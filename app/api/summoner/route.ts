@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { supabase } from '../../lib/supabase';
 
 const REGIONAL: Record<string, string> = {
   euw1: 'europe',
@@ -18,8 +19,42 @@ export async function GET(request: NextRequest) {
   const parts = decoded.split('#');
   const gameName = parts[0].trim();
   const tagLine = parts[1]?.trim() || 'EUW';
+  const fullName = `${gameName}#${tagLine}`;
 
   try {
+    // Supabase Cache prüfen
+    const { data: cached } = await supabase
+      .from('players')
+      .select('*')
+      .eq('summoner_name', fullName)
+      .eq('region', region)
+      .single();
+
+    if (cached) {
+      const updatedAt = new Date(cached.updated_at).getTime();
+      const now = Date.now();
+      const fiveMinutes = 5 * 60 * 1000;
+
+      if (now - updatedAt < fiveMinutes) {
+        const { data: rankedData } = await supabase
+          .from('ranked_stats')
+          .select('*')
+          .eq('player_id', cached.id);
+
+        return NextResponse.json({
+          summoner: {
+            name: cached.summoner_name,
+            summonerLevel: cached.summoner_level,
+            profileIconId: cached.profile_icon_id,
+            puuid: cached.puuid,
+          },
+          ranked: rankedData || [],
+          fromCache: true,
+        });
+      }
+    }
+
+    // Riot API aufrufen
     const accountRes = await fetch(
       `https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}?api_key=${apiKey}`
     );
@@ -45,9 +80,42 @@ export async function GET(request: NextRequest) {
     );
     const ranked = rankedRes.ok ? await rankedRes.json() : [];
 
+    // In Supabase speichern
+    const { data: player, error: playerError } = await supabase
+      .from('players')
+      .upsert({
+        summoner_name: fullName,
+        summoner_id: summoner.id,
+        puuid: account.puuid,
+        region: region,
+        summoner_level: summoner.summonerLevel,
+        profile_icon_id: summoner.profileIconId,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'puuid' })
+      .select()
+      .single();
+
+    if (!playerError && player && Array.isArray(ranked) && ranked.length > 0) {
+      const soloQueue = ranked.find((r: any) => r.queueType === 'RANKED_SOLO_5x5');
+      if (soloQueue) {
+        await supabase
+          .from('ranked_stats')
+          .upsert({
+            player_id: player.id,
+            queue_type: soloQueue.queueType,
+            tier: soloQueue.tier,
+            rank: soloQueue.rank,
+            league_points: soloQueue.leaguePoints,
+            wins: soloQueue.wins,
+            losses: soloQueue.losses,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'player_id' });
+      }
+    }
+
     return NextResponse.json({
-      summoner: { ...summoner, name: `${account.gameName}#${account.tagLine}` },
-      ranked
+      summoner: { ...summoner, name: fullName },
+      ranked: Array.isArray(ranked) ? ranked : [],
     });
 
   } catch (error) {

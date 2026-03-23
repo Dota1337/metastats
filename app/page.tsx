@@ -10,31 +10,13 @@ export default function Home() {
   const [error, setError] = useState('');
   const [ddVersion, setDdVersion] = useState('14.1.1');
 
-  const search = async () => {
+const search = async () => {
     if (!name.trim()) return;
-    setLoading(true);
-    const versionRes = await fetch('/api/version');
-    const versionData = await versionRes.json();
-    setDdVersion(versionData.version);
-    setError('');
-    setPlayer(null);
-    setMatches([]);
-    try {
-      const res = await fetch(`/api/summoner?name=${encodeURIComponent(name)}&region=${region}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setPlayer(data);
-
-      const matchRes = await fetch(`/api/matches?puuid=${encodeURIComponent(data.summoner.puuid)}&region=${region}`);
-const matchText = await matchRes.text();
-console.log('Match Response:', matchText);
-const matchData = JSON.parse(matchText);
-      if (matchRes.ok) setMatches(matchData.matches || []);
-    } catch (e: any) {
-      setError(e.message || 'Fehler beim Suchen');
-    } finally {
-      setLoading(false);
-    }
+    const parts = name.split('#');
+    const gameName = parts[0].trim();
+    const tag = parts[1]?.trim() || 'EUW';
+    const slug = `${gameName.replace(/ /g, '-')}-${tag}`;
+    window.location.href = `/player/${slug}`;
   };
 
   const ranked = Array.isArray(player?.ranked)

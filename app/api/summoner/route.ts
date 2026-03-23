@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../lib/supabase';
+import { calculateMarketValue } from '../../lib/marketvalue';
 
 const REGIONAL: Record<string, string> = {
   euw1: 'europe',
@@ -22,7 +23,6 @@ export async function GET(request: NextRequest) {
   const fullName = `${gameName}#${tagLine}`;
 
   try {
-    // Supabase Cache prüfen
     const { data: cached } = await supabase
       .from('players')
       .select('*')
@@ -54,7 +54,6 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Riot API aufrufen
     const accountRes = await fetch(
       `https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}?api_key=${apiKey}`
     );
@@ -80,8 +79,62 @@ export async function GET(request: NextRequest) {
     );
     const ranked = rankedRes.ok ? await rankedRes.json() : [];
 
-    // In Supabase speichern
-    const { data: player, error: playerError } = await supabase
+    const soloQueue = Array.isArray(ranked)
+      ? ranked.find((r: any) => r.queueType === 'RANKED_SOLO_5x5')
+      : null;
+
+    const matchListRes = await fetch(
+      `https://${regional}.api.riotgames.com/lol/match/v5/matches/by-puuid/${account.puuid}/ids?start=0&count=30&api_key=${apiKey}`
+    );
+    const matchIds: string[] = matchListRes.ok ? await matchListRes.json() : [];
+
+    const matchDetails = await Promise.all(
+      matchIds.slice(0, 10).map(async (id) => {
+        const res = await fetch(`https://${regional}.api.riotgames.com/lol/match/v5/matches/${id}?api_key=${apiKey}`);
+        return res.ok ? res.json() : null;
+      })
+    );
+
+    const matches = matchDetails.filter(Boolean).map((match) => {
+      const participant = match.info.participants.find((p: any) => p.puuid === account.puuid);
+      return {
+        kills: participant?.kills || 0,
+        deaths: participant?.deaths || 0,
+        assists: participant?.assists || 0,
+        win: participant?.win || false,
+        gameDuration: match.info.gameDuration,
+        cs: (participant?.totalMinionsKilled || 0) + (participant?.neutralMinionsKilled || 0),
+        role: participant?.individualPosition || 'UNKNOWN',
+        damageDealt: participant?.totalDamageDealtToChampions || 0,
+        visionScore: participant?.visionScore || 0,
+        wardsPlaced: participant?.wardsPlaced || 0,
+        firstBloodKill: participant?.firstBloodKill || false,
+        firstBloodAssist: participant?.firstBloodAssist || false,
+        firstBloodVictim: participant?.firstBloodVictim || false,
+        dragonKills: participant?.dragonKills || 0,
+        baronKills: participant?.baronKills || 0,
+        turretKills: participant?.turretKills || 0,
+        gameWonFromBehind: (participant?.wasLosing && participant?.win) || false,
+        surrendered: participant?.gameEndedInSurrender || false,
+      };
+    });
+
+    const marketValue = calculateMarketValue(
+      soloQueue ? {
+        tier: soloQueue.tier,
+        rank: soloQueue.rank,
+        leaguePoints: soloQueue.leaguePoints,
+        wins: soloQueue.wins,
+        losses: soloQueue.losses,
+      } : null,
+      matches
+    );
+
+    const winrate = soloQueue
+      ? Math.round((soloQueue.wins / (soloQueue.wins + soloQueue.losses)) * 100)
+      : null;
+
+    const { data: player } = await supabase
       .from('players')
       .upsert({
         summoner_name: fullName,
@@ -90,27 +143,38 @@ export async function GET(request: NextRequest) {
         region: region,
         summoner_level: summoner.summonerLevel,
         profile_icon_id: summoner.profileIconId,
+        market_value: marketValue.rated ? marketValue.value : null,
+        tier: soloQueue?.tier || null,
+        rank: soloQueue?.rank || null,
+        winrate: winrate,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'puuid' })
       .select()
       .single();
 
-    if (!playerError && player && Array.isArray(ranked) && ranked.length > 0) {
-      const soloQueue = ranked.find((r: any) => r.queueType === 'RANKED_SOLO_5x5');
-      if (soloQueue) {
-        await supabase
-          .from('ranked_stats')
-          .upsert({
-            player_id: player.id,
-            queue_type: soloQueue.queueType,
-            tier: soloQueue.tier,
-            rank: soloQueue.rank,
-            league_points: soloQueue.leaguePoints,
-            wins: soloQueue.wins,
-            losses: soloQueue.losses,
-            updated_at: new Date().toISOString(),
-          }, { onConflict: 'player_id' });
-      }
+    if (player && marketValue.rated) {
+      await supabase
+        .from('market_value_history')
+        .insert({
+          player_id: player.id,
+          market_value: marketValue.value,
+          recorded_at: new Date().toISOString(),
+        });
+    }
+
+    if (player && soloQueue) {
+      await supabase
+        .from('ranked_stats')
+        .upsert({
+          player_id: player.id,
+          queue_type: soloQueue.queueType,
+          tier: soloQueue.tier,
+          rank: soloQueue.rank,
+          league_points: soloQueue.leaguePoints,
+          wins: soloQueue.wins,
+          losses: soloQueue.losses,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'player_id' });
     }
 
     return NextResponse.json({

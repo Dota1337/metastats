@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const matchListRes = await fetch(
-      `https://${regional}.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?start=0&count=10&api_key=${apiKey}`
+      `https://${regional}.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?start=0&count=30&api_key=${apiKey}`
     );
 
     if (!matchListRes.ok) {
@@ -48,6 +48,19 @@ export async function GET(request: NextRequest) {
         gameDuration: match.info.gameDuration,
         gameMode: match.info.gameMode,
         cs: (participant?.totalMinionsKilled || 0) + (participant?.neutralMinionsKilled || 0),
+        role: participant?.individualPosition || participant?.teamPosition || 'UNKNOWN',
+        damageDealt: participant?.totalDamageDealtToChampions || 0,
+        visionScore: participant?.visionScore || 0,
+        wardsPlaced: participant?.wardsPlaced || 0,
+        firstBloodKill: participant?.firstBloodKill || false,
+        firstBloodAssist: participant?.firstBloodAssist || false,
+        firstBloodVictim: participant?.firstBloodVictim || false,
+        dragonKills: participant?.dragonKills || 0,
+        baronKills: participant?.baronKills || 0,
+        turretKills: participant?.turretKills || 0,
+        objectivesStolen: participant?.objectivesStolen || 0,
+        gameWonFromBehind: (participant?.wasLosing && participant?.win) || false,
+        surrendered: participant?.gameEndedInSurrender || false,
       };
     });
 

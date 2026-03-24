@@ -97,6 +97,11 @@ export async function GET(request: NextRequest) {
 
     const matches = matchDetails.filter(Boolean).map((match) => {
       const participant = match.info.participants.find((p: any) => p.puuid === account.puuid);
+      const teamId = participant?.teamId;
+      const teammates = match.info.participants.filter((p: any) => p.teamId === teamId);
+      const teamKills = teammates.reduce((s: number, p: any) => s + (p.kills || 0), 0);
+      const teamDamage = teammates.reduce((s: number, p: any) => s + (p.totalDamageDealtToChampions || 0), 0);
+      const teamGold = teammates.reduce((s: number, p: any) => s + (p.goldEarned || 0), 0);
       return {
         kills: participant?.kills || 0,
         deaths: participant?.deaths || 0,
@@ -116,6 +121,24 @@ export async function GET(request: NextRequest) {
         turretKills: participant?.turretKills || 0,
         gameWonFromBehind: (participant?.wasLosing && participant?.win) || false,
         surrendered: participant?.gameEndedInSurrender || false,
+        // Knowledge Graph extended fields
+        teamKills,
+        soloKills: participant?.challenges?.soloKills ?? participant?.soloKills ?? 0,
+        totalDamageTaken: participant?.totalDamageTaken || 0,
+        teamDamage,
+        doubleKills: participant?.doubleKills || 0,
+        tripleKills: participant?.tripleKills || 0,
+        quadraKills: participant?.quadraKills || 0,
+        pentaKills: participant?.pentaKills || 0,
+        goldEarned: participant?.goldEarned || 0,
+        teamGold,
+        controlWardsPlaced: participant?.challenges?.controlWardsPlaced ?? participant?.detectorWardsPlaced ?? 0,
+        wardsKilled: participant?.wardsKilled || 0,
+        riftHeraldKills: participant?.challenges?.riftHeraldTakedowns ?? 0,
+        inhibitorKills: participant?.inhibitorKills || 0,
+        totalHealsOnTeammates: participant?.totalHealsOnTeammates || 0,
+        totalDamageShieldedOnTeammates: participant?.totalDamageShieldedOnTeammates || 0,
+        timeCCingOthers: participant?.timeCCingOthers || 0,
       };
     });
 
@@ -134,23 +157,37 @@ export async function GET(request: NextRequest) {
       ? Math.round((soloQueue.wins / (soloQueue.wins + soloQueue.losses)) * 100)
       : null;
 
-    const { data: player } = await supabase
-      .from('players')
-      .upsert({
-        summoner_name: fullName,
-        summoner_id: summoner.id,
-        puuid: account.puuid,
-        region: region,
-        summoner_level: summoner.summonerLevel,
-        profile_icon_id: summoner.profileIconId,
-        market_value: marketValue.rated ? marketValue.value : null,
-        tier: soloQueue?.tier || null,
-        rank: soloQueue?.rank || null,
-        winrate: winrate,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'puuid' })
-      .select()
-      .single();
+const visitorId = request.cookies.get('visitor_id')?.value;
+
+const { data: existingPlayer } = await supabase
+  .from('players')
+  .select('id, searched_by')
+  .eq('puuid', account.puuid)
+  .single();
+
+const searchedBy = existingPlayer?.searched_by || [];
+if (visitorId && !searchedBy.includes(visitorId)) {
+  searchedBy.push(visitorId);
+}
+
+const { data: player } = await supabase
+  .from('players')
+  .upsert({
+    summoner_name: fullName,
+    summoner_id: summoner.id,
+    puuid: account.puuid,
+    region: region,
+    summoner_level: summoner.summonerLevel,
+    profile_icon_id: summoner.profileIconId,
+    market_value: marketValue.rated ? marketValue.value : null,
+    tier: soloQueue?.tier || null,
+    rank: soloQueue?.rank || null,
+    winrate: winrate,
+    searched_by: searchedBy,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'puuid' })
+  .select()
+  .single();
 
     if (player && marketValue.rated) {
       await supabase

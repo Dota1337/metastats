@@ -1,12 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
 
-const FEATURED_PLAYERS = [
-  { name: 'Faker', tag: 'T1', region: 'kr' },
-  { name: 'Caps', tag: 'EUW', region: 'euw1' },
-  { name: 'Rekkles', tag: 'EUW', region: 'euw1' },
-];
-
 export default function Home() {
   const [name, setName] = useState('');
   const [region, setRegion] = useState('euw1');
@@ -18,6 +12,11 @@ export default function Home() {
   const [loadingMarket, setLoadingMarket] = useState(false);
 
   useEffect(() => {
+    let visitorId = document.cookie.split('; ').find(r => r.startsWith('visitor_id='))?.split('=')[1];
+    if (!visitorId) {
+      visitorId = crypto.randomUUID();
+      document.cookie = `visitor_id=${visitorId}; max-age=31536000; path=/`;
+    }
     fetchRecentPlayers();
   }, []);
 
@@ -64,7 +63,6 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-[#080c18]">
-      {/* Navigation */}
       <nav className="bg-[#0a0e1a] border-b border-[#1e2a3a] px-6 py-3 flex items-center justify-between">
         <a href="/" className="text-[#c89b3c] text-lg font-medium">
           meta<span className="text-white">stats</span>.gg
@@ -76,7 +74,6 @@ export default function Home() {
         </div>
       </nav>
 
-      {/* Hero */}
       <div className="bg-[#0a0e1a] border-b border-[#1e2a3a] px-6 py-16 text-center">
         <div className="text-[#c89b3c] text-xs uppercase tracking-widest mb-3">Die führende E-Sport Analyseplattform</div>
         <h1 className="text-white text-4xl font-medium mb-3">
@@ -86,7 +83,6 @@ export default function Home() {
           Echtzeit-Stats, Match History & KI-gestützte Marktwertberechnung für alle Spieler
         </p>
 
-        {/* Tabs */}
         <div className="flex justify-center gap-2 mb-6">
           <button
             onClick={() => setActiveTab('search')}
@@ -131,7 +127,6 @@ export default function Home() {
       <div className="max-w-6xl mx-auto px-6 py-8">
         {activeTab === 'search' && (
           <div className="grid grid-cols-3 gap-6">
-            {/* Plattform Stats */}
             <div className="col-span-3 grid grid-cols-4 gap-3 mb-2">
               {[
                 { label: 'Gespeicherte Spieler', value: '2,4M', sub: '+12.4% diese Woche' },
@@ -147,7 +142,6 @@ export default function Home() {
               ))}
             </div>
 
-            {/* Zuletzt gesuchte Spieler */}
             <div className="col-span-2 bg-[#0d1526] border border-[#1e2a3a] rounded p-5">
               <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-4">Zuletzt gesucht</div>
               {recentPlayers.length === 0 ? (
@@ -169,7 +163,6 @@ export default function Home() {
               )}
             </div>
 
-            {/* Features */}
             <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-5">
               <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-4">Features</div>
               <div className="flex flex-col gap-3">
@@ -198,7 +191,6 @@ export default function Home() {
               <div className="col-span-3 text-center text-[#8a9bb0] py-20">Lade Marktwert-Daten...</div>
             ) : (
               <>
-                {/* Top Marktwerte */}
                 <div className="col-span-3 bg-[#0d1526] border border-[#1e2a3a] rounded p-5">
                   <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-4">Top Marktwerte</div>
                   {topPlayers.length === 0 ? (
@@ -222,7 +214,6 @@ export default function Home() {
                   ))}
                 </div>
 
-                {/* Größte Gewinner */}
                 <div className="col-span-1 bg-[#0d1526] border border-[#1e2a3a] rounded p-5">
                   <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-4">
                     Größte Gewinner <span className="text-green-400">↑</span> diese Woche
@@ -237,7 +228,6 @@ export default function Home() {
                   ))}
                 </div>
 
-                {/* Größte Verlierer */}
                 <div className="col-span-1 bg-[#0d1526] border border-[#1e2a3a] rounded p-5">
                   <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-4">
                     Größte Verlierer <span className="text-red-400">↓</span> diese Woche
@@ -252,7 +242,6 @@ export default function Home() {
                   ))}
                 </div>
 
-                {/* Info */}
                 <div className="col-span-1 bg-[#0d1526] border border-[#1e2a3a] rounded p-5">
                   <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-4">Wie wird berechnet?</div>
                   <div className="flex flex-col gap-3">

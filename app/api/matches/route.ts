@@ -38,6 +38,11 @@ export async function GET(request: NextRequest) {
       const participant = match.info.participants.find(
         (p: any) => p.puuid === puuid
       );
+      const teamId = participant?.teamId;
+      const teammates = match.info.participants.filter((p: any) => p.teamId === teamId);
+      const teamKills = teammates.reduce((s: number, p: any) => s + (p.kills || 0), 0);
+      const teamDamage = teammates.reduce((s: number, p: any) => s + (p.totalDamageDealtToChampions || 0), 0);
+      const teamGold = teammates.reduce((s: number, p: any) => s + (p.goldEarned || 0), 0);
       return {
         matchId: match.metadata.matchId,
         champion: participant?.championName,
@@ -61,6 +66,24 @@ export async function GET(request: NextRequest) {
         objectivesStolen: participant?.objectivesStolen || 0,
         gameWonFromBehind: (participant?.wasLosing && participant?.win) || false,
         surrendered: participant?.gameEndedInSurrender || false,
+        // Knowledge Graph extended fields
+        teamKills,
+        soloKills: participant?.challenges?.soloKills ?? participant?.soloKills ?? 0,
+        totalDamageTaken: participant?.totalDamageTaken || 0,
+        teamDamage,
+        doubleKills: participant?.doubleKills || 0,
+        tripleKills: participant?.tripleKills || 0,
+        quadraKills: participant?.quadraKills || 0,
+        pentaKills: participant?.pentaKills || 0,
+        goldEarned: participant?.goldEarned || 0,
+        teamGold,
+        controlWardsPlaced: participant?.challenges?.controlWardsPlaced ?? participant?.detectorWardsPlaced ?? 0,
+        wardsKilled: participant?.wardsKilled || 0,
+        riftHeraldKills: participant?.challenges?.riftHeraldTakedowns ?? 0,
+        inhibitorKills: participant?.inhibitorKills || 0,
+        totalHealsOnTeammates: participant?.totalHealsOnTeammates || 0,
+        totalDamageShieldedOnTeammates: participant?.totalDamageShieldedOnTeammates || 0,
+        timeCCingOthers: participant?.timeCCingOthers || 0,
       };
     });
 

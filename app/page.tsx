@@ -51,8 +51,8 @@ export default function Home() {
     const parts = name.split('#');
     const gameName = parts[0].trim();
     const tag = parts[1]?.trim() || 'EUW';
-    const slug = gameName.replace(/ /g, '-') + '-' + tag;
-    window.location.href = '/player/' + slug;
+    const slug = encodeURIComponent(gameName) + '--' + encodeURIComponent(tag);
+    window.location.href = '/player/' + slug + '?region=' + region;
   };
 
   const formatValue = (v: number) => {
@@ -149,7 +149,7 @@ export default function Home() {
               ) : (
                 <div className="flex flex-col gap-2">
                   {recentPlayers.map((p, i) => (
-                    <a key={i} href={'/player/' + p.summoner_name.replace('#', '-').replace(/ /g, '-')} className="flex items-center gap-3 p-2 rounded hover:bg-[#141c2e] transition-colors">
+                    <a key={i} href={'/player/' + encodeURIComponent(p.summoner_name.split('#')[0]) + '--' + encodeURIComponent(p.summoner_name.split('#')[1] || 'EUW') + '?region=' + (p.region || 'euw1')} className="flex items-center gap-3 p-2 rounded hover:bg-[#141c2e] transition-colors">
                       <div className="w-8 h-8 rounded-full bg-[#1a2438] border border-[#2a3a50] flex items-center justify-center text-[#8a9bb0] text-xs font-medium flex-shrink-0">
                         {p.summoner_name.slice(0, 2).toUpperCase()}
                       </div>
@@ -204,7 +204,7 @@ export default function Home() {
                     </div>
                   )}
                   {topPlayers.map((p, i) => (
-                    <a key={i} href={'/player/' + p.summoner_name.replace('#', '-').replace(/ /g, '-')} className="grid grid-cols-5 gap-2 px-2 py-2 rounded hover:bg-[#141c2e] transition-colors">
+                    <a key={i} href={'/player/' + encodeURIComponent(p.summoner_name.split('#')[0]) + '--' + encodeURIComponent(p.summoner_name.split('#')[1] || 'EUW') + '?region=' + (p.region || 'euw1')} className="grid grid-cols-5 gap-2 px-2 py-2 rounded hover:bg-[#141c2e] transition-colors">
                       <div className="text-[#8a9bb0] text-sm">{i + 1}</div>
                       <div className="text-white text-sm">{p.summoner_name}</div>
                       <div className="text-[#c89b3c] text-sm font-medium text-right">{formatValue(p.market_value)}</div>
@@ -221,7 +221,7 @@ export default function Home() {
                   {gainers.length === 0 ? (
                     <div className="text-[#4a5a70] text-xs text-center py-6">Noch keine Daten</div>
                   ) : gainers.map((p, i) => (
-                    <a key={i} href={'/player/' + p.summoner_name.replace('#', '-').replace(/ /g, '-')} className="flex items-center justify-between py-2 hover:bg-[#141c2e] px-2 rounded transition-colors">
+                    <a key={i} href={'/player/' + encodeURIComponent(p.summoner_name.split('#')[0]) + '--' + encodeURIComponent(p.summoner_name.split('#')[1] || 'EUW') + '?region=' + (p.region || 'euw1')} className="flex items-center justify-between py-2 hover:bg-[#141c2e] px-2 rounded transition-colors">
                       <span className="text-white text-sm">{p.summoner_name}</span>
                       <span className="text-green-400 text-sm font-medium">+{formatValue(p.change)}</span>
                     </a>
@@ -235,7 +235,7 @@ export default function Home() {
                   {losers.length === 0 ? (
                     <div className="text-[#4a5a70] text-xs text-center py-6">Noch keine Daten</div>
                   ) : losers.map((p, i) => (
-                    <a key={i} href={'/player/' + p.summoner_name.replace('#', '-').replace(/ /g, '-')} className="flex items-center justify-between py-2 hover:bg-[#141c2e] px-2 rounded transition-colors">
+                    <a key={i} href={'/player/' + encodeURIComponent(p.summoner_name.split('#')[0]) + '--' + encodeURIComponent(p.summoner_name.split('#')[1] || 'EUW') + '?region=' + (p.region || 'euw1')} className="flex items-center justify-between py-2 hover:bg-[#141c2e] px-2 rounded transition-colors">
                       <span className="text-white text-sm">{p.summoner_name}</span>
                       <span className="text-red-400 text-sm font-medium">{formatValue(p.change)}</span>
                     </a>

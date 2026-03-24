@@ -1,10 +1,11 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { calculateMarketValue } from '../../lib/marketvalue';
 
 export default function PlayerPage() {
   const { slug } = useParams();
+  const searchParams = useSearchParams();
   const [player, setPlayer] = useState<any>(null);
   const [matches, setMatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -15,12 +16,23 @@ export default function PlayerPage() {
   const [challenges, setChallenges] = useState<any[]>([]);
   const [challengeConfig, setChallengeConfig] = useState<Record<number, { name: string; description: string; thresholds: Record<string, number> }>>({});
   const [championMap, setChampionMap] = useState<Record<number, { id: string; name: string }>>({});
+  const region = searchParams.get('region') || 'euw1';
 
   useEffect(() => {
     if (!slug) return;
-    const parts = (slug as string).split('-');
-    const tag = parts[parts.length - 1];
-    const name = parts.slice(0, -1).join(' ');
+    const decoded = decodeURIComponent(slug as string);
+    const separatorIndex = decoded.lastIndexOf('--');
+    let name: string;
+    let tag: string;
+    if (separatorIndex !== -1) {
+      name = decoded.slice(0, separatorIndex);
+      tag = decoded.slice(separatorIndex + 2);
+    } else {
+      // Fallback for old-style URLs (name-tag)
+      const parts = decoded.split('-');
+      tag = parts[parts.length - 1];
+      name = parts.slice(0, -1).join(' ');
+    }
     loadPlayer(name, tag);
   }, [slug]);
 
@@ -31,12 +43,12 @@ export default function PlayerPage() {
       const versionData = await versionRes.json();
       setDdVersion(versionData.version);
 
-      const res = await fetch(`/api/summoner?name=${encodeURIComponent(name + '#' + tag)}&region=euw1`);
+      const res = await fetch(`/api/summoner?name=${encodeURIComponent(name + '#' + tag)}&region=${region}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setPlayer(data);
 
-      const matchRes = await fetch(`/api/matches?puuid=${encodeURIComponent(data.summoner.puuid)}&region=euw1`);
+      const matchRes = await fetch(`/api/matches?puuid=${encodeURIComponent(data.summoner.puuid)}&region=${region}`);
       const matchData = await matchRes.json();
       if (matchRes.ok) setMatches(matchData.matches || []);
 
@@ -52,9 +64,9 @@ export default function PlayerPage() {
       // Parallel fetch: mastery, live game, challenges
       const puuid = encodeURIComponent(data.summoner.puuid);
       const [masteryRes, liveRes, challengeRes] = await Promise.all([
-        fetch(`/api/mastery?puuid=${puuid}&region=euw1`),
-        fetch(`/api/live-game?puuid=${puuid}&region=euw1`),
-        fetch(`/api/challenges?puuid=${puuid}&region=euw1`),
+        fetch(`/api/mastery?puuid=${puuid}&region=${region}`),
+        fetch(`/api/live-game?puuid=${puuid}&region=${region}`),
+        fetch(`/api/challenges?puuid=${puuid}&region=${region}`),
       ]);
 
       if (masteryRes.ok) {
@@ -128,7 +140,7 @@ export default function PlayerPage() {
         <div className="flex gap-6">
           <a href="/" className="text-[#8a9bb0] text-sm hover:text-white">Spielersuche</a>
           <a href="/leaderboard" className="text-[#8a9bb0] text-sm hover:text-white">Rangliste</a>
-          <a href="#" className="text-[#8a9bb0] text-sm hover:text-white">Champions</a>
+          <a href="/champions" className="text-[#8a9bb0] text-sm hover:text-white">Champions</a>
         </div>
       </nav>
 
@@ -162,7 +174,7 @@ export default function PlayerPage() {
                     )}
                   </h1>
                   <div className="text-[#8a9bb0] text-sm mt-1">
-                    Level {player.summoner.summonerLevel} · EUW · {roleLabels[marketValue.role] || '-'}
+                    Level {player.summoner.summonerLevel} · {region.toUpperCase().replace('1', '')} · {roleLabels[marketValue.role] || '-'}
                   </div>
                 </div>
                 <div className="text-right">

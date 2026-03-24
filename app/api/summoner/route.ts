@@ -41,6 +41,15 @@ export async function GET(request: NextRequest) {
           .select('*')
           .eq('player_id', cached.id);
 
+        const mapped = (rankedData || []).map((r: any) => ({
+          queueType: r.queue_type,
+          tier: r.tier,
+          rank: r.rank,
+          leaguePoints: r.league_points,
+          wins: r.wins,
+          losses: r.losses,
+        }));
+
         return NextResponse.json({
           summoner: {
             name: cached.summoner_name,
@@ -48,7 +57,7 @@ export async function GET(request: NextRequest) {
             profileIconId: cached.profile_icon_id,
             puuid: cached.puuid,
           },
-          ranked: rankedData || [],
+          ranked: mapped,
           fromCache: true,
         });
       }
@@ -214,6 +223,11 @@ const { data: player } = await supabase
         }, { onConflict: 'player_id' });
     }
 
+    // Collect champion stats from matches (non-blocking)
+    if (soloQueue && matches.length > 0) {
+      collectChampionStats(matches, matchDetails.filter(Boolean), account.puuid, soloQueue.tier).catch(() => {});
+    }
+
     return NextResponse.json({
       summoner: { ...summoner, name: fullName },
       ranked: Array.isArray(ranked) ? ranked : [],
@@ -221,5 +235,63 @@ const { data: player } = await supabase
 
   } catch (error) {
     return NextResponse.json({ error: 'Server Fehler' }, { status: 500 });
+  }
+}
+
+async function collectChampionStats(
+  matches: any[],
+  rawMatches: any[],
+  puuid: string,
+  tier: string
+) {
+  // Aggregate champion stats from this player's matches
+  const champStats: Record<string, { wins: number; games: number; kills: number; deaths: number; assists: number }> = {};
+  const bannedChamps: Record<string, number> = {};
+  let totalGames = rawMatches.length;
+
+  for (const match of rawMatches) {
+    if (!match?.info?.participants) continue;
+
+    // Count bans
+    for (const team of match.info.teams || []) {
+      for (const ban of team.bans || []) {
+        if (ban.championId > 0) {
+          const key = String(ban.championId);
+          bannedChamps[key] = (bannedChamps[key] || 0) + 1;
+        }
+      }
+    }
+
+    // Count picks and wins for all participants (not just our player)
+    for (const p of match.info.participants) {
+      const key = String(p.championId);
+      if (!champStats[key]) {
+        champStats[key] = { wins: 0, games: 0, kills: 0, deaths: 0, assists: 0 };
+      }
+      champStats[key].games++;
+      if (p.win) champStats[key].wins++;
+      champStats[key].kills += p.kills || 0;
+      champStats[key].deaths += p.deaths || 0;
+      champStats[key].assists += p.assists || 0;
+    }
+  }
+
+  // Total games counted = rawMatches * 10 participants per match
+  const totalParticipantGames = totalGames * 10;
+
+  // Upsert champion stats per tier
+  for (const [champKey, stats] of Object.entries(champStats)) {
+    await supabase.from('champion_stats').upsert({
+      champion_key: champKey,
+      tier: tier,
+      wins: stats.wins,
+      games: stats.games,
+      kills: stats.kills,
+      deaths: stats.deaths,
+      assists: stats.assists,
+      bans: bannedChamps[champKey] || 0,
+      total_games_in_tier: totalParticipantGames,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'champion_key,tier' });
   }
 }

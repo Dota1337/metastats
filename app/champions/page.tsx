@@ -1,28 +1,9 @@
 'use client';
 import { useState, useEffect } from 'react';
-
-const TIERS = [
-  { value: 'all', label: 'Alle Ränge' },
-  { value: 'IRON', label: 'Iron' },
-  { value: 'BRONZE', label: 'Bronze' },
-  { value: 'SILVER', label: 'Silver' },
-  { value: 'GOLD', label: 'Gold' },
-  { value: 'PLATINUM', label: 'Platinum' },
-  { value: 'EMERALD', label: 'Emerald' },
-  { value: 'DIAMOND', label: 'Diamond' },
-  { value: 'MASTER', label: 'Master' },
-  { value: 'GRANDMASTER', label: 'Grandmaster' },
-  { value: 'CHALLENGER', label: 'Challenger' },
-];
-
-const ROLES = [
-  { value: 'all', label: 'Alle Rollen', icon: '⊕' },
-  { value: 'top', label: 'Top', icon: '⊤' },
-  { value: 'jungle', label: 'Jungle', icon: '⊙' },
-  { value: 'mid', label: 'Mid', icon: '◆' },
-  { value: 'adc', label: 'ADC', icon: '⊳' },
-  { value: 'support', label: 'Support', icon: '✚' },
-];
+import Nav from '../components/Nav';
+import Footer from '../components/Footer';
+import PageHero from '../components/PageHero';
+import { useI18n } from '../lib/i18n';
 
 type SortKey = 'name' | 'winRate' | 'pickRate' | 'banRate' | 'games' | 'avgKDA';
 
@@ -51,6 +32,30 @@ export default function ChampionsPage() {
   const [version, setVersion] = useState('');
   const [hasStats, setHasStats] = useState(false);
   const [search, setSearch] = useState('');
+  const { t } = useI18n();
+
+  const TIERS = [
+    { value: 'all', label: t('tier.all') },
+    { value: 'IRON', label: t('tier.iron') },
+    { value: 'BRONZE', label: t('tier.bronze') },
+    { value: 'SILVER', label: t('tier.silver') },
+    { value: 'GOLD', label: t('tier.gold') },
+    { value: 'PLATINUM', label: t('tier.platinum') },
+    { value: 'EMERALD', label: t('tier.emerald') },
+    { value: 'DIAMOND', label: t('tier.diamond') },
+    { value: 'MASTER', label: t('tier.master') },
+    { value: 'GRANDMASTER', label: t('tier.grandmaster') },
+    { value: 'CHALLENGER', label: t('tier.challenger') },
+  ];
+
+  const ROLES = [
+    { value: 'all', label: t('role.all') },
+    { value: 'top', label: t('role.top') },
+    { value: 'jungle', label: t('role.jungle') },
+    { value: 'mid', label: t('role.mid') },
+    { value: 'adc', label: t('role.adc') },
+    { value: 'support', label: t('role.support') },
+  ];
 
   useEffect(() => {
     fetchChampions();
@@ -92,24 +97,13 @@ export default function ChampionsPage() {
     });
 
   const tierColors: Record<string, string> = {
-    IRON: '#6b6b6b',
-    BRONZE: '#a0652a',
-    SILVER: '#8fa0a8',
-    GOLD: '#c89b3c',
-    PLATINUM: '#209e85',
-    EMERALD: '#00a86b',
-    DIAMOND: '#576cce',
-    MASTER: '#9d48e0',
-    GRANDMASTER: '#e44040',
-    CHALLENGER: '#f0c040',
+    IRON: '#6b6b6b', BRONZE: '#a0652a', SILVER: '#8fa0a8', GOLD: '#c89b3c',
+    PLATINUM: '#209e85', EMERALD: '#00a86b', DIAMOND: '#576cce',
+    MASTER: '#9d48e0', GRANDMASTER: '#e44040', CHALLENGER: '#f0c040',
   };
 
   const roleLabels: Record<string, string> = {
-    TOP: 'Top',
-    JUNGLE: 'Jungle',
-    MIDDLE: 'Mid',
-    BOTTOM: 'ADC',
-    SUPPORT: 'Support',
+    TOP: 'Top', JUNGLE: 'Jungle', MIDDLE: 'Mid', BOTTOM: 'ADC', SUPPORT: 'Support',
   };
 
   const SortHeader = ({ label, sKey, className }: { label: string; sKey: SortKey; className?: string }) => (
@@ -124,47 +118,35 @@ export default function ChampionsPage() {
     </button>
   );
 
+  const currentTierLabel = TIERS.find((tr) => tr.value === tier)?.label || t('tier.all');
+  const currentRoleLabel = ROLES.find((r) => r.value === role)?.label || t('role.all');
+
   return (
     <main className="min-h-screen bg-[#080c18]">
-      <nav className="bg-[#0a0e1a] border-b border-[#1e2a3a] px-6 py-3 flex items-center justify-between">
-        <a href="/" className="text-[#c89b3c] text-lg font-medium">
-          meta<span className="text-white">stats</span>.gg
-        </a>
-        <div className="flex gap-6">
-          <a href="/" className="text-[#8a9bb0] text-sm hover:text-white">Spielersuche</a>
-          <a href="/leaderboard" className="text-[#8a9bb0] text-sm hover:text-white">Rangliste</a>
-          <a href="/champions" className="text-white text-sm">Champions</a>
-        </div>
-      </nav>
+      <Nav active="champions" />
 
-      <div className="max-w-6xl mx-auto px-6 py-8">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-white text-2xl font-medium mb-1">Champion-Statistiken</h1>
-          <p className="text-[#8a9bb0] text-sm">
-            Winrate, Pickrate & Banrate aller Champions nach Rang
-          </p>
-        </div>
+      <PageHero title={t('champ.title')} subtitle={t('champ.subtitle')} leftChampion="Lux" rightChampion="Zed" />
 
+      <div className="max-w-6xl mx-auto px-6 pb-8">
         {/* Filters */}
         <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-4">
           <div className="flex flex-wrap items-center gap-4">
             {/* Tier Filter */}
             <div>
-              <div className="text-[#8a9bb0] text-xs mb-2">Rang</div>
+              <div className="text-[#8a9bb0] text-xs mb-2">{t('champ.rank')}</div>
               <div className="flex flex-wrap gap-1">
-                {TIERS.map((t) => (
+                {TIERS.map((tr) => (
                   <button
-                    key={t.value}
-                    onClick={() => setTier(t.value)}
+                    key={tr.value}
+                    onClick={() => setTier(tr.value)}
                     className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-                      tier === t.value
+                      tier === tr.value
                         ? 'bg-[#c89b3c] text-[#0a0e1a]'
                         : 'bg-[#141c2e] text-[#8a9bb0] hover:text-white hover:bg-[#1a2438]'
                     }`}
-                    style={tier === t.value && t.value !== 'all' ? { backgroundColor: tierColors[t.value] || '#c89b3c' } : {}}
+                    style={tier === tr.value && tr.value !== 'all' ? { backgroundColor: tierColors[tr.value] || '#c89b3c' } : {}}
                   >
-                    {t.label}
+                    {tr.label}
                   </button>
                 ))}
               </div>
@@ -172,7 +154,7 @@ export default function ChampionsPage() {
 
             {/* Role Filter */}
             <div>
-              <div className="text-[#8a9bb0] text-xs mb-2">Rolle</div>
+              <div className="text-[#8a9bb0] text-xs mb-2">{t('champ.role')}</div>
               <div className="flex gap-1">
                 {ROLES.map((r) => (
                   <button
@@ -192,10 +174,10 @@ export default function ChampionsPage() {
 
             {/* Search */}
             <div className="ml-auto">
-              <div className="text-[#8a9bb0] text-xs mb-2">Suche</div>
+              <div className="text-[#8a9bb0] text-xs mb-2">{t('champ.search')}</div>
               <input
                 type="text"
-                placeholder="Champion suchen..."
+                placeholder={t('champ.searchPlaceholder')}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="bg-[#141c2e] border border-[#2a3a50] rounded px-3 py-1.5 text-white text-xs outline-none placeholder-[#4a5a70] w-48"
@@ -207,35 +189,31 @@ export default function ChampionsPage() {
         {/* Info Banner if no stats */}
         {!hasStats && !loading && (
           <div className="bg-[#141c2e] border border-[#2a3a50] rounded p-3 mb-4 text-center">
-            <div className="text-[#8a9bb0] text-xs">
-              Statistiken werden gesammelt, wenn Spieler gesucht werden. Suche Spieler um Daten aufzubauen.
-            </div>
+            <div className="text-[#8a9bb0] text-xs">{t('champ.statsCollecting')}</div>
           </div>
         )}
 
         {/* Stats Summary */}
         <div className="grid grid-cols-4 gap-3 mb-4">
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-3 text-center">
-            <div className="text-[#8a9bb0] text-xs">Champions</div>
+            <div className="text-[#8a9bb0] text-xs">{t('nav.champions')}</div>
             <div className="text-white text-xl font-medium">{sorted.length}</div>
           </div>
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-3 text-center">
-            <div className="text-[#8a9bb0] text-xs">Rang</div>
+            <div className="text-[#8a9bb0] text-xs">{t('champ.rank')}</div>
             <div className="text-xl font-medium" style={{ color: tierColors[tier] || '#c89b3c' }}>
-              {TIERS.find((t) => t.value === tier)?.label || 'Alle'}
+              {currentTierLabel}
             </div>
           </div>
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-3 text-center">
-            <div className="text-[#8a9bb0] text-xs">Mit Daten</div>
+            <div className="text-[#8a9bb0] text-xs">{t('champ.withData')}</div>
             <div className="text-white text-xl font-medium">
               {sorted.filter((c) => c.games > 0).length}
             </div>
           </div>
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-3 text-center">
-            <div className="text-[#8a9bb0] text-xs">Rolle</div>
-            <div className="text-white text-xl font-medium">
-              {ROLES.find((r) => r.value === role)?.label || 'Alle'}
-            </div>
+            <div className="text-[#8a9bb0] text-xs">{t('champ.role')}</div>
+            <div className="text-white text-xl font-medium">{currentRoleLabel}</div>
           </div>
         </div>
 
@@ -245,19 +223,19 @@ export default function ChampionsPage() {
           <div className="grid grid-cols-[3rem_3rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem] gap-2 px-4 py-3 border-b border-[#1e2a3a] bg-[#0a0e1a]">
             <div className="text-[#8a9bb0] text-xs uppercase tracking-wider">#</div>
             <div />
-            <SortHeader label="Champion" sKey="name" />
-            <div className="text-[#8a9bb0] text-xs uppercase tracking-wider">Rolle</div>
+            <SortHeader label={t('champ.champion')} sKey="name" />
+            <div className="text-[#8a9bb0] text-xs uppercase tracking-wider">{t('champ.role')}</div>
             <SortHeader label="Winrate" sKey="winRate" className="justify-end" />
             <SortHeader label="Pickrate" sKey="pickRate" className="justify-end" />
             <SortHeader label="Banrate" sKey="banRate" className="justify-end" />
             <SortHeader label="KDA" sKey="avgKDA" className="justify-end" />
-            <SortHeader label="Spiele" sKey="games" className="justify-end" />
+            <SortHeader label={t('champ.games')} sKey="games" className="justify-end" />
           </div>
 
           {loading ? (
-            <div className="text-center text-[#8a9bb0] py-20">Lade Champion-Daten...</div>
+            <div className="text-center text-[#8a9bb0] py-20">{t('champ.loading')}</div>
           ) : sorted.length === 0 ? (
-            <div className="text-center text-[#4a5a70] py-20">Keine Champions gefunden</div>
+            <div className="text-center text-[#4a5a70] py-20">{t('champ.noChampions')}</div>
           ) : (
             <div className="divide-y divide-[#1e2a3a]/50">
               {sorted.map((champ, i) => {
@@ -268,8 +246,9 @@ export default function ChampionsPage() {
                   : 'text-red-400';
 
                 return (
-                  <div
+                  <a
                     key={champ.key}
+                    href={`/champions/${champ.id}`}
                     className="grid grid-cols-[3rem_3rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem] gap-2 px-4 py-2 items-center hover:bg-[#141c2e] transition-colors"
                   >
                     <div className="text-[#4a5a70] text-sm">{i + 1}</div>
@@ -298,7 +277,7 @@ export default function ChampionsPage() {
                     <div className="text-[#4a5a70] text-xs text-right">
                       {champ.games > 0 ? champ.games.toLocaleString() : '-'}
                     </div>
-                  </div>
+                  </a>
                 );
               })}
             </div>
@@ -307,7 +286,7 @@ export default function ChampionsPage() {
 
         {/* Tier Distribution Info */}
         <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mt-4">
-          <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-3">Rang-Verteilung</div>
+          <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-3">{t('champ.rankDistribution')}</div>
           <div className="grid grid-cols-5 gap-2">
             {[
               { tier: 'Iron', pct: '5.6%', color: '#6b6b6b' },
@@ -320,19 +299,17 @@ export default function ChampionsPage() {
               { tier: 'Master', pct: '0.95%', color: '#9d48e0' },
               { tier: 'Grandmaster', pct: '0.04%', color: '#e44040' },
               { tier: 'Challenger', pct: '0.01%', color: '#f0c040' },
-            ].map((t) => (
-              <div key={t.tier} className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: t.color }} />
-                <span className="text-xs" style={{ color: t.color }}>{t.tier}</span>
-                <span className="text-[#4a5a70] text-xs ml-auto">{t.pct}</span>
+            ].map((item) => (
+              <div key={item.tier} className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
+                <span className="text-xs" style={{ color: item.color }}>{item.tier}</span>
+                <span className="text-[#4a5a70] text-xs ml-auto">{item.pct}</span>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="text-center text-[#4a5a70] text-xs mt-8 pt-6 border-t border-[#1e2a3a]">
-          metastats.gg · Nicht offiziell mit Riot Games verbunden · <a href="/datenschutz" className="hover:text-white">Datenschutz</a> · <a href="/impressum" className="hover:text-white">Impressum</a>
-        </div>
+        <Footer />
       </div>
     </main>
   );

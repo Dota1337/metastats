@@ -9,9 +9,10 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    // Filter players where this visitor's ID is in the searched_by array
     const { data } = await supabase
       .from('players')
-      .select('summoner_name, region, summoner_level, profile_icon_id')
+      .select('summoner_name, region, summoner_level, profile_icon_id, tier, rank, market_value')
       .contains('searched_by', [visitorId])
       .order('updated_at', { ascending: false })
       .limit(8);

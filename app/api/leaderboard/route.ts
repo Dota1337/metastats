@@ -1,60 +1,151 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { supabase } from '../../lib/supabase';
 
-export async function GET() {
-  const apiKey = process.env.RIOT_API_KEY!;
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const region = searchParams.get('region') || 'all';
+  const tier = searchParams.get('tier') || 'CHALLENGER';
+  const search = searchParams.get('search') || '';
+
+  try {
+    // Search mode: find players by name
+    if (search.trim()) {
+      const { data: searchResults } = await supabase
+        .from('players')
+        .select('summoner_name, region, tier, rank, winrate, market_value, summoner_level, profile_icon_id')
+        .ilike('summoner_name', `%${search}%`)
+        .order('market_value', { ascending: false, nullsFirst: false })
+        .limit(20);
+
+      return NextResponse.json({
+        entries: (searchResults || []).map((p, i) => ({
+          rank: i + 1,
+          summonerName: p.summoner_name,
+          region: p.region,
+          tier: p.tier,
+          playerRank: p.rank,
+          winrate: p.winrate || 0,
+          marketValue: p.market_value,
+          level: p.summoner_level,
+          profileIcon: p.profile_icon_id,
+        })),
+        source: 'search',
+        tier: null,
+      });
+    }
+
+    // Leaderboard mode: fetch from Supabase (players we already have)
+    let query = supabase
+      .from('players')
+      .select('summoner_name, region, tier, rank, winrate, market_value, summoner_level, profile_icon_id');
+
+    // Filter by tier
+    if (tier === 'CHALLENGER') {
+      query = query.eq('tier', 'CHALLENGER');
+    } else if (tier === 'GRANDMASTER') {
+      query = query.eq('tier', 'GRANDMASTER');
+    } else if (tier === 'MASTER') {
+      query = query.eq('tier', 'MASTER');
+    }
+
+    // Filter by region
+    if (region !== 'all') {
+      query = query.eq('region', region);
+    }
+
+    const { data: players, error: dbError } = await query
+      .order('market_value', { ascending: false, nullsFirst: false })
+      .limit(50);
+
+    if (dbError) {
+      // Fallback: try Riot API if Supabase fails
+      return NextResponse.json({ error: 'Datenbank nicht verfügbar', entries: [] }, { status: 500 });
+    }
+
+    const entries = (players || []).map((p, i) => ({
+      rank: i + 1,
+      summonerName: p.summoner_name || 'Unbekannt',
+      region: p.region,
+      tier: p.tier,
+      playerRank: p.rank,
+      winrate: p.winrate || 0,
+      marketValue: p.market_value,
+      level: p.summoner_level,
+      profileIcon: p.profile_icon_id,
+    }));
+
+    // If we have no data in Supabase, try Riot API as discovery
+    if (entries.length === 0) {
+      const apiKey = process.env.RIOT_API_KEY;
+      if (apiKey) {
+        const riotEntries = await fetchFromRiot(apiKey, region !== 'all' ? region : 'euw1', tier);
+        if (riotEntries.length > 0) {
+          return NextResponse.json({ entries: riotEntries, source: 'riot', tier });
+        }
+      }
+
+      return NextResponse.json({
+        entries: [],
+        source: 'empty',
+        tier,
+        message: 'Noch keine Spieler in dieser Kategorie. Suche Spieler um Daten aufzubauen.',
+      });
+    }
+
+    return NextResponse.json({ entries, source: 'database', tier });
+
+  } catch (error) {
+    return NextResponse.json({ error: 'Server Fehler', entries: [] }, { status: 500 });
+  }
+}
+
+async function fetchFromRiot(apiKey: string, region: string, tier: string): Promise<any[]> {
+  const REGIONAL: Record<string, string> = {
+    euw1: 'europe', eun1: 'europe', na1: 'americas', kr: 'asia',
+  };
+  const regional = REGIONAL[region] || 'europe';
+
+  const tierEndpoint = tier === 'GRANDMASTER' ? 'grandmasterleagues' : tier === 'MASTER' ? 'masterleagues' : 'challengerleagues';
 
   try {
     const res = await fetch(
-      `https://euw1.api.riotgames.com/lol/league/v4/challengerleagues/by-queue/RANKED_SOLO_5x5?api_key=${apiKey}`
+      `https://${region}.api.riotgames.com/lol/league/v4/${tierEndpoint}/by-queue/RANKED_SOLO_5x5?api_key=${apiKey}`
     );
-
-    if (!res.ok) {
-      return NextResponse.json({ error: 'Daten nicht verfügbar' }, { status: 403 });
-    }
+    if (!res.ok) return [];
 
     const data = await res.json();
-
-    const top10 = data.entries
+    const top = data.entries
       .sort((a: any, b: any) => b.leaguePoints - a.leaguePoints)
-      .slice(0, 10);
+      .slice(0, 20);
 
     const entries = [];
-    for (let i = 0; i < top10.length; i++) {
-      const e = top10[i];
+    for (let i = 0; i < Math.min(top.length, 10); i++) {
+      const e = top[i];
       try {
-        const summonerRes = await fetch(
-          `https://euw1.api.riotgames.com/lol/summoner/v4/summoners/${e.summonerId}?api_key=${apiKey}`
-        );
-        const summoner = await summonerRes.json();
-        const accountRes = await fetch(
-          `https://europe.api.riotgames.com/riot/account/v1/accounts/by-puuid/${summoner.puuid}?api_key=${apiKey}`
-        );
-        const account = await accountRes.json();
+        const sumRes = await fetch(`https://${region}.api.riotgames.com/lol/summoner/v4/summoners/${e.summonerId}?api_key=${apiKey}`);
+        if (!sumRes.ok) continue;
+        const summoner = await sumRes.json();
+
+        const accRes = await fetch(`https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-puuid/${summoner.puuid}?api_key=${apiKey}`);
+        if (!accRes.ok) continue;
+        const account = await accRes.json();
+
+        if (!account.gameName) continue;
+
         entries.push({
           rank: i + 1,
-          summonerName: account.gameName + '#' + account.tagLine,
-          slug: account.gameName.replace(/ /g, '-') + '-' + account.tagLine,
-          leaguePoints: e.leaguePoints,
-          wins: e.wins,
-          losses: e.losses,
+          summonerName: `${account.gameName}#${account.tagLine}`,
+          region,
+          tier: data.tier,
+          playerRank: e.rank,
           winrate: Math.round((e.wins / (e.wins + e.losses)) * 100),
-        });
-      } catch {
-        entries.push({
-          rank: i + 1,
-          summonerName: 'Unbekannt',
-          slug: 'unbekannt',
+          marketValue: null,
+          level: summoner.summonerLevel,
+          profileIcon: summoner.profileIconId,
           leaguePoints: e.leaguePoints,
-          wins: e.wins,
-          losses: e.losses,
-          winrate: Math.round((e.wins / (e.wins + e.losses)) * 100),
         });
-      }
+      } catch { continue; }
     }
-
-    return NextResponse.json({ tier: data.tier, entries });
-
-  } catch (error) {
-    return NextResponse.json({ error: 'Server Fehler' }, { status: 500 });
-  }
+    return entries;
+  } catch { return []; }
 }

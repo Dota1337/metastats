@@ -1,7 +1,10 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
-import { calculateMarketValue } from '../../lib/marketvalue';
+import { calculateMarketValue, type BreakdownItem } from '../../lib/marketvalue';
+import Nav from '../../components/Nav';
+import Footer from '../../components/Footer';
+import { useI18n } from '../../lib/i18n';
 
 export default function PlayerPage() {
   const { slug } = useParams();
@@ -17,6 +20,7 @@ export default function PlayerPage() {
   const [challengeConfig, setChallengeConfig] = useState<Record<number, { name: string; description: string; thresholds: Record<string, number> }>>({});
   const [championMap, setChampionMap] = useState<Record<number, { id: string; name: string }>>({});
   const region = searchParams.get('region') || 'euw1';
+  const { t } = useI18n();
 
   useEffect(() => {
     if (!slug) return;
@@ -133,20 +137,11 @@ export default function PlayerPage() {
 
   return (
     <main className="min-h-screen bg-[#080c18]">
-      <nav className="bg-[#0a0e1a] border-b border-[#1e2a3a] px-6 py-3 flex items-center justify-between">
-        <a href="/" className="text-[#c89b3c] text-lg font-medium">
-          meta<span className="text-white">stats</span>.gg
-        </a>
-        <div className="flex gap-6">
-          <a href="/" className="text-[#8a9bb0] text-sm hover:text-white">Spielersuche</a>
-          <a href="/leaderboard" className="text-[#8a9bb0] text-sm hover:text-white">Rangliste</a>
-          <a href="/champions" className="text-[#8a9bb0] text-sm hover:text-white">Champions</a>
-        </div>
-      </nav>
+      <Nav />
 
       <div className="max-w-5xl mx-auto px-6 py-8">
         {loading && (
-          <div className="text-center text-[#8a9bb0] mt-20">Lade Spielerprofil...</div>
+          <div className="text-center text-[#8a9bb0] mt-20">{t('player.loading')}</div>
         )}
 
         {error && (
@@ -178,7 +173,7 @@ export default function PlayerPage() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-[#8a9bb0] text-xs mb-1">KI-Marktwert</div>
+                  <div className="text-[#8a9bb0] text-xs mb-1">{t('player.aiMarketValue')}</div>
                   {marketValue.rated ? (
                     <div className="text-[#c89b3c] text-3xl font-medium">{marketValue.formatted}</div>
                   ) : (
@@ -189,28 +184,104 @@ export default function PlayerPage() {
 
               <div className="grid grid-cols-4 gap-3">
                 <div className="bg-[#141c2e] rounded p-4 text-center">
-                  <div className="text-[#8a9bb0] text-xs mb-1">Rang</div>
+                  <div className="text-[#8a9bb0] text-xs mb-1">{t('player.rank')}</div>
                   <div className="text-white font-medium text-sm">
-                    {ranked ? ranked.tier + ' ' + ranked.rank : 'Unranked'}
+                    {ranked ? ranked.tier + ' ' + ranked.rank : t('player.unranked')}
                   </div>
                   {ranked && <div className="text-[#c89b3c] text-xs mt-1">{ranked.leaguePoints} LP</div>}
                 </div>
                 <div className="bg-[#141c2e] rounded p-4 text-center">
-                  <div className="text-[#8a9bb0] text-xs mb-1">Winrate (30 Spiele)</div>
+                  <div className="text-[#8a9bb0] text-xs mb-1">{t('player.winrate30')}</div>
                   <div className={`font-medium text-sm ${winrate && winrate >= 50 ? 'text-green-400' : 'text-red-400'}`}>
                     {winrate !== null ? winrate + '%' : '-'}
                   </div>
                 </div>
                 <div className="bg-[#141c2e] rounded p-4 text-center">
-                  <div className="text-[#8a9bb0] text-xs mb-1">Ø KDA</div>
+                  <div className="text-[#8a9bb0] text-xs mb-1">{t('player.avgKDA')}</div>
                   <div className="text-white font-medium text-sm">{kda || '-'}</div>
                 </div>
                 <div className="bg-[#141c2e] rounded p-4 text-center">
-                  <div className="text-[#8a9bb0] text-xs mb-1">Hauptrolle</div>
+                  <div className="text-[#8a9bb0] text-xs mb-1">{t('player.mainRole')}</div>
                   <div className="text-white font-medium text-sm">{roleLabels[marketValue.role] || '-'}</div>
                 </div>
               </div>
             </div>
+
+            {/* Market Value Breakdown */}
+            {marketValue.rated && marketValue.breakdown.length > 0 && (
+              <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 mb-4">
+                <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-4">
+                  {t('player.marketBreakdown')}
+                </div>
+                <div className="grid grid-cols-3 gap-3 mb-4">
+                  <div className="bg-[#141c2e] rounded p-3 text-center">
+                    <div className="text-[#8a9bb0] text-xs mb-1">{t('player.baseValue')} ({ranked?.tier} {ranked?.rank})</div>
+                    <div className="text-white text-lg font-medium">
+                      ${marketValue.baseValue >= 1000 ? (marketValue.baseValue / 1000).toFixed(1) + 'k' : marketValue.baseValue}
+                    </div>
+                  </div>
+                  <div className="bg-[#141c2e] rounded p-3 text-center">
+                    <div className="text-[#8a9bb0] text-xs mb-1">{t('player.multiplier')}</div>
+                    <div className={`text-lg font-medium ${marketValue.multiplier >= 1 ? 'text-green-400' : 'text-red-400'}`}>
+                      x{marketValue.multiplier.toFixed(3)}
+                    </div>
+                  </div>
+                  <div className="bg-[#141c2e] rounded p-3 text-center">
+                    <div className="text-[#8a9bb0] text-xs mb-1">{t('player.finalValue')}</div>
+                    <div className="text-[#c89b3c] text-lg font-medium">{marketValue.formatted}</div>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                  {[...marketValue.breakdown]
+                    .sort((a, b) => Math.abs(b.impact) - Math.abs(a.impact))
+                    .map((item: BreakdownItem, i: number) => (
+                    <div key={i} className="flex items-center gap-3 py-1.5 px-2 rounded hover:bg-[#141c2e]">
+                      <div className="w-16 text-xs text-[#4a5a70]">{item.category}</div>
+                      <div className="w-36 text-xs text-white">{item.label}</div>
+                      <div className="flex-1 h-2 bg-[#141c2e] rounded overflow-hidden">
+                        {item.positive ? (
+                          <div className="h-full bg-green-500/60 rounded" style={{ width: `${Math.min(Math.abs(item.impact) / 0.175 * 100, 100)}%` }} />
+                        ) : (
+                          <div className="h-full bg-red-500/60 rounded" style={{ width: `${Math.min(Math.abs(item.impact) / 0.175 * 100, 100)}%` }} />
+                        )}
+                      </div>
+                      <div className={`w-14 text-xs font-medium text-right ${item.positive ? 'text-green-400' : 'text-red-400'}`}>
+                        {item.positive ? '+' : ''}{(item.impact * 100).toFixed(1)}%
+                      </div>
+                      <div className="w-36 text-xs text-[#8a9bb0] text-right">{item.stat}</div>
+                    </div>
+                  ))}
+                </div>
+                {marketValue.stats.gamesAnalyzed > 0 && (
+                  <div className="mt-4 pt-3 border-t border-[#1e2a3a] grid grid-cols-6 gap-2">
+                    <div className="text-center">
+                      <div className="text-[#8a9bb0] text-xs">{t('player.games')}</div>
+                      <div className="text-white text-sm">{marketValue.stats.gamesAnalyzed}</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-[#8a9bb0] text-xs">Winrate</div>
+                      <div className="text-white text-sm">{marketValue.stats.winrate.toFixed(1)}%</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-[#8a9bb0] text-xs">KDA</div>
+                      <div className="text-white text-sm">{marketValue.stats.kda.toFixed(2)}</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-[#8a9bb0] text-xs">CS/Min</div>
+                      <div className="text-white text-sm">{marketValue.stats.csPerMin.toFixed(1)}</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-[#8a9bb0] text-xs">DMG/Min</div>
+                      <div className="text-white text-sm">{marketValue.stats.damagePerMin.toFixed(0)}</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-[#8a9bb0] text-xs">Vision</div>
+                      <div className="text-white text-sm">{marketValue.stats.visionScore.toFixed(1)}</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Champion Mastery */}
             {masteries.length > 0 && (
@@ -305,7 +376,7 @@ export default function PlayerPage() {
                         <div className="text-[#8a9bb0] text-xs">Vision</div>
                       </div>
                       <div className={'text-sm font-medium w-20 text-right ' + (match.win ? 'text-green-400' : 'text-red-400')}>
-                        {match.win ? 'Sieg' : 'Niederlage'}
+                        {match.win ? t('player.win') : t('player.loss')}
                       </div>
                     </div>
                   ))}
@@ -317,13 +388,11 @@ export default function PlayerPage() {
 
         {!player && !loading && (
           <div className="text-center text-[#4a5a70] text-sm mt-12">
-            Gib einen Summoner-Namen ein um zu starten
+            {t('player.enterName')}
           </div>
         )}
 
-        <div className="text-center text-[#4a5a70] text-xs mt-8 pt-6 border-t border-[#1e2a3a]">
-          metastats.gg · Nicht offiziell mit Riot Games verbunden · Datenschutz · Impressum
-        </div>
+        <Footer />
       </div>
     </main>
   );

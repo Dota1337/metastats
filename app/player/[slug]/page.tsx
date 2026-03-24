@@ -10,6 +10,11 @@ export default function PlayerPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [ddVersion, setDdVersion] = useState('14.1.1');
+  const [masteries, setMasteries] = useState<any[]>([]);
+  const [liveGame, setLiveGame] = useState<{ inGame: boolean; gameData?: any }>({ inGame: false });
+  const [challenges, setChallenges] = useState<any[]>([]);
+  const [challengeConfig, setChallengeConfig] = useState<Record<number, { name: string; description: string; thresholds: Record<string, number> }>>({});
+  const [championMap, setChampionMap] = useState<Record<number, { id: string; name: string }>>({});
 
   useEffect(() => {
     if (!slug) return;
@@ -34,6 +39,44 @@ export default function PlayerPage() {
       const matchRes = await fetch(`/api/matches?puuid=${encodeURIComponent(data.summoner.puuid)}&region=euw1`);
       const matchData = await matchRes.json();
       if (matchRes.ok) setMatches(matchData.matches || []);
+
+      // Champion map from ddragon
+      const champRes = await fetch(`https://ddragon.leagueoflegends.com/cdn/${versionData.version}/data/en_US/champion.json`);
+      if (champRes.ok) {
+        const champData = await champRes.json();
+        const map: Record<number, { id: string; name: string }> = {};
+        Object.values(champData.data).forEach((c: any) => { map[Number(c.key)] = { id: c.id, name: c.name }; });
+        setChampionMap(map);
+      }
+
+      // Parallel fetch: mastery, live game, challenges
+      const puuid = encodeURIComponent(data.summoner.puuid);
+      const [masteryRes, liveRes, challengeRes] = await Promise.all([
+        fetch(`/api/mastery?puuid=${puuid}&region=euw1`),
+        fetch(`/api/live-game?puuid=${puuid}&region=euw1`),
+        fetch(`/api/challenges?puuid=${puuid}&region=euw1`),
+      ]);
+
+      if (masteryRes.ok) {
+        const masteryData = await masteryRes.json();
+        setMasteries(masteryData.masteries || []);
+      }
+      if (liveRes.ok) {
+        const liveData = await liveRes.json();
+        setLiveGame(liveData);
+      }
+      if (challengeRes.ok) {
+        const challengeData = await challengeRes.json();
+        const allChallenges = challengeData.challenges?.challenges || [];
+        const configMap = challengeData.configMap || {};
+        setChallengeConfig(configMap);
+        const levelOrder: Record<string, number> = { CHALLENGER: 5, GRANDMASTER: 4, MASTER: 3, DIAMOND: 2, PLATINUM: 1 };
+        const sorted = allChallenges
+          .filter((c: any) => levelOrder[c.level] >= 3)
+          .sort((a: any, b: any) => (levelOrder[b.level] || 0) - (levelOrder[a.level] || 0))
+          .slice(0, 3);
+        setChallenges(sorted);
+      }
     } catch (e: any) {
       setError(e.message || 'Spieler nicht gefunden');
     } finally {
@@ -109,7 +152,15 @@ export default function PlayerPage() {
                   className="w-20 h-20 rounded-full border-2 border-[#c89b3c]"
                 />
                 <div className="flex-1">
-                  <h1 className="text-white text-2xl font-medium">{player.summoner.name}</h1>
+                  <h1 className="text-white text-2xl font-medium flex items-center gap-3">
+                    {player.summoner.name}
+                    {liveGame.inGame && (
+                      <span className="inline-flex items-center gap-1 bg-green-500/20 text-green-400 text-xs font-bold px-2 py-0.5 rounded-full border border-green-500/40">
+                        <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                        LIVE
+                      </span>
+                    )}
+                  </h1>
                   <div className="text-[#8a9bb0] text-sm mt-1">
                     Level {player.summoner.summonerLevel} · EUW · {roleLabels[marketValue.role] || '-'}
                   </div>
@@ -148,6 +199,68 @@ export default function PlayerPage() {
                 </div>
               </div>
             </div>
+
+            {/* Champion Mastery */}
+            {masteries.length > 0 && (
+              <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 mb-4">
+                <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-4">
+                  Champion Mastery
+                </div>
+                <div className="grid grid-cols-5 gap-3">
+                  {masteries.slice(0, 5).map((m: any, i: number) => {
+                    const champ = championMap[m.championId];
+                    const champId = champ?.id || 'Unknown';
+                    const champDisplayName = champ?.name || champId;
+                    return (
+                      <div key={i} className="bg-[#141c2e] rounded p-4 flex flex-col items-center gap-2">
+                        <img
+                          src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/champion/${champId}.png`}
+                          alt={champDisplayName}
+                          className="w-12 h-12 rounded-full border-2 border-[#c89b3c]"
+                        />
+                        <div className="text-white text-sm font-medium">{champDisplayName}</div>
+                        <div className="text-[#c89b3c] text-xs font-bold">Level {m.championLevel}</div>
+                        <div className="text-[#8a9bb0] text-xs">{m.championPoints?.toLocaleString()} Punkte</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Challenge Highlights */}
+            {challenges.length > 0 && (
+              <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 mb-4">
+                <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-4">
+                  Challenge Highlights
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  {challenges.map((c: any, i: number) => {
+                    const levelColors: Record<string, string> = {
+                      CHALLENGER: 'text-[#f0c040] border-[#f0c040]',
+                      GRANDMASTER: 'text-red-400 border-red-400',
+                      MASTER: 'text-purple-400 border-purple-400',
+                    };
+                    const colorClass = levelColors[c.level] || 'text-[#8a9bb0] border-[#8a9bb0]';
+                    const config = challengeConfig[c.challengeId];
+                    const name = config?.name || `Challenge #${c.challengeId}`;
+                    const threshold = config?.thresholds?.[c.level];
+                    return (
+                      <div key={i} className="bg-[#141c2e] rounded p-4 flex flex-col items-center gap-2 text-center">
+                        <div className={`text-xs font-bold px-2 py-0.5 rounded border ${colorClass}`}>
+                          {c.level}
+                        </div>
+                        <div className="text-white text-sm font-medium">{name}</div>
+                        <div className="text-[#8a9bb0] text-xs">{c.value?.toLocaleString()}{threshold !== undefined ? ` / ${threshold.toLocaleString()}` : ''}</div>
+                        <div className="text-[#c89b3c] text-xs">
+                          Top {c.percentile !== undefined ? (c.percentile * 100).toFixed(1) : '?'}%
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Match History */}
             {matches.length > 0 && (

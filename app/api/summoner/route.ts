@@ -58,6 +58,7 @@ export async function GET(request: NextRequest) {
             puuid: cached.puuid,
           },
           ranked: mapped,
+          matches: [], // matches fetched separately via /api/matches for cached responses
           fromCache: true,
         });
       }
@@ -92,19 +93,28 @@ export async function GET(request: NextRequest) {
       ? ranked.find((r: any) => r.queueType === 'RANKED_SOLO_5x5')
       : null;
 
+    // Fetch match IDs once — used for market value AND returned to client
     const matchListRes = await fetch(
       `https://${regional}.api.riotgames.com/lol/match/v5/matches/by-puuid/${account.puuid}/ids?start=0&count=30&api_key=${apiKey}`
     );
     const matchIds: string[] = matchListRes.ok ? await matchListRes.json() : [];
 
-    const matchDetails = await Promise.all(
-      matchIds.slice(0, 10).map(async (id) => {
-        const res = await fetch(`https://${regional}.api.riotgames.com/lol/match/v5/matches/${id}?api_key=${apiKey}`);
-        return res.ok ? res.json() : null;
-      })
-    );
+    // Fetch all 30 match details (batched in groups of 10 to respect rate limits)
+    const allMatchDetails: any[] = [];
+    for (let batch = 0; batch < matchIds.length; batch += 10) {
+      const batchIds = matchIds.slice(batch, batch + 10);
+      const batchResults = await Promise.all(
+        batchIds.map(async (id) => {
+          const res = await fetch(`https://${regional}.api.riotgames.com/lol/match/v5/matches/${id}?api_key=${apiKey}`);
+          return res.ok ? res.json() : null;
+        })
+      );
+      allMatchDetails.push(...batchResults);
+    }
 
-    const matches = matchDetails.filter(Boolean).map((match) => {
+    const matchDetails = allMatchDetails.filter(Boolean);
+
+    const processMatch = (match: any) => {
       const participant = match.info.participants.find((p: any) => p.puuid === account.puuid);
       const teamId = participant?.teamId;
       const teammates = match.info.participants.filter((p: any) => p.teamId === teamId);
@@ -112,13 +122,16 @@ export async function GET(request: NextRequest) {
       const teamDamage = teammates.reduce((s: number, p: any) => s + (p.totalDamageDealtToChampions || 0), 0);
       const teamGold = teammates.reduce((s: number, p: any) => s + (p.goldEarned || 0), 0);
       return {
+        matchId: match.metadata.matchId,
+        champion: participant?.championName,
+        gameMode: match.info.gameMode,
         kills: participant?.kills || 0,
         deaths: participant?.deaths || 0,
         assists: participant?.assists || 0,
         win: participant?.win || false,
         gameDuration: match.info.gameDuration,
         cs: (participant?.totalMinionsKilled || 0) + (participant?.neutralMinionsKilled || 0),
-        role: participant?.individualPosition || 'UNKNOWN',
+        role: participant?.individualPosition || participant?.teamPosition || 'UNKNOWN',
         damageDealt: participant?.totalDamageDealtToChampions || 0,
         visionScore: participant?.visionScore || 0,
         wardsPlaced: participant?.wardsPlaced || 0,
@@ -128,9 +141,9 @@ export async function GET(request: NextRequest) {
         dragonKills: participant?.dragonKills || 0,
         baronKills: participant?.baronKills || 0,
         turretKills: participant?.turretKills || 0,
+        objectivesStolen: participant?.objectivesStolen || 0,
         gameWonFromBehind: (participant?.wasLosing && participant?.win) || false,
         surrendered: participant?.gameEndedInSurrender || false,
-        // Knowledge Graph extended fields
         teamKills,
         soloKills: participant?.challenges?.soloKills ?? participant?.soloKills ?? 0,
         totalDamageTaken: participant?.totalDamageTaken || 0,
@@ -149,7 +162,9 @@ export async function GET(request: NextRequest) {
         totalDamageShieldedOnTeammates: participant?.totalDamageShieldedOnTeammates || 0,
         timeCCingOthers: participant?.timeCCingOthers || 0,
       };
-    });
+    };
+
+    const matches = matchDetails.map(processMatch);
 
     const marketValue = calculateMarketValue(
       soloQueue ? {
@@ -208,29 +223,33 @@ const { data: player } = await supabase
         });
     }
 
-    if (player && soloQueue) {
-      await supabase
-        .from('ranked_stats')
-        .upsert({
+    // Store all ranked queues (solo + flex)
+    if (player && Array.isArray(ranked)) {
+      // Delete old ranked_stats for this player, then insert all queues
+      await supabase.from('ranked_stats').delete().eq('player_id', player.id);
+      for (const queue of ranked) {
+        await supabase.from('ranked_stats').insert({
           player_id: player.id,
-          queue_type: soloQueue.queueType,
-          tier: soloQueue.tier,
-          rank: soloQueue.rank,
-          league_points: soloQueue.leaguePoints,
-          wins: soloQueue.wins,
-          losses: soloQueue.losses,
+          queue_type: queue.queueType,
+          tier: queue.tier,
+          rank: queue.rank,
+          league_points: queue.leaguePoints,
+          wins: queue.wins,
+          losses: queue.losses,
           updated_at: new Date().toISOString(),
-        }, { onConflict: 'player_id' });
+        });
+      }
     }
 
     // Collect champion stats from matches (non-blocking)
     if (soloQueue && matches.length > 0) {
-      collectChampionStats(matches, matchDetails.filter(Boolean), account.puuid, soloQueue.tier).catch(() => {});
+      collectChampionStats(matches, matchDetails, account.puuid, soloQueue.tier).catch(() => {});
     }
 
     return NextResponse.json({
       summoner: { ...summoner, name: fullName },
       ranked: Array.isArray(ranked) ? ranked : [],
+      matches,
     });
 
   } catch (error) {

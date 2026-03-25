@@ -16,8 +16,6 @@ export default function PlayerPage() {
   const [ddVersion, setDdVersion] = useState('14.1.1');
   const [masteries, setMasteries] = useState<any[]>([]);
   const [liveGame, setLiveGame] = useState<{ inGame: boolean; gameData?: any }>({ inGame: false });
-  const [challenges, setChallenges] = useState<any[]>([]); // kept for API compatibility
-  const [challengeConfig, setChallengeConfig] = useState<Record<number, { name: string; description: string; thresholds: Record<string, number> }>>({});
   const [championMap, setChampionMap] = useState<Record<number, { id: string; name: string }>>({});
   const region = searchParams.get('region') || 'euw1';
   const { t } = useI18n();
@@ -52,9 +50,14 @@ export default function PlayerPage() {
       if (!res.ok) throw new Error(data.error);
       setPlayer(data);
 
-      const matchRes = await fetch(`/api/matches?puuid=${encodeURIComponent(data.summoner.puuid)}&region=${region}`);
-      const matchData = await matchRes.json();
-      if (matchRes.ok) setMatches(matchData.matches || []);
+      // Use matches from summoner response (fresh), fallback to /api/matches (cached)
+      if (data.matches && data.matches.length > 0) {
+        setMatches(data.matches);
+      } else {
+        const matchRes = await fetch(`/api/matches?puuid=${encodeURIComponent(data.summoner.puuid)}&region=${region}`);
+        const matchData = await matchRes.json();
+        if (matchRes.ok) setMatches(matchData.matches || []);
+      }
 
       // Champion map from ddragon
       const champRes = await fetch(`https://ddragon.leagueoflegends.com/cdn/${versionData.version}/data/en_US/champion.json`);
@@ -65,12 +68,11 @@ export default function PlayerPage() {
         setChampionMap(map);
       }
 
-      // Parallel fetch: mastery, live game, challenges
+      // Parallel fetch: mastery + live game
       const puuid = encodeURIComponent(data.summoner.puuid);
-      const [masteryRes, liveRes, challengeRes] = await Promise.all([
+      const [masteryRes, liveRes] = await Promise.all([
         fetch(`/api/mastery?puuid=${puuid}&region=${region}`),
         fetch(`/api/live-game?puuid=${puuid}&region=${region}`),
-        fetch(`/api/challenges?puuid=${puuid}&region=${region}`),
       ]);
 
       if (masteryRes.ok) {
@@ -80,18 +82,6 @@ export default function PlayerPage() {
       if (liveRes.ok) {
         const liveData = await liveRes.json();
         setLiveGame(liveData);
-      }
-      if (challengeRes.ok) {
-        const challengeData = await challengeRes.json();
-        const allChallenges = challengeData.challenges?.challenges || [];
-        const configMap = challengeData.configMap || {};
-        setChallengeConfig(configMap);
-        const levelOrder: Record<string, number> = { CHALLENGER: 5, GRANDMASTER: 4, MASTER: 3, DIAMOND: 2, PLATINUM: 1 };
-        const sorted = allChallenges
-          .filter((c: any) => levelOrder[c.level] >= 3)
-          .sort((a: any, b: any) => (levelOrder[b.level] || 0) - (levelOrder[a.level] || 0))
-          .slice(0, 3);
-        setChallenges(sorted);
       }
     } catch (e: any) {
       setError(e.message || 'Spieler nicht gefunden');

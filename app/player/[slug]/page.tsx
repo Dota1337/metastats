@@ -16,7 +16,7 @@ export default function PlayerPage() {
   const [ddVersion, setDdVersion] = useState('14.1.1');
   const [masteries, setMasteries] = useState<any[]>([]);
   const [liveGame, setLiveGame] = useState<{ inGame: boolean; gameData?: any }>({ inGame: false });
-  const [challenges, setChallenges] = useState<any[]>([]);
+  const [challenges, setChallenges] = useState<any[]>([]); // kept for API compatibility
   const [challengeConfig, setChallengeConfig] = useState<Record<number, { name: string; description: string; thresholds: Record<string, number> }>>({});
   const [championMap, setChampionMap] = useState<Record<number, { id: string; name: string }>>({});
   const region = searchParams.get('region') || 'euw1';
@@ -104,6 +104,10 @@ export default function PlayerPage() {
     ? player.ranked.find((r: any) => r.queueType === 'RANKED_SOLO_5x5')
     : null;
 
+  const flex = Array.isArray(player?.ranked)
+    ? player.ranked.find((r: any) => r.queueType === 'RANKED_FLEX_SR')
+    : null;
+
   const marketValue = calculateMarketValue(
     ranked ? {
       tier: ranked.tier,
@@ -182,13 +186,20 @@ export default function PlayerPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-5 gap-3">
                 <div className="bg-[#141c2e] rounded p-4 text-center">
-                  <div className="text-[#8a9bb0] text-xs mb-1">{t('player.rank')}</div>
+                  <div className="text-[#8a9bb0] text-xs mb-1">Solo/Duo</div>
                   <div className="text-white font-medium text-sm">
                     {ranked ? ranked.tier + ' ' + ranked.rank : t('player.unranked')}
                   </div>
                   {ranked && <div className="text-[#c89b3c] text-xs mt-1">{ranked.leaguePoints} LP</div>}
+                </div>
+                <div className="bg-[#141c2e] rounded p-4 text-center">
+                  <div className="text-[#8a9bb0] text-xs mb-1">Flex</div>
+                  <div className="text-white font-medium text-sm">
+                    {flex ? flex.tier + ' ' + flex.rank : t('player.unranked')}
+                  </div>
+                  {flex && <div className="text-[#c89b3c] text-xs mt-1">{flex.leaguePoints} LP</div>}
                 </div>
                 <div className="bg-[#141c2e] rounded p-4 text-center">
                   <div className="text-[#8a9bb0] text-xs mb-1">{t('player.winrate30')}</div>
@@ -311,75 +322,92 @@ export default function PlayerPage() {
               </div>
             )}
 
-            {/* Challenge Highlights */}
-            {challenges.length > 0 && (
-              <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 mb-4">
+            {/* Match History — letzte 30 Spiele mit ausführlichen Stats */}
+            {matches.length > 0 && (
+              <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6">
                 <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-4">
-                  Challenge Highlights
+                  Match History ({t('player.lastGames')} {matches.length} {t('player.gamesLabel')})
                 </div>
-                <div className="grid grid-cols-3 gap-3">
-                  {challenges.map((c: any, i: number) => {
-                    const levelColors: Record<string, string> = {
-                      CHALLENGER: 'text-[#f0c040] border-[#f0c040]',
-                      GRANDMASTER: 'text-red-400 border-red-400',
-                      MASTER: 'text-purple-400 border-purple-400',
-                    };
-                    const colorClass = levelColors[c.level] || 'text-[#8a9bb0] border-[#8a9bb0]';
-                    const config = challengeConfig[c.challengeId];
-                    const name = config?.name || `Challenge #${c.challengeId}`;
-                    const threshold = config?.thresholds?.[c.level];
+                <div className="flex flex-col gap-2">
+                  {matches.map((match, i) => {
+                    const kdaVal = match.deaths > 0
+                      ? ((match.kills + match.assists) / match.deaths).toFixed(2)
+                      : 'Perfect';
+                    const csPerMin = match.gameDuration > 0
+                      ? (match.cs / (match.gameDuration / 60)).toFixed(1)
+                      : '0';
+                    const dmgPerMin = match.gameDuration > 0
+                      ? Math.round(match.damageDealt / (match.gameDuration / 60))
+                      : 0;
+                    const killParticipation = match.teamKills > 0
+                      ? Math.round(((match.kills + match.assists) / match.teamKills) * 100)
+                      : 0;
+                    const dmgShare = match.teamDamage > 0
+                      ? Math.round((match.damageDealt / match.teamDamage) * 100)
+                      : 0;
+                    const goldShare = match.teamGold > 0
+                      ? Math.round((match.goldEarned / match.teamGold) * 100)
+                      : 0;
+
                     return (
-                      <div key={i} className="bg-[#141c2e] rounded p-4 flex flex-col items-center gap-2 text-center">
-                        <div className={`text-xs font-bold px-2 py-0.5 rounded border ${colorClass}`}>
-                          {c.level}
+                      <div key={i} className={'rounded border-l-4 overflow-hidden ' + (match.win ? 'border-green-500 bg-[#0a1f0a]' : 'border-red-500 bg-[#1f0a0a]')}>
+                        {/* Main row */}
+                        <div className="flex items-center gap-3 p-3">
+                          <img
+                            src={'https://ddragon.leagueoflegends.com/cdn/' + ddVersion + '/img/champion/' + match.champion + '.png'}
+                            alt={match.champion}
+                            className="w-10 h-10 rounded flex-shrink-0"
+                          />
+                          <div className="w-24">
+                            <div className="text-white text-sm font-medium">{match.champion}</div>
+                            <div className="text-[#8a9bb0] text-xs">{match.gameMode} · {formatDuration(match.gameDuration)}</div>
+                          </div>
+                          <div className="text-center w-20">
+                            <div className="text-white text-sm font-medium">{match.kills}/{match.deaths}/{match.assists}</div>
+                            <div className="text-[#8a9bb0] text-xs">{kdaVal} KDA</div>
+                          </div>
+                          <div className="text-center w-14">
+                            <div className="text-white text-sm font-medium">{match.cs}</div>
+                            <div className="text-[#8a9bb0] text-xs">{csPerMin}/m</div>
+                          </div>
+                          <div className="text-center w-16">
+                            <div className="text-white text-sm font-medium">{(match.damageDealt / 1000).toFixed(1)}k</div>
+                            <div className="text-[#8a9bb0] text-xs">{dmgPerMin}/m</div>
+                          </div>
+                          <div className="text-center w-12">
+                            <div className="text-white text-sm font-medium">{match.visionScore}</div>
+                            <div className="text-[#8a9bb0] text-xs">Vis</div>
+                          </div>
+                          <div className="text-center w-12">
+                            <div className="text-white text-sm font-medium">{killParticipation}%</div>
+                            <div className="text-[#8a9bb0] text-xs">KP</div>
+                          </div>
+                          <div className="text-center w-14">
+                            <div className="text-white text-sm font-medium">{(match.goldEarned / 1000).toFixed(1)}k</div>
+                            <div className="text-[#8a9bb0] text-xs">Gold</div>
+                          </div>
+                          <div className={'text-sm font-medium w-16 text-right ' + (match.win ? 'text-green-400' : 'text-red-400')}>
+                            {match.win ? t('player.win') : t('player.loss')}
+                          </div>
                         </div>
-                        <div className="text-white text-sm font-medium">{name}</div>
-                        <div className="text-[#8a9bb0] text-xs">{c.value?.toLocaleString()}{threshold !== undefined ? ` / ${threshold.toLocaleString()}` : ''}</div>
-                        <div className="text-[#c89b3c] text-xs">
-                          Top {c.percentile !== undefined ? (c.percentile * 100).toFixed(1) : '?'}%
+                        {/* Detail row */}
+                        <div className="flex items-center gap-4 px-3 pb-2 text-xs text-[#6a7a90]">
+                          <span>{roleLabels[match.role] || '-'}</span>
+                          <span>DMG-Anteil: {dmgShare}%</span>
+                          <span>Gold-Anteil: {goldShare}%</span>
+                          <span>Wards: {match.wardsPlaced}</span>
+                          <span>Ctrl Wards: {match.controlWardsPlaced}</span>
+                          {match.soloKills > 0 && <span>Solo Kills: {match.soloKills}</span>}
+                          {match.doubleKills > 0 && <span>Double: {match.doubleKills}</span>}
+                          {match.tripleKills > 0 && <span className="text-[#c89b3c]">Triple: {match.tripleKills}</span>}
+                          {match.quadraKills > 0 && <span className="text-[#c89b3c]">Quadra: {match.quadraKills}</span>}
+                          {match.pentaKills > 0 && <span className="text-[#f0c040] font-bold">PENTA!</span>}
+                          {match.turretKills > 0 && <span>Turrets: {match.turretKills}</span>}
+                          {match.firstBloodKill && <span className="text-red-400">First Blood</span>}
                         </div>
                       </div>
                     );
                   })}
-                </div>
-              </div>
-            )}
-
-            {/* Match History */}
-            {matches.length > 0 && (
-              <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6">
-                <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-4">
-                  Match History (letzte {matches.length} Spiele)
-                </div>
-                <div className="flex flex-col gap-2">
-                  {matches.map((match, i) => (
-                    <div key={i} className={'flex items-center gap-4 p-3 rounded border-l-4 ' + (match.win ? 'border-green-500 bg-[#0a1f0a]' : 'border-red-500 bg-[#1f0a0a]')}>
-                      <img
-                        src={'https://ddragon.leagueoflegends.com/cdn/' + ddVersion + '/img/champion/' + match.champion + '.png'}
-                        alt={match.champion}
-                        className="w-10 h-10 rounded flex-shrink-0"
-                      />
-                      <div className="flex-1">
-                        <div className="text-white text-sm font-medium">{match.champion}</div>
-                        <div className="text-[#8a9bb0] text-xs">{match.gameMode} · {formatDuration(match.gameDuration)}</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-white text-sm font-medium">{match.kills}/{match.deaths}/{match.assists}</div>
-                        <div className="text-[#8a9bb0] text-xs">KDA</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-white text-sm font-medium">{match.cs}</div>
-                        <div className="text-[#8a9bb0] text-xs">CS</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-white text-sm font-medium">{match.visionScore}</div>
-                        <div className="text-[#8a9bb0] text-xs">Vision</div>
-                      </div>
-                      <div className={'text-sm font-medium w-20 text-right ' + (match.win ? 'text-green-400' : 'text-red-400')}>
-                        {match.win ? t('player.win') : t('player.loss')}
-                      </div>
-                    </div>
-                  ))}
                 </div>
               </div>
             )}

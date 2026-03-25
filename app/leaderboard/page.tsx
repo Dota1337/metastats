@@ -94,7 +94,7 @@ export default function Leaderboard() {
     <main className="min-h-screen bg-[#080c18]">
       <Nav active="leaderboard" />
 
-      <PageHero title={t('lb.title')} subtitle={t('lb.subtitle')} leftChampion="Ahri" rightChampion="Thresh">
+      <PageHero title={t('lb.title')} subtitle={t('lb.subtitle')} leftChampion="Ahri" rightChampion="DrMundo">
         <div className="flex justify-center gap-1 mt-4">
           {REGIONS.map(r => (
             <button

@@ -125,7 +125,7 @@ export default function ChampionsPage() {
     <main className="min-h-screen bg-[#080c18]">
       <Nav active="champions" />
 
-      <PageHero title={t('champ.title')} subtitle={t('champ.subtitle')} leftChampion="Lux" rightChampion="Zed" />
+      <PageHero title={t('champ.title')} subtitle={t('champ.subtitle')} leftChampion="Lux" rightChampion="Teemo" />
 
       <div className="max-w-6xl mx-auto px-6 pb-8">
         {/* Filters */}

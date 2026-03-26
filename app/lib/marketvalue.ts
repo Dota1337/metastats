@@ -476,11 +476,7 @@ export function calculateMarketValue(
   const { multiplier, breakdown } = calculateMultiplierWithBreakdown(matches, role);
   const finalValue = Math.round(base * multiplier);
 
-  const formatted = finalValue >= 1000000
-    ? '$' + (finalValue / 1000000).toFixed(2) + 'M'
-    : finalValue >= 1000
-    ? '$' + (finalValue / 1000).toFixed(1) + 'k'
-    : '$' + finalValue;
+  const formatted = '$' + finalValue.toLocaleString('de-DE');
 
   const totalKills = matches.reduce((s, m) => s + m.kills, 0);
   const totalDeaths = matches.reduce((s, m) => s + m.deaths, 0);

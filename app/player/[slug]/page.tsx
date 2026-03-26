@@ -226,7 +226,7 @@ export default function PlayerPage() {
                   <div className="bg-[#141c2e] rounded p-3 text-center">
                     <div className="text-[#8a9bb0] text-xs mb-1">{t('player.baseValue')} ({ranked?.tier} {ranked?.rank})</div>
                     <div className="text-white text-lg font-medium">
-                      ${marketValue.baseValue >= 1000 ? (marketValue.baseValue / 1000).toFixed(1) + 'k' : marketValue.baseValue}
+                      ${marketValue.baseValue.toLocaleString('de-DE')}
                     </div>
                   </div>
                   <div className="bg-[#141c2e] rounded p-3 text-center">

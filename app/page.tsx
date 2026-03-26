@@ -71,9 +71,7 @@ export default function Home() {
   };
 
   const formatValue = (v: number) => {
-    if (v >= 1000000) return '$' + (v / 1000000).toFixed(2) + 'M';
-    if (v >= 1000) return '$' + (v / 1000).toFixed(1) + 'k';
-    return '$' + v;
+    return '$' + v.toLocaleString('de-DE');
   };
 
   const makePlayerLink = (p: any) =>

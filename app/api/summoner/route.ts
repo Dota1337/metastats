@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '../../lib/supabase';
+import { supabaseAdmin as supabase } from '../../lib/supabase';
 import { calculateMarketValue } from '../../lib/marketvalue';
 import { processMatch, toLegacyMatchData, type ExtendedMatchData } from '../../lib/match-processor';
 import { calculateStatsOverview } from '../../lib/stats-categories';
@@ -189,7 +189,7 @@ if (visitorId && !searchedBy.includes(visitorId)) {
   searchedBy.push(visitorId);
 }
 
-const { data: player } = await supabase
+const { data: player, error: upsertError } = await supabase
   .from('players')
   .upsert({
     summoner_name: fullName,
@@ -207,6 +207,10 @@ const { data: player } = await supabase
   }, { onConflict: 'puuid' })
   .select()
   .single();
+
+if (upsertError) {
+  console.error('Supabase upsert error:', upsertError);
+}
 
     if (player && marketValue.rated) {
       await supabase

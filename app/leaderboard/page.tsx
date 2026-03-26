@@ -77,9 +77,7 @@ export default function Leaderboard() {
 
   const formatValue = (v: number | null) => {
     if (!v) return '-';
-    if (v >= 1000000) return '$' + (v / 1000000).toFixed(2) + 'M';
-    if (v >= 1000) return '$' + (v / 1000).toFixed(1) + 'k';
-    return '$' + v;
+    return '$' + v.toLocaleString('de-DE');
   };
 
   const tierColor = TIERS.find(t => t.value === tier)?.color || '#c89b3c';

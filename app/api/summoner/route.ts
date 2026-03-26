@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../lib/supabase';
 import { calculateMarketValue } from '../../lib/marketvalue';
+import { processMatch, toLegacyMatchData, type ExtendedMatchData } from '../../lib/match-processor';
+import { calculateStatsOverview } from '../../lib/stats-categories';
 
 const REGIONAL: Record<string, string> = {
   euw1: 'europe',
@@ -114,57 +116,50 @@ export async function GET(request: NextRequest) {
 
     const matchDetails = allMatchDetails.filter(Boolean);
 
-    const processMatch = (match: any) => {
-      const participant = match.info.participants.find((p: any) => p.puuid === account.puuid);
-      const teamId = participant?.teamId;
-      const teammates = match.info.participants.filter((p: any) => p.teamId === teamId);
-      const teamKills = teammates.reduce((s: number, p: any) => s + (p.kills || 0), 0);
-      const teamDamage = teammates.reduce((s: number, p: any) => s + (p.totalDamageDealtToChampions || 0), 0);
-      const teamGold = teammates.reduce((s: number, p: any) => s + (p.goldEarned || 0), 0);
-      return {
-        matchId: match.metadata.matchId,
-        champion: participant?.championName,
-        gameMode: match.info.gameMode,
-        kills: participant?.kills || 0,
-        deaths: participant?.deaths || 0,
-        assists: participant?.assists || 0,
-        win: participant?.win || false,
-        gameDuration: match.info.gameDuration,
-        cs: (participant?.totalMinionsKilled || 0) + (participant?.neutralMinionsKilled || 0),
-        role: participant?.individualPosition || participant?.teamPosition || 'UNKNOWN',
-        damageDealt: participant?.totalDamageDealtToChampions || 0,
-        visionScore: participant?.visionScore || 0,
-        wardsPlaced: participant?.wardsPlaced || 0,
-        firstBloodKill: participant?.firstBloodKill || false,
-        firstBloodAssist: participant?.firstBloodAssist || false,
-        firstBloodVictim: participant?.firstBloodVictim || false,
-        dragonKills: participant?.dragonKills || 0,
-        baronKills: participant?.baronKills || 0,
-        turretKills: participant?.turretKills || 0,
-        objectivesStolen: participant?.objectivesStolen || 0,
-        gameWonFromBehind: (participant?.wasLosing && participant?.win) || false,
-        surrendered: participant?.gameEndedInSurrender || false,
-        teamKills,
-        soloKills: participant?.challenges?.soloKills ?? participant?.soloKills ?? 0,
-        totalDamageTaken: participant?.totalDamageTaken || 0,
-        teamDamage,
-        doubleKills: participant?.doubleKills || 0,
-        tripleKills: participant?.tripleKills || 0,
-        quadraKills: participant?.quadraKills || 0,
-        pentaKills: participant?.pentaKills || 0,
-        goldEarned: participant?.goldEarned || 0,
-        teamGold,
-        controlWardsPlaced: participant?.challenges?.controlWardsPlaced ?? participant?.detectorWardsPlaced ?? 0,
-        wardsKilled: participant?.wardsKilled || 0,
-        riftHeraldKills: participant?.challenges?.riftHeraldTakedowns ?? 0,
-        inhibitorKills: participant?.inhibitorKills || 0,
-        totalHealsOnTeammates: participant?.totalHealsOnTeammates || 0,
-        totalDamageShieldedOnTeammates: participant?.totalDamageShieldedOnTeammates || 0,
-        timeCCingOthers: participant?.timeCCingOthers || 0,
-      };
-    };
+    // Process matches with the shared processor (extracts all ~200 stats)
+    const extendedMatches: ExtendedMatchData[] = matchDetails
+      .map(raw => processMatch(raw, account.puuid))
+      .filter(Boolean) as ExtendedMatchData[];
 
-    const matches = matchDetails.map(processMatch);
+    // Legacy format for existing market value calculation
+    const matches = extendedMatches.map(m => ({
+      ...toLegacyMatchData(m),
+      // Pass through new challenge fields for enhanced market value
+      damagePerMinute: m.challenges.damagePerMinute,
+      goldPerMinute: m.challenges.goldPerMinute,
+      teamDamagePercentage: m.challenges.teamDamagePercentage,
+      visionScorePerMinute: m.challenges.visionScorePerMinute,
+      turretPlatesTaken: m.challenges.turretPlatesTaken,
+      earlyLaningPhaseGoldExpAdvantage: m.challenges.earlyLaningPhaseGoldExpAdvantage,
+      maxCsAdvantageOnLaneOpponent: m.challenges.maxCsAdvantageOnLaneOpponent,
+      skillshotsDodged: m.challenges.skillshotsDodged,
+      outnumberedKills: m.challenges.outnumberedKills,
+      survivedSingleDigitHpCount: m.challenges.survivedSingleDigitHpCount,
+      maxKillDeficit: m.challenges.maxKillDeficit,
+      longestTimeSpentLiving: m.longestTimeSpentLiving,
+      totalTimeSpentDead: m.totalTimeSpentDead,
+      damageSelfMitigated: m.damageSelfMitigated,
+      goldSpent: m.goldSpent,
+      damageDealtToObjectives: m.damageDealtToObjectives,
+      damageDealtToBuildings: m.damageDealtToBuildings,
+      legendaryCount: m.challenges.legendaryCount,
+      takedownsFirst25Minutes: m.challenges.takedownsFirst25Minutes,
+      saveAllyFromDeath: m.challenges.saveAllyFromDeath,
+      effectiveHealAndShielding: m.challenges.effectiveHealAndShielding,
+      epicMonsterSteals: m.challenges.epicMonsterSteals,
+    }));
+
+    // Calculate 20 stat categories
+    const statsOverview = calculateStatsOverview(
+      extendedMatches,
+      soloQueue ? {
+        tier: soloQueue.tier,
+        rank: soloQueue.rank,
+        leaguePoints: soloQueue.leaguePoints,
+        wins: soloQueue.wins,
+        losses: soloQueue.losses,
+      } : null
+    );
 
     const marketValue = calculateMarketValue(
       soloQueue ? {
@@ -250,6 +245,7 @@ const { data: player } = await supabase
       summoner: { ...summoner, name: fullName },
       ranked: Array.isArray(ranked) ? ranked : [],
       matches,
+      statsOverview,
     });
 
   } catch (error) {

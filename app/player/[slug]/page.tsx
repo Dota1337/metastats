@@ -11,12 +11,15 @@ export default function PlayerPage() {
   const searchParams = useSearchParams();
   const [player, setPlayer] = useState<any>(null);
   const [matches, setMatches] = useState<any[]>([]);
+  const [statsOverview, setStatsOverview] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [ddVersion, setDdVersion] = useState('14.1.1');
   const [masteries, setMasteries] = useState<any[]>([]);
   const [liveGame, setLiveGame] = useState<{ inGame: boolean; gameData?: any }>({ inGame: false });
   const [championMap, setChampionMap] = useState<Record<number, { id: string; name: string }>>({});
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+  const [isPremium] = useState(false); // TODO: connect to auth system
   const region = searchParams.get('region') || 'euw1';
   const { t } = useI18n();
 
@@ -57,6 +60,11 @@ export default function PlayerPage() {
         const matchRes = await fetch(`/api/matches?puuid=${encodeURIComponent(data.summoner.puuid)}&region=${region}`);
         const matchData = await matchRes.json();
         if (matchRes.ok) setMatches(matchData.matches || []);
+      }
+
+      // Stats overview (20 categories)
+      if (data.statsOverview) {
+        setStatsOverview(data.statsOverview);
       }
 
       // Champion map from ddragon
@@ -279,6 +287,122 @@ export default function PlayerPage() {
                       <div className="text-[#8a9bb0] text-xs">Vision</div>
                       <div className="text-white text-sm">{marketValue.stats.visionScore.toFixed(1)}</div>
                     </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 20 Stat Categories */}
+            {statsOverview && statsOverview.categories && statsOverview.categories.length > 0 && (
+              <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 mb-4">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <div className="text-[#8a9bb0] text-xs uppercase tracking-widest">
+                      {t('stats.title')}
+                    </div>
+                    <div className="text-[#4a5a70] text-xs mt-1">
+                      {t('stats.subtitle')} {statsOverview.gamesAnalyzed} {t('stats.games')}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[#8a9bb0] text-xs">{t('stats.overallScore')}</div>
+                    <div className="text-2xl font-medium" style={{
+                      color: statsOverview.overallScore >= 70 ? '#4ade80' :
+                             statsOverview.overallScore >= 50 ? '#c89b3c' :
+                             statsOverview.overallScore >= 30 ? '#f59e0b' : '#ef4444'
+                    }}>
+                      {statsOverview.overallScore}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {statsOverview.categories.map((cat: any) => (
+                    <div
+                      key={cat.id}
+                      className="bg-[#141c2e] rounded p-3 cursor-pointer hover:bg-[#1a2540] transition-colors"
+                      onClick={() => setExpandedCategory(expandedCategory === cat.id ? null : cat.id)}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-lg w-7 text-center">{cat.icon}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-white text-sm font-medium truncate">{cat.name}</span>
+                            {cat.trend > 5 && <span className="text-green-400 text-xs">&#9650;</span>}
+                            {cat.trend < -5 && <span className="text-red-400 text-xs">&#9660;</span>}
+                          </div>
+                          <div className="text-[#6a7a90] text-xs truncate">{cat.summary}</div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <div className="w-16 h-2 bg-[#0d1526] rounded overflow-hidden">
+                            <div
+                              className="h-full rounded transition-all"
+                              style={{
+                                width: `${cat.score}%`,
+                                backgroundColor: cat.score >= 70 ? '#4ade80' :
+                                                 cat.score >= 50 ? '#c89b3c' :
+                                                 cat.score >= 30 ? '#f59e0b' : '#ef4444',
+                              }}
+                            />
+                          </div>
+                          <span className="text-white text-sm font-medium w-8 text-right">{cat.score}</span>
+                        </div>
+                      </div>
+
+                      {/* Expanded: Premium detail stats */}
+                      {expandedCategory === cat.id && (
+                        <div className="mt-3 pt-3 border-t border-[#1e2a3a]">
+                          {isPremium ? (
+                            <div className="grid grid-cols-2 gap-2">
+                              {cat.details.map((d: any, j: number) => (
+                                <div key={j} className="flex justify-between items-baseline">
+                                  <span className="text-[#6a7a90] text-xs">{d.name}</span>
+                                  <span className="text-white text-xs font-medium">
+                                    {typeof d.value === 'number' ? d.value.toLocaleString() : d.value}{d.unit ? ` ${d.unit}` : ''}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-center py-2">
+                              <div className="flex items-center justify-center gap-2 mb-2">
+                                {cat.details.slice(0, 2).map((d: any, j: number) => (
+                                  <span key={j} className="text-[#6a7a90] text-xs">
+                                    {d.name}: <span className="text-white">{typeof d.value === 'number' ? d.value.toLocaleString() : d.value}{d.unit ? ` ${d.unit}` : ''}</span>
+                                  </span>
+                                ))}
+                              </div>
+                              {cat.details.length > 2 && (
+                                <div className="relative">
+                                  <div className="grid grid-cols-2 gap-1 opacity-20 blur-[2px] select-none pointer-events-none">
+                                    {cat.details.slice(2, 6).map((d: any, j: number) => (
+                                      <div key={j} className="flex justify-between">
+                                        <span className="text-[#6a7a90] text-xs">{d.name}</span>
+                                        <span className="text-white text-xs">***</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                  <div className="absolute inset-0 flex items-center justify-center">
+                                    <span className="bg-[#c89b3c]/10 border border-[#c89b3c]/30 text-[#c89b3c] text-xs px-3 py-1 rounded-full">
+                                      +{cat.details.length - 2} Stats — {t('stats.premiumBadge')}
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {!isPremium && (
+                  <div className="mt-4 pt-3 border-t border-[#1e2a3a] text-center">
+                    <div className="text-[#6a7a90] text-xs mb-2">{t('stats.premiumHint')}</div>
+                    <button className="bg-gradient-to-r from-[#c89b3c] to-[#a07830] text-black text-xs font-bold px-6 py-2 rounded hover:brightness-110 transition">
+                      {t('stats.unlockDetails')}
+                    </button>
                   </div>
                 )}
               </div>

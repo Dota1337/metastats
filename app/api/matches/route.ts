@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { processMatch, toLegacyMatchData } from '../../lib/match-processor';
 
 const REGIONAL: Record<string, string> = {
   euw1: 'europe',
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
 
     const matchIds: string[] = await matchListRes.json();
 
-    const matches = await Promise.all(
+    const rawMatches = await Promise.all(
       matchIds.map(async (id) => {
         const res = await fetch(
           `https://${regional}.api.riotgames.com/lol/match/v5/matches/${id}?api_key=${apiKey}`
@@ -34,60 +35,15 @@ export async function GET(request: NextRequest) {
       })
     );
 
-    const filtered = matches.filter(Boolean).map((match) => {
-      const participant = match.info.participants.find(
-        (p: any) => p.puuid === puuid
-      );
-      const teamId = participant?.teamId;
-      const teammates = match.info.participants.filter((p: any) => p.teamId === teamId);
-      const teamKills = teammates.reduce((s: number, p: any) => s + (p.kills || 0), 0);
-      const teamDamage = teammates.reduce((s: number, p: any) => s + (p.totalDamageDealtToChampions || 0), 0);
-      const teamGold = teammates.reduce((s: number, p: any) => s + (p.goldEarned || 0), 0);
-      return {
-        matchId: match.metadata.matchId,
-        champion: participant?.championName,
-        kills: participant?.kills,
-        deaths: participant?.deaths,
-        assists: participant?.assists,
-        win: participant?.win,
-        gameDuration: match.info.gameDuration,
-        gameMode: match.info.gameMode,
-        cs: (participant?.totalMinionsKilled || 0) + (participant?.neutralMinionsKilled || 0),
-        role: participant?.individualPosition || participant?.teamPosition || 'UNKNOWN',
-        damageDealt: participant?.totalDamageDealtToChampions || 0,
-        visionScore: participant?.visionScore || 0,
-        wardsPlaced: participant?.wardsPlaced || 0,
-        firstBloodKill: participant?.firstBloodKill || false,
-        firstBloodAssist: participant?.firstBloodAssist || false,
-        firstBloodVictim: participant?.firstBloodVictim || false,
-        dragonKills: participant?.dragonKills || 0,
-        baronKills: participant?.baronKills || 0,
-        turretKills: participant?.turretKills || 0,
-        objectivesStolen: participant?.objectivesStolen || 0,
-        gameWonFromBehind: (participant?.wasLosing && participant?.win) || false,
-        surrendered: participant?.gameEndedInSurrender || false,
-        // Knowledge Graph extended fields
-        teamKills,
-        soloKills: participant?.challenges?.soloKills ?? participant?.soloKills ?? 0,
-        totalDamageTaken: participant?.totalDamageTaken || 0,
-        teamDamage,
-        doubleKills: participant?.doubleKills || 0,
-        tripleKills: participant?.tripleKills || 0,
-        quadraKills: participant?.quadraKills || 0,
-        pentaKills: participant?.pentaKills || 0,
-        goldEarned: participant?.goldEarned || 0,
-        teamGold,
-        controlWardsPlaced: participant?.challenges?.controlWardsPlaced ?? participant?.detectorWardsPlaced ?? 0,
-        wardsKilled: participant?.wardsKilled || 0,
-        riftHeraldKills: participant?.challenges?.riftHeraldTakedowns ?? 0,
-        inhibitorKills: participant?.inhibitorKills || 0,
-        totalHealsOnTeammates: participant?.totalHealsOnTeammates || 0,
-        totalDamageShieldedOnTeammates: participant?.totalDamageShieldedOnTeammates || 0,
-        timeCCingOthers: participant?.timeCCingOthers || 0,
-      };
-    });
+    const extended = rawMatches
+      .filter(Boolean)
+      .map(raw => processMatch(raw, puuid))
+      .filter(Boolean);
 
-    return NextResponse.json({ matches: filtered });
+    // Return both extended data and legacy format for backwards compatibility
+    const legacy = extended.map(m => toLegacyMatchData(m!));
+
+    return NextResponse.json({ matches: legacy, extended });
 
   } catch (error) {
     return NextResponse.json({ error: 'Server Fehler' }, { status: 500 });

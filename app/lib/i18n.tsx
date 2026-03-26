@@ -174,6 +174,18 @@ const translations = {
   // Common
   'common.loading': { de: 'Laden...', en: 'Loading...' },
   'common.all': { de: 'Alle', en: 'All' },
+
+  // Stats Categories
+  'stats.title': { de: 'Leistungsanalyse', en: 'Performance Analysis' },
+  'stats.subtitle': { de: '20 Statistik-Kategorien basierend auf', en: '20 stat categories based on' },
+  'stats.games': { de: 'Spielen', en: 'games' },
+  'stats.overallScore': { de: 'Gesamtscore', en: 'Overall Score' },
+  'stats.improving': { de: 'Verbesserung', en: 'Improving' },
+  'stats.declining': { de: 'Rückgang', en: 'Declining' },
+  'stats.stable': { de: 'Stabil', en: 'Stable' },
+  'stats.premiumHint': { de: 'Detaillierte Statistiken für Premium-Abonnenten', en: 'Detailed stats for premium subscribers' },
+  'stats.premiumBadge': { de: 'PREMIUM', en: 'PREMIUM' },
+  'stats.unlockDetails': { de: 'Details freischalten', en: 'Unlock details' },
 } as const;
 
 type TranslationKey = keyof typeof translations;

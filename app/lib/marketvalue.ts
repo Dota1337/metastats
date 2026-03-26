@@ -34,6 +34,29 @@ interface MatchData {
   totalHealsOnTeammates?: number;
   totalDamageShieldedOnTeammates?: number;
   timeCCingOthers?: number;
+  // Extended challenge fields (Phase A)
+  damagePerMinute?: number;
+  goldPerMinute?: number;
+  teamDamagePercentage?: number;
+  visionScorePerMinute?: number;
+  turretPlatesTaken?: number;
+  earlyLaningPhaseGoldExpAdvantage?: number;
+  maxCsAdvantageOnLaneOpponent?: number;
+  skillshotsDodged?: number;
+  outnumberedKills?: number;
+  survivedSingleDigitHpCount?: number;
+  maxKillDeficit?: number;
+  longestTimeSpentLiving?: number;
+  totalTimeSpentDead?: number;
+  damageSelfMitigated?: number;
+  goldSpent?: number;
+  damageDealtToObjectives?: number;
+  damageDealtToBuildings?: number;
+  legendaryCount?: number;
+  takedownsFirst25Minutes?: number;
+  saveAllyFromDeath?: number;
+  effectiveHealAndShielding?: number;
+  epicMonsterSteals?: number;
 }
 
 interface RankedData {
@@ -234,6 +257,58 @@ function calculateMultiplierWithBreakdown(matches: MatchData[], role: string): {
   }
 
   if (roleFlexibility >= 3) { multiplier += 0.04; add('Allgemein', 'Rollen-Flexibilität', +0.04, `${roleFlexibility} Rollen`); }
+
+  // === Enhanced Universal Factors (from challenges data) ===
+
+  const avgDpm = avgOptional(matches, m => m.damagePerMinute);
+  const avgGpm = avgOptional(matches, m => m.goldPerMinute);
+  const avgOutnumbered = avgOptional(matches, m => m.outnumberedKills);
+  const avgSkillDodge = avgOptional(matches, m => m.skillshotsDodged);
+  const avgClutchSurvive = avgOptional(matches, m => m.survivedSingleDigitHpCount);
+  const avgPlates = avgOptional(matches, m => m.turretPlatesTaken);
+  const avgLaneLead = avgOptional(matches, m => m.earlyLaningPhaseGoldExpAdvantage);
+  const avgCsAdv = avgOptional(matches, m => m.maxCsAdvantageOnLaneOpponent);
+  const avgLegendary = avgOptional(matches, m => m.legendaryCount);
+  const avgMaxDeficit = avgOptional(matches, m => m.maxKillDeficit);
+  const avgTakedowns25 = avgOptional(matches, m => m.takedownsFirst25Minutes);
+  const avgObjDmg = avgOptional(matches, m => m.damageDealtToObjectives);
+  const avgBuildingDmg = avgOptional(matches, m => m.damageDealtToBuildings);
+  const avgObjSteals = avgOptional(matches, m => m.epicMonsterSteals);
+  const avgDeadTime = avgOptional(matches, m => m.totalTimeSpentDead);
+
+  // Lane Dominance
+  if (avgLaneLead != null && avgLaneLead > 600) { multiplier += 0.06; add('Lane', 'Lane-Dominanz', +0.06, `+${avgLaneLead.toFixed(0)} Gold/XP-Vorteil`); }
+  else if (avgLaneLead != null && avgLaneLead > 300) { multiplier += 0.03; add('Lane', 'Lane-Dominanz', +0.03, `+${avgLaneLead.toFixed(0)} Gold/XP-Vorteil`); }
+  else if (avgLaneLead != null && avgLaneLead < -300) { multiplier -= 0.04; add('Lane', 'Lane-Schwäche', -0.04, `${avgLaneLead.toFixed(0)} Gold/XP-Rückstand`); }
+
+  if (avgCsAdv != null && avgCsAdv > 25) { multiplier += 0.04; add('Lane', 'CS-Vorteil', +0.04, `Ø ${avgCsAdv.toFixed(0)} CS Vorsprung`); }
+
+  // Clutch & Mechanics
+  if (avgOutnumbered != null && avgOutnumbered > 0.5) { multiplier += 0.05; add('Mechanik', 'Outplay-Kills', +0.05, `${avgOutnumbered.toFixed(1)}/Spiel (Unterzahl)`); }
+  if (avgSkillDodge != null && avgSkillDodge > 30) { multiplier += 0.04; add('Mechanik', 'Skillshot-Dodge', +0.04, `${avgSkillDodge.toFixed(0)} Skillshots/Spiel`); }
+  if (avgClutchSurvive != null && avgClutchSurvive > 1) { multiplier += 0.03; add('Mechanik', 'Clutch-Überlebend', +0.03, `${avgClutchSurvive.toFixed(1)}x knapp überlebt`); }
+  if (avgLegendary != null && avgLegendary > 0.1) { multiplier += 0.05; add('Mechanik', 'Legendary-Status', +0.05, `${(avgLegendary * 100).toFixed(0)}% der Spiele`); }
+
+  // Early Game Aggression
+  if (avgPlates != null && avgPlates > 2) { multiplier += 0.04; add('Frühspiel', 'Turret Plates', +0.04, `${avgPlates.toFixed(1)} Plates/Spiel`); }
+  if (avgTakedowns25 != null && avgTakedowns25 > 8) { multiplier += 0.04; add('Frühspiel', 'Takedowns @25', +0.04, `${avgTakedowns25.toFixed(1)} Takedowns`); }
+
+  // Objective Damage
+  if (avgObjDmg != null && avgObjDmg > 15000) { multiplier += 0.03; add('Objectives', 'Obj.-Schaden', +0.03, `${(avgObjDmg / 1000).toFixed(1)}k/Spiel`); }
+  if (avgBuildingDmg != null && avgBuildingDmg > 5000) { multiplier += 0.03; add('Objectives', 'Turm-Schaden', +0.03, `${(avgBuildingDmg / 1000).toFixed(1)}k/Spiel`); }
+  if (avgObjSteals != null && avgObjSteals > 0.2) { multiplier += 0.04; add('Objectives', 'Obj. Steals', +0.04, `${avgObjSteals.toFixed(2)} Steals/Spiel`); }
+
+  // Survivability & Mental
+  if (avgDeadTime != null) {
+    const deadRatio = avgDeadTime / (avgDuration * 60);
+    if (deadRatio > 0.20) { multiplier -= 0.05; add('Überleben', 'Totzeit', -0.05, `${(deadRatio * 100).toFixed(0)}% tot (>20%)`); }
+  }
+
+  // Comeback mental
+  if (avgMaxDeficit != null && avgMaxDeficit > 5) {
+    const deficitWins = matches.filter(m => m.win && (m.maxKillDeficit ?? 0) >= 5).length / matches.length;
+    if (deficitWins > 0.15) { multiplier += 0.05; add('Mental', 'Comeback-Mentalität', +0.05, `${(deficitWins * 100).toFixed(0)}% Siege nach 5+ Kill-Rückstand`); }
+  }
 
   // === Role-Specific Factors ===
 

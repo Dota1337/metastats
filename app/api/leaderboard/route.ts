@@ -122,13 +122,17 @@ async function fetchFromRiot(apiKey: string, region: string, tier: string): Prom
     for (let i = 0; i < Math.min(top.length, 10); i++) {
       const e = top[i];
       try {
-        const sumRes = await fetch(`https://${region}.api.riotgames.com/lol/summoner/v4/summoners/${e.summonerId}?api_key=${apiKey}`);
-        if (!sumRes.ok) continue;
-        const summoner = await sumRes.json();
+        // Use puuid directly (summonerId is deprecated)
+        const puuid = e.puuid;
+        if (!puuid) continue;
 
-        const accRes = await fetch(`https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-puuid/${summoner.puuid}?api_key=${apiKey}`);
+        const [accRes, sumRes] = await Promise.all([
+          fetch(`https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-puuid/${puuid}?api_key=${apiKey}`),
+          fetch(`https://${region}.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${puuid}?api_key=${apiKey}`),
+        ]);
         if (!accRes.ok) continue;
         const account = await accRes.json();
+        const summoner = sumRes.ok ? await sumRes.json() : {};
 
         if (!account.gameName) continue;
 
@@ -140,8 +144,8 @@ async function fetchFromRiot(apiKey: string, region: string, tier: string): Prom
           playerRank: e.rank,
           winrate: Math.round((e.wins / (e.wins + e.losses)) * 100),
           marketValue: null,
-          level: summoner.summonerLevel,
-          profileIcon: summoner.profileIconId,
+          level: summoner.summonerLevel || 0,
+          profileIcon: summoner.profileIconId || 0,
           leaguePoints: e.leaguePoints,
         });
       } catch { continue; }

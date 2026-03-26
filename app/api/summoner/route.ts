@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
     const summoner = await summonerRes.json();
 
     const rankedRes = await fetch(
-      `https://${region}.api.riotgames.com/lol/league/v4/entries/by-summoner/${summoner.id}?api_key=${apiKey}`
+      `https://${region}.api.riotgames.com/lol/league/v4/entries/by-puuid/${account.puuid}?api_key=${apiKey}`
     );
     const ranked = rankedRes.ok ? await rankedRes.json() : [];
 
@@ -193,7 +193,7 @@ const { data: player } = await supabase
   .from('players')
   .upsert({
     summoner_name: fullName,
-    summoner_id: summoner.id,
+    summoner_id: account.puuid,
     puuid: account.puuid,
     region: region,
     summoner_level: summoner.summonerLevel,

@@ -258,6 +258,7 @@ export async function GET(request: NextRequest) {
       ranked: Array.isArray(ranked) ? ranked : [],
       matches,
       statsOverview,
+      storedMarketValue: marketValue.rated ? marketValue.value : null,
     });
 
   } catch (error) {

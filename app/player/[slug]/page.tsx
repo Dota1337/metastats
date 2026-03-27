@@ -12,6 +12,7 @@ export default function PlayerPage() {
   const [player, setPlayer] = useState<any>(null);
   const [matches, setMatches] = useState<any[]>([]);
   const [statsOverview, setStatsOverview] = useState<any>(null);
+  const [storedMarketValue, setStoredMarketValue] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [ddVersion, setDdVersion] = useState('14.1.1');
@@ -52,6 +53,7 @@ export default function PlayerPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setPlayer(data);
+      if (data.storedMarketValue) setStoredMarketValue(data.storedMarketValue);
 
       // Use matches from summoner response (fresh), fallback to /api/matches (cached)
       if (data.matches && data.matches.length > 0) {
@@ -118,11 +120,11 @@ export default function PlayerPage() {
     matches
   );
 
-  const marketValue = (player?.storedMarketValue && matches.length === 0)
+  const marketValue = storedMarketValue
     ? {
         ...calculatedMarketValue,
-        value: player.storedMarketValue,
-        formatted: '$' + player.storedMarketValue.toLocaleString('de-DE'),
+        value: storedMarketValue,
+        formatted: '$' + storedMarketValue.toLocaleString('de-DE'),
         rated: true,
       }
     : calculatedMarketValue;
@@ -141,6 +143,23 @@ export default function PlayerPage() {
     ? ((matches.reduce((s, m) => s + m.kills + m.assists, 0)) /
       Math.max(matches.reduce((s, m) => s + m.deaths, 0), 1)).toFixed(2)
     : null;
+
+  const timeAgo = (timestamp: number) => {
+    if (!timestamp) return '';
+    const now = Date.now();
+    const diff = now - timestamp;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+    const weeks = Math.floor(diff / 604800000);
+    if (minutes < 1) return 'Gerade eben';
+    if (minutes < 60) return `Vor ${minutes} Min.`;
+    if (hours < 24) return `Vor ${hours} Std.`;
+    if (days === 1) return 'Vor 1 Tag';
+    if (days < 7) return `Vor ${days} Tagen`;
+    if (weeks === 1) return 'Vor 1 Woche';
+    return `Vor ${weeks} Wochen`;
+  };
 
   const roleLabels: Record<string, string> = {
     TOP: 'Top', JUNGLE: 'Jungle', MIDDLE: 'Mid',
@@ -516,7 +535,7 @@ export default function PlayerPage() {
                           />
                           <div className="w-24">
                             <div className="text-white text-sm font-medium">{match.champion}</div>
-                            <div className="text-[#8a9bb0] text-xs">{getQueueName(match)} · {formatDuration(match.gameDuration)}</div>
+                            <div className="text-[#8a9bb0] text-xs">{getQueueName(match)} · {formatDuration(match.gameDuration)}{match.gameCreation ? ` · ${timeAgo(match.gameCreation)}` : ''}</div>
                           </div>
                           <div className="text-center w-20">
                             <div className="text-white text-sm font-medium">{match.kills}/{match.deaths}/{match.assists}</div>

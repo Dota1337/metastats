@@ -136,6 +136,38 @@ export default function PlayerPage() {
     BOTTOM: 'ADC', SUPPORT: 'Support', UNKNOWN: '-'
   };
 
+  const queueLabels: Record<number, string> = {
+    420: 'Solo/Duo',
+    440: 'Flex',
+    450: 'ARAM',
+    400: 'Normal Draft',
+    430: 'Normal Blind',
+    490: 'Normal (Quickplay)',
+    700: 'Clash',
+    720: 'ARAM: Clash',
+    900: 'ARURF',
+    1020: 'One for All',
+    1300: 'Nexus Blitz',
+    1400: 'Ultimate Spellbook',
+    1700: 'Arena',
+    1710: 'Arena',
+    1900: 'Pick URF',
+    2000: 'Tutorial 1',
+    2010: 'Tutorial 2',
+    2020: 'Tutorial 3',
+    1090: 'TFT Normal',
+    1100: 'TFT Ranked',
+    1130: 'TFT Hyper Roll',
+    1160: 'TFT Double Up',
+  };
+
+  const getQueueName = (match: any) => {
+    if (match.queueId && queueLabels[match.queueId]) return queueLabels[match.queueId];
+    if (match.gameMode === 'ARAM') return 'ARAM';
+    if (match.gameMode === 'CLASSIC') return 'Normal';
+    return match.gameMode || '-';
+  };
+
   return (
     <main className="min-h-screen bg-[#080c18]">
       <Nav />
@@ -473,7 +505,7 @@ export default function PlayerPage() {
                           />
                           <div className="w-24">
                             <div className="text-white text-sm font-medium">{match.champion}</div>
-                            <div className="text-[#8a9bb0] text-xs">{match.gameMode} · {formatDuration(match.gameDuration)}</div>
+                            <div className="text-[#8a9bb0] text-xs">{getQueueName(match)} · {formatDuration(match.gameDuration)}</div>
                           </div>
                           <div className="text-center w-20">
                             <div className="text-white text-sm font-medium">{match.kills}/{match.deaths}/{match.assists}</div>

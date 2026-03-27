@@ -11,6 +11,7 @@ export interface ExtendedMatchData {
   champLevel: number;
   role: string;
   gameMode: string;
+  queueId: number;
   gameDuration: number;
   win: boolean;
   surrendered: boolean;
@@ -247,6 +248,7 @@ export function processMatch(rawMatch: any, puuid: string): ExtendedMatchData | 
     champLevel: p.champLevel || 0,
     role: p.individualPosition || p.teamPosition || 'UNKNOWN',
     gameMode: rawMatch.info.gameMode || '',
+    queueId: rawMatch.info.queueId || 0,
     gameDuration: rawMatch.info.gameDuration || 0,
     win: p.win || false,
     surrendered: p.gameEndedInSurrender || false,
@@ -466,6 +468,7 @@ export function toLegacyMatchData(m: ExtendedMatchData) {
     win: m.win,
     gameDuration: m.gameDuration,
     gameMode: m.gameMode,
+    queueId: m.queueId,
     cs: m.cs,
     role: m.role,
     damageDealt: m.damageDealt,

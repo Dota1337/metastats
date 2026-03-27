@@ -56,15 +56,14 @@ export default function PlayerPage() {
       // Use matches from summoner response (fresh), fallback to /api/matches (cached)
       if (data.matches && data.matches.length > 0) {
         setMatches(data.matches);
+        if (data.statsOverview) setStatsOverview(data.statsOverview);
       } else {
         const matchRes = await fetch(`/api/matches?puuid=${encodeURIComponent(data.summoner.puuid)}&region=${region}`);
         const matchData = await matchRes.json();
-        if (matchRes.ok) setMatches(matchData.matches || []);
-      }
-
-      // Stats overview (20 categories)
-      if (data.statsOverview) {
-        setStatsOverview(data.statsOverview);
+        if (matchRes.ok) {
+          setMatches(matchData.matches || []);
+          if (matchData.statsOverview) setStatsOverview(matchData.statsOverview);
+        }
       }
 
       // Champion map from ddragon

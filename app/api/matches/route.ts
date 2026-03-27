@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { processMatch, toLegacyMatchData } from '../../lib/match-processor';
+import { processMatch, toLegacyMatchData, type ExtendedMatchData } from '../../lib/match-processor';
+import { calculateStatsOverview } from '../../lib/stats-categories';
 
 const REGIONAL: Record<string, string> = {
   euw1: 'europe',
@@ -42,8 +43,9 @@ export async function GET(request: NextRequest) {
 
     // Return both extended data and legacy format for backwards compatibility
     const legacy = extended.map(m => toLegacyMatchData(m!));
+    const statsOverview = calculateStatsOverview(extended as ExtendedMatchData[], null);
 
-    return NextResponse.json({ matches: legacy, extended });
+    return NextResponse.json({ matches: legacy, extended, statsOverview });
 
   } catch (error) {
     return NextResponse.json({ error: 'Server Fehler' }, { status: 500 });

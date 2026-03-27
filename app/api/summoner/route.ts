@@ -25,65 +25,80 @@ export async function GET(request: NextRequest) {
   const fullName = `${gameName}#${tagLine}`;
 
   try {
-    const { data: cached } = await supabase
-      .from('players')
-      .select('*')
-      .eq('summoner_name', fullName)
-      .eq('region', region)
-      .single();
-
-    if (cached) {
-      const updatedAt = new Date(cached.updated_at).getTime();
-      const now = Date.now();
-      const fiveMinutes = 5 * 60 * 1000;
-
-      if (now - updatedAt < fiveMinutes) {
-        const { data: rankedData } = await supabase
-          .from('ranked_stats')
-          .select('*')
-          .eq('player_id', cached.id);
-
-        const mapped = (rankedData || []).map((r: any) => ({
-          queueType: r.queue_type,
-          tier: r.tier,
-          rank: r.rank,
-          leaguePoints: r.league_points,
-          wins: r.wins,
-          losses: r.losses,
-        }));
-
-        return NextResponse.json({
-          summoner: {
-            name: cached.summoner_name,
-            summonerLevel: cached.summoner_level,
-            profileIconId: cached.profile_icon_id,
-            puuid: cached.puuid,
-          },
-          ranked: mapped,
-          matches: [], // matches fetched separately via /api/matches for cached responses
-          fromCache: true,
-        });
-      }
-    }
-
+    // === Step 1: Resolve account ===
     const accountRes = await fetch(
       `https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}?api_key=${apiKey}`
     );
-
     if (!accountRes.ok) {
       return NextResponse.json({ error: 'Spieler nicht gefunden' }, { status: 404 });
     }
-
     const account = await accountRes.json();
 
+    // === Step 2: Load cached player from Supabase ===
+    const { data: cached } = await supabase
+      .from('players')
+      .select('*')
+      .eq('puuid', account.puuid)
+      .single();
+
+    // === Step 3: Fetch match IDs (cheap: 1 API call) to check for new games ===
+    const matchListRes = await fetch(
+      `https://${regional}.api.riotgames.com/lol/match/v5/matches/by-puuid/${account.puuid}/ids?start=0&count=30&api_key=${apiKey}`
+    );
+    const matchIds: string[] = matchListRes.ok ? await matchListRes.json() : [];
+    const latestMatchId = matchIds[0] || null;
+
+    // Check if we have new matches since last calculation
+    // summoner_id field stores the last known match ID
+    const hasNewMatches = !cached || cached.summoner_id !== latestMatchId;
+
+    // === Step 4a: No new matches → return stored data ===
+    if (!hasNewMatches && cached) {
+      const { data: rankedData } = await supabase
+        .from('ranked_stats')
+        .select('*')
+        .eq('player_id', cached.id);
+
+      const mapped = (rankedData || []).map((r: any) => ({
+        queueType: r.queue_type,
+        tier: r.tier,
+        rank: r.rank,
+        leaguePoints: r.league_points,
+        wins: r.wins,
+        losses: r.losses,
+      }));
+
+      // Track visitor
+      const visitorId = request.cookies.get('visitor_id')?.value;
+      if (visitorId) {
+        const searchedBy = cached.searched_by || [];
+        if (!searchedBy.includes(visitorId)) {
+          searchedBy.push(visitorId);
+          await supabase.from('players').update({ searched_by: searchedBy }).eq('id', cached.id);
+        }
+      }
+
+      return NextResponse.json({
+        summoner: {
+          name: cached.summoner_name,
+          summonerLevel: cached.summoner_level,
+          profileIconId: cached.profile_icon_id,
+          puuid: cached.puuid,
+        },
+        ranked: mapped,
+        matches: [], // loaded via /api/matches
+        fromCache: true,
+        storedMarketValue: cached.market_value,
+      });
+    }
+
+    // === Step 4b: New matches detected → full recalculation ===
     const summonerRes = await fetch(
       `https://${region}.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${account.puuid}?api_key=${apiKey}`
     );
-
     if (!summonerRes.ok) {
       return NextResponse.json({ error: 'Summoner nicht gefunden' }, { status: 404 });
     }
-
     const summoner = await summonerRes.json();
 
     const rankedRes = await fetch(
@@ -94,12 +109,6 @@ export async function GET(request: NextRequest) {
     const soloQueue = Array.isArray(ranked)
       ? ranked.find((r: any) => r.queueType === 'RANKED_SOLO_5x5')
       : null;
-
-    // Fetch match IDs once — used for market value AND returned to client
-    const matchListRes = await fetch(
-      `https://${regional}.api.riotgames.com/lol/match/v5/matches/by-puuid/${account.puuid}/ids?start=0&count=30&api_key=${apiKey}`
-    );
-    const matchIds: string[] = matchListRes.ok ? await matchListRes.json() : [];
 
     // Fetch all 30 match details (batched in groups of 10 to respect rate limits)
     const allMatchDetails: any[] = [];
@@ -124,7 +133,6 @@ export async function GET(request: NextRequest) {
     // Legacy format for existing market value calculation
     const matches = extendedMatches.map(m => ({
       ...toLegacyMatchData(m),
-      // Pass through new challenge fields for enhanced market value
       damagePerMinute: m.challenges.damagePerMinute,
       goldPerMinute: m.challenges.goldPerMinute,
       teamDamagePercentage: m.challenges.teamDamagePercentage,
@@ -176,41 +184,42 @@ export async function GET(request: NextRequest) {
       ? Math.round((soloQueue.wins / (soloQueue.wins + soloQueue.losses)) * 100)
       : null;
 
-const visitorId = request.cookies.get('visitor_id')?.value;
+    // === Step 5: Persist to Supabase ===
+    const visitorId = request.cookies.get('visitor_id')?.value;
 
-const { data: existingPlayer } = await supabase
-  .from('players')
-  .select('id, searched_by')
-  .eq('puuid', account.puuid)
-  .single();
+    const { data: existingPlayer } = await supabase
+      .from('players')
+      .select('id, searched_by')
+      .eq('puuid', account.puuid)
+      .single();
 
-const searchedBy = existingPlayer?.searched_by || [];
-if (visitorId && !searchedBy.includes(visitorId)) {
-  searchedBy.push(visitorId);
-}
+    const searchedBy = existingPlayer?.searched_by || [];
+    if (visitorId && !searchedBy.includes(visitorId)) {
+      searchedBy.push(visitorId);
+    }
 
-const { data: player, error: upsertError } = await supabase
-  .from('players')
-  .upsert({
-    summoner_name: fullName,
-    summoner_id: account.puuid,
-    puuid: account.puuid,
-    region: region,
-    summoner_level: summoner.summonerLevel,
-    profile_icon_id: summoner.profileIconId,
-    market_value: marketValue.rated ? marketValue.value : null,
-    tier: soloQueue?.tier || null,
-    rank: soloQueue?.rank || null,
-    winrate: winrate,
-    searched_by: searchedBy,
-    updated_at: new Date().toISOString(),
-  }, { onConflict: 'puuid' })
-  .select()
-  .single();
+    const { data: player, error: upsertError } = await supabase
+      .from('players')
+      .upsert({
+        summoner_name: fullName,
+        summoner_id: latestMatchId || account.puuid, // stores latest match ID
+        puuid: account.puuid,
+        region: region,
+        summoner_level: summoner.summonerLevel,
+        profile_icon_id: summoner.profileIconId,
+        market_value: marketValue.rated ? marketValue.value : null,
+        tier: soloQueue?.tier || null,
+        rank: soloQueue?.rank || null,
+        winrate: winrate,
+        searched_by: searchedBy,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'puuid' })
+      .select()
+      .single();
 
-if (upsertError) {
-  console.error('Supabase upsert error:', upsertError);
-}
+    if (upsertError) {
+      console.error('Supabase upsert error:', upsertError);
+    }
 
     if (player && marketValue.rated) {
       await supabase
@@ -224,7 +233,6 @@ if (upsertError) {
 
     // Store all ranked queues (solo + flex)
     if (player && Array.isArray(ranked)) {
-      // Delete old ranked_stats for this player, then insert all queues
       await supabase.from('ranked_stats').delete().eq('player_id', player.id);
       for (const queue of ranked) {
         await supabase.from('ranked_stats').insert({

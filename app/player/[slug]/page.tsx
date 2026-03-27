@@ -105,7 +105,9 @@ export default function PlayerPage() {
     ? player.ranked.find((r: any) => r.queueType === 'RANKED_FLEX_SR')
     : null;
 
-  const marketValue = calculateMarketValue(
+  // Use stored market value from Supabase when available (cached responses),
+  // only recalculate when we have fresh match data
+  const calculatedMarketValue = calculateMarketValue(
     ranked ? {
       tier: ranked.tier,
       rank: ranked.rank,
@@ -115,6 +117,15 @@ export default function PlayerPage() {
     } : null,
     matches
   );
+
+  const marketValue = (player?.storedMarketValue && matches.length === 0)
+    ? {
+        ...calculatedMarketValue,
+        value: player.storedMarketValue,
+        formatted: '$' + player.storedMarketValue.toLocaleString('de-DE'),
+        rated: true,
+      }
+    : calculatedMarketValue;
 
   const formatDuration = (seconds: number) => {
     const m = Math.floor(seconds / 60);

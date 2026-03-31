@@ -1,24 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { processMatch, toLegacyMatchData, type ExtendedMatchData } from '../../lib/match-processor';
+import { processMatch, toLegacyMatchData, extractParticipants, extractBans, type ExtendedMatchData } from '../../lib/match-processor';
 import { calculateStatsOverview } from '../../lib/stats-categories';
 
-const REGIONAL: Record<string, string> = {
-  euw1: 'europe',
-  eun1: 'europe',
-  na1: 'americas',
-  kr: 'asia',
-};
+import { getRegionalRouting } from '../../lib/regions';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const puuid = searchParams.get('puuid') || '';
   const region = searchParams.get('region') || 'euw1';
   const apiKey = process.env.RIOT_API_KEY!;
-  const regional = REGIONAL[region] || 'europe';
+  const start = parseInt(searchParams.get('start') || '0', 10);
+  const count = parseInt(searchParams.get('count') || '30', 10);
+  const regional = getRegionalRouting(region);
 
   try {
     const matchListRes = await fetch(
-      `https://${regional}.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?start=0&count=30&api_key=${apiKey}`
+      `https://${regional}.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?start=${start}&count=${Math.min(count, 30)}&api_key=${apiKey}`
     );
 
     if (!matchListRes.ok) {
@@ -41,8 +38,21 @@ export async function GET(request: NextRequest) {
       .map(raw => processMatch(raw, puuid))
       .filter(Boolean);
 
+    // Build participant + ban maps for detailed match view
+    const participantsMap: Record<string, any> = {};
+    const bansMap: Record<string, any> = {};
+    for (const raw of rawMatches.filter(Boolean)) {
+      if (!raw?.metadata?.matchId) continue;
+      participantsMap[raw.metadata.matchId] = extractParticipants(raw);
+      bansMap[raw.metadata.matchId] = extractBans(raw);
+    }
+
     // Return both extended data and legacy format for backwards compatibility
-    const legacy = extended.map(m => toLegacyMatchData(m!));
+    const legacy = (extended as ExtendedMatchData[]).map(m => ({
+      ...toLegacyMatchData(m!),
+      participants: participantsMap[m!.matchId] || [],
+      bans: bansMap[m!.matchId] || [],
+    }));
     const statsOverview = calculateStatsOverview(extended as ExtendedMatchData[], null);
 
     return NextResponse.json({ matches: legacy, extended, statsOverview });

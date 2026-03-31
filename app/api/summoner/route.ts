@@ -1,22 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '../../lib/supabase';
 import { calculateMarketValue } from '../../lib/marketvalue';
-import { processMatch, toLegacyMatchData, type ExtendedMatchData } from '../../lib/match-processor';
+import { processMatch, toLegacyMatchData, extractParticipants, extractBans, type ExtendedMatchData } from '../../lib/match-processor';
 import { calculateStatsOverview } from '../../lib/stats-categories';
 
-const REGIONAL: Record<string, string> = {
-  euw1: 'europe',
-  eun1: 'europe',
-  na1: 'americas',
-  kr: 'asia',
-};
+import { getRegionalRouting } from '../../lib/regions';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const name = searchParams.get('name') || '';
   const region = searchParams.get('region') || 'euw1';
   const apiKey = process.env.RIOT_API_KEY!;
-  const regional = REGIONAL[region] || 'europe';
+  const regional = getRegionalRouting(region);
 
   const decoded = decodeURIComponent(name);
   const parts = decoded.split('#');
@@ -41,7 +36,8 @@ export async function GET(request: NextRequest) {
       .eq('puuid', account.puuid)
       .single();
 
-    // === Step 3: Fetch match IDs (cheap: 1 API call) to check for new games ===
+    // === Step 3: Fetch match IDs ===
+    // Recent 30 LoL matches (all queues) for display
     const matchListRes = await fetch(
       `https://${regional}.api.riotgames.com/lol/match/v5/matches/by-puuid/${account.puuid}/ids?start=0&count=30&api_key=${apiKey}`
     );
@@ -109,11 +105,43 @@ export async function GET(request: NextRequest) {
     const soloQueue = Array.isArray(ranked)
       ? ranked.find((r: any) => r.queueType === 'RANKED_SOLO_5x5')
       : null;
+    const flexQueue = Array.isArray(ranked)
+      ? ranked.find((r: any) => r.queueType === 'RANKED_FLEX_SR')
+      : null;
 
-    // Fetch all 30 match details (batched in groups of 10 to respect rate limits)
+    // Determine which queue to use for market value: higher rank wins
+    const TIER_VAL: Record<string, number> = {
+      IRON: 0, BRONZE: 1, SILVER: 2, GOLD: 3, PLATINUM: 4,
+      EMERALD: 5, DIAMOND: 6, MASTER: 7, GRANDMASTER: 8, CHALLENGER: 9,
+    };
+    const RANK_VAL: Record<string, number> = { IV: 0, III: 1, II: 2, I: 3 };
+    const rankScore = (q: any) => q ? (TIER_VAL[q.tier] || 0) * 1000 + (RANK_VAL[q.rank] || 0) * 100 + (q.leaguePoints || 0) : -1;
+    const soloScore = rankScore(soloQueue);
+    const flexScore = rankScore(flexQueue);
+    const primaryQueue = soloScore >= flexScore ? soloQueue : flexQueue;
+    const primaryQueueId = soloScore >= flexScore ? 420 : 440; // 420=Solo/Duo, 440=Flex
+
+    // Fetch ranked match IDs for market value (max 60 to stay within rate limits)
+    const rankedMatchIds: string[] = [];
+    const rankedListRes = await fetch(
+      `https://${regional}.api.riotgames.com/lol/match/v5/matches/by-puuid/${account.puuid}/ids?queue=${primaryQueueId}&start=0&count=60&api_key=${apiKey}`
+    );
+    if (rankedListRes.ok) {
+      const ids: string[] = await rankedListRes.json();
+      rankedMatchIds.push(...ids);
+    }
+
+    // Merge: display matchIds first (for match history), then ranked matchIds (for market value)
+    // Limit total fetches to stay within rate limits (dev key: 100 req/2min)
+    const displaySet = new Set(matchIds);
+    const rankedOnly = rankedMatchIds.filter(id => !displaySet.has(id));
+    // Fetch display matches (30) + up to 30 extra ranked matches = max 60 match detail calls
+    const allMatchIdArray = [...matchIds, ...rankedOnly.slice(0, 30)];
+
+    // Fetch match details (batched)
     const allMatchDetails: any[] = [];
-    for (let batch = 0; batch < matchIds.length; batch += 10) {
-      const batchIds = matchIds.slice(batch, batch + 10);
+    for (let batch = 0; batch < allMatchIdArray.length; batch += 10) {
+      const batchIds = allMatchIdArray.slice(batch, batch + 10);
       const batchResults = await Promise.all(
         batchIds.map(async (id) => {
           const res = await fetch(`https://${regional}.api.riotgames.com/lol/match/v5/matches/${id}?api_key=${apiKey}`);
@@ -125,14 +153,35 @@ export async function GET(request: NextRequest) {
 
     const matchDetails = allMatchDetails.filter(Boolean);
 
-    // Process matches with the shared processor (extracts all ~200 stats)
-    const extendedMatches: ExtendedMatchData[] = matchDetails
+    // Process ALL matches with the shared processor (extracts all ~200 stats)
+    const allExtendedMatches: ExtendedMatchData[] = matchDetails
       .map(raw => processMatch(raw, account.puuid))
       .filter(Boolean) as ExtendedMatchData[];
 
-    // Legacy format for existing market value calculation
-    const matches = extendedMatches.map(m => ({
+    // Split: display matches (recent 30, all queues) vs ranked matches (prioritized queue, for market value)
+    const rankedMatchIdSet = new Set(rankedMatchIds);
+    const rankedExtendedMatches = allExtendedMatches.filter(m => rankedMatchIdSet.has(m.matchId));
+    const displayExtendedMatches = allExtendedMatches
+      .filter(m => matchIds.includes(m.matchId))
+      .slice(0, 30);
+
+    // Use display matches for the UI, ranked matches for market value
+    const extendedMatches = displayExtendedMatches;
+
+    // Extract participant data for detailed match view
+    const participantsMap: Record<string, any> = {};
+    const bansMap: Record<string, any> = {};
+    for (const raw of matchDetails) {
+      if (!raw?.metadata?.matchId) continue;
+      participantsMap[raw.metadata.matchId] = extractParticipants(raw);
+      bansMap[raw.metadata.matchId] = extractBans(raw);
+    }
+
+    // Helper: convert extended matches to legacy format
+    const toLegacy = (m: ExtendedMatchData) => ({
       ...toLegacyMatchData(m),
+      participants: participantsMap[m.matchId] || [],
+      bans: bansMap[m.matchId] || [],
       damagePerMinute: m.challenges.damagePerMinute,
       goldPerMinute: m.challenges.goldPerMinute,
       teamDamagePercentage: m.challenges.teamDamagePercentage,
@@ -155,33 +204,40 @@ export async function GET(request: NextRequest) {
       saveAllyFromDeath: m.challenges.saveAllyFromDeath,
       effectiveHealAndShielding: m.challenges.effectiveHealAndShielding,
       epicMonsterSteals: m.challenges.epicMonsterSteals,
-    }));
+    });
 
-    // Calculate 20 stat categories
+    // Display matches (recent 30, all queues) — for match history UI
+    const matches = extendedMatches.map(toLegacy);
+
+    // Ranked matches (up to 200, prioritized queue only) — for market value
+    const rankedMatches = rankedExtendedMatches.map(toLegacy);
+
+    // Calculate 20 stat categories (based on display matches for overview)
     const statsOverview = calculateStatsOverview(
       extendedMatches,
-      soloQueue ? {
-        tier: soloQueue.tier,
-        rank: soloQueue.rank,
-        leaguePoints: soloQueue.leaguePoints,
-        wins: soloQueue.wins,
-        losses: soloQueue.losses,
+      primaryQueue ? {
+        tier: primaryQueue.tier,
+        rank: primaryQueue.rank,
+        leaguePoints: primaryQueue.leaguePoints,
+        wins: primaryQueue.wins,
+        losses: primaryQueue.losses,
       } : null
     );
 
+    // Market value: based on ALL ranked matches from the prioritized queue
     const marketValue = calculateMarketValue(
-      soloQueue ? {
-        tier: soloQueue.tier,
-        rank: soloQueue.rank,
-        leaguePoints: soloQueue.leaguePoints,
-        wins: soloQueue.wins,
-        losses: soloQueue.losses,
+      primaryQueue ? {
+        tier: primaryQueue.tier,
+        rank: primaryQueue.rank,
+        leaguePoints: primaryQueue.leaguePoints,
+        wins: primaryQueue.wins,
+        losses: primaryQueue.losses,
       } : null,
-      matches
+      rankedMatches
     );
 
-    const winrate = soloQueue
-      ? Math.round((soloQueue.wins / (soloQueue.wins + soloQueue.losses)) * 100)
+    const winrate = primaryQueue
+      ? Math.round((primaryQueue.wins / (primaryQueue.wins + primaryQueue.losses)) * 100)
       : null;
 
     // === Step 5: Persist to Supabase ===
@@ -208,8 +264,8 @@ export async function GET(request: NextRequest) {
         summoner_level: summoner.summonerLevel,
         profile_icon_id: summoner.profileIconId,
         market_value: marketValue.rated ? marketValue.value : null,
-        tier: soloQueue?.tier || null,
-        rank: soloQueue?.rank || null,
+        tier: primaryQueue?.tier || null,
+        rank: primaryQueue?.rank || null,
         winrate: winrate,
         searched_by: searchedBy,
         updated_at: new Date().toISOString(),
@@ -248,9 +304,9 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Collect champion stats from matches (non-blocking)
-    if (soloQueue && matches.length > 0) {
-      collectChampionStats(matches, matchDetails, account.puuid, soloQueue.tier).catch(() => {});
+    // Collect champion stats from ranked matches (non-blocking)
+    if (primaryQueue && rankedMatches.length > 0) {
+      collectChampionStats(rankedMatches, matchDetails, account.puuid, primaryQueue.tier, region).catch(() => {});
     }
 
     return NextResponse.json({
@@ -259,6 +315,8 @@ export async function GET(request: NextRequest) {
       matches,
       statsOverview,
       storedMarketValue: marketValue.rated ? marketValue.value : null,
+      rankedGamesAnalyzed: rankedMatches.length,
+      primaryQueue: primaryQueueId === 420 ? 'RANKED_SOLO_5x5' : 'RANKED_FLEX_SR',
     });
 
   } catch (error) {
@@ -270,7 +328,8 @@ async function collectChampionStats(
   matches: any[],
   rawMatches: any[],
   puuid: string,
-  tier: string
+  tier: string,
+  region: string
 ) {
   // Aggregate champion stats from this player's matches
   const champStats: Record<string, { wins: number; games: number; kills: number; deaths: number; assists: number }> = {};
@@ -312,6 +371,7 @@ async function collectChampionStats(
     await supabase.from('champion_stats').upsert({
       champion_key: champKey,
       tier: tier,
+      region: region,
       wins: stats.wins,
       games: stats.games,
       kills: stats.kills,
@@ -320,6 +380,6 @@ async function collectChampionStats(
       bans: bannedChamps[champKey] || 0,
       total_games_in_tier: totalParticipantGames,
       updated_at: new Date().toISOString(),
-    }, { onConflict: 'champion_key,tier' });
+    }, { onConflict: 'champion_key,tier,region' });
   }
 }

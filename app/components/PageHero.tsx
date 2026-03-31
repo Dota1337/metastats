@@ -10,34 +10,66 @@ interface PageHeroProps {
 
 export default function PageHero({ title, subtitle, leftChampion, rightChampion, children }: PageHeroProps) {
   return (
-    <div className="relative overflow-hidden bg-[#080c18]">
-      {/* Left champion */}
-      <div className="absolute left-0 top-0 bottom-0 w-[35%] overflow-hidden">
+    <div className="relative overflow-hidden bg-[#0e1525]" style={{ minHeight: '160px' }}>
+      {/* Mobile: single background with both champions side by side */}
+      <div className="sm:hidden absolute inset-0 flex">
+        <div className="w-1/2 relative overflow-hidden">
+          <img
+            src={`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${leftChampion}_0.jpg`}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{ filter: 'brightness(1.4)', objectPosition: '50% 15%' }}
+          />
+          <div className="absolute inset-0" style={{
+            background: 'linear-gradient(to right, rgba(14,21,37,0) 0%, rgba(14,21,37,0.8) 85%, rgba(14,21,37,1) 100%)',
+          }} />
+          <div className="absolute inset-0" style={{
+            background: 'linear-gradient(to bottom, rgba(14,21,37,0) 0%, rgba(14,21,37,0) 50%, rgba(14,21,37,1) 100%)',
+          }} />
+        </div>
+        <div className="w-1/2 relative overflow-hidden">
+          <img
+            src={`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${rightChampion}_0.jpg`}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{ filter: 'brightness(1.4)', objectPosition: '50% 15%' }}
+          />
+          <div className="absolute inset-0" style={{
+            background: 'linear-gradient(to left, rgba(14,21,37,0) 0%, rgba(14,21,37,0.8) 85%, rgba(14,21,37,1) 100%)',
+          }} />
+          <div className="absolute inset-0" style={{
+            background: 'linear-gradient(to bottom, rgba(14,21,37,0) 0%, rgba(14,21,37,0) 50%, rgba(14,21,37,1) 100%)',
+          }} />
+        </div>
+      </div>
+
+      {/* Desktop: positioned at sides */}
+      <div className="hidden sm:block absolute left-0 top-0 bottom-0 w-[35%] overflow-hidden">
         <img
           src={`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${leftChampion}_0.jpg`}
           alt=""
-          className="absolute inset-0 w-full h-full object-cover object-[70%_15%]"
+          className="absolute inset-0 w-full h-full object-cover"
+          style={{ filter: 'brightness(1.4)', objectPosition: '70% 15%' }}
         />
         <div className="absolute inset-0" style={{
-          background: 'linear-gradient(to right, rgba(8,12,24,0) 0%, rgba(8,12,24,0.3) 70%, rgba(8,12,24,1) 100%)',
+          background: 'linear-gradient(to right, rgba(14,21,37,0) 0%, rgba(14,21,37,0.15) 60%, rgba(14,21,37,1) 100%)',
         }} />
         <div className="absolute inset-0" style={{
-          background: 'linear-gradient(to bottom, rgba(8,12,24,0) 0%, rgba(8,12,24,0.1) 70%, rgba(8,12,24,1) 100%)',
+          background: 'linear-gradient(to bottom, rgba(14,21,37,0) 0%, rgba(14,21,37,0) 60%, rgba(14,21,37,1) 100%)',
         }} />
       </div>
-
-      {/* Right champion */}
-      <div className="absolute right-0 top-0 bottom-0 w-[35%] overflow-hidden">
+      <div className="hidden sm:block absolute right-0 top-0 bottom-0 w-[35%] overflow-hidden">
         <img
           src={`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${rightChampion}_0.jpg`}
           alt=""
-          className="absolute inset-0 w-full h-full object-cover object-[30%_15%]"
+          className="absolute inset-0 w-full h-full object-cover"
+          style={{ filter: 'brightness(1.4)', objectPosition: '30% 15%' }}
         />
         <div className="absolute inset-0" style={{
-          background: 'linear-gradient(to left, rgba(8,12,24,0) 0%, rgba(8,12,24,0.3) 70%, rgba(8,12,24,1) 100%)',
+          background: 'linear-gradient(to left, rgba(14,21,37,0) 0%, rgba(14,21,37,0.15) 60%, rgba(14,21,37,1) 100%)',
         }} />
         <div className="absolute inset-0" style={{
-          background: 'linear-gradient(to bottom, rgba(8,12,24,0) 0%, rgba(8,12,24,0.1) 70%, rgba(8,12,24,1) 100%)',
+          background: 'linear-gradient(to bottom, rgba(14,21,37,0) 0%, rgba(14,21,37,0) 60%, rgba(14,21,37,1) 100%)',
         }} />
       </div>
 

@@ -1,10 +1,17 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import { useParams, useSearchParams } from 'next/navigation';
 import { calculateMarketValue, type BreakdownItem } from '../../lib/marketvalue';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
+import ChampionBreakdown from '../../components/ChampionBreakdown';
+import MatchDetail from '../../components/MatchDetail';
+import LiveGameDetail from '../../components/LiveGameDetail';
 import { useI18n } from '../../lib/i18n';
+import { loadProLookup, lookupPro, type ProPlayer } from '../../lib/pro-players';
+
+const PerformanceCharts = dynamic(() => import('../../components/PerformanceCharts'), { ssr: false });
 
 export default function PlayerPage() {
   const { slug } = useParams();
@@ -20,7 +27,12 @@ export default function PlayerPage() {
   const [liveGame, setLiveGame] = useState<{ inGame: boolean; gameData?: any }>({ inGame: false });
   const [championMap, setChampionMap] = useState<Record<number, { id: string; name: string }>>({});
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+  const [expandedMatch, setExpandedMatch] = useState<number | null>(null);
+  const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [proInfo, setProInfo] = useState<ProPlayer | null>(null);
   const [isPremium] = useState(false); // TODO: connect to auth system
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMoreMatches, setHasMoreMatches] = useState(true);
   const region = searchParams.get('region') || 'euw1';
   const { t } = useI18n();
 
@@ -54,6 +66,12 @@ export default function PlayerPage() {
       if (!res.ok) throw new Error(data.error);
       setPlayer(data);
       if (data.storedMarketValue) setStoredMarketValue(data.storedMarketValue);
+
+      // Check if this player is a pro
+      loadProLookup().then(lookup => {
+        const pro = lookupPro(lookup, data.summoner?.name || '');
+        if (pro) setProInfo(pro);
+      });
 
       // Use matches from summoner response (fresh), fallback to /api/matches (cached)
       if (data.matches && data.matches.length > 0) {
@@ -96,6 +114,29 @@ export default function PlayerPage() {
       setError(e.message || 'Spieler nicht gefunden');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadMoreMatches = async () => {
+    if (!player?.summoner?.puuid || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const start = matches.length;
+      const res = await fetch(`/api/matches?puuid=${encodeURIComponent(player.summoner.puuid)}&region=${region}&start=${start}&count=30`);
+      if (res.ok) {
+        const data = await res.json();
+        const newMatches = data.matches || [];
+        if (newMatches.length === 0) {
+          setHasMoreMatches(false);
+        } else {
+          setMatches(prev => [...prev, ...newMatches]);
+          if (newMatches.length < 30) setHasMoreMatches(false);
+        }
+      }
+    } catch {
+      // silent fail
+    } finally {
+      setLoadingMore(false);
     }
   };
 
@@ -198,11 +239,21 @@ export default function PlayerPage() {
     return match.gameMode || '-';
   };
 
+  const filteredMatches = useMemo(() => {
+    if (roleFilter === 'all') return matches;
+    return matches.filter(m => m.role === roleFilter);
+  }, [matches, roleFilter]);
+
+  const availableRoles = useMemo(() => {
+    const roles = new Set(matches.map(m => m.role).filter(r => r && r !== 'UNKNOWN'));
+    return ['all', ...Array.from(roles)];
+  }, [matches]);
+
   return (
-    <main className="min-h-screen bg-[#080c18]">
+    <main className="min-h-screen bg-[#0e1525]">
       <Nav />
 
-      <div className="max-w-5xl mx-auto px-6 py-8">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
         {loading && (
           <div className="text-center text-[#8a9bb0] mt-20">{t('player.loading')}</div>
         )}
@@ -214,16 +265,21 @@ export default function PlayerPage() {
         {player && !loading && (
           <>
             {/* Header */}
-            <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 mb-4">
-              <div className="flex items-center gap-6 mb-6">
+            <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 sm:p-6 mb-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 mb-6">
                 <img
                   src={'https://ddragon.leagueoflegends.com/cdn/' + ddVersion + '/img/profileicon/' + player.summoner.profileIconId + '.png'}
                   alt="icon"
-                  className="w-20 h-20 rounded-full border-2 border-[#c89b3c]"
+                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-[#c89b3c]"
                 />
-                <div className="flex-1">
-                  <h1 className="text-white text-2xl font-medium flex items-center gap-3">
-                    {player.summoner.name}
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-white text-xl sm:text-2xl font-medium flex flex-wrap items-center gap-2 sm:gap-3">
+                    <span className="truncate">{player.summoner.name}</span>
+                    {proInfo && (
+                      <span className="inline-flex items-center gap-1.5 bg-[#c89b3c]/15 text-[#c89b3c] text-xs font-bold px-2.5 py-0.5 rounded-full border border-[#c89b3c]/40">
+                        PRO
+                      </span>
+                    )}
                     {liveGame.inGame && (
                       <span className="inline-flex items-center gap-1 bg-green-500/20 text-green-400 text-xs font-bold px-2 py-0.5 rounded-full border border-green-500/40">
                         <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
@@ -232,26 +288,36 @@ export default function PlayerPage() {
                     )}
                   </h1>
                   <div className="text-[#8a9bb0] text-sm mt-1">
+                    {proInfo ? (
+                      <span><span className="text-[#c89b3c]">{proInfo.proName}</span> · {proInfo.team}{proInfo.league ? ` · ${proInfo.league}` : ''} · </span>
+                    ) : null}
                     Level {player.summoner.summonerLevel} · {region.toUpperCase().replace('1', '')} · {roleLabels[marketValue.role] || '-'}
                   </div>
                 </div>
-                <div className="text-right">
+                <div className="sm:text-right">
                   <div className="text-[#8a9bb0] text-xs mb-1">{t('player.aiMarketValue')}</div>
                   {marketValue.rated ? (
-                    <div className="text-[#c89b3c] text-3xl font-medium">{marketValue.formatted}</div>
+                    <div className="text-[#c89b3c] text-2xl sm:text-3xl font-medium">{marketValue.formatted}</div>
                   ) : (
                     <div className="text-[#4a5a70] text-lg">Not Rated</div>
                   )}
                 </div>
               </div>
 
-              <div className="grid grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                 <div className="bg-[#141c2e] rounded p-4 text-center">
                   <div className="text-[#8a9bb0] text-xs mb-1">Solo/Duo</div>
                   <div className="text-white font-medium text-sm">
                     {ranked ? ranked.tier + ' ' + ranked.rank : t('player.unranked')}
                   </div>
                   {ranked && <div className="text-[#c89b3c] text-xs mt-1">{ranked.leaguePoints} LP</div>}
+                  {ranked && (
+                    <div className="text-[#4a5a70] text-xs mt-1">
+                      {ranked.wins + ranked.losses} Spiele
+                      <span className="text-green-400/70 ml-1">{ranked.wins}W</span>
+                      <span className="text-red-400/70 ml-1">{ranked.losses}L</span>
+                    </div>
+                  )}
                 </div>
                 <div className="bg-[#141c2e] rounded p-4 text-center">
                   <div className="text-[#8a9bb0] text-xs mb-1">Flex</div>
@@ -259,6 +325,13 @@ export default function PlayerPage() {
                     {flex ? flex.tier + ' ' + flex.rank : t('player.unranked')}
                   </div>
                   {flex && <div className="text-[#c89b3c] text-xs mt-1">{flex.leaguePoints} LP</div>}
+                  {flex && (
+                    <div className="text-[#4a5a70] text-xs mt-1">
+                      {flex.wins + flex.losses} Spiele
+                      <span className="text-green-400/70 ml-1">{flex.wins}W</span>
+                      <span className="text-red-400/70 ml-1">{flex.losses}L</span>
+                    </div>
+                  )}
                 </div>
                 <div className="bg-[#141c2e] rounded p-4 text-center">
                   <div className="text-[#8a9bb0] text-xs mb-1">{t('player.winrate30')}</div>
@@ -279,11 +352,11 @@ export default function PlayerPage() {
 
             {/* Market Value Breakdown */}
             {marketValue.rated && marketValue.breakdown.length > 0 && (
-              <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 mb-4">
+              <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 sm:p-6 mb-4">
                 <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-4">
                   {t('player.marketBreakdown')}
                 </div>
-                <div className="grid grid-cols-3 gap-3 mb-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
                   <div className="bg-[#141c2e] rounded p-3 text-center">
                     <div className="text-[#8a9bb0] text-xs mb-1">{t('player.baseValue')} ({ranked?.tier} {ranked?.rank})</div>
                     <div className="text-white text-lg font-medium">
@@ -305,10 +378,10 @@ export default function PlayerPage() {
                   {[...marketValue.breakdown]
                     .sort((a, b) => Math.abs(b.impact) - Math.abs(a.impact))
                     .map((item: BreakdownItem, i: number) => (
-                    <div key={i} className="flex items-center gap-3 py-1.5 px-2 rounded hover:bg-[#141c2e]">
+                    <div key={i} className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3 py-1.5 px-2 rounded hover:bg-[#141c2e]">
                       <div className="w-16 text-xs text-[#4a5a70]">{item.category}</div>
-                      <div className="w-36 text-xs text-white">{item.label}</div>
-                      <div className="flex-1 h-2 bg-[#141c2e] rounded overflow-hidden">
+                      <div className="w-full sm:w-36 text-xs text-white">{item.label}</div>
+                      <div className="flex-1 h-2 bg-[#141c2e] rounded overflow-hidden min-w-[60px]">
                         {item.positive ? (
                           <div className="h-full bg-green-500/60 rounded" style={{ width: `${Math.min(Math.abs(item.impact) / 0.175 * 100, 100)}%` }} />
                         ) : (
@@ -318,12 +391,12 @@ export default function PlayerPage() {
                       <div className={`w-14 text-xs font-medium text-right ${item.positive ? 'text-green-400' : 'text-red-400'}`}>
                         {item.positive ? '+' : ''}{(item.impact * 100).toFixed(1)}%
                       </div>
-                      <div className="w-36 text-xs text-[#8a9bb0] text-right">{item.stat}</div>
+                      <div className="hidden sm:block w-36 text-xs text-[#8a9bb0] text-right">{item.stat}</div>
                     </div>
                   ))}
                 </div>
                 {marketValue.stats.gamesAnalyzed > 0 && (
-                  <div className="mt-4 pt-3 border-t border-[#1e2a3a] grid grid-cols-6 gap-2">
+                  <div className="mt-4 pt-3 border-t border-[#1e2a3a] grid grid-cols-3 sm:grid-cols-6 gap-2">
                     <div className="text-center">
                       <div className="text-[#8a9bb0] text-xs">{t('player.games')}</div>
                       <div className="text-white text-sm">{marketValue.stats.gamesAnalyzed}</div>
@@ -355,13 +428,13 @@ export default function PlayerPage() {
 
             {/* 20 Stat Categories */}
             {statsOverview && statsOverview.categories && statsOverview.categories.length > 0 && (
-              <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 mb-4">
+              <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-3 sm:p-6 mb-4">
                 <div className="flex items-center justify-between mb-4">
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <div className="text-[#8a9bb0] text-xs uppercase tracking-widest">
                       {t('stats.title')}
                     </div>
-                    <div className="text-[#4a5a70] text-xs mt-1">
+                    <div className="text-[#4a5a70] text-xs mt-1 truncate">
                       {t('stats.subtitle')} {statsOverview.gamesAnalyzed} {t('stats.games')}
                     </div>
                   </div>
@@ -471,11 +544,11 @@ export default function PlayerPage() {
 
             {/* Champion Mastery */}
             {masteries.length > 0 && (
-              <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 mb-4">
+              <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-3 sm:p-6 mb-4">
                 <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-4">
                   Champion Mastery
                 </div>
-                <div className="grid grid-cols-5 gap-3">
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
                   {masteries.slice(0, 5).map((m: any, i: number) => {
                     const champ = championMap[m.championId];
                     const champId = champ?.id || 'Unknown';
@@ -497,93 +570,74 @@ export default function PlayerPage() {
               </div>
             )}
 
-            {/* Match History — letzte 30 Spiele mit ausführlichen Stats */}
+            {/* Live Game Detail */}
+            {liveGame.inGame && liveGame.gameData && (
+              <LiveGameDetail
+                gameData={liveGame.gameData}
+                ddVersion={ddVersion}
+                championMap={championMap}
+                region={region}
+              />
+            )}
+
+            {/* Performance Charts */}
             {matches.length > 0 && (
-              <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6">
-                <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-4">
-                  Match History ({t('player.lastGames')} {matches.length} {t('player.gamesLabel')})
+              <PerformanceCharts matches={matches} ddVersion={ddVersion} />
+            )}
+
+            {/* Champion Breakdown */}
+            {matches.length > 0 && (
+              <ChampionBreakdown matches={matches} ddVersion={ddVersion} />
+            )}
+
+            {/* Match History with Role Filter */}
+            {matches.length > 0 && (
+              <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-3 sm:p-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                  <div className="text-[#8a9bb0] text-xs uppercase tracking-widest">
+                    Match History ({t('player.lastGames')} {filteredMatches.length} {t('player.gamesLabel')})
+                  </div>
+                  {/* Role Filter */}
+                  <div className="flex flex-wrap gap-1">
+                    {availableRoles.map(r => (
+                      <button
+                        key={r}
+                        onClick={() => setRoleFilter(r)}
+                        className={`px-2.5 py-1 rounded text-xs transition-colors ${
+                          roleFilter === r
+                            ? 'bg-[#c89b3c]/20 text-[#c89b3c] border border-[#c89b3c]/30'
+                            : 'text-[#4a5a70] hover:text-[#8a9bb0]'
+                        }`}
+                      >
+                        {r === 'all' ? 'Alle' : roleLabels[r] || r}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div className="flex flex-col gap-2">
-                  {matches.map((match, i) => {
-                    const kdaVal = match.deaths > 0
-                      ? ((match.kills + match.assists) / match.deaths).toFixed(2)
-                      : 'Perfect';
-                    const csPerMin = match.gameDuration > 0
-                      ? (match.cs / (match.gameDuration / 60)).toFixed(1)
-                      : '0';
-                    const dmgPerMin = match.gameDuration > 0
-                      ? Math.round(match.damageDealt / (match.gameDuration / 60))
-                      : 0;
-                    const killParticipation = match.teamKills > 0
-                      ? Math.round(((match.kills + match.assists) / match.teamKills) * 100)
-                      : 0;
-                    const dmgShare = match.teamDamage > 0
-                      ? Math.round((match.damageDealt / match.teamDamage) * 100)
-                      : 0;
-                    const goldShare = match.teamGold > 0
-                      ? Math.round((match.goldEarned / match.teamGold) * 100)
-                      : 0;
-
-                    return (
-                      <div key={i} className={'rounded border-l-4 overflow-hidden ' + (match.win ? 'border-green-500 bg-[#0a1f0a]' : 'border-red-500 bg-[#1f0a0a]')}>
-                        {/* Main row */}
-                        <div className="flex items-center gap-3 p-3">
-                          <img
-                            src={'https://ddragon.leagueoflegends.com/cdn/' + ddVersion + '/img/champion/' + match.champion + '.png'}
-                            alt={match.champion}
-                            className="w-10 h-10 rounded flex-shrink-0"
-                          />
-                          <div className="w-24">
-                            <div className="text-white text-sm font-medium">{match.champion}</div>
-                            <div className="text-[#8a9bb0] text-xs">{getQueueName(match)} · {formatDuration(match.gameDuration)}{match.gameCreation ? ` · ${timeAgo(match.gameCreation)}` : ''}</div>
-                          </div>
-                          <div className="text-center w-20">
-                            <div className="text-white text-sm font-medium">{match.kills}/{match.deaths}/{match.assists}</div>
-                            <div className="text-[#8a9bb0] text-xs">{kdaVal} KDA</div>
-                          </div>
-                          <div className="text-center w-14">
-                            <div className="text-white text-sm font-medium">{match.cs}</div>
-                            <div className="text-[#8a9bb0] text-xs">{csPerMin}/m</div>
-                          </div>
-                          <div className="text-center w-16">
-                            <div className="text-white text-sm font-medium">{(match.damageDealt / 1000).toFixed(1)}k</div>
-                            <div className="text-[#8a9bb0] text-xs">{dmgPerMin}/m</div>
-                          </div>
-                          <div className="text-center w-12">
-                            <div className="text-white text-sm font-medium">{match.visionScore}</div>
-                            <div className="text-[#8a9bb0] text-xs">Vis</div>
-                          </div>
-                          <div className="text-center w-12">
-                            <div className="text-white text-sm font-medium">{killParticipation}%</div>
-                            <div className="text-[#8a9bb0] text-xs">KP</div>
-                          </div>
-                          <div className="text-center w-14">
-                            <div className="text-white text-sm font-medium">{(match.goldEarned / 1000).toFixed(1)}k</div>
-                            <div className="text-[#8a9bb0] text-xs">Gold</div>
-                          </div>
-                          <div className={'text-sm font-medium w-16 text-right ' + (match.win ? 'text-green-400' : 'text-red-400')}>
-                            {match.win ? t('player.win') : t('player.loss')}
-                          </div>
-                        </div>
-                        {/* Detail row */}
-                        <div className="flex items-center gap-4 px-3 pb-2 text-xs text-[#6a7a90]">
-                          <span>{roleLabels[match.role] || '-'}</span>
-                          <span>DMG-Anteil: {dmgShare}%</span>
-                          <span>Gold-Anteil: {goldShare}%</span>
-                          <span>Wards: {match.wardsPlaced}</span>
-                          <span>Ctrl Wards: {match.controlWardsPlaced}</span>
-                          {match.soloKills > 0 && <span>Solo Kills: {match.soloKills}</span>}
-                          {match.doubleKills > 0 && <span>Double: {match.doubleKills}</span>}
-                          {match.tripleKills > 0 && <span className="text-[#c89b3c]">Triple: {match.tripleKills}</span>}
-                          {match.quadraKills > 0 && <span className="text-[#c89b3c]">Quadra: {match.quadraKills}</span>}
-                          {match.pentaKills > 0 && <span className="text-[#f0c040] font-bold">PENTA!</span>}
-                          {match.turretKills > 0 && <span>Turrets: {match.turretKills}</span>}
-                          {match.firstBloodKill && <span className="text-red-400">First Blood</span>}
-                        </div>
-                      </div>
-                    );
-                  })}
+                  {filteredMatches.map((match, i) => (
+                    <MatchDetail
+                      key={match.matchId || i}
+                      match={match}
+                      ddVersion={ddVersion}
+                      isExpanded={expandedMatch === i}
+                      onToggle={() => setExpandedMatch(expandedMatch === i ? null : i)}
+                      formatDuration={formatDuration}
+                      timeAgo={timeAgo}
+                      getQueueName={getQueueName}
+                      roleLabels={roleLabels}
+                    />
+                  ))}
                 </div>
+                {hasMoreMatches && roleFilter === 'all' && (
+                  <button
+                    onClick={loadMoreMatches}
+                    disabled={loadingMore}
+                    className="mt-4 w-full py-2.5 rounded bg-[#141c2e] border border-[#1e2a3a] text-[#8a9bb0] hover:text-white hover:border-[#c89b3c]/50 text-xs transition-colors disabled:opacity-50"
+                  >
+                    {loadingMore ? 'Lade...' : 'Mehr Matches laden'}
+                  </button>
+                )}
               </div>
             )}
           </>

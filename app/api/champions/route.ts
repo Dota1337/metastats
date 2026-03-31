@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '../../lib/supabase';
+import { readFileSync, existsSync } from 'fs';
+import { join } from 'path';
 
 interface ChampionInfo {
   id: string;
@@ -14,6 +16,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const tier = searchParams.get('tier') || 'all';
   const role = searchParams.get('role') || 'all';
+  const region = searchParams.get('region') || 'euw1';
 
   try {
     // Fetch Data Dragon version + champion list
@@ -39,38 +42,98 @@ export async function GET(request: NextRequest) {
       image: c.image.full,
     }));
 
-    // Fetch aggregated stats from Supabase
-    let query = supabase.from('champion_stats').select('*');
-    if (tier !== 'all') {
-      query = query.eq('tier', tier.toUpperCase());
+    // Try Supabase first for stats
+    let statsMap: Record<string, {
+      wins: number; games: number;
+      kills: number; deaths: number; assists: number;
+      bans: number; totalGames: number;
+    }> = {};
+    let hasStats = false;
+
+    try {
+      let query = supabase.from('champion_stats').select('*').eq('region', region);
+      if (tier !== 'all') {
+        query = query.eq('tier', tier.toUpperCase());
+      }
+      const { data: statsRows } = await query;
+
+      if (statsRows && statsRows.length > 0) {
+        hasStats = true;
+        for (const row of statsRows) {
+          const key = row.champion_key;
+          if (!statsMap[key]) {
+            statsMap[key] = { wins: 0, games: 0, kills: 0, deaths: 0, assists: 0, bans: 0, totalGames: 0 };
+          }
+          statsMap[key].wins += row.wins || 0;
+          statsMap[key].games += row.games || 0;
+          statsMap[key].kills += row.kills || 0;
+          statsMap[key].deaths += row.deaths || 0;
+          statsMap[key].assists += row.assists || 0;
+          statsMap[key].bans += row.bans || 0;
+          statsMap[key].totalGames += row.total_games_in_tier || 0;
+        }
+      }
+    } catch {
+      // Supabase unavailable, continue without
     }
 
-    const { data: statsRows } = await query;
-
-    // Build stats map: championKey -> stats
-    const statsMap: Record<string, {
-      wins: number;
-      games: number;
-      kills: number;
-      deaths: number;
-      assists: number;
-      bans: number;
-      totalGames: number;
-    }> = {};
-
-    if (statsRows && statsRows.length > 0) {
-      for (const row of statsRows) {
-        const key = row.champion_key;
-        if (!statsMap[key]) {
-          statsMap[key] = { wins: 0, games: 0, kills: 0, deaths: 0, assists: 0, bans: 0, totalGames: 0 };
+    // If no Supabase stats, try static JSON files collected by the script
+    if (!hasStats) {
+      try {
+        const regionFile = `champion-stats-${region.replace('1', '')}.json`;
+        // Try fetching from public folder (works on Vercel)
+        const origin = new URL(request.url).origin;
+        const staticRes = await fetch(`${origin}/${regionFile}`);
+        if (staticRes.ok) {
+          const collectData = await staticRes.json();
+          if (collectData.stats && collectData.totalParticipantGames > 0) {
+            hasStats = true;
+            const totalGames = collectData.totalParticipantGames;
+            for (const [key, s] of Object.entries(collectData.stats) as [string, any][]) {
+              statsMap[key] = {
+                wins: s.wins,
+                games: s.games,
+                kills: s.kills,
+                deaths: s.deaths,
+                assists: s.assists,
+                bans: s.bans,
+                totalGames: totalGames,
+              };
+            }
+          }
         }
-        statsMap[key].wins += row.wins || 0;
-        statsMap[key].games += row.games || 0;
-        statsMap[key].kills += row.kills || 0;
-        statsMap[key].deaths += row.deaths || 0;
-        statsMap[key].assists += row.assists || 0;
-        statsMap[key].bans += row.bans || 0;
-        statsMap[key].totalGames += row.total_games_in_tier || 0;
+      } catch {
+        // Static file not available
+      }
+    }
+
+    // Last resort: try the live collection endpoint
+    if (!hasStats) {
+      try {
+        const origin = new URL(request.url).origin;
+        const collectRes = await fetch(`${origin}/api/champions/collect?region=${region}`, {
+          headers: { 'x-internal': '1' },
+        });
+        if (collectRes.ok) {
+          const collectData = await collectRes.json();
+          if (collectData.stats && collectData.totalParticipantGames > 0) {
+            hasStats = true;
+            const totalGames = collectData.totalParticipantGames;
+            for (const [key, s] of Object.entries(collectData.stats) as [string, any][]) {
+              statsMap[key] = {
+                wins: s.wins,
+                games: s.games,
+                kills: s.kills,
+                deaths: s.deaths,
+                assists: s.assists,
+                bans: s.bans,
+                totalGames: totalGames,
+              };
+            }
+          }
+        }
+      } catch {
+        // Collection failed, continue without stats
       }
     }
 
@@ -132,7 +195,8 @@ export async function GET(request: NextRequest) {
       champions: filtered,
       tier,
       totalChampions: filtered.length,
-      hasStats: statsRows && statsRows.length > 0,
+      hasStats,
+      region,
     });
   } catch (error) {
     return NextResponse.json({ error: 'Server Fehler' }, { status: 500 });

@@ -105,18 +105,28 @@ export async function GET(request: NextRequest) {
         .slice(0, 5);
     }
 
-    // 5. Tier statistics
+    // 5. Tier statistics — always fetch ALL tiers regardless of filter
     const tierStats: Record<string, { count: number; avgValue: number; minValue: number; maxValue: number }> = {};
-    for (const t of tiers) {
-      const tierPlayers = enrichedPlayers.filter(p => p.tier === t);
-      if (tierPlayers.length > 0) {
-        const values = tierPlayers.map(p => p.marketValue);
-        tierStats[t] = {
-          count: tierPlayers.length,
-          avgValue: Math.round(values.reduce((s, v) => s + v, 0) / values.length),
-          minValue: Math.min(...values),
-          maxValue: Math.max(...values),
-        };
+    let allPlayersQuery = supabase
+      .from('players')
+      .select('tier, market_value')
+      .not('market_value', 'is', null)
+      .gt('market_value', 0);
+    if (region !== 'all') {
+      allPlayersQuery = allPlayersQuery.eq('region', region);
+    }
+    const { data: allForStats } = await allPlayersQuery;
+    if (allForStats) {
+      for (const t of tiers) {
+        const tierValues = allForStats.filter(p => p.tier === t).map(p => p.market_value);
+        if (tierValues.length > 0) {
+          tierStats[t] = {
+            count: tierValues.length,
+            avgValue: Math.round(tierValues.reduce((s, v) => s + v, 0) / tierValues.length),
+            minValue: Math.min(...tierValues),
+            maxValue: Math.max(...tierValues),
+          };
+        }
       }
     }
 

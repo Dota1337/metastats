@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     // 1. Fetch all rated players from Supabase
     let query = supabase
       .from('players')
-      .select('id, summoner_name, region, tier, rank, winrate, market_value, summoner_level, profile_icon_id, updated_at')
+      .select('id, summoner_name, region, tier, rank, winrate, market_value, summoner_level, profile_icon_id, league_points, updated_at')
       .not('market_value', 'is', null)
       .gt('market_value', 0)
       .order('market_value', { ascending: false });
@@ -85,6 +85,7 @@ export async function GET(request: NextRequest) {
         weeklyChangePct: change && change.oldValue > 0
           ? Math.round(((change.newValue - change.oldValue) / change.oldValue) * 1000) / 10
           : 0,
+        lp: p.league_points ?? null,
       };
     });
 

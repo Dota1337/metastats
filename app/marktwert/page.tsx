@@ -24,6 +24,7 @@ interface Player {
   profileIcon: number;
   weeklyChange: number;
   weeklyChangePct: number;
+  lp: number | null;
 }
 
 export default function MarktwertPage() {
@@ -189,10 +190,11 @@ export default function MarktwertPage() {
                 <div className="text-[#8a9bb0] text-xs uppercase tracking-widest">{t('mv.topValues')}</div>
               </div>
               {/* Desktop header */}
-              <div className="hidden md:grid grid-cols-[3rem_1fr_5rem_5rem_6rem_6rem] gap-3 px-4 py-2 border-b border-[#1e2a3a] text-[#4a5a70] text-xs">
+              <div className="hidden md:grid grid-cols-[3rem_1fr_5rem_3.5rem_5rem_6rem_6rem] gap-3 px-4 py-2 border-b border-[#1e2a3a] text-[#4a5a70] text-xs">
                 <div>#</div>
                 <div>{t('mv.player')}</div>
                 <div className="text-right">{t('mv.rank')}</div>
+                <div className="text-right">LP</div>
                 <div className="text-right">{t('mv.winrate')}</div>
                 <div className="text-right">{t('mv.marketValue')}</div>
                 <div className="text-right">{t('mv.7days')}</div>
@@ -201,7 +203,7 @@ export default function MarktwertPage() {
                 <a
                   key={p.id}
                   href={makePlayerLink(p.name, p.region)}
-                  className="block md:grid md:grid-cols-[3rem_1fr_5rem_5rem_6rem_6rem] gap-3 px-4 py-2.5 border-b border-[#1e2a3a]/30 hover:bg-[#141c2e] transition-colors items-center"
+                  className="block md:grid md:grid-cols-[3rem_1fr_5rem_3.5rem_5rem_6rem_6rem] gap-3 px-4 py-2.5 border-b border-[#1e2a3a]/30 hover:bg-[#141c2e] transition-colors items-center"
                 >
                   {/* Mobile */}
                   <div className="md:hidden flex items-center gap-3">
@@ -210,7 +212,7 @@ export default function MarktwertPage() {
                     }`}>{i + 1}</div>
                     <div className="flex-1 min-w-0">
                       <div className="text-white text-sm font-medium truncate">{p.name}</div>
-                      <div className="text-[#4a5a70] text-xs">{p.tier} {p.rank} · {p.winrate}%</div>
+                      <div className="text-[#4a5a70] text-xs">{p.tier}{p.tier === 'DIAMOND' ? ` ${p.rank}` : ''}{p.lp != null ? ` · ${p.lp} LP` : ''} · {p.winrate}%</div>
                     </div>
                     <div className="text-right flex-shrink-0">
                       <div className="text-[#c89b3c] text-sm font-medium">{formatValue(p.marketValue)}</div>
@@ -234,8 +236,11 @@ export default function MarktwertPage() {
                     </div>
                     <div className="text-right">
                       <span className="text-xs font-medium" style={{ color: TIER_COLORS[p.tier] || '#8a9bb0' }}>
-                        {p.tier} {p.rank}
+                        {p.tier}{p.tier === 'DIAMOND' ? ` ${p.rank}` : ''}
                       </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-sm text-[#8a9bb0]">{p.lp != null ? p.lp : '-'}</span>
                     </div>
                     <div className="text-right">
                       <span className={`text-sm ${p.winrate >= 55 ? 'text-green-400' : p.winrate >= 50 ? 'text-white' : 'text-red-400'}`}>

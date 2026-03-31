@@ -4,7 +4,7 @@ import Footer from '../components/Footer';
 
 export default function Datenschutz() {
   return (
-    <main className="min-h-screen bg-[#080c18]">
+    <main className="min-h-screen bg-[#0e1525]">
       <Nav />
 
       <div className="max-w-3xl mx-auto px-6 py-10">
@@ -38,7 +38,7 @@ export default function Datenschutz() {
             <p className="text-[#8a9bb0] text-sm leading-relaxed mb-3">
               Diese Website verwendet ein einziges Cookie:
             </p>
-            <div className="bg-[#080c18] border border-[#1e2a3a] rounded p-4 mb-3">
+            <div className="bg-[#0e1525] border border-[#1e2a3a] rounded p-4 mb-3">
               <div className="grid grid-cols-3 gap-2 text-xs">
                 <div>
                   <span className="text-[#4a5a70]">Name:</span>
@@ -55,7 +55,7 @@ export default function Datenschutz() {
               </div>
             </div>
             <p className="text-[#8a9bb0] text-sm leading-relaxed">
-              Das Cookie <code className="text-white bg-[#080c18] px-1 rounded">visitor_id</code> enthält eine
+              Das Cookie <code className="text-white bg-[#0e1525] px-1 rounded">visitor_id</code> enthält eine
               zufällig generierte ID, die ausschließlich dazu dient, Ihnen Ihre zuletzt gesuchten Spieler
               anzuzeigen. Es werden keine personenbezogenen Daten gespeichert.
             </p>

@@ -35,6 +35,13 @@ interface ChampionStats {
   attackrange: number;
 }
 
+interface ChampionSkin {
+  id: string;
+  num: number;
+  name: string;
+  chromas: boolean;
+}
+
 interface ChampionData {
   id: string;
   key: string;
@@ -47,6 +54,7 @@ interface ChampionData {
   stats: ChampionStats;
   spells: ChampionSpell[];
   passive: ChampionPassive;
+  skins: ChampionSkin[];
 }
 
 function stripHtml(html: string): string {
@@ -70,6 +78,7 @@ export default function ChampionDetailPage() {
   const [version, setVersion] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectedSkin, setSelectedSkin] = useState(0);
   const { t } = useI18n();
 
   useEffect(() => {
@@ -115,7 +124,7 @@ export default function ChampionDetailPage() {
     : [];
 
   return (
-    <main className="min-h-screen bg-[#080c18]">
+    <main className="min-h-screen bg-[#0e1525]">
       {/* Navigation */}
       <Nav active="champions" />
 
@@ -151,7 +160,7 @@ export default function ChampionDetailPage() {
                 filter: 'brightness(0.25) blur(2px)',
               }}
             />
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#080c18]" />
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0e1525]" />
             <div className="relative max-w-4xl mx-auto px-6 py-16 flex items-center gap-6">
               <img
                 src={`https://ddragon.leagueoflegends.com/cdn/${version}/img/champion/${champion.id}.png`}
@@ -302,6 +311,54 @@ export default function ChampionDetailPage() {
                       </ul>
                     </div>
                   )}
+                </div>
+              </section>
+            )}
+
+            {/* Skins Gallery */}
+            {champion.skins && champion.skins.length > 1 && (
+              <section className="mb-8">
+                <h2 className="text-white text-lg font-semibold mb-4">Skins ({champion.skins.length - 1})</h2>
+                <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
+                  {/* Selected skin splash */}
+                  <div className="relative aspect-[16/7] overflow-hidden">
+                    <img
+                      src={`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${champion.id}_${champion.skins[selectedSkin]?.num || 0}.jpg`}
+                      alt={champion.skins[selectedSkin]?.name || champion.name}
+                      className="w-full h-full object-cover object-top transition-opacity duration-300"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0d1526] via-transparent to-transparent" />
+                    <div className="absolute bottom-4 left-4">
+                      <div className="text-white text-lg font-medium">
+                        {champion.skins[selectedSkin]?.name === 'default'
+                          ? champion.name
+                          : champion.skins[selectedSkin]?.name}
+                      </div>
+                      {champion.skins[selectedSkin]?.chromas && (
+                        <span className="text-[#c89b3c] text-xs">Chromas verfuegbar</span>
+                      )}
+                    </div>
+                  </div>
+                  {/* Skin thumbnails */}
+                  <div className="flex gap-1 p-3 overflow-x-auto">
+                    {champion.skins.map((skin, i) => (
+                      <button
+                        key={skin.id}
+                        onClick={() => setSelectedSkin(i)}
+                        className={`flex-shrink-0 w-16 h-16 rounded overflow-hidden border-2 transition-all ${
+                          selectedSkin === i
+                            ? 'border-[#c89b3c] ring-1 ring-[#c89b3c]/50'
+                            : 'border-transparent opacity-60 hover:opacity-100'
+                        }`}
+                      >
+                        <img
+                          src={`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${champion.id}_${skin.num}.jpg`}
+                          alt={skin.name}
+                          className="w-full h-full object-cover object-top"
+                        />
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </section>
             )}

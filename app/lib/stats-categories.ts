@@ -544,39 +544,6 @@ function calcConsistency(matches: ExtendedMatchData[]): CategoryScore {
   };
 }
 
-function calcVersatility(matches: ExtendedMatchData[]): CategoryScore {
-  const champCounts: Record<string, number> = {};
-  const roleCounts: Record<string, number> = {};
-
-  matches.forEach(m => {
-    champCounts[m.champion] = (champCounts[m.champion] || 0) + 1;
-    if (m.role !== 'UNKNOWN') roleCounts[m.role] = (roleCounts[m.role] || 0) + 1;
-  });
-
-  const uniqueChamps = Object.keys(champCounts).length;
-  const uniqueRoles = Object.values(roleCounts).filter(c => c / matches.length > 0.1).length;
-  const topChampRate = Math.max(...Object.values(champCounts)) / matches.length;
-  const otp = topChampRate > 0.6; // one-trick indicator
-
-  const champScore = scoreFromThresholds(uniqueChamps, 3, 6, 10, 15);
-  const roleScore = scoreFromThresholds(uniqueRoles, 1, 2, 3, 4);
-  const score = clamp(champScore * 0.6 + roleScore * 0.4);
-
-  return {
-    id: 'versatility', name: 'Vielseitigkeit', nameEn: 'Versatility', icon: '🔀',
-    score, trend: 0,
-    impact: (score - 50) / 350,
-    summary: `${uniqueChamps} Champions, ${uniqueRoles} Rollen${otp ? ' (One-Trick)' : ''}`,
-    summaryEn: `${uniqueChamps} champions, ${uniqueRoles} roles${otp ? ' (one-trick)' : ''}`,
-    details: [
-      { name: 'Unique Champions', value: uniqueChamps, unit: '', description: 'Verschiedene Champions gespielt' },
-      { name: 'Aktive Rollen', value: uniqueRoles, unit: '', description: 'Rollen mit >10% Spielanteil' },
-      { name: 'Main-Champion-Rate', value: +(topChampRate * 100).toFixed(0), unit: '%', description: 'Spielanteil des meistgespielten Champions' },
-      { name: 'One-Trick', value: otp ? 1 : 0, unit: '', description: '>60% auf einem Champion' },
-    ],
-  };
-}
-
 function calcTrend(matches: ExtendedMatchData[]): CategoryScore {
   if (matches.length < 10) {
     return {
@@ -623,83 +590,6 @@ function calcTrend(matches: ExtendedMatchData[]): CategoryScore {
   };
 }
 
-function calcCommunication(matches: ExtendedMatchData[]): CategoryScore {
-  const avgMia = avg(matches, m => m.challenges.enemyMissingPings);
-  const avgOmw = avg(matches, m => m.challenges.onMyWayPings);
-  const avgDanger = avg(matches, m => m.challenges.dangerPings);
-  const avgAssistMe = avg(matches, m => m.challenges.assistMePings);
-  const avgVision = avg(matches, m => m.challenges.needVisionPings);
-  const avgEnemyVision = avg(matches, m => m.challenges.enemyVisionPings);
-  const avgCommand = avg(matches, m => m.challenges.commandPings);
-  const avgRetreat = avg(matches, m => m.challenges.retreatPings + m.challenges.getBackPings);
-  const avgBait = avg(matches, m => m.challenges.baitPings);
-
-  // "Constructive" pings: MIA, danger, OMW, vision, command
-  const constructive = avgMia + avgOmw + avgDanger + avgVision + avgEnemyVision + avgCommand;
-  // Total pings
-  const total = constructive + avgAssistMe + avgRetreat + avgBait;
-
-  const constructiveRate = total > 0 ? (constructive / total) * 100 : 50;
-  const pingVolume = total;
-
-  // Moderate ping use with high constructive rate = best
-  const volumeScore = pingVolume < 5 ? 30 : pingVolume > 100 ? 40 : 70;
-  const qualityScore = scoreFromThresholds(constructiveRate, 30, 50, 65, 80);
-  const score = clamp(volumeScore * 0.3 + qualityScore * 0.7);
-
-  return {
-    id: 'communication', name: 'Kommunikation', nameEn: 'Communication', icon: '💬',
-    score, trend: 0,
-    impact: (score - 50) / 500,
-    summary: `Ø ${total.toFixed(0)} Pings/Spiel, ${constructiveRate.toFixed(0)}% konstruktiv`,
-    summaryEn: `Avg ${total.toFixed(0)} pings/game, ${constructiveRate.toFixed(0)}% constructive`,
-    details: [
-      { name: 'MIA-Pings', value: +avgMia.toFixed(1), unit: '/Spiel', description: 'Enemy Missing Pings' },
-      { name: 'OMW-Pings', value: +avgOmw.toFixed(1), unit: '/Spiel', description: 'On My Way Pings' },
-      { name: 'Danger-Pings', value: +avgDanger.toFixed(1), unit: '/Spiel', description: 'Danger Pings' },
-      { name: 'Assist Me', value: +avgAssistMe.toFixed(1), unit: '/Spiel', description: 'Hilfe-Pings' },
-      { name: 'Vision-Pings', value: +avgVision.toFixed(1), unit: '/Spiel', description: 'Vision-Anfragen' },
-      { name: 'Command-Pings', value: +avgCommand.toFixed(1), unit: '/Spiel', description: 'Befehls-Pings' },
-      { name: 'Gesamt-Pings', value: +total.toFixed(0), unit: '/Spiel', description: 'Alle Pings pro Spiel' },
-      { name: 'Konstruktiv-Rate', value: +constructiveRate.toFixed(0), unit: '%', description: 'Anteil konstruktiver Pings' },
-    ],
-  };
-}
-
-function calcRankProgress(matches: ExtendedMatchData[], ranked: { tier: string; rank: string; leaguePoints: number; wins: number; losses: number } | null): CategoryScore {
-  if (!ranked) {
-    return {
-      id: 'rank_progress', name: 'Rangfortschritt', nameEn: 'Rank Progress', icon: '🏅',
-      score: 0, trend: 0, impact: 0,
-      summary: 'Unranked',
-      summaryEn: 'Unranked',
-      details: [],
-    };
-  }
-
-  const totalGames = ranked.wins + ranked.losses;
-  const overallWR = totalGames > 0 ? (ranked.wins / totalGames) * 100 : 50;
-  const tierOrder: Record<string, number> = { IRON: 0, BRONZE: 1, SILVER: 2, GOLD: 3, PLATINUM: 4, EMERALD: 5, DIAMOND: 6, MASTER: 7, GRANDMASTER: 8, CHALLENGER: 9 };
-  const rankOrder: Record<string, number> = { IV: 0, III: 1, II: 2, I: 3 };
-  const tierScore = (tierOrder[ranked.tier] ?? 0) * 10 + (rankOrder[ranked.rank] ?? 0) * 2.5 + ranked.leaguePoints / 100 * 2.5;
-  const score = clamp(tierScore);
-
-  return {
-    id: 'rank_progress', name: 'Rangfortschritt', nameEn: 'Rank Progress', icon: '🏅',
-    score, trend: 0,
-    impact: 0, // rank is already reflected in base value
-    summary: `${ranked.tier} ${ranked.rank} (${ranked.leaguePoints} LP) — ${overallWR.toFixed(0)}% WR`,
-    summaryEn: `${ranked.tier} ${ranked.rank} (${ranked.leaguePoints} LP) — ${overallWR.toFixed(0)}% WR`,
-    details: [
-      { name: 'Rang', value: tierOrder[ranked.tier] ?? 0, unit: '', description: `${ranked.tier} ${ranked.rank}` },
-      { name: 'LP', value: ranked.leaguePoints, unit: 'LP', description: 'League Points' },
-      { name: 'Siege (Saison)', value: ranked.wins, unit: '', description: 'Ranked-Siege insgesamt' },
-      { name: 'Niederlagen (Saison)', value: ranked.losses, unit: '', description: 'Ranked-Niederlagen insgesamt' },
-      { name: 'Winrate (Saison)', value: +overallWR.toFixed(1), unit: '%', description: 'Gesamte Ranked-Winrate' },
-    ],
-  };
-}
-
 // ─── Main Export ──────────────────────────────────────────────────────────────
 
 export function calculateStatsOverview(
@@ -729,10 +619,7 @@ export function calculateStatsOverview(
     calcEarlyGameImpact(matches),
     calcMechanics(matches),
     calcConsistency(matches),
-    calcVersatility(matches),
     calcTrend(matches),
-    calcCommunication(matches),
-    calcRankProgress(matches, ranked),
   ];
 
   const overallScore = Math.round(

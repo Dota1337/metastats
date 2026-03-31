@@ -31,10 +31,15 @@ export default function MarktwertPage() {
 
   const REGIONS = [
     { value: 'all', label: t('mv.allRegions') },
-    { value: 'euw1', label: 'EUW' },
-    { value: 'eun1', label: 'EUNE' },
-    { value: 'na1', label: 'NA' },
-    { value: 'kr', label: 'KR' },
+    { value: 'euw1', label: 'EUW' }, { value: 'eun1', label: 'EUNE' },
+    { value: 'na1', label: 'NA' }, { value: 'kr', label: 'KR' },
+    { value: 'br1', label: 'BR' }, { value: 'la1', label: 'LAN' },
+    { value: 'la2', label: 'LAS' }, { value: 'oc1', label: 'OCE' },
+    { value: 'tr1', label: 'TR' }, { value: 'ru', label: 'RU' },
+    { value: 'jp1', label: 'JP' }, { value: 'ph2', label: 'PH' },
+    { value: 'sg2', label: 'SG' }, { value: 'th2', label: 'TH' },
+    { value: 'tw2', label: 'TW' }, { value: 'vn2', label: 'VN' },
+    { value: 'me1', label: 'ME' },
   ];
 
   const TIERS = [
@@ -94,7 +99,7 @@ export default function MarktwertPage() {
     : [tier];
 
   return (
-    <main className="min-h-screen bg-[#080c18]">
+    <main className="min-h-screen bg-[#0e1525]">
       <Nav active="marktwert" />
 
       <PageHero title={t('mv.title')} subtitle={t('mv.subtitle')} leftChampion="Jinx" rightChampion="Caitlyn" />
@@ -102,10 +107,10 @@ export default function MarktwertPage() {
       <div className="max-w-6xl mx-auto px-6 pb-8">
 
         {/* Filters */}
-        <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-4 flex flex-wrap items-center gap-4">
-          <div>
+        <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-4 flex flex-wrap items-start gap-4">
+          <div className="w-full sm:w-auto">
             <div className="text-[#8a9bb0] text-xs mb-2">{t('mv.region')}</div>
-            <div className="flex gap-1">
+            <div className="flex flex-wrap gap-1">
               {REGIONS.map(r => (
                 <button
                   key={r.value}
@@ -156,7 +161,7 @@ export default function MarktwertPage() {
           <>
             {/* Tier Stats Overview */}
             {Object.keys(tierStats).length > 0 && (
-              <div className="grid grid-cols-4 gap-3 mb-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
                 {['CHALLENGER', 'GRANDMASTER', 'MASTER', 'DIAMOND'].map(tr => {
                   const stats = tierStats[tr];
                   if (!stats) return (
@@ -183,7 +188,8 @@ export default function MarktwertPage() {
               <div className="px-4 py-3 border-b border-[#1e2a3a] bg-[#0a0e1a]">
                 <div className="text-[#8a9bb0] text-xs uppercase tracking-widest">{t('mv.topValues')}</div>
               </div>
-              <div className="grid grid-cols-[3rem_1fr_5rem_5rem_6rem_6rem] gap-3 px-4 py-2 border-b border-[#1e2a3a] text-[#4a5a70] text-xs">
+              {/* Desktop header */}
+              <div className="hidden md:grid grid-cols-[3rem_1fr_5rem_5rem_6rem_6rem] gap-3 px-4 py-2 border-b border-[#1e2a3a] text-[#4a5a70] text-xs">
                 <div>#</div>
                 <div>{t('mv.player')}</div>
                 <div className="text-right">{t('mv.rank')}</div>
@@ -195,46 +201,67 @@ export default function MarktwertPage() {
                 <a
                   key={p.id}
                   href={makePlayerLink(p.name, p.region)}
-                  className="grid grid-cols-[3rem_1fr_5rem_5rem_6rem_6rem] gap-3 px-4 py-2.5 border-b border-[#1e2a3a]/30 hover:bg-[#141c2e] transition-colors items-center"
+                  className="block md:grid md:grid-cols-[3rem_1fr_5rem_5rem_6rem_6rem] gap-3 px-4 py-2.5 border-b border-[#1e2a3a]/30 hover:bg-[#141c2e] transition-colors items-center"
                 >
-                  <div className={`text-sm ${i < 3 ? 'font-bold' : ''} ${
-                    i === 0 ? 'text-yellow-400' : i === 1 ? 'text-gray-300' : i === 2 ? 'text-amber-600' : 'text-[#4a5a70]'
-                  }`}>
-                    {i + 1}
+                  {/* Mobile */}
+                  <div className="md:hidden flex items-center gap-3">
+                    <div className={`text-sm w-6 flex-shrink-0 ${i < 3 ? 'font-bold' : ''} ${
+                      i === 0 ? 'text-yellow-400' : i === 1 ? 'text-gray-300' : i === 2 ? 'text-amber-600' : 'text-[#4a5a70]'
+                    }`}>{i + 1}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-white text-sm font-medium truncate">{p.name}</div>
+                      <div className="text-[#4a5a70] text-xs">{p.tier} {p.rank} · {p.winrate}%</div>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <div className="text-[#c89b3c] text-sm font-medium">{formatValue(p.marketValue)}</div>
+                      {p.weeklyChange !== 0 && (
+                        <div className={`text-xs ${p.weeklyChange > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          {formatChange(p.weeklyChange)}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="text-white text-sm font-medium">{p.name}</div>
-                    <span className="text-[#4a5a70] text-xs">{(p.region || '').toUpperCase().replace('1', '')}</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-xs font-medium" style={{ color: TIER_COLORS[p.tier] || '#8a9bb0' }}>
-                      {p.tier} {p.rank}
-                    </span>
-                  </div>
-                  <div className="text-right">
-                    <span className={`text-sm ${p.winrate >= 55 ? 'text-green-400' : p.winrate >= 50 ? 'text-white' : 'text-red-400'}`}>
-                      {p.winrate}%
-                    </span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[#c89b3c] text-sm font-medium">{formatValue(p.marketValue)}</span>
-                  </div>
-                  <div className="text-right">
-                    {p.weeklyChange !== 0 ? (
-                      <span className={`text-xs font-medium ${p.weeklyChange > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {formatChange(p.weeklyChange)}
-                        <span className="text-[#4a5a70] ml-1">({p.weeklyChangePct > 0 ? '+' : ''}{p.weeklyChangePct}%)</span>
+                  {/* Desktop */}
+                  <div className="hidden md:contents">
+                    <div className={`text-sm ${i < 3 ? 'font-bold' : ''} ${
+                      i === 0 ? 'text-yellow-400' : i === 1 ? 'text-gray-300' : i === 2 ? 'text-amber-600' : 'text-[#4a5a70]'
+                    }`}>
+                      {i + 1}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="text-white text-sm font-medium">{p.name}</div>
+                      <span className="text-[#4a5a70] text-xs">{(p.region || '').toUpperCase().replace('1', '')}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs font-medium" style={{ color: TIER_COLORS[p.tier] || '#8a9bb0' }}>
+                        {p.tier} {p.rank}
                       </span>
-                    ) : (
-                      <span className="text-[#4a5a70] text-xs">-</span>
-                    )}
+                    </div>
+                    <div className="text-right">
+                      <span className={`text-sm ${p.winrate >= 55 ? 'text-green-400' : p.winrate >= 50 ? 'text-white' : 'text-red-400'}`}>
+                        {p.winrate}%
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[#c89b3c] text-sm font-medium">{formatValue(p.marketValue)}</span>
+                    </div>
+                    <div className="text-right">
+                      {p.weeklyChange !== 0 ? (
+                        <span className={`text-xs font-medium ${p.weeklyChange > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          {formatChange(p.weeklyChange)}
+                          <span className="text-[#4a5a70] ml-1">({p.weeklyChangePct > 0 ? '+' : ''}{p.weeklyChangePct}%)</span>
+                        </span>
+                      ) : (
+                        <span className="text-[#4a5a70] text-xs">-</span>
+                      )}
+                    </div>
                   </div>
                 </a>
               ))}
             </div>
 
             {/* Weekly Movers */}
-            <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
               {/* Gainers */}
               <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
                 <div className="px-4 py-3 border-b border-[#1e2a3a] bg-[#0a0e1a]">
@@ -328,10 +355,10 @@ export default function MarktwertPage() {
                   { tier: 'Master', range: '$2.000 - $8.000', desc: 'Skaliert linear mit LP (bis 200 LP)', color: '#9d48e0' },
                   { tier: 'Diamond', range: '$10 - $2.000', desc: 'Diamond IV ($10) bis Diamond I ($2.000)', color: '#576cce' },
                 ].map(s => (
-                  <div key={s.tier} className="flex items-center gap-3 py-1">
-                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
-                    <div className="w-28 text-sm font-medium" style={{ color: s.color }}>{s.tier}</div>
-                    <div className="w-40 text-white text-sm">{s.range}</div>
+                  <div key={s.tier} className="flex flex-wrap sm:flex-nowrap items-start sm:items-center gap-2 sm:gap-3 py-1">
+                    <div className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5 sm:mt-0" style={{ backgroundColor: s.color }} />
+                    <div className="w-20 sm:w-28 text-sm font-medium flex-shrink-0" style={{ color: s.color }}>{s.tier}</div>
+                    <div className="w-full sm:w-40 text-white text-sm flex-shrink-0">{s.range}</div>
                     <div className="text-[#4a5a70] text-xs flex-1">{s.desc}</div>
                   </div>
                 ))}

@@ -455,6 +455,78 @@ export function processMatch(rawMatch: any, puuid: string): ExtendedMatchData | 
   };
 }
 
+/** Summary of a single participant in a match (for detailed match view) */
+export interface ParticipantSummary {
+  puuid: string;
+  summonerName: string;
+  champion: string;
+  championId: number;
+  champLevel: number;
+  teamId: number;
+  role: string;
+  kills: number;
+  deaths: number;
+  assists: number;
+  cs: number;
+  damageDealt: number;
+  damageDealtToChampions: number;
+  damageTaken: number;
+  goldEarned: number;
+  visionScore: number;
+  wardsPlaced: number;
+  controlWardsPlaced: number;
+  items: number[];
+  summoner1Id: number;
+  summoner2Id: number;
+  win: boolean;
+  perks?: { primary: number; secondary: number };
+}
+
+/** Extract summaries for all 10 participants from a raw match */
+export function extractParticipants(rawMatch: any): ParticipantSummary[] {
+  if (!rawMatch?.info?.participants) return [];
+  return rawMatch.info.participants.map((p: any) => ({
+    puuid: p.puuid || '',
+    summonerName: p.riotIdGameName ? `${p.riotIdGameName}#${p.riotIdTagline || ''}` : p.summonerName || 'Unknown',
+    champion: p.championName || '',
+    championId: p.championId || 0,
+    champLevel: p.champLevel || 0,
+    teamId: p.teamId || 0,
+    role: p.individualPosition || p.teamPosition || 'UNKNOWN',
+    kills: p.kills || 0,
+    deaths: p.deaths || 0,
+    assists: p.assists || 0,
+    cs: (p.totalMinionsKilled || 0) + (p.neutralMinionsKilled || 0),
+    damageDealt: p.totalDamageDealt || 0,
+    damageDealtToChampions: p.totalDamageDealtToChampions || 0,
+    damageTaken: p.totalDamageTaken || 0,
+    goldEarned: p.goldEarned || 0,
+    visionScore: p.visionScore || 0,
+    wardsPlaced: p.wardsPlaced || 0,
+    controlWardsPlaced: p.challenges?.controlWardsPlaced || p.detectorWardsPlaced || 0,
+    items: [p.item0 || 0, p.item1 || 0, p.item2 || 0, p.item3 || 0, p.item4 || 0, p.item5 || 0, p.item6 || 0],
+    summoner1Id: p.summoner1Id || 0,
+    summoner2Id: p.summoner2Id || 0,
+    win: p.win || false,
+    perks: p.perks?.styles ? {
+      primary: p.perks.styles[0]?.style || 0,
+      secondary: p.perks.styles[1]?.style || 0,
+    } : undefined,
+  }));
+}
+
+/** Extract ban data from a raw match */
+export function extractBans(rawMatch: any): { teamId: number; championId: number }[] {
+  if (!rawMatch?.info?.teams) return [];
+  const bans: { teamId: number; championId: number }[] = [];
+  for (const team of rawMatch.info.teams) {
+    for (const ban of team.bans || []) {
+      bans.push({ teamId: team.teamId, championId: ban.championId });
+    }
+  }
+  return bans;
+}
+
 /**
  * Convert ExtendedMatchData to the legacy format expected by the current marketvalue.ts.
  * This allows a gradual migration — routes can use ExtendedMatchData while marketvalue.ts

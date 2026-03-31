@@ -3,12 +3,13 @@ import { useState, useEffect, useRef } from 'react';
 import Nav from './components/Nav';
 import Footer from './components/Footer';
 import { useI18n } from './lib/i18n';
+import { REGIONS } from './lib/regions';
 
-// Iconic LoL champions for featured section (Data Dragon IDs)
-const FEATURED_CHAMPIONS = [
-  { id: 'Jinx', name: 'Jinx', role: 'ADC' },
-  { id: 'Yasuo', name: 'Yasuo', role: 'Mid' },
-  { id: 'Ahri', name: 'Ahri', role: 'Mid' },
+// Fallback champions if API is not available
+const FALLBACK_CHAMPIONS = [
+  { id: 'Ezreal', name: 'Ezreal', role: 'Marksman', games: 549, winRate: 47.0 },
+  { id: 'Karma', name: 'Karma', role: 'Mage', games: 535, winRate: 49.5 },
+  { id: 'Nautilus', name: 'Nautilus', role: 'Tank', games: 502, winRate: 48.8 },
 ];
 
 
@@ -23,6 +24,8 @@ export default function Home() {
   const [loadingMarket, setLoadingMarket] = useState(false);
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [featuredChamps, setFeaturedChamps] = useState(FALLBACK_CHAMPIONS);
+  const [siteStats, setSiteStats] = useState({ totalTeams: 951, totalProPlayers: 1292, regions: 17, matchesAnalyzed: 2564 });
   const { t } = useI18n();
 
   useEffect(() => {
@@ -32,6 +35,7 @@ export default function Home() {
       document.cookie = `visitor_id=${visitorId}; max-age=31536000; path=/`;
     }
     fetchRecentPlayers();
+    fetchHomepageStats();
     setMounted(true);
   }, []);
 
@@ -46,6 +50,15 @@ export default function Home() {
       const res = await fetch('/api/recent-players');
       const data = await res.json();
       if (data.players) setRecentPlayers(data.players);
+    } catch {}
+  };
+
+  const fetchHomepageStats = async () => {
+    try {
+      const res = await fetch('/api/homepage-stats');
+      const data = await res.json();
+      if (data.topChampions?.length >= 3) setFeaturedChamps(data.topChampions);
+      if (data.stats) setSiteStats(prev => ({ ...prev, ...data.stats }));
     } catch {}
   };
 
@@ -78,7 +91,7 @@ export default function Home() {
     '/player/' + encodeURIComponent(p.summoner_name.split('#')[0]) + '--' + encodeURIComponent(p.summoner_name.split('#')[1] || 'EUW') + '?region=' + (p.region || 'euw1');
 
   return (
-    <main className="min-h-screen bg-[#080c18]">
+    <main className="min-h-screen bg-[#0e1525]">
       {/* Particle animation styles */}
       <style>{`
         @keyframes float {
@@ -145,7 +158,7 @@ export default function Home() {
           />
           {/* Gradient overlay — bottom fades to page bg, center stays visible */}
           <div className="absolute inset-0" style={{
-            background: 'linear-gradient(to bottom, rgba(8,12,24,0.3) 0%, rgba(8,12,24,0.4) 50%, rgba(8,12,24,0.9) 100%)',
+            background: 'linear-gradient(to bottom, rgba(14,21,37,0.3) 0%, rgba(14,21,37,0.4) 50%, rgba(14,21,37,0.9) 100%)',
           }} />
         </div>
 
@@ -170,8 +183,8 @@ export default function Home() {
         )}
 
         {/* Gradient overlays */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#080c18] via-transparent to-[#080c18]" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#080c18] via-transparent to-[#080c18]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0e1525] via-transparent to-[#0e1525]" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0e1525] via-transparent to-[#0e1525]" />
 
         {/* Hero content */}
         <div className="relative px-6 pt-20 pb-16 text-center hero-animate">
@@ -181,7 +194,7 @@ export default function Home() {
           <div className="text-[#c89b3c] text-xs uppercase tracking-[0.3em] mb-4 font-medium">
             {t('home.subtitle')}
           </div>
-          <h1 className="text-white text-5xl font-bold mb-4 tracking-tight">
+          <h1 className="text-white text-3xl sm:text-5xl font-bold mb-4 tracking-tight">
             meta<span className="text-[#c89b3c]">stats</span>.gg
           </h1>
           <p className="text-[#8a9bb0] text-sm mb-10 max-w-md mx-auto leading-relaxed">
@@ -190,16 +203,15 @@ export default function Home() {
 
           {/* Search bar with gold border */}
           <div className="max-w-xl mx-auto gold-border rounded-lg p-0.5 mb-8">
-            <div className="flex bg-[#0d1526] rounded-lg overflow-hidden">
+            <div className="flex flex-col sm:flex-row bg-[#0d1526] rounded-lg overflow-hidden">
               <select
                 value={region}
                 onChange={e => setRegion(e.target.value)}
-                className="bg-[#141c2e] border-r border-[#1e2a3a] text-[#8a9bb0] text-sm px-4 outline-none"
+                className="bg-[#141c2e] border-b sm:border-b-0 sm:border-r border-[#1e2a3a] text-[#8a9bb0] text-sm px-4 py-2 sm:py-0 outline-none"
               >
-                <option value="euw1">EUW</option>
-                <option value="eun1">EUNE</option>
-                <option value="na1">NA</option>
-                <option value="kr">KR</option>
+                {REGIONS.map(r => (
+                  <option key={r.value} value={r.value}>{r.label}</option>
+                ))}
               </select>
               <input
                 className="flex-1 bg-transparent text-white text-sm px-5 py-3.5 outline-none placeholder-[#4a5a70]"
@@ -210,7 +222,7 @@ export default function Home() {
               />
               <button
                 onClick={search}
-                className="bg-[#c89b3c] hover:bg-[#d4a94a] text-[#0a0e1a] text-sm font-semibold px-6 transition-colors"
+                className="bg-[#c89b3c] hover:bg-[#d4a94a] text-[#0a0e1a] text-sm font-semibold px-6 py-3 sm:py-0 transition-colors"
               >
                 {t('home.searchBtn')}
               </button>
@@ -235,11 +247,14 @@ export default function Home() {
         </div>
       </div>
 
-      {/* === FEATURED CHAMPIONS === */}
+      {/* === TOP CHAMPIONS (most played) === */}
       {activeTab === 'search' && (
-        <div className="max-w-6xl mx-auto px-6 -mt-2 mb-8">
-          <div className="grid grid-cols-3 gap-4">
-            {FEATURED_CHAMPIONS.map((champ, i) => (
+        <div className="max-w-6xl mx-auto px-6 mt-4 mb-8">
+          <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-3 px-1">
+            Meistgespielte Champions (Challenger + GM + Master)
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {featuredChamps.map((champ, i) => (
               <a
                 key={champ.id}
                 href={`/champions/${champ.id}`}
@@ -256,8 +271,13 @@ export default function Home() {
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0d1526] via-transparent to-transparent" />
                   <div className="absolute bottom-3 left-4">
-                    <div className="text-white text-lg font-semibold">{champ.name}</div>
-                    <div className="text-[#c89b3c] text-xs">{champ.role}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[#c89b3c] text-xs font-bold bg-[#c89b3c]/20 px-1.5 py-0.5 rounded">#{i + 1}</span>
+                      <span className="text-white text-lg font-semibold">{champ.name}</span>
+                    </div>
+                    <div className="text-[#8a9bb0] text-xs mt-0.5">
+                      {champ.games?.toLocaleString('de-DE')} Spiele · {champ.winRate}% WR
+                    </div>
                   </div>
                 </div>
               </a>
@@ -271,12 +291,11 @@ export default function Home() {
         {activeTab === 'search' && (
           <>
             {/* Stats Cards with 3D effect */}
-            <div className="grid grid-cols-4 gap-3 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
               {[
-                { label: t('home.savedPlayers'), value: '2,4M', sub: '+12.4% ' + t('home.thisWeek') },
-                { label: t('home.analyzedMatches'), value: '18,7M', sub: t('home.last30days') },
-                { label: t('home.avgMarketValue'), value: '$4.200', sub: t('home.topFrom') },
-                { label: t('home.activeRegions'), value: '4', sub: 'EUW · EUNE · NA · KR' },
+                { label: 'Pro Teams', value: siteStats.totalTeams.toLocaleString('de-DE'), sub: 'Verifizierte Roster' },
+                { label: 'Pro-Spieler', value: siteStats.totalProPlayers.toLocaleString('de-DE'), sub: 'Alle Ligen weltweit' },
+                { label: t('home.analyzedMatches'), value: siteStats.matchesAnalyzed.toLocaleString('de-DE'), sub: 'Challenger + GM + Master' },
               ].map(s => (
                 <div key={s.label} className="card-3d glass rounded-lg p-4">
                   <div className="text-[#8a9bb0] text-xs mb-1">{s.label}</div>
@@ -287,8 +306,8 @@ export default function Home() {
             </div>
 
             {/* Recent searches + Features */}
-            <div className="grid grid-cols-3 gap-6">
-              <div className="col-span-2 glass-strong rounded-xl p-5">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 glass-strong rounded-xl p-5">
                 <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-4">{t('home.recentSearches')}</div>
                 {recentPlayers.length === 0 ? (
                   <div className="text-[#4a5a70] text-sm text-center py-8">{t('home.noSearches')}</div>
@@ -347,33 +366,35 @@ export default function Home() {
         )}
 
         {activeTab === 'marktwert' && (
-          <div className="grid grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {loadingMarket ? (
-              <div className="col-span-3 text-center text-[#8a9bb0] py-20">{t('common.loading')}</div>
+              <div className="col-span-1 lg:col-span-3 text-center text-[#8a9bb0] py-20">{t('common.loading')}</div>
             ) : (
               <>
-                <div className="col-span-3 glass-strong rounded-xl p-5">
+                <div className="col-span-1 lg:col-span-3 glass-strong rounded-xl p-5">
                   <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-4">{t('home.topMarketValues')}</div>
                   {topPlayers.length === 0 ? (
                     <div className="text-[#4a5a70] text-sm text-center py-8">{t('home.noMarketData')}</div>
                   ) : (
-                    <div className="grid grid-cols-5 gap-2 text-xs text-[#4a5a70] px-2 mb-2">
+                    <div className="hidden sm:grid grid-cols-5 gap-2 text-xs text-[#4a5a70] px-2 mb-2">
                       <div>#</div><div>{t('mv.player')}</div><div className="text-right">{t('mv.marketValue')}</div>
                       <div className="text-right">{t('mv.rank')}</div><div className="text-right">{t('mv.winrate')}</div>
                     </div>
                   )}
                   {topPlayers.map((p, i) => (
-                    <a key={i} href={makePlayerLink(p)} className="grid grid-cols-5 gap-2 px-2 py-2.5 rounded-lg hover:bg-white/5 transition-colors">
-                      <div className="text-[#4a5a70] text-sm">{i + 1}</div>
-                      <div className="text-white text-sm font-medium">{p.summoner_name}</div>
-                      <div className="text-[#c89b3c] text-sm font-medium text-right">{formatValue(p.market_value)}</div>
-                      <div className="text-[#8a9bb0] text-sm text-right">{p.tier} {p.rank}</div>
-                      <div className="text-sm text-right">{p.winrate}%</div>
+                    <a key={i} href={makePlayerLink(p)} className="flex flex-col sm:grid sm:grid-cols-5 gap-1 sm:gap-2 px-2 py-2.5 rounded-lg hover:bg-white/5 transition-colors border-b border-[#1e2a3a]/30 sm:border-0">
+                      <div className="hidden sm:block text-[#4a5a70] text-sm">{i + 1}</div>
+                      <div className="text-white text-sm font-medium">
+                        <span className="sm:hidden text-[#4a5a70] mr-2">{i + 1}.</span>{p.summoner_name}
+                      </div>
+                      <div className="text-[#c89b3c] text-sm font-medium sm:text-right">{formatValue(p.market_value)}</div>
+                      <div className="text-[#8a9bb0] text-xs sm:text-sm sm:text-right">{p.tier} {p.rank} · {p.winrate}%</div>
+                      <div className="hidden sm:block text-sm text-right">{p.winrate}%</div>
                     </a>
                   ))}
                 </div>
 
-                <div className="col-span-1 glass-strong rounded-xl p-5">
+                <div className="glass-strong rounded-xl p-5">
                   <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-4">
                     {t('home.winnersWeek')} <span className="text-green-400">&#9650;</span>
                   </div>
@@ -387,7 +408,7 @@ export default function Home() {
                   ))}
                 </div>
 
-                <div className="col-span-1 glass-strong rounded-xl p-5">
+                <div className="glass-strong rounded-xl p-5">
                   <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-4">
                     {t('home.losersWeek')} <span className="text-red-400">&#9660;</span>
                   </div>
@@ -401,7 +422,7 @@ export default function Home() {
                   ))}
                 </div>
 
-                <div className="col-span-1 glass-strong rounded-xl p-5">
+                <div className="glass-strong rounded-xl p-5">
                   <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-4">{t('home.howCalc')}</div>
                   <div className="flex flex-col gap-3">
                     {[

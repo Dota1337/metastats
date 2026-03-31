@@ -4,7 +4,7 @@ import Footer from '../components/Footer';
 
 export default function Impressum() {
   return (
-    <main className="min-h-screen bg-[#080c18]">
+    <main className="min-h-screen bg-[#0e1525]">
       <Nav />
 
       <div className="max-w-3xl mx-auto px-6 py-10">

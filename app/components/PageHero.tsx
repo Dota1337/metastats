@@ -18,7 +18,7 @@ export default function PageHero({ title, subtitle, leftChampion, rightChampion,
             src={`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${leftChampion}_0.jpg`}
             alt=""
             className="absolute inset-0 w-full h-full object-cover"
-            style={{ filter: 'brightness(1.4)', objectPosition: '50% 15%' }}
+            style={{ filter: 'brightness(1.12)', objectPosition: '50% 15%' }}
           />
           <div className="absolute inset-0" style={{
             background: 'linear-gradient(to right, rgba(14,21,37,0) 0%, rgba(14,21,37,0.8) 85%, rgba(14,21,37,1) 100%)',
@@ -32,7 +32,7 @@ export default function PageHero({ title, subtitle, leftChampion, rightChampion,
             src={`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${rightChampion}_0.jpg`}
             alt=""
             className="absolute inset-0 w-full h-full object-cover"
-            style={{ filter: 'brightness(1.4)', objectPosition: '50% 15%' }}
+            style={{ filter: 'brightness(1.12)', objectPosition: '50% 15%' }}
           />
           <div className="absolute inset-0" style={{
             background: 'linear-gradient(to left, rgba(14,21,37,0) 0%, rgba(14,21,37,0.8) 85%, rgba(14,21,37,1) 100%)',
@@ -49,7 +49,7 @@ export default function PageHero({ title, subtitle, leftChampion, rightChampion,
           src={`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${leftChampion}_0.jpg`}
           alt=""
           className="absolute inset-0 w-full h-full object-cover"
-          style={{ filter: 'brightness(1.4)', objectPosition: '70% 15%' }}
+          style={{ filter: 'brightness(1.12)', objectPosition: '70% 15%' }}
         />
         <div className="absolute inset-0" style={{
           background: 'linear-gradient(to right, rgba(14,21,37,0) 0%, rgba(14,21,37,0.15) 60%, rgba(14,21,37,1) 100%)',
@@ -63,7 +63,7 @@ export default function PageHero({ title, subtitle, leftChampion, rightChampion,
           src={`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${rightChampion}_0.jpg`}
           alt=""
           className="absolute inset-0 w-full h-full object-cover"
-          style={{ filter: 'brightness(1.4)', objectPosition: '30% 15%' }}
+          style={{ filter: 'brightness(1.12)', objectPosition: '30% 15%' }}
         />
         <div className="absolute inset-0" style={{
           background: 'linear-gradient(to left, rgba(14,21,37,0) 0%, rgba(14,21,37,0.15) 60%, rgba(14,21,37,1) 100%)',

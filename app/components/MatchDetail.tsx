@@ -69,9 +69,9 @@ export default function MatchDetail({ match, ddVersion, isExpanded, onToggle, fo
           alt={match.champion}
           className="w-8 h-8 sm:w-10 sm:h-10 rounded flex-shrink-0"
         />
-        <div className="flex-1 min-w-0 sm:w-24 sm:flex-none">
+        <div className="flex-1 min-w-0 sm:flex-none sm:w-auto sm:max-w-[14rem]">
           <div className="text-white text-sm font-medium truncate">{match.champion}</div>
-          <div className="text-[#8a9bb0] text-xs truncate">{getQueueName(match)} · {formatDuration(match.gameDuration)}{match.gameCreation ? ` · ${timeAgo(match.gameCreation)}` : ''}</div>
+          <div className="text-[#8a9bb0] text-xs whitespace-nowrap">{getQueueName(match)} · {formatDuration(match.gameDuration)}{match.gameCreation ? ` · ${timeAgo(match.gameCreation)}` : ''}</div>
         </div>
         <div className="text-center flex-shrink-0">
           <div className="text-white text-sm font-medium">{match.kills}/{match.deaths}/{match.assists}</div>

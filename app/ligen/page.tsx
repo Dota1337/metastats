@@ -191,8 +191,10 @@ export default function LigenPage() {
   };
 
   const getTeamRoster = (teamName: string): ProPlayer[] => {
+    if (!teamName) return [];
+    const name = teamName.toLowerCase();
     return proPlayers.filter(p =>
-      p.team.toLowerCase() === teamName.toLowerCase() &&
+      typeof p.team === 'string' && p.team.toLowerCase() === name &&
       ['Top', 'Jungle', 'Mid', 'Bot', 'Support'].includes(p.role)
     );
   };

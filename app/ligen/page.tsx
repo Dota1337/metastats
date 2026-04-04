@@ -187,7 +187,11 @@ export default function LigenPage() {
     if (!playerName) return null;
     const p = proPlayers.find(pp => pp.proName.toLowerCase() === playerName.toLowerCase());
     if (!p || !p.accounts || p.accounts.length === 0) return null;
-    return `/player/${encodeURIComponent(p.accounts[0])}`;
+    // Only link if account has proper Riot ID with #tag
+    const riotId = p.accounts.find(a => a.includes('#'));
+    if (!riotId) return null;
+    const [gameName, tag] = riotId.split('#');
+    return `/player/${encodeURIComponent(gameName)}--${encodeURIComponent(tag)}?region=euw1`;
   };
 
   const getTeamRoster = (teamName: string): ProPlayer[] => {

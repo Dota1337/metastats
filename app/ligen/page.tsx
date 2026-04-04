@@ -452,7 +452,7 @@ export default function LigenPage() {
                         <div className={`text-xs font-medium mb-1.5 ${isToday ? 'text-[#c89b3c]' : 'text-[#8a9bb0]'}`}>
                           {day.getDate()}. {day.toLocaleDateString('de-DE', { month: 'short' })}
                         </div>
-                        {events && Array.from(events).slice(0, 4).map(slug => (
+                        {events && Array.from(events).map(slug => (
                           <button
                             key={slug}
                             onClick={() => fetchLeagueDetail(slug)}
@@ -462,9 +462,6 @@ export default function LigenPage() {
                             {getLeagueName(slug)}
                           </button>
                         ))}
-                        {events && events.size > 4 && (
-                          <span className="text-[9px] text-[#4a5a70]">+{events.size - 4} weitere</span>
-                        )}
                       </div>
                     );
                   })}
@@ -486,7 +483,7 @@ export default function LigenPage() {
                         <div className={`text-[10px] font-medium ${isToday ? 'text-[#c89b3c]' : 'text-[#8a9bb0]'}`}>
                           {day.getDate()}
                         </div>
-                        {events && Array.from(events).slice(0, 2).map(slug => (
+                        {events && Array.from(events).map(slug => (
                           <button
                             key={slug}
                             onClick={() => fetchLeagueDetail(slug)}
@@ -496,9 +493,6 @@ export default function LigenPage() {
                             {getLeagueName(slug)}
                           </button>
                         ))}
-                        {events && events.size > 2 && (
-                          <span className="text-[7px] text-[#4a5a70]">+{events.size - 2}</span>
-                        )}
                       </div>
                     );
                   })}

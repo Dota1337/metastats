@@ -2,19 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const API_KEY = '0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z';
 
-// Cache standings for 30 minutes
+// Cache standings for 15 minutes
 let standingsCache: Record<string, { data: any; time: number }> = {};
-const CACHE_TTL = 30 * 60 * 1000;
-
-async function fetchTournaments(): Promise<any[]> {
-  const res = await fetch(
-    'https://esports-api.lolesports.com/persisted/gw/getTournamentsForLeague?hl=en-US',
-    { headers: { 'x-api-key': API_KEY } }
-  );
-  if (!res.ok) return [];
-  const data = await res.json();
-  return data?.data?.leagues || [];
-}
+const CACHE_TTL = 15 * 60 * 1000;
 
 async function fetchLeagues(): Promise<any[]> {
   const res = await fetch(
@@ -26,37 +16,13 @@ async function fetchLeagues(): Promise<any[]> {
   return data?.data?.leagues || [];
 }
 
-async function fetchStandings(tournamentId: string): Promise<any> {
-  const res = await fetch(
-    `https://esports-api.lolesports.com/persisted/gw/getStandingsV3?hl=en-US&tournamentId=${tournamentId}`,
-    { headers: { 'x-api-key': API_KEY } }
-  );
-  if (!res.ok) return null;
-  const data = await res.json();
-  return data?.data?.standings || null;
-}
-
-async function fetchScheduleForLeague(leagueSlug: string): Promise<any[]> {
-  // Fetch schedule filtered by time window (today + 14 days past results + future)
-  const res = await fetch(
-    'https://esports-api.lolesports.com/persisted/gw/getSchedule?hl=en-US',
-    { headers: { 'x-api-key': API_KEY } }
-  );
-  if (!res.ok) return [];
-  const data = await res.json();
-  const events = data?.data?.schedule?.events || [];
-  return events.filter((e: any) => e.league?.slug === leagueSlug && e.type === 'match');
-}
-
 export async function GET(request: NextRequest) {
   const leagueSlug = request.nextUrl.searchParams.get('league') || '';
 
   if (!leagueSlug) {
-    // Return list of all active leagues with their current tournaments
     return await getLeaguesOverview();
   }
 
-  // Return standings + matches for a specific league
   return await getLeagueDetail(leagueSlug);
 }
 
@@ -96,14 +62,13 @@ async function getLeagueDetail(leagueSlug: string) {
   }
 
   try {
-    // Fetch league info and tournaments
     const leagues = await fetchLeagues();
     const league = leagues.find((l: any) => l.slug === leagueSlug);
     if (!league) {
       return NextResponse.json({ error: 'Liga nicht gefunden' }, { status: 404 });
     }
 
-    // Get tournaments for this league to find current tournament ID
+    // Get tournaments for this league
     const tournRes = await fetch(
       `https://esports-api.lolesports.com/persisted/gw/getTournamentsForLeague?hl=en-US&leagueId=${league.id}`,
       { headers: { 'x-api-key': API_KEY } }
@@ -111,26 +76,42 @@ async function getLeagueDetail(leagueSlug: string) {
     const tournData = await tournRes.json();
     const tournaments = tournData?.data?.leagues?.[0]?.tournaments || [];
 
-    // Find current/most recent tournament
+    // Sort by startDate descending and find current tournament
     const nowDate = new Date();
-    const currentTournament = tournaments.find((t: any) => {
+    const sorted = tournaments.sort((a: any, b: any) =>
+      new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+    );
+
+    const currentTournament = sorted.find((t: any) => {
       const start = new Date(t.startDate);
       const end = new Date(t.endDate);
       return start <= nowDate && end >= nowDate;
-    }) || tournaments[tournaments.length - 1];
+    }) || sorted[0]; // fallback to most recent
 
     // Fetch standings for current tournament
     let standings: any[] = [];
     if (currentTournament) {
-      const standingsData = await fetchStandings(currentTournament.id);
-      if (standingsData) {
-        for (const stage of standingsData) {
-          for (const section of stage.stages || []) {
-            for (const s of section.sections || []) {
-              if (s.rankings) {
-                standings = s.rankings.map((r: any) => ({
+      try {
+        const standingsRes = await fetch(
+          `https://esports-api.lolesports.com/persisted/gw/getStandingsV3?hl=en-US&tournamentId=${currentTournament.id}`,
+          { headers: { 'x-api-key': API_KEY } }
+        );
+        const standingsData = await standingsRes.json();
+        const rawStandings = standingsData?.data?.standings || [];
+
+        // Parse the nested structure correctly:
+        // standings[0].stages[].sections[].rankings[]
+        if (rawStandings.length > 0) {
+          const entry = rawStandings[0];
+          const stages = entry.stages || [];
+          // Use the first stage with rankings (usually "Regular Season")
+          for (const stage of stages) {
+            const sections = stage.sections || [];
+            for (const section of sections) {
+              if (section.rankings && section.rankings.length > 0) {
+                standings = section.rankings.map((r: any) => ({
                   ordinal: r.ordinal,
-                  teams: r.teams.map((t: any) => ({
+                  teams: (r.teams || []).map((t: any) => ({
                     name: t.name,
                     code: t.code,
                     image: t.image,
@@ -138,27 +119,66 @@ async function getLeagueDetail(leagueSlug: string) {
                     losses: t.record?.losses || 0,
                   })),
                 }));
+                break; // use first section with data
               }
             }
+            if (standings.length > 0) break; // found standings, stop
           }
         }
-      }
+      } catch {}
     }
 
-    // Fetch recent + upcoming matches for this league
-    const matches = await fetchScheduleForLeague(leagueSlug);
-    const formattedMatches = matches.map((e: any) => ({
-      startTime: e.startTime,
-      state: e.state,
-      blockName: e.blockName || '',
-      teams: e.match?.teams?.map((t: any) => ({
-        name: t.name,
-        code: t.code,
-        image: t.image,
-        outcome: t.result?.outcome || null,
-        gameWins: t.result?.gameWins ?? 0,
-      })),
-    }));
+    // Fetch schedule matches for this league (all pages)
+    let allMatches: any[] = [];
+    try {
+      const schedRes = await fetch(
+        'https://esports-api.lolesports.com/persisted/gw/getSchedule?hl=en-US',
+        { headers: { 'x-api-key': API_KEY } }
+      );
+      const schedData = await schedRes.json();
+      let events = schedData?.data?.schedule?.events || [];
+
+      // Also fetch newer page
+      const newerToken = schedData?.data?.schedule?.pages?.newer;
+      if (newerToken) {
+        try {
+          const moreRes = await fetch(
+            `https://esports-api.lolesports.com/persisted/gw/getSchedule?hl=en-US&pageToken=${newerToken}`,
+            { headers: { 'x-api-key': API_KEY } }
+          );
+          const moreData = await moreRes.json();
+          events = [...events, ...(moreData?.data?.schedule?.events || [])];
+        } catch {}
+      }
+
+      // Also fetch older page for more results
+      const olderToken = schedData?.data?.schedule?.pages?.older;
+      if (olderToken) {
+        try {
+          const olderRes = await fetch(
+            `https://esports-api.lolesports.com/persisted/gw/getSchedule?hl=en-US&pageToken=${olderToken}`,
+            { headers: { 'x-api-key': API_KEY } }
+          );
+          const olderData = await olderRes.json();
+          events = [...(olderData?.data?.schedule?.events || []), ...events];
+        } catch {}
+      }
+
+      allMatches = events
+        .filter((e: any) => e.type === 'match' && e.league?.slug === leagueSlug)
+        .map((e: any) => ({
+          startTime: e.startTime,
+          state: e.state,
+          blockName: e.blockName || '',
+          teams: e.match?.teams?.map((t: any) => ({
+            name: t.name,
+            code: t.code,
+            image: t.image,
+            outcome: t.result?.outcome || null,
+            gameWins: t.result?.gameWins ?? 0,
+          })),
+        }));
+    } catch {}
 
     const result = {
       league: {
@@ -173,7 +193,7 @@ async function getLeagueDetail(leagueSlug: string) {
         endDate: currentTournament.endDate,
       } : null,
       standings,
-      matches: formattedMatches,
+      matches: allMatches,
     };
 
     standingsCache[leagueSlug] = { data: result, time: now };

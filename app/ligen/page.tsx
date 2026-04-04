@@ -226,7 +226,7 @@ export default function LigenPage() {
           <div className="flex items-center justify-center py-20">
             <div className="w-8 h-8 border-2 border-[#c89b3c] border-t-transparent rounded-full animate-spin" />
           </div>
-        ) : selectedLeague && leagueDetail ? (
+        ) : selectedLeague ? (
           /* ── League Detail View ── */
           <div>
             <button
@@ -239,26 +239,30 @@ export default function LigenPage() {
               <span className="text-sm">Zurück zur Übersicht</span>
             </button>
 
-            {/* League header */}
-            <div className="flex items-center gap-4 mb-6 bg-[#0d1526] rounded-xl border border-[#1e2a3a] p-4">
-              {leagueDetail.league.image && (
-                <img src={leagueDetail.league.image} alt="" className="w-12 h-12 rounded-lg object-contain bg-[#141c2e] p-1" />
-              )}
-              <div>
-                <h2 className="text-xl font-bold">{leagueDetail.league.name}</h2>
-                <p className="text-[#8a9bb0] text-sm">
-                  {leagueDetail.league.region}
-                  {leagueDetail.tournament && ` · ${leagueDetail.tournament.name}`}
-                </p>
-              </div>
-            </div>
-
             {detailLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="w-6 h-6 border-2 border-[#c89b3c] border-t-transparent rounded-full animate-spin" />
+              <div className="flex items-center justify-center py-20">
+                <div className="w-8 h-8 border-2 border-[#c89b3c] border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : !leagueDetail ? (
+              <div className="bg-[#0d1526] rounded-xl border border-[#1e2a3a] py-12 text-center text-[#4a5a70]">
+                Fehler beim Laden der Liga-Daten
               </div>
             ) : (
               <>
+                {/* League header */}
+                <div className="flex items-center gap-4 mb-6 bg-[#0d1526] rounded-xl border border-[#1e2a3a] p-4">
+                  {leagueDetail.league.image && (
+                    <img src={leagueDetail.league.image} alt="" className="w-12 h-12 rounded-lg object-contain bg-[#141c2e] p-1" />
+                  )}
+                  <div>
+                    <h2 className="text-xl font-bold">{leagueDetail.league.name}</h2>
+                    <p className="text-[#8a9bb0] text-sm">
+                      {leagueDetail.league.region}
+                      {leagueDetail.tournament && ` · ${leagueDetail.tournament.name}`}
+                    </p>
+                  </div>
+                </div>
+
                 {/* Sub-tabs */}
                 <div className="flex gap-2 mb-4">
                   {[

@@ -211,6 +211,14 @@ export default function LigenPage() {
 
   const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
   const formatTime = (dateStr: string) => new Date(dateStr).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+  const formatTournamentName = (slug: string) => {
+    return slug
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, c => c.toUpperCase())
+      .replace(/\b(Lec|Lck|Lpl|Lcs|Lta|Vcs|Pcs|Ljl|Nacl)\b/gi, m => m.toUpperCase())
+      .replace(/\bSplit\b/g, 'Split')
+      .replace(/\b(\d{4})\b/g, '$1');
+  };
 
   // Split detail matches
   const pastMatches = (leagueDetail?.matches || []).filter(m => m.state === 'completed').reverse();
@@ -257,36 +265,50 @@ export default function LigenPage() {
             ) : (
               <>
                 {/* League header */}
-                <div className="flex items-center gap-4 mb-6 bg-[#0d1526] rounded-xl border border-[#1e2a3a] p-4">
+                <div className="flex items-center gap-4 mb-6 bg-gradient-to-r from-[#0d1526] to-[#0a0e1a] rounded-xl border border-[#1e2a3a] p-5">
                   {leagueDetail.league.image && (
-                    <img src={leagueDetail.league.image} alt="" className="w-12 h-12 rounded-lg object-contain bg-[#141c2e] p-1" />
+                    <img src={leagueDetail.league.image} alt="" className="w-14 h-14 rounded-xl object-contain bg-[#141c2e] p-1.5 flex-shrink-0" />
                   )}
-                  <div>
-                    <h2 className="text-xl font-bold">{leagueDetail.league.name}</h2>
+                  <div className="flex-1 min-w-0">
+                    <h2 className="text-xl font-bold truncate">{leagueDetail.league.name}</h2>
                     <p className="text-[#8a9bb0] text-sm">
                       {leagueDetail.league.region}
-                      {leagueDetail.tournament && ` · ${leagueDetail.tournament.name}`}
+                      {leagueDetail.tournament && ` · ${formatTournamentName(leagueDetail.tournament.name)}`}
                     </p>
+                  </div>
+                  {/* Quick stats */}
+                  <div className="hidden sm:flex gap-4">
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-white">{(leagueDetail.standings || []).flatMap(s => s.teams || []).length}</div>
+                      <div className="text-[10px] text-[#4a5a70] uppercase tracking-wider">Teams</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-white">{(leagueDetail.matches || []).length}</div>
+                      <div className="text-[10px] text-[#4a5a70] uppercase tracking-wider">Spiele</div>
+                    </div>
                   </div>
                 </div>
 
                 {/* Sub-tabs */}
-                <div className="flex gap-2 mb-4">
+                <div className="flex gap-1 bg-[#0d1526] rounded-xl border border-[#1e2a3a] p-1 mb-5">
                   {[
-                    { key: 'standings' as const, label: 'Tabelle', count: leagueDetail.standings?.length || 0 },
-                    { key: 'upcoming' as const, label: 'Kommende Spiele', count: upcomingMatches.length },
-                    { key: 'results' as const, label: 'Ergebnisse', count: pastMatches.length },
+                    { key: 'standings' as const, label: 'Tabelle', icon: 'M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z' },
+                    { key: 'upcoming' as const, label: `Kommend (${upcomingMatches.length})`, icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
+                    { key: 'results' as const, label: `Ergebnisse (${pastMatches.length})`, icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
                   ].map(t => (
                     <button
                       key={t.key}
                       onClick={() => setDetailTab(t.key)}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-medium transition-all ${
                         detailTab === t.key
-                          ? 'bg-[#c89b3c]/20 text-[#c89b3c] border border-[#c89b3c]/30'
-                          : 'text-[#8a9bb0] hover:text-white bg-[#0d1526] border border-[#1e2a3a] hover:border-[#c89b3c]/30'
+                          ? 'bg-[#1e2a3a] text-[#c89b3c] shadow-sm'
+                          : 'text-[#8a9bb0] hover:text-white'
                       }`}
                     >
-                      {t.label} {t.count > 0 && <span className="text-xs ml-1 opacity-70">({t.count})</span>}
+                      <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d={t.icon} />
+                      </svg>
+                      {t.label}
                     </button>
                   ))}
                 </div>
@@ -299,74 +321,111 @@ export default function LigenPage() {
                     ) : (
                       <table className="w-full">
                         <thead>
-                          <tr className="border-b border-[#1e2a3a] text-[#4a5a70] text-xs uppercase tracking-wider">
-                            <th className="px-4 py-3 text-left w-10">#</th>
-                            <th className="px-4 py-3 text-left">Team</th>
-                            <th className="px-4 py-3 text-center w-16">S</th>
-                            <th className="px-4 py-3 text-center w-16">N</th>
-                            <th className="px-4 py-3 text-center w-20">WR</th>
-                            <th className="px-4 py-3 text-left hidden sm:table-cell">Spieler</th>
+                          <tr className="border-b-2 border-[#1e2a3a] text-[#4a5a70] text-[10px] uppercase tracking-widest">
+                            <th className="px-3 sm:px-4 py-3 text-center w-10">#</th>
+                            <th className="px-3 sm:px-4 py-3 text-left">Team</th>
+                            <th className="px-2 py-3 text-center w-12">S</th>
+                            <th className="px-2 py-3 text-center w-12">N</th>
+                            <th className="px-2 py-3 text-center w-16">Bilanz</th>
+                            <th className="px-3 sm:px-4 py-3 text-left hidden md:table-cell">Spieler</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {(leagueDetail.standings || []).map((entry) =>
-                            (entry.teams || []).map((team) => {
-                              const link = getTeamLink(team.name, team.code);
-                              const total = team.wins + team.losses;
-                              const wr = total > 0 ? Math.round((team.wins / total) * 100) : 0;
-                              const roster = getTeamRoster(team.name);
+                          {(() => {
+                            let rank = 0;
+                            return (leagueDetail.standings || []).map((entry) =>
+                              (entry.teams || []).map((team) => {
+                                rank++;
+                                const link = getTeamLink(team.name, team.code);
+                                const total = team.wins + team.losses;
+                                const wr = total > 0 ? Math.round((team.wins / total) * 100) : 0;
+                                const wrBar = total > 0 ? (team.wins / total) * 100 : 50;
+                                const roster = getTeamRoster(team.name);
+                                const isTop3 = rank <= 3;
+                                const isBottom2 = rank > (leagueDetail.standings || []).flatMap(s => s.teams || []).length - 2;
 
-                              return (
-                                <tr key={`${entry.ordinal}-${team.code}`} className="border-b border-[#141c2e] hover:bg-[#141c2e] transition-colors">
-                                  <td className="px-4 py-3">
-                                    <span className={`text-sm font-bold ${entry.ordinal <= 3 ? 'text-[#c89b3c]' : 'text-[#4a5a70]'}`}>
-                                      {entry.ordinal}
-                                    </span>
-                                  </td>
-                                  <td className="px-4 py-3">
-                                    <div className="flex items-center gap-3">
-                                      {team.image && <img src={team.image} alt="" className="w-7 h-7 rounded" />}
-                                      {link ? (
-                                        <Link href={link} className="text-sm font-medium text-white hover:text-[#c89b3c] transition-colors">
-                                          {team.name}
-                                        </Link>
-                                      ) : (
-                                        <span className="text-sm font-medium">{team.name}</span>
-                                      )}
-                                    </div>
-                                  </td>
-                                  <td className="px-4 py-3 text-center text-sm text-green-400 font-medium">{team.wins}</td>
-                                  <td className="px-4 py-3 text-center text-sm text-red-400 font-medium">{team.losses}</td>
-                                  <td className="px-4 py-3 text-center">
-                                    <span className={`text-sm font-bold ${wr >= 60 ? 'text-green-400' : wr >= 40 ? 'text-[#8a9bb0]' : 'text-red-400'}`}>
-                                      {wr}%
-                                    </span>
-                                  </td>
-                                  <td className="px-4 py-3 hidden sm:table-cell">
-                                    <div className="flex gap-2 flex-wrap">
-                                      {roster.map(player => {
-                                        const playerLink = getPlayerSlug(player.proName);
-                                        return playerLink ? (
-                                          <Link
-                                            key={player.proName}
-                                            href={playerLink}
-                                            className="text-xs text-[#8a9bb0] hover:text-[#c89b3c] transition-colors"
-                                            title={player.role}
-                                          >
-                                            {player.proName}
-                                          </Link>
+                                return (
+                                  <tr
+                                    key={`${entry.ordinal}-${team.code}`}
+                                    className={`border-b border-[#141c2e] hover:bg-[#141c2e]/80 transition-colors ${
+                                      isTop3 ? 'bg-[#c89b3c]/[0.03]' : isBottom2 ? 'bg-red-500/[0.02]' : ''
+                                    }`}
+                                  >
+                                    <td className="px-3 sm:px-4 py-3 text-center">
+                                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                                        rank === 1 ? 'bg-[#c89b3c]/20 text-[#c89b3c]' :
+                                        rank === 2 ? 'bg-[#8a9bb0]/20 text-[#8a9bb0]' :
+                                        rank === 3 ? 'bg-[#b87333]/20 text-[#b87333]' :
+                                        'text-[#4a5a70]'
+                                      }`}>
+                                        {rank}
+                                      </div>
+                                    </td>
+                                    <td className="px-3 sm:px-4 py-3">
+                                      <div className="flex items-center gap-3">
+                                        {team.image ? (
+                                          <img src={team.image} alt="" className="w-8 h-8 rounded-md object-contain bg-[#141c2e] p-0.5 flex-shrink-0" />
                                         ) : (
-                                          <span key={player.proName} className="text-xs text-[#4a5a70]" title={player.role}>
-                                            {player.proName}
-                                          </span>
-                                        );
-                                      })}
-                                    </div>
-                                  </td>
-                                </tr>
-                              );
-                            })
-                          )}
+                                          <div className="w-8 h-8 rounded-md bg-[#141c2e] flex-shrink-0" />
+                                        )}
+                                        <div className="min-w-0">
+                                          {link ? (
+                                            <Link href={link} className="text-sm font-semibold text-white hover:text-[#c89b3c] transition-colors block truncate">
+                                              {team.name}
+                                            </Link>
+                                          ) : (
+                                            <span className="text-sm font-semibold text-white block truncate">{team.name}</span>
+                                          )}
+                                          <span className="text-[10px] text-[#4a5a70] hidden sm:inline">{team.code}</span>
+                                        </div>
+                                      </div>
+                                    </td>
+                                    <td className="px-2 py-3 text-center">
+                                      <span className="text-sm font-bold text-green-400">{team.wins}</span>
+                                    </td>
+                                    <td className="px-2 py-3 text-center">
+                                      <span className="text-sm font-bold text-red-400">{team.losses}</span>
+                                    </td>
+                                    <td className="px-2 py-3">
+                                      <div className="flex flex-col items-center gap-1">
+                                        <span className={`text-xs font-bold ${wr >= 60 ? 'text-green-400' : wr >= 40 ? 'text-[#8a9bb0]' : 'text-red-400'}`}>
+                                          {total > 0 ? `${wr}%` : '—'}
+                                        </span>
+                                        {total > 0 && (
+                                          <div className="w-full h-1 bg-red-400/30 rounded-full overflow-hidden">
+                                            <div className="h-full bg-green-400/80 rounded-full" style={{ width: `${wrBar}%` }} />
+                                          </div>
+                                        )}
+                                      </div>
+                                    </td>
+                                    <td className="px-3 sm:px-4 py-3 hidden md:table-cell">
+                                      <div className="flex gap-1.5 flex-wrap">
+                                        {roster.map(player => {
+                                          const playerLink = getPlayerSlug(player.proName);
+                                          const roleColors: Record<string, string> = {
+                                            Top: 'text-blue-400', Jungle: 'text-green-400', Mid: 'text-purple-400',
+                                            Bot: 'text-red-400', Support: 'text-yellow-400',
+                                          };
+                                          return (
+                                            <span key={player.proName} className="inline-flex items-center gap-0.5">
+                                              <span className={`text-[9px] ${roleColors[player.role] || 'text-[#4a5a70]'}`}>●</span>
+                                              {playerLink ? (
+                                                <Link href={playerLink} className="text-[11px] text-[#8a9bb0] hover:text-[#c89b3c] transition-colors">
+                                                  {player.proName}
+                                                </Link>
+                                              ) : (
+                                                <span className="text-[11px] text-[#4a5a70]">{player.proName}</span>
+                                              )}
+                                            </span>
+                                          );
+                                        })}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })
+                            );
+                          })()}
                         </tbody>
                       </table>
                     )}

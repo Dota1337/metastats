@@ -6,7 +6,7 @@
     },
     {
       "path": "/api/cron/update-esports",
-      "schedule": "0 */2 * * *"
+      "schedule": "0 6 * * *"
     }
   ]
 }

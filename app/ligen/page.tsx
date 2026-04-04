@@ -82,23 +82,29 @@ export default function LigenPage() {
 
   // Load leagues + schedule on mount
   useEffect(() => {
-    Promise.all([
-      fetch('/api/tournaments/standings').then(r => r.json()),
-      fetch('/api/tournaments').then(r => r.json()),
-      fetch('/pro-players.json').then(r => r.json()),
-      fetch('/pro-teams.json').then(r => r.json()),
-    ]).then(([leagueData, scheduleData, playerData, teamData]) => {
-      setLeagues(leagueData.leagues || []);
-      setSchedule((scheduleData.tournaments || []).map((t: any) => ({
-        league: t.league,
-        leagueSlug: t.leagueSlug,
-        startTime: t.startTime,
-        state: t.state,
-        teams: t.teams,
-      })));
-      setProPlayers(playerData.players || []);
-      setProTeams(teamData.teams || []);
-    }).catch(() => {}).finally(() => setLoading(false));
+    const load = async () => {
+      try {
+        const [leagueRes, scheduleRes] = await Promise.all([
+          fetch('/api/tournaments/standings').then(r => r.json()).catch(() => ({ leagues: [] })),
+          fetch('/api/tournaments').then(r => r.json()).catch(() => ({ tournaments: [] })),
+        ]);
+        setLeagues(leagueRes.leagues || []);
+        setSchedule((scheduleRes.tournaments || []).map((t: any) => ({
+          league: t.league,
+          leagueSlug: t.leagueSlug,
+          startTime: t.startTime,
+          state: t.state,
+          teams: t.teams,
+        })));
+      } catch {}
+
+      // Load pro data separately (large files, non-blocking)
+      fetch('/pro-players.json').then(r => r.json()).then(d => setProPlayers(d.players || [])).catch(() => {});
+      fetch('/pro-teams.json').then(r => r.json()).then(d => setProTeams(d.teams || [])).catch(() => {});
+
+      setLoading(false);
+    };
+    load();
   }, []);
 
   const fetchLeagueDetail = async (slug: string) => {

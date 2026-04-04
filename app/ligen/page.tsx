@@ -131,8 +131,11 @@ export default function LigenPage() {
     return events;
   }, [schedule]);
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
 
   const getWeekDays = (baseDate: Date) => {
     const start = new Date(baseDate);
@@ -172,16 +175,18 @@ export default function LigenPage() {
   const getLeagueName = (slug: string) => leagues.find(l => l.slug === slug)?.name || slug;
 
   const getTeamLink = (teamName: string, teamCode: string): string | null => {
+    if (!teamName && !teamCode) return null;
     const t = proTeams.find(pt =>
-      pt.name.toLowerCase() === teamName.toLowerCase() ||
-      pt.short.toLowerCase() === teamCode.toLowerCase()
+      (teamName && pt.name.toLowerCase() === teamName.toLowerCase()) ||
+      (teamCode && pt.short.toLowerCase() === teamCode.toLowerCase())
     );
     return t ? `/teams/${t.id}` : null;
   };
 
   const getPlayerSlug = (playerName: string): string | null => {
+    if (!playerName) return null;
     const p = proPlayers.find(pp => pp.proName.toLowerCase() === playerName.toLowerCase());
-    if (!p || p.accounts.length === 0) return null;
+    if (!p || !p.accounts || p.accounts.length === 0) return null;
     return `/player/${encodeURIComponent(p.accounts[0])}`;
   };
 
@@ -206,8 +211,8 @@ export default function LigenPage() {
   const formatTime = (dateStr: string) => new Date(dateStr).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
 
   // Split detail matches
-  const pastMatches = leagueDetail?.matches.filter(m => m.state === 'completed').reverse() || [];
-  const upcomingMatches = leagueDetail?.matches.filter(m => m.state === 'unstarted' || m.state === 'inProgress') || [];
+  const pastMatches = (leagueDetail?.matches || []).filter(m => m.state === 'completed').reverse();
+  const upcomingMatches = (leagueDetail?.matches || []).filter(m => m.state === 'unstarted' || m.state === 'inProgress');
 
   return (
     <div className="min-h-screen bg-[#0a0e1a] text-white">
@@ -266,7 +271,7 @@ export default function LigenPage() {
                 {/* Sub-tabs */}
                 <div className="flex gap-2 mb-4">
                   {[
-                    { key: 'standings' as const, label: 'Tabelle', count: leagueDetail.standings.length },
+                    { key: 'standings' as const, label: 'Tabelle', count: leagueDetail.standings?.length || 0 },
                     { key: 'upcoming' as const, label: 'Kommende Spiele', count: upcomingMatches.length },
                     { key: 'results' as const, label: 'Ergebnisse', count: pastMatches.length },
                   ].map(t => (
@@ -287,7 +292,7 @@ export default function LigenPage() {
                 {/* Standings */}
                 {detailTab === 'standings' && (
                   <div className="bg-[#0d1526] rounded-xl border border-[#1e2a3a] overflow-hidden">
-                    {leagueDetail.standings.length === 0 ? (
+                    {!leagueDetail.standings || leagueDetail.standings.length === 0 ? (
                       <div className="py-12 text-center text-[#4a5a70]">Keine Standings verfügbar</div>
                     ) : (
                       <table className="w-full">
@@ -302,8 +307,8 @@ export default function LigenPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {leagueDetail.standings.map((entry) =>
-                            entry.teams.map((team) => {
+                          {(leagueDetail.standings || []).map((entry) =>
+                            (entry.teams || []).map((team) => {
                               const link = getTeamLink(team.name, team.code);
                               const total = team.wins + team.losses;
                               const wr = total > 0 ? Math.round((team.wins / total) * 100) : 0;

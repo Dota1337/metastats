@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/check-patches",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/update-esports",
+      "schedule": "0 */2 * * *"
+    }
+  ]
+}

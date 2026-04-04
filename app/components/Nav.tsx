@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useI18n, LANGUAGES, type Lang } from '../lib/i18n';
 
 interface NavProps {
-  active?: 'search' | 'leaderboard' | 'champions' | 'marktwert' | 'analyse' | 'teams';
+  active?: 'search' | 'leaderboard' | 'champions' | 'marktwert' | 'analyse' | 'teams' | 'ligen';
 }
 
 interface SearchResult {
@@ -116,6 +116,7 @@ export default function Nav({ active }: NavProps) {
           <a href="/champions" className={linkClass('champions')}>{t('nav.champions')}</a>
           <a href="/marktwert" className={linkClass('marktwert')}>{t('nav.marketvalue')}</a>
           <a href="/teams" className={linkClass('teams')}>Pro Teams</a>
+          <a href="/ligen" className={linkClass('ligen')}>Ligen & Wettbewerbe</a>
           <a href="/compare" className={linkClass('analyse')}>{t('nav.analyse')}</a>
 
           {/* Global Search */}
@@ -298,6 +299,7 @@ export default function Nav({ active }: NavProps) {
           <a href="/champions" className={linkClass('champions')} onClick={() => setMenuOpen(false)}>{t('nav.champions')}</a>
           <a href="/marktwert" className={linkClass('marktwert')} onClick={() => setMenuOpen(false)}>{t('nav.marketvalue')}</a>
           <a href="/teams" className={linkClass('teams')} onClick={() => setMenuOpen(false)}>Pro Teams</a>
+          <a href="/ligen" className={linkClass('ligen')} onClick={() => setMenuOpen(false)}>Ligen & Wettbewerbe</a>
           <a href="/compare" className={linkClass('analyse')} onClick={() => setMenuOpen(false)}>{t('nav.analyse')}</a>
 
           {/* Language selector mobile */}

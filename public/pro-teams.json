@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-05T00:49:29.797Z",
+  "updatedAt": "2026-04-05T00:52:46.572Z",
   "totalTeams": 400,
   "teams": [
     {
@@ -7,7 +7,7 @@
       "name": "T1",
       "short": "T1",
       "region": "Korea",
-      "logo": "https://static.lolesports.com/teams/1631819614066_t1-2021-worlds.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1631819614066_t1-2021-worlds.png",
       "roster": [],
       "results": [
         {
@@ -660,7 +660,7 @@
       "name": "G2 Esports",
       "short": "G2",
       "region": "Europe",
-      "logo": "https://static.lolesports.com/teams/G2-FullonDark.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2FG2-FullonDark.png",
       "roster": [
         {
           "name": "Send0o",
@@ -1493,7 +1493,7 @@
       "name": "Invictus Gaming",
       "short": "INV",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1634762917340_300px-Invictus_Gaming_logo.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1634762917340_300px-Invictus_Gaming_logo.png",
       "roster": [
         {
           "name": "Breathe",
@@ -2283,7 +2283,7 @@
       "name": "Gen.G",
       "short": "GEN",
       "region": "Korea",
-      "logo": "https://static.lolesports.com/teams/1671038289866_GenG_2023.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1671038289866_GenG_2023.png",
       "roster": [
         {
           "name": "Kiin",
@@ -3057,7 +3057,7 @@
       "name": "EDward Gaming",
       "short": "EDW",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1631819297476_edg-2021-worlds.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1631819297476_edg-2021-worlds.png",
       "roster": [
         {
           "name": "Zdz",
@@ -3845,7 +3845,7 @@
       "name": "Fnatic",
       "short": "FNC",
       "region": "Europe",
-      "logo": "https://static.lolesports.com/teams/1631819669150_fnc-2021-worlds.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1631819669150_fnc-2021-worlds.png",
       "roster": [
         {
           "name": "Empyros",
@@ -4628,7 +4628,7 @@
       "name": "Bilibili Gaming",
       "short": "BLG",
       "region": "China",
-      "logo": "https://static.lolesports.com/teams/1682322954525_Bilibili_Gaming_logo_20211.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1682322954525_Bilibili_Gaming_logo_20211.png",
       "roster": [
         {
           "name": "Bin (Chen Ze-Bin)",
@@ -5382,7 +5382,7 @@
       "name": "Top Esports",
       "short": "TES",
       "region": "China",
-      "logo": "https://static.lolesports.com/teams/1592592064571_TopEsportsTES-01-FullonDark.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1592592064571_TopEsportsTES-01-FullonDark.png",
       "roster": [],
       "results": [
         {
@@ -6035,7 +6035,7 @@
       "name": "JD Gaming",
       "short": "JDG",
       "region": "China",
-      "logo": "https://static.lolesports.com/teams/1627457924722_29.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1627457924722_29.png",
       "roster": [
         {
           "name": "Xiaoxu",
@@ -6825,7 +6825,7 @@
       "name": "Cloud9",
       "short": "C9",
       "region": "North America",
-      "logo": "https://static.lolesports.com/teams/1631820065189_c9-2021-worlds.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1631820065189_c9-2021-worlds.png",
       "roster": [
         {
           "name": "Thanatos (Park Seung-gyu)",
@@ -7632,7 +7632,7 @@
       "name": "Dplus KIA",
       "short": "DK",
       "region": "Korea",
-      "logo": "https://static.lolesports.com/teams/1673259409468_DPlusKIALOGO1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1673259409468_DPlusKIALOGO1.png",
       "roster": [],
       "results": [
         {
@@ -8085,7 +8085,7 @@
       "name": "Team Liquid",
       "short": "TL",
       "region": "North America",
-      "logo": "https://static.lolesports.com/teams/1769357207762_TLAlienware_Minimal_Bug-White.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1769357207762_TLAlienware_Minimal_Bug-White.png",
       "roster": [],
       "results": [
         {
@@ -8738,7 +8738,7 @@
       "name": "KT Rolster",
       "short": "KT",
       "region": "Korea",
-      "logo": "https://static.lolesports.com/teams/kt_darkbackground.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2Fkt_darkbackground.png",
       "roster": [
         {
           "name": "PerfecT (Lee Seung-min)",
@@ -9508,7 +9508,7 @@
       "name": "Hanwha Life Esports",
       "short": "HLE",
       "region": "Korea",
-      "logo": "https://static.lolesports.com/teams/hle-2021-color-on-dark.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2Fhle-2021-color-on-dark.png",
       "roster": [
         {
           "name": "Zeus",
@@ -10070,7 +10070,7 @@
       "name": "FlyQuest",
       "short": "FLY",
       "region": "North America",
-      "logo": "https://static.lolesports.com/teams/flyquest-new-on-dark.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2Fflyquest-new-on-dark.png",
       "roster": [
         {
           "name": "Gakgos",
@@ -10689,7 +10689,7 @@
       "name": "CTBC Flying Oyster",
       "short": "CTB",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1656307849320_CFO_Logo.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1656307849320_CFO_Logo.png",
       "roster": [
         {
           "name": "Rest",
@@ -11143,7 +11143,7 @@
       "name": "Weibo Gaming",
       "short": "WBG",
       "region": "China",
-      "logo": "https://static.lolesports.com/teams/1641202879910_3.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1641202879910_3.png",
       "roster": [],
       "results": [
         {
@@ -12216,7 +12216,7 @@
       "name": "Oh My God",
       "short": "OH ",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1686821355861_OMG_2023_logo-01.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1686821355861_OMG_2023_logo-01.png",
       "roster": [
         {
           "name": "Hery",
@@ -12964,7 +12964,7 @@
       "name": "LNG Esports",
       "short": "LNG",
       "region": "China",
-      "logo": "https://static.lolesports.com/teams/1717487697003_LNGlogo.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1717487697003_LNGlogo.png",
       "roster": [
         {
           "name": "sheer",
@@ -13542,7 +13542,7 @@
       "name": "Isurus",
       "short": "ISU",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/ISG.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2FISG.png",
       "roster": [
         {
           "name": "Lady Mufa",
@@ -14209,7 +14209,7 @@
       "name": "Anyone's Legend",
       "short": "ANY",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1641199582689_.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1641199582689_.png",
       "roster": [
         {
           "name": "Flandre",
@@ -14612,7 +14612,7 @@
       "name": "Karmine Corp",
       "short": "KC",
       "region": "Europe",
-      "logo": "https://static.lolesports.com/teams/1704714951336_KC.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1704714951336_KC.png",
       "roster": [
         {
           "name": "Canna",
@@ -15300,7 +15300,7 @@
       "name": "Movistar KOI",
       "short": "MOV",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1734012609283_MKOI_FullColor_Blue.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1734012609283_MKOI_FullColor_Blue.png",
       "roster": [
         {
           "name": "Myrwn",
@@ -15651,7 +15651,7 @@
       "name": "GAM Esports",
       "short": "GAM",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1643263093448_GAMyellow.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1643263093448_GAMyellow.png",
       "roster": [
         {
           "name": "Kiaya",
@@ -16341,7 +16341,7 @@
       "name": "LGD Gaming",
       "short": "LGD",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/LGD-FullonDark-1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2FLGD-FullonDark-1.png",
       "roster": [
         {
           "name": "Burdol",
@@ -17037,7 +17037,7 @@
       "name": "DetonatioN FocusMe",
       "short": "DET",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1673415140442_dfm.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1673415140442_dfm.png",
       "roster": [
         {
           "name": "RayFarky",
@@ -17796,7 +17796,7 @@
       "name": "Maryville University",
       "short": "MAR",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1773762488904_maryvilleesportslogo.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1773762488904_maryvilleesportslogo.png",
       "roster": [
         {
           "name": "Keii",
@@ -18557,7 +18557,7 @@
       "name": "paiN Gaming",
       "short": "PAI",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1674657011011_pain_logo_white.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1674657011011_pain_logo_white.png",
       "roster": [
         {
           "name": "Robo",
@@ -19350,7 +19350,7 @@
       "name": "Anubis Gaming",
       "short": "ANU",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1738571697908_logo.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1738571697908_logo.png",
       "roster": [
         {
           "name": "Color",
@@ -20098,7 +20098,7 @@
       "name": "SK Gaming",
       "short": "SK",
       "region": "Europe",
-      "logo": "https://static.lolesports.com/teams/1643979272144_SK_Monochrome.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1643979272144_SK_Monochrome.png",
       "roster": [
         {
           "name": "Wunder",
@@ -20856,7 +20856,7 @@
       "name": "Berlin International Gaming",
       "short": "BER",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1674839453682_PRM_BIG-MonochromeLightBG.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1674839453682_PRM_BIG-MonochromeLightBG.png",
       "roster": [
         {
           "name": "Irrelevant",
@@ -21629,7 +21629,7 @@
       "name": "Team Vitality",
       "short": "VIT",
       "region": "Europe",
-      "logo": "https://static.lolesports.com/teams/1675865863968_Vitality_FullColor.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1675865863968_Vitality_FullColor.png",
       "roster": [],
       "results": [
         {
@@ -22026,7 +22026,7 @@
       "name": "LOUD",
       "short": "LOU",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/Logo-LOUD-Esports_Original.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2FLogo-LOUD-Esports_Original.png",
       "roster": [
         {
           "name": "xyno",
@@ -22427,7 +22427,7 @@
       "name": "eSuba",
       "short": "ESU",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1767800932248_suprema-logo-3.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1767800932248_suprema-logo-3.png",
       "roster": [
         {
           "name": "Bobsik",
@@ -23162,7 +23162,7 @@
       "name": "3BL Esports",
       "short": "3BL",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1767880818037_Copyof3BLLOGO.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1767880818037_Copyof3BLLOGO.png",
       "roster": [
         {
           "name": "Claww",
@@ -23800,7 +23800,7 @@
       "name": "FURIA",
       "short": "FUR",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/FURIA---black.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2FFURIA---black.png",
       "roster": [
         {
           "name": "Guigo",
@@ -24661,7 +24661,7 @@
       "name": "INTZ",
       "short": "INT",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1770801521472_LOGOINTZ2026COMESTRELAS.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1770801521472_LOGOINTZ2026COMESTRELAS.png",
       "roster": [
         {
           "name": "Eradan",
@@ -25420,7 +25420,7 @@
       "name": "NRG",
       "short": "NRG",
       "region": "North America",
-      "logo": "https://static.lolesports.com/teams/1772618316826_NRGWHT.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1772618316826_NRGWHT.png",
       "roster": [
         {
           "name": "Zamudo",
@@ -25603,7 +25603,7 @@
       "name": "RED Canids",
       "short": "RED",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1642969030123_REDlogo_REDCanids-RGB-linhabranca1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1642969030123_REDlogo_REDCanids-RGB-linhabranca1.png",
       "roster": [
         {
           "name": "zynts",
@@ -26353,7 +26353,7 @@
       "name": "Dignitas",
       "short": "DIG",
       "region": "North America",
-      "logo": "https://static.lolesports.com/teams/DIG-FullonDark.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2FDIG-FullonDark.png",
       "roster": [
         {
           "name": "Photon",
@@ -27089,7 +27089,7 @@
       "name": "BNK FEARX",
       "short": "BNK",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1734691810721_BFXfullcolorfordarkbg.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1734691810721_BFXfullcolorfordarkbg.png",
       "roster": [
         {
           "name": "Clear (Song Hyeon-min)",
@@ -27391,7 +27391,7 @@
       "name": "Cool Beans Team",
       "short": "COO",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/NSFullonDark.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2FNSFullonDark.png",
       "roster": [
         {
           "name": "Leikmaður",
@@ -27519,7 +27519,7 @@
       "name": "LGD Gaming Young Team",
       "short": "LGD",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/LGD-FullonDark-1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2FLGD-FullonDark-1.png",
       "roster": [
         {
           "name": "Guts (Yan Feng-Ying)",
@@ -27896,7 +27896,7 @@
       "name": "Estral Esports",
       "short": "EST",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1774200288247_estral_c.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1774200288247_estral_c.png",
       "roster": [
         {
           "name": "SuperCleber",
@@ -28403,7 +28403,7 @@
       "name": "Bilibili Gaming Junior",
       "short": "BIL",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1682322954525_Bilibili_Gaming_logo_20211.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1682322954525_Bilibili_Gaming_logo_20211.png",
       "roster": [
         {
           "name": "Wenbo (Yang Wen-Bo)",
@@ -28934,7 +28934,7 @@
       "name": "MAD Lions KOI",
       "short": "MAD",
       "region": "Europe",
-      "logo": "https://static.lolesports.com/teams/NSFullonDark.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2FNSFullonDark.png",
       "roster": [],
       "results": [
         {
@@ -29043,7 +29043,7 @@
       "name": "Fukuoka SoftBank HAWKS gaming",
       "short": "FUK",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1725885083108_SHG_White_Main.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1725885083108_SHG_White_Main.png",
       "roster": [
         {
           "name": "Evi",
@@ -29475,7 +29475,7 @@
       "name": "KT Rolster Challengers",
       "short": "KT ",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/kt_darkbackground.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2Fkt_darkbackground.png",
       "roster": [
         {
           "name": "Sero",
@@ -29883,7 +29883,7 @@
       "name": "EDward Gaming Youth Team",
       "short": "EDW",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1672933861879_Heretics-Full-Color.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1672933861879_Heretics-Full-Color.png",
       "roster": [
         {
           "name": "qiuyu",
@@ -30354,7 +30354,7 @@
       "name": "Karmine Corp Blue",
       "short": "KAR",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1704714951336_KC.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1704714951336_KC.png",
       "roster": [
         {
           "name": "Tao (Xu Hongtao Alessandro)",
@@ -30722,7 +30722,7 @@
       "name": "LYON (2024 American Team)",
       "short": "LYO",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1771401158736_FULL_COLOR_FOR_DARK_BG-1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1771401158736_FULL_COLOR_FOR_DARK_BG-1.png",
       "roster": [
         {
           "name": "Dhokla",
@@ -30888,7 +30888,7 @@
       "name": "Team BDS",
       "short": "BDS",
       "region": "Europe",
-      "logo": "https://static.lolesports.com/teams/1765897071435_600px-Shifters_allmode.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1765897071435_600px-Shifters_allmode.png",
       "roster": [],
       "results": [
         {
@@ -31615,7 +31615,7 @@
       "name": "Saint Louis University",
       "short": "SAI",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1736206402275_VER1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1736206402275_VER1.png",
       "roster": [
         {
           "name": "Airren",
@@ -32325,7 +32325,7 @@
       "name": "Fuego",
       "short": "FUE",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1711010140737_FUEGO-C.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1711010140737_FUEGO-C.png",
       "roster": [
         {
           "name": "Zothve",
@@ -32748,7 +32748,7 @@
       "name": "Dplus Kia Challengers",
       "short": "DPL",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1673260049703_DPlusKIALOGO11.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1673260049703_DPlusKIALOGO11.png",
       "roster": [
         {
           "name": "Jaehyuk",
@@ -33056,7 +33056,7 @@
       "name": "George Mason University",
       "short": "GEO",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1736206402275_VER1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1736206402275_VER1.png",
       "roster": [
         {
           "name": "J0nii",
@@ -33396,7 +33396,7 @@
       "name": "Nongshim RedForce",
       "short": "NON",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/NSFullonDark.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2FNSFullonDark.png",
       "roster": [
         {
           "name": "Kingen",
@@ -33723,7 +33723,7 @@
       "name": "Nightbirds",
       "short": "NIG",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1634762917340_300px-Invictus_Gaming_logo.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1634762917340_300px-Invictus_Gaming_logo.png",
       "roster": [
         {
           "name": "SLT",
@@ -34031,7 +34031,7 @@
       "name": "Dark Passage",
       "short": "DAR",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1767801004393_DarkPassage_Logo_Dark_BeyazDolgu.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1767801004393_DarkPassage_Logo_Dark_BeyazDolgu.png",
       "roster": [
         {
           "name": "Sukru",
@@ -34744,7 +34744,7 @@
       "name": "Team Heretics",
       "short": "TH",
       "region": "Europe",
-      "logo": "https://static.lolesports.com/teams/1672933861879_Heretics-Full-Color.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1672933861879_Heretics-Full-Color.png",
       "roster": [],
       "results": [
         {
@@ -35410,7 +35410,7 @@
       "name": "paiN Gaming Academy",
       "short": "PAI",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1774199812580_pain_w.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1774199812580_pain_w.png",
       "roster": [
         {
           "name": "Zoen (Enzo Ganino)",
@@ -36460,7 +36460,7 @@
       "name": "Disguised",
       "short": "DIS",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1731496922454_Disguised-Wordmark-Yellow-Main.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1731496922454_Disguised-Wordmark-Yellow-Main.png",
       "roster": [
         {
           "name": "Castle (Cho Hyeon-seong)",
@@ -36669,7 +36669,7 @@
       "name": "Nongshim Esports Academy",
       "short": "NON",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1768185850233_logo_c-Photoroom.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1768185850233_logo_c-Photoroom.png",
       "roster": [
         {
           "name": "Janus (Eom Ye-jun)",
@@ -36938,7 +36938,7 @@
       "name": "Solary",
       "short": "SOL",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/LFL-SLY-logo.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2FLFL-SLY-logo.png",
       "roster": [
         {
           "name": "Kryze",
@@ -37545,7 +37545,7 @@
       "name": "Eintracht Spandau",
       "short": "EIN",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1674832820210_PRM_EINS-FullColorDarkBG.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1674832820210_PRM_EINS-FullColorDarkBG.png",
       "roster": [
         {
           "name": "JNX",
@@ -38551,7 +38551,7 @@
       "name": "Shopify Rebellion",
       "short": "SHO",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1701424227458_Teams204_Shopify_1632869404072.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1701424227458_Teams204_Shopify_1632869404072.png",
       "roster": [
         {
           "name": "Fudge",
@@ -38738,7 +38738,7 @@
       "name": "Leviatan",
       "short": "LEV",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1643795049372_LEV-CLAROWhite.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1643795049372_LEV-CLAROWhite.png",
       "roster": [
         {
           "name": "Devost",
@@ -39101,7 +39101,7 @@
       "name": "Deep Cross Gaming",
       "short": "DEE",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1773832146741_LCP_DCG_Full_W.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1773832146741_LCP_DCG_Full_W.png",
       "roster": [
         {
           "name": "Flauren",
@@ -39505,7 +39505,7 @@
       "name": "Michigan State University",
       "short": "MIC",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1634762917340_300px-Invictus_Gaming_logo.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1634762917340_300px-Invictus_Gaming_logo.png",
       "roster": [
         {
           "name": "Superyacht",
@@ -39935,7 +39935,7 @@
       "name": "Barça eSports",
       "short": "BAR",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1639828813946_61b778236a9c9995719028.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1639828813946_61b778236a9c9995719028.png",
       "roster": [
         {
           "name": "selenex",
@@ -40383,7 +40383,7 @@
       "name": "BNK FEARX Youth",
       "short": "BNK",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1734691838858_BFXfullcolorfordarkbg.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1734691838858_BFXfullcolorfordarkbg.png",
       "roster": [
         {
           "name": "Kangin",
@@ -40579,7 +40579,7 @@
       "name": "Ground Zero Gaming",
       "short": "GRO",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1766395585595_LCP_TEAMLogo_GZ_Full_B.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1766395585595_LCP_TEAMLogo_GZ_Full_B.png",
       "roster": [
         {
           "name": "1Jiang",
@@ -40837,7 +40837,7 @@
       "name": "Arizona State University",
       "short": "ARI",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1736206402275_VER1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1736206402275_VER1.png",
       "roster": [
         {
           "name": "Pinny",
@@ -41207,7 +41207,7 @@
       "name": "Nongshim Esports",
       "short": "NS",
       "region": "Korea",
-      "logo": "https://static.lolesports.com/teams/NSFullonDark.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2FNSFullonDark.png",
       "roster": [],
       "results": [
         {
@@ -41308,7 +41308,7 @@
       "name": "Illinois State University",
       "short": "ILL",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1736206402275_VER1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1736206402275_VER1.png",
       "roster": [
         {
           "name": "PCL (Kostyantyn Dudarchuk)",
@@ -42213,7 +42213,7 @@
       "name": "No Need Orga",
       "short": "NO ",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1771324524126_rsg_full_color_onW.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1771324524126_rsg_full_color_onW.png",
       "roster": [
         {
           "name": "Tolkin",
@@ -42846,7 +42846,7 @@
       "name": "Bethany Lutheran College",
       "short": "BET",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1672933861879_Heretics-Full-Color.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1672933861879_Heretics-Full-Color.png",
       "roster": [
         {
           "name": "dog2",
@@ -43241,7 +43241,7 @@
       "name": "Northwood University",
       "short": "NOR",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1672933861879_Heretics-Full-Color.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1672933861879_Heretics-Full-Color.png",
       "roster": [
         {
           "name": "Cozy",
@@ -43458,7 +43458,7 @@
       "name": "Ohio State University",
       "short": "OHI",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1736206402275_VER1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1736206402275_VER1.png",
       "roster": [
         {
           "name": "2m2mc",
@@ -43834,7 +43834,7 @@
       "name": "Baam Esports",
       "short": "BAA",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1738571384294_.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1738571384294_.png",
       "roster": [
         {
           "name": "handm",
@@ -44219,7 +44219,7 @@
       "name": "RED Academy",
       "short": "RED",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1642969030123_REDlogo_REDCanids-RGB-linhabranca1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1642969030123_REDlogo_REDCanids-RGB-linhabranca1.png",
       "roster": [
         {
           "name": "Curse (Raí Yamada)",
@@ -44961,7 +44961,7 @@
       "name": "CTBC Flying Oyster Academy",
       "short": "CTB",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/flyquest-new-on-dark.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2Fflyquest-new-on-dark.png",
       "roster": [
         {
           "name": "Yuhe",
@@ -45310,7 +45310,7 @@
       "name": "Miami University",
       "short": "MIA",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1742290724150_Apex_FullColor.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1742290724150_Apex_FullColor.png",
       "roster": [
         {
           "name": "BelugaWaill",
@@ -45624,7 +45624,7 @@
       "name": "Misa Esports",
       "short": "MIS",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1737386153294_MisaEsports.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1737386153294_MisaEsports.png",
       "roster": [
         {
           "name": "Elwind",
@@ -46001,7 +46001,7 @@
       "name": "Fisher College",
       "short": "FIS",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1774831918150_sh.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1774831918150_sh.png",
       "roster": [
         {
           "name": "Jenkins",
@@ -46213,7 +46213,7 @@
       "name": "KIT SC White",
       "short": "KIT",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1766134108028_Skillcamp.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1766134108028_Skillcamp.png",
       "roster": [
         {
           "name": "GentlemanHero",
@@ -46803,7 +46803,7 @@
       "name": "BoostGate Esports",
       "short": "BOO",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1737386212434_BoostGate.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1737386212434_BoostGate.png",
       "roster": [
         {
           "name": "Cha0s",
@@ -47210,7 +47210,7 @@
       "name": "Hanwha Life Esports Challengers",
       "short": "HAN",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1631819564399_hle-2021-worlds.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1631819564399_hle-2021-worlds.png",
       "roster": [
         {
           "name": "Panther (Park Ji-ho)",
@@ -47547,7 +47547,7 @@
       "name": "mCon esports",
       "short": "MCO",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/MCon_esportslogo_square.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2FMCon_esportslogo_square.png",
       "roster": [
         {
           "name": "MaiYuk",
@@ -48267,7 +48267,7 @@
       "name": "CNG Royal",
       "short": "CNG",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1641199582689_.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1641199582689_.png",
       "roster": [
         {
           "name": "Ploxy",
@@ -48476,7 +48476,7 @@
       "name": "Full Sense",
       "short": "FUL",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1767769784669_Sentinels_2020_Icon.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1767769784669_Sentinels_2020_Icon.png",
       "roster": [
         {
           "name": "Excellentless",
@@ -48967,7 +48967,7 @@
       "name": "KT Rolster Academy",
       "short": "KT ",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/kt_darkbackground.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2Fkt_darkbackground.png",
       "roster": [
         {
           "name": "Zealot (Lee Jong-seok)",
@@ -49549,7 +49549,7 @@
       "name": "Forsaken (Polish Team)",
       "short": "FOR",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1702894248711_1500_FSK_MONO.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1702894248711_1500_FSK_MONO.png",
       "roster": [
         {
           "name": "iBo",
@@ -50041,7 +50041,7 @@
       "name": "Converse University",
       "short": "CON",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1736206402275_VER1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1736206402275_VER1.png",
       "roster": [
         {
           "name": "Ego (William Cronin)",
@@ -50354,7 +50354,7 @@
       "name": "Conviction",
       "short": "CON",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1675158238331_Conviction.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1675158238331_Conviction.png",
       "roster": [
         {
           "name": "Sniper",
@@ -50623,7 +50623,7 @@
       "name": "Lourdes University",
       "short": "LOU",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1736206402275_VER1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1736206402275_VER1.png",
       "roster": [
         {
           "name": "Owl (Jacob Brayboy)",
@@ -50813,7 +50813,7 @@
       "name": "Blue Otter",
       "short": "BLU",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1686625849125_BlueOtter.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1686625849125_BlueOtter.png",
       "roster": [
         {
           "name": "Ariana",
@@ -51039,7 +51039,7 @@
       "name": "GnG Amazigh",
       "short": "GNG",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1738571853483_FullcolorforDarkBG.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1738571853483_FullcolorforDarkBG.png",
       "roster": [
         {
           "name": "iwanan",
@@ -51267,7 +51267,7 @@
       "name": "Illinois Wesleyan University",
       "short": "ILL",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1634763008788_220px-Team_WE_logo.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1634763008788_220px-Team_WE_logo.png",
       "roster": [
         {
           "name": "Animosity",
@@ -51607,7 +51607,7 @@
       "name": "Galions",
       "short": "GAL",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1734090136444_WHITE_GALIONS_LOGO.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1734090136444_WHITE_GALIONS_LOGO.png",
       "roster": [
         {
           "name": "Carlsen",
@@ -51826,7 +51826,7 @@
       "name": "CCG Esports",
       "short": "CCG",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1743818097778__CCGIcon_Main.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1743818097778__CCGIcon_Main.png",
       "roster": [
         {
           "name": "Fiji",
@@ -52164,7 +52164,7 @@
       "name": "Lenovo Legion Honvéd",
       "short": "LEN",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1706578984342_ION.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1706578984342_ION.png",
       "roster": [
         {
           "name": "Bala (Áron Balogh)",
@@ -52630,7 +52630,7 @@
       "name": "Ici Japon Corp. Esport",
       "short": "ICI",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1767707446482_ap.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1767707446482_ap.png",
       "roster": [
         {
           "name": "Badlulu",
@@ -52893,7 +52893,7 @@
       "name": "Grand View University",
       "short": "GRA",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1736206402275_VER1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1736206402275_VER1.png",
       "roster": [
         {
           "name": "Strict Proctor",
@@ -53513,7 +53513,7 @@
       "name": "LUA Gaming",
       "short": "LUA",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1715245265080_658435d7e218f402908540.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1715245265080_658435d7e218f402908540.png",
       "roster": [
         {
           "name": "Dani (Daniel Gómez Martínez)",
@@ -53749,7 +53749,7 @@
       "name": "HELL PIGS",
       "short": "HEL",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1634762917340_300px-Invictus_Gaming_logo.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1634762917340_300px-Invictus_Gaming_logo.png",
       "roster": [
         {
           "name": "Sailuo",
@@ -53912,7 +53912,7 @@
       "name": "ROSSMANN Centaurs",
       "short": "ROS",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1734307301367_ROSS.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1734307301367_ROSS.png",
       "roster": [
         {
           "name": "CPM",
@@ -54157,7 +54157,7 @@
       "name": "Maze Gaming",
       "short": "MAZ",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1643036820055_maze-ColorLight.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1643036820055_maze-ColorLight.png",
       "roster": [
         {
           "name": "Diaakc",
@@ -54481,7 +54481,7 @@
       "name": "Nongshim RedForce Academy",
       "short": "NON",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1642969030123_REDlogo_REDCanids-RGB-linhabranca1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1642969030123_REDlogo_REDCanids-RGB-linhabranca1.png",
       "roster": [
         {
           "name": "Amelia",
@@ -54955,7 +54955,7 @@
       "name": "LEO (Swedish Team)",
       "short": "LEO",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1767707264821_leo.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1767707264821_leo.png",
       "roster": [
         {
           "name": "Mansterninja",
@@ -55167,7 +55167,7 @@
       "name": "E WIE EINFACH E-SPORTS",
       "short": "E W",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1674832938539_MicrosoftTeams-image14.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1674832938539_MicrosoftTeams-image14.png",
       "roster": [
         {
           "name": "Vizicsacsi",
@@ -55523,7 +55523,7 @@
       "name": "Gamespace Mediterranean College Esports",
       "short": "GAM",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1643263093448_GAMyellow.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1643263093448_GAMyellow.png",
       "roster": [
         {
           "name": "Loading",
@@ -56158,7 +56158,7 @@
       "name": "Inside Games",
       "short": "INS",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/NSFullonDark.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2FNSFullonDark.png",
       "roster": [
         {
           "name": "Fejkýý",
@@ -56848,7 +56848,7 @@
       "name": "GIANTX",
       "short": "GX",
       "region": "Europe",
-      "logo": "https://static.lolesports.com/teams/1703256688027_658305af80d3b372217018.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1703256688027_658305af80d3b372217018.png",
       "roster": [
         {
           "name": "Lot",
@@ -57146,7 +57146,7 @@
       "name": "Hanwha Life Esports Academy",
       "short": "HAN",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1631819564399_hle-2021-worlds.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1631819564399_hle-2021-worlds.png",
       "roster": [
         {
           "name": "Achael",
@@ -57678,7 +57678,7 @@
       "name": "SDM Tigres",
       "short": "SDM",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1742463079753_FULL_COLOR_FOR_DARK_BG6.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1742463079753_FULL_COLOR_FOR_DARK_BG6.png",
       "roster": [
         {
           "name": "Steellar",
@@ -58479,7 +58479,7 @@
       "name": "Dynasty",
       "short": "DYN",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1767914106312_dyn_w.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1767914106312_dyn_w.png",
       "roster": [
         {
           "name": "Luuuk",
@@ -58925,7 +58925,7 @@
       "name": "Myth Esports",
       "short": "MYT",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1704706801199_Myth_Esports_2023_Nov_allmode.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1704706801199_Myth_Esports_2023_Nov_allmode.png",
       "roster": [
         {
           "name": "Sprotte",
@@ -59550,7 +59550,7 @@
       "name": "SPIKE Syndicate",
       "short": "SPI",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1738058246517_EBL_SPK-MonochromeDarkBG.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1738058246517_EBL_SPK-MonochromeDarkBG.png",
       "roster": [
         {
           "name": "Phaxi",
@@ -59892,7 +59892,7 @@
       "name": "G2 NORD",
       "short": "G2 ",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1767714240621_G2_Nord_White.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1767714240621_G2_Nord_White.png",
       "roster": [
         {
           "name": "Shelfmade",
@@ -60068,7 +60068,7 @@
       "name": "Inferno Esports (Filipino Team)",
       "short": "INF",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1631820471748_inf-2021-worlds.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1631820471748_inf-2021-worlds.png",
       "roster": [
         {
           "name": "1jw",
@@ -60243,7 +60243,7 @@
       "name": "BeFive",
       "short": "BEF",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1706183570607_EBL_BE5-FullColorDarkBG.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1706183570607_EBL_BE5-FullColorDarkBG.png",
       "roster": [
         {
           "name": "Falleo",
@@ -60546,7 +60546,7 @@
       "name": "Ruddy Corporation",
       "short": "RUD",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1767962931112_rud.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1767962931112_rud.png",
       "roster": [
         {
           "name": "White Snow",
@@ -60703,7 +60703,7 @@
       "name": "One More Esports",
       "short": "ONE",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1738572035889_OneMoreEsportslogo3.4transaprentbackground.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1738572035889_OneMoreEsportslogo3.4transaprentbackground.png",
       "roster": [
         {
           "name": "Zankiller",
@@ -61084,7 +61084,7 @@
       "name": "SNOOZE Esports",
       "short": "SNO",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1641603984263_SN.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1641603984263_SN.png",
       "roster": [
         {
           "name": "Hatsu",
@@ -61305,7 +61305,7 @@
       "name": "Black Lion",
       "short": "BLA",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1771324451584_ck_full_color_onW.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1771324451584_ck_full_color_onW.png",
       "roster": [
         {
           "name": "TobbaTaco",
@@ -61848,7 +61848,7 @@
       "name": "Oklahoma Christian University",
       "short": "OKL",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1736206402275_VER1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1736206402275_VER1.png",
       "roster": [
         {
           "name": "Gjones",
@@ -62062,7 +62062,7 @@
       "name": "Purdue University Northwest",
       "short": "PUR",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1672933861879_Heretics-Full-Color.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1672933861879_Heretics-Full-Color.png",
       "roster": [
         {
           "name": "Prank",
@@ -62294,7 +62294,7 @@
       "name": "Saigon Dino",
       "short": "SAI",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1737108816278_SaigonDino-DINOLogo2025.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1737108816278_SaigonDino-DINOLogo2025.png",
       "roster": [
         {
           "name": "Choso",
@@ -62988,7 +62988,7 @@
       "name": "Eintracht Frankfurt",
       "short": "EIN",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1674832854605_SGE.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1674832854605_SGE.png",
       "roster": [
         {
           "name": "Mietek",
@@ -63440,7 +63440,7 @@
       "name": "San Jose State University",
       "short": "SAN",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1736206402275_VER1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1736206402275_VER1.png",
       "roster": [
         {
           "name": "Mountains",
@@ -64488,7 +64488,7 @@
       "name": "Bulldog Esports",
       "short": "BUL",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1736206647522_BDG1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1736206647522_BDG1.png",
       "roster": [
         {
           "name": "Noodle (Kim Kroon)",
@@ -64911,7 +64911,7 @@
       "name": "Cicadas Gaming",
       "short": "CIC",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1643263093448_GAMyellow.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1643263093448_GAMyellow.png",
       "roster": [
         {
           "name": "Tobi4",
@@ -65516,7 +65516,7 @@
       "name": "Bomba Team",
       "short": "BOM",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1770648772201_Bombalogoyellow.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1770648772201_Bombalogoyellow.png",
       "roster": [
         {
           "name": "frajgo",
@@ -65665,7 +65665,7 @@
       "name": "Caldya Esport",
       "short": "CAL",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1641199582689_.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1641199582689_.png",
       "roster": [
         {
           "name": "Drali",
@@ -65850,7 +65850,7 @@
       "name": "CGN Esports",
       "short": "CGN",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1742216184064_Logomark-FullcolourfordarkBG.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1742216184064_Logomark-FullcolourfordarkBG.png",
       "roster": [
         {
           "name": "Raider",
@@ -66053,7 +66053,7 @@
       "name": "FlameHard",
       "short": "FLA",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1673413831349_fl.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1673413831349_fl.png",
       "roster": [
         {
           "name": "Alexx",
@@ -66291,7 +66291,7 @@
       "name": "Lotus (North American Team)",
       "short": "LOT",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1672933861879_Heretics-Full-Color.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1672933861879_Heretics-Full-Color.png",
       "roster": [
         {
           "name": "Porsche (Shane Higginbotham)",
@@ -66500,7 +66500,7 @@
       "name": "Senshi eSports (Benelux Team)",
       "short": "SEN",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1767769784669_Sentinels_2020_Icon.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1767769784669_Sentinels_2020_Icon.png",
       "roster": [
         {
           "name": "Ilyxøu",
@@ -67312,7 +67312,7 @@
       "name": "PAGLE48",
       "short": "PAG",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1734090136444_WHITE_GALIONS_LOGO.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1734090136444_WHITE_GALIONS_LOGO.png",
       "roster": [
         {
           "name": "Cynthia",
@@ -67486,7 +67486,7 @@
       "name": "Barcząca Esports",
       "short": "BAR",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1639828813946_61b778236a9c9995719028.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1639828813946_61b778236a9c9995719028.png",
       "roster": [
         {
           "name": "Agresivoo",
@@ -67893,7 +67893,7 @@
       "name": "Epic Avalanche",
       "short": "EPI",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1641199582689_.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1641199582689_.png",
       "roster": [
         {
           "name": "Menninkäinen",
@@ -68486,7 +68486,7 @@
       "name": "Malvinas Gaming",
       "short": "MAL",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1770889502736_FULL_COLOR_FOR_DARK_BG1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1770889502736_FULL_COLOR_FOR_DARK_BG1.png",
       "roster": [
         {
           "name": "nvillada",
@@ -68878,7 +68878,7 @@
       "name": "Natus Vincere",
       "short": "NAT",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1752746833620_NAVI_FullColor.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1752746833620_NAVI_FullColor.png",
       "roster": [
         {
           "name": "Maynter",
@@ -69288,7 +69288,7 @@
       "name": "Seven Dark",
       "short": "SEV",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1770889439846_FULL_COLOR_FOR_DARK_BG-3.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1770889439846_FULL_COLOR_FOR_DARK_BG-3.png",
       "roster": [
         {
           "name": "GianKios",
@@ -69720,7 +69720,7 @@
       "name": "FENNEL",
       "short": "FEN",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1673413831349_fl.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1673413831349_fl.png",
       "roster": [
         {
           "name": "kkkkkkkkk",
@@ -69889,7 +69889,7 @@
       "name": "Kaufland Hangry Knights",
       "short": "KAU",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1734307355268_KHK.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1734307355268_KHK.png",
       "roster": [
         {
           "name": "Venour",
@@ -70254,7 +70254,7 @@
       "name": "Skillcamp",
       "short": "SKI",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1766134108028_Skillcamp.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1766134108028_Skillcamp.png",
       "roster": [
         {
           "name": "Yeti (Szymon Wójcicki)",
@@ -70536,7 +70536,7 @@
       "name": "MVK Esports Academy",
       "short": "MVK",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1767089709161_White_Logo.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1767089709161_White_Logo.png",
       "roster": [
         {
           "name": "SanSan",
@@ -70617,7 +70617,7 @@
       "name": "Dorado Gaming",
       "short": "DOR",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1750891473240_Dorado_Gaminglogo_square1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1750891473240_Dorado_Gaminglogo_square1.png",
       "roster": [
         {
           "name": "Dec0y",
@@ -70779,7 +70779,7 @@
       "name": "Otter Side",
       "short": "OTT",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/TT-FullonDark.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2FTT-FullonDark.png",
       "roster": [
         {
           "name": "bicas",
@@ -71059,7 +71059,7 @@
       "name": "Faerie Charm (Singaporean Team)",
       "short": "FAE",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1767707446482_ap.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1767707446482_ap.png",
       "roster": [
         {
           "name": "Dust (Koh Kai Jie)",
@@ -71261,7 +71261,7 @@
       "name": "Eesti Rästikud",
       "short": "EES",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1774200288247_estral_c.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1774200288247_estral_c.png",
       "roster": [
         {
           "name": "yOFT",
@@ -72174,7 +72174,7 @@
       "name": "BlueWhites",
       "short": "BLU",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1592592064571_TopEsportsTES-01-FullonDark.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1592592064571_TopEsportsTES-01-FullonDark.png",
       "roster": [
         {
           "name": "Anto",
@@ -72688,7 +72688,7 @@
       "name": "Saigon Warriors",
       "short": "SAI",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1634762917340_300px-Invictus_Gaming_logo.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1634762917340_300px-Invictus_Gaming_logo.png",
       "roster": [
         {
           "name": "Nern",
@@ -72853,7 +72853,7 @@
       "name": "Golden Lions",
       "short": "GOL",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1770889382925_FULL_COLOR_FOR_DARK_BG.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1770889382925_FULL_COLOR_FOR_DARK_BG.png",
       "roster": [
         {
           "name": "Wamu",
@@ -73036,7 +73036,7 @@
       "name": "Apex Mission Impossible",
       "short": "APE",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1742290724150_Apex_FullColor.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1742290724150_Apex_FullColor.png",
       "roster": [
         {
           "name": "arbrio",
@@ -73919,7 +73919,7 @@
       "name": "JSK Esports",
       "short": "JSK",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1643979272144_SK_Monochrome.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1643979272144_SK_Monochrome.png",
       "roster": [
         {
           "name": "Nakhla",
@@ -74051,7 +74051,7 @@
       "name": "Gen.G Scholars",
       "short": "GEN",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1773829250929_GENGLOGO_GOLD.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1773829250929_GENGLOGO_GOLD.png",
       "roster": [
         {
           "name": "Bean (Kim Jong-wan)",
@@ -74462,7 +74462,7 @@
       "name": "Rising Gaming",
       "short": "RIS",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1771324524126_rsg_full_color_onW.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1771324524126_rsg_full_color_onW.png",
       "roster": [
         {
           "name": "YellowYoshi",
@@ -74596,7 +74596,7 @@
       "name": "Citadel Gaming",
       "short": "CIT",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1750891104102_CitadelGaming.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1750891104102_CitadelGaming.png",
       "roster": [
         {
           "name": "winnie (Winston Herold)",
@@ -74723,7 +74723,7 @@
       "name": "404 Multigaming e.V.",
       "short": "404",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1634762917340_300px-Invictus_Gaming_logo.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1634762917340_300px-Invictus_Gaming_logo.png",
       "roster": [
         {
           "name": "WNTR",
@@ -75173,7 +75173,7 @@
       "name": "Lupus Esports",
       "short": "LUP",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1738058187788_EBL_LUP-FullColorDarkBG.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1738058187788_EBL_LUP-FullColorDarkBG.png",
       "roster": [
         {
           "name": "PatkicaA",
@@ -75477,7 +75477,7 @@
       "name": "9Gaming",
       "short": "9GA",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1643263093448_GAMyellow.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1643263093448_GAMyellow.png",
       "roster": [
         {
           "name": "Nanaue (Phùng Đức Tài)",
@@ -76012,7 +76012,7 @@
       "name": "LYON Academy",
       "short": "LYO",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1771401158736_FULL_COLOR_FOR_DARK_BG-1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1771401158736_FULL_COLOR_FOR_DARK_BG-1.png",
       "roster": [
         {
           "name": "Kantoshi",
@@ -76146,7 +76146,7 @@
       "name": "SN CyberCore Esports",
       "short": "SN ",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1641603984263_SN.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1641603984263_SN.png",
       "roster": [
         {
           "name": "Solis",
@@ -76286,7 +76286,7 @@
       "name": "GLORE",
       "short": "GLO",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1774530204931_GLORE-LogoPZ.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1774530204931_GLORE-LogoPZ.png",
       "roster": [
         {
           "name": "Szafa",
@@ -76559,7 +76559,7 @@
       "name": "DKB XPERION NXT",
       "short": "DKB",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1673259409468_DPlusKIALOGO1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1673259409468_DPlusKIALOGO1.png",
       "roster": [
         {
           "name": "Niqkl",
@@ -77135,7 +77135,7 @@
       "name": "Cloud eSport",
       "short": "CLO",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/Logo-LOUD-Esports_Original.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2FLogo-LOUD-Esports_Original.png",
       "roster": [
         {
           "name": "1334mat",
@@ -77231,7 +77231,7 @@
       "name": "Crystal Rose (French Team)",
       "short": "CRY",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1641199582689_.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1641199582689_.png",
       "roster": [
         {
           "name": "Achille",
@@ -77313,7 +77313,7 @@
       "name": "EKO Esports",
       "short": "EKO",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1704283880911_EKO_Esports_Emblem_Logo_Main.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1704283880911_EKO_Esports_Emblem_Logo_Main.png",
       "roster": [
         {
           "name": "The Mountain (Marco Benvenuto)",
@@ -77785,7 +77785,7 @@
       "name": "Once Upon A Team",
       "short": "ONC",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1704706849093_Once_Upon_A_Teamlogo_square.webp",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1704706849093_Once_Upon_A_Teamlogo_square.webp",
       "roster": [
         {
           "name": "Egemen",
@@ -78126,7 +78126,7 @@
       "name": "DOCISK",
       "short": "DOC",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1743505234603_LOGOTYP_DOCISK.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1743505234603_LOGOTYP_DOCISK.png",
       "roster": [
         {
           "name": "PmK",
@@ -78473,7 +78473,7 @@
       "name": "Burning Core Toyama",
       "short": "BUR",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1768185850233_logo_c-Photoroom.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1768185850233_logo_c-Photoroom.png",
       "roster": [
         {
           "name": "Isuka",
@@ -78726,7 +78726,7 @@
       "name": "DetonatioN FocusMe Academy",
       "short": "DET",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1738334806335_dfm_full_color_onB.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1738334806335_dfm_full_color_onB.png",
       "roster": [
         {
           "name": "Potential",
@@ -78996,7 +78996,7 @@
       "name": "Bushido Wildcats",
       "short": "BUS",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1767799893163_BW-KEDI-SARI-2.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1767799893163_BW-KEDI-SARI-2.png",
       "roster": [
         {
           "name": "Elramir",
@@ -79143,7 +79143,7 @@
       "name": "Ngựa Hí Esports",
       "short": "NGỰ",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1768185850233_logo_c-Photoroom.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1768185850233_logo_c-Photoroom.png",
       "roster": [
         {
           "name": "VietThanh",
@@ -79401,7 +79401,7 @@
       "name": "Exalty",
       "short": "EXA",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1641199582689_.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1641199582689_.png",
       "roster": [
         {
           "name": "Bvigjjerge",
@@ -79825,7 +79825,7 @@
       "name": "Mind Blue eSports",
       "short": "MIN",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1686625849125_BlueOtter.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1686625849125_BlueOtter.png",
       "roster": [
         {
           "name": "Tsugara",
@@ -80687,7 +80687,7 @@
       "name": "Clocks",
       "short": "CLO",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1771324451584_ck_full_color_onW.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1771324451584_ck_full_color_onW.png",
       "roster": [
         {
           "name": "Gecko",
@@ -80883,7 +80883,7 @@
       "name": "L Guide Gaming",
       "short": "L G",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1771324562336_lgg_full_color_onW.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1771324562336_lgg_full_color_onW.png",
       "roster": [
         {
           "name": "SnowRabbit",
@@ -80972,7 +80972,7 @@
       "name": "Cleary University",
       "short": "CLE",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1736206402275_VER1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1736206402275_VER1.png",
       "roster": [
         {
           "name": "Yami (Thomas McDonald)",
@@ -81129,7 +81129,7 @@
       "name": "Florida Southern College",
       "short": "FLO",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1672933861879_Heretics-Full-Color.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1672933861879_Heretics-Full-Color.png",
       "roster": [
         {
           "name": "Dreto",
@@ -81437,7 +81437,7 @@
       "name": "Dutch Community Team",
       "short": "DUT",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1773762488904_maryvilleesportslogo.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1773762488904_maryvilleesportslogo.png",
       "roster": [
         {
           "name": "MrPlenty",
@@ -81799,7 +81799,7 @@
       "name": "Paranormal Invaders",
       "short": "PAR",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1641199582689_.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1641199582689_.png",
       "roster": [
         {
           "name": "Libra (Emre Ercan Güler)",
@@ -82039,7 +82039,7 @@
       "name": "RED OUAT",
       "short": "RED",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1642969030123_REDlogo_REDCanids-RGB-linhabranca1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1642969030123_REDlogo_REDCanids-RGB-linhabranca1.png",
       "roster": [
         {
           "name": "2SPKY",
@@ -82297,7 +82297,7 @@
       "name": "International Esports Industry Center",
       "short": "INT",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1641199582689_.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1641199582689_.png",
       "roster": [
         {
           "name": "Wenli",
@@ -82395,7 +82395,7 @@
       "name": "KIA.eSuba Academy",
       "short": "KIA",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1767800932248_suprema-logo-3.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1767800932248_suprema-logo-3.png",
       "roster": [
         {
           "name": "rajed",
@@ -82715,7 +82715,7 @@
       "name": "FURIA Youth",
       "short": "FUR",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/FURIA---black.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2FFURIA---black.png",
       "roster": [
         {
           "name": "Feng (Brenno Martins)",
@@ -83010,7 +83010,7 @@
       "name": "Los Mapaches",
       "short": "LOS",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1686087430642_logo_los_white_newest.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1686087430642_logo_los_white_newest.png",
       "roster": [
         {
           "name": "Felopo",
@@ -83117,7 +83117,7 @@
       "name": "Meavedron Anonymo Master Academy",
       "short": "MEA",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1774530455413_600px-Anonymo_Esports_2021_allmode.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1774530455413_600px-Anonymo_Esports_2021_allmode.png",
       "roster": [
         {
           "name": "krytybu",
@@ -83323,7 +83323,7 @@
       "name": "LODIS (Polish Team)",
       "short": "LOD",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1641900765750_lodis.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1641900765750_lodis.png",
       "roster": [
         {
           "name": "Bless1",
@@ -83973,7 +83973,7 @@
       "name": "Brod n Friends",
       "short": "BRO",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1716454310243_Nowyprojekt.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1716454310243_Nowyprojekt.png",
       "roster": [
         {
           "name": "Aniki",
@@ -84912,7 +84912,7 @@
       "name": "NCG Valkirias",
       "short": "NCG",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1770887650353_FULL_COLOR_FOR_DARK_BG-1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1770887650353_FULL_COLOR_FOR_DARK_BG-1.png",
       "roster": [
         {
           "name": "Nemesis Jane",
@@ -85034,7 +85034,7 @@
       "name": "Original Gaming",
       "short": "ORI",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1634762917340_300px-Invictus_Gaming_logo.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1634762917340_300px-Invictus_Gaming_logo.png",
       "roster": [
         {
           "name": "Hamin",
@@ -85191,7 +85191,7 @@
       "name": "Diversion Gaming",
       "short": "DIV",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1643263093448_GAMyellow.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1643263093448_GAMyellow.png",
       "roster": [
         {
           "name": "GoDirr",
@@ -85661,7 +85661,7 @@
       "name": "Kun Shan Lightning Tiger",
       "short": "KUN",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1634762917340_300px-Invictus_Gaming_logo.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1634762917340_300px-Invictus_Gaming_logo.png",
       "roster": [
         {
           "name": "Pototo",
@@ -85758,7 +85758,7 @@
       "name": "RMD Gaming",
       "short": "RMD",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1774199461844_rdm_c.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1774199461844_rdm_c.png",
       "roster": [
         {
           "name": "cRa",
@@ -86494,7 +86494,7 @@
       "name": "Kiwoom DRX",
       "short": "DRX",
       "region": "Korea",
-      "logo": "https://static.lolesports.com/teams/1774247803537_horizontal_EN_Wh.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1774247803537_horizontal_EN_Wh.png",
       "roster": [
         {
           "name": "Rich (Lee Jae-won)",
@@ -86633,7 +86633,7 @@
       "name": "OKSavingsBank BRION",
       "short": "BRO",
       "region": "Korea",
-      "logo": "https://static.lolesports.com/teams/1716454310243_Nowyprojekt.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1716454310243_Nowyprojekt.png",
       "roster": [],
       "results": [],
       "trophies": [],
@@ -86644,7 +86644,7 @@
       "name": "24 7 Tower Dive",
       "short": "24 ",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1634763008788_220px-Team_WE_logo.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1634763008788_220px-Team_WE_logo.png",
       "roster": [
         {
           "name": "Paardenpikkie",
@@ -86995,7 +86995,7 @@
       "name": "7REX",
       "short": "7RE",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1770800891074_logo-7rex-vetor.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1770800891074_logo-7rex-vetor.png",
       "roster": [
         {
           "name": "Hakari",
@@ -87167,7 +87167,7 @@
       "name": "9z Globant",
       "short": "9Z ",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1771234194177_FULL_COLOR_FOR_DARK_BG-2.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1771234194177_FULL_COLOR_FOR_DARK_BG-2.png",
       "roster": [
         {
           "name": "Nate",
@@ -87694,7 +87694,7 @@
       "name": "AceGaming",
       "short": "ACE",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1643263093448_GAMyellow.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1643263093448_GAMyellow.png",
       "roster": [
         {
           "name": "Rain (Fabian Prenzel)",
@@ -87761,7 +87761,7 @@
       "name": "AceGaming Wildcard",
       "short": "ACE",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1643263093448_GAMyellow.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1643263093448_GAMyellow.png",
       "roster": [
         {
           "name": "zagon",
@@ -87832,7 +87832,7 @@
       "name": "Aeterna Esports",
       "short": "AET",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1774831963251_ChatGPTImage30mar202602_49_52.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1774831963251_ChatGPTImage30mar202602_49_52.png",
       "roster": [
         {
           "name": "TheSerius",
@@ -87951,7 +87951,7 @@
       "name": "Aethra Esports Strijders",
       "short": "AET",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1672933861879_Heretics-Full-Color.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1672933861879_Heretics-Full-Color.png",
       "roster": [
         {
           "name": "ADHDaddy",
@@ -88054,7 +88054,7 @@
       "name": "All for One Gaming",
       "short": "ALL",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1641199582689_.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1641199582689_.png",
       "roster": [
         {
           "name": "Flamer",
@@ -88506,7 +88506,7 @@
       "name": "ALMO Players",
       "short": "ALM",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1766149888302_Ogi7qeR.webp",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1766149888302_Ogi7qeR.webp",
       "roster": [
         {
           "name": "HandiDog",
@@ -88643,7 +88643,7 @@
       "name": "Andromeda Gaming",
       "short": "AND",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1643263093448_GAMyellow.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1643263093448_GAMyellow.png",
       "roster": [
         {
           "name": "Metys",
@@ -88865,7 +88865,7 @@
       "name": "Anonymo Esports",
       "short": "ANO",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1774530455413_600px-Anonymo_Esports_2021_allmode.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1774530455413_600px-Anonymo_Esports_2021_allmode.png",
       "roster": [
         {
           "name": "HeSSZero",
@@ -88959,7 +88959,7 @@
       "name": "Anyone's Legend.Young",
       "short": "ANY",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1773829250929_GENGLOGO_GOLD.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1773829250929_GENGLOGO_GOLD.png",
       "roster": [
         {
           "name": "YiNova",
@@ -89505,7 +89505,7 @@
       "name": "Arctic Pandas",
       "short": "ARC",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1767707446482_ap.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1767707446482_ap.png",
       "roster": [
         {
           "name": "Nille",
@@ -89903,7 +89903,7 @@
       "name": "Atruvia Münster Esports",
       "short": "ATR",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/NSFullonDark.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2FNSFullonDark.png",
       "roster": [
         {
           "name": "Koga",
@@ -90350,7 +90350,7 @@
       "name": "Babos Gaming",
       "short": "BAB",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1643263093448_GAMyellow.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1643263093448_GAMyellow.png",
       "roster": [
         {
           "name": "Eyliph",
@@ -90600,7 +90600,7 @@
       "name": "Babos Gaming Academy",
       "short": "BAB",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1643263093448_GAMyellow.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1643263093448_GAMyellow.png",
       "roster": [
         {
           "name": "Cluey",
@@ -90708,7 +90708,7 @@
       "name": "Ball State University",
       "short": "BAL",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1641199582689_.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1641199582689_.png",
       "roster": [
         {
           "name": "Silk (Julian Rodriguez)",
@@ -91379,7 +91379,7 @@
       "name": "Bocoya Esports Club",
       "short": "BOC",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1774563483977_alma_c.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1774563483977_alma_c.png",
       "roster": [
         {
           "name": "Pinut (Edwin Lizardo)",
@@ -91638,7 +91638,7 @@
       "name": "Briar Cliff University",
       "short": "BRI",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1736206402275_VER1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1736206402275_VER1.png",
       "roster": [
         {
           "name": "oxy",
@@ -91989,7 +91989,7 @@
       "name": "Campbellsville University",
       "short": "CAM",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1736206402275_VER1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1736206402275_VER1.png",
       "roster": [
         {
           "name": "Six Kings",
@@ -92130,7 +92130,7 @@
       "name": "Carleton University",
       "short": "CAR",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1736206402275_VER1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1736206402275_VER1.png",
       "roster": [
         {
           "name": "Undefined (Nik Nemec)",
@@ -92247,7 +92247,7 @@
       "name": "Cleveland State University",
       "short": "CLE",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1643795049372_LEV-CLAROWhite.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1643795049372_LEV-CLAROWhite.png",
       "roster": [
         {
           "name": "Jaeson",
@@ -92421,7 +92421,7 @@
       "name": "Colossal Gaming",
       "short": "COL",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1742216184064_Logomark-FullcolourfordarkBG.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1742216184064_Logomark-FullcolourfordarkBG.png",
       "roster": [
         {
           "name": "lobellan",
@@ -92658,7 +92658,7 @@
       "name": "Croatian Flair",
       "short": "CRO",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1673413831349_fl.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1673413831349_fl.png",
       "roster": [
         {
           "name": "Danilo",
@@ -92750,7 +92750,7 @@
       "name": "Cuban Raft Raiders",
       "short": "CUB",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1760942281523_tgFWzVsV_400x400.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1760942281523_tgFWzVsV_400x400.png",
       "roster": [
         {
           "name": "Kingsley",
@@ -92815,7 +92815,7 @@
       "name": "Cumberland University",
       "short": "CUM",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1736206402275_VER1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1736206402275_VER1.png",
       "roster": [
         {
           "name": "Retrozing",
@@ -92862,7 +92862,7 @@
       "name": "Deer Gaming",
       "short": "DEE",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1767782982863_deer_black222.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1767782982863_deer_black222.png",
       "roster": [
         {
           "name": "Virtuso",
@@ -92953,7 +92953,7 @@
       "name": "devils.one inStreamly",
       "short": "DEV",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/NSFullonDark.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2FNSFullonDark.png",
       "roster": [
         {
           "name": "Goldmen",
@@ -93070,7 +93070,7 @@
       "name": "Divernex",
       "short": "DIV",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1736206402275_VER1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1736206402275_VER1.png",
       "roster": [
         {
           "name": "Lays",
@@ -93302,7 +93302,7 @@
       "name": "DMG Esports Denmark",
       "short": "DMG",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1736207774024_DMG1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1736207774024_DMG1.png",
       "roster": [
         {
           "name": "Celshaydore",
@@ -93549,7 +93549,7 @@
       "name": "DN SOOPers",
       "short": "DN ",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1767340467921_DN_SOOPerslogo_profile.webp",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1767340467921_DN_SOOPerslogo_profile.webp",
       "roster": [
         {
           "name": "DuDu (Lee Dong-ju)",
@@ -93721,7 +93721,7 @@
       "name": "DN SOOPers Academy",
       "short": "DN ",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1767340467921_DN_SOOPerslogo_profile.webp",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1767340467921_DN_SOOPerslogo_profile.webp",
       "roster": [
         {
           "name": "Junu",
@@ -93810,7 +93810,7 @@
       "name": "DN SOOPers Challengers",
       "short": "DN ",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1767340467921_DN_SOOPerslogo_profile.webp",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1767340467921_DN_SOOPerslogo_profile.webp",
       "roster": [
         {
           "name": "Lancer",
@@ -93910,7 +93910,7 @@
       "name": "Docta Liberty",
       "short": "DOC",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1743505234603_LOGOTYP_DOCISK.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1743505234603_LOGOTYP_DOCISK.png",
       "roster": [
         {
           "name": "raspymuffin",
@@ -93994,7 +93994,7 @@
       "name": "Dplus Kia Academy",
       "short": "DPL",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1673260049703_DPlusKIALOGO11.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1673260049703_DPlusKIALOGO11.png",
       "roster": [
         {
           "name": "Solid (Nam Hyeon-seo)",
@@ -94098,7 +94098,7 @@
       "name": "Dragons Esports",
       "short": "DRA",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1750353775144_drg_c.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1750353775144_drg_c.png",
       "roster": [
         {
           "name": "Juzu",
@@ -94278,7 +94278,7 @@
       "name": "Drury University",
       "short": "DRU",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1736206402275_VER1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1736206402275_VER1.png",
       "roster": [
         {
           "name": "Qukslice",
@@ -94563,7 +94563,7 @@
       "name": "Ei Nerd Esports",
       "short": "EI ",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1774199508230_nerd_w.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1774199508230_nerd_w.png",
       "roster": [
         {
           "name": "Makes",
@@ -94666,7 +94666,7 @@
       "name": "Eintracht Spandau Zwei",
       "short": "EIN",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1634763008788_220px-Team_WE_logo.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1634763008788_220px-Team_WE_logo.png",
       "roster": [
         {
           "name": "Bladeshow",
@@ -95190,7 +95190,7 @@
       "name": "Ethereal Enigmas",
       "short": "ETH",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1672933861879_Heretics-Full-Color.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1672933861879_Heretics-Full-Color.png",
       "roster": [
         {
           "name": "didie",
@@ -95434,7 +95434,7 @@
       "name": "Falke Esports",
       "short": "FAL",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1774563552660_falke_w.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1774563552660_falke_w.png",
       "roster": [
         {
           "name": "Ethe",
@@ -95785,7 +95785,7 @@
       "name": "Fast8",
       "short": "FAS",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1771324480291_f8_full_color_onW.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1771324480291_f8_full_color_onW.png",
       "roster": [
         {
           "name": "Hannah (Daichi Kurosaki)",
@@ -95889,7 +95889,7 @@
       "name": "Fatui Harbringers",
       "short": "FAT",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1768185850233_logo_c-Photoroom.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1768185850233_logo_c-Photoroom.png",
       "roster": [
         {
           "name": "Hyrene",
@@ -96084,7 +96084,7 @@
       "name": "Fluxo W7M",
       "short": "FLU",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1766161431111_LogoColorida.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1766161431111_LogoColorida.png",
       "roster": [
         {
           "name": "curty",
@@ -96291,7 +96291,7 @@
       "name": "FN Esports",
       "short": "FN ",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1750353923793_fn_c.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1750353923793_fn_c.png",
       "roster": [
         {
           "name": "Krest",
@@ -96490,7 +96490,7 @@
       "name": "French Flair",
       "short": "FRE",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1766135308638_Logo_FF_Clair.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1766135308638_Logo_FF_Clair.png",
       "roster": [
         {
           "name": "Adam (Adam Maanane)",
@@ -96596,7 +96596,7 @@
       "name": "Frites Esports Club",
       "short": "FRI",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1767711449006_Frites_Esports_Club_Black-removebg-preview.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1767711449006_Frites_Esports_Club_Black-removebg-preview.png",
       "roster": [
         {
           "name": "NuQ",
@@ -96733,7 +96733,7 @@
       "name": "Fuse Esports",
       "short": "FUS",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1674832383233_PRM_USE-FullColorDarkBG.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1674832383233_PRM_USE-FullColorDarkBG.png",
       "roster": [
         {
           "name": "Bloopy",
@@ -96845,7 +96845,7 @@
       "name": "FUSION (Latin American Team)",
       "short": "FUS",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1706578984342_ION.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1706578984342_ION.png",
       "roster": [
         {
           "name": "Raydell",
@@ -96961,7 +96961,7 @@
       "name": "G3V E-sports",
       "short": "G3V",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1771401260130_FULL_COLOR_FOR_DARK_BG.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1771401260130_FULL_COLOR_FOR_DARK_BG.png",
       "roster": [
         {
           "name": "Brayaron",
@@ -97088,7 +97088,7 @@
       "name": "Galions Sharks",
       "short": "GAL",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/NSFullonDark.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2FNSFullonDark.png",
       "roster": [
         {
           "name": "SwiT",
@@ -97185,7 +97185,7 @@
       "name": "GAM3RS X",
       "short": "GAM",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1643263093448_GAMyellow.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1643263093448_GAMyellow.png",
       "roster": [
         {
           "name": "Avahir",
@@ -97210,7 +97210,7 @@
       "name": "Garden Gaming",
       "short": "GAR",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1643263093448_GAMyellow.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1643263093448_GAMyellow.png",
       "roster": [
         {
           "name": "Krasito",
@@ -97524,7 +97524,7 @@
       "name": "Gen.G Global Academy",
       "short": "GEN",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1773829250929_GENGLOGO_GOLD.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1773829250929_GENGLOGO_GOLD.png",
       "roster": [
         {
           "name": "Ripple",
@@ -97752,7 +97752,7 @@
       "name": "GIANTX iTero",
       "short": "GIA",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1703256688027_658305af80d3b372217018.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1703256688027_658305af80d3b372217018.png",
       "roster": [
         {
           "name": "ManoloGap",
@@ -97847,7 +97847,7 @@
       "name": "Glitch Esports",
       "short": "GLI",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1734090136444_WHITE_GALIONS_LOGO.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1734090136444_WHITE_GALIONS_LOGO.png",
       "roster": [
         {
           "name": "Uzumaki",
@@ -97924,7 +97924,7 @@
       "name": "GMBLERS Esports",
       "short": "GMB",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1737015399075_logo_interno.PNG",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1737015399075_logo_interno.PNG",
       "roster": [
         {
           "name": "SkaR",
@@ -98220,7 +98220,7 @@
       "name": "GOAL",
       "short": "GOA",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1741780171372_GOAL.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1741780171372_GOAL.png",
       "roster": [
         {
           "name": "kPr",
@@ -98383,7 +98383,7 @@
       "name": "Godalions Blossom",
       "short": "GOD",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1686087430642_logo_los_white_newest.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1686087430642_logo_los_white_newest.png",
       "roster": [
         {
           "name": "GertrudeThePony",
@@ -98933,7 +98933,7 @@
       "name": "HANJIN BRION",
       "short": "HAN",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1716454325887_Nowyprojekt.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1716454325887_Nowyprojekt.png",
       "roster": [
         {
           "name": "Casting",
@@ -99064,7 +99064,7 @@
       "name": "HANJIN BRION Academy",
       "short": "HAN",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1716454325887_Nowyprojekt.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1716454325887_Nowyprojekt.png",
       "roster": [
         {
           "name": "nonnein",
@@ -99207,7 +99207,7 @@
       "name": "HANJIN BRION Challengers",
       "short": "HAN",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1716454325887_Nowyprojekt.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1716454325887_Nowyprojekt.png",
       "roster": [
         {
           "name": "DDahyuk",
@@ -99303,7 +99303,7 @@
       "name": "Hannover Esports e.V.",
       "short": "HAN",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1736206402275_VER1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1736206402275_VER1.png",
       "roster": [
         {
           "name": "R4GN4X",
@@ -99508,7 +99508,7 @@
       "name": "Hitpoint",
       "short": "HIT",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/TeamPhantasma.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2FTeamPhantasma.png",
       "roster": [],
       "results": [],
       "trophies": [],
@@ -99519,7 +99519,7 @@
       "name": "HMBLE",
       "short": "HMB",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1767616780850_HMBLE_Submark_White.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1767616780850_HMBLE_Submark_White.png",
       "roster": [
         {
           "name": "APP",
@@ -99680,7 +99680,7 @@
       "name": "Icon Esports (Mexican Team)",
       "short": "ICO",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1770887525476_FULL_COLOR_FOR_BLACK_BG.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1770887525476_FULL_COLOR_FOR_BLACK_BG.png",
       "roster": [
         {
           "name": "Luchiano",
@@ -100009,7 +100009,7 @@
       "name": "Indiana University Bloomington",
       "short": "IND",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1736206402275_VER1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1736206402275_VER1.png",
       "roster": [
         {
           "name": "Lokidosi",
@@ -100138,7 +100138,7 @@
       "name": "Inferno Drive Tokyo",
       "short": "INF",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1631820471748_inf-2021-worlds.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1631820471748_inf-2021-worlds.png",
       "roster": [
         {
           "name": "Pinnnk",
@@ -100367,7 +100367,7 @@
       "name": "Joblife",
       "short": "JOB",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1734359529263_JoblifeRed.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1734359529263_JoblifeRed.png",
       "roster": [
         {
           "name": "Vertigo",
@@ -100697,7 +100697,7 @@
       "name": "JSK Academy",
       "short": "JSK",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1643979272144_SK_Monochrome.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1643979272144_SK_Monochrome.png",
       "roster": [
         {
           "name": "Chakroun",
@@ -100803,7 +100803,7 @@
       "name": "Juniata College",
       "short": "JUN",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1774831963251_ChatGPTImage30mar202602_49_52.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1774831963251_ChatGPTImage30mar202602_49_52.png",
       "roster": [
         {
           "name": "Wizza",
@@ -101049,7 +101049,7 @@
       "name": "Juventus Gaming White",
       "short": "JUV",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1643263093448_GAMyellow.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1643263093448_GAMyellow.png",
       "roster": [
         {
           "name": "Confia",
@@ -101278,7 +101278,7 @@
       "name": "Karmine Corp Blue Stars",
       "short": "KAR",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1704714951336_KC.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1704714951336_KC.png",
       "roster": [
         {
           "name": "Koala (Alexis Gonzalez)",
@@ -101430,7 +101430,7 @@
       "name": "Keiser University",
       "short": "KEI",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1736206402275_VER1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1736206402275_VER1.png",
       "roster": [
         {
           "name": "GFP",
@@ -101658,7 +101658,7 @@
       "name": "Kiwoom DRX Challengers",
       "short": "KIW",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1774247803537_horizontal_EN_Wh.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1774247803537_horizontal_EN_Wh.png",
       "roster": [
         {
           "name": "Frog (Lee Min-hoi)",
@@ -101752,7 +101752,7 @@
       "name": "La BOMBAS",
       "short": "LA ",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1767707328732_bomb.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1767707328732_bomb.png",
       "roster": [
         {
           "name": "Cyclops",
@@ -101942,7 +101942,7 @@
       "name": "League of Legends Championship Pacific",
       "short": "LEA",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/NSFullonDark.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2FNSFullonDark.png",
       "roster": [],
       "results": [],
       "trophies": [],
@@ -101953,7 +101953,7 @@
       "name": "Liga Ace",
       "short": "LIG",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1634762917340_300px-Invictus_Gaming_logo.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1634762917340_300px-Invictus_Gaming_logo.png",
       "roster": [
         {
           "name": "Juliostito",
@@ -101976,7 +101976,7 @@
       "name": "Lightning Esports",
       "short": "LIG",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1634762917340_300px-Invictus_Gaming_logo.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1634762917340_300px-Invictus_Gaming_logo.png",
       "roster": [
         {
           "name": "ByFalco",
@@ -102138,7 +102138,7 @@
       "name": "Lille Esport",
       "short": "LIL",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1766134201581_LilleEsport.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1766134201581_LilleEsport.png",
       "roster": [
         {
           "name": "KKT",
@@ -102372,7 +102372,7 @@
       "name": "Locked In (Dutch Team)",
       "short": "LOC",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1771324451584_ck_full_color_onW.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1771324451584_ck_full_color_onW.png",
       "roster": [
         {
           "name": "Kayleqlated",
@@ -102485,7 +102485,7 @@
       "name": "LoL EMEA Championship",
       "short": "LOL",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/NSFullonDark.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2FNSFullonDark.png",
       "roster": [
         {
           "name": "Purple (Paul Meyer-Dunker)",
@@ -102837,7 +102837,7 @@
       "name": "mCon esports Academy",
       "short": "MCO",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/MCon_esportslogo_square.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2FMCon_esportslogo_square.png",
       "roster": [
         {
           "name": "Huub",
@@ -102998,7 +102998,7 @@
       "name": "Mental Rush",
       "short": "MEN",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1641199582689_.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1641199582689_.png",
       "roster": [
         {
           "name": "Zeniv",
@@ -103109,7 +103109,7 @@
       "name": "Movistar KOI Fénix",
       "short": "MOV",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1704458610869_6596f892741d1355702004.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1704458610869_6596f892741d1355702004.png",
       "roster": [
         {
           "name": "NightSlayer",
@@ -103274,7 +103274,7 @@
       "name": "Movistar KOI Karps",
       "short": "MOV",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1734012609283_MKOI_FullColor_Blue.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1734012609283_MKOI_FullColor_Blue.png",
       "roster": [
         {
           "name": "Nae",
@@ -103338,7 +103338,7 @@
       "name": "MT1 Esports",
       "short": "MT1",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1726801573959_539px-T1_2019_full_allmode.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1726801573959_539px-T1_2019_full_allmode.png",
       "roster": [
         {
           "name": "Vin (Elvin Berisha)",
@@ -103484,7 +103484,7 @@
       "name": "MT1 Vision",
       "short": "MT1",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1726801573959_539px-T1_2019_full_allmode.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1726801573959_539px-T1_2019_full_allmode.png",
       "roster": [
         {
           "name": "TjaTjonny",
@@ -103557,7 +103557,7 @@
       "name": "MVK Esports",
       "short": "MVK",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1767089709161_White_Logo.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1767089709161_White_Logo.png",
       "roster": [
         {
           "name": "Kratos (Ngô Đức Khánh)",
@@ -103696,7 +103696,7 @@
       "name": "NCG Esports",
       "short": "NCG",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1770887650353_FULL_COLOR_FOR_DARK_BG-1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1770887650353_FULL_COLOR_FOR_DARK_BG-1.png",
       "roster": [
         {
           "name": "Lie",
@@ -103853,7 +103853,7 @@
       "name": "New Meta",
       "short": "NEW",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1771324815499_nm_full_color_onW.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1771324815499_nm_full_color_onW.png",
       "roster": [
         {
           "name": "advance (Lee Jung-young)",
@@ -103966,7 +103966,7 @@
       "name": "NextGeneration Esports",
       "short": "NEX",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1768185850233_logo_c-Photoroom.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1768185850233_logo_c-Photoroom.png",
       "roster": [
         {
           "name": "Tricky (Butti Almansoori)",
@@ -104239,7 +104239,7 @@
       "name": "Nocturne Gale",
       "short": "NOC",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1641199582689_.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1641199582689_.png",
       "roster": [
         {
           "name": "iTrox",
@@ -104493,7 +104493,7 @@
       "name": "Northeastern University",
       "short": "NOR",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1672933861879_Heretics-Full-Color.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1672933861879_Heretics-Full-Color.png",
       "roster": [
         {
           "name": "Jisung",
@@ -104730,7 +104730,7 @@
       "name": "NOVEX",
       "short": "NOV",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1771324794243_nvx_full_color_onB.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1771324794243_nvx_full_color_onB.png",
       "roster": [
         {
           "name": "PonG",
@@ -104819,7 +104819,7 @@
       "name": "Oakland University",
       "short": "OAK",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1736206402275_VER1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1736206402275_VER1.png",
       "roster": [
         {
           "name": "Wzec",
@@ -105209,7 +105209,7 @@
       "name": "Ohio Northern University",
       "short": "OHI",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1672933861879_Heretics-Full-Color.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1672933861879_Heretics-Full-Color.png",
       "roster": [
         {
           "name": "Aggression (Michael Barnes)",
@@ -105383,7 +105383,7 @@
       "name": "One Trick Production",
       "short": "ONE",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1771324451584_ck_full_color_onW.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1771324451584_ck_full_color_onW.png",
       "roster": [
         {
           "name": "Chreak",
@@ -105418,7 +105418,7 @@
       "name": "Oxygen Gaming",
       "short": "OXY",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1773829250929_GENGLOGO_GOLD.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1773829250929_GENGLOGO_GOLD.png",
       "roster": [
         {
           "name": "Poweh",
@@ -105708,7 +105708,7 @@
       "name": "Packmiko E-Sports DACH",
       "short": "PAC",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1771324451584_ck_full_color_onW.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1771324451584_ck_full_color_onW.png",
       "roster": [
         {
           "name": "Frenna",
@@ -105780,7 +105780,7 @@
       "name": "Park University",
       "short": "PAR",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1736206402275_VER1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1736206402275_VER1.png",
       "roster": [
         {
           "name": "Proxyinginbase",
@@ -105880,7 +105880,7 @@
       "name": "Partizan Sangal",
       "short": "PAR",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1744190485577_EBL_PXS-MonochromeDarkBG.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1744190485577_EBL_PXS-MonochromeDarkBG.png",
       "roster": [
         {
           "name": "Chan (Jang Chan-ho)",
@@ -106150,7 +106150,7 @@
       "name": "PCIFIC Esports",
       "short": "PCI",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1767800848871_PcificLogo2.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1767800848871_PcificLogo2.png",
       "roster": [
         {
           "name": "Ersin",
@@ -106235,7 +106235,7 @@
       "name": "PCS Athena",
       "short": "PCS",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1672933861879_Heretics-Full-Color.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1672933861879_Heretics-Full-Color.png",
       "roster": [
         {
           "name": "Noemi",
@@ -106306,7 +106306,7 @@
       "name": "Polar Squad Esports",
       "short": "POL",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1772041837794_PLS_C.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1772041837794_PLS_C.png",
       "roster": [
         {
           "name": "Shavo",
@@ -106725,7 +106725,7 @@
       "name": "Polski Hub Esportowy",
       "short": "POL",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1643979272144_SK_Monochrome.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1643979272144_SK_Monochrome.png",
       "roster": [],
       "results": [],
       "trophies": [],
@@ -106736,7 +106736,7 @@
       "name": "Pratt Community College",
       "short": "PRA",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/TT-FullonDark.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2FTT-FullonDark.png",
       "roster": [
         {
           "name": "Sonin",
@@ -107170,7 +107170,7 @@
       "name": "REDPack Esports",
       "short": "RED",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1642969030123_REDlogo_REDCanids-RGB-linhabranca1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1642969030123_REDlogo_REDCanids-RGB-linhabranca1.png",
       "roster": [
         {
           "name": "Davyyy",
@@ -107307,7 +107307,7 @@
       "name": "regnum4games",
       "short": "REG",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1643263093448_GAMyellow.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1643263093448_GAMyellow.png",
       "roster": [
         {
           "name": "Spy (Pavlos Soulemezis)",
@@ -107843,7 +107843,7 @@
       "name": "Reveal Multigaming",
       "short": "REV",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1634762917340_300px-Invictus_Gaming_logo.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1634762917340_300px-Invictus_Gaming_logo.png",
       "roster": [
         {
           "name": "Sojo",
@@ -107991,7 +107991,7 @@
       "name": "Rich Gang Denmark",
       "short": "RIC",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1771324815499_nm_full_color_onW.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1771324815499_nm_full_color_onW.png",
       "roster": [
         {
           "name": "Nijhuis",
@@ -108081,7 +108081,7 @@
       "name": "Riot Games Inc.",
       "short": "RIO",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1643263093448_GAMyellow.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1643263093448_GAMyellow.png",
       "roster": [
         {
           "name": "Khải Nguyễn",
@@ -108258,7 +108258,7 @@
       "name": "RMD Gaming Trainee",
       "short": "RMD",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1774199461844_rdm_c.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1774199461844_rdm_c.png",
       "roster": [
         {
           "name": "demonn",
@@ -108430,7 +108430,7 @@
       "name": "Savannah College of Art and Design",
       "short": "SAV",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1634762917340_300px-Invictus_Gaming_logo.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1634762917340_300px-Invictus_Gaming_logo.png",
       "roster": [
         {
           "name": "Aizo",
@@ -108639,7 +108639,7 @@
       "name": "Sentinels",
       "short": "SEN",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1767769784669_Sentinels_2020_Icon.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1767769784669_Sentinels_2020_Icon.png",
       "roster": [
         {
           "name": "Impact",
@@ -108767,7 +108767,7 @@
       "name": "Shifters",
       "short": "SHI",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1765897071435_600px-Shifters_allmode.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1765897071435_600px-Shifters_allmode.png",
       "roster": [
         {
           "name": "Rooster",
@@ -109224,7 +109224,7 @@
       "name": "SNAKE EATERS",
       "short": "SNA",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1641603984263_SN.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1641603984263_SN.png",
       "roster": [
         {
           "name": "Cesth",
@@ -109459,7 +109459,7 @@
       "name": "Spartans EU",
       "short": "SPA",
       "region": "",
-      "logo": "https://static.lolesports.com/teams/1773837632921_LogoWhitetextv1.png",
+      "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1773837632921_LogoWhitetextv1.png",
       "roster": [
         {
           "name": "Septico1",

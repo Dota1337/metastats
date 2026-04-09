@@ -98,6 +98,9 @@ export default function MatchDetail({ match, ddVersion, isExpanded, onToggle, fo
           <div className="text-[#8a9bb0] text-xs">Gold</div>
         </div>
         <div className="flex items-center gap-1 sm:gap-2 ml-auto flex-shrink-0">
+          {match.pentaKills > 0 && <span className="bg-[#f0c040]/20 text-[#f0c040] text-[10px] font-bold px-1.5 py-0.5 rounded">PENTA</span>}
+          {!match.pentaKills && match.quadraKills > 0 && <span className="bg-[#c89b3c]/20 text-[#c89b3c] text-[10px] font-bold px-1.5 py-0.5 rounded">QUADRA</span>}
+          {!match.pentaKills && !match.quadraKills && match.tripleKills > 0 && <span className="bg-[#8a9bb0]/20 text-[#8a9bb0] text-[10px] font-bold px-1.5 py-0.5 rounded">TRIPLE</span>}
           <div className={'text-xs sm:text-sm font-medium ' + (match.win ? 'text-green-400' : 'text-red-400')}>
             {match.win ? 'Sieg' : 'Niederlage'}
           </div>

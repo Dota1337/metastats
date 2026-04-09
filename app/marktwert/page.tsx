@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import Nav from '../components/Nav';
 import Footer from '../components/Footer';
 import PageHero from '../components/PageHero';
+import MarketInsights from '../components/MarketInsights';
 import { useI18n } from '../lib/i18n';
 
 const TIER_COLORS: Record<string, string> = {
@@ -106,6 +107,9 @@ export default function MarktwertPage() {
       <PageHero title={t('mv.title')} subtitle={t('mv.subtitle')} leftChampion="Jinx" rightChampion="Caitlyn" />
 
       <div className="max-w-6xl mx-auto px-6 pb-8">
+
+        {/* Market Intelligence */}
+        <MarketInsights />
 
         {/* Filters */}
         <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-4 flex flex-wrap items-start gap-4">
@@ -355,10 +359,10 @@ export default function MarktwertPage() {
               <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-3">{t('mv.scale')}</div>
               <div className="flex flex-col gap-2">
                 {[
-                  { tier: 'Challenger', range: '$25.000 - $750.000', desc: '#1 bekommt den Höchstwert, Top 10 ab $200k', color: '#f0c040' },
-                  { tier: 'Grandmaster', range: '$8.000 - $25.000', desc: 'Skaliert linear mit LP (bis 400 LP)', color: '#e44040' },
-                  { tier: 'Master', range: '$2.000 - $8.000', desc: 'Skaliert linear mit LP (bis 200 LP)', color: '#9d48e0' },
-                  { tier: 'Diamond', range: '$10 - $2.000', desc: 'Diamond IV ($10) bis Diamond I ($2.000)', color: '#576cce' },
+                  { tier: 'Challenger', range: '$25.000 - $750.000', desc: t('mv.scaleChallenger'), color: '#f0c040' },
+                  { tier: 'Grandmaster', range: '$8.000 - $25.000', desc: t('mv.scaleGrandmaster'), color: '#e44040' },
+                  { tier: 'Master', range: '$2.000 - $8.000', desc: t('mv.scaleMaster'), color: '#9d48e0' },
+                  { tier: 'Diamond', range: '$10 - $2.000', desc: t('mv.scaleDiamond'), color: '#576cce' },
                 ].map(s => (
                   <div key={s.tier} className="flex flex-wrap sm:flex-nowrap items-start sm:items-center gap-2 sm:gap-3 py-1">
                     <div className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5 sm:mt-0" style={{ backgroundColor: s.color }} />

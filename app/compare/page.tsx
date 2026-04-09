@@ -197,7 +197,7 @@ function MultiSearchTab({ region, setRegion }: { region: string; setRegion: (r: 
         <textarea
           value={input}
           onChange={e => setInput(e.target.value)}
-          placeholder={"Spieler1#EUW\nSpieler2#EUW\nSpieler3#EUW"}
+          placeholder={t('compare.placeholder')}
           rows={4}
           className="w-full bg-[#0e1525] border border-[#1e2a3a] rounded-lg p-3 text-white text-sm placeholder-[#4a5a70] focus:outline-none focus:border-[#c89b3c] resize-none"
         />
@@ -208,7 +208,7 @@ function MultiSearchTab({ region, setRegion }: { region: string; setRegion: (r: 
           </select>
           <button onClick={handleSearch} disabled={searching || !input.trim()}
             className="bg-[#c89b3c] hover:bg-[#d4a94e] disabled:opacity-50 text-black font-semibold px-6 py-2 rounded text-sm transition-colors">
-            {searching ? 'Laden...' : t('home.searchBtn')}
+            {searching ? t('common.loading') : t('home.searchBtn')}
           </button>
         </div>
       </div>
@@ -220,14 +220,14 @@ function MultiSearchTab({ region, setRegion }: { region: string; setRegion: (r: 
               <div key={i} className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-4 flex items-center gap-4">
                 <div className="w-10 h-10 rounded-full bg-[#1e2a3a] animate-pulse" />
                 <div className="flex-1"><div className="h-4 w-32 bg-[#1e2a3a] rounded animate-pulse" /></div>
-                <span className="text-[#8a9bb0] text-sm">Laden...</span>
+                <span className="text-[#8a9bb0] text-sm">{t('common.loading')}</span>
               </div>
             );
             if (player.error) return (
               <div key={i} className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-4 flex items-center gap-4">
                 <div className="w-10 h-10 rounded-full bg-[#1e2a3a] flex items-center justify-center text-[#4a5a70]">?</div>
                 <span className="text-white text-sm flex-1">{player.name}{player.tag ? `#${player.tag}` : ''}</span>
-                <span className="text-red-400 text-sm">Nicht gefunden</span>
+                <span className="text-red-400 text-sm">{t('compare.notFound')}</span>
               </div>
             );
 
@@ -254,7 +254,7 @@ function MultiSearchTab({ region, setRegion }: { region: string; setRegion: (r: 
                     <span className="text-sm font-medium" style={{ color: getTierColor(solo.tier) }}>
                       {solo.tier} {solo.rank}
                     </span>
-                  ) : <span className="text-[#4a5a70] text-xs">Unranked</span>}
+                  ) : <span className="text-[#4a5a70] text-xs">{t('player.unranked')}</span>}
                 </div>
                 <div className="hidden sm:block text-center w-14">
                   {winrate !== null ? (
@@ -291,7 +291,7 @@ function CompareTab({ region, setRegion }: { region: string; setRegion: (r: stri
 
   async function fetchPlayer(name: string) {
     const summonerRes = await fetch(`/api/summoner?name=${encodeURIComponent(name)}&region=${region}`);
-    if (!summonerRes.ok) throw new Error(`"${name}" nicht gefunden`);
+    if (!summonerRes.ok) throw new Error(`"${name}" ${t('compare.notFound').toLowerCase()}`);
     const summoner = await summonerRes.json();
     // Summoner response already includes matches when fresh
     if (summoner.matches && summoner.matches.length > 0) {
@@ -304,7 +304,7 @@ function CompareTab({ region, setRegion }: { region: string; setRegion: (r: stri
   }
 
   async function handleCompare() {
-    if (!player1Input.trim() || !player2Input.trim()) { setError('Bitte beide Spielernamen eingeben'); return; }
+    if (!player1Input.trim() || !player2Input.trim()) { setError(t('compare.enterBoth')); return; }
     setLoading(true); setError(''); setPlayer1(null); setPlayer2(null);
     try {
       // Sequential to avoid rate limiting (each player uses ~30-70 API calls)
@@ -352,14 +352,14 @@ function CompareTab({ region, setRegion }: { region: string; setRegion: (r: stri
       <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-4 sm:p-6 mb-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
           <div>
-            <label className="block text-[#8a9bb0] text-xs mb-1">Spieler 1</label>
+            <label className="block text-[#8a9bb0] text-xs mb-1">{t('compare.player1')}</label>
             <input type="text" placeholder="Name#Tag" value={player1Input}
               onChange={e => setPlayer1Input(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleCompare()}
               className="w-full bg-[#0e1525] border border-[#1e2a3a] rounded px-3 py-2 text-white text-sm placeholder-[#4a5a70] outline-none focus:border-[#c89b3c]" />
           </div>
           <div>
-            <label className="block text-[#8a9bb0] text-xs mb-1">Spieler 2</label>
+            <label className="block text-[#8a9bb0] text-xs mb-1">{t('compare.player2')}</label>
             <input type="text" placeholder="Name#Tag" value={player2Input}
               onChange={e => setPlayer2Input(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleCompare()}
@@ -373,7 +373,7 @@ function CompareTab({ region, setRegion }: { region: string; setRegion: (r: stri
           </select>
           <button onClick={handleCompare} disabled={loading}
             className="flex-1 sm:flex-none bg-[#c89b3c] hover:bg-[#b08a34] text-black font-semibold text-sm px-6 py-2 rounded transition-colors disabled:opacity-50">
-            {loading ? 'Laden...' : t('compare.title')}
+            {loading ? t('common.loading') : t('compare.title')}
           </button>
         </div>
         {error && <p className="text-red-400 text-sm mt-3">{error}</p>}
@@ -439,7 +439,7 @@ function CompareTab({ region, setRegion }: { region: string; setRegion: (r: stri
 
           {/* Top Champions */}
           <div className="mt-6 pt-4 border-t border-[#1e2a3a]">
-            <div className="text-center text-[#8a9bb0] text-xs mb-3">Top Champions</div>
+            <div className="text-center text-[#8a9bb0] text-xs mb-3">{t('compare.topChampions')}</div>
             <div className="grid grid-cols-2 gap-4 sm:gap-8">
               {[s1, s2].map((s, si) => (
                 <div key={si}>

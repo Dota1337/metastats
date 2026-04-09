@@ -12,6 +12,9 @@ import { useI18n } from '../../lib/i18n';
 import { loadProLookup, lookupPro, type ProPlayer } from '../../lib/pro-players';
 
 const PerformanceCharts = dynamic(() => import('../../components/PerformanceCharts'), { ssr: false });
+const RadarStats = dynamic(() => import('../../components/RadarStats'), { ssr: false });
+const MarketValueChart = dynamic(() => import('../../components/MarketValueChart'), { ssr: false });
+import AICoach from '../../components/AICoach';
 
 export default function PlayerPage() {
   const { slug } = useParams();
@@ -32,6 +35,7 @@ export default function PlayerPage() {
   const [proInfo, setProInfo] = useState<ProPlayer | null>(null);
   const [isPremium] = useState(false); // TODO: connect to auth system
   const [loadingMore, setLoadingMore] = useState(false);
+  const [expandedSmurfs, setExpandedSmurfs] = useState(false);
   const [hasMoreMatches, setHasMoreMatches] = useState(true);
   const region = searchParams.get('region') || 'euw1';
   const { t } = useI18n();
@@ -148,6 +152,13 @@ export default function PlayerPage() {
     ? player.ranked.find((r: any) => r.queueType === 'RANKED_FLEX_SR')
     : null;
 
+  // Format tier display: hide rank (I) for Challenger, Grandmaster, Master
+  const formatTier = (q: any) => {
+    if (!q) return null;
+    const noRankTiers = ['CHALLENGER', 'GRANDMASTER', 'MASTER'];
+    return noRankTiers.includes(q.tier) ? q.tier : `${q.tier} ${q.rank}`;
+  };
+
   // Use stored market value from Supabase when available (cached responses),
   // only recalculate when we have fresh match data
   const calculatedMarketValue = calculateMarketValue(
@@ -193,13 +204,16 @@ export default function PlayerPage() {
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
     const weeks = Math.floor(diff / 604800000);
+    const months = Math.floor(days / 30);
     if (minutes < 1) return 'Gerade eben';
     if (minutes < 60) return `Vor ${minutes} Min.`;
     if (hours < 24) return `Vor ${hours} Std.`;
     if (days === 1) return 'Vor 1 Tag';
     if (days < 7) return `Vor ${days} Tagen`;
-    if (weeks === 1) return 'Vor 1 Woche';
-    return `Vor ${weeks} Wochen`;
+    if (weeks <= 4) return `Vor ${weeks} Woche${weeks > 1 ? 'n' : ''}`;
+    if (months === 1) return 'Vor 1 Monat';
+    if (months < 12) return `Vor ${months} Monaten`;
+    return `Vor über 1 Jahr`;
   };
 
   const roleLabels: Record<string, string> = {
@@ -304,11 +318,18 @@ export default function PlayerPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                {proInfo && (
+                  <div className="bg-[#141c2e] rounded p-4 text-center">
+                    <div className="text-[#8a9bb0] text-xs mb-1">Team</div>
+                    <div className="text-[#c89b3c] font-medium text-sm">{proInfo.team}</div>
+                    <div className="text-[#4a5a70] text-xs mt-1">{proInfo.role || ''}{proInfo.league ? ` · ${proInfo.league}` : ''}</div>
+                  </div>
+                )}
                 <div className="bg-[#141c2e] rounded p-4 text-center">
                   <div className="text-[#8a9bb0] text-xs mb-1">Solo/Duo</div>
                   <div className="text-white font-medium text-sm">
-                    {ranked ? ranked.tier + ' ' + ranked.rank : t('player.unranked')}
+                    {ranked ? formatTier(ranked) : t('player.unranked')}
                   </div>
                   {ranked && <div className="text-[#c89b3c] text-xs mt-1">{ranked.leaguePoints} LP</div>}
                   {ranked && (
@@ -322,7 +343,7 @@ export default function PlayerPage() {
                 <div className="bg-[#141c2e] rounded p-4 text-center">
                   <div className="text-[#8a9bb0] text-xs mb-1">Flex</div>
                   <div className="text-white font-medium text-sm">
-                    {flex ? flex.tier + ' ' + flex.rank : t('player.unranked')}
+                    {flex ? formatTier(flex) : t('player.unranked')}
                   </div>
                   {flex && <div className="text-[#c89b3c] text-xs mt-1">{flex.leaguePoints} LP</div>}
                   {flex && (
@@ -347,8 +368,67 @@ export default function PlayerPage() {
                   <div className="text-[#8a9bb0] text-xs mb-1">{t('player.mainRole')}</div>
                   <div className="text-white font-medium text-sm">{roleLabels[marketValue.role] || '-'}</div>
                 </div>
+                {matches.length > 0 && (
+                  <div className="bg-[#141c2e] rounded p-4 text-center">
+                    <div className="text-[#8a9bb0] text-xs mb-1">DMG/Min</div>
+                    <div className="text-white font-medium text-sm">
+                      {Math.round(matches.reduce((s: number, m: any) => s + (m.gameDuration > 0 ? m.damageDealt / (m.gameDuration / 60) : 0), 0) / matches.length).toLocaleString('de-DE')}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
+
+            {/* Pro Accounts Box */}
+            {proInfo && (proInfo.smurfs?.length || 0) > 0 && (
+              <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 sm:p-6 mb-4">
+                <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-3">
+                  Pro Accounts
+                </div>
+                <div className="space-y-2">
+                  {/* Main Account */}
+                  {proInfo.mainAccount && (
+                    <div className="flex items-center gap-3 bg-[#141c2e] border border-[#c89b3c]/30 rounded p-3">
+                      <div className="text-[10px] text-[#c89b3c] font-bold uppercase tracking-wider w-10 shrink-0">Main</div>
+                      <a
+                        href={`/player/${encodeURIComponent(proInfo.mainAccount.name)}--${encodeURIComponent(proInfo.mainAccount.tag)}?region=${proInfo.mainAccount.region === 'kr' ? 'kr' : proInfo.mainAccount.region === 'na' ? 'na1' : 'euw1'}`}
+                        className="text-white hover:text-[#c89b3c] font-medium text-sm transition-colors"
+                      >
+                        {proInfo.mainAccount.name}<span className="text-[#4a5a70]">#{proInfo.mainAccount.tag}</span>
+                      </a>
+                      {proInfo.mainAccount.rank && proInfo.mainAccount.rank !== 'Unknown' && proInfo.mainAccount.rank !== 'Unranked' && (
+                        <span className="text-[#8a9bb0] text-xs ml-auto">{proInfo.mainAccount.rank}</span>
+                      )}
+                      <span className="text-[#4a5a70] text-[10px] uppercase">{proInfo.mainAccount.region?.toUpperCase()}</span>
+                    </div>
+                  )}
+                  {/* Smurf Accounts */}
+                  {proInfo.smurfs?.slice(0, expandedSmurfs ? undefined : 5).map((smurf, i) => (
+                    <div key={i} className="flex items-center gap-3 bg-[#141c2e] rounded p-3">
+                      <div className="text-[10px] text-[#4a5a70] font-bold uppercase tracking-wider w-10 shrink-0">Smurf</div>
+                      <a
+                        href={`/player/${encodeURIComponent(smurf.name)}--${encodeURIComponent(smurf.tag)}?region=${smurf.region === 'kr' ? 'kr' : smurf.region === 'na' ? 'na1' : 'euw1'}`}
+                        className="text-[#8a9bb0] hover:text-white text-sm transition-colors"
+                      >
+                        {smurf.name}<span className="text-[#4a5a70]">#{smurf.tag}</span>
+                      </a>
+                      {smurf.rank && smurf.rank !== 'Unknown' && smurf.rank !== 'Unranked' && (
+                        <span className="text-[#4a5a70] text-xs ml-auto">{smurf.rank}</span>
+                      )}
+                      <span className="text-[#4a5a70] text-[10px] uppercase">{smurf.region?.toUpperCase()}</span>
+                    </div>
+                  ))}
+                  {(proInfo.smurfs?.length || 0) > 5 && !expandedSmurfs && (
+                    <button
+                      onClick={() => setExpandedSmurfs(true)}
+                      className="w-full text-center text-[#4a5a70] hover:text-[#8a9bb0] text-xs py-2 transition-colors"
+                    >
+                      + {(proInfo.smurfs?.length || 0) - 5} weitere Accounts anzeigen
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Market Value Breakdown */}
             {marketValue.rated && marketValue.breakdown.length > 0 && (
@@ -358,7 +438,7 @@ export default function PlayerPage() {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
                   <div className="bg-[#141c2e] rounded p-3 text-center">
-                    <div className="text-[#8a9bb0] text-xs mb-1">{t('player.baseValue')} ({ranked?.tier} {ranked?.rank})</div>
+                    <div className="text-[#8a9bb0] text-xs mb-1">{t('player.baseValue')} ({ranked ? formatTier(ranked) : '-'})</div>
                     <div className="text-white text-lg font-medium">
                       ${marketValue.baseValue.toLocaleString('de-DE')}
                     </div>
@@ -423,6 +503,22 @@ export default function PlayerPage() {
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Market Value History Chart */}
+            {marketValue.rated && player?.summoner?.puuid && (
+              <MarketValueChart puuid={player.summoner.puuid} currentValue={marketValue.value} />
+            )}
+
+            {/* AI Coach */}
+            {matches.length > 0 && (
+              <div className="mb-4">
+                <AICoach
+                  matches={matches}
+                  tier={player?.ranked?.find((r: any) => r.queueType === 'RANKED_SOLO_5x5')?.tier || player?.summoner?.tier || player?.tier}
+                  role={statsOverview?.role}
+                />
               </div>
             )}
 
@@ -540,6 +636,11 @@ export default function PlayerPage() {
                   </div>
                 )}
               </div>
+            )}
+
+            {/* Radar Stats */}
+            {statsOverview?.categories?.length >= 4 && (
+              <RadarStats categories={statsOverview.categories} />
             )}
 
             {/* Champion Mastery */}

@@ -12,6 +12,10 @@ export const LANGUAGES: { code: Lang; label: string; flag: string; flagUrl: stri
   { code: 'fr', label: 'Fran\u00E7ais', flag: '\uD83C\uDDEB\uD83C\uDDF7', flagUrl: 'https://flagcdn.com/w40/fr.png', country: 'France' },
 ];
 
+export const LOCALE_MAP: Record<Lang, string> = {
+  de: 'de-DE', en: 'en-US', ko: 'ko-KR', zh: 'zh-CN', es: 'es-ES', fr: 'fr-FR',
+};
+
 const t6 = (de: string, en: string, ko: string, zh: string, es: string, fr: string) => ({ de, en, ko, zh, es, fr });
 
 const translations = {
@@ -20,7 +24,7 @@ const translations = {
   'nav.leaderboard': t6('Rangliste', 'Leaderboard', '\uB9AC\uB354\uBCF4\uB4DC', '\u6392\u884C\u699C', 'Clasificaci\u00F3n', 'Classement'),
   'nav.champions': t6('Champions', 'Champions', '\uCC54\uD53C\uC5B8', '\u82F1\u96C4', 'Campeones', 'Champions'),
   'nav.marketvalue': t6('Marktwerte', 'Market Values', '\uC2DC\uC7A5 \uAC00\uCE58', '\u5E02\u573A\u4EF7\u503C', 'Valor de Mercado', 'Valeur March\u00E9'),
-  'nav.analyse': t6('Spieleranalyse', 'Player Analysis', '\uC120\uC218 \uBD84\uC11D', '\u9009\u624B\u5206\u6790', 'An\u00E1lisis', 'Analyse'),
+  'nav.analyse': t6('Spielervergleich', 'Player Comparison', '\uC120\uC218 \uBE44\uAD50', '\u9009\u624B\u5BF9\u6BD4', 'Comparaci\u00F3n', 'Comparaison'),
 
   // Homepage
   'home.subtitle': t6('Die f\u00FChrende E-Sport Analyseplattform', 'The Leading E-Sports Analytics Platform', '\uCD5C\uACE0\uC758 e\uC2A4\uD3EC\uCE20 \uBD84\uC11D \uD50C\uB7AB\uD3FC', '\u9886\u5148\u7684\u7535\u5B50\u7ADE\u6280\u5206\u6790\u5E73\u53F0', 'La plataforma l\u00EDder de an\u00E1lisis de eSports', 'La plateforme d\'analyse eSport de r\u00E9f\u00E9rence'),
@@ -247,6 +251,98 @@ const translations = {
   // Multi-Search
   'multi.title': t6('Multi-Search', 'Multi-Search', '\uBA40\uD2F0 \uAC80\uC0C9', '\u591A\u4EBA\u641C\u7D22', 'Multi-B\u00FAsqueda', 'Multi-Recherche'),
   'multi.subtitle': t6('Analysiere mehrere Spieler gleichzeitig', 'Analyze multiple players at once', '\uC5EC\uB7EC \uC120\uC218\uB97C \uB3D9\uC2DC\uC5D0 \uBD84\uC11D\uD558\uC138\uC694', '\u540C\u65F6\u5206\u6790\u591A\u4E2A\u73A9\u5BB6', 'Analiza varios jugadores a la vez', 'Analysez plusieurs joueurs simultan\u00E9ment'),
+
+  // Ligen & Wettbewerbe
+  'ligen.title1': t6('Ligen', 'Leagues', '\uB9AC\uADF8', '\uC2E0\u8D5B', 'Ligas', 'Ligues'),
+  'ligen.title2': t6('& Wettbewerbe', '& Competitions', '& \uB300\uD68C', '& \uC218\u8D5B\u4E8B', '& Competiciones', '& Comp\u00E9titions'),
+  'ligen.subtitle': t6('Kalender, Tabellen und Ergebnisse aller LoL Esports Ligen', 'Calendar, standings and results of all LoL Esports leagues', '\uBAA8\uB4E0 LoL e\uC2A4\uD3EC\uCE20 \uB9AC\uADF8\uC758 \uC77C\uC815, \uC21C\uC704 \uBC0F \uACB0\uACFC', '\u6240\u6709LoL\u7535\u7ADE\u8054\u8D5B\u7684\u65E5\u5386\u3001\u6392\u540D\u548C\u7ED3\u679C', 'Calendario, tablas y resultados de todas las ligas de LoL Esports', 'Calendrier, classements et r\u00E9sultats de toutes les ligues LoL Esports'),
+  'ligen.back': t6('Zur\u00FCck zur \u00DCbersicht', 'Back to overview', '\uBAA9\uB85D\uC73C\uB85C \uB3CC\uC544\uAC00\uAE30', '\u8FD4\u56DE\u6982\u89C8', 'Volver al resumen', 'Retour \u00E0 l\'aper\u00E7u'),
+  'ligen.loadError': t6('Fehler beim Laden der Liga-Daten', 'Error loading league data', '\uB9AC\uADF8 \uB370\uC774\uD130 \uB85C\uB529 \uC624\uB958', '\u52A0\u8F7D\u8054\u8D5B\u6570\u636E\u65F6\u51FA\u9519', 'Error al cargar los datos de la liga', 'Erreur de chargement des donn\u00E9es'),
+  'ligen.standings': t6('Tabelle', 'Standings', '\uC21C\uC704', '\u79EF\u5206\u699C', 'Tabla', 'Classement'),
+  'ligen.upcoming': t6('Kommend', 'Upcoming', '\uC608\uC815', '\u5373\u5C06\u8FDB\u884C', 'Pr\u00F3ximos', '\u00C0 venir'),
+  'ligen.results': t6('Ergebnisse', 'Results', '\uACB0\uACFC', '\u7ED3\u679C', 'Resultados', 'R\u00E9sultats'),
+  'ligen.noStandings': t6('Keine Standings verf\u00FCgbar', 'No standings available', '\uC21C\uC704 \uC815\uBCF4 \uC5C6\uC74C', '\u6682\u65E0\u79EF\u5206\u699C', 'No hay clasificaci\u00F3n disponible', 'Pas de classement disponible'),
+  'ligen.noUpcoming': t6('Keine kommenden Spiele', 'No upcoming matches', '\uC608\uC815\uB41C \uACBD\uAE30 \uC5C6\uC74C', '\u6682\u65E0\u5373\u5C06\u8FDB\u884C\u7684\u6BD4\u8D5B', 'No hay partidos pr\u00F3ximos', 'Pas de matchs \u00E0 venir'),
+  'ligen.noResults': t6('Keine Ergebnisse verf\u00FCgbar', 'No results available', '\uACB0\uACFC \uC5C6\uC74C', '\u6682\u65E0\u7ED3\u679C', 'No hay resultados disponibles', 'Pas de r\u00E9sultats disponibles'),
+  'ligen.allLeagues': t6('Alle Ligen', 'All Leagues', '\uBAA8\uB4E0 \uB9AC\uADF8', '\u6240\u6709\u8054\u8D5B', 'Todas las Ligas', 'Toutes les Ligues'),
+  'ligen.record': t6('Bilanz', 'Record', '\uC804\uC801', '\u6218\u7EE9', 'Balance', 'Bilan'),
+
+  // Calendar
+  'cal.week': t6('Woche', 'Week', '\uC8FC\uAC04', '\u5468', 'Semana', 'Semaine'),
+  'cal.month': t6('Monat', 'Month', '\uC6D4\uAC04', '\u6708', 'Mes', 'Mois'),
+  'cal.today': t6('Heute', 'Today', '\uC624\uB298', '\u4ECA\u5929', 'Hoy', 'Aujourd\'hui'),
+
+  // SideDrawer
+  'drawer.close': t6('Men\u00FC schlie\u00DFen', 'Close menu', '\uBA54\uB274 \uB2EB\uAE30', '\u5173\u95ED\u83DC\u5355', 'Cerrar men\u00FA', 'Fermer le menu'),
+  'drawer.open': t6('Patch Notes & Turniere', 'Patch Notes & Tournaments', '\uD328\uCE58 \uB178\uD2B8 & \uB300\uD68C', '\u8865\u4E01\u8BF4\u660E\u548C\u8D5B\u4E8B', 'Notas de parche y Torneos', 'Notes de patch & Tournois'),
+  'drawer.tournaments': t6('Turniere', 'Tournaments', '\uB300\uD68C', '\u8D5B\u4E8B', 'Torneos', 'Tournois'),
+  'drawer.patchNotes': t6('Patch Notes', 'Patch Notes', '\uD328\uCE58 \uB178\uD2B8', '\u8865\u4E01\u8BF4\u660E', 'Notas de parche', 'Notes de patch'),
+  'drawer.all': t6('Alle', 'All', '\uC804\uCCB4', '\u5168\u90E8', 'Todos', 'Tous'),
+  'drawer.live': t6('Live', 'Live', '\uB77C\uC774\uBE0C', '\u76F4\u64AD', 'En vivo', 'En direct'),
+  'drawer.planned': t6('Geplant', 'Scheduled', '\uC608\uC815', '\u5DF2\u5B89\u6392', 'Programados', 'Planifi\u00E9'),
+  'drawer.allLeagues': t6('Alle Ligen', 'All Leagues', '\uBAA8\uB4E0 \uB9AC\uADF8', '\u6240\u6709\u8054\u8D5B', 'Todas las Ligas', 'Toutes les Ligues'),
+  'drawer.noMatches': t6('Keine Matches gefunden', 'No matches found', '\uACBD\uAE30\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4', '\u672A\u627E\u5230\u6BD4\u8D5B', 'No se encontraron partidos', 'Aucun match trouv\u00E9'),
+  'drawer.current': t6('Aktuell', 'Current', '\uCD5C\uC2E0', '\u6700\u65B0', 'Actual', 'Actuel'),
+  'drawer.officialNotes': t6('Offizielle Patch Notes', 'Official Patch Notes', '\uACF5\uC2DD \uD328\uCE58 \uB178\uD2B8', '\u5B98\u65B9\u8865\u4E01\u8BF4\u660E', 'Notas de parche oficiales', 'Notes de patch officielles'),
+
+  // AI Coach
+  'coach.analyzing': t6('Analysiere...', 'Analyzing...', '\uBD84\uC11D \uC911...', '\u5206\u6790\u4E2D...', 'Analizando...', 'Analyse en cours...'),
+  'coach.gamesAnalyzed': t6('Spiele analysiert', 'games analyzed', '\uACBD\uAE30 \uBD84\uC11D \uC644\uB8CC', '\u573A\u6BD4\u8D5B\u5DF2\u5206\u6790', 'partidas analizadas', 'matchs analys\u00E9s'),
+  'coach.improvement': t6('Verbesserungspotenzial', 'Improvement Potential', '\uAC1C\uC120 \uAC00\uB2A5\uC131', '\u63D0\u5347\u6F5C\u529B', 'Potencial de mejora', 'Potentiel d\'am\u00E9lioration'),
+  'coach.comparedWith': t6('Verglichen mit anderen', 'Compared with other', '\uB2E4\uB978', '\u4E0E\u5176\u4ED6', 'Comparado con otros', 'Compar\u00E9 aux autres'),
+  'coach.playersRole': t6('-Spielern \u00B7 Rolle:', ' players \u00B7 Role:', ' \uD50C\uB808\uC774\uC5B4 \uBE44\uAD50 \u00B7 \uC5ED\uD560:', '\u73A9\u5BB6\u6BD4\u8F83 \u00B7 \u4F4D\u7F6E:', ' jugadores \u00B7 Rol:', ' joueurs \u00B7 R\u00F4le :'),
+  'coach.strengths': t6('St\u00E4rken', 'Strengths', '\uAC15\uC810', '\u4F18\u52BF', 'Fortalezas', 'Forces'),
+  'coach.weaknesses': t6('Schw\u00E4chen', 'Weaknesses', '\uC57D\uC810', '\u5F31\u70B9', 'Debilidades', 'Faiblesses'),
+  'coach.tips': t6('Tipps', 'Tips', '\uD301', '\u5EFA\u8BAE', 'Consejos', 'Conseils'),
+
+  // Market Intelligence
+  'mi.title': t6('Market Intelligence', 'Market Intelligence', '\uB9C8\uCF13 \uC778\uD154\uB9AC\uC804\uC2A4', '\u5E02\u573A\u60C5\u62A5', 'Inteligencia de Mercado', 'Intelligence de March\u00E9'),
+  'mi.subtitle': t6('Transfer-Predictions & Anomaly-Detection', 'Transfer Predictions & Anomaly Detection', '\uC774\uC801 \uC608\uCE21 & \uC774\uC0C1 \uAC10\uC9C0', '\u8F6C\u4F1A\u9884\u6D4B\u4E0E\u5F02\u5E38\u68C0\u6D4B', 'Predicciones de Transferencias y Anomal\u00EDas', 'Pr\u00E9dictions de Transferts & Anomalies'),
+  'mi.transferRadar': t6('Transfer-Radar', 'Transfer Radar', '\uC774\uC801 \uB808\uC774\uB354', '\u8F6C\u4F1A\u96F7\u8FBE', 'Radar de Transferencias', 'Radar de Transferts'),
+  'mi.anomalies': t6('Anomalien', 'Anomalies', '\uC774\uC0C1 \uC9D5\uD6C4', '\u5F02\u5E38', 'Anomal\u00EDas', 'Anomalies'),
+  'mi.noTransfers': t6('Keine Transfer-Predictions verf\u00FCgbar', 'No transfer predictions available', '\uC774\uC801 \uC608\uCE21 \uC5C6\uC74C', '\u6682\u65E0\u8F6C\u4F1A\u9884\u6D4B', 'No hay predicciones de transferencias', 'Pas de pr\u00E9dictions de transfert'),
+  'mi.upgrade': t6('Aufstieg', 'Upgrade', '\uC0C1\uD5A5', '\u4E0A\u5347', 'Ascenso', 'Promotion'),
+  'mi.lateral': t6('Lateral', 'Lateral', '\uC218\uD3C9', '\u5E73\u884C', 'Lateral', 'Lat\u00E9ral'),
+  'mi.downgrade': t6('Abstieg', 'Downgrade', '\uD558\uD5A5', '\u4E0B\u964D', 'Descenso', 'Descente'),
+  'mi.transferProb': t6('Wechselwahrscheinlichkeit', 'Transfer Probability', '\uC774\uC801 \uD655\uB960', '\u8F6C\u4F1A\u6982\u7387', 'Probabilidad de traspaso', 'Probabilit\u00E9 de transfert'),
+  'mi.teamPlace': t6('Team-Platz', 'Team Place', '\uD300 \uC21C\uC704', '\u961F\u4F0D\u6392\u540D', 'Puesto del equipo', 'Place de l\'\u00E9quipe'),
+  'mi.contractUntil': t6('Vertrag bis', 'Contract until', '\uACC4\uC57D \uB9CC\uB8CC', '\u5408\u540C\u5230\u671F', 'Contrato hasta', 'Contrat jusqu\'au'),
+  'mi.noAnomalies': t6('Keine Anomalien erkannt', 'No anomalies detected', '\uC774\uC0C1 \uAC10\uC9C0 \uC5C6\uC74C', '\u672A\u68C0\u6D4B\u5230\u5F02\u5E38', 'No se detectaron anomal\u00EDas', 'Aucune anomalie d\u00E9tect\u00E9e'),
+  'mi.notable': t6('Auff\u00E4llig', 'Notable', '\uC8FC\uBAA9', '\u663E\u8457', 'Notable', 'Notable'),
+
+  // Team Synergy
+  'synergy.title': t6('Team Synergy', 'Team Synergy', '\uD300 \uC2DC\uB108\uC9C0', '\u56E2\u961F\u534F\u540C', 'Sinergia del Equipo', 'Synergie d\'\u00C9quipe'),
+  'synergy.analyze': t6('Synergy-Analyse', 'Synergy Analysis', '\uC2DC\uB108\uC9C0 \uBD84\uC11D', '\u534F\u540C\u5206\u6790', 'An\u00E1lisis de Sinergia', 'Analyse de Synergie'),
+  'synergy.titleRate': t6('Titelquote', 'Title Rate', '\uC6B0\uC2B9 \uBE44\uC728', '\u51A0\u519B\u7387', 'Tasa de T\u00EDtulos', 'Taux de Titres'),
+  'synergy.experience': t6('Erfahrung', 'Experience', '\uACBD\uD5D8', '\u7ECF\u9A8C', 'Experiencia', 'Exp\u00E9rience'),
+  'synergy.competition': t6('Wettbewerb', 'Competition', '\uACBD\uC7C1', '\u7ADE\u4E89', 'Competici\u00F3n', 'Comp\u00E9tition'),
+  'synergy.region': t6('Region', 'Region', '\uC9C0\uC5ED', '\u5730\u533A', 'Regi\u00F3n', 'R\u00E9gion'),
+
+  // Compare additional
+  'compare.player1': t6('Spieler 1', 'Player 1', '\uD50C\uB808\uC774\uC5B4 1', '\u73A9\u5BB61', 'Jugador 1', 'Joueur 1'),
+  'compare.player2': t6('Spieler 2', 'Player 2', '\uD50C\uB808\uC774\uC5B4 2', '\u73A9\u5BB62', 'Jugador 2', 'Joueur 2'),
+  'compare.notFound': t6('Nicht gefunden', 'Not found', '\uCC3E\uC744 \uC218 \uC5C6\uC74C', '\u672A\u627E\u5230', 'No encontrado', 'Non trouv\u00E9'),
+  'compare.enterBoth': t6('Bitte beide Spielernamen eingeben', 'Please enter both player names', '\uB450 \uD50C\uB808\uC774\uC5B4 \uC774\uB984\uC744 \uBAA8\uB450 \uC785\uB825\uD558\uC138\uC694', '\u8BF7\u8F93\u5165\u4E24\u4E2A\u73A9\u5BB6\u540D\u79F0', 'Introduce ambos nombres', 'Veuillez entrer les deux noms'),
+  'compare.topChampions': t6('Top Champions', 'Top Champions', '\uD0D1 \uCC54\uD53C\uC5B8', '\u6700\u4F73\u82F1\u96C4', 'Top Campeones', 'Top Champions'),
+  'compare.placeholder': t6('Spieler1#EUW\nSpieler2#EUW\nSpieler3#EUW', 'Player1#EUW\nPlayer2#EUW\nPlayer3#EUW', '\uD50C\uB808\uC774\uC5B41#KR1\n\uD50C\uB808\uC774\uC5B42#KR1\n\uD50C\uB808\uC774\uC5B43#KR1', '\u73A9\u5BB61#KR\n\u73A9\u5BB62#KR\n\u73A9\u5BB63#KR', 'Jugador1#EUW\nJugador2#EUW\nJugador3#EUW', 'Joueur1#EUW\nJoueur2#EUW\nJoueur3#EUW'),
+
+  // Market Value Scale descriptions
+  'mv.scaleChallenger': t6('#1 bekommt den H\u00F6chstwert, Top 10 ab $200k', '#1 gets highest value, Top 10 from $200k', '#1\uC774 \uCD5C\uACE0\uAC12, \uC0C1\uC704 10\uBA85 $200k \uC774\uC0C1', '#1\u83B7\u6700\u9AD8\u4EF7\u503C\uFF0C\u524D10\u540D$200k\u8D77', '#1 obtiene el valor m\u00E1ximo, Top 10 desde $200k', '#1 obtient la valeur max, Top 10 \u00E0 partir de $200k'),
+  'mv.scaleGrandmaster': t6('Skaliert linear mit LP (bis 400 LP)', 'Scales linearly with LP (up to 400 LP)', 'LP\uC5D0 \uB530\uB77C \uC120\uD615 \uC870\uC815 (\uCD5C\uB300 400 LP)', '\u968FLP\u7EBF\u6027\u589E\u957F\uFF08\u6700\u9AD8400 LP\uFF09', 'Escala linealmente con LP (hasta 400 LP)', '\u00C9chelle lin\u00E9aire avec LP (jusqu\'\u00E0 400 LP)'),
+  'mv.scaleMaster': t6('Skaliert linear mit LP (bis 200 LP)', 'Scales linearly with LP (up to 200 LP)', 'LP\uC5D0 \uB530\uB77C \uC120\uD615 \uC870\uC815 (\uCD5C\uB300 200 LP)', '\u968FLP\u7EBF\u6027\u589E\u957F\uFF08\u6700\u9AD8200 LP\uFF09', 'Escala linealmente con LP (hasta 200 LP)', '\u00C9chelle lin\u00E9aire avec LP (jusqu\'\u00E0 200 LP)'),
+  'mv.scaleDiamond': t6('Diamond IV ($10) bis Diamond I ($2.000)', 'Diamond IV ($10) to Diamond I ($2,000)', '\uB2E4\uC774\uC544\uBABD\uB4DC IV ($10)\uBD80\uD130 \uB2E4\uC774\uC544\uBABD\uB4DC I ($2,000)', '\u94BB\u77F3IV ($10) \u81F3 \u94BB\u77F3I ($2,000)', 'Diamante IV ($10) a Diamante I ($2.000)', 'Diamant IV ($10) \u00E0 Diamant I ($2.000)'),
+
+  // Champions additional
+  'champ.noDataFor': t6('F\u00FCr', 'For', '', '', 'Para', 'Pour'),
+  'champ.noDataAvailable': t6('sind derzeit noch keine Daten vorhanden. Die aktuellen Statistiken basieren auf Challenger + Grandmaster Matches.', 'no data is currently available. Current statistics are based on Challenger + Grandmaster matches.', '\uC5D0 \uB300\uD55C \uB370\uC774\uD130\uAC00 \uC544\uC9C1 \uC5C6\uC2B5\uB2C8\uB2E4. \uD604\uC7AC \uD1B5\uACC4\uB294 \uCC4C\uB9B0\uC800 + \uADF8\uB79C\uB4DC\uB9C8\uC2A4\uD130 \uB9E4\uCE58 \uAE30\uC900\uC785\uB2C8\uB2E4.', '\u76EE\u524D\u6CA1\u6709\u6570\u636E\u3002\u5F53\u524D\u7EDF\u8BA1\u57FA\u4E8E\u6700\u5F3A\u738B\u8005+\u5B97\u5E08\u5BF9\u5C40\u3002', 'actualmente no tiene datos. Las estad\u00EDsticas actuales se basan en partidas Aspirante + Gran Maestro.', 'n\'a actuellement pas de donn\u00E9es. Les stats sont bas\u00E9es sur les matchs Challenger + Grand Ma\u00EEtre.'),
+  'champ.loadFromApi': t6('Lade Champion-Statistiken von Riot API', 'Loading champion statistics from Riot API', 'Riot API\uC5D0\uC11C \uCC54\uD53C\uC5B8 \uD1B5\uACC4 \uB85C\uB529 \uC911', '\u4ECERiot API\u52A0\u8F7D\u82F1\u96C4\u7EDF\u8BA1\u6570\u636E', 'Cargando estad\u00EDsticas de campeones de Riot API', 'Chargement des stats depuis l\'API Riot'),
+  'champ.loadNow': t6('Jetzt laden', 'Load now', '\uC9C0\uAE08 \uB85C\uB529', '\u7ACB\u5373\u52A0\u8F7D', 'Cargar ahora', 'Charger maintenant'),
+  'champ.regionLabel': t6('Region', 'Region', '\uC9C0\uC5ED', '\u5730\u533A', 'Regi\u00F3n', 'R\u00E9gion'),
+
+  // Homepage additional
+  'home.topChampions': t6('Meistgespielte Champions (Challenger + GM + Master)', 'Most Played Champions (Challenger + GM + Master)', '\uCD5C\uB2E4 \uD50C\uB808\uC774 \uCC54\uD53C\uC5B8 (\uCC4C\uB9B0\uC800 + GM + \uB9C8\uC2A4\uD130)', '\u6700\u5E38\u4F7F\u7528\u82F1\u96C4\uFF08\u6700\u5F3A\u738B\u8005+\u5B97\u5E08+\u5927\u5E08\uFF09', 'Campeones m\u00E1s jugados (Aspirante + GM + Maestro)', 'Champions les plus jou\u00E9s (Challenger + GM + Ma\u00EEtre)'),
+  'home.verifiedRosters': t6('Verifizierte Roster', 'Verified Rosters', '\uC778\uC99D\uB41C \uB85C\uC2A4\uD130', '\u5DF2\u9A8C\u8BC1\u9635\u5BB9', 'Plantillas verificadas', 'Effectifs v\u00E9rifi\u00E9s'),
+  'home.allLeagues': t6('Alle Ligen weltweit', 'All leagues worldwide', '\uC804 \uC138\uACC4 \uBAA8\uB4E0 \uB9AC\uADF8', '\u5168\u7403\u6240\u6709\u8054\u8D5B', 'Todas las ligas del mundo', 'Toutes les ligues du monde'),
 } as const;
 
 type TranslationKey = keyof typeof translations;

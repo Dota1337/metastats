@@ -220,7 +220,7 @@ export default function ChampionsPage() {
 
             {/* Region Filter */}
             <div className="w-full sm:w-auto">
-              <div className="text-[#8a9bb0] text-xs mb-2">Region</div>
+              <div className="text-[#8a9bb0] text-xs mb-2">{t('champ.regionLabel')}</div>
               <div className="flex gap-1 overflow-x-auto pb-1">
                 {REGIONS.map((r) => (
                   <button
@@ -256,7 +256,7 @@ export default function ChampionsPage() {
         {tier !== 'all' && !loading && !hasStats && (
           <div className="bg-[#141c2e] border border-[#2a3a50] rounded p-3 mb-4 text-center">
             <div className="text-[#8a9bb0] text-xs">
-              Fuer <span className="text-white font-medium" style={{ color: tierColors[tier] }}>{currentTierLabel}</span> sind derzeit noch keine Daten vorhanden. Die aktuellen Statistiken basieren auf Challenger + Grandmaster Matches.
+              {t('champ.noDataFor')} <span className="text-white font-medium" style={{ color: tierColors[tier] }}>{currentTierLabel}</span> {t('champ.noDataAvailable')}
             </div>
           </div>
         )}
@@ -267,13 +267,13 @@ export default function ChampionsPage() {
             {collecting ? (
               <div className="flex items-center justify-center gap-2">
                 <div className="w-3 h-3 border-2 border-[#c89b3c] border-t-transparent rounded-full animate-spin" />
-                <div className="text-[#c89b3c] text-xs">Lade Champion-Statistiken von Riot API ({REGIONS.find(r => r.value === region)?.label})...</div>
+                <div className="text-[#c89b3c] text-xs">{t('champ.loadFromApi')} ({REGIONS.find(r => r.value === region)?.label})...</div>
               </div>
             ) : (
               <div className="text-[#8a9bb0] text-xs">
                 {t('champ.statsCollecting')}
                 <button onClick={triggerCollection} className="ml-2 text-[#c89b3c] hover:underline">
-                  Jetzt laden
+                  {t('champ.loadNow')}
                 </button>
               </div>
             )}

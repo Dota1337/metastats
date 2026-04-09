@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
+import { useI18n, LOCALE_MAP } from '../lib/i18n';
 
 interface PatchNote {
   version: string;
@@ -31,6 +32,8 @@ type Tab = 'patches' | 'tournaments';
 type TournamentFilter = 'all' | 'upcoming' | 'live';
 
 export default function SideDrawer() {
+  const { t, lang } = useI18n();
+  const locale = LOCALE_MAP[lang];
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<Tab>('tournaments');
   const [patches, setPatches] = useState<PatchNote[]>([]);
@@ -114,12 +117,12 @@ export default function SideDrawer() {
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);
-    return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return d.toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' });
   };
 
   const formatTime = (dateStr: string) => {
     const d = new Date(dateStr);
-    return d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
   };
 
   const relativeTime = (dateStr: string) => {
@@ -150,7 +153,7 @@ export default function SideDrawer() {
           open ? 'translate-x-[340px] sm:translate-x-[380px]' : 'translate-x-0'
         } bg-[#0d1526] border border-l-0 border-[#1e2a3a] hover:border-[#c89b3c]/50 group`}
         style={{ top: '50%', transform: `translateY(-50%) ${open ? 'translateX(340px)' : 'translateX(0)'}` }}
-        title={open ? 'Menü schließen' : 'Patch Notes & Turniere'}
+        title={open ? t('drawer.close') : t('drawer.open')}
       >
         <div className="flex flex-col items-center gap-2">
           {liveCount > 0 && !open && (
@@ -205,7 +208,7 @@ export default function SideDrawer() {
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              Turniere
+              {t('drawer.tournaments')}
               {liveCount > 0 && (
                 <span className="bg-red-500/20 text-red-400 text-[10px] px-1.5 py-0.5 rounded-full font-bold">
                   {liveCount} LIVE
@@ -223,7 +226,7 @@ export default function SideDrawer() {
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              Patch Notes
+              {t('drawer.patchNotes')}
             </button>
           </div>
         </div>
@@ -246,9 +249,10 @@ export default function SideDrawer() {
               leagueMap={leagueMap}
               formatTime={formatTime}
               relativeTime={relativeTime}
+              t={t}
             />
           ) : (
-            <PatchesContent patches={patches} />
+            <PatchesContent patches={patches} t={t} />
           )}
         </div>
       </div>
@@ -259,7 +263,7 @@ export default function SideDrawer() {
 /* ── Tournaments Tab ── */
 function TournamentsContent({
   tournaments, groupedByDate, tournamentFilter, setTournamentFilter,
-  leagueFilter, setLeagueFilter, sortedLeagues, leagueMap, formatTime, relativeTime,
+  leagueFilter, setLeagueFilter, sortedLeagues, leagueMap, formatTime, relativeTime, t,
 }: {
   tournaments: Tournament[];
   groupedByDate: Record<string, Tournament[]>;
@@ -271,11 +275,12 @@ function TournamentsContent({
   leagueMap: Record<string, { name: string; region: string }>;
   formatTime: (d: string) => string;
   relativeTime: (d: string) => string;
+  t: (key: any) => string;
 }) {
   const filters: { key: TournamentFilter; label: string }[] = [
-    { key: 'all', label: 'Alle' },
-    { key: 'live', label: 'Live' },
-    { key: 'upcoming', label: 'Geplant' },
+    { key: 'all', label: t('drawer.all') },
+    { key: 'live', label: t('drawer.live') },
+    { key: 'upcoming', label: t('drawer.planned') },
   ];
 
   return (
@@ -302,7 +307,7 @@ function TournamentsContent({
           onChange={e => setLeagueFilter(e.target.value)}
           className="w-full bg-[#141c2e] border border-[#1e2a3a] rounded px-2 py-1.5 text-xs text-white outline-none focus:border-[#c89b3c]/50"
         >
-          <option value="">Alle Ligen</option>
+          <option value="">{t('drawer.allLeagues')}</option>
           {sortedLeagues.map(slug => (
             <option key={slug} value={slug}>
               {leagueMap[slug]?.name || slug} — {leagueMap[slug]?.region || ''}
@@ -314,7 +319,7 @@ function TournamentsContent({
       {/* Match list */}
       {tournaments.length === 0 ? (
         <div className="px-4 py-8 text-center text-[#4a5a70] text-xs">
-          Keine Matches gefunden
+          {t('drawer.noMatches')}
         </div>
       ) : (
         Object.entries(groupedByDate).map(([date, matches]) => (
@@ -396,7 +401,7 @@ function MatchCard({ match, formatTime, relativeTime }: { match: Tournament; for
 }
 
 /* ── Patches Tab ── */
-function PatchesContent({ patches }: { patches: PatchNote[] }) {
+function PatchesContent({ patches, t }: { patches: PatchNote[]; t: (key: any) => string }) {
   return (
     <div className="px-4 py-3 space-y-2">
       {patches.map((patch, i) => (
@@ -419,7 +424,7 @@ function PatchesContent({ patches }: { patches: PatchNote[] }) {
                 </span>
                 {patch.isNew && (
                   <span className="bg-[#c89b3c]/20 text-[#c89b3c] text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase">
-                    Aktuell
+                    {t('drawer.current')}
                   </span>
                 )}
               </div>
@@ -439,7 +444,7 @@ function PatchesContent({ patches }: { patches: PatchNote[] }) {
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
               </svg>
-              Offizielle Patch Notes
+              {t('drawer.officialNotes')}
             </div>
           </div>
         </a>

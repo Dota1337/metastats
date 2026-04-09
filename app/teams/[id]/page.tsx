@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
+import TeamSynergy from '../../components/TeamSynergy';
 import { useI18n } from '../../lib/i18n';
 
 const TROPHY_COLORS: Record<string, string> = {
@@ -150,6 +151,11 @@ export default function TeamDetailPage() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
+        {/* Team Synergy Analysis */}
+        <div className="mb-6">
+          <TeamSynergy roster={team.roster || []} teamName={team.name} results={team.results || []} region={team.region} />
+        </div>
+
         {/* Main Roster */}
         {mainPlayers.length > 0 && (
           <section className="mb-6">

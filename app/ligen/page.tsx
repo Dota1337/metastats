@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Nav from '../components/Nav';
 import Footer from '../components/Footer';
+import { useI18n, LOCALE_MAP } from '../lib/i18n';
 
 interface LeagueInfo {
   slug: string;
@@ -68,6 +69,8 @@ interface ProTeam {
 type CalendarView = 'week' | 'month';
 
 export default function LigenPage() {
+  const { t, lang } = useI18n();
+  const locale = LOCALE_MAP[lang];
   const [leagues, setLeagues] = useState<LeagueInfo[]>([]);
   const [schedule, setSchedule] = useState<ScheduleEvent[]>([]);
   const [selectedLeague, setSelectedLeague] = useState<string | null>(null);
@@ -203,18 +206,23 @@ export default function LigenPage() {
     );
   };
 
-  const dayNames = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
-  const monthNames = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+  const dayNames = [...Array(7)].map((_, i) => {
+    const d = new Date(2024, 0, i + 1); // 2024-01-01 is a Monday
+    return d.toLocaleDateString(locale, { weekday: 'short' }).substring(0, 2);
+  });
+  const monthNames = [...Array(12)].map((_, i) => {
+    return new Date(2024, i, 1).toLocaleDateString(locale, { month: 'long' });
+  });
 
   const weekDays = calendarView === 'week' ? getWeekDays(calendarDate) : [];
   const monthDays = calendarView === 'month' ? getMonthDays(calendarDate) : [];
 
   const headerLabel = calendarView === 'week'
-    ? `${weekDays[0]?.toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })} – ${weekDays[6]?.toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' })}`
+    ? `${weekDays[0]?.toLocaleDateString(locale, { day: '2-digit', month: 'short' })} – ${weekDays[6]?.toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' })}`
     : `${monthNames[calendarDate.getMonth()]} ${calendarDate.getFullYear()}`;
 
-  const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  const formatTime = (dateStr: string) => new Date(dateStr).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+  const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const formatTime = (dateStr: string) => new Date(dateStr).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
   const formatTournamentName = (slug: string) => {
     return slug
       .replace(/_/g, ' ')
@@ -236,9 +244,9 @@ export default function LigenPage() {
         {/* Page Header */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold">
-            <span className="text-[#c89b3c]">Ligen</span> & Wettbewerbe
+            <span className="text-[#c89b3c]">{t('ligen.title1')}</span> {t('ligen.title2')}
           </h1>
-          <p className="text-[#8a9bb0] text-sm mt-1">Kalender, Tabellen und Ergebnisse aller LoL Esports Ligen</p>
+          <p className="text-[#8a9bb0] text-sm mt-1">{t('ligen.subtitle')}</p>
         </div>
 
         {loading ? (
@@ -255,7 +263,7 @@ export default function LigenPage() {
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
               </svg>
-              <span className="text-sm">Zurück zur Übersicht</span>
+              <span className="text-sm">{t('ligen.back')}</span>
             </button>
 
             {detailLoading ? (
@@ -264,7 +272,7 @@ export default function LigenPage() {
               </div>
             ) : !leagueDetail ? (
               <div className="bg-[#0d1526] rounded-xl border border-[#1e2a3a] py-12 text-center text-[#4a5a70]">
-                Fehler beim Laden der Liga-Daten
+                {t('ligen.loadError')}
               </div>
             ) : (
               <>
@@ -296,23 +304,23 @@ export default function LigenPage() {
                 {/* Sub-tabs */}
                 <div className="flex gap-1 bg-[#0d1526] rounded-xl border border-[#1e2a3a] p-1 mb-5">
                   {[
-                    { key: 'standings' as const, label: 'Tabelle', icon: 'M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z' },
-                    { key: 'upcoming' as const, label: `Kommend (${upcomingMatches.length})`, icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
-                    { key: 'results' as const, label: `Ergebnisse (${pastMatches.length})`, icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
-                  ].map(t => (
+                    { key: 'standings' as const, label: t('ligen.standings'), icon: 'M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z' },
+                    { key: 'upcoming' as const, label: `${t('ligen.upcoming')} (${upcomingMatches.length})`, icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
+                    { key: 'results' as const, label: `${t('ligen.results')} (${pastMatches.length})`, icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
+                  ].map(tab => (
                     <button
-                      key={t.key}
-                      onClick={() => setDetailTab(t.key)}
+                      key={tab.key}
+                      onClick={() => setDetailTab(tab.key)}
                       className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-medium transition-all ${
-                        detailTab === t.key
+                        detailTab === tab.key
                           ? 'bg-[#1e2a3a] text-[#c89b3c] shadow-sm'
                           : 'text-[#8a9bb0] hover:text-white'
                       }`}
                     >
                       <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d={t.icon} />
+                        <path strokeLinecap="round" strokeLinejoin="round" d={tab.icon} />
                       </svg>
-                      {t.label}
+                      {tab.label}
                     </button>
                   ))}
                 </div>
@@ -321,7 +329,7 @@ export default function LigenPage() {
                 {detailTab === 'standings' && (
                   <div className="bg-[#0d1526] rounded-xl border border-[#1e2a3a] overflow-hidden">
                     {!leagueDetail.standings || leagueDetail.standings.length === 0 ? (
-                      <div className="py-12 text-center text-[#4a5a70]">Keine Standings verfügbar</div>
+                      <div className="py-12 text-center text-[#4a5a70]">{t('ligen.noStandings')}</div>
                     ) : (
                       <table className="w-full">
                         <thead>
@@ -330,8 +338,8 @@ export default function LigenPage() {
                             <th className="px-3 sm:px-4 py-3 text-left">Team</th>
                             <th className="px-2 py-3 text-center w-12">S</th>
                             <th className="px-2 py-3 text-center w-12">N</th>
-                            <th className="px-2 py-3 text-center w-16">Bilanz</th>
-                            <th className="px-3 sm:px-4 py-3 text-left hidden md:table-cell">Spieler</th>
+                            <th className="px-2 py-3 text-center w-16">{t('ligen.record')}</th>
+                            <th className="px-3 sm:px-4 py-3 text-left hidden md:table-cell">{t('teams.players')}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -441,7 +449,7 @@ export default function LigenPage() {
                   <div className="space-y-2">
                     {upcomingMatches.length === 0 ? (
                       <div className="bg-[#0d1526] rounded-xl border border-[#1e2a3a] py-12 text-center text-[#4a5a70]">
-                        Keine kommenden Spiele
+                        {t('ligen.noUpcoming')}
                       </div>
                     ) : upcomingMatches.map((match, i) => (
                       <MatchRow key={`up-${i}`} match={match} formatDate={formatDate} formatTime={formatTime} getTeamLink={getTeamLink} />
@@ -454,7 +462,7 @@ export default function LigenPage() {
                   <div className="space-y-2">
                     {pastMatches.length === 0 ? (
                       <div className="bg-[#0d1526] rounded-xl border border-[#1e2a3a] py-12 text-center text-[#4a5a70]">
-                        Keine Ergebnisse verfügbar
+                        {t('ligen.noResults')}
                       </div>
                     ) : pastMatches.map((match, i) => (
                       <MatchRow key={`past-${i}`} match={match} formatDate={formatDate} formatTime={formatTime} getTeamLink={getTeamLink} />
@@ -478,7 +486,7 @@ export default function LigenPage() {
                       calendarView === 'week' ? 'bg-[#c89b3c]/20 text-[#c89b3c]' : 'text-[#8a9bb0] hover:text-white'
                     }`}
                   >
-                    Woche
+                    {t('cal.week')}
                   </button>
                   <button
                     onClick={() => setCalendarView('month')}
@@ -486,7 +494,7 @@ export default function LigenPage() {
                       calendarView === 'month' ? 'bg-[#c89b3c]/20 text-[#c89b3c]' : 'text-[#8a9bb0] hover:text-white'
                     }`}
                   >
-                    Monat
+                    {t('cal.month')}
                   </button>
                 </div>
 
@@ -500,7 +508,7 @@ export default function LigenPage() {
                     onClick={() => setCalendarDate(new Date())}
                     className="px-3 py-1 text-xs text-[#c89b3c] hover:text-white transition-colors font-medium rounded hover:bg-[#141c2e]"
                   >
-                    Heute
+                    {t('cal.today')}
                   </button>
                   <button onClick={() => navigateCalendar(1)} className="p-1.5 text-[#8a9bb0] hover:text-white transition-colors rounded hover:bg-[#141c2e]">
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
@@ -530,7 +538,7 @@ export default function LigenPage() {
                         }`}
                       >
                         <div className={`text-xs font-medium mb-1.5 ${isToday ? 'text-[#c89b3c]' : 'text-[#8a9bb0]'}`}>
-                          {day.getDate()}. {day.toLocaleDateString('de-DE', { month: 'short' })}
+                          {day.getDate()}. {day.toLocaleDateString(locale, { month: 'short' })}
                         </div>
                         {events && Array.from(events).map(slug => (
                           <button
@@ -581,7 +589,7 @@ export default function LigenPage() {
             </div>
 
             {/* League list */}
-            <h2 className="text-lg font-bold mb-3">Alle Ligen</h2>
+            <h2 className="text-lg font-bold mb-3">{t('ligen.allLeagues')}</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {[...leagues].sort((a, b) => a.name.localeCompare(b.name)).map(league => (
                 <button

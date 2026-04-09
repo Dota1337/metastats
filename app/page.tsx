@@ -251,7 +251,7 @@ export default function Home() {
       {activeTab === 'search' && (
         <div className="max-w-6xl mx-auto px-6 mt-4 mb-8">
           <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-3 px-1">
-            Meistgespielte Champions (Challenger + GM + Master)
+            {t('home.topChampions')}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {featuredChamps.map((champ, i) => (
@@ -293,8 +293,8 @@ export default function Home() {
             {/* Stats Cards with 3D effect */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
               {[
-                { label: 'Pro Teams', value: siteStats.totalTeams.toLocaleString('de-DE'), sub: 'Verifizierte Roster' },
-                { label: 'Pro-Spieler', value: siteStats.totalProPlayers.toLocaleString('de-DE'), sub: 'Alle Ligen weltweit' },
+                { label: t('teams.title'), value: siteStats.totalTeams.toLocaleString('de-DE'), sub: t('home.verifiedRosters') },
+                { label: 'Pro-Spieler', value: siteStats.totalProPlayers.toLocaleString('de-DE'), sub: t('home.allLeagues') },
                 { label: t('home.analyzedMatches'), value: siteStats.matchesAnalyzed.toLocaleString('de-DE'), sub: 'Challenger + GM + Master' },
               ].map(s => (
                 <div key={s.label} className="card-3d glass rounded-lg p-4">

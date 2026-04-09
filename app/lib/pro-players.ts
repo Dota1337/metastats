@@ -1,11 +1,22 @@
 /** Utility to check if a summoner name matches a known pro player */
 
+export interface ProAccount {
+  name: string;
+  tag: string;
+  region: string;
+  rank?: string;
+  verified?: boolean;
+  sources?: number;
+}
+
 export interface ProPlayer {
   proName: string;
   team: string;
   role: string;
   league?: string;
   accounts: string[];
+  mainAccount?: ProAccount | null;
+  smurfs?: ProAccount[];
 }
 
 let proData: { players: ProPlayer[] } | null = null;

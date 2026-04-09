@@ -108,7 +108,10 @@ export default function ChampionBreakdown({ matches, ddVersion }: Props) {
                 <div className={`text-sm font-medium ${wr >= 60 ? 'text-green-400' : wr >= 50 ? 'text-blue-400' : 'text-red-400'}`}>
                   {wr}%
                 </div>
-                <div className="text-[#4a5a70] text-xs">{s.wins}W {s.games - s.wins}L</div>
+                <div className="w-full h-1.5 bg-red-500/30 rounded overflow-hidden mt-1">
+                  <div className="h-full bg-green-500/70 rounded" style={{ width: `${wr}%` }} />
+                </div>
+                <div className="text-[#4a5a70] text-xs mt-0.5">{s.wins}W {s.games - s.wins}L</div>
               </div>
               <div className="text-center">
                 <div className={`text-sm font-medium ${kda >= 4 ? 'text-green-400' : kda >= 2.5 ? 'text-white' : 'text-red-400'}`}>

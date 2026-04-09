@@ -6,7 +6,7 @@ export default function Footer() {
 
   return (
     <div className="text-center text-[#4a5a70] text-xs mt-8 pt-6 border-t border-[#1e2a3a]">
-      metastats.gg · {t('footer.disclaimer')} · <a href="/datenschutz" className="hover:text-white">{t('footer.privacy')}</a> · <a href="/impressum" className="hover:text-white">{t('footer.legal')}</a>
+      metastats.gg · {t('footer.disclaimer')}
     </div>
   );
 }

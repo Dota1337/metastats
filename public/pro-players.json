@@ -508,8 +508,33 @@
       "role": "Mid",
       "country": "China",
       "accounts": [
-        "쯔지 쌰 쯔지#4165",
+        "kk9qwq#KR1",
+        "ZZXE0BYCNW#EUW",
         "asdfadsasdfads#1234"
+      ],
+      "mainAccount": {
+        "name": "kk9qwq",
+        "tag": "KR1",
+        "region": "kr",
+        "rank": "Ch 1,485LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "ZZXE0BYCNW",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "asdfadsasdfads",
+          "tag": "1234",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -518,9 +543,17 @@
       "role": "Jungle",
       "country": "China",
       "accounts": [
-        "Xun#OOK",
         "eewqoeowqeqwoo#2223"
-      ]
+      ],
+      "mainAccount": {
+        "name": "eewqoeowqeqwoo",
+        "tag": "2223",
+        "region": "br",
+        "rank": "Diamond II",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Bin",
@@ -529,8 +562,32 @@
       "country": "China",
       "accounts": [
         "빈 스토리#KR1",
-        "rsdfsaasq#1111",
-        "Bin#K620"
+        "BLGBin ge#EUW",
+        "rsdfsaasq#1111"
+      ],
+      "mainAccount": {
+        "name": "빈 스토리",
+        "tag": "KR1",
+        "region": "kr",
+        "rank": "Diamond I",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "BLGBin ge",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "rsdfsaasq",
+          "tag": "1111",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -540,8 +597,32 @@
       "country": "China",
       "accounts": [
         "키보드에음료쏟아서고장내는이도윤#KR1",
-        "BLG 온#KR1",
+        "hanbaoshutiao#EUW",
         "onc#12345"
+      ],
+      "mainAccount": {
+        "name": "키보드에음료쏟아서고장내는이도윤",
+        "tag": "KR1",
+        "region": "kr",
+        "rank": "Ch 1,678LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "hanbaoshutiao",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "onc",
+          "tag": "12345",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -550,10 +631,17 @@
       "role": "Bot",
       "country": "South Korea",
       "accounts": [
-        "Blue#KR33",
-        "Happy#A33",
-        "1697865#NA1"
-      ]
+        "Blue#KR33"
+      ],
+      "mainAccount": {
+        "name": "Blue",
+        "tag": "KR33",
+        "region": "kr",
+        "rank": "GM 1,280LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Munchy",
@@ -597,9 +685,17 @@
       "role": "Support",
       "country": "South Korea",
       "accounts": [
-        "참새크면비둘기#KR1",
-        "Taki#KR1"
-      ]
+        "댕청잇#KR123"
+      ],
+      "mainAccount": {
+        "name": "댕청잇",
+        "tag": "KR123",
+        "region": "kr",
+        "rank": "Master 1,197LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "VicLa",
@@ -607,8 +703,17 @@
       "role": "Mid",
       "country": "South Korea",
       "accounts": [
-        "대광 #God"
-      ]
+        "대광#God"
+      ],
+      "mainAccount": {
+        "name": "대광",
+        "tag": "God",
+        "region": "kr",
+        "rank": "Unknown",
+        "verified": false,
+        "sources": 1
+      },
+      "smurfs": []
     },
     {
       "proName": "Clear",
@@ -616,9 +721,17 @@
       "role": "Top",
       "country": "South Korea",
       "accounts": [
-        "songman#KR11",
-        "텐동맨#KR1"
-      ]
+        "songman#KR11"
+      ],
+      "mainAccount": {
+        "name": "songman",
+        "tag": "KR11",
+        "region": "kr",
+        "rank": "Master 1,062LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Raptor",
@@ -626,10 +739,17 @@
       "role": "Jungle",
       "country": "South Korea",
       "accounts": [
-        "Raptor#KR123",
-        "불청객2#KR1",
-        "raptorr#kr123"
-      ]
+        "Raptor#KR123"
+      ],
+      "mainAccount": {
+        "name": "Raptor",
+        "tag": "KR123",
+        "region": "kr",
+        "rank": "Ch 1,621LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Diable",
@@ -637,9 +757,17 @@
       "role": "Bot",
       "country": "South Korea",
       "accounts": [
-        "ad1top#CN1",
-        "적수가없는사람#KR1"
-      ]
+        "LSB Diable#KR1"
+      ],
+      "mainAccount": {
+        "name": "LSB Diable",
+        "tag": "KR1",
+        "region": "kr",
+        "rank": "Master 461LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "AdlerCass",
@@ -999,11 +1127,25 @@
       "role": "Mid",
       "country": "United States",
       "accounts": [
-        "BUZZCUTmanFIGHT#APA",
-        "See No Evil#APA",
-        "TL YAPA#HONDA",
-        "TL YAPA#APA",
-        "TL El Debutante"
+        "Lobby Admin#FIGHT",
+        "TL El Debutante#mid"
+      ],
+      "mainAccount": {
+        "name": "Lobby Admin",
+        "tag": "FIGHT",
+        "region": "na",
+        "rank": "Ch 1,722LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "TL El Debutante",
+          "tag": "mid",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -1124,6 +1266,23 @@
       "accounts": [
         "ieada#KR1",
         "no15ff#EUW"
+      ],
+      "mainAccount": {
+        "name": "ieada",
+        "tag": "KR1",
+        "region": "kr",
+        "rank": "Master 1,005LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "no15ff",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Diamond I",
+          "sources": 2
+        }
       ]
     },
     {
@@ -1132,7 +1291,25 @@
       "role": "Jungle",
       "country": "Italy",
       "accounts": [
-        "JZADfans#KR1"
+        "The Qiaang#EUW",
+        "The Qiaang#The"
+      ],
+      "mainAccount": {
+        "name": "The Qiaang",
+        "tag": "EUW",
+        "region": "euw",
+        "rank": "Platinum I",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": [
+        {
+          "name": "The Qiaang",
+          "tag": "The",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -1141,12 +1318,25 @@
       "role": "Bot",
       "country": "Taiwan",
       "accounts": [
-        "xinsuixiaogou#6666",
-        "fish0il#hongq",
-        "小柴銓#tw2",
-        "Doggokule#1234",
-        "Iceland 18Y",
-        "BYG Liang"
+        "hongqkule#1212",
+        "BYG Liang#EUW"
+      ],
+      "mainAccount": {
+        "name": "hongqkule",
+        "tag": "1212",
+        "region": "kr",
+        "rank": "Master 735LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "BYG Liang",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -1192,8 +1382,17 @@
       "role": "Jungle",
       "country": "United States",
       "accounts": [
-        "EXYU#NA1"
-      ]
+        "eXyu#000"
+      ],
+      "mainAccount": {
+        "name": "eXyu",
+        "tag": "000",
+        "region": "euw",
+        "rank": "Unknown",
+        "verified": false,
+        "sources": 1
+      },
+      "smurfs": []
     },
     {
       "proName": "Lyonz",
@@ -1287,10 +1486,17 @@
       "role": "Bot",
       "country": "South Korea",
       "accounts": [
-        "DK Smash#KR7",
-        "사옥 지박령#KR4",
-        "Smash#KR2"
-      ]
+        "DK Smash#KR7"
+      ],
+      "mainAccount": {
+        "name": "DK Smash",
+        "tag": "KR7",
+        "region": "kr",
+        "rank": "Unknown",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Akashi",
@@ -1774,9 +1980,17 @@
       "role": "Mid",
       "country": "South Korea",
       "accounts": [
-        "Quad#123",
-        "FLY Quad#123"
-      ]
+        "Quad#123"
+      ],
+      "mainAccount": {
+        "name": "Quad",
+        "tag": "123",
+        "region": "kr",
+        "rank": "Ch 1,715LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Gryffinn",
@@ -1784,9 +1998,17 @@
       "role": "Jungle",
       "country": "United States",
       "accounts": [
-        "Gryffinn#NA1",
-        "twtv Gryffinn#NA1"
-      ]
+        "Gryffinn#NA1"
+      ],
+      "mainAccount": {
+        "name": "Gryffinn",
+        "tag": "NA1",
+        "region": "na",
+        "rank": "Unranked",
+        "verified": false,
+        "sources": 1
+      },
+      "smurfs": []
     },
     {
       "proName": "Massu",
@@ -1794,9 +2016,17 @@
       "role": "Bot",
       "country": "Iraq",
       "accounts": [
-        "KaiGyt#0187",
-        "Shajara#3636"
-      ]
+        "KaiGyt#0187"
+      ],
+      "mainAccount": {
+        "name": "KaiGyt",
+        "tag": "0187",
+        "region": "na",
+        "rank": "Diamond I",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Gakgos",
@@ -1805,7 +2035,16 @@
       "country": "Turkey",
       "accounts": [
         "FLY Gakgos#123"
-      ]
+      ],
+      "mainAccount": {
+        "name": "FLY Gakgos",
+        "tag": "123",
+        "region": "euw",
+        "rank": "Unranked",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Cryogen",
@@ -1814,7 +2053,9 @@
       "country": "Vietnam",
       "accounts": [
         "Cryogen#NA1"
-      ]
+      ],
+      "mainAccount": null,
+      "smurfs": []
     },
     {
       "proName": "Upset",
@@ -1822,9 +2063,121 @@
       "role": "Bot",
       "country": "Germany",
       "accounts": [
-        "asdfasdf #0308",
-        "FNC Upset#0308",
-        "THINKPOSITIVE03#NA1"
+        "FNC Upset22#EUW",
+        "V5Jr8WhJeIp4oAwM#EUW",
+        "Mfbtskldffh#EUW",
+        "illumi zoldyck1#EUW",
+        "killua zoldyck1#34986",
+        "OdKZxaNb9oYDgbXO#EUW",
+        "FΝC Upset#EUW",
+        "FNC Upset222#EUW",
+        "Meruem12#96603",
+        "FNC Upset13#EUW",
+        "DPMGODX1#EUW",
+        "Upset33#EUW",
+        "Upset03#EUW",
+        "Upset#asdff"
+      ],
+      "mainAccount": {
+        "name": "FNC Upset22",
+        "tag": "EUW",
+        "region": "euw",
+        "rank": "Diamond II",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": [
+        {
+          "name": "V5Jr8WhJeIp4oAwM",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Platinum I",
+          "sources": 2
+        },
+        {
+          "name": "Mfbtskldffh",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Platinum I",
+          "sources": 2
+        },
+        {
+          "name": "illumi zoldyck1",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Platinum I",
+          "sources": 2
+        },
+        {
+          "name": "killua zoldyck1",
+          "tag": "34986",
+          "region": "euw",
+          "rank": "Platinum I",
+          "sources": 2
+        },
+        {
+          "name": "OdKZxaNb9oYDgbXO",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Platinum I",
+          "sources": 2
+        },
+        {
+          "name": "FΝC Upset",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Platinum I",
+          "sources": 2
+        },
+        {
+          "name": "FNC Upset222",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "Meruem12",
+          "tag": "96603",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "FNC Upset13",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "DPMGODX1",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "Upset33",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "Upset03",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "Upset",
+          "tag": "asdff",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -1833,7 +2186,41 @@
       "role": "Jungle",
       "country": "Spain",
       "accounts": [
-        "Cachorro Alpha#razzz"
+        "Razørk Activoo#razzz",
+        "Cachorro Alpha#razzz",
+        "Golfilla#EUW",
+        "G2 Argøs#EUW"
+      ],
+      "mainAccount": {
+        "name": "Razørk Activoo",
+        "tag": "razzz",
+        "region": "euw",
+        "rank": "Ch 2,253LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": [
+        {
+          "name": "Cachorro Alpha",
+          "tag": "razzz",
+          "region": "euw",
+          "rank": "Diamond I",
+          "sources": 2
+        },
+        {
+          "name": "Golfilla",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "G2 Argøs",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -1842,8 +2229,25 @@
       "role": "Mid",
       "country": "Greece",
       "accounts": [
-        "dmsdklb #vivi",
-        "Jjimdak#000"
+        "J1HUIV#000",
+        "dmsdklb#vivi"
+      ],
+      "mainAccount": {
+        "name": "J1HUIV",
+        "tag": "000",
+        "region": "euw",
+        "rank": "Ch 2,493LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": [
+        {
+          "name": "dmsdklb",
+          "tag": "vivi",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -2072,9 +2476,17 @@
       "role": "Top",
       "country": "Germany",
       "accounts": [
-        "G2 BrokenBlade#1918",
-        "G2 Fogo de Chão#1918"
-      ]
+        "G2 BrokenBlade#1918"
+      ],
+      "mainAccount": {
+        "name": "G2 BrokenBlade",
+        "tag": "1918",
+        "region": "euw",
+        "rank": "Ch 2,053LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "SkewMond",
@@ -2083,7 +2495,24 @@
       "country": "France",
       "accounts": [
         "G2 SkewMond#3327",
-        "G2 Joga Bonito#G2G2"
+        "Miyamoto Musashi#2783"
+      ],
+      "mainAccount": {
+        "name": "G2 SkewMond",
+        "tag": "3327",
+        "region": "euw",
+        "rank": "Ch 2,951LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": [
+        {
+          "name": "Miyamoto Musashi",
+          "tag": "2783",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -2092,9 +2521,17 @@
       "role": "Bot",
       "country": "France",
       "accounts": [
-        "G2 Hans Sama#12838",
-        "G2G2G2#32235"
-      ]
+        "G2 Hans Sama#12838"
+      ],
+      "mainAccount": {
+        "name": "G2 Hans Sama",
+        "tag": "12838",
+        "region": "euw",
+        "rank": "Unranked",
+        "verified": false,
+        "sources": 1
+      },
+      "smurfs": []
     },
     {
       "proName": "Labrov",
@@ -2103,7 +2540,48 @@
       "country": "Greece",
       "accounts": [
         "G2 Labrov#8085",
-        "school phobia#EUW"
+        "school phobia#EUW",
+        "skliks#EUNE",
+        "LYXNNH#EUW",
+        "BGfXFaXs132#EUW2"
+      ],
+      "mainAccount": {
+        "name": "G2 Labrov",
+        "tag": "8085",
+        "region": "euw",
+        "rank": "Ch 2,205LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": [
+        {
+          "name": "school phobia",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "skliks",
+          "tag": "EUNE",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "LYXNNH",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "BGfXFaXs132",
+          "tag": "EUW2",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -2113,8 +2591,32 @@
       "country": "Denmark",
       "accounts": [
         "G2 Caps#1323",
-        "G2 Caps#LOL1",
-        "G2G2G2#G2G2"
+        "Speedy McJingles#EUW",
+        "A 99 mid laner#EUW"
+      ],
+      "mainAccount": {
+        "name": "G2 Caps",
+        "tag": "1323",
+        "region": "euw",
+        "rank": "Ch 2,592LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": [
+        {
+          "name": "Speedy McJingles",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Platinum I",
+          "sources": 2
+        },
+        {
+          "name": "A 99 mid laner",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -2218,7 +2720,24 @@
       "country": "South Korea",
       "accounts": [
         "kiin#KR1",
-        "kiin#구독좋아요"
+        "asdfzxcv#3347"
+      ],
+      "mainAccount": {
+        "name": "kiin",
+        "tag": "KR1",
+        "region": "kr",
+        "rank": "Master 611LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "asdfzxcv",
+          "tag": "3347",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -2227,9 +2746,33 @@
       "role": "Jungle",
       "country": "South Korea",
       "accounts": [
-        "JUGKlNG#kr",
-        "asfdwrqe#123",
-        "밴쿠버#123"
+        "HUANG TONG DAYE#KR1",
+        "happy gαme#EUW",
+        "asfdwrqe#123"
+      ],
+      "mainAccount": {
+        "name": "HUANG TONG DAYE",
+        "tag": "KR1",
+        "region": "kr",
+        "rank": "Ch 1,417LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "happy gαme",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "asfdwrqe",
+          "tag": "123",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -2239,8 +2782,48 @@
       "country": "South Korea",
       "accounts": [
         "허거덩#0303",
-        "Lehends#원숭이",
-        "KKintube#낀낀이형"
+        "Pd8JbseaJwwjQpNH#EUW",
+        "Shrimp Shark#43083",
+        "lIlIlIIllIlllIIl#EUW",
+        "Lehends#원숭이"
+      ],
+      "mainAccount": {
+        "name": "허거덩",
+        "tag": "0303",
+        "region": "kr",
+        "rank": "Master 565LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "Pd8JbseaJwwjQpNH",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Diamond I",
+          "sources": 2
+        },
+        {
+          "name": "Shrimp Shark",
+          "tag": "43083",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "lIlIlIIllIlllIIl",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "Lehends",
+          "tag": "원숭이",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -2249,9 +2832,33 @@
       "role": "Bot",
       "country": "South Korea",
       "accounts": [
-        "귀찮게하지마#KR3",
+        "황금고블린1#KR1",
         "Gen G Ru1er#EUW",
-        "ruler#145"
+        "tkffuwnjwpqkf#EUW"
+      ],
+      "mainAccount": {
+        "name": "황금고블린1",
+        "tag": "KR1",
+        "region": "kr",
+        "rank": "Ch 1,149LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "Gen G Ru1er",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "tkffuwnjwpqkf",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -2260,9 +2867,17 @@
       "role": "Support",
       "country": "South Korea",
       "accounts": [
-        "Duro#Gen",
-        "Rio de Janeiro#브라질"
-      ]
+        "Duro#Gen"
+      ],
+      "mainAccount": {
+        "name": "Duro",
+        "tag": "Gen",
+        "region": "kr",
+        "rank": "Master 398LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "WhyLag",
@@ -2476,7 +3091,24 @@
       "country": "South Korea",
       "accounts": [
         "우 맨#who",
-        "BoraBoraBora#paiN"
+        "TLTLTL#TLTL"
+      ],
+      "mainAccount": {
+        "name": "우 맨",
+        "tag": "who",
+        "region": "kr",
+        "rank": "Ch 2,008LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "TLTLTL",
+          "tag": "TLTL",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -2485,9 +3117,41 @@
       "role": "Bot",
       "country": "South Korea",
       "accounts": [
-        "T1 Gumayusi#ＫR1",
-        "구르시#녹서스",
+        "HLE Gumayusi#0298",
+        "Giant Monster#09494",
+        "MQLWKENRK#EUW",
         "taco genius#8848"
+      ],
+      "mainAccount": {
+        "name": "HLE Gumayusi",
+        "tag": "0298",
+        "region": "kr",
+        "rank": "Ch 2,333LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "Giant Monster",
+          "tag": "09494",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "MQLWKENRK",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "taco genius",
+          "tag": "8848",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -2497,8 +3161,24 @@
       "country": "South Korea",
       "accounts": [
         "vinaka#KR1",
-        "PoAtan#ASP",
         "srcrd#EUW"
+      ],
+      "mainAccount": {
+        "name": "vinaka",
+        "tag": "KR1",
+        "region": "kr",
+        "rank": "GM 1,460LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "srcrd",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -2507,9 +3187,33 @@
       "role": "Top",
       "country": "South Korea",
       "accounts": [
-        "Spring#bomm",
-        "T1 Haaland#NA1",
-        "Pom Michutda#EUW"
+        "Zeus#glgl",
+        "Pom Michutda#EUW",
+        "Zimmer#god"
+      ],
+      "mainAccount": {
+        "name": "Zeus",
+        "tag": "glgl",
+        "region": "kr",
+        "rank": "Ch 1,927LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "Pom Michutda",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "Zimmer",
+          "tag": "god",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -2519,7 +3223,32 @@
       "country": "South Korea",
       "accounts": [
         "플레이리스트겨울#KR1",
+        "GDB CARRY#EUW",
         "Delight11#kor"
+      ],
+      "mainAccount": {
+        "name": "플레이리스트겨울",
+        "tag": "KR1",
+        "region": "kr",
+        "rank": "GM 1,402LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "GDB CARRY",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "Delight11",
+          "tag": "kor",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -2530,6 +3259,23 @@
       "accounts": [
         "suis#kr7",
         "Dkdldb#516"
+      ],
+      "mainAccount": {
+        "name": "suis",
+        "tag": "kr7",
+        "region": "kr",
+        "rank": "Ch 2,543LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "Dkdldb",
+          "tag": "516",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -2897,10 +3643,17 @@
       "role": "Mid",
       "country": "Taiwan",
       "accounts": [
-        "tfhto#KR1",
-        "YuJunJia#0610",
-        "吉娃娃只有5歲#0702"
-      ]
+        "Doggokule#1234"
+      ],
+      "mainAccount": {
+        "name": "Doggokule",
+        "tag": "1234",
+        "region": "br",
+        "rank": "Diamond I",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Vampire",
@@ -2908,9 +3661,17 @@
       "role": "Support",
       "country": "China",
       "accounts": [
-        "OwO#43351",
         "caiminghong#QAQ"
-      ]
+      ],
+      "mainAccount": {
+        "name": "caiminghong",
+        "tag": "QAQ",
+        "region": "br",
+        "rank": "Diamond I",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "JunJia",
@@ -2918,9 +3679,41 @@
       "role": "Jungle",
       "country": "Taiwan",
       "accounts": [
-        "fgdgaw#KR1",
         "asdjipadsjip#KR1",
-        "fragile #KR1"
+        "Expecto Patrounm#EUW",
+        "ITTBLZKHHZ#EUW",
+        "庭不下來#0610"
+      ],
+      "mainAccount": {
+        "name": "asdjipadsjip",
+        "tag": "KR1",
+        "region": "kr",
+        "rank": "GM 1,410LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "Expecto Patrounm",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "ITTBLZKHHZ",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "庭不下來",
+          "tag": "0610",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -2930,8 +3723,32 @@
       "country": "China",
       "accounts": [
         "나아침먹고싶어#7401",
-        "wenwhatwen#EU1",
-        "JDG GALA#123"
+        "2021Worlds0171#EUW",
+        "wenwhatwen#EU1"
+      ],
+      "mainAccount": {
+        "name": "나아침먹고싶어",
+        "tag": "7401",
+        "region": "kr",
+        "rank": "Master 985LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "2021Worlds0171",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "wenwhatwen",
+          "tag": "EU1",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -2940,9 +3757,17 @@
       "role": "Top",
       "country": "China",
       "accounts": [
-        "샤오 쑤A#KR1",
         "吸血鬼大王#世一鬼"
-      ]
+      ],
+      "mainAccount": {
+        "name": "吸血鬼大王",
+        "tag": "世一鬼",
+        "region": "kr",
+        "rank": "Master 378LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Glarb",
@@ -3190,8 +4015,24 @@
       "country": "France",
       "accounts": [
         "KC NEXT ADKING#EUW",
-        "I NEED SOLOQ#EUW",
-        "KC Caliste#0001"
+        "MOMO KOZUKI#soloq"
+      ],
+      "mainAccount": {
+        "name": "KC NEXT ADKING",
+        "tag": "EUW",
+        "region": "euw",
+        "rank": "Ch 3,045LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": [
+        {
+          "name": "MOMO KOZUKI",
+          "tag": "soloq",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -3200,7 +4041,25 @@
       "role": "Jungle",
       "country": "Sweden",
       "accounts": [
-        "KC Yiken#1111"
+        "KC Yiken#1111",
+        "Yikos#EUW"
+      ],
+      "mainAccount": {
+        "name": "KC Yiken",
+        "tag": "1111",
+        "region": "euw",
+        "rank": "Ch 2,512LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": [
+        {
+          "name": "Yikos",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -3209,7 +4068,33 @@
       "role": "Top",
       "country": "South Korea",
       "accounts": [
-        "칸 나#0211"
+        "칸 나#0211",
+        "Savage love#EUW",
+        "EJRKLJ0#0000"
+      ],
+      "mainAccount": {
+        "name": "칸 나",
+        "tag": "0211",
+        "region": "kr",
+        "rank": "Unranked",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "Savage love",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "EJRKLJ0",
+          "tag": "0000",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -3218,10 +4103,17 @@
       "role": "Support",
       "country": "United States",
       "accounts": [
-        "Busio JNG#NA1",
-        "Mad Hatter#Hat",
-        "OG Mithy#Moo"
-      ]
+        "KC Busio#000"
+      ],
+      "mainAccount": {
+        "name": "KC Busio",
+        "tag": "000",
+        "region": "na",
+        "rank": "Diamond IV",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Yukino",
@@ -4007,7 +4899,40 @@
       "country": "Spain",
       "accounts": [
         "komanche uchiha#elite",
+        "Ratón calvo#EUW",
+        "domyos#mchla",
         "Andrew Laedis#EUW"
+      ],
+      "mainAccount": {
+        "name": "komanche uchiha",
+        "tag": "elite",
+        "region": "euw",
+        "rank": "Ch 2,064LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": [
+        {
+          "name": "Ratón calvo",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "domyos",
+          "tag": "mchla",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "Andrew Laedis",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -4016,12 +4941,17 @@
       "role": "Mid",
       "country": "Canada",
       "accounts": [
-        "KOIIIIIIIII#1234",
-        "torontoooooooo #1234",
-        "jjjjjjjjjjjj#1234",
-        "VJBYYTF0AO#EUW",
-        "2001 05 09 #2001"
-      ]
+        "VJBYYTF0AO#EUW"
+      ],
+      "mainAccount": {
+        "name": "VJBYYTF0AO",
+        "tag": "EUW",
+        "region": "euw",
+        "rank": "Unranked",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": []
     },
     {
       "proName": "Supa",
@@ -4030,7 +4960,40 @@
       "country": "Spain",
       "accounts": [
         "tukaan#tukan",
-        "Tukaan#tuknn"
+        "Perro de Elyoya#EUW",
+        "4tukano4#TUKAN",
+        "K1374n0#EUW"
+      ],
+      "mainAccount": {
+        "name": "tukaan",
+        "tag": "tukan",
+        "region": "euw",
+        "rank": "Ch 2,744LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": [
+        {
+          "name": "Perro de Elyoya",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Platinum I",
+          "sources": 2
+        },
+        {
+          "name": "4tukano4",
+          "tag": "TUKAN",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "K1374n0",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -4039,9 +5002,33 @@
       "role": "Top",
       "country": "Spain",
       "accounts": [
-        "Lamine Yamal#Annie",
-        "MANZANA VAPE#TFNYS",
-        "Bb trickz#Tipz"
+        "snoopy#kite",
+        "shirin#lover",
+        "Mualani C6#Myrwn"
+      ],
+      "mainAccount": {
+        "name": "snoopy",
+        "tag": "kite",
+        "region": "euw",
+        "rank": "Master 71LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": [
+        {
+          "name": "shirin",
+          "tag": "lover",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "Mualani C6",
+          "tag": "Myrwn",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -4050,9 +5037,17 @@
       "role": "Support",
       "country": "Spain",
       "accounts": [
-        "alvarooo#EUW",
-        "Articuno#sup"
-      ]
+        "alvarooo#000"
+      ],
+      "mainAccount": {
+        "name": "alvarooo",
+        "tag": "000",
+        "region": "euw",
+        "rank": "Ch 2,834LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Chika",
@@ -4272,7 +5267,16 @@
       "country": "Canada",
       "accounts": [
         "Zamudo#NA1"
-      ]
+      ],
+      "mainAccount": {
+        "name": "Zamudo",
+        "tag": "NA1",
+        "region": "na",
+        "rank": "Unranked",
+        "verified": false,
+        "sources": 1
+      },
+      "smurfs": []
     },
     {
       "proName": "Sushee",
@@ -4281,7 +5285,16 @@
       "country": "Canada",
       "accounts": [
         "Sushee#NA1"
-      ]
+      ],
+      "mainAccount": {
+        "name": "Sushee",
+        "tag": "NA1",
+        "region": "na",
+        "rank": "Unranked",
+        "verified": false,
+        "sources": 1
+      },
+      "smurfs": []
     },
     {
       "proName": "Kisno",
@@ -4290,7 +5303,16 @@
       "country": "United States",
       "accounts": [
         "kisno#NA1"
-      ]
+      ],
+      "mainAccount": {
+        "name": "kisno",
+        "tag": "NA1",
+        "region": "na",
+        "rank": "Unranked",
+        "verified": false,
+        "sources": 1
+      },
+      "smurfs": []
     },
     {
       "proName": "CheeseChaz",
@@ -5027,7 +6049,9 @@
       "country": "Brazil",
       "accounts": [
         "katsuo#brkn"
-      ]
+      ],
+      "mainAccount": null,
+      "smurfs": []
     },
     {
       "proName": "swag",
@@ -5036,7 +6060,9 @@
       "country": "Brazil",
       "accounts": [
         "swag#yunk"
-      ]
+      ],
+      "mainAccount": null,
+      "smurfs": []
     },
     {
       "proName": "Nagata",
@@ -5046,7 +6072,9 @@
       "accounts": [
         "nagata#1994",
         "ADKING#zora"
-      ]
+      ],
+      "mainAccount": null,
+      "smurfs": []
     },
     {
       "proName": "Donk",
@@ -5057,7 +6085,9 @@
         "Donk#1605",
         "Handsome Viper #ADGOD",
         "Viper Ruler Guma#ADGOD"
-      ]
+      ],
+      "mainAccount": null,
+      "smurfs": []
     },
     {
       "proName": "White Snow",
@@ -5436,8 +6466,25 @@
       "role": "Support",
       "country": "Brazil",
       "accounts": [
-        "Ceos#SRE",
-        "fogao 4 boca#KR1"
+        "Ceos#9035",
+        "Krastyel#EUW"
+      ],
+      "mainAccount": {
+        "name": "Ceos",
+        "tag": "9035",
+        "region": "br",
+        "rank": "Diamond I",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "Krastyel",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -5455,8 +6502,41 @@
       "role": "Support",
       "country": "Slovenia",
       "accounts": [
-        "Billy Butcher#Mikyx",
-        "MSF Kacchan#KR1"
+        "Expedition 28#0211",
+        "Riza Hawkeyé#76934",
+        "VegetableMuncher#EUW",
+        "Billy Butcher#Mikyx"
+      ],
+      "mainAccount": {
+        "name": "Expedition 28",
+        "tag": "0211",
+        "region": "euw",
+        "rank": "Ch 2,705LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": [
+        {
+          "name": "Riza Hawkeyé",
+          "tag": "76934",
+          "region": "euw",
+          "rank": "Ch 950LP",
+          "sources": 2
+        },
+        {
+          "name": "VegetableMuncher",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "Billy Butcher",
+          "tag": "Mikyx",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -5602,8 +6682,17 @@
       "role": "Mid",
       "country": "South Korea",
       "accounts": [
-        "Cry Out#3210"
-      ]
+        "眠いな#2323"
+      ],
+      "mainAccount": {
+        "name": "眠いな",
+        "tag": "2323",
+        "region": "euw",
+        "rank": "Master 1,321LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": []
     },
     {
       "proName": "Electric",
@@ -5884,9 +6973,41 @@
       "role": "Support",
       "country": "South Korea",
       "accounts": [
-        "역천괴#ker3",
+        "Keria#4111",
+        "The Kid Keria#EUW",
         "Ai Aqua Ruby#66298",
-        "durcjsrhl#1014"
+        "triplestar#star"
+      ],
+      "mainAccount": {
+        "name": "Keria",
+        "tag": "4111",
+        "region": "kr",
+        "rank": "GM 1,459LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "The Kid Keria",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "Ai Aqua Ruby",
+          "tag": "66298",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "triplestar",
+          "tag": "star",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -5896,8 +7017,32 @@
       "country": "South Korea",
       "accounts": [
         "오 너#111",
-        "BONG BONG U#123",
-        "hi hello#12341"
+        "T1 Roach#EUW",
+        "BONG BONG U#123"
+      ],
+      "mainAccount": {
+        "name": "오 너",
+        "tag": "111",
+        "region": "kr",
+        "rank": "Ch 2,238LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "T1 Roach",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "BONG BONG U",
+          "tag": "123",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -5907,8 +7052,40 @@
       "country": "South Korea",
       "accounts": [
         "어리고싶다#KR1",
-        "HLE TOP#1234",
-        "TOPTOPTOP#1234"
+        "h9aM1DQHxKnrilLD#EUW",
+        "HO1WQYETAN#EUW",
+        "HLE TOP#1234"
+      ],
+      "mainAccount": {
+        "name": "어리고싶다",
+        "tag": "KR1",
+        "region": "kr",
+        "rank": "Ch 1,794LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "h9aM1DQHxKnrilLD",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Diamond I",
+          "sources": 2
+        },
+        {
+          "name": "HO1WQYETAN",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "HLE TOP",
+          "tag": "1234",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -5918,7 +7095,32 @@
       "country": "South Korea",
       "accounts": [
         "Peyz#KR11",
+        "ABCDPEYZ#EUW",
         "qwewqrsad2w#11111"
+      ],
+      "mainAccount": {
+        "name": "Peyz",
+        "tag": "KR11",
+        "region": "kr",
+        "rank": "Ch 2,431LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "ABCDPEYZ",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "qwewqrsad2w",
+          "tag": "11111",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -5928,8 +7130,40 @@
       "country": "South Korea",
       "accounts": [
         "Hide on bush#KR1",
-        "Hide on bush#61151",
-        "Hide on bush#canad"
+        "wincg#84926",
+        "silent silence#08022",
+        "Hide on bush#61151"
+      ],
+      "mainAccount": {
+        "name": "Hide on bush",
+        "tag": "KR1",
+        "region": "kr",
+        "rank": "GM 1,494LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "wincg",
+          "tag": "84926",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "silent silence",
+          "tag": "08022",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "Hide on bush",
+          "tag": "61151",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -5947,9 +7181,41 @@
       "role": "Support",
       "country": "South Korea",
       "accounts": [
-        "리퀴드 코어장전#KR1",
         "From Iron#1123",
+        "BOL4#EUW",
+        "ChatDisabler94#EUW",
         "TL Honda CoreJJ#EUEU"
+      ],
+      "mainAccount": {
+        "name": "From Iron",
+        "tag": "1123",
+        "region": "na",
+        "rank": "Ch 2,561LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "BOL4",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Diamond I",
+          "sources": 2
+        },
+        {
+          "name": "ChatDisabler94",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "TL Honda CoreJJ",
+          "tag": "EUEU",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -5958,9 +7224,17 @@
       "role": "Jungle",
       "country": "Argentina",
       "accounts": [
-        "Josedeodo#0000",
-        "Josedeodo2#BR1"
-      ]
+        "2891407957263904#KR1"
+      ],
+      "mainAccount": {
+        "name": "2891407957263904",
+        "tag": "KR1",
+        "region": "kr",
+        "rank": "Unranked",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Yeon",
@@ -5969,7 +7243,24 @@
       "country": "United States",
       "accounts": [
         "TL Yeon#7lol",
-        "Autumn Tree#蘇沐秋"
+        "IHATEYOU#TL7"
+      ],
+      "mainAccount": {
+        "name": "TL Yeon",
+        "tag": "7lol",
+        "region": "na",
+        "rank": "Ch 1,585LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "IHATEYOU",
+          "tag": "TL7",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -6055,7 +7346,25 @@
       "role": "Mid",
       "country": "Czech Republic",
       "accounts": [
-        "QüarantineAbuser#EUW"
+        "Marek Brazda1#DOG",
+        "PogMirkler#000"
+      ],
+      "mainAccount": {
+        "name": "Marek Brazda1",
+        "tag": "DOG",
+        "region": "euw",
+        "rank": "GM 1,638LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": [
+        {
+          "name": "PogMirkler",
+          "tag": "000",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -6138,9 +7447,25 @@
       "role": "Bot",
       "country": "China",
       "accounts": [
-        "EUW: 我就是我#tian",
-        "eeevoLyekcaJ#NA1",
-        "JackeyLove"
+        "qweasdqweasdqw#KR1",
+        "我就是我#tian"
+      ],
+      "mainAccount": {
+        "name": "qweasdqweasdqw",
+        "tag": "KR1",
+        "region": "kr",
+        "rank": "Master 1,173LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "我就是我",
+          "tag": "tian",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -6149,9 +7474,33 @@
       "role": "Top",
       "country": "China",
       "accounts": [
-        "qsxmiocmio#KR1",
+        "Xxqqq#KR1",
         "JZDKVFYPNO#EUW",
-        "MM9 ghost#NA1"
+        "tesguohao#124"
+      ],
+      "mainAccount": {
+        "name": "Xxqqq",
+        "tag": "KR1",
+        "region": "kr",
+        "rank": "Ch 908LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "JZDKVFYPNO",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "tesguohao",
+          "tag": "124",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -6161,7 +7510,24 @@
       "country": "China",
       "accounts": [
         "livinli#KR1",
-        "我就是天#0000"
+        "cinema#6800"
+      ],
+      "mainAccount": {
+        "name": "livinli",
+        "tag": "KR1",
+        "region": "kr",
+        "rank": "Ch 1,643LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "cinema",
+          "tag": "6800",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -7279,7 +8645,32 @@
       "country": "China",
       "accounts": [
         "sad and bad#KR1",
+        "nishuohuaa bin#EUW",
         "WO CAO BIN#CN3"
+      ],
+      "mainAccount": {
+        "name": "sad and bad",
+        "tag": "KR1",
+        "region": "kr",
+        "rank": "Master 887LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "nishuohuaa bin",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "WO CAO BIN",
+          "tag": "CN3",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -9240,9 +10631,17 @@
       "role": "Mid",
       "country": "South Korea",
       "accounts": [
-        "daystar#KR1",
-        "정이라고 하쟈"
-      ]
+        "aksdjhfljlasdkaj#asdkl"
+      ],
+      "mainAccount": {
+        "name": "aksdjhfljlasdkaj",
+        "tag": "asdkl",
+        "region": "euw",
+        "rank": "Unknown",
+        "verified": false,
+        "sources": 1
+      },
+      "smurfs": []
     },
     {
       "proName": "Slayer",
@@ -10093,8 +11492,41 @@
       "role": "Bot",
       "country": "Denmark",
       "accounts": [
-        "Żven#NA1",
-        "Zven#KR1"
+        "Zven#S16XD",
+        "C9 Zvenn#EUW",
+        "Zven#GOAT",
+        "C9 ZVENNN#EUW"
+      ],
+      "mainAccount": {
+        "name": "Zven",
+        "tag": "S16XD",
+        "region": "na",
+        "rank": "Ch 2,033LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": [
+        {
+          "name": "C9 Zvenn",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Ch 997LP",
+          "sources": 2
+        },
+        {
+          "name": "Zven",
+          "tag": "GOAT",
+          "region": "na",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "C9 ZVENNN",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -10103,7 +11535,33 @@
       "role": "Jungle",
       "country": "United States",
       "accounts": [
-        "blaberfish2#NA1"
+        "blaberfish2#NA1",
+        "C9 Blaberfish2#EUW",
+        "jgchai2#EUW"
+      ],
+      "mainAccount": {
+        "name": "blaberfish2",
+        "tag": "NA1",
+        "region": "na",
+        "rank": "Ch 1,713LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "C9 Blaberfish2",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "jgchai2",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -10112,8 +11570,17 @@
       "role": "Support",
       "country": "Canada",
       "accounts": [
-        "pabl0 picass0#EUW"
-      ]
+        "VULCAN#5125"
+      ],
+      "mainAccount": {
+        "name": "VULCAN",
+        "tag": "5125",
+        "region": "na",
+        "rank": "Ch 1,488LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Thanatos",
@@ -10121,11 +11588,17 @@
       "role": "Top",
       "country": "South Korea",
       "accounts": [
-        "C9 Thanatos#EUW",
-        "thanatoes#EUW",
-        "C9 Thanatos",
-        "Thanatoes"
-      ]
+        "Thanatoes#kr2"
+      ],
+      "mainAccount": {
+        "name": "Thanatoes",
+        "tag": "kr2",
+        "region": "na",
+        "rank": "Ch 2,094LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Ploxy",
@@ -10447,8 +11920,17 @@
       "role": "Mid",
       "country": "South Korea",
       "accounts": [
-        "Liiv Pungyeon"
-      ]
+        "CFO Pungyeon#0622"
+      ],
+      "mainAccount": {
+        "name": "CFO Pungyeon",
+        "tag": "0622",
+        "region": "euw",
+        "rank": "Unknown",
+        "verified": false,
+        "sources": 1
+      },
+      "smurfs": []
     },
     {
       "proName": "2274",
@@ -10457,7 +11939,16 @@
       "country": "Taiwan",
       "accounts": [
         "eqwdqg#KR1"
-      ]
+      ],
+      "mainAccount": {
+        "name": "eqwdqg",
+        "tag": "KR1",
+        "region": "kr",
+        "rank": "Unranked",
+        "verified": false,
+        "sources": 1
+      },
+      "smurfs": []
     },
     {
       "proName": "Leowei",
@@ -10836,8 +12327,24 @@
       "country": "Australia",
       "accounts": [
         "ADCADC123#NA1",
-        "NA Hopium#EUW",
-        "VIPERFANBOY1#KR1"
+        "NA Hopium#EUW"
+      ],
+      "mainAccount": {
+        "name": "ADCADC123",
+        "tag": "NA1",
+        "region": "na",
+        "rank": "GM 1,104LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "NA Hopium",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -10846,9 +12353,25 @@
       "role": "Support",
       "country": "South Korea",
       "accounts": [
-        "Ignar#0000",
-        "Fantastic Duo2#EUW",
-        "änsn #EUW"
+        "IgNar#960",
+        "P5MoSZ1jatp3JQYy#EUW"
+      ],
+      "mainAccount": {
+        "name": "IgNar",
+        "tag": "960",
+        "region": "kr",
+        "rank": "Diamond I",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "P5MoSZ1jatp3JQYy",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Diamond III",
+          "sources": 2
+        }
       ]
     },
     {
@@ -10857,7 +12380,25 @@
       "role": "Top",
       "country": "South Korea",
       "accounts": [
-        "1 cent top#KR1"
+        "1 cent top#KR1",
+        "is it just me#EUW"
+      ],
+      "mainAccount": {
+        "name": "1 cent top",
+        "tag": "KR1",
+        "region": "kr",
+        "rank": "Unranked",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "is it just me",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -11356,8 +12897,32 @@
       "country": "South Korea",
       "accounts": [
         "DK ShowMaker#KR1",
-        "ShowMaker#kr",
-        "DWG KIA#KR1"
+        "dntmdgkrhtlvdjdy#EUW",
+        "Syndra#0722"
+      ],
+      "mainAccount": {
+        "name": "DK ShowMaker",
+        "tag": "KR1",
+        "region": "kr",
+        "rank": "Ch 2,400LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "dntmdgkrhtlvdjdy",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "Syndra",
+          "tag": "0722",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -11366,9 +12931,17 @@
       "role": "Top",
       "country": "South Korea",
       "accounts": [
-        "Si Woo#EUW",
-        "Siwoo"
-      ]
+        "TOPKING#asd"
+      ],
+      "mainAccount": {
+        "name": "TOPKING",
+        "tag": "asd",
+        "region": "kr",
+        "rank": "Ch 2,215LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Lucid",
@@ -11378,6 +12951,23 @@
       "accounts": [
         "DK Lucid#KR1",
         "nicemeetyou#1234"
+      ],
+      "mainAccount": {
+        "name": "DK Lucid",
+        "tag": "KR1",
+        "region": "kr",
+        "rank": "Ch 2,205LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "nicemeetyou",
+          "tag": "1234",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -11386,9 +12976,17 @@
       "role": "Support",
       "country": "South Korea",
       "accounts": [
-        "Career#EUW",
-        "Career"
-      ]
+        "꼬부기#0829"
+      ],
+      "mainAccount": {
+        "name": "꼬부기",
+        "tag": "0829",
+        "region": "kr",
+        "rank": "Unknown",
+        "verified": false,
+        "sources": 1
+      },
+      "smurfs": []
     },
     {
       "proName": "Hitscan",
@@ -11767,8 +13365,17 @@
       "role": "Mid",
       "country": "China",
       "accounts": [
-        "ange1z#NA1"
-      ]
+        "아창란o식물#KR1"
+      ],
+      "mainAccount": {
+        "name": "아창란o식물",
+        "tag": "KR1",
+        "region": "kr",
+        "rank": "Ch 1,064LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Zdz",
@@ -11776,9 +13383,17 @@
       "role": "Top",
       "country": "China",
       "accounts": [
-        "zdz#KR1",
-        "Zdz"
-      ]
+        "2891447165093696#KR1"
+      ],
+      "mainAccount": {
+        "name": "2891447165093696",
+        "tag": "KR1",
+        "region": "kr",
+        "rank": "Unranked",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Xiaohao",
@@ -11786,9 +13401,17 @@
       "role": "Jungle",
       "country": "China",
       "accounts": [
-        "XIAOHAO#001",
-        "Xiaohao"
-      ]
+        "강아지좋아#KR3"
+      ],
+      "mainAccount": {
+        "name": "강아지좋아",
+        "tag": "KR3",
+        "region": "kr",
+        "rank": "Ch 1,835LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Leave",
@@ -11796,8 +13419,17 @@
       "role": "Bot",
       "country": "China",
       "accounts": [
-        "Leave#KR1"
-      ]
+        "leave#444"
+      ],
+      "mainAccount": {
+        "name": "leave",
+        "tag": "444",
+        "region": "kr",
+        "rank": "Ch 2,049LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Parukia",
@@ -11806,7 +13438,16 @@
       "country": "China",
       "accounts": [
         "qwerqwerqw#KR1"
-      ]
+      ],
+      "mainAccount": {
+        "name": "qwerqwerqw",
+        "tag": "KR1",
+        "region": "kr",
+        "rank": "Unranked",
+        "verified": false,
+        "sources": 1
+      },
+      "smurfs": []
     },
     {
       "proName": "qiuyu",
@@ -11915,9 +13556,33 @@
       "role": "Mid",
       "country": "Denmark",
       "accounts": [
-        "Sencux#EUW",
-        "Chres",
-        "Sencux"
+        "QloTrGeSdV#EUW",
+        "Sencux#123",
+        "TOPSON#BUMS"
+      ],
+      "mainAccount": {
+        "name": "QloTrGeSdV",
+        "tag": "EUW",
+        "region": "euw",
+        "rank": "GM 1,364LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": [
+        {
+          "name": "Sencux",
+          "tag": "123",
+          "region": "euw",
+          "rank": "Diamond IV",
+          "sources": 2
+        },
+        {
+          "name": "TOPSON",
+          "tag": "BUMS",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -11926,8 +13591,17 @@
       "role": "Bot",
       "country": "Germany",
       "accounts": [
-        "Notiko"
-      ]
+        "Notiko#EUW01"
+      ],
+      "mainAccount": {
+        "name": "Notiko",
+        "tag": "EUW01",
+        "region": "euw",
+        "rank": "Unranked",
+        "verified": false,
+        "sources": 1
+      },
+      "smurfs": []
     },
     {
       "proName": "Mietek",
@@ -11935,9 +13609,17 @@
       "role": "Top",
       "country": "Poland",
       "accounts": [
-        "Mietek#EUW",
-        "Mietek"
-      ]
+        "Mietek#777"
+      ],
+      "mainAccount": {
+        "name": "Mietek",
+        "tag": "777",
+        "region": "euw",
+        "rank": "Master 1,228LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": []
     },
     {
       "proName": "D4nKa",
@@ -11945,10 +13627,17 @@
       "role": "Jungle",
       "country": "Germany",
       "accounts": [
-        "D4nKa#EUW",
-        "D4nKa",
-        "STARGAZ1NG1"
-      ]
+        "molodoy jg#FURIA"
+      ],
+      "mainAccount": {
+        "name": "molodoy jg",
+        "tag": "FURIA",
+        "region": "euw",
+        "rank": "Master 1,154LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": []
     },
     {
       "proName": "Farfetch",
@@ -11956,8 +13645,33 @@
       "role": "Support",
       "country": "Turkey",
       "accounts": [
-        "Farfetch1#EUW",
-        "WhaleRíder#EUW"
+        "farfetch#296",
+        "Whale Rider#43378",
+        "夕阳格外伤感  人间多有遗憾#对不起"
+      ],
+      "mainAccount": {
+        "name": "farfetch",
+        "tag": "296",
+        "region": "euw",
+        "rank": "Master 1,161LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": [
+        {
+          "name": "Whale Rider",
+          "tag": "43378",
+          "region": "euw",
+          "rank": "Platinum I",
+          "sources": 2
+        },
+        {
+          "name": "夕阳格外伤感  人间多有遗憾",
+          "tag": "对不起",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -11966,16 +13680,25 @@
       "role": "Mid",
       "country": "Germany",
       "accounts": [
-        "PowérOfEvil#EUW",
-        "Poewned",
-        "TSM FTX PoE",
-        "TSM FTX Poewned",
-        "FLY PowerOfEvil",
-        "Diabolical PoE",
-        "ThePowerOfDevil",
-        "IMT PoE",
-        "내셔의 이빨 mid",
-        "ThePowerOfEvil"
+        "ThePowerOfEvil#EUW",
+        "ThePowerOfDevil#EUW"
+      ],
+      "mainAccount": {
+        "name": "ThePowerOfEvil",
+        "tag": "EUW",
+        "region": "euw",
+        "rank": "GM 1,462LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": [
+        {
+          "name": "ThePowerOfDevil",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -11984,7 +13707,57 @@
       "role": "Top",
       "country": "Germany",
       "accounts": [
-        "Jotunheimrr#EUW"
+        "Glorpmeister#Jenax",
+        "Totentanz#37230",
+        "glorpBusDriver#JENAX",
+        "KlausStörtebeker#EUW",
+        "I WILL BE KING#EUW",
+        "Jenax#Twtv"
+      ],
+      "mainAccount": {
+        "name": "Glorpmeister",
+        "tag": "Jenax",
+        "region": "euw",
+        "rank": "Ch 1,953LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": [
+        {
+          "name": "Totentanz",
+          "tag": "37230",
+          "region": "euw",
+          "rank": "Ch 1,098LP",
+          "sources": 2
+        },
+        {
+          "name": "glorpBusDriver",
+          "tag": "JENAX",
+          "region": "euw",
+          "rank": "GM 1,388LP",
+          "sources": 2
+        },
+        {
+          "name": "KlausStörtebeker",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Platinum I",
+          "sources": 2
+        },
+        {
+          "name": "I WILL BE KING",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "Jenax",
+          "tag": "Twtv",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -11993,8 +13766,17 @@
       "role": "Bot",
       "country": "Germany",
       "accounts": [
-        "keduii1234#EUW"
-      ]
+        "KED1111111#1310"
+      ],
+      "mainAccount": {
+        "name": "KED1111111",
+        "tag": "1310",
+        "region": "euw",
+        "rank": "Ch 2,377LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": []
     },
     {
       "proName": "seaz",
@@ -12002,7 +13784,57 @@
       "role": "Support",
       "country": "Austria",
       "accounts": [
-        "Séaz#EUW"
+        "EINS seaz#0000",
+        "PLUTO#1589",
+        "EINS Sofa#Couch",
+        "Ewigkeit#0000",
+        "Austrian Random#EUW",
+        "tambal#EUW"
+      ],
+      "mainAccount": {
+        "name": "EINS seaz",
+        "tag": "0000",
+        "region": "euw",
+        "rank": "GM 1,721LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": [
+        {
+          "name": "PLUTO",
+          "tag": "1589",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "EINS Sofa",
+          "tag": "Couch",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "Ewigkeit",
+          "tag": "0000",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "Austrian Random",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "tambal",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -12011,8 +13843,33 @@
       "role": "Jungle",
       "country": "Germany",
       "accounts": [
+        "ANKARAI0MESSI#EUW",
         "Xagog#EUW",
-        "Xagog"
+        "helal xagog#EUW"
+      ],
+      "mainAccount": {
+        "name": "ANKARAI0MESSI",
+        "tag": "EUW",
+        "region": "euw",
+        "rank": "Unranked",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": [
+        {
+          "name": "Xagog",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "helal xagog",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -12768,12 +14625,17 @@
       "role": "Top",
       "country": "Greece",
       "accounts": [
-        "Empyros#EUW",
-        "Empyros",
-        "Jaxplank",
-        "Tant1s",
-        "Πανούλης"
-      ]
+        "pt4#000"
+      ],
+      "mainAccount": {
+        "name": "pt4",
+        "tag": "000",
+        "region": "euw",
+        "rank": "Ch 1,951LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": []
     },
     {
       "proName": "Obsess",
@@ -12781,7 +14643,33 @@
       "role": "Jungle",
       "country": "Germany",
       "accounts": [
-        "Obsess"
+        "Obsess#2308",
+        "ARR0GANZ#EGO",
+        "Obsi#2308"
+      ],
+      "mainAccount": {
+        "name": "Obsess",
+        "tag": "2308",
+        "region": "euw",
+        "rank": "Master 937LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": [
+        {
+          "name": "ARR0GANZ",
+          "tag": "EGO",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "Obsi",
+          "tag": "2308",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -12790,7 +14678,25 @@
       "role": "Support",
       "country": "South Korea",
       "accounts": [
-        "Gen G Lospa#KR1"
+        "Gen G Lospa#KR1",
+        "FUT Lospa#FUT"
+      ],
+      "mainAccount": {
+        "name": "Gen G Lospa",
+        "tag": "KR1",
+        "region": "kr",
+        "rank": "Unranked",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "FUT Lospa",
+          "tag": "FUT",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -12866,8 +14772,17 @@
       "role": "Jungle",
       "country": "Taiwan",
       "accounts": [
-        "20180111#KR1"
-      ]
+        "junjiakule#1212"
+      ],
+      "mainAccount": {
+        "name": "junjiakule",
+        "tag": "1212",
+        "region": "kr",
+        "rank": "Master 474LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Koala",
@@ -12875,9 +14790,17 @@
       "role": "Support",
       "country": "Taiwan",
       "accounts": [
-        "Migratory Bir#KR1",
-        "웨이 안#KR1"
-      ]
+        "Migratory Bir#KR1"
+      ],
+      "mainAccount": {
+        "name": "Migratory Bir",
+        "tag": "KR1",
+        "region": "kr",
+        "rank": "Master 300LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Pretender",
@@ -12887,7 +14810,9 @@
       "accounts": [
         "咪以為自己真係Banana至得架",
         "Sobanlite"
-      ]
+      ],
+      "mainAccount": null,
+      "smurfs": []
     },
     {
       "proName": "MnM",
@@ -12895,7 +14820,25 @@
       "role": "Support",
       "country": "Hong Kong",
       "accounts": [
-        "ii7it2 #KR1"
+        "53666#KR1",
+        "SAJ4GApT9poUfrYD#EUW"
+      ],
+      "mainAccount": {
+        "name": "53666",
+        "tag": "KR1",
+        "region": "kr",
+        "rank": "Master 414LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "SAJ4GApT9poUfrYD",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Diamond I",
+          "sources": 2
+        }
       ]
     },
     {
@@ -12903,7 +14846,18 @@
       "team": "Frank Esports",
       "role": "Top",
       "country": "Hong Kong",
-      "accounts": []
+      "accounts": [
+        "wamiwtaita#HK1"
+      ],
+      "mainAccount": {
+        "name": "wamiwtaita",
+        "tag": "HK1",
+        "region": "euw",
+        "rank": "Unknown",
+        "verified": false,
+        "sources": 1
+      },
+      "smurfs": []
     },
     {
       "proName": "SAKEN",
@@ -13197,9 +15151,17 @@
       "role": "Bot",
       "country": "Germany",
       "accounts": [
-        "Sola",
-        "Solaaaa"
-      ]
+        "Siegbert Schnösl#REICH"
+      ],
+      "mainAccount": {
+        "name": "Siegbert Schnösl",
+        "tag": "REICH",
+        "region": "euw",
+        "rank": "Unranked",
+        "verified": false,
+        "sources": 1
+      },
+      "smurfs": []
     },
     {
       "proName": "Send0o",
@@ -13207,7 +15169,33 @@
       "role": "Top",
       "country": "Spain",
       "accounts": [
-        "Send0o"
+        "Madres Enjoyer#MILK",
+        "El Gallegoaleman#EUNR1",
+        "Madres Enjoyer#69696"
+      ],
+      "mainAccount": {
+        "name": "Madres Enjoyer",
+        "tag": "MILK",
+        "region": "euw",
+        "rank": "Master 1,214LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": [
+        {
+          "name": "El Gallegoaleman",
+          "tag": "EUNR1",
+          "region": "euw",
+          "rank": "Master 934LP",
+          "sources": 2
+        },
+        {
+          "name": "Madres Enjoyer",
+          "tag": "69696",
+          "region": "euw",
+          "rank": "Platinum I",
+          "sources": 2
+        }
       ]
     },
     {
@@ -13652,9 +15640,25 @@
       "role": "Bot",
       "country": "Spain",
       "accounts": [
-        "2weeksrank1#EUW",
-        "6419#EUW",
-        "100x100meréngue#EUW"
+        "Inmaculado#Guess",
+        "100x100 MERENGUE#03669"
+      ],
+      "mainAccount": {
+        "name": "Inmaculado",
+        "tag": "Guess",
+        "region": "euw",
+        "rank": "Ch 2,396LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": [
+        {
+          "name": "100x100 MERENGUE",
+          "tag": "03669",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -13663,8 +15667,41 @@
       "role": "Top",
       "country": "Turkey",
       "accounts": [
-        "Lot#EUW",
-        "Lot"
+        "chenzelot#LOT",
+        "choilot#LOT",
+        "lot1#EUW",
+        "IW Lot#EUW"
+      ],
+      "mainAccount": {
+        "name": "chenzelot",
+        "tag": "LOT",
+        "region": "euw",
+        "rank": "Ch 2,440LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": [
+        {
+          "name": "choilot",
+          "tag": "LOT",
+          "region": "euw",
+          "rank": "Diamond II",
+          "sources": 2
+        },
+        {
+          "name": "lot1",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Platinum I",
+          "sources": 2
+        },
+        {
+          "name": "IW Lot",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Platinum I",
+          "sources": 2
+        }
       ]
     },
     {
@@ -13673,9 +15710,17 @@
       "role": "Support",
       "country": "South Korea",
       "accounts": [
-        "경로당홍삼캔디훔쳐먹는김건#KR1",
-        "Èurope#EUW"
-      ]
+        "qrds#211"
+      ],
+      "mainAccount": {
+        "name": "qrds",
+        "tag": "211",
+        "region": "euw",
+        "rank": "Unranked",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Noah",
@@ -13683,10 +15728,17 @@
       "role": "Bot",
       "country": "South Korea",
       "accounts": [
-        "Nóąh#EUW",
-        "Positive Taek",
-        "Noah7"
-      ]
+        "GX Monkey#XDD"
+      ],
+      "mainAccount": {
+        "name": "GX Monkey",
+        "tag": "XDD",
+        "region": "euw",
+        "rank": "Ch 2,007LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Jackies",
@@ -13694,9 +15746,17 @@
       "role": "Mid",
       "country": "Czech Republic",
       "accounts": [
-        "Jackies#EUW",
-        "DEMON JACKIES"
-      ]
+        "HF Jackies#FUEGO"
+      ],
+      "mainAccount": {
+        "name": "HF Jackies",
+        "tag": "FUEGO",
+        "region": "euw",
+        "rank": "Unknown",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "ISMA",
@@ -13704,9 +15764,33 @@
       "role": "Jungle",
       "country": "France",
       "accounts": [
-        "Išma#EUW",
-        "Ismaa",
-        "Ismaaa"
+        "ismααα#EUW",
+        "isma#soloq",
+        "ismaaa1#EUW"
+      ],
+      "mainAccount": {
+        "name": "ismααα",
+        "tag": "EUW",
+        "region": "euw",
+        "rank": "Ch 2,270LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": [
+        {
+          "name": "isma",
+          "tag": "soloq",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "ismaaa1",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -14256,9 +16340,17 @@
       "role": "Top",
       "country": "South Korea",
       "accounts": [
-        "Casting#EUW",
-        "Casting"
-      ]
+        "Casting#KR11"
+      ],
+      "mainAccount": {
+        "name": "Casting",
+        "tag": "KR11",
+        "region": "kr",
+        "rank": "Ch 1,830LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Namgung",
@@ -14266,9 +16358,17 @@
       "role": "Support",
       "country": "South Korea",
       "accounts": [
-        " NAMGUNG#EUW",
-        "Namgung"
-      ]
+        "BRO Namgung#1004"
+      ],
+      "mainAccount": {
+        "name": "BRO Namgung",
+        "tag": "1004",
+        "region": "euw",
+        "rank": "Unknown",
+        "verified": false,
+        "sources": 1
+      },
+      "smurfs": []
     },
     {
       "proName": "GIDEON",
@@ -14276,9 +16376,17 @@
       "role": "Jungle",
       "country": "South Korea",
       "accounts": [
-        "gideon#0000",
-        "황제펭귄 5호"
-      ]
+        "초록이필요해#KR2"
+      ],
+      "mainAccount": {
+        "name": "초록이필요해",
+        "tag": "KR2",
+        "region": "kr",
+        "rank": "Ch 1,728LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Teddy",
@@ -14286,8 +16394,33 @@
       "role": "Bot",
       "country": "South Korea",
       "accounts": [
-        "ecrrd#KR1",
-        "I want winner#EUW"
+        "Teddy#sss",
+        "iVCTrw7RsfmvmIEw#EUW",
+        "JlN SUNG Park#EUW"
+      ],
+      "mainAccount": {
+        "name": "Teddy",
+        "tag": "sss",
+        "region": "kr",
+        "rank": "Ch 1,697LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "iVCTrw7RsfmvmIEw",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Diamond I",
+          "sources": 2
+        },
+        {
+          "name": "JlN SUNG Park",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -14296,8 +16429,17 @@
       "role": "Mid",
       "country": "South Korea",
       "accounts": [
-        "C9 Loki"
-      ]
+        "BRO Loki#0823"
+      ],
+      "mainAccount": {
+        "name": "BRO Loki",
+        "tag": "0823",
+        "region": "kr",
+        "rank": "Ch 2,315LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Wooper",
@@ -15303,9 +17445,17 @@
       "role": "Mid",
       "country": "South Korea",
       "accounts": [
-        "kyeahoo#0000",
-        "Yo제끼럽 왔썹"
-      ]
+        "라면 밀수범#흐흐흐"
+      ],
+      "mainAccount": {
+        "name": "라면 밀수범",
+        "tag": "흐흐흐",
+        "region": "kr",
+        "rank": "Unranked",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Prime",
@@ -15797,8 +17947,25 @@
       "role": "Jungle",
       "country": "South Korea",
       "accounts": [
-        "T1 Cuzz#KR1",
-        "LSADSDD#EUW"
+        "독침붕#딱충이",
+        "yort#05765"
+      ],
+      "mainAccount": {
+        "name": "독침붕",
+        "tag": "딱충이",
+        "region": "kr",
+        "rank": "Ch 1,629LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "yort",
+          "tag": "05765",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -15807,9 +17974,17 @@
       "role": "Bot",
       "country": "South Korea",
       "accounts": [
-        "Aiming#KR1",
         "아이린#KR1"
-      ]
+      ],
+      "mainAccount": {
+        "name": "아이린",
+        "tag": "KR1",
+        "region": "kr",
+        "rank": "Master 1,240LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "PerfecT",
@@ -15817,8 +17992,17 @@
       "role": "Top",
       "country": "South Korea",
       "accounts": [
-        "KT PerfecT#KR1"
-      ]
+        "작두콩차#꿀유자차"
+      ],
+      "mainAccount": {
+        "name": "작두콩차",
+        "tag": "꿀유자차",
+        "region": "kr",
+        "rank": "Ch 1,648LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Pollu",
@@ -15826,8 +18010,17 @@
       "role": "Support",
       "country": "South Korea",
       "accounts": [
-        "Pollu#KR1"
-      ]
+        "YdBB#0107"
+      ],
+      "mainAccount": {
+        "name": "YdBB",
+        "tag": "0107",
+        "region": "kr",
+        "rank": "Ch 1,782LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Effort",
@@ -15835,11 +18028,17 @@
       "role": "Support",
       "country": "South Korea",
       "accounts": [
-        "Liiv Effort#EUW",
-        "Spread Wings#KR1",
-        "Liiv Effort",
-        "Spread Wings"
-      ]
+        "QeowyxduYtTOHuQ9#EUW"
+      ],
+      "mainAccount": {
+        "name": "QeowyxduYtTOHuQ9",
+        "tag": "EUW",
+        "region": "euw",
+        "rank": "Diamond I",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": []
     },
     {
       "proName": "Bdd",
@@ -15847,7 +18046,25 @@
       "role": "Mid",
       "country": "South Korea",
       "accounts": [
-        "Gen G Bdd#KR1"
+        "아구몬#0509",
+        "byeeeeeee#EUW"
+      ],
+      "mainAccount": {
+        "name": "아구몬",
+        "tag": "0509",
+        "region": "kr",
+        "rank": "Ch 1,730LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "byeeeeeee",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -16316,9 +18533,25 @@
       "role": "Support",
       "country": "China",
       "accounts": [
-        "missing#KR1",
-        "changguiiiiiiiii",
-        "kgcjhADHSADN"
+        "mtrngrxsyl#6146",
+        "BYRDCDD0CL#EUW"
+      ],
+      "mainAccount": {
+        "name": "mtrngrxsyl",
+        "tag": "6146",
+        "region": "kr",
+        "rank": "GM 1,382LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "BYRDCDD0CL",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -16327,8 +18560,17 @@
       "role": "Jungle",
       "country": "South Korea",
       "accounts": [
-        "모두다함께차차차#KR1"
-      ]
+        "운동된다이거#0223"
+      ],
+      "mainAccount": {
+        "name": "운동된다이거",
+        "tag": "0223",
+        "region": "kr",
+        "rank": "Master 1,233LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "BuLLDoG",
@@ -16336,9 +18578,17 @@
       "role": "Mid",
       "country": "South Korea",
       "accounts": [
-        "Bulldog#KR1",
-        "AF BuLLDoG"
-      ]
+        "LNG BuLLDoG#KR2"
+      ],
+      "mainAccount": {
+        "name": "LNG BuLLDoG",
+        "tag": "KR2",
+        "region": "kr",
+        "rank": "Ch 2,282LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "1xn",
@@ -16346,9 +18596,17 @@
       "role": "Bot",
       "country": "China",
       "accounts": [
-        "1xn#KR1",
-        "1xn"
-      ]
+        "Xonxwaqdaswx#0451"
+      ],
+      "mainAccount": {
+        "name": "Xonxwaqdaswx",
+        "tag": "0451",
+        "region": "kr",
+        "rank": "Master 1,207LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "sheer",
@@ -16357,7 +18615,16 @@
       "country": "China",
       "accounts": [
         "시비걸면지상렬#KR1"
-      ]
+      ],
+      "mainAccount": {
+        "name": "시비걸면지상렬",
+        "tag": "KR1",
+        "region": "kr",
+        "rank": "Unknown",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Milkshake",
@@ -17775,7 +20042,32 @@
       "country": "South Korea",
       "accounts": [
         "미북이#KR1",
-        "hihellohey3#NA1"
+        "See u Iceland#EUW",
+        "Annihilation the#6404"
+      ],
+      "mainAccount": {
+        "name": "미북이",
+        "tag": "KR1",
+        "region": "kr",
+        "rank": "GM 1,396LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "See u Iceland",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "Annihilation the",
+          "tag": "6404",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -17784,8 +20076,17 @@
       "role": "Bot",
       "country": "South Korea",
       "accounts": [
-        "태 윤#KR1"
-      ]
+        "태 윤#N"
+      ],
+      "mainAccount": {
+        "name": "태 윤",
+        "tag": "N",
+        "region": "kr",
+        "rank": "Unknown",
+        "verified": false,
+        "sources": 1
+      },
+      "smurfs": []
     },
     {
       "proName": "Sponge",
@@ -17793,8 +20094,17 @@
       "role": "Jungle",
       "country": "South Korea",
       "accounts": [
-        "Sponge#KR1"
-      ]
+        "Not Bad#KR2"
+      ],
+      "mainAccount": {
+        "name": "Not Bad",
+        "tag": "KR2",
+        "region": "kr",
+        "rank": "Ch 1,843LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Calix",
@@ -17802,8 +20112,17 @@
       "role": "Mid",
       "country": "South Korea",
       "accounts": [
-        "calix#0000"
-      ]
+        "dlfuwls#123"
+      ],
+      "mainAccount": {
+        "name": "dlfuwls",
+        "tag": "123",
+        "region": "euw",
+        "rank": "Unknown",
+        "verified": false,
+        "sources": 1
+      },
+      "smurfs": []
     },
     {
       "proName": "Kingen",
@@ -17811,10 +20130,17 @@
       "role": "Top",
       "country": "South Korea",
       "accounts": [
-        "Kingen#KR1",
-        "갯벌타워#KR1",
-        "BABO123#EUW"
-      ]
+        "Kingen#KR1"
+      ],
+      "mainAccount": {
+        "name": "Kingen",
+        "tag": "KR1",
+        "region": "kr",
+        "rank": "GM 1,544LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Lehends",
@@ -17822,9 +20148,33 @@
       "role": "Support",
       "country": "South Korea",
       "accounts": [
-        "Lehends#KR1",
         "Always be crying#KR1",
-        "Lehends#EUW"
+        "sT8uen6ifnyiHftV#EUW",
+        "기인시꾸나래#모에모에뀨"
+      ],
+      "mainAccount": {
+        "name": "Always be crying",
+        "tag": "KR1",
+        "region": "kr",
+        "rank": "Master 266LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "sT8uen6ifnyiHftV",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Diamond I",
+          "sources": 2
+        },
+        {
+          "name": "기인시꾸나래",
+          "tag": "모에모에뀨",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -17977,7 +20327,9 @@
       "country": "United States",
       "accounts": [
         "Siroinai#001"
-      ]
+      ],
+      "mainAccount": null,
+      "smurfs": []
     },
     {
       "proName": "Spica",
@@ -17985,9 +20337,17 @@
       "role": "Support",
       "country": "China",
       "accounts": [
-        "ASTROBOY99#EUW",
-        "Spica1#EUW"
-      ]
+        "Spica#001"
+      ],
+      "mainAccount": {
+        "name": "Spica",
+        "tag": "001",
+        "region": "na",
+        "rank": "GM 1,432LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "PhyMini",
@@ -17996,7 +20356,16 @@
       "country": "United States",
       "accounts": [
         "PhyMini#NA1"
-      ]
+      ],
+      "mainAccount": {
+        "name": "PhyMini",
+        "tag": "NA1",
+        "region": "na",
+        "rank": "Unranked",
+        "verified": false,
+        "sources": 1
+      },
+      "smurfs": []
     },
     {
       "proName": "Wzec",
@@ -19283,14 +21652,18 @@
       "team": "ROGUE CREW",
       "role": "Mid",
       "country": "Brazil",
-      "accounts": []
+      "accounts": [],
+      "mainAccount": null,
+      "smurfs": []
     },
     {
       "proName": "Turani",
       "team": "ROGUE CREW",
       "role": "Jungle",
       "country": "Brazil",
-      "accounts": []
+      "accounts": [],
+      "mainAccount": null,
+      "smurfs": []
     },
     {
       "proName": "Smarty",
@@ -19710,10 +22083,17 @@
       "role": "Jungle",
       "country": "United States",
       "accounts": [
-        "Contractz#NA1",
-        "LUFFY GEAR 5#KR1",
-        "정글 가이#KR1"
-      ]
+        "Portgas D Ace#OP99"
+      ],
+      "mainAccount": {
+        "name": "Portgas D Ace",
+        "tag": "OP99",
+        "region": "na",
+        "rank": "Master 816LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Bvoy",
@@ -19721,13 +22101,17 @@
       "role": "Bot",
       "country": "South Korea",
       "accounts": [
-        "Bvoy#EUW",
-        "LEGENO PANTS",
-        "Bvoy",
-        "llaBvoy",
-        "Bvoy3",
-        "spicy banana"
-      ]
+        "틀니낄나이#420"
+      ],
+      "mainAccount": {
+        "name": "틀니낄나이",
+        "tag": "420",
+        "region": "kr",
+        "rank": "Diamond I",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Fudge",
@@ -19735,9 +22119,33 @@
       "role": "Top",
       "country": "Australia",
       "accounts": [
-        "HOPIUMCOPIUM#NA1",
-        "Fudge Cakey#NA1",
+        "Fudgecakey#5811",
+        "C9 Fudge Factor#EUW",
         "Oswald Yuki#EUW"
+      ],
+      "mainAccount": {
+        "name": "Fudgecakey",
+        "tag": "5811",
+        "region": "na",
+        "rank": "Ch 1,932LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "C9 Fudge Factor",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "Oswald Yuki",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -19746,8 +22154,17 @@
       "role": "Mid",
       "country": "South Korea",
       "accounts": [
-        "Zinie#NA1"
-      ]
+        "숟가락전사#12345"
+      ],
+      "mainAccount": {
+        "name": "숟가락전사",
+        "tag": "12345",
+        "region": "kr",
+        "rank": "Diamond I",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Puppe",
@@ -19823,8 +22240,49 @@
       "role": "Jungle",
       "country": "France",
       "accounts": [
-        "Šheun#EUW",
-        "lé petit Poulpos#EUW"
+        "Expedition 28#WHITE",
+        "Sunflower#2509",
+        "Corgi in the jgl#EUW",
+        "Duncan#2509",
+        "V Skeanz#EUW"
+      ],
+      "mainAccount": {
+        "name": "Expedition 28",
+        "tag": "WHITE",
+        "region": "euw",
+        "rank": "Ch 2,131LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": [
+        {
+          "name": "Sunflower",
+          "tag": "2509",
+          "region": "euw",
+          "rank": "Diamond II",
+          "sources": 2
+        },
+        {
+          "name": "Corgi in the jgl",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Silver I",
+          "sources": 2
+        },
+        {
+          "name": "Duncan",
+          "tag": "2509",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "V Skeanz",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -19833,12 +22291,41 @@
       "role": "Top",
       "country": "Denmark",
       "accounts": [
-        "Wundër#EUW",
-        "NoWoWFreeWin",
-        "Doublebeef",
-        "TheOutgoing",
-        "G2 Sejong",
-        "IdontplayLeague"
+        "Expedition 28#0911",
+        "Hansen#2727",
+        "Wafflebrother#EUW",
+        "Wunderwear#EUW"
+      ],
+      "mainAccount": {
+        "name": "Expedition 28",
+        "tag": "0911",
+        "region": "euw",
+        "rank": "GM 1,846LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": [
+        {
+          "name": "Hansen",
+          "tag": "2727",
+          "region": "euw",
+          "rank": "Diamond I",
+          "sources": 2
+        },
+        {
+          "name": "Wafflebrother",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "Wunderwear",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -19847,7 +22334,105 @@
       "role": "Mid",
       "country": "Russia",
       "accounts": [
-        "Τreasure Hunter#EUW"
+        "C6pggkgxm5vUb99z#EUW",
+        "itq#EUW",
+        "etο#EUW",
+        "Adlan#EUW",
+        "redil#0307",
+        "ari1#EUW",
+        "nοte#EUW",
+        "Τreasure Hunter#EUW",
+        "LlDER#EUW",
+        "emtwfwydw#9999",
+        "soothing breeze#EUW",
+        "Ιyn#EUW"
+      ],
+      "mainAccount": {
+        "name": "C6pggkgxm5vUb99z",
+        "tag": "EUW",
+        "region": "euw",
+        "rank": "Diamond II",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": [
+        {
+          "name": "itq",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Platinum I",
+          "sources": 2
+        },
+        {
+          "name": "etο",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "Adlan",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "redil",
+          "tag": "0307",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "ari1",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "nοte",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "Τreasure Hunter",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "LlDER",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "emtwfwydw",
+          "tag": "9999",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "soothing breeze",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "Ιyn",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -19856,7 +22441,25 @@
       "role": "Bot",
       "country": "Croatia",
       "accounts": [
-        "jopa#EUW"
+        "Jopa1#EUW",
+        "Kovacic#MK8"
+      ],
+      "mainAccount": {
+        "name": "Jopa1",
+        "tag": "EUW",
+        "region": "euw",
+        "rank": "Unranked",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": [
+        {
+          "name": "Kovacic",
+          "tag": "MK8",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -20008,7 +22611,16 @@
       "country": "France",
       "accounts": [
         "Wakz#EUW"
-      ]
+      ],
+      "mainAccount": {
+        "name": "Wakz",
+        "tag": "EUW",
+        "region": "euw",
+        "rank": "Unranked",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Kryze",
@@ -20017,8 +22629,40 @@
       "country": "Sweden",
       "accounts": [
         "xLinayaa#EUW",
-        "Kryze#EUW",
-        "Aednatan#EUW"
+        "Aednatan#EUW",
+        "Agadmator fan#EUW",
+        "Kryze#EUW"
+      ],
+      "mainAccount": {
+        "name": "xLinayaa",
+        "tag": "EUW",
+        "region": "euw",
+        "rank": "Master 1,055LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": [
+        {
+          "name": "Aednatan",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Platinum I",
+          "sources": 2
+        },
+        {
+          "name": "Agadmator fan",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Platinum I",
+          "sources": 2
+        },
+        {
+          "name": "Kryze",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -20027,7 +22671,41 @@
       "role": "Jungle",
       "country": "France",
       "accounts": [
-        "Monsieur oui#EUW"
+        "SMRADOCH ZICSSI#EUW",
+        "Sir Leywin#EUW",
+        "AØH#EUW",
+        "Zicssi#soloq"
+      ],
+      "mainAccount": {
+        "name": "SMRADOCH ZICSSI",
+        "tag": "EUW",
+        "region": "euw",
+        "rank": "Ch 2,299LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": [
+        {
+          "name": "Sir Leywin",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Master 966LP",
+          "sources": 2
+        },
+        {
+          "name": "AØH",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "Zicssi",
+          "tag": "soloq",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -20035,7 +22713,18 @@
       "team": "Solary",
       "role": "Bot",
       "country": "Turkey",
-      "accounts": []
+      "accounts": [
+        "NOTH#Sus"
+      ],
+      "mainAccount": {
+        "name": "NOTH",
+        "tag": "Sus",
+        "region": "euw",
+        "rank": "Unknown",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Piero",
@@ -20043,9 +22732,17 @@
       "role": "Support",
       "country": "South Korea",
       "accounts": [
-        "Pìero#EUW",
-        "불만있음다표출해"
-      ]
+        "Phil Ivey#102o"
+      ],
+      "mainAccount": {
+        "name": "Phil Ivey",
+        "tag": "102o",
+        "region": "euw",
+        "rank": "Ch 2,238LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": []
     },
     {
       "proName": "Dexam",
@@ -20544,8 +23241,33 @@
       "role": "Mid",
       "country": "Turkey",
       "accounts": [
-        "MSI MISSION#EUW",
-        "WíIIy Wonka#EUW"
+        "SeRiN1#EUW",
+        "midmidmid1#EUW",
+        "MSI MISSION#EUW"
+      ],
+      "mainAccount": {
+        "name": "SeRiN1",
+        "tag": "EUW",
+        "region": "euw",
+        "rank": "Ch 2,452LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": [
+        {
+          "name": "midmidmid1",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Master 233LP",
+          "sources": 2
+        },
+        {
+          "name": "MSI MISSION",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Platinum I",
+          "sources": 2
+        }
       ]
     },
     {
@@ -20554,8 +23276,17 @@
       "role": "Jungle",
       "country": "France",
       "accounts": [
-        "Sheò#EUW"
-      ]
+        "SunTzu#hidon"
+      ],
+      "mainAccount": {
+        "name": "SunTzu",
+        "tag": "hidon",
+        "region": "euw",
+        "rank": "GM 1,576LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": []
     },
     {
       "proName": "Tracyn",
@@ -20563,8 +23294,17 @@
       "role": "Top",
       "country": "Poland",
       "accounts": [
-        "Tracyn#1234"
-      ]
+        "highlighter#eyeez"
+      ],
+      "mainAccount": {
+        "name": "highlighter",
+        "tag": "eyeez",
+        "region": "euw",
+        "rank": "Diamond IV",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": []
     },
     {
       "proName": "Ice",
@@ -20572,8 +23312,25 @@
       "role": "Bot",
       "country": "South Korea",
       "accounts": [
-        "ÎCE#EUW",
-        "폭탄치우기"
+        "난화내#0713",
+        "happy game#713"
+      ],
+      "mainAccount": {
+        "name": "난화내",
+        "tag": "0713",
+        "region": "kr",
+        "rank": "Unranked",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "happy game",
+          "tag": "713",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -20582,9 +23339,17 @@
       "role": "Support",
       "country": "South Korea",
       "accounts": [
-        "wáy#EUW",
-        "KT Way"
-      ]
+        "Way#0201"
+      ],
+      "mainAccount": {
+        "name": "Way",
+        "tag": "0201",
+        "region": "kr",
+        "rank": "Unranked",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Daglas",
@@ -20685,12 +23450,25 @@
       "role": "Top",
       "country": "South Korea",
       "accounts": [
-        "Morgan5358#NA1",
-        "Morgan5358",
-        "보라별사탕",
-        "HLE Morgan1",
-        "5358",
-        "Star is coming"
+        "Morgan#5358",
+        "Star is coming#EUW"
+      ],
+      "mainAccount": {
+        "name": "Morgan",
+        "tag": "5358",
+        "region": "kr",
+        "rank": "Diamond II",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "Star is coming",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -20699,8 +23477,25 @@
       "role": "Mid",
       "country": "South Korea",
       "accounts": [
-        "붐칙칵칙#KR1",
-        "TrëeFrog#NA1"
+        "OH MY GOLLY#GOSH",
+        "quid not quad#100"
+      ],
+      "mainAccount": {
+        "name": "OH MY GOLLY",
+        "tag": "GOSH",
+        "region": "na",
+        "rank": "Ch 1,987LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "quid not quad",
+          "tag": "100",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -20936,8 +23731,49 @@
       "role": "Bot",
       "country": "Czech Republic",
       "accounts": [
-        "mommys milk yum#EUW",
-        "G2 Humanoid#EUW"
+        "hovinko z kose#marek",
+        "hello bro#EUW",
+        "DWG BOOM#EUW",
+        "RNG CRYIN1#EUW",
+        "mommys milk yum#EUW"
+      ],
+      "mainAccount": {
+        "name": "hovinko z kose",
+        "tag": "marek",
+        "region": "euw",
+        "rank": "Master 1,032LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": [
+        {
+          "name": "hello bro",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Master 713LP",
+          "sources": 2
+        },
+        {
+          "name": "DWG BOOM",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Platinum I",
+          "sources": 2
+        },
+        {
+          "name": "RNG CRYIN1",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "mommys milk yum",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -20946,8 +23782,25 @@
       "role": "Jungle",
       "country": "Lithuania",
       "accounts": [
-        "Im a Juñgler#EUW",
-        "very artistic#EUW"
+        "JG top boy#lync1",
+        "ddh#EUW"
+      ],
+      "mainAccount": {
+        "name": "JG top boy",
+        "tag": "lync1",
+        "region": "euw",
+        "rank": "Ch 3,043LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": [
+        {
+          "name": "ddh",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -20956,7 +23809,25 @@
       "role": "Support",
       "country": "Turkey",
       "accounts": [
-        "Fleshy#EUW"
+        "VIT Fleshy#EU1",
+        "Hmmm#hmhm"
+      ],
+      "mainAccount": {
+        "name": "VIT Fleshy",
+        "tag": "EU1",
+        "region": "euw",
+        "rank": "Ch 2,622LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": [
+        {
+          "name": "Hmmm",
+          "tag": "hmhm",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -20966,7 +23837,16 @@
       "country": "Turkey",
       "accounts": [
         "Naak Nako#EUW"
-      ]
+      ],
+      "mainAccount": {
+        "name": "Naak Nako",
+        "tag": "EUW",
+        "region": "euw",
+        "rank": "Unranked",
+        "verified": false,
+        "sources": 1
+      },
+      "smurfs": []
     },
     {
       "proName": "Cube",
@@ -21557,7 +24437,9 @@
       "country": "China",
       "accounts": [
         "日益澄明"
-      ]
+      ],
+      "mainAccount": null,
+      "smurfs": []
     },
     {
       "proName": "Tian",
@@ -21565,9 +24447,17 @@
       "role": "Jungle",
       "country": "China",
       "accounts": [
-        "Tian9999#JP1",
-        "xinnian09#EUW"
-      ]
+        "diming#ziyou"
+      ],
+      "mainAccount": {
+        "name": "diming",
+        "tag": "ziyou",
+        "region": "kr",
+        "rank": "Master 760LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "ZUIAN",
@@ -21575,8 +24465,17 @@
       "role": "Top",
       "country": "China",
       "accounts": [
-        "Pure Imagination#0000"
-      ]
+        "Pure Imagination#幻想时间"
+      ],
+      "mainAccount": {
+        "name": "Pure Imagination",
+        "tag": "幻想时间",
+        "region": "kr",
+        "rank": "Unranked",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "hanghang",
@@ -21914,14 +24813,36 @@
       "team": "Unicorns of Love Sexy Edition",
       "role": "Jungle",
       "country": "France",
-      "accounts": []
+      "accounts": [
+        "224434#000"
+      ],
+      "mainAccount": {
+        "name": "224434",
+        "tag": "000",
+        "region": "euw",
+        "rank": "Diamond II",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "RoyalKanin",
       "team": "Unicorns of Love Sexy Edition",
       "role": "Mid",
       "country": "Sweden",
-      "accounts": []
+      "accounts": [
+        "TheRoyalKanin#EUW"
+      ],
+      "mainAccount": {
+        "name": "TheRoyalKanin",
+        "tag": "EUW",
+        "region": "euw",
+        "rank": "Unranked",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Fornoreason",
@@ -21929,8 +24850,17 @@
       "role": "Top",
       "country": "Germany",
       "accounts": [
-        "For no Reasón#EUW"
-      ]
+        "FornoReason#Gap"
+      ],
+      "mainAccount": {
+        "name": "FornoReason",
+        "tag": "Gap",
+        "region": "euw",
+        "rank": "GM 1,383LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": []
     },
     {
       "proName": "Twiizt",
@@ -21938,7 +24868,25 @@
       "role": "Support",
       "country": "Sweden",
       "accounts": [
-        "Twiizt#EUW"
+        "Ado fan#EUW",
+        "Nubobo#EUW"
+      ],
+      "mainAccount": {
+        "name": "Ado fan",
+        "tag": "EUW",
+        "region": "euw",
+        "rank": "Diamond I",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": [
+        {
+          "name": "Nubobo",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -21946,7 +24894,18 @@
       "team": "Unicorns of Love Sexy Edition",
       "role": "Bot",
       "country": "Denmark",
-      "accounts": []
+      "accounts": [
+        "The Oogster#DV1"
+      ],
+      "mainAccount": {
+        "name": "The Oogster",
+        "tag": "DV1",
+        "region": "euw",
+        "rank": "Unknown",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Seneca",
@@ -21954,8 +24913,17 @@
       "role": "Support",
       "country": "Sweden",
       "accounts": [
-        "Senêca#EUW"
-      ]
+        "Brevitate Vitae#EUW"
+      ],
+      "mainAccount": {
+        "name": "Brevitate Vitae",
+        "tag": "EUW",
+        "region": "euw",
+        "rank": "Unranked",
+        "verified": false,
+        "sources": 1
+      },
+      "smurfs": []
     },
     {
       "proName": "AMT",
@@ -22879,6 +25847,23 @@
       "accounts": [
         "mashushu#KR1",
         "SuperMochi#1234"
+      ],
+      "mainAccount": {
+        "name": "mashushu",
+        "tag": "KR1",
+        "region": "kr",
+        "rank": "Ch 2,096LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "SuperMochi",
+          "tag": "1234",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -22887,7 +25872,25 @@
       "role": "Support",
       "country": "China",
       "accounts": [
-        "라면이 맛있다#KR1"
+        "92282312del#KR1",
+        "cheikikingbrozzz#2849"
+      ],
+      "mainAccount": {
+        "name": "92282312del",
+        "tag": "KR1",
+        "region": "kr",
+        "rank": "Ch 921LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "cheikikingbrozzz",
+          "tag": "2849",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -22896,9 +25899,17 @@
       "role": "Jungle",
       "country": "China",
       "accounts": [
-        "Dan Xiao Gu#KR1",
-        "Dinner first#EUW"
-      ]
+        "felisa#KR1"
+      ],
+      "mainAccount": {
+        "name": "felisa",
+        "tag": "KR1",
+        "region": "kr",
+        "rank": "Master 740LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Zika",
@@ -22906,7 +25917,25 @@
       "role": "Top",
       "country": "China",
       "accounts": [
-        "zcxsdasdas#EUW"
+        "yyyyyyyyyyyys#777",
+        "zcxsdasdas#1683"
+      ],
+      "mainAccount": {
+        "name": "yyyyyyyyyyyys",
+        "tag": "777",
+        "region": "kr",
+        "rank": "GM 1,320LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "zcxsdasdas",
+          "tag": "1683",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -33621,7 +36650,16 @@
       "country": "",
       "accounts": [
         "Jenax#EUW"
-      ]
+      ],
+      "mainAccount": {
+        "name": "Jenax",
+        "tag": "EUW",
+        "region": "euw",
+        "rank": "Unranked",
+        "verified": false,
+        "sources": 1
+      },
+      "smurfs": []
     },
     {
       "proName": "Kanin",
@@ -33630,7 +36668,16 @@
       "country": "",
       "accounts": [
         "Kanìn#EUW"
-      ]
+      ],
+      "mainAccount": {
+        "name": "Kanìn",
+        "tag": "EUW",
+        "region": "euw",
+        "rank": "Unranked",
+        "verified": false,
+        "sources": 1
+      },
+      "smurfs": []
     },
     {
       "proName": "MicheI",
@@ -33656,7 +36703,41 @@
       "role": "Jungle",
       "country": "",
       "accounts": [
-        "Zanzarah#EUW"
+        "Zanzarah#1996",
+        "ZQX7M9V4#X7Qv",
+        "WIIIIIIIIIIIIIII#EUW",
+        "Zanzarah#7066"
+      ],
+      "mainAccount": {
+        "name": "Zanzarah",
+        "tag": "1996",
+        "region": "euw",
+        "rank": "GM 1,891LP",
+        "verified": true,
+        "sources": 3
+      },
+      "smurfs": [
+        {
+          "name": "ZQX7M9V4",
+          "tag": "X7Qv",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "WIIIIIIIIIIIIIII",
+          "tag": "EUW",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        },
+        {
+          "name": "Zanzarah",
+          "tag": "7066",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {
@@ -33665,8 +36746,17 @@
       "role": "Top",
       "country": "",
       "accounts": [
-        "Saçre#EUW"
-      ]
+        "Sacre#0001"
+      ],
+      "mainAccount": {
+        "name": "Sacre",
+        "tag": "0001",
+        "region": "euw",
+        "rank": "Unknown",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Veignorem",
@@ -33674,8 +36764,17 @@
       "role": "Support",
       "country": "",
       "accounts": [
-        "Veignorem#001"
-      ]
+        "Veignomims#0401"
+      ],
+      "mainAccount": {
+        "name": "Veignomims",
+        "tag": "0401",
+        "region": "euw",
+        "rank": "Unknown",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": []
     },
     {
       "proName": "Kanin",
@@ -33701,7 +36800,25 @@
       "role": "Top",
       "country": "",
       "accounts": [
-        "Summit#EUW"
+        "SB 서밋#KR1",
+        "FLY Quad#R7777"
+      ],
+      "mainAccount": {
+        "name": "SB 서밋",
+        "tag": "KR1",
+        "region": "kr",
+        "rank": "Ch 967LP",
+        "verified": true,
+        "sources": 2
+      },
+      "smurfs": [
+        {
+          "name": "FLY Quad",
+          "tag": "R7777",
+          "region": "euw",
+          "rank": "Unranked",
+          "sources": 2
+        }
       ]
     },
     {

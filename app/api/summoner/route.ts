@@ -50,16 +50,59 @@ export async function GET(request: NextRequest) {
 
     // === Step 4a: No new matches → return stored data ===
     if (!hasNewMatches && cached) {
-      const { data: rankedData } = await supabase
+      let { data: rankedData } = await supabase
         .from('ranked_stats')
         .select('*')
         .eq('player_id', cached.id);
 
+      // If no ranked stats stored, fetch fresh from Riot API
+      if (!rankedData || rankedData.length === 0) {
+        try {
+          const rankedRes = await fetch(
+            `https://${region}.api.riotgames.com/lol/league/v4/entries/by-puuid/${account.puuid}?api_key=${apiKey}`
+          );
+          if (rankedRes.ok) {
+            const freshRanked = await rankedRes.json();
+            if (Array.isArray(freshRanked) && freshRanked.length > 0) {
+              // Store ranked stats and update player tier
+              const soloQ = freshRanked.find((r: any) => r.queueType === 'RANKED_SOLO_5x5');
+              const flexQ = freshRanked.find((r: any) => r.queueType === 'RANKED_FLEX_SR');
+              const primary = soloQ || flexQ;
+              if (primary) {
+                await supabase.from('players').update({
+                  tier: primary.tier,
+                  rank: primary.rank,
+                  winrate: Math.round((primary.wins / (primary.wins + primary.losses)) * 100),
+                }).eq('id', cached.id);
+                cached.tier = primary.tier;
+                cached.rank = primary.rank;
+              }
+              for (const q of freshRanked) {
+                await supabase.from('ranked_stats').upsert({
+                  player_id: cached.id,
+                  queue_type: q.queueType,
+                  tier: q.tier,
+                  rank: q.rank,
+                  league_points: q.leaguePoints,
+                  wins: q.wins,
+                  losses: q.losses,
+                  updated_at: new Date().toISOString(),
+                }, { onConflict: 'player_id,queue_type' });
+              }
+              rankedData = freshRanked.map((q: any) => ({
+                queue_type: q.queueType, tier: q.tier, rank: q.rank,
+                league_points: q.leaguePoints, wins: q.wins, losses: q.losses,
+              }));
+            }
+          }
+        } catch {}
+      }
+
       const mapped = (rankedData || []).map((r: any) => ({
-        queueType: r.queue_type,
+        queueType: r.queue_type || r.queueType,
         tier: r.tier,
         rank: r.rank,
-        leaguePoints: r.league_points,
+        leaguePoints: r.league_points || r.leaguePoints,
         wins: r.wins,
         losses: r.losses,
       }));
@@ -80,6 +123,8 @@ export async function GET(request: NextRequest) {
           summonerLevel: cached.summoner_level,
           profileIconId: cached.profile_icon_id,
           puuid: cached.puuid,
+          tier: cached.tier,
+          rank: cached.rank,
         },
         ranked: mapped,
         matches: [], // loaded via /api/matches

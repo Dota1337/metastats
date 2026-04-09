@@ -65,14 +65,16 @@ export async function GET(request: NextRequest) {
 
     const events = scheduleData?.data?.schedule?.events || [];
 
-    // Also fetch next page if available for more upcoming matches
+    // Fetch additional pages (older + newer) for full calendar coverage
     let moreEvents: any[] = [];
-    const olderToken = scheduleData?.data?.schedule?.pages?.newer;
-    if (olderToken) {
-      try {
-        const more = await fetchLoLEsports(olderToken);
-        moreEvents = more?.data?.schedule?.events || [];
-      } catch {}
+    const pages = scheduleData?.data?.schedule?.pages || {};
+    for (const token of [pages.older, pages.newer]) {
+      if (token) {
+        try {
+          const more = await fetchLoLEsports(token);
+          moreEvents.push(...(more?.data?.schedule?.events || []));
+        } catch {}
+      }
     }
 
     const allEvents = [...events, ...moreEvents];
@@ -134,18 +136,6 @@ export async function GET(request: NextRequest) {
 
 function applyFilters(data: any, filter: string, league: string) {
   let tournaments = [...(data.tournaments || [])];
-
-  // Default: only show today + next 14 days (plus live games)
-  const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const twoWeeksLater = new Date(startOfToday.getTime() + 14 * 24 * 60 * 60 * 1000);
-
-  // Always filter to today + 14 days window (live games always pass)
-  tournaments = tournaments.filter((t: Tournament) => {
-    if (t.state === 'inProgress') return true;
-    const d = new Date(t.startTime);
-    return d >= startOfToday && d <= twoWeeksLater;
-  });
 
   if (filter === 'upcoming') {
     tournaments = tournaments.filter((t: Tournament) => t.state === 'unstarted');

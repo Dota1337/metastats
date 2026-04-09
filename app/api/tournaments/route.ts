@@ -18,9 +18,9 @@ const PRIORITY_LEAGUES = new Set([
   'lta_cross', 'emea_masters', 'lck_challengers_league',
 ]);
 
-// Cache for 15 minutes
+// Cache for 30 minutes (11 API calls per refresh)
 let cached: { data: any; time: number } | null = null;
-const CACHE_TTL = 15 * 60 * 1000;
+const CACHE_TTL = 30 * 60 * 1000;
 const API_KEY = '0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z';
 
 async function fetchLoLEsports(pageToken?: string): Promise<any> {
@@ -65,16 +65,29 @@ export async function GET(request: NextRequest) {
 
     const events = scheduleData?.data?.schedule?.events || [];
 
-    // Fetch additional pages (older + newer) for full calendar coverage
+    // Paginate in both directions for full calendar coverage (~6 weeks)
+    const MAX_PAGES = 5;
     let moreEvents: any[] = [];
-    const pages = scheduleData?.data?.schedule?.pages || {};
-    for (const token of [pages.older, pages.newer]) {
-      if (token) {
-        try {
-          const more = await fetchLoLEsports(token);
-          moreEvents.push(...(more?.data?.schedule?.events || []));
-        } catch {}
-      }
+    const initialPages = scheduleData?.data?.schedule?.pages || {};
+
+    // Fetch older pages (past events)
+    let olderToken = initialPages.older;
+    for (let i = 0; i < MAX_PAGES && olderToken; i++) {
+      try {
+        const page = await fetchLoLEsports(olderToken);
+        moreEvents.push(...(page?.data?.schedule?.events || []));
+        olderToken = page?.data?.schedule?.pages?.older;
+      } catch { break; }
+    }
+
+    // Fetch newer pages (future events)
+    let newerToken = initialPages.newer;
+    for (let i = 0; i < MAX_PAGES && newerToken; i++) {
+      try {
+        const page = await fetchLoLEsports(newerToken);
+        moreEvents.push(...(page?.data?.schedule?.events || []));
+        newerToken = page?.data?.schedule?.pages?.newer;
+      } catch { break; }
     }
 
     const allEvents = [...events, ...moreEvents];

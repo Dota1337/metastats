@@ -575,7 +575,7 @@ export default function LigenPage() {
                           <button
                             key={slug}
                             onClick={() => fetchLeagueDetail(slug)}
-                            className="block w-full text-left text-[8px] text-[#c89b3c] hover:text-white truncate leading-tight mt-0.5 transition-colors"
+                            className="block w-full text-left text-[11px] text-[#c89b3c] hover:text-white truncate leading-snug mt-0.5 transition-colors"
                             title={getLeagueName(slug)}
                           >
                             {getLeagueName(slug)}

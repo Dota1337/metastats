@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-05T01:04:03.843Z",
+  "updatedAt": "2026-04-10T19:44:45.544Z",
   "totalTeams": 400,
   "teams": [
     {
@@ -8,7 +8,135 @@
       "short": "T1",
       "region": "Korea",
       "logo": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/a/a2/T1logo_square.png/revision/latest?cb=20230512040747",
-      "roster": [],
+      "roster": [
+        {
+          "name": "Doran",
+          "firstName": "Hyeonjun",
+          "lastName": "Choi",
+          "role": "Top",
+          "isPlayer": true,
+          "status": "main",
+          "order": 1,
+          "country": "",
+          "image": "http://static.lolesports.com/players/1769087520664_LCK_T1_Doran_F.PNG",
+          "accounts": [
+            "T1 Doran"
+          ],
+          "riotId": "T1 Doran#KR1"
+        },
+        {
+          "name": "Oner",
+          "firstName": "Hyunjun",
+          "lastName": "Mun",
+          "role": "Jungle",
+          "isPlayer": true,
+          "status": "main",
+          "order": 2,
+          "country": "South Korea",
+          "image": "http://static.lolesports.com/players/1769087509929_LCK_T1_Oner_F.PNG",
+          "accounts": [
+            "T1 Oner"
+          ],
+          "riotId": "T1 Oner#KR1"
+        },
+        {
+          "name": "Faker",
+          "firstName": "Sanghyeok",
+          "lastName": "Lee",
+          "role": "Mid",
+          "isPlayer": true,
+          "status": "main",
+          "order": 3,
+          "country": "South Korea",
+          "image": "http://static.lolesports.com/players/1769087499078_LCK_T1_Faker_F.PNG",
+          "accounts": [
+            "Hide on bush"
+          ],
+          "riotId": "Hide on bush#KR1"
+        },
+        {
+          "name": "Peyz",
+          "firstName": "SOOHWAN",
+          "lastName": "Kim",
+          "role": "ADC",
+          "isPlayer": true,
+          "status": "main",
+          "order": 4,
+          "country": "South Korea",
+          "image": "http://static.lolesports.com/players/1769087491906_LCK_T1_Peyz_F.PNG",
+          "accounts": [
+            "T1 Peyz"
+          ],
+          "riotId": "T1 Peyz#KR1"
+        },
+        {
+          "name": "Keria",
+          "firstName": "Minseok",
+          "lastName": "Ryu",
+          "role": "Support",
+          "isPlayer": true,
+          "status": "main",
+          "order": 5,
+          "country": "South Korea",
+          "image": "http://static.lolesports.com/players/1769087515444_LCK_T1_Keria_F.PNG",
+          "accounts": [
+            "T1 Keria"
+          ],
+          "riotId": "T1 Keria#KR1"
+        },
+        {
+          "name": "Haetae",
+          "firstName": "Suhyeon",
+          "lastName": "Sim",
+          "role": "Top",
+          "isPlayer": true,
+          "status": "sub",
+          "order": 1,
+          "country": "",
+          "image": "http://static.lolesports.com/players/1769083792191_image6-2026-01-22T130909.603.png",
+          "accounts": [],
+          "riotId": null
+        },
+        {
+          "name": "Guti",
+          "firstName": "Moon",
+          "lastName": "Jeonghwan",
+          "role": "Mid",
+          "isPlayer": true,
+          "status": "sub",
+          "order": 3,
+          "country": "",
+          "image": "http://static.lolesports.com/players/1769083583495_image6-2026-01-22T130511.010.png",
+          "accounts": [],
+          "riotId": null
+        },
+        {
+          "name": "kkOma",
+          "firstName": "",
+          "lastName": "",
+          "role": "Head Coach",
+          "isPlayer": false,
+          "status": "staff",
+          "order": 7,
+          "country": "",
+          "image": null,
+          "accounts": [],
+          "riotId": null
+        },
+        {
+          "name": "Dooti",
+          "firstName": "",
+          "lastName": "",
+          "role": "Coach",
+          "isPlayer": false,
+          "status": "staff",
+          "order": 7,
+          "country": "",
+          "image": null,
+          "accounts": [],
+          "riotId": null
+        }
+      ],
       "results": [
         {
           "event": "LCK Cup 2026",
@@ -5383,7 +5511,88 @@
       "short": "TES",
       "region": "China",
       "logo": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/4/46/Top_Esportslogo_square.png/revision/latest?cb=20260109111428",
-      "roster": [],
+      "roster": [
+        {
+          "name": "369",
+          "firstName": "",
+          "lastName": "",
+          "role": "Top",
+          "isPlayer": true,
+          "status": "main",
+          "order": 1,
+          "country": "China",
+          "image": null,
+          "accounts": [],
+          "riotId": null
+        },
+        {
+          "name": "Tian",
+          "firstName": "",
+          "lastName": "",
+          "role": "Jungle",
+          "isPlayer": true,
+          "status": "main",
+          "order": 2,
+          "country": "",
+          "image": null,
+          "accounts": [],
+          "riotId": null
+        },
+        {
+          "name": "Creme",
+          "firstName": "",
+          "lastName": "",
+          "role": "Mid",
+          "isPlayer": true,
+          "status": "main",
+          "order": 3,
+          "country": "China",
+          "image": null,
+          "accounts": [],
+          "riotId": null
+        },
+        {
+          "name": "JackeyLove",
+          "firstName": "",
+          "lastName": "",
+          "role": "ADC",
+          "isPlayer": true,
+          "status": "main",
+          "order": 4,
+          "country": "China",
+          "image": null,
+          "accounts": [
+            "JackeyLove"
+          ],
+          "riotId": "JackeyLove#cnKR"
+        },
+        {
+          "name": "Fengyue",
+          "firstName": "",
+          "lastName": "",
+          "role": "Support",
+          "isPlayer": true,
+          "status": "main",
+          "order": 5,
+          "country": "China",
+          "image": null,
+          "accounts": [],
+          "riotId": null
+        },
+        {
+          "name": "Poppy",
+          "firstName": "",
+          "lastName": "",
+          "role": "Head Coach",
+          "isPlayer": false,
+          "status": "staff",
+          "order": 7,
+          "country": "",
+          "image": null,
+          "accounts": [],
+          "riotId": null
+        }
+      ],
       "results": [
         {
           "event": "LPL 2026 Split 1 Playoffs",
@@ -7633,7 +7842,124 @@
       "short": "DK",
       "region": "Korea",
       "logo": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/1/1b/Dplus_Kialogo_square.png/revision/latest?cb=20230512050104",
-      "roster": [],
+      "roster": [
+        {
+          "name": "Kingen",
+          "firstName": "",
+          "lastName": "",
+          "role": "Top",
+          "isPlayer": true,
+          "status": "main",
+          "order": 1,
+          "country": "South Korea",
+          "image": null,
+          "accounts": [
+            "DK Kingen"
+          ],
+          "riotId": "DK Kingen#KR1"
+        },
+        {
+          "name": "Lucid",
+          "firstName": "Yonghyeok",
+          "lastName": "Choi",
+          "role": "Jungle",
+          "isPlayer": true,
+          "status": "main",
+          "order": 2,
+          "country": "",
+          "image": "http://static.lolesports.com/players/1769090996535_LCK_DK_Lucid_F.PNG",
+          "accounts": [
+            "DK Lucid"
+          ],
+          "riotId": "DK Lucid#KR1"
+        },
+        {
+          "name": "ShowMaker",
+          "firstName": "Su",
+          "lastName": "Heo",
+          "role": "Mid",
+          "isPlayer": true,
+          "status": "main",
+          "order": 3,
+          "country": "",
+          "image": "http://static.lolesports.com/players/1769090991978_LCK_DK_Showmaker_F.PNG",
+          "accounts": [
+            "DK ShowMaker"
+          ],
+          "riotId": "DK ShowMaker#KR1"
+        },
+        {
+          "name": "Aiming",
+          "firstName": "",
+          "lastName": "",
+          "role": "ADC",
+          "isPlayer": true,
+          "status": "main",
+          "order": 4,
+          "country": "South Korea",
+          "image": null,
+          "accounts": [
+            "DK Aiming"
+          ],
+          "riotId": "DK Aiming#KR1"
+        },
+        {
+          "name": "Kellin",
+          "firstName": "",
+          "lastName": "",
+          "role": "Support",
+          "isPlayer": true,
+          "status": "main",
+          "order": 5,
+          "country": "South Korea",
+          "image": null,
+          "accounts": [
+            "DK Kellin"
+          ],
+          "riotId": "DK Kellin#KR1"
+        },
+        {
+          "name": "Jaehyuk",
+          "firstName": "Jaehyuk",
+          "lastName": "Kwon",
+          "role": "Top",
+          "isPlayer": true,
+          "status": "sub",
+          "order": 1,
+          "country": "",
+          "image": "http://static.lolesports.com/players/1769089631457_image6-2026-01-22T144643.456.png",
+          "accounts": [
+            "Jaehyuk"
+          ],
+          "riotId": "Jaehyuk"
+        },
+        {
+          "name": "Garden",
+          "firstName": "Jeongwon",
+          "lastName": "Seol",
+          "role": "Mid",
+          "isPlayer": true,
+          "status": "sub",
+          "order": 3,
+          "country": "",
+          "image": "http://static.lolesports.com/players/1769089555344_image6-2026-01-22T144534.879.png",
+          "accounts": [],
+          "riotId": null
+        },
+        {
+          "name": "acorn",
+          "firstName": "",
+          "lastName": "",
+          "role": "Head Coach",
+          "isPlayer": false,
+          "status": "staff",
+          "order": 7,
+          "country": "",
+          "image": null,
+          "accounts": [],
+          "riotId": null
+        }
+      ],
       "results": [
         {
           "event": "Worlds 2022",
@@ -8086,7 +8412,68 @@
       "short": "TL",
       "region": "North America",
       "logo": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/f/f4/Team_Liquidlogo_square.png/revision/latest?cb=20251229063951",
-      "roster": [],
+      "roster": [
+        {
+          "name": "Impact",
+          "role": "Top",
+          "isPlayer": true,
+          "status": "main",
+          "order": 1,
+          "country": "",
+          "accounts": [
+            "Impact"
+          ],
+          "riotId": "Impact#NA1"
+        },
+        {
+          "name": "UmTi",
+          "role": "Jungle",
+          "isPlayer": true,
+          "status": "main",
+          "order": 2,
+          "country": "",
+          "accounts": [
+            "UmTi"
+          ],
+          "riotId": "UmTi#NA1"
+        },
+        {
+          "name": "APA",
+          "role": "Mid",
+          "isPlayer": true,
+          "status": "main",
+          "order": 3,
+          "country": "",
+          "accounts": [
+            "APA"
+          ],
+          "riotId": "APA#NA1"
+        },
+        {
+          "name": "Yeon",
+          "role": "ADC",
+          "isPlayer": true,
+          "status": "main",
+          "order": 4,
+          "country": "",
+          "accounts": [
+            "Yeon"
+          ],
+          "riotId": "Yeon#NA1"
+        },
+        {
+          "name": "CoreJJ",
+          "role": "Support",
+          "isPlayer": true,
+          "status": "main",
+          "order": 5,
+          "country": "",
+          "accounts": [
+            "CoreJJ"
+          ],
+          "riotId": "CoreJJ#NA1"
+        }
+      ],
       "results": [
         {
           "event": "LCS 2026 Lock-In",
@@ -11144,7 +11531,92 @@
       "short": "WBG",
       "region": "China",
       "logo": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/5/58/Weibo_Gaminglogo_square.png/revision/latest?cb=20260109113138",
-      "roster": [],
+      "roster": [
+        {
+          "name": "Breathe",
+          "firstName": "",
+          "lastName": "",
+          "role": "Top",
+          "isPlayer": true,
+          "status": "main",
+          "order": 1,
+          "country": "",
+          "image": null,
+          "accounts": [
+            "Breathe"
+          ],
+          "riotId": "Breathe#cnKR"
+        },
+        {
+          "name": "Jiejie",
+          "firstName": "",
+          "lastName": "",
+          "role": "Jungle",
+          "isPlayer": true,
+          "status": "main",
+          "order": 2,
+          "country": "China",
+          "image": null,
+          "accounts": [],
+          "riotId": null
+        },
+        {
+          "name": "Xiaohu",
+          "firstName": "",
+          "lastName": "",
+          "role": "Mid",
+          "isPlayer": true,
+          "status": "main",
+          "order": 3,
+          "country": "",
+          "image": null,
+          "accounts": [
+            "Xiaohu"
+          ],
+          "riotId": "Xiaohu#cnKR"
+        },
+        {
+          "name": "Elk",
+          "firstName": "",
+          "lastName": "",
+          "role": "ADC",
+          "isPlayer": true,
+          "status": "main",
+          "order": 4,
+          "country": "China",
+          "image": null,
+          "accounts": [
+            "Elk"
+          ],
+          "riotId": "Elk#cnKR"
+        },
+        {
+          "name": "Crisp",
+          "firstName": "",
+          "lastName": "",
+          "role": "Support",
+          "isPlayer": true,
+          "status": "main",
+          "order": 5,
+          "country": "",
+          "image": null,
+          "accounts": [],
+          "riotId": null
+        },
+        {
+          "name": "Shine",
+          "firstName": "",
+          "lastName": "",
+          "role": "Head Coach",
+          "isPlayer": false,
+          "status": "staff",
+          "order": 7,
+          "country": "",
+          "image": null,
+          "accounts": [],
+          "riotId": null
+        }
+      ],
       "results": [
         {
           "event": "LPL 2026 Split 1 Playoffs",
@@ -21630,7 +22102,90 @@
       "short": "VIT",
       "region": "Europe",
       "logo": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/8/86/Team_Vitalitylogo_square.png/revision/latest?cb=20230224142251",
-      "roster": [],
+      "roster": [
+        {
+          "name": "Naak Nako",
+          "firstName": "Kaan",
+          "lastName": "Okan",
+          "role": "Top",
+          "isPlayer": true,
+          "status": "main",
+          "order": 1,
+          "country": "Turkey",
+          "image": "http://static.lolesports.com/players/1774652368701_naaknako.png",
+          "accounts": [],
+          "riotId": null
+        },
+        {
+          "name": "Lyncas",
+          "firstName": "Linas",
+          "lastName": "Naunčikas",
+          "role": "Jungle",
+          "isPlayer": true,
+          "status": "main",
+          "order": 2,
+          "country": "Lithuania",
+          "image": "http://static.lolesports.com/players/1774652185682_lyncas.png",
+          "accounts": [],
+          "riotId": null
+        },
+        {
+          "name": "Humanoid",
+          "firstName": " Marek",
+          "lastName": "Brázda",
+          "role": "Mid",
+          "isPlayer": true,
+          "status": "main",
+          "order": 3,
+          "country": "Czech Republic",
+          "image": "http://static.lolesports.com/players/1774651500920_humanoid.png",
+          "accounts": [
+            "FNC Humanoid"
+          ],
+          "riotId": "FNC Humanoid#EUW"
+        },
+        {
+          "name": "Carzzy",
+          "firstName": "Matyáš",
+          "lastName": "Orság",
+          "role": "ADC",
+          "isPlayer": true,
+          "status": "main",
+          "order": 4,
+          "country": "Czech Republic",
+          "image": "http://static.lolesports.com/players/1774651395852_carzzy.png",
+          "accounts": [
+            "Carzzy"
+          ],
+          "riotId": "Carzzy#EUW"
+        },
+        {
+          "name": "Fleshy",
+          "firstName": "Kadir",
+          "lastName": "Kemiksiz",
+          "role": "Support",
+          "isPlayer": true,
+          "status": "main",
+          "order": 5,
+          "country": "Turkey",
+          "image": "http://static.lolesports.com/players/1774651476897_fleshy.png",
+          "accounts": [],
+          "riotId": null
+        },
+        {
+          "name": "Pad",
+          "firstName": "",
+          "lastName": "",
+          "role": "Head Coach",
+          "isPlayer": false,
+          "status": "staff",
+          "order": 7,
+          "country": "",
+          "image": null,
+          "accounts": [],
+          "riotId": null
+        }
+      ],
       "results": [
         {
           "event": "LEC 2026 Versus Playoffs",
@@ -28935,7 +29490,60 @@
       "short": "MAD",
       "region": "Europe",
       "logo": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/8/84/MAD_Lions_KOIlogo_square.png/revision/latest?cb=20230703140443",
-      "roster": [],
+      "roster": [
+        {
+          "name": "Myrwn",
+          "role": "Top",
+          "isPlayer": true,
+          "status": "main",
+          "order": 1,
+          "country": "",
+          "accounts": [],
+          "riotId": null
+        },
+        {
+          "name": "Elyoya",
+          "role": "Jungle",
+          "isPlayer": true,
+          "status": "main",
+          "order": 2,
+          "country": "",
+          "accounts": [
+            "Elyoya"
+          ],
+          "riotId": "Elyoya#EUW"
+        },
+        {
+          "name": "Fresskowy",
+          "role": "Mid",
+          "isPlayer": true,
+          "status": "main",
+          "order": 3,
+          "country": "",
+          "accounts": [],
+          "riotId": null
+        },
+        {
+          "name": "Supa",
+          "role": "ADC",
+          "isPlayer": true,
+          "status": "main",
+          "order": 4,
+          "country": "",
+          "accounts": [],
+          "riotId": null
+        },
+        {
+          "name": "Alvaro",
+          "role": "Support",
+          "isPlayer": true,
+          "status": "main",
+          "order": 5,
+          "country": "",
+          "accounts": [],
+          "riotId": null
+        }
+      ],
       "results": [
         {
           "event": "KCX4: Forever Rivals",
@@ -30889,7 +31497,68 @@
       "short": "BDS",
       "region": "Europe",
       "logo": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/9/9e/Team_BDSlogo_square.png/revision/latest?cb=20220111205502",
-      "roster": [],
+      "roster": [
+        {
+          "name": "Adam",
+          "role": "Top",
+          "isPlayer": true,
+          "status": "main",
+          "order": 1,
+          "country": "",
+          "accounts": [
+            "Adam"
+          ],
+          "riotId": "Adam#EUW"
+        },
+        {
+          "name": "Sheo",
+          "role": "Jungle",
+          "isPlayer": true,
+          "status": "main",
+          "order": 2,
+          "country": "",
+          "accounts": [],
+          "riotId": null
+        },
+        {
+          "name": "nuc",
+          "role": "Mid",
+          "isPlayer": true,
+          "status": "main",
+          "order": 3,
+          "country": "",
+          "accounts": [
+            "nuc"
+          ],
+          "riotId": "nuc#EUW"
+        },
+        {
+          "name": "Crownie",
+          "role": "ADC",
+          "isPlayer": true,
+          "status": "main",
+          "order": 4,
+          "country": "",
+          "accounts": [
+            "Crownie"
+          ],
+          "riotId": "Crownie#EUW"
+        },
+        {
+          "name": "Labrov",
+          "role": "Support",
+          "isPlayer": true,
+          "status": "main",
+          "order": 5,
+          "country": "",
+          "accounts": [
+            "Labr0v",
+            "Labrov",
+            "Labrovv"
+          ],
+          "riotId": "Labr0v"
+        }
+      ],
       "results": [
         {
           "event": "LEC 2025 Summer Playoffs",
@@ -34745,7 +35414,112 @@
       "short": "TH",
       "region": "Europe",
       "logo": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/b/bf/Team_Hereticslogo_square.png/revision/latest?cb=20251230025102",
-      "roster": [],
+      "roster": [
+        {
+          "name": "Tracyn",
+          "firstName": "Sebastian",
+          "lastName": "Wojtoń",
+          "role": "Top",
+          "isPlayer": true,
+          "status": "main",
+          "order": 1,
+          "country": "",
+          "image": "http://static.lolesports.com/players/1774652650240_tracyn.png",
+          "accounts": [],
+          "riotId": null
+        },
+        {
+          "name": "Sheo",
+          "firstName": "Théo",
+          "lastName": "Borile",
+          "role": "Jungle",
+          "isPlayer": true,
+          "status": "main",
+          "order": 2,
+          "country": "",
+          "image": "http://static.lolesports.com/players/1774652573563_sheo.png",
+          "accounts": [],
+          "riotId": null
+        },
+        {
+          "name": "Serin",
+          "firstName": "Tolga",
+          "lastName": "Ölmez",
+          "role": "Mid",
+          "isPlayer": true,
+          "status": "main",
+          "order": 3,
+          "country": "Turkey",
+          "image": "http://static.lolesports.com/players/1774652550234_serin.png",
+          "accounts": [],
+          "riotId": null
+        },
+        {
+          "name": "Ice",
+          "firstName": "Sang-hoon",
+          "lastName": "Yoon",
+          "role": "ADC",
+          "isPlayer": true,
+          "status": "main",
+          "order": 4,
+          "country": "",
+          "image": "http://static.lolesports.com/players/1774651565551_ice.png",
+          "accounts": [],
+          "riotId": null
+        },
+        {
+          "name": "Stend",
+          "firstName": "",
+          "lastName": "",
+          "role": "Support",
+          "isPlayer": true,
+          "status": "main",
+          "order": 5,
+          "country": "",
+          "image": null,
+          "accounts": [],
+          "riotId": null
+        },
+        {
+          "name": "Way",
+          "firstName": "Han",
+          "lastName": "Kil",
+          "role": "Support",
+          "isPlayer": true,
+          "status": "sub",
+          "order": 5,
+          "country": "",
+          "image": "http://static.lolesports.com/players/1774652723449_way.png",
+          "accounts": [],
+          "riotId": null
+        },
+        {
+          "name": "Hidon",
+          "firstName": "",
+          "lastName": "",
+          "role": "Head Coach",
+          "isPlayer": false,
+          "status": "staff",
+          "order": 7,
+          "country": "",
+          "image": null,
+          "accounts": [],
+          "riotId": null
+        },
+        {
+          "name": "mithy",
+          "firstName": "",
+          "lastName": "",
+          "role": "Coach",
+          "isPlayer": false,
+          "status": "staff",
+          "order": 7,
+          "country": "",
+          "image": null,
+          "accounts": [],
+          "riotId": null
+        }
+      ],
       "results": [
         {
           "event": "LEC 2026 Versus Playoffs",
@@ -41208,7 +41982,58 @@
       "short": "NS",
       "region": "Korea",
       "logo": "https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2FNSFullonDark.png",
-      "roster": [],
+      "roster": [
+        {
+          "name": "DnDn",
+          "role": "Top",
+          "isPlayer": true,
+          "status": "main",
+          "order": 1,
+          "country": "",
+          "accounts": [],
+          "riotId": null
+        },
+        {
+          "name": "Sylvie",
+          "role": "Jungle",
+          "isPlayer": true,
+          "status": "main",
+          "order": 2,
+          "country": "",
+          "accounts": [],
+          "riotId": null
+        },
+        {
+          "name": "Fisher",
+          "role": "Mid",
+          "isPlayer": true,
+          "status": "main",
+          "order": 3,
+          "country": "",
+          "accounts": [],
+          "riotId": null
+        },
+        {
+          "name": "Jiwoo",
+          "role": "ADC",
+          "isPlayer": true,
+          "status": "main",
+          "order": 4,
+          "country": "",
+          "accounts": [],
+          "riotId": null
+        },
+        {
+          "name": "Peter",
+          "role": "Support",
+          "isPlayer": true,
+          "status": "main",
+          "order": 5,
+          "country": "",
+          "accounts": [],
+          "riotId": null
+        }
+      ],
       "results": [
         {
           "event": "KeSPA Cup 2025",
@@ -71528,243 +72353,6 @@
       "totalPrizeMoney": 2723
     },
     {
-      "id": "ilha-das-lendas",
-      "name": "Ilha das Lendas",
-      "short": "ILH",
-      "region": "",
-      "logo": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/a/a8/Ilha_das_Lendaslogo_square.png/revision/latest?cb=20240112223444",
-      "roster": [],
-      "results": [
-        {
-          "event": "IDL Showmatch - IDL x CATZ The Final Game",
-          "place": 1,
-          "date": "2025-06-22",
-          "prizeUSD": 0,
-          "originalPrize": "",
-          "trophy": "gold"
-        },
-        {
-          "event": "IDL Showmatch - IDL x FOFO",
-          "place": 1,
-          "date": "2025-06-15",
-          "prizeUSD": 0,
-          "originalPrize": "",
-          "trophy": "gold"
-        },
-        {
-          "event": "IDL Showmatch - IDL x JKG",
-          "place": 1,
-          "date": "2025-06-08",
-          "prizeUSD": 0,
-          "originalPrize": "",
-          "trophy": "gold"
-        },
-        {
-          "event": "IDL Showmatch - IDL x CATZ Rematch",
-          "place": 2,
-          "date": "2025-05-23",
-          "prizeUSD": 0,
-          "originalPrize": "",
-          "trophy": "silver"
-        },
-        {
-          "event": "IDL Showmatch - IDL x CATZ",
-          "place": 1,
-          "date": "2025-05-16",
-          "prizeUSD": 0,
-          "originalPrize": "",
-          "trophy": "gold"
-        },
-        {
-          "event": "IDL Showmatch - A Vingança do Oreia",
-          "place": 2,
-          "date": "2025-05-09",
-          "prizeUSD": 0,
-          "originalPrize": "",
-          "trophy": "silver"
-        },
-        {
-          "event": "IDL Showmatch - Ilha das Lendas x Veios",
-          "place": 2,
-          "date": "2025-05-02",
-          "prizeUSD": 0,
-          "originalPrize": "",
-          "trophy": "silver"
-        },
-        {
-          "event": "IDL Showmatch - IDL x IDC",
-          "place": 1,
-          "date": "2025-02-08",
-          "prizeUSD": 0,
-          "originalPrize": "",
-          "trophy": "gold"
-        },
-        {
-          "event": "CBLOL Academy 2024 Split 2 Playoffs",
-          "place": 4,
-          "date": "2024-08-20",
-          "prizeUSD": 2660,
-          "originalPrize": "14000 BRL",
-          "trophy": null
-        },
-        {
-          "event": "CBLOL Academy 2024 Split 2",
-          "place": 5,
-          "date": "2024-07-16",
-          "prizeUSD": 0,
-          "originalPrize": "",
-          "trophy": null
-        },
-        {
-          "event": "CBLOL Academy 2024 Split 2 Q2",
-          "place": 1,
-          "date": "2024-04-30",
-          "prizeUSD": 0,
-          "originalPrize": "",
-          "trophy": "gold"
-        },
-        {
-          "event": "CBOLÃO League S1 - Showmatches",
-          "place": 1,
-          "date": "2024-04-24",
-          "prizeUSD": 0,
-          "originalPrize": "",
-          "trophy": "gold"
-        },
-        {
-          "event": "CBOLÃO League S1 - Showmatches",
-          "place": 1,
-          "date": "2024-04-24",
-          "prizeUSD": 0,
-          "originalPrize": "",
-          "trophy": "gold"
-        },
-        {
-          "event": "CBLOL Academy 2024 Split 2 Q1",
-          "place": 1,
-          "date": "2024-04-23",
-          "prizeUSD": 0,
-          "originalPrize": "",
-          "trophy": "gold"
-        },
-        {
-          "event": "CBLOL Academy 2024 Split 1 Q2",
-          "place": 4,
-          "date": "2024-01-22",
-          "prizeUSD": 0,
-          "originalPrize": "",
-          "trophy": null
-        },
-        {
-          "event": "CBLOL Academy 2024 Split 1 Q1",
-          "place": 4,
-          "date": "2024-01-16",
-          "prizeUSD": 0,
-          "originalPrize": "",
-          "trophy": null
-        }
-      ],
-      "trophies": [
-        {
-          "event": "IDL Showmatch - IDL x CATZ The Final Game",
-          "place": 1,
-          "date": "2025-06-22",
-          "prizeUSD": 0,
-          "originalPrize": "",
-          "trophy": "gold"
-        },
-        {
-          "event": "IDL Showmatch - IDL x FOFO",
-          "place": 1,
-          "date": "2025-06-15",
-          "prizeUSD": 0,
-          "originalPrize": "",
-          "trophy": "gold"
-        },
-        {
-          "event": "IDL Showmatch - IDL x JKG",
-          "place": 1,
-          "date": "2025-06-08",
-          "prizeUSD": 0,
-          "originalPrize": "",
-          "trophy": "gold"
-        },
-        {
-          "event": "IDL Showmatch - IDL x CATZ Rematch",
-          "place": 2,
-          "date": "2025-05-23",
-          "prizeUSD": 0,
-          "originalPrize": "",
-          "trophy": "silver"
-        },
-        {
-          "event": "IDL Showmatch - IDL x CATZ",
-          "place": 1,
-          "date": "2025-05-16",
-          "prizeUSD": 0,
-          "originalPrize": "",
-          "trophy": "gold"
-        },
-        {
-          "event": "IDL Showmatch - A Vingança do Oreia",
-          "place": 2,
-          "date": "2025-05-09",
-          "prizeUSD": 0,
-          "originalPrize": "",
-          "trophy": "silver"
-        },
-        {
-          "event": "IDL Showmatch - Ilha das Lendas x Veios",
-          "place": 2,
-          "date": "2025-05-02",
-          "prizeUSD": 0,
-          "originalPrize": "",
-          "trophy": "silver"
-        },
-        {
-          "event": "IDL Showmatch - IDL x IDC",
-          "place": 1,
-          "date": "2025-02-08",
-          "prizeUSD": 0,
-          "originalPrize": "",
-          "trophy": "gold"
-        },
-        {
-          "event": "CBLOL Academy 2024 Split 2 Q2",
-          "place": 1,
-          "date": "2024-04-30",
-          "prizeUSD": 0,
-          "originalPrize": "",
-          "trophy": "gold"
-        },
-        {
-          "event": "CBOLÃO League S1 - Showmatches",
-          "place": 1,
-          "date": "2024-04-24",
-          "prizeUSD": 0,
-          "originalPrize": "",
-          "trophy": "gold"
-        },
-        {
-          "event": "CBOLÃO League S1 - Showmatches",
-          "place": 1,
-          "date": "2024-04-24",
-          "prizeUSD": 0,
-          "originalPrize": "",
-          "trophy": "gold"
-        },
-        {
-          "event": "CBLOL Academy 2024 Split 2 Q1",
-          "place": 1,
-          "date": "2024-04-23",
-          "prizeUSD": 0,
-          "originalPrize": "",
-          "trophy": "gold"
-        }
-      ],
-      "totalPrizeMoney": 2660
-    },
-    {
       "id": "fortress-esports",
       "name": "Fortress Esports",
       "short": "FOR",
@@ -86623,7 +87211,70 @@
       "short": "RGE",
       "region": "Europe",
       "logo": null,
-      "roster": [],
+      "roster": [
+        {
+          "name": "Szygenda",
+          "role": "Top",
+          "isPlayer": true,
+          "status": "main",
+          "order": 1,
+          "country": "",
+          "accounts": [
+            "Szygenda"
+          ],
+          "riotId": "Szygenda#EUW"
+        },
+        {
+          "name": "Malrang",
+          "role": "Jungle",
+          "isPlayer": true,
+          "status": "main",
+          "order": 2,
+          "country": "",
+          "accounts": [
+            "Malrang"
+          ],
+          "riotId": "Malrang#EUW"
+        },
+        {
+          "name": "Larssen",
+          "role": "Mid",
+          "isPlayer": true,
+          "status": "main",
+          "order": 3,
+          "country": "",
+          "accounts": [
+            "Larssen"
+          ],
+          "riotId": "Larssen#EUW"
+        },
+        {
+          "name": "Comp",
+          "role": "ADC",
+          "isPlayer": true,
+          "status": "main",
+          "order": 4,
+          "country": "",
+          "accounts": [
+            "Comp",
+            "Competitive",
+            "Compp"
+          ],
+          "riotId": "Comp"
+        },
+        {
+          "name": "Trymbi",
+          "role": "Support",
+          "isPlayer": true,
+          "status": "main",
+          "order": 5,
+          "country": "",
+          "accounts": [
+            "Trymbi"
+          ],
+          "riotId": "Trymbi#EUW"
+        }
+      ],
       "results": [],
       "trophies": [],
       "totalPrizeMoney": 0
@@ -86634,7 +87285,58 @@
       "short": "BRO",
       "region": "Korea",
       "logo": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/c/cf/BRIONlogo_square.png/revision/latest?cb=20260310010332",
-      "roster": [],
+      "roster": [
+        {
+          "name": "Morgan",
+          "role": "Top",
+          "isPlayer": true,
+          "status": "main",
+          "order": 1,
+          "country": "",
+          "accounts": [],
+          "riotId": null
+        },
+        {
+          "name": "Raptor",
+          "role": "Jungle",
+          "isPlayer": true,
+          "status": "main",
+          "order": 2,
+          "country": "",
+          "accounts": [],
+          "riotId": null
+        },
+        {
+          "name": "Karis",
+          "role": "Mid",
+          "isPlayer": true,
+          "status": "main",
+          "order": 3,
+          "country": "",
+          "accounts": [],
+          "riotId": null
+        },
+        {
+          "name": "Envyy",
+          "role": "ADC",
+          "isPlayer": true,
+          "status": "main",
+          "order": 4,
+          "country": "",
+          "accounts": [],
+          "riotId": null
+        },
+        {
+          "name": "Effort",
+          "role": "Support",
+          "isPlayer": true,
+          "status": "main",
+          "order": 5,
+          "country": "",
+          "accounts": [],
+          "riotId": null
+        }
+      ],
       "results": [],
       "trophies": [],
       "totalPrizeMoney": 0
@@ -87676,17 +88378,6 @@
           "trophy": "silver"
         }
       ],
-      "totalPrizeMoney": 0
-    },
-    {
-      "id": "abstract--brazilian-team-",
-      "name": "Abstract (Brazilian Team)",
-      "short": "ABS",
-      "region": "",
-      "logo": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/a/a6/Abstract_%28Brazilian_Team%29logo_square.png/revision/latest?cb=20211009043210",
-      "roster": [],
-      "results": [],
-      "trophies": [],
       "totalPrizeMoney": 0
     },
     {
@@ -99504,17 +100195,6 @@
       "totalPrizeMoney": 0
     },
     {
-      "id": "hitpoint",
-      "name": "Hitpoint",
-      "short": "HIT",
-      "region": "",
-      "logo": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/7/73/Hitpointlogo_square.png/revision/latest?cb=20191130192709",
-      "roster": [],
-      "results": [],
-      "trophies": [],
-      "totalPrizeMoney": 0
-    },
-    {
       "id": "hmble",
       "name": "HMBLE",
       "short": "HMB",
@@ -101938,17 +102618,6 @@
       "totalPrizeMoney": 0
     },
     {
-      "id": "league-of-legends-championship-pacific",
-      "name": "League of Legends Championship Pacific",
-      "short": "LEA",
-      "region": "",
-      "logo": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/a/a7/League_of_Legends_Championship_Pacificlogo_square.png/revision/latest?cb=20241118191001",
-      "roster": [],
-      "results": [],
-      "trophies": [],
-      "totalPrizeMoney": 0
-    },
-    {
       "id": "liga-ace",
       "name": "Liga Ace",
       "short": "LIG",
@@ -102534,17 +103203,6 @@
       "totalPrizeMoney": 0
     },
     {
-      "id": "lol-pro-league",
-      "name": "LoL Pro League",
-      "short": "LOL",
-      "region": "",
-      "logo": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/a/a8/LPL_2020_square.png/revision/latest?cb=20200930130909",
-      "roster": [],
-      "results": [],
-      "trophies": [],
-      "totalPrizeMoney": 0
-    },
-    {
       "id": "looksmaxxer",
       "name": "LOOKSMAXXER",
       "short": "LOO",
@@ -102819,17 +103477,6 @@
           "trophy": "bronze"
         }
       ],
-      "totalPrizeMoney": 0
-    },
-    {
-      "id": "lvp",
-      "name": "LVP",
-      "short": "LVP",
-      "region": "",
-      "logo": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/2/2a/LVPlogo_square.png/revision/latest?cb=20200525163118",
-      "roster": [],
-      "results": [],
-      "trophies": [],
       "totalPrizeMoney": 0
     },
     {
@@ -106291,17 +106938,6 @@
       "totalPrizeMoney": 0
     },
     {
-      "id": "pg-esports",
-      "name": "PG Esports",
-      "short": "PG ",
-      "region": "",
-      "logo": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/0/0e/PG_Esportslogo_square.png/revision/latest?cb=20190214121150",
-      "roster": [],
-      "results": [],
-      "trophies": [],
-      "totalPrizeMoney": 0
-    },
-    {
       "id": "polar-squad-esports",
       "name": "Polar Squad Esports",
       "short": "POL",
@@ -106718,17 +107354,6 @@
           "trophy": "bronze"
         }
       ],
-      "totalPrizeMoney": 0
-    },
-    {
-      "id": "polski-hub-esportowy",
-      "name": "Polski Hub Esportowy",
-      "short": "POL",
-      "region": "",
-      "logo": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/0/08/Polski_Hub_Esportowylogo_square.png/revision/latest?cb=20250531170929",
-      "roster": [],
-      "results": [],
-      "trophies": [],
       "totalPrizeMoney": 0
     },
     {

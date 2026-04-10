@@ -48,12 +48,23 @@ function getTrophy(place) {
 async function main() {
   console.log('=== Pro Teams Crawler (Multi-Source Validated) ===\n');
 
-  // Source 1: Leaguepedia Players (active, with team)
-  console.log('[1/5] Quelle 1: Leaguepedia Players...');
-  const playersSource = await cargoQuery(
-    'Players=P', 'P.ID,P.Player,P.Team,P.Role,P.Country,P.Image,P.IsRetired',
-    'P.IsRetired="No" AND P.Team IS NOT NULL AND P.Team!=""', 'P.Team ASC', 3000
-  );
+  // Source 1: Leaguepedia Players (active, with team) — paginated to get ALL
+  console.log('[1/5] Quelle 1: Leaguepedia Players (paginiert)...');
+  const playersSource = [];
+  let playersOffset = 0;
+  const PLAYERS_PAGE = 500;
+  while (true) {
+    const batch = await cargoQuery(
+      'Players=P', 'P.ID,P.Player,P.Team,P.Role,P.Country,P.Image,P.IsRetired',
+      'P.IsRetired="No" AND P.Team IS NOT NULL AND P.Team!=""',
+      'P.ID ASC', PLAYERS_PAGE, playersOffset
+    );
+    if (batch.length === 0) break;
+    playersSource.push(...batch);
+    playersOffset += PLAYERS_PAGE;
+    if (batch.length < PLAYERS_PAGE) break;
+    await sleep(800);
+  }
   console.log(`  ${playersSource.length} Eintraege`);
 
   // Source 2: Leaguepedia current tournament rosters (most reliable for ACTIVE players)
@@ -74,6 +85,24 @@ async function main() {
     proPlayersData = JSON.parse(raw);
   } catch {}
   console.log(`  ${proPlayersData.players.length} Spieler mit Account-Daten`);
+
+  // Source 3b: Existing pro-teams.json — for roster preservation on empty rebuild
+  const existingRosters = {}; // teamName.toLowerCase() -> { roster, logo, short }
+  try {
+    const fs = await import('fs');
+    const raw = fs.readFileSync('public/pro-teams.json', 'utf8');
+    const old = JSON.parse(raw);
+    for (const t of (old.teams || [])) {
+      if (t.name && (t.roster || []).length > 0) {
+        existingRosters[t.name.toLowerCase()] = {
+          roster: t.roster,
+          logo: t.logo || null,
+          short: t.short || null,
+        };
+      }
+    }
+    console.log(`  ${Object.keys(existingRosters).length} existierende Roster als Fallback geladen`);
+  } catch {}
 
   // Build account lookup: playerName (lowercase) -> accounts[]
   const accountLookup = {};
@@ -143,6 +172,32 @@ async function main() {
       inTournamentRoster: tournamentRosters[team]?.has(name.toLowerCase()) || false,
     });
   }
+
+  // Leaguepedia uses different team name strings than we do.
+  // Map our canonical name -> list of names to try in Leaguepedia's Players.Team column.
+  // All candidates are checked in order; first non-empty match wins.
+  //
+  // IMPORTANT: Only list aliases that truly refer to the SAME team org.
+  // Do NOT alias "Nongshim Esports" -> "Nongshim RedForce" (different team), or
+  // "OKSavingsBank BRION" -> "HANJIN BRION" (new org, different roster).
+  // For those cases, let the preserve-existing fallback handle it.
+  const LEAGUEPEDIA_TEAM_NAMES = {
+    'Dplus KIA': ['Dplus Kia', 'Dplus KIA'],
+    'Kiwoom DRX': ['Kiwoom DRX', 'DRX'],
+    'Gen.G': ['Gen.G', 'Gen.G Esports'],
+  };
+
+  // League umbrella organisations mislabeled as teams on Leaguepedia — drop them entirely
+  const LEAGUE_UMBRELLAS = new Set([
+    'Ilha das Lendas',
+    'Abstract (Brazilian Team)',
+    'Hitpoint',
+    'League of Legends Championship Pacific',
+    'LoL Pro League',
+    'LVP',
+    'PG Esports',
+    'Polski Hub Esportowy',
+  ]);
 
   // Major teams definition
   const majorTeams = [
@@ -261,7 +316,19 @@ async function main() {
 
   function buildTeam(name, meta) {
     if (seenTeams.has(name.toLowerCase())) return;
-    const roster = playersRoster[name] || [];
+    if (LEAGUE_UMBRELLAS.has(name)) return;
+
+    // Try canonical name first, then Leaguepedia aliases
+    let roster = playersRoster[name] || [];
+    if (roster.length === 0) {
+      const aliases = LEAGUEPEDIA_TEAM_NAMES[name] || [];
+      for (const alias of aliases) {
+        if ((playersRoster[alias] || []).length > 0) {
+          roster = playersRoster[alias];
+          break;
+        }
+      }
+    }
 
     // Validated roster: players confirmed by tournament roster = Main
     // Players only in Players table = Sub (unless they fill a missing main role)
@@ -328,16 +395,42 @@ async function main() {
     const verifiedTotal = VERIFIED_TOTALS[name];
     const finalPrize = verifiedTotal || Math.round(totalPrize);
 
+    // Roster-selection policy:
+    //  1. If existing file has a complete roster (>=5 main players), TRUST it over fresh crawl.
+    //     Leaguepedia's Players table contains historical members flagged as non-retired,
+    //     which would regress curated rosters (e.g. Dplus KIA: Khan/Smash instead of Kingen/Kellin).
+    //  2. Otherwise use the fresh crawl.
+    //  3. If fresh crawl is also empty, fall back to existing (any size).
+    const existing = existingRosters[name.toLowerCase()];
+    const existingMainCount = existing ? existing.roster.filter(m => m.status === 'main').length : 0;
+
+    let finalRoster = allMembers;
+    let rosterSource = 'leaguepedia-players';
+
+    if (existing && existingMainCount >= 5) {
+      finalRoster = existing.roster;
+      rosterSource = 'preserved-curated';
+    } else if (finalRoster.length === 0 && existing && existing.roster.length > 0) {
+      finalRoster = existing.roster;
+      rosterSource = 'preserved-from-existing';
+      console.log(`  [PRESERVE] ${name}: kept ${existing.roster.length} existing members (no Leaguepedia data)`);
+    }
+
+    // Preserve existing logo/short if current build has nothing better
+    const finalLogo = (meta?.logo) || existing?.logo || null;
+    const finalShort = (meta?.short) || existing?.short || name.slice(0, 3).toUpperCase();
+
     teamsDB.push({
       id: name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
       name,
-      short: meta?.short || name.slice(0, 3).toUpperCase(),
+      short: finalShort,
       region: meta?.region || '',
-      logo: meta?.logo || null,
-      roster: allMembers,
+      logo: finalLogo,
+      roster: finalRoster,
       results: results.slice(0, 50), // Keep up to 50 results for detail view
       trophies,
       totalPrizeMoney: finalPrize,
+      rosterSource,
     });
     seenTeams.add(name.toLowerCase());
   }

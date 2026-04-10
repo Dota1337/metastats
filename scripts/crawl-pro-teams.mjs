@@ -199,13 +199,14 @@ async function main() {
     'Polski Hub Esportowy',
   ]);
 
-  // Major teams definition
+  // Major teams definition — no hardcoded logos (akamai URLs were dead since commit 7a632e3).
+  // Logos come from existing file or enrich-team-logos post-processing.
   const majorTeams = [
-    { name: 'T1', short: 'T1', region: 'Korea', logo: 'https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1631819614066_t1-2021-worlds.png' },
-    { name: 'Gen.G', short: 'GEN', region: 'Korea', logo: 'https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1671038289866_GenG_2023.png' },
-    { name: 'G2 Esports', short: 'G2', region: 'Europe', logo: 'https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2FG2-FullonDark.png' },
-    { name: 'Fnatic', short: 'FNC', region: 'Europe', logo: 'https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1631819669150_fnc-2021-worlds.png' },
-    { name: 'Cloud9', short: 'C9', region: 'North America', logo: 'https://am-a.akamaihd.net/image?resize=120:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1631820065189_c9-2021-worlds.png' },
+    { name: 'T1', short: 'T1', region: 'Korea' },
+    { name: 'Gen.G', short: 'GEN', region: 'Korea' },
+    { name: 'G2 Esports', short: 'G2', region: 'Europe' },
+    { name: 'Fnatic', short: 'FNC', region: 'Europe' },
+    { name: 'Cloud9', short: 'C9', region: 'North America' },
     { name: 'Team Liquid', short: 'TL', region: 'North America' },
     { name: 'FlyQuest', short: 'FLY', region: 'North America' },
     { name: 'Dplus KIA', short: 'DK', region: 'Korea' },
@@ -416,9 +417,10 @@ async function main() {
       console.log(`  [PRESERVE] ${name}: kept ${existing.roster.length} existing members (no Leaguepedia data)`);
     }
 
-    // Preserve existing logo/short if current build has nothing better
-    const finalLogo = (meta?.logo) || existing?.logo || null;
-    const finalShort = (meta?.short) || existing?.short || name.slice(0, 3).toUpperCase();
+    // Trust existing logo/short over hardcoded meta — existing came from enrich-team-logos
+    // and has been manually verified over many commits (commits 7a632e3, fead011).
+    const finalLogo = existing?.logo || meta?.logo || null;
+    const finalShort = existing?.short || meta?.short || name.slice(0, 3).toUpperCase();
 
     teamsDB.push({
       id: name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
@@ -448,6 +450,39 @@ async function main() {
   }
 
   teamsDB.sort((a, b) => b.totalPrizeMoney - a.totalPrizeMoney);
+
+  // Post-step: enrich missing logos from Leaguepedia Teams table (lightweight, no extra APIs)
+  const teamsMissingLogo = teamsDB.filter(t => !t.logo || !String(t.logo).startsWith('http'));
+  if (teamsMissingLogo.length > 0) {
+    console.log(`\n[Logo-Enrichment] ${teamsMissingLogo.length} Teams ohne Logo, lade von Leaguepedia...`);
+    const leaguepediaLogos = {};
+    let lpOffset = 0;
+    while (true) {
+      const batch = await cargoQuery(
+        'Teams', 'Teams.Name,Teams.Short,Teams.Image',
+        'Teams.Image IS NOT NULL AND Teams.Image != ""',
+        'Teams.Name ASC', 500, lpOffset
+      );
+      if (!batch.length) break;
+      for (const t of batch) {
+        if (t.Image && t.Name) {
+          const imgName = String(t.Image).replace(/ /g, '_');
+          const url = `https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/${imgName}`;
+          leaguepediaLogos[t.Name.toLowerCase()] = url;
+          if (t.Short) leaguepediaLogos[String(t.Short).toLowerCase()] = url;
+        }
+      }
+      lpOffset += 500;
+      if (batch.length < 500) break;
+      await sleep(500);
+    }
+    let enriched = 0;
+    for (const t of teamsMissingLogo) {
+      const url = leaguepediaLogos[(t.name || '').toLowerCase()] || leaguepediaLogos[(t.short || '').toLowerCase()];
+      if (url) { t.logo = url; enriched++; }
+    }
+    console.log(`  ${enriched}/${teamsMissingLogo.length} Logos via Leaguepedia ergaenzt`);
+  }
 
   // Stats
   const validated = teamsDB.reduce((s, t) => s + t.roster.filter(m => m.status === 'main').length, 0);

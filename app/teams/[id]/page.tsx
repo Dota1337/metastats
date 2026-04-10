@@ -86,7 +86,10 @@ export default function TeamDetailPage() {
     const parts = m.riotId.split('#');
     const name = parts[0];
     const tag = parts[1] || DEFAULT_TAGS[teamRiotRegion] || 'EUW';
-    return `/player/${encodeURIComponent(name)}--${encodeURIComponent(tag)}?region=${teamRiotRegion}`;
+    // Per-player region from pro-players.json mainAccount wins over team default.
+    // E.g. a KR pro on an EU team will have region='kr' from their validated account.
+    const region = m.region || teamRiotRegion;
+    return `/player/${encodeURIComponent(name)}--${encodeURIComponent(tag)}?region=${region}`;
   };
   const formatPrize = (v: number) => {
     if (v >= 1_000_000) return '$' + (v / 1_000_000).toFixed(1) + 'M';

@@ -25,7 +25,30 @@ export async function GET(request: NextRequest) {
       `https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}?api_key=${apiKey}`
     );
     if (!accountRes.ok) {
-      return NextResponse.json({ error: 'Spieler nicht gefunden' }, { status: 404 });
+      // Distinguish error classes so the UI can show meaningful messages
+      // and so we don't silently mask a revoked Riot API key as "Spieler nicht gefunden".
+      if (accountRes.status === 401 || accountRes.status === 403) {
+        return NextResponse.json(
+          { error: 'Riot API Key ungültig oder abgelaufen', code: 'riot_auth' },
+          { status: 503 }
+        );
+      }
+      if (accountRes.status === 429) {
+        return NextResponse.json(
+          { error: 'Riot API Rate-Limit erreicht. Bitte kurz warten.', code: 'riot_rate_limit' },
+          { status: 429 }
+        );
+      }
+      if (accountRes.status === 404) {
+        return NextResponse.json(
+          { error: 'Spieler nicht gefunden', code: 'not_found' },
+          { status: 404 }
+        );
+      }
+      return NextResponse.json(
+        { error: `Riot API Fehler (${accountRes.status})`, code: 'riot_upstream' },
+        { status: 502 }
+      );
     }
     const account = await accountRes.json();
 

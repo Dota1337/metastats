@@ -1,0 +1,64 @@
+name: Weekly Data Crawl
+
+on:
+  schedule:
+    # Every Friday at 06:00 UTC
+    - cron: '0 6 * * 5'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  crawl-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Pro Player Crawler (no Riot API key needed)
+      - name: Crawl Pro Players
+        run: node scripts/crawl-pro-players.mjs
+
+      # Champion Stats Crawler (needs valid Riot API key)
+      - name: Crawl Champion Stats
+        if: env.RIOT_API_KEY != ''
+        env:
+          RIOT_API_KEY: ${{ secrets.RIOT_API_KEY }}
+        run: |
+          echo "Starting champion stats crawler..."
+          node scripts/collect-highelo.mjs || echo "Champion stats crawler failed (API key may be expired)"
+
+      # Commit updated data files
+      - name: Commit data updates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/pro-players.json public/champion-stats-*.json
+          if git diff --staged --quiet; then
+            echo "No data changes to commit"
+          else
+            git commit -m "chron: weekly data update (pro players + champion stats)
+
+          Co-Authored-By: claude-flow <ruv@ruv.net>"
+            git push
+          fi
+
+      # Deploy to Vercel
+      - name: Deploy to Vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          npm i -g vercel
+          vercel pull --yes --environment=production --token=$VERCEL_TOKEN
+          vercel build --prod --token=$VERCEL_TOKEN
+          vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN

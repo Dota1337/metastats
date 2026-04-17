@@ -6,6 +6,12 @@ on:
     - cron: '0 6 * * 5'
   workflow_dispatch: # Allow manual trigger
 
+permissions:
+  contents: write
+
+env:
+  RIOT_API_KEY: ${{ secrets.RIOT_API_KEY }}
+
 jobs:
   crawl-and-deploy:
     runs-on: ubuntu-latest
@@ -30,11 +36,7 @@ jobs:
       # Champion Stats Crawler (needs valid Riot API key)
       - name: Crawl Champion Stats
         if: env.RIOT_API_KEY != ''
-        env:
-          RIOT_API_KEY: ${{ secrets.RIOT_API_KEY }}
-        run: |
-          echo "Starting champion stats crawler..."
-          node scripts/collect-highelo.mjs || echo "Champion stats crawler failed (API key may be expired)"
+        run: node scripts/collect-highelo.mjs
 
       # Commit updated data files
       - name: Commit data updates
@@ -45,7 +47,7 @@ jobs:
           if git diff --staged --quiet; then
             echo "No data changes to commit"
           else
-            git commit -m "chron: weekly data update (pro players + champion stats)
+            git commit -m "chore: weekly data update (pro players + champion stats)
 
           Co-Authored-By: claude-flow <ruv@ruv.net>"
             git push

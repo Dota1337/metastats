@@ -146,6 +146,15 @@ export default function Home() {
 
       <Nav active="search" />
 
+      {/* === PROTOTYPE BANNER === */}
+      <div className="bg-gradient-to-r from-[#c89b3c]/20 via-[#c89b3c]/10 to-[#c89b3c]/20 border-b border-[#c89b3c]/30 text-center py-2 px-4 text-xs sm:text-sm text-[#f0e6d2]">
+        <span className="inline-flex items-center gap-2">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#c89b3c] animate-pulse" />
+          <strong className="text-[#c89b3c]">Prototyp-Phase:</strong>
+          Diese Seite befindet sich in aktiver Entwicklung — Features, Daten und Design können sich jederzeit ändern.
+        </span>
+      </div>
+
       {/* === HERO SECTION === */}
       <div className="relative overflow-hidden">
         {/* Hero background — LoL champion splash art */}

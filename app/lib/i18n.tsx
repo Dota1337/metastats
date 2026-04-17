@@ -135,13 +135,13 @@ const translations = {
   'tier.grandmaster': t6('Grandmaster', 'Grandmaster', '\uADF8\uB79C\uB4DC\uB9C8\uC2A4\uD130', '\u5B97\u5E08', 'Gran Maestro', 'Grand Ma\u00EEtre'),
   'tier.challenger': t6('Challenger', 'Challenger', '\uCC4C\uB9B0\uC800', '\u6700\u5F3A\u738B\u8005', 'Aspirante', 'Challenger'),
 
-  // Role names (game terms - Top/Jungle/Mid/ADC/Support stay in DE/EN/ES/FR)
+  // Role names (DE/EN keep LoL terms, KR/ZH/ES/FR translated per user rule 2026-04-17)
   'role.all': t6('Alle Rollen', 'All Roles', '\uBAA8\uB4E0 \uD3EC\uC9C0\uC158', '\u6240\u6709\u4F4D\u7F6E', 'Todos', 'Tous'),
-  'role.top': t6('Top', 'Top', '\uD0D1', '\u4E0A\u8DEF', 'Top', 'Top'),
-  'role.jungle': t6('Jungle', 'Jungle', '\uC815\uAE00', '\u6253\u91CE', 'Jungle', 'Jungle'),
-  'role.mid': t6('Mid', 'Mid', '\uBBF8\uB4DC', '\u4E2D\u8DEF', 'Mid', 'Mid'),
-  'role.adc': t6('ADC', 'ADC', '\uC6D0\uB51C', '\u4E0B\u8DEF', 'ADC', 'ADC'),
-  'role.support': t6('Support', 'Support', '\uC11C\uD3EC\uD130', '\u8F85\u52A9', 'Support', 'Support'),
+  'role.top': t6('Top', 'Top', '\uD0D1', '\u4E0A\u8DEF', 'Superior', 'Haut'),
+  'role.jungle': t6('Jungle', 'Jungle', '\uC815\uAE00', '\u6253\u91CE', 'Jungla', 'Jungle'),
+  'role.mid': t6('Mid', 'Mid', '\uBBF8\uB4DC', '\u4E2D\u8DEF', 'Central', 'Milieu'),
+  'role.adc': t6('ADC', 'ADC', '\uC6D0\uB51C', '\u4E0B\u8DEF', 'Tirador', 'Tireur'),
+  'role.support': t6('Support', 'Support', '\uC11C\uD3EC\uD130', '\u8F85\u52A9', 'Apoyo', 'Soutien'),
 
   // Champion Detail
   'champDetail.back': t6('Alle Champions', 'All Champions', '\uBAA8\uB4E0 \uCC54\uD53C\uC5B8', '\u6240\u6709\u82F1\u96C4', 'Todos los campeones', 'Tous les champions'),
@@ -354,7 +354,14 @@ const translations = {
   'match.loss': t6('Niederlage', 'Defeat', '\uD328\uBC30', '\u5931\u8D25', 'Derrota', 'D\u00E9faite'),
   'match.dmgShare': t6('DMG-Anteil', 'DMG Share', '\uD53C\uD574 \uBE44\uC728', '\u4F24\u5BB3\u5360\u6BD4', 'Cuota DMG', 'Part DMG'),
   'match.goldShare': t6('Gold-Anteil', 'Gold Share', '\uACE8\uB4DC \uBE44\uC728', '\u91D1\u5E01\u5360\u6BD4', 'Cuota Oro', 'Part Or'),
-  'match.soloKills': t6('Solo Kills', 'Solo Kills', '\uC194\uB85C \uD0AC', '\u5355\u6740', 'Solo Kills', 'Solo Kills'),
+  'match.soloKills': t6('Solo Kills', 'Solo Kills', '\uC194\uB85C \uD0AC', '\u5355\u6740', 'Asesinatos en solitario', 'Kills en solo'),
+  'match.wards': t6('Wards', 'Wards', '\uC640\uB4DC', '\u5B88\u536B', 'Guardianes', 'Balises'),
+  'match.ctrlWards': t6('Ctrl Wards', 'Ctrl Wards', '\uC81C\uC5B4 \uC640\uB4DC', '\u63A7\u536B', 'Guardianes de control', 'Balises de contr\u00F4le'),
+  'match.firstBlood': t6('First Blood', 'First Blood', '\uC120\uCDE8\uC810', '\u4E00\u8840', 'Primera sangre', 'Premier sang'),
+  'match.double': t6('Double', 'Double', '\uB354\uBE14\uD0AC', '\u53CC\u6740', 'Doble', 'Double'),
+  'match.triple': t6('Triple', 'Triple', '\uD2B8\uB9AC\uD50C\uD0AC', '\u4E09\u6740', 'Triple', 'Triple'),
+  'match.quadra': t6('Quadra', 'Quadra', '\uCFFC\uB4DC\uB77C\uD0AC', '\u56DB\u6740', 'Cu\u00E1druple', 'Quadra'),
+  'match.turrets': t6('Turrets', 'Turrets', '\uD0C0\uC6CC', '\u9632\u5FA1\u5854', 'Torretas', 'Tourelles'),
 
   // Radar Profile
   'radar.title': t6('Spieler-Profil', 'Player Profile', '\uD50C\uB808\uC774\uC5B4 \uD504\uB85C\uD544', '\u73A9\u5BB6\u8D44\u6599', 'Perfil del Jugador', 'Profil du Joueur'),

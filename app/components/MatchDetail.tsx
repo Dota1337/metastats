@@ -117,15 +117,15 @@ export default function MatchDetail({ match, ddVersion, isExpanded, onToggle, fo
         <span>{roleLabels[match.role] || '-'}</span>
         <span>{t('match.dmgShare')}: {dmgShare}%</span>
         <span>{t('match.goldShare')}: {goldShare}%</span>
-        <span>Wards: {match.wardsPlaced}</span>
-        <span>Ctrl Wards: {match.controlWardsPlaced}</span>
+        <span>{t('match.wards')}: {match.wardsPlaced}</span>
+        <span>{t('match.ctrlWards')}: {match.controlWardsPlaced}</span>
         {match.soloKills > 0 && <span>{t('match.soloKills')}: {match.soloKills}</span>}
-        {match.doubleKills > 0 && <span>Double: {match.doubleKills}</span>}
-        {match.tripleKills > 0 && <span className="text-[#c89b3c]">Triple: {match.tripleKills}</span>}
-        {match.quadraKills > 0 && <span className="text-[#c89b3c]">Quadra: {match.quadraKills}</span>}
+        {match.doubleKills > 0 && <span>{t('match.double')}: {match.doubleKills}</span>}
+        {match.tripleKills > 0 && <span className="text-[#c89b3c]">{t('match.triple')}: {match.tripleKills}</span>}
+        {match.quadraKills > 0 && <span className="text-[#c89b3c]">{t('match.quadra')}: {match.quadraKills}</span>}
         {match.pentaKills > 0 && <span className="text-[#f0c040] font-bold">PENTA!</span>}
-        {match.turretKills > 0 && <span>Turrets: {match.turretKills}</span>}
-        {match.firstBloodKill && <span className="text-red-400">First Blood</span>}
+        {match.turretKills > 0 && <span>{t('match.turrets')}: {match.turretKills}</span>}
+        {match.firstBloodKill && <span className="text-red-400">{t('match.firstBlood')}</span>}
       </div>
 
       {/* Expanded: Full Game Details */}

@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { useI18n, LANGUAGES, type Lang } from '../lib/i18n';
+import { useI18n, LANGUAGES } from '../lib/i18n';
 
 interface NavProps {
   active?: 'search' | 'leaderboard' | 'champions' | 'marktwert' | 'analyse' | 'teams' | 'ligen';
@@ -194,7 +194,12 @@ export default function Nav({ active }: NavProps) {
                   {LANGUAGES.map(l => (
                     <button
                       key={l.code}
-                      onClick={() => { setLang(l.code); setLangOpen(false); }}
+                      onClick={() => {
+                        setLang(l.code);
+                        setLangOpen(false);
+                        // Hard reload so server-rendered metadata (tab title, OG tags) update for the new language
+                        if (l.code !== lang) window.location.reload();
+                      }}
                       className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs transition-colors ${
                         lang === l.code
                           ? 'bg-[#c89b3c]/10 text-[#c89b3c]'
@@ -307,7 +312,11 @@ export default function Nav({ active }: NavProps) {
             {LANGUAGES.map(l => (
               <button
                 key={l.code}
-                onClick={() => { setLang(l.code); setMenuOpen(false); }}
+                onClick={() => {
+                  setLang(l.code);
+                  setMenuOpen(false);
+                  if (l.code !== lang) window.location.reload();
+                }}
                 className={`flex items-center gap-1.5 px-2 py-1.5 rounded text-xs ${
                   lang === l.code ? 'bg-[#c89b3c]/10 text-[#c89b3c]' : 'text-[#8a9bb0]'
                 }`}

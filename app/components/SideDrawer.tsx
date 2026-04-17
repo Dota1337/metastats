@@ -157,7 +157,7 @@ export default function SideDrawer() {
       >
         <div className="flex flex-col items-center gap-2">
           {liveCount > 0 && !open && (
-            <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+            <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" aria-hidden="true" />
           )}
           <svg className={`w-4 h-4 text-[#c89b3c] transition-transform ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d={open ? 'M15 19l-7-7 7-7' : 'M9 5l7 7-7 7'} />
@@ -328,7 +328,7 @@ function TournamentsContent({
               <span className="text-[#8a9bb0] text-[10px] font-medium uppercase tracking-wider">{date}</span>
             </div>
             {matches.map((match, i) => (
-              <MatchCard key={`${match.startTime}-${i}`} match={match} formatTime={formatTime} relativeTime={relativeTime} />
+              <MatchCard key={`${match.startTime}-${i}`} match={match} formatTime={formatTime} relativeTime={relativeTime} t={t} />
             ))}
           </div>
         ))
@@ -337,18 +337,29 @@ function TournamentsContent({
   );
 }
 
-function MatchCard({ match, formatTime, relativeTime }: { match: Tournament; formatTime: (d: string) => string; relativeTime: (d: string) => string }) {
+function MatchCard({ match, formatTime, relativeTime, t }: { match: Tournament; formatTime: (d: string) => string; relativeTime: (d: string) => string; t: (key: any) => string }) {
   const isLive = match.state === 'inProgress';
   const isUpcoming = match.state === 'unstarted';
   const team1 = match.teams?.[0];
   const team2 = match.teams?.[1];
+  const href = match.leagueSlug ? `/ligen?league=${encodeURIComponent(match.leagueSlug)}` : '/ligen';
 
   return (
-    <div className={`px-4 py-2.5 border-b border-[#141c2e] hover:bg-[#0d1526] transition-colors ${isLive ? 'bg-red-500/5' : ''}`}>
+    <a
+      href={href}
+      title={t('drawer.viewTournament')}
+      onClick={(e) => {
+        // Allow Ctrl/Cmd-click to open in new tab, otherwise navigate same tab and let drawer close via route change
+        if (e.metaKey || e.ctrlKey || e.shiftKey) return;
+        window.location.href = href;
+        e.preventDefault();
+      }}
+      className={`block px-4 py-2.5 border-b border-[#141c2e] hover:bg-[#0d1526] transition-colors cursor-pointer ${isLive ? 'bg-red-500/5 hover:bg-red-500/10' : ''}`}
+    >
       {/* League + Time */}
       <div className="flex items-center justify-between mb-1.5">
         <div className="flex items-center gap-1.5">
-          {isLive && <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />}
+          {isLive && <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" aria-hidden="true" />}
           <span className={`text-[10px] font-medium ${isLive ? 'text-red-400' : 'text-[#c89b3c]'}`}>
             {match.league}
           </span>
@@ -396,7 +407,7 @@ function MatchCard({ match, formatTime, relativeTime }: { match: Tournament; for
           </div>
         </div>
       )}
-    </div>
+    </a>
   );
 }
 

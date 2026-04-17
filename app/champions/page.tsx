@@ -4,6 +4,7 @@ import Nav from '../components/Nav';
 import Footer from '../components/Footer';
 import PageHero from '../components/PageHero';
 import { useI18n } from '../lib/i18n';
+import { usePageTitle } from '../lib/use-page-title';
 
 type SortKey = 'name' | 'winRate' | 'pickRate' | 'banRate' | 'games' | 'avgKDA';
 
@@ -23,6 +24,7 @@ interface Champion {
 }
 
 export default function ChampionsPage() {
+  usePageTitle('pageTitle.champions');
   const [champions, setChampions] = useState<Champion[]>([]);
   const [loading, setLoading] = useState(true);
   const [tier, setTier] = useState('all');

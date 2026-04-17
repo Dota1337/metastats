@@ -6,6 +6,7 @@ import Nav from '../components/Nav';
 import Footer from '../components/Footer';
 import PageHero from '../components/PageHero';
 import { useI18n, LOCALE_MAP } from '../lib/i18n';
+import { usePageTitle } from '../lib/use-page-title';
 
 const CompareRadar = dynamic(() => import('../components/CompareRadar'), { ssr: false });
 
@@ -97,6 +98,7 @@ function ComparisonBar({ label, value1, value2, format1, format2 }: {
 // === Main Page ===
 
 export default function AnalysePage() {
+  usePageTitle('pageTitle.compare');
   const { t } = useI18n();
   const [mode, setMode] = useState<'multi' | 'compare'>('compare');
   const [region, setRegion] = useState('euw1');

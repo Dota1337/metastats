@@ -1,5 +1,8 @@
 import type { MetadataRoute } from 'next';
 
+// Rebuild sitemap at most once per day
+export const revalidate = 86400;
+
 const SITE_URL = 'https://metastats.gg';
 
 export default function sitemap(): MetadataRoute.Sitemap {

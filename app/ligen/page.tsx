@@ -1,9 +1,11 @@
 'use client';
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import Nav from '../components/Nav';
 import Footer from '../components/Footer';
 import { useI18n, LOCALE_MAP } from '../lib/i18n';
+import { usePageTitle } from '../lib/use-page-title';
 
 interface LeagueInfo {
   slug: string;
@@ -69,8 +71,11 @@ interface ProTeam {
 type CalendarView = 'week' | 'month';
 
 export default function LigenPage() {
+  usePageTitle('pageTitle.ligen');
   const { t, lang } = useI18n();
   const locale = LOCALE_MAP[lang];
+  const searchParams = useSearchParams();
+  const initialLeagueSlug = searchParams.get('league');
   const [leagues, setLeagues] = useState<LeagueInfo[]>([]);
   const [schedule, setSchedule] = useState<ScheduleEvent[]>([]);
   const [selectedLeague, setSelectedLeague] = useState<string | null>(null);
@@ -109,6 +114,18 @@ export default function LigenPage() {
     };
     load();
   }, []);
+
+  // Open league detail automatically when arriving via ?league=SLUG (e.g. from SideDrawer match click)
+  useEffect(() => {
+    if (initialLeagueSlug && !selectedLeague) {
+      fetchLeagueDetail(initialLeagueSlug);
+      // Smooth scroll to detail view once rendered
+      setTimeout(() => {
+        document.getElementById('league-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 400);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialLeagueSlug]);
 
   const fetchLeagueDetail = async (slug: string) => {
     setSelectedLeague(slug);
@@ -255,7 +272,7 @@ export default function LigenPage() {
           </div>
         ) : selectedLeague ? (
           /* ── League Detail View ── */
-          <div>
+          <div id="league-detail">
             <button
               onClick={() => { setSelectedLeague(null); setLeagueDetail(null); }}
               className="flex items-center gap-2 text-[#8a9bb0] hover:text-white transition-colors mb-4"

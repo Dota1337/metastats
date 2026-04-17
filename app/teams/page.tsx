@@ -4,6 +4,7 @@ import Nav from '../components/Nav';
 import Footer from '../components/Footer';
 import PageHero from '../components/PageHero';
 import { useI18n } from '../lib/i18n';
+import { usePageTitle } from '../lib/use-page-title';
 
 interface TeamResult {
   event: string;
@@ -63,6 +64,7 @@ function getSeasonPrize(team: TeamSummary, season: string): number {
 }
 
 export default function TeamsPage() {
+  usePageTitle('pageTitle.teams');
   const [teams, setTeams] = useState<TeamSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [regionFilter, setRegionFilter] = useState('all');

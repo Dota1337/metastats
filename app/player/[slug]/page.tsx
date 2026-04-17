@@ -8,7 +8,9 @@ import Footer from '../../components/Footer';
 import ChampionBreakdown from '../../components/ChampionBreakdown';
 import MatchDetail from '../../components/MatchDetail';
 import LiveGameDetail from '../../components/LiveGameDetail';
+import ApiUnavailable from '../../components/ApiUnavailable';
 import { useI18n, LOCALE_MAP } from '../../lib/i18n';
+import { useCustomPageTitle } from '../../lib/use-page-title';
 import { loadProLookup, lookupPro, type ProPlayer } from '../../lib/pro-players';
 
 const PerformanceCharts = dynamic(() => import('../../components/PerformanceCharts'), { ssr: false });
@@ -28,6 +30,7 @@ export default function PlayerPage() {
   const [ddVersion, setDdVersion] = useState('14.1.1');
   const [masteries, setMasteries] = useState<any[]>([]);
   const [liveGame, setLiveGame] = useState<{ inGame: boolean; gameData?: any }>({ inGame: false });
+  const [liveGameUnavailable, setLiveGameUnavailable] = useState(false);
   const [championMap, setChampionMap] = useState<Record<number, { id: string; name: string }>>({});
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [expandedMatch, setExpandedMatch] = useState<number | null>(null);
@@ -40,6 +43,7 @@ export default function PlayerPage() {
   const region = searchParams.get('region') || 'euw1';
   const { t, lang } = useI18n();
   const numLocale = LOCALE_MAP[lang];
+  useCustomPageTitle(player?.summoner?.name || null);
 
   useEffect(() => {
     if (!slug) return;
@@ -114,6 +118,10 @@ export default function PlayerPage() {
       if (liveRes.ok) {
         const liveData = await liveRes.json();
         setLiveGame(liveData);
+        setLiveGameUnavailable(false);
+      } else if (liveRes.status === 403 || liveRes.status === 401) {
+        // Spectator API requires Production-level Riot API key
+        setLiveGameUnavailable(true);
       }
     } catch (e: any) {
       setError(e.message || 'Spieler nicht gefunden');
@@ -680,6 +688,11 @@ export default function PlayerPage() {
                 championMap={championMap}
                 region={region}
               />
+            )}
+
+            {/* Live Game unavailable notice (Spectator API requires Riot Production Key) */}
+            {liveGameUnavailable && !liveGame.inGame && (
+              <ApiUnavailable />
             )}
 
             {/* Performance Charts */}

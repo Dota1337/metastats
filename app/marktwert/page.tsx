@@ -5,6 +5,7 @@ import Footer from '../components/Footer';
 import PageHero from '../components/PageHero';
 import MarketInsights from '../components/MarketInsights';
 import { useI18n } from '../lib/i18n';
+import { usePageTitle } from '../lib/use-page-title';
 
 const TIER_COLORS: Record<string, string> = {
   CHALLENGER: '#f0c040',
@@ -29,6 +30,7 @@ interface Player {
 }
 
 export default function MarktwertPage() {
+  usePageTitle('pageTitle.marktwert');
   const { t } = useI18n();
 
   const REGIONS = [

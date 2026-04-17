@@ -6,7 +6,7 @@ export default function PrototypeBanner() {
   return (
     <div className="bg-gradient-to-r from-[#c89b3c]/20 via-[#c89b3c]/10 to-[#c89b3c]/20 border-b border-[#c89b3c]/30 py-2.5 px-4">
       <div className="max-w-5xl mx-auto flex items-start sm:items-center gap-2.5 justify-center">
-        <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#c89b3c] animate-pulse flex-shrink-0 mt-1.5 sm:mt-0" />
+        <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#c89b3c] animate-pulse flex-shrink-0 mt-1.5 sm:mt-0" aria-hidden="true" />
         <div className="text-xs sm:text-sm text-[#f0e6d2] text-left sm:text-center">
           <div>
             <strong className="text-[#c89b3c]">{t('banner.label')}</strong>

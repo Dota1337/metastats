@@ -6,11 +6,13 @@ export async function GET(request: NextRequest) {
 
     // Load champion stats
     let topChampions: { id: string; name: string; games: number; winRate: number; role: string }[] = [];
+    let matchesAnalyzed = 0;
     try {
       const statsRes = await fetch(`${origin}/champion-stats-euw.json`);
       if (statsRes.ok) {
         const statsData = await statsRes.json();
         const stats = statsData.stats || {};
+        matchesAnalyzed = statsData.matchesAnalyzed || 0;
 
         // Get Data Dragon champion mapping
         const versionRes = await fetch('https://ddragon.leagueoflegends.com/api/versions.json');
@@ -68,7 +70,7 @@ export async function GET(request: NextRequest) {
         totalTeams,
         totalProPlayers,
         regions: 17,
-        matchesAnalyzed: 2564, // from our champion stats crawl
+        matchesAnalyzed,
       },
     });
   } catch {

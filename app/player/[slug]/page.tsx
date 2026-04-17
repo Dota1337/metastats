@@ -8,7 +8,7 @@ import Footer from '../../components/Footer';
 import ChampionBreakdown from '../../components/ChampionBreakdown';
 import MatchDetail from '../../components/MatchDetail';
 import LiveGameDetail from '../../components/LiveGameDetail';
-import { useI18n } from '../../lib/i18n';
+import { useI18n, LOCALE_MAP } from '../../lib/i18n';
 import { loadProLookup, lookupPro, type ProPlayer } from '../../lib/pro-players';
 
 const PerformanceCharts = dynamic(() => import('../../components/PerformanceCharts'), { ssr: false });
@@ -38,7 +38,8 @@ export default function PlayerPage() {
   const [expandedSmurfs, setExpandedSmurfs] = useState(false);
   const [hasMoreMatches, setHasMoreMatches] = useState(true);
   const region = searchParams.get('region') || 'euw1';
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const numLocale = LOCALE_MAP[lang];
 
   useEffect(() => {
     if (!slug) return;
@@ -372,7 +373,7 @@ export default function PlayerPage() {
                   <div className="bg-[#141c2e] rounded p-4 text-center">
                     <div className="text-[#8a9bb0] text-xs mb-1">DMG/Min</div>
                     <div className="text-white font-medium text-sm">
-                      {Math.round(matches.reduce((s: number, m: any) => s + (m.gameDuration > 0 ? m.damageDealt / (m.gameDuration / 60) : 0), 0) / matches.length).toLocaleString('de-DE')}
+                      {Math.round(matches.reduce((s: number, m: any) => s + (m.gameDuration > 0 ? m.damageDealt / (m.gameDuration / 60) : 0), 0) / matches.length).toLocaleString(numLocale)}
                     </div>
                   </div>
                 )}

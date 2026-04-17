@@ -115,8 +115,8 @@ export default function Nav({ active }: NavProps) {
           <a href="/leaderboard" className={linkClass('leaderboard')}>{t('nav.leaderboard')}</a>
           <a href="/champions" className={linkClass('champions')}>{t('nav.champions')}</a>
           <a href="/marktwert" className={linkClass('marktwert')}>{t('nav.marketvalue')}</a>
-          <a href="/teams" className={linkClass('teams')}>Pro Teams</a>
-          <a href="/ligen" className={linkClass('ligen')}>Ligen & Wettbewerbe</a>
+          <a href="/teams" className={linkClass('teams')}>{t('nav.proTeams')}</a>
+          <a href="/ligen" className={linkClass('ligen')}>{t('nav.leagues')}</a>
           <a href="/compare" className={linkClass('analyse')}>{t('nav.analyse')}</a>
 
           {/* Global Search */}
@@ -128,7 +128,7 @@ export default function Nav({ active }: NavProps) {
               <input
                 ref={inputRef}
                 type="text"
-                placeholder="Spieler / Champion..."
+                placeholder={t('nav.searchPlaceholder')}
                 value={searchQuery}
                 onChange={e => { setSearchQuery(e.target.value); setSearchOpen(true); }}
                 onFocus={() => searchQuery && setSearchOpen(true)}
@@ -162,7 +162,7 @@ export default function Nav({ active }: NavProps) {
                     <div className="flex-1 min-w-0">
                       <div className="text-white text-xs font-medium truncate">{r.name}</div>
                       <div className="text-[#4a5a70] text-[10px]">
-                        {r.type === 'champion' ? 'Champion' : 'Spieler suchen'}
+                        {r.type === 'champion' ? t('nav.champion') : t('nav.searchPlayer')}
                       </div>
                     </div>
                     <svg className="w-3 h-3 text-[#4a5a70] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -249,7 +249,7 @@ export default function Nav({ active }: NavProps) {
             </svg>
             <input
               type="text"
-              placeholder="Spieler / Champion..."
+              placeholder={t('nav.searchPlaceholder')}
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               onKeyDown={handleSearchKeyDown}
@@ -298,8 +298,8 @@ export default function Nav({ active }: NavProps) {
           <a href="/leaderboard" className={linkClass('leaderboard')} onClick={() => setMenuOpen(false)}>{t('nav.leaderboard')}</a>
           <a href="/champions" className={linkClass('champions')} onClick={() => setMenuOpen(false)}>{t('nav.champions')}</a>
           <a href="/marktwert" className={linkClass('marktwert')} onClick={() => setMenuOpen(false)}>{t('nav.marketvalue')}</a>
-          <a href="/teams" className={linkClass('teams')} onClick={() => setMenuOpen(false)}>Pro Teams</a>
-          <a href="/ligen" className={linkClass('ligen')} onClick={() => setMenuOpen(false)}>Ligen & Wettbewerbe</a>
+          <a href="/teams" className={linkClass('teams')} onClick={() => setMenuOpen(false)}>{t('nav.proTeams')}</a>
+          <a href="/ligen" className={linkClass('ligen')} onClick={() => setMenuOpen(false)}>{t('nav.leagues')}</a>
           <a href="/compare" className={linkClass('analyse')} onClick={() => setMenuOpen(false)}>{t('nav.analyse')}</a>
 
           {/* Language selector mobile */}

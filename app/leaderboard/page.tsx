@@ -3,11 +3,12 @@ import { useState, useEffect } from 'react';
 import Nav from '../components/Nav';
 import Footer from '../components/Footer';
 import PageHero from '../components/PageHero';
-import { useI18n } from '../lib/i18n';
+import { useI18n, LOCALE_MAP } from '../lib/i18n';
 import { loadProLookup, lookupPro, type ProPlayer } from '../lib/pro-players';
 
 export default function Leaderboard() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const numLocale = LOCALE_MAP[lang];
 
   const REGIONS = [
     { value: 'euw1', label: 'EUW' },
@@ -189,7 +190,7 @@ export default function Leaderboard() {
         </select>
 
         {totalPlayers && (
-          <span className="text-[#4a5a70] text-xs hidden sm:inline">({totalPlayers.toLocaleString('de-DE')})</span>
+          <span className="text-[#4a5a70] text-xs hidden sm:inline">({totalPlayers.toLocaleString(numLocale)})</span>
         )}
 
         <button

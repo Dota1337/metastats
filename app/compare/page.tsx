@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import Nav from '../components/Nav';
 import Footer from '../components/Footer';
 import PageHero from '../components/PageHero';
-import { useI18n } from '../lib/i18n';
+import { useI18n, LOCALE_MAP } from '../lib/i18n';
 
 const CompareRadar = dynamic(() => import('../components/CompareRadar'), { ssr: false });
 
@@ -281,7 +281,8 @@ function MultiSearchTab({ region, setRegion }: { region: string; setRegion: (r: 
 // === Compare Tab ===
 
 function CompareTab({ region, setRegion }: { region: string; setRegion: (r: string) => void }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const numLocale = LOCALE_MAP[lang];
   const [player1Input, setPlayer1Input] = useState('');
   const [player2Input, setPlayer2Input] = useState('');
   const [loading, setLoading] = useState(false);
@@ -431,7 +432,7 @@ function CompareTab({ region, setRegion }: { region: string; setRegion: (r: stri
           <ComparisonBar label="Winrate" value1={s1.winrate} value2={s2.winrate} format1={`${s1.winrate}%`} format2={`${s2.winrate}%`} />
           <ComparisonBar label="KDA" value1={s1.kda} value2={s2.kda} format1={s1.kda.toFixed(2)} format2={s2.kda.toFixed(2)} />
           <ComparisonBar label="CS/Min" value1={s1.csPerMin} value2={s2.csPerMin} format1={s1.csPerMin.toFixed(1)} format2={s2.csPerMin.toFixed(1)} />
-          <ComparisonBar label="DMG/Min" value1={s1.dmgPerMin} value2={s2.dmgPerMin} format1={s1.dmgPerMin.toLocaleString('de-DE')} format2={s2.dmgPerMin.toLocaleString('de-DE')} />
+          <ComparisonBar label="DMG/Min" value1={s1.dmgPerMin} value2={s2.dmgPerMin} format1={s1.dmgPerMin.toLocaleString(numLocale)} format2={s2.dmgPerMin.toLocaleString(numLocale)} />
           <ComparisonBar label="Vision" value1={s1.visionScore} value2={s2.visionScore} format1={s1.visionScore.toFixed(1)} format2={s2.visionScore.toFixed(1)} />
           <ComparisonBar label="Marktwert" value1={s1.marketValue} value2={s2.marketValue}
             format1={s1.marketValue ? formatMarketValue(s1.marketValue) : 'N/A'}

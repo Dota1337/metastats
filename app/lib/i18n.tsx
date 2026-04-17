@@ -25,6 +25,20 @@ const translations = {
   'nav.champions': t6('Champions', 'Champions', '\uCC54\uD53C\uC5B8', '\u82F1\u96C4', 'Campeones', 'Champions'),
   'nav.marketvalue': t6('Marktwerte', 'Market Values', '\uC2DC\uC7A5 \uAC00\uCE58', '\u5E02\u573A\u4EF7\u503C', 'Valor de Mercado', 'Valeur March\u00E9'),
   'nav.analyse': t6('Spielervergleich', 'Player Comparison', '\uC120\uC218 \uBE44\uAD50', '\u9009\u624B\u5BF9\u6BD4', 'Comparaci\u00F3n', 'Comparaison'),
+  'nav.proTeams': t6('Pro Teams', 'Pro Teams', '\uD504\uB85C\uD300', '\u804C\u4E1A\u6218\u961F', 'Equipos Pro', '\u00C9quipes Pro'),
+  'nav.leagues': t6('Ligen & Wettbewerbe', 'Leagues & Competitions', '\uB9AC\uADF8 & \uB300\uD68C', '\u8054\u8D5B & \u6BD4\u8D5B', 'Ligas & Competiciones', 'Ligues & Comp\u00E9titions'),
+  'nav.searchPlaceholder': t6('Spieler / Champion...', 'Player / Champion...', '\uD50C\uB808\uC774\uC5B4 / \uCC54\uD53C\uC5B8...', '\u73A9\u5BB6 / \u82F1\u96C4...', 'Jugador / Campe\u00F3n...', 'Joueur / Champion...'),
+  'nav.searchPlayer': t6('Spieler suchen', 'Search player', '\uD50C\uB808\uC774\uC5B4 \uAC80\uC0C9', '\u641C\u7D22\u73A9\u5BB6', 'Buscar jugador', 'Rechercher joueur'),
+  'nav.champion': t6('Champion', 'Champion', '\uCC54\uD53C\uC5B8', '\u82F1\u96C4', 'Campe\u00F3n', 'Champion'),
+  'error.featureUnavailable': t6(
+    'Dieses Feature ist derzeit nicht verf\u00FCgbar. Wir arbeiten daran \u2014 Riot Production-Key ist beantragt.',
+    'This feature is currently unavailable. We\'re working on it \u2014 Riot Production Key is pending.',
+    '\uC774 \uAE30\uB2A5\uC740 \uD604\uC7AC \uC0AC\uC6A9\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4. \uC791\uC5C5 \uC911 \u2014 Riot \uD504\uB85C\uB355\uC158 \uD0A4\uB97C \uB300\uAE30 \uC911\uC785\uB2C8\uB2E4.',
+    '\u6B64\u529F\u80FD\u76EE\u524D\u65E0\u6CD5\u4F7F\u7528\u3002\u6B63\u5728\u5904\u7406 \u2014 \u7B49\u5F85Riot\u6B63\u5F0F\u5BC6\u94A5\u3002',
+    'Esta funci\u00F3n no est\u00E1 disponible actualmente. Estamos trabajando en ello \u2014 Clave de producci\u00F3n de Riot pendiente.',
+    'Cette fonctionnalit\u00E9 est actuellement indisponible. Nous y travaillons \u2014 Cl\u00E9 de production Riot en attente.'
+  ),
+  'error.retry': t6('Erneut versuchen', 'Retry', '\uB2E4\uC2DC \uC2DC\uB3C4', '\u91CD\u8BD5', 'Reintentar', 'R\u00E9essayer'),
 
   // Homepage
   'home.subtitle': t6('Die f\u00FChrende E-Sport Analyseplattform', 'The Leading E-Sports Analytics Platform', '\uCD5C\uACE0\uC758 e\uC2A4\uD3EC\uCE20 \uBD84\uC11D \uD50C\uB7AB\uD3FC', '\u9886\u5148\u7684\u7535\u5B50\u7ADE\u6280\u5206\u6790\u5E73\u53F0', 'La plataforma l\u00EDder de an\u00E1lisis de eSports', 'La plateforme d\'analyse eSport de r\u00E9f\u00E9rence'),
@@ -410,28 +424,41 @@ const I18nContext = createContext<I18nContextType>({
   t: (key) => translations[key]?.de || key,
 });
 
-export function I18nProvider({ children }: { children: ReactNode }) {
-  const [lang, setLangState] = useState<Lang>('de');
-  const [mounted, setMounted] = useState(false);
+export const LANG_COOKIE = 'metastats-lang';
+
+export function I18nProvider({ children, initialLang = 'de' }: { children: ReactNode; initialLang?: Lang }) {
+  const [lang, setLangState] = useState<Lang>(initialLang);
 
   useEffect(() => {
-    const saved = localStorage.getItem('metastats-lang') as Lang;
-    if (saved && LANGUAGES.some(l => l.code === saved)) setLangState(saved);
-    setMounted(true);
+    // Keep <html lang="..."> in sync with current language (SEO + screen readers)
+    if (typeof document !== 'undefined') {
+      document.documentElement.lang = lang;
+    }
+  }, [lang]);
+
+  useEffect(() => {
+    // On first mount, reconcile with localStorage in case cookie was missing/stale
+    try {
+      const saved = localStorage.getItem(LANG_COOKIE) as Lang | null;
+      if (saved && LANGUAGES.some(l => l.code === saved) && saved !== lang) {
+        setLangState(saved);
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const setLang = (l: Lang) => {
     setLangState(l);
-    localStorage.setItem('metastats-lang', l);
+    try { localStorage.setItem(LANG_COOKIE, l); } catch {}
+    // Persist as cookie so SSR can read it on next request
+    if (typeof document !== 'undefined') {
+      document.cookie = `${LANG_COOKIE}=${l}; path=/; max-age=31536000; samesite=lax`;
+    }
   };
 
   const t = (key: TranslationKey): string => {
     return translations[key]?.[lang] || translations[key]?.en || key;
   };
-
-  if (!mounted) {
-    return <>{children}</>;
-  }
 
   return (
     <I18nContext.Provider value={{ lang, setLang, t }}>

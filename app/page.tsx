@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Nav from './components/Nav';
 import Footer from './components/Footer';
-import { useI18n } from './lib/i18n';
+import { useI18n, LOCALE_MAP } from './lib/i18n';
 import { REGIONS } from './lib/regions';
 
 // Fallback champions if API is not available
@@ -26,7 +26,8 @@ export default function Home() {
   const [mounted, setMounted] = useState(false);
   const [featuredChamps, setFeaturedChamps] = useState(FALLBACK_CHAMPIONS);
   const [siteStats, setSiteStats] = useState({ totalTeams: 951, totalProPlayers: 1292, regions: 17, matchesAnalyzed: 2564 });
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const locale = LOCALE_MAP[lang];
 
   useEffect(() => {
     let visitorId = document.cookie.split('; ').find(r => r.startsWith('visitor_id='))?.split('=')[1];
@@ -148,10 +149,12 @@ export default function Home() {
 
       {/* === PROTOTYPE BANNER === */}
       <div className="bg-gradient-to-r from-[#c89b3c]/20 via-[#c89b3c]/10 to-[#c89b3c]/20 border-b border-[#c89b3c]/30 text-center py-2 px-4 text-xs sm:text-sm text-[#f0e6d2]">
-        <span className="inline-flex items-center gap-2">
-          <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#c89b3c] animate-pulse" />
-          <strong className="text-[#c89b3c]">Prototyp-Phase:</strong>
-          Diese Seite befindet sich in aktiver Entwicklung — Features, Daten und Design können sich jederzeit ändern.
+        <span className="inline-flex items-center gap-2 max-w-5xl">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#c89b3c] animate-pulse flex-shrink-0" />
+          <span>
+            <strong className="text-[#c89b3c]">{t('banner.label')}</strong>{' '}
+            {t('banner.text')}
+          </span>
         </span>
       </div>
 
@@ -285,7 +288,7 @@ export default function Home() {
                       <span className="text-white text-lg font-semibold">{champ.name}</span>
                     </div>
                     <div className="text-[#8a9bb0] text-xs mt-0.5">
-                      {champ.games?.toLocaleString('de-DE')} Spiele · {champ.winRate}% WR
+                      {champ.games?.toLocaleString(locale)} {t('champ.games')} · {champ.winRate}% WR
                     </div>
                   </div>
                 </div>
@@ -302,9 +305,9 @@ export default function Home() {
             {/* Stats Cards with 3D effect */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
               {[
-                { label: t('teams.title'), value: siteStats.totalTeams.toLocaleString('de-DE'), sub: t('home.verifiedRosters') },
-                { label: 'Pro-Spieler', value: siteStats.totalProPlayers.toLocaleString('de-DE'), sub: t('home.allLeagues') },
-                { label: t('home.analyzedMatches'), value: siteStats.matchesAnalyzed.toLocaleString('de-DE'), sub: 'Challenger + GM + Master' },
+                { label: t('teams.title'), value: siteStats.totalTeams.toLocaleString(locale), sub: t('home.verifiedRosters') },
+                { label: t('home.proPlayers'), value: siteStats.totalProPlayers.toLocaleString(locale), sub: t('home.allLeagues') },
+                { label: t('home.analyzedMatches'), value: siteStats.matchesAnalyzed.toLocaleString(locale), sub: 'Challenger + GM + Master' },
               ].map(s => (
                 <div key={s.label} className="card-3d glass rounded-lg p-4">
                   <div className="text-[#8a9bb0] text-xs mb-1">{s.label}</div>

@@ -421,7 +421,7 @@ export default function Leaderboard() {
                   </div>
                   <div>
                     <div className="text-white text-sm font-medium flex items-center gap-1.5">
-                      {entry.summonerName || <span className="text-[#4a5a70]">Spieler #{entry.rank}</span>}
+                      {entry.summonerName || <span className="text-[#4a5a70]">{t('lb.unknownPlayer')} #{entry.rank}</span>}
                       {entry.summonerName && lookupPro(proLookup, entry.summonerName) && (
                         <span className="inline-flex items-center bg-[#c89b3c]/15 text-[#c89b3c] text-[10px] font-bold px-1.5 py-0 rounded-full border border-[#c89b3c]/40 leading-4">
                           PRO

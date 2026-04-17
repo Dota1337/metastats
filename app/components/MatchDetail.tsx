@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { useI18n } from '../lib/i18n';
 
 interface Participant {
   summonerName: string;
@@ -34,6 +35,7 @@ interface Props {
 }
 
 export default function MatchDetail({ match, ddVersion, isExpanded, onToggle, formatDuration, timeAgo, getQueueName, roleLabels }: Props) {
+  const { t } = useI18n();
   const [activeTab, setActiveTab] = useState<'overview' | 'damage'>('overview');
   const kdaVal = match.deaths > 0
     ? ((match.kills + match.assists) / match.deaths).toFixed(2)
@@ -102,7 +104,7 @@ export default function MatchDetail({ match, ddVersion, isExpanded, onToggle, fo
           {!match.pentaKills && match.quadraKills > 0 && <span className="bg-[#c89b3c]/20 text-[#c89b3c] text-[10px] font-bold px-1.5 py-0.5 rounded">QUADRA</span>}
           {!match.pentaKills && !match.quadraKills && match.tripleKills > 0 && <span className="bg-[#8a9bb0]/20 text-[#8a9bb0] text-[10px] font-bold px-1.5 py-0.5 rounded">TRIPLE</span>}
           <div className={'text-xs sm:text-sm font-medium ' + (match.win ? 'text-green-400' : 'text-red-400')}>
-            {match.win ? 'Sieg' : 'Niederlage'}
+            {match.win ? t('match.win') : t('match.loss')}
           </div>
           <svg className={`w-4 h-4 text-[#4a5a70] transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -113,11 +115,11 @@ export default function MatchDetail({ match, ddVersion, isExpanded, onToggle, fo
       {/* Detail row (quick stats) */}
       <div className="flex flex-wrap items-center gap-2 sm:gap-4 px-3 pb-2 text-xs text-[#6a7a90]">
         <span>{roleLabels[match.role] || '-'}</span>
-        <span>DMG-Anteil: {dmgShare}%</span>
-        <span>Gold-Anteil: {goldShare}%</span>
+        <span>{t('match.dmgShare')}: {dmgShare}%</span>
+        <span>{t('match.goldShare')}: {goldShare}%</span>
         <span>Wards: {match.wardsPlaced}</span>
         <span>Ctrl Wards: {match.controlWardsPlaced}</span>
-        {match.soloKills > 0 && <span>Solo Kills: {match.soloKills}</span>}
+        {match.soloKills > 0 && <span>{t('match.soloKills')}: {match.soloKills}</span>}
         {match.doubleKills > 0 && <span>Double: {match.doubleKills}</span>}
         {match.tripleKills > 0 && <span className="text-[#c89b3c]">Triple: {match.tripleKills}</span>}
         {match.quadraKills > 0 && <span className="text-[#c89b3c]">Quadra: {match.quadraKills}</span>}
@@ -141,7 +143,7 @@ export default function MatchDetail({ match, ddVersion, isExpanded, onToggle, fo
                     : 'text-[#4a5a70] hover:text-[#8a9bb0]'
                 }`}
               >
-                {tab === 'overview' ? 'Spieler' : 'Schaden'}
+                {tab === 'overview' ? t('match.player') : t('match.damage')}
               </button>
             ))}
           </div>
@@ -152,7 +154,7 @@ export default function MatchDetail({ match, ddVersion, isExpanded, onToggle, fo
             return (
               <div key={ti} className={`mb-3 rounded overflow-hidden border ${teamWon ? 'border-green-500/20' : 'border-red-500/20'}`}>
                 <div className={`px-3 py-1.5 text-xs font-medium ${teamWon ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
-                  {teamWon ? 'Sieg' : 'Niederlage'} — Team {ti + 1}
+                  {teamWon ? t('match.win') : t('match.loss')} — Team {ti + 1}
                 </div>
 
                 {activeTab === 'overview' && (
@@ -161,7 +163,7 @@ export default function MatchDetail({ match, ddVersion, isExpanded, onToggle, fo
                     <div className="hidden md:grid grid-cols-[2rem_1.8rem_1fr_4.5rem_3.5rem_4rem_3rem_3rem_10rem] gap-1 px-2 py-1 text-[#4a5a70] text-[10px] uppercase bg-[#0a0e1a]">
                       <div />
                       <div />
-                      <div>Spieler</div>
+                      <div>{t('match.player')}</div>
                       <div className="text-center">KDA</div>
                       <div className="text-center">CS</div>
                       <div className="text-center">DMG</div>
@@ -172,7 +174,7 @@ export default function MatchDetail({ match, ddVersion, isExpanded, onToggle, fo
                     {/* Mobile header */}
                     <div className="md:hidden grid grid-cols-[1.5rem_1fr_4rem_3rem] gap-1 px-2 py-1 text-[#4a5a70] text-[10px] uppercase bg-[#0a0e1a]">
                       <div />
-                      <div>Spieler</div>
+                      <div>{t('match.player')}</div>
                       <div className="text-center">KDA</div>
                       <div className="text-center">CS</div>
                     </div>
@@ -229,9 +231,9 @@ export default function MatchDetail({ match, ddVersion, isExpanded, onToggle, fo
                   <>
                     <div className="grid grid-cols-[2rem_1fr_1fr_1fr] gap-2 px-2 py-1 text-[#4a5a70] text-[10px] uppercase bg-[#0a0e1a]">
                       <div />
-                      <div>Spieler</div>
-                      <div>Schaden verursacht</div>
-                      <div>Schaden erlitten</div>
+                      <div>{t('match.player')}</div>
+                      <div>{t('match.damageDealt')}</div>
+                      <div>{t('match.damageTaken')}</div>
                     </div>
                     {team.map((p, pi) => (
                       <div key={pi} className="grid grid-cols-[2rem_1fr_1fr_1fr] gap-2 px-2 py-1.5 items-center text-xs">

@@ -343,6 +343,42 @@ const translations = {
   'home.topChampions': t6('Meistgespielte Champions (Challenger + GM + Master)', 'Most Played Champions (Challenger + GM + Master)', '\uCD5C\uB2E4 \uD50C\uB808\uC774 \uCC54\uD53C\uC5B8 (\uCC4C\uB9B0\uC800 + GM + \uB9C8\uC2A4\uD130)', '\u6700\u5E38\u4F7F\u7528\u82F1\u96C4\uFF08\u6700\u5F3A\u738B\u8005+\u5B97\u5E08+\u5927\u5E08\uFF09', 'Campeones m\u00E1s jugados (Aspirante + GM + Maestro)', 'Champions les plus jou\u00E9s (Challenger + GM + Ma\u00EEtre)'),
   'home.verifiedRosters': t6('Verifizierte Roster', 'Verified Rosters', '\uC778\uC99D\uB41C \uB85C\uC2A4\uD130', '\u5DF2\u9A8C\u8BC1\u9635\u5BB9', 'Plantillas verificadas', 'Effectifs v\u00E9rifi\u00E9s'),
   'home.allLeagues': t6('Alle Ligen weltweit', 'All leagues worldwide', '\uC804 \uC138\uACC4 \uBAA8\uB4E0 \uB9AC\uADF8', '\u5168\u7403\u6240\u6709\u8054\u8D5B', 'Todas las ligas del mundo', 'Toutes les ligues du monde'),
+  'home.proPlayers': t6('Pro-Spieler', 'Pro Players', '\uD504\uB85C \uC120\uC218', '\u804C\u4E1A\u9009\u624B', 'Jugadores Pro', 'Joueurs Pro'),
+
+  // Match Detail
+  'match.player': t6('Spieler', 'Player', '\uD50C\uB808\uC774\uC5B4', '\u73A9\u5BB6', 'Jugador', 'Joueur'),
+  'match.damage': t6('Schaden', 'Damage', '\uD53C\uD574\uB7C9', '\u4F24\u5BB3', 'Da\u00F1o', 'D\u00E9g\u00E2ts'),
+  'match.damageDealt': t6('Schaden verursacht', 'Damage Dealt', '\uAC00\uD55C \uD53C\uD574', '\u9020\u6210\u4F24\u5BB3', 'Da\u00F1o causado', 'D\u00E9g\u00E2ts inflig\u00E9s'),
+  'match.damageTaken': t6('Schaden erlitten', 'Damage Taken', '\uBC1B\uC740 \uD53C\uD574', '\u627F\u53D7\u4F24\u5BB3', 'Da\u00F1o recibido', 'D\u00E9g\u00E2ts subis'),
+  'match.win': t6('Sieg', 'Victory', '\uC2B9\uB9AC', '\u80DC\u5229', 'Victoria', 'Victoire'),
+  'match.loss': t6('Niederlage', 'Defeat', '\uD328\uBC30', '\u5931\u8D25', 'Derrota', 'D\u00E9faite'),
+  'match.dmgShare': t6('DMG-Anteil', 'DMG Share', '\uD53C\uD574 \uBE44\uC728', '\u4F24\u5BB3\u5360\u6BD4', 'Cuota DMG', 'Part DMG'),
+  'match.goldShare': t6('Gold-Anteil', 'Gold Share', '\uACE8\uB4DC \uBE44\uC728', '\u91D1\u5E01\u5360\u6BD4', 'Cuota Oro', 'Part Or'),
+  'match.soloKills': t6('Solo Kills', 'Solo Kills', '\uC194\uB85C \uD0AC', '\u5355\u6740', 'Solo Kills', 'Solo Kills'),
+
+  // Radar Profile
+  'radar.title': t6('Spieler-Profil', 'Player Profile', '\uD50C\uB808\uC774\uC5B4 \uD504\uB85C\uD544', '\u73A9\u5BB6\u8D44\u6599', 'Perfil del Jugador', 'Profil du Joueur'),
+  'radar.subtitle': t6('St\u00E4rken-Analyse basierend auf den letzten Spielen', 'Strength analysis based on recent games', '\uCD5C\uADFC \uACBD\uAE30 \uAE30\uBC18 \uAC15\uC810 \uBD84\uC11D', '\u57FA\u4E8E\u8FD1\u671F\u6BD4\u8D5B\u7684\u4F18\u52BF\u5206\u6790', 'An\u00E1lisis de fortalezas reciente', 'Analyse des forces r\u00E9centes'),
+  'radar.fighting': t6('K\u00E4mpfen', 'Fighting', '\uC804\uD22C', '\u6218\u6597', 'Combate', 'Combat'),
+  'radar.farming': t6('Farmen', 'Farming', '\uD30C\uBC0D', '\u53D1\u80B2', 'Farmeo', 'Farming'),
+  'radar.vision': t6('Sicht', 'Vision', '\uC2DC\uC57C', '\u89C6\u91CE', 'Visi\u00F3n', 'Vision'),
+  'radar.objectives': t6('Objectives', 'Objectives', '\uC624\uBE0C\uC81D\uD2B8', '\u8D44\u6E90\u70B9', 'Objetivos', 'Objectifs'),
+  'radar.survival': t6('\u00DCberleben', 'Survival', '\uC0DD\uC874', '\u751F\u5B58', 'Supervivencia', 'Survie'),
+  'radar.teamplay': t6('Teamplay', 'Teamplay', '\uD300\uD50C\uB808\uC774', '\u56E2\u961F\u914D\u5408', 'Juego en equipo', 'Jeu d\'\u00E9quipe'),
+
+  // Leaderboard additional
+  'lb.unknownPlayer': t6('Spieler', 'Player', '\uD50C\uB808\uC774\uC5B4', '\u73A9\u5BB6', 'Jugador', 'Joueur'),
+
+  // Prototype Banner
+  'banner.label': t6('Prototyp-Phase:', 'Prototype Phase:', '\uD504\uB85C\uD1A0\uD0C0\uC785 \uB2E8\uACC4:', '\u539F\u578B\u9636\u6BB5\uFF1A', 'Fase Prototipo:', 'Phase Prototype :'),
+  'banner.text': t6(
+    'Diese Seite befindet sich in aktiver Entwicklung \u2014 die KI wird gerade trainiert und lernt aus den gesammelten Daten. Features, Daten und Design k\u00F6nnen sich jederzeit \u00E4ndern.',
+    'This site is in active development \u2014 the AI is currently being trained and learning from collected data. Features, data and design may change at any time.',
+    '\uC774 \uC0AC\uC774\uD2B8\uB294 \uC801\uADF9\uC801\uC73C\uB85C \uAC1C\uBC1C \uC911\uC785\uB2C8\uB2E4 \u2014 AI\uB294 \uD604\uC7AC \uD559\uC2B5 \uC911\uC774\uBA70 \uC218\uC9D1\uB41C \uB370\uC774\uD130\uB85C \uD6C8\uB828\uB418\uACE0 \uC788\uC2B5\uB2C8\uB2E4. \uAE30\uB2A5, \uB370\uC774\uD130 \uBC0F \uB514\uC790\uC778\uC740 \uC5B8\uC81C\uB4E0\uC9C0 \uBCC0\uACBD\uB420 \uC218 \uC788\uC2B5\uB2C8\uB2E4.',
+    '\u672C\u7AD9\u6B63\u5728\u79EF\u6781\u5F00\u53D1\u4E2D \u2014 AI\u6B63\u5728\u63A5\u53D7\u8BAD\u7EC3\u5E76\u4ECE\u6536\u96C6\u7684\u6570\u636E\u4E2D\u5B66\u4E60\u3002\u529F\u80FD\u3001\u6570\u636E\u548C\u8BBE\u8BA1\u53EF\u80FD\u968F\u65F6\u66F4\u6539\u3002',
+    'Este sitio est\u00E1 en desarrollo activo \u2014 la IA se est\u00E1 entrenando y aprendiendo de los datos recopilados. Las funciones, datos y dise\u00F1o pueden cambiar en cualquier momento.',
+    'Ce site est en d\u00E9veloppement actif \u2014 l\'IA est actuellement en apprentissage \u00E0 partir des donn\u00E9es collect\u00E9es. Les fonctionnalit\u00E9s, donn\u00E9es et le design peuvent changer \u00E0 tout moment.'
+  ),
 } as const;
 
 type TranslationKey = keyof typeof translations;

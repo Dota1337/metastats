@@ -4,22 +4,24 @@ import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   ResponsiveContainer, Tooltip,
 } from 'recharts';
+import { useI18n } from '../lib/i18n';
 
 interface Props {
   categories: { id: string; name: string; score: number; icon: string }[];
 }
 
 // Group stat categories into 6 radar axes
-const RADAR_GROUPS: Record<string, { label: string; ids: string[] }> = {
-  fighting: { label: 'Fighting', ids: ['kda_rating', 'damage_output', 'damage_share', 'clutch_factor', 'mechanics'] },
-  farming: { label: 'Farming', ids: ['farming', 'gold_efficiency'] },
-  vision: { label: 'Vision', ids: ['vision_control'] },
-  objectives: { label: 'Objectives', ids: ['objective_control'] },
-  survival: { label: 'Survival', ids: ['survivability', 'consistency'] },
-  teamplay: { label: 'Teamplay', ids: ['teamplay', 'comeback_strength', 'early_game'] },
+const RADAR_GROUPS: Record<string, { labelKey: 'radar.fighting' | 'radar.farming' | 'radar.vision' | 'radar.objectives' | 'radar.survival' | 'radar.teamplay'; ids: string[] }> = {
+  fighting: { labelKey: 'radar.fighting', ids: ['kda_rating', 'damage_output', 'damage_share', 'clutch_factor', 'mechanics'] },
+  farming: { labelKey: 'radar.farming', ids: ['farming', 'gold_efficiency'] },
+  vision: { labelKey: 'radar.vision', ids: ['vision_control'] },
+  objectives: { labelKey: 'radar.objectives', ids: ['objective_control'] },
+  survival: { labelKey: 'radar.survival', ids: ['survivability', 'consistency'] },
+  teamplay: { labelKey: 'radar.teamplay', ids: ['teamplay', 'comeback_strength', 'early_game'] },
 };
 
 export default function RadarStats({ categories }: Props) {
+  const { t } = useI18n();
   const radarData = useMemo(() => {
     return Object.entries(RADAR_GROUPS).map(([key, group]) => {
       const matching = categories.filter(c =>
@@ -28,18 +30,18 @@ export default function RadarStats({ categories }: Props) {
       const score = matching.length > 0
         ? Math.round(matching.reduce((s, c) => s + c.score, 0) / matching.length)
         : 50;
-      return { axis: group.label, score, fullMark: 100 };
+      return { axis: t(group.labelKey), score, fullMark: 100 };
     });
-  }, [categories]);
+  }, [categories, t]);
 
   if (categories.length < 4) return null;
 
   return (
     <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 sm:p-6 mb-4">
       <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-2">
-        Spieler-Profil
+        {t('radar.title')}
       </div>
-      <div className="text-[#4a5a70] text-xs mb-4">Stärken-Analyse basierend auf den letzten Spielen</div>
+      <div className="text-[#4a5a70] text-xs mb-4">{t('radar.subtitle')}</div>
       <ResponsiveContainer width="100%" height={280}>
         <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="75%">
           <PolarGrid stroke="#1e2a3a" />

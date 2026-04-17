@@ -370,14 +370,22 @@ const translations = {
   'lb.unknownPlayer': t6('Spieler', 'Player', '\uD50C\uB808\uC774\uC5B4', '\u73A9\u5BB6', 'Jugador', 'Joueur'),
 
   // Prototype Banner
-  'banner.label': t6('Prototyp-Phase:', 'Prototype Phase:', '\uD504\uB85C\uD1A0\uD0C0\uC785 \uB2E8\uACC4:', '\u539F\u578B\u9636\u6BB5\uFF1A', 'Fase Prototipo:', 'Phase Prototype :'),
+  'banner.label': t6('Prototyp-Phase', 'Prototype Phase', '\uD504\uB85C\uD1A0\uD0C0\uC785 \uB2E8\uACC4', '\u539F\u578B\u9636\u6BB5', 'Fase Prototipo', 'Phase Prototype'),
   'banner.text': t6(
-    'Diese Seite befindet sich in aktiver Entwicklung \u2014 die KI wird gerade trainiert und lernt aus den gesammelten Daten. Features, Daten und Design k\u00F6nnen sich jederzeit \u00E4ndern.',
-    'This site is in active development \u2014 the AI is currently being trained and learning from collected data. Features, data and design may change at any time.',
-    '\uC774 \uC0AC\uC774\uD2B8\uB294 \uC801\uADF9\uC801\uC73C\uB85C \uAC1C\uBC1C \uC911\uC785\uB2C8\uB2E4 \u2014 AI\uB294 \uD604\uC7AC \uD559\uC2B5 \uC911\uC774\uBA70 \uC218\uC9D1\uB41C \uB370\uC774\uD130\uB85C \uD6C8\uB828\uB418\uACE0 \uC788\uC2B5\uB2C8\uB2E4. \uAE30\uB2A5, \uB370\uC774\uD130 \uBC0F \uB514\uC790\uC778\uC740 \uC5B8\uC81C\uB4E0\uC9C0 \uBCC0\uACBD\uB420 \uC218 \uC788\uC2B5\uB2C8\uB2E4.',
-    '\u672C\u7AD9\u6B63\u5728\u79EF\u6781\u5F00\u53D1\u4E2D \u2014 AI\u6B63\u5728\u63A5\u53D7\u8BAD\u7EC3\u5E76\u4ECE\u6536\u96C6\u7684\u6570\u636E\u4E2D\u5B66\u4E60\u3002\u529F\u80FD\u3001\u6570\u636E\u548C\u8BBE\u8BA1\u53EF\u80FD\u968F\u65F6\u66F4\u6539\u3002',
-    'Este sitio est\u00E1 en desarrollo activo \u2014 la IA se est\u00E1 entrenando y aprendiendo de los datos recopilados. Las funciones, datos y dise\u00F1o pueden cambiar en cualquier momento.',
-    'Ce site est en d\u00E9veloppement actif \u2014 l\'IA est actuellement en apprentissage \u00E0 partir des donn\u00E9es collect\u00E9es. Les fonctionnalit\u00E9s, donn\u00E9es et le design peuvent changer \u00E0 tout moment.'
+    'Die KI wird gerade trainiert und lernt aus den gesammelten Daten.',
+    'The AI is currently being trained and learning from collected data.',
+    'AI\uAC00 \uD604\uC7AC \uD559\uC2B5 \uC911\uC774\uBA70 \uC218\uC9D1\uB41C \uB370\uC774\uD130\uB85C \uD6C8\uB828\uB418\uACE0 \uC788\uC2B5\uB2C8\uB2E4.',
+    'AI\u6B63\u5728\u63A5\u53D7\u8BAD\u7EC3\u5E76\u4ECE\u6536\u96C6\u7684\u6570\u636E\u4E2D\u5B66\u4E60\u3002',
+    'La IA se est\u00E1 entrenando y aprendiendo de los datos recopilados.',
+    'L\'IA est actuellement en apprentissage \u00E0 partir des donn\u00E9es collect\u00E9es.'
+  ),
+  'banner.subtext': t6(
+    'Features, Daten und Design k\u00F6nnen sich jederzeit \u00E4ndern.',
+    'Features, data and design may change at any time.',
+    '\uAE30\uB2A5, \uB370\uC774\uD130 \uBC0F \uB514\uC790\uC778\uC740 \uC5B8\uC81C\uB4E0\uC9C0 \uBCC0\uACBD\uB420 \uC218 \uC788\uC2B5\uB2C8\uB2E4.',
+    '\u529F\u80FD\u3001\u6570\u636E\u548C\u8BBE\u8BA1\u53EF\u80FD\u968F\u65F6\u66F4\u6539\u3002',
+    'Las funciones, datos y dise\u00F1o pueden cambiar en cualquier momento.',
+    'Les fonctionnalit\u00E9s, donn\u00E9es et le design peuvent changer \u00E0 tout moment.'
   ),
 } as const;
 

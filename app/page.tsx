@@ -5,13 +5,20 @@ import Footer from './components/Footer';
 import { useI18n, LOCALE_MAP } from './lib/i18n';
 import { REGIONS } from './lib/regions';
 
-// Fallback champions if API is not available
-const FALLBACK_CHAMPIONS = [
-  { id: 'Ezreal', name: 'Ezreal', role: 'Marksman', games: 549, winRate: 47.0 },
-  { id: 'Karma', name: 'Karma', role: 'Mage', games: 535, winRate: 49.5 },
-  { id: 'Nautilus', name: 'Nautilus', role: 'Tank', games: 502, winRate: 48.8 },
-];
+interface Champion {
+  id: string;
+  name: string;
+  role: string;
+  games: number;
+  winRate: number;
+}
 
+interface SiteStats {
+  totalTeams: number;
+  totalProPlayers: number;
+  regions: number;
+  matchesAnalyzed: number;
+}
 
 export default function Home() {
   const [name, setName] = useState('');
@@ -24,8 +31,8 @@ export default function Home() {
   const [loadingMarket, setLoadingMarket] = useState(false);
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
-  const [featuredChamps, setFeaturedChamps] = useState(FALLBACK_CHAMPIONS);
-  const [siteStats, setSiteStats] = useState({ totalTeams: 951, totalProPlayers: 1292, regions: 17, matchesAnalyzed: 2564 });
+  const [featuredChamps, setFeaturedChamps] = useState<Champion[] | null>(null);
+  const [siteStats, setSiteStats] = useState<SiteStats | null>(null);
   const { t, lang } = useI18n();
   const locale = LOCALE_MAP[lang];
 
@@ -59,8 +66,17 @@ export default function Home() {
       const res = await fetch('/api/homepage-stats');
       const data = await res.json();
       if (data.topChampions?.length >= 3) setFeaturedChamps(data.topChampions);
-      if (data.stats) setSiteStats(prev => ({ ...prev, ...data.stats }));
-    } catch {}
+      else setFeaturedChamps([]); // API returned but empty → show empty state, not skeleton
+      if (data.stats) setSiteStats({
+        totalTeams: data.stats.totalTeams ?? 0,
+        totalProPlayers: data.stats.totalProPlayers ?? 0,
+        regions: data.stats.regions ?? 0,
+        matchesAnalyzed: data.stats.matchesAnalyzed ?? 0,
+      });
+    } catch {
+      setFeaturedChamps([]);
+      setSiteStats({ totalTeams: 0, totalProPlayers: 0, regions: 0, matchesAnalyzed: 0 });
+    }
   };
 
   const fetchMarketData = async () => {
@@ -148,14 +164,20 @@ export default function Home() {
       <Nav active="search" />
 
       {/* === PROTOTYPE BANNER === */}
-      <div className="bg-gradient-to-r from-[#c89b3c]/20 via-[#c89b3c]/10 to-[#c89b3c]/20 border-b border-[#c89b3c]/30 text-center py-2 px-4 text-xs sm:text-sm text-[#f0e6d2]">
-        <span className="inline-flex items-center gap-2 max-w-5xl">
-          <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#c89b3c] animate-pulse flex-shrink-0" />
-          <span>
-            <strong className="text-[#c89b3c]">{t('banner.label')}</strong>{' '}
-            {t('banner.text')}
-          </span>
-        </span>
+      <div className="bg-gradient-to-r from-[#c89b3c]/20 via-[#c89b3c]/10 to-[#c89b3c]/20 border-b border-[#c89b3c]/30 py-2.5 px-4">
+        <div className="max-w-5xl mx-auto flex items-start sm:items-center gap-2.5 text-center justify-center">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#c89b3c] animate-pulse flex-shrink-0 mt-1.5 sm:mt-0" />
+          <div className="text-xs sm:text-sm text-[#f0e6d2] text-left sm:text-center">
+            <div>
+              <strong className="text-[#c89b3c]">{t('banner.label')}</strong>
+              <span className="text-[#c89b3c] mx-1.5">·</span>
+              {t('banner.text')}
+            </div>
+            <div className="text-[11px] sm:text-xs text-[#c89b3c]/70 mt-0.5">
+              {t('banner.subtext')}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* === HERO SECTION === */}
@@ -265,36 +287,55 @@ export default function Home() {
           <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-3 px-1">
             {t('home.topChampions')}
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {featuredChamps.map((champ, i) => (
-              <a
-                key={champ.id}
-                href={`/champions/${champ.id}`}
-                className="card-3d glass rounded-xl overflow-hidden group cursor-pointer"
-                onMouseEnter={() => setHoveredCard(i)}
-                onMouseLeave={() => setHoveredCard(null)}
-              >
-                <div className="relative h-36 overflow-hidden">
-                  <img
-                    src={`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${champ.id}_0.jpg`}
-                    alt={champ.name}
-                    className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-110"
-                    style={{ filter: hoveredCard === i ? 'brightness(0.7)' : 'brightness(0.5)' }}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#0d1526] via-transparent to-transparent" />
-                  <div className="absolute bottom-3 left-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[#c89b3c] text-xs font-bold bg-[#c89b3c]/20 px-1.5 py-0.5 rounded">#{i + 1}</span>
-                      <span className="text-white text-lg font-semibold">{champ.name}</span>
-                    </div>
-                    <div className="text-[#8a9bb0] text-xs mt-0.5">
-                      {champ.games?.toLocaleString(locale)} {t('champ.games')} · {champ.winRate}% WR
-                    </div>
+          {featuredChamps === null ? (
+            // Skeleton loader while data is loading
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {[0, 1, 2].map(i => (
+                <div key={i} className="glass rounded-xl overflow-hidden h-36 relative animate-pulse">
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#141c2e] to-[#0d1526]" />
+                  <div className="absolute bottom-3 left-4 right-4">
+                    <div className="h-4 w-24 bg-[#1e2a3a] rounded mb-2" />
+                    <div className="h-3 w-32 bg-[#1e2a3a] rounded" />
                   </div>
                 </div>
-              </a>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : featuredChamps.length === 0 ? (
+            <div className="glass rounded-xl p-8 text-center text-[#4a5a70] text-sm">
+              {t('champ.statsCollecting')}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {featuredChamps.map((champ, i) => (
+                <a
+                  key={champ.id}
+                  href={`/champions/${champ.id}`}
+                  className="card-3d glass rounded-xl overflow-hidden group cursor-pointer"
+                  onMouseEnter={() => setHoveredCard(i)}
+                  onMouseLeave={() => setHoveredCard(null)}
+                >
+                  <div className="relative h-36 overflow-hidden">
+                    <img
+                      src={`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${champ.id}_0.jpg`}
+                      alt={champ.name}
+                      className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-110"
+                      style={{ filter: hoveredCard === i ? 'brightness(0.7)' : 'brightness(0.5)' }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0d1526] via-transparent to-transparent" />
+                    <div className="absolute bottom-3 left-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[#c89b3c] text-xs font-bold bg-[#c89b3c]/20 px-1.5 py-0.5 rounded">#{i + 1}</span>
+                        <span className="text-white text-lg font-semibold">{champ.name}</span>
+                      </div>
+                      <div className="text-[#8a9bb0] text-xs mt-0.5">
+                        {champ.games?.toLocaleString(locale)} {t('champ.games')} · {champ.winRate}% WR
+                      </div>
+                    </div>
+                  </div>
+                </a>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -304,14 +345,25 @@ export default function Home() {
           <>
             {/* Stats Cards with 3D effect */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-              {[
-                { label: t('teams.title'), value: siteStats.totalTeams.toLocaleString(locale), sub: t('home.verifiedRosters') },
-                { label: t('home.proPlayers'), value: siteStats.totalProPlayers.toLocaleString(locale), sub: t('home.allLeagues') },
-                { label: t('home.analyzedMatches'), value: siteStats.matchesAnalyzed.toLocaleString(locale), sub: 'Challenger + GM + Master' },
-              ].map(s => (
+              {(siteStats === null
+                ? [
+                    { label: t('teams.title'), sub: t('home.verifiedRosters') },
+                    { label: t('home.proPlayers'), sub: t('home.allLeagues') },
+                    { label: t('home.analyzedMatches'), sub: 'Challenger + GM + Master' },
+                  ].map(s => ({ ...s, value: null as string | null }))
+                : [
+                    { label: t('teams.title'), value: siteStats.totalTeams.toLocaleString(locale), sub: t('home.verifiedRosters') },
+                    { label: t('home.proPlayers'), value: siteStats.totalProPlayers.toLocaleString(locale), sub: t('home.allLeagues') },
+                    { label: t('home.analyzedMatches'), value: siteStats.matchesAnalyzed.toLocaleString(locale), sub: 'Challenger + GM + Master' },
+                  ]
+              ).map(s => (
                 <div key={s.label} className="card-3d glass rounded-lg p-4">
                   <div className="text-[#8a9bb0] text-xs mb-1">{s.label}</div>
-                  <div className="text-white text-2xl font-bold">{s.value}</div>
+                  {s.value === null ? (
+                    <div className="h-8 w-20 bg-[#1e2a3a] rounded animate-pulse my-0.5" />
+                  ) : (
+                    <div className="text-white text-2xl font-bold">{s.value}</div>
+                  )}
                   <div className="text-[#c89b3c] text-xs mt-1">{s.sub}</div>
                 </div>
               ))}

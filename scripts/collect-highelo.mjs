@@ -4,7 +4,11 @@
  * Saves results to public/champion-stats-euw.json for the frontend.
  */
 
-const API_KEY = process.env.RIOT_API_KEY || 'RGAPI-1e0027ce-767b-41ae-a387-787a59b744e3';
+const API_KEY = process.env.RIOT_API_KEY;
+if (!API_KEY) {
+  console.error('RIOT_API_KEY env var required');
+  process.exit(1);
+}
 const REGION = 'euw1';
 const REGIONAL = 'europe';
 

@@ -33,10 +33,15 @@ jobs:
       - name: Crawl Pro Players
         run: node scripts/crawl-pro-players.mjs
 
-      # Champion Stats Crawler (needs valid Riot API key)
-      - name: Crawl Champion Stats
+      # Champion Stats Crawler — EUW (needs valid Riot API key)
+      - name: Crawl Champion Stats (EUW)
         if: env.RIOT_API_KEY != ''
         run: node scripts/collect-highelo.mjs
+
+      # Champion Stats Crawler — Korea (needs valid Riot API key)
+      - name: Crawl Champion Stats (Korea)
+        if: env.RIOT_API_KEY != ''
+        run: node scripts/collect-kr-cn.mjs
 
       # Commit updated data files
       - name: Commit data updates

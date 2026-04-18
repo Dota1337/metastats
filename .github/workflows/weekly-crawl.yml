@@ -15,7 +15,7 @@ env:
 jobs:
   crawl-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 360  # GitHub hard cap for free plan — crawlers are rate-limited by Riot dev key
 
     steps:
       - name: Checkout repository

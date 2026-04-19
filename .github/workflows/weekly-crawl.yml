@@ -57,15 +57,5 @@ jobs:
           Co-Authored-By: claude-flow <ruv@ruv.net>"
             git push
           fi
-
-      # Deploy to Vercel
-      - name: Deploy to Vercel
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        run: |
-          npm i -g vercel
-          vercel pull --yes --environment=production --token=$VERCEL_TOKEN
-          vercel build --prod --token=$VERCEL_TOKEN
-          vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
+      # Deployment is handled by Vercel's GitHub integration — the push above
+      # automatically triggers a production deploy, no CLI step needed here.

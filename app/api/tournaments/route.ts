@@ -65,22 +65,11 @@ export async function GET(request: NextRequest) {
 
     const events = scheduleData?.data?.schedule?.events || [];
 
-    // Paginate in both directions for full calendar coverage (~6 weeks)
+    // Paginate forward only — the drawer shows today + 14 days, past events are dropped.
     const MAX_PAGES = 5;
     let moreEvents: any[] = [];
     const initialPages = scheduleData?.data?.schedule?.pages || {};
 
-    // Fetch older pages (past events)
-    let olderToken = initialPages.older;
-    for (let i = 0; i < MAX_PAGES && olderToken; i++) {
-      try {
-        const page = await fetchLoLEsports(olderToken);
-        moreEvents.push(...(page?.data?.schedule?.events || []));
-        olderToken = page?.data?.schedule?.pages?.older;
-      } catch { break; }
-    }
-
-    // Fetch newer pages (future events)
     let newerToken = initialPages.newer;
     for (let i = 0; i < MAX_PAGES && newerToken; i++) {
       try {
@@ -150,10 +139,24 @@ export async function GET(request: NextRequest) {
 function applyFilters(data: any, filter: string, league: string) {
   let tournaments = [...(data.tournaments || [])];
 
-  if (filter === 'upcoming') {
-    tournaments = tournaments.filter((t: Tournament) => t.state === 'unstarted');
-  } else if (filter === 'live') {
+  if (filter === 'live') {
     tournaments = tournaments.filter((t: Tournament) => t.state === 'inProgress');
+  } else {
+    // Window: today 00:00 UTC through +15 days (exclusive upper bound).
+    // Live matches pass through regardless of startTime so an ongoing match that
+    // began before midnight UTC never disappears from the drawer.
+    const now = new Date();
+    const startOfToday = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+    const endWindow = startOfToday + 15 * 24 * 60 * 60 * 1000;
+    tournaments = tournaments.filter((t: Tournament) => {
+      if (t.state === 'inProgress') return true;
+      const ts = new Date(t.startTime).getTime();
+      return ts >= startOfToday && ts < endWindow;
+    });
+
+    if (filter === 'upcoming') {
+      tournaments = tournaments.filter((t: Tournament) => t.state === 'unstarted');
+    }
   }
 
   if (league) {

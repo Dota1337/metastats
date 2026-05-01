@@ -63,5 +63,6 @@ jobs:
               echo "Push attempt $attempt failed, retrying..."
               sleep 5
             done
+          fi
       # Deployment is handled by Vercel's GitHub integration — the push above
       # automatically triggers a production deploy, no CLI step needed here.

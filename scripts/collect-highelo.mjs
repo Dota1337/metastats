@@ -1,8 +1,12 @@
 /**
  * Collects champion statistics from ALL Challenger + Grandmaster players (EUW).
  * Handles Riot API rate limits: 100 requests / 2 minutes.
- * Saves results to public/champion-stats-euw.json for the frontend.
+ * Saves:
+ *   - public/champion-stats-euw.json   (legacy aggregate stats)
+ *   - public/champion-builds-euw.json  (per-champion-per-role builds, runes, counters)
  */
+
+import { loadBootSet, aggregateMatch, finalizeBuilds, ALLOWED_QUEUES } from './lib/build-aggregator.mjs';
 
 const API_KEY = process.env.RIOT_API_KEY;
 if (!API_KEY) {
@@ -99,8 +103,8 @@ async function main() {
     if (p.puuid) puuidTierMap[p.puuid] = p.tier;
   }
 
-  // Step 2: Fetch match IDs (8 ranked per player), track tier
-  console.log('[2/4] Lade Match-IDs (8 Ranked pro Spieler)...');
+  // Step 2: Fetch match IDs (Solo + Flex, ~8 each per player), track tier
+  console.log('[2/4] Lade Match-IDs (Solo+Flex, je 8 pro Spieler)...');
   const allMatchIds = new Set();
   const matchTierMap = {};
 
@@ -109,20 +113,22 @@ async function main() {
   for (const tier of tierOrder) {
     const tierPuuids = puuids.filter(p => puuidTierMap[p] === tier);
     for (let i = 0; i < tierPuuids.length; i++) {
-      try {
-        const res = await rateLimitedFetch(
-          `https://${REGIONAL}.api.riotgames.com/lol/match/v5/matches/by-puuid/${tierPuuids[i]}/ids?queue=420&start=0&count=8&api_key=${API_KEY}`
-        );
-        if (res.ok) {
-          const ids = await res.json();
-          for (const id of ids) {
-            if (!allMatchIds.has(id)) {
-              allMatchIds.add(id);
-              matchTierMap[id] = tier;
+      for (const queue of [420, 440]) {
+        try {
+          const res = await rateLimitedFetch(
+            `https://${REGIONAL}.api.riotgames.com/lol/match/v5/matches/by-puuid/${tierPuuids[i]}/ids?queue=${queue}&start=0&count=8&api_key=${API_KEY}`
+          );
+          if (res.ok) {
+            const ids = await res.json();
+            for (const id of ids) {
+              if (!allMatchIds.has(id)) {
+                allMatchIds.add(id);
+                matchTierMap[id] = tier;
+              }
             }
           }
-        }
-      } catch {}
+        } catch {}
+      }
 
       if ((i + 1) % 25 === 0 || i === tierPuuids.length - 1) {
         console.log(`  ${tier}: ${i + 1}/${tierPuuids.length} Spieler (${allMatchIds.size} unique Matches)`);
@@ -132,12 +138,19 @@ async function main() {
 
   console.log(`\n  ${allMatchIds.size} einzigartige Matches gefunden\n`);
 
-  // Step 3: Fetch match details + aggregate per tier
+  // Step 3: Fetch match details + aggregate per tier (legacy stats) + per role (builds)
   console.log('[3/4] Lade Match-Details und berechne Stats...');
+  const ddVersionRes = await fetch('https://ddragon.leagueoflegends.com/api/versions.json');
+  const ddVersions = await ddVersionRes.json();
+  const ddVersion = ddVersions[0];
+  const bootSet = await loadBootSet(ddVersion);
+  console.log(`  Data Dragon ${ddVersion} — ${bootSet.size} Boot-Item-IDs erkannt`);
+
   const matchIdArray = Array.from(allMatchIds);
   const champStats = {};
   const tierStats = { CHALLENGER: {}, GRANDMASTER: {}, MASTER: {} };
   const tierGames = { CHALLENGER: 0, GRANDMASTER: 0, MASTER: 0 };
+  const builds = {};                  // Per-role build aggregator
   let totalGames = 0;
   let errors = 0;
 
@@ -148,7 +161,7 @@ async function main() {
       );
       if (res.ok) {
         const match = await res.json();
-        if (match?.info?.participants && match.info.queueId === 420) {
+        if (match?.info?.participants && ALLOWED_QUEUES.has(match.info.queueId)) {
           totalGames++;
           const mTier = matchTierMap[matchIdArray[i]] || 'MASTER';
           tierGames[mTier] = (tierGames[mTier] || 0) + 1;
@@ -183,6 +196,9 @@ async function main() {
               }
             }
           }
+
+          // Build aggregation (per champion + teamPosition)
+          aggregateMatch(match, builds, bootSet);
         }
       } else {
         errors++;
@@ -217,6 +233,18 @@ async function main() {
   const fs = await import('fs');
   fs.writeFileSync('public/champion-stats-euw.json', JSON.stringify(output));
   console.log('\n  -> public/champion-stats-euw.json gespeichert');
+
+  // Builds JSON
+  const buildsOut = {
+    region: REGION,
+    collectedAt: new Date().toISOString(),
+    matchesAnalyzed: totalGames,
+    ddragonVersion: ddVersion,
+    byChampionRole: finalizeBuilds(builds),
+  };
+  fs.writeFileSync('public/champion-builds-euw.json', JSON.stringify(buildsOut));
+  const champRoleCount = Object.values(buildsOut.byChampionRole).reduce((a, r) => a + Object.keys(r).length, 0);
+  console.log(`  -> public/champion-builds-euw.json gespeichert (${Object.keys(buildsOut.byChampionRole).length} Champs, ${champRoleCount} Champ×Rollen)`);
 
   // Step 4: Save per-tier stats to Supabase
   console.log('\n[4/4] Speichere per-Tier Stats in Supabase...');

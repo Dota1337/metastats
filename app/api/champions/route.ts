@@ -137,20 +137,60 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Map Data Dragon tags to roles
+    // Match-based role data from champion-builds-{region}.json (preferred over Data Dragon tags).
+    // Falls back to tag heuristic when builds JSON is not yet available.
+    let roleGames: Record<string, Record<string, number>> = {}; // championKey -> { TOP: n, MID: n, ... }
+    try {
+      const buildsFile = join(process.cwd(), 'public', `champion-builds-${region.replace('1', '')}.json`);
+      if (existsSync(buildsFile)) {
+        const buildsData = JSON.parse(readFileSync(buildsFile, 'utf8'));
+        for (const [champKey, roles] of Object.entries(buildsData.byChampionRole || {}) as [string, any][]) {
+          roleGames[champKey] = {};
+          for (const [r, d] of Object.entries(roles) as [string, any][]) {
+            roleGames[champKey][r] = d.games || 0;
+          }
+        }
+      }
+    } catch {
+      // builds JSON not yet generated, fall back to tags
+    }
+    const hasMatchRoles = Object.keys(roleGames).length > 0;
+
+    // Map Data Dragon tags to roles (fallback for champions without match data)
     const tagToRole: Record<string, string> = {
       Fighter: 'TOP',
       Tank: 'TOP',
       Assassin: 'JUNGLE',
       Mage: 'MIDDLE',
       Marksman: 'BOTTOM',
-      Support: 'SUPPORT',
+      Support: 'UTILITY',
     };
+
+    // Resolve primary role + significant roles for a champion. Significant = role
+    // accounts for at least 5% of the champion's games — that's where op.gg/lolg
+    // also draws the line for "this champion is a viable pick here".
+    const ROLE_SIGNIFICANCE = 0.05;
+    function resolveRoles(champKey: string, tags: string[]): { primary: string; significant: Set<string> } {
+      const fromMatches = roleGames[champKey];
+      if (fromMatches && Object.keys(fromMatches).length > 0) {
+        const total = Object.values(fromMatches).reduce((a, b) => a + b, 0);
+        const significant = new Set<string>();
+        let primary = '';
+        let max = -1;
+        for (const [r, g] of Object.entries(fromMatches)) {
+          if (g / total >= ROLE_SIGNIFICANCE) significant.add(r);
+          if (g > max) { max = g; primary = r; }
+        }
+        return { primary, significant };
+      }
+      const tagPrimary = tagToRole[tags[0]] || 'MIDDLE';
+      return { primary: tagPrimary, significant: new Set([tagPrimary]) };
+    }
 
     // Merge champion info with stats
     const result = champions.map((champ) => {
       const stats = statsMap[champ.key];
-      const primaryRole = tagToRole[champ.tags[0]] || 'MIDDLE';
+      const { primary, significant } = resolveRoles(champ.key, champ.tags);
 
       return {
         id: champ.id,
@@ -159,7 +199,8 @@ export async function GET(request: NextRequest) {
         title: champ.title,
         tags: champ.tags,
         image: champ.image,
-        role: primaryRole,
+        role: primary,
+        significantRoles: [...significant],
         winRate: stats && stats.games > 0 ? Math.round((stats.wins / stats.games) * 1000) / 10 : null,
         pickRate: stats && stats.totalGames > 0 ? Math.round((stats.games / stats.totalGames) * 1000) / 10 : null,
         banRate: stats && stats.totalGames > 0 ? Math.round((stats.bans / stats.totalGames) * 1000) / 10 : null,
@@ -170,16 +211,23 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    // Filter by role
+    // Filter by role: when match-based roles are available, use significantRoles
+    // (champion qualifies for every role he plays >= 5%). Otherwise primary only.
     const roleMap: Record<string, string> = {
       top: 'TOP',
       jungle: 'JUNGLE',
       mid: 'MIDDLE',
       adc: 'BOTTOM',
-      support: 'SUPPORT',
+      support: 'UTILITY',
     };
     const filtered = role !== 'all'
-      ? result.filter((c) => c.role === roleMap[role.toLowerCase()])
+      ? result.filter((c) => {
+          const target = roleMap[role.toLowerCase()];
+          if (!target) return false;
+          return hasMatchRoles
+            ? (c.significantRoles as string[]).includes(target)
+            : c.role === target;
+        })
       : result;
 
     // Sort: champions with data first (by pick rate desc), then alphabetically

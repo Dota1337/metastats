@@ -182,6 +182,24 @@ const translations = {
   'champDetail.loading': t6('Lade Champion...', 'Loading champion...', '\uCC54\uD53C\uC5B8 \uB85C\uB529...', '\u52A0\u8F7D\u82F1\u96C4...', 'Cargando...', 'Chargement...'),
   'champDetail.notFound': t6('Champion nicht gefunden', 'Champion not found', '\uCC54\uD53C\uC5B8\uC744 \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4', '\u672A\u627E\u5230\u82F1\u96C4', 'Campe\u00F3n no encontrado', 'Champion introuvable'),
 
+  // Champion Builds (op.gg-style per role)
+  'champBuild.heading': t6('Builds & Runen', 'Builds & Runes', '\uBE4C\uB4DC \uBC0F \uB8EC', '\u51FA\u88C5\u4E0E\u7B26\u6587', 'Builds y Runas', 'Builds & Runes'),
+  'champBuild.runes': t6('Runen', 'Runes', '\uB8EC', '\u7B26\u6587', 'Runas', 'Runes'),
+  'champBuild.summoners': t6('Summoner Spells', 'Summoner Spells', '\uC18C\uD658\uC0AC \uC8FC\uBB38', '\u53EC\u5524\u5E08\u6280\u80FD', 'Hechizos', 'Sorts'),
+  'champBuild.boots': t6('Schuhe', 'Boots', '\uC2E0\uBC1C', '\u978B\u5B50', 'Botas', 'Bottes'),
+  'champBuild.builds': t6('Item Builds', 'Item Builds', '\uC544\uC774\uD15C \uBE4C\uB4DC', '\u88C5\u5907\u51FA\u88C5', 'Builds', 'Builds'),
+  'champBuild.items': t6('H\u00E4ufigste Items', 'Most Used Items', '\uAC00\uC7A5 \uB9CE\uC774 \uC0AC\uC6A9\uB41C \uC544\uC774\uD15C', '\u6700\u5E38\u7528\u88C5\u5907', '\u00CDtems m\u00E1s usados', 'Objets les plus utilis\u00E9s'),
+  'champBuild.counters': t6('Counters', 'Counters', '\uCE74\uC6B4\uD130', '\u514B\u5236\u82F1\u96C4', 'Counters', 'Counters'),
+  'champBuild.strongAgainst': t6('Stark gegen', 'Strong against', '\uAC15\uD55C \uC0C1\uB300', '\u514B\u5236', 'Fuerte contra', 'Fort contre'),
+  'champBuild.weakAgainst': t6('Schwach gegen', 'Weak against', '\uC57D\uD55C \uC0C1\uB300', '\u88AB\u514B\u5236', 'D\u00E9bil contra', 'Faible contre'),
+  'champBuild.winRate': t6('Win-Rate', 'Win Rate', '\uC2B9\uB960', '\u80DC\u7387', 'Winrate', 'Winrate'),
+  'champBuild.pickRate': t6('Pick-Rate', 'Pick Rate', '\uD53D\uB960', '\u9009\u7387', 'Pickrate', 'Pickrate'),
+  'champBuild.games': t6('Spiele', 'Games', '\uACBD\uAE30', '\u6BD4\u8D5B', 'Partidas', 'Matchs'),
+  'champBuild.statShards': t6('Stat-Shards', 'Stat Shards', '\uB2A5\uB825\uCE58 \uD30C\uD3B8', '\u5C5E\u6027\u788E\u7247', 'Fragmentos', 'Fragments'),
+  'champBuild.region': t6('Region', 'Region', '\uC9C0\uC5ED', '\u5730\u533A', 'Regi\u00F3n', 'R\u00E9gion'),
+  'champBuild.fromMatches': t6('basierend auf {n} Matches', 'based on {n} matches', '{n}\uAC1C \uACBD\uAE30 \uAE30\uBC18', '\u57FA\u4E8E{n}\u573A\u6BD4\u8D5B', 'basado en {n} partidas', 'd\'apr\u00E8s {n} matchs'),
+  'champBuild.role': t6('Rolle', 'Role', '\uD3EC\uC9C0\uC158', '\u4F4D\u7F6E', 'Rol', 'R\u00F4le'),
+
   // Marktwert
   'mv.title': t6('Marktwerte', 'Market Values', '\uC2DC\uC7A5 \uAC00\uCE58', '\u5E02\u573A\u4EF7\u503C', 'Valores de Mercado', 'Valeurs March\u00E9'),
   'mv.subtitle': t6('KI-gest\u00FCtzte Marktwertberechnung f\u00FCr alle Spieler ab Diamond IV', 'AI-powered market value calculation for all Diamond IV+ players', '\uB2E4\uC774\uC544 IV+ \uC804\uCCB4 AI \uC2DC\uC7A5\uAC00\uCE58', '\u94BB\u77F3IV+\u73A9\u5BB6AI\u5E02\u503C\u8BA1\u7B97', 'Valor de mercado IA para jugadores Diamante IV+', 'Valeur march\u00E9 IA pour joueurs Diamant IV+'),

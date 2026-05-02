@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
+import ChampionBuildsSection from '../../components/ChampionBuildsSection';
 import { useI18n } from '../../lib/i18n';
 
 interface ChampionSpell {
@@ -196,6 +197,9 @@ export default function ChampionDetailPage() {
           </div>
 
           <div className="max-w-4xl mx-auto px-6 pb-12">
+            {/* Builds & Runes (op.gg-style) — renders nothing until the first crawl produces data */}
+            <ChampionBuildsSection championKey={champion.key} />
+
             {/* Stats Section */}
             <section className="mb-8">
               <h2 className="text-white text-lg font-semibold mb-4">{t('champDetail.baseStats')}</h2>

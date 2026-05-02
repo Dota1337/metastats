@@ -5,8 +5,10 @@
  *     We collect KR data which includes many Chinese pros playing on KR server.
  *
  * Handles Riot API rate limits: 100 requests / 2 minutes.
- * Saves results to public/champion-stats-kr.json + Supabase.
+ * Saves results to public/champion-stats-kr.json + public/champion-builds-kr.json + Supabase.
  */
+
+import { loadBootSet, aggregateMatch, finalizeBuilds, ALLOWED_QUEUES } from './lib/build-aggregator.mjs';
 
 const API_KEY = process.env.RIOT_API_KEY;
 if (!API_KEY) {
@@ -93,8 +95,8 @@ async function collectRegion(region, regional, label) {
   console.log(`  Master: ${master.entries?.length || 0} (top ${masterSample.length} gesampled)`);
   console.log(`  Gesamt: ${puuids.length} Spieler\n`);
 
-  // Step 2: Fetch match IDs per tier
-  console.log('[2/4] Lade Match-IDs (8 pro Spieler)...');
+  // Step 2: Fetch match IDs per tier (Solo+Flex)
+  console.log('[2/4] Lade Match-IDs (Solo+Flex, je 8 pro Spieler)...');
   const allMatchIds = new Set();
   const matchTierMap = {};
 
@@ -102,20 +104,22 @@ async function collectRegion(region, regional, label) {
   for (const tier of tierOrder) {
     const tierPuuids = puuids.filter(p => puuidTierMap[p] === tier);
     for (let i = 0; i < tierPuuids.length; i++) {
-      try {
-        const res = await rateLimitedFetch(
-          `https://${regional}.api.riotgames.com/lol/match/v5/matches/by-puuid/${tierPuuids[i]}/ids?queue=420&start=0&count=8&api_key=${API_KEY}`
-        );
-        if (res.ok) {
-          const ids = await res.json();
-          for (const id of ids) {
-            if (!allMatchIds.has(id)) {
-              allMatchIds.add(id);
-              matchTierMap[id] = tier;
+      for (const queue of [420, 440]) {
+        try {
+          const res = await rateLimitedFetch(
+            `https://${regional}.api.riotgames.com/lol/match/v5/matches/by-puuid/${tierPuuids[i]}/ids?queue=${queue}&start=0&count=8&api_key=${API_KEY}`
+          );
+          if (res.ok) {
+            const ids = await res.json();
+            for (const id of ids) {
+              if (!allMatchIds.has(id)) {
+                allMatchIds.add(id);
+                matchTierMap[id] = tier;
+              }
             }
           }
-        }
-      } catch {}
+        } catch {}
+      }
       if ((i + 1) % 25 === 0 || i === tierPuuids.length - 1) {
         console.log(`  ${tier}: ${i + 1}/${tierPuuids.length} (${allMatchIds.size} unique)`);
       }
@@ -123,12 +127,19 @@ async function collectRegion(region, regional, label) {
   }
   console.log(`\n  ${allMatchIds.size} einzigartige Matches\n`);
 
-  // Step 3: Fetch match details
+  // Step 3: Fetch match details + builds
   console.log('[3/4] Lade Match-Details...');
+  const ddVersionRes = await fetch('https://ddragon.leagueoflegends.com/api/versions.json');
+  const ddVersions = await ddVersionRes.json();
+  const ddVersion = ddVersions[0];
+  const bootSet = await loadBootSet(ddVersion);
+  console.log(`  Data Dragon ${ddVersion} — ${bootSet.size} Boot-Item-IDs erkannt`);
+
   const matchIdArray = Array.from(allMatchIds);
   const champStats = {};
   const tierStats = { CHALLENGER: {}, GRANDMASTER: {}, MASTER: {} };
   const tierGames = { CHALLENGER: 0, GRANDMASTER: 0, MASTER: 0 };
+  const builds = {};
   let totalGames = 0;
   let errors = 0;
 
@@ -139,7 +150,7 @@ async function collectRegion(region, regional, label) {
       );
       if (res.ok) {
         const match = await res.json();
-        if (match?.info?.participants && match.info.queueId === 420) {
+        if (match?.info?.participants && ALLOWED_QUEUES.has(match.info.queueId)) {
           totalGames++;
           const mTier = matchTierMap[matchIdArray[i]] || 'MASTER';
           tierGames[mTier]++;
@@ -172,6 +183,8 @@ async function collectRegion(region, regional, label) {
               }
             }
           }
+
+          aggregateMatch(match, builds, bootSet);
         }
       } else { errors++; }
     } catch { errors++; }
@@ -199,6 +212,18 @@ async function collectRegion(region, regional, label) {
   };
   fs.writeFileSync(`public/champion-stats-${region}.json`, JSON.stringify(output));
   console.log(`\n  -> public/champion-stats-${region}.json`);
+
+  // Builds JSON
+  const buildsOut = {
+    region,
+    collectedAt: new Date().toISOString(),
+    matchesAnalyzed: totalGames,
+    ddragonVersion: ddVersion,
+    byChampionRole: finalizeBuilds(builds),
+  };
+  fs.writeFileSync(`public/champion-builds-${region}.json`, JSON.stringify(buildsOut));
+  const champRoleCount = Object.values(buildsOut.byChampionRole).reduce((a, r) => a + Object.keys(r).length, 0);
+  console.log(`  -> public/champion-builds-${region}.json (${Object.keys(buildsOut.byChampionRole).length} Champs, ${champRoleCount} Champ×Rollen)`);
 
   // Step 4: Save to Supabase
   console.log('\n[4/4] Supabase speichern...');

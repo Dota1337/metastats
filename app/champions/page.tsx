@@ -151,7 +151,7 @@ export default function ChampionsPage() {
   };
 
   const roleLabels: Record<string, string> = {
-    TOP: 'Top', JUNGLE: 'Jungle', MIDDLE: 'Mid', BOTTOM: 'ADC', SUPPORT: 'Support',
+    TOP: 'Top', JUNGLE: 'Jungle', MIDDLE: 'Mid', BOTTOM: 'ADC', UTILITY: 'Support', SUPPORT: 'Support',
   };
 
   const SortHeader = ({ label, sKey, className }: { label: string; sKey: SortKey; className?: string }) => (

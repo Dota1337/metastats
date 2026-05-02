@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  issues: write
 
 env:
   RIOT_API_KEY: ${{ secrets.RIOT_API_KEY }}
@@ -43,12 +44,18 @@ jobs:
         if: env.RIOT_API_KEY != ''
         run: node scripts/collect-kr-cn.mjs
 
+      # Season detection — runs no Riot API, only Data Dragon. Updates
+      # public/seasons.json and exposes `season-changed` for the issue step.
+      - name: Detect new season
+        id: season
+        run: node scripts/detect-season.mjs
+
       # Commit updated data files
       - name: Commit data updates
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add public/pro-players.json public/champion-stats-*.json
+          git add public/pro-players.json public/champion-stats-*.json public/seasons.json
           if git diff --staged --quiet; then
             echo "No data changes to commit"
           else
@@ -64,5 +71,31 @@ jobs:
               sleep 5
             done
           fi
+
+      # If the season detector flagged a major bump, open a GitHub issue so
+      # the maintainer can confirm and (if desired) tag historical Marktwert
+      # snapshots manually. We do NOT auto-tag snapshots — a false positive
+      # would split the historical chart irreversibly.
+      - name: Open season-bump issue
+        if: steps.season.outputs.season-changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --title "Season bump detected: ${{ steps.season.outputs.previous-season }} → ${{ steps.season.outputs.new-season }}" \
+            --body "Detector flagged a new major patch.
+
+          - Previous season: \`${{ steps.season.outputs.previous-season }}\`
+          - New season: \`${{ steps.season.outputs.new-season }}\`
+          - Start patch: \`${{ steps.season.outputs.start-patch }}\`
+
+          \`public/seasons.json\` has already been updated.
+
+          **Manual follow-up:**
+          1. Confirm this is a real season start (Riot's official patch notes).
+          2. Decide whether to tag existing \`market_value_history\` rows with the previous season ID.
+          3. Close this issue once handled." \
+            --label "season-detected" || echo "Issue creation failed (non-fatal)"
+
       # Deployment is handled by Vercel's GitHub integration — the push above
       # automatically triggers a production deploy, no CLI step needed here.

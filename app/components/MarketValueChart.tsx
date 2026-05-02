@@ -14,10 +14,26 @@ interface HistoryPoint {
   market_value: number;
 }
 
+interface SeasonEntry {
+  id: string;
+  label: string;
+}
+
 export default function MarketValueChart({ puuid, currentValue }: Props) {
   const [history, setHistory] = useState<HistoryPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [season, setSeason] = useState('current');
+  const [pastSeasons, setPastSeasons] = useState<SeasonEntry[]>([]);
+
+  useEffect(() => {
+    fetch('/seasons.json')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data?.history) return;
+        setPastSeasons(data.history.slice(0, 3).map((s: SeasonEntry) => ({ id: s.id, label: s.label })));
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!puuid) return;
@@ -51,8 +67,7 @@ export default function MarketValueChart({ puuid, currentValue }: Props) {
 
   const seasons = [
     { value: 'current', label: 'Aktuelle Season' },
-    { value: '2025-s1', label: 'Season 2025 Split 1' },
-    { value: '2024-s2', label: 'Season 2024 Split 2' },
+    ...pastSeasons.map(s => ({ value: s.id, label: s.label })),
     { value: 'all', label: 'Alle Daten' },
   ];
 

@@ -1,0 +1,96 @@
+{
+  "currentSeason": {
+    "id": "s2026",
+    "label": "Season 2026",
+    "major": 16,
+    "startPatch": "16.1.1"
+  },
+  "history": [
+    {
+      "id": "s2025",
+      "label": "Season 2025",
+      "major": 15,
+      "startPatch": "15.1.1"
+    },
+    {
+      "id": "s2024",
+      "label": "Season 2024",
+      "major": 14,
+      "startPatch": "14.1.1"
+    },
+    {
+      "id": "s2023",
+      "label": "Season 2023",
+      "major": 13,
+      "startPatch": "13.1.1"
+    },
+    {
+      "id": "s2022",
+      "label": "Season 2022",
+      "major": 12,
+      "startPatch": "12.1.1"
+    },
+    {
+      "id": "s2021",
+      "label": "Season 2021",
+      "major": 11,
+      "startPatch": "11.1.1"
+    },
+    {
+      "id": "s2020",
+      "label": "Season 2020",
+      "major": 10,
+      "startPatch": "10.1.1"
+    },
+    {
+      "id": "s2019",
+      "label": "Season 2019",
+      "major": 9,
+      "startPatch": "9.1.1"
+    },
+    {
+      "id": "s2018",
+      "label": "Season 2018",
+      "major": 8,
+      "startPatch": "8.1.1"
+    },
+    {
+      "id": "s2017",
+      "label": "Season 2017",
+      "major": 7,
+      "startPatch": "7.1.1"
+    },
+    {
+      "id": "s2016",
+      "label": "Season 2016",
+      "major": 6,
+      "startPatch": "6.1.1"
+    },
+    {
+      "id": "s2015",
+      "label": "Season 2015",
+      "major": 5,
+      "startPatch": "5.1.1"
+    },
+    {
+      "id": "s2014",
+      "label": "Season 2014",
+      "major": 4,
+      "startPatch": "4.1.2"
+    },
+    {
+      "id": "s2013",
+      "label": "Season 2013",
+      "major": 3,
+      "startPatch": "3.6.14"
+    },
+    {
+      "id": "s2010",
+      "label": "Season 2010",
+      "major": 0,
+      "startPatch": "0.151.2"
+    }
+  ],
+  "lastCheckedAt": "2026-05-02T16:57:18.839Z",
+  "latestPatch": "16.9.1"
+}

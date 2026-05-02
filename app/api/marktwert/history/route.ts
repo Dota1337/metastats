@@ -21,25 +21,25 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ history: [] });
   }
 
-  // Season date ranges
+  // Season date ranges. Season IDs follow public/seasons.json format `s<year>`,
+  // which by Riot convention equals the calendar year (Patch X.1 ships in early
+  // January of year X+2010). Filter `recorded_at >= Jan 1 of that year`.
   let fromDate: string | null = null;
+  let toDate: string | null = null;
   const now = new Date();
-  switch (season) {
-    case 'current':
-      // Current season = start of this year
+  if (season === 'all') {
+    fromDate = null;
+  } else if (season === 'current') {
+    fromDate = `${now.getFullYear()}-01-01T00:00:00Z`;
+  } else {
+    const m = /^s(\d{4})$/.exec(season);
+    if (m) {
+      const year = Number(m[1]);
+      fromDate = `${year}-01-01T00:00:00Z`;
+      toDate = `${year + 1}-01-01T00:00:00Z`;
+    } else {
       fromDate = `${now.getFullYear()}-01-01T00:00:00Z`;
-      break;
-    case '2025-s1':
-      fromDate = '2025-01-01T00:00:00Z';
-      break;
-    case '2024-s2':
-      fromDate = '2024-07-01T00:00:00Z';
-      break;
-    case 'all':
-      fromDate = null;
-      break;
-    default:
-      fromDate = `${now.getFullYear()}-01-01T00:00:00Z`;
+    }
   }
 
   let query = supabase
@@ -50,6 +50,9 @@ export async function GET(request: NextRequest) {
 
   if (fromDate) {
     query = query.gte('recorded_at', fromDate);
+  }
+  if (toDate) {
+    query = query.lt('recorded_at', toDate);
   }
 
   const { data: history } = await query;

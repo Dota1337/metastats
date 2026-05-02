@@ -7,10 +7,50 @@
 
 import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import { request as httpsRequest } from 'node:https';
+import { lookup as dnsLookup } from 'node:dns';
 import sodium from 'libsodium-wrappers';
 
 const REPO = 'Dota1337/metastats';
 const RIOT_STATUS_URL = 'https://euw1.api.riotgames.com/lol/status/v4/platform-data';
+
+// Node's global fetch (undici) hangs on Cloudflare IPv6 in this env and the
+// `family` hint on https.request is unreliable; pre-resolve to an IPv4 and
+// connect directly with SNI = original hostname.
+function lookupIPv4(host) {
+  return new Promise((resolve, reject) => {
+    dnsLookup(host, { family: 4 }, (err, addr) => (err ? reject(err) : resolve(addr)));
+  });
+}
+
+async function fetchIPv4(url, init = {}) {
+  const u = new URL(url);
+  const ip = await lookupIPv4(u.hostname);
+  return new Promise((resolve, reject) => {
+    const req = httpsRequest(
+      {
+        host: ip,
+        servername: u.hostname,
+        port: u.port || 443,
+        path: u.pathname + u.search,
+        method: init.method || 'GET',
+        headers: { Host: u.hostname, ...(init.headers || {}) },
+      },
+      res => {
+        const chunks = [];
+        res.on('data', c => chunks.push(c));
+        res.on('end', () => {
+          const body = Buffer.concat(chunks).toString('utf8');
+          resolve({ status: res.statusCode, text: () => Promise.resolve(body), json: () => Promise.resolve(JSON.parse(body)) });
+        });
+      },
+    );
+    req.on('error', reject);
+    req.setTimeout(20000, () => req.destroy(new Error('Request timeout')));
+    if (init.body) req.write(init.body);
+    req.end();
+  });
+}
 
 function readEnv() {
   const text = readFileSync('.env.local', 'utf8');
@@ -32,7 +72,7 @@ function runCapture(cmd, args, input) {
 }
 
 async function validateRiotKey(key) {
-  const r = await fetch(RIOT_STATUS_URL, { headers: { 'X-Riot-Token': key } });
+  const r = await fetchIPv4(RIOT_STATUS_URL, { headers: { 'X-Riot-Token': key } });
   if (r.status !== 200) throw new Error(`Riot API rejected key: HTTP ${r.status}`);
 }
 
@@ -46,7 +86,7 @@ async function updateVercelEnv(targets, key) {
 }
 
 async function updateGithubSecret(ghToken, key) {
-  const api = (path, init = {}) => fetch(`https://api.github.com/repos/${REPO}${path}`, {
+  const api = (path, init = {}) => fetchIPv4(`https://api.github.com/repos/${REPO}${path}`, {
     ...init,
     headers: {
       Authorization: `Bearer ${ghToken}`,

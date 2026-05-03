@@ -78,15 +78,21 @@ export default function Nav({ active }: NavProps) {
     setResults([...playerResults, ...champMatches]);
   }, [searchQuery, champions]);
 
+  const playerHref = (raw: string) => {
+    const parts = raw.split('#');
+    const gameName = parts[0].trim();
+    const tag = parts[1]?.trim() || 'EUW';
+    const slug = encodeURIComponent(gameName) + '--' + encodeURIComponent(tag);
+    const prefix = game === 'tft' ? '/tft' : '';
+    return `${prefix}/player/${slug}?region=euw1`;
+  };
+
   const navigateToResult = (result: SearchResult) => {
     if (result.type === 'champion') {
-      window.location.href = `/champions/${result.id}`;
+      // No champion-detail route in TFT — send the user to the units list
+      window.location.href = game === 'tft' ? '/tft/units' : `/champions/${result.id}`;
     } else {
-      const parts = result.name.split('#');
-      const gameName = parts[0].trim();
-      const tag = parts[1]?.trim() || 'EUW';
-      const slug = encodeURIComponent(gameName) + '--' + encodeURIComponent(tag);
-      window.location.href = `/player/${slug}?region=euw1`;
+      window.location.href = playerHref(result.name);
     }
     setSearchOpen(false);
     setSearchQuery('');
@@ -94,12 +100,7 @@ export default function Nav({ active }: NavProps) {
 
   const handleSearchKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && searchQuery.trim()) {
-      // Default: navigate to player
-      const parts = searchQuery.split('#');
-      const gameName = parts[0].trim();
-      const tag = parts[1]?.trim() || 'EUW';
-      const slug = encodeURIComponent(gameName) + '--' + encodeURIComponent(tag);
-      window.location.href = `/player/${slug}?region=euw1`;
+      window.location.href = playerHref(searchQuery);
       setSearchOpen(false);
       setSearchQuery('');
     }

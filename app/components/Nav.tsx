@@ -117,10 +117,10 @@ export default function Nav({ active }: NavProps) {
     <nav className="bg-[#0a0e1a] border-b border-[#1e2a3a] px-4 sm:px-6 py-3" data-game={game}>
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 flex-shrink-0">
-          <GameSwitcher />
           <a href={homeHref} className={`${accentClass} text-lg font-medium flex-shrink-0`}>
             meta<span className="text-white">stats</span>.gg
           </a>
+          <GameSwitcher />
         </div>
 
         {/* Desktop nav */}

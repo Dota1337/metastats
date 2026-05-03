@@ -388,9 +388,6 @@ export default function ChampionDetailPage() {
                           ? champion.name
                           : champion.skins[selectedSkin]?.name}
                       </div>
-                      {champion.skins[selectedSkin]?.chromas && (
-                        <span className="text-[#c89b3c] text-xs">Chromas verfuegbar</span>
-                      )}
                     </div>
                   </div>
                   {/* Skin thumbnails */}

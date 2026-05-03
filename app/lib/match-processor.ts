@@ -479,40 +479,62 @@ export interface ParticipantSummary {
   summoner1Id: number;
   summoner2Id: number;
   win: boolean;
-  perks?: { primary: number; secondary: number };
+  perks?: {
+    primary: number;
+    secondary: number;
+    keystone: number;
+    primarySelections: number[]; // p1, p2, p3
+    secondarySelections: number[]; // s1, s2
+    statPerks: { off: number; flex: number; def: number };
+  };
 }
 
 /** Extract summaries for all 10 participants from a raw match */
 export function extractParticipants(rawMatch: any): ParticipantSummary[] {
   if (!rawMatch?.info?.participants) return [];
-  return rawMatch.info.participants.map((p: any) => ({
-    puuid: p.puuid || '',
-    summonerName: p.riotIdGameName ? `${p.riotIdGameName}#${p.riotIdTagline || ''}` : p.summonerName || 'Unknown',
-    champion: p.championName || '',
-    championId: p.championId || 0,
-    champLevel: p.champLevel || 0,
-    teamId: p.teamId || 0,
-    role: p.individualPosition || p.teamPosition || 'UNKNOWN',
-    kills: p.kills || 0,
-    deaths: p.deaths || 0,
-    assists: p.assists || 0,
-    cs: (p.totalMinionsKilled || 0) + (p.neutralMinionsKilled || 0),
-    damageDealt: p.totalDamageDealt || 0,
-    damageDealtToChampions: p.totalDamageDealtToChampions || 0,
-    damageTaken: p.totalDamageTaken || 0,
-    goldEarned: p.goldEarned || 0,
-    visionScore: p.visionScore || 0,
-    wardsPlaced: p.wardsPlaced || 0,
-    controlWardsPlaced: p.challenges?.controlWardsPlaced || p.detectorWardsPlaced || 0,
-    items: [p.item0 || 0, p.item1 || 0, p.item2 || 0, p.item3 || 0, p.item4 || 0, p.item5 || 0, p.item6 || 0],
-    summoner1Id: p.summoner1Id || 0,
-    summoner2Id: p.summoner2Id || 0,
-    win: p.win || false,
-    perks: p.perks?.styles ? {
-      primary: p.perks.styles[0]?.style || 0,
-      secondary: p.perks.styles[1]?.style || 0,
-    } : undefined,
-  }));
+  return rawMatch.info.participants.map((p: any) => {
+    const styles = p.perks?.styles || [];
+    const primarySelections = (styles[0]?.selections || []).map((s: any) => Number(s.perk) || 0);
+    const secondarySelections = (styles[1]?.selections || []).map((s: any) => Number(s.perk) || 0);
+    const stat = p.perks?.statPerks || {};
+    const perks = styles.length >= 2 ? {
+      primary: styles[0]?.style || 0,
+      secondary: styles[1]?.style || 0,
+      keystone: primarySelections[0] || 0,
+      primarySelections: primarySelections.slice(1, 4), // p1, p2, p3
+      secondarySelections: secondarySelections.slice(0, 2), // s1, s2
+      statPerks: {
+        off: Number(stat.offense) || 0,
+        flex: Number(stat.flex) || 0,
+        def: Number(stat.defense) || 0,
+      },
+    } : undefined;
+    return {
+      puuid: p.puuid || '',
+      summonerName: p.riotIdGameName ? `${p.riotIdGameName}#${p.riotIdTagline || ''}` : p.summonerName || 'Unknown',
+      champion: p.championName || '',
+      championId: p.championId || 0,
+      champLevel: p.champLevel || 0,
+      teamId: p.teamId || 0,
+      role: p.individualPosition || p.teamPosition || 'UNKNOWN',
+      kills: p.kills || 0,
+      deaths: p.deaths || 0,
+      assists: p.assists || 0,
+      cs: (p.totalMinionsKilled || 0) + (p.neutralMinionsKilled || 0),
+      damageDealt: p.totalDamageDealt || 0,
+      damageDealtToChampions: p.totalDamageDealtToChampions || 0,
+      damageTaken: p.totalDamageTaken || 0,
+      goldEarned: p.goldEarned || 0,
+      visionScore: p.visionScore || 0,
+      wardsPlaced: p.wardsPlaced || 0,
+      controlWardsPlaced: p.challenges?.controlWardsPlaced || p.detectorWardsPlaced || 0,
+      items: [p.item0 || 0, p.item1 || 0, p.item2 || 0, p.item3 || 0, p.item4 || 0, p.item5 || 0, p.item6 || 0],
+      summoner1Id: p.summoner1Id || 0,
+      summoner2Id: p.summoner2Id || 0,
+      win: p.win || false,
+      perks,
+    };
+  });
 }
 
 /** Extract ban data from a raw match */

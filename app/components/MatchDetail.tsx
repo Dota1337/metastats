@@ -1,6 +1,7 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useI18n } from '../lib/i18n';
+import { loadRuneIndex, loadSummonerIndex, RUNE_IMG_BASE, type RuneInfo, type SummonerInfo } from '../lib/dd-assets';
 
 interface Participant {
   summonerName: string;
@@ -20,7 +21,17 @@ interface Participant {
   wardsPlaced: number;
   controlWardsPlaced: number;
   items: number[];
+  summoner1Id: number;
+  summoner2Id: number;
   win: boolean;
+  perks?: {
+    primary: number;
+    secondary: number;
+    keystone: number;
+    primarySelections: number[];
+    secondarySelections: number[];
+    statPerks: { off: number; flex: number; def: number };
+  };
 }
 
 interface Props {
@@ -37,6 +48,16 @@ interface Props {
 export default function MatchDetail({ match, ddVersion, isExpanded, onToggle, formatDuration, timeAgo, getQueueName, roleLabels }: Props) {
   const { t } = useI18n();
   const [activeTab, setActiveTab] = useState<'overview' | 'damage'>('overview');
+  const [runeIdx, setRuneIdx] = useState<Record<number, RuneInfo>>({});
+  const [summonerIdx, setSummonerIdx] = useState<Record<number, SummonerInfo>>({});
+
+  useEffect(() => {
+    if (!ddVersion) return;
+    let cancelled = false;
+    loadRuneIndex(ddVersion).then(idx => { if (!cancelled) setRuneIdx(idx); });
+    loadSummonerIndex(ddVersion).then(idx => { if (!cancelled) setSummonerIdx(idx); });
+    return () => { cancelled = true; };
+  }, [ddVersion]);
   const kdaVal = match.deaths > 0
     ? ((match.kills + match.assists) / match.deaths).toFixed(2)
     : 'Perfect';
@@ -160,7 +181,8 @@ export default function MatchDetail({ match, ddVersion, isExpanded, onToggle, fo
                 {activeTab === 'overview' && (
                   <>
                     {/* Desktop header */}
-                    <div className="hidden md:grid grid-cols-[2rem_1.8rem_1fr_4.5rem_3.5rem_4rem_3rem_3rem_10rem] gap-1 px-2 py-1 text-[#4a5a70] text-[10px] uppercase bg-[#0a0e1a]">
+                    <div className="hidden md:grid grid-cols-[2rem_3.4rem_1.8rem_1fr_4.5rem_3.5rem_4rem_3rem_3rem_10rem] gap-1 px-2 py-1 text-[#4a5a70] text-[10px] uppercase bg-[#0a0e1a]">
+                      <div />
                       <div />
                       <div />
                       <div>{t('match.player')}</div>
@@ -180,15 +202,37 @@ export default function MatchDetail({ match, ddVersion, isExpanded, onToggle, fo
                     </div>
                     {team.map((p, pi) => {
                       const pKda = p.deaths > 0 ? ((p.kills + p.assists) / p.deaths).toFixed(1) : 'P';
+                      const sum1 = summonerIdx[p.summoner1Id];
+                      const sum2 = summonerIdx[p.summoner2Id];
+                      const keystone = p.perks ? runeIdx[p.perks.keystone] : undefined;
+                      const secondaryTree = p.perks ? runeIdx[p.perks.secondary] : undefined;
                       return (
                         <div key={pi}>
                           {/* Desktop row */}
-                          <div className="hidden md:grid grid-cols-[2rem_1.8rem_1fr_4.5rem_3.5rem_4rem_3rem_3rem_10rem] gap-1 px-2 py-1 items-center hover:bg-white/5 text-xs">
+                          <div className="hidden md:grid grid-cols-[2rem_3.4rem_1.8rem_1fr_4.5rem_3.5rem_4rem_3rem_3rem_10rem] gap-1 px-2 py-1 items-center hover:bg-white/5 text-xs">
                             <img
                               src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/champion/${p.champion}.png`}
                               alt=""
                               className="w-6 h-6 rounded"
                             />
+                            <div className="flex items-center gap-0.5">
+                              <div className="flex flex-col gap-0.5">
+                                {sum1 ? (
+                                  <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/spell/${sum1.iconFile}`} alt={sum1.key} title={sum1.key} className="w-[14px] h-[14px] rounded-sm" />
+                                ) : <div className="w-[14px] h-[14px] rounded-sm bg-[#1e2a3a]" />}
+                                {sum2 ? (
+                                  <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/spell/${sum2.iconFile}`} alt={sum2.key} title={sum2.key} className="w-[14px] h-[14px] rounded-sm" />
+                                ) : <div className="w-[14px] h-[14px] rounded-sm bg-[#1e2a3a]" />}
+                              </div>
+                              <div className="flex flex-col items-center gap-0.5">
+                                {keystone ? (
+                                  <img src={`${RUNE_IMG_BASE}${keystone.icon}`} alt={keystone.name} title={keystone.name} className="w-[18px] h-[18px] rounded-full bg-black/40" />
+                                ) : <div className="w-[18px] h-[18px] rounded-full bg-[#1e2a3a]" />}
+                                {secondaryTree ? (
+                                  <img src={`${RUNE_IMG_BASE}${secondaryTree.icon}`} alt={secondaryTree.name} title={secondaryTree.name} className="w-[12px] h-[12px] rounded-full bg-black/40" />
+                                ) : <div className="w-[12px] h-[12px] rounded-full bg-[#1e2a3a]" />}
+                              </div>
+                            </div>
                             <div className="text-[#4a5a70] text-[10px]">{p.champLevel}</div>
                             <div className="text-white truncate text-xs">{p.summonerName.split('#')[0]}</div>
                             <div className="text-center">

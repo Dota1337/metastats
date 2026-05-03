@@ -48,11 +48,15 @@ jobs:
         run: node scripts/build-tft-knowledge-graph.mjs --region euw1
         continue-on-error: true
 
+      - name: Refresh TFT tier distribution
+        run: node scripts/fetch-tft-tier-distribution.mjs
+        continue-on-error: true
+
       - name: Commit data updates
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add public/tft-set.json public/tft-stats-*.json public/tft-graph-*.json
+          git add public/tft-set.json public/tft-stats-*.json public/tft-graph-*.json public/tft-tier-distribution.json
           if git diff --staged --quiet; then
             echo "No data changes to commit"
           else

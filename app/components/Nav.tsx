@@ -127,12 +127,11 @@ export default function Nav({ active }: NavProps) {
         <div className="hidden lg:flex items-center gap-4 flex-1 justify-end">
           {game === 'tft' ? (
             <>
-              <a href="/tft" className={linkClass('search')}>{t('nav.search')}</a>
+              <a href="/tft" className={linkClass('comps')}>{t('nav.comps')}</a>
               <a href="/tft/leaderboard" className={linkClass('leaderboard')}>{t('nav.leaderboard')}</a>
               <a href="/tft/units" className={linkClass('units')}>{t('nav.units')}</a>
               <a href="/tft/items" className={linkClass('items')}>{t('nav.items')}</a>
               <a href="/tft/augments" className={linkClass('augments')}>{t('nav.augments')}</a>
-              <a href="/tft/comps" className={linkClass('comps')}>{t('nav.comps')}</a>
               <a href="/tft/traits" className={linkClass('traits')}>{t('nav.traits')}</a>
               <a href="/tft/marktwert" className={linkClass('marktwert')}>{t('nav.marketvalue')}</a>
               <a href="/tft/compare" className={linkClass('analyse')}>{t('nav.analyse')}</a>
@@ -331,12 +330,11 @@ export default function Nav({ active }: NavProps) {
         <div className="lg:hidden mt-3 pt-3 border-t border-[#1e2a3a] flex flex-col gap-3">
           {game === 'tft' ? (
             <>
-              <a href="/tft" className={linkClass('search')} onClick={() => setMenuOpen(false)}>{t('nav.search')}</a>
+              <a href="/tft" className={linkClass('comps')} onClick={() => setMenuOpen(false)}>{t('nav.comps')}</a>
               <a href="/tft/leaderboard" className={linkClass('leaderboard')} onClick={() => setMenuOpen(false)}>{t('nav.leaderboard')}</a>
               <a href="/tft/units" className={linkClass('units')} onClick={() => setMenuOpen(false)}>{t('nav.units')}</a>
               <a href="/tft/items" className={linkClass('items')} onClick={() => setMenuOpen(false)}>{t('nav.items')}</a>
               <a href="/tft/augments" className={linkClass('augments')} onClick={() => setMenuOpen(false)}>{t('nav.augments')}</a>
-              <a href="/tft/comps" className={linkClass('comps')} onClick={() => setMenuOpen(false)}>{t('nav.comps')}</a>
               <a href="/tft/traits" className={linkClass('traits')} onClick={() => setMenuOpen(false)}>{t('nav.traits')}</a>
               <a href="/tft/marktwert" className={linkClass('marktwert')} onClick={() => setMenuOpen(false)}>{t('nav.marketvalue')}</a>
               <a href="/tft/compare" className={linkClass('analyse')} onClick={() => setMenuOpen(false)}>{t('nav.analyse')}</a>

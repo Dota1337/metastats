@@ -8,7 +8,7 @@ import CompList from '../components/tft/CompList';
 export default function TftLandingPage() {
   return (
     <main className="min-h-screen bg-[#0e1525]">
-      <Nav active="search" />
+      <Nav active="comps" />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
         <CompList />
       </div>

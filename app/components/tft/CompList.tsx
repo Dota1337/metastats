@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import TierFilter, { type TierBucket } from './TierFilter';
 import EmptyData from './EmptyData';
 import CompCard from './CompCard';
@@ -9,26 +9,40 @@ import {
   type TftChampion, type TftItem, type TftTrait, type TftAugment,
 } from '../../lib/tft-dd-assets';
 
-// Reusable comp tier list — used both on /tft (TFT landing) and /tft/comps.
-// MetaTFT-style: dense card grid sorted by avg placement, S/A/B/C tier badges,
-// stats prominent on the right, units row with carry highlighted.
+const REGIONS: { value: string; label: string }[] = [
+  { value: 'euw1', label: 'EUW' },
+  { value: 'kr',   label: 'KR' },
+  { value: 'na1',  label: 'NA' },
+];
+
+// Sort options users actually want — placement is the TFT skill metric;
+// pick-rate signals "what is meta now"; top-1 finds the snowball comps.
+const SORT_OPTIONS: { value: string; label: string }[] = [
+  { value: 'avgPlacement', label: 'Ø Platzierung' },
+  { value: 'pickRate',     label: 'Pick-Rate' },
+  { value: 'top4Rate',     label: 'Top 4' },
+  { value: 'top1Rate',     label: 'Sieg-Rate' },
+];
 
 export default function CompList() {
   const { t } = useI18n();
   const [bucket, setBucket] = useState<TierBucket>('master_plus');
+  const [region, setRegion] = useState('euw1');
+  const [sortBy, setSortBy] = useState('avgPlacement');
   const [comps, setComps] = useState<any[]>([]);
   const [hasData, setHasData] = useState<boolean | null>(null);
+  const [meta, setMeta] = useState<{ set?: number; setName?: string; patch?: string; matchesAnalyzed?: number; minGames?: number } | null>(null);
   const [ddVersion, setDdVersion] = useState('');
-  const [setMeta, setSetMeta] = useState<{ setNumber: number; setName: string; latestPatch: string } | null>(null);
+  const [setInfo, setSetInfo] = useState<{ setNumber: number; setName: string; latestPatch: string } | null>(null);
   const [champs, setChamps] = useState<Record<string, TftChampion>>({});
   const [items, setItems] = useState<Record<number, TftItem>>({});
   const [traits, setTraits] = useState<Record<string, TftTrait>>({});
   const [augs, setAugs] = useState<Record<string, TftAugment>>({});
 
   useEffect(() => {
-    loadTftSetMeta().then(meta => {
-      if (meta?.latestPatch) setDdVersion(meta.latestPatch);
-      if (meta) setSetMeta(meta as any);
+    loadTftSetMeta().then(m => {
+      if (m?.latestPatch) setDdVersion(m.latestPatch);
+      if (m) setSetInfo(m as any);
     });
   }, []);
   useEffect(() => {
@@ -39,34 +53,81 @@ export default function CompList() {
     loadTftAugments(ddVersion).then(setAugs);
   }, [ddVersion]);
   useEffect(() => {
-    fetch(`/api/tft/comps?region=euw1&bucket=${bucket}&source=data`)
+    setComps([]);
+    setHasData(null);
+    fetch(`/api/tft/comps?region=${region}&bucket=${bucket}&source=data`)
       .then(r => r.json())
-      .then(d => { setHasData(!!d.hasData); setComps(d.comps || []); })
+      .then(d => {
+        setHasData(!!d.hasData);
+        setComps(d.comps || []);
+        setMeta({ set: d.set, setName: d.setName, patch: d.patch, matchesAnalyzed: d.matchesAnalyzed, minGames: d.minGames });
+      })
       .catch(() => { setHasData(false); setComps([]); });
-  }, [bucket]);
+  }, [bucket, region]);
+
+  const sorted = useMemo(() => {
+    const c = [...comps];
+    if (sortBy === 'avgPlacement') c.sort((a, b) => (a.avgPlacement ?? 9) - (b.avgPlacement ?? 9));
+    else if (sortBy === 'pickRate') c.sort((a, b) => (b.pickRate ?? 0) - (a.pickRate ?? 0));
+    else if (sortBy === 'top4Rate') c.sort((a, b) => (b.top4Rate ?? 0) - (a.top4Rate ?? 0));
+    else if (sortBy === 'top1Rate') c.sort((a, b) => (b.top1Rate ?? 0) - (a.top1Rate ?? 0));
+    return c;
+  }, [comps, sortBy]);
 
   return (
     <>
-      {/* Set header bar */}
-      {setMeta && (
-        <div className="flex items-center justify-between gap-3 mb-4">
-          <div>
-            <div className="text-[#7B61FF] text-xs uppercase tracking-widest">Set {setMeta.setNumber} · {setMeta.setName}</div>
-            <h1 className="text-white text-2xl font-medium mt-1">{t('nav.comps')}</h1>
-          </div>
-          <TierFilter value={bucket} onChange={setBucket} />
+      {/* Set + region header */}
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-4">
+        <div>
+          {setInfo && <div className="text-[#7B61FF] text-xs uppercase tracking-widest">Set {setInfo.setNumber} · {setInfo.setName}{meta?.patch ? ` · Patch ${meta.patch}` : ''}</div>}
+          <h1 className="text-white text-2xl font-medium mt-1">{t('nav.comps')}</h1>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {REGIONS.map(r => (
+            <button
+              key={r.value}
+              onClick={() => setRegion(r.value)}
+              className={`px-3 py-1.5 rounded text-xs font-medium ${region === r.value ? 'bg-[#7B61FF] text-white' : 'bg-[#141c2e] text-[#8a9bb0] hover:text-white'}`}
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+        <TierFilter value={bucket} onChange={setBucket} />
+        <div className="flex-1" />
+        <div className="flex items-center gap-2">
+          <span className="text-[#4a5a70] text-xs">Sortieren:</span>
+          <select
+            value={sortBy}
+            onChange={e => setSortBy(e.target.value)}
+            className="bg-[#141c2e] border border-[#1e2a3a] rounded px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#7B61FF]/60"
+          >
+            {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {/* Data scope summary */}
+      {hasData && meta?.matchesAnalyzed != null && (
+        <div className="text-[#4a5a70] text-[11px] mb-3">
+          {meta.matchesAnalyzed.toLocaleString('de-DE')} Matches analysiert · {sorted.length} Comps mit ≥ {meta.minGames ?? 30} Spielen
         </div>
       )}
 
       {hasData === false && <EmptyData />}
-      {hasData && comps.length === 0 && (
+      {hasData && sorted.length === 0 && (
         <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#8a9bb0] text-sm">
-          Keine Comps mit ausreichend Spielen in diesem Tier-Bucket.
+          {region !== 'euw1'
+            ? 'Für diese Region wurden noch keine Daten gecrawlt — aktuell nur EUW. KR und NA folgen mit dem Production-Key.'
+            : 'Keine Comps mit ausreichend Spielen für diese Auswahl.'}
         </div>
       )}
 
       <div className="space-y-2">
-        {comps.map((c, i) => (
+        {sorted.map((c, i) => (
           <CompCard
             key={c.slug}
             comp={c}
@@ -76,7 +137,7 @@ export default function CompList() {
             items={items}
             traits={traits}
             augs={augs}
-            href={`/tft/comps/${encodeURIComponent(c.slug)}?bucket=${bucket}`}
+            href={`/tft/comps/${encodeURIComponent(c.slug)}?bucket=${bucket}&region=${region}`}
           />
         ))}
       </div>

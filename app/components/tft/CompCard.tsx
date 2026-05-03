@@ -16,6 +16,7 @@ interface Comp {
   authorName?: string;
 }
 
+
 // Defensive: roll-up data from older crawler versions wrote count as `{}`
 // (mergeBuckets bug). We accept either a number or an object and bump the
 // fallback to 1 so cards still render consistently.
@@ -145,7 +146,8 @@ export default function CompCard({
         <div className="flex items-stretch gap-2 text-right">
           <Stat label="Avg" value={comp.avgPlacement?.toFixed(2) ?? '—'} accent={tier.color} />
           <Stat label="Top 4" value={comp.top4Rate != null ? `${(comp.top4Rate * 100).toFixed(0)}%` : '—'} />
-          <Stat label="Top 1" value={comp.top1Rate != null ? `${(comp.top1Rate * 100).toFixed(0)}%` : '—'} />
+          <Stat label="Sieg" value={comp.top1Rate != null ? `${(comp.top1Rate * 100).toFixed(0)}%` : '—'} />
+          <Stat label="Pick" value={comp.pickRate != null ? `${(comp.pickRate * 100).toFixed(2)}%` : '—'} />
           <div className="flex flex-col items-end justify-center pl-2 border-l border-[#1e2a3a]">
             <div className="text-[#4a5a70] text-[9px] uppercase tracking-widest">Spiele</div>
             <div className="text-[#8a9bb0] text-sm">{comp.games}</div>

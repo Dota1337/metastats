@@ -16,14 +16,27 @@ export async function GET(request: NextRequest) {
   const sourceRaw = (searchParams.get('source') || 'data').toLowerCase();
   const source = VALID_SOURCES.has(sourceRaw) ? sourceRaw : 'data';
   const slug = searchParams.get('slug'); // optional: detail view
+  const minGames = Math.max(0, parseInt(searchParams.get('minGames') || '30', 10));
 
   const dataComps: any[] = [];
+  let stats: any = null;
   if (source === 'data' || source === 'all') {
-    const stats = loadTftStats(region);
+    stats = loadTftStats(region);
     if (stats?.byComp) {
+      // Total participants in this bucket = total comp-games. We compute it
+      // once and reuse for pick rates so each row carries `playRate` directly.
+      let bucketParticipants = 0;
+      for (const buckets of Object.values<any>(stats.byComp)) {
+        const b = buckets[bucket] || buckets.all;
+        if (b) bucketParticipants += b.games;
+      }
+
       for (const [clusterKey, buckets] of Object.entries<any>(stats.byComp)) {
         const b = buckets[bucket] || buckets.all;
         if (!b) continue;
+        // Apply sample threshold so the long-tail of cluster keys (5–10 games)
+        // doesn't pollute the tier list with statistically meaningless entries.
+        if (b.games < minGames) continue;
         dataComps.push({
           source: 'data',
           slug: clusterKey,
@@ -32,6 +45,8 @@ export async function GET(request: NextRequest) {
           avgPlacement: b.games > 0 ? b.sumPlacement / b.games : null,
           top4Rate: b.games > 0 ? b.top4 / b.games : null,
           top1Rate: b.games > 0 ? b.top1 / b.games : null,
+          // pickRate = % of all comp-games in this bucket that picked this cluster
+          pickRate: bucketParticipants > 0 ? b.games / bucketParticipants : null,
           typicalUnits: b.typicalUnits || [],
           typicalAugments: b.typicalAugments || [],
           carryItems: b.carryItems || [],
@@ -72,6 +87,11 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     region, bucket, source,
     hasData: dataComps.length > 0 || editorialComps.length > 0,
+    set: stats?.set,
+    setName: stats?.setName,
+    patch: stats?.patch,
+    matchesAnalyzed: stats?.matchesAnalyzed ?? null,
+    minGames,
     comps: source === 'editorial' ? editorialComps
          : source === 'all' ? [...editorialComps, ...dataComps]
          : dataComps,

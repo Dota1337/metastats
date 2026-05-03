@@ -1,18 +1,68 @@
 {
   "queue": "RANKED_TFT",
   "month": "March 2026",
-  "fetchedAt": "2026-05-03T14:50:00Z",
+  "fetchedAt": "2026-05-03T20:44:28.037Z",
   "source": "esportstales.com",
   "tiers": [
-    { "key": "IRON",        "label": "Iron",    "color": "#6b6b6b", "pct": 0.89 },
-    { "key": "BRONZE",      "label": "Bronze",  "color": "#a0652a", "pct": 8.8 },
-    { "key": "SILVER",      "label": "Silver",  "color": "#8fa0a8", "pct": 22 },
-    { "key": "GOLD",        "label": "Gold",    "color": "#c89b3c", "pct": 29 },
-    { "key": "PLATINUM",    "label": "Plat",    "color": "#209e85", "pct": 23 },
-    { "key": "EMERALD",     "label": "Emerald", "color": "#00a86b", "pct": 11 },
-    { "key": "DIAMOND",     "label": "Dia",     "color": "#576cce", "pct": 4.2 },
-    { "key": "MASTER",      "label": "Master",  "color": "#9d48e0", "pct": 1.5 },
-    { "key": "GRANDMASTER", "label": "GM",      "color": "#e44040", "pct": 0.043 },
-    { "key": "CHALLENGER",  "label": "Chall",   "color": "#f0c040", "pct": 0.021 }
+    {
+      "key": "IRON",
+      "label": "Iron",
+      "color": "#6b6b6b",
+      "pct": 0.89
+    },
+    {
+      "key": "BRONZE",
+      "label": "Bronze",
+      "color": "#a0652a",
+      "pct": 8.8
+    },
+    {
+      "key": "SILVER",
+      "label": "Silver",
+      "color": "#8fa0a8",
+      "pct": 22
+    },
+    {
+      "key": "GOLD",
+      "label": "Gold",
+      "color": "#c89b3c",
+      "pct": 29
+    },
+    {
+      "key": "PLATINUM",
+      "label": "Plat",
+      "color": "#209e85",
+      "pct": 23
+    },
+    {
+      "key": "EMERALD",
+      "label": "Emerald",
+      "color": "#00a86b",
+      "pct": 11
+    },
+    {
+      "key": "DIAMOND",
+      "label": "Dia",
+      "color": "#576cce",
+      "pct": 4.2
+    },
+    {
+      "key": "MASTER",
+      "label": "Master",
+      "color": "#9d48e0",
+      "pct": 1.5
+    },
+    {
+      "key": "GRANDMASTER",
+      "label": "GM",
+      "color": "#e44040",
+      "pct": 0.043
+    },
+    {
+      "key": "CHALLENGER",
+      "label": "Chall",
+      "color": "#f0c040",
+      "pct": 0.021
+    }
   ]
 }

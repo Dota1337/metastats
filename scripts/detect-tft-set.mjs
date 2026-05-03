@@ -1,0 +1,126 @@
+#!/usr/bin/env node
+// Detects the current live TFT set and writes public/tft-set.json so the
+// frontend + downstream crawlers know which set's data to display.
+//
+// Source: CommunityDragon's tft/en_us.json (the de-facto authoritative TFT
+// metadata mirror — Riot Data Dragon does not expose a set list directly).
+// Strategy: find the highest "number" in setData[] whose mutator matches
+// /^TFTSet\d+$/ (no TURBO / no subset variants). That is the live ranked set.
+
+import { writeFileSync, readFileSync, existsSync, appendFileSync } from 'node:fs';
+import { request as httpsRequest } from 'node:https';
+import { lookup as dnsLookup } from 'node:dns';
+
+const SOURCE_URL = 'https://raw.communitydragon.org/latest/cdragon/tft/en_us.json';
+const OUT = 'public/tft-set.json';
+
+// Riot's CommunityDragon mirror only exposes the internal mutator name
+// ("Set17") — the marketing-facing name ("Space Gods") is not in the JSON.
+// Hardcoded mapping for the user-visible label, fallback "Set N".
+const SET_NAMES = {
+  10: 'Remix Rumble',
+  11: 'Inkborn Fables',
+  12: 'Magic n\' Mayhem',
+  13: 'Into the Arcane',
+  14: 'Cyber City',
+  15: 'Spatulor',
+  16: 'K.O. Coliseum',
+  17: 'Space Gods',
+};
+
+function lookupIPv4(host) {
+  return new Promise((resolve, reject) => {
+    dnsLookup(host, { family: 4 }, (err, addr) => err ? reject(err) : resolve(addr));
+  });
+}
+
+async function fetchJSON(url) {
+  const u = new URL(url);
+  const ip = await lookupIPv4(u.hostname);
+  return new Promise((resolve, reject) => {
+    const req = httpsRequest({
+      host: ip,
+      servername: u.hostname,
+      port: 443,
+      path: u.pathname + u.search,
+      method: 'GET',
+      headers: { Host: u.hostname, 'User-Agent': 'metastats-crawler/1.0' },
+    }, res => {
+      const chunks = [];
+      res.on('data', c => chunks.push(c));
+      res.on('end', () => {
+        if (res.statusCode !== 200) return reject(new Error(`HTTP ${res.statusCode}`));
+        try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8'))); }
+        catch (e) { reject(e); }
+      });
+    });
+    req.on('error', reject);
+    req.setTimeout(60000, () => req.destroy(new Error('timeout')));
+    req.end();
+  });
+}
+
+async function fetchLatestPatch() {
+  // Riot Data Dragon's versions.json is the authoritative patch list; first entry is latest.
+  const url = 'https://ddragon.leagueoflegends.com/api/versions.json';
+  const v = await fetchJSON(url);
+  return Array.isArray(v) ? v[0] : null;
+}
+
+function setOutput(key, value) {
+  const file = process.env.GITHUB_OUTPUT;
+  if (file) appendFileSync(file, `${key}=${value}\n`);
+}
+
+async function main() {
+  console.log('[1/3] Fetch latest patch from Data Dragon');
+  const patch = await fetchLatestPatch();
+  console.log('      patch:', patch);
+
+  console.log('[2/3] Fetch TFT metadata from CommunityDragon');
+  const cd = await fetchJSON(SOURCE_URL);
+  const setData = cd?.setData || [];
+  console.log('      setData entries:', setData.length);
+
+  // Pick the live set: highest "number" with a mutator that is exactly
+  // "TFTSet<N>" — this filters out TURBO subsets and beta variants.
+  const liveSets = setData.filter(s => /^TFTSet\d+$/.test(s.mutator || ''));
+  if (liveSets.length === 0) {
+    console.error('ERROR: no live set found in CommunityDragon data');
+    process.exit(1);
+  }
+  const live = liveSets.sort((a, b) => (b.number || 0) - (a.number || 0))[0];
+  const displayName = SET_NAMES[live.number] || `Set ${live.number}`;
+  console.log(`      live set: ${live.number} "${displayName}" (mutator ${live.mutator})`);
+
+  console.log('[3/3] Compare against existing tft-set.json + write');
+  const stored = existsSync(OUT) ? JSON.parse(readFileSync(OUT, 'utf8')) : null;
+  const changed = !stored || stored.setNumber !== live.number;
+
+  const payload = {
+    setNumber: live.number,
+    setName: displayName,
+    mutator: live.mutator,
+    latestPatch: patch,
+    detectedAt: stored?.detectedAt && !changed ? stored.detectedAt : new Date().toISOString(),
+    lastCheckedAt: new Date().toISOString(),
+    history: stored?.history || [],
+  };
+  if (changed && stored?.setNumber) {
+    payload.history = [
+      { setNumber: stored.setNumber, setName: stored.setName, mutator: stored.mutator, endedAt: new Date().toISOString() },
+      ...(stored.history || []),
+    ];
+    console.log(`      DETECTED: set ${stored.setNumber} -> ${live.number}`);
+    setOutput('set-changed', 'true');
+    setOutput('previous-set', String(stored.setNumber));
+    setOutput('new-set', String(live.number));
+  } else {
+    console.log('      no bump');
+    setOutput('set-changed', 'false');
+  }
+  writeFileSync(OUT, JSON.stringify(payload, null, 2) + '\n');
+  console.log(`      -> ${OUT}`);
+}
+
+main().catch(err => { console.error('FAIL:', err.message); process.exit(1); });

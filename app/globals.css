@@ -3,6 +3,15 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* Game-specific accent. Default = LoL gold. Nav root sets data-game="tft"
+     on the <nav> element when the route starts with /tft, which swaps this
+     to TFT purple. Components reference var(--accent) for game-aware hover
+     borders, focus rings, etc. */
+  --accent: #c89b3c;
+}
+
+nav[data-game="tft"] {
+  --accent: #7B61FF;
 }
 
 @theme inline {

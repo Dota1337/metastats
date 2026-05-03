@@ -1,9 +1,14 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
+import { usePathname } from 'next/navigation';
 import { useI18n, LANGUAGES } from '../lib/i18n';
+import { detectGameFromPath } from '../lib/games';
+import GameSwitcher from './GameSwitcher';
 
 interface NavProps {
-  active?: 'search' | 'leaderboard' | 'champions' | 'marktwert' | 'analyse' | 'teams' | 'ligen';
+  active?:
+    | 'search' | 'leaderboard' | 'champions' | 'marktwert' | 'analyse' | 'teams' | 'ligen'
+    | 'units' | 'items' | 'augments' | 'comps' | 'traits';
 }
 
 interface SearchResult {
@@ -15,6 +20,8 @@ interface SearchResult {
 
 export default function Nav({ active }: NavProps) {
   const { lang, setLang, t } = useI18n();
+  const pathname = usePathname() || '/';
+  const game = detectGameFromPath(pathname);
   const [langOpen, setLangOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -102,22 +109,44 @@ export default function Nav({ active }: NavProps) {
     }
   };
 
+  const homeHref = game === 'tft' ? '/tft' : '/';
+  const accentClass = game === 'tft' ? 'text-[#7B61FF]' : 'text-[#c89b3c]';
+
   return (
-    <nav className="bg-[#0a0e1a] border-b border-[#1e2a3a] px-4 sm:px-6 py-3">
+    <nav className="bg-[#0a0e1a] border-b border-[#1e2a3a] px-4 sm:px-6 py-3" data-game={game}>
       <div className="flex items-center justify-between gap-3">
-        <a href="/" className="text-[#c89b3c] text-lg font-medium flex-shrink-0">
-          meta<span className="text-white">stats</span>.gg
-        </a>
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <GameSwitcher />
+          <a href={homeHref} className={`${accentClass} text-lg font-medium flex-shrink-0`}>
+            meta<span className="text-white">stats</span>.gg
+          </a>
+        </div>
 
         {/* Desktop nav */}
         <div className="hidden lg:flex items-center gap-4 flex-1 justify-end">
-          <a href="/" className={linkClass('search')}>{t('nav.search')}</a>
-          <a href="/leaderboard" className={linkClass('leaderboard')}>{t('nav.leaderboard')}</a>
-          <a href="/champions" className={linkClass('champions')}>{t('nav.champions')}</a>
-          <a href="/marktwert" className={linkClass('marktwert')}>{t('nav.marketvalue')}</a>
-          <a href="/teams" className={linkClass('teams')}>{t('nav.proTeams')}</a>
-          <a href="/ligen" className={linkClass('ligen')}>{t('nav.leagues')}</a>
-          <a href="/compare" className={linkClass('analyse')}>{t('nav.analyse')}</a>
+          {game === 'tft' ? (
+            <>
+              <a href="/tft" className={linkClass('search')}>{t('nav.search')}</a>
+              <a href="/tft/leaderboard" className={linkClass('leaderboard')}>{t('nav.leaderboard')}</a>
+              <a href="/tft/units" className={linkClass('units')}>{t('nav.units')}</a>
+              <a href="/tft/items" className={linkClass('items')}>{t('nav.items')}</a>
+              <a href="/tft/augments" className={linkClass('augments')}>{t('nav.augments')}</a>
+              <a href="/tft/comps" className={linkClass('comps')}>{t('nav.comps')}</a>
+              <a href="/tft/traits" className={linkClass('traits')}>{t('nav.traits')}</a>
+              <a href="/tft/marktwert" className={linkClass('marktwert')}>{t('nav.marketvalue')}</a>
+              <a href="/tft/compare" className={linkClass('analyse')}>{t('nav.analyse')}</a>
+            </>
+          ) : (
+            <>
+              <a href="/" className={linkClass('search')}>{t('nav.search')}</a>
+              <a href="/leaderboard" className={linkClass('leaderboard')}>{t('nav.leaderboard')}</a>
+              <a href="/champions" className={linkClass('champions')}>{t('nav.champions')}</a>
+              <a href="/marktwert" className={linkClass('marktwert')}>{t('nav.marketvalue')}</a>
+              <a href="/teams" className={linkClass('teams')}>{t('nav.proTeams')}</a>
+              <a href="/ligen" className={linkClass('ligen')}>{t('nav.leagues')}</a>
+              <a href="/compare" className={linkClass('analyse')}>{t('nav.analyse')}</a>
+            </>
+          )}
 
           {/* Global Search */}
           <div ref={searchRef} className="relative">
@@ -299,13 +328,29 @@ export default function Nav({ active }: NavProps) {
       {/* Mobile menu */}
       {menuOpen && (
         <div className="lg:hidden mt-3 pt-3 border-t border-[#1e2a3a] flex flex-col gap-3">
-          <a href="/" className={linkClass('search')} onClick={() => setMenuOpen(false)}>{t('nav.search')}</a>
-          <a href="/leaderboard" className={linkClass('leaderboard')} onClick={() => setMenuOpen(false)}>{t('nav.leaderboard')}</a>
-          <a href="/champions" className={linkClass('champions')} onClick={() => setMenuOpen(false)}>{t('nav.champions')}</a>
-          <a href="/marktwert" className={linkClass('marktwert')} onClick={() => setMenuOpen(false)}>{t('nav.marketvalue')}</a>
-          <a href="/teams" className={linkClass('teams')} onClick={() => setMenuOpen(false)}>{t('nav.proTeams')}</a>
-          <a href="/ligen" className={linkClass('ligen')} onClick={() => setMenuOpen(false)}>{t('nav.leagues')}</a>
-          <a href="/compare" className={linkClass('analyse')} onClick={() => setMenuOpen(false)}>{t('nav.analyse')}</a>
+          {game === 'tft' ? (
+            <>
+              <a href="/tft" className={linkClass('search')} onClick={() => setMenuOpen(false)}>{t('nav.search')}</a>
+              <a href="/tft/leaderboard" className={linkClass('leaderboard')} onClick={() => setMenuOpen(false)}>{t('nav.leaderboard')}</a>
+              <a href="/tft/units" className={linkClass('units')} onClick={() => setMenuOpen(false)}>{t('nav.units')}</a>
+              <a href="/tft/items" className={linkClass('items')} onClick={() => setMenuOpen(false)}>{t('nav.items')}</a>
+              <a href="/tft/augments" className={linkClass('augments')} onClick={() => setMenuOpen(false)}>{t('nav.augments')}</a>
+              <a href="/tft/comps" className={linkClass('comps')} onClick={() => setMenuOpen(false)}>{t('nav.comps')}</a>
+              <a href="/tft/traits" className={linkClass('traits')} onClick={() => setMenuOpen(false)}>{t('nav.traits')}</a>
+              <a href="/tft/marktwert" className={linkClass('marktwert')} onClick={() => setMenuOpen(false)}>{t('nav.marketvalue')}</a>
+              <a href="/tft/compare" className={linkClass('analyse')} onClick={() => setMenuOpen(false)}>{t('nav.analyse')}</a>
+            </>
+          ) : (
+            <>
+              <a href="/" className={linkClass('search')} onClick={() => setMenuOpen(false)}>{t('nav.search')}</a>
+              <a href="/leaderboard" className={linkClass('leaderboard')} onClick={() => setMenuOpen(false)}>{t('nav.leaderboard')}</a>
+              <a href="/champions" className={linkClass('champions')} onClick={() => setMenuOpen(false)}>{t('nav.champions')}</a>
+              <a href="/marktwert" className={linkClass('marktwert')} onClick={() => setMenuOpen(false)}>{t('nav.marketvalue')}</a>
+              <a href="/teams" className={linkClass('teams')} onClick={() => setMenuOpen(false)}>{t('nav.proTeams')}</a>
+              <a href="/ligen" className={linkClass('ligen')} onClick={() => setMenuOpen(false)}>{t('nav.leagues')}</a>
+              <a href="/compare" className={linkClass('analyse')} onClick={() => setMenuOpen(false)}>{t('nav.analyse')}</a>
+            </>
+          )}
 
           {/* Language selector mobile */}
           <div className="flex flex-wrap gap-1.5 pt-2 border-t border-[#1e2a3a]">

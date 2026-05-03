@@ -14,7 +14,9 @@ env:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    # 200 players × 95s delay = ~317 min worst case (cache hits run faster).
+    # 360 min matches the weekly-crawl ceiling and stays inside GitHub's hard cap.
+    timeout-minutes: 360
 
     steps:
       - name: Checkout repository

@@ -112,12 +112,19 @@ export default function ChampionDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedSkin, setSelectedSkin] = useState(0);
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+
+  // Riot Data Dragon expects locale codes in `xx_YY` form (de_DE, en_US, …);
+  // our app stores languages as ISO short codes (de, en, …). Map both ways.
+  const ddLocale: Record<string, string> = {
+    de: 'de_DE', en: 'en_US', ko: 'ko_KR', zh: 'zh_CN', es: 'es_ES', fr: 'fr_FR',
+  };
 
   useEffect(() => {
     if (!id) return;
     loadChampion(id as string);
-  }, [id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, lang]);
 
   const loadChampion = async (championId: string) => {
     setLoading(true);
@@ -128,14 +135,24 @@ export default function ChampionDetailPage() {
       const ver = versionData.version;
       setVersion(ver);
 
+      const locale = ddLocale[lang] || 'en_US';
       const res = await fetch(
-        `https://ddragon.leagueoflegends.com/cdn/${ver}/data/de_DE/champion/${championId}.json`
+        `https://ddragon.leagueoflegends.com/cdn/${ver}/data/${locale}/champion/${championId}.json`
       );
       if (!res.ok) throw new Error('Champion nicht gefunden');
       const data = await res.json();
       const champData = data.data[championId];
       if (!champData) throw new Error('Champion nicht gefunden');
+      // Filter chroma variants — Riot lists them as separate skin entries
+      // whose name ends in `<original> (Color)`. The boolean `chromas` flag
+      // on the parent skin already tells us "this skin has chromas", so the
+      // suffix entries are pure noise in the gallery.
+      if (Array.isArray(champData.skins)) {
+        champData.skins = champData.skins.filter((s: any) => !/\s+\([^)]+\)\s*$/.test(s.name || ''));
+      }
       setChampion(champData);
+      // Reset selectedSkin if it no longer points to a valid index after filtering
+      setSelectedSkin(0);
     } catch (e: any) {
       setError(e.message || 'Fehler beim Laden');
     } finally {

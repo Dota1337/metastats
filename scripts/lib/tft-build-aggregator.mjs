@@ -25,6 +25,8 @@ export function emptyAggregate() {
     byItem: new Map(),     // apiName -> Map<bucket, ItemBucket>
     byAugment: new Map(),  // apiName -> Map<slotKey, Map<bucket, AugmentBucket>>
     byTrait: new Map(),    // traitName -> Map<activation, Map<bucket, TraitBucket>>
+    byComp: new Map(),     // clusterKey -> Map<bucket, CompBucket>
+    byCompPair: new Map(), // "a||b" sorted -> { games, aBetter } — for counter edges
     matchesAnalyzed: 0,
     matchesSkipped: 0,
   };
@@ -54,6 +56,53 @@ function newAugmentBucket() {
 }
 function newTraitBucket() {
   return { games: 0, sumPlacement: 0, top4: 0 };
+}
+
+function newCompBucket() {
+  return {
+    games: 0, sumPlacement: 0, top4: 0, top1: 0,
+    typicalUnits: new Map(),     // characterId -> count
+    typicalAugments: new Map(),  // apiName -> { count, sumPlacement }
+    carryItems: new Map(),       // sortedItemTriple -> count (carry's full build)
+  };
+}
+
+// Cluster a participant's board into a deterministic key:
+//   `${primaryActivatedTrait}@${level}_${carryUnit}`
+// primaryActivatedTrait = highest-style activated trait, ties broken by
+//   tier_current then alphabetical. carryUnit = unit holding the most items
+//   (ties broken by highest tier (star level), then highest cost rarity).
+// Falls all units have zero items, the highest-cost unit wins. Returns null
+// if the board is so sparse that we can't classify (e.g. early surrender).
+function classifyComp(participant) {
+  const traits = (participant.traits || []).filter(t => (t.style ?? 0) > 0);
+  if (traits.length === 0) return null;
+  traits.sort((a, b) => {
+    if ((b.style ?? 0) !== (a.style ?? 0)) return (b.style ?? 0) - (a.style ?? 0);
+    if ((b.tier_current ?? 0) !== (a.tier_current ?? 0)) return (b.tier_current ?? 0) - (a.tier_current ?? 0);
+    return (a.name || '').localeCompare(b.name || '');
+  });
+  const primaryTrait = traits[0];
+
+  const units = participant.units || [];
+  if (units.length === 0) return null;
+  const ranked = [...units].sort((a, b) => {
+    const aItems = (a.itemNames || []).length;
+    const bItems = (b.itemNames || []).length;
+    if (bItems !== aItems) return bItems - aItems;
+    if ((b.tier ?? 1) !== (a.tier ?? 1)) return (b.tier ?? 1) - (a.tier ?? 1);
+    return (b.rarity ?? 0) - (a.rarity ?? 0);
+  });
+  const carry = ranked[0];
+  if (!carry?.character_id) return null;
+
+  return {
+    clusterKey: `${primaryTrait.name}@${primaryTrait.tier_current ?? 0}_${carry.character_id}`,
+    primaryTrait: primaryTrait.name,
+    primaryTraitLevel: primaryTrait.tier_current ?? 0,
+    carryUnit: carry.character_id,
+    carryItems: (carry.itemNames || []).filter(Boolean).sort(),
+  };
 }
 
 /**
@@ -86,7 +135,13 @@ export function aggregateMatch(rawMatch, agg, opts) {
   // tier-bucket attribution uses the focus player's tier — that's how
   // metatft / tactics.tools attribute games too: a match shows up under the
   // bucket of the player whose lobby it represents.
-  for (const p of participants) {
+
+  // Pre-classify each participant's comp for the comp + pair aggregations.
+  const compClass = participants.map(p => classifyComp(p));
+
+  for (let pIdx = 0; pIdx < participants.length; pIdx++) {
+    const p = participants[pIdx];
+    const compInfo = compClass[pIdx];
     const placement = p.placement ?? 9;
     const top4 = placement <= 4;
     const top1 = placement === 1;
@@ -169,6 +224,55 @@ export function aggregateMatch(rawMatch, agg, opts) {
       tb.sumPlacement += placement;
       if (top4) tb.top4++;
     }
+
+    // Per comp cluster
+    if (compInfo) {
+      const compBuckets = getOrCreate(agg.byComp, compInfo.clusterKey, () => new Map());
+      const cb = getOrCreate(compBuckets, tierBucket, newCompBucket);
+      cb.games++;
+      cb.sumPlacement += placement;
+      if (top4) cb.top4++;
+      if (top1) cb.top1++;
+      // Tag every unit on the board so the frontend can show "typical roster"
+      for (const u of p.units || []) {
+        if (!u.character_id) continue;
+        cb.typicalUnits.set(u.character_id, (cb.typicalUnits.get(u.character_id) || 0) + 1);
+      }
+      // Augments paired with this comp
+      const augs = Array.isArray(p.augments) ? p.augments : [];
+      for (const a of augs) {
+        if (!a) continue;
+        const ae = getOrCreate(cb.typicalAugments, a, () => ({ count: 0, sumPlacement: 0 }));
+        ae.count++;
+        ae.sumPlacement += placement;
+      }
+      // Carry's full 3-item build, if any
+      if (compInfo.carryItems.length === 3) {
+        const ckey = compInfo.carryItems.join('|');
+        cb.carryItems.set(ckey, (cb.carryItems.get(ckey) || 0) + 1);
+      }
+    }
+  }
+
+  // Per-match pair tracking — head-to-head between every pair of comps in
+  // the lobby (8 players → up to 28 pairs). Used downstream for counter
+  // edges. Sorted-key ensures (A,B) and (B,A) collapse.
+  for (let i = 0; i < participants.length; i++) {
+    const a = compClass[i];
+    if (!a) continue;
+    const aPlace = participants[i].placement ?? 9;
+    for (let j = i + 1; j < participants.length; j++) {
+      const b = compClass[j];
+      if (!b || a.clusterKey === b.clusterKey) continue;
+      const sorted = [a.clusterKey, b.clusterKey].sort();
+      const key = sorted.join('||');
+      const bPlace = participants[j].placement ?? 9;
+      const entry = getOrCreate(agg.byCompPair, key, () => ({ a: sorted[0], b: sorted[1], games: 0, aBetter: 0 }));
+      entry.games++;
+      const aIsFirst = sorted[0] === a.clusterKey;
+      const aWon = aPlace < bPlace;
+      if (aIsFirst ? aWon : !aWon) entry.aBetter++;
+    }
   }
 
   return true;
@@ -210,12 +314,15 @@ export function finalize(agg, opts = {}) {
   const minUnitGames = opts.minUnitGames ?? 5;
   const minItemGames = opts.minItemGames ?? 5;
   const minAugmentGames = opts.minAugmentGames ?? 5;
+  const minCompGames = opts.minCompGames ?? 8;
+  const minPairGames = opts.minPairGames ?? 10;
 
   // 1) Roll up tier buckets to derive "all" and "master_plus".
   for (const buckets of agg.byUnit.values())     rollUp(buckets);
   for (const buckets of agg.byItem.values())     rollUp(buckets);
   for (const slotMap of agg.byAugment.values())  for (const buckets of slotMap.values()) rollUp(buckets);
   for (const actMap  of agg.byTrait.values())    for (const buckets of actMap.values())  rollUp(buckets);
+  for (const buckets of agg.byComp.values())     rollUp(buckets);
 
   // 2) Convert Maps to plain objects + Top-N per section.
   const out = {
@@ -225,6 +332,8 @@ export function finalize(agg, opts = {}) {
     byItem: {},
     byAugment: {},
     byTrait: {},
+    byComp: {},
+    compPairs: [],
   };
 
   for (const [cid, buckets] of agg.byUnit) {
@@ -278,6 +387,41 @@ export function finalize(agg, opts = {}) {
       }
     }
   }
+
+  // Comp clusters
+  for (const [key, buckets] of agg.byComp) {
+    const slim = {};
+    for (const [bucket, b] of buckets) {
+      if (b.games < minCompGames) continue;
+      const typicalUnits = [...b.typicalUnits.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 9)
+        .map(([cid, count]) => ({ characterId: cid, count }));
+      const typicalAugments = [...b.typicalAugments.entries()]
+        .sort((a, b) => b[1].count - a[1].count)
+        .slice(0, 6)
+        .map(([apiName, e]) => ({ apiName, count: e.count, sumPlacement: e.sumPlacement }));
+      const carryItems = [...b.carryItems.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([k, count]) => ({ items: k.split('|'), count }));
+      slim[bucket] = {
+        games: b.games, sumPlacement: b.sumPlacement, top4: b.top4, top1: b.top1,
+        typicalUnits, typicalAugments, carryItems,
+      };
+    }
+    if (Object.keys(slim).length > 0) out.byComp[key] = slim;
+  }
+
+  // Comp pairs (counter signals) — keep only meaningful matchups
+  for (const [, e] of agg.byCompPair) {
+    if (e.games < minPairGames) continue;
+    const aWinRate = e.aBetter / e.games;
+    if (aWinRate >= 0.55 || aWinRate <= 0.45) {
+      out.compPairs.push({ a: e.a, b: e.b, games: e.games, aBetter: e.aBetter });
+    }
+  }
+
   return out;
 }
 

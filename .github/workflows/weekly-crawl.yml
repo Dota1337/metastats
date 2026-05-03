@@ -50,12 +50,19 @@ jobs:
         id: season
         run: node scripts/detect-season.mjs
 
+      # Pull external rank distribution (esportstales.com -> leagueofgraphs)
+      # so the leaderboard chart is real data, not stale hardcoded values.
+      # Failure is non-fatal: keeps the previous JSON if scrape breaks.
+      - name: Refresh tier distribution
+        run: node scripts/fetch-tier-distribution.mjs
+        continue-on-error: true
+
       # Commit updated data files
       - name: Commit data updates
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add public/pro-players.json public/champion-stats-*.json public/champion-builds-*.json public/seasons.json
+          git add public/pro-players.json public/champion-stats-*.json public/champion-builds-*.json public/seasons.json public/tier-distribution.json
           if git diff --staged --quiet; then
             echo "No data changes to commit"
           else

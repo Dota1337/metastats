@@ -1,0 +1,63 @@
+name: TFT Weekly Crawl
+
+on:
+  schedule:
+    # Saturday 06:00 UTC — phased between the LoL Friday crawl and the
+    # Sunday marketvalue refresh. Currently EUW only; KR is added once the
+    # production key arrives (it doubles the runtime per crawl).
+    - cron: '0 6 * * 6'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  RIOT_API_KEY: ${{ secrets.RIOT_API_KEY }}
+
+jobs:
+  crawl-and-deploy:
+    runs-on: ubuntu-latest
+    # ~3000 sampled players * ~4 matches with the dev-key 90 req / 2 min
+    # window puts a single region around 4-5h. 360 matches our LoL hard cap.
+    timeout-minutes: 360
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Refresh the set tag first so the crawler filters on the live set
+      # right away (the regular weekly-crawl also runs this, but the TFT
+      # workflow runs on a different day so we can't rely on that).
+      - name: Detect TFT set
+        run: node scripts/detect-tft-set.mjs
+        continue-on-error: true
+
+      - name: Crawl TFT all-ranks (EUW)
+        if: env.RIOT_API_KEY != ''
+        run: node scripts/collect-tft-allranks.mjs --region euw1
+
+      - name: Commit data updates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/tft-set.json public/tft-stats-*.json
+          if git diff --staged --quiet; then
+            echo "No data changes to commit"
+          else
+            git commit -m "chore: weekly TFT data update
+
+          Co-Authored-By: claude-flow <ruv@ruv.net>"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main && git push && break
+              echo "Push attempt $attempt failed, retrying..."
+              sleep 5
+            done
+          fi

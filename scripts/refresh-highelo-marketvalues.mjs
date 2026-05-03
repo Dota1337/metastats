@@ -14,18 +14,23 @@
  * Rate limit: ~1 player per 90 seconds (dev key: 100 req/2min)
  */
 
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
 
-// Load .env.local
-const envPath = resolve(process.cwd(), '.env.local');
-const envFile = readFileSync(envPath, 'utf8');
-const env = Object.fromEntries(
-  envFile.split('\n').filter(l => l.includes('=') && !l.startsWith('#'))
-    .map(l => { const i = l.indexOf('='); return [l.slice(0, i).trim(), l.slice(i + 1).trim()]; })
-);
-const API_KEY = env.RIOT_API_KEY;
-if (!API_KEY) { console.error('RIOT_API_KEY not found in .env.local'); process.exit(1); }
+// Prefer process.env (CI / GitHub Actions), fall back to .env.local for local runs.
+let API_KEY = process.env.RIOT_API_KEY;
+if (!API_KEY) {
+  const envPath = resolve(process.cwd(), '.env.local');
+  if (existsSync(envPath)) {
+    const envFile = readFileSync(envPath, 'utf8');
+    const env = Object.fromEntries(
+      envFile.split('\n').filter(l => l.includes('=') && !l.startsWith('#'))
+        .map(l => { const i = l.indexOf('='); return [l.slice(0, i).trim(), l.slice(i + 1).trim()]; })
+    );
+    API_KEY = env.RIOT_API_KEY;
+  }
+}
+if (!API_KEY) { console.error('RIOT_API_KEY not found (checked process.env and .env.local)'); process.exit(1); }
 
 // Parse args
 const args = process.argv.slice(2);

@@ -78,8 +78,16 @@ export async function GET(request: NextRequest) {
         .select('*')
         .eq('player_id', cached.id);
 
-      // If no ranked stats stored, fetch fresh from Riot API
-      if (!rankedData || rankedData.length === 0) {
+      // Touch-refresh: if the players row is stale (>6h since last write), pull
+      // ranked stats again so LP movements show up without a full recalculation.
+      // 6h matches typical solo-queue session length — anything finer would
+      // burn API quota for marginal freshness gains.
+      const STALE_MS = 6 * 60 * 60 * 1000;
+      const lastUpdate = cached.updated_at ? new Date(cached.updated_at).getTime() : 0;
+      const isStale = !lastUpdate || (Date.now() - lastUpdate) > STALE_MS;
+
+      // Trigger fresh fetch if stats are missing OR the row is stale.
+      if (!rankedData || rankedData.length === 0 || isStale) {
         try {
           const rankedRes = await fetch(
             `https://${region}.api.riotgames.com/lol/league/v4/entries/by-puuid/${account.puuid}?api_key=${apiKey}`
@@ -96,9 +104,16 @@ export async function GET(request: NextRequest) {
                   tier: primary.tier,
                   rank: primary.rank,
                   winrate: Math.round((primary.wins / (primary.wins + primary.losses)) * 100),
+                  updated_at: new Date().toISOString(),
                 }).eq('id', cached.id);
                 cached.tier = primary.tier;
                 cached.rank = primary.rank;
+              } else {
+                // No ranked queue at all (unranked) — still bump updated_at so we
+                // don't refresh again on every following request.
+                await supabase.from('players').update({
+                  updated_at: new Date().toISOString(),
+                }).eq('id', cached.id);
               }
               for (const q of freshRanked) {
                 await supabase.from('ranked_stats').upsert({

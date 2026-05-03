@@ -298,9 +298,17 @@ function mergeBuckets(list) {
       else if (v instanceof Map) {
         if (!out[k]) out[k] = new Map();
         for (const [kk, vv] of v) {
-          const existing = out[k].get(kk);
-          if (!existing) out[k].set(kk, mergeBuckets([vv]));
-          else out[k].set(kk, mergeBuckets([existing, vv]));
+          // Map values can be primitives (typicalUnits stores number counts)
+          // or sub-objects (item entries store {games, sumPlacement, …}).
+          // The number case has to short-circuit — passing a number through
+          // mergeBuckets returns {} because Object.entries(<number>) is empty.
+          if (typeof vv === 'number') {
+            out[k].set(kk, ((out[k].get(kk) || 0)) + vv);
+          } else {
+            const existing = out[k].get(kk);
+            if (!existing) out[k].set(kk, mergeBuckets([vv]));
+            else out[k].set(kk, mergeBuckets([existing, vv]));
+          }
         }
       } else if (Array.isArray(v)) {
         out[k] = v;  // e.g. items: [a,b,c]

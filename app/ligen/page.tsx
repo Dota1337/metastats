@@ -94,7 +94,7 @@ export default function LigenPage() {
       try {
         const [leagueRes, scheduleRes] = await Promise.all([
           fetch('/api/tournaments/standings').then(r => r.json()).catch(() => ({ leagues: [] })),
-          fetch('/api/tournaments').then(r => r.json()).catch(() => ({ tournaments: [] })),
+          fetch('/api/tournaments?window=full').then(r => r.json()).catch(() => ({ tournaments: [] })),
         ]);
         setLeagues(leagueRes.leagues || []);
         setSchedule((scheduleRes.tournaments || []).map((t: any) => ({

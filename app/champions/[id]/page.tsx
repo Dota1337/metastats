@@ -73,6 +73,38 @@ const TAG_COLORS: Record<string, string> = {
 
 const SPELL_KEYS = ['Q', 'W', 'E', 'R'];
 
+// Skin splash on Data Dragon's CDN sometimes 404s (centered splash variants,
+// late-released skins, etc.). Cascade: splash → loading → default splash.
+// If all three fail, show a styled placeholder with the alt text instead of
+// the browser's broken-image icon — Memory rule: no fake visuals.
+function SkinImage({ championId, skinNum, alt, className }: {
+  championId: string; skinNum: number; alt: string; className?: string;
+}) {
+  const [stage, setStage] = useState<0 | 1 | 2 | 3>(0);
+  // Reset cascade when the source changes
+  useEffect(() => { setStage(0); }, [championId, skinNum]);
+  if (stage === 3) {
+    return (
+      <div className={`flex items-center justify-center bg-[#141c2e] text-[#4a5a70] text-[10px] text-center px-1 ${className || ''}`}>
+        {alt || '—'}
+      </div>
+    );
+  }
+  const base = 'https://ddragon.leagueoflegends.com/cdn/img/champion';
+  const src =
+    stage === 0 ? `${base}/splash/${championId}_${skinNum}.jpg` :
+    stage === 1 ? `${base}/loading/${championId}_${skinNum}.jpg` :
+    `${base}/splash/${championId}_0.jpg`;
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className={className}
+      onError={() => setStage(s => (s < 3 ? (s + 1) as 0 | 1 | 2 | 3 : s))}
+    />
+  );
+}
+
 export default function ChampionDetailPage() {
   const { id } = useParams();
   const [champion, setChampion] = useState<ChampionData | null>(null);
@@ -326,8 +358,9 @@ export default function ChampionDetailPage() {
                 <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
                   {/* Selected skin splash */}
                   <div className="relative aspect-[16/7] overflow-hidden">
-                    <img
-                      src={`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${champion.id}_${champion.skins[selectedSkin]?.num || 0}.jpg`}
+                    <SkinImage
+                      championId={champion.id}
+                      skinNum={champion.skins[selectedSkin]?.num || 0}
                       alt={champion.skins[selectedSkin]?.name || champion.name}
                       className="w-full h-full object-cover object-top transition-opacity duration-300"
                     />
@@ -355,8 +388,9 @@ export default function ChampionDetailPage() {
                             : 'border-transparent opacity-60 hover:opacity-100'
                         }`}
                       >
-                        <img
-                          src={`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${champion.id}_${skin.num}.jpg`}
+                        <SkinImage
+                          championId={champion.id}
+                          skinNum={skin.num}
                           alt={skin.name}
                           className="w-full h-full object-cover object-top"
                         />

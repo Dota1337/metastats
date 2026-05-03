@@ -248,6 +248,51 @@ export default function Leaderboard() {
           />
         </div>
 
+        {/* Rank distribution overview (moved from /champions) */}
+        {!search.trim() && (
+          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-4">
+            <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-4">{t('champ.rankDistribution')}</div>
+            <div className="flex items-end gap-2 h-40 mb-3">
+              {[
+                { tier: 'Iron', pct: 5.6, color: '#6b6b6b' },
+                { tier: 'Bronze', pct: 19.0, color: '#a0652a' },
+                { tier: 'Silver', pct: 22.7, color: '#8fa0a8' },
+                { tier: 'Gold', pct: 24.1, color: '#c89b3c' },
+                { tier: 'Plat', pct: 14.4, color: '#209e85' },
+                { tier: 'Emerald', pct: 9.1, color: '#00a86b' },
+                { tier: 'Dia', pct: 3.5, color: '#576cce' },
+                { tier: 'Master', pct: 0.95, color: '#9d48e0' },
+                { tier: 'GM', pct: 0.04, color: '#e44040' },
+                { tier: 'Chall', pct: 0.01, color: '#f0c040' },
+              ].map((item) => {
+                const maxPct = 24.1;
+                const barHeight = Math.max((item.pct / maxPct) * 100, 2);
+                return (
+                  <div key={item.tier} className="flex-1 flex flex-col items-center gap-1">
+                    <div className="text-[10px] font-medium" style={{ color: item.color }}>
+                      {item.pct >= 1 ? item.pct.toFixed(1) + '%' : item.pct + '%'}
+                    </div>
+                    <div className="w-full relative" style={{ height: '120px' }}>
+                      <div
+                        className="absolute bottom-0 w-full rounded-t transition-all duration-500"
+                        style={{
+                          height: `${barHeight}%`,
+                          backgroundColor: item.color,
+                          opacity: 0.7,
+                          boxShadow: `0 0 8px ${item.color}40`,
+                        }}
+                      />
+                    </div>
+                    <div className="text-[10px] text-center" style={{ color: item.color }}>
+                      {item.tier}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Tier Tabs */}
         {!search.trim() && (
           <div className="flex flex-wrap gap-1 mb-4">

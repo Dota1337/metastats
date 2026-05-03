@@ -52,9 +52,11 @@ export async function GET(request: NextRequest) {
   const now = Date.now();
   const filter = request.nextUrl.searchParams.get('filter') || 'all'; // all, upcoming, live, completed
   const leagueFilter = request.nextUrl.searchParams.get('league') || '';
+  // window=full keeps past events (calendar view); default drops them (drawer)
+  const fullWindow = request.nextUrl.searchParams.get('window') === 'full';
 
   if (cached && now - cached.time < CACHE_TTL) {
-    return NextResponse.json(applyFilters(cached.data, filter, leagueFilter));
+    return NextResponse.json(applyFilters(cached.data, filter, leagueFilter, fullWindow));
   }
 
   try {
@@ -65,9 +67,11 @@ export async function GET(request: NextRequest) {
 
     const events = scheduleData?.data?.schedule?.events || [];
 
-    // Paginate forward only — the drawer shows today + 14 days, past events are dropped.
+    // Paginate both directions: 5 newer (future fixtures) + 5 older (results)
+    // pages. The drawer/calendar consumer decides via the `window` query param
+    // whether past events are kept (window=full) or dropped (default).
     const MAX_PAGES = 5;
-    let moreEvents: any[] = [];
+    const moreEvents: any[] = [];
     const initialPages = scheduleData?.data?.schedule?.pages || {};
 
     let newerToken = initialPages.newer;
@@ -76,6 +80,15 @@ export async function GET(request: NextRequest) {
         const page = await fetchLoLEsports(newerToken);
         moreEvents.push(...(page?.data?.schedule?.events || []));
         newerToken = page?.data?.schedule?.pages?.newer;
+      } catch { break; }
+    }
+
+    let olderToken = initialPages.older;
+    for (let i = 0; i < MAX_PAGES && olderToken; i++) {
+      try {
+        const page = await fetchLoLEsports(olderToken);
+        moreEvents.push(...(page?.data?.schedule?.events || []));
+        olderToken = page?.data?.schedule?.pages?.older;
       } catch { break; }
     }
 
@@ -130,19 +143,19 @@ export async function GET(request: NextRequest) {
 
     cached = { data: result, time: now };
 
-    return NextResponse.json(applyFilters(result, filter, leagueFilter));
+    return NextResponse.json(applyFilters(result, filter, leagueFilter, fullWindow));
   } catch (error) {
     return NextResponse.json({ error: 'Fehler beim Laden der Turnierdaten' }, { status: 500 });
   }
 }
 
-function applyFilters(data: any, filter: string, league: string) {
+function applyFilters(data: any, filter: string, league: string, fullWindow: boolean) {
   let tournaments = [...(data.tournaments || [])];
 
   if (filter === 'live') {
     tournaments = tournaments.filter((t: Tournament) => t.state === 'inProgress');
-  } else {
-    // Window: today 00:00 UTC through +15 days (exclusive upper bound).
+  } else if (!fullWindow) {
+    // Drawer window: today 00:00 UTC through +15 days (exclusive upper bound).
     // Live matches pass through regardless of startTime so an ongoing match that
     // began before midnight UTC never disappears from the drawer.
     const now = new Date();
@@ -157,6 +170,9 @@ function applyFilters(data: any, filter: string, league: string) {
     if (filter === 'upcoming') {
       tournaments = tournaments.filter((t: Tournament) => t.state === 'unstarted');
     }
+  } else if (filter === 'upcoming') {
+    // Full window + upcoming filter: keep only future + unstarted.
+    tournaments = tournaments.filter((t: Tournament) => t.state === 'unstarted');
   }
 
   if (league) {

@@ -1,4 +1,81 @@
-import StubPage from '../../components/tft/StubPage';
-export default function Page() {
-  return <StubPage active="traits" title="Synergien / Traits" hint="Trait-Tier-Liste mit Aktivierungs-Stufen — kommt in Stage 4." />;
+'use client';
+import { useEffect, useState } from 'react';
+import Nav from '../../components/Nav';
+import Footer from '../../components/Footer';
+import TierFilter, { type TierBucket } from '../../components/tft/TierFilter';
+import EmptyData from '../../components/tft/EmptyData';
+import { useI18n } from '../../lib/i18n';
+import { loadTftSetMeta, loadTftTraits, type TftTrait } from '../../lib/tft-dd-assets';
+
+interface TraitRow {
+  name: string;
+  activation: number;
+  games: number;
+  avgPlacement: number | null;
+  top4Rate: number | null;
 }
+
+export default function TftTraitsPage() {
+  const { t } = useI18n();
+  const [bucket, setBucket] = useState<TierBucket>('master_plus');
+  const [rows, setRows] = useState<TraitRow[]>([]);
+  const [hasData, setHasData] = useState<boolean | null>(null);
+  const [ddVersion, setDdVersion] = useState('');
+  const [traitMap, setTraitMap] = useState<Record<string, TftTrait>>({});
+
+  useEffect(() => { loadTftSetMeta().then(meta => { if (meta?.latestPatch) setDdVersion(meta.latestPatch); }); }, []);
+  useEffect(() => { if (ddVersion) loadTftTraits(ddVersion).then(setTraitMap); }, [ddVersion]);
+  useEffect(() => {
+    fetch(`/api/tft/traits?region=euw1&bucket=${bucket}`)
+      .then(r => r.json())
+      .then(d => { setHasData(!!d.hasData); setRows(d.traits || []); })
+      .catch(() => { setHasData(false); setRows([]); });
+  }, [bucket]);
+
+  return (
+    <main className="min-h-screen bg-[#0e1525]">
+      <Nav active="traits" />
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-5">
+          <h1 className="text-white text-2xl font-medium">{t('nav.traits')}</h1>
+          <TierFilter value={bucket} onChange={setBucket} />
+        </div>
+
+        {hasData === false && <EmptyData />}
+
+        {hasData && rows.length > 0 && (
+          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
+            <div className="hidden md:grid grid-cols-[3rem_1fr_4rem_5rem_5rem_5rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#4a5a70] bg-[#0a0e1a]">
+              <div></div>
+              <div>{t('nav.traits')}</div>
+              <div className="text-right">{t('tft.activation')}</div>
+              <div className="text-right">{t('tft.avgPlacement')}</div>
+              <div className="text-right">{t('tft.top4')}</div>
+              <div className="text-right">{t('tft.gamesShort')}</div>
+            </div>
+            {rows.map(r => {
+              const meta = traitMap[r.name];
+              return (
+                <div key={`${r.name}-${r.activation}`} className="grid grid-cols-[3rem_1fr_4rem_5rem_5rem_5rem] gap-2 px-4 py-2 items-center text-xs border-t border-[#1e2a3a]">
+                  {ddVersion && meta?.image?.full ? (
+                    <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/tft-trait/${meta.image.full}`} alt={meta.name} className="w-9 h-9 rounded" />
+                  ) : (
+                    <div className="w-9 h-9 rounded bg-[#1e2a3a]" />
+                  )}
+                  <div className="text-white">{meta?.name || prettyTrait(r.name)}</div>
+                  <div className="text-right text-[#7B61FF]">{r.activation}</div>
+                  <div className="text-right text-white">{r.avgPlacement?.toFixed(2) ?? '—'}</div>
+                  <div className="text-right text-[#8a9bb0]">{r.top4Rate != null ? `${(r.top4Rate * 100).toFixed(1)}%` : '—'}</div>
+                  <div className="text-right text-[#4a5a70]">{r.games}</div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+      <Footer />
+    </main>
+  );
+}
+
+function prettyTrait(s: string) { return s.replace(/^TFT\d+_/, ''); }

@@ -5,7 +5,7 @@ import Footer from '../../components/Footer';
 import TierFilter, { type TierBucket } from '../../components/tft/TierFilter';
 import EmptyData from '../../components/tft/EmptyData';
 import { useI18n } from '../../lib/i18n';
-import { loadTftAugments, loadTftSetMeta, type TftAugment } from '../../lib/tft-dd-assets';
+import { loadTftAssets, tftIconUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
 
 interface AugRow {
   apiName: string;
@@ -25,11 +25,9 @@ export default function TftAugmentsPage() {
   const [slot, setSlot] = useState<string>('all');
   const [rows, setRows] = useState<AugRow[]>([]);
   const [hasData, setHasData] = useState<boolean | null>(null);
-  const [ddVersion, setDdVersion] = useState('');
-  const [augMap, setAugMap] = useState<Record<string, TftAugment>>({});
+  const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
 
-  useEffect(() => { loadTftSetMeta().then(meta => { if (meta?.latestPatch) setDdVersion(meta.latestPatch); }); }, []);
-  useEffect(() => { if (ddVersion) loadTftAugments(ddVersion).then(setAugMap); }, [ddVersion]);
+  useEffect(() => { loadTftAssets().then(setAssets); }, []);
   useEffect(() => {
     const url = `/api/tft/augments?region=euw1&bucket=${bucket}${slot !== 'all' ? `&slot=${slot}` : ''}`;
     fetch(url).then(r => r.json())
@@ -77,13 +75,14 @@ export default function TftAugmentsPage() {
               <div className="text-right">{t('tft.gamesShort')}</div>
             </div>
             {rows.map(r => {
-              const meta = augMap[r.apiName];
+              const meta = assets?.augments[r.apiName];
               const tierColor = TIER_COLORS[meta?.tier ?? 0] || '#4a5a70';
+              const url = tftIconUrl(assets, meta?.icon);
               return (
                 <div key={`${r.apiName}-${r.slot ?? 'all'}`}
                      className="grid grid-cols-[3rem_1fr_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 items-center text-xs border-t border-[#1e2a3a]">
-                  {ddVersion && meta?.image?.full ? (
-                    <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/tft-augment/${meta.image.full}`} alt={meta.name} className="w-9 h-9 rounded border-2" style={{ borderColor: tierColor }} />
+                  {url ? (
+                    <img src={url} alt={meta!.name} className="w-9 h-9 rounded border-2" style={{ borderColor: tierColor }} />
                   ) : (
                     <div className="w-9 h-9 rounded border-2 bg-[#1e2a3a] flex items-center justify-center text-[8px] text-[#4a5a70]" style={{ borderColor: tierColor }}>{prettyAug(r.apiName)}</div>
                   )}

@@ -6,7 +6,7 @@ import Footer from '../../../components/Footer';
 import TierFilter, { type TierBucket } from '../../../components/tft/TierFilter';
 import EmptyData from '../../../components/tft/EmptyData';
 import { useI18n } from '../../../lib/i18n';
-import { loadTftChampions, loadTftItems, loadTftSetMeta, loadTftTraits, type TftChampion, type TftItem, type TftTrait } from '../../../lib/tft-dd-assets';
+import { loadTftAssets, tftIconUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 
 interface UnitDetail {
   characterId: string;
@@ -25,23 +25,11 @@ export default function TftUnitDetailPage() {
   const id = decodeURIComponent(String(params?.id || ''));
   const initialBucket = (search.get('bucket') as TierBucket) || 'master_plus';
   const [bucket, setBucket] = useState<TierBucket>(initialBucket);
-  const [data, setData] = useState<UnitDetail | null | undefined>(undefined); // undefined = loading
+  const [data, setData] = useState<UnitDetail | null | undefined>(undefined);
   const [hasData, setHasData] = useState<boolean | null>(null);
-  const [ddVersion, setDdVersion] = useState('');
-  const [champ, setChamp] = useState<TftChampion | null>(null);
-  const [items, setItems] = useState<Record<number, TftItem>>({});
-  const [traits, setTraits] = useState<Record<string, TftTrait>>({});
+  const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
 
-  useEffect(() => {
-    loadTftSetMeta().then(meta => { if (meta?.latestPatch) setDdVersion(meta.latestPatch); });
-  }, []);
-  useEffect(() => {
-    if (!ddVersion) return;
-    loadTftChampions(ddVersion).then(map => setChamp(map[id] || null));
-    loadTftItems(ddVersion).then(setItems);
-    loadTftTraits(ddVersion).then(setTraits);
-  }, [ddVersion, id]);
-
+  useEffect(() => { loadTftAssets().then(setAssets); }, []);
   useEffect(() => {
     fetch(`/api/tft/units?region=euw1&bucket=${bucket}&id=${encodeURIComponent(id)}`)
       .then(r => r.json())
@@ -49,36 +37,25 @@ export default function TftUnitDetailPage() {
       .catch(() => { setHasData(false); setData(null); });
   }, [bucket, id]);
 
-  // Build a quick apiName -> item lookup. Match-V1 uses apiName strings
-  // ("TFT_Item_GiantSlayer"), Data Dragon keys items by integer id but
-  // exposes the apiName via `apiName` on the item object.
-  const itemsByApiName: Record<string, TftItem> = Object.fromEntries(
-    Object.values(items).map(i => [(i as any).apiName || `unknown_${i.id}`, i])
-  );
-  // Also try suffix match: api name is something like "TFT_Item_GiantSlayer"
-  // and image is something like "TFT_Item_GiantSlayer.png" — direct image
-  // path for any unknown apiName.
+  const champ = assets?.champions[id];
 
   return (
     <main className="min-h-screen bg-[#0e1525]">
       <Nav active="units" />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
-        {/* Header */}
         <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-5 mb-5">
           <a href="/tft/units" className="text-[#7B61FF] text-xs hover:underline">← {t('nav.units')}</a>
           <div className="flex items-center gap-4 mt-2">
-            {ddVersion && champ?.image?.full && (
-              <img
-                src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/tft-champion/${champ.image.full}`}
-                alt={champ.name}
-                className="w-16 h-16 rounded-lg border-2 border-[#7B61FF]"
-              />
+            {tftIconUrl(assets, champ?.icon) ? (
+              <img src={tftIconUrl(assets, champ!.icon)!} alt={champ!.name} className="w-16 h-16 rounded-lg border-2 border-[#7B61FF] object-cover" />
+            ) : (
+              <div className="w-16 h-16 rounded-lg bg-[#1e2a3a]" />
             )}
             <div className="flex-1">
-              <h1 className="text-white text-2xl font-medium">{champ?.name || id}</h1>
+              <h1 className="text-white text-2xl font-medium">{champ?.name || prettyChar(id)}</h1>
               <div className="text-[#8a9bb0] text-xs mt-0.5">
                 {champ?.cost ? `${champ.cost}-Cost` : ''}
-                {champ?.traits?.length ? ' · ' + champ.traits.map(t => traits[t]?.name || t).join(' · ') : ''}
+                {champ?.traits?.length ? ' · ' + champ.traits.map(tr => assets?.traits[tr]?.name || prettyChar(tr)).join(' · ') : ''}
               </div>
             </div>
           </div>
@@ -94,7 +71,6 @@ export default function TftUnitDetailPage() {
         )}
         {data && (
           <>
-            {/* Stat strip */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
               <Stat label={t('tft.avgPlacement')} value={data.avgPlacement?.toFixed(2) ?? '—'} />
               <Stat label={t('tft.top4')} value={data.top4Rate != null ? `${(data.top4Rate * 100).toFixed(1)}%` : '—'} />
@@ -102,16 +78,13 @@ export default function TftUnitDetailPage() {
               <Stat label={t('tft.gamesShort')} value={data.games.toLocaleString('de-DE')} />
             </div>
 
-            {/* Top item builds — User-Top-Prio: 5 häufigste 3-Item-Combos */}
             {data.topItemSets.length > 0 && (
               <Section title={t('tft.topBuilds')}>
                 <div className="space-y-2">
                   {data.topItemSets.map((s, i) => (
                     <div key={i} className="flex items-center gap-3 bg-[#141c2e] border border-[#1e2a3a] rounded p-3">
                       <div className="flex gap-1.5">
-                        {s.items.map((it, j) => (
-                          <ItemIcon key={j} apiName={it} ddVersion={ddVersion} byApiName={itemsByApiName} />
-                        ))}
+                        {s.items.map((it, j) => <ItemIcon key={j} apiName={it} assets={assets} />)}
                       </div>
                       <div className="flex-1" />
                       <div className="text-right text-xs">
@@ -126,13 +99,12 @@ export default function TftUnitDetailPage() {
               </Section>
             )}
 
-            {/* Most-used items across all slots */}
             {data.topItems.length > 0 && (
               <Section title={t('tft.mostUsedItems')}>
                 <div className="flex flex-wrap gap-2">
                   {data.topItems.map((it, i) => (
                     <div key={i} className="flex flex-col items-center gap-1 bg-[#141c2e] border border-[#1e2a3a] rounded p-1.5 w-16">
-                      <ItemIcon apiName={it.item} ddVersion={ddVersion} byApiName={itemsByApiName} size={9} />
+                      <ItemIcon apiName={it.item} assets={assets} size={9} />
                       <div className="text-[10px] text-white">Ø {it.avgPlacement?.toFixed(1) ?? '—'}</div>
                       <div className="text-[10px] text-[#4a5a70]">{it.games}g</div>
                     </div>
@@ -156,7 +128,6 @@ function Stat({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
-
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="mb-5">
@@ -165,23 +136,14 @@ function Section({ title, children }: { title: string; children: React.ReactNode
     </div>
   );
 }
-
-function ItemIcon({ apiName, ddVersion, byApiName, size = 10 }: { apiName: string; ddVersion: string; byApiName: Record<string, TftItem>; size?: number }) {
-  const item = byApiName[apiName];
+function ItemIcon({ apiName, assets, size = 10 }: { apiName: string; assets: TftAssetsBundle | null; size?: number }) {
+  const item = assets?.items[apiName];
   const sizeClass = size === 10 ? 'w-10 h-10' : 'w-9 h-9';
-  if (!ddVersion || !item?.image?.full) {
+  const url = tftIconUrl(assets, item?.icon);
+  if (!url) {
     return <div className={`${sizeClass} rounded bg-[#1e2a3a] flex items-center justify-center text-[8px] text-[#4a5a70] text-center px-0.5`} title={apiName}>{prettyItem(apiName)}</div>;
   }
-  return (
-    <img
-      src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/tft-item/${item.image.full}`}
-      alt={item.name}
-      title={item.name}
-      className={`${sizeClass} rounded`}
-    />
-  );
+  return <img src={url} alt={item!.name} title={item!.name} className={`${sizeClass} rounded`} />;
 }
-
-function prettyItem(apiName: string) {
-  return apiName.replace(/^TFT\d*_Item_/, '').slice(0, 8);
-}
+function prettyItem(s: string) { return s.replace(/^TFT\d*_Item_/, '').slice(0, 8); }
+function prettyChar(s: string) { return s.replace(/^TFT\d+_/, ''); }

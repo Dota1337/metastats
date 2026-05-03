@@ -5,7 +5,7 @@ import Footer from '../../components/Footer';
 import TierFilter, { type TierBucket } from '../../components/tft/TierFilter';
 import EmptyData from '../../components/tft/EmptyData';
 import { useI18n } from '../../lib/i18n';
-import { loadTftChampions, loadTftSetMeta, type TftChampion } from '../../lib/tft-dd-assets';
+import { loadTftAssets, tftIconUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
 
 interface UnitRow {
   characterId: string;
@@ -20,18 +20,10 @@ export default function TftUnitsPage() {
   const [bucket, setBucket] = useState<TierBucket>('master_plus');
   const [units, setUnits] = useState<UnitRow[]>([]);
   const [hasData, setHasData] = useState<boolean | null>(null);
-  const [ddVersion, setDdVersion] = useState('');
-  const [championMap, setChampionMap] = useState<Record<string, TftChampion>>({});
+  const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
   const [costFilter, setCostFilter] = useState<number | null>(null);
 
-  useEffect(() => {
-    loadTftSetMeta().then(meta => { if (meta?.latestPatch) setDdVersion(meta.latestPatch); });
-  }, []);
-  useEffect(() => {
-    if (!ddVersion) return;
-    loadTftChampions(ddVersion).then(setChampionMap);
-  }, [ddVersion]);
-
+  useEffect(() => { loadTftAssets().then(setAssets); }, []);
   useEffect(() => {
     fetch(`/api/tft/units?region=euw1&bucket=${bucket}`)
       .then(r => r.json())
@@ -41,11 +33,8 @@ export default function TftUnitsPage() {
 
   const filtered = useMemo(() => {
     if (costFilter == null) return units;
-    return units.filter(u => (championMap[u.characterId]?.cost ?? -1) === costFilter);
-  }, [units, championMap, costFilter]);
-
-  const totalGames = useMemo(() => units.reduce((s, u) => s + u.games, 0) / 8, [units]);
-  // Pickrate denominator = total games (we count one unit-game per slot, divide by 8 because each match has 8 boards each with up to 9 units; rough).
+    return units.filter(u => (assets?.champions[u.characterId]?.cost ?? -1) === costFilter);
+  }, [units, assets, costFilter]);
 
   return (
     <main className="min-h-screen bg-[#0e1525]">
@@ -56,7 +45,6 @@ export default function TftUnitsPage() {
           <TierFilter value={bucket} onChange={setBucket} />
         </div>
 
-        {/* Cost filter chips */}
         <div className="flex flex-wrap gap-1 mb-4">
           <button
             onClick={() => setCostFilter(null)}
@@ -88,23 +76,18 @@ export default function TftUnitsPage() {
               <div className="text-right">{t('tft.gamesShort')}</div>
             </div>
             {filtered.map(u => {
-              const ch = championMap[u.characterId];
+              const ch = assets?.champions[u.characterId];
               const cost = ch?.cost ?? 1;
               const costColor = costColorOf(cost);
+              const url = tftIconUrl(assets, ch?.icon);
               return (
                 <a
                   key={u.characterId}
                   href={`/tft/units/${encodeURIComponent(u.characterId)}?bucket=${bucket}`}
                   className="grid grid-cols-[3rem_1fr_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]"
                 >
-                  <div className="w-9 h-9 rounded border-2" style={{ borderColor: costColor }}>
-                    {ddVersion && ch?.image?.full && (
-                      <img
-                        src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/tft-champion/${ch.image.full}`}
-                        alt={ch.name}
-                        className="w-full h-full object-cover rounded-sm"
-                      />
-                    )}
+                  <div className="w-9 h-9 rounded border-2 overflow-hidden" style={{ borderColor: costColor }}>
+                    {url && <img src={url} alt={ch!.name} className="w-full h-full object-cover" />}
                   </div>
                   <div className="text-white">{ch?.name || prettyCharId(u.characterId)}</div>
                   <div className="text-right text-white">{u.avgPlacement?.toFixed(2) ?? '—'}</div>

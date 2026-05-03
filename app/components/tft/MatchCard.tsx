@@ -1,37 +1,19 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { loadTftChampions, loadTftItems, loadTftTraits, loadTftAugments } from '../../lib/tft-dd-assets';
+import { loadTftAssets, tftIconUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import type { TftMatchSummary, TftParticipantSummary } from '../../lib/tft-match-processor';
-
-const TFT_LANG = 'en_US';
 
 interface Props {
   match: TftMatchSummary;
   selfPuuid: string;
-  ddVersion: string;
+  ddVersion?: string;        // legacy prop, no longer used
 }
 
-export default function MatchCard({ match, selfPuuid, ddVersion }: Props) {
+export default function MatchCard({ match, selfPuuid }: Props) {
   const [open, setOpen] = useState(false);
-  const [champs, setChamps] = useState<Record<string, any>>({});
-  const [items, setItems] = useState<Record<number, any>>({});
-  const [traits, setTraits] = useState<Record<string, any>>({});
-  const [augs, setAugs] = useState<Record<string, any>>({});
+  const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
 
-  useEffect(() => {
-    if (!ddVersion) return;
-    let cancelled = false;
-    Promise.all([
-      loadTftChampions(ddVersion, TFT_LANG),
-      loadTftItems(ddVersion, TFT_LANG),
-      loadTftTraits(ddVersion, TFT_LANG),
-      loadTftAugments(ddVersion, TFT_LANG),
-    ]).then(([c, i, t, a]) => {
-      if (cancelled) return;
-      setChamps(c); setItems(i); setTraits(t); setAugs(a);
-    });
-    return () => { cancelled = true; };
-  }, [ddVersion]);
+  useEffect(() => { loadTftAssets().then(setAssets); }, []);
 
   const me = match.participants.find(p => p.puuid === selfPuuid) || match.participants[0];
   const placement = me.placement;
@@ -45,27 +27,19 @@ export default function MatchCard({ match, selfPuuid, ddVersion }: Props) {
       <div className="flex items-center gap-3 p-3 cursor-pointer hover:bg-white/5" onClick={() => setOpen(o => !o)}>
         <PlacementBadge placement={placement} />
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <ActivatedTraits participant={me} traits={traits} ddVersion={ddVersion} />
-          </div>
+          <ActivatedTraits participant={me} assets={assets} />
           <div className="text-[#8a9bb0] text-xs mt-1">
             Lvl {me.level} · Round {me.lastRound} · {minutes}:{seconds} · {ago}
           </div>
         </div>
-        <BoardPreview participant={me} champs={champs} items={items} ddVersion={ddVersion} />
-        <AugmentRow augments={me.augments} augs={augs} />
+        <BoardPreview participant={me} assets={assets} />
+        <AugmentRow augments={me.augments} assets={assets} />
       </div>
 
       {open && (
         <div className="border-t border-[#1e2a3a] bg-[#0a0e1a] p-3 space-y-2">
           {match.participants.slice().sort((a, b) => a.placement - b.placement).map(p => (
-            <ParticipantRow
-              key={p.puuid}
-              participant={p}
-              isSelf={p.puuid === selfPuuid}
-              champs={champs} items={items} traits={traits} augs={augs}
-              ddVersion={ddVersion}
-            />
+            <ParticipantRow key={p.puuid} participant={p} isSelf={p.puuid === selfPuuid} assets={assets} />
           ))}
         </div>
       )}
@@ -84,18 +58,17 @@ function PlacementBadge({ placement }: { placement: number }) {
   );
 }
 
-function ActivatedTraits({ participant, traits, ddVersion }: { participant: TftParticipantSummary; traits: Record<string, any>; ddVersion: string }) {
+function ActivatedTraits({ participant, assets }: { participant: TftParticipantSummary; assets: TftAssetsBundle | null }) {
   const active = participant.traits.filter(t => t.tierCurrent > 0).slice(0, 6);
   return (
     <div className="flex gap-1 flex-wrap">
       {active.map(t => {
-        const info = traits[t.name];
+        const info = assets?.traits[t.name];
         const styleColor = traitStyleColor(t.style);
+        const url = tftIconUrl(assets, info?.icon);
         return (
           <div key={t.name} className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px]" style={{ backgroundColor: `${styleColor}25`, color: styleColor }}>
-            {info?.image?.full && (
-              <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/tft-trait/${info.image.full}`} alt={info.name} className="w-3 h-3" />
-            )}
+            {url && <img src={url} alt={info!.name} className="w-3 h-3" />}
             <span>{t.numUnits} {info?.name || prettyTraitName(t.name)}</span>
           </div>
         );
@@ -104,25 +77,28 @@ function ActivatedTraits({ participant, traits, ddVersion }: { participant: TftP
   );
 }
 
-function BoardPreview({ participant, champs, items, ddVersion }: { participant: TftParticipantSummary; champs: Record<string, any>; items: Record<number, any>; ddVersion: string }) {
+function BoardPreview({ participant, assets }: { participant: TftParticipantSummary; assets: TftAssetsBundle | null }) {
   return (
     <div className="hidden md:flex gap-1 flex-wrap max-w-[300px] justify-end">
       {participant.units.slice(0, 9).map((u, i) => (
-        <UnitTile key={i} unit={u} champs={champs} items={items} ddVersion={ddVersion} small />
+        <UnitTile key={i} unit={u} assets={assets} small />
       ))}
     </div>
   );
 }
 
-function AugmentRow({ augments, augs }: { augments: string[]; augs: Record<string, any> }) {
+function AugmentRow({ augments, assets }: { augments: string[]; assets: TftAssetsBundle | null }) {
   if (!augments?.length) return null;
   return (
     <div className="hidden lg:flex gap-1 flex-shrink-0">
       {augments.map((a, i) => {
-        const info = augs[a];
+        const info = assets?.augments[a];
         const tierColor = info?.tier === 3 ? '#c39bff' : info?.tier === 2 ? '#e0c75a' : '#9ab0bf';
-        return (
-          <div key={i} className="w-7 h-7 rounded border-2 flex items-center justify-center bg-[#141c2e]" style={{ borderColor: tierColor }} title={info?.name || a}>
+        const url = tftIconUrl(assets, info?.icon);
+        return url ? (
+          <img key={i} src={url} alt={info!.name} title={info!.name} className="w-7 h-7 rounded border-2" style={{ borderColor: tierColor }} />
+        ) : (
+          <div key={i} className="w-7 h-7 rounded border-2 bg-[#141c2e] flex items-center justify-center" style={{ borderColor: tierColor }} title={info?.name || a}>
             <span className="text-[8px] text-[#8a9bb0] truncate px-0.5">{(info?.name || a).slice(0, 4)}</span>
           </div>
         );
@@ -131,7 +107,7 @@ function AugmentRow({ augments, augs }: { augments: string[]; augs: Record<strin
   );
 }
 
-function ParticipantRow({ participant, isSelf, champs, items, traits, augs, ddVersion }: { participant: TftParticipantSummary; isSelf: boolean; champs: Record<string, any>; items: Record<number, any>; traits: Record<string, any>; augs: Record<string, any>; ddVersion: string }) {
+function ParticipantRow({ participant, isSelf, assets }: { participant: TftParticipantSummary; isSelf: boolean; assets: TftAssetsBundle | null }) {
   return (
     <div className={`flex flex-col md:flex-row md:items-center gap-2 px-2 py-2 rounded ${isSelf ? 'bg-[#7B61FF]/10 border border-[#7B61FF]/30' : 'hover:bg-white/5'}`}>
       <div className="flex items-center gap-2 md:w-44 flex-shrink-0">
@@ -142,31 +118,28 @@ function ParticipantRow({ participant, isSelf, champs, items, traits, augs, ddVe
         </div>
       </div>
       <div className="flex-1 flex flex-wrap items-center gap-1.5">
-        <ActivatedTraits participant={participant} traits={traits} ddVersion={ddVersion} />
+        <ActivatedTraits participant={participant} assets={assets} />
       </div>
       <div className="flex flex-wrap gap-1">
-        {participant.units.map((u, i) => (
-          <UnitTile key={i} unit={u} champs={champs} items={items} ddVersion={ddVersion} />
-        ))}
+        {participant.units.map((u, i) => <UnitTile key={i} unit={u} assets={assets} />)}
       </div>
-      <AugmentRow augments={participant.augments} augs={augs} />
+      <AugmentRow augments={participant.augments} assets={assets} />
     </div>
   );
 }
 
-function UnitTile({ unit, champs, items, ddVersion, small }: { unit: any; champs: Record<string, any>; items: Record<number, any>; ddVersion: string; small?: boolean }) {
-  const info = champs[unit.characterId];
+function UnitTile({ unit, assets, small }: { unit: any; assets: TftAssetsBundle | null; small?: boolean }) {
+  const info = assets?.champions[unit.characterId];
   const sz = small ? 'w-7 h-7' : 'w-9 h-9';
   const cost = (info?.cost ?? unit.rarity + 1) || 1;
   const costColor = costToColor(cost);
+  const url = tftIconUrl(assets, info?.icon);
   return (
     <div className="flex flex-col items-center gap-0.5">
-      <div className={`relative ${sz} rounded border-2`} style={{ borderColor: costColor }}>
-        {info?.image?.full ? (
-          <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/tft-champion/${info.image.full}`} alt={info?.name || unit.characterId} className="w-full h-full object-cover rounded-sm" />
-        ) : (
-          <div className="w-full h-full bg-[#1e2a3a] rounded-sm" />
-        )}
+      <div className={`relative ${sz} rounded border-2 overflow-hidden`} style={{ borderColor: costColor }}>
+        {url
+          ? <img src={url} alt={info?.name || unit.characterId} className="w-full h-full object-cover" />
+          : <div className="w-full h-full bg-[#1e2a3a]" />}
         {unit.tier > 1 && (
           <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 text-[9px] leading-none" style={{ color: costColor }}>
             {'★'.repeat(unit.tier)}
@@ -175,9 +148,15 @@ function UnitTile({ unit, champs, items, ddVersion, small }: { unit: any; champs
       </div>
       {unit.items?.length > 0 && !small && (
         <div className="flex gap-px">
-          {unit.items.slice(0, 3).map((it: string, i: number) => (
-            <div key={i} className="w-2.5 h-2.5 rounded-sm bg-[#1e2a3a]" title={it} />
-          ))}
+          {unit.items.slice(0, 3).map((it: string, i: number) => {
+            const itemInfo = assets?.items[it];
+            const iurl = tftIconUrl(assets, itemInfo?.icon);
+            return iurl ? (
+              <img key={i} src={iurl} alt={itemInfo!.name} title={itemInfo!.name} className="w-2.5 h-2.5 rounded-sm" />
+            ) : (
+              <div key={i} className="w-2.5 h-2.5 rounded-sm bg-[#1e2a3a]" title={it} />
+            );
+          })}
         </div>
       )}
     </div>

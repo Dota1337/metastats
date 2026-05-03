@@ -5,7 +5,7 @@ import Footer from '../../components/Footer';
 import TierFilter, { type TierBucket } from '../../components/tft/TierFilter';
 import EmptyData from '../../components/tft/EmptyData';
 import { useI18n } from '../../lib/i18n';
-import { loadTftSetMeta, loadTftTraits, type TftTrait } from '../../lib/tft-dd-assets';
+import { loadTftAssets, tftIconUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
 
 interface TraitRow {
   name: string;
@@ -20,11 +20,9 @@ export default function TftTraitsPage() {
   const [bucket, setBucket] = useState<TierBucket>('master_plus');
   const [rows, setRows] = useState<TraitRow[]>([]);
   const [hasData, setHasData] = useState<boolean | null>(null);
-  const [ddVersion, setDdVersion] = useState('');
-  const [traitMap, setTraitMap] = useState<Record<string, TftTrait>>({});
+  const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
 
-  useEffect(() => { loadTftSetMeta().then(meta => { if (meta?.latestPatch) setDdVersion(meta.latestPatch); }); }, []);
-  useEffect(() => { if (ddVersion) loadTftTraits(ddVersion).then(setTraitMap); }, [ddVersion]);
+  useEffect(() => { loadTftAssets().then(setAssets); }, []);
   useEffect(() => {
     fetch(`/api/tft/traits?region=euw1&bucket=${bucket}`)
       .then(r => r.json())
@@ -54,11 +52,12 @@ export default function TftTraitsPage() {
               <div className="text-right">{t('tft.gamesShort')}</div>
             </div>
             {rows.map(r => {
-              const meta = traitMap[r.name];
+              const meta = assets?.traits[r.name];
+              const url = tftIconUrl(assets, meta?.icon);
               return (
                 <div key={`${r.name}-${r.activation}`} className="grid grid-cols-[3rem_1fr_4rem_5rem_5rem_5rem] gap-2 px-4 py-2 items-center text-xs border-t border-[#1e2a3a]">
-                  {ddVersion && meta?.image?.full ? (
-                    <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/tft-trait/${meta.image.full}`} alt={meta.name} className="w-9 h-9 rounded" />
+                  {url ? (
+                    <img src={url} alt={meta!.name} className="w-9 h-9 rounded" />
                   ) : (
                     <div className="w-9 h-9 rounded bg-[#1e2a3a]" />
                   )}

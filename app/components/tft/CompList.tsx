@@ -4,10 +4,7 @@ import TierFilter, { type TierBucket } from './TierFilter';
 import EmptyData from './EmptyData';
 import CompCard from './CompCard';
 import { useI18n } from '../../lib/i18n';
-import {
-  loadTftSetMeta, loadTftChampions, loadTftItems, loadTftTraits, loadTftAugments,
-  type TftChampion, type TftItem, type TftTrait, type TftAugment,
-} from '../../lib/tft-dd-assets';
+import { loadTftAssets, type TftAssetsBundle } from '../../lib/tft-cdragon';
 
 const REGIONS: { value: string; label: string }[] = [
   { value: 'euw1', label: 'EUW' },
@@ -15,8 +12,6 @@ const REGIONS: { value: string; label: string }[] = [
   { value: 'na1',  label: 'NA' },
 ];
 
-// Sort options users actually want — placement is the TFT skill metric;
-// pick-rate signals "what is meta now"; top-1 finds the snowball comps.
 const SORT_OPTIONS: { value: string; label: string }[] = [
   { value: 'avgPlacement', label: 'Ø Platzierung' },
   { value: 'pickRate',     label: 'Pick-Rate' },
@@ -32,26 +27,9 @@ export default function CompList() {
   const [comps, setComps] = useState<any[]>([]);
   const [hasData, setHasData] = useState<boolean | null>(null);
   const [meta, setMeta] = useState<{ set?: number; setName?: string; patch?: string; matchesAnalyzed?: number; minGames?: number } | null>(null);
-  const [ddVersion, setDdVersion] = useState('');
-  const [setInfo, setSetInfo] = useState<{ setNumber: number; setName: string; latestPatch: string } | null>(null);
-  const [champs, setChamps] = useState<Record<string, TftChampion>>({});
-  const [items, setItems] = useState<Record<number, TftItem>>({});
-  const [traits, setTraits] = useState<Record<string, TftTrait>>({});
-  const [augs, setAugs] = useState<Record<string, TftAugment>>({});
+  const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
 
-  useEffect(() => {
-    loadTftSetMeta().then(m => {
-      if (m?.latestPatch) setDdVersion(m.latestPatch);
-      if (m) setSetInfo(m as any);
-    });
-  }, []);
-  useEffect(() => {
-    if (!ddVersion) return;
-    loadTftChampions(ddVersion).then(setChamps);
-    loadTftItems(ddVersion).then(setItems);
-    loadTftTraits(ddVersion).then(setTraits);
-    loadTftAugments(ddVersion).then(setAugs);
-  }, [ddVersion]);
+  useEffect(() => { loadTftAssets().then(setAssets); }, []);
   useEffect(() => {
     setComps([]);
     setHasData(null);
@@ -76,10 +54,9 @@ export default function CompList() {
 
   return (
     <>
-      {/* Set + region header */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-4">
         <div>
-          {setInfo && <div className="text-[#7B61FF] text-xs uppercase tracking-widest">Set {setInfo.setNumber} · {setInfo.setName}{meta?.patch ? ` · Patch ${meta.patch}` : ''}</div>}
+          {assets && <div className="text-[#7B61FF] text-xs uppercase tracking-widest">Set {assets.set} · {assets.setName}{meta?.patch ? ` · Patch ${meta.patch}` : ''}</div>}
           <h1 className="text-white text-2xl font-medium mt-1">{t('nav.comps')}</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -110,7 +87,6 @@ export default function CompList() {
         </div>
       </div>
 
-      {/* Data scope summary */}
       {hasData && meta?.matchesAnalyzed != null && (
         <div className="text-[#4a5a70] text-[11px] mb-3">
           {meta.matchesAnalyzed.toLocaleString('de-DE')} Matches analysiert · {sorted.length} Comps mit ≥ {meta.minGames ?? 30} Spielen
@@ -132,11 +108,7 @@ export default function CompList() {
             key={c.slug}
             comp={c}
             rank={i + 1}
-            ddVersion={ddVersion}
-            champs={champs}
-            items={items}
-            traits={traits}
-            augs={augs}
+            assets={assets}
             href={`/tft/comps/${encodeURIComponent(c.slug)}?bucket=${bucket}&region=${region}`}
           />
         ))}

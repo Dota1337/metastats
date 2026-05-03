@@ -6,7 +6,7 @@ import Footer from '../../../components/Footer';
 import TierFilter, { type TierBucket } from '../../../components/tft/TierFilter';
 import EmptyData from '../../../components/tft/EmptyData';
 import { useI18n } from '../../../lib/i18n';
-import { loadTftChampions, loadTftItems, loadTftSetMeta, type TftChampion, type TftItem } from '../../../lib/tft-dd-assets';
+import { loadTftAssets, tftIconUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 
 interface ItemDetail {
   apiName: string;
@@ -24,17 +24,9 @@ export default function TftItemDetailPage() {
   const [bucket, setBucket] = useState<TierBucket>((search.get('bucket') as TierBucket) || 'master_plus');
   const [data, setData] = useState<ItemDetail | null | undefined>(undefined);
   const [hasData, setHasData] = useState<boolean | null>(null);
-  const [ddVersion, setDdVersion] = useState('');
-  const [items, setItems] = useState<Record<number, TftItem>>({});
-  const [champs, setChamps] = useState<Record<string, TftChampion>>({});
+  const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
 
-  useEffect(() => { loadTftSetMeta().then(meta => { if (meta?.latestPatch) setDdVersion(meta.latestPatch); }); }, []);
-  useEffect(() => {
-    if (!ddVersion) return;
-    loadTftItems(ddVersion).then(setItems);
-    loadTftChampions(ddVersion).then(setChamps);
-  }, [ddVersion]);
-
+  useEffect(() => { loadTftAssets().then(setAssets); }, []);
   useEffect(() => {
     fetch(`/api/tft/items?region=euw1&bucket=${bucket}&id=${encodeURIComponent(id)}`)
       .then(r => r.json())
@@ -42,7 +34,8 @@ export default function TftItemDetailPage() {
       .catch(() => { setHasData(false); setData(null); });
   }, [bucket, id]);
 
-  const itemMeta = Object.values(items).find(i => (i as any).apiName === id) || null;
+  const itemMeta = assets?.items[id];
+  const url = tftIconUrl(assets, itemMeta?.icon);
 
   return (
     <main className="min-h-screen bg-[#0e1525]">
@@ -51,11 +44,14 @@ export default function TftItemDetailPage() {
         <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-5 mb-5">
           <a href="/tft/items" className="text-[#7B61FF] text-xs hover:underline">← {t('nav.items')}</a>
           <div className="flex items-center gap-4 mt-2">
-            {ddVersion && itemMeta?.image?.full && (
-              <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/tft-item/${itemMeta.image.full}`} alt={itemMeta.name} className="w-16 h-16 rounded-lg border-2 border-[#7B61FF]" />
+            {url ? (
+              <img src={url} alt={itemMeta!.name} className="w-16 h-16 rounded-lg border-2 border-[#7B61FF]" />
+            ) : (
+              <div className="w-16 h-16 rounded-lg bg-[#1e2a3a]" />
             )}
             <div className="flex-1">
-              <h1 className="text-white text-2xl font-medium">{itemMeta?.name || id}</h1>
+              <h1 className="text-white text-2xl font-medium">{itemMeta?.name || prettyApi(id)}</h1>
+              {itemMeta?.desc && <p className="text-[#8a9bb0] text-xs mt-1 max-w-prose">{itemMeta.desc}</p>}
             </div>
           </div>
         </div>
@@ -78,13 +74,14 @@ export default function TftItemDetailPage() {
                 <h2 className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-2">{t('tft.topUsers')}</h2>
                 <div className="flex flex-wrap gap-2">
                   {data.topUsers.map(u => {
-                    const ch = champs[u.characterId];
+                    const ch = assets?.champions[u.characterId];
+                    const churl = tftIconUrl(assets, ch?.icon);
                     return (
                       <a key={u.characterId} href={`/tft/units/${encodeURIComponent(u.characterId)}?bucket=${bucket}`}
                          className="flex flex-col items-center gap-1 bg-[#141c2e] border border-[#1e2a3a] rounded p-2 w-20 hover:border-[#7B61FF]/50">
-                        {ddVersion && ch?.image?.full && (
-                          <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/tft-champion/${ch.image.full}`} alt={ch.name} className="w-10 h-10 rounded" />
-                        )}
+                        {churl
+                          ? <img src={churl} alt={ch!.name} className="w-10 h-10 rounded object-cover" />
+                          : <div className="w-10 h-10 rounded bg-[#1e2a3a]" />}
                         <div className="text-[10px] text-white text-center truncate w-full">{ch?.name || prettyChar(u.characterId)}</div>
                         <div className="text-[10px] text-[#4a5a70]">{u.games}g</div>
                       </a>
@@ -109,4 +106,5 @@ function Stat({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+function prettyApi(s: string) { return s.replace(/^TFT\d*_Item_/, ''); }
 function prettyChar(id: string) { return id.replace(/^TFT\d+_/, ''); }

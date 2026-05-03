@@ -5,7 +5,7 @@ import Footer from '../../components/Footer';
 import TierFilter, { type TierBucket } from '../../components/tft/TierFilter';
 import EmptyData from '../../components/tft/EmptyData';
 import { useI18n } from '../../lib/i18n';
-import { loadTftItems, loadTftSetMeta, type TftItem } from '../../lib/tft-dd-assets';
+import { loadTftAssets, tftIconUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
 
 interface ItemRow {
   apiName: string;
@@ -19,21 +19,15 @@ export default function TftItemsPage() {
   const [bucket, setBucket] = useState<TierBucket>('master_plus');
   const [items, setItems] = useState<ItemRow[]>([]);
   const [hasData, setHasData] = useState<boolean | null>(null);
-  const [ddVersion, setDdVersion] = useState('');
-  const [itemMap, setItemMap] = useState<Record<number, TftItem>>({});
+  const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
 
-  useEffect(() => { loadTftSetMeta().then(meta => { if (meta?.latestPatch) setDdVersion(meta.latestPatch); }); }, []);
-  useEffect(() => { if (ddVersion) loadTftItems(ddVersion).then(setItemMap); }, [ddVersion]);
+  useEffect(() => { loadTftAssets().then(setAssets); }, []);
   useEffect(() => {
     fetch(`/api/tft/items?region=euw1&bucket=${bucket}`)
       .then(r => r.json())
       .then(d => { setHasData(!!d.hasData); setItems(d.items || []); })
       .catch(() => { setHasData(false); setItems([]); });
   }, [bucket]);
-
-  const byApi: Record<string, TftItem> = Object.fromEntries(
-    Object.values(itemMap).map(i => [(i as any).apiName || `_${i.id}`, i])
-  );
 
   return (
     <main className="min-h-screen bg-[#0e1525]">
@@ -56,15 +50,16 @@ export default function TftItemsPage() {
               <div className="text-right">{t('tft.gamesShort')}</div>
             </div>
             {items.map(it => {
-              const meta = byApi[it.apiName];
+              const meta = assets?.items[it.apiName];
+              const url = tftIconUrl(assets, meta?.icon);
               return (
                 <a
                   key={it.apiName}
                   href={`/tft/items/${encodeURIComponent(it.apiName)}?bucket=${bucket}`}
                   className="grid grid-cols-[3rem_1fr_5rem_5rem_5rem] gap-2 px-4 py-2 items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]"
                 >
-                  {ddVersion && meta?.image?.full ? (
-                    <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/tft-item/${meta.image.full}`} alt={meta.name} className="w-9 h-9 rounded" />
+                  {url ? (
+                    <img src={url} alt={meta!.name} className="w-9 h-9 rounded" />
                   ) : (
                     <div className="w-9 h-9 rounded bg-[#1e2a3a] flex items-center justify-center text-[8px] text-[#4a5a70] px-0.5 text-center">{prettyApi(it.apiName)}</div>
                   )}

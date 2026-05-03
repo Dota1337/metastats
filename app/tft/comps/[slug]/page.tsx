@@ -7,10 +7,7 @@ import TierFilter, { type TierBucket } from '../../../components/tft/TierFilter'
 import EmptyData from '../../../components/tft/EmptyData';
 import CompCard from '../../../components/tft/CompCard';
 import { useI18n } from '../../../lib/i18n';
-import {
-  loadTftSetMeta, loadTftChampions, loadTftItems, loadTftTraits, loadTftAugments,
-  type TftChampion, type TftItem, type TftTrait, type TftAugment,
-} from '../../../lib/tft-dd-assets';
+import { loadTftAssets, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 
 export default function TftCompDetailPage() {
   const { t } = useI18n();
@@ -20,20 +17,9 @@ export default function TftCompDetailPage() {
   const [bucket, setBucket] = useState<TierBucket>((search.get('bucket') as TierBucket) || 'master_plus');
   const [comp, setComp] = useState<any | null | undefined>(undefined);
   const [hasData, setHasData] = useState<boolean | null>(null);
-  const [ddVersion, setDdVersion] = useState('');
-  const [champs, setChamps] = useState<Record<string, TftChampion>>({});
-  const [items, setItems] = useState<Record<number, TftItem>>({});
-  const [traits, setTraits] = useState<Record<string, TftTrait>>({});
-  const [augs, setAugs] = useState<Record<string, TftAugment>>({});
+  const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
 
-  useEffect(() => { loadTftSetMeta().then(meta => { if (meta?.latestPatch) setDdVersion(meta.latestPatch); }); }, []);
-  useEffect(() => {
-    if (!ddVersion) return;
-    loadTftChampions(ddVersion).then(setChamps);
-    loadTftItems(ddVersion).then(setItems);
-    loadTftTraits(ddVersion).then(setTraits);
-    loadTftAugments(ddVersion).then(setAugs);
-  }, [ddVersion]);
+  useEffect(() => { loadTftAssets().then(setAssets); }, []);
   useEffect(() => {
     fetch(`/api/tft/comps?region=euw1&bucket=${bucket}&slug=${encodeURIComponent(slug)}`)
       .then(r => r.json())
@@ -58,14 +44,7 @@ export default function TftCompDetailPage() {
 
         {comp && (
           <>
-            <CompCard
-              comp={comp}
-              ddVersion={ddVersion}
-              champs={champs}
-              items={items}
-              traits={traits}
-              augs={augs}
-            />
+            <CompCard comp={comp} assets={assets} />
 
             {/* Counters from KG */}
             {comp.counters && (comp.counters.beats?.length > 0 || comp.counters.losesTo?.length > 0) && (

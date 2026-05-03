@@ -14,7 +14,7 @@
  */
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
-import { aggregateMatch, finalize } from './lib/tft-build-aggregator.mjs';
+import { aggregateMatch, finalize, emptyAggregate } from './lib/tft-build-aggregator.mjs';
 
 const args = process.argv.slice(2);
 const arg = (k, def) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : def; };
@@ -175,10 +175,9 @@ async function main() {
 
   // Step 3: fetch match details + aggregate
   console.log(`\n[3/3] Aggregating ${allMatchIds.size} matches`);
-  const agg = {
-    byUnit: new Map(), byItem: new Map(), byAugment: new Map(), byTrait: new Map(),
-    matchesAnalyzed: 0, matchesSkipped: 0,
-  };
+  // Use the helper so we can't drift from the aggregator's expected shape —
+  // last time we hand-rolled the init we forgot byComp/byCompPair.
+  const agg = emptyAggregate();
   const ids = [...allMatchIds];
   for (let j = 0; j < ids.length; j++) {
     const id = ids[j];

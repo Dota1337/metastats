@@ -1,4 +1,9 @@
-name: Weekly Data Crawl
+name: Weekly Data Crawl (EUW)
+
+# EUW LoL crawl + all once-per-week detect/refresh steps. Korea is in
+# weekly-crawl-kr.yml on a different cron slot so neither side has to fit
+# into the 360min GHA cap by itself — the previous combined workflow
+# couldn't finish reliably with the new build aggregator.
 
 on:
   schedule:
@@ -35,14 +40,11 @@ jobs:
         run: node scripts/crawl-pro-players.mjs
 
       # Champion Stats Crawler — EUW (needs valid Riot API key)
+      # Korea is split into weekly-crawl-kr.yml because the combined run
+      # was hitting the 360min GHA cap with Solo+Flex + the build aggregator.
       - name: Crawl Champion Stats (EUW)
         if: env.RIOT_API_KEY != ''
         run: node scripts/collect-highelo.mjs
-
-      # Champion Stats Crawler — Korea (needs valid Riot API key)
-      - name: Crawl Champion Stats (Korea)
-        if: env.RIOT_API_KEY != ''
-        run: node scripts/collect-kr-cn.mjs
 
       # Season detection — runs no Riot API, only Data Dragon. Updates
       # public/seasons.json and exposes `season-changed` for the issue step.
@@ -69,7 +71,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add public/pro-players.json public/champion-stats-*.json public/champion-builds-*.json public/seasons.json public/tier-distribution.json public/tft-set.json
+          git add public/pro-players.json public/champion-stats-euw.json public/champion-builds-euw.json public/seasons.json public/tier-distribution.json public/tft-set.json
           if git diff --staged --quiet; then
             echo "No data changes to commit"
           else

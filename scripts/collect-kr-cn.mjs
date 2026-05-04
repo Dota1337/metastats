@@ -95,8 +95,9 @@ async function collectRegion(region, regional, label) {
   console.log(`  Master: ${master.entries?.length || 0} (top ${masterSample.length} gesampled)`);
   console.log(`  Gesamt: ${puuids.length} Spieler\n`);
 
-  // Step 2: Fetch match IDs per tier (Solo+Flex)
-  console.log('[2/4] Lade Match-IDs (Solo+Flex, je 8 pro Spieler)...');
+  // Step 2: Fetch match IDs per tier (Solo only — Flex was dropped after
+  // it pushed the EUW+KR runs over the GHA 360min cap)
+  console.log('[2/4] Lade Match-IDs (Solo, 8 pro Spieler)...');
   const allMatchIds = new Set();
   const matchTierMap = {};
 
@@ -104,22 +105,20 @@ async function collectRegion(region, regional, label) {
   for (const tier of tierOrder) {
     const tierPuuids = puuids.filter(p => puuidTierMap[p] === tier);
     for (let i = 0; i < tierPuuids.length; i++) {
-      for (const queue of [420, 440]) {
-        try {
-          const res = await rateLimitedFetch(
-            `https://${regional}.api.riotgames.com/lol/match/v5/matches/by-puuid/${tierPuuids[i]}/ids?queue=${queue}&start=0&count=8&api_key=${API_KEY}`
-          );
-          if (res.ok) {
-            const ids = await res.json();
-            for (const id of ids) {
-              if (!allMatchIds.has(id)) {
-                allMatchIds.add(id);
-                matchTierMap[id] = tier;
-              }
+      try {
+        const res = await rateLimitedFetch(
+          `https://${regional}.api.riotgames.com/lol/match/v5/matches/by-puuid/${tierPuuids[i]}/ids?queue=420&start=0&count=8&api_key=${API_KEY}`
+        );
+        if (res.ok) {
+          const ids = await res.json();
+          for (const id of ids) {
+            if (!allMatchIds.has(id)) {
+              allMatchIds.add(id);
+              matchTierMap[id] = tier;
             }
           }
-        } catch {}
-      }
+        }
+      } catch {}
       if ((i + 1) % 25 === 0 || i === tierPuuids.length - 1) {
         console.log(`  ${tier}: ${i + 1}/${tierPuuids.length} (${allMatchIds.size} unique)`);
       }

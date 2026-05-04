@@ -223,5 +223,5 @@ export function finalizeBuilds(builds, opts = {}) {
   return out;
 }
 
-export const ALLOWED_QUEUES = new Set([420, 440]); // Solo + Flex
+export const ALLOWED_QUEUES = new Set([420]); // Solo only — see collect-highelo.mjs comment
 export const ROLES_LIST = ROLES;

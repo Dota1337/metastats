@@ -16,13 +16,16 @@ interface TftHeroProps {
 }
 
 const SLOT_COUNT = 4;
-const ORBIT_DURATION_S = 36; // Slow & calm — one full revolution every 36s.
-// Per-slot content swap intervals — different prime-ish gaps so slots never
-// re-sync. The slot picks a different chibi/tactician each tick.
-const SWAP_MS = [6300, 7700, 9100, 10500];
+const ORBIT_DURATION_S = 20;
+// Per-slot content swap intervals — different prime-ish gaps so the cast
+// keeps cycling. Each slot picks a different figure than the others.
+const SWAP_MS = [7500, 9100, 10700, 12300];
 
-const FULL_LAYOUT = { figure: 120, radius: 140 };
-const COMPACT_LAYOUT = { figure: 70, radius: 80 };
+// Layout sizes:
+//   figure = front-figure rendered size (px) — back figure scales down by 0.45.
+//   radius = horizontal swing radius — keeps the cluster narrow.
+const FULL_LAYOUT = { figure: 140, radius: 70 };
+const COMPACT_LAYOUT = { figure: 80, radius: 36 };
 
 function pickRandom<T>(arr: T[], exclude?: Set<T>): T | null {
   const candidates = exclude ? arr.filter(x => !exclude.has(x)) : arr;
@@ -86,28 +89,39 @@ export default function TftHero({
 
   const layout = compact ? COMPACT_LAYOUT : FULL_LAYOUT;
   const setLabel = assets ? `Set ${assets.set} · ${assets.setName}` : null;
-  // Hero needs to be at least tall enough for the orbit circle + margin.
-  const heroMinHeight = (layout.radius + layout.figure) * 2 + 20;
+  // Cluster takes radius+halfFigure on each horizontal side. Hero height
+  // accommodates the (slightly larger than figure) drop-shadow.
+  const heroMinHeight = layout.figure + 60;
 
   return (
     <div
-      className={`relative overflow-hidden ${compact ? 'py-6' : 'py-10 sm:py-14'}`}
+      className={`relative overflow-hidden ${compact ? 'py-5' : 'py-8 sm:py-12'}`}
       style={{ minHeight: heroMinHeight }}
     >
       <style>{`
-        @keyframes tftOrbitCW {
-          from { transform: rotate(0deg)   translateX(var(--orbit-r)) rotate(0deg); }
-          to   { transform: rotate(360deg) translateX(var(--orbit-r)) rotate(-360deg); }
+        /* Pseudo-3D carousel — figures swing horizontally on an elliptical path
+           with depth simulated via scale + opacity + z-index. The "front"
+           figure (0%/100% keyframe) is always crisp and centered on the slot
+           anchor; "back" (50%) is small and dim behind it; sides (25%/75%)
+           are medium width and partial-opacity. One slot is always near front
+           so the headline always has a clean focal figure beside it. */
+        @keyframes tftCarousel3DLeft {
+          0%,100% { transform: translateX(0)                     scale(1.00); opacity: 1.0;  z-index: 3; }
+          25%     { transform: translateX(var(--orbit-r))         scale(0.65); opacity: 0.82; z-index: 2; }
+          50%     { transform: translateX(0)                     scale(0.45); opacity: 0.45; z-index: 0; }
+          75%     { transform: translateX(calc(-1 * var(--orbit-r))) scale(0.65); opacity: 0.82; z-index: 2; }
         }
-        @keyframes tftOrbitCCW {
-          from { transform: rotate(0deg)    translateX(var(--orbit-r)) rotate(0deg); }
-          to   { transform: rotate(-360deg) translateX(var(--orbit-r)) rotate(360deg); }
+        @keyframes tftCarousel3DRight {
+          0%,100% { transform: translateX(0)                     scale(1.00); opacity: 1.0;  z-index: 3; }
+          25%     { transform: translateX(calc(-1 * var(--orbit-r))) scale(0.65); opacity: 0.82; z-index: 2; }
+          50%     { transform: translateX(0)                     scale(0.45); opacity: 0.45; z-index: 0; }
+          75%     { transform: translateX(var(--orbit-r))         scale(0.65); opacity: 0.82; z-index: 2; }
         }
         @keyframes tftFigFade {
           from { opacity: 0; filter: blur(3px); }
           to   { opacity: 1; filter: blur(0); }
         }
-        .tft-fig-img { animation: tftFigFade 0.9s ease-out; }
+        .tft-fig-img { animation: tftFigFade 0.8s ease-out; }
         @media (prefers-reduced-motion: reduce) {
           .tft-orbit-item { animation: none !important; }
         }
@@ -183,7 +197,7 @@ function OrbitCluster({
   useEffect(() => {
     if (pool.length === 0) return;
     const initial = pickInitial(pool, SLOT_COUNT);
-    setSlots(prev => {
+    setSlots(() => {
       const next: (TftCompanion | null)[] = Array(SLOT_COUNT).fill(null);
       for (let i = 0; i < SLOT_COUNT; i++) next[i] = initial[i] || null;
       return next;
@@ -208,18 +222,20 @@ function OrbitCluster({
     };
   }, [pool]);
 
-  // Orbit box wraps the 4 figures around a center anchor.
-  // Width/height = 2 * (radius + half-figure); figures positioned at the
-  // center and rotated outward by the keyframe.
-  const boxSize = layout.radius * 2 + layout.figure;
+  // Bounding box just needs to contain the side-position figures.
+  // Side figure render size = layout.figure * 0.65; centered on x = ±radius.
+  // Half-extent = radius + (figure * 0.65 / 2).
+  const halfExtent = layout.radius + (layout.figure * 0.65) / 2;
+  const boxWidth = halfExtent * 2;
+  const boxHeight = layout.figure + 24; // generous for drop-shadow + scale
+
   const anchorClass =
     side === 'left'
-      ? 'hidden sm:block absolute left-0 sm:-left-4 md:left-0 lg:left-6'
-      : 'hidden sm:block absolute right-0 sm:-right-4 md:right-0 lg:right-6';
+      ? 'hidden sm:block absolute left-2 sm:left-4 md:left-8'
+      : 'hidden sm:block absolute right-2 sm:right-4 md:right-8';
 
-  // Soft fade toward the hero center keeps headline legible.
-  const maskDirection = side === 'left' ? 'to right' : 'to left';
-  const orbitDirection = side === 'left' ? 'tftOrbitCW' : 'tftOrbitCCW';
+  const keyframeName =
+    side === 'left' ? 'tftCarousel3DLeft' : 'tftCarousel3DRight';
 
   return (
     <div
@@ -227,22 +243,20 @@ function OrbitCluster({
       style={{
         top: '50%',
         transform: 'translateY(-50%)',
-        width: boxSize,
-        height: boxSize,
+        width: boxWidth,
+        height: boxHeight,
         pointerEvents: 'none',
         userSelect: 'none',
-        maskImage: `linear-gradient(${maskDirection}, rgba(0,0,0,1) 0%, rgba(0,0,0,0.95) 55%, rgba(0,0,0,0) 100%)`,
-        WebkitMaskImage: `linear-gradient(${maskDirection}, rgba(0,0,0,1) 0%, rgba(0,0,0,0.95) 55%, rgba(0,0,0,0) 100%)`,
       }}
       aria-hidden="true"
     >
-      {/* Orbit center — 0px point at the cluster middle. Children orbit
-          around this via translateX(radius) inside their keyframe. */}
+      {/* Carousel anchor — 0px point at the cluster center. Children orbit
+          relative to this via translateX + scale in their keyframe. */}
       <div className="absolute left-1/2 top-1/2" style={{ width: 0, height: 0 }}>
         {slots.map((fig, i) => {
           const url = tftCompanionIconUrl(assets, fig?.icon);
-          // animationDelay phase-shifts each slot so they sit 90° apart on
-          // the circle. Negative delay starts the animation already in progress.
+          // Phase each slot 1/4 cycle ahead so all 4 positions
+          // (front / one side / back / other side) are always occupied.
           const delay = -(i / SLOT_COUNT) * ORBIT_DURATION_S;
           return (
             <div
@@ -253,7 +267,7 @@ function OrbitCluster({
                 height: layout.figure,
                 marginLeft: -layout.figure / 2,
                 marginTop: -layout.figure / 2,
-                animation: `${orbitDirection} ${ORBIT_DURATION_S}s linear infinite`,
+                animation: `${keyframeName} ${ORBIT_DURATION_S}s linear infinite`,
                 animationDelay: `${delay}s`,
                 ['--orbit-r' as unknown as string]: `${layout.radius}px`,
               } as React.CSSProperties}
@@ -266,7 +280,7 @@ function OrbitCluster({
                   title={fig?.name}
                   className="tft-fig-img w-full h-full object-contain"
                   style={{
-                    filter: `drop-shadow(0 ${compact ? 6 : 12}px ${compact ? 12 : 24}px rgba(123,97,255,0.35))`,
+                    filter: `drop-shadow(0 ${compact ? 4 : 10}px ${compact ? 10 : 22}px rgba(123,97,255,0.35))`,
                   }}
                   loading="lazy"
                   onError={e => {

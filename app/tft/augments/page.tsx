@@ -39,7 +39,7 @@ export default function TftAugmentsPage() {
   return (
     <main className="min-h-screen bg-[#0e1525]">
       <Nav active="augments" />
-      <TftHero compact pageTitle={t('nav.augments')} />
+      <TftHero pageTitle={t('nav.augments')} />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
         <div className="flex items-center justify-end mb-5">
           <TierFilter value={bucket} onChange={setBucket} />

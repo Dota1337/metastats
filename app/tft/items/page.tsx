@@ -33,7 +33,7 @@ export default function TftItemsPage() {
   return (
     <main className="min-h-screen bg-[#0e1525]">
       <Nav active="items" />
-      <TftHero compact pageTitle={t('nav.items')} />
+      <TftHero pageTitle={t('nav.items')} />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
         <div className="flex items-center justify-end mb-5">
           <TierFilter value={bucket} onChange={setBucket} />

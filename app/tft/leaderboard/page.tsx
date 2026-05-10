@@ -57,7 +57,7 @@ export default function TftLeaderboardPage() {
   return (
     <main className="min-h-screen bg-[#0e1525]">
       <Nav active="leaderboard" />
-      <TftHero compact pageTitle={t('nav.leaderboard')} />
+      <TftHero pageTitle={t('nav.leaderboard')} />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
 
 

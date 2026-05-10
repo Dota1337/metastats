@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Spieler nicht gefunden', code: 'not_found' }, { status: 404 });
       }
       if (accountRes.status === 429) {
-        return NextResponse.json({ error: 'Rate-Limit erreicht', code: 'riot_rate_limit' }, { status: 429 });
+        return NextResponse.json({ error: 'Daten in Kürze wieder verfügbar', code: 'riot_rate_limit' }, { status: 429 });
       }
       return NextResponse.json({ error: `Riot API Fehler (${accountRes.status})`, code: 'riot_upstream' }, { status: 502 });
     }

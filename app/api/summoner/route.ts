@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
       }
       if (accountRes.status === 429) {
         return NextResponse.json(
-          { error: 'Riot API Rate-Limit erreicht. Bitte kurz warten.', code: 'riot_rate_limit' },
+          { error: 'Daten in Kürze wieder verfügbar', code: 'riot_rate_limit' },
           { status: 429 }
         );
       }

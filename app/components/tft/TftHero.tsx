@@ -91,7 +91,7 @@ export default function TftHero({
   const setLabel = assets ? `Set ${assets.set} · ${assets.setName}` : null;
   // Hero height = figure size + small buffer for drop-shadow blur.
   // Kept tight so the gap between hero and first content box stays minimal.
-  const heroMinHeight = layout.figure + 30;
+  const heroMinHeight = layout.figure + 18;
 
   return (
     <div
@@ -280,7 +280,7 @@ function OrbitCluster({
                   title={fig?.name}
                   className="tft-fig-img w-full h-full object-contain"
                   style={{
-                    filter: `drop-shadow(0 ${compact ? 4 : 10}px ${compact ? 10 : 22}px rgba(123,97,255,0.35))`,
+                    filter: `drop-shadow(0 ${compact ? 3 : 6}px ${compact ? 8 : 14}px rgba(123,97,255,0.35))`,
                   }}
                   loading="lazy"
                   onError={e => {

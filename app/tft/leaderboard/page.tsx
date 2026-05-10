@@ -58,7 +58,7 @@ export default function TftLeaderboardPage() {
     <main className="min-h-screen bg-[#0e1525]">
       <Nav active="leaderboard" />
       <TftHero pageTitle={t('nav.leaderboard')} />
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-3 pb-6">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-2 pb-6">
 
 
         {tierDist && tierDist.tiers.length > 0 && (

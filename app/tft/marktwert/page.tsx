@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
 import { useI18n } from '../../lib/i18n';
+import TftHero from '../../components/tft/TftHero';
 
 interface TopPlayer {
   rank: number;
@@ -73,8 +74,8 @@ export default function TftMarktwertPage() {
   return (
     <main className="min-h-screen bg-[#0e1525]">
       <Nav active="marktwert" />
+      <TftHero pageTitle={t('nav.marketvalue')} />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
-        <h1 className="text-white text-2xl font-medium mb-2">{t('nav.marketvalue')}</h1>
         <p className="text-[#8a9bb0] text-sm mb-4">Marktwerte ab Master · TFT Standard Ranked</p>
 
         <div className="flex flex-wrap gap-2 mb-3">

@@ -6,6 +6,7 @@ import PageHero from '../components/PageHero';
 import MarketInsights from '../components/MarketInsights';
 import { useI18n } from '../lib/i18n';
 import { usePageTitle } from '../lib/use-page-title';
+import { formatTier } from '../lib/rank-format';
 
 const TIER_COLORS: Record<string, string> = {
   CHALLENGER: '#f0c040',
@@ -218,7 +219,7 @@ export default function MarktwertPage() {
                     }`}>{i + 1}</div>
                     <div className="flex-1 min-w-0">
                       <div className="text-white text-sm font-medium truncate">{p.name}</div>
-                      <div className="text-[#4a5a70] text-xs">{p.tier}{p.tier === 'DIAMOND' ? ` ${p.rank}` : ''}{p.lp != null ? ` · ${p.lp} LP` : ''} · {p.winrate}%</div>
+                      <div className="text-[#4a5a70] text-xs">{formatTier(p.tier, p.rank)}{p.lp != null ? ` · ${p.lp} LP` : ''} · {p.winrate}%</div>
                     </div>
                     <div className="text-right flex-shrink-0">
                       <div className="text-[#c89b3c] text-sm font-medium">{formatValue(p.marketValue)}</div>
@@ -242,7 +243,7 @@ export default function MarktwertPage() {
                     </div>
                     <div className="text-right">
                       <span className="text-xs font-medium" style={{ color: TIER_COLORS[p.tier] || '#8a9bb0' }}>
-                        {p.tier}{p.tier === 'DIAMOND' ? ` ${p.rank}` : ''}
+                        {formatTier(p.tier, p.rank)}
                       </span>
                     </div>
                     <div className="text-right">

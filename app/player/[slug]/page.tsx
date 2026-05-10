@@ -12,6 +12,7 @@ import ApiUnavailable from '../../components/ApiUnavailable';
 import { useI18n, LOCALE_MAP } from '../../lib/i18n';
 import { useCustomPageTitle } from '../../lib/use-page-title';
 import { loadProLookup, lookupPro, type ProPlayer } from '../../lib/pro-players';
+import { formatTier } from '../../lib/rank-format';
 
 const PerformanceCharts = dynamic(() => import('../../components/PerformanceCharts'), { ssr: false });
 const RadarStats = dynamic(() => import('../../components/RadarStats'), { ssr: false });
@@ -162,10 +163,9 @@ export default function PlayerPage() {
     : null;
 
   // Format tier display: hide rank (I) for Challenger, Grandmaster, Master
-  const formatTier = (q: any) => {
+  const formatRankedQueue = (q: any) => {
     if (!q) return null;
-    const noRankTiers = ['CHALLENGER', 'GRANDMASTER', 'MASTER'];
-    return noRankTiers.includes(q.tier) ? q.tier : `${q.tier} ${q.rank}`;
+    return formatTier(q.tier, q.rank);
   };
 
   // Use stored market value from Supabase when available (cached responses),
@@ -338,7 +338,7 @@ export default function PlayerPage() {
                 <div className="bg-[#141c2e] rounded p-4 text-center">
                   <div className="text-[#8a9bb0] text-xs mb-1">Solo/Duo</div>
                   <div className="text-white font-medium text-sm">
-                    {ranked ? formatTier(ranked) : t('player.unranked')}
+                    {ranked ? formatRankedQueue(ranked) : t('player.unranked')}
                   </div>
                   {ranked && <div className="text-[#c89b3c] text-xs mt-1">{ranked.leaguePoints} LP</div>}
                   {ranked && (
@@ -352,7 +352,7 @@ export default function PlayerPage() {
                 <div className="bg-[#141c2e] rounded p-4 text-center">
                   <div className="text-[#8a9bb0] text-xs mb-1">Flex</div>
                   <div className="text-white font-medium text-sm">
-                    {flex ? formatTier(flex) : t('player.unranked')}
+                    {flex ? formatRankedQueue(flex) : t('player.unranked')}
                   </div>
                   {flex && <div className="text-[#c89b3c] text-xs mt-1">{flex.leaguePoints} LP</div>}
                   {flex && (
@@ -447,7 +447,7 @@ export default function PlayerPage() {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
                   <div className="bg-[#141c2e] rounded p-3 text-center">
-                    <div className="text-[#8a9bb0] text-xs mb-1">{t('player.baseValue')} ({ranked ? formatTier(ranked) : '-'})</div>
+                    <div className="text-[#8a9bb0] text-xs mb-1">{t('player.baseValue')} ({ranked ? formatRankedQueue(ranked) : '-'})</div>
                     <div className="text-white text-lg font-medium">
                       ${marketValue.baseValue.toLocaleString('de-DE')}
                     </div>

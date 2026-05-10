@@ -4,6 +4,7 @@ import Nav from './components/Nav';
 import Footer from './components/Footer';
 import { useI18n, LOCALE_MAP } from './lib/i18n';
 import { REGIONS } from './lib/regions';
+import { formatTier } from './lib/rank-format';
 
 interface Champion {
   id: string;
@@ -378,7 +379,7 @@ export default function Home() {
                           <div className="text-[#4a5a70] text-xs">{p.region?.toUpperCase().replace('1', '')} · Level {p.summoner_level}</div>
                         </div>
                         {p.tier && (
-                          <div className="text-[#8a9bb0] text-xs">{p.tier} {p.rank}</div>
+                          <div className="text-[#8a9bb0] text-xs">{formatTier(p.tier, p.rank)}</div>
                         )}
                         {p.market_value && (
                           <div className="text-[#c89b3c] text-xs font-medium">{formatValue(p.market_value)}</div>
@@ -435,7 +436,7 @@ export default function Home() {
                         <span className="sm:hidden text-[#4a5a70] mr-2">{i + 1}.</span>{p.summoner_name}
                       </div>
                       <div className="text-[#c89b3c] text-sm font-medium sm:text-right">{formatValue(p.market_value)}</div>
-                      <div className="text-[#8a9bb0] text-xs sm:text-sm sm:text-right">{p.tier} {p.rank} · {p.winrate}%</div>
+                      <div className="text-[#8a9bb0] text-xs sm:text-sm sm:text-right">{formatTier(p.tier, p.rank)} · {p.winrate}%</div>
                       <div className="hidden sm:block text-sm text-right">{p.winrate}%</div>
                     </a>
                   ))}

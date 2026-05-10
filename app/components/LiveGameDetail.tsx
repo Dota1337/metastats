@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { formatTier } from '../lib/rank-format';
 
 interface Props {
   gameData: any;
@@ -156,7 +157,7 @@ export default function LiveGameDetail({ gameData, ddVersion, championMap, regio
                   <div className="text-[#4a5a70] text-xs">...</div>
                 ) : p.ranked ? (
                   <>
-                    <div className="text-[#8a9bb0] text-xs font-medium">{p.ranked.tier} {p.ranked.rank}</div>
+                    <div className="text-[#8a9bb0] text-xs font-medium">{formatTier(p.ranked.tier, p.ranked.rank)}</div>
                     <div className="text-[#4a5a70] text-[10px]">{p.ranked.leaguePoints} LP</div>
                   </>
                 ) : (

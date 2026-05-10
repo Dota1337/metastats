@@ -6,6 +6,7 @@ import Footer from '../../../components/Footer';
 import MatchCard from '../../../components/tft/MatchCard';
 import { useI18n } from '../../../lib/i18n';
 import { loadTftSetMeta } from '../../../lib/tft-dd-assets';
+import { formatTier } from '../../../lib/rank-format';
 import type { TftMatchSummary } from '../../../lib/tft-match-processor';
 
 interface SummonerData {
@@ -204,7 +205,7 @@ function RankBlock({ ranked }: { ranked: SummonerData['ranked'] }) {
     <div className="text-right">
       <div className="text-[#4a5a70] text-xs uppercase tracking-widest">Standard Ranked</div>
       <div className="text-lg font-medium mt-1" style={{ color }}>
-        {ranked.tier} {ranked.rank || ''} <span className="text-white">{ranked.leaguePoints ?? 0} LP</span>
+        {formatTier(ranked.tier, ranked.rank)} <span className="text-white">{ranked.leaguePoints ?? 0} LP</span>
       </div>
       <div className="text-[#4a5a70] text-xs">
         {ranked.wins ?? 0}W {ranked.losses ?? 0}L{wr != null && <> · {wr}% WR</>}

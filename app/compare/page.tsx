@@ -7,6 +7,7 @@ import Footer from '../components/Footer';
 import PageHero from '../components/PageHero';
 import { useI18n, LOCALE_MAP } from '../lib/i18n';
 import { usePageTitle } from '../lib/use-page-title';
+import { formatTier, NO_DIVISION_TIERS } from '../lib/rank-format';
 
 const CompareRadar = dynamic(() => import('../components/CompareRadar'), { ssr: false });
 
@@ -52,6 +53,8 @@ function rankToNumber(tier: string, rank: string, lp: number): number {
 
 function formatRank(tier: string, rank: string, lp: number): string {
   const t = tier.charAt(0) + tier.slice(1).toLowerCase();
+  // Drop the division for Challenger / GM / Master — those tiers have none.
+  if (NO_DIVISION_TIERS.has(tier)) return `${t} (${lp} LP)`;
   return `${t} ${rank} (${lp} LP)`;
 }
 
@@ -254,7 +257,7 @@ function MultiSearchTab({ region, setRegion }: { region: string; setRegion: (r: 
                 <div className="hidden sm:block text-center">
                   {solo ? (
                     <span className="text-sm font-medium" style={{ color: getTierColor(solo.tier) }}>
-                      {solo.tier} {solo.rank}
+                      {formatTier(solo.tier, solo.rank)}
                     </span>
                   ) : <span className="text-[#4a5a70] text-xs">{t('player.unranked')}</span>}
                 </div>

@@ -236,7 +236,7 @@ export default function ChampionBuildsSection({ championKey }: Props) {
                 </div>
                 <div className="text-xs">
                   <div className="text-white">{pct(s.wins, s.games)} WR</div>
-                  <div className="text-[#4a5a70]">{s.games}g</div>
+                  <div className="text-[#4a5a70]">{s.games} {t('champBuild.games')}</div>
                 </div>
               </div>
             ))}
@@ -247,7 +247,7 @@ export default function ChampionBuildsSection({ championKey }: Props) {
       {/* Boots */}
       {role.topBoots.length > 0 && (
         <Section title={t('champBuild.boots')}>
-          <ItemRow items={role.topBoots} ddImg={ddImg} />
+          <ItemRow items={role.topBoots} ddImg={ddImg} gamesLabel={t('champBuild.games') as string} />
         </Section>
       )}
 
@@ -271,7 +271,7 @@ export default function ChampionBuildsSection({ championKey }: Props) {
                 </div>
                 <div className="ml-auto text-right text-xs whitespace-nowrap">
                   <div className="text-white">{pct(b.wins, b.games)} WR</div>
-                  <div className="text-[#4a5a70]">{b.games}g</div>
+                  <div className="text-[#4a5a70]">{b.games} {t('champBuild.games')}</div>
                 </div>
               </div>
             ))}
@@ -282,7 +282,7 @@ export default function ChampionBuildsSection({ championKey }: Props) {
       {/* Most-used items */}
       {role.topItems.length > 0 && (
         <Section title={t('champBuild.items')}>
-          <ItemRow items={role.topItems.slice(0, 12)} ddImg={ddImg} />
+          <ItemRow items={role.topItems.slice(0, 12)} ddImg={ddImg} gamesLabel={t('champBuild.games') as string} />
         </Section>
       )}
 
@@ -290,8 +290,8 @@ export default function ChampionBuildsSection({ championKey }: Props) {
       {(role.counters.strongAgainst.length > 0 || role.counters.weakAgainst.length > 0) && (
         <Section title={t('champBuild.counters')}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <CounterList title={t('champBuild.strongAgainst')} entries={role.counters.strongAgainst} championMap={championMap} ddImg={ddImg} kind="strong" />
-            <CounterList title={t('champBuild.weakAgainst')} entries={role.counters.weakAgainst} championMap={championMap} ddImg={ddImg} kind="weak" />
+            <CounterList title={t('champBuild.strongAgainst')} entries={role.counters.strongAgainst} championMap={championMap} ddImg={ddImg} kind="strong" gamesLabel={t('champBuild.games') as string} />
+            <CounterList title={t('champBuild.weakAgainst')} entries={role.counters.weakAgainst} championMap={championMap} ddImg={ddImg} kind="weak" gamesLabel={t('champBuild.games') as string} />
           </div>
         </Section>
       )}
@@ -317,14 +317,14 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function ItemRow({ items, ddImg }: { items: ItemEntry[]; ddImg: (p: string) => string }) {
+function ItemRow({ items, ddImg, gamesLabel }: { items: ItemEntry[]; ddImg: (p: string) => string; gamesLabel: string }) {
   return (
     <div className="flex flex-wrap gap-2">
       {items.map((it, idx) => (
         <div key={idx} className="flex flex-col items-center gap-1 bg-[#141c2e] border border-[#1e2a3a] rounded p-1.5">
           <img src={ddImg(`item/${it.item}.png`)} alt={`Item ${it.item}`} className="w-9 h-9 rounded" />
           <div className="text-[10px] text-white">{pct(it.wins, it.games)}</div>
-          <div className="text-[10px] text-[#4a5a70]">{it.games}g</div>
+          <div className="text-[10px] text-[#4a5a70] whitespace-nowrap">{it.games} {gamesLabel}</div>
         </div>
       ))}
     </div>
@@ -384,20 +384,21 @@ function RunesPage({
       </div>
       <div className="md:ml-auto text-right">
         <div className="text-white text-sm">{pct(wins, games)} WR</div>
-        <div className="text-[11px] text-[#4a5a70]">{games}g</div>
+        <div className="text-[11px] text-[#4a5a70]">{games} {t('champBuild.games')}</div>
       </div>
     </div>
   );
 }
 
 function CounterList({
-  title, entries, championMap, ddImg, kind,
+  title, entries, championMap, ddImg, kind, gamesLabel,
 }: {
   title: string;
   entries: CounterEntry[];
   championMap: Record<string, ChampionInfo>;
   ddImg: (p: string) => string;
   kind: 'strong' | 'weak';
+  gamesLabel: string;
 }) {
   return (
     <div>
@@ -418,7 +419,7 @@ function CounterList({
               <div className={`text-sm font-medium ${kind === 'strong' ? 'text-green-400' : 'text-red-400'}`}>
                 {wr}
               </div>
-              <div className="text-[11px] text-[#4a5a70] w-12 text-right">{c.gamesAgainst}g</div>
+              <div className="text-[11px] text-[#4a5a70] text-right whitespace-nowrap">{c.gamesAgainst} {gamesLabel}</div>
             </div>
           );
         })}

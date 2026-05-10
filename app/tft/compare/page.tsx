@@ -4,6 +4,7 @@ import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
 import { useI18n } from '../../lib/i18n';
 import TftHero from '../../components/tft/TftHero';
+import { formatTier } from '../../lib/rank-format';
 
 interface PlayerSummary {
   name: string;
@@ -106,7 +107,7 @@ export default function TftComparePage() {
             return (
               <div key={i} className="bg-[#0d1526] border border-[#1e2a3a] rounded p-5">
                 <div className="text-white text-base font-medium mb-1">{r.name}</div>
-                <div className="text-[#8a9bb0] text-xs mb-3">{r.tier || 'Unranked'} {r.rank || ''} {r.lp != null ? `· ${r.lp} LP` : ''}</div>
+                <div className="text-[#8a9bb0] text-xs mb-3">{r.tier ? formatTier(r.tier, r.rank) : 'Unranked'} {r.lp != null ? `· ${r.lp} LP` : ''}</div>
                 <div className="space-y-1 text-xs">
                   <Row label={t('tft.avgPlacement')} value={r.avgPlacement?.toFixed(2) ?? '—'} />
                   <Row label={t('tft.top4')} value={r.top4Rate != null ? `${(r.top4Rate * 100).toFixed(0)}%` : '—'} />

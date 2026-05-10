@@ -15,27 +15,32 @@ interface TftHeroProps {
   children?: React.ReactNode;
 }
 
-const ROTATION_MS = 3500;
-const COUNT_FULL = 5;
-const COUNT_COMPACT = 3;
+// Independent rotation intervals so the two sides don't change at the same moment.
+const LEFT_ROTATE_MS = 5400;
+const RIGHT_ROTATE_MS = 6200;
 
-function pickRandomDistinct(
-  pool: TftCompanion[],
-  n: number,
-  exclude: Set<string>,
-): TftCompanion[] {
-  const candidates = pool.filter(c => !exclude.has(c.species + '|' + c.name));
-  const picked: TftCompanion[] = [];
-  const taken = new Set<string>();
-  while (picked.length < n && taken.size < candidates.length) {
-    const idx = Math.floor(Math.random() * candidates.length);
-    const c = candidates[idx];
-    const key = c.species + '|' + c.name;
-    if (taken.has(key)) continue;
-    taken.add(key);
-    picked.push(c);
+function pickRandom<T>(arr: T[], exclude?: T): T | null {
+  if (arr.length === 0) return null;
+  if (arr.length === 1) return arr[0];
+  let pick: T | null = null;
+  for (let i = 0; i < 6; i++) {
+    pick = arr[Math.floor(Math.random() * arr.length)];
+    if (pick !== exclude) return pick;
   }
-  return picked;
+  return pick;
+}
+
+// Dedupe tacticians by name — the API ships level 1/2/3 evolutions with the
+// same name and similar visuals; one entry per skin is enough for the rotation.
+function dedupeByName(arr: TftCompanion[]): TftCompanion[] {
+  const seen = new Set<string>();
+  const out: TftCompanion[] = [];
+  for (const c of arr) {
+    if (seen.has(c.name)) continue;
+    seen.add(c.name);
+    out.push(c);
+  }
+  return out;
 }
 
 export default function TftHero({
@@ -50,69 +55,82 @@ export default function TftHero({
     loadTftAssets().then(setAssets);
   }, []);
 
-  const pool = useMemo(() => {
+  // Pools curated for visual appeal:
+  //  - Chibis: kMythic + kPrestige are the themed skin variants (Blood Moon, K/DA, Spirit Blossom, ...).
+  //    kLegendary chibis are plain "Chibi Aatrox" base versions — less striking.
+  //  - Tacticians: kMythic only — the rarest Little Legends like Summer Splash Ao Shin.
+  const chibiPool = useMemo(() => {
     if (!assets?.chibis) return [];
     return Object.values(assets.chibis).filter(
-      c => (c.rarity === 'kMythic' || c.rarity === 'kLegendary') && !!c.icon,
+      c => (c.rarity === 'kMythic' || c.rarity === 'kPrestige') && !!c.icon,
     );
   }, [assets]);
 
-  const count = compact ? COUNT_COMPACT : COUNT_FULL;
-  const [slots, setSlots] = useState<(TftCompanion | null)[]>(() =>
-    Array(count).fill(null),
-  );
+  const tacticianPool = useMemo(() => {
+    if (!assets?.tacticians) return [];
+    const mythic = Object.values(assets.tacticians).filter(
+      c => c.rarity === 'kMythic' && !!c.icon,
+    );
+    return dedupeByName(mythic);
+  }, [assets]);
+
+  const [leftFigure, setLeftFigure] = useState<TftCompanion | null>(null);
+  const [rightFigure, setRightFigure] = useState<TftCompanion | null>(null);
 
   useEffect(() => {
-    if (pool.length === 0) return;
-    const initial = pickRandomDistinct(pool, count, new Set());
-    setSlots(() => {
-      const next: (TftCompanion | null)[] = Array(count).fill(null);
-      for (let i = 0; i < count; i++) next[i] = initial[i] || null;
-      return next;
-    });
-  }, [pool, count]);
+    if (chibiPool.length > 0) setLeftFigure(pickRandom(chibiPool));
+  }, [chibiPool]);
 
   useEffect(() => {
-    if (pool.length === 0) return;
+    if (tacticianPool.length > 0) setRightFigure(pickRandom(tacticianPool));
+  }, [tacticianPool]);
+
+  useEffect(() => {
+    if (chibiPool.length < 2) return;
     const reduce =
       typeof window !== 'undefined' &&
       window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     if (reduce) return;
     const id = window.setInterval(() => {
-      setSlots(prev => {
-        const next = [...prev];
-        const slotIdx = Math.floor(Math.random() * count);
-        const exclude = new Set(
-          prev.filter(Boolean).map(c => c!.species + '|' + c!.name),
-        );
-        const [pickedNew] = pickRandomDistinct(pool, 1, exclude);
-        if (pickedNew) next[slotIdx] = pickedNew;
-        return next;
-      });
-    }, ROTATION_MS);
+      setLeftFigure(prev => pickRandom(chibiPool, prev || undefined));
+    }, LEFT_ROTATE_MS);
     return () => window.clearInterval(id);
-  }, [pool, count]);
+  }, [chibiPool]);
 
-  const avatarSize = compact ? 56 : 84;
+  useEffect(() => {
+    if (tacticianPool.length < 2) return;
+    const reduce =
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) return;
+    const id = window.setInterval(() => {
+      setRightFigure(prev => pickRandom(tacticianPool, prev || undefined));
+    }, RIGHT_ROTATE_MS);
+    return () => window.clearInterval(id);
+  }, [tacticianPool]);
+
   const setLabel = assets ? `Set ${assets.set} · ${assets.setName}` : null;
+  const figureSize = compact ? 140 : 240;
 
   return (
     <div
-      className={`relative overflow-hidden ${compact ? 'py-5' : 'py-8 sm:py-12'}`}
+      className={`relative overflow-hidden ${compact ? 'py-6' : 'py-10 sm:py-14'}`}
+      style={{ minHeight: compact ? 120 : 220 }}
     >
       <style>{`
-        @keyframes tftChibiFade {
-          from { opacity: 0; transform: scale(0.88); filter: blur(2px); }
-          to   { opacity: 1; transform: scale(1);    filter: blur(0); }
+        @keyframes tftFigFade {
+          from { opacity: 0; transform: translateY(8px) scale(0.96); filter: blur(3px); }
+          to   { opacity: 1; transform: translateY(0)   scale(1);    filter: blur(0); }
         }
-        .tft-chibi-img { animation: tftChibiFade 0.7s ease-out; }
-        @keyframes tftGlowPulse {
-          0%, 100% { box-shadow: 0 0 18px rgba(123,97,255,0.18); }
-          50%      { box-shadow: 0 0 32px rgba(123,97,255,0.40); }
+        .tft-fig-img { animation: tftFigFade 0.9s ease-out; }
+        @keyframes tftFigFloat {
+          0%, 100% { transform: translateY(0); }
+          50%      { transform: translateY(-6px); }
         }
-        .tft-chibi-glow { animation: tftGlowPulse 4s ease-in-out infinite; }
+        .tft-fig-float { animation: tftFigFloat 6s ease-in-out infinite; }
       `}</style>
 
+      {/* Gradient background */}
       <div
         className="absolute inset-0"
         style={{
@@ -123,7 +141,26 @@ export default function TftHero({
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#7B61FF]/40 to-transparent" />
       <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#7B61FF]/20 to-transparent" />
 
-      <div className="relative max-w-6xl mx-auto px-4 sm:px-6 text-center">
+      {/* LEFT figure (Chibi) — hidden on mobile */}
+      <SideFigure
+        side="left"
+        figure={leftFigure}
+        assets={assets}
+        size={figureSize}
+        compact={compact}
+      />
+
+      {/* RIGHT figure (Tactician) — hidden on mobile */}
+      <SideFigure
+        side="right"
+        figure={rightFigure}
+        assets={assets}
+        size={figureSize}
+        compact={compact}
+      />
+
+      {/* Center content */}
+      <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 text-center">
         {setLabel && (
           <div className="text-[#7B61FF] text-[10px] sm:text-xs uppercase tracking-[0.3em] mb-2">
             {setLabel}
@@ -138,60 +175,65 @@ export default function TftHero({
           </h1>
         )}
         {subtitle && !compact && (
-          <p className="text-[#8a9bb0] text-sm mb-4 max-w-md mx-auto">
-            {subtitle}
-          </p>
+          <p className="text-[#8a9bb0] text-sm max-w-md mx-auto">{subtitle}</p>
         )}
-
-        <div
-          className={`flex justify-center items-center gap-3 sm:gap-5 ${compact ? 'mt-2' : 'mt-4'}`}
-          aria-hidden="true"
-        >
-          {slots.map((chibi, i) => (
-            <ChibiSlot
-              key={i}
-              chibi={chibi}
-              assets={assets}
-              size={avatarSize}
-            />
-          ))}
-        </div>
-
         {children && <div className="mt-5">{children}</div>}
       </div>
     </div>
   );
 }
 
-function ChibiSlot({
-  chibi,
+function SideFigure({
+  side,
+  figure,
   assets,
   size,
+  compact,
 }: {
-  chibi: TftCompanion | null;
+  side: 'left' | 'right';
+  figure: TftCompanion | null;
   assets: TftAssetsBundle | null;
   size: number;
+  compact: boolean;
 }) {
-  const url = tftCompanionIconUrl(assets, chibi?.icon);
+  const url = tftCompanionIconUrl(assets, figure?.icon);
+  // Soft inward fade so text in the middle stays legible.
+  const maskDirection = side === 'left' ? 'to right' : 'to left';
+  const positionClass =
+    side === 'left'
+      ? 'left-0 sm:left-2 md:left-6 lg:left-12'
+      : 'right-0 sm:right-2 md:right-6 lg:right-12';
+
   return (
     <div
-      className="tft-chibi-glow relative rounded-full overflow-hidden border border-[#7B61FF]/30"
-      style={{ width: size, height: size }}
+      className={`hidden sm:block absolute ${positionClass} pointer-events-none select-none`}
+      style={{
+        width: size,
+        height: size,
+        top: '50%',
+        transform: 'translateY(-50%)',
+        maskImage: `linear-gradient(${maskDirection}, rgba(0,0,0,1) 0%, rgba(0,0,0,0.9) 60%, rgba(0,0,0,0) 100%)`,
+        WebkitMaskImage: `linear-gradient(${maskDirection}, rgba(0,0,0,1) 0%, rgba(0,0,0,0.9) 60%, rgba(0,0,0,0) 100%)`,
+      }}
+      aria-hidden="true"
     >
       {url ? (
-        <img
-          key={chibi!.itemId}
-          src={url}
-          alt=""
-          title={chibi?.name}
-          className="tft-chibi-img w-full h-full object-cover"
-          loading="lazy"
-          onError={e => {
-            (e.currentTarget as HTMLImageElement).style.opacity = '0';
-          }}
-        />
+        <div className="tft-fig-float w-full h-full">
+          <img
+            key={figure!.itemId}
+            src={url}
+            alt=""
+            title={figure?.name}
+            className="tft-fig-img w-full h-full object-contain"
+            style={{ filter: `drop-shadow(0 ${compact ? 6 : 12}px ${compact ? 12 : 24}px rgba(123,97,255,0.35))` }}
+            loading="lazy"
+            onError={e => {
+              (e.currentTarget as HTMLImageElement).style.opacity = '0';
+            }}
+          />
+        </div>
       ) : (
-        <div className="w-full h-full bg-gradient-to-br from-[#1a2438] to-[#0d1526] animate-pulse" />
+        <div className="w-full h-full" />
       )}
     </div>
   );

@@ -24,8 +24,8 @@ const SWAP_MS = [7500, 9100, 10700, 12300];
 // Layout sizes:
 //   figure = front-figure rendered size (px) — back figure scales down by 0.45.
 //   radius = horizontal swing radius — keeps the cluster narrow.
-const FULL_LAYOUT = { figure: 140, radius: 70 };
-const COMPACT_LAYOUT = { figure: 80, radius: 36 };
+const FULL_LAYOUT = { figure: 182, radius: 91 };
+const COMPACT_LAYOUT = { figure: 104, radius: 47 };
 
 function pickRandom<T>(arr: T[], exclude?: Set<T>): T | null {
   const candidates = exclude ? arr.filter(x => !exclude.has(x)) : arr;

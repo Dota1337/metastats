@@ -75,7 +75,7 @@ export default function TftMarktwertPage() {
     <main className="min-h-screen bg-[#0e1525]">
       <Nav active="marktwert" />
       <TftHero pageTitle={t('nav.marketvalue')} />
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-3 pb-6">
         <p className="text-[#8a9bb0] text-sm mb-4">Marktwerte ab Master · TFT Standard Ranked</p>
 
         <div className="flex flex-wrap gap-2 mb-3">

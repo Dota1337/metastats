@@ -66,7 +66,7 @@ export default function TftComparePage() {
     <main className="min-h-screen bg-[#0e1525]">
       <Nav active="analyse" />
       <TftHero pageTitle={t('nav.analyse')} />
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-3 pb-6">
 
 
         <div className="flex flex-wrap gap-2 mb-3">

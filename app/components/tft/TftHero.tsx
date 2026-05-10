@@ -89,13 +89,13 @@ export default function TftHero({
 
   const layout = compact ? COMPACT_LAYOUT : FULL_LAYOUT;
   const setLabel = assets ? `Set ${assets.set} · ${assets.setName}` : null;
-  // Cluster takes radius+halfFigure on each horizontal side. Hero height
-  // accommodates the (slightly larger than figure) drop-shadow.
-  const heroMinHeight = layout.figure + 60;
+  // Hero height = figure size + small buffer for drop-shadow blur.
+  // Kept tight so the gap between hero and first content box stays minimal.
+  const heroMinHeight = layout.figure + 30;
 
   return (
     <div
-      className={`relative overflow-hidden ${compact ? 'py-5' : 'py-8 sm:py-12'}`}
+      className={`relative overflow-hidden ${compact ? 'py-3' : 'py-4 sm:py-6'}`}
       style={{ minHeight: heroMinHeight }}
     >
       <style>{`

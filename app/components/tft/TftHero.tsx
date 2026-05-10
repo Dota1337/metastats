@@ -15,23 +15,47 @@ interface TftHeroProps {
   children?: React.ReactNode;
 }
 
-// Independent rotation intervals so the two sides don't change at the same moment.
-const LEFT_ROTATE_MS = 5400;
-const RIGHT_ROTATE_MS = 6200;
-
-function pickRandom<T>(arr: T[], exclude?: T): T | null {
-  if (arr.length === 0) return null;
-  if (arr.length === 1) return arr[0];
-  let pick: T | null = null;
-  for (let i = 0; i < 6; i++) {
-    pick = arr[Math.floor(Math.random() * arr.length)];
-    if (pick !== exclude) return pick;
-  }
-  return pick;
+// Slot layout for each side. The first slot is the "front" (largest); the rest
+// are layered behind with smaller sizes and pixel offsets relative to the front.
+// Offsets are mirrored automatically for the right-side cluster.
+interface SlotConfig {
+  size: number;
+  offsetX: number; // positive = further from edge (toward center)
+  offsetY: number; // positive = down
+  opacity: number;
+  rotateMs: number;
+  z: number;
 }
 
-// Dedupe tacticians by name — the API ships level 1/2/3 evolutions with the
-// same name and similar visuals; one entry per skin is enough for the rotation.
+const FULL_SLOTS: SlotConfig[] = [
+  { size: 240, offsetX: 0,   offsetY: 0,    opacity: 1.0, rotateMs: 5400, z: 3 },
+  { size: 160, offsetX: 110, offsetY: -70,  opacity: 0.80, rotateMs: 6800, z: 1 },
+  { size: 140, offsetX: 100, offsetY: 80,   opacity: 0.75, rotateMs: 8200, z: 2 },
+];
+
+const COMPACT_SLOTS: SlotConfig[] = [
+  { size: 130, offsetX: 0,  offsetY: 0,   opacity: 1.0,  rotateMs: 5400, z: 2 },
+  { size: 90,  offsetX: 70, offsetY: -28, opacity: 0.78, rotateMs: 7200, z: 1 },
+];
+
+function pickRandom<T>(arr: T[], exclude?: Set<T>): T | null {
+  const candidates = exclude ? arr.filter(x => !exclude.has(x)) : arr;
+  if (candidates.length === 0) return arr[0] || null;
+  return candidates[Math.floor(Math.random() * candidates.length)];
+}
+
+function pickInitial<T>(arr: T[], n: number): T[] {
+  const taken = new Set<T>();
+  const out: T[] = [];
+  for (let i = 0; i < n; i++) {
+    const pick = pickRandom(arr, taken);
+    if (!pick) break;
+    taken.add(pick);
+    out.push(pick);
+  }
+  return out;
+}
+
 function dedupeByName(arr: TftCompanion[]): TftCompanion[] {
   const seen = new Set<string>();
   const out: TftCompanion[] = [];
@@ -56,8 +80,8 @@ export default function TftHero({
   }, []);
 
   // Pools curated for visual appeal:
-  //  - Chibis: kMythic + kPrestige are the themed skin variants (Blood Moon, K/DA, Spirit Blossom, ...).
-  //    kLegendary chibis are plain "Chibi Aatrox" base versions — less striking.
+  //  - Chibis: kMythic + kPrestige (themed skin variants — Blood Moon, K/DA, Spirit Blossom, ...).
+  //    kLegendary chibis are plain "Chibi Aatrox" base versions — less striking visually.
   //  - Tacticians: kMythic only — the rarest Little Legends like Summer Splash Ao Shin.
   const chibiPool = useMemo(() => {
     if (!assets?.chibis) return [];
@@ -74,60 +98,36 @@ export default function TftHero({
     return dedupeByName(mythic);
   }, [assets]);
 
-  const [leftFigure, setLeftFigure] = useState<TftCompanion | null>(null);
-  const [rightFigure, setRightFigure] = useState<TftCompanion | null>(null);
-
-  useEffect(() => {
-    if (chibiPool.length > 0) setLeftFigure(pickRandom(chibiPool));
-  }, [chibiPool]);
-
-  useEffect(() => {
-    if (tacticianPool.length > 0) setRightFigure(pickRandom(tacticianPool));
-  }, [tacticianPool]);
-
-  useEffect(() => {
-    if (chibiPool.length < 2) return;
-    const reduce =
-      typeof window !== 'undefined' &&
-      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    if (reduce) return;
-    const id = window.setInterval(() => {
-      setLeftFigure(prev => pickRandom(chibiPool, prev || undefined));
-    }, LEFT_ROTATE_MS);
-    return () => window.clearInterval(id);
-  }, [chibiPool]);
-
-  useEffect(() => {
-    if (tacticianPool.length < 2) return;
-    const reduce =
-      typeof window !== 'undefined' &&
-      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    if (reduce) return;
-    const id = window.setInterval(() => {
-      setRightFigure(prev => pickRandom(tacticianPool, prev || undefined));
-    }, RIGHT_ROTATE_MS);
-    return () => window.clearInterval(id);
-  }, [tacticianPool]);
-
+  const slotConfig = compact ? COMPACT_SLOTS : FULL_SLOTS;
   const setLabel = assets ? `Set ${assets.set} · ${assets.setName}` : null;
-  const figureSize = compact ? 140 : 240;
+  const heroMinHeight = compact ? 150 : 300;
 
   return (
     <div
       className={`relative overflow-hidden ${compact ? 'py-6' : 'py-10 sm:py-14'}`}
-      style={{ minHeight: compact ? 120 : 220 }}
+      style={{ minHeight: heroMinHeight }}
     >
       <style>{`
         @keyframes tftFigFade {
-          from { opacity: 0; transform: translateY(8px) scale(0.96); filter: blur(3px); }
+          from { opacity: 0; transform: translateY(8px) scale(0.94); filter: blur(3px); }
           to   { opacity: 1; transform: translateY(0)   scale(1);    filter: blur(0); }
         }
         .tft-fig-img { animation: tftFigFade 0.9s ease-out; }
-        @keyframes tftFigFloat {
+        @keyframes tftFigFloatA {
           0%, 100% { transform: translateY(0); }
           50%      { transform: translateY(-6px); }
         }
-        .tft-fig-float { animation: tftFigFloat 6s ease-in-out infinite; }
+        @keyframes tftFigFloatB {
+          0%, 100% { transform: translateY(0); }
+          50%      { transform: translateY(-4px); }
+        }
+        @keyframes tftFigFloatC {
+          0%, 100% { transform: translateY(0); }
+          50%      { transform: translateY(-8px); }
+        }
+        .tft-fig-float-0 { animation: tftFigFloatA 6s ease-in-out infinite; }
+        .tft-fig-float-1 { animation: tftFigFloatB 7s ease-in-out infinite 0.5s; }
+        .tft-fig-float-2 { animation: tftFigFloatC 8s ease-in-out infinite 1s; }
       `}</style>
 
       {/* Gradient background */}
@@ -141,21 +141,21 @@ export default function TftHero({
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#7B61FF]/40 to-transparent" />
       <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#7B61FF]/20 to-transparent" />
 
-      {/* LEFT figure (Chibi) — hidden on mobile */}
-      <SideFigure
+      {/* LEFT cluster (Chibis) */}
+      <SideCluster
         side="left"
-        figure={leftFigure}
+        pool={chibiPool}
         assets={assets}
-        size={figureSize}
+        slotConfig={slotConfig}
         compact={compact}
       />
 
-      {/* RIGHT figure (Tactician) — hidden on mobile */}
-      <SideFigure
+      {/* RIGHT cluster (Tacticians) */}
+      <SideCluster
         side="right"
-        figure={rightFigure}
+        pool={tacticianPool}
         assets={assets}
-        size={figureSize}
+        slotConfig={slotConfig}
         compact={compact}
       />
 
@@ -183,58 +183,125 @@ export default function TftHero({
   );
 }
 
-function SideFigure({
+function SideCluster({
   side,
-  figure,
+  pool,
   assets,
-  size,
+  slotConfig,
   compact,
 }: {
   side: 'left' | 'right';
-  figure: TftCompanion | null;
+  pool: TftCompanion[];
   assets: TftAssetsBundle | null;
-  size: number;
+  slotConfig: SlotConfig[];
   compact: boolean;
 }) {
-  const url = tftCompanionIconUrl(assets, figure?.icon);
-  // Soft inward fade so text in the middle stays legible.
-  const maskDirection = side === 'left' ? 'to right' : 'to left';
-  const positionClass =
+  const [slots, setSlots] = useState<(TftCompanion | null)[]>(() =>
+    Array(slotConfig.length).fill(null),
+  );
+
+  // Initial fill with distinct figures
+  useEffect(() => {
+    if (pool.length === 0) return;
+    const initial = pickInitial(pool, slotConfig.length);
+    setSlots(prev => {
+      const next: (TftCompanion | null)[] = Array(slotConfig.length).fill(null);
+      for (let i = 0; i < slotConfig.length; i++) next[i] = initial[i] || null;
+      return next;
+    });
+  }, [pool, slotConfig.length]);
+
+  // Each slot rotates on its own timer. Tied to slot index so different slots
+  // change at different times — gives an organic, never-synced feel.
+  useEffect(() => {
+    if (pool.length < 2) return;
+    const reduce =
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) return;
+    const timers = slotConfig.map((cfg, i) =>
+      window.setInterval(() => {
+        setSlots(prev => {
+          const next = [...prev];
+          const inUse = new Set(prev.filter(Boolean) as TftCompanion[]);
+          const candidate = pickRandom(pool, inUse);
+          if (candidate) next[i] = candidate;
+          return next;
+        });
+      }, cfg.rotateMs),
+    );
+    return () => {
+      for (const t of timers) window.clearInterval(t);
+    };
+  }, [pool, slotConfig]);
+
+  // Cluster anchor — figures position absolutely relative to it.
+  const anchorClass =
     side === 'left'
-      ? 'left-0 sm:left-2 md:left-6 lg:left-12'
-      : 'right-0 sm:right-2 md:right-6 lg:right-12';
+      ? 'hidden sm:block absolute left-0 sm:left-2 md:left-6 lg:left-10'
+      : 'hidden sm:block absolute right-0 sm:right-2 md:right-6 lg:right-10';
+
+  // Cluster mask — figures fade toward the center so headline stays legible.
+  const maskDirection = side === 'left' ? 'to right' : 'to left';
+
+  // Width/height of the cluster bounding box — base on slot 0 + extension.
+  const front = slotConfig[0];
+  const clusterWidth = front.size + (slotConfig[1]?.offsetX || 0) + (slotConfig[1]?.size || 0) * 0.4;
+  const clusterHeight = front.size + Math.max(0, ...slotConfig.slice(1).map(s => Math.abs(s.offsetY)));
 
   return (
     <div
-      className={`hidden sm:block absolute ${positionClass} pointer-events-none select-none`}
+      className={anchorClass}
       style={{
-        width: size,
-        height: size,
         top: '50%',
         transform: 'translateY(-50%)',
-        maskImage: `linear-gradient(${maskDirection}, rgba(0,0,0,1) 0%, rgba(0,0,0,0.9) 60%, rgba(0,0,0,0) 100%)`,
-        WebkitMaskImage: `linear-gradient(${maskDirection}, rgba(0,0,0,1) 0%, rgba(0,0,0,0.9) 60%, rgba(0,0,0,0) 100%)`,
+        width: clusterWidth,
+        height: clusterHeight,
+        pointerEvents: 'none',
+        userSelect: 'none',
+        maskImage: `linear-gradient(${maskDirection}, rgba(0,0,0,1) 0%, rgba(0,0,0,0.95) 55%, rgba(0,0,0,0) 100%)`,
+        WebkitMaskImage: `linear-gradient(${maskDirection}, rgba(0,0,0,1) 0%, rgba(0,0,0,0.95) 55%, rgba(0,0,0,0) 100%)`,
       }}
       aria-hidden="true"
     >
-      {url ? (
-        <div className="tft-fig-float w-full h-full">
-          <img
-            key={figure!.itemId}
-            src={url}
-            alt=""
-            title={figure?.name}
-            className="tft-fig-img w-full h-full object-contain"
-            style={{ filter: `drop-shadow(0 ${compact ? 6 : 12}px ${compact ? 12 : 24}px rgba(123,97,255,0.35))` }}
-            loading="lazy"
-            onError={e => {
-              (e.currentTarget as HTMLImageElement).style.opacity = '0';
+      {slotConfig.map((cfg, i) => {
+        const fig = slots[i];
+        const url = tftCompanionIconUrl(assets, fig?.icon);
+        // Mirror offsetX for the right cluster.
+        const x = side === 'left' ? cfg.offsetX : clusterWidth - cfg.offsetX - cfg.size;
+        const y = (clusterHeight - cfg.size) / 2 + cfg.offsetY;
+        return (
+          <div
+            key={i}
+            className={`absolute tft-fig-float-${i % 3}`}
+            style={{
+              left: x,
+              top: y,
+              width: cfg.size,
+              height: cfg.size,
+              zIndex: cfg.z,
+              opacity: cfg.opacity,
             }}
-          />
-        </div>
-      ) : (
-        <div className="w-full h-full" />
-      )}
+          >
+            {url ? (
+              <img
+                key={fig!.itemId}
+                src={url}
+                alt=""
+                title={fig?.name}
+                className="tft-fig-img w-full h-full object-contain"
+                style={{
+                  filter: `drop-shadow(0 ${compact ? 6 : 12}px ${compact ? 12 : 24}px rgba(123,97,255,${0.25 + cfg.opacity * 0.15}))`,
+                }}
+                loading="lazy"
+                onError={e => {
+                  (e.currentTarget as HTMLImageElement).style.opacity = '0';
+                }}
+              />
+            ) : null}
+          </div>
+        );
+      })}
     </div>
   );
 }

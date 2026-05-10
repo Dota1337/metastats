@@ -21,6 +21,7 @@ import { request as httpsRequest } from 'node:https';
 import { lookup as dnsLookup } from 'node:dns';
 
 const SOURCE_URL = 'https://raw.communitydragon.org/latest/cdragon/tft/en_us.json';
+const COMPANIONS_URL = 'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/companions.json';
 
 function lookupIPv4(host) {
   return new Promise((resolve, reject) => {
@@ -69,12 +70,26 @@ function pickActiveSet(setData) {
   return live.sort((a, b) => (b.number || 0) - (a.number || 0))[0] || null;
 }
 
+// Companion icons live under a different CD namespace than items/champions.
+// Path in JSON: "/lol-game-data/assets/ASSETS/Loadouts/Companions/Tooltip_X.png"
+// Maps to:     ".../plugins/rcp-be-lol-game-data/global/default/assets/loadouts/companions/tooltip_x.png"
+// Note: the JSON path has BOTH `/lol-game-data/assets/` (prefix) AND `ASSETS/` (file path) —
+// only the prefix needs stripping; the inner ASSETS/ lowercases to the served `assets/`.
+function normalizeCompanionIcon(raw) {
+  if (!raw || typeof raw !== 'string') return null;
+  return raw.replace(/^\/lol-game-data\/assets\//i, '').toLowerCase();
+}
+
 async function main() {
-  console.log('[1/3] Fetch CommunityDragon TFT data');
+  console.log('[1/4] Fetch CommunityDragon TFT data');
   const cd = await fetchJSON(SOURCE_URL);
   console.log('       items:', (cd.items || []).length, ' setData entries:', (cd.setData || []).length);
 
-  console.log('[2/3] Pick active set + collect entries');
+  console.log('[2/4] Fetch companion catalog (Chibis + Tacticians)');
+  const companions = await fetchJSON(COMPANIONS_URL);
+  console.log('       companions total:', companions.length);
+
+  console.log('[3/4] Pick active set + collect entries');
   const active = pickActiveSet(cd.setData || []);
   if (!active) { console.error('No live set found'); process.exit(1); }
   console.log(`       active set: ${active.number} (${active.mutator})`);
@@ -135,20 +150,58 @@ async function main() {
     };
   }
 
-  console.log(`       items: ${Object.keys(items).length}  champions: ${Object.keys(champions).length}  traits: ${Object.keys(traits).length}  augments: ${Object.keys(augments).length}`);
+  // Chibis (TFT-only premium companions) — all rarities (kMythic/kLegendary/kPrestige)
+  // are kept because the bundle stays small (~120 entries × ~150B) and the frontend
+  // filters by TFTRarity for the hero rotation.
+  const chibis = {};
+  for (const c of companions || []) {
+    if (c.companionType !== 'kChibi') continue;
+    if (!c.contentId) continue;
+    chibis[c.contentId] = {
+      name: c.name || '',
+      icon: normalizeCompanionIcon(c.loadoutsIcon),
+      species: c.speciesName || '',
+      rarity: c.TFTRarity || 'kStandard', // kMythic / kLegendary / kPrestige
+      itemId: c.itemId ?? 0,
+    };
+  }
 
-  console.log('[3/3] Write public/tft-assets.json + per-set archive');
+  // Tacticians (Little Legends) — TFTOnly flag is barely used in CD data, so we
+  // instead filter on TFTRarity in {kMythic, kLegendary} to get the iconic skins
+  // (≈400 entries). Lower rarities (Standard) bloat the bundle and have less
+  // visual appeal. Per-tier duplicates (level 1/2/3 evolutions) are kept — the
+  // frontend can dedupe by speciesName if it shows them in a list.
+  const tacticians = {};
+  for (const c of companions || []) {
+    if (c.companionType !== 'kLittleLegend') continue;
+    if (c.TFTRarity !== 'kMythic' && c.TFTRarity !== 'kLegendary') continue;
+    if (!c.contentId) continue;
+    tacticians[c.contentId] = {
+      name: c.name || '',
+      icon: normalizeCompanionIcon(c.loadoutsIcon),
+      species: c.speciesName || '',
+      rarity: c.TFTRarity,
+      itemId: c.itemId ?? 0,
+    };
+  }
+
+  console.log(`       items: ${Object.keys(items).length}  champions: ${Object.keys(champions).length}  traits: ${Object.keys(traits).length}  augments: ${Object.keys(augments).length}  chibis: ${Object.keys(chibis).length}  tacticians: ${Object.keys(tacticians).length}`);
+
+  console.log('[4/4] Write public/tft-assets.json + per-set archive');
   const payload = {
     set: active.number,
     setName: active.name,
     mutator: active.mutator,
     fetchedAt: new Date().toISOString(),
-    source: 'CommunityDragon (cdragon/tft/en_us.json)',
+    source: 'CommunityDragon (cdragon/tft/en_us.json + companions.json)',
     iconBase: 'https://raw.communitydragon.org/latest/game/',
+    companionsIconBase: 'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/',
     items,
     champions,
     traits,
     augments,
+    chibis,
+    tacticians,
   };
   // Single 'live' file the frontend always reads + a per-set archive so we
   // can roll back if CD breaks. Old archives stay for diff/history.

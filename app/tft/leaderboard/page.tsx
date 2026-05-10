@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
 import { useI18n } from '../../lib/i18n';
+import TftHero from '../../components/tft/TftHero';
 
 interface Player {
   rank: number; puuid: string;
@@ -56,8 +57,9 @@ export default function TftLeaderboardPage() {
   return (
     <main className="min-h-screen bg-[#0e1525]">
       <Nav active="leaderboard" />
+      <TftHero compact pageTitle={t('nav.leaderboard')} />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
-        <h1 className="text-white text-2xl font-medium mb-4">{t('nav.leaderboard')}</h1>
+
 
         {tierDist && tierDist.tiers.length > 0 && (
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-4">

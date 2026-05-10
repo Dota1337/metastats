@@ -37,16 +37,31 @@ export interface TftAugment {
   tier: number;
 }
 
+// Chibi-Champions (TFT-only premium companions) and Tacticians (Little Legends).
+// Built from CommunityDragon's companions.json — see scripts/fetch-tft-assets.mjs.
+// Icons resolve via companionsIconBase (different namespace than item/champ icons).
+export type TftRarity = 'kMythic' | 'kLegendary' | 'kPrestige' | 'kStandard';
+export interface TftCompanion {
+  name: string;
+  icon: string | null;
+  species: string;
+  rarity: TftRarity;
+  itemId: number;
+}
+
 export interface TftAssetsBundle {
   set: number;
   setName: string;
   mutator: string;
   fetchedAt: string;
   iconBase: string;
+  companionsIconBase?: string;
   items: Record<string, TftItem>;
   champions: Record<string, TftChampion>;
   traits: Record<string, TftTrait>;
   augments: Record<string, TftAugment>;
+  chibis?: Record<string, TftCompanion>;
+  tacticians?: Record<string, TftCompanion>;
 }
 
 let cached: Promise<TftAssetsBundle | null> | null = null;
@@ -66,4 +81,12 @@ export function loadTftAssets(): Promise<TftAssetsBundle | null> {
 export function tftIconUrl(bundle: TftAssetsBundle | null, iconPath: string | null | undefined): string | null {
   if (!bundle || !iconPath) return null;
   return bundle.iconBase + iconPath;
+}
+
+// Companion icons (Chibis + Tacticians) live under a different CD namespace.
+// Bundle stores normalized paths like "assets/loadouts/companions/tooltip_x.png".
+export function tftCompanionIconUrl(bundle: TftAssetsBundle | null, iconPath: string | null | undefined): string | null {
+  if (!bundle || !iconPath) return null;
+  const base = bundle.companionsIconBase || 'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/';
+  return base + iconPath;
 }

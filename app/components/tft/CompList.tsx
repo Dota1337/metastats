@@ -6,6 +6,12 @@ import CompCard from './CompCard';
 import { useI18n } from '../../lib/i18n';
 import { loadTftAssets, type TftAssetsBundle } from '../../lib/tft-cdragon';
 
+interface CompListProps {
+  // When the parent renders a TftHero above, hide CompList's inline title and
+  // set-badge to avoid duplication. Patch info is then surfaced in the meta line.
+  headless?: boolean;
+}
+
 const REGIONS: { value: string; label: string }[] = [
   { value: 'euw1', label: 'EUW' },
   { value: 'kr',   label: 'KR' },
@@ -19,7 +25,7 @@ const SORT_OPTIONS: { value: string; label: string }[] = [
   { value: 'top1Rate',     label: 'Sieg-Rate' },
 ];
 
-export default function CompList() {
+export default function CompList({ headless = false }: CompListProps) {
   const { t } = useI18n();
   const [bucket, setBucket] = useState<TierBucket>('master_plus');
   const [region, setRegion] = useState('euw1');
@@ -54,12 +60,27 @@ export default function CompList() {
 
   return (
     <>
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-4">
-        <div>
-          {assets && <div className="text-[#7B61FF] text-xs uppercase tracking-widest">Set {assets.set} · {assets.setName}{meta?.patch ? ` · Patch ${meta.patch}` : ''}</div>}
-          <h1 className="text-white text-2xl font-medium mt-1">{t('nav.comps')}</h1>
+      {!headless && (
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-4">
+          <div>
+            {assets && <div className="text-[#7B61FF] text-xs uppercase tracking-widest">Set {assets.set} · {assets.setName}{meta?.patch ? ` · Patch ${meta.patch}` : ''}</div>}
+            <h1 className="text-white text-2xl font-medium mt-1">{t('nav.comps')}</h1>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {REGIONS.map(r => (
+              <button
+                key={r.value}
+                onClick={() => setRegion(r.value)}
+                className={`px-3 py-1.5 rounded text-xs font-medium ${region === r.value ? 'bg-[#7B61FF] text-white' : 'bg-[#141c2e] text-[#8a9bb0] hover:text-white'}`}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+      )}
+      {headless && (
+        <div className="flex flex-wrap items-center justify-end gap-2 mb-4">
           {REGIONS.map(r => (
             <button
               key={r.value}
@@ -70,7 +91,7 @@ export default function CompList() {
             </button>
           ))}
         </div>
-      </div>
+      )}
 
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
         <TierFilter value={bucket} onChange={setBucket} />
@@ -89,7 +110,7 @@ export default function CompList() {
 
       {hasData && meta?.matchesAnalyzed != null && (
         <div className="text-[#4a5a70] text-[11px] mb-3">
-          {meta.matchesAnalyzed.toLocaleString('de-DE')} Matches analysiert · {sorted.length} Comps mit ≥ {meta.minGames ?? 30} Spielen
+          {meta.matchesAnalyzed.toLocaleString('de-DE')} Matches analysiert · {sorted.length} Comps mit ≥ {meta.minGames ?? 30} Spielen{headless && meta?.patch ? ` · Patch ${meta.patch}` : ''}
         </div>
       )}
 

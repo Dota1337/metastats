@@ -6,6 +6,7 @@ import TierFilter, { type TierBucket } from '../../components/tft/TierFilter';
 import EmptyData from '../../components/tft/EmptyData';
 import { useI18n } from '../../lib/i18n';
 import { loadTftAssets, tftIconUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
+import TftHero from '../../components/tft/TftHero';
 
 interface ItemRow {
   apiName: string;
@@ -32,9 +33,9 @@ export default function TftItemsPage() {
   return (
     <main className="min-h-screen bg-[#0e1525]">
       <Nav active="items" />
+      <TftHero compact pageTitle={t('nav.items')} />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-5">
-          <h1 className="text-white text-2xl font-medium">{t('nav.items')}</h1>
+        <div className="flex items-center justify-end mb-5">
           <TierFilter value={bucket} onChange={setBucket} />
         </div>
 

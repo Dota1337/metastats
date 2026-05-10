@@ -37,6 +37,14 @@ const translations = {
   'game.switch': t6('Spiel wechseln', 'Switch game', '\uAC8C\uC784 \uC804\uD658', '\u5207\u6362\u6E38\u620F', 'Cambiar juego', 'Changer de jeu'),
   'game.lol': t6('League of Legends', 'League of Legends', '\uB9AC\uADF8 \uC624\uBE0C \uB808\uC804\uB4DC', '\u82F1\u96C4\u8054\u76DF', 'League of Legends', 'League of Legends'),
   'game.tft': t6('Teamfight Tactics', 'Teamfight Tactics', '\uC804\uB7B5\uC801 \uD300 \uC804\uD22C', '\u4E91\u9876\u4E4B\u5F08', 'Teamfight Tactics', 'Teamfight Tactics'),
+  'tft.heroSubtitle': t6(
+    'Aktuelle Meta-Comps der Top-Spieler',
+    'Current meta comps from top players',
+    '\uC0C1\uC704 \uD50C\uB808\uC774\uC5B4\uC758 \uD604\uC7AC \uBA54\uD0C0 \uC870\uD569',
+    '\u9876\u5C16\u73A9\u5BB6\u7684\u5F53\u524D\u4E3B\u6D41\u9635\u5BB9',
+    'Composiciones meta actuales de los mejores jugadores',
+    'Compositions meta actuelles des meilleurs joueurs'
+  ),
   'tft.set': t6('Set', 'Set', '\uC2DC\uC98C', '\u8D5B\u5B63', 'Set', 'Set'),
   'tft.allSets': t6('Alle Sets', 'All sets', '\uBAA8\uB4E0 \uC2DC\uC98C', '\u6240\u6709\u8D5B\u5B63', 'Todos los sets', 'Tous les sets'),
   'tft.currentSet': t6('Aktuelles Set', 'Current set', '\uD604\uC7AC \uC2DC\uC98C', '\u5F53\u524D\u8D5B\u5B63', 'Set actual', 'Set actuel'),

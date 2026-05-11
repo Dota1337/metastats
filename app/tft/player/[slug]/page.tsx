@@ -651,9 +651,18 @@ function SeasonRankRow({ season }: { season: SeasonRank }) {
   const tier = (season.peak_tier || '').toUpperCase();
   const color = TIER_COLORS[tier] || '#8a9bb0';
   const setLabel = formatSetLabel(season.set_label, season.set_number);
-  const rankText = season.peak_rating_label
-    || [tier, season.peak_division, season.peak_lp != null ? `${season.peak_lp} LP` : '']
-        .filter(Boolean).join(' ');
+  // Build from structured fields via formatTier so Challenger/GM/Master
+  // never render the bogus "I" division. peak_rating_label is from the
+  // source (metatft/dakgg) and contains the raw tier+division string,
+  // so it would re-introduce the "I" — only use it as a last-resort
+  // fallback when peak_tier is missing.
+  const tierLabel = tier
+    ? formatTier(tier, season.peak_division)
+    : (season.peak_rating_label || '');
+  const rankText = [
+    tierLabel,
+    season.peak_lp != null ? `${season.peak_lp} LP` : '',
+  ].filter(Boolean).join(' ');
   return (
     <div className="flex items-center justify-between gap-3 text-xs">
       <div className="text-[#8a9bb0] flex-shrink-0">{setLabel}</div>

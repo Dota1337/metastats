@@ -61,10 +61,12 @@ export async function GET(request: NextRequest) {
 
     // Three calls in parallel: TFT summoner-by-puuid (icon, level), TFT ranked
     // entries (solo + double-up + hyperroll), recent match IDs (queue 1100).
+    // count=120 covers the 4-page pagination (30 per page) on the player page;
+    // Riot's match-v1 endpoint accepts up to 200 in a single call.
     const [summonerRes, rankedRes, matchIdsRes] = await Promise.all([
       fetch(`https://${region}.api.riotgames.com/tft/summoner/v1/summoners/by-puuid/${puuid}?api_key=${apiKey}`),
       fetch(`https://${region}.api.riotgames.com/tft/league/v1/by-puuid/${puuid}?api_key=${apiKey}`),
-      fetch(`https://${regional}.api.riotgames.com/tft/match/v1/matches/by-puuid/${puuid}/ids?count=20&api_key=${apiKey}`),
+      fetch(`https://${regional}.api.riotgames.com/tft/match/v1/matches/by-puuid/${puuid}/ids?count=120&api_key=${apiKey}`),
     ]);
 
     const summoner = summonerRes.ok ? await summonerRes.json() : null;

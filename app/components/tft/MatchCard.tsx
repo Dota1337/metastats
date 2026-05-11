@@ -78,10 +78,13 @@ function ActivatedTraits({ participant, assets }: { participant: TftParticipantS
 }
 
 function BoardPreview({ participant, assets }: { participant: TftParticipantSummary; assets: TftAssetsBundle | null }) {
+  // Collapsed-view preview shows every unit with its 3 items below — same
+  // shape as the expanded ParticipantRow, just narrower. Items inline let
+  // the user scan a comp at a glance without having to expand the card.
   return (
-    <div className="hidden md:flex gap-1 flex-wrap max-w-[300px] justify-end">
+    <div className="hidden md:flex gap-1.5 flex-wrap max-w-[420px] justify-end">
       {participant.units.slice(0, 9).map((u, i) => (
-        <UnitTile key={i} unit={u} assets={assets} small />
+        <UnitTile key={i} unit={u} assets={assets} />
       ))}
     </div>
   );
@@ -130,7 +133,10 @@ function ParticipantRow({ participant, isSelf, assets }: { participant: TftParti
 
 function UnitTile({ unit, assets, small }: { unit: any; assets: TftAssetsBundle | null; small?: boolean }) {
   const info = assets?.champions[unit.characterId];
-  const sz = small ? 'w-7 h-7' : 'w-9 h-9';
+  // Bumped up one notch — the previous w-7/w-9 sizing made unit faces
+  // unrecognisable on the match-card grid.
+  const sz = small ? 'w-9 h-9' : 'w-12 h-12';
+  const itemSz = small ? 'w-3 h-3' : 'w-4 h-4';
   const cost = (info?.cost ?? unit.rarity + 1) || 1;
   const costColor = costToColor(cost);
   const url = tftIconUrl(assets, info?.icon);
@@ -146,15 +152,15 @@ function UnitTile({ unit, assets, small }: { unit: any; assets: TftAssetsBundle 
           </div>
         )}
       </div>
-      {unit.items?.length > 0 && !small && (
+      {unit.items?.length > 0 && (
         <div className="flex gap-px">
           {unit.items.slice(0, 3).map((it: string, i: number) => {
             const itemInfo = assets?.items[it];
             const iurl = tftIconUrl(assets, itemInfo?.icon);
             return iurl ? (
-              <img key={i} src={iurl} alt={itemInfo!.name} title={itemInfo!.name} className="w-2.5 h-2.5 rounded-sm" />
+              <img key={i} src={iurl} alt={itemInfo!.name} title={itemInfo!.name} className={`${itemSz} rounded-sm`} />
             ) : (
-              <div key={i} className="w-2.5 h-2.5 rounded-sm bg-[#1e2a3a]" title={it} />
+              <div key={i} className={`${itemSz} rounded-sm bg-[#1e2a3a]`} title={it} />
             );
           })}
         </div>

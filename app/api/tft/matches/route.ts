@@ -27,6 +27,8 @@ export async function GET(request: NextRequest) {
 
   let ids: string[] = [];
   if (idsParam) {
+    // Caller paginates client-side at 30/page; cap server-side at 30 so a
+    // bogus query can't fan out into 120 Riot match-v1 calls in one request.
     ids = idsParam.split(',').map(s => s.trim()).filter(Boolean).slice(0, 30);
   } else if (puuid) {
     const url = `https://${regional}.api.riotgames.com/tft/match/v1/matches/by-puuid/${puuid}/ids?start=${start}&count=${count}&api_key=${apiKey}`;

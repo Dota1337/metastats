@@ -4,11 +4,12 @@
  * CN: Not available via Riot API — Chinese servers are operated by Tencent.
  *     We collect KR data which includes many Chinese pros playing on KR server.
  *
- * Handles Riot API rate limits: 100 requests / 2 minutes.
+ * Rate-limiting handled by the shared Riot client (200 req/s on production key).
  * Saves results to public/champion-stats-kr.json + public/champion-builds-kr.json + Supabase.
  */
 
 import { loadBootSet, aggregateMatch, finalizeBuilds, ALLOWED_QUEUES } from './lib/build-aggregator.mjs';
+import { createRiotClient } from './lib/riot-client.mjs';
 
 const API_KEY = process.env.RIOT_API_KEY;
 if (!API_KEY) {
@@ -20,36 +21,8 @@ const REGIONS = [
   { id: 'kr', regional: 'asia', label: 'Korea' },
 ];
 
-let requestCount = 0;
-let windowStart = Date.now();
-const MAX_REQUESTS_PER_WINDOW = 90;
-const WINDOW_MS = 2 * 60 * 1000 + 5000;
-
-async function rateLimitedFetch(url) {
-  const elapsed = Date.now() - windowStart;
-  if (requestCount >= MAX_REQUESTS_PER_WINDOW) {
-    const waitTime = WINDOW_MS - elapsed;
-    if (waitTime > 0) {
-      console.log(`  [Rate Limit] ${requestCount} Requests. Warte ${Math.ceil(waitTime / 1000)}s...`);
-      await sleep(waitTime);
-    }
-    requestCount = 0;
-    windowStart = Date.now();
-  }
-  requestCount++;
-  const res = await fetch(url);
-  if (res.status === 429) {
-    const retryAfter = parseInt(res.headers.get('retry-after') || '120', 10);
-    console.log(`  [429] Rate limited! Warte ${retryAfter}s...`);
-    await sleep(retryAfter * 1000 + 2000);
-    requestCount = 0;
-    windowStart = Date.now();
-    return rateLimitedFetch(url);
-  }
-  return res;
-}
-
-function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+const riot = createRiotClient();
+const rateLimitedFetch = riot.fetch;
 
 async function collectRegion(region, regional, label) {
   console.log(`\n=== ${label} (${region}) — Challenger + Grandmaster + Master ===\n`);

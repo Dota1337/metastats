@@ -15,6 +15,7 @@
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { aggregateMatch, finalize, emptyAggregate } from './lib/tft-build-aggregator.mjs';
+import { createRiotClient } from './lib/riot-client.mjs';
 
 const args = process.argv.slice(2);
 const arg = (k, def) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : def; };
@@ -46,39 +47,10 @@ if (existsSync('public/tft-set.json')) {
 }
 const CURRENT_SET = setMeta?.setNumber ?? null;
 
-// Rate limit: 100 requests / 2 minutes (Riot dev key, shared across LoL+TFT).
-let requestCount = 0;
-let windowStart = Date.now();
-const MAX_REQUESTS = 90;
-const WINDOW_MS = 125_000;
-
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-
-async function rl(url) {
-  const elapsed = Date.now() - windowStart;
-  if (requestCount >= MAX_REQUESTS) {
-    const wait = WINDOW_MS - elapsed;
-    if (wait > 0) {
-      console.log(`  [rate-limit] waiting ${Math.ceil(wait/1000)}s`);
-      await sleep(wait);
-    }
-    requestCount = 0;
-    windowStart = Date.now();
-  }
-  requestCount++;
-  let res;
-  try { res = await fetch(url); }
-  catch (e) { console.log('  fetch error', e.message); return null; }
-  if (res.status === 429) {
-    const retry = parseInt(res.headers.get('retry-after') || '120', 10);
-    console.log(`  [429] retrying after ${retry}s`);
-    await sleep(retry * 1000 + 1000);
-    requestCount = 0; windowStart = Date.now();
-    return rl(url);
-  }
-  if (!res.ok) { return { _status: res.status }; }
-  return res.json();
-}
+// Rate-limiting handled by shared Riot client (200 req/s on production key,
+// shared across LoL+TFT endpoints).
+const riot = createRiotClient();
+const rl = url => riot.fetchJson(url, { safe: true });
 
 async function fetchApex(tier) {
   const data = await rl(`https://${REGION}.api.riotgames.com/tft/league/v1/${tier}?api_key=${API_KEY}`);

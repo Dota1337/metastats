@@ -16,6 +16,7 @@
 
 import { readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
+import { createRiotClient } from './lib/riot-client.mjs';
 
 // Prefer process.env (CI / GitHub Actions), fall back to .env.local for local runs.
 let API_KEY = process.env.RIOT_API_KEY;
@@ -55,16 +56,11 @@ const REGIONAL = {
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
+// Shared Riot client handles rate-limiting (200 req/s on prod key) + 429 retries.
+// Local wrapper concatenates the API key, which the client's surface doesn't do.
+const riot = createRiotClient();
 async function riotFetch(url) {
-  const res = await fetch(`${url}${url.includes('?') ? '&' : '?'}api_key=${API_KEY}`);
-  if (res.status === 429) {
-    const retryAfter = parseInt(res.headers.get('Retry-After') || '10', 10);
-    console.log(`  Rate limited, waiting ${retryAfter}s...`);
-    await sleep(retryAfter * 1000 + 1000);
-    return riotFetch(url);
-  }
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-  return res.json();
+  return riot.fetchJson(`${url}${url.includes('?') ? '&' : '?'}api_key=${API_KEY}`);
 }
 
 async function main() {

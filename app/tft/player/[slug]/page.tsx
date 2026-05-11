@@ -322,48 +322,47 @@ function SeasonStats({ stats, loading, currentSet, assets }: { stats: PlayerStat
         <Stat label={t('tft.gamesShort')} value={String(stats.totalMatches)} />
       </div>
 
-      {/* Units (top 15, ranked 1-15 across three blocks of 5) + Augments
-          (top 5). Outer grid is 4 columns on lg so the three unit blocks +
-          augment column each get a 25%-width slot — chips end up the same
-          size whether they're in the unit area or the augment column. */}
+      {/* Top units: 3 column-blocks across the card's full width, each block
+          holding 5 chips top-to-bottom (1-5 / 6-10 / 11-15). */}
       {stats.topUnits && stats.topUnits.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-5">
-          <div className="lg:col-span-3">
-            <div className="text-[#8a9bb0] text-[10px] uppercase tracking-widest mb-2">{t('tft.topUnitsPlayed')}</div>
-            {/* lg:grid-flow-col + lg:grid-rows-5 lays the 15 chips down each
-                column before moving to the next, so the three blocks read
-                top-to-bottom: 1-5, 6-10, 11-15. Smaller breakpoints fall
-                back to the default row-wise flow. */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 lg:grid-rows-5 lg:grid-flow-col gap-2">
-              {stats.topUnits.slice(0, 15).map((u, i) => (
-                <UnitChip
-                  key={u.characterId}
-                  rank={i + 1}
-                  characterId={u.characterId}
-                  games={u.games}
-                  avg={u.avgPlacement}
-                  assets={assets}
-                />
-              ))}
-            </div>
+        <div className="mb-5">
+          <div className="text-[#8a9bb0] text-[10px] uppercase tracking-widest mb-2">{t('tft.topUnitsPlayed')}</div>
+          {/* lg:grid-rows-5 + lg:grid-flow-col fills column 1 first (ranks
+              1-5), then column 2 (6-10), then column 3 (11-15). Smaller
+              breakpoints fall back to row-wise flow. */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 lg:grid-rows-5 lg:grid-flow-col gap-2">
+            {stats.topUnits.slice(0, 15).map((u, i) => (
+              <UnitChip
+                key={u.characterId}
+                rank={i + 1}
+                characterId={u.characterId}
+                games={u.games}
+                avg={u.avgPlacement}
+                assets={assets}
+              />
+            ))}
           </div>
-          {stats.topAugments && stats.topAugments.length > 0 && (
-            <div>
-              <div className="text-[#8a9bb0] text-[10px] uppercase tracking-widest mb-2">{t('tft.favoriteAugments')}</div>
-              <div className="space-y-2">
-                {stats.topAugments.slice(0, 5).map((a, i) => (
-                  <AugmentChip
-                    key={a.apiName}
-                    rank={i + 1}
-                    apiName={a.apiName}
-                    games={a.games}
-                    avg={a.avgPlacement}
-                    assets={assets}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
+        </div>
+      )}
+
+      {/* Favourite augments: 5 chips across the full width (1 row on lg) so
+          each augment gets the same horizontal weight as the unit blocks
+          above. */}
+      {stats.topAugments && stats.topAugments.length > 0 && (
+        <div className="mb-5">
+          <div className="text-[#8a9bb0] text-[10px] uppercase tracking-widest mb-2">{t('tft.favoriteAugments')}</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+            {stats.topAugments.slice(0, 5).map((a, i) => (
+              <AugmentChip
+                key={a.apiName}
+                rank={i + 1}
+                apiName={a.apiName}
+                games={a.games}
+                avg={a.avgPlacement}
+                assets={assets}
+              />
+            ))}
+          </div>
         </div>
       )}
 

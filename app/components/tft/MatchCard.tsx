@@ -49,11 +49,12 @@ export default function MatchCard({ match, selfPuuid }: Props) {
         </div>
       </div>
 
-      {/* Expanded participants list inset slightly from the card edges so
-          it reads as a sub-panel + leaves a visible gap to the next match
-          card below. Mirrors how metatft groups its expanded view. */}
+      {/* Expanded participants list indented from the left edge of the
+          card so it reads as a sub-panel belonging to the header row
+          above. Right + bottom insets stay tight so it doesn't look
+          orphaned. Mirrors metatft's drop-down offset. */}
       {open && (
-        <div className="mx-3 mb-3 rounded border border-[#1e2a3a] bg-[#0a0e1a] p-3 space-y-2">
+        <div className="ml-12 mr-3 mb-3 rounded border border-[#1e2a3a] bg-[#0a0e1a] p-3 space-y-2">
           {match.participants.slice().sort((a, b) => a.placement - b.placement).map(p => (
             <ParticipantRow key={p.puuid} participant={p} isSelf={p.puuid === selfPuuid} assets={assets} />
           ))}

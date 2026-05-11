@@ -22,9 +22,19 @@ export default function MatchCard({ match, selfPuuid }: Props) {
   const seconds = Math.floor(match.gameLength % 60).toString().padStart(2, '0');
   const ago = timeAgo(match.gameDatetime);
 
+  // The placement-coloured bar lives on the header block only — when the
+  // dropdown is open it stops at the header so the expanded panel below
+  // visually offsets and the bar doesn't run past the inset.
+  const headerColor = placedTopFour
+    ? 'border-green-500 bg-[#0a1f0a]'
+    : 'border-red-500 bg-[#1f0a0a]';
+
   return (
-    <div className={`rounded border-l-4 overflow-hidden ${placedTopFour ? 'border-green-500 bg-[#0a1f0a]' : 'border-red-500 bg-[#1f0a0a]'}`}>
-      <div className="p-3 cursor-pointer hover:bg-white/5" onClick={() => setOpen(o => !o)}>
+    <div className="rounded">
+      <div
+        className={`border-l-4 rounded p-3 cursor-pointer hover:bg-white/5 ${headerColor}`}
+        onClick={() => setOpen(o => !o)}
+      >
         {/* Top row: placement + meta + augments. Units moved to their own
             full-width row below so all 9 fit side-by-side instead of
             wrapping inside the 420px cap. */}
@@ -51,10 +61,9 @@ export default function MatchCard({ match, selfPuuid }: Props) {
 
       {/* Expanded participants list indented from the left edge of the
           card so it reads as a sub-panel belonging to the header row
-          above. Right + bottom insets stay tight so it doesn't look
-          orphaned. Mirrors metatft's drop-down offset. */}
+          above. The placement bar doesn't continue down here. */}
       {open && (
-        <div className="ml-12 mr-3 mb-3 rounded border border-[#1e2a3a] bg-[#0a0e1a] p-3 space-y-2">
+        <div className="ml-12 mr-3 mt-2 rounded border border-[#1e2a3a] bg-[#0a0e1a] p-3 space-y-2">
           {match.participants.slice().sort((a, b) => a.placement - b.placement).map(p => (
             <ParticipantRow key={p.puuid} participant={p} isSelf={p.puuid === selfPuuid} assets={assets} />
           ))}

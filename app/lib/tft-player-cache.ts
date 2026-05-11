@@ -233,6 +233,34 @@ async function upsertFetchState(puuid: string, region: string, latestMatchId: st
   }
 }
 
+/**
+ * List the set numbers (descending) that the player has cached match data
+ * for. We require ≥10 matches per set so we don't render a "Set 14" pill
+ * when the player just happens to have one stray re-recorded match in
+ * Riot's history from years ago. Set 1 is also filtered — TFT used 0 as
+ * "no set" early on.
+ */
+export async function listCachedSets(puuid: string): Promise<number[]> {
+  // PostgREST doesn't expose distinct/group_by on the REST layer, so we
+  // pull the set_number column with a server-side limit-20000 and dedupe
+  // client-side. Per-puuid the row count stays under ~3000 in practice,
+  // well below the page size.
+  const r = await fetch(
+    `${SUPA_URL}/rest/v1/tft_player_match_cache?puuid=eq.${encodeURIComponent(puuid)}&select=set_number`,
+    { headers: { ...supaHeaders(), Range: '0-9999' } },
+  );
+  if (!r.ok) return [];
+  const rows = await r.json();
+  const counts = new Map<number, number>();
+  for (const row of rows) {
+    if (row.set_number > 0) counts.set(row.set_number, (counts.get(row.set_number) || 0) + 1);
+  }
+  return [...counts.entries()]
+    .filter(([, c]) => c >= 10)
+    .map(([s]) => s)
+    .sort((a, b) => b - a);
+}
+
 export async function loadCachedMatches(
   puuid: string,
   filter: { setNumber?: number | null; queueId?: number | null } = {},

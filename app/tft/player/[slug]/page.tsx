@@ -24,6 +24,8 @@ interface SummonerData {
 interface PlayerStats {
   hasStats: boolean;
   set?: number | null;
+  currentSet?: number | null;
+  availableSets?: number[];
   totalMatches: number;
   sampledMatches?: number;
   inSetMatches?: number;
@@ -84,6 +86,9 @@ export default function TftPlayerPage() {
 
   const [playerStats, setPlayerStats] = useState<PlayerStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
+  // null = follow current set; set to a specific number when the user picks
+  // a different set in the SeasonStats pill bar.
+  const [statsSetOverride, setStatsSetOverride] = useState<number | null>(null);
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
 
   useEffect(() => {
@@ -111,11 +116,12 @@ export default function TftPlayerPage() {
   useEffect(() => {
     if (!data?.summoner.puuid) return;
     setStatsLoading(true);
-    fetch(`/api/tft/player-stats?puuid=${data.summoner.puuid}&region=${region}`)
+    const setQuery = statsSetOverride != null ? `&set=${statsSetOverride}` : '';
+    fetch(`/api/tft/player-stats?puuid=${data.summoner.puuid}&region=${region}${setQuery}`)
       .then(r => r.ok ? r.json() : null)
       .then((s: PlayerStats | null) => { setPlayerStats(s); setStatsLoading(false); })
       .catch(() => setStatsLoading(false));
-  }, [data?.summoner.puuid, region]);
+  }, [data?.summoner.puuid, region, statsSetOverride]);
 
   const currentPageIds = useMemo(() => {
     if (!data) return [];
@@ -140,11 +146,16 @@ export default function TftPlayerPage() {
       .catch(() => setPageLoading(false));
   }, [currentPageIds.join(','), region]);
 
+  // Match-history set list = union of sets we see in the loaded match-card
+  // batch + sets the player-stats endpoint reports cached. The stats-endpoint
+  // list is broader since it walks every cached match, not just the current
+  // pagination window.
   const availableSets = useMemo(() => {
     const set = new Set<number>();
     for (const m of Object.values(matchCache)) if (typeof m.setNumber === 'number') set.add(m.setNumber);
+    for (const s of playerStats?.availableSets || []) set.add(s);
     return [...set].sort((a, b) => b - a);
-  }, [matchCache]);
+  }, [matchCache, playerStats?.availableSets]);
 
   useEffect(() => {
     if (setManuallyPicked || availableSets.length === 0) return;
@@ -203,7 +214,14 @@ export default function TftPlayerPage() {
               </div>
             </div>
 
-            <SeasonStats stats={playerStats} loading={statsLoading} currentSet={currentSet} assets={assets} />
+            <SeasonStats
+              stats={playerStats}
+              loading={statsLoading}
+              currentSet={currentSet}
+              selectedSet={statsSetOverride}
+              onPickSet={setStatsSetOverride}
+              assets={assets}
+            />
 
             {availableSets.length > 0 && (
               <div className="flex items-center justify-between mb-3">
@@ -295,80 +313,124 @@ function Pagination({ page, totalPages, onChange, loading }: { page: number; tot
   );
 }
 
-function SeasonStats({ stats, loading, currentSet, assets }: { stats: PlayerStats | null; loading: boolean; currentSet: number | null; assets: TftAssetsBundle | null }) {
+function SeasonStats({
+  stats, loading, currentSet, selectedSet, onPickSet, assets,
+}: {
+  stats: PlayerStats | null;
+  loading: boolean;
+  currentSet: number | null;
+  selectedSet: number | null;
+  onPickSet: (s: number | null) => void;
+  assets: TftAssetsBundle | null;
+}) {
   const { t } = useI18n();
+  const activeSet = stats?.set ?? selectedSet ?? currentSet;
+
   if (loading && !stats) {
     return (
       <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-5 mb-5">
         <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-3">
-          Saison-Statistik{currentSet != null ? ` · Set ${currentSet}` : ''}
+          Saison-Statistik{activeSet != null ? ` · Set ${activeSet}` : ''}
         </div>
         <div className="text-[#8a9bb0] text-sm">Berechne aus allen Saison-Matches ...</div>
       </div>
     );
   }
-  if (!stats?.hasStats) return null;
+
+  // Even if hasStats is false (the user has no Solo-Ranked match for the
+  // selected set), keep the card visible so the pill bar still works.
+  const availableSets = stats?.availableSets || [];
+  const showPills = availableSets.length > 1;
 
   return (
     <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-5 mb-5">
-      <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-4">
-        Saison-Statistik{stats.set != null ? ` · Set ${stats.set}` : ''}
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+        <div className="text-[#8a9bb0] text-xs uppercase tracking-widest">
+          Saison-Statistik{activeSet != null ? ` · Set ${activeSet}` : ''}
+        </div>
+        {showPills && (
+          <div className="flex items-center gap-1">
+            {availableSets.map(s => {
+              const active = (stats?.set ?? currentSet) === s;
+              const isCurrent = s === currentSet;
+              return (
+                <button
+                  key={s}
+                  onClick={() => onPickSet(isCurrent ? null : s)}
+                  className={`px-2.5 py-1 rounded text-xs font-medium ${
+                    active
+                      ? 'bg-[#7B61FF] text-white'
+                      : 'bg-[#141c2e] text-[#8a9bb0] hover:text-white border border-[#1e2a3a]'
+                  }`}
+                >
+                  Set {s}{isCurrent ? ' ·' : ''}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-        <Stat label={t('tft.avgPlacement')} value={stats.avgPlacement?.toFixed(2) ?? '—'} />
-        <Stat label={t('tft.top4')} value={stats.top4Rate != null ? `${(stats.top4Rate * 100).toFixed(1)}%` : '—'} />
-        <Stat label={t('tft.top1')} value={stats.top1Rate != null ? `${(stats.top1Rate * 100).toFixed(1)}%` : '—'} />
-        <Stat label={t('tft.gamesShort')} value={String(stats.totalMatches)} />
-      </div>
-
-      {/* Top units: 3 column-blocks across the card's full width, each block
-          holding 5 chips top-to-bottom (1-5 / 6-10 / 11-15). */}
-      {stats.topUnits && stats.topUnits.length > 0 && (
-        <div className="mb-5">
-          <div className="text-[#8a9bb0] text-[10px] uppercase tracking-widest mb-2">{t('tft.topUnitsPlayed')}</div>
-          {/* lg:grid-rows-5 + lg:grid-flow-col fills column 1 first (ranks
-              1-5), then column 2 (6-10), then column 3 (11-15). Smaller
-              breakpoints fall back to row-wise flow. */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 lg:grid-rows-5 lg:grid-flow-col gap-2">
-            {stats.topUnits.slice(0, 15).map((u, i) => (
-              <UnitChip
-                key={u.characterId}
-                rank={i + 1}
-                characterId={u.characterId}
-                games={u.games}
-                avg={u.avgPlacement}
-                assets={assets}
-              />
-            ))}
-          </div>
+      {!stats?.hasStats ? (
+        <div className="text-[#8a9bb0] text-sm py-4 text-center">
+          Keine Solo-Ranked-Matches für Set {activeSet} im Cache.
         </div>
-      )}
-
-      {/* Favourite augments: 5 chips across the full width (1 row on lg) so
-          each augment gets the same horizontal weight as the unit blocks
-          above. */}
-      {stats.topAugments && stats.topAugments.length > 0 && (
-        <div className="mb-5">
-          <div className="text-[#8a9bb0] text-[10px] uppercase tracking-widest mb-2">{t('tft.favoriteAugments')}</div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
-            {stats.topAugments.slice(0, 5).map((a, i) => (
-              <AugmentChip
-                key={a.apiName}
-                rank={i + 1}
-                apiName={a.apiName}
-                games={a.games}
-                avg={a.avgPlacement}
-                assets={assets}
-              />
-            ))}
+      ) : (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+            <Stat label={t('tft.avgPlacement')} value={stats.avgPlacement?.toFixed(2) ?? '—'} />
+            <Stat label={t('tft.top4')} value={stats.top4Rate != null ? `${(stats.top4Rate * 100).toFixed(1)}%` : '—'} />
+            <Stat label={t('tft.top1')} value={stats.top1Rate != null ? `${(stats.top1Rate * 100).toFixed(1)}%` : '—'} />
+            <Stat label={t('tft.gamesShort')} value={String(stats.totalMatches)} />
           </div>
-        </div>
-      )}
 
-      {/* Play-style: radar + placement histogram + raw averages */}
-      {stats.scores && stats.placementDistribution && stats.averages && (
-        <PlayStyle scores={stats.scores} dist={stats.placementDistribution} avgs={stats.averages} />
+          {/* Top units: 3 column-blocks across the card's full width, each
+              block holding 5 chips top-to-bottom (1-5 / 6-10 / 11-15). */}
+          {stats.topUnits && stats.topUnits.length > 0 && (
+            <div className="mb-5">
+              <div className="text-[#8a9bb0] text-[10px] uppercase tracking-widest mb-2">{t('tft.topUnitsPlayed')}</div>
+              {/* lg:grid-rows-5 + lg:grid-flow-col fills column 1 first
+                  (ranks 1-5), then column 2 (6-10), then column 3 (11-15).
+                  Smaller breakpoints fall back to row-wise flow. */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 lg:grid-rows-5 lg:grid-flow-col gap-2">
+                {stats.topUnits.slice(0, 15).map((u, i) => (
+                  <UnitChip
+                    key={u.characterId}
+                    rank={i + 1}
+                    characterId={u.characterId}
+                    games={u.games}
+                    avg={u.avgPlacement}
+                    assets={assets}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Favourite augments: 5 chips across the full width (1 row on lg). */}
+          {stats.topAugments && stats.topAugments.length > 0 && (
+            <div className="mb-5">
+              <div className="text-[#8a9bb0] text-[10px] uppercase tracking-widest mb-2">{t('tft.favoriteAugments')}</div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+                {stats.topAugments.slice(0, 5).map((a, i) => (
+                  <AugmentChip
+                    key={a.apiName}
+                    rank={i + 1}
+                    apiName={a.apiName}
+                    games={a.games}
+                    avg={a.avgPlacement}
+                    assets={assets}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Play-style: radar + placement histogram + raw averages */}
+          {stats.scores && stats.placementDistribution && stats.averages && (
+            <PlayStyle scores={stats.scores} dist={stats.placementDistribution} avgs={stats.averages} />
+          )}
+        </>
       )}
     </div>
   );

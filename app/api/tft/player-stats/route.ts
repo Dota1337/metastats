@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
-import { refreshPlayerCache, loadCachedMatches } from '../../../lib/tft-player-cache';
+import { refreshPlayerCache, loadCachedMatches, listCachedSets } from '../../../lib/tft-player-cache';
 
 // Player season-stats endpoint.
 // Reads from tft_player_match_cache. On every request we refresh the cache
@@ -40,22 +40,45 @@ export async function GET(request: NextRequest) {
   if (!puuid) return NextResponse.json({ error: 'puuid required' }, { status: 400 });
 
   const currentSet = getCurrentSet();
+  // ?set=16 lets the page switch to a previous set without re-fetching Riot —
+  // the cache already holds every Set N match that ever survived a refresh.
+  // Defaults to the current set so existing callers keep working.
+  const setParam = searchParams.get('set');
+  const targetSet = setParam != null && setParam !== ''
+    ? Number(setParam)
+    : currentSet;
 
-  // 1) Refresh cache (incremental on hot players, full pull on cold ones).
-  try {
-    await refreshPlayerCache(puuid, region, { riotApiKey: apiKey });
-  } catch (e: any) {
-    return NextResponse.json({ error: `cache refresh failed: ${e.message}` }, { status: 502 });
+  // 1) Refresh cache only when we're asking for the current set — for past
+  // sets the cache is the source of truth (Riot's history no longer
+  // contains those matches at scale).
+  if (targetSet === currentSet) {
+    try {
+      await refreshPlayerCache(puuid, region, { riotApiKey: apiKey });
+    } catch (e: any) {
+      return NextResponse.json({ error: `cache refresh failed: ${e.message}` }, { status: 502 });
+    }
   }
 
-  // 2) Read the player's cached matches for the current set + Solo Ranked.
+  // 2) Read the player's cached matches for the target set + Solo Ranked.
   const cached = await loadCachedMatches(puuid, {
-    setNumber: currentSet,
+    setNumber: targetSet,
     queueId: STANDARD_RANKED_QUEUE,
   });
 
+  // 3) Available sets — every Set N that has any cached match. UI uses this
+  // to show only the pills the player actually has data for.
+  const availableSets = await listCachedSets(puuid);
+
   if (cached.length === 0) {
-    return NextResponse.json({ hasStats: false, region, puuid, totalMatches: 0, set: currentSet });
+    return NextResponse.json({
+      hasStats: false,
+      region,
+      puuid,
+      totalMatches: 0,
+      set: targetSet,
+      currentSet,
+      availableSets,
+    });
   }
 
   // 3) Aggregate.
@@ -149,7 +172,9 @@ export async function GET(request: NextRequest) {
     hasStats: true,
     region,
     puuid,
-    set: currentSet,
+    set: targetSet,
+    currentSet,
+    availableSets,
     totalMatches: games,
     avgPlacement,
     top4Rate: top4 / games,

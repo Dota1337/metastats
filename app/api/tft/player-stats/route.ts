@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { refreshPlayerCache, loadCachedMatches, listCachedSets } from '../../../lib/tft-player-cache';
+import { ensureRankHistoryBackfilled, type SeasonRank } from '../../../lib/tft-rank-history';
+import { getRegionalRouting } from '../../../lib/regions';
 
 // Player season-stats endpoint.
 // Reads from tft_player_match_cache. On every request we refresh the cache
@@ -69,6 +71,27 @@ export async function GET(request: NextRequest) {
   // to show only the pills the player actually has data for.
   const availableSets = await listCachedSets(puuid);
 
+  // 4) Historical season ranks — backfilled once from metatft, cached
+  // forever in our own table. We need the player's Riot ID (gameName +
+  // tagLine) for the metatft URL; cheaper to look it up here than to
+  // require the frontend to pass it on every call.
+  let seasonRanks: SeasonRank[] = [];
+  try {
+    const regional = getRegionalRouting(region);
+    const accRes = await fetch(
+      `https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-puuid/${puuid}?api_key=${apiKey}`,
+    );
+    if (accRes.ok) {
+      const acc = await accRes.json();
+      seasonRanks = await ensureRankHistoryBackfilled(
+        puuid, region, acc.gameName || '', acc.tagLine || '',
+      );
+    }
+  } catch (e) {
+    // Backfill failures are non-fatal — endpoint still returns current-set stats.
+    console.warn('rank-history backfill error:', e);
+  }
+
   if (cached.length === 0) {
     return NextResponse.json({
       hasStats: false,
@@ -78,6 +101,7 @@ export async function GET(request: NextRequest) {
       set: targetSet,
       currentSet,
       availableSets,
+      seasonRanks,
     });
   }
 
@@ -175,6 +199,7 @@ export async function GET(request: NextRequest) {
     set: targetSet,
     currentSet,
     availableSets,
+    seasonRanks,
     totalMatches: games,
     avgPlacement,
     top4Rate: top4 / games,

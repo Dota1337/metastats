@@ -21,11 +21,24 @@ interface SummonerData {
   region: string;
 }
 
+interface SeasonRank {
+  set_number: number;
+  set_label: string | null;
+  queue_id: number;
+  peak_tier: string | null;
+  peak_division: string | null;
+  peak_lp: number | null;
+  peak_rating_label: string | null;
+  total_games: number | null;
+  source: string;
+}
+
 interface PlayerStats {
   hasStats: boolean;
   set?: number | null;
   currentSet?: number | null;
   availableSets?: number[];
+  seasonRanks?: SeasonRank[];
   totalMatches: number;
   sampledMatches?: number;
   inSetMatches?: number;
@@ -210,7 +223,7 @@ export default function TftPlayerPage() {
                   <div className="text-white text-xl font-medium">{gameName}</div>
                   <div className="text-[#8a9bb0] text-sm">#{tagLine} · Level {data.summoner.summonerLevel ?? '—'}</div>
                 </div>
-                <RankBlock ranked={data.ranked} />
+                <RankBlock ranked={data.ranked} seasonRanks={playerStats?.seasonRanks} />
               </div>
             </div>
 
@@ -578,30 +591,88 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function RankBlock({ ranked }: { ranked: SummonerData['ranked'] }) {
-  if (!ranked || !ranked.tier) {
-    return (
-      <div className="text-right">
-        <div className="text-[#4a5a70] text-xs uppercase tracking-widest">Standard Ranked</div>
-        <div className="text-[#8a9bb0] text-sm mt-1">Unranked</div>
-      </div>
-    );
-  }
-  const color = TIER_COLORS[ranked.tier] || '#8a9bb0';
-  const wr = (ranked.wins ?? 0) + (ranked.losses ?? 0) > 0
-    ? Math.round(((ranked.wins ?? 0) / ((ranked.wins ?? 0) + (ranked.losses ?? 0))) * 100)
-    : null;
-  return (
-    <div className="text-right">
-      <div className="text-[#4a5a70] text-xs uppercase tracking-widest">Standard Ranked</div>
-      <div className="text-lg font-medium mt-1" style={{ color }}>
+function RankBlock({ ranked, seasonRanks }: { ranked: SummonerData['ranked']; seasonRanks?: SeasonRank[] }) {
+  const [open, setOpen] = useState(false);
+  const pastSeasons = (seasonRanks || []).filter(s => s.peak_tier).sort((a, b) => b.set_number - a.set_number);
+
+  const inner = !ranked || !ranked.tier ? (
+    <>
+      <div className="text-[#8a9bb0] text-xs uppercase tracking-widest">Standard Ranked</div>
+      <div className="text-[#8a9bb0] text-sm mt-1">Unranked</div>
+    </>
+  ) : (
+    <>
+      <div className="text-[#8a9bb0] text-xs uppercase tracking-widest">Standard Ranked</div>
+      <div className="text-lg font-medium mt-1" style={{ color: TIER_COLORS[ranked.tier] || '#8a9bb0' }}>
         {formatTier(ranked.tier, ranked.rank)} <span className="text-white">{ranked.leaguePoints ?? 0} LP</span>
       </div>
-      <div className="text-[#4a5a70] text-xs">
-        {ranked.wins ?? 0}W {ranked.losses ?? 0}L{wr != null && <> · {wr}% WR</>}
+      <div className="text-[#8a9bb0] text-xs">
+        {ranked.wins ?? 0}W {ranked.losses ?? 0}L
+        {(ranked.wins ?? 0) + (ranked.losses ?? 0) > 0 && (
+          <> · {Math.round(((ranked.wins ?? 0) / ((ranked.wins ?? 0) + (ranked.losses ?? 0))) * 100)}% WR</>
+        )}
+      </div>
+    </>
+  );
+
+  return (
+    <div className="text-right relative">
+      {inner}
+      {pastSeasons.length > 0 && (
+        <>
+          <button
+            onClick={() => setOpen(o => !o)}
+            className="mt-2 text-[10px] text-[#7B61FF] hover:text-[#a892ff] uppercase tracking-widest"
+          >
+            Vergangene Saisons ({pastSeasons.length}) {open ? '▲' : '▼'}
+          </button>
+          {open && (
+            <div className="absolute right-0 mt-1 z-20 bg-[#0d1526] border border-[#1e2a3a] rounded-lg shadow-lg p-3 min-w-[280px] text-left">
+              <div className="text-[#8a9bb0] text-[10px] uppercase tracking-widest mb-2">
+                Höchster Rang pro Set
+              </div>
+              <div className="space-y-1.5">
+                {pastSeasons.map(s => (
+                  <SeasonRankRow key={s.set_number} season={s} />
+                ))}
+              </div>
+              <div className="text-[#4a5a70] text-[9px] mt-2 pt-2 border-t border-[#1e2a3a]">
+                Daten via metatft.com Open API
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function SeasonRankRow({ season }: { season: SeasonRank }) {
+  const tier = (season.peak_tier || '').toUpperCase();
+  const color = TIER_COLORS[tier] || '#8a9bb0';
+  const setLabel = formatSetLabel(season.set_label, season.set_number);
+  const rankText = season.peak_rating_label
+    || [tier, season.peak_division, season.peak_lp != null ? `${season.peak_lp} LP` : '']
+        .filter(Boolean).join(' ');
+  return (
+    <div className="flex items-center justify-between gap-3 text-xs">
+      <div className="text-[#8a9bb0] flex-shrink-0">{setLabel}</div>
+      <div className="flex items-center gap-2 min-w-0">
+        <span style={{ color }} className="font-medium truncate">{rankText}</span>
+        {season.total_games != null && (
+          <span className="text-[#4a5a70] text-[10px] flex-shrink-0">{season.total_games} Sp.</span>
+        )}
       </div>
     </div>
   );
+}
+
+// "TFTSet9_2" → "Set 9.2", "TFTSet16" → "Set 16"
+function formatSetLabel(rawLabel: string | null, setNumber: number): string {
+  if (!rawLabel) return `Set ${setNumber}`;
+  const m = /^TFTSet(\d+)(?:_(\d+))?/i.exec(rawLabel);
+  if (!m) return `Set ${setNumber}`;
+  return m[2] ? `Set ${m[1]}.${m[2]}` : `Set ${m[1]}`;
 }
 
 function costToColor(cost: number) {

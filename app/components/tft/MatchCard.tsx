@@ -22,17 +22,17 @@ export default function MatchCard({ match, selfPuuid }: Props) {
   const seconds = Math.floor(match.gameLength % 60).toString().padStart(2, '0');
   const ago = timeAgo(match.gameDatetime);
 
-  // The placement-coloured bar lives on the header block only — when the
-  // dropdown is open it stops at the header so the expanded panel below
-  // visually offsets and the bar doesn't run past the inset.
-  const headerColor = placedTopFour
-    ? 'border-green-500 bg-[#0a1f0a]'
-    : 'border-red-500 bg-[#1f0a0a]';
+  // Placement-coloured bar runs on the left of the header AND of the
+  // expanded dropdown, with the dropdown's bar inset along with the
+  // dropdown itself — so the bar visually "steps in" together with the
+  // expansion, like metatft does.
+  const barColor = placedTopFour ? 'border-green-500' : 'border-red-500';
+  const headerBg = placedTopFour ? 'bg-[#0a1f0a]' : 'bg-[#1f0a0a]';
 
   return (
     <div className="rounded">
       <div
-        className={`border-l-4 rounded p-3 cursor-pointer hover:bg-white/5 ${headerColor}`}
+        className={`border-l-4 rounded p-3 cursor-pointer hover:bg-white/5 ${barColor} ${headerBg}`}
         onClick={() => setOpen(o => !o)}
       >
         {/* Top row: placement + meta + augments. Units moved to their own
@@ -60,10 +60,11 @@ export default function MatchCard({ match, selfPuuid }: Props) {
       </div>
 
       {/* Expanded participants list indented from the left edge of the
-          card so it reads as a sub-panel belonging to the header row
-          above. The placement bar doesn't continue down here. */}
+          card. The placement-coloured bar continues down its left edge so
+          the user keeps the win/loss signal while the panel itself sits
+          offset to the right. */}
       {open && (
-        <div className="ml-12 mr-3 mt-2 rounded border border-[#1e2a3a] bg-[#0a0e1a] p-3 space-y-2">
+        <div className={`ml-12 mr-3 mt-2 rounded border-l-4 ${barColor} bg-[#0a0e1a] p-3 space-y-2`}>
           {match.participants.slice().sort((a, b) => a.placement - b.placement).map(p => (
             <ParticipantRow key={p.puuid} participant={p} isSelf={p.puuid === selfPuuid} assets={assets} />
           ))}

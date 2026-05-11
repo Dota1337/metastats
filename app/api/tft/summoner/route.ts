@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const name = searchParams.get('name') || '';
   const region = (searchParams.get('region') || 'euw1').toLowerCase();
-  const apiKey = process.env.RIOT_API_KEY;
+  const apiKey = process.env.RIOT_API_KEY_TFT;
   if (!apiKey) {
     return NextResponse.json({ error: 'Riot API Key fehlt', code: 'no_key' }, { status: 503 });
   }

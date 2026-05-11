@@ -12,13 +12,13 @@ permissions:
   contents: write
 
 env:
-  RIOT_API_KEY: ${{ secrets.RIOT_API_KEY }}
+  RIOT_API_KEY_TFT: ${{ secrets.RIOT_API_KEY_TFT }}
 
 jobs:
   crawl-and-deploy:
     runs-on: ubuntu-latest
-    # ~3000 sampled players * ~4 matches with the dev-key 90 req / 2 min
-    # window puts a single region around 4-5h. 360 matches our LoL hard cap.
+    # Production TFT key (~18 req/s effective, capped by match-detail method-limit).
+    # ~3500 sampled players * 8 matches → ~20k unique matches → ~20 min crawl.
     timeout-minutes: 360
 
     steps:
@@ -48,7 +48,7 @@ jobs:
         continue-on-error: true
 
       - name: Crawl TFT all-ranks (EUW)
-        if: env.RIOT_API_KEY != ''
+        if: env.RIOT_API_KEY_TFT != ''
         run: node scripts/collect-tft-allranks.mjs --region euw1
 
       - name: Build TFT knowledge graph (EUW)

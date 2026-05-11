@@ -1,9 +1,15 @@
 #!/usr/bin/env node
-// Rotates the Riot API key across every place we use it.
-// Reads RIOT_API_KEY and GH_TOKEN from .env.local, then updates:
-//   - Vercel Production + Development env
-//   - GitHub Actions repo secret (Dota1337/metastats)
-// Finally triggers a Vercel redeploy via empty commit + push.
+// Syncs Riot API keys across every place we use them.
+// Reads .env.local for:
+//   - RIOT_API_KEY      (LoL — currently a dev key, expires every 24h)
+//   - RIOT_API_KEY_TFT  (TFT — production key, doesn't expire)
+//   - GH_TOKEN          (PAT with repo:secrets write on Dota1337/metastats)
+// Updates Vercel Production + Development env + GitHub Actions repo secret
+// for every key that's present, then triggers a redeploy.
+//
+// Usage:
+//   node scripts/refresh-riot-key.mjs              # syncs whichever keys are set
+//   node scripts/refresh-riot-key.mjs --skip-deploy # don't push the empty commit
 
 import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
@@ -12,7 +18,18 @@ import { lookup as dnsLookup } from 'node:dns';
 import sodium from 'libsodium-wrappers';
 
 const REPO = 'Dota1337/metastats';
-const RIOT_STATUS_URL = 'https://euw1.api.riotgames.com/lol/status/v4/platform-data';
+const LOL_STATUS_URL = 'https://euw1.api.riotgames.com/lol/status/v4/platform-data';
+const TFT_VALIDATE_URL = 'https://euw1.api.riotgames.com/tft/league/v1/challenger';
+
+const SKIP_DEPLOY = process.argv.includes('--skip-deploy');
+
+// Each key has an env-var name (in .env.local), the Vercel/GitHub secret name,
+// and a validation URL (TFT endpoints reject LoL-only keys with 403 and vice versa,
+// so we validate each key against its actual game).
+const KEYS = [
+  { envName: 'RIOT_API_KEY',     secretName: 'RIOT_API_KEY',     validateUrl: LOL_STATUS_URL,  label: 'LoL' },
+  { envName: 'RIOT_API_KEY_TFT', secretName: 'RIOT_API_KEY_TFT', validateUrl: TFT_VALIDATE_URL, label: 'TFT' },
+];
 
 // Node's global fetch (undici) hangs on Cloudflare IPv6 in this env and the
 // `family` hint on https.request is unreliable; pre-resolve to an IPv4 and
@@ -71,21 +88,21 @@ function runCapture(cmd, args, input) {
   return spawnSync(cmd, args, { input, shell: true, encoding: 'utf8' });
 }
 
-async function validateRiotKey(key) {
-  const r = await fetchIPv4(RIOT_STATUS_URL, { headers: { 'X-Riot-Token': key } });
-  if (r.status !== 200) throw new Error(`Riot API rejected key: HTTP ${r.status}`);
+async function validateRiotKey(key, url, label) {
+  const r = await fetchIPv4(url, { headers: { 'X-Riot-Token': key } });
+  if (r.status !== 200) throw new Error(`Riot API rejected ${label} key: HTTP ${r.status}`);
 }
 
-async function updateVercelEnv(targets, key) {
+async function updateVercelEnv(targets, secretName, key) {
   for (const target of targets) {
-    spawnSync('vercel', ['env', 'rm', 'RIOT_API_KEY', target, '--yes'], { stdio: 'inherit', shell: true });
-    const add = runCapture('vercel', ['env', 'add', 'RIOT_API_KEY', target], key);
-    if (add.status !== 0) throw new Error(`vercel env add ${target} failed`);
+    spawnSync('vercel', ['env', 'rm', secretName, target, '--yes'], { stdio: 'inherit', shell: true });
+    const add = runCapture('vercel', ['env', 'add', secretName, target], key);
+    if (add.status !== 0) throw new Error(`vercel env add ${secretName} ${target} failed`);
     process.stdout.write(add.stdout || '');
   }
 }
 
-async function updateGithubSecret(ghToken, key) {
+async function updateGithubSecret(ghToken, secretName, key) {
   const api = (path, init = {}) => fetchIPv4(`https://api.github.com/repos/${REPO}${path}`, {
     ...init,
     headers: {
@@ -105,7 +122,7 @@ async function updateGithubSecret(ghToken, key) {
     encrypted_value: sodium.to_base64(encBytes, sodium.base64_variants.ORIGINAL),
     key_id: pk.key_id,
   });
-  const r = await api('/actions/secrets/RIOT_API_KEY', {
+  const r = await api(`/actions/secrets/${secretName}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body,
@@ -114,32 +131,48 @@ async function updateGithubSecret(ghToken, key) {
 }
 
 function triggerRedeploy() {
-  run('git', ['commit', '--allow-empty', '-m', '"chore: refresh Riot API key"']);
+  run('git', ['commit', '--allow-empty', '-m', '"chore: refresh Riot API keys"']);
   run('git', ['push']);
 }
 
 async function main() {
   const env = readEnv();
-  const key = env.RIOT_API_KEY;
   const ghToken = env.GH_TOKEN;
-  if (!key || !key.startsWith('RGAPI-')) throw new Error('RIOT_API_KEY missing or malformed in .env.local');
   if (!ghToken || !ghToken.startsWith('github_pat_')) throw new Error('GH_TOKEN missing in .env.local');
 
-  console.log('[1/5] Validating Riot key against Riot API...');
-  await validateRiotKey(key);
-  console.log('      OK (HTTP 200)');
+  const present = KEYS.filter(k => env[k.envName] && env[k.envName].startsWith('RGAPI-'));
+  if (present.length === 0) throw new Error('No RIOT_API_KEY* found in .env.local');
 
-  console.log('[2/5] Updating Vercel production + development env...');
-  await updateVercelEnv(['production', 'development'], key);
+  const step = (n, total, msg) => console.log(`[${n}/${total}] ${msg}`);
+  const totalSteps = present.length * 3 + (SKIP_DEPLOY ? 0 : 1);
+  let n = 0;
 
-  console.log('[3/5] Updating GitHub Actions repo secret...');
-  await updateGithubSecret(ghToken, key);
-  console.log('      OK');
+  // Phase 1: validate each key against its respective game endpoint
+  for (const k of present) {
+    step(++n, totalSteps, `Validating ${k.label} key against Riot API...`);
+    await validateRiotKey(env[k.envName], k.validateUrl, k.label);
+    console.log(`      OK (HTTP 200)`);
+  }
 
-  console.log('[4/5] Triggering Vercel redeploy via empty commit...');
-  triggerRedeploy();
+  // Phase 2: update Vercel prod + dev for each key
+  for (const k of present) {
+    step(++n, totalSteps, `Updating Vercel prod+dev env for ${k.secretName}...`);
+    await updateVercelEnv(['production', 'development'], k.secretName, env[k.envName]);
+  }
 
-  console.log('[5/5] Done. Key rotated across Vercel (prod+dev) and GitHub Actions.');
+  // Phase 3: update GitHub Actions repo secret for each key
+  for (const k of present) {
+    step(++n, totalSteps, `Updating GitHub Actions repo secret ${k.secretName}...`);
+    await updateGithubSecret(ghToken, k.secretName, env[k.envName]);
+    console.log('      OK');
+  }
+
+  if (!SKIP_DEPLOY) {
+    step(++n, totalSteps, 'Triggering Vercel redeploy via empty commit...');
+    triggerRedeploy();
+  }
+
+  console.log(`\nDone. Synced ${present.length} key(s): ${present.map(k => k.label).join(', ')}`);
 }
 
 main().catch(err => { console.error('ERROR:', err.message); process.exit(1); });

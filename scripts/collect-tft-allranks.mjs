@@ -4,13 +4,11 @@
  * tier — Iron through Challenger. Writes:
  *   public/tft-stats-{set}-{region}.json
  *
- * Differs from the LoL crawler in that it samples below Master/Apex too
- * (the LoL crawler only crawls Master+). Sample sizes per tier are
- * conservative defaults; raise via flags once the production key arrives.
+ * Uses RIOT_API_KEY_TFT (production tier, ~50 req/s app-wide).
  *
  * Usage:
  *   node scripts/collect-tft-allranks.mjs --region euw1
- *   node scripts/collect-tft-allranks.mjs --region kr  --matches-per-player 5
+ *   node scripts/collect-tft-allranks.mjs --region kr  --matches-per-player 10
  */
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
@@ -21,7 +19,7 @@ const args = process.argv.slice(2);
 const arg = (k, def) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : def; };
 
 const REGION = (arg('--region', 'euw1') || 'euw1').toLowerCase();
-const MATCHES_PER_PLAYER = Number(arg('--matches-per-player', '4'));
+const MATCHES_PER_PLAYER = Number(arg('--matches-per-player', '8'));
 const SAMPLE_SIZES = {
   IRON:        Number(arg('--max-iron',        '100')),
   BRONZE:      Number(arg('--max-bronze',      '150')),
@@ -29,7 +27,7 @@ const SAMPLE_SIZES = {
   GOLD:        Number(arg('--max-gold',        '250')),
   PLATINUM:    Number(arg('--max-platinum',    '300')),
   EMERALD:     Number(arg('--max-emerald',     '400')),
-  DIAMOND:     Number(arg('--max-diamond',     '500')),
+  DIAMOND:     Number(arg('--max-diamond',    '1000')),
 };
 const REGIONAL = ({
   euw1: 'europe', eun1: 'europe', tr1: 'europe', ru: 'europe', me1: 'europe',
@@ -38,8 +36,8 @@ const REGIONAL = ({
   oc1: 'sea', ph2: 'sea', sg2: 'sea', th2: 'sea', tw2: 'sea', vn2: 'sea',
 })[REGION] || 'europe';
 
-const API_KEY = process.env.RIOT_API_KEY;
-if (!API_KEY) { console.error('RIOT_API_KEY env var required'); process.exit(1); }
+const API_KEY = process.env.RIOT_API_KEY_TFT;
+if (!API_KEY) { console.error('RIOT_API_KEY_TFT env var required'); process.exit(1); }
 
 let setMeta = null;
 if (existsSync('public/tft-set.json')) {
@@ -47,9 +45,15 @@ if (existsSync('public/tft-set.json')) {
 }
 const CURRENT_SET = setMeta?.setNumber ?? null;
 
-// Rate-limiting handled by shared Riot client (200 req/s on production key,
-// shared across LoL+TFT endpoints).
-const riot = createRiotClient();
+// Production TFT limits (verified from X-App-Rate-Limit: 500:10,30000:600 +
+// match-detail method-limit 200:10). We cap below the match-detail method
+// (the bottleneck) so we never blow it across alternating endpoints.
+const riot = createRiotClient({
+  shortWindowRequests: 180,    // 90% of match-detail 200/10s
+  shortWindowMs: 10_500,
+  longWindowRequests: 28000,   // 93% of app 30000/600s
+  longWindowMs: 605_000,
+});
 const rl = url => riot.fetchJson(url, { safe: true });
 
 async function fetchApex(tier) {

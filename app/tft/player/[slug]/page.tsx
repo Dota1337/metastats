@@ -236,30 +236,9 @@ export default function TftPlayerPage() {
               assets={assets}
             />
 
-            {availableSets.length > 0 && (
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-[#8a9bb0] text-xs uppercase tracking-widest">Match History</div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[#4a5a70] text-xs">{t('tft.set')}:</span>
-                  <select
-                    value={selectedSet == null ? 'all' : String(selectedSet)}
-                    onChange={e => {
-                      const v = e.target.value;
-                      setSetManuallyPicked(true);
-                      setSelectedSet(v === 'all' ? null : Number(v));
-                    }}
-                    className="bg-[#141c2e] border border-[#1e2a3a] rounded px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#7B61FF]/60"
-                  >
-                    {availableSets.map(s => (
-                      <option key={s} value={s}>
-                        Set {s}{s === currentSet ? ` · ${t('tft.currentSet')}` : ''}
-                      </option>
-                    ))}
-                    <option value="all">{t('tft.allSets')}</option>
-                  </select>
-                </div>
-              </div>
-            )}
+            <div className="mb-3">
+              <div className="text-[#8a9bb0] text-xs uppercase tracking-widest">Match History</div>
+            </div>
 
             <div className="space-y-3">
               {pageLoading && pageMatches.length === 0 && (

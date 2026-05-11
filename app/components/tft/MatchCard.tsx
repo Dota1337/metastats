@@ -24,16 +24,27 @@ export default function MatchCard({ match, selfPuuid }: Props) {
 
   return (
     <div className={`rounded border-l-4 overflow-hidden ${placedTopFour ? 'border-green-500 bg-[#0a1f0a]' : 'border-red-500 bg-[#1f0a0a]'}`}>
-      <div className="flex items-center gap-3 p-3 cursor-pointer hover:bg-white/5" onClick={() => setOpen(o => !o)}>
-        <PlacementBadge placement={placement} />
-        <div className="flex-1 min-w-0">
-          <ActivatedTraits participant={me} assets={assets} />
-          <div className="text-[#8a9bb0] text-xs mt-1">
-            Lvl {me.level} · Round {me.lastRound} · {minutes}:{seconds} · {ago}
+      <div className="p-3 cursor-pointer hover:bg-white/5" onClick={() => setOpen(o => !o)}>
+        {/* Top row: placement + meta + augments. Units moved to their own
+            full-width row below so all 9 fit side-by-side instead of
+            wrapping inside the 420px cap. */}
+        <div className="flex items-center gap-3">
+          <PlacementBadge placement={placement} />
+          <div className="flex-1 min-w-0">
+            <ActivatedTraits participant={me} assets={assets} />
+            <div className="text-[#8a9bb0] text-xs mt-1">
+              Lvl {me.level} · Stage {formatStage(me.lastRound)} · {minutes}:{seconds} · {ago}
+            </div>
           </div>
+          <AugmentRow augments={me.augments} assets={assets} />
         </div>
-        <BoardPreview participant={me} assets={assets} />
-        <AugmentRow augments={me.augments} assets={assets} />
+        {/* Units row — every unit a click-through to /tft/units/[id] with
+            hover tooltip showing the name + items. */}
+        <div className="mt-3 flex gap-1.5 flex-wrap">
+          {me.units.map((u, i) => (
+            <UnitTile key={i} unit={u} assets={assets} interactive />
+          ))}
+        </div>
       </div>
 
       {open && (
@@ -45,6 +56,20 @@ export default function MatchCard({ match, selfPuuid }: Props) {
       )}
     </div>
   );
+}
+
+// Convert Riot's flat `last_round` integer to the TFT stage-round label
+// players read on screen. Stage 1 has 4 rounds (carousel + 3 PvE), every
+// stage after that has 7. So last_round=4 is "1-4", 5 is "2-1", 12 is
+// "3-1", 40 is "7-1", and so on. Set 17 still follows this scheme; if Riot
+// changes the per-stage round count in a future set we'll bump it here.
+function formatStage(lastRound: number): string {
+  if (lastRound <= 0) return '—';
+  if (lastRound <= 4) return `1-${lastRound}`;
+  const offset = lastRound - 4;
+  const stage = Math.floor((offset - 1) / 7) + 2;
+  const round = ((offset - 1) % 7) + 1;
+  return `${stage}-${round}`;
 }
 
 function PlacementBadge({ placement }: { placement: number }) {
@@ -77,18 +102,8 @@ function ActivatedTraits({ participant, assets }: { participant: TftParticipantS
   );
 }
 
-function BoardPreview({ participant, assets }: { participant: TftParticipantSummary; assets: TftAssetsBundle | null }) {
-  // Collapsed-view preview shows every unit with its 3 items below — same
-  // shape as the expanded ParticipantRow, just narrower. Items inline let
-  // the user scan a comp at a glance without having to expand the card.
-  return (
-    <div className="hidden md:flex gap-1.5 flex-wrap max-w-[420px] justify-end">
-      {participant.units.slice(0, 9).map((u, i) => (
-        <UnitTile key={i} unit={u} assets={assets} />
-      ))}
-    </div>
-  );
-}
+// (Old BoardPreview is gone — units render directly in the match card's
+// own full-width row now.)
 
 function AugmentRow({ augments, assets }: { augments: string[]; assets: TftAssetsBundle | null }) {
   if (!augments?.length) return null;
@@ -124,27 +139,32 @@ function ParticipantRow({ participant, isSelf, assets }: { participant: TftParti
         <ActivatedTraits participant={participant} assets={assets} />
       </div>
       <div className="flex flex-wrap gap-1">
-        {participant.units.map((u, i) => <UnitTile key={i} unit={u} assets={assets} />)}
+        {participant.units.map((u, i) => <UnitTile key={i} unit={u} assets={assets} interactive />)}
       </div>
       <AugmentRow augments={participant.augments} assets={assets} />
     </div>
   );
 }
 
-function UnitTile({ unit, assets, small }: { unit: any; assets: TftAssetsBundle | null; small?: boolean }) {
+function UnitTile({ unit, assets, small, interactive }: { unit: any; assets: TftAssetsBundle | null; small?: boolean; interactive?: boolean }) {
   const info = assets?.champions[unit.characterId];
-  // Bumped up one notch — the previous w-7/w-9 sizing made unit faces
-  // unrecognisable on the match-card grid.
   const sz = small ? 'w-9 h-9' : 'w-12 h-12';
   const itemSz = small ? 'w-3 h-3' : 'w-4 h-4';
   const cost = (info?.cost ?? unit.rarity + 1) || 1;
   const costColor = costToColor(cost);
   const url = tftIconUrl(assets, info?.icon);
-  return (
-    <div className="flex flex-col items-center gap-0.5">
+  const name = info?.name || prettyCharId(unit.characterId);
+  const stars = unit.tier > 1 ? ` ${'★'.repeat(unit.tier)}` : '';
+  const itemNames = (unit.items || [])
+    .map((it: string) => assets?.items[it]?.name || it.replace(/^TFT\d*_Item_/, ''))
+    .join(', ');
+  const tooltip = `${name}${stars}${itemNames ? ` — ${itemNames}` : ''}`;
+
+  const inner = (
+    <>
       <div className={`relative ${sz} rounded border-2 overflow-hidden`} style={{ borderColor: costColor }}>
         {url
-          ? <img src={url} alt={info?.name || unit.characterId} className="w-full h-full object-cover" />
+          ? <img src={url} alt={name} className="w-full h-full object-cover" />
           : <div className="w-full h-full bg-[#1e2a3a]" />}
         {unit.tier > 1 && (
           <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 text-[9px] leading-none" style={{ color: costColor }}>
@@ -165,8 +185,31 @@ function UnitTile({ unit, assets, small }: { unit: any; assets: TftAssetsBundle 
           })}
         </div>
       )}
+    </>
+  );
+
+  if (interactive && unit.characterId) {
+    return (
+      <a
+        href={`/tft/units/${encodeURIComponent(unit.characterId)}`}
+        title={tooltip}
+        // Stop the click from toggling the match-card's expanded view.
+        onClick={e => e.stopPropagation()}
+        className="flex flex-col items-center gap-0.5 hover:scale-110 transition"
+      >
+        {inner}
+      </a>
+    );
+  }
+  return (
+    <div className="flex flex-col items-center gap-0.5" title={tooltip}>
+      {inner}
     </div>
   );
+}
+
+function prettyCharId(id: string) {
+  return id.replace(/^TFT\d+_/, '');
 }
 
 function costToColor(cost: number) {

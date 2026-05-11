@@ -100,10 +100,20 @@ export default function TftItemsPage() {
                     {(it.topUsers || []).slice(0, 5).map((cid, i) => {
                       const ch = assets?.champions[cid];
                       const curl = tftIconUrl(assets, ch?.icon);
-                      return curl ? (
-                        <img key={i} src={curl} alt={ch?.name || ''} title={ch?.name} className="w-8 h-8 rounded" />
-                      ) : (
-                        <div key={i} className="w-8 h-8 rounded bg-[#1e2a3a]" />
+                      const borderColor = costToColor(ch?.cost ?? 1);
+                      return (
+                        <div
+                          key={i}
+                          className="w-8 h-8 rounded border-2 overflow-hidden flex-shrink-0"
+                          style={{ borderColor }}
+                          title={ch?.name}
+                        >
+                          {curl ? (
+                            <img src={curl} alt={ch?.name || ''} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full bg-[#1e2a3a]" />
+                          )}
+                        </div>
                       );
                     })}
                   </div>
@@ -123,3 +133,7 @@ export default function TftItemsPage() {
 }
 
 function prettyApi(s: string) { return s.replace(/^TFT\d*_Item_/, '').slice(0, 10); }
+
+function costToColor(cost: number) {
+  return cost === 1 ? '#9aa6b2' : cost === 2 ? '#3a8' : cost === 3 ? '#3a8ddc' : cost === 4 ? '#c39bff' : '#e0c75a';
+}

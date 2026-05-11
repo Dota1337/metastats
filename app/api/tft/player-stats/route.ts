@@ -163,7 +163,7 @@ export async function GET(request: NextRequest) {
       lastRound: avgLastRound,
     },
     scores,
-    topUnits: topN(unitGames, 10, 'character_id').map((u: any) => ({
+    topUnits: topN(unitGames, 15, 'character_id').map((u: any) => ({
       characterId: u.character_id, games: u.games, avgPlacement: u.avgPlacement, top4Rate: u.top4Rate,
     })),
     topAugments: topN(augmentGames, 5, 'apiName'),

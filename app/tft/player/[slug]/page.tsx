@@ -322,16 +322,19 @@ function SeasonStats({ stats, loading, currentSet, assets }: { stats: PlayerStat
         <Stat label={t('tft.gamesShort')} value={String(stats.totalMatches)} />
       </div>
 
-      {/* Units (top 10) + Augments (top 5) — chip sizing tuned to fill the
-          two-column units area without dwarfing the augment column. */}
+      {/* Units (top 15) + Augments (top 5) — chips are ranked 1..15 in
+          reading order so the player can see which units he leans on
+          hardest. 2 cols × 8 rows fills the box height to roughly match
+          the 5-augment column to its right. */}
       {stats.topUnits && stats.topUnits.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-5">
           <div className="lg:col-span-2">
             <div className="text-[#8a9bb0] text-[10px] uppercase tracking-widest mb-2">{t('tft.topUnitsPlayed')}</div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {stats.topUnits.slice(0, 10).map(u => (
+              {stats.topUnits.slice(0, 15).map((u, i) => (
                 <UnitChip
                   key={u.characterId}
+                  rank={i + 1}
                   characterId={u.characterId}
                   games={u.games}
                   avg={u.avgPlacement}
@@ -344,9 +347,10 @@ function SeasonStats({ stats, loading, currentSet, assets }: { stats: PlayerStat
             <div>
               <div className="text-[#8a9bb0] text-[10px] uppercase tracking-widest mb-2">{t('tft.favoriteAugments')}</div>
               <div className="space-y-2">
-                {stats.topAugments.slice(0, 5).map(a => (
+                {stats.topAugments.slice(0, 5).map((a, i) => (
                   <AugmentChip
                     key={a.apiName}
+                    rank={i + 1}
                     apiName={a.apiName}
                     games={a.games}
                     avg={a.avgPlacement}
@@ -367,7 +371,25 @@ function SeasonStats({ stats, loading, currentSet, assets }: { stats: PlayerStat
   );
 }
 
-function UnitChip({ characterId, games, avg, assets }: { characterId: string; games: number; avg: number; assets: TftAssetsBundle | null }) {
+function rankColor(rank: number): string {
+  if (rank === 1) return '#f0c040';   // gold
+  if (rank === 2) return '#cfd6dc';   // silver
+  if (rank === 3) return '#cd7f32';   // bronze
+  return '#8a9bb0';                   // neutral
+}
+
+function RankBadge({ rank }: { rank: number }) {
+  return (
+    <div
+      className="w-6 text-center flex-shrink-0 text-sm font-bold tabular-nums"
+      style={{ color: rankColor(rank) }}
+    >
+      {rank}
+    </div>
+  );
+}
+
+function UnitChip({ rank, characterId, games, avg, assets }: { rank: number; characterId: string; games: number; avg: number; assets: TftAssetsBundle | null }) {
   const { t } = useI18n();
   const info = assets?.champions[characterId];
   const url = tftIconUrl(assets, info?.icon);
@@ -377,10 +399,11 @@ function UnitChip({ characterId, games, avg, assets }: { characterId: string; ga
   return (
     <a
       href={`/tft/units/${encodeURIComponent(characterId)}`}
-      title={`${name} — ${games} ${t('tft.gamesShort')}, Ø ${avg.toFixed(2)}`}
-      className="flex items-center gap-3 bg-[#0a0e1a] border border-[#1e2a3a] rounded-md px-3 py-2.5 hover:border-[#7B61FF]/50 hover:bg-[#101729] transition"
+      title={`#${rank} ${name} — ${games} ${t('tft.gamesShort')}, Ø ${avg.toFixed(2)}`}
+      className="flex items-center gap-2.5 bg-[#0a0e1a] border border-[#1e2a3a] rounded-md px-2.5 py-2 hover:border-[#7B61FF]/50 hover:bg-[#101729] transition"
     >
-      <div className="w-11 h-11 rounded border-2 overflow-hidden flex-shrink-0" style={{ borderColor: costColor }}>
+      <RankBadge rank={rank} />
+      <div className="w-10 h-10 rounded border-2 overflow-hidden flex-shrink-0" style={{ borderColor: costColor }}>
         {url ? <img src={url} alt={name} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-[#1e2a3a]" />}
       </div>
       <div className="flex-1 min-w-0">
@@ -391,7 +414,7 @@ function UnitChip({ characterId, games, avg, assets }: { characterId: string; ga
   );
 }
 
-function AugmentChip({ apiName, games, avg, assets }: { apiName: string; games: number; avg: number; assets: TftAssetsBundle | null }) {
+function AugmentChip({ rank, apiName, games, avg, assets }: { rank: number; apiName: string; games: number; avg: number; assets: TftAssetsBundle | null }) {
   const { t } = useI18n();
   const info = assets?.augments[apiName];
   const url = tftIconUrl(assets, info?.icon);
@@ -399,10 +422,11 @@ function AugmentChip({ apiName, games, avg, assets }: { apiName: string; games: 
   const name = info?.name || apiName.replace(/^TFT\d+_Augment_/, '');
   return (
     <div
-      title={`${name} — ${games} ${t('tft.gamesShort')}, Ø ${avg.toFixed(2)}`}
-      className="flex items-center gap-3 bg-[#0a0e1a] border border-[#1e2a3a] rounded-md px-3 py-2.5"
+      title={`#${rank} ${name} — ${games} ${t('tft.gamesShort')}, Ø ${avg.toFixed(2)}`}
+      className="flex items-center gap-2.5 bg-[#0a0e1a] border border-[#1e2a3a] rounded-md px-2.5 py-2"
     >
-      <div className="w-11 h-11 rounded border-2 overflow-hidden flex-shrink-0" style={{ borderColor: tierColor }}>
+      <RankBadge rank={rank} />
+      <div className="w-10 h-10 rounded border-2 overflow-hidden flex-shrink-0" style={{ borderColor: tierColor }}>
         {url ? <img src={url} alt={name} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-[#1e2a3a]" />}
       </div>
       <div className="flex-1 min-w-0">

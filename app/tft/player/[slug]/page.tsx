@@ -350,38 +350,12 @@ function SeasonStats({
     );
   }
 
-  // Even if hasStats is false (the user has no Solo-Ranked match for the
-  // selected set), keep the card visible so the pill bar still works.
-  const availableSets = stats?.availableSets || [];
-  const showPills = availableSets.length > 1;
-
   return (
     <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-5 mb-5">
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <div className="text-[#8a9bb0] text-xs uppercase tracking-widest">
           Saison-Statistik{activeSet != null ? ` · Set ${activeSet}` : ''}
         </div>
-        {showPills && (
-          <div className="flex items-center gap-1">
-            {availableSets.map(s => {
-              const active = (stats?.set ?? currentSet) === s;
-              const isCurrent = s === currentSet;
-              return (
-                <button
-                  key={s}
-                  onClick={() => onPickSet(isCurrent ? null : s)}
-                  className={`px-2.5 py-1 rounded text-xs font-medium ${
-                    active
-                      ? 'bg-[#7B61FF] text-white'
-                      : 'bg-[#141c2e] text-[#8a9bb0] hover:text-white border border-[#1e2a3a]'
-                  }`}
-                >
-                  Set {s}{isCurrent ? ' ·' : ''}
-                </button>
-              );
-            })}
-          </div>
-        )}
       </div>
 
       {!stats?.hasStats ? (
@@ -624,7 +598,7 @@ function RankBlock({ ranked, seasonRanks }: { ranked: SummonerData['ranked']; se
             onClick={() => setOpen(o => !o)}
             className="mt-2 text-[10px] text-[#7B61FF] hover:text-[#a892ff] uppercase tracking-widest"
           >
-            Vergangene Saisons ({pastSeasons.length}) {open ? '▲' : '▼'}
+            Alle Saisons ({pastSeasons.length}) {open ? '▲' : '▼'}
           </button>
           {open && (
             <div className="absolute right-0 mt-1 z-20 bg-[#0d1526] border border-[#1e2a3a] rounded-lg shadow-lg p-3 min-w-[280px] text-left">

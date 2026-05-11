@@ -83,7 +83,7 @@ export default function TftItemDetailPage() {
                           ? <img src={churl} alt={ch!.name} className="w-10 h-10 rounded object-cover" />
                           : <div className="w-10 h-10 rounded bg-[#1e2a3a]" />}
                         <div className="text-[10px] text-white text-center truncate w-full">{ch?.name || prettyChar(u.characterId)}</div>
-                        <div className="text-[10px] text-[#4a5a70]">{u.games}g</div>
+                        <div className="text-[10px] text-[#4a5a70]">{u.games} {t('tft.gamesShort')}</div>
                       </a>
                     );
                   })}

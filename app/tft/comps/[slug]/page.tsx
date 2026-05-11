@@ -57,7 +57,7 @@ export default function TftCompDetailPage() {
                       <a key={i} href={`/tft/comps/${encodeURIComponent(c.b)}?bucket=${bucket}`}
                          className="flex items-center justify-between bg-[#0d1526] border border-[#1e2a3a] rounded px-3 py-2 hover:border-green-500/40">
                         <span className="text-white text-xs truncate">{prettyComp(c.b)}</span>
-                        <span className="text-green-400 text-xs">{Math.round(c.aWinRate * 100)}% · {c.games}g</span>
+                        <span className="text-green-400 text-xs">{Math.round(c.aWinRate * 100)}% · {c.games} {t('tft.gamesShort')}</span>
                       </a>
                     ))}
                   </div>
@@ -70,7 +70,7 @@ export default function TftCompDetailPage() {
                       <a key={i} href={`/tft/comps/${encodeURIComponent(c.a)}?bucket=${bucket}`}
                          className="flex items-center justify-between bg-[#0d1526] border border-[#1e2a3a] rounded px-3 py-2 hover:border-red-500/40">
                         <span className="text-white text-xs truncate">{prettyComp(c.a)}</span>
-                        <span className="text-red-400 text-xs">{Math.round(c.aWinRate * 100)}% · {c.games}g</span>
+                        <span className="text-red-400 text-xs">{Math.round(c.aWinRate * 100)}% · {c.games} {t('tft.gamesShort')}</span>
                       </a>
                     ))}
                   </div>

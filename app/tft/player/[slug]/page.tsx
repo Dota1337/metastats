@@ -1,6 +1,10 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
+import {
+  ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, Radar,
+  BarChart, Bar, XAxis, YAxis, Tooltip,
+} from 'recharts';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import MatchCard from '../../../components/tft/MatchCard';
@@ -25,6 +29,21 @@ interface PlayerStats {
   avgPlacement?: number;
   top4Rate?: number;
   top1Rate?: number;
+  placementDistribution?: number[];
+  averages?: {
+    level: number;
+    goldLeft: number;
+    eliminations: number;
+    damage: number;
+    lastRound: number;
+  };
+  scores?: {
+    tempo: number;
+    aggression: number;
+    damage: number;
+    survival: number;
+    consistency: number;
+  };
   topUnits?: { characterId: string; games: number; avgPlacement: number; top4Rate: number }[];
   topAugments?: { apiName: string; games: number; avgPlacement: number; top4Rate: number }[];
   topTraits?: { key: string; games: number; avgPlacement: number; top4Rate: number }[];
@@ -44,24 +63,21 @@ export default function TftPlayerPage() {
   const searchParams = useSearchParams();
   const region = (searchParams.get('region') || 'euw1').toLowerCase();
   const slug = decodeURIComponent(String(params?.slug || ''));
-  // Accept both `Caps#EUW` and `Caps--EUW` (URL-safe)
   const [gameName, tagLine] = slug.includes('--')
     ? slug.split('--').map(decodeURIComponent)
     : slug.split('#').map(decodeURIComponent);
   const fullName = `${gameName}${tagLine ? '#' + tagLine : ''}`;
 
   const [data, setData] = useState<SummonerData | null>(null);
-  // Match summaries keyed by matchId — populated lazily per page.
   const [matchCache, setMatchCache] = useState<Record<string, TftMatchSummary>>({});
   const [loading, setLoading] = useState(true);
   const [pageLoading, setPageLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ddVersion, setDdVersion] = useState('');
   const [currentSet, setCurrentSet] = useState<number | null>(null);
-  // null = all sets, number = filter on that set
   const [selectedSet, setSelectedSet] = useState<number | null>(null);
   const [setManuallyPicked, setSetManuallyPicked] = useState(false);
-  const [page, setPage] = useState(0); // 0..3 for 4 pages of 30
+  const [page, setPage] = useState(0);
 
   const [playerStats, setPlayerStats] = useState<PlayerStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
@@ -69,14 +85,11 @@ export default function TftPlayerPage() {
 
   useEffect(() => {
     fetch('https://ddragon.leagueoflegends.com/api/versions.json')
-      .then(r => r.json())
-      .then(v => setDdVersion(v[0]))
-      .catch(() => {});
+      .then(r => r.json()).then(v => setDdVersion(v[0])).catch(() => {});
     loadTftSetMeta().then(meta => { if (meta) setCurrentSet(meta.setNumber); });
     loadTftAssets().then(setAssets);
   }, []);
 
-  // Summoner data + the 120 match IDs.
   useEffect(() => {
     if (!gameName) return;
     setLoading(true);
@@ -85,21 +98,13 @@ export default function TftPlayerPage() {
     setMatchCache({});
     fetch(`/api/tft/summoner?name=${encodeURIComponent(fullName)}&region=${region}`)
       .then(async r => {
-        if (!r.ok) {
-          const j = await r.json().catch(() => ({}));
-          throw new Error(j.error || `HTTP ${r.status}`);
-        }
+        if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.error || `HTTP ${r.status}`); }
         return r.json();
       })
-      .then((d: SummonerData) => {
-        setData(d);
-        setLoading(false);
-      })
+      .then((d: SummonerData) => { setData(d); setLoading(false); })
       .catch(e => { setError(e.message); setLoading(false); });
   }, [fullName, gameName, region]);
 
-  // Season stats — runs in the background so it doesn't block match-history.
-  // Stats survey ~200 most recent matches and may take 5-10s wall time.
   useEffect(() => {
     if (!data?.summoner.puuid) return;
     setStatsLoading(true);
@@ -109,13 +114,11 @@ export default function TftPlayerPage() {
       .catch(() => setStatsLoading(false));
   }, [data?.summoner.puuid, region]);
 
-  // Page IDs for the current pagination slice.
   const currentPageIds = useMemo(() => {
     if (!data) return [];
     return data.matchIds.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
   }, [data, page]);
 
-  // Lazy-load match details for the current page if not already cached.
   useEffect(() => {
     if (currentPageIds.length === 0) return;
     const missing = currentPageIds.filter(id => !matchCache[id]);
@@ -134,14 +137,12 @@ export default function TftPlayerPage() {
       .catch(() => setPageLoading(false));
   }, [currentPageIds.join(','), region]);
 
-  // Available sets from loaded match details (newest first).
   const availableSets = useMemo(() => {
     const set = new Set<number>();
     for (const m of Object.values(matchCache)) if (typeof m.setNumber === 'number') set.add(m.setNumber);
     return [...set].sort((a, b) => b - a);
   }, [matchCache]);
 
-  // Auto-pick a sensible default set when matches first load.
   useEffect(() => {
     if (setManuallyPicked || availableSets.length === 0) return;
     if (currentSet != null && availableSets.includes(currentSet)) {
@@ -154,7 +155,6 @@ export default function TftPlayerPage() {
     }
   }, [availableSets, currentSet, matchCache, setManuallyPicked]);
 
-  // Page summaries: ordered by the matchId sequence, filtered by set.
   const pageMatches = useMemo(() => {
     const out: TftMatchSummary[] = [];
     for (const id of currentPageIds) {
@@ -204,9 +204,7 @@ export default function TftPlayerPage() {
 
             {availableSets.length > 0 && (
               <div className="flex items-center justify-between mb-3">
-                <div className="text-[#8a9bb0] text-xs uppercase tracking-widest">
-                  Match History
-                </div>
+                <div className="text-[#8a9bb0] text-xs uppercase tracking-widest">Match History</div>
                 <div className="flex items-center gap-2">
                   <span className="text-[#4a5a70] text-xs">{t('tft.set')}:</span>
                   <select
@@ -249,12 +247,7 @@ export default function TftPlayerPage() {
             </div>
 
             {totalPages > 1 && (
-              <Pagination
-                page={page}
-                totalPages={totalPages}
-                onChange={p => setPage(p)}
-                loading={pageLoading}
-              />
+              <Pagination page={page} totalPages={totalPages} onChange={p => setPage(p)} loading={pageLoading} />
             )}
           </>
         )}
@@ -281,9 +274,7 @@ function Pagination({ page, totalPages, onChange, loading }: { page: number; tot
             onClick={() => onChange(i)}
             disabled={loading}
             className={`w-8 h-8 rounded text-xs font-medium ${
-              i === page
-                ? 'bg-[#7B61FF] text-white'
-                : 'bg-[#141c2e] border border-[#1e2a3a] text-[#8a9bb0] hover:text-white'
+              i === page ? 'bg-[#7B61FF] text-white' : 'bg-[#141c2e] border border-[#1e2a3a] text-[#8a9bb0] hover:text-white'
             }`}
           >
             {i + 1}
@@ -302,13 +293,14 @@ function Pagination({ page, totalPages, onChange, loading }: { page: number; tot
 }
 
 function SeasonStats({ stats, loading, currentSet, assets }: { stats: PlayerStats | null; loading: boolean; currentSet: number | null; assets: TftAssetsBundle | null }) {
+  const { t } = useI18n();
   if (loading && !stats) {
     return (
       <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-5 mb-5">
         <div className="text-[#4a5a70] text-xs uppercase tracking-widest mb-3">
           Saison-Statistik{currentSet != null ? ` · Set ${currentSet}` : ''}
         </div>
-        <div className="text-[#4a5a70] text-sm">Berechne aus letzten ~200 Matches ...</div>
+        <div className="text-[#4a5a70] text-sm">Berechne aus allen Saison-Matches ...</div>
       </div>
     );
   }
@@ -321,37 +313,170 @@ function SeasonStats({ stats, loading, currentSet, assets }: { stats: PlayerStat
           Saison-Statistik{stats.set != null ? ` · Set ${stats.set}` : ''}
         </div>
         <div className="text-[#4a5a70] text-[10px]">
-          n = {stats.totalMatches} Matches
+          n = {stats.totalMatches} {t('tft.matches')}
         </div>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-        <Stat label="Ø Platzierung" value={stats.avgPlacement?.toFixed(2) ?? '—'} />
-        <Stat label="Top 4" value={stats.top4Rate != null ? `${(stats.top4Rate * 100).toFixed(1)}%` : '—'} />
-        <Stat label="Sieg" value={stats.top1Rate != null ? `${(stats.top1Rate * 100).toFixed(1)}%` : '—'} />
-        <Stat label="Spiele" value={String(stats.totalMatches)} />
+        <Stat label={t('tft.avgPlacement')} value={stats.avgPlacement?.toFixed(2) ?? '—'} />
+        <Stat label={t('tft.top4')} value={stats.top4Rate != null ? `${(stats.top4Rate * 100).toFixed(1)}%` : '—'} />
+        <Stat label={t('tft.top1')} value={stats.top1Rate != null ? `${(stats.top1Rate * 100).toFixed(1)}%` : '—'} />
+        <Stat label={t('tft.gamesShort')} value={String(stats.totalMatches)} />
       </div>
 
+      {/* Units (top 10) + Augments (top 5) */}
       {stats.topUnits && stats.topUnits.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <TopList title="Meist-gespielte Units" entries={stats.topUnits.map(u => ({
-            key: u.characterId,
-            label: assets?.champions[u.characterId]?.name || u.characterId.replace(/^TFT\d+_/, ''),
-            icon: assets ? tftIconUrl(assets, assets.champions[u.characterId]?.icon) : null,
-            games: u.games,
-            avg: u.avgPlacement,
-          }))} />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-5">
+          <div className="lg:col-span-2">
+            <div className="text-[#4a5a70] text-[10px] uppercase tracking-widest mb-1.5">{t('tft.topUnitsPlayed')}</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+              {stats.topUnits.slice(0, 10).map(u => (
+                <UnitChip
+                  key={u.characterId}
+                  characterId={u.characterId}
+                  games={u.games}
+                  avg={u.avgPlacement}
+                  assets={assets}
+                />
+              ))}
+            </div>
+          </div>
           {stats.topAugments && stats.topAugments.length > 0 && (
-            <TopList title="Lieblings-Augments" entries={stats.topAugments.map(a => ({
-              key: a.apiName,
-              label: assets?.augments[a.apiName]?.name || a.apiName.replace(/^TFT\d+_Augment_/, ''),
-              icon: assets ? tftIconUrl(assets, assets.augments[a.apiName]?.icon) : null,
-              games: a.games,
-              avg: a.avgPlacement,
-            }))} />
+            <div>
+              <div className="text-[#4a5a70] text-[10px] uppercase tracking-widest mb-1.5">{t('tft.favoriteAugments')}</div>
+              <div className="space-y-1.5">
+                {stats.topAugments.slice(0, 5).map(a => (
+                  <AugmentChip
+                    key={a.apiName}
+                    apiName={a.apiName}
+                    games={a.games}
+                    avg={a.avgPlacement}
+                    assets={assets}
+                  />
+                ))}
+              </div>
+            </div>
           )}
         </div>
       )}
+
+      {/* Play-style: radar + placement histogram + raw averages */}
+      {stats.scores && stats.placementDistribution && stats.averages && (
+        <PlayStyle scores={stats.scores} dist={stats.placementDistribution} avgs={stats.averages} />
+      )}
+    </div>
+  );
+}
+
+function UnitChip({ characterId, games, avg, assets }: { characterId: string; games: number; avg: number; assets: TftAssetsBundle | null }) {
+  const { t } = useI18n();
+  const info = assets?.champions[characterId];
+  const url = tftIconUrl(assets, info?.icon);
+  const cost = info?.cost ?? 1;
+  const costColor = costToColor(cost);
+  const name = info?.name || characterId.replace(/^TFT\d+_/, '');
+  return (
+    <a
+      href={`/tft/units/${encodeURIComponent(characterId)}`}
+      title={`${name} — ${games} ${t('tft.gamesShort')}, Ø ${avg.toFixed(2)}`}
+      className="flex items-center gap-2 bg-[#0a0e1a] border border-[#1e2a3a] rounded px-2 py-1.5 hover:border-[#7B61FF]/40 transition"
+    >
+      <div className="w-7 h-7 rounded border-2 overflow-hidden flex-shrink-0" style={{ borderColor: costColor }}>
+        {url ? <img src={url} alt={name} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-[#1e2a3a]" />}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-white text-xs truncate">{name}</div>
+        <div className="text-[#4a5a70] text-[10px]">{games} {t('tft.gamesShort')} · Ø {avg.toFixed(2)}</div>
+      </div>
+    </a>
+  );
+}
+
+function AugmentChip({ apiName, games, avg, assets }: { apiName: string; games: number; avg: number; assets: TftAssetsBundle | null }) {
+  const { t } = useI18n();
+  const info = assets?.augments[apiName];
+  const url = tftIconUrl(assets, info?.icon);
+  const tierColor = info?.tier === 3 ? '#c39bff' : info?.tier === 2 ? '#e0c75a' : '#9ab0bf';
+  const name = info?.name || apiName.replace(/^TFT\d+_Augment_/, '');
+  return (
+    <div
+      title={`${name} — ${games} ${t('tft.gamesShort')}, Ø ${avg.toFixed(2)}`}
+      className="flex items-center gap-2 bg-[#0a0e1a] border border-[#1e2a3a] rounded px-2 py-1.5"
+    >
+      <div className="w-7 h-7 rounded border-2 overflow-hidden flex-shrink-0" style={{ borderColor: tierColor }}>
+        {url ? <img src={url} alt={name} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-[#1e2a3a]" />}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-white text-xs truncate">{name}</div>
+        <div className="text-[#4a5a70] text-[10px]">{games} {t('tft.gamesShort')} · Ø {avg.toFixed(2)}</div>
+      </div>
+    </div>
+  );
+}
+
+function PlayStyle({ scores, dist, avgs }: { scores: NonNullable<PlayerStats['scores']>; dist: number[]; avgs: NonNullable<PlayerStats['averages']> }) {
+  const { t } = useI18n();
+  const radarData = [
+    { axis: t('tft.tempo'),       value: round1(scores.tempo) },
+    { axis: t('tft.aggression'),  value: round1(scores.aggression) },
+    { axis: t('tft.damage'),      value: round1(scores.damage) },
+    { axis: t('tft.survival'),    value: round1(scores.survival) },
+    { axis: t('tft.consistency'), value: round1(scores.consistency) },
+  ];
+  const histData = dist.map((c, i) => ({ place: `${i + 1}.`, count: c }));
+  const total = dist.reduce((a, b) => a + b, 0) || 1;
+
+  return (
+    <>
+      <div className="text-[#4a5a70] text-[10px] uppercase tracking-widest mb-2">{t('tft.gameStyle')}</div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-3">
+        <div className="bg-[#0a0e1a] border border-[#1e2a3a] rounded p-3" style={{ height: 240 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <RadarChart data={radarData}>
+              <PolarGrid stroke="#1e2a3a" />
+              <PolarAngleAxis dataKey="axis" stroke="#8a9bb0" tick={{ fontSize: 11 }} />
+              <Radar name="Score" dataKey="value" stroke="#7B61FF" fill="#7B61FF" fillOpacity={0.35} />
+              <Tooltip
+                cursor={{ fill: 'transparent' }}
+                contentStyle={{ backgroundColor: '#0d1526', border: '1px solid #1e2a3a', fontSize: 11 }}
+                formatter={(v: any) => [`${v}/100`, '']}
+              />
+            </RadarChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="bg-[#0a0e1a] border border-[#1e2a3a] rounded p-3" style={{ height: 240 }}>
+          <div className="text-[#8a9bb0] text-[10px] mb-1">{t('tft.placementDistribution')}</div>
+          <ResponsiveContainer width="100%" height="90%">
+            <BarChart data={histData} margin={{ top: 5, right: 0, bottom: 0, left: -25 }}>
+              <XAxis dataKey="place" stroke="#8a9bb0" tick={{ fontSize: 10 }} />
+              <YAxis stroke="#8a9bb0" tick={{ fontSize: 10 }} />
+              <Tooltip
+                cursor={{ fill: 'rgba(123,97,255,0.1)' }}
+                contentStyle={{ backgroundColor: '#0d1526', border: '1px solid #1e2a3a', fontSize: 11 }}
+                formatter={(v: any) => [`${v} (${((Number(v) / total) * 100).toFixed(1)}%)`, t('tft.matches')]}
+              />
+              <Bar dataKey="count" fill="#7B61FF" radius={[2, 2, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+        <MiniStat label={t('tft.avgLevel')}        value={avgs.level.toFixed(2)} />
+        <MiniStat label={t('tft.avgGoldLeft')}     value={avgs.goldLeft.toFixed(1)} />
+        <MiniStat label={t('tft.avgEliminations')} value={avgs.eliminations.toFixed(2)} />
+        <MiniStat label={t('tft.avgDamage')}       value={Math.round(avgs.damage).toString()} />
+        <MiniStat label={t('tft.avgLastRound')}    value={avgs.lastRound.toFixed(1)} />
+      </div>
+    </>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-[#0a0e1a] border border-[#1e2a3a] rounded px-2 py-1.5">
+      <div className="text-[#4a5a70] text-[9px] uppercase tracking-widest">{label}</div>
+      <div className="text-white text-sm font-medium mt-0.5">{value}</div>
     </div>
   );
 }
@@ -361,29 +486,6 @@ function Stat({ label, value }: { label: string; value: string }) {
     <div className="bg-[#0a0e1a] border border-[#1e2a3a] rounded px-3 py-2">
       <div className="text-[#4a5a70] text-[10px] uppercase tracking-widest">{label}</div>
       <div className="text-white text-xl font-semibold mt-0.5">{value}</div>
-    </div>
-  );
-}
-
-function TopList({ title, entries }: { title: string; entries: { key: string; label: string; icon: string | null; games: number; avg: number }[] }) {
-  return (
-    <div>
-      <div className="text-[#4a5a70] text-[10px] uppercase tracking-widest mb-1.5">{title}</div>
-      <div className="space-y-1">
-        {entries.map(e => (
-          <div key={e.key} className="flex items-center gap-2 bg-[#0a0e1a] border border-[#1e2a3a] rounded px-2 py-1.5">
-            {e.icon ? (
-              <img src={e.icon} alt={e.label} className="w-6 h-6 rounded flex-shrink-0" />
-            ) : (
-              <div className="w-6 h-6 rounded bg-[#1e2a3a] flex-shrink-0" />
-            )}
-            <div className="flex-1 min-w-0">
-              <div className="text-white text-xs truncate">{e.label}</div>
-              <div className="text-[#4a5a70] text-[10px]">{e.games}g · Ø {e.avg.toFixed(2)}</div>
-            </div>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
@@ -413,3 +515,8 @@ function RankBlock({ ranked }: { ranked: SummonerData['ranked'] }) {
     </div>
   );
 }
+
+function costToColor(cost: number) {
+  return cost === 1 ? '#9aa6b2' : cost === 2 ? '#3a8' : cost === 3 ? '#3a8ddc' : cost === 4 ? '#c39bff' : '#e0c75a';
+}
+function round1(n: number) { return Math.round(n * 10) / 10; }

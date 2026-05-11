@@ -90,7 +90,7 @@ export default function TftUnitDetailPage() {
                       <div className="text-right text-xs">
                         <div className="text-white">Ø {s.avgPlacement?.toFixed(2) ?? '—'}</div>
                         <div className="text-[#4a5a70]">
-                          {s.top4Rate != null ? `${(s.top4Rate * 100).toFixed(0)}% T4` : ''} · {s.games}g
+                          {s.top4Rate != null ? `${(s.top4Rate * 100).toFixed(0)}% T4` : ''} · {s.games} {t('tft.gamesShort')}
                         </div>
                       </div>
                     </div>
@@ -106,7 +106,7 @@ export default function TftUnitDetailPage() {
                     <div key={i} className="flex flex-col items-center gap-1 bg-[#141c2e] border border-[#1e2a3a] rounded p-1.5 w-16">
                       <ItemIcon apiName={it.item} assets={assets} size={9} />
                       <div className="text-[10px] text-white">Ø {it.avgPlacement?.toFixed(1) ?? '—'}</div>
-                      <div className="text-[10px] text-[#4a5a70]">{it.games}g</div>
+                      <div className="text-[10px] text-[#4a5a70]">{it.games} {t('tft.gamesShort')}</div>
                     </div>
                   ))}
                 </div>

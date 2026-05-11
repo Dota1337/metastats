@@ -11,6 +11,11 @@ const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 const METATFT_URL = 'https://api.metatft.com/public/profile/lookup_by_riotid';
+// dak.gg is lolchess.gg's backend. Their /summoners/{shard}/{name-tag}/profile
+// endpoint returns `summonerSeasons` reaching back to Set 1, which metatft
+// can't cover (they only started crawling ~Set 8.2). We combine: dak.gg
+// gives us the full skeleton, metatft fills in LP + games where it has them.
+const DAKGG_URL = 'https://tft.dakgg.io/api/v1/summoners';
 
 const STANDARD_RANKED_QUEUE = 1100;
 
@@ -60,9 +65,17 @@ export async function ensureRankHistoryBackfilled(
 
   if (shouldFetch) {
     try {
-      const fetched = await fetchMetatftRatingHistory(region, gameName, tagLine);
-      if (fetched.length > 0) {
-        await upsertRankHistoryRows(puuid, region, fetched);
+      // Fetch both sources in parallel. dak.gg covers Set 1+, metatft adds
+      // LP + games to the sets it has (Set 8.2+). The merge prefers
+      // metatft entries when they exist (LP is more informative than
+      // tier-only) and falls back to dak.gg for older sets.
+      const [metatftRanks, dakggRanks] = await Promise.all([
+        fetchMetatftRatingHistory(region, gameName, tagLine).catch(() => [] as SeasonRank[]),
+        fetchDakggSeasons(region, gameName, tagLine).catch(() => [] as SeasonRank[]),
+      ]);
+      const merged = mergeRankSources(metatftRanks, dakggRanks);
+      if (merged.length > 0) {
+        await upsertRankHistoryRows(puuid, region, merged);
         await upsertBackfillState(puuid, region, 'success', null);
       } else {
         await upsertBackfillState(puuid, region, 'no_data', null);
@@ -195,6 +208,75 @@ async function fetchMetatftRatingHistory(
 function parseSetNumber(label: string): number | null {
   const m = /^TFTSet(\d+)/i.exec(label);
   return m ? parseInt(m[1], 10) : null;
+}
+
+// dak.gg → canonical TFTSetN[_M] format.
+//   'set1'   → 'TFTSet1'
+//   'set9.5' → 'TFTSet9_2'   (.5 is the mid-set, which Riot internally
+//                              labels with the _2 suffix)
+function normalizeDakSetLabel(dakLabel: string): string | null {
+  const m = /^set(\d+)(?:\.(\d+))?$/i.exec(dakLabel);
+  if (!m) return null;
+  // .5 ↔ _2 (Riot only ships ONE mid-set per set, conventionally labelled
+  // either "set N.5" by community or "TFTSet N_2" by the engine).
+  return m[2] ? `TFTSet${m[1]}_2` : `TFTSet${m[1]}`;
+}
+
+async function fetchDakggSeasons(
+  shard: string, gameName: string, tagLine: string,
+): Promise<SeasonRank[]> {
+  const slug = `${gameName}-${tagLine}`;
+  const url = `${DAKGG_URL}/${shard}/${encodeURIComponent(slug)}/profile`;
+  const r = await fetch(url, {
+    headers: {
+      'User-Agent': 'metastats.gg/1.0',
+      'Origin': 'https://lolchess.gg',
+      'Referer': 'https://lolchess.gg/',
+      Accept: 'application/json',
+    },
+  });
+  if (!r.ok) {
+    if (r.status === 404) return [];
+    throw new Error(`dakgg HTTP ${r.status}`);
+  }
+  const data = await r.json();
+  const seasons = data?.summonerSeasons || [];
+  // summonerLeagues holds the LP/plays of the current season — we don't
+  // need them here because the player-stats endpoint already shows the
+  // live rank from Riot's API. We only consume the past-season list.
+  const out: SeasonRank[] = [];
+  for (const s of seasons) {
+    if (!s?.season || !s?.tier) continue;
+    const canonicalLabel = normalizeDakSetLabel(s.season);
+    if (!canonicalLabel) continue;
+    const setNumber = parseSetNumber(canonicalLabel);
+    if (setNumber == null) continue;
+    const tier = (s.tier || '').toUpperCase();
+    const division = s.rank ? String(s.rank).toUpperCase() : null;
+    out.push({
+      set_number: setNumber,
+      set_label: canonicalLabel,
+      queue_id: STANDARD_RANKED_QUEUE,
+      peak_tier: tier,
+      peak_division: division,
+      peak_lp: null,                                     // dakgg doesn't expose LP for past seasons
+      peak_rating_label: division ? `${tier} ${division}` : tier,
+      total_games: null,
+      source: 'dakgg',
+    });
+  }
+  return out;
+}
+
+// Merge metatft + dakgg results by set_label, preferring metatft rows where
+// both sources have data (metatft has LP + games, dakgg only has tier).
+function mergeRankSources(metatft: SeasonRank[], dakgg: SeasonRank[]): SeasonRank[] {
+  const byLabel = new Map<string, SeasonRank>();
+  // dakgg first (covers more sets but less detail)…
+  for (const r of dakgg) if (r.set_label) byLabel.set(r.set_label, r);
+  // …then metatft overwrites where it has a row (richer data).
+  for (const r of metatft) if (r.set_label) byLabel.set(r.set_label, r);
+  return [...byLabel.values()];
 }
 
 // "CHALLENGER I 1566 LP" → { tier: 'CHALLENGER', division: 'I', lp: 1566 }

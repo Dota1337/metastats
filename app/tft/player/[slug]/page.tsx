@@ -26,6 +26,9 @@ interface PlayerStats {
   set?: number | null;
   totalMatches: number;
   sampledMatches?: number;
+  inSetMatches?: number;
+  rankedSoloInSet?: number;
+  totalHistoryIds?: number;
   avgPlacement?: number;
   top4Rate?: number;
   top1Rate?: number;
@@ -308,12 +311,17 @@ function SeasonStats({ stats, loading, currentSet, assets }: { stats: PlayerStat
 
   return (
     <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-5 mb-5">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <div className="text-[#4a5a70] text-xs uppercase tracking-widest">
           Saison-Statistik{stats.set != null ? ` · Set ${stats.set}` : ''}
         </div>
-        <div className="text-[#4a5a70] text-[10px]">
-          n = {stats.totalMatches} {t('tft.matches')}
+        <div className="text-[#4a5a70] text-[10px] text-right">
+          <div>n = {stats.totalMatches} Solo-Ranked {t('tft.matches')}</div>
+          {stats.totalHistoryIds != null && stats.inSetMatches != null && (
+            <div className="text-[#4a5a70]/70">
+              aus {stats.inSetMatches} Set-{stats.set}-Matches in Riot-History (Cap {stats.totalHistoryIds})
+            </div>
+          )}
         </div>
       </div>
 

@@ -58,26 +58,19 @@ export async function GET(request: NextRequest) {
   }
 
   // 2) Match details in parallel batches of 30. ~50 req/s effective on prod
-  //    key, so 1000 details land in ~20s.
+  //    key, so 1000 details land in ~20s. We walk through every ID Riot
+  //    returned — an earlier early-exit on "out-of-set streak" was cutting
+  //    off active players whose history straddles a set boundary, so we now
+  //    just process the full list. Cost is bounded (Riot's history cap of
+  //    1000 IDs total) so the worst-case wall time stays around 20-25s.
   const matches: any[] = [];
-  let outOfSetStreak = 0;
   for (let i = 0; i < allIds.length; i += 30) {
     const batch = allIds.slice(i, i + 30);
     const results = await Promise.all(batch.map(async id => {
       const r = await fetch(`https://${regional}.api.riotgames.com/tft/match/v1/matches/${id}?api_key=${apiKey}`);
       return r.ok ? r.json() : null;
     }));
-    let batchInSet = 0;
-    for (const m of results) {
-      if (!m) continue;
-      const inSet = currentSet == null || m.info?.tft_set_number === currentSet;
-      if (inSet) batchInSet++;
-      matches.push(m);
-    }
-    // 60+ consecutive out-of-set matches → we've walked past the set boundary.
-    if (batchInSet === 0) outOfSetStreak += batch.length;
-    else outOfSetStreak = 0;
-    if (outOfSetStreak >= 60) break;
+    for (const m of results) if (m) matches.push(m);
   }
 
   // 3) Aggregate.
@@ -92,6 +85,11 @@ export async function GET(request: NextRequest) {
   let sumLastRound = 0;
   const placementCounts = [0, 0, 0, 0, 0, 0, 0, 0]; // index 0 = placement 1
 
+  // Diagnostics so the frontend can surface "175 of 487 set-17 matches" if
+  // Riot's 1000-id cap is limiting us.
+  let inSetCount = 0;
+  let rankedSoloInSet = 0;
+
   const unitGames = new Map<string, { games: number; sumPlace: number; top4: number }>();
   const augmentGames = new Map<string, { games: number; sumPlace: number; top4: number }>();
   const traitGames = new Map<string, { games: number; sumPlace: number; top4: number }>();
@@ -99,7 +97,11 @@ export async function GET(request: NextRequest) {
   for (const m of matches) {
     const info = m?.info;
     if (!info?.participants) continue;
-    if ((info.queue_id ?? info.queueId) !== STANDARD_RANKED_QUEUE) continue;
+    const queueId = info.queue_id ?? info.queueId;
+    const inSet = currentSet == null || info.tft_set_number === currentSet;
+    if (inSet) inSetCount++;
+    if (inSet && queueId === STANDARD_RANKED_QUEUE) rankedSoloInSet++;
+    if (queueId !== STANDARD_RANKED_QUEUE) continue;
     if (currentSet != null && info.tft_set_number !== currentSet) continue;
     const me = info.participants.find((p: any) => p.puuid === puuid);
     if (!me) continue;
@@ -189,6 +191,9 @@ export async function GET(request: NextRequest) {
     set: currentSet,
     totalMatches: games,
     sampledMatches: matches.length,
+    inSetMatches: inSetCount,         // every Set N match in Riot's history (any queue)
+    rankedSoloInSet: rankedSoloInSet, // Solo ranked only, current set
+    totalHistoryIds: allIds.length,   // ceiling that Riot's match-v1 returned
     avgPlacement,
     top4Rate: top4 / games,
     top1Rate: top1 / games,

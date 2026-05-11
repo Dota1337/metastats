@@ -166,8 +166,11 @@ export default function Home() {
 
       {/* === HERO SECTION === */}
       <div className="relative overflow-hidden">
-        {/* Hero background — LoL champion splash art */}
-        <div className="absolute inset-0">
+        {/* Hero background — LoL champion splash art.
+           pointer-events-none on the whole decorative stack so it doesn't
+           swallow mousedown when the user starts a text selection on the
+           hero copy below. */}
+        <div className="absolute inset-0 pointer-events-none">
           <img
             src="https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Kaisa_0.jpg"
             alt=""
@@ -200,9 +203,10 @@ export default function Home() {
           </div>
         )}
 
-        {/* Gradient overlays */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0e1525] via-transparent to-[#0e1525]" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0e1525] via-transparent to-[#0e1525]" />
+        {/* Gradient overlays — pointer-events-none so they don't intercept
+           text-selection drags on the hero copy below. */}
+        <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-[#0e1525] via-transparent to-[#0e1525]" />
+        <div className="absolute inset-0 pointer-events-none bg-gradient-to-r from-[#0e1525] via-transparent to-[#0e1525]" />
 
         {/* Hero content */}
         <div className="relative px-6 pt-20 pb-16 text-center hero-animate">
@@ -276,7 +280,7 @@ export default function Home() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {[0, 1, 2].map(i => (
                 <div key={i} className="glass rounded-xl overflow-hidden h-36 relative animate-pulse">
-                  <div className="absolute inset-0 bg-gradient-to-br from-[#141c2e] to-[#0d1526]" />
+                  <div className="absolute inset-0 pointer-events-none bg-gradient-to-br from-[#141c2e] to-[#0d1526]" />
                   <div className="absolute bottom-3 left-4 right-4">
                     <div className="h-4 w-24 bg-[#1e2a3a] rounded mb-2" />
                     <div className="h-3 w-32 bg-[#1e2a3a] rounded" />
@@ -305,7 +309,7 @@ export default function Home() {
                       className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-110"
                       style={{ filter: hoveredCard === i ? 'brightness(0.7)' : 'brightness(0.5)' }}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#0d1526] via-transparent to-transparent" />
+                    <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-[#0d1526] via-transparent to-transparent" />
                     <div className="absolute bottom-3 left-4">
                       <div className="flex items-center gap-2">
                         <span className="text-[#c89b3c] text-xs font-bold bg-[#c89b3c]/20 px-1.5 py-0.5 rounded">#{i + 1}</span>

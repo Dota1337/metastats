@@ -189,7 +189,7 @@ function UnitTile({ unit, assets, small, interactive }: { unit: any; assets: Tft
           : <div className="w-full h-full bg-[#1e2a3a]" />}
         {unit.tier > 1 && (
           <div
-            className="absolute top-0 left-1/2 -translate-x-1/2 text-[9px] leading-tight px-1 rounded-b bg-black/70 font-bold"
+            className="absolute bottom-0 left-1/2 -translate-x-1/2 text-[9px] leading-tight px-1 rounded-t bg-black/70 font-bold"
             style={{ color: starColor, textShadow: '0 0 2px rgba(0,0,0,0.9)' }}
           >
             {'★'.repeat(unit.tier)}

@@ -126,7 +126,7 @@ async function upsertRankHistoryRows(
   // Each row already has set_number, peak fields. Add puuid + region.
   const payload = rows.map(r => ({ ...r, puuid, region, fetched_at: new Date().toISOString() }));
   const res = await fetch(
-    `${SUPA_URL}/rest/v1/tft_player_rank_history?on_conflict=puuid,set_number,queue_id`,
+    `${SUPA_URL}/rest/v1/tft_player_rank_history?on_conflict=puuid,set_label,queue_id`,
     {
       method: 'POST',
       headers: {

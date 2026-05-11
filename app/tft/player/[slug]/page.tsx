@@ -300,10 +300,10 @@ function SeasonStats({ stats, loading, currentSet, assets }: { stats: PlayerStat
   if (loading && !stats) {
     return (
       <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-5 mb-5">
-        <div className="text-[#4a5a70] text-xs uppercase tracking-widest mb-3">
+        <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-3">
           Saison-Statistik{currentSet != null ? ` · Set ${currentSet}` : ''}
         </div>
-        <div className="text-[#4a5a70] text-sm">Berechne aus allen Saison-Matches ...</div>
+        <div className="text-[#8a9bb0] text-sm">Berechne aus allen Saison-Matches ...</div>
       </div>
     );
   }
@@ -311,18 +311,8 @@ function SeasonStats({ stats, loading, currentSet, assets }: { stats: PlayerStat
 
   return (
     <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-5 mb-5">
-      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <div className="text-[#4a5a70] text-xs uppercase tracking-widest">
-          Saison-Statistik{stats.set != null ? ` · Set ${stats.set}` : ''}
-        </div>
-        <div className="text-[#4a5a70] text-[10px] text-right">
-          <div>n = {stats.totalMatches} Solo-Ranked {t('tft.matches')}</div>
-          {stats.totalHistoryIds != null && stats.inSetMatches != null && (
-            <div className="text-[#4a5a70]/70">
-              aus {stats.inSetMatches} Set-{stats.set}-Matches in Riot-History (Cap {stats.totalHistoryIds})
-            </div>
-          )}
-        </div>
+      <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-4">
+        Saison-Statistik{stats.set != null ? ` · Set ${stats.set}` : ''}
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
@@ -332,12 +322,13 @@ function SeasonStats({ stats, loading, currentSet, assets }: { stats: PlayerStat
         <Stat label={t('tft.gamesShort')} value={String(stats.totalMatches)} />
       </div>
 
-      {/* Units (top 10) + Augments (top 5) */}
+      {/* Units (top 10) + Augments (top 5) — chip sizing tuned to fill the
+          two-column units area without dwarfing the augment column. */}
       {stats.topUnits && stats.topUnits.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-5">
           <div className="lg:col-span-2">
-            <div className="text-[#4a5a70] text-[10px] uppercase tracking-widest mb-1.5">{t('tft.topUnitsPlayed')}</div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+            <div className="text-[#8a9bb0] text-[10px] uppercase tracking-widest mb-2">{t('tft.topUnitsPlayed')}</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {stats.topUnits.slice(0, 10).map(u => (
                 <UnitChip
                   key={u.characterId}
@@ -351,8 +342,8 @@ function SeasonStats({ stats, loading, currentSet, assets }: { stats: PlayerStat
           </div>
           {stats.topAugments && stats.topAugments.length > 0 && (
             <div>
-              <div className="text-[#4a5a70] text-[10px] uppercase tracking-widest mb-1.5">{t('tft.favoriteAugments')}</div>
-              <div className="space-y-1.5">
+              <div className="text-[#8a9bb0] text-[10px] uppercase tracking-widest mb-2">{t('tft.favoriteAugments')}</div>
+              <div className="space-y-2">
                 {stats.topAugments.slice(0, 5).map(a => (
                   <AugmentChip
                     key={a.apiName}
@@ -387,14 +378,14 @@ function UnitChip({ characterId, games, avg, assets }: { characterId: string; ga
     <a
       href={`/tft/units/${encodeURIComponent(characterId)}`}
       title={`${name} — ${games} ${t('tft.gamesShort')}, Ø ${avg.toFixed(2)}`}
-      className="flex items-center gap-2 bg-[#0a0e1a] border border-[#1e2a3a] rounded px-2 py-1.5 hover:border-[#7B61FF]/40 transition"
+      className="flex items-center gap-3 bg-[#0a0e1a] border border-[#1e2a3a] rounded-md px-3 py-2.5 hover:border-[#7B61FF]/50 hover:bg-[#101729] transition"
     >
-      <div className="w-7 h-7 rounded border-2 overflow-hidden flex-shrink-0" style={{ borderColor: costColor }}>
+      <div className="w-11 h-11 rounded border-2 overflow-hidden flex-shrink-0" style={{ borderColor: costColor }}>
         {url ? <img src={url} alt={name} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-[#1e2a3a]" />}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="text-white text-xs truncate">{name}</div>
-        <div className="text-[#4a5a70] text-[10px]">{games} {t('tft.gamesShort')} · Ø {avg.toFixed(2)}</div>
+        <div className="text-white text-sm font-medium truncate">{name}</div>
+        <div className="text-[#9ab0c4] text-xs">{games} {t('tft.gamesShort')} · Ø {avg.toFixed(2)}</div>
       </div>
     </a>
   );
@@ -409,14 +400,14 @@ function AugmentChip({ apiName, games, avg, assets }: { apiName: string; games: 
   return (
     <div
       title={`${name} — ${games} ${t('tft.gamesShort')}, Ø ${avg.toFixed(2)}`}
-      className="flex items-center gap-2 bg-[#0a0e1a] border border-[#1e2a3a] rounded px-2 py-1.5"
+      className="flex items-center gap-3 bg-[#0a0e1a] border border-[#1e2a3a] rounded-md px-3 py-2.5"
     >
-      <div className="w-7 h-7 rounded border-2 overflow-hidden flex-shrink-0" style={{ borderColor: tierColor }}>
+      <div className="w-11 h-11 rounded border-2 overflow-hidden flex-shrink-0" style={{ borderColor: tierColor }}>
         {url ? <img src={url} alt={name} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-[#1e2a3a]" />}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="text-white text-xs truncate">{name}</div>
-        <div className="text-[#4a5a70] text-[10px]">{games} {t('tft.gamesShort')} · Ø {avg.toFixed(2)}</div>
+        <div className="text-white text-sm font-medium truncate">{name}</div>
+        <div className="text-[#9ab0c4] text-xs">{games} {t('tft.gamesShort')} · Ø {avg.toFixed(2)}</div>
       </div>
     </div>
   );
@@ -436,7 +427,7 @@ function PlayStyle({ scores, dist, avgs }: { scores: NonNullable<PlayerStats['sc
 
   return (
     <>
-      <div className="text-[#4a5a70] text-[10px] uppercase tracking-widest mb-2">{t('tft.gameStyle')}</div>
+      <div className="text-[#8a9bb0] text-[10px] uppercase tracking-widest mb-2">{t('tft.gameStyle')}</div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-3">
         <div className="bg-[#0a0e1a] border border-[#1e2a3a] rounded p-3" style={{ height: 240 }}>
           <ResponsiveContainer width="100%" height="100%">
@@ -483,7 +474,7 @@ function PlayStyle({ scores, dist, avgs }: { scores: NonNullable<PlayerStats['sc
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-[#0a0e1a] border border-[#1e2a3a] rounded px-2 py-1.5">
-      <div className="text-[#4a5a70] text-[9px] uppercase tracking-widest">{label}</div>
+      <div className="text-[#8a9bb0] text-[9px] uppercase tracking-widest">{label}</div>
       <div className="text-white text-sm font-medium mt-0.5">{value}</div>
     </div>
   );
@@ -492,7 +483,7 @@ function MiniStat({ label, value }: { label: string; value: string }) {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-[#0a0e1a] border border-[#1e2a3a] rounded px-3 py-2">
-      <div className="text-[#4a5a70] text-[10px] uppercase tracking-widest">{label}</div>
+      <div className="text-[#8a9bb0] text-[10px] uppercase tracking-widest">{label}</div>
       <div className="text-white text-xl font-semibold mt-0.5">{value}</div>
     </div>
   );

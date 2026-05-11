@@ -13,6 +13,8 @@ interface ItemRow {
   games: number;
   avgPlacement: number | null;
   top4Rate: number | null;
+  pickRate: number | null;
+  topUsers: string[];
 }
 
 export default function TftItemsPage() {
@@ -20,20 +22,21 @@ export default function TftItemsPage() {
   const [bucket, setBucket] = useState<TierBucket>('master_plus');
   const [items, setItems] = useState<ItemRow[]>([]);
   const [hasData, setHasData] = useState<boolean | null>(null);
+  const [patch, setPatch] = useState<string | undefined>(undefined);
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
   useEffect(() => {
     fetch(`/api/tft/items?region=euw1&bucket=${bucket}`)
       .then(r => r.json())
-      .then(d => { setHasData(!!d.hasData); setItems(d.items || []); })
+      .then(d => { setHasData(!!d.hasData); setItems(d.items || []); setPatch(d.patch); })
       .catch(() => { setHasData(false); setItems([]); });
   }, [bucket]);
 
   return (
     <main className="min-h-screen bg-[#0e1525]">
       <Nav active="items" />
-      <TftHero pageTitle={t('nav.items')} />
+      <TftHero pageTitle={t('nav.items')} patch={patch} />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-2 pb-6">
         <div className="flex items-center justify-end mb-5">
           <TierFilter value={bucket} onChange={setBucket} />
@@ -43,10 +46,12 @@ export default function TftItemsPage() {
 
         {hasData && items.length > 0 && (
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
-            <div className="hidden md:grid grid-cols-[3rem_1fr_5rem_5rem_5rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#4a5a70] bg-[#0a0e1a]">
+            <div className="hidden md:grid grid-cols-[3rem_1fr_9rem_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#4a5a70] bg-[#0a0e1a]">
               <div></div>
               <div>{t('nav.items')}</div>
+              <div>{t('tft.topUsers')}</div>
               <div className="text-right">{t('tft.avgPlacement')}</div>
+              <div className="text-right">{t('tft.pickRate')}</div>
               <div className="text-right">{t('tft.top4')}</div>
               <div className="text-right">{t('tft.gamesShort')}</div>
             </div>
@@ -57,7 +62,7 @@ export default function TftItemsPage() {
                 <a
                   key={it.apiName}
                   href={`/tft/items/${encodeURIComponent(it.apiName)}?bucket=${bucket}`}
-                  className="grid grid-cols-[3rem_1fr_5rem_5rem_5rem] gap-2 px-4 py-2 items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]"
+                  className="grid grid-cols-[3rem_1fr_9rem_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]"
                 >
                   {url ? (
                     <img src={url} alt={meta!.name} className="w-9 h-9 rounded" />
@@ -65,7 +70,19 @@ export default function TftItemsPage() {
                     <div className="w-9 h-9 rounded bg-[#1e2a3a] flex items-center justify-center text-[8px] text-[#4a5a70] px-0.5 text-center">{prettyApi(it.apiName)}</div>
                   )}
                   <div className="text-white">{meta?.name || prettyApi(it.apiName)}</div>
+                  <div className="flex items-center gap-1">
+                    {(it.topUsers || []).slice(0, 5).map((cid, i) => {
+                      const ch = assets?.champions[cid];
+                      const curl = tftIconUrl(assets, ch?.icon);
+                      return curl ? (
+                        <img key={i} src={curl} alt={ch?.name || ''} title={ch?.name} className="w-5 h-5 rounded" />
+                      ) : (
+                        <div key={i} className="w-5 h-5 rounded bg-[#1e2a3a]" />
+                      );
+                    })}
+                  </div>
                   <div className="text-right text-white">{it.avgPlacement?.toFixed(2) ?? '—'}</div>
+                  <div className="text-right text-[#8a9bb0]">{it.pickRate != null ? `${(it.pickRate * 100).toFixed(1)}%` : '—'}</div>
                   <div className="text-right text-[#8a9bb0]">{it.top4Rate != null ? `${(it.top4Rate * 100).toFixed(1)}%` : '—'}</div>
                   <div className="text-right text-[#4a5a70]">{it.games}</div>
                 </a>

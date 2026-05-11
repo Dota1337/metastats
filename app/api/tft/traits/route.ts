@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { loadTftStats, normalizeBucket } from '../../../lib/tft-stats-loader';
+import { loadTftStats, normalizeBucket, bucketParticipants } from '../../../lib/tft-stats-loader';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -11,6 +11,8 @@ export async function GET(request: NextRequest) {
 
   // Each trait has multiple activation levels — emit a row per (trait, level)
   // so the frontend can show "Vanguard 4" and "Vanguard 6" as separate ranks.
+  // pickRate denominator is `participants` (one (trait, level) per player max).
+  const participants = bucketParticipants(stats, bucket);
   const list: any[] = [];
   for (const [name, levels] of Object.entries<any>(stats.byTrait || {})) {
     for (const [level, buckets] of Object.entries<any>(levels)) {
@@ -22,6 +24,7 @@ export async function GET(request: NextRequest) {
         games: b.games,
         avgPlacement: b.games > 0 ? b.sumPlacement / b.games : null,
         top4Rate: b.games > 0 ? b.top4 / b.games : null,
+        pickRate: participants > 0 ? b.games / participants : null,
       });
     }
   }

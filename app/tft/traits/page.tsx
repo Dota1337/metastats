@@ -14,6 +14,7 @@ interface TraitRow {
   games: number;
   avgPlacement: number | null;
   top4Rate: number | null;
+  pickRate: number | null;
 }
 
 export default function TftTraitsPage() {
@@ -21,20 +22,21 @@ export default function TftTraitsPage() {
   const [bucket, setBucket] = useState<TierBucket>('master_plus');
   const [rows, setRows] = useState<TraitRow[]>([]);
   const [hasData, setHasData] = useState<boolean | null>(null);
+  const [patch, setPatch] = useState<string | undefined>(undefined);
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
   useEffect(() => {
     fetch(`/api/tft/traits?region=euw1&bucket=${bucket}`)
       .then(r => r.json())
-      .then(d => { setHasData(!!d.hasData); setRows(d.traits || []); })
+      .then(d => { setHasData(!!d.hasData); setRows(d.traits || []); setPatch(d.patch); })
       .catch(() => { setHasData(false); setRows([]); });
   }, [bucket]);
 
   return (
     <main className="min-h-screen bg-[#0e1525]">
       <Nav active="traits" />
-      <TftHero pageTitle={t('nav.traits')} />
+      <TftHero pageTitle={t('nav.traits')} patch={patch} />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-2 pb-6">
         <div className="flex items-center justify-end mb-5">
           <TierFilter value={bucket} onChange={setBucket} />
@@ -44,11 +46,12 @@ export default function TftTraitsPage() {
 
         {hasData && rows.length > 0 && (
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
-            <div className="hidden md:grid grid-cols-[3rem_1fr_4rem_5rem_5rem_5rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#4a5a70] bg-[#0a0e1a]">
+            <div className="hidden md:grid grid-cols-[3rem_1fr_4rem_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#4a5a70] bg-[#0a0e1a]">
               <div></div>
               <div>{t('nav.traits')}</div>
               <div className="text-right">{t('tft.activation')}</div>
               <div className="text-right">{t('tft.avgPlacement')}</div>
+              <div className="text-right">{t('tft.pickRate')}</div>
               <div className="text-right">{t('tft.top4')}</div>
               <div className="text-right">{t('tft.gamesShort')}</div>
             </div>
@@ -56,7 +59,7 @@ export default function TftTraitsPage() {
               const meta = assets?.traits[r.name];
               const url = tftIconUrl(assets, meta?.icon);
               return (
-                <div key={`${r.name}-${r.activation}`} className="grid grid-cols-[3rem_1fr_4rem_5rem_5rem_5rem] gap-2 px-4 py-2 items-center text-xs border-t border-[#1e2a3a]">
+                <div key={`${r.name}-${r.activation}`} className="grid grid-cols-[3rem_1fr_4rem_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 items-center text-xs border-t border-[#1e2a3a]">
                   {url ? (
                     <img src={url} alt={meta!.name} className="w-9 h-9 rounded" />
                   ) : (
@@ -65,6 +68,7 @@ export default function TftTraitsPage() {
                   <div className="text-white">{meta?.name || prettyTrait(r.name)}</div>
                   <div className="text-right text-[#7B61FF]">{r.activation}</div>
                   <div className="text-right text-white">{r.avgPlacement?.toFixed(2) ?? '—'}</div>
+                  <div className="text-right text-[#8a9bb0]">{r.pickRate != null ? `${(r.pickRate * 100).toFixed(1)}%` : '—'}</div>
                   <div className="text-right text-[#8a9bb0]">{r.top4Rate != null ? `${(r.top4Rate * 100).toFixed(1)}%` : '—'}</div>
                   <div className="text-right text-[#4a5a70]">{r.games}</div>
                 </div>

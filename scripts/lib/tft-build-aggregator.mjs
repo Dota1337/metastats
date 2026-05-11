@@ -27,6 +27,9 @@ export function emptyAggregate() {
     byTrait: new Map(),    // traitName -> Map<activation, Map<bucket, TraitBucket>>
     byComp: new Map(),     // clusterKey -> Map<bucket, CompBucket>
     byCompPair: new Map(), // "a||b" sorted -> { games, aBetter } — for counter edges
+    participantsByBucket: new Map(), // bucket -> count (matches × 8). Exact denominator
+                                     //   for pickRate; bypasses minCompGames filter
+                                     //   that byComp roll-ups would impose.
     matchesAnalyzed: 0,
     matchesSkipped: 0,
   };
@@ -130,6 +133,10 @@ export function aggregateMatch(rawMatch, agg, opts) {
   }
 
   agg.matchesAnalyzed++;
+  agg.participantsByBucket.set(
+    tierBucket,
+    (agg.participantsByBucket.get(tierBucket) || 0) + participants.length,
+  );
 
   // We aggregate every participant of the match (not just focusPuuid). The
   // tier-bucket attribution uses the focus player's tier — that's how
@@ -332,10 +339,24 @@ export function finalize(agg, opts = {}) {
   for (const actMap  of agg.byTrait.values())    for (const buckets of actMap.values())  rollUp(buckets);
   for (const buckets of agg.byComp.values())     rollUp(buckets);
 
+  // Roll up participants per bucket into 'all' and 'master_plus' so the
+  // pickRate denominator works for the rolled-up roll-ups too.
+  const participantsByBucket = {};
+  let allP = 0;
+  let mpP = 0;
+  for (const [b, count] of agg.participantsByBucket) {
+    participantsByBucket[b] = count;
+    allP += count;
+    if (APEX_BUCKETS.includes(b)) mpP += count;
+  }
+  participantsByBucket.all = allP;
+  participantsByBucket.master_plus = mpP;
+
   // 2) Convert Maps to plain objects + Top-N per section.
   const out = {
     matchesAnalyzed: agg.matchesAnalyzed,
     matchesSkipped: agg.matchesSkipped,
+    participantsByBucket,
     byUnit: {},
     byItem: {},
     byAugment: {},

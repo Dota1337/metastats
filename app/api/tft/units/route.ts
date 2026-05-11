@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { loadTftStats, normalizeBucket } from '../../../lib/tft-stats-loader';
+import { loadTftStats, normalizeBucket, bucketParticipants } from '../../../lib/tft-stats-loader';
 
 // Returns per-unit aggregated stats for a region+tier-bucket. The unit detail
 // page calls this with ?id=TFT17_Vex&bucket=master_plus to render the
@@ -50,6 +50,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Unit list — emit one entry per unit that has data in the requested bucket
+  const participants = bucketParticipants(stats, bucket);
   const units: any[] = [];
   for (const [characterId, buckets] of Object.entries<any>(stats.byUnit || {})) {
     const b = buckets[bucket] || buckets.all;
@@ -60,6 +61,9 @@ export async function GET(request: NextRequest) {
       avgPlacement: b.games > 0 ? b.sumPlacement / b.games : null,
       top4Rate: b.games > 0 ? b.top4 / b.games : null,
       top1Rate: b.games > 0 ? b.top1 / b.games : null,
+      pickRate: participants > 0 ? b.games / participants : null,
+      // Top 3 items the unit gets carried with — inline preview for the list.
+      topItems: (b.topItems || []).slice(0, 3).map((it: any) => it.item),
     });
   }
   units.sort((a, b) => (a.avgPlacement ?? 9) - (b.avgPlacement ?? 9));

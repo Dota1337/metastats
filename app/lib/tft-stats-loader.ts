@@ -45,3 +45,23 @@ export function normalizeBucket(b: string | null): string {
   const v = b.toLowerCase();
   return VALID_BUCKETS.has(v) ? v : 'master_plus';
 }
+
+// Number of *participants* in a tier-bucket — used as the denominator when
+// turning per-unit/item/augment/trait games into a pick rate.
+//
+// Prefers the explicit `participantsByBucket` field if the crawler emitted it
+// (added 2026-05-11; older JSONs don't have it). Falls back to summing
+// byComp[…].games which is the participant-count of every classified board.
+// The fallback under-counts by ~3% because byComp drops clusters below
+// minCompGames=8, but it's the closest available proxy and stable across runs.
+export function bucketParticipants(stats: any, bucket: string): number {
+  if (stats?.participantsByBucket?.[bucket] != null) {
+    return stats.participantsByBucket[bucket];
+  }
+  let total = 0;
+  for (const buckets of Object.values<any>(stats?.byComp || {})) {
+    const b = buckets?.[bucket];
+    if (b) total += b.games;
+  }
+  return total;
+}

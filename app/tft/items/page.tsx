@@ -72,7 +72,7 @@ export default function TftItemsPage() {
 
         {hasData && items.length > 0 && (
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
-            <div className="hidden md:grid grid-cols-[3rem_1fr_12rem_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#4a5a70] bg-[#0a0e1a]">
+            <div className="hidden md:grid grid-cols-[3rem_1fr_11rem_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#4a5a70] bg-[#0a0e1a]">
               <div></div>
               <div>{t('nav.items')}</div>
               <div>{t('tft.topUsers')}</div>
@@ -88,7 +88,7 @@ export default function TftItemsPage() {
                 <a
                   key={it.apiName}
                   href={`/tft/items/${encodeURIComponent(it.apiName)}?bucket=${filters.bucket}`}
-                  className="grid grid-cols-[3rem_1fr_12rem_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]"
+                  className="grid grid-cols-[3rem_1fr_11rem_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]"
                 >
                   {url ? (
                     <img src={url} alt={meta!.name} className="w-9 h-9 rounded" />
@@ -101,9 +101,9 @@ export default function TftItemsPage() {
                       const ch = assets?.champions[cid];
                       const curl = tftIconUrl(assets, ch?.icon);
                       return curl ? (
-                        <img key={i} src={curl} alt={ch?.name || ''} title={ch?.name} className="w-9 h-9 rounded" />
+                        <img key={i} src={curl} alt={ch?.name || ''} title={ch?.name} className="w-8 h-8 rounded" />
                       ) : (
-                        <div key={i} className="w-9 h-9 rounded bg-[#1e2a3a]" />
+                        <div key={i} className="w-8 h-8 rounded bg-[#1e2a3a]" />
                       );
                     })}
                   </div>

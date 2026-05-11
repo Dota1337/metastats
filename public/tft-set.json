@@ -2,8 +2,10 @@
   "setNumber": 17,
   "setName": "Space Gods",
   "mutator": "TFTSet17",
-  "latestPatch": "16.9.1",
+  "latestPatch": "17.2",
+  "lolPatch": "16.9.1",
+  "patchOverride": null,
   "detectedAt": "2026-05-03T14:04:48.564Z",
-  "lastCheckedAt": "2026-05-09T07:55:21.790Z",
+  "lastCheckedAt": "2026-05-11T19:56:23.244Z",
   "history": []
 }

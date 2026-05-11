@@ -28,6 +28,34 @@ const SET_NAMES = {
   17: 'Space Gods',
 };
 
+// TFT-Patch numbering is NOT exposed by any Riot API — Match-V1's
+// game_version returns the LoL build (e.g. "16.9.772.8292") and Data Dragon
+// only lists LoL versions. The user-visible TFT patch ("17.2") is a marketing
+// label that follows the convention `${setNumber}.${nthPatchSinceSetLaunch}`,
+// where each new LoL patch ≈ a new TFT patch.
+//
+// Mapping = the LoL patch where each set launched. From that we derive the
+// current TFT patch by subtracting from the current LoL minor version.
+// Update this when a new set ships — and bump the launch entry, not delete
+// the old ones (history pages may reference old set patches).
+const SET_LAUNCH_LOL = {
+  17: '16.7',   // Set 17 "Space Gods" — launched on LoL 16.7
+};
+
+function tftPatchFromLol(lolVersion, setNumber) {
+  const launch = SET_LAUNCH_LOL[setNumber];
+  if (!launch || !lolVersion) return lolVersion;
+  const [curMajor, curMinor] = lolVersion.split('.').slice(0, 2).map(Number);
+  const [launchMajor, launchMinor] = launch.split('.').map(Number);
+  if ([curMajor, curMinor, launchMajor, launchMinor].some(n => Number.isNaN(n))) return lolVersion;
+  // Riot does roughly 25 LoL patches per year. Cross-year math:
+  const yearDiff = curMajor - launchMajor;
+  const minorDiff = curMinor - launchMinor;
+  const tftMinor = yearDiff * 25 + minorDiff;
+  if (tftMinor < 0) return lolVersion;
+  return `${setNumber}.${tftMinor}`;
+}
+
 function lookupIPv4(host) {
   return new Promise((resolve, reject) => {
     dnsLookup(host, { family: 4 }, (err, addr) => err ? reject(err) : resolve(addr));
@@ -73,9 +101,9 @@ function setOutput(key, value) {
 }
 
 async function main() {
-  console.log('[1/3] Fetch latest patch from Data Dragon');
-  const patch = await fetchLatestPatch();
-  console.log('      patch:', patch);
+  console.log('[1/3] Fetch latest LoL patch from Data Dragon');
+  const lolPatch = await fetchLatestPatch();
+  console.log('      LoL patch:', lolPatch);
 
   console.log('[2/3] Fetch TFT metadata from CommunityDragon');
   const cd = await fetchJSON(SOURCE_URL);
@@ -93,15 +121,24 @@ async function main() {
   const displayName = SET_NAMES[live.number] || `Set ${live.number}`;
   console.log(`      live set: ${live.number} "${displayName}" (mutator ${live.mutator})`);
 
+  // Compute the TFT-style patch label from the LoL version + set-launch table.
+  // patchOverride in the existing tft-set.json wins — set it manually when
+  // Riot ships a hotfix like "17.2b" that doesn't line up with a LoL patch.
   console.log('[3/3] Compare against existing tft-set.json + write');
   const stored = existsSync(OUT) ? JSON.parse(readFileSync(OUT, 'utf8')) : null;
   const changed = !stored || stored.setNumber !== live.number;
+
+  const derivedTftPatch = tftPatchFromLol(lolPatch, live.number);
+  const tftPatch = stored?.patchOverride || derivedTftPatch;
+  console.log(`      LoL ${lolPatch} → TFT ${tftPatch}${stored?.patchOverride ? ' (override)' : ''}`);
 
   const payload = {
     setNumber: live.number,
     setName: displayName,
     mutator: live.mutator,
-    latestPatch: patch,
+    latestPatch: tftPatch,
+    lolPatch,                          // kept around for diagnostics
+    patchOverride: stored?.patchOverride || null,
     detectedAt: stored?.detectedAt && !changed ? stored.detectedAt : new Date().toISOString(),
     lastCheckedAt: new Date().toISOString(),
     history: stored?.history || [],

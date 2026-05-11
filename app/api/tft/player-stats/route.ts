@@ -1,31 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getRegionalRouting } from '../../../lib/regions';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
+import { refreshPlayerCache, loadCachedMatches } from '../../../lib/tft-player-cache';
 
 // Player season-stats endpoint.
-// Aggregates over every match in the player's history for the current TFT
-// set. Riot's match-v1 list endpoint allows 200 IDs per request, paginated
-// up to 1000 ids total (Riot's per-player retention cap).
+// Reads from tft_player_match_cache. On every request we refresh the cache
+// against Riot (incremental — only new matches are fetched), then aggregate
+// from the cache.
 //
-// Returns avg placement, top1/4 rates, per-axis play-style metrics
-// (Tempo/Aggression/Survival/Consistency) for the radar chart, plus
-// placement distribution histogram and top 10 units + top 5 augments.
+// First-ever visit for a player: ~50s wall time (Riot's 200/10s match-detail
+// method limit caps the burst). Every visit after that: ~1-2s because we
+// only fetch the handful of new matches since last visit.
+//
+// Side effect: the cache survives Riot's per-puuid 1000-id history cap. Once
+// a match is cached we keep it, so the stats can include games older than
+// what Riot's match-v1 list still returns.
 
-// Vercel Pro plan required — Hobby caps at 10s, this endpoint needs 50-55s
-// to walk 1000 matches under Riot's 200/10s match-detail method limit.
 export const maxDuration = 60;
 
 const STANDARD_RANKED_QUEUE = 1100;
-const PAGE_SIZE = 200;
-const MAX_PAGES = 5;
-
-// Match-V1 detail endpoint's method rate limit is 200 req / 10s, so we send
-// 20 in parallel and wait the rest of the 1.05s wave before the next batch.
-// Effective throughput ≈ 19 req/s — comfortably under the cap, with room
-// for 429 retries that bump our wall time slightly.
-const WAVE_CONCURRENCY = 20;
-const WAVE_MS = 1050;
 
 function getCurrentSet(): number | null {
   try {
@@ -46,54 +39,23 @@ export async function GET(request: NextRequest) {
   if (!apiKey) return NextResponse.json({ error: 'Riot API Key fehlt' }, { status: 503 });
   if (!puuid) return NextResponse.json({ error: 'puuid required' }, { status: 400 });
 
-  const regional = getRegionalRouting(region);
   const currentSet = getCurrentSet();
 
-  // 1) Paginated match-ID fetch.
-  const allIds: string[] = [];
-  for (let page = 0; page < MAX_PAGES; page++) {
-    const start = page * PAGE_SIZE;
-    const r = await fetch(
-      `https://${regional}.api.riotgames.com/tft/match/v1/matches/by-puuid/${puuid}/ids?count=${PAGE_SIZE}&start=${start}&api_key=${apiKey}`,
-    );
-    if (!r.ok) break;
-    const ids: string[] = await r.json();
-    if (!Array.isArray(ids) || ids.length === 0) break;
-    allIds.push(...ids);
-    if (ids.length < PAGE_SIZE) break;   // last page
+  // 1) Refresh cache (incremental on hot players, full pull on cold ones).
+  try {
+    await refreshPlayerCache(puuid, region, { riotApiKey: apiKey });
+  } catch (e: any) {
+    return NextResponse.json({ error: `cache refresh failed: ${e.message}` }, { status: 502 });
   }
-  if (allIds.length === 0) {
+
+  // 2) Read the player's cached matches for the current set + Solo Ranked.
+  const cached = await loadCachedMatches(puuid, {
+    setNumber: currentSet,
+    queueId: STANDARD_RANKED_QUEUE,
+  });
+
+  if (cached.length === 0) {
     return NextResponse.json({ hasStats: false, region, puuid, totalMatches: 0, set: currentSet });
-  }
-
-  // 2) Match details. Earlier version fired 30-wide Promise.all bursts which
-  //    blew past Riot's match-v1 method limit (200/10s) and silently dropped
-  //    every 429-rejected match — the result was ~200 of 1000 ids ever
-  //    making it to the aggregator. Now we wave 20 in parallel + sleep the
-  //    remainder of a 1.05s window before the next wave, and retry once on
-  //    429 honouring Retry-After. Wall time for 1000 ids: ~52s.
-  const fetchDetail = async (id: string, attempt = 0): Promise<any | null> => {
-    const r = await fetch(`https://${regional}.api.riotgames.com/tft/match/v1/matches/${id}?api_key=${apiKey}`);
-    if (r.ok) return r.json();
-    if (r.status === 429 && attempt < 2) {
-      const retryAfter = parseInt(r.headers.get('retry-after') || '2', 10);
-      await new Promise(s => setTimeout(s, retryAfter * 1000 + 200));
-      return fetchDetail(id, attempt + 1);
-    }
-    return null;
-  };
-
-  const matches: any[] = [];
-  for (let i = 0; i < allIds.length; i += WAVE_CONCURRENCY) {
-    const waveStart = Date.now();
-    const wave = allIds.slice(i, i + WAVE_CONCURRENCY);
-    const results = await Promise.all(wave.map(id => fetchDetail(id)));
-    for (const m of results) if (m) matches.push(m);
-    const elapsed = Date.now() - waveStart;
-    const remaining = WAVE_MS - elapsed;
-    if (remaining > 0 && i + WAVE_CONCURRENCY < allIds.length) {
-      await new Promise(s => setTimeout(s, remaining));
-    }
   }
 
   // 3) Aggregate.
@@ -106,76 +68,53 @@ export async function GET(request: NextRequest) {
   let sumEliminations = 0;
   let sumDamage = 0;
   let sumLastRound = 0;
-  const placementCounts = [0, 0, 0, 0, 0, 0, 0, 0]; // index 0 = placement 1
-
-  // Diagnostics so the frontend can surface "175 of 487 set-17 matches" if
-  // Riot's 1000-id cap is limiting us.
-  let inSetCount = 0;
-  let rankedSoloInSet = 0;
+  const placementCounts = [0, 0, 0, 0, 0, 0, 0, 0];
 
   const unitGames = new Map<string, { games: number; sumPlace: number; top4: number }>();
   const augmentGames = new Map<string, { games: number; sumPlace: number; top4: number }>();
   const traitGames = new Map<string, { games: number; sumPlace: number; top4: number }>();
 
-  for (const m of matches) {
-    const info = m?.info;
-    if (!info?.participants) continue;
-    const queueId = info.queue_id ?? info.queueId;
-    const inSet = currentSet == null || info.tft_set_number === currentSet;
-    if (inSet) inSetCount++;
-    if (inSet && queueId === STANDARD_RANKED_QUEUE) rankedSoloInSet++;
-    if (queueId !== STANDARD_RANKED_QUEUE) continue;
-    if (currentSet != null && info.tft_set_number !== currentSet) continue;
-    const me = info.participants.find((p: any) => p.puuid === puuid);
-    if (!me) continue;
-
-    const placement = me.placement ?? 9;
+  for (const m of cached) {
+    const placement = m.placement;
     games++;
     sumPlacement += placement;
     if (placement <= 4) top4++;
     if (placement === 1) top1++;
     if (placement >= 1 && placement <= 8) placementCounts[placement - 1]++;
+    sumLevel += m.level;
+    sumGoldLeft += m.gold_left;
+    sumEliminations += m.players_eliminated;
+    sumDamage += m.total_damage;
+    sumLastRound += m.last_round;
 
-    sumLevel += me.level ?? 0;
-    sumGoldLeft += me.gold_left ?? 0;
-    sumEliminations += me.players_eliminated ?? 0;
-    sumDamage += me.total_damage_to_players ?? 0;
-    sumLastRound += me.last_round ?? 0;
-
-    for (const u of me.units || []) {
+    for (const u of m.units || []) {
       const cid = u.character_id;
       if (!cid) continue;
-      const entry = unitGames.get(cid) || { games: 0, sumPlace: 0, top4: 0 };
-      entry.games++;
-      entry.sumPlace += placement;
-      if (placement <= 4) entry.top4++;
-      unitGames.set(cid, entry);
+      const e = unitGames.get(cid) || { games: 0, sumPlace: 0, top4: 0 };
+      e.games++;
+      e.sumPlace += placement;
+      if (placement <= 4) e.top4++;
+      unitGames.set(cid, e);
     }
-    for (const a of me.augments || []) {
+    for (const a of m.augments || []) {
       if (!a) continue;
-      const entry = augmentGames.get(a) || { games: 0, sumPlace: 0, top4: 0 };
-      entry.games++;
-      entry.sumPlace += placement;
-      if (placement <= 4) entry.top4++;
-      augmentGames.set(a, entry);
+      const e = augmentGames.get(a) || { games: 0, sumPlace: 0, top4: 0 };
+      e.games++;
+      e.sumPlace += placement;
+      if (placement <= 4) e.top4++;
+      augmentGames.set(a, e);
     }
-    for (const t of me.traits || []) {
-      if (!t?.name || (t.style ?? 0) === 0) continue;
+    for (const t of m.traits || []) {
+      if (!t?.name) continue;
       const key = `${t.name}@${t.tier_current ?? 0}`;
-      const entry = traitGames.get(key) || { games: 0, sumPlace: 0, top4: 0 };
-      entry.games++;
-      entry.sumPlace += placement;
-      if (placement <= 4) entry.top4++;
-      traitGames.set(key, entry);
+      const e = traitGames.get(key) || { games: 0, sumPlace: 0, top4: 0 };
+      e.games++;
+      e.sumPlace += placement;
+      if (placement <= 4) e.top4++;
+      traitGames.set(key, e);
     }
   }
 
-  if (games === 0) {
-    return NextResponse.json({ hasStats: false, region, puuid, totalMatches: 0, set: currentSet });
-  }
-
-  // Top-N helper — players who only see a unit once or twice in their history
-  // shouldn't show up in "most-played" lists, so we floor at 3 occurrences.
   function topN<T extends { games: number; sumPlace: number; top4: number }>(
     map: Map<string, T>, n: number, keyName: string,
   ) {
@@ -198,13 +137,12 @@ export async function GET(request: NextRequest) {
   const avgDamage = sumDamage / games;
   const avgLastRound = sumLastRound / games;
 
-  // Play-style scores 0-100, calibrated to typical ranked TFT ranges.
   const scores = {
-    tempo:       clamp01((avgLevel - 6) / 3) * 100,                  // 6→0, 9→100
-    aggression:  clamp01(avgEliminations / 7) * 100,                 // max 7 elims
-    damage:      clamp01(avgDamage / 200) * 100,                     // 200dmg ≈ scaling carry
-    survival:    clamp01((9 - avgPlacement) / 8) * 100,              // 1st=100%, 8th=12.5%
-    consistency: (top4 / games) * 100,                               // raw top-4 rate
+    tempo:       clamp01((avgLevel - 6) / 3) * 100,
+    aggression:  clamp01(avgEliminations / 7) * 100,
+    damage:      clamp01(avgDamage / 200) * 100,
+    survival:    clamp01((9 - avgPlacement) / 8) * 100,
+    consistency: (top4 / games) * 100,
   };
 
   return NextResponse.json({
@@ -213,10 +151,6 @@ export async function GET(request: NextRequest) {
     puuid,
     set: currentSet,
     totalMatches: games,
-    sampledMatches: matches.length,
-    inSetMatches: inSetCount,         // every Set N match in Riot's history (any queue)
-    rankedSoloInSet: rankedSoloInSet, // Solo ranked only, current set
-    totalHistoryIds: allIds.length,   // ceiling that Riot's match-v1 returned
     avgPlacement,
     top4Rate: top4 / games,
     top1Rate: top1 / games,
@@ -229,7 +163,9 @@ export async function GET(request: NextRequest) {
       lastRound: avgLastRound,
     },
     scores,
-    topUnits: topN(unitGames, 10, 'characterId'),
+    topUnits: topN(unitGames, 10, 'character_id').map((u: any) => ({
+      characterId: u.character_id, games: u.games, avgPlacement: u.avgPlacement, top4Rate: u.top4Rate,
+    })),
     topAugments: topN(augmentGames, 5, 'apiName'),
     topTraits: topN(traitGames, 5, 'key'),
   });

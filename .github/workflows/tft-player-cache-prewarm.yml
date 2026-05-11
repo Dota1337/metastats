@@ -1,0 +1,80 @@
+name: TFT Player Cache Pre-Warm
+
+# Daily run that keeps the tft_player_match_cache hot for every Master+
+# (and optionally Diamond I) player across all regions. Aim is "open the
+# Loescher profile and see stats instantly" rather than 50 s of warm-up.
+#
+# First time this runs against a player it does the full 1000-id pull
+# (~50 s). Daily incremental updates after that diff against cache and
+# typically fetch 0-10 new matches per player (~1-5 s).
+
+on:
+  schedule:
+    # Every day at 06:00 UTC — after the daily stats crawl at 04:00 so the
+    # set/patch metadata is already updated.
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+    inputs:
+      scope:
+        description: 'Player scope (apex | diamond_plus)'
+        required: false
+        default: 'apex'
+        type: choice
+        options:
+          - apex
+          - diamond_plus
+      top_diamond:
+        description: 'How many Diamond-I players per region (diamond_plus only)'
+        required: false
+        default: '1000'
+
+permissions:
+  contents: read
+
+env:
+  NODE_OPTIONS: --use-system-ca
+
+jobs:
+  prewarm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350    # GHA hard cap is 360 — leaves buffer for cleanup
+    strategy:
+      fail-fast: false
+      max-parallel: 17
+      matrix:
+        region:
+          - euw1
+          - kr
+          - na1
+          - eun1
+          - br1
+          - jp1
+          - oc1
+          - la1
+          - la2
+          - tr1
+          - ru
+          - me1
+          - ph2
+          - sg2
+          - th2
+          - tw2
+          - vn2
+    env:
+      RIOT_API_KEY_TFT: ${{ secrets.RIOT_API_KEY_TFT }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci
+
+      - name: Pre-warm ${{ matrix.region }}
+        if: env.RIOT_API_KEY_TFT != '' && env.SUPABASE_SERVICE_ROLE_KEY != ''
+        run: |
+          node scripts/prewarm-tft-player-cache.mjs \
+            --region ${{ matrix.region }} \
+            --scope ${{ inputs.scope || 'apex' }} \
+            --top-diamond ${{ inputs.top_diamond || '1000' }}

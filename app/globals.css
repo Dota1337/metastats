@@ -1,13 +1,21 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* The site is dark-only by design — every page sets its own `bg-[#0e1525]`
+     on `<main>`. The body fills the gap above/below the main element (e.g.
+     under the PrototypeBanner, which uses a 20%-opacity gold gradient).
+     Pinning the body to the page tone makes the banner readable regardless
+     of the visitor's OS color preference. Don't restore @prefers-color-scheme
+     here — it was making the banner unreadable on light-mode laptops.
+  */
+  --background: #0e1525;
+  --foreground: #ededed;
   /* Game-specific accent. Default = LoL gold. Nav root sets data-game="tft"
      on the <nav> element when the route starts with /tft, which swaps this
      to TFT purple. Components reference var(--accent) for game-aware hover
      borders, focus rings, etc. */
   --accent: #c89b3c;
+  color-scheme: dark;
 }
 
 nav[data-game="tft"] {
@@ -19,13 +27,6 @@ nav[data-game="tft"] {
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {

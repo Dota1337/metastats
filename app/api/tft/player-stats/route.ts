@@ -5,18 +5,27 @@ import { join } from 'path';
 
 // Player season-stats endpoint.
 // Aggregates over every match in the player's history for the current TFT
-// set. Riot's match-v1 list endpoint caps at 200 IDs per request, so we
-// paginate up to 5 pages (=1000 matches max). We stop early as soon as a
-// page comes back empty OR every match on a page is from a previous set
-// — anything older isn't part of the current season.
+// set. Riot's match-v1 list endpoint allows 200 IDs per request, paginated
+// up to 1000 ids total (Riot's per-player retention cap).
 //
 // Returns avg placement, top1/4 rates, per-axis play-style metrics
 // (Tempo/Aggression/Survival/Consistency) for the radar chart, plus
 // placement distribution histogram and top 10 units + top 5 augments.
 
+// Vercel Pro plan required — Hobby caps at 10s, this endpoint needs 50-55s
+// to walk 1000 matches under Riot's 200/10s match-detail method limit.
+export const maxDuration = 60;
+
 const STANDARD_RANKED_QUEUE = 1100;
 const PAGE_SIZE = 200;
 const MAX_PAGES = 5;
+
+// Match-V1 detail endpoint's method rate limit is 200 req / 10s, so we send
+// 20 in parallel and wait the rest of the 1.05s wave before the next batch.
+// Effective throughput ≈ 19 req/s — comfortably under the cap, with room
+// for 429 retries that bump our wall time slightly.
+const WAVE_CONCURRENCY = 20;
+const WAVE_MS = 1050;
 
 function getCurrentSet(): number | null {
   try {
@@ -57,20 +66,34 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ hasStats: false, region, puuid, totalMatches: 0, set: currentSet });
   }
 
-  // 2) Match details in parallel batches of 30. ~50 req/s effective on prod
-  //    key, so 1000 details land in ~20s. We walk through every ID Riot
-  //    returned — an earlier early-exit on "out-of-set streak" was cutting
-  //    off active players whose history straddles a set boundary, so we now
-  //    just process the full list. Cost is bounded (Riot's history cap of
-  //    1000 IDs total) so the worst-case wall time stays around 20-25s.
+  // 2) Match details. Earlier version fired 30-wide Promise.all bursts which
+  //    blew past Riot's match-v1 method limit (200/10s) and silently dropped
+  //    every 429-rejected match — the result was ~200 of 1000 ids ever
+  //    making it to the aggregator. Now we wave 20 in parallel + sleep the
+  //    remainder of a 1.05s window before the next wave, and retry once on
+  //    429 honouring Retry-After. Wall time for 1000 ids: ~52s.
+  const fetchDetail = async (id: string, attempt = 0): Promise<any | null> => {
+    const r = await fetch(`https://${regional}.api.riotgames.com/tft/match/v1/matches/${id}?api_key=${apiKey}`);
+    if (r.ok) return r.json();
+    if (r.status === 429 && attempt < 2) {
+      const retryAfter = parseInt(r.headers.get('retry-after') || '2', 10);
+      await new Promise(s => setTimeout(s, retryAfter * 1000 + 200));
+      return fetchDetail(id, attempt + 1);
+    }
+    return null;
+  };
+
   const matches: any[] = [];
-  for (let i = 0; i < allIds.length; i += 30) {
-    const batch = allIds.slice(i, i + 30);
-    const results = await Promise.all(batch.map(async id => {
-      const r = await fetch(`https://${regional}.api.riotgames.com/tft/match/v1/matches/${id}?api_key=${apiKey}`);
-      return r.ok ? r.json() : null;
-    }));
+  for (let i = 0; i < allIds.length; i += WAVE_CONCURRENCY) {
+    const waveStart = Date.now();
+    const wave = allIds.slice(i, i + WAVE_CONCURRENCY);
+    const results = await Promise.all(wave.map(id => fetchDetail(id)));
     for (const m of results) if (m) matches.push(m);
+    const elapsed = Date.now() - waveStart;
+    const remaining = WAVE_MS - elapsed;
+    if (remaining > 0 && i + WAVE_CONCURRENCY < allIds.length) {
+      await new Promise(s => setTimeout(s, remaining));
+    }
   }
 
   // 3) Aggregate.

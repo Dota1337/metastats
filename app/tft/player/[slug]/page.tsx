@@ -230,7 +230,7 @@ export default function TftPlayerPage() {
               </div>
             )}
 
-            <div className="space-y-2">
+            <div className="space-y-3">
               {pageLoading && pageMatches.length === 0 && (
                 <div className="text-[#4a5a70] text-center py-8">Lade Match-History ...</div>
               )}

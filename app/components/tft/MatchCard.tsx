@@ -39,16 +39,21 @@ export default function MatchCard({ match, selfPuuid }: Props) {
           <AugmentRow augments={me.augments} assets={assets} />
         </div>
         {/* Units row — every unit a click-through to /tft/units/[id] with
-            hover tooltip showing the name + items. */}
-        <div className="mt-3 flex gap-1.5 flex-wrap">
+            hover tooltip showing the name + items. Indent left so the row
+            visually sits under the meta text rather than under the
+            placement badge, plus extra top margin to breathe. */}
+        <div className="mt-5 ml-15 flex gap-2 flex-wrap">
           {me.units.map((u, i) => (
             <UnitTile key={i} unit={u} assets={assets} interactive />
           ))}
         </div>
       </div>
 
+      {/* Expanded participants list inset slightly from the card edges so
+          it reads as a sub-panel + leaves a visible gap to the next match
+          card below. Mirrors how metatft groups its expanded view. */}
       {open && (
-        <div className="border-t border-[#1e2a3a] bg-[#0a0e1a] p-3 space-y-2">
+        <div className="mx-3 mb-3 rounded border border-[#1e2a3a] bg-[#0a0e1a] p-3 space-y-2">
           {match.participants.slice().sort((a, b) => a.placement - b.placement).map(p => (
             <ParticipantRow key={p.puuid} participant={p} isSelf={p.puuid === selfPuuid} assets={assets} />
           ))}
@@ -160,6 +165,11 @@ function UnitTile({ unit, assets, small, interactive }: { unit: any; assets: Tft
     .join(', ');
   const tooltip = `${name}${stars}${itemNames ? ` — ${itemNames}` : ''}`;
 
+  // Star color: 3★ gets a punchy gold so it pops, 2★ stays white. Both sit
+  // inside the icon at the top with a dark backdrop so they stay readable
+  // against bright splash art.
+  const starColor = unit.tier === 3 ? '#f0c040' : '#ffffff';
+
   const inner = (
     <>
       <div className={`relative ${sz} rounded border-2 overflow-hidden`} style={{ borderColor: costColor }}>
@@ -167,7 +177,10 @@ function UnitTile({ unit, assets, small, interactive }: { unit: any; assets: Tft
           ? <img src={url} alt={name} className="w-full h-full object-cover" />
           : <div className="w-full h-full bg-[#1e2a3a]" />}
         {unit.tier > 1 && (
-          <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 text-[9px] leading-none" style={{ color: costColor }}>
+          <div
+            className="absolute top-0 left-1/2 -translate-x-1/2 text-[9px] leading-tight px-1 rounded-b bg-black/70 font-bold"
+            style={{ color: starColor, textShadow: '0 0 2px rgba(0,0,0,0.9)' }}
+          >
             {'★'.repeat(unit.tier)}
           </div>
         )}

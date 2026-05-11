@@ -83,6 +83,25 @@ export function tftIconUrl(bundle: TftAssetsBundle | null, iconPath: string | nu
   return bundle.iconBase + iconPath;
 }
 
+// The bundle's `champion.icon` is the wide splash-centered art used on
+// big surfaces (match-card units, player profile). For tight UI like the
+// items-page carrier strip we want the square hud tile that metatft and
+// the in-game client show. CommunityDragon stores it next to the splash:
+//   skins/base/images/<id>_splash_centered_<n>.<mutator>.png
+//        →                hud/<id>_square.<mutator>.png
+// Returns the square URL if the path follows the modern Set-17-style
+// layout, otherwise falls back to the regular icon URL so older sets
+// and special units (TFT_BlueGolem etc.) still render something.
+export function tftChampionTileUrl(
+  bundle: TftAssetsBundle | null,
+  champion: TftChampion | null | undefined,
+): string | null {
+  if (!bundle || !champion?.icon) return null;
+  const m = /^assets\/characters\/([^/]+)\/skins\/base\/images\/[^/]+_splash_centered_\d+\.([^/.]+)\.png$/i.exec(champion.icon);
+  if (!m) return tftIconUrl(bundle, champion.icon);
+  return `${bundle.iconBase}assets/characters/${m[1]}/hud/${m[1]}_square.${m[2]}.png`;
+}
+
 // Companion icons (Chibis + Tacticians) live under a different CD namespace.
 // Bundle stores normalized paths like "assets/loadouts/companions/tooltip_x.png".
 export function tftCompanionIconUrl(bundle: TftAssetsBundle | null, iconPath: string | null | undefined): string | null {

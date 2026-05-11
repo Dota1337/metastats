@@ -11,7 +11,7 @@ import StatsFilterBar, {
   type PatchInfo,
 } from '../../components/tft/StatsFilterBar';
 import { useI18n } from '../../lib/i18n';
-import { loadTftAssets, tftIconUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
+import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import TftHero from '../../components/tft/TftHero';
 
 interface ItemRow {
@@ -99,7 +99,8 @@ export default function TftItemsPage() {
                   <div className="flex items-center gap-1.5">
                     {(it.topUsers || []).slice(0, 5).map((cid, i) => {
                       const ch = assets?.champions[cid];
-                      const curl = tftIconUrl(assets, ch?.icon);
+                      const tileUrl = tftChampionTileUrl(assets, ch);
+                      const fallbackUrl = tftIconUrl(assets, ch?.icon);
                       const borderColor = costToColor(ch?.cost ?? 1);
                       return (
                         <div
@@ -108,8 +109,16 @@ export default function TftItemsPage() {
                           style={{ borderColor }}
                           title={ch?.name}
                         >
-                          {curl ? (
-                            <img src={curl} alt={ch?.name || ''} className="w-full h-full object-cover" />
+                          {tileUrl ? (
+                            <img
+                              src={tileUrl}
+                              alt={ch?.name || ''}
+                              className="w-full h-full object-cover"
+                              onError={e => {
+                                const img = e.currentTarget;
+                                if (fallbackUrl && img.src !== fallbackUrl) img.src = fallbackUrl;
+                              }}
+                            />
                           ) : (
                             <div className="w-full h-full bg-[#1e2a3a]" />
                           )}

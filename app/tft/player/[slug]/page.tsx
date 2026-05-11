@@ -322,15 +322,19 @@ function SeasonStats({ stats, loading, currentSet, assets }: { stats: PlayerStat
         <Stat label={t('tft.gamesShort')} value={String(stats.totalMatches)} />
       </div>
 
-      {/* Units (top 15) + Augments (top 5) — chips are ranked 1..15 in
-          reading order so the player can see which units he leans on
-          hardest. 2 cols × 8 rows fills the box height to roughly match
-          the 5-augment column to its right. */}
+      {/* Units (top 15, ranked 1-15 across three blocks of 5) + Augments
+          (top 5). Outer grid is 4 columns on lg so the three unit blocks +
+          augment column each get a 25%-width slot — chips end up the same
+          size whether they're in the unit area or the augment column. */}
       {stats.topUnits && stats.topUnits.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-5">
-          <div className="lg:col-span-2">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-5">
+          <div className="lg:col-span-3">
             <div className="text-[#8a9bb0] text-[10px] uppercase tracking-widest mb-2">{t('tft.topUnitsPlayed')}</div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {/* lg:grid-flow-col + lg:grid-rows-5 lays the 15 chips down each
+                column before moving to the next, so the three blocks read
+                top-to-bottom: 1-5, 6-10, 11-15. Smaller breakpoints fall
+                back to the default row-wise flow. */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 lg:grid-rows-5 lg:grid-flow-col gap-2">
               {stats.topUnits.slice(0, 15).map((u, i) => (
                 <UnitChip
                   key={u.characterId}

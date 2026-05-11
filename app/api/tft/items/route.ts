@@ -1,21 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { loadTftStats, normalizeBucket, bucketParticipants } from '../../../lib/tft-stats-loader';
+import { loadTftStats, normalizeBucket } from '../../../lib/tft-stats-loader';
+import {
+  resolveFilters,
+  callRpc,
+  getAvailablePatches,
+  mergeJsonbCountArrays,
+} from '../../../lib/tft-supabase-reader';
+
+interface ItemListRow {
+  api_name: string;
+  games: number;
+  sum_placement: number;
+  top4: number;
+  total_item_slots: number;
+  top_users_merged: any[][];
+}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const region = (searchParams.get('region') || 'euw1').toLowerCase();
-  const bucket = normalizeBucket(searchParams.get('bucket'));
   const id = searchParams.get('id');
 
-  const stats = loadTftStats(region);
-  if (!stats) return NextResponse.json({ region, bucket, hasData: false, items: [], note: 'no crawl data yet' });
-
+  // Detail view → legacy JSON loader (per-bucket users only available there).
   if (id) {
+    const region = (searchParams.get('region') || 'euw1').toLowerCase();
+    const bucket = normalizeBucket(searchParams.get('bucket'));
+    const stats = loadTftStats(region);
+    if (!stats) return NextResponse.json({ region, bucket, hasData: false, item: null });
     const buckets = stats.byItem?.[id];
     if (!buckets) return NextResponse.json({ region, bucket, hasData: true, item: null });
     const data = buckets[bucket] || buckets.all || null;
     if (!data) return NextResponse.json({ region, bucket, hasData: true, item: null });
-    const avgPlacement = data.games > 0 ? data.sumPlacement / data.games : null;
     return NextResponse.json({
       region, bucket,
       set: stats.set, patch: stats.patch,
@@ -23,7 +37,7 @@ export async function GET(request: NextRequest) {
       item: {
         apiName: id,
         games: data.games,
-        avgPlacement,
+        avgPlacement: data.games > 0 ? data.sumPlacement / data.games : null,
         top4Rate: data.games > 0 ? data.top4 / data.games : null,
         topUsers: (data.topUsers || []).map((u: any) => ({
           characterId: u.characterId,
@@ -34,36 +48,46 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // pickRate denominator: count item *carry-slots*, not boards. Each player
-  // typically has 6-12 items on the board (≈3 per carry × 2-3 carries), so
-  // dividing by `participants × 8` makes pickRates look microscopic. Use the
-  // total item-slot count (sum of byItem.games) instead, so pickRate reads as
-  // "share of every item-slot this item occupied" — comparable across items.
-  let totalItemSlots = 0;
-  for (const buckets of Object.values<any>(stats.byItem || {})) {
-    const b = buckets[bucket] || buckets.all;
-    if (b) totalItemSlots += b.games;
-  }
-
-  const items: any[] = [];
-  for (const [apiName, buckets] of Object.entries<any>(stats.byItem || {})) {
-    const b = buckets[bucket] || buckets.all;
-    if (!b) continue;
-    items.push({
-      apiName,
-      games: b.games,
-      avgPlacement: b.games > 0 ? b.sumPlacement / b.games : null,
-      top4Rate: b.games > 0 ? b.top4 / b.games : null,
-      pickRate: totalItemSlots > 0 ? b.games / totalItemSlots : null,
-      // Top 5 units who carry the item — inline preview for the list view.
-      topUsers: (b.topUsers || []).slice(0, 5).map((u: any) => u.characterId),
+  try {
+    const filters = await resolveFilters(searchParams);
+    const rows = await callRpc<ItemListRow[]>('get_tft_item_stats', {
+      p_regions: filters.regions,
+      p_buckets: filters.buckets,
+      p_days: filters.days,
+      p_patch: filters.patch,
+      p_set: filters.setNumber,
     });
+    const totalSlots = rows[0]?.total_item_slots || 0;
+    const items = rows.map(r => {
+      // top_users_merged is jsonb[] (an outer array of per-row arrays). Flatten
+      // and re-group so the most-common carrier wins across the merged window.
+      const topUsers = mergeJsonbCountArrays(r.top_users_merged || [], 'characterId', 5)
+        .map(u => u.characterId);
+      return {
+        apiName: r.api_name,
+        games: Number(r.games),
+        avgPlacement: r.games > 0 ? Number(r.sum_placement) / Number(r.games) : null,
+        top4Rate: r.games > 0 ? Number(r.top4) / Number(r.games) : null,
+        pickRate: totalSlots > 0 ? Number(r.games) / Number(totalSlots) : null,
+        topUsers,
+      };
+    });
+    items.sort((a, b) => (a.avgPlacement ?? 9) - (b.avgPlacement ?? 9));
+
+    const patches = await getAvailablePatches();
+    return NextResponse.json({
+      hasData: items.length > 0,
+      filters: {
+        region: filters.regionLabel,
+        bucket: filters.bucketLabel,
+        days: filters.days,
+        patch: filters.patch,
+        set: filters.setNumber,
+      },
+      patches,
+      items,
+    });
+  } catch (e: any) {
+    return NextResponse.json({ hasData: false, items: [], error: e.message }, { status: 502 });
   }
-  items.sort((a, b) => (a.avgPlacement ?? 9) - (b.avgPlacement ?? 9));
-  return NextResponse.json({
-    region, bucket,
-    set: stats.set, patch: stats.patch,
-    hasData: true,
-    items,
-  });
 }

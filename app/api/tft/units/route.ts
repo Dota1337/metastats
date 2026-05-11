@@ -1,23 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { loadTftStats, normalizeBucket, bucketParticipants } from '../../../lib/tft-stats-loader';
+import { resolveFilters, callRpc, getAvailablePatches } from '../../../lib/tft-supabase-reader';
 
-// Returns per-unit aggregated stats for a region+tier-bucket. The unit detail
-// page calls this with ?id=TFT17_Vex&bucket=master_plus to render the
-// item-builds section; the units list page calls without `id` to get a tier
-// list across all units.
+// /api/tft/units
+//   Filter params (Supabase-backed):
+//     region  = all | west | asia | <single, e.g. 'euw1'>
+//     bucket  = all | master_plus | <single, e.g. 'diamond'>
+//     days    = 1..7   (default 3)
+//     patch   = current | previous | <literal>
+//     set     = <int>  (optional)
+//
+//   id=… still routes through the legacy JSON loader for the unit-detail
+//   view, which depends on byUnit[*].topItems/topItemSets — fields the
+//   per-day Supabase rows don't carry. Once we add a tft_daily_unit_items
+//   reverse-index this will move over too; for now the detail page still
+//   shows the most-recent crawl.
+
+interface UnitListRow {
+  character_id: string;
+  games: number;
+  sum_placement: number;
+  top4: number;
+  top1: number;
+  participants: number;
+}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const region = (searchParams.get('region') || 'euw1').toLowerCase();
-  const bucket = normalizeBucket(searchParams.get('bucket'));
   const id = searchParams.get('id');
 
-  const stats = loadTftStats(region);
-  if (!stats) {
-    return NextResponse.json({ region, bucket, hasData: false, units: [], note: 'no crawl data yet' });
-  }
-
+  // Detail view stays on the legacy JSON loader — see top of file.
   if (id) {
+    const region = (searchParams.get('region') || 'euw1').toLowerCase();
+    const bucket = normalizeBucket(searchParams.get('bucket'));
+    const stats = loadTftStats(region);
+    if (!stats) return NextResponse.json({ region, bucket, hasData: false, unit: null });
     const buckets = stats.byUnit?.[id];
     if (!buckets) return NextResponse.json({ region, bucket, hasData: true, unit: null });
     const data = buckets[bucket] || buckets.all || null;
@@ -49,28 +66,41 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // Unit list — emit one entry per unit that has data in the requested bucket
-  const participants = bucketParticipants(stats, bucket);
-  const units: any[] = [];
-  for (const [characterId, buckets] of Object.entries<any>(stats.byUnit || {})) {
-    const b = buckets[bucket] || buckets.all;
-    if (!b) continue;
-    units.push({
-      characterId,
-      games: b.games,
-      avgPlacement: b.games > 0 ? b.sumPlacement / b.games : null,
-      top4Rate: b.games > 0 ? b.top4 / b.games : null,
-      top1Rate: b.games > 0 ? b.top1 / b.games : null,
-      pickRate: participants > 0 ? b.games / participants : null,
-      // Top 3 items the unit gets carried with — inline preview for the list.
-      topItems: (b.topItems || []).slice(0, 3).map((it: any) => it.item),
+  // Stats list — Supabase RPC with filter expansion.
+  try {
+    const filters = await resolveFilters(searchParams);
+    const rows = await callRpc<UnitListRow[]>('get_tft_unit_stats', {
+      p_regions: filters.regions,
+      p_buckets: filters.buckets,
+      p_days: filters.days,
+      p_patch: filters.patch,
+      p_set: filters.setNumber,
     });
+    const participants = rows[0]?.participants || 0;
+    const units = rows.map(r => ({
+      characterId: r.character_id,
+      games: Number(r.games),
+      avgPlacement: r.games > 0 ? Number(r.sum_placement) / Number(r.games) : null,
+      top4Rate: r.games > 0 ? Number(r.top4) / Number(r.games) : null,
+      top1Rate: r.games > 0 ? Number(r.top1) / Number(r.games) : null,
+      pickRate: participants > 0 ? Number(r.games) / Number(participants) : null,
+    }));
+    units.sort((a, b) => (a.avgPlacement ?? 9) - (b.avgPlacement ?? 9));
+
+    const patches = await getAvailablePatches();
+    return NextResponse.json({
+      hasData: units.length > 0,
+      filters: {
+        region: filters.regionLabel,
+        bucket: filters.bucketLabel,
+        days: filters.days,
+        patch: filters.patch,
+        set: filters.setNumber,
+      },
+      patches,
+      units,
+    });
+  } catch (e: any) {
+    return NextResponse.json({ hasData: false, units: [], error: e.message }, { status: 502 });
   }
-  units.sort((a, b) => (a.avgPlacement ?? 9) - (b.avgPlacement ?? 9));
-  return NextResponse.json({
-    region, bucket,
-    set: stats.set, patch: stats.patch,
-    hasData: true,
-    units,
-  });
 }

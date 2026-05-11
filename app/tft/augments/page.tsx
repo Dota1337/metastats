@@ -1,9 +1,15 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
-import TierFilter, { type TierBucket } from '../../components/tft/TierFilter';
 import EmptyData from '../../components/tft/EmptyData';
+import StatsFilterBar, {
+  filtersFromSearchParams,
+  filtersToQueryString,
+  type Filters,
+  type PatchInfo,
+} from '../../components/tft/StatsFilterBar';
 import { useI18n } from '../../lib/i18n';
 import { loadTftAssets, tftIconUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import TftHero from '../../components/tft/TftHero';
@@ -23,29 +29,46 @@ const TIER_COLORS: Record<number, string> = { 1: '#9ab0bf', 2: '#e0c75a', 3: '#c
 
 export default function TftAugmentsPage() {
   const { t } = useI18n();
-  const [bucket, setBucket] = useState<TierBucket>('master_plus');
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const [filters, setFilters] = useState<Filters>(() => filtersFromSearchParams(new URLSearchParams(searchParams.toString())));
   const [slot, setSlot] = useState<string>('all');
   const [rows, setRows] = useState<AugRow[]>([]);
   const [hasData, setHasData] = useState<boolean | null>(null);
-  const [patch, setPatch] = useState<string | undefined>(undefined);
+  const [patches, setPatches] = useState<PatchInfo[]>([]);
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
+
   useEffect(() => {
-    const url = `/api/tft/augments?region=euw1&bucket=${bucket}${slot !== 'all' ? `&slot=${slot}` : ''}`;
-    fetch(url).then(r => r.json())
-      .then(d => { setHasData(!!d.hasData); setRows(d.augments || []); setPatch(d.patch); })
-      .catch(() => { setHasData(false); setRows([]); });
-  }, [bucket, slot]);
+    setLoading(true);
+    const qs = filtersToQueryString(filters) + (slot !== 'all' ? `&slot=${slot}` : '');
+    fetch(`/api/tft/augments?${qs}`)
+      .then(r => r.json())
+      .then(d => {
+        setHasData(!!d.hasData);
+        setRows(d.augments || []);
+        setPatches(d.patches || []);
+        setLoading(false);
+      })
+      .catch(() => { setHasData(false); setRows([]); setLoading(false); });
+    const url = `${pathname}?${filtersToQueryString(filters)}`;
+    if (typeof window !== 'undefined' && window.location.pathname + window.location.search !== url) {
+      router.replace(url, { scroll: false });
+    }
+  }, [filters, slot, pathname, router]);
+
+  const currentPatchLabel = patches[0]?.patch;
 
   return (
     <main className="min-h-screen bg-[#0e1525]">
       <Nav active="augments" />
-      <TftHero pageTitle={t('nav.augments')} patch={patch} />
+      <TftHero pageTitle={t('nav.augments')} patch={currentPatchLabel} />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-2 pb-6">
-        <div className="flex items-center justify-end mb-5">
-          <TierFilter value={bucket} onChange={setBucket} />
-        </div>
+        <StatsFilterBar filters={filters} patches={patches} onChange={setFilters} />
 
         <div className="flex flex-wrap gap-1 mb-4">
           <span className="text-[#4a5a70] text-xs self-center mr-2">{t('tft.slot')}:</span>
@@ -60,6 +83,9 @@ export default function TftAugmentsPage() {
           ))}
         </div>
 
+        {loading && hasData === null && (
+          <div className="text-[#4a5a70] text-center py-8">{t('tft.noDataYet').replace('Noch keine Daten', 'Lade')}</div>
+        )}
         {hasData === false && <EmptyData />}
         {hasData && rows.length === 0 && (
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#8a9bb0] text-sm">
@@ -107,4 +133,4 @@ export default function TftAugmentsPage() {
   );
 }
 
-function prettyAug(s: string) { return s.replace(/^TFT\d*_Augment_/, '').slice(0, 12); }
+function prettyAug(s: string) { return s.replace(/^TFT\d+_Augment_/, '').slice(0, 10); }

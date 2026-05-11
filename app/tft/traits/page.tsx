@@ -1,9 +1,15 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
-import TierFilter, { type TierBucket } from '../../components/tft/TierFilter';
 import EmptyData from '../../components/tft/EmptyData';
+import StatsFilterBar, {
+  filtersFromSearchParams,
+  filtersToQueryString,
+  type Filters,
+  type PatchInfo,
+} from '../../components/tft/StatsFilterBar';
 import { useI18n } from '../../lib/i18n';
 import { loadTftAssets, tftIconUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import TftHero from '../../components/tft/TftHero';
@@ -19,29 +25,49 @@ interface TraitRow {
 
 export default function TftTraitsPage() {
   const { t } = useI18n();
-  const [bucket, setBucket] = useState<TierBucket>('master_plus');
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const [filters, setFilters] = useState<Filters>(() => filtersFromSearchParams(new URLSearchParams(searchParams.toString())));
   const [rows, setRows] = useState<TraitRow[]>([]);
   const [hasData, setHasData] = useState<boolean | null>(null);
-  const [patch, setPatch] = useState<string | undefined>(undefined);
+  const [patches, setPatches] = useState<PatchInfo[]>([]);
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
+
   useEffect(() => {
-    fetch(`/api/tft/traits?region=euw1&bucket=${bucket}`)
+    setLoading(true);
+    const qs = filtersToQueryString(filters);
+    fetch(`/api/tft/traits?${qs}`)
       .then(r => r.json())
-      .then(d => { setHasData(!!d.hasData); setRows(d.traits || []); setPatch(d.patch); })
-      .catch(() => { setHasData(false); setRows([]); });
-  }, [bucket]);
+      .then(d => {
+        setHasData(!!d.hasData);
+        setRows(d.traits || []);
+        setPatches(d.patches || []);
+        setLoading(false);
+      })
+      .catch(() => { setHasData(false); setRows([]); setLoading(false); });
+    const url = `${pathname}?${qs}`;
+    if (typeof window !== 'undefined' && window.location.pathname + window.location.search !== url) {
+      router.replace(url, { scroll: false });
+    }
+  }, [filters, pathname, router]);
+
+  const currentPatchLabel = patches[0]?.patch;
 
   return (
     <main className="min-h-screen bg-[#0e1525]">
       <Nav active="traits" />
-      <TftHero pageTitle={t('nav.traits')} patch={patch} />
+      <TftHero pageTitle={t('nav.traits')} patch={currentPatchLabel} />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-2 pb-6">
-        <div className="flex items-center justify-end mb-5">
-          <TierFilter value={bucket} onChange={setBucket} />
-        </div>
+        <StatsFilterBar filters={filters} patches={patches} onChange={setFilters} />
 
+        {loading && hasData === null && (
+          <div className="text-[#4a5a70] text-center py-8">{t('tft.noDataYet').replace('Noch keine Daten', 'Lade')}</div>
+        )}
         {hasData === false && <EmptyData />}
 
         {hasData && rows.length > 0 && (

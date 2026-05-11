@@ -14,14 +14,19 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { aggregateMatch, finalize, emptyAggregate } from './lib/tft-build-aggregator.mjs';
 import { createRiotClient } from './lib/riot-client.mjs';
+import { writeTftStatsToSupabase } from './lib/tft-supabase-writer.mjs';
 
 const args = process.argv.slice(2);
 const arg = (k, def) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : def; };
+const hasFlag = (k) => args.includes(k);
 
 const REGION = (arg('--region', 'euw1') || 'euw1').toLowerCase();
 const MATCHES_PER_PLAYER = Number(arg('--matches-per-player', '8'));
+const SKIP_SUPABASE = hasFlag('--no-supabase');
+const SKIP_JSON = hasFlag('--no-json');
+// Iron is intentionally skipped — too few games per day for meaningful
+// per-region stats below Bronze.
 const SAMPLE_SIZES = {
-  IRON:        Number(arg('--max-iron',        '100')),
   BRONZE:      Number(arg('--max-bronze',      '150')),
   SILVER:      Number(arg('--max-silver',      '200')),
   GOLD:        Number(arg('--max-gold',        '250')),
@@ -176,9 +181,24 @@ async function main() {
     sampledPlayers: uniquePlayers.length,
     ...finalized,
   };
-  const file = `public/tft-stats-${REGION}.json`;
-  writeFileSync(file, JSON.stringify(payload));
-  console.log(`\n  -> ${file} (${payload.matchesAnalyzed} matches, ${Object.keys(payload.byUnit).length} units, ${Object.keys(payload.byItem).length} items)`);
+
+  if (!SKIP_JSON) {
+    const file = `public/tft-stats-${REGION}.json`;
+    writeFileSync(file, JSON.stringify(payload));
+    console.log(`\n  -> ${file} (${payload.matchesAnalyzed} matches, ${Object.keys(payload.byUnit).length} units, ${Object.keys(payload.byItem).length} items)`);
+  }
+
+  if (!SKIP_SUPABASE) {
+    const day = new Date().toISOString().slice(0, 10); // UTC date
+    console.log(`\n[supabase] writing ${REGION} ${day} patch=${payload.patch} set=${CURRENT_SET}`);
+    await writeTftStatsToSupabase({
+      region: REGION,
+      day,
+      patch: payload.patch,
+      setNumber: CURRENT_SET,
+      payload,
+    });
+  }
 }
 
 main().catch(err => { console.error('FAIL:', err.message); console.error(err.stack); process.exit(1); });

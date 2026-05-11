@@ -1,0 +1,116 @@
+name: TFT Daily Crawl
+
+# Crawls every Riot TFT region once per day and writes per-day, per-bucket
+# stats to Supabase. Uses GitHub Actions matrix to run the 17 regions in
+# parallel — each runner does ~25-30 min of Riot calls, the slowest
+# region is the wall-time.
+#
+# Replaces the old weekly workflow (kept for now under its own filename so
+# the existing JSON-based pages still get a Saturday refresh while the
+# Supabase-backed filter system is being built out).
+
+on:
+  schedule:
+    # Every day at 04:00 UTC — Riot's daily soft-rate-limit window resets
+    # around midnight UTC, so 04:00 gives the API a few hours of buffer
+    # for the player-facing traffic to drain before our batch job hits it.
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  NODE_OPTIONS: --use-system-ca
+
+jobs:
+  # Stage 1: refresh set + asset metadata. Runs once, on its own runner, so
+  # the matrix jobs all see the same tft-set.json + asset bundle.
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - run: npm ci
+
+      - name: Detect TFT set
+        run: node scripts/detect-tft-set.mjs
+        continue-on-error: true
+
+      - name: Refresh TFT asset bundle
+        run: node scripts/fetch-tft-assets.mjs
+        continue-on-error: true
+
+      - name: Refresh TFT tier distribution
+        run: node scripts/fetch-tft-tier-distribution.mjs
+        continue-on-error: true
+
+      - name: Commit set/asset updates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/tft-set.json public/tft-tier-distribution.json public/tft-assets*.json 2>/dev/null || true
+          if git diff --staged --quiet; then
+            echo "No set/asset changes."
+          else
+            git commit -m "chore: daily TFT set/asset refresh"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main && git push && break
+              echo "Push attempt $attempt failed, retrying..."
+              sleep 5
+            done
+          fi
+
+  # Stage 2: crawl every region in parallel and write to Supabase.
+  crawl:
+    needs: prepare
+    runs-on: ubuntu-latest
+    # 30-40 min upper bound per region with the production TFT key
+    # (~18 req/s effective, ~20k matches per region).
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false   # if one region 5xx's we still want the others to land
+      max-parallel: 17
+      matrix:
+        region:
+          - euw1
+          - kr
+          - na1
+          - eun1
+          - br1
+          - jp1
+          - oc1
+          - la1
+          - la2
+          - tr1
+          - ru
+          - me1
+          - ph2
+          - sg2
+          - th2
+          - tw2
+          - vn2
+    env:
+      RIOT_API_KEY_TFT: ${{ secrets.RIOT_API_KEY_TFT }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - run: npm ci
+
+      - name: Crawl ${{ matrix.region }} → Supabase
+        if: env.RIOT_API_KEY_TFT != '' && env.SUPABASE_SERVICE_ROLE_KEY != ''
+        # --no-json: skip the legacy /public/tft-stats-*.json output so 17
+        # parallel runners don't fight over `git push`. The Supabase tables
+        # are the source of truth from now on.
+        run: node scripts/collect-tft-allranks.mjs --region ${{ matrix.region }} --no-json

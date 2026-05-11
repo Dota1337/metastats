@@ -4,6 +4,7 @@ import { join } from 'path';
 import { refreshPlayerCache, loadCachedMatches, listCachedSets } from '../../../lib/tft-player-cache';
 import { ensureRankHistoryBackfilled, type SeasonRank } from '../../../lib/tft-rank-history';
 import { getRegionalRouting } from '../../../lib/regions';
+import { isExcludedUnit } from '../../../lib/tft-excluded';
 
 // Player season-stats endpoint.
 // Reads from tft_player_match_cache. On every request we refresh the cache
@@ -136,7 +137,7 @@ export async function GET(request: NextRequest) {
 
     for (const u of m.units || []) {
       const cid = u.character_id;
-      if (!cid) continue;
+      if (!cid || isExcludedUnit(cid)) continue;
       const e = unitGames.get(cid) || { games: 0, sumPlace: 0, top4: 0 };
       e.games++;
       e.sumPlace += placement;

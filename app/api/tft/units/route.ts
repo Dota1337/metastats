@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { loadTftStats, normalizeBucket, bucketParticipants } from '../../../lib/tft-stats-loader';
 import { resolveFilters, callRpc, getAvailablePatches } from '../../../lib/tft-supabase-reader';
+import { isExcludedUnit } from '../../../lib/tft-excluded';
 
 // /api/tft/units
 //   Filter params (Supabase-backed):
@@ -31,6 +32,9 @@ export async function GET(request: NextRequest) {
 
   // Detail view stays on the legacy JSON loader — see top of file.
   if (id) {
+    if (isExcludedUnit(id)) {
+      return NextResponse.json({ region: 'euw1', bucket: 'all', hasData: true, unit: null });
+    }
     const region = (searchParams.get('region') || 'euw1').toLowerCase();
     const bucket = normalizeBucket(searchParams.get('bucket'));
     const stats = loadTftStats(region);
@@ -77,14 +81,16 @@ export async function GET(request: NextRequest) {
       p_set: filters.setNumber,
     });
     const participants = rows[0]?.participants || 0;
-    const units = rows.map(r => ({
-      characterId: r.character_id,
-      games: Number(r.games),
-      avgPlacement: r.games > 0 ? Number(r.sum_placement) / Number(r.games) : null,
-      top4Rate: r.games > 0 ? Number(r.top4) / Number(r.games) : null,
-      top1Rate: r.games > 0 ? Number(r.top1) / Number(r.games) : null,
-      pickRate: participants > 0 ? Number(r.games) / Number(participants) : null,
-    }));
+    const units = rows
+      .filter(r => !isExcludedUnit(r.character_id))
+      .map(r => ({
+        characterId: r.character_id,
+        games: Number(r.games),
+        avgPlacement: r.games > 0 ? Number(r.sum_placement) / Number(r.games) : null,
+        top4Rate: r.games > 0 ? Number(r.top4) / Number(r.games) : null,
+        top1Rate: r.games > 0 ? Number(r.top1) / Number(r.games) : null,
+        pickRate: participants > 0 ? Number(r.games) / Number(participants) : null,
+      }));
     units.sort((a, b) => (a.avgPlacement ?? 9) - (b.avgPlacement ?? 9));
 
     const patches = await getAvailablePatches();

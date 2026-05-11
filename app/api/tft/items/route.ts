@@ -6,6 +6,7 @@ import {
   getAvailablePatches,
   mergeJsonbCountArrays,
 } from '../../../lib/tft-supabase-reader';
+import { isExcludedItem, isExcludedUnit } from '../../../lib/tft-excluded';
 
 interface ItemListRow {
   api_name: string;
@@ -22,6 +23,9 @@ export async function GET(request: NextRequest) {
 
   // Detail view → legacy JSON loader (per-bucket users only available there).
   if (id) {
+    if (isExcludedItem(id)) {
+      return NextResponse.json({ region: 'euw1', bucket: 'all', hasData: true, item: null });
+    }
     const region = (searchParams.get('region') || 'euw1').toLowerCase();
     const bucket = normalizeBucket(searchParams.get('bucket'));
     const stats = loadTftStats(region);
@@ -58,20 +62,23 @@ export async function GET(request: NextRequest) {
       p_set: filters.setNumber,
     });
     const totalSlots = rows[0]?.total_item_slots || 0;
-    const items = rows.map(r => {
-      // top_users_merged is jsonb[] (an outer array of per-row arrays). Flatten
-      // and re-group so the most-common carrier wins across the merged window.
-      const topUsers = mergeJsonbCountArrays(r.top_users_merged || [], 'characterId', 5)
-        .map(u => u.characterId);
-      return {
-        apiName: r.api_name,
-        games: Number(r.games),
-        avgPlacement: r.games > 0 ? Number(r.sum_placement) / Number(r.games) : null,
-        top4Rate: r.games > 0 ? Number(r.top4) / Number(r.games) : null,
-        pickRate: totalSlots > 0 ? Number(r.games) / Number(totalSlots) : null,
-        topUsers,
-      };
-    });
+    const items = rows
+      .filter(r => !isExcludedItem(r.api_name))
+      .map(r => {
+        // top_users_merged is jsonb[] (an outer array of per-row arrays). Flatten
+        // and re-group so the most-common carrier wins across the merged window.
+        const topUsers = mergeJsonbCountArrays(r.top_users_merged || [], 'characterId', 5)
+          .map(u => u.characterId)
+          .filter(cid => !isExcludedUnit(cid));
+        return {
+          apiName: r.api_name,
+          games: Number(r.games),
+          avgPlacement: r.games > 0 ? Number(r.sum_placement) / Number(r.games) : null,
+          top4Rate: r.games > 0 ? Number(r.top4) / Number(r.games) : null,
+          pickRate: totalSlots > 0 ? Number(r.games) / Number(totalSlots) : null,
+          topUsers,
+        };
+      });
     items.sort((a, b) => (a.avgPlacement ?? 9) - (b.avgPlacement ?? 9));
 
     const patches = await getAvailablePatches();

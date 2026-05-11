@@ -1,65 +1,61 @@
 /**
- * Centralized Riot API client with rate-limiting.
+ * Centralized Riot API client with sliding-window rate-limiting.
  *
- * Replaces the per-script `rateLimitedFetch` helpers that were tuned for
- * the dev key (90 req / 2min ≈ 0.75 req/s). With the production key
- * (active since 2026-05-11) we run at 200 req/s sustained — that's ~4x
- * safety margin under Riot's long-window limit (500k req / 10min ≈ 833
- * req/s) and well below the short-window cap (30k req / 10s).
+ * Defaults match what our actual key reports via `X-App-Rate-Limit`:
+ *   short:  20 req / 1s  → we use 18 (10% safety)
+ *   long:  100 req / 2min → we use 95 (5% safety)
  *
- * Two surfaces are exposed:
+ * NOTE — 2026-05-11: Our key was expected to be a Production key but
+ * still reports Dev-key limits. Until Riot upgrades the actual app
+ * tier, both windows are needed to avoid the 115s `Retry-After` lockouts.
+ *
+ * Two surfaces:
  *   - fetch(url, init)                    → Response (drop-in for old helpers)
  *   - fetchJson(url, { safe = false })    → JSON, or { _status } / null when safe=true
  *
  * Behaviour:
- *   - Steady pacing: enforces minimum delay between requests (200/s = 5ms)
- *   - Burst safety: caps requests/10s window as a backstop for parallel surges
- *   - 429 handling: respects Retry-After header with 1s pad, then retries
+ *   - Sliding-window check against BOTH short + long limits
+ *   - 429 → respects Retry-After + clears windows + retries
  */
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 export function createRiotClient(opts = {}) {
   const {
-    requestsPerSecond = 200,
+    shortWindowRequests = 18,
+    shortWindowMs = 1100,           // 1s + 100ms slack
+    longWindowRequests = 95,
+    longWindowMs = 122_000,         // 120s + 2s slack
     log = console.log,
   } = opts;
 
-  const minDelayMs = Math.max(1, Math.floor(1000 / requestsPerSecond));
-  const burstLimit = requestsPerSecond * 10; // 10s worth, safety backstop
-  const burstWindowMs = 10_500;
-
-  let requestCount = 0;
-  let windowStart = Date.now();
-  let lastRequestAt = 0;
+  const shortWindow = [];
+  const longWindow = [];
 
   async function rateLimitedFetch(url, init) {
-    // Window reset
-    const now = Date.now();
-    if (now - windowStart >= burstWindowMs) {
-      requestCount = 0;
-      windowStart = now;
-    }
+    // Acquire a slot in both windows before firing
+    while (true) {
+      const now = Date.now();
+      while (shortWindow.length && shortWindow[0] < now - shortWindowMs) shortWindow.shift();
+      while (longWindow.length && longWindow[0] < now - longWindowMs) longWindow.shift();
 
-    // Burst-safety backstop (rarely triggers at 200/s, but catches parallel surges)
-    if (requestCount >= burstLimit) {
-      const wait = burstWindowMs - (Date.now() - windowStart);
-      if (wait > 0) {
-        log(`  [rate-limit] burst cap (${requestCount}) reached, waiting ${Math.ceil(wait / 1000)}s`);
-        await sleep(wait);
+      if (shortWindow.length < shortWindowRequests && longWindow.length < longWindowRequests) {
+        shortWindow.push(now);
+        longWindow.push(now);
+        break;
       }
-      requestCount = 0;
-      windowStart = Date.now();
-    }
 
-    // Steady-pacing: enforce min delay between requests
-    const sinceLast = Date.now() - lastRequestAt;
-    if (sinceLast < minDelayMs) {
-      await sleep(minDelayMs - sinceLast);
-    }
+      const shortWait = shortWindow.length >= shortWindowRequests
+        ? Math.max(0, shortWindow[0] + shortWindowMs - now) : 0;
+      const longWait = longWindow.length >= longWindowRequests
+        ? Math.max(0, longWindow[0] + longWindowMs - now) : 0;
+      const wait = Math.max(shortWait, longWait, 50);
 
-    requestCount++;
-    lastRequestAt = Date.now();
+      if (wait > 5000) {
+        log(`  [rate-limit] long-window cap, waiting ${Math.ceil(wait / 1000)}s`);
+      }
+      await sleep(wait);
+    }
 
     const res = await fetch(url, init);
 
@@ -67,8 +63,10 @@ export function createRiotClient(opts = {}) {
       const retryAfter = parseInt(res.headers.get('retry-after') || '10', 10);
       log(`  [429] Rate limited, waiting ${retryAfter}s...`);
       await sleep(retryAfter * 1000 + 1000);
-      requestCount = 0;
-      windowStart = Date.now();
+      // Reset windows after explicit 429 — Riot's internal counters
+      // were ahead of ours, so the safest restart is from a clean slate.
+      shortWindow.length = 0;
+      longWindow.length = 0;
       return rateLimitedFetch(url, init);
     }
 

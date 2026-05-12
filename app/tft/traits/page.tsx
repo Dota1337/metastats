@@ -131,6 +131,7 @@ export default function TftTraitsPage() {
               <div className="text-right">{t('tft.top4')}</div>
               <div className="text-right">{t('tft.gamesShort')}</div>
             </div>
+            <div className="md:hidden px-4 py-2 text-[10px] uppercase tracking-widest text-[#4a5a70] bg-[#0a0e1a]">{t('nav.traits')}</div>
             {grouped.map(g => {
               const meta = assets?.traits[g.name];
               const url = tftIconUrl(assets, meta?.icon);
@@ -139,22 +140,34 @@ export default function TftTraitsPage() {
                 <a
                   key={g.name}
                   href={`/tft/traits/${encodeURIComponent(g.name)}`}
-                  className="grid grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 items-center text-xs border-t border-[#1e2a3a] hover:bg-white/5"
+                  className="block md:grid md:grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 md:items-center text-xs border-t border-[#1e2a3a] hover:bg-white/5"
                 >
-                  {url ? (
-                    <img src={url} alt={meta!.name} className="w-9 h-9 rounded" />
-                  ) : (
-                    <div className="w-9 h-9 rounded bg-[#1e2a3a]" />
-                  )}
-                  <div className="text-white truncate">{meta?.name || prettyTrait(g.name)}</div>
-                  <TierStrip tiers={tiers} />
-                  <div className="text-right text-[#7B61FF] font-medium">
+                  <div className="flex items-center gap-3 md:contents">
+                    {url ? (
+                      <img src={url} alt={meta!.name} className="w-9 h-9 rounded flex-shrink-0" />
+                    ) : (
+                      <div className="w-9 h-9 rounded bg-[#1e2a3a] flex-shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0 md:flex-initial">
+                      <div className="text-white truncate">{meta?.name || prettyTrait(g.name)}</div>
+                      {/* Mobile-only: best-activation hint as small subtitle */}
+                      <div className="md:hidden text-[#7B61FF] text-[10px]">
+                        {t('tft.trait.bestAt')} {g.bestActivation ?? '—'}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-1.5 pl-12 md:pl-0 md:mt-0">
+                    <TierStrip tiers={tiers} />
+                  </div>
+                  <div className="hidden md:block text-right text-[#7B61FF] font-medium">
                     {g.bestActivation ?? '—'}
                   </div>
-                  <div className="text-right text-white">{g.bestAvg?.toFixed(2) ?? '—'}</div>
-                  <div className="text-right text-[#8a9bb0]">{g.pickRate != null ? `${(g.pickRate * 100).toFixed(1)}%` : '—'}</div>
-                  <div className="text-right text-[#8a9bb0]">{g.avgTop4Rate != null ? `${(g.avgTop4Rate * 100).toFixed(1)}%` : '—'}</div>
-                  <div className="text-right text-[#4a5a70]">{g.totalGames}</div>
+                  <div className="grid grid-cols-4 gap-2 mt-1.5 pl-12 md:pl-0 md:mt-0 md:contents">
+                    <Cell label={t('tft.avgPlacement')} value={g.bestAvg?.toFixed(2) ?? '—'} accent="white" />
+                    <Cell label={t('tft.pickRate')} value={g.pickRate != null ? `${(g.pickRate * 100).toFixed(1)}%` : '—'} />
+                    <Cell label={t('tft.top4')} value={g.avgTop4Rate != null ? `${(g.avgTop4Rate * 100).toFixed(1)}%` : '—'} />
+                    <Cell label={t('tft.gamesShort')} value={String(g.totalGames)} accent="muted" />
+                  </div>
                 </a>
               );
             })}
@@ -190,3 +203,16 @@ function TierStrip({ tiers }: { tiers: TftTraitTier[] }) {
 }
 
 function prettyTrait(s: string) { return s.replace(/^TFT\d+_/, '').replace(/Trait$/, ''); }
+
+function Cell({ label, value, accent }: { label: string; value: string; accent?: 'white' | 'muted' }) {
+  const valueClass = accent === 'white' ? 'text-white' : accent === 'muted' ? 'text-[#4a5a70]' : 'text-[#8a9bb0]';
+  return (
+    <>
+      <div className="md:hidden">
+        <div className="text-[#4a5a70] text-[9px] uppercase tracking-widest leading-tight">{label}</div>
+        <div className={`${valueClass} tabular-nums leading-tight`}>{value}</div>
+      </div>
+      <div className={`hidden md:block text-right ${valueClass} tabular-nums`}>{value}</div>
+    </>
+  );
+}

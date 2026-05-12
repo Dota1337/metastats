@@ -149,7 +149,7 @@ export default function TftLeaderboardPage() {
 
         {!loading && !error && (
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
-            <div className="grid grid-cols-[3rem_1fr_5rem_5rem_5rem_7rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#4a5a70] bg-[#0a0e1a]">
+            <div className="hidden sm:grid grid-cols-[3rem_1fr_5rem_5rem_5rem_7rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#4a5a70] bg-[#0a0e1a]">
               <div className="text-right">#</div>
               <div>Spieler</div>
               <div className="text-right">LP</div>
@@ -166,17 +166,25 @@ export default function TftLeaderboardPage() {
                 <a
                   key={p.puuid}
                   href={slug ? `/tft/player/${slug}?region=${region}` : '#'}
-                  className="grid grid-cols-[3rem_1fr_5rem_5rem_5rem_7rem] gap-2 px-4 py-2 items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]"
+                  className="block sm:grid sm:grid-cols-[3rem_1fr_5rem_5rem_5rem_7rem] gap-2 px-4 py-2 sm:items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]"
                 >
-                  <div className="text-right text-[#8a9bb0]">{p.rank}</div>
-                  <div className="text-white truncate">
-                    {p.gameName ? `${p.gameName}` : <span className="text-[#4a5a70]">unbekannt</span>}
-                    {p.tagLine && <span className="text-[#4a5a70] text-[10px]"> #{p.tagLine}</span>}
+                  {/* Mobile: rank + name on first row, stats stacked below.
+                      Desktop: original 6-col grid. */}
+                  <div className="hidden sm:block text-right text-[#8a9bb0]">{p.rank}</div>
+                  <div className="flex items-baseline gap-2 sm:block">
+                    <span className="text-[#8a9bb0] text-[10px] sm:hidden">#{p.rank}</span>
+                    <span className="text-white truncate flex-1 sm:flex-initial">
+                      {p.gameName ? `${p.gameName}` : <span className="text-[#4a5a70]">unbekannt</span>}
+                      {p.tagLine && <span className="text-[#4a5a70] text-[10px]"> #{p.tagLine}</span>}
+                    </span>
                   </div>
-                  <div className="text-right text-white">{p.leaguePoints}</div>
-                  <div className="text-right text-[#4a5a70]">{total}</div>
-                  <div className="text-right text-[#8a9bb0]">{wr}%</div>
-                  <div className="text-right tabular-nums">
+                  <div className="hidden sm:block text-right text-white">{p.leaguePoints}</div>
+                  <div className="hidden sm:block text-right text-[#4a5a70]">{total}</div>
+                  <div className="hidden sm:block text-right text-[#8a9bb0]">{wr}%</div>
+                  <div className="flex sm:block items-center justify-between mt-1 sm:mt-0 sm:text-right tabular-nums">
+                    <span className="text-[#4a5a70] text-[10px] sm:hidden">
+                      {p.leaguePoints} LP · {total} {t('tft.gamesShort')} · {wr}% WR
+                    </span>
                     {mv != null
                       ? <span className="text-[#7B61FF] font-medium">{fmtEur(mv)}</span>
                       : <span className="text-[#4a5a70]">—</span>

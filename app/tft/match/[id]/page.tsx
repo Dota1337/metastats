@@ -141,15 +141,15 @@ function ParticipantCard({
     : null;
 
   return (
-    <div className={`border-l-4 rounded p-3 ${barColor} ${bg}`}>
-      <div className="flex items-start gap-3 flex-wrap">
+    <div className={`border-l-4 rounded p-2 sm:p-3 ${barColor} ${bg}`}>
+      <div className="flex items-start gap-2 sm:gap-3 flex-wrap">
         <PlacementBadge placement={placement} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             {slug ? (
               <a
                 href={`/tft/player/${slug}?region=${region}`}
-                className="text-white text-sm font-medium hover:text-[#7B61FF]"
+                className="text-white text-sm font-medium hover:text-[#7B61FF] truncate max-w-[160px] sm:max-w-none"
               >
                 {gameName}
                 {tagLine && <span className="text-[#4a5a70] text-xs"> #{tagLine}</span>}
@@ -160,14 +160,14 @@ function ParticipantCard({
               </span>
             )}
             <span className="text-[#4a5a70] text-[10px]">
-              Lvl {participant.level} · Stage {formatStage(participant.lastRound)} · {participant.goldLeft}g
+              Lvl {participant.level} · {formatStage(participant.lastRound)} · {participant.goldLeft}g
               {participant.playersEliminated > 0 && ` · ${participant.playersEliminated} ${t('tft.match.eliminated')}`}
             </span>
           </div>
           <div className="mt-1.5">
             <ActivatedTraits participant={participant} assets={assets} />
           </div>
-          <div className="mt-3 flex gap-2 flex-wrap">
+          <div className="mt-2 sm:mt-3 flex gap-1.5 sm:gap-2 flex-wrap">
             {participant.units.map((u, i) => (
               <UnitTile key={i} unit={u} assets={assets} />
             ))}

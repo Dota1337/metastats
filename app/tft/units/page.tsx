@@ -106,6 +106,10 @@ export default function TftUnitsPage() {
               <div className="text-right">{t('tft.top1')}</div>
               <div className="text-right">{t('tft.gamesShort')}</div>
             </div>
+            {/* Mobile-only column hint */}
+            <div className="md:hidden px-4 py-2 text-[10px] uppercase tracking-widest text-[#4a5a70] bg-[#0a0e1a]">
+              Champion
+            </div>
             {filtered.map(u => {
               const ch = assets?.champions[u.characterId];
               const cost = ch?.cost ?? 1;
@@ -115,17 +119,25 @@ export default function TftUnitsPage() {
                 <a
                   key={u.characterId}
                   href={`/tft/units/${encodeURIComponent(u.characterId)}?bucket=${filters.bucket}`}
-                  className="grid grid-cols-[3rem_1fr_5rem_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]"
+                  className="block md:grid md:grid-cols-[3rem_1fr_5rem_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 md:items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]"
                 >
-                  <div className="w-9 h-9 rounded border-2 overflow-hidden" style={{ borderColor: costColor }}>
-                    {url && <img src={url} alt={ch!.name} className="w-full h-full object-cover" />}
+                  {/* Mobile: icon + name row, stats row below.
+                      Desktop: original 7-col grid. */}
+                  <div className="flex items-center gap-3 md:contents">
+                    <div className="w-9 h-9 rounded border-2 overflow-hidden flex-shrink-0" style={{ borderColor: costColor }}>
+                      {url && <img src={url} alt={ch!.name} className="w-full h-full object-cover" />}
+                    </div>
+                    <div className="text-white truncate flex-1 md:flex-initial">{ch?.name || prettyCharId(u.characterId)}</div>
                   </div>
-                  <div className="text-white">{ch?.name || prettyCharId(u.characterId)}</div>
-                  <div className="text-right text-white">{u.avgPlacement?.toFixed(2) ?? '—'}</div>
-                  <div className="text-right text-[#8a9bb0]">{u.pickRate != null ? `${(u.pickRate * 100).toFixed(1)}%` : '—'}</div>
-                  <div className="text-right text-[#8a9bb0]">{u.top4Rate != null ? `${(u.top4Rate * 100).toFixed(1)}%` : '—'}</div>
-                  <div className="text-right text-[#8a9bb0]">{u.top1Rate != null ? `${(u.top1Rate * 100).toFixed(1)}%` : '—'}</div>
-                  <div className="text-right text-[#4a5a70]">{u.games}</div>
+                  {/* Stats: 4-column grid on mobile so the numbers stack
+                      neatly under the icon row; explicit cells on desktop. */}
+                  <div className="grid grid-cols-4 gap-2 mt-1.5 pl-12 md:pl-0 md:mt-0 md:contents">
+                    <Cell label={t('tft.avgPlacement')} value={u.avgPlacement?.toFixed(2) ?? '—'} accent="white" />
+                    <Cell label={t('tft.pickRate')} value={u.pickRate != null ? `${(u.pickRate * 100).toFixed(1)}%` : '—'} />
+                    <Cell label={t('tft.top4')} value={u.top4Rate != null ? `${(u.top4Rate * 100).toFixed(1)}%` : '—'} />
+                    <Cell label={t('tft.top1')} value={u.top1Rate != null ? `${(u.top1Rate * 100).toFixed(1)}%` : '—'} />
+                    <div className="hidden md:block text-right text-[#4a5a70]">{u.games}</div>
+                  </div>
                 </a>
               );
             })}
@@ -142,4 +154,21 @@ function costColorOf(cost: number) {
 }
 function prettyCharId(id: string) {
   return id.replace(/^TFT\d+_/, '');
+}
+
+// Stat cell that reflows between mobile (label-above-value pair, left-
+// aligned in a 4-col mobile grid) and desktop (right-aligned single value
+// in the parent's explicit grid column). `display: contents` on the
+// desktop side makes the parent grid pull this through transparently.
+function Cell({ label, value, accent }: { label: string; value: string; accent?: 'white' }) {
+  const valueClass = accent === 'white' ? 'text-white' : 'text-[#8a9bb0]';
+  return (
+    <>
+      <div className="md:hidden">
+        <div className="text-[#4a5a70] text-[9px] uppercase tracking-widest leading-tight">{label}</div>
+        <div className={`${valueClass} tabular-nums leading-tight`}>{value}</div>
+      </div>
+      <div className={`hidden md:block text-right ${valueClass} tabular-nums`}>{value}</div>
+    </>
+  );
 }

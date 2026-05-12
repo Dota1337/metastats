@@ -397,7 +397,7 @@ function SeasonStats({
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
             <Stat label={t('tft.avgPlacement')} value={stats.avgPlacement?.toFixed(2) ?? '—'} />
             <Stat label={t('tft.top4')} value={stats.top4Rate != null ? `${(stats.top4Rate * 100).toFixed(1)}%` : '—'} />
             <Stat label={t('tft.top1')} value={stats.top1Rate != null ? `${(stats.top1Rate * 100).toFixed(1)}%` : '—'} />

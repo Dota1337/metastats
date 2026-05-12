@@ -49,7 +49,9 @@ export default function CompCard({
   const Wrapper: any = href ? 'a' : 'div';
   return (
     <Wrapper {...(href ? { href } : {})} className="block bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-3 hover:border-[#7B61FF]/40 transition-colors">
-      <div className="grid grid-cols-[auto_1fr_auto] gap-4 items-center">
+      {/* Mobile: stack the carry header → units row → stats column vertically.
+          Desktop: original 3-column grid keeps it dense. */}
+      <div className="flex flex-col sm:grid sm:grid-cols-[auto_1fr_auto] gap-3 sm:gap-4 sm:items-center">
         <div className="flex items-center gap-3">
           {rank != null && <div className="text-[#4a5a70] text-sm font-medium w-6 text-center">{rank}</div>}
           <div className="flex items-center justify-center w-10 h-10 rounded-lg font-bold text-base"
@@ -142,7 +144,9 @@ export default function CompCard({
           )}
         </div>
 
-        <div className="flex items-stretch gap-2 text-right">
+        {/* Stats: horizontal pills on mobile (wraps if needed),
+            right-aligned column on desktop. */}
+        <div className="flex items-stretch gap-2 sm:text-right flex-wrap sm:flex-nowrap">
           <Stat label="Avg" value={comp.avgPlacement?.toFixed(2) ?? '—'} accent={tier.color} />
           <Stat label="Top 4" value={comp.top4Rate != null ? `${(comp.top4Rate * 100).toFixed(0)}%` : '—'} />
           <Stat label="Sieg" value={comp.top1Rate != null ? `${(comp.top1Rate * 100).toFixed(0)}%` : '—'} />

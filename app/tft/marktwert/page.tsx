@@ -150,13 +150,14 @@ export default function TftMarktwertPage() {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-2 pb-6">
         <p className="text-[#8a9bb0] text-sm mb-4">{t('tft.marketValue.pageHint')}</p>
 
-        {/* Region selector — all 17 regions, scrollable horizontally on mobile */}
-        <div className="flex flex-wrap gap-1.5 mb-3">
+        {/* Region selector — wraps on desktop, horizontally scrollable on
+            mobile so 17 regions don't fight for vertical space. */}
+        <div className="flex sm:flex-wrap gap-1.5 mb-3 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 sm:overflow-visible">
           {REGIONS.map(r => (
             <button
               key={r.value}
               onClick={() => setRegion(r.value)}
-              className={`px-2.5 py-1 rounded text-xs font-medium ${
+              className={`px-2.5 py-1 rounded text-xs font-medium flex-shrink-0 ${
                 region === r.value
                   ? 'bg-[#7B61FF] text-white'
                   : 'bg-[#141c2e] text-[#8a9bb0] hover:text-white'
@@ -275,7 +276,8 @@ function TopTab({
 
       {!loading && players.length > 0 && (
         <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
-          <div className="grid grid-cols-[3rem_1fr_5rem_4rem_8rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#4a5a70] bg-[#0a0e1a]">
+          {/* Desktop table header — hidden on mobile where each row is a card */}
+          <div className="hidden sm:grid grid-cols-[3rem_1fr_5rem_4rem_8rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#4a5a70] bg-[#0a0e1a]">
             <div className="text-right">#</div>
             <div>{t('tft.marketValue.col.player')}</div>
             <div className="text-right">LP</div>
@@ -288,22 +290,30 @@ function TopTab({
               <a
                 key={p.puuid}
                 href={slug ? `/tft/player/${slug}?region=${region}` : '#'}
-                className="grid grid-cols-[3rem_1fr_5rem_4rem_8rem] gap-2 px-4 py-2 items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]"
+                className="block sm:grid sm:grid-cols-[3rem_1fr_5rem_4rem_8rem] gap-2 px-4 py-2 sm:items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]"
               >
-                <div className="text-right text-[#8a9bb0] tabular-nums">{i + 1}</div>
-                <div className="text-white truncate">
-                  {p.gameName || <span className="text-[#4a5a70]">unbekannt</span>}
-                  {p.tagLine && <span className="text-[#4a5a70] text-[10px]"> #{p.tagLine}</span>}
-                  <span
-                    className="ml-2 text-[10px] uppercase tracking-widest"
-                    style={{ color: TIER_COLORS[p.tier] || '#8a9bb0' }}
-                  >
-                    {p.tier.slice(0, 4)}
+                {/* Mobile: rank + name + tier inline, value + multiplier as
+                    a row below. Desktop: original 5-column grid. */}
+                <div className="hidden sm:block text-right text-[#8a9bb0] tabular-nums">{i + 1}</div>
+                <div className="flex items-baseline gap-2 sm:block">
+                  <span className="text-[#8a9bb0] tabular-nums text-[10px] sm:hidden">#{i + 1}</span>
+                  <span className="text-white truncate flex-1 sm:flex-initial">
+                    {p.gameName || <span className="text-[#4a5a70]">unbekannt</span>}
+                    {p.tagLine && <span className="text-[#4a5a70] text-[10px]"> #{p.tagLine}</span>}
+                    <span
+                      className="ml-2 text-[10px] uppercase tracking-widest"
+                      style={{ color: TIER_COLORS[p.tier] || '#8a9bb0' }}
+                    >
+                      {p.tier.slice(0, 4)}
+                    </span>
                   </span>
                 </div>
-                <div className="text-right text-white tabular-nums">{p.lp}</div>
-                <div className="text-right text-[#8a9bb0] tabular-nums">{p.multiplier.toFixed(2)}</div>
-                <div className="text-right">
+                <div className="hidden sm:block text-right text-white tabular-nums">{p.lp}</div>
+                <div className="hidden sm:block text-right text-[#8a9bb0] tabular-nums">{p.multiplier.toFixed(2)}</div>
+                <div className="flex sm:block items-center justify-between mt-1 sm:mt-0 sm:text-right">
+                  <span className="text-[#4a5a70] text-[10px] sm:hidden">
+                    {p.lp} LP · ×{p.multiplier.toFixed(2)}
+                  </span>
                   <span className="text-[#7B61FF] font-medium tabular-nums">
                     {fmtEur(p.finalValue, lang)}
                   </span>
@@ -382,7 +392,7 @@ function MoversTab({
 
       {!loading && movers.length > 0 && (
         <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
-          <div className="grid grid-cols-[3rem_1fr_7rem_5rem_6rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#4a5a70] bg-[#0a0e1a]">
+          <div className="hidden sm:grid grid-cols-[3rem_1fr_7rem_5rem_6rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#4a5a70] bg-[#0a0e1a]">
             <div className="text-right">#</div>
             <div>{t('tft.marketValue.col.player')}</div>
             <div className="text-right">{t('tft.marketValue.col.now')}</div>
@@ -397,24 +407,31 @@ function MoversTab({
               <a
                 key={m.puuid}
                 href={slug ? `/tft/player/${slug}?region=${region}` : '#'}
-                className="grid grid-cols-[3rem_1fr_7rem_5rem_6rem] gap-2 px-4 py-2 items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]"
+                className="block sm:grid sm:grid-cols-[3rem_1fr_7rem_5rem_6rem] gap-2 px-4 py-2 sm:items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]"
               >
-                <div className="text-right text-[#8a9bb0] tabular-nums">{i + 1}</div>
-                <div className="text-white truncate">
-                  {m.gameName || <span className="text-[#4a5a70]">unbekannt</span>}
-                  {m.tagLine && <span className="text-[#4a5a70] text-[10px]"> #{m.tagLine}</span>}
-                  <span
-                    className="ml-2 text-[10px] uppercase tracking-widest"
-                    style={{ color: TIER_COLORS[m.tier] || '#8a9bb0' }}
-                  >
-                    {m.tier.slice(0, 4)}
+                <div className="hidden sm:block text-right text-[#8a9bb0] tabular-nums">{i + 1}</div>
+                <div className="flex items-baseline gap-2 sm:block">
+                  <span className="text-[#8a9bb0] tabular-nums text-[10px] sm:hidden">#{i + 1}</span>
+                  <span className="text-white truncate flex-1 sm:flex-initial">
+                    {m.gameName || <span className="text-[#4a5a70]">unbekannt</span>}
+                    {m.tagLine && <span className="text-[#4a5a70] text-[10px]"> #{m.tagLine}</span>}
+                    <span
+                      className="ml-2 text-[10px] uppercase tracking-widest"
+                      style={{ color: TIER_COLORS[m.tier] || '#8a9bb0' }}
+                    >
+                      {m.tier.slice(0, 4)}
+                    </span>
                   </span>
                 </div>
-                <div className="text-right text-white tabular-nums">{fmtEur(m.currentValue, lang)}</div>
-                <div className="text-right text-[#8a9bb0] tabular-nums text-[10px]">{fmtEur(m.previousValue, lang)}</div>
-                <div className="text-right tabular-nums font-medium" style={{ color }}>
-                  {sign}{fmtEur(m.delta, lang)}
-                  <div className="text-[10px] opacity-80">{m.deltaPct >= 0 ? '+' : ''}{m.deltaPct.toFixed(1)}%</div>
+                <div className="hidden sm:block text-right text-white tabular-nums">{fmtEur(m.currentValue, lang)}</div>
+                <div className="hidden sm:block text-right text-[#8a9bb0] tabular-nums text-[10px]">{fmtEur(m.previousValue, lang)}</div>
+                {/* Mobile: now-value + delta in one row below the name; desktop keeps the 3-col split */}
+                <div className="flex sm:block items-center justify-between mt-1 sm:mt-0 sm:text-right">
+                  <span className="text-white tabular-nums sm:hidden">{fmtEur(m.currentValue, lang)}</span>
+                  <span className="tabular-nums font-medium" style={{ color }}>
+                    {sign}{fmtEur(m.delta, lang)}{' '}
+                    <span className="text-[10px] opacity-80">{m.deltaPct >= 0 ? '+' : ''}{m.deltaPct.toFixed(1)}%</span>
+                  </span>
                 </div>
               </a>
             );

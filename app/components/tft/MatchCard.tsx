@@ -35,10 +35,9 @@ export default function MatchCard({ match, selfPuuid }: Props) {
         className={`border-l-4 rounded p-3 cursor-pointer hover:bg-white/5 ${barColor} ${headerBg}`}
         onClick={() => setOpen(o => !o)}
       >
-        {/* Top row: placement + meta + augments. Units moved to their own
-            full-width row below so all 9 fit side-by-side instead of
-            wrapping inside the 420px cap. */}
-        <div className="flex items-center gap-3">
+        {/* Top row: placement + meta + augments. Wraps on phone so the
+            augments don't get squashed off-screen — they're core context. */}
+        <div className="flex items-start sm:items-center gap-3 flex-wrap">
           <PlacementBadge placement={placement} />
           <div className="flex-1 min-w-0">
             <ActivatedTraits participant={me} assets={assets} />
@@ -48,11 +47,10 @@ export default function MatchCard({ match, selfPuuid }: Props) {
           </div>
           <AugmentRow augments={me.augments} assets={assets} />
         </div>
-        {/* Units row — every unit a click-through to /tft/units/[id] with
-            hover tooltip showing the name + items. Indent left so the row
-            visually sits under the meta text rather than under the
-            placement badge, plus extra top margin to breathe. */}
-        <div className="mt-5 ml-15 flex gap-2 flex-wrap">
+        {/* Units row — every unit a click-through to /tft/units/[id]. On
+            mobile, indent only slightly (ml-2) so all 9 tiles get the
+            horizontal space they need; desktop indents under meta. */}
+        <div className="mt-4 sm:mt-5 ml-2 sm:ml-15 flex gap-1.5 sm:gap-2 flex-wrap">
           {me.units.map((u, i) => (
             <UnitTile key={i} unit={u} assets={assets} interactive />
           ))}
@@ -136,17 +134,19 @@ function ActivatedTraits({ participant, assets }: { participant: TftParticipantS
 
 function AugmentRow({ augments, assets }: { augments: string[]; assets: TftAssetsBundle | null }) {
   if (!augments?.length) return null;
+  // Used to be hidden on <lg — but augments are core context. Show them
+  // everywhere; just size them down on small screens so they don't crowd.
   return (
-    <div className="hidden lg:flex gap-1 flex-shrink-0">
+    <div className="flex gap-1 flex-shrink-0">
       {augments.map((a, i) => {
         const info = assets?.augments[a];
         const tierColor = info?.tier === 3 ? '#c39bff' : info?.tier === 2 ? '#e0c75a' : '#9ab0bf';
         const url = tftIconUrl(assets, info?.icon);
         const inner = url ? (
-          <img src={url} alt={info!.name} title={info!.name} className="w-7 h-7 rounded border-2 hover:scale-110 transition" style={{ borderColor: tierColor }} />
+          <img src={url} alt={info!.name} title={info!.name} className="w-6 h-6 sm:w-7 sm:h-7 rounded border-2 hover:scale-110 transition" style={{ borderColor: tierColor }} />
         ) : (
-          <div className="w-7 h-7 rounded border-2 bg-[#141c2e] flex items-center justify-center hover:brightness-125 transition" style={{ borderColor: tierColor }} title={info?.name || a}>
-            <span className="text-[8px] text-[#8a9bb0] truncate px-0.5">{(info?.name || a).slice(0, 4)}</span>
+          <div className="w-6 h-6 sm:w-7 sm:h-7 rounded border-2 bg-[#141c2e] flex items-center justify-center hover:brightness-125 transition" style={{ borderColor: tierColor }} title={info?.name || a}>
+            <span className="text-[7px] sm:text-[8px] text-[#8a9bb0] truncate px-0.5">{(info?.name || a).slice(0, 4)}</span>
           </div>
         );
         return (

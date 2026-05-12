@@ -104,6 +104,7 @@ export default function TftAugmentsPage() {
               <div className="text-right">{t('tft.top4')}</div>
               <div className="text-right">{t('tft.gamesShort')}</div>
             </div>
+            <div className="md:hidden px-4 py-2 text-[10px] uppercase tracking-widest text-[#4a5a70] bg-[#0a0e1a]">Augment</div>
             {rows.map(r => {
               const meta = assets?.augments[r.apiName];
               const tierColor = TIER_COLORS[meta?.tier ?? 0] || '#4a5a70';
@@ -111,18 +112,27 @@ export default function TftAugmentsPage() {
               return (
                 <a key={`${r.apiName}-${r.slot ?? 'all'}`}
                    href={`/tft/augments/${encodeURIComponent(r.apiName)}?bucket=${filters.bucket}`}
-                   className="grid grid-cols-[3rem_1fr_5rem_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 items-center text-xs border-t border-[#1e2a3a] hover:bg-white/5">
-                  {url ? (
-                    <img src={url} alt={meta!.name} className="w-9 h-9 rounded border-2" style={{ borderColor: tierColor }} />
-                  ) : (
-                    <div className="w-9 h-9 rounded border-2 bg-[#1e2a3a] flex items-center justify-center text-[8px] text-[#4a5a70]" style={{ borderColor: tierColor }}>{prettyAug(r.apiName)}</div>
-                  )}
-                  <div className="text-white">{meta?.name || prettyAug(r.apiName)}</div>
-                  <div className="text-right text-xs" style={{ color: tierColor }}>{TIER_LABELS[meta?.tier ?? 0] || '—'}</div>
-                  <div className="text-right text-white">{r.avgPlacement?.toFixed(2) ?? '—'}</div>
-                  <div className="text-right text-[#8a9bb0]">{r.pickRate != null ? `${(r.pickRate * 100).toFixed(1)}%` : '—'}</div>
-                  <div className="text-right text-[#8a9bb0]">{r.top4Rate != null ? `${(r.top4Rate * 100).toFixed(1)}%` : '—'}</div>
-                  <div className="text-right text-[#4a5a70]">{r.games}</div>
+                   className="block md:grid md:grid-cols-[3rem_1fr_5rem_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 md:items-center text-xs border-t border-[#1e2a3a] hover:bg-white/5">
+                  <div className="flex items-center gap-3 md:contents">
+                    {url ? (
+                      <img src={url} alt={meta!.name} className="w-9 h-9 rounded border-2 flex-shrink-0" style={{ borderColor: tierColor }} />
+                    ) : (
+                      <div className="w-9 h-9 rounded border-2 bg-[#1e2a3a] flex items-center justify-center text-[8px] text-[#4a5a70] flex-shrink-0" style={{ borderColor: tierColor }}>{prettyAug(r.apiName)}</div>
+                    )}
+                    <div className="flex-1 min-w-0 md:flex-initial">
+                      <div className="text-white truncate">{meta?.name || prettyAug(r.apiName)}</div>
+                      <div className="md:hidden text-[10px]" style={{ color: tierColor }}>
+                        {TIER_LABELS[meta?.tier ?? 0] || '—'}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="hidden md:block text-right text-xs" style={{ color: tierColor }}>{TIER_LABELS[meta?.tier ?? 0] || '—'}</div>
+                  <div className="grid grid-cols-4 gap-2 mt-1.5 pl-12 md:pl-0 md:mt-0 md:contents">
+                    <Cell label={t('tft.avgPlacement')} value={r.avgPlacement?.toFixed(2) ?? '—'} accent="white" />
+                    <Cell label={t('tft.pickRate')} value={r.pickRate != null ? `${(r.pickRate * 100).toFixed(1)}%` : '—'} />
+                    <Cell label={t('tft.top4')} value={r.top4Rate != null ? `${(r.top4Rate * 100).toFixed(1)}%` : '—'} />
+                    <Cell label={t('tft.gamesShort')} value={String(r.games)} accent="muted" />
+                  </div>
                 </a>
               );
             })}
@@ -135,3 +145,16 @@ export default function TftAugmentsPage() {
 }
 
 function prettyAug(s: string) { return s.replace(/^TFT\d+_Augment_/, '').slice(0, 10); }
+
+function Cell({ label, value, accent }: { label: string; value: string; accent?: 'white' | 'muted' }) {
+  const valueClass = accent === 'white' ? 'text-white' : accent === 'muted' ? 'text-[#4a5a70]' : 'text-[#8a9bb0]';
+  return (
+    <>
+      <div className="md:hidden">
+        <div className="text-[#4a5a70] text-[9px] uppercase tracking-widest leading-tight">{label}</div>
+        <div className={`${valueClass} tabular-nums leading-tight`}>{value}</div>
+      </div>
+      <div className={`hidden md:block text-right ${valueClass} tabular-nums`}>{value}</div>
+    </>
+  );
+}

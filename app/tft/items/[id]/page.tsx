@@ -6,7 +6,7 @@ import Footer from '../../../components/Footer';
 import TierFilter, { type TierBucket } from '../../../components/tft/TierFilter';
 import EmptyData from '../../../components/tft/EmptyData';
 import { useI18n } from '../../../lib/i18n';
-import { loadTftAssets, tftIconUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 
 interface ItemDetail {
   apiName: string;
@@ -128,7 +128,7 @@ export default function TftItemDetailPage() {
                 <div className="flex flex-wrap gap-2">
                   {data.topUsers.map(u => {
                     const ch = assets?.champions[u.characterId];
-                    const churl = tftIconUrl(assets, ch?.icon);
+                    const churl = tftChampionTileUrl(assets, ch);
                     return (
                       <a key={u.characterId} href={`/tft/units/${encodeURIComponent(u.characterId)}?bucket=${bucket}`}
                          className="flex flex-col items-center gap-1 bg-[#141c2e] border border-[#1e2a3a] rounded p-2 w-20 hover:border-[#7B61FF]/50">

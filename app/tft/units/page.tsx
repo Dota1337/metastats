@@ -11,7 +11,7 @@ import StatsFilterBar, {
   type PatchInfo,
 } from '../../components/tft/StatsFilterBar';
 import { useI18n } from '../../lib/i18n';
-import { loadTftAssets, tftIconUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
+import { loadTftAssets, tftChampionTileUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import TftHero from '../../components/tft/TftHero';
 
 interface UnitRow {
@@ -114,7 +114,7 @@ export default function TftUnitsPage() {
               const ch = assets?.champions[u.characterId];
               const cost = ch?.cost ?? 1;
               const costColor = costColorOf(cost);
-              const url = tftIconUrl(assets, ch?.icon);
+              const url = tftChampionTileUrl(assets, ch);
               return (
                 <a
                   key={u.characterId}

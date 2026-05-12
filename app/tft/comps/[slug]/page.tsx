@@ -7,7 +7,7 @@ import TierFilter, { type TierBucket } from '../../../components/tft/TierFilter'
 import EmptyData from '../../../components/tft/EmptyData';
 import CompCard from '../../../components/tft/CompCard';
 import { useI18n } from '../../../lib/i18n';
-import { loadTftAssets, tftIconUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 
 // Slot meaning in tft_daily_augment_stats: 0 = stage 2-1, 1 = 3-2, 2 = 4-2.
 const SLOT_LABELS = ['2-1', '3-2', '4-2'] as const;
@@ -248,7 +248,7 @@ export default function TftCompDetailPage() {
                 <div className="flex flex-wrap gap-2">
                   {comp.typicalUnits.map((u: { characterId: string; count: number }) => {
                     const ch = assets?.champions[u.characterId];
-                    const url = tftIconUrl(assets, ch?.icon);
+                    const url = tftChampionTileUrl(assets, ch);
                     const cost = ch?.cost ?? 1;
                     return (
                       <a

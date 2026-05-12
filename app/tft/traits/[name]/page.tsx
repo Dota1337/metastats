@@ -4,7 +4,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
-import { loadTftAssets, tftIconUrl, type TftAssetsBundle, type TftTrait, type TftTraitTier } from '../../../lib/tft-cdragon';
+import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle, type TftTrait, type TftTraitTier } from '../../../lib/tft-cdragon';
 
 // Per-trait detail page. Combines three data sources:
 //   1) /api/tft/traits — stat rows (1 per activation level)
@@ -173,7 +173,7 @@ export default function TftTraitDetailPage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
               {matchingUnits.slice(0, 15).map(u => {
                 const champion = assets?.champions[u.characterId];
-                const champUrl = tftIconUrl(assets, champion?.icon);
+                const champUrl = tftChampionTileUrl(assets, champion);
                 const cost = champion?.cost ?? 1;
                 return (
                   <a

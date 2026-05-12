@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { loadTftAssets, tftIconUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
+import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import type { TftMatchSummary, TftParticipantSummary } from '../../lib/tft-match-processor';
 
 interface Props {
@@ -186,7 +186,10 @@ function UnitTile({ unit, assets, small, interactive }: { unit: any; assets: Tft
   const itemSz = small ? 'w-3 h-3' : 'w-4 h-4';
   const cost = (info?.cost ?? unit.rarity + 1) || 1;
   const costColor = costToColor(cost);
-  const url = tftIconUrl(assets, info?.icon);
+  // Square HUD tile rather than splash-centered — same change applied
+  // across CompCard / units list / unit-detail. The wide art cropped the
+  // champion's face under `object-cover` and looked offset.
+  const url = tftChampionTileUrl(assets, info);
   const name = info?.name || prettyCharId(unit.characterId);
   const stars = unit.tier > 1 ? ` ${'★'.repeat(unit.tier)}` : '';
   const itemNames = (unit.items || [])

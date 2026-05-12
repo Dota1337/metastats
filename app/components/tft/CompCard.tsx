@@ -1,6 +1,6 @@
 'use client';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
-import { tftIconUrl } from '../../lib/tft-cdragon';
+import { tftIconUrl, tftChampionTileUrl } from '../../lib/tft-cdragon';
 
 interface Comp {
   source?: 'data' | 'editorial';
@@ -58,8 +58,8 @@ export default function CompCard({
                style={{ color: tier.color, backgroundColor: tier.bg, border: `1px solid ${tier.color}40` }}>
             {tier.label}
           </div>
-          {tftIconUrl(assets, carry?.icon) ? (
-            <img src={tftIconUrl(assets, carry!.icon)!} alt={carry!.name} className="w-12 h-12 rounded border-2 border-[#c39bff] object-cover" />
+          {tftChampionTileUrl(assets, carry) ? (
+            <img src={tftChampionTileUrl(assets, carry)!} alt={carry!.name} className="w-12 h-12 rounded border-2 border-[#c39bff] object-cover" />
           ) : (
             <div className="w-12 h-12 rounded bg-[#1e2a3a]" />
           )}
@@ -98,7 +98,13 @@ export default function CompCard({
             {typicalUnits.map(u => {
               const ch = assets?.champions[u.characterId];
               const isCarry = parts && u.characterId === parts.carry;
-              const url = tftIconUrl(assets, ch?.icon);
+              // Square HUD tile (hud/<id>_square.<mutator>.png) — same source
+              // metatft + ingame use; the wide splash art that CompCard used
+              // to pull cropped to the chest under `object-cover` and looked
+              // off-center. Fallback to splash via tftChampionTileUrl()
+              // handles cross-set / special units that don't have the
+              // square path.
+              const url = tftChampionTileUrl(assets, ch);
               return (
                 <a
                   key={u.characterId}

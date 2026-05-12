@@ -4,7 +4,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
-import { loadTftAssets, tftIconUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import type { TftMatchSummary, TftParticipantSummary } from '../../../lib/tft-match-processor';
 
 // Permanent URL for one TFT match. Reuses the same match-shaped data as the
@@ -223,7 +223,7 @@ function UnitTile({ unit, assets }: { unit: any; assets: TftAssetsBundle | null 
   const info = assets?.champions[unit.characterId];
   const cost = (info?.cost ?? unit.rarity + 1) || 1;
   const costColor = costToColor(cost);
-  const url = tftIconUrl(assets, info?.icon);
+  const url = tftChampionTileUrl(assets, info);
   const name = info?.name || prettyCharId(unit.characterId);
   const stars = unit.tier > 1 ? ` ${'★'.repeat(unit.tier)}` : '';
   const itemNames = (unit.items || [])

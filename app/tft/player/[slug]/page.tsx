@@ -23,7 +23,7 @@ interface TftProRecord {
   twitter_handle: string | null;
 }
 import { loadTftSetMeta } from '../../../lib/tft-dd-assets';
-import { loadTftAssets, tftIconUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { formatTier } from '../../../lib/rank-format';
 import type { TftMatchSummary } from '../../../lib/tft-match-processor';
 
@@ -477,7 +477,7 @@ function RankBadge({ rank }: { rank: number }) {
 function UnitChip({ rank, characterId, games, avg, assets }: { rank: number; characterId: string; games: number; avg: number; assets: TftAssetsBundle | null }) {
   const { t } = useI18n();
   const info = assets?.champions[characterId];
-  const url = tftIconUrl(assets, info?.icon);
+  const url = tftChampionTileUrl(assets, info);
   const cost = info?.cost ?? 1;
   const costColor = costToColor(cost);
   const name = info?.name || characterId.replace(/^TFT\d+_/, '');

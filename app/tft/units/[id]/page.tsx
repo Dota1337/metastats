@@ -6,7 +6,7 @@ import Footer from '../../../components/Footer';
 import TierFilter, { type TierBucket } from '../../../components/tft/TierFilter';
 import EmptyData from '../../../components/tft/EmptyData';
 import { useI18n } from '../../../lib/i18n';
-import { loadTftAssets, tftIconUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 
 interface UnitDetail {
   characterId: string;
@@ -46,8 +46,8 @@ export default function TftUnitDetailPage() {
         <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-5 mb-5">
           <a href="/tft/units" className="text-[#7B61FF] text-xs hover:underline">← {t('nav.units')}</a>
           <div className="flex items-center gap-4 mt-2">
-            {tftIconUrl(assets, champ?.icon) ? (
-              <img src={tftIconUrl(assets, champ!.icon)!} alt={champ!.name} className="w-16 h-16 rounded-lg border-2 border-[#7B61FF] object-cover" />
+            {tftChampionTileUrl(assets, champ) ? (
+              <img src={tftChampionTileUrl(assets, champ)!} alt={champ!.name} className="w-16 h-16 rounded-lg border-2 border-[#7B61FF] object-cover" />
             ) : (
               <div className="w-16 h-16 rounded-lg bg-[#1e2a3a]" />
             )}

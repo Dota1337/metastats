@@ -44,6 +44,28 @@ const REGIONAL = ({
 const API_KEY = process.env.RIOT_API_KEY_TFT;
 if (!API_KEY) { console.error('RIOT_API_KEY_TFT env var required'); process.exit(1); }
 
+const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://bwawxwgxxfafbruebixa.supabase.co';
+const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+// Pre-fetch the set of TFT pro PUUIDs so the aggregator can flag matches
+// containing pros and write a parallel `pro_pool` bucket. Falls through to
+// an empty set if Supabase isn't reachable — pipeline keeps working, just
+// without pro-only stats.
+async function loadProPuuids() {
+  if (!SUPA_KEY) return new Set();
+  try {
+    const url = `${SUPA_URL}/rest/v1/tft_pro_players?select=puuid`;
+    const r = await fetch(url, {
+      headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` },
+    });
+    if (!r.ok) return new Set();
+    const rows = await r.json();
+    const set = new Set();
+    for (const row of rows || []) if (row.puuid) set.add(row.puuid);
+    return set;
+  } catch { return new Set(); }
+}
+
 let setMeta = null;
 if (existsSync('public/tft-set.json')) {
   try { setMeta = JSON.parse(readFileSync('public/tft-set.json', 'utf8')); } catch {}
@@ -156,6 +178,8 @@ async function main() {
 
   // Step 3: fetch match details + aggregate
   console.log(`\n[3/3] Aggregating ${allMatchIds.size} matches`);
+  const proPuuids = await loadProPuuids();
+  console.log(`  [pro] loaded ${proPuuids.size} pro PUUIDs for pro_pool tagging`);
   // Use the helper so we can't drift from the aggregator's expected shape —
   // last time we hand-rolled the init we forgot byComp/byCompPair.
   const agg = emptyAggregate();
@@ -164,7 +188,7 @@ async function main() {
     const id = ids[j];
     const raw = await rl(`https://${REGIONAL}.api.riotgames.com/tft/match/v1/matches/${id}?api_key=${API_KEY}`);
     if (!raw || raw._status) { agg.matchesSkipped++; continue; }
-    aggregateMatch(raw, agg, { tierBucket: matchTier[id], currentSet: CURRENT_SET });
+    aggregateMatch(raw, agg, { tierBucket: matchTier[id], currentSet: CURRENT_SET, proPuuids });
     if ((j + 1) % 100 === 0 || j === ids.length - 1) {
       console.log(`  ${j+1}/${ids.length} (${agg.matchesAnalyzed} aggregated, ${agg.matchesSkipped} skipped)`);
     }

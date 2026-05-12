@@ -1246,6 +1246,81 @@ const translations = {
     '\uD45C\uC900', '\u6807\u51C6',
     'Est\u00E1ndar', 'Standard'
   ),
+
+  // \u2500 Pro-Player Vertical (S\u00E4ule 2) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  'tft.pros.title': t6(
+    'TFT Pro-Spieler', 'TFT Pro Players',
+    'TFT \uD504\uB85C \uC120\uC218', 'TFT \u804C\u4E1A\u9009\u624B',
+    'Jugadores Pro TFT', 'Joueurs Pro TFT'
+  ),
+  'tft.pros.subtitle': t6(
+    'Verifizierte Tournament-Spieler und Streamer mit Riot-Account-Validierung',
+    'Verified tournament players and streamers with Riot account validation',
+    '\uB9AC\uC624\uD2B8 \uACC4\uC815 \uAC80\uC99D\uC744 \uD1B5\uACFC\uD55C \uD1A0\uB108\uBA3C\uD2B8 \uC120\uC218 \uBC0F \uC2A4\uD2B8\uB9AC\uBA38',
+    '\u5DF2\u9A8C\u8BC1\u7684\u8D5B\u4E8B\u9009\u624B\u4E0E\u4E3B\u64AD\uFF0C\u9644 Riot \u8D26\u53F7\u6821\u9A8C',
+    'Jugadores de torneos y streamers verificados con validaci\u00F3n de cuenta Riot',
+    'Joueurs de tournoi et streamers v\u00E9rifi\u00E9s avec validation Riot'
+  ),
+  'tft.pros.empty': t6(
+    'Keine Pros gefunden. Filter zur\u00FCcksetzen?',
+    'No pros found. Reset filters?',
+    '\uD504\uB85C\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4. \uD544\uD130\uB97C \uC7AC\uC124\uC815\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?',
+    '\u672A\u627E\u5230\u804C\u4E1A\u9009\u624B\u3002\u91CD\u7F6E\u7B5B\u9009\uFF1F',
+    'No se encontraron pros. \u00BFRestablecer filtros?',
+    'Aucun pro trouv\u00E9. R\u00E9initialiser les filtres ?'
+  ),
+  'tft.pros.allTeams': t6(
+    'Alle Teams', 'All Teams',
+    '\uBAA8\uB4E0 \uD300', '\u6240\u6709\u6218\u961F',
+    'Todos los equipos', 'Toutes les \u00E9quipes'
+  ),
+  'tft.pros.allRoles': t6(
+    'Alle Rollen', 'All Roles',
+    '\uBAA8\uB4E0 \uC5ED\uD560', '\u6240\u6709\u89D2\u8272',
+    'Todos los roles', 'Tous les r\u00F4les'
+  ),
+  'tft.pros.searchPlaceholder': t6(
+    'Suche Name, Team, Riot-ID \u2026',
+    'Search name, team, Riot ID \u2026',
+    '\uC774\uB984, \uD300, Riot ID \uAC80\uC0C9\u2026',
+    '\u641C\u7D22\u540D\u79F0\u3001\u6218\u961F\u3001Riot ID\u2026',
+    'Buscar nombre, equipo, Riot ID\u2026',
+    'Rechercher nom, \u00E9quipe, Riot ID\u2026'
+  ),
+  'tft.pros.col.player': t6(
+    'Pro-Name / Real Name', 'Pro Name / Real Name',
+    '\uD504\uB85C \uC774\uB984 / \uBCF8\uBA85', '\u804C\u4E1A ID / \u771F\u5B9E\u59D3\u540D',
+    'Nombre Pro / Real', 'Nom Pro / R\u00E9el'
+  ),
+  'tft.pros.col.team': t6(
+    'Team', 'Team', '\uD300', '\u6218\u961F', 'Equipo', '\u00C9quipe'
+  ),
+  'tft.pros.col.role': t6(
+    'Rolle', 'Role', '\uC5ED\uD560', '\u89D2\u8272', 'Rol', 'R\u00F4le'
+  ),
+  'tft.pros.col.region': t6(
+    'Region', 'Region', '\uC9C0\uC5ED', '\u533A\u57DF', 'Regi\u00F3n', 'R\u00E9gion'
+  ),
+
+  // \u2500 Pro-Picks Filter Toggle \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  'tft.filter.proOnly': t6(
+    'Nur Pros',
+    'Pros Only',
+    '\uD504\uB85C\uB9CC',
+    '\u4EC5\u804C\u4E1A',
+    'Solo Pros',
+    'Pros uniquement'
+  ),
+
+  // \u2500 Comp Pro-vs-Solo-Queue Section \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  'tft.comp.proVsSolo': t6(
+    'Pro vs Solo-Queue',
+    'Pro vs Solo Queue',
+    '\uD504\uB85C vs \uC194\uB85C\uD050',
+    '\u804C\u4E1A vs \u5355\u6392',
+    'Pro vs Cola Solo',
+    'Pro vs Solo Queue'
+  ),
 } as const;
 
 type TranslationKey = keyof typeof translations;

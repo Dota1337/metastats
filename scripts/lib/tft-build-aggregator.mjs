@@ -120,7 +120,7 @@ function classifyComp(participant) {
  *        whose match this is. We only count once per match per tier.
  */
 export function aggregateMatch(rawMatch, agg, opts) {
-  const { tierBucket, currentSet, focusPuuid } = opts;
+  const { tierBucket, currentSet, focusPuuid, proPuuids } = opts;
   if (!rawMatch?.info?.participants) { agg.matchesSkipped++; return false; }
   const info = rawMatch.info;
   // Filter out non-ranked queues just in case the crawler missed it.
@@ -140,6 +140,22 @@ export function aggregateMatch(rawMatch, agg, opts) {
     (agg.participantsByBucket.get(tierBucket) || 0) + participants.length,
   );
 
+  // Detect whether this match has at least one pro participant. If yes,
+  // we'll write every per-participant aggregation TWICE — once into the
+  // normal tierBucket and once into the synthetic 'pro_pool' bucket. This
+  // gives us pro-only Avg/Top4/Pick rates without a parallel schema —
+  // tft-supabase-reader just treats pro_pool as another bucket name.
+  const hasPro = proPuuids && proPuuids.size > 0 && participants.some(p => p.puuid && proPuuids.has(p.puuid));
+  if (hasPro) {
+    agg.participantsByBucket.set(
+      'pro_pool',
+      (agg.participantsByBucket.get('pro_pool') || 0) + participants.length,
+    );
+  }
+  // Bucket-list each aggregation writes to. We loop over this instead of
+  // duplicating the inner aggregation code.
+  const buckets = hasPro ? [tierBucket, 'pro_pool'] : [tierBucket];
+
   // We aggregate every participant of the match (not just focusPuuid). The
   // tier-bucket attribution uses the focus player's tier — that's how
   // metatft / tactics.tools attribute games too: a match shows up under the
@@ -155,54 +171,60 @@ export function aggregateMatch(rawMatch, agg, opts) {
     const top4 = placement <= 4;
     const top1 = placement === 1;
 
-    // Per unit
+    // Per unit — writes to every bucket in `buckets` (tierBucket + optionally
+    // 'pro_pool'). The inner loop is identical; we just reach into the
+    // bucket-level map per iteration.
     for (const u of p.units || []) {
       const cid = u.character_id;
       if (!cid) continue;
       const unitBuckets = getOrCreate(agg.byUnit, cid, () => new Map());
-      const ub = getOrCreate(unitBuckets, tierBucket, newUnitBucket);
-      ub.games++;
-      ub.sumPlacement += placement;
-      if (top4) ub.top4++;
-      if (top1) ub.top1++;
+      for (const bucket of buckets) {
+        const ub = getOrCreate(unitBuckets, bucket, newUnitBucket);
+        ub.games++;
+        ub.sumPlacement += placement;
+        if (top4) ub.top4++;
+        if (top1) ub.top1++;
 
-      const items = Array.isArray(u.itemNames) ? u.itemNames : [];
-      // Items: count each occurrence (3 items = 3 increments).
-      // top4/sumPlacement are tied to the unit's match, not item slot, so they
-      // stay accurate even with the per-occurrence model.
-      const seenItem = new Set();
-      for (const it of items) {
-        if (!it || seenItem.has(it)) continue;   // dedup within one unit slot triple
-        seenItem.add(it);
-        const ie = getOrCreate(ub.items, it, () => ({ games: 0, top4: 0, sumPlacement: 0 }));
-        ie.games++;
-        ie.sumPlacement += placement;
-        if (top4) ie.top4++;
-
-        // Reverse index: byItem
-        const itemBuckets = getOrCreate(agg.byItem, it, () => new Map());
-        const ib = getOrCreate(itemBuckets, tierBucket, newItemBucket);
-        ib.games++;
-        ib.sumPlacement += placement;
-        if (top4) ib.top4++;
-        const userEntry = getOrCreate(ib.users, cid, () => ({ games: 0, sumPlacement: 0 }));
-        userEntry.games++;
-        userEntry.sumPlacement += placement;
+        const items = Array.isArray(u.itemNames) ? u.itemNames : [];
+        const seenItem = new Set();
+        for (const it of items) {
+          if (!it || seenItem.has(it)) continue;
+          seenItem.add(it);
+          const ie = getOrCreate(ub.items, it, () => ({ games: 0, top4: 0, sumPlacement: 0 }));
+          ie.games++;
+          ie.sumPlacement += placement;
+          if (top4) ie.top4++;
+        }
+        if (items.length >= 3) {
+          const sorted = [...items].sort();
+          const key = sorted.join('|');
+          const se = getOrCreate(ub.itemSets, key, () => ({ items: sorted, games: 0, top4: 0, sumPlacement: 0 }));
+          se.games++;
+          se.sumPlacement += placement;
+          if (top4) se.top4++;
+        }
       }
 
-      // Item set: only count when the unit has 3 finished items
-      if (items.length >= 3) {
-        const sorted = [...items].sort();
-        const key = sorted.join('|');
-        const se = getOrCreate(ub.itemSets, key, () => ({ items: sorted, games: 0, top4: 0, sumPlacement: 0 }));
-        se.games++;
-        se.sumPlacement += placement;
-        if (top4) se.top4++;
+      // byItem reverse index — same dual-bucket pattern
+      const items2 = Array.isArray(u.itemNames) ? u.itemNames : [];
+      const seenItem2 = new Set();
+      for (const it of items2) {
+        if (!it || seenItem2.has(it)) continue;
+        seenItem2.add(it);
+        const itemBuckets = getOrCreate(agg.byItem, it, () => new Map());
+        for (const bucket of buckets) {
+          const ib = getOrCreate(itemBuckets, bucket, newItemBucket);
+          ib.games++;
+          ib.sumPlacement += placement;
+          if (top4) ib.top4++;
+          const userEntry = getOrCreate(ib.users, cid, () => ({ games: 0, sumPlacement: 0 }));
+          userEntry.games++;
+          userEntry.sumPlacement += placement;
+        }
       }
     }
 
-    // Per augment — slot index = position in the augments array (0,1,2 maps
-    // to 2-1, 3-2, 4-2 in standard).
+    // Per augment — slot index = position in the augments array
     const augments = Array.isArray(p.augments) ? p.augments : [];
     for (let i = 0; i < augments.length; i++) {
       const apiName = augments[i];
@@ -213,10 +235,12 @@ export function aggregateMatch(rawMatch, agg, opts) {
         slotKey,
         () => new Map(),
       );
-      const ab = getOrCreate(slotBuckets, tierBucket, newAugmentBucket);
-      ab.games++;
-      ab.sumPlacement += placement;
-      if (top4) ab.top4++;
+      for (const bucket of buckets) {
+        const ab = getOrCreate(slotBuckets, bucket, newAugmentBucket);
+        ab.games++;
+        ab.sumPlacement += placement;
+        if (top4) ab.top4++;
+      }
     }
 
     // Per trait — only when activated (style > 0)
@@ -228,41 +252,41 @@ export function aggregateMatch(rawMatch, agg, opts) {
         activation,
         () => new Map(),
       );
-      const tb = getOrCreate(actBuckets, tierBucket, newTraitBucket);
-      tb.games++;
-      tb.sumPlacement += placement;
-      if (top4) tb.top4++;
+      for (const bucket of buckets) {
+        const tb = getOrCreate(actBuckets, bucket, newTraitBucket);
+        tb.games++;
+        tb.sumPlacement += placement;
+        if (top4) tb.top4++;
+      }
     }
 
-    // Per comp cluster
+    // Per comp cluster — same dual-bucket pattern. typicalUnits / augments /
+    // carryItems Maps live on each bucket entry; they accumulate independently.
     if (compInfo) {
       const compBuckets = getOrCreate(agg.byComp, compInfo.clusterKey, () => new Map());
-      const cb = getOrCreate(compBuckets, tierBucket, newCompBucket);
-      cb.games++;
-      cb.sumPlacement += placement;
-      // Track final level and last_round so the comp-detail page can
-      // surface leveling-tempo ("Did this comp tend to be Lvl 8 by 5-1?").
-      cb.sumLevel += Number(p.level ?? 0);
-      cb.sumLastRound += Number(p.last_round ?? 0);
-      if (top4) cb.top4++;
-      if (top1) cb.top1++;
-      // Tag every unit on the board so the frontend can show "typical roster"
-      for (const u of p.units || []) {
-        if (!u.character_id) continue;
-        cb.typicalUnits.set(u.character_id, (cb.typicalUnits.get(u.character_id) || 0) + 1);
-      }
-      // Augments paired with this comp
-      const augs = Array.isArray(p.augments) ? p.augments : [];
-      for (const a of augs) {
-        if (!a) continue;
-        const ae = getOrCreate(cb.typicalAugments, a, () => ({ count: 0, sumPlacement: 0 }));
-        ae.count++;
-        ae.sumPlacement += placement;
-      }
-      // Carry's full 3-item build, if any
-      if (compInfo.carryItems.length === 3) {
-        const ckey = compInfo.carryItems.join('|');
-        cb.carryItems.set(ckey, (cb.carryItems.get(ckey) || 0) + 1);
+      for (const bucket of buckets) {
+        const cb = getOrCreate(compBuckets, bucket, newCompBucket);
+        cb.games++;
+        cb.sumPlacement += placement;
+        cb.sumLevel += Number(p.level ?? 0);
+        cb.sumLastRound += Number(p.last_round ?? 0);
+        if (top4) cb.top4++;
+        if (top1) cb.top1++;
+        for (const u of p.units || []) {
+          if (!u.character_id) continue;
+          cb.typicalUnits.set(u.character_id, (cb.typicalUnits.get(u.character_id) || 0) + 1);
+        }
+        const augs = Array.isArray(p.augments) ? p.augments : [];
+        for (const a of augs) {
+          if (!a) continue;
+          const ae = getOrCreate(cb.typicalAugments, a, () => ({ count: 0, sumPlacement: 0 }));
+          ae.count++;
+          ae.sumPlacement += placement;
+        }
+        if (compInfo.carryItems.length === 3) {
+          const ckey = compInfo.carryItems.join('|');
+          cb.carryItems.set(ckey, (cb.carryItems.get(ckey) || 0) + 1);
+        }
       }
     }
   }
@@ -295,7 +319,11 @@ export function aggregateMatch(rawMatch, agg, opts) {
 // pick a slice without re-aggregating. Pure summation — averages computed at
 // emit-time from the rolled sums.
 function rollUp(perBucket) {
-  const all = mergeBuckets([...perBucket.values()]);
+  // 'all' aggregates only the base tier buckets — pro_pool is a parallel
+  // dimension (it's already a duplicate of tier-bucket games for matches
+  // with pro participants), so summing it into 'all' would double-count.
+  const baseEntries = TIER_BUCKETS.map(b => perBucket.get(b)).filter(Boolean);
+  const all = mergeBuckets(baseEntries);
   const masterPlus = mergeBuckets(APEX_BUCKETS.map(b => perBucket.get(b)).filter(Boolean));
   if (all) perBucket.set('all', all);
   if (masterPlus) perBucket.set('master_plus', masterPlus);
@@ -346,13 +374,15 @@ export function finalize(agg, opts = {}) {
   for (const buckets of agg.byComp.values())     rollUp(buckets);
 
   // Roll up participants per bucket into 'all' and 'master_plus' so the
-  // pickRate denominator works for the rolled-up roll-ups too.
+  // pickRate denominator works for the rolled-up roll-ups too. pro_pool
+  // is excluded from 'all' for the same reason rollUp() above excludes it —
+  // it duplicates already-counted participants.
   const participantsByBucket = {};
   let allP = 0;
   let mpP = 0;
   for (const [b, count] of agg.participantsByBucket) {
     participantsByBucket[b] = count;
-    allP += count;
+    if (TIER_BUCKETS.includes(b)) allP += count;
     if (APEX_BUCKETS.includes(b)) mpP += count;
   }
   participantsByBucket.all = allP;

@@ -1,0 +1,45 @@
+[
+  {
+    "proName": "Setsuko",
+    "realName": "Kevin Jiang",
+    "region": "na1",
+    "riotId": "setsuko1#NA1",
+    "role": "Player",
+    "country": "United States",
+    "twitch": "setsuko",
+    "twitter": "setsukotft"
+  },
+  {
+    "proName": "Frodan",
+    "realName": "Dan Chou",
+    "region": "na1",
+    "riotId": "Frodan#NA1",
+    "role": "Caster",
+    "country": "United States",
+    "twitch": "frodan",
+    "twitter": "frodantft"
+  },
+  {
+    "proName": "Robinsongz",
+    "region": "na1",
+    "riotId": "Robinsongz#NA1",
+    "role": "Streamer",
+    "country": "United States",
+    "twitch": "robinsongz"
+  },
+  {
+    "proName": "Soju",
+    "region": "na1",
+    "riotId": "Soju#NA1",
+    "role": "Streamer",
+    "country": "United States",
+    "twitch": "soju"
+  },
+  {
+    "proName": "Kurumx",
+    "region": "euw1",
+    "riotId": "Kurumx#EUW",
+    "role": "Player",
+    "country": "United Kingdom"
+  }
+]

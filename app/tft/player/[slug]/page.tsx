@@ -11,6 +11,17 @@ import MatchCard from '../../../components/tft/MatchCard';
 import MarketValueHero from '../../../components/tft/MarketValueHero';
 import { useI18n } from '../../../lib/i18n';
 import { loadProLookup, lookupPro, type ProPlayer } from '../../../lib/pro-players';
+
+interface TftProRecord {
+  pro_name: string;
+  real_name: string | null;
+  team: string | null;
+  role: string | null;
+  country: string | null;
+  source: string;
+  twitch_handle: string | null;
+  twitter_handle: string | null;
+}
 import { loadTftSetMeta } from '../../../lib/tft-dd-assets';
 import { loadTftAssets, tftIconUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { formatTier } from '../../../lib/rank-format';
@@ -106,19 +117,33 @@ export default function TftPlayerPage() {
   const [statsSetOverride, setStatsSetOverride] = useState<number | null>(null);
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
   const [proInfo, setProInfo] = useState<ProPlayer | null>(null);
+  const [tftProInfo, setTftProInfo] = useState<TftProRecord | null>(null);
 
   useEffect(() => {
     fetch('https://ddragon.leagueoflegends.com/api/versions.json')
       .then(r => r.json()).then(v => setDdVersion(v[0])).catch(() => {});
     loadTftSetMeta().then(meta => { if (meta) setCurrentSet(meta.setNumber); });
     loadTftAssets().then(setAssets);
-    // Pro-Lookup is a single ~80kb JSON shared with the LoL side; loaded
-    // once globally and used by both /player/[slug] and /tft/player/[slug].
+    // Pro-Lookup against the LoL-Liquipedia JSON. Quick name-based match;
+    // gets overridden by the TFT-native lookup below if that one finds a
+    // hit (TFT-native carries source provenance + tournament data).
     loadProLookup().then(lookup => {
       const pro = lookupPro(lookup, fullName);
       if (pro) setProInfo(pro);
     });
   }, [fullName]);
+
+  // TFT-native pro lookup: keyed by puuid which we only know after the
+  // summoner fetch resolves. Runs in parallel with stats once that's done.
+  useEffect(() => {
+    if (!data?.summoner.puuid) return;
+    let cancelled = false;
+    fetch(`/api/tft/pros?puuid=${data.summoner.puuid}`)
+      .then(r => r.ok ? r.json() : { pro: null })
+      .then(d => { if (!cancelled) setTftProInfo(d.pro || null); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [data?.summoner.puuid]);
 
   useEffect(() => {
     if (!gameName) return;
@@ -231,10 +256,20 @@ export default function TftPlayerPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-white text-xl font-medium">{gameName}</span>
-                    {proInfo && <ProBadge pro={proInfo} />}
+                    {/* TFT-native pro record wins if both sources match —
+                        it's puuid-verified, not just name-matched. */}
+                    {tftProInfo ? <TftProBadge pro={tftProInfo} /> : proInfo && <ProBadge pro={proInfo} />}
                   </div>
                   <div className="text-[#8a9bb0] text-sm">#{tagLine} · Level {data.summoner.summonerLevel ?? '—'}</div>
-                  {proInfo && (
+                  {tftProInfo && (
+                    <div className="text-[#a892ff] text-xs mt-0.5">
+                      {tftProInfo.pro_name}
+                      {tftProInfo.team && ` · ${tftProInfo.team}`}
+                      {tftProInfo.role && ` · ${tftProInfo.role}`}
+                      {tftProInfo.country && ` · ${tftProInfo.country}`}
+                    </div>
+                  )}
+                  {!tftProInfo && proInfo && (
                     <div className="text-[#a892ff] text-xs mt-0.5">
                       {proInfo.proName} · {proInfo.team} · {proInfo.role}
                     </div>
@@ -564,15 +599,30 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 function ProBadge({ pro }: { pro: ProPlayer }) {
-  // The cross-game pro-players.json is sourced from Leaguepedia's Cargo
-  // export — that's our verification anchor. The badge label calls that
-  // out so users see the provenance without needing the tooltip.
+  // Fallback badge — name-matched against the LoL-Liquipedia list. Used
+  // only when the puuid-verified TFT list has nothing for this account.
   return (
     <span
       title={`Verifiziert via Leaguepedia · ${pro.team} ${pro.role}`}
       className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#7B61FF]/15 text-[#7B61FF] text-[10px] uppercase tracking-widest font-medium border border-[#7B61FF]/40"
     >
       ✓ Verified Pro
+    </span>
+  );
+}
+
+function TftProBadge({ pro }: { pro: TftProRecord }) {
+  // TFT-native badge — the puuid is itself the verification (the crawler
+  // resolves Liquipedia's lolchess field against Riot's account-v1).
+  // Slightly different styling so users can tell at a glance that this is
+  // the TFT-native signal vs. the LoL-Liquipedia fallback.
+  const sourceLabel = pro.source === 'liquipedia' ? 'Liquipedia' : 'metastats';
+  return (
+    <span
+      title={`Verifiziert via ${sourceLabel} · ${pro.team || 'Free Agent'} ${pro.role || ''}`.trim()}
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#3ecf8e]/15 text-[#3ecf8e] text-[10px] uppercase tracking-widest font-medium border border-[#3ecf8e]/40"
+    >
+      ✓ Verified TFT Pro
     </span>
   );
 }

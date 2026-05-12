@@ -27,6 +27,10 @@ const REGION_OPTIONS: Option[] = [
 ];
 
 const BUCKET_OPTIONS: Option[] = [
+  // Pro-only filter at the very top — unique selling point and most
+  // attention-grabbing slice. Comes from the aggregator's pro_pool bucket
+  // tagged on matches with at least one TFT pro participant.
+  { value: 'pro_pool',    labelKey: 'tft.filter.proOnly' },
   { value: 'all',         labelKey: 'tft.filter.allRanks' },
   { value: 'master_plus', labelKey: 'tft.filter.masterPlus' },
   { value: 'challenger',  labelKey: 'tft.bucket.challenger' },

@@ -17,6 +17,10 @@ const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const PERSIST_BUCKETS = [
   'bronze', 'silver', 'gold', 'platinum', 'emerald',
   'diamond', 'master', 'grandmaster', 'challenger',
+  // Synthetic dimension: rows tagged `pro_pool` exist alongside the
+  // tier-bucket rows for any match containing a TFT pro participant.
+  // Lets the API filter to pro-only stats via `bucket=pro_pool`.
+  'pro_pool',
 ];
 
 const BATCH = 200;

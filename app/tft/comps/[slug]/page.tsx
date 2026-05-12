@@ -26,6 +26,7 @@ export default function TftCompDetailPage() {
   const slug = decodeURIComponent(String(params?.slug || ''));
   const [bucket, setBucket] = useState<TierBucket>((search.get('bucket') as TierBucket) || 'master_plus');
   const [comp, setComp] = useState<any | null | undefined>(undefined);
+  const [proComp, setProComp] = useState<any | null>(null);
   const [hasData, setHasData] = useState<boolean | null>(null);
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
   // Per-slot augment lookup: apiName -> { 0: {games, avgPlacement}, 1: {…}, 2: {…} }
@@ -34,10 +35,16 @@ export default function TftCompDetailPage() {
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
 
   useEffect(() => {
-    fetch(`/api/tft/comps?region=euw1&bucket=${bucket}&slug=${encodeURIComponent(slug)}`)
-      .then(r => r.json())
-      .then(d => { setHasData(!!d.hasData); setComp(d.comp || null); })
-      .catch(() => { setHasData(false); setComp(null); });
+    // Pull the normal-bucket comp + the pro-pool variant in parallel so the
+    // "Pro vs Solo Queue" section lights up as soon as both arrive.
+    Promise.all([
+      fetch(`/api/tft/comps?region=euw1&bucket=${bucket}&slug=${encodeURIComponent(slug)}`).then(r => r.json()),
+      fetch(`/api/tft/comps?region=all&bucket=pro_pool&slug=${encodeURIComponent(slug)}&minGames=5`).then(r => r.ok ? r.json() : { comp: null }),
+    ]).then(([normal, pro]) => {
+      setHasData(!!normal.hasData);
+      setComp(normal.comp || null);
+      setProComp(pro.comp || null);
+    }).catch(() => { setHasData(false); setComp(null); });
   }, [bucket, slug]);
 
   // Pull augment-by-slot stats so we can show each typical augment's likely
@@ -79,6 +86,46 @@ export default function TftCompDetailPage() {
         {comp && (
           <>
             <CompCard comp={comp} assets={assets} />
+
+            {/* Pro vs Solo-Queue divergence — only shown when the pro_pool
+                has at least a handful of games for this comp. Surfaces the
+                kind of insight no other TFT site has: do pros play this
+                differently than the ladder average? */}
+            {proComp && proComp.games >= 5 && (
+              <section className="mt-5 bg-gradient-to-br from-[#0d1526] to-[#0a1c14] border border-[#3ecf8e]/30 rounded p-4">
+                <h2 className="text-[#3ecf8e] text-xs uppercase tracking-widest mb-3">
+                  {t('tft.comp.proVsSolo')}
+                </h2>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <DeltaStat
+                    label={t('tft.avgPlacement')}
+                    pro={proComp.avgPlacement}
+                    solo={comp.avgPlacement}
+                    lowerIsBetter
+                    fmt={n => n.toFixed(2)}
+                  />
+                  <DeltaStat
+                    label={t('tft.top4')}
+                    pro={proComp.top4Rate}
+                    solo={comp.top4Rate}
+                    fmt={n => `${(n * 100).toFixed(1)}%`}
+                  />
+                  <DeltaStat
+                    label={t('tft.top1')}
+                    pro={proComp.top1Rate}
+                    solo={comp.top1Rate}
+                    fmt={n => `${(n * 100).toFixed(1)}%`}
+                  />
+                  <DeltaStat
+                    label={t('tft.gamesShort')}
+                    pro={proComp.games}
+                    solo={null}
+                    fmt={n => String(Math.round(n))}
+                    rawOnly
+                  />
+                </div>
+              </section>
+            )}
 
             {/* Leveling tempo — surfaces avg final level + avg last-round
                 so users see at a glance whether this comp wants to be Lvl 8
@@ -281,6 +328,53 @@ function Stat({ label, value }: { label: string; value: string }) {
     <div className="bg-[#0a0e1a] border border-[#1e2a3a] rounded px-3 py-2">
       <div className="text-[#8a9bb0] text-[10px] uppercase tracking-widest">{label}</div>
       <div className="text-white text-base font-semibold mt-0.5">{value}</div>
+    </div>
+  );
+}
+
+// Pro-vs-Solo-Queue delta stat. Shows the pro value as the headline plus a
+// signed Δ vs the regular bucket. `lowerIsBetter` flips the green/red color
+// for metrics like avg placement (lower = stronger). `rawOnly` shows the
+// pro number without a Δ — used for sample-size context where there's no
+// comparable "ladder" denominator that makes sense to subtract.
+function DeltaStat({
+  label, pro, solo, lowerIsBetter, fmt, rawOnly,
+}: {
+  label: string;
+  pro: number | null | undefined;
+  solo: number | null | undefined;
+  lowerIsBetter?: boolean;
+  fmt: (n: number) => string;
+  rawOnly?: boolean;
+}) {
+  if (pro == null) {
+    return (
+      <div className="bg-[#0a0e1a] border border-[#1e2a3a] rounded px-3 py-2">
+        <div className="text-[#8a9bb0] text-[10px] uppercase tracking-widest">{label}</div>
+        <div className="text-[#4a5a70] text-base font-semibold mt-0.5">—</div>
+      </div>
+    );
+  }
+  const delta = solo != null ? pro - solo : null;
+  const betterColor = '#3ecf8e';
+  const worseColor = '#e44040';
+  const color = delta == null || delta === 0
+    ? '#8a9bb0'
+    : (lowerIsBetter ? (delta < 0 ? betterColor : worseColor)
+                     : (delta > 0 ? betterColor : worseColor));
+  const arrow = delta == null || delta === 0
+    ? ''
+    : (lowerIsBetter ? (delta < 0 ? '▲' : '▼')
+                     : (delta > 0 ? '▲' : '▼'));
+  return (
+    <div className="bg-[#0a0e1a] border border-[#1e2a3a] rounded px-3 py-2">
+      <div className="text-[#8a9bb0] text-[10px] uppercase tracking-widest">{label}</div>
+      <div className="text-white text-base font-semibold mt-0.5 tabular-nums">{fmt(pro)}</div>
+      {!rawOnly && delta != null && (
+        <div className="text-[10px] tabular-nums mt-0.5" style={{ color }}>
+          {arrow} {fmt(Math.abs(delta))} vs Solo-Queue
+        </div>
+      )}
     </div>
   );
 }

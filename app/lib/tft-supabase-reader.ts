@@ -35,6 +35,11 @@ export const ALL_BUCKETS = [
 export const BUCKET_GROUPS: Record<string, string[]> = {
   all: ALL_BUCKETS,
   master_plus: ['master', 'grandmaster', 'challenger'],
+  // pro_pool is a synthetic bucket: rows are written by the aggregator
+  // alongside tier-bucket rows when a TFT pro participated in the match.
+  // Exposed as an identity group so callers can pass bucket=pro_pool and
+  // get the Pro-only slice without naming convention awareness.
+  pro_pool: ['pro_pool'],
 };
 
 export interface ResolvedFilters {

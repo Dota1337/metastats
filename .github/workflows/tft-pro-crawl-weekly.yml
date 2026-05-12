@@ -1,0 +1,39 @@
+name: TFT Pro Player Weekly Crawl
+
+on:
+  schedule:
+    # Sunday 08:00 UTC — pro scene moves slowly so weekly cadence is enough.
+    # Phased after the marketvalue daily so we never collide with it.
+    - cron: '0 8 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  RIOT_API_KEY_TFT: ${{ secrets.RIOT_API_KEY_TFT }}
+  NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    # ~400 player pages × 2.1s Liquipedia delay ≈ 14 minutes Liquipedia time,
+    # plus Riot resolves ~1.5s each (account-v1 is unrated). ~30 min worst case.
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Crawl TFT pro players
+        if: env.RIOT_API_KEY_TFT != ''
+        run: node scripts/crawl-tft-pro-players.mjs

@@ -135,17 +135,16 @@ export default function SideDrawer() {
   const fetchTftTournaments = async () => {
     setLoading(true);
     try {
-      // Pull live + upcoming + most recent past; the drawer is for "what's
-      // happening now and soon", not a backlog of every event ever.
-      const [live, upcoming, past] = await Promise.all([
+      // Drawer surfaces what's actually relevant right now — live + upcoming.
+      // Past events live on the /tft/tournaments full page if a user wants
+      // to browse history.
+      const [live, upcoming] = await Promise.all([
         fetch('/api/tft/tournaments?status=live').then(r => r.json()).catch(() => ({ tournaments: [] })),
-        fetch('/api/tft/tournaments?status=upcoming&limit=15').then(r => r.json()).catch(() => ({ tournaments: [] })),
-        fetch('/api/tft/tournaments?status=past&limit=5').then(r => r.json()).catch(() => ({ tournaments: [] })),
+        fetch('/api/tft/tournaments?status=upcoming&limit=20').then(r => r.json()).catch(() => ({ tournaments: [] })),
       ]);
       setTftTournaments([
         ...(live.tournaments || []),
         ...(upcoming.tournaments || []),
-        ...(past.tournaments || []),
       ]);
     } catch {} finally {
       setLoading(false);
@@ -506,10 +505,11 @@ function TftTournamentsContent({
     return <div className="px-4 py-8 text-center text-[#4a5a70] text-xs">{t('drawer.noMatches')}</div>;
   }
 
-  // Group by status so users see what's actually live before scrolling.
+  // Group by status — live first (pulsing red header), then upcoming. Past
+  // events are filtered out at the fetch layer so they never appear in the
+  // drawer.
   const live = tournaments.filter(x => x.status === 'live');
   const upcoming = tournaments.filter(x => x.status === 'upcoming');
-  const past = tournaments.filter(x => x.status === 'past');
 
   return (
     <div>
@@ -523,12 +523,6 @@ function TftTournamentsContent({
         <SectionHeader label={t('drawer.planned')} count={upcoming.length} accent="#3ecf8e" />
       )}
       {upcoming.map(tournament => (
-        <TftTournamentRow key={tournament.id} tournament={tournament} dateFmt={dateFmt} tierColor={tierColor} />
-      ))}
-      {past.length > 0 && (
-        <SectionHeader label={t('drawer.past')} count={past.length} accent="#8a9bb0" />
-      )}
-      {past.map(tournament => (
         <TftTournamentRow key={tournament.id} tournament={tournament} dateFmt={dateFmt} tierColor={tierColor} />
       ))}
     </div>

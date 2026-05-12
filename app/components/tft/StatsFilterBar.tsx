@@ -7,8 +7,6 @@ interface Option { value: string; labelKey?: string; label?: string }
 
 const REGION_OPTIONS: Option[] = [
   { value: 'all',   labelKey: 'tft.filter.allRegions' },
-  { value: 'west',  labelKey: 'tft.filter.west' },
-  { value: 'asia',  labelKey: 'tft.filter.asia' },
   { value: 'euw1',  label: 'EUW' },
   { value: 'eun1',  label: 'EUNE' },
   { value: 'kr',    label: 'KR' },

@@ -28,10 +28,7 @@ export default function DatenschutzPage() {
 
           <div>
             <h2 className="text-white text-base font-medium mb-2">{t('legal.privacy.controllerHeading')}</h2>
-            <p>
-              Dominik Taubinger<br />
-              info@metastats.gg
-            </p>
+            <p>info@metastats.gg</p>
           </div>
 
           <div>

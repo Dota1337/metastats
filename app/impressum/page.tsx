@@ -19,11 +19,7 @@ export default function ImpressumPage() {
         <section className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-6 space-y-5 text-sm text-[#8a9bb0] leading-relaxed">
           <div>
             <h2 className="text-white text-base font-medium mb-2">{t('legal.imprint.providerHeading')}</h2>
-            <p>
-              Dominik Taubinger<br />
-              metastats.gg<br />
-              [Anschrift wird ergänzt]
-            </p>
+            <p>metastats.gg</p>
           </div>
 
           <div>
@@ -33,11 +29,7 @@ export default function ImpressumPage() {
 
           <div>
             <h2 className="text-white text-base font-medium mb-2">{t('legal.imprint.responsibleHeading')}</h2>
-            <p>
-              {t('legal.imprint.responsibleText')}<br />
-              Dominik Taubinger<br />
-              [Anschrift wird ergänzt]
-            </p>
+            <p>{t('legal.imprint.responsibleText')}</p>
           </div>
 
           <div>

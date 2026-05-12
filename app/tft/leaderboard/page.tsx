@@ -2,13 +2,18 @@
 import { useEffect, useState } from 'react';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
-import { useI18n } from '../../lib/i18n';
+import { useI18n, LOCALE_MAP } from '../../lib/i18n';
 import TftHero from '../../components/tft/TftHero';
 
 interface Player {
   rank: number; puuid: string;
   gameName: string | null; tagLine: string | null;
   tier: string; leaguePoints: number; wins: number; losses: number;
+}
+
+interface MarketSnapshot {
+  puuid: string;
+  finalValue: number;
 }
 
 const TIERS = [
@@ -24,10 +29,11 @@ const REGIONS = [
 ];
 
 export default function TftLeaderboardPage() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [region, setRegion] = useState('euw1');
   const [tier, setTier] = useState('CHALLENGER');
   const [players, setPlayers] = useState<Player[]>([]);
+  const [marketValues, setMarketValues] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tierDist, setTierDist] = useState<{ month: string; tiers: { key: string; label: string; pct: number; color: string }[] } | null>(null);
@@ -42,6 +48,7 @@ export default function TftLeaderboardPage() {
   useEffect(() => {
     setLoading(true);
     setError(null);
+    setMarketValues(new Map());
     fetch(`/api/tft/leaderboard?region=${region}&tier=${tier}`)
       .then(async r => {
         if (!r.ok) {
@@ -53,6 +60,30 @@ export default function TftLeaderboardPage() {
       .then(d => { setPlayers(d.players || []); setLoading(false); })
       .catch(e => { setError(e.message); setLoading(false); });
   }, [region, tier]);
+
+  // Side-load marketvalues from the snapshot leaderboard. Single batch
+  // request — limited to the snapshot table, no Riot calls. Result is keyed
+  // by puuid so we can join without name-fuzzy-matching.
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/tft/marktwert/leaderboard?region=${region}&tier=${tier}&limit=500`)
+      .then(r => r.ok ? r.json() : { players: [] })
+      .then(d => {
+        if (cancelled) return;
+        const m = new Map<string, number>();
+        for (const p of (d.players || []) as MarketSnapshot[]) {
+          if (p.puuid && typeof p.finalValue === 'number') m.set(p.puuid, p.finalValue);
+        }
+        setMarketValues(m);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [region, tier]);
+
+  const fmtEur = (n: number) =>
+    new Intl.NumberFormat(LOCALE_MAP[lang], {
+      style: 'currency', currency: 'EUR', maximumFractionDigits: 0,
+    }).format(n);
 
   return (
     <main className="min-h-screen bg-[#0e1525]">
@@ -118,22 +149,24 @@ export default function TftLeaderboardPage() {
 
         {!loading && !error && (
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
-            <div className="grid grid-cols-[3rem_1fr_5rem_5rem_5rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#4a5a70] bg-[#0a0e1a]">
+            <div className="grid grid-cols-[3rem_1fr_5rem_5rem_5rem_7rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#4a5a70] bg-[#0a0e1a]">
               <div className="text-right">#</div>
               <div>Spieler</div>
               <div className="text-right">LP</div>
               <div className="text-right">{t('tft.gamesShort')}</div>
               <div className="text-right">WR</div>
+              <div className="text-right">{t('tft.marketValue')}</div>
             </div>
             {players.map(p => {
               const total = p.wins + p.losses;
               const wr = total > 0 ? Math.round((p.wins / total) * 100) : 0;
               const slug = p.gameName ? `${encodeURIComponent(p.gameName)}--${encodeURIComponent(p.tagLine || 'EUW')}` : null;
+              const mv = marketValues.get(p.puuid);
               return (
                 <a
                   key={p.puuid}
                   href={slug ? `/tft/player/${slug}?region=${region}` : '#'}
-                  className="grid grid-cols-[3rem_1fr_5rem_5rem_5rem] gap-2 px-4 py-2 items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]"
+                  className="grid grid-cols-[3rem_1fr_5rem_5rem_5rem_7rem] gap-2 px-4 py-2 items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]"
                 >
                   <div className="text-right text-[#8a9bb0]">{p.rank}</div>
                   <div className="text-white truncate">
@@ -143,6 +176,12 @@ export default function TftLeaderboardPage() {
                   <div className="text-right text-white">{p.leaguePoints}</div>
                   <div className="text-right text-[#4a5a70]">{total}</div>
                   <div className="text-right text-[#8a9bb0]">{wr}%</div>
+                  <div className="text-right tabular-nums">
+                    {mv != null
+                      ? <span className="text-[#7B61FF] font-medium">{fmtEur(mv)}</span>
+                      : <span className="text-[#4a5a70]">—</span>
+                    }
+                  </div>
                 </a>
               );
             })}

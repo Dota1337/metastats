@@ -693,6 +693,58 @@ const translations = {
     'Buckets en \u20AC (mil \u20AC)',
     'Tranches \u20AC (millier d\'\u20AC)'
   ),
+
+  // \u2500 Match Detail Page \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  'tft.match.title': t6(
+    'Match-Details', 'Match Details',
+    '\uB9E4\uCE58 \uC0C1\uC138', '\u6BD4\u8D5B\u8BE6\u60C5',
+    'Detalles del Match', 'D\u00E9tails du match'
+  ),
+  'tft.match.loading': t6(
+    'Lade Match-Daten ...', 'Loading match data ...',
+    '\uB9E4\uCE58 \uB370\uC774\uD130 \uB85C\uB529 \uC911 ...', '\u6B63\u5728\u52A0\u8F7D\u6BD4\u8D5B\u6570\u636E...',
+    'Cargando datos del match ...', 'Chargement des donn\u00E9es du match ...'
+  ),
+  'tft.match.notFound': t6(
+    'Match nicht gefunden.', 'Match not found.',
+    '\uB9E4\uCE58\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.', '\u672A\u627E\u5230\u8BE5\u6BD4\u8D5B\u3002',
+    'Match no encontrado.', 'Match introuvable.'
+  ),
+  'tft.match.date': t6(
+    'Datum', 'Date', '\uB0A0\uC9DC', '\u65E5\u671F', 'Fecha', 'Date'
+  ),
+  'tft.match.length': t6(
+    'Spielzeit', 'Length', '\uAC8C\uC784 \uC2DC\uAC04', '\u6BD4\u8D5B\u65F6\u957F', 'Duraci\u00F3n', 'Dur\u00E9e'
+  ),
+  'tft.match.patch': t6(
+    'Patch', 'Patch', '\uD328\uCE58', '\u7248\u672C', 'Parche', 'Patch'
+  ),
+  'tft.match.eliminated': t6(
+    'Kills', 'kills', '\uD0AC', '\u51FB\u6740', 'kills', 'kills'
+  ),
+
+  // \u2500 Compare Page \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  'tft.compare.player': t6(
+    'Spieler', 'Player', '\uD50C\uB808\uC774\uC5B4', '\u73A9\u5BB6', 'Jugador', 'Joueur'
+  ),
+  'tft.compare.button': t6(
+    'Vergleichen', 'Compare',
+    '\uBE44\uAD50', '\u6BD4\u8F83',
+    'Comparar', 'Comparer'
+  ),
+  'tft.compare.comparing': t6(
+    'Vergleiche ...', 'Comparing ...',
+    '\uBE44\uAD50 \uC911 ...', '\u6BD4\u8F83\u4E2D...',
+    'Comparando ...', 'Comparaison ...'
+  ),
+  'tft.compare.chartTitle': t6(
+    'Marktwert-Verlauf (30 Tage)',
+    'Market Value Trend (30 days)',
+    '\uC2DC\uC7A5 \uAC00\uCE58 \uCD94\uC774 (30\uC77C)',
+    '\u5E02\u573A\u4EF7\u503C\u8D70\u52BF (30\u5929)',
+    'Tendencia de Valor de Mercado (30 d\u00EDas)',
+    '\u00C9volution de la valeur de march\u00E9 (30 jours)'
+  ),
 } as const;
 
 type TranslationKey = keyof typeof translations;

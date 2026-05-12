@@ -68,6 +68,13 @@ export default function MatchCard({ match, selfPuuid }: Props) {
           {match.participants.slice().sort((a, b) => a.placement - b.placement).map(p => (
             <ParticipantRow key={p.puuid} participant={p} isSelf={p.puuid === selfPuuid} assets={assets} />
           ))}
+          <a
+            href={`/tft/match/${encodeURIComponent(match.matchId)}`}
+            onClick={e => e.stopPropagation()}
+            className="block text-right text-[10px] text-[#7B61FF] hover:text-[#a892ff] uppercase tracking-widest pt-1 border-t border-[#1e2a3a]"
+          >
+            Match-Detail →
+          </a>
         </div>
       )}
     </div>

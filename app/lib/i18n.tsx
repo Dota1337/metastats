@@ -570,9 +570,9 @@ const translations = {
     'de {n} partidas', 'sur {n} matchs'
   ),
   'tft.marketValue.howCalculated': t6(
-    'Wie wird das berechnet?', 'How is this calculated?',
-    '\uC774\uAC83\uC740 \uC5B4\uB5BB\uAC8C \uACC4\uC0B0\uB418\uB098\uC694?', '\u5982\u4F55\u8BA1\u7B97\uFF1F',
-    '\u00BFC\u00F3mo se calcula?', 'Comment est-ce calcul\u00E9 ?'
+    'Marktwert-Berechnung', 'Market Value Calculation',
+    '\uC2DC\uC7A5 \uAC00\uCE58 \uACC4\uC0B0', '\u5E02\u573A\u4EF7\u503C\u8BA1\u7B97',
+    'C\u00E1lculo de Valor de Mercado', 'Calcul de valeur de march\u00E9'
   ),
   'tft.marketValue.methodologyIntro': t6(
     'Basiswert {base} aus Tier + LP, multipliziert durch:',

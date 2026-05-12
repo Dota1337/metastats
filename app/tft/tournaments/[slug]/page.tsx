@@ -38,6 +38,16 @@ const REGION_LABELS: Record<string, string> = {
   INT: 'International', AMER: 'Americas', EMEA: 'EMEA', APAC: 'Pacific', CN: 'China',
 };
 
+// Same cleaner used on the list page — drop set-codename suffix/prefix and
+// collapse the "/" hierarchy so the tournament reads as a single human name.
+function cleanTournamentName(raw: string): string {
+  let name = raw;
+  name = name.replace(/\s*\([^)]+\)\s*$/, '');
+  name = name.replace(/^[^/]+\/(.+)$/, '$1');
+  name = name.replace(/\//g, ' ');
+  return name.trim();
+}
+
 export default function TftTournamentDetailPage() {
   const { t, lang } = useI18n();
   const params = useParams();
@@ -95,18 +105,13 @@ export default function TftTournamentDetailPage() {
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <h1 className="text-white text-2xl font-medium">{tournament.name}</h1>
+              <h1 className="text-white text-2xl font-medium">{cleanTournamentName(tournament.name)}</h1>
               <div className="flex items-center gap-2 flex-wrap mt-1.5">
                 <span className="text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded" style={{ backgroundColor: `${statusColor}25`, color: statusColor }}>
                   {t(`tft.tournaments.${tournament.status}` as const)}
                 </span>
                 {tournament.region && (
                   <span className="text-xs text-[#8a9bb0]">{REGION_LABELS[tournament.region] || tournament.region}</span>
-                )}
-                {tournament.set_number && (
-                  <span className="text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded bg-[#7B61FF]/15 text-[#7B61FF]">
-                    Set {tournament.set_number}
-                  </span>
                 )}
               </div>
               <div className="text-[#8a9bb0] text-sm mt-2">
@@ -154,8 +159,9 @@ export default function TftTournamentDetailPage() {
           </div>
         )}
 
-        {/* Standings */}
-        {tournament.results && tournament.results.length > 0 ? (
+        {/* Standings — only rendered when we have data. No info text when
+            empty (per user preference to skip explanatory copy). */}
+        {tournament.results && tournament.results.length > 0 && (
           <section className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
             <div className="px-4 py-2 bg-[#0a0e1a] text-[10px] uppercase tracking-widest text-[#4a5a70]">
               {t('tft.tournaments.standings')}
@@ -198,12 +204,6 @@ export default function TftTournamentDetailPage() {
               );
             })}
           </section>
-        ) : (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#8a9bb0] text-sm">
-            {tournament.status === 'upcoming'
-              ? t('tft.tournaments.standingsAfterEvent')
-              : t('tft.tournaments.noStandingsYet')}
-          </div>
         )}
       </div>
       <Footer />

@@ -36,6 +36,21 @@ const REGION_LABELS: Record<string, string> = {
   INT: 'International', AMER: 'Americas', EMEA: 'EMEA', APAC: 'Pacific', CN: 'China',
 };
 
+// Liquipedia stores tournament names with the set codename baked in
+// ("Space Gods/AMER/Regional Finals", "AMER Regional Finals (Space Gods)").
+// We display only the tournament name itself — set info lives on its own
+// Set-N badge or on the detail page, no point repeating it.
+function cleanTournamentName(raw: string): string {
+  let name = raw;
+  // Strip trailing "(set codename)" suffix
+  name = name.replace(/\s*\([^)]+\)\s*$/, '');
+  // Strip leading "<set-codename>/" prefix from page-title-derived names
+  name = name.replace(/^[^/]+\/(.+)$/, '$1');
+  // Drop intermediate "/" so "AMER/Regional Finals" → "AMER Regional Finals"
+  name = name.replace(/\//g, ' ');
+  return name.trim();
+}
+
 export default function TftTournamentsPage() {
   const { t, lang } = useI18n();
   const locale = LOCALE_MAP[lang];
@@ -165,12 +180,7 @@ function TournamentRow({ t, locale }: { t: Tournament; locale: string }) {
         )}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-white text-base font-medium truncate">{t.name}</span>
-            {t.set_number && (
-              <span className="text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded bg-[#7B61FF]/15 text-[#7B61FF]">
-                Set {t.set_number}
-              </span>
-            )}
+            <span className="text-white text-base font-medium truncate">{cleanTournamentName(t.name)}</span>
             {t.region && (
               <span className="text-[10px] uppercase tracking-widest text-[#8a9bb0]">
                 {REGION_LABELS[t.region] || t.region}

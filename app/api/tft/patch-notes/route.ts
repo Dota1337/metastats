@@ -6,8 +6,9 @@ import { getAvailablePatches } from '../../../lib/tft-supabase-reader';
 // canonical Riot TFT news URL — the LoL patch-notes endpoint can't be
 // reused because TFT lives on a different teamfighttactics.lol... domain.
 //
-// URL pattern: `https://teamfighttactics.leagueoflegends.com/en-us/news/game-updates/teamfight-tactics-patch-XX-Y-notes`
-// e.g. patch 17.2 → /teamfight-tactics-patch-17-2-notes
+// URL pattern: `https://www.leagueoflegends.com/en-us/news/game-updates/teamfight-tactics-patch-XX-Y-notes`
+// The previous teamfighttactics.lol... subdomain returned 404 — Riot
+// publishes TFT patch notes under the main league of legends news index.
 //
 // 1-hour cache because the patch list only changes when Riot ships a new
 // version (every two weeks).
@@ -28,8 +29,10 @@ function tftPatchUrl(version: string): string {
   // doesn't include sub-patch suffixes; clicking through still lands on the
   // most recent post for that major patch.
   const m = /^(\d+)\.(\d+)/.exec(version);
-  if (!m) return 'https://teamfighttactics.leagueoflegends.com/en-us/news/tags/patch-notes/';
-  return `https://teamfighttactics.leagueoflegends.com/en-us/news/game-updates/teamfight-tactics-patch-${m[1]}-${m[2]}-notes`;
+  // Fallback to the news index on leagueoflegends.com — also the canonical
+  // home for the per-patch posts.
+  if (!m) return 'https://www.leagueoflegends.com/en-us/news/tags/teamfight-tactics-patch-notes/';
+  return `https://www.leagueoflegends.com/en-us/news/game-updates/teamfight-tactics-patch-${m[1]}-${m[2]}-notes`;
 }
 
 export async function GET() {

@@ -568,7 +568,7 @@ function TftTournamentRow({
           </div>
         )}
         <div className="flex-1 min-w-0">
-          <div className="text-white text-xs font-medium truncate">{tournament.name}</div>
+          <div className="text-white text-xs font-medium truncate">{cleanTournamentName(tournament.name)}</div>
           <div className="text-[#4a5a70] text-[10px] mt-0.5">
             {dateFmt(tournament.start_date)} – {dateFmt(tournament.end_date)}
             {tournament.region && ` · ${tournament.region}`}
@@ -582,6 +582,18 @@ function TftTournamentRow({
       </div>
     </a>
   );
+}
+
+// Strip the Liquipedia set-codename baked into tournament names — same
+// helper used on the list + detail pages. Single source of truth could
+// live in a shared file, but the function is 3 lines so duplicating it
+// keeps SideDrawer self-contained.
+function cleanTournamentName(raw: string): string {
+  let name = raw;
+  name = name.replace(/\s*\([^)]+\)\s*$/, '');
+  name = name.replace(/^[^/]+\/(.+)$/, '$1');
+  name = name.replace(/\//g, ' ');
+  return name.trim();
 }
 
 /* ── Patches Tab ── */

@@ -152,8 +152,8 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
               {formatEuro(mv.finalValue, lang)}
             </div>
           </div>
-          <div className="mt-2 flex items-center gap-2 text-sm">
-            {delta != null ? (
+          {delta != null && (
+            <div className="mt-2 flex items-center gap-2 text-sm">
               <span
                 className="font-medium tabular-nums"
                 style={{ color: isFlat ? '#8a9bb0' : isUp ? '#3ecf8e' : '#e44040' }}
@@ -161,11 +161,9 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
                 {isUp ? '▲' : isFlat ? '–' : '▼'}{' '}
                 {formatEuro(Math.abs(delta.abs), lang)} ({delta.pct >= 0 ? '+' : ''}{delta.pct.toFixed(1)}%)
               </span>
-            ) : (
-              <span className="text-[#4a5a70] text-xs">{t('tft.marketValue.notEnoughHistory')}</span>
-            )}
-            <span className="text-[#4a5a70] text-xs">· {t('tft.marketValue.last7d')}</span>
-          </div>
+              <span className="text-[#4a5a70] text-xs">· {t('tft.marketValue.last7d')}</span>
+            </div>
+          )}
         </div>
 
         {/* Middle: Multiplier + sample size */}
@@ -220,11 +218,7 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
                   />
                 </LineChart>
               </ResponsiveContainer>
-            ) : (
-              <div className="h-full flex items-center justify-end text-[#4a5a70] text-xs">
-                {t('tft.marketValue.notEnoughHistory')}
-              </div>
-            )}
+            ) : null}
           </div>
         </div>
       </div>
@@ -232,17 +226,9 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
       {/* Expandable agent breakdown */}
       {showDetails && (
         <div className="mt-4 pt-4 border-t border-[#1e2a3a] grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-xs">
-          <div className="sm:col-span-2 text-[#8a9bb0] text-xs leading-relaxed mb-1">
-            {t('tft.marketValue.methodologyIntro').replace('{base}', formatEuro(mv.baseValue, lang))}
-          </div>
           {mv.agents.map(a => (
             <AgentRow key={a.agent} agent={a} />
           ))}
-          {data.source === 'snapshot' && data.snapshotDate && (
-            <div className="sm:col-span-2 text-[#4a5a70] text-[10px] mt-1">
-              {t('tft.marketValue.snapshotFrom').replace('{date}', new Date(data.snapshotDate).toLocaleDateString(LOCALE_MAP[lang]))}
-            </div>
-          )}
         </div>
       )}
     </div>

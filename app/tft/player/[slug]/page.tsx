@@ -10,6 +10,7 @@ import Footer from '../../../components/Footer';
 import MatchCard from '../../../components/tft/MatchCard';
 import MarketValueHero from '../../../components/tft/MarketValueHero';
 import { useI18n } from '../../../lib/i18n';
+import { loadProLookup, lookupPro, type ProPlayer } from '../../../lib/pro-players';
 import { loadTftSetMeta } from '../../../lib/tft-dd-assets';
 import { loadTftAssets, tftIconUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { formatTier } from '../../../lib/rank-format';
@@ -104,13 +105,20 @@ export default function TftPlayerPage() {
   // a different set in the SeasonStats pill bar.
   const [statsSetOverride, setStatsSetOverride] = useState<number | null>(null);
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
+  const [proInfo, setProInfo] = useState<ProPlayer | null>(null);
 
   useEffect(() => {
     fetch('https://ddragon.leagueoflegends.com/api/versions.json')
       .then(r => r.json()).then(v => setDdVersion(v[0])).catch(() => {});
     loadTftSetMeta().then(meta => { if (meta) setCurrentSet(meta.setNumber); });
     loadTftAssets().then(setAssets);
-  }, []);
+    // Pro-Lookup is a single ~80kb JSON shared with the LoL side; loaded
+    // once globally and used by both /player/[slug] and /tft/player/[slug].
+    loadProLookup().then(lookup => {
+      const pro = lookupPro(lookup, fullName);
+      if (pro) setProInfo(pro);
+    });
+  }, [fullName]);
 
   useEffect(() => {
     if (!gameName) return;
@@ -221,8 +229,16 @@ export default function TftPlayerPage() {
                   />
                 )}
                 <div className="flex-1 min-w-0">
-                  <div className="text-white text-xl font-medium">{gameName}</div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-white text-xl font-medium">{gameName}</span>
+                    {proInfo && <ProBadge pro={proInfo} />}
+                  </div>
                   <div className="text-[#8a9bb0] text-sm">#{tagLine} · Level {data.summoner.summonerLevel ?? '—'}</div>
+                  {proInfo && (
+                    <div className="text-[#a892ff] text-xs mt-0.5">
+                      {proInfo.proName} · {proInfo.team} · {proInfo.role}
+                    </div>
+                  )}
                 </div>
                 <RankBlock ranked={data.ranked} seasonRanks={playerStats?.seasonRanks} />
               </div>
@@ -544,6 +560,20 @@ function Stat({ label, value }: { label: string; value: string }) {
       <div className="text-[#8a9bb0] text-[10px] uppercase tracking-widest">{label}</div>
       <div className="text-white text-xl font-semibold mt-0.5">{value}</div>
     </div>
+  );
+}
+
+function ProBadge({ pro }: { pro: ProPlayer }) {
+  // The cross-game pro-players.json is sourced from Leaguepedia's Cargo
+  // export — that's our verification anchor. The badge label calls that
+  // out so users see the provenance without needing the tooltip.
+  return (
+    <span
+      title={`Verifiziert via Leaguepedia · ${pro.team} ${pro.role}`}
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#7B61FF]/15 text-[#7B61FF] text-[10px] uppercase tracking-widest font-medium border border-[#7B61FF]/40"
+    >
+      ✓ Verified Pro
+    </span>
   );
 }
 

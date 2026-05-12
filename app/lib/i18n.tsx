@@ -852,6 +852,400 @@ const translations = {
     '\uC774 \uC2AC\uB86F\uC5D0\uC11C \uC81C\uACF5\uB418\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.', '\u6B64\u4F4D\u7F6E\u4E0D\u63D0\u4F9B\u3002',
     'No ofrecido en este slot.', 'Non propos\u00E9 \u00E0 cet emplacement.'
   ),
+
+  // \u2500 Legal pages: Impressum + Datenschutz + Cookie Banner \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  'legal.imprint': t6(
+    'Impressum', 'Imprint', '\uBC95\uC801 \uACE0\uC9C0', '\u6CD5\u5F8B\u58F0\u660E', 'Aviso Legal', 'Mentions l\u00E9gales'
+  ),
+  'legal.privacy': t6(
+    'Datenschutz', 'Privacy', '\uAC1C\uC778\uC815\uBCF4\uCC98\uB9AC\uBC29\uCE68', '\u9690\u79C1\u653F\u7B56', 'Privacidad', 'Confidentialit\u00E9'
+  ),
+  'legal.imprint.providerHeading': t6(
+    'Diensteanbieter', 'Service Provider',
+    '\uC11C\uBE44\uC2A4 \uC81C\uACF5\uC790', '\u670D\u52A1\u63D0\u4F9B\u5546',
+    'Proveedor del Servicio', 'Fournisseur du service'
+  ),
+  'legal.imprint.contactHeading': t6(
+    'Kontakt', 'Contact',
+    '\uC5F0\uB77D\uCC98', '\u8054\u7CFB\u65B9\u5F0F',
+    'Contacto', 'Contact'
+  ),
+  'legal.imprint.responsibleHeading': t6(
+    'Verantwortlich f\u00FCr den Inhalt nach \u00A7 55 Abs. 2 RStV',
+    'Responsible for content per \u00A7 55 Abs. 2 RStV',
+    '\uCF58\uD150\uCE20 \uCC45\uC784\uC790 (RStV \u00A7 55 Abs. 2)',
+    '\u5185\u5BB9\u8D23\u4EFB\u4EBA (RStV \u00A755 Abs. 2)',
+    'Responsable del contenido (RStV \u00A755 Abs. 2)',
+    'Responsable du contenu (RStV \u00A755 Abs. 2)'
+  ),
+  'legal.imprint.responsibleText': t6(
+    'Der Diensteanbieter ist gleichzeitig inhaltlich Verantwortlicher:',
+    'The service provider is also responsible for content:',
+    '\uC11C\uBE44\uC2A4 \uC81C\uACF5\uC790\uAC00 \uCF58\uD150\uCE20 \uCC45\uC784\uC790\uC785\uB2C8\uB2E4:',
+    '\u670D\u52A1\u63D0\u4F9B\u5546\u540C\u65F6\u4E3A\u5185\u5BB9\u8D1F\u8D23\u4EBA\uFF1A',
+    'El proveedor tambi\u00E9n es responsable del contenido:',
+    'Le fournisseur est \u00E9galement responsable du contenu :'
+  ),
+  'legal.imprint.disclaimerHeading': t6(
+    'Haftungsausschluss', 'Disclaimer',
+    '\uBA74\uCC45 \uC870\uD56D', '\u514D\u8D23\u58F0\u660E',
+    'Descargo de responsabilidad', 'Avertissement'
+  ),
+  'legal.imprint.disclaimerContent': t6(
+    'Die Inhalte dieser Seite werden mit gr\u00F6\u00DFter Sorgfalt erstellt. F\u00FCr die Richtigkeit, Vollst\u00E4ndigkeit und Aktualit\u00E4t der Inhalte kann jedoch keine Gew\u00E4hr \u00FCbernommen werden. Statistiken werden aus \u00F6ffentlichen APIs (Riot Games, CommunityDragon, metatft) bezogen und sind ohne Gew\u00E4hr.',
+    'Content on this site is produced with care; we cannot guarantee accuracy, completeness, or timeliness. Statistics come from public APIs (Riot, CommunityDragon, metatft) and are provided without warranty.',
+    '\uC774 \uC0AC\uC774\uD2B8\uC758 \uCF58\uD150\uCE20\uB294 \uC2E0\uC911\uD788 \uC791\uC131\uB418\uC9C0\uB9CC \uC815\uD655\uC131, \uC644\uC804\uC131 \uBC0F \uC2DC\uC758\uC131\uC744 \uBCF4\uC7A5\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uD1B5\uACC4\uB294 \uACF5\uAC1C API\uC5D0\uC11C \uC218\uC9D1\uB418\uBA70 \uBCF4\uC99D \uC5C6\uC774 \uC81C\uACF5\uB429\uB2C8\uB2E4.',
+    '\u672C\u7F51\u7AD9\u5185\u5BB9\u7ECF\u7CBE\u5FC3\u5236\u4F5C\uFF0C\u4F46\u4E0D\u4FDD\u8BC1\u5176\u51C6\u786E\u6027\u3001\u5B8C\u6574\u6027\u6216\u65F6\u6548\u6027\u3002\u7EDF\u8BA1\u6570\u636E\u6765\u81EA\u516C\u5F00API\uFF0C\u6309\u539F\u6837\u63D0\u4F9B\u3002',
+    'Los contenidos se elaboran con cuidado, sin garant\u00EDa de exactitud o actualidad. Las estad\u00EDsticas provienen de APIs p\u00FAblicas y se entregan sin garant\u00EDa.',
+    'Le contenu est produit avec soin, sans garantie d\'exactitude ni d\'actualit\u00E9. Les statistiques proviennent d\'APIs publiques, sans garantie.'
+  ),
+  'legal.imprint.disclaimerLinks': t6(
+    'Trotz sorgf\u00E4ltiger inhaltlicher Kontrolle \u00FCbernehmen wir keine Haftung f\u00FCr die Inhalte externer Links. F\u00FCr den Inhalt der verlinkten Seiten sind ausschlie\u00DFlich deren Betreiber verantwortlich.',
+    'Despite careful review, we cannot accept liability for the content of external links. The operators of linked pages are solely responsible for their content.',
+    '\uC678\uBD80 \uB9C1\uD06C \uB0B4\uC6A9\uC5D0 \uB300\uD574\uC11C\uB294 \uCC45\uC784\uC744 \uC9C0\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uB9C1\uD06C\uB41C \uD398\uC774\uC9C0\uC758 \uB0B4\uC6A9\uC740 \uD574\uB2F9 \uC6B4\uC601\uC790\uC758 \uCC45\uC784\uC785\uB2C8\uB2E4.',
+    '\u6211\u4EEC\u5BF9\u5916\u90E8\u94FE\u63A5\u7684\u5185\u5BB9\u4E0D\u627F\u62C5\u8D23\u4EFB\u3002\u94FE\u63A5\u9875\u9762\u7684\u5185\u5BB9\u4EC5\u7531\u5176\u8FD0\u8425\u8005\u8D1F\u8D23\u3002',
+    'No asumimos responsabilidad por el contenido de enlaces externos.',
+    'Nous ne sommes pas responsables du contenu des liens externes.'
+  ),
+  'legal.imprint.riotHeading': t6(
+    'Hinweis zu Riot Games',
+    'Riot Games Notice',
+    'Riot Games \uC548\uB0B4',
+    '\u5173\u4E8E Riot Games',
+    'Aviso sobre Riot Games',
+    'Mention Riot Games'
+  ),
+  'legal.imprint.riotDisclaimer': t6(
+    'metastats.gg ist nicht mit Riot Games, Inc. verbunden, von Riot Games unterst\u00FCtzt oder finanziert. League of Legends und Teamfight Tactics sind eingetragene Marken von Riot Games, Inc.',
+    'metastats.gg isn\'t endorsed by Riot Games and doesn\'t reflect the views or opinions of Riot Games or anyone officially involved in producing or managing League of Legends or Teamfight Tactics. League of Legends and Teamfight Tactics are registered trademarks of Riot Games, Inc.',
+    'metastats.gg\uC740 Riot Games\uC640 \uACF5\uC2DD\uC801\uC73C\uB85C \uC81C\uD734\uB418\uC5B4 \uC788\uC9C0 \uC54A\uC73C\uBA70 Riot Games\uC758 \uD6C4\uC6D0\uC774\uB098 \uC790\uAE08 \uC9C0\uC6D0\uC744 \uBC1B\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. League of Legends\uC640 Teamfight Tactics\uB294 Riot Games\uC758 \uB4F1\uB85D \uC0C1\uD45C\uC785\uB2C8\uB2E4.',
+    'metastats.gg \u4E0D\u96B6\u5C5E\u4E8E Riot Games\uFF0C\u4EA6\u672A\u83B7\u5176\u8BA4\u53EF\u6216\u8D44\u52A9\u3002League of Legends \u4E0E Teamfight Tactics \u662F Riot Games, Inc. \u7684\u6CE8\u518C\u5546\u6807\u3002',
+    'metastats.gg no est\u00E1 afiliado, respaldado ni patrocinado por Riot Games, Inc. League of Legends y Teamfight Tactics son marcas registradas.',
+    'metastats.gg n\'est ni affili\u00E9 ni soutenu par Riot Games, Inc. League of Legends et Teamfight Tactics sont des marques d\u00E9pos\u00E9es.'
+  ),
+  'legal.imprint.copyrightHeading': t6(
+    'Urheberrecht', 'Copyright',
+    '\uC800\uC791\uAD8C', '\u7248\u6743',
+    'Derechos de autor', 'Droits d\'auteur'
+  ),
+  'legal.imprint.copyrightText': t6(
+    'Die durch die Seitenbetreiber erstellten Inhalte und Werke unterliegen dem deutschen Urheberrecht. Die Vervielf\u00E4ltigung, Bearbeitung, Verbreitung jeder Art au\u00DFerhalb der Grenzen des Urheberrechts bed\u00FCrfen der schriftlichen Zustimmung.',
+    'Content created by the site operators is subject to German copyright law. Any duplication, processing, distribution beyond copyright limits requires written consent.',
+    '\uC6B4\uC601\uC790\uAC00 \uC791\uC131\uD55C \uCF58\uD150\uCE20\uB294 \uB3C5\uC77C \uC800\uC791\uAD8C\uBC95\uC758 \uBCF4\uD638\uB97C \uBC1B\uC2B5\uB2C8\uB2E4. \uC800\uC791\uAD8C \uD55C\uB3C4\uB97C \uB118\uB294 \uBAA8\uB4E0 \uC0AC\uC6A9\uC5D0\uB294 \uC11C\uBA74 \uB3D9\uC758\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4.',
+    '\u672C\u7F51\u7AD9\u8FD0\u8425\u8005\u521B\u4F5C\u7684\u5185\u5BB9\u53D7\u5FB7\u56FD\u7248\u6743\u6CD5\u4FDD\u62A4\u3002\u8D85\u51FA\u7248\u6743\u9650\u5236\u7684\u4EFB\u4F55\u4F7F\u7528\u5747\u9700\u4E66\u9762\u540C\u610F\u3002',
+    'Los contenidos creados por los operadores est\u00E1n sujetos a la legislaci\u00F3n alemana de derechos de autor.',
+    'Les contenus cr\u00E9\u00E9s par les op\u00E9rateurs sont soumis au droit d\'auteur allemand.'
+  ),
+  'legal.privacy.overviewHeading': t6(
+    '\u00DCberblick', 'Overview', '\uAC1C\uC694', '\u6982\u89C8', 'Resumen', 'Aper\u00E7u'
+  ),
+  'legal.privacy.overviewText': t6(
+    'Diese Datenschutzerkl\u00E4rung informiert \u00FCber Art, Umfang und Zweck der Verarbeitung personenbezogener Daten auf metastats.gg im Sinne von Art. 13 DSGVO.',
+    'This privacy notice describes how personal data is processed on metastats.gg in line with Art. 13 GDPR.',
+    '\uC774 \uAC1C\uC778\uC815\uBCF4\uCC98\uB9AC\uBC29\uCE68\uC740 metastats.gg\uC5D0\uC11C \uAC1C\uC778\uC815\uBCF4\uB97C \uCC98\uB9AC\uD558\uB294 \uBC29\uBC95\uC744 GDPR 13\uC870\uC5D0 \uB530\uB77C \uC124\uBA85\uD569\uB2C8\uB2E4.',
+    '\u672C\u9690\u79C1\u58F0\u660E\u6839\u636E GDPR \u7B2C 13 \u6761\u8BF4\u660E metastats.gg \u5982\u4F55\u5904\u7406\u4E2A\u4EBA\u6570\u636E\u3002',
+    'Esta pol\u00EDtica de privacidad describe el tratamiento de datos personales conforme al art. 13 RGPD.',
+    'Cette politique d\u00E9crit le traitement des donn\u00E9es personnelles conform\u00E9ment \u00E0 l\'art. 13 RGPD.'
+  ),
+  'legal.privacy.controllerHeading': t6(
+    'Verantwortlicher', 'Controller',
+    '\uCC45\uC784\uC790', '\u8D1F\u8D23\u4EBA',
+    'Responsable', 'Responsable du traitement'
+  ),
+  'legal.privacy.dataCollectedHeading': t6(
+    'Welche Daten werden erfasst?', 'What data is collected?',
+    '\uC218\uC9D1\uB418\uB294 \uB370\uC774\uD130', '\u6536\u96C6\u7684\u6570\u636E',
+    '\u00BFQu\u00E9 datos se recopilan?', 'Quelles donn\u00E9es sont collect\u00E9es ?'
+  ),
+  'legal.privacy.dataCollectedIntro': t6(
+    'metastats.gg verarbeitet folgende Datenkategorien:',
+    'metastats.gg processes the following data categories:',
+    'metastats.gg\uB294 \uB2E4\uC74C \uB370\uC774\uD130 \uBC94\uC8FC\uB97C \uCC98\uB9AC\uD569\uB2C8\uB2E4:',
+    'metastats.gg \u5904\u7406\u4EE5\u4E0B\u6570\u636E\u7C7B\u522B\uFF1A',
+    'metastats.gg procesa las siguientes categor\u00EDas:',
+    'metastats.gg traite les cat\u00E9gories suivantes :'
+  ),
+  'legal.privacy.dataRiot': t6(
+    'Spielerdaten aus der \u00F6ffentlichen Riot Games API (puuid, Riot-ID, Match-Daten, Rang) \u2014 ausschlie\u00DFlich f\u00FCr die angeforderte Spielersuche und in Caching-Tabellen zur Performance-Optimierung.',
+    'Player data from the public Riot Games API (puuid, Riot ID, match data, rank) \u2014 only for the player search requested and in caching tables for performance.',
+    '\uACF5\uAC1C Riot Games API\uC758 \uD50C\uB808\uC774\uC5B4 \uB370\uC774\uD130(puuid, Riot ID, \uACBD\uAE30 \uB370\uC774\uD130, \uD2F0\uC5B4) \u2014 \uC694\uCCAD\uB41C \uD50C\uB808\uC774\uC5B4 \uAC80\uC0C9\uC5D0\uB9CC \uC0AC\uC6A9\uB418\uBA70 \uC131\uB2A5 \uCE90\uC2DC \uD14C\uC774\uBE14\uC5D0 \uC800\uC7A5\uB429\uB2C8\uB2E4.',
+    '\u6765\u81EA\u516C\u5F00 Riot Games API \u7684\u73A9\u5BB6\u6570\u636E\uFF08puuid\u3001Riot ID\u3001\u5BF9\u6218\u6570\u636E\u3001\u6BB5\u4F4D\uFF09\u2014\u2014 \u4EC5\u7528\u4E8E\u6240\u8BF7\u6C42\u7684\u73A9\u5BB6\u641C\u7D22\u53CA\u6027\u80FD\u7F13\u5B58\u3002',
+    'Datos de jugadores de la API p\u00FAblica de Riot (puuid, Riot ID, datos de partida, rango), solo para b\u00FAsquedas y cach\u00E9 de rendimiento.',
+    'Donn\u00E9es de joueurs via l\'API publique de Riot (puuid, Riot ID, donn\u00E9es de match, rang), uniquement pour la recherche demand\u00E9e et le cache.'
+  ),
+  'legal.privacy.dataLogs': t6(
+    'Server-Logs (anonymisierte IP, User-Agent, Zeitstempel) durch unseren Hosting-Anbieter Vercel \u2014 zur Sicherheits- und Performance-Analyse.',
+    'Server logs (anonymised IP, user-agent, timestamp) via our hosting provider Vercel \u2014 for security and performance analysis.',
+    '\uC11C\uBC84 \uB85C\uADF8(\uC775\uBA85\uD654\uB41C IP, \uC0AC\uC6A9\uC790 \uC5D0\uC774\uC804\uD2B8, \uD0C0\uC784\uC2A4\uD0EC\uD504) \u2014 \uD638\uC2A4\uD305 \uC81C\uACF5\uC5C5\uCCB4 Vercel\uC744 \uD1B5\uD574 \uBCF4\uC548 \uBC0F \uC131\uB2A5 \uBD84\uC11D \uBAA9\uC801.',
+    '\u7531\u6258\u7BA1\u5546 Vercel \u6536\u96C6\u7684\u670D\u52A1\u5668\u65E5\u5FD7\uFF08\u533F\u540D\u5316 IP\u3001\u7528\u6237\u4EE3\u7406\u3001\u65F6\u95F4\u6233\uFF09\uFF0C\u7528\u4E8E\u5B89\u5168\u548C\u6027\u80FD\u5206\u6790\u3002',
+    'Registros del servidor (IP anonimizada, user-agent, marca de tiempo) por nuestro hosting Vercel.',
+    'Journaux serveur (IP anonymis\u00E9e, user-agent, horodatage) via notre h\u00E9bergeur Vercel.'
+  ),
+  'legal.privacy.dataLang': t6(
+    'Sprach-Cookie (metastats-lang) zur Speicherung deiner Sprachauswahl \u2014 funktional notwendig im Sinne von \u00A7 25 Abs. 2 TTDSG.',
+    'Language cookie (metastats-lang) to persist your language choice \u2014 functionally required per \u00A7 25 Abs. 2 TTDSG.',
+    '\uC5B8\uC5B4 \uCFE0\uD0A4(metastats-lang)\uB294 \uC5B8\uC5B4 \uC120\uD0DD\uC744 \uC800\uC7A5\uD558\uB294 \uAE30\uB2A5 \uCFE0\uD0A4\uC785\uB2C8\uB2E4.',
+    '\u8BED\u8A00 Cookie\uFF08metastats-lang\uFF09\u7528\u4E8E\u4FDD\u5B58\u60A8\u7684\u8BED\u8A00\u9009\u62E9\uFF0C\u5C5E\u4E8E\u529F\u80FD\u6027\u5FC5\u9700 Cookie\u3002',
+    'Cookie de idioma (metastats-lang) para guardar tu selecci\u00F3n \u2014 funcionalmente necesaria.',
+    'Cookie de langue (metastats-lang) pour m\u00E9moriser votre choix \u2014 n\u00E9cessaire au fonctionnement.'
+  ),
+  'legal.privacy.processorsHeading': t6(
+    'Auftragsverarbeiter & Dienste',
+    'Processors & Services',
+    '\uB370\uC774\uD130 \uCC98\uB9AC\uC790 \uBC0F \uC11C\uBE44\uC2A4',
+    '\u6570\u636E\u5904\u7406\u65B9\u4E0E\u670D\u52A1',
+    'Encargados del tratamiento y servicios',
+    'Sous-traitants et services'
+  ),
+  'legal.privacy.processorVercel': t6(
+    'Vercel Inc. (USA) \u2014 Hosting & Edge-Cache. Privacy Shield zertifiziert, DSGVO-konforme Datenverarbeitungsvereinbarung.',
+    'Vercel Inc. (USA) \u2014 hosting & edge cache. Privacy Shield certified, GDPR-compliant DPA.',
+    'Vercel Inc.(\uBBF8\uAD6D) \u2014 \uD638\uC2A4\uD305 \uBC0F \uC5E3\uC9C0 \uCE90\uC2DC.',
+    'Vercel Inc.\uFF08\u7F8E\u56FD\uFF09\u2014 \u6258\u7BA1\u548C\u8FB9\u7F18\u7F13\u5B58\u3002',
+    'Vercel Inc. (EE.UU.) \u2014 alojamiento.',
+    'Vercel Inc. (USA) \u2014 h\u00E9bergement.'
+  ),
+  'legal.privacy.processorSupabase': t6(
+    'Supabase (USA/EU) \u2014 Datenbank-Hosting. PostgreSQL mit Row-Level-Security, Cache nur Game-Daten (kein PII).',
+    'Supabase (USA/EU) \u2014 database hosting. PostgreSQL with row-level security, caches only game data (no PII).',
+    'Supabase(\uBBF8\uAD6D/EU) \u2014 \uB370\uC774\uD130\uBCA0\uC774\uC2A4 \uD638\uC2A4\uD305. \uAC8C\uC784 \uB370\uC774\uD130 \uCE90\uC2DC(PII \uC5C6\uC74C).',
+    'Supabase\uFF08\u7F8E\u56FD/EU\uFF09\u2014 \u6570\u636E\u5E93\u6258\u7BA1\u3002\u4EC5\u7F13\u5B58\u6E38\u620F\u6570\u636E\u3002',
+    'Supabase \u2014 alojamiento de base de datos.',
+    'Supabase \u2014 h\u00E9bergement de base de donn\u00E9es.'
+  ),
+  'legal.privacy.processorRiot': t6(
+    'Riot Games, Inc. (USA) \u2014 Spieldaten-API. Wir senden Spielernamen / puuid f\u00FCr Suchanfragen.',
+    'Riot Games, Inc. (USA) \u2014 game data API. We forward player name / puuid for searches.',
+    'Riot Games, Inc.(\uBBF8\uAD6D) \u2014 \uAC8C\uC784 \uB370\uC774\uD130 API.',
+    'Riot Games, Inc.\uFF08\u7F8E\u56FD\uFF09\u2014 \u6E38\u620F\u6570\u636E API\u3002',
+    'Riot Games, Inc. (EE.UU.) \u2014 API de datos de partida.',
+    'Riot Games, Inc. (USA) \u2014 API de donn\u00E9es de jeu.'
+  ),
+  'legal.privacy.processorCdragon': t6(
+    'CommunityDragon (CDN) \u2014 statische Asset-Auslieferung (Icons, Bilder). Keine personenbezogene Verarbeitung.',
+    'CommunityDragon (CDN) \u2014 static asset delivery (icons, images). No personal data processing.',
+    'CommunityDragon(CDN) \u2014 \uC815\uC801 \uC790\uC0B0 \uC81C\uACF5.',
+    'CommunityDragon (CDN)\u2014 \u9759\u6001\u8D44\u6E90\u5206\u53D1\u3002',
+    'CommunityDragon (CDN) \u2014 entrega de activos est\u00E1ticos.',
+    'CommunityDragon (CDN) \u2014 livraison d\'assets statiques.'
+  ),
+  'legal.privacy.cookiesHeading': t6(
+    'Cookies', 'Cookies', '\uCFE0\uD0A4', 'Cookie', 'Cookies', 'Cookies'
+  ),
+  'legal.privacy.cookiesText': t6(
+    'metastats.gg setzt nur ein funktionales Cookie (metastats-lang) zur Speicherung der Sprachauswahl. Es werden keine Tracking- oder Werbe-Cookies gesetzt. Vercel Analytics nutzt eine anonymisierte, hash-basierte Methode ohne Cookies und ohne IP-Speicherung.',
+    'metastats.gg sets only a functional cookie (metastats-lang) for language preference. No tracking or advertising cookies are set. Vercel Analytics uses an anonymous, hash-based method without cookies and without IP storage.',
+    'metastats.gg\uB294 \uC5B8\uC5B4 \uC120\uD0DD\uC6A9 \uAE30\uB2A5 \uCFE0\uD0A4(metastats-lang)\uB9CC \uC0AC\uC6A9\uD569\uB2C8\uB2E4. \uCD94\uC801/\uAD11\uACE0 \uCFE0\uD0A4\uB294 \uC5C6\uC2B5\uB2C8\uB2E4.',
+    'metastats.gg \u4EC5\u8BBE\u7F6E\u4E00\u4E2A\u529F\u80FD\u6027 Cookie\uFF08metastats-lang\uFF09\u7528\u4E8E\u8BED\u8A00\u504F\u597D\uFF0C\u65E0\u8FFD\u8E2A\u6216\u5E7F\u544A Cookie\u3002',
+    'metastats.gg solo establece una cookie funcional (metastats-lang). Sin cookies de seguimiento o publicidad.',
+    'metastats.gg ne d\u00E9finit qu\'un cookie fonctionnel (metastats-lang). Aucun cookie de suivi ou publicitaire.'
+  ),
+  'legal.privacy.retentionHeading': t6(
+    'Speicherdauer', 'Retention',
+    '\uBCF4\uAD00 \uAE30\uAC04', '\u4FDD\u7559\u671F',
+    'Conservaci\u00F3n', 'Conservation'
+  ),
+  'legal.privacy.retentionText': t6(
+    'Server-Logs werden maximal 14 Tage gespeichert. Spielerdaten-Caches (puuid, Match-IDs) verbleiben in der Datenbank, solange sie f\u00FCr die Plattform-Funktionalit\u00E4t erforderlich sind. Auf Anfrage l\u00F6schen wir Datens\u00E4tze einzelner Spieler innerhalb von 30 Tagen.',
+    'Server logs are kept for max 14 days. Player-data caches (puuid, match IDs) remain as long as needed for platform functionality. On request, we erase individual player records within 30 days.',
+    '\uC11C\uBC84 \uB85C\uADF8\uB294 \uCD5C\uB300 14\uC77C \uBCF4\uAD00\uB429\uB2C8\uB2E4. \uD50C\uB808\uC774\uC5B4 \uCE90\uC2DC\uB294 \uAE30\uB2A5 \uC720\uC9C0\uC5D0 \uD544\uC694\uD55C \uB9CC\uD07C \uBCF4\uAD00\uB429\uB2C8\uB2E4.',
+    '\u670D\u52A1\u5668\u65E5\u5FD7\u6700\u957F\u4FDD\u7559 14 \u5929\u3002\u73A9\u5BB6\u6570\u636E\u7F13\u5B58\u6309\u9700\u4FDD\u7559\u3002',
+    'Los registros se conservan m\u00E1x. 14 d\u00EDas. Las cach\u00E9s de jugadores se mantienen mientras sean necesarias.',
+    'Les journaux sont conserv\u00E9s max. 14 jours. Les caches de joueurs restent tant que n\u00E9cessaire.'
+  ),
+  'legal.privacy.rightsHeading': t6(
+    'Deine Rechte', 'Your Rights',
+    '\uADC0\uD558\uC758 \uAD8C\uB9AC', '\u60A8\u7684\u6743\u5229',
+    'Tus derechos', 'Vos droits'
+  ),
+  'legal.privacy.rightsIntro': t6(
+    'Du hast nach DSGVO folgende Rechte:',
+    'Under GDPR you have the following rights:',
+    'GDPR\uC5D0 \uB530\uB77C \uB2E4\uC74C \uAD8C\uB9AC\uB97C \uAC00\uC9D1\uB2C8\uB2E4:',
+    '\u4F9D\u636E GDPR\uFF0C\u60A8\u4EAB\u6709\u4EE5\u4E0B\u6743\u5229\uFF1A',
+    'Seg\u00FAn el RGPD tienes los siguientes derechos:',
+    'Selon le RGPD, vous disposez des droits suivants :'
+  ),
+  'legal.privacy.rightAccess': t6(
+    'Auskunft \u00FCber gespeicherte Daten (Art. 15)',
+    'Access (Art. 15)',
+    '\uC561\uC138\uC2A4 \uAD8C\uB9AC (\uC81C15\uC870)',
+    '\u8BBF\u95EE\u6743 (\u7B2C15\u6761)',
+    'Acceso (art. 15)',
+    'Acc\u00E8s (art. 15)'
+  ),
+  'legal.privacy.rightRectify': t6(
+    'Berichtigung (Art. 16)', 'Rectification (Art. 16)',
+    '\uC815\uC815 (\uC81C16\uC870)', '\u66F4\u6B63 (\u7B2C16\u6761)',
+    'Rectificaci\u00F3n (art. 16)', 'Rectification (art. 16)'
+  ),
+  'legal.privacy.rightErase': t6(
+    'L\u00F6schung (Art. 17, "Recht auf Vergessenwerden")',
+    'Erasure (Art. 17, "right to be forgotten")',
+    '\uC0AD\uC81C (\uC81C17\uC870)', '\u5220\u9664 (\u7B2C17\u6761)',
+    'Supresi\u00F3n (art. 17)', 'Effacement (art. 17)'
+  ),
+  'legal.privacy.rightRestrict': t6(
+    'Einschr\u00E4nkung der Verarbeitung (Art. 18)',
+    'Restriction of processing (Art. 18)',
+    '\uCC98\uB9AC \uC81C\uD55C (\uC81C18\uC870)', '\u5904\u7406\u9650\u5236 (\u7B2C18\u6761)',
+    'Limitaci\u00F3n del tratamiento (art. 18)',
+    'Limitation du traitement (art. 18)'
+  ),
+  'legal.privacy.rightPortability': t6(
+    'Daten\u00FCbertragbarkeit (Art. 20)',
+    'Data portability (Art. 20)',
+    '\uB370\uC774\uD130 \uC774\uB3D9\uC131 (\uC81C20\uC870)', '\u6570\u636E\u53EF\u643A\u6743 (\u7B2C20\u6761)',
+    'Portabilidad (art. 20)', 'Portabilit\u00E9 (art. 20)'
+  ),
+  'legal.privacy.rightComplain': t6(
+    'Beschwerde bei einer Aufsichtsbeh\u00F6rde (Art. 77)',
+    'Complaint to a supervisory authority (Art. 77)',
+    '\uAC10\uB3C5 \uAE30\uAD00\uC5D0 \uD56D\uC758 (\uC81C77\uC870)',
+    '\u5411\u76D1\u7BA1\u673A\u6784\u6295\u8BC9 (\u7B2C77\u6761)',
+    'Reclamaci\u00F3n ante autoridad (art. 77)',
+    'Plainte aupr\u00E8s d\'une autorit\u00E9 (art. 77)'
+  ),
+  'legal.privacy.rightsContact': t6(
+    'Zur Aus\u00FCbung deiner Rechte schreibe an info@metastats.gg. Wir bearbeiten Anfragen innerhalb von 30 Tagen.',
+    'Email info@metastats.gg to exercise these rights. We respond within 30 days.',
+    '\uAD8C\uB9AC \uD589\uC0AC\uB294 info@metastats.gg\uB85C \uC5F0\uB77D\uC8FC\uC138\uC694. 30\uC77C \uC774\uB0B4 \uB2F5\uBCC0\uB4DC\uB9BD\uB2C8\uB2E4.',
+    '\u8BF7\u53D1\u90AE\u4EF6\u81F3 info@metastats.gg \u884C\u4F7F\u6743\u5229\u3002\u6211\u4EEC\u5C06\u5728 30 \u5929\u5185\u56DE\u590D\u3002',
+    'Para ejercer estos derechos: info@metastats.gg. Respondemos en 30 d\u00EDas.',
+    'Pour exercer vos droits : info@metastats.gg. R\u00E9ponse sous 30 jours.'
+  ),
+  'legal.privacy.changesHeading': t6(
+    '\u00C4nderungen', 'Changes',
+    '\uBCC0\uACBD\uC0AC\uD56D', '\u53D8\u66F4',
+    'Cambios', 'Modifications'
+  ),
+  'legal.privacy.changesText': t6(
+    'Diese Datenschutzerkl\u00E4rung kann angepasst werden, um aktuellen rechtlichen Anforderungen zu entsprechen. Die jeweils aktuelle Fassung gilt ab Ver\u00F6ffentlichung auf dieser Seite.',
+    'This privacy notice may be updated to reflect current legal requirements. The current version applies from publication on this page.',
+    '\uBCF8 \uAC1C\uC778\uC815\uBCF4\uCC98\uB9AC\uBC29\uCE68\uC740 \uBC95\uC801 \uC694\uAC74\uC5D0 \uB530\uB77C \uBCC0\uACBD\uB420 \uC218 \uC788\uC2B5\uB2C8\uB2E4.',
+    '\u672C\u58F0\u660E\u53EF\u80FD\u6839\u636E\u6CD5\u5F8B\u8981\u6C42\u66F4\u65B0\uFF0C\u6700\u65B0\u7248\u672C\u81EA\u53D1\u5E03\u4E4B\u65E5\u8D77\u751F\u6548\u3002',
+    'Esta pol\u00EDtica puede actualizarse para reflejar requisitos legales.',
+    'Cette politique peut \u00EAtre mise \u00E0 jour selon les exigences l\u00E9gales.'
+  ),
+
+  // \u2500 Cookie banner \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  'cookie.title': t6(
+    'Cookies', 'Cookies', '\uCFE0\uD0A4', 'Cookie', 'Cookies', 'Cookies'
+  ),
+  'cookie.body': t6(
+    'Wir setzen ein notwendiges Cookie f\u00FCr die Sprachauswahl und nutzen anonyme Analytics ohne Tracking. Details unter',
+    'We set one functional cookie for language and use anonymous analytics with no tracking. Details in our',
+    '\uC5B8\uC5B4 \uC120\uD0DD\uC744 \uC704\uD55C \uD544\uC218 \uCFE0\uD0A4\uC640 \uC775\uBA85 \uBD84\uC11D\uC744 \uC0AC\uC6A9\uD569\uB2C8\uB2E4. \uC790\uC138\uD55C \uB0B4\uC6A9\uC740',
+    '\u6211\u4EEC\u8BBE\u7F6E\u4E00\u4E2A\u529F\u80FD\u6027 Cookie\uFF08\u8BED\u8A00\uFF09\u5E76\u4F7F\u7528\u533F\u540D\u5206\u6790\u3002\u8BE6\u60C5\u89C1',
+    'Usamos una cookie funcional para el idioma y anal\u00EDtica an\u00F3nima. Detalles en',
+    'Un cookie fonctionnel pour la langue, analytique anonyme. D\u00E9tails dans la'
+  ),
+  'cookie.accept': t6(
+    'Akzeptieren', 'Accept',
+    '\uC218\uB77D', '\u63A5\u53D7',
+    'Aceptar', 'Accepter'
+  ),
+  'cookie.decline': t6(
+    'Ablehnen', 'Decline',
+    '\uAC70\uBD80', '\u62D2\u7EDD',
+    'Rechazar', 'Refuser'
+  ),
+
+  // \u2500 Patch Notes / Patch Diff \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  'tft.patchNotes.title': t6(
+    'Patch-\u00DCbersicht', 'Patch Overview',
+    '\uD328\uCE58 \uAC1C\uC694', '\u7248\u672C\u6982\u89C8',
+    'Resumen de Parches', 'Aper\u00E7u des patchs'
+  ),
+  'tft.patchNotes.subtitle': t6(
+    'Was hat sich pro Patch gemessen ge\u00E4ndert \u2014 automatisch generierte Winners & Losers.',
+    'What measurably changed each patch \u2014 auto-generated winners & losers.',
+    '\uAC01 \uD328\uCE58\uB9C8\uB2E4 \uCE21\uC815\uB41C \uBCC0\uACBD \uC0AC\uD56D \u2014 \uC790\uB3D9 \uC0DD\uC131\uB41C \uC0C1\uC2B9/\uD558\uB77D \uBAA9\uB85D.',
+    '\u6BCF\u4E2A\u7248\u672C\u7684\u53EF\u91CF\u5316\u53D8\u5316 \u2014 \u81EA\u52A8\u751F\u6210\u7684\u8D62\u5BB6\u4E0E\u8F93\u5BB6\u3002',
+    'Cambios medibles por parche \u2014 ganadores y perdedores autogenerados.',
+    'Changements mesurables par patch \u2014 gagnants et perdants g\u00E9n\u00E9r\u00E9s.'
+  ),
+  'tft.patchNotes.empty': t6(
+    'Noch keine Patch-Daten verf\u00FCgbar. Komm in ein paar Tagen wieder.',
+    'No patch data available yet. Check back in a few days.',
+    '\uC544\uC9C1 \uD328\uCE58 \uB370\uC774\uD130\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.',
+    '\u6682\u65E0\u7248\u672C\u6570\u636E\u3002',
+    'A\u00FAn no hay datos de parche.',
+    'Pas encore de donn\u00E9es de patch.'
+  ),
+  'tft.patchNotes.singlePatch': t6(
+    'Erst ein Patch in den Daten. Diff-Vergleich erscheint sobald der n\u00E4chste Patch live ist.',
+    'Only one patch in the data yet. Diff comparison appears once the next patch is live.',
+    '\uB370\uC774\uD130\uC5D0 \uD328\uCE58\uAC00 \uD558\uB098\uBFD0\uC785\uB2C8\uB2E4.',
+    '\u6570\u636E\u4E2D\u53EA\u6709\u4E00\u4E2A\u7248\u672C\uFF0C\u9700\u8981\u81F3\u5C11\u4E24\u4E2A\u7248\u672C\u624D\u80FD\u5BF9\u6BD4\u3002',
+    'Solo un parche en los datos.',
+    'Un seul patch dans les donn\u00E9es.'
+  ),
+  'tft.patchNotes.current': t6(
+    'Aktuell', 'Current', '\uD604\uC7AC', '\u5F53\u524D', 'Actual', 'Actuel'
+  ),
+  'tft.patchNotes.matches': t6(
+    'Spiele', 'Matches', '\uACBD\uAE30', '\u6BD4\u8D5B', 'Partidas', 'Matchs'
+  ),
+  'tft.patchNotes.comparedTo': t6(
+    'verglichen mit', 'compared to',
+    '\uB300\uBE44', '\u5BF9\u6BD4',
+    'comparado con', 'compar\u00E9 \u00E0'
+  ),
+  'tft.patchNotes.entitiesCompared': t6(
+    'Eintr\u00E4ge verglichen', 'entities compared',
+    '\uD56D\uBAA9 \uBE44\uAD50\uB428', '\u9879\u5DF2\u6BD4\u8F83',
+    'entradas comparadas', 'entr\u00E9es compar\u00E9es'
+  ),
+  'tft.patchNotes.winners': t6(
+    'Gewinner', 'Winners',
+    '\uC0C1\uC2B9', '\u8D62\u5BB6',
+    'Ganadores', 'Gagnants'
+  ),
+  'tft.patchNotes.losers': t6(
+    'Verlierer', 'Losers',
+    '\uD558\uB77D', '\u8F93\u5BB6',
+    'Perdedores', 'Perdants'
+  ),
+  'tft.patchNotes.entity.unit': t6(
+    'Units', 'Units', '\uC720\uB2DB', '\u5355\u4F4D', 'Unidades', 'Unit\u00E9s'
+  ),
+  'tft.patchNotes.entity.item': t6(
+    'Items', 'Items', '\uC544\uC774\uD15C', '\u88C5\u5907', '\u00CDtems', 'Objets'
+  ),
+  'tft.patchNotes.entity.trait': t6(
+    'Synergien', 'Traits', '\uC2DC\uB108\uC9C0', '\u7F81\u7ECA', 'Sinergias', 'Synergies'
+  ),
+
+  // \u2500 Comp leveling tempo \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  'tft.comp.avgLevel': t6(
+    '\u00D8 Level', 'Avg Level',
+    '\uD3C9\uADE0 \uB808\uBCA8', '\u5E73\u5747\u7B49\u7EA7',
+    'Nivel medio', 'Niveau moyen'
+  ),
+  'tft.comp.avgLastRound': t6(
+    '\u00D8 End-Stage', 'Avg End Stage',
+    '\uD3C9\uADE0 \uC885\uB8CC \uB77C\uC6B4\uB4DC', '\u5E73\u5747\u7ED3\u675F\u9636\u6BB5',
+    'Etapa final media', '\u00C9tape finale moyenne'
+  ),
+  'tft.comp.tempo': t6(
+    'Tempo', 'Tempo', '\uD15C\uD3EC', '\u8282\u594F', 'Tempo', 'Tempo'
+  ),
+  'tft.comp.tempo.fastEight': t6(
+    'Fast 8', 'Fast 8',
+    '\uBE60\uB978 8\uB808\uBCA8', '\u901F\u6500 8',
+    'R\u00E1pido a 8', 'Niveau 8 rapide'
+  ),
+  'tft.comp.tempo.slowRoll': t6(
+    'Slow-Roll', 'Slow-Roll',
+    '\uC2AC\uB85C\uC6B0\uB864', '\u4F4E\u8D39\u641C',
+    'Slow-Roll', 'Slow-Roll'
+  ),
+  'tft.comp.tempo.balanced': t6(
+    'Standard', 'Standard',
+    '\uD45C\uC900', '\u6807\u51C6',
+    'Est\u00E1ndar', 'Standard'
+  ),
 } as const;
 
 type TranslationKey = keyof typeof translations;

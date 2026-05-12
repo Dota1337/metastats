@@ -164,6 +164,8 @@ export async function writeTftStatsToSupabase(opts) {
       compRows.push({
         ...baseRow, bucket, cluster_key: clusterKey,
         games: b.games, sum_placement: b.sumPlacement, top4: b.top4, top1: b.top1 ?? 0,
+        sum_level: b.sumLevel ?? 0,
+        sum_last_round: b.sumLastRound ?? 0,
         typical_units: b.typicalUnits || [],
         typical_augments: b.typicalAugments || [],
         carry_items: b.carryItems || [],

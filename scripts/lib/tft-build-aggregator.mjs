@@ -64,6 +64,8 @@ function newTraitBucket() {
 function newCompBucket() {
   return {
     games: 0, sumPlacement: 0, top4: 0, top1: 0,
+    sumLevel: 0,                  // Σ final level — divided by games for avgLevel
+    sumLastRound: 0,              // Σ last_round — divided by games for avgLastRound
     typicalUnits: new Map(),     // characterId -> count
     typicalAugments: new Map(),  // apiName -> { count, sumPlacement }
     carryItems: new Map(),       // sortedItemTriple -> count (carry's full build)
@@ -238,6 +240,10 @@ export function aggregateMatch(rawMatch, agg, opts) {
       const cb = getOrCreate(compBuckets, tierBucket, newCompBucket);
       cb.games++;
       cb.sumPlacement += placement;
+      // Track final level and last_round so the comp-detail page can
+      // surface leveling-tempo ("Did this comp tend to be Lvl 8 by 5-1?").
+      cb.sumLevel += Number(p.level ?? 0);
+      cb.sumLastRound += Number(p.last_round ?? 0);
       if (top4) cb.top4++;
       if (top1) cb.top1++;
       // Tag every unit on the board so the frontend can show "typical roster"

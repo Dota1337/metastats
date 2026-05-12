@@ -21,6 +21,8 @@ interface CompRow {
   sum_placement: number;
   top4: number;
   top1: number;
+  sum_level: number;
+  sum_last_round: number;
   participants: number;
   typical_units_merged: any[][];
   typical_augments_merged: any[][];
@@ -65,6 +67,8 @@ export async function GET(request: NextRequest) {
         top4Rate: r.games > 0 ? Number(r.top4) / Number(r.games) : null,
         top1Rate: r.games > 0 ? Number(r.top1) / Number(r.games) : null,
         pickRate: participants > 0 ? Number(r.games) / Number(participants) : null,
+        avgLevel: r.games > 0 && r.sum_level ? Number(r.sum_level) / Number(r.games) : null,
+        avgLastRound: r.games > 0 && r.sum_last_round ? Number(r.sum_last_round) / Number(r.games) : null,
         typicalUnits,
         typicalAugments,
         carryItems,

@@ -80,6 +80,18 @@ export default function TftCompDetailPage() {
           <>
             <CompCard comp={comp} assets={assets} />
 
+            {/* Leveling tempo — surfaces avg final level + avg last-round
+                so users see at a glance whether this comp wants to be Lvl 8
+                by Stage 5 or settles at Lvl 7 because it died earlier. */}
+            {(comp.avgLevel != null || comp.avgLastRound != null) && (
+              <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <Stat label={t('tft.comp.avgLevel')} value={comp.avgLevel != null ? comp.avgLevel.toFixed(1) : '—'} />
+                <Stat label={t('tft.comp.avgLastRound')} value={comp.avgLastRound != null ? formatStage(comp.avgLastRound) : '—'} />
+                <Stat label={t('tft.comp.tempo')} value={tempoLabel(comp.avgLevel, comp.avgLastRound, t)} />
+                <Stat label={t('tft.gamesShort')} value={String(comp.games)} />
+              </section>
+            )}
+
             {/* Top Item-Sets pro Carry — extends what CompCard only teased
                 inline. Each set shows its 3 items + relative pick share. */}
             {comp.carryItems && comp.carryItems.length > 0 && (
@@ -262,4 +274,35 @@ function costColor(cost: number) {
     : cost === 3 ? '#3a8ddc'
     : cost === 4 ? '#c39bff'
     : '#e0c75a';
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-[#0a0e1a] border border-[#1e2a3a] rounded px-3 py-2">
+      <div className="text-[#8a9bb0] text-[10px] uppercase tracking-widest">{label}</div>
+      <div className="text-white text-base font-semibold mt-0.5">{value}</div>
+    </div>
+  );
+}
+
+// Stage-round formatter mirrors the MatchCard formatStage logic so users
+// see "5-1" instead of an opaque last_round=33.
+function formatStage(round: number): string {
+  if (round <= 0) return '—';
+  if (round <= 4) return `1-${Math.round(round)}`;
+  const offset = round - 4;
+  const stage = Math.floor((offset - 1) / 7) + 2;
+  const r = ((offset - 1) % 7) + 1;
+  return `${stage}-${Math.round(r)}`;
+}
+
+// Light heuristic: comps that hit higher avg level for the same last-round
+// were leveling faster than the lobby average, so we tag them "early-level"
+// vs "slow-roll". Threshold is loose — there's no objective truth here, but
+// avg-level <= 7 with similar last-round signals a reroll archetype.
+function tempoLabel(avgLevel: number | null | undefined, avgRound: number | null | undefined, t: (k: any) => string): string {
+  if (avgLevel == null) return '—';
+  if (avgLevel >= 8.5) return t('tft.comp.tempo.fastEight');
+  if (avgLevel <= 7.0) return t('tft.comp.tempo.slowRoll');
+  return t('tft.comp.tempo.balanced');
 }

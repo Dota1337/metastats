@@ -5,6 +5,7 @@ import { I18nProvider } from "./lib/i18n";
 import { getServerLang, getSeoCopy } from "./lib/server-lang";
 import SideDrawer from "./components/SideDrawer";
 import PrototypeBanner from "./components/PrototypeBanner";
+import CookieBanner from "./components/CookieBanner";
 import { Analytics } from "@vercel/analytics/next";
 
 const geistSans = Geist({
@@ -86,6 +87,7 @@ export default async function RootLayout({
           <PrototypeBanner />
           <SideDrawer />
           {children}
+          <CookieBanner />
           <Analytics />
         </I18nProvider>
       </body>

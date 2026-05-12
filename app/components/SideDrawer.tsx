@@ -102,6 +102,14 @@ export default function SideDrawer() {
     }
   }, [open, tab, game]);
 
+  // Reset patches when the active game changes — otherwise the drawer keeps
+  // showing the previous game's patches (LoL on a TFT page after switching).
+  // The cached states for tournaments stay because each game has its own
+  // state variable, but patches share one slot.
+  useEffect(() => {
+    setPatches([]);
+  }, [game]);
+
   // Re-fetch tournaments when filter changes (only the LoL path has filters;
   // TFT drawer shows the unfiltered live + upcoming list).
   useEffect(() => {
@@ -147,7 +155,11 @@ export default function SideDrawer() {
   const fetchPatches = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/patch-notes');
+      // Game-aware patch source: TFT pulls from our own crawl_meta-derived
+      // list (URLs point to teamfighttactics.lol...); LoL keeps the existing
+      // DDragon-driven endpoint.
+      const endpoint = game === 'tft' ? '/api/tft/patch-notes' : '/api/patch-notes';
+      const res = await fetch(endpoint);
       const data = await res.json();
       if (data.patches) setPatches(data.patches);
     } catch {} finally {

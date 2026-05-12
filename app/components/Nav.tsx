@@ -131,7 +131,9 @@ export default function Nav({ active }: NavProps) {
               <a href="/tft/leaderboard" className={linkClass('leaderboard')}>{t('nav.leaderboard')}</a>
               <a href="/tft/units" className={linkClass('units')}>{t('nav.units')}</a>
               <a href="/tft/items" className={linkClass('items')}>{t('nav.items')}</a>
-              <a href="/tft/augments" className={linkClass('augments')}>{t('nav.augments')}</a>
+              {/* Augments-Reiter ist ausgeblendet: Set 17 liefert keine
+                  Augments im Match-V1 DTO. /tft/augments + Detail-Pages
+                  bleiben erreichbar für direkten Zugriff. */}
               <a href="/tft/traits" className={linkClass('traits')}>{t('nav.traits')}</a>
               <a href="/tft/marktwert" className={linkClass('marktwert')}>{t('nav.marketvalue')}</a>
               <a href="/tft/tournaments" className={linkClass('tournaments')}>{t('nav.leagues')}</a>
@@ -335,7 +337,6 @@ export default function Nav({ active }: NavProps) {
               <a href="/tft/leaderboard" className={linkClass('leaderboard')} onClick={() => setMenuOpen(false)}>{t('nav.leaderboard')}</a>
               <a href="/tft/units" className={linkClass('units')} onClick={() => setMenuOpen(false)}>{t('nav.units')}</a>
               <a href="/tft/items" className={linkClass('items')} onClick={() => setMenuOpen(false)}>{t('nav.items')}</a>
-              <a href="/tft/augments" className={linkClass('augments')} onClick={() => setMenuOpen(false)}>{t('nav.augments')}</a>
               <a href="/tft/traits" className={linkClass('traits')} onClick={() => setMenuOpen(false)}>{t('nav.traits')}</a>
               <a href="/tft/marktwert" className={linkClass('marktwert')} onClick={() => setMenuOpen(false)}>{t('nav.marketvalue')}</a>
               <a href="/tft/tournaments" className={linkClass('tournaments')} onClick={() => setMenuOpen(false)}>{t('nav.leagues')}</a>

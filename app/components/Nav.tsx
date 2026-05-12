@@ -8,7 +8,7 @@ import GameSwitcher from './GameSwitcher';
 interface NavProps {
   active?:
     | 'search' | 'leaderboard' | 'champions' | 'marktwert' | 'analyse' | 'teams' | 'ligen'
-    | 'units' | 'items' | 'augments' | 'comps' | 'traits';
+    | 'units' | 'items' | 'augments' | 'comps' | 'traits' | 'tournaments';
 }
 
 interface SearchResult {
@@ -134,6 +134,7 @@ export default function Nav({ active }: NavProps) {
               <a href="/tft/augments" className={linkClass('augments')}>{t('nav.augments')}</a>
               <a href="/tft/traits" className={linkClass('traits')}>{t('nav.traits')}</a>
               <a href="/tft/marktwert" className={linkClass('marktwert')}>{t('nav.marketvalue')}</a>
+              <a href="/tft/tournaments" className={linkClass('tournaments')}>{t('nav.leagues')}</a>
               <a href="/tft/compare" className={linkClass('analyse')}>{t('nav.analyse')}</a>
             </>
           ) : (
@@ -337,6 +338,7 @@ export default function Nav({ active }: NavProps) {
               <a href="/tft/augments" className={linkClass('augments')} onClick={() => setMenuOpen(false)}>{t('nav.augments')}</a>
               <a href="/tft/traits" className={linkClass('traits')} onClick={() => setMenuOpen(false)}>{t('nav.traits')}</a>
               <a href="/tft/marktwert" className={linkClass('marktwert')} onClick={() => setMenuOpen(false)}>{t('nav.marketvalue')}</a>
+              <a href="/tft/tournaments" className={linkClass('tournaments')} onClick={() => setMenuOpen(false)}>{t('nav.leagues')}</a>
               <a href="/tft/compare" className={linkClass('analyse')} onClick={() => setMenuOpen(false)}>{t('nav.analyse')}</a>
             </>
           ) : (

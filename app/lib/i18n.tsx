@@ -1321,6 +1321,110 @@ const translations = {
     'Pro vs Cola Solo',
     'Pro vs Solo Queue'
   ),
+
+  // \u2500 TFT Tournaments / Esports \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  'tft.tournaments.title': t6(
+    'TFT Ligen & Wettbewerbe', 'TFT Leagues & Tournaments',
+    'TFT \uB9AC\uADF8 & \uD1A0\uB108\uBA3C\uD2B8', 'TFT \u8054\u8D5B\u4E0E\u8D5B\u4E8B',
+    'Ligas y Torneos TFT', 'Ligues et Tournois TFT'
+  ),
+  'tft.tournaments.subtitle': t6(
+    'Aktuelle TFT-Tournaments mit Standings, Prize Pools und Pro-Spieler-Verlinkung. Daten via Liquipedia.',
+    'Current TFT tournaments with standings, prize pools and pro-player links. Sourced from Liquipedia.',
+    'Liquipedia \uAE30\uBC18 TFT \uD1A0\uB108\uBA3C\uD2B8, \uC21C\uC704\uC640 \uC0C1\uAE08 \uC815\uBCF4.',
+    '\u57FA\u4E8E Liquipedia \u7684 TFT \u8D5B\u4E8B\u6570\u636E\uFF0C\u542B\u6392\u540D\u548C\u5956\u91D1\u3002',
+    'Torneos TFT con clasificaciones y bolsas de premios. Datos v\u00EDa Liquipedia.',
+    'Tournois TFT avec classements et cashprizes. Donn\u00E9es via Liquipedia.'
+  ),
+  'tft.tournaments.allRegions': t6(
+    'Alle Regionen', 'All Regions',
+    '\uBAA8\uB4E0 \uC9C0\uC5ED', '\u6240\u6709\u533A\u57DF',
+    'Todas las regiones', 'Toutes les r\u00E9gions'
+  ),
+  'tft.tournaments.allTiers': t6(
+    'Alle Tiers', 'All Tiers',
+    '\uBAA8\uB4E0 \uB4F1\uAE09', '\u6240\u6709\u7B49\u7EA7',
+    'Todos los tiers', 'Tous les tiers'
+  ),
+  'tft.tournaments.allSets': t6(
+    'Alle Sets', 'All Sets',
+    '\uBAA8\uB4E0 \uC2DC\uC98C', '\u6240\u6709\u8D5B\u5B63',
+    'Todos los sets', 'Tous les sets'
+  ),
+  'tft.tournaments.empty': t6(
+    'Noch keine Tournaments. Komm in ein paar Tagen wieder.',
+    'No tournaments yet. Check back in a few days.',
+    '\uC544\uC9C1 \uD1A0\uB108\uBA3C\uD2B8\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.',
+    '\u6682\u65E0\u8D5B\u4E8B\u6570\u636E\u3002',
+    'Sin torneos todav\u00EDa.',
+    'Pas encore de tournois.'
+  ),
+  'tft.tournaments.live': t6(
+    'Live', 'Live',
+    '\uB77C\uC774\uBE0C', '\u6B63\u5728\u8FDB\u884C',
+    'En Vivo', 'En direct'
+  ),
+  'tft.tournaments.upcoming': t6(
+    'Demn\u00E4chst', 'Upcoming',
+    '\uC608\uC815', '\u5373\u5C06\u5F00\u59CB',
+    'Pr\u00F3ximos', '\u00C0 venir'
+  ),
+  'tft.tournaments.past': t6(
+    'Beendet', 'Past',
+    '\uC885\uB8CC', '\u5DF2\u7ED3\u675F',
+    'Pasados', 'Pass\u00E9s'
+  ),
+  'tft.tournaments.notFound': t6(
+    'Tournament nicht gefunden.', 'Tournament not found.',
+    '\uD1A0\uB108\uBA3C\uD2B8\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.', '\u672A\u627E\u5230\u8BE5\u8D5B\u4E8B\u3002',
+    'Torneo no encontrado.', 'Tournoi introuvable.'
+  ),
+  'tft.tournaments.sourcedFrom': t6(
+    'Quelle:', 'Source:',
+    '\uCD9C\uCC98:', '\u6765\u6E90:',
+    'Fuente:', 'Source :'
+  ),
+  'tft.tournaments.openOnLiquipedia': t6(
+    'Auf Liquipedia ansehen',
+    'Open on Liquipedia',
+    'Liquipedia\uC5D0\uC11C \uBCF4\uAE30',
+    '\u5728 Liquipedia \u4E0A\u67E5\u770B',
+    'Ver en Liquipedia',
+    'Voir sur Liquipedia'
+  ),
+  'tft.tournaments.liveStream': t6(
+    'Live-Stream', 'Live Stream',
+    '\uB77C\uC774\uBE0C \uBC29\uC1A1', '\u76F4\u64AD',
+    'Transmisi\u00F3n en vivo', 'Stream en direct'
+  ),
+  'tft.tournaments.standings': t6(
+    'Standings', 'Standings',
+    '\uC21C\uC704', '\u6392\u540D',
+    'Clasificaciones', 'Classement'
+  ),
+  'tft.tournaments.standingsAfterEvent': t6(
+    'Standings erscheinen nach Tournament-Ende.',
+    'Standings appear after the tournament ends.',
+    '\uD1A0\uB108\uBA3C\uD2B8 \uC885\uB8CC \uD6C4 \uC21C\uC704\uAC00 \uAC8C\uC2DC\uB429\uB2C8\uB2E4.',
+    '\u6BD4\u8D5B\u7ED3\u675F\u540E\u5C06\u516C\u5E03\u6392\u540D\u3002',
+    'Las clasificaciones aparecen tras el evento.',
+    'Le classement appara\u00EEt apr\u00E8s le tournoi.'
+  ),
+  'tft.tournaments.noStandingsYet': t6(
+    'Noch keine Standings importiert. Liquipedia-Sync l\u00E4uft w\u00F6chentlich.',
+    'No standings imported yet. Liquipedia sync runs weekly.',
+    '\uC544\uC9C1 \uAC00\uC838\uC628 \uC21C\uC704\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4. Liquipedia \uB3D9\uAE30\uD654\uB294 \uB9E4\uC8FC \uC2E4\uD589\uB429\uB2C8\uB2E4.',
+    '\u5C1A\u672A\u5BFC\u5165\u6392\u540D\u3002Liquipedia \u540C\u6B65\u6BCF\u5468\u8FD0\u884C\u3002',
+    'A\u00FAn no hay clasificaciones importadas. Sincronizaci\u00F3n semanal con Liquipedia.',
+    'Pas encore de classement import\u00E9. Synchronisation Liquipedia hebdomadaire.'
+  ),
+
+  // \u2500 SideDrawer Past Section \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  'drawer.past': t6(
+    'Beendet', 'Past',
+    '\uC885\uB8CC', '\u5DF2\u7ED3\u675F',
+    'Pasados', 'Pass\u00E9s'
+  ),
 } as const;
 
 type TranslationKey = keyof typeof translations;

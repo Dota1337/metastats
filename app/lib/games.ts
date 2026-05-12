@@ -21,21 +21,23 @@ const PAGE_MAP_LOL_TO_TFT: { match: RegExp; to: string }[] = [
   { match: /^\/champions(\/.*)?$/,    to: '/tft/units' },
   { match: /^\/marktwert(\/.*)?$/,    to: '/tft/marktwert' },
   { match: /^\/compare(\/.*)?$/,      to: '/tft/compare' },
+  { match: /^\/ligen(\/.*)?$/,        to: '/tft/tournaments' },     // leagues → TFT tournaments
   { match: /^\/player\/(.+)$/,        to: '/tft/player/$1' },
   { match: /^\/?$/,                   to: '/tft' },
 ];
 
 const PAGE_MAP_TFT_TO_LOL: { match: RegExp; to: string }[] = [
-  { match: /^\/tft\/leaderboard(\/.*)?$/, to: '/leaderboard' },
-  { match: /^\/tft\/units(\/.*)?$/,       to: '/champions' },
-  { match: /^\/tft\/items(\/.*)?$/,       to: '/champions' },       // no LoL equivalent
-  { match: /^\/tft\/augments(\/.*)?$/,    to: '/champions' },
-  { match: /^\/tft\/comps(\/.*)?$/,       to: '/champions' },
-  { match: /^\/tft\/traits(\/.*)?$/,      to: '/champions' },
-  { match: /^\/tft\/marktwert(\/.*)?$/,   to: '/marktwert' },
-  { match: /^\/tft\/compare(\/.*)?$/,     to: '/compare' },
-  { match: /^\/tft\/player\/(.+)$/,       to: '/player/$1' },
-  { match: /^\/tft\/?$/,                  to: '/' },
+  { match: /^\/tft\/leaderboard(\/.*)?$/,    to: '/leaderboard' },
+  { match: /^\/tft\/units(\/.*)?$/,          to: '/champions' },
+  { match: /^\/tft\/items(\/.*)?$/,          to: '/champions' },       // no LoL equivalent
+  { match: /^\/tft\/augments(\/.*)?$/,       to: '/champions' },
+  { match: /^\/tft\/comps(\/.*)?$/,          to: '/champions' },
+  { match: /^\/tft\/traits(\/.*)?$/,         to: '/champions' },
+  { match: /^\/tft\/marktwert(\/.*)?$/,      to: '/marktwert' },
+  { match: /^\/tft\/compare(\/.*)?$/,        to: '/compare' },
+  { match: /^\/tft\/tournaments(\/.*)?$/,    to: '/ligen' },           // TFT tournaments → leagues
+  { match: /^\/tft\/player\/(.+)$/,          to: '/player/$1' },
+  { match: /^\/tft\/?$/,                     to: '/' },
 ];
 
 export function detectGameFromPath(pathname: string): Game {

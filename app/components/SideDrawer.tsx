@@ -1,6 +1,8 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
+import { usePathname } from 'next/navigation';
 import { useI18n, LOCALE_MAP } from '../lib/i18n';
+import { detectGameFromPath, type Game } from '../lib/games';
 
 interface PatchNote {
   version: string;
@@ -28,16 +30,37 @@ interface Tournament {
   teams?: Team[];
 }
 
+// TFT tournaments come from our own Liquipedia-backed crawler (no team-vs-
+// team matches like LoL). Different shape, separate rendering branch.
+interface TftTournament {
+  id: string;
+  name: string;
+  tier: string | null;
+  region: string | null;
+  set_number: number | null;
+  start_date: string | null;
+  end_date: string | null;
+  status: 'upcoming' | 'live' | 'past';
+  prize_pool_usd: number | null;
+  twitch_channel: string | null;
+}
+
 type Tab = 'patches' | 'tournaments';
 type TournamentFilter = 'all' | 'upcoming' | 'live';
 
 export default function SideDrawer() {
   const { t, lang } = useI18n();
   const locale = LOCALE_MAP[lang];
+  const pathname = usePathname() || '/';
+  // Game detection is the only thing that switches the drawer's data source.
+  // LoL → /api/tournaments (Riot Esports API).
+  // TFT → /api/tft/tournaments (Liquipedia-backed).
+  const game: Game = detectGameFromPath(pathname);
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<Tab>('tournaments');
   const [patches, setPatches] = useState<PatchNote[]>([]);
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
+  const [tftTournaments, setTftTournaments] = useState<TftTournament[]>([]);
   const [tournamentFilter, setTournamentFilter] = useState<TournamentFilter>('all');
   const [leagueFilter, setLeagueFilter] = useState('');
   const [sortedLeagues, setSortedLeagues] = useState<string[]>([]);
@@ -68,25 +91,58 @@ export default function SideDrawer() {
     return () => document.removeEventListener('keydown', handler);
   }, []);
 
-  // Load data when drawer opens
+  // Load data when drawer opens — split by game so we only hit the API the
+  // user actually needs for the page they're on.
   useEffect(() => {
     if (!open) return;
     if (tab === 'patches' && patches.length === 0) fetchPatches();
-    if (tab === 'tournaments' && tournaments.length === 0) fetchTournaments();
-  }, [open, tab]);
+    if (tab === 'tournaments') {
+      if (game === 'tft' && tftTournaments.length === 0) fetchTftTournaments();
+      if (game === 'lol' && tournaments.length === 0) fetchTournaments();
+    }
+  }, [open, tab, game]);
 
-  // Re-fetch tournaments when filter changes
+  // Re-fetch tournaments when filter changes (only the LoL path has filters;
+  // TFT drawer shows the unfiltered live + upcoming list).
   useEffect(() => {
-    if (open && tab === 'tournaments') fetchTournaments();
+    if (open && tab === 'tournaments' && game === 'lol') fetchTournaments();
   }, [tournamentFilter, leagueFilter]);
 
-  // Check for live matches on mount (for badge)
+  // Live-count badge — counts the live ones for the active game so the
+  // pulsing dot is in-context.
   useEffect(() => {
-    fetch('/api/tournaments?filter=live')
-      .then(r => r.json())
-      .then(d => setLiveCount(d.totalMatches || 0))
-      .catch(() => {});
-  }, []);
+    if (game === 'tft') {
+      fetch('/api/tft/tournaments?status=live')
+        .then(r => r.json())
+        .then(d => setLiveCount((d.tournaments || []).length))
+        .catch(() => {});
+    } else {
+      fetch('/api/tournaments?filter=live')
+        .then(r => r.json())
+        .then(d => setLiveCount(d.totalMatches || 0))
+        .catch(() => {});
+    }
+  }, [game]);
+
+  const fetchTftTournaments = async () => {
+    setLoading(true);
+    try {
+      // Pull live + upcoming + most recent past; the drawer is for "what's
+      // happening now and soon", not a backlog of every event ever.
+      const [live, upcoming, past] = await Promise.all([
+        fetch('/api/tft/tournaments?status=live').then(r => r.json()).catch(() => ({ tournaments: [] })),
+        fetch('/api/tft/tournaments?status=upcoming&limit=15').then(r => r.json()).catch(() => ({ tournaments: [] })),
+        fetch('/api/tft/tournaments?status=past&limit=5').then(r => r.json()).catch(() => ({ tournaments: [] })),
+      ]);
+      setTftTournaments([
+        ...(live.tournaments || []),
+        ...(upcoming.tournaments || []),
+        ...(past.tournaments || []),
+      ]);
+    } catch {} finally {
+      setLoading(false);
+    }
+  };
 
   const fetchPatches = async () => {
     setLoading(true);
@@ -238,19 +294,27 @@ export default function SideDrawer() {
               <div className="w-5 h-5 border-2 border-[#c89b3c] border-t-transparent rounded-full animate-spin" />
             </div>
           ) : tab === 'tournaments' ? (
-            <TournamentsContent
-              tournaments={tournaments}
-              groupedByDate={groupedByDate}
-              tournamentFilter={tournamentFilter}
-              setTournamentFilter={setTournamentFilter}
-              leagueFilter={leagueFilter}
-              setLeagueFilter={setLeagueFilter}
-              sortedLeagues={sortedLeagues}
-              leagueMap={leagueMap}
-              formatTime={formatTime}
-              relativeTime={relativeTime}
-              t={t}
-            />
+            // Game-aware split: the LoL drawer renders the existing Riot-
+            // Esports schedule view; the TFT drawer renders a simpler
+            // "Liquipedia-tournament-card list" since TFT esports has no
+            // team-vs-team matches like LoL does.
+            game === 'tft' ? (
+              <TftTournamentsContent tournaments={tftTournaments} locale={locale} t={t} />
+            ) : (
+              <TournamentsContent
+                tournaments={tournaments}
+                groupedByDate={groupedByDate}
+                tournamentFilter={tournamentFilter}
+                setTournamentFilter={setTournamentFilter}
+                leagueFilter={leagueFilter}
+                setLeagueFilter={setLeagueFilter}
+                sortedLeagues={sortedLeagues}
+                leagueMap={leagueMap}
+                formatTime={formatTime}
+                relativeTime={relativeTime}
+                t={t}
+              />
+            )
           ) : (
             <PatchesContent patches={patches} t={t} />
           )}
@@ -407,6 +471,103 @@ function MatchCard({ match, formatTime, relativeTime, t }: { match: Tournament; 
           </div>
         </div>
       )}
+    </a>
+  );
+}
+
+/* ── TFT Tournaments Tab ── */
+// Compact card list of Liquipedia-sourced TFT tournaments — live ones
+// pinned at the top with a pulsing red dot, then upcoming, then a few
+// recent past ones. Click → /tft/tournaments/[slug].
+function TftTournamentsContent({
+  tournaments, locale, t,
+}: { tournaments: TftTournament[]; locale: string; t: (key: any) => string }) {
+  const tierColor = (tier: string | null) => {
+    if (tier === 'S') return '#e0c75a';
+    if (tier === 'A') return '#7B61FF';
+    if (tier === 'B') return '#3a8ddc';
+    return '#5a6a80';
+  };
+  const dateFmt = (s: string | null) => s ? new Date(s).toLocaleDateString(locale, { day: '2-digit', month: 'short' }) : '—';
+
+  if (tournaments.length === 0) {
+    return <div className="px-4 py-8 text-center text-[#4a5a70] text-xs">{t('drawer.noMatches')}</div>;
+  }
+
+  // Group by status so users see what's actually live before scrolling.
+  const live = tournaments.filter(x => x.status === 'live');
+  const upcoming = tournaments.filter(x => x.status === 'upcoming');
+  const past = tournaments.filter(x => x.status === 'past');
+
+  return (
+    <div>
+      {live.length > 0 && (
+        <SectionHeader label={t('drawer.live')} count={live.length} accent="#e44040" pulse />
+      )}
+      {live.map(tournament => (
+        <TftTournamentRow key={tournament.id} tournament={tournament} dateFmt={dateFmt} tierColor={tierColor} />
+      ))}
+      {upcoming.length > 0 && (
+        <SectionHeader label={t('drawer.planned')} count={upcoming.length} accent="#3ecf8e" />
+      )}
+      {upcoming.map(tournament => (
+        <TftTournamentRow key={tournament.id} tournament={tournament} dateFmt={dateFmt} tierColor={tierColor} />
+      ))}
+      {past.length > 0 && (
+        <SectionHeader label={t('drawer.past')} count={past.length} accent="#8a9bb0" />
+      )}
+      {past.map(tournament => (
+        <TftTournamentRow key={tournament.id} tournament={tournament} dateFmt={dateFmt} tierColor={tierColor} />
+      ))}
+    </div>
+  );
+}
+
+function SectionHeader({ label, count, accent, pulse }: { label: string; count: number; accent: string; pulse?: boolean }) {
+  return (
+    <div className="px-4 py-1.5 bg-[#0d1526] border-y border-[#1e2a3a] sticky top-0 z-10 flex items-center gap-2">
+      <span className="relative flex h-2 w-2">
+        {pulse && <span className="absolute inset-0 rounded-full opacity-75 animate-ping" style={{ backgroundColor: accent }} />}
+        <span className="relative inline-flex rounded-full h-2 w-2" style={{ backgroundColor: accent }} />
+      </span>
+      <span className="text-[10px] font-medium uppercase tracking-wider" style={{ color: accent }}>
+        {label} <span className="opacity-60">({count})</span>
+      </span>
+    </div>
+  );
+}
+
+function TftTournamentRow({
+  tournament, dateFmt, tierColor,
+}: { tournament: TftTournament; dateFmt: (s: string | null) => string; tierColor: (t: string | null) => string }) {
+  const color = tierColor(tournament.tier);
+  return (
+    <a
+      href={`/tft/tournaments/${encodeURIComponent(tournament.id)}`}
+      className="block px-4 py-2.5 border-b border-[#141c2e] hover:bg-[#0d1526] transition-colors"
+    >
+      <div className="flex items-start gap-2.5">
+        {tournament.tier && (
+          <div
+            className="flex items-center justify-center w-7 h-7 rounded text-[10px] font-bold flex-shrink-0"
+            style={{ color, backgroundColor: `${color}20`, border: `1px solid ${color}55` }}
+          >
+            {tournament.tier}
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          <div className="text-white text-xs font-medium truncate">{tournament.name}</div>
+          <div className="text-[#4a5a70] text-[10px] mt-0.5">
+            {dateFmt(tournament.start_date)} – {dateFmt(tournament.end_date)}
+            {tournament.region && ` · ${tournament.region}`}
+          </div>
+        </div>
+        {tournament.prize_pool_usd != null && (
+          <div className="text-[#7B61FF] text-[10px] font-medium tabular-nums flex-shrink-0">
+            ${(tournament.prize_pool_usd / 1000).toFixed(0)}k
+          </div>
+        )}
+      </div>
     </a>
   );
 }

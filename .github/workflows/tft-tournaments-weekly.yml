@@ -1,0 +1,38 @@
+name: TFT Tournament Weekly Crawl
+
+on:
+  schedule:
+    # Wednesday 09:00 UTC. Phased after Sunday's pro-player crawl so the
+    # tournament-results placement→puuid join has the fresh pro list.
+    - cron: '0 9 * * 3'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    # ~17 tournament pages × 30s Liquipedia rate-limit ≈ 9 minutes; the schema
+    # is API-ready so dropping the delay once we have a Liquipedia API key
+    # cuts the runtime to ~2 minutes.
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Crawl TFT tournaments
+        run: node scripts/crawl-tft-tournaments.mjs

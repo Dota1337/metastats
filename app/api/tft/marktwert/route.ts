@@ -3,13 +3,19 @@ import { calculateTftMarketValue } from '../../../lib/tft-marketvalue';
 import { loadTftGraph } from '../../../lib/tft-stats-loader';
 import { getRegionalRouting } from '../../../lib/regions';
 import { processTftMatch } from '../../../lib/tft-match-processor';
+import { supabase } from '../../../lib/supabase';
 
-// On-demand TFT market value computation for a single player.
 // /api/tft/marktwert?name=Caps#EUW&region=euw1
 //
-// Master+ only — Iron–Diamond responds with rated:false and a reason.
-// The leaderboard view (/tft/marktwert page) calls this for every player
-// on the Master+ ladder when rendering the regional top list.
+// Snapshot-first: tries to read the latest daily snapshot from Supabase
+// (written by scripts/collect-tft-marketvalues.mjs). Falls back to a full
+// live-calculation only when no snapshot exists yet (new climber, region
+// with crawl not yet run, etc.).
+//
+// Master+ only — Iron–Diamond responds with rated:false.
+//
+// Optional ?live=1 query param forces a live re-calc even when a snapshot
+// exists; used by the player-page hero when the user pulls-to-refresh.
 
 const TFT_RANKED_SOLO = 'RANKED_TFT';
 
@@ -17,24 +23,56 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const name = searchParams.get('name') || '';
   const region = (searchParams.get('region') || 'euw1').toLowerCase();
-  const apiKey = process.env.RIOT_API_KEY_TFT;
-  if (!apiKey) {
-    return NextResponse.json({ error: 'Riot API Key fehlt' }, { status: 503 });
-  }
-  const regional = getRegionalRouting(region);
+  const forceLive = searchParams.get('live') === '1';
 
   const decoded = decodeURIComponent(name);
   const [gameName, tagLineRaw] = decoded.split('#');
   if (!gameName) return NextResponse.json({ error: 'Kein Name angegeben' }, { status: 400 });
   const tagLine = (tagLineRaw || 'EUW').trim();
 
-  // Resolve account
+  const apiKey = process.env.RIOT_API_KEY_TFT;
+  if (!apiKey) return NextResponse.json({ error: 'Riot API Key fehlt' }, { status: 503 });
+  const regional = getRegionalRouting(region);
+
+  // Resolve account first — we need the puuid both for the snapshot lookup
+  // and (as a fallback) for the live calc. Account lookup is the only Riot
+  // call that's strictly required in the snapshot-hit path.
   const accRes = await fetch(`https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}?api_key=${apiKey}`);
   if (!accRes.ok) return NextResponse.json({ error: 'Spieler nicht gefunden' }, { status: 404 });
   const account = await accRes.json();
   const puuid = account.puuid;
 
-  // Pull ranked entries + recent matches in parallel
+  // 1) Snapshot path — fast, no rate-limit cost.
+  if (!forceLive) {
+    const { data: snap } = await supabase
+      .from('tft_player_marketvalue_snapshots')
+      .select('tier, rank, lp, ladder_rank, base_value, multiplier, final_value, sample_size, damping, agents, snapshot_date')
+      .eq('puuid', puuid)
+      .eq('region', region)
+      .order('snapshot_date', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (snap) {
+      return NextResponse.json({
+        summoner: { name: `${account.gameName}#${account.tagLine}`, puuid, tier: snap.tier, rank: snap.rank, lp: snap.lp },
+        marketValue: {
+          baseValue: snap.base_value,
+          multiplier: Number(snap.multiplier),
+          finalValue: snap.final_value,
+          rated: true,
+          sampleSize: snap.sample_size,
+          damping: Number(snap.damping),
+          agents: snap.agents || [],
+        },
+        source: 'snapshot',
+        snapshotDate: snap.snapshot_date,
+        region,
+      });
+    }
+  }
+
+  // 2) Live fallback — used when no snapshot exists or ?live=1.
   const [rankedRes, idsRes] = await Promise.all([
     fetch(`https://${region}.api.riotgames.com/tft/league/v1/by-puuid/${puuid}?api_key=${apiKey}`),
     fetch(`https://${regional}.api.riotgames.com/tft/match/v1/matches/by-puuid/${puuid}/ids?count=30&api_key=${apiKey}`),
@@ -43,7 +81,6 @@ export async function GET(request: NextRequest) {
   const matchIds: string[] = idsRes.ok ? await idsRes.json() : [];
   const ranked = Array.isArray(rankedAll) ? rankedAll.find((r: any) => r.queueType === TFT_RANKED_SOLO) || null : null;
 
-  // Pull match details (limit to current set later via processor)
   const detailedRaw = await Promise.all(matchIds.slice(0, 30).map(async id => {
     const r = await fetch(`https://${regional}.api.riotgames.com/tft/match/v1/matches/${id}?api_key=${apiKey}`);
     return r.ok ? r.json() : null;
@@ -79,6 +116,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     summoner: { name: `${account.gameName}#${account.tagLine}`, puuid, tier: ranked?.tier, rank: ranked?.rank, lp: ranked?.leaguePoints ?? null },
     marketValue: result,
+    source: 'live',
     region,
   });
 }

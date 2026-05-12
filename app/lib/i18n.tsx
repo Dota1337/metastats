@@ -518,6 +518,100 @@ const translations = {
     'Las funciones, datos y dise\u00F1o pueden cambiar en cualquier momento.',
     'Les fonctionnalit\u00E9s, donn\u00E9es et le design peuvent changer \u00E0 tout moment.'
   ),
+
+  // \u2500 Marktwert / TFT player marketvalue hero \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  'tft.marketValue': t6(
+    'Marktwert', 'Market Value',
+    '\uC2DC\uC7A5 \uAC00\uCE58', '\u5E02\u573A\u4EF7\u503C',
+    'Valor de Mercado', 'Valeur March\u00E9'
+  ),
+  'tft.marketValue.belowMaster': t6(
+    'Marktwert ab Master+ verf\u00FCgbar.',
+    'Market value available from Master+ upward.',
+    'Master+ \uBD80\uD130 \uC774\uC6A9 \uAC00\uB2A5\uD55C \uC2DC\uC7A5 \uAC00\uCE58\uC785\uB2C8\uB2E4.',
+    '\u5E02\u573A\u4EF7\u503C\u4ECE Master+ \u8D77\u63D0\u4F9B\u3002',
+    'Valor de mercado disponible desde Master+.',
+    'Valeur de march\u00E9 disponible \u00E0 partir de Master+.'
+  ),
+  'tft.marketValue.notRated': t6(
+    'Noch nicht bewertet.',
+    'Not rated yet.',
+    '\uC544\uC9C1 \uD3C9\uAC00\uB418\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4.',
+    '\u5C1A\u672A\u8BC4\u4F30\u3002',
+    'A\u00FAn no evaluado.',
+    'Pas encore \u00E9valu\u00E9.'
+  ),
+  'tft.marketValue.notEnoughHistory': t6(
+    'Noch nicht genug Historie',
+    'Not enough history yet',
+    '\uC544\uC9C1 \uCDA9\uBD84\uD55C \uC774\uB825\uC774 \uC5C6\uC2B5\uB2C8\uB2E4',
+    '\u5386\u53F2\u6570\u636E\u4E0D\u8DB3',
+    'A\u00FAn no hay suficiente historial',
+    'Pas encore assez d\'historique'
+  ),
+  'tft.marketValue.last7d': t6(
+    'letzte 7 Tage', 'last 7 days',
+    '\uCD5C\uADFC 7\uC77C', '\u6700\u8FD17\u5929',
+    '\u00FAltimos 7 d\u00EDas', '7 derniers jours'
+  ),
+  'tft.marketValue.last30d': t6(
+    'letzte 30 Tage', 'last 30 days',
+    '\uCD5C\uADFC 30\uC77C', '\u6700\u8FD130\u5929',
+    '\u00FAltimos 30 d\u00EDas', '30 derniers jours'
+  ),
+  'tft.marketValue.multiplier': t6(
+    'Multiplikator', 'Multiplier',
+    '\uBC30\uC728', '\u500D\u6570',
+    'Multiplicador', 'Multiplicateur'
+  ),
+  'tft.marketValue.basedOn': t6(
+    'aus {n} Spielen', 'from {n} games',
+    '{n}\uACBD\uAE30 \uAE30\uBC18', '\u57FA\u4E8E{n}\u573A\u6BD4\u8D5B',
+    'de {n} partidas', 'sur {n} matchs'
+  ),
+  'tft.marketValue.howCalculated': t6(
+    'Wie wird das berechnet?', 'How is this calculated?',
+    '\uC774\uAC83\uC740 \uC5B4\uB5BB\uAC8C \uACC4\uC0B0\uB418\uB098\uC694?', '\u5982\u4F55\u8BA1\u7B97\uFF1F',
+    '\u00BFC\u00F3mo se calcula?', 'Comment est-ce calcul\u00E9 ?'
+  ),
+  'tft.marketValue.methodologyIntro': t6(
+    'Basiswert {base} aus Tier + LP, multipliziert durch:',
+    'Base value {base} from tier + LP, multiplied by:',
+    '\uD2F0\uC5B4 + LP\uC5D0\uC11C \uC0B0\uCD9C\uD55C \uAE30\uBCF8\uAC12 {base}, \uBC30\uC728 \uC801\uC6A9:',
+    '\u57FA\u4E8E\u6BB5\u4F4D+LP\u7684\u57FA\u7840\u4EF7\u503C {base}\uFF0C\u4E58\u4EE5\uFF1A',
+    'Valor base {base} de tier + LP, multiplicado por:',
+    'Valeur de base {base} \u00E0 partir du tier + LP, multipli\u00E9e par :'
+  ),
+  'tft.marketValue.snapshotFrom': t6(
+    'Snapshot vom {date}', 'Snapshot from {date}',
+    '{date} \uC2A4\uB0C5\uC0F7', '{date} \u7684\u5FEB\u7167',
+    'Snapshot del {date}', 'Snapshot du {date}'
+  ),
+  'tft.marketValue.agent.performance': t6(
+    'Performance', 'Performance',
+    '\uD37C\uD3EC\uBC0D\uC2A4', '\u8868\u73B0',
+    'Rendimiento', 'Performance'
+  ),
+  'tft.marketValue.agent.metaAdaptation': t6(
+    'Meta-Anpassung', 'Meta Adaptation',
+    '\uBA54\uD0C0 \uC801\uC751', '\u9002\u5E94\u4E3B\u6D41',
+    'Adaptaci\u00F3n Meta', 'Adaptation M\u00E9ta'
+  ),
+  'tft.marketValue.agent.highRoll': t6(
+    'High-Roll', 'High Roll',
+    '\uD558\uC774\uB864', '\u9AD8\u989D\u6536\u76CA',
+    'High-Roll', 'High-Roll'
+  ),
+  'tft.marketValue.agent.consistency': t6(
+    'Konsistenz', 'Consistency',
+    '\uC77C\uAD00\uC131', '\u7A33\u5B9A\u6027',
+    'Consistencia', 'Constance'
+  ),
+  'tft.marketValue.agent.noImpact': t6(
+    'Kein Einfluss', 'No impact',
+    '\uC601\uD5A5 \uC5C6\uC74C', '\u65E0\u5F71\u54CD',
+    'Sin impacto', 'Aucun impact'
+  ),
 } as const;
 
 type TranslationKey = keyof typeof translations;

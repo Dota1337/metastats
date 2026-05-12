@@ -8,6 +8,7 @@ import {
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import MatchCard from '../../../components/tft/MatchCard';
+import MarketValueHero from '../../../components/tft/MarketValueHero';
 import { useI18n } from '../../../lib/i18n';
 import { loadTftSetMeta } from '../../../lib/tft-dd-assets';
 import { loadTftAssets, tftIconUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
@@ -76,7 +77,7 @@ const TIER_COLORS: Record<string, string> = {
 const PAGE_SIZE = 30;
 
 export default function TftPlayerPage() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const params = useParams();
   const searchParams = useSearchParams();
   const region = (searchParams.get('region') || 'euw1').toLowerCase();
@@ -226,6 +227,8 @@ export default function TftPlayerPage() {
                 <RankBlock ranked={data.ranked} seasonRanks={playerStats?.seasonRanks} />
               </div>
             </div>
+
+            <MarketValueHero fullName={fullName} region={region} lang={lang} />
 
             <SeasonStats
               stats={playerStats}

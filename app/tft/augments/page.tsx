@@ -109,8 +109,9 @@ export default function TftAugmentsPage() {
               const tierColor = TIER_COLORS[meta?.tier ?? 0] || '#4a5a70';
               const url = tftIconUrl(assets, meta?.icon);
               return (
-                <div key={`${r.apiName}-${r.slot ?? 'all'}`}
-                     className="grid grid-cols-[3rem_1fr_5rem_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 items-center text-xs border-t border-[#1e2a3a]">
+                <a key={`${r.apiName}-${r.slot ?? 'all'}`}
+                   href={`/tft/augments/${encodeURIComponent(r.apiName)}?bucket=${filters.bucket}`}
+                   className="grid grid-cols-[3rem_1fr_5rem_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 items-center text-xs border-t border-[#1e2a3a] hover:bg-white/5">
                   {url ? (
                     <img src={url} alt={meta!.name} className="w-9 h-9 rounded border-2" style={{ borderColor: tierColor }} />
                   ) : (
@@ -122,7 +123,7 @@ export default function TftAugmentsPage() {
                   <div className="text-right text-[#8a9bb0]">{r.pickRate != null ? `${(r.pickRate * 100).toFixed(1)}%` : '—'}</div>
                   <div className="text-right text-[#8a9bb0]">{r.top4Rate != null ? `${(r.top4Rate * 100).toFixed(1)}%` : '—'}</div>
                   <div className="text-right text-[#4a5a70]">{r.games}</div>
-                </div>
+                </a>
               );
             })}
           </div>

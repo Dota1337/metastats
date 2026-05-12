@@ -129,11 +129,27 @@ async function main() {
   for (const t of active.traits || []) {
     const apiName = t.apiName;
     if (!apiName) continue;
+    // CD stores tier breakpoints as `effects[]` with minUnits/maxUnits + style
+    // (1=bronze, 3=silver, 4=gold, 5=prismatic) and a `variables` map of
+    // numeric stat bonuses. Multi-tier descs (Challenger, etc.) interleave
+    // per-tier templated copy in `desc`, so we keep the raw desc + structured
+    // tiers and let the frontend render either the full text once or
+    // per-tier pills with style + variable breakdown.
+    const tiers = (t.effects || [])
+      .filter(e => e && typeof e.minUnits === 'number')
+      .sort((a, b) => (a.minUnits || 0) - (b.minUnits || 0))
+      .map(e => ({
+        minUnits: e.minUnits,
+        maxUnits: e.maxUnits ?? null,
+        style: e.style ?? 0,
+        variables: e.variables || {},
+      }));
     traits[apiName] = {
       name: t.name || apiName,
       icon: normalizeIconPath(t.icon || ''),
       desc: stripHtml(t.desc || ''),
       innate: t.innate || '',
+      tiers,
     };
   }
 
@@ -212,6 +228,20 @@ async function main() {
 
 function stripHtml(s) {
   return String(s || '').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+// Replace CD-style @VAR@ placeholders in a description with the resolved
+// numeric value from a trait/augment effect's `variables` map. Percentage
+// suffixes ("@VAR@%") stay attached; trait copy carries that pattern.
+function resolveDescPlaceholders(desc, vars) {
+  if (!desc || !vars) return desc;
+  return desc.replace(/@([A-Za-z0-9_]+)@/g, (_, key) => {
+    if (!(key in vars)) return `@${key}@`;
+    const v = vars[key];
+    // Strip trailing zeros after the decimal point so 12.0 reads as "12"
+    // but 12.5 stays "12.5". Some CD variables come through as integers.
+    return typeof v === 'number' ? (Number.isInteger(v) ? String(v) : v.toFixed(1).replace(/\.0$/, '')) : String(v);
+  });
 }
 
 // Riot doesn't put the augment tier on the API directly. Fall back to

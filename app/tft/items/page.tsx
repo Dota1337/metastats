@@ -103,9 +103,11 @@ export default function TftItemsPage() {
                       const fallbackUrl = tftIconUrl(assets, ch?.icon);
                       const borderColor = costToColor(ch?.cost ?? 1);
                       return (
-                        <div
+                        <a
                           key={i}
-                          className="w-8 h-8 rounded border-2 overflow-hidden flex-shrink-0"
+                          href={`/tft/units/${encodeURIComponent(cid)}?bucket=${filters.bucket}`}
+                          onClick={e => e.stopPropagation()}
+                          className="w-8 h-8 rounded border-2 overflow-hidden flex-shrink-0 hover:scale-110 transition"
                           style={{ borderColor }}
                           title={ch?.name}
                         >
@@ -122,7 +124,7 @@ export default function TftItemsPage() {
                           ) : (
                             <div className="w-full h-full bg-[#1e2a3a]" />
                           )}
-                        </div>
+                        </a>
                       );
                     })}
                   </div>

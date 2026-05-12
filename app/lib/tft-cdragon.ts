@@ -24,11 +24,18 @@ export interface TftChampion {
   traits: string[];
   ability?: { name: string; desc: string };
 }
+export interface TftTraitTier {
+  minUnits: number;
+  maxUnits: number | null;
+  style: number;                              // 1=bronze 3=silver 4=gold 5=prismatic
+  variables: Record<string, number>;
+}
 export interface TftTrait {
   name: string;
   icon: string | null;
   desc?: string;
   innate?: string;
+  tiers?: TftTraitTier[];
 }
 export interface TftAugment {
   name: string;

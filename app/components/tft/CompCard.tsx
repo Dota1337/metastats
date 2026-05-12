@@ -65,7 +65,26 @@ export default function CompCard({
 
         <div className="min-w-0">
           <div className="flex items-center gap-2 mb-1.5">
-            <span className="text-white text-sm font-medium truncate">{traitName} {parts?.level ?? ''} · {carry?.name || (parts ? prettyChar(parts.carry) : '')}</span>
+            <span className="text-white text-sm font-medium truncate">
+              {parts ? (
+                <a
+                  href={`/tft/traits/${encodeURIComponent(parts.trait)}`}
+                  onClick={e => e.stopPropagation()}
+                  className="hover:text-[#7B61FF] transition-colors"
+                >
+                  {traitName}
+                </a>
+              ) : traitName}
+              {' '}{parts?.level ?? ''} · {parts ? (
+                <a
+                  href={`/tft/units/${encodeURIComponent(parts.carry)}`}
+                  onClick={e => e.stopPropagation()}
+                  className="hover:text-[#7B61FF] transition-colors"
+                >
+                  {carry?.name || prettyChar(parts.carry)}
+                </a>
+              ) : (carry?.name || '')}
+            </span>
             {comp.source === 'editorial' && comp.authorName && (
               <span className="px-2 py-0.5 rounded-full bg-[#7B61FF]/15 text-[#7B61FF] text-[9px] uppercase tracking-widest">
                 {comp.authorName}
@@ -79,10 +98,14 @@ export default function CompCard({
               const isCarry = parts && u.characterId === parts.carry;
               const url = tftIconUrl(assets, ch?.icon);
               return (
-                <div key={u.characterId}
-                     className="relative w-8 h-8 rounded border-2"
-                     style={{ borderColor: isCarry ? '#c39bff' : (ch ? costColorOf(ch.cost) : '#1e2a3a') }}
-                     title={ch?.name || u.characterId}>
+                <a
+                  key={u.characterId}
+                  href={`/tft/units/${encodeURIComponent(u.characterId)}`}
+                  onClick={e => e.stopPropagation()}
+                  className="relative w-8 h-8 rounded border-2 hover:scale-110 transition"
+                  style={{ borderColor: isCarry ? '#c39bff' : (ch ? costColorOf(ch.cost) : '#1e2a3a') }}
+                  title={ch?.name || u.characterId}
+                >
                   {url && <img src={url} alt={ch?.name || u.characterId} className="w-full h-full object-cover rounded-sm" />}
                   {isCarry && comp.carryItems?.[0]?.items?.length > 0 && (
                     <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 flex gap-px">
@@ -97,7 +120,7 @@ export default function CompCard({
                       })}
                     </div>
                   )}
-                </div>
+                </a>
               );
             })}
           </div>

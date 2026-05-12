@@ -745,6 +745,113 @@ const translations = {
     'Tendencia de Valor de Mercado (30 d\u00EDas)',
     '\u00C9volution de la valeur de march\u00E9 (30 jours)'
   ),
+
+  // \u2500 Trait Detail Page \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  'tft.trait.tiers': t6(
+    'Stufen', 'Tiers', '\uB2E8\uACC4', '\u9636\u6BB5', 'Niveles', 'Niveaux'
+  ),
+  'tft.trait.bestAt': t6(
+    'Beste Stufe', 'Best Tier', '\uCD5C\uACE0 \uB2E8\uACC4', '\u6700\u4F73\u9636\u6BB5', 'Mejor Nivel', 'Meilleur Niveau'
+  ),
+  'tft.trait.statsPerTier': t6(
+    'Statistiken pro Stufe', 'Stats Per Tier',
+    '\uB2E8\uACC4\uBCC4 \uD1B5\uACC4', '\u9636\u6BB5\u7EDF\u8BA1',
+    'Estad\u00EDsticas por Nivel', 'Statistiques par niveau'
+  ),
+  'tft.trait.bestUnits': t6(
+    'Beste Units mit diesem Trait', 'Best Units With This Trait',
+    '\uC774 \uC2DC\uB108\uC9C0\uB97C \uAC00\uC9C4 \uCD5C\uACE0 \uC720\uB2DB', '\u62E5\u6709\u6B64\u7F81\u7ECA\u7684\u6700\u4F73\u5355\u4F4D',
+    'Mejores Unidades con este Trait', 'Meilleures unit\u00E9s avec ce trait'
+  ),
+  'tft.trait.noData': t6(
+    'Keine Daten zu diesem Trait.', 'No data for this trait.',
+    '\uC774 \uC2DC\uB108\uC9C0\uC5D0 \uB300\uD55C \uB370\uC774\uD130\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.', '\u8BE5\u7F81\u7ECA\u6682\u65E0\u6570\u636E\u3002',
+    'No hay datos para este trait.', 'Pas de donn\u00E9es pour ce trait.'
+  ),
+  'tft.loading': t6(
+    'L\u00E4dt \u2026', 'Loading \u2026', '\uB85C\uB529 \uC911 \u2026', '\u52A0\u8F7D\u4E2D\u2026', 'Cargando \u2026', 'Chargement \u2026'
+  ),
+  'tft.avgPlacementShort': t6(
+    'Avg', 'Avg', '\uD3C9\uADE0', '\u5E73\u5747', 'Avg', 'Moy.'
+  ),
+
+  // \u2500 Comp Detail Page \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  'tft.comp.notFound': t6(
+    'Comp nicht gefunden.', 'Comp not found.',
+    '\uC870\uD569\uC744 \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.', '\u672A\u627E\u5230\u8BE5\u9635\u5BB9\u3002',
+    'Comp no encontrada.', 'Comp introuvable.'
+  ),
+  'tft.comp.topItemSets': t6(
+    'H\u00E4ufigste Item-Sets am Carry', 'Most Common Item Sets on Carry',
+    '\uCE90\uB9AC \uCD5C\uB2E4 \uC544\uC774\uD15C \uC138\uD2B8', '\u4E3BC\u6700\u5E38\u7528\u88C5\u5907\u7EC4\u5408',
+    'Sets de \u00CDtems m\u00E1s comunes en el Carry', 'Sets d\'objets les plus utilis\u00E9s sur le Carry'
+  ),
+  'tft.comp.itemSet': t6(
+    'Set', 'Set', '\uC138\uD2B8', '\u7EC4\u5408', 'Set', 'Set'
+  ),
+  'tft.comp.augmentsByStage': t6(
+    'Augments nach Stage', 'Augments By Stage',
+    '\uC2A4\uD14C\uC774\uC9C0\uBCC4 \uC99D\uAC15\uCCB4', '\u9636\u6BB5\u5F3A\u5316',
+    'Aumentos por Etapa', 'Augments par \u00E9tape'
+  ),
+  'tft.comp.stage': t6(
+    'Stage', 'Stage', '\uC2A4\uD14C\uC774\uC9C0', '\u9636\u6BB5', 'Etapa', '\u00C9tape'
+  ),
+  'tft.comp.noStageData': t6(
+    'Keine Daten', 'No data',
+    '\uB370\uC774\uD130 \uC5C6\uC74C', '\u65E0\u6570\u636E',
+    'Sin datos', 'Aucune donn\u00E9e'
+  ),
+  'tft.comp.typicalUnits': t6(
+    'Typische Units', 'Typical Units',
+    '\uC77C\uBC18\uC801\uC778 \uC720\uB2DB', '\u5E38\u7528\u5355\u4F4D',
+    'Unidades T\u00EDpicas', 'Unit\u00E9s typiques'
+  ),
+  'tft.comp.strongAgainst': t6(
+    'Stark gegen', 'Strong Against',
+    '\uAC15\uD55C \uC0C1\uB300', '\u514B\u5236',
+    'Fuerte contra', 'Fort contre'
+  ),
+  'tft.comp.weakAgainst': t6(
+    'Schwach gegen', 'Weak Against',
+    '\uC57D\uD55C \uC0C1\uB300', '\u88AB\u514B\u5236',
+    'D\u00E9bil contra', 'Faible contre'
+  ),
+  'tft.comp.noSignificantData': t6(
+    'Keine signifikanten Daten', 'No significant data',
+    '\uC720\uC758\uBBF8\uD55C \uB370\uC774\uD130 \uC5C6\uC74C', '\u65E0\u663E\u8457\u6570\u636E',
+    'Sin datos significativos', 'Pas de donn\u00E9es significatives'
+  ),
+
+  // \u2500 Item Detail Page (recipe + siblings) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  'tft.item.recipe': t6(
+    'Rezept', 'Recipe', '\uB808\uC2DC\uD53C', '\u914D\u65B9', 'Receta', 'Recette'
+  ),
+  'tft.item.sharedComponents': t6(
+    'Items mit geteilten Komponenten', 'Items With Shared Components',
+    '\uACF5\uC720 \uAD6C\uC131 \uC694\uC18C\uB97C \uAC00\uC9C4 \uC544\uC774\uD15C', '\u5171\u4EAB\u90E8\u4EF6\u7684\u88C5\u5907',
+    '\u00CDtems con componentes compartidos', 'Objets avec composants partag\u00E9s'
+  ),
+
+  // \u2500 Augment Detail Page \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  'tft.augment.statsPerStage': t6(
+    'Statistiken pro Stage', 'Stats Per Stage',
+    '\uC2A4\uD14C\uC774\uC9C0\uBCC4 \uD1B5\uACC4', '\u9636\u6BB5\u7EDF\u8BA1',
+    'Estad\u00EDsticas por Etapa', 'Statistiques par \u00E9tape'
+  ),
+  'tft.augment.stage': t6(
+    'Stage', 'Stage', '\uC2A4\uD14C\uC774\uC9C0', '\u9636\u6BB5', 'Etapa', '\u00C9tape'
+  ),
+  'tft.augment.bestSlot': t6(
+    'Bester Slot', 'Best Slot',
+    '\uCD5C\uACE0 \uC2AC\uB86F', '\u6700\u4F73\u4F4D\u7F6E',
+    'Mejor Slot', 'Meilleur slot'
+  ),
+  'tft.augment.notOfferedHere': t6(
+    'In diesem Slot nicht angeboten.', 'Not offered in this slot.',
+    '\uC774 \uC2AC\uB86F\uC5D0\uC11C \uC81C\uACF5\uB418\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.', '\u6B64\u4F4D\u7F6E\u4E0D\u63D0\u4F9B\u3002',
+    'No ofrecido en este slot.', 'Non propos\u00E9 \u00E0 cet emplacement.'
+  ),
 } as const;
 
 type TranslationKey = keyof typeof translations;

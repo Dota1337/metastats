@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
@@ -11,7 +11,7 @@ import StatsFilterBar, {
   type PatchInfo,
 } from '../../components/tft/StatsFilterBar';
 import { useI18n } from '../../lib/i18n';
-import { loadTftAssets, tftIconUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
+import { loadTftAssets, tftIconUrl, type TftAssetsBundle, type TftTraitTier } from '../../lib/tft-cdragon';
 import TftHero from '../../components/tft/TftHero';
 
 interface TraitRow {
@@ -22,6 +22,27 @@ interface TraitRow {
   top4Rate: number | null;
   pickRate: number | null;
 }
+
+// One row per trait — collapsing the per-activation rows the API returns.
+// We surface the best activation level's avg-placement as the "headline"
+// number and show all tier breakpoints as pills so users see the trait's
+// full activation curve at a glance.
+interface GroupedTrait {
+  name: string;
+  totalGames: number;
+  bestAvg: number | null;
+  bestActivation: number | null;
+  avgTop4Rate: number | null;
+  pickRate: number | null;
+}
+
+// Visual map for trait activation styles — mirrors the in-game frame colors.
+const STYLE_COLORS: Record<number, string> = {
+  1: '#a07a4d',   // bronze
+  3: '#cfd6dc',   // silver
+  4: '#e0c75a',   // gold
+  5: '#c39bff',   // prismatic
+};
 
 export default function TftTraitsPage() {
   const { t } = useI18n();
@@ -56,6 +77,34 @@ export default function TftTraitsPage() {
     }
   }, [filters, pathname, router]);
 
+  // Collapse per-activation rows into one entry per trait. "Best" = activation
+  // level with the lowest (best) average placement, weighted by games.
+  const grouped: GroupedTrait[] = useMemo(() => {
+    const byName = new Map<string, TraitRow[]>();
+    for (const r of rows) {
+      const list = byName.get(r.name) || [];
+      list.push(r);
+      byName.set(r.name, list);
+    }
+    const out: GroupedTrait[] = [];
+    for (const [name, list] of byName) {
+      const totalGames = list.reduce((s, r) => s + r.games, 0);
+      const best = list.reduce<TraitRow | null>(
+        (acc, r) => (acc == null || (r.avgPlacement ?? 9) < (acc.avgPlacement ?? 9)) ? r : acc, null);
+      const totalTop4 = list.reduce((s, r) => s + (r.top4Rate != null ? r.top4Rate * r.games : 0), 0);
+      const totalPick = list.reduce((s, r) => s + (r.pickRate != null ? r.pickRate * r.games : 0), 0);
+      out.push({
+        name,
+        totalGames,
+        bestAvg: best?.avgPlacement ?? null,
+        bestActivation: best?.activation ?? null,
+        avgTop4Rate: totalGames > 0 ? totalTop4 / totalGames : null,
+        pickRate: totalGames > 0 ? totalPick / totalGames : null,
+      });
+    }
+    return out.sort((a, b) => (a.bestAvg ?? 9) - (b.bestAvg ?? 9));
+  }, [rows]);
+
   const currentPatchLabel = patches[0]?.patch;
 
   return (
@@ -66,38 +115,47 @@ export default function TftTraitsPage() {
         <StatsFilterBar filters={filters} patches={patches} onChange={setFilters} />
 
         {loading && hasData === null && (
-          <div className="text-[#4a5a70] text-center py-8">{t('tft.noDataYet').replace('Noch keine Daten', 'Lade')}</div>
+          <div className="text-[#4a5a70] text-center py-8">{t('tft.loading')}</div>
         )}
         {hasData === false && <EmptyData />}
 
-        {hasData && rows.length > 0 && (
+        {hasData && grouped.length > 0 && (
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
-            <div className="hidden md:grid grid-cols-[3rem_1fr_4rem_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#4a5a70] bg-[#0a0e1a]">
+            <div className="hidden md:grid grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#4a5a70] bg-[#0a0e1a]">
               <div></div>
               <div>{t('nav.traits')}</div>
-              <div className="text-right">{t('tft.activation')}</div>
+              <div>{t('tft.trait.tiers')}</div>
+              <div className="text-right">{t('tft.trait.bestAt')}</div>
               <div className="text-right">{t('tft.avgPlacement')}</div>
               <div className="text-right">{t('tft.pickRate')}</div>
               <div className="text-right">{t('tft.top4')}</div>
               <div className="text-right">{t('tft.gamesShort')}</div>
             </div>
-            {rows.map(r => {
-              const meta = assets?.traits[r.name];
+            {grouped.map(g => {
+              const meta = assets?.traits[g.name];
               const url = tftIconUrl(assets, meta?.icon);
+              const tiers: TftTraitTier[] = meta?.tiers || [];
               return (
-                <div key={`${r.name}-${r.activation}`} className="grid grid-cols-[3rem_1fr_4rem_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 items-center text-xs border-t border-[#1e2a3a]">
+                <a
+                  key={g.name}
+                  href={`/tft/traits/${encodeURIComponent(g.name)}`}
+                  className="grid grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 items-center text-xs border-t border-[#1e2a3a] hover:bg-white/5"
+                >
                   {url ? (
                     <img src={url} alt={meta!.name} className="w-9 h-9 rounded" />
                   ) : (
                     <div className="w-9 h-9 rounded bg-[#1e2a3a]" />
                   )}
-                  <div className="text-white">{meta?.name || prettyTrait(r.name)}</div>
-                  <div className="text-right text-[#7B61FF]">{r.activation}</div>
-                  <div className="text-right text-white">{r.avgPlacement?.toFixed(2) ?? '—'}</div>
-                  <div className="text-right text-[#8a9bb0]">{r.pickRate != null ? `${(r.pickRate * 100).toFixed(1)}%` : '—'}</div>
-                  <div className="text-right text-[#8a9bb0]">{r.top4Rate != null ? `${(r.top4Rate * 100).toFixed(1)}%` : '—'}</div>
-                  <div className="text-right text-[#4a5a70]">{r.games}</div>
-                </div>
+                  <div className="text-white truncate">{meta?.name || prettyTrait(g.name)}</div>
+                  <TierStrip tiers={tiers} />
+                  <div className="text-right text-[#7B61FF] font-medium">
+                    {g.bestActivation ?? '—'}
+                  </div>
+                  <div className="text-right text-white">{g.bestAvg?.toFixed(2) ?? '—'}</div>
+                  <div className="text-right text-[#8a9bb0]">{g.pickRate != null ? `${(g.pickRate * 100).toFixed(1)}%` : '—'}</div>
+                  <div className="text-right text-[#8a9bb0]">{g.avgTop4Rate != null ? `${(g.avgTop4Rate * 100).toFixed(1)}%` : '—'}</div>
+                  <div className="text-right text-[#4a5a70]">{g.totalGames}</div>
+                </a>
               );
             })}
           </div>
@@ -108,4 +166,27 @@ export default function TftTraitsPage() {
   );
 }
 
-function prettyTrait(s: string) { return s.replace(/^TFT\d+_/, ''); }
+// Compact horizontal tier strip — one square per breakpoint, color-coded
+// by the style index from CommunityDragon. Mirrors the in-game trait
+// activation row in the hex grid.
+function TierStrip({ tiers }: { tiers: TftTraitTier[] }) {
+  if (!tiers || tiers.length === 0) return <div className="text-[#4a5a70] text-[10px]">—</div>;
+  return (
+    <div className="flex gap-1 flex-wrap">
+      {tiers.map((tier, i) => {
+        const color = STYLE_COLORS[tier.style] || '#4a5a70';
+        return (
+          <div
+            key={i}
+            className="rounded px-1.5 py-0.5 text-[10px] font-bold tabular-nums"
+            style={{ backgroundColor: `${color}22`, color, border: `1px solid ${color}55` }}
+          >
+            {tier.minUnits}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function prettyTrait(s: string) { return s.replace(/^TFT\d+_/, '').replace(/Trait$/, ''); }

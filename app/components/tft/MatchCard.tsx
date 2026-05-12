@@ -115,10 +115,16 @@ function ActivatedTraits({ participant, assets }: { participant: TftParticipantS
         const styleColor = traitStyleColor(t.style);
         const url = tftIconUrl(assets, info?.icon);
         return (
-          <div key={t.name} className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px]" style={{ backgroundColor: `${styleColor}25`, color: styleColor }}>
+          <a
+            key={t.name}
+            href={`/tft/traits/${encodeURIComponent(t.name)}`}
+            onClick={e => e.stopPropagation()}
+            className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] hover:brightness-125 transition"
+            style={{ backgroundColor: `${styleColor}25`, color: styleColor }}
+          >
             {url && <img src={url} alt={info!.name} className="w-3 h-3" />}
             <span>{t.numUnits} {info?.name || prettyTraitName(t.name)}</span>
-          </div>
+          </a>
         );
       })}
     </div>
@@ -136,12 +142,17 @@ function AugmentRow({ augments, assets }: { augments: string[]; assets: TftAsset
         const info = assets?.augments[a];
         const tierColor = info?.tier === 3 ? '#c39bff' : info?.tier === 2 ? '#e0c75a' : '#9ab0bf';
         const url = tftIconUrl(assets, info?.icon);
-        return url ? (
-          <img key={i} src={url} alt={info!.name} title={info!.name} className="w-7 h-7 rounded border-2" style={{ borderColor: tierColor }} />
+        const inner = url ? (
+          <img src={url} alt={info!.name} title={info!.name} className="w-7 h-7 rounded border-2 hover:scale-110 transition" style={{ borderColor: tierColor }} />
         ) : (
-          <div key={i} className="w-7 h-7 rounded border-2 bg-[#141c2e] flex items-center justify-center" style={{ borderColor: tierColor }} title={info?.name || a}>
+          <div className="w-7 h-7 rounded border-2 bg-[#141c2e] flex items-center justify-center hover:brightness-125 transition" style={{ borderColor: tierColor }} title={info?.name || a}>
             <span className="text-[8px] text-[#8a9bb0] truncate px-0.5">{(info?.name || a).slice(0, 4)}</span>
           </div>
+        );
+        return (
+          <a key={i} href={`/tft/augments/${encodeURIComponent(a)}`} onClick={e => e.stopPropagation()}>
+            {inner}
+          </a>
         );
       })}
     </div>

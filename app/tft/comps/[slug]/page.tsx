@@ -7,7 +7,17 @@ import TierFilter, { type TierBucket } from '../../../components/tft/TierFilter'
 import EmptyData from '../../../components/tft/EmptyData';
 import CompCard from '../../../components/tft/CompCard';
 import { useI18n } from '../../../lib/i18n';
-import { loadTftAssets, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import { loadTftAssets, tftIconUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+
+// Slot meaning in tft_daily_augment_stats: 0 = stage 2-1, 1 = 3-2, 2 = 4-2.
+const SLOT_LABELS = ['2-1', '3-2', '4-2'] as const;
+
+interface AugmentRow {
+  apiName: string;
+  slot: number | null;
+  games: number;
+  avgPlacement: number | null;
+}
 
 export default function TftCompDetailPage() {
   const { t } = useI18n();
@@ -18,14 +28,38 @@ export default function TftCompDetailPage() {
   const [comp, setComp] = useState<any | null | undefined>(undefined);
   const [hasData, setHasData] = useState<boolean | null>(null);
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
+  // Per-slot augment lookup: apiName -> { 0: {games, avgPlacement}, 1: {…}, 2: {…} }
+  const [augmentSlotMap, setAugmentSlotMap] = useState<Record<string, Record<number, { games: number; avgPlacement: number | null }>>>({});
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
+
   useEffect(() => {
     fetch(`/api/tft/comps?region=euw1&bucket=${bucket}&slug=${encodeURIComponent(slug)}`)
       .then(r => r.json())
       .then(d => { setHasData(!!d.hasData); setComp(d.comp || null); })
       .catch(() => { setHasData(false); setComp(null); });
   }, [bucket, slug]);
+
+  // Pull augment-by-slot stats so we can show each typical augment's likely
+  // offer slot (2-1 / 3-2 / 4-2). Done in parallel with the comp fetch so
+  // the slot pills land as the comp data renders.
+  useEffect(() => {
+    Promise.all([0, 1, 2].map(slot =>
+      fetch(`/api/tft/augments?region=euw1&bucket=${bucket}&slot=${slot}`)
+        .then(r => r.ok ? r.json() : { augments: [] })
+        .then(d => ({ slot, augments: (d.augments || []) as AugmentRow[] }))
+        .catch(() => ({ slot, augments: [] as AugmentRow[] }))
+    )).then(results => {
+      const map: typeof augmentSlotMap = {};
+      for (const { slot, augments } of results) {
+        for (const a of augments) {
+          if (!map[a.apiName]) map[a.apiName] = {};
+          map[a.apiName][slot] = { games: a.games, avgPlacement: a.avgPlacement };
+        }
+      }
+      setAugmentSlotMap(map);
+    });
+  }, [bucket]);
 
   return (
     <main className="min-h-screen bg-[#0e1525]">
@@ -39,20 +73,152 @@ export default function TftCompDetailPage() {
 
         {hasData === false && <EmptyData />}
         {comp === null && hasData && (
-          <div className="text-[#8a9bb0] text-center py-8">Comp nicht gefunden.</div>
+          <div className="text-[#8a9bb0] text-center py-8">{t('tft.comp.notFound')}</div>
         )}
 
         {comp && (
           <>
             <CompCard comp={comp} assets={assets} />
 
+            {/* Top Item-Sets pro Carry — extends what CompCard only teased
+                inline. Each set shows its 3 items + relative pick share. */}
+            {comp.carryItems && comp.carryItems.length > 0 && (
+              <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
+                <h2 className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-3">{t('tft.comp.topItemSets')}</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {comp.carryItems.slice(0, 3).map((set: { items: string[]; count: number }, i: number) => {
+                    const totalCount = comp.carryItems.reduce((s: number, c: any) => s + (Number(c.count) || 0), 0);
+                    const pct = totalCount > 0 ? (Number(set.count) / totalCount) * 100 : 0;
+                    return (
+                      <div key={i} className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[#8a9bb0] text-[10px] uppercase tracking-widest">
+                            {t('tft.comp.itemSet')} {i + 1}
+                          </span>
+                          <span className="text-[#7B61FF] text-xs font-medium tabular-nums">
+                            {pct.toFixed(0)}%
+                          </span>
+                        </div>
+                        <div className="flex gap-1.5">
+                          {set.items.map((it, j) => {
+                            const meta = assets?.items[it];
+                            const url = tftIconUrl(assets, meta?.icon);
+                            return (
+                              <a
+                                key={j}
+                                href={`/tft/items/${encodeURIComponent(it)}?bucket=${bucket}`}
+                                title={meta?.name || it}
+                                className="hover:scale-110 transition"
+                              >
+                                {url ? (
+                                  <img src={url} alt={meta!.name} className="w-8 h-8 rounded border border-[#0d1526]" />
+                                ) : (
+                                  <div className="w-8 h-8 rounded bg-[#1e2a3a]" />
+                                )}
+                              </a>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
+            {/* Augments grouped by likely stage offer — joined client-side
+                with the per-slot augment-stats endpoint. Each augment lands
+                in the slot where it has the most games (= dominant offer
+                stage), so users see at a glance "this comp wants X at 2-1,
+                Y at 3-2, Z at 4-2". */}
+            {comp.typicalAugments && comp.typicalAugments.length > 0 && (
+              <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
+                <h2 className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-3">{t('tft.comp.augmentsByStage')}</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {[0, 1, 2].map(slot => {
+                    const augmentsForSlot = (comp.typicalAugments as { apiName: string; count: number }[])
+                      .filter(a => {
+                        const slotMap = augmentSlotMap[a.apiName];
+                        if (!slotMap) return false;
+                        // Find dominant slot for this augment
+                        const slots = Object.entries(slotMap).map(([k, v]) => ({ slot: Number(k), games: v.games }));
+                        if (slots.length === 0) return false;
+                        const dominant = slots.reduce((a, b) => a.games > b.games ? a : b);
+                        return dominant.slot === slot;
+                      })
+                      .slice(0, 4);
+                    return (
+                      <div key={slot} className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3">
+                        <div className="text-[#8a9bb0] text-[10px] uppercase tracking-widest mb-2">
+                          {t('tft.comp.stage')} {SLOT_LABELS[slot]}
+                        </div>
+                        {augmentsForSlot.length === 0 ? (
+                          <div className="text-[#4a5a70] text-[10px] py-2">{t('tft.comp.noStageData')}</div>
+                        ) : (
+                          <div className="space-y-1.5">
+                            {augmentsForSlot.map(a => {
+                              const meta = assets?.augments[a.apiName];
+                              const url = tftIconUrl(assets, meta?.icon);
+                              const tierColor = meta?.tier === 3 ? '#c39bff' : meta?.tier === 2 ? '#e0c75a' : '#9ab0bf';
+                              return (
+                                <div key={a.apiName} className="flex items-center gap-2">
+                                  {url ? (
+                                    <img src={url} alt={meta!.name} title={meta!.name} className="w-7 h-7 rounded border" style={{ borderColor: tierColor }} />
+                                  ) : (
+                                    <div className="w-7 h-7 rounded border bg-[#1e2a3a]" style={{ borderColor: tierColor }} title={a.apiName} />
+                                  )}
+                                  <span className="text-white text-[11px] truncate flex-1" style={{ color: tierColor }}>
+                                    {meta?.name || a.apiName.replace(/^TFT\d+_Augment_/, '')}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
+            {/* All typical units in larger size, clickable */}
+            {comp.typicalUnits && comp.typicalUnits.length > 0 && (
+              <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
+                <h2 className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-3">{t('tft.comp.typicalUnits')}</h2>
+                <div className="flex flex-wrap gap-2">
+                  {comp.typicalUnits.map((u: { characterId: string; count: number }) => {
+                    const ch = assets?.champions[u.characterId];
+                    const url = tftIconUrl(assets, ch?.icon);
+                    const cost = ch?.cost ?? 1;
+                    return (
+                      <a
+                        key={u.characterId}
+                        href={`/tft/units/${encodeURIComponent(u.characterId)}?bucket=${bucket}`}
+                        className="flex flex-col items-center hover:scale-105 transition"
+                      >
+                        {url ? (
+                          <img src={url} alt={ch!.name} className="w-12 h-12 rounded object-cover border-2" style={{ borderColor: costColor(cost) }} />
+                        ) : (
+                          <div className="w-12 h-12 rounded bg-[#1e2a3a]" />
+                        )}
+                        <div className="text-white text-[10px] mt-0.5 text-center max-w-[60px] truncate">
+                          {ch?.name || u.characterId.replace(/^TFT\d+_/, '')}
+                        </div>
+                      </a>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
             {/* Counters from KG */}
             {comp.counters && (comp.counters.beats?.length > 0 || comp.counters.losesTo?.length > 0) && (
               <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <h3 className="text-green-400 text-xs uppercase tracking-widest mb-2">Stark gegen</h3>
+                  <h3 className="text-green-400 text-xs uppercase tracking-widest mb-2">{t('tft.comp.strongAgainst')}</h3>
                   <div className="space-y-1.5">
-                    {(comp.counters.beats || []).length === 0 && <div className="text-[#4a5a70] text-xs">Keine signifikanten Daten</div>}
+                    {(comp.counters.beats || []).length === 0 && <div className="text-[#4a5a70] text-xs">{t('tft.comp.noSignificantData')}</div>}
                     {(comp.counters.beats || []).map((c: any, i: number) => (
                       <a key={i} href={`/tft/comps/${encodeURIComponent(c.b)}?bucket=${bucket}`}
                          className="flex items-center justify-between bg-[#0d1526] border border-[#1e2a3a] rounded px-3 py-2 hover:border-green-500/40">
@@ -63,9 +229,9 @@ export default function TftCompDetailPage() {
                   </div>
                 </div>
                 <div>
-                  <h3 className="text-red-400 text-xs uppercase tracking-widest mb-2">Schwach gegen</h3>
+                  <h3 className="text-red-400 text-xs uppercase tracking-widest mb-2">{t('tft.comp.weakAgainst')}</h3>
                   <div className="space-y-1.5">
-                    {(comp.counters.losesTo || []).length === 0 && <div className="text-[#4a5a70] text-xs">Keine signifikanten Daten</div>}
+                    {(comp.counters.losesTo || []).length === 0 && <div className="text-[#4a5a70] text-xs">{t('tft.comp.noSignificantData')}</div>}
                     {(comp.counters.losesTo || []).map((c: any, i: number) => (
                       <a key={i} href={`/tft/comps/${encodeURIComponent(c.a)}?bucket=${bucket}`}
                          className="flex items-center justify-between bg-[#0d1526] border border-[#1e2a3a] rounded px-3 py-2 hover:border-red-500/40">
@@ -89,4 +255,11 @@ function prettyComp(slug: string) {
   const m = /^(.+)@(\d+)_(.+)$/.exec(slug);
   if (!m) return slug;
   return `${m[1].replace(/^TFT\d+_/, '')} ${m[2]} · ${m[3].replace(/^TFT\d+_/, '')}`;
+}
+function costColor(cost: number) {
+  return cost === 1 ? '#9aa6b2'
+    : cost === 2 ? '#3a8'
+    : cost === 3 ? '#3a8ddc'
+    : cost === 4 ? '#c39bff'
+    : '#e0c75a';
 }

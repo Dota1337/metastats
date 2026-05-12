@@ -36,6 +36,22 @@ export default function TftItemDetailPage() {
 
   const itemMeta = assets?.items[id];
   const url = tftIconUrl(assets, itemMeta?.icon);
+  const composition = itemMeta?.composition || [];
+
+  // Reverse-lookup: sibling items that share at least one component with us.
+  // Useful so a player on Negatron Cape sees all 9 magic-resist completed
+  // items at a glance, with their own composition pills.
+  const siblings = assets && composition.length > 0
+    ? Object.entries(assets.items)
+        .filter(([k, v]) => k !== id && v.composition && v.composition.some(c => composition.includes(c)))
+        // Only the active set's primary completed items — heuristic via the
+        // apiName prefix matching the requested item's prefix.
+        .filter(([k]) => {
+          const reqPrefix = id.replace(/_Item_.*$/, '');
+          return k.startsWith(reqPrefix) || k.startsWith('TFT_Item_');
+        })
+        .slice(0, 12)
+    : [];
 
   return (
     <main className="min-h-screen bg-[#0e1525]">
@@ -54,6 +70,43 @@ export default function TftItemDetailPage() {
               {itemMeta?.desc && <p className="text-[#8a9bb0] text-xs mt-1 max-w-prose">{itemMeta.desc}</p>}
             </div>
           </div>
+
+          {/* Recipe: two components → completed item. Each base item is its
+              own clickable tile so the player can dig into the component
+              economy from any direction. */}
+          {composition.length === 2 && (
+            <div className="mt-4 pt-4 border-t border-[#1e2a3a]">
+              <div className="text-[#8a9bb0] text-[10px] uppercase tracking-widest mb-2">{t('tft.item.recipe')}</div>
+              <div className="flex items-center gap-3 flex-wrap">
+                {composition.map((compId, i) => {
+                  const compMeta = assets?.items[compId];
+                  const compUrl = tftIconUrl(assets, compMeta?.icon);
+                  return (
+                    <div key={i} className="flex items-center gap-3">
+                      <a
+                        href={`/tft/items/${encodeURIComponent(compId)}?bucket=${bucket}`}
+                        title={compMeta?.name || compId}
+                        className="flex items-center gap-2 bg-[#141c2e] border border-[#1e2a3a] rounded px-2 py-1 hover:border-[#7B61FF]/50"
+                      >
+                        {compUrl ? (
+                          <img src={compUrl} alt={compMeta!.name} className="w-8 h-8 rounded" />
+                        ) : (
+                          <div className="w-8 h-8 rounded bg-[#1e2a3a]" />
+                        )}
+                        <span className="text-white text-xs">{compMeta?.name || prettyApi(compId)}</span>
+                      </a>
+                      {i === 0 && <span className="text-[#7B61FF] text-lg font-medium">+</span>}
+                    </div>
+                  );
+                })}
+                <span className="text-[#7B61FF] text-lg font-medium">=</span>
+                <div className="flex items-center gap-2 bg-[#7B61FF]/10 border border-[#7B61FF]/30 rounded px-2 py-1">
+                  {url && <img src={url} alt={itemMeta!.name} className="w-8 h-8 rounded" />}
+                  <span className="text-white text-xs font-medium">{itemMeta?.name || prettyApi(id)}</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex justify-end mb-4">
@@ -91,6 +144,34 @@ export default function TftItemDetailPage() {
               </div>
             )}
           </>
+        )}
+
+        {/* Sibling items — completed items that share a component with this
+            one. Lets players see all options for a given starter (e.g. "I
+            got a Sword early — what completed items use it?"). */}
+        {siblings.length > 0 && (
+          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
+            <h2 className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-3">{t('tft.item.sharedComponents')}</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+              {siblings.map(([k, v]) => {
+                const sUrl = tftIconUrl(assets, v.icon);
+                return (
+                  <a
+                    key={k}
+                    href={`/tft/items/${encodeURIComponent(k)}?bucket=${bucket}`}
+                    className="flex items-center gap-2 bg-[#141c2e] border border-[#1e2a3a] rounded p-2 hover:border-[#7B61FF]/50"
+                  >
+                    {sUrl ? (
+                      <img src={sUrl} alt={v.name} className="w-8 h-8 rounded" />
+                    ) : (
+                      <div className="w-8 h-8 rounded bg-[#1e2a3a]" />
+                    )}
+                    <span className="text-white text-[11px] truncate">{v.name}</span>
+                  </a>
+                );
+              })}
+            </div>
+          </div>
         )}
       </div>
       <Footer />

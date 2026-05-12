@@ -51,7 +51,11 @@ async function main() {
     return;
   }
 
-  const client = new pg.Client({ connectionString: dbUrl, ssl: { rejectUnauthorized: false } });
+  // Supabase passwords often contain '#' / '@' / other reserved URL chars.
+  // pg's URL parser rejects those if they're not percent-encoded, so we
+  // split the URL manually and re-encode the password before connecting.
+  const safeUrl = encodePasswordInPgUrl(dbUrl);
+  const client = new pg.Client({ connectionString: safeUrl, ssl: { rejectUnauthorized: false } });
   await client.connect();
   try {
     for (const file of files) {
@@ -85,6 +89,25 @@ async function main() {
   } finally {
     await client.end();
   }
+}
+
+function encodePasswordInPgUrl(url) {
+  // postgresql://user:password@host:port/db?…
+  // Extract everything between the second `:` and the first `@` after it,
+  // percent-encode reserved chars (#, @, /, ?, &, %, :), leave the rest.
+  const schemeEnd = url.indexOf('://');
+  if (schemeEnd < 0) return url;
+  const after = url.slice(schemeEnd + 3);
+  const atIdx = after.lastIndexOf('@');
+  if (atIdx < 0) return url;
+  const userinfo = after.slice(0, atIdx);
+  const rest = after.slice(atIdx);
+  const colonIdx = userinfo.indexOf(':');
+  if (colonIdx < 0) return url;
+  const user = userinfo.slice(0, colonIdx);
+  const pass = userinfo.slice(colonIdx + 1);
+  const encoded = encodeURIComponent(pass);
+  return `${url.slice(0, schemeEnd + 3)}${user}:${encoded}${rest}`;
 }
 
 main().catch(err => { console.error('FATAL:', err.message); process.exit(1); });

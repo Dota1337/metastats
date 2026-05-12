@@ -104,24 +104,11 @@ export default function CompCard({
                   key={u.characterId}
                   href={`/tft/units/${encodeURIComponent(u.characterId)}`}
                   onClick={e => e.stopPropagation()}
-                  className="relative w-8 h-8 rounded border-2 hover:scale-110 transition"
+                  className="w-8 h-8 rounded border-2 hover:scale-110 transition overflow-hidden"
                   style={{ borderColor: isCarry ? '#c39bff' : (ch ? costColorOf(ch.cost) : '#1e2a3a') }}
                   title={ch?.name || u.characterId}
                 >
                   {url && <img src={url} alt={ch?.name || u.characterId} className="w-full h-full object-cover rounded-sm" />}
-                  {isCarry && comp.carryItems?.[0]?.items?.length > 0 && (
-                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 flex gap-px">
-                      {comp.carryItems[0].items.slice(0, 3).map((it, i) => {
-                        const m = assets?.items[it];
-                        const iurl = tftIconUrl(assets, m?.icon);
-                        return iurl ? (
-                          <img key={i} src={iurl} alt={m!.name} title={m!.name} className="w-3 h-3 rounded-sm border border-[#0d1526]" />
-                        ) : (
-                          <div key={i} className="w-3 h-3 rounded-sm bg-[#1e2a3a] border border-[#0d1526]" title={it} />
-                        );
-                      })}
-                    </div>
-                  )}
                 </a>
               );
             })}

@@ -67,7 +67,9 @@ export async function GET(request: NextRequest) {
       .map(r => {
         // top_users_merged is jsonb[] (an outer array of per-row arrays). Flatten
         // and re-group so the most-common carrier wins across the merged window.
-        const topUsers = mergeJsonbCountArrays(r.top_users_merged || [], 'characterId', 5)
+        // Cap at 8 — the items-list column has room for that many cost-bordered
+        // tiles without overflowing on desktop.
+        const topUsers = mergeJsonbCountArrays(r.top_users_merged || [], 'characterId', 8)
           .map(u => u.characterId)
           .filter(cid => !isExcludedUnit(cid));
         return {

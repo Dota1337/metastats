@@ -72,7 +72,11 @@ export default function TftItemsPage() {
 
         {hasData && items.length > 0 && (
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
-            <div className="hidden md:grid grid-cols-[3rem_1fr_11rem_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#4a5a70] bg-[#0a0e1a]">
+            {/* Grid: icon (3rem) → name (12rem) → TopUsers (1fr, grows to
+                fill the row) → 4 stat columns. Name moves from 1fr to a
+                fixed 12rem so the TopUsers row gets the slack — that's
+                where the cost-bordered champion tiles want to breathe. */}
+            <div className="hidden md:grid grid-cols-[3rem_12rem_1fr_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#4a5a70] bg-[#0a0e1a]">
               <div></div>
               <div>{t('nav.items')}</div>
               <div>{t('tft.topUsers')}</div>
@@ -91,7 +95,7 @@ export default function TftItemsPage() {
                 <a
                   key={it.apiName}
                   href={`/tft/items/${encodeURIComponent(it.apiName)}?bucket=${filters.bucket}`}
-                  className="block md:grid md:grid-cols-[3rem_1fr_11rem_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 md:items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]"
+                  className="block md:grid md:grid-cols-[3rem_12rem_1fr_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 md:items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]"
                 >
                   {/* Icon + name row — icon on left, name flows on mobile;
                       on desktop participates in the parent grid via contents. */}
@@ -103,10 +107,13 @@ export default function TftItemsPage() {
                     )}
                     <div className="text-white truncate flex-1 md:flex-initial">{meta?.name || prettyApi(it.apiName)}</div>
                   </div>
-                  {/* Top users — scrolls horizontally on mobile so a 5-icon
-                      row never blocks the column from rendering at all. */}
-                  <div className="flex items-center gap-1.5 mt-2 md:mt-0 pl-12 md:pl-0 overflow-x-auto">
-                    {(it.topUsers || []).slice(0, 5).map((cid, i) => {
+                  {/* Top users — 8 cost-bordered champion tiles. On mobile
+                      the row still scrolls horizontally (overflow-x-auto)
+                      because 8×32px doesn't fit on small screens; on
+                      desktop the column is wide enough to render them all
+                      inline without scrolling. */}
+                  <div className="flex items-center gap-1.5 mt-2 md:mt-0 pl-12 md:pl-0 overflow-x-auto md:overflow-visible">
+                    {(it.topUsers || []).slice(0, 8).map((cid, i) => {
                       const ch = assets?.champions[cid];
                       const tileUrl = tftChampionTileUrl(assets, ch);
                       const fallbackUrl = tftIconUrl(assets, ch?.icon);

@@ -423,10 +423,13 @@ export function finalize(agg, opts = {}) {
     out.byItem[item] = {};
     for (const [bucket, b] of buckets) {
       if (b.games < minItemGames) continue;
+      // Store top 10 in the daily snapshot so the API has headroom to show
+      // 8 after applying the exclusion list — the items-list column has
+      // space for 8 cost-bordered tiles.
       const topUsers = [...b.users.entries()]
         .map(([cid, e]) => ({ characterId: cid, games: e.games, sumPlacement: e.sumPlacement }))
         .sort((a, b) => b.games - a.games)
-        .slice(0, 5);
+        .slice(0, 10);
       out.byItem[item][bucket] = {
         games: b.games, sumPlacement: b.sumPlacement, top4: b.top4, topUsers,
       };

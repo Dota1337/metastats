@@ -309,7 +309,7 @@ export default function TftPlayerPage() {
                 </div>
               )}
               {pageMatches.map(m => (
-                <MatchCard key={m.matchId} match={m} selfPuuid={data.summoner.puuid} ddVersion={ddVersion} />
+                <MatchCard key={m.matchId} match={m} selfPuuid={data.summoner.puuid} ddVersion={ddVersion} region={region} />
               ))}
             </div>
 

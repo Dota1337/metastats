@@ -161,7 +161,21 @@ export default function TftComparePage() {
                 className="bg-[#0d1526] border-l-4 rounded p-5"
                 style={{ borderLeftColor: SERIES_COLORS[i] }}
               >
-                <div className="text-white text-base font-medium mb-1">{r.name}</div>
+                {(() => {
+                  // Link the compared player's name to their full profile.
+                  // r.name is the full Riot ID "gameName#tagLine".
+                  const [gn, tl] = r.name.split('#');
+                  if (!gn) return <div className="text-white text-base font-medium mb-1">{r.name}</div>;
+                  const slug = `${encodeURIComponent(gn)}--${encodeURIComponent(tl || region.replace(/\d+$/, '').toUpperCase())}`;
+                  return (
+                    <a
+                      href={`/tft/player/${slug}?region=${region}`}
+                      className="text-white text-base font-medium mb-1 hover:text-[#7B61FF] transition-colors block"
+                    >
+                      {r.name}
+                    </a>
+                  );
+                })()}
                 <div className="text-[#8a9bb0] text-xs mb-3">
                   {r.tier ? formatTier(r.tier, r.rank) : 'Unranked'}
                   {r.lp != null ? ` · ${r.lp} LP` : ''}

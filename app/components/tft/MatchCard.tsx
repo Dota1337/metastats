@@ -7,9 +7,10 @@ interface Props {
   match: TftMatchSummary;
   selfPuuid: string;
   ddVersion?: string;        // legacy prop, no longer used
+  region?: string;           // platform routing for participant-link slugs
 }
 
-export default function MatchCard({ match, selfPuuid }: Props) {
+export default function MatchCard({ match, selfPuuid, region }: Props) {
   const [open, setOpen] = useState(false);
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
 
@@ -64,7 +65,7 @@ export default function MatchCard({ match, selfPuuid }: Props) {
       {open && (
         <div className={`ml-12 mr-3 mt-2 rounded border-l-4 ${barColor} bg-[#0a0e1a] p-3 space-y-2`}>
           {match.participants.slice().sort((a, b) => a.placement - b.placement).map(p => (
-            <ParticipantRow key={p.puuid} participant={p} isSelf={p.puuid === selfPuuid} assets={assets} />
+            <ParticipantRow key={p.puuid} participant={p} isSelf={p.puuid === selfPuuid} assets={assets} region={region || regionFromMatchId(match.matchId)} />
           ))}
           <a
             href={`/tft/match/${encodeURIComponent(match.matchId)}`}
@@ -159,13 +160,29 @@ function AugmentRow({ augments, assets }: { augments: string[]; assets: TftAsset
   );
 }
 
-function ParticipantRow({ participant, isSelf, assets }: { participant: TftParticipantSummary; isSelf: boolean; assets: TftAssetsBundle | null }) {
+function ParticipantRow({ participant, isSelf, assets, region }: { participant: TftParticipantSummary; isSelf: boolean; assets: TftAssetsBundle | null; region: string }) {
+  const riotId = (participant as any).riotIdName as string | null;
+  const [gameName, tagLine] = riotId ? riotId.split('#') : [null, null];
+  const slug = gameName
+    ? `${encodeURIComponent(gameName)}--${encodeURIComponent(tagLine || region.replace(/\d+$/, '').toUpperCase())}`
+    : null;
+  const displayName = gameName || participant.puuid.slice(0, 8);
   return (
     <div className={`flex flex-col md:flex-row md:items-center gap-2 px-2 py-2 rounded ${isSelf ? 'bg-[#7B61FF]/10 border border-[#7B61FF]/30' : 'hover:bg-white/5'}`}>
       <div className="flex items-center gap-2 md:w-44 flex-shrink-0">
         <PlacementBadge placement={participant.placement} />
         <div className="min-w-0 flex-1">
-          <div className="text-white text-xs truncate">{(participant as any).riotIdName?.split('#')[0] || participant.puuid.slice(0, 8)}</div>
+          {slug ? (
+            <a
+              href={`/tft/player/${slug}?region=${region}`}
+              onClick={e => e.stopPropagation()}
+              className="text-white text-xs truncate block hover:text-[#7B61FF] transition-colors"
+            >
+              {displayName}
+            </a>
+          ) : (
+            <div className="text-[#4a5a70] text-xs truncate">{displayName}</div>
+          )}
           <div className="text-[#4a5a70] text-[10px]">Lvl {participant.level} · R{participant.lastRound}</div>
         </div>
       </div>
@@ -178,6 +195,16 @@ function ParticipantRow({ participant, isSelf, assets }: { participant: TftParti
       <AugmentRow augments={participant.augments} assets={assets} />
     </div>
   );
+}
+
+// Derive platform routing from a TFT match ID. Match IDs come in
+// "PLATFORM_NUMBER" format (e.g. "EUW1_7850388638", "KR_5912348321").
+// Lower-case the prefix for our internal region convention.
+function regionFromMatchId(matchId: string | undefined): string {
+  if (!matchId) return 'euw1';
+  const underscore = matchId.indexOf('_');
+  if (underscore <= 0) return 'euw1';
+  return matchId.slice(0, underscore).toLowerCase();
 }
 
 function UnitTile({ unit, assets, small, interactive }: { unit: any; assets: TftAssetsBundle | null; small?: boolean; interactive?: boolean }) {

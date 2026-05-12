@@ -612,6 +612,87 @@ const translations = {
     '\uC601\uD5A5 \uC5C6\uC74C', '\u65E0\u5F71\u54CD',
     'Sin impacto', 'Aucun impact'
   ),
+
+  // \u2500 Marktwert Page (Top / Movers / Distribution) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  'tft.marketValue.pageHint': t6(
+    'Marktwerte ab Master \u00B7 TFT Standard Ranked \u00B7 T\u00E4gliche Snapshots',
+    'Market values from Master+ \u00B7 TFT Standard Ranked \u00B7 Daily snapshots',
+    'Master+ \uBD80\uD130 \u00B7 TFT \uD45C\uC900 \uB7AD\uD06C \u00B7 \uC77C\uC77C \uC2A4\uB0C5\uC0F7',
+    '\u4ECE Master \u8D77 \u00B7 TFT \u6807\u51C6\u6392\u4F4D \u00B7 \u6BCF\u65E5\u5FEB\u7167',
+    'Valores desde Master+ \u00B7 TFT Est\u00E1ndar Ranked \u00B7 Snapshots diarios',
+    'Valeurs \u00E0 partir de Master+ \u00B7 TFT Standard Ranked \u00B7 Snapshots quotidiens'
+  ),
+  'tft.marketValue.tab.top': t6(
+    'Aktuelle Top-Werte', 'Current Top Values',
+    '\uD604\uC7AC \uC0C1\uC704 \uAC00\uCE58', '\u5F53\u524D\u6700\u9AD8\u4EF7\u503C',
+    'Mejores Valores Actuales', 'Meilleures valeurs actuelles'
+  ),
+  'tft.marketValue.tab.movers': t6(
+    'Top-Mover', 'Top Movers',
+    '\uC0C1\uC2B9/\uD558\uB77D', '\u6DA8\u8DCC\u5E45\u699C',
+    'Mayores Cambios', 'Plus grands mouvements'
+  ),
+  'tft.marketValue.tab.distribution': t6(
+    'Verteilung', 'Distribution',
+    '\uBD84\uD3EC', '\u5206\u5E03',
+    'Distribuci\u00F3n', 'R\u00E9partition'
+  ),
+  'tft.marketValue.empty': t6(
+    'Noch keine Daten f\u00FCr diese Region. T\u00E4gliche Snapshots beginnen mit der n\u00E4chsten Aktualisierung.',
+    'No data for this region yet. Daily snapshots start with the next refresh.',
+    '\uC774 \uC9C0\uC5ED\uC5D0 \uB300\uD55C \uB370\uC774\uD130\uAC00 \uC544\uC9C1 \uC5C6\uC2B5\uB2C8\uB2E4. \uB2E4\uC74C \uC5C5\uB370\uC774\uD2B8\uBD80\uD130 \uC77C\uC77C \uC2A4\uB0C5\uC0F7\uC774 \uC2DC\uC791\uB429\uB2C8\uB2E4.',
+    '\u8BE5\u5730\u533A\u6682\u65E0\u6570\u636E\u3002\u4E0B\u6B21\u5237\u65B0\u540E\u5F00\u59CB\u6BCF\u65E5\u5FEB\u7167\u3002',
+    'A\u00FAn no hay datos para esta regi\u00F3n. Los snapshots diarios comienzan con la pr\u00F3xima actualizaci\u00F3n.',
+    'Pas encore de donn\u00E9es pour cette r\u00E9gion. Les snapshots quotidiens commencent \u00E0 la prochaine mise \u00E0 jour.'
+  ),
+  'tft.marketValue.col.player': t6(
+    'Spieler', 'Player', '\uD50C\uB808\uC774\uC5B4', '\u73A9\u5BB6', 'Jugador', 'Joueur'
+  ),
+  'tft.marketValue.col.now': t6(
+    'Aktuell', 'Now', '\uD604\uC7AC', '\u5F53\u524D', 'Actual', 'Actuel'
+  ),
+  'tft.marketValue.movers.gainers': t6(
+    'Aufsteiger', 'Gainers',
+    '\uC0C1\uC2B9', '\u4E0A\u6DA8',
+    'Ganadores', 'Hausses'
+  ),
+  'tft.marketValue.movers.losers': t6(
+    'Absteiger', 'Losers',
+    '\uD558\uB77D', '\u4E0B\u8DCC',
+    'Perdedores', 'Baisses'
+  ),
+  'tft.marketValue.movers.notEnoughHistory': t6(
+    'Noch nicht genug Snapshot-Historie f\u00FCr diese Zeitspanne. Komm in ein paar Tagen wieder.',
+    'Not enough snapshot history for this window yet. Check back in a few days.',
+    '\uC774 \uAE30\uAC04\uC5D0 \uB300\uD55C \uC2A4\uB0C5\uC0F7 \uC774\uB825\uC774 \uC544\uC9C1 \uBD80\uC871\uD569\uB2C8\uB2E4. \uBA70\uCE60 \uD6C4\uC5D0 \uB2E4\uC2DC \uD655\uC778\uD574 \uC8FC\uC138\uC694.',
+    '\u6B64\u65F6\u95F4\u6BB5\u7684\u5FEB\u7167\u5386\u53F2\u4E0D\u8DB3\u3002\u8BF7\u51E0\u5929\u540E\u518D\u6765\u67E5\u770B\u3002',
+    'A\u00FAn no hay suficiente historial de snapshots para este periodo. Vuelve en unos d\u00EDas.',
+    'Pas encore assez d\'historique pour cette p\u00E9riode. Revenez dans quelques jours.'
+  ),
+  'tft.marketValue.distribution.title': t6(
+    'Marktwert-Verteilung in der Region',
+    'Market value distribution in the region',
+    '\uC9C0\uC5ED \uB0B4 \uC2DC\uC7A5 \uAC00\uCE58 \uBD84\uD3EC',
+    '\u8BE5\u5730\u533A\u5E02\u573A\u4EF7\u503C\u5206\u5E03',
+    'Distribuci\u00F3n de valor de mercado en la regi\u00F3n',
+    'Distribution de la valeur de march\u00E9 dans la r\u00E9gion'
+  ),
+  'tft.marketValue.distribution.basedOn': t6(
+    'aus {n} Spielern', 'from {n} players',
+    '{n}\uBA85 \uD50C\uB808\uC774\uC5B4', '\u57FA\u4E8E{n}\u540D\u73A9\u5BB6',
+    'de {n} jugadores', 'sur {n} joueurs'
+  ),
+  'tft.marketValue.distribution.players': t6(
+    'Spieler', 'Players', '\uD50C\uB808\uC774\uC5B4', '\u73A9\u5BB6', 'Jugadores', 'Joueurs'
+  ),
+  'tft.marketValue.distribution.xAxisHint': t6(
+    '\u20AC-Buckets (Tausend \u20AC)',
+    'EUR buckets (thousand \u20AC)',
+    'EUR \uAD6C\uAC04 (\uCC9C \u20AC)',
+    'EUR \u533A\u95F4 (\u5343\u6B27\u5143)',
+    'Buckets en \u20AC (mil \u20AC)',
+    'Tranches \u20AC (millier d\'\u20AC)'
+  ),
 } as const;
 
 type TranslationKey = keyof typeof translations;

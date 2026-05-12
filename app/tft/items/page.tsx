@@ -112,7 +112,7 @@ export default function TftItemsPage() {
                       because 8×32px doesn't fit on small screens; on
                       desktop the column is wide enough to render them all
                       inline without scrolling. */}
-                  <div className="flex items-center gap-1.5 mt-2 md:mt-0 pl-12 md:pl-0 overflow-x-auto md:overflow-visible">
+                  <div className="flex items-center gap-1.5 mt-2 md:mt-0 pl-12 md:pl-6 overflow-x-auto md:overflow-visible">
                     {(it.topUsers || []).slice(0, 8).map((cid, i) => {
                       const ch = assets?.champions[cid];
                       const tileUrl = tftChampionTileUrl(assets, ch);

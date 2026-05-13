@@ -22,9 +22,6 @@ on:
 permissions:
   contents: write
 
-env:
-  NODE_OPTIONS: --use-system-ca
-
 jobs:
   # Stage 1: refresh set + asset metadata. Runs once, on its own runner, so
   # the matrix jobs all see the same tft-set.json + asset bundle.

@@ -11,10 +11,12 @@ name: TFT Daily Crawl
 
 on:
   schedule:
-    # Every day at 04:00 UTC — Riot's daily soft-rate-limit window resets
-    # around midnight UTC, so 04:00 gives the API a few hours of buffer
-    # for the player-facing traffic to drain before our batch job hits it.
-    - cron: '0 4 * * *'
+    # Every day at 05:15 UTC. The crawler reads the most recent completed
+    # 24h window [yesterday 05:00 UTC, today 05:00 UTC) via Riot's
+    # startTime/endTime filter — the 15-min offset gives Riot's match-history
+    # index a small buffer to settle the very last matches of the window
+    # before we ask for them.
+    - cron: '15 5 * * *'
   workflow_dispatch:
 
 permissions:

@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip as RechartsTooltip, Legend,
 } from 'recharts';
@@ -9,7 +10,8 @@ import { useI18n, LOCALE_MAP, type Lang } from '../../lib/i18n';
 import TftHero from '../../components/tft/TftHero';
 import { formatTier } from '../../lib/rank-format';
 
-// Region list mirrors /tft/marktwert and /units pages — all crawled regions.
+const CompareRadar = dynamic(() => import('../../components/CompareRadar'), { ssr: false });
+
 const REGIONS: { value: string; label: string }[] = [
   { value: 'euw1', label: 'EUW' }, { value: 'eun1', label: 'EUNE' },
   { value: 'kr',   label: 'KR'  }, { value: 'na1',  label: 'NA' },
@@ -23,7 +25,12 @@ const REGIONS: { value: string; label: string }[] = [
 ];
 
 const SERIES_COLORS = ['#7B61FF', '#3ecf8e'] as const;
+const TIER_NUM: Record<string, number> = {
+  IRON: 1, BRONZE: 2, SILVER: 3, GOLD: 4, PLATINUM: 5, EMERALD: 6,
+  DIAMOND: 7, MASTER: 8, GRANDMASTER: 9, CHALLENGER: 10,
+};
 
+interface AgentBreakdown { agent: string; multiplier: number; delta: number }
 interface PlayerSummary {
   name: string;
   puuid: string;
@@ -33,12 +40,52 @@ interface PlayerSummary {
   marketValue: number | null;
   rated: boolean;
   multiplier: number | null;
-  avgPlacement: number | null;
-  top4Rate: number | null;
-  matches: number;
+  agents: AgentBreakdown[];
+  // From /api/tft/player-stats
+  totalMatches: number;
+  avgPlacement: number;
+  top4Rate: number;
+  top1Rate: number;
+  placementDistribution: number[];   // [count@1, count@2, …, count@8]
+  averages: { level: number; goldLeft: number; eliminations: number; damage: number; lastRound: number };
+  topUnits: { characterId: string; games: number; avgPlacement: number; top4Rate: number }[];
 }
 
 interface HistoryPoint { date: string; finalValue: number }
+
+function rankEmblemUrl(tier: string | null): string | null {
+  if (!tier) return null;
+  return `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-emblem/emblem-${tier.toLowerCase()}.png`;
+}
+
+function tftUnitIconUrl(characterId: string): string {
+  // CommunityDragon HUD tile (square portrait) — matches the in-game shop
+  return `https://raw.communitydragon.org/latest/game/assets/characters/${characterId.toLowerCase()}/hud/${characterId.toLowerCase()}_square.tft_set17.png`;
+}
+
+function rankNum(tier: string | null, lp: number | null): number {
+  if (!tier) return 0;
+  return (TIER_NUM[tier] || 0) * 1000 + (lp || 0);
+}
+
+function countCategoryWins(s1: PlayerSummary, s2: PlayerSummary): { p1: number; p2: number } {
+  // Lower is better for avg-placement → invert. Others: higher = better.
+  const cats: Array<[number, number]> = [
+    [rankNum(s1.tier, s1.lp), rankNum(s2.tier, s2.lp)],
+    [s1.marketValue || 0, s2.marketValue || 0],
+    [s1.multiplier || 0, s2.multiplier || 0],
+    [-s1.avgPlacement, -s2.avgPlacement],
+    [s1.top4Rate, s2.top4Rate],
+    [s1.top1Rate, s2.top1Rate],
+    [s1.totalMatches, s2.totalMatches],
+  ];
+  let p1 = 0, p2 = 0;
+  for (const [a, b] of cats) {
+    if (a > b) p1++;
+    else if (b > a) p2++;
+  }
+  return { p1, p2 };
+}
 
 export default function TftComparePage() {
   const { t, lang } = useI18n();
@@ -58,36 +105,48 @@ export default function TftComparePage() {
       const name = raw.trim();
       if (!name) { next[i] = null; setResults([...next]); return; }
       try {
+        // 1) Marktwert snapshot
         const r = await fetch(`/api/tft/marktwert?name=${encodeURIComponent(name)}&region=${region}`);
         if (!r.ok) {
           const j = await r.json().catch(() => ({}));
           next[i] = { error: j.error || `HTTP ${r.status}` };
-        } else {
-          const d = await r.json();
-          const perf = d.marketValue?.agents?.find((a: any) => a.agent === 'performance');
-          const avgNote = perf?.notes?.find((n: any) => n.label === 'avg-placement');
-          const top4Note = perf?.notes?.find((n: any) => n.label === 'top-4 rate');
-          next[i] = {
-            name: d.summoner?.name || name,
-            puuid: d.summoner?.puuid || '',
-            tier: d.summoner?.tier || null,
-            rank: d.summoner?.rank || null,
-            lp: d.summoner?.lp ?? null,
-            marketValue: d.marketValue?.finalValue ?? null,
-            rated: !!d.marketValue?.rated,
-            multiplier: d.marketValue?.multiplier ?? null,
-            avgPlacement: avgNote?.detail ? Number(avgNote.detail) : null,
-            top4Rate: top4Note?.detail ? Number(String(top4Note.detail).replace('%', '')) / 100 : null,
-            matches: d.marketValue?.sampleSize ?? 0,
-          };
-          // Background-fetch the 30-day history for the chart overlay.
-          if (next[i] && (next[i] as PlayerSummary).rated && (next[i] as PlayerSummary).puuid) {
-            const puuid = (next[i] as PlayerSummary).puuid;
-            fetch(`/api/tft/marktwert/history?puuid=${puuid}&region=${region}&days=30`)
-              .then(r => r.ok ? r.json() : { series: [] })
-              .then(h => setHistories(prev => prev.map((p, idx) => idx === i ? (h.series || []) : p)))
-              .catch(() => {});
-          }
+          setResults([...next]);
+          return;
+        }
+        const d = await r.json();
+        const puuid = d.summoner?.puuid || '';
+        // 2) Season-aggregated stats — only if rated (no point otherwise)
+        let stats: any = null;
+        if (puuid && d.marketValue?.rated) {
+          const sr = await fetch(`/api/tft/player-stats?puuid=${puuid}&region=${region}`);
+          stats = sr.ok ? await sr.json() : null;
+        }
+        next[i] = {
+          name: d.summoner?.name || name,
+          puuid,
+          tier: d.summoner?.tier || null,
+          rank: d.summoner?.rank || null,
+          lp: d.summoner?.lp ?? null,
+          marketValue: d.marketValue?.finalValue ?? null,
+          rated: !!d.marketValue?.rated,
+          multiplier: d.marketValue?.multiplier ?? null,
+          agents: (d.marketValue?.agents || []).map((a: any) => ({
+            agent: a.agent, multiplier: a.multiplier, delta: a.delta,
+          })),
+          totalMatches: stats?.totalMatches ?? d.marketValue?.sampleSize ?? 0,
+          avgPlacement: stats?.avgPlacement ?? 0,
+          top4Rate: stats?.top4Rate ?? 0,
+          top1Rate: stats?.top1Rate ?? 0,
+          placementDistribution: stats?.placementDistribution ?? [0,0,0,0,0,0,0,0],
+          averages: stats?.averages ?? { level: 0, goldLeft: 0, eliminations: 0, damage: 0, lastRound: 0 },
+          topUnits: stats?.topUnits ?? [],
+        };
+        // 3) Background-fetch 30d history
+        if ((next[i] as PlayerSummary).rated && puuid) {
+          fetch(`/api/tft/marktwert/history?puuid=${puuid}&region=${region}&days=30`)
+            .then(r => r.ok ? r.json() : { series: [] })
+            .then(h => setHistories(prev => prev.map((p, idx) => idx === i ? (h.series || []) : p)))
+            .catch(() => {});
         }
       } catch (e: any) {
         next[i] = { error: e.message };
@@ -97,9 +156,11 @@ export default function TftComparePage() {
     setLoading(false);
   };
 
-  // Merge the two histories into a single Recharts-ready array keyed by date,
-  // so both players show up as overlaid lines.
   const chartData = mergeHistories(histories);
+  const bothLoaded = results.every(r => r && !('error' in r));
+  const s1 = bothLoaded ? (results[0] as PlayerSummary) : null;
+  const s2 = bothLoaded ? (results[1] as PlayerSummary) : null;
+  const score = s1 && s2 ? countCategoryWins(s1, s2) : null;
 
   return (
     <main className="min-h-screen bg-[#0e1525]">
@@ -143,6 +204,7 @@ export default function TftComparePage() {
           {loading ? t('tft.compare.comparing') : t('tft.compare.button')}
         </button>
 
+        {/* Player cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
           {results.map((r, i) => {
             if (!r) return (
@@ -155,51 +217,132 @@ export default function TftComparePage() {
                 {r.error}
               </div>
             );
+            const emblem = rankEmblemUrl(r.tier);
             return (
               <div
                 key={i}
-                className="bg-[#0d1526] border-l-4 rounded p-5"
+                className="bg-[#0d1526] border-l-4 rounded p-5 flex items-start gap-3"
                 style={{ borderLeftColor: SERIES_COLORS[i] }}
               >
-                {(() => {
-                  // Link the compared player's name to their full profile.
-                  // r.name is the full Riot ID "gameName#tagLine".
-                  const [gn, tl] = r.name.split('#');
-                  if (!gn) return <div className="text-white text-base font-medium mb-1">{r.name}</div>;
-                  const slug = `${encodeURIComponent(gn)}--${encodeURIComponent(tl || region.replace(/\d+$/, '').toUpperCase())}`;
-                  return (
-                    <a
-                      href={`/tft/player/${slug}?region=${region}`}
-                      className="text-white text-base font-medium mb-1 hover:text-[#7B61FF] transition-colors block"
-                    >
-                      {r.name}
-                    </a>
-                  );
-                })()}
-                <div className="text-[#a0b0c5] text-xs mb-3">
-                  {r.tier ? formatTier(r.tier, r.rank) : 'Unranked'}
-                  {r.lp != null ? ` · ${r.lp} LP` : ''}
-                </div>
-                <div className="space-y-1 text-xs">
-                  <Row label={t('tft.avgPlacement')} value={r.avgPlacement?.toFixed(2) ?? '—'} />
-                  <Row label={t('tft.top4')} value={r.top4Rate != null ? `${(r.top4Rate * 100).toFixed(0)}%` : '—'} />
-                  <Row label={t('tft.gamesShort')} value={String(r.matches)} />
-                  <Row label={t('tft.marketValue.multiplier')} value={r.multiplier != null ? `×${r.multiplier.toFixed(2)}` : '—'} />
-                  <Row
-                    label={t('tft.marketValue')}
-                    value={r.rated && r.marketValue != null
-                      ? new Intl.NumberFormat(LOCALE_MAP[lang], {
-                          style: 'currency', currency: 'EUR', maximumFractionDigits: 0,
-                        }).format(r.marketValue)
-                      : '—'
-                    }
-                    highlight
-                  />
+                {emblem && <img src={emblem} alt={r.tier || ''} className="w-14 h-14 object-contain shrink-0" />}
+                <div className="flex-1 min-w-0">
+                  {(() => {
+                    const [gn, tl] = r.name.split('#');
+                    const slug = `${encodeURIComponent(gn)}--${encodeURIComponent(tl || region.replace(/\d+$/, '').toUpperCase())}`;
+                    return (
+                      <a href={`/tft/player/${slug}?region=${region}`} className="text-white text-base font-medium hover:text-[#7B61FF] transition-colors block truncate">
+                        {r.name}
+                      </a>
+                    );
+                  })()}
+                  <div className="text-[#a0b0c5] text-xs mb-2">
+                    {r.tier ? formatTier(r.tier, r.rank) : 'Unranked'}{r.lp != null ? ` · ${r.lp} LP` : ''}
+                  </div>
+                  <div className="text-[#7B61FF] text-xl font-semibold tabular-nums">
+                    {r.rated && r.marketValue != null
+                      ? new Intl.NumberFormat(LOCALE_MAP[lang], { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(r.marketValue)
+                      : '—'}
+                  </div>
+                  <div className="text-[#a0b0c5] text-[10px]">
+                    ×{r.multiplier?.toFixed(2) ?? '—'} · {r.totalMatches} Matches
+                  </div>
                 </div>
               </div>
             );
           })}
         </div>
+
+        {/* Head-to-Head + visuals only when both players resolved */}
+        {s1 && s2 && score && (
+          <>
+            <HeadToHeadBanner p1={score.p1} p2={score.p2} name1={s1.name.split('#')[0]} name2={s2.name.split('#')[0]} />
+
+            {/* Agent-Multiplier-Radar — 6 axes from marketvalue pipeline */}
+            <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-4">
+              <div className="text-center text-[#a0b0c5] text-xs uppercase tracking-widest mb-2">Performance-Radar</div>
+              {(() => {
+                const agentOrder = ['performance', 'metaAdaptation', 'highRoll', 'consistency', 'flexMastery', 'gameSense'];
+                const agentLabels: Record<string, string> = {
+                  performance: 'Performance',
+                  metaAdaptation: 'Meta',
+                  highRoll: 'High-Roll',
+                  consistency: 'Konsistenz',
+                  flexMastery: 'Flex',
+                  gameSense: 'Game-Sense',
+                };
+                // Normalise each agent's multiplier to a 0..100 scale using its
+                // known range so all six axes are comparable. Ranges match
+                // app/lib/tft-marketvalue/agents/*.
+                const ranges: Record<string, [number, number]> = {
+                  performance:    [0.45, 1.40],
+                  metaAdaptation: [0.85, 1.18],
+                  highRoll:       [0.90, 1.12],
+                  consistency:    [0.88, 1.10],
+                  flexMastery:    [0.90, 1.12],
+                  gameSense:      [0.94, 1.10],
+                };
+                const normalize = (agent: string, m: number) => {
+                  const [lo, hi] = ranges[agent] || [0.5, 1.5];
+                  return Math.max(0, Math.min(100, ((m - lo) / (hi - lo)) * 100));
+                };
+                const data = agentOrder.map(a => {
+                  const a1 = s1.agents.find(x => x.agent === a);
+                  const a2 = s2.agents.find(x => x.agent === a);
+                  return {
+                    stat: agentLabels[a],
+                    p1: a1 ? normalize(a, a1.multiplier) : 0,
+                    p2: a2 ? normalize(a, a2.multiplier) : 0,
+                  };
+                });
+                return <CompareRadar data={data} name1={s1.name.split('#')[0]} name2={s2.name.split('#')[0]} />;
+              })()}
+            </div>
+
+            {/* Color-coded stat bars */}
+            <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-4">
+              <CompareStatBar label="Ø Platz (niedriger = besser)" v1={s1.avgPlacement} v2={s2.avgPlacement} fmt1={s1.avgPlacement.toFixed(2)} fmt2={s2.avgPlacement.toFixed(2)} lowerIsBetter />
+              <CompareStatBar label="Top-4-Quote" v1={s1.top4Rate} v2={s2.top4Rate} fmt1={`${(s1.top4Rate * 100).toFixed(0)}%`} fmt2={`${(s2.top4Rate * 100).toFixed(0)}%`} />
+              <CompareStatBar label="Sieg-Quote" v1={s1.top1Rate} v2={s2.top1Rate} fmt1={`${(s1.top1Rate * 100).toFixed(0)}%`} fmt2={`${(s2.top1Rate * 100).toFixed(0)}%`} />
+              <CompareStatBar label="Ø Schaden" v1={s1.averages.damage} v2={s2.averages.damage} fmt1={Math.round(s1.averages.damage).toLocaleString(LOCALE_MAP[lang])} fmt2={Math.round(s2.averages.damage).toLocaleString(LOCALE_MAP[lang])} />
+              <CompareStatBar label="Ø Endrunde" v1={s1.averages.lastRound} v2={s2.averages.lastRound} fmt1={s1.averages.lastRound.toFixed(1)} fmt2={s2.averages.lastRound.toFixed(1)} />
+              <CompareStatBar label="Ø Level" v1={s1.averages.level} v2={s2.averages.level} fmt1={s1.averages.level.toFixed(1)} fmt2={s2.averages.level.toFixed(1)} />
+              <CompareStatBar label="Multiplikator" v1={s1.multiplier || 0} v2={s2.multiplier || 0} fmt1={`×${(s1.multiplier || 0).toFixed(2)}`} fmt2={`×${(s2.multiplier || 0).toFixed(2)}`} />
+            </div>
+
+            {/* Placement Distribution histogram */}
+            <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-4">
+              <div className="text-center text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">Platzierungs-Verteilung</div>
+              <div className="grid grid-cols-2 gap-4">
+                <PlacementHistogram dist={s1.placementDistribution} color={SERIES_COLORS[0]} />
+                <PlacementHistogram dist={s2.placementDistribution} color={SERIES_COLORS[1]} />
+              </div>
+            </div>
+
+            {/* Top units */}
+            <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-4">
+              <div className="text-center text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">Meist-gespielte Units</div>
+              <div className="grid grid-cols-2 gap-4">
+                {[s1, s2].map((s, i) => (
+                  <div key={i}>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {s.topUnits.slice(0, 8).map(u => (
+                        <div key={u.characterId} title={`${u.characterId} · ${u.games}× · Ø ${u.avgPlacement.toFixed(1)}`} className="flex flex-col items-center gap-0.5">
+                          <img
+                            src={tftUnitIconUrl(u.characterId)}
+                            alt={u.characterId}
+                            className="w-9 h-9 rounded border border-[#1e2a3a]"
+                            onError={(e) => { (e.target as HTMLImageElement).style.opacity = '0.3'; }}
+                          />
+                          <span className="text-[9px] text-[#a0b0c5] tabular-nums">{u.games}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
 
         {chartData.length >= 2 && (
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
@@ -223,12 +366,7 @@ export default function TftComparePage() {
                     tickFormatter={(v) => `${Math.round(v / 1000)}k`}
                   />
                   <RechartsTooltip
-                    contentStyle={{
-                      backgroundColor: '#0d1526',
-                      border: '1px solid #1e2a3a',
-                      borderRadius: 6,
-                      fontSize: 12,
-                    }}
+                    contentStyle={{ backgroundColor: '#0d1526', border: '1px solid #1e2a3a', borderRadius: 6, fontSize: 12 }}
                     labelStyle={{ color: '#a0b0c5' }}
                     formatter={(value: any) => [
                       new Intl.NumberFormat(LOCALE_MAP[lang], { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(Number(value)),
@@ -262,19 +400,93 @@ export default function TftComparePage() {
   );
 }
 
-function Row({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+function HeadToHeadBanner({ p1, p2, name1, name2 }: { p1: number; p2: number; name1: string; name2: string }) {
+  const total = p1 + p2 || 1;
+  const w1 = (p1 / total) * 100;
   return (
-    <div className="flex justify-between">
-      <span className="text-[#7a8aa0]">{label}</span>
-      <span className={highlight ? 'text-[#7B61FF] font-medium' : 'text-white'}>{value}</span>
+    <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-4">
+      <div className="flex items-center justify-between text-xs mb-2">
+        <span className={`font-semibold truncate ${p1 > p2 ? 'text-[#7B61FF]' : 'text-[#a0b0c5]'}`}>{name1}</span>
+        <span className="text-[#7a8aa0] uppercase tracking-widest">Head-to-Head</span>
+        <span className={`font-semibold truncate ${p2 > p1 ? 'text-[#3ecf8e]' : 'text-[#a0b0c5]'}`}>{name2}</span>
+      </div>
+      <div className="relative h-2.5 rounded-full bg-[#1e2a3a] overflow-hidden">
+        <div
+          className="absolute left-0 top-0 h-full bg-gradient-to-r from-[#7B61FF] to-[#9d48e0] transition-all duration-700"
+          style={{ width: `${w1}%`, boxShadow: '0 0 8px rgba(123,97,255,0.45)' }}
+        />
+        <div
+          className="absolute right-0 top-0 h-full bg-gradient-to-l from-[#3ecf8e] to-[#2bb47a] transition-all duration-700"
+          style={{ width: `${100 - w1}%`, boxShadow: '0 0 8px rgba(62,207,142,0.45)' }}
+        />
+      </div>
+      <div className="flex items-center justify-between text-[10px] mt-1.5 tabular-nums">
+        <span className={p1 > p2 ? 'text-[#7B61FF] font-bold' : 'text-[#7a8aa0]'}>{p1} {p1 === 1 ? 'Kategorie' : 'Kategorien'}</span>
+        <span className={p2 > p1 ? 'text-[#3ecf8e] font-bold' : 'text-[#7a8aa0]'}>{p2} {p2 === 1 ? 'Kategorie' : 'Kategorien'}</span>
+      </div>
+    </div>
+  );
+}
+
+function CompareStatBar({ label, v1, v2, fmt1, fmt2, lowerIsBetter = false }: { label: string; v1: number; v2: number; fmt1: string; fmt2: string; lowerIsBetter?: boolean }) {
+  const c1 = lowerIsBetter ? (v1 < v2 ? '#7B61FF' : '#3a4a64') : (v1 > v2 ? '#7B61FF' : '#3a4a64');
+  const c2 = lowerIsBetter ? (v2 < v1 ? '#3ecf8e' : '#3a4a64') : (v2 > v1 ? '#3ecf8e' : '#3a4a64');
+  const p1Wins = lowerIsBetter ? v1 < v2 : v1 > v2;
+  const p2Wins = lowerIsBetter ? v2 < v1 : v2 > v1;
+  const maxAbs = Math.max(Math.abs(v1), Math.abs(v2)) || 1;
+  const pct1 = (Math.abs(v1) / maxAbs) * 100;
+  const pct2 = (Math.abs(v2) / maxAbs) * 100;
+  return (
+    <div className="mb-3">
+      <div className="text-center text-[#a0b0c5] text-[10px] uppercase tracking-widest mb-1">{label}</div>
+      <div className="flex items-center gap-2">
+        <span className={`text-xs sm:text-sm w-20 sm:w-28 text-right shrink-0 tabular-nums font-medium ${p1Wins ? 'text-[#7B61FF]' : 'text-white'}`}>{fmt1}</span>
+        <div className="flex-1 flex gap-1">
+          <div className="flex-1 flex justify-end">
+            <div className="h-4 rounded-l transition-all duration-500" style={{ width: `${pct1}%`, backgroundColor: c1, boxShadow: p1Wins ? '0 0 10px rgba(123,97,255,0.45)' : 'none' }} />
+          </div>
+          <div className="flex-1 flex justify-start">
+            <div className="h-4 rounded-r transition-all duration-500" style={{ width: `${pct2}%`, backgroundColor: c2, boxShadow: p2Wins ? '0 0 10px rgba(62,207,142,0.45)' : 'none' }} />
+          </div>
+        </div>
+        <span className={`text-xs sm:text-sm w-20 sm:w-28 shrink-0 tabular-nums font-medium ${p2Wins ? 'text-[#3ecf8e]' : 'text-white'}`}>{fmt2}</span>
+      </div>
+    </div>
+  );
+}
+
+function PlacementHistogram({ dist, color }: { dist: number[]; color: string }) {
+  const max = Math.max(...dist) || 1;
+  // Placements 1..4 in success-green hues, 5..8 in red — same visual logic
+  // as the player-page placement distribution chart.
+  return (
+    <div className="flex items-end gap-1 h-24">
+      {dist.map((count, i) => {
+        const place = i + 1;
+        const isTop4 = place <= 4;
+        const heightPct = (count / max) * 100;
+        return (
+          <div key={place} className="flex-1 flex flex-col items-center gap-1">
+            <div className="text-[9px] text-[#a0b0c5] tabular-nums">{count}</div>
+            <div
+              className="w-full rounded-sm transition-all duration-500"
+              style={{
+                height: `${heightPct}%`,
+                minHeight: count > 0 ? '4px' : '2px',
+                backgroundColor: isTop4 ? color : '#3a4a64',
+                opacity: count > 0 ? 1 : 0.3,
+              }}
+              title={`Platz ${place}: ${count}`}
+            />
+            <div className="text-[9px] text-[#7a8aa0] tabular-nums">{place}</div>
+          </div>
+        );
+      })}
     </div>
   );
 }
 
 // Merge two newest-last time-series into a Recharts row shape {date, p0, p1}.
-// Missing days for either player are simply absent in the source array; we
-// emit a row for every date that appears in either series and let Recharts
-// connectNulls bridge the gaps.
 function mergeHistories(histories: HistoryPoint[][]): { date: string; p0?: number; p1?: number }[] {
   const dates = new Set<string>();
   for (const series of histories) for (const p of series) dates.add(p.date);

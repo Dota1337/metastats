@@ -67,8 +67,128 @@ function getChampionStats(matches: any[]): Array<{ champion: string; games: numb
   }
   return Object.entries(map)
     .map(([champion, s]) => ({ champion, games: s.games, wins: s.wins, winrate: Math.round((s.wins / s.games) * 100) }))
-    .sort((a, b) => b.games - a.games)
-    .slice(0, 3);
+    .sort((a, b) => b.games - a.games);
+}
+
+// Recent-form takes the newest N matches and returns them as compact W/L
+// markers. Returns newest-first so the UI can render left-to-right
+// chronologically by reversing.
+function getRecentForm(matches: any[], n = 10): boolean[] {
+  return matches.slice(0, n).map(m => Boolean(m.win));
+}
+
+// Streak helpers — counts the current (newest-end) consecutive run and the
+// longest run anywhere in the window. Positive = win-streak, negative = lose.
+function getStreaks(matches: any[]): { current: number; longestWin: number; longestLose: number } {
+  if (matches.length === 0) return { current: 0, longestWin: 0, longestLose: 0 };
+  // Current streak: scan from newest (index 0) forward, all same outcome
+  const newestWin = !!matches[0].win;
+  let current = 0;
+  for (const m of matches) {
+    if (!!m.win !== newestWin) break;
+    current++;
+  }
+  current = newestWin ? current : -current;
+  // Longest streaks anywhere in the window
+  let lw = 0, ll = 0, runW = 0, runL = 0;
+  for (const m of matches) {
+    if (m.win) { runW++; runL = 0; lw = Math.max(lw, runW); }
+    else { runL++; runW = 0; ll = Math.max(ll, runL); }
+  }
+  return { current, longestWin: lw, longestLose: ll };
+}
+
+// Damage breakdown across the sample — anti-noise by aggregating before
+// computing the ratio. Returns physical/magic/true % shares.
+function getDamageBreakdown(matches: any[]): { phys: number; mag: number; tru: number; total: number } {
+  let p = 0, m = 0, tr = 0;
+  for (const x of matches) {
+    p += x.physicalDamageDealtToChampions || 0;
+    m += x.magicDamageDealtToChampions || 0;
+    tr += x.trueDamageDealtToChampions || 0;
+  }
+  const total = p + m + tr || 1;
+  return { phys: (p / total) * 100, mag: (m / total) * 100, tru: (tr / total) * 100, total: p + m + tr };
+}
+
+function getVisionStats(matches: any[]): { wardsPlaced: number; wardsKilled: number; controlWards: number } {
+  const games = matches.length || 1;
+  let wp = 0, wk = 0, cw = 0;
+  for (const m of matches) {
+    wp += m.wardsPlaced || 0;
+    wk += m.wardsKilled || 0;
+    cw += m.controlWardsPlaced || 0;
+  }
+  return {
+    wardsPlaced: Math.round((wp / games) * 10) / 10,
+    wardsKilled: Math.round((wk / games) * 10) / 10,
+    controlWards: Math.round((cw / games) * 10) / 10,
+  };
+}
+
+function getObjectiveStats(matches: any[]): { drakes: number; barons: number; turrets: number; firstBloods: number } {
+  const games = matches.length || 1;
+  let dr = 0, br = 0, tu = 0, fb = 0;
+  for (const m of matches) {
+    dr += m.dragonKills || m.dragonTakedowns || 0;
+    br += m.baronKills || m.baronTakedowns || 0;
+    tu += m.turretKills || m.turretTakedowns || 0;
+    if (m.firstBloodKill || m.firstBloodAssist) fb++;
+  }
+  return {
+    drakes: Math.round((dr / games) * 10) / 10,
+    barons: Math.round((br / games) * 10) / 10,
+    turrets: Math.round((tu / games) * 10) / 10,
+    firstBloods: Math.round((fb / games) * 100),
+  };
+}
+
+// Riot's `teamPosition` is the most reliable role marker (final assigned
+// role); fall back to the raw `role`/`lane` if missing.
+function getRoleDistribution(matches: any[]): { role: string; count: number; pct: number }[] {
+  const counts: Record<string, number> = { TOP: 0, JUNGLE: 0, MIDDLE: 0, BOTTOM: 0, UTILITY: 0, OTHER: 0 };
+  for (const m of matches) {
+    const r = (m.teamPosition || m.individualPosition || m.role || '').toUpperCase();
+    if (r === 'TOP') counts.TOP++;
+    else if (r === 'JUNGLE') counts.JUNGLE++;
+    else if (r === 'MIDDLE' || r === 'MID') counts.MIDDLE++;
+    else if (r === 'BOTTOM' || r === 'ADC' || r === 'CARRY') counts.BOTTOM++;
+    else if (r === 'UTILITY' || r === 'SUPPORT' || r === 'SUP') counts.UTILITY++;
+    else counts.OTHER++;
+  }
+  const total = matches.length || 1;
+  return Object.entries(counts)
+    .filter(([, c]) => c > 0)
+    .map(([role, count]) => ({ role, count, pct: (count / total) * 100 }))
+    .sort((a, b) => b.count - a.count);
+}
+
+// Riot CommunityDragon ships rank emblem PNGs at this stable path. Tier
+// strings come uppercase from the ranked API; we lowercase for the URL.
+function rankEmblemUrl(tier: string | undefined): string | null {
+  if (!tier) return null;
+  return `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-emblem/emblem-${tier.toLowerCase()}.png`;
+}
+
+// Head-to-head winner counter — used by the score banner. Stats where
+// higher = better; KDA / winrate / damage / vision / rank / objectives.
+function countCategoryWins(s1: any, s2: any): { p1: number; p2: number; tie: number } {
+  const cats: Array<[number, number]> = [
+    [s1.rankNum, s2.rankNum],
+    [s1.winrate, s2.winrate],
+    [s1.kda, s2.kda],
+    [s1.csPerMin, s2.csPerMin],
+    [s1.dmgPerMin, s2.dmgPerMin],
+    [s1.visionScore, s2.visionScore],
+    [s1.marketValue, s2.marketValue],
+  ];
+  let p1 = 0, p2 = 0, tie = 0;
+  for (const [a, b] of cats) {
+    if (a > b) p1++;
+    else if (b > a) p2++;
+    else tie++;
+  }
+  return { p1, p2, tie };
 }
 
 // === ComparisonBar ===
@@ -79,20 +199,217 @@ function ComparisonBar({ label, value1, value2, format1, format2 }: {
   const max = Math.max(value1, value2) || 1;
   const pct1 = (value1 / max) * 100;
   const pct2 = (value2 / max) * 100;
+  const p1Wins = value1 > value2;
+  const p2Wins = value2 > value1;
+  const tie = value1 === value2;
+  // Gold accent on the winning side, dim grey on the loser. Tie = both gold.
+  const c1 = tie ? '#c89b3c' : p1Wins ? '#c89b3c' : '#3a4a64';
+  const c2 = tie ? '#c89b3c' : p2Wins ? '#c89b3c' : '#3a4a64';
   return (
     <div className="mb-4">
       <div className="text-center text-[#a0b0c5] text-xs mb-1">{label}</div>
       <div className="flex items-center gap-2">
-        <span className="text-white text-xs sm:text-sm w-16 sm:w-24 text-right shrink-0">{format1}</span>
+        <span className={`text-xs sm:text-sm w-16 sm:w-24 text-right shrink-0 tabular-nums font-medium ${p1Wins ? 'text-[#c89b3c]' : 'text-white'}`}>{format1}</span>
         <div className="flex-1 flex gap-1">
           <div className="flex-1 flex justify-end">
-            <div className="h-5 rounded-l transition-all duration-500" style={{ width: `${pct1}%`, backgroundColor: value1 >= value2 ? '#c89b3c' : '#1e2a3a' }} />
+            <div
+              className="h-5 rounded-l transition-all duration-500"
+              style={{ width: `${pct1}%`, backgroundColor: c1, boxShadow: p1Wins ? '0 0 12px rgba(200,155,60,0.35)' : 'none' }}
+            />
           </div>
           <div className="flex-1 flex justify-start">
-            <div className="h-5 rounded-r transition-all duration-500" style={{ width: `${pct2}%`, backgroundColor: value2 >= value1 ? '#c89b3c' : '#1e2a3a' }} />
+            <div
+              className="h-5 rounded-r transition-all duration-500"
+              style={{ width: `${pct2}%`, backgroundColor: c2, boxShadow: p2Wins ? '0 0 12px rgba(200,155,60,0.35)' : 'none' }}
+            />
           </div>
         </div>
-        <span className="text-white text-xs sm:text-sm w-16 sm:w-24 shrink-0">{format2}</span>
+        <span className={`text-xs sm:text-sm w-16 sm:w-24 shrink-0 tabular-nums font-medium ${p2Wins ? 'text-[#c89b3c]' : 'text-white'}`}>{format2}</span>
+      </div>
+    </div>
+  );
+}
+
+// === New visual blocks ===
+
+function HeadToHeadBanner({ p1, p2, name1, name2 }: { p1: number; p2: number; name1: string; name2: string }) {
+  const total = p1 + p2 || 1;
+  const w1 = (p1 / total) * 100;
+  return (
+    <div className="mb-6">
+      <div className="flex items-center justify-between text-xs mb-2">
+        <span className={`font-semibold ${p1 > p2 ? 'text-[#c89b3c]' : 'text-[#a0b0c5]'}`}>{name1}</span>
+        <span className="text-[#7a8aa0]">Head-to-Head</span>
+        <span className={`font-semibold ${p2 > p1 ? 'text-[#c89b3c]' : 'text-[#a0b0c5]'}`}>{name2}</span>
+      </div>
+      <div className="relative h-2.5 rounded-full bg-[#1e2a3a] overflow-hidden">
+        <div
+          className="absolute left-0 top-0 h-full bg-gradient-to-r from-[#c89b3c] to-[#d4a94a] transition-all duration-700"
+          style={{ width: `${w1}%`, boxShadow: '0 0 8px rgba(200,155,60,0.45)' }}
+        />
+      </div>
+      <div className="flex items-center justify-between text-[10px] mt-1.5 tabular-nums">
+        <span className={p1 > p2 ? 'text-[#c89b3c] font-bold' : 'text-[#7a8aa0]'}>{p1} {p1 === 1 ? 'Kategorie' : 'Kategorien'}</span>
+        <span className={p2 > p1 ? 'text-[#c89b3c] font-bold' : 'text-[#7a8aa0]'}>{p2} {p2 === 1 ? 'Kategorie' : 'Kategorien'}</span>
+      </div>
+    </div>
+  );
+}
+
+function TierBadgeRow({ s1, s2 }: { s1: any; s2: any }) {
+  const e1 = rankEmblemUrl(s1.tier);
+  const e2 = rankEmblemUrl(s2.tier);
+  return (
+    <div className="grid grid-cols-2 gap-3 mb-6">
+      {[
+        { stat: s1, emblem: e1 },
+        { stat: s2, emblem: e2 },
+      ].map((p, i) => (
+        <div key={i} className="bg-[#0a0e1a] border border-[#1e2a3a] rounded-lg p-3 flex items-center gap-3">
+          {p.emblem ? (
+            <img src={p.emblem} alt={p.stat.tier || ''} className="w-14 h-14 object-contain" />
+          ) : (
+            <div className="w-14 h-14 rounded bg-[#1e2a3a]" />
+          )}
+          <div className="min-w-0">
+            <div className="text-white text-sm font-medium">{p.stat.rankStr}</div>
+            {p.stat.tier && (
+              <div className="text-[10px] uppercase tracking-widest mt-0.5" style={{ color: getTierColor(p.stat.tier) }}>
+                {p.stat.tier}
+              </div>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function RecentFormRow({ form, streaks, side }: { form: boolean[]; streaks: { current: number; longestWin: number; longestLose: number }; side: 'left' | 'right' }) {
+  const wins = form.filter(Boolean).length;
+  const losses = form.length - wins;
+  // Render chronologically left→right (oldest first). The match list is
+  // newest-first so we reverse for display.
+  const ordered = [...form].reverse();
+  const streakText =
+    streaks.current > 0 ? `${streaks.current}W Streak` :
+    streaks.current < 0 ? `${-streaks.current}L Streak` :
+    '–';
+  return (
+    <div className={`flex items-center gap-2 ${side === 'right' ? 'justify-end' : ''}`}>
+      <div className="flex gap-1">
+        {ordered.map((w, i) => (
+          <div
+            key={i}
+            className={`w-3.5 h-3.5 rounded-sm ${w ? 'bg-[#3ecf8e]' : 'bg-[#e44040]'}`}
+            style={{ boxShadow: w ? '0 0 4px rgba(62,207,142,0.4)' : '0 0 4px rgba(228,64,64,0.3)' }}
+            title={w ? 'Win' : 'Loss'}
+          />
+        ))}
+      </div>
+      <div className="text-[10px] tabular-nums">
+        <span className="text-[#3ecf8e]">{wins}</span>
+        <span className="text-[#7a8aa0]">-</span>
+        <span className="text-[#e44040]">{losses}</span>
+        <span className={`ml-1.5 ${streaks.current > 0 ? 'text-[#3ecf8e]' : streaks.current < 0 ? 'text-[#e44040]' : 'text-[#7a8aa0]'}`}>
+          · {streakText}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function DamageBreakdownBar({ breakdown }: { breakdown: { phys: number; mag: number; tru: number } }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex h-3 rounded overflow-hidden bg-[#0a0e1a]">
+        <div className="bg-[#e0a85a] transition-all duration-500" style={{ width: `${breakdown.phys}%` }} title={`Physical ${breakdown.phys.toFixed(0)}%`} />
+        <div className="bg-[#4488ee] transition-all duration-500" style={{ width: `${breakdown.mag}%` }} title={`Magic ${breakdown.mag.toFixed(0)}%`} />
+        <div className="bg-[#cfd6dc] transition-all duration-500" style={{ width: `${breakdown.tru}%` }} title={`True ${breakdown.tru.toFixed(0)}%`} />
+      </div>
+      <div className="flex justify-between text-[9px] tabular-nums text-[#a0b0c5]">
+        <span>P {breakdown.phys.toFixed(0)}%</span>
+        <span>M {breakdown.mag.toFixed(0)}%</span>
+        <span>T {breakdown.tru.toFixed(0)}%</span>
+      </div>
+    </div>
+  );
+}
+
+function MiniStatCard({ label, value, accent }: { label: string; value: string | number; accent?: boolean }) {
+  return (
+    <div className="bg-[#0a0e1a] border border-[#1e2a3a] rounded p-2 text-center">
+      <div className={`text-base font-semibold tabular-nums ${accent ? 'text-[#c89b3c]' : 'text-white'}`}>{value}</div>
+      <div className="text-[9px] uppercase tracking-widest text-[#7a8aa0] mt-0.5">{label}</div>
+    </div>
+  );
+}
+
+const ROLE_COLORS: Record<string, string> = {
+  TOP: '#c89b3c', JUNGLE: '#3ecf8e', MIDDLE: '#4488ee',
+  BOTTOM: '#e0a85a', UTILITY: '#a892ff', OTHER: '#7a8aa0',
+};
+const ROLE_LABELS: Record<string, string> = {
+  TOP: 'Top', JUNGLE: 'Jng', MIDDLE: 'Mid', BOTTOM: 'ADC', UTILITY: 'Sup', OTHER: 'Other',
+};
+
+function RoleDonut({ roles, size = 80 }: { roles: { role: string; count: number; pct: number }[]; size?: number }) {
+  if (roles.length === 0) {
+    return <div className="text-[#7a8aa0] text-xs text-center py-2">–</div>;
+  }
+  // Build conic-gradient string from role percentages
+  let acc = 0;
+  const stops: string[] = [];
+  for (const r of roles) {
+    const start = acc;
+    acc += r.pct;
+    stops.push(`${ROLE_COLORS[r.role]} ${start}% ${acc}%`);
+  }
+  const bg = `conic-gradient(${stops.join(', ')})`;
+  const primary = roles[0];
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <div
+        className="rounded-full relative"
+        style={{ width: size, height: size, background: bg }}
+      >
+        <div
+          className="absolute inset-2 rounded-full bg-[#0d1526] flex items-center justify-center"
+          style={{ inset: `${size * 0.18}px` }}
+        >
+          <div className="text-center leading-tight">
+            <div className="text-white text-xs font-semibold">{ROLE_LABELS[primary.role]}</div>
+            <div className="text-[9px] text-[#a0b0c5] tabular-nums">{primary.pct.toFixed(0)}%</div>
+          </div>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-x-2 gap-y-0.5 justify-center text-[9px]">
+        {roles.map(r => (
+          <div key={r.role} className="flex items-center gap-1">
+            <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: ROLE_COLORS[r.role] }} />
+            <span className="text-[#a0b0c5] tabular-nums">{ROLE_LABELS[r.role]} {r.pct.toFixed(0)}%</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ChampionPoolBlock({ pool, count }: { pool: { champion: string; games: number; winrate: number }[]; count: number }) {
+  return (
+    <div className="flex flex-col items-center gap-1.5">
+      <div className="text-white text-2xl font-semibold tabular-nums">{count}</div>
+      <div className="text-[9px] uppercase tracking-widest text-[#7a8aa0]">Champions</div>
+      <div className="flex gap-1 mt-1 flex-wrap justify-center">
+        {pool.slice(0, 6).map(c => (
+          <img
+            key={c.champion}
+            src={`https://ddragon.leagueoflegends.com/cdn/14.10.1/img/champion/${c.champion}.png`}
+            alt={c.champion}
+            title={`${c.champion} · ${c.games} games · ${c.winrate}% WR`}
+            className="w-7 h-7 rounded-sm border border-[#1e2a3a]"
+          />
+        ))}
       </div>
     </div>
   );
@@ -338,7 +655,11 @@ function CompareTab({ region, setRegion }: { region: string; setRegion: (r: stri
     const csPerMin = totalMin > 0 ? matches.reduce((s: number, m: any) => s + (m.cs || 0), 0) / totalMin : 0;
     const dmgPerMin = totalMin > 0 ? matches.reduce((s: number, m: any) => s + (m.damageDealt || m.totalDamageDealtToChampions || 0), 0) / totalMin : 0;
     const visionScore = matches.reduce((s: number, m: any) => s + (m.visionScore || 0), 0) / totalGames;
+    const allChampions = getChampionStats(matches);
     return {
+      tier: solo?.tier as string | undefined,
+      rank: solo?.rank as string | undefined,
+      lp: solo?.leaguePoints as number | undefined,
       rankNum: solo ? rankToNumber(solo.tier, solo.rank, solo.leaguePoints) : 0,
       rankStr: solo ? formatRank(solo.tier, solo.rank, solo.leaguePoints) : 'Unranked',
       winrate, kda: Math.round(kda * 100) / 100,
@@ -346,7 +667,16 @@ function CompareTab({ region, setRegion }: { region: string; setRegion: (r: stri
       dmgPerMin: Math.round(dmgPerMin),
       visionScore: Math.round(visionScore * 10) / 10,
       marketValue: data.summoner.storedMarketValue || 0,
-      champions: getChampionStats(matches),
+      champions: allChampions.slice(0, 3),
+      championPoolSize: allChampions.length,
+      topChampions: allChampions.slice(0, 6),
+      recentForm: getRecentForm(matches),
+      streaks: getStreaks(matches),
+      damage: getDamageBreakdown(matches),
+      vision: getVisionStats(matches),
+      objectives: getObjectiveStats(matches),
+      roles: getRoleDistribution(matches),
+      sampleSize: matches.length,
     };
   }
 
@@ -385,10 +715,12 @@ function CompareTab({ region, setRegion }: { region: string; setRegion: (r: stri
         {error && <p className="text-red-400 text-sm mt-3">{error}</p>}
       </div>
 
-      {player1 && player2 && s1 && s2 && (
+      {player1 && player2 && s1 && s2 && (() => {
+        const score = countCategoryWins(s1, s2);
+        return (
         <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-4 sm:p-6">
           {/* Profile headers */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2 sm:gap-3">
               <img src={`https://ddragon.leagueoflegends.com/cdn/14.10.1/img/profileicon/${player1.summoner.summoner.profileIconId}.png`}
                 alt="" className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-[#c89b3c]" />
@@ -405,6 +737,26 @@ function CompareTab({ region, setRegion }: { region: string; setRegion: (r: stri
               </div>
               <img src={`https://ddragon.leagueoflegends.com/cdn/14.10.1/img/profileicon/${player2.summoner.summoner.profileIconId}.png`}
                 alt="" className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-[#c89b3c]" />
+            </div>
+          </div>
+
+          {/* Head-to-head score banner */}
+          <HeadToHeadBanner
+            p1={score.p1}
+            p2={score.p2}
+            name1={player1.summoner.summoner.name}
+            name2={player2.summoner.summoner.name}
+          />
+
+          {/* Tier-Embleme */}
+          <TierBadgeRow s1={s1} s2={s2} />
+
+          {/* Recent form — letzte 10 Spiele als W/L-Quadrate + Streak */}
+          <div className="bg-[#0a0e1a] border border-[#1e2a3a] rounded-lg p-3 mb-6">
+            <div className="text-center text-[10px] uppercase tracking-widest text-[#7a8aa0] mb-2">Letzte 10 Spiele · Streak</div>
+            <div className="grid grid-cols-2 gap-3">
+              <RecentFormRow form={s1.recentForm} streaks={s1.streaks} side="left" />
+              <RecentFormRow form={s2.recentForm} streaks={s2.streaks} side="right" />
             </div>
           </div>
 
@@ -443,7 +795,63 @@ function CompareTab({ region, setRegion }: { region: string; setRegion: (r: stri
             format1={s1.marketValue ? formatMarketValue(s1.marketValue) : 'N/A'}
             format2={s2.marketValue ? formatMarketValue(s2.marketValue) : 'N/A'} />
 
-          {/* Top Champions */}
+          {/* Schadens-Verteilung */}
+          <div className="mt-6 pt-4 border-t border-[#1e2a3a]">
+            <div className="text-center text-[#a0b0c5] text-xs mb-3">Schadens-Verteilung</div>
+            <div className="grid grid-cols-2 gap-4">
+              <DamageBreakdownBar breakdown={s1.damage} />
+              <DamageBreakdownBar breakdown={s2.damage} />
+            </div>
+          </div>
+
+          {/* Vision (Ø pro Spiel) */}
+          <div className="mt-6 pt-4 border-t border-[#1e2a3a]">
+            <div className="text-center text-[#a0b0c5] text-xs mb-3">Vision (Ø pro Spiel)</div>
+            <div className="grid grid-cols-2 gap-4">
+              {[s1, s2].map((s, si) => (
+                <div key={si} className="grid grid-cols-3 gap-1.5">
+                  <MiniStatCard label="Wards" value={s.vision.wardsPlaced} />
+                  <MiniStatCard label="Killed" value={s.vision.wardsKilled} />
+                  <MiniStatCard label="Control" value={s.vision.controlWards} />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Objectives & First Blood */}
+          <div className="mt-6 pt-4 border-t border-[#1e2a3a]">
+            <div className="text-center text-[#a0b0c5] text-xs mb-3">Objectives (Ø pro Spiel)</div>
+            <div className="grid grid-cols-2 gap-4">
+              {[s1, s2].map((s, si) => (
+                <div key={si} className="grid grid-cols-4 gap-1.5">
+                  <MiniStatCard label="Drakes" value={s.objectives.drakes} />
+                  <MiniStatCard label="Baron" value={s.objectives.barons} />
+                  <MiniStatCard label="Turrets" value={s.objectives.turrets} />
+                  <MiniStatCard label="First Blood" value={`${s.objectives.firstBloods}%`} accent />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Rollen-Verteilung + Champion Pool */}
+          <div className="mt-6 pt-4 border-t border-[#1e2a3a] grid grid-cols-2 gap-6">
+            <div>
+              <div className="text-center text-[#a0b0c5] text-xs mb-3">Rollen-Verteilung</div>
+              <div className="grid grid-cols-2 gap-4 place-items-center">
+                <RoleDonut roles={s1.roles} />
+                <RoleDonut roles={s2.roles} />
+              </div>
+            </div>
+            <div>
+              <div className="text-center text-[#a0b0c5] text-xs mb-3">Champion-Pool</div>
+              <div className="grid grid-cols-2 gap-4 place-items-center">
+                <ChampionPoolBlock pool={s1.topChampions} count={s1.championPoolSize} />
+                <ChampionPoolBlock pool={s2.topChampions} count={s2.championPoolSize} />
+              </div>
+            </div>
+          </div>
+
+          {/* Top Champions detail */}
           <div className="mt-6 pt-4 border-t border-[#1e2a3a]">
             <div className="text-center text-[#a0b0c5] text-xs mb-3">{t('compare.topChampions')}</div>
             <div className="grid grid-cols-2 gap-4 sm:gap-8">
@@ -461,7 +869,8 @@ function CompareTab({ region, setRegion }: { region: string; setRegion: (r: stri
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
     </>
   );
 }

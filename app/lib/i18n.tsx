@@ -776,6 +776,11 @@ const translations = {
     '\uD6C4\uBC18 \uC9C4\uCD9C', '\u540E\u671F\u51FA\u5C40',
     'Salida tard\u00EDa', 'Sortie tardive'
   ),
+  'tft.marketValue.note.earlyExit': t6(
+    'Fr\u00FChes Ausscheiden', 'Early exit',
+    '\uCD08\uBC18 \uD0C8\uB77D', '\u524D\u671F\u51FA\u5C40',
+    'Salida temprana', 'Sortie pr\u00E9coce'
+  ),
   'tft.marketValue.note.ecoMastery': t6(
     'Eco-Effizienz', 'Eco mastery',
     '\uACBD\uC81C \uC6B4\uC601', '\u7ECF\u6D4E\u7CBE\u901A',

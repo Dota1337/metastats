@@ -247,6 +247,16 @@ function flexMasteryAgent(matches) {
 // GameSenseAgent — late-game decision making.
 // Survival skill: how late did the player exit when they didn't make Top-4?
 // Eco mastery: how much gold was left on the bench when they Top-4'd?
+// See app/lib/tft-marketvalue/agents/game-sense.ts for the threshold rationale.
+
+function roundToStage(round) {
+  if (round <= 3) return `1-${round}`;
+  const r = round - 3;
+  const stage = Math.floor((r - 1) / 7) + 2;
+  const pos = ((r - 1) % 7) + 1;
+  return `${stage}-${pos}`;
+}
+
 function gameSenseAgent(matches) {
   const notes = [];
   let multiplier = 1;
@@ -254,16 +264,20 @@ function gameSenseAgent(matches) {
     return { agent: 'gameSense', multiplier: 1, delta: 0, notes: [{ label: 'sample too small', impact: 0 }] };
   }
 
-  // Survival: avg last_round when finishing 5–8
+  // Survival: avg last_round when finishing 5–8 (round number, not stage)
   const bottoms = matches.filter(m => m.placement >= 5 && typeof m.lastRound === 'number' && m.lastRound > 0);
   if (bottoms.length >= 5) {
     const avgLate = bottoms.reduce((a, b) => a + b.lastRound, 0) / bottoms.length;
-    if (avgLate > 6.0) {
+    const stageLabel = roundToStage(Math.round(avgLate));
+    if (avgLate > 25) {
       multiplier += 0.05;
-      notes.push({ label: 'late exit', impact: +0.05, detail: `Ø Stage ${avgLate.toFixed(1)}` });
-    } else if (avgLate > 5.5) {
+      notes.push({ label: 'late exit', impact: +0.05, detail: `Ø Stage ${stageLabel}` });
+    } else if (avgLate > 22) {
       multiplier += 0.02;
-      notes.push({ label: 'late exit', impact: +0.02, detail: `Ø Stage ${avgLate.toFixed(1)}` });
+      notes.push({ label: 'late exit', impact: +0.02, detail: `Ø Stage ${stageLabel}` });
+    } else if (avgLate < 15) {
+      multiplier -= 0.03;
+      notes.push({ label: 'early exit', impact: -0.03, detail: `Ø Stage ${stageLabel}` });
     }
   }
 

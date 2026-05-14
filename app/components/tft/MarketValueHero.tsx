@@ -313,6 +313,7 @@ const NOTE_LABEL_KEYS: Record<string, string> = {
   'narrow carry pool':       'tft.marketValue.note.narrowCarryPool',
   // gameSense
   'late exit':               'tft.marketValue.note.lateExit',
+  'early exit':              'tft.marketValue.note.earlyExit',
   'eco mastery':              'tft.marketValue.note.ecoMastery',
   'unspent gold':            'tft.marketValue.note.unspentGold',
   // catch-alls — any of these agent-emitted strings means "we couldn't score"

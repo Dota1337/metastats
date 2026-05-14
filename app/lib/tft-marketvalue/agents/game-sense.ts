@@ -5,8 +5,22 @@ import type { AgentScore, TftMatchSnapshot } from '../types';
 //                    Late exits = good macro / late-stage decisions.
 //   Eco mastery    — how much gold sat unused at Top-4 finishes?
 //                    Low = bench spent efficiently; high = under-rolled.
+//
+// Riot's last_round is the sequential round number, not the stage label.
+// Approximate stage mapping: Stage 1 = rounds 1-3, then 7 rounds per stage.
+// Typical bottom-4 game ends round 12-25 depending on placement (8 → ~10-15,
+// 5 → ~22-28). Anything past round 25 means the player consistently lasts
+// into Stage 5+ even when losing — that's the macro signal we reward.
 // goldLeft can be null for matches cached before migration 0012 — those
 // are silently skipped (need at least 5 samples either way).
+
+function roundToStage(round: number): string {
+  if (round <= 3) return `1-${round}`;
+  const r = round - 3;
+  const stage = Math.floor((r - 1) / 7) + 2;
+  const pos = ((r - 1) % 7) + 1;
+  return `${stage}-${pos}`;
+}
 
 export function gameSenseAgent(matches: TftMatchSnapshot[]): AgentScore {
   const notes: AgentScore['notes'] = [];
@@ -18,12 +32,16 @@ export function gameSenseAgent(matches: TftMatchSnapshot[]): AgentScore {
   const bottoms = matches.filter(m => m.placement >= 5 && typeof m.lastRound === 'number' && (m.lastRound as number) > 0);
   if (bottoms.length >= 5) {
     const avgLate = bottoms.reduce((a, b) => a + (b.lastRound as number), 0) / bottoms.length;
-    if (avgLate > 6.0) {
+    const stageLabel = roundToStage(Math.round(avgLate));
+    if (avgLate > 25) {
       multiplier += 0.05;
-      notes.push({ label: 'late exit', impact: +0.05, detail: `Ø Stage ${avgLate.toFixed(1)}` });
-    } else if (avgLate > 5.5) {
+      notes.push({ label: 'late exit', impact: +0.05, detail: `Ø Stage ${stageLabel}` });
+    } else if (avgLate > 22) {
       multiplier += 0.02;
-      notes.push({ label: 'late exit', impact: +0.02, detail: `Ø Stage ${avgLate.toFixed(1)}` });
+      notes.push({ label: 'late exit', impact: +0.02, detail: `Ø Stage ${stageLabel}` });
+    } else if (avgLate < 15) {
+      multiplier -= 0.03;
+      notes.push({ label: 'early exit', impact: -0.03, detail: `Ø Stage ${stageLabel}` });
     }
   }
 

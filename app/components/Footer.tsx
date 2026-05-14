@@ -13,9 +13,9 @@ export default function Footer() {
 
   return (
     <footer className="mt-12 pt-6 pb-8 border-t border-[#1e2a3a]">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs text-[#4a5a70]">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs text-[#7a8aa0]">
         <div className="flex items-center gap-3">
-          <span className="text-[#8a9bb0] font-medium">metastats.gg</span>
+          <span className="text-[#a0b0c5] font-medium">metastats.gg</span>
           <span className="hidden sm:inline">·</span>
           <span className="hidden sm:inline">{t('footer.disclaimer')}</span>
         </div>
@@ -42,7 +42,7 @@ export default function Footer() {
                 <button
                   key={l.code}
                   onClick={() => { setLang(l.code); setOpen(false); }}
-                  className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-white/5 ${l.code === lang ? 'text-white' : 'text-[#8a9bb0]'}`}
+                  className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-white/5 ${l.code === lang ? 'text-white' : 'text-[#a0b0c5]'}`}
                 >
                   <img src={l.flagUrl} alt="" className="w-5 h-auto rounded-sm" />
                   <span>{l.label}</span>
@@ -54,7 +54,7 @@ export default function Footer() {
         </div>
       </div>
 
-      <div className="sm:hidden mt-3 px-4 text-center text-[10px] text-[#4a5a70]">
+      <div className="sm:hidden mt-3 px-4 text-center text-[10px] text-[#7a8aa0]">
         {t('footer.disclaimer')}
       </div>
     </footer>

@@ -14,7 +14,7 @@ export default function ApiUnavailable({ onRetry, compact = false }: Props) {
         <span className="w-1.5 h-1.5 rounded-full bg-[#c89b3c] animate-pulse" aria-hidden="true" />
         Beta
       </div>
-      <p className="text-[#8a9bb0] text-sm leading-relaxed max-w-md mx-auto">
+      <p className="text-[#a0b0c5] text-sm leading-relaxed max-w-md mx-auto">
         {t('error.featureUnavailable')}
       </p>
       {onRetry && (

@@ -219,7 +219,7 @@ export default function Home() {
           <h1 className="text-white text-3xl sm:text-5xl font-bold mb-4 tracking-tight">
             meta<span className="text-[#c89b3c]">stats</span>.gg
           </h1>
-          <p className="text-[#8a9bb0] text-sm mb-10 max-w-md mx-auto leading-relaxed">
+          <p className="text-[#a0b0c5] text-sm mb-10 max-w-md mx-auto leading-relaxed">
             {t('home.desc')}
           </p>
 
@@ -229,14 +229,14 @@ export default function Home() {
               <select
                 value={region}
                 onChange={e => setRegion(e.target.value)}
-                className="bg-[#141c2e] border-b sm:border-b-0 sm:border-r border-[#1e2a3a] text-[#8a9bb0] text-sm px-4 py-2 sm:py-0 outline-none"
+                className="bg-[#141c2e] border-b sm:border-b-0 sm:border-r border-[#1e2a3a] text-[#a0b0c5] text-sm px-4 py-2 sm:py-0 outline-none"
               >
                 {REGIONS.map(r => (
                   <option key={r.value} value={r.value}>{r.label}</option>
                 ))}
               </select>
               <input
-                className="flex-1 bg-transparent text-white text-sm px-5 py-3.5 outline-none placeholder-[#4a5a70]"
+                className="flex-1 bg-transparent text-white text-sm px-5 py-3.5 outline-none placeholder-[#7a8aa0]"
                 placeholder={t('home.searchPlaceholder')}
                 value={name}
                 onChange={e => setName(e.target.value)}
@@ -255,13 +255,13 @@ export default function Home() {
           <div className="flex justify-center gap-2">
             <button
               onClick={() => setActiveTab('search')}
-              className={`px-5 py-2 rounded-lg text-xs font-medium transition-all ${activeTab === 'search' ? 'bg-[#c89b3c]/10 text-[#c89b3c] border border-[#c89b3c]/30' : 'text-[#4a5a70] hover:text-[#8a9bb0]'}`}
+              className={`px-5 py-2 rounded-lg text-xs font-medium transition-all ${activeTab === 'search' ? 'bg-[#c89b3c]/10 text-[#c89b3c] border border-[#c89b3c]/30' : 'text-[#7a8aa0] hover:text-[#a0b0c5]'}`}
             >
               {t('home.searchTab')}
             </button>
             <button
               onClick={() => setActiveTab('marktwert')}
-              className={`px-5 py-2 rounded-lg text-xs font-medium transition-all ${activeTab === 'marktwert' ? 'bg-[#c89b3c]/10 text-[#c89b3c] border border-[#c89b3c]/30' : 'text-[#4a5a70] hover:text-[#8a9bb0]'}`}
+              className={`px-5 py-2 rounded-lg text-xs font-medium transition-all ${activeTab === 'marktwert' ? 'bg-[#c89b3c]/10 text-[#c89b3c] border border-[#c89b3c]/30' : 'text-[#7a8aa0] hover:text-[#a0b0c5]'}`}
             >
               {t('home.marketTab')}
             </button>
@@ -272,7 +272,7 @@ export default function Home() {
       {/* === TOP CHAMPIONS (most played) === */}
       {activeTab === 'search' && (
         <div className="max-w-6xl mx-auto px-6 mt-4 mb-8">
-          <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-3 px-1">
+          <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3 px-1">
             {t('home.topChampions')}
           </div>
           {featuredChamps === null ? (
@@ -289,7 +289,7 @@ export default function Home() {
               ))}
             </div>
           ) : featuredChamps.length === 0 ? (
-            <div className="glass rounded-xl p-8 text-center text-[#4a5a70] text-sm">
+            <div className="glass rounded-xl p-8 text-center text-[#7a8aa0] text-sm">
               {t('champ.statsCollecting')}
             </div>
           ) : (
@@ -315,7 +315,7 @@ export default function Home() {
                         <span className="text-[#c89b3c] text-xs font-bold bg-[#c89b3c]/20 px-1.5 py-0.5 rounded">#{i + 1}</span>
                         <span className="text-white text-lg font-semibold">{champ.name}</span>
                       </div>
-                      <div className="text-[#8a9bb0] text-xs mt-0.5">
+                      <div className="text-[#a0b0c5] text-xs mt-0.5">
                         {champ.games?.toLocaleString(locale)} {t('champ.games')} · {champ.winRate}% WR
                       </div>
                     </div>
@@ -346,7 +346,7 @@ export default function Home() {
                   ]
               ).map(s => (
                 <div key={s.label} className="card-3d glass rounded-lg p-4">
-                  <div className="text-[#8a9bb0] text-xs mb-1">{s.label}</div>
+                  <div className="text-[#a0b0c5] text-xs mb-1">{s.label}</div>
                   {s.value === null ? (
                     <div className="h-8 w-20 bg-[#1e2a3a] rounded animate-pulse my-0.5" />
                   ) : (
@@ -360,9 +360,9 @@ export default function Home() {
             {/* Recent searches + Features */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 glass-strong rounded-xl p-5">
-                <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-4">{t('home.recentSearches')}</div>
+                <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-4">{t('home.recentSearches')}</div>
                 {recentPlayers.length === 0 ? (
-                  <div className="text-[#4a5a70] text-sm text-center py-8">{t('home.noSearches')}</div>
+                  <div className="text-[#7a8aa0] text-sm text-center py-8">{t('home.noSearches')}</div>
                 ) : (
                   <div className="flex flex-col gap-1">
                     {recentPlayers.map((p, i) => (
@@ -374,16 +374,16 @@ export default function Home() {
                             className="w-9 h-9 rounded-full border border-[#2a3a50]"
                           />
                         ) : (
-                          <div className="w-9 h-9 rounded-full bg-[#1a2438] border border-[#2a3a50] flex items-center justify-center text-[#8a9bb0] text-xs font-medium">
+                          <div className="w-9 h-9 rounded-full bg-[#1a2438] border border-[#2a3a50] flex items-center justify-center text-[#a0b0c5] text-xs font-medium">
                             {p.summoner_name.slice(0, 2).toUpperCase()}
                           </div>
                         )}
                         <div className="flex-1">
                           <div className="text-white text-sm font-medium">{p.summoner_name}</div>
-                          <div className="text-[#4a5a70] text-xs">{p.region?.toUpperCase().replace('1', '')} · Level {p.summoner_level}</div>
+                          <div className="text-[#7a8aa0] text-xs">{p.region?.toUpperCase().replace('1', '')} · Level {p.summoner_level}</div>
                         </div>
                         {p.tier && (
-                          <div className="text-[#8a9bb0] text-xs">{formatTier(p.tier, p.rank)}</div>
+                          <div className="text-[#a0b0c5] text-xs">{formatTier(p.tier, p.rank)}</div>
                         )}
                         {p.market_value && (
                           <div className="text-[#c89b3c] text-xs font-medium">{formatValue(p.market_value)}</div>
@@ -395,7 +395,7 @@ export default function Home() {
               </div>
 
               <div className="glass-strong rounded-xl p-5">
-                <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-4">{t('home.features')}</div>
+                <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-4">{t('home.features')}</div>
                 <div className="flex flex-col gap-4">
                   {[
                     { icon: '◆', title: t('home.feat1title'), desc: t('home.feat1desc') },
@@ -407,7 +407,7 @@ export default function Home() {
                       <span className="text-[#c89b3c] text-sm mt-0.5">{f.icon}</span>
                       <div>
                         <div className="text-white text-sm font-medium">{f.title}</div>
-                        <div className="text-[#4a5a70] text-xs">{f.desc}</div>
+                        <div className="text-[#7a8aa0] text-xs">{f.desc}</div>
                       </div>
                     </div>
                   ))}
@@ -420,38 +420,38 @@ export default function Home() {
         {activeTab === 'marktwert' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {loadingMarket ? (
-              <div className="col-span-1 lg:col-span-3 text-center text-[#8a9bb0] py-20">{t('common.loading')}</div>
+              <div className="col-span-1 lg:col-span-3 text-center text-[#a0b0c5] py-20">{t('common.loading')}</div>
             ) : (
               <>
                 <div className="col-span-1 lg:col-span-3 glass-strong rounded-xl p-5">
-                  <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-4">{t('home.topMarketValues')}</div>
+                  <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-4">{t('home.topMarketValues')}</div>
                   {topPlayers.length === 0 ? (
-                    <div className="text-[#4a5a70] text-sm text-center py-8">{t('home.noMarketData')}</div>
+                    <div className="text-[#7a8aa0] text-sm text-center py-8">{t('home.noMarketData')}</div>
                   ) : (
-                    <div className="hidden sm:grid grid-cols-5 gap-2 text-xs text-[#4a5a70] px-2 mb-2">
+                    <div className="hidden sm:grid grid-cols-5 gap-2 text-xs text-[#7a8aa0] px-2 mb-2">
                       <div>#</div><div>{t('mv.player')}</div><div className="text-right">{t('mv.marketValue')}</div>
                       <div className="text-right">{t('mv.rank')}</div><div className="text-right">{t('mv.winrate')}</div>
                     </div>
                   )}
                   {topPlayers.map((p, i) => (
                     <a key={i} href={makePlayerLink(p)} className="flex flex-col sm:grid sm:grid-cols-5 gap-1 sm:gap-2 px-2 py-2.5 rounded-lg hover:bg-white/5 transition-colors border-b border-[#1e2a3a]/30 sm:border-0">
-                      <div className="hidden sm:block text-[#4a5a70] text-sm">{i + 1}</div>
+                      <div className="hidden sm:block text-[#7a8aa0] text-sm">{i + 1}</div>
                       <div className="text-white text-sm font-medium">
-                        <span className="sm:hidden text-[#4a5a70] mr-2">{i + 1}.</span>{p.summoner_name}
+                        <span className="sm:hidden text-[#7a8aa0] mr-2">{i + 1}.</span>{p.summoner_name}
                       </div>
                       <div className="text-[#c89b3c] text-sm font-medium sm:text-right">{formatValue(p.market_value)}</div>
-                      <div className="text-[#8a9bb0] text-xs sm:text-sm sm:text-right">{formatTier(p.tier, p.rank)} · {p.winrate}%</div>
+                      <div className="text-[#a0b0c5] text-xs sm:text-sm sm:text-right">{formatTier(p.tier, p.rank)} · {p.winrate}%</div>
                       <div className="hidden sm:block text-sm text-right">{p.winrate}%</div>
                     </a>
                   ))}
                 </div>
 
                 <div className="glass-strong rounded-xl p-5">
-                  <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-4">
+                  <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-4">
                     {t('home.winnersWeek')} <span className="text-green-400">&#9650;</span>
                   </div>
                   {gainers.length === 0 ? (
-                    <div className="text-[#4a5a70] text-xs text-center py-6">{t('home.noData')}</div>
+                    <div className="text-[#7a8aa0] text-xs text-center py-6">{t('home.noData')}</div>
                   ) : gainers.map((p, i) => (
                     <a key={i} href={makePlayerLink(p)} className="flex items-center justify-between py-2 hover:bg-white/5 px-2 rounded-lg transition-colors">
                       <span className="text-white text-sm">{p.summoner_name}</span>
@@ -461,11 +461,11 @@ export default function Home() {
                 </div>
 
                 <div className="glass-strong rounded-xl p-5">
-                  <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-4">
+                  <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-4">
                     {t('home.losersWeek')} <span className="text-red-400">&#9660;</span>
                   </div>
                   {losers.length === 0 ? (
-                    <div className="text-[#4a5a70] text-xs text-center py-6">{t('home.noData')}</div>
+                    <div className="text-[#7a8aa0] text-xs text-center py-6">{t('home.noData')}</div>
                   ) : losers.map((p, i) => (
                     <a key={i} href={makePlayerLink(p)} className="flex items-center justify-between py-2 hover:bg-white/5 px-2 rounded-lg transition-colors">
                       <span className="text-white text-sm">{p.summoner_name}</span>
@@ -475,7 +475,7 @@ export default function Home() {
                 </div>
 
                 <div className="glass-strong rounded-xl p-5">
-                  <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-4">{t('home.howCalc')}</div>
+                  <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-4">{t('home.howCalc')}</div>
                   <div className="flex flex-col gap-3">
                     {[
                       { label: t('home.rank'), desc: t('home.baseFromDia') },
@@ -486,7 +486,7 @@ export default function Home() {
                     ].map(f => (
                       <div key={f.label} className="flex justify-between">
                         <span className="text-white text-xs">{f.label}</span>
-                        <span className="text-[#4a5a70] text-xs">{f.desc}</span>
+                        <span className="text-[#7a8aa0] text-xs">{f.desc}</span>
                       </div>
                     ))}
                   </div>

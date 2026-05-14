@@ -59,7 +59,7 @@ export default function TftAugmentDetailPage() {
 
   const meta = assets?.augments[apiName];
   const tier = meta?.tier ?? 0;
-  const tierColor = TIER_COLORS[tier] || '#4a5a70';
+  const tierColor = TIER_COLORS[tier] || '#7a8aa0';
   const iconUrl = tftIconUrl(assets, meta?.icon);
 
   // Best slot = slot with the lowest avg placement among those with data.
@@ -93,7 +93,7 @@ export default function TftAugmentDetailPage() {
                   </span>
                 )}
               </div>
-              {meta?.desc && <p className="text-[#8a9bb0] text-sm mt-2 leading-relaxed">{meta.desc}</p>}
+              {meta?.desc && <p className="text-[#a0b0c5] text-sm mt-2 leading-relaxed">{meta.desc}</p>}
             </div>
           </div>
         </div>
@@ -103,14 +103,14 @@ export default function TftAugmentDetailPage() {
         </div>
 
         {loading && (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#8a9bb0] text-sm">
+          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#a0b0c5] text-sm">
             {t('tft.loading')}
           </div>
         )}
 
         {!loading && (
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
-            <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-3">{t('tft.augment.statsPerStage')}</div>
+            <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.augment.statsPerStage')}</div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {[0, 1, 2].map(slot => {
                 const row = perSlot[slot];
@@ -121,7 +121,7 @@ export default function TftAugmentDetailPage() {
                     className={`bg-[#141c2e] border rounded p-3 ${isBest ? 'border-[#7B61FF]/60' : 'border-[#1e2a3a]'}`}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-[#8a9bb0] text-[10px] uppercase tracking-widest">
+                      <span className="text-[#a0b0c5] text-[10px] uppercase tracking-widest">
                         {t('tft.augment.stage')} {SLOT_LABELS[slot]}
                       </span>
                       {isBest && (
@@ -138,7 +138,7 @@ export default function TftAugmentDetailPage() {
                         <StatLine label={t('tft.gamesShort')} value={String(row.games)} />
                       </div>
                     ) : (
-                      <div className="text-[#4a5a70] text-xs py-2">{t('tft.augment.notOfferedHere')}</div>
+                      <div className="text-[#7a8aa0] text-xs py-2">{t('tft.augment.notOfferedHere')}</div>
                     )}
                   </div>
                 );
@@ -155,8 +155,8 @@ export default function TftAugmentDetailPage() {
 function StatLine({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
     <div className="flex justify-between">
-      <span className="text-[#4a5a70]">{label}</span>
-      <span className={accent ? 'text-white font-medium' : 'text-[#8a9bb0]'}>{value}</span>
+      <span className="text-[#7a8aa0]">{label}</span>
+      <span className={accent ? 'text-white font-medium' : 'text-[#a0b0c5]'}>{value}</span>
     </div>
   );
 }

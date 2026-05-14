@@ -32,13 +32,13 @@ const TIER_ORDER: Record<string, number> = {
 const RANK_ORDER: Record<string, number> = { IV: 1, III: 2, II: 3, I: 4 };
 
 function getTierColor(tier: string | undefined): string {
-  if (!tier) return '#8a9bb0';
+  if (!tier) return '#a0b0c5';
   const colors: Record<string, string> = {
     IRON: '#6b6b6b', BRONZE: '#a0522d', SILVER: '#b0b0b0', GOLD: '#c89b3c',
     PLATINUM: '#2d9e8f', EMERALD: '#2dbe6e', DIAMOND: '#4488ee',
     MASTER: '#9b59b6', GRANDMASTER: '#e74c3c', CHALLENGER: '#f1c40f',
   };
-  return colors[tier.toUpperCase()] || '#8a9bb0';
+  return colors[tier.toUpperCase()] || '#a0b0c5';
 }
 
 function formatMarketValue(value: number): string {
@@ -81,7 +81,7 @@ function ComparisonBar({ label, value1, value2, format1, format2 }: {
   const pct2 = (value2 / max) * 100;
   return (
     <div className="mb-4">
-      <div className="text-center text-[#8a9bb0] text-xs mb-1">{label}</div>
+      <div className="text-center text-[#a0b0c5] text-xs mb-1">{label}</div>
       <div className="flex items-center gap-2">
         <span className="text-white text-xs sm:text-sm w-16 sm:w-24 text-right shrink-0">{format1}</span>
         <div className="flex-1 flex gap-1">
@@ -117,13 +117,13 @@ export default function AnalysePage() {
         <div className="flex gap-2 mb-6">
           <button
             onClick={() => setMode('compare')}
-            className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${mode === 'compare' ? 'bg-[#c89b3c]/10 text-[#c89b3c] border border-[#c89b3c]/30' : 'text-[#4a5a70] hover:text-[#8a9bb0]'}`}
+            className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${mode === 'compare' ? 'bg-[#c89b3c]/10 text-[#c89b3c] border border-[#c89b3c]/30' : 'text-[#7a8aa0] hover:text-[#a0b0c5]'}`}
           >
             {t('compare.title')}
           </button>
           <button
             onClick={() => setMode('multi')}
-            className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${mode === 'multi' ? 'bg-[#c89b3c]/10 text-[#c89b3c] border border-[#c89b3c]/30' : 'text-[#4a5a70] hover:text-[#8a9bb0]'}`}
+            className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${mode === 'multi' ? 'bg-[#c89b3c]/10 text-[#c89b3c] border border-[#c89b3c]/30' : 'text-[#7a8aa0] hover:text-[#a0b0c5]'}`}
           >
             {t('multi.title')}
           </button>
@@ -196,7 +196,7 @@ function MultiSearchTab({ region, setRegion }: { region: string; setRegion: (r: 
   return (
     <>
       <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-4 sm:p-6 mb-6">
-        <label className="block text-[#8a9bb0] text-sm mb-2">
+        <label className="block text-[#a0b0c5] text-sm mb-2">
           {t('multi.subtitle')} (max. 5, Name#Tag)
         </label>
         <textarea
@@ -204,7 +204,7 @@ function MultiSearchTab({ region, setRegion }: { region: string; setRegion: (r: 
           onChange={e => setInput(e.target.value)}
           placeholder={t('compare.placeholder')}
           rows={4}
-          className="w-full bg-[#0e1525] border border-[#1e2a3a] rounded-lg p-3 text-white text-sm placeholder-[#4a5a70] focus:outline-none focus:border-[#c89b3c] resize-none"
+          className="w-full bg-[#0e1525] border border-[#1e2a3a] rounded-lg p-3 text-white text-sm placeholder-[#7a8aa0] focus:outline-none focus:border-[#c89b3c] resize-none"
         />
         <div className="flex flex-wrap items-center gap-3 mt-3">
           <select value={region} onChange={e => setRegion(e.target.value)}
@@ -225,12 +225,12 @@ function MultiSearchTab({ region, setRegion }: { region: string; setRegion: (r: 
               <div key={i} className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-4 flex items-center gap-4">
                 <div className="w-10 h-10 rounded-full bg-[#1e2a3a] animate-pulse" />
                 <div className="flex-1"><div className="h-4 w-32 bg-[#1e2a3a] rounded animate-pulse" /></div>
-                <span className="text-[#8a9bb0] text-sm">{t('common.loading')}</span>
+                <span className="text-[#a0b0c5] text-sm">{t('common.loading')}</span>
               </div>
             );
             if (player.error) return (
               <div key={i} className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-4 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-[#1e2a3a] flex items-center justify-center text-[#4a5a70]">?</div>
+                <div className="w-10 h-10 rounded-full bg-[#1e2a3a] flex items-center justify-center text-[#7a8aa0]">?</div>
                 <span className="text-white text-sm flex-1">{player.name}{player.tag ? `#${player.tag}` : ''}</span>
                 <span className="text-red-400 text-sm">{t('compare.notFound')}</span>
               </div>
@@ -252,27 +252,27 @@ function MultiSearchTab({ region, setRegion }: { region: string; setRegion: (r: 
                 ) : <div className="w-10 h-10 rounded-full bg-[#1e2a3a] flex-shrink-0" />}
                 <div className="flex-1 min-w-0">
                   <div className="text-white text-sm font-medium truncate">{summoner?.name || `${player.name}#${player.tag}`}</div>
-                  <div className="text-[#4a5a70] text-xs">Lvl {summoner?.summonerLevel || '?'}</div>
+                  <div className="text-[#7a8aa0] text-xs">Lvl {summoner?.summonerLevel || '?'}</div>
                 </div>
                 <div className="hidden sm:block text-center">
                   {solo ? (
                     <span className="text-sm font-medium" style={{ color: getTierColor(solo.tier) }}>
                       {formatTier(solo.tier, solo.rank)}
                     </span>
-                  ) : <span className="text-[#4a5a70] text-xs">{t('player.unranked')}</span>}
+                  ) : <span className="text-[#7a8aa0] text-xs">{t('player.unranked')}</span>}
                 </div>
                 <div className="hidden sm:block text-center w-14">
                   {winrate !== null ? (
                     <span className="text-sm font-medium" style={{ color: winrate >= 50 ? '#2dbe6e' : '#e74c3c' }}>{winrate}%</span>
-                  ) : <span className="text-[#4a5a70] text-xs">-</span>}
+                  ) : <span className="text-[#7a8aa0] text-xs">-</span>}
                 </div>
                 <div className="hidden sm:block text-center w-12">
-                  {kda ? <span className="text-white text-sm">{kda}</span> : <span className="text-[#4a5a70] text-xs">-</span>}
+                  {kda ? <span className="text-white text-sm">{kda}</span> : <span className="text-[#7a8aa0] text-xs">-</span>}
                 </div>
                 <div className="text-right flex-shrink-0">
                   {marketValue ? (
                     <span className="text-[#c89b3c] text-sm font-semibold">{formatMarketValue(marketValue)}</span>
-                  ) : <span className="text-[#4a5a70] text-xs">-</span>}
+                  ) : <span className="text-[#7a8aa0] text-xs">-</span>}
                 </div>
               </a>
             );
@@ -358,18 +358,18 @@ function CompareTab({ region, setRegion }: { region: string; setRegion: (r: stri
       <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-4 sm:p-6 mb-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
           <div>
-            <label className="block text-[#8a9bb0] text-xs mb-1">{t('compare.player1')}</label>
+            <label className="block text-[#a0b0c5] text-xs mb-1">{t('compare.player1')}</label>
             <input type="text" placeholder="Name#Tag" value={player1Input}
               onChange={e => setPlayer1Input(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleCompare()}
-              className="w-full bg-[#0e1525] border border-[#1e2a3a] rounded px-3 py-2 text-white text-sm placeholder-[#4a5a70] outline-none focus:border-[#c89b3c]" />
+              className="w-full bg-[#0e1525] border border-[#1e2a3a] rounded px-3 py-2 text-white text-sm placeholder-[#7a8aa0] outline-none focus:border-[#c89b3c]" />
           </div>
           <div>
-            <label className="block text-[#8a9bb0] text-xs mb-1">{t('compare.player2')}</label>
+            <label className="block text-[#a0b0c5] text-xs mb-1">{t('compare.player2')}</label>
             <input type="text" placeholder="Name#Tag" value={player2Input}
               onChange={e => setPlayer2Input(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleCompare()}
-              className="w-full bg-[#0e1525] border border-[#1e2a3a] rounded px-3 py-2 text-white text-sm placeholder-[#4a5a70] outline-none focus:border-[#c89b3c]" />
+              className="w-full bg-[#0e1525] border border-[#1e2a3a] rounded px-3 py-2 text-white text-sm placeholder-[#7a8aa0] outline-none focus:border-[#c89b3c]" />
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -394,14 +394,14 @@ function CompareTab({ region, setRegion }: { region: string; setRegion: (r: stri
                 alt="" className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-[#c89b3c]" />
               <div>
                 <div className="text-white text-sm font-semibold truncate max-w-[100px] sm:max-w-none">{player1.summoner.summoner.name}</div>
-                <div className="text-[#8a9bb0] text-xs">Lvl {player1.summoner.summoner.summonerLevel}</div>
+                <div className="text-[#a0b0c5] text-xs">Lvl {player1.summoner.summoner.summonerLevel}</div>
               </div>
             </div>
-            <div className="text-[#4a5a70] text-xs font-semibold">VS</div>
+            <div className="text-[#7a8aa0] text-xs font-semibold">VS</div>
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="text-right">
                 <div className="text-white text-sm font-semibold truncate max-w-[100px] sm:max-w-none">{player2.summoner.summoner.name}</div>
-                <div className="text-[#8a9bb0] text-xs">Lvl {player2.summoner.summoner.summonerLevel}</div>
+                <div className="text-[#a0b0c5] text-xs">Lvl {player2.summoner.summoner.summonerLevel}</div>
               </div>
               <img src={`https://ddragon.leagueoflegends.com/cdn/14.10.1/img/profileicon/${player2.summoner.summoner.profileIconId}.png`}
                 alt="" className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-[#c89b3c]" />
@@ -445,17 +445,17 @@ function CompareTab({ region, setRegion }: { region: string; setRegion: (r: stri
 
           {/* Top Champions */}
           <div className="mt-6 pt-4 border-t border-[#1e2a3a]">
-            <div className="text-center text-[#8a9bb0] text-xs mb-3">{t('compare.topChampions')}</div>
+            <div className="text-center text-[#a0b0c5] text-xs mb-3">{t('compare.topChampions')}</div>
             <div className="grid grid-cols-2 gap-4 sm:gap-8">
               {[s1, s2].map((s, si) => (
                 <div key={si}>
                   {s.champions.map(c => (
                     <div key={c.champion} className="flex items-center justify-between py-1">
                       <span className="text-white text-sm">{c.champion}</span>
-                      <span className="text-[#8a9bb0] text-xs">{c.winrate}% ({c.games})</span>
+                      <span className="text-[#a0b0c5] text-xs">{c.winrate}% ({c.games})</span>
                     </div>
                   ))}
-                  {s.champions.length === 0 && <span className="text-[#4a5a70] text-xs">-</span>}
+                  {s.champions.length === 0 && <span className="text-[#7a8aa0] text-xs">-</span>}
                 </div>
               ))}
             </div>

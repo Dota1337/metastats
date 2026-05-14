@@ -42,7 +42,7 @@ export default function MatchCard({ match, selfPuuid, region }: Props) {
           <PlacementBadge placement={placement} />
           <div className="flex-1 min-w-0">
             <ActivatedTraits participant={me} assets={assets} />
-            <div className="text-[#8a9bb0] text-xs mt-1">
+            <div className="text-[#a0b0c5] text-xs mt-1">
               Lvl {me.level} · Stage {formatStage(me.lastRound)} · {minutes}:{seconds} · {ago}
             </div>
           </div>
@@ -100,7 +100,7 @@ function PlacementBadge({ placement }: { placement: number }) {
   return (
     <div className="flex flex-col items-center justify-center w-12 h-12 rounded-lg border-2" style={{ borderColor: color }}>
       <div className="text-lg font-bold leading-none" style={{ color }}>{placement}</div>
-      <div className="text-[9px] text-[#8a9bb0]">{ordinal}</div>
+      <div className="text-[9px] text-[#a0b0c5]">{ordinal}</div>
     </div>
   );
 }
@@ -147,7 +147,7 @@ function AugmentRow({ augments, assets }: { augments: string[]; assets: TftAsset
           <img src={url} alt={info!.name} title={info!.name} className="w-6 h-6 sm:w-7 sm:h-7 rounded border-2 hover:scale-110 transition" style={{ borderColor: tierColor }} />
         ) : (
           <div className="w-6 h-6 sm:w-7 sm:h-7 rounded border-2 bg-[#141c2e] flex items-center justify-center hover:brightness-125 transition" style={{ borderColor: tierColor }} title={info?.name || a}>
-            <span className="text-[7px] sm:text-[8px] text-[#8a9bb0] truncate px-0.5">{(info?.name || a).slice(0, 4)}</span>
+            <span className="text-[7px] sm:text-[8px] text-[#a0b0c5] truncate px-0.5">{(info?.name || a).slice(0, 4)}</span>
           </div>
         );
         return (
@@ -181,9 +181,9 @@ function ParticipantRow({ participant, isSelf, assets, region }: { participant: 
               {displayName}
             </a>
           ) : (
-            <div className="text-[#4a5a70] text-xs truncate">{displayName}</div>
+            <div className="text-[#7a8aa0] text-xs truncate">{displayName}</div>
           )}
-          <div className="text-[#4a5a70] text-[10px]">Lvl {participant.level} · R{participant.lastRound}</div>
+          <div className="text-[#7a8aa0] text-[10px]">Lvl {participant.level} · R{participant.lastRound}</div>
         </div>
       </div>
       <div className="flex-1 flex flex-wrap items-center gap-1.5">
@@ -288,7 +288,7 @@ function costToColor(cost: number) {
   return cost === 1 ? '#9aa6b2' : cost === 2 ? '#3a8' : cost === 3 ? '#3a8ddc' : cost === 4 ? '#c39bff' : '#e0c75a';
 }
 function traitStyleColor(style: number) {
-  return style === 5 ? '#c39bff' : style === 4 ? '#e0c75a' : style === 3 ? '#cfd6dc' : style === 1 ? '#a07a4d' : '#4a5a70';
+  return style === 5 ? '#c39bff' : style === 4 ? '#e0c75a' : style === 3 ? '#cfd6dc' : style === 1 ? '#a07a4d' : '#7a8aa0';
 }
 function prettyTraitName(raw: string) {
   return raw.replace(/^TFT\d+_/, '').replace(/([A-Z])/g, ' $1').trim();

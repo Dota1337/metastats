@@ -53,7 +53,7 @@ export default function TftUnitDetailPage() {
             )}
             <div className="flex-1">
               <h1 className="text-white text-2xl font-medium">{champ?.name || prettyChar(id)}</h1>
-              <div className="text-[#8a9bb0] text-xs mt-0.5">
+              <div className="text-[#a0b0c5] text-xs mt-0.5">
                 {champ?.cost ? `${champ.cost}-Cost` : ''}
                 {champ?.traits?.length ? ' · ' + champ.traits.map(tr => assets?.traits[tr]?.name || prettyChar(tr)).join(' · ') : ''}
               </div>
@@ -67,7 +67,7 @@ export default function TftUnitDetailPage() {
 
         {hasData === false && <EmptyData />}
         {data === null && hasData && (
-          <div className="text-[#8a9bb0] text-center py-8">{t('tft.unit.notFound')}</div>
+          <div className="text-[#a0b0c5] text-center py-8">{t('tft.unit.notFound')}</div>
         )}
         {data && (
           <>
@@ -89,7 +89,7 @@ export default function TftUnitDetailPage() {
                       <div className="flex-1" />
                       <div className="text-right text-xs">
                         <div className="text-white">Ø {s.avgPlacement?.toFixed(2) ?? '—'}</div>
-                        <div className="text-[#4a5a70]">
+                        <div className="text-[#7a8aa0]">
                           {s.top4Rate != null ? `${(s.top4Rate * 100).toFixed(0)}% T4` : ''} · {s.games} {t('tft.gamesShort')}
                         </div>
                       </div>
@@ -106,7 +106,7 @@ export default function TftUnitDetailPage() {
                     <div key={i} className="flex flex-col items-center gap-1 bg-[#141c2e] border border-[#1e2a3a] rounded p-1.5 w-16">
                       <ItemIcon apiName={it.item} assets={assets} size={9} />
                       <div className="text-[10px] text-white">Ø {it.avgPlacement?.toFixed(1) ?? '—'}</div>
-                      <div className="text-[10px] text-[#4a5a70]">{it.games} {t('tft.gamesShort')}</div>
+                      <div className="text-[10px] text-[#7a8aa0]">{it.games} {t('tft.gamesShort')}</div>
                     </div>
                   ))}
                 </div>
@@ -123,7 +123,7 @@ export default function TftUnitDetailPage() {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-3">
-      <div className="text-[#4a5a70] text-[10px] uppercase tracking-widest">{label}</div>
+      <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">{label}</div>
       <div className="text-white text-lg font-medium mt-1">{value}</div>
     </div>
   );
@@ -131,7 +131,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="mb-5">
-      <h2 className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-2">{title}</h2>
+      <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-2">{title}</h2>
       {children}
     </div>
   );
@@ -141,7 +141,7 @@ function ItemIcon({ apiName, assets, size = 10 }: { apiName: string; assets: Tft
   const sizeClass = size === 10 ? 'w-10 h-10' : 'w-9 h-9';
   const url = tftIconUrl(assets, item?.icon);
   if (!url) {
-    return <div className={`${sizeClass} rounded bg-[#1e2a3a] flex items-center justify-center text-[8px] text-[#4a5a70] text-center px-0.5`} title={apiName}>{prettyItem(apiName)}</div>;
+    return <div className={`${sizeClass} rounded bg-[#1e2a3a] flex items-center justify-center text-[8px] text-[#7a8aa0] text-center px-0.5`} title={apiName}>{prettyItem(apiName)}</div>;
   }
   return <img src={url} alt={item!.name} title={item!.name} className={`${sizeClass} rounded`} />;
 }

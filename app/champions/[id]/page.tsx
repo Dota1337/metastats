@@ -85,7 +85,7 @@ function SkinImage({ championId, skinNum, alt, className }: {
   useEffect(() => { setStage(0); }, [championId, skinNum]);
   if (stage === 3) {
     return (
-      <div className={`flex items-center justify-center bg-[#141c2e] text-[#4a5a70] text-[10px] text-center px-1 ${className || ''}`}>
+      <div className={`flex items-center justify-center bg-[#141c2e] text-[#7a8aa0] text-[10px] text-center px-1 ${className || ''}`}>
         {alt || '—'}
       </div>
     );
@@ -181,7 +181,7 @@ export default function ChampionDetailPage() {
       {/* Loading State */}
       {loading && (
         <div className="flex items-center justify-center py-40">
-          <div className="text-[#8a9bb0] text-lg">{t('champDetail.loading')}</div>
+          <div className="text-[#a0b0c5] text-lg">{t('champDetail.loading')}</div>
         </div>
       )}
 
@@ -191,7 +191,7 @@ export default function ChampionDetailPage() {
           <div className="text-red-400 text-xl mb-4">{error}</div>
           <a
             href="/champions"
-            className="inline-block px-6 py-2 bg-[#1e2a3a] text-[#8a9bb0] rounded hover:text-white transition-colors"
+            className="inline-block px-6 py-2 bg-[#1e2a3a] text-[#a0b0c5] rounded hover:text-white transition-colors"
           >
             Zurueck zur Champion-Uebersicht
           </a>
@@ -220,7 +220,7 @@ export default function ChampionDetailPage() {
               <div>
                 <a
                   href="/champions"
-                  className="text-[#8a9bb0] text-xs hover:text-white transition-colors mb-2 inline-block"
+                  className="text-[#a0b0c5] text-xs hover:text-white transition-colors mb-2 inline-block"
                 >
                   &larr; {t('champDetail.back')}
                 </a>
@@ -258,7 +258,7 @@ export default function ChampionDetailPage() {
                     key={stat.label}
                     className="bg-[#0d1526] border border-[#1e2a3a] rounded p-3"
                   >
-                    <div className="text-[#8a9bb0] text-xs mb-1">{stat.label}</div>
+                    <div className="text-[#a0b0c5] text-xs mb-1">{stat.label}</div>
                     <div className="text-white text-lg font-medium">
                       {stat.isPercent
                         ? stat.value.toFixed(3)
@@ -294,7 +294,7 @@ export default function ChampionDetailPage() {
                     <div className="text-white text-sm font-medium mb-1">
                       {champion.passive.name}
                     </div>
-                    <div className="text-[#8a9bb0] text-sm leading-relaxed">
+                    <div className="text-[#a0b0c5] text-sm leading-relaxed">
                       {stripHtml(champion.passive.description)}
                     </div>
                   </div>
@@ -320,7 +320,7 @@ export default function ChampionDetailPage() {
                       <div className="text-white text-sm font-medium mb-1">
                         {spell.name}
                       </div>
-                      <div className="text-[#8a9bb0] text-sm leading-relaxed">
+                      <div className="text-[#a0b0c5] text-sm leading-relaxed">
                         {stripHtml(spell.description)}
                       </div>
                     </div>
@@ -341,7 +341,7 @@ export default function ChampionDetailPage() {
                       </h3>
                       <ul className="space-y-2">
                         {champion.allytips.map((tip, i) => (
-                          <li key={i} className="text-[#8a9bb0] text-sm flex gap-2">
+                          <li key={i} className="text-[#a0b0c5] text-sm flex gap-2">
                             <span className="text-green-400/60 flex-shrink-0">&#x2022;</span>
                             {tip}
                           </li>
@@ -356,7 +356,7 @@ export default function ChampionDetailPage() {
                       </h3>
                       <ul className="space-y-2">
                         {champion.enemytips.map((tip, i) => (
-                          <li key={i} className="text-[#8a9bb0] text-sm flex gap-2">
+                          <li key={i} className="text-[#a0b0c5] text-sm flex gap-2">
                             <span className="text-red-400/60 flex-shrink-0">&#x2022;</span>
                             {tip}
                           </li>
@@ -419,7 +419,7 @@ export default function ChampionDetailPage() {
             <section className="mb-8">
               <h2 className="text-white text-lg font-semibold mb-4">{t('champDetail.lore')}</h2>
               <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-5">
-                <p className="text-[#8a9bb0] text-sm leading-relaxed">
+                <p className="text-[#a0b0c5] text-sm leading-relaxed">
                   {champion.lore}
                 </p>
               </div>

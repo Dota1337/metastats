@@ -53,7 +53,7 @@ export default function CompCard({
           Desktop: original 3-column grid keeps it dense. */}
       <div className="flex flex-col sm:grid sm:grid-cols-[auto_1fr_auto] gap-3 sm:gap-4 sm:items-center">
         <div className="flex items-center gap-3">
-          {rank != null && <div className="text-[#4a5a70] text-sm font-medium w-6 text-center">{rank}</div>}
+          {rank != null && <div className="text-[#7a8aa0] text-sm font-medium w-6 text-center">{rank}</div>}
           <div className="flex items-center justify-center w-10 h-10 rounded-lg font-bold text-base"
                style={{ color: tier.color, backgroundColor: tier.bg, border: `1px solid ${tier.color}40` }}>
             {tier.label}
@@ -122,7 +122,7 @@ export default function CompCard({
 
           {comp.typicalAugments && comp.typicalAugments.length > 0 && (
             <div className="flex flex-wrap items-center gap-1 mt-2">
-              <span className="text-[#4a5a70] text-[9px] uppercase tracking-widest mr-1">Augments</span>
+              <span className="text-[#7a8aa0] text-[9px] uppercase tracking-widest mr-1">Augments</span>
               {comp.typicalAugments.slice(0, 4).map(a => {
                 const m = assets?.augments[a.apiName];
                 const tierColor = m?.tier === 3 ? '#c39bff' : m?.tier === 2 ? '#e0c75a' : '#9ab0bf';
@@ -145,8 +145,8 @@ export default function CompCard({
           <Stat label="Sieg" value={comp.top1Rate != null ? `${(comp.top1Rate * 100).toFixed(0)}%` : '—'} />
           <Stat label="Pick" value={comp.pickRate != null ? `${(comp.pickRate * 100).toFixed(2)}%` : '—'} />
           <div className="flex flex-col items-end justify-center pl-2 border-l border-[#1e2a3a]">
-            <div className="text-[#4a5a70] text-[9px] uppercase tracking-widest">Spiele</div>
-            <div className="text-[#8a9bb0] text-sm">{comp.games}</div>
+            <div className="text-[#7a8aa0] text-[9px] uppercase tracking-widest">Spiele</div>
+            <div className="text-[#a0b0c5] text-sm">{comp.games}</div>
           </div>
         </div>
       </div>
@@ -157,7 +157,7 @@ export default function CompCard({
 function Stat({ label, value, accent }: { label: string; value: string; accent?: string }) {
   return (
     <div className="flex flex-col items-end justify-center min-w-[3.5rem]">
-      <div className="text-[#4a5a70] text-[9px] uppercase tracking-widest">{label}</div>
+      <div className="text-[#7a8aa0] text-[9px] uppercase tracking-widest">{label}</div>
       <div className="text-base font-medium" style={{ color: accent || '#ffffff' }}>{value}</div>
     </div>
   );

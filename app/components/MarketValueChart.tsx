@@ -87,7 +87,7 @@ export default function MarketValueChart({ puuid, currentValue }: Props) {
     <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 sm:p-6 mb-4">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <div className="text-[#8a9bb0] text-xs uppercase tracking-widest">
+          <div className="text-[#a0b0c5] text-xs uppercase tracking-widest">
             Marktwert-Verlauf
           </div>
           {chartData.length >= 2 && (
@@ -95,7 +95,7 @@ export default function MarketValueChart({ puuid, currentValue }: Props) {
               <span className={`text-sm font-medium ${change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {change >= 0 ? '+' : ''}{changePercent}%
               </span>
-              <span className="text-[#4a5a70] text-xs">
+              <span className="text-[#7a8aa0] text-xs">
                 ({change >= 0 ? '+' : ''}${Math.abs(change).toLocaleString('de-DE')})
               </span>
             </div>
@@ -104,7 +104,7 @@ export default function MarketValueChart({ puuid, currentValue }: Props) {
         <select
           value={season}
           onChange={e => setSeason(e.target.value)}
-          className="bg-[#141c2e] border border-[#1e2a3a] rounded px-3 py-1.5 text-xs text-[#8a9bb0] focus:outline-none focus:border-[#c89b3c]/50"
+          className="bg-[#141c2e] border border-[#1e2a3a] rounded px-3 py-1.5 text-xs text-[#a0b0c5] focus:outline-none focus:border-[#c89b3c]/50"
         >
           {seasons.map(s => (
             <option key={s.value} value={s.value}>{s.label}</option>
@@ -113,7 +113,7 @@ export default function MarketValueChart({ puuid, currentValue }: Props) {
       </div>
 
       {loading ? (
-        <div className="h-[200px] flex items-center justify-center text-[#4a5a70] text-xs">
+        <div className="h-[200px] flex items-center justify-center text-[#7a8aa0] text-xs">
           Lade Marktwert-Daten...
         </div>
       ) : (
@@ -128,14 +128,14 @@ export default function MarketValueChart({ puuid, currentValue }: Props) {
             <CartesianGrid stroke="#1e2a3a" strokeDasharray="3 3" />
             <XAxis
               dataKey="date"
-              tick={{ fill: '#4a5a70', fontSize: 10 }}
+              tick={{ fill: '#7a8aa0', fontSize: 10 }}
               tickLine={false}
               axisLine={false}
               interval="preserveStartEnd"
             />
             <YAxis
               domain={[minVal, maxVal]}
-              tick={{ fill: '#4a5a70', fontSize: 10 }}
+              tick={{ fill: '#7a8aa0', fontSize: 10 }}
               tickLine={false}
               axisLine={false}
               tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`}
@@ -146,7 +146,7 @@ export default function MarketValueChart({ puuid, currentValue }: Props) {
                 const d = payload[0]?.payload;
                 return (
                   <div className="bg-[#0d1526] border border-[#1e2a3a] rounded px-3 py-2 text-xs shadow-lg">
-                    <div className="text-[#8a9bb0] mb-1">{d?.label}</div>
+                    <div className="text-[#a0b0c5] mb-1">{d?.label}</div>
                     <div className="text-[#c89b3c] font-medium">
                       ${d?.value?.toLocaleString('de-DE')}
                     </div>

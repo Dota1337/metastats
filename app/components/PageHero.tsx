@@ -77,7 +77,7 @@ export default function PageHero({ title, subtitle, leftChampion, rightChampion,
       <div className="relative max-w-6xl mx-auto px-6 pt-14 pb-10 text-center">
         <div className="w-10 h-0.5 bg-gradient-to-r from-transparent via-[#c89b3c] to-transparent mx-auto mb-4" />
         <h1 className="text-white text-3xl font-bold">{title}</h1>
-        {subtitle && <p className="text-[#8a9bb0] text-sm mt-2 max-w-lg mx-auto">{subtitle}</p>}
+        {subtitle && <p className="text-[#a0b0c5] text-sm mt-2 max-w-lg mx-auto">{subtitle}</p>}
         {children}
       </div>
     </div>

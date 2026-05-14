@@ -69,7 +69,7 @@ export default function TftPatchDetailPage() {
 
         <h1 className="text-white text-2xl font-medium mt-3 mb-1">Patch {version}</h1>
         {diff?.previousPatch && (
-          <p className="text-[#8a9bb0] text-sm mb-4">
+          <p className="text-[#a0b0c5] text-sm mb-4">
             {t('tft.patchNotes.comparedTo')} <strong className="text-white">Patch {diff.previousPatch}</strong>
             {diff.sampleSize != null && ` · ${diff.sampleSize} ${t('tft.patchNotes.entitiesCompared')}`}
           </p>
@@ -82,7 +82,7 @@ export default function TftPatchDetailPage() {
               key={e}
               onClick={() => setEntity(e)}
               className={`px-4 py-2 text-xs font-medium uppercase tracking-widest ${
-                entity === e ? 'text-white border-b-2 border-[#7B61FF]' : 'text-[#8a9bb0] hover:text-white'
+                entity === e ? 'text-white border-b-2 border-[#7B61FF]' : 'text-[#a0b0c5] hover:text-white'
               }`}
             >
               {t(`tft.patchNotes.entity.${e}` as const)}
@@ -96,7 +96,7 @@ export default function TftPatchDetailPage() {
             <button
               key={b}
               onClick={() => setBucket(b)}
-              className={`px-3 py-1 rounded text-xs ${bucket === b ? 'bg-[#7B61FF] text-white' : 'bg-[#141c2e] text-[#8a9bb0] hover:text-white'}`}
+              className={`px-3 py-1 rounded text-xs ${bucket === b ? 'bg-[#7B61FF] text-white' : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'}`}
             >
               {b.replace('_plus', '+').replace(/^./, c => c.toUpperCase())}
             </button>
@@ -104,13 +104,13 @@ export default function TftPatchDetailPage() {
         </div>
 
         {loading && (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#8a9bb0] text-sm">
+          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#a0b0c5] text-sm">
             {t('tft.loading')}
           </div>
         )}
 
         {!loading && (!diff?.hasData) && (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#8a9bb0] text-sm">
+          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#a0b0c5] text-sm">
             {diff?.reason === 'single_patch'
               ? t('tft.patchNotes.singlePatch')
               : t('tft.patchNotes.empty')}
@@ -157,7 +157,7 @@ function DiffColumn({
         {direction === 'up' ? '▲' : '▼'} {title}
       </div>
       {entries.length === 0 ? (
-        <div className="p-4 text-[#4a5a70] text-xs text-center">—</div>
+        <div className="p-4 text-[#7a8aa0] text-xs text-center">—</div>
       ) : entries.map(e => (
         <DiffRow key={e.key} entry={e} entity={entity} assets={assets} />
       ))}
@@ -188,7 +188,7 @@ function DiffRow({ entry, entity, assets }: { entry: DiffEntry; entity: Entity; 
       )}
       <div className="text-white truncate">
         {meta?.name || entry.key}
-        <div className="text-[#4a5a70] text-[10px]">
+        <div className="text-[#7a8aa0] text-[10px]">
           {entry.currentAvgPlacement.toFixed(2)} ← {entry.previousAvgPlacement.toFixed(2)}
         </div>
       </div>
@@ -196,9 +196,9 @@ function DiffRow({ entry, entity, assets }: { entry: DiffEntry; entity: Entity; 
         <div className="font-medium" style={{ color: deltaColor }}>
           {entry.deltaAvgPlacement > 0 ? '+' : ''}{entry.deltaAvgPlacement.toFixed(2)}
         </div>
-        <div className="text-[#4a5a70] text-[10px]">avg Δ</div>
+        <div className="text-[#7a8aa0] text-[10px]">avg Δ</div>
       </div>
-      <div className="text-right text-[#4a5a70] text-[10px]">
+      <div className="text-right text-[#7a8aa0] text-[10px]">
         {entry.currentGames.toLocaleString()}
       </div>
     </a>

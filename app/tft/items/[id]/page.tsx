@@ -67,7 +67,7 @@ export default function TftItemDetailPage() {
             )}
             <div className="flex-1">
               <h1 className="text-white text-2xl font-medium">{itemMeta?.name || prettyApi(id)}</h1>
-              {itemMeta?.desc && <p className="text-[#8a9bb0] text-xs mt-1 max-w-prose">{itemMeta.desc}</p>}
+              {itemMeta?.desc && <p className="text-[#a0b0c5] text-xs mt-1 max-w-prose">{itemMeta.desc}</p>}
             </div>
           </div>
 
@@ -76,7 +76,7 @@ export default function TftItemDetailPage() {
               economy from any direction. */}
           {composition.length === 2 && (
             <div className="mt-4 pt-4 border-t border-[#1e2a3a]">
-              <div className="text-[#8a9bb0] text-[10px] uppercase tracking-widest mb-2">{t('tft.item.recipe')}</div>
+              <div className="text-[#a0b0c5] text-[10px] uppercase tracking-widest mb-2">{t('tft.item.recipe')}</div>
               <div className="flex items-center gap-3 flex-wrap">
                 {composition.map((compId, i) => {
                   const compMeta = assets?.items[compId];
@@ -124,7 +124,7 @@ export default function TftItemDetailPage() {
 
             {data.topUsers.length > 0 && (
               <div className="mb-5">
-                <h2 className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-2">{t('tft.topUsers')}</h2>
+                <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-2">{t('tft.topUsers')}</h2>
                 <div className="flex flex-wrap gap-2">
                   {data.topUsers.map(u => {
                     const ch = assets?.champions[u.characterId];
@@ -136,7 +136,7 @@ export default function TftItemDetailPage() {
                           ? <img src={churl} alt={ch!.name} className="w-10 h-10 rounded object-cover" />
                           : <div className="w-10 h-10 rounded bg-[#1e2a3a]" />}
                         <div className="text-[10px] text-white text-center truncate w-full">{ch?.name || prettyChar(u.characterId)}</div>
-                        <div className="text-[10px] text-[#4a5a70]">{u.games} {t('tft.gamesShort')}</div>
+                        <div className="text-[10px] text-[#7a8aa0]">{u.games} {t('tft.gamesShort')}</div>
                       </a>
                     );
                   })}
@@ -151,7 +151,7 @@ export default function TftItemDetailPage() {
             got a Sword early — what completed items use it?"). */}
         {siblings.length > 0 && (
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
-            <h2 className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-3">{t('tft.item.sharedComponents')}</h2>
+            <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.item.sharedComponents')}</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
               {siblings.map(([k, v]) => {
                 const sUrl = tftIconUrl(assets, v.icon);
@@ -182,7 +182,7 @@ export default function TftItemDetailPage() {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-3">
-      <div className="text-[#4a5a70] text-[10px] uppercase tracking-widest">{label}</div>
+      <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">{label}</div>
       <div className="text-white text-lg font-medium mt-1">{value}</div>
     </div>
   );

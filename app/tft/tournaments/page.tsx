@@ -89,7 +89,7 @@ export default function TftTournamentsPage() {
       <Nav active="tournaments" />
       <TftHero pageTitle={t('tft.tournaments.title')} />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-2 pb-6">
-        <p className="text-[#8a9bb0] text-sm mb-4">{t('tft.tournaments.subtitle')}</p>
+        <p className="text-[#a0b0c5] text-sm mb-4">{t('tft.tournaments.subtitle')}</p>
 
         {/* Filter bar — only renders rows that have ≥2 options so we don't
             crowd the layout with single-choice "filters". */}
@@ -114,10 +114,10 @@ export default function TftTournamentsPage() {
           )}
         </div>
 
-        {loading && <div className="text-[#4a5a70] text-center py-8">{t('tft.loading')}</div>}
+        {loading && <div className="text-[#7a8aa0] text-center py-8">{t('tft.loading')}</div>}
 
         {!loading && tournaments.length === 0 && (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#8a9bb0] text-sm">
+          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#a0b0c5] text-sm">
             {t('tft.tournaments.empty')}
           </div>
         )}
@@ -135,7 +135,7 @@ export default function TftTournamentsPage() {
         )}
 
         {!loading && past.length > 0 && (
-          <Section title={t('tft.tournaments.past')} accent="#8a9bb0">
+          <Section title={t('tft.tournaments.past')} accent="#a0b0c5">
             {past.map(x => <TournamentRow key={x.id} t={x} locale={locale} />)}
           </Section>
         )}
@@ -161,7 +161,7 @@ function Section({ title, accent, pulse, children }: { title: string; accent: st
 }
 
 function TournamentRow({ t, locale }: { t: Tournament; locale: string }) {
-  const tierColor = t.tier ? (TIER_COLORS[t.tier] || '#8a9bb0') : '#8a9bb0';
+  const tierColor = t.tier ? (TIER_COLORS[t.tier] || '#a0b0c5') : '#a0b0c5';
   const dateFmt = (s: string | null) => s ? new Date(s).toLocaleDateString(locale, { day: '2-digit', month: 'short' }) : '—';
   return (
     <a
@@ -182,12 +182,12 @@ function TournamentRow({ t, locale }: { t: Tournament; locale: string }) {
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-white text-base font-medium truncate">{cleanTournamentName(t.name)}</span>
             {t.region && (
-              <span className="text-[10px] uppercase tracking-widest text-[#8a9bb0]">
+              <span className="text-[10px] uppercase tracking-widest text-[#a0b0c5]">
                 {REGION_LABELS[t.region] || t.region}
               </span>
             )}
           </div>
-          <div className="text-[#8a9bb0] text-xs mt-1">
+          <div className="text-[#a0b0c5] text-xs mt-1">
             {dateFmt(t.start_date)} – {dateFmt(t.end_date)}
             {t.format && ` · ${t.format}`}
             {t.num_participants && ` · ${t.num_participants} Teilnehmer`}
@@ -198,7 +198,7 @@ function TournamentRow({ t, locale }: { t: Tournament; locale: string }) {
             <div className="text-[#7B61FF] text-base font-semibold tabular-nums">
               ${t.prize_pool_usd.toLocaleString('en-US')}
             </div>
-            <div className="text-[#4a5a70] text-[10px] uppercase tracking-widest">Prize Pool</div>
+            <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">Prize Pool</div>
           </div>
         )}
       </div>

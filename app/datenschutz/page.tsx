@@ -20,7 +20,7 @@ export default function DatenschutzPage() {
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
         <h1 className="text-white text-2xl font-medium mb-6">{t('legal.privacy')}</h1>
 
-        <section className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-6 space-y-6 text-sm text-[#8a9bb0] leading-relaxed">
+        <section className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-6 space-y-6 text-sm text-[#a0b0c5] leading-relaxed">
           <div>
             <h2 className="text-white text-base font-medium mb-2">{t('legal.privacy.overviewHeading')}</h2>
             <p>{t('legal.privacy.overviewText')}</p>

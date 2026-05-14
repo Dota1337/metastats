@@ -6,7 +6,7 @@ export default function Loading() {
           <div className="w-12 h-12 border-2 border-[#1e2a3a] rounded-full" />
           <div className="absolute inset-0 w-12 h-12 border-2 border-[#c89b3c] border-t-transparent rounded-full animate-spin" />
         </div>
-        <div className="text-[#4a5a70] text-xs uppercase tracking-widest">metastats</div>
+        <div className="text-[#7a8aa0] text-xs uppercase tracking-widest">metastats</div>
       </div>
     </div>
   );

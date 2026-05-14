@@ -159,8 +159,8 @@ export default function Leaderboard() {
           disabled={page <= 1}
           className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
             page <= 1
-              ? 'bg-[#141c2e] text-[#4a5a70] cursor-not-allowed'
-              : 'bg-[#141c2e] text-[#8a9bb0] hover:text-white hover:bg-[#1a2438]'
+              ? 'bg-[#141c2e] text-[#7a8aa0] cursor-not-allowed'
+              : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white hover:bg-[#1a2438]'
           }`}
         >
           {t('team.prev')}
@@ -171,7 +171,7 @@ export default function Leaderboard() {
           <div className="hidden sm:flex items-center gap-1">
             {getVisiblePages().map((p, i) =>
               p === '...' ? (
-                <span key={`e${i}`} className="text-[#4a5a70] text-xs px-1">...</span>
+                <span key={`e${i}`} className="text-[#7a8aa0] text-xs px-1">...</span>
               ) : (
                 <button
                   key={p}
@@ -179,7 +179,7 @@ export default function Leaderboard() {
                   className={`min-w-[2rem] px-2 py-1 rounded text-xs font-medium transition-colors ${
                     page === p
                       ? 'bg-[#c89b3c]/15 text-[#c89b3c] border border-[#c89b3c]/30'
-                      : 'text-[#8a9bb0] hover:text-white hover:bg-[#141c2e]'
+                      : 'text-[#a0b0c5] hover:text-white hover:bg-[#141c2e]'
                   }`}
                 >
                   {p}
@@ -201,7 +201,7 @@ export default function Leaderboard() {
         </select>
 
         {totalPlayers && (
-          <span className="text-[#4a5a70] text-xs hidden sm:inline">({totalPlayers.toLocaleString(numLocale)})</span>
+          <span className="text-[#7a8aa0] text-xs hidden sm:inline">({totalPlayers.toLocaleString(numLocale)})</span>
         )}
 
         <button
@@ -209,8 +209,8 @@ export default function Leaderboard() {
           disabled={!hasNextPage}
           className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
             !hasNextPage
-              ? 'bg-[#141c2e] text-[#4a5a70] cursor-not-allowed'
-              : 'bg-[#141c2e] text-[#8a9bb0] hover:text-white hover:bg-[#1a2438]'
+              ? 'bg-[#141c2e] text-[#7a8aa0] cursor-not-allowed'
+              : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white hover:bg-[#1a2438]'
           }`}
         >
           {t('team.next')}
@@ -236,7 +236,7 @@ export default function Leaderboard() {
               key={r.value}
               onClick={() => { setRegion(r.value); setPage(1); }}
               className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-                region === r.value ? 'bg-[#c89b3c] text-[#0a0e1a]' : 'bg-[#141c2e] text-[#8a9bb0] hover:text-white'
+                region === r.value ? 'bg-[#c89b3c] text-[#0a0e1a]' : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'
               }`}
             >
               {r.label}
@@ -253,7 +253,7 @@ export default function Leaderboard() {
             placeholder={t('lb.searchPlaceholder')}
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full bg-[#141c2e] border border-[#2a3a50] rounded px-4 py-2.5 text-white text-sm outline-none placeholder-[#4a5a70]"
+            className="w-full bg-[#141c2e] border border-[#2a3a50] rounded px-4 py-2.5 text-white text-sm outline-none placeholder-[#7a8aa0]"
           />
         </div>
 
@@ -263,9 +263,9 @@ export default function Leaderboard() {
         {!search.trim() && tierDist && tierDist.tiers.length > 0 && (
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-4">
             <div className="flex items-baseline justify-between mb-4">
-              <div className="text-[#8a9bb0] text-xs uppercase tracking-widest">{t('champ.rankDistribution')}</div>
+              <div className="text-[#a0b0c5] text-xs uppercase tracking-widest">{t('champ.rankDistribution')}</div>
               {tierDist.month && (
-                <div className="text-[#4a5a70] text-[10px]">{tierDist.month}</div>
+                <div className="text-[#7a8aa0] text-[10px]">{tierDist.month}</div>
               )}
             </div>
             <div className="flex items-end gap-2 h-40 mb-3">
@@ -325,7 +325,7 @@ export default function Leaderboard() {
                     className={`px-3 py-2 rounded text-xs font-medium transition-colors flex items-center gap-1 ${
                       isActive
                         ? 'text-[#0a0e1a]'
-                        : 'bg-[#141c2e] text-[#8a9bb0] hover:text-white'
+                        : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'
                     }`}
                     style={isActive ? { backgroundColor: tr.color } : {}}
                   >
@@ -355,7 +355,7 @@ export default function Leaderboard() {
                           className={`w-full px-3 py-1.5 text-xs text-left transition-colors ${
                             tier === tr.value && division === div
                               ? 'text-[#0a0e1a] font-medium'
-                              : 'text-[#8a9bb0] hover:text-white hover:bg-[#141c2e]'
+                              : 'text-[#a0b0c5] hover:text-white hover:bg-[#141c2e]'
                           }`}
                           style={tier === tr.value && division === div ? { backgroundColor: tr.color } : {}}
                         >
@@ -373,7 +373,7 @@ export default function Leaderboard() {
         {/* Search indicator */}
         {search.trim() && source === 'search' && (
           <div className="bg-[#141c2e] border border-[#2a3a50] rounded p-3 mb-4 flex items-center justify-between">
-            <span className="text-[#8a9bb0] text-xs">
+            <span className="text-[#a0b0c5] text-xs">
               {t('lb.searchResult')} "{search}" — {entries.length} {t('lb.playersFound')}
             </span>
             <button onClick={() => setSearch('')} className="text-[#c89b3c] text-xs hover:text-white">
@@ -387,30 +387,30 @@ export default function Leaderboard() {
 
         {/* Content */}
         {loading ? (
-          <div className="text-center text-[#8a9bb0] py-20">{t('lb.loading')}</div>
+          <div className="text-center text-[#a0b0c5] py-20">{t('lb.loading')}</div>
         ) : message && entries.length === 0 ? (
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-8 text-center">
-            <div className="text-[#8a9bb0] text-sm mb-2">{message}</div>
-            <div className="text-[#4a5a70] text-xs">
+            <div className="text-[#a0b0c5] text-sm mb-2">{message}</div>
+            <div className="text-[#7a8aa0] text-xs">
               {t('champ.statsCollecting')}
             </div>
           </div>
         ) : entries.length === 0 ? (
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-8 text-center">
-            <div className="text-[#8a9bb0] text-sm">{t('lb.noPlayers')}</div>
+            <div className="text-[#a0b0c5] text-sm">{t('lb.noPlayers')}</div>
           </div>
         ) : (
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
             {/* Table Header — Desktop */}
             <div className="hidden md:grid grid-cols-[3rem_2.5rem_1fr_5rem_4rem_5rem_5rem_6rem] gap-3 px-4 py-2.5 border-b border-[#1e2a3a] bg-[#0a0e1a]">
-              <div className="text-[#8a9bb0] text-xs">#</div>
+              <div className="text-[#a0b0c5] text-xs">#</div>
               <div />
-              <div className="text-[#8a9bb0] text-xs">{t('lb.player')}</div>
-              <div className="text-[#8a9bb0] text-xs text-right">LP</div>
-              <div className="text-[#8a9bb0] text-xs text-right">W/L</div>
-              <div className="text-[#8a9bb0] text-xs text-right">{t('home.winrate')}</div>
-              <div className="text-[#8a9bb0] text-xs text-right">{t('lb.region')}</div>
-              <div className="text-[#8a9bb0] text-xs text-right">{t('lb.marketValue')}</div>
+              <div className="text-[#a0b0c5] text-xs">{t('lb.player')}</div>
+              <div className="text-[#a0b0c5] text-xs text-right">LP</div>
+              <div className="text-[#a0b0c5] text-xs text-right">W/L</div>
+              <div className="text-[#a0b0c5] text-xs text-right">{t('home.winrate')}</div>
+              <div className="text-[#a0b0c5] text-xs text-right">{t('lb.region')}</div>
+              <div className="text-[#a0b0c5] text-xs text-right">{t('lb.marketValue')}</div>
             </div>
 
             {/* Rows */}
@@ -426,7 +426,7 @@ export default function Leaderboard() {
                     entry.rank === 1 ? 'text-yellow-400' :
                     entry.rank === 2 ? 'text-gray-300' :
                     entry.rank === 3 ? 'text-amber-600' :
-                    'text-[#4a5a70]'
+                    'text-[#7a8aa0]'
                   }`}>
                     {entry.rank}
                   </div>
@@ -437,16 +437,16 @@ export default function Leaderboard() {
                       className="w-8 h-8 rounded-full border border-[#2a3a50] flex-shrink-0"
                     />
                   ) : (
-                    <div className="w-8 h-8 rounded-full bg-[#1a2438] border border-[#2a3a50] flex items-center justify-center text-[#4a5a70] text-xs flex-shrink-0">?</div>
+                    <div className="w-8 h-8 rounded-full bg-[#1a2438] border border-[#2a3a50] flex items-center justify-center text-[#7a8aa0] text-xs flex-shrink-0">?</div>
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="text-white text-sm font-medium flex items-center gap-1.5 truncate">
-                      {entry.summonerName || <span className="text-[#4a5a70]">#{entry.rank}</span>}
+                      {entry.summonerName || <span className="text-[#7a8aa0]">#{entry.rank}</span>}
                       {entry.summonerName && lookupPro(proLookup, entry.summonerName) && (
                         <span className="inline-flex items-center bg-[#c89b3c]/15 text-[#c89b3c] text-[10px] font-bold px-1.5 py-0 rounded-full border border-[#c89b3c]/40 leading-4">PRO</span>
                       )}
                     </div>
-                    <div className="text-[#4a5a70] text-xs">{entry.leaguePoints != null ? entry.leaguePoints + ' LP' : ''} · {entry.winrate}%</div>
+                    <div className="text-[#7a8aa0] text-xs">{entry.leaguePoints != null ? entry.leaguePoints + ' LP' : ''} · {entry.winrate}%</div>
                   </div>
                   <div className="text-right flex-shrink-0">
                     <span className="text-[#c89b3c] text-sm font-medium">{formatValue(entry.marketValue)}</span>
@@ -458,7 +458,7 @@ export default function Leaderboard() {
                     entry.rank === 1 ? 'text-yellow-400' :
                     entry.rank === 2 ? 'text-gray-300' :
                     entry.rank === 3 ? 'text-amber-600' :
-                    'text-[#4a5a70]'
+                    'text-[#7a8aa0]'
                   }`}>
                     {entry.rank}
                   </div>
@@ -470,14 +470,14 @@ export default function Leaderboard() {
                         className="w-8 h-8 rounded-full border border-[#2a3a50]"
                       />
                     ) : (
-                      <div className="w-8 h-8 rounded-full bg-[#1a2438] border border-[#2a3a50] flex items-center justify-center text-[#4a5a70] text-xs">
+                      <div className="w-8 h-8 rounded-full bg-[#1a2438] border border-[#2a3a50] flex items-center justify-center text-[#7a8aa0] text-xs">
                         ?
                       </div>
                     )}
                   </div>
                   <div>
                     <div className="text-white text-sm font-medium flex items-center gap-1.5">
-                      {entry.summonerName || <span className="text-[#4a5a70]">{t('lb.unknownPlayer')} #{entry.rank}</span>}
+                      {entry.summonerName || <span className="text-[#7a8aa0]">{t('lb.unknownPlayer')} #{entry.rank}</span>}
                       {entry.summonerName && lookupPro(proLookup, entry.summonerName) && (
                         <span className="inline-flex items-center bg-[#c89b3c]/15 text-[#c89b3c] text-[10px] font-bold px-1.5 py-0 rounded-full border border-[#c89b3c]/40 leading-4">
                           PRO
@@ -488,7 +488,7 @@ export default function Leaderboard() {
                       const pro = lookupPro(proLookup, entry.summonerName);
                       return pro
                         ? <div className="text-[#c89b3c] text-xs">{pro.proName} · {pro.team}</div>
-                        : <div className="text-[#4a5a70] text-xs">Level {entry.level || '?'}</div>;
+                        : <div className="text-[#7a8aa0] text-xs">Level {entry.level || '?'}</div>;
                     })()}
                   </div>
                   <div className="text-right">
@@ -496,10 +496,10 @@ export default function Leaderboard() {
                       {entry.leaguePoints != null ? entry.leaguePoints : '-'} LP
                     </div>
                     {entry.playerRank && !['CHALLENGER', 'GRANDMASTER', 'MASTER'].includes(entry.tier) && (
-                      <div className="text-[#4a5a70] text-xs">{entry.tier} {entry.playerRank}</div>
+                      <div className="text-[#7a8aa0] text-xs">{entry.tier} {entry.playerRank}</div>
                     )}
                   </div>
-                  <div className="text-[#8a9bb0] text-xs text-right">
+                  <div className="text-[#a0b0c5] text-xs text-right">
                     {entry.wins != null ? `${entry.wins}W ${entry.losses}L` : '-'}
                   </div>
                   <div className="text-right">
@@ -511,7 +511,7 @@ export default function Leaderboard() {
                       {entry.winrate}%
                     </span>
                   </div>
-                  <div className="text-[#8a9bb0] text-xs text-right">
+                  <div className="text-[#a0b0c5] text-xs text-right">
                     {(entry.region || '').toUpperCase().replace('1', '')}
                   </div>
                   <div className="text-right">

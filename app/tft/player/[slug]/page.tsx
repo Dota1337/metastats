@@ -233,12 +233,12 @@ export default function TftPlayerPage() {
     <main className="min-h-screen bg-[#0e1525]">
       <Nav active="search" />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
-        {loading && <div className="text-[#8a9bb0] text-center py-12">Lade Spieler-Daten ...</div>}
+        {loading && <div className="text-[#a0b0c5] text-center py-12">Lade Spieler-Daten ...</div>}
 
         {error && (
           <div className="bg-[#0d1526] border border-red-500/40 rounded p-6 text-center">
             <div className="text-red-400 font-medium mb-1">Fehler</div>
-            <div className="text-[#8a9bb0] text-sm">{error}</div>
+            <div className="text-[#a0b0c5] text-sm">{error}</div>
           </div>
         )}
 
@@ -260,7 +260,7 @@ export default function TftPlayerPage() {
                         it's puuid-verified, not just name-matched. */}
                     {tftProInfo ? <TftProBadge pro={tftProInfo} /> : proInfo && <ProBadge pro={proInfo} />}
                   </div>
-                  <div className="text-[#8a9bb0] text-sm">#{tagLine} · Level {data.summoner.summonerLevel ?? '—'}</div>
+                  <div className="text-[#a0b0c5] text-sm">#{tagLine} · Level {data.summoner.summonerLevel ?? '—'}</div>
                   {tftProInfo && (
                     <div className="text-[#a892ff] text-xs mt-0.5">
                       {tftProInfo.pro_name}
@@ -291,20 +291,20 @@ export default function TftPlayerPage() {
             />
 
             <div className="mb-3">
-              <div className="text-[#8a9bb0] text-xs uppercase tracking-widest">Match History</div>
+              <div className="text-[#a0b0c5] text-xs uppercase tracking-widest">Match History</div>
             </div>
 
             <div className="space-y-3">
               {pageLoading && pageMatches.length === 0 && (
-                <div className="text-[#4a5a70] text-center py-8">Lade Match-History ...</div>
+                <div className="text-[#7a8aa0] text-center py-8">Lade Match-History ...</div>
               )}
               {!pageLoading && data.matchIds.length === 0 && (
-                <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#8a9bb0] text-sm">
+                <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#a0b0c5] text-sm">
                   Keine Standard-Ranked-Matches gefunden.
                 </div>
               )}
               {!pageLoading && data.matchIds.length > 0 && pageMatches.length === 0 && (
-                <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#8a9bb0] text-sm">
+                <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#a0b0c5] text-sm">
                   {t('tft.noMatchesForSet')}
                 </div>
               )}
@@ -330,7 +330,7 @@ function Pagination({ page, totalPages, onChange, loading }: { page: number; tot
       <button
         onClick={() => onChange(Math.max(0, page - 1))}
         disabled={page === 0 || loading}
-        className="px-3 py-1.5 rounded bg-[#141c2e] border border-[#1e2a3a] text-[#8a9bb0] hover:text-white hover:border-[#7B61FF]/40 disabled:opacity-40 disabled:cursor-not-allowed"
+        className="px-3 py-1.5 rounded bg-[#141c2e] border border-[#1e2a3a] text-[#a0b0c5] hover:text-white hover:border-[#7B61FF]/40 disabled:opacity-40 disabled:cursor-not-allowed"
       >
         ← Zurück
       </button>
@@ -341,7 +341,7 @@ function Pagination({ page, totalPages, onChange, loading }: { page: number; tot
             onClick={() => onChange(i)}
             disabled={loading}
             className={`w-8 h-8 rounded text-xs font-medium ${
-              i === page ? 'bg-[#7B61FF] text-white' : 'bg-[#141c2e] border border-[#1e2a3a] text-[#8a9bb0] hover:text-white'
+              i === page ? 'bg-[#7B61FF] text-white' : 'bg-[#141c2e] border border-[#1e2a3a] text-[#a0b0c5] hover:text-white'
             }`}
           >
             {i + 1}
@@ -351,7 +351,7 @@ function Pagination({ page, totalPages, onChange, loading }: { page: number; tot
       <button
         onClick={() => onChange(Math.min(totalPages - 1, page + 1))}
         disabled={page >= totalPages - 1 || loading}
-        className="px-3 py-1.5 rounded bg-[#141c2e] border border-[#1e2a3a] text-[#8a9bb0] hover:text-white hover:border-[#7B61FF]/40 disabled:opacity-40 disabled:cursor-not-allowed"
+        className="px-3 py-1.5 rounded bg-[#141c2e] border border-[#1e2a3a] text-[#a0b0c5] hover:text-white hover:border-[#7B61FF]/40 disabled:opacity-40 disabled:cursor-not-allowed"
       >
         Weiter →
       </button>
@@ -375,10 +375,10 @@ function SeasonStats({
   if (loading && !stats) {
     return (
       <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-5 mb-5">
-        <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-3">
+        <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">
           Saison-Statistik{activeSet != null ? ` · Set ${activeSet}` : ''}
         </div>
-        <div className="text-[#8a9bb0] text-sm">Berechne aus allen Saison-Matches ...</div>
+        <div className="text-[#a0b0c5] text-sm">Berechne aus allen Saison-Matches ...</div>
       </div>
     );
   }
@@ -386,13 +386,13 @@ function SeasonStats({
   return (
     <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-5 mb-5">
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-        <div className="text-[#8a9bb0] text-xs uppercase tracking-widest">
+        <div className="text-[#a0b0c5] text-xs uppercase tracking-widest">
           Saison-Statistik{activeSet != null ? ` · Set ${activeSet}` : ''}
         </div>
       </div>
 
       {!stats?.hasStats ? (
-        <div className="text-[#8a9bb0] text-sm py-4 text-center">
+        <div className="text-[#a0b0c5] text-sm py-4 text-center">
           Keine Solo-Ranked-Matches für Set {activeSet} im Cache.
         </div>
       ) : (
@@ -408,7 +408,7 @@ function SeasonStats({
               block holding 5 chips top-to-bottom (1-5 / 6-10 / 11-15). */}
           {stats.topUnits && stats.topUnits.length > 0 && (
             <div className="mb-5">
-              <div className="text-[#8a9bb0] text-[10px] uppercase tracking-widest mb-2">{t('tft.topUnitsPlayed')}</div>
+              <div className="text-[#a0b0c5] text-[10px] uppercase tracking-widest mb-2">{t('tft.topUnitsPlayed')}</div>
               {/* lg:grid-rows-5 + lg:grid-flow-col fills column 1 first
                   (ranks 1-5), then column 2 (6-10), then column 3 (11-15).
                   Smaller breakpoints fall back to row-wise flow. */}
@@ -430,7 +430,7 @@ function SeasonStats({
           {/* Favourite augments: 5 chips across the full width (1 row on lg). */}
           {stats.topAugments && stats.topAugments.length > 0 && (
             <div className="mb-5">
-              <div className="text-[#8a9bb0] text-[10px] uppercase tracking-widest mb-2">{t('tft.favoriteAugments')}</div>
+              <div className="text-[#a0b0c5] text-[10px] uppercase tracking-widest mb-2">{t('tft.favoriteAugments')}</div>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
                 {stats.topAugments.slice(0, 5).map((a, i) => (
                   <AugmentChip
@@ -460,7 +460,7 @@ function rankColor(rank: number): string {
   if (rank === 1) return '#f0c040';   // gold
   if (rank === 2) return '#cfd6dc';   // silver
   if (rank === 3) return '#cd7f32';   // bronze
-  return '#8a9bb0';                   // neutral
+  return '#a0b0c5';                   // neutral
 }
 
 function RankBadge({ rank }: { rank: number }) {
@@ -536,13 +536,13 @@ function PlayStyle({ scores, dist, avgs }: { scores: NonNullable<PlayerStats['sc
 
   return (
     <>
-      <div className="text-[#8a9bb0] text-[10px] uppercase tracking-widest mb-2">{t('tft.gameStyle')}</div>
+      <div className="text-[#a0b0c5] text-[10px] uppercase tracking-widest mb-2">{t('tft.gameStyle')}</div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-3">
         <div className="bg-[#0a0e1a] border border-[#1e2a3a] rounded p-3" style={{ height: 240 }}>
           <ResponsiveContainer width="100%" height="100%">
             <RadarChart data={radarData}>
               <PolarGrid stroke="#1e2a3a" />
-              <PolarAngleAxis dataKey="axis" stroke="#8a9bb0" tick={{ fontSize: 11 }} />
+              <PolarAngleAxis dataKey="axis" stroke="#a0b0c5" tick={{ fontSize: 11 }} />
               <Radar name="Score" dataKey="value" stroke="#7B61FF" fill="#7B61FF" fillOpacity={0.35} />
               <Tooltip
                 cursor={{ fill: 'transparent' }}
@@ -553,11 +553,11 @@ function PlayStyle({ scores, dist, avgs }: { scores: NonNullable<PlayerStats['sc
           </ResponsiveContainer>
         </div>
         <div className="bg-[#0a0e1a] border border-[#1e2a3a] rounded p-3" style={{ height: 240 }}>
-          <div className="text-[#8a9bb0] text-[10px] mb-1">{t('tft.placementDistribution')}</div>
+          <div className="text-[#a0b0c5] text-[10px] mb-1">{t('tft.placementDistribution')}</div>
           <ResponsiveContainer width="100%" height="90%">
             <BarChart data={histData} margin={{ top: 5, right: 0, bottom: 0, left: -25 }}>
-              <XAxis dataKey="place" stroke="#8a9bb0" tick={{ fontSize: 10 }} />
-              <YAxis stroke="#8a9bb0" tick={{ fontSize: 10 }} />
+              <XAxis dataKey="place" stroke="#a0b0c5" tick={{ fontSize: 10 }} />
+              <YAxis stroke="#a0b0c5" tick={{ fontSize: 10 }} />
               <Tooltip
                 cursor={{ fill: 'rgba(123,97,255,0.1)' }}
                 contentStyle={{ backgroundColor: '#0d1526', border: '1px solid #1e2a3a', fontSize: 11 }}
@@ -583,7 +583,7 @@ function PlayStyle({ scores, dist, avgs }: { scores: NonNullable<PlayerStats['sc
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-[#0a0e1a] border border-[#1e2a3a] rounded px-2 py-1.5">
-      <div className="text-[#8a9bb0] text-[9px] uppercase tracking-widest">{label}</div>
+      <div className="text-[#a0b0c5] text-[9px] uppercase tracking-widest">{label}</div>
       <div className="text-white text-sm font-medium mt-0.5">{value}</div>
     </div>
   );
@@ -592,7 +592,7 @@ function MiniStat({ label, value }: { label: string; value: string }) {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-[#0a0e1a] border border-[#1e2a3a] rounded px-3 py-2">
-      <div className="text-[#8a9bb0] text-[10px] uppercase tracking-widest">{label}</div>
+      <div className="text-[#a0b0c5] text-[10px] uppercase tracking-widest">{label}</div>
       <div className="text-white text-xl font-semibold mt-0.5">{value}</div>
     </div>
   );
@@ -633,16 +633,16 @@ function RankBlock({ ranked, seasonRanks }: { ranked: SummonerData['ranked']; se
 
   const inner = !ranked || !ranked.tier ? (
     <>
-      <div className="text-[#8a9bb0] text-xs uppercase tracking-widest">Standard Ranked</div>
-      <div className="text-[#8a9bb0] text-sm mt-1">Unranked</div>
+      <div className="text-[#a0b0c5] text-xs uppercase tracking-widest">Standard Ranked</div>
+      <div className="text-[#a0b0c5] text-sm mt-1">Unranked</div>
     </>
   ) : (
     <>
-      <div className="text-[#8a9bb0] text-xs uppercase tracking-widest">Standard Ranked</div>
-      <div className="text-lg font-medium mt-1" style={{ color: TIER_COLORS[ranked.tier] || '#8a9bb0' }}>
+      <div className="text-[#a0b0c5] text-xs uppercase tracking-widest">Standard Ranked</div>
+      <div className="text-lg font-medium mt-1" style={{ color: TIER_COLORS[ranked.tier] || '#a0b0c5' }}>
         {formatTier(ranked.tier, ranked.rank)} <span className="text-white">{ranked.leaguePoints ?? 0} LP</span>
       </div>
-      <div className="text-[#8a9bb0] text-xs">
+      <div className="text-[#a0b0c5] text-xs">
         {ranked.wins ?? 0}W {ranked.losses ?? 0}L
         {(ranked.wins ?? 0) + (ranked.losses ?? 0) > 0 && (
           <> · {Math.round(((ranked.wins ?? 0) / ((ranked.wins ?? 0) + (ranked.losses ?? 0))) * 100)}% WR</>
@@ -664,7 +664,7 @@ function RankBlock({ ranked, seasonRanks }: { ranked: SummonerData['ranked']; se
           </button>
           {open && (
             <div className="absolute right-0 mt-1 z-20 bg-[#0d1526] border border-[#1e2a3a] rounded-lg shadow-lg p-3 min-w-[280px] text-left">
-              <div className="text-[#8a9bb0] text-[10px] uppercase tracking-widest mb-2">
+              <div className="text-[#a0b0c5] text-[10px] uppercase tracking-widest mb-2">
                 Höchster Rang pro Set
               </div>
               <div className="space-y-1.5">
@@ -682,7 +682,7 @@ function RankBlock({ ranked, seasonRanks }: { ranked: SummonerData['ranked']; se
 
 function SeasonRankRow({ season }: { season: SeasonRank }) {
   const tier = (season.peak_tier || '').toUpperCase();
-  const color = TIER_COLORS[tier] || '#8a9bb0';
+  const color = TIER_COLORS[tier] || '#a0b0c5';
   const setLabel = formatSetLabel(season.set_label, season.set_number);
   // Build from structured fields via formatTier so Challenger/GM/Master
   // never render the bogus "I" division. peak_rating_label is from the
@@ -698,11 +698,11 @@ function SeasonRankRow({ season }: { season: SeasonRank }) {
   ].filter(Boolean).join(' ');
   return (
     <div className="flex items-center justify-between gap-3 text-xs">
-      <div className="text-[#8a9bb0] flex-shrink-0">{setLabel}</div>
+      <div className="text-[#a0b0c5] flex-shrink-0">{setLabel}</div>
       <div className="flex items-center gap-2 min-w-0">
         <span style={{ color }} className="font-medium truncate">{rankText}</span>
         {season.total_games != null && (
-          <span className="text-[#4a5a70] text-[10px] flex-shrink-0">{season.total_games} Sp.</span>
+          <span className="text-[#7a8aa0] text-[10px] flex-shrink-0">{season.total_games} Sp.</span>
         )}
       </div>
     </div>

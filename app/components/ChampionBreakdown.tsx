@@ -53,7 +53,7 @@ export default function ChampionBreakdown({ matches, ddVersion }: Props) {
   return (
     <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 mb-4">
       <div className="flex items-center justify-between mb-4">
-        <div className="text-[#8a9bb0] text-xs uppercase tracking-widest">
+        <div className="text-[#a0b0c5] text-xs uppercase tracking-widest">
           Champion-Statistiken
         </div>
         <div className="flex gap-1">
@@ -64,7 +64,7 @@ export default function ChampionBreakdown({ matches, ddVersion }: Props) {
               className={`px-3 py-1 rounded text-xs transition-colors ${
                 sortBy === key
                   ? 'bg-[#c89b3c]/20 text-[#c89b3c] border border-[#c89b3c]/30'
-                  : 'text-[#4a5a70] hover:text-[#8a9bb0]'
+                  : 'text-[#7a8aa0] hover:text-[#a0b0c5]'
               }`}
             >
               {label}
@@ -73,7 +73,7 @@ export default function ChampionBreakdown({ matches, ddVersion }: Props) {
         </div>
       </div>
 
-      <div className="grid grid-cols-[2.5rem_2.5rem_1fr_3.5rem_4.5rem_5rem_4rem_4rem] gap-2 px-2 py-1 text-[#4a5a70] text-xs uppercase">
+      <div className="grid grid-cols-[2.5rem_2.5rem_1fr_3.5rem_4.5rem_5rem_4rem_4rem] gap-2 px-2 py-1 text-[#7a8aa0] text-xs uppercase">
         <div>#</div>
         <div />
         <div>Champion</div>
@@ -96,7 +96,7 @@ export default function ChampionBreakdown({ matches, ddVersion }: Props) {
 
           return (
             <div key={s.champion} className="grid grid-cols-[2.5rem_2.5rem_1fr_3.5rem_4.5rem_5rem_4rem_4rem] gap-2 px-2 py-1.5 rounded hover:bg-[#141c2e] items-center">
-              <div className="text-[#4a5a70] text-sm">{i + 1}</div>
+              <div className="text-[#7a8aa0] text-sm">{i + 1}</div>
               <img
                 src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/champion/${s.champion}.png`}
                 alt={s.champion}
@@ -111,16 +111,16 @@ export default function ChampionBreakdown({ matches, ddVersion }: Props) {
                 <div className="w-full h-1.5 bg-red-500/30 rounded overflow-hidden mt-1">
                   <div className="h-full bg-green-500/70 rounded" style={{ width: `${wr}%` }} />
                 </div>
-                <div className="text-[#4a5a70] text-xs mt-0.5">{s.wins}W {s.games - s.wins}L</div>
+                <div className="text-[#7a8aa0] text-xs mt-0.5">{s.wins}W {s.games - s.wins}L</div>
               </div>
               <div className="text-center">
                 <div className={`text-sm font-medium ${kda >= 4 ? 'text-green-400' : kda >= 2.5 ? 'text-white' : 'text-red-400'}`}>
                   {kda.toFixed(2)}
                 </div>
-                <div className="text-[#4a5a70] text-xs">{avgK}/{avgD}/{avgA}</div>
+                <div className="text-[#7a8aa0] text-xs">{avgK}/{avgD}/{avgA}</div>
               </div>
-              <div className="text-[#8a9bb0] text-sm text-center">{csMin.toFixed(1)}</div>
-              <div className="text-[#8a9bb0] text-sm text-center">{dmgMin}</div>
+              <div className="text-[#a0b0c5] text-sm text-center">{csMin.toFixed(1)}</div>
+              <div className="text-[#a0b0c5] text-sm text-center">{dmgMin}</div>
             </div>
           );
         })}

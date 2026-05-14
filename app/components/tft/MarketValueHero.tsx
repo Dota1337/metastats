@@ -108,7 +108,7 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
       <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-5 mb-5">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
-            <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-2">{t('tft.marketValue')}</div>
+            <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-2">{t('tft.marketValue')}</div>
             <div className="h-9 w-32 bg-[#1e2a3a] rounded animate-pulse" />
             <div className="h-3 w-20 bg-[#1e2a3a] rounded animate-pulse mt-2" />
           </div>
@@ -124,8 +124,8 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
     const reason = data?.marketValue.notRatedReason || 'unrated';
     return (
       <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-5 mb-5">
-        <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-2">{t('tft.marketValue')}</div>
-        <div className="text-[#8a9bb0] text-base">
+        <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-2">{t('tft.marketValue')}</div>
+        <div className="text-[#a0b0c5] text-base">
           {reason === 'below_master' ? t('tft.marketValue.belowMaster') : t('tft.marketValue.notRated')}
         </div>
       </div>
@@ -147,7 +147,7 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
         {/* Left: Big EUR value + 7d delta */}
         <div className="flex flex-col justify-between min-w-[180px]">
           <div>
-            <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-1.5">{t('tft.marketValue')}</div>
+            <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-1.5">{t('tft.marketValue')}</div>
             <div className="text-white text-4xl sm:text-5xl font-semibold tabular-nums leading-tight">
               {formatEuro(mv.finalValue, lang)}
             </div>
@@ -156,12 +156,12 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
             <div className="mt-2 flex items-center gap-2 text-sm">
               <span
                 className="font-medium tabular-nums"
-                style={{ color: isFlat ? '#8a9bb0' : isUp ? '#3ecf8e' : '#e44040' }}
+                style={{ color: isFlat ? '#a0b0c5' : isUp ? '#3ecf8e' : '#e44040' }}
               >
                 {isUp ? '▲' : isFlat ? '–' : '▼'}{' '}
                 {formatEuro(Math.abs(delta.abs), lang)} ({delta.pct >= 0 ? '+' : ''}{delta.pct.toFixed(1)}%)
               </span>
-              <span className="text-[#4a5a70] text-xs">· {t('tft.marketValue.last7d')}</span>
+              <span className="text-[#7a8aa0] text-xs">· {t('tft.marketValue.last7d')}</span>
             </div>
           )}
         </div>
@@ -169,11 +169,11 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
         {/* Middle: Multiplier + sample size */}
         <div className="flex flex-col justify-between min-w-[140px]">
           <div>
-            <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-1.5">{t('tft.marketValue.multiplier')}</div>
+            <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-1.5">{t('tft.marketValue.multiplier')}</div>
             <div className="text-white text-2xl font-medium tabular-nums">
               ×{mv.multiplier.toFixed(2)}
             </div>
-            <div className="text-[#8a9bb0] text-xs mt-1">
+            <div className="text-[#a0b0c5] text-xs mt-1">
               {t('tft.marketValue.basedOn').replace('{n}', String(mv.sampleSize))}
             </div>
           </div>
@@ -187,7 +187,7 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
 
         {/* Right: 30d sparkline (if we have history) */}
         <div className="flex-1 min-w-[200px] max-w-md">
-          <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-1.5 text-right">
+          <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-1.5 text-right">
             {t('tft.marketValue.last30d')}
           </div>
           <div className="h-20">
@@ -204,7 +204,7 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
                       borderRadius: 6,
                       fontSize: 12,
                     }}
-                    labelStyle={{ color: '#8a9bb0' }}
+                    labelStyle={{ color: '#a0b0c5' }}
                     formatter={(value: any) => [formatEuro(Number(value), lang), t('tft.marketValue')]}
                     labelFormatter={(d) => typeof d === 'string' ? new Date(d).toLocaleDateString(LOCALE_MAP[lang]) : ''}
                   />
@@ -248,12 +248,12 @@ function AgentRow({ agent }: { agent: AgentScore }) {
   })();
   const positive = agent.delta > 0;
   const negative = agent.delta < 0;
-  const color = positive ? '#3ecf8e' : negative ? '#e44040' : '#8a9bb0';
+  const color = positive ? '#3ecf8e' : negative ? '#e44040' : '#a0b0c5';
   return (
     <div className="flex items-start justify-between gap-3">
       <div className="flex-1 min-w-0">
         <div className="text-white font-medium">{label}</div>
-        <div className="text-[#4a5a70] text-[10px] mt-0.5">
+        <div className="text-[#7a8aa0] text-[10px] mt-0.5">
           {agent.notes.length > 0
             ? agent.notes.map(n => `${n.label}${n.detail ? ` (${n.detail})` : ''}`).join(' · ')
             : t('tft.marketValue.agent.noImpact')}

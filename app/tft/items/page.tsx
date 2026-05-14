@@ -66,7 +66,7 @@ export default function TftItemsPage() {
         <StatsFilterBar filters={filters} patches={patches} onChange={setFilters} />
 
         {loading && hasData === null && (
-          <div className="text-[#4a5a70] text-center py-8">{t('tft.noDataYet').replace('Noch keine Daten', 'Lade')}</div>
+          <div className="text-[#7a8aa0] text-center py-8">{t('tft.noDataYet').replace('Noch keine Daten', 'Lade')}</div>
         )}
         {hasData === false && <EmptyData />}
 
@@ -76,7 +76,7 @@ export default function TftItemsPage() {
                 fill the row) → 4 stat columns. Name moves from 1fr to a
                 fixed 12rem so the TopUsers row gets the slack — that's
                 where the cost-bordered champion tiles want to breathe. */}
-            <div className="hidden md:grid grid-cols-[3rem_12rem_1fr_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#4a5a70] bg-[#0a0e1a]">
+            <div className="hidden md:grid grid-cols-[3rem_12rem_1fr_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#7a8aa0] bg-[#0a0e1a]">
               <div></div>
               <div>{t('nav.items')}</div>
               <div>{t('tft.topUsers')}</div>
@@ -85,7 +85,7 @@ export default function TftItemsPage() {
               <div className="text-right">{t('tft.top4')}</div>
               <div className="text-right">{t('tft.gamesShort')}</div>
             </div>
-            <div className="md:hidden px-4 py-2 text-[10px] uppercase tracking-widest text-[#4a5a70] bg-[#0a0e1a]">
+            <div className="md:hidden px-4 py-2 text-[10px] uppercase tracking-widest text-[#7a8aa0] bg-[#0a0e1a]">
               {t('nav.items')}
             </div>
             {items.map(it => {
@@ -103,7 +103,7 @@ export default function TftItemsPage() {
                     {url ? (
                       <img src={url} alt={meta!.name} className="w-9 h-9 rounded flex-shrink-0" />
                     ) : (
-                      <div className="w-9 h-9 rounded bg-[#1e2a3a] flex items-center justify-center text-[8px] text-[#4a5a70] px-0.5 text-center flex-shrink-0">{prettyApi(it.apiName)}</div>
+                      <div className="w-9 h-9 rounded bg-[#1e2a3a] flex items-center justify-center text-[8px] text-[#7a8aa0] px-0.5 text-center flex-shrink-0">{prettyApi(it.apiName)}</div>
                     )}
                     <div className="text-white truncate flex-1 md:flex-initial">{meta?.name || prettyApi(it.apiName)}</div>
                   </div>
@@ -176,11 +176,11 @@ function costToColor(cost: number) {
 // desktop cell. The extra `<div className="hidden md:block">{games}</div>`
 // after the Cells covers the 5th column.
 function Cell({ label, value, accent }: { label: string; value: string; accent?: 'white' | 'muted' }) {
-  const valueClass = accent === 'white' ? 'text-white' : accent === 'muted' ? 'text-[#4a5a70]' : 'text-[#8a9bb0]';
+  const valueClass = accent === 'white' ? 'text-white' : accent === 'muted' ? 'text-[#7a8aa0]' : 'text-[#a0b0c5]';
   return (
     <>
       <div className="md:hidden">
-        <div className="text-[#4a5a70] text-[9px] uppercase tracking-widest leading-tight">{label}</div>
+        <div className="text-[#7a8aa0] text-[9px] uppercase tracking-widest leading-tight">{label}</div>
         <div className={`${valueClass} tabular-nums leading-tight`}>{value}</div>
       </div>
       <div className={`hidden md:block text-right ${valueClass} tabular-nums`}>{value}</div>

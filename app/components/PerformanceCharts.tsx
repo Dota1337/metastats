@@ -14,7 +14,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
     <div className="bg-[#0d1526] border border-[#1e2a3a] rounded px-3 py-2 text-xs shadow-lg">
-      <div className="text-[#8a9bb0] mb-1">{label}</div>
+      <div className="text-[#a0b0c5] mb-1">{label}</div>
       {payload.map((p: any, i: number) => (
         <div key={i} className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }} />
@@ -65,7 +65,7 @@ export default function PerformanceCharts({ matches, ddVersion }: Props) {
 
   return (
     <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 mb-4">
-      <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-4">
+      <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-4">
         Performance-Verlauf
       </div>
 
@@ -73,7 +73,7 @@ export default function PerformanceCharts({ matches, ddVersion }: Props) {
         {/* Winrate Trend */}
         <div>
           <div className="text-white text-sm font-medium mb-2">Winrate-Verlauf</div>
-          <div className="text-[#4a5a70] text-xs mb-3">Kumulativ + 5-Spiele-Schnitt</div>
+          <div className="text-[#7a8aa0] text-xs mb-3">Kumulativ + 5-Spiele-Schnitt</div>
           <ResponsiveContainer width="100%" height={180}>
             <AreaChart data={rollingData}>
               <defs>
@@ -83,8 +83,8 @@ export default function PerformanceCharts({ matches, ddVersion }: Props) {
                 </linearGradient>
               </defs>
               <CartesianGrid stroke="#1e2a3a" strokeDasharray="3 3" />
-              <XAxis dataKey="game" tick={{ fill: '#4a5a70', fontSize: 10 }} tickLine={false} axisLine={false} />
-              <YAxis domain={[0, 100]} tick={{ fill: '#4a5a70', fontSize: 10 }} tickLine={false} axisLine={false} unit="%" />
+              <XAxis dataKey="game" tick={{ fill: '#7a8aa0', fontSize: 10 }} tickLine={false} axisLine={false} />
+              <YAxis domain={[0, 100]} tick={{ fill: '#7a8aa0', fontSize: 10 }} tickLine={false} axisLine={false} unit="%" />
               <Tooltip content={<CustomTooltip />} />
               <Area type="monotone" dataKey="wr" stroke="#4ade8080" strokeWidth={1} fill="none" name="Kumulativ" dot={false} />
               <Area type="monotone" dataKey="rollingWR" stroke="#4ade80" strokeWidth={2} fill="url(#wrGrad)" name="5-Spiele WR" dot={false} />
@@ -95,7 +95,7 @@ export default function PerformanceCharts({ matches, ddVersion }: Props) {
         {/* KDA Trend */}
         <div>
           <div className="text-white text-sm font-medium mb-2">KDA-Verlauf</div>
-          <div className="text-[#4a5a70] text-xs mb-3">5-Spiele-Durchschnitt</div>
+          <div className="text-[#7a8aa0] text-xs mb-3">5-Spiele-Durchschnitt</div>
           <ResponsiveContainer width="100%" height={180}>
             <AreaChart data={rollingData}>
               <defs>
@@ -105,8 +105,8 @@ export default function PerformanceCharts({ matches, ddVersion }: Props) {
                 </linearGradient>
               </defs>
               <CartesianGrid stroke="#1e2a3a" strokeDasharray="3 3" />
-              <XAxis dataKey="game" tick={{ fill: '#4a5a70', fontSize: 10 }} tickLine={false} axisLine={false} />
-              <YAxis tick={{ fill: '#4a5a70', fontSize: 10 }} tickLine={false} axisLine={false} />
+              <XAxis dataKey="game" tick={{ fill: '#7a8aa0', fontSize: 10 }} tickLine={false} axisLine={false} />
+              <YAxis tick={{ fill: '#7a8aa0', fontSize: 10 }} tickLine={false} axisLine={false} />
               <Tooltip content={<CustomTooltip />} />
               <Area type="monotone" dataKey="kda" stroke="#c89b3c50" strokeWidth={1} fill="none" name="KDA" dot={false} />
               <Area type="monotone" dataKey="rollingKDA" stroke="#c89b3c" strokeWidth={2} fill="url(#kdaGrad)" name="5-Spiele KDA" dot={false} />
@@ -117,7 +117,7 @@ export default function PerformanceCharts({ matches, ddVersion }: Props) {
         {/* CS/Min Trend */}
         <div>
           <div className="text-white text-sm font-medium mb-2">CS/Min-Verlauf</div>
-          <div className="text-[#4a5a70] text-xs mb-3">5-Spiele-Durchschnitt</div>
+          <div className="text-[#7a8aa0] text-xs mb-3">5-Spiele-Durchschnitt</div>
           <ResponsiveContainer width="100%" height={180}>
             <AreaChart data={rollingData}>
               <defs>
@@ -127,8 +127,8 @@ export default function PerformanceCharts({ matches, ddVersion }: Props) {
                 </linearGradient>
               </defs>
               <CartesianGrid stroke="#1e2a3a" strokeDasharray="3 3" />
-              <XAxis dataKey="game" tick={{ fill: '#4a5a70', fontSize: 10 }} tickLine={false} axisLine={false} />
-              <YAxis tick={{ fill: '#4a5a70', fontSize: 10 }} tickLine={false} axisLine={false} />
+              <XAxis dataKey="game" tick={{ fill: '#7a8aa0', fontSize: 10 }} tickLine={false} axisLine={false} />
+              <YAxis tick={{ fill: '#7a8aa0', fontSize: 10 }} tickLine={false} axisLine={false} />
               <Tooltip content={<CustomTooltip />} />
               <Area type="monotone" dataKey="csMin" stroke="#60a5fa50" strokeWidth={1} fill="none" name="CS/Min" dot={false} />
               <Area type="monotone" dataKey="rollingCS" stroke="#60a5fa" strokeWidth={2} fill="url(#csGrad)" name="5-Spiele CS/Min" dot={false} />
@@ -139,11 +139,11 @@ export default function PerformanceCharts({ matches, ddVersion }: Props) {
         {/* Win/Loss per Game Bar Chart */}
         <div>
           <div className="text-white text-sm font-medium mb-2">Siege & Niederlagen</div>
-          <div className="text-[#4a5a70] text-xs mb-3">Pro Spiel</div>
+          <div className="text-[#7a8aa0] text-xs mb-3">Pro Spiel</div>
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={chartData.map(d => ({ ...d, winBar: d.win ? 1 : 0, lossBar: d.win ? 0 : 1 }))}>
               <CartesianGrid stroke="#1e2a3a" strokeDasharray="3 3" />
-              <XAxis dataKey="game" tick={{ fill: '#4a5a70', fontSize: 10 }} tickLine={false} axisLine={false} />
+              <XAxis dataKey="game" tick={{ fill: '#7a8aa0', fontSize: 10 }} tickLine={false} axisLine={false} />
               <YAxis domain={[0, 1]} tick={false} axisLine={false} />
               <Tooltip content={({ active, payload }: any) => {
                 if (!active || !payload?.length) return null;

@@ -80,7 +80,7 @@ export default function TftCompDetailPage() {
 
         {hasData === false && <EmptyData />}
         {comp === null && hasData && (
-          <div className="text-[#8a9bb0] text-center py-8">{t('tft.comp.notFound')}</div>
+          <div className="text-[#a0b0c5] text-center py-8">{t('tft.comp.notFound')}</div>
         )}
 
         {comp && (
@@ -143,7 +143,7 @@ export default function TftCompDetailPage() {
                 inline. Each set shows its 3 items + relative pick share. */}
             {comp.carryItems && comp.carryItems.length > 0 && (
               <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
-                <h2 className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-3">{t('tft.comp.topItemSets')}</h2>
+                <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.topItemSets')}</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {comp.carryItems.slice(0, 3).map((set: { items: string[]; count: number }, i: number) => {
                     const totalCount = comp.carryItems.reduce((s: number, c: any) => s + (Number(c.count) || 0), 0);
@@ -151,7 +151,7 @@ export default function TftCompDetailPage() {
                     return (
                       <div key={i} className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3">
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-[#8a9bb0] text-[10px] uppercase tracking-widest">
+                          <span className="text-[#a0b0c5] text-[10px] uppercase tracking-widest">
                             {t('tft.comp.itemSet')} {i + 1}
                           </span>
                           <span className="text-[#7B61FF] text-xs font-medium tabular-nums">
@@ -192,7 +192,7 @@ export default function TftCompDetailPage() {
                 Y at 3-2, Z at 4-2". */}
             {comp.typicalAugments && comp.typicalAugments.length > 0 && (
               <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
-                <h2 className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-3">{t('tft.comp.augmentsByStage')}</h2>
+                <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.augmentsByStage')}</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {[0, 1, 2].map(slot => {
                     const augmentsForSlot = (comp.typicalAugments as { apiName: string; count: number }[])
@@ -208,11 +208,11 @@ export default function TftCompDetailPage() {
                       .slice(0, 4);
                     return (
                       <div key={slot} className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3">
-                        <div className="text-[#8a9bb0] text-[10px] uppercase tracking-widest mb-2">
+                        <div className="text-[#a0b0c5] text-[10px] uppercase tracking-widest mb-2">
                           {t('tft.comp.stage')} {SLOT_LABELS[slot]}
                         </div>
                         {augmentsForSlot.length === 0 ? (
-                          <div className="text-[#4a5a70] text-[10px] py-2">{t('tft.comp.noStageData')}</div>
+                          <div className="text-[#7a8aa0] text-[10px] py-2">{t('tft.comp.noStageData')}</div>
                         ) : (
                           <div className="space-y-1.5">
                             {augmentsForSlot.map(a => {
@@ -244,7 +244,7 @@ export default function TftCompDetailPage() {
             {/* All typical units in larger size, clickable */}
             {comp.typicalUnits && comp.typicalUnits.length > 0 && (
               <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
-                <h2 className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-3">{t('tft.comp.typicalUnits')}</h2>
+                <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.typicalUnits')}</h2>
                 <div className="flex flex-wrap gap-2">
                   {comp.typicalUnits.map((u: { characterId: string; count: number }) => {
                     const ch = assets?.champions[u.characterId];
@@ -277,7 +277,7 @@ export default function TftCompDetailPage() {
                 <div>
                   <h3 className="text-green-400 text-xs uppercase tracking-widest mb-2">{t('tft.comp.strongAgainst')}</h3>
                   <div className="space-y-1.5">
-                    {(comp.counters.beats || []).length === 0 && <div className="text-[#4a5a70] text-xs">{t('tft.comp.noSignificantData')}</div>}
+                    {(comp.counters.beats || []).length === 0 && <div className="text-[#7a8aa0] text-xs">{t('tft.comp.noSignificantData')}</div>}
                     {(comp.counters.beats || []).map((c: any, i: number) => (
                       <a key={i} href={`/tft/comps/${encodeURIComponent(c.b)}?bucket=${bucket}`}
                          className="flex items-center justify-between bg-[#0d1526] border border-[#1e2a3a] rounded px-3 py-2 hover:border-green-500/40">
@@ -290,7 +290,7 @@ export default function TftCompDetailPage() {
                 <div>
                   <h3 className="text-red-400 text-xs uppercase tracking-widest mb-2">{t('tft.comp.weakAgainst')}</h3>
                   <div className="space-y-1.5">
-                    {(comp.counters.losesTo || []).length === 0 && <div className="text-[#4a5a70] text-xs">{t('tft.comp.noSignificantData')}</div>}
+                    {(comp.counters.losesTo || []).length === 0 && <div className="text-[#7a8aa0] text-xs">{t('tft.comp.noSignificantData')}</div>}
                     {(comp.counters.losesTo || []).map((c: any, i: number) => (
                       <a key={i} href={`/tft/comps/${encodeURIComponent(c.a)}?bucket=${bucket}`}
                          className="flex items-center justify-between bg-[#0d1526] border border-[#1e2a3a] rounded px-3 py-2 hover:border-red-500/40">
@@ -326,7 +326,7 @@ function costColor(cost: number) {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-[#0a0e1a] border border-[#1e2a3a] rounded px-3 py-2">
-      <div className="text-[#8a9bb0] text-[10px] uppercase tracking-widest">{label}</div>
+      <div className="text-[#a0b0c5] text-[10px] uppercase tracking-widest">{label}</div>
       <div className="text-white text-base font-semibold mt-0.5">{value}</div>
     </div>
   );
@@ -350,8 +350,8 @@ function DeltaStat({
   if (pro == null) {
     return (
       <div className="bg-[#0a0e1a] border border-[#1e2a3a] rounded px-3 py-2">
-        <div className="text-[#8a9bb0] text-[10px] uppercase tracking-widest">{label}</div>
-        <div className="text-[#4a5a70] text-base font-semibold mt-0.5">—</div>
+        <div className="text-[#a0b0c5] text-[10px] uppercase tracking-widest">{label}</div>
+        <div className="text-[#7a8aa0] text-base font-semibold mt-0.5">—</div>
       </div>
     );
   }
@@ -359,7 +359,7 @@ function DeltaStat({
   const betterColor = '#3ecf8e';
   const worseColor = '#e44040';
   const color = delta == null || delta === 0
-    ? '#8a9bb0'
+    ? '#a0b0c5'
     : (lowerIsBetter ? (delta < 0 ? betterColor : worseColor)
                      : (delta > 0 ? betterColor : worseColor));
   const arrow = delta == null || delta === 0
@@ -368,7 +368,7 @@ function DeltaStat({
                      : (delta > 0 ? '▲' : '▼'));
   return (
     <div className="bg-[#0a0e1a] border border-[#1e2a3a] rounded px-3 py-2">
-      <div className="text-[#8a9bb0] text-[10px] uppercase tracking-widest">{label}</div>
+      <div className="text-[#a0b0c5] text-[10px] uppercase tracking-widest">{label}</div>
       <div className="text-white text-base font-semibold mt-0.5 tabular-nums">{fmt(pro)}</div>
       {!rawOnly && delta != null && (
         <div className="text-[10px] tabular-nums mt-0.5" style={{ color }}>

@@ -35,7 +35,7 @@ interface AICoachProps {
 
 const GRADE_COLORS: Record<string, string> = {
   'S+': '#f0c040', 'S': '#f0c040', 'A': '#4ade80', 'B': '#60a5fa',
-  'C': '#8a9bb0', 'D': '#f87171', 'D-': '#ef4444',
+  'C': '#a0b0c5', 'D': '#f87171', 'D-': '#ef4444',
 };
 
 export default function AICoach({ matches, tier, role }: AICoachProps) {
@@ -81,7 +81,7 @@ export default function AICoach({ matches, tier, role }: AICoachProps) {
           </div>
           <div className="text-left">
             <div className="text-white text-sm font-medium">AI Coach</div>
-            <div className="text-[#4a5a70] text-[10px]">
+            <div className="text-[#7a8aa0] text-[10px]">
               {loading ? t('coach.analyzing') : report ? `${report.gamesAnalyzed} ${t('coach.gamesAnalyzed')}` : ''}
             </div>
           </div>
@@ -91,7 +91,7 @@ export default function AICoach({ matches, tier, role }: AICoachProps) {
           {report && !loading && (
             <>
               <div className="text-right">
-                <div className={`text-lg font-bold`} style={{ color: GRADE_COLORS[report.overallGrade] || '#8a9bb0' }}>
+                <div className={`text-lg font-bold`} style={{ color: GRADE_COLORS[report.overallGrade] || '#a0b0c5' }}>
                   {report.overallGrade}
                 </div>
               </div>
@@ -101,7 +101,7 @@ export default function AICoach({ matches, tier, role }: AICoachProps) {
                   className="h-full rounded-full transition-all duration-500"
                   style={{
                     width: `${report.overallScore}%`,
-                    backgroundColor: GRADE_COLORS[report.overallGrade] || '#8a9bb0',
+                    backgroundColor: GRADE_COLORS[report.overallGrade] || '#a0b0c5',
                   }}
                 />
               </div>
@@ -110,7 +110,7 @@ export default function AICoach({ matches, tier, role }: AICoachProps) {
           {loading && (
             <div className="w-4 h-4 border-2 border-[#c89b3c] border-t-transparent rounded-full animate-spin" />
           )}
-          <svg className={`w-4 h-4 text-[#4a5a70] transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <svg className={`w-4 h-4 text-[#7a8aa0] transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
           </svg>
         </div>
@@ -126,7 +126,7 @@ export default function AICoach({ matches, tier, role }: AICoachProps) {
           </div>
 
           {/* Compared to tier */}
-          <div className="text-[#4a5a70] text-[10px] text-center">
+          <div className="text-[#7a8aa0] text-[10px] text-center">
             {t('coach.comparedWith')} {report.comparedTo}{t('coach.playersRole')} {report.role}
           </div>
 
@@ -185,7 +185,7 @@ function InsightCard({ insight, color }: { insight: CoachingInsight; color: 'gre
         <span className="text-white text-xs font-medium">{insight.title}</span>
         <div className="flex items-center gap-2">
           <span className={`${c.text} text-xs font-bold`}>{insight.stat}</span>
-          <span className="text-[#4a5a70] text-[10px]">/ {formatBenchmark(insight.category, insight.benchmarkValue)}</span>
+          <span className="text-[#7a8aa0] text-[10px]">/ {formatBenchmark(insight.category, insight.benchmarkValue)}</span>
         </div>
       </div>
       {/* Percentile bar */}
@@ -193,7 +193,7 @@ function InsightCard({ insight, color }: { insight: CoachingInsight; color: 'gre
         <div className={`h-full ${c.bar} rounded-full transition-all duration-500`} style={{ width: `${insight.percentile}%` }} />
       </div>
       {insight.description && (
-        <div className="text-[#8a9bb0] text-[11px] leading-relaxed">{insight.description}</div>
+        <div className="text-[#a0b0c5] text-[11px] leading-relaxed">{insight.description}</div>
       )}
     </div>
   );

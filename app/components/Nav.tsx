@@ -32,7 +32,7 @@ export default function Nav({ active }: NavProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const linkClass = (key: NavProps['active']) =>
-    key === active ? 'text-white text-sm' : 'text-[#8a9bb0] text-sm hover:text-white';
+    key === active ? 'text-white text-sm' : 'text-[#a0b0c5] text-sm hover:text-white';
 
   const currentLang = LANGUAGES.find(l => l.code === lang) || LANGUAGES[0];
 
@@ -154,7 +154,7 @@ export default function Nav({ active }: NavProps) {
           {/* Global Search */}
           <div ref={searchRef} className="relative">
             <div className="flex items-center bg-[#141c2e] border border-[#2a3a50] rounded px-2.5 py-1 gap-2 hover:border-[#c89b3c]/50 transition-colors focus-within:border-[#c89b3c]">
-              <svg className="w-3.5 h-3.5 text-[#4a5a70] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="w-3.5 h-3.5 text-[#7a8aa0] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
               <input
@@ -165,7 +165,7 @@ export default function Nav({ active }: NavProps) {
                 onChange={e => { setSearchQuery(e.target.value); setSearchOpen(true); }}
                 onFocus={() => searchQuery && setSearchOpen(true)}
                 onKeyDown={handleSearchKeyDown}
-                className="bg-transparent text-white text-xs outline-none placeholder-[#4a5a70] w-36"
+                className="bg-transparent text-white text-xs outline-none placeholder-[#7a8aa0] w-36"
               />
             </div>
 
@@ -186,18 +186,18 @@ export default function Nav({ active }: NavProps) {
                       />
                     ) : (
                       <div className="w-6 h-6 rounded bg-[#1e2a3a] flex items-center justify-center">
-                        <svg className="w-3.5 h-3.5 text-[#8a9bb0]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <svg className="w-3.5 h-3.5 text-[#a0b0c5]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                         </svg>
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="text-white text-xs font-medium truncate">{r.name}</div>
-                      <div className="text-[#4a5a70] text-[10px]">
+                      <div className="text-[#7a8aa0] text-[10px]">
                         {r.type === 'champion' ? t('nav.champion') : t('nav.searchPlayer')}
                       </div>
                     </div>
-                    <svg className="w-3 h-3 text-[#4a5a70] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <svg className="w-3 h-3 text-[#7a8aa0] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                     </svg>
                   </button>
@@ -210,7 +210,7 @@ export default function Nav({ active }: NavProps) {
           <div className="relative">
             <button
               onClick={() => setLangOpen(!langOpen)}
-              className="flex items-center gap-1.5 bg-[#141c2e] border border-[#2a3a50] rounded px-2.5 py-1 text-xs font-medium text-[#8a9bb0] hover:text-white hover:border-[#c89b3c] transition-colors"
+              className="flex items-center gap-1.5 bg-[#141c2e] border border-[#2a3a50] rounded px-2.5 py-1 text-xs font-medium text-[#a0b0c5] hover:text-white hover:border-[#c89b3c] transition-colors"
             >
               <img src={currentLang.flagUrl} alt="" className="w-4 h-3 object-cover rounded-sm" />
               <span className="text-white">{currentLang.code.toUpperCase()}</span>
@@ -235,7 +235,7 @@ export default function Nav({ active }: NavProps) {
                       className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs transition-colors ${
                         lang === l.code
                           ? 'bg-[#c89b3c]/10 text-[#c89b3c]'
-                          : 'text-[#8a9bb0] hover:text-white hover:bg-[#141c2e]'
+                          : 'text-[#a0b0c5] hover:text-white hover:bg-[#141c2e]'
                       }`}
                     >
                       <img src={l.flagUrl} alt="" className="w-5 h-3.5 object-cover rounded-sm" />
@@ -254,7 +254,7 @@ export default function Nav({ active }: NavProps) {
         <div className="flex items-center gap-2 lg:hidden">
           <button
             onClick={() => { setSearchOpen(!searchOpen); setMenuOpen(false); }}
-            className="text-[#8a9bb0] hover:text-white p-1"
+            className="text-[#a0b0c5] hover:text-white p-1"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -262,7 +262,7 @@ export default function Nav({ active }: NavProps) {
           </button>
           <button
             onClick={() => { setMenuOpen(!menuOpen); setSearchOpen(false); }}
-            className="text-[#8a9bb0] hover:text-white p-1"
+            className="text-[#a0b0c5] hover:text-white p-1"
           >
             {menuOpen ? (
               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -281,7 +281,7 @@ export default function Nav({ active }: NavProps) {
       {searchOpen && (
         <div className="lg:hidden mt-3 pt-3 border-t border-[#1e2a3a]" ref={searchRef}>
           <div className="flex items-center bg-[#141c2e] border border-[#2a3a50] rounded px-3 py-2 gap-2">
-            <svg className="w-4 h-4 text-[#4a5a70] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="w-4 h-4 text-[#7a8aa0] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input
@@ -291,7 +291,7 @@ export default function Nav({ active }: NavProps) {
               onChange={e => setSearchQuery(e.target.value)}
               onKeyDown={handleSearchKeyDown}
               autoFocus
-              className="bg-transparent text-white text-sm outline-none placeholder-[#4a5a70] flex-1"
+              className="bg-transparent text-white text-sm outline-none placeholder-[#7a8aa0] flex-1"
             />
           </div>
           {results.length > 0 && (
@@ -310,14 +310,14 @@ export default function Nav({ active }: NavProps) {
                     />
                   ) : (
                     <div className="w-7 h-7 rounded bg-[#1e2a3a] flex items-center justify-center">
-                      <svg className="w-4 h-4 text-[#8a9bb0]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <svg className="w-4 h-4 text-[#a0b0c5]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="text-white text-sm font-medium truncate">{r.name}</div>
-                    <div className="text-[#4a5a70] text-xs">
+                    <div className="text-[#7a8aa0] text-xs">
                       {r.type === 'champion' ? 'Champion' : 'Spieler suchen'}
                     </div>
                   </div>
@@ -365,7 +365,7 @@ export default function Nav({ active }: NavProps) {
                   if (l.code !== lang) window.location.reload();
                 }}
                 className={`flex items-center gap-1.5 px-2 py-1.5 rounded text-xs ${
-                  lang === l.code ? 'bg-[#c89b3c]/10 text-[#c89b3c]' : 'text-[#8a9bb0]'
+                  lang === l.code ? 'bg-[#c89b3c]/10 text-[#c89b3c]' : 'text-[#a0b0c5]'
                 }`}
               >
                 <img src={l.flagUrl} alt="" className="w-5 h-3.5 object-cover rounded-sm" />

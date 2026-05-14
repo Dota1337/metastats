@@ -146,7 +146,7 @@ function FilterSelect({
 }) {
   return (
     <div>
-      <div className="text-[#4a5a70] text-[10px] uppercase tracking-widest mb-1">{label}</div>
+      <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest mb-1">{label}</div>
       <select
         value={value}
         onChange={e => onChange(e.target.value)}

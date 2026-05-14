@@ -115,13 +115,13 @@ export default function TftTraitsPage() {
         <StatsFilterBar filters={filters} patches={patches} onChange={setFilters} />
 
         {loading && hasData === null && (
-          <div className="text-[#4a5a70] text-center py-8">{t('tft.loading')}</div>
+          <div className="text-[#7a8aa0] text-center py-8">{t('tft.loading')}</div>
         )}
         {hasData === false && <EmptyData />}
 
         {hasData && grouped.length > 0 && (
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
-            <div className="hidden md:grid grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#4a5a70] bg-[#0a0e1a]">
+            <div className="hidden md:grid grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#7a8aa0] bg-[#0a0e1a]">
               <div></div>
               <div>{t('nav.traits')}</div>
               <div>{t('tft.trait.tiers')}</div>
@@ -131,7 +131,7 @@ export default function TftTraitsPage() {
               <div className="text-right">{t('tft.top4')}</div>
               <div className="text-right">{t('tft.gamesShort')}</div>
             </div>
-            <div className="md:hidden px-4 py-2 text-[10px] uppercase tracking-widest text-[#4a5a70] bg-[#0a0e1a]">{t('nav.traits')}</div>
+            <div className="md:hidden px-4 py-2 text-[10px] uppercase tracking-widest text-[#7a8aa0] bg-[#0a0e1a]">{t('nav.traits')}</div>
             {grouped.map(g => {
               const meta = assets?.traits[g.name];
               const url = tftIconUrl(assets, meta?.icon);
@@ -183,11 +183,11 @@ export default function TftTraitsPage() {
 // by the style index from CommunityDragon. Mirrors the in-game trait
 // activation row in the hex grid.
 function TierStrip({ tiers }: { tiers: TftTraitTier[] }) {
-  if (!tiers || tiers.length === 0) return <div className="text-[#4a5a70] text-[10px]">—</div>;
+  if (!tiers || tiers.length === 0) return <div className="text-[#7a8aa0] text-[10px]">—</div>;
   return (
     <div className="flex gap-1 flex-wrap">
       {tiers.map((tier, i) => {
-        const color = STYLE_COLORS[tier.style] || '#4a5a70';
+        const color = STYLE_COLORS[tier.style] || '#7a8aa0';
         return (
           <div
             key={i}
@@ -205,11 +205,11 @@ function TierStrip({ tiers }: { tiers: TftTraitTier[] }) {
 function prettyTrait(s: string) { return s.replace(/^TFT\d+_/, '').replace(/Trait$/, ''); }
 
 function Cell({ label, value, accent }: { label: string; value: string; accent?: 'white' | 'muted' }) {
-  const valueClass = accent === 'white' ? 'text-white' : accent === 'muted' ? 'text-[#4a5a70]' : 'text-[#8a9bb0]';
+  const valueClass = accent === 'white' ? 'text-white' : accent === 'muted' ? 'text-[#7a8aa0]' : 'text-[#a0b0c5]';
   return (
     <>
       <div className="md:hidden">
-        <div className="text-[#4a5a70] text-[9px] uppercase tracking-widest leading-tight">{label}</div>
+        <div className="text-[#7a8aa0] text-[9px] uppercase tracking-widest leading-tight">{label}</div>
         <div className={`${valueClass} tabular-nums leading-tight`}>{value}</div>
       </div>
       <div className={`hidden md:block text-right ${valueClass} tabular-nums`}>{value}</div>

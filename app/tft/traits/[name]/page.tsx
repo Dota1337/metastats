@@ -120,17 +120,17 @@ export default function TftTraitDetailPage() {
             </div>
           </div>
           {traitMeta?.desc && (
-            <p className="text-[#8a9bb0] text-sm mt-4 leading-relaxed">{traitMeta.desc}</p>
+            <p className="text-[#a0b0c5] text-sm mt-4 leading-relaxed">{traitMeta.desc}</p>
           )}
         </div>
 
         {/* Per-tier stats table */}
         {!loading && traitStats.length > 0 && (
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded mb-5 overflow-hidden">
-            <div className="px-4 py-2 bg-[#0a0e1a] text-[#8a9bb0] text-xs uppercase tracking-widest">
+            <div className="px-4 py-2 bg-[#0a0e1a] text-[#a0b0c5] text-xs uppercase tracking-widest">
               {t('tft.trait.statsPerTier')}
             </div>
-            <div className="grid grid-cols-[4rem_1fr_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#4a5a70] bg-[#0a0e1a] border-t border-[#1e2a3a]">
+            <div className="grid grid-cols-[4rem_1fr_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#7a8aa0] bg-[#0a0e1a] border-t border-[#1e2a3a]">
               <div className="text-right">{t('tft.activation')}</div>
               <div></div>
               <div className="text-right">{t('tft.avgPlacement')}</div>
@@ -157,9 +157,9 @@ export default function TftTraitDetailPage() {
                     )}
                   </div>
                   <div className="text-right text-white">{s.avgPlacement?.toFixed(2) ?? '—'}</div>
-                  <div className="text-right text-[#8a9bb0]">{s.pickRate != null ? `${(s.pickRate * 100).toFixed(1)}%` : '—'}</div>
-                  <div className="text-right text-[#8a9bb0]">{s.top4Rate != null ? `${(s.top4Rate * 100).toFixed(1)}%` : '—'}</div>
-                  <div className="text-right text-[#4a5a70]">{s.games}</div>
+                  <div className="text-right text-[#a0b0c5]">{s.pickRate != null ? `${(s.pickRate * 100).toFixed(1)}%` : '—'}</div>
+                  <div className="text-right text-[#a0b0c5]">{s.top4Rate != null ? `${(s.top4Rate * 100).toFixed(1)}%` : '—'}</div>
+                  <div className="text-right text-[#7a8aa0]">{s.games}</div>
                 </div>
               );
             })}
@@ -169,7 +169,7 @@ export default function TftTraitDetailPage() {
         {/* Best units with this trait */}
         {!loading && matchingUnits.length > 0 && (
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-5 mb-5">
-            <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-3">{t('tft.trait.bestUnits')}</div>
+            <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.trait.bestUnits')}</div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
               {matchingUnits.slice(0, 15).map(u => {
                 const champion = assets?.champions[u.characterId];
@@ -187,7 +187,7 @@ export default function TftTraitDetailPage() {
                       <div className="w-12 h-12 rounded bg-[#1e2a3a]" />
                     )}
                     <div className="text-white text-[11px] mt-1 text-center truncate w-full">{champion?.name || prettyChar(u.characterId)}</div>
-                    <div className="text-[#8a9bb0] text-[10px]">
+                    <div className="text-[#a0b0c5] text-[10px]">
                       {u.avgPlacement?.toFixed(2) ?? '—'} {t('tft.avgPlacementShort')}
                     </div>
                   </a>
@@ -198,13 +198,13 @@ export default function TftTraitDetailPage() {
         )}
 
         {loading && (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#8a9bb0] text-sm">
+          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#a0b0c5] text-sm">
             {t('tft.loading')}
           </div>
         )}
 
         {!loading && traitStats.length === 0 && matchingUnits.length === 0 && (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#8a9bb0] text-sm">
+          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#a0b0c5] text-sm">
             {t('tft.trait.noData')}
           </div>
         )}
@@ -216,7 +216,7 @@ export default function TftTraitDetailPage() {
 
 function TierPill({ tier }: { tier: TftTraitTier }) {
   const sc = STYLE_COLORS[tier.style];
-  const color = sc?.hex || '#4a5a70';
+  const color = sc?.hex || '#7a8aa0';
   return (
     <div
       className="flex items-center gap-2 rounded px-2.5 py-1 text-xs font-medium tabular-nums"

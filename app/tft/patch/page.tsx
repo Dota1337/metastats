@@ -34,12 +34,12 @@ export default function TftPatchListPage() {
       <Nav active="comps" />
       <TftHero pageTitle={t('tft.patchNotes.title')} />
       <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-2 pb-6">
-        <p className="text-[#8a9bb0] text-sm mb-4">{t('tft.patchNotes.subtitle')}</p>
+        <p className="text-[#a0b0c5] text-sm mb-4">{t('tft.patchNotes.subtitle')}</p>
 
-        {loading && <div className="text-[#4a5a70] text-center py-8">{t('tft.loading')}</div>}
+        {loading && <div className="text-[#7a8aa0] text-center py-8">{t('tft.loading')}</div>}
 
         {!loading && patches.length === 0 && (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#8a9bb0] text-sm">
+          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#a0b0c5] text-sm">
             {t('tft.patchNotes.empty')}
           </div>
         )}
@@ -62,7 +62,7 @@ export default function TftPatchListPage() {
                         </span>
                       )}
                     </div>
-                    <div className="text-[#8a9bb0] text-xs mt-0.5">
+                    <div className="text-[#a0b0c5] text-xs mt-0.5">
                       Set {p.set_number} · {new Date(p.first_day).toLocaleDateString()} – {new Date(p.last_day).toLocaleDateString()}
                     </div>
                   </div>
@@ -70,7 +70,7 @@ export default function TftPatchListPage() {
                     <div className="text-[#7B61FF] text-sm font-medium tabular-nums">
                       {p.total_matches.toLocaleString()}
                     </div>
-                    <div className="text-[#4a5a70] text-[10px] uppercase tracking-widest">
+                    <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">
                       {t('tft.patchNotes.matches')}
                     </div>
                   </div>

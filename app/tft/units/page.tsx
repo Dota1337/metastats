@@ -75,7 +75,7 @@ export default function TftUnitsPage() {
         <div className="flex flex-wrap gap-1 mb-4">
           <button
             onClick={() => setCostFilter(null)}
-            className={`px-3 py-1 rounded text-xs ${costFilter == null ? 'bg-[#7B61FF] text-white' : 'bg-[#141c2e] text-[#8a9bb0] hover:text-white'}`}
+            className={`px-3 py-1 rounded text-xs ${costFilter == null ? 'bg-[#7B61FF] text-white' : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'}`}
           >
             {t('tft.bucket.all')}
           </button>
@@ -83,7 +83,7 @@ export default function TftUnitsPage() {
             <button
               key={c}
               onClick={() => setCostFilter(c)}
-              className={`px-3 py-1 rounded text-xs ${costFilter === c ? 'bg-[#7B61FF] text-white' : 'bg-[#141c2e] text-[#8a9bb0] hover:text-white'}`}
+              className={`px-3 py-1 rounded text-xs ${costFilter === c ? 'bg-[#7B61FF] text-white' : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'}`}
             >
               {c}-Cost
             </button>
@@ -91,13 +91,13 @@ export default function TftUnitsPage() {
         </div>
 
         {loading && hasData === null && (
-          <div className="text-[#4a5a70] text-center py-8">{t('tft.noDataYet').replace('Noch keine Daten', 'Lade')}</div>
+          <div className="text-[#7a8aa0] text-center py-8">{t('tft.noDataYet').replace('Noch keine Daten', 'Lade')}</div>
         )}
         {hasData === false && <EmptyData />}
 
         {hasData && filtered.length > 0 && (
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
-            <div className="hidden md:grid grid-cols-[3rem_1fr_5rem_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#4a5a70] bg-[#0a0e1a]">
+            <div className="hidden md:grid grid-cols-[3rem_1fr_5rem_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#7a8aa0] bg-[#0a0e1a]">
               <div></div>
               <div>Champion</div>
               <div className="text-right">{t('tft.avgPlacement')}</div>
@@ -107,7 +107,7 @@ export default function TftUnitsPage() {
               <div className="text-right">{t('tft.gamesShort')}</div>
             </div>
             {/* Mobile-only column hint */}
-            <div className="md:hidden px-4 py-2 text-[10px] uppercase tracking-widest text-[#4a5a70] bg-[#0a0e1a]">
+            <div className="md:hidden px-4 py-2 text-[10px] uppercase tracking-widest text-[#7a8aa0] bg-[#0a0e1a]">
               Champion
             </div>
             {filtered.map(u => {
@@ -136,7 +136,7 @@ export default function TftUnitsPage() {
                     <Cell label={t('tft.pickRate')} value={u.pickRate != null ? `${(u.pickRate * 100).toFixed(1)}%` : '—'} />
                     <Cell label={t('tft.top4')} value={u.top4Rate != null ? `${(u.top4Rate * 100).toFixed(1)}%` : '—'} />
                     <Cell label={t('tft.top1')} value={u.top1Rate != null ? `${(u.top1Rate * 100).toFixed(1)}%` : '—'} />
-                    <div className="hidden md:block text-right text-[#4a5a70]">{u.games}</div>
+                    <div className="hidden md:block text-right text-[#7a8aa0]">{u.games}</div>
                   </div>
                 </a>
               );
@@ -161,11 +161,11 @@ function prettyCharId(id: string) {
 // in the parent's explicit grid column). `display: contents` on the
 // desktop side makes the parent grid pull this through transparently.
 function Cell({ label, value, accent }: { label: string; value: string; accent?: 'white' }) {
-  const valueClass = accent === 'white' ? 'text-white' : 'text-[#8a9bb0]';
+  const valueClass = accent === 'white' ? 'text-white' : 'text-[#a0b0c5]';
   return (
     <>
       <div className="md:hidden">
-        <div className="text-[#4a5a70] text-[9px] uppercase tracking-widest leading-tight">{label}</div>
+        <div className="text-[#7a8aa0] text-[9px] uppercase tracking-widest leading-tight">{label}</div>
         <div className={`${valueClass} tabular-nums leading-tight`}>{value}</div>
       </div>
       <div className={`hidden md:block text-right ${valueClass} tabular-nums`}>{value}</div>

@@ -53,10 +53,10 @@ export default function TftMatchDetailPage() {
       <Nav active="search" />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
         <h1 className="text-white text-xl font-medium mb-2">{t('tft.match.title')}</h1>
-        <div className="text-[#4a5a70] text-xs font-mono mb-5 truncate">{matchId}</div>
+        <div className="text-[#7a8aa0] text-xs font-mono mb-5 truncate">{matchId}</div>
 
         {loading && (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#8a9bb0] text-sm">
+          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#a0b0c5] text-sm">
             {t('tft.match.loading')}
           </div>
         )}
@@ -111,7 +111,7 @@ function MatchHeader({ match }: { match: TftMatchSummary }) {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div className="text-[#4a5a70] text-[10px] uppercase tracking-widest mb-0.5">{label}</div>
+      <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest mb-0.5">{label}</div>
       <div className="text-white">{value}</div>
     </div>
   );
@@ -152,14 +152,14 @@ function ParticipantCard({
                 className="text-white text-sm font-medium hover:text-[#7B61FF] truncate max-w-[160px] sm:max-w-none"
               >
                 {gameName}
-                {tagLine && <span className="text-[#4a5a70] text-xs"> #{tagLine}</span>}
+                {tagLine && <span className="text-[#7a8aa0] text-xs"> #{tagLine}</span>}
               </a>
             ) : (
-              <span className="text-[#4a5a70] text-sm font-mono">
+              <span className="text-[#7a8aa0] text-sm font-mono">
                 {participant.puuid.slice(0, 10)}…
               </span>
             )}
-            <span className="text-[#4a5a70] text-[10px]">
+            <span className="text-[#7a8aa0] text-[10px]">
               Lvl {participant.level} · {formatStage(participant.lastRound)} · {participant.goldLeft}g
               {participant.playersEliminated > 0 && ` · ${participant.playersEliminated} ${t('tft.match.eliminated')}`}
             </span>
@@ -188,7 +188,7 @@ function PlacementBadge({ placement }: { placement: number }) {
       style={{ borderColor: color }}
     >
       <div className="text-lg font-bold leading-none" style={{ color }}>{placement}</div>
-      <div className="text-[9px] text-[#8a9bb0]">{ordinal}</div>
+      <div className="text-[9px] text-[#a0b0c5]">{ordinal}</div>
     </div>
   );
 }
@@ -290,7 +290,7 @@ function AugmentColumn({ augments, assets }: { augments: string[]; assets: TftAs
             style={{ borderColor: tierColor }}
             title={info?.name || a}
           >
-            <span className="text-[8px] text-[#8a9bb0] truncate px-0.5">{(info?.name || a).slice(0, 4)}</span>
+            <span className="text-[8px] text-[#a0b0c5] truncate px-0.5">{(info?.name || a).slice(0, 4)}</span>
           </div>
         );
         return (
@@ -334,7 +334,7 @@ function traitStyleColor(style: number) {
     : style === 4 ? '#e0c75a'
     : style === 3 ? '#cfd6dc'
     : style === 1 ? '#a07a4d'
-    : '#4a5a70';
+    : '#7a8aa0';
 }
 
 function prettyTraitName(raw: string) {

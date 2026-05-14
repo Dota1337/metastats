@@ -98,7 +98,7 @@ export default function LiveGameDetail({ gameData, ddVersion, championMap, regio
         <div className="text-white text-sm font-medium">{teamLabel}</div>
         {teamBans.length > 0 && (
           <div className="flex items-center gap-1">
-            <span className="text-[#4a5a70] text-xs mr-1">Bans:</span>
+            <span className="text-[#7a8aa0] text-xs mr-1">Bans:</span>
             {teamBans.map((b: any, i: number) => {
               const c = championMap[b.championId];
               return c ? (
@@ -150,18 +150,18 @@ export default function LiveGameDetail({ gameData, ddVersion, championMap, regio
               </div>
               <div>
                 <div className="text-white text-xs font-medium truncate">{p.summonerName}</div>
-                <div className="text-[#4a5a70] text-[10px]">{p.champion}</div>
+                <div className="text-[#7a8aa0] text-[10px]">{p.champion}</div>
               </div>
               <div className="text-right">
                 {p.loading ? (
-                  <div className="text-[#4a5a70] text-xs">...</div>
+                  <div className="text-[#7a8aa0] text-xs">...</div>
                 ) : p.ranked ? (
                   <>
-                    <div className="text-[#8a9bb0] text-xs font-medium">{formatTier(p.ranked.tier, p.ranked.rank)}</div>
-                    <div className="text-[#4a5a70] text-[10px]">{p.ranked.leaguePoints} LP</div>
+                    <div className="text-[#a0b0c5] text-xs font-medium">{formatTier(p.ranked.tier, p.ranked.rank)}</div>
+                    <div className="text-[#7a8aa0] text-[10px]">{p.ranked.leaguePoints} LP</div>
                   </>
                 ) : (
-                  <div className="text-[#4a5a70] text-xs">Unranked</div>
+                  <div className="text-[#7a8aa0] text-xs">Unranked</div>
                 )}
               </div>
               <div className="text-right">
@@ -170,7 +170,7 @@ export default function LiveGameDetail({ gameData, ddVersion, championMap, regio
                     {wr}% WR
                   </span>
                 ) : (
-                  <span className="text-[#4a5a70] text-xs">-</span>
+                  <span className="text-[#7a8aa0] text-xs">-</span>
                 )}
               </div>
             </div>
@@ -188,12 +188,12 @@ export default function LiveGameDetail({ gameData, ddVersion, championMap, regio
             <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
             LIVE
           </span>
-          <span className="text-[#8a9bb0] text-xs uppercase tracking-widest">
+          <span className="text-[#a0b0c5] text-xs uppercase tracking-widest">
             Live Game
           </span>
         </div>
         {gameDuration > 0 && (
-          <div className="text-[#4a5a70] text-xs">{gameDuration} Min.</div>
+          <div className="text-[#7a8aa0] text-xs">{gameDuration} Min.</div>
         )}
       </div>
 

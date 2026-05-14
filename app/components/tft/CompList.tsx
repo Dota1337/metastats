@@ -71,7 +71,7 @@ export default function CompList({ headless = false }: CompListProps) {
               <button
                 key={r.value}
                 onClick={() => setRegion(r.value)}
-                className={`px-3 py-1.5 rounded text-xs font-medium ${region === r.value ? 'bg-[#7B61FF] text-white' : 'bg-[#141c2e] text-[#8a9bb0] hover:text-white'}`}
+                className={`px-3 py-1.5 rounded text-xs font-medium ${region === r.value ? 'bg-[#7B61FF] text-white' : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'}`}
               >
                 {r.label}
               </button>
@@ -85,7 +85,7 @@ export default function CompList({ headless = false }: CompListProps) {
             <button
               key={r.value}
               onClick={() => setRegion(r.value)}
-              className={`px-3 py-1.5 rounded text-xs font-medium ${region === r.value ? 'bg-[#7B61FF] text-white' : 'bg-[#141c2e] text-[#8a9bb0] hover:text-white'}`}
+              className={`px-3 py-1.5 rounded text-xs font-medium ${region === r.value ? 'bg-[#7B61FF] text-white' : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'}`}
             >
               {r.label}
             </button>
@@ -97,7 +97,7 @@ export default function CompList({ headless = false }: CompListProps) {
         <TierFilter value={bucket} onChange={setBucket} />
         <div className="flex-1" />
         <div className="flex items-center gap-2">
-          <span className="text-[#4a5a70] text-xs">Sortieren:</span>
+          <span className="text-[#7a8aa0] text-xs">Sortieren:</span>
           <select
             value={sortBy}
             onChange={e => setSortBy(e.target.value)}
@@ -109,14 +109,14 @@ export default function CompList({ headless = false }: CompListProps) {
       </div>
 
       {hasData && meta?.matchesAnalyzed != null && (
-        <div className="text-[#4a5a70] text-[11px] mb-3">
+        <div className="text-[#7a8aa0] text-[11px] mb-3">
           {meta.matchesAnalyzed.toLocaleString('de-DE')} Matches analysiert · {sorted.length} Comps mit ≥ {meta.minGames ?? 30} Spielen{headless && meta?.patch ? ` · Patch ${meta.patch}` : ''}
         </div>
       )}
 
       {hasData === false && <EmptyData />}
       {hasData && sorted.length === 0 && (
-        <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#8a9bb0] text-sm">
+        <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#a0b0c5] text-sm">
           {region !== 'euw1'
             ? 'Für diese Region wurden noch keine Daten gecrawlt — aktuell nur EUW. KR und NA folgen mit dem Production-Key.'
             : 'Keine Comps mit ausreichend Spielen für diese Auswahl.'}

@@ -71,12 +71,12 @@ export default function TftAugmentsPage() {
         <StatsFilterBar filters={filters} patches={patches} onChange={setFilters} />
 
         <div className="flex flex-wrap gap-1 mb-4">
-          <span className="text-[#4a5a70] text-xs self-center mr-2">{t('tft.slot')}:</span>
+          <span className="text-[#7a8aa0] text-xs self-center mr-2">{t('tft.slot')}:</span>
           {['all', '0', '1', '2'].map(s => (
             <button
               key={s}
               onClick={() => setSlot(s)}
-              className={`px-3 py-1 rounded text-xs ${slot === s ? 'bg-[#7B61FF] text-white' : 'bg-[#141c2e] text-[#8a9bb0] hover:text-white'}`}
+              className={`px-3 py-1 rounded text-xs ${slot === s ? 'bg-[#7B61FF] text-white' : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'}`}
             >
               {SLOT_LABELS[s] || s}
             </button>
@@ -84,18 +84,18 @@ export default function TftAugmentsPage() {
         </div>
 
         {loading && hasData === null && (
-          <div className="text-[#4a5a70] text-center py-8">{t('tft.noDataYet').replace('Noch keine Daten', 'Lade')}</div>
+          <div className="text-[#7a8aa0] text-center py-8">{t('tft.noDataYet').replace('Noch keine Daten', 'Lade')}</div>
         )}
         {hasData === false && <EmptyData />}
         {hasData && rows.length === 0 && (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#8a9bb0] text-sm">
+          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#a0b0c5] text-sm">
             Set 17 enthält keine Augments — die Sektion füllt sich, sobald Riot das Augment-Feld in einem Set wieder ausliefert.
           </div>
         )}
 
         {hasData && rows.length > 0 && (
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
-            <div className="hidden md:grid grid-cols-[3rem_1fr_5rem_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#4a5a70] bg-[#0a0e1a]">
+            <div className="hidden md:grid grid-cols-[3rem_1fr_5rem_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#7a8aa0] bg-[#0a0e1a]">
               <div></div>
               <div>Augment</div>
               <div className="text-right">Tier</div>
@@ -104,10 +104,10 @@ export default function TftAugmentsPage() {
               <div className="text-right">{t('tft.top4')}</div>
               <div className="text-right">{t('tft.gamesShort')}</div>
             </div>
-            <div className="md:hidden px-4 py-2 text-[10px] uppercase tracking-widest text-[#4a5a70] bg-[#0a0e1a]">Augment</div>
+            <div className="md:hidden px-4 py-2 text-[10px] uppercase tracking-widest text-[#7a8aa0] bg-[#0a0e1a]">Augment</div>
             {rows.map(r => {
               const meta = assets?.augments[r.apiName];
-              const tierColor = TIER_COLORS[meta?.tier ?? 0] || '#4a5a70';
+              const tierColor = TIER_COLORS[meta?.tier ?? 0] || '#7a8aa0';
               const url = tftIconUrl(assets, meta?.icon);
               return (
                 <a key={`${r.apiName}-${r.slot ?? 'all'}`}
@@ -117,7 +117,7 @@ export default function TftAugmentsPage() {
                     {url ? (
                       <img src={url} alt={meta!.name} className="w-9 h-9 rounded border-2 flex-shrink-0" style={{ borderColor: tierColor }} />
                     ) : (
-                      <div className="w-9 h-9 rounded border-2 bg-[#1e2a3a] flex items-center justify-center text-[8px] text-[#4a5a70] flex-shrink-0" style={{ borderColor: tierColor }}>{prettyAug(r.apiName)}</div>
+                      <div className="w-9 h-9 rounded border-2 bg-[#1e2a3a] flex items-center justify-center text-[8px] text-[#7a8aa0] flex-shrink-0" style={{ borderColor: tierColor }}>{prettyAug(r.apiName)}</div>
                     )}
                     <div className="flex-1 min-w-0 md:flex-initial">
                       <div className="text-white truncate">{meta?.name || prettyAug(r.apiName)}</div>
@@ -147,11 +147,11 @@ export default function TftAugmentsPage() {
 function prettyAug(s: string) { return s.replace(/^TFT\d+_Augment_/, '').slice(0, 10); }
 
 function Cell({ label, value, accent }: { label: string; value: string; accent?: 'white' | 'muted' }) {
-  const valueClass = accent === 'white' ? 'text-white' : accent === 'muted' ? 'text-[#4a5a70]' : 'text-[#8a9bb0]';
+  const valueClass = accent === 'white' ? 'text-white' : accent === 'muted' ? 'text-[#7a8aa0]' : 'text-[#a0b0c5]';
   return (
     <>
       <div className="md:hidden">
-        <div className="text-[#4a5a70] text-[9px] uppercase tracking-widest leading-tight">{label}</div>
+        <div className="text-[#7a8aa0] text-[9px] uppercase tracking-widest leading-tight">{label}</div>
         <div className={`${valueClass} tabular-nums leading-tight`}>{value}</div>
       </div>
       <div className={`hidden md:block text-right ${valueClass} tabular-nums`}>{value}</div>

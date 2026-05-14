@@ -148,7 +148,7 @@ export default function TftMarktwertPage() {
       <Nav active="marktwert" />
       <TftHero pageTitle={t('nav.marketvalue')} />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-2 pb-6">
-        <p className="text-[#8a9bb0] text-sm mb-4">{t('tft.marketValue.pageHint')}</p>
+        <p className="text-[#a0b0c5] text-sm mb-4">{t('tft.marketValue.pageHint')}</p>
 
         {/* Region selector — wraps on desktop, horizontally scrollable on
             mobile so 17 regions don't fight for vertical space. */}
@@ -160,7 +160,7 @@ export default function TftMarktwertPage() {
               className={`px-2.5 py-1 rounded text-xs font-medium flex-shrink-0 ${
                 region === r.value
                   ? 'bg-[#7B61FF] text-white'
-                  : 'bg-[#141c2e] text-[#8a9bb0] hover:text-white'
+                  : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'
               }`}
             >
               {r.label}
@@ -177,7 +177,7 @@ export default function TftMarktwertPage() {
               className={`px-4 py-2 text-xs font-medium uppercase tracking-widest ${
                 tab === tt
                   ? 'text-white border-b-2 border-[#7B61FF]'
-                  : 'text-[#8a9bb0] hover:text-white'
+                  : 'text-[#a0b0c5] hover:text-white'
               }`}
             >
               {t(`tft.marketValue.tab.${tt}` as const)}
@@ -258,7 +258,7 @@ function TopTab({
             className={`px-3 py-1.5 rounded text-xs font-medium ${
               tierFilter === tr
                 ? 'bg-[#7B61FF] text-white'
-                : 'bg-[#141c2e] text-[#8a9bb0] hover:text-white'
+                : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'
             }`}
           >
             {tr || t('tft.filter.allRanks')}
@@ -269,7 +269,7 @@ function TopTab({
       {loading && <SkeletonRows count={10} />}
 
       {!loading && players.length === 0 && (
-        <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#8a9bb0] text-sm">
+        <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#a0b0c5] text-sm">
           {t('tft.marketValue.empty')}
         </div>
       )}
@@ -277,7 +277,7 @@ function TopTab({
       {!loading && players.length > 0 && (
         <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
           {/* Desktop table header — hidden on mobile where each row is a card */}
-          <div className="hidden sm:grid grid-cols-[3rem_1fr_5rem_4rem_8rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#4a5a70] bg-[#0a0e1a]">
+          <div className="hidden sm:grid grid-cols-[3rem_1fr_5rem_4rem_8rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#7a8aa0] bg-[#0a0e1a]">
             <div className="text-right">#</div>
             <div>{t('tft.marketValue.col.player')}</div>
             <div className="text-right">LP</div>
@@ -294,24 +294,24 @@ function TopTab({
               >
                 {/* Mobile: rank + name + tier inline, value + multiplier as
                     a row below. Desktop: original 5-column grid. */}
-                <div className="hidden sm:block text-right text-[#8a9bb0] tabular-nums">{i + 1}</div>
+                <div className="hidden sm:block text-right text-[#a0b0c5] tabular-nums">{i + 1}</div>
                 <div className="flex items-baseline gap-2 sm:block">
-                  <span className="text-[#8a9bb0] tabular-nums text-[10px] sm:hidden">#{i + 1}</span>
+                  <span className="text-[#a0b0c5] tabular-nums text-[10px] sm:hidden">#{i + 1}</span>
                   <span className="text-white truncate flex-1 sm:flex-initial">
-                    {p.gameName || <span className="text-[#4a5a70]">unbekannt</span>}
-                    {p.tagLine && <span className="text-[#4a5a70] text-[10px]"> #{p.tagLine}</span>}
+                    {p.gameName || <span className="text-[#7a8aa0]">unbekannt</span>}
+                    {p.tagLine && <span className="text-[#7a8aa0] text-[10px]"> #{p.tagLine}</span>}
                     <span
                       className="ml-2 text-[10px] uppercase tracking-widest"
-                      style={{ color: TIER_COLORS[p.tier] || '#8a9bb0' }}
+                      style={{ color: TIER_COLORS[p.tier] || '#a0b0c5' }}
                     >
                       {p.tier.slice(0, 4)}
                     </span>
                   </span>
                 </div>
                 <div className="hidden sm:block text-right text-white tabular-nums">{p.lp}</div>
-                <div className="hidden sm:block text-right text-[#8a9bb0] tabular-nums">{p.multiplier.toFixed(2)}</div>
+                <div className="hidden sm:block text-right text-[#a0b0c5] tabular-nums">{p.multiplier.toFixed(2)}</div>
                 <div className="flex sm:block items-center justify-between mt-1 sm:mt-0 sm:text-right">
-                  <span className="text-[#4a5a70] text-[10px] sm:hidden">
+                  <span className="text-[#7a8aa0] text-[10px] sm:hidden">
                     {p.lp} LP · ×{p.multiplier.toFixed(2)}
                   </span>
                   <span className="text-[#7B61FF] font-medium tabular-nums">
@@ -352,7 +352,7 @@ function MoversTab({
             onClick={() => setDirection('up')}
             className={`px-3 py-1.5 rounded text-xs font-medium ${
               direction === 'up' ? 'bg-[#3ecf8e]/20 text-[#3ecf8e] border border-[#3ecf8e]/40'
-                                 : 'bg-[#141c2e] text-[#8a9bb0] hover:text-white'
+                                 : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'
             }`}
           >
             ▲ {t('tft.marketValue.movers.gainers')}
@@ -361,7 +361,7 @@ function MoversTab({
             onClick={() => setDirection('down')}
             className={`px-3 py-1.5 rounded text-xs font-medium ${
               direction === 'down' ? 'bg-[#e44040]/20 text-[#e44040] border border-[#e44040]/40'
-                                   : 'bg-[#141c2e] text-[#8a9bb0] hover:text-white'
+                                   : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'
             }`}
           >
             ▼ {t('tft.marketValue.movers.losers')}
@@ -373,7 +373,7 @@ function MoversTab({
               key={w}
               onClick={() => setWindow(w)}
               className={`px-3 py-1.5 rounded text-xs font-medium ${
-                window_ === w ? 'bg-[#7B61FF] text-white' : 'bg-[#141c2e] text-[#8a9bb0] hover:text-white'
+                window_ === w ? 'bg-[#7B61FF] text-white' : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'
               }`}
             >
               {w}d
@@ -385,14 +385,14 @@ function MoversTab({
       {loading && <SkeletonRows count={6} />}
 
       {!loading && movers.length === 0 && (
-        <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#8a9bb0] text-sm">
+        <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#a0b0c5] text-sm">
           {t('tft.marketValue.movers.notEnoughHistory')}
         </div>
       )}
 
       {!loading && movers.length > 0 && (
         <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
-          <div className="hidden sm:grid grid-cols-[3rem_1fr_7rem_5rem_6rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#4a5a70] bg-[#0a0e1a]">
+          <div className="hidden sm:grid grid-cols-[3rem_1fr_7rem_5rem_6rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#7a8aa0] bg-[#0a0e1a]">
             <div className="text-right">#</div>
             <div>{t('tft.marketValue.col.player')}</div>
             <div className="text-right">{t('tft.marketValue.col.now')}</div>
@@ -409,22 +409,22 @@ function MoversTab({
                 href={slug ? `/tft/player/${slug}?region=${region}` : '#'}
                 className="block sm:grid sm:grid-cols-[3rem_1fr_7rem_5rem_6rem] gap-2 px-4 py-2 sm:items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]"
               >
-                <div className="hidden sm:block text-right text-[#8a9bb0] tabular-nums">{i + 1}</div>
+                <div className="hidden sm:block text-right text-[#a0b0c5] tabular-nums">{i + 1}</div>
                 <div className="flex items-baseline gap-2 sm:block">
-                  <span className="text-[#8a9bb0] tabular-nums text-[10px] sm:hidden">#{i + 1}</span>
+                  <span className="text-[#a0b0c5] tabular-nums text-[10px] sm:hidden">#{i + 1}</span>
                   <span className="text-white truncate flex-1 sm:flex-initial">
-                    {m.gameName || <span className="text-[#4a5a70]">unbekannt</span>}
-                    {m.tagLine && <span className="text-[#4a5a70] text-[10px]"> #{m.tagLine}</span>}
+                    {m.gameName || <span className="text-[#7a8aa0]">unbekannt</span>}
+                    {m.tagLine && <span className="text-[#7a8aa0] text-[10px]"> #{m.tagLine}</span>}
                     <span
                       className="ml-2 text-[10px] uppercase tracking-widest"
-                      style={{ color: TIER_COLORS[m.tier] || '#8a9bb0' }}
+                      style={{ color: TIER_COLORS[m.tier] || '#a0b0c5' }}
                     >
                       {m.tier.slice(0, 4)}
                     </span>
                   </span>
                 </div>
                 <div className="hidden sm:block text-right text-white tabular-nums">{fmtEur(m.currentValue, lang)}</div>
-                <div className="hidden sm:block text-right text-[#8a9bb0] tabular-nums text-[10px]">{fmtEur(m.previousValue, lang)}</div>
+                <div className="hidden sm:block text-right text-[#a0b0c5] tabular-nums text-[10px]">{fmtEur(m.previousValue, lang)}</div>
                 {/* Mobile: now-value + delta in one row below the name; desktop keeps the 3-col split */}
                 <div className="flex sm:block items-center justify-between mt-1 sm:mt-0 sm:text-right">
                   <span className="text-white tabular-nums sm:hidden">{fmtEur(m.currentValue, lang)}</span>
@@ -460,7 +460,7 @@ function DistributionTab({
   }
   if (data.length === 0) {
     return (
-      <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#8a9bb0] text-sm">
+      <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#a0b0c5] text-sm">
         {t('tft.marketValue.empty')}
       </div>
     );
@@ -468,10 +468,10 @@ function DistributionTab({
   return (
     <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-5">
       <div className="flex items-center justify-between mb-3">
-        <div className="text-[#8a9bb0] text-xs uppercase tracking-widest">
+        <div className="text-[#a0b0c5] text-xs uppercase tracking-widest">
           {t('tft.marketValue.distribution.title')}
         </div>
-        <div className="text-[#4a5a70] text-[10px]">
+        <div className="text-[#7a8aa0] text-[10px]">
           {t('tft.marketValue.distribution.basedOn').replace('{n}', String(count))}
         </div>
       </div>
@@ -480,14 +480,14 @@ function DistributionTab({
           <BarChart data={data} margin={{ top: 8, right: 8, bottom: 24, left: 8 }}>
             <XAxis
               dataKey="label"
-              stroke="#4a5a70"
+              stroke="#7a8aa0"
               fontSize={10}
-              tick={{ fill: '#8a9bb0' }}
+              tick={{ fill: '#a0b0c5' }}
               angle={-25}
               textAnchor="end"
               height={50}
             />
-            <YAxis stroke="#4a5a70" fontSize={10} tick={{ fill: '#8a9bb0' }} />
+            <YAxis stroke="#7a8aa0" fontSize={10} tick={{ fill: '#a0b0c5' }} />
             <RechartsTooltip
               contentStyle={{
                 backgroundColor: '#0d1526',
@@ -495,7 +495,7 @@ function DistributionTab({
                 borderRadius: 6,
                 fontSize: 12,
               }}
-              labelStyle={{ color: '#8a9bb0' }}
+              labelStyle={{ color: '#a0b0c5' }}
               formatter={(value: any) => [value, t('tft.marketValue.distribution.players')]}
             />
             <Bar dataKey="count" radius={[4, 4, 0, 0]}>
@@ -506,7 +506,7 @@ function DistributionTab({
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <div className="text-[#4a5a70] text-[10px] mt-2 text-center">
+      <div className="text-[#7a8aa0] text-[10px] mt-2 text-center">
         {t('tft.marketValue.distribution.xAxisHint')}
       </div>
     </div>

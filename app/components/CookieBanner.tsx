@@ -39,7 +39,7 @@ export default function CookieBanner() {
       <div id="cookie-banner-title" className="text-white font-medium mb-1.5">
         {t('cookie.title')}
       </div>
-      <p className="text-[#8a9bb0] text-xs leading-relaxed mb-3">
+      <p className="text-[#a0b0c5] text-xs leading-relaxed mb-3">
         {t('cookie.body')}{' '}
         <a href="/datenschutz" className="text-[#7B61FF] hover:underline">
           {t('legal.privacy')}
@@ -55,7 +55,7 @@ export default function CookieBanner() {
         </button>
         <button
           onClick={() => persist('declined')}
-          className="flex-1 bg-[#141c2e] hover:bg-[#1e2a3a] text-[#8a9bb0] hover:text-white text-xs px-3 py-2 rounded"
+          className="flex-1 bg-[#141c2e] hover:bg-[#1e2a3a] text-[#a0b0c5] hover:text-white text-xs px-3 py-2 rounded"
         >
           {t('cookie.decline')}
         </button>

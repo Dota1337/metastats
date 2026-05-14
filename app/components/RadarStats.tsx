@@ -38,21 +38,21 @@ export default function RadarStats({ categories }: Props) {
 
   return (
     <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 sm:p-6 mb-4">
-      <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-2">
+      <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-2">
         {t('radar.title')}
       </div>
-      <div className="text-[#4a5a70] text-xs mb-4">{t('radar.subtitle')}</div>
+      <div className="text-[#7a8aa0] text-xs mb-4">{t('radar.subtitle')}</div>
       <ResponsiveContainer width="100%" height={280}>
         <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="75%">
           <PolarGrid stroke="#1e2a3a" />
           <PolarAngleAxis
             dataKey="axis"
-            tick={{ fill: '#8a9bb0', fontSize: 11 }}
+            tick={{ fill: '#a0b0c5', fontSize: 11 }}
           />
           <PolarRadiusAxis
             angle={30}
             domain={[0, 100]}
-            tick={{ fill: '#4a5a70', fontSize: 9 }}
+            tick={{ fill: '#7a8aa0', fontSize: 9 }}
             axisLine={false}
           />
           <Radar

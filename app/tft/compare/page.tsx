@@ -115,7 +115,7 @@ export default function TftComparePage() {
               className={`px-2.5 py-1 rounded text-xs font-medium ${
                 region === r.value
                   ? 'bg-[#7B61FF] text-white'
-                  : 'bg-[#141c2e] text-[#8a9bb0] hover:text-white'
+                  : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'
               }`}
             >
               {r.label}
@@ -146,7 +146,7 @@ export default function TftComparePage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
           {results.map((r, i) => {
             if (!r) return (
-              <div key={i} className="bg-[#0d1526] border border-[#1e2a3a] rounded p-5 text-[#4a5a70] text-sm text-center">
+              <div key={i} className="bg-[#0d1526] border border-[#1e2a3a] rounded p-5 text-[#7a8aa0] text-sm text-center">
                 {t('tft.compare.player')} {i + 1}
               </div>
             );
@@ -176,7 +176,7 @@ export default function TftComparePage() {
                     </a>
                   );
                 })()}
-                <div className="text-[#8a9bb0] text-xs mb-3">
+                <div className="text-[#a0b0c5] text-xs mb-3">
                   {r.tier ? formatTier(r.tier, r.rank) : 'Unranked'}
                   {r.lp != null ? ` · ${r.lp} LP` : ''}
                 </div>
@@ -203,7 +203,7 @@ export default function TftComparePage() {
 
         {chartData.length >= 2 && (
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
-            <div className="text-[#8a9bb0] text-xs uppercase tracking-widest mb-3">
+            <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">
               {t('tft.compare.chartTitle')}
             </div>
             <div className="h-64">
@@ -211,15 +211,15 @@ export default function TftComparePage() {
                 <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 24, left: 8 }}>
                   <XAxis
                     dataKey="date"
-                    stroke="#4a5a70"
+                    stroke="#7a8aa0"
                     fontSize={10}
-                    tick={{ fill: '#8a9bb0' }}
+                    tick={{ fill: '#a0b0c5' }}
                     tickFormatter={(d) => new Date(d).toLocaleDateString(LOCALE_MAP[lang], { month: 'short', day: 'numeric' })}
                   />
                   <YAxis
-                    stroke="#4a5a70"
+                    stroke="#7a8aa0"
                     fontSize={10}
-                    tick={{ fill: '#8a9bb0' }}
+                    tick={{ fill: '#a0b0c5' }}
                     tickFormatter={(v) => `${Math.round(v / 1000)}k`}
                   />
                   <RechartsTooltip
@@ -229,14 +229,14 @@ export default function TftComparePage() {
                       borderRadius: 6,
                       fontSize: 12,
                     }}
-                    labelStyle={{ color: '#8a9bb0' }}
+                    labelStyle={{ color: '#a0b0c5' }}
                     formatter={(value: any) => [
                       new Intl.NumberFormat(LOCALE_MAP[lang], { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(Number(value)),
                       '',
                     ]}
                     labelFormatter={(d) => typeof d === 'string' ? new Date(d).toLocaleDateString(LOCALE_MAP[lang]) : ''}
                   />
-                  <Legend wrapperStyle={{ fontSize: 10, color: '#8a9bb0' }} />
+                  <Legend wrapperStyle={{ fontSize: 10, color: '#a0b0c5' }} />
                   {results.map((r, i) =>
                     !r || 'error' in r ? null : (
                       <Line
@@ -265,7 +265,7 @@ export default function TftComparePage() {
 function Row({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
     <div className="flex justify-between">
-      <span className="text-[#4a5a70]">{label}</span>
+      <span className="text-[#7a8aa0]">{label}</span>
       <span className={highlight ? 'text-[#7B61FF] font-medium' : 'text-white'}>{value}</span>
     </div>
   );

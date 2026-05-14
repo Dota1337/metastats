@@ -155,19 +155,19 @@ export default function ChampionBuildsSection({ championKey }: Props) {
         <div>
           <h2 className="text-xl font-semibold text-white">{t('champBuild.heading')}</h2>
           {matches > 0 && (
-            <div className="text-[#4a5a70] text-xs mt-0.5">
+            <div className="text-[#7a8aa0] text-xs mt-0.5">
               {t('champBuild.fromMatches').replace('{n}', matches.toLocaleString('de-DE'))}
             </div>
           )}
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[#8a9bb0] text-xs uppercase tracking-wider">{t('champBuild.region')}</span>
+          <span className="text-[#a0b0c5] text-xs uppercase tracking-wider">{t('champBuild.region')}</span>
           <div className="flex bg-[#141c2e] border border-[#1e2a3a] rounded">
             {REGIONS.map(r => (
               <button
                 key={r.value}
                 onClick={() => setRegion(r.value)}
-                className={`px-3 py-1.5 text-xs uppercase ${region === r.value ? 'bg-[#1e2a3a] text-[#c89b3c]' : 'text-[#8a9bb0] hover:text-white'}`}
+                className={`px-3 py-1.5 text-xs uppercase ${region === r.value ? 'bg-[#1e2a3a] text-[#c89b3c]' : 'text-[#a0b0c5] hover:text-white'}`}
               >
                 {r.label}
               </button>
@@ -189,11 +189,11 @@ export default function ChampionBuildsSection({ championKey }: Props) {
               className={`px-4 py-2 text-sm border-b-2 transition-colors ${
                 isActive
                   ? 'border-[#c89b3c] text-[#c89b3c]'
-                  : 'border-transparent text-[#8a9bb0] hover:text-white'
+                  : 'border-transparent text-[#a0b0c5] hover:text-white'
               }`}
             >
               <div className="font-medium">{t(rt.key as any)}</div>
-              <div className="text-[10px] text-[#4a5a70]">{r.games} {t('champBuild.games')} · {wr}</div>
+              <div className="text-[10px] text-[#7a8aa0]">{r.games} {t('champBuild.games')} · {wr}</div>
             </button>
           );
         })}
@@ -230,13 +230,13 @@ export default function ChampionBuildsSection({ championKey }: Props) {
                         className="w-8 h-8 rounded"
                       />
                     ) : (
-                      <div key={spId} className="w-8 h-8 rounded bg-[#1e2a3a] text-[10px] text-[#4a5a70] flex items-center justify-center">{spId}</div>
+                      <div key={spId} className="w-8 h-8 rounded bg-[#1e2a3a] text-[10px] text-[#7a8aa0] flex items-center justify-center">{spId}</div>
                     )
                   ))}
                 </div>
                 <div className="text-xs">
                   <div className="text-white">{pct(s.wins, s.games)} WR</div>
-                  <div className="text-[#4a5a70]">{s.games} {t('champBuild.games')}</div>
+                  <div className="text-[#7a8aa0]">{s.games} {t('champBuild.games')}</div>
                 </div>
               </div>
             ))}
@@ -271,7 +271,7 @@ export default function ChampionBuildsSection({ championKey }: Props) {
                 </div>
                 <div className="ml-auto text-right text-xs whitespace-nowrap">
                   <div className="text-white">{pct(b.wins, b.games)} WR</div>
-                  <div className="text-[#4a5a70]">{b.games} {t('champBuild.games')}</div>
+                  <div className="text-[#7a8aa0]">{b.games} {t('champBuild.games')}</div>
                 </div>
               </div>
             ))}
@@ -302,7 +302,7 @@ export default function ChampionBuildsSection({ championKey }: Props) {
 function Stat({ label, value }: { label: string; value: string | null }) {
   return (
     <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3">
-      <div className="text-[#8a9bb0] text-xs uppercase tracking-wider">{label}</div>
+      <div className="text-[#a0b0c5] text-xs uppercase tracking-wider">{label}</div>
       <div className="text-white text-lg font-medium mt-1">{value ?? '—'}</div>
     </div>
   );
@@ -311,7 +311,7 @@ function Stat({ label, value }: { label: string; value: string | null }) {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="mb-5">
-      <h3 className="text-[#8a9bb0] text-xs uppercase tracking-wider mb-2">{title}</h3>
+      <h3 className="text-[#a0b0c5] text-xs uppercase tracking-wider mb-2">{title}</h3>
       {children}
     </div>
   );
@@ -324,7 +324,7 @@ function ItemRow({ items, ddImg, gamesLabel }: { items: ItemEntry[]; ddImg: (p: 
         <div key={idx} className="flex flex-col items-center gap-1 bg-[#141c2e] border border-[#1e2a3a] rounded p-1.5">
           <img src={ddImg(`item/${it.item}.png`)} alt={`Item ${it.item}`} className="w-9 h-9 rounded" />
           <div className="text-[10px] text-white">{pct(it.wins, it.games)}</div>
-          <div className="text-[10px] text-[#4a5a70] whitespace-nowrap">{it.games} {gamesLabel}</div>
+          <div className="text-[10px] text-[#7a8aa0] whitespace-nowrap">{it.games} {gamesLabel}</div>
         </div>
       ))}
     </div>
@@ -357,7 +357,7 @@ function RunesPage({
     <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3 flex flex-col md:flex-row md:items-center gap-4">
       <div className="flex items-center gap-3">
         <div className="flex flex-col items-center">
-          <div className="text-[10px] text-[#4a5a70] uppercase mb-1">Primary</div>
+          <div className="text-[10px] text-[#7a8aa0] uppercase mb-1">Primary</div>
           {renderRune(rune.keystone, true)}
         </div>
         <div className="flex gap-2">
@@ -368,7 +368,7 @@ function RunesPage({
       </div>
       <div className="flex items-center gap-3">
         <div className="flex flex-col items-center">
-          <div className="text-[10px] text-[#4a5a70] uppercase mb-1">Secondary</div>
+          <div className="text-[10px] text-[#7a8aa0] uppercase mb-1">Secondary</div>
           {renderRune(rune.secondary, true)}
         </div>
         <div className="flex gap-2">
@@ -376,15 +376,15 @@ function RunesPage({
           {renderRune(rune.s2)}
         </div>
       </div>
-      <div className="flex flex-col gap-1 text-[11px] text-[#8a9bb0]">
-        <div className="text-[10px] text-[#4a5a70] uppercase">{t('champBuild.statShards')}</div>
+      <div className="flex flex-col gap-1 text-[11px] text-[#a0b0c5]">
+        <div className="text-[10px] text-[#7a8aa0] uppercase">{t('champBuild.statShards')}</div>
         <div>{STAT_SHARD_LABELS[rune.off] || rune.off}</div>
         <div>{STAT_SHARD_LABELS[rune.flex] || rune.flex}</div>
         <div>{STAT_SHARD_LABELS[rune.def] || rune.def}</div>
       </div>
       <div className="md:ml-auto text-right">
         <div className="text-white text-sm">{pct(wins, games)} WR</div>
-        <div className="text-[11px] text-[#4a5a70]">{games} {t('champBuild.games')}</div>
+        <div className="text-[11px] text-[#7a8aa0]">{games} {t('champBuild.games')}</div>
       </div>
     </div>
   );
@@ -402,7 +402,7 @@ function CounterList({
 }) {
   return (
     <div>
-      <div className="text-xs uppercase tracking-wider text-[#8a9bb0] mb-2">{title}</div>
+      <div className="text-xs uppercase tracking-wider text-[#a0b0c5] mb-2">{title}</div>
       <div className="space-y-1.5">
         {entries.map((c, idx) => {
           const champ = championMap[c.enemy];
@@ -419,7 +419,7 @@ function CounterList({
               <div className={`text-sm font-medium ${kind === 'strong' ? 'text-green-400' : 'text-red-400'}`}>
                 {wr}
               </div>
-              <div className="text-[11px] text-[#4a5a70] text-right whitespace-nowrap">{c.gamesAgainst} {gamesLabel}</div>
+              <div className="text-[11px] text-[#7a8aa0] text-right whitespace-nowrap">{c.gamesAgainst} {gamesLabel}</div>
             </div>
           );
         })}

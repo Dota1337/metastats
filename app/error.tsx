@@ -13,7 +13,7 @@ export default function ErrorBoundary({ error, reset }: { error: Error & { diges
       <div className="text-center max-w-md">
         <div className="text-red-400 text-6xl mb-3">⚠</div>
         <h1 className="text-white text-xl font-semibold mb-2">{t('error.crashTitle')}</h1>
-        <p className="text-[#8a9bb0] text-sm mb-6">{t('error.crashText')}</p>
+        <p className="text-[#a0b0c5] text-sm mb-6">{t('error.crashText')}</p>
         <div className="flex flex-col sm:flex-row gap-2 justify-center">
           <button
             onClick={reset}
@@ -21,12 +21,12 @@ export default function ErrorBoundary({ error, reset }: { error: Error & { diges
           >
             {t('error.retry')}
           </button>
-          <a href="/" className="border border-[#2a3a50] hover:border-[#c89b3c] text-[#8a9bb0] hover:text-white text-sm px-6 py-2.5 rounded-lg transition-colors">
+          <a href="/" className="border border-[#2a3a50] hover:border-[#c89b3c] text-[#a0b0c5] hover:text-white text-sm px-6 py-2.5 rounded-lg transition-colors">
             {t('notFound.home')}
           </a>
         </div>
         {error.digest && (
-          <div className="mt-6 text-[#4a5a70] text-[10px] font-mono">Error ID: {error.digest}</div>
+          <div className="mt-6 text-[#7a8aa0] text-[10px] font-mono">Error ID: {error.digest}</div>
         )}
       </div>
     </main>

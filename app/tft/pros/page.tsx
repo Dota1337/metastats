@@ -99,14 +99,14 @@ export default function TftProsPage() {
       <Nav active="search" />
       <TftHero pageTitle={t('tft.pros.title')} />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-2 pb-6">
-        <p className="text-[#8a9bb0] text-sm mb-4">{t('tft.pros.subtitle')}</p>
+        <p className="text-[#a0b0c5] text-sm mb-4">{t('tft.pros.subtitle')}</p>
 
         {/* Region filter */}
         {regionOptions.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mb-3">
             <button
               onClick={() => setRegion('')}
-              className={`px-2.5 py-1 rounded text-xs font-medium ${region === '' ? 'bg-[#7B61FF] text-white' : 'bg-[#141c2e] text-[#8a9bb0] hover:text-white'}`}
+              className={`px-2.5 py-1 rounded text-xs font-medium ${region === '' ? 'bg-[#7B61FF] text-white' : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'}`}
             >
               {t('tft.filter.allRegions')}
             </button>
@@ -114,7 +114,7 @@ export default function TftProsPage() {
               <button
                 key={r.code}
                 onClick={() => setRegion(r.code)}
-                className={`px-2.5 py-1 rounded text-xs font-medium ${region === r.code ? 'bg-[#7B61FF] text-white' : 'bg-[#141c2e] text-[#8a9bb0] hover:text-white'}`}
+                className={`px-2.5 py-1 rounded text-xs font-medium ${region === r.code ? 'bg-[#7B61FF] text-white' : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'}`}
               >
                 {r.label} <span className="text-[10px] opacity-70">{r.count}</span>
               </button>
@@ -155,18 +155,18 @@ export default function TftProsPage() {
         </div>
 
         {loading && (
-          <div className="text-[#4a5a70] text-center py-8">{t('tft.loading')}</div>
+          <div className="text-[#7a8aa0] text-center py-8">{t('tft.loading')}</div>
         )}
 
         {!loading && filteredPros.length === 0 && (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#8a9bb0] text-sm">
+          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#a0b0c5] text-sm">
             {t('tft.pros.empty')}
           </div>
         )}
 
         {!loading && filteredPros.length > 0 && (
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
-            <div className="grid grid-cols-[1fr_8rem_7rem_6rem_3rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#4a5a70] bg-[#0a0e1a]">
+            <div className="grid grid-cols-[1fr_8rem_7rem_6rem_3rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#7a8aa0] bg-[#0a0e1a]">
               <div>{t('tft.pros.col.player')}</div>
               <div className="hidden sm:block">{t('tft.pros.col.team')}</div>
               <div className="hidden sm:block">{t('tft.pros.col.role')}</div>
@@ -185,15 +185,15 @@ export default function TftProsPage() {
                   <div className="min-w-0">
                     <div className="text-white font-medium truncate">{p.pro_name}</div>
                     {(p.real_name || p.country) && (
-                      <div className="text-[#4a5a70] text-[10px] truncate">
+                      <div className="text-[#7a8aa0] text-[10px] truncate">
                         {p.real_name}{p.real_name && p.country ? ' · ' : ''}{p.country}
                       </div>
                     )}
                   </div>
-                  <div className="hidden sm:block text-[#8a9bb0] truncate">{p.team || '—'}</div>
-                  <div className="hidden sm:block text-[#8a9bb0] truncate">{p.role || '—'}</div>
-                  <div className="hidden sm:block text-[#8a9bb0]">{REGION_LABELS[p.region] || p.region.toUpperCase()}</div>
-                  <div className="flex items-center justify-end gap-1.5 text-[#4a5a70]">
+                  <div className="hidden sm:block text-[#a0b0c5] truncate">{p.team || '—'}</div>
+                  <div className="hidden sm:block text-[#a0b0c5] truncate">{p.role || '—'}</div>
+                  <div className="hidden sm:block text-[#a0b0c5]">{REGION_LABELS[p.region] || p.region.toUpperCase()}</div>
+                  <div className="flex items-center justify-end gap-1.5 text-[#7a8aa0]">
                     {p.twitch_handle && (
                       <a
                         href={`https://twitch.tv/${p.twitch_handle}`}

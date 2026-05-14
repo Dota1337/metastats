@@ -19,7 +19,7 @@ export default function StubPage({ active, title, hint }: { active: Active; titl
             TFT
           </div>
           <h1 className="text-white text-2xl font-medium mb-2">{title}</h1>
-          <p className="text-[#8a9bb0] text-sm">{hint || 'Wird in einer der nächsten Iterationen ausgeliefert.'}</p>
+          <p className="text-[#a0b0c5] text-sm">{hint || 'Wird in einer der nächsten Iterationen ausgeliefert.'}</p>
         </div>
       </div>
       <Footer />

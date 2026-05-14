@@ -230,7 +230,7 @@ export default function SideDrawer() {
             <path strokeLinecap="round" strokeLinejoin="round" d={open ? 'M15 19l-7-7 7-7' : 'M9 5l7 7-7 7'} />
           </svg>
           {!open && (
-            <span className="text-[#8a9bb0] text-[9px] font-medium [writing-mode:vertical-lr] group-hover:text-white transition-colors">
+            <span className="text-[#a0b0c5] text-[9px] font-medium [writing-mode:vertical-lr] group-hover:text-white transition-colors">
               LIVE
             </span>
           )}
@@ -255,7 +255,7 @@ export default function SideDrawer() {
             <span className="text-[#c89b3c] text-sm font-medium">
               meta<span className="text-white">stats</span>
             </span>
-            <button onClick={() => setOpen(false)} className="text-[#4a5a70] hover:text-white transition-colors">
+            <button onClick={() => setOpen(false)} className="text-[#7a8aa0] hover:text-white transition-colors">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -269,7 +269,7 @@ export default function SideDrawer() {
               className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                 tab === 'tournaments'
                   ? 'bg-[#1e2a3a] text-white shadow-sm'
-                  : 'text-[#8a9bb0] hover:text-white'
+                  : 'text-[#a0b0c5] hover:text-white'
               }`}
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -287,7 +287,7 @@ export default function SideDrawer() {
               className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                 tab === 'patches'
                   ? 'bg-[#1e2a3a] text-white shadow-sm'
-                  : 'text-[#8a9bb0] hover:text-white'
+                  : 'text-[#a0b0c5] hover:text-white'
               }`}
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -370,7 +370,7 @@ function TournamentsContent({
               className={`px-2.5 py-1 rounded text-[10px] font-medium transition-colors ${
                 tournamentFilter === f.key
                   ? 'bg-[#c89b3c]/20 text-[#c89b3c]'
-                  : 'text-[#8a9bb0] hover:text-white hover:bg-[#141c2e]'
+                  : 'text-[#a0b0c5] hover:text-white hover:bg-[#141c2e]'
               }`}
             >
               {f.label}
@@ -393,14 +393,14 @@ function TournamentsContent({
 
       {/* Match list */}
       {tournaments.length === 0 ? (
-        <div className="px-4 py-8 text-center text-[#4a5a70] text-xs">
+        <div className="px-4 py-8 text-center text-[#7a8aa0] text-xs">
           {t('drawer.noMatches')}
         </div>
       ) : (
         Object.entries(groupedByDate).map(([date, matches]) => (
           <div key={date}>
             <div className="px-4 py-1.5 bg-[#0d1526] border-y border-[#1e2a3a] sticky top-0 z-10">
-              <span className="text-[#8a9bb0] text-[10px] font-medium uppercase tracking-wider">{date}</span>
+              <span className="text-[#a0b0c5] text-[10px] font-medium uppercase tracking-wider">{date}</span>
             </div>
             {matches.map((match, i) => (
               <MatchCard key={`${match.startTime}-${i}`} match={match} formatTime={formatTime} relativeTime={relativeTime} t={t} />
@@ -439,10 +439,10 @@ function MatchCard({ match, formatTime, relativeTime, t }: { match: Tournament; 
             {match.league}
           </span>
           {match.blockName && (
-            <span className="text-[#4a5a70] text-[10px]">· {match.blockName}</span>
+            <span className="text-[#7a8aa0] text-[10px]">· {match.blockName}</span>
           )}
         </div>
-        <span className={`text-[10px] ${isLive ? 'text-red-400 font-bold' : isUpcoming ? 'text-[#8a9bb0]' : 'text-[#4a5a70]'}`}>
+        <span className={`text-[10px] ${isLive ? 'text-red-400 font-bold' : isUpcoming ? 'text-[#a0b0c5]' : 'text-[#7a8aa0]'}`}>
           {isLive ? 'LIVE' : isUpcoming ? relativeTime(match.startTime) : formatTime(match.startTime)}
         </span>
       </div>
@@ -454,7 +454,7 @@ function MatchCard({ match, formatTime, relativeTime, t }: { match: Tournament; 
             {team1.image && <img src={team1.image} alt="" className="w-5 h-5 rounded" />}
             <span className={`text-xs truncate ${
               team1.outcome === 'win' ? 'text-green-400 font-medium' :
-              team1.outcome === 'loss' ? 'text-[#4a5a70]' : 'text-white'
+              team1.outcome === 'loss' ? 'text-[#7a8aa0]' : 'text-white'
             }`}>
               {team1.name}
             </span>
@@ -462,11 +462,11 @@ function MatchCard({ match, formatTime, relativeTime, t }: { match: Tournament; 
 
           {/* Score */}
           <div className="flex items-center gap-1 px-2">
-            <span className={`text-xs font-bold ${team1.outcome === 'win' ? 'text-green-400' : 'text-[#8a9bb0]'}`}>
+            <span className={`text-xs font-bold ${team1.outcome === 'win' ? 'text-green-400' : 'text-[#a0b0c5]'}`}>
               {match.state !== 'unstarted' ? team1.gameWins : '-'}
             </span>
-            <span className="text-[#4a5a70] text-[10px]">:</span>
-            <span className={`text-xs font-bold ${team2.outcome === 'win' ? 'text-green-400' : 'text-[#8a9bb0]'}`}>
+            <span className="text-[#7a8aa0] text-[10px]">:</span>
+            <span className={`text-xs font-bold ${team2.outcome === 'win' ? 'text-green-400' : 'text-[#a0b0c5]'}`}>
               {match.state !== 'unstarted' ? team2.gameWins : '-'}
             </span>
           </div>
@@ -474,7 +474,7 @@ function MatchCard({ match, formatTime, relativeTime, t }: { match: Tournament; 
           <div className="flex-1 flex items-center justify-end gap-2 min-w-0">
             <span className={`text-xs truncate ${
               team2.outcome === 'win' ? 'text-green-400 font-medium' :
-              team2.outcome === 'loss' ? 'text-[#4a5a70]' : 'text-white'
+              team2.outcome === 'loss' ? 'text-[#7a8aa0]' : 'text-white'
             }`}>
               {team2.name}
             </span>
@@ -502,7 +502,7 @@ function TftTournamentsContent({
   const dateFmt = (s: string | null) => s ? new Date(s).toLocaleDateString(locale, { day: '2-digit', month: 'short' }) : '—';
 
   if (tournaments.length === 0) {
-    return <div className="px-4 py-8 text-center text-[#4a5a70] text-xs">{t('drawer.noMatches')}</div>;
+    return <div className="px-4 py-8 text-center text-[#7a8aa0] text-xs">{t('drawer.noMatches')}</div>;
   }
 
   // Group by status — live first (pulsing red header), then upcoming. Past
@@ -563,7 +563,7 @@ function TftTournamentRow({
         )}
         <div className="flex-1 min-w-0">
           <div className="text-white text-xs font-medium truncate">{cleanTournamentName(tournament.name)}</div>
-          <div className="text-[#4a5a70] text-[10px] mt-0.5">
+          <div className="text-[#7a8aa0] text-[10px] mt-0.5">
             {dateFmt(tournament.start_date)} – {dateFmt(tournament.end_date)}
             {tournament.region && ` · ${tournament.region}`}
           </div>
@@ -618,19 +618,19 @@ function PatchesContent({ patches, t }: { patches: PatchNote[]; t: (key: any) =>
                   </span>
                 )}
               </div>
-              <span className="text-[#4a5a70] text-[10px]">{patch.date}</span>
+              <span className="text-[#7a8aa0] text-[10px]">{patch.date}</span>
             </div>
             {patch.highlights.length > 0 && (
               <div className="mt-1.5 space-y-0.5">
                 {patch.highlights.map((h, j) => (
-                  <div key={j} className="text-[#8a9bb0] text-[11px] flex items-start gap-1.5">
+                  <div key={j} className="text-[#a0b0c5] text-[11px] flex items-start gap-1.5">
                     <span className="text-[#c89b3c] mt-0.5">·</span>
                     {h}
                   </div>
                 ))}
               </div>
             )}
-            <div className="flex items-center gap-1 mt-1.5 text-[#4a5a70] text-[10px]">
+            <div className="flex items-center gap-1 mt-1.5 text-[#7a8aa0] text-[10px]">
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
               </svg>

@@ -13,6 +13,8 @@ import { performanceAgent } from './agents/performance';
 import { metaAdaptationAgent, buildMetaKgSlice, type MetaKgSlice } from './agents/meta-adaptation';
 import { highRollAgent, buildHighRollKgSlice, type HighRollKgSlice } from './agents/high-roll';
 import { consistencyAgent } from './agents/consistency';
+import { flexMasteryAgent } from './agents/flex-mastery';
+import { gameSenseAgent } from './agents/game-sense';
 
 export interface TftMarketValueInput {
   ranked: TftRanked | null;
@@ -51,8 +53,12 @@ export function calculateTftMarketValue(input: TftMarketValueInput): MarketValue
   const meta = metaAdaptationAgent(input.matches, metaKg);
   const high = highRollAgent(input.matches, highRollKg, augTier);
   const cons = consistencyAgent(input.matches);
+  const flex = flexMasteryAgent(input.matches);
+  const sense = gameSenseAgent(input.matches);
 
-  const productMultiplier = perf.multiplier * meta.multiplier * high.multiplier * cons.multiplier;
+  const productMultiplier =
+    perf.multiplier * meta.multiplier * high.multiplier *
+    cons.multiplier * flex.multiplier * sense.multiplier;
   const damping = dampFor(input.matches.length);
   // Damping pulls multiplier toward 1.0 by `(1 - damping)` weight. So with
   // damping=0.5 a 1.4x multiplier becomes 1.2x; damping=1.0 keeps it at 1.4x.
@@ -64,7 +70,7 @@ export function calculateTftMarketValue(input: TftMarketValueInput): MarketValue
     multiplier: Number(clamped.toFixed(3)),
     finalValue: Math.round(base.baseValue * clamped),
     rated: true,
-    agents: [perf, meta, high, cons],
+    agents: [perf, meta, high, cons, flex, sense],
     sampleSize: input.matches.length,
     damping,
   };

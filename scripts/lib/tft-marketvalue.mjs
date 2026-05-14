@@ -190,6 +190,101 @@ function highRollAgent(matches, kg, augTierMap) {
   return { agent: 'highRoll', multiplier, delta: multiplier - 1, notes };
 }
 
+// FlexMasteryAgent — rewards players who can pilot multiple comps at a high
+// level (the opposite of one-trick spam). Pure one-tricks still get a small
+// bonus if their average placement on that single comp is exceptional.
+function flexMasteryAgent(matches) {
+  const notes = [];
+  let multiplier = 1;
+  if (matches.length < 10) {
+    return { agent: 'flexMastery', multiplier: 1, delta: 0, notes: [{ label: 'sample too small', impact: 0 }] };
+  }
+
+  // Per-comp placement averages (min 5 games per comp counted)
+  const byComp = new Map();
+  for (const m of matches) {
+    const k = m.comp?.clusterKey;
+    if (!k) continue;
+    if (!byComp.has(k)) byComp.set(k, []);
+    byComp.get(k).push(m.placement);
+  }
+  const compAvgs = [...byComp.entries()]
+    .filter(([, plcs]) => plcs.length >= 5)
+    .map(([k, plcs]) => ({ key: k, avg: plcs.reduce((a, b) => a + b, 0) / plcs.length, games: plcs.length }));
+  const masteredComps = compAvgs.filter(c => c.avg <= 3.5);
+  const dominant = compAvgs.sort((a, b) => b.games - a.games)[0];
+
+  if (masteredComps.length >= 3) {
+    multiplier += 0.06;
+    notes.push({ label: 'flex mastery', impact: +0.06, detail: `${masteredComps.length} comps avg ≤3.5` });
+  } else if (masteredComps.length >= 2) {
+    multiplier += 0.03;
+    notes.push({ label: 'flex mastery', impact: +0.03, detail: `${masteredComps.length} comps avg ≤3.5` });
+  } else if (dominant && dominant.games >= 15 && dominant.avg <= 2.8) {
+    // Pure one-trick but exceptional → small bonus (less than flex would get)
+    multiplier += 0.03;
+    notes.push({ label: 'one-trick mastery', impact: +0.03, detail: `avg ${dominant.avg.toFixed(2)}` });
+  } else if (compAvgs.length >= 3 && compAvgs.every(c => c.avg > 4.5)) {
+    multiplier -= 0.04;
+    notes.push({ label: 'flex without substance', impact: -0.04, detail: `${compAvgs.length} comps all avg >4.5` });
+  }
+
+  // Carry-unit diversity — a separate axis from comp variety. Same comp
+  // family can have different carries (Aphelios vs Jinx Sentinels, etc.)
+  const carryUnits = new Set(matches.map(m => m.comp?.carryUnit).filter(Boolean));
+  if (carryUnits.size >= 6) {
+    multiplier += 0.03;
+    notes.push({ label: 'carry diversity', impact: +0.03, detail: `${carryUnits.size} carries` });
+  } else if (carryUnits.size <= 2 && matches.length >= 30) {
+    multiplier -= 0.04;
+    notes.push({ label: 'narrow carry pool', impact: -0.04, detail: `${carryUnits.size} carries` });
+  }
+
+  multiplier = Math.max(0.90, Math.min(1.12, multiplier));
+  return { agent: 'flexMastery', multiplier, delta: multiplier - 1, notes };
+}
+
+// GameSenseAgent — late-game decision making.
+// Survival skill: how late did the player exit when they didn't make Top-4?
+// Eco mastery: how much gold was left on the bench when they Top-4'd?
+function gameSenseAgent(matches) {
+  const notes = [];
+  let multiplier = 1;
+  if (matches.length < 10) {
+    return { agent: 'gameSense', multiplier: 1, delta: 0, notes: [{ label: 'sample too small', impact: 0 }] };
+  }
+
+  // Survival: avg last_round when finishing 5–8
+  const bottoms = matches.filter(m => m.placement >= 5 && typeof m.lastRound === 'number' && m.lastRound > 0);
+  if (bottoms.length >= 5) {
+    const avgLate = bottoms.reduce((a, b) => a + b.lastRound, 0) / bottoms.length;
+    if (avgLate > 6.0) {
+      multiplier += 0.05;
+      notes.push({ label: 'late exit', impact: +0.05, detail: `Ø Stage ${avgLate.toFixed(1)}` });
+    } else if (avgLate > 5.5) {
+      multiplier += 0.02;
+      notes.push({ label: 'late exit', impact: +0.02, detail: `Ø Stage ${avgLate.toFixed(1)}` });
+    }
+  }
+
+  // Eco: avg gold_left when finishing Top-4 (lower = more efficiently spent)
+  // Skip null gold_left (matches cached before migration 0012)
+  const tops = matches.filter(m => m.placement <= 4 && typeof m.goldLeft === 'number');
+  if (tops.length >= 5) {
+    const avgGold = tops.reduce((a, b) => a + b.goldLeft, 0) / tops.length;
+    if (avgGold < 15) {
+      multiplier += 0.03;
+      notes.push({ label: 'eco mastery', impact: +0.03, detail: `Ø ${avgGold.toFixed(0)}g leftover` });
+    } else if (avgGold > 40) {
+      multiplier -= 0.02;
+      notes.push({ label: 'unspent gold', impact: -0.02, detail: `Ø ${avgGold.toFixed(0)}g leftover` });
+    }
+  }
+
+  multiplier = Math.max(0.94, Math.min(1.10, multiplier));
+  return { agent: 'gameSense', multiplier, delta: multiplier - 1, notes };
+}
+
 function consistencyAgent(matches) {
   const notes = [];
   let multiplier = 1;
@@ -258,8 +353,12 @@ export function calculateTftMarketValue(input) {
   const meta = metaAdaptationAgent(input.matches, metaKg);
   const high = highRollAgent(input.matches, highRollKg, augTier);
   const cons = consistencyAgent(input.matches);
+  const flex = flexMasteryAgent(input.matches);
+  const sense = gameSenseAgent(input.matches);
 
-  const productMultiplier = perf.multiplier * meta.multiplier * high.multiplier * cons.multiplier;
+  const productMultiplier =
+    perf.multiplier * meta.multiplier * high.multiplier *
+    cons.multiplier * flex.multiplier * sense.multiplier;
   const damping = dampFor(input.matches.length);
   const damped = 1 + (productMultiplier - 1) * damping;
   const clamped = Math.max(0.45, Math.min(1.65, damped));
@@ -269,7 +368,7 @@ export function calculateTftMarketValue(input) {
     multiplier: Number(clamped.toFixed(3)),
     finalValue: Math.round(base.baseValue * clamped),
     rated: true,
-    agents: [perf, meta, high, cons],
+    agents: [perf, meta, high, cons, flex, sense],
     sampleSize: input.matches.length,
     damping,
   };
@@ -339,5 +438,10 @@ export function buildSnapshotForPlayer(rawMatch, puuid) {
       tier: u.tier ?? 1,
       items: Array.isArray(u.itemNames) ? u.itemNames : [],
     })),
+    // Extra match metrics for the flexMastery / gameSense agents
+    lastRound: me.last_round ?? 0,
+    goldLeft: typeof me.gold_left === 'number' ? me.gold_left : null,
+    level: me.level ?? 0,
+    totalDamage: me.total_damage_to_players ?? 0,
   };
 }

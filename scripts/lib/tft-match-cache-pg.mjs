@@ -139,6 +139,9 @@ function buildCachedRow(rawMatch, puuid, region) {
     level: me.level ?? 0,
     last_round: me.last_round ?? 0,
     total_damage: me.total_damage_to_players ?? 0,
+    // gold_left can legitimately be 0 (Top-1 player spent everything) — only
+    // null it when Riot omitted the field entirely.
+    gold_left: typeof me.gold_left === 'number' ? me.gold_left : null,
     comp_cluster_key: snap.comp?.clusterKey ?? null,
     carry_unit: snap.comp?.carryUnit ?? null,
     carry_items: snap.comp?.carryItems ?? [],
@@ -195,7 +198,7 @@ async function upsertMatchRows(db, rows) {
     let p = 1;
     for (const row of batch) {
       values.push(
-        `($${p++}, $${p++}, $${p++}, $${p++}, $${p++}, $${p++}, $${p++}, $${p++}, $${p++}, $${p++}, $${p++}, $${p++}, $${p++}::jsonb, $${p++}::jsonb, $${p++}::jsonb, $${p++}::jsonb)`,
+        `($${p++}, $${p++}, $${p++}, $${p++}, $${p++}, $${p++}, $${p++}, $${p++}, $${p++}, $${p++}, $${p++}, $${p++}, $${p++}, $${p++}::jsonb, $${p++}::jsonb, $${p++}::jsonb, $${p++}::jsonb)`,
       );
       params.push(
         row.puuid,
@@ -208,6 +211,7 @@ async function upsertMatchRows(db, rows) {
         row.level,
         row.last_round,
         row.total_damage,
+        row.gold_left,
         row.comp_cluster_key,
         row.carry_unit,
         JSON.stringify(row.carry_items),
@@ -218,7 +222,7 @@ async function upsertMatchRows(db, rows) {
     }
     const sql = `insert into tft_player_match_cache
       (puuid, match_id, region, set_number, queue_id, game_datetime, placement,
-       level, last_round, total_damage, comp_cluster_key, carry_unit,
+       level, last_round, total_damage, gold_left, comp_cluster_key, carry_unit,
        carry_items, augments, units, traits)
       values ${values.join(',')}
       on conflict (puuid, match_id) do nothing`;
@@ -232,7 +236,8 @@ async function upsertMatchRows(db, rows) {
 export async function listSeasonMatches(db, puuid, setNumber) {
   const r = await db.query(
     `select match_id, set_number, placement, augments, units, traits,
-            comp_cluster_key, carry_unit, carry_items, game_datetime
+            comp_cluster_key, carry_unit, carry_items, game_datetime,
+            last_round, gold_left, level, total_damage
        from tft_player_match_cache
        where puuid = $1 and queue_id = $2 and set_number = $3
        order by game_datetime desc`,
@@ -252,5 +257,10 @@ export async function listSeasonMatches(db, puuid, setNumber) {
     } : undefined,
     units: row.units || [],
     gameDatetime: Number(row.game_datetime),
+    lastRound: row.last_round,
+    // gold_left: null for matches cached before migration 0012 — agents skip null
+    goldLeft: row.gold_left,
+    level: row.level,
+    totalDamage: row.total_damage,
   }));
 }

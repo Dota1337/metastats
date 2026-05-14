@@ -660,6 +660,16 @@ const translations = {
     '\uC77C\uAD00\uC131', '\u7A33\u5B9A\u6027',
     'Consistencia', 'Constance'
   ),
+  'tft.marketValue.agent.flexMastery': t6(
+    'Flex-K\u00F6nnen', 'Flex Mastery',
+    '\uD50C\uB809\uC2A4 \uC219\uB828\uB3C4', '\u7075\u6D3B\u7CBE\u901A',
+    'Maestr\u00EDa flex', 'Ma\u00EEtrise flex'
+  ),
+  'tft.marketValue.agent.gameSense': t6(
+    'Game Sense', 'Game Sense',
+    '\uAC8C\uC784 \uC13C\uC2A4', '\u6E38\u620F\u610F\u8BC6',
+    'Visi\u00F3n de juego', 'Sens du jeu'
+  ),
   'tft.marketValue.agent.noImpact': t6(
     'Kein Einfluss', 'No impact',
     '\uC601\uD5A5 \uC5C6\uC74C', '\u65E0\u5F71\u54CD',
@@ -734,6 +744,48 @@ const translations = {
     '\uACBD\uAE30 \uBD80\uC871', '\u6BD4\u8D5B\u8FC7\u5C11',
     'Pocas partidas', 'Trop peu de matchs'
   ),
+  // flexMastery
+  'tft.marketValue.note.flexMastery': t6(
+    'Flex-Komposition', 'Flex comp pool',
+    '\uD50C\uB809\uC2A4 \uB371', '\u7075\u6D3B\u9635\u5BB9',
+    'Pool flex', 'Pool flex'
+  ),
+  'tft.marketValue.note.oneTrickMastery': t6(
+    'One-Trick-Meisterschaft', 'One-trick mastery',
+    '\uC6D0\uD2B8\uB9AD \uB9C8\uC2A4\uD130', '\u5355\u4E00\u7CBE\u901A',
+    'Maestr\u00EDa one-trick', 'Ma\u00EEtrise one-trick'
+  ),
+  'tft.marketValue.note.flexNoSubstance': t6(
+    'Flex ohne Resultate', 'Flex without results',
+    '\uACB0\uACFC \uC5C6\uB294 \uD50C\uB809\uC2A4', '\u7075\u6D3B\u4F46\u7F3A\u4E4F\u6210\u679C',
+    'Flex sin resultados', 'Flex sans r\u00E9sultats'
+  ),
+  'tft.marketValue.note.carryDiversity': t6(
+    'Carry-Vielfalt', 'Carry diversity',
+    '\uCE90\uB9AC \uB2E4\uC591\uC131', '\u4E3B\u529B\u591A\u6837\u6027',
+    'Diversidad de carry', 'Diversit\u00E9 de carry'
+  ),
+  'tft.marketValue.note.narrowCarryPool': t6(
+    'Schmaler Carry-Pool', 'Narrow carry pool',
+    '\uC81C\uD55C\uB41C \uCE90\uB9AC \uD480', '\u4E3B\u529B\u6C60\u7A84',
+    'Pool de carry limitado', 'Pool de carry limit\u00E9'
+  ),
+  // gameSense
+  'tft.marketValue.note.lateExit': t6(
+    'Sp\u00E4tes Ausscheiden', 'Late exit',
+    '\uD6C4\uBC18 \uC9C4\uCD9C', '\u540E\u671F\u51FA\u5C40',
+    'Salida tard\u00EDa', 'Sortie tardive'
+  ),
+  'tft.marketValue.note.ecoMastery': t6(
+    'Eco-Effizienz', 'Eco mastery',
+    '\uACBD\uC81C \uC6B4\uC601', '\u7ECF\u6D4E\u7CBE\u901A',
+    'Maestr\u00EDa econ\u00F3mica', 'Ma\u00EEtrise \u00E9co'
+  ),
+  'tft.marketValue.note.unspentGold': t6(
+    'Ungenutztes Gold', 'Unspent gold',
+    '\uBBF8\uC0AC\uC6A9 \uACE8\uB4DC', '\u672A\u4F7F\u7528\u91D1\u5E01',
+    'Oro sin usar', 'Or non d\u00E9pens\u00E9'
+  ),
   // Detail-string fragments \u2014 agents emit detail strings like "6 in a row"
   // or "67% recommended"; the frontend pattern-matches and swaps the
   // English fragment for the localized one.
@@ -761,6 +813,16 @@ const translations = {
     'Comps', 'comps',
     '\uB371', '\u9635\u5BB9',
     'comps', 'comps'
+  ),
+  'tft.marketValue.note.detail.leftover': t6(
+    'Restgold', 'leftover',
+    '\uC794\uC5EC', '\u5269\u4F59',
+    'restante', 'restant'
+  ),
+  'tft.marketValue.note.detail.carries': t6(
+    'Carries', 'carries',
+    '\uCE90\uB9AC', '\u4E3B\u529B',
+    'carries', 'carries'
   ),
 
   // \u2500 Marktwert Page (Top / Movers / Distribution) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500

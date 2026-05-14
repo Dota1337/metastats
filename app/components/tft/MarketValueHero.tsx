@@ -293,21 +293,31 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
 // Map stable agent-note label IDs to i18n keys. Agents emit short technical
 // labels like 'placement stddev'; the user sees the localized phrase.
 const NOTE_LABEL_KEYS: Record<string, string> = {
-  'avg-placement':     'tft.marketValue.note.avgPlacement',
-  'top-4 rate':        'tft.marketValue.note.top4Rate',
-  'top-1 rate':        'tft.marketValue.note.top1Rate',
-  'comp diversity':    'tft.marketValue.note.compDiversity',
-  'meta picks':        'tft.marketValue.note.metaPicks',
-  'one-trick penalty': 'tft.marketValue.note.oneTrickPenalty',
-  'off-meta':          'tft.marketValue.note.offMeta',
-  'item slam':         'tft.marketValue.note.itemSlam',
-  'prismatic share':   'tft.marketValue.note.prismaticShare',
-  'placement stddev':  'tft.marketValue.note.placementStddev',
-  'top-4 streak':      'tft.marketValue.note.top4Streak',
-  'bottom-4 share':    'tft.marketValue.note.bottom4Share',
+  'avg-placement':           'tft.marketValue.note.avgPlacement',
+  'top-4 rate':              'tft.marketValue.note.top4Rate',
+  'top-1 rate':              'tft.marketValue.note.top1Rate',
+  'comp diversity':          'tft.marketValue.note.compDiversity',
+  'meta picks':              'tft.marketValue.note.metaPicks',
+  'one-trick penalty':       'tft.marketValue.note.oneTrickPenalty',
+  'off-meta':                'tft.marketValue.note.offMeta',
+  'item slam':               'tft.marketValue.note.itemSlam',
+  'prismatic share':         'tft.marketValue.note.prismaticShare',
+  'placement stddev':        'tft.marketValue.note.placementStddev',
+  'top-4 streak':            'tft.marketValue.note.top4Streak',
+  'bottom-4 share':          'tft.marketValue.note.bottom4Share',
+  // flexMastery
+  'flex mastery':            'tft.marketValue.note.flexMastery',
+  'one-trick mastery':       'tft.marketValue.note.oneTrickMastery',
+  'flex without substance':  'tft.marketValue.note.flexNoSubstance',
+  'carry diversity':         'tft.marketValue.note.carryDiversity',
+  'narrow carry pool':       'tft.marketValue.note.narrowCarryPool',
+  // gameSense
+  'late exit':               'tft.marketValue.note.lateExit',
+  'eco mastery':              'tft.marketValue.note.ecoMastery',
+  'unspent gold':            'tft.marketValue.note.unspentGold',
   // catch-alls — any of these agent-emitted strings means "we couldn't score"
-  'no matches':        'tft.marketValue.note.tooFewMatches',
-  'sample too small':  'tft.marketValue.note.tooFewMatches',
+  'no matches':              'tft.marketValue.note.tooFewMatches',
+  'sample too small':        'tft.marketValue.note.tooFewMatches',
 };
 
 // Translate fragments inside detail strings. Agents emit
@@ -320,7 +330,9 @@ function localizeDetail(detail: string, t: (k: any) => string): string {
     .replace(/\brecommended\b/i, t('tft.marketValue.note.detail.recommended'))
     .replace(/\bin top-10\b/i, t('tft.marketValue.note.detail.inTop10'))
     .replace(/\bone comp\b/i, t('tft.marketValue.note.detail.oneComp'))
-    .replace(/\bcomps\b/i, t('tft.marketValue.note.detail.compsUnit'));
+    .replace(/\bcomps\b/i, t('tft.marketValue.note.detail.compsUnit'))
+    .replace(/\bleftover\b/i, t('tft.marketValue.note.detail.leftover'))
+    .replace(/\bcarries\b/i, t('tft.marketValue.note.detail.carries'));
 }
 
 function AgentRow({ agent }: { agent: AgentScore }) {
@@ -331,6 +343,8 @@ function AgentRow({ agent }: { agent: AgentScore }) {
       case 'metaAdaptation': return t('tft.marketValue.agent.metaAdaptation');
       case 'highRoll':       return t('tft.marketValue.agent.highRoll');
       case 'consistency':    return t('tft.marketValue.agent.consistency');
+      case 'flexMastery':    return t('tft.marketValue.agent.flexMastery');
+      case 'gameSense':      return t('tft.marketValue.agent.gameSense');
       default:               return agent.agent;
     }
   })();

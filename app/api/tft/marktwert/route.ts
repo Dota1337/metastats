@@ -99,6 +99,12 @@ export async function GET(request: NextRequest) {
       augments: me.augments,
       comp: classify(me),
       units: me.units.map((u: any) => ({ characterId: u.characterId, tier: u.tier, items: u.items })),
+      // Extra metrics for flexMastery / gameSense agents (snake_case in raw,
+      // camelCase on processed match objects — try both)
+      lastRound: me.last_round ?? me.lastRound ?? 0,
+      goldLeft: typeof (me.gold_left ?? me.goldLeft) === 'number' ? (me.gold_left ?? me.goldLeft) : null,
+      level: me.level ?? 0,
+      totalDamage: me.total_damage_to_players ?? me.totalDamageToPlayers ?? 0,
     };
   }).filter((m): m is NonNullable<typeof m> => m != null);
 

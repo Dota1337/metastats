@@ -21,6 +21,13 @@ export interface TftMatchSnapshot {
     carryItems: string[];
   };
   units: { characterId: string; tier: number; items: string[] }[];
+  // Extra match-level metrics fed to flexMastery / gameSense.
+  // Optional because some legacy callers (live-calc fallback) build a thinner
+  // snapshot — agents tolerate undefined by skipping the affected note.
+  lastRound?: number;
+  goldLeft?: number | null;
+  level?: number;
+  totalDamage?: number;
 }
 
 export interface AgentScore {

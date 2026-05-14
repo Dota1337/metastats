@@ -132,6 +132,22 @@ async function main() {
   const tftPatch = stored?.patchOverride || derivedTftPatch;
   console.log(`      LoL ${lolPatch} → TFT ${tftPatch}${stored?.patchOverride ? ' (override)' : ''}`);
 
+  // Pull set-start / set-end from the Riot patch-schedule roadmap if it's been
+  // crawled. Keeps tft-set.json self-contained for /api/tft/sets/current.
+  let setStartDate = stored?.setStartDate ?? null;
+  let setEndDate = stored?.setEndDate ?? null;
+  const ROADMAP = 'public/tft-roadmap.json';
+  if (existsSync(ROADMAP)) {
+    try {
+      const roadmap = JSON.parse(readFileSync(ROADMAP, 'utf8'));
+      const info = roadmap.sets?.[String(live.number)];
+      if (info) {
+        setStartDate = info.startDate || setStartDate;
+        setEndDate = info.endDate || setEndDate;
+      }
+    } catch {}
+  }
+
   const payload = {
     setNumber: live.number,
     setName: displayName,
@@ -142,6 +158,8 @@ async function main() {
     detectedAt: stored?.detectedAt && !changed ? stored.detectedAt : new Date().toISOString(),
     lastCheckedAt: new Date().toISOString(),
     history: stored?.history || [],
+    setStartDate,
+    setEndDate,
   };
   if (changed && stored?.setNumber) {
     payload.history = [

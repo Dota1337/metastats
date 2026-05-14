@@ -7,5 +7,7 @@
   "patchOverride": null,
   "detectedAt": "2026-05-03T14:04:48.564Z",
   "lastCheckedAt": "2026-05-14T09:08:16.661Z",
-  "history": []
+  "history": [],
+  "setStartDate": "2026-04-15",
+  "setEndDate": "2026-07-28"
 }

@@ -587,6 +587,31 @@ const translations = {
     '\uB370\uC774\uD130 \uAE30\uC900\uC77C', '\u6570\u636E\u65E5\u671F',
     'Datos del', 'Donn\u00E9es du'
   ),
+  'tft.setTimeline.setLabel': t6(
+    'Set {n}', 'Set {n}',
+    '\uC2DC\uC98C {n}', '\u8D5B\u5B63 {n}',
+    'Set {n}', 'Set {n}'
+  ),
+  'tft.setTimeline.dayOf': t6(
+    'Tag {d} von {t}', 'Day {d} of {t}',
+    '{t}\uC77C \uC911 {d}\uC77C\uC9F8', '\u7B2C {d} / {t} \u5929',
+    'D\u00EDa {d} de {t}', 'Jour {d} sur {t}'
+  ),
+  'tft.setTimeline.remaining': t6(
+    'noch {r} Tage', '{r} days left',
+    '{r}\uC77C \uB0A8\uC74C', '\u5269\u4F59 {r} \u5929',
+    '{r} d\u00EDas restantes', '{r} jours restants'
+  ),
+  'tft.setTimeline.today': t6(
+    'Heute', 'Today',
+    '\uC624\uB298', '\u4ECA\u5929',
+    'Hoy', 'Aujourd\'hui'
+  ),
+  'tft.setTimeline.hotfix': t6(
+    'Hotfix', 'Hotfix',
+    '\uD56B\uD53D\uC2A4', '\u70ED\u4FEE',
+    'Hotfix', 'Hotfix'
+  ),
   'tft.marketValue.multiplier': t6(
     'Multiplikator', 'Multiplier',
     '\uBC30\uC728', '\u500D\u6570',

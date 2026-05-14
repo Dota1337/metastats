@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { ResponsiveContainer, LineChart, Line, YAxis, Tooltip as RechartsTooltip } from 'recharts';
 import { useI18n, LOCALE_MAP, type Lang } from '../../lib/i18n';
+import SetTimeline from './SetTimeline';
 
 interface MarketValueResponse {
   summoner: { name: string; puuid: string; tier?: string; rank?: string; lp?: number };
@@ -233,9 +234,6 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
               <span className={refreshState === 'busy' ? 'inline-block animate-spin' : 'inline-block'}>↻</span>
               {refreshState === 'busy' ? t('tft.marketValue.refresh.busy') : t('tft.marketValue.refresh.button')}
             </button>
-            <span className="text-[#a0b0c5] text-xs uppercase tracking-widest">
-              {t('tft.marketValue.last30d')}
-            </span>
           </div>
           <div className="h-20">
             {historyLoading ? (
@@ -276,6 +274,9 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
           {refreshMessage}
         </div>
       )}
+
+      {/* Season timeline — set start → today → set end with patch ticks */}
+      <SetTimeline lang={lang} />
 
       {/* Expandable agent breakdown */}
       {showDetails && (

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAvailablePatches } from '../../../lib/tft-supabase-reader';
+import { tftPatchLabel } from '../../../lib/tft-patch-label';
 
 // TFT-specific patch notes. Sources the patch list from our daily-stats
 // crawl (`get_tft_available_patches` RPC) and maps each patch number to its
@@ -47,13 +48,22 @@ export async function GET() {
     // 180 days = roughly the lifetime of a TFT set; gives us all patches
     // of the current set plus the tail end of the previous one.
     const rows = await getAvailablePatches(180);
-    const patches: PatchNote[] = rows.map((r, i) => ({
-      version: r.patch,
-      date: r.last_day,
-      url: tftPatchUrl(r.patch),
-      // We don't crawl headline summaries — the side-drawer card links
-      // straight to Riot's patch notes page. Highlights stays empty so
-      // the LoL-side renderer's "summary list" stays graceful.
+    // The crawl_meta table stores Riot's raw game_version (LoL patch like
+    // "16.10"), not the TFT marketing label users actually see in-game
+    // and on the patch-notes page. Normalise here so the side-drawer
+    // header, the link URL, and the date list all match.
+    const dedup = new Map<string, { date: string; raw: string }>();
+    for (const r of rows) {
+      const tftLabel = tftPatchLabel(r.patch);
+      if (!tftLabel) continue;
+      // Keep the *latest* entry per TFT label (rows are already sorted
+      // newest-first by getAvailablePatches).
+      if (!dedup.has(tftLabel)) dedup.set(tftLabel, { date: r.last_day, raw: r.patch });
+    }
+    const patches: PatchNote[] = [...dedup.entries()].map(([version, info], i) => ({
+      version,
+      date: info.date,
+      url: tftPatchUrl(version),
       highlights: [],
       isNew: i === 0,
     }));

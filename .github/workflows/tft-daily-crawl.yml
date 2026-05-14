@@ -55,6 +55,13 @@ jobs:
         run: node scripts/detect-tft-set.mjs
         continue-on-error: true
 
+      - name: Refresh TFT patch roadmap
+        # Riot publishes a patch schedule article that lists every patch date
+        # for the year. We scrape it daily so set-start / set-end / future
+        # patch dates stay current in /api/tft/sets/current.
+        run: node scripts/fetch-tft-roadmap.mjs
+        continue-on-error: true
+
       - name: Refresh TFT asset bundle
         run: node scripts/fetch-tft-assets.mjs
         continue-on-error: true
@@ -67,7 +74,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add public/tft-set.json public/tft-tier-distribution.json public/tft-assets*.json 2>/dev/null || true
+          git add public/tft-set.json public/tft-roadmap.json public/tft-tier-distribution.json public/tft-assets*.json 2>/dev/null || true
           if git diff --staged --quiet; then
             echo "No set/asset changes."
           else

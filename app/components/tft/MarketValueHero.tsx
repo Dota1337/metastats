@@ -72,34 +72,70 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
   const [loading, setLoading] = useState(true);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [showDetails, setShowDetails] = useState(false);
+  const [refreshState, setRefreshState] = useState<'idle' | 'busy' | 'cooldown' | 'error'>('idle');
+  const [refreshMessage, setRefreshMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
+  const loadValue = (signal?: AbortSignal) => {
     setLoading(true);
     setData(null);
     setHistory([]);
-    fetch(`/api/tft/marktwert?name=${encodeURIComponent(fullName)}&region=${region}`)
+    return fetch(`/api/tft/marktwert?name=${encodeURIComponent(fullName)}&region=${region}`, { signal })
       .then(async r => {
         if (!r.ok) throw new Error('Marktwert nicht verfügbar');
         return r.json();
       })
       .then(j => {
-        if (cancelled) return;
         setData(j);
         setLoading(false);
-        // Kick off history fetch only if rated — unrated players have no
-        // snapshots to query.
         if (j.marketValue?.rated && j.summoner?.puuid) {
           setHistoryLoading(true);
-          fetch(`/api/tft/marktwert/history?puuid=${j.summoner.puuid}&region=${region}&days=30`)
+          fetch(`/api/tft/marktwert/history?puuid=${j.summoner.puuid}&region=${region}&days=30`, { signal })
             .then(r => r.ok ? r.json() : { series: [] })
-            .then(h => { if (!cancelled) { setHistory(h.series || []); setHistoryLoading(false); } })
-            .catch(() => { if (!cancelled) setHistoryLoading(false); });
+            .then(h => { setHistory(h.series || []); setHistoryLoading(false); })
+            .catch(() => setHistoryLoading(false));
         }
       })
-      .catch(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
+      .catch(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    const ctrl = new AbortController();
+    loadValue(ctrl.signal);
+    return () => ctrl.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fullName, region]);
+
+  // On-demand refresh: the Vercel API forwards to the Hetzner crawler box,
+  // which re-fills the match cache for this puuid and pushes a fresh snapshot
+  // to Supabase before responding. After 200 we re-read /api/tft/marktwert
+  // and the user sees the new value.
+  const triggerRefresh = async () => {
+    if (!data?.summoner?.puuid || refreshState === 'busy') return;
+    setRefreshState('busy');
+    setRefreshMessage(null);
+    try {
+      const res = await fetch('/api/tft/marktwert/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ puuid: data.summoner.puuid, region }),
+      });
+      if (res.status === 429) {
+        const j = await res.json().catch(() => ({}));
+        const sec = j.retryAfter || 60;
+        setRefreshState('cooldown');
+        setRefreshMessage(t('tft.marketValue.refresh.cooldown').replace('{s}', String(sec)));
+        setTimeout(() => { setRefreshState('idle'); setRefreshMessage(null); }, sec * 1000);
+        return;
+      }
+      if (!res.ok) throw new Error(`refresh failed: ${res.status}`);
+      await loadValue();
+      setRefreshState('idle');
+    } catch {
+      setRefreshState('error');
+      setRefreshMessage(t('tft.marketValue.refresh.failed'));
+      setTimeout(() => { setRefreshState('idle'); setRefreshMessage(null); }, 5000);
+    }
+  };
 
   // Loading skeleton — keeps the layout shape stable so the page doesn't jump
   // once the value lands.
@@ -187,8 +223,19 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
 
         {/* Right: 30d sparkline (if we have history) */}
         <div className="flex-1 min-w-[200px] max-w-md">
-          <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-1.5 text-right">
-            {t('tft.marketValue.last30d')}
+          <div className="flex items-center justify-end gap-2 mb-1.5">
+            <button
+              onClick={triggerRefresh}
+              disabled={refreshState === 'busy' || refreshState === 'cooldown'}
+              className="inline-flex items-center gap-1 text-[10px] uppercase tracking-widest text-[#a0b0c5] hover:text-white disabled:text-[#7a8aa0] disabled:cursor-not-allowed transition-colors"
+              title={data.snapshotDate ? `${t('tft.marketValue.dataFrom')} ${new Date(data.snapshotDate).toLocaleDateString(LOCALE_MAP[lang])}` : ''}
+            >
+              <span className={refreshState === 'busy' ? 'inline-block animate-spin' : 'inline-block'}>↻</span>
+              {refreshState === 'busy' ? t('tft.marketValue.refresh.busy') : t('tft.marketValue.refresh.button')}
+            </button>
+            <span className="text-[#a0b0c5] text-xs uppercase tracking-widest">
+              {t('tft.marketValue.last30d')}
+            </span>
           </div>
           <div className="h-20">
             {historyLoading ? (
@@ -222,6 +269,13 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
           </div>
         </div>
       </div>
+
+      {/* Refresh feedback (cooldown / error) — only shown transiently */}
+      {refreshMessage && (
+        <div className="mt-2 text-[11px] text-[#a0b0c5]" role="status">
+          {refreshMessage}
+        </div>
+      )}
 
       {/* Expandable agent breakdown */}
       {showDetails && (

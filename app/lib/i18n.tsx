@@ -559,6 +559,34 @@ const translations = {
     '\uCD5C\uADFC 30\uC77C', '\u6700\u8FD130\u5929',
     '\u00FAltimos 30 d\u00EDas', '30 derniers jours'
   ),
+  'tft.marketValue.refresh.button': t6(
+    'Aktualisieren', 'Refresh',
+    '\uC0C8\uB85C\uACE0\uCE68', '\u5237\u65B0',
+    'Actualizar', 'Actualiser'
+  ),
+  'tft.marketValue.refresh.busy': t6(
+    'Lade\u2026', 'Loading\u2026',
+    '\uB85C\uB529 \uC911\u2026', '\u52A0\u8F7D\u4E2D\u2026',
+    'Cargando\u2026', 'Chargement\u2026'
+  ),
+  'tft.marketValue.refresh.cooldown': t6(
+    'Bitte {s}s warten', 'Please wait {s}s',
+    '{s}\uCD08 \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4', '\u8BF7\u7B49\u5F85 {s} \u79D2',
+    'Espera {s}s', 'Patientez {s}s'
+  ),
+  'tft.marketValue.refresh.failed': t6(
+    'Aktualisierung fehlgeschlagen \u2014 bitte sp\u00E4ter erneut versuchen',
+    'Refresh failed \u2014 please try again later',
+    '\uC0C8\uB85C\uACE0\uCE68 \uC2E4\uD328 \u2014 \uB098\uC911\uC5D0 \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694',
+    '\u5237\u65B0\u5931\u8D25 \u2014 \u8BF7\u7A0D\u540E\u518D\u8BD5',
+    'Actualizaci\u00F3n fallida \u2014 int\u00E9ntalo m\u00E1s tarde',
+    '\u00C9chec de l\'actualisation \u2014 r\u00E9essayez plus tard'
+  ),
+  'tft.marketValue.dataFrom': t6(
+    'Daten vom', 'Data from',
+    '\uB370\uC774\uD130 \uAE30\uC900\uC77C', '\u6570\u636E\u65E5\u671F',
+    'Datos del', 'Donn\u00E9es du'
+  ),
   'tft.marketValue.multiplier': t6(
     'Multiplikator', 'Multiplier',
     '\uBC30\uC728', '\u500D\u6570',

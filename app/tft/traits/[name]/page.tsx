@@ -5,6 +5,7 @@ import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle, type TftTrait, type TftTraitTier } from '../../../lib/tft-cdragon';
+import { renderTraitDesc } from '../../../lib/tft-trait-desc';
 
 // Per-trait detail page. Combines three data sources:
 //   1) /api/tft/traits — stat rows (1 per activation level)
@@ -119,9 +120,25 @@ export default function TftTraitDetailPage() {
               )}
             </div>
           </div>
-          {traitMeta?.desc && (
-            <p className="text-[#a0b0c5] text-sm mt-4 leading-relaxed">{traitMeta.desc}</p>
-          )}
+          {(() => {
+            const rendered = renderTraitDesc(traitMeta);
+            if (!rendered.generalDesc && rendered.tiers.length === 0) return null;
+            return (
+              <div className="mt-4 text-sm text-[#a0b0c5] leading-relaxed space-y-2">
+                {rendered.generalDesc && <p>{rendered.generalDesc}</p>}
+                {rendered.tiers.length > 0 && (
+                  <ul className="space-y-1.5">
+                    {rendered.tiers.map(tier => (
+                      <li key={tier.minUnits} className="flex gap-2 items-start">
+                        <span className="text-[#7B61FF] font-semibold tabular-nums shrink-0 w-7 text-right">({tier.minUnits})</span>
+                        <span>{tier.text}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            );
+          })()}
         </div>
 
         {/* Per-tier stats table */}

@@ -213,15 +213,9 @@ export default function Home() {
           {/* Gold accent line */}
           <div className="w-12 h-0.5 bg-gradient-to-r from-transparent via-[#c89b3c] to-transparent mx-auto mb-6" />
 
-          <div className="text-[#c89b3c] text-xs uppercase tracking-[0.3em] mb-4 font-medium">
-            {t('home.subtitle')}
-          </div>
-          <h1 className="text-white text-3xl sm:text-5xl font-bold mb-4 tracking-tight">
+          <h1 className="text-white text-3xl sm:text-5xl font-bold mb-10 tracking-tight">
             meta<span className="text-[#c89b3c]">stats</span>.gg
           </h1>
-          <p className="text-[#a0b0c5] text-sm mb-10 max-w-md mx-auto leading-relaxed">
-            {t('home.desc')}
-          </p>
 
           {/* Search bar with gold border */}
           <div className="max-w-xl mx-auto gold-border rounded-lg p-0.5 mb-8">

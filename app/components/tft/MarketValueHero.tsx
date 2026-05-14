@@ -235,6 +235,39 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
   );
 }
 
+// Map stable agent-note label IDs to i18n keys. Agents emit short technical
+// labels like 'placement stddev'; the user sees the localized phrase.
+const NOTE_LABEL_KEYS: Record<string, string> = {
+  'avg-placement':     'tft.marketValue.note.avgPlacement',
+  'top-4 rate':        'tft.marketValue.note.top4Rate',
+  'top-1 rate':        'tft.marketValue.note.top1Rate',
+  'comp diversity':    'tft.marketValue.note.compDiversity',
+  'meta picks':        'tft.marketValue.note.metaPicks',
+  'one-trick penalty': 'tft.marketValue.note.oneTrickPenalty',
+  'off-meta':          'tft.marketValue.note.offMeta',
+  'item slam':         'tft.marketValue.note.itemSlam',
+  'prismatic share':   'tft.marketValue.note.prismaticShare',
+  'placement stddev':  'tft.marketValue.note.placementStddev',
+  'top-4 streak':      'tft.marketValue.note.top4Streak',
+  'bottom-4 share':    'tft.marketValue.note.bottom4Share',
+  // catch-alls — any of these agent-emitted strings means "we couldn't score"
+  'no matches':        'tft.marketValue.note.tooFewMatches',
+  'sample too small':  'tft.marketValue.note.tooFewMatches',
+};
+
+// Translate fragments inside detail strings. Agents emit
+// "6 in a row" / "67% recommended" / "53% in top-10" / "85% one comp" /
+// "17 comps" — we pattern-replace the English tail with the localized one.
+function localizeDetail(detail: string, t: (k: any) => string): string {
+  if (!detail) return detail;
+  return detail
+    .replace(/\bin a row\b/i, t('tft.marketValue.note.detail.inARow'))
+    .replace(/\brecommended\b/i, t('tft.marketValue.note.detail.recommended'))
+    .replace(/\bin top-10\b/i, t('tft.marketValue.note.detail.inTop10'))
+    .replace(/\bone comp\b/i, t('tft.marketValue.note.detail.oneComp'))
+    .replace(/\bcomps\b/i, t('tft.marketValue.note.detail.compsUnit'));
+}
+
 function AgentRow({ agent }: { agent: AgentScore }) {
   const { t } = useI18n();
   const label = (() => {
@@ -253,13 +286,17 @@ function AgentRow({ agent }: { agent: AgentScore }) {
     <div className="flex items-start justify-between gap-3">
       <div className="flex-1 min-w-0">
         <div className="text-white font-medium">{label}</div>
-        <div className="text-[#7a8aa0] text-[10px] mt-0.5">
+        <div className="text-[#a0b0c5] text-xs mt-0.5">
           {agent.notes.length > 0
-            ? agent.notes.map(n => `${n.label}${n.detail ? ` (${n.detail})` : ''}`).join(' · ')
+            ? agent.notes.map(n => {
+                const noteLabel = NOTE_LABEL_KEYS[n.label] ? t(NOTE_LABEL_KEYS[n.label] as any) : n.label;
+                const detail = n.detail ? localizeDetail(n.detail, t) : '';
+                return `${noteLabel}${detail ? ` (${detail})` : ''}`;
+              }).join(' · ')
             : t('tft.marketValue.agent.noImpact')}
         </div>
       </div>
-      <div className="tabular-nums font-medium whitespace-nowrap" style={{ color }}>
+      <div className="tabular-nums font-medium whitespace-nowrap flex-shrink-0" style={{ color }}>
         ×{agent.multiplier.toFixed(2)}
       </div>
     </div>

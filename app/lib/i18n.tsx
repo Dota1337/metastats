@@ -613,6 +613,103 @@ const translations = {
     'Sin impacto', 'Aucun impact'
   ),
 
+  // \u2500 Marktwert agent-note labels \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  // Stable IDs come from the agent files (e.g. 'placement stddev'), the
+  // frontend maps them to these human-readable, localized strings.
+  'tft.marketValue.note.avgPlacement': t6(
+    '\u00D8 Platzierung', 'Avg placement',
+    '\uD3C9\uADE0 \uB4F1\uC218', '\u5E73\u5747\u540D\u6B21',
+    'Posici\u00F3n media', 'Placement moyen'
+  ),
+  'tft.marketValue.note.top4Rate': t6(
+    'Top-4-Quote', 'Top-4 rate',
+    'Top-4 \uBE44\uC728', 'Top-4 \u6BD4\u7387',
+    'Tasa Top-4', 'Taux Top-4'
+  ),
+  'tft.marketValue.note.top1Rate': t6(
+    'Sieg-Quote', 'Win rate',
+    '1\uC704 \uBE44\uC728', '\u5403\u9E21\u7387',
+    'Tasa de victorias', 'Taux de victoire'
+  ),
+  'tft.marketValue.note.compDiversity': t6(
+    'Comp-Vielfalt', 'Comp diversity',
+    '\uB371 \uB2E4\uC591\uC131', '\u9635\u5BB9\u591A\u6837\u6027',
+    'Diversidad de comp', 'Diversit\u00E9 de comp'
+  ),
+  'tft.marketValue.note.metaPicks': t6(
+    'meta picks', 'meta picks',
+    '\uBA54\uD0C0 \uD53D', '\u4E3B\u6D41\u9635\u5BB9',
+    'picks meta', 'picks m\u00E9ta'
+  ),
+  'tft.marketValue.note.oneTrickPenalty': t6(
+    'One-Trick-Abzug', 'One-trick penalty',
+    '\uC6D0\uD2B8\uB9AD \uAC10\uC810', '\u5355\u4E00\u9635\u5BB9\u6263\u5206',
+    'Penalizaci\u00F3n one-trick', 'P\u00E9nalit\u00E9 one-trick'
+  ),
+  'tft.marketValue.note.offMeta': t6(
+    'Off-Meta', 'Off-meta',
+    '\uBE44\uBA54\uD0C0', '\u975E\u4E3B\u6D41',
+    'Fuera del meta', 'Hors m\u00E9ta'
+  ),
+  'tft.marketValue.note.itemSlam': t6(
+    'Items gut getroffen', 'Items on point',
+    '\uC544\uC774\uD15C \uC801\uC911', '\u88C5\u5907\u547D\u4E2D',
+    '\u00CDtems acertados', 'Items bien plac\u00E9s'
+  ),
+  'tft.marketValue.note.prismaticShare': t6(
+    'Prismatic-Quote', 'Prismatic share',
+    '\uD504\uB9AC\uC988\uB9C8\uD2F1 \uBE44\uC728', '\u68F1\u5F69\u6BD4\u7387',
+    'Cuota prism\u00E1tica', 'Part prismatique'
+  ),
+  'tft.marketValue.note.placementStddev': t6(
+    'Platzierungs-Stabilit\u00E4t', 'Placement stability',
+    '\uC21C\uC704 \uC548\uC815\uC131', '\u540D\u6B21\u7A33\u5B9A\u6027',
+    'Estabilidad de posici\u00F3n', 'Stabilit\u00E9 du placement'
+  ),
+  'tft.marketValue.note.top4Streak': t6(
+    'Top-4-Serie', 'Top-4 streak',
+    'Top-4 \uC5F0\uC18D', 'Top-4 \u8FDE\u80DC',
+    'Racha Top-4', 'S\u00E9rie Top-4'
+  ),
+  'tft.marketValue.note.bottom4Share': t6(
+    'Bottom-4-Quote', 'Bottom-4 rate',
+    '\uD558\uC704 4 \uBE44\uC728', '\u4E0B\u534A\u533A\u6BD4\u7387',
+    'Tasa Bottom-4', 'Taux Bottom-4'
+  ),
+  'tft.marketValue.note.tooFewMatches': t6(
+    'Zu wenige Matches', 'Too few matches',
+    '\uACBD\uAE30 \uBD80\uC871', '\u6BD4\u8D5B\u8FC7\u5C11',
+    'Pocas partidas', 'Trop peu de matchs'
+  ),
+  // Detail-string fragments \u2014 agents emit detail strings like "6 in a row"
+  // or "67% recommended"; the frontend pattern-matches and swaps the
+  // English fragment for the localized one.
+  'tft.marketValue.note.detail.inARow': t6(
+    'in Folge', 'in a row',
+    '\uC5F0\uC18D', '\u8FDE\u80DC',
+    'seguidas', "d'affil\u00E9e"
+  ),
+  'tft.marketValue.note.detail.recommended': t6(
+    'empfohlen', 'recommended',
+    '\uCD94\uCC9C', '\u63A8\u8350',
+    'recomendados', 'recommand\u00E9s'
+  ),
+  'tft.marketValue.note.detail.inTop10': t6(
+    'in Top-10', 'in top-10',
+    'Top-10 \uC548', 'Top-10 \u5185',
+    'en top-10', 'dans top-10'
+  ),
+  'tft.marketValue.note.detail.oneComp': t6(
+    'gleiche Comp', 'one comp',
+    '\uAC19\uC740 \uB371', '\u76F8\u540C\u9635\u5BB9',
+    'la misma comp', 'm\u00EAme comp'
+  ),
+  'tft.marketValue.note.detail.compsUnit': t6(
+    'Comps', 'comps',
+    '\uB371', '\u9635\u5BB9',
+    'comps', 'comps'
+  ),
+
   // \u2500 Marktwert Page (Top / Movers / Distribution) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   'tft.marketValue.pageHint': t6(
     'Marktwerte ab Master \u00B7 TFT Standard Ranked \u00B7 T\u00E4gliche Snapshots',

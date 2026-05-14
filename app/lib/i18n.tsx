@@ -587,6 +587,11 @@ const translations = {
     '\uB370\uC774\uD130 \uAE30\uC900\uC77C', '\u6570\u636E\u65E5\u671F',
     'Datos del', 'Donn\u00E9es du'
   ),
+  'tft.trait.possibleItems': t6(
+    'Mögliche Items', 'Possible items',
+    '가능한 아이템', '可能的物品',
+    'Ítems posibles', 'Items possibles'
+  ),
   'tft.setTimeline.setLabel': t6(
     'Set {n}', 'Set {n}',
     '\uC2DC\uC98C {n}', '\u8D5B\u5B63 {n}',

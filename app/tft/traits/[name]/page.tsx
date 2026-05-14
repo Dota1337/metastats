@@ -5,7 +5,7 @@ import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle, type TftTrait, type TftTraitTier } from '../../../lib/tft-cdragon';
-import { renderTraitDesc } from '../../../lib/tft-trait-desc';
+import { renderTraitDesc, findTraitItemPool } from '../../../lib/tft-trait-desc';
 
 // Per-trait detail page. Combines three data sources:
 //   1) /api/tft/traits — stat rows (1 per activation level)
@@ -122,6 +122,8 @@ export default function TftTraitDetailPage() {
           </div>
           {(() => {
             const rendered = renderTraitDesc(traitMeta);
+            const itemPool = findTraitItemPool(apiName, assets?.items);
+            const referencesRandomItem = rendered.tiers.some(t => /random .* item/i.test(t.text));
             if (!rendered.generalDesc && rendered.tiers.length === 0) return null;
             return (
               <div className="mt-4 text-sm text-[#a0b0c5] leading-relaxed space-y-2">
@@ -135,6 +137,23 @@ export default function TftTraitDetailPage() {
                       </li>
                     ))}
                   </ul>
+                )}
+                {referencesRandomItem && itemPool.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-[#1e2a3a]">
+                    <div className="text-[#a0b0c5] text-[10px] uppercase tracking-widest mb-2">
+                      {t('tft.trait.possibleItems')}
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {itemPool.map(item => (
+                        <span
+                          key={item.apiName}
+                          className="inline-block px-2 py-0.5 rounded bg-[#1e2a3a] text-[#a0b0c5] text-xs"
+                        >
+                          {item.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
             );

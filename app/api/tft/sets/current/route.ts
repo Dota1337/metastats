@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { supabase } from '../../../../lib/supabase';
+import { tftPatchLabel } from '../../../../lib/tft-patch-label';
 
 // Returns everything the SetTimeline UI needs:
 //   - current set metadata (number, name, start, end, current patch)
@@ -83,15 +84,20 @@ export async function GET() {
     patchMap.set(version, { version, date, isMajor: true, isHotfix: false });
   }
   for (const { patch, first_day } of dbPatches) {
-    const existing = patchMap.get(patch);
+    // DB stores LoL patch labels (e.g. "16.10"); normalise to the TFT
+    // marketing label ("17.3") so the timeline shows what the user
+    // recognises. tftPatchLabel returns the input unchanged when it's
+    // already in TFT form (17.x) or a B-patch ("17.3b").
+    const tftPatch = tftPatchLabel(patch);
+    if (!tftPatch) continue;
+    const existing = patchMap.get(tftPatch);
     if (existing) {
-      // major patch — keep roadmap date as the canonical one
+      // major patch already covered by the roadmap — skip
       continue;
     }
-    // Strip trailing letter for the base label match (e.g. "17.3b" → "17.3")
-    const base = patch.match(/^(\d+\.\d+)/)?.[1];
-    const isMajorBase = base && majorByVersion.has(base) && base === patch;
-    patchMap.set(patch, { version: patch, date: first_day, isMajor: !!isMajorBase, isHotfix: !isMajorBase });
+    const base = tftPatch.match(/^(\d+\.\d+)/)?.[1];
+    const isMajorBase = base && majorByVersion.has(base) && base === tftPatch;
+    patchMap.set(tftPatch, { version: tftPatch, date: first_day, isMajor: !!isMajorBase, isHotfix: !isMajorBase });
   }
   const patches = [...patchMap.values()].sort((a, b) => a.date.localeCompare(b.date));
 

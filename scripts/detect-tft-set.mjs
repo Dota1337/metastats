@@ -38,8 +38,13 @@ const SET_NAMES = {
 // current TFT patch by subtracting from the current LoL minor version.
 // Update this when a new set ships — and bump the launch entry, not delete
 // the old ones (history pages may reference old set patches).
+// Maps each TFT set to the "anchor" LoL patch — i.e. the LoL patch number
+// you subtract from to get the TFT patch minor (LoL anchor + 1 = TFT X.1).
+// For Set 17 the launch patch TFT 17.1 went live alongside LoL 16.9 on
+// 2026-04-15. So the anchor (where minor diff = 0 produces "17.0", which
+// never exists) is LoL 16.8.
 const SET_LAUNCH_LOL = {
-  17: '16.7',   // Set 17 "Space Gods" — launched on LoL 16.7
+  17: '16.8',   // Set 17 "Space Gods" anchors at LoL 16.8 → TFT 17.1 = LoL 16.9
 };
 
 function tftPatchFromLol(lolVersion, setNumber) {

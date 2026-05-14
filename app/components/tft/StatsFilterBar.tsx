@@ -1,5 +1,6 @@
 'use client';
 import { useI18n } from '../../lib/i18n';
+import { tftPatchLabel } from '../../lib/tft-patch-label';
 
 // Region / bucket option lists kept in sync with tft-supabase-reader.ts.
 // If you add a region or bucket group there, mirror it here.
@@ -89,11 +90,11 @@ export default function StatsFilterBar({ filters, patches, onChange }: Props) {
           onChange={v => onChange({ ...filters, patch: v })}
         >
           <option value="current">
-            {t('tft.filter.current')}{newest ? ` · ${newest.patch}` : ''}
+            {t('tft.filter.current')}{newest ? ` · ${tftPatchLabel(newest.patch)}` : ''}
           </option>
           {previous && (
             <option value="previous">
-              {t('tft.filter.previous')} · {previous.patch}
+              {t('tft.filter.previous')} · {tftPatchLabel(previous.patch)}
             </option>
           )}
         </FilterSelect>

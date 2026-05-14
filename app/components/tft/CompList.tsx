@@ -5,6 +5,7 @@ import EmptyData from './EmptyData';
 import CompCard from './CompCard';
 import { useI18n } from '../../lib/i18n';
 import { loadTftAssets, type TftAssetsBundle } from '../../lib/tft-cdragon';
+import { tftPatchLabel } from '../../lib/tft-patch-label';
 
 interface CompListProps {
   // When the parent renders a TftHero above, hide CompList's inline title and
@@ -63,7 +64,7 @@ export default function CompList({ headless = false }: CompListProps) {
       {!headless && (
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-4">
           <div>
-            {assets && <div className="text-[#7B61FF] text-xs uppercase tracking-widest">Set {assets.set} · {assets.setName}{meta?.patch ? ` · Patch ${meta.patch}` : ''}</div>}
+            {assets && <div className="text-[#7B61FF] text-xs uppercase tracking-widest">Set {assets.set} · {assets.setName}{meta?.patch ? ` · Patch ${tftPatchLabel(meta.patch)}` : ''}</div>}
             <h1 className="text-white text-2xl font-medium mt-1">{t('nav.comps')}</h1>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -110,7 +111,7 @@ export default function CompList({ headless = false }: CompListProps) {
 
       {hasData && meta?.matchesAnalyzed != null && (
         <div className="text-[#7a8aa0] text-[11px] mb-3">
-          {meta.matchesAnalyzed.toLocaleString('de-DE')} Matches analysiert · {sorted.length} Comps mit ≥ {meta.minGames ?? 30} Spielen{headless && meta?.patch ? ` · Patch ${meta.patch}` : ''}
+          {meta.matchesAnalyzed.toLocaleString('de-DE')} Matches analysiert · {sorted.length} Comps mit ≥ {meta.minGames ?? 30} Spielen{headless && meta?.patch ? ` · Patch ${tftPatchLabel(meta.patch)}` : ''}
         </div>
       )}
 

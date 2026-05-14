@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import { tftPatchLabel } from '../../lib/tft-patch-label';
 import {
   loadTftAssets,
   tftCompanionIconUrl,
@@ -158,7 +159,7 @@ export default function TftHero({
         {setLabel && (
           <div className="text-[#7B61FF] text-[10px] sm:text-xs uppercase tracking-[0.3em] mb-2">
             {setLabel}
-            {patch ? ` · Patch ${patch}` : ''}
+            {patch ? ` · Patch ${tftPatchLabel(patch)}` : ''}
           </div>
         )}
         {pageTitle && (

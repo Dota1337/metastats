@@ -4,6 +4,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
+import { tftPatchLabel } from '../../../lib/tft-patch-label';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import type { TftMatchSummary, TftParticipantSummary } from '../../../lib/tft-match-processor';
 
@@ -103,7 +104,7 @@ function MatchHeader({ match }: { match: TftMatchSummary }) {
       <Stat label={t('tft.match.date')} value={date} />
       <Stat label={t('tft.match.length')} value={`${minutes}:${seconds}`} />
       <Stat label={t('tft.set')} value={match.setNumber ? `Set ${match.setNumber}` : '—'} />
-      <Stat label={t('tft.match.patch')} value={match.gameVersion?.split(' ')[1] || '—'} />
+      <Stat label={t('tft.match.patch')} value={tftPatchLabel(match.gameVersion?.split(' ')[1]) || '—'} />
     </div>
   );
 }

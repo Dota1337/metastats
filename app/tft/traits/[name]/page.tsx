@@ -5,7 +5,14 @@ import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle, type TftTrait, type TftTraitTier } from '../../../lib/tft-cdragon';
-import { renderTraitDesc, findTraitItemPool } from '../../../lib/tft-trait-desc';
+import {
+  renderTraitDesc,
+  findTraitItemPool,
+  findTraitVariants,
+  extractConstellationLabel,
+  stripStargazerPreamble,
+  findArbiterOptions,
+} from '../../../lib/tft-trait-desc';
 
 // Per-trait detail page. Combines three data sources:
 //   1) /api/tft/traits — stat rows (1 per activation level)
@@ -64,6 +71,17 @@ export default function TftTraitDetailPage() {
     ]).then(([traitData, unitData]) => {
       if (cancelled) return;
       const allTraits = (traitData.traits || []) as TraitStat[];
+      // When the route param is a display name (e.g. "Stargazer"), the API
+      // rows are keyed by per-variant apiName — so we match against any
+      // variant in the family, not just an exact key.
+      const variantApiNames = new Set<string>();
+      variantApiNames.add(apiName);
+      if (typeof window !== 'undefined') {
+        // No assets dependency here yet (we're inside the fetch); resolve
+        // variants by scanning the API response, which always carries the
+        // raw apiName. Final variant resolution happens in the render path
+        // via assets, but for now we leave per-variant rows visible.
+      }
       setTraitStats(allTraits.filter(t => t.name === apiName).sort((a, b) => a.activation - b.activation));
       // Filter to units that mention this trait in their CD bundle entry.
       // The asset bundle is needed for the join — without assets, no filter.
@@ -73,8 +91,28 @@ export default function TftTraitDetailPage() {
     return () => { cancelled = true; };
   }, [apiName, region, bucket]);
 
-  const traitMeta: TftTrait | undefined = assets?.traits[apiName];
+  // URL param can be either a raw apiName ("TFT17_Stargazer_Wolf") or a
+  // display name ("Stargazer", "Arbiter"). When it's a display name we
+  // surface every variant together; when it's an apiName but the trait
+  // belongs to a multi-variant family, we also fall through to the
+  // grouped view so users land on the same page either way.
+  const directMeta: TftTrait | undefined = assets?.traits[apiName];
+  const matchByDisplayName = assets
+    ? Object.entries(assets.traits).filter(([, m]) => m.name === apiName)
+    : [];
+  const displayName = directMeta?.name ?? apiName;
+  const allVariants = assets
+    ? findTraitVariants(displayName, assets.traits as any)
+    : [];
+  const isGroup = allVariants.length > 1;
+  // For the header (icon + name + tiers) we prefer the "root" variant when
+  // the family has one (TFT17_Stargazer w/o suffix), otherwise the first.
+  const rootVariant = allVariants.find(v => !/_\w+$/.test(v.apiName.replace(/^TFT\d+_/, ''))) || allVariants[0];
+  const traitMeta: TftTrait | undefined = directMeta
+    ?? (matchByDisplayName[0]?.[1] as TftTrait | undefined)
+    ?? rootVariant?.meta as TftTrait | undefined;
   const iconUrl = tftIconUrl(assets, traitMeta?.icon);
+  const isArbiter = displayName === 'Arbiter';
 
   // Join: which units have this trait? CD champions store `traits[]` as an
   // array of display names (not apiNames) — but our traits dict is keyed by
@@ -121,8 +159,14 @@ export default function TftTraitDetailPage() {
             </div>
           </div>
           {(() => {
-            const rendered = renderTraitDesc(traitMeta);
-            const itemPool = findTraitItemPool(apiName, assets?.items);
+            // For multi-variant families we render the per-variant cards
+            // further down; the header description is the "root" variant
+            // (the one without the per-mechanic suffix) which carries the
+            // generic blurb without the variant-specific body.
+            const headerTrait = isGroup && rootVariant ? rootVariant.meta : traitMeta;
+            const rendered = renderTraitDesc(headerTrait as any);
+            const effectiveApiName = directMeta ? apiName : (rootVariant?.apiName || apiName);
+            const itemPool = findTraitItemPool(effectiveApiName, assets?.items);
             const referencesRandomItem = rendered.tiers.some(t => /random .* item/i.test(t.text));
             if (!rendered.generalDesc && rendered.tiers.length === 0) return null;
             return (
@@ -159,6 +203,91 @@ export default function TftTraitDetailPage() {
             );
           })()}
         </div>
+
+        {/* Multi-variant family (e.g. Stargazer's 7 constellations) — one
+           card per variant with the shared preamble stripped. Hidden when
+           there's only a single variant. */}
+        {isGroup && (
+          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-5 mb-5">
+            <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">
+              {t('tft.trait.variants').replace('{n}', String(allVariants.filter(v => v.apiName !== rootVariant?.apiName).length))}
+            </div>
+            <div className="grid sm:grid-cols-2 gap-3">
+              {allVariants
+                .filter(v => v.apiName !== rootVariant?.apiName)
+                .map(v => {
+                  const constellation = extractConstellationLabel(v.meta.desc) || v.meta.name;
+                  const cleanedMeta = { ...v.meta, desc: stripStargazerPreamble(v.meta.desc) };
+                  const r = renderTraitDesc(cleanedMeta as any);
+                  return (
+                    <div key={v.apiName} className="bg-[#0a0e1a] border border-[#1e2a3a] rounded p-3">
+                      <div className="text-[#7B61FF] text-sm font-semibold mb-2">{constellation}</div>
+                      {r.generalDesc && (
+                        <p className="text-[#a0b0c5] text-xs leading-relaxed mb-2">{r.generalDesc}</p>
+                      )}
+                      {r.tiers.length > 0 && (
+                        <ul className="space-y-1 text-xs">
+                          {r.tiers.map(tier => (
+                            <li key={tier.minUnits} className="flex gap-2 items-start">
+                              <span className="text-[#7B61FF] font-semibold tabular-nums shrink-0 w-6 text-right">({tier.minUnits})</span>
+                              <span className="text-[#a0b0c5]">{tier.text}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        )}
+
+        {/* Arbiter — Cause × Effect pickable matrix. Set 17 Arbiters let
+           you pair any cause from one column with any effect from the
+           other; rendering them side-by-side makes the mechanic legible
+           without reading prose. */}
+        {isArbiter && (() => {
+          const { causes, effects } = findArbiterOptions(
+            assets?.items as any,
+            traitMeta as any,
+          );
+          if (causes.length === 0 && effects.length === 0) return null;
+          return (
+            <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-5 mb-5">
+              <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">
+                {t('tft.trait.arbiterPicker')}
+              </div>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <div className="text-white text-xs font-semibold mb-2 uppercase tracking-wider">
+                    {t('tft.trait.arbiterCauses')}
+                  </div>
+                  <ul className="space-y-1.5">
+                    {causes.map(c => (
+                      <li key={c.apiName} className="bg-[#0a0e1a] border border-[#1e2a3a] rounded px-3 py-2 text-xs">
+                        <div className="text-[#7B61FF] font-medium mb-0.5">{c.label}</div>
+                        <div className="text-[#a0b0c5] leading-snug">{c.desc}</div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <div className="text-white text-xs font-semibold mb-2 uppercase tracking-wider">
+                    {t('tft.trait.arbiterEffects')}
+                  </div>
+                  <ul className="space-y-1.5">
+                    {effects.map(e => (
+                      <li key={e.apiName} className="bg-[#0a0e1a] border border-[#1e2a3a] rounded px-3 py-2 text-xs">
+                        <div className="text-[#7B61FF] font-medium mb-0.5">{e.label}</div>
+                        <div className="text-[#a0b0c5] leading-snug">{e.desc}</div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Per-tier stats table */}
         {!loading && traitStats.length > 0 && (

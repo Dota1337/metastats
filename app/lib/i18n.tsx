@@ -592,6 +592,32 @@ const translations = {
     '가능한 아이템', '可能的物品',
     'Ítems posibles', 'Items possibles'
   ),
+  'tft.trait.variants': t6(
+    '{n} Konstellationen — pro Spiel wird eine zufällig gewählt',
+    '{n} constellations — one rolled per game',
+    '{n}개 별자리 — 게임마다 하나 무작위 선택',
+    '{n} 个星座 — 每局随机选择一个',
+    '{n} constelaciones — una se elige al azar por partida',
+    '{n} constellations — une tirée au sort par partie'
+  ),
+  'tft.trait.arbiterPicker': t6(
+    'Ursache + Effekt wählen',
+    'Pick a Cause + Effect',
+    '원인 + 효과 선택',
+    '选择原因 + 效果',
+    'Elige causa + efecto',
+    'Choisis cause + effet'
+  ),
+  'tft.trait.arbiterCauses': t6(
+    'Mögliche Ursachen', 'Available Causes',
+    '가능한 원인', '可选原因',
+    'Causas posibles', 'Causes possibles'
+  ),
+  'tft.trait.arbiterEffects': t6(
+    'Mögliche Effekte', 'Available Effects',
+    '가능한 효과', '可选效果',
+    'Efectos posibles', 'Efectos possibles'
+  ),
   'tft.setTimeline.setLabel': t6(
     'Set {n}', 'Set {n}',
     '\uC2DC\uC98C {n}', '\u8D5B\u5B63 {n}',

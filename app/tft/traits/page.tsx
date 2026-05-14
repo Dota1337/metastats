@@ -77,24 +77,31 @@ export default function TftTraitsPage() {
     }
   }, [filters, pathname, router]);
 
-  // Collapse per-activation rows into one entry per trait. "Best" = activation
-  // level with the lowest (best) average placement, weighted by games.
+  // Collapse per-activation rows into one entry per *display name* (not
+  // per apiName) so multi-variant families like Stargazer's 7
+  // constellations show up as a single "Stargazer" row instead of 8 rows
+  // that all read "Stargazer" + force the user to click through to know
+  // which is which. Stats aggregate across variants weighted by games.
   const grouped: GroupedTrait[] = useMemo(() => {
-    const byName = new Map<string, TraitRow[]>();
+    const byKey = new Map<string, { displayName: string; rows: TraitRow[] }>();
     for (const r of rows) {
-      const list = byName.get(r.name) || [];
-      list.push(r);
-      byName.set(r.name, list);
+      // Prefer the display name from the asset bundle; fall back to the
+      // raw apiName when assets haven't loaded yet (avoids flicker).
+      const meta = assets?.traits[r.name];
+      const displayName = meta?.name || r.name;
+      const entry = byKey.get(displayName) || { displayName, rows: [] };
+      entry.rows.push(r);
+      byKey.set(displayName, entry);
     }
     const out: GroupedTrait[] = [];
-    for (const [name, list] of byName) {
+    for (const [displayName, { rows: list }] of byKey) {
       const totalGames = list.reduce((s, r) => s + r.games, 0);
       const best = list.reduce<TraitRow | null>(
         (acc, r) => (acc == null || (r.avgPlacement ?? 9) < (acc.avgPlacement ?? 9)) ? r : acc, null);
       const totalTop4 = list.reduce((s, r) => s + (r.top4Rate != null ? r.top4Rate * r.games : 0), 0);
       const totalPick = list.reduce((s, r) => s + (r.pickRate != null ? r.pickRate * r.games : 0), 0);
       out.push({
-        name,
+        name: displayName,
         totalGames,
         bestAvg: best?.avgPlacement ?? null,
         bestActivation: best?.activation ?? null,
@@ -103,7 +110,7 @@ export default function TftTraitsPage() {
       });
     }
     return out.sort((a, b) => (a.bestAvg ?? 9) - (b.bestAvg ?? 9));
-  }, [rows]);
+  }, [rows, assets]);
 
   const currentPatchLabel = patches[0]?.patch;
 
@@ -133,9 +140,18 @@ export default function TftTraitsPage() {
             </div>
             <div className="md:hidden px-4 py-2 text-[10px] uppercase tracking-widest text-[#7a8aa0] bg-[#0a0e1a]">{t('nav.traits')}</div>
             {grouped.map(g => {
-              const meta = assets?.traits[g.name];
+              // g.name is now the display name. Look up the trait by
+              // matching display name across all variants and prefer the
+              // root variant (no per-mechanic suffix) for the header icon.
+              const variantEntries = assets
+                ? Object.entries(assets.traits).filter(([, m]) => m.name === g.name)
+                : [];
+              const rootEntry = variantEntries.find(([apiName]) =>
+                !/^TFT\d+_\w+_\w+$/.test(apiName)
+              ) || variantEntries[0];
+              const meta = rootEntry?.[1] || assets?.traits[g.name];
               const url = tftIconUrl(assets, meta?.icon);
-              const tiers: TftTraitTier[] = meta?.tiers || [];
+              const tiers: TftTraitTier[] = (meta?.tiers || []) as TftTraitTier[];
               return (
                 <a
                   key={g.name}

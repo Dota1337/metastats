@@ -22,9 +22,14 @@ export interface TftMarketValueInput {
   augmentTierMap?: Record<string, number> | null;  // apiName -> 1/2/3
 }
 
+// Sample-size damping pulls the multiplier toward 1.0 when we don't have
+// enough matches to trust the agent signals. With set-wide aggregation we
+// expect 100+ matches for active players, so 100 is the new "full trust"
+// threshold; the old 40-match plateau is replaced with a softer 0.95 ramp.
 function dampFor(sampleSize: number): number {
   if (sampleSize < 20) return 0.5;
   if (sampleSize < 40) return 0.8;
+  if (sampleSize < 100) return 0.95;
   return 1.0;
 }
 

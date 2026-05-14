@@ -105,7 +105,7 @@ const translations = {
   'tft.matches':                t6('Matches', 'Matches', '\uACBD\uAE30', '\u573A\u6B21', 'Partidas', 'Matchs'),
   'tft.counters': t6('Konter', 'Counters', '\uCE74\uC6B4\uD130', '\u514B\u5236', 'Counters', 'Counters'),
   'tft.beatsBy': t6('schl\u00E4gt mit', 'beats by', '\uC2B9\uB960', '\u80DC\u7387', 'gana con', 'bat avec'),
-  'tft.noDataYet': t6('Noch keine Daten \u2014 der erste Crawl l\u00E4uft Samstag.', 'No data yet \u2014 first crawl runs on Saturday.', '\uC544\uC9C1 \uB370\uC774\uD130 \uC5C6\uC74C \u2014 \uCCAB \uD06C\uB864\uC740 \uD1A0\uC694\uC77C\uC5D0 \uC2E4\uD589\uB429\uB2C8\uB2E4.', '\u6682\u65E0\u6570\u636E \u2014 \u9996\u6B21\u6293\u53D6\u5C06\u4E8E\u5468\u516D\u8FD0\u884C\u3002', 'A\u00FAn sin datos \u2014 primera recolecci\u00F3n el s\u00E1bado.', 'Pas encore de donn\u00E9es \u2014 premi\u00E8re collecte samedi.'),
+  'tft.noDataYet': t6('Noch keine Daten', 'No data yet', '\uC544\uC9C1 \uB370\uC774\uD130 \uC5C6\uC74C', '\u6682\u65E0\u6570\u636E', 'A\u00FAn sin datos', 'Pas encore de donn\u00E9es'),
   'tft.unit.notFound': t6('Unit nicht gefunden', 'Unit not found', '\uC720\uB2DB\uC744 \uCC3E\uC744 \uC218 \uC5C6\uC74C', '\u672A\u627E\u5230\u5355\u4F4D', 'Unidad no encontrada', 'Unit\u00E9 introuvable'),
   'nav.searchPlayer': t6('Spieler suchen', 'Search player', '\uD50C\uB808\uC774\uC5B4 \uAC80\uC0C9', '\u641C\u7D22\u73A9\u5BB6', 'Buscar jugador', 'Rechercher joueur'),
   'nav.champion': t6('Champion', 'Champion', '\uCC54\uD53C\uC5B8', '\u82F1\u96C4', 'Campe\u00F3n', 'Champion'),
@@ -160,7 +160,7 @@ const translations = {
   'home.feat4title': t6('Multi-Region', 'Multi-Region', '\uBA40\uD2F0 \uC9C0\uC5ED', '\u591A\u5730\u533A', 'Multi-Regi\u00F3n', 'Multi-R\u00E9gion'),
   'home.feat4desc': t6('EUW, EUNE, NA, KR', 'EUW, EUNE, NA, KR', 'EUW, EUNE, NA, KR', 'EUW, EUNE, NA, KR', 'EUW, EUNE, NA, KR', 'EUW, EUNE, NA, KR'),
   'home.topMarketValues': t6('Top Marktwerte', 'Top Market Values', '\uCD5C\uACE0 \uC2DC\uC7A5\uAC00\uCE58', '\u6700\u9AD8\u5E02\u503C', 'Top Valores', 'Top Valeurs'),
-  'home.noMarketData': t6('Noch keine Daten \u2014 Marktwerte werden gesammelt w\u00E4hrend Spieler gesucht werden', 'No data yet \u2014 market values are collected as players are searched', '\uC544\uC9C1 \uB370\uC774\uD130 \uC5C6\uC74C', '\u6682\u65E0\u6570\u636E', 'Sin datos a\u00FAn', 'Pas encore de donn\u00E9es'),
+  'home.noMarketData': t6('Noch keine Daten', 'No data yet', '\uC544\uC9C1 \uB370\uC774\uD130 \uC5C6\uC74C', '\u6682\u65E0\u6570\u636E', 'A\u00FAn sin datos', 'Pas encore de donn\u00E9es'),
   'home.winnersWeek': t6('Gr\u00F6\u00DFte Gewinner', 'Biggest Gainers', '\uCD5C\uB300 \uC0C1\uC2B9', '\u6700\u5927\u8D62\u5BB6', 'Mayores ganadores', 'Plus grands gagnants'),
   'home.losersWeek': t6('Gr\u00F6\u00DFte Verlierer', 'Biggest Losers', '\uCD5C\uB300 \uD558\uB77D', '\u6700\u5927\u8F93\u5BB6', 'Mayores perdedores', 'Plus grands perdants'),
   'home.thisWeekLabel': t6('diese Woche', 'this week', '\uC774\uBC88 \uC8FC', '\u672C\u5468', 'esta semana', 'cette semaine'),
@@ -218,7 +218,7 @@ const translations = {
   'champ.searchPlaceholder': t6('Champion suchen...', 'Search champion...', '\uCC54\uD53C\uC5B8 \uAC80\uC0C9...', '\u641C\u7D22\u82F1\u96C4...', 'Buscar campe\u00F3n...', 'Rechercher champion...'),
   'champ.allRanks': t6('Alle R\u00E4nge', 'All Ranks', '\uBAA8\uB4E0 \uB7AD\uD06C', '\u6240\u6709\u6BB5\u4F4D', 'Todos los rangos', 'Tous les rangs'),
   'champ.allRoles': t6('Alle Rollen', 'All Roles', '\uBAA8\uB4E0 \uD3EC\uC9C0\uC158', '\u6240\u6709\u4F4D\u7F6E', 'Todos los roles', 'Tous les r\u00F4les'),
-  'champ.statsCollecting': t6('Statistiken werden gesammelt, wenn Spieler gesucht werden.', 'Statistics are collected when players are searched.', '\uD50C\uB808\uC774\uC5B4 \uAC80\uC0C9 \uC2DC \uD1B5\uACC4\uAC00 \uC218\uC9D1\uB429\uB2C8\uB2E4.', '\u641C\u7D22\u73A9\u5BB6\u65F6\u6536\u96C6\u7EDF\u8BA1\u6570\u636E\u3002', 'Las estad\u00EDsticas se recopilan al buscar jugadores.', 'Les stats sont collect\u00E9es lors des recherches.'),
+  'champ.statsCollecting': t6('Noch keine Daten', 'No data yet', '\uC544\uC9C1 \uB370\uC774\uD130 \uC5C6\uC74C', '\u6682\u65E0\u6570\u636E', 'A\u00FAn sin datos', 'Pas encore de donn\u00E9es'),
   'champ.withData': t6('Mit Daten', 'With Data', '\uB370\uC774\uD130 \uC788\uC74C', '\u6709\u6570\u636E', 'Con datos', 'Avec donn\u00E9es'),
   'champ.champion': t6('Champion', 'Champion', '\uCC54\uD53C\uC5B8', '\u82F1\u96C4', 'Campe\u00F3n', 'Champion'),
   'champ.games': t6('Spiele', 'Games', '\uACBD\uAE30', '\u6BD4\u8D5B', 'Partidas', 'Matchs'),
@@ -464,7 +464,7 @@ const translations = {
   'champ.regionLabel': t6('Region', 'Region', '\uC9C0\uC5ED', '\u5730\u533A', 'Regi\u00F3n', 'R\u00E9gion'),
 
   // Homepage additional
-  'home.topChampions': t6('Meistgespielte Champions (Challenger + GM + Master)', 'Most Played Champions (Challenger + GM + Master)', '\uCD5C\uB2E4 \uD50C\uB808\uC774 \uCC54\uD53C\uC5B8 (\uCC4C\uB9B0\uC800 + GM + \uB9C8\uC2A4\uD130)', '\u6700\u5E38\u4F7F\u7528\u82F1\u96C4\uFF08\u6700\u5F3A\u738B\u8005+\u5B97\u5E08+\u5927\u5E08\uFF09', 'Campeones m\u00E1s jugados (Aspirante + GM + Maestro)', 'Champions les plus jou\u00E9s (Challenger + GM + Ma\u00EEtre)'),
+  'home.topChampions': t6('Meistgespielte Champions', 'Most Played Champions', '\uCD5C\uB2E4 \uD50C\uB808\uC774 \uCC54\uD53C\uC5B8', '\u6700\u5E38\u4F7F\u7528\u82F1\u96C4', 'Campeones m\u00E1s jugados', 'Champions les plus jou\u00E9s'),
   'home.verifiedRosters': t6('Verifizierte Roster', 'Verified Rosters', '\uC778\uC99D\uB41C \uB85C\uC2A4\uD130', '\u5DF2\u9A8C\u8BC1\u9635\u5BB9', 'Plantillas verificadas', 'Effectifs v\u00E9rifi\u00E9s'),
   'home.allLeagues': t6('Alle Ligen weltweit', 'All leagues worldwide', '\uC804 \uC138\uACC4 \uBAA8\uB4E0 \uB9AC\uADF8', '\u5168\u7403\u6240\u6709\u8054\u8D5B', 'Todas las ligas del mundo', 'Toutes les ligues du monde'),
   'home.proPlayers': t6('Pro-Spieler', 'Pro Players', '\uD504\uB85C \uC120\uC218', '\u804C\u4E1A\u9009\u624B', 'Jugadores Pro', 'Joueurs Pro'),
@@ -1329,12 +1329,12 @@ const translations = {
     'Ligas y Torneos TFT', 'Ligues et Tournois TFT'
   ),
   'tft.tournaments.subtitle': t6(
-    'Aktuelle TFT-Tournaments mit Standings, Prize Pools und Pro-Spieler-Verlinkung. Daten via Liquipedia.',
-    'Current TFT tournaments with standings, prize pools and pro-player links. Sourced from Liquipedia.',
-    'Liquipedia \uAE30\uBC18 TFT \uD1A0\uB108\uBA3C\uD2B8, \uC21C\uC704\uC640 \uC0C1\uAE08 \uC815\uBCF4.',
-    '\u57FA\u4E8E Liquipedia \u7684 TFT \u8D5B\u4E8B\u6570\u636E\uFF0C\u542B\u6392\u540D\u548C\u5956\u91D1\u3002',
-    'Torneos TFT con clasificaciones y bolsas de premios. Datos v\u00EDa Liquipedia.',
-    'Tournois TFT avec classements et cashprizes. Donn\u00E9es via Liquipedia.'
+    'Aktuelle TFT-Tournaments mit Standings, Prize Pools und Pro-Spieler-Verlinkung.',
+    'Current TFT tournaments with standings, prize pools and pro-player links.',
+    '\uCD5C\uC2E0 TFT \uD1A0\uB108\uBA3C\uD2B8, \uC21C\uC704\uC640 \uC0C1\uAE08 \uC815\uBCF4.',
+    'TFT \u8D5B\u4E8B\u6570\u636E\uFF0C\u542B\u6392\u540D\u548C\u5956\u91D1\u3002',
+    'Torneos TFT con clasificaciones y bolsas de premios.',
+    'Tournois TFT avec classements et cashprizes.'
   ),
   'tft.tournaments.allRegions': t6(
     'Alle Regionen', 'All Regions',

@@ -131,18 +131,6 @@ export default function TftTournamentDetailPage() {
             )}
           </div>
 
-          {/* Source link — outbound to Liquipedia for the canonical info. */}
-          <div className="mt-3 pt-3 border-t border-[#1e2a3a] flex items-center justify-between text-[10px] text-[#4a5a70]">
-            <span>{t('tft.tournaments.sourcedFrom')} Liquipedia</span>
-            <a
-              href={`https://liquipedia.net/teamfighttactics/${tournament.liquipedia_page}`}
-              target="_blank"
-              rel="noreferrer"
-              className="text-[#7B61FF] hover:underline"
-            >
-              {t('tft.tournaments.openOnLiquipedia')} →
-            </a>
-          </div>
         </div>
 
         {/* Twitch embed if available + tournament is live */}

@@ -603,7 +603,7 @@ function ProBadge({ pro }: { pro: ProPlayer }) {
   // only when the puuid-verified TFT list has nothing for this account.
   return (
     <span
-      title={`Verifiziert via Leaguepedia · ${pro.team} ${pro.role}`}
+      title={`Verifizierter Pro · ${pro.team} ${pro.role}`}
       className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#7B61FF]/15 text-[#7B61FF] text-[10px] uppercase tracking-widest font-medium border border-[#7B61FF]/40"
     >
       ✓ Verified Pro
@@ -671,9 +671,6 @@ function RankBlock({ ranked, seasonRanks }: { ranked: SummonerData['ranked']; se
                 {pastSeasons.map(s => (
                   <SeasonRankRow key={s.set_number} season={s} />
                 ))}
-              </div>
-              <div className="text-[#4a5a70] text-[9px] mt-2 pt-2 border-t border-[#1e2a3a]">
-                Daten via metatft.com Open API
               </div>
             </div>
           )}

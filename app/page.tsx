@@ -337,12 +337,12 @@ export default function Home() {
                 ? [
                     { label: t('teams.title'), sub: t('home.verifiedRosters') },
                     { label: t('home.proPlayers'), sub: t('home.allLeagues') },
-                    { label: t('home.analyzedMatches'), sub: 'Challenger + GM + Master' },
+                    { label: t('home.analyzedMatches'), sub: '' },
                   ].map(s => ({ ...s, value: null as string | null }))
                 : [
                     { label: t('teams.title'), value: siteStats.totalTeams.toLocaleString(locale), sub: t('home.verifiedRosters') },
                     { label: t('home.proPlayers'), value: siteStats.totalProPlayers.toLocaleString(locale), sub: t('home.allLeagues') },
-                    { label: t('home.analyzedMatches'), value: siteStats.matchesAnalyzed.toLocaleString(locale), sub: 'Challenger + GM + Master' },
+                    { label: t('home.analyzedMatches'), value: siteStats.matchesAnalyzed.toLocaleString(locale), sub: '' },
                   ]
               ).map(s => (
                 <div key={s.label} className="card-3d glass rounded-lg p-4">
@@ -352,7 +352,7 @@ export default function Home() {
                   ) : (
                     <div className="text-white text-2xl font-bold">{s.value}</div>
                   )}
-                  <div className="text-[#c89b3c] text-xs mt-1">{s.sub}</div>
+                  {s.sub && <div className="text-[#c89b3c] text-xs mt-1">{s.sub}</div>}
                 </div>
               ))}
             </div>

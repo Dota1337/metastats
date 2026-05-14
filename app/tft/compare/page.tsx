@@ -9,6 +9,7 @@ import Footer from '../../components/Footer';
 import { useI18n, LOCALE_MAP, type Lang } from '../../lib/i18n';
 import TftHero from '../../components/tft/TftHero';
 import { formatTier } from '../../lib/rank-format';
+import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
 
 const CompareRadar = dynamic(() => import('../../components/CompareRadar'), { ssr: false });
 
@@ -63,9 +64,20 @@ function rankEmblemUrl(tier: string | null): string | null {
   return `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-emblem/emblem-${tier.toLowerCase()}.png`;
 }
 
-function tftUnitIconUrl(characterId: string): string {
-  // CommunityDragon HUD tile (square portrait) — matches the in-game shop
-  return `https://raw.communitydragon.org/latest/game/assets/characters/${characterId.toLowerCase()}/hud/${characterId.toLowerCase()}_square.tft_set17.png`;
+// Build square + splash URLs for a unit. Square is the in-shop HUD tile;
+// splash is the wider portrait used when the square doesn't exist for that
+// unit (Rhaast / other Kayn-variants have their square stored under a
+// transformed filename like `tft17_kayn_slay_square` instead of
+// `tft17_rhaast_square`). The render-time onError swaps from square →
+// splash so both cases render correctly.
+function tftUnitIconUrls(characterId: string, assets: TftAssetsBundle | null): { square: string; splash: string | null } {
+  const champ = assets?.champions[characterId];
+  const tile = tftChampionTileUrl(assets, champ);
+  const splash = tftIconUrl(assets, champ?.icon);
+  // Fallback when assets aren't loaded yet: best-guess square URL from the
+  // characterId itself. Same shape as before so existing units keep working.
+  const fallbackSquare = `https://raw.communitydragon.org/latest/game/assets/characters/${characterId.toLowerCase()}/hud/${characterId.toLowerCase()}_square.tft_set17.png`;
+  return { square: tile || fallbackSquare, splash };
 }
 
 function rankNum(tier: string | null, lp: number | null): number {
@@ -99,6 +111,9 @@ export default function TftComparePage() {
   const [results, setResults] = useState<(PlayerSummary | { error: string } | null)[]>([null, null]);
   const [histories, setHistories] = useState<HistoryPoint[][]>([[], []]);
   const [loading, setLoading] = useState(false);
+  const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
+
+  useEffect(() => { loadTftAssets().then(setAssets); }, []);
 
   const compare = async () => {
     setLoading(true);
@@ -407,17 +422,29 @@ export default function TftComparePage() {
                         <div className="text-[#7a8aa0] text-xs text-center py-3">noch keine Match-Details</div>
                       ) : (
                         <div className="flex gap-1.5 flex-wrap">
-                          {s.topUnits.slice(0, 8).map(u => (
-                            <div key={u.characterId} title={`${u.characterId} · ${u.games}× · Ø ${u.avgPlacement.toFixed(1)}`} className="flex flex-col items-center gap-0.5">
-                              <img
-                                src={tftUnitIconUrl(u.characterId)}
-                                alt={u.characterId}
-                                className="w-9 h-9 rounded border border-[#1e2a3a]"
-                                onError={(e) => { (e.target as HTMLImageElement).style.opacity = '0.3'; }}
-                              />
-                              <span className="text-[9px] text-[#a0b0c5] tabular-nums">{u.games}</span>
-                            </div>
-                          ))}
+                          {s.topUnits.slice(0, 8).map(u => {
+                            const urls = tftUnitIconUrls(u.characterId, assets);
+                            return (
+                              <div key={u.characterId} title={`${u.characterId} · ${u.games}× · Ø ${u.avgPlacement.toFixed(1)}`} className="flex flex-col items-center gap-0.5">
+                                <img
+                                  src={urls.square}
+                                  alt={u.characterId}
+                                  className="w-9 h-9 rounded border border-[#1e2a3a] object-cover"
+                                  onError={(e) => {
+                                    const t = e.target as HTMLImageElement;
+                                    // 1st failure: try the splash variant. 2nd failure: dim out.
+                                    if (t.dataset.fallback !== 'splash' && urls.splash) {
+                                      t.dataset.fallback = 'splash';
+                                      t.src = urls.splash;
+                                    } else {
+                                      t.style.opacity = '0.3';
+                                    }
+                                  }}
+                                />
+                                <span className="text-[9px] text-[#a0b0c5] tabular-nums">{u.games}</span>
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
                     </div>

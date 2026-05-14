@@ -167,12 +167,23 @@ async function refreshOnePlayer(puuid, region) {
   }
   const account = await fetchAccount(puuid, regional);
 
+  // Preserve the player's last known ladder_rank from the daily crawler —
+  // the single-player refresh has no cheap way to recompute it, and
+  // dropping it would collapse Top-50 Challenger base values onto the LP
+  // fallback curve (€200k → €50k for rank 1).
+  const ladderRankRow = await pool.query(
+    'select ladder_rank from tft_player_marketvalue_snapshots where puuid = $1 and region = $2 and ladder_rank is not null order by snapshot_date desc limit 1',
+    [puuid, region],
+  );
+  const ladderRank = ladderRankRow.rows[0]?.ladder_rank ?? null;
+
   // 5) Marketvalue compute
   const result = calculateTftMarketValue({
     ranked: {
       tier: ranked.tier, rank: ranked.rank, leaguePoints: ranked.leaguePoints,
       wins: ranked.wins, losses: ranked.losses,
     },
+    playerRank: ranked.tier === 'CHALLENGER' && ladderRank ? ladderRank : undefined,
     matches,
     patchKnowledgeGraph: ctx.graph,
   });
@@ -186,7 +197,7 @@ async function refreshOnePlayer(puuid, region) {
     puuid, region, snapshot_date: today,
     game_name: account?.gameName ?? null, tag_line: account?.tagLine ?? null,
     tier: ranked.tier, rank: ranked.rank, lp: ranked.leaguePoints,
-    ladder_rank: null,
+    ladder_rank: ladderRank,
     base_value: result.baseValue, multiplier: Number(result.multiplier),
     final_value: result.finalValue, sample_size: result.sampleSize,
     damping: Number(result.damping), agents: result.agents,

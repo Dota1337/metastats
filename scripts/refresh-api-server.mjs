@@ -20,7 +20,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import pg from 'pg';
 import { createRiotClient } from './lib/riot-client.mjs';
-import { refreshPlayerMatchCache, listSeasonMatches } from './lib/tft-match-cache-pg.mjs';
+import { refreshPlayerMatchCache, listSeasonMatches, backfillPlayerCacheToSupabase } from './lib/tft-match-cache-pg.mjs';
 import {
   upsertSeasonStats,
   buildHotCompKeys,
@@ -145,8 +145,14 @@ async function refreshOnePlayer(puuid, region) {
 
   const ctx = getRegionCtx(region);
 
-  // 1) Cache refresh
+  // 1) Cache refresh (Hetzner-PG, with Supabase mirror of new rows)
   await refreshPlayerMatchCache(pool, puuid, region, regional, riot, { force: true });
+
+  // 1b) Backfill Supabase with ANY cached matches not yet mirrored. The
+  //     refresh above only mirrors *new* rows — for players who were
+  //     crawled before the mirror was wired up this is the catch-up.
+  //     Fire-and-forget; failure shouldn't block the marketvalue compute.
+  backfillPlayerCacheToSupabase(pool, puuid).catch(() => {});
 
   // 2) Read set matches
   const matches = await listSeasonMatches(pool, puuid, setNumber);

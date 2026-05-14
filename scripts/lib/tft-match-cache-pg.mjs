@@ -103,6 +103,16 @@ export async function refreshPlayerMatchCache(db, puuid, region, regional, riot,
 
   if (newRows.length > 0) {
     await upsertMatchRows(db, newRows);
+    // Mirror to Supabase so Vercel-side aggregations see the new matches.
+    // Failure is non-fatal — Hetzner-PG is the source of truth, Supabase is
+    // the read-replica.
+    if (opts.syncSupabase !== false) {
+      try {
+        await syncPlayerCacheToSupabase(newRows, { log });
+      } catch (e) {
+        log(`[cache] supabase mirror failed: ${e.message}`);
+      }
+    }
   }
 
   const total = await countCachedTotal(db, puuid);
@@ -142,6 +152,7 @@ function buildCachedRow(rawMatch, puuid, region) {
     // gold_left can legitimately be 0 (Top-1 player spent everything) — only
     // null it when Riot omitted the field entirely.
     gold_left: typeof me.gold_left === 'number' ? me.gold_left : null,
+    players_eliminated: me.players_eliminated ?? 0,
     comp_cluster_key: snap.comp?.clusterKey ?? null,
     carry_unit: snap.comp?.carryUnit ?? null,
     carry_items: snap.comp?.carryItems ?? [],
@@ -198,7 +209,7 @@ async function upsertMatchRows(db, rows) {
     let p = 1;
     for (const row of batch) {
       values.push(
-        `($${p++}, $${p++}, $${p++}, $${p++}, $${p++}, $${p++}, $${p++}, $${p++}, $${p++}, $${p++}, $${p++}, $${p++}, $${p++}, $${p++}::jsonb, $${p++}::jsonb, $${p++}::jsonb, $${p++}::jsonb)`,
+        `($${p++}, $${p++}, $${p++}, $${p++}, $${p++}, $${p++}, $${p++}, $${p++}, $${p++}, $${p++}, $${p++}, $${p++}, $${p++}, $${p++}, $${p++}::jsonb, $${p++}::jsonb, $${p++}::jsonb, $${p++}::jsonb)`,
       );
       params.push(
         row.puuid,
@@ -212,6 +223,7 @@ async function upsertMatchRows(db, rows) {
         row.last_round,
         row.total_damage,
         row.gold_left,
+        row.players_eliminated,
         row.comp_cluster_key,
         row.carry_unit,
         JSON.stringify(row.carry_items),
@@ -222,12 +234,93 @@ async function upsertMatchRows(db, rows) {
     }
     const sql = `insert into tft_player_match_cache
       (puuid, match_id, region, set_number, queue_id, game_datetime, placement,
-       level, last_round, total_damage, gold_left, comp_cluster_key, carry_unit,
-       carry_items, augments, units, traits)
+       level, last_round, total_damage, gold_left, players_eliminated,
+       comp_cluster_key, carry_unit, carry_items, augments, units, traits)
       values ${values.join(',')}
       on conflict (puuid, match_id) do nothing`;
     await db.query(sql, params);
   }
+}
+
+// Mirror a player's match-cache rows to Supabase so the Vercel-side
+// /api/tft/player-stats endpoint can serve per-match detail (placement
+// distribution, top units, averages) without us having to give Vercel
+// direct access to the Hetzner Postgres. The Supabase schema doesn't
+// have the comp/carry columns we use locally for the marketvalue
+// aggregator — we strip those before pushing. Idempotent (PK on
+// puuid+match_id), so this is safe to call after every refresh.
+const SUPABASE_BATCH = 200;
+export async function syncPlayerCacheToSupabase(rows, opts = {}) {
+  const log = opts.log || (() => {});
+  const supaUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supaKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supaUrl || !supaKey) {
+    log('  [supabase] missing env, skipping match-cache sync');
+    return { pushed: 0, skipped: rows.length };
+  }
+  if (rows.length === 0) return { pushed: 0, skipped: 0 };
+
+  // Reshape for the Supabase schema: drop Hetzner-only columns, ensure
+  // every required field is present with a fallback default.
+  const supaRows = rows.map(r => ({
+    puuid: r.puuid,
+    match_id: r.match_id,
+    region: r.region,
+    set_number: r.set_number,
+    queue_id: r.queue_id,
+    game_datetime: r.game_datetime,
+    placement: r.placement,
+    level: r.level ?? 0,
+    gold_left: r.gold_left ?? 0,
+    players_eliminated: r.players_eliminated ?? 0,
+    total_damage: r.total_damage ?? 0,
+    last_round: r.last_round ?? 0,
+    units: r.units || [],
+    augments: r.augments || [],
+    traits: r.traits || [],
+  }));
+
+  for (let i = 0; i < supaRows.length; i += SUPABASE_BATCH) {
+    const batch = supaRows.slice(i, i + SUPABASE_BATCH);
+    const res = await fetch(`${supaUrl}/rest/v1/tft_player_match_cache?on_conflict=puuid,match_id`, {
+      method: 'POST',
+      headers: {
+        apikey: supaKey,
+        Authorization: `Bearer ${supaKey}`,
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=merge-duplicates,return=minimal',
+      },
+      body: JSON.stringify(batch),
+    });
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`Supabase match_cache upsert failed: HTTP ${res.status} ${body.slice(0, 300)}`);
+    }
+  }
+  log(`  [supabase] mirrored ${supaRows.length} match-cache rows`);
+  return { pushed: supaRows.length, skipped: 0 };
+}
+
+// One-time backfill: push every already-cached match for a player from
+// Hetzner Postgres up to Supabase. Used by the refresh API on first
+// touch — the Hetzner Postgres has the player's full cache from the
+// daily crawler but Supabase only has whatever was opportunistically
+// written by older Vercel-side code paths.
+export async function backfillPlayerCacheToSupabase(db, puuid, opts = {}) {
+  const log = opts.log || (() => {});
+  const r = await db.query(
+    `select puuid, match_id, region, set_number, queue_id, game_datetime,
+            placement, level, last_round, total_damage, gold_left,
+            players_eliminated, units, augments, traits
+       from tft_player_match_cache
+       where puuid = $1`,
+    [puuid],
+  );
+  if (r.rows.length === 0) {
+    log('[backfill] no cached matches yet for player');
+    return { pushed: 0 };
+  }
+  return syncPlayerCacheToSupabase(r.rows, { log });
 }
 
 // Read all cached matches for a player in a given set. Used by the season

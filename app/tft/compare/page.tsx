@@ -49,6 +49,11 @@ interface PlayerSummary {
   placementDistribution: number[];   // [count@1, count@2, …, count@8]
   averages: { level: number; goldLeft: number; eliminations: number; damage: number; lastRound: number };
   topUnits: { characterId: string; games: number; avgPlacement: number; top4Rate: number }[];
+  // 'season_aggregate' = headline numbers from the synced aggregate table
+  //  only, no per-match detail yet. Triggers the background refresh.
+  // 'live' = full match-level data available.
+  statsSource?: 'live' | 'season_aggregate';
+  refreshing?: boolean;
 }
 
 interface HistoryPoint { date: string; finalValue: number }
@@ -121,6 +126,7 @@ export default function TftComparePage() {
           const sr = await fetch(`/api/tft/player-stats?puuid=${puuid}&region=${region}`);
           stats = sr.ok ? await sr.json() : null;
         }
+        const statsSource = stats?.statsSource === 'season_aggregate' ? 'season_aggregate' : 'live';
         next[i] = {
           name: d.summoner?.name || name,
           puuid,
@@ -140,6 +146,8 @@ export default function TftComparePage() {
           placementDistribution: stats?.placementDistribution ?? [0,0,0,0,0,0,0,0],
           averages: stats?.averages ?? { level: 0, goldLeft: 0, eliminations: 0, damage: 0, lastRound: 0 },
           topUnits: stats?.topUnits ?? [],
+          statsSource,
+          refreshing: statsSource === 'season_aggregate' && !!puuid,
         };
         // 3) Background-fetch 30d history
         if ((next[i] as PlayerSummary).rated && puuid) {
@@ -148,12 +156,58 @@ export default function TftComparePage() {
             .then(h => setHistories(prev => prev.map((p, idx) => idx === i ? (h.series || []) : p)))
             .catch(() => {});
         }
+        // 4) Auto-refresh — if the player's per-match cache wasn't ready
+        //    in Supabase, trigger the Hetzner refresh API and re-fetch
+        //    player-stats once it lands. The refresh API has its own
+        //    60s per-puuid rate limit; if we hit 429 we keep the
+        //    season-aggregate view (better than nothing).
+        const cur = next[i] as PlayerSummary;
+        if (cur.statsSource === 'season_aggregate' && cur.puuid) {
+          autoRefreshPlayer(i, cur.puuid).catch(() => {});
+        }
       } catch (e: any) {
         next[i] = { error: e.message };
       }
       setResults([...next]);
     }));
     setLoading(false);
+  };
+
+  const autoRefreshPlayer = async (index: number, puuid: string) => {
+    try {
+      const refreshRes = await fetch('/api/tft/marktwert/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ puuid, region }),
+      });
+      // 200 = refresh ran, 429 = recently refreshed (back-off applies).
+      // In both cases the Supabase cache should now be hot enough to
+      // re-fetch player-stats.
+      if (!refreshRes.ok && refreshRes.status !== 429) return;
+      const sr = await fetch(`/api/tft/player-stats?puuid=${puuid}&region=${region}`);
+      if (!sr.ok) return;
+      const stats = await sr.json();
+      setResults(prev => prev.map((p, idx) => {
+        if (idx !== index || !p || 'error' in p) return p;
+        return {
+          ...(p as PlayerSummary),
+          totalMatches: stats.totalMatches ?? (p as PlayerSummary).totalMatches,
+          avgPlacement: stats.avgPlacement ?? (p as PlayerSummary).avgPlacement,
+          top4Rate: stats.top4Rate ?? (p as PlayerSummary).top4Rate,
+          top1Rate: stats.top1Rate ?? (p as PlayerSummary).top1Rate,
+          placementDistribution: stats.placementDistribution ?? (p as PlayerSummary).placementDistribution,
+          averages: stats.averages ?? (p as PlayerSummary).averages,
+          topUnits: stats.topUnits ?? (p as PlayerSummary).topUnits,
+          statsSource: stats.statsSource === 'season_aggregate' ? 'season_aggregate' : 'live',
+          refreshing: false,
+        };
+      }));
+    } finally {
+      setResults(prev => prev.map((p, idx) => {
+        if (idx !== index || !p || 'error' in p) return p;
+        return { ...(p as PlayerSummary), refreshing: false };
+      }));
+    }
   };
 
   const chartData = mergeHistories(histories);
@@ -317,18 +371,27 @@ export default function TftComparePage() {
               <CompareStatBar label="Multiplikator" v1={s1.multiplier || 0} v2={s2.multiplier || 0} fmt1={`×${(s1.multiplier || 0).toFixed(2)}`} fmt2={`×${(s2.multiplier || 0).toFixed(2)}`} />
             </div>
 
-            {/* Placement Distribution histogram — only when at least one
-               player has per-match data (sum > 0); otherwise hide entirely */}
-            {(s1.placementDistribution.some(c => c > 0) || s2.placementDistribution.some(c => c > 0)) && (
+            {/* Placement Distribution — render either real data or a loading
+               skeleton while the background refresh is fetching match
+               details. Once at least one player has data, the histogram
+               shows up. */}
+            {(s1.placementDistribution.some(c => c > 0) || s2.placementDistribution.some(c => c > 0) || s1.refreshing || s2.refreshing) && (
               <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-4">
-                <div className="text-center text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">Platzierungs-Verteilung</div>
+                <div className="text-center text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">
+                  Platzierungs-Verteilung
+                  {(s1.refreshing || s2.refreshing) && <span className="ml-2 text-[#7B61FF]">· wird geladen…</span>}
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   {s1.placementDistribution.some(c => c > 0)
                     ? <PlacementHistogram dist={s1.placementDistribution} color={SERIES_COLORS[0]} />
-                    : <div className="text-[#7a8aa0] text-xs text-center self-center">noch keine Match-Details</div>}
+                    : s1.refreshing
+                      ? <PlacementSkeleton />
+                      : <div className="text-[#7a8aa0] text-xs text-center self-center">noch keine Match-Details</div>}
                   {s2.placementDistribution.some(c => c > 0)
                     ? <PlacementHistogram dist={s2.placementDistribution} color={SERIES_COLORS[1]} />
-                    : <div className="text-[#7a8aa0] text-xs text-center self-center">noch keine Match-Details</div>}
+                    : s2.refreshing
+                      ? <PlacementSkeleton />
+                      : <div className="text-[#7a8aa0] text-xs text-center self-center">noch keine Match-Details</div>}
                 </div>
               </div>
             )}
@@ -472,6 +535,20 @@ function CompareStatBar({ label, v1, v2, fmt1, fmt2, lowerIsBetter = false }: { 
         </div>
         <span className={`text-xs sm:text-sm w-20 sm:w-28 shrink-0 tabular-nums font-medium ${p2Wins ? 'text-[#3ecf8e]' : 'text-white'}`}>{fmt2}</span>
       </div>
+    </div>
+  );
+}
+
+function PlacementSkeleton() {
+  return (
+    <div className="flex items-end gap-1 h-24 animate-pulse">
+      {[1,2,3,4,5,6,7,8].map(i => (
+        <div key={i} className="flex-1 flex flex-col items-center gap-1">
+          <div className="text-[9px] text-[#1e2a3a]">·</div>
+          <div className="w-full rounded-sm bg-[#1e2a3a]" style={{ height: `${30 + i * 5}%` }} />
+          <div className="text-[9px] text-[#7a8aa0]">{i}</div>
+        </div>
+      ))}
     </div>
   );
 }

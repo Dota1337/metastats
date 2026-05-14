@@ -298,49 +298,70 @@ export default function TftComparePage() {
               })()}
             </div>
 
-            {/* Color-coded stat bars */}
+            {/* Color-coded stat bars — only render the bars where at least
+               one player has a non-zero value so fallback paths (season
+               aggregate without per-match detail) don't spam "0 vs 0" rows */}
             <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-4">
               <CompareStatBar label="Ø Platz (niedriger = besser)" v1={s1.avgPlacement} v2={s2.avgPlacement} fmt1={s1.avgPlacement.toFixed(2)} fmt2={s2.avgPlacement.toFixed(2)} lowerIsBetter />
               <CompareStatBar label="Top-4-Quote" v1={s1.top4Rate} v2={s2.top4Rate} fmt1={`${(s1.top4Rate * 100).toFixed(0)}%`} fmt2={`${(s2.top4Rate * 100).toFixed(0)}%`} />
               <CompareStatBar label="Sieg-Quote" v1={s1.top1Rate} v2={s2.top1Rate} fmt1={`${(s1.top1Rate * 100).toFixed(0)}%`} fmt2={`${(s2.top1Rate * 100).toFixed(0)}%`} />
-              <CompareStatBar label="Ø Schaden" v1={s1.averages.damage} v2={s2.averages.damage} fmt1={Math.round(s1.averages.damage).toLocaleString(LOCALE_MAP[lang])} fmt2={Math.round(s2.averages.damage).toLocaleString(LOCALE_MAP[lang])} />
-              <CompareStatBar label="Ø Endrunde" v1={s1.averages.lastRound} v2={s2.averages.lastRound} fmt1={s1.averages.lastRound.toFixed(1)} fmt2={s2.averages.lastRound.toFixed(1)} />
-              <CompareStatBar label="Ø Level" v1={s1.averages.level} v2={s2.averages.level} fmt1={s1.averages.level.toFixed(1)} fmt2={s2.averages.level.toFixed(1)} />
+              {(s1.averages.damage > 0 || s2.averages.damage > 0) && (
+                <CompareStatBar label="Ø Schaden" v1={s1.averages.damage} v2={s2.averages.damage} fmt1={Math.round(s1.averages.damage).toLocaleString(LOCALE_MAP[lang])} fmt2={Math.round(s2.averages.damage).toLocaleString(LOCALE_MAP[lang])} />
+              )}
+              {(s1.averages.lastRound > 0 || s2.averages.lastRound > 0) && (
+                <CompareStatBar label="Ø Endrunde" v1={s1.averages.lastRound} v2={s2.averages.lastRound} fmt1={s1.averages.lastRound.toFixed(1)} fmt2={s2.averages.lastRound.toFixed(1)} />
+              )}
+              {(s1.averages.level > 0 || s2.averages.level > 0) && (
+                <CompareStatBar label="Ø Level" v1={s1.averages.level} v2={s2.averages.level} fmt1={s1.averages.level.toFixed(1)} fmt2={s2.averages.level.toFixed(1)} />
+              )}
               <CompareStatBar label="Multiplikator" v1={s1.multiplier || 0} v2={s2.multiplier || 0} fmt1={`×${(s1.multiplier || 0).toFixed(2)}`} fmt2={`×${(s2.multiplier || 0).toFixed(2)}`} />
             </div>
 
-            {/* Placement Distribution histogram */}
-            <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-4">
-              <div className="text-center text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">Platzierungs-Verteilung</div>
-              <div className="grid grid-cols-2 gap-4">
-                <PlacementHistogram dist={s1.placementDistribution} color={SERIES_COLORS[0]} />
-                <PlacementHistogram dist={s2.placementDistribution} color={SERIES_COLORS[1]} />
+            {/* Placement Distribution histogram — only when at least one
+               player has per-match data (sum > 0); otherwise hide entirely */}
+            {(s1.placementDistribution.some(c => c > 0) || s2.placementDistribution.some(c => c > 0)) && (
+              <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-4">
+                <div className="text-center text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">Platzierungs-Verteilung</div>
+                <div className="grid grid-cols-2 gap-4">
+                  {s1.placementDistribution.some(c => c > 0)
+                    ? <PlacementHistogram dist={s1.placementDistribution} color={SERIES_COLORS[0]} />
+                    : <div className="text-[#7a8aa0] text-xs text-center self-center">noch keine Match-Details</div>}
+                  {s2.placementDistribution.some(c => c > 0)
+                    ? <PlacementHistogram dist={s2.placementDistribution} color={SERIES_COLORS[1]} />
+                    : <div className="text-[#7a8aa0] text-xs text-center self-center">noch keine Match-Details</div>}
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Top units */}
-            <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-4">
-              <div className="text-center text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">Meist-gespielte Units</div>
-              <div className="grid grid-cols-2 gap-4">
-                {[s1, s2].map((s, i) => (
-                  <div key={i}>
-                    <div className="flex gap-1.5 flex-wrap">
-                      {s.topUnits.slice(0, 8).map(u => (
-                        <div key={u.characterId} title={`${u.characterId} · ${u.games}× · Ø ${u.avgPlacement.toFixed(1)}`} className="flex flex-col items-center gap-0.5">
-                          <img
-                            src={tftUnitIconUrl(u.characterId)}
-                            alt={u.characterId}
-                            className="w-9 h-9 rounded border border-[#1e2a3a]"
-                            onError={(e) => { (e.target as HTMLImageElement).style.opacity = '0.3'; }}
-                          />
-                          <span className="text-[9px] text-[#a0b0c5] tabular-nums">{u.games}</span>
+            {/* Top units — hidden if neither player has unit-level data */}
+            {(s1.topUnits.length > 0 || s2.topUnits.length > 0) && (
+              <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-4">
+                <div className="text-center text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">Meist-gespielte Units</div>
+                <div className="grid grid-cols-2 gap-4">
+                  {[s1, s2].map((s, i) => (
+                    <div key={i}>
+                      {s.topUnits.length === 0 ? (
+                        <div className="text-[#7a8aa0] text-xs text-center py-3">noch keine Match-Details</div>
+                      ) : (
+                        <div className="flex gap-1.5 flex-wrap">
+                          {s.topUnits.slice(0, 8).map(u => (
+                            <div key={u.characterId} title={`${u.characterId} · ${u.games}× · Ø ${u.avgPlacement.toFixed(1)}`} className="flex flex-col items-center gap-0.5">
+                              <img
+                                src={tftUnitIconUrl(u.characterId)}
+                                alt={u.characterId}
+                                className="w-9 h-9 rounded border border-[#1e2a3a]"
+                                onError={(e) => { (e.target as HTMLImageElement).style.opacity = '0.3'; }}
+                              />
+                              <span className="text-[9px] text-[#a0b0c5] tabular-nums">{u.games}</span>
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      )}
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </>
         )}
 

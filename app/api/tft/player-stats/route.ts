@@ -5,6 +5,7 @@ import { refreshPlayerCache, loadCachedMatches, listCachedSets } from '../../../
 import { ensureRankHistoryBackfilled, type SeasonRank } from '../../../lib/tft-rank-history';
 import { getRegionalRouting } from '../../../lib/regions';
 import { isExcludedUnit } from '../../../lib/tft-excluded';
+import { supabase } from '../../../lib/supabase';
 
 // Player season-stats endpoint.
 // Reads from tft_player_match_cache. On every request we refresh the cache
@@ -94,6 +95,45 @@ export async function GET(request: NextRequest) {
   }
 
   if (cached.length === 0) {
+    // Fallback path: the new Hetzner-side crawler writes to the Hetzner
+    // Postgres match cache, not to Supabase. For players who've only been
+    // touched by that pipeline (most of the current player base post-
+    // backfill), there's no match-level data here — but the synced
+    // tft_player_season_stats row holds every aggregate the compare /
+    // player pages need. Return that instead of an empty hasStats:false
+    // payload so the UI can still render the headline numbers.
+    const { data: seasonRow } = await supabase
+      .from('tft_player_season_stats')
+      .select('sample_size, avg_placement, top4_rate, top1_rate, bottom4_rate, placement_stddev, best_top4_streak, unique_comps, dominant_share, meta_pick_share, item_slam_score')
+      .eq('puuid', puuid)
+      .eq('region', region)
+      .eq('set_number', targetSet)
+      .maybeSingle();
+
+    if (seasonRow && seasonRow.sample_size > 0) {
+      return NextResponse.json({
+        hasStats: true,
+        statsSource: 'season_aggregate',         // signal to the UI: no per-match detail
+        region,
+        puuid,
+        set: targetSet,
+        currentSet,
+        availableSets,
+        seasonRanks,
+        totalMatches: seasonRow.sample_size,
+        avgPlacement: Number(seasonRow.avg_placement) || 0,
+        top4Rate: Number(seasonRow.top4_rate) || 0,
+        top1Rate: Number(seasonRow.top1_rate) || 0,
+        // No per-match data → distribution + averages + top units unavailable
+        placementDistribution: [0, 0, 0, 0, 0, 0, 0, 0],
+        averages: { level: 0, goldLeft: 0, eliminations: 0, damage: 0, lastRound: 0 },
+        scores: {},
+        topUnits: [],
+        topAugments: [],
+        topTraits: [],
+      });
+    }
+
     return NextResponse.json({
       hasStats: false,
       region,

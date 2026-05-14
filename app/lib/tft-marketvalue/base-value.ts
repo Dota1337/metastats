@@ -1,9 +1,16 @@
 import type { TftRanked } from './types';
 
 // TFT base value scale, Master+ only (Iron through Diamond → Not Rated).
-// Calibrated against TFT's smaller esports + streaming economy: Top-1 ≈ 200k €,
-// Challenger generic ≈ 10–25k €, Master 0–50 LP ≈ 0.5–1.5k €. Numbers are
-// rough first-pass values — refine after we see real sample data.
+// Calibrated relative to LoL: LoL's top pros must outscale TFT's because
+// the LoL esports + sponsorship economy is an order of magnitude larger.
+// Target final-value range after multiplier (×0.45 .. ×1.65):
+//   Chall #1            → ~180k €  (base 130k, typical multi 1.4)
+//   Chall #30           → ~60k €   (base 43k)
+//   Chall #150          → ~20k €
+//   GM 200 LP           → ~10k €
+//   Master 200 LP       → ~5k €
+//   Master 0 LP         → ~1k €
+// Diamond stays Not Rated (no marketvalue).
 
 const TIER_VAL: Record<string, number> = {
   IRON: 0, BRONZE: 1, SILVER: 2, GOLD: 3, PLATINUM: 4,
@@ -28,26 +35,28 @@ export function computeBaseValue(ranked: TftRanked | null, playerRank?: number):
   const lp = Math.max(0, ranked.leaguePoints || 0);
 
   if (tier === 'MASTER') {
-    // 0 → 500, 200 → 3500 (linear, capped at 200 LP because GM kicks in)
+    // 0 → 1000, 200 → 4000. Gentle entry into apex.
     const cappedLp = Math.min(lp, 200);
-    return { rated: true, baseValue: 500 + (cappedLp / 200) * 3000 };
+    return { rated: true, baseValue: 1000 + (cappedLp / 200) * 3000 };
   }
   if (tier === 'GRANDMASTER') {
-    // 0 → 3500, 400 → 10000
+    // 0 → 4000, 400 → 12000. Smooth bridge between Master ceiling and low Chall.
     const cappedLp = Math.min(lp, 400);
-    return { rated: true, baseValue: 3500 + (cappedLp / 400) * 6500 };
+    return { rated: true, baseValue: 4000 + (cappedLp / 400) * 8000 };
   }
   if (tier === 'CHALLENGER') {
-    // Top-N curve — falls back to LP-based when player rank is unknown
-    if (playerRank === 1) return { rated: true, baseValue: 200000 };
-    if (playerRank && playerRank <= 10) {
-      return { rated: true, baseValue: 70000 + ((10 - playerRank) / 9) * 80000 };
+    // Top 30 — linear interpolation: rank 1 → 130k, rank 30 → 43k.
+    // With typical multiplier ~1.4 this lands at the 60k-180k final-value
+    // target band the brief calls for.
+    if (playerRank && playerRank <= 30) {
+      return { rated: true, baseValue: 130000 - ((playerRank - 1) / 29) * 87000 };
     }
-    if (playerRank && playerRank <= 50) {
-      return { rated: true, baseValue: 25000 + ((50 - playerRank) / 40) * 35000 };
+    // Rank 31–150 — continued gentle drop 43k → 15k.
+    if (playerRank && playerRank <= 150) {
+      return { rated: true, baseValue: 43000 - ((playerRank - 30) / 120) * 28000 };
     }
-    // Generic Chall: scale by LP only
-    return { rated: true, baseValue: 10000 + (lp / 1000) * 15000 };
+    // Rank > 150 or unknown — LP-based fade, max ~12k base.
+    return { rated: true, baseValue: 5000 + Math.min(1, lp / 1500) * 7000 };
   }
 
   return { rated: false, baseValue: 0, notRatedReason: 'unknown_tier' };

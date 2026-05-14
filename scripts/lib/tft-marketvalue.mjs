@@ -26,23 +26,26 @@ export function computeBaseValue(ranked, playerRank) {
   }
   const lp = Math.max(0, ranked.leaguePoints || 0);
 
+  // Calibrated relative to LoL — TFT's top pros sit below LoL's top pros.
+  // Target final-value range after multiplier:
+  //   Chall #1 → ~180k, Chall #30 → ~60k, Master 0 LP → ~1k.
+  // Keep this in lockstep with app/lib/tft-marketvalue/base-value.ts.
   if (tier === 'MASTER') {
     const cappedLp = Math.min(lp, 200);
-    return { rated: true, baseValue: 500 + (cappedLp / 200) * 3000 };
+    return { rated: true, baseValue: 1000 + (cappedLp / 200) * 3000 };
   }
   if (tier === 'GRANDMASTER') {
     const cappedLp = Math.min(lp, 400);
-    return { rated: true, baseValue: 3500 + (cappedLp / 400) * 6500 };
+    return { rated: true, baseValue: 4000 + (cappedLp / 400) * 8000 };
   }
   if (tier === 'CHALLENGER') {
-    if (playerRank === 1) return { rated: true, baseValue: 200000 };
-    if (playerRank && playerRank <= 10) {
-      return { rated: true, baseValue: 70000 + ((10 - playerRank) / 9) * 80000 };
+    if (playerRank && playerRank <= 30) {
+      return { rated: true, baseValue: 130000 - ((playerRank - 1) / 29) * 87000 };
     }
-    if (playerRank && playerRank <= 50) {
-      return { rated: true, baseValue: 25000 + ((50 - playerRank) / 40) * 35000 };
+    if (playerRank && playerRank <= 150) {
+      return { rated: true, baseValue: 43000 - ((playerRank - 30) / 120) * 28000 };
     }
-    return { rated: true, baseValue: 10000 + (lp / 1000) * 15000 };
+    return { rated: true, baseValue: 5000 + Math.min(1, lp / 1500) * 7000 };
   }
   return { rated: false, baseValue: 0, notRatedReason: 'unknown_tier' };
 }

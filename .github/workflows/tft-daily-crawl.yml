@@ -1,23 +1,37 @@
 name: TFT Daily Crawl
 
-# Crawls every Riot TFT region once per day and writes per-day, per-bucket
-# stats to Supabase. Uses GitHub Actions matrix to run the 17 regions in
-# parallel — each runner does ~25-30 min of Riot calls, the slowest
-# region is the wall-time.
+# Crawls every Riot TFT region and writes per-day, per-bucket stats to
+# Supabase. Uses GitHub Actions matrix to run the 17 regions in parallel —
+# each runner does ~25-30 min of Riot calls on the final daily run, less
+# on intraday runs with smaller windows.
 #
-# Replaces the old weekly workflow (kept for now under its own filename so
-# the existing JSON-based pages still get a Saturday refresh while the
-# Supabase-backed filter system is being built out).
+# Schedule:
+#   05:15 UTC          — final run for the *previous* day, mode=auto.
+#                        Window = [yesterday 05, today 05), day = yesterday.
+#                        Closes the prior day with the full 24h.
+#   11:15/17:15/23:15  — intraday runs for the *current* day, mode=today.
+#                        Window = [today 05, now), day = today. Each upsert
+#                        overwrites the previous intraday aggregate for the
+#                        same key, so the current day's stats grow ~every 6h
+#                        until the next 05:15 final run seals them.
 
 on:
   schedule:
-    # Every day at 05:15 UTC. The crawler reads the most recent completed
-    # 24h window [yesterday 05:00 UTC, today 05:00 UTC) via Riot's
-    # startTime/endTime filter — the 15-min offset gives Riot's match-history
-    # index a small buffer to settle the very last matches of the window
-    # before we ask for them.
+    # Final run for yesterday — 15-min offset gives Riot's match-history
+    # index a buffer to settle the last matches of the closed window.
     - cron: '15 5 * * *'
+    # Intraday runs for today: 6h, 12h, 18h after the day's 05 UTC anchor.
+    - cron: '15 11,17,23 * * *'
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Crawl mode: auto (yesterday final) or today (rolling intraday)'
+        required: false
+        default: 'auto'
+        type: choice
+        options:
+          - auto
+          - today
 
 permissions:
   contents: write
@@ -112,4 +126,21 @@ jobs:
         # --no-json: skip the legacy /public/tft-stats-*.json output so 17
         # parallel runners don't fight over `git push`. The Supabase tables
         # are the source of truth from now on.
-        run: node scripts/collect-tft-allranks.mjs --region ${{ matrix.region }} --no-json
+        #
+        # Mode selection:
+        #   schedule '15 5 * * *' → auto   (finalize yesterday)
+        #   schedule '15 11,17,23 * * *' → today (rolling current-day intraday)
+        #   workflow_dispatch → use the input (defaults to auto)
+        env:
+          SCHEDULE: ${{ github.event.schedule }}
+          DISPATCH_MODE: ${{ github.event.inputs.mode }}
+        run: |
+          if [ "$SCHEDULE" = "15 11,17,23 * * *" ]; then
+            MODE=today
+          elif [ -n "$DISPATCH_MODE" ]; then
+            MODE="$DISPATCH_MODE"
+          else
+            MODE=auto
+          fi
+          echo "Crawl mode: $MODE"
+          node scripts/collect-tft-allranks.mjs --region ${{ matrix.region }} --no-json --mode "$MODE"

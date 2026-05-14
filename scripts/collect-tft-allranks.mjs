@@ -32,6 +32,13 @@ const hasFlag = (k) => args.includes(k);
 const REGION = (arg('--region', 'euw1') || 'euw1').toLowerCase();
 const SKIP_SUPABASE = hasFlag('--no-supabase');
 const SKIP_JSON = hasFlag('--no-json');
+// Window mode:
+//   'auto'  (default) — most recent completed 24h window [yesterday 05, today 05),
+//                       day = yesterday. Used by the 05:15 UTC final daily run.
+//   'today'           — rolling window [today 05 UTC, now), day = today. Used
+//                       by the intraday runs (11/17/23 UTC) so the current
+//                       day's aggregates grow throughout the day.
+const MODE = (arg('--mode', 'auto') || 'auto').toLowerCase();
 // Hard cap per player to bound runtime when something goes weird (e.g. an
 // inflated startTime would normally page forever). 200 is well above any
 // realistic 24h grinding session (max ~45 matches/24h given 30min game length).
@@ -59,19 +66,33 @@ if (!API_KEY) { console.error('RIOT_API_KEY_TFT env var required'); process.exit
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://bwawxwgxxfafbruebixa.supabase.co';
 const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// 24h window anchored at 05:00 UTC. The crawl job runs shortly after 05:00
-// UTC daily, so the most recent completed window is [yesterday 05, today 05).
-// Falling back to the previous slice if invoked before 05:00 UTC (manual
-// dispatch) keeps the request from asking Riot for "future" matches.
-function computeWindow(now = new Date()) {
+// 24h window anchored at 05:00 UTC.
+//
+// mode='auto'  → most recent completed 24h window [yesterday 05, today 05).
+//                Used by the 05:15 UTC final daily run; day = yesterday.
+//                Falls back to the previous slice if invoked before 05:00 UTC
+//                (manual dispatch) so we never ask Riot for "future" matches.
+//
+// mode='today' → rolling window [today 05 UTC, now). day = today. Used by the
+//                intraday runs (11/17/23 UTC) so the current day's aggregates
+//                grow throughout the day. Each intraday upsert overwrites the
+//                previous one for the same (region, bucket, patch, set, day, …)
+//                key, and the next morning's 05:15 final run closes the day
+//                with the full 24h window.
+//                If invoked before today 05 UTC, falls back to mode='auto'
+//                semantics so we don't crawl a zero-length window.
+function computeWindow(now = new Date(), mode = 'auto') {
   const today5 = new Date(Date.UTC(
     now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 5, 0, 0, 0,
   ));
+  if (mode === 'today' && now >= today5) {
+    return { startTime: today5, endTime: now };
+  }
   const endTime = now < today5 ? new Date(today5.getTime() - 86_400_000) : today5;
   const startTime = new Date(endTime.getTime() - 86_400_000);
   return { startTime, endTime };
 }
-const WINDOW = computeWindow();
+const WINDOW = computeWindow(new Date(), MODE);
 const WINDOW_START_SEC = Math.floor(WINDOW.startTime.getTime() / 1000);
 const WINDOW_END_SEC = Math.floor(WINDOW.endTime.getTime() / 1000);
 // `day` column = the calendar date the window primarily covers (its start).

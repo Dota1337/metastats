@@ -167,7 +167,10 @@ async function discoverPlayers() {
 }
 
 // --puuids mode: skip apex discovery, fetch each player's RANKED_TFT entry
-// directly. Used by the backfill workflow.
+// directly. Used by the backfill workflow. ladderRank is reused from the
+// most recent existing snapshot in the same region — without it CHALLENGER
+// players fall onto the LP-only base-value curve (~12k vs real ~130k),
+// which would produce 10× too-low backfilled values.
 async function loadPlayersByPuuids(puuids) {
   console.log(`[discovery] ${REGION} — explicit ${puuids.length} puuid(s)`);
   const out = [];
@@ -185,6 +188,12 @@ async function loadPlayersByPuuids(puuids) {
       if (VERBOSE) console.log(`  [skip] no RANKED_TFT entry for ${puuid.slice(0, 8)}…`);
       continue;
     }
+    const lr = await pool.query(
+      `select ladder_rank from tft_player_marketvalue_snapshots
+         where puuid=$1 and region=$2 and ladder_rank is not null
+         order by snapshot_date desc limit 1`,
+      [puuid, REGION],
+    );
     out.push({
       puuid,
       tier: entry.tier,
@@ -192,10 +201,7 @@ async function loadPlayersByPuuids(puuids) {
       lp: entry.leaguePoints ?? 0,
       wins: entry.wins ?? 0,
       losses: entry.losses ?? 0,
-      // ladderRank can't be reconstructed for a backfilled date; only
-      // CHALLENGER-tier players use it (top-50 base-value curve), so
-      // null is correct for non-chal and an approximation otherwise.
-      ladderRank: undefined,
+      ladderRank: lr.rows[0]?.ladder_rank ?? undefined,
     });
   }
   return out;

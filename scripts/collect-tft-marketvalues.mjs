@@ -17,6 +17,12 @@
  *   node scripts/collect-tft-marketvalues.mjs --region euw1
  *   node scripts/collect-tft-marketvalues.mjs --region euw1 --include-diamond
  *   node scripts/collect-tft-marketvalues.mjs --region euw1 --limit 5 --verbose
+ *   node scripts/collect-tft-marketvalues.mjs --region euw1 --snapshot-date 2026-05-15 --puuids p1,p2,p3
+ *
+ * `--snapshot-date` overrides `current_date` for the inserted row — used
+ * by the backfill workflow when a daily run was missed.
+ * `--puuids` skips the apex/diamond discovery and processes exactly those
+ * players (rank/LP fetched fresh via tft/league/v1/by-puuid).
  */
 
 import { readFileSync, existsSync } from 'node:fs';
@@ -41,6 +47,18 @@ const LIMIT = parseInt(arg('--limit', '0'), 10);
 const FORCE_REFRESH = hasFlag('--force-refresh');
 const SKIP_CACHE_REFRESH = hasFlag('--skip-cache-refresh');
 const VERBOSE = hasFlag('--verbose');
+
+const SNAPSHOT_DATE_RAW = arg('--snapshot-date', null);
+const SNAPSHOT_DATE = SNAPSHOT_DATE_RAW && /^\d{4}-\d{2}-\d{2}$/.test(SNAPSHOT_DATE_RAW)
+  ? SNAPSHOT_DATE_RAW
+  : null;
+if (SNAPSHOT_DATE_RAW && !SNAPSHOT_DATE) {
+  console.error(`Invalid --snapshot-date '${SNAPSHOT_DATE_RAW}', expected YYYY-MM-DD`);
+  process.exit(1);
+}
+
+const PUUIDS_RAW = arg('--puuids', null);
+const PUUIDS = PUUIDS_RAW ? PUUIDS_RAW.split(',').map(s => s.trim()).filter(Boolean) : null;
 
 const REGIONAL = ({
   euw1: 'europe', eun1: 'europe', tr1: 'europe', ru: 'europe', me1: 'europe',
@@ -148,6 +166,41 @@ async function discoverPlayers() {
   return all;
 }
 
+// --puuids mode: skip apex discovery, fetch each player's RANKED_TFT entry
+// directly. Used by the backfill workflow.
+async function loadPlayersByPuuids(puuids) {
+  console.log(`[discovery] ${REGION} — explicit ${puuids.length} puuid(s)`);
+  const out = [];
+  for (const puuid of puuids) {
+    const data = await rl(
+      `https://${REGION}.api.riotgames.com/tft/league/v1/by-puuid/${puuid}?api_key=${API_KEY}`,
+    );
+    if (!data || data._status) {
+      if (VERBOSE) console.log(`  [skip] no league entry for ${puuid.slice(0, 8)}…`);
+      continue;
+    }
+    const arr = Array.isArray(data) ? data : [];
+    const entry = arr.find(e => e.queueType === 'RANKED_TFT');
+    if (!entry) {
+      if (VERBOSE) console.log(`  [skip] no RANKED_TFT entry for ${puuid.slice(0, 8)}…`);
+      continue;
+    }
+    out.push({
+      puuid,
+      tier: entry.tier,
+      rank: entry.rank,
+      lp: entry.leaguePoints ?? 0,
+      wins: entry.wins ?? 0,
+      losses: entry.losses ?? 0,
+      // ladderRank can't be reconstructed for a backfilled date; only
+      // CHALLENGER-tier players use it (top-50 base-value curve), so
+      // null is correct for non-chal and an approximation otherwise.
+      ladderRank: undefined,
+    });
+  }
+  return out;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // per-region context: KG, current set
 // ─────────────────────────────────────────────────────────────────────────────
@@ -215,11 +268,13 @@ async function processPlayer(p, ctx) {
   }
 
   const acc = await fetchAccount(p.puuid);
+  const snapshotDateExpr = SNAPSHOT_DATE ? '$3::date' : 'current_date';
+  const baseParams = SNAPSHOT_DATE ? [SNAPSHOT_DATE] : [];
   await pool.query(
     `insert into tft_player_marketvalue_snapshots (
        puuid, region, snapshot_date, game_name, tag_line, tier, rank, lp, ladder_rank,
        base_value, multiplier, final_value, sample_size, damping, agents
-     ) values ($1, $2, current_date, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb)
+     ) values ($1, $2, ${snapshotDateExpr}, $${3 + baseParams.length}, $${4 + baseParams.length}, $${5 + baseParams.length}, $${6 + baseParams.length}, $${7 + baseParams.length}, $${8 + baseParams.length}, $${9 + baseParams.length}, $${10 + baseParams.length}, $${11 + baseParams.length}, $${12 + baseParams.length}, $${13 + baseParams.length}, $${14 + baseParams.length}::jsonb)
      on conflict (puuid, region, snapshot_date) do update set
        game_name   = excluded.game_name,
        tag_line    = excluded.tag_line,
@@ -235,6 +290,7 @@ async function processPlayer(p, ctx) {
        agents      = excluded.agents`,
     [
       p.puuid, REGION,
+      ...baseParams,
       acc?.gameName ?? null, acc?.tagLine ?? null,
       p.tier, p.rank ?? 'I', p.lp, p.ladderRank ?? null,
       result.baseValue, result.multiplier, result.finalValue,
@@ -249,7 +305,7 @@ async function processPlayer(p, ctx) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function main() {
-  console.log(`=== TFT Marketvalue Crawler (Hetzner) — ${REGION} ===`);
+  console.log(`=== TFT Marketvalue Crawler (Hetzner) — ${REGION}${SNAPSHOT_DATE ? ` · snapshot_date=${SNAPSHOT_DATE}` : ''} ===`);
   const t0 = Date.now();
 
   const setNumber = loadCurrentSet();
@@ -261,7 +317,7 @@ async function main() {
   const hotCompKeys = buildHotCompKeys(graph);
   const recommendedItems = buildRecommendedItems(graph);
 
-  let players = await discoverPlayers();
+  let players = PUUIDS ? await loadPlayersByPuuids(PUUIDS) : await discoverPlayers();
   if (LIMIT > 0) players = players.slice(0, LIMIT);
   console.log(`\n[1/2] ${players.length} players to process\n`);
 

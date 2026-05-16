@@ -152,6 +152,14 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
     }
   };
 
+  // Pre-compute chart data here (before any early returns) so the order of
+  // React hooks stays stable across renders — useMemo can't sit below the
+  // `if (loading)` short-circuits.
+  const chartData = useMemo(
+    () => history.map(p => ({ ...p, dateMs: new Date(p.date + 'T00:00:00Z').getTime() })),
+    [history],
+  );
+
   // Loading skeleton — keeps the layout shape stable so the page doesn't jump
   // once the value lands.
   if (loading) {
@@ -193,10 +201,6 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
   // anchors to the set window — points land at their real position rather
   // than being stretched across the full width when we only have 2-3 days
   // of crawler history.
-  const chartData = useMemo(
-    () => history.map(p => ({ ...p, dateMs: new Date(p.date + 'T00:00:00Z').getTime() })),
-    [history],
-  );
   const setStartMs = setInfo?.startDate
     ? new Date(setInfo.startDate + 'T00:00:00Z').getTime()
     : (chartData[0]?.dateMs ?? 0);

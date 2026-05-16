@@ -11,7 +11,7 @@ interface Comp {
   top4Rate: number | null;
   top1Rate: number | null;
   pickRate?: number | null;
-  typicalUnits: { characterId: string; count: number | unknown }[];
+  typicalUnits: { characterId: string; count: number | unknown; carryItemGames?: number | unknown }[];
   typicalAugments: { apiName: string; count: number | unknown; sumPlacement?: number | unknown }[];
   carryItems: { items: string[]; count: number | unknown }[];
   authorName?: string;
@@ -37,14 +37,33 @@ export default function CompCard({
 }) {
   const parts = parseClusterKey(comp.clusterKey);
   const traitMeta = parts && assets ? assets.traits[parts.trait] : null;
+  // Stargazer (and similar themed traits) ships seven constellation variants
+  // — Mountain, Serpent, Huntress, Medallion, Fountain, Wolf, Shield — all of
+  // which share the same `name`. The constellation suffix lives in the
+  // apiName, so we surface it explicitly: "Stargazer · Mountain 6" instead
+  // of the ambiguous "Stargazer 6".
   const traitName = traitMeta?.name || (parts ? prettyTrait(parts.trait) : 'Unknown');
-  const carry = parts && assets ? assets.champions[parts.carry] : null;
+  const traitVariant = parts ? extractTraitVariant(parts.trait, traitName) : null;
   const tier = tierBadge(comp.avgPlacement);
 
   const typicalUnits = [...(comp.typicalUnits || [])]
-    .map(u => ({ ...u, _c: safeCount(u.count) }))
+    .map(u => ({
+      ...u,
+      _c: safeCount(u.count),
+      _carry: safeCount((u as any).carryItemGames),
+    }))
     .sort((a, b) => b._c - a._c)
     .slice(0, 9);
+
+  // Real DMG-carry: unit with the highest share of games holding a
+  // damage-carry item. Falls back to the cluster_key carry (lead champion)
+  // when no typical unit has carryItemGames data yet (old aggregator rows).
+  const carryByItems = typicalUnits
+    .filter(u => u._c >= 5 && u._carry > 0)
+    .map(u => ({ cid: u.characterId, rate: u._carry / u._c, _carry: u._carry }))
+    .sort((a, b) => (b.rate - a.rate) || (b._carry - a._carry))[0];
+  const carryCid = carryByItems?.cid || parts?.carry;
+  const carry = carryCid && assets ? assets.champions[carryCid] : null;
 
   const Wrapper: any = href ? 'a' : 'div';
   return (
@@ -77,13 +96,14 @@ export default function CompCard({
                   {traitName}
                 </a>
               ) : traitName}
-              {' '}{parts?.level ?? ''} · {parts ? (
+              {traitVariant && <span className="text-[#a892ff]"> · {traitVariant}</span>}
+              {' '}{parts?.level ?? ''} · {carryCid ? (
                 <a
-                  href={`/tft/units/${encodeURIComponent(parts.carry)}`}
+                  href={`/tft/units/${encodeURIComponent(carryCid)}`}
                   onClick={e => e.stopPropagation()}
                   className="hover:text-[#7B61FF] transition-colors"
                 >
-                  {carry?.name || prettyChar(parts.carry)}
+                  {carry?.name || prettyChar(carryCid)}
                 </a>
               ) : (carry?.name || '')}
             </span>
@@ -97,7 +117,7 @@ export default function CompCard({
           <div className="flex flex-wrap items-center gap-1 mb-1.5">
             {typicalUnits.map(u => {
               const ch = assets?.champions[u.characterId];
-              const isCarry = parts && u.characterId === parts.carry;
+              const isCarry = u.characterId === carryCid;
               // Square HUD tile (hud/<id>_square.<mutator>.png) — same source
               // metatft + ingame use; the wide splash art that CompCard used
               // to pull cropped to the chest under `object-cover` and looked
@@ -167,6 +187,23 @@ function parseClusterKey(key: string): { trait: string; level: number; carry: st
   const m = /^(.+)@(\d+)_(.+)$/.exec(key);
   if (!m) return null;
   return { trait: m[1], level: Number(m[2]), carry: m[3] };
+}
+
+// Pull a constellation/variant suffix out of trait apiNames that ship multiple
+// flavours of the same name. Set 17 Stargazer has seven: Mountain, Serpent,
+// Huntress, Medallion, Fountain, Wolf, Shield — all of which load with the
+// display name "Stargazer". We extract the suffix after the canonical
+// traitName so the UI can disambiguate them. Returns null when the apiName
+// doesn't follow the variant pattern.
+function extractTraitVariant(traitApiName: string, traitDisplayName: string): string | null {
+  const stripped = traitApiName.replace(/^TFT\d+_/, '');
+  if (!stripped.includes('_')) return null;
+  const variant = stripped.split('_').slice(1).join(' ');
+  if (!variant) return null;
+  // Skip the case where the suffix already matches the display name (e.g. a
+  // trait whose apiName encodes the same word the asset bundle already shows).
+  if (variant.toLowerCase() === traitDisplayName.toLowerCase()) return null;
+  return variant;
 }
 function costColorOf(cost: number) {
   return cost === 1 ? '#9aa6b2' : cost === 2 ? '#3a8' : cost === 3 ? '#3a8ddc' : cost === 4 ? '#c39bff' : '#e0c75a';

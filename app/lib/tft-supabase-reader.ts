@@ -135,21 +135,26 @@ export async function callRpc<T = any>(fn: string, args: Record<string, unknown>
 // Merge a list of jsonb arrays (e.g. typical_units snippets from multiple
 // daily rows of the same cluster) into a single sorted top-N by count.
 // Each input array has the shape [{ <keyName>: …, count, … }, …].
+// carryItemGames is summed when present — used by the comp UI to identify
+// the actual DMG-carry among the typical units (highest carryItemGames/count
+// ratio), which differs from the cluster_key carry (= unit with most items,
+// often a tank).
 export function mergeJsonbCountArrays<K extends string>(
   arrays: any[],
   keyName: K,
   topN: number,
-): Array<{ [k in K]: string } & { count: number; sumPlacement?: number; games?: number }> {
-  const merged = new Map<string, { count: number; sumPlacement: number; games: number }>();
+): Array<{ [k in K]: string } & { count: number; sumPlacement?: number; games?: number; carryItemGames?: number }> {
+  const merged = new Map<string, { count: number; sumPlacement: number; games: number; carryItemGames: number }>();
   for (const arr of arrays) {
     if (!Array.isArray(arr)) continue;
     for (const e of arr) {
       const key = e?.[keyName];
       if (!key) continue;
-      const cur = merged.get(key) || { count: 0, sumPlacement: 0, games: 0 };
+      const cur = merged.get(key) || { count: 0, sumPlacement: 0, games: 0, carryItemGames: 0 };
       cur.count += Number(e.count ?? e.games ?? 0);
       cur.sumPlacement += Number(e.sumPlacement ?? e.sum_placement ?? 0);
       cur.games += Number(e.games ?? 0);
+      cur.carryItemGames += Number(e.carryItemGames ?? e.carry_item_games ?? 0);
       merged.set(key, cur);
     }
   }

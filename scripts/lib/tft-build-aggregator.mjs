@@ -19,6 +19,46 @@
 const TIER_BUCKETS = ['iron','bronze','silver','gold','platinum','emerald','diamond','master','grandmaster','challenger'];
 const APEX_BUCKETS = ['master','grandmaster','challenger'];
 
+// Items that are unambiguous damage-carry items. We tag a unit in a comp as
+// the DMG-carry if it disproportionately holds these — independent of the
+// cluster_key carry (which is just the unit with the most total items, often
+// a tank with 3 defensive items). Match-V1 doesn't expose per-unit damage,
+// so item composition is the next-best proxy.
+//
+// Hybrid items (Guinsoo's, Hextech Gunblade) and AS items (Red Buff = RFC,
+// Kraken's Fury = Runaan's) count because they only go on damage carries.
+// Sterak's Gage counts because in Set 17 it lands on bruiser-carries like
+// Riven; defensive-only tanks (Bramble, Dragon's Claw, Gargoyle, Warmog)
+// are excluded.
+const DAMAGE_CARRY_ITEMS = new Set([
+  // Pure AD
+  'TFT_Item_Bloodthirster',
+  'TFT_Item_Deathblade',
+  'TFT_Item_InfinityEdge',
+  'TFT_Item_LastWhisper',
+  'TFT_Item_SpearOfShojin',
+  // Pure AP
+  'TFT_Item_JeweledGauntlet',
+  'TFT_Item_ArchangelsStaff',
+  'TFT_Item_Morellonomicon',
+  'TFT_Item_RabadonsDeathcap',
+  'TFT_Item_NightHarvester',
+  'TFT_Item_Leviathan',     // Nashor's Tooth (Set-17 rename, same apiName)
+  'TFT_Item_StatikkShiv',   // Void Staff (Set-17 rename, same apiName)
+  'TFT_Item_RedBuff',       // Sunfire Cape (Set-17 rename, same apiName)
+  // Hybrid AD/AP — only ever on damage carries
+  'TFT_Item_GuinsoosRageblade',
+  'TFT_Item_HextechGunblade',
+  'TFT_Item_TitansResolve',
+  // Attack-speed — single-target / Runaan-spreader carry items
+  'TFT_Item_RapidFireCannon',
+  'TFT_Item_RunaansHurricane',
+  // Bruiser-carry only (off-tank like Riven)
+  'TFT_Item_SteraksGage',
+  // Mana-engine carry items
+  'TFT_Item_BlueBuff',
+]);
+
 export function emptyAggregate() {
   return {
     byUnit: new Map(),     // characterId -> Map<bucket, UnitBucket>
@@ -66,7 +106,12 @@ function newCompBucket() {
     games: 0, sumPlacement: 0, top4: 0, top1: 0,
     sumLevel: 0,                  // Σ final level — divided by games for avgLevel
     sumLastRound: 0,              // Σ last_round — divided by games for avgLastRound
-    typicalUnits: new Map(),     // characterId -> count
+    // characterId -> { count, carryItemGames }. carryItemGames is the number
+    // of times this unit was seen holding ≥1 DAMAGE_CARRY_ITEMS — the
+    // frontend uses count/carryItemGames ratio to pick the actual DMG carry
+    // (independent of the cluster_key carry which is just the unit with
+    // most items, often a tank).
+    typicalUnits: new Map(),
     typicalAugments: new Map(),  // apiName -> { count, sumPlacement }
     carryItems: new Map(),       // sortedItemTriple -> count (carry's full build)
   };
@@ -274,7 +319,10 @@ export function aggregateMatch(rawMatch, agg, opts) {
         if (top1) cb.top1++;
         for (const u of p.units || []) {
           if (!u.character_id) continue;
-          cb.typicalUnits.set(u.character_id, (cb.typicalUnits.get(u.character_id) || 0) + 1);
+          const ue = getOrCreate(cb.typicalUnits, u.character_id, () => ({ count: 0, carryItemGames: 0 }));
+          ue.count++;
+          const items = Array.isArray(u.itemNames) ? u.itemNames : [];
+          if (items.some(it => DAMAGE_CARRY_ITEMS.has(it))) ue.carryItemGames++;
         }
         const augs = Array.isArray(p.augments) ? p.augments : [];
         for (const a of augs) {
@@ -462,9 +510,9 @@ export function finalize(agg, opts = {}) {
     for (const [bucket, b] of buckets) {
       if (b.games < minCompGames) continue;
       const typicalUnits = [...b.typicalUnits.entries()]
-        .sort((a, b) => b[1] - a[1])
+        .sort((a, b) => (b[1].count || 0) - (a[1].count || 0))
         .slice(0, 9)
-        .map(([cid, count]) => ({ characterId: cid, count }));
+        .map(([cid, e]) => ({ characterId: cid, count: e.count, carryItemGames: e.carryItemGames || 0 }));
       const typicalAugments = [...b.typicalAugments.entries()]
         .sort((a, b) => b[1].count - a[1].count)
         .slice(0, 6)

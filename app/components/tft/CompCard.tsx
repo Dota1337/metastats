@@ -50,7 +50,11 @@ export default function CompCard({
     .map(u => ({
       ...u,
       _c: safeCount(u.count),
-      _carry: safeCount((u as any).carryItemGames),
+      // carryItemGames is a real number-or-missing field — DON'T fall back to
+      // 1 via safeCount, because that would put every unit into the carry
+      // selection pool on old aggregator rows and pick the unit with the
+      // lowest count as the carry.
+      _carry: typeof (u as any).carryItemGames === 'number' ? (u as any).carryItemGames : 0,
     }))
     .sort((a, b) => b._c - a._c)
     .slice(0, 9);

@@ -1,8 +1,8 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { ResponsiveContainer, LineChart, Line, YAxis, Tooltip as RechartsTooltip } from 'recharts';
+import { useEffect, useMemo, useState } from 'react';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip as RechartsTooltip } from 'recharts';
 import { useI18n, LOCALE_MAP, type Lang } from '../../lib/i18n';
-import SetTimeline from './SetTimeline';
+import SetTimeline, { type SetInfo } from './SetTimeline';
 
 interface MarketValueResponse {
   summoner: { name: string; puuid: string; tier?: string; rank?: string; lp?: number };
@@ -70,6 +70,7 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
   const { t } = useI18n();
   const [data, setData] = useState<MarketValueResponse | null>(null);
   const [history, setHistory] = useState<HistoryPoint[]>([]);
+  const [setInfo, setSetInfo] = useState<SetInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [showDetails, setShowDetails] = useState(false);
@@ -80,17 +81,30 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
     setLoading(true);
     setData(null);
     setHistory([]);
-    return fetch(`/api/tft/marktwert?name=${encodeURIComponent(fullName)}&region=${region}`, { signal })
-      .then(async r => {
-        if (!r.ok) throw new Error('Marktwert nicht verfügbar');
-        return r.json();
-      })
-      .then(j => {
+    // Fetch marketvalue + current-set in parallel — the set's startDate
+    // scopes the sparkline window so the chart shows only this set's data.
+    return Promise.all([
+      fetch(`/api/tft/marktwert?name=${encodeURIComponent(fullName)}&region=${region}`, { signal })
+        .then(async r => {
+          if (!r.ok) throw new Error('Marktwert nicht verfügbar');
+          return r.json();
+        }),
+      fetch('/api/tft/sets/current', { signal })
+        .then(r => r.ok ? r.json() : null)
+        .catch(() => null),
+    ])
+      .then(([j, s]) => {
         setData(j);
+        const validSet = s && s.startDate && s.endDate && !s.error ? (s as SetInfo) : null;
+        setSetInfo(validSet);
         setLoading(false);
+
         if (j.marketValue?.rated && j.summoner?.puuid) {
           setHistoryLoading(true);
-          fetch(`/api/tft/marktwert/history?puuid=${j.summoner.puuid}&region=${region}&days=30`, { signal })
+          const historyUrl = validSet?.startDate
+            ? `/api/tft/marktwert/history?puuid=${j.summoner.puuid}&region=${region}&from=${validSet.startDate}`
+            : `/api/tft/marktwert/history?puuid=${j.summoner.puuid}&region=${region}&days=30`;
+          fetch(historyUrl, { signal })
             .then(r => r.ok ? r.json() : { series: [] })
             .then(h => { setHistory(h.series || []); setHistoryLoading(false); })
             .catch(() => setHistoryLoading(false));
@@ -175,6 +189,19 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
   const isFlat = (delta?.abs ?? 0) === 0;
   const lineColor = !delta || isFlat ? '#7B61FF' : isUp ? '#3ecf8e' : '#e44040';
 
+  // Numeric x-axis pinned to [set-start, today] so the sparkline always
+  // anchors to the set window — points land at their real position rather
+  // than being stretched across the full width when we only have 2-3 days
+  // of crawler history.
+  const chartData = useMemo(
+    () => history.map(p => ({ ...p, dateMs: new Date(p.date + 'T00:00:00Z').getTime() })),
+    [history],
+  );
+  const setStartMs = setInfo?.startDate
+    ? new Date(setInfo.startDate + 'T00:00:00Z').getTime()
+    : (chartData[0]?.dateMs ?? 0);
+  const todayMs = new Date((setInfo?.today || new Date().toISOString().slice(0, 10)) + 'T00:00:00Z').getTime();
+
   return (
     <div className="bg-gradient-to-br from-[#0d1526] to-[#0e1830] border border-[#1e2a3a] rounded-lg p-5 mb-5 relative overflow-hidden">
       {/* Accent stripe to make the hero visually distinct from the other cards */}
@@ -238,9 +265,15 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
           <div className="h-20">
             {historyLoading ? (
               <div className="h-full w-full bg-[#1e2a3a] rounded animate-pulse" />
-            ) : history.length >= 2 ? (
+            ) : chartData.length >= 2 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={history} margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
+                <LineChart data={chartData} margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
+                  <XAxis
+                    type="number"
+                    dataKey="dateMs"
+                    domain={[setStartMs, todayMs]}
+                    hide
+                  />
                   <YAxis hide domain={['dataMin', 'dataMax']} />
                   <RechartsTooltip
                     contentStyle={{
@@ -251,14 +284,14 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
                     }}
                     labelStyle={{ color: '#a0b0c5' }}
                     formatter={(value: any) => [formatEuro(Number(value), lang), t('tft.marketValue')]}
-                    labelFormatter={(d) => typeof d === 'string' ? new Date(d).toLocaleDateString(LOCALE_MAP[lang]) : ''}
+                    labelFormatter={(ms) => typeof ms === 'number' ? new Date(ms).toLocaleDateString(LOCALE_MAP[lang]) : ''}
                   />
                   <Line
                     type="monotone"
                     dataKey="finalValue"
                     stroke={lineColor}
                     strokeWidth={2}
-                    dot={false}
+                    dot={chartData.length <= 6 ? { r: 3, fill: lineColor } : false}
                     activeDot={{ r: 4 }}
                   />
                 </LineChart>
@@ -275,8 +308,8 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
         </div>
       )}
 
-      {/* Season timeline — set start → today → set end with patch ticks */}
-      <SetTimeline lang={lang} />
+      {/* Compact set-remaining indicator */}
+      {setInfo && <SetTimeline lang={lang} info={setInfo} />}
 
       {/* Expandable agent breakdown */}
       {showDetails && (

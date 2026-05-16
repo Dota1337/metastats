@@ -1,0 +1,73 @@
+name: Riot API key pre-flight
+description: >
+  Validates the Riot API key before a long crawl. On 401/403 the workflow
+  fails fast and opens (or de-dupes) a `riot-key-expired` issue so the user
+  gets a notification instead of a silent multi-day outage.
+
+inputs:
+  game:
+    description: 'lol or tft — picks which env var + endpoint to probe'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Validate Riot key
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        REPO: ${{ github.repository }}
+        WORKFLOW: ${{ github.workflow }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: |
+        set -uo pipefail
+
+        if [ "${{ inputs.game }}" = "tft" ]; then
+          KEY="${RIOT_API_KEY_TFT:-}"
+          LABEL="TFT"
+          URL="https://euw1.api.riotgames.com/tft/league/v1/challenger"
+        else
+          KEY="${RIOT_API_KEY:-}"
+          LABEL="LoL"
+          URL="https://euw1.api.riotgames.com/lol/status/v4/platform-data"
+        fi
+
+        if [ -z "$KEY" ]; then
+          echo "::warning::No $LABEL key configured in env — pre-flight skipped"
+          exit 0
+        fi
+
+        STATUS=$(curl -sS -o /tmp/preflight.body -w "%{http_code}" \
+          -H "X-Riot-Token: $KEY" "$URL" || echo "000")
+        echo "Riot $LABEL key pre-flight: HTTP $STATUS"
+
+        if [ "$STATUS" = "401" ] || [ "$STATUS" = "403" ]; then
+          TITLE="Riot $LABEL key expired (HTTP $STATUS)"
+          # De-dupe: only open one issue per game until it's closed
+          OPEN=$(gh issue list -R "$REPO" --label riot-key-expired --state open \
+            --search "in:title $TITLE" --json number --jq 'length' 2>/dev/null || echo 0)
+          if [ "$OPEN" = "0" ]; then
+            gh issue create -R "$REPO" \
+              --title "$TITLE" \
+              --label riot-key-expired \
+              --body "Pre-flight returned HTTP \`$STATUS\` for \`$URL\`.
+
+              Workflow: **$WORKFLOW** ($RUN_URL)
+              Detected at: $(date -u +%FT%TZ)
+
+              **Fix:** rotate the key on the dev machine:
+              \`\`\`
+              node scripts/refresh-riot-key.mjs
+              \`\`\`
+              Close this issue once the key is rotated." \
+              || echo "::warning::Issue create failed (non-fatal)"
+          else
+            echo "Open issue already exists — skipping create"
+          fi
+          echo "::error::Riot $LABEL key invalid (HTTP $STATUS). Aborting before crawl."
+          exit 1
+        fi
+
+        if [ "$STATUS" != "200" ] && [ "$STATUS" != "204" ]; then
+          echo "::warning::Unexpected pre-flight status $STATUS — continuing"
+        fi

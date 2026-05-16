@@ -35,6 +35,13 @@ on:
 
 permissions:
   contents: write
+  issues: write
+
+# Prevent the 6-hour intraday crons from cancelling each other when a previous
+# run is still going (e.g. on a slow region). Queued runs wait instead.
+concurrency:
+  group: tft-daily-crawl
+  cancel-in-progress: false
 
 jobs:
   # Stage 1: refresh set + asset metadata. Runs once, on its own runner, so
@@ -121,6 +128,11 @@ jobs:
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Riot TFT key pre-flight
+        uses: ./.github/actions/riot-preflight
+        with:
+          game: tft
 
       - uses: actions/setup-node@v4
         with:

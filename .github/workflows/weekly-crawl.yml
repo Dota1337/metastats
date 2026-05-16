@@ -15,6 +15,13 @@ permissions:
   contents: write
   issues: write
 
+# Don't cancel an in-progress run if a manual dispatch fires while the
+# scheduled run is still going — Pro-Player + Champion-Stats crawl takes
+# hours and double-runs waste API quota.
+concurrency:
+  group: weekly-crawl-euw
+  cancel-in-progress: false
+
 env:
   RIOT_API_KEY: ${{ secrets.RIOT_API_KEY }}
 
@@ -26,6 +33,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Riot LoL key pre-flight
+        uses: ./.github/actions/riot-preflight
+        with:
+          game: lol
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

@@ -30,6 +30,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 jobs:
   prewarm:
@@ -63,6 +64,12 @@ jobs:
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Riot TFT key pre-flight
+        uses: ./.github/actions/riot-preflight
+        with:
+          game: tft
+
       - uses: actions/setup-node@v4
         with:
           node-version: '20'

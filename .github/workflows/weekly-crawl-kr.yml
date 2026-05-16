@@ -13,6 +13,11 @@ on:
 
 permissions:
   contents: write
+  issues: write
+
+concurrency:
+  group: weekly-crawl-kr
+  cancel-in-progress: false
 
 env:
   RIOT_API_KEY: ${{ secrets.RIOT_API_KEY }}
@@ -25,6 +30,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Riot LoL key pre-flight
+        uses: ./.github/actions/riot-preflight
+        with:
+          game: lol
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

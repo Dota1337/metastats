@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 env:
   RIOT_API_KEY_TFT: ${{ secrets.RIOT_API_KEY_TFT }}
@@ -25,6 +26,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Riot TFT key pre-flight
+        uses: ./.github/actions/riot-preflight
+        with:
+          game: tft
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

@@ -20,6 +20,30 @@
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+// Transient network errors that warrant a retry. GitHub-hosted runners
+// occasionally see `ENOTFOUND` for the regional Riot hostnames (e.g.
+// th2/ph2.api.riotgames.com) for a few seconds — without a retry the whole
+// workflow fails the first second of execution.
+const TRANSIENT_NET_CODES = new Set([
+  'ENOTFOUND', 'EAI_AGAIN', 'ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED',
+  'UND_ERR_SOCKET', 'UND_ERR_CONNECT_TIMEOUT',
+]);
+
+async function fetchWithNetRetry(url, init, log, attempt = 0) {
+  try {
+    return await fetch(url, init);
+  } catch (err) {
+    const code = err?.cause?.code || err?.code || '';
+    if (TRANSIENT_NET_CODES.has(code) && attempt < 3) {
+      const backoffMs = [2000, 5000, 10000][attempt];
+      log(`  [net-retry] ${code} on ${url} — retry ${attempt + 1}/3 in ${Math.round(backoffMs / 1000)}s`);
+      await sleep(backoffMs);
+      return fetchWithNetRetry(url, init, log, attempt + 1);
+    }
+    throw err;
+  }
+}
+
 export function createRiotClient(opts = {}) {
   const {
     shortWindowRequests = 18,
@@ -57,7 +81,7 @@ export function createRiotClient(opts = {}) {
       await sleep(wait);
     }
 
-    const res = await fetch(url, init);
+    const res = await fetchWithNetRetry(url, init, log);
 
     if (res.status === 429) {
       const retryAfter = parseInt(res.headers.get('retry-after') || '10', 10);

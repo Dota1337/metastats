@@ -39,6 +39,16 @@ const SKIP_JSON = hasFlag('--no-json');
 //                       by the intraday runs (11/17/23 UTC) so the current
 //                       day's aggregates grow throughout the day.
 const MODE = (arg('--mode', 'auto') || 'auto').toLowerCase();
+// Backfill flag: --day YYYY-MM-DD treats the window as [day 05 UTC, day+1 05 UTC)
+// and writes `day = YYYY-MM-DD`. Used when a daily run was missed.
+const DAY_OVERRIDE_RAW = arg('--day', null);
+const DAY_OVERRIDE = DAY_OVERRIDE_RAW && /^\d{4}-\d{2}-\d{2}$/.test(DAY_OVERRIDE_RAW)
+  ? DAY_OVERRIDE_RAW
+  : null;
+if (DAY_OVERRIDE_RAW && !DAY_OVERRIDE) {
+  console.error(`Invalid --day '${DAY_OVERRIDE_RAW}', expected YYYY-MM-DD`);
+  process.exit(1);
+}
 // Hard cap per player to bound runtime when something goes weird (e.g. an
 // inflated startTime would normally page forever). 200 is well above any
 // realistic 24h grinding session (max ~45 matches/24h given 30min game length).
@@ -81,7 +91,12 @@ const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 //                with the full 24h window.
 //                If invoked before today 05 UTC, falls back to mode='auto'
 //                semantics so we don't crawl a zero-length window.
-function computeWindow(now = new Date(), mode = 'auto') {
+function computeWindow(now = new Date(), mode = 'auto', dayOverride = null) {
+  if (dayOverride) {
+    const startTime = new Date(dayOverride + 'T05:00:00Z');
+    const endTime = new Date(startTime.getTime() + 86_400_000);
+    return { startTime, endTime };
+  }
   const today5 = new Date(Date.UTC(
     now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 5, 0, 0, 0,
   ));
@@ -92,7 +107,7 @@ function computeWindow(now = new Date(), mode = 'auto') {
   const startTime = new Date(endTime.getTime() - 86_400_000);
   return { startTime, endTime };
 }
-const WINDOW = computeWindow(new Date(), MODE);
+const WINDOW = computeWindow(new Date(), MODE, DAY_OVERRIDE);
 const WINDOW_START_SEC = Math.floor(WINDOW.startTime.getTime() / 1000);
 const WINDOW_END_SEC = Math.floor(WINDOW.endTime.getTime() / 1000);
 // `day` column = the calendar date the window primarily covers (its start).

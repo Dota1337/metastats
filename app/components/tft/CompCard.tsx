@@ -11,7 +11,12 @@ interface Comp {
   top4Rate: number | null;
   top1Rate: number | null;
   pickRate?: number | null;
-  typicalUnits: { characterId: string; count: number | unknown; carryItemGames?: number | unknown }[];
+  typicalUnits: {
+    characterId: string;
+    count: number | unknown;
+    carryItemGames?: number | unknown;
+    topItems?: { apiName: string; count: number | unknown }[];
+  }[];
   typicalAugments: { apiName: string; count: number | unknown; sumPlacement?: number | unknown }[];
   carryItems: { items: string[]; count: number | unknown }[];
   authorName?: string;
@@ -118,27 +123,43 @@ export default function CompCard({
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-1 mb-1.5">
+          <div className="flex flex-wrap items-start gap-1.5 mb-1.5">
             {typicalUnits.map(u => {
               const ch = assets?.champions[u.characterId];
               const isCarry = u.characterId === carryCid;
-              // Square HUD tile (hud/<id>_square.<mutator>.png) — same source
-              // metatft + ingame use; the wide splash art that CompCard used
-              // to pull cropped to the chest under `object-cover` and looked
-              // off-center. Fallback to splash via tftChampionTileUrl()
-              // handles cross-set / special units that don't have the
-              // square path.
               const url = tftChampionTileUrl(assets, ch);
+              const items = Array.isArray(u.topItems) ? u.topItems.slice(0, 3) : [];
               return (
                 <a
                   key={u.characterId}
                   href={`/tft/units/${encodeURIComponent(u.characterId)}`}
                   onClick={e => e.stopPropagation()}
-                  className="w-8 h-8 rounded border-2 hover:scale-110 transition overflow-hidden"
-                  style={{ borderColor: isCarry ? '#c39bff' : (ch ? costColorOf(ch.cost) : '#1e2a3a') }}
+                  className="flex flex-col items-center gap-0.5 hover:scale-105 transition"
                   title={ch?.name || u.characterId}
                 >
-                  {url && <img src={url} alt={ch?.name || u.characterId} className="w-full h-full object-cover rounded-sm" />}
+                  <div
+                    className="w-11 h-11 rounded border-2 overflow-hidden"
+                    style={{ borderColor: isCarry ? '#c39bff' : (ch ? costColorOf(ch.cost) : '#1e2a3a') }}
+                  >
+                    {url && <img src={url} alt={ch?.name || u.characterId} className="w-full h-full object-cover rounded-sm" />}
+                  </div>
+                  {items.length > 0 && (
+                    <div className="flex items-center gap-[1px]">
+                      {items.map(it => {
+                        const meta = assets?.items[it.apiName];
+                        const iconUrl = tftIconUrl(assets, meta?.icon);
+                        return (
+                          <div
+                            key={it.apiName}
+                            className="w-[14px] h-[14px] rounded-sm bg-[#0a0e1a] border border-[#1e2a3a] overflow-hidden"
+                            title={meta?.name || it.apiName}
+                          >
+                            {iconUrl && <img src={iconUrl} alt={meta?.name || it.apiName} className="w-full h-full object-cover" />}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </a>
               );
             })}

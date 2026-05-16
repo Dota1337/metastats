@@ -319,10 +319,20 @@ export function aggregateMatch(rawMatch, agg, opts) {
         if (top1) cb.top1++;
         for (const u of p.units || []) {
           if (!u.character_id) continue;
-          const ue = getOrCreate(cb.typicalUnits, u.character_id, () => ({ count: 0, carryItemGames: 0 }));
+          const ue = getOrCreate(cb.typicalUnits, u.character_id, () => ({
+            count: 0,
+            carryItemGames: 0,
+            items: new Map(),     // apiName -> games-on-this-unit-in-this-comp
+          }));
           ue.count++;
           const items = Array.isArray(u.itemNames) ? u.itemNames : [];
           if (items.some(it => DAMAGE_CARRY_ITEMS.has(it))) ue.carryItemGames++;
+          const seen = new Set();
+          for (const it of items) {
+            if (!it || seen.has(it)) continue;
+            seen.add(it);
+            ue.items.set(it, (ue.items.get(it) || 0) + 1);
+          }
         }
         const augs = Array.isArray(p.augments) ? p.augments : [];
         for (const a of augs) {
@@ -512,7 +522,18 @@ export function finalize(agg, opts = {}) {
       const typicalUnits = [...b.typicalUnits.entries()]
         .sort((a, b) => (b[1].count || 0) - (a[1].count || 0))
         .slice(0, 9)
-        .map(([cid, e]) => ({ characterId: cid, count: e.count, carryItemGames: e.carryItemGames || 0 }));
+        .map(([cid, e]) => {
+          const topItems = e.items
+            ? [...e.items.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3)
+                .map(([apiName, count]) => ({ apiName, count }))
+            : [];
+          return {
+            characterId: cid,
+            count: e.count,
+            carryItemGames: e.carryItemGames || 0,
+            topItems,
+          };
+        });
       const typicalAugments = [...b.typicalAugments.entries()]
         .sort((a, b) => b[1].count - a[1].count)
         .slice(0, 6)

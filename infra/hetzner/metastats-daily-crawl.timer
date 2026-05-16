@@ -1,0 +1,15 @@
+[Unit]
+Description=Daily TFT all-ranks crawl — finalizes yesterday at 05:15 UTC
+
+[Timer]
+# 05:15 UTC matches the cron of the disabled GH workflow tft-daily-crawl.yml.
+# Marketvalue starts at 04:00 UTC; by 05:15 it's well into its run but the
+# TFT prod key bucket is shared regardless, so both run at half-rate during
+# the overlap (~3h). Acceptable trade-off vs. the alternative of bumping
+# marketvalue earlier and squeezing the EU/KR ranked window.
+OnCalendar=*-*-* 05:15:00 UTC
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

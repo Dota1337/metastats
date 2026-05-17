@@ -58,6 +58,7 @@ export default function TftTraitDetailPage() {
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
   const [traitStats, setTraitStats] = useState<TraitStat[]>([]);
   const [units, setUnits] = useState<UnitStat[]>([]);
+  const [comps, setComps] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
@@ -68,7 +69,8 @@ export default function TftTraitDetailPage() {
     Promise.all([
       fetch(`/api/tft/traits?region=${region}&bucket=${bucket}`).then(r => r.json()).catch(() => ({ traits: [] })),
       fetch(`/api/tft/units?region=${region}&bucket=${bucket}`).then(r => r.json()).catch(() => ({ units: [] })),
-    ]).then(([traitData, unitData]) => {
+      fetch(`/api/tft/comps?region=${region === 'all' ? 'euw1' : region}&bucket=${bucket}&days=3&patch=current&source=data`).then(r => r.json()).catch(() => ({ comps: [] })),
+    ]).then(([traitData, unitData, compData]) => {
       if (cancelled) return;
       const allTraits = (traitData.traits || []) as TraitStat[];
       // When the route param is a display name (e.g. "Stargazer"), the API
@@ -86,6 +88,26 @@ export default function TftTraitDetailPage() {
       // Filter to units that mention this trait in their CD bundle entry.
       // The asset bundle is needed for the join — without assets, no filter.
       setUnits(unitData.units || []);
+      // Top comps anchored on this trait family. cluster_key starts with the
+      // trait apiName (e.g. „TFT17_Stargazer_Mountain@6_TFT17_Maokai"), so a
+      // simple prefix match across all variants finds the comps.
+      const compsList = (compData.comps || [])
+        .filter((c: any) => {
+          const key = c.clusterKey || '';
+          // Match against the route apiName plus any sibling variant if the
+          // family name is shared (handled via prefix-then-suffix split).
+          if (key.startsWith(`${apiName}@`)) return true;
+          const traitPart = key.split('@')[0];
+          if (!traitPart) return false;
+          // Sibling variants share the same family prefix (everything before
+          // the last underscore-suffix). E.g. TFT17_Stargazer_Mountain and
+          // TFT17_Stargazer_Wolf share TFT17_Stargazer.
+          const reqFamily = apiName.replace(/_[^_]+$/, '');
+          const rowFamily = traitPart.replace(/_[^_]+$/, '');
+          return reqFamily === rowFamily;
+        })
+        .slice(0, 6);
+      setComps(compsList);
       setLoading(false);
     });
     return () => { cancelled = true; };
@@ -362,13 +384,57 @@ export default function TftTraitDetailPage() {
           </div>
         )}
 
+        {/* Top comps using this trait family */}
+        {!loading && comps.length > 0 && (
+          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-5 mb-5">
+            <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.compsWithTrait')}</div>
+            <div className="space-y-1.5">
+              {comps.map(c => {
+                const m = /^(.+)@(\d+)_(.+)$/.exec(c.clusterKey || '');
+                if (!m) return null;
+                const [, traitApi, levelStr, carryId] = m;
+                const variant = (() => {
+                  const stripped = traitApi.replace(/^TFT\d+_/, '');
+                  if (!stripped.includes('_')) return null;
+                  const v = stripped.split('_').slice(1).join(' ');
+                  return v || null;
+                })();
+                const carry = assets ? assets.champions[carryId] : null;
+                const carryUrl = tftChampionTileUrl(assets, carry);
+                return (
+                  <a
+                    key={c.slug}
+                    href={`/tft/comps/${encodeURIComponent(c.slug)}?bucket=${bucket}&region=${region}`}
+                    className="flex items-center gap-3 bg-[#141c2e] border border-[#1e2a3a] rounded p-2.5 hover:border-[#7B61FF]/40 transition-colors"
+                  >
+                    {carryUrl && (
+                      <img src={carryUrl} alt="" className="w-9 h-9 rounded border border-[#c39bff]/60 object-cover flex-shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-white text-sm font-medium truncate">
+                        {traitMeta?.name || prettyTrait(traitApi)}
+                        {variant && <span className="text-[#a892ff]"> · {variant}</span>}
+                        {' '}{levelStr} · {carry?.name || prettyChar(carryId)}
+                      </div>
+                    </div>
+                    <div className="text-right text-xs tabular-nums">
+                      <div className="text-white">Ø {c.avgPlacement?.toFixed(2) ?? '—'}</div>
+                      <div className="text-[#7a8aa0]">{c.games} {t('tft.gamesShort')}</div>
+                    </div>
+                  </a>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {loading && (
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#a0b0c5] text-sm">
             {t('tft.loading')}
           </div>
         )}
 
-        {!loading && traitStats.length === 0 && matchingUnits.length === 0 && (
+        {!loading && traitStats.length === 0 && matchingUnits.length === 0 && comps.length === 0 && (
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#a0b0c5] text-sm">
             {t('tft.trait.noData')}
           </div>

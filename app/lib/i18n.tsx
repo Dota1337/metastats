@@ -85,6 +85,7 @@ const translations = {
   'tft.builderClear': t6('Leeren', 'Clear', '\uC9C0\uC6B0\uAE30', '\u6E05\u7A7A', 'Vaciar', 'Vider'),
   'tft.builderSearch': t6('Champion suchen\u2026', 'Search champion\u2026', '\uCC54\uD53C\uC5B8 \uAC80\uC0C9\u2026', '\u641C\u7D22\u82F1\u96C4\u2026', 'Buscar campe\u00F3n\u2026', 'Chercher un champion\u2026'),
   'tft.builderTraits': t6('Aktive Synergien', 'Active traits', '\uD65C\uC131 \uC2DC\uB108\uC9C0', '\u6FC0\u6D3B\u7684\u7F81\u7ECA', 'Sinergias activas', 'Synergies actives'),
+  'tft.compsWithTrait': t6('Top-Comps mit dieser Synergie', 'Top comps with this trait', '\uC774 \uC2DC\uB108\uC9C0\uB97C \uC0AC\uC6A9\uD558\uB294 \uC0C1\uC704 \uC870\uD569', '\u4F7F\u7528\u8BE5\u7F81\u7ECA\u7684\u9876\u7EA7\u9635\u5BB9', 'Mejores comps con esta sinergia', 'Meilleures comps avec cette synergie'),
   'tft.mostUsedItems': t6('H\u00E4ufigste Items', 'Most used items', '\uAC00\uC7A5 \uB9CE\uC774 \uC0AC\uC6A9\uB41C \uC544\uC774\uD15C', '\u6700\u5E38\u7528\u88C5\u5907', '\u00CDtems m\u00E1s usados', 'Objets les plus utilis\u00E9s'),
   'tft.topUsers': t6('H\u00E4ufigste Tr\u00E4ger', 'Most common holders', '\uAC00\uC7A5 \uB9CE\uC774 \uC0AC\uC6A9\uD558\uB294 \uCC54\uD53C\uC5B8', '\u6700\u5E38\u88C5\u5907\u7684\u82F1\u96C4', 'Portadores m\u00E1s comunes', 'Porteurs les plus fr\u00E9quents'),
   'tft.topItems': t6('Top-Items', 'Top items', '\uCD5C\uACE0 \uC544\uC774\uD15C', '\u70ED\u95E8\u88C5\u5907', 'Mejores \u00EDtems', 'Meilleurs objets'),

@@ -8,6 +8,7 @@ import EmptyData from '../../../components/tft/EmptyData';
 import CompCard from '../../../components/tft/CompCard';
 import { useI18n } from '../../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import PositionHeatmap from '../../../components/tft/PositionHeatmap';
 
 // Slot meaning in tft_daily_augment_stats: 0 = stage 2-1, 1 = 3-2, 2 = 4-2.
 const SLOT_LABELS = ['2-1', '3-2', '4-2'] as const;
@@ -241,6 +242,17 @@ export default function TftCompDetailPage() {
               </section>
             )}
 
+            {/* Position heatmap per typical unit — renders empty when the
+                Overwolf companion app hasn't submitted enough observations
+                yet for the units in this comp. */}
+            {comp.typicalUnits && comp.typicalUnits.length > 0 && (
+              <PositionHeatmap
+                units={comp.typicalUnits}
+                carryCharacterId={parseClusterKey(comp.clusterKey)?.carry}
+                assets={assets}
+              />
+            )}
+
             {/* All typical units in larger size, clickable */}
             {comp.typicalUnits && comp.typicalUnits.length > 0 && (
               <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
@@ -308,6 +320,13 @@ export default function TftCompDetailPage() {
       <Footer />
     </main>
   );
+}
+
+function parseClusterKey(key: string): { trait: string; level: number; carry: string } | null {
+  if (!key) return null;
+  const m = /^(.+)@(\d+)_(.+)$/.exec(key);
+  if (!m) return null;
+  return { trait: m[1], level: Number(m[2]), carry: m[3] };
 }
 
 function prettyComp(slug: string) {

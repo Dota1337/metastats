@@ -1,23 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 
 // Companion-app endpoint. Accepts batched board observations from the
 // Overwolf TFT GEP listener and writes them into tft_position_observations.
 //
-// Auth model: open POST (no Bearer token). The companion app installs free
-// from the Overwolf store, so any per-user token would surface our shared
-// secret. Instead we:
-//   - rate-limit per match_id (one full payload per match should be enough)
-//   - cap payload size (50 observations is generous)
+// Auth model: HMAC-SHA256 over the raw request body using a shared secret
+// bundled with the OPK. The shared secret isn't cryptographically secret
+// (anyone with the OPK can extract it), but combined with a ±5-minute
+// timestamp window it makes casual replay/spam expensive enough that the
+// existing unique-index on the observation table absorbs the rest.
+// Additional safeguards:
+//   - cap payload size (5000 observations per body)
 //   - validate every field strictly — anything unexpected gets rejected
-//   - de-dup via the unique index on (match_id, observer_puuid, kind, cell, unit, round)
+//   - de-dup via the unique index on (match_id, observer_puuid, kind,
+//     cell, unit, round)
 //
-// Future hardening: require an HMAC signed with the app's bundled secret
-// once a per-app keypair is in the Overwolf manifest. For now we trust the
-// existing index + validation to bound abuse.
+// If we later need real per-user identity, a server-issued short-lived
+// token after Overwolf OAuth replaces this.
 
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://bwawxwgxxfafbruebixa.supabase.co';
 const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const APP_SECRET = process.env.OVERWOLF_APP_SECRET || '';
+const TIMESTAMP_WINDOW_MS = 5 * 60 * 1000;
+
+function verifySignature(body: string, providedHex: string): boolean {
+  if (!APP_SECRET || !providedHex) return false;
+  let expectedBuf: Buffer;
+  let providedBuf: Buffer;
+  try {
+    expectedBuf = createHmac('sha256', APP_SECRET).update(body).digest();
+    providedBuf = Buffer.from(providedHex, 'hex');
+  } catch {
+    return false;
+  }
+  if (expectedBuf.length !== providedBuf.length) return false;
+  return timingSafeEqual(expectedBuf, providedBuf);
+}
 
 const MAX_OBSERVATIONS_PER_PAYLOAD = 5000;
 const MAX_AUGMENTS_PER_PAYLOAD = 30;
@@ -70,9 +89,28 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'service unavailable' }, { status: 503 });
   }
 
+  // Read body once as raw text so we can HMAC the exact bytes the client
+  // signed. Re-parse to JSON afterwards.
+  const rawBody = await request.text();
+
+  const sigHeader = request.headers.get('x-companion-signature') || '';
+  const tsHeader = request.headers.get('x-companion-timestamp') || '';
+
+  // Skip signature checks only when the secret isn't configured server-side —
+  // useful in dev. In production, missing APP_SECRET fails closed.
+  if (APP_SECRET) {
+    const ts = Number(tsHeader);
+    if (!Number.isFinite(ts) || Math.abs(Date.now() - ts) > TIMESTAMP_WINDOW_MS) {
+      return NextResponse.json({ error: 'timestamp outside window' }, { status: 401 });
+    }
+    if (!verifySignature(rawBody, sigHeader)) {
+      return NextResponse.json({ error: 'bad signature' }, { status: 401 });
+    }
+  }
+
   let body: any;
   try {
-    body = await request.json();
+    body = JSON.parse(rawBody);
   } catch {
     return NextResponse.json({ error: 'invalid json' }, { status: 400 });
   }

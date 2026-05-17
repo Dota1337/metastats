@@ -18,7 +18,9 @@
 // offers a kill-switch + a link back to metastats.gg.
 
 const TFT_GAME_ID = 21570;
-const SUBMIT_URL = 'https://metastats.gg/api/tft/positions/submit';
+const CONFIG = (typeof window !== 'undefined' && window.METASTATS_CONFIG) || {};
+const SUBMIT_URL = (CONFIG.apiBase || 'https://metastats.gg') + '/api/tft/positions/submit';
+const APP_SECRET = CONFIG.appSecret || '';
 
 const REQUIRED_FEATURES = [
   'gep_internal',
@@ -93,6 +95,25 @@ function isPaused() {
   catch (e) { return false; }
 }
 
+// HMAC-SHA256 sign a payload string with the bundled app secret. Returns
+// the signature as lowercase hex. Uses the WebCrypto SubtleCrypto API
+// that Overwolf's CEF runtime exposes — same shape as browsers.
+function hmacSignHex(secret, payload) {
+  if (!secret) return Promise.resolve('');
+  var enc = new TextEncoder();
+  return crypto.subtle
+    .importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
+    .then(function (key) { return crypto.subtle.sign('HMAC', key, enc.encode(payload)); })
+    .then(function (sig) {
+      var bytes = new Uint8Array(sig);
+      var hex = '';
+      for (var i = 0; i < bytes.length; i++) {
+        hex += bytes[i].toString(16).padStart(2, '0');
+      }
+      return hex;
+    });
+}
+
 function submit() {
   if (matchState.observations.length === 0) return;
   if (isPaused()) {
@@ -100,6 +121,7 @@ function submit() {
     reset();
     return;
   }
+  var timestamp = Date.now();
   var payload = {
     matchId: matchState.matchId,
     region: matchState.region,
@@ -109,13 +131,24 @@ function submit() {
     augmentsCount: matchState.augmentsPicked.length,
     observations: matchState.observations,
     augments: matchState.augmentsPicked,
-    sentAt: new Date().toISOString(),
+    sentAt: new Date(timestamp).toISOString(),
+    timestamp: timestamp,
     clientVersion: '0.1.0',
   };
-  fetch(SUBMIT_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+  var body = JSON.stringify(payload);
+  // Sign the body. Server checks (a) signature matches, (b) timestamp is
+  // within ±5min of server-now — together this gates replay + casual
+  // tampering without needing per-user keys.
+  hmacSignHex(APP_SECRET, body).then(function (sig) {
+    return fetch(SUBMIT_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Companion-Signature': sig,
+        'X-Companion-Timestamp': String(timestamp),
+      },
+      body: body,
+    });
   }).then(function (res) {
     log('submit', res.status, payload.observationCount, 'observations');
   }).catch(function (e) {

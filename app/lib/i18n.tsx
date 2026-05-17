@@ -73,6 +73,7 @@ const translations = {
   'tft.topBuilds': t6('Top Item-Builds', 'Top Item Builds', '\uCD5C\uACE0 \uC544\uC774\uD15C \uBE4C\uB4DC', '\u6700\u4F73\u51FA\u88C5', 'Mejores Builds', 'Meilleurs Builds'),
   'tft.compsWithUnit': t6('Comps mit dieser Unit', 'Comps with this unit', '\uC774 \uC720\uB2DB\uC744 \uC0AC\uC6A9\uD558\uB294 \uC870\uD569', '\u4F7F\u7528\u8BE5\u82F1\u96C4\u7684\u9635\u5BB9', 'Comps con esta unidad', 'Comps avec cette unit\u00E9'),
   'tft.sortBy': t6('Sortieren', 'Sort by', '\uC815\uB82C', '\u6392\u5E8F', 'Ordenar', 'Trier par'),
+  'tft.compsWithItem': t6('Comps mit diesem Item', 'Comps with this item', '\uC774 \uC544\uC774\uD15C\uC744 \uC0AC\uC6A9\uD558\uB294 \uC870\uD569', '\u4F7F\u7528\u8BE5\u88C5\u5907\u7684\u9635\u5BB9', 'Comps con este \u00EDtem', 'Comps avec cet objet'),
   'tft.mostUsedItems': t6('H\u00E4ufigste Items', 'Most used items', '\uAC00\uC7A5 \uB9CE\uC774 \uC0AC\uC6A9\uB41C \uC544\uC774\uD15C', '\u6700\u5E38\u7528\u88C5\u5907', '\u00CDtems m\u00E1s usados', 'Objets les plus utilis\u00E9s'),
   'tft.topUsers': t6('H\u00E4ufigste Tr\u00E4ger', 'Most common holders', '\uAC00\uC7A5 \uB9CE\uC774 \uC0AC\uC6A9\uD558\uB294 \uCC54\uD53C\uC5B8', '\u6700\u5E38\u88C5\u5907\u7684\u82F1\u96C4', 'Portadores m\u00E1s comunes', 'Porteurs les plus fr\u00E9quents'),
   'tft.topItems': t6('Top-Items', 'Top items', '\uCD5C\uACE0 \uC544\uC774\uD15C', '\u70ED\u95E8\u88C5\u5907', 'Mejores \u00EDtems', 'Meilleurs objets'),

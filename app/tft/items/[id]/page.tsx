@@ -25,6 +25,7 @@ export default function TftItemDetailPage() {
   const [data, setData] = useState<ItemDetail | null | undefined>(undefined);
   const [hasData, setHasData] = useState<boolean | null>(null);
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
+  const [compsWithItem, setCompsWithItem] = useState<any[]>([]);
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
   useEffect(() => {
@@ -32,6 +33,20 @@ export default function TftItemDetailPage() {
       .then(r => r.json())
       .then(d => { setHasData(!!d.hasData); setData(d.item || null); })
       .catch(() => { setHasData(false); setData(null); });
+    // Cross-query: comps that frequently build this item on their lead carry.
+    // Uses the existing carryItems jsonb (top-3-item triples per comp) so no
+    // aggregator change is needed.
+    fetch(`/api/tft/comps?region=euw1&bucket=${bucket}&days=3&patch=current&source=data`)
+      .then(r => r.json())
+      .then(d => {
+        const filtered = (d.comps || [])
+          .filter((c: any) =>
+            (c.carryItems || []).some((ci: any) => (ci.items || []).includes(id)),
+          )
+          .slice(0, 6);
+        setCompsWithItem(filtered);
+      })
+      .catch(() => setCompsWithItem([]));
   }, [bucket, id]);
 
   const itemMeta = assets?.items[id];
@@ -122,27 +137,64 @@ export default function TftItemDetailPage() {
               <Stat label={t('tft.gamesShort')} value={data.games.toLocaleString('de-DE')} />
             </div>
 
-            {data.topUsers.length > 0 && (
-              <div className="mb-5">
-                <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-2">{t('tft.topUsers')}</h2>
-                <div className="flex flex-wrap gap-2">
-                  {data.topUsers.map(u => {
-                    const ch = assets?.champions[u.characterId];
-                    const churl = tftChampionTileUrl(assets, ch);
-                    return (
-                      <a key={u.characterId} href={`/tft/units/${encodeURIComponent(u.characterId)}?bucket=${bucket}`}
-                         className="flex flex-col items-center gap-1 bg-[#141c2e] border border-[#1e2a3a] rounded p-2 w-20 hover:border-[#7B61FF]/50">
-                        {churl
-                          ? <img src={churl} alt={ch!.name} className="w-10 h-10 rounded object-cover" />
-                          : <div className="w-10 h-10 rounded bg-[#1e2a3a]" />}
-                        <div className="text-[10px] text-white text-center truncate w-full">{ch?.name || prettyChar(u.characterId)}</div>
-                        <div className="text-[10px] text-[#7a8aa0]">{u.games} {t('tft.gamesShort')}</div>
-                      </a>
-                    );
-                  })}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">
+              {data.topUsers.length > 0 && (
+                <div>
+                  <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-2">{t('tft.topUsers')}</h2>
+                  <div className="flex flex-wrap gap-2">
+                    {data.topUsers.map(u => {
+                      const ch = assets?.champions[u.characterId];
+                      const churl = tftChampionTileUrl(assets, ch);
+                      return (
+                        <a key={u.characterId} href={`/tft/units/${encodeURIComponent(u.characterId)}?bucket=${bucket}`}
+                           className="flex flex-col items-center gap-1 bg-[#141c2e] border border-[#1e2a3a] rounded p-2 w-20 hover:border-[#7B61FF]/50">
+                          {churl
+                            ? <img src={churl} alt={ch!.name} className="w-10 h-10 rounded object-cover" />
+                            : <div className="w-10 h-10 rounded bg-[#1e2a3a]" />}
+                          <div className="text-[10px] text-white text-center truncate w-full">{ch?.name || prettyChar(u.characterId)}</div>
+                          <div className="text-[10px] text-[#7a8aa0]">{u.games} {t('tft.gamesShort')}</div>
+                        </a>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+
+              {compsWithItem.length > 0 && (
+                <div>
+                  <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-2">{t('tft.compsWithItem')}</h2>
+                  <div className="space-y-1.5">
+                    {compsWithItem.map(c => {
+                      const parts = parseClusterKey(c.clusterKey);
+                      const traitMeta = parts && assets ? assets.traits[parts.trait] : null;
+                      const traitName = traitMeta?.name || (parts ? prettyTrait(parts.trait) : '');
+                      const carry = parts && assets ? assets.champions[parts.carry] : null;
+                      const carryUrl = tftChampionTileUrl(assets, carry);
+                      return (
+                        <a
+                          key={c.slug}
+                          href={`/tft/comps/${encodeURIComponent(c.slug)}?bucket=${bucket}&region=euw1`}
+                          className="flex items-center gap-2 bg-[#141c2e] border border-[#1e2a3a] rounded p-2 hover:border-[#7B61FF]/40 transition-colors"
+                        >
+                          {carryUrl && (
+                            <img src={carryUrl} alt="" className="w-8 h-8 rounded border border-[#c39bff]/60 object-cover flex-shrink-0" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="text-white text-[11px] font-medium truncate leading-tight">
+                              {traitName} {parts?.level ?? ''} · {carry?.name || (parts ? prettyChar(parts.carry) : '')}
+                            </div>
+                          </div>
+                          <div className="text-right text-[11px] tabular-nums leading-tight">
+                            <div className="text-white">Ø {c.avgPlacement?.toFixed(2) ?? '—'}</div>
+                            <div className="text-[#7a8aa0]">{c.games}</div>
+                          </div>
+                        </a>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
           </>
         )}
 
@@ -189,3 +241,9 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 function prettyApi(s: string) { return s.replace(/^TFT\d*_Item_/, ''); }
 function prettyChar(id: string) { return id.replace(/^TFT\d+_/, ''); }
+function prettyTrait(s: string) { return s.replace(/^TFT\d+_/, ''); }
+function parseClusterKey(key: string) {
+  const m = /^(.+)@(\d+)_(.+)$/.exec(key);
+  if (!m) return null;
+  return { trait: m[1], level: Number(m[2]), carry: m[3] };
+}

@@ -6,9 +6,9 @@
     "version": "0.1.0",
     "minimum-overwolf-version": "0.275.0",
     "author": "metastats.gg",
-    "icon": "images/icon_256.png",
-    "icon_gray": "images/icon_256_gray.png",
-    "launcher_icon": "images/icon_256.ico",
+    "icon": "images/IconMouseOver.png",
+    "icon_gray": "images/IconMouseNormal.png",
+    "launcher_icon": "images/launcher_icon.ico",
     "splash_image": "images/splash.png",
     "description": "Aggregiert anonyme Position- und Comp-Daten aus deinen TFT-Spielen, um metastats.gg's Pro-Statistiken zu verbessern. Kein Display, keine Beratung — nur stille Hintergrund-Telemetrie."
   },

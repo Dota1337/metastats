@@ -27,10 +27,15 @@ async function svgToPng(svgPath, outPath, { width, height }) {
 }
 
 async function main() {
+  // File names follow Overwolf convention:
+  //   IconMouseNormal.png = grayscale, default unselected state
+  //   IconMouseOver.png   = colored, hover/selected
+  //   launcher_icon.ico   = multi-size Windows launcher, 4 layers (16/32/48/256)
+  //   splash.png          = 400×120 splash banner
   const tasks = [
-    { svg: 'logo.svg',      png: 'icon_256.png',      size: { width: 256, height: 256 } },
-    { svg: 'logo-gray.svg', png: 'icon_256_gray.png', size: { width: 256, height: 256 } },
-    { svg: 'splash.svg',    png: 'splash.png',        size: { width: 400, height: 120 } },
+    { svg: 'logo.svg',      png: 'IconMouseOver.png',   size: { width: 256, height: 256 } },
+    { svg: 'logo-gray.svg', png: 'IconMouseNormal.png', size: { width: 256, height: 256 } },
+    { svg: 'splash.svg',    png: 'splash.png',          size: { width: 400, height: 120 } },
   ];
 
   for (const t of tasks) {
@@ -40,20 +45,22 @@ async function main() {
     console.log(`✓ ${t.png}  (${t.size.width}×${t.size.height})`);
   }
 
-  // ICO: Windows launcher prefers multi-size, build from PNGs at 16/32/48/64/128/256
-  const icoSizes = [16, 32, 48, 64, 128, 256];
+  // ICO: Overwolf store spec requires exactly 16/32/48/256 and < 150 KB.
+  // Built from logo-ico.svg (a colour-reduced version of logo.svg) so the
+  // 256x256 layer palette-quantises tight enough to stay inside the budget.
+  const icoSizes = [16, 32, 48, 256];
   const icoBuffers = [];
   for (const size of icoSizes) {
-    const svg = readFileSync(join(here, 'logo.svg'));
+    const svg = readFileSync(join(here, 'logo-ico.svg'));
     const buf = await sharp(svg, { density: 384 })
       .resize(size, size, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
-      .png()
+      .png({ compressionLevel: 9, palette: true, colors: 32, dither: 0 })
       .toBuffer();
     icoBuffers.push(buf);
   }
   const icoBuf = await pngToIco(icoBuffers);
-  writeFileSync(join(here, 'icon_256.ico'), icoBuf);
-  console.log(`✓ icon_256.ico (sizes ${icoSizes.join('/')})`);
+  writeFileSync(join(here, 'launcher_icon.ico'), icoBuf);
+  console.log(`✓ launcher_icon.ico (sizes ${icoSizes.join('/')}, ${(icoBuf.length / 1024).toFixed(1)} KB)`);
 }
 
 main().catch(err => { console.error('FAIL:', err.message); process.exit(1); });

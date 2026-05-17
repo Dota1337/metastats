@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="120" viewBox="0 0 400 120" fill="none">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="400" y2="120" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0e1525"/>
+      <stop offset="1" stop-color="#1a2438"/>
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0" y1="0" x2="400" y2="120" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7B61FF"/>
+      <stop offset="1" stop-color="#a892ff"/>
+    </linearGradient>
+    <linearGradient id="sparkGrad" x1="0" y1="0" x2="400" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7B61FF"/>
+      <stop offset="0.6" stop-color="#a892ff"/>
+      <stop offset="1" stop-color="#f0c040"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="0" y="0" width="400" height="120" fill="url(#bgGrad)"/>
+
+  <!-- Decorative accent line top -->
+  <rect x="0" y="0" width="400" height="2" fill="url(#sparkGrad)"/>
+
+  <!-- Compact logo mark left -->
+  <g transform="translate(20,30)">
+    <!-- Hex outline -->
+    <polygon points="14,4 36,4 50,30 36,56 14,56 0,30"
+             stroke="url(#accentGrad)" stroke-width="2" fill="none"/>
+    <!-- "m" letter -->
+    <path d="M 13 18 L 13 44
+             M 13 22 Q 13 17, 19 17 Q 25 17, 25 26 L 25 44
+             M 25 26 Q 25 17, 31 17 Q 37 17, 37 26 L 37 44"
+          stroke="url(#accentGrad)" stroke-width="3.5"
+          stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+
+  <!-- Wordmark -->
+  <text x="90" y="58" font-family="-apple-system, 'Segoe UI', sans-serif"
+        font-size="28" font-weight="600" fill="#ffffff">
+    metastats<tspan fill="#a892ff">.gg</tspan>
+  </text>
+  <text x="90" y="82" font-family="-apple-system, 'Segoe UI', sans-serif"
+        font-size="13" fill="#a0b0c5" letter-spacing="1.2">
+    Companion
+  </text>
+
+  <!-- Right-side sparkline -->
+  <g transform="translate(280,40)">
+    <polyline points="0,40 24,36 48,28 72,22 96,8"
+              stroke="url(#sparkGrad)" stroke-width="3"
+              fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="0" cy="40" r="3" fill="#a892ff"/>
+    <circle cx="48" cy="28" r="3" fill="#a892ff"/>
+    <circle cx="96" cy="8" r="4" fill="#f0c040"/>
+  </g>
+</svg>

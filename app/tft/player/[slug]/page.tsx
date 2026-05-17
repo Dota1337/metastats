@@ -9,6 +9,7 @@ import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import MatchCard from '../../../components/tft/MatchCard';
 import MarketValueHero from '../../../components/tft/MarketValueHero';
+import BookmarkButton from '../../../components/BookmarkButton';
 import { useI18n } from '../../../lib/i18n';
 import { loadProLookup, lookupPro, type ProPlayer } from '../../../lib/pro-players';
 
@@ -282,6 +283,16 @@ export default function TftPlayerPage() {
                     {/* TFT-native pro record wins if both sources match —
                         it's puuid-verified, not just name-matched. */}
                     {tftProInfo ? <TftProBadge pro={tftProInfo} /> : proInfo && <ProBadge pro={proInfo} />}
+                    {gameName && tagLine && (
+                      <BookmarkButton
+                        type="player"
+                        bookmarkKey={`${gameName}-${tagLine}`}
+                        label={`${gameName}#${tagLine}`}
+                        region={region}
+                        size="md"
+                        stopPropagation={false}
+                      />
+                    )}
                   </div>
                   <div className="text-[#a0b0c5] text-sm">#{tagLine} · Level {data.summoner.summonerLevel ?? '—'}</div>
                   {tftProInfo && (

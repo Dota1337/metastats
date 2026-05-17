@@ -1,6 +1,7 @@
 'use client';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
 import { tftChampionTileUrl } from '../../lib/tft-cdragon';
+import BookmarkButton from '../BookmarkButton';
 
 // Dense, scannable row layout for /tft/comps. Replaces the narrative
 // CompCard so pros can survey 20+ comps at a glance — avg-placement is
@@ -124,7 +125,7 @@ export default function CompRow({
       style={{ gridTemplateColumns: 'minmax(0,1fr)' }}
     >
       {/* Mobile: stacked. Desktop: tight horizontal row. */}
-      <div className="grid grid-cols-[1.25rem_1.5rem_2.5rem_minmax(7rem,1fr)_minmax(0,auto)_auto] sm:grid-cols-[1.25rem_1.5rem_2.5rem_minmax(11rem,1fr)_minmax(0,auto)_3rem_3rem_3rem_3rem_3rem] items-center gap-2 sm:gap-3">
+      <div className="grid grid-cols-[1.25rem_1.5rem_2.5rem_minmax(7rem,1fr)_minmax(0,auto)_auto] sm:grid-cols-[1.25rem_1.5rem_2.5rem_minmax(11rem,1fr)_minmax(0,auto)_3rem_3rem_3rem_3rem_3rem_1.25rem] items-center gap-2 sm:gap-3">
         <div className="text-[#7a8aa0] tabular-nums text-right">{rank}</div>
         <div
           className="w-6 h-6 rounded flex items-center justify-center font-bold text-[11px]"
@@ -190,6 +191,14 @@ export default function CompRow({
         </div>
         <div className="hidden sm:block text-right tabular-nums text-[#7a8aa0]">
           {comp.games}
+        </div>
+        <div className="hidden sm:flex items-center justify-end">
+          <BookmarkButton
+            type="comp"
+            bookmarkKey={comp.slug}
+            label={`${traitName}${traitVariant ? ` · ${traitVariant}` : ''}${parts?.level ? ` ${parts.level}` : ''}${carry?.name ? ` · ${carry.name}` : ''}`}
+            size="sm"
+          />
         </div>
 
         {/* Mobile-only inline stats */}

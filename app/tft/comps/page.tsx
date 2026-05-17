@@ -103,7 +103,7 @@ export default function TftCompsPage() {
 
         {hasData && comps.length > 0 && (
           <>
-            <div className="hidden sm:grid grid-cols-[1.25rem_1.5rem_2.5rem_minmax(11rem,1fr)_minmax(0,auto)_3rem_3rem_3rem_3rem_3rem] items-center gap-3 px-3 py-1.5 text-[10px] uppercase tracking-widest text-[#7a8aa0]">
+            <div className="hidden sm:grid grid-cols-[1.25rem_1.5rem_2.5rem_minmax(11rem,1fr)_minmax(0,auto)_3rem_3rem_3rem_3rem_3rem_1.25rem] items-center gap-3 px-3 py-1.5 text-[10px] uppercase tracking-widest text-[#7a8aa0]">
               <div></div>
               <div></div>
               <div></div>
@@ -114,6 +114,7 @@ export default function TftCompsPage() {
               <div className="text-right">{t('tft.top1')}</div>
               <div className="text-right">{t('tft.pickRate')}</div>
               <div className="text-right">{t('tft.gamesShort')}</div>
+              <div></div>
             </div>
             <div className="space-y-1">
               {sortedComps.map((c, i) => (

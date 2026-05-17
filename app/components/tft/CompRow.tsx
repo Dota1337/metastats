@@ -16,6 +16,8 @@ interface Comp {
   top4Rate: number | null;
   top1Rate: number | null;
   pickRate?: number | null;
+  avgLevel?: number | null;
+  avgLastRound?: number | null;
   typicalUnits: { characterId: string; count: number | unknown; carryItemGames?: number | unknown }[];
 }
 
@@ -51,6 +53,16 @@ function costColorOf(cost: number) {
   return cost === 1 ? '#9aa6b2' : cost === 2 ? '#3a8' : cost === 3 ? '#3a8ddc' : cost === 4 ? '#c39bff' : '#e0c75a';
 }
 
+// Pro-relevant tempo signal. Fast-8 / Slow-roll / Balanced derived from
+// the average final level of players running the comp — gives the row a
+// at-a-glance „when do I roll" hint without forcing a click into detail.
+function tempoTag(avgLevel: number | null | undefined): { label: string; color: string } | null {
+  if (avgLevel == null) return null;
+  if (avgLevel >= 8.5) return { label: 'Fast 8', color: '#e0c75a' };
+  if (avgLevel <= 7.0) return { label: 'Slow', color: '#3a8ddc' };
+  return { label: 'Std', color: '#7a8aa0' };
+}
+
 export default function CompRow({
   comp, rank, assets, href,
 }: {
@@ -82,6 +94,7 @@ export default function CompRow({
   const carryUrl = tftChampionTileUrl(assets, carry);
 
   const tier = tierBadge(comp.avgPlacement);
+  const tempo = tempoTag(comp.avgLevel);
 
   return (
     <a
@@ -107,6 +120,19 @@ export default function CompRow({
             {traitVariant && <span className="text-[#a892ff]"> · {traitVariant}</span>}
             {' '}{parts?.level ?? ''} · {carry?.name || (carryCid ? prettyChar(carryCid) : '')}
           </div>
+          {tempo && (
+            <div className="flex items-center gap-1.5 mt-0.5 text-[10px] tabular-nums">
+              <span
+                className="px-1.5 py-[1px] rounded text-[10px] font-medium"
+                style={{ color: tempo.color, backgroundColor: `${tempo.color}1f`, border: `1px solid ${tempo.color}40` }}
+              >
+                {tempo.label}
+              </span>
+              {comp.avgLevel != null && (
+                <span className="text-[#7a8aa0]">Lvl Ø {comp.avgLevel.toFixed(1)}</span>
+              )}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-[2px]">
           {typicalUnits.slice(0, 9).map(u => {

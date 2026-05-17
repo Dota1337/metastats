@@ -112,6 +112,10 @@ export default function TftPlayerPage() {
 
   const [playerStats, setPlayerStats] = useState<PlayerStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
+  // Lobby Master+ avg-placement per champion — lets the UI show how the
+  // player's results on Champion X compare to the rest of the lobby pool.
+  // Computed once per region from /api/tft/units and reused for every chip.
+  const [lobbyAvgByUnit, setLobbyAvgByUnit] = useState<Record<string, number>>({});
   // null = follow current set; set to a specific number when the user picks
   // a different set in the SeasonStats pill bar.
   const [statsSetOverride, setStatsSetOverride] = useState<number | null>(null);
@@ -169,6 +173,25 @@ export default function TftPlayerPage() {
       .then((s: PlayerStats | null) => { setPlayerStats(s); setStatsLoading(false); })
       .catch(() => setStatsLoading(false));
   }, [data?.summoner.puuid, region, statsSetOverride]);
+
+  // Lobby-baseline fetch — Master+ avg-placement per champion in the
+  // player's region. Hits the edge-cached /api/tft/units so it's a single
+  // round-trip per region+bucket.
+  useEffect(() => {
+    if (!region) return;
+    fetch(`/api/tft/units?region=${region}&bucket=master_plus&days=7&patch=current`)
+      .then(r => r.ok ? r.json() : null)
+      .then(j => {
+        const map: Record<string, number> = {};
+        for (const u of (j?.units || [])) {
+          if (u.characterId && typeof u.avgPlacement === 'number') {
+            map[u.characterId] = u.avgPlacement;
+          }
+        }
+        setLobbyAvgByUnit(map);
+      })
+      .catch(() => {});
+  }, [region]);
 
   const currentPageIds = useMemo(() => {
     if (!data) return [];
@@ -288,6 +311,7 @@ export default function TftPlayerPage() {
               selectedSet={statsSetOverride}
               onPickSet={setStatsSetOverride}
               assets={assets}
+              lobbyAvgByUnit={lobbyAvgByUnit}
             />
 
             <div className="mb-3">
@@ -360,7 +384,7 @@ function Pagination({ page, totalPages, onChange, loading }: { page: number; tot
 }
 
 function SeasonStats({
-  stats, loading, currentSet, selectedSet, onPickSet, assets,
+  stats, loading, currentSet, selectedSet, onPickSet, assets, lobbyAvgByUnit,
 }: {
   stats: PlayerStats | null;
   loading: boolean;
@@ -368,6 +392,7 @@ function SeasonStats({
   selectedSet: number | null;
   onPickSet: (s: number | null) => void;
   assets: TftAssetsBundle | null;
+  lobbyAvgByUnit?: Record<string, number>;
 }) {
   const { t } = useI18n();
   const activeSet = stats?.set ?? selectedSet ?? currentSet;
@@ -421,6 +446,7 @@ function SeasonStats({
                     games={u.games}
                     avg={u.avgPlacement}
                     assets={assets}
+                    lobbyAvg={lobbyAvgByUnit?.[u.characterId]}
                   />
                 ))}
               </div>
@@ -474,17 +500,21 @@ function RankBadge({ rank }: { rank: number }) {
   );
 }
 
-function UnitChip({ rank, characterId, games, avg, assets }: { rank: number; characterId: string; games: number; avg: number; assets: TftAssetsBundle | null }) {
+function UnitChip({ rank, characterId, games, avg, assets, lobbyAvg }: { rank: number; characterId: string; games: number; avg: number; assets: TftAssetsBundle | null; lobbyAvg?: number }) {
   const { t } = useI18n();
   const info = assets?.champions[characterId];
   const url = tftChampionTileUrl(assets, info);
   const cost = info?.cost ?? 1;
   const costColor = costToColor(cost);
   const name = info?.name || characterId.replace(/^TFT\d+_/, '');
+  // Diff vs. lobby Master+ average. Negative = player places *better* than
+  // the average lobby (lower placement number is better in TFT).
+  const diff = typeof lobbyAvg === 'number' ? avg - lobbyAvg : null;
+  const diffColor = diff == null ? '#7a8aa0' : diff <= -0.15 ? '#3ecf8e' : diff >= 0.15 ? '#e44040' : '#a0b0c5';
   return (
     <a
       href={`/tft/units/${encodeURIComponent(characterId)}`}
-      title={`#${rank} ${name} — ${games} ${t('tft.gamesShort')}, Ø ${avg.toFixed(2)}`}
+      title={`#${rank} ${name} — ${games} ${t('tft.gamesShort')}, Ø ${avg.toFixed(2)}${lobbyAvg != null ? ` (Lobby Ø ${lobbyAvg.toFixed(2)})` : ''}`}
       className="flex items-center gap-2.5 bg-[#0a0e1a] border border-[#1e2a3a] rounded-md px-2.5 py-2 hover:border-[#7B61FF]/50 hover:bg-[#101729] transition"
     >
       <RankBadge rank={rank} />
@@ -493,7 +523,14 @@ function UnitChip({ rank, characterId, games, avg, assets }: { rank: number; cha
       </div>
       <div className="flex-1 min-w-0">
         <div className="text-white text-sm font-medium truncate">{name}</div>
-        <div className="text-[#9ab0c4] text-xs">{games} {t('tft.gamesShort')} · Ø {avg.toFixed(2)}</div>
+        <div className="text-[#9ab0c4] text-xs flex items-center gap-1.5 tabular-nums">
+          <span>{games} {t('tft.gamesShort')} · Ø {avg.toFixed(2)}</span>
+          {diff != null && (
+            <span style={{ color: diffColor }}>
+              {diff <= 0 ? '' : '+'}{diff.toFixed(2)}
+            </span>
+          )}
+        </div>
       </div>
     </a>
   );

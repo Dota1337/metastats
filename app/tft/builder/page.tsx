@@ -7,43 +7,41 @@ import TftHero from '../../components/tft/TftHero';
 import { useI18n } from '../../lib/i18n';
 import { loadTftAssets, tftChampionTileUrl, tftIconUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
 
-// Visual comp-builder. TFT-standard 4×7 hex board:
+// Visual comp-builder with TFT-standard 4×7 pointy-top hex board.
+// Row layout (cell indices):
 //   Row 0 (back)  cells 0..6
 //   Row 1         cells 7..13   (shifted right by half-cell)
 //   Row 2         cells 14..20
 //   Row 3 (front) cells 21..27  (shifted right)
 //
-// Interaction model — pure click, with optional HTML5 drag-and-drop on
-// top:
-//   • Click champion in palette → "picker" mode (cid selected)
-//   • Click empty cell with picker active → place there + clear picker
-//   • Click occupied cell with picker active → swap unit
-//   • Click placed unit (no picker) → select cell, open item-picker
-//   • Right-click placed unit → remove
-//   • Click item in palette while a unit is selected → add (max 3)
-//   • Click item-chip on selected unit → remove that item
+// Two boards (own + optional opponent) share the same cell coordinate
+// space; placements are kept in separate arrays. URL ?b= encodes both,
+// localStorage saved-comps store both.
 //
-// Persistence:
-//   • URL ?b=<base64-json> always reflects current state — instant share
-//   • "Save" stores into localStorage tft.savedComps[]
-//   • "My comps" sidebar loads or deletes saved builds
+// Hex cells use a clip-path polygon overlay. To get a visible "border"
+// without losing the hex shape, we draw a colored outer layer and an
+// inset dark inner layer — the gap acts as the border.
 
 const ROWS = 4;
 const COLS = 7;
 const MAX_UNITS = 10;
 const MAX_ITEMS_PER_UNIT = 3;
 const STORAGE_KEY = 'tft.savedComps';
+const HEX_CLIP = 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)';
+
+type Team = 'own' | 'opp';
 
 interface Placement {
-  cell: number;          // 0..27
+  cell: number;
   characterId: string;
-  items: string[];       // up to 3 item apiNames
+  items: string[];
 }
 
 interface SavedComp {
   id: string;
   name: string;
   placements: Placement[];
+  oppPlacements: Placement[];
   createdAt: number;
 }
 
@@ -56,31 +54,38 @@ interface ItemEntry {
   category: ItemTab[];
 }
 
-function encodeState(placements: Placement[]): string {
-  if (placements.length === 0) return '';
+function encodeState(own: Placement[], opp: Placement[]): string {
+  if (own.length === 0 && opp.length === 0) return '';
   try {
-    const compact = placements.map(p => ({ c: p.cell, i: p.characterId, t: p.items }));
+    const compact: any = { p: own.map(p => ({ c: p.cell, i: p.characterId, t: p.items })) };
+    if (opp.length > 0) compact.o = opp.map(p => ({ c: p.cell, i: p.characterId, t: p.items }));
     return btoa(JSON.stringify(compact));
   } catch { return ''; }
 }
 
-function decodeState(s: string): Placement[] {
-  if (!s) return [];
+function decodePlacementArray(json: any): Placement[] {
+  if (!Array.isArray(json)) return [];
+  return json
+    .map((e: any): Placement | null => {
+      if (typeof e !== 'object' || e == null) return null;
+      const cell = Number(e.c);
+      const cid = String(e.i || '');
+      const items = Array.isArray(e.t) ? e.t.filter((x: any) => typeof x === 'string').slice(0, MAX_ITEMS_PER_UNIT) : [];
+      if (!Number.isFinite(cell) || cell < 0 || cell >= ROWS * COLS) return null;
+      if (!cid) return null;
+      return { cell, characterId: cid, items };
+    })
+    .filter(Boolean) as Placement[];
+}
+
+function decodeState(s: string): { own: Placement[]; opp: Placement[] } {
+  if (!s) return { own: [], opp: [] };
   try {
     const json = JSON.parse(atob(s));
-    if (!Array.isArray(json)) return [];
-    return json
-      .map((e: any): Placement | null => {
-        if (typeof e !== 'object' || e == null) return null;
-        const cell = Number(e.c);
-        const cid = String(e.i || '');
-        const items = Array.isArray(e.t) ? e.t.filter((x: any) => typeof x === 'string').slice(0, MAX_ITEMS_PER_UNIT) : [];
-        if (!Number.isFinite(cell) || cell < 0 || cell >= ROWS * COLS) return null;
-        if (!cid) return null;
-        return { cell, characterId: cid, items };
-      })
-      .filter(Boolean) as Placement[];
-  } catch { return []; }
+    // Backward compatible: old encoding was a plain array of placements.
+    if (Array.isArray(json)) return { own: decodePlacementArray(json), opp: [] };
+    return { own: decodePlacementArray(json.p || []), opp: decodePlacementArray(json.o || []) };
+  } catch { return { own: [], opp: [] }; }
 }
 
 function categorizeItem(id: string, name: string): ItemTab[] {
@@ -98,8 +103,12 @@ export default function TftBuilderPage() {
   const search = useSearchParams();
 
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
-  const [placements, setPlacements] = useState<Placement[]>(() => decodeState(search.get('b') || ''));
+  const initial = useMemo(() => decodeState(search.get('b') || ''), [search]);
+  const [ownPlacements, setOwnPlacements] = useState<Placement[]>(initial.own);
+  const [oppPlacements, setOppPlacements] = useState<Placement[]>(initial.opp);
+  const [showOpponent, setShowOpponent] = useState<boolean>(initial.opp.length > 0);
   const [pickerChar, setPickerChar] = useState<string | null>(null);
+  const [selectedTeam, setSelectedTeam] = useState<Team>('own');
   const [selectedCell, setSelectedCell] = useState<number | null>(null);
   const [costFilter, setCostFilter] = useState<number | null>(null);
   const [champQuery, setChampQuery] = useState('');
@@ -107,31 +116,38 @@ export default function TftBuilderPage() {
   const [itemQuery, setItemQuery] = useState('');
   const [savedComps, setSavedComps] = useState<SavedComp[]>([]);
   const [shareToast, setShareToast] = useState(false);
-  const dragRef = useRef<{ from: 'palette' | 'board'; payload: string | number } | null>(null);
+  const dragRef = useRef<{ from: 'palette' | 'board'; payload: string | number; fromTeam?: Team } | null>(null);
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
 
-  // Load saved comps from localStorage on mount
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const arr = JSON.parse(raw);
-        if (Array.isArray(arr)) setSavedComps(arr);
+        if (Array.isArray(arr)) {
+          // migrate older saves that only stored a flat placements array
+          const normalised: SavedComp[] = arr.map((c: any) => ({
+            id: String(c.id || 'c_' + Math.random()),
+            name: String(c.name || ''),
+            placements: Array.isArray(c.placements) ? c.placements : [],
+            oppPlacements: Array.isArray(c.oppPlacements) ? c.oppPlacements : [],
+            createdAt: Number(c.createdAt || Date.now()),
+          }));
+          setSavedComps(normalised);
+        }
       }
     } catch { /* ignore */ }
   }, []);
 
-  // Persist URL on every state change
   useEffect(() => {
-    const encoded = encodeState(placements);
+    const encoded = encodeState(ownPlacements, oppPlacements);
     const target = encoded ? `${pathname}?b=${encoded}` : pathname;
     if (typeof window !== 'undefined' && window.location.pathname + window.location.search !== target) {
       router.replace(target, { scroll: false });
     }
-  }, [placements, pathname, router]);
+  }, [ownPlacements, oppPlacements, pathname, router]);
 
-  // Build champion list (cost 1-5)
   const champions = useMemo(() => {
     if (!assets) return [] as { characterId: string; name: string; cost: number }[];
     return Object.entries(assets.champions)
@@ -148,28 +164,23 @@ export default function TftBuilderPage() {
     });
   }, [champions, costFilter, champQuery]);
 
-  // Build item list with category tagging
   const items = useMemo<ItemEntry[]>(() => {
     if (!assets) return [];
     const out: ItemEntry[] = [];
     for (const [id, item] of Object.entries(assets.items)) {
       if (/Augment/i.test(id)) continue;
       if (!/^TFT(_|17_|Set\d+_)?Item/i.test(id)) continue;
-      // Junk filters
       if (/Grant|Anvil|Orbs|Loot|Debug|Tutorial|Tactician|TheStar/i.test(id)) continue;
       if (!item.name) continue;
       const hasComp = !!(item.composition && item.composition.length === 2);
       const cats = categorizeItem(id, item.name);
-      // Only flag as "completed" / "components" if it has the right shape
       if (hasComp && !cats.includes('emblems') && !cats.includes('artifacts') && !cats.includes('radiant')) {
         cats.push('completed');
       }
-      // Components heuristic: known basic-item ids
       if (/^TFT_Item_(BFSword|Bow|RodOfAges|RodOfTheJax|Tear|ChainVest|Cloak|GiantsBelt|SparringGloves|Spatula)/i.test(id)) {
         cats.push('components');
       }
-      // Set17 special with no composition + not categorised elsewhere → bucket into "components" as fallback so they show somewhere
-      if (cats.length === 1 /* only 'all' */) {
+      if (cats.length === 1) {
         if (/^TFT17_Item_/i.test(id)) cats.push('artifacts');
       }
       out.push({ id, name: item.name, icon: item.icon, category: cats });
@@ -185,12 +196,14 @@ export default function TftBuilderPage() {
     });
   }, [items, itemTab, itemQuery]);
 
-  // Trait calculation (same as before)
+  // Traits are computed from own + opp boards combined? No — only the
+  // own board's traits matter for the user's actual comp. Opp board is
+  // a scenario sketch and irrelevant for own-trait activation.
   const activeTraits = useMemo(() => {
     if (!assets) return [] as { apiName: string; name: string; count: number; tiers: any[]; activeIdx: number | null; icon?: string | null }[];
     const counts = new Map<string, number>();
     const seen = new Set<string>();
-    for (const p of placements) {
+    for (const p of ownPlacements) {
       if (seen.has(p.characterId)) continue;
       seen.add(p.characterId);
       const champ: any = assets.champions[p.characterId];
@@ -219,21 +232,31 @@ export default function TftBuilderPage() {
       if (aActive !== bActive) return bActive - aActive;
       return b.count - a.count;
     });
-  }, [placements, assets]);
+  }, [ownPlacements, assets]);
 
-  // ----- Mutations -----
-  const placementByCell = useMemo(() => {
+  // ----- Helpers to read/write placements per team -----
+  const placementsFor = (team: Team) => team === 'own' ? ownPlacements : oppPlacements;
+  const setPlacementsFor = (team: Team, updater: (prev: Placement[]) => Placement[]) => {
+    if (team === 'own') setOwnPlacements(updater);
+    else setOppPlacements(updater);
+  };
+
+  const ownByCell = useMemo(() => {
     const m = new Map<number, Placement>();
-    for (const p of placements) m.set(p.cell, p);
+    for (const p of ownPlacements) m.set(p.cell, p);
     return m;
-  }, [placements]);
+  }, [ownPlacements]);
+  const oppByCell = useMemo(() => {
+    const m = new Map<number, Placement>();
+    for (const p of oppPlacements) m.set(p.cell, p);
+    return m;
+  }, [oppPlacements]);
+  const byCell = (team: Team) => team === 'own' ? ownByCell : oppByCell;
 
-  const placeAt = useCallback((cell: number, cid: string) => {
-    setPlacements(prev => {
+  const placeAt = useCallback((team: Team, cell: number, cid: string) => {
+    setPlacementsFor(team, prev => {
       const existing = prev.find(p => p.cell === cell);
-      // Same unit already there? noop.
       if (existing && existing.characterId === cid) return prev;
-      // Unit already on the board at a different cell? move it instead of cloning.
       const existingElsewhere = prev.find(p => p.characterId === cid && p.cell !== cell);
       let next = prev.filter(p => p.cell !== cell);
       if (existingElsewhere) {
@@ -247,13 +270,13 @@ export default function TftBuilderPage() {
     });
   }, []);
 
-  const removeAt = useCallback((cell: number) => {
-    setPlacements(prev => prev.filter(p => p.cell !== cell));
-    if (selectedCell === cell) setSelectedCell(null);
-  }, [selectedCell]);
+  const removeAt = useCallback((team: Team, cell: number) => {
+    setPlacementsFor(team, prev => prev.filter(p => p.cell !== cell));
+    if (selectedTeam === team && selectedCell === cell) setSelectedCell(null);
+  }, [selectedTeam, selectedCell]);
 
-  const swapCells = useCallback((from: number, to: number) => {
-    setPlacements(prev => {
+  const swapWithinTeam = useCallback((team: Team, from: number, to: number) => {
+    setPlacementsFor(team, prev => {
       const a = prev.find(p => p.cell === from);
       const b = prev.find(p => p.cell === to);
       if (!a) return prev;
@@ -266,92 +289,119 @@ export default function TftBuilderPage() {
 
   const addItemToSelected = useCallback((itemId: string) => {
     if (selectedCell == null) return;
-    setPlacements(prev => prev.map(p => {
+    setPlacementsFor(selectedTeam, prev => prev.map(p => {
       if (p.cell !== selectedCell) return p;
       if (p.items.length >= MAX_ITEMS_PER_UNIT) return p;
       if (p.items.includes(itemId)) return p;
       return { ...p, items: [...p.items, itemId] };
     }));
-  }, [selectedCell]);
+  }, [selectedCell, selectedTeam]);
 
   const removeItemFromSelected = useCallback((itemId: string) => {
     if (selectedCell == null) return;
-    setPlacements(prev => prev.map(p => p.cell === selectedCell
+    setPlacementsFor(selectedTeam, prev => prev.map(p => p.cell === selectedCell
       ? { ...p, items: p.items.filter(i => i !== itemId) }
       : p,
     ));
-  }, [selectedCell]);
+  }, [selectedCell, selectedTeam]);
 
-  function onCellClick(cell: number) {
-    const occupied = placementByCell.get(cell);
+  function onCellClick(team: Team, cell: number) {
+    const occupied = byCell(team).get(cell);
     if (pickerChar) {
-      placeAt(cell, pickerChar);
+      placeAt(team, cell, pickerChar);
       setPickerChar(null);
+      setSelectedTeam(team);
       setSelectedCell(cell);
       return;
     }
     if (occupied) {
-      setSelectedCell(prev => prev === cell ? null : cell);
-    } else if (selectedCell != null) {
-      // Move selected unit to empty cell
-      swapCells(selectedCell, cell);
+      if (selectedTeam === team && selectedCell === cell) {
+        setSelectedCell(null);
+      } else {
+        setSelectedTeam(team);
+        setSelectedCell(cell);
+      }
+    } else if (selectedCell != null && selectedTeam === team) {
+      swapWithinTeam(team, selectedCell, cell);
       setSelectedCell(cell);
+    } else {
+      setSelectedCell(null);
     }
   }
 
-  function onCellContextMenu(e: React.MouseEvent, cell: number) {
+  function onCellContextMenu(e: React.MouseEvent, team: Team, cell: number) {
     e.preventDefault();
-    removeAt(cell);
+    removeAt(team, cell);
   }
 
   function onChampionPick(cid: string) {
-    if (placements.some(p => p.characterId === cid)) {
-      // Already on board — remove it.
-      setPlacements(prev => prev.filter(p => p.characterId !== cid));
+    const onBoard = ownPlacements.some(p => p.characterId === cid) || oppPlacements.some(p => p.characterId === cid);
+    if (onBoard && !pickerChar) {
+      // Remove from whichever team it's on
+      setOwnPlacements(prev => prev.filter(p => p.characterId !== cid));
+      setOppPlacements(prev => prev.filter(p => p.characterId !== cid));
       return;
     }
     setPickerChar(prev => prev === cid ? null : cid);
   }
 
-  function clearBoard() {
-    setPlacements([]);
+  function clearBoard(team?: Team) {
+    if (!team) {
+      setOwnPlacements([]); setOppPlacements([]);
+    } else {
+      setPlacementsFor(team, () => []);
+    }
     setSelectedCell(null);
     setPickerChar(null);
   }
 
-  // Drag & Drop
   function onDragStartChampion(e: React.DragEvent, cid: string) {
     dragRef.current = { from: 'palette', payload: cid };
     e.dataTransfer.effectAllowed = 'copy';
     e.dataTransfer.setData('text/plain', cid);
   }
-  function onDragStartBoard(e: React.DragEvent, cell: number) {
-    dragRef.current = { from: 'board', payload: cell };
+  function onDragStartBoard(e: React.DragEvent, team: Team, cell: number) {
+    dragRef.current = { from: 'board', payload: cell, fromTeam: team };
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', String(cell));
   }
-  function onDropCell(e: React.DragEvent, cell: number) {
+  function onDropCell(e: React.DragEvent, team: Team, cell: number) {
     e.preventDefault();
     const drag = dragRef.current;
     if (!drag) return;
     if (drag.from === 'palette') {
-      placeAt(cell, String(drag.payload));
+      placeAt(team, cell, String(drag.payload));
     } else if (drag.from === 'board') {
       const from = Number(drag.payload);
-      if (from !== cell) swapCells(from, cell);
+      const fromTeam = drag.fromTeam || 'own';
+      if (fromTeam === team) {
+        if (from !== cell) swapWithinTeam(team, from, cell);
+      } else {
+        // Move across teams: remove from source, place on target.
+        const sourceP = placementsFor(fromTeam).find(p => p.cell === from);
+        if (sourceP) {
+          setPlacementsFor(fromTeam, prev => prev.filter(p => p.cell !== from));
+          setPlacementsFor(team, prev => {
+            const next = prev.filter(p => p.cell !== cell);
+            if (next.length >= MAX_UNITS) return prev;
+            next.push({ cell, characterId: sourceP.characterId, items: sourceP.items });
+            return next;
+          });
+        }
+      }
     }
     dragRef.current = null;
   }
   function onDragOver(e: React.DragEvent) { e.preventDefault(); }
 
-  // Save / Load / Delete
   function saveCurrent() {
     const name = (typeof window !== 'undefined' && window.prompt(t('tft.builderSaveName'), '')) || '';
     if (!name.trim()) return;
     const entry: SavedComp = {
       id: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
       name: name.trim().slice(0, 60),
-      placements,
+      placements: ownPlacements,
+      oppPlacements,
       createdAt: Date.now(),
     };
     const next = [entry, ...savedComps].slice(0, 50);
@@ -361,7 +411,9 @@ export default function TftBuilderPage() {
   function loadSaved(id: string) {
     const c = savedComps.find(s => s.id === id);
     if (!c) return;
-    setPlacements(c.placements);
+    setOwnPlacements(c.placements);
+    setOppPlacements(c.oppPlacements || []);
+    if ((c.oppPlacements || []).length > 0) setShowOpponent(true);
     setSelectedCell(null);
     setPickerChar(null);
   }
@@ -370,10 +422,10 @@ export default function TftBuilderPage() {
     setSavedComps(next);
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
   }
-
   async function copyShareLink() {
     if (typeof window === 'undefined') return;
-    const url = window.location.origin + window.location.pathname + (placements.length > 0 ? `?b=${encodeState(placements)}` : '');
+    const enc = encodeState(ownPlacements, oppPlacements);
+    const url = window.location.origin + window.location.pathname + (enc ? `?b=${enc}` : '');
     try {
       await navigator.clipboard.writeText(url);
       setShareToast(true);
@@ -381,8 +433,112 @@ export default function TftBuilderPage() {
     } catch { /* ignore */ }
   }
 
-  // ----- Render helpers -----
-  const selectedPlacement = selectedCell != null ? placementByCell.get(selectedCell) : undefined;
+  const selectedPlacement = selectedCell != null ? byCell(selectedTeam).get(selectedCell) : undefined;
+
+  // ----- Hex cell renderer -----
+  function renderBoard(team: Team) {
+    const isOwn = team === 'own';
+    const byCellMap = byCell(team);
+    return (
+      <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-3">
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-[#a0b0c5] text-[10px] uppercase tracking-widest">
+            {isOwn ? t('tft.builderOwn') : t('tft.builderOpponent')} · {placementsFor(team).length}/{MAX_UNITS}
+          </div>
+          {placementsFor(team).length > 0 && (
+            <button
+              onClick={() => clearBoard(team)}
+              className="text-[#5a6a80] hover:text-[#e44040] text-[10px]"
+            >
+              {t('tft.builderClear')}
+            </button>
+          )}
+        </div>
+        <div className="mx-auto" style={{ maxWidth: '420px' }}>
+          {Array.from({ length: ROWS }).map((_, rowIdx) => (
+            <div
+              key={rowIdx}
+              className="flex"
+              style={{
+                paddingLeft: rowIdx % 2 === 1 ? 'calc((100% / 7) / 2)' : '0',
+                marginTop: rowIdx === 0 ? 0 : '-7%',
+              }}
+            >
+              {Array.from({ length: COLS }).map((__, colIdx) => {
+                const cell = rowIdx * COLS + colIdx;
+                const p = byCellMap.get(cell);
+                const isSelected = selectedTeam === team && selectedCell === cell;
+                const champ: any = p && assets?.champions[p.characterId];
+                const url = champ ? tftChampionTileUrl(assets, champ) : null;
+                const cost = champ?.cost ?? 1;
+                const borderColor = isSelected
+                  ? '#a892ff'
+                  : p
+                    ? costColorOf(cost)
+                    : pickerChar
+                      ? '#7B61FF55'
+                      : '#1e2a3a';
+                return (
+                  <div
+                    key={cell}
+                    className="relative"
+                    style={{
+                      width: 'calc(100% / 7)',
+                      aspectRatio: '1 / 1.1547',
+                      padding: '2px',
+                    }}
+                  >
+                    {/* outer border layer */}
+                    <div
+                      className="absolute inset-0"
+                      style={{
+                        clipPath: HEX_CLIP,
+                        backgroundColor: borderColor,
+                        opacity: !p && !isSelected ? 0.6 : 1,
+                      }}
+                    />
+                    {/* inner content */}
+                    <button
+                      draggable={!!p}
+                      onClick={() => onCellClick(team, cell)}
+                      onContextMenu={e => onCellContextMenu(e, team, cell)}
+                      onDragStart={p ? (e => onDragStartBoard(e, team, cell)) : undefined}
+                      onDragOver={onDragOver}
+                      onDrop={e => onDropCell(e, team, cell)}
+                      className="absolute overflow-hidden transition-all duration-150 cursor-pointer"
+                      style={{
+                        top: '4px', left: '4px', right: '4px', bottom: '4px',
+                        clipPath: HEX_CLIP,
+                        backgroundColor: '#0a0e1a',
+                      }}
+                      title={p ? `${champ?.name || p.characterId}` : ''}
+                    >
+                      {url && (
+                        <img src={url} alt={champ?.name || ''} className="w-full h-full object-cover pointer-events-none" />
+                      )}
+                      {p && p.items.length > 0 && (
+                        <div className="absolute bottom-0 left-0 right-0 flex gap-0.5 justify-center pb-0.5 pointer-events-none">
+                          {p.items.map((iid) => {
+                            const item = assets?.items[iid];
+                            const iurl = tftIconUrl(assets, item?.icon);
+                            return (
+                              <div key={iid} className="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-sm overflow-hidden border border-black/70 bg-[#0a0e1a]">
+                                {iurl && <img src={iurl} alt="" className="w-full h-full object-cover" />}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-[#0e1525]">
@@ -390,101 +546,48 @@ export default function TftBuilderPage() {
       <TftHero pageTitle={t('tft.builderTitle')} subtitle={t('tft.builderSubtitle')} />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-2 pb-8">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5">
-          {/* LEFT column: board + palette + items */}
+          {/* LEFT */}
           <div>
             {/* Toolbar */}
             <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
               <div className="text-[#a0b0c5] text-xs uppercase tracking-widest">
-                {t('tft.builderBoard')} · {placements.length}/{MAX_UNITS}
+                {t('tft.builderBoard')}
               </div>
               <div className="flex items-center gap-2">
                 <button
+                  onClick={() => setShowOpponent(s => !s)}
+                  className="px-3 py-1.5 rounded text-xs bg-[#141c2e] text-[#a0b0c5] hover:text-white border border-[#1e2a3a]"
+                >
+                  {showOpponent ? t('tft.builderHideOpponent') : t('tft.builderShowOpponent')}
+                </button>
+                <button
                   onClick={saveCurrent}
-                  disabled={placements.length === 0}
+                  disabled={ownPlacements.length === 0 && oppPlacements.length === 0}
                   className="px-3 py-1.5 rounded text-xs bg-[#7B61FF] text-white hover:bg-[#9981FF] disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   {t('tft.builderSave')}
                 </button>
                 <button
                   onClick={copyShareLink}
-                  disabled={placements.length === 0}
-                  className="px-3 py-1.5 rounded text-xs bg-[#141c2e] text-[#a0b0c5] hover:text-white border border-[#1e2a3a] disabled:opacity-30 disabled:cursor-not-allowed relative"
+                  disabled={ownPlacements.length === 0 && oppPlacements.length === 0}
+                  className="px-3 py-1.5 rounded text-xs bg-[#141c2e] text-[#a0b0c5] hover:text-white border border-[#1e2a3a] disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   {shareToast ? t('tft.builderShareCopied') : t('tft.builderShare')}
                 </button>
-                {placements.length > 0 && (
-                  <button
-                    onClick={clearBoard}
-                    className="px-3 py-1.5 rounded text-xs text-[#7a8aa0] hover:text-[#e44040] border border-transparent hover:border-[#e44040]/40"
-                  >
-                    {t('tft.builderClear')}
-                  </button>
-                )}
               </div>
             </div>
 
-            {/* Hex board */}
-            <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-4 mb-4">
-              <div className="flex flex-col gap-1.5">
-                {Array.from({ length: ROWS }).map((_, rowIdx) => (
-                  <div
-                    key={rowIdx}
-                    className="flex gap-1.5 justify-center"
-                    style={{ paddingLeft: rowIdx % 2 === 1 ? 'calc((100% / 7) / 2)' : '0' }}
-                  >
-                    {Array.from({ length: COLS }).map((__, colIdx) => {
-                      const cell = rowIdx * COLS + colIdx;
-                      const p = placementByCell.get(cell);
-                      const isSelected = selectedCell === cell;
-                      const champ: any = p && assets?.champions[p.characterId];
-                      const url = champ ? tftChampionTileUrl(assets, champ) : null;
-                      const cost = champ?.cost ?? 1;
-                      return (
-                        <button
-                          key={cell}
-                          draggable={!!p}
-                          onClick={() => onCellClick(cell)}
-                          onContextMenu={e => onCellContextMenu(e, cell)}
-                          onDragStart={p ? (e => onDragStartBoard(e, cell)) : undefined}
-                          onDragOver={onDragOver}
-                          onDrop={e => onDropCell(e, cell)}
-                          className="relative flex-1 aspect-square rounded-md overflow-hidden transition-all duration-150"
-                          style={{
-                            maxWidth: 'calc((100% - 9px) / 7)',
-                            border: p
-                              ? `2px solid ${isSelected ? '#a892ff' : costColorOf(cost)}`
-                              : '1px dashed #233048',
-                            backgroundColor: p ? '#0a0e1a' : pickerChar ? 'rgba(123,97,255,0.08)' : '#0a0e1a',
-                            boxShadow: isSelected ? '0 0 0 2px rgba(168,146,255,0.35)' : 'none',
-                          }}
-                          title={p ? `${champ?.name || p.characterId}` : `Cell ${cell}`}
-                        >
-                          {url && (
-                            <img src={url} alt={champ?.name || ''} className="w-full h-full object-cover pointer-events-none" />
-                          )}
-                          {p && p.items.length > 0 && (
-                            <div className="absolute bottom-0.5 left-0.5 right-0.5 flex gap-0.5 pointer-events-none">
-                              {p.items.map((iid) => {
-                                const item = assets?.items[iid];
-                                const iurl = tftIconUrl(assets, item?.icon);
-                                return (
-                                  <div key={iid} className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-sm overflow-hidden border border-black/60 bg-[#0a0e1a]">
-                                    {iurl && <img src={iurl} alt="" className="w-full h-full object-cover" />}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                ))}
+            {/* Opp board */}
+            {showOpponent && (
+              <div className="mb-3">
+                {renderBoard('opp')}
               </div>
-            </div>
+            )}
+            {/* Own board */}
+            {renderBoard('own')}
 
             {/* Champion palette */}
-            <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-4 mb-4">
+            <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-4 mt-4 mb-4">
               <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
                 <div className="flex items-center gap-1">
                   <button
@@ -512,11 +615,11 @@ export default function TftBuilderPage() {
                   className="flex-1 min-w-[160px] bg-[#141c2e] border border-[#1e2a3a] rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-[#7B61FF]/60"
                 />
               </div>
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(60px,1fr))] gap-1.5">
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(54px,1fr))] gap-1.5">
                 {filteredChampions.map(c => {
                   const champ: any = assets?.champions[c.characterId];
                   const url = tftChampionTileUrl(assets, champ);
-                  const onBoard = placements.some(p => p.characterId === c.characterId);
+                  const onBoard = ownPlacements.some(p => p.characterId === c.characterId) || oppPlacements.some(p => p.characterId === c.characterId);
                   const isPicker = pickerChar === c.characterId;
                   return (
                     <button
@@ -542,7 +645,7 @@ export default function TftBuilderPage() {
               </div>
             </div>
 
-            {/* Items palette — only useful when a unit is selected */}
+            {/* Items palette */}
             <div
               className="bg-[#0d1526] border rounded-lg p-4"
               style={{ borderColor: selectedPlacement ? '#a892ff66' : '#1e2a3a' }}
@@ -567,7 +670,7 @@ export default function TftBuilderPage() {
                   className="flex-1 min-w-[160px] bg-[#141c2e] border border-[#1e2a3a] rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-[#7B61FF]/60"
                 />
               </div>
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(40px,1fr))] gap-1.5 max-h-[280px] overflow-y-auto pr-1">
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(38px,1fr))] gap-1.5 max-h-[260px] overflow-y-auto pr-1">
                 {filteredItems.map(item => {
                   const url = tftIconUrl(assets, item.icon);
                   const onSelectedUnit = selectedPlacement?.items.includes(item.id);
@@ -588,13 +691,15 @@ export default function TftBuilderPage() {
             </div>
           </div>
 
-          {/* RIGHT column: selected unit info + active traits + saved comps */}
+          {/* RIGHT */}
           <div className="flex flex-col gap-4 lg:sticky lg:top-4 lg:self-start">
-            {/* Selected unit panel */}
             {selectedPlacement && (
               <div className="bg-[#0d1526] border border-[#a892ff]/40 rounded-lg p-4">
                 <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-2">
                   {t('tft.builderUnitItems')}
+                  <span className="ml-1 text-[#5a6a80] normal-case tracking-normal">
+                    ({selectedTeam === 'own' ? t('tft.builderOwn') : t('tft.builderOpponent')})
+                  </span>
                 </div>
                 <div className="flex items-center gap-2 mb-3">
                   {(() => {
@@ -628,12 +733,11 @@ export default function TftBuilderPage() {
               </div>
             )}
 
-            {/* Active traits */}
             <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-4">
               <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">
                 {t('tft.builderTraits')}
               </div>
-              {placements.length === 0 ? (
+              {ownPlacements.length === 0 ? (
                 <div className="text-[#7a8aa0] text-xs">—</div>
               ) : (
                 <div className="space-y-2">
@@ -684,7 +788,6 @@ export default function TftBuilderPage() {
               )}
             </div>
 
-            {/* My comps */}
             {savedComps.length > 0 && (
               <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-4">
                 <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">
@@ -699,7 +802,7 @@ export default function TftBuilderPage() {
                         title={c.name}
                       >
                         {c.name}
-                        <span className="text-[#5a6a80] ml-1.5">({c.placements.length})</span>
+                        <span className="text-[#5a6a80] ml-1.5">({c.placements.length + (c.oppPlacements?.length || 0)})</span>
                       </button>
                       <button
                         onClick={() => deleteSaved(c.id)}

@@ -53,14 +53,28 @@ function costColorOf(cost: number) {
   return cost === 1 ? '#9aa6b2' : cost === 2 ? '#3a8' : cost === 3 ? '#3a8ddc' : cost === 4 ? '#c39bff' : '#e0c75a';
 }
 
-// Pro-relevant tempo signal. Fast-8 / Slow-roll / Balanced derived from
-// the average final level of players running the comp — gives the row a
-// at-a-glance „when do I roll" hint without forcing a click into detail.
-function tempoTag(avgLevel: number | null | undefined): { label: string; color: string } | null {
-  if (avgLevel == null) return null;
-  if (avgLevel >= 8.5) return { label: 'Fast 8', color: '#e0c75a' };
-  if (avgLevel <= 7.0) return { label: 'Slow', color: '#3a8ddc' };
-  return { label: 'Std', color: '#7a8aa0' };
+// Single primary descriptor per comp, like tactics.tools' "Items Dep / Fast 8
+// / Consistent / High WR". Priority order matters: tempo wins over difficulty,
+// win-rate wins over consistency. Pros want one quick label to recognise the
+// archetype, not a stack of competing tags.
+function descriptorTag(opts: {
+  avgLevel?: number | null;
+  top1Rate?: number | null;
+  top4Rate?: number | null;
+  carryCost?: number;
+  carryItemRate?: number;
+}): { label: string; color: string } | null {
+  const { avgLevel, top1Rate, top4Rate, carryCost, carryItemRate } = opts;
+  if (avgLevel != null) {
+    if (avgLevel >= 8.5) return { label: 'Fast 8', color: '#e0c75a' };
+    if (avgLevel <= 7.0) return { label: 'Reroll', color: '#3a8ddc' };
+  }
+  if (carryCost != null && carryCost >= 4 && (carryItemRate ?? 0) > 0.55) {
+    return { label: 'Items Dep', color: '#c39bff' };
+  }
+  if ((top1Rate ?? 0) > 0.18) return { label: 'High WR', color: '#3ecf8e' };
+  if ((top4Rate ?? 0) > 0.65) return { label: 'Consistent', color: '#3a8ddc' };
+  return null;
 }
 
 export default function CompRow({
@@ -94,7 +108,14 @@ export default function CompRow({
   const carryUrl = tftChampionTileUrl(assets, carry);
 
   const tier = tierBadge(comp.avgPlacement);
-  const tempo = tempoTag(comp.avgLevel);
+  const carryItemRate = carryByItems ? carryByItems.rate : 0;
+  const descriptor = descriptorTag({
+    avgLevel: comp.avgLevel,
+    top1Rate: comp.top1Rate,
+    top4Rate: comp.top4Rate,
+    carryCost: carry?.cost,
+    carryItemRate,
+  });
 
   return (
     <a
@@ -120,14 +141,16 @@ export default function CompRow({
             {traitVariant && <span className="text-[#a892ff]"> · {traitVariant}</span>}
             {' '}{parts?.level ?? ''} · {carry?.name || (carryCid ? prettyChar(carryCid) : '')}
           </div>
-          {tempo && (
+          {(descriptor || comp.avgLevel != null) && (
             <div className="flex items-center gap-1.5 mt-0.5 text-[10px] tabular-nums">
-              <span
-                className="px-1.5 py-[1px] rounded text-[10px] font-medium"
-                style={{ color: tempo.color, backgroundColor: `${tempo.color}1f`, border: `1px solid ${tempo.color}40` }}
-              >
-                {tempo.label}
-              </span>
+              {descriptor && (
+                <span
+                  className="px-1.5 py-[1px] rounded text-[10px] font-medium"
+                  style={{ color: descriptor.color, backgroundColor: `${descriptor.color}1f`, border: `1px solid ${descriptor.color}40` }}
+                >
+                  {descriptor.label}
+                </span>
+              )}
               {comp.avgLevel != null && (
                 <span className="text-[#7a8aa0]">Lvl Ø {comp.avgLevel.toFixed(1)}</span>
               )}

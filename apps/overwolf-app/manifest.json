@@ -1,0 +1,64 @@
+{
+  "manifest_version": 1,
+  "type": "WebApp",
+  "meta": {
+    "name": "metastats.gg Companion",
+    "version": "0.1.0",
+    "minimum-overwolf-version": "0.275.0",
+    "author": "metastats.gg",
+    "icon": "images/icon_256.png",
+    "icon_gray": "images/icon_256_gray.png",
+    "launcher_icon": "images/icon_256.ico",
+    "splash_image": "images/splash.png",
+    "description": "Aggregiert anonyme Position- und Comp-Daten aus deinen TFT-Spielen, um metastats.gg's Pro-Statistiken zu verbessern. Kein Display, keine Beratung — nur stille Hintergrund-Telemetrie."
+  },
+  "permissions": [
+    "GameInfo",
+    "Extensions"
+  ],
+  "data": {
+    "start_window": "background",
+    "windows": {
+      "background": {
+        "file": "windows/background.html",
+        "is_background_page": true,
+        "show_in_taskbar": false,
+        "transparent": true,
+        "clickthrough": true,
+        "resizable": false,
+        "size": { "width": 1, "height": 1 }
+      },
+      "desktop": {
+        "file": "windows/desktop.html",
+        "show_in_taskbar": true,
+        "transparent": false,
+        "resizable": true,
+        "size": { "width": 540, "height": 420 },
+        "min_size": { "width": 480, "height": 360 }
+      }
+    },
+    "game_targeting": {
+      "type": "dedicated",
+      "game_ids": [21570]
+    },
+    "game_events": [21570],
+    "launch_events": [
+      {
+        "event": "GameLaunch",
+        "tracked": true,
+        "event_data": {
+          "game_ids": [21570]
+        },
+        "start_minimized": true
+      }
+    ],
+    "externally_connectable": {
+      "matches": [
+        "https://metastats.gg/*",
+        "https://*.metastats.gg/*"
+      ]
+    },
+    "extra-objects": {},
+    "user_agent": "metastats-companion/0.1"
+  }
+}

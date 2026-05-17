@@ -1,0 +1,117 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #0e1525;
+  color: #fff;
+  padding: 20px;
+}
+
+header { margin-bottom: 16px; }
+
+h1 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.subtitle {
+  color: #a0b0c5;
+  font-size: 12px;
+}
+
+main { display: flex; flex-direction: column; gap: 12px; }
+
+.card {
+  background: #0d1526;
+  border: 1px solid #1e2a3a;
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+
+.card h2 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #a0b0c5;
+  margin-bottom: 8px;
+}
+
+.card ul {
+  list-style: none;
+  font-size: 12px;
+  color: #cfd6dc;
+}
+
+.card ul li {
+  padding: 3px 0 3px 18px;
+  position: relative;
+}
+
+.card ul li::before {
+  content: '•';
+  position: absolute;
+  left: 4px;
+  color: #7B61FF;
+}
+
+.status {
+  background: linear-gradient(135deg, #0d1526, #0e1830);
+  border: 1px solid #1e2a3a;
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.badge--idle { background: rgba(160, 176, 197, 0.18); color: #cfd6dc; }
+.badge--active { background: rgba(62, 207, 142, 0.18); color: #3ecf8e; }
+.badge--paused { background: rgba(228, 64, 64, 0.18); color: #e44040; }
+
+.status-text { font-size: 12px; color: #a0b0c5; }
+
+.actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.btn {
+  flex: 1;
+  min-width: 140px;
+  padding: 9px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn--primary {
+  background: #7B61FF;
+  color: #fff;
+}
+.btn--primary:hover { background: #9d80ff; }
+
+.btn--ghost {
+  background: transparent;
+  color: #a0b0c5;
+  border: 1px solid #1e2a3a;
+}
+.btn--ghost:hover { background: #141c2e; color: #fff; }
+
+footer {
+  margin-top: 12px;
+  text-align: center;
+}
+
+.version {
+  color: #5a6a80;
+  font-size: 10px;
+}

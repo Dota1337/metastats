@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <title>metastats.gg Companion</title>
+  <link rel="stylesheet" href="../css/desktop.css" />
+</head>
+<body>
+  <header>
+    <h1>metastats.gg Companion</h1>
+    <p class="subtitle">Stille Telemetrie für bessere TFT-Statistiken</p>
+  </header>
+
+  <main>
+    <section class="status" id="status">
+      <div class="badge badge--idle" id="status-badge">Wartet auf TFT-Spiel</div>
+      <p class="status-text" id="status-text">Starte ein TFT-Match, die App sammelt im Hintergrund anonyme Position- und Comp-Daten.</p>
+    </section>
+
+    <section class="card">
+      <h2>Was wir sammeln</h2>
+      <ul>
+        <li>Position deiner Einheiten auf dem Hex-Board (cell_N)</li>
+        <li>Position der Gegner-Einheiten in Lobby-Kämpfen (cell_N)</li>
+        <li>Match-ID, Region, deine Platzierung am Match-Ende</li>
+        <li>Welche Augments du gewählt hast — nur Statistik, nie angezeigt</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>Was wir NICHT tun</h2>
+      <ul>
+        <li>Keine Echtzeit-Beratung im Spiel</li>
+        <li>Kein Anzeigen von Augment-Empfehlungen (Riot ToS)</li>
+        <li>Kein Speicher-Lesen, kein Vanguard-Konflikt</li>
+        <li>Keine Personal-Daten an Dritte</li>
+      </ul>
+    </section>
+
+    <section class="card actions">
+      <a href="https://metastats.gg/tft" class="btn btn--primary" target="_blank">metastats.gg öffnen</a>
+      <button class="btn btn--ghost" id="toggle-pause">Pausieren</button>
+    </section>
+
+    <footer>
+      <p class="version">v<span id="version">0.1.0</span> · Game-ID 21570</p>
+    </footer>
+  </main>
+
+  <script src="../js/desktop.js"></script>
+</body>
+</html>

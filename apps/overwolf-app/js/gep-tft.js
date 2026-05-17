@@ -279,6 +279,23 @@ function attachListeners() {
   });
 }
 
+// Overwolf's "Launch" button calls the manifest's start_window — for us
+// that's this background window, which is invisible. Without explicit
+// help the user clicks Launch and sees nothing because the background
+// runs silently. Open the desktop window here so Launch always lands
+// the user on the UI; if it's already open Overwolf just restores it.
+function openDesktopWindow() {
+  if (typeof overwolf === 'undefined' || !overwolf.windows) return;
+  overwolf.windows.obtainDeclaredWindow('desktop', function (res) {
+    if (!res || res.status !== 'success' || !res.window) {
+      log('obtainDeclaredWindow(desktop) failed', res && res.error);
+      return;
+    }
+    overwolf.windows.restore(res.window.id, function () {});
+  });
+}
+
 attachListeners();
 setRequiredFeatures();
+openDesktopWindow();
 log('background listener armed');

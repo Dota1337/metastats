@@ -7,6 +7,7 @@ import {
   mergeJsonbCountArrays,
 } from '../../../lib/tft-supabase-reader';
 import { isExcludedItem, isExcludedUnit } from '../../../lib/tft-excluded';
+import { cachedJson } from '../../../lib/api-cache';
 
 interface ItemListRow {
   api_name: string;
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest) {
     if (!buckets) return NextResponse.json({ region, bucket, hasData: true, item: null });
     const data = buckets[bucket] || buckets.all || null;
     if (!data) return NextResponse.json({ region, bucket, hasData: true, item: null });
-    return NextResponse.json({
+    return cachedJson({
       region, bucket,
       set: stats.set, patch: stats.patch,
       hasData: true,
@@ -84,7 +85,7 @@ export async function GET(request: NextRequest) {
     items.sort((a, b) => (a.avgPlacement ?? 9) - (b.avgPlacement ?? 9));
 
     const patches = await getAvailablePatches();
-    return NextResponse.json({
+    return cachedJson({
       hasData: items.length > 0,
       filters: {
         region: filters.regionLabel,

@@ -5,6 +5,7 @@ import {
   getAvailablePatches,
   mergeJsonbCountArrays,
 } from '../../../lib/tft-supabase-reader';
+import { cachedJson } from '../../../lib/api-cache';
 
 // /api/tft/comps
 // List view: returns aggregated comp clusters that match the filter set.
@@ -103,7 +104,7 @@ export async function GET(request: NextRequest) {
       beats.sort((a, b) => b.aWinRate - a.aWinRate);
       losesTo.sort((a, b) => a.aWinRate - b.aWinRate);
 
-      return NextResponse.json({
+      return cachedJson({
         filters,
         hasData: true,
         comp: { ...comp, counters: { beats: beats.slice(0, 5), losesTo: losesTo.slice(0, 5) } },
@@ -111,7 +112,7 @@ export async function GET(request: NextRequest) {
     }
 
     const patches = await getAvailablePatches();
-    return NextResponse.json({
+    return cachedJson({
       hasData: dataComps.length > 0,
       filters: {
         region: filters.regionLabel,

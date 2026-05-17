@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { loadTftStats, normalizeBucket, bucketParticipants } from '../../../lib/tft-stats-loader';
 import { resolveFilters, callRpc, getAvailablePatches } from '../../../lib/tft-supabase-reader';
 import { isExcludedUnit } from '../../../lib/tft-excluded';
+import { cachedJson } from '../../../lib/api-cache';
 
 // /api/tft/units
 //   Filter params (Supabase-backed):
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
     const data = buckets[bucket] || buckets.all || null;
     if (!data) return NextResponse.json({ region, bucket, hasData: true, unit: null });
     const avgPlacement = data.games > 0 ? data.sumPlacement / data.games : null;
-    return NextResponse.json({
+    return cachedJson({
       region, bucket,
       set: stats.set, patch: stats.patch,
       hasData: true,
@@ -94,7 +95,7 @@ export async function GET(request: NextRequest) {
     units.sort((a, b) => (a.avgPlacement ?? 9) - (b.avgPlacement ?? 9));
 
     const patches = await getAvailablePatches();
-    return NextResponse.json({
+    return cachedJson({
       hasData: units.length > 0,
       filters: {
         region: filters.regionLabel,

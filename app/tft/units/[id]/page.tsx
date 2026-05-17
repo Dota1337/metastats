@@ -18,6 +18,14 @@ interface UnitDetail {
   topItemSets: { items: string[]; games: number; avgPlacement: number | null; top4Rate: number | null }[];
 }
 
+interface CompWithUnit {
+  slug: string;
+  clusterKey: string;
+  games: number;
+  avgPlacement: number | null;
+  top4Rate: number | null;
+}
+
 export default function TftUnitDetailPage() {
   const { t } = useI18n();
   const params = useParams();
@@ -28,6 +36,7 @@ export default function TftUnitDetailPage() {
   const [data, setData] = useState<UnitDetail | null | undefined>(undefined);
   const [hasData, setHasData] = useState<boolean | null>(null);
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
+  const [comps, setComps] = useState<CompWithUnit[]>([]);
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
   useEffect(() => {
@@ -35,6 +44,25 @@ export default function TftUnitDetailPage() {
       .then(r => r.json())
       .then(d => { setHasData(!!d.hasData); setData(d.unit || null); })
       .catch(() => { setHasData(false); setData(null); });
+    // Pull comps and filter client-side for ones containing this champion as
+    // a typical unit. Pro-Frage „in welchen Comps spielt der Champion?" auf
+    // der Detail-Seite ohne extra API surface.
+    fetch(`/api/tft/comps?region=euw1&bucket=${bucket}&days=3&patch=current&source=data`)
+      .then(r => r.json())
+      .then(d => {
+        const withUnit = (d.comps || [])
+          .filter((c: any) => (c.typicalUnits || []).some((u: any) => u.characterId === id))
+          .slice(0, 6)
+          .map((c: any) => ({
+            slug: c.slug,
+            clusterKey: c.clusterKey,
+            games: c.games,
+            avgPlacement: c.avgPlacement,
+            top4Rate: c.top4Rate,
+          }));
+        setComps(withUnit);
+      })
+      .catch(() => setComps([]));
   }, [bucket, id]);
 
   const champ = assets?.champions[id];
@@ -78,40 +106,85 @@ export default function TftUnitDetailPage() {
               <Stat label={t('tft.gamesShort')} value={data.games.toLocaleString('de-DE')} />
             </div>
 
-            {data.topItemSets.length > 0 && (
-              <Section title={t('tft.topBuilds')}>
-                <div className="space-y-2">
-                  {data.topItemSets.map((s, i) => (
-                    <div key={i} className="flex items-center gap-3 bg-[#141c2e] border border-[#1e2a3a] rounded p-3">
-                      <div className="flex gap-1.5">
-                        {s.items.map((it, j) => <ItemIcon key={j} apiName={it} assets={assets} />)}
-                      </div>
-                      <div className="flex-1" />
-                      <div className="text-right text-xs">
-                        <div className="text-white">Ø {s.avgPlacement?.toFixed(2) ?? '—'}</div>
-                        <div className="text-[#7a8aa0]">
-                          {s.top4Rate != null ? `${(s.top4Rate * 100).toFixed(0)}% T4` : ''} · {s.games} {t('tft.gamesShort')}
+            {/* Single-screen grid: Item-Sets, Single-Items, Comps with unit. */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {data.topItemSets.length > 0 && (
+                <Section title={t('tft.topBuilds')}>
+                  <div className="space-y-2">
+                    {data.topItemSets.slice(0, 5).map((s, i) => (
+                      <div key={i} className="flex items-center gap-3 bg-[#141c2e] border border-[#1e2a3a] rounded p-2.5">
+                        <div className="flex gap-1">
+                          {s.items.map((it, j) => <ItemIcon key={j} apiName={it} assets={assets} size={9} />)}
+                        </div>
+                        <div className="flex-1" />
+                        <div className="text-right text-[11px] leading-tight">
+                          <div className="text-white tabular-nums">Ø {s.avgPlacement?.toFixed(2) ?? '—'}</div>
+                          <div className="text-[#7a8aa0] tabular-nums">
+                            {s.top4Rate != null ? `${(s.top4Rate * 100).toFixed(0)}% T4` : ''}
+                            <span className="text-[#5a6a80]"> · {s.games}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </Section>
-            )}
+                    ))}
+                  </div>
+                </Section>
+              )}
 
-            {data.topItems.length > 0 && (
-              <Section title={t('tft.mostUsedItems')}>
-                <div className="flex flex-wrap gap-2">
-                  {data.topItems.map((it, i) => (
-                    <div key={i} className="flex flex-col items-center gap-1 bg-[#141c2e] border border-[#1e2a3a] rounded p-1.5 w-16">
-                      <ItemIcon apiName={it.item} assets={assets} size={9} />
-                      <div className="text-[10px] text-white">Ø {it.avgPlacement?.toFixed(1) ?? '—'}</div>
-                      <div className="text-[10px] text-[#7a8aa0]">{it.games} {t('tft.gamesShort')}</div>
-                    </div>
-                  ))}
-                </div>
-              </Section>
-            )}
+              {data.topItems.length > 0 && (
+                <Section title={t('tft.mostUsedItems')}>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {data.topItems.slice(0, 12).map((it, i) => (
+                      <div key={i} className="flex flex-col items-center gap-0.5 bg-[#141c2e] border border-[#1e2a3a] rounded p-1.5">
+                        <ItemIcon apiName={it.item} assets={assets} size={9} />
+                        <div className="text-[10px] text-white tabular-nums">Ø{it.avgPlacement?.toFixed(1) ?? '—'}</div>
+                        <div className="text-[9px] text-[#7a8aa0] tabular-nums">{it.games}</div>
+                      </div>
+                    ))}
+                  </div>
+                </Section>
+              )}
+
+              {comps.length > 0 && (
+                <Section title={t('tft.compsWithUnit')}>
+                  <div className="space-y-1.5">
+                    {comps.map(c => {
+                      const parts = parseClusterKey(c.clusterKey);
+                      const traitName = parts && assets?.traits[parts.trait]?.name
+                        ? assets.traits[parts.trait].name
+                        : parts ? prettyChar(parts.trait) : '';
+                      const variant = parts ? extractTraitVariant(parts.trait, traitName) : null;
+                      const carry = parts && assets ? assets.champions[parts.carry] : null;
+                      const carryUrl = tftChampionTileUrl(assets, carry);
+                      return (
+                        <a
+                          key={c.slug}
+                          href={`/tft/comps/${encodeURIComponent(c.slug)}?bucket=${bucket}&region=euw1`}
+                          className="flex items-center gap-2 bg-[#141c2e] border border-[#1e2a3a] rounded p-2 hover:border-[#7B61FF]/40 transition-colors"
+                        >
+                          {carryUrl && (
+                            <img src={carryUrl} alt="" className="w-8 h-8 rounded border border-[#c39bff]/60 object-cover flex-shrink-0" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="text-white text-[11px] font-medium truncate leading-tight">
+                              {traitName}
+                              {variant && <span className="text-[#a892ff]"> · {variant}</span>}
+                              {' '}{parts?.level ?? ''}
+                            </div>
+                            <div className="text-[10px] text-[#7a8aa0] truncate">
+                              {carry?.name || (parts ? prettyChar(parts.carry) : '')}
+                            </div>
+                          </div>
+                          <div className="text-right text-[11px] tabular-nums leading-tight">
+                            <div className="text-white">Ø {c.avgPlacement?.toFixed(2) ?? '—'}</div>
+                            <div className="text-[#7a8aa0]">{c.games}</div>
+                          </div>
+                        </a>
+                      );
+                    })}
+                  </div>
+                </Section>
+              )}
+            </div>
           </>
         )}
       </div>
@@ -147,3 +220,18 @@ function ItemIcon({ apiName, assets, size = 10 }: { apiName: string; assets: Tft
 }
 function prettyItem(s: string) { return s.replace(/^TFT\d*_Item_/, '').slice(0, 8); }
 function prettyChar(s: string) { return s.replace(/^TFT\d+_/, ''); }
+
+function parseClusterKey(key: string) {
+  const m = /^(.+)@(\d+)_(.+)$/.exec(key);
+  if (!m) return null;
+  return { trait: m[1], level: Number(m[2]), carry: m[3] };
+}
+
+function extractTraitVariant(traitApiName: string, traitDisplayName: string): string | null {
+  const stripped = traitApiName.replace(/^TFT\d+_/, '');
+  if (!stripped.includes('_')) return null;
+  const variant = stripped.split('_').slice(1).join(' ');
+  if (!variant) return null;
+  if (variant.toLowerCase() === traitDisplayName.toLowerCase()) return null;
+  return variant;
+}

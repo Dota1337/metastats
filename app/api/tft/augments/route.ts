@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { resolveFilters, callRpc, getAvailablePatches } from '../../../lib/tft-supabase-reader';
+import { cachedJson } from '../../../lib/api-cache';
 
 interface AugmentRow {
   api_name: string;
@@ -38,7 +39,7 @@ export async function GET(request: NextRequest) {
     augments.sort((a, b) => (a.avgPlacement ?? 9) - (b.avgPlacement ?? 9));
 
     const patches = await getAvailablePatches();
-    return NextResponse.json({
+    return cachedJson({
       hasData: augments.length > 0,
       filters: {
         region: filters.regionLabel,

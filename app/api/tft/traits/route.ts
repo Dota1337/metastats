@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { resolveFilters, callRpc, getAvailablePatches } from '../../../lib/tft-supabase-reader';
+import { cachedJson } from '../../../lib/api-cache';
 
 interface TraitRow {
   name: string;
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
     traits.sort((a, b) => (a.avgPlacement ?? 9) - (b.avgPlacement ?? 9));
 
     const patches = await getAvailablePatches();
-    return NextResponse.json({
+    return cachedJson({
       hasData: traits.length > 0,
       filters: {
         region: filters.regionLabel,

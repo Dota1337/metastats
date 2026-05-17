@@ -51,15 +51,15 @@
     },
     "game_targeting": {
       "type": "dedicated",
-      "game_ids": [21570]
+      "game_ids": [5426, 21570]
     },
-    "game_events": [21570],
+    "game_events": [5426, 21570],
     "launch_events": [
       {
         "event": "GameLaunch",
         "tracked": true,
         "event_data": {
-          "game_ids": [21570]
+          "game_ids": [5426, 21570]
         },
         "start_minimized": true
       }

@@ -24,6 +24,28 @@ const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const APP_SECRET = process.env.OVERWOLF_APP_SECRET || '';
 const TIMESTAMP_WINDOW_MS = 5 * 60 * 1000;
 
+// The companion app runs inside Overwolf's CEF as
+// overwolf-extension://<extension-id>. Each install gets a different
+// extension-id (dev-unpacked vs store-signed), so reflect the request
+// origin instead of hardcoding one — combined with the HMAC + timestamp
+// check, this is safe.
+function corsHeaders(origin: string | null): Record<string, string> {
+  return {
+    'Access-Control-Allow-Origin': origin || '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Companion-Signature, X-Companion-Timestamp',
+    'Access-Control-Max-Age': '86400',
+    Vary: 'Origin',
+  };
+}
+
+export function OPTIONS(request: NextRequest) {
+  return new Response(null, {
+    status: 204,
+    headers: corsHeaders(request.headers.get('origin')),
+  });
+}
+
 function verifySignature(body: string, providedHex: string): boolean {
   if (!APP_SECRET || !providedHex) return false;
   let expectedBuf: Buffer;
@@ -85,8 +107,12 @@ function normaliseObservation(raw: Observation): null | {
 }
 
 export async function POST(request: NextRequest) {
+  const cors = corsHeaders(request.headers.get('origin'));
+  const reply = (data: unknown, status: number) =>
+    NextResponse.json(data, { status, headers: cors });
+
   if (!SUPA_KEY) {
-    return NextResponse.json({ error: 'service unavailable' }, { status: 503 });
+    return reply({ error: 'service unavailable' }, 503);
   }
 
   // Read body once as raw text so we can HMAC the exact bytes the client
@@ -101,10 +127,10 @@ export async function POST(request: NextRequest) {
   if (APP_SECRET) {
     const ts = Number(tsHeader);
     if (!Number.isFinite(ts) || Math.abs(Date.now() - ts) > TIMESTAMP_WINDOW_MS) {
-      return NextResponse.json({ error: 'timestamp outside window' }, { status: 401 });
+      return reply({ error: 'timestamp outside window' }, 401);
     }
     if (!verifySignature(rawBody, sigHeader)) {
-      return NextResponse.json({ error: 'bad signature' }, { status: 401 });
+      return reply({ error: 'bad signature' }, 401);
     }
   }
 
@@ -112,21 +138,21 @@ export async function POST(request: NextRequest) {
   try {
     body = JSON.parse(rawBody);
   } catch {
-    return NextResponse.json({ error: 'invalid json' }, { status: 400 });
+    return reply({ error: 'invalid json' }, 400);
   }
 
   if (!isString(body.matchId, 80)) {
-    return NextResponse.json({ error: 'matchId required' }, { status: 400 });
+    return reply({ error: 'matchId required' }, 400);
   }
   if (body.region != null && !VALID_REGIONS.has(String(body.region).toLowerCase())) {
-    return NextResponse.json({ error: 'invalid region' }, { status: 400 });
+    return reply({ error: 'invalid region' }, 400);
   }
 
   const observations = Array.isArray(body.observations)
     ? body.observations.slice(0, MAX_OBSERVATIONS_PER_PAYLOAD)
     : [];
   if (observations.length === 0) {
-    return NextResponse.json({ error: 'no observations' }, { status: 400 });
+    return reply({ error: 'no observations' }, 400);
   }
 
   const observerPuuid = isString(body.ownPuuid, 100) ? body.ownPuuid : null;
@@ -154,7 +180,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (rows.length === 0) {
-    return NextResponse.json({ error: 'no valid observations' }, { status: 400 });
+    return reply({ error: 'no valid observations' }, 400);
   }
 
   const sb = createClient(SUPA_URL, SUPA_KEY, { auth: { persistSession: false } });
@@ -166,12 +192,8 @@ export async function POST(request: NextRequest) {
     });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return reply({ error: error.message }, 500);
   }
 
-  // Augments are accepted but not yet persisted — schema is below the
-  // position-observations MVP and we don't want to block submit success
-  // on it. Once the augment table exists we'll write here too.
-
-  return NextResponse.json({ ok: true, accepted: rows.length });
+  return reply({ ok: true, accepted: rows.length }, 200);
 }

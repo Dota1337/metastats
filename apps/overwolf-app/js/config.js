@@ -11,5 +11,7 @@
 
 window.METASTATS_CONFIG = {
   appSecret: 'b1fb7ccb494629968f7f23cf4619de60bcca00abd9edaf01ec2104058966308e',
-  apiBase: 'https://metastats.gg',
+  // Use canonical hostname — apex 307-redirects to www and CORS
+  // preflight requests must not be redirected.
+  apiBase: 'https://www.metastats.gg',
 };

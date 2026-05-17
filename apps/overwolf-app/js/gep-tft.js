@@ -17,7 +17,14 @@
 // This is a silent background-only telemetry app. The desktop window only
 // offers a kill-switch + a link back to metastats.gg.
 
-const TFT_GAME_ID = 21570;
+// TFT auf Desktop läuft im League-Client → Overwolf reportet das als
+// Game-ID 5426 (League of Legends). 21570 existiert in der Spieleliste
+// für TFT Mobile / Standalone — als Fallback drin lassen. Beide IDs
+// triggern setRequiredFeatures; die TFT-spezifischen GEP-Features
+// (board, roster) feuern nur in einem TFT-Match, daher braucht es im
+// Submit-Pfad keinen zusätzlichen Mode-Filter — leere observations →
+// kein Submit.
+const TFT_GAME_IDS = [5426, 21570];
 const CONFIG = (typeof window !== 'undefined' && window.METASTATS_CONFIG) || {};
 const SUBMIT_URL = (CONFIG.apiBase || 'https://metastats.gg') + '/api/tft/positions/submit';
 const APP_SECRET = CONFIG.appSecret || '';
@@ -212,12 +219,28 @@ function onGepInfoUpdate(info) {
   var data = info.info && info.info[f];
   if (!data) return;
 
+  if (f !== 'board') {
+    try { log('GEP info', f, JSON.stringify(data).slice(0, 200)); }
+    catch (e) { log('GEP info', f, '[unstringifiable]'); }
+  }
+
   if (f === 'match_info') {
     if (data.match_id) matchState.matchId = String(data.match_id);
     if (data.region) matchState.region = String(data.region).toLowerCase();
     if (data.opponent_info) matchState.opponentInfo = data.opponent_info;
     var rosterFromMatch = extractRoster(data);
     if (rosterFromMatch.length > 0) pushRosterToLobby(rosterFromMatch);
+    // TFT delivers placement as a match_info update keyed 'match_outcome',
+    // not as a separate match_end event. Treat it as a submit-trigger.
+    var outcome = data.match_outcome || data.matchOutcome || data.placement;
+    if (outcome != null) {
+      var place = Number(outcome) || null;
+      if (place && !matchState.placement) {
+        matchState.placement = place;
+        log('match_outcome via match_info', place);
+        submit();
+      }
+    }
   }
   if (f === 'roster') {
     var roster = extractRoster(data);
@@ -246,13 +269,22 @@ function onGepEvent(events) {
   if (!events || !events.events) return;
   for (var i = 0; i < events.events.length; i++) {
     var ev = events.events[i];
-    if (ev.name === 'match_start') {
+    try {
+      log('GEP event', ev.name, typeof ev.data === 'string' ? ev.data.slice(0, 100) : ev.data);
+    } catch (e) { log('GEP event', ev && ev.name); }
+    if (ev.name === 'match_start' || ev.name === 'matchStart') {
       reset();
       log('match_start');
     }
-    if (ev.name === 'match_end' || ev.name === 'matchEnd') {
+    if (
+      ev.name === 'match_end' ||
+      ev.name === 'matchEnd' ||
+      ev.name === 'match_outcome' ||
+      ev.name === 'gameEnd' ||
+      ev.name === 'tft_match_end'
+    ) {
       try { matchState.placement = Number(ev.data || 0) || null; } catch (e) { /* no-op */ }
-      log('match_end placement', matchState.placement);
+      log('match_end placement', matchState.placement, 'via', ev.name);
       submit();
     }
     if (ev.name === 'augment_picked' && ev.data) {
@@ -274,8 +306,17 @@ function attachListeners() {
   overwolf.games.events.onInfoUpdates2.addListener(onGepInfoUpdate);
   overwolf.games.events.onNewEvents.addListener(onGepEvent);
   overwolf.games.onGameInfoUpdated.addListener(function (info) {
-    var inTft = info && info.gameInfo && info.gameInfo.gameId === TFT_GAME_ID && info.gameInfo.isRunning;
-    if (inTft) setRequiredFeatures();
+    var gid = info && info.gameInfo && info.gameInfo.gameId;
+    var running = info && info.gameInfo && info.gameInfo.isRunning;
+    log('onGameInfoUpdated gid=' + gid + ' running=' + running);
+    if (running && TFT_GAME_IDS.indexOf(gid) >= 0) {
+      setRequiredFeatures();
+    } else if (!running && matchState.observations.length > 0) {
+      // Safety-net: if we never saw an explicit match-end event but the
+      // game went away, flush whatever we have so the work isn't lost.
+      log('game not running — flushing observations as safety net');
+      submit();
+    }
   });
 }
 

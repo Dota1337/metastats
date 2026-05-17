@@ -106,6 +106,105 @@ main { display: flex; flex-direction: column; gap: 12px; }
 }
 .btn--ghost:hover { background: #141c2e; color: #fff; }
 
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.card-head h2 { margin-bottom: 0; }
+
+.btn-icon {
+  background: transparent;
+  border: 1px solid #1e2a3a;
+  color: #a0b0c5;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  line-height: 1;
+}
+.btn-icon:hover { color: #fff; background: #141c2e; }
+
+.live-comps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.live-comps-placeholder {
+  color: #7a8aa0;
+  font-size: 11px;
+  padding: 4px 0;
+}
+
+.live-comp {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 6px;
+  background: #0a0e1a;
+  border: 1px solid #1e2a3a;
+  border-radius: 4px;
+  font-size: 11px;
+  text-decoration: none;
+  color: inherit;
+}
+.live-comp:hover { border-color: rgba(123, 97, 255, 0.4); }
+.live-comp-rank {
+  width: 18px;
+  text-align: right;
+  color: #7a8aa0;
+  font-variant-numeric: tabular-nums;
+}
+.live-comp-tier {
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  font-weight: bold;
+  font-size: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.live-comp-name {
+  flex: 1;
+  min-width: 0;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.live-comp-avg {
+  font-variant-numeric: tabular-nums;
+  color: #cfd6dc;
+  font-weight: 500;
+}
+
+.rolls {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+.rolls th,
+.rolls td {
+  text-align: left;
+  padding: 4px 6px;
+  border-bottom: 1px solid #1e2a3a;
+}
+.rolls th {
+  color: #7a8aa0;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 9px;
+  font-weight: 500;
+}
+.rolls td:nth-child(1) { color: #a892ff; font-weight: 500; font-variant-numeric: tabular-nums; width: 56px; }
+.rolls td:nth-child(2) { color: #fff; width: 60px; font-variant-numeric: tabular-nums; }
+.rolls td:nth-child(3) { color: #a0b0c5; }
+.rolls tr:last-child td { border-bottom: none; }
+
 footer {
   margin-top: 12px;
   text-align: center;

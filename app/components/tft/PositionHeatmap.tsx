@@ -28,25 +28,29 @@ interface CellShare { cell: number; observations: number; share: number }
 interface Props {
   units: { characterId: string; count?: number | unknown }[];
   carryCharacterId?: string;
+  clusterKey?: string;
   assets: TftAssetsBundle | null;
 }
 
-export default function PositionHeatmap({ units, carryCharacterId, assets }: Props) {
+export default function PositionHeatmap({ units, carryCharacterId, clusterKey, assets }: Props) {
   const [data, setData] = useState<Record<string, CellShare[]>>({});
   const [hasData, setHasData] = useState<boolean>(false);
+  const [source, setSource] = useState<'comp' | 'global'>('global');
 
   useEffect(() => {
     const ids = units.map(u => u.characterId).filter(Boolean);
     if (ids.length === 0) return;
-    fetch(`/api/tft/positions/by-units?units=${ids.join(',')}`)
+    const qs = `units=${ids.join(',')}${clusterKey ? `&cluster=${encodeURIComponent(clusterKey)}` : ''}`;
+    fetch(`/api/tft/positions/by-units?${qs}`)
       .then(r => r.ok ? r.json() : null)
       .then(j => {
         if (!j) return;
         setHasData(!!j.hasData);
         setData(j.units || {});
+        setSource(j.source || 'global');
       })
       .catch(() => {});
-  }, [units]);
+  }, [units, clusterKey]);
 
   if (!hasData) return null;
 
@@ -59,7 +63,12 @@ export default function PositionHeatmap({ units, carryCharacterId, assets }: Pro
 
   return (
     <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
-      <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">Positionierung</h2>
+      <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">
+        Positionierung
+        {source === 'global' && (
+          <span className="text-[#5a6a80] text-[10px] normal-case tracking-normal ml-2">(global)</span>
+        )}
+      </h2>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
         {ordered.map(u => {
           const cells = data[u.characterId];

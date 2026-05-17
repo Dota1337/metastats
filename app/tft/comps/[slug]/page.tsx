@@ -249,6 +249,7 @@ export default function TftCompDetailPage() {
               <PositionHeatmap
                 units={comp.typicalUnits}
                 carryCharacterId={parseClusterKey(comp.clusterKey)?.carry}
+                clusterKey={comp.clusterKey}
                 assets={assets}
               />
             )}

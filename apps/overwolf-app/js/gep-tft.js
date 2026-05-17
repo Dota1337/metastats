@@ -27,6 +27,7 @@ const REQUIRED_FEATURES = [
   'match_info',
   'board',         // own board_pieces with cell positions
   'live_client_data',
+  'roster',        // opponent list for the lobby-scout window
 ];
 
 // State during a match. Cleared at match-end.
@@ -158,6 +159,53 @@ function submit() {
   });
 }
 
+// Parses the roster payload Overwolf delivers when match_info or the
+// dedicated `roster` feature updates. Both `data.roster` (raw object or
+// JSON string) and `data.players` shapes appear depending on GEP version
+// — we handle both, then forward to the lobby window.
+function extractRoster(data) {
+  if (!data) return [];
+  var raw = data.roster ?? data.players ?? null;
+  if (!raw) return [];
+  if (typeof raw === 'string') {
+    try { raw = JSON.parse(raw); } catch (e) { return []; }
+  }
+  var list = Array.isArray(raw) ? raw : Object.values(raw);
+  var out = [];
+  for (var i = 0; i < list.length; i++) {
+    var p = list[i];
+    if (!p) continue;
+    var name = String(p.gameName || p.summoner_name || p.name || '').trim();
+    if (!name) continue;
+    // Skip ourselves so the lobby window only shows the 7 opponents.
+    if (matchState.ownPuuid && p.puuid && p.puuid === matchState.ownPuuid) continue;
+    var tag = String(p.tagLine || p.tag_line || '').trim();
+    if (name.indexOf('#') > 0 && !tag) {
+      var parts = name.split('#');
+      name = parts[0];
+      tag = parts.slice(1).join('#');
+    }
+    out.push({
+      gameName: name,
+      tagLine: tag,
+      region: (matchState.region || 'euw1').toLowerCase(),
+    });
+  }
+  return out;
+}
+
+function pushRosterToLobby(roster) {
+  if (!roster || roster.length === 0) return;
+  if (typeof overwolf === 'undefined' || !overwolf.windows) return;
+  // Open the in-game window if it isn't already, then send the roster.
+  overwolf.windows.obtainDeclaredWindow('lobby', function (res) {
+    if (!res || res.status !== 'success') return;
+    overwolf.windows.restore(res.window.id, function () {
+      overwolf.windows.sendMessage(res.window.id, 'lobby:roster', { roster: roster }, function () {});
+    });
+  });
+}
+
 function onGepInfoUpdate(info) {
   if (!info || !info.feature) return;
   var f = info.feature;
@@ -168,6 +216,12 @@ function onGepInfoUpdate(info) {
     if (data.match_id) matchState.matchId = String(data.match_id);
     if (data.region) matchState.region = String(data.region).toLowerCase();
     if (data.opponent_info) matchState.opponentInfo = data.opponent_info;
+    var rosterFromMatch = extractRoster(data);
+    if (rosterFromMatch.length > 0) pushRosterToLobby(rosterFromMatch);
+  }
+  if (f === 'roster') {
+    var roster = extractRoster(data);
+    if (roster.length > 0) pushRosterToLobby(roster);
   }
   if (f === 'live_client_data') {
     if (data.active_player) {

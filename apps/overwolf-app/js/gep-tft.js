@@ -26,7 +26,10 @@
 // kein Submit.
 const TFT_GAME_IDS = [5426, 21570];
 const CONFIG = (typeof window !== 'undefined' && window.METASTATS_CONFIG) || {};
-const SUBMIT_URL = (CONFIG.apiBase || 'https://metastats.gg') + '/api/tft/positions/submit';
+// Fallback uses the canonical hostname directly. The apex 307-redirects
+// to www and CORS preflights must not be redirected — so even if
+// config.js fails to load, the URL we hit must still be www.
+const SUBMIT_URL = (CONFIG.apiBase || 'https://www.metastats.gg') + '/api/tft/positions/submit';
 const APP_SECRET = CONFIG.appSecret || '';
 
 const REQUIRED_FEATURES = [
@@ -46,6 +49,8 @@ const matchState = {
   opponentInfo: null,
   augmentsPicked: [],   // augment-api-names picked across the match
   placement: null,
+  currentRound: 0,      // updated from match_info / game_data
+  gameTimeAtSeed: null, // first observed gameTime (seconds), for delta-rounds
 };
 
 function log() {
@@ -60,6 +65,20 @@ function reset() {
   matchState.opponentInfo = null;
   matchState.augmentsPicked = [];
   matchState.placement = null;
+  matchState.currentRound = 0;
+  matchState.gameTimeAtSeed = null;
+}
+
+// Convert game-time (seconds since match start) to a TFT round index.
+// Stages of TFT are roughly:
+//   Stage 1: ~80s (carousel + 3 rounds)
+//   Stage 2 onwards: ~5 rounds × 40s ≈ 200s
+// Empirical mapping: round ≈ floor(gameTime / 35) is close enough for
+// aggregating positions by stage. Doesn't need to match Riot's exact
+// indexing — we just need a monotonically increasing bucket.
+function gameTimeToRound(gameTimeSec) {
+  if (!Number.isFinite(gameTimeSec) || gameTimeSec < 0) return 0;
+  return Math.max(0, Math.min(60, Math.floor(gameTimeSec / 35)));
 }
 
 function parseBoardPieces(raw) {
@@ -129,6 +148,15 @@ function submit() {
     reset();
     return;
   }
+  // Overwolf's TFT GEP does not expose Riot's match_id (it's only
+  // available post-game via Match-V1). Synthesise a stable client-side
+  // id so the server's unique index can still dedupe re-submits, and so
+  // the matchId-required validator passes.
+  if (!matchState.matchId) {
+    matchState.matchId = 'LIVE_' + Date.now() + '_' + (matchState.ownPuuid || 'anon').slice(0, 8);
+    log('synth matchId', matchState.matchId);
+  }
+  if (!matchState.region) matchState.region = 'euw1';
   var timestamp = Date.now();
   var payload = {
     matchId: matchState.matchId,
@@ -158,7 +186,9 @@ function submit() {
       body: body,
     });
   }).then(function (res) {
-    log('submit', res.status, payload.observationCount, 'observations');
+    return res.text().then(function (body) {
+      log('submit', res.status, payload.observationCount, 'observations', 'body=', body.slice(0, 200));
+    });
   }).catch(function (e) {
     log('submit failed', e && e.message);
   }).then(function () {
@@ -228,6 +258,19 @@ function onGepInfoUpdate(info) {
     if (data.match_id) matchState.matchId = String(data.match_id);
     if (data.region) matchState.region = String(data.region).toLowerCase();
     if (data.opponent_info) matchState.opponentInfo = data.opponent_info;
+    // Round info — try several known Overwolf keys. Each may be a
+    // JSON-string or plain object.
+    var roundCandidate = data.round_info || data.matchState || data.roundData;
+    if (roundCandidate) {
+      var rc = roundCandidate;
+      if (typeof rc === 'string') { try { rc = JSON.parse(rc); } catch (e) { rc = null; } }
+      if (rc) {
+        var r = rc.round != null ? rc.round : (rc.roundIndex != null ? rc.roundIndex : null);
+        var s = rc.stage != null ? rc.stage : null;
+        if (r != null && s != null) matchState.currentRound = Number(s) * 10 + Number(r);
+        else if (r != null) matchState.currentRound = Number(r);
+      }
+    }
     var rosterFromMatch = extractRoster(data);
     if (rosterFromMatch.length > 0) pushRosterToLobby(rosterFromMatch);
     // TFT delivers placement as a match_info update keyed 'match_outcome',
@@ -247,15 +290,43 @@ function onGepInfoUpdate(info) {
     if (roster.length > 0) pushRosterToLobby(roster);
   }
   if (f === 'live_client_data') {
-    if (data.active_player) {
-      matchState.ownPuuid = String(
-        (data.active_player && data.active_player.summoner_id) || matchState.ownPuuid || ''
-      );
+    // Overwolf delivers nested data inside live_client_data as
+    // JSON-stringified blobs, not as plain objects. Parse before using.
+    var ap = data.active_player;
+    if (typeof ap === 'string') { try { ap = JSON.parse(ap); } catch (e) { ap = null; } }
+    if (ap) {
+      // Prefer riotId (gameName#tagLine) as a stable handle since
+      // summoner_id isn't exposed; falls back to summonerName.
+      var handle = ap.summoner_id || ap.riotId || ap.summonerName ||
+        (ap.riotIdGameName && ap.riotIdTagLine ? ap.riotIdGameName + '#' + ap.riotIdTagLine : null);
+      if (handle) matchState.ownPuuid = String(handle).slice(0, 100);
+      if (ap.riotIdTagLine) {
+        var tag = String(ap.riotIdTagLine).toLowerCase();
+        // EUW → euw1, NA → na1, KR → kr, EUNE → eun1, …
+        var TAG_TO_REGION = { euw: 'euw1', eune: 'eun1', na: 'na1', kr: 'kr', br: 'br1', lan: 'la1', las: 'la2', oce: 'oc1', jp: 'jp1', tr: 'tr1', ru: 'ru' };
+        if (TAG_TO_REGION[tag]) matchState.region = TAG_TO_REGION[tag];
+      }
+    }
+    var gd = data.game_data;
+    if (typeof gd === 'string') { try { gd = JSON.parse(gd); } catch (e) { gd = null; } }
+    if (gd && gd.gameTime != null) {
+      if (!matchState.matchId) {
+        // Seed a stable id from the game-start moment (round-down by 60s
+        // so jitter in game_data updates doesn't change the id mid-match).
+        var seed = Math.floor((Date.now() - gd.gameTime * 1000) / 60000) * 60000;
+        matchState.matchId = 'LIVE_' + seed + '_' + (matchState.ownPuuid || 'anon').slice(0, 8);
+      }
+      // Use gameTime as a fallback round-tracker if match_info doesn't
+      // supply round_info. Only update if it's strictly larger so we
+      // don't move backwards when packets arrive out of order.
+      var fallbackRound = gameTimeToRound(gd.gameTime);
+      if (fallbackRound > matchState.currentRound) {
+        matchState.currentRound = fallbackRound;
+      }
     }
   }
   if (f === 'board') {
-    var lastObs = matchState.observations[matchState.observations.length - 1];
-    var round = Number(lastObs && lastObs.round) || 0;
+    var round = matchState.currentRound || 0;
     if (data.board_pieces) {
       recordBoard(round, 'own', parseBoardPieces(data.board_pieces));
     }
@@ -306,18 +377,36 @@ function attachListeners() {
   overwolf.games.events.onInfoUpdates2.addListener(onGepInfoUpdate);
   overwolf.games.events.onNewEvents.addListener(onGepEvent);
   overwolf.games.onGameInfoUpdated.addListener(function (info) {
-    var gid = info && info.gameInfo && info.gameInfo.gameId;
-    var running = info && info.gameInfo && info.gameInfo.isRunning;
-    log('onGameInfoUpdated gid=' + gid + ' running=' + running);
-    if (running && TFT_GAME_IDS.indexOf(gid) >= 0) {
+    var gi = (info && info.gameInfo) || {};
+    // Overwolf has shipped the property under several names across
+    // versions: id, classId, gameId. Probe all three.
+    var gid = gi.id || gi.classId || gi.gameId;
+    var running = gi.isRunning;
+    log('onGameInfoUpdated id=' + gi.id + ' classId=' + gi.classId + ' running=' + running + ' title=' + (gi.title || ''));
+    // The manifest's `game_ids` array is what Overwolf uses to decide
+    // whether to fire this listener at all — so by the time we get
+    // here, the running game is one we declared. Re-arm features on
+    // every transition into running, regardless of which id property
+    // is populated. This avoids brittle id-matching.
+    if (running) {
       setRequiredFeatures();
-    } else if (!running && matchState.observations.length > 0) {
-      // Safety-net: if we never saw an explicit match-end event but the
-      // game went away, flush whatever we have so the work isn't lost.
+    } else if (running === false && matchState.observations.length > 0) {
       log('game not running — flushing observations as safety net');
       submit();
     }
   });
+
+  // Initial probe: onGameInfoUpdated only fires on state changes. If
+  // the app was reloaded mid-game, query the current running game so
+  // we can arm features immediately rather than waiting for the next
+  // transition.
+  if (overwolf.games && overwolf.games.getRunningGameInfo) {
+    overwolf.games.getRunningGameInfo(function (res) {
+      if (!res) return;
+      log('getRunningGameInfo id=' + res.id + ' classId=' + res.classId + ' running=' + res.isRunning + ' title=' + (res.title || ''));
+      if (res.isRunning) setRequiredFeatures();
+    });
+  }
 }
 
 // Overwolf's "Launch" button calls the manifest's start_window — for us
@@ -336,7 +425,12 @@ function openDesktopWindow() {
   });
 }
 
+var COMPANION_BUILD = '2026-05-18T01:00-round-tracking-v6';
+
 attachListeners();
 setRequiredFeatures();
 openDesktopWindow();
+log('build', COMPANION_BUILD);
+log('SUBMIT_URL', SUBMIT_URL);
+log('CONFIG.apiBase', CONFIG && CONFIG.apiBase);
 log('background listener armed');

@@ -1,0 +1,14 @@
+[Unit]
+Description=Companion backfill — every 10 minutes
+
+[Timer]
+# Riot's match-v1 indexes a finished TFT match within ~30s-2min, so a
+# 10-minute polling cadence keeps placements fresh without hammering
+# the prod key bucket. Each run is idempotent — already-resolved rows
+# are skipped via the match_id=like.LIVE_* filter.
+OnBootSec=2min
+OnUnitActiveSec=10min
+RandomizedDelaySec=30
+
+[Install]
+WantedBy=timers.target

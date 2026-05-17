@@ -1,0 +1,19 @@
+[Unit]
+Description=metastats — backfill placement + Riot match-id into companion observations
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/metastats-crawler
+EnvironmentFile=/etc/metastats-crawler/env
+# Single observer with a handful of LIVE_ rows finishes in seconds. Cap
+# generously to absorb burst usage (many users → many account-v1 calls).
+TimeoutStartSec=10m
+ExecStart=/usr/bin/node scripts/backfill-companion-placements.mjs
+StandardOutput=journal
+StandardError=journal
+Nice=15
+
+[Install]
+WantedBy=multi-user.target

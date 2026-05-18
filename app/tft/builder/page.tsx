@@ -454,90 +454,97 @@ export default function TftBuilderPage() {
             </button>
           )}
         </div>
-        {/* Hex math: each cell is 1/7.5 of the board width so that the
-            odd-row half-cell offset on the LEFT also creates an equal
-            half-cell overflow on the RIGHT — preserves the staggered
-            silhouette on both sides like the in-game board. */}
-        <div className="mx-auto" style={{ maxWidth: '420px' }}>
-          {Array.from({ length: ROWS }).map((_, rowIdx) => (
-            <div
-              key={rowIdx}
-              className="flex"
-              style={{
-                paddingLeft: rowIdx % 2 === 1 ? 'calc(100% / 15)' : '0',
-              }}
-            >
-              {Array.from({ length: COLS }).map((__, colIdx) => {
-                const cell = rowIdx * COLS + colIdx;
-                const p = byCellMap.get(cell);
-                const isSelected = selectedTeam === team && selectedCell === cell;
-                const champ: any = p && assets?.champions[p.characterId];
-                const url = champ ? tftChampionTileUrl(assets, champ) : null;
-                const cost = champ?.cost ?? 1;
-                const borderColor = isSelected
-                  ? '#a892ff'
-                  : p
-                    ? costColorOf(cost)
-                    : pickerChar
-                      ? '#7B61FF55'
-                      : '#1e2a3a';
-                return (
-                  <div
-                    key={cell}
-                    className="relative flex-none"
-                    style={{
-                      width: 'calc(200% / 15)',  // = 1/7.5 of board width
-                      aspectRatio: '1 / 1.1547',
-                      padding: '2px',
-                    }}
-                  >
-                    {/* outer border layer */}
-                    <div
-                      className="absolute inset-0"
-                      style={{
-                        clipPath: HEX_CLIP,
-                        backgroundColor: borderColor,
-                        opacity: !p && !isSelected ? 0.6 : 1,
-                      }}
-                    />
-                    {/* inner content */}
-                    <button
-                      draggable={!!p}
-                      onClick={() => onCellClick(team, cell)}
-                      onContextMenu={e => onCellContextMenu(e, team, cell)}
-                      onDragStart={p ? (e => onDragStartBoard(e, team, cell)) : undefined}
-                      onDragOver={onDragOver}
-                      onDrop={e => onDropCell(e, team, cell)}
-                      className="absolute overflow-hidden transition-all duration-150 cursor-pointer"
-                      style={{
-                        top: '4px', left: '4px', right: '4px', bottom: '4px',
-                        clipPath: HEX_CLIP,
-                        backgroundColor: '#0a0e1a',
-                      }}
-                      title={p ? `${champ?.name || p.characterId}` : ''}
-                    >
-                      {url && (
-                        <img src={url} alt={champ?.name || ''} className="w-full h-full object-cover pointer-events-none" />
-                      )}
-                      {p && p.items.length > 0 && (
-                        <div className="absolute bottom-0 left-0 right-0 flex gap-0.5 justify-center pb-0.5 pointer-events-none">
-                          {p.items.map((iid) => {
-                            const item = assets?.items[iid];
-                            const iurl = tftIconUrl(assets, item?.icon);
-                            return (
-                              <div key={iid} className="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-sm overflow-hidden border border-black/70 bg-[#0a0e1a]">
-                                {iurl && <img src={iurl} alt="" className="w-full h-full object-cover" />}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          ))}
+        {/* Hex math: 7 cells per row, odd rows shifted by half-cell to the
+            RIGHT. To get the staggered silhouette on both sides (like the
+            in-game board), each cell is sized as 1/7.5 of the container
+            width — that way odd rows extend exactly half a cell past the
+            right edge while even rows leave that same half-cell gap.
+            Position absolutely on the container (NOT inside row-flex) so
+            cell widths stay identical regardless of row offset. */}
+        <div
+          className="relative mx-auto"
+          style={{
+            maxWidth: '420px',
+            width: '100%',
+            aspectRatio: `${7.5} / ${ROWS * 1.1547}`,
+          }}
+        >
+          {Array.from({ length: ROWS * COLS }).map((_, cellIdx) => {
+            const rowIdx = Math.floor(cellIdx / COLS);
+            const colIdx = cellIdx % COLS;
+            const offset = rowIdx % 2 === 1 ? 0.5 : 0;
+            const leftPct = ((colIdx + offset) / 7.5) * 100;
+            const topPct = (rowIdx / ROWS) * 100;
+            const cell = cellIdx;
+            const p = byCellMap.get(cell);
+            const isSelected = selectedTeam === team && selectedCell === cell;
+            const champ: any = p && assets?.champions[p.characterId];
+            const url = champ ? tftChampionTileUrl(assets, champ) : null;
+            const cost = champ?.cost ?? 1;
+            const borderColor = isSelected
+              ? '#a892ff'
+              : p
+                ? costColorOf(cost)
+                : pickerChar
+                  ? '#7B61FF55'
+                  : '#1e2a3a';
+            return (
+              <div
+                key={cell}
+                className="absolute"
+                style={{
+                  left: `${leftPct}%`,
+                  top: `${topPct}%`,
+                  width: `${100 / 7.5}%`,
+                  height: `${100 / ROWS}%`,
+                  padding: '2px',
+                }}
+              >
+                {/* outer border layer */}
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    clipPath: HEX_CLIP,
+                    backgroundColor: borderColor,
+                    opacity: !p && !isSelected ? 0.6 : 1,
+                  }}
+                />
+                {/* inner content */}
+                <button
+                  draggable={!!p}
+                  onClick={() => onCellClick(team, cell)}
+                  onContextMenu={e => onCellContextMenu(e, team, cell)}
+                  onDragStart={p ? (e => onDragStartBoard(e, team, cell)) : undefined}
+                  onDragOver={onDragOver}
+                  onDrop={e => onDropCell(e, team, cell)}
+                  className="absolute overflow-hidden transition-all duration-150 cursor-pointer"
+                  style={{
+                    top: '3px', left: '3px', right: '3px', bottom: '3px',
+                    clipPath: HEX_CLIP,
+                    backgroundColor: '#0a0e1a',
+                  }}
+                  title={p ? `${champ?.name || p.characterId}` : ''}
+                >
+                  {url && (
+                    <img src={url} alt={champ?.name || ''} className="w-full h-full object-cover pointer-events-none" />
+                  )}
+                  {p && p.items.length > 0 && (
+                    <div className="absolute bottom-0 left-0 right-0 flex gap-0.5 justify-center pb-0.5 pointer-events-none">
+                      {p.items.map((iid) => {
+                        const item = assets?.items[iid];
+                        const iurl = tftIconUrl(assets, item?.icon);
+                        return (
+                          <div key={iid} className="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-sm overflow-hidden border border-black/70 bg-[#0a0e1a]">
+                            {iurl && <img src={iurl} alt="" className="w-full h-full object-cover" />}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </button>
+              </div>
+            );
+          })}
         </div>
       </div>
     );

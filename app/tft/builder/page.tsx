@@ -461,7 +461,6 @@ export default function TftBuilderPage() {
               className="flex"
               style={{
                 paddingLeft: rowIdx % 2 === 1 ? 'calc((100% / 7) / 2)' : '0',
-                marginTop: rowIdx === 0 ? 0 : '-7%',
               }}
             >
               {Array.from({ length: COLS }).map((__, colIdx) => {

@@ -454,13 +454,17 @@ export default function TftBuilderPage() {
             </button>
           )}
         </div>
+        {/* Hex math: each cell is 1/7.5 of the board width so that the
+            odd-row half-cell offset on the LEFT also creates an equal
+            half-cell overflow on the RIGHT — preserves the staggered
+            silhouette on both sides like the in-game board. */}
         <div className="mx-auto" style={{ maxWidth: '420px' }}>
           {Array.from({ length: ROWS }).map((_, rowIdx) => (
             <div
               key={rowIdx}
               className="flex"
               style={{
-                paddingLeft: rowIdx % 2 === 1 ? 'calc((100% / 7) / 2)' : '0',
+                paddingLeft: rowIdx % 2 === 1 ? 'calc(100% / 15)' : '0',
               }}
             >
               {Array.from({ length: COLS }).map((__, colIdx) => {
@@ -480,9 +484,9 @@ export default function TftBuilderPage() {
                 return (
                   <div
                     key={cell}
-                    className="relative"
+                    className="relative flex-none"
                     style={{
-                      width: 'calc(100% / 7)',
+                      width: 'calc(200% / 15)',  // = 1/7.5 of board width
                       aspectRatio: '1 / 1.1547',
                       padding: '2px',
                     }}

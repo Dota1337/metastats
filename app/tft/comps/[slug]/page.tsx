@@ -284,37 +284,6 @@ export default function TftCompDetailPage() {
               </section>
             )}
 
-            {/* Counters from KG */}
-            {comp.counters && (comp.counters.beats?.length > 0 || comp.counters.losesTo?.length > 0) && (
-              <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <h3 className="text-green-400 text-xs uppercase tracking-widest mb-2">{t('tft.comp.strongAgainst')}</h3>
-                  <div className="space-y-1.5">
-                    {(comp.counters.beats || []).length === 0 && <div className="text-[#7a8aa0] text-xs">{t('tft.comp.noSignificantData')}</div>}
-                    {(comp.counters.beats || []).map((c: any, i: number) => (
-                      <a key={i} href={`/tft/comps/${encodeURIComponent(c.b)}?bucket=${bucket}`}
-                         className="flex items-center justify-between bg-[#0d1526] border border-[#1e2a3a] rounded px-3 py-2 hover:border-green-500/40">
-                        <span className="text-white text-xs truncate">{prettyComp(c.b)}</span>
-                        <span className="text-green-400 text-xs">{Math.round(c.aWinRate * 100)}% · {c.games} {t('tft.gamesShort')}</span>
-                      </a>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <h3 className="text-red-400 text-xs uppercase tracking-widest mb-2">{t('tft.comp.weakAgainst')}</h3>
-                  <div className="space-y-1.5">
-                    {(comp.counters.losesTo || []).length === 0 && <div className="text-[#7a8aa0] text-xs">{t('tft.comp.noSignificantData')}</div>}
-                    {(comp.counters.losesTo || []).map((c: any, i: number) => (
-                      <a key={i} href={`/tft/comps/${encodeURIComponent(c.a)}?bucket=${bucket}`}
-                         className="flex items-center justify-between bg-[#0d1526] border border-[#1e2a3a] rounded px-3 py-2 hover:border-red-500/40">
-                        <span className="text-white text-xs truncate">{prettyComp(c.a)}</span>
-                        <span className="text-red-400 text-xs">{Math.round(c.aWinRate * 100)}% · {c.games} {t('tft.gamesShort')}</span>
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
           </>
         )}
       </div>

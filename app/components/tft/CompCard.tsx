@@ -106,7 +106,7 @@ export default function CompCard({
                 </a>
               ) : traitName}
               {traitVariant && <span className="text-[#a892ff]"> · {traitVariant}</span>}
-              {' '}{parts?.level ?? ''} · {carryCid ? (
+              {' · '}{carryCid ? (
                 <a
                   href={`/tft/units/${encodeURIComponent(carryCid)}`}
                   onClick={e => e.stopPropagation()}

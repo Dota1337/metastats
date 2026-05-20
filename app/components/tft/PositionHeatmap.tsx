@@ -8,14 +8,18 @@ import { tftChampionTileUrl } from '../../lib/tft-cdragon';
 // mini 4×7 hex grid per typical unit, with the cells the unit is most
 // often placed on highlighted by frequency.
 //
-// TFT board layout assumed (subject to refinement once observation
-// volume tells us the exact cell-id mapping Overwolf uses):
-//   Row 0 (front) cells 0–6
-//   Row 1         cells 7–13
-//   Row 2         cells 14–20
-//   Row 3 (back)  cells 21–27
-// Hex offset every other row, kept here as a CSS grid with translateX for
-// odd rows so the visual matches the in-game board.
+// TFT board layout — matches the in-game player POV:
+//   data row 0 (back)  cells 0–6   → visual BOTTOM row
+//   data row 1         cells 7–13
+//   data row 2         cells 14–20
+//   data row 3 (front) cells 21–27 → visual TOP row
+// Rows are rendered top-down with data-row 3 first, so the frontline
+// appears at the top of the heatmap, exactly like the player sees their
+// own board in-game.
+//
+// Hex stagger: odd data-rows (1, 3) shift half a cell to the right —
+// after flipping, this lands on visual rows 0 and 2 (top and middle),
+// matching the in-game board silhouette.
 //
 // If the API returns hasData=false (no observations yet) the component
 // renders nothing — empty state stays mute, no info text.
@@ -98,14 +102,18 @@ export default function PositionHeatmap({ units, carryCharacterId, clusterKey, a
                 </div>
               </div>
               <div className="flex flex-col gap-0.5">
-                {Array.from({ length: ROWS }).map((_, rowIdx) => (
+                {Array.from({ length: ROWS }).map((_, visualRowIdx) => {
+                  // Flip vertically so data-row 3 (frontline) renders at the
+                  // visual top — player POV matches in-game board.
+                  const dataRowIdx = ROWS - 1 - visualRowIdx;
+                  return (
                   <div
-                    key={rowIdx}
+                    key={visualRowIdx}
                     className="flex gap-0.5"
-                    style={{ paddingLeft: rowIdx % 2 === 1 ? '8px' : '0' }}
+                    style={{ paddingLeft: dataRowIdx % 2 === 1 ? '8px' : '0' }}
                   >
                     {Array.from({ length: COLS }).map((__, colIdx) => {
-                      const cellIdx = rowIdx * COLS + colIdx;
+                      const cellIdx = dataRowIdx * COLS + colIdx;
                       const share = shareByCell.get(cellIdx) ?? 0;
                       const intensity = maxShare > 0 ? share / maxShare : 0;
                       return (
@@ -123,7 +131,8 @@ export default function PositionHeatmap({ units, carryCharacterId, clusterKey, a
                       );
                     })}
                   </div>
-                ))}
+                );
+                })}
               </div>
             </div>
           );

@@ -8,11 +8,16 @@ import { useI18n } from '../../lib/i18n';
 import { loadTftAssets, tftChampionTileUrl, tftIconUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
 
 // Visual comp-builder with TFT-standard 4×7 pointy-top hex board.
-// Row layout (cell indices):
-//   Row 0 (back)  cells 0..6
-//   Row 1         cells 7..13   (shifted right by half-cell)
-//   Row 2         cells 14..20
-//   Row 3 (front) cells 21..27  (shifted right)
+// Row layout (cell indices) — matches in-game player POV:
+//   Row 0 (back)  cells 0..6                            → visual BOTTOM row
+//   Row 1         cells 7..13   (shifted right by half) → 2nd from bottom
+//   Row 2         cells 14..20                          → 2nd from top
+//   Row 3 (front) cells 21..27 (shifted right)          → visual TOP row
+//
+// Cells are positioned absolutely; we flip the topPct so data-row 3
+// (frontline) lands at the top of the board — what the player sees in-game.
+// Stagger stays bound to the data-row index, so odd data-rows (1, 3) keep
+// their half-cell right-shift, matching the in-game silhouette.
 //
 // Two boards (own + optional opponent) share the same cell coordinate
 // space; placements are kept in separate arrays. URL ?b= encodes both,
@@ -474,7 +479,9 @@ export default function TftBuilderPage() {
             const colIdx = cellIdx % COLS;
             const offset = rowIdx % 2 === 1 ? 0.5 : 0;
             const leftPct = ((colIdx + offset) / 7.5) * 100;
-            const topPct = (rowIdx / ROWS) * 100;
+            // Flip vertically: data-row 3 (frontline) renders at the top of
+            // the board — player POV matches in-game.
+            const topPct = ((ROWS - 1 - rowIdx) / ROWS) * 100;
             const cell = cellIdx;
             const p = byCellMap.get(cell);
             const isSelected = selectedTeam === team && selectedCell === cell;

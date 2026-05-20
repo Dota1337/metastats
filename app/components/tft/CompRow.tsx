@@ -140,7 +140,7 @@ export default function CompRow({
           <div className="text-white font-medium truncate">
             {traitName}
             {traitVariant && <span className="text-[#a892ff]"> · {traitVariant}</span>}
-            {' '}{parts?.level ?? ''} · {carry?.name || (carryCid ? prettyChar(carryCid) : '')}
+            {' · '}{carry?.name || (carryCid ? prettyChar(carryCid) : '')}
           </div>
           {(descriptor || comp.avgLevel != null) && (
             <div className="flex items-center gap-1.5 mt-0.5 text-[10px] tabular-nums">
@@ -196,7 +196,7 @@ export default function CompRow({
           <BookmarkButton
             type="comp"
             bookmarkKey={comp.slug}
-            label={`${traitName}${traitVariant ? ` · ${traitVariant}` : ''}${parts?.level ? ` ${parts.level}` : ''}${carry?.name ? ` · ${carry.name}` : ''}`}
+            label={`${traitName}${traitVariant ? ` · ${traitVariant}` : ''}${carry?.name ? ` · ${carry.name}` : ''}`}
             size="sm"
           />
         </div>

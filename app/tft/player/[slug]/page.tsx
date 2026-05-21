@@ -13,6 +13,15 @@ import BookmarkButton from '../../../components/BookmarkButton';
 import { useI18n } from '../../../lib/i18n';
 import { loadProLookup, lookupPro, type ProPlayer } from '../../../lib/pro-players';
 
+interface TftTournamentResult {
+  tournament: string;
+  date: string;
+  place: string | null;
+  prize_usd: number;
+  tier: string | null;
+  page: string | null;
+}
+
 interface TftProRecord {
   pro_name: string;
   real_name: string | null;
@@ -22,6 +31,9 @@ interface TftProRecord {
   source: string;
   twitch_handle: string | null;
   twitter_handle: string | null;
+  image_url?: string | null;
+  total_earnings_usd?: number | null;
+  tournament_results?: TftTournamentResult[] | null;
 }
 import { loadTftSetMeta } from '../../../lib/tft-dd-assets';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
@@ -312,6 +324,8 @@ export default function TftPlayerPage() {
                 <RankBlock ranked={data.ranked} seasonRanks={playerStats?.seasonRanks} />
               </div>
             </div>
+
+            {tftProInfo && <TournamentHistory pro={tftProInfo} />}
 
             <MarketValueHero fullName={fullName} region={region} lang={lang} />
 
@@ -656,6 +670,79 @@ function ProBadge({ pro }: { pro: ProPlayer }) {
     >
       ✓ Verified Pro
     </span>
+  );
+}
+
+function formatProEarnings(v: number | null | undefined): string {
+  if (!v || v <= 0) return '—';
+  if (v >= 1_000_000) return '$' + (v / 1_000_000).toFixed(1) + 'M';
+  if (v >= 1_000) return '$' + Math.round(v / 1_000) + 'k';
+  return '$' + v.toLocaleString('en-US');
+}
+
+function placeColor(place: string | null): string {
+  if (!place) return '#a0b0c5';
+  const p = place.toLowerCase();
+  if (p.startsWith('1')) return '#f0c040';
+  if (p.startsWith('2')) return '#c0c0c0';
+  if (p.startsWith('3')) return '#cd7f32';
+  return '#a0b0c5';
+}
+
+function TournamentHistory({ pro }: { pro: TftProRecord }) {
+  const [open, setOpen] = useState(false);
+  const all = pro.tournament_results || [];
+  if (all.length === 0) return null;
+  const visible = open ? all : all.slice(0, 10);
+  const wins = all.filter((r) => String(r.place || '').startsWith('1')).length;
+  return (
+    <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-3">
+      <div className="flex items-baseline justify-between mb-3">
+        <h2 className="text-white text-sm font-medium uppercase tracking-widest">Tournament History</h2>
+        <div className="text-xs text-[#a0b0c5]">
+          <span className="text-white">{all.length}</span> Turniere ·{' '}
+          <span className="text-[#f0c040]">{wins}× 1.</span> ·{' '}
+          <span className="text-[#c89b3c]">{formatProEarnings(pro.total_earnings_usd)}</span>
+        </div>
+      </div>
+      <div className="hidden sm:grid grid-cols-[6rem_3rem_1fr_5rem_6rem] gap-2 text-[10px] uppercase text-[#7a8aa0] pb-2 border-b border-[#1e2a3a]">
+        <div>Datum</div>
+        <div>Platz</div>
+        <div>Turnier</div>
+        <div>Tier</div>
+        <div className="text-right">Preisgeld</div>
+      </div>
+      {visible.map((r, i) => (
+        <div
+          key={i}
+          className="grid grid-cols-[6rem_3rem_1fr_5rem_6rem] gap-2 py-1.5 text-xs items-center border-b border-[#1e2a3a]/40 last:border-b-0"
+        >
+          <div className="text-[#7a8aa0] tabular-nums">{r.date?.slice(0, 10) || '—'}</div>
+          <div className="font-medium tabular-nums" style={{ color: placeColor(r.place) }}>
+            {r.place || '—'}
+          </div>
+          <div className="min-w-0 truncate text-white">
+            {r.page ? (
+              <a href={r.page} target="_blank" rel="noreferrer" className="hover:text-[#a892ff]">
+                {r.tournament}
+              </a>
+            ) : (
+              r.tournament
+            )}
+          </div>
+          <div className="text-[#7a8aa0] hidden sm:block">{r.tier || '—'}</div>
+          <div className="text-[#c89b3c] text-right tabular-nums">{formatProEarnings(r.prize_usd)}</div>
+        </div>
+      ))}
+      {all.length > 10 && (
+        <button
+          onClick={() => setOpen(!open)}
+          className="mt-2 w-full text-center text-xs text-[#a892ff] hover:text-white"
+        >
+          {open ? 'Weniger anzeigen' : `+ ${all.length - 10} weitere anzeigen`}
+        </button>
+      )}
+    </div>
   );
 }
 

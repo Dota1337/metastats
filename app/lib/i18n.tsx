@@ -1585,6 +1585,15 @@ const translations = {
   'tft.pros.col.region': t6(
     'Region', 'Region', '\uC9C0\uC5ED', '\u533A\u57DF', 'Regi\u00F3n', 'R\u00E9gion'
   ),
+  'tft.pros.col.earnings': t6(
+    'Preisgeld', 'Earnings', '\uC0C1\uAE08', '\u5956\u91D1', 'Premios', 'Gains'
+  ),
+  'tft.pros.tournaments': t6(
+    'Turniere', 'Tournaments', '\uD1A0\uB108\uBA3C\uD2B8', '\u9526\u6807\u8D5B', 'Torneos', 'Tournois'
+  ),
+  'tft.pros.totalEarnings': t6(
+    'Gesamtes Preisgeld', 'Total Earnings', '\uCD1D \uC0C1\uAE08', '\u603B\u5956\u91D1', 'Premios Totales', 'Gains Totaux'
+  ),
 
   // \u2500 Pro-Picks Filter Toggle \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   'tft.filter.proOnly': t6(

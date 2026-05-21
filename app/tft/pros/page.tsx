@@ -10,6 +10,15 @@ import { useI18n } from '../../lib/i18n';
 // we already have for the player on the TFT side (match cache, marketvalue
 // snapshot) so each row also links to their full profile.
 
+interface TournamentResult {
+  tournament: string;
+  date: string;
+  place: string | null;
+  prize_usd: number;
+  tier: string | null;
+  page: string | null;
+}
+
 interface Pro {
   puuid: string;
   pro_name: string;
@@ -22,6 +31,16 @@ interface Pro {
   source: 'liquipedia' | 'manual';
   twitch_handle: string | null;
   twitter_handle: string | null;
+  image_url: string | null;
+  total_earnings_usd: number | null;
+  tournament_results: TournamentResult[] | null;
+}
+
+function formatEarnings(v: number | null): string {
+  if (!v || v <= 0) return '—';
+  if (v >= 1_000_000) return '$' + (v / 1_000_000).toFixed(1) + 'M';
+  if (v >= 1_000) return '$' + Math.round(v / 1_000) + 'k';
+  return '$' + v.toLocaleString('en-US');
 }
 
 interface Response {
@@ -166,11 +185,13 @@ export default function TftProsPage() {
 
         {!loading && filteredPros.length > 0 && (
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
-            <div className="grid grid-cols-[1fr_8rem_7rem_6rem_3rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#7a8aa0] bg-[#0a0e1a]">
+            <div className="grid grid-cols-[2.5rem_1fr_7rem_6rem_4rem_5rem_3rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#7a8aa0] bg-[#0a0e1a]">
+              <div></div>
               <div>{t('tft.pros.col.player')}</div>
               <div className="hidden sm:block">{t('tft.pros.col.team')}</div>
               <div className="hidden sm:block">{t('tft.pros.col.role')}</div>
               <div className="hidden sm:block">{t('tft.pros.col.region')}</div>
+              <div className="text-right">{t('tft.pros.col.earnings')}</div>
               <div></div>
             </div>
             {filteredPros.map(p => {
@@ -180,8 +201,23 @@ export default function TftProsPage() {
                 <a
                   key={p.puuid}
                   href={`/tft/player/${slug}?region=${p.region}`}
-                  className="grid grid-cols-[1fr_8rem_7rem_6rem_3rem] gap-2 px-4 py-2 items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]"
+                  className="grid grid-cols-[2.5rem_1fr_7rem_6rem_4rem_5rem_3rem] gap-2 px-4 py-2 items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]"
                 >
+                  <div className="flex-shrink-0">
+                    {p.image_url ? (
+                      <img
+                        src={p.image_url}
+                        alt=""
+                        loading="lazy"
+                        className="w-8 h-8 rounded-full object-cover bg-[#141c2e] border border-[#1e2a3a]"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-[#141c2e] border border-[#1e2a3a] flex items-center justify-center text-[#7a8aa0] text-[10px]">
+                        {p.pro_name.slice(0, 2).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
                   <div className="min-w-0">
                     <div className="text-white font-medium truncate">{p.pro_name}</div>
                     {(p.real_name || p.country) && (
@@ -193,6 +229,7 @@ export default function TftProsPage() {
                   <div className="hidden sm:block text-[#a0b0c5] truncate">{p.team || '—'}</div>
                   <div className="hidden sm:block text-[#a0b0c5] truncate">{p.role || '—'}</div>
                   <div className="hidden sm:block text-[#a0b0c5]">{REGION_LABELS[p.region] || p.region.toUpperCase()}</div>
+                  <div className="text-[#c89b3c] text-right tabular-nums">{formatEarnings(p.total_earnings_usd)}</div>
                   <div className="flex items-center justify-end gap-1.5 text-[#7a8aa0]">
                     {p.twitch_handle && (
                       <a

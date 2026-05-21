@@ -8,7 +8,7 @@ import GameSwitcher from './GameSwitcher';
 interface NavProps {
   active?:
     | 'search' | 'leaderboard' | 'champions' | 'marktwert' | 'analyse' | 'teams' | 'ligen'
-    | 'units' | 'items' | 'augments' | 'comps' | 'traits' | 'tournaments' | 'saved' | 'builder';
+    | 'units' | 'items' | 'augments' | 'comps' | 'traits' | 'tournaments' | 'saved' | 'builder' | 'pros';
 }
 
 interface SearchResult {

@@ -96,7 +96,7 @@ export default function TftProsPage() {
 
   return (
     <main className="min-h-screen bg-[#0e1525]">
-      <Nav active="search" />
+      <Nav active="pros" />
       <TftHero pageTitle={t('tft.pros.title')} />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-2 pb-6">
         <p className="text-[#a0b0c5] text-sm mb-4">{t('tft.pros.subtitle')}</p>

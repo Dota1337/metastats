@@ -26,6 +26,7 @@ const translations = {
   'nav.marketvalue': t6('Marktwerte', 'Market Values', '\uC2DC\uC7A5 \uAC00\uCE58', '\u5E02\u573A\u4EF7\u503C', 'Valor de Mercado', 'Valeur March\u00E9'),
   'nav.analyse': t6('Spielervergleich', 'Player Comparison', '\uC120\uC218 \uBE44\uAD50', '\u9009\u624B\u5BF9\u6BD4', 'Comparaci\u00F3n', 'Comparaison'),
   'nav.proTeams': t6('Pro Teams', 'Pro Teams', '\uD504\uB85C\uD300', '\u804C\u4E1A\u6218\u961F', 'Equipos Pro', '\u00C9quipes Pro'),
+  'nav.tftPros': t6('Pro-Spieler', 'Pro Player', '\uD504\uB85C \uC120\uC218', '\u804C\u4E1A\u9009\u624B', 'Jugadores Pro', 'Joueurs Pro'),
   'nav.leagues': t6('Ligen & Wettbewerbe', 'Leagues & Competitions', '\uB9AC\uADF8 & \uB300\uD68C', '\u8054\u8D5B & \u6BD4\u8D5B', 'Ligas & Competiciones', 'Ligues & Comp\u00E9titions'),
   'nav.searchPlaceholder': t6('Spieler / Champion...', 'Player / Champion...', '\uD50C\uB808\uC774\uC5B4 / \uCC54\uD53C\uC5B8...', '\u73A9\u5BB6 / \u82F1\u96C4...', 'Jugador / Campe\u00F3n...', 'Joueur / Champion...'),
   'nav.searchPlaceholderTft': t6('Spieler / Unit / Item...', 'Player / Unit / Item...', '\uD50C\uB808\uC774\uC5B4 / \uC720\uB2DB / \uC544\uC774\uD15C...', '\u73A9\u5BB6 / \u5355\u4F4D / \u88C5\u5907...', 'Jugador / Unidad / \u00CDtem...', 'Joueur / Unit\u00E9 / Objet...'),

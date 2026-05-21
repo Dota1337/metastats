@@ -35,22 +35,83 @@ function getTrophy(place) {
   return null;
 }
 
+const PAGE_SIZE = 500;
+const MAX_PAGES = 20;
+
+async function fetchHistoricalNames(teamName) {
+  // Walk the TeamRenames chain backwards: T1 -> SK Telecom T1 -> ...
+  const known = new Set([teamName]);
+  const queue = [teamName];
+  while (queue.length > 0) {
+    const current = queue.shift();
+    const params = new URLSearchParams({
+      tables: 'TeamRenames=TR',
+      fields: 'TR.OriginalName,TR.NewName',
+      where: `TR.NewName="${current.replace(/"/g, '\\"')}"`,
+      limit: '50',
+      format: 'json',
+    });
+    try {
+      const res = await fetch(`${CARGO_API}?${params}`, { headers: { 'User-Agent': 'metastats.gg' } });
+      if (!res.ok) continue;
+      const text = await res.text();
+      if (!text.startsWith('[')) continue;
+      const rows = JSON.parse(text);
+      for (const row of rows) {
+        const orig = row.OriginalName;
+        if (orig && !known.has(orig)) {
+          known.add(orig);
+          queue.push(orig);
+        }
+      }
+      await sleep(150);
+    } catch {}
+  }
+  return [...known];
+}
+
+async function fetchResultsForName(teamName) {
+  const all = [];
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const params = new URLSearchParams({
+      tables: 'TournamentResults=TR',
+      fields: 'TR.Event,TR.Place,TR.Date,TR.Prize,TR.PrizeUnit',
+      where: `TR.Team="${teamName.replace(/"/g, '\\"')}"`,
+      'order by': 'TR.Date DESC',
+      limit: String(PAGE_SIZE),
+      offset: String(page * PAGE_SIZE),
+      format: 'json',
+    });
+    try {
+      const res = await fetch(`${CARGO_API}?${params}`, { headers: { 'User-Agent': 'metastats.gg' } });
+      if (!res.ok) break;
+      const text = await res.text();
+      if (!text.startsWith('[')) break;
+      const batch = JSON.parse(text);
+      all.push(...batch);
+      if (batch.length < PAGE_SIZE) break;
+      await sleep(200);
+    } catch { break; }
+  }
+  return all;
+}
+
 async function fetchTeamResults(teamName) {
-  const params = new URLSearchParams({
-    tables: 'TournamentResults=TR',
-    fields: 'TR.Event,TR.Place,TR.Date,TR.Prize,TR.PrizeUnit',
-    where: `TR.Team="${teamName.replace(/"/g, '\\"')}"`,
-    'order by': 'TR.Date DESC',
-    limit: '100',
-    format: 'json',
-  });
-  try {
-    const res = await fetch(`${CARGO_API}?${params}`, { headers: { 'User-Agent': 'metastats.gg' } });
-    if (!res.ok) return [];
-    const text = await res.text();
-    if (!text.startsWith('[')) return [];
-    return JSON.parse(text);
-  } catch { return []; }
+  const names = await fetchHistoricalNames(teamName);
+  const seen = new Set();
+  const merged = [];
+  for (const name of names) {
+    const rows = await fetchResultsForName(name);
+    for (const r of rows) {
+      const key = `${r.Event || ''}|${r.Date || ''}|${r.Place || ''}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      merged.push(r);
+    }
+    await sleep(150);
+  }
+  merged.sort((a, b) => (b.Date || '').localeCompare(a.Date || ''));
+  return merged;
 }
 
 async function main() {

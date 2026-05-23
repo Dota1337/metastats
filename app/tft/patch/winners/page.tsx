@@ -49,21 +49,37 @@ export default function TftPatchWinnersPage() {
     return () => { cancelled = true; };
   }, [entity]);
 
+  // Compute max-delta across both lists for proportional bar widths.
+  const maxAbsDelta = Math.max(
+    1,
+    ...[...winners, ...losers].map(e => Math.abs(e.deltaAvgPlacement)),
+  );
+
   const renderRow = (e: DiffEntry, idx: number, isWinner: boolean) => {
     const display = renderEntity(e.key, entity, assets);
     const sign = e.deltaAvgPlacement < 0 ? '−' : '+';
+    const barColor = isWinner ? '#3ecf8e' : '#e44040';
+    const barWidth = (Math.abs(e.deltaAvgPlacement) / maxAbsDelta) * 100;
+    const pickRatePct = (e.currentPickRate * 100).toFixed(1);
     return (
-      <div key={e.key} className="flex items-center gap-2 bg-[#141c2e] border border-[#1e2a3a] rounded p-2.5">
-        <span className="text-[#7a8aa0] text-[10px] w-4 tabular-nums">#{idx + 1}</span>
-        {display.icon}
-        <div className="flex-1 min-w-0">
-          <div className="text-white text-[12px] truncate">{display.name}</div>
-          <div className="text-[#7a8aa0] text-[10px] tabular-nums">
-            Ø {e.previousAvgPlacement.toFixed(2)} → {e.currentAvgPlacement.toFixed(2)}
+      <div key={e.key} className="bg-[#141c2e] border border-[#1e2a3a] rounded p-2.5">
+        <div className="flex items-center gap-2">
+          <span className="text-[#7a8aa0] text-[10px] w-4 tabular-nums">#{idx + 1}</span>
+          {display.icon}
+          <div className="flex-1 min-w-0">
+            <div className="text-white text-[12px] truncate">{display.name}</div>
+            <div className="text-[#7a8aa0] text-[10px] tabular-nums">
+              Ø {e.previousAvgPlacement.toFixed(2)} → {e.currentAvgPlacement.toFixed(2)}
+              <span className="text-[#5a6a80]"> · {pickRatePct}% pick</span>
+            </div>
+          </div>
+          <div className="text-sm tabular-nums font-medium" style={{ color: barColor }}>
+            {sign}{Math.abs(e.deltaAvgPlacement).toFixed(2)}
           </div>
         </div>
-        <div className={`text-sm tabular-nums font-medium ${isWinner ? 'text-[#3ecf8e]' : 'text-[#e44040]'}`}>
-          {sign}{Math.abs(e.deltaAvgPlacement).toFixed(2)}
+        {/* Delta-bar: visualizes magnitude of avg-place swing */}
+        <div className="mt-1.5 h-1 bg-[#0d1526] rounded overflow-hidden">
+          <div className="h-full transition-all" style={{ width: `${barWidth.toFixed(0)}%`, backgroundColor: barColor }} />
         </div>
       </div>
     );

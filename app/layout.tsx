@@ -83,6 +83,28 @@ export default async function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col">
+        {/* JSON-LD: WebSite + SearchAction for sitelinks-style results */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'WebSite',
+            url: SITE_URL,
+            name: 'metastats.gg',
+            description: 'League of Legends & Teamfight Tactics meta analytics, market values, pro player tracking and patch-driven data depth.',
+            inLanguage: ['de', 'en', 'ko', 'zh-CN', 'es', 'fr'],
+            potentialAction: {
+              '@type': 'SearchAction',
+              target: { '@type': 'EntryPoint', urlTemplate: `${SITE_URL}/multi-search?q={search_term_string}` },
+              'query-input': 'required name=search_term_string',
+            },
+            publisher: {
+              '@type': 'Organization',
+              name: 'metastats.gg',
+              url: SITE_URL,
+            },
+          }) }}
+        />
         <I18nProvider initialLang={initialLang}>
           <PrototypeBanner />
           <SideDrawer />

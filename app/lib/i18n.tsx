@@ -96,6 +96,7 @@ const translations = {
   'tft.comp.skillCap.consistent': t6('Anf\u00E4ngerfreundlich', 'Beginner-friendly', '\uCD08\uBCF4\uC790 \uCE5C\uD654\uC801', '\u65B0\u624B\u53CB\u597D', 'Apta para principiantes', 'Adapt\u00E9 d\u00E9butants'),
   'tft.comp.levelTempo': t6('Level-Tempo', 'Level tempo', '\uB808\uBCA8 \uD15C\uD3EC', '\u7B49\u7EA7\u8282\u594F', 'Ritmo de nivel', 'Tempo de niveau'),
   'tft.itemSlotOrder': t6('Item-Build-Reihenfolge', 'Item build order', '\uC544\uC774\uD15C \uBE4C\uB4DC \uC21C\uC11C', '\u88C5\u5907\u51FA\u88C5\u987A\u5E8F', 'Orden de construcci\u00F3n', 'Ordre de construction'),
+  'tft.unitTimeline': t6('Patch-Verlauf', 'Patch timeline', '\uD328\uCE58 \uCD94\uC774', '\u7248\u672C\u8D70\u52BF', 'Cronolog\u00EDa de parches', '\u00C9volution par patch'),
   'tft.slotFirst': t6('Erster Slot', 'First slot', '\uCCAB \uBC88\uC9F8 \uC2AC\uB86F', '\u7B2C\u4E00\u4EF6\u88C5\u5907', 'Primer slot', 'Premier slot'),
   'tft.slotSecond': t6('Zweiter Slot', 'Second slot', '\uB450 \uBC88\uC9F8 \uC2AC\uB86F', '\u7B2C\u4E8C\u4EF6\u88C5\u5907', 'Segundo slot', 'Deuxi\u00E8me slot'),
   'tft.slotThird': t6('Dritter Slot', 'Third slot', '\uC138 \uBC88\uC9F8 \uC2AC\uB86F', '\u7B2C\u4E09\u4EF6\u88C5\u5907', 'Tercer slot', 'Troisi\u00E8me slot'),

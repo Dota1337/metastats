@@ -1,6 +1,10 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
+import {
+  ResponsiveContainer, LineChart, Line, XAxis, YAxis,
+  Tooltip as RechartsTooltip, ReferenceLine,
+} from 'recharts';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import TierFilter, { type TierBucket } from '../../../components/tft/TierFilter';
@@ -49,8 +53,16 @@ export default function TftUnitDetailPage() {
   const [hasData, setHasData] = useState<boolean | null>(null);
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
   const [comps, setComps] = useState<CompWithUnit[]>([]);
+  const [timeline, setTimeline] = useState<Array<{ patch: string; avgPlacement: number; top4Rate: number; pickRate: number | null; games: number }>>([]);
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
+  // Unit-Patch-Timeline (Sprint 5.2): avg_place across last 5 patches.
+  useEffect(() => {
+    fetch(`/api/tft/unit-history?characterId=${encodeURIComponent(id)}&bucket=${bucket}&patches=5`)
+      .then(r => r.ok ? r.json() : { timeline: [] })
+      .then(d => setTimeline(d.timeline || []))
+      .catch(() => setTimeline([]));
+  }, [id, bucket]);
   // Reset star-tier selector when switching units/buckets if the new snapshot
   // doesn't have per-tier data for the currently-selected tier.
   useEffect(() => {
@@ -320,6 +332,46 @@ export default function TftUnitDetailPage() {
                   </Section>
                 );
               })()}
+
+              {timeline.length >= 2 && (
+                <Section title={t('tft.unitTimeline')}>
+                  <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3" style={{ height: 180 }}>
+                    <ResponsiveContainer>
+                      <LineChart data={timeline} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
+                        <XAxis
+                          dataKey="patch"
+                          tick={{ fill: '#5a6a80', fontSize: 10 }}
+                          axisLine={{ stroke: '#1e2a3a' }}
+                          tickLine={false}
+                        />
+                        <YAxis
+                          domain={['dataMin - 0.2', 'dataMax + 0.2']}
+                          reversed
+                          tick={{ fill: '#5a6a80', fontSize: 10 }}
+                          axisLine={false}
+                          tickLine={false}
+                          width={28}
+                          tickFormatter={(v: number) => v.toFixed(2)}
+                        />
+                        <RechartsTooltip
+                          contentStyle={{ backgroundColor: '#0d1526', border: '1px solid #1e2a3a', borderRadius: 4, fontSize: 11 }}
+                          labelStyle={{ color: '#a0b0c5' }}
+                          formatter={(v: any): any => [Number(v).toFixed(2), t('tft.avgPlacement')]}
+                        />
+                        <ReferenceLine y={4.5} stroke="#5a6a80" strokeDasharray="3 3" strokeOpacity={0.4} />
+                        <Line
+                          type="monotone"
+                          dataKey="avgPlacement"
+                          stroke="#7B61FF"
+                          strokeWidth={2}
+                          dot={{ r: 3, fill: '#7B61FF' }}
+                          activeDot={{ r: 5, fill: '#a892ff' }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </Section>
+              )}
 
               {comps.length > 0 && (
                 <Section title={t('tft.compsWithUnit')}>

@@ -213,6 +213,24 @@ function ingest(map, raw) {
   if (k) map[k] = v;
 }
 
+// Strip Liquipedia template/wiki artifacts from a freeform field:
+//   - HTML comments: `<!--Leave this blank-->`
+//   - Wikilinks:     `[[Cloud9|Cloud9]]` → `Cloud9`, `[[Cloud9]]` → `Cloud9`
+//   - Template noise: `{{TeamPart|Cloud9}}` → `Cloud9` (last segment)
+//   - Trim and collapse whitespace; return null for empty
+function cleanWikiField(raw) {
+  if (!raw) return null;
+  let s = String(raw);
+  // Strip HTML comments
+  s = s.replace(/<!--[\s\S]*?-->/g, '');
+  // Resolve [[Link|Display]] → Display, [[Link]] → Link
+  s = s.replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, '$2').replace(/\[\[([^\]]+)\]\]/g, '$1');
+  // Drop {{Templates}} — keep last pipe-segment as a heuristic for org names
+  s = s.replace(/\{\{[^}]*\|([^|}]+)\}\}/g, '$1').replace(/\{\{[^}]+\}\}/g, '');
+  s = s.replace(/\s+/g, ' ').trim();
+  return s || null;
+}
+
 // Parse `lolchess=na/setsuko1-NA1` style fields into { region, riotId }.
 // Returns null if the field doesn't carry a recognizable region prefix.
 function parseLolchess(field) {
@@ -339,21 +357,28 @@ async function main() {
       const puuid = await resolvePuuid(accountSpec.region, accountSpec.gameName, accountSpec.tagLine);
       if (!puuid) { skipped++; continue; }
       resolved++;
+      // Clean team / role / country / socials: Liquipedia leaks HTML
+      // comments ("<!--Leave blank-->") and [[Wikilinks]] into raw fields.
+      // Fallback to team_history's most recent entry when `team=` is blank.
+      const cleanedTeam = cleanWikiField(info.team)
+        || cleanWikiField(info.team_history)
+        || cleanWikiField(info.team1)
+        || null;
       rows.push({
         puuid,
         pro_name: idField,
-        real_name: info.name || null,
+        real_name: cleanWikiField(info.name),
         region: accountSpec.region,
         riot_id: `${accountSpec.gameName}#${accountSpec.tagLine}`,
-        team: info.team || null,
-        role: info.role || 'Player',
-        country: info.country || null,
+        team: cleanedTeam,
+        role: cleanWikiField(info.role) || 'Player',
+        country: cleanWikiField(info.country) || cleanWikiField(info.nationality),
         source: 'liquipedia',
         source_page: title,
-        twitch_handle: info.twitch || null,
-        twitter_handle: info.twitter || null,
-        youtube_handle: info.youtube || null,
-        instagram_handle: info.instagram || null,
+        twitch_handle: cleanWikiField(info.twitch),
+        twitter_handle: cleanWikiField(info.twitter),
+        youtube_handle: cleanWikiField(info.youtube),
+        instagram_handle: cleanWikiField(info.instagram),
         tournament_results: [],
         last_validated_at: new Date().toISOString(),
       });

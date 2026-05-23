@@ -3,13 +3,14 @@ import { useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { useI18n, LANGUAGES } from '../lib/i18n';
 import { detectGameFromPath } from '../lib/games';
+import { useAuth } from '../lib/auth-context';
 import GameSwitcher from './GameSwitcher';
 
 interface NavProps {
   active?:
     | 'search' | 'leaderboard' | 'champions' | 'marktwert' | 'analyse' | 'teams' | 'ligen'
     | 'units' | 'items' | 'augments' | 'comps' | 'traits' | 'tournaments' | 'saved' | 'builder' | 'pros'
-    | 'onetricks' | 'patch' | 'community';
+    | 'onetricks' | 'patch' | 'community' | 'coach';
 }
 
 interface SearchResult {
@@ -21,10 +22,13 @@ interface SearchResult {
 
 export default function Nav({ active }: NavProps) {
   const { lang, setLang, t } = useI18n();
+  const { user, signOut } = useAuth();
   const pathname = usePathname() || '/';
   const game = detectGameFromPath(pathname);
   const [langOpen, setLangOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [champions, setChampions] = useState<{ id: string; name: string }[]>([]);
@@ -143,6 +147,7 @@ export default function Nav({ active }: NavProps) {
               <a href="/tft/compare" className={linkClass('analyse')}>{t('nav.analyse')}</a>
               <a href="/tft/builder" className={linkClass('builder')}>{t('tft.builderTitle')}</a>
               <a href="/tft/comps/community" className={linkClass('community')}>{t('nav.community')}</a>
+              <a href="/tft/coach" className={linkClass('coach')}>{t('nav.coach')}</a>
               <a href="/tft/saved" className={linkClass('saved')} title={t('tft.savedTitle')}>★</a>
             </>
           ) : (
@@ -209,6 +214,44 @@ export default function Nav({ active }: NavProps) {
                   </button>
                 ))}
               </div>
+            )}
+          </div>
+
+          {/* User menu / Login */}
+          <div className="relative" ref={userMenuRef}>
+            {user ? (
+              <>
+                <button
+                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  className="flex items-center gap-1.5 bg-[#141c2e] border border-[#2a3a50] rounded px-2 py-1 text-xs hover:border-[#7B61FF] transition-colors"
+                  title={user.email || ''}
+                >
+                  {user.avatarUrl ? (
+                    <img src={user.avatarUrl} alt="" className="w-5 h-5 rounded-full object-cover" />
+                  ) : (
+                    <div className="w-5 h-5 rounded-full bg-[#7B61FF] text-white text-[10px] flex items-center justify-center font-medium">
+                      {(user.name || user.email || '?').slice(0, 1).toUpperCase()}
+                    </div>
+                  )}
+                  <span className="text-white max-w-[8rem] truncate">{user.name || user.email}</span>
+                </button>
+                {userMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-30" onClick={() => setUserMenuOpen(false)} />
+                    <div className="absolute right-0 top-full mt-1 z-40 bg-[#0d1526] border border-[#1e2a3a] rounded shadow-lg min-w-[160px]">
+                      <button
+                        onClick={async () => { await signOut(); setUserMenuOpen(false); }}
+                        className="w-full text-left px-3 py-2 text-xs text-[#a0b0c5] hover:text-white hover:bg-[#141c2e]"
+                      >{t('nav.logout')}</button>
+                    </div>
+                  </>
+                )}
+              </>
+            ) : (
+              <a
+                href={`/auth/login?next=${encodeURIComponent(pathname)}`}
+                className="bg-[#141c2e] border border-[#2a3a50] rounded px-2.5 py-1 text-xs text-[#a0b0c5] hover:text-white hover:border-[#7B61FF] transition-colors"
+              >{t('nav.login')}</a>
             )}
           </div>
 

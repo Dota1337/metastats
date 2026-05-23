@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { I18nProvider } from "./lib/i18n";
+import { AuthProvider } from "./lib/auth-context";
 import { getServerLang, getSeoCopy } from "./lib/server-lang";
 import SideDrawer from "./components/SideDrawer";
 import PrototypeBanner from "./components/PrototypeBanner";
@@ -106,11 +107,13 @@ export default async function RootLayout({
           }) }}
         />
         <I18nProvider initialLang={initialLang}>
-          <PrototypeBanner />
-          <SideDrawer />
-          {children}
-          <CookieBanner />
-          <Analytics />
+          <AuthProvider>
+            <PrototypeBanner />
+            <SideDrawer />
+            {children}
+            <CookieBanner />
+            <Analytics />
+          </AuthProvider>
         </I18nProvider>
       </body>
     </html>

@@ -63,7 +63,6 @@ export default function TftProsPage() {
   const [loading, setLoading] = useState(true);
   const [region, setRegion] = useState<string>('');
   const [team, setTeam] = useState<string>('');
-  const [role, setRole] = useState<string>('');
   const [search, setSearch] = useState('');
 
   useEffect(() => {
@@ -72,13 +71,12 @@ export default function TftProsPage() {
     const params = new URLSearchParams();
     if (region) params.set('region', region);
     if (team) params.set('team', team);
-    if (role) params.set('role', role);
     fetch(`/api/tft/pros?${params.toString()}`)
       .then(r => r.json())
       .then(d => { if (!cancelled) { setData(d); setLoading(false); } })
       .catch(() => { if (!cancelled) { setData(null); setLoading(false); } });
     return () => { cancelled = true; };
-  }, [region, team, role]);
+  }, [region, team]);
 
   // Client-side fuzzy search on top of the server filters. We never round-
   // trip for substring matches — the pro list is small enough (<1000) that
@@ -153,17 +151,6 @@ export default function TftProsPage() {
               <option key={t.name} value={t.name}>{t.name} ({t.count})</option>
             ))}
           </select>
-          <select
-            value={role}
-            onChange={e => setRole(e.target.value)}
-            className="bg-[#141c2e] border border-[#1e2a3a] rounded px-2 py-1 text-xs text-white outline-none"
-          >
-            <option value="">{t('tft.pros.allRoles')}</option>
-            <option value="Player">Player</option>
-            <option value="Streamer">Streamer</option>
-            <option value="Coach">Coach</option>
-            <option value="Caster">Caster</option>
-          </select>
           <input
             type="text"
             value={search}
@@ -185,11 +172,10 @@ export default function TftProsPage() {
 
         {!loading && filteredPros.length > 0 && (
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
-            <div className="grid grid-cols-[2.5rem_1fr_7rem_6rem_4rem_5rem_3rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#7a8aa0] bg-[#0a0e1a]">
+            <div className="grid grid-cols-[2.5rem_1fr_7rem_4rem_5rem_3rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#7a8aa0] bg-[#0a0e1a]">
               <div></div>
               <div>{t('tft.pros.col.player')}</div>
               <div className="hidden sm:block">{t('tft.pros.col.team')}</div>
-              <div className="hidden sm:block">{t('tft.pros.col.role')}</div>
               <div className="hidden sm:block">{t('tft.pros.col.region')}</div>
               <div className="text-right">{t('tft.pros.col.earnings')}</div>
               <div></div>
@@ -201,7 +187,7 @@ export default function TftProsPage() {
                 <a
                   key={p.puuid}
                   href={`/tft/player/${slug}?region=${p.region}`}
-                  className="grid grid-cols-[2.5rem_1fr_7rem_6rem_4rem_5rem_3rem] gap-2 px-4 py-2 items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]"
+                  className="grid grid-cols-[2.5rem_1fr_7rem_4rem_5rem_3rem] gap-2 px-4 py-2 items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]"
                 >
                   <div className="flex-shrink-0">
                     {p.image_url ? (
@@ -227,7 +213,6 @@ export default function TftProsPage() {
                     )}
                   </div>
                   <div className="hidden sm:block text-[#a0b0c5] truncate">{p.team || '—'}</div>
-                  <div className="hidden sm:block text-[#a0b0c5] truncate">{p.role || '—'}</div>
                   <div className="hidden sm:block text-[#a0b0c5]">{REGION_LABELS[p.region] || p.region.toUpperCase()}</div>
                   <div className="text-[#c89b3c] text-right tabular-nums">{formatEarnings(p.total_earnings_usd)}</div>
                   <div className="flex items-center justify-end gap-1.5 text-[#7a8aa0]">

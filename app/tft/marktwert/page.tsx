@@ -26,18 +26,11 @@ const TIER_COLORS: Record<string, string> = {
   MASTER: '#9d48e0', GRANDMASTER: '#e44040', CHALLENGER: '#f0c040',
 };
 
-const TABS = ['top', 'movers', 'teams', 'distribution'] as const;
+// 'teams' tab removed 2026-05-23: TFT is single-player, sum-of-roster
+// ranking by team has no gameplay relevance. The /api/tft/marktwert/teams
+// endpoint stays for potential future use (e.g. org tournament views).
+const TABS = ['top', 'movers', 'distribution'] as const;
 type Tab = typeof TABS[number];
-
-interface TeamRow {
-  team: string;
-  rosterSize: number;
-  totalValue: number;
-  avgValue: number;
-  topPlayerName: string | null;
-  topPlayerValue: number;
-  roster: { puuid: string; proName: string; displayName: string; finalValue: number; role: string | null; region: string }[];
-}
 
 interface LeaderboardPlayer {
   puuid: string;
@@ -88,8 +81,6 @@ export default function TftMarktwertPage() {
 
   const [leaderboard, setLeaderboard] = useState<LeaderboardPlayer[]>([]);
   const [movers, setMovers] = useState<Mover[]>([]);
-  const [teams, setTeams] = useState<TeamRow[]>([]);
-  const [teamsLoading, setTeamsLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [moversLoading, setMoversLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -116,19 +107,6 @@ export default function TftMarktwertPage() {
       .catch(e => { if (!cancelled) { setError(e.message); setLoading(false); } });
     return () => { cancelled = true; };
   }, [region, tierFilter]);
-
-  // Teams fetch — only when Teams tab is active. region=all merges across
-  // all regions (orgs with international roster).
-  useEffect(() => {
-    if (tab !== 'teams') return;
-    let cancelled = false;
-    setTeamsLoading(true); setTeams([]);
-    fetch(`/api/tft/marktwert/teams?region=all&limit=50`)
-      .then(r => r.ok ? r.json() : { teams: [] })
-      .then(d => { if (!cancelled) { setTeams(d.teams || []); setTeamsLoading(false); } })
-      .catch(() => { if (!cancelled) { setTeams([]); setTeamsLoading(false); } });
-    return () => { cancelled = true; };
-  }, [tab]);
 
   // Movers fetch — only when the Movers tab is active so we don't waste
   // round-trips when the user is on Top / Distribution.
@@ -242,10 +220,6 @@ export default function TftMarktwertPage() {
           />
         )}
 
-        {tab === 'teams' && (
-          <TeamsTab teams={teams} loading={teamsLoading} lang={lang} t={t} />
-        )}
-
         {tab === 'distribution' && (
           <DistributionTab
             data={histogram}
@@ -258,60 +232,6 @@ export default function TftMarktwertPage() {
       </div>
       <Footer />
     </main>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Teams tab (Sprint 3.4 — Team-Marktwert)
-// ─────────────────────────────────────────────────────────────────────────────
-
-function TeamsTab({ teams, loading, lang, t }: {
-  teams: TeamRow[]; loading: boolean; lang: Lang; t: (k: any) => string;
-}) {
-  if (loading) {
-    return <div className="text-[#a0b0c5] text-center py-8">…</div>;
-  }
-  if (teams.length === 0) {
-    return <div className="text-[#a0b0c5] text-center py-8">{t('tft.marketValue.teams.empty')}</div>;
-  }
-  return (
-    <div className="space-y-2">
-      {teams.map((row, idx) => (
-        <details key={row.team} className="bg-[#0d1526] border border-[#1e2a3a] rounded">
-          <summary className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-[#141c2e]">
-            <span className="text-[#7a8aa0] text-xs tabular-nums w-6">#{idx + 1}</span>
-            <span className="text-white font-medium flex-1 truncate">{row.team}</span>
-            <span className="text-[#a0b0c5] text-xs tabular-nums hidden sm:inline">
-              {row.rosterSize} {t('tft.marketValue.teams.players')}
-            </span>
-            <span className="text-[#a892ff] text-xs tabular-nums hidden sm:inline">
-              Ø {fmtEur(row.avgValue, lang)}
-            </span>
-            <span className="text-[#3ecf8e] text-sm font-medium tabular-nums">
-              {fmtEur(row.totalValue, lang)}
-            </span>
-          </summary>
-          <div className="px-4 py-3 border-t border-[#1e2a3a]">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {row.roster.map((p, i) => (
-                <a
-                  key={p.puuid}
-                  href={`/tft/player/${encodeURIComponent(p.displayName)}?region=${p.region}`}
-                  className="flex items-center gap-2 bg-[#141c2e] border border-[#1e2a3a] rounded p-2 hover:border-[#a892ff]/40"
-                >
-                  <span className="text-[#7a8aa0] text-[10px] tabular-nums w-4">#{i + 1}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-white text-[12px] truncate">{p.displayName}</div>
-                    <div className="text-[#7a8aa0] text-[10px]">{p.region.toUpperCase()}{p.role ? ` · ${p.role}` : ''}</div>
-                  </div>
-                  <div className="text-[12px] text-[#3ecf8e] tabular-nums">{fmtEur(p.finalValue, lang)}</div>
-                </a>
-              ))}
-            </div>
-          </div>
-        </details>
-      ))}
-    </div>
   );
 }
 

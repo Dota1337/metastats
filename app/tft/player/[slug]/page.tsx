@@ -326,6 +326,9 @@ export default function TftPlayerPage() {
             </div>
 
             {tftProInfo && <TournamentHistory pro={tftProInfo} />}
+            {tftProInfo && data.summoner.puuid && (
+              <ProSpecialty puuid={data.summoner.puuid} setNumber={currentSet} assets={assets} t={t} />
+            )}
 
             <MarketValueHero fullName={fullName} region={region} lang={lang} />
 
@@ -856,3 +859,120 @@ function costToColor(cost: number) {
   return cost === 1 ? '#9aa6b2' : cost === 2 ? '#3a8' : cost === 3 ? '#3a8ddc' : cost === 4 ? '#c39bff' : '#e0c75a';
 }
 function round1(n: number) { return Math.round(n * 10) / 10; }
+
+// Pro-Specialty + Pro-Build-Drift (Sprint 3.2 + 3.3). Fetches the new
+// /api/tft/pros/specialty endpoint and renders the pro's top comps + their
+// signature item builds per carry. Only mounted for verified TFT pros.
+interface SpecialtyComp {
+  clusterKey: string;
+  carryUnit: string;
+  games: number;
+  share: number;
+  avgPlacement: number | null;
+  top4Rate: number | null;
+}
+interface SpecialtyBuild { items: string[]; count: number; avgPlacement: number | null }
+interface SpecialtyUnit {
+  unitId: string;
+  total: number;
+  tiers: Record<string, SpecialtyBuild[]>;
+}
+function ProSpecialty({ puuid, setNumber, assets, t }: {
+  puuid: string;
+  setNumber: number | null | undefined;
+  assets: TftAssetsBundle | null;
+  t: (k: any) => string;
+}) {
+  const [data, setData] = useState<{ comps: SpecialtyComp[]; unitBuilds: SpecialtyUnit[]; classifiedGames: number } | null>(null);
+  useEffect(() => {
+    const setParam = setNumber != null ? `&set=${setNumber}` : '';
+    fetch(`/api/tft/pros/specialty?puuid=${encodeURIComponent(puuid)}${setParam}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d && (d.comps?.length || d.unitBuilds?.length)) setData(d); })
+      .catch(() => {});
+  }, [puuid, setNumber]);
+  if (!data) return null;
+  return (
+    <section className="mt-4 bg-gradient-to-br from-[#0d1526] to-[#1a0e26] border border-[#a892ff]/30 rounded p-4">
+      <h2 className="text-[#a892ff] text-xs uppercase tracking-widest mb-3">{t('tft.player.proSpecialty')}</h2>
+      {data.comps.length > 0 && (
+        <div className="mb-4">
+          <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest mb-2">
+            {t('tft.player.signatureComps')} · {data.classifiedGames} {t('tft.gamesShort')}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {data.comps.slice(0, 6).map(c => {
+              const m = /^(.+)@(\d+)_(.+)$/.exec(c.clusterKey);
+              const trait = m ? m[1] : '';
+              const carry = m ? m[3] : c.carryUnit;
+              const traitName = assets?.traits[trait]?.name || trait.replace(/^TFT\d+_/, '');
+              const carryAsset = assets?.champions[carry];
+              return (
+                <a
+                  key={c.clusterKey}
+                  href={`/tft/comps/${encodeURIComponent(c.clusterKey)}`}
+                  className="flex items-center gap-2 bg-[#141c2e] border border-[#1e2a3a] rounded p-2 hover:border-[#a892ff]/40 transition-colors"
+                >
+                  {tftChampionTileUrl(assets, carryAsset) && (
+                    <img src={tftChampionTileUrl(assets, carryAsset)!} alt="" className="w-8 h-8 rounded border border-[#c39bff]/60 flex-shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-white text-[11px] font-medium truncate">
+                      {traitName} · {carryAsset?.name || carry.replace(/^TFT\d+_/, '')}
+                    </div>
+                    <div className="text-[#7a8aa0] text-[10px] tabular-nums">
+                      {(c.share * 100).toFixed(0)}% · Ø {c.avgPlacement?.toFixed(2) ?? '—'} · {c.games}g
+                    </div>
+                  </div>
+                  <div className="text-[10px] tabular-nums text-[#3ecf8e]">
+                    {c.top4Rate != null ? `${(c.top4Rate * 100).toFixed(0)}% T4` : ''}
+                  </div>
+                </a>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      {data.unitBuilds.length > 0 && (
+        <div>
+          <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest mb-2">{t('tft.player.signatureBuilds')}</div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+            {data.unitBuilds.slice(0, 4).map(u => {
+              const unitAsset = assets?.champions[u.unitId];
+              const tierKeys = Object.keys(u.tiers).sort();
+              return (
+                <div key={u.unitId} className="bg-[#141c2e] border border-[#1e2a3a] rounded p-2.5">
+                  <div className="flex items-center gap-2 mb-2">
+                    {tftChampionTileUrl(assets, unitAsset) && (
+                      <img src={tftChampionTileUrl(assets, unitAsset)!} alt="" className="w-8 h-8 rounded border border-[#c39bff]/60" />
+                    )}
+                    <span className="text-white text-[11px]">{unitAsset?.name || u.unitId.replace(/^TFT\d+_/, '')}</span>
+                    <span className="text-[#7a8aa0] text-[10px] tabular-nums ml-auto">{u.total}g</span>
+                  </div>
+                  <div className="space-y-1">
+                    {tierKeys.flatMap(tier => (u.tiers[tier] || []).slice(0, 1).map((build, i) => (
+                      <div key={`${tier}-${i}`} className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-[#a892ff] w-5">{tier}★</span>
+                        <div className="flex gap-0.5">
+                          {build.items.map((it, j) => {
+                            const iconUrl = tftIconUrl(assets, assets?.items[it]?.icon);
+                            return iconUrl ? (
+                              <img key={j} src={iconUrl} alt="" className="w-5 h-5 rounded" title={assets?.items[it]?.name || it} />
+                            ) : (
+                              <div key={j} className="w-5 h-5 rounded bg-[#1e2a3a]" />
+                            );
+                          })}
+                        </div>
+                        <span className="text-[10px] text-[#7a8aa0] tabular-nums ml-auto">{build.count}× · Ø{build.avgPlacement?.toFixed(1) ?? '—'}</span>
+                      </div>
+                    )))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}

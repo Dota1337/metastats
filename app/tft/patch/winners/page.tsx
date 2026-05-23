@@ -1,0 +1,150 @@
+'use client';
+import { useEffect, useState } from 'react';
+import Nav from '../../../components/Nav';
+import Footer from '../../../components/Footer';
+import { useI18n } from '../../../lib/i18n';
+import { loadTftAssets, tftChampionTileUrl, tftIconUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+
+type Entity = 'unit' | 'item' | 'trait';
+const ENTITIES: Entity[] = ['unit', 'item', 'trait'];
+
+interface DiffEntry {
+  key: string;
+  currentGames: number;
+  previousGames: number;
+  currentAvgPlacement: number;
+  previousAvgPlacement: number;
+  deltaAvgPlacement: number;
+  currentPickRate: number;
+  previousPickRate: number;
+  deltaPickRate: number;
+  currentTop4Rate: number;
+  previousTop4Rate: number;
+  deltaTop4Rate: number;
+}
+
+export default function TftPatchWinnersPage() {
+  const { t } = useI18n();
+  const [entity, setEntity] = useState<Entity>('unit');
+  const [winners, setWinners] = useState<DiffEntry[]>([]);
+  const [losers, setLosers] = useState<DiffEntry[]>([]);
+  const [info, setInfo] = useState<{ currentPatch: string | null; previousPatch: string | null }>({ currentPatch: null, previousPatch: null });
+  const [loading, setLoading] = useState(false);
+  const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
+
+  useEffect(() => { loadTftAssets().then(setAssets); }, []);
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    fetch(`/api/tft/patch-diff?entity=${entity}`)
+      .then(r => r.ok ? r.json() : { winners: [], losers: [] })
+      .then(d => {
+        if (cancelled) return;
+        setWinners(d.winners || []);
+        setLosers(d.losers || []);
+        setInfo({ currentPatch: d.currentPatch || null, previousPatch: d.previousPatch || null });
+        setLoading(false);
+      })
+      .catch(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [entity]);
+
+  const renderRow = (e: DiffEntry, idx: number, isWinner: boolean) => {
+    const display = renderEntity(e.key, entity, assets);
+    const sign = e.deltaAvgPlacement < 0 ? '−' : '+';
+    return (
+      <div key={e.key} className="flex items-center gap-2 bg-[#141c2e] border border-[#1e2a3a] rounded p-2.5">
+        <span className="text-[#7a8aa0] text-[10px] w-4 tabular-nums">#{idx + 1}</span>
+        {display.icon}
+        <div className="flex-1 min-w-0">
+          <div className="text-white text-[12px] truncate">{display.name}</div>
+          <div className="text-[#7a8aa0] text-[10px] tabular-nums">
+            Ø {e.previousAvgPlacement.toFixed(2)} → {e.currentAvgPlacement.toFixed(2)}
+          </div>
+        </div>
+        <div className={`text-sm tabular-nums font-medium ${isWinner ? 'text-[#3ecf8e]' : 'text-[#e44040]'}`}>
+          {sign}{Math.abs(e.deltaAvgPlacement).toFixed(2)}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <main className="min-h-screen bg-[#0e1525]">
+      <Nav active="patch" />
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+        <h1 className="text-white text-2xl font-medium mb-1">{t('tft.patchWinners.title')}</h1>
+        <p className="text-[#a0b0c5] text-sm mb-4">
+          {info.previousPatch && info.currentPatch
+            ? `${info.previousPatch} → ${info.currentPatch}`
+            : t('tft.patchWinners.subtitle')}
+        </p>
+
+        <div className="flex gap-1 mb-4">
+          {ENTITIES.map(e => (
+            <button
+              key={e}
+              onClick={() => setEntity(e)}
+              className={`px-3 py-1.5 text-xs uppercase tracking-widest rounded border ${
+                entity === e
+                  ? 'bg-[#7B61FF] border-[#7B61FF] text-white'
+                  : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5] hover:border-[#7B61FF]/40'
+              }`}
+            >
+              {t(`nav.${e === 'unit' ? 'units' : e === 'item' ? 'items' : 'traits'}` as const)}
+            </button>
+          ))}
+        </div>
+
+        {loading && <div className="text-[#a0b0c5] text-center py-8">…</div>}
+
+        {!loading && (winners.length > 0 || losers.length > 0) && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <section>
+              <h2 className="text-[#3ecf8e] text-xs uppercase tracking-widest mb-2">▲ {t('tft.patchWinners.winners')}</h2>
+              <div className="space-y-1.5">
+                {winners.slice(0, 12).map((e, i) => renderRow(e, i, true))}
+              </div>
+            </section>
+            <section>
+              <h2 className="text-[#e44040] text-xs uppercase tracking-widest mb-2">▼ {t('tft.patchWinners.losers')}</h2>
+              <div className="space-y-1.5">
+                {losers.slice(0, 12).map((e, i) => renderRow(e, i, false))}
+              </div>
+            </section>
+          </div>
+        )}
+
+        {!loading && winners.length === 0 && losers.length === 0 && (
+          <div className="text-[#a0b0c5] text-center py-8">{t('tft.patchWinners.empty')}</div>
+        )}
+      </div>
+      <Footer />
+    </main>
+  );
+}
+
+function renderEntity(key: string, entity: Entity, assets: TftAssetsBundle | null) {
+  if (entity === 'unit') {
+    const champ = assets?.champions[key];
+    const url = tftChampionTileUrl(assets, champ);
+    return {
+      name: champ?.name || key.replace(/^TFT\d+_/, ''),
+      icon: url ? <img src={url} alt="" className="w-8 h-8 rounded border border-[#c39bff]/60" /> : <div className="w-8 h-8 rounded bg-[#1e2a3a]" />,
+    };
+  }
+  if (entity === 'item') {
+    const item = assets?.items[key];
+    const url = tftIconUrl(assets, item?.icon);
+    return {
+      name: item?.name || key.replace(/^TFT\d*_Item_/, ''),
+      icon: url ? <img src={url} alt="" className="w-7 h-7 rounded" /> : <div className="w-7 h-7 rounded bg-[#1e2a3a]" />,
+    };
+  }
+  const [traitId, activation] = key.split('@');
+  const trait = assets?.traits[traitId];
+  return {
+    name: `${trait?.name || traitId.replace(/^TFT\d+_/, '')} (${activation})`,
+    icon: <div className="w-7 h-7 rounded bg-[#1e2a3a]" />,
+  };
+}

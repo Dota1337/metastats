@@ -1,14 +1,16 @@
 #!/usr/bin/env node
-// Syncs Riot API keys across every place we use them.
+// Syncs the LoL Riot API key across every place we use it.
 // Reads .env.local for:
-//   - RIOT_API_KEY      (LoL — currently a dev key, expires every 24h)
-//   - RIOT_API_KEY_TFT  (TFT — production key, doesn't expire)
-//   - GH_TOKEN          (PAT with repo:secrets write on Dota1337/metastats)
-// Updates Vercel Production + Development env + GitHub Actions repo secret
-// for every key that's present, then triggers a redeploy.
+//   - RIOT_API_KEY  (LoL — currently a dev key, expires every 24h)
+//   - GH_TOKEN      (PAT with repo:secrets write on Dota1337/metastats)
+// Updates Vercel Production + Development env + GitHub Actions repo secret,
+// then triggers a redeploy.
+//
+// RIOT_API_KEY_TFT (TFT production key) is permanent and intentionally not
+// synced here — it stays as set in Vercel/GitHub.
 //
 // Usage:
-//   node scripts/refresh-riot-key.mjs              # syncs whichever keys are set
+//   node scripts/refresh-riot-key.mjs
 //   node scripts/refresh-riot-key.mjs --skip-deploy # don't push the empty commit
 
 import { readFileSync } from 'node:fs';
@@ -19,16 +21,11 @@ import sodium from 'libsodium-wrappers';
 
 const REPO = 'Dota1337/metastats';
 const LOL_STATUS_URL = 'https://euw1.api.riotgames.com/lol/status/v4/platform-data';
-const TFT_VALIDATE_URL = 'https://euw1.api.riotgames.com/tft/league/v1/challenger';
 
 const SKIP_DEPLOY = process.argv.includes('--skip-deploy');
 
-// Each key has an env-var name (in .env.local), the Vercel/GitHub secret name,
-// and a validation URL (TFT endpoints reject LoL-only keys with 403 and vice versa,
-// so we validate each key against its actual game).
 const KEYS = [
-  { envName: 'RIOT_API_KEY',     secretName: 'RIOT_API_KEY',     validateUrl: LOL_STATUS_URL,  label: 'LoL' },
-  { envName: 'RIOT_API_KEY_TFT', secretName: 'RIOT_API_KEY_TFT', validateUrl: TFT_VALIDATE_URL, label: 'TFT' },
+  { envName: 'RIOT_API_KEY', secretName: 'RIOT_API_KEY', validateUrl: LOL_STATUS_URL, label: 'LoL' },
 ];
 
 // Node's global fetch (undici) hangs on Cloudflare IPv6 in this env and the
@@ -141,7 +138,7 @@ async function main() {
   if (!ghToken || !ghToken.startsWith('github_pat_')) throw new Error('GH_TOKEN missing in .env.local');
 
   const present = KEYS.filter(k => env[k.envName] && env[k.envName].startsWith('RGAPI-'));
-  if (present.length === 0) throw new Error('No RIOT_API_KEY* found in .env.local');
+  if (present.length === 0) throw new Error('No RIOT_API_KEY found in .env.local');
 
   const step = (n, total, msg) => console.log(`[${n}/${total}] ${msg}`);
   const totalSteps = present.length * 3 + (SKIP_DEPLOY ? 0 : 1);

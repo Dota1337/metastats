@@ -8,15 +8,26 @@ import EmptyData from '../../../components/tft/EmptyData';
 import { useI18n } from '../../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 
+type ItemEntry = { item: string; games: number; avgPlacement: number | null; top4Rate: number | null };
+type ItemSetEntry = { items: string[]; games: number; avgPlacement: number | null; top4Rate: number | null };
+type DamageBin = { games: number; p50: number | null; p75: number | null; p95: number | null; p99: number | null; max: number | null };
+type SlotEntry = { item: string; count: number };
+
 interface UnitDetail {
   characterId: string;
   games: number;
   avgPlacement: number | null;
   top4Rate: number | null;
   top1Rate: number | null;
-  topItems: { item: string; games: number; avgPlacement: number | null; top4Rate: number | null }[];
-  topItemSets: { items: string[]; games: number; avgPlacement: number | null; top4Rate: number | null }[];
+  topItems: ItemEntry[];
+  topItemSets: ItemSetEntry[];
+  topItemsByTier: Record<string, ItemEntry[]> | null;
+  topItemSetsByTier: Record<string, ItemSetEntry[]> | null;
+  damageByTier: Record<string, Record<string, DamageBin>> | null;
+  itemSlotOrderByTier: Record<string, Record<string, SlotEntry[]>> | null;
 }
+
+type StarTier = 'all' | '1' | '2' | '3';
 
 interface CompWithUnit {
   slug: string;
@@ -33,12 +44,21 @@ export default function TftUnitDetailPage() {
   const id = decodeURIComponent(String(params?.id || ''));
   const initialBucket = (search.get('bucket') as TierBucket) || 'master_plus';
   const [bucket, setBucket] = useState<TierBucket>(initialBucket);
+  const [star, setStar] = useState<StarTier>('all');
   const [data, setData] = useState<UnitDetail | null | undefined>(undefined);
   const [hasData, setHasData] = useState<boolean | null>(null);
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
   const [comps, setComps] = useState<CompWithUnit[]>([]);
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
+  // Reset star-tier selector when switching units/buckets if the new snapshot
+  // doesn't have per-tier data for the currently-selected tier.
+  useEffect(() => {
+    if (!data) return;
+    const tierKeys = data.topItemsByTier ? Object.keys(data.topItemsByTier) : [];
+    if (tierKeys.length === 0 && star !== 'all') setStar('all');
+    else if (star !== 'all' && !data.topItemsByTier?.[star]?.length) setStar('all');
+  }, [data, star]);
   useEffect(() => {
     fetch(`/api/tft/units?region=euw1&bucket=${bucket}&id=${encodeURIComponent(id)}`)
       .then(r => r.json())
@@ -106,43 +126,176 @@ export default function TftUnitDetailPage() {
               <Stat label={t('tft.gamesShort')} value={data.games.toLocaleString('de-DE')} />
             </div>
 
+            {/* Star-tier selector (BiS by star level). Hidden if the snapshot
+                doesn't carry per-tier data yet (pre-rollout JSONs). */}
+            {data.topItemsByTier && Object.keys(data.topItemsByTier).length > 0 && (
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-[#7a8aa0] text-[11px] uppercase tracking-widest">{t('tft.byStarLevel')}</span>
+                <div className="flex gap-1">
+                  {(['all','1','2','3'] as StarTier[]).map(k => {
+                    const active = star === k;
+                    const label = k === 'all' ? t('tft.starTierAll') : `${k}★`;
+                    const disabled = k !== 'all' && !data.topItemsByTier?.[k]?.length;
+                    return (
+                      <button
+                        key={k}
+                        type="button"
+                        disabled={disabled}
+                        onClick={() => setStar(k)}
+                        className={`px-2.5 py-1 text-[11px] rounded border transition-colors ${
+                          active
+                            ? 'bg-[#7B61FF] border-[#7B61FF] text-white'
+                            : disabled
+                            ? 'bg-[#141c2e] border-[#1e2a3a] text-[#3a4555] cursor-not-allowed'
+                            : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5] hover:border-[#7B61FF]/40'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Single-screen grid: Item-Sets, Single-Items, Comps with unit. */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              {data.topItemSets.length > 0 && (
-                <Section title={t('tft.topBuilds')}>
-                  <div className="space-y-2">
-                    {data.topItemSets.slice(0, 5).map((s, i) => (
-                      <div key={i} className="flex items-center gap-3 bg-[#141c2e] border border-[#1e2a3a] rounded p-2.5">
-                        <div className="flex gap-1">
-                          {s.items.map((it, j) => <ItemIcon key={j} apiName={it} assets={assets} size={9} />)}
-                        </div>
-                        <div className="flex-1" />
-                        <div className="text-right text-[11px] leading-tight">
-                          <div className="text-white tabular-nums">Ø {s.avgPlacement?.toFixed(2) ?? '—'}</div>
-                          <div className="text-[#7a8aa0] tabular-nums">
-                            {s.top4Rate != null ? `${(s.top4Rate * 100).toFixed(0)}% T4` : ''}
-                            <span className="text-[#5a6a80]"> · {s.games}</span>
+              {(() => {
+                const itemSets = star === 'all'
+                  ? data.topItemSets
+                  : (data.topItemSetsByTier?.[star] || []);
+                return itemSets.length > 0 && (
+                  <Section title={t('tft.topBuilds')}>
+                    <div className="space-y-2">
+                      {itemSets.slice(0, 5).map((s, i) => (
+                        <div key={i} className="flex items-center gap-3 bg-[#141c2e] border border-[#1e2a3a] rounded p-2.5">
+                          <div className="flex gap-1">
+                            {s.items.map((it, j) => <ItemIcon key={j} apiName={it} assets={assets} size={9} />)}
+                          </div>
+                          <div className="flex-1" />
+                          <div className="text-right text-[11px] leading-tight">
+                            <div className="text-white tabular-nums">Ø {s.avgPlacement?.toFixed(2) ?? '—'}</div>
+                            <div className="text-[#7a8aa0] tabular-nums">
+                              {s.top4Rate != null ? `${(s.top4Rate * 100).toFixed(0)}% T4` : ''}
+                              <span className="text-[#5a6a80]"> · {s.games}</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                </Section>
-              )}
+                      ))}
+                    </div>
+                  </Section>
+                );
+              })()}
 
-              {data.topItems.length > 0 && (
-                <Section title={t('tft.mostUsedItems')}>
-                  <div className="grid grid-cols-4 gap-1.5">
-                    {data.topItems.slice(0, 12).map((it, i) => (
-                      <div key={i} className="flex flex-col items-center gap-0.5 bg-[#141c2e] border border-[#1e2a3a] rounded p-1.5">
-                        <ItemIcon apiName={it.item} assets={assets} size={9} />
-                        <div className="text-[10px] text-white tabular-nums">Ø{it.avgPlacement?.toFixed(1) ?? '—'}</div>
-                        <div className="text-[9px] text-[#7a8aa0] tabular-nums">{it.games}</div>
-                      </div>
-                    ))}
-                  </div>
-                </Section>
-              )}
+              {(() => {
+                const items = star === 'all'
+                  ? data.topItems
+                  : (data.topItemsByTier?.[star] || []);
+                return items.length > 0 && (
+                  <Section title={t('tft.mostUsedItems')}>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {items.slice(0, 12).map((it, i) => (
+                        <div key={i} className="flex flex-col items-center gap-0.5 bg-[#141c2e] border border-[#1e2a3a] rounded p-1.5">
+                          <ItemIcon apiName={it.item} assets={assets} size={9} />
+                          <div className="text-[10px] text-white tabular-nums">Ø{it.avgPlacement?.toFixed(1) ?? '—'}</div>
+                          <div className="text-[9px] text-[#7a8aa0] tabular-nums">{it.games}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </Section>
+                );
+              })()}
+
+              {(() => {
+                const slotData = data.itemSlotOrderByTier;
+                if (!slotData) return null;
+                // Pick the active tier — fall back to the one with most data.
+                const activeTier = star !== 'all' && slotData[star]
+                  ? star
+                  : (Object.keys(slotData).sort((a, b) => {
+                      const an = Object.keys(slotData[a] || {}).length;
+                      const bn = Object.keys(slotData[b] || {}).length;
+                      return bn - an;
+                    })[0] || null);
+                if (!activeTier || !slotData[activeTier]) return null;
+                const slots = slotData[activeTier];
+                const slotIdxs = Object.keys(slots).sort();
+                if (slotIdxs.length === 0) return null;
+                return (
+                  <Section title={`${t('tft.itemSlotOrder')} · ${activeTier}★`}>
+                    <div className="space-y-2">
+                      {slotIdxs.map(si => {
+                        const entries = slots[si] || [];
+                        const total = entries.reduce((s, e) => s + e.count, 0) || 1;
+                        const label = si === '0' ? t('tft.slotFirst')
+                          : si === '1' ? t('tft.slotSecond')
+                          : t('tft.slotThird');
+                        return (
+                          <div key={si} className="bg-[#141c2e] border border-[#1e2a3a] rounded p-2.5">
+                            <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest mb-1.5">{label}</div>
+                            <div className="space-y-1">
+                              {entries.slice(0, 3).map((e, i) => (
+                                <div key={i} className="flex items-center gap-2">
+                                  <ItemIcon apiName={e.item} assets={assets} size={9} />
+                                  <div className="flex-1 h-1.5 bg-[#1e2a3a] rounded overflow-hidden">
+                                    <div className="h-full bg-[#7B61FF]" style={{ width: `${(e.count / total) * 100}%` }} />
+                                  </div>
+                                  <span className="text-[11px] text-[#a0b0c5] tabular-nums w-10 text-right">{((e.count / total) * 100).toFixed(0)}%</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </Section>
+                );
+              })()}
+
+              {(() => {
+                const damage = data.damageByTier;
+                if (!damage) return null;
+                const tiers = Object.keys(damage).sort();
+                if (tiers.length === 0) return null;
+                const fmt = (n: number | null) => n == null ? '—' : n >= 10000 ? `${(n/1000).toFixed(1)}k` : Math.round(n).toLocaleString('de-DE');
+                return (
+                  <Section title={t('tft.damageAtlas')}>
+                    <div className="bg-[#141c2e] border border-[#1e2a3a] rounded overflow-hidden">
+                      <table className="w-full text-[11px] tabular-nums">
+                        <thead>
+                          <tr className="text-[#7a8aa0] border-b border-[#1e2a3a]">
+                            <th className="text-left px-2 py-1.5 font-normal">{t('tft.stars')}</th>
+                            <th className="text-left px-2 py-1.5 font-normal">{t('tft.itemsShort')}</th>
+                            <th className="text-right px-2 py-1.5 font-normal">P50</th>
+                            <th className="text-right px-2 py-1.5 font-normal">P75</th>
+                            <th className="text-right px-2 py-1.5 font-normal">P95</th>
+                            <th className="text-right px-2 py-1.5 font-normal">{t('tft.gamesShort')}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {tiers.flatMap(tier => {
+                            const itemCountBins = damage[tier] || {};
+                            const counts = Object.keys(itemCountBins).sort().reverse();
+                            return counts.map(ic => {
+                              const bin = itemCountBins[ic];
+                              return (
+                                <tr key={`${tier}-${ic}`} className="border-b border-[#1e2a3a]/50 last:border-0">
+                                  <td className="px-2 py-1.5 text-white">{tier}★</td>
+                                  <td className="px-2 py-1.5 text-[#a0b0c5]">{ic}</td>
+                                  <td className="px-2 py-1.5 text-right text-white">{fmt(bin.p50)}</td>
+                                  <td className="px-2 py-1.5 text-right text-[#a0b0c5]">{fmt(bin.p75)}</td>
+                                  <td className="px-2 py-1.5 text-right text-[#a0b0c5]">{fmt(bin.p95)}</td>
+                                  <td className="px-2 py-1.5 text-right text-[#7a8aa0]">{bin.games}</td>
+                                </tr>
+                              );
+                            });
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </Section>
+                );
+              })()}
 
               {comps.length > 0 && (
                 <Section title={t('tft.compsWithUnit')}>

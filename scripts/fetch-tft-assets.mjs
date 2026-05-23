@@ -94,14 +94,17 @@ async function main() {
   if (!active) { console.error('No live set found'); process.exit(1); }
   console.log(`       active set: ${active.number} (${active.mutator})`);
 
-  // Items: keep all (cross-set items appear in matches), but keyed by apiName
+  // Items: keep all (cross-set items appear in matches), but keyed by apiName.
+  // CD ships descs with @VAR@ placeholders and the values live in `effects` —
+  // we resolve here so the frontend gets ready-to-render copy.
   const items = {};
   for (const it of cd.items || []) {
     if (!it.apiName) continue;
+    const rawDesc = stripHtml(it.desc || '');
     items[it.apiName] = {
       name: it.name || it.apiName,
       icon: normalizeIconPath(it.icon),
-      desc: stripHtml(it.desc || ''),
+      desc: resolveDescPlaceholders(rawDesc, it.effects),
       composition: it.composition || [],
       tags: it.tags || [],
     };
@@ -153,15 +156,17 @@ async function main() {
     };
   }
 
-  // Augments: only active set
+  // Augments: only active set. Same @VAR@ resolution as items — variables
+  // live in `effects`.
   const augments = {};
   for (const a of active.augments || []) {
     const apiName = a.apiName;
     if (!apiName) continue;
+    const rawDesc = stripHtml(a.desc || '');
     augments[apiName] = {
       name: a.name || apiName,
       icon: normalizeIconPath(a.icon || ''),
-      desc: stripHtml(a.desc || ''),
+      desc: resolveDescPlaceholders(rawDesc, a.effects),
       tier: deriveAugmentTier(apiName, a.name || ''),
     };
   }
@@ -230,18 +235,41 @@ function stripHtml(s) {
   return String(s || '').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-// Replace CD-style @VAR@ placeholders in a description with the resolved
-// numeric value from a trait/augment effect's `variables` map. Percentage
-// suffixes ("@VAR@%") stay attached; trait copy carries that pattern.
+// Replace CD-style @VAR@ / @VAR*100@ placeholders in a description with the
+// resolved numeric value from a trait/item/augment effects map. Lookup is
+// case-insensitive (CD ships mixed-case keys). Unresolved tokens are
+// stripped — leaving "@Foo@" in user-facing copy reads worse than a small
+// punctuation gap.
+function fmtNum(v) {
+  if (typeof v !== 'number' || !Number.isFinite(v)) return '';
+  if (Number.isInteger(v)) return String(v);
+  const rounded = Math.round(v * 100) / 100;
+  return rounded % 1 === 0 ? String(rounded) : String(rounded);
+}
 function resolveDescPlaceholders(desc, vars) {
-  if (!desc || !vars) return desc;
-  return desc.replace(/@([A-Za-z0-9_]+)@/g, (_, key) => {
-    if (!(key in vars)) return `@${key}@`;
-    const v = vars[key];
-    // Strip trailing zeros after the decimal point so 12.0 reads as "12"
-    // but 12.5 stays "12.5". Some CD variables come through as integers.
-    return typeof v === 'number' ? (Number.isInteger(v) ? String(v) : v.toFixed(1).replace(/\.0$/, '')) : String(v);
+  if (!desc) return desc;
+  const lookup = {};
+  if (vars && typeof vars === 'object') {
+    for (const [k, v] of Object.entries(vars)) lookup[k.toLowerCase()] = v;
+  }
+  let out = desc;
+  out = out.replace(/@([A-Za-z0-9_]+)\*100@/g, (_, key) => {
+    const v = lookup[key.toLowerCase()];
+    return typeof v === 'number' ? String(Math.round(v * 100)) : '';
   });
+  out = out.replace(/@([A-Za-z0-9_]+)@/g, (_, key) => {
+    const v = lookup[key.toLowerCase()];
+    return v === undefined ? '' : fmtNum(typeof v === 'number' ? v : Number(v));
+  });
+  out = out.replace(/@[\w.:\-+*]+@/g, '');
+  out = out.replace(/\s+/g, ' ')
+           .replace(/\s+([,.;:])/g, '$1')
+           .replace(/\(\s*\)/g, '')
+           // Riot's CD source occasionally ships "...instead.Recommended" with
+           // no space after a period preceding a capital letter. Insert one.
+           .replace(/([.!?])([A-Z])/g, '$1 $2')
+           .trim();
+  return out;
 }
 
 // Riot doesn't put the augment tier on the API directly. Fall back to

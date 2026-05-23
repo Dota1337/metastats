@@ -132,6 +132,22 @@ export async function callRpc<T = any>(fn: string, args: Record<string, unknown>
   return (await res.json()) as T;
 }
 
+// Merge a list of jsonb dicts (key -> int) by summing values per key.
+// Used for last_round_dist / top4_by_round which the RPC ships as
+// jsonb_agg([{ "22": 14, ...}, { "22": 9, "23": 4, ...}]).
+export function mergeJsonbCountDicts(dicts: any[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const d of dicts || []) {
+    if (!d || typeof d !== 'object' || Array.isArray(d)) continue;
+    for (const [k, v] of Object.entries(d)) {
+      const n = Number(v);
+      if (!Number.isFinite(n)) continue;
+      out[k] = (out[k] || 0) + n;
+    }
+  }
+  return out;
+}
+
 // Merge a list of jsonb arrays (e.g. typical_units snippets from multiple
 // daily rows of the same cluster) into a single sorted top-N by count.
 // Each input array has the shape [{ <keyName>: …, count, … }, …].

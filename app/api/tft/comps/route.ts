@@ -4,6 +4,7 @@ import {
   callRpc,
   getAvailablePatches,
   mergeJsonbCountArrays,
+  mergeJsonbCountDicts,
 } from '../../../lib/tft-supabase-reader';
 import { cachedJson } from '../../../lib/api-cache';
 
@@ -24,10 +25,17 @@ interface CompRow {
   top1: number;
   sum_level: number;
   sum_last_round: number;
+  sum_players_eliminated: number;
   participants: number;
   typical_units_merged: any[][];
   typical_augments_merged: any[][];
   carry_items_merged: any[][];
+  last_round_dist_merged: any[] | null;
+  top4_by_round_merged: any[] | null;
+  level_dist_merged: any[] | null;
+  level_sum_last_round_merged: any[] | null;
+  // { bucket: { games, sum_placement } } from migration 0017 — for Skill-Cap.
+  bucket_breakdown: Record<string, { games: number; sum_placement: number }> | null;
 }
 
 interface CompPairRow {
@@ -59,11 +67,101 @@ export async function GET(request: NextRequest) {
       const typicalUnits = mergeJsonbCountArrays(r.typical_units_merged || [], 'characterId', 9);
       const typicalAugments = mergeJsonbCountArrays(r.typical_augments_merged || [], 'apiName', 6);
       const carryItems = mergeCarryItems(r.carry_items_merged || []);
+      // Sprint 6.3 — Comp-Flex-Score. Normalized entropy of the top-9 unit
+      // distribution: 0 = locked (single dominant unit), 1 = fully even.
+      // High flex = pivot-friendly comp; low flex = exact-hit dependent.
+      const flexScore = (() => {
+        const total = typicalUnits.reduce((s, u) => s + (u.count || 0), 0);
+        if (total <= 0 || typicalUnits.length === 0) return null;
+        let h = 0;
+        for (const u of typicalUnits) {
+          const p = (u.count || 0) / total;
+          if (p > 0) h -= p * Math.log(p);
+        }
+        const maxH = Math.log(typicalUnits.length);
+        return maxH > 0 ? h / maxH : null;
+      })();
+      // Aggro-Index (Sprint 2.1): kills per game, attributed by the comp's
+      // typical pattern. High = push/streak comp, low = econ-coast comp.
+      const aggroIndex = r.games > 0 && r.sum_players_eliminated
+        ? Number(r.sum_players_eliminated) / Number(r.games)
+        : null;
+      // Leveling-Tempo-Curves (Sprint 2.2): per-final-level distribution +
+      // avg death-round per level. UI plots "at lvl 8 you die at round X".
+      const lvlGames = mergeJsonbCountDicts(r.level_dist_merged || []);
+      const lvlSumRound = mergeJsonbCountDicts(r.level_sum_last_round_merged || []);
+      const totalLevelGames = Object.values(lvlGames).reduce((s, n) => s + n, 0);
+      const levelingTempo = Object.keys(lvlGames)
+        .map(k => Number(k))
+        .filter(n => Number.isFinite(n) && n >= 1 && n <= 11)
+        .sort((a, b) => a - b)
+        .map(level => {
+          const g = lvlGames[String(level)] || 0;
+          const sumRound = lvlSumRound[String(level)] || 0;
+          return {
+            level,
+            games: g,
+            share: totalLevelGames > 0 ? g / totalLevelGames : null,
+            avgLastRound: g > 0 ? sumRound / g : null,
+          };
+        });
+      // Skill-Cap-Index (Sprint 2.3): variance of avgPlacement across
+      // rank-buckets (only buckets with ≥ 20 games). Higher = comp performs
+      // very differently per skill level → execution-dependent.
+      const buckets = r.bucket_breakdown || {};
+      const bucketAvgs: { bucket: string; games: number; avgPlacement: number }[] = [];
+      for (const [bk, v] of Object.entries(buckets)) {
+        if (!v || (v as any).games < 20) continue;
+        const games = Number((v as any).games);
+        const sumP = Number((v as any).sum_placement);
+        bucketAvgs.push({ bucket: bk, games, avgPlacement: sumP / games });
+      }
+      let skillCapIndex: number | null = null;
+      let skillCapBuckets: typeof bucketAvgs = [];
+      if (bucketAvgs.length >= 2) {
+        const min = Math.min(...bucketAvgs.map(b => b.avgPlacement));
+        const max = Math.max(...bucketAvgs.map(b => b.avgPlacement));
+        skillCapIndex = max - min;
+        skillCapBuckets = bucketAvgs.sort((a, b) => {
+          const order = ['challenger','grandmaster','master','master_plus','diamond','emerald','platinum','gold','silver','bronze','iron','all','pro_pool'];
+          return order.indexOf(a.bucket) - order.indexOf(b.bucket);
+        });
+      }
+
+      // Death-round histogram + survival→top4 conditional.
+      const roundGames = mergeJsonbCountDicts(r.last_round_dist_merged || []);
+      const roundTop4 = mergeJsonbCountDicts(r.top4_by_round_merged || []);
+      const totalGames = Number(r.games) || 0;
+      const totalTop4 = Number(r.top4) || 0;
+      const roundsSorted = Object.keys(roundGames)
+        .map(k => Number(k))
+        .filter(n => Number.isFinite(n) && n > 0)
+        .sort((a, b) => a - b);
+      const roundHistogram = roundsSorted.map(round => ({
+        round,
+        games: roundGames[String(round)] || 0,
+        top4: roundTop4[String(round)] || 0,
+      }));
+      // Survival curve: at each round r, P(top4 | last_round ≥ r). This is
+      // the actionable read — "if I'm still alive at round r in this comp,
+      // what's my top4 probability?"
+      let cumGames = totalGames;
+      let cumTop4 = totalTop4;
+      const survivalToTop4 = roundsSorted.map(round => {
+        const point = {
+          round,
+          atLeast: cumGames,
+          top4Rate: cumGames > 0 ? cumTop4 / cumGames : null,
+        };
+        cumGames -= (roundGames[String(round)] || 0);
+        cumTop4 -= (roundTop4[String(round)] || 0);
+        return point;
+      });
       return {
         source: 'data',
         slug: r.cluster_key,
         clusterKey: r.cluster_key,
-        games: Number(r.games),
+        games: totalGames,
         avgPlacement: r.games > 0 ? Number(r.sum_placement) / Number(r.games) : null,
         top4Rate: r.games > 0 ? Number(r.top4) / Number(r.games) : null,
         top1Rate: r.games > 0 ? Number(r.top1) / Number(r.games) : null,
@@ -73,6 +171,13 @@ export async function GET(request: NextRequest) {
         typicalUnits,
         typicalAugments,
         carryItems,
+        roundHistogram,
+        survivalToTop4,
+        aggroIndex,
+        levelingTempo,
+        skillCapIndex,
+        skillCapBuckets,
+        flexScore,
       };
     });
     dataComps.sort((a, b) => (a.avgPlacement ?? 9) - (b.avgPlacement ?? 9));

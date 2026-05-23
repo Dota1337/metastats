@@ -9,6 +9,7 @@ import CompCard from '../../../components/tft/CompCard';
 import { useI18n } from '../../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import PositionHeatmap from '../../../components/tft/PositionHeatmap';
+import EditorialSources from '../../../components/tft/EditorialSources';
 
 // Slot meaning in tft_daily_augment_stats: 0 = stage 2-1, 1 = 3-2, 2 = 4-2.
 const SLOT_LABELS = ['2-1', '3-2', '4-2'] as const;
@@ -140,6 +141,140 @@ export default function TftCompDetailPage() {
               </section>
             )}
 
+            {/* Comp-DNA: Aggro-Index + Skill-Cap-Index + Leveling-Tempo-Curve.
+                Sprint-2 stack — three data angles no other TFT site exposes. */}
+            {(comp.aggroIndex != null || comp.skillCapIndex != null || (comp.levelingTempo && comp.levelingTempo.length > 0) || comp.flexScore != null) && (
+              <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
+                <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.compDna')}</h2>
+                {comp.flexScore != null && (
+                  <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3 mb-3">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">{t('tft.comp.flexScore')}</span>
+                      <span className="text-white text-xl font-medium tabular-nums">{(comp.flexScore * 100).toFixed(0)}</span>
+                      <span className="text-[#a0b0c5] text-[11px]">
+                        {comp.flexScore >= 0.85 ? t('tft.comp.flex.flexible') :
+                         comp.flexScore >= 0.7 ? t('tft.comp.flex.adaptive') :
+                         t('tft.comp.flex.locked')}
+                      </span>
+                    </div>
+                    <div className="mt-1.5 h-1.5 bg-[#1e2a3a] rounded overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-[#e44040] via-[#f0c040] to-[#3ecf8e]" style={{ width: `${(comp.flexScore * 100).toFixed(0)}%` }} />
+                    </div>
+                  </div>
+                )}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                  {comp.aggroIndex != null && (
+                    <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3">
+                      <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">{t('tft.comp.aggroIndex')}</div>
+                      <div className="text-white text-xl font-medium mt-1 tabular-nums">{comp.aggroIndex.toFixed(2)}</div>
+                      <div className="text-[#a0b0c5] text-[11px] mt-1">
+                        {comp.aggroIndex >= 1.2 ? t('tft.comp.aggro.push')
+                          : comp.aggroIndex >= 0.7 ? t('tft.comp.aggro.balanced')
+                          : t('tft.comp.aggro.econ')}
+                      </div>
+                    </div>
+                  )}
+                  {comp.skillCapIndex != null && (
+                    <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3">
+                      <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">{t('tft.comp.skillCap')}</div>
+                      <div className="text-white text-xl font-medium mt-1 tabular-nums">Δ {comp.skillCapIndex.toFixed(2)}</div>
+                      <div className="text-[#a0b0c5] text-[11px] mt-1">
+                        {comp.skillCapIndex >= 1.0 ? t('tft.comp.skillCap.execution')
+                          : comp.skillCapIndex >= 0.5 ? t('tft.comp.skillCap.medium')
+                          : t('tft.comp.skillCap.consistent')}
+                      </div>
+                      {comp.skillCapBuckets && comp.skillCapBuckets.length > 0 && (
+                        <div className="text-[#5a6a80] text-[10px] tabular-nums mt-1.5">
+                          {comp.skillCapBuckets.map((bk: any) => (
+                            <span key={bk.bucket} className="mr-2">
+                              {bk.bucket}: {bk.avgPlacement.toFixed(2)}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {comp.levelingTempo && comp.levelingTempo.length > 0 && (
+                    <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3">
+                      <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest mb-1.5">{t('tft.comp.levelTempo')}</div>
+                      <div className="space-y-1">
+                        {comp.levelingTempo.filter((p: any) => p.share != null && p.share >= 0.05).map((p: any) => (
+                          <div key={p.level} className="flex items-center gap-2 text-[11px] tabular-nums">
+                            <span className="text-white w-6">Lvl {p.level}</span>
+                            <div className="flex-1 h-1.5 bg-[#1e2a3a] rounded overflow-hidden">
+                              <div className="h-full bg-[#7B61FF]" style={{ width: `${Math.min(100, (p.share || 0) * 100 * 2)}%` }} />
+                            </div>
+                            <span className="text-[#a0b0c5] w-10 text-right">{((p.share || 0) * 100).toFixed(0)}%</span>
+                            <span className="text-[#7a8aa0] w-12 text-right">{p.avgLastRound != null ? formatStage(p.avgLastRound) : '—'}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
+
+            {/* Death-Round + Survival-to-Top4 — unique to metastats. Shows
+                where this comp dies in the lobby distribution and at which
+                round the "you're safe to commit" inflection happens. */}
+            {comp.roundHistogram && comp.roundHistogram.length > 0 && (() => {
+              const hist: { round: number; games: number; top4: number }[] = comp.roundHistogram;
+              const survival: { round: number; atLeast: number; top4Rate: number | null }[] = comp.survivalToTop4 || [];
+              const maxGames = hist.reduce((m, p) => Math.max(m, p.games), 0) || 1;
+              const totalGames = comp.games || 1;
+              const modeBin = hist.reduce((best, p) => (p.games > best.games ? p : best), hist[0]);
+              // Survival inflection: lowest round at which top4-rate ≥ 0.5
+              const inflection = survival.find(p => (p.top4Rate ?? 0) >= 0.5);
+              const inflectionPct = inflection && inflection.atLeast
+                ? (inflection.atLeast / totalGames) * 100
+                : null;
+              return (
+                <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
+                  <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">
+                    {t('tft.comp.deathCurve')}
+                  </h2>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+                    <Stat label={t('tft.comp.modeRound')} value={modeBin ? formatStage(modeBin.round) : '—'} />
+                    <Stat
+                      label={t('tft.comp.survivalInflection')}
+                      value={inflection ? `${formatStage(inflection.round)} (${(inflection.top4Rate! * 100).toFixed(0)}%)` : '—'}
+                    />
+                    <Stat
+                      label={t('tft.comp.inflectionShare')}
+                      value={inflectionPct != null ? `${inflectionPct.toFixed(0)}%` : '—'}
+                    />
+                  </div>
+                  <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3">
+                    <div className="flex items-end gap-0.5 h-24">
+                      {hist.map(p => {
+                        const h = Math.max(2, (p.games / maxGames) * 100);
+                        const top4Rate = p.games > 0 ? p.top4 / p.games : 0;
+                        const hue = Math.round(120 * top4Rate);
+                        return (
+                          <div
+                            key={p.round}
+                            className="flex-1 min-w-0 relative group"
+                            title={`${formatStage(p.round)} · ${p.games} games · ${(top4Rate * 100).toFixed(0)}% T4`}
+                          >
+                            <div
+                              className="w-full rounded-sm transition-opacity hover:opacity-100 opacity-90"
+                              style={{ height: `${h}%`, backgroundColor: `hsl(${hue}, 60%, 50%)` }}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="flex justify-between text-[9px] text-[#5a6a80] tabular-nums mt-1">
+                      <span>{formatStage(hist[0].round)}</span>
+                      <span className="text-[#7B61FF]">{modeBin ? formatStage(modeBin.round) : ''}</span>
+                      <span>{formatStage(hist[hist.length - 1].round)}</span>
+                    </div>
+                  </div>
+                </section>
+              );
+            })()}
+
             {/* Top Item-Sets pro Carry — extends what CompCard only teased
                 inline. Each set shows its 3 items + relative pick share. */}
             {comp.carryItems && comp.carryItems.length > 0 && (
@@ -253,6 +388,8 @@ export default function TftCompDetailPage() {
                 assets={assets}
               />
             )}
+
+            <EditorialSources />
 
             {/* All typical units in larger size, clickable */}
             {comp.typicalUnits && comp.typicalUnits.length > 0 && (

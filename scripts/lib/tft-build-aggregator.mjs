@@ -84,8 +84,23 @@ function getOrCreate(map, key, factory) {
 function newUnitBucket() {
   return {
     games: 0, sumPlacement: 0, top4: 0, top1: 0,
-    items: new Map(),       // apiName -> { games, top4, sumPlacement }
-    itemSets: new Map(),    // sortedKey -> { items[], games, top4, sumPlacement }
+    items: new Map(),         // apiName -> { games, top4, sumPlacement }
+    itemSets: new Map(),      // sortedKey -> { items[], games, top4, sumPlacement }
+    // Star-level-aware mirrors. tier (1/2/3) -> per-item / per-set sub-Map.
+    // Used for BiS-by-star-level on the unit-detail UI (1★ Caitlyn builds
+    // differently than 2★ — CC items first vs DMG items).
+    itemsByTier: new Map(),    // tier -> Map<apiName, {games, top4, sumPlacement}>
+    itemSetsByTier: new Map(), // tier -> Map<sortedKey, {items[], games, top4, sumPlacement}>
+    // Damage-Atlas: when THIS unit is the inferred carry of a participant,
+    // push the participant's total_damage_to_players into this bin. Match-V1
+    // has no per-unit damage, so we attribute the total to the carry (unit
+    // with the most items; ties: higher star then higher cost).
+    // tier (1/2/3) -> itemCount ('0'..'3') -> number[] (damage values).
+    // Finalized into P50/P75/P95/P99 + games per (tier, itemCount).
+    carryDamage: new Map(),
+    // Item-Slot-Build-Order: tier -> slotIdx ('0'/'1'/'2') -> Map<item, count>.
+    // Match-V1 itemNames preserves build order — index 0 = first slot built.
+    itemSlotOrderByTier: new Map(),
   };
 }
 function newItemBucket() {
@@ -106,6 +121,11 @@ function newCompBucket() {
     games: 0, sumPlacement: 0, top4: 0, top1: 0,
     sumLevel: 0,                  // Σ final level — divided by games for avgLevel
     sumLastRound: 0,              // Σ last_round — divided by games for avgLastRound
+    sumPlayersEliminated: 0,      // Σ players_eliminated — aggroIndex = sum/games
+    // Per-final-level: Map<level (string), { games, sumLastRound }>. Lets
+    // the UI compute "if you finalize at lvl 8 with this comp, your avg
+    // death-round is X" — proxies the leveling-tempo curve.
+    levelDist: new Map(),
     // characterId -> { count, carryItemGames }. carryItemGames is the number
     // of times this unit was seen holding ≥1 DAMAGE_CARRY_ITEMS — the
     // frontend uses count/carryItemGames ratio to pick the actual DMG carry
@@ -114,6 +134,10 @@ function newCompBucket() {
     typicalUnits: new Map(),
     typicalAugments: new Map(),  // apiName -> { count, sumPlacement }
     carryItems: new Map(),       // sortedItemTriple -> count (carry's full build)
+    // Death-round histogram. round (int as Map-key) -> { games, top4 }.
+    // Used to render the "survival → top4" probability curve on the comp
+    // detail page.
+    lastRoundDist: new Map(),
   };
 }
 
@@ -216,6 +240,28 @@ export function aggregateMatch(rawMatch, agg, opts) {
     const top4 = placement <= 4;
     const top1 = placement === 1;
 
+    // Damage-Atlas: attribute participant.total_damage_to_players to the
+    // inferred carry (unit with most items; ties: higher star then higher
+    // cost). compInfo.carryUnit already encodes this exact rule from
+    // classifyComp; fall back to a fresh ranking when classifyComp returned
+    // null (e.g. early surrender with no activated trait).
+    const totalDmg = Number(p.total_damage_to_players ?? 0);
+    let carryUnit = null;
+    if (totalDmg > 0) {
+      if (compInfo) {
+        carryUnit = (p.units || []).find(u => u.character_id === compInfo.carryUnit) || null;
+      } else if ((p.units || []).length > 0) {
+        const ranked = [...p.units].sort((a, b) => {
+          const ai = (a.itemNames || []).length;
+          const bi = (b.itemNames || []).length;
+          if (bi !== ai) return bi - ai;
+          if ((b.tier ?? 1) !== (a.tier ?? 1)) return (b.tier ?? 1) - (a.tier ?? 1);
+          return (b.rarity ?? 0) - (a.rarity ?? 0);
+        });
+        carryUnit = ranked[0] || null;
+      }
+    }
+
     // Per unit — writes to every bucket in `buckets` (tierBucket + optionally
     // 'pro_pool'). The inner loop is identical; we just reach into the
     // bucket-level map per iteration.
@@ -231,22 +277,67 @@ export function aggregateMatch(rawMatch, agg, opts) {
         if (top1) ub.top1++;
 
         const items = Array.isArray(u.itemNames) ? u.itemNames : [];
+        const starTier = String(u.tier ?? 1);
+        let starItems = null;
         const seenItem = new Set();
         for (const it of items) {
           if (!it || seenItem.has(it)) continue;
           seenItem.add(it);
+          // Global (all stars)
           const ie = getOrCreate(ub.items, it, () => ({ games: 0, top4: 0, sumPlacement: 0 }));
           ie.games++;
           ie.sumPlacement += placement;
           if (top4) ie.top4++;
+          // Per star-tier
+          if (!starItems) {
+            starItems = ub.itemsByTier.get(starTier);
+            if (!starItems) { starItems = new Map(); ub.itemsByTier.set(starTier, starItems); }
+          }
+          const ie2 = getOrCreate(starItems, it, () => ({ games: 0, top4: 0, sumPlacement: 0 }));
+          ie2.games++;
+          ie2.sumPlacement += placement;
+          if (top4) ie2.top4++;
         }
         if (items.length >= 3) {
           const sorted = [...items].sort();
           const key = sorted.join('|');
+          // Global
           const se = getOrCreate(ub.itemSets, key, () => ({ items: sorted, games: 0, top4: 0, sumPlacement: 0 }));
           se.games++;
           se.sumPlacement += placement;
           if (top4) se.top4++;
+          // Per star-tier
+          let starSets = ub.itemSetsByTier.get(starTier);
+          if (!starSets) { starSets = new Map(); ub.itemSetsByTier.set(starTier, starSets); }
+          const se2 = getOrCreate(starSets, key, () => ({ items: sorted, games: 0, top4: 0, sumPlacement: 0 }));
+          se2.games++;
+          se2.sumPlacement += placement;
+          if (top4) se2.top4++;
+        }
+
+        // Damage-Atlas: only attribute when THIS unit IS the participant's
+        // carry. itemCount caps at 3 (Match-V1 allows ≤3 items per unit).
+        if (carryUnit && carryUnit.character_id === cid && totalDmg > 0) {
+          const carryItemCount = String(Math.min(3, (carryUnit.itemNames || []).length));
+          let tierMap = ub.carryDamage.get(starTier);
+          if (!tierMap) { tierMap = new Map(); ub.carryDamage.set(starTier, tierMap); }
+          let arr = tierMap.get(carryItemCount);
+          if (!arr) { arr = []; tierMap.set(carryItemCount, arr); }
+          arr.push(totalDmg);
+        }
+        // Item-Slot-Build-Order (Sprint 2.4): build slot index in itemNames
+        // is the order Riot reports them — slot 0 was built first.
+        if (items.length > 0) {
+          let slotMap = ub.itemSlotOrderByTier.get(starTier);
+          if (!slotMap) { slotMap = new Map(); ub.itemSlotOrderByTier.set(starTier, slotMap); }
+          for (let si = 0; si < Math.min(3, items.length); si++) {
+            const it = items[si];
+            if (!it) continue;
+            const slotKey = String(si);
+            let slotEntry = slotMap.get(slotKey);
+            if (!slotEntry) { slotEntry = new Map(); slotMap.set(slotKey, slotEntry); }
+            slotEntry.set(it, (slotEntry.get(it) || 0) + 1);
+          }
         }
       }
 
@@ -345,6 +436,25 @@ export function aggregateMatch(rawMatch, agg, opts) {
           const ckey = compInfo.carryItems.join('|');
           cb.carryItems.set(ckey, (cb.carryItems.get(ckey) || 0) + 1);
         }
+        // Death-round histogram. Skip round 0 (sentinel for no-data).
+        const lr = Number(p.last_round ?? 0);
+        if (lr > 0) {
+          const key = String(lr);
+          const re = getOrCreate(cb.lastRoundDist, key, () => ({ games: 0, top4: 0 }));
+          re.games++;
+          if (top4) re.top4++;
+        }
+        // Aggro-Index input
+        cb.sumPlayersEliminated += Number(p.players_eliminated ?? 0);
+        // Leveling-tempo input: per-final-level histogram + parallel last_round
+        // accumulator. Skip if level is missing/0 (early surrender row).
+        const finalLevel = Number(p.level ?? 0);
+        if (finalLevel > 0) {
+          const lkey = String(finalLevel);
+          const le = getOrCreate(cb.levelDist, lkey, () => ({ games: 0, sumLastRound: 0 }));
+          le.games++;
+          le.sumLastRound += lr;
+        }
       }
     }
   }
@@ -387,6 +497,30 @@ function rollUp(perBucket) {
   if (masterPlus) perBucket.set('master_plus', masterPlus);
 }
 
+// Recursively merge a list of Maps. Numeric values are summed, nested Maps
+// recursed into, arrays concatenated (carryDamage leaves), plain objects
+// deep-merged via mergeBuckets. Used for the Map<tier, Map<...>> shapes
+// introduced by itemsByTier / itemSetsByTier / carryDamage.
+function mergeMaps(list) {
+  const out = new Map();
+  for (const m of list) {
+    if (!(m instanceof Map)) continue;
+    for (const [k, v] of m) {
+      const existing = out.get(k);
+      if (typeof v === 'number') {
+        out.set(k, (existing || 0) + v);
+      } else if (Array.isArray(v)) {
+        out.set(k, existing ? existing.concat(v) : v.slice());
+      } else if (v instanceof Map) {
+        out.set(k, mergeMaps(existing ? [existing, v] : [v]));
+      } else {
+        out.set(k, mergeBuckets(existing ? [existing, v] : [v]));
+      }
+    }
+  }
+  return out;
+}
+
 function mergeBuckets(list) {
   if (list.length === 0) return null;
   // Generic merge: numeric fields summed, Maps merged element-wise.
@@ -397,12 +531,14 @@ function mergeBuckets(list) {
       else if (v instanceof Map) {
         if (!out[k]) out[k] = new Map();
         for (const [kk, vv] of v) {
-          // Map values can be primitives (typicalUnits stores number counts)
-          // or sub-objects (item entries store {games, sumPlacement, …}).
-          // The number case has to short-circuit — passing a number through
-          // mergeBuckets returns {} because Object.entries(<number>) is empty.
+          // Map values can be primitives (typicalUnits stores number counts),
+          // nested Maps (itemsByTier[tier] -> Map<item, obj>), or plain
+          // sub-objects (item entries store {games, sumPlacement, …}).
           if (typeof vv === 'number') {
             out[k].set(kk, ((out[k].get(kk) || 0)) + vv);
+          } else if (vv instanceof Map) {
+            const existing = out[k].get(kk);
+            out[k].set(kk, mergeMaps(existing ? [existing, vv] : [vv]));
           } else {
             const existing = out[k].get(kk);
             if (!existing) out[k].set(kk, mergeBuckets([vv]));
@@ -415,6 +551,16 @@ function mergeBuckets(list) {
     }
   }
   return out;
+}
+
+// Pick the value at percentile `p` (0..1) from a pre-sorted ascending array.
+// Returns null for an empty array. Uses the nearest-rank method which is
+// stable for small samples and doesn't interpolate (rounded damage values
+// read cleaner in the UI).
+function percentile(sortedAsc, p) {
+  if (!sortedAsc || sortedAsc.length === 0) return null;
+  const idx = Math.min(sortedAsc.length - 1, Math.floor((sortedAsc.length - 1) * p));
+  return sortedAsc[idx];
 }
 
 export function finalize(agg, opts = {}) {
@@ -471,9 +617,71 @@ export function finalize(agg, opts = {}) {
         .sort((a, b) => b.games - a.games)
         .slice(0, 5)
         .map(s => ({ items: s.items, games: s.games, top4: s.top4, sumPlacement: s.sumPlacement }));
+      // Per-star-tier top-N (BiS by star level). Same min-games threshold per
+      // tier so we don't surface 2-game samples for 3-star carries.
+      const topItemsByTier = {};
+      const topItemSetsByTier = {};
+      const itemsByTier = b.itemsByTier instanceof Map ? b.itemsByTier : new Map();
+      const itemSetsByTier = b.itemSetsByTier instanceof Map ? b.itemSetsByTier : new Map();
+      for (const [tier, itemMap] of itemsByTier) {
+        if (!(itemMap instanceof Map)) continue;
+        const arr = [...itemMap.entries()]
+          .map(([item, e]) => ({ item, games: e.games, top4: e.top4, sumPlacement: e.sumPlacement }))
+          .sort((a, b) => b.games - a.games)
+          .slice(0, 10);
+        if (arr.length > 0) topItemsByTier[tier] = arr;
+      }
+      for (const [tier, setMap] of itemSetsByTier) {
+        if (!(setMap instanceof Map)) continue;
+        const arr = [...setMap.values()]
+          .sort((a, b) => b.games - a.games)
+          .slice(0, 5)
+          .map(s => ({ items: s.items, games: s.games, top4: s.top4, sumPlacement: s.sumPlacement }));
+        if (arr.length > 0) topItemSetsByTier[tier] = arr;
+      }
+      // Damage-Atlas: percentiles per (tier, itemCount). Only emit bins with
+      // ≥10 samples — anything sparser is too noisy to be useful.
+      const damageByTier = {};
+      const carryDamage = b.carryDamage instanceof Map ? b.carryDamage : new Map();
+      const MIN_DAMAGE_SAMPLES = 10;
+      for (const [tier, itemCountMap] of carryDamage) {
+        if (!(itemCountMap instanceof Map)) continue;
+        const perItemCount = {};
+        for (const [itemCount, arr] of itemCountMap) {
+          if (!Array.isArray(arr) || arr.length < MIN_DAMAGE_SAMPLES) continue;
+          const sorted = [...arr].sort((a, b) => a - b);
+          perItemCount[itemCount] = {
+            games: sorted.length,
+            p50: percentile(sorted, 0.50),
+            p75: percentile(sorted, 0.75),
+            p95: percentile(sorted, 0.95),
+            p99: percentile(sorted, 0.99),
+            max: sorted[sorted.length - 1],
+          };
+        }
+        if (Object.keys(perItemCount).length > 0) damageByTier[tier] = perItemCount;
+      }
+      // Item-Slot-Build-Order: per (tier, slotIdx), top-3 items by frequency.
+      const itemSlotOrderByTier = {};
+      const slotMaster = b.itemSlotOrderByTier instanceof Map ? b.itemSlotOrderByTier : new Map();
+      for (const [tier, slotMap] of slotMaster) {
+        if (!(slotMap instanceof Map)) continue;
+        const perSlot = {};
+        for (const [slotIdx, itemMap] of slotMap) {
+          if (!(itemMap instanceof Map)) continue;
+          perSlot[slotIdx] = [...itemMap.entries()]
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3)
+            .map(([item, count]) => ({ item, count }));
+        }
+        if (Object.keys(perSlot).length > 0) itemSlotOrderByTier[tier] = perSlot;
+      }
       out.byUnit[cid][bucket] = {
         games: b.games, sumPlacement: b.sumPlacement, top4: b.top4, top1: b.top1,
         topItems, topItemSets,
+        topItemsByTier, topItemSetsByTier,
+        damageByTier,
+        itemSlotOrderByTier,
       };
     }
   }
@@ -542,9 +750,33 @@ export function finalize(agg, opts = {}) {
         .sort((a, b) => b[1] - a[1])
         .slice(0, 3)
         .map(([k, count]) => ({ items: k.split('|'), count }));
+      // Death-round histogram split into two parallel jsonb dicts (one with
+      // games-per-round, one with top4-per-round). Two dicts so the
+      // jsonb_agg roll-up in get_tft_comp_stats can sum each independently
+      // without parsing nested objects in SQL.
+      const lastRoundDist = {};
+      const top4ByRound = {};
+      const lrMap = b.lastRoundDist instanceof Map ? b.lastRoundDist : new Map();
+      for (const [round, e] of lrMap) {
+        lastRoundDist[round] = (lastRoundDist[round] || 0) + e.games;
+        if (e.top4) top4ByRound[round] = (top4ByRound[round] || 0) + e.top4;
+      }
+      // Per-final-level histograms (Sprint 2.2 — Leveling-Tempo-Curves).
+      const levelDist = {};
+      const levelSumLastRound = {};
+      const lvlMap = b.levelDist instanceof Map ? b.levelDist : new Map();
+      for (const [lvl, e] of lvlMap) {
+        levelDist[lvl] = (levelDist[lvl] || 0) + e.games;
+        levelSumLastRound[lvl] = (levelSumLastRound[lvl] || 0) + e.sumLastRound;
+      }
       slim[bucket] = {
         games: b.games, sumPlacement: b.sumPlacement, top4: b.top4, top1: b.top1,
+        sumLevel: b.sumLevel ?? 0,
+        sumLastRound: b.sumLastRound ?? 0,
+        sumPlayersEliminated: b.sumPlayersEliminated ?? 0,
         typicalUnits, typicalAugments, carryItems,
+        lastRoundDist, top4ByRound,
+        levelDist, levelSumLastRound,
       };
     }
     if (Object.keys(slim).length > 0) out.byComp[key] = slim;

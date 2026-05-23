@@ -1,0 +1,34 @@
+{
+  "_comment": "Curated editorial tier-list link-outs (Sprint 4.3). Updated manually per patch. The /tft/comps detail page renders these next to our data-tier so users see opinion + numbers side by side.",
+  "version": "2026-05-22",
+  "sources": [
+    {
+      "id": "tftacademy",
+      "name": "TFTAcademy",
+      "by": "Dishsoap & Frodan",
+      "url": "https://tftacademy.com/tierlist/comps",
+      "tagline": "Former world champion + Challenger caster"
+    },
+    {
+      "id": "metasrc",
+      "name": "METAsrc",
+      "by": "Data-driven",
+      "url": "https://www.metasrc.com/tft/tier-list/comps",
+      "tagline": "Statistical aggregation"
+    },
+    {
+      "id": "tactics_tools",
+      "name": "tactics.tools",
+      "by": "Community analytics",
+      "url": "https://tactics.tools/team-compositions",
+      "tagline": "Free, granular comp stats"
+    },
+    {
+      "id": "mobalytics",
+      "name": "Mobalytics",
+      "by": "Pro coaching",
+      "url": "https://mobalytics.gg/tft/team-comps",
+      "tagline": "Game plan walkthroughs"
+    }
+  ]
+}

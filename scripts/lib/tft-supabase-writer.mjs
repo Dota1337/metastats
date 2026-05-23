@@ -170,9 +170,14 @@ export async function writeTftStatsToSupabase(opts) {
         games: b.games, sum_placement: b.sumPlacement, top4: b.top4, top1: b.top1 ?? 0,
         sum_level: b.sumLevel ?? 0,
         sum_last_round: b.sumLastRound ?? 0,
+        sum_players_eliminated: b.sumPlayersEliminated ?? 0,
         typical_units: b.typicalUnits || [],
         typical_augments: b.typicalAugments || [],
         carry_items: b.carryItems || [],
+        last_round_dist: b.lastRoundDist || {},
+        top4_by_round: b.top4ByRound || {},
+        level_dist: b.levelDist || {},
+        level_sum_last_round: b.levelSumLastRound || {},
       });
     }
   }

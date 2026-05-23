@@ -67,6 +67,36 @@ export async function GET(request: NextRequest) {
           avgPlacement: s.games > 0 ? s.sumPlacement / s.games : null,
           top4Rate: s.games > 0 ? s.top4 / s.games : null,
         })),
+        topItemsByTier: data.topItemsByTier
+          ? Object.fromEntries(
+              Object.entries(data.topItemsByTier).map(([tier, arr]: [string, any]) => [
+                tier,
+                (arr || []).map((it: any) => ({
+                  item: it.item,
+                  games: it.games,
+                  avgPlacement: it.games > 0 ? it.sumPlacement / it.games : null,
+                  top4Rate: it.games > 0 ? it.top4 / it.games : null,
+                })),
+              ])
+            )
+          : null,
+        topItemSetsByTier: data.topItemSetsByTier
+          ? Object.fromEntries(
+              Object.entries(data.topItemSetsByTier).map(([tier, arr]: [string, any]) => [
+                tier,
+                (arr || []).map((s: any) => ({
+                  items: s.items,
+                  games: s.games,
+                  avgPlacement: s.games > 0 ? s.sumPlacement / s.games : null,
+                  top4Rate: s.games > 0 ? s.top4 / s.games : null,
+                })),
+              ])
+            )
+          : null,
+        // Damage-Atlas: { tier: { itemCount: { games, p50, p75, p95, p99, max } } }
+        damageByTier: data.damageByTier || null,
+        // Item-Slot-Build-Order: { tier: { slotIdx: [{item, count}, ...] } }
+        itemSlotOrderByTier: data.itemSlotOrderByTier || null,
       },
     });
   }

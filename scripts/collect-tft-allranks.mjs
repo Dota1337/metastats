@@ -309,10 +309,21 @@ async function main() {
     }
   }
 
-  // Finalize + write per patch
-  const writtenPatches = [];
+  // Pick the patch with the most matches as the "primary" snapshot. Strict
+  // `patch === CURRENT_PATCH` was unreliable: Riot's Match-V1 game_version
+  // reports LoL-side patches ("16.10") while setMeta tracks TFT-side ones
+  // ("17.3") — strict equality never matched and the JSON snapshot went
+  // stale. Heaviest-patch-wins handles both single-patch and mixed-patch
+  // boundary days cleanly.
+  const finalizedByPatch = new Map();
   for (const [patch, agg] of aggsByPatch) {
-    const finalized = finalize(agg, { minUnitGames: 5, minItemGames: 5, minAugmentGames: 5 });
+    finalizedByPatch.set(patch, finalize(agg, { minUnitGames: 5, minItemGames: 5, minAugmentGames: 5 }));
+  }
+  const primaryPatch = [...finalizedByPatch.entries()]
+    .sort((a, b) => (b[1].matchesAnalyzed || 0) - (a[1].matchesAnalyzed || 0))[0]?.[0];
+
+  const writtenPatches = [];
+  for (const [patch, finalized] of finalizedByPatch) {
     const payload = {
       set: CURRENT_SET,
       setName: setMeta?.setName,
@@ -327,10 +338,7 @@ async function main() {
     };
 
     if (!SKIP_JSON) {
-      // Only write JSON for the primary (current-meta) patch — keeps the
-      // public/tft-stats-<region>.json file shape stable for the legacy
-      // JSON readers. Older overlapping patches still land in Supabase.
-      if (patch === CURRENT_PATCH) {
+      if (patch === primaryPatch) {
         const file = `public/tft-stats-${REGION}.json`;
         writeFileSync(file, JSON.stringify(payload));
         console.log(`\n  -> ${file} (patch=${patch}, ${payload.matchesAnalyzed} matches, ${Object.keys(payload.byUnit).length} units, ${Object.keys(payload.byItem).length} items)`);

@@ -121,6 +121,7 @@ export default function TftBuilderPage() {
   const [itemQuery, setItemQuery] = useState('');
   const [savedComps, setSavedComps] = useState<SavedComp[]>([]);
   const [shareToast, setShareToast] = useState(false);
+  const [publishState, setPublishState] = useState<'idle' | 'sending' | 'ok' | 'err'>('idle');
   const dragRef = useRef<{ from: 'palette' | 'board'; payload: string | number; fromTeam?: Team } | null>(null);
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
@@ -438,6 +439,44 @@ export default function TftBuilderPage() {
     } catch { /* ignore */ }
   }
 
+  // Publish to community gallery — anonymous, cookie-tracked.
+  async function publishToCommunity() {
+    if (typeof window === 'undefined' || ownPlacements.length === 0) return;
+    const name = window.prompt(t('tft.builderPublishName'), '') || '';
+    if (!name.trim()) return;
+    const handle = window.prompt(t('tft.builderPublishHandle'), '') || '';
+    // Derive trait_label + carry_unit from active synergies + most-itemized unit
+    const carry = [...ownPlacements].sort((a, b) =>
+      (b.items?.length || 0) - (a.items?.length || 0),
+    )[0]?.characterId || null;
+    setPublishState('sending');
+    try {
+      const r = await fetch('/api/tft/comps/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim().slice(0, 60),
+          authorHandle: handle.trim().slice(0, 24) || null,
+          placements: ownPlacements,
+          oppPlacements,
+          carryUnit: carry,
+        }),
+      });
+      if (r.ok) {
+        setPublishState('ok');
+        setTimeout(() => setPublishState('idle'), 2500);
+      } else {
+        const j = await r.json().catch(() => ({}));
+        setPublishState('err');
+        console.warn('publish failed:', j);
+        setTimeout(() => setPublishState('idle'), 2500);
+      }
+    } catch {
+      setPublishState('err');
+      setTimeout(() => setPublishState('idle'), 2500);
+    }
+  }
+
   const selectedPlacement = selectedCell != null ? byCell(selectedTeam).get(selectedCell) : undefined;
 
   // ----- Hex cell renderer -----
@@ -590,6 +629,17 @@ export default function TftBuilderPage() {
                   className="px-3 py-1.5 rounded text-xs bg-[#141c2e] text-[#a0b0c5] hover:text-white border border-[#1e2a3a] disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   {shareToast ? t('tft.builderShareCopied') : t('tft.builderShare')}
+                </button>
+                <button
+                  onClick={publishToCommunity}
+                  disabled={ownPlacements.length === 0 || publishState === 'sending'}
+                  className="px-3 py-1.5 rounded text-xs bg-[#3ecf8e] text-[#0d1526] hover:bg-[#5be0a3] disabled:opacity-30 disabled:cursor-not-allowed font-medium"
+                  title={t('tft.builderPublishHint')}
+                >
+                  {publishState === 'sending' ? '…'
+                    : publishState === 'ok' ? '✓ ' + t('tft.builderPublished')
+                    : publishState === 'err' ? t('tft.builderPublishErr')
+                    : t('tft.builderPublish')}
                 </button>
               </div>
             </div>

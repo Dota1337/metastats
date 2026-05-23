@@ -9,7 +9,7 @@ interface NavProps {
   active?:
     | 'search' | 'leaderboard' | 'champions' | 'marktwert' | 'analyse' | 'teams' | 'ligen'
     | 'units' | 'items' | 'augments' | 'comps' | 'traits' | 'tournaments' | 'saved' | 'builder' | 'pros'
-    | 'onetricks' | 'patch';
+    | 'onetricks' | 'patch' | 'community';
 }
 
 interface SearchResult {
@@ -142,6 +142,7 @@ export default function Nav({ active }: NavProps) {
               <a href="/tft/patch/winners" className={linkClass('patch')}>{t('nav.patchWinners')}</a>
               <a href="/tft/compare" className={linkClass('analyse')}>{t('nav.analyse')}</a>
               <a href="/tft/builder" className={linkClass('builder')}>{t('tft.builderTitle')}</a>
+              <a href="/tft/comps/community" className={linkClass('community')}>{t('nav.community')}</a>
               <a href="/tft/saved" className={linkClass('saved')} title={t('tft.savedTitle')}>★</a>
             </>
           ) : (

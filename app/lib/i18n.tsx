@@ -83,6 +83,8 @@ const translations = {
   'tft.comp.modeRound': t6('H\u00E4ufigster Tod', 'Most common death', '\uAC00\uC7A5 \uD754\uD55C \uC0AC\uB9DD', '\u6700\u5E38\u9635\u4EA1\u56DE\u5408', 'Muerte m\u00E1s com\u00FAn', 'Mort la plus fr\u00E9quente'),
   'tft.comp.survivalInflection': t6('Top-4-Schwelle', 'Top-4 threshold', 'Top-4 \uC784\uACC4\uC810', 'Top-4 \u4E34\u754C\u70B9', 'Umbral Top-4', 'Seuil Top-4'),
   'tft.comp.inflectionShare': t6('Spieler-Anteil', 'Player share', '\uD50C\uB808\uC774\uC5B4 \uBE44\uC911', '\u73A9\u5BB6\u5360\u6BD4', 'Cuota de jugadores', 'Part des joueurs'),
+  'tft.comp.dieHere': t6('Hier gestorben', 'Died here', '\uC5EC\uAE30\uC11C \uC0AC\uB9DD', '\u5728\u6B64\u9635\u4EA1', 'Murieron aqu\u00ED', 'Mort ici'),
+  'tft.comp.survivalChart': t6('Top-4-Wahrscheinlichkeit', 'Top-4 probability', 'Top-4 \uD655\uB960', 'Top-4 \u6982\u7387', 'Probabilidad Top-4', 'Probabilit\u00E9 Top-4'),
   'tft.comp.compDna': t6('Comp-DNA', 'Comp DNA', '\uC870\uD569 DNA', '\u9635\u5BB9 DNA', 'ADN de la comp', 'ADN de la comp'),
   'tft.comp.aggroIndex': t6('Aggro-Index (Kills/Spiel)', 'Aggro Index (Kills/Game)', '\uACF5\uACA9\uC131 (\uD0AC/\uAC8C\uC784)', '\u6FC0\u8FDB\u5EA6\uFF08\u51FB\u6740/\u5C40\uFF09', '\u00CDndice Aggro (Kills/Partida)', 'Aggro (Kills/Partie)'),
   'tft.comp.aggro.push': t6('Push-Streak-Comp', 'Push-streak comp', '\uC5F0\uC2B9 \uAC15\uD589 \uC870\uD569', '\u8FDE\u80DC\u63A8\u8FDB\u578B', 'Comp de racha agresiva', 'Comp push-streak'),

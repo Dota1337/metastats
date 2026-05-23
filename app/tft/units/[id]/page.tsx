@@ -321,7 +321,6 @@ export default function TftUnitDetailPage() {
                             <div className="text-white text-[11px] font-medium truncate leading-tight">
                               {traitName}
                               {variant && <span className="text-[#a892ff]"> · {variant}</span>}
-                              {' '}{parts?.level ?? ''}
                             </div>
                             <div className="text-[10px] text-[#7a8aa0] truncate">
                               {carry?.name || (parts ? prettyChar(parts.carry) : '')}

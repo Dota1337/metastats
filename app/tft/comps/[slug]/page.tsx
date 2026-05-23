@@ -1,6 +1,10 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
+import {
+  ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis,
+  Tooltip as RechartsTooltip, ReferenceLine, Cell,
+} from 'recharts';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import TierFilter, { type TierBucket } from '../../../components/tft/TierFilter';
@@ -183,15 +187,30 @@ export default function TftCompDetailPage() {
                           : comp.skillCapIndex >= 0.5 ? t('tft.comp.skillCap.medium')
                           : t('tft.comp.skillCap.consistent')}
                       </div>
-                      {comp.skillCapBuckets && comp.skillCapBuckets.length > 0 && (
-                        <div className="text-[#5a6a80] text-[10px] tabular-nums mt-1.5">
-                          {comp.skillCapBuckets.map((bk: any) => (
-                            <span key={bk.bucket} className="mr-2">
-                              {bk.bucket}: {bk.avgPlacement.toFixed(2)}
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                      {comp.skillCapBuckets && comp.skillCapBuckets.length > 0 && (() => {
+                        // Visual bar comparison: lower avg_place = better,
+                        // map 1..8 placement range to a 0..1 quality bar.
+                        const minP = Math.min(...comp.skillCapBuckets.map((b: any) => b.avgPlacement));
+                        const maxP = Math.max(...comp.skillCapBuckets.map((b: any) => b.avgPlacement));
+                        const range = Math.max(0.01, maxP - minP);
+                        return (
+                          <div className="space-y-1 mt-2">
+                            {comp.skillCapBuckets.map((bk: any) => {
+                              const norm = 1 - ((bk.avgPlacement - minP) / range);
+                              const hue = Math.round(120 * norm);
+                              return (
+                                <div key={bk.bucket} className="flex items-center gap-2 text-[10px] tabular-nums">
+                                  <span className="text-[#a0b0c5] w-16 truncate">{t(`tft.bucket.${bk.bucket}` as any) || bk.bucket}</span>
+                                  <div className="flex-1 h-1 bg-[#1e2a3a] rounded overflow-hidden">
+                                    <div className="h-full" style={{ width: `${(norm * 100).toFixed(0)}%`, backgroundColor: `hsl(${hue}, 60%, 50%)` }} />
+                                  </div>
+                                  <span className="text-white w-10 text-right">{bk.avgPlacement.toFixed(2)}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
                   {comp.levelingTempo && comp.levelingTempo.length > 0 && (
@@ -246,29 +265,92 @@ export default function TftCompDetailPage() {
                     />
                   </div>
                   <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3">
-                    <div className="flex items-end gap-0.5 h-24">
-                      {hist.map(p => {
-                        const h = Math.max(2, (p.games / maxGames) * 100);
-                        const top4Rate = p.games > 0 ? p.top4 / p.games : 0;
-                        const hue = Math.round(120 * top4Rate);
-                        return (
-                          <div
-                            key={p.round}
-                            className="flex-1 min-w-0 relative group"
-                            title={`${formatStage(p.round)} · ${p.games} games · ${(top4Rate * 100).toFixed(0)}% T4`}
-                          >
-                            <div
-                              className="w-full rounded-sm transition-opacity hover:opacity-100 opacity-90"
-                              style={{ height: `${h}%`, backgroundColor: `hsl(${hue}, 60%, 50%)` }}
-                            />
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <div className="flex justify-between text-[9px] text-[#5a6a80] tabular-nums mt-1">
-                      <span>{formatStage(hist[0].round)}</span>
-                      <span className="text-[#7B61FF]">{modeBin ? formatStage(modeBin.round) : ''}</span>
-                      <span>{formatStage(hist[hist.length - 1].round)}</span>
+                    {(() => {
+                      // Merge histogram + survival data into a single dataset
+                      // so Recharts renders the death-bar histogram + the
+                      // survival→top4 line over the same X-axis.
+                      const survByRound = new Map(survival.map(s => [s.round, s]));
+                      const chartData = hist.map(p => ({
+                        round: p.round,
+                        stage: formatStage(p.round),
+                        games: p.games,
+                        top4Rate: p.games > 0 ? (p.top4 / p.games) * 100 : 0,
+                        survivalRate: (survByRound.get(p.round)?.top4Rate ?? 0) * 100,
+                      }));
+                      return (
+                        <div style={{ width: '100%', height: 200 }}>
+                          <ResponsiveContainer>
+                            <ComposedChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
+                              <XAxis
+                                dataKey="stage"
+                                tick={{ fill: '#5a6a80', fontSize: 10 }}
+                                axisLine={{ stroke: '#1e2a3a' }}
+                                tickLine={false}
+                                interval="preserveStartEnd"
+                              />
+                              <YAxis
+                                yAxisId="left"
+                                tick={{ fill: '#5a6a80', fontSize: 10 }}
+                                axisLine={false}
+                                tickLine={false}
+                                width={28}
+                              />
+                              <YAxis
+                                yAxisId="right"
+                                orientation="right"
+                                domain={[0, 100]}
+                                tick={{ fill: '#3ecf8e', fontSize: 10 }}
+                                axisLine={false}
+                                tickLine={false}
+                                width={32}
+                                tickFormatter={v => `${v}%`}
+                              />
+                              <RechartsTooltip
+                                contentStyle={{
+                                  backgroundColor: '#0d1526',
+                                  border: '1px solid #1e2a3a',
+                                  borderRadius: 4,
+                                  fontSize: 11,
+                                }}
+                                labelStyle={{ color: '#a0b0c5' }}
+                                formatter={(value: any, name: any): any => {
+                                  if (name === 'games') return [value, t('tft.comp.dieHere')];
+                                  if (name === 'survivalRate') return [`${Number(value).toFixed(0)}%`, t('tft.comp.survivalChart')];
+                                  return [value, name];
+                                }}
+                              />
+                              {modeBin && (
+                                <ReferenceLine
+                                  yAxisId="left"
+                                  x={formatStage(modeBin.round)}
+                                  stroke="#7B61FF"
+                                  strokeDasharray="3 3"
+                                  strokeOpacity={0.6}
+                                />
+                              )}
+                              <Bar yAxisId="left" dataKey="games" radius={[2, 2, 0, 0]}>
+                                {chartData.map((d, idx) => {
+                                  const hue = Math.round(120 * (d.top4Rate / 100));
+                                  return <Cell key={idx} fill={`hsl(${hue}, 60%, 45%)`} />;
+                                })}
+                              </Bar>
+                              <Line
+                                yAxisId="right"
+                                type="monotone"
+                                dataKey="survivalRate"
+                                stroke="#3ecf8e"
+                                strokeWidth={2}
+                                dot={false}
+                                activeDot={{ r: 4, fill: '#3ecf8e' }}
+                              />
+                            </ComposedChart>
+                          </ResponsiveContainer>
+                        </div>
+                      );
+                    })()}
+                    <div className="flex justify-between text-[9px] text-[#5a6a80] mt-1.5">
+                      <span><span className="inline-block w-2 h-2 bg-[#e44040] rounded-sm mr-1"/>{t('tft.comp.dieHere')}</span>
+                      <span><span className="inline-block w-2 h-2 bg-[#3ecf8e] rounded-sm mr-1"/>{t('tft.comp.survivalChart')}</span>
                     </div>
                   </div>
                 </section>

@@ -86,15 +86,27 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 async function liquipediaJson(params) {
   const url = `${LIQUIPEDIA_API}?${new URLSearchParams({ ...params, format: 'json' })}`;
-  const res = await fetch(url, {
-    headers: {
-      'User-Agent': USER_AGENT,
-      // Liquipedia requires gzip on all API requests.
-      'Accept-Encoding': 'gzip, deflate',
-    },
-  });
-  if (!res.ok) throw new Error(`Liquipedia HTTP ${res.status}: ${url.slice(0, 200)}`);
-  return res.json();
+  // 429 retry-loop with exponential back-off (Liquipedia rate-limits bursts).
+  let backoff = 10_000;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': USER_AGENT,
+        'Accept-Encoding': 'gzip, deflate',
+      },
+    });
+    if (res.ok) return res.json();
+    if (res.status === 429 && attempt < 3) {
+      const retryAfter = Number(res.headers.get('Retry-After')) || 0;
+      const wait = Math.max(retryAfter * 1000, backoff);
+      console.log(`  [liquipedia] 429 — backoff ${Math.round(wait/1000)}s (attempt ${attempt + 1})`);
+      await sleep(wait);
+      backoff *= 2;
+      continue;
+    }
+    throw new Error(`Liquipedia HTTP ${res.status}: ${url.slice(0, 200)}`);
+  }
+  throw new Error('Liquipedia 429 after 4 attempts');
 }
 
 async function fetchAllPlayerTitles() {

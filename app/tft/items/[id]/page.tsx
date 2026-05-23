@@ -181,7 +181,7 @@ export default function TftItemDetailPage() {
                           )}
                           <div className="flex-1 min-w-0">
                             <div className="text-white text-[11px] font-medium truncate leading-tight">
-                              {traitName} {parts?.level ?? ''} · {carry?.name || (parts ? prettyChar(parts.carry) : '')}
+                              {traitName} · {carry?.name || (parts ? prettyChar(parts.carry) : '')}
                             </div>
                           </div>
                           <div className="text-right text-[11px] tabular-nums leading-tight">

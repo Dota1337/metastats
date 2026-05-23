@@ -34,6 +34,9 @@ const LIMIT = parseInt(arg('--limit', '0'), 10);
 const SKIP_SUPABASE = hasFlag('--no-supabase');
 const SKIP_LIQUIPEDIA = hasFlag('--skip-liquipedia');
 const VERBOSE = hasFlag('--verbose');
+// Legacy mode: walk Category:Players + action=parse per page (~400 requests).
+// Default is now Cargo (1-2 requests, ~400× less traffic, avoids IP bans).
+const LEGACY = hasFlag('--legacy');
 
 const LIQUIPEDIA_API = 'https://liquipedia.net/teamfighttactics/api.php';
 // Liquipedia ToU: "wait 2 seconds between requests, identify yourself".
@@ -133,6 +136,50 @@ async function fetchPlayerWikitext(title) {
     action: 'parse', page: title, prop: 'wikitext',
   });
   return j.parse?.wikitext?.['*'] || '';
+}
+
+// Cargo path — one structured query returns up to 500 player rows with all
+// fields we need, vs the legacy walk's ~400 individual page-parse requests.
+// Reduces Liquipedia request count by ~400× and is the only realistic way
+// to avoid IP bans on repeated runs. Field set kept minimal: only what
+// upsertPros() actually writes. Falls back to a smaller field set if the
+// wiki's Cargo schema doesn't include the Lolchess field.
+async function fetchPlayersViaCargo() {
+  const out = [];
+  const PER_PAGE = 500;
+  // Field-set in priority order — the Lolchess (region+riot-id) field varies
+  // by wiki version, so we try the most common names. If Cargo rejects the
+  // query the catch will fall back to the legacy walk.
+  const fields = [
+    'ID',           // pro name (canonical handle)
+    'Name',         // real name
+    'Team',
+    'Role',
+    'Country',
+    'Twitch',
+    'Twitter',
+    'YouTube',
+    'Image',
+    'Lolchess',     // primary Riot-ID source (e.g. "na/setsuko1-NA1")
+    'Lolchess2',
+  ].join(',');
+  let offset = 0;
+  while (true) {
+    const j = await liquipediaJson({
+      action: 'cargoquery',
+      tables: 'Players',
+      fields,
+      limit: String(PER_PAGE),
+      offset: String(offset),
+    });
+    const rows = (j.cargoquery || []).map(e => e.title || {});
+    for (const r of rows) out.push(r);
+    if (rows.length < PER_PAGE) break;
+    offset += PER_PAGE;
+    if (offset > 5000) break;  // safety cap — TFT has ≪ 5000 players
+    await sleep(LIQUIPEDIA_DELAY_MS);
+  }
+  return out;
 }
 
 // Lazy-tolerant parser: walks the {{Infobox player |k=v |...}} template and
@@ -264,54 +311,100 @@ async function main() {
   const t0 = Date.now();
   console.log('=== TFT Pro Player Crawler ===\n');
 
-  // 1) Discover titles
-  let titles = [];
-  if (!SKIP_LIQUIPEDIA) {
-    console.log('[1/3] Fetching Liquipedia Category:Players …');
-    titles = await fetchAllPlayerTitles();
-    if (LIMIT > 0) titles = titles.slice(0, LIMIT);
-    console.log(`       ${titles.length} player pages\n`);
-  }
-
-  // 2) Parse + resolve
+  // Cargo path (default) — single structured query returns every player row
+  // in the Liquipedia TFT wiki Cargo Players table. Legacy walk only on
+  // explicit --legacy flag (last-resort if Cargo schema changes).
   const rows = [];
   let parsed = 0, resolved = 0, skipped = 0;
-  for (const title of titles) {
-    await sleep(LIQUIPEDIA_DELAY_MS);
-    let wikitext;
-    try { wikitext = await fetchPlayerWikitext(title); }
-    catch (e) { if (VERBOSE) console.warn(`  [skip] ${title}: ${e.message}`); skipped++; continue; }
-    const info = parseInfobox(wikitext);
-    if (!info) { skipped++; continue; }
-    parsed++;
-    const idField = info.id || info.ID || info.player;
-    const accountSpec = parseLolchess(info.lolchess) || parseLolchess(info.lolchess2);
-    if (!idField || !accountSpec) { skipped++; continue; }
-    // Resolve via Riot
-    const puuid = await resolvePuuid(accountSpec.region, accountSpec.gameName, accountSpec.tagLine);
-    if (!puuid) { skipped++; continue; }
-    resolved++;
-    rows.push({
-      puuid,
-      pro_name: idField,
-      real_name: info.name || null,
-      region: accountSpec.region,
-      riot_id: `${accountSpec.gameName}#${accountSpec.tagLine}`,
-      team: info.team || null,
-      role: info.role || 'Player',
-      country: info.country || null,
-      source: 'liquipedia',
-      source_page: title,
-      twitch_handle: info.twitch || null,
-      twitter_handle: info.twitter || null,
-      youtube_handle: info.youtube || null,
-      instagram_handle: info.instagram || null,
-      tournament_results: [],
-      last_validated_at: new Date().toISOString(),
-    });
-    if (rows.length % 10 === 0) {
-      const elapsed = ((Date.now() - t0) / 1000).toFixed(0);
-      console.log(`  ${rows.length}/${titles.length}  parsed=${parsed} resolved=${resolved} skipped=${skipped}  ${elapsed}s`);
+
+  if (!SKIP_LIQUIPEDIA && !LEGACY) {
+    console.log('[1/3] Fetching Liquipedia Players via Cargo …');
+    let cargoRows;
+    try {
+      cargoRows = await fetchPlayersViaCargo();
+    } catch (e) {
+      console.warn(`  [cargo] failed (${e.message}) — falling back to legacy walk`);
+      cargoRows = null;
+    }
+    if (cargoRows) {
+      if (LIMIT > 0) cargoRows = cargoRows.slice(0, LIMIT);
+      console.log(`       ${cargoRows.length} player rows from Cargo (1 query vs ~${cargoRows.length} legacy)\n`);
+      for (const r of cargoRows) {
+        const idField = r.ID;
+        const accountSpec = parseLolchess(r.Lolchess) || parseLolchess(r.Lolchess2);
+        if (!idField || !accountSpec) { skipped++; continue; }
+        parsed++;
+        const puuid = await resolvePuuid(accountSpec.region, accountSpec.gameName, accountSpec.tagLine);
+        if (!puuid) { skipped++; continue; }
+        resolved++;
+        rows.push({
+          puuid,
+          pro_name: idField,
+          real_name: r.Name || null,
+          region: accountSpec.region,
+          riot_id: `${accountSpec.gameName}#${accountSpec.tagLine}`,
+          team: r.Team || null,
+          role: r.Role || 'Player',
+          country: r.Country || null,
+          source: 'liquipedia',
+          source_page: `Cargo:Players/${idField}`,
+          twitch_handle: r.Twitch || null,
+          twitter_handle: r.Twitter || null,
+          youtube_handle: r.YouTube || null,
+          instagram_handle: null,
+          tournament_results: [],
+          last_validated_at: new Date().toISOString(),
+        });
+        if (rows.length % 25 === 0) {
+          const elapsed = ((Date.now() - t0) / 1000).toFixed(0);
+          console.log(`  ${rows.length}/${cargoRows.length}  resolved=${resolved} skipped=${skipped}  ${elapsed}s`);
+        }
+      }
+    }
+  }
+
+  // Legacy walk — only triggered by --legacy or as Cargo fallback (rows empty + cargoRows was null)
+  if (!SKIP_LIQUIPEDIA && (LEGACY || rows.length === 0)) {
+    console.log('[1/3 legacy] Fetching Liquipedia Category:Players …');
+    let titles = await fetchAllPlayerTitles();
+    if (LIMIT > 0) titles = titles.slice(0, LIMIT);
+    console.log(`       ${titles.length} player pages (~${titles.length} requests)\n`);
+    for (const title of titles) {
+      await sleep(LIQUIPEDIA_DELAY_MS);
+      let wikitext;
+      try { wikitext = await fetchPlayerWikitext(title); }
+      catch (e) { if (VERBOSE) console.warn(`  [skip] ${title}: ${e.message}`); skipped++; continue; }
+      const info = parseInfobox(wikitext);
+      if (!info) { skipped++; continue; }
+      parsed++;
+      const idField = info.id || info.ID || info.player;
+      const accountSpec = parseLolchess(info.lolchess) || parseLolchess(info.lolchess2);
+      if (!idField || !accountSpec) { skipped++; continue; }
+      const puuid = await resolvePuuid(accountSpec.region, accountSpec.gameName, accountSpec.tagLine);
+      if (!puuid) { skipped++; continue; }
+      resolved++;
+      rows.push({
+        puuid,
+        pro_name: idField,
+        real_name: info.name || null,
+        region: accountSpec.region,
+        riot_id: `${accountSpec.gameName}#${accountSpec.tagLine}`,
+        team: info.team || null,
+        role: info.role || 'Player',
+        country: info.country || null,
+        source: 'liquipedia',
+        source_page: title,
+        twitch_handle: info.twitch || null,
+        twitter_handle: info.twitter || null,
+        youtube_handle: info.youtube || null,
+        instagram_handle: info.instagram || null,
+        tournament_results: [],
+        last_validated_at: new Date().toISOString(),
+      });
+      if (rows.length % 10 === 0) {
+        const elapsed = ((Date.now() - t0) / 1000).toFixed(0);
+        console.log(`  ${rows.length}/${titles.length}  parsed=${parsed} resolved=${resolved} skipped=${skipped}  ${elapsed}s`);
+      }
     }
   }
 

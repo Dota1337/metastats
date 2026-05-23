@@ -258,6 +258,14 @@ export default function TftUnitDetailPage() {
                 const tiers = Object.keys(damage).sort();
                 if (tiers.length === 0) return null;
                 const fmt = (n: number | null) => n == null ? '—' : n >= 10000 ? `${(n/1000).toFixed(1)}k` : Math.round(n).toLocaleString('de-DE');
+                // Find global max P95 to normalize bar widths across rows
+                let globalMax = 0;
+                for (const tier of tiers) {
+                  for (const ic of Object.keys(damage[tier] || {})) {
+                    const bin = damage[tier][ic];
+                    if (bin?.p95 && bin.p95 > globalMax) globalMax = bin.p95;
+                  }
+                }
                 return (
                   <Section title={t('tft.damageAtlas')}>
                     <div className="bg-[#141c2e] border border-[#1e2a3a] rounded overflow-hidden">
@@ -266,8 +274,7 @@ export default function TftUnitDetailPage() {
                           <tr className="text-[#7a8aa0] border-b border-[#1e2a3a]">
                             <th className="text-left px-2 py-1.5 font-normal">{t('tft.stars')}</th>
                             <th className="text-left px-2 py-1.5 font-normal">{t('tft.itemsShort')}</th>
-                            <th className="text-right px-2 py-1.5 font-normal">P50</th>
-                            <th className="text-right px-2 py-1.5 font-normal">P75</th>
+                            <th className="text-left px-2 py-1.5 font-normal" colSpan={2}>P50 — P95</th>
                             <th className="text-right px-2 py-1.5 font-normal">P95</th>
                             <th className="text-right px-2 py-1.5 font-normal">{t('tft.gamesShort')}</th>
                           </tr>
@@ -278,13 +285,30 @@ export default function TftUnitDetailPage() {
                             const counts = Object.keys(itemCountBins).sort().reverse();
                             return counts.map(ic => {
                               const bin = itemCountBins[ic];
+                              // Bar: from P50 → P95 visualised as a range bar.
+                              // Single-color gradient (carry damage in TFT = always
+                              // a "good signal"), brighter when range is tight.
+                              const p50Pct = globalMax > 0 && bin.p50 ? (bin.p50 / globalMax) * 100 : 0;
+                              const p95Pct = globalMax > 0 && bin.p95 ? (bin.p95 / globalMax) * 100 : 0;
+                              const rangeWidth = Math.max(2, p95Pct - p50Pct);
                               return (
                                 <tr key={`${tier}-${ic}`} className="border-b border-[#1e2a3a]/50 last:border-0">
-                                  <td className="px-2 py-1.5 text-white">{tier}★</td>
+                                  <td className="px-2 py-1.5 text-white"><span className="text-[#e0c75a]">★</span>{tier}</td>
                                   <td className="px-2 py-1.5 text-[#a0b0c5]">{ic}</td>
-                                  <td className="px-2 py-1.5 text-right text-white">{fmt(bin.p50)}</td>
-                                  <td className="px-2 py-1.5 text-right text-[#a0b0c5]">{fmt(bin.p75)}</td>
-                                  <td className="px-2 py-1.5 text-right text-[#a0b0c5]">{fmt(bin.p95)}</td>
+                                  <td className="px-2 py-1.5 text-right text-white w-12">{fmt(bin.p50)}</td>
+                                  <td className="px-2 py-1.5 w-32">
+                                    <div className="relative h-2 bg-[#0d1526] rounded overflow-hidden">
+                                      <div
+                                        className="absolute h-full"
+                                        style={{
+                                          left: `${p50Pct.toFixed(0)}%`,
+                                          width: `${rangeWidth.toFixed(0)}%`,
+                                          background: 'linear-gradient(to right, #7B61FF, #3ecf8e)',
+                                        }}
+                                      />
+                                    </div>
+                                  </td>
+                                  <td className="px-2 py-1.5 text-right text-[#3ecf8e]">{fmt(bin.p95)}</td>
                                   <td className="px-2 py-1.5 text-right text-[#7a8aa0]">{bin.games}</td>
                                 </tr>
                               );

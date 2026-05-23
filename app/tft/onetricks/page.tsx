@@ -78,21 +78,39 @@ export default function TftOneTricksPage() {
         <div className="space-y-2">
           {data.map((p, idx) => {
             const display = p.gameName || '—';
+            // Tier-color the specialty score: 90%+=purple, 75-90%=violet, else green
+            const specPct = p.top2Share * 100;
+            const specColor = specPct >= 90 ? '#a892ff' : specPct >= 75 ? '#7B61FF' : '#3ecf8e';
+            const tierBg = p.tier === 'CHALLENGER' ? '#f0c040'
+              : p.tier === 'GRANDMASTER' ? '#e44040'
+              : p.tier === 'MASTER' ? '#9d48e0'
+              : '#3a8ddc';
+            const top1Width = p.top2Share > 0 ? (p.signatureComps[0]?.share ?? 0) / p.top2Share * 100 : 0;
             return (
-              <div key={p.puuid} className="bg-[#0d1526] border border-[#1e2a3a] rounded p-3">
+              <div key={p.puuid} className="bg-[#0d1526] border border-[#1e2a3a] rounded p-3 hover:border-[#7B61FF]/30 transition-colors">
                 <div className="flex items-center gap-3 mb-2">
-                  <span className="text-[#7a8aa0] text-xs tabular-nums w-6">#{idx + 1}</span>
+                  <span className="text-[#7a8aa0] text-xs tabular-nums w-6 font-medium">#{idx + 1}</span>
+                  <span className="text-[9px] tabular-nums uppercase tracking-widest px-1.5 py-0.5 rounded font-medium" style={{ backgroundColor: `${tierBg}20`, color: tierBg }}>
+                    {p.tier.slice(0, 3)}
+                  </span>
                   <a
                     href={`/tft/player/${encodeURIComponent(display)}?region=${region}`}
                     className="text-white font-medium hover:text-[#a892ff] flex-1 truncate"
                   >
                     {display}{p.tagLine ? <span className="text-[#7a8aa0]">#{p.tagLine}</span> : null}
                   </a>
-                  <span className="text-[10px] text-[#a892ff] tabular-nums">{p.tier}</span>
-                  <span className="text-[11px] text-[#3ecf8e] tabular-nums">
-                    {(p.top2Share * 100).toFixed(0)}% {t('tft.onetricks.specialty')}
-                  </span>
                   <span className="text-[10px] text-[#7a8aa0] tabular-nums">{p.totalGames}g</span>
+                </div>
+                {/* Specialty-bar: visualizes top1 vs top2 share split */}
+                <div className="mb-2.5">
+                  <div className="flex justify-between text-[10px] mb-1">
+                    <span className="text-[#7a8aa0]">{t('tft.onetricks.specialty')}</span>
+                    <span className="tabular-nums font-medium" style={{ color: specColor }}>{specPct.toFixed(0)}%</span>
+                  </div>
+                  <div className="h-1.5 bg-[#1e2a3a] rounded overflow-hidden flex">
+                    <div className="h-full" style={{ width: `${(p.top2Share * top1Width / 100 * 100).toFixed(0)}%`, backgroundColor: specColor }} />
+                    <div className="h-full" style={{ width: `${(p.top2Share * (1 - top1Width / 100) * 100).toFixed(0)}%`, backgroundColor: `${specColor}80` }} />
+                  </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {p.signatureComps.map(c => {

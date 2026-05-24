@@ -26,7 +26,24 @@ import {
   buildHotCompKeys,
   buildRecommendedItems,
 } from './lib/tft-season-aggregator.mjs';
-import { calculateTftMarketValue } from './lib/tft-marketvalue.mjs';
+import { computeBaseValue } from './lib/tft-marketvalue.mjs';
+import { extractRawMetrics, scoreSkill } from './lib/tft-skill-score.mjs';
+
+// Load the persisted region/set population so the single-player refresh can
+// normalise this one player against the same cohort the batch computed.
+// Returns null if the batch hasn't populated this region yet (→ neutral mult).
+async function loadPopulation(pool, region, setNumber) {
+  const r = await pool.query(
+    'select medians, expected_dmg, comp_meta from tft_mv_population_stats where region = $1 and set_number = $2',
+    [region, setNumber],
+  );
+  if (!r.rows[0]) return null;
+  const row = r.rows[0];
+  return {
+    pop: { medians: row.medians, expectedDmg: row.expected_dmg },
+    compMeta: new Map(Object.entries(row.comp_meta || {})),
+  };
+}
 
 const REGIONAL = ({
   euw1: 'europe', eun1: 'europe', tr1: 'europe', ru: 'europe', me1: 'europe',
@@ -183,19 +200,26 @@ async function refreshOnePlayer(puuid, region) {
   );
   const ladderRank = ladderRankRow.rows[0]?.ladder_rank ?? null;
 
-  // 5) Marketvalue compute
-  const result = calculateTftMarketValue({
-    ranked: {
-      tier: ranked.tier, rank: ranked.rank, leaguePoints: ranked.leaguePoints,
-      wins: ranked.wins, losses: ranked.losses,
-    },
-    playerRank: ranked.tier === 'CHALLENGER' && ladderRank ? ladderRank : undefined,
-    matches,
-    patchKnowledgeGraph: ctx.graph,
-  });
-  if (!result.rated) {
-    return { ok: true, rated: false, reason: result.notRatedReason, sampleSize: matches.length };
+  // 5) Marketvalue compute — base × population-relative skill-score multiplier
+  const base = computeBaseValue(
+    { tier: ranked.tier, rank: ranked.rank, leaguePoints: ranked.leaguePoints, wins: ranked.wins, losses: ranked.losses },
+    ranked.tier === 'CHALLENGER' && ladderRank ? ladderRank : undefined,
+  );
+  if (!base.rated) {
+    return { ok: true, rated: false, reason: base.notRatedReason, sampleSize: matches.length };
   }
+  // Normalise against the persisted population. If the batch hasn't populated
+  // this region yet, fall back to a neutral 1.0 multiplier (base-only) so the
+  // player still gets a rank-based value rather than nothing.
+  const popData = await loadPopulation(pool, region, setNumber);
+  let multiplier = 1, sampleSize = matches.length, damping = 1, signals = [];
+  if (popData) {
+    const raw = extractRawMetrics(matches, { wins: ranked.wins, losses: ranked.losses }, popData.compMeta);
+    const sk = scoreSkill(raw, popData.pop);
+    multiplier = sk.multiplier; sampleSize = sk.sampleSize; damping = sk.damping; signals = sk.signals;
+  }
+  const baseValue = Math.round(base.baseValue);
+  const finalValue = Math.round(base.baseValue * multiplier);
 
   // 6) Persist locally + remotely
   const today = new Date().toISOString().slice(0, 10);
@@ -204,9 +228,9 @@ async function refreshOnePlayer(puuid, region) {
     game_name: account?.gameName ?? null, tag_line: account?.tagLine ?? null,
     tier: ranked.tier, rank: ranked.rank, lp: ranked.leaguePoints,
     ladder_rank: ladderRank,
-    base_value: result.baseValue, multiplier: Number(result.multiplier),
-    final_value: result.finalValue, sample_size: result.sampleSize,
-    damping: Number(result.damping), agents: result.agents,
+    base_value: baseValue, multiplier,
+    final_value: finalValue, sample_size: sampleSize,
+    damping, agents: signals,
   };
   await pool.query(
     `insert into tft_player_marketvalue_snapshots (
@@ -243,8 +267,8 @@ async function refreshOnePlayer(puuid, region) {
 
   return {
     ok: true, rated: true,
-    snapshotDate: today, finalValue: result.finalValue,
-    multiplier: result.multiplier, sampleSize: result.sampleSize,
+    snapshotDate: today, finalValue,
+    multiplier, sampleSize,
   };
 }
 

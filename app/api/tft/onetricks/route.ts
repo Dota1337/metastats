@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '../../../lib/supabase';
+// Service-role client: the marketvalue RPC + 80-player match-cache read are
+// too heavy for the public anon role's short statement_timeout (they 500'd
+// with 57014). This runs server-side only, so bypassing RLS is fine.
+import { supabaseAdmin as supabase } from '../../../lib/supabase';
 
 // /api/tft/onetricks?region=euw1&minShare=0.6
 //

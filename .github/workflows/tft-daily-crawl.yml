@@ -102,26 +102,16 @@ jobs:
     timeout-minutes: 60
     strategy:
       fail-fast: false   # if one region 5xx's we still want the others to land
-      max-parallel: 17
+      max-parallel: 3
+      # Trimmed from 17 regions to the 3 primary regions on 2026-05-24 to stay
+      # within the GitHub Actions free-tier minutes budget (these were disabled
+      # because 17 regions × 4 runs/day exhausted the quota). Expand again or
+      # move to the Hetzner crawler box if more regions are needed.
       matrix:
         region:
           - euw1
           - kr
           - na1
-          - eun1
-          - br1
-          - jp1
-          - oc1
-          - la1
-          - la2
-          - tr1
-          - ru
-          - me1
-          - ph2
-          - sg2
-          - th2
-          - tw2
-          - vn2
     env:
       RIOT_API_KEY_TFT: ${{ secrets.RIOT_API_KEY_TFT }}
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}

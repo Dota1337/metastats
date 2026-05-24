@@ -38,26 +38,16 @@ jobs:
     timeout-minutes: 350    # GHA hard cap is 360 — leaves buffer for cleanup
     strategy:
       fail-fast: false
-      max-parallel: 17
+      max-parallel: 3
+      # Trimmed from 17 regions to the 3 primary regions on 2026-05-24. The
+      # pre-warm is the heaviest workflow (up to ~6h/region on first fill), so
+      # 17 regions blew the GitHub Actions free-tier budget. Expand or move to
+      # the Hetzner crawler box if full region coverage is needed.
       matrix:
         region:
           - euw1
           - kr
           - na1
-          - eun1
-          - br1
-          - jp1
-          - oc1
-          - la1
-          - la2
-          - tr1
-          - ru
-          - me1
-          - ph2
-          - sg2
-          - th2
-          - tw2
-          - vn2
     env:
       RIOT_API_KEY_TFT: ${{ secrets.RIOT_API_KEY_TFT }}
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}

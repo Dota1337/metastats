@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { callRpc, getAvailablePatches } from '../../../lib/tft-supabase-reader';
+import { callRpc, getAvailablePatches, BUCKET_GROUPS } from '../../../lib/tft-supabase-reader';
 
 // /api/tft/patch-diff?patch=17.2&prev=17.1&entity=unit|item|trait
 //
@@ -43,7 +43,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'invalid entity' }, { status: 400 });
   }
   const region = searchParams.get('region');
-  const bucket = searchParams.get('bucket') || 'master_plus';
+  const bucketParam = searchParams.get('bucket') || 'master_plus';
+  // Expand group names ('master_plus','all','pro_pool') to the real bucket
+  // values stored in the stats tables — the RPC matches bucket = ANY(...),
+  // and there are no rows literally tagged 'master_plus'.
+  const buckets = BUCKET_GROUPS[bucketParam] || [bucketParam];
 
   try {
     const patches = await getAvailablePatches(180);
@@ -65,7 +69,6 @@ export async function GET(request: NextRequest) {
     const setNumber = patches.find(p => p.patch === currentPatch)?.set_number
                     ?? patches[0].set_number;
     const regions = region ? [region] : null;
-    const buckets = [bucket];
 
     const [curr, prev] = await Promise.all([
       fetchEntityRows(entity, currentPatch, setNumber, regions, buckets),

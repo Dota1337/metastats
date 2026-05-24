@@ -10,6 +10,7 @@ import Footer from '../../../components/Footer';
 import TierFilter, { type TierBucket } from '../../../components/tft/TierFilter';
 import EmptyData from '../../../components/tft/EmptyData';
 import { useI18n } from '../../../lib/i18n';
+import { tftPatchLabel } from '../../../lib/tft-patch-label';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 
 type ItemEntry = { item: string; games: number; avgPlacement: number | null; top4Rate: number | null };
@@ -340,6 +341,7 @@ export default function TftUnitDetailPage() {
                       <LineChart data={timeline} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
                         <XAxis
                           dataKey="patch"
+                          tickFormatter={(v: string) => tftPatchLabel(v)}
                           tick={{ fill: '#5a6a80', fontSize: 10 }}
                           axisLine={{ stroke: '#1e2a3a' }}
                           tickLine={false}

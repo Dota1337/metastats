@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { callRpc, getAvailablePatches, REGION_GROUPS } from '../../../lib/tft-supabase-reader';
+import { callRpc, getAvailablePatches, REGION_GROUPS, BUCKET_GROUPS } from '../../../lib/tft-supabase-reader';
 
 // /api/tft/unit-history?characterId=X&patches=5&bucket=master_plus
 // Per-unit avg_placement / pick_rate / top4 across last N patches.
@@ -21,7 +21,10 @@ export async function GET(request: NextRequest) {
   const bucket = searchParams.get('bucket') || 'master_plus';
   const regionParam = searchParams.get('region') || 'all';
   const regions = REGION_GROUPS[regionParam] || REGION_GROUPS.all;
-  const buckets = [bucket];
+  // Expand group names ('master_plus','all') to the real bucket values — the
+  // RPC matches bucket = ANY(...) and no row is literally tagged 'master_plus',
+  // so passing the group name returned 0 rows → empty timeline → missing chart.
+  const buckets = BUCKET_GROUPS[bucket] || [bucket];
 
   const allPatches = await getAvailablePatches(180);
   const patches = allPatches.slice(0, patchCount);
@@ -53,6 +56,10 @@ export async function GET(request: NextRequest) {
     } catch {
     }
   }
-  timeline.reverse();
+  // Oldest patch left, newest right. Sort explicitly by first_day instead of
+  // relying on the RPC's order — Riot's raw game_version strings don't sort
+  // chronologically (e.g. "17.2" predates "16.10"), so a number-based order
+  // would put patches in the wrong place on the x-axis.
+  timeline.sort((a, b) => (a.firstDay < b.firstDay ? -1 : a.firstDay > b.firstDay ? 1 : 0));
   return NextResponse.json({ characterId, timeline });
 }

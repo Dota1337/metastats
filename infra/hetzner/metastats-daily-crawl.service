@@ -2,6 +2,10 @@
 Description=metastats TFT daily stats crawl (all regions, all ranks)
 Wants=network-online.target
 After=network-online.target
+# Chain the marketvalue crawl (Diamond II+) to run right after this aggregate
+# crawl succeeds — single timer, no separate 04:00 schedule. The marketvalue
+# unit carries --include-diamond and its own per-region/total timeouts.
+OnSuccess=metastats-crawler.service
 
 [Service]
 Type=oneshot

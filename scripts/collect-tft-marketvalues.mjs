@@ -93,6 +93,11 @@ if (!API_KEY) { console.error('RIOT_API_KEY_TFT env var required'); process.exit
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) { console.error('DATABASE_URL env var required'); process.exit(1); }
 
+// Optional Supabase mirror for the population stats so the Vercel live-calc
+// fallback can read them (the snapshots themselves are mirrored separately).
+const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || null;
+const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || null;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // setup
 // ─────────────────────────────────────────────────────────────────────────────
@@ -271,6 +276,22 @@ async function persistPopulation(setNumber, pop, compMeta, playerCount) {
     [REGION, setNumber, JSON.stringify(pop.medians), JSON.stringify(pop.expectedDmg),
      JSON.stringify(Object.fromEntries(compMeta)), playerCount],
   );
+  // Mirror to Supabase so the Vercel live-calc fallback can read it. Best-effort.
+  if (SUPA_URL && SUPA_KEY) {
+    await fetch(`${SUPA_URL}/rest/v1/tft_mv_population_stats?on_conflict=region,set_number`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`,
+        'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal',
+      },
+      body: JSON.stringify([{
+        region: REGION, set_number: setNumber,
+        medians: pop.medians, expected_dmg: pop.expectedDmg,
+        comp_meta: Object.fromEntries(compMeta), player_count: playerCount,
+      }]),
+    }).then(r => { if (!r.ok) console.error(`  [pop→supabase] HTTP ${r.status}`); })
+      .catch(e => console.error(`  [pop→supabase] ${e.message}`));
+  }
 }
 
 // Pass 2: base value × skill-score multiplier → snapshot.

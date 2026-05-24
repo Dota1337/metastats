@@ -330,37 +330,26 @@ export default function TftComparePage() {
             <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-4">
               <div className="text-center text-[#a0b0c5] text-xs uppercase tracking-widest mb-2">Performance-Radar</div>
               {(() => {
-                const agentOrder = ['performance', 'metaAdaptation', 'highRoll', 'consistency', 'flexMastery', 'gameSense'];
-                const agentLabels: Record<string, string> = {
+                const signalOrder = ['performance', 'metaRelative', 'consistency', 'flexMastery', 'gameSense', 'boardStrength'];
+                const signalLabels: Record<string, string> = {
                   performance: 'Performance',
-                  metaAdaptation: 'Meta',
-                  highRoll: 'High-Roll',
+                  metaRelative: 'Meta',
                   consistency: 'Konsistenz',
                   flexMastery: 'Flex',
                   gameSense: 'Game-Sense',
+                  boardStrength: 'Board',
                 };
-                // Normalise each agent's multiplier to a 0..100 scale using its
-                // known range so all six axes are comparable. Ranges match
-                // app/lib/tft-marketvalue/agents/*.
-                const ranges: Record<string, [number, number]> = {
-                  performance:    [0.45, 1.40],
-                  metaAdaptation: [0.85, 1.18],
-                  highRoll:       [0.90, 1.12],
-                  consistency:    [0.88, 1.10],
-                  flexMastery:    [0.90, 1.12],
-                  gameSense:      [0.94, 1.10],
-                };
-                const normalize = (agent: string, m: number) => {
-                  const [lo, hi] = ranges[agent] || [0.5, 1.5];
-                  return Math.max(0, Math.min(100, ((m - lo) / (hi - lo)) * 100));
-                };
-                const data = agentOrder.map(a => {
-                  const a1 = s1.agents.find(x => x.agent === a);
-                  const a2 = s2.agents.find(x => x.agent === a);
+                // Each signal carries a population z-score (−3..+3). Map to a
+                // 0..100 radar axis where 50 = population median (z = 0).
+                const normZ = (z: number | null | undefined) =>
+                  z == null ? 50 : Math.max(0, Math.min(100, ((z + 3) / 6) * 100));
+                const data = signalOrder.map(sig => {
+                  const a1 = (s1.agents as any[]).find(x => x.signal === sig);
+                  const a2 = (s2.agents as any[]).find(x => x.signal === sig);
                   return {
-                    stat: agentLabels[a],
-                    p1: a1 ? normalize(a, a1.multiplier) : 0,
-                    p2: a2 ? normalize(a, a2.multiplier) : 0,
+                    stat: signalLabels[sig],
+                    p1: a1?.available ? normZ(a1.z) : 50,
+                    p2: a2?.available ? normZ(a2.z) : 50,
                   };
                 });
                 return <CompareRadar data={data} name1={s1.name.split('#')[0]} name2={s2.name.split('#')[0]} />;

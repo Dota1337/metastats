@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { calculateTftMarketValue } from '../../../lib/tft-marketvalue';
-import { loadTftGraph } from '../../../lib/tft-stats-loader';
+import { computeBaseValue } from '../../../lib/tft-marketvalue/base-value';
+import { extractRawMetrics, scoreSkill, type CompMetaEntry } from '../../../lib/tft-marketvalue/skill-score';
 import { getRegionalRouting } from '../../../lib/regions';
 import { processTftMatch } from '../../../lib/tft-match-processor';
 import { supabase } from '../../../lib/supabase';
@@ -108,20 +108,43 @@ export async function GET(request: NextRequest) {
     };
   }).filter((m): m is NonNullable<typeof m> => m != null);
 
-  const graph = loadTftGraph(region);
+  // Base value from rank/LP (unchanged curve), then the population-relative
+  // skill-score multiplier read from the batch-persisted population stats.
+  const base = computeBaseValue(
+    ranked ? { tier: ranked.tier, rank: ranked.rank, leaguePoints: ranked.leaguePoints, wins: ranked.wins, losses: ranked.losses } : null,
+  );
 
-  const result = calculateTftMarketValue({
-    ranked: ranked ? {
-      tier: ranked.tier, rank: ranked.rank, leaguePoints: ranked.leaguePoints,
-      wins: ranked.wins, losses: ranked.losses,
-    } : null,
-    matches: selfMatches,
-    patchKnowledgeGraph: graph,
-  });
+  let marketValue: Record<string, unknown>;
+  if (!base.rated) {
+    marketValue = {
+      baseValue: 0, multiplier: 1, finalValue: 0, rated: false,
+      notRatedReason: base.notRatedReason, sampleSize: selfMatches.length, damping: 1, agents: [],
+    };
+  } else {
+    const setNumber = selfMatches.reduce((mx, m) => Math.max(mx, m.setNumber || 0), 0);
+    const setMatches = selfMatches.filter(m => m.setNumber === setNumber);
+    const { data: ps } = await supabase
+      .from('tft_mv_population_stats')
+      .select('medians, expected_dmg, comp_meta')
+      .eq('region', region).eq('set_number', setNumber).maybeSingle();
+
+    let multiplier = 1, sampleSize = setMatches.length, damping = 1, signals: unknown[] = [];
+    if (ps) {
+      const compMeta = new Map<string, CompMetaEntry>(Object.entries((ps.comp_meta || {}) as Record<string, CompMetaEntry>));
+      const raw = extractRawMetrics(setMatches as any, ranked ? { wins: ranked.wins, losses: ranked.losses } : null, compMeta);
+      const sk = scoreSkill(raw, { medians: ps.medians, expectedDmg: ps.expected_dmg } as any);
+      multiplier = sk.multiplier; sampleSize = sk.sampleSize; damping = sk.damping; signals = sk.signals;
+    }
+    marketValue = {
+      baseValue: Math.round(base.baseValue), multiplier,
+      finalValue: Math.round(base.baseValue * multiplier),
+      rated: true, sampleSize, damping, agents: signals,
+    };
+  }
 
   return NextResponse.json({
     summoner: { name: `${account.gameName}#${account.tagLine}`, puuid, tier: ranked?.tier, rank: ranked?.rank, lp: ranked?.leaguePoints ?? null },
-    marketValue: result,
+    marketValue,
     source: 'live',
     region,
   });

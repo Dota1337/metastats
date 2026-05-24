@@ -16,9 +16,23 @@ git fetch origin --quiet
 # spawned per-region child re-reads scripts from disk, and npm ci wipes
 # node_modules. Skip cleanly and let a later run (workflow_dispatch once idle)
 # apply the change.
-if systemctl is-active --quiet metastats-crawler.service \
-   || systemctl is-active --quiet metastats-daily-crawl.service; then
-  echo "WARN: a crawl is active — skipping sync. Re-run via workflow_dispatch once idle."
+#
+# NOTE: the crawls are Type=oneshot, so while running they sit in state
+# "activating" (NOT "active"). `is-active --quiet` returns false for
+# "activating", so we must match both states explicitly.
+crawl_running() {
+  local u state
+  for u in metastats-crawler.service metastats-daily-crawl.service; do
+    state=$(systemctl is-active "$u" 2>/dev/null || true)
+    if [ "$state" = active ] || [ "$state" = activating ] || [ "$state" = reloading ]; then
+      echo "$u is $state"
+      return 0
+    fi
+  done
+  return 1
+}
+if active=$(crawl_running); then
+  echo "WARN: a crawl is running ($active) — skipping sync. Re-run via workflow_dispatch once idle."
   exit 0
 fi
 
@@ -29,8 +43,11 @@ git reset --hard origin/main || { git clean -fd; git reset --hard origin/main; }
 after=$(sha1sum package-lock.json 2>/dev/null | cut -d' ' -f1 || true)
 
 if [ "$before" != "$after" ]; then
+  # Full install (NOT --omit=dev): the crawler's runtime deps `pg` and
+  # `libsodium-wrappers` currently live in devDependencies, so omitting dev
+  # would strip them and break every script that imports pg.
   echo "package-lock.json changed — running npm ci"
-  npm ci --omit=dev
+  npm ci
 fi
 
 # Re-arm the timers so the next scheduled run uses the new code. Restarting a

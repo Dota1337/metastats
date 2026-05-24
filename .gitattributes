@@ -1,0 +1,5 @@
+# Shell scripts and Linux systemd units must stay LF regardless of the OS the
+# repo is checked out on — they are piped to bash / installed on the Hetzner
+# box, where a CRLF would break the shebang or an ExecStart= line.
+*.sh            text eol=lf
+infra/hetzner/* text eol=lf

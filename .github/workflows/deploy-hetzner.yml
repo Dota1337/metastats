@@ -1,0 +1,45 @@
+name: Deploy crawler to Hetzner
+
+# GitHub is the single source of truth for the crawler code. On every push to
+# main that touches crawler code or deps, sync the Hetzner box to origin/main.
+# The box only consumes main (it never pushes); crawled data flows box ->
+# Supabase separately.
+#
+# Systemd unit files in infra/hetzner/ are versioned for backup/source-of-truth
+# but are NOT auto-applied (sensitive, rarely change). Deploy unit changes by
+# hand: scp the file to /etc/systemd/system/ and `systemctl daemon-reload`.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'public/tft-graph-*.json'
+      - 'public/tft-set.json'
+      - 'infra/hetzner/remote-deploy.sh'
+      - '.github/workflows/deploy-hetzner.yml'
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-hetzner
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.HETZNER_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "${{ secrets.HETZNER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Sync box to origin/main
+        run: |
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes "root@${{ secrets.HETZNER_HOST }}" 'bash -s' < infra/hetzner/remote-deploy.sh

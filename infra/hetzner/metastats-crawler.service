@@ -1,0 +1,15 @@
+[Unit]
+Description=metastats TFT marketvalue crawler (Master+ daily)
+Wants=network-online.target postgresql.service
+After=network-online.target postgresql.service
+
+[Service]
+TimeoutStartSec=20h
+Type=oneshot
+WorkingDirectory=/opt/metastats-crawler
+EnvironmentFile=/etc/metastats-crawler/env
+ExecStart=/usr/bin/node scripts/crawl-all-regions.mjs
+StandardOutput=journal
+StandardError=journal
+Nice=10
+IOSchedulingClass=best-effort

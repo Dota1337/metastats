@@ -125,9 +125,10 @@ async function fetchApex(tier) {
 }
 
 async function fetchDiamond() {
-  // Diamond has 4 divisions × pages. Walk until empty.
+  // Rated floor is Diamond II — only walk divisions I + II (D3/D4 are not
+  // rated, see computeBaseValue, and skipping them keeps the crawl scope sane).
   const all = [];
-  for (const division of ['I', 'II', 'III', 'IV']) {
+  for (const division of ['I', 'II']) {
     let page = 1;
     while (true) {
       const url = `https://${REGION}.api.riotgames.com/tft/league/v1/entries/DIAMOND/${division}?page=${page}&api_key=${API_KEY}`;

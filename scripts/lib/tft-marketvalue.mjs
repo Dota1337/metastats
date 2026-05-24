@@ -15,16 +15,34 @@ const TIER_VAL = {
   EMERALD: 5, DIAMOND: 6, MASTER: 7, GRANDMASTER: 8, CHALLENGER: 9,
 };
 
+// Roman division → number. Only used to gate Diamond (II+ rated, III/IV not).
+const DIV_VAL = { I: 1, II: 2, III: 3, IV: 4 };
+
 export function computeBaseValue(ranked, playerRank) {
   if (!ranked || !ranked.tier) {
     return { rated: false, baseValue: 0, notRatedReason: 'unranked' };
   }
   const tier = ranked.tier.toUpperCase();
   const tierNum = TIER_VAL[tier] ?? -1;
-  if (tierNum < TIER_VAL.MASTER) {
-    return { rated: false, baseValue: 0, notRatedReason: 'below_master' };
+  if (tierNum < TIER_VAL.DIAMOND) {
+    return { rated: false, baseValue: 0, notRatedReason: 'below_diamond' };
   }
   const lp = Math.max(0, ranked.leaguePoints || 0);
+
+  // Diamond is rated only from division II up (D3/D4 excluded by decision —
+  // keeps the daily crawl scope sane while preserving the climb incentive).
+  // The base ramps continuously into Master's 1000 entry:
+  //   D2 0LP → 200, D2 100LP → 600, D1 0LP → 600, D1 100LP → 1000 (= Master 0).
+  if (tier === 'DIAMOND') {
+    const div = DIV_VAL[(ranked.rank || '').toUpperCase()] ?? 0;
+    if (div !== 1 && div !== 2) {
+      return { rated: false, baseValue: 0, notRatedReason: 'below_diamond2' };
+    }
+    const cappedLp = Math.min(lp, 100);
+    return div === 2
+      ? { rated: true, baseValue: 200 + (cappedLp / 100) * 400 }
+      : { rated: true, baseValue: 600 + (cappedLp / 100) * 400 };
+  }
 
   // Calibrated relative to LoL — TFT's top pros sit below LoL's top pros.
   // Target final-value range after multiplier:

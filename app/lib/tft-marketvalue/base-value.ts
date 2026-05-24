@@ -1,21 +1,26 @@
 import type { TftRanked } from './types';
 
-// TFT base value scale, Master+ only (Iron through Diamond → Not Rated).
-// Calibrated relative to LoL: LoL's top pros must outscale TFT's because
-// the LoL esports + sponsorship economy is an order of magnitude larger.
-// Target final-value range after multiplier (×0.45 .. ×1.65):
+// TFT base value scale, Diamond II and up (Iron through Diamond III/IV → Not
+// Rated). Calibrated relative to LoL: LoL's top pros must outscale TFT's
+// because the LoL esports + sponsorship economy is an order of magnitude
+// larger. Target final-value range after multiplier (×0.45 .. ×1.65):
 //   Chall #1            → ~180k €  (base 130k, typical multi 1.4)
 //   Chall #30           → ~60k €   (base 43k)
 //   Chall #150          → ~20k €
 //   GM 200 LP           → ~10k €
 //   Master 200 LP       → ~5k €
 //   Master 0 LP         → ~1k €
-// Diamond stays Not Rated (no marketvalue).
+//   Diamond I  100 LP   → ~1k €    (meets Master 0 LP)
+//   Diamond II 0 LP     → ~200 €   (rated floor)
+// Diamond III/IV and below stay Not Rated.
 
 const TIER_VAL: Record<string, number> = {
   IRON: 0, BRONZE: 1, SILVER: 2, GOLD: 3, PLATINUM: 4,
   EMERALD: 5, DIAMOND: 6, MASTER: 7, GRANDMASTER: 8, CHALLENGER: 9,
 };
+
+// Roman division → number. Only used to gate Diamond (II+ rated, III/IV not).
+const DIV_VAL: Record<string, number> = { I: 1, II: 2, III: 3, IV: 4 };
 
 export interface BaseValueResult {
   rated: boolean;
@@ -29,10 +34,25 @@ export function computeBaseValue(ranked: TftRanked | null, playerRank?: number):
   }
   const tier = ranked.tier.toUpperCase();
   const tierNum = TIER_VAL[tier] ?? -1;
-  if (tierNum < TIER_VAL.MASTER) {
-    return { rated: false, baseValue: 0, notRatedReason: 'below_master' };
+  if (tierNum < TIER_VAL.DIAMOND) {
+    return { rated: false, baseValue: 0, notRatedReason: 'below_diamond' };
   }
   const lp = Math.max(0, ranked.leaguePoints || 0);
+
+  // Diamond is rated only from division II up (D3/D4 excluded by decision —
+  // keeps the daily crawl scope sane while preserving the climb incentive).
+  // Base ramps continuously into Master's 1000 entry:
+  //   D2 0LP → 200, D2 100LP → 600, D1 0LP → 600, D1 100LP → 1000 (= Master 0).
+  if (tier === 'DIAMOND') {
+    const div = DIV_VAL[(ranked.rank ?? '').toUpperCase()] ?? 0;
+    if (div !== 1 && div !== 2) {
+      return { rated: false, baseValue: 0, notRatedReason: 'below_diamond2' };
+    }
+    const cappedLp = Math.min(lp, 100);
+    return div === 2
+      ? { rated: true, baseValue: 200 + (cappedLp / 100) * 400 }
+      : { rated: true, baseValue: 600 + (cappedLp / 100) * 400 };
+  }
 
   if (tier === 'MASTER') {
     // 0 → 1000, 200 → 4000. Gentle entry into apex.

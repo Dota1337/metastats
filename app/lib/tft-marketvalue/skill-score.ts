@@ -27,6 +27,7 @@ export interface RawMetrics {
   perfM: number | null;
   metaRelM: number | null;
   metaCount: number;
+  compPlc: Record<string, { sum: number; count: number }>;
   consM: number | null;
   flexM: number | null;
   survival: number | null;
@@ -75,18 +76,15 @@ export function extractRawMetrics(
   const top4Blend = n ? (top4Count + K_TOP4_PRIOR * careerWr) / (n + K_TOP4_PRIOR) : 0;
   const perfM = n >= MIN_SAMPLE.performance ? (-avgPlc + 0.5 * top4Blend) : null;
 
-  let metaDeltaSum = 0, metaCount = 0;
-  if (compMetaAvg) {
-    for (const m of matches) {
-      const key = m.comp?.clusterKey;
-      if (!key || !(m.placement > 0)) continue;
-      const meta = compMetaAvg.get(key);
-      if (!meta || meta.games < META_MIN_GAMES) continue;
-      metaDeltaSum += (meta.avgPlacement - m.placement);
-      metaCount++;
-    }
+  const compPlc: Record<string, { sum: number; count: number }> = {};
+  for (const m of matches) {
+    const key = m.comp?.clusterKey;
+    if (!key || !(m.placement > 0)) continue;
+    const c = compPlc[key] || (compPlc[key] = { sum: 0, count: 0 });
+    c.sum += m.placement; c.count++;
   }
-  const metaRelM = metaCount >= MIN_SAMPLE.metaRelative ? (metaDeltaSum / metaCount) : null;
+  let metaRelM: number | null = null, metaCount = 0;
+  if (compMetaAvg) ({ metaRelM, metaCount } = metaRelFrom(compPlc, compMetaAvg));
 
   let consM: number | null = null;
   if (n >= MIN_SAMPLE.consistency) {
@@ -126,7 +124,38 @@ export function extractRawMetrics(
     }
   }
 
-  return { n, perfM, metaRelM, metaCount, consM, flexM, survival, eco, dmgByPlc, dmgCount };
+  return { n, perfM, metaRelM, metaCount, compPlc, consM, flexM, survival, eco, dmgByPlc, dmgCount };
+}
+
+function metaRelFrom(compPlc: Record<string, { sum: number; count: number }>, compMetaAvg: Map<string, CompMetaEntry>): { metaRelM: number | null; metaCount: number } {
+  let deltaSum = 0, count = 0;
+  for (const key of Object.keys(compPlc)) {
+    const meta = compMetaAvg.get(key);
+    if (!meta || meta.games < META_MIN_GAMES) continue;
+    const c = compPlc[key];
+    deltaSum += (meta.avgPlacement * c.count - c.sum);
+    count += c.count;
+  }
+  return { metaRelM: count >= MIN_SAMPLE.metaRelative ? deltaSum / count : null, metaCount: count };
+}
+
+// Cohort comp-benchmark from all players' compPlc (self-contained — no Supabase dep).
+export function buildCompMeta(rawList: RawMetrics[]): Map<string, CompMetaEntry> {
+  const agg: Record<string, { sum: number; count: number }> = {};
+  for (const r of rawList) for (const key of Object.keys(r.compPlc || {})) {
+    const a = agg[key] || (agg[key] = { sum: 0, count: 0 });
+    a.sum += r.compPlc[key].sum; a.count += r.compPlc[key].count;
+  }
+  const map = new Map<string, CompMetaEntry>();
+  for (const key of Object.keys(agg)) map.set(key, { avgPlacement: agg[key].count ? agg[key].sum / agg[key].count : 0, games: agg[key].count });
+  return map;
+}
+
+export function applyMeta(raw: RawMetrics, compMetaAvg: Map<string, CompMetaEntry>): RawMetrics {
+  if (raw.metaRelM != null) return raw;
+  const { metaRelM, metaCount } = metaRelFrom(raw.compPlc || {}, compMetaAvg);
+  raw.metaRelM = metaRelM; raw.metaCount = metaCount;
+  return raw;
 }
 
 function boardResidual(dmgByPlc: Record<string, { sum: number; count: number }>, dmgCount: number, expectedDmg: Record<string, number>): number | null {

@@ -70,19 +70,19 @@ export function extractRawMetrics(matches, ranked, compMetaAvg) {
   const top4Blend = n ? (top4Count + K_TOP4_PRIOR * careerWr) / (n + K_TOP4_PRIOR) : 0;
   const perfM = n >= MIN_SAMPLE.performance ? (-avgPlc + 0.5 * top4Blend) : null;
 
-  // metaRelative — placed better than the comp's master+ meta average?
-  let metaDeltaSum = 0, metaCount = 0;
-  if (compMetaAvg) {
-    for (const m of matches) {
-      const key = m.comp?.clusterKey;
-      if (!key || !(m.placement > 0)) continue;
-      const meta = compMetaAvg.get(key);
-      if (!meta || meta.games < META_MIN_GAMES) continue;
-      metaDeltaSum += (meta.avgPlacement - m.placement);  // higher = beat the comp's norm
-      metaCount++;
-    }
+  // metaRelative — per-comp placement sums (compPlc) are ALWAYS collected so the
+  // batch can build the cohort comp-benchmark in one pass. metaRelM is computed
+  // inline when a benchmark is supplied (live path / calibration); otherwise the
+  // batch defers it to applyMeta() once buildCompMeta() has run.
+  const compPlc = {};
+  for (const m of matches) {
+    const key = m.comp?.clusterKey;
+    if (!key || !(m.placement > 0)) continue;
+    const c = compPlc[key] || (compPlc[key] = { sum: 0, count: 0 });
+    c.sum += m.placement; c.count++;
   }
-  const metaRelM = metaCount >= MIN_SAMPLE.metaRelative ? (metaDeltaSum / metaCount) : null;
+  let metaRelM = null, metaCount = 0;
+  if (compMetaAvg) ({ metaRelM, metaCount } = metaRelFrom(compPlc, compMetaAvg));
 
   // consistency — negative stddev of placements
   let consM = null;
@@ -129,7 +129,42 @@ export function extractRawMetrics(matches, ranked, compMetaAvg) {
     }
   }
 
-  return { n, perfM, metaRelM, metaCount, consM, flexM, survival, eco, dmgByPlc, dmgCount };
+  return { n, perfM, metaRelM, metaCount, compPlc, consM, flexM, survival, eco, dmgByPlc, dmgCount };
+}
+
+// metaRelative from per-comp placement sums + a comp benchmark Map. Equivalent
+// to the per-match mean of (benchmarkAvg - placement) over meta-eligible comps.
+function metaRelFrom(compPlc, compMetaAvg) {
+  let deltaSum = 0, count = 0;
+  for (const key of Object.keys(compPlc)) {
+    const meta = compMetaAvg.get(key);
+    if (!meta || meta.games < META_MIN_GAMES) continue;
+    const c = compPlc[key];
+    deltaSum += (meta.avgPlacement * c.count - c.sum);
+    count += c.count;
+  }
+  return { metaRelM: count >= MIN_SAMPLE.metaRelative ? deltaSum / count : null, metaCount: count };
+}
+
+// Build the cohort comp-benchmark from all players' compPlc (self-contained —
+// no dependency on the Supabase-side tft_daily_comp_stats). Map<clusterKey,{avgPlacement,games}>.
+export function buildCompMeta(rawList) {
+  const agg = {};
+  for (const r of rawList) for (const key of Object.keys(r.compPlc || {})) {
+    const a = agg[key] || (agg[key] = { sum: 0, count: 0 });
+    a.sum += r.compPlc[key].sum; a.count += r.compPlc[key].count;
+  }
+  const map = new Map();
+  for (const key of Object.keys(agg)) map.set(key, { avgPlacement: agg[key].count ? agg[key].sum / agg[key].count : 0, games: agg[key].count });
+  return map;
+}
+
+// Fill in raw.metaRelM/metaCount after the benchmark is known (batch path).
+export function applyMeta(raw, compMetaAvg) {
+  if (raw.metaRelM != null) return raw;
+  const { metaRelM, metaCount } = metaRelFrom(raw.compPlc || {}, compMetaAvg);
+  raw.metaRelM = metaRelM; raw.metaCount = metaCount;
+  return raw;
 }
 
 // ── Phase 2: population stats (median/MAD per metric + expected dmg) ──────────

@@ -46,6 +46,7 @@ export async function GET(request: NextRequest) {
         timeline.push({
           patch: p.patch,
           firstDay: p.first_day,
+          lastDay: p.last_day,
           games: Number(row.games),
           avgPlacement: Number(row.sum_placement) / Number(row.games),
           top4Rate: Number(row.top4) / Number(row.games),
@@ -56,10 +57,11 @@ export async function GET(request: NextRequest) {
     } catch {
     }
   }
-  // Oldest patch left, newest right. Sort explicitly by first_day instead of
-  // relying on the RPC's order — Riot's raw game_version strings don't sort
-  // chronologically (e.g. "17.2" predates "16.10"), so a number-based order
-  // would put patches in the wrong place on the x-axis.
-  timeline.sort((a, b) => (a.firstDay < b.firstDay ? -1 : a.firstDay > b.firstDay ? 1 : 0));
+  // Oldest patch left, newest right. Order by last_day (the patch's most
+  // recent active day), which is monotonic with recency. Riot's raw
+  // game_version strings ("17.2" predates "16.10") don't sort chronologically,
+  // and first_day can tie across overlapping patches (16.9 and 16.10 both
+  // start 05-12), so last_day is the reliable key for "current = rightmost".
+  timeline.sort((a, b) => (a.lastDay < b.lastDay ? -1 : a.lastDay > b.lastDay ? 1 : 0));
   return NextResponse.json({ characterId, timeline });
 }

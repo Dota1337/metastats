@@ -14,18 +14,21 @@ interface MarketValueResponse {
     notRatedReason?: string;
     sampleSize: number;
     damping: number;
-    agents: AgentScore[];
+    agents: SkillSignal[];
   };
   source: 'snapshot' | 'live';
   snapshotDate?: string;
   region: string;
 }
 
-interface AgentScore {
-  agent: string;
-  multiplier: number;
-  delta: number;
-  notes: { label: string; impact: number; detail?: string }[];
+// New weighted skill-score signal shape (replaces the old {agent,multiplier,notes}).
+interface SkillSignal {
+  signal: string;
+  z: number | null;
+  weight: number;
+  contribution: number;   // signed w·z/Σw — this signal's share of the skill score
+  detail: string;
+  available: boolean;
 }
 
 interface HistoryPoint {
@@ -253,8 +256,8 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
           </button>
         </div>
 
-        {/* Right: 30d sparkline (if we have history) */}
-        <div className="flex-1 min-w-[200px] max-w-md">
+        {/* Right: value chart over the set window (grows into the free space) */}
+        <div className="flex-1 min-w-[300px]">
           <div className="flex items-center justify-end gap-2 mb-1.5">
             <button
               onClick={triggerRefresh}
@@ -266,7 +269,7 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
               {refreshState === 'busy' ? t('tft.marketValue.refresh.busy') : t('tft.marketValue.refresh.button')}
             </button>
           </div>
-          <div className="h-20">
+          <div className="h-28">
             {historyLoading ? (
               <div className="h-full w-full bg-[#1e2a3a] rounded animate-pulse" />
             ) : chartData.length >= 2 ? (
@@ -302,6 +305,8 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
               </ResponsiveContainer>
             ) : null}
           </div>
+          {/* Timeline directly under the chart: patch-start → today (matches the chart's x-axis) */}
+          {setInfo && <PatchTimeline info={setInfo} lang={lang} />}
         </div>
       </div>
 
@@ -315,96 +320,94 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
       {/* Compact set-remaining indicator */}
       {setInfo && <SetTimeline lang={lang} info={setInfo} />}
 
-      {/* Expandable agent breakdown */}
+      {/* Expandable skill-score breakdown */}
       {showDetails && (
-        <div className="mt-4 pt-4 border-t border-[#1e2a3a] grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-xs">
-          {mv.agents.map(a => (
-            <AgentRow key={a.agent} agent={a} />
-          ))}
+        <div className="mt-4 pt-4 border-t border-[#1e2a3a]">
+          <div className="text-[#a0b0c5] text-xs mb-3">
+            {t('tft.marketValue.methodologyIntro').replace('{base}', formatEuro(mv.baseValue, lang))}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-xs">
+            {[...mv.agents]
+              .filter(s => s && s.signal)   // skip legacy-shape rows during the transition day
+              .sort((a, b) => Number(b.available) - Number(a.available) || Math.abs(b.contribution) - Math.abs(a.contribution))
+              .map(s => <SignalRow key={s.signal} sig={s} />)}
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-// Map stable agent-note label IDs to i18n keys. Agents emit short technical
-// labels like 'placement stddev'; the user sees the localized phrase.
-const NOTE_LABEL_KEYS: Record<string, string> = {
-  'avg-placement':           'tft.marketValue.note.avgPlacement',
-  'top-4 rate':              'tft.marketValue.note.top4Rate',
-  'top-1 rate':              'tft.marketValue.note.top1Rate',
-  'comp diversity':          'tft.marketValue.note.compDiversity',
-  'meta picks':              'tft.marketValue.note.metaPicks',
-  'one-trick penalty':       'tft.marketValue.note.oneTrickPenalty',
-  'off-meta':                'tft.marketValue.note.offMeta',
-  'item slam':               'tft.marketValue.note.itemSlam',
-  'prismatic share':         'tft.marketValue.note.prismaticShare',
-  'placement stddev':        'tft.marketValue.note.placementStddev',
-  'top-4 streak':            'tft.marketValue.note.top4Streak',
-  'bottom-4 share':          'tft.marketValue.note.bottom4Share',
-  // flexMastery
-  'flex mastery':            'tft.marketValue.note.flexMastery',
-  'one-trick mastery':       'tft.marketValue.note.oneTrickMastery',
-  'flex without substance':  'tft.marketValue.note.flexNoSubstance',
-  'carry diversity':         'tft.marketValue.note.carryDiversity',
-  'narrow carry pool':       'tft.marketValue.note.narrowCarryPool',
-  // gameSense
-  'late exit':               'tft.marketValue.note.lateExit',
-  'early exit':              'tft.marketValue.note.earlyExit',
-  'eco mastery':              'tft.marketValue.note.ecoMastery',
-  'unspent gold':            'tft.marketValue.note.unspentGold',
-  // catch-alls — any of these agent-emitted strings means "we couldn't score"
-  'no matches':              'tft.marketValue.note.tooFewMatches',
-  'sample too small':        'tft.marketValue.note.tooFewMatches',
-};
-
-// Translate fragments inside detail strings. Agents emit
-// "6 in a row" / "67% recommended" / "53% in top-10" / "85% one comp" /
-// "17 comps" — we pattern-replace the English tail with the localized one.
-function localizeDetail(detail: string, t: (k: any) => string): string {
-  if (!detail) return detail;
-  return detail
-    .replace(/\bin a row\b/i, t('tft.marketValue.note.detail.inARow'))
-    .replace(/\brecommended\b/i, t('tft.marketValue.note.detail.recommended'))
-    .replace(/\bin top-10\b/i, t('tft.marketValue.note.detail.inTop10'))
-    .replace(/\bone comp\b/i, t('tft.marketValue.note.detail.oneComp'))
-    .replace(/\bcomps\b/i, t('tft.marketValue.note.detail.compsUnit'))
-    .replace(/\bleftover\b/i, t('tft.marketValue.note.detail.leftover'))
-    .replace(/\bcarries\b/i, t('tft.marketValue.note.detail.carries'));
+// A horizontal timeline directly under the chart, spanning the chart's x-axis
+// window: patch/set start (left) → today (right).
+function PatchTimeline({ info, lang }: { info: SetInfo; lang: Lang }) {
+  const { t } = useI18n();
+  if (!info.startDate) return null;
+  const fmt = (d: string) =>
+    new Date(d + 'T00:00:00Z').toLocaleDateString(LOCALE_MAP[lang], { day: '2-digit', month: 'short' });
+  return (
+    <div className="mt-2">
+      <div className="relative h-1 rounded-full bg-[#1e2a3a]">
+        <span className="absolute left-0 -top-[3px] h-[7px] w-[7px] rounded-full bg-[#7B61FF]" />
+        <span className="absolute right-0 -top-[3px] h-[7px] w-[7px] rounded-full bg-[#9d48e0]" />
+      </div>
+      <div className="flex items-center justify-between mt-1 text-[10px] text-[#7a8aa0] tabular-nums">
+        <span>
+          {t('tft.marketValue.timeline.start')}
+          {info.currentPatch ? ` · ${info.currentPatch}` : ''} · {fmt(info.startDate)}
+        </span>
+        <span>{t('tft.setTimeline.today')} · {fmt(info.today)}</span>
+      </div>
+    </div>
+  );
 }
 
-function AgentRow({ agent }: { agent: AgentScore }) {
+const SIGNAL_LABEL_KEYS: Record<string, string> = {
+  performance:   'tft.marketValue.agent.performance',
+  metaRelative:  'tft.marketValue.agent.metaRelative',
+  consistency:   'tft.marketValue.agent.consistency',
+  flexMastery:   'tft.marketValue.agent.flexMastery',
+  gameSense:     'tft.marketValue.agent.gameSense',
+  boardStrength: 'tft.marketValue.agent.boardStrength',
+};
+
+// One row of the skill-score breakdown: weight, z-score + detail, and the
+// signed contribution (w·z/Σw) to the overall skill score.
+function SignalRow({ sig }: { sig: SkillSignal }) {
   const { t } = useI18n();
-  const label = (() => {
-    switch (agent.agent) {
-      case 'performance':    return t('tft.marketValue.agent.performance');
-      case 'metaAdaptation': return t('tft.marketValue.agent.metaAdaptation');
-      case 'highRoll':       return t('tft.marketValue.agent.highRoll');
-      case 'consistency':    return t('tft.marketValue.agent.consistency');
-      case 'flexMastery':    return t('tft.marketValue.agent.flexMastery');
-      case 'gameSense':      return t('tft.marketValue.agent.gameSense');
-      default:               return agent.agent;
-    }
-  })();
-  const positive = agent.delta > 0;
-  const negative = agent.delta < 0;
+  const label = SIGNAL_LABEL_KEYS[sig.signal] ? t(SIGNAL_LABEL_KEYS[sig.signal] as any) : sig.signal;
+  const weightPct = `${Math.round(sig.weight * 100)}%`;
+
+  if (!sig.available) {
+    return (
+      <div className="flex items-start justify-between gap-3 opacity-50">
+        <div className="flex-1 min-w-0">
+          <div className="text-white font-medium">
+            {label} <span className="text-[#7a8aa0] font-normal">· {weightPct}</span>
+          </div>
+          <div className="text-[#a0b0c5] text-xs mt-0.5">{t('tft.marketValue.agent.notRated')}</div>
+        </div>
+        <div className="text-[#7a8aa0] text-xs whitespace-nowrap flex-shrink-0">—</div>
+      </div>
+    );
+  }
+
+  const positive = sig.contribution > 0.0005;
+  const negative = sig.contribution < -0.0005;
   const color = positive ? '#3ecf8e' : negative ? '#e44040' : '#a0b0c5';
   return (
     <div className="flex items-start justify-between gap-3">
       <div className="flex-1 min-w-0">
-        <div className="text-white font-medium">{label}</div>
+        <div className="text-white font-medium">
+          {label} <span className="text-[#7a8aa0] font-normal">· {weightPct}</span>
+        </div>
         <div className="text-[#a0b0c5] text-xs mt-0.5">
-          {agent.notes.length > 0
-            ? agent.notes.map(n => {
-                const noteLabel = NOTE_LABEL_KEYS[n.label] ? t(NOTE_LABEL_KEYS[n.label] as any) : n.label;
-                const detail = n.detail ? localizeDetail(n.detail, t) : '';
-                return `${noteLabel}${detail ? ` (${detail})` : ''}`;
-              }).join(' · ')
-            : t('tft.marketValue.agent.noImpact')}
+          z {sig.z != null ? (sig.z >= 0 ? '+' : '') + sig.z.toFixed(2) : '—'}
+          {sig.detail ? ` · ${sig.detail}` : ''}
         </div>
       </div>
       <div className="tabular-nums font-medium whitespace-nowrap flex-shrink-0" style={{ color }}>
-        ×{agent.multiplier.toFixed(2)}
+        {sig.contribution >= 0 ? '+' : ''}{sig.contribution.toFixed(2)}
       </div>
     </div>
   );

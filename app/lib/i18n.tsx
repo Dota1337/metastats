@@ -851,6 +851,31 @@ const translations = {
     '\uAC8C\uC784 \uC13C\uC2A4', '\u6E38\u620F\u610F\u8BC6',
     'Visi\u00F3n de juego', 'Sens du jeu'
   ),
+  'tft.marketValue.agent.metaRelative': t6(
+    'Meta-Vorsprung', 'Meta Edge',
+    '\uBA54\uD0C0 \uC6B0\uC704', '\u8D85\u989D\u8868\u73B0',
+    'Ventaja Meta', 'Avantage M\u00E9ta'
+  ),
+  'tft.marketValue.agent.boardStrength': t6(
+    'Board-St\u00E4rke', 'Board Strength',
+    '\uBCF4\uB4DC \uD30C\uC6CC', '\u68CB\u76D8\u5F3A\u5EA6',
+    'Fuerza del tablero', 'Force du plateau'
+  ),
+  'tft.marketValue.agent.notRated': t6(
+    'zu wenig Daten', 'not enough data',
+    '\uB370\uC774\uD130 \uBD80\uC871', '\u6570\u636E\u4E0D\u8DB3',
+    'datos insuficientes', 'donn\u00E9es insuffisantes'
+  ),
+  'tft.marketValue.skillScore': t6(
+    'Skill-Score', 'Skill Score',
+    '\uC2A4\uD0AC \uC810\uC218', '\u6280\u5DE7\u8BC4\u5206',
+    'Puntuaci\u00F3n de habilidad', 'Score de comp\u00E9tence'
+  ),
+  'tft.marketValue.timeline.start': t6(
+    'Patch-Start', 'Patch start',
+    '\uD328\uCE58 \uC2DC\uC791', '\u7248\u672C\u5F00\u59CB',
+    'Inicio del parche', 'D\u00E9but du patch'
+  ),
   'tft.marketValue.agent.noImpact': t6(
     'Kein Einfluss', 'No impact',
     '\uC601\uD5A5 \uC5C6\uC74C', '\u65E0\u5F71\u54CD',

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 // too heavy for the public anon role's short statement_timeout (they 500'd
 // with 57014). This runs server-side only, so bypassing RLS is fine.
 import { supabaseAdmin as supabase } from '../../../lib/supabase';
+import { getAvailablePatches } from '../../../lib/tft-supabase-reader';
 
 // /api/tft/onetricks?region=euw1&minShare=0.6
 //
@@ -47,7 +48,15 @@ export async function GET(request: NextRequest) {
   const region = (searchParams.get('region') || 'euw1').toLowerCase();
   const minShare = Math.max(0.4, Math.min(1, parseFloat(searchParams.get('minShare') || '0.6')));
   const setParam = searchParams.get('set');
-  const setNumber = setParam ? Number(setParam) : null;
+  let setNumber = setParam ? Number(setParam) : null;
+  if (setNumber == null) {
+    // Default to the current set. Without a set_number filter the cache read
+    // scans every set's matches for 80 players and order-by-datetime sorts the
+    // lot → 10s+ and intermittent statement timeouts. Pinning the set lets the
+    // (puuid, set_number, queue_id, game_datetime) index serve rows in order.
+    const patches = await getAvailablePatches();
+    setNumber = patches[0]?.set_number ?? null;
+  }
 
   const { data: mvData, error: mvErr } = await supabase.rpc('get_tft_latest_marketvalues', {
     p_region: region,

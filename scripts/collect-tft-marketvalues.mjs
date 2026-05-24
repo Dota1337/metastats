@@ -29,7 +29,8 @@ import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import pg from 'pg';
 import { createRiotClient } from './lib/riot-client.mjs';
-import { calculateTftMarketValue, buildSnapshotForPlayer } from './lib/tft-marketvalue.mjs';
+import { computeBaseValue, buildSnapshotForPlayer } from './lib/tft-marketvalue.mjs';
+import { extractRawMetrics, buildPopulation, scoreSkill } from './lib/tft-skill-score.mjs';
 import { refreshPlayerMatchCache, listSeasonMatches } from './lib/tft-match-cache-pg.mjs';
 import {
   upsertSeasonStats,
@@ -241,38 +242,47 @@ async function fetchAccount(puuid) {
   return { gameName: r.gameName || null, tagLine: r.tagLine || null };
 }
 
-async function processPlayer(p, ctx) {
-  const { setNumber, hotCompKeys, recommendedItems, graph } = ctx;
-  // 1) Bring match cache up-to-date for this player
+// Pass 1: refresh cache, read matches, write season stats, extract raw metrics.
+// metaRelM is deferred (compMetaAvg=null) until the cohort benchmark is built.
+async function gatherPlayer(p, ctx) {
+  const { setNumber, hotCompKeys, recommendedItems } = ctx;
   if (!SKIP_CACHE_REFRESH) {
     await refreshPlayerMatchCache(pool, p.puuid, REGION, REGIONAL, riot, {
       force: FORCE_REFRESH,
       log: VERBOSE ? (msg) => console.log(`    ${msg}`) : undefined,
     });
   }
-
-  // 2) Read all set matches from cache
   const matches = await listSeasonMatches(pool, p.puuid, setNumber);
+  // Always write season stats (even <5 matches → 0-sample row the UI shows honestly)
+  await upsertSeasonStats(pool, p.puuid, REGION, setNumber, { matches, hotCompKeys, recommendedItems });
+  if (matches.length < 5) return { skip: true, sampleSize: matches.length };
+  return { raw: extractRawMetrics(matches, { wins: p.wins, losses: p.losses }, null), sampleSize: matches.length };
+}
 
-  // 3) Aggregate per-set stats (always — even on empty matches we write
-  //    a row so the UI can show 0 sample-size honestly)
-  await upsertSeasonStats(pool, p.puuid, REGION, setNumber, {
-    matches, hotCompKeys, recommendedItems,
-  });
+// Persist the region/set population (medians + expected dmg + cohort comp benchmark)
+// so the on-demand single-player refresh can normalise against the same population.
+async function persistPopulation(setNumber, pop, compMeta, playerCount) {
+  await pool.query(
+    `insert into tft_mv_population_stats (region, set_number, medians, expected_dmg, comp_meta, player_count, computed_at)
+     values ($1, $2, $3::jsonb, $4::jsonb, $5::jsonb, $6, now())
+     on conflict (region, set_number) do update set
+       medians = excluded.medians, expected_dmg = excluded.expected_dmg,
+       comp_meta = excluded.comp_meta, player_count = excluded.player_count, computed_at = now()`,
+    [REGION, setNumber, JSON.stringify(pop.medians), JSON.stringify(pop.expectedDmg),
+     JSON.stringify(Object.fromEntries(compMeta)), playerCount],
+  );
+}
 
-  // 4) Marketvalue snapshot — only persist if we have enough sample
-  if (matches.length < 5) {
-    return { snapshotted: false, sampleSize: matches.length, reason: 'too few matches' };
-  }
-  const result = calculateTftMarketValue({
-    ranked: { tier: p.tier, rank: p.rank || 'I', leaguePoints: p.lp, wins: p.wins, losses: p.losses },
-    playerRank: p.tier === 'CHALLENGER' ? p.ladderRank : undefined,
-    matches,
-    patchKnowledgeGraph: graph,
-  });
-  if (!result.rated) {
-    return { snapshotted: false, sampleSize: matches.length, reason: result.notRatedReason };
-  }
+// Pass 2: base value × skill-score multiplier → snapshot.
+async function snapshotPlayer(p, raw, pop) {
+  const base = computeBaseValue(
+    { tier: p.tier, rank: p.rank || 'I', leaguePoints: p.lp, wins: p.wins, losses: p.losses },
+    p.tier === 'CHALLENGER' ? p.ladderRank : undefined,
+  );
+  if (!base.rated) return { snapshotted: false, reason: base.notRatedReason };
+  const sk = scoreSkill(raw, pop);
+  const baseValue = Math.round(base.baseValue);
+  const finalValue = Math.round(base.baseValue * sk.multiplier);
 
   const acc = await fetchAccount(p.puuid);
   const snapshotDateExpr = SNAPSHOT_DATE ? '$3::date' : 'current_date';
@@ -300,11 +310,11 @@ async function processPlayer(p, ctx) {
       ...baseParams,
       acc?.gameName ?? null, acc?.tagLine ?? null,
       p.tier, p.rank ?? 'I', p.lp, p.ladderRank ?? null,
-      result.baseValue, result.multiplier, result.finalValue,
-      result.sampleSize, result.damping, JSON.stringify(result.agents),
+      baseValue, sk.multiplier, finalValue,
+      sk.sampleSize, sk.damping, JSON.stringify(sk.signals),
     ],
   );
-  return { snapshotted: true, sampleSize: matches.length, finalValue: result.finalValue };
+  return { snapshotted: true, finalValue };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -326,19 +336,17 @@ async function main() {
 
   let players = PUUIDS ? await loadPlayersByPuuids(PUUIDS) : await discoverPlayers();
   if (LIMIT > 0) players = players.slice(0, LIMIT);
-  console.log(`\n[1/2] ${players.length} players to process\n`);
-
-  console.log('[2/2] Refresh cache + snapshot per player');
-  let processed = 0, snapshotted = 0, skipped = 0, failed = 0;
-  const ctx = { setNumber, hotCompKeys, recommendedItems, graph };
+  console.log(`\n[1/3] ${players.length} players — Pass 1: cache refresh + raw metrics`);
+  const ctx = { setNumber, hotCompKeys, recommendedItems };
+  const gathered = [];
+  let p1 = 0, tooFew = 0, failed = 0;
   for (const p of players) {
     try {
-      const r = await processPlayer(p, ctx);
-      processed++;
-      if (r.snapshotted) snapshotted++; else skipped++;
-      if (VERBOSE || processed % 25 === 0 || processed === players.length) {
-        const elapsed = ((Date.now() - t0) / 1000).toFixed(0);
-        console.log(`  ${processed}/${players.length} | ${snapshotted} snapshots, ${skipped} skipped, ${failed} failed | ${elapsed}s`);
+      const g = await gatherPlayer(p, ctx);
+      p1++;
+      if (g.skip) tooFew++; else gathered.push({ p, raw: g.raw });
+      if (VERBOSE || p1 % 25 === 0 || p1 === players.length) {
+        console.log(`  ${p1}/${players.length} | ${gathered.length} usable, ${tooFew} too-few | ${((Date.now() - t0) / 1000).toFixed(0)}s`);
       }
     } catch (err) {
       failed++;
@@ -347,9 +355,34 @@ async function main() {
     }
   }
 
-  const totalS = (Date.now() - t0) / 1000;
-  console.log(`\nDone. ${snapshotted} snapshots / ${processed} processed / ${players.length} total in ${totalS.toFixed(0)}s`);
+  if (gathered.length === 0) {
+    console.log('No usable players (≥5 matches) — nothing to score.');
+    await pool.end();
+    return;
+  }
 
+  // Pass 2 prep: cohort comp-benchmark + population median/MAD, persisted for the live path.
+  console.log(`\n[2/3] Build population from ${gathered.length} players`);
+  const compMeta = buildCompMeta(gathered.map(g => g.raw));
+  for (const g of gathered) applyMeta(g.raw, compMeta);
+  const pop = buildPopulation(gathered.map(g => g.raw));
+  await persistPopulation(setNumber, pop, compMeta, gathered.length);
+  console.log(`  comp-benchmark: ${compMeta.size} comps · population persisted`);
+
+  console.log(`\n[3/3] Pass 2: score + snapshot`);
+  let snapshotted = 0, unrated = 0;
+  for (const g of gathered) {
+    try {
+      const r = await snapshotPlayer(g.p, g.raw, pop);
+      if (r.snapshotted) snapshotted++; else unrated++;
+    } catch (err) {
+      failed++;
+      console.error(`  [error] snapshot ${g.p.puuid.slice(0, 8)}…: ${err.message}`);
+    }
+  }
+
+  const totalS = (Date.now() - t0) / 1000;
+  console.log(`\nDone. ${snapshotted} snapshots / ${gathered.length} usable / ${players.length} total | ${tooFew} too-few, ${unrated} unrated, ${failed} failed in ${totalS.toFixed(0)}s`);
   await pool.end();
 }
 

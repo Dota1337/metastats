@@ -1,13 +1,18 @@
 [Unit]
-Description=Daily TFT all-ranks crawl — finalizes yesterday at 05:15 UTC
+Description=Daily TFT all-ranks crawl — starts 00:00 UTC so all regions are fresh by late morning
 
 [Timer]
-# 05:15 UTC matches the cron of the disabled GH workflow tft-daily-crawl.yml.
-# Marketvalue starts at 04:00 UTC; by 05:15 it's well into its run but the
-# TFT prod key bucket is shared regardless, so both run at half-rate during
-# the overlap (~3h). Acceptable trade-off vs. the alternative of bumping
-# marketvalue earlier and squeezing the EU/KR ranked window.
-OnCalendar=*-*-* 05:15:00 UTC
+# 00:00 UTC start: the all-regions pass runs ~9h worst-case, so it finishes
+# by ~09:00 UTC (~11:00 CEST) with every region crawled before the European
+# daytime traffic peaks. Giving it the full night is what guarantees "all
+# regions done by the forenoon".
+#
+# Shared TFT prod-key bucket: the marketvalue timer still fires at 04:00 UTC,
+# so the two overlap ~04:00–09:00 at half-rate. The crawl is sized for that
+# (20h ceiling in the .service). If the overlap ever pushes the crawl past
+# the morning, move marketvalue to start *after* the crawl window instead of
+# stacking both at midnight (stacking would halve throughput the whole run).
+OnCalendar=*-*-* 00:00:00 UTC
 Persistent=true
 RandomizedDelaySec=300
 

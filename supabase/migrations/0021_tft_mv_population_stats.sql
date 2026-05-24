@@ -12,6 +12,7 @@ create table if not exists tft_mv_population_stats (
   set_number   integer     not null,
   medians      jsonb       not null,            -- { performance:{median,mad,n}, metaRelative:{…}, … }
   expected_dmg jsonb       not null,            -- { "1": rate, "2": rate, … } population mean dmgRate per placement
+  comp_meta    jsonb       not null default '{}'::jsonb,  -- { clusterKey: { avgPlacement, games } } cohort comp benchmark for metaRelative
   player_count integer     not null default 0,  -- # players that fed the population
   computed_at  timestamptz not null default now(),
   primary key (region, set_number)

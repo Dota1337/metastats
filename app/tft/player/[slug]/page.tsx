@@ -883,6 +883,14 @@ function ProSpecialty({ puuid, setNumber, assets, t }: {
   t: (k: any) => string;
 }) {
   const [data, setData] = useState<{ comps: SpecialtyComp[]; unitBuilds: SpecialtyUnit[]; classifiedGames: number } | null>(null);
+  // Cluster keys that actually resolve to a comp page. The detail page only
+  // shows data for euw1/master_plus clusters, so we mirror that exact query and
+  // link conditionally: matching clusters → comp page, the rest stay on the
+  // carry's unit page (no "no data" dead-ends). The specialty API classifies
+  // with the new num_units≥2 logic while the aggregator still uses the old one,
+  // so today only the overlap (e.g. Dark Star · Kai'Sa) matches; once the
+  // aggregator is realigned (Task #18) more keys resolve here automatically.
+  const [compKeys, setCompKeys] = useState<Set<string> | null>(null);
   useEffect(() => {
     const setParam = setNumber != null ? `&set=${setNumber}` : '';
     fetch(`/api/tft/pros/specialty?puuid=${encodeURIComponent(puuid)}${setParam}`)
@@ -890,6 +898,12 @@ function ProSpecialty({ puuid, setNumber, assets, t }: {
       .then(d => { if (d && (d.comps?.length || d.unitBuilds?.length)) setData(d); })
       .catch(() => {});
   }, [puuid, setNumber]);
+  useEffect(() => {
+    fetch('/api/tft/comps?region=euw1&bucket=master_plus')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (Array.isArray(d?.comps)) setCompKeys(new Set(d.comps.map((c: any) => c.clusterKey))); })
+      .catch(() => {});
+  }, []);
   if (!data) return null;
   return (
     <section className="mt-4 bg-gradient-to-br from-[#0d1526] to-[#1a0e26] border border-[#a892ff]/30 rounded p-4">
@@ -906,10 +920,14 @@ function ProSpecialty({ puuid, setNumber, assets, t }: {
               const carry = m ? m[3] : c.carryUnit;
               const traitName = assets?.traits[trait]?.name || trait.replace(/^TFT\d+_/, '');
               const carryAsset = assets?.champions[carry];
+              // Comp page if this cluster resolves there, else the carry's unit page.
+              const href = compKeys?.has(c.clusterKey)
+                ? `/tft/comps/${encodeURIComponent(c.clusterKey)}`
+                : `/tft/units/${encodeURIComponent(c.carryUnit)}`;
               return (
                 <a
                   key={c.clusterKey}
-                  href={`/tft/units/${encodeURIComponent(c.carryUnit)}`}
+                  href={href}
                   className="flex items-center gap-2 bg-[#141c2e] border border-[#1e2a3a] rounded p-2 hover:border-[#a892ff]/40 transition-colors"
                 >
                   {tftChampionTileUrl(assets, carryAsset) && (

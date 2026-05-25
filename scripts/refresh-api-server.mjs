@@ -280,6 +280,13 @@ const recent = new Map();        // key → last completion timestamp
 const inflight = new Map();      // key → Promise<result>  (dedupe concurrent calls)
 const REFRESH_MIN_INTERVAL_MS = 60_000;
 
+// Prune stale throttle entries so `recent` doesn't grow unbounded on this
+// long-lived server (an entry older than the interval can never throttle again).
+setInterval(() => {
+  const cutoff = Date.now() - REFRESH_MIN_INTERVAL_MS;
+  for (const [k, ts] of recent) if (ts < cutoff) recent.delete(k);
+}, 3_600_000).unref();
+
 async function handleRefresh(body) {
   const { puuid, region } = body;
   if (!puuid || !region) throw Object.assign(new Error('puuid+region required'), { status: 400 });

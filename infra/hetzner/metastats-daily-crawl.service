@@ -14,6 +14,9 @@ EnvironmentFile=/etc/metastats-crawler/env
 # No artificial cap — let every region finish; the only time limits are
 # riot-client's per-request timeout + rate limits.
 TimeoutStartSec=infinity
+# Graceful-stop headroom: the child catches SIGTERM to write partial aggregates;
+# give it 10 min before SIGKILL (default 90s could cut the write short).
+TimeoutStopSec=600
 # --region-timeout=0 disables the per-region kill on legacy box code; current
 # code has no per-region timeout (the arg is a harmless no-op there).
 ExecStart=/usr/bin/node scripts/crawl-allranks-all-regions.mjs --mode auto --region-timeout=0

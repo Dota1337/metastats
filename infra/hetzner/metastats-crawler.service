@@ -7,6 +7,9 @@ After=network-online.target postgresql.service
 # No artificial cap — a full Diamond-II+ crawl can legitimately run many hours;
 # the only time limits are riot-client's per-request timeout + rate limits.
 TimeoutStartSec=infinity
+# Graceful-stop headroom: the child catches SIGTERM to flush Pass 2 + persist;
+# give it 10 min before SIGKILL (default 90s could cut the flush short).
+TimeoutStopSec=600
 Type=oneshot
 WorkingDirectory=/opt/metastats-crawler
 EnvironmentFile=/etc/metastats-crawler/env

@@ -95,6 +95,27 @@ export async function GET(request: NextRequest) {
           : null,
         // Damage-Atlas: { tier: { itemCount: { games, p50, p75, p95, p99, max } } }
         damageByTier: data.damageByTier || null,
+        // Carry-Performance: { tier: { itemCount: { games, avgPlacement, top4Rate, top1Rate } } }
+        // — avg placement + top4 when THIS unit was the carry (replaces the
+        // player-HP damage atlas with a real carry-strength signal).
+        carryPlacementByTier: data.carryPlacementByTier
+          ? Object.fromEntries(
+              Object.entries(data.carryPlacementByTier).map(([tier, m]: [string, any]) => [
+                tier,
+                Object.fromEntries(
+                  Object.entries(m || {}).map(([ic, e]: [string, any]) => [
+                    ic,
+                    {
+                      games: e.games,
+                      avgPlacement: e.games > 0 ? e.sumPlacement / e.games : null,
+                      top4Rate: e.games > 0 ? e.top4 / e.games : null,
+                      top1Rate: e.games > 0 ? e.top1 / e.games : null,
+                    },
+                  ])
+                ),
+              ])
+            )
+          : null,
         // Item-Slot-Build-Order: { tier: { slotIdx: [{item, count}, ...] } }
         itemSlotOrderByTier: data.itemSlotOrderByTier || null,
       },

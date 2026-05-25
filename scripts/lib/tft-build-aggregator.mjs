@@ -98,6 +98,11 @@ function newUnitBucket() {
     // tier (1/2/3) -> itemCount ('0'..'3') -> number[] (damage values).
     // Finalized into P50/P75/P95/P99 + games per (tier, itemCount).
     carryDamage: new Map(),
+    // Carry-Performance: when THIS unit is the inferred carry, accumulate
+    // placement + top4/top1 per (tier, itemCount). A real carry-strength signal
+    // to replace the player-HP "damage atlas" (Match-V1 has no per-unit/in-combat
+    // damage). tier -> itemCount ('0'..'3') -> { games, sumPlacement, top4, top1 }.
+    carryPerf: new Map(),
     // Item-Slot-Build-Order: tier -> slotIdx ('0'/'1'/'2') -> Map<item, count>.
     // Match-V1 itemNames preserves build order — index 0 = first slot built.
     itemSlotOrderByTier: new Map(),
@@ -324,6 +329,12 @@ export function aggregateMatch(rawMatch, agg, opts) {
           let arr = tierMap.get(carryItemCount);
           if (!arr) { arr = []; tierMap.set(carryItemCount, arr); }
           arr.push(totalDmg);
+          // Parallel carry-performance bin (placement/top4/top1) for the same carry.
+          let perfTier = ub.carryPerf.get(starTier);
+          if (!perfTier) { perfTier = new Map(); ub.carryPerf.set(starTier, perfTier); }
+          let pe = perfTier.get(carryItemCount);
+          if (!pe) { pe = { games: 0, sumPlacement: 0, top4: 0, top1: 0 }; perfTier.set(carryItemCount, pe); }
+          pe.games++; pe.sumPlacement += placement; if (top4) pe.top4++; if (top1) pe.top1++;
         }
         // Item-Slot-Build-Order (Sprint 2.4): build slot index in itemNames
         // is the order Riot reports them — slot 0 was built first.
@@ -661,6 +672,21 @@ export function finalize(agg, opts = {}) {
         }
         if (Object.keys(perItemCount).length > 0) damageByTier[tier] = perItemCount;
       }
+      // Carry-Performance: avg placement + top4/top1 per (tier, itemCount) when
+      // THIS unit was the carry. Emit raw sums (API computes the rates), only
+      // bins with ≥20 samples — sparser is too noisy for a per-(tier,item) cell.
+      const carryPlacementByTier = {};
+      const carryPerf = b.carryPerf instanceof Map ? b.carryPerf : new Map();
+      const MIN_CARRY_PERF_SAMPLES = 20;
+      for (const [tier, itemCountMap] of carryPerf) {
+        if (!(itemCountMap instanceof Map)) continue;
+        const perItemCount = {};
+        for (const [itemCount, e] of itemCountMap) {
+          if (!e || e.games < MIN_CARRY_PERF_SAMPLES) continue;
+          perItemCount[itemCount] = { games: e.games, sumPlacement: e.sumPlacement, top4: e.top4, top1: e.top1 };
+        }
+        if (Object.keys(perItemCount).length > 0) carryPlacementByTier[tier] = perItemCount;
+      }
       // Item-Slot-Build-Order: per (tier, slotIdx), top-3 items by frequency.
       const itemSlotOrderByTier = {};
       const slotMaster = b.itemSlotOrderByTier instanceof Map ? b.itemSlotOrderByTier : new Map();
@@ -681,6 +707,7 @@ export function finalize(agg, opts = {}) {
         topItems, topItemSets,
         topItemsByTier, topItemSetsByTier,
         damageByTier,
+        carryPlacementByTier,
         itemSlotOrderByTier,
       };
     }

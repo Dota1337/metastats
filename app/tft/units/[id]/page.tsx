@@ -16,6 +16,7 @@ import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } f
 type ItemEntry = { item: string; games: number; avgPlacement: number | null; top4Rate: number | null };
 type ItemSetEntry = { items: string[]; games: number; avgPlacement: number | null; top4Rate: number | null };
 type DamageBin = { games: number; p50: number | null; p75: number | null; p95: number | null; p99: number | null; max: number | null };
+type CarryPerfBin = { games: number; avgPlacement: number | null; top4Rate: number | null; top1Rate: number | null };
 type SlotEntry = { item: string; count: number };
 
 interface UnitDetail {
@@ -29,6 +30,7 @@ interface UnitDetail {
   topItemsByTier: Record<string, ItemEntry[]> | null;
   topItemSetsByTier: Record<string, ItemSetEntry[]> | null;
   damageByTier: Record<string, Record<string, DamageBin>> | null;
+  carryPlacementByTier: Record<string, Record<string, CarryPerfBin>> | null;
   itemSlotOrderByTier: Record<string, Record<string, SlotEntry[]>> | null;
 }
 
@@ -266,6 +268,64 @@ export default function TftUnitDetailPage() {
               })()}
 
               {(() => {
+                // Carry-Strength: avg placement + Top-4 when this unit is the
+                // carry, per star·item. Replaces the player-HP "damage atlas"
+                // (TFT API has no per-unit combat damage). Renders once the
+                // aggregator re-run has populated carryPlacementByTier.
+                const perf = data.carryPlacementByTier;
+                if (!perf || Object.keys(perf).length === 0) return null;
+                const tiers = Object.keys(perf).sort();
+                return (
+                  <Section title={t('tft.carryStrength')}>
+                    <div className="text-[#7a8aa0] text-[11px] mb-2">{t('tft.carryStrengthCaption')}</div>
+                    <div className="bg-[#141c2e] border border-[#1e2a3a] rounded overflow-hidden">
+                      <table className="w-full text-[11px] tabular-nums">
+                        <thead>
+                          <tr className="text-[#7a8aa0] border-b border-[#1e2a3a]">
+                            <th className="text-left px-2 py-1.5 font-normal">{t('tft.stars')}</th>
+                            <th className="text-left px-2 py-1.5 font-normal">{t('tft.itemsShort')}</th>
+                            <th className="text-right px-2 py-1.5 font-normal">{t('tft.carryAvgPlace')}</th>
+                            <th className="text-left px-2 py-1.5 font-normal" colSpan={2}>Top-4</th>
+                            <th className="text-right px-2 py-1.5 font-normal">{t('tft.gamesShort')}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {tiers.flatMap(tier => {
+                            const bins = perf[tier] || {};
+                            const counts = Object.keys(bins).sort().reverse();
+                            return counts.map(ic => {
+                              const e = bins[ic];
+                              const t4 = e.top4Rate != null ? e.top4Rate * 100 : 0;
+                              const place = e.avgPlacement;
+                              // Lower placement = better → green; ~mid = amber; high = red.
+                              const placeColor = place == null ? '#a0b0c5' : place <= 3.5 ? '#3ecf8e' : place <= 4.5 ? '#e0c75a' : '#e07a5a';
+                              return (
+                                <tr key={`${tier}-${ic}`} className="border-b border-[#1e2a3a]/50 last:border-0">
+                                  <td className="px-2 py-1.5 text-white"><span className="text-[#e0c75a]">★</span>{tier}</td>
+                                  <td className="px-2 py-1.5 text-[#a0b0c5]">{ic}</td>
+                                  <td className="px-2 py-1.5 text-right font-medium" style={{ color: placeColor }}>{place != null ? place.toFixed(2) : '—'}</td>
+                                  <td className="px-2 py-1.5 text-right text-[#3ecf8e] w-12">{e.top4Rate != null ? `${t4.toFixed(0)}%` : '—'}</td>
+                                  <td className="px-2 py-1.5 w-32">
+                                    <div className="relative h-2 bg-[#0d1526] rounded overflow-hidden">
+                                      <div className="absolute h-full left-0 bg-[#3ecf8e]" style={{ width: `${Math.min(100, t4).toFixed(0)}%` }} />
+                                    </div>
+                                  </td>
+                                  <td className="px-2 py-1.5 text-right text-[#7a8aa0]">{e.games}</td>
+                                </tr>
+                              );
+                            });
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </Section>
+                );
+              })()}
+
+              {(() => {
+                // Fallback only — superseded by the Carry-Strength section above
+                // once the aggregator re-run lands carryPlacementByTier.
+                if (data.carryPlacementByTier && Object.keys(data.carryPlacementByTier).length > 0) return null;
                 const damage = data.damageByTier;
                 if (!damage) return null;
                 const tiers = Object.keys(damage).sort();

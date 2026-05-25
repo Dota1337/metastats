@@ -78,6 +78,16 @@ const translations = {
   'tft.byStarLevel': t6('Nach Stern-Level', 'By star level', '\uBCC4 \uB808\uBCA8\uBCC4', '\u6309\u661F\u7EA7', 'Por nivel de estrella', 'Par niveau d\u2019\u00E9toile'),
   'tft.starTierAll': t6('Alle', 'All', '\uC804\uCCB4', '\u5168\u90E8', 'Todos', 'Tous'),
   'tft.damageAtlas': t6('Schaden als Carry', 'Damage as Carry', '\uCE90\uB9AC\uB85C\uC11C\uC758 \uB370\uBBF8\uC9C0', '\u4F5C\u4E3A\u6838\u5FC3\u7684\u4F24\u5BB3', 'Da\u00F1o como Carry', 'D\u00E9g\u00E2ts en tant que Carry'),
+  'tft.carryStrength': t6('Carry-St\u00E4rke', 'Carry Strength', '\uCE90\uB9AC \uC131\uB2A5', '\u6838\u5FC3\u5F3A\u5EA6', 'Fuerza como Carry', 'Puissance en Carry'),
+  'tft.carryStrengthCaption': t6(
+    '\u00D8-Platzierung & Top-4, wenn diese Unit der Carry ist',
+    'Avg placement & Top-4 when this unit is the carry',
+    '\uC774 \uC720\uB2DB\uC774 \uCE90\uB9AC\uC77C \uB54C\uC758 \uD3C9\uADE0 \uB4F1\uC218 & Top-4',
+    '\u5F53\u8BE5\u5355\u4F4D\u4E3A\u6838\u5FC3\u65F6\u7684\u5E73\u5747\u540D\u6B21\u4E0E Top-4',
+    'Posici\u00F3n media y Top-4 cuando esta unidad es el carry',
+    'Placement moyen & Top-4 quand cette unit\u00E9 est le carry'
+  ),
+  'tft.carryAvgPlace': t6('\u00D8 Platz.', 'Avg place', '\uD3C9\uADE0 \uB4F1\uC218', '\u5E73\u5747\u540D\u6B21', 'Pos. media', 'Place. moy.'),
   'tft.stars': t6('Sterne', 'Stars', '\uBCC4', '\u661F\u7EA7', 'Estrellas', '\u00C9toiles'),
   'tft.itemsShort': t6('Items', 'Items', '\uC544\uC774\uD15C', '\u88C5\u5907', '\u00CDtems', 'Objets'),
   'tft.comp.deathCurve': t6('Sterbe-Verteilung & Top-4-Survival', 'Death distribution & Top-4 survival', '\uC0AC\uB9DD \uBD84\uD3EC & Top-4 \uC0DD\uC874', '\u9635\u4EA1\u5206\u5E03 & Top-4 \u5B58\u6D3B', 'Distribuci\u00F3n de muerte y supervivencia Top-4', 'Distribution de mort & survie Top-4'),

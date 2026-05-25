@@ -908,7 +908,7 @@ function ProSpecialty({ puuid, setNumber, assets, t }: {
               return (
                 <a
                   key={c.clusterKey}
-                  href={`/tft/comps/${encodeURIComponent(c.clusterKey)}`}
+                  href={`/tft/units/${encodeURIComponent(c.carryUnit)}`}
                   className="flex items-center gap-2 bg-[#141c2e] border border-[#1e2a3a] rounded p-2 hover:border-[#a892ff]/40 transition-colors"
                 >
                   {tftChampionTileUrl(assets, carryAsset) && (

@@ -36,6 +36,7 @@ const translations = {
   'nav.items': t6('Items', 'Items', '\uC544\uC774\uD15C', '\u88C5\u5907', '\u00CDtems', 'Objets'),
   'nav.augments': t6('Augments', 'Augments', '\uC99D\uAC15', '\u5F3A\u5316\u7B26\u6587', 'Aumentos', 'Augments'),
   'nav.comps': t6('Comps', 'Comps', '\uC870\uD569', '\u9635\u5BB9', 'Comps', 'Comps'),
+  'nav.meta': t6('Meta', 'Meta', '\uBA54\uD0C0', 'Meta', 'Meta', 'Meta'),
   'nav.traits': t6('Synergien', 'Traits', '\uC2DC\uB108\uC9C0', '\u7F81\u7ECA', 'Sinergias', 'Synergies'),
   'game.switch': t6('Spiel wechseln', 'Switch game', '\uAC8C\uC784 \uC804\uD658', '\u5207\u6362\u6E38\u620F', 'Cambiar juego', 'Changer de jeu'),
   'game.lol': t6('League of Legends', 'League of Legends', '\uB9AC\uADF8 \uC624\uBE0C \uB808\uC804\uB4DC', '\u82F1\u96C4\u8054\u76DF', 'League of Legends', 'League of Legends'),

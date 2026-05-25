@@ -26,6 +26,7 @@ export default function Nav({ active }: NavProps) {
   const pathname = usePathname() || '/';
   const game = detectGameFromPath(pathname);
   const [langOpen, setLangOpen] = useState(false);
+  const [metaOpen, setMetaOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -38,6 +39,12 @@ export default function Nav({ active }: NavProps) {
 
   const linkClass = (key: NavProps['active']) =>
     key === active ? 'text-white text-sm' : 'text-[#a0b0c5] text-sm hover:text-white';
+
+  // "Meta" groups the four meta-data pages (Comps/Units/Items/Synergien) into
+  // one dropdown so the TFT nav row isn't 14 tabs wide.
+  const metaActive = active === 'comps' || active === 'units' || active === 'items' || active === 'traits';
+  const metaItemClass = (key: NavProps['active']) =>
+    `block px-3 py-2 text-xs transition-colors ${key === active ? 'bg-[#7B61FF]/10 text-[#7B61FF]' : 'text-[#a0b0c5] hover:text-white hover:bg-[#141c2e]'}`;
 
   const currentLang = LANGUAGES.find(l => l.code === lang) || LANGUAGES[0];
 
@@ -132,14 +139,32 @@ export default function Nav({ active }: NavProps) {
         <div className="hidden lg:flex items-center gap-4 flex-1 justify-end">
           {game === 'tft' ? (
             <>
-              <a href="/tft" className={linkClass('comps')}>{t('nav.comps')}</a>
+              {/* Meta dropdown: Comps / Units / Items / Synergien. Augments are
+                  hidden (Set 17 ships no augments in the Match-V1 DTO; /tft/augments
+                  + detail pages stay reachable directly). */}
+              <div className="relative">
+                <button
+                  onClick={() => setMetaOpen(o => !o)}
+                  className={`flex items-center gap-1 ${metaActive ? 'text-white text-sm' : 'text-[#a0b0c5] text-sm hover:text-white'}`}
+                >
+                  {t('nav.meta')}
+                  <svg className={`w-3 h-3 transition-transform ${metaOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {metaOpen && (
+                  <>
+                    <div className="fixed inset-0 z-30" onClick={() => setMetaOpen(false)} />
+                    <div className="absolute left-0 top-full mt-1 z-40 bg-[#0d1526] border border-[#1e2a3a] rounded shadow-lg overflow-hidden min-w-[150px]">
+                      <a href="/tft" className={metaItemClass('comps')}>{t('nav.comps')}</a>
+                      <a href="/tft/units" className={metaItemClass('units')}>{t('nav.units')}</a>
+                      <a href="/tft/items" className={metaItemClass('items')}>{t('nav.items')}</a>
+                      <a href="/tft/traits" className={metaItemClass('traits')}>{t('nav.traits')}</a>
+                    </div>
+                  </>
+                )}
+              </div>
               <a href="/tft/leaderboard" className={linkClass('leaderboard')}>{t('nav.leaderboard')}</a>
-              <a href="/tft/units" className={linkClass('units')}>{t('nav.units')}</a>
-              <a href="/tft/items" className={linkClass('items')}>{t('nav.items')}</a>
-              {/* Augments-Reiter ist ausgeblendet: Set 17 liefert keine
-                  Augments im Match-V1 DTO. /tft/augments + Detail-Pages
-                  bleiben erreichbar für direkten Zugriff. */}
-              <a href="/tft/traits" className={linkClass('traits')}>{t('nav.traits')}</a>
               <a href="/tft/tournaments" className={linkClass('tournaments')}>{t('nav.leagues')}</a>
               <a href="/tft/pros" className={linkClass('pros')}>{t('nav.tftPros')}</a>
               <a href="/tft/onetricks" className={linkClass('onetricks')}>{t('nav.onetricks')}</a>
@@ -382,11 +407,12 @@ export default function Nav({ active }: NavProps) {
         <div className="lg:hidden mt-3 pt-3 border-t border-[#1e2a3a] flex flex-col gap-3">
           {game === 'tft' ? (
             <>
-              <a href="/tft" className={linkClass('comps')} onClick={() => setMenuOpen(false)}>{t('nav.comps')}</a>
+              <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">{t('nav.meta')}</div>
+              <a href="/tft" className={`pl-3 ${linkClass('comps')}`} onClick={() => setMenuOpen(false)}>{t('nav.comps')}</a>
+              <a href="/tft/units" className={`pl-3 ${linkClass('units')}`} onClick={() => setMenuOpen(false)}>{t('nav.units')}</a>
+              <a href="/tft/items" className={`pl-3 ${linkClass('items')}`} onClick={() => setMenuOpen(false)}>{t('nav.items')}</a>
+              <a href="/tft/traits" className={`pl-3 ${linkClass('traits')}`} onClick={() => setMenuOpen(false)}>{t('nav.traits')}</a>
               <a href="/tft/leaderboard" className={linkClass('leaderboard')} onClick={() => setMenuOpen(false)}>{t('nav.leaderboard')}</a>
-              <a href="/tft/units" className={linkClass('units')} onClick={() => setMenuOpen(false)}>{t('nav.units')}</a>
-              <a href="/tft/items" className={linkClass('items')} onClick={() => setMenuOpen(false)}>{t('nav.items')}</a>
-              <a href="/tft/traits" className={linkClass('traits')} onClick={() => setMenuOpen(false)}>{t('nav.traits')}</a>
               <a href="/tft/tournaments" className={linkClass('tournaments')} onClick={() => setMenuOpen(false)}>{t('nav.leagues')}</a>
               <a href="/tft/pros" className={linkClass('pros')} onClick={() => setMenuOpen(false)}>{t('nav.tftPros')}</a>
               <a href="/tft/onetricks" className={linkClass('onetricks')} onClick={() => setMenuOpen(false)}>{t('nav.onetricks')}</a>

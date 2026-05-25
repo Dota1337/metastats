@@ -3,9 +3,10 @@
  * Crawls TFT tournaments from Liquipedia and upserts into Supabase.
  *
  * Pipeline (current — wikitext-parse path):
- *   1) Seed tournament page-titles from a hand-maintained list of the
- *      biggest events plus Category:S-Tier_Tournaments / A-Tier / B-Tier
- *      (Liquipedia tiers events by importance).
+ *   1) Seed tournament page-titles: a hand-maintained list of the biggest
+ *      events (carries region/set_number overrides) MERGED with auto-discovery
+ *      from Category:S-Tier_Tournaments + A-Tier (+ B-Tier via --include-b-tier),
+ *      so new events are picked up without editing the seed list.
  *   2) For each title: action=parse&prop=wikitext → parse the
  *      {{Infobox league}} template for metadata + the {{Prize pool}} or
  *      {{TeamCard}} blocks for placements.
@@ -23,9 +24,11 @@
  * for that.
  *
  * Usage:
- *   node scripts/crawl-tft-tournaments.mjs                # full run
+ *   node scripts/crawl-tft-tournaments.mjs                # full run (auto-discovers S+A tier)
  *   node scripts/crawl-tft-tournaments.mjs --limit 5      # smoke-test
  *   node scripts/crawl-tft-tournaments.mjs --no-supabase  # dry run
+ *   node scripts/crawl-tft-tournaments.mjs --no-discover  # curated seed only (skip category scan)
+ *   node scripts/crawl-tft-tournaments.mjs --include-b-tier  # also crawl B-tier events
  *   node scripts/crawl-tft-tournaments.mjs --pages "Foo,Bar"  # explicit list
  */
 
@@ -119,17 +122,72 @@ async function fetchTournamentWikitext(page) {
   };
 }
 
+// All page titles in a Liquipedia category (handles cmcontinue paging). Each
+// API call still respects the 30s ToU delay.
+async function fetchCategoryMembers(category) {
+  const pages = [];
+  let cmcontinue = null;
+  do {
+    const params = {
+      action: 'query', list: 'categorymembers',
+      cmtitle: `Category:${category}`, cmlimit: '500', cmtype: 'page',
+    };
+    if (cmcontinue) params.cmcontinue = cmcontinue;
+    const j = await liquipediaJson(params);
+    for (const m of j.query?.categorymembers || []) pages.push(m.title);
+    cmcontinue = j.continue?.cmcontinue || null;
+    if (cmcontinue) await sleep(LIQUIPEDIA_DELAY_MS);
+  } while (cmcontinue);
+  return pages;
+}
+
+// Auto-discover tournament pages from Liquipedia's tier categories so new
+// events are picked up without editing SEED_TOURNAMENTS. The curated seed still
+// wins (it carries region/set_number/tier overrides the categories don't have).
+// S + A tiers by default (premier + regional majors); B-tier behind a flag
+// because it's large and mostly minor weeklies.
+async function discoverSeedFromCategories() {
+  const cats = [
+    { cat: 'S-Tier_Tournaments', tier: 'S' },
+    { cat: 'A-Tier_Tournaments', tier: 'A' },
+  ];
+  if (hasFlag('--include-b-tier')) cats.push({ cat: 'B-Tier_Tournaments', tier: 'B' });
+  const discovered = [];
+  for (let i = 0; i < cats.length; i++) {
+    if (i > 0) await sleep(LIQUIPEDIA_DELAY_MS);
+    try {
+      const titles = await fetchCategoryMembers(cats[i].cat);
+      for (const title of titles) {
+        discovered.push({ page: title.replace(/ /g, '_'), tier: cats[i].tier, region: null });
+      }
+      console.log(`  [discover] ${cats[i].cat}: ${titles.length} pages`);
+    } catch (e) {
+      console.warn(`  [discover] ${cats[i].cat} failed: ${e.message}`);
+    }
+  }
+  return discovered;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Template parsing — depth-tracked so nested templates don't fool the splitter
 
-function findTemplate(wikitext, templateName) {
-  const startMarker = `{{${templateName}`;
-  let idx = 0;
+function findTemplate(wikitext, templateName, from = 0) {
+  // MediaWiki template names are case-insensitive on the FIRST letter only
+  // ("{{prize pool slot}}" === "{{Prize pool slot}}"), so match either casing.
+  const lower = templateName.charAt(0).toLowerCase() + templateName.slice(1);
+  const upper = templateName.charAt(0).toUpperCase() + templateName.slice(1);
+  const markers = upper === lower ? [`{{${lower}`] : [`{{${lower}`, `{{${upper}`];
+  let idx = from;
   while (true) {
-    const start = wikitext.indexOf(startMarker, idx);
+    // Earliest occurrence of any marker casing at/after idx.
+    let start = -1, marker = '';
+    for (const mk of markers) {
+      const p = wikitext.indexOf(mk, idx);
+      if (p >= 0 && (start < 0 || p < start)) { start = p; marker = mk; }
+    }
     if (start < 0) return null;
     // Ensure it's a template boundary (next char is `|` or `}` after a space)
-    const next = wikitext[start + startMarker.length];
+    const next = wikitext[start + marker.length];
     if (next !== '|' && next !== ' ' && next !== '\n' && next !== '}') {
       idx = start + 1;
       continue;
@@ -137,11 +195,24 @@ function findTemplate(wikitext, templateName) {
     let depth = 0, i = start;
     while (i < wikitext.length) {
       if (wikitext[i] === '{' && wikitext[i + 1] === '{') { depth++; i += 2; continue; }
-      if (wikitext[i] === '}' && wikitext[i + 1] === '}') { depth--; i += 2; if (depth === 0) return { start, end: i, body: wikitext.slice(start + startMarker.length, i - 2) }; continue; }
+      if (wikitext[i] === '}' && wikitext[i + 1] === '}') { depth--; i += 2; if (depth === 0) return { start, end: i, body: wikitext.slice(start + marker.length, i - 2) }; continue; }
       i++;
     }
     return null;
   }
+}
+
+// All depth-balanced occurrences of a template (by name), in document order.
+function findAllTemplates(wikitext, templateName) {
+  const out = [];
+  let from = 0;
+  while (true) {
+    const t = findTemplate(wikitext, templateName, from);
+    if (!t) break;
+    out.push(t.body);
+    from = t.end;
+  }
+  return out;
 }
 
 function parseTemplateFields(body) {
@@ -213,32 +284,78 @@ function deriveStatus(startDate, endDate) {
 // Liquipedia uses many variants; the most common in TFT pages is `prize-pool-slot`
 // templates inside a wrapping table. We do a permissive scan: any line with
 // `place=N|...|p1=Name|...|usdprize=X` (or similar).
+// Depth-aware split of a template body into positional + keyed args. The body
+// starts with the leading `|` (everything after the template name), so the
+// first (empty) segment is dropped from positionals.
+function parseTemplateArgs(body) {
+  const positional = [], keyed = {};
+  let depth = 0, buf = '';
+  const flush = () => {
+    const eq = buf.indexOf('=');
+    if (eq >= 0) {
+      const k = buf.slice(0, eq).trim();
+      // Real param keys are simple tokens; anything else (a link/template that
+      // happens to contain `=`) is a positional value.
+      if (/^[A-Za-z0-9_ -]+$/.test(k)) { keyed[k] = buf.slice(eq + 1).trim(); return; }
+    }
+    const v = buf.trim();
+    if (v) positional.push(v);
+  };
+  for (let j = 0; j < body.length; j++) {
+    const c = body[j], n = body[j + 1];
+    if (c === '{' && n === '{') { depth++; buf += c; continue; }
+    if (c === '}' && n === '}') { depth--; buf += c; continue; }
+    if (c === '[' && n === '[') { depth++; buf += c; continue; }
+    if (c === ']' && n === ']') { depth--; buf += c; continue; }
+    if (c === '|' && depth === 0) { flush(); buf = ''; } else buf += c;
+  }
+  flush();
+  return { positional, keyed };
+}
+
+// Modern TFT prize-pool format: {{Slot|place=N|usdprize=X|{{SoloOpponent|Name|flag=xx}}}}.
+// Older pages used {{prize pool slot|place=N|p1=Name|usdprize=X}}. Handle both,
+// depth-safely (nested SoloOpponent/flag templates must not truncate the slot).
 function extractPlacements(wikitext) {
   const placements = [];
-  // Match "place=1" / "place=2" entries
-  const placeRegex = /\{\{prize\s*pool\s*slot[^}]*\}\}/gis;
-  let m;
-  while ((m = placeRegex.exec(wikitext)) != null) {
-    const body = m[0];
-    const fields = {};
-    body.slice(2, -2).split('|').slice(1).forEach(part => {
-      const eq = part.indexOf('=');
-      if (eq < 0) return;
-      const k = part.slice(0, eq).trim();
-      const v = part.slice(eq + 1).trim();
-      fields[k] = v;
-    });
-    const place = parseInt(fields.place || '0', 10);
-    if (!place) continue;
-    const proName = unwiki(fields.p1 || fields.player || fields.team || '');
-    if (!proName) continue;
-    placements.push({
-      placement: place,
-      proName,
-      team: unwiki(fields.team || fields.t1 || '') || null,
-      country: fields.c1 || fields.flag || null,
-      prizeUsd: parsePrize(fields.usdprize),
-    });
+  const seen = new Set();
+  const push = (place, proName, country, prizeUsd, team) => {
+    if (!place || !proName) return;
+    const key = `${place}::${proName.toLowerCase()}`;
+    if (seen.has(key)) return;   // de-dupe nested per-day + overall blocks
+    seen.add(key);
+    placements.push({ placement: place, proName, team: team || null, country: country || null, prizeUsd: prizeUsd ?? null });
+  };
+
+  // Modern {{Slot}} + nested {{SoloOpponent}}. Slots are in rank order and
+  // usually carry NO explicit place= — placement is the running position. A
+  // slot may hold several SoloOpponents (tied range, e.g. 5th-8th): they share
+  // the slot's base rank and the counter advances by the opponent count.
+  let rank = 1;
+  for (const body of findAllTemplates(wikitext, 'Slot')) {
+    const f = parseTemplateFields(body);
+    const base = f.place ? parseInt(f.place, 10) : rank;
+    const prize = parsePrize(f.usdprize || f.localprize);
+    const opps = findAllTemplates(body, 'SoloOpponent');
+    let n = 0;
+    for (const oppBody of opps) {
+      const { positional, keyed } = parseTemplateArgs(oppBody);
+      const proName = unwiki(positional[0] || keyed['1'] || keyed.p1 || '');
+      if (!proName) continue;
+      push(base, proName, keyed.flag || null, prize, null);
+      n++;
+    }
+    rank = base + Math.max(1, n);
+  }
+
+  // Legacy {{prize pool slot}} format (older events) — only if Slot found nothing.
+  if (placements.length === 0) {
+    for (const body of findAllTemplates(wikitext, 'prize pool slot')) {
+      const f = parseTemplateFields(body);
+      const place = parseInt(f.place || '0', 10);
+      const proName = unwiki(f.p1 || f.player || f['1'] || '');
+      push(place, proName, f.c1 || f.p1flag || f.flag || null, parsePrize(f.usdprize), unwiki(f.team || '') || null);
+    }
   }
   return placements;
 }
@@ -311,6 +428,17 @@ async function main() {
   let seed = SEED_TOURNAMENTS;
   if (PAGES_OVERRIDE) {
     seed = PAGES_OVERRIDE.split(',').map(p => ({ page: p.trim(), tier: null, region: null }));
+  } else if (!hasFlag('--no-discover')) {
+    console.log('[0/3] Auto-discovering tournament pages from tier categories …');
+    const discovered = await discoverSeedFromCategories();
+    const seen = new Set(SEED_TOURNAMENTS.map(s => s.page.toLowerCase()));
+    const merged = [...SEED_TOURNAMENTS];   // curated first — keeps their region/set/tier overrides
+    for (const d of discovered) {
+      const key = d.page.toLowerCase();
+      if (!seen.has(key)) { merged.push(d); seen.add(key); }
+    }
+    console.log(`  [discover] ${SEED_TOURNAMENTS.length} curated + ${merged.length - SEED_TOURNAMENTS.length} new = ${merged.length} pages\n`);
+    seed = merged;
   }
   if (LIMIT > 0) seed = seed.slice(0, LIMIT);
   console.log(`[1/3] ${seed.length} tournament pages to crawl (${Math.ceil(seed.length * LIQUIPEDIA_DELAY_MS / 60000)} min @ 30s rate-limit)\n`);

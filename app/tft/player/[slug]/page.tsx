@@ -11,6 +11,7 @@ import MatchCard from '../../../components/tft/MatchCard';
 import MarketValueHero from '../../../components/tft/MarketValueHero';
 import BookmarkButton from '../../../components/BookmarkButton';
 import { useI18n } from '../../../lib/i18n';
+import { formatStage } from '../../../lib/tft-stage';
 import { loadProLookup, lookupPro, type ProPlayer } from '../../../lib/pro-players';
 
 interface TftTournamentResult {
@@ -639,7 +640,7 @@ function PlayStyle({ scores, dist, avgs }: { scores: NonNullable<PlayerStats['sc
         <MiniStat label={t('tft.avgGoldLeft')}     value={avgs.goldLeft.toFixed(1)} />
         <MiniStat label={t('tft.avgEliminations')} value={avgs.eliminations.toFixed(2)} />
         <MiniStat label={t('tft.avgDamage')}       value={Math.round(avgs.damage).toString()} />
-        <MiniStat label={t('tft.avgLastRound')}    value={avgs.lastRound.toFixed(1)} />
+        <MiniStat label={t('tft.avgLastRound')}    value={formatStage(avgs.lastRound)} />
       </div>
     </>
   );

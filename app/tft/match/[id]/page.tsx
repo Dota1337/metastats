@@ -7,6 +7,7 @@ import { useI18n } from '../../../lib/i18n';
 import { tftPatchLabel } from '../../../lib/tft-patch-label';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import type { TftMatchSummary, TftParticipantSummary } from '../../../lib/tft-match-processor';
+import { formatStage } from '../../../lib/tft-stage';
 
 // Permanent URL for one TFT match. Reuses the same match-shaped data as the
 // inline expansion in MatchCard but laid out vertically for shareability —
@@ -309,14 +310,6 @@ function AugmentColumn({ augments, assets }: { augments: string[]; assets: TftAs
 // and we can iterate the detail view without touching the inline expansion.
 // ─────────────────────────────────────────────────────────────────────────────
 
-function formatStage(lastRound: number): string {
-  if (lastRound <= 0) return '—';
-  if (lastRound <= 4) return `1-${lastRound}`;
-  const offset = lastRound - 4;
-  const stage = Math.floor((offset - 1) / 7) + 2;
-  const round = ((offset - 1) % 7) + 1;
-  return `${stage}-${round}`;
-}
 
 function prettyCharId(id: string) {
   return id.replace(/^TFT\d+_/, '');

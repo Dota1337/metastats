@@ -13,6 +13,7 @@ import CompCard from '../../../components/tft/CompCard';
 import { useI18n } from '../../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import PositionHeatmap from '../../../components/tft/PositionHeatmap';
+import { formatStage } from '../../../lib/tft-stage';
 
 // Slot meaning in tft_daily_augment_stats: 0 = stage 2-1, 1 = 3-2, 2 = 4-2.
 const SLOT_LABELS = ['2-1', '3-2', '4-2'] as const;
@@ -584,16 +585,6 @@ function DeltaStat({
   );
 }
 
-// Stage-round formatter mirrors the MatchCard formatStage logic so users
-// see "5-1" instead of an opaque last_round=33.
-function formatStage(round: number): string {
-  if (round <= 0) return '—';
-  if (round <= 4) return `1-${Math.round(round)}`;
-  const offset = round - 4;
-  const stage = Math.floor((offset - 1) / 7) + 2;
-  const r = ((offset - 1) % 7) + 1;
-  return `${stage}-${Math.round(r)}`;
-}
 
 // Light heuristic: comps that hit higher avg level for the same last-round
 // were leveling faster than the lobby average, so we tag them "early-level"

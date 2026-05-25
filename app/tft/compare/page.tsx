@@ -10,6 +10,7 @@ import { useI18n, LOCALE_MAP, type Lang } from '../../lib/i18n';
 import TftHero from '../../components/tft/TftHero';
 import { formatTier } from '../../lib/rank-format';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
+import { formatStage } from '../../lib/tft-stage';
 
 const CompareRadar = dynamic(() => import('../../components/CompareRadar'), { ssr: false });
 
@@ -367,7 +368,7 @@ export default function TftComparePage() {
                 <CompareStatBar label="Ø Schaden" v1={s1.averages.damage} v2={s2.averages.damage} fmt1={Math.round(s1.averages.damage).toLocaleString(LOCALE_MAP[lang])} fmt2={Math.round(s2.averages.damage).toLocaleString(LOCALE_MAP[lang])} />
               )}
               {(s1.averages.lastRound > 0 || s2.averages.lastRound > 0) && (
-                <CompareStatBar label="Ø Endrunde" v1={s1.averages.lastRound} v2={s2.averages.lastRound} fmt1={s1.averages.lastRound.toFixed(1)} fmt2={s2.averages.lastRound.toFixed(1)} />
+                <CompareStatBar label="Ø Endrunde" v1={s1.averages.lastRound} v2={s2.averages.lastRound} fmt1={formatStage(s1.averages.lastRound)} fmt2={formatStage(s2.averages.lastRound)} />
               )}
               {(s1.averages.level > 0 || s2.averages.level > 0) && (
                 <CompareStatBar label="Ø Level" v1={s1.averages.level} v2={s2.averages.level} fmt1={s1.averages.level.toFixed(1)} fmt2={s2.averages.level.toFixed(1)} />

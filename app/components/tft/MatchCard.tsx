@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import type { TftMatchSummary, TftParticipantSummary } from '../../lib/tft-match-processor';
+import { formatStage } from '../../lib/tft-stage';
 
 interface Props {
   match: TftMatchSummary;
@@ -85,15 +86,6 @@ export default function MatchCard({ match, selfPuuid, region }: Props) {
 // stage after that has 7. So last_round=4 is "1-4", 5 is "2-1", 12 is
 // "3-1", 40 is "7-1", and so on. Set 17 still follows this scheme; if Riot
 // changes the per-stage round count in a future set we'll bump it here.
-function formatStage(lastRound: number): string {
-  if (lastRound <= 0) return '—';
-  if (lastRound <= 4) return `1-${lastRound}`;
-  const offset = lastRound - 4;
-  const stage = Math.floor((offset - 1) / 7) + 2;
-  const round = ((offset - 1) % 7) + 1;
-  return `${stage}-${round}`;
-}
-
 function PlacementBadge({ placement }: { placement: number }) {
   const color = placement === 1 ? '#f0c040' : placement <= 4 ? '#3a8' : '#888';
   const ordinal = placement === 1 ? '1st' : placement === 2 ? '2nd' : placement === 3 ? '3rd' : `${placement}th`;

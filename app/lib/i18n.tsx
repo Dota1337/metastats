@@ -883,6 +883,160 @@ const translations = {
     'Sin impacto', 'Aucun impact'
   ),
 
+  // \u2500\u2500 Marktwert-Methodik / Q&A-Seite (/tft/marktwert/methodik) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  'tft.mv.method.link': t6(
+    'Marktwert-Berechnung', "How it's calculated",
+    '\uC0B0\uC815 \uBC29\uC2DD', '\u4F30\u503C\u8BA1\u7B97\u65B9\u5F0F',
+    'C\u00F3mo se calcula', 'M\u00E9thode de calcul'
+  ),
+  'tft.mv.method.title': t6(
+    'Marktwert-Berechnung', 'How the market value is calculated',
+    '\uC2DC\uC7A5 \uAC00\uCE58 \uC0B0\uC815 \uBC29\uC2DD', '\u5E02\u573A\u4EF7\u503C\u5982\u4F55\u8BA1\u7B97',
+    'C\u00F3mo se calcula el valor de mercado', 'Comment la valeur marchande est calcul\u00E9e'
+  ),
+  'tft.mv.method.intro': t6(
+    'Wie der Marktwert eines Spielers entsteht \u2014 Schritt f\u00FCr Schritt erkl\u00E4rt.',
+    "How a player's market value is built \u2014 explained step by step.",
+    '\uC120\uC218\uC758 \uC2DC\uC7A5 \uAC00\uCE58\uAC00 \uC5B4\uB5BB\uAC8C \uC0B0\uCD9C\uB418\uB294\uC9C0 \uB2E8\uACC4\uBCC4\uB85C \uC124\uBA85\uD569\uB2C8\uB2E4.',
+    '\u9010\u6B65\u8BF4\u660E\u9009\u624B\u7684\u5E02\u573A\u4EF7\u503C\u662F\u5982\u4F55\u5F97\u51FA\u7684\u3002',
+    'C\u00F3mo se construye el valor de mercado de un jugador, explicado paso a paso.',
+    "Comment la valeur marchande d'un joueur est \u00E9tablie, expliqu\u00E9e \u00E9tape par \u00E9tape."
+  ),
+  'tft.mv.method.q.what': t6(
+    'Was ist der Marktwert?', 'What is the market value?',
+    '\uC2DC\uC7A5 \uAC00\uCE58\uB780 \uBB34\uC5C7\uC778\uAC00\uC694?', '\u4EC0\u4E48\u662F\u5E02\u573A\u4EF7\u503C\uFF1F',
+    '\u00BFQu\u00E9 es el valor de mercado?', "Qu'est-ce que la valeur marchande ?"
+  ),
+  'tft.mv.method.a.what': t6(
+    'Der Marktwert sch\u00E4tzt die aktuelle Spielst\u00E4rke als Geldbetrag und macht Spieler vergleichbar. Er besteht aus einem Basiswert (aus dem Rang) multipliziert mit einem Skill-Multiplikator (aus der Leistung).',
+    "The market value estimates a player's current strength as a monetary figure, making players comparable. It is a base value (from rank) multiplied by a skill multiplier (from performance).",
+    '\uC2DC\uC7A5 \uAC00\uCE58\uB294 \uC120\uC218\uC758 \uD604\uC7AC \uC2E4\uB825\uC744 \uAE08\uC561\uC73C\uB85C \uD658\uC0B0\uD574 \uC11C\uB85C \uBE44\uAD50\uD560 \uC218 \uC788\uAC8C \uD569\uB2C8\uB2E4. \uB7AD\uD06C \uAE30\uBC18\uC758 \uAE30\uBCF8\uAC12\uC5D0 \uC2E4\uB825 \uAE30\uBC18\uC758 \uC2A4\uD0AC \uBC30\uC218\uB97C \uACF1\uD55C \uAC12\uC785\uB2C8\uB2E4.',
+    '\u5E02\u573A\u4EF7\u503C\u5C06\u9009\u624B\u5F53\u524D\u7684\u5B9E\u529B\u6362\u7B97\u4E3A\u91D1\u989D\uFF0C\u4FBF\u4E8E\u76F8\u4E92\u6BD4\u8F83\u3002\u5B83\u7531\u57FA\u7840\u503C\uFF08\u6765\u81EA\u6BB5\u4F4D\uFF09\u4E58\u4EE5\u5B9E\u529B\u500D\u6570\uFF08\u6765\u81EA\u8868\u73B0\uFF09\u6784\u6210\u3002',
+    'El valor de mercado estima la fuerza actual de un jugador como una cifra monetaria, permitiendo compararlos. Es un valor base (seg\u00FAn el rango) multiplicado por un multiplicador de habilidad (seg\u00FAn el rendimiento).',
+    "La valeur marchande estime la force actuelle d'un joueur sous forme d'un montant, ce qui permet de les comparer. C'est une valeur de base (issue du rang) multipli\u00E9e par un multiplicateur de comp\u00E9tence (issu des performances)."
+  ),
+  'tft.mv.method.q.base': t6(
+    'Wie entsteht der Basiswert?', 'How is the base value determined?',
+    '\uAE30\uBCF8\uAC12\uC740 \uC5B4\uB5BB\uAC8C \uC815\uD574\uC9C0\uB098\uC694?', '\u57FA\u7840\u503C\u662F\u5982\u4F55\u786E\u5B9A\u7684\uFF1F',
+    '\u00BFC\u00F3mo se determina el valor base?', 'Comment la valeur de base est-elle d\u00E9termin\u00E9e ?'
+  ),
+  'tft.mv.method.a.base': t6(
+    'Aus Tier und LP \u00FCber eine feste Kurve: h\u00F6herer Rang \u2192 h\u00F6herer Basiswert. Der niedrigste angesetzte Rang ist Diamant II.',
+    'From tier and LP via a fixed curve: higher rank \u2192 higher base value. The lowest rank we score is Diamond II.',
+    '\uD2F0\uC5B4\uC640 LP\uB97C \uACE0\uC815\uB41C \uACE1\uC120\uC73C\uB85C \uD658\uC0B0\uD569\uB2C8\uB2E4. \uB7AD\uD06C\uAC00 \uB192\uC744\uC218\uB85D \uAE30\uBCF8\uAC12\uC774 \uCEE4\uC9C0\uBA70, \uC0B0\uC815 \uB300\uC0C1\uC758 \uCD5C\uC800 \uB7AD\uD06C\uB294 \uB2E4\uC774\uC544\uBAAC\uB4DC II\uC785\uB2C8\uB2E4.',
+    '\u6839\u636E\u6BB5\u4F4D\u548C LP \u901A\u8FC7\u56FA\u5B9A\u66F2\u7EBF\u5F97\u51FA\uFF1A\u6BB5\u4F4D\u8D8A\u9AD8\uFF0C\u57FA\u7840\u503C\u8D8A\u9AD8\u3002\u8BA1\u5165\u7684\u6700\u4F4E\u6BB5\u4F4D\u4E3A\u94BB\u77F3 II\u3002',
+    'A partir del tier y los LP mediante una curva fija: mayor rango \u2192 mayor valor base. El rango m\u00E1s bajo que puntuamos es Diamante II.',
+    '\u00C0 partir du palier et des LP via une courbe fixe : rang plus \u00E9lev\u00E9 \u2192 valeur de base plus \u00E9lev\u00E9e. Le rang le plus bas pris en compte est Diamant II.'
+  ),
+  'tft.mv.method.q.z': t6(
+    'Was bedeutet der z-Score?', 'What does the z-score mean?',
+    'z \uC810\uC218\uB294 \uBB34\uC5C7\uC744 \uC758\uBBF8\uD558\uB098\uC694?', 'z \u5206\u6570\u662F\u4EC0\u4E48\u610F\u601D\uFF1F',
+    '\u00BFQu\u00E9 significa la puntuaci\u00F3n z?', 'Que signifie le score z ?'
+  ),
+  'tft.mv.method.a.z': t6(
+    'Der z-Score misst, wie weit ein Spieler vom Median seiner Kohorte (Diamant II+, gleiche Region und gleiches Set) entfernt ist \u2014 in robusten Standardabweichungen (MAD). 0 = Durchschnitt, positiv = besser, negativ = schlechter. Extremwerte werden bei \u00B13 gekappt.',
+    'The z-score measures how far a player is from the median of their cohort (Diamond II+, same region and set) \u2014 in robust standard deviations (MAD). 0 = average, positive = better, negative = worse. Extremes are capped at \u00B13.',
+    'z \uC810\uC218\uB294 \uC120\uC218\uAC00 \uC18D\uD55C \uC9D1\uB2E8(\uB2E4\uC774\uC544\uBAAC\uB4DC II \uC774\uC0C1, \uB3D9\uC77C \uC9C0\uC5ED\u00B7\uC2DC\uC98C)\uC758 \uC911\uC559\uAC12\uC5D0\uC11C \uC5BC\uB9C8\uB098 \uB5A8\uC5B4\uC838 \uC788\uB294\uC9C0\uB97C \uACAC\uACE0\uD55C \uD45C\uC900\uD3B8\uCC28(MAD)\uB85C \uB098\uD0C0\uB0C5\uB2C8\uB2E4. 0 = \uD3C9\uADE0, \uC591\uC218 = \uC6B0\uC218, \uC74C\uC218 = \uC800\uC870\uC774\uBA70 \uADF9\uB2E8\uAC12\uC740 \u00B13\uC73C\uB85C \uC81C\uD55C\uB429\uB2C8\uB2E4.',
+    'z \u5206\u6570\u8861\u91CF\u9009\u624B\u4E0E\u5176\u540C\u7EC4\uFF08\u94BB\u77F3 II \u4EE5\u4E0A\u3001\u76F8\u540C\u5927\u533A\u4E0E\u7248\u672C\uFF09\u4E2D\u4F4D\u6570\u7684\u8DDD\u79BB\uFF0C\u5355\u4F4D\u4E3A\u7A33\u5065\u6807\u51C6\u5DEE\uFF08MAD\uFF09\u30020 = \u5E73\u5747\uFF0C\u6B63\u503C = \u66F4\u597D\uFF0C\u8D1F\u503C = \u66F4\u5DEE\uFF0C\u6781\u7AEF\u503C\u88AB\u9650\u5236\u5728 \u00B13\u3002',
+    'La puntuaci\u00F3n z mide cu\u00E1n lejos est\u00E1 un jugador de la mediana de su cohorte (Diamante II+, misma regi\u00F3n y set), en desviaciones est\u00E1ndar robustas (MAD). 0 = promedio, positivo = mejor, negativo = peor. Los extremos se limitan a \u00B13.',
+    'Le score z mesure l\u2019\u00E9cart d\u2019un joueur par rapport \u00E0 la m\u00E9diane de sa cohorte (Diamant II+, m\u00EAme r\u00E9gion et m\u00EAme set), en \u00E9carts-types robustes (MAD). 0 = moyenne, positif = meilleur, n\u00E9gatif = moins bon. Les extr\u00EAmes sont plafonn\u00E9s \u00E0 \u00B13.'
+  ),
+  'tft.mv.method.q.signals': t6(
+    'Welche Signale flie\u00DFen ein?', 'Which signals go into it?',
+    '\uC5B4\uB5A4 \uC9C0\uD45C\uAC00 \uBC18\uC601\uB418\uB098\uC694?', '\u5305\u542B\u54EA\u4E9B\u6307\u6807\uFF1F',
+    '\u00BFQu\u00E9 se\u00F1ales intervienen?', 'Quels signaux entrent en jeu ?'
+  ),
+  'tft.mv.method.a.signals': t6(
+    'Sechs gewichtete Signale ergeben den Skill-Multiplikator. Jedes wird als z-Score gegen die Kohorte gemessen:',
+    'Six weighted signals form the skill multiplier. Each is measured as a z-score against the cohort:',
+    '\uC5EC\uC12F \uAC1C\uC758 \uAC00\uC911 \uC9C0\uD45C\uAC00 \uC2A4\uD0AC \uBC30\uC218\uB97C \uAD6C\uC131\uD558\uBA70, \uAC01\uAC01 \uC9D1\uB2E8 \uB300\uBE44 z \uC810\uC218\uB85C \uCE21\uC815\uB429\uB2C8\uB2E4:',
+    '\u516D\u4E2A\u52A0\u6743\u6307\u6807\u5171\u540C\u6784\u6210\u5B9E\u529B\u500D\u6570\uFF0C\u6BCF\u4E2A\u90FD\u4EE5\u76F8\u5BF9\u540C\u7EC4\u7684 z \u5206\u6570\u8861\u91CF\uFF1A',
+    'Seis se\u00F1ales ponderadas forman el multiplicador de habilidad. Cada una se mide como puntuaci\u00F3n z frente a la cohorte:',
+    'Six signaux pond\u00E9r\u00E9s forment le multiplicateur de comp\u00E9tence. Chacun est mesur\u00E9 sous forme de score z par rapport \u00E0 la cohorte :'
+  ),
+  'tft.mv.method.sig.performance': t6(
+    'Wie gut platzierst du dich im Schnitt? Basis: \u00D8-Platzierung kombiniert mit Top-4- und Sieg-Anteil.',
+    'How well do you place on average? Based on average placement combined with Top-4 and win rate.',
+    '\uD3C9\uADE0\uC801\uC73C\uB85C \uC5BC\uB9C8\uB098 \uB192\uC740 \uC21C\uC704\uC5D0 \uB4DC\uB294\uAC00? \uD3C9\uADE0 \uB4F1\uC218\uC5D0 Top-4\u00B71\uC704 \uBE44\uC728\uC744 \uACB0\uD569\uD569\uB2C8\uB2E4.',
+    '\u4F60\u7684\u5E73\u5747\u540D\u6B21\u6709\u591A\u597D\uFF1F\u57FA\u4E8E\u5E73\u5747\u540D\u6B21\u7ED3\u5408 Top-4 \u4E0E\u5403\u9E21\u7387\u3002',
+    '\u00BFQu\u00E9 tan bien te posicionas de media? Basado en la posici\u00F3n media combinada con la tasa de Top-4 y de victorias.',
+    'Quel est votre classement moyen ? Bas\u00E9 sur le placement moyen combin\u00E9 au taux de Top-4 et de victoires.'
+  ),
+  'tft.mv.method.sig.metaRelative': t6(
+    'Holst du mit denselben Comps mehr heraus als der Durchschnitt? Vergleich gegen die Meta-Baseline derselben Comps.',
+    'Do you get more out of the same comps than average? Compared against the meta baseline of those comps.',
+    '\uAC19\uC740 \uC870\uD569\uC73C\uB85C \uD3C9\uADE0\uBCF4\uB2E4 \uB354 \uC88B\uC740 \uC131\uACFC\uB97C \uB0B4\uB294\uAC00? \uB3D9\uC77C \uC870\uD569\uC758 \uBA54\uD0C0 \uAE30\uC900\uC120\uACFC \uBE44\uAD50\uD569\uB2C8\uB2E4.',
+    '\u7528\u76F8\u540C\u9635\u5BB9\u4F60\u80FD\u5426\u6253\u51FA\u9AD8\u4E8E\u5E73\u5747\u7684\u6210\u7EE9\uFF1F\u4E0E\u8FD9\u4E9B\u9635\u5BB9\u7684 Meta \u57FA\u51C6\u7EBF\u6BD4\u8F83\u3002',
+    '\u00BFSacas m\u00E1s partido que la media a las mismas composiciones? Comparado con la l\u00EDnea base meta de esas composiciones.',
+    'Tirez-vous plus parti des m\u00EAmes compositions que la moyenne ? Compar\u00E9 \u00E0 la r\u00E9f\u00E9rence m\u00E9ta de ces compositions.'
+  ),
+  'tft.mv.method.sig.consistency': t6(
+    'Wie konstant sind deine Platzierungen? Basis: Streuung (\u03C3) \u2014 weniger Ausrei\u00DFer ist besser.',
+    'How consistent are your placements? Based on spread (\u03C3) \u2014 fewer outliers is better.',
+    '\uC21C\uC704\uAC00 \uC5BC\uB9C8\uB098 \uC77C\uC815\uD55C\uAC00? \uBD84\uC0B0(\u03C3) \uAE30\uBC18\uC73C\uB85C \uAE30\uBCF5\uC774 \uC801\uC744\uC218\uB85D \uC88B\uC2B5\uB2C8\uB2E4.',
+    '\u4F60\u7684\u540D\u6B21\u6709\u591A\u7A33\u5B9A\uFF1F\u57FA\u4E8E\u79BB\u6563\u5EA6\uFF08\u03C3\uFF09\uFF0C\u6CE2\u52A8\u8D8A\u5C0F\u8D8A\u597D\u3002',
+    '\u00BFQu\u00E9 tan constantes son tus posiciones? Basado en la dispersi\u00F3n (\u03C3): menos valores at\u00EDpicos es mejor.',
+    'Vos placements sont-ils r\u00E9guliers ? Bas\u00E9 sur la dispersion (\u03C3) : moins de valeurs extr\u00EAmes, c\u2019est mieux.'
+  ),
+  'tft.mv.method.sig.flexMastery': t6(
+    'Wie viele verschiedene Comps spielst du erfolgreich? Belohnt Flexibilit\u00E4t statt Einseitigkeit.',
+    'How many different comps do you play successfully? Rewards flexibility over one-tricking.',
+    '\uC11C\uB85C \uB2E4\uB978 \uC870\uD569\uC744 \uC5BC\uB9C8\uB098 \uC798 \uC18C\uD654\uD558\uB294\uAC00? \uD55C \uC870\uD569\uB9CC \uACE0\uC9D1\uD558\uAE30\uBCF4\uB2E4 \uC720\uC5F0\uD568\uC744 \uB192\uC774 \uD3C9\uAC00\uD569\uB2C8\uB2E4.',
+    '\u4F60\u80FD\u6210\u529F\u9A7E\u9A6D\u591A\u5C11\u79CD\u4E0D\u540C\u9635\u5BB9\uFF1F\u5956\u52B1\u7075\u6D3B\u591A\u53D8\u800C\u975E\u5355\u4E00\u6253\u6CD5\u3002',
+    '\u00BFCu\u00E1ntas composiciones distintas juegas con \u00E9xito? Premia la flexibilidad frente a jugar siempre lo mismo.',
+    'Combien de compositions diff\u00E9rentes jouez-vous avec succ\u00E8s ? R\u00E9compense la polyvalence plut\u00F4t que le mono-jeu.'
+  ),
+  'tft.mv.method.sig.gameSense': t6(
+    'Late-Game-\u00DCberleben und Eco-Management \u2014 wie lange du dich h\u00E4ltst und wie effizient du dein Gold nutzt.',
+    'Late-game survival and economy management \u2014 how long you last and how efficiently you use gold.',
+    '\uD6C4\uBC18 \uC0DD\uC874\uB825\uACFC \uC774\uCF54\uB178\uBBF8 \uAD00\uB9AC \u2014 \uC5BC\uB9C8\uB098 \uC624\uB798 \uBC84\uD2F0\uACE0 \uACE8\uB4DC\uB97C \uC5BC\uB9C8\uB098 \uD6A8\uC728\uC801\uC73C\uB85C \uC4F0\uB294\uC9C0.',
+    '\u540E\u671F\u751F\u5B58\u4E0E\u7ECF\u6D4E\u8FD0\u8425\u2014\u2014\u4F60\u80FD\u6491\u591A\u4E45\uFF0C\u4EE5\u53CA\u7528\u91D1\u5E01\u7684\u6548\u7387\u3002',
+    'Supervivencia en late-game y gesti\u00F3n de econom\u00EDa: cu\u00E1nto aguantas y con qu\u00E9 eficiencia usas el oro.',
+    'Survie en fin de partie et gestion de l\u2019\u00E9conomie : combien de temps vous tenez et l\u2019efficacit\u00E9 de votre or.'
+  ),
+  'tft.mv.method.sig.boardStrength': t6(
+    'St\u00E4rke deines finalen Boards relativ zur erreichten Platzierung.',
+    'Strength of your final board relative to the placement reached.',
+    '\uB3C4\uB2EC\uD55C \uC21C\uC704 \uB300\uBE44 \uCD5C\uC885 \uBCF4\uB4DC\uC758 \uAC15\uD568.',
+    '\u76F8\u5BF9\u4E8E\u6700\u7EC8\u540D\u6B21\uFF0C\u4F60\u6700\u7EC8\u68CB\u76D8\u7684\u5F3A\u5EA6\u3002',
+    'Fuerza de tu tablero final en relaci\u00F3n con la posici\u00F3n alcanzada.',
+    'Force de votre plateau final par rapport au classement atteint.'
+  ),
+  'tft.mv.method.q.mult': t6(
+    'Wie wird daraus der Marktwert?', 'How does that become the market value?',
+    '\uC774 \uAC12\uB4E4\uC774 \uC5B4\uB5BB\uAC8C \uC2DC\uC7A5 \uAC00\uCE58\uAC00 \uB418\uB098\uC694?', '\u8FD9\u4E9B\u6307\u6807\u5982\u4F55\u53D8\u6210\u5E02\u573A\u4EF7\u503C\uFF1F',
+    '\u00BFC\u00F3mo se convierte eso en el valor de mercado?', 'Comment cela devient-il la valeur marchande ?'
+  ),
+  'tft.mv.method.a.mult': t6(
+    'Die sechs z-Scores werden mit ihren Gewichten verrechnet, gegl\u00E4ttet und zu einem Multiplikator zwischen 0,45 und 1,65 zusammengefasst. Basiswert \u00D7 Multiplikator = Marktwert.',
+    'The six z-scores are combined with their weights, smoothed, and condensed into a multiplier between 0.45 and 1.65. Base value \u00D7 multiplier = market value.',
+    '\uC5EC\uC12F \uAC1C\uC758 z \uC810\uC218\uB97C \uAC00\uC911\uCE58\uC640 \uD568\uAED8 \uD569\uC0B0\u00B7\uD3C9\uD65C\uD654\uD558\uC5EC 0.45~1.65 \uC0AC\uC774\uC758 \uBC30\uC218\uB85C \uB9CC\uB4ED\uB2C8\uB2E4. \uAE30\uBCF8\uAC12 \u00D7 \uBC30\uC218 = \uC2DC\uC7A5 \uAC00\uCE58.',
+    '\u516D\u4E2A z \u5206\u6570\u6309\u6743\u91CD\u5408\u5E76\u3001\u5E73\u6ED1\u540E\uFF0C\u6C47\u603B\u4E3A 0.45 \u5230 1.65 \u4E4B\u95F4\u7684\u500D\u6570\u3002\u57FA\u7840\u503C \u00D7 \u500D\u6570 = \u5E02\u573A\u4EF7\u503C\u3002',
+    'Las seis puntuaciones z se combinan con sus pesos, se suavizan y se condensan en un multiplicador entre 0,45 y 1,65. Valor base \u00D7 multiplicador = valor de mercado.',
+    'Les six scores z sont combin\u00E9s selon leurs poids, liss\u00E9s, puis condens\u00E9s en un multiplicateur compris entre 0,45 et 1,65. Valeur de base \u00D7 multiplicateur = valeur marchande.'
+  ),
+  'tft.mv.method.q.example': t6(
+    'Ein Beispiel', 'An example',
+    '\uC608\uC2DC', '\u4E3E\u4F8B',
+    'Un ejemplo', 'Un exemple'
+  ),
+  'tft.mv.method.a.example': t6(
+    'Basiswert 112.000\u00A0\u20AC \u00D7 Multiplikator 1,20 = 134.400\u00A0\u20AC. Ein Multiplikator \u00FCber 1,0 steht f\u00FCr \u00FCberdurchschnittliche Leistung, unter 1,0 f\u00FCr unterdurchschnittliche.',
+    'Base value \u20AC112,000 \u00D7 multiplier 1.20 = \u20AC134,400. A multiplier above 1.0 means above-average performance, below 1.0 means below-average.',
+    '\uAE30\uBCF8\uAC12 112,000\u20AC \u00D7 \uBC30\uC218 1.20 = 134,400\u20AC. \uBC30\uC218\uAC00 1.0\uBCF4\uB2E4 \uD06C\uBA74 \uD3C9\uADE0 \uC774\uC0C1, \uC791\uC73C\uBA74 \uD3C9\uADE0 \uC774\uD558\uC758 \uC2E4\uB825\uC744 \uB73B\uD569\uB2C8\uB2E4.',
+    '\u57FA\u7840\u503C 112,000\u20AC \u00D7 \u500D\u6570 1.20 = 134,400\u20AC\u3002\u500D\u6570\u9AD8\u4E8E 1.0 \u8868\u793A\u9AD8\u4E8E\u5E73\u5747\u6C34\u5E73\uFF0C\u4F4E\u4E8E 1.0 \u8868\u793A\u4F4E\u4E8E\u5E73\u5747\u6C34\u5E73\u3002',
+    'Valor base 112.000\u00A0\u20AC \u00D7 multiplicador 1,20 = 134.400\u00A0\u20AC. Un multiplicador superior a 1,0 indica un rendimiento por encima de la media; inferior a 1,0, por debajo.',
+    'Valeur de base 112\u00A0000\u00A0\u20AC \u00D7 multiplicateur 1,20 = 134\u00A0400\u00A0\u20AC. Un multiplicateur sup\u00E9rieur \u00E0 1,0 indique une performance au-dessus de la moyenne, inf\u00E9rieur \u00E0 1,0 en dessous.'
+  ),
+  'tft.mv.tip.z': t6(
+    'z-Score: Abstand zum Median-Spieler (Diamant II+) in robusten Standardabweichungen. 0 = Durchschnitt, + besser, - schlechter.',
+    'z-score: distance from the median player (Diamond II+) in robust standard deviations. 0 = average, + better, - worse.',
+    'z \uC810\uC218: \uC911\uC559\uAC12 \uC120\uC218(\uB2E4\uC774\uC544\uBAAC\uB4DC II \uC774\uC0C1)\uC640\uC758 \uAC70\uB9AC(\uACAC\uACE0\uD55C \uD45C\uC900\uD3B8\uCC28). 0 = \uD3C9\uADE0, + \uC6B0\uC218, - \uC800\uC870.',
+    'z \u5206\u6570\uFF1A\u4E0E\u4E2D\u4F4D\u6570\u9009\u624B\uFF08\u94BB\u77F3 II \u4EE5\u4E0A\uFF09\u7684\u8DDD\u79BB\uFF0C\u5355\u4F4D\u4E3A\u7A33\u5065\u6807\u51C6\u5DEE\u30020 = \u5E73\u5747\uFF0C+ \u66F4\u597D\uFF0C- \u66F4\u5DEE\u3002',
+    'Puntuaci\u00F3n z: distancia respecto al jugador mediano (Diamante II+) en desviaciones est\u00E1ndar robustas. 0 = promedio, + mejor, - peor.',
+    'Score z : \u00E9cart par rapport au joueur m\u00E9dian (Diamant II+) en \u00E9carts-types robustes. 0 = moyenne, + meilleur, - moins bon.'
+  ),
+
   // \u2500 Marktwert agent-note labels \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   // Stable IDs come from the agent files (e.g. 'placement stddev'), the
   // frontend maps them to these human-readable, localized strings.

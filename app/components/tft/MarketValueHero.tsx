@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip as RechartsTooltip } from 'recharts';
 import { useI18n, LOCALE_MAP, type Lang } from '../../lib/i18n';
 import SetTimeline, { type SetInfo } from './SetTimeline';
+import Link from 'next/link';
 
 interface MarketValueResponse {
   summoner: { name: string; puuid: string; tier?: string; rank?: string; lp?: number };
@@ -332,6 +333,12 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
               .sort((a, b) => Number(b.available) - Number(a.available) || Math.abs(b.contribution) - Math.abs(a.contribution))
               .map(s => <SignalRow key={s.signal} sig={s} />)}
           </div>
+          <Link
+            href="/tft/marktwert/methodik"
+            className="inline-flex items-center gap-1 mt-3 text-[11px] text-[#7B61FF] hover:text-[#9d7bff] transition-colors"
+          >
+            <span aria-hidden>ⓘ</span> {t('tft.mv.method.link')}
+          </Link>
         </div>
       )}
     </div>
@@ -375,15 +382,20 @@ const SIGNAL_LABEL_KEYS: Record<string, string> = {
 // signed contribution (w·z/Σw) to the overall skill score.
 function SignalRow({ sig }: { sig: SkillSignal }) {
   const { t } = useI18n();
-  const label = SIGNAL_LABEL_KEYS[sig.signal] ? t(SIGNAL_LABEL_KEYS[sig.signal] as any) : sig.signal;
+  const known = !!SIGNAL_LABEL_KEYS[sig.signal];
+  const label = known ? t(SIGNAL_LABEL_KEYS[sig.signal] as any) : sig.signal;
   const weightPct = `${Math.round(sig.weight * 100)}%`;
+  // Label deep-links to its explanation; hover shows the short description.
+  const labelEl = known
+    ? <Link href={`/tft/marktwert/methodik#${sig.signal}`} title={t(`tft.mv.method.sig.${sig.signal}` as any)} className="hover:text-[#9d7bff] transition-colors">{label}</Link>
+    : label;
 
   if (!sig.available) {
     return (
       <div className="flex items-start justify-between gap-3 opacity-50">
         <div className="flex-1 min-w-0">
           <div className="text-white font-medium">
-            {label} <span className="text-[#7a8aa0] font-normal">· {weightPct}</span>
+            {labelEl} <span className="text-[#7a8aa0] font-normal">· {weightPct}</span>
           </div>
           <div className="text-[#a0b0c5] text-xs mt-0.5">{t('tft.marketValue.agent.notRated')}</div>
         </div>
@@ -401,7 +413,7 @@ function SignalRow({ sig }: { sig: SkillSignal }) {
         <div className="text-white font-medium">
           {label} <span className="text-[#7a8aa0] font-normal">· {weightPct}</span>
         </div>
-        <div className="text-[#a0b0c5] text-xs mt-0.5">
+        <div className="text-[#a0b0c5] text-xs mt-0.5 cursor-help" title={t('tft.mv.tip.z')}>
           z {sig.z != null ? (sig.z >= 0 ? '+' : '') + sig.z.toFixed(2) : '—'}
           {sig.detail ? ` · ${sig.detail}` : ''}
         </div>

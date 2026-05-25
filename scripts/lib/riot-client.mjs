@@ -29,14 +29,23 @@ const TRANSIENT_NET_CODES = new Set([
   'UND_ERR_SOCKET', 'UND_ERR_CONNECT_TIMEOUT',
 ]);
 
+// Hard per-request timeout. Without it a single stuck socket hangs the whole
+// crawler indefinitely — and because the crawls are systemd Type=oneshot,
+// the unit then sits in "activating" forever (observed 2026-05-25 on stop).
+// Treat a timeout like a transient net error: abort + retry, then give up.
+const REQUEST_TIMEOUT_MS = 20_000;
+
 async function fetchWithNetRetry(url, init, log, attempt = 0) {
   try {
-    return await fetch(url, init);
+    // Respect a caller-supplied signal if present; otherwise enforce our own.
+    const signal = init?.signal ?? AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+    return await fetch(url, { ...init, signal });
   } catch (err) {
     const code = err?.cause?.code || err?.code || '';
-    if (TRANSIENT_NET_CODES.has(code) && attempt < 3) {
+    const isTimeout = err?.name === 'TimeoutError' || err?.name === 'AbortError';
+    if ((TRANSIENT_NET_CODES.has(code) || isTimeout) && attempt < 3) {
       const backoffMs = [2000, 5000, 10000][attempt];
-      log(`  [net-retry] ${code} on ${url} — retry ${attempt + 1}/3 in ${Math.round(backoffMs / 1000)}s`);
+      log(`  [net-retry] ${isTimeout ? 'request-timeout' : code} on ${url} — retry ${attempt + 1}/3 in ${Math.round(backoffMs / 1000)}s`);
       await sleep(backoffMs);
       return fetchWithNetRetry(url, init, log, attempt + 1);
     }

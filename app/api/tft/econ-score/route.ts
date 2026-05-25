@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '../../../lib/supabase';
+import { supabase, supabaseAdmin } from '../../../lib/supabase';
+import { getAvailablePatches } from '../../../lib/tft-supabase-reader';
 
 // /api/tft/econ-score?puuid=X
 // Sprint 5.4 — Econ-Discipline-Score. Compares the player's average
@@ -12,7 +13,14 @@ export async function GET(request: NextRequest) {
   const puuid = searchParams.get('puuid');
   if (!puuid) return NextResponse.json({ error: 'puuid required' }, { status: 400 });
   const setParam = searchParams.get('set');
-  const setNumber = setParam ? Number(setParam) : null;
+  // Default to the current set so BOTH the player and peer queries stay
+  // set-scoped — the peer query without set_number scans the whole cache and
+  // 57014-times out. NaN-guard a malformed ?set.
+  let setNumber = setParam && Number.isFinite(Number(setParam)) ? Number(setParam) : null;
+  if (setNumber == null) {
+    const patches = await getAvailablePatches();
+    setNumber = patches[0]?.set_number ?? null;
+  }
 
   let q = supabase
     .from('tft_player_match_cache')
@@ -41,12 +49,16 @@ export async function GET(request: NextRequest) {
     ? top4Rows.reduce((s, r) => s + (r.gold_left || 0), 0) / top4Rows.length
     : null;
 
-  const { data: peerRows } = await supabase
+  // Service-role client: this cross-player read is too heavy for the anon
+  // role's short statement_timeout. Set-scoped + capped at 2000 rows.
+  let pq = supabaseAdmin
     .from('tft_player_match_cache')
     .select('gold_left')
     .eq('queue_id', STANDARD_RANKED_QUEUE)
     .gte('placement', 5)
     .limit(2000);
+  if (setNumber != null) pq = pq.eq('set_number', setNumber);
+  const { data: peerRows } = await pq;
   let peerAvgGoldLeft: number | null = null;
   if (peerRows && peerRows.length > 0) {
     const peerSum = peerRows.reduce((s, r: any) => s + (Number(r.gold_left) || 0), 0);

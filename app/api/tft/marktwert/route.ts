@@ -108,10 +108,29 @@ export async function GET(request: NextRequest) {
     };
   }).filter((m): m is NonNullable<typeof m> => m != null);
 
+  // Challenger base value uses the ladder-rank curve (130k..43k for the top
+  // 150). Without it a Challenger drops onto the LP-only fallback (~12k, ~10x
+  // too low). The live path has no apex-ladder context, so reuse the most
+  // recent snapshot's persisted ladder_rank for this player.
+  let ladderRank: number | undefined;
+  if (ranked?.tier === 'CHALLENGER') {
+    const { data: lr } = await supabase
+      .from('tft_player_marketvalue_snapshots')
+      .select('ladder_rank')
+      .eq('puuid', puuid)
+      .eq('region', region)
+      .not('ladder_rank', 'is', null)
+      .order('snapshot_date', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    ladderRank = lr?.ladder_rank ?? undefined;
+  }
+
   // Base value from rank/LP (unchanged curve), then the population-relative
   // skill-score multiplier read from the batch-persisted population stats.
   const base = computeBaseValue(
     ranked ? { tier: ranked.tier, rank: ranked.rank, leaguePoints: ranked.leaguePoints, wins: ranked.wins, losses: ranked.losses } : null,
+    ladderRank,
   );
 
   let marketValue: Record<string, unknown>;

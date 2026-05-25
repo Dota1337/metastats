@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
   // the cache already holds every Set N match that ever survived a refresh.
   // Defaults to the current set so existing callers keep working.
   const setParam = searchParams.get('set');
-  const targetSet = setParam != null && setParam !== ''
+  const targetSet = setParam != null && setParam !== '' && Number.isFinite(Number(setParam))
     ? Number(setParam)
     : currentSet;
 

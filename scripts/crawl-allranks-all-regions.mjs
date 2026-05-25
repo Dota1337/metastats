@@ -41,8 +41,13 @@ const arg = (k) => {
 
 const MODE = (arg('--mode') || 'auto').toLowerCase();
 const DAY_OVERRIDE = arg('--day');
-const REGION_TIMEOUT_MIN = Number(arg('--region-timeout') || 90);
+const REGION_TIMEOUT_MIN = Number(arg('--region-timeout') || 120);
 const REGION_TIMEOUT_MS = REGION_TIMEOUT_MIN * 60 * 1000;
+// Soft budget handed to the child = hard timeout minus cushion. The child
+// stops discovering/aggregating early enough to still write its partial
+// aggregates before we SIGTERM/SIGKILL it (the vn2 total-loss bug, 2026-05-25).
+const REGION_CUSHION_MIN = Number(arg('--region-cushion') || 15);
+const CHILD_BUDGET_MIN = Math.max(5, REGION_TIMEOUT_MIN - REGION_CUSHION_MIN);
 const regionFilter = arg('--regions');
 const regions = regionFilter
   ? regionFilter.split(',').map(r => r.trim()).filter(Boolean)
@@ -60,7 +65,9 @@ function runChild(cmd, cmdArgs, label, { timeoutMs = 0 } = {}) {
         timedOut = true;
         console.error(`[${label}] timeout after ${Math.round(timeoutMs / 60000)} min — sending SIGTERM`);
         proc.kill('SIGTERM');
-        setTimeout(() => { try { proc.kill('SIGKILL'); } catch { /* gone */ } }, 10_000);
+        // 2 min grace — the child catches SIGTERM to flush its partial
+        // aggregates, which needs more than 10s.
+        setTimeout(() => { try { proc.kill('SIGKILL'); } catch { /* gone */ } }, 120_000);
       }, timeoutMs);
     }
 
@@ -86,13 +93,13 @@ async function main() {
   const dayLabel = DAY_OVERRIDE ? `day=${DAY_OVERRIDE}` : `mode=${MODE}`;
   console.log(`=== crawl-allranks-all-regions (sequential) — ${dayLabel} ===`);
   console.log(`    regions: ${regions.join(',')}`);
-  console.log(`    timeout per region: ${REGION_TIMEOUT_MIN} min`);
+  console.log(`    timeout per region: ${REGION_TIMEOUT_MIN} min · Pass budget: ${CHILD_BUDGET_MIN} min`);
 
   let done = 0, failed = 0;
   for (const region of regions) {
     const label = region;
     console.log(`\n[${label}] start (timeout ${REGION_TIMEOUT_MIN} min)`);
-    const cmdArgs = ['scripts/collect-tft-allranks.mjs', '--region', region, '--no-json'];
+    const cmdArgs = ['scripts/collect-tft-allranks.mjs', '--region', region, '--no-json', '--time-budget-min', String(CHILD_BUDGET_MIN)];
     if (DAY_OVERRIDE) cmdArgs.push('--day', DAY_OVERRIDE);
     else cmdArgs.push('--mode', MODE);
     try {

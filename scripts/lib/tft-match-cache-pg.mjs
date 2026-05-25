@@ -284,6 +284,7 @@ export async function syncPlayerCacheToSupabase(rows, opts = {}) {
     const batch = supaRows.slice(i, i + SUPABASE_BATCH);
     const res = await fetch(`${supaUrl}/rest/v1/tft_player_match_cache?on_conflict=puuid,match_id`, {
       method: 'POST',
+      signal: AbortSignal.timeout(15_000),
       headers: {
         apikey: supaKey,
         Authorization: `Bearer ${supaKey}`,

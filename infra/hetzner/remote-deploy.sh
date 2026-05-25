@@ -52,6 +52,13 @@ fi
 
 # Re-arm the timers so the next scheduled run uses the new code. Restarting a
 # .timer never interrupts an in-flight oneshot .service.
-systemctl restart metastats-daily-crawl.timer metastats-companion-backfill.timer metastats-crawler.timer
+#
+# metastats-crawler.timer is intentionally EXCLUDED: the marketvalue crawl runs
+# via OnSuccess= chained to the daily crawl, not its own 04:00 timer. That timer
+# is Persistent=true with a past OnCalendar, so `systemctl restart` would re-arm
+# it and fire a spurious standalone marketvalue crawl on every deploy — which can
+# then run concurrently with the chained one and double the Riot load. The timer
+# is masked on the box; keep it out of this list.
+systemctl restart metastats-daily-crawl.timer metastats-companion-backfill.timer
 
 echo "Deployed $(git rev-parse --short HEAD) on $(hostname) at $(date -u +%FT%TZ)"

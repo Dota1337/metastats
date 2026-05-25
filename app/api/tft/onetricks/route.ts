@@ -11,7 +11,12 @@ import { getAvailablePatches } from '../../../lib/tft-supabase-reader';
 // classifiable games. Reads marketvalue top-N + their match cache.
 
 interface CachedMatch {
-  units: { character_id?: string; tier?: number; rarity?: number; itemNames?: string[] }[];
+  // Unit shape differs by writer: the Hetzner crawler stores {characterId,
+  // tier, items}; the legacy Vercel path stores {character_id, tier, rarity,
+  // items}. Neither writes `itemNames`. Accept every key so comps classify
+  // regardless of source (otherwise Hetzner-sourced rows never classify and
+  // the page renders empty).
+  units: { character_id?: string; characterId?: string; tier?: number; rarity?: number; items?: string[]; itemNames?: string[] }[];
   traits: { name?: string; tier_current?: number; style?: number }[];
   placement: number;
 }
@@ -28,15 +33,16 @@ function classifyComp(m: CachedMatch): string | null {
   const units = m.units || [];
   if (units.length === 0) return null;
   const ranked = [...units].sort((a, b) => {
-    const ai = (a.itemNames || []).length;
-    const bi = (b.itemNames || []).length;
+    const ai = (a.items ?? a.itemNames ?? []).length;
+    const bi = (b.items ?? b.itemNames ?? []).length;
     if (bi !== ai) return bi - ai;
     if ((b.tier ?? 1) !== (a.tier ?? 1)) return (b.tier ?? 1) - (a.tier ?? 1);
     return (b.rarity ?? 0) - (a.rarity ?? 0);
   });
   const carry = ranked[0];
-  if (!carry?.character_id) return null;
-  return `${primary.name}@${primary.tier_current ?? 0}_${carry.character_id}`;
+  const carryId = carry?.characterId ?? carry?.character_id;
+  if (!carryId) return null;
+  return `${primary.name}@${primary.tier_current ?? 0}_${carryId}`;
 }
 
 const TOP_PLAYERS = 80;
@@ -48,7 +54,7 @@ export async function GET(request: NextRequest) {
   const region = (searchParams.get('region') || 'euw1').toLowerCase();
   const minShare = Math.max(0.4, Math.min(1, parseFloat(searchParams.get('minShare') || '0.6')));
   const setParam = searchParams.get('set');
-  let setNumber = setParam ? Number(setParam) : null;
+  let setNumber = setParam && Number.isFinite(Number(setParam)) ? Number(setParam) : null;
   if (setNumber == null) {
     // Default to the current set. Without a set_number filter the cache read
     // scans every set's matches for 80 players and order-by-datetime sorts the

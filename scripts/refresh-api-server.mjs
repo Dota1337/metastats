@@ -85,10 +85,17 @@ const pool = new pg.Pool({ connectionString: DB_URL, max: 5 });
 
 // Single shared riot client — the rate-limiter must be process-wide so a
 // burst of refresh calls doesn't trip 429s.
+//
+// Capped well below the crawlers' ~180/10s: the TFT match-detail method limit
+// (200/10s) is shared across ALL processes on this box (daily crawl, marketvalue
+// crawl, this server). The crawls are serialized (OnSuccess chain), but this
+// server is always-on, so a live refresh can overlap a running crawl. Keeping
+// this at 45/10s leaves the crawler its headroom; riot-client's 429 handling is
+// the backstop if they still briefly collide.
 const riot = createRiotClient({
-  shortWindowRequests: 18,
+  shortWindowRequests: 12,
   shortWindowMs: 1100,
-  longWindowRequests: 180,
+  longWindowRequests: 45,
   longWindowMs: 10_500,
 });
 
@@ -128,10 +135,10 @@ async function pushToSupabase(snapshotRow, seasonRow) {
     Prefer: 'resolution=merge-duplicates,return=minimal',
   };
   await fetch(`${SUPA_URL}/rest/v1/tft_player_marketvalue_snapshots?on_conflict=puuid,region,snapshot_date`, {
-    method: 'POST', headers, body: JSON.stringify([snapshotRow]),
+    method: 'POST', headers, body: JSON.stringify([snapshotRow]), signal: AbortSignal.timeout(15_000),
   }).then(r => { if (!r.ok) throw new Error(`snapshot push ${r.status}`); });
   await fetch(`${SUPA_URL}/rest/v1/tft_player_season_stats?on_conflict=puuid,region,set_number`, {
-    method: 'POST', headers, body: JSON.stringify([seasonRow]),
+    method: 'POST', headers, body: JSON.stringify([seasonRow]), signal: AbortSignal.timeout(15_000),
   }).then(r => { if (!r.ok) throw new Error(`season push ${r.status}`); });
 }
 

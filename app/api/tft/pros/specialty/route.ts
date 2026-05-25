@@ -16,7 +16,10 @@ interface CachedMatch {
   placement: number;
   level: number;
   last_round: number;
-  units: { character_id?: string; tier?: number; rarity?: number; itemNames?: string[] }[];
+  // Unit shape differs by writer (Hetzner crawler: {characterId, tier, items};
+  // legacy Vercel: {character_id, tier, rarity, items}). Neither writes
+  // `itemNames`. Accept every key so Hetzner-sourced rows classify too.
+  units: { character_id?: string; characterId?: string; tier?: number; rarity?: number; items?: string[]; itemNames?: string[] }[];
   traits: { name?: string; tier_current?: number; style?: number }[];
 }
 
@@ -37,17 +40,18 @@ function classifyComp(m: CachedMatch): ClassifiedComp | null {
   const units = m.units || [];
   if (units.length === 0) return null;
   const ranked = [...units].sort((a, b) => {
-    const ai = (a.itemNames || []).length;
-    const bi = (b.itemNames || []).length;
+    const ai = (a.items ?? a.itemNames ?? []).length;
+    const bi = (b.items ?? b.itemNames ?? []).length;
     if (bi !== ai) return bi - ai;
     if ((b.tier ?? 1) !== (a.tier ?? 1)) return (b.tier ?? 1) - (a.tier ?? 1);
     return (b.rarity ?? 0) - (a.rarity ?? 0);
   });
   const carry = ranked[0];
-  if (!carry?.character_id) return null;
+  const carryId = carry?.characterId ?? carry?.character_id;
+  if (!carryId) return null;
   return {
-    clusterKey: `${primary.name}@${primary.tier_current ?? 0}_${carry.character_id}`,
-    carryUnit: carry.character_id,
+    clusterKey: `${primary.name}@${primary.tier_current ?? 0}_${carryId}`,
+    carryUnit: carryId,
   };
 }
 
@@ -58,7 +62,7 @@ export async function GET(request: NextRequest) {
   const puuid = searchParams.get('puuid');
   if (!puuid) return NextResponse.json({ error: 'puuid required' }, { status: 400 });
   const setParam = searchParams.get('set');
-  const setNumber = setParam ? Number(setParam) : null;
+  const setNumber = setParam && Number.isFinite(Number(setParam)) ? Number(setParam) : null;
 
   let q = supabase
     .from('tft_player_match_cache')
@@ -94,10 +98,11 @@ export async function GET(request: NextRequest) {
     if (top1) ce.top1++;
     comps.set(cls.clusterKey, ce);
 
-    const carryUnit = (m.units || []).find(u => u.character_id === cls.carryUnit);
-    if (carryUnit && Array.isArray(carryUnit.itemNames) && carryUnit.itemNames.length === 3) {
+    const carryUnit = (m.units || []).find(u => (u.characterId ?? u.character_id) === cls.carryUnit);
+    const carryItems = carryUnit ? (carryUnit.items ?? carryUnit.itemNames) : undefined;
+    if (carryUnit && Array.isArray(carryItems) && carryItems.length === 3) {
       const tier = String(carryUnit.tier ?? 1);
-      const sorted = [...carryUnit.itemNames].sort();
+      const sorted = [...carryItems].sort();
       const key = sorted.join('|');
       let perUnit = unitBuilds.get(cls.carryUnit);
       if (!perUnit) { perUnit = new Map(); unitBuilds.set(cls.carryUnit, perUnit); }

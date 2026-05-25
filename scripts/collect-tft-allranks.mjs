@@ -53,6 +53,18 @@ if (DAY_OVERRIDE_RAW && !DAY_OVERRIDE) {
 // inflated startTime would normally page forever). 200 is well above any
 // realistic 24h grinding session (max ~45 matches/24h given 30min game length).
 const MAX_MATCHES_PER_PLAYER = Number(arg('--max-matches-per-player', '200'));
+// Soft time budget (minutes). When exceeded — or on SIGTERM from the
+// orchestrator's region timeout — we stop discovering/aggregating and jump to
+// the write phase, so a region that runs long still writes the aggregates it
+// already built instead of being SIGKILLed with nothing (the vn2 bug, 2026-05-25).
+const TIME_BUDGET_MIN = parseInt(arg('--time-budget-min', '0'), 10);
+const TIME_BUDGET_MS = TIME_BUDGET_MIN > 0 ? TIME_BUDGET_MIN * 60 * 1000 : 0;
+let aborting = false;
+process.on('SIGTERM', () => {
+  if (aborting) return;
+  aborting = true;
+  console.log('\n[signal] SIGTERM — finishing current step, then writing partial aggregates');
+});
 // Iron is intentionally skipped — too few games per day for meaningful
 // per-region stats below Bronze.
 const SAMPLE_SIZES = {
@@ -144,6 +156,7 @@ async function loadProPuuids() {
     const url = `${SUPA_URL}/rest/v1/tft_pro_players?select=puuid`;
     const r = await fetch(url, {
       headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` },
+      signal: AbortSignal.timeout(15_000),
     });
     if (!r.ok) return new Set();
     const rows = await r.json();
@@ -253,6 +266,8 @@ async function fetchMatchIdsForPlayer(puuid) {
 async function main() {
   console.log(`=== TFT Crawler ${REGION} (regional ${REGIONAL}) — set ${CURRENT_SET ?? '?'} ===`);
   console.log(`[window] ${WINDOW.startTime.toISOString()} → ${WINDOW.endTime.toISOString()}  (day=${DAY})`);
+  const t0 = Date.now();
+  if (TIME_BUDGET_MS) console.log(`[budget] soft time budget ${TIME_BUDGET_MIN} min`);
 
   // Step 1: discover sample players per tier
   const players = await discoverPlayers();
@@ -271,6 +286,10 @@ async function main() {
   let i = 0;
   let totalCalls = 0;
   for (const p of uniquePlayers) {
+    if (aborting || (TIME_BUDGET_MS && Date.now() - t0 > TIME_BUDGET_MS)) {
+      console.log(`  [budget] stopping ID discovery at ${i}/${uniquePlayers.length} — proceeding with ${allMatchIds.size} match ids`);
+      break;
+    }
     i++;
     const ids = await fetchMatchIdsForPlayer(p.puuid);
     totalCalls += Math.max(1, Math.ceil(ids.length / 100));
@@ -296,6 +315,10 @@ async function main() {
   let totalSkipped = 0;
   const ids = [...allMatchIds];
   for (let j = 0; j < ids.length; j++) {
+    if (aborting || (TIME_BUDGET_MS && Date.now() - t0 > TIME_BUDGET_MS)) {
+      console.log(`  [budget] stopping aggregation at ${j}/${ids.length} — writing partial aggregates`);
+      break;
+    }
     const id = ids[j];
     const raw = await rl(`https://${REGIONAL}.api.riotgames.com/tft/match/v1/matches/${id}?api_key=${API_KEY}`);
     if (!raw || raw._status) { totalSkipped++; continue; }

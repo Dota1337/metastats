@@ -7,7 +7,7 @@
  *   2. refreshPlayerMatchCache → keeps tft_player_match_cache current
  *   3. listSeasonMatches(currentSet) → all the player's matches for the live set
  *   4. upsertSeasonStats → tft_player_season_stats
- *   5. calculateTftMarketValue over the full set → tft_player_marketvalue_snapshots
+ *   5. scoreSkill (population-relative) over the full set → tft_player_marketvalue_snapshots
  *
  * Writes go to the local Hetzner Postgres (DATABASE_URL). A separate
  * sync-marketvalue-to-supabase.mjs script pushes the snapshot + season_stats
@@ -30,7 +30,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import pg from 'pg';
 import { createRiotClient } from './lib/riot-client.mjs';
-import { computeBaseValue, buildSnapshotForPlayer } from './lib/tft-marketvalue.mjs';
+import { computeBaseValue } from './lib/tft-marketvalue.mjs';
 import { extractRawMetrics, buildCompMeta, applyMeta, buildPopulation, scoreSkill } from './lib/tft-skill-score.mjs';
 import { refreshPlayerMatchCache, listSeasonMatches } from './lib/tft-match-cache-pg.mjs';
 import {
@@ -295,6 +295,7 @@ async function persistPopulation(setNumber, pop, compMeta, playerCount) {
   if (SUPA_URL && SUPA_KEY) {
     await fetch(`${SUPA_URL}/rest/v1/tft_mv_population_stats?on_conflict=region,set_number`, {
       method: 'POST',
+      signal: AbortSignal.timeout(15_000),
       headers: {
         apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`,
         'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal',
@@ -360,7 +361,7 @@ async function snapshotPlayer(p, raw, pop) {
 async function main() {
   console.log(`=== TFT Marketvalue Crawler (Hetzner) — ${REGION}${SNAPSHOT_DATE ? ` · snapshot_date=${SNAPSHOT_DATE}` : ''} ===`);
   const t0 = Date.now();
-
+  try {
   const setNumber = loadCurrentSet();
   if (setNumber == null) { console.error('No current set, aborting'); process.exit(1); }
   console.log(`  current set: ${setNumber}`);
@@ -397,7 +398,6 @@ async function main() {
 
   if (gathered.length === 0) {
     console.log('No usable players (≥5 matches) — nothing to score.');
-    await pool.end();
     return;
   }
 
@@ -412,6 +412,10 @@ async function main() {
   console.log(`\n[3/3] Pass 2: score + snapshot`);
   let snapshotted = 0, unrated = 0;
   for (const g of gathered) {
+    if (aborting) {
+      console.log(`  [budget] Pass 2 stopped early at ${snapshotted}/${gathered.length} — population already persisted`);
+      break;
+    }
     try {
       const r = await snapshotPlayer(g.p, g.raw, pop);
       if (r.snapshotted) snapshotted++; else unrated++;
@@ -423,12 +427,15 @@ async function main() {
 
   const totalS = (Date.now() - t0) / 1000;
   console.log(`\nDone. ${snapshotted} snapshots / ${gathered.length} usable / ${players.length} total | ${tooFew} too-few, ${unrated} unrated, ${failed} failed in ${totalS.toFixed(0)}s`);
-  await pool.end();
+  } finally {
+    // Always close the pool so the event loop drains and the systemd oneshot
+    // can exit instead of sitting in "activating" forever on a stuck socket.
+    await pool.end().catch(() => {});
+  }
 }
 
 main().catch(err => {
   console.error('FAIL:', err.message);
   console.error(err.stack);
-  pool.end().catch(() => {});
   process.exit(1);
 });

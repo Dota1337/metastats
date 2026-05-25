@@ -752,12 +752,9 @@ function TournamentHistory({ pro }: { pro: TftProRecord }) {
 function TftProBadge({ pro }: { pro: TftProRecord }) {
   // TFT-native badge — the puuid is itself the verification (the crawler
   // resolves Liquipedia's lolchess field against Riot's account-v1).
-  // Slightly different styling so users can tell at a glance that this is
-  // the TFT-native signal vs. the LoL-Liquipedia fallback.
-  const sourceLabel = pro.source === 'liquipedia' ? 'Liquipedia' : 'metastats';
   return (
     <span
-      title={`Verifiziert via ${sourceLabel} · ${pro.team || 'Free Agent'} ${pro.role || ''}`.trim()}
+      title={`Verifizierter TFT-Pro · ${pro.team || 'Free Agent'} ${pro.role || ''}`.trim()}
       className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#3ecf8e]/15 text-[#3ecf8e] text-[10px] uppercase tracking-widest font-medium border border-[#3ecf8e]/40"
     >
       ✓ Verified TFT Pro

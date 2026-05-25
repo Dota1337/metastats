@@ -1380,8 +1380,8 @@ const translations = {
     'Descargo de responsabilidad', 'Avertissement'
   ),
   'legal.imprint.disclaimerContent': t6(
-    'Die Inhalte dieser Seite werden mit gr\u00F6\u00DFter Sorgfalt erstellt. F\u00FCr die Richtigkeit, Vollst\u00E4ndigkeit und Aktualit\u00E4t der Inhalte kann jedoch keine Gew\u00E4hr \u00FCbernommen werden. Statistiken werden aus \u00F6ffentlichen APIs (Riot Games, CommunityDragon, metatft) bezogen und sind ohne Gew\u00E4hr.',
-    'Content on this site is produced with care; we cannot guarantee accuracy, completeness, or timeliness. Statistics come from public APIs (Riot, CommunityDragon, metatft) and are provided without warranty.',
+    'Die Inhalte dieser Seite werden mit gr\u00F6\u00DFter Sorgfalt erstellt. F\u00FCr die Richtigkeit, Vollst\u00E4ndigkeit und Aktualit\u00E4t der Inhalte kann jedoch keine Gew\u00E4hr \u00FCbernommen werden. Statistiken werden aus \u00F6ffentlichen APIs (Riot Games, CommunityDragon) bezogen und sind ohne Gew\u00E4hr.',
+    'Content on this site is produced with care; we cannot guarantee accuracy, completeness, or timeliness. Statistics come from public APIs (Riot, CommunityDragon) and are provided without warranty.',
     '\uC774 \uC0AC\uC774\uD2B8\uC758 \uCF58\uD150\uCE20\uB294 \uC2E0\uC911\uD788 \uC791\uC131\uB418\uC9C0\uB9CC \uC815\uD655\uC131, \uC644\uC804\uC131 \uBC0F \uC2DC\uC758\uC131\uC744 \uBCF4\uC7A5\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uD1B5\uACC4\uB294 \uACF5\uAC1C API\uC5D0\uC11C \uC218\uC9D1\uB418\uBA70 \uBCF4\uC99D \uC5C6\uC774 \uC81C\uACF5\uB429\uB2C8\uB2E4.',
     '\u672C\u7F51\u7AD9\u5185\u5BB9\u7ECF\u7CBE\u5FC3\u5236\u4F5C\uFF0C\u4F46\u4E0D\u4FDD\u8BC1\u5176\u51C6\u786E\u6027\u3001\u5B8C\u6574\u6027\u6216\u65F6\u6548\u6027\u3002\u7EDF\u8BA1\u6570\u636E\u6765\u81EA\u516C\u5F00API\uFF0C\u6309\u539F\u6837\u63D0\u4F9B\u3002',
     'Los contenidos se elaboran con cuidado, sin garant\u00EDa de exactitud o actualidad. Las estad\u00EDsticas provienen de APIs p\u00FAblicas y se entregan sin garant\u00EDa.',
@@ -1908,12 +1908,12 @@ const translations = {
     'Le classement appara\u00EEt apr\u00E8s le tournoi.'
   ),
   'tft.tournaments.noStandingsYet': t6(
-    'Noch keine Standings importiert. Liquipedia-Sync l\u00E4uft w\u00F6chentlich.',
-    'No standings imported yet. Liquipedia sync runs weekly.',
-    '\uC544\uC9C1 \uAC00\uC838\uC628 \uC21C\uC704\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4. Liquipedia \uB3D9\uAE30\uD654\uB294 \uB9E4\uC8FC \uC2E4\uD589\uB429\uB2C8\uB2E4.',
-    '\u5C1A\u672A\u5BFC\u5165\u6392\u540D\u3002Liquipedia \u540C\u6B65\u6BCF\u5468\u8FD0\u884C\u3002',
-    'A\u00FAn no hay clasificaciones importadas. Sincronizaci\u00F3n semanal con Liquipedia.',
-    'Pas encore de classement import\u00E9. Synchronisation Liquipedia hebdomadaire.'
+    'Noch keine Standings importiert.',
+    'No standings imported yet.',
+    '\uC544\uC9C1 \uAC00\uC838\uC628 \uC21C\uC704\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.',
+    '\u5C1A\u672A\u5BFC\u5165\u6392\u540D\u3002',
+    'A\u00FAn no hay clasificaciones importadas.',
+    'Pas encore de classement import\u00E9.'
   ),
 
   // \u2500 SideDrawer Past Section \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500

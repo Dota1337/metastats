@@ -13,7 +13,6 @@ import CompCard from '../../../components/tft/CompCard';
 import { useI18n } from '../../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import PositionHeatmap from '../../../components/tft/PositionHeatmap';
-import EditorialSources from '../../../components/tft/EditorialSources';
 
 // Slot meaning in tft_daily_augment_stats: 0 = stage 2-1, 1 = 3-2, 2 = 4-2.
 const SLOT_LABELS = ['2-1', '3-2', '4-2'] as const;
@@ -470,8 +469,6 @@ export default function TftCompDetailPage() {
                 assets={assets}
               />
             )}
-
-            <EditorialSources />
 
             {/* All typical units in larger size, clickable */}
             {comp.typicalUnits && comp.typicalUnits.length > 0 && (

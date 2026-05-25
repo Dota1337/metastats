@@ -116,11 +116,6 @@ export default function CompCard({
                 </a>
               ) : (carry?.name || '')}
             </span>
-            {comp.source === 'editorial' && comp.authorName && (
-              <span className="px-2 py-0.5 rounded-full bg-[#7B61FF]/15 text-[#7B61FF] text-[9px] uppercase tracking-widest">
-                {comp.authorName}
-              </span>
-            )}
           </div>
 
           <div className="flex flex-wrap items-start gap-1.5 mb-1.5">

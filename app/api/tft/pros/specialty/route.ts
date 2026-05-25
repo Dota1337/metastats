@@ -28,6 +28,22 @@ interface ClassifiedComp {
   carryUnit: string;
 }
 
+// Tank/defensive items (+ trait emblems) don't make a unit a carry. The carry
+// is whoever holds the most genuinely offensive items — tanks routinely hold 3
+// defensive items (Warmog's/Gargoyle/Bramble…), so plain item-count mis-picks
+// them (Illaoi was wrongly flagged carry in every comp; rarity tiebreak is dead
+// because the Hetzner cache shape stores no rarity).
+const DEFENSIVE_ITEMS = new Set([
+  'TFT_Item_WarmogsArmor', 'TFT_Item_DragonsClaw', 'TFT_Item_GargoyleStoneplate',
+  'TFT_Item_BrambleVest', 'TFT_Item_SunfireCape', 'TFT_Item_Redemption',
+  'TFT_Item_FrozenHeart', 'TFT_Item_IonicSpark', 'TFT_Item_AdaptiveHelm',
+  'TFT_Item_ProtectorsVow', 'TFT_Item_SteadfastHeart', 'TFT_Item_Evenshroud',
+  'TFT_Item_SpectralGauntlet',
+]);
+function carryItemCount(u: { items?: string[]; itemNames?: string[] }): number {
+  return (u.items ?? u.itemNames ?? []).filter(it => !DEFENSIVE_ITEMS.has(it) && !/Emblem/.test(it)).length;
+}
+
 function classifyComp(m: CachedMatch): ClassifiedComp | null {
   const active = (m.traits || []).filter(t => (t.style ?? 0) > 0);
   if (active.length === 0) return null;
@@ -45,12 +61,14 @@ function classifyComp(m: CachedMatch): ClassifiedComp | null {
   const primary = traits[0];
   const units = m.units || [];
   if (units.length === 0) return null;
+  // Rank by offensive-item count first (not raw item count) so a 3-tank-item
+  // bruiser never outranks the real damage carry; then total items, then star.
   const ranked = [...units].sort((a, b) => {
-    const ai = (a.items ?? a.itemNames ?? []).length;
-    const bi = (b.items ?? b.itemNames ?? []).length;
+    const ca = carryItemCount(a), cb = carryItemCount(b);
+    if (cb !== ca) return cb - ca;
+    const ai = (a.items ?? a.itemNames ?? []).length, bi = (b.items ?? b.itemNames ?? []).length;
     if (bi !== ai) return bi - ai;
-    if ((b.tier ?? 1) !== (a.tier ?? 1)) return (b.tier ?? 1) - (a.tier ?? 1);
-    return (b.rarity ?? 0) - (a.rarity ?? 0);
+    return (b.tier ?? 1) - (a.tier ?? 1);
   });
   const carry = ranked[0];
   const carryId = carry?.characterId ?? carry?.character_id;
@@ -148,19 +166,20 @@ export async function GET(request: NextRequest) {
   const unitBuildsArr = [...unitBuilds.entries()]
     .map(([unitId, perTier]) => {
       const tiers: Record<string, { items: string[]; count: number; avgPlacement: number | null }[]> = {};
-      let unitTotal = 0;
       for (const [tier, builds] of perTier) {
         const arr = [...builds.values()]
+          .filter(b => b.count >= 2)   // only recurring builds — a 1-game item set isn't a "signature" build
           .sort((a, b) => b.count - a.count)
           .slice(0, 3)
           .map(b => ({ items: b.items, count: b.count, avgPlacement: b.count > 0 ? b.sumPlacement / b.count : null }));
-        tiers[tier] = arr;
-        for (const a of arr) unitTotal += a.count;
+        if (arr.length) tiers[tier] = arr;
       }
-      return { unitId, total: unitTotal, tiers };
+      // Header = total games this unit was the carry (matches the comps section),
+      // not a build-count sum.
+      return { unitId, games: carries.get(unitId)?.games ?? 0, tiers };
     })
-    .filter(u => u.total >= 3)
-    .sort((a, b) => b.total - a.total)
+    .filter(u => u.games >= 3 && Object.keys(u.tiers).length > 0)
+    .sort((a, b) => b.games - a.games)
     .slice(0, 5);
 
   return NextResponse.json({

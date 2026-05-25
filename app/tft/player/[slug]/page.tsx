@@ -872,7 +872,7 @@ interface SpecialtyComp {
 interface SpecialtyBuild { items: string[]; count: number; avgPlacement: number | null }
 interface SpecialtyUnit {
   unitId: string;
-  total: number;
+  games: number;
   tiers: Record<string, SpecialtyBuild[]>;
 }
 function ProSpecialty({ puuid, setNumber, assets, t }: {
@@ -945,10 +945,10 @@ function ProSpecialty({ puuid, setNumber, assets, t }: {
                       <img src={tftChampionTileUrl(assets, unitAsset)!} alt="" className="w-8 h-8 rounded border border-[#c39bff]/60" />
                     )}
                     <span className="text-white text-[11px]">{unitAsset?.name || u.unitId.replace(/^TFT\d+_/, '')}</span>
-                    <span className="text-[#7a8aa0] text-[10px] tabular-nums ml-auto">{u.total} {t('tft.gamesShort')}</span>
+                    <span className="text-[#7a8aa0] text-[10px] tabular-nums ml-auto">{u.games} {t('tft.gamesShort')}</span>
                   </div>
                   <div className="space-y-1">
-                    {tierKeys.flatMap(tier => (u.tiers[tier] || []).slice(0, 1).map((build, i) => (
+                    {tierKeys.flatMap(tier => (u.tiers[tier] || []).map((build, i) => (
                       <div key={`${tier}-${i}`} className="flex items-center gap-1.5">
                         <span className="text-[10px] text-[#a892ff] w-5">{tier}★</span>
                         <div className="flex gap-0.5">

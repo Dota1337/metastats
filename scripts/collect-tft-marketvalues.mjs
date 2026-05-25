@@ -18,6 +18,7 @@
  *   node scripts/collect-tft-marketvalues.mjs --region euw1 --include-diamond
  *   node scripts/collect-tft-marketvalues.mjs --region euw1 --limit 5 --verbose
  *   node scripts/collect-tft-marketvalues.mjs --region euw1 --snapshot-date 2026-05-15 --puuids p1,p2,p3
+ *   node scripts/collect-tft-marketvalues.mjs --region euw1 --time-budget-min 215   # stop Pass 1 early, still persist
  *
  * `--snapshot-date` overrides `current_date` for the inserted row — used
  * by the backfill workflow when a daily run was missed.
@@ -30,7 +31,7 @@ import { resolve } from 'node:path';
 import pg from 'pg';
 import { createRiotClient } from './lib/riot-client.mjs';
 import { computeBaseValue, buildSnapshotForPlayer } from './lib/tft-marketvalue.mjs';
-import { extractRawMetrics, buildPopulation, scoreSkill } from './lib/tft-skill-score.mjs';
+import { extractRawMetrics, buildCompMeta, applyMeta, buildPopulation, scoreSkill } from './lib/tft-skill-score.mjs';
 import { refreshPlayerMatchCache, listSeasonMatches } from './lib/tft-match-cache-pg.mjs';
 import {
   upsertSeasonStats,
@@ -48,6 +49,20 @@ const LIMIT = parseInt(arg('--limit', '0'), 10);
 const FORCE_REFRESH = hasFlag('--force-refresh');
 const SKIP_CACHE_REFRESH = hasFlag('--skip-cache-refresh');
 const VERBOSE = hasFlag('--verbose');
+
+// Soft Pass-1 time budget (minutes). When it is exceeded — or on SIGTERM from
+// the orchestrator's region timeout — Pass 1 stops taking new players and we
+// jump straight to Pass 2 + persist. A long region then still lands a
+// population row + snapshots for everyone gathered so far instead of being
+// killed with nothing written. 0 = no budget (run until done).
+const TIME_BUDGET_MIN = parseInt(arg('--time-budget-min', '0'), 10);
+const TIME_BUDGET_MS = TIME_BUDGET_MIN > 0 ? TIME_BUDGET_MIN * 60 * 1000 : 0;
+let aborting = false;
+process.on('SIGTERM', () => {
+  if (aborting) return;
+  aborting = true;
+  console.log('\n  [signal] SIGTERM — finishing current player, then jumping to Pass 2 + persist');
+});
 
 const SNAPSHOT_DATE_RAW = arg('--snapshot-date', null);
 const SNAPSHOT_DATE = SNAPSHOT_DATE_RAW && /^\d{4}-\d{2}-\d{2}$/.test(SNAPSHOT_DATE_RAW)
@@ -362,6 +377,10 @@ async function main() {
   const gathered = [];
   let p1 = 0, tooFew = 0, failed = 0;
   for (const p of players) {
+    if (aborting || (TIME_BUDGET_MS && Date.now() - t0 > TIME_BUDGET_MS)) {
+      console.log(`  [budget] Pass 1 stopped early at ${p1}/${players.length} (${gathered.length} usable, ${((Date.now() - t0) / 1000).toFixed(0)}s) — jumping to Pass 2 + persist`);
+      break;
+    }
     try {
       const g = await gatherPlayer(p, ctx);
       p1++;

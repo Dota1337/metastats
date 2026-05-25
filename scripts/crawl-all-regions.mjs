@@ -19,7 +19,8 @@
  *   node scripts/crawl-all-regions.mjs --clusters=europe     # subset
  *   node scripts/crawl-all-regions.mjs --skip-sync           # crawl only
  *   node scripts/crawl-all-regions.mjs --include-diamond     # extend scope
- *   node scripts/crawl-all-regions.mjs --region-timeout=90   # minutes
+ *   node scripts/crawl-all-regions.mjs --region-timeout=90   # hard kill per region (min)
+ *   node scripts/crawl-all-regions.mjs --region-cushion=25   # Pass-2 reserve under that (min)
  */
 
 import { spawn } from 'node:child_process';
@@ -44,6 +45,12 @@ const clusterFilter = arg('--clusters');
 const SKIP_SYNC = hasFlag('--skip-sync');
 const REGION_TIMEOUT_MIN = Number(arg('--region-timeout') || 90);
 const REGION_TIMEOUT_MS = REGION_TIMEOUT_MIN * 60 * 1000;
+// Cushion subtracted from the hard region timeout to give the child a soft
+// Pass-1 budget. The child stops gathering early enough to still run Pass 2 +
+// persist before we SIGTERM/SIGKILL it — so a region that can't finish in time
+// still lands a population row + snapshots instead of dying with nothing.
+const REGION_CUSHION_MIN = Number(arg('--region-cushion') || 25);
+const CHILD_BUDGET_MIN = Math.max(5, REGION_TIMEOUT_MIN - REGION_CUSHION_MIN);
 
 const EXTRA = [];
 if (hasFlag('--include-diamond')) EXTRA.push('--include-diamond');
@@ -66,8 +73,9 @@ function runChild(cmd, args, label, { timeoutMs = 0 } = {}) {
         timedOut = true;
         console.error(`[${label}] timeout after ${Math.round(timeoutMs / 60000)} min — sending SIGTERM`);
         proc.kill('SIGTERM');
-        // Hard-kill if it ignores SIGTERM for 10 s
-        setTimeout(() => { try { proc.kill('SIGKILL'); } catch { /* already gone */ } }, 10_000);
+        // Hard-kill only if it ignores SIGTERM for 2 min — the child catches
+        // SIGTERM to flush Pass 2 + persist, which needs more than 10 s.
+        setTimeout(() => { try { proc.kill('SIGKILL'); } catch { /* already gone */ } }, 120_000);
       }, timeoutMs);
     }
 
@@ -95,7 +103,7 @@ async function crawlCluster(cluster, regions) {
     try {
       const { elapsed } = await runChild(
         'node',
-        ['scripts/collect-tft-marketvalues.mjs', '--region', region, ...EXTRA],
+        ['scripts/collect-tft-marketvalues.mjs', '--region', region, '--time-budget-min', String(CHILD_BUDGET_MIN), ...EXTRA],
         label,
         { timeoutMs: REGION_TIMEOUT_MS },
       );
@@ -124,7 +132,7 @@ async function syncCluster(cluster) {
 async function main() {
   const t0 = Date.now();
   console.log(`=== crawl-all-regions (sequential) — clusters: ${Object.keys(targetClusters).join(',')} ===`);
-  console.log(`    region timeout: ${REGION_TIMEOUT_MIN} min · sync-after-each: ${!SKIP_SYNC}`);
+  console.log(`    region timeout: ${REGION_TIMEOUT_MIN} min · Pass-1 budget: ${CHILD_BUDGET_MIN} min · sync-after-each: ${!SKIP_SYNC}`);
 
   for (const [cluster, regions] of Object.entries(targetClusters)) {
     const tCluster = Date.now();

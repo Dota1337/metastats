@@ -8,7 +8,11 @@ TimeoutStartSec=20h
 Type=oneshot
 WorkingDirectory=/opt/metastats-crawler
 EnvironmentFile=/etc/metastats-crawler/env
-ExecStart=/usr/bin/node scripts/crawl-all-regions.mjs --include-diamond
+# --region-timeout=240: the Diamond-II+ first fill needs ~155 min for a big
+# region's Pass 1 (euw1 ~5.3k players); 90 min killed it mid-Pass-1 before any
+# population/snapshots were written. The child carries a soft Pass-1 budget
+# (timeout minus cushion) so it always reaches Pass 2 + persist.
+ExecStart=/usr/bin/node scripts/crawl-all-regions.mjs --include-diamond --region-timeout=240
 StandardOutput=journal
 StandardError=journal
 Nice=10

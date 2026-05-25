@@ -418,6 +418,7 @@ export default function TftUnitDetailPage() {
                         <RechartsTooltip
                           contentStyle={{ backgroundColor: '#0d1526', border: '1px solid #1e2a3a', borderRadius: 4, fontSize: 11 }}
                           labelStyle={{ color: '#a0b0c5' }}
+                          labelFormatter={(label: any) => tftPatchLabel(String(label))}
                           formatter={(v: any): any => [Number(v).toFixed(2), t('tft.avgPlacement')]}
                         />
                         <ReferenceLine y={4.5} stroke="#5a6a80" strokeDasharray="3 3" strokeOpacity={0.4} />

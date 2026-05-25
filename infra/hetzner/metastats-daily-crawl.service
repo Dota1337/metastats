@@ -14,7 +14,11 @@ EnvironmentFile=/etc/metastats-crawler/env
 # 17 regions × ~30 min worst-case = ~9h. 20h ceiling matches the
 # marketvalue unit so two daily timers always find a dead service.
 TimeoutStartSec=20h
-ExecStart=/usr/bin/node scripts/crawl-allranks-all-regions.mjs --mode auto
+# --region-timeout=240: most regions finish in ~30 min, but the biggest
+# (e.g. vn2 ~95 min) overran the old 90-min default and were SIGKILLed with
+# their day's data lost. 240 gives ample headroom; the orchestrator's soft
+# budget + partial-persist (newer code) is the secondary safety net.
+ExecStart=/usr/bin/node scripts/crawl-allranks-all-regions.mjs --mode auto --region-timeout=240
 StandardOutput=journal
 StandardError=journal
 Nice=10

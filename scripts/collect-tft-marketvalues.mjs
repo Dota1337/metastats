@@ -261,10 +261,12 @@ async function fetchAccount(puuid) {
 // Pass 1: refresh cache, read matches, write season stats, extract raw metrics.
 // metaRelM is deferred (compMetaAvg=null) until the cohort benchmark is built.
 async function gatherPlayer(p, ctx) {
-  const { setNumber, hotCompKeys, recommendedItems } = ctx;
+  const { setNumber, hotCompKeys, recommendedItems, startTimeSec, maxIds } = ctx;
   if (!SKIP_CACHE_REFRESH) {
     await refreshPlayerMatchCache(pool, p.puuid, REGION, REGIONAL, riot, {
       force: FORCE_REFRESH,
+      startTimeSec,   // only walk the current set's matches, not full history
+      maxIds,         // cap the cold backfill
       log: VERBOSE ? (msg) => console.log(`    ${msg}`) : undefined,
     });
   }
@@ -369,8 +371,23 @@ async function main() {
 
   let players = PUUIDS ? await loadPlayersByPuuids(PUUIDS) : await discoverPlayers();
   if (LIMIT > 0) players = players.slice(0, LIMIT);
+  // Cold players otherwise backfill their entire ~1000-match multi-set history
+  // (~55s each — the throughput killer; diagnosed: 0 rate-limit hits, pure fetch
+  // volume). Restrict the id walk to the current set: startTime = earliest cached
+  // game_datetime for this set (−1d cushion), capped at maxColdIds recent set-era
+  // ids. A ~100-match sample is plenty for the skill-score percentiles; daily
+  // incremental refreshes top up the rest.
+  const maxColdIds = parseInt(arg('--max-cold-ids', '200'), 10);
+  let startTimeSec = Math.floor((Date.now() - 150 * 86400 * 1000) / 1000); // fallback
+  try {
+    const r = await pool.query('select min(game_datetime) as m from tft_player_match_cache where set_number = $1 and game_datetime > 0', [setNumber]);
+    const m = Number(r.rows[0]?.m);
+    if (Number.isFinite(m) && m > 0) startTimeSec = Math.floor(m / 1000) - 86400;
+  } catch { /* keep fallback */ }
+  console.log(`  cache-refresh window: matches since ${new Date(startTimeSec * 1000).toISOString().slice(0, 10)} (current set), cap ${maxColdIds} ids/player`);
+
   console.log(`\n[1/3] ${players.length} players — Pass 1: cache refresh + raw metrics`);
-  const ctx = { setNumber, hotCompKeys, recommendedItems };
+  const ctx = { setNumber, hotCompKeys, recommendedItems, startTimeSec, maxIds: maxColdIds };
   const gathered = [];
   let p1 = 0, tooFew = 0, failed = 0;
   for (const p of players) {

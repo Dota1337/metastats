@@ -35,6 +35,12 @@ const TFT_RANKED_QUEUE = 1100;
 export async function refreshPlayerMatchCache(db, puuid, region, regional, riot, opts = {}) {
   const log = opts.log || (() => {});
   const maxStale = opts.maxStaleMinutes ?? STALE_AFTER_MINUTES_DEFAULT;
+  // startTimeSec: limit the id walk to the current set (caller passes the
+  // set-start epoch); maxIds: cap the cold backfill. Without these a cold
+  // player's first touch fetches their entire ~1000-match multi-set history —
+  // the marketvalue first-fill throughput killer (~55s/cold player, no 429s).
+  const startTimeSec = opts.startTimeSec ?? null;
+  const maxIds = opts.maxIds ?? RIOT_HISTORY_MAX;
 
   if (!opts.force) {
     const stateRow = await db.query(
@@ -48,7 +54,7 @@ export async function refreshPlayerMatchCache(db, puuid, region, regional, riot,
   }
 
   // Pull recent ids first — if everything is already cached we exit cheap.
-  const recentIds = await fetchIds(regional, puuid, riot, 0, RIOT_HISTORY_PAGE);
+  const recentIds = await fetchIds(regional, puuid, riot, 0, RIOT_HISTORY_PAGE, startTimeSec);
   if (recentIds.length === 0) {
     await upsertFetchState(db, puuid, region, null, 0, false);
     return { cached: 0, newMatches: 0, skippedFresh: false };
@@ -65,8 +71,8 @@ export async function refreshPlayerMatchCache(db, puuid, region, regional, riot,
     // Riot's 1000-id cap.
     initialBackfill = true;
     const fullIds = [...recentIds];
-    for (let start = RIOT_HISTORY_PAGE; start < RIOT_HISTORY_MAX; start += RIOT_HISTORY_PAGE) {
-      const page = await fetchIds(regional, puuid, riot, start, RIOT_HISTORY_PAGE);
+    for (let start = RIOT_HISTORY_PAGE; start < maxIds; start += RIOT_HISTORY_PAGE) {
+      const page = await fetchIds(regional, puuid, riot, start, RIOT_HISTORY_PAGE, startTimeSec);
       if (page.length === 0) break;
       fullIds.push(...page);
       if (page.length < RIOT_HISTORY_PAGE) break;
@@ -124,8 +130,12 @@ export async function refreshPlayerMatchCache(db, puuid, region, regional, riot,
 
 // ── Riot helpers ────────────────────────────────────────────────────────────
 
-async function fetchIds(regional, puuid, riot, start, count) {
-  const url = `https://${regional}.api.riotgames.com/tft/match/v1/matches/by-puuid/${puuid}/ids?start=${start}&count=${count}&api_key=${process.env.RIOT_API_KEY_TFT}`;
+async function fetchIds(regional, puuid, riot, start, count, startTimeSec) {
+  // startTime (epoch seconds) restricts the result to matches after the set
+  // start, so a cold player's walk covers the current set instead of years of
+  // multi-set history.
+  const st = startTimeSec ? `&startTime=${startTimeSec}` : '';
+  const url = `https://${regional}.api.riotgames.com/tft/match/v1/matches/by-puuid/${puuid}/ids?start=${start}&count=${count}${st}&api_key=${process.env.RIOT_API_KEY_TFT}`;
   const ids = await riot.fetchJson(url, { safe: true });
   return Array.isArray(ids) ? ids : [];
 }

@@ -17,13 +17,17 @@ interface CachedMatch {
   // regardless of source (otherwise Hetzner-sourced rows never classify and
   // the page renders empty).
   units: { character_id?: string; characterId?: string; tier?: number; rarity?: number; items?: string[]; itemNames?: string[] }[];
-  traits: { name?: string; tier_current?: number; style?: number }[];
+  traits: { name?: string; tier_current?: number; style?: number; num_units?: number }[];
   placement: number;
 }
 
 function classifyComp(m: CachedMatch): string | null {
-  const traits = (m.traits || []).filter(t => (t.style ?? 0) > 0);
-  if (traits.length === 0) return null;
+  const active = (m.traits || []).filter(t => (t.style ?? 0) > 0);
+  if (active.length === 0) return null;
+  // Prefer real comp traits (≥2 units) — single-unit "UniqueTrait"s otherwise
+  // fragment the same comp. Fall back to all if none qualify (legacy rows).
+  const pool = active.filter(t => (t.num_units ?? 0) >= 2);
+  const traits = pool.length ? pool : active;
   traits.sort((a, b) => {
     if ((b.style ?? 0) !== (a.style ?? 0)) return (b.style ?? 0) - (a.style ?? 0);
     if ((b.tier_current ?? 0) !== (a.tier_current ?? 0)) return (b.tier_current ?? 0) - (a.tier_current ?? 0);

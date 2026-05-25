@@ -16,12 +16,10 @@ name: TFT Daily Crawl
 #                        until the next 05:15 final run seals them.
 
 on:
-  schedule:
-    # Final run for yesterday — 15-min offset gives Riot's match-history
-    # index a buffer to settle the last matches of the closed window.
-    - cron: '15 5 * * *'
-    # Intraday runs for today: 6h, 12h, 18h after the day's 05 UTC anchor.
-    - cron: '15 11,17,23 * * *'
+  # Schedule removed 2026-05-25: the Hetzner `metastats-daily-crawl` timer
+  # (00:00 UTC, all 17 regions, all ranks) is the source of truth now and this
+  # GH schedule only produced redundant/ghost runs. Kept manual-only
+  # (workflow_dispatch) as a fallback for spot re-crawls of euw1/kr/na1.
   workflow_dispatch:
     inputs:
       mode:

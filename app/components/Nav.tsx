@@ -40,9 +40,11 @@ export default function Nav({ active }: NavProps) {
   const linkClass = (key: NavProps['active']) =>
     key === active ? 'text-white text-sm' : 'text-[#a0b0c5] text-sm hover:text-white';
 
-  // "Meta" groups the four meta-data pages (Comps/Units/Items/Synergien) into
-  // one dropdown so the TFT nav row isn't 14 tabs wide.
-  const metaActive = active === 'comps' || active === 'units' || active === 'items' || active === 'traits';
+  // "Meta" groups the meta-data pages (Comps/Units/Items/Synergien) plus the
+  // derived meta-analysis pages (One-Tricks/Patch-Diff) into one dropdown so
+  // the TFT nav row isn't 14 tabs wide.
+  const metaActive = active === 'comps' || active === 'units' || active === 'items' || active === 'traits'
+    || active === 'onetricks' || active === 'patch';
   const metaItemClass = (key: NavProps['active']) =>
     `block px-3 py-2 text-xs transition-colors ${key === active ? 'bg-[#7B61FF]/10 text-[#7B61FF]' : 'text-[#a0b0c5] hover:text-white hover:bg-[#141c2e]'}`;
 
@@ -139,9 +141,9 @@ export default function Nav({ active }: NavProps) {
         <div className="hidden lg:flex items-center gap-4 flex-1 justify-end">
           {game === 'tft' ? (
             <>
-              {/* Meta dropdown: Comps / Units / Items / Synergien. Augments are
-                  hidden (Set 17 ships no augments in the Match-V1 DTO; /tft/augments
-                  + detail pages stay reachable directly). */}
+              {/* Meta dropdown: Comps / Units / Items / Synergien / One-Tricks /
+                  Patch-Diff. Augments are hidden (Set 17 ships no augments in the
+                  Match-V1 DTO; /tft/augments + detail pages stay reachable directly). */}
               <div className="relative">
                 <button
                   onClick={() => setMetaOpen(o => !o)}
@@ -160,6 +162,8 @@ export default function Nav({ active }: NavProps) {
                       <a href="/tft/units" className={metaItemClass('units')}>{t('nav.units')}</a>
                       <a href="/tft/items" className={metaItemClass('items')}>{t('nav.items')}</a>
                       <a href="/tft/traits" className={metaItemClass('traits')}>{t('nav.traits')}</a>
+                      <a href="/tft/onetricks" className={metaItemClass('onetricks')}>{t('nav.onetricks')}</a>
+                      <a href="/tft/patch/winners" className={metaItemClass('patch')}>{t('nav.patchWinners')}</a>
                     </div>
                   </>
                 )}
@@ -167,8 +171,6 @@ export default function Nav({ active }: NavProps) {
               <a href="/tft/leaderboard" className={linkClass('leaderboard')}>{t('nav.leaderboard')}</a>
               <a href="/tft/tournaments" className={linkClass('tournaments')}>{t('nav.leagues')}</a>
               <a href="/tft/pros" className={linkClass('pros')}>{t('nav.tftPros')}</a>
-              <a href="/tft/onetricks" className={linkClass('onetricks')}>{t('nav.onetricks')}</a>
-              <a href="/tft/patch/winners" className={linkClass('patch')}>{t('nav.patchWinners')}</a>
               <a href="/tft/compare" className={linkClass('analyse')}>{t('nav.analyse')}</a>
               <a href="/tft/builder" className={linkClass('builder')}>{t('tft.builderTitle')}</a>
               <a href="/tft/comps/community" className={linkClass('community')}>{t('nav.community')}</a>
@@ -412,11 +414,11 @@ export default function Nav({ active }: NavProps) {
               <a href="/tft/units" className={`pl-3 ${linkClass('units')}`} onClick={() => setMenuOpen(false)}>{t('nav.units')}</a>
               <a href="/tft/items" className={`pl-3 ${linkClass('items')}`} onClick={() => setMenuOpen(false)}>{t('nav.items')}</a>
               <a href="/tft/traits" className={`pl-3 ${linkClass('traits')}`} onClick={() => setMenuOpen(false)}>{t('nav.traits')}</a>
+              <a href="/tft/onetricks" className={`pl-3 ${linkClass('onetricks')}`} onClick={() => setMenuOpen(false)}>{t('nav.onetricks')}</a>
+              <a href="/tft/patch/winners" className={`pl-3 ${linkClass('patch')}`} onClick={() => setMenuOpen(false)}>{t('nav.patchWinners')}</a>
               <a href="/tft/leaderboard" className={linkClass('leaderboard')} onClick={() => setMenuOpen(false)}>{t('nav.leaderboard')}</a>
               <a href="/tft/tournaments" className={linkClass('tournaments')} onClick={() => setMenuOpen(false)}>{t('nav.leagues')}</a>
               <a href="/tft/pros" className={linkClass('pros')} onClick={() => setMenuOpen(false)}>{t('nav.tftPros')}</a>
-              <a href="/tft/onetricks" className={linkClass('onetricks')} onClick={() => setMenuOpen(false)}>{t('nav.onetricks')}</a>
-              <a href="/tft/patch/winners" className={linkClass('patch')} onClick={() => setMenuOpen(false)}>{t('nav.patchWinners')}</a>
               <a href="/tft/compare" className={linkClass('analyse')} onClick={() => setMenuOpen(false)}>{t('nav.analyse')}</a>
               <a href="/tft/builder" className={linkClass('builder')} onClick={() => setMenuOpen(false)}>{t('tft.builderTitle')}</a>
               <a href="/tft/saved" className={linkClass('saved')} onClick={() => setMenuOpen(false)}>★ {t('tft.savedTitle')}</a>

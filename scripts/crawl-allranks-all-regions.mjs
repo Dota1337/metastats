@@ -6,20 +6,20 @@
  * a day or two.
  *
  * Sequential per region — TFT prod key has one shared 500/10s app-wide
- * bucket, so parallel regions just fight each other. Per-region timeout
- * (default 90 min) so one stuck region doesn't lock the others out.
+ * bucket, so parallel regions just fight each other.
  *
- * collect-tft-allranks.mjs writes straight to Supabase, so no sync step
- * is needed — we just orchestrate the runs.
+ * No artificial per-region timeout: a region runs until it naturally finishes.
+ * The only time limits are riot-client.mjs's per-request timeout + rate limits
+ * (external-API constraints). collect-tft-allranks.mjs writes straight to
+ * Supabase, so no sync step is needed — we just orchestrate the runs.
  *
- * Used by the systemd metastats-daily-crawl.timer (05:15 UTC mode=auto).
+ * Used by the systemd metastats-daily-crawl.timer (00:00 UTC mode=auto).
  *
  * Usage:
  *   node scripts/crawl-allranks-all-regions.mjs                    # all regions, mode=auto
  *   node scripts/crawl-allranks-all-regions.mjs --mode today       # rolling current-day
  *   node scripts/crawl-allranks-all-regions.mjs --day 2026-05-15   # backfill specific day
  *   node scripts/crawl-allranks-all-regions.mjs --regions=euw1,kr  # subset
- *   node scripts/crawl-allranks-all-regions.mjs --region-timeout=120
  */
 
 import { spawn } from 'node:child_process';
@@ -41,35 +41,15 @@ const arg = (k) => {
 
 const MODE = (arg('--mode') || 'auto').toLowerCase();
 const DAY_OVERRIDE = arg('--day');
-const REGION_TIMEOUT_MIN = Number(arg('--region-timeout') || 120);
-const REGION_TIMEOUT_MS = REGION_TIMEOUT_MIN * 60 * 1000;
-// Soft budget handed to the child = hard timeout minus cushion. The child
-// stops discovering/aggregating early enough to still write its partial
-// aggregates before we SIGTERM/SIGKILL it (the vn2 total-loss bug, 2026-05-25).
-const REGION_CUSHION_MIN = Number(arg('--region-cushion') || 15);
-const CHILD_BUDGET_MIN = Math.max(5, REGION_TIMEOUT_MIN - REGION_CUSHION_MIN);
 const regionFilter = arg('--regions');
 const regions = regionFilter
   ? regionFilter.split(',').map(r => r.trim()).filter(Boolean)
   : ALL_REGIONS;
 
-function runChild(cmd, cmdArgs, label, { timeoutMs = 0 } = {}) {
+function runChild(cmd, cmdArgs, label) {
   return new Promise((resolve, reject) => {
     const t0 = Date.now();
     const proc = spawn(cmd, cmdArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
-    let timeoutHandle = null;
-    let timedOut = false;
-
-    if (timeoutMs > 0) {
-      timeoutHandle = setTimeout(() => {
-        timedOut = true;
-        console.error(`[${label}] timeout after ${Math.round(timeoutMs / 60000)} min — sending SIGTERM`);
-        proc.kill('SIGTERM');
-        // 2 min grace — the child catches SIGTERM to flush its partial
-        // aggregates, which needs more than 10s.
-        setTimeout(() => { try { proc.kill('SIGKILL'); } catch { /* gone */ } }, 120_000);
-      }, timeoutMs);
-    }
 
     const onLine = (chunk) => {
       const lines = chunk.toString('utf8').split('\n').filter(Boolean);
@@ -79,10 +59,8 @@ function runChild(cmd, cmdArgs, label, { timeoutMs = 0 } = {}) {
     proc.stderr.on('data', onLine);
 
     proc.on('close', code => {
-      if (timeoutHandle) clearTimeout(timeoutHandle);
       const elapsed = ((Date.now() - t0) / 1000).toFixed(0);
-      if (timedOut) reject(new Error(`${label} killed by timeout after ${elapsed}s`));
-      else if (code === 0) resolve({ label, elapsed });
+      if (code === 0) resolve({ label, elapsed });
       else reject(new Error(`${label} exited ${code} after ${elapsed}s`));
     });
   });
@@ -93,17 +71,16 @@ async function main() {
   const dayLabel = DAY_OVERRIDE ? `day=${DAY_OVERRIDE}` : `mode=${MODE}`;
   console.log(`=== crawl-allranks-all-regions (sequential) — ${dayLabel} ===`);
   console.log(`    regions: ${regions.join(',')}`);
-  console.log(`    timeout per region: ${REGION_TIMEOUT_MIN} min · Pass budget: ${CHILD_BUDGET_MIN} min`);
 
   let done = 0, failed = 0;
   for (const region of regions) {
     const label = region;
-    console.log(`\n[${label}] start (timeout ${REGION_TIMEOUT_MIN} min)`);
-    const cmdArgs = ['scripts/collect-tft-allranks.mjs', '--region', region, '--no-json', '--time-budget-min', String(CHILD_BUDGET_MIN)];
+    console.log(`\n[${label}] start`);
+    const cmdArgs = ['scripts/collect-tft-allranks.mjs', '--region', region, '--no-json'];
     if (DAY_OVERRIDE) cmdArgs.push('--day', DAY_OVERRIDE);
     else cmdArgs.push('--mode', MODE);
     try {
-      const { elapsed } = await runChild('node', cmdArgs, label, { timeoutMs: REGION_TIMEOUT_MS });
+      const { elapsed } = await runChild('node', cmdArgs, label);
       console.log(`[${label}] done in ${elapsed}s`);
       done++;
     } catch (err) {

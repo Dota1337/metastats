@@ -59,6 +59,7 @@ async function supaUpsert(table, rows, onConflict) {
     const url = `${SUPA_URL}/rest/v1/${table}?on_conflict=${onConflict}`;
     const res = await fetch(url, {
       method: 'POST',
+      signal: AbortSignal.timeout(15_000),
       headers: {
         apikey: SUPA_KEY,
         Authorization: `Bearer ${SUPA_KEY}`,

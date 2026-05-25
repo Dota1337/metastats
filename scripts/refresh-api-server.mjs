@@ -83,19 +83,15 @@ if (!AUTH_TOKEN || !RIOT_KEY || !DB_URL || !SUPA_URL || !SUPA_KEY) {
 
 const pool = new pg.Pool({ connectionString: DB_URL, max: 5 });
 
-// Single shared riot client — the rate-limiter must be process-wide so a
-// burst of refresh calls doesn't trip 429s.
-//
-// Capped well below the crawlers' ~180/10s: the TFT match-detail method limit
-// (200/10s) is shared across ALL processes on this box (daily crawl, marketvalue
-// crawl, this server). The crawls are serialized (OnSuccess chain), but this
-// server is always-on, so a live refresh can overlap a running crawl. Keeping
-// this at 45/10s leaves the crawler its headroom; riot-client's 429 handling is
-// the backstop if they still briefly collide.
+// Single shared riot client — the rate-limiter is process-wide so a burst of
+// refresh calls doesn't trip 429s. Capped at ~180/10s = 90% of Riot's
+// match-detail 200/10s method limit (the external API limit). If a crawl
+// overlaps this always-on server, riot-client's 429 Retry-After handling
+// reconciles the shared bucket — no artificial sub-limit beyond Riot's own.
 const riot = createRiotClient({
-  shortWindowRequests: 12,
+  shortWindowRequests: 18,
   shortWindowMs: 1100,
-  longWindowRequests: 45,
+  longWindowRequests: 180,
   longWindowMs: 10_500,
 });
 

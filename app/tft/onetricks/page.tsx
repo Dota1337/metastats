@@ -99,7 +99,7 @@ export default function TftOneTricksPage() {
                   >
                     {display}{p.tagLine ? <span className="text-[#7a8aa0]">#{p.tagLine}</span> : null}
                   </a>
-                  <span className="text-[10px] text-[#7a8aa0] tabular-nums">{p.totalGames}g</span>
+                  <span className="text-[10px] text-[#7a8aa0] tabular-nums">{p.totalGames} {t('tft.gamesShort')}</span>
                 </div>
                 {/* Specialty-bar: visualizes top1 vs top2 share split */}
                 <div className="mb-2.5">

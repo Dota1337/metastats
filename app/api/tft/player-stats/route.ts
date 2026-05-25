@@ -176,7 +176,11 @@ export async function GET(request: NextRequest) {
     sumLastRound += m.last_round;
 
     for (const u of m.units || []) {
-      const cid = u.character_id;
+      // Unit shape differs by writer: the Hetzner crawler stores characterId,
+      // the legacy Vercel path stores character_id. Read both — otherwise a
+      // Hetzner-sourced player's top-units come back near-empty (only the rare
+      // legacy-shape match counts), e.g. Nunu showing 1 instead of 133 games.
+      const cid = u.characterId ?? u.character_id;
       if (!cid || isExcludedUnit(cid)) continue;
       const e = unitGames.get(cid) || { games: 0, sumPlace: 0, top4: 0 };
       e.games++;

@@ -819,6 +819,7 @@ function RankBlock({ ranked, seasonRanks }: { ranked: SummonerData['ranked']; se
 }
 
 function SeasonRankRow({ season }: { season: SeasonRank }) {
+  const { t } = useI18n();
   const tier = (season.peak_tier || '').toUpperCase();
   const color = TIER_COLORS[tier] || '#a0b0c5';
   const setLabel = formatSetLabel(season.set_label, season.set_number);
@@ -840,7 +841,7 @@ function SeasonRankRow({ season }: { season: SeasonRank }) {
       <div className="flex items-center gap-2 min-w-0">
         <span style={{ color }} className="font-medium truncate">{rankText}</span>
         {season.total_games != null && (
-          <span className="text-[#7a8aa0] text-[10px] flex-shrink-0">{season.total_games} Sp.</span>
+          <span className="text-[#7a8aa0] text-[10px] flex-shrink-0">{season.total_games} {t('tft.gamesShort')}</span>
         )}
       </div>
     </div>
@@ -921,7 +922,7 @@ function ProSpecialty({ puuid, setNumber, assets, t }: {
                       {traitName} · {carryAsset?.name || carry.replace(/^TFT\d+_/, '')}
                     </div>
                     <div className="text-[#7a8aa0] text-[10px] tabular-nums">
-                      {(c.share * 100).toFixed(0)}% · Ø {c.avgPlacement?.toFixed(2) ?? '—'} · {c.games}g
+                      {(c.share * 100).toFixed(0)}% · Ø {c.avgPlacement?.toFixed(2) ?? '—'} · {c.games} {t('tft.gamesShort')}
                     </div>
                   </div>
                   <div className="text-[10px] tabular-nums text-[#3ecf8e]">
@@ -947,7 +948,7 @@ function ProSpecialty({ puuid, setNumber, assets, t }: {
                       <img src={tftChampionTileUrl(assets, unitAsset)!} alt="" className="w-8 h-8 rounded border border-[#c39bff]/60" />
                     )}
                     <span className="text-white text-[11px]">{unitAsset?.name || u.unitId.replace(/^TFT\d+_/, '')}</span>
-                    <span className="text-[#7a8aa0] text-[10px] tabular-nums ml-auto">{u.total}g</span>
+                    <span className="text-[#7a8aa0] text-[10px] tabular-nums ml-auto">{u.total} {t('tft.gamesShort')}</span>
                   </div>
                   <div className="space-y-1">
                     {tierKeys.flatMap(tier => (u.tiers[tier] || []).slice(0, 1).map((build, i) => (

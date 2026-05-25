@@ -280,6 +280,42 @@ function deriveStatus(startDate, endDate) {
   return 'upcoming';
 }
 
+// Set number straight from the page so it's right even for auto-discovered
+// events (the seed list mislabels some). Prefer the set-esports navbox
+// ({{tft_set_17_esports_navbox}}); else the most-frequent {{setname/NN}}.
+function deriveSetNumber(wikitext) {
+  const navbox = /tft[ _]set[ _](\d+)[ _]esports[ _]navbox/i.exec(wikitext);
+  if (navbox) return parseInt(navbox[1], 10);
+  const counts = {};
+  const re = /\{\{\s*setname\/(\d+)/gi;
+  let m;
+  while ((m = re.exec(wikitext))) counts[m[1]] = (counts[m[1]] || 0) + 1;
+  const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+  return top ? parseInt(top[0], 10) : null;
+}
+
+// Distinct participant count from {{ParticipantTable}} / {{ParticipantSection}}
+// blocks (each entrant is a {{SoloOpponent}}). Lets ongoing/upcoming events —
+// which have no final {{Slot}} ranking yet — still show "N participants".
+function countParticipants(wikitext) {
+  const collect = (text, set) => {
+    for (const opp of findAllTemplates(text, 'SoloOpponent')) {
+      const { positional, keyed } = parseTemplateArgs(opp);
+      const n = unwiki(positional[0] || keyed['1'] || '');
+      if (n) set.add(n.toLowerCase());
+    }
+  };
+  const names = new Set();
+  // Prefer dedicated participant blocks…
+  for (const tpl of ['ParticipantTable', 'ParticipantSection']) {
+    for (const block of findAllTemplates(wikitext, tpl)) collect(block, names);
+  }
+  // …else fall back to distinct {{SoloOpponent}} page-wide (bracket/matches),
+  // which approximates the roster size for ongoing events without a table.
+  if (names.size === 0) collect(wikitext, names);
+  return names.size || null;
+}
+
 // Extract placements from {{Prize pool}} / {{prize pool start}} blocks.
 // Liquipedia uses many variants; the most common in TFT pages is `prize-pool-slot`
 // templates inside a wrapping table. We do a permissive scan: any line with
@@ -446,9 +482,8 @@ async function main() {
   const proPuuidByName = await loadProPuuids();
   console.log(`  [pro-join] loaded ${proPuuidByName.size} pros for puuid back-fill\n`);
 
-  console.log('[2/3] Fetching + parsing each page …');
-  const tournaments = [];
-  const allResults = [];
+  console.log('[2/3] Fetching + parsing + writing each page …');
+  let totalTournaments = 0, totalResults = 0;
   let parsed = 0, skipped = 0;
   for (const s of seed) {
     if (parsed > 0) await sleep(LIQUIPEDIA_DELAY_MS);
@@ -468,55 +503,62 @@ async function main() {
     const startDate = parseDate(fields.sdate || fields.startdate);
     const endDate = parseDate(fields.edate || fields.enddate);
     const status = deriveStatus(startDate, endDate);
-    tournaments.push({
+
+    // Placements (finished events). Participant count is a fallback so
+    // ongoing/upcoming events — which have no final {{Slot}} ranking yet —
+    // still show "N participants" instead of looking empty.
+    const placements = extractPlacements(wikitext);
+    const infoboxCount = parseInt(fields.team_number || fields.player_number || '0', 10) || null;
+    const numParticipants = infoboxCount || placements.length || countParticipants(wikitext);
+
+    const tour = {
       id,
       liquipedia_page: s.page,
       name,
-      // Seed-tier wins over wiki-tier (the wiki stores numeric 1/2/3 but our
-      // schema uses S/A/B/C — easier to enforce that in seed-list than to
-      // parse-and-translate here).
+      // Seed-tier wins over wiki-tier (wiki stores numeric 1/2/3; our schema uses S/A/B/C).
       tier: s.tier || numericTierToLetter(fields.liquipediatier),
       region: s.region || null,
-      set_number: s.setNumber || null,
+      // Set number from the page itself; seed value only as a fallback.
+      set_number: deriveSetNumber(wikitext) || s.setNumber || null,
       start_date: startDate,
       end_date: endDate,
       status,
       prize_pool_usd: parsePrize(fields.prizepool),
       twitch_channel: fields.twitch || null,
       format: unwiki(fields.format) || null,
-      num_participants: parseInt(fields.team_number || fields.player_number || '0', 10) || null,
+      num_participants: numParticipants,
       logo_url: null,                   // logos need image-API resolution; later
       source: 'liquipedia',
       last_validated_at: new Date().toISOString(),
-    });
+    };
 
-    // Extract placements (best-effort; not all pages have them in a parseable form)
-    const placements = extractPlacements(wikitext);
-    for (const p of placements) {
-      const puuid = proPuuidByName.get(p.proName.toLowerCase()) || null;
-      allResults.push({
-        tournament_id: id,
-        placement: p.placement,
-        pro_name: p.proName,
-        pro_puuid: puuid,
-        team: p.team,
-        country: p.country,
-        prize_usd: p.prizeUsd,
-      });
+    const results = placements.map(p => ({
+      tournament_id: id,
+      placement: p.placement,
+      pro_name: p.proName,
+      pro_puuid: proPuuidByName.get(p.proName.toLowerCase()) || null,
+      team: p.team,
+      country: p.country,
+      prize_usd: p.prizeUsd,
+    }));
+
+    // Write incrementally: a 2.5h discovery run must persist partial progress
+    // and never POST one huge results payload. Results are replaced per event.
+    try {
+      await upsert('tft_tournaments', [tour], 'id');
+      await deleteResultsFor(id);
+      await upsert('tft_tournament_results', results, 'tournament_id,placement,pro_name');
+      totalTournaments++;
+      totalResults += results.length;
+    } catch (e) {
+      console.warn(`  [write-fail] ${s.page}: ${e.message}`);
     }
     parsed++;
-    console.log(`  ${parsed}/${seed.length}  ${s.page}  placements=${placements.length}`);
+    console.log(`  ${parsed}/${seed.length}  ${s.page}  set=${tour.set_number ?? '—'}  placements=${placements.length}  participants=${numParticipants ?? '—'}`);
   }
 
-  console.log(`\n[3/3] Writing ${tournaments.length} tournaments + ${allResults.length} placements …`);
-  await upsert('tft_tournaments', tournaments, 'id');
-  // Replace strategy for results: delete + insert per tournament, since
-  // placements can change as Liquipedia updates Standings.
-  for (const t of tournaments) await deleteResultsFor(t.id);
-  await upsert('tft_tournament_results', allResults, 'tournament_id,placement,pro_name');
-
   const total = ((Date.now() - t0) / 1000).toFixed(0);
-  console.log(`\nDone. ${tournaments.length} tournaments, ${allResults.length} placements in ${total}s (skipped: ${skipped})`);
+  console.log(`\nDone. ${totalTournaments} tournaments, ${totalResults} placements in ${total}s (skipped: ${skipped})`);
 }
 
 main().catch(err => { console.error('FAIL:', err.message); console.error(err.stack); process.exit(1); });

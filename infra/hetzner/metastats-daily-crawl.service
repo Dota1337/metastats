@@ -2,9 +2,20 @@
 Description=metastats TFT daily stats crawl (all regions, all ranks)
 Wants=network-online.target
 After=network-online.target
+# Mutual exclusion with the marketvalue crawl. Both consume the single shared
+# TFT prod-key bucket (500/10s), so they must NEVER run concurrently — when they
+# did, the heavy all-ranks aggregate crawl starved the marketvalue crawl in a
+# permanent 429 storm (the D2+ cold-fill runs >24h and overran into the next
+# 00:00 firing of this timer). Conflicts= makes starting this daily crawl
+# gracefully stop a still-running marketvalue crawl: collect-tft-marketvalues
+# catches SIGTERM, flushes Pass 2 + persists partial progress within
+# TimeoutStopSec, and the region cursor (see crawl-all-regions.mjs) means the
+# interrupted region simply resumes — warm-cached — on the next chained run.
+Conflicts=metastats-crawler.service
 # Chain the marketvalue crawl (Diamond II+) to run right after this aggregate
-# crawl succeeds — single timer, no separate 04:00 schedule. The marketvalue
-# unit carries --include-diamond and its own per-region/total timeouts.
+# crawl succeeds — single timer, no separate 04:00 schedule. By the time this
+# fires, this unit is already inactive, so Conflicts= above does not block it.
+# The marketvalue unit carries --include-diamond and its own timeouts.
 OnSuccess=metastats-crawler.service
 
 [Service]

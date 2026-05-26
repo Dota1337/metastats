@@ -5,25 +5,39 @@
  * production key has a single 500/10s app-wide bucket, so parallel cluster
  * crawls just fight for the same quota and end up slower overall.
  *
- * After every cluster finishes we push the cluster's snapshots to Supabase
+ * Round-robin region cursor
+ * -------------------------
+ * The Diamond-II+ cold-fill is far larger than one nightly window (euw1 alone
+ * is >11h), and Conflicts= in metastats-daily-crawl.service gracefully stops
+ * this crawl at the next 00:00 firing. Without a cursor the crawl would always
+ * restart at euw1 every night and the later regions (na1, kr, br1, …) would
+ * NEVER be reached — their marketvalues would stay permanently stale. So we
+ * persist the last fully-completed region and resume at the NEXT one each run,
+ * wrapping around. A region cut short by the midnight SIGTERM is NOT marked
+ * complete, so it resumes — warm-cached — on the next chained run.
+ *
+ * After every cluster boundary we push that cluster's snapshots to Supabase
  * right away, so partial progress is visible on metastats.gg even if a later
- * cluster crashes.
+ * region crashes or the run is stopped.
  *
  * No artificial per-region timeout: a region runs until it naturally finishes.
  * The only time limits in the pipeline are the per-request timeout + rate
  * limits inside riot-client.mjs (external-API constraints) — see
- * scripts/lib/riot-client.mjs.
+ * scripts/lib/riot-client.mjs — plus the midnight Conflicts= stop.
  *
  * Used by the systemd metastats-crawler.service (chained after the daily crawl).
  *
  * Usage:
- *   node scripts/crawl-all-regions.mjs                       # all clusters
+ *   node scripts/crawl-all-regions.mjs                       # all regions, resume from cursor
  *   node scripts/crawl-all-regions.mjs --clusters=europe     # subset
  *   node scripts/crawl-all-regions.mjs --skip-sync           # crawl only
  *   node scripts/crawl-all-regions.mjs --include-diamond     # extend scope
+ *   node scripts/crawl-all-regions.mjs --reset-cursor        # ignore + clear saved cursor
  */
 
 import { spawn } from 'node:child_process';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { dirname } from 'node:path';
 
 const CLUSTERS = {
   europe:   ['euw1', 'eun1', 'tr1', 'ru', 'me1'],
@@ -31,6 +45,13 @@ const CLUSTERS = {
   asia:     ['kr', 'jp1'],
   sea:      ['oc1', 'ph2', 'sg2', 'th2', 'tw2', 'vn2'],
 };
+
+// Canonical flat region order = clusters in definition order, regions within.
+const REGION_ORDER = Object.values(CLUSTERS).flat();
+const REGION_CLUSTER = {};
+for (const [cluster, regions] of Object.entries(CLUSTERS)) {
+  for (const region of regions) REGION_CLUSTER[region] = cluster;
+}
 
 const args = process.argv.slice(2);
 const arg = (k) => {
@@ -43,20 +64,70 @@ const hasFlag = (k) => args.includes(k);
 
 const clusterFilter = arg('--clusters');
 const SKIP_SYNC = hasFlag('--skip-sync');
+const RESET_CURSOR = hasFlag('--reset-cursor');
 
 const EXTRA = [];
 if (hasFlag('--include-diamond')) EXTRA.push('--include-diamond');
 if (hasFlag('--verbose')) EXTRA.push('--verbose');
 if (hasFlag('--force-refresh')) EXTRA.push('--force-refresh');
 
-const targetClusters = clusterFilter
-  ? Object.fromEntries(clusterFilter.split(',').map(c => [c.trim(), CLUSTERS[c.trim()]]).filter(([, v]) => v))
-  : CLUSTERS;
+// Cursor lives OUTSIDE /opt/metastats-crawler: remote-deploy.sh runs
+// `git reset --hard` with a `git clean -fd` fallback, which would wipe an
+// untracked file inside the repo. /etc/metastats-crawler/ is the persistent
+// production dir (same place as the env file); fall back to cwd for local dev.
+const CURSOR_PATH = process.env.MV_REGION_CURSOR
+  || (existsSync('/etc/metastats-crawler') ? '/etc/metastats-crawler/mv-region-cursor.json' : 'mv-region-cursor.json');
 
-function runChild(cmd, args, label) {
+function readCursor() {
+  if (RESET_CURSOR) return null;
+  try {
+    return JSON.parse(readFileSync(CURSOR_PATH, 'utf8')).lastCompletedRegion || null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCursor(region) {
+  try {
+    mkdirSync(dirname(CURSOR_PATH), { recursive: true });
+    writeFileSync(
+      CURSOR_PATH,
+      JSON.stringify({ lastCompletedRegion: region, updatedAt: new Date().toISOString() }, null, 2),
+    );
+  } catch (err) {
+    console.error(`[cursor] failed to persist (${CURSOR_PATH}): ${err.message}`);
+  }
+}
+
+// Build this run's region order: rotate the canonical order to start right
+// AFTER the last completed region, wrapping around so every region is covered.
+function buildRunOrder() {
+  let pool = REGION_ORDER;
+  if (clusterFilter) {
+    const set = new Set(clusterFilter.split(',').map(s => s.trim()).filter(Boolean));
+    pool = REGION_ORDER.filter(r => set.has(REGION_CLUSTER[r]));
+  }
+  const last = readCursor();
+  const idx = last ? pool.indexOf(last) : -1;
+  if (idx < 0) return pool.slice();
+  return [...pool.slice(idx + 1), ...pool.slice(0, idx + 1)];
+}
+
+// Graceful shutdown: on SIGTERM (the midnight Conflicts= stop, or `systemctl
+// stop`) finish the in-flight region's own graceful flush, then exit WITHOUT
+// advancing the cursor for that region so it resumes next run.
+let stopping = false;
+process.on('SIGTERM', () => {
+  if (stopping) return;
+  stopping = true;
+  console.log('\n[orchestrator] SIGTERM — stopping after the current region flushes; '
+    + 'cursor NOT advanced for the interrupted region (it resumes next run).');
+});
+
+function runChild(cmd, cmdArgs, label) {
   return new Promise((resolve, reject) => {
     const t0 = Date.now();
-    const proc = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    const proc = spawn(cmd, cmdArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
 
     const onLine = (chunk) => {
       const lines = chunk.toString('utf8').split('\n').filter(Boolean);
@@ -73,8 +144,32 @@ function runChild(cmd, args, label) {
   });
 }
 
-async function crawlCluster(cluster, regions) {
-  for (const region of regions) {
+async function sync(label) {
+  if (SKIP_SYNC) return;
+  console.log(`[${label}] pushing to Supabase`);
+  try {
+    // sync-marketvalue-to-supabase.mjs filters on `snapshot_date = today` by
+    // default which is exactly what we want here. Upsert semantics mean a later
+    // sync harmlessly re-pushes anything an earlier one missed.
+    await runChild('node', ['scripts/sync-marketvalue-to-supabase.mjs'], label);
+  } catch (err) {
+    console.error(`[${label}] FAILED: ${err.message}`);
+    // Don't abort the whole run on a sync failure.
+  }
+}
+
+async function main() {
+  const t0 = Date.now();
+  const order = buildRunOrder();
+  console.log('=== crawl-all-regions (sequential, round-robin) ===');
+  console.log(`    cursor: ${CURSOR_PATH} (last completed: ${readCursor() || 'none'})`);
+  console.log(`    order: ${order.join(',')}`);
+  console.log(`    sync-after-each-cluster: ${!SKIP_SYNC}`);
+
+  for (let i = 0; i < order.length; i++) {
+    if (stopping) break;
+    const region = order[i];
+    const cluster = REGION_CLUSTER[region];
     const label = `${cluster}/${region}`;
     console.log(`[${label}] start`);
     try {
@@ -86,40 +181,30 @@ async function crawlCluster(cluster, regions) {
       console.log(`[${label}] done in ${elapsed}s`);
     } catch (err) {
       console.error(`[${label}] FAILED: ${err.message}`);
-      // Carry on — one region's failure shouldn't abort the others
+      // Fall through: a real failure still advances the cursor below so a broken
+      // region can't wedge the rotation forever — it retries on the next pass.
     }
-  }
-}
 
-async function syncCluster(cluster) {
-  if (SKIP_SYNC) return;
-  console.log(`[sync/${cluster}] pushing to Supabase`);
-  try {
-    // Sync everything that's fresh — sync-marketvalue-to-supabase.mjs filters
-    // on `snapshot_date = today` by default which is exactly what we want here.
-    await runChild('node', ['scripts/sync-marketvalue-to-supabase.mjs'], `sync/${cluster}`);
-  } catch (err) {
-    console.error(`[sync/${cluster}] FAILED: ${err.message}`);
-    // Don't abort the whole run on a sync failure — the next cluster's sync
-    // will pick up everything thanks to upsert semantics.
-  }
-}
+    if (stopping) {
+      // Cut short by the midnight SIGTERM: leave the cursor on the previous
+      // region so this one resumes (warm-cached) next run, then flush the
+      // partial progress to Supabase before we exit.
+      console.log(`[${label}] interrupted by shutdown — cursor left at previous region`);
+      await sync('sync/shutdown');
+      break;
+    }
 
-async function main() {
-  const t0 = Date.now();
-  console.log(`=== crawl-all-regions (sequential) — clusters: ${Object.keys(targetClusters).join(',')} ===`);
-  console.log(`    sync-after-each: ${!SKIP_SYNC}`);
+    writeCursor(region);
 
-  for (const [cluster, regions] of Object.entries(targetClusters)) {
-    const tCluster = Date.now();
-    await crawlCluster(cluster, regions);
-    const clusterMin = ((Date.now() - tCluster) / 60_000).toFixed(1);
-    console.log(`\n=== cluster ${cluster} done in ${clusterMin} min ===\n`);
-    await syncCluster(cluster);
+    // Sync at cluster boundaries (≈4×/run) to limit redundant full re-pushes.
+    const next = order[i + 1];
+    if (!next || REGION_CLUSTER[next] !== cluster) {
+      await sync(`sync/${cluster}`);
+    }
   }
 
   const elapsedMin = ((Date.now() - t0) / 60_000).toFixed(1);
-  console.log(`\n=== all clusters done in ${elapsedMin} min ===`);
+  console.log(`\n=== run done in ${elapsedMin} min ===`);
 }
 
 main().catch(err => {

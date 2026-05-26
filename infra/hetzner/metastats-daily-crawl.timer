@@ -7,11 +7,10 @@ Description=Daily TFT all-ranks crawl — starts 00:00 UTC so all regions are fr
 # daytime traffic peaks. Giving it the full night is what guarantees "all
 # regions done by the forenoon".
 #
-# Shared TFT prod-key bucket: the marketvalue timer still fires at 04:00 UTC,
-# so the two overlap ~04:00–09:00 at half-rate. The crawl is sized for that
-# (20h ceiling in the .service). If the overlap ever pushes the crawl past
-# the morning, move marketvalue to start *after* the crawl window instead of
-# stacking both at midnight (stacking would halve throughput the whole run).
+# Shared TFT prod-key bucket: there is NO separate marketvalue timer anymore
+# (metastats-crawler.timer is masked). The marketvalue crawl runs only via
+# OnSuccess= chained to this unit, and Conflicts= in this unit's .service
+# guarantees the two never overlap on the key.
 OnCalendar=*-*-* 00:00:00 UTC
 Persistent=true
 RandomizedDelaySec=300

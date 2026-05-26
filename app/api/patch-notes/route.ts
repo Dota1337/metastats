@@ -60,7 +60,7 @@ export async function GET() {
       baseDate.setDate(baseDate.getDate() - daysToWed);
 
       return {
-        version: `${season}.${patch}`,
+        version: `${year}.${patch}`,
         date: baseDate.toISOString().split('T')[0],
         url,
         highlights: [],

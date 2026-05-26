@@ -347,8 +347,8 @@ export default function TftUnitDetailPage() {
                           <tr className="text-[#7a8aa0] border-b border-[#1e2a3a]">
                             <th className="text-left px-2 py-1.5 font-normal">{t('tft.stars')}</th>
                             <th className="text-left px-2 py-1.5 font-normal">{t('tft.itemsShort')}</th>
-                            <th className="text-left px-2 py-1.5 font-normal" colSpan={2}>P50 — P95</th>
-                            <th className="text-right px-2 py-1.5 font-normal">P95</th>
+                            <th className="text-left px-2 py-1.5 font-normal" colSpan={2}>{t('tft.dmgTypical')}</th>
+                            <th className="text-right px-2 py-1.5 font-normal">{t('tft.dmgPeak')}</th>
                             <th className="text-right px-2 py-1.5 font-normal">{t('tft.gamesShort')}</th>
                           </tr>
                         </thead>

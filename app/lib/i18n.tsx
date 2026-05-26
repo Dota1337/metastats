@@ -78,6 +78,8 @@ const translations = {
   'tft.byStarLevel': t6('Nach Stern-Level', 'By star level', '\uBCC4 \uB808\uBCA8\uBCC4', '\u6309\u661F\u7EA7', 'Por nivel de estrella', 'Par niveau d\u2019\u00E9toile'),
   'tft.starTierAll': t6('Alle', 'All', '\uC804\uCCB4', '\u5168\u90E8', 'Todos', 'Tous'),
   'tft.damageAtlas': t6('Schaden als Carry', 'Damage as Carry', '\uCE90\uB9AC\uB85C\uC11C\uC758 \uB370\uBBF8\uC9C0', '\u4F5C\u4E3A\u6838\u5FC3\u7684\u4F24\u5BB3', 'Da\u00F1o como Carry', 'D\u00E9g\u00E2ts en tant que Carry'),
+  'tft.dmgTypical': t6('Typisch', 'Typical', '\uC77C\uBC18', '\u5178\u578B', 'T\u00EDpico', 'Typique'),
+  'tft.dmgPeak': t6('Spitze', 'Peak', '\uCD5C\uACE0', '\u5CF0\u503C', 'Pico', 'Pic'),
   'tft.carryStrength': t6('Carry-St\u00E4rke', 'Carry Strength', '\uCE90\uB9AC \uC131\uB2A5', '\u6838\u5FC3\u5F3A\u5EA6', 'Fuerza como Carry', 'Puissance en Carry'),
   'tft.carryStrengthCaption': t6(
     '\u00D8-Platzierung & Top-4, wenn diese Unit der Carry ist',

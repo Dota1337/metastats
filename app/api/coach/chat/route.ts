@@ -30,7 +30,7 @@ async function buildPlayerContext(puuid: string, setNumber: number | null): Prom
       .eq('puuid', puuid)
       .eq('queue_id', STANDARD_RANKED_QUEUE)
       .order('game_datetime', { ascending: false })
-      .limit(20);
+      .limit(60);
     if (setNumber != null) q = q.eq('set_number', setNumber);
     const { data: matches } = await q;
     if (!matches || matches.length === 0) return null;

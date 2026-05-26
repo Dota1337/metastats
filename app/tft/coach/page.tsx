@@ -7,7 +7,7 @@ import { useI18n } from '../../lib/i18n';
 
 // AI-Coach (Sprint 7+). Streaming chat with optional player-context
 // injection — pass ?puuid=...&region=... to get advice grounded in the
-// caller's last 20 matches. Falls back to a generic-advice mode when no
+// caller's last 60 matches. Falls back to a generic-advice mode when no
 // puuid is passed or ANTHROPIC_API_KEY isn't set on the server.
 
 interface Message { role: 'user' | 'assistant'; content: string }

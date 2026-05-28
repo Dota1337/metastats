@@ -1,10 +1,13 @@
 #!/usr/bin/env node
 // Syncs the LoL Riot API key across every place we use it.
 // Reads .env.local for:
-//   - RIOT_API_KEY  (LoL — currently a dev key, expires every 24h)
-//   - GH_TOKEN      (PAT with repo:secrets write on Dota1337/metastats)
+//   - RIOT_API_KEY        (LoL — currently a dev key, expires every 24h)
+//   - GH_TOKEN            (PAT with repo:secrets write on Dota1337/metastats)
+//   - HETZNER_REFRESH_URL (used to derive the crawler-box host; HETZNER_HOST overrides)
 // Updates Vercel Production + Development env + GitHub Actions repo secret,
-// then triggers a redeploy.
+// pushes the key to the Hetzner crawler box + kicks its high-elo marketvalue
+// refresh (the only moment the dev key is guaranteed fresh — see
+// metastats-lol-marketvalue.service), then triggers a redeploy.
 //
 // RIOT_API_KEY_TFT (TFT production key) is permanent and intentionally not
 // synced here — it stays as set in Vercel/GitHub.
@@ -12,6 +15,7 @@
 // Usage:
 //   node scripts/refresh-riot-key.mjs
 //   node scripts/refresh-riot-key.mjs --skip-deploy # don't push the empty commit
+//   node scripts/refresh-riot-key.mjs --skip-box    # don't touch the Hetzner box
 
 import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
@@ -132,6 +136,38 @@ function triggerRedeploy() {
   run('git', ['push']);
 }
 
+// Best-effort: push the freshly-validated LoL key to the Hetzner crawler box
+// and kick the high-elo marketvalue refresh. This is the only moment the dev
+// key is guaranteed valid, so it's also the right moment to run the box job
+// (which self-throttles to ~weekly). SSH/host problems must NOT fail the key
+// sync — you might rotate from a machine without box access.
+function syncKeyToHetzner(env, key) {
+  const host = env.HETZNER_HOST
+    || (env.HETZNER_REFRESH_URL ? new URL(env.HETZNER_REFRESH_URL).hostname : null);
+  if (!host) {
+    console.log('      (no HETZNER_HOST / HETZNER_REFRESH_URL in .env.local — skipping box sync)');
+    return;
+  }
+  // RGAPI keys are [A-Za-z0-9-] only, so they're safe inside the sed `#`
+  // expression and the single-quoted printf fallback below.
+  const remote = [
+    'set -e',
+    'f=/etc/metastats-crawler/env',
+    'touch "$f"',
+    `if grep -q '^RIOT_API_KEY=' "$f"; then sed -i 's#^RIOT_API_KEY=.*#RIOT_API_KEY=${key}#' "$f"; else printf 'RIOT_API_KEY=%s\\n' '${key}' >> "$f"; fi`,
+    // --no-block: don't wait out the multi-hour pass; oneshot semantics de-dupe
+    // a concurrent run, and the wrapper self-throttles to ~weekly.
+    'systemctl start --no-block metastats-lol-marketvalue.service',
+    'echo "      box keyed + lol-marketvalue kicked"',
+  ].join('; ');
+  const r = spawnSync('ssh',
+    ['-o', 'ConnectTimeout=12', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=accept-new', `root@${host}`, remote],
+    { stdio: 'inherit' });
+  if (r.status !== 0) {
+    console.log(`      WARN: box sync failed (ssh exit ${r.status ?? r.error?.message ?? '?'}) — Vercel/GitHub keys are updated; box stays on its previous key.`);
+  }
+}
+
 async function main() {
   const env = readEnv();
   const ghToken = env.GH_TOKEN;
@@ -140,8 +176,10 @@ async function main() {
   const present = KEYS.filter(k => env[k.envName] && env[k.envName].startsWith('RGAPI-'));
   if (present.length === 0) throw new Error('No RIOT_API_KEY found in .env.local');
 
+  const SKIP_BOX = process.argv.includes('--skip-box');
+  const boxSteps = SKIP_BOX ? 0 : present.filter(k => k.envName === 'RIOT_API_KEY').length;
   const step = (n, total, msg) => console.log(`[${n}/${total}] ${msg}`);
-  const totalSteps = present.length * 3 + (SKIP_DEPLOY ? 0 : 1);
+  const totalSteps = present.length * 3 + boxSteps + (SKIP_DEPLOY ? 0 : 1);
   let n = 0;
 
   // Phase 1: validate each key against its respective game endpoint
@@ -162,6 +200,15 @@ async function main() {
     step(++n, totalSteps, `Updating GitHub Actions repo secret ${k.secretName}...`);
     await updateGithubSecret(ghToken, k.secretName, env[k.envName]);
     console.log('      OK');
+  }
+
+  // Phase 4: push the validated LoL key to the Hetzner box + kick its high-elo
+  // marketvalue refresh (best-effort; never fails the key sync).
+  if (!SKIP_BOX) {
+    for (const k of present.filter(k => k.envName === 'RIOT_API_KEY')) {
+      step(++n, totalSteps, 'Syncing LoL key to Hetzner box + kicking marketvalue refresh...');
+      syncKeyToHetzner(env, env[k.envName]);
+    }
   }
 
   if (!SKIP_DEPLOY) {

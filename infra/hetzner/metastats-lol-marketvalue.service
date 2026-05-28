@@ -1,0 +1,23 @@
+[Unit]
+Description=metastats LoL high-elo marketvalue refresh (event-driven: kicked by refresh-riot-key.mjs after a key rotation; self-throttled to ~weekly)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+# No timer on purpose: a weekly cron would fire with a >24h-old (expired) LoL
+# dev key. refresh-riot-key.mjs starts this unit right after validating a fresh
+# key; the wrapper self-throttles so it does a real pass at most ~weekly.
+Type=oneshot
+# A full Chall+GM pass across euw1+kr paces ~95s/player and can run several
+# hours; the only real limits are riot-client's per-request timeout + LoL rate
+# limits. Uses RIOT_API_KEY — a separate bucket from RIOT_API_KEY_TFT, so it
+# never contends with the TFT crawls.
+TimeoutStartSec=infinity
+TimeoutStopSec=120
+WorkingDirectory=/opt/metastats-crawler
+EnvironmentFile=/etc/metastats-crawler/env
+ExecStart=/usr/bin/node scripts/lol-marketvalue-weekly.mjs
+StandardOutput=journal
+StandardError=journal
+Nice=10
+IOSchedulingClass=best-effort

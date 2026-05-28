@@ -269,6 +269,7 @@ const translations = {
   'tft.counters': t6('Konter', 'Counters', '\uCE74\uC6B4\uD130', '\u514B\u5236', 'Counters', 'Counters'),
   'tft.beatsBy': t6('schl\u00E4gt mit', 'beats by', '\uC2B9\uB960', '\u80DC\u7387', 'gana con', 'bat avec'),
   'tft.noDataYet': t6('Noch keine Daten', 'No data yet', '\uC544\uC9C1 \uB370\uC774\uD130 \uC5C6\uC74C', '\u6682\u65E0\u6570\u636E', 'A\u00FAn sin datos', 'Pas encore de donn\u00E9es'),
+  'tft.noCompsForSelection': t6('Keine Comps mit ausreichend Spielen f\u00FCr diese Auswahl.', 'No comps with enough games for this selection.', '\uC774 \uC120\uD0DD\uC5D0 \uCDA9\uBD84\uD55C \uAC8C\uC784\uC774 \uC788\uB294 \uB371\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.', '\u8BE5\u7B5B\u9009\u4E0B\u6CA1\u6709\u8DB3\u591F\u5BF9\u5C40\u7684\u9635\u5BB9\u3002', 'No hay composiciones con suficientes partidas para esta selecci\u00F3n.', 'Aucune compo avec assez de parties pour cette s\u00E9lection.'),
   'tft.unit.notFound': t6('Unit nicht gefunden', 'Unit not found', '\uC720\uB2DB\uC744 \uCC3E\uC744 \uC218 \uC5C6\uC74C', '\u672A\u627E\u5230\u5355\u4F4D', 'Unidad no encontrada', 'Unit\u00E9 introuvable'),
   'nav.searchPlayer': t6('Spieler suchen', 'Search player', '\uD50C\uB808\uC774\uC5B4 \uAC80\uC0C9', '\u641C\u7D22\u73A9\u5BB6', 'Buscar jugador', 'Rechercher joueur'),
   'nav.champion': t6('Champion', 'Champion', '\uCC54\uD53C\uC5B8', '\u82F1\u96C4', 'Campe\u00F3n', 'Champion'),

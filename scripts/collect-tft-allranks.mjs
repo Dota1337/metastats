@@ -130,17 +130,39 @@ function parseMatchPatchBase(gameVersion) {
   return m ? `${m[1]}.${m[2]}` : null;
 }
 
-// Resolve a match to the canonical patch label we store. If the parsed
-// game_version matches the current setMeta.latestPatch base (e.g. parsed
-// "15.4" === setMeta "15.4b" base "15.4"), use the full latestPatch with
-// its b/c suffix — Riot's game_version doesn't carry b-patch markers, but
-// our reporting layer expects them. Otherwise fall back to the parsed base.
+// Convert a parsed LoL game_version base ("16.11") into the TFT patch
+// namespace ("17.4") using the (lolPatch ↔ latestPatch) anchor in
+// tft-set.json — the same offset arithmetic as app/lib/tft-patch-label.ts.
+// Riot's Match-V1 game_version reports LoL-side patches, but the whole app
+// (UI, patch filter, "current" resolution) speaks the TFT patch number
+// players see in-game, so we store that. Degrades to the raw LoL base if no
+// anchor is available or the result falls outside the set window.
+function lolBaseToTftBase(lolBase) {
+  const setNumber = setMeta?.setNumber;
+  const anchorLol = parseMatchPatchBase(setMeta?.lolPatch);
+  const anchorTft = parseMatchPatchBase(setMeta?.latestPatch);
+  if (!lolBase || !setNumber || !anchorLol || !anchorTft) return lolBase;
+  const [inMaj, inMin] = lolBase.split('.').map(Number);
+  const [aLolMaj, aLolMin] = anchorLol.split('.').map(Number);
+  const aTftMin = Number(anchorTft.split('.')[1]);
+  if ([inMaj, inMin, aLolMaj, aLolMin, aTftMin].some(Number.isNaN)) return lolBase;
+  if (inMaj === setNumber) return lolBase; // already TFT-shaped
+  const tftMinor = aTftMin + (inMaj - aLolMaj) * 25 + (inMin - aLolMin);
+  if (tftMinor < 0 || tftMinor > 30) return lolBase; // out of set window
+  return `${setNumber}.${tftMinor}`;
+}
+
+// Resolve a match to the canonical (TFT-namespace) patch label we store. If
+// the converted patch equals the current setMeta.latestPatch base, return the
+// full latestPatch with its b/c suffix — Riot's game_version doesn't carry
+// b-patch markers, but our reporting layer expects them.
 function resolvePatch(gameVersion, currentPatch) {
   const parsed = parseMatchPatchBase(gameVersion);
   if (!parsed) return currentPatch || 'unknown';
+  const tft = lolBaseToTftBase(parsed);
   const currentBase = currentPatch?.match(/^(\d+\.\d+)/)?.[1];
-  if (parsed === currentBase) return currentPatch;
-  return parsed;
+  if (tft === currentBase) return currentPatch;
+  return tft;
 }
 
 // Pre-fetch the set of TFT pro PUUIDs so the aggregator can flag matches
@@ -327,12 +349,10 @@ async function main() {
     }
   }
 
-  // Pick the patch with the most matches as the "primary" snapshot. Strict
-  // `patch === CURRENT_PATCH` was unreliable: Riot's Match-V1 game_version
-  // reports LoL-side patches ("16.10") while setMeta tracks TFT-side ones
-  // ("17.3") — strict equality never matched and the JSON snapshot went
-  // stale. Heaviest-patch-wins handles both single-patch and mixed-patch
-  // boundary days cleanly.
+  // Pick the patch with the most matches as the "primary" snapshot. Patches
+  // are already normalized to the TFT namespace by resolvePatch, but a
+  // mid-window patch boundary still yields two patches for one day —
+  // heaviest-patch-wins picks the dominant one for the JSON snapshot.
   const finalizedByPatch = new Map();
   for (const [patch, agg] of aggsByPatch) {
     finalizedByPatch.set(patch, finalize(agg, { minUnitGames: 5, minItemGames: 5, minAugmentGames: 5 }));

@@ -75,13 +75,25 @@ export interface PatchInfo {
 
 let _patchCache: { ts: number; rows: PatchInfo[] } | null = null;
 
+// A freshly-released patch surfaces here on its first (usually partial) crawl
+// day with only a few thousand games — far too thin for the comp view's
+// per-cluster min-games threshold, so the page rendered "Noch keine Daten" for
+// the ~1 partial day after every patch drop. Drop patches below this volume so
+// "current"/"previous" + the patch dropdown resolve to the newest ESTABLISHED
+// patch. total_matches = sum(comp games) from get_tft_available_patches; a full
+// crawl day is ~250k while a partial patch-drop day is ~10k.
+const PATCH_MIN_GAMES = 100_000;
+
 export async function getAvailablePatches(days = 30): Promise<PatchInfo[]> {
   // 5-min in-process cache. Patches don't change mid-day.
   if (_patchCache && Date.now() - _patchCache.ts < 5 * 60 * 1000) {
     return _patchCache.rows;
   }
-  const rows = await callRpc<PatchInfo[]>('get_tft_available_patches', { p_days: days });
-  _patchCache = { ts: Date.now(), rows: rows || [] };
+  const rows = (await callRpc<PatchInfo[]>('get_tft_available_patches', { p_days: days })) || [];
+  // Never return empty: if every patch is below the floor (e.g. right after a
+  // set launch) keep the raw list so the page still shows the best available.
+  const established = rows.filter(r => Number(r.total_matches) >= PATCH_MIN_GAMES);
+  _patchCache = { ts: Date.now(), rows: established.length > 0 ? established : rows };
   return _patchCache.rows;
 }
 

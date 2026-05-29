@@ -159,6 +159,26 @@ export async function writeTftStatsToSupabase(opts) {
   await upsertRows('tft_daily_trait_stats', traitRows,
     'region,bucket,patch,set_number,day,name,activation');
 
+  // 5b) Traits by actual unit count (overcapping signal — migration 0025)
+  const traitUcRows = [];
+  for (const [name, counts] of Object.entries(payload.byTraitUnitCount || {})) {
+    for (const [ucKey, buckets] of Object.entries(counts)) {
+      const numUnits = Number(ucKey);
+      if (Number.isNaN(numUnits)) continue;
+      for (const bucket of PERSIST_BUCKETS) {
+        const b = buckets[bucket];
+        if (!b || !b.games) continue;
+        traitUcRows.push({
+          ...baseRow, bucket, name, num_units: numUnits,
+          games: b.games, sum_placement: b.sumPlacement, top4: b.top4,
+        });
+      }
+    }
+  }
+  log(`  [supabase] trait_unitcount_stats: ${traitUcRows.length} rows`);
+  await upsertRows('tft_daily_trait_unitcount_stats', traitUcRows,
+    'region,bucket,patch,set_number,day,name,num_units');
+
   // 6) Comps — with jsonb typical_units / augments / carry items
   const compRows = [];
   for (const [clusterKey, buckets] of Object.entries(payload.byComp || {})) {

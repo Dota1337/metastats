@@ -1466,6 +1466,19 @@ const translations = {
     '\uD65C\uC131\uD654 \uACE1\uC120', '\u6FC0\u6D3B\u66F2\u7EBF',
     'Curva de activaci\u00F3n', 'Courbe d\'activation'
   ),
+  'tft.trait.unitCountCurve': t6(
+    '\u00D8-Platzierung pro Unit-Anzahl', 'Avg placement by unit count',
+    '\uC720\uB2DB \uC218\uBCC4 \uD3C9\uADE0 \uC21C\uC704', '\u6309\u5355\u4F4D\u6570\u7684\u5E73\u5747\u540D\u6B21',
+    'Posici\u00F3n media por n\u00BA de unidades', 'Classement moyen par nombre d\'unit\u00E9s'
+  ),
+  'tft.trait.unitCountHint': t6(
+    'Lohnt sich Overcapping? Mehr Units desselben Traits als der Breakpoint verlangt.',
+    'Does overcapping help? More units of the trait than the breakpoint needs.',
+    '\uC624\uBC84\uCEA1\uC774 \uB3C4\uC6C0\uC774 \uB420\uAE4C\uC694? \uBE0C\uB808\uC774\uD06C\uD3EC\uC778\uD2B8\uBCF4\uB2E4 \uB9CE\uC740 \uC720\uB2DB.',
+    '\u53E0\u6EE1\u662F\u5426\u6709\u76CA\uFF1F\u540C\u7279\u8D28\u5355\u4F4D\u6570\u8D85\u8FC7\u6FC0\u6D3B\u70B9\u3002',
+    '\u00BFVale la pena sobrepasar? M\u00E1s unidades del rasgo de las que pide el breakpoint.',
+    'Le surplus paie-t-il ? Plus d\'unit\u00E9s du trait que le palier n\'exige.'
+  ),
   'tft.trait.bestUnits': t6(
     'Beste Units mit diesem Trait', 'Best Units With This Trait',
     '\uC774 \uC2DC\uB108\uC9C0\uB97C \uAC00\uC9C4 \uCD5C\uACE0 \uC720\uB2DB', '\u62E5\u6709\u6B64\u7F81\u7ECA\u7684\u6700\u4F73\u5355\u4F4D',

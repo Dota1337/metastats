@@ -65,6 +65,7 @@ export function emptyAggregate() {
     byItem: new Map(),     // apiName -> Map<bucket, ItemBucket>
     byAugment: new Map(),  // apiName -> Map<slotKey, Map<bucket, AugmentBucket>>
     byTrait: new Map(),    // traitName -> Map<activation, Map<bucket, TraitBucket>>
+    byTraitUnitCount: new Map(), // traitName -> Map<num_units, Map<bucket, TraitBucket>> — overcapping signal
     byComp: new Map(),     // clusterKey -> Map<bucket, CompBucket>
     byCompPair: new Map(), // "a||b" sorted -> { games, aBetter } — for counter edges
     participantsByBucket: new Map(), // bucket -> count (matches × 8). Exact denominator
@@ -406,6 +407,24 @@ export function aggregateMatch(rawMatch, agg, opts) {
         tb.sumPlacement += placement;
         if (top4) tb.top4++;
       }
+      // Per ACTUAL unit count (num_units) — "does overcapping help?". Same
+      // dual-bucket pattern, keyed by the real unit count rather than the
+      // activated breakpoint (tier_current). num_units lives on the raw trait
+      // object and was previously unused by any aggregation.
+      const numUnits = Number(t.num_units ?? 0);
+      if (numUnits > 0) {
+        const ucBuckets = getOrCreate(
+          getOrCreate(agg.byTraitUnitCount, t.name, () => new Map()),
+          String(numUnits),
+          () => new Map(),
+        );
+        for (const bucket of buckets) {
+          const tb = getOrCreate(ucBuckets, bucket, newTraitBucket);
+          tb.games++;
+          tb.sumPlacement += placement;
+          if (top4) tb.top4++;
+        }
+      }
     }
 
     // Per comp cluster — same dual-bucket pattern. typicalUnits / augments /
@@ -589,6 +608,7 @@ export function finalize(agg, opts = {}) {
   for (const buckets of agg.byItem.values())     rollUp(buckets);
   for (const slotMap of agg.byAugment.values())  for (const buckets of slotMap.values()) rollUp(buckets);
   for (const actMap  of agg.byTrait.values())    for (const buckets of actMap.values())  rollUp(buckets);
+  for (const ucMap   of agg.byTraitUnitCount.values()) for (const buckets of ucMap.values()) rollUp(buckets);
   for (const buckets of agg.byComp.values())     rollUp(buckets);
 
   // Roll up participants per bucket into 'all' and 'master_plus' so the
@@ -615,6 +635,7 @@ export function finalize(agg, opts = {}) {
     byItem: {},
     byAugment: {},
     byTrait: {},
+    byTraitUnitCount: {},
     byComp: {},
     compPairs: [],
   };
@@ -748,6 +769,16 @@ export function finalize(agg, opts = {}) {
       for (const [bucket, b] of buckets) {
         if (b.games < minAugmentGames) continue;
         out.byTrait[trait][act][bucket] = { games: b.games, sumPlacement: b.sumPlacement, top4: b.top4 };
+      }
+    }
+  }
+  for (const [trait, ucMap] of agg.byTraitUnitCount) {
+    out.byTraitUnitCount[trait] = {};
+    for (const [nu, buckets] of ucMap) {
+      out.byTraitUnitCount[trait][nu] = {};
+      for (const [bucket, b] of buckets) {
+        if (b.games < minAugmentGames) continue;
+        out.byTraitUnitCount[trait][nu][bucket] = { games: b.games, sumPlacement: b.sumPlacement, top4: b.top4 };
       }
     }
   }

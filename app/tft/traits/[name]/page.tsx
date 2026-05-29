@@ -63,6 +63,7 @@ export default function TftTraitDetailPage() {
   const [traitStats, setTraitStats] = useState<TraitStat[]>([]);
   const [units, setUnits] = useState<UnitStat[]>([]);
   const [comps, setComps] = useState<any[]>([]);
+  const [unitCount, setUnitCount] = useState<{ numUnits: number; games: number; avgPlacement: number | null; top4Rate: number | null }[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
@@ -74,7 +75,8 @@ export default function TftTraitDetailPage() {
       fetch(`/api/tft/traits?region=${region}&bucket=${bucket}`).then(r => r.json()).catch(() => ({ traits: [] })),
       fetch(`/api/tft/units?region=${region}&bucket=${bucket}`).then(r => r.json()).catch(() => ({ units: [] })),
       fetch(`/api/tft/comps?region=${region === 'all' ? 'euw1' : region}&bucket=${bucket}&days=3&patch=current&source=data`).then(r => r.json()).catch(() => ({ comps: [] })),
-    ]).then(([traitData, unitData, compData]) => {
+      fetch(`/api/tft/trait-unitcount?name=${encodeURIComponent(apiName)}&region=${region}&bucket=${bucket}`).then(r => r.json()).catch(() => ({ points: [] })),
+    ]).then(([traitData, unitData, compData, ucData]) => {
       if (cancelled) return;
       const allTraits = (traitData.traits || []) as TraitStat[];
       // When the route param is a display name (e.g. "Stargazer"), the API
@@ -112,6 +114,7 @@ export default function TftTraitDetailPage() {
         })
         .slice(0, 6);
       setComps(compsList);
+      setUnitCount(ucData?.points || []);
       setLoading(false);
     });
     return () => { cancelled = true; };
@@ -352,6 +355,37 @@ export default function TftTraitDetailPage() {
             </div>
           );
         })()}
+
+        {/* num_units curve (migration 0025) — avg placement by ACTUAL unit
+            count = "does overcapping this trait help?". Green line, reversed Y
+            (up = better). Hidden until the crawl fills trait_unitcount_stats. */}
+        {!loading && unitCount.length >= 2 && (
+          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-5">
+            <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-1">{t('tft.trait.unitCountCurve')}</div>
+            <div className="text-[#7a8aa0] text-[11px] mb-3">{t('tft.trait.unitCountHint')}</div>
+            <div style={{ width: '100%', height: 200 }}>
+              <ResponsiveContainer>
+                <LineChart
+                  data={unitCount.map(p => ({ label: String(p.numUnits), avgPlacement: p.avgPlacement, top4: p.top4Rate != null ? p.top4Rate * 100 : null, games: p.games }))}
+                  margin={{ top: 8, right: 12, left: -8, bottom: 4 }}
+                >
+                  <XAxis dataKey="label" tick={{ fill: '#5a6a80', fontSize: 11 }} axisLine={{ stroke: '#1e2a3a' }} tickLine={false} />
+                  <YAxis domain={['dataMin - 0.2', 'dataMax + 0.2']} reversed tick={{ fill: '#5a6a80', fontSize: 10 }} axisLine={false} tickLine={false} width={36} tickFormatter={(v: any) => Number(v).toFixed(1)} />
+                  <ReferenceLine y={4.5} stroke="#5a6a80" strokeDasharray="3 3" strokeOpacity={0.4} />
+                  <RechartsTooltip
+                    contentStyle={{ backgroundColor: '#0d1526', border: '1px solid #1e2a3a', borderRadius: 4, fontSize: 11 }}
+                    labelStyle={{ color: '#a0b0c5' }}
+                    formatter={(v: any, _n: any, item: any) => {
+                      const p = item?.payload;
+                      return [`Ø ${Number(v).toFixed(2)}${p?.top4 != null ? ` · ${p.top4.toFixed(0)}% T4` : ''}${p?.games != null ? ` · ${p.games} ${t('tft.gamesShort')}` : ''}`, t('tft.avgPlacement')];
+                    }}
+                  />
+                  <Line type="monotone" dataKey="avgPlacement" stroke="#3ecf8e" strokeWidth={2} dot={{ r: 4, fill: '#3ecf8e' }} activeDot={{ r: 6, fill: '#6ee7b7' }} connectNulls />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
 
         {/* Per-tier stats table */}
         {!loading && traitStats.length > 0 && (

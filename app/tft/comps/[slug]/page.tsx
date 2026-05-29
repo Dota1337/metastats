@@ -30,6 +30,11 @@ export default function TftCompDetailPage() {
   const params = useParams();
   const search = useSearchParams();
   const slug = decodeURIComponent(String(params?.slug || ''));
+  // Region from the URL — the comps list passes ?region=… in the href and its
+  // default is 'all'. Was hardcoded to 'euw1', which made the detail show
+  // "no data" for any comp with <30 games in euw1 but popular across all
+  // regions (list aggregated all regions, detail only queried euw1).
+  const region = search.get('region') || 'all';
   const [bucket, setBucket] = useState<TierBucket>((search.get('bucket') as TierBucket) || 'master_plus');
   const [comp, setComp] = useState<any | null | undefined>(undefined);
   const [proComp, setProComp] = useState<any | null>(null);
@@ -44,21 +49,21 @@ export default function TftCompDetailPage() {
     // Pull the normal-bucket comp + the pro-pool variant in parallel so the
     // "Pro vs Solo Queue" section lights up as soon as both arrive.
     Promise.all([
-      fetch(`/api/tft/comps?region=euw1&bucket=${bucket}&slug=${encodeURIComponent(slug)}`).then(r => r.json()),
+      fetch(`/api/tft/comps?region=${region}&bucket=${bucket}&slug=${encodeURIComponent(slug)}`).then(r => r.json()),
       fetch(`/api/tft/comps?region=all&bucket=pro_pool&slug=${encodeURIComponent(slug)}&minGames=5`).then(r => r.ok ? r.json() : { comp: null }),
     ]).then(([normal, pro]) => {
       setHasData(!!normal.hasData);
       setComp(normal.comp || null);
       setProComp(pro.comp || null);
     }).catch(() => { setHasData(false); setComp(null); });
-  }, [bucket, slug]);
+  }, [bucket, slug, region]);
 
   // Pull augment-by-slot stats so we can show each typical augment's likely
   // offer slot (2-1 / 3-2 / 4-2). Done in parallel with the comp fetch so
   // the slot pills land as the comp data renders.
   useEffect(() => {
     Promise.all([0, 1, 2].map(slot =>
-      fetch(`/api/tft/augments?region=euw1&bucket=${bucket}&slot=${slot}`)
+      fetch(`/api/tft/augments?region=${region}&bucket=${bucket}&slot=${slot}`)
         .then(r => r.ok ? r.json() : { augments: [] })
         .then(d => ({ slot, augments: (d.augments || []) as AugmentRow[] }))
         .catch(() => ({ slot, augments: [] as AugmentRow[] }))
@@ -72,7 +77,7 @@ export default function TftCompDetailPage() {
       }
       setAugmentSlotMap(map);
     });
-  }, [bucket]);
+  }, [bucket, region]);
 
   return (
     <main className="min-h-screen bg-[#0e1525]">

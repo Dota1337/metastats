@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Fragment } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis,
@@ -268,55 +268,57 @@ export default function TftUnitDetailPage() {
               })()}
 
               {(() => {
-                // Carry-Strength: avg placement + Top-4 when this unit is the
-                // carry, per star·item. Replaces the player-HP "damage atlas"
-                // (TFT API has no per-unit combat damage). Renders once the
-                // aggregator re-run has populated carryPlacementByTier.
+                // Carry-Strength heatmap: avg placement when this unit is the
+                // carry, per star × item-count. Cell colour = performance
+                // (green better → red worse). Replaces the player-HP "damage
+                // atlas" (TFT API has no per-unit combat damage). Renders once
+                // the aggregator has populated carryPlacementByTier.
                 const perf = data.carryPlacementByTier;
                 if (!perf || Object.keys(perf).length === 0) return null;
                 const tiers = Object.keys(perf).sort();
+                const icSet = new Set<number>();
+                for (const tr of tiers) for (const ic of Object.keys(perf[tr] || {})) icSet.add(Number(ic));
+                const itemCounts = [...icSet].filter(n => Number.isFinite(n)).sort((a, b) => a - b);
+                if (itemCounts.length === 0) return null;
+                // Map avg placement → hue: 3.0 (great) green, 5.5 (poor) red.
+                const colorFor = (place: number | null) => {
+                  if (place == null) return '#0d1526';
+                  const c = Math.max(3.0, Math.min(5.5, place));
+                  const hue = Math.round(140 * (1 - (c - 3.0) / 2.5));
+                  return `hsl(${hue}, 50%, 30%)`;
+                };
                 return (
                   <Section title={t('tft.carryStrength')}>
                     <div className="text-[#7a8aa0] text-[11px] mb-2">{t('tft.carryStrengthCaption')}</div>
-                    <div className="bg-[#141c2e] border border-[#1e2a3a] rounded overflow-hidden">
-                      <table className="w-full text-[11px] tabular-nums">
-                        <thead>
-                          <tr className="text-[#7a8aa0] border-b border-[#1e2a3a]">
-                            <th className="text-left px-2 py-1.5 font-normal">{t('tft.stars')}</th>
-                            <th className="text-left px-2 py-1.5 font-normal">{t('tft.itemsShort')}</th>
-                            <th className="text-right px-2 py-1.5 font-normal">{t('tft.carryAvgPlace')}</th>
-                            <th className="text-left px-2 py-1.5 font-normal" colSpan={2}>Top-4</th>
-                            <th className="text-right px-2 py-1.5 font-normal">{t('tft.gamesShort')}</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {tiers.flatMap(tier => {
-                            const bins = perf[tier] || {};
-                            const counts = Object.keys(bins).sort().reverse();
-                            return counts.map(ic => {
-                              const e = bins[ic];
-                              const t4 = e.top4Rate != null ? e.top4Rate * 100 : 0;
-                              const place = e.avgPlacement;
-                              // Lower placement = better → green; ~mid = amber; high = red.
-                              const placeColor = place == null ? '#a0b0c5' : place <= 3.5 ? '#3ecf8e' : place <= 4.5 ? '#e0c75a' : '#e07a5a';
+                    <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3 overflow-x-auto">
+                      <div
+                        className="inline-grid gap-1 text-[11px] tabular-nums min-w-full"
+                        style={{ gridTemplateColumns: `auto repeat(${itemCounts.length}, minmax(2.6rem, 1fr))` }}
+                      >
+                        <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest pr-2 flex items-end">{t('tft.itemsShort')} →</div>
+                        {itemCounts.map(ic => (
+                          <div key={`h-${ic}`} className="text-[#a0b0c5] text-center pb-0.5">{ic}</div>
+                        ))}
+                        {tiers.map(tier => (
+                          <Fragment key={tier}>
+                            <div className="text-white pr-2 flex items-center whitespace-nowrap"><span className="text-[#e0c75a]">★</span>{tier}</div>
+                            {itemCounts.map(ic => {
+                              const e = perf[tier]?.[String(ic)];
+                              const place = e?.avgPlacement ?? null;
                               return (
-                                <tr key={`${tier}-${ic}`} className="border-b border-[#1e2a3a]/50 last:border-0">
-                                  <td className="px-2 py-1.5 text-white"><span className="text-[#e0c75a]">★</span>{tier}</td>
-                                  <td className="px-2 py-1.5 text-[#a0b0c5]">{ic}</td>
-                                  <td className="px-2 py-1.5 text-right font-medium" style={{ color: placeColor }}>{place != null ? place.toFixed(2) : '—'}</td>
-                                  <td className="px-2 py-1.5 text-right text-[#3ecf8e] w-12">{e.top4Rate != null ? `${t4.toFixed(0)}%` : '—'}</td>
-                                  <td className="px-2 py-1.5 w-32">
-                                    <div className="relative h-2 bg-[#0d1526] rounded overflow-hidden">
-                                      <div className="absolute h-full left-0 bg-[#3ecf8e]" style={{ width: `${Math.min(100, t4).toFixed(0)}%` }} />
-                                    </div>
-                                  </td>
-                                  <td className="px-2 py-1.5 text-right text-[#7a8aa0]">{e.games}</td>
-                                </tr>
+                                <div
+                                  key={`${tier}-${ic}`}
+                                  className="rounded text-center py-2 text-white"
+                                  style={{ backgroundColor: colorFor(place) }}
+                                  title={e ? `${tier}★ · ${ic} ${t('tft.itemsShort')} · Ø ${place?.toFixed(2)} · ${e.top4Rate != null ? `${(e.top4Rate * 100).toFixed(0)}% T4` : '—'} · ${e.games} ${t('tft.gamesShort')}` : undefined}
+                                >
+                                  {place != null ? place.toFixed(2) : '·'}
+                                </div>
                               );
-                            });
-                          })}
-                        </tbody>
-                      </table>
+                            })}
+                          </Fragment>
+                        ))}
+                      </div>
                     </div>
                   </Section>
                 );
@@ -341,6 +343,7 @@ export default function TftUnitDetailPage() {
                 }
                 return (
                   <Section title={t('tft.damageAtlas')}>
+                    <div className="text-[#7a8aa0] text-[11px] mb-2">{t('tft.damageAtlasCaption')}</div>
                     <div className="bg-[#141c2e] border border-[#1e2a3a] rounded overflow-hidden">
                       <table className="w-full text-[11px] tabular-nums">
                         <thead>

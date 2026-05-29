@@ -77,7 +77,15 @@ const translations = {
   'tft.topBuilds': t6('Top Item-Builds', 'Top Item Builds', '\uCD5C\uACE0 \uC544\uC774\uD15C \uBE4C\uB4DC', '\u6700\u4F73\u51FA\u88C5', 'Mejores Builds', 'Meilleurs Builds'),
   'tft.byStarLevel': t6('Nach Stern-Level', 'By star level', '\uBCC4 \uB808\uBCA8\uBCC4', '\u6309\u661F\u7EA7', 'Por nivel de estrella', 'Par niveau d\u2019\u00E9toile'),
   'tft.starTierAll': t6('Alle', 'All', '\uC804\uCCB4', '\u5168\u90E8', 'Todos', 'Tous'),
-  'tft.damageAtlas': t6('Schaden als Carry', 'Damage as Carry', '\uCE90\uB9AC\uB85C\uC11C\uC758 \uB370\uBBF8\uC9C0', '\u4F5C\u4E3A\u6838\u5FC3\u7684\u4F24\u5BB3', 'Da\u00F1o como Carry', 'D\u00E9g\u00E2ts en tant que Carry'),
+  'tft.damageAtlas': t6('Spieler-HP-Schaden als Carry', 'Player-HP damage as carry', '\uCE90\uB9AC\uC758 \uD50C\uB808\uC774\uC5B4 HP \uD53C\uD574', '\u4F5C\u4E3A\u6838\u5FC3\u5BF9\u73A9\u5BB6\u751F\u547D\u7684\u4F24\u5BB3', 'Da\u00F1o a vida de jugadores como Carry', 'D\u00E9g\u00E2ts aux PV joueurs en Carry'),
+  'tft.damageAtlasCaption': t6(
+    'HP-Schaden an Mitspielern (kein Unit-Combat-Schaden) \u2014 dem Carry zugeordnet',
+    'HP damage to other players (not unit combat damage) \u2014 attributed to the carry',
+    '\uB2E4\uB978 \uD50C\uB808\uC774\uC5B4 HP\uC5D0 \uAC00\uD55C \uD53C\uD574 (\uC720\uB2DB \uC804\uD22C \uD53C\uD574 \uC544\uB2D8) \u2014 \uCE90\uB9AC\uC5D0 \uADC0\uC18D',
+    '\u5BF9\u5176\u4ED6\u73A9\u5BB6\u751F\u547D\u503C\u7684\u4F24\u5BB3\uFF08\u975E\u5355\u4F4D\u6218\u6597\u4F24\u5BB3\uFF09\u2014 \u5F52\u4E8E\u6838\u5FC3',
+    'Da\u00F1o a la vida de otros jugadores (no da\u00F1o de combate de unidades) \u2014 atribuido al carry',
+    'D\u00E9g\u00E2ts aux PV des autres joueurs (pas les d\u00E9g\u00E2ts de combat des unit\u00E9s) \u2014 attribu\u00E9s au carry'
+  ),
   'tft.dmgTypical': t6('Typisch', 'Typical', '\uC77C\uBC18', '\u5178\u578B', 'T\u00EDpico', 'Typique'),
   'tft.dmgPeak': t6('Spitze', 'Peak', '\uCD5C\uACE0', '\u5CF0\u503C', 'Pico', 'Pic'),
   'tft.carryStrength': t6('Carry-St\u00E4rke', 'Carry Strength', '\uCE90\uB9AC \uC131\uB2A5', '\u6838\u5FC3\u5F3A\u5EA6', 'Fuerza como Carry', 'Puissance en Carry'),
@@ -1313,6 +1321,9 @@ const translations = {
   ),
   'tft.patchWinners.winners': t6('Aufsteiger', 'Winners', '상승', '上升', 'Ganadores', 'Gagnants'),
   'tft.patchWinners.losers': t6('Absteiger', 'Losers', '하락', '下降', 'Perdedores', 'Perdants'),
+  'tft.patchWinners.swingChart': t6('Größte Veränderungen', 'Biggest swings', '가장 큰 변화', '最大变动', 'Mayores cambios', 'Plus grands écarts'),
+  'tft.patchWinners.swing': t6('Ø-Platzierungs-Schwung', 'Avg-placement swing', '평균 순위 변화', '平均名次变动', 'Cambio de posición media', 'Variation du classement moyen'),
+  'tft.patchWinners.swingHint': t6('Rechts/grün = verbessert · Links/rot = verschlechtert', 'Right/green = improved · Left/red = worse', '오른쪽/녹색 = 개선 · 왼쪽/빨강 = 악화', '右/绿=变强 · 左/红=变弱', 'Derecha/verde = mejoró · Izquierda/rojo = empeoró', 'Droite/vert = amélioré · Gauche/rouge = pire'),
   'tft.patchWinners.empty': t6(
     'Noch keine Patch-Vergleichsdaten — der vorherige Patch wird nach 2 Tagen Daten sichtbar.',
     'No patch comparison data yet — previous patch appears after ~2 days of data.',
@@ -1449,6 +1460,11 @@ const translations = {
     'Statistiken pro Stufe', 'Stats Per Tier',
     '\uB2E8\uACC4\uBCC4 \uD1B5\uACC4', '\u9636\u6BB5\u7EDF\u8BA1',
     'Estad\u00EDsticas por Nivel', 'Statistiques par niveau'
+  ),
+  'tft.trait.activationCurve': t6(
+    'Aktivierungskurve', 'Activation curve',
+    '\uD65C\uC131\uD654 \uACE1\uC120', '\u6FC0\u6D3B\u66F2\u7EBF',
+    'Curva de activaci\u00F3n', 'Courbe d\'activation'
   ),
   'tft.trait.bestUnits': t6(
     'Beste Units mit diesem Trait', 'Best Units With This Trait',

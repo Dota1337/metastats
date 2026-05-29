@@ -4,6 +4,10 @@ import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
 import { loadTftAssets, tftChampionTileUrl, tftIconUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import {
+  ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis,
+  ReferenceLine, Tooltip as RechartsTooltip,
+} from 'recharts';
 
 type Entity = 'unit' | 'item' | 'trait';
 const ENTITIES: Entity[] = ['unit', 'item', 'trait'];
@@ -113,6 +117,42 @@ export default function TftPatchWinnersPage() {
         </div>
 
         {loading && <div className="text-[#a0b0c5] text-center py-8">…</div>}
+
+        {!loading && (winners.length > 0 || losers.length > 0) && (() => {
+          // Diverging swing chart: top movers on a shared zero-axis. swing =
+          // −Δavg-placement, so improvement (lower placement) points right/green
+          // and regression points left/red — the at-a-glance "what shifted".
+          const top = [...winners.slice(0, 8), ...losers.slice(0, 8)];
+          const rows = top
+            .map(e => ({ key: e.key, name: renderEntity(e.key, entity, assets).name, swing: Number((-e.deltaAvgPlacement).toFixed(3)) }))
+            .sort((a, b) => b.swing - a.swing);
+          if (rows.length === 0) return null;
+          const max = Math.max(0.05, ...rows.map(r => Math.abs(r.swing)));
+          return (
+            <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-4">
+              <div className="text-[#a0b0c5] text-[10px] uppercase tracking-widest mb-2">{t('tft.patchWinners.swingChart')}</div>
+              <div style={{ width: '100%', height: rows.length * 22 + 12 }}>
+                <ResponsiveContainer>
+                  <BarChart data={rows} layout="vertical" margin={{ top: 0, right: 12, bottom: 0, left: 12 }}>
+                    <XAxis type="number" domain={[-max, max]} hide />
+                    <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 10, fill: '#a0b0c5' }} axisLine={false} tickLine={false} />
+                    <ReferenceLine x={0} stroke="#33445c" />
+                    <RechartsTooltip
+                      cursor={{ fill: 'rgba(123,97,255,0.08)' }}
+                      contentStyle={{ backgroundColor: '#0d1526', border: '1px solid #1e2a3a', borderRadius: 6, fontSize: 12 }}
+                      labelStyle={{ color: '#a0b0c5' }}
+                      formatter={(v: any) => [`${Number(v) >= 0 ? '+' : '−'}${Math.abs(Number(v)).toFixed(2)} Ø`, t('tft.patchWinners.swing')]}
+                    />
+                    <Bar dataKey="swing" radius={[2, 2, 2, 2]} barSize={11}>
+                      {rows.map(r => <Cell key={r.key} fill={r.swing >= 0 ? '#3ecf8e' : '#e44040'} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="text-[#5a6a80] text-[9px] mt-1">{t('tft.patchWinners.swingHint')}</div>
+            </div>
+          );
+        })()}
 
         {!loading && (winners.length > 0 || losers.length > 0) && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

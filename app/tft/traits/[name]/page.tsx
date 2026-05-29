@@ -13,6 +13,10 @@ import {
   stripStargazerPreamble,
   findArbiterOptions,
 } from '../../../lib/tft-trait-desc';
+import {
+  ResponsiveContainer, LineChart, Line, XAxis, YAxis,
+  ReferenceLine, Tooltip as RechartsTooltip,
+} from 'recharts';
 
 // Per-trait detail page. Combines three data sources:
 //   1) /api/tft/traits — stat rows (1 per activation level)
@@ -306,6 +310,44 @@ export default function TftTraitDetailPage() {
                     ))}
                   </ul>
                 </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Activation curve — avg placement per breakpoint. The activation
+            levels form a natural curve; Y is reversed so "up = better". */}
+        {!loading && traitStats.length >= 2 && (() => {
+          const chartData = traitStats
+            .map(s => ({
+              label: String(s.activation),
+              avgPlacement: s.avgPlacement,
+              top4: s.top4Rate != null ? s.top4Rate * 100 : null,
+              games: s.games,
+            }))
+            .filter(d => d.avgPlacement != null);
+          if (chartData.length < 2) return null;
+          return (
+            <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-5">
+              <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.trait.activationCurve')}</div>
+              <div style={{ width: '100%', height: 200 }}>
+                <ResponsiveContainer>
+                  <LineChart data={chartData} margin={{ top: 8, right: 12, left: -8, bottom: 4 }}>
+                    <XAxis dataKey="label" tick={{ fill: '#5a6a80', fontSize: 11 }} axisLine={{ stroke: '#1e2a3a' }} tickLine={false} />
+                    <YAxis domain={['dataMin - 0.2', 'dataMax + 0.2']} reversed tick={{ fill: '#5a6a80', fontSize: 10 }} axisLine={false} tickLine={false} width={36} tickFormatter={(v: any) => Number(v).toFixed(1)} />
+                    <ReferenceLine y={4.5} stroke="#5a6a80" strokeDasharray="3 3" strokeOpacity={0.4} />
+                    <RechartsTooltip
+                      contentStyle={{ backgroundColor: '#0d1526', border: '1px solid #1e2a3a', borderRadius: 4, fontSize: 11 }}
+                      labelStyle={{ color: '#a0b0c5' }}
+                      labelFormatter={(l: any) => `${t('tft.activation')}: ${l}`}
+                      formatter={(v: any, _n: any, item: any) => {
+                        const p = item?.payload;
+                        return [`Ø ${Number(v).toFixed(2)}${p?.top4 != null ? ` · ${p.top4.toFixed(0)}% T4` : ''}${p?.games != null ? ` · ${p.games} ${t('tft.gamesShort')}` : ''}`, t('tft.avgPlacement')];
+                      }}
+                    />
+                    <Line type="monotone" dataKey="avgPlacement" stroke="#7B61FF" strokeWidth={2} dot={{ r: 4, fill: '#7B61FF' }} activeDot={{ r: 6, fill: '#a892ff' }} />
+                  </LineChart>
+                </ResponsiveContainer>
               </div>
             </div>
           );

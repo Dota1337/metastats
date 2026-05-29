@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callRpc, getAvailablePatches, REGION_GROUPS, BUCKET_GROUPS } from '../../../lib/tft-supabase-reader';
+import { cachedJson } from '../../../lib/api-cache';
 
 // /api/tft/unit-history?characterId=X&patches=5&bucket=master_plus
 // Per-unit avg_placement / pick_rate / top4 across last N patches.
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
 
   const allPatches = await getAvailablePatches(180);
   const patches = allPatches.slice(0, patchCount);
-  if (patches.length === 0) return NextResponse.json({ characterId, timeline: [] });
+  if (patches.length === 0) return cachedJson({ characterId, timeline: [] });
 
   const timeline: any[] = [];
   for (const p of patches) {
@@ -66,5 +67,5 @@ export async function GET(request: NextRequest) {
   // and first_day can tie across overlapping patches (16.9 and 16.10 both
   // start 05-12), so last_day is the reliable key for "current = rightmost".
   timeline.sort((a, b) => (a.lastDay < b.lastDay ? -1 : a.lastDay > b.lastDay ? 1 : 0));
-  return NextResponse.json({ characterId, timeline });
+  return cachedJson({ characterId, timeline });
 }

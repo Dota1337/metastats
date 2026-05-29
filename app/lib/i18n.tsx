@@ -199,6 +199,21 @@ const translations = {
   'tft.player.proSpecialty': t6('Pro-Spezialisierung & Signature-Builds', 'Pro Specialty & Signature Builds', '\uD504\uB85C \uC804\uBB38\uD654 & \uC2DC\uADF8\uB2C8\uCC98 \uBE4C\uB4DC', '\u804C\u4E1A\u73A9\u5BB6\u4E13\u7CBE & \u6807\u5FD7\u6027\u51FA\u88C5', 'Especialidad Pro y Builds firma', 'Sp\u00E9cialit\u00E9 Pro & Builds signature'),
   'tft.player.signatureComps': t6('Lieblings-Comps', 'Favourite comps', '\uC120\uD638 \uC870\uD569', '\u5E38\u7528\u9635\u5BB9', 'Comps preferidas', 'Comps favorites'),
   'tft.player.signatureBuilds': t6('Signature-Item-Builds', 'Signature item builds', '\uC2DC\uADF8\uB2C8\uCC98 \uC544\uC774\uD15C \uBE4C\uB4DC', '\u6807\u5FD7\u6027\u51FA\u88C5', 'Builds firma', 'Builds signature'),
+  'tft.player.seasonProfile': t6('Saison-Profil', 'Season Profile', '\uC2DC\uC98C \uD504\uB85C\uD544', '\u8D5B\u5B63\u6982\u51B5', 'Perfil de temporada', 'Profil de saison'),
+  'tft.player.consistency': t6('Konstanz', 'Consistency', '\uC77C\uAD00\uC131', '\u7A33\u5B9A\u6027', 'Constancia', 'R\u00E9gularit\u00E9'),
+  'tft.player.consistency.tip': t6('Standardabweichung der Platzierung \u2014 niedriger = konstanter', 'Placement standard deviation \u2014 lower is more consistent', '\uC21C\uC704 \uD45C\uC900\uD3B8\uCC28 \u2014 \uB0AE\uC744\uC218\uB85D \uC77C\uAD00\uC801', '\u540D\u6B21\u6807\u51C6\u5DEE \u2014 \u8D8A\u4F4E\u8D8A\u7A33\u5B9A', 'Desviaci\u00F3n est\u00E1ndar de posici\u00F3n \u2014 menor es m\u00E1s constante', '\u00C9cart-type du classement \u2014 plus bas = plus r\u00E9gulier'),
+  'tft.player.bestStreak': t6('Beste Top-4-Serie', 'Best Top-4 streak', '\uCD5C\uACE0 \uD1B14 \uC5F0\uC18D', '\u6700\u4F73\u524D\u56DB\u8FDE\u573A', 'Mejor racha Top-4', 'Meilleure s\u00E9rie Top-4'),
+  'tft.player.bestStreak.tip': t6('L\u00E4ngste Serie aufeinanderfolgender Top-4-Platzierungen', 'Longest run of consecutive Top-4 finishes', '\uC5F0\uC18D \uD1B14 \uCD5C\uC7A5 \uAE30\uB85D', '\u8FDE\u7EED\u8FDB\u5165\u524D\u56DB\u7684\u6700\u957F\u7EAA\u5F55', 'Racha m\u00E1s larga de Top-4 consecutivos', 'Plus longue s\u00E9rie de Top-4 cons\u00E9cutifs'),
+  'tft.player.uniqueComps': t6('Gespielte Comps', 'Unique comps', '\uD50C\uB808\uC774\uD55C \uC870\uD569 \uC218', '\u4F7F\u7528\u9635\u5BB9\u6570', 'Comps \u00FAnicas', 'Comps uniques'),
+  'tft.player.uniqueComps.tip': t6('Anzahl verschiedener Comps diese Saison', 'Number of distinct comps this season', '\uC774\uBC88 \uC2DC\uC98C \uD50C\uB808\uC774\uD55C \uC11C\uB85C \uB2E4\uB978 \uC870\uD569 \uC218', '\u672C\u8D5B\u5B63\u4F7F\u7528\u7684\u4E0D\u540C\u9635\u5BB9\u6570\u91CF', 'N\u00FAmero de comps distintas esta temporada', 'Nombre de comps distinctes cette saison'),
+  'tft.player.dominantShare': t6('Main-Comp-Anteil', 'Main-comp share', '\uC8FC\uB825 \uC870\uD569 \uBE44\uC911', '\u4E3B\u529B\u9635\u5BB9\u5360\u6BD4', 'Comp principal %', 'Part comp principale'),
+  'tft.player.dominantShare.tip': t6('Anteil der Spiele in der meistgespielten Comp', 'Share of games in the most-played comp', '\uAC00\uC7A5 \uB9CE\uC774 \uD55C \uC870\uD569\uC758 \uAC8C\uC784 \uBE44\uC911', '\u6700\u5E38\u7528\u9635\u5BB9\u7684\u5BF9\u5C40\u5360\u6BD4', 'Porcentaje de partidas en la comp m\u00E1s jugada', 'Part des parties dans la comp la plus jou\u00E9e'),
+  'tft.player.metaPickShare': t6('Meta-Anteil', 'Meta share', '\uBA54\uD0C0 \uBE44\uC911', '\u7248\u672C\u5F3A\u52BF\u5360\u6BD4', 'Cuota meta', 'Part m\u00E9ta'),
+  'tft.player.metaPickShare.tip': t6('Anteil der Spiele in aktuell starken Meta-Comps', 'Share of games in currently strong meta comps', '\uD604\uC7AC \uAC15\uD55C \uBA54\uD0C0 \uC870\uD569 \uBE44\uC911', '\u5F53\u524D\u5F3A\u52BF\u7248\u672C\u9635\u5BB9\u5360\u6BD4', 'Porcentaje de partidas en comps meta fuertes', 'Part des parties dans les comps m\u00E9ta fortes'),
+  'tft.player.itemSlam': t6('Item-Effizienz', 'Item efficiency', '\uC544\uC774\uD15C \uD6A8\uC728', '\u88C5\u5907\u6548\u7387', 'Eficiencia de \u00EDtems', 'Efficacit\u00E9 objets'),
+  'tft.player.itemSlam.tip': t6('Wie oft empfohlene BiS-Items gebaut wurden', 'How often recommended BiS items were built', '\uAD8C\uC7A5 BiS \uC544\uC774\uD15C \uC81C\uC791 \uBE48\uB3C4', '\u6253\u9020\u63A8\u8350BiS\u88C5\u5907\u7684\u9891\u7387', 'Con qu\u00E9 frecuencia se construyeron \u00EDtems BiS recomendados', 'Fr\u00E9quence de construction des objets BiS recommand\u00E9s'),
+  'tft.player.bottom4Rate': t6('Bottom-4-Quote', 'Bottom-4 rate', '\uD558\uC704 4\uC704 \uBE44\uC728', '\u540E\u56DB\u7387', 'Tasa Bottom-4', 'Taux Bottom-4'),
+  'tft.player.bottom4Rate.tip': t6('Anteil der Spiele mit Platzierung 5\u20138', 'Share of games finishing 5th\u20138th', '5~8\uC704\uB85C \uB05D\uB09C \uAC8C\uC784 \uBE44\uC728', '\u540D\u52175-8\u540D\u7684\u5BF9\u5C40\u5360\u6BD4', 'Porcentaje de partidas en puestos 5.\u00BA\u20138.\u00BA', 'Part des parties termin\u00E9es 5e\u20138e'),
   'tft.compsWithUnit': t6('Comps mit dieser Unit', 'Comps with this unit', '\uC774 \uC720\uB2DB\uC744 \uC0AC\uC6A9\uD558\uB294 \uC870\uD569', '\u4F7F\u7528\u8BE5\u82F1\u96C4\u7684\u9635\u5BB9', 'Comps con esta unidad', 'Comps avec cette unit\u00E9'),
   'tft.sortBy': t6('Sortieren', 'Sort by', '\uC815\uB82C', '\u6392\u5E8F', 'Ordenar', 'Trier par'),
   'tft.compsWithItem': t6('Comps mit diesem Item', 'Comps with this item', '\uC774 \uC544\uC774\uD15C\uC744 \uC0AC\uC6A9\uD558\uB294 \uC870\uD569', '\u4F7F\u7528\u8BE5\u88C5\u5907\u7684\u9635\u5BB9', 'Comps con este \u00EDtem', 'Comps avec cet objet'),
@@ -821,6 +836,16 @@ const translations = {
     'Marktwert-Berechnung', 'Market Value Calculation',
     '\uC2DC\uC7A5 \uAC00\uCE58 \uACC4\uC0B0', '\u5E02\u573A\u4EF7\u503C\u8BA1\u7B97',
     'C\u00E1lculo de Valor de Mercado', 'Calcul de valeur de march\u00E9'
+  ),
+  'tft.marketValue.contributions': t6(
+    'Beitrag zum Skill-Score', 'Skill-score contributions',
+    '\uC2A4\uD0AC \uC810\uC218 \uAE30\uC5EC\uB3C4', '\u6280\u672F\u5206\u8D21\u732E',
+    'Aportes al skill-score', 'Contributions au skill-score'
+  ),
+  'tft.marketValue.contribution': t6(
+    'Beitrag', 'Contribution',
+    '\uAE30\uC5EC\uB3C4', '\u8D21\u732E',
+    'Aporte', 'Contribution'
   ),
   'tft.marketValue.methodologyIntro': t6(
     'Basiswert {base} aus Tier + LP, multipliziert durch:',

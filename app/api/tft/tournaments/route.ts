@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../lib/supabase';
+import { cachedJson } from '../../../lib/api-cache';
 
 // /api/tft/tournaments
 //   List: optional status/region/tier/set filters via query params.
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabase.rpc('get_tft_tournament_detail', { p_id: slug });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     const row = (data || [])[0] || null;
-    return NextResponse.json({ tournament: row });
+    return cachedJson({ tournament: row });
   }
 
   const status = searchParams.get('status');
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({
+  return cachedJson({
     tournaments: data || [],
     count: data?.length || 0,
   });

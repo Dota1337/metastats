@@ -92,6 +92,20 @@ interface PlayerStats {
   topUnits?: { characterId: string; games: number; avgPlacement: number; top4Rate: number }[];
   topAugments?: { apiName: string; games: number; avgPlacement: number; top4Rate: number }[];
   topTraits?: { key: string; games: number; avgPlacement: number; top4Rate: number }[];
+  statsSource?: string;
+  // Precomputed season-depth metrics from tft_player_season_stats (Hetzner).
+  // Present in both the cached-match path (enrichment) and the no-cache
+  // fallback. null when the player has no season row yet.
+  seasonAggregate?: {
+    sampleSize: number;
+    bottom4Rate: number;
+    placementStddev: number;
+    bestTop4Streak: number;
+    uniqueComps: number;
+    dominantShare: number;
+    metaPickShare: number;
+    itemSlamScore: number;
+  } | null;
 }
 
 const TIER_COLORS: Record<string, string> = {
@@ -458,6 +472,8 @@ function SeasonStats({
             <Stat label={t('tft.gamesShort')} value={String(stats.totalMatches)} />
           </div>
 
+          {stats.seasonAggregate && <SeasonProfile agg={stats.seasonAggregate} />}
+
           {/* Top units: 3 column-blocks across the card's full width, each
               block holding 5 chips top-to-bottom (1-5 / 6-10 / 11-15). */}
           {stats.topUnits && stats.topUnits.length > 0 && (
@@ -501,12 +517,37 @@ function SeasonStats({
             </div>
           )}
 
-          {/* Play-style: radar + placement histogram + raw averages */}
-          {stats.scores && stats.placementDistribution && stats.averages && (
+          {/* Play-style: radar + placement histogram + raw averages.
+              Guard on a real score key — the season_aggregate fallback path
+              returns scores:{} (no per-match detail), and rendering the radar
+              from that would draw NaN axes / all-zero bars (fake data). */}
+          {stats.scores && Object.keys(stats.scores).length > 0 && stats.placementDistribution && stats.averages && (
             <PlayStyle scores={stats.scores} dist={stats.placementDistribution} avgs={stats.averages} />
           )}
         </>
       )}
+    </div>
+  );
+}
+
+// Season-depth profile — the metrics the Hetzner crawler precomputes into
+// tft_player_season_stats but that the page never surfaced. All real,
+// already-populated values; renders only when seasonAggregate is present.
+function SeasonProfile({ agg }: { agg: NonNullable<PlayerStats['seasonAggregate']> }) {
+  const { t } = useI18n();
+  const pct = (v: number) => `${(v * 100).toFixed(0)}%`;
+  return (
+    <div className="mb-5">
+      <div className="text-[#a0b0c5] text-[10px] uppercase tracking-widest mb-2">{t('tft.player.seasonProfile')}</div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+        <MiniStat label={t('tft.player.consistency')}   value={`±${agg.placementStddev.toFixed(2)}`} title={t('tft.player.consistency.tip')} />
+        <MiniStat label={t('tft.player.bestStreak')}     value={String(agg.bestTop4Streak)} title={t('tft.player.bestStreak.tip')} />
+        <MiniStat label={t('tft.player.uniqueComps')}    value={String(agg.uniqueComps)} title={t('tft.player.uniqueComps.tip')} />
+        <MiniStat label={t('tft.player.dominantShare')}  value={pct(agg.dominantShare)} title={t('tft.player.dominantShare.tip')} />
+        <MiniStat label={t('tft.player.metaPickShare')}  value={pct(agg.metaPickShare)} title={t('tft.player.metaPickShare.tip')} />
+        <MiniStat label={t('tft.player.itemSlam')}       value={pct(agg.itemSlamScore)} title={t('tft.player.itemSlam.tip')} />
+        <MiniStat label={t('tft.player.bottom4Rate')}    value={pct(agg.bottom4Rate)} title={t('tft.player.bottom4Rate.tip')} />
+      </div>
     </div>
   );
 }
@@ -646,10 +687,10 @@ function PlayStyle({ scores, dist, avgs }: { scores: NonNullable<PlayerStats['sc
   );
 }
 
-function MiniStat({ label, value }: { label: string; value: string }) {
+function MiniStat({ label, value, title }: { label: string; value: string; title?: string }) {
   return (
-    <div className="bg-[#0a0e1a] border border-[#1e2a3a] rounded px-2 py-1.5">
-      <div className="text-[#a0b0c5] text-[9px] uppercase tracking-widest">{label}</div>
+    <div className="bg-[#0a0e1a] border border-[#1e2a3a] rounded px-2 py-1.5" title={title}>
+      <div className={`text-[#a0b0c5] text-[9px] uppercase tracking-widest${title ? ' cursor-help' : ''}`}>{label}</div>
       <div className="text-white text-sm font-medium mt-0.5">{value}</div>
     </div>
   );

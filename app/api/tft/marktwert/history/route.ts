@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
+import { cachedJson } from '../../../../lib/api-cache';
 
 // /api/tft/marktwert/history?puuid=...&region=euw1&days=30
 // /api/tft/marktwert/history?puuid=...&region=euw1&from=2026-04-15
@@ -55,5 +56,5 @@ export async function GET(request: NextRequest) {
     }))
     .reverse();
 
-  return NextResponse.json({ region, puuid, days, series });
+  return cachedJson({ region, puuid, days, series });
 }

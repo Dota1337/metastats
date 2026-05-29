@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip as RechartsTooltip } from 'recharts';
+import { ResponsiveContainer, LineChart, Line, BarChart, Bar, Cell, ReferenceLine, XAxis, YAxis, Tooltip as RechartsTooltip } from 'recharts';
 import { useI18n, LOCALE_MAP, type Lang } from '../../lib/i18n';
 import SetTimeline, { type SetInfo } from './SetTimeline';
 import Link from 'next/link';
@@ -327,6 +327,13 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
           <div className="text-[#a0b0c5] text-xs mb-3">
             {t('tft.marketValue.methodologyIntro').replace('{base}', formatEuro(mv.baseValue, lang))}
           </div>
+
+          {/* Diverging contribution chart — each signal's signed share (w·z/Σw)
+              of the skill score. Green pulls the multiplier above 1.0, red below.
+              Makes the multiplier composition legible at a glance before the
+              detailed rows below. */}
+          <ContributionChart agents={mv.agents} />
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-xs">
             {[...mv.agents]
               .filter(s => s && s.signal)   // skip legacy-shape rows during the transition day
@@ -377,6 +384,59 @@ const SIGNAL_LABEL_KEYS: Record<string, string> = {
   gameSense:     'tft.marketValue.agent.gameSense',
   boardStrength: 'tft.marketValue.agent.boardStrength',
 };
+
+// Diverging horizontal bar chart of every available signal's signed
+// contribution (w·z/Σw). Sorted strongest-positive → strongest-negative;
+// green bars push the multiplier above 1.0, red below. Hidden when fewer
+// than two signals are available (nothing to compare).
+function ContributionChart({ agents }: { agents: SkillSignal[] }) {
+  const { t } = useI18n();
+  const rows = [...agents]
+    .filter(s => s && s.signal && s.available)
+    .sort((a, b) => b.contribution - a.contribution)
+    .map(s => ({
+      signal: s.signal,
+      name: SIGNAL_LABEL_KEYS[s.signal] ? t(SIGNAL_LABEL_KEYS[s.signal] as any) : s.signal,
+      value: Number(s.contribution.toFixed(3)),
+    }));
+  if (rows.length < 2) return null;
+  // Symmetric domain so the zero line sits dead-centre and bar lengths are
+  // comparable left vs right. Floor at 0.05 so a near-flat profile doesn't
+  // get amplified into misleadingly long bars.
+  const max = Math.max(0.05, ...rows.map(r => Math.abs(r.value)));
+  return (
+    <div className="mb-4">
+      <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest mb-1.5">{t('tft.marketValue.contributions')}</div>
+      <div style={{ height: rows.length * 26 + 6 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={rows} layout="vertical" margin={{ top: 0, right: 10, bottom: 0, left: 10 }}>
+            <XAxis type="number" domain={[-max, max]} hide />
+            <YAxis
+              type="category"
+              dataKey="name"
+              width={104}
+              tick={{ fontSize: 11, fill: '#a0b0c5' }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <ReferenceLine x={0} stroke="#33445c" />
+            <RechartsTooltip
+              cursor={{ fill: 'rgba(123,97,255,0.08)' }}
+              contentStyle={{ backgroundColor: '#0d1526', border: '1px solid #1e2a3a', borderRadius: 6, fontSize: 12 }}
+              labelStyle={{ color: '#a0b0c5' }}
+              formatter={(v: any) => [`${Number(v) >= 0 ? '+' : ''}${Number(v).toFixed(2)}`, t('tft.marketValue.contribution')]}
+            />
+            <Bar dataKey="value" radius={[2, 2, 2, 2]} barSize={12}>
+              {rows.map(r => (
+                <Cell key={r.signal} fill={r.value >= 0 ? '#3ecf8e' : '#e44040'} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
 
 // One row of the skill-score breakdown: weight, z-score + detail, and the
 // signed contribution (w·z/Σw) to the overall skill score.

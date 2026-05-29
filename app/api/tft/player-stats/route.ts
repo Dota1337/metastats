@@ -94,6 +94,34 @@ export async function GET(request: NextRequest) {
     console.warn('rank-history backfill error:', e);
   }
 
+  // Season aggregate — depth metrics the Hetzner crawler precomputes into
+  // tft_player_season_stats (consistency, streaks, comp diversity, meta/item
+  // discipline). These can't be cheaply recomputed from the per-match cache
+  // (meta_pick_share / item_slam_score / dominant_share need the knowledge
+  // graph + comp classification), so we read the precomputed row and surface
+  // it as `seasonAggregate` alongside the live numbers. Used by both the
+  // cached-match path (enrichment) and the no-cache fallback (headline source).
+  const { data: seasonRow } = await supabase
+    .from('tft_player_season_stats')
+    .select('sample_size, avg_placement, top4_rate, top1_rate, bottom4_rate, placement_stddev, best_top4_streak, unique_comps, dominant_share, meta_pick_share, item_slam_score')
+    .eq('puuid', puuid)
+    .eq('region', region)
+    .eq('set_number', targetSet)
+    .maybeSingle();
+
+  const seasonAggregate = seasonRow && seasonRow.sample_size > 0
+    ? {
+        sampleSize: seasonRow.sample_size,
+        bottom4Rate: Number(seasonRow.bottom4_rate) || 0,
+        placementStddev: Number(seasonRow.placement_stddev) || 0,
+        bestTop4Streak: Number(seasonRow.best_top4_streak) || 0,
+        uniqueComps: Number(seasonRow.unique_comps) || 0,
+        dominantShare: Number(seasonRow.dominant_share) || 0,
+        metaPickShare: Number(seasonRow.meta_pick_share) || 0,
+        itemSlamScore: Number(seasonRow.item_slam_score) || 0,
+      }
+    : null;
+
   if (cached.length === 0) {
     // Fallback path: the new Hetzner-side crawler writes to the Hetzner
     // Postgres match cache, not to Supabase. For players who've only been
@@ -102,14 +130,6 @@ export async function GET(request: NextRequest) {
     // tft_player_season_stats row holds every aggregate the compare /
     // player pages need. Return that instead of an empty hasStats:false
     // payload so the UI can still render the headline numbers.
-    const { data: seasonRow } = await supabase
-      .from('tft_player_season_stats')
-      .select('sample_size, avg_placement, top4_rate, top1_rate, bottom4_rate, placement_stddev, best_top4_streak, unique_comps, dominant_share, meta_pick_share, item_slam_score')
-      .eq('puuid', puuid)
-      .eq('region', region)
-      .eq('set_number', targetSet)
-      .maybeSingle();
-
     if (seasonRow && seasonRow.sample_size > 0) {
       return NextResponse.json({
         hasStats: true,
@@ -124,6 +144,7 @@ export async function GET(request: NextRequest) {
         avgPlacement: Number(seasonRow.avg_placement) || 0,
         top4Rate: Number(seasonRow.top4_rate) || 0,
         top1Rate: Number(seasonRow.top1_rate) || 0,
+        seasonAggregate,
         // No per-match data → distribution + averages + top units unavailable
         placementDistribution: [0, 0, 0, 0, 0, 0, 0, 0],
         averages: { level: 0, goldLeft: 0, eliminations: 0, damage: 0, lastRound: 0 },
@@ -249,6 +270,7 @@ export async function GET(request: NextRequest) {
     avgPlacement,
     top4Rate: top4 / games,
     top1Rate: top1 / games,
+    seasonAggregate,
     placementDistribution: placementCounts,
     averages: {
       level: avgLevel,

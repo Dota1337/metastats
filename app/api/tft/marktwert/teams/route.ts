@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
+import { cachedJson } from '../../../../lib/api-cache';
 
 // /api/tft/marktwert/teams?region=euw1&limit=20
 //
@@ -29,5 +30,5 @@ export async function GET(request: NextRequest) {
     roster: row.roster || [],
   }));
 
-  return NextResponse.json({ region: regionParam, count: teams.length, teams });
+  return cachedJson({ region: regionParam, count: teams.length, teams });
 }

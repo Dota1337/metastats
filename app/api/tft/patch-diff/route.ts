@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callRpc, getAvailablePatches, BUCKET_GROUPS } from '../../../lib/tft-supabase-reader';
+import { cachedJson } from '../../../lib/api-cache';
 
 // /api/tft/patch-diff?patch=17.2&prev=17.1&entity=unit|item|trait
 //
@@ -52,7 +53,7 @@ export async function GET(request: NextRequest) {
   try {
     const patches = await getAvailablePatches(180);
     if (patches.length === 0) {
-      return NextResponse.json({ hasData: false, winners: [], losers: [], patches: [], reason: 'no_patches' });
+      return cachedJson({ hasData: false, winners: [], losers: [], patches: [], reason: 'no_patches' });
     }
     const currentPatch = searchParams.get('patch') || patches[0].patch;
     const previousPatch = searchParams.get('prev') || (patches[1]?.patch ?? null);
@@ -60,7 +61,7 @@ export async function GET(request: NextRequest) {
       // Single-patch state — the pipeline hasn't accumulated a previous
       // version yet. Return the current entity stats so the UI can show
       // them as a "current only" baseline.
-      return NextResponse.json({
+      return cachedJson({
         hasData: false, winners: [], losers: [],
         patches, currentPatch, previousPatch: null, reason: 'single_patch',
       });
@@ -108,7 +109,7 @@ export async function GET(request: NextRequest) {
     const winners = [...diffs].sort((a, b) => a.deltaAvgPlacement - b.deltaAvgPlacement).slice(0, 15);
     const losers  = [...diffs].sort((a, b) => b.deltaAvgPlacement - a.deltaAvgPlacement).slice(0, 15);
 
-    return NextResponse.json({
+    return cachedJson({
       hasData: diffs.length > 0,
       currentPatch,
       previousPatch,

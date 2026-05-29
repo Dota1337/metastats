@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
+import { cachedJson } from '../../../../lib/api-cache';
 
 // /api/tft/marktwert/movers?region=euw1&direction=up|down&window=7&limit=20
 //
@@ -46,5 +47,5 @@ export async function GET(request: NextRequest) {
     deltaPct: Number(row.delta_pct),
   }));
 
-  return NextResponse.json({ region, direction, window: window_, count: movers.length, movers });
+  return cachedJson({ region, direction, window: window_, count: movers.length, movers });
 }

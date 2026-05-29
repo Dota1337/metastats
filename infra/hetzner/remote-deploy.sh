@@ -4,6 +4,19 @@
 # to origin/main. The box is a pure CONSUMER of main; it never pushes. Crawled
 # data flows box -> Supabase separately and is untouched here.
 #
+# Two sync modes (the box crawls almost 24/7 — daily all-ranks ~13h + the
+# chained marketvalue crawl — so an "only deploy when idle" rule starves the
+# box and it silently drifts dozens of commits behind, e.g. d22f441 stuck for
+# days in May 2026):
+#   * crawl running  -> CODE-ONLY sync: `git reset --hard origin/main` only.
+#                       Safe because an in-flight crawl already has its scripts
+#                       loaded in memory; the updated files take effect on the
+#                       NEXT scheduled run. We deliberately skip `git clean`,
+#                       `npm ci` and timer restarts — all of which can disrupt
+#                       a running crawl (wiping node_modules / untracked outputs).
+#   * idle           -> FULL sync: reset (+ clean fallback) + npm ci on lock
+#                       change + timer re-arm, as before.
+#
 # Systemd unit files (infra/hetzner/*.timer|*.service) are NOT applied here —
 # they are sensitive and change rarely. Apply unit changes manually:
 #   scp infra/hetzner/<unit> root@<host>:/etc/systemd/system/ && systemctl daemon-reload
@@ -12,14 +25,9 @@ set -euo pipefail
 cd /opt/metastats-crawler
 git fetch origin --quiet
 
-# Never pull files / run npm ci out from under an in-flight crawl: a freshly
-# spawned per-region child re-reads scripts from disk, and npm ci wipes
-# node_modules. Skip cleanly and let a later run (workflow_dispatch once idle)
-# apply the change.
-#
-# NOTE: the crawls are Type=oneshot, so while running they sit in state
-# "activating" (NOT "active"). `is-active --quiet` returns false for
-# "activating", so we must match both states explicitly.
+# Crawls are Type=oneshot, so while running they sit in state "activating"
+# (NOT "active"). `is-active --quiet` returns false for "activating", so match
+# every in-flight state explicitly.
 crawl_running() {
   local u state
   for u in metastats-crawler.service metastats-daily-crawl.service; do
@@ -31,14 +39,35 @@ crawl_running() {
   done
   return 1
 }
+
+before=$(sha1sum package-lock.json 2>/dev/null | cut -d' ' -f1 || true)
+
+# Hard-sync tracked files to main. Plain reset first; if an untracked file would
+# be clobbered by a now-tracked file, stash the blockers (preserved, NOT
+# deleted — no `git clean`) and retry. Safe to run mid-crawl.
+sync_code() {
+  git reset --hard origin/main 2>/dev/null || {
+    echo "untracked collision — stashing blockers (recoverable via 'git stash list')"
+    git stash push -u --quiet -m "auto pre-reset $(date -u +%FT%TZ)" || true
+    git reset --hard origin/main
+  }
+}
+
 if active=$(crawl_running); then
-  echo "WARN: a crawl is running ($active) — skipping sync. Re-run via workflow_dispatch once idle."
+  # CODE-ONLY: update files for the next run; leave the live crawl, deps and
+  # timers untouched.
+  echo "crawl running ($active) — code-only sync (no clean / npm ci / restart)"
+  sync_code
+  after=$(sha1sum package-lock.json 2>/dev/null | cut -d' ' -f1 || true)
+  if [ "$before" != "$after" ]; then
+    echo "WARN: package-lock.json changed — npm ci deferred (unsafe mid-crawl). Re-run via workflow_dispatch once idle."
+  fi
+  echo "Code-synced $(git rev-parse --short HEAD) on $(hostname) at $(date -u +%FT%TZ) (crawl active; deps/timers not touched)"
   exit 0
 fi
 
-before=$(sha1sum package-lock.json 2>/dev/null | cut -d' ' -f1 || true)
-# Hard-sync to main. The fallback clears stray untracked files (e.g. scripts
-# that predate their commit) only if they would block the reset.
+# IDLE: full sync. The clean fallback clears stray untracked files only when
+# they would block the reset.
 git reset --hard origin/main || { git clean -fd; git reset --hard origin/main; }
 after=$(sha1sum package-lock.json 2>/dev/null | cut -d' ' -f1 || true)
 
@@ -61,4 +90,4 @@ fi
 # is masked on the box; keep it out of this list.
 systemctl restart metastats-daily-crawl.timer metastats-companion-backfill.timer
 
-echo "Deployed $(git rev-parse --short HEAD) on $(hostname) at $(date -u +%FT%TZ)"
+echo "Deployed $(git rev-parse --short HEAD) on $(hostname) at $(date -u +%FT%TZ) (full sync)"

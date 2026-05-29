@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
 
     if (snap) {
       return NextResponse.json({
-        summoner: { name: `${account.gameName}#${account.tagLine}`, puuid, tier: snap.tier, rank: snap.rank, lp: snap.lp },
+        summoner: { name: `${account.gameName}#${account.tagLine}`, puuid, tier: snap.tier, rank: snap.rank, lp: snap.lp, ladderRank: snap.ladder_rank ?? null },
         marketValue: {
           baseValue: snap.base_value,
           multiplier: Number(snap.multiplier),
@@ -162,7 +162,7 @@ export async function GET(request: NextRequest) {
   }
 
   return NextResponse.json({
-    summoner: { name: `${account.gameName}#${account.tagLine}`, puuid, tier: ranked?.tier, rank: ranked?.rank, lp: ranked?.leaguePoints ?? null },
+    summoner: { name: `${account.gameName}#${account.tagLine}`, puuid, tier: ranked?.tier, rank: ranked?.rank, lp: ranked?.leaguePoints ?? null, ladderRank: ladderRank ?? null },
     marketValue,
     source: 'live',
     region,

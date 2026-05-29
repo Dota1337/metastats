@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import {
-  ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis,
+  ResponsiveContainer, ComposedChart, AreaChart, Area, Bar, Line, XAxis, YAxis,
   Tooltip as RechartsTooltip, ReferenceLine, Cell,
 } from 'recharts';
 import Nav from '../../../components/Nav';
@@ -213,23 +213,47 @@ export default function TftCompDetailPage() {
                       })()}
                     </div>
                   )}
-                  {comp.levelingTempo && comp.levelingTempo.length > 0 && (
-                    <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3">
-                      <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest mb-1.5">{t('tft.comp.levelTempo')}</div>
-                      <div className="space-y-1">
-                        {comp.levelingTempo.filter((p: any) => p.share != null && p.share >= 0.05).map((p: any) => (
-                          <div key={p.level} className="flex items-center gap-2 text-[11px] tabular-nums">
-                            <span className="text-white w-6">Lvl {p.level}</span>
-                            <div className="flex-1 h-1.5 bg-[#1e2a3a] rounded overflow-hidden">
-                              <div className="h-full bg-[#7B61FF]" style={{ width: `${Math.min(100, (p.share || 0) * 100 * 2)}%` }} />
-                            </div>
-                            <span className="text-[#a0b0c5] w-10 text-right">{((p.share || 0) * 100).toFixed(0)}%</span>
-                            <span className="text-[#7a8aa0] w-12 text-right">{p.avgLastRound != null ? formatStage(p.avgLastRound) : '—'}</span>
-                          </div>
-                        ))}
+                  {comp.levelingTempo && comp.levelingTempo.length > 0 && (() => {
+                    // Tempo curve: share of games ending at each final level.
+                    // The peak shows where this comp typically tops out; the
+                    // tooltip carries the avg death-round per level.
+                    const pts = (comp.levelingTempo as { level: number; share: number | null; avgLastRound: number | null }[])
+                      .filter(p => p.share != null);
+                    if (pts.length === 0) return null;
+                    const chartData = pts.map(p => ({
+                      level: `Lvl ${p.level}`,
+                      share: Math.round((p.share || 0) * 100),
+                      avgLastRound: p.avgLastRound,
+                    }));
+                    return (
+                      <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3">
+                        <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest mb-1.5">{t('tft.comp.levelTempo')}</div>
+                        <div style={{ width: '100%', height: 132 }}>
+                          <ResponsiveContainer>
+                            <AreaChart data={chartData} margin={{ top: 4, right: 6, left: -26, bottom: 0 }}>
+                              <defs>
+                                <linearGradient id="tempoFill" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="0%" stopColor="#7B61FF" stopOpacity={0.5} />
+                                  <stop offset="100%" stopColor="#7B61FF" stopOpacity={0.05} />
+                                </linearGradient>
+                              </defs>
+                              <XAxis dataKey="level" tick={{ fill: '#5a6a80', fontSize: 9 }} axisLine={{ stroke: '#1e2a3a' }} tickLine={false} interval={0} />
+                              <YAxis tick={{ fill: '#5a6a80', fontSize: 9 }} axisLine={false} tickLine={false} width={30} tickFormatter={(v: any) => `${v}%`} />
+                              <RechartsTooltip
+                                contentStyle={{ backgroundColor: '#0d1526', border: '1px solid #1e2a3a', borderRadius: 4, fontSize: 11 }}
+                                labelStyle={{ color: '#a0b0c5' }}
+                                formatter={(value: any, _name: any, item: any) => {
+                                  const alr = item?.payload?.avgLastRound;
+                                  return [`${value}%${alr != null ? ` · Ø ${formatStage(alr)}` : ''}`, t('tft.comp.levelShare')];
+                                }}
+                              />
+                              <Area type="monotone" dataKey="share" stroke="#7B61FF" strokeWidth={2} fill="url(#tempoFill)" />
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
               </section>
             )}
@@ -356,6 +380,20 @@ export default function TftCompDetailPage() {
                 </section>
               );
             })()}
+
+            {/* Matchups — counter edges from the comp-pair table. Beats /
+                even (45–55% coin-flips) / loses-to, each linking to the
+                opponent comp. Previously computed by the API but never shown. */}
+            {comp.counters && ((comp.counters.beats?.length ?? 0) + (comp.counters.even?.length ?? 0) + (comp.counters.losesTo?.length ?? 0)) > 0 && (
+              <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
+                <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.matchups')}</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <MatchupColumn title={t('tft.comp.beats')}   color="#3ecf8e" edges={comp.counters.beats}   assets={assets} bucket={bucket} t={t} />
+                  <MatchupColumn title={t('tft.comp.even')}    color="#a0b0c5" edges={comp.counters.even}    assets={assets} bucket={bucket} t={t} />
+                  <MatchupColumn title={t('tft.comp.losesTo')} color="#e44040" edges={comp.counters.losesTo} assets={assets} bucket={bucket} t={t} />
+                </div>
+              </section>
+            )}
 
             {/* Top Item-Sets pro Carry — extends what CompCard only teased
                 inline. Each set shows its 3 items + relative pick share. */}
@@ -514,6 +552,55 @@ function parseClusterKey(key: string): { trait: string; level: number; carry: st
   const m = /^(.+)@(\d+)_(.+)$/.exec(key);
   if (!m) return null;
   return { trait: m[1], level: Number(m[2]), carry: m[3] };
+}
+
+interface CounterEdge { opponent: string; games: number; winRate: number }
+
+// One matchup column (beats / even / loses-to). Each edge links to the
+// opponent comp's page and shows this comp's win-rate vs it + sample size.
+function MatchupColumn({ title, color, edges, assets, bucket, t }: {
+  title: string;
+  color: string;
+  edges?: CounterEdge[];
+  assets: TftAssetsBundle | null;
+  bucket: string;
+  t: (k: any) => string;
+}) {
+  return (
+    <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3">
+      <div className="text-[10px] uppercase tracking-widest mb-2" style={{ color }}>{title}</div>
+      {!edges || edges.length === 0 ? (
+        <div className="text-[#7a8aa0] text-[10px] py-1">{t('tft.comp.noMatchupData')}</div>
+      ) : (
+        <div className="space-y-1.5">
+          {edges.map(e => {
+            const parts = parseClusterKey(e.opponent);
+            const traitName = parts && assets ? (assets.traits[parts.trait]?.name || parts.trait.replace(/^TFT\d+_/, '')) : '';
+            const carry = parts && assets ? assets.champions[parts.carry] : null;
+            const url = tftChampionTileUrl(assets, carry);
+            const label = carry?.name || (parts ? parts.carry.replace(/^TFT\d+_/, '') : e.opponent);
+            return (
+              <a
+                key={e.opponent}
+                href={`/tft/comps/${encodeURIComponent(e.opponent)}?bucket=${bucket}`}
+                title={`${traitName} · ${label}`}
+                className="flex items-center gap-2 hover:opacity-80 transition"
+              >
+                {url ? (
+                  <img src={url} alt="" className="w-6 h-6 rounded border border-[#c39bff]/50 flex-shrink-0" />
+                ) : (
+                  <div className="w-6 h-6 rounded bg-[#1e2a3a] flex-shrink-0" />
+                )}
+                <span className="text-white text-[11px] truncate flex-1 min-w-0">{label}</span>
+                <span className="text-[10px] tabular-nums flex-shrink-0" style={{ color }}>{(e.winRate * 100).toFixed(0)}%</span>
+                <span className="text-[#5a6a80] text-[9px] tabular-nums flex-shrink-0 w-7 text-right">{e.games}</span>
+              </a>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function prettyComp(slug: string) {

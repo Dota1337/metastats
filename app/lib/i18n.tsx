@@ -108,6 +108,12 @@ const translations = {
   'tft.comp.skillCap.medium': t6('Mittel skillgated', 'Medium skill gate', '\uC911\uAC04 \uC2E4\uB825 \uC694\uAD6C', '\u4E2D\u7B49\u95E8\u69DB', 'Habilidad media', 'Skill moyen'),
   'tft.comp.skillCap.consistent': t6('Anf\u00E4ngerfreundlich', 'Beginner-friendly', '\uCD08\uBCF4\uC790 \uCE5C\uD654\uC801', '\u65B0\u624B\u53CB\u597D', 'Apta para principiantes', 'Adapt\u00E9 d\u00E9butants'),
   'tft.comp.levelTempo': t6('Level-Tempo', 'Level tempo', '\uB808\uBCA8 \uD15C\uD3EC', '\u7B49\u7EA7\u8282\u594F', 'Ritmo de nivel', 'Tempo de niveau'),
+  'tft.comp.levelShare': t6('Spiel-Anteil', 'Game share', '\uAC8C\uC784 \uBE44\uC911', '\u5BF9\u5C40\u5360\u6BD4', 'Cuota de partidas', 'Part des parties'),
+  'tft.comp.matchups': t6('Matchups & Konter', 'Matchups & counters', '\uB9E4\uCE58\uC5C5 & \uCE74\uC6B4\uD130', '\u5BF9\u4F4D\u4E0E\u514B\u5236', 'Enfrentamientos y counters', 'Matchups & counters'),
+  'tft.comp.beats': t6('Schl\u00E4gt', 'Beats', '\uC6B0\uC138', '\u514B\u5236', 'Vence a', 'Bat'),
+  'tft.comp.even': t6('Ausgeglichen', 'Even', '\uB300\uB4F1', '\u52BF\u5747\u529B\u654C', 'Igualado', '\u00C9quilibr\u00E9'),
+  'tft.comp.losesTo': t6('Verliert gegen', 'Loses to', '\uC5F4\uC138', '\u88AB\u514B\u5236', 'Pierde contra', 'Perd contre'),
+  'tft.comp.noMatchupData': t6('Noch keine Matchup-Daten', 'No matchup data yet', '\uC544\uC9C1 \uB9E4\uCE58\uC5C5 \uB370\uC774\uD130 \uC5C6\uC74C', '\u6682\u65E0\u5BF9\u4F4D\u6570\u636E', 'Sin datos de enfrentamiento', 'Pas encore de donn\u00E9es'),
   'tft.itemSlotOrder': t6('Item-Build-Reihenfolge', 'Item build order', '\uC544\uC774\uD15C \uBE4C\uB4DC \uC21C\uC11C', '\u88C5\u5907\u51FA\u88C5\u987A\u5E8F', 'Orden de construcci\u00F3n', 'Ordre de construction'),
   'tft.unitTimeline': t6('Patch-Verlauf', 'Patch timeline', '\uD328\uCE58 \uCD94\uC774', '\u7248\u672C\u8D70\u52BF', 'Cronolog\u00EDa de parches', '\u00C9volution par patch'),
   'tft.builderPublish': t6('Ver\u00F6ffentlichen', 'Publish', '\uAC8C\uC2DC', '\u53D1\u5E03', 'Publicar', 'Publier'),
@@ -846,6 +852,11 @@ const translations = {
     'Beitrag', 'Contribution',
     '\uAE30\uC5EC\uB3C4', '\u8D21\u732E',
     'Aporte', 'Contribution'
+  ),
+  'tft.marketValue.ladderRank': t6(
+    'Region-Rang #{n}', 'Region rank #{n}',
+    '\uC9C0\uC5ED \uC21C\uC704 #{n}', '\u533A\u57DF\u6392\u540D #{n}',
+    'Rango de regi\u00F3n #{n}', 'Rang r\u00E9gional #{n}'
   ),
   'tft.marketValue.methodologyIntro': t6(
     'Basiswert {base} aus Tier + LP, multipliziert durch:',

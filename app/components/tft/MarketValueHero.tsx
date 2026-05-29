@@ -6,7 +6,7 @@ import SetTimeline, { type SetInfo } from './SetTimeline';
 import Link from 'next/link';
 
 interface MarketValueResponse {
-  summoner: { name: string; puuid: string; tier?: string; rank?: string; lp?: number };
+  summoner: { name: string; puuid: string; tier?: string; rank?: string; lp?: number; ladderRank?: number | null };
   marketValue: {
     baseValue: number;
     multiplier: number;
@@ -223,6 +223,11 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
             <div className="text-white text-4xl sm:text-5xl font-semibold tabular-nums leading-tight">
               {formatEuro(mv.finalValue, lang)}
             </div>
+            {data.summoner.ladderRank != null && data.summoner.ladderRank > 0 && (
+              <div className="text-[#a0b0c5] text-xs mt-1.5 tabular-nums">
+                {t('tft.marketValue.ladderRank').replace('{n}', String(data.summoner.ladderRank))}
+              </div>
+            )}
           </div>
           {delta != null && (
             <div className="mt-2 flex items-center gap-2 text-sm">

@@ -1351,6 +1351,9 @@ const translations = {
   'tft.marketValue.col.player': t6(
     'Spieler', 'Player', '\uD50C\uB808\uC774\uC5B4', '\u73A9\u5BB6', 'Jugador', 'Joueur'
   ),
+  'tft.marketValue.col.trend': t6(
+    'Trend (14T)', 'Trend (14d)', '\uCD94\uC138 (14\uC77C)', '\u8D8B\u52BF (14\u5929)', 'Tendencia (14d)', 'Tendance (14j)'
+  ),
   'tft.marketValue.col.now': t6(
     'Aktuell', 'Now', '\uD604\uC7AC', '\u5F53\u524D', 'Actual', 'Actuel'
   ),

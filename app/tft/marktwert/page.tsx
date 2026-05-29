@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import {
-  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, Cell,
+  ResponsiveContainer, BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip as RechartsTooltip, Cell,
 } from 'recharts';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
@@ -84,6 +84,9 @@ export default function TftMarktwertPage() {
   const [loading, setLoading] = useState(false);
   const [moversLoading, setMoversLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Per-player value sparklines (top tab), keyed by puuid. Fetched once per
+  // region — independent of the tier filter.
+  const [sparks, setSparks] = useState<Record<string, { date: string; value: number }[]>>({});
 
   // Leaderboard fetch — drives the Top tab and the Distribution tab (we
   // derive the histogram client-side from the leaderboard data).
@@ -107,6 +110,18 @@ export default function TftMarktwertPage() {
       .catch(e => { if (!cancelled) { setError(e.message); setLoading(false); } });
     return () => { cancelled = true; };
   }, [region, tierFilter]);
+
+  // Sparklines — top-100 players' recent value series for this region. One
+  // round-trip per region (CDN-cached); rows without data render an empty cell.
+  useEffect(() => {
+    let cancelled = false;
+    setSparks({});
+    fetch(`/api/tft/marktwert/sparklines?region=${region}&limit=100&days=14`)
+      .then(r => r.ok ? r.json() : { series: {} })
+      .then(d => { if (!cancelled) setSparks(d.series || {}); })
+      .catch(() => { if (!cancelled) setSparks({}); });
+    return () => { cancelled = true; };
+  }, [region]);
 
   // Movers fetch — only when the Movers tab is active so we don't waste
   // round-trips when the user is on Top / Distribution.
@@ -201,6 +216,7 @@ export default function TftMarktwertPage() {
             region={region}
             tierFilter={tierFilter}
             onTierFilter={setTierFilter}
+            sparks={sparks}
             lang={lang}
             t={t}
           />
@@ -240,13 +256,14 @@ export default function TftMarktwertPage() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function TopTab({
-  players, loading, region, tierFilter, onTierFilter, lang, t,
+  players, loading, region, tierFilter, onTierFilter, sparks, lang, t,
 }: {
   players: LeaderboardPlayer[];
   loading: boolean;
   region: string;
   tierFilter: string;
   onTierFilter: (v: string) => void;
+  sparks: Record<string, { date: string; value: number }[]>;
   lang: Lang;
   t: (k: any) => string;
 }) {
@@ -280,11 +297,12 @@ function TopTab({
       {!loading && players.length > 0 && (
         <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
           {/* Desktop table header — hidden on mobile where each row is a card */}
-          <div className="hidden sm:grid grid-cols-[3rem_1fr_5rem_4rem_8rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#7a8aa0] bg-[#0a0e1a]">
+          <div className="hidden sm:grid grid-cols-[3rem_1fr_5rem_4rem_5rem_8rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#7a8aa0] bg-[#0a0e1a]">
             <div className="text-right">#</div>
             <div>{t('tft.marketValue.col.player')}</div>
             <div className="text-right">LP</div>
             <div className="text-right">×</div>
+            <div className="text-center">{t('tft.marketValue.col.trend')}</div>
             <div className="text-right">{t('tft.marketValue')}</div>
           </div>
           {players.map((p, i) => {
@@ -293,7 +311,7 @@ function TopTab({
               <a
                 key={p.puuid}
                 href={slug ? `/tft/player/${slug}?region=${region}` : '#'}
-                className="block sm:grid sm:grid-cols-[3rem_1fr_5rem_4rem_8rem] gap-2 px-4 py-2 sm:items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]"
+                className="block sm:grid sm:grid-cols-[3rem_1fr_5rem_4rem_5rem_8rem] gap-2 px-4 py-2 sm:items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]"
               >
                 {/* Mobile: rank + name + tier inline, value + multiplier as
                     a row below. Desktop: original 5-column grid. */}
@@ -313,6 +331,7 @@ function TopTab({
                 </div>
                 <div className="hidden sm:block text-right text-white tabular-nums">{p.lp}</div>
                 <div className="hidden sm:block text-right text-[#a0b0c5] tabular-nums">{p.multiplier.toFixed(2)}</div>
+                <div className="hidden sm:block px-1"><Sparkline data={sparks[p.puuid]} /></div>
                 <div className="flex sm:block items-center justify-between mt-1 sm:mt-0 sm:text-right">
                   <span className="text-[#7a8aa0] text-[10px] sm:hidden">
                     {p.lp} LP · ×{p.multiplier.toFixed(2)}
@@ -519,6 +538,25 @@ function DistributionTab({
 // ─────────────────────────────────────────────────────────────────────────────
 // shared
 // ─────────────────────────────────────────────────────────────────────────────
+
+// Tiny per-row value sparkline. Green if the series ended up, red if down,
+// neutral if flat/insufficient. No axes/tooltip — it's a glance, not a chart.
+function Sparkline({ data }: { data: { date: string; value: number }[] | undefined }) {
+  if (!data || data.length < 2) return <div className="h-6" />;
+  const first = data[0].value;
+  const last = data[data.length - 1].value;
+  const color = last > first ? '#3ecf8e' : last < first ? '#e44040' : '#7a8aa0';
+  return (
+    <div className="h-6 w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data} margin={{ top: 3, right: 2, bottom: 3, left: 2 }}>
+          <YAxis hide domain={['dataMin', 'dataMax']} />
+          <Line type="monotone" dataKey="value" stroke={color} strokeWidth={1.5} dot={false} isAnimationActive={false} />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
 
 function SkeletonRows({ count }: { count: number }) {
   return (

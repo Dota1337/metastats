@@ -26,6 +26,7 @@ interface CompRow {
   sum_level: number;
   sum_last_round: number;
   sum_players_eliminated: number;
+  sum_gold_left: number;
   participants: number;
   typical_units_merged: any[][];
   typical_augments_merged: any[][];
@@ -193,6 +194,12 @@ function enrichComp(r: CompRow) {
   const aggroIndex = r.games > 0 && r.sum_players_eliminated
     ? Number(r.sum_players_eliminated) / Number(r.games)
     : null;
+  // Comp-Eco: avg gold left when the game ended. Low = spent out / all-in,
+  // high = over-econ'd (or died early sitting on gold). Backfills from the
+  // next crawl — null on pre-0024 rows so the UI just hides it.
+  const avgGoldLeft = r.games > 0 && r.sum_gold_left
+    ? Number(r.sum_gold_left) / Number(r.games)
+    : null;
   // Leveling-Tempo-Curves (Sprint 2.2): per-final-level distribution +
   // avg death-round per level.
   const lvlGames = mergeJsonbCountDicts(r.level_dist_merged || []);
@@ -260,7 +267,7 @@ function enrichComp(r: CompRow) {
     cumTop4 -= (roundTop4[String(round)] || 0);
     return point;
   });
-  return { roundHistogram, survivalToTop4, aggroIndex, levelingTempo, skillCapIndex, skillCapBuckets, flexScore };
+  return { roundHistogram, survivalToTop4, aggroIndex, avgGoldLeft, levelingTempo, skillCapIndex, skillCapBuckets, flexScore };
 }
 
 // Merge per-day carry-items lists ([{items:[…], count}, …]) into a single

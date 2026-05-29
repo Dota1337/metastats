@@ -127,6 +127,7 @@ function newCompBucket() {
     sumLevel: 0,                  // Σ final level — divided by games for avgLevel
     sumLastRound: 0,              // Σ last_round — divided by games for avgLastRound
     sumPlayersEliminated: 0,      // Σ players_eliminated — aggroIndex = sum/games
+    sumGoldLeft: 0,               // Σ gold_left — divided by games for avgGoldLeft (comp eco)
     // Per-final-level: Map<level (string), { games, sumLastRound }>. Lets
     // the UI compute "if you finalize at lvl 8 with this comp, your avg
     // death-round is X" — proxies the leveling-tempo curve.
@@ -457,6 +458,8 @@ export function aggregateMatch(rawMatch, agg, opts) {
         }
         // Aggro-Index input
         cb.sumPlayersEliminated += Number(p.players_eliminated ?? 0);
+        // Comp-Eco input: Σ gold_left → avgGoldLeft = sum/games (economy profile)
+        cb.sumGoldLeft += Number(p.gold_left ?? 0);
         // Leveling-tempo input: per-final-level histogram + parallel last_round
         // accumulator. Skip if level is missing/0 (early surrender row).
         const finalLevel = Number(p.level ?? 0);
@@ -801,6 +804,7 @@ export function finalize(agg, opts = {}) {
         sumLevel: b.sumLevel ?? 0,
         sumLastRound: b.sumLastRound ?? 0,
         sumPlayersEliminated: b.sumPlayersEliminated ?? 0,
+        sumGoldLeft: b.sumGoldLeft ?? 0,
         typicalUnits, typicalAugments, carryItems,
         lastRoundDist, top4ByRound,
         levelDist, levelSumLastRound,

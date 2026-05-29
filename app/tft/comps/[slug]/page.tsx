@@ -137,10 +137,14 @@ export default function TftCompDetailPage() {
                 so users see at a glance whether this comp wants to be Lvl 8
                 by Stage 5 or settles at Lvl 7 because it died earlier. */}
             {(comp.avgLevel != null || comp.avgLastRound != null) && (
-              <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3">
                 <Stat label={t('tft.comp.avgLevel')} value={comp.avgLevel != null ? comp.avgLevel.toFixed(1) : '—'} />
                 <Stat label={t('tft.comp.avgLastRound')} value={comp.avgLastRound != null ? formatStage(comp.avgLastRound) : '—'} />
                 <Stat label={t('tft.comp.tempo')} value={tempoLabel(comp.avgLevel, comp.avgLastRound, t)} />
+                {/* Comp-Eco (migration 0024) — only shown once the crawl has filled sum_gold_left */}
+                {comp.avgGoldLeft != null && (
+                  <Stat label={t('tft.avgGoldLeft')} value={comp.avgGoldLeft.toFixed(1)} />
+                )}
                 <Stat label={t('tft.gamesShort')} value={String(comp.games)} />
               </section>
             )}

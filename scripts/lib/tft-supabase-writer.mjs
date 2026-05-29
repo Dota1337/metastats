@@ -171,6 +171,7 @@ export async function writeTftStatsToSupabase(opts) {
         sum_level: b.sumLevel ?? 0,
         sum_last_round: b.sumLastRound ?? 0,
         sum_players_eliminated: b.sumPlayersEliminated ?? 0,
+        sum_gold_left: b.sumGoldLeft ?? 0,
         typical_units: b.typicalUnits || [],
         typical_augments: b.typicalAugments || [],
         carry_items: b.carryItems || [],

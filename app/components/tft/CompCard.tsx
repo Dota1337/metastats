@@ -1,6 +1,7 @@
 'use client';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
 import { tftIconUrl, tftChampionTileUrl } from '../../lib/tft-cdragon';
+import { costColor as costColorOf } from '../../lib/tft-ui';
 
 interface Comp {
   source?: 'data' | 'editorial';
@@ -224,9 +225,6 @@ function extractTraitVariant(traitApiName: string, traitDisplayName: string): st
   // trait whose apiName encodes the same word the asset bundle already shows).
   if (variant.toLowerCase() === traitDisplayName.toLowerCase()) return null;
   return variant;
-}
-function costColorOf(cost: number) {
-  return cost === 1 ? '#9aa6b2' : cost === 2 ? '#3a8' : cost === 3 ? '#3a8ddc' : cost === 4 ? '#c39bff' : '#e0c75a';
 }
 function prettyTrait(s: string) { return s.replace(/^TFT\d+_/, ''); }
 function prettyChar(s: string) { return s.replace(/^TFT\d+_/, ''); }

@@ -1,6 +1,7 @@
 'use client';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
 import { tftChampionTileUrl } from '../../lib/tft-cdragon';
+import { costColor as costColorOf } from '../../lib/tft-ui';
 import BookmarkButton from '../BookmarkButton';
 
 // Dense, scannable row layout for /tft/comps. Replaces the narrative
@@ -48,10 +49,6 @@ function extractTraitVariant(traitApiName: string, traitDisplayName: string): st
   if (!variant) return null;
   if (variant.toLowerCase() === traitDisplayName.toLowerCase()) return null;
   return variant;
-}
-
-function costColorOf(cost: number) {
-  return cost === 1 ? '#9aa6b2' : cost === 2 ? '#3a8' : cost === 3 ? '#3a8ddc' : cost === 4 ? '#c39bff' : '#e0c75a';
 }
 
 // Single primary descriptor per comp, like tactics.tools' "Items Dep / Fast 8

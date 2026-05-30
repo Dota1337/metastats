@@ -113,15 +113,25 @@ const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || null;
 // setup
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Cap below the TFT prod match-detail method limit (200/10s), shared with
-// the all-ranks crawler.
+// Cap just below the TFT prod match-detail method limit (200/10s), matching
+// the all-ranks crawler. The previous 18/1.1s short window throttled us to
+// ~16 req/s — far below the method limit — and combined with serial per-player
+// fetches the cold-fill crawled at ~3 req/s (~60s/cold player), so the apex
+// regions never finished before the next 00:02 aggregate crawl killed the run.
 const riot = createRiotClient({
-  shortWindowRequests: 18,
-  shortWindowMs: 1100,
-  longWindowRequests: 180,
-  longWindowMs: 10_500,
+  shortWindowRequests: 180,    // 90% of match-detail 200/10s
+  shortWindowMs: 10_500,
+  longWindowRequests: 28000,   // 93% of app 30000/600s
+  longWindowMs: 605_000,
 });
 const rl = url => riot.fetchJson(url, { safe: true });
+
+// How many match-detail fetches to run concurrently *within* one player's
+// cold backfill. The riot-client sliding window still gates the global rate
+// (concurrency just fills the otherwise-idle headroom up to the method limit),
+// and a single key bucket means no cross-region contention. 6 keeps us under
+// 200/10s even at ~0.3s/request while cutting cold-player time ~5x.
+const MATCH_FETCH_CONCURRENCY = parseInt(arg('--match-concurrency', '6'), 10);
 
 const pool = new pg.Pool({ connectionString: DATABASE_URL, max: 5 });
 
@@ -267,6 +277,7 @@ async function gatherPlayer(p, ctx) {
       force: FORCE_REFRESH,
       startTimeSec,   // only walk the current set's matches, not full history
       maxIds,         // cap the cold backfill
+      concurrency: MATCH_FETCH_CONCURRENCY,  // fill the rate-limit headroom on cold players
       log: VERBOSE ? (msg) => console.log(`    ${msg}`) : undefined,
     });
   }

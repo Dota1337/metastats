@@ -12,9 +12,9 @@
 import { buildSnapshotForPlayer } from './tft-marketvalue.mjs';
 
 // Match-V1 detail endpoint has a 200/10s method limit per routing cluster.
-// We don't add our own concurrency here — riot-client.mjs already enforces
-// a sliding window, so back-to-back `fetchJson` calls naturally land at the
-// safe rate.
+// riot-client.mjs enforces a sliding window, so callers can fetch with bounded
+// concurrency (see opts.concurrency) to fill the rate-limit headroom without
+// risking 429s — the window gates the true rate either way.
 
 const STALE_AFTER_MINUTES_DEFAULT = 5;
 const RIOT_HISTORY_PAGE = 200;
@@ -29,7 +29,7 @@ const TFT_RANKED_QUEUE = 1100;
  * @param {string} region          platform routing value (euw1, kr, …)
  * @param {string} regional        regional routing (europe/americas/asia/sea)
  * @param {{ fetchJson: (url: string, opts?: { safe?: boolean }) => Promise<any> }} riot
- * @param {{ force?: boolean, maxStaleMinutes?: number, log?: (s: string) => void }} [opts]
+ * @param {{ force?: boolean, maxStaleMinutes?: number, startTimeSec?: number, maxIds?: number, concurrency?: number, syncSupabase?: boolean, log?: (s: string) => void }} [opts]
  * @returns {Promise<{ cached: number, newMatches: number, skippedFresh: boolean }>}
  */
 export async function refreshPlayerMatchCache(db, puuid, region, regional, riot, opts = {}) {
@@ -92,19 +92,36 @@ export async function refreshPlayerMatchCache(db, puuid, region, regional, riot,
     return { cached: total, newMatches: 0, skippedFresh: false };
   }
 
-  // Fetch details one-by-one — riot-client handles rate-limiting. We *could*
-  // parallelize but the windowed limiter already gates us to the safe rate;
-  // adding Promise.all here just makes error handling harder.
+  // Fetch details with bounded concurrency. The riot-client sliding window
+  // still enforces the global safe rate — concurrency only fills the headroom
+  // between our serial ~3 req/s and the method limit (200/10s), which is the
+  // difference between a cold apex region finishing in hours vs. never. With
+  // concurrency 1 (the default for non-marketvalue callers) this is exactly
+  // the old serial loop. A failed fetch is skipped, same as before.
+  const concurrency = Math.max(1, opts.concurrency ?? 1);
   const newRows = [];
-  for (const id of allMissing) {
+  const fetchOne = async (id) => {
     const raw = await riot.fetchJson(
       `https://${regional}.api.riotgames.com/tft/match/v1/matches/${id}?api_key=${process.env.RIOT_API_KEY_TFT}`,
       { safe: true },
     );
-    if (!raw || raw._status) continue;
-    if ((raw.info?.queue_id ?? raw.info?.queueId) !== TFT_RANKED_QUEUE) continue;
+    if (!raw || raw._status) return;
+    if ((raw.info?.queue_id ?? raw.info?.queueId) !== TFT_RANKED_QUEUE) return;
     const row = buildCachedRow(raw, puuid, region);
     if (row) newRows.push(row);
+  };
+  if (concurrency === 1) {
+    for (const id of allMissing) await fetchOne(id);
+  } else {
+    // Simple fixed-size worker pool draining a shared index cursor.
+    let cursor = 0;
+    const worker = async () => {
+      while (cursor < allMissing.length) {
+        const id = allMissing[cursor++];
+        await fetchOne(id);
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(concurrency, allMissing.length) }, worker));
   }
 
   if (newRows.length > 0) {

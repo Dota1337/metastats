@@ -20,6 +20,7 @@ export interface TftItem {
 export interface TftChampion {
   name: string;
   icon: string | null;
+  tile?: string | null;   // Riot's square HUD tile (CD `tileIcon`); icon is the wide splash
   cost: number;
   traits: string[];
   ability?: { name: string; desc: string };
@@ -93,17 +94,23 @@ export function tftIconUrl(bundle: TftAssetsBundle | null, iconPath: string | nu
 // The bundle's `champion.icon` is the wide splash-centered art used on
 // big surfaces (match-card units, player profile). For tight UI like the
 // items-page carrier strip we want the square hud tile that metatft and
-// the in-game client show. CommunityDragon stores it next to the splash:
-//   skins/base/images/<id>_splash_centered_<n>.<mutator>.png
-//        →                hud/<id>_square.<mutator>.png
-// Returns the square URL if the path follows the modern Set-17-style
-// layout, otherwise falls back to the regular icon URL so older sets
-// and special units (TFT_BlueGolem etc.) still render something.
+// the in-game client show.
+//
+// Prefer the bundle's `tile` field — Riot's authoritative `tileIcon`, correct
+// even for units whose splash path breaks the `_splash_centered_N` convention
+// (Jax, Diana, Galio, Blitzcrank, Summon) or whose tile lives under a different
+// name entirely (Rhaast → tft17_kayn_slay_square). The old regex derivation
+// could only guess the first family and silently fell back to a stretched
+// splash for the rest. The regex is kept as a fallback for per-set archives
+// built before `tile` was captured; `tftIconUrl(icon)` is the last resort so
+// special units (TFT_BlueGolem, PVE minions) still render the wide art.
 export function tftChampionTileUrl(
   bundle: TftAssetsBundle | null,
   champion: TftChampion | null | undefined,
 ): string | null {
-  if (!bundle || !champion?.icon) return null;
+  if (!bundle || !champion) return null;
+  if (champion.tile) return bundle.iconBase + champion.tile;
+  if (!champion.icon) return null;
   const m = /^assets\/characters\/([^/]+)\/skins\/base\/images\/[^/]+_splash_centered_\d+\.([^/.]+)\.png$/i.exec(champion.icon);
   if (!m) return tftIconUrl(bundle, champion.icon);
   return `${bundle.iconBase}assets/characters/${m[1]}/hud/${m[1]}_square.${m[2]}.png`;

@@ -118,6 +118,12 @@ async function main() {
     champions[apiName] = {
       name: c.name || apiName,
       icon: normalizeIconPath(c.icon || c.tileIcon || ''),
+      // Riot's authoritative square HUD tile. We can't derive it from `icon`:
+      // most units follow `<id>_splash_centered_N`, but Jax/Diana/Galio/… don't,
+      // and Rhaast's tile is `TFT17_Kayn_Slay_Square` (not `_rhaast_square`).
+      // Storing it verbatim lets the frontend render the correct portrait
+      // without pattern-guessing. null for PVE minions (no tileIcon).
+      tile: normalizeIconPath(c.tileIcon),
       cost: c.cost ?? 0,
       traits: c.traits || [],
       ability: c.ability ? {

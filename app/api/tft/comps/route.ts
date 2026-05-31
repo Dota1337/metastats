@@ -61,21 +61,23 @@ export async function GET(request: NextRequest) {
 
   try {
     const filters = await resolveFilters(searchParams);
-    const rows = await callRpc<CompRow[]>('get_tft_comp_stats', {
-      p_regions: filters.regions,
-      p_buckets: filters.buckets,
-      p_days: filters.days,
-      p_patch: filters.patch,
-      p_set: filters.setNumber,
-      p_min_games: minGames,
-    });
-    const participants = rows[0]?.participants || 0;
 
     // Detail view: full metrics (death-curve, comp-DNA, matchups) for the one
     // matched cluster only. These are heavy per row — entropy, variance and
     // several jsonb-dict merges — and the list never reads them, so we don't
     // compute them for every cluster (see baseComp vs enrichComp below).
+    // The full RPC aggregates all 7 jsonb columns; only the detail path needs
+    // the 4 detail-only ones, so the list path below uses the lean variant.
     if (slug) {
+      const rows = await callRpc<CompRow[]>('get_tft_comp_stats', {
+        p_regions: filters.regions,
+        p_buckets: filters.buckets,
+        p_days: filters.days,
+        p_patch: filters.patch,
+        p_set: filters.setNumber,
+        p_min_games: minGames,
+      });
+      const participants = rows[0]?.participants || 0;
       const row = rows.find(r => r.cluster_key === slug);
       if (!row) return cachedJson({ filters, hasData: false, comp: null });
       const comp = { ...baseComp(row, participants), ...enrichComp(row) };
@@ -126,9 +128,19 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // List view: lean rows only — base stats + unit/augment/carry tiles (what
-    // CompRow and the landing CompCard render). The detail-only metrics are
-    // omitted to keep the payload and per-row compute small.
+    // List view: lean RPC — aggregates only the 3 jsonb columns the list
+    // renders (typical_units / augments / carry_items), skipping the 4
+    // detail-only jsonb_agg merges. Measured ~12x faster cold (1847ms→152ms)
+    // since the heavy detail jsonb is never detoasted or aggregated here.
+    const rows = await callRpc<CompRow[]>('get_tft_comp_stats_list', {
+      p_regions: filters.regions,
+      p_buckets: filters.buckets,
+      p_days: filters.days,
+      p_patch: filters.patch,
+      p_set: filters.setNumber,
+      p_min_games: minGames,
+    });
+    const participants = rows[0]?.participants || 0;
     const dataComps = rows.map(r => baseComp(r, participants));
     dataComps.sort((a, b) => (a.avgPlacement ?? 9) - (b.avgPlacement ?? 9));
 

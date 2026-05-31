@@ -62,17 +62,14 @@ function buildUrls() {
     }
   }
 
-  // Units / traits — light slices only (diamond/master_plus, mostly 3-day).
-  for (const ep of ['units', 'traits']) {
+  // Units / items / traits — the high-traffic rank slices at region=all.
+  // items got the lean RPC in migration 0028 (all-bucket/7d 76s→5.5s), so it
+  // now warms the same matrix as the others instead of just the safe defaults.
+  for (const ep of ['units', 'items', 'traits']) {
     urls.add(`/api/tft/${ep}?${qs('diamond', 3, 'all')}`);
     urls.add(`/api/tft/${ep}?${qs('master_plus', 3, 'all')}`);
     urls.add(`/api/tft/${ep}?${qs('master_plus', 7, 'all')}`);
   }
-  // Items — heaviest RPC; only the two safe default slices until it gets the
-  // lean treatment. (diamond/3d ~9s, master_plus/3d ~1.3s; all-bucket / 7d
-  // exceed the statement timeout and are left for the follow-up optimization.)
-  urls.add(`/api/tft/items?${qs('diamond', 3, 'all')}`);
-  urls.add(`/api/tft/items?${qs('master_plus', 3, 'all')}`);
 
   return [...urls];
 }

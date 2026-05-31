@@ -55,7 +55,12 @@ export async function GET(request: NextRequest) {
 
   try {
     const filters = await resolveFilters(searchParams);
-    const rows = await callRpc<ItemListRow[]>('get_tft_item_stats', {
+    // Lean RPC (migration 0028): merges top_users to the top-8 carriers in SQL
+    // instead of jsonb_agg-ing every per-day array. ~14x faster on the heavy
+    // all-bucket/7d slice (76s→5.5s, no more 502) and ~126x on the diamond/3d
+    // default (9s→72ms). Returns the same shape; the merged list is wrapped so
+    // the mergeJsonbCountArrays call below still works unchanged.
+    const rows = await callRpc<ItemListRow[]>('get_tft_item_stats_list', {
       p_regions: filters.regions,
       p_buckets: filters.buckets,
       p_days: filters.days,

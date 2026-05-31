@@ -1,0 +1,49 @@
+name: TFT Stats Cache Warm
+
+# Pre-warms the Vercel edge cache for the popular TFT stats filter combos so the
+# first morning visitor of each gets an instant X-Vercel-Cache: HIT instead of
+# paying the cold Supabase aggregation RPC.
+#
+# Timing: the Hetzner aggregate crawl starts 00:00 UTC and finishes by ~09:00
+# UTC (see metastats-daily-crawl.timer). We warm at 09:30 UTC, once the day's
+# comp/unit/item/trait data is fresh. The stats APIs cache 6h + 24h SWR, so a
+# single warm pass keeps the popular keys hot through the day.
+#
+# No secrets: the script hits public GET endpoints on www.metastats.gg.
+
+on:
+  schedule:
+    - cron: '30 9 * * *'
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Base URL to warm (default https://www.metastats.gg)'
+        required: false
+        default: 'https://www.metastats.gg'
+
+permissions:
+  contents: read
+
+# Never run two warmers at once (a manual dispatch during the cron, say) — they
+# would contend on the same heavy RPCs and trip the statement timeout.
+concurrency:
+  group: tft-stats-cache-warm
+  cancel-in-progress: false
+
+jobs:
+  warm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # No `npm ci`: the warmer is pure Node built-ins (global fetch /
+      # AbortController), so we skip dependency install for a fast, cheap run.
+      - name: Warm TFT stats cache
+        env:
+          WARM_BASE_URL: ${{ inputs.base_url || 'https://www.metastats.gg' }}
+        run: node scripts/warm-tft-stats-cache.mjs

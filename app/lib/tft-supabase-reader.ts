@@ -84,17 +84,35 @@ let _patchCache: { ts: number; rows: PatchInfo[] } | null = null;
 // crawl day is ~250k while a partial patch-drop day is ~10k.
 const PATCH_MIN_GAMES = 100_000;
 
+// get_tft_available_patches scans the whole comp-stats day window (~148k rows)
+// to derive ~3 patch rows: ~70ms warm but ~2.4s cold (after a crawl the fresh
+// rows' visibility map isn't all-visible yet, so the index-only scan pays heap
+// fetches). It runs before EVERY stats RPC and the result is identical for all
+// callers and changes at most once a day, so we cache it module-wide for 6h —
+// a warm instance pays the query at most once per window instead of every
+// request. 6h staleness is harmless: a new patch is filtered by PATCH_MIN_GAMES
+// until it has ~half a crawl day anyway, so it can't surface as "current" early.
+const PATCH_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+
 export async function getAvailablePatches(days = 30): Promise<PatchInfo[]> {
-  // 5-min in-process cache. Patches don't change mid-day.
-  if (_patchCache && Date.now() - _patchCache.ts < 5 * 60 * 1000) {
+  if (_patchCache && Date.now() - _patchCache.ts < PATCH_CACHE_TTL_MS) {
     return _patchCache.rows;
   }
-  const rows = (await callRpc<PatchInfo[]>('get_tft_available_patches', { p_days: days })) || [];
-  // Never return empty: if every patch is below the floor (e.g. right after a
-  // set launch) keep the raw list so the page still shows the best available.
-  const established = rows.filter(r => Number(r.total_matches) >= PATCH_MIN_GAMES);
-  _patchCache = { ts: Date.now(), rows: established.length > 0 ? established : rows };
-  return _patchCache.rows;
+  try {
+    const rows = (await callRpc<PatchInfo[]>('get_tft_available_patches', { p_days: days })) || [];
+    // Never return empty: if every patch is below the floor (e.g. right after a
+    // set launch) keep the raw list so the page still shows the best available.
+    const established = rows.filter(r => Number(r.total_matches) >= PATCH_MIN_GAMES);
+    _patchCache = { ts: Date.now(), rows: established.length > 0 ? established : rows };
+    return _patchCache.rows;
+  } catch (e) {
+    // Stale-serve: a cold-buffer statement timeout on this pre-flight query must
+    // not blank the patch dropdown or 502 the whole stats page. Fall back to the
+    // last good list (even if expired) when we have one; only propagate if we've
+    // never successfully loaded patches.
+    if (_patchCache) return _patchCache.rows;
+    throw e;
+  }
 }
 
 // "current" → newest patch, "previous" → second-newest, else literal string.

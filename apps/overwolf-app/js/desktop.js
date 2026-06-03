@@ -5,7 +5,7 @@
 
 var STORAGE_KEY = 'metastats.companion.paused';
 var CONFIG = (typeof window !== 'undefined' && window.METASTATS_CONFIG) || {};
-var API_BASE = CONFIG.apiBase || 'https://metastats.gg';
+var API_BASE = CONFIG.apiBase || 'https://www.metastats.gg';
 
 function tierClassOf(avgPlace) {
   if (avgPlace == null) return { label: '?', color: '#5a6a80', bg: 'rgba(90,106,128,0.15)' };
@@ -81,14 +81,14 @@ function renderStatus() {
   if (!badge || !text || !btn) return;
   if (isPaused()) {
     badge.className = 'badge badge--paused';
-    badge.textContent = 'Pausiert';
-    text.textContent = 'Die Datensammlung ist deaktiviert. Klicke unten, um sie wieder einzuschalten.';
-    btn.textContent = 'Fortsetzen';
+    badge.textContent = 'Paused';
+    text.textContent = 'Data collection is disabled. Click below to re-enable it.';
+    btn.textContent = 'Resume';
   } else {
     badge.className = 'badge badge--idle';
-    badge.textContent = 'Wartet auf TFT-Spiel';
-    text.textContent = 'Starte ein TFT-Match — die App sammelt im Hintergrund anonyme Position- und Comp-Daten.';
-    btn.textContent = 'Pausieren';
+    badge.textContent = 'Waiting for a TFT match';
+    text.textContent = 'Start a TFT match — the app collects anonymized board-position and composition data in the background.';
+    btn.textContent = 'Pause';
   }
 }
 

@@ -425,7 +425,7 @@ function openDesktopWindow() {
   });
 }
 
-var COMPANION_BUILD = '2026-05-18T01:00-round-tracking-v6';
+var COMPANION_BUILD = '2026-05-18T01:30-en-localization-v7';
 
 attachListeners();
 setRequiredFeatures();

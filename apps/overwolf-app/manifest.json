@@ -10,7 +10,7 @@
     "icon_gray": "images/IconMouseNormal.png",
     "launcher_icon": "images/launcher_icon.ico",
     "splash_image": "images/splash.png",
-    "description": "Aggregiert anonyme Position- und Comp-Daten aus deinen TFT-Spielen, um metastats.gg's Pro-Statistiken zu verbessern. Kein Display, keine Beratung — nur stille Hintergrund-Telemetrie."
+    "description": "Aggregates anonymized board-position and composition data from your TFT matches to improve metastats.gg's community statistics. No in-game overlay, no live coaching — silent background telemetry only."
   },
   "permissions": [
     "GameInfo",

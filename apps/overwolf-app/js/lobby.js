@@ -8,7 +8,7 @@
 // stays intact.
 
 var CONFIG = (window.METASTATS_CONFIG) || {};
-var API_BASE = CONFIG.apiBase || 'https://metastats.gg';
+var API_BASE = CONFIG.apiBase || 'https://www.metastats.gg';
 
 var rosterCache = {};      // gameName-tagLine → { avgPlacement, label }
 var currentRoster = [];    // [{ gameName, tagLine, region }]
@@ -24,7 +24,7 @@ function render() {
   var empty = document.getElementById('lobby-empty');
   var list = document.getElementById('lobby-list');
   if (!list) return;
-  if (currentRoster.length === 0) { setEmpty('Warte auf Lobby-Daten…'); return; }
+  if (currentRoster.length === 0) { setEmpty('Waiting for lobby data…'); return; }
   empty.style.display = 'none';
   list.style.display = 'flex';
   list.innerHTML = '';
@@ -102,5 +102,5 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   });
   attach();
-  setEmpty('Warte auf Lobby-Daten…');
+  setEmpty('Waiting for lobby data…');
 });

@@ -1,0 +1,21 @@
+[Unit]
+Description=metastats — aggregate companion position observations into tft_position_comp_cell
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/metastats-crawler
+EnvironmentFile=/etc/metastats-crawler/env
+# Each run processes up to BATCH_SIZE (1000) observations and is idempotent
+# via the (cluster_key, unit, cell) primary key + tft_position_aggregator_state
+# high-water mark. 10 minutes is generous headroom for a 1k-row batch even
+# under load.
+TimeoutStartSec=10m
+ExecStart=/usr/bin/node scripts/aggregate-position-observations.mjs
+StandardOutput=journal
+StandardError=journal
+Nice=15
+
+[Install]
+WantedBy=multi-user.target

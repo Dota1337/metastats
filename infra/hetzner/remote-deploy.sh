@@ -88,6 +88,6 @@ fi
 # it and fire a spurious standalone marketvalue crawl on every deploy — which can
 # then run concurrently with the chained one and double the Riot load. The timer
 # is masked on the box; keep it out of this list.
-systemctl restart metastats-daily-crawl.timer metastats-companion-backfill.timer
+systemctl restart metastats-daily-crawl.timer metastats-companion-backfill.timer metastats-position-aggregator.timer
 
 echo "Deployed $(git rev-parse --short HEAD) on $(hostname) at $(date -u +%FT%TZ) (full sync)"

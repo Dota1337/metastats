@@ -1,0 +1,15 @@
+[Unit]
+Description=Companion position aggregator — every 15 minutes
+
+[Timer]
+# Companion observations land in batches at match-end (10 min cadence via
+# the companion-backfill timer). Aggregator picks them up shortly after.
+# 15 minutes is conservative for the freshly-upgraded Micro compute; can
+# tighten to 5min once we have steady-state traffic and want comp-bound
+# position heatmaps to feel near-live.
+OnBootSec=5min
+OnUnitActiveSec=15min
+RandomizedDelaySec=60
+
+[Install]
+WantedBy=timers.target

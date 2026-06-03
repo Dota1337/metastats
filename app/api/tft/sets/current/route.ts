@@ -53,24 +53,19 @@ export async function GET() {
     majorByVersion.set(p.version, p.date);
   }
 
-  // Hotfix / B-patches: SELECT DISTINCT patch FROM tft_daily_unit_stats
-  // WHERE set_number = current. These are the patch labels that actually
-  // appeared in matches — covers 17.3b / 17.3c style hotfixes the support
-  // page doesn't list. min(day) gives us when each first showed up.
+  // Hotfix / B-patches: distinct patches we've actually observed in matches
+  // for the current set, with their first-seen day. Covers 17.3b / 17.3c
+  // style hotfixes the support page doesn't list. The aggregation runs in
+  // Postgres (RPC 0029) so the build-time prerender doesn't have to pull
+  // every (patch, day) row across the daily stats table.
   let dbPatches: { patch: string; first_day: string }[] = [];
   try {
     const { data } = await supabase
-      .from('tft_daily_unit_stats')
-      .select('patch, day')
-      .eq('set_number', setNumber)
-      .order('day', { ascending: true });
+      .rpc('get_tft_distinct_patches_for_set', { p_set: setNumber });
     if (Array.isArray(data)) {
-      const seen = new Map<string, string>();
-      for (const row of data) {
-        if (!row.patch) continue;
-        if (!seen.has(row.patch)) seen.set(row.patch, row.day);
-      }
-      dbPatches = [...seen.entries()].map(([patch, first_day]) => ({ patch, first_day }));
+      dbPatches = data
+        .filter((r: { patch: string | null }) => !!r.patch)
+        .map((r: { patch: string; first_day: string }) => ({ patch: r.patch, first_day: r.first_day }));
     }
   } catch {
     // DB unavailable — degrade to roadmap-only patches

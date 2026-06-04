@@ -17,10 +17,12 @@ env:
 jobs:
   crawl:
     runs-on: ubuntu-latest
-    # ~17 tournament pages × 30s Liquipedia rate-limit ≈ 9 minutes; the schema
-    # is API-ready so dropping the delay once we have a Liquipedia API key
-    # cuts the runtime to ~2 minutes.
-    timeout-minutes: 30
+    # Auto-discovery from Liquipedia S/A-Tier categories yields ~300 pages, and
+    # the public wikitext ToU forces a 30s delay between requests → ~150 min
+    # floor. 180 min keeps headroom for retries / expandtemplates extra-calls.
+    # Once we have an LPDB API key the delay drops to the documented per-second
+    # limit (~5 min total).
+    timeout-minutes: 180
 
     steps:
       - name: Checkout repository

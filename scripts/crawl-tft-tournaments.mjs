@@ -122,6 +122,22 @@ async function fetchTournamentWikitext(page) {
   };
 }
 
+// Ask Liquipedia to expand any wikitext server-side (resolves {{Template}}
+// references that aren't in our local TFT_SET_NAMES whitelist). On-demand only:
+// we call this for a `name`-field value if it still contains `{{…}}` after
+// local unwiki resolution — otherwise we skip the extra request entirely so
+// the 30s ToU delay doesn't compound on every page.
+async function expandTemplatesViaLiquipedia(text) {
+  if (!text) return text;
+  try {
+    const j = await liquipediaJson({ action: 'expandtemplates', text, prop: 'wikitext' });
+    return j.expandtemplates?.wikitext || text;
+  } catch (e) {
+    if (VERBOSE) console.warn(`  [expand-fail] ${e.message}`);
+    return text;
+  }
+}
+
 // All page titles in a Liquipedia category (handles cmcontinue paging). Each
 // API call still respects the 30s ToU delay.
 async function fetchCategoryMembers(category) {
@@ -261,17 +277,28 @@ const TFT_SET_NAMES = {
   12: "Magic n' Mayhem",
   13: 'Into the Arcane',
   14: 'Cyber City',
-  15: 'Spatulor',
-  16: 'K.O. Coliseum',
+  15: 'K.O. Coliseum',
+  16: 'Lore & Legends',
   17: 'Space Gods',
 };
+
+// Local-only template resolver (no Liquipedia call) — applied first inside
+// `unwiki()` and reused as a precheck before deciding to pay an extra
+// `expandtemplates` round-trip. Knows our whitelist of templates that have a
+// deterministic local resolution; leaves everything else untouched so the
+// caller can decide whether to expand server-side or strip.
+function unwikiTemplateOnly(s) {
+  if (!s) return '';
+  return s.replace(/\{\{\s*setname\s*\/\s*(\d+)\s*\}\}/gi, (_, n) => TFT_SET_NAMES[parseInt(n, 10)] || `Set ${n}`);
+}
 
 // Strip wiki-link syntax `[[X|Y]]` → `Y`, `[[X]]` → `X`, and resolve / strip
 // `{{Template}}` references that MediaWiki would otherwise expand server-side.
 // We do the SetName resolution explicitly so events whose `name` field is just
 // `{{SetName/17}}: AMER Regional Finals` come out as "Space Gods: AMER Regional
-// Finals" instead of bleeding raw template syntax into the UI. Anything else
-// in `{{…}}` we can't safely resolve from wikitext alone — strip it.
+// Finals" instead of bleeding raw template syntax into the UI. Anything still
+// in `{{…}}` at this point either came back unresolved from a server-side
+// expand call or is a template we don't know — strip it as the safe fallback.
 function unwiki(s) {
   if (!s) return '';
   let out = s
@@ -534,7 +561,19 @@ async function main() {
     }
     const fields = parseTemplateFields(info.body);
     const id = pageToSlug(s.page);
-    const name = unwiki(fields.name) || displayTitle;
+    // If the raw name field still has wikitext templates that aren't in our
+    // local TFT_SET_NAMES whitelist, pay one extra Liquipedia call to expand
+    // them server-side (with the standard 30s ToU delay). Cheap because almost
+    // every tournament has a plain-text name.
+    let rawName = fields.name || '';
+    if (/\{\{[^{}]+\}\}/.test(rawName)) {
+      const stillTemplated = /\{\{[^{}]+\}\}/.test(unwikiTemplateOnly(rawName));
+      if (stillTemplated) {
+        await sleep(LIQUIPEDIA_DELAY_MS);
+        rawName = await expandTemplatesViaLiquipedia(rawName);
+      }
+    }
+    const name = unwiki(rawName) || displayTitle;
     const startDate = parseDate(fields.sdate || fields.startdate);
     const endDate = parseDate(fields.edate || fields.enddate);
     const status = deriveStatus(startDate, endDate);

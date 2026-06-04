@@ -23,8 +23,8 @@ const SET_NAMES = {
   12: 'Magic n\' Mayhem',
   13: 'Into the Arcane',
   14: 'Cyber City',
-  15: 'Spatulor',
-  16: 'K.O. Coliseum',
+  15: 'K.O. Coliseum',
+  16: 'Lore & Legends',
   17: 'Space Gods',
 };
 

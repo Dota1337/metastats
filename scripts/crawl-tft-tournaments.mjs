@@ -243,14 +243,49 @@ function ingest(map, raw) {
   if (k) map[k] = v;
 }
 
-// Strip wiki-link syntax `[[X|Y]]` → `Y`, `[[X]]` → `X`.
+// Set names — mirror of scripts/detect-tft-set.mjs SET_NAMES. Keep in sync.
+// Used to resolve the Liquipedia `{{SetName/N}}` template, which on the wiki
+// renders to the marketing-facing set name (e.g. {{SetName/17}} → "Space Gods").
+const TFT_SET_NAMES = {
+  1: 'Beta',
+  2: 'Rise of the Elements',
+  3: 'Galaxies',
+  4: 'Fates',
+  5: 'Reckoning',
+  6: 'Gizmos & Gadgets',
+  7: 'Dragonlands',
+  8: 'Monsters Attack',
+  9: 'Runeterra Reforged',
+  10: 'Remix Rumble',
+  11: 'Inkborn Fables',
+  12: "Magic n' Mayhem",
+  13: 'Into the Arcane',
+  14: 'Cyber City',
+  15: 'Spatulor',
+  16: 'K.O. Coliseum',
+  17: 'Space Gods',
+};
+
+// Strip wiki-link syntax `[[X|Y]]` → `Y`, `[[X]]` → `X`, and resolve / strip
+// `{{Template}}` references that MediaWiki would otherwise expand server-side.
+// We do the SetName resolution explicitly so events whose `name` field is just
+// `{{SetName/17}}: AMER Regional Finals` come out as "Space Gods: AMER Regional
+// Finals" instead of bleeding raw template syntax into the UI. Anything else
+// in `{{…}}` we can't safely resolve from wikitext alone — strip it.
 function unwiki(s) {
   if (!s) return '';
-  return s
+  let out = s
+    .replace(/\{\{\s*setname\s*\/\s*(\d+)\s*\}\}/gi, (_, n) => TFT_SET_NAMES[parseInt(n, 10)] || `Set ${n}`)
     .replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, '$2')
     .replace(/\[\[([^\]]+)\]\]/g, '$1')
     .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/g, ' ')
+    .replace(/&nbsp;/g, ' ');
+  // Strip any remaining {{…}} templates. Iterate so nested templates collapse
+  // ({{Foo|{{Bar}}}} → {{Foo|}} → '').
+  let prev;
+  do { prev = out; out = out.replace(/\{\{[^{}]*\}\}/g, ''); } while (out !== prev);
+  return out
+    .replace(/^[\s:,\-–—]+/, '')   // orphan punctuation left by a stripped leading template
     .replace(/\s+/g, ' ')
     .trim();
 }

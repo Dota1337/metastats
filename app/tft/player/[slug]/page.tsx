@@ -522,7 +522,7 @@ function SeasonStats({
               returns scores:{} (no per-match detail), and rendering the radar
               from that would draw NaN axes / all-zero bars (fake data). */}
           {stats.scores && Object.keys(stats.scores).length > 0 && stats.placementDistribution && stats.averages && (
-            <PlayStyle scores={stats.scores} dist={stats.placementDistribution} avgs={stats.averages} />
+            <PlayStyle scores={stats.scores} dist={stats.placementDistribution} avgs={stats.averages} avgPlacement={stats.avgPlacement} top4Rate={stats.top4Rate} />
           )}
         </>
       )}
@@ -629,14 +629,45 @@ function AugmentChip({ rank, apiName, games, avg, assets }: { rank: number; apiN
   );
 }
 
-function PlayStyle({ scores, dist, avgs }: { scores: NonNullable<PlayerStats['scores']>; dist: number[]; avgs: NonNullable<PlayerStats['averages']> }) {
+function PlayStyle({
+  scores, dist, avgs, avgPlacement, top4Rate,
+}: {
+  scores: NonNullable<PlayerStats['scores']>;
+  dist: number[];
+  avgs: NonNullable<PlayerStats['averages']>;
+  avgPlacement?: number;
+  top4Rate?: number;
+}) {
   const { t } = useI18n();
+  // Each row carries the score itself + the raw metric it derived from + the
+  // formula explainer. The Recharts Tooltip's `content` slot reads them so a
+  // hover surfaces "Tempo · 90/100 · Ø Lvl 8.7 · (Ø Level − 6) ÷ 3 …".
   const radarData = [
-    { axis: t('tft.tempo'),       value: round1(scores.tempo) },
-    { axis: t('tft.eco'),         value: round1(scores.eco) },
-    { axis: t('tft.damage'),      value: round1(scores.damage) },
-    { axis: t('tft.survival'),    value: round1(scores.survival) },
-    { axis: t('tft.consistency'), value: round1(scores.consistency) },
+    {
+      axis: t('tft.tempo'), value: round1(scores.tempo),
+      current: `${t('tft.avgLevel')}: ${avgs.level.toFixed(2)}`,
+      formula: t('tft.tempo.tooltip'),
+    },
+    {
+      axis: t('tft.eco'), value: round1(scores.eco),
+      current: `${t('tft.avgGoldLeft')}: ${avgs.goldLeft.toFixed(1)}g`,
+      formula: t('tft.eco.tooltip'),
+    },
+    {
+      axis: t('tft.damage'), value: round1(scores.damage),
+      current: `${t('tft.avgDamage')}: ${Math.round(avgs.damage)}`,
+      formula: t('tft.damage.tooltip'),
+    },
+    {
+      axis: t('tft.survival'), value: round1(scores.survival),
+      current: `${t('tft.avgPlacement')}: ${avgPlacement?.toFixed(2) ?? '—'}`,
+      formula: t('tft.survival.tooltip'),
+    },
+    {
+      axis: t('tft.consistency'), value: round1(scores.consistency),
+      current: `${t('tft.top4')}: ${top4Rate != null ? (top4Rate * 100).toFixed(1) + '%' : '—'}`,
+      formula: t('tft.consistency.tooltip'),
+    },
   ];
   const histData = dist.map((c, i) => ({ place: `${i + 1}.`, count: c }));
   const total = dist.reduce((a, b) => a + b, 0) || 1;
@@ -653,8 +684,21 @@ function PlayStyle({ scores, dist, avgs }: { scores: NonNullable<PlayerStats['sc
               <Radar name="Score" dataKey="value" stroke="#7B61FF" fill="#7B61FF" fillOpacity={0.35} />
               <Tooltip
                 cursor={{ fill: 'transparent' }}
-                contentStyle={{ backgroundColor: '#0d1526', border: '1px solid #1e2a3a', fontSize: 11 }}
-                formatter={(v: any) => [`${v}/100`, '']}
+                wrapperStyle={{ outline: 'none' }}
+                content={(props: any) => {
+                  const d = props?.payload?.[0]?.payload;
+                  if (!d) return null;
+                  return (
+                    <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-2.5 max-w-[280px] shadow-lg">
+                      <div className="flex items-baseline gap-2 mb-1">
+                        <span className="text-white text-xs font-medium">{d.axis}</span>
+                        <span className="text-[#7B61FF] text-sm font-semibold tabular-nums">{d.value}/100</span>
+                      </div>
+                      {d.current && <div className="text-[#a0b0c5] text-[11px] tabular-nums">{d.current}</div>}
+                      {d.formula && <div className="text-[#7a8aa0] text-[10px] leading-snug mt-1">{d.formula}</div>}
+                    </div>
+                  );
+                }}
               />
             </RadarChart>
           </ResponsiveContainer>

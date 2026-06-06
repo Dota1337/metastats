@@ -1044,13 +1044,16 @@ function ProSpecialty({ puuid, setNumber, assets, t }: {
               const tierKeys = Object.keys(u.tiers).sort();
               return (
                 <div key={u.unitId} className="bg-[#141c2e] border border-[#1e2a3a] rounded p-2.5">
-                  <div className="flex items-center gap-2 mb-2">
+                  <a
+                    href={`/tft/units/${encodeURIComponent(u.unitId)}`}
+                    className="flex items-center gap-2 mb-2 hover:opacity-90 transition-opacity group"
+                  >
                     {tftChampionTileUrl(assets, unitAsset) && (
-                      <img src={tftChampionTileUrl(assets, unitAsset)!} alt="" className="w-8 h-8 rounded border border-[#c39bff]/60" />
+                      <img src={tftChampionTileUrl(assets, unitAsset)!} alt={unitAsset?.name || u.unitId} className="w-8 h-8 rounded border border-[#c39bff]/60 group-hover:border-[#c39bff]" />
                     )}
-                    <span className="text-white text-[11px]">{unitAsset?.name || u.unitId.replace(/^TFT\d+_/, '')}</span>
+                    <span className="text-white text-[11px] group-hover:text-[#7B61FF] transition-colors">{unitAsset?.name || u.unitId.replace(/^TFT\d+_/, '')}</span>
                     <span className="text-[#7a8aa0] text-[10px] tabular-nums ml-auto">{u.games} {t('tft.gamesShort')}</span>
-                  </div>
+                  </a>
                   <div className="space-y-1">
                     {tierKeys.flatMap(tier => (u.tiers[tier] || []).map((build, i) => (
                       <div key={`${tier}-${i}`} className="flex items-center gap-1.5">
@@ -1058,8 +1061,16 @@ function ProSpecialty({ puuid, setNumber, assets, t }: {
                         <div className="flex gap-0.5">
                           {build.items.map((it, j) => {
                             const iconUrl = tftIconUrl(assets, assets?.items[it]?.icon);
+                            const itemName = assets?.items[it]?.name || it;
                             return iconUrl ? (
-                              <img key={j} src={iconUrl} alt="" className="w-5 h-5 rounded" title={assets?.items[it]?.name || it} />
+                              <a
+                                key={j}
+                                href={`/tft/items/${encodeURIComponent(it)}`}
+                                title={itemName}
+                                className="hover:scale-110 transition-transform"
+                              >
+                                <img src={iconUrl} alt={itemName} className="w-5 h-5 rounded" />
+                              </a>
                             ) : (
                               <div key={j} className="w-5 h-5 rounded bg-[#1e2a3a]" />
                             );

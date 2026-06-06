@@ -35,6 +35,10 @@ interface CompRow {
   top4_by_round_merged: any[] | null;
   level_dist_merged: any[] | null;
   level_sum_last_round_merged: any[] | null;
+  // W3-A: jsonb-agg of per-day carry_star_dist objects. Each daily row ships
+  // { "1": {games, sumPlacement, top4, top1}, "2": …, "3": … } — array-merge
+  // sums per star key here in the API.
+  carry_star_dist_merged: any[] | null;
   // { bucket: { games, sum_placement } } from migration 0017 — for Skill-Cap.
   bucket_breakdown: Record<string, { games: number; sum_placement: number }> | null;
 }
@@ -376,7 +380,36 @@ function enrichComp(r: CompRow) {
     cumTop4 -= (roundTop4[String(round)] || 0);
     return point;
   });
-  return { roundHistogram, survivalToTop4, aggroIndex, avgGoldLeft, levelingTempo, skillCapIndex, skillCapBuckets, flexScore };
+  // W3-A: Carry-Star outcome — merge the per-day jsonb dicts into a per-star
+  // summary (games, avgPlacement, top4Rate, top1Rate). Reroll comps show
+  // dramatically better numbers at 3★ than at 2★; pros use the gap to decide
+  // whether to slow-roll a level or push 8.
+  const carryStarOutcome: { star: number; games: number; avgPlacement: number | null; top4Rate: number | null; top1Rate: number | null }[] = [];
+  const csMerged: Record<string, { games: number; sumPlacement: number; top4: number; top1: number }> = {};
+  for (const dayDict of (r.carry_star_dist_merged || [])) {
+    if (!dayDict || typeof dayDict !== 'object' || Array.isArray(dayDict)) continue;
+    for (const [star, e] of Object.entries(dayDict as Record<string, any>)) {
+      if (!e || typeof e !== 'object') continue;
+      const cur = csMerged[star] || { games: 0, sumPlacement: 0, top4: 0, top1: 0 };
+      cur.games += Number(e.games ?? 0);
+      cur.sumPlacement += Number(e.sumPlacement ?? e.sum_placement ?? 0);
+      cur.top4 += Number(e.top4 ?? 0);
+      cur.top1 += Number(e.top1 ?? 0);
+      csMerged[star] = cur;
+    }
+  }
+  for (const star of [1, 2, 3]) {
+    const e = csMerged[String(star)];
+    if (!e || e.games === 0) continue;
+    carryStarOutcome.push({
+      star,
+      games: e.games,
+      avgPlacement: e.sumPlacement / e.games,
+      top4Rate: e.top4 / e.games,
+      top1Rate: e.top1 / e.games,
+    });
+  }
+  return { roundHistogram, survivalToTop4, aggroIndex, avgGoldLeft, levelingTempo, skillCapIndex, skillCapBuckets, flexScore, carryStarOutcome };
 }
 
 // Merge per-day carry-items lists ([{items:[…], count}, …]) into a single

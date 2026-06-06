@@ -145,6 +145,11 @@ function newCompBucket() {
     // Used to render the "survival → top4" probability curve on the comp
     // detail page.
     lastRoundDist: new Map(),
+    // W3-A: Carry-Star-Outcome — per star level of the inferred carry, the
+    // bucket {games, sumPlacement, top4, top1}. Lets the UI show "if Aphelios
+    // hits 3★ → Avg 2.8 (12% of games), vs 2★ → Avg 4.9". Reroll comps
+    // collapse at 2★; fast-8 comps rarely reach 3★ but win when they do.
+    carryStarOutcome: new Map(),
   };
 }
 
@@ -479,6 +484,25 @@ export function aggregateMatch(rawMatch, agg, opts) {
         cb.sumPlayersEliminated += Number(p.players_eliminated ?? 0);
         // Comp-Eco input: Σ gold_left → avgGoldLeft = sum/games (economy profile)
         cb.sumGoldLeft += Number(p.gold_left ?? 0);
+        // W3-A: Carry-Star outcome — find the unit instance matching compInfo's
+        // carry (deterministic by classifyComp's item-count/tier ranking) and
+        // record its star with the placement. Falls through to '0' when the
+        // carry can't be located (defensive — shouldn't happen since classifyComp
+        // returned compInfo from the same units list).
+        {
+          const cu = (p.units || []).find(u => u.character_id === compInfo.carryUnit);
+          const carryStar = cu?.tier ?? 0;
+          if (carryStar > 0) {
+            const csKey = String(carryStar);
+            const cse = getOrCreate(cb.carryStarOutcome, csKey, () => ({
+              games: 0, sumPlacement: 0, top4: 0, top1: 0,
+            }));
+            cse.games++;
+            cse.sumPlacement += placement;
+            if (top4) cse.top4++;
+            if (top1) cse.top1++;
+          }
+        }
         // Leveling-tempo input: per-final-level histogram + parallel last_round
         // accumulator. Skip if level is missing/0 (early surrender row).
         const finalLevel = Number(p.level ?? 0);
@@ -830,6 +854,17 @@ export function finalize(agg, opts = {}) {
         levelDist[lvl] = (levelDist[lvl] || 0) + e.games;
         levelSumLastRound[lvl] = (levelSumLastRound[lvl] || 0) + e.sumLastRound;
       }
+      // W3-A: Carry-Star outcome serialized as { "<star>": { games, sumPlacement, top4, top1 } }
+      const carryStarDist = {};
+      const csMap = b.carryStarOutcome instanceof Map ? b.carryStarOutcome : new Map();
+      for (const [star, e] of csMap) {
+        carryStarDist[star] = {
+          games: (carryStarDist[star]?.games || 0) + e.games,
+          sumPlacement: (carryStarDist[star]?.sumPlacement || 0) + e.sumPlacement,
+          top4: (carryStarDist[star]?.top4 || 0) + e.top4,
+          top1: (carryStarDist[star]?.top1 || 0) + e.top1,
+        };
+      }
       slim[bucket] = {
         games: b.games, sumPlacement: b.sumPlacement, top4: b.top4, top1: b.top1,
         sumLevel: b.sumLevel ?? 0,
@@ -839,6 +874,7 @@ export function finalize(agg, opts = {}) {
         typicalUnits, typicalAugments, carryItems,
         lastRoundDist, top4ByRound,
         levelDist, levelSumLastRound,
+        carryStarDist,
       };
     }
     if (Object.keys(slim).length > 0) out.byComp[key] = slim;

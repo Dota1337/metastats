@@ -472,6 +472,52 @@ export default function TftCompDetailPage() {
                 untersagt. Datenfeld typicalAugments bleibt im API-Payload
                 (Migration unverändert), aber wird nicht mehr angezeigt. */}
 
+            {/* W3-A: Carry-Star-Outcome — wenn der Carry sein 3★ schafft,
+                wie gut wird der Run typischerweise? Reroll-Comps zeigen hier
+                eine drastische Spreizung zwischen 2★ und 3★, Fast-8-Comps
+                kapern nur selten 3★ und schlagen sich da fast immer durch. */}
+            {(comp.carryStarOutcome && comp.carryStarOutcome.length >= 2) && (() => {
+              const totalGames = (comp.carryStarOutcome as { games: number }[]).reduce((s: number, x: { games: number }) => s + x.games, 0);
+              if (totalGames === 0) return null;
+              return (
+                <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
+                  <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.carryStarOutcome')}</h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {(comp.carryStarOutcome as { star: number; games: number; avgPlacement: number; top4Rate: number; top1Rate: number }[]).map((row) => {
+                      const share = totalGames > 0 ? (row.games / totalGames) * 100 : 0;
+                      const starColor = row.star === 3 ? '#c39bff' : row.star === 2 ? '#e0c75a' : '#9ab0bf';
+                      return (
+                        <div key={row.star} className="bg-[#141c2e] border rounded p-3" style={{ borderColor: `${starColor}40` }}>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-base font-medium" style={{ color: starColor }}>
+                              {'★'.repeat(row.star)}
+                            </span>
+                            <span className="text-[#7a8aa0] text-[10px] tabular-nums">
+                              {share.toFixed(0)}% · {row.games}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-1 text-[11px] tabular-nums">
+                            <div>
+                              <div className="text-[#7a8aa0] text-[9px] uppercase tracking-widest">{t('tft.avgPlacement')}</div>
+                              <div className="text-white text-base font-medium">{row.avgPlacement.toFixed(2)}</div>
+                            </div>
+                            <div>
+                              <div className="text-[#7a8aa0] text-[9px] uppercase tracking-widest">{t('tft.top4')}</div>
+                              <div className="text-white">{(row.top4Rate * 100).toFixed(0)}%</div>
+                            </div>
+                            <div>
+                              <div className="text-[#7a8aa0] text-[9px] uppercase tracking-widest">{t('tft.top1')}</div>
+                              <div className="text-white">{(row.top1Rate * 100).toFixed(0)}%</div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              );
+            })()}
+
             {/* W3-B: Econ-ROI / Roll-Stage-Pro-Sicht. Macht aus dem rohen
                 level_dist + level_sum_last_round eine Pro-lesbare Aussage:
                 "Wo ist das Cap dieser Comp und wie tief kommt sie dort?" */}

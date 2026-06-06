@@ -199,6 +199,7 @@ export async function writeTftStatsToSupabase(opts) {
         top4_by_round: b.top4ByRound || {},
         level_dist: b.levelDist || {},
         level_sum_last_round: b.levelSumLastRound || {},
+        carry_star_dist: b.carryStarDist || {},
       });
     }
   }

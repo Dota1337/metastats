@@ -325,6 +325,7 @@ const translations = {
   'tft.metaPulse.krAhead':     t6('KR voraus', 'KR ahead', 'KR \uC55E\uC11C', '\u97E9\u670D\u9886\u5148', 'KR adelantado', 'KR en avance'),
   'tft.metaPulse.patchWinners':t6('Patch-Gewinner', 'Patch winners', '\uD328\uCE58 \uC2B9\uC790', '\u7248\u672C\u80DC\u8005', 'Ganadores del parche', 'Gagnants du patch'),
   'tft.metaPulse.shortcut':    t6('Pro-Tool', 'Pro tool', '\uD504\uB85C \uB3C4\uAD6C', '\u4E13\u4E1A\u5DE5\u5177', 'Pro tool', 'Outil pro'),
+  'tft.comp.carryStarOutcome': t6('Carry-Sternstufe \u2192 Outcome', 'Carry star \u2192 Outcome', '\uCE90\uB9AC \uBCC4 \u2192 \uACB0\uACFC', '\u4E3BC\u661F\u7EA7 \u2192 \u7ED3\u679C', 'Estrella del carry \u2192 resultado', '\u00C9toile du carry \u2192 r\u00E9sultat'),
   'tft.gameStyle':              t6('Spielweise', 'Play style', '\uD50C\uB808\uC774 \uC2A4\uD0C0\uC77C', '\u73A9\u6CD5\u98CE\u683C', 'Estilo de juego', 'Style de jeu'),
   'tft.tempo':                  t6('Tempo', 'Tempo', '\uD15C\uD3EC', '\u8282\u594F', 'Tempo', 'Tempo'),
   'tft.aggression':             t6('Aggression', 'Aggression', '\uACF5\uACA9\uC131', '\u653B\u51FB\u6027', 'Agresi\u00F3n', 'Agressivit\u00E9'),

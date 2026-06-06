@@ -84,7 +84,7 @@ interface PlayerStats {
   };
   scores?: {
     tempo: number;
-    aggression: number;
+    eco: number;
     damage: number;
     survival: number;
     consistency: number;
@@ -633,7 +633,7 @@ function PlayStyle({ scores, dist, avgs }: { scores: NonNullable<PlayerStats['sc
   const { t } = useI18n();
   const radarData = [
     { axis: t('tft.tempo'),       value: round1(scores.tempo) },
-    { axis: t('tft.aggression'),  value: round1(scores.aggression) },
+    { axis: t('tft.eco'),         value: round1(scores.eco) },
     { axis: t('tft.damage'),      value: round1(scores.damage) },
     { axis: t('tft.survival'),    value: round1(scores.survival) },
     { axis: t('tft.consistency'), value: round1(scores.consistency) },

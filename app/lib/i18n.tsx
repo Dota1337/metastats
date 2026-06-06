@@ -332,7 +332,7 @@ const translations = {
   'tft.comp.contestedTriple':  t6('3+ in Lobby', '3+ in lobby', '\uB85C\uBE44\uC5D0 3\uBA85+', '3+\u4EBA\u5BF9\u5C40', '3+ en lobby', '3+ dans le lobby'),
   'tft.gameStyle':              t6('Spielweise', 'Play style', '\uD50C\uB808\uC774 \uC2A4\uD0C0\uC77C', '\u73A9\u6CD5\u98CE\u683C', 'Estilo de juego', 'Style de jeu'),
   'tft.tempo':                  t6('Tempo', 'Tempo', '\uD15C\uD3EC', '\u8282\u594F', 'Tempo', 'Tempo'),
-  'tft.aggression':             t6('Aggression', 'Aggression', '\uACF5\uACA9\uC131', '\u653B\u51FB\u6027', 'Agresi\u00F3n', 'Agressivit\u00E9'),
+  'tft.eco':                    t6('Eco', 'Eco', '\uACBD\uC81C', '\u7ECF\u6D4E', 'Econom\u00EDa', '\u00C9conomie'),
   'tft.survival':               t6('\u00DCberleben', 'Survival', '\uC0DD\uC874', '\u751F\u5B58', 'Supervivencia', 'Survie'),
   'tft.consistency':            t6('Konsistenz', 'Consistency', '\uC77C\uAD00\uC131', '\u7A33\u5B9A\u6027', 'Consistencia', 'R\u00E9gularit\u00E9'),
   'tft.damage':                 t6('Schaden', 'Damage', '\uD53C\uD574\uB7C9', '\u4F24\u5BB3', 'Da\u00F1o', 'D\u00E9g\u00E2ts'),

@@ -252,7 +252,12 @@ export async function GET(request: NextRequest) {
 
   const scores = {
     tempo:       clamp01((avgLevel - 6) / 3) * 100,
-    aggression:  clamp01(avgEliminations / 7) * 100,
+    // Eco-Mastery — replaces "Aggression" because that one correlated too
+    // tightly with Tempo (both = "how hard do you push the game?").
+    // Low avgGoldLeft = clean slam-out; high = died holding money (over-econ
+    // or all-in lost early). Anchor 5g → 100, 25g → 0 covers the typical
+    // top-tier (8-12g) to beginner (30-50g) spread.
+    eco:         clamp01(1 - (avgGoldLeft - 5) / 20) * 100,
     damage:      clamp01(avgDamage / 200) * 100,
     survival:    clamp01((9 - avgPlacement) / 8) * 100,
     consistency: (top4 / games) * 100,

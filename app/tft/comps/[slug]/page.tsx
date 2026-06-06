@@ -14,6 +14,7 @@ import { useI18n } from '../../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import PositionHeatmap from '../../../components/tft/PositionHeatmap';
 import { formatStage } from '../../../lib/tft-stage';
+import { aggregateComponents } from '../../../lib/tft-components';
 
 // Slot meaning in tft_daily_augment_stats: 0 = stage 2-1, 1 = 3-2, 2 = 4-2.
 const SLOT_LABELS = ['2-1', '3-2', '4-2'] as const;
@@ -403,6 +404,56 @@ export default function TftCompDetailPage() {
                 </div>
               </section>
             )}
+
+            {/* Komponent-Priority (W1-B): rolls each top item-set up to its
+                Carousel components. Pro question „welches Bauteil zuerst
+                greifen?" beantwortet sich aus carryItems × recipes. Reine
+                Client-Aggregation, keine zusätzlichen API-Calls. */}
+            {comp.carryItems && comp.carryItems.length > 0 && assets && (() => {
+              const components = aggregateComponents(comp.carryItems, assets, 6);
+              if (components.length === 0) return null;
+              return (
+                <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
+                  <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.componentPriority')}</h2>
+                  <div className="flex flex-wrap gap-2">
+                    {components.map((c, i) => {
+                      const meta = assets.items[c.component];
+                      const url = tftIconUrl(assets, meta?.icon);
+                      const pct = (c.weight * 100).toFixed(0);
+                      const fromItemsTitle = c.fromItems
+                        .slice(0, 4)
+                        .map(it => assets.items[it]?.name || it.replace(/^TFT\d*_Item_/, ''))
+                        .join(' · ');
+                      return (
+                        <div
+                          key={c.component}
+                          title={`${meta?.name || c.component} — ${t('tft.comp.componentInItems')}: ${fromItemsTitle}`}
+                          className="flex flex-col items-center w-16"
+                        >
+                          <div className="relative">
+                            {url ? (
+                              <img src={url} alt={meta?.name || ''} className="w-12 h-12 rounded border-2" style={{ borderColor: i === 0 ? '#e0c75a' : '#1e2a3a' }} />
+                            ) : (
+                              <div className="w-12 h-12 rounded bg-[#1e2a3a]" />
+                            )}
+                            {i === 0 && (
+                              <span className="absolute -top-1 -right-1 text-[9px] bg-[#e0c75a] text-[#0d1526] px-1 rounded font-bold">1</span>
+                            )}
+                          </div>
+                          <div className="text-white text-[10px] mt-1 truncate max-w-full">
+                            {meta?.name?.split(' ').pop() || c.component.split('_').pop()}
+                          </div>
+                          <div className="w-full h-1 bg-[#1e2a3a] rounded mt-1 overflow-hidden">
+                            <div className="h-full bg-[#7B61FF]" style={{ width: `${pct}%` }} />
+                          </div>
+                          <div className="text-[#a0b0c5] text-[10px] tabular-nums">{pct}%</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              );
+            })()}
 
             {/* Top Item-Sets pro Carry — extends what CompCard only teased
                 inline. Each set shows its 3 items + relative pick share. */}

@@ -1,0 +1,194 @@
+'use client';
+import { useState } from 'react';
+import { useI18n } from '../../lib/i18n';
+
+// W1-C: Multi-Criteria-Filter — Pro-Tool, um versteckte Power-Comps zu finden
+// (z.B. „avgPlace<4.4 UND pickrate<5% UND games>500" = under-the-radar S-Tier).
+// Reine Client-Filterung über die bereits geladene Comp-Liste; keine zusätzlichen
+// API-Calls. Preset-Chips deck'n die häufigsten Pro-Fragen ab.
+
+export interface AdvancedFilters {
+  avgPlaceMax: number | null;     // Ø-Platzierung höchstens X (kleiner = besser)
+  top4MinPct: number | null;      // Top-4-Rate mindestens X%
+  top1MinPct: number | null;      // Top-1-Rate mindestens X%
+  pickMaxPct: number | null;      // Pickrate höchstens X% (für versteckte Comps)
+  gamesMin: number | null;        // Mindest-Samplegröße
+}
+
+export const ADV_DEFAULT: AdvancedFilters = {
+  avgPlaceMax: null,
+  top4MinPct: null,
+  top1MinPct: null,
+  pickMaxPct: null,
+  gamesMin: null,
+};
+
+// Active when at least one constraint is set.
+export function isAdvActive(f: AdvancedFilters): boolean {
+  return f.avgPlaceMax != null || f.top4MinPct != null || f.top1MinPct != null
+    || f.pickMaxPct != null || f.gamesMin != null;
+}
+
+// Apply filters to a list of comps (client-side). Comps with missing metric
+// values pass when no constraint references that metric, and fail any constraint
+// that touches a missing value (so partial data doesn't masquerade as a fit).
+export function applyAdvancedFilters<T extends {
+  avgPlacement: number | null;
+  top4Rate: number | null;
+  top1Rate: number | null;
+  pickRate?: number | null;
+  games: number;
+}>(comps: T[], f: AdvancedFilters): T[] {
+  return comps.filter(c => {
+    if (f.avgPlaceMax != null && (c.avgPlacement == null || c.avgPlacement > f.avgPlaceMax)) return false;
+    if (f.top4MinPct != null && (c.top4Rate == null || c.top4Rate * 100 < f.top4MinPct)) return false;
+    if (f.top1MinPct != null && (c.top1Rate == null || c.top1Rate * 100 < f.top1MinPct)) return false;
+    if (f.pickMaxPct != null && c.pickRate != null && c.pickRate * 100 > f.pickMaxPct) return false;
+    if (f.gamesMin != null && c.games < f.gamesMin) return false;
+    return true;
+  });
+}
+
+// URL helpers: pack into a single "adv" param so URLs stay compact and
+// shareable. Format: avgMax=4.4_top4Min=50_gamesMin=500_pickMax=8.
+export function advToUrlParam(f: AdvancedFilters): string | null {
+  const parts: string[] = [];
+  if (f.avgPlaceMax != null) parts.push(`avgMax=${f.avgPlaceMax}`);
+  if (f.top4MinPct != null) parts.push(`top4Min=${f.top4MinPct}`);
+  if (f.top1MinPct != null) parts.push(`top1Min=${f.top1MinPct}`);
+  if (f.pickMaxPct != null) parts.push(`pickMax=${f.pickMaxPct}`);
+  if (f.gamesMin != null) parts.push(`gamesMin=${f.gamesMin}`);
+  return parts.length > 0 ? parts.join('_') : null;
+}
+
+export function advFromUrlParam(raw: string | null): AdvancedFilters {
+  if (!raw) return ADV_DEFAULT;
+  const out: AdvancedFilters = { ...ADV_DEFAULT };
+  for (const p of raw.split('_')) {
+    const [k, v] = p.split('=');
+    const n = Number(v);
+    if (!Number.isFinite(n)) continue;
+    if (k === 'avgMax') out.avgPlaceMax = n;
+    else if (k === 'top4Min') out.top4MinPct = n;
+    else if (k === 'top1Min') out.top1MinPct = n;
+    else if (k === 'pickMax') out.pickMaxPct = n;
+    else if (k === 'gamesMin') out.gamesMin = n;
+  }
+  return out;
+}
+
+// Pro-Presets — die häufigsten Such-Patterns. Werte konservativ gewählt:
+// "Hidden Gems" trifft S-Tier-Comps unter 5% Pickrate (= das, was die meisten
+// Leute übersehen). "Safe Picks" priorisiert Konsistenz. "Tournament-strong"
+// belohnt high-roll-potential (Top1) bei akzeptablem Floor.
+const PRESETS: { key: string; labelKey: string; filters: AdvancedFilters }[] = [
+  { key: 'gems',       labelKey: 'tft.adv.preset.gems',       filters: { ...ADV_DEFAULT, avgPlaceMax: 4.4, pickMaxPct: 5, gamesMin: 200 } },
+  { key: 'safe',       labelKey: 'tft.adv.preset.safe',       filters: { ...ADV_DEFAULT, top4MinPct: 55, gamesMin: 300 } },
+  { key: 'tournament', labelKey: 'tft.adv.preset.tournament', filters: { ...ADV_DEFAULT, top1MinPct: 18, gamesMin: 200 } },
+];
+
+interface Props {
+  filters: AdvancedFilters;
+  onChange: (next: AdvancedFilters) => void;
+  resultCount: number;
+  totalCount: number;
+}
+
+export default function AdvancedCompFilters({ filters, onChange, resultCount, totalCount }: Props) {
+  const { t } = useI18n();
+  const [expanded, setExpanded] = useState(isAdvActive(filters));
+  const active = isAdvActive(filters);
+
+  return (
+    <div className="mb-3">
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <button
+          type="button"
+          onClick={() => setExpanded(e => !e)}
+          className={`px-3 py-1 rounded border transition-colors ${
+            active
+              ? 'bg-[#7B61FF]/15 border-[#7B61FF]/60 text-[#a892ff]'
+              : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5] hover:border-[#7B61FF]/40'
+          }`}
+        >
+          {expanded ? '−' : '+'} {t('tft.adv.title')}
+          {active && <span className="ml-1.5 text-[10px] tabular-nums">({resultCount}/{totalCount})</span>}
+        </button>
+        {PRESETS.map(p => {
+          const isOn = JSON.stringify(filters) === JSON.stringify(p.filters);
+          return (
+            <button
+              key={p.key}
+              type="button"
+              onClick={() => onChange(isOn ? ADV_DEFAULT : p.filters)}
+              className={`px-2.5 py-1 rounded border transition-colors ${
+                isOn
+                  ? 'bg-[#3ecf8e]/15 border-[#3ecf8e]/60 text-[#3ecf8e]'
+                  : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5] hover:border-[#3ecf8e]/40'
+              }`}
+            >
+              {t(p.labelKey as any)}
+            </button>
+          );
+        })}
+        {active && (
+          <button
+            type="button"
+            onClick={() => onChange(ADV_DEFAULT)}
+            className="px-2 py-1 rounded text-[#7a8aa0] hover:text-white text-[11px]"
+          >
+            × {t('tft.adv.reset')}
+          </button>
+        )}
+      </div>
+
+      {expanded && (
+        <div className="mt-2 bg-[#0d1526] border border-[#1e2a3a] rounded p-3 grid grid-cols-2 sm:grid-cols-5 gap-2">
+          <NumField label={t('tft.adv.avgMax')} value={filters.avgPlaceMax} step={0.1}
+            onChange={v => onChange({ ...filters, avgPlaceMax: v })} placeholder="4.4" />
+          <NumField label={t('tft.adv.top4Min')} value={filters.top4MinPct} step={1} suffix="%"
+            onChange={v => onChange({ ...filters, top4MinPct: v })} placeholder="55" />
+          <NumField label={t('tft.adv.top1Min')} value={filters.top1MinPct} step={1} suffix="%"
+            onChange={v => onChange({ ...filters, top1MinPct: v })} placeholder="18" />
+          <NumField label={t('tft.adv.pickMax')} value={filters.pickMaxPct} step={0.5} suffix="%"
+            onChange={v => onChange({ ...filters, pickMaxPct: v })} placeholder="5" />
+          <NumField label={t('tft.adv.gamesMin')} value={filters.gamesMin} step={50}
+            onChange={v => onChange({ ...filters, gamesMin: v })} placeholder="200" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NumField({
+  label, value, onChange, placeholder, step = 1, suffix,
+}: {
+  label: string;
+  value: number | null;
+  onChange: (v: number | null) => void;
+  placeholder?: string;
+  step?: number;
+  suffix?: string;
+}) {
+  return (
+    <label className="block">
+      <span className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">{label}</span>
+      <div className="flex items-center mt-0.5">
+        <input
+          type="number"
+          step={step}
+          value={value ?? ''}
+          placeholder={placeholder}
+          onChange={e => {
+            const raw = e.target.value;
+            if (raw === '') return onChange(null);
+            const n = Number(raw);
+            onChange(Number.isFinite(n) ? n : null);
+          }}
+          className="w-full bg-[#141c2e] border border-[#1e2a3a] rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-[#7B61FF]/60"
+        />
+        {suffix && <span className="text-[#7a8aa0] text-[10px] ml-1">{suffix}</span>}
+      </div>
+    </label>
+  );
+}

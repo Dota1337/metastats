@@ -14,6 +14,13 @@ import StatsFilterBar, {
 import { useI18n } from '../../lib/i18n';
 import { loadTftAssets, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import TftHero from '../../components/tft/TftHero';
+import AdvancedCompFilters, {
+  ADV_DEFAULT,
+  advFromUrlParam,
+  advToUrlParam,
+  applyAdvancedFilters,
+  type AdvancedFilters,
+} from '../../components/tft/AdvancedCompFilters';
 
 // Filter shape and URL-sync mirror /tft/units and /tft/items so the
 // three stats pages behave identically (patch / bucket / days / region).
@@ -26,6 +33,9 @@ export default function TftCompsPage() {
 
   const [filters, setFilters] = useState<Filters>(() =>
     filtersFromSearchParams(new URLSearchParams(searchParams.toString())),
+  );
+  const [adv, setAdv] = useState<AdvancedFilters>(() =>
+    advFromUrlParam(searchParams.get('adv')),
   );
   const [sortBy, setSortBy] = useState<'avg' | 'win' | 'top4' | 'pick' | 'games' | 'velocity'>(
     (searchParams.get('sort') as any) || 'avg',
@@ -52,17 +62,21 @@ export default function TftCompsPage() {
         setLoading(false);
       })
       .catch(() => { setHasData(false); setComps([]); setLoading(false); });
-    const url = `${pathname}?${qs}`;
+    const advParam = advToUrlParam(adv);
+    const url = `${pathname}?${qs}${advParam ? `&adv=${advParam}` : ''}`;
     if (typeof window !== 'undefined' && window.location.pathname + window.location.search !== url) {
       router.replace(url, { scroll: false });
     }
-  }, [filters, pathname, router]);
+  }, [filters, adv, pathname, router]);
 
   const currentPatchLabel = patches[0]?.patch;
 
+  // Apply advanced filters BEFORE sort so the result count + sort target match.
+  // Client-side filter on the already-loaded comps — no extra API roundtrip.
+  const filteredComps = applyAdvancedFilters(comps, adv);
   const sortedComps = (() => {
-    if (comps.length === 0) return comps;
-    const copy = [...comps];
+    if (filteredComps.length === 0) return filteredComps;
+    const copy = [...filteredComps];
     switch (sortBy) {
       case 'win':   copy.sort((a, b) => (b.top1Rate ?? 0) - (a.top1Rate ?? 0)); break;
       case 'top4':  copy.sort((a, b) => (b.top4Rate ?? 0) - (a.top4Rate ?? 0)); break;
@@ -91,6 +105,13 @@ export default function TftCompsPage() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-2 pb-6">
         <StatsFilterBar filters={filters} patches={patches} onChange={setFilters} />
 
+        <AdvancedCompFilters
+          filters={adv}
+          onChange={setAdv}
+          resultCount={filteredComps.length}
+          totalCount={comps.length}
+        />
+
         <div className="flex items-center justify-end gap-2 mb-3 -mt-1 text-xs">
           <span className="text-[#7a8aa0]">{t('tft.sortBy')}:</span>
           <select
@@ -114,7 +135,7 @@ export default function TftCompsPage() {
         )}
         {hasData === false && <EmptyData />}
 
-        {hasData && comps.length > 0 && (
+        {hasData && sortedComps.length > 0 && (
           <>
             <div className={`hidden sm:grid items-center gap-3 px-3 py-1.5 text-[10px] uppercase tracking-widest text-[#7a8aa0] ${
               filters.velocity > 0

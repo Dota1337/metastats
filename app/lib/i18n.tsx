@@ -288,6 +288,16 @@ const translations = {
   'tft.velocity.notEnough':t6('zu wenig Daten', 'not enough data', '\uB370\uC774\uD130 \uBD80\uC871', '\u6570\u636E\u4E0D\u8DB3', 'datos insuficientes', 'donn\u00E9es insuffisantes'),
   'tft.velocity.trending': t6('Trending', 'Trending', '\uD2B8\uB80C\uB529', '\u8DA3\u52BF', 'Tendencia', 'Tendance'),
   'tft.velocity.tooltip':  t6('Verbesserung der \u00D8-Platzierung vs Vergleichsfenster', 'Avg-placement improvement vs comparison window', '\uBE44\uAD50 \uAE30\uAC04 \uB300\uBE44 \uD3C9\uADE0 \uC21C\uC704 \uAC1C\uC120', '\u5E73\u5747\u540D\u6B21\u76F8\u6BD4\u53C2\u8003\u671F\u95F4\u7684\u6539\u5584', 'Mejora del puesto medio vs ventana de referencia', 'Am\u00E9lioration du classement moyen vs fen\u00EAtre de comparaison'),
+  'tft.adv.title':         t6('Erweiterte Filter', 'Advanced filters', '\uACE0\uAE09 \uD544\uD130', '\u9AD8\u7EA7\u7B5B\u9009', 'Filtros avanzados', 'Filtres avanc\u00E9s'),
+  'tft.adv.reset':         t6('Zur\u00FCcksetzen', 'Reset', '\uCD08\uAE30\uD654', '\u91CD\u7F6E', 'Restablecer', 'R\u00E9initialiser'),
+  'tft.adv.avgMax':        t6('\u00D8 max', 'Avg max', '\uD3C9\uADE0 \uCD5C\uB300', '\u5E73\u5747\u6700\u5927', 'Med. m\u00E1x', 'Moy. max'),
+  'tft.adv.top4Min':       t6('Top 4 min', 'Top 4 min', 'Top 4 \uCD5C\uC18C', 'Top 4 \u6700\u5C0F', 'Top 4 m\u00EDn', 'Top 4 min'),
+  'tft.adv.top1Min':       t6('Top 1 min', 'Top 1 min', 'Top 1 \uCD5C\uC18C', 'Top 1 \u6700\u5C0F', 'Top 1 m\u00EDn', 'Top 1 min'),
+  'tft.adv.pickMax':       t6('Pick max', 'Pick max', '\uD53D\uB960 \uCD5C\uB300', '\u9009\u53D6\u7387\u6700\u5927', 'Pick m\u00E1x', 'Pick max'),
+  'tft.adv.gamesMin':      t6('Spiele min', 'Games min', '\uACBD\uAE30 \uCD5C\uC18C', '\u573A\u6B21\u6700\u5C0F', 'Partidas m\u00EDn', 'Parties min'),
+  'tft.adv.preset.gems':       t6('Hidden Gems', 'Hidden Gems', '\uC228\uC740 \uBCF4\uC11D', '\u9690\u85CF\u5B9D\u85CF', 'Joyas Ocultas', 'P\u00E9pites cach\u00E9es'),
+  'tft.adv.preset.safe':       t6('Safe Picks', 'Safe Picks', '\uC548\uC804 \uD53D', '\u7A33\u5065\u9009\u62E9', 'Picks Seguros', 'Picks s\u00FBrs'),
+  'tft.adv.preset.tournament': t6('Tournament-stark', 'Tournament-strong', '\uD1A0\uB108\uBA3C\uD2B8 \uAC15\uC138', '\u6BD4\u8D5B\u5F3A\u52BF', 'Fuerte en torneo', 'Fort en tournoi'),
   'tft.gameStyle':              t6('Spielweise', 'Play style', '\uD50C\uB808\uC774 \uC2A4\uD0C0\uC77C', '\u73A9\u6CD5\u98CE\u683C', 'Estilo de juego', 'Style de jeu'),
   'tft.tempo':                  t6('Tempo', 'Tempo', '\uD15C\uD3EC', '\u8282\u594F', 'Tempo', 'Tempo'),
   'tft.aggression':             t6('Aggression', 'Aggression', '\uACF5\uACA9\uC131', '\u653B\u51FB\u6027', 'Agresi\u00F3n', 'Agressivit\u00E9'),
@@ -1518,6 +1528,16 @@ const translations = {
     'H\u00E4ufigste Item-Sets am Carry', 'Most Common Item Sets on Carry',
     '\uCE90\uB9AC \uCD5C\uB2E4 \uC544\uC774\uD15C \uC138\uD2B8', '\u4E3BC\u6700\u5E38\u7528\u88C5\u5907\u7EC4\u5408',
     'Sets de \u00CDtems m\u00E1s comunes en el Carry', 'Sets d\'objets les plus utilis\u00E9s sur le Carry'
+  ),
+  'tft.comp.componentPriority': t6(
+    'Bauteil-Priorit\u00E4t (Carousel)', 'Component Priority (Carousel)',
+    '\uCEF4\uD3EC\uB10C\uD2B8 \uC6B0\uC120\uC21C\uC704 (\uCE90\uB7EC\uC140)', '\u7EC4\u4EF6\u4F18\u5148\u7EA7 (\u8F6C\u76D8)',
+    'Prioridad de Componentes (Carrusel)', 'Priorit\u00E9 des composants (carrousel)'
+  ),
+  'tft.comp.componentInItems': t6(
+    'verbaut in', 'used in',
+    '\uC0AC\uC6A9 \uCC98', '\u7528\u4E8E',
+    'usado en', 'utilis\u00E9 dans'
   ),
   'tft.comp.itemSet': t6(
     'Set', 'Set', '\uC138\uD2B8', '\u7EC4\u5408', 'Set', 'Set'

@@ -9,8 +9,8 @@ import {
   ReferenceLine, Tooltip as RechartsTooltip,
 } from 'recharts';
 
-type Entity = 'unit' | 'item' | 'trait';
-const ENTITIES: Entity[] = ['unit', 'item', 'trait'];
+type Entity = 'unit' | 'item' | 'trait' | 'comp';
+const ENTITIES: Entity[] = ['unit', 'item', 'trait', 'comp'];
 
 interface DiffEntry {
   key: string;
@@ -111,7 +111,7 @@ export default function TftPatchWinnersPage() {
                   : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5] hover:border-[#7B61FF]/40'
               }`}
             >
-              {t(`nav.${e === 'unit' ? 'units' : e === 'item' ? 'items' : 'traits'}` as const)}
+              {t(`nav.${e === 'unit' ? 'units' : e === 'item' ? 'items' : e === 'comp' ? 'comps' : 'traits'}` as const)}
             </button>
           ))}
         </div>
@@ -195,6 +195,18 @@ function renderEntity(key: string, entity: Entity, assets: TftAssetsBundle | nul
     return {
       name: item?.name || key.replace(/^TFT\d*_Item_/, ''),
       icon: url ? <img src={url} alt="" className="w-7 h-7 rounded" /> : <div className="w-7 h-7 rounded bg-[#1e2a3a]" />,
+    };
+  }
+  if (entity === 'comp') {
+    // cluster_key: <trait>@<level>_<carry> — show carry portrait + "Trait · Carry"
+    const m = /^(.+)@(\d+)_(.+)$/.exec(key);
+    if (!m) return { name: key, icon: <div className="w-7 h-7 rounded bg-[#1e2a3a]" /> };
+    const trait = assets?.traits[m[1]];
+    const carry = assets?.champions[m[3]];
+    const url = tftChampionTileUrl(assets, carry);
+    return {
+      name: `${trait?.name || m[1].replace(/^TFT\d+_/, '')} · ${carry?.name || m[3].replace(/^TFT\d+_/, '')}`,
+      icon: url ? <img src={url} alt="" className="w-7 h-7 rounded border border-[#c39bff]/60 object-cover" /> : <div className="w-7 h-7 rounded bg-[#1e2a3a]" />,
     };
   }
   const [traitId, activation] = key.split('@');

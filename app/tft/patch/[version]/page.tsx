@@ -15,8 +15,8 @@ import {
 // / traits) — augments would be a fourth but Set 17 doesn't ship augments
 // so we hide it until the data lands.
 
-type Entity = 'unit' | 'item' | 'trait';
-const ENTITIES: Entity[] = ['unit', 'item', 'trait'];
+type Entity = 'unit' | 'item' | 'trait' | 'comp';
+const ENTITIES: Entity[] = ['unit', 'item', 'trait', 'comp'];
 
 interface DiffEntry {
   key: string;
@@ -125,6 +125,16 @@ export default function TftPatchDetailPage() {
           // Diverging swing chart — same read as the winners overview: +swing
           // (improvement) green/right, −swing (regression) red/left.
           const nameOf = (key: string) => {
+            if (entity === 'comp') {
+              // cluster_key shape: `<trait>@<level>_<carry>` — combine trait
+              // display name + carry champion so the label reads like the
+              // comp listing (e.g. "Cyber City 3 · Yi").
+              const m = /^(.+)@(\d+)_(.+)$/.exec(key);
+              if (!m) return key.replace(/^TFT\d+_/, '');
+              const traitName = assets?.traits[m[1]]?.name || m[1].replace(/^TFT\d+_/, '');
+              const carryName = assets?.champions[m[3]]?.name || m[3].replace(/^TFT\d+_/, '');
+              return `${traitName} · ${carryName}`;
+            }
             const base = key.split('@')[0];
             const meta = entity === 'unit' ? assets?.champions[base] : entity === 'item' ? assets?.items[base] : assets?.traits[base];
             return meta?.name || base.replace(/^TFT\d+_/, '');

@@ -1999,6 +1999,9 @@ const translations = {
   'tft.patchNotes.entity.trait': t6(
     'Synergien', 'Traits', '\uC2DC\uB108\uC9C0', '\u7F81\u7ECA', 'Sinergias', 'Synergies'
   ),
+  'tft.patchNotes.entity.comp': t6(
+    'Comps', 'Comps', '\uB371', '\u9635\u5BB9', 'Comps', 'Compos'
+  ),
 
   // \u2500 Comp leveling tempo \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   'tft.comp.avgLevel': t6(

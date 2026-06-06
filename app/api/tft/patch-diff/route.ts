@@ -14,11 +14,12 @@ import { cachedJson } from '../../../lib/api-cache';
 // the UI can render a "Komm in ein paar Tagen wieder" empty state instead
 // of an error.
 
-type Entity = 'unit' | 'item' | 'trait';
+type Entity = 'unit' | 'item' | 'trait' | 'comp';
 
 interface UnitRow { character_id: string; games: number; sum_placement: number; top4: number; top1: number; participants: number }
 interface ItemRow { api_name: string; games: number; sum_placement: number; top4: number; total_item_slots: number }
 interface TraitRow { name: string; activation: number; games: number; sum_placement: number; top4: number; participants: number }
+interface CompRow { cluster_key: string; games: number; sum_placement: number; top4: number; top1: number; participants: number }
 
 interface DiffEntry {
   key: string;
@@ -40,7 +41,7 @@ const MIN_GAMES = 50;
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const entity = (searchParams.get('entity') || 'unit').toLowerCase() as Entity;
-  if (!['unit', 'item', 'trait'].includes(entity)) {
+  if (!['unit', 'item', 'trait', 'comp'].includes(entity)) {
     return NextResponse.json({ error: 'invalid entity' }, { status: 400 });
   }
   const region = searchParams.get('region');
@@ -177,19 +178,34 @@ async function fetchEntityRows(
       participants,
     }));
   }
-  // entity === 'trait'
-  const rows = await callRpc<TraitRow[]>('get_tft_trait_stats', base);
-  const participants = Number(rows[0]?.participants || 0);
-  // Collapse per-activation rows so we have one entry per trait name. We
-  // sum across activation levels because the "did this trait get
-  // buffed/nerfed?" question doesn't care which activation triggered it.
-  const byName = new Map<string, Normalized>();
-  for (const r of rows) {
-    const cur = byName.get(r.name) || { key: r.name, games: 0, sum_placement: 0, top4: 0, participants };
-    cur.games += Number(r.games);
-    cur.sum_placement += Number(r.sum_placement);
-    cur.top4 += Number(r.top4);
-    byName.set(r.name, cur);
+  if (entity === 'trait') {
+    const rows = await callRpc<TraitRow[]>('get_tft_trait_stats', base);
+    const participants = Number(rows[0]?.participants || 0);
+    // Collapse per-activation rows so we have one entry per trait name. We
+    // sum across activation levels because the "did this trait get
+    // buffed/nerfed?" question doesn't care which activation triggered it.
+    const byName = new Map<string, Normalized>();
+    for (const r of rows) {
+      const cur = byName.get(r.name) || { key: r.name, games: 0, sum_placement: 0, top4: 0, participants };
+      cur.games += Number(r.games);
+      cur.sum_placement += Number(r.sum_placement);
+      cur.top4 += Number(r.top4);
+      byName.set(r.name, cur);
+    }
+    return [...byName.values()];
   }
-  return [...byName.values()];
+  // entity === 'comp' — leverages the lean comp-stats RPC so we don't pull
+  // the 7-jsonb-column heavy version just for a sample-size diff.
+  const rows = await callRpc<CompRow[]>('get_tft_comp_stats_list', {
+    ...base,
+    p_min_games: 50,
+  });
+  const participants = Number(rows[0]?.participants || 0);
+  return rows.map(r => ({
+    key: r.cluster_key,
+    games: Number(r.games),
+    sum_placement: Number(r.sum_placement),
+    top4: Number(r.top4),
+    participants,
+  }));
 }

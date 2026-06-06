@@ -46,6 +46,70 @@ interface CompPairRow {
   a_better: number;
 }
 
+interface VelocityRow {
+  cluster_key: string;
+  games_now: number;
+  games_prev: number;
+  sum_placement_now: number;
+  sum_placement_prev: number;
+  top4_now: number;
+  top4_prev: number;
+  top1_now: number;
+  top1_prev: number;
+  participants_now: number;
+  participants_prev: number;
+}
+
+interface CompVelocity {
+  gamesNow: number;
+  gamesPrev: number;
+  avgPlaceNow: number | null;
+  avgPlacePrev: number | null;
+  deltaAvgPlace: number | null;
+  pickRateNow: number | null;
+  pickRatePrev: number | null;
+  deltaPickRate: number | null;
+  top4RateNow: number | null;
+  top4RatePrev: number | null;
+  deltaTop4Rate: number | null;
+  // true when the cluster appeared in now-window but not in prev — usually
+  // means "new comp" (post-patch surge) and shouldn't be ranked by Δ at all.
+  isNew: boolean;
+}
+
+// Minimum games per window for Δ to be considered statistically meaningful.
+// Below that, the row keeps its raw now/prev counts but Δs are nulled — UI
+// then renders an "—" / "NEW" badge rather than misleading noise.
+const VELOCITY_MIN_PREV_GAMES = 30;
+
+function deriveVelocity(v: VelocityRow): CompVelocity {
+  const gn = Number(v.games_now);
+  const gp = Number(v.games_prev);
+  const pn = Number(v.participants_now);
+  const pp = Number(v.participants_prev);
+  const avgN = gn > 0 ? Number(v.sum_placement_now) / gn : null;
+  const avgP = gp > 0 ? Number(v.sum_placement_prev) / gp : null;
+  const pickN = pn > 0 ? gn / pn : null;
+  const pickP = pp > 0 ? gp / pp : null;
+  const t4N = gn > 0 ? Number(v.top4_now) / gn : null;
+  const t4P = gp > 0 ? Number(v.top4_prev) / gp : null;
+  const canDelta = gp >= VELOCITY_MIN_PREV_GAMES && gn >= VELOCITY_MIN_PREV_GAMES;
+  return {
+    gamesNow: gn,
+    gamesPrev: gp,
+    avgPlaceNow: avgN,
+    avgPlacePrev: avgP,
+    deltaAvgPlace: canDelta && avgN != null && avgP != null ? avgN - avgP : null,
+    pickRateNow: pickN,
+    pickRatePrev: pickP,
+    deltaPickRate: canDelta && pickN != null && pickP != null ? pickN - pickP : null,
+    top4RateNow: t4N,
+    top4RatePrev: t4P,
+    deltaTop4Rate: canDelta && t4N != null && t4P != null ? t4N - t4P : null,
+    isNew: gp < 5 && gn >= 30,
+  };
+}
+
 interface CounterEdge {
   opponent: string;   // cluster_key of the other comp
   games: number;
@@ -132,16 +196,48 @@ export async function GET(request: NextRequest) {
     // renders (typical_units / augments / carry_items), skipping the 4
     // detail-only jsonb_agg merges. Measured ~12x faster cold (1847ms→152ms)
     // since the heavy detail jsonb is never detoasted or aggregated here.
-    const rows = await callRpc<CompRow[]>('get_tft_comp_stats_list', {
-      p_regions: filters.regions,
-      p_buckets: filters.buckets,
-      p_days: filters.days,
-      p_patch: filters.patch,
-      p_set: filters.setNumber,
-      p_min_games: minGames,
-    });
+    //
+    // Optional velocity layer (W1-A): with ?velocity=N we fire a second RPC
+    // in parallel and merge Δs (avg-place, pickrate, top4) into each row so
+    // the listing can sort/visualise "what shifted in the last N days". N is
+    // the shift between now-window (last `days` days) and prev-window.
+    const velocityShift = Math.max(0, parseInt(searchParams.get('velocity') || '0', 10));
+    const wantVelocity = velocityShift > 0;
+
+    const [rows, velocityRows] = await Promise.all([
+      callRpc<CompRow[]>('get_tft_comp_stats_list', {
+        p_regions: filters.regions,
+        p_buckets: filters.buckets,
+        p_days: filters.days,
+        p_patch: filters.patch,
+        p_set: filters.setNumber,
+        p_min_games: minGames,
+      }),
+      wantVelocity
+        ? callRpc<VelocityRow[]>('get_tft_comp_velocity', {
+            p_regions: filters.regions,
+            p_buckets: filters.buckets,
+            p_set: filters.setNumber,
+            p_patch: filters.patch,
+            p_days: filters.days,
+            p_shift_days: velocityShift,
+            // Allow newer entries with only a current-window sample to surface
+            // as "NEW" rather than being filtered out for lacking a baseline.
+            p_min_games: Math.max(10, Math.floor(minGames / 3)),
+          }).catch(() => [] as VelocityRow[])
+        : Promise.resolve([] as VelocityRow[]),
+    ]);
+
     const participants = rows[0]?.participants || 0;
-    const dataComps = rows.map(r => baseComp(r, participants));
+    const velocityByKey = new Map<string, VelocityRow>();
+    for (const v of velocityRows) velocityByKey.set(v.cluster_key, v);
+
+    const dataComps = rows.map(r => {
+      const base = baseComp(r, participants);
+      const v = velocityByKey.get(r.cluster_key);
+      if (!v) return base;
+      return { ...base, velocity: deriveVelocity(v) };
+    });
     dataComps.sort((a, b) => (a.avgPlacement ?? 9) - (b.avgPlacement ?? 9));
 
     const patches = await getAvailablePatches();
@@ -153,6 +249,7 @@ export async function GET(request: NextRequest) {
         days: filters.days,
         patch: filters.patch,
         set: filters.setNumber,
+        velocityShift: wantVelocity ? velocityShift : null,
       },
       patches,
       minGames,

@@ -15,7 +15,7 @@ interface CompListProps {
 
 // Mirror /tft/units and /tft/items defaults so the stats pages line up:
 // current patch · Diamond · last 3 days · all regions.
-const DEFAULT_FILTERS: Filters = { patch: 'current', bucket: 'diamond', days: 3, region: 'all' };
+const DEFAULT_FILTERS: Filters = { patch: 'current', bucket: 'diamond', days: 3, region: 'all', velocity: 0 };
 
 const SORT_OPTIONS: { value: string; labelKey: string }[] = [
   { value: 'avgPlacement', labelKey: 'tft.avgPlacement' },

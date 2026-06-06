@@ -2,12 +2,20 @@
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
 import { tftChampionTileUrl } from '../../lib/tft-cdragon';
 import { costColor as costColorOf } from '../../lib/tft-ui';
+import { useI18n } from '../../lib/i18n';
 import BookmarkButton from '../BookmarkButton';
 
 // Dense, scannable row layout for /tft/comps. Replaces the narrative
 // CompCard so pros can survey 20+ comps at a glance — avg-placement is
 // the prominent column, everything else is auxiliary. CompCard is still
 // used on the TFT landing page where the bigger format makes sense.
+
+interface CompVelocity {
+  deltaAvgPlace: number | null;
+  deltaPickRate: number | null;
+  isNew: boolean;
+  gamesPrev: number;
+}
 
 interface Comp {
   source?: 'data' | 'editorial';
@@ -21,6 +29,7 @@ interface Comp {
   avgLevel?: number | null;
   avgLastRound?: number | null;
   typicalUnits: { characterId: string; count: number | unknown; carryItemGames?: number | unknown }[];
+  velocity?: CompVelocity | null;
 }
 
 const safeCount = (v: unknown): number => (typeof v === 'number' ? v : 1);
@@ -76,13 +85,18 @@ function descriptorTag(opts: {
 }
 
 export default function CompRow({
-  comp, rank, assets, href,
+  comp, rank, assets, href, showVelocity = false,
 }: {
   comp: Comp;
   rank: number;
   assets: TftAssetsBundle | null;
   href: string;
+  // When true the row reserves an extra column for the Δ-place delta. Must
+  // match the header grid in the parent page — the comps page only enables
+  // velocity if the API was queried with ?velocity=N.
+  showVelocity?: boolean;
 }) {
+  const { t } = useI18n();
   const parts = parseClusterKey(comp.clusterKey);
   const traitMeta = parts && assets ? assets.traits[parts.trait] : null;
   const traitName = traitMeta?.name || (parts ? prettyTrait(parts.trait) : 'Unknown');
@@ -122,7 +136,11 @@ export default function CompRow({
       style={{ gridTemplateColumns: 'minmax(0,1fr)' }}
     >
       {/* Mobile: stacked. Desktop: tight horizontal row. */}
-      <div className="grid grid-cols-[1.25rem_1.5rem_2.5rem_minmax(7rem,1fr)_minmax(0,auto)_auto] sm:grid-cols-[1.25rem_1.5rem_2.5rem_minmax(11rem,1fr)_minmax(0,auto)_3rem_3rem_3rem_3rem_3rem_1.25rem] items-center gap-2 sm:gap-3">
+      <div className={`grid grid-cols-[1.25rem_1.5rem_2.5rem_minmax(7rem,1fr)_minmax(0,auto)_auto] ${
+        showVelocity
+          ? 'sm:grid-cols-[1.25rem_1.5rem_2.5rem_minmax(11rem,1fr)_minmax(0,auto)_3rem_3rem_3rem_3rem_3rem_3.5rem_1.25rem]'
+          : 'sm:grid-cols-[1.25rem_1.5rem_2.5rem_minmax(11rem,1fr)_minmax(0,auto)_3rem_3rem_3rem_3rem_3rem_1.25rem]'
+      } items-center gap-2 sm:gap-3`}>
         <div className="text-[#7a8aa0] tabular-nums text-right">{rank}</div>
         <div
           className="w-6 h-6 rounded flex items-center justify-center font-bold text-[11px]"
@@ -189,6 +207,34 @@ export default function CompRow({
         <div className="hidden sm:block text-right tabular-nums text-[#7a8aa0]">
           {comp.games}
         </div>
+        {showVelocity && (
+          <div className="hidden sm:block text-right tabular-nums">
+            {(() => {
+              const v = comp.velocity;
+              if (!v) return <span className="text-[#5a6a80]">—</span>;
+              if (v.isNew) {
+                return (
+                  <span
+                    className="inline-block px-1 rounded text-[10px] font-semibold"
+                    style={{ color: '#c39bff', backgroundColor: '#c39bff1f', border: '1px solid #c39bff40' }}
+                  >
+                    {t('tft.velocity.newComp')}
+                  </span>
+                );
+              }
+              if (v.deltaAvgPlace == null) return <span className="text-[#5a6a80]">—</span>;
+              // Lower placement = improvement → green ▲; higher = regression → red ▼.
+              const better = v.deltaAvgPlace < 0;
+              const color = better ? '#3ecf8e' : '#e44040';
+              const arrow = better ? '▲' : '▼';
+              return (
+                <span style={{ color }} className="font-medium">
+                  {arrow} {Math.abs(v.deltaAvgPlace).toFixed(2)}
+                </span>
+              );
+            })()}
+          </div>
+        )}
         <div className="hidden sm:flex items-center justify-end">
           <BookmarkButton
             type="comp"

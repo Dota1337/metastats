@@ -52,6 +52,10 @@ export interface Filters {
   bucket: string;
   days: number;
   region: string;
+  // W1-A: velocity comparison shift in days. 0 = disabled (no Δ column shown).
+  // 3 = compare current 3-day window vs the 3 days before that (48h-Verschiebung).
+  // 7 = compare current 3-day window vs the 3 days a week ago.
+  velocity: number;
 }
 
 export interface PatchInfo {
@@ -83,7 +87,7 @@ export default function StatsFilterBar({ filters, patches, onChange }: Props) {
 
   return (
     <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-3 mb-4">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <FilterSelect
           label={t('tft.filter.patch')}
           value={filters.patch}
@@ -132,6 +136,16 @@ export default function StatsFilterBar({ filters, patches, onChange }: Props) {
             </option>
           ))}
         </FilterSelect>
+
+        <FilterSelect
+          label={t('tft.filter.velocity')}
+          value={String(filters.velocity)}
+          onChange={v => onChange({ ...filters, velocity: Number(v) })}
+        >
+          <option value="0">{t('tft.filter.velocityOff')}</option>
+          <option value="3">{t('tft.filter.velocity48h')}</option>
+          <option value="7">{t('tft.filter.velocity7d')}</option>
+        </FilterSelect>
       </div>
     </div>
   );
@@ -162,11 +176,16 @@ function FilterSelect({
 // URL-state helpers — share filters via shareable URLs.
 
 export function filtersFromSearchParams(searchParams: URLSearchParams): Filters {
+  // Allowed velocity windows: 0 (off), 3 (48h shift), 7 (7d shift). Anything
+  // else collapses to 0 so a stale URL can't surface stale shapes.
+  const velocityRaw = parseInt(searchParams.get('velocity') || '0', 10);
+  const velocity = velocityRaw === 3 || velocityRaw === 7 ? velocityRaw : 0;
   return {
     patch: searchParams.get('patch') || 'current',
     bucket: searchParams.get('bucket') || 'diamond',
     days: Math.max(1, Math.min(7, parseInt(searchParams.get('days') || '3', 10))),
     region: searchParams.get('region') || 'all',
+    velocity,
   };
 }
 
@@ -177,5 +196,7 @@ export function filtersToQueryString(f: Filters): string {
     days: String(f.days),
     region: f.region,
   });
+  // Only emit velocity when non-zero to keep URLs clean for the default case.
+  if (f.velocity > 0) sp.set('velocity', String(f.velocity));
   return sp.toString();
 }

@@ -27,7 +27,7 @@ export default function TftCompsPage() {
   const [filters, setFilters] = useState<Filters>(() =>
     filtersFromSearchParams(new URLSearchParams(searchParams.toString())),
   );
-  const [sortBy, setSortBy] = useState<'avg' | 'win' | 'top4' | 'pick' | 'games'>(
+  const [sortBy, setSortBy] = useState<'avg' | 'win' | 'top4' | 'pick' | 'games' | 'velocity'>(
     (searchParams.get('sort') as any) || 'avg',
   );
   const [comps, setComps] = useState<any[]>([]);
@@ -68,6 +68,16 @@ export default function TftCompsPage() {
       case 'top4':  copy.sort((a, b) => (b.top4Rate ?? 0) - (a.top4Rate ?? 0)); break;
       case 'pick':  copy.sort((a, b) => (b.pickRate ?? 0) - (a.pickRate ?? 0)); break;
       case 'games': copy.sort((a, b) => (b.games ?? 0) - (a.games ?? 0)); break;
+      case 'velocity':
+        // Most-improved first (most-negative Δ = biggest jump up in placement).
+        // Comps with null Δ (new comps or below sample-size threshold) fall to
+        // the bottom so the trending set always reads top-down.
+        copy.sort((a, b) => {
+          const da = a.velocity?.deltaAvgPlace ?? Infinity;
+          const db = b.velocity?.deltaAvgPlace ?? Infinity;
+          return da - db;
+        });
+        break;
       case 'avg':
       default:      copy.sort((a, b) => (a.avgPlacement ?? 9) - (b.avgPlacement ?? 9));
     }
@@ -93,6 +103,9 @@ export default function TftCompsPage() {
             <option value="win">{t('tft.top1')}</option>
             <option value="pick">{t('tft.pickRate')}</option>
             <option value="games">{t('tft.gamesShort')}</option>
+            {filters.velocity > 0 && (
+              <option value="velocity">{t('tft.velocity.trending')}</option>
+            )}
           </select>
         </div>
 
@@ -103,7 +116,11 @@ export default function TftCompsPage() {
 
         {hasData && comps.length > 0 && (
           <>
-            <div className="hidden sm:grid grid-cols-[1.25rem_1.5rem_2.5rem_minmax(11rem,1fr)_minmax(0,auto)_3rem_3rem_3rem_3rem_3rem_1.25rem] items-center gap-3 px-3 py-1.5 text-[10px] uppercase tracking-widest text-[#7a8aa0]">
+            <div className={`hidden sm:grid items-center gap-3 px-3 py-1.5 text-[10px] uppercase tracking-widest text-[#7a8aa0] ${
+              filters.velocity > 0
+                ? 'grid-cols-[1.25rem_1.5rem_2.5rem_minmax(11rem,1fr)_minmax(0,auto)_3rem_3rem_3rem_3rem_3rem_3.5rem_1.25rem]'
+                : 'grid-cols-[1.25rem_1.5rem_2.5rem_minmax(11rem,1fr)_minmax(0,auto)_3rem_3rem_3rem_3rem_3rem_1.25rem]'
+            }`}>
               <div></div>
               <div></div>
               <div></div>
@@ -114,6 +131,7 @@ export default function TftCompsPage() {
               <div className="text-right">{t('tft.top1')}</div>
               <div className="text-right">{t('tft.pickRate')}</div>
               <div className="text-right">{t('tft.gamesShort')}</div>
+              {filters.velocity > 0 && <div className="text-right">{t('tft.velocity.delta')}</div>}
               <div></div>
             </div>
             <div className="space-y-1">
@@ -124,6 +142,7 @@ export default function TftCompsPage() {
                   rank={i + 1}
                   assets={assets}
                   href={`/tft/comps/${encodeURIComponent(c.slug)}?bucket=${filters.bucket}&region=${filters.region}`}
+                  showVelocity={filters.velocity > 0}
                 />
               ))}
             </div>

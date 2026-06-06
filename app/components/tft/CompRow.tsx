@@ -148,9 +148,21 @@ export default function CompRow({
         >
           {tier.label}
         </div>
-        <div className="w-10 h-10 rounded border-2 overflow-hidden" style={{ borderColor: '#c39bff' }}>
-          {carryUrl && <img src={carryUrl} alt={carry?.name || ''} className="w-full h-full object-cover" />}
-        </div>
+        {carryCid ? (
+          <a
+            href={`/tft/units/${encodeURIComponent(carryCid)}`}
+            onClick={e => e.stopPropagation()}
+            title={carry?.name || carryCid}
+            className="w-10 h-10 rounded border-2 overflow-hidden block hover:scale-105 transition-transform"
+            style={{ borderColor: '#c39bff' }}
+          >
+            {carryUrl && <img src={carryUrl} alt={carry?.name || ''} className="w-full h-full object-cover" />}
+          </a>
+        ) : (
+          <div className="w-10 h-10 rounded border-2 overflow-hidden" style={{ borderColor: '#c39bff' }}>
+            {carryUrl && <img src={carryUrl} alt={carry?.name || ''} className="w-full h-full object-cover" />}
+          </div>
+        )}
         <div className="min-w-0 leading-tight">
           <div className="text-white font-medium truncate">
             {traitName}
@@ -179,14 +191,16 @@ export default function CompRow({
             const isCarry = u.characterId === carryCid;
             const url = tftChampionTileUrl(assets, ch);
             return (
-              <div
+              <a
                 key={u.characterId}
-                className="w-6 h-6 rounded border overflow-hidden flex-shrink-0"
+                href={`/tft/units/${encodeURIComponent(u.characterId)}`}
+                onClick={e => e.stopPropagation()}
+                className="w-6 h-6 rounded border overflow-hidden flex-shrink-0 block hover:scale-110 transition-transform"
                 style={{ borderColor: isCarry ? '#c39bff' : (ch ? costColorOf(ch.cost) : '#1e2a3a') }}
                 title={ch?.name || u.characterId}
               >
                 {url && <img src={url} alt={ch?.name || ''} className="w-full h-full object-cover" />}
-              </div>
+              </a>
             );
           })}
         </div>

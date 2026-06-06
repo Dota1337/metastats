@@ -87,20 +87,23 @@ export default function PositionHeatmap({ units, carryCharacterId, clusterKey, a
 
           return (
             <div key={u.characterId} className="bg-[#0a0e1a] border border-[#1e2a3a] rounded p-2.5">
-              <div className="flex items-center gap-2 mb-2">
+              <a
+                href={`/tft/units/${encodeURIComponent(u.characterId)}`}
+                className="flex items-center gap-2 mb-2 hover:opacity-90 transition-opacity group"
+              >
                 {url && (
                   <img
                     src={url}
                     alt={ch?.name || ''}
-                    className="w-8 h-8 rounded border-2 object-cover"
+                    className="w-8 h-8 rounded border-2 object-cover group-hover:border-[#c39bff]"
                     style={{ borderColor: isCarry ? '#c39bff' : '#1e2a3a' }}
                   />
                 )}
                 <div className="flex-1 min-w-0">
-                  <div className="text-white text-xs font-medium truncate">{ch?.name || u.characterId}</div>
+                  <div className="text-white text-xs font-medium truncate group-hover:text-[#7B61FF] transition-colors">{ch?.name || u.characterId}</div>
                   {isCarry && <div className="text-[#a892ff] text-[10px] uppercase tracking-widest">Carry</div>}
                 </div>
-              </div>
+              </a>
               <div className="flex flex-col gap-0.5">
                 {Array.from({ length: ROWS }).map((_, visualRowIdx) => {
                   // Flip vertically so data-row 3 (frontline) renders at the

@@ -414,11 +414,17 @@ export default function TftComparePage() {
                         <div className="flex gap-1.5 flex-wrap">
                           {s.topUnits.slice(0, 8).map(u => {
                             const urls = tftUnitIconUrls(u.characterId, assets);
+                            const champName = assets?.champions[u.characterId]?.name || u.characterId;
                             return (
-                              <div key={u.characterId} title={`${u.characterId} · ${u.games}× · Ø ${u.avgPlacement.toFixed(1)}`} className="flex flex-col items-center gap-0.5">
+                              <a
+                                key={u.characterId}
+                                href={`/tft/units/${encodeURIComponent(u.characterId)}`}
+                                title={`${champName} · ${u.games}× · Ø ${u.avgPlacement.toFixed(1)}`}
+                                className="flex flex-col items-center gap-0.5 hover:scale-110 transition-transform"
+                              >
                                 <img
                                   src={urls.square}
-                                  alt={u.characterId}
+                                  alt={champName}
                                   className="w-9 h-9 rounded border border-[#1e2a3a] object-cover"
                                   onError={(e) => {
                                     const t = e.target as HTMLImageElement;
@@ -432,7 +438,7 @@ export default function TftComparePage() {
                                   }}
                                 />
                                 <span className="text-[9px] text-[#a0b0c5] tabular-nums">{u.games}</span>
-                              </div>
+                              </a>
                             );
                           })}
                         </div>

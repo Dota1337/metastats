@@ -392,10 +392,11 @@ export default function TftCompDetailPage() {
                         .map(it => assets.items[it]?.name || it.replace(/^TFT\d*_Item_/, ''))
                         .join(' · ');
                       return (
-                        <div
+                        <a
                           key={c.component}
+                          href={`/tft/items/${encodeURIComponent(c.component)}?bucket=${bucket}`}
                           title={`${meta?.name || c.component} — ${t('tft.comp.componentInItems')}: ${fromItemsTitle}`}
-                          className="flex flex-col items-center w-16"
+                          className="flex flex-col items-center w-16 hover:scale-105 transition-transform"
                         >
                           <div className="relative">
                             {url ? (
@@ -414,7 +415,7 @@ export default function TftCompDetailPage() {
                             <div className="h-full bg-[#7B61FF]" style={{ width: `${pct}%` }} />
                           </div>
                           <div className="text-[#a0b0c5] text-[10px] tabular-nums">{pct}%</div>
-                        </div>
+                        </a>
                       );
                     })}
                   </div>

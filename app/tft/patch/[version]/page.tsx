@@ -4,7 +4,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
-import { loadTftAssets, tftIconUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import {
   ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis,
   ReferenceLine, Tooltip as RechartsTooltip,
@@ -219,28 +219,62 @@ function DiffColumn({
 }
 
 function DiffRow({ entry, entity, assets }: { entry: DiffEntry; entity: Entity; assets: TftAssetsBundle | null }) {
-  const meta = entity === 'unit'
-    ? assets?.champions[entry.key]
-    : entity === 'item'
-      ? assets?.items[entry.key]
-      : assets?.traits[entry.key];
-  const url = tftIconUrl(assets, meta?.icon);
-  const linkBase = entity === 'unit' ? '/tft/units'
-    : entity === 'item' ? '/tft/items'
-    : '/tft/traits';
+  // Each entity has its own key shape, image source, and target page. The
+  // old version routed all non-unit/item entries to /tft/traits/<key>, which
+  // broke comp- and trait-rows (comp keys = "trait@level_carry", trait keys
+  // = "traitId@activation" — both produced invalid URLs).
+  let imageEl: React.ReactNode;
+  let displayName: string;
+  let href: string;
+
+  if (entity === 'unit') {
+    const champ = assets?.champions[entry.key];
+    const churl = tftChampionTileUrl(assets, champ);
+    imageEl = churl
+      ? <img src={churl} alt={champ?.name || ''} className="w-9 h-9 rounded object-cover" />
+      : <div className="w-9 h-9 rounded bg-[#1e2a3a]" />;
+    displayName = champ?.name || entry.key.replace(/^TFT\d+_/, '');
+    href = `/tft/units/${encodeURIComponent(entry.key)}`;
+  } else if (entity === 'item') {
+    const item = assets?.items[entry.key];
+    const iurl = tftIconUrl(assets, item?.icon);
+    imageEl = iurl
+      ? <img src={iurl} alt={item?.name || ''} className="w-9 h-9 rounded" />
+      : <div className="w-9 h-9 rounded bg-[#1e2a3a]" />;
+    displayName = item?.name || entry.key.replace(/^TFT\d*_Item_/, '');
+    href = `/tft/items/${encodeURIComponent(entry.key)}`;
+  } else if (entity === 'comp') {
+    const m = /^(.+)@(\d+)_(.+)$/.exec(entry.key);
+    const trait = m && assets ? assets.traits[m[1]] : null;
+    const carry = m && assets ? assets.champions[m[3]] : null;
+    const churl = tftChampionTileUrl(assets, carry);
+    imageEl = churl
+      ? <img src={churl} alt={carry?.name || ''} className="w-9 h-9 rounded border border-[#c39bff]/60 object-cover" />
+      : <div className="w-9 h-9 rounded bg-[#1e2a3a]" />;
+    displayName = m
+      ? `${trait?.name || m[1].replace(/^TFT\d+_/, '')} · ${carry?.name || m[3].replace(/^TFT\d+_/, '')}`
+      : entry.key;
+    href = `/tft/comps/${encodeURIComponent(entry.key)}`;
+  } else {
+    const [traitId, activation] = entry.key.split('@');
+    const trait = assets?.traits[traitId];
+    const turl = tftIconUrl(assets, trait?.icon);
+    imageEl = turl
+      ? <img src={turl} alt={trait?.name || ''} className="w-9 h-9 rounded" />
+      : <div className="w-9 h-9 rounded bg-[#1e2a3a]" />;
+    displayName = `${trait?.name || traitId.replace(/^TFT\d+_/, '')}${activation ? ` (${activation})` : ''}`;
+    href = `/tft/traits/${encodeURIComponent(traitId)}`;
+  }
+
   const deltaColor = entry.deltaAvgPlacement < 0 ? '#3ecf8e' : '#e44040';
   return (
     <a
-      href={`${linkBase}/${encodeURIComponent(entry.key)}`}
+      href={href}
       className="grid grid-cols-[2.5rem_1fr_5rem_4rem] gap-2 px-4 py-2 items-center text-xs border-t border-[#1e2a3a] hover:bg-white/5"
     >
-      {url ? (
-        <img src={url} alt={meta!.name} className="w-9 h-9 rounded" />
-      ) : (
-        <div className="w-9 h-9 rounded bg-[#1e2a3a]" />
-      )}
+      {imageEl}
       <div className="text-white truncate">
-        {meta?.name || entry.key}
+        {displayName}
         <div className="text-[#7a8aa0] text-[10px]">
           {entry.currentAvgPlacement.toFixed(2)} ← {entry.previousAvgPlacement.toFixed(2)}
         </div>

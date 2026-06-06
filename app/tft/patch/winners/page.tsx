@@ -65,8 +65,13 @@ export default function TftPatchWinnersPage() {
     const barColor = isWinner ? '#3ecf8e' : '#e44040';
     const barWidth = (Math.abs(e.deltaAvgPlacement) / maxAbsDelta) * 100;
     const pickRatePct = (e.currentPickRate * 100).toFixed(1);
+    const Wrapper: any = display.href ? 'a' : 'div';
     return (
-      <div key={e.key} className="bg-[#141c2e] border border-[#1e2a3a] rounded p-2.5">
+      <Wrapper
+        key={e.key}
+        {...(display.href ? { href: display.href } : {})}
+        className={`block bg-[#141c2e] border border-[#1e2a3a] rounded p-2.5 ${display.href ? 'hover:border-[#7B61FF]/40 transition-colors' : ''}`}
+      >
         <div className="flex items-center gap-2">
           <span className="text-[#7a8aa0] text-[10px] w-4 tabular-nums">#{idx + 1}</span>
           {display.icon}
@@ -85,7 +90,7 @@ export default function TftPatchWinnersPage() {
         <div className="mt-1.5 h-1 bg-[#0d1526] rounded overflow-hidden">
           <div className="h-full transition-all" style={{ width: `${barWidth.toFixed(0)}%`, backgroundColor: barColor }} />
         </div>
-      </div>
+      </Wrapper>
     );
   };
 
@@ -187,6 +192,7 @@ function renderEntity(key: string, entity: Entity, assets: TftAssetsBundle | nul
     return {
       name: champ?.name || key.replace(/^TFT\d+_/, ''),
       icon: url ? <img src={url} alt="" className="w-8 h-8 rounded border border-[#c39bff]/60" /> : <div className="w-8 h-8 rounded bg-[#1e2a3a]" />,
+      href: `/tft/units/${encodeURIComponent(key)}`,
     };
   }
   if (entity === 'item') {
@@ -195,18 +201,20 @@ function renderEntity(key: string, entity: Entity, assets: TftAssetsBundle | nul
     return {
       name: item?.name || key.replace(/^TFT\d*_Item_/, ''),
       icon: url ? <img src={url} alt="" className="w-7 h-7 rounded" /> : <div className="w-7 h-7 rounded bg-[#1e2a3a]" />,
+      href: `/tft/items/${encodeURIComponent(key)}`,
     };
   }
   if (entity === 'comp') {
     // cluster_key: <trait>@<level>_<carry> — show carry portrait + "Trait · Carry"
     const m = /^(.+)@(\d+)_(.+)$/.exec(key);
-    if (!m) return { name: key, icon: <div className="w-7 h-7 rounded bg-[#1e2a3a]" /> };
+    if (!m) return { name: key, icon: <div className="w-7 h-7 rounded bg-[#1e2a3a]" />, href: null as string | null };
     const trait = assets?.traits[m[1]];
     const carry = assets?.champions[m[3]];
     const url = tftChampionTileUrl(assets, carry);
     return {
       name: `${trait?.name || m[1].replace(/^TFT\d+_/, '')} · ${carry?.name || m[3].replace(/^TFT\d+_/, '')}`,
       icon: url ? <img src={url} alt="" className="w-7 h-7 rounded border border-[#c39bff]/60 object-cover" /> : <div className="w-7 h-7 rounded bg-[#1e2a3a]" />,
+      href: `/tft/comps/${encodeURIComponent(key)}`,
     };
   }
   const [traitId, activation] = key.split('@');
@@ -214,5 +222,6 @@ function renderEntity(key: string, entity: Entity, assets: TftAssetsBundle | nul
   return {
     name: `${trait?.name || traitId.replace(/^TFT\d+_/, '')} (${activation})`,
     icon: <div className="w-7 h-7 rounded bg-[#1e2a3a]" />,
+    href: `/tft/traits/${encodeURIComponent(traitId)}`,
   };
 }

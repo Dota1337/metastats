@@ -118,7 +118,22 @@ export default function TftUnitDetailPage() {
               <h1 className="text-white text-2xl font-medium">{champ?.name || prettyChar(id)}</h1>
               <div className="text-[#a0b0c5] text-xs mt-0.5">
                 {champ?.cost ? `${champ.cost}-Cost` : ''}
-                {champ?.traits?.length ? ' · ' + champ.traits.map(tr => assets?.traits[tr]?.name || prettyChar(tr)).join(' · ') : ''}
+                {champ?.traits?.length ? (
+                  <>
+                    {' · '}
+                    {champ.traits.map((tr, i) => (
+                      <span key={tr}>
+                        {i > 0 && ' · '}
+                        <a
+                          href={`/tft/traits/${encodeURIComponent(tr)}`}
+                          className="hover:text-[#7B61FF] transition-colors"
+                        >
+                          {assets?.traits[tr]?.name || prettyChar(tr)}
+                        </a>
+                      </span>
+                    ))}
+                  </>
+                ) : null}
               </div>
             </div>
           </div>
@@ -507,10 +522,19 @@ function ItemIcon({ apiName, assets, size = 10 }: { apiName: string; assets: Tft
   const item = assets?.items[apiName];
   const sizeClass = size === 10 ? 'w-10 h-10' : 'w-9 h-9';
   const url = tftIconUrl(assets, item?.icon);
+  const href = `/tft/items/${encodeURIComponent(apiName)}`;
   if (!url) {
-    return <div className={`${sizeClass} rounded bg-[#1e2a3a] flex items-center justify-center text-[8px] text-[#7a8aa0] text-center px-0.5`} title={apiName}>{prettyItem(apiName)}</div>;
+    return (
+      <a href={href} className={`${sizeClass} rounded bg-[#1e2a3a] flex items-center justify-center text-[8px] text-[#7a8aa0] text-center px-0.5 hover:bg-[#2a3a52] transition-colors`} title={item?.name || apiName}>
+        {prettyItem(apiName)}
+      </a>
+    );
   }
-  return <img src={url} alt={item!.name} title={item!.name} className={`${sizeClass} rounded`} />;
+  return (
+    <a href={href} title={item!.name} className="hover:scale-110 transition-transform inline-block">
+      <img src={url} alt={item!.name} className={`${sizeClass} rounded`} />
+    </a>
+  );
 }
 function prettyItem(s: string) { return s.replace(/^TFT\d*_Item_/, '').slice(0, 8); }
 function prettyChar(s: string) { return s.replace(/^TFT\d+_/, ''); }

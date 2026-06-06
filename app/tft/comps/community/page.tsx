@@ -94,8 +94,14 @@ export default function TftCommunityGalleryPage() {
             return (
               <div key={c.id} className="bg-[#0d1526] border border-[#1e2a3a] rounded p-3 hover:border-[#7B61FF]/30 transition-colors">
                 <div className="flex items-start gap-3 mb-2">
-                  {carryUrl && (
-                    <img src={carryUrl} alt="" className="w-10 h-10 rounded border border-[#c39bff]/60 flex-shrink-0" />
+                  {carryUrl && c.carryUnit && (
+                    <a
+                      href={`/tft/units/${encodeURIComponent(c.carryUnit)}`}
+                      title={carry?.name || c.carryUnit}
+                      className="flex-shrink-0 hover:scale-105 transition-transform"
+                    >
+                      <img src={carryUrl} alt={carry?.name || ''} className="w-10 h-10 rounded border border-[#c39bff]/60" />
+                    </a>
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="text-white text-sm font-medium truncate">{c.name}</div>
@@ -123,27 +129,36 @@ export default function TftCommunityGalleryPage() {
                     const ch = assets?.champions[p.characterId];
                     const url = tftChampionTileUrl(assets, ch);
                     return (
-                      <div
+                      <a
                         key={i}
-                        className="relative w-9 h-9 rounded overflow-hidden border"
+                        href={`/tft/units/${encodeURIComponent(p.characterId)}`}
+                        className="relative w-9 h-9 rounded overflow-hidden border block hover:scale-110 transition-transform"
                         style={{ borderColor: ch ? costColorOf(ch.cost) : '#1e2a3a' }}
                         title={ch?.name || p.characterId}
                       >
-                        {url && <img src={url} alt="" className="w-full h-full object-cover" />}
+                        {url && <img src={url} alt={ch?.name || ''} className="w-full h-full object-cover" />}
                         {p.items && p.items.length > 0 && (
                           <div className="absolute bottom-0 left-0 right-0 flex gap-px bg-black/60">
                             {p.items.slice(0, 3).map((it, j) => {
                               const item = assets?.items[it];
                               const iurl = tftIconUrl(assets, item?.icon);
+                              const itemName = item?.name || it;
                               return iurl ? (
-                                <img key={j} src={iurl} alt="" className="w-[11px] h-[11px]" />
+                                <a
+                                  key={j}
+                                  href={`/tft/items/${encodeURIComponent(it)}`}
+                                  onClick={e => e.stopPropagation()}
+                                  title={itemName}
+                                >
+                                  <img src={iurl} alt={itemName} className="w-[11px] h-[11px]" />
+                                </a>
                               ) : (
                                 <div key={j} className="w-[11px] h-[11px] bg-[#1e2a3a]" />
                               );
                             })}
                           </div>
                         )}
-                      </div>
+                      </a>
                     );
                   })}
                 </div>

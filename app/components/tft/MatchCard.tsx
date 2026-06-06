@@ -241,8 +241,17 @@ function UnitTile({ unit, assets, small, interactive }: { unit: any; assets: Tft
           {unit.items.slice(0, 3).map((it: string, i: number) => {
             const itemInfo = assets?.items[it];
             const iurl = tftIconUrl(assets, itemInfo?.icon);
+            const itemName = itemInfo?.name || it.replace(/^TFT\d*_Item_/, '');
             return iurl ? (
-              <img key={i} src={iurl} alt={itemInfo!.name} title={itemInfo!.name} className={`${itemSz} rounded-sm`} />
+              <a
+                key={i}
+                href={`/tft/items/${encodeURIComponent(it)}`}
+                onClick={e => e.stopPropagation()}
+                title={itemName}
+                className="hover:scale-125 transition-transform"
+              >
+                <img src={iurl} alt={itemName} className={`${itemSz} rounded-sm`} />
+              </a>
             ) : (
               <div key={i} className={`${itemSz} rounded-sm bg-[#1e2a3a]`} title={it} />
             );

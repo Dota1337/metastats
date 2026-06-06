@@ -88,7 +88,14 @@ export default function CompCard({
             {tier.label}
           </div>
           {tftChampionTileUrl(assets, carry) ? (
-            <img src={tftChampionTileUrl(assets, carry)!} alt={carry!.name} className="w-12 h-12 rounded border-2 border-[#c39bff] object-cover" />
+            <a
+              href={`/tft/units/${encodeURIComponent(carryCid!)}`}
+              onClick={e => e.stopPropagation()}
+              title={carry!.name}
+              className="block hover:scale-105 transition-transform"
+            >
+              <img src={tftChampionTileUrl(assets, carry)!} alt={carry!.name} className="w-12 h-12 rounded border-2 border-[#c39bff] object-cover" />
+            </a>
           ) : (
             <div className="w-12 h-12 rounded bg-[#1e2a3a]" />
           )}
@@ -145,13 +152,15 @@ export default function CompCard({
                         const meta = assets?.items[it.apiName];
                         const iconUrl = tftIconUrl(assets, meta?.icon);
                         return (
-                          <div
+                          <a
                             key={it.apiName}
-                            className="w-[14px] h-[14px] rounded-sm bg-[#0a0e1a] border border-[#1e2a3a] overflow-hidden"
+                            href={`/tft/items/${encodeURIComponent(it.apiName)}`}
+                            onClick={e => e.stopPropagation()}
+                            className="w-[14px] h-[14px] rounded-sm bg-[#0a0e1a] border border-[#1e2a3a] overflow-hidden block hover:border-[#c39bff]/60"
                             title={meta?.name || it.apiName}
                           >
                             {iconUrl && <img src={iconUrl} alt={meta?.name || it.apiName} className="w-full h-full object-cover" />}
-                          </div>
+                          </a>
                         );
                       })}
                     </div>

@@ -472,6 +472,101 @@ export default function TftCompDetailPage() {
                 untersagt. Datenfeld typicalAugments bleibt im API-Payload
                 (Migration unverändert), aber wird nicht mehr angezeigt. */}
 
+            {/* W3-B: Econ-ROI / Roll-Stage-Pro-Sicht. Macht aus dem rohen
+                level_dist + level_sum_last_round eine Pro-lesbare Aussage:
+                "Wo ist das Cap dieser Comp und wie tief kommt sie dort?" */}
+            {comp.levelingTempo && comp.levelingTempo.length >= 2 && (() => {
+              const lt = comp.levelingTempo as { level: number; share: number | null; avgLastRound: number | null; games: number }[];
+              const valid = lt.filter(p => p.share != null && p.games >= 10);
+              if (valid.length === 0) return null;
+              // Cap-Level: höchste Share (ignoriert Level 4 als reine
+              // Eliminations-Stutzer-Häufung; Reroll/Fast8-Modus kapitulieren
+              // an Level 6/8/9). Optimaler Reach: avgLastRound bei diesem
+              // Level — höher = die Comp kommt nach Cap noch tief in die
+              // Lobby rein.
+              const capLevel = valid.reduce((b, p) => (p.share ?? 0) > (b.share ?? 0) ? p : b);
+              const chartData = valid.map(p => ({
+                label: `Lvl ${p.level}`,
+                share: Math.round((p.share || 0) * 100),
+                avgRound: p.avgLastRound,
+                avgStage: p.avgLastRound != null ? formatStage(p.avgLastRound) : '—',
+              }));
+              return (
+                <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
+                  <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.econRoi')}</h2>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+                    <Stat label={t('tft.comp.capLevel')} value={`Lvl ${capLevel.level}`} />
+                    <Stat
+                      label={t('tft.comp.capShare')}
+                      value={capLevel.share != null ? `${(capLevel.share * 100).toFixed(0)}%` : '—'}
+                    />
+                    <Stat
+                      label={t('tft.comp.capReach')}
+                      value={capLevel.avgLastRound != null ? formatStage(capLevel.avgLastRound) : '—'}
+                    />
+                  </div>
+                  <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3">
+                    <div style={{ width: '100%', height: 200 }}>
+                      <ResponsiveContainer>
+                        <ComposedChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
+                          <XAxis
+                            dataKey="label"
+                            tick={{ fill: '#5a6a80', fontSize: 10 }}
+                            axisLine={{ stroke: '#1e2a3a' }}
+                            tickLine={false}
+                          />
+                          <YAxis
+                            yAxisId="left"
+                            tick={{ fill: '#5a6a80', fontSize: 10 }}
+                            axisLine={false}
+                            tickLine={false}
+                            width={28}
+                            tickFormatter={(v: any) => `${v}%`}
+                          />
+                          <YAxis
+                            yAxisId="right"
+                            orientation="right"
+                            tick={{ fill: '#3ecf8e', fontSize: 10 }}
+                            axisLine={false}
+                            tickLine={false}
+                            width={36}
+                            tickFormatter={(v: any) => formatStage(Number(v))}
+                            domain={[(dataMin: number) => Math.max(8, dataMin - 2), (dataMax: number) => dataMax + 2]}
+                          />
+                          <RechartsTooltip
+                            contentStyle={{ backgroundColor: '#0d1526', border: '1px solid #1e2a3a', borderRadius: 4, fontSize: 11 }}
+                            labelStyle={{ color: '#a0b0c5' }}
+                            formatter={(value: any, name: any, item: any): any => {
+                              if (name === 'share') return [`${value}%`, t('tft.comp.levelShare')];
+                              if (name === 'avgRound') {
+                                const stage = item?.payload?.avgStage;
+                                return [stage, t('tft.comp.avgLastRound')];
+                              }
+                              return [value, name];
+                            }}
+                          />
+                          <Bar yAxisId="left" dataKey="share" fill="#7B61FF" radius={[2, 2, 0, 0]} />
+                          <Line
+                            yAxisId="right"
+                            type="monotone"
+                            dataKey="avgRound"
+                            stroke="#3ecf8e"
+                            strokeWidth={2}
+                            dot={{ r: 3, fill: '#3ecf8e' }}
+                            activeDot={{ r: 5, fill: '#3ecf8e' }}
+                          />
+                        </ComposedChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="flex justify-between text-[9px] text-[#5a6a80] mt-1.5">
+                      <span><span className="inline-block w-2 h-2 bg-[#7B61FF] rounded-sm mr-1"/>{t('tft.comp.levelShare')}</span>
+                      <span><span className="inline-block w-2 h-2 bg-[#3ecf8e] rounded-sm mr-1"/>{t('tft.comp.avgLastRound')}</span>
+                    </div>
+                  </div>
+                </section>
+              );
+            })()}
+
             {/* Position heatmap per typical unit — renders empty when the
                 Overwolf companion app hasn't submitted enough observations
                 yet for the units in this comp. */}

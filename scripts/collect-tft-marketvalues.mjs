@@ -433,13 +433,18 @@ async function main() {
   await persistPopulation(setNumber, pop, compMeta, gathered.length);
   console.log(`  comp-benchmark: ${compMeta.size} comps · population persisted`);
 
-  console.log(`\n[3/3] Pass 2: score + snapshot`);
+  // Pass 2 must NOT bail on `aborting` — it's cheap (DB writes only, no Riot
+  // calls) and dropping snapshots was the bug that left vn2 with 0 writes for
+  // 4+ days (2026-06-04 → 06-06). The Conflicts= SIGTERM from the daily-crawl
+  // timer fires mid-Pass-1; before this fix the same flag killed Pass 2 too,
+  // discarding every gathered player. Memory:
+  // feedback_verify_background_services + project_status 2026-06-06.
+  //
+  // The whole-run timeout (TimeoutStopSec=600) still bounds Pass 2 if it ever
+  // somehow gets stuck — systemd SIGKILLs after the grace period.
+  console.log(`\n[3/3] Pass 2: score + snapshot (runs to completion regardless of SIGTERM)`);
   let snapshotted = 0, unrated = 0;
   for (const g of gathered) {
-    if (aborting) {
-      console.log(`  [budget] Pass 2 stopped early at ${snapshotted}/${gathered.length} — population already persisted`);
-      break;
-    }
     try {
       const r = await snapshotPlayer(g.p, g.raw, pop);
       if (r.snapshotted) snapshotted++; else unrated++;
@@ -447,6 +452,9 @@ async function main() {
       failed++;
       console.error(`  [error] snapshot ${g.p.puuid.slice(0, 8)}…: ${err.message}`);
     }
+  }
+  if (aborting) {
+    console.log(`  [signal] Pass 2 completed despite SIGTERM — ${snapshotted} snapshots persisted`);
   }
 
   const totalS = (Date.now() - t0) / 1000;

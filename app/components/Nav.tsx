@@ -176,6 +176,7 @@ export default function Nav({ active }: NavProps) {
               <a href="/tft/pros" className={linkClass('pros')}>{t('nav.tftPros')}</a>
               <a href="/tft/compare" className={linkClass('analyse')}>{t('nav.analyse')}</a>
               <a href="/tft/builder" className={linkClass('builder')}>{t('tft.builderTitle')}</a>
+              <a href="/tft/lobby-scout" className="text-sm text-[#a0b0c5] hover:text-white">{t('nav.lobbyScout')}</a>
               <a href="/tft/comps/community" className={linkClass('community')}>{t('nav.community')}</a>
               <a href="/tft/coach" className={linkClass('coach')}>{t('nav.coach')}</a>
               <a href="/tft/saved" className={linkClass('saved')} title={t('tft.savedTitle')}>★</a>
@@ -426,6 +427,7 @@ export default function Nav({ active }: NavProps) {
               <a href="/tft/pros" className={linkClass('pros')} onClick={() => setMenuOpen(false)}>{t('nav.tftPros')}</a>
               <a href="/tft/compare" className={linkClass('analyse')} onClick={() => setMenuOpen(false)}>{t('nav.analyse')}</a>
               <a href="/tft/builder" className={linkClass('builder')} onClick={() => setMenuOpen(false)}>{t('tft.builderTitle')}</a>
+              <a href="/tft/lobby-scout" className="text-sm text-[#a0b0c5]" onClick={() => setMenuOpen(false)}>{t('nav.lobbyScout')}</a>
               <a href="/tft/saved" className={linkClass('saved')} onClick={() => setMenuOpen(false)}>★ {t('tft.savedTitle')}</a>
             </>
           ) : (

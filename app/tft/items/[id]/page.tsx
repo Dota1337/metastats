@@ -7,6 +7,7 @@ import TierFilter, { type TierBucket } from '../../../components/tft/TierFilter'
 import EmptyData from '../../../components/tft/EmptyData';
 import { useI18n } from '../../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import tftSet from '../../../../public/tft-set.json';
 
 interface ItemDetail {
   apiName: string;
@@ -56,15 +57,31 @@ export default function TftItemDetailPage() {
   // Reverse-lookup: sibling items that share at least one component with us.
   // Useful so a player on Negatron Cape sees all 9 magic-resist completed
   // items at a glance, with their own composition pills.
+  //
+  // Strict set-scoping: keep only items from the active set + the universal
+  // `TFT_Item_*` namespace. The old `id.replace(/_Item_.*$/, '')`-prefix
+  // heuristic collapsed to `"TFT"` for the universal `TFT_Item_*` ids, which
+  // matched every set's prefix and silently pulled in retired Set-4..16
+  // emblems and Set-5 radiant spats (the latter with raw i18n keys as
+  // display names, e.g. "tft_item_name_Set5Skirmisher_RadiantSpat").
+  // We also drop `_Corrupted` reskins (same item, different name → visually
+  // duplicate entries) and any item whose display name still looks like an
+  // unresolved CDragon i18n key.
+  const SET_NUM = tftSet.setNumber;
+  const isCurrentSetItem = (k: string) =>
+    k.startsWith('TFT_Item_') ||
+    k.startsWith(`TFT${SET_NUM}_Item_`) ||
+    k.startsWith(`TFTSet${SET_NUM}_Item_`);
   const siblings = assets && composition.length > 0
     ? Object.entries(assets.items)
-        .filter(([k, v]) => k !== id && v.composition && v.composition.some(c => composition.includes(c)))
-        // Only the active set's primary completed items — heuristic via the
-        // apiName prefix matching the requested item's prefix.
-        .filter(([k]) => {
-          const reqPrefix = id.replace(/_Item_.*$/, '');
-          return k.startsWith(reqPrefix) || k.startsWith('TFT_Item_');
-        })
+        .filter(([k, v]) =>
+          k !== id &&
+          isCurrentSetItem(k) &&
+          !/Corrupted/i.test(k) &&
+          !/^tft_item_name_/i.test(v.name || '') &&
+          v.composition &&
+          v.composition.some(c => composition.includes(c)),
+        )
         .slice(0, 12)
     : [];
 

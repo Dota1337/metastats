@@ -1587,6 +1587,16 @@ const translations = {
   ),
 
   // \u2500 Augment Detail Page \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  'tft.augment.allTiers': t6(
+    'Alle Tiers', 'All tiers',
+    '\uBAA8\uB4E0 \uD2F0\uC5B4', '\u6240\u6709\u7B49\u7EA7',
+    'Todos los tiers', 'Tous les tiers'
+  ),
+  'tft.augment.searchPlaceholder': t6(
+    'Augment suchen\u2026', 'Search augment\u2026',
+    '\uC99D\uAC15\uCCB4 \uAC80\uC0C9\u2026', '\u641C\u7D22\u5F3A\u5316\u2026',
+    'Buscar aumento\u2026', 'Rechercher un augment\u2026'
+  ),
   'tft.augment.statsPerStage': t6(
     'Statistiken pro Stage', 'Stats Per Stage',
     '\uC2A4\uD14C\uC774\uC9C0\uBCC4 \uD1B5\uACC4', '\u9636\u6BB5\u7EDF\u8BA1',

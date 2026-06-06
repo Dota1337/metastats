@@ -16,16 +16,6 @@ import PositionHeatmap from '../../../components/tft/PositionHeatmap';
 import { formatStage } from '../../../lib/tft-stage';
 import { aggregateComponents } from '../../../lib/tft-components';
 
-// Slot meaning in tft_daily_augment_stats: 0 = stage 2-1, 1 = 3-2, 2 = 4-2.
-const SLOT_LABELS = ['2-1', '3-2', '4-2'] as const;
-
-interface AugmentRow {
-  apiName: string;
-  slot: number | null;
-  games: number;
-  avgPlacement: number | null;
-}
-
 export default function TftCompDetailPage() {
   const { t } = useI18n();
   const params = useParams();
@@ -41,8 +31,6 @@ export default function TftCompDetailPage() {
   const [proComp, setProComp] = useState<any | null>(null);
   const [hasData, setHasData] = useState<boolean | null>(null);
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
-  // Per-slot augment lookup: apiName -> { 0: {games, avgPlacement}, 1: {…}, 2: {…} }
-  const [augmentSlotMap, setAugmentSlotMap] = useState<Record<string, Record<number, { games: number; avgPlacement: number | null }>>>({});
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
 
@@ -58,27 +46,6 @@ export default function TftCompDetailPage() {
       setProComp(pro.comp || null);
     }).catch(() => { setHasData(false); setComp(null); });
   }, [bucket, slug, region]);
-
-  // Pull augment-by-slot stats so we can show each typical augment's likely
-  // offer slot (2-1 / 3-2 / 4-2). Done in parallel with the comp fetch so
-  // the slot pills land as the comp data renders.
-  useEffect(() => {
-    Promise.all([0, 1, 2].map(slot =>
-      fetch(`/api/tft/augments?region=${region}&bucket=${bucket}&slot=${slot}`)
-        .then(r => r.ok ? r.json() : { augments: [] })
-        .then(d => ({ slot, augments: (d.augments || []) as AugmentRow[] }))
-        .catch(() => ({ slot, augments: [] as AugmentRow[] }))
-    )).then(results => {
-      const map: typeof augmentSlotMap = {};
-      for (const { slot, augments } of results) {
-        for (const a of augments) {
-          if (!map[a.apiName]) map[a.apiName] = {};
-          map[a.apiName][slot] = { games: a.games, avgPlacement: a.avgPlacement };
-        }
-      }
-      setAugmentSlotMap(map);
-    });
-  }, [bucket, region]);
 
   return (
     <main className="min-h-screen bg-[#0e1525]">
@@ -501,61 +468,9 @@ export default function TftCompDetailPage() {
               </section>
             )}
 
-            {/* Augments grouped by likely stage offer — joined client-side
-                with the per-slot augment-stats endpoint. Each augment lands
-                in the slot where it has the most games (= dominant offer
-                stage), so users see at a glance "this comp wants X at 2-1,
-                Y at 3-2, Z at 4-2". */}
-            {comp.typicalAugments && comp.typicalAugments.length > 0 && (
-              <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
-                <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.augmentsByStage')}</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {[0, 1, 2].map(slot => {
-                    const augmentsForSlot = (comp.typicalAugments as { apiName: string; count: number }[])
-                      .filter(a => {
-                        const slotMap = augmentSlotMap[a.apiName];
-                        if (!slotMap) return false;
-                        // Find dominant slot for this augment
-                        const slots = Object.entries(slotMap).map(([k, v]) => ({ slot: Number(k), games: v.games }));
-                        if (slots.length === 0) return false;
-                        const dominant = slots.reduce((a, b) => a.games > b.games ? a : b);
-                        return dominant.slot === slot;
-                      })
-                      .slice(0, 4);
-                    return (
-                      <div key={slot} className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3">
-                        <div className="text-[#a0b0c5] text-[10px] uppercase tracking-widest mb-2">
-                          {t('tft.comp.stage')} {SLOT_LABELS[slot]}
-                        </div>
-                        {augmentsForSlot.length === 0 ? (
-                          <div className="text-[#7a8aa0] text-[10px] py-2">{t('tft.comp.noStageData')}</div>
-                        ) : (
-                          <div className="space-y-1.5">
-                            {augmentsForSlot.map(a => {
-                              const meta = assets?.augments[a.apiName];
-                              const url = tftIconUrl(assets, meta?.icon);
-                              const tierColor = meta?.tier === 3 ? '#c39bff' : meta?.tier === 2 ? '#e0c75a' : '#9ab0bf';
-                              return (
-                                <div key={a.apiName} className="flex items-center gap-2">
-                                  {url ? (
-                                    <img src={url} alt={meta!.name} title={meta!.name} className="w-7 h-7 rounded border" style={{ borderColor: tierColor }} />
-                                  ) : (
-                                    <div className="w-7 h-7 rounded border bg-[#1e2a3a]" style={{ borderColor: tierColor }} title={a.apiName} />
-                                  )}
-                                  <span className="text-white text-[11px] truncate flex-1" style={{ color: tierColor }}>
-                                    {meta?.name || a.apiName.replace(/^TFT\d+_Augment_/, '')}
-                                  </span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
-            )}
+            {/* Augments-by-Stage section entfernt — Riot hat Augment-Stats
+                untersagt. Datenfeld typicalAugments bleibt im API-Payload
+                (Migration unverändert), aber wird nicht mehr angezeigt. */}
 
             {/* Position heatmap per typical unit — renders empty when the
                 Overwolf companion app hasn't submitted enough observations

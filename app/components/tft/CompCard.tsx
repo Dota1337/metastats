@@ -161,21 +161,9 @@ export default function CompCard({
             })}
           </div>
 
-          {comp.typicalAugments && comp.typicalAugments.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1 mt-2">
-              <span className="text-[#7a8aa0] text-[9px] uppercase tracking-widest mr-1">Augments</span>
-              {comp.typicalAugments.slice(0, 4).map(a => {
-                const m = assets?.augments[a.apiName];
-                const tierColor = m?.tier === 3 ? '#c39bff' : m?.tier === 2 ? '#e0c75a' : '#9ab0bf';
-                const url = tftIconUrl(assets, m?.icon);
-                return url ? (
-                  <img key={a.apiName} src={url} alt={m!.name} title={m!.name} className="w-5 h-5 rounded border" style={{ borderColor: tierColor }} />
-                ) : (
-                  <div key={a.apiName} className="w-5 h-5 rounded border bg-[#1e2a3a]" style={{ borderColor: tierColor }} title={a.apiName} />
-                );
-              })}
-            </div>
-          )}
+          {/* typicalAugments-Block entfernt — Riot hat Augment-Stats untersagt.
+              Daten kommen weiter in der API an (RPC unverändert), werden aber
+              nicht mehr UI-seitig dargestellt. */}
         </div>
 
         {/* Stats: horizontal pills on mobile (wraps if needed),

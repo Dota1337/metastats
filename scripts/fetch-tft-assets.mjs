@@ -162,18 +162,27 @@ async function main() {
     };
   }
 
-  // Augments: only active set. Same @VAR@ resolution as items — variables
-  // live in `effects`.
+  // Augments: only active set. CD ships `setData[].augments` as an ARRAY OF
+  // apiName STRINGS (not objects) — the full payload (name/desc/icon/effects)
+  // lives in the top-level items[] list under the same apiName, keyed by the
+  // `_Augment_` suffix. Earlier code iterated as objects and missed every
+  // entry — the bundle landed with 0 augments. Same @VAR@ resolution as items.
   const augments = {};
-  for (const a of active.augments || []) {
-    const apiName = a.apiName;
+  const itemsByName = new Map(items ? [] : []); // built below from cd.items
+  for (const it of cd.items || []) {
+    if (it.apiName) itemsByName.set(it.apiName, it);
+  }
+  for (const augName of active.augments || []) {
+    const apiName = typeof augName === 'string' ? augName : augName?.apiName;
     if (!apiName) continue;
+    const a = itemsByName.get(apiName);
+    if (!a) continue;
     const rawDesc = stripHtml(a.desc || '');
     augments[apiName] = {
       name: a.name || apiName,
       icon: normalizeIconPath(a.icon || ''),
       desc: resolveDescPlaceholders(rawDesc, a.effects),
-      tier: deriveAugmentTier(apiName, a.name || ''),
+      tier: deriveAugmentTier(apiName, a.name || '', a.icon || ''),
     };
   }
 
@@ -278,12 +287,17 @@ function resolveDescPlaceholders(desc, vars) {
   return out;
 }
 
-// Riot doesn't put the augment tier on the API directly. Fall back to
-// scanning the apiName + name for known suffixes:
-//   "*_PlusPlus" / "Prismatic" → 3
-//   "*_Plus" / "Gold" → 2
-//   else → 1 (Silver)
-function deriveAugmentTier(apiName, name) {
+// Riot doesn't expose the augment tier on the API directly. CDragon hides it
+// in the icon path filename suffix: `…/<Name>_I.<set>.tex` for Silver, `_II` for
+// Gold, `_III` for Prismatic. That's by far the most reliable hint (matches the
+// in-game category). Old fallbacks for apiName/name suffixes stay as a backstop
+// for assets without the underscore-tier convention.
+function deriveAugmentTier(apiName, name, icon) {
+  if (icon && typeof icon === 'string') {
+    if (/_III\.[^.]+\.tex$/i.test(icon)) return 3;
+    if (/_II\.[^.]+\.tex$/i.test(icon)) return 2;
+    if (/_I\.[^.]+\.tex$/i.test(icon)) return 1;
+  }
   const both = `${apiName} ${name}`.toLowerCase();
   if (/prismatic|\bplusplus|\+\+/.test(both)) return 3;
   if (/\bplus\b|gold|_plus(?!plus)/.test(both)) return 2;

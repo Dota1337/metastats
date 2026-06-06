@@ -141,9 +141,10 @@ export default function Nav({ active }: NavProps) {
         <div className="hidden lg:flex items-center gap-4 flex-1 justify-end">
           {game === 'tft' ? (
             <>
-              {/* Meta dropdown: Comps / Units / Items / Synergien / One-Tricks /
-                  Patch-Diff. Augments are hidden (Set 17 ships no augments in the
-                  Match-V1 DTO; /tft/augments + detail pages stay reachable directly). */}
+              {/* Meta dropdown: Comps / Units / Items / Augments / Synergien /
+                  One-Tricks / Patch-Diff. Augments page is a pure REFERENCE
+                  catalog (name + description + tier), KEINE Statistiken (Riot
+                  has restricted augment-stats display). */}
               <div className="relative">
                 <button
                   onClick={() => setMetaOpen(o => !o)}
@@ -161,6 +162,7 @@ export default function Nav({ active }: NavProps) {
                       <a href="/tft" className={metaItemClass('comps')}>{t('nav.comps')}</a>
                       <a href="/tft/units" className={metaItemClass('units')}>{t('nav.units')}</a>
                       <a href="/tft/items" className={metaItemClass('items')}>{t('nav.items')}</a>
+                      <a href="/tft/augments" className={metaItemClass('augments')}>{t('nav.augments')}</a>
                       <a href="/tft/traits" className={metaItemClass('traits')}>{t('nav.traits')}</a>
                       <a href="/tft/onetricks" className={metaItemClass('onetricks')}>{t('nav.onetricks')}</a>
                       <a href="/tft/patch/winners" className={metaItemClass('patch')}>{t('nav.patchWinners')}</a>
@@ -413,6 +415,7 @@ export default function Nav({ active }: NavProps) {
               <a href="/tft" className={`pl-3 ${linkClass('comps')}`} onClick={() => setMenuOpen(false)}>{t('nav.comps')}</a>
               <a href="/tft/units" className={`pl-3 ${linkClass('units')}`} onClick={() => setMenuOpen(false)}>{t('nav.units')}</a>
               <a href="/tft/items" className={`pl-3 ${linkClass('items')}`} onClick={() => setMenuOpen(false)}>{t('nav.items')}</a>
+              <a href="/tft/augments" className={`pl-3 ${linkClass('augments')}`} onClick={() => setMenuOpen(false)}>{t('nav.augments')}</a>
               <a href="/tft/traits" className={`pl-3 ${linkClass('traits')}`} onClick={() => setMenuOpen(false)}>{t('nav.traits')}</a>
               <a href="/tft/onetricks" className={`pl-3 ${linkClass('onetricks')}`} onClick={() => setMenuOpen(false)}>{t('nav.onetricks')}</a>
               <a href="/tft/patch/winners" className={`pl-3 ${linkClass('patch')}`} onClick={() => setMenuOpen(false)}>{t('nav.patchWinners')}</a>

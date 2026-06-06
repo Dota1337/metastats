@@ -39,6 +39,9 @@ interface CompRow {
   // { "1": {games, sumPlacement, top4, top1}, "2": …, "3": … } — array-merge
   // sums per star key here in the API.
   carry_star_dist_merged: any[] | null;
+  // W4-B: jsonb-agg of per-day contested_dist objects. Same shape as
+  // carry_star_dist but keys are contested-level (1=solo, 2=one rival, 3=2+).
+  contested_dist_merged: any[] | null;
   // { bucket: { games, sum_placement } } from migration 0017 — for Skill-Cap.
   bucket_breakdown: Record<string, { games: number; sum_placement: number }> | null;
 }
@@ -409,7 +412,35 @@ function enrichComp(r: CompRow) {
       top1Rate: e.top1 / e.games,
     });
   }
-  return { roundHistogram, survivalToTop4, aggroIndex, avgGoldLeft, levelingTempo, skillCapIndex, skillCapBuckets, flexScore, carryStarOutcome };
+  // W4-B: Contested-Distribution — per "how many lobby players forced this
+  // comp" bucket {games, sumPlacement, top4, top1}. Solo = 1, one rival = 2,
+  // 2+ rivals = 3 (capped to keep the UI from listing a long tail).
+  const contestedOutcome: { contested: number; games: number; avgPlacement: number | null; top4Rate: number | null; top1Rate: number | null }[] = [];
+  const cnMerged: Record<string, { games: number; sumPlacement: number; top4: number; top1: number }> = {};
+  for (const dayDict of (r.contested_dist_merged || [])) {
+    if (!dayDict || typeof dayDict !== 'object' || Array.isArray(dayDict)) continue;
+    for (const [level, e] of Object.entries(dayDict as Record<string, any>)) {
+      if (!e || typeof e !== 'object') continue;
+      const cur = cnMerged[level] || { games: 0, sumPlacement: 0, top4: 0, top1: 0 };
+      cur.games += Number(e.games ?? 0);
+      cur.sumPlacement += Number(e.sumPlacement ?? e.sum_placement ?? 0);
+      cur.top4 += Number(e.top4 ?? 0);
+      cur.top1 += Number(e.top1 ?? 0);
+      cnMerged[level] = cur;
+    }
+  }
+  for (const lvl of [1, 2, 3]) {
+    const e = cnMerged[String(lvl)];
+    if (!e || e.games === 0) continue;
+    contestedOutcome.push({
+      contested: lvl,
+      games: e.games,
+      avgPlacement: e.sumPlacement / e.games,
+      top4Rate: e.top4 / e.games,
+      top1Rate: e.top1 / e.games,
+    });
+  }
+  return { roundHistogram, survivalToTop4, aggroIndex, avgGoldLeft, levelingTempo, skillCapIndex, skillCapBuckets, flexScore, carryStarOutcome, contestedOutcome };
 }
 
 // Merge per-day carry-items lists ([{items:[…], count}, …]) into a single

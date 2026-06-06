@@ -518,6 +518,59 @@ export default function TftCompDetailPage() {
               );
             })()}
 
+            {/* W4-B: Contested-Penalty — wie stark fällt der Avg-Place ab, wenn
+                2+ Spieler die gleiche Comp in der Lobby forcen. Aggregator
+                schreibt das pro Match aus der Lobby-cluster_key-Verteilung. */}
+            {(comp.contestedOutcome && comp.contestedOutcome.length >= 2) && (() => {
+              const solo = (comp.contestedOutcome as { contested: number; avgPlacement: number; games: number; top4Rate: number; top1Rate: number }[]).find((c) => c.contested === 1);
+              const totalGames = (comp.contestedOutcome as { games: number }[]).reduce((s: number, x: { games: number }) => s + x.games, 0);
+              if (totalGames === 0) return null;
+              return (
+                <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
+                  <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.contestedPenalty')}</h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {(comp.contestedOutcome as { contested: number; games: number; avgPlacement: number; top4Rate: number; top1Rate: number }[]).map((row) => {
+                      const share = totalGames > 0 ? (row.games / totalGames) * 100 : 0;
+                      const delta = solo && solo.games > 0 && row.contested !== 1 ? row.avgPlacement - solo.avgPlacement : null;
+                      const accentColor = row.contested === 1 ? '#3ecf8e' : row.contested === 2 ? '#e0c75a' : '#e44040';
+                      const label = row.contested === 1 ? t('tft.comp.contestedSolo')
+                                  : row.contested === 2 ? t('tft.comp.contestedDuo')
+                                  : t('tft.comp.contestedTriple');
+                      return (
+                        <div key={row.contested} className="bg-[#141c2e] border rounded p-3" style={{ borderColor: `${accentColor}40` }}>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-medium uppercase tracking-widest" style={{ color: accentColor }}>{label}</span>
+                            <span className="text-[#7a8aa0] text-[10px] tabular-nums">
+                              {share.toFixed(0)}% · {row.games}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-1 text-[11px] tabular-nums">
+                            <div>
+                              <div className="text-[#7a8aa0] text-[9px] uppercase tracking-widest">{t('tft.avgPlacement')}</div>
+                              <div className="text-white text-base font-medium">{row.avgPlacement.toFixed(2)}</div>
+                              {delta != null && (
+                                <div className="text-[10px] tabular-nums mt-0.5" style={{ color: delta > 0 ? '#e44040' : '#3ecf8e' }}>
+                                  {delta > 0 ? '+' : ''}{delta.toFixed(2)}
+                                </div>
+                              )}
+                            </div>
+                            <div>
+                              <div className="text-[#7a8aa0] text-[9px] uppercase tracking-widest">{t('tft.top4')}</div>
+                              <div className="text-white">{(row.top4Rate * 100).toFixed(0)}%</div>
+                            </div>
+                            <div>
+                              <div className="text-[#7a8aa0] text-[9px] uppercase tracking-widest">{t('tft.top1')}</div>
+                              <div className="text-white">{(row.top1Rate * 100).toFixed(0)}%</div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              );
+            })()}
+
             {/* W3-B: Econ-ROI / Roll-Stage-Pro-Sicht. Macht aus dem rohen
                 level_dist + level_sum_last_round eine Pro-lesbare Aussage:
                 "Wo ist das Cap dieser Comp und wie tief kommt sie dort?" */}

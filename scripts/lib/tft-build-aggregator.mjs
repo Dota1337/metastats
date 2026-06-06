@@ -150,6 +150,11 @@ function newCompBucket() {
     // hits 3★ → Avg 2.8 (12% of games), vs 2★ → Avg 4.9". Reroll comps
     // collapse at 2★; fast-8 comps rarely reach 3★ but win when they do.
     carryStarOutcome: new Map(),
+    // W4-B: Contested-Distribution — bucketed by how many lobby players forced
+    // the same cluster_key (1 = solo, 2 = one rival, 3 = three-or-more). Each
+    // bucket carries {games, sumPlacement, top4, top1}; the UI shows the
+    // penalty when too many people force the same comp.
+    contestedDist: new Map(),
   };
 }
 
@@ -244,6 +249,15 @@ export function aggregateMatch(rawMatch, agg, opts) {
 
   // Pre-classify each participant's comp for the comp + pair aggregations.
   const compClass = participants.map(p => classifyComp(p));
+
+  // W4-B: count cluster_key occurrences in this lobby so we can attribute a
+  // contested-level (1 / 2 / 3+) to every participant when we hit the comp
+  // bucket below. Done once per match, lookups are O(1) inside the loop.
+  const clusterCounts = new Map();
+  for (const c of compClass) {
+    if (!c?.clusterKey) continue;
+    clusterCounts.set(c.clusterKey, (clusterCounts.get(c.clusterKey) || 0) + 1);
+  }
 
   for (let pIdx = 0; pIdx < participants.length; pIdx++) {
     const p = participants[pIdx];
@@ -502,6 +516,20 @@ export function aggregateMatch(rawMatch, agg, opts) {
             if (top4) cse.top4++;
             if (top1) cse.top1++;
           }
+        }
+        // W4-B: Contested-level bucket. clusterCounts was filled before this
+        // loop, so reading it here is O(1). Cap at 3 so the UI never has to
+        // deal with a long tail of "5-contested" outliers.
+        {
+          const contested = Math.min(3, clusterCounts.get(compInfo.clusterKey) || 1);
+          const ckey = String(contested);
+          const ce = getOrCreate(cb.contestedDist, ckey, () => ({
+            games: 0, sumPlacement: 0, top4: 0, top1: 0,
+          }));
+          ce.games++;
+          ce.sumPlacement += placement;
+          if (top4) ce.top4++;
+          if (top1) ce.top1++;
         }
         // Leveling-tempo input: per-final-level histogram + parallel last_round
         // accumulator. Skip if level is missing/0 (early surrender row).
@@ -865,6 +893,17 @@ export function finalize(agg, opts = {}) {
           top1: (carryStarDist[star]?.top1 || 0) + e.top1,
         };
       }
+      // W4-B: Contested-Distribution serialized as { "1": {games, sumPlacement, top4, top1}, ... }
+      const contestedDist = {};
+      const cnMap = b.contestedDist instanceof Map ? b.contestedDist : new Map();
+      for (const [level, e] of cnMap) {
+        contestedDist[level] = {
+          games: (contestedDist[level]?.games || 0) + e.games,
+          sumPlacement: (contestedDist[level]?.sumPlacement || 0) + e.sumPlacement,
+          top4: (contestedDist[level]?.top4 || 0) + e.top4,
+          top1: (contestedDist[level]?.top1 || 0) + e.top1,
+        };
+      }
       slim[bucket] = {
         games: b.games, sumPlacement: b.sumPlacement, top4: b.top4, top1: b.top1,
         sumLevel: b.sumLevel ?? 0,
@@ -875,6 +914,7 @@ export function finalize(agg, opts = {}) {
         lastRoundDist, top4ByRound,
         levelDist, levelSumLastRound,
         carryStarDist,
+        contestedDist,
       };
     }
     if (Object.keys(slim).length > 0) out.byComp[key] = slim;

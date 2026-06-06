@@ -200,6 +200,7 @@ export async function writeTftStatsToSupabase(opts) {
         level_dist: b.levelDist || {},
         level_sum_last_round: b.levelSumLastRound || {},
         carry_star_dist: b.carryStarDist || {},
+        contested_dist: b.contestedDist || {},
       });
     }
   }

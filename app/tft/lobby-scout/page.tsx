@@ -49,13 +49,22 @@ export default function TftLobbyScoutPage() {
       .catch(() => setComps([]));
   }, []);
 
-  // Set-17-only champion catalog from the asset bundle. Filter PVE minions
-  // (no cost = 0) and apply the cost/text controls.
+  // Playable-only champion catalog for the current set. CDragon ships PvE
+  // mobs (cost 11, e.g. TFT17_PVE_Krug "Cosmic Bruiser", TimebreakerCore),
+  // boss encounters (TFT17_Enemy_Aatrox "Apex Primordian"), and map-mechanic
+  // fakes (TFT17_DarkStar_FakeUnit "Mini Black Hole") in the same dictionary
+  // as the regular units — so `cost > 0` alone isn't enough. Real playable
+  // units have cost 1-5 AND at least one trait; the non-playables fail one
+  // of those two even when the apiName looks innocent.
   const champions = useMemo(() => {
     if (!assets) return [] as [string, TftChampion][];
     const q = query.trim().toLowerCase();
     return Object.entries(assets.champions)
-      .filter(([id, c]) => id.startsWith(`TFT${assets.set}_`) && c.cost > 0)
+      .filter(([id, c]) =>
+        id.startsWith(`TFT${assets.set}_`) &&
+        c.cost >= 1 && c.cost <= 5 &&
+        Array.isArray(c.traits) && c.traits.length > 0,
+      )
       .filter(([_, c]) => costFilter === 'all' || c.cost === costFilter)
       .filter(([_, c]) => !q || c.name.toLowerCase().includes(q))
       .sort((a, b) => a[1].cost - b[1].cost || a[1].name.localeCompare(b[1].name));

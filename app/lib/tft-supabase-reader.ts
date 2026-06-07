@@ -132,16 +132,44 @@ async function resolvePatch(param: string | null): Promise<string | null> {
 export async function resolveFilters(searchParams: URLSearchParams): Promise<ResolvedFilters> {
   const regionLabel = searchParams.get('region') || 'all';
   const bucketLabel = searchParams.get('bucket') || 'diamond';
-  const days = Math.max(1, Math.min(7, parseInt(searchParams.get('days') || '3', 10)));
+  const requestedDays = Math.max(1, Math.min(7, parseInt(searchParams.get('days') || '3', 10)));
   const patchParam = searchParams.get('patch') || 'current';
   const setParam = searchParams.get('set');
 
   const regions = expandRegions(regionLabel);
   const buckets = expandBuckets(bucketLabel);
-  const patch = await resolvePatch(patchParam);
+  const patches = await getAvailablePatches();
+  const patch = await resolvePatchFromList(patches, patchParam);
   const setNumber = setParam ? parseInt(setParam, 10) : null;
 
+  // Stale-Data-Bump: während des Erstfills läuft der daily-Aggregator nicht,
+  // also kann der letzte Stats-Tag mehrere Tage hinter `current_date` liegen.
+  // Wenn der User „Letzter Tag" (days=1) wählt und die letzten Stats von vor
+  // 2 Tagen sind, würde die RPC ein leeres Fenster sehen (day > today-1d
+  // bei latest=today-2d). Wir expandieren das Fenster minimal so weit, dass
+  // der letzte verfügbare Stats-Tag drin liegt. Keine Stille — die Page zeigt
+  // weiter die User-gewählte Granularität, aber mit verschobener Range.
+  const latestDay = patches[0]?.last_day;
+  let days = requestedDays;
+  if (latestDay) {
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const latest = new Date(latestDay + 'T00:00:00Z');
+    const staleness = Math.floor((today.getTime() - latest.getTime()) / 86_400_000);
+    // RPC-Filter ist `day > current_date - p_days::interval`. Wir brauchen
+    // p_days >= staleness + 1 damit der letzte Stats-Tag im Fenster ist.
+    if (staleness >= 1) days = Math.max(days, staleness + requestedDays);
+  }
+
   return { regions, buckets, days, patch, setNumber, regionLabel, bucketLabel };
+}
+
+// Variant of resolvePatch that takes the patch-list as input (avoids a second
+// getAvailablePatches roundtrip when the caller already has them).
+async function resolvePatchFromList(patches: PatchInfo[], param: string): Promise<string | null> {
+  if (param === 'current') return patches[0]?.patch ?? null;
+  if (param === 'previous') return patches[1]?.patch ?? null;
+  return param;
 }
 
 export async function callRpc<T = any>(fn: string, args: Record<string, unknown>): Promise<T> {

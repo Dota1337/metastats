@@ -9,13 +9,16 @@ import { fetchHetznerPlayerMatches } from '../../../../lib/tft-hetzner-matches';
 //   - Pro-Build-Drift (Sprint 3.3): per-carry-unit item-build distribution
 // Pure read-side aggregation — no new write path needed.
 
+// Shape mirrors fetchHetznerPlayerMatches's HetznerMatchRow — only the fields
+// this endpoint actually reads. The Hetzner refresh-api serves camelCase, so
+// the interface is camelCase end-to-end (no more lying snake_case cast).
 interface CachedMatch {
-  match_id: string;
-  set_number: number;
-  queue_id: number;
+  matchId: string;
+  setNumber: number;
+  queueId: number;
   placement: number;
   level: number;
-  last_round: number;
+  lastRound: number;
   // Unit shape differs by writer (Hetzner crawler: {characterId, tier, items};
   // legacy Vercel: {character_id, tier, rarity, items}). Neither writes
   // `itemNames`. Accept every key so Hetzner-sourced rows classify too.
@@ -97,7 +100,10 @@ export async function GET(request: NextRequest) {
       queueId: STANDARD_RANKED_QUEUE,
       limitPerPuuid: 500,
     });
-    rows = matches as unknown as CachedMatch[];
+    // HetznerMatchRow is a structural superset of CachedMatch — both are
+    // camelCase, so the rows just flow through. The cast is intentional and
+    // type-safe (we only read fields declared on CachedMatch).
+    rows = matches as CachedMatch[];
   } catch (err) {
     const message = err instanceof Error ? err.message : 'hetzner_unreachable';
     return NextResponse.json({ error: message }, { status: 502 });

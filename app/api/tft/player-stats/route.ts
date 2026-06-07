@@ -150,7 +150,6 @@ export async function GET(request: NextRequest) {
         averages: { level: 0, goldLeft: 0, eliminations: 0, damage: 0, lastRound: 0 },
         scores: {},
         topUnits: [],
-        topAugments: [],
         topTraits: [],
       });
     }
@@ -180,7 +179,6 @@ export async function GET(request: NextRequest) {
   const placementCounts = [0, 0, 0, 0, 0, 0, 0, 0];
 
   const unitGames = new Map<string, { games: number; sumPlace: number; top4: number }>();
-  const augmentGames = new Map<string, { games: number; sumPlace: number; top4: number }>();
   const traitGames = new Map<string, { games: number; sumPlace: number; top4: number }>();
 
   for (const m of cached) {
@@ -208,14 +206,6 @@ export async function GET(request: NextRequest) {
       e.sumPlace += placement;
       if (placement <= 4) e.top4++;
       unitGames.set(cid, e);
-    }
-    for (const a of m.augments || []) {
-      if (!a) continue;
-      const e = augmentGames.get(a) || { games: 0, sumPlace: 0, top4: 0 };
-      e.games++;
-      e.sumPlace += placement;
-      if (placement <= 4) e.top4++;
-      augmentGames.set(a, e);
     }
     for (const t of m.traits || []) {
       if (!t?.name) continue;
@@ -288,7 +278,6 @@ export async function GET(request: NextRequest) {
     topUnits: topN(unitGames, 15, 'character_id').map((u: any) => ({
       characterId: u.character_id, games: u.games, avgPlacement: u.avgPlacement, top4Rate: u.top4Rate,
     })),
-    topAugments: topN(augmentGames, 5, 'apiName'),
     topTraits: topN(traitGames, 5, 'key'),
   });
 }

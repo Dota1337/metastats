@@ -64,7 +64,10 @@ export default function TftAugmentsReferencePage() {
         <div className="flex flex-wrap items-center gap-2 mb-4">
           {(['all', 3, 2, 1] as TierFilter[]).map(tk => {
             const active = tierFilter === tk;
-            const label = tk === 'all' ? t('tft.filter.allRanks').replace('Ränge', 'Tiers').replace('ranks', 'tiers') : TIER_LABELS[tk as number];
+            // `label` is only used for the non-`all` branch; the `all` button
+            // shows tft.augment.allTiers directly. Don't pre-compute a label
+            // for `all` that gets thrown away.
+            const label = tk === 'all' ? '' : TIER_LABELS[tk as number];
             const color = tk === 'all' ? '#7B61FF' : TIER_COLORS[tk as number];
             return (
               <button

@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Match cache lives on Hetzner — route through refresh-api.
-  let rows: { gold_left: number; placement: number; level: number }[] = [];
+  let rows: { goldLeft: number; placement: number; level: number }[] = [];
   try {
     const matches = await fetchHetznerPlayerMatches({
       puuids: [puuid],
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
       queueId: STANDARD_RANKED_QUEUE,
       limitPerPuuid: 100,
     });
-    rows = matches.map(m => ({ gold_left: m.goldLeft ?? 0, placement: m.placement, level: m.level }));
+    rows = matches.map(m => ({ goldLeft: m.goldLeft ?? 0, placement: m.placement, level: m.level }));
   } catch (err) {
     const message = err instanceof Error ? err.message : 'hetzner_unreachable';
     return NextResponse.json({ error: message }, { status: 502 });
@@ -40,15 +40,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ puuid, hasData: false, reason: 'insufficient_samples', games: rows.length });
   }
 
-  const sum = rows.reduce((s, r) => s + (r.gold_left || 0), 0);
+  const sum = rows.reduce((s, r) => s + (r.goldLeft || 0), 0);
   const avgGoldLeft = sum / rows.length;
   const bot4Rows = rows.filter(r => r.placement >= 5);
   const top4Rows = rows.filter(r => r.placement <= 4);
   const avgGoldLeftBot4 = bot4Rows.length > 0
-    ? bot4Rows.reduce((s, r) => s + (r.gold_left || 0), 0) / bot4Rows.length
+    ? bot4Rows.reduce((s, r) => s + (r.goldLeft || 0), 0) / bot4Rows.length
     : null;
   const avgGoldLeftTop4 = top4Rows.length > 0
-    ? top4Rows.reduce((s, r) => s + (r.gold_left || 0), 0) / top4Rows.length
+    ? top4Rows.reduce((s, r) => s + (r.goldLeft || 0), 0) / top4Rows.length
     : null;
 
   // Peer baseline: global Set-N mean gold_left for placement>=5 players,

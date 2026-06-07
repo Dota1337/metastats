@@ -90,7 +90,6 @@ interface PlayerStats {
     consistency: number;
   };
   topUnits?: { characterId: string; games: number; avgPlacement: number; top4Rate: number }[];
-  topAugments?: { apiName: string; games: number; avgPlacement: number; top4Rate: number }[];
   topTraits?: { key: string; games: number; avgPlacement: number; top4Rate: number }[];
   statsSource?: string;
   // Precomputed season-depth metrics from tft_player_season_stats (Hetzner).
@@ -284,11 +283,11 @@ export default function TftPlayerPage() {
     <main className="min-h-screen bg-[#0e1525]">
       <Nav active="search" />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
-        {loading && <div className="text-[#a0b0c5] text-center py-12">Lade Spieler-Daten ...</div>}
+        {loading && <div className="text-[#a0b0c5] text-center py-12">{t('tft.player.loading')}</div>}
 
         {error && (
           <div className="bg-[#0d1526] border border-red-500/40 rounded p-6 text-center">
-            <div className="text-red-400 font-medium mb-1">Fehler</div>
+            <div className="text-red-400 font-medium mb-1">{t('tft.player.error')}</div>
             <div className="text-[#a0b0c5] text-sm">{error}</div>
           </div>
         )}
@@ -358,16 +357,16 @@ export default function TftPlayerPage() {
             />
 
             <div className="mb-3">
-              <div className="text-[#a0b0c5] text-xs uppercase tracking-widest">Match History</div>
+              <div className="text-[#a0b0c5] text-xs uppercase tracking-widest">{t('tft.player.matchHistory')}</div>
             </div>
 
             <div className="space-y-3">
               {pageLoading && pageMatches.length === 0 && (
-                <div className="text-[#7a8aa0] text-center py-8">Lade Match-History ...</div>
+                <div className="text-[#7a8aa0] text-center py-8">{t('tft.player.loadingMatchHistory')}</div>
               )}
               {!pageLoading && data.matchIds.length === 0 && (
                 <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#a0b0c5] text-sm">
-                  Keine Standard-Ranked-Matches gefunden.
+                  {t('tft.player.noStandardMatches')}
                 </div>
               )}
               {!pageLoading && data.matchIds.length > 0 && pageMatches.length === 0 && (
@@ -392,6 +391,7 @@ export default function TftPlayerPage() {
 }
 
 function Pagination({ page, totalPages, onChange, loading }: { page: number; totalPages: number; onChange: (p: number) => void; loading: boolean }) {
+  const { t } = useI18n();
   return (
     <div className="flex items-center justify-center gap-2 mt-5 text-xs">
       <button
@@ -399,7 +399,7 @@ function Pagination({ page, totalPages, onChange, loading }: { page: number; tot
         disabled={page === 0 || loading}
         className="px-3 py-1.5 rounded bg-[#141c2e] border border-[#1e2a3a] text-[#a0b0c5] hover:text-white hover:border-[#7B61FF]/40 disabled:opacity-40 disabled:cursor-not-allowed"
       >
-        ← Zurück
+        {t('tft.player.prev')}
       </button>
       <div className="flex items-center gap-1">
         {Array.from({ length: totalPages }, (_, i) => (
@@ -420,7 +420,7 @@ function Pagination({ page, totalPages, onChange, loading }: { page: number; tot
         disabled={page >= totalPages - 1 || loading}
         className="px-3 py-1.5 rounded bg-[#141c2e] border border-[#1e2a3a] text-[#a0b0c5] hover:text-white hover:border-[#7B61FF]/40 disabled:opacity-40 disabled:cursor-not-allowed"
       >
-        Weiter →
+        {t('tft.player.next')}
       </button>
     </div>
   );
@@ -444,9 +444,9 @@ function SeasonStats({
     return (
       <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-5 mb-5">
         <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">
-          Saison-Statistik{activeSet != null ? ` · Set ${activeSet}` : ''}
+          {t('tft.player.seasonStats')}{activeSet != null ? ` · Set ${activeSet}` : ''}
         </div>
-        <div className="text-[#a0b0c5] text-sm">Berechne aus allen Saison-Matches ...</div>
+        <div className="text-[#a0b0c5] text-sm">{t('tft.player.computingFromAllMatches')}</div>
       </div>
     );
   }
@@ -455,13 +455,13 @@ function SeasonStats({
     <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-5 mb-5">
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <div className="text-[#a0b0c5] text-xs uppercase tracking-widest">
-          Saison-Statistik{activeSet != null ? ` · Set ${activeSet}` : ''}
+          {t('tft.player.seasonStats')}{activeSet != null ? ` · Set ${activeSet}` : ''}
         </div>
       </div>
 
       {!stats?.hasStats ? (
         <div className="text-[#a0b0c5] text-sm py-4 text-center">
-          Keine Solo-Ranked-Matches für Set {activeSet} im Cache.
+          {t('tft.player.noSoloMatchesForSet').replace('{n}', String(activeSet))}
         </div>
       ) : (
         <>
@@ -498,24 +498,8 @@ function SeasonStats({
             </div>
           )}
 
-          {/* Favourite augments: 5 chips across the full width (1 row on lg). */}
-          {stats.topAugments && stats.topAugments.length > 0 && (
-            <div className="mb-5">
-              <div className="text-[#a0b0c5] text-[10px] uppercase tracking-widest mb-2">{t('tft.favoriteAugments')}</div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
-                {stats.topAugments.slice(0, 5).map((a, i) => (
-                  <AugmentChip
-                    key={a.apiName}
-                    rank={i + 1}
-                    apiName={a.apiName}
-                    games={a.games}
-                    avg={a.avgPlacement}
-                    assets={assets}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
+          {/* Augment-Stats absichtlich entfernt — Riot-Restriction für die
+              Anzeige von Augment-Performance. */}
 
           {/* Play-style: radar + placement histogram + raw averages.
               Guard on a real score key — the season_aggregate fallback path
@@ -603,29 +587,6 @@ function UnitChip({ rank, characterId, games, avg, assets, lobbyAvg }: { rank: n
         </div>
       </div>
     </a>
-  );
-}
-
-function AugmentChip({ rank, apiName, games, avg, assets }: { rank: number; apiName: string; games: number; avg: number; assets: TftAssetsBundle | null }) {
-  const { t } = useI18n();
-  const info = assets?.augments[apiName];
-  const url = tftIconUrl(assets, info?.icon);
-  const tierColor = info?.tier === 3 ? '#c39bff' : info?.tier === 2 ? '#e0c75a' : '#9ab0bf';
-  const name = info?.name || apiName.replace(/^TFT\d+_Augment_/, '');
-  return (
-    <div
-      title={`#${rank} ${name} — ${games} ${t('tft.gamesShort')}, Ø ${avg.toFixed(2)}`}
-      className="flex items-center gap-2.5 bg-[#0a0e1a] border border-[#1e2a3a] rounded-md px-2.5 py-2"
-    >
-      <RankBadge rank={rank} />
-      <div className="w-10 h-10 rounded border-2 overflow-hidden flex-shrink-0" style={{ borderColor: tierColor }}>
-        {url ? <img src={url} alt={name} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-[#1e2a3a]" />}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="text-white text-sm font-medium truncate">{name}</div>
-        <div className="text-[#9ab0c4] text-xs">{games} {t('tft.gamesShort')} · Ø {avg.toFixed(2)}</div>
-      </div>
-    </div>
   );
 }
 
@@ -752,12 +713,13 @@ function Stat({ label, value }: { label: string; value: string }) {
 function ProBadge({ pro }: { pro: ProPlayer }) {
   // Fallback badge — name-matched against the LoL-Liquipedia list. Used
   // only when the puuid-verified TFT list has nothing for this account.
+  const { t } = useI18n();
   return (
     <span
-      title={`Verifizierter Pro · ${pro.team} ${pro.role}`}
+      title={`${t('tft.player.verifiedPro')} · ${pro.team} ${pro.role}`}
       className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#7B61FF]/15 text-[#7B61FF] text-[10px] uppercase tracking-widest font-medium border border-[#7B61FF]/40"
     >
-      ✓ Verified Pro
+      {t('tft.player.verifiedProBadge')}
     </span>
   );
 }
@@ -779,6 +741,7 @@ function placeColor(place: string | null): string {
 }
 
 function TournamentHistory({ pro }: { pro: TftProRecord }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const all = pro.tournament_results || [];
   if (all.length === 0) return null;
@@ -787,19 +750,19 @@ function TournamentHistory({ pro }: { pro: TftProRecord }) {
   return (
     <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-3">
       <div className="flex items-baseline justify-between mb-3">
-        <h2 className="text-white text-sm font-medium uppercase tracking-widest">Tournament History</h2>
+        <h2 className="text-white text-sm font-medium uppercase tracking-widest">{t('tft.player.tournamentHistory')}</h2>
         <div className="text-xs text-[#a0b0c5]">
-          <span className="text-white">{all.length}</span> Turniere ·{' '}
+          <span className="text-white">{all.length}</span> {t('tft.player.tournaments')} ·{' '}
           <span className="text-[#f0c040]">{wins}× 1.</span> ·{' '}
           <span className="text-[#c89b3c]">{formatProEarnings(pro.total_earnings_usd)}</span>
         </div>
       </div>
       <div className="hidden sm:grid grid-cols-[6rem_3rem_1fr_5rem_6rem] gap-2 text-[10px] uppercase text-[#7a8aa0] pb-2 border-b border-[#1e2a3a]">
-        <div>Datum</div>
-        <div>Platz</div>
-        <div>Turnier</div>
-        <div>Tier</div>
-        <div className="text-right">Preisgeld</div>
+        <div>{t('tft.player.colDate')}</div>
+        <div>{t('tft.player.colPlace')}</div>
+        <div>{t('tft.player.colTournament')}</div>
+        <div>{t('tft.player.colTier')}</div>
+        <div className="text-right">{t('tft.player.colPrize')}</div>
       </div>
       {visible.map((r, i) => (
         <div
@@ -828,7 +791,7 @@ function TournamentHistory({ pro }: { pro: TftProRecord }) {
           onClick={() => setOpen(!open)}
           className="mt-2 w-full text-center text-xs text-[#a892ff] hover:text-white"
         >
-          {open ? 'Weniger anzeigen' : `+ ${all.length - 10} weitere anzeigen`}
+          {open ? t('tft.player.showLess') : t('tft.player.showMore').replace('{n}', String(all.length - 10))}
         </button>
       )}
     </div>
@@ -838,28 +801,30 @@ function TournamentHistory({ pro }: { pro: TftProRecord }) {
 function TftProBadge({ pro }: { pro: TftProRecord }) {
   // TFT-native badge — the puuid is itself the verification (the crawler
   // resolves Liquipedia's lolchess field against Riot's account-v1).
+  const { t } = useI18n();
   return (
     <span
-      title={`Verifizierter TFT-Pro · ${pro.team || 'Free Agent'} ${pro.role || ''}`.trim()}
+      title={`${t('tft.player.verifiedTftPro')} · ${pro.team || 'Free Agent'} ${pro.role || ''}`.trim()}
       className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#3ecf8e]/15 text-[#3ecf8e] text-[10px] uppercase tracking-widest font-medium border border-[#3ecf8e]/40"
     >
-      ✓ Verified TFT Pro
+      {t('tft.player.verifiedTftProBadge')}
     </span>
   );
 }
 
 function RankBlock({ ranked, seasonRanks }: { ranked: SummonerData['ranked']; seasonRanks?: SeasonRank[] }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const pastSeasons = (seasonRanks || []).filter(s => s.peak_tier).sort((a, b) => b.set_number - a.set_number);
 
   const inner = !ranked || !ranked.tier ? (
     <>
-      <div className="text-[#a0b0c5] text-xs uppercase tracking-widest">Standard Ranked</div>
-      <div className="text-[#a0b0c5] text-sm mt-1">Unranked</div>
+      <div className="text-[#a0b0c5] text-xs uppercase tracking-widest">{t('tft.player.standardRanked')}</div>
+      <div className="text-[#a0b0c5] text-sm mt-1">{t('tft.player.unranked')}</div>
     </>
   ) : (
     <>
-      <div className="text-[#a0b0c5] text-xs uppercase tracking-widest">Standard Ranked</div>
+      <div className="text-[#a0b0c5] text-xs uppercase tracking-widest">{t('tft.player.standardRanked')}</div>
       <div className="text-lg font-medium mt-1" style={{ color: TIER_COLORS[ranked.tier] || '#a0b0c5' }}>
         {formatTier(ranked.tier, ranked.rank)} <span className="text-white">{ranked.leaguePoints ?? 0} LP</span>
       </div>
@@ -881,12 +846,12 @@ function RankBlock({ ranked, seasonRanks }: { ranked: SummonerData['ranked']; se
             onClick={() => setOpen(o => !o)}
             className="mt-2 text-[10px] text-[#7B61FF] hover:text-[#a892ff] uppercase tracking-widest"
           >
-            Alle Saisons ({pastSeasons.length}) {open ? '▲' : '▼'}
+            {t('tft.player.allSeasons').replace('{n}', String(pastSeasons.length))} {open ? '▲' : '▼'}
           </button>
           {open && (
             <div className="absolute right-0 mt-1 z-20 bg-[#0d1526] border border-[#1e2a3a] rounded-lg shadow-lg p-3 min-w-[280px] text-left">
               <div className="text-[#a0b0c5] text-[10px] uppercase tracking-widest mb-2">
-                Höchster Rang pro Set
+                {t('tft.player.peakRankPerSet')}
               </div>
               <div className="space-y-1.5">
                 {pastSeasons.map(s => (

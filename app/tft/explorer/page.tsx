@@ -159,28 +159,51 @@ export default function TftExplorerPage() {
   const unitOptions = useMemo(() => {
     if (!assets) return [] as { id: string; name: string; cost: number }[];
     return Object.entries(assets.champions)
-      .filter(([id, c]) => id.startsWith(SET_PREFIX) && c && (c as any).cost > 0 && (c as any).cost <= 5)
+      .filter(([id, c]) => {
+        if (!id.startsWith(SET_PREFIX)) return false;
+        const ch = c as any;
+        if (!ch || ch.cost <= 0 || ch.cost > 5) return false;
+        // Playable champions always have at least one trait. PvE summons
+        // (Mini Black Hole, Apex Primordian, Enemy_*) and "FakeUnit" entries
+        // have 0 traits — they sneak past the cost filter but shouldn't
+        // appear in the playable-champion picker.
+        if (!Array.isArray(ch.traits) || ch.traits.length === 0) return false;
+        if (/Enemy_|FakeUnit|Minion|Summon/i.test(id)) return false;
+        return true;
+      })
       .map(([id, c]) => ({ id, name: (c as any).name as string, cost: (c as any).cost as number }))
       .sort((a, b) => a.cost - b.cost || a.name.localeCompare(b.name));
   }, [assets, SET_PREFIX]);
 
   const itemOptions = useMemo(() => {
     if (!assets) return [] as { id: string; name: string; icon: string | null }[];
+    // Whitelist statt Blacklist — drei klare Kategorien:
+    //   1. Normale Combat-Items   →  TFT_Item_<Name>          (Deathblade, Infinity Edge …)
+    //   2. Artefakte              →  TFT_Item_Artifact_<Name> + TFT<set>_Item_Artifact_<Name>
+    //   3. Radiant-Versionen      →  TFT<n>_Item_<Name>Radiant
+    // Alles andere (Augments, Emblems, Spatulas, MarketOfferings, Hex-Buffs,
+    // Loot-Orbs, Anvils, Trait-Emblems, Debug-Items, Set-Mechanik-Mods,
+    // Tactician-Items, Tome-Items) fällt explizit raus.
+    const JUNK_NAME = /^@|^tft_item_name_|@[A-Za-z]+@/i;
     return Object.entries(assets.items)
       .filter(([id, meta]) => {
         const name = (meta as any)?.name;
-        if (!name) return false;
-        // Drop augments (Riot-tabu), components/recipes, set-specific stuff
-        // from other sets, and trait-emblems (rendered separately as traits).
-        if (/Augment/i.test(id)) return false;
-        if (/component|recipe/i.test(name)) return false;
-        if (/Emblem/i.test(id)) return false;
-        // Only current-set items + universal TFT_Item_* (cross-set base items).
-        return id.startsWith(SET_PREFIX) || id.startsWith('TFT_Item_');
+        if (!name || JUNK_NAME.test(name)) return false;
+        // Artefakte aus jedem Set
+        if (/^TFT(\d+)?_Item_Artifact_/.test(id)) return true;
+        // Radiant-Items (TFT5_Item_*Radiant, TFT17_Item_*_Radiant)
+        if (/^TFT\d+_Item_.*Radiant$/.test(id)) return true;
+        // Normale Combat-Items: TFT_Item_<Name> ohne Junk-Suffix
+        if (id.startsWith('TFT_Item_')) {
+          if (/Grant|Anvil|Offering|Orb|Mod|Spat|Augment|Tome|Refund|Tactician|Choice|Test|Debug|Hex|Emblem|TestDummy|Crit|Capsule|Crown/i.test(id)) return false;
+          if (/component|recipe/i.test(name)) return false;
+          return true;
+        }
+        return false;
       })
       .map(([id, meta]) => ({ id, name: (meta as any).name as string, icon: (meta as any).icon || null }))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [assets, SET_PREFIX]);
+  }, [assets]);
 
   const traitOptions = useMemo(() => {
     if (!assets) return [] as { id: string; name: string }[];
@@ -236,10 +259,11 @@ export default function TftExplorerPage() {
 
         {/* Filter rail (left) + results (right). Sticky rail with its own
             inner scroll so the user doesn't have to scroll past 200+ comps
-            to reach the trait picker. */}
+            to reach the trait picker. The max-h leaves ~5rem at the top for
+            the Nav + a small bottom gap so the rail never bleeds off-screen. */}
         <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4">
           {/* Filter rail */}
-          <div className="space-y-3 lg:sticky lg:top-4 self-start lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:pr-1">
+          <div className="space-y-3 lg:sticky lg:top-4 self-start lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto lg:pr-1 lg:[scrollbar-gutter:stable]">
             <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-3 space-y-3">
               <div>
                 <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest mb-1.5">{t('tft.filter.bucket')}</div>
@@ -514,7 +538,7 @@ function FilterPicker({
         placeholder=""
         className="w-full bg-[#141c2e] border border-[#1e2a3a] rounded text-white text-xs px-2 py-1.5 mb-2"
       />
-      <div className="max-h-48 overflow-y-auto space-y-0.5">
+      <div className="max-h-40 overflow-y-auto space-y-0.5">
         {options.map(o => {
           const active = selected.includes(o.id);
           let iconUrl: string | null = null;

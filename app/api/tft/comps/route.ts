@@ -149,9 +149,32 @@ export async function GET(request: NextRequest) {
         p_min_games: minGames,
       });
       const participants = rows[0]?.participants || 0;
-      const row = rows.find(r => r.cluster_key === slug);
+      let row = rows.find(r => r.cluster_key === slug);
+      let aliasedFrom: string | null = null;
+      // Core-Comp Consolidation: 1-3 unit / activation-level Varianten einer
+      // Comp sind keine eigenständigen Comps (User-Vorgabe). Wenn der exakte
+      // slug im aktuellen Window keine Daten hat, suchen wir nach Geschwistern
+      // mit identischem Trait-Root UND Carry — also `<trait>@<x>_<carry>` für
+      // alle x — und nehmen den mit den meisten Games. Der Fallback gilt nur
+      // wenn die ähnliche Variante ≥ 50 Spiele hat; sonst echt "noch keine
+      // Daten" und nicht aufdrängen.
+      if (!row) {
+        const m = /^(.+)@(\d+)_(.+)$/.exec(slug);
+        if (m) {
+          const sameCore = rows
+            .filter(r => {
+              const rm = /^(.+)@(\d+)_(.+)$/.exec(r.cluster_key);
+              return rm && rm[1] === m[1] && rm[3] === m[3] && Number(r.games) >= 50;
+            })
+            .sort((a, b) => Number(b.games) - Number(a.games));
+          if (sameCore.length > 0) {
+            row = sameCore[0];
+            aliasedFrom = slug;
+          }
+        }
+      }
       if (!row) return cachedJson({ filters, hasData: false, comp: null });
-      const comp = { ...baseComp(row, participants), ...enrichComp(row) };
+      const comp = { ...baseComp(row, participants), ...enrichComp(row), aliasedFrom };
 
       // Counter edges — single RPC for the same region/day/patch window.
       const pairs = await callRpc<CompPairRow[]>('get_tft_comp_pairs', {

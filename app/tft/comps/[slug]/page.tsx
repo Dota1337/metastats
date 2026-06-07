@@ -60,11 +60,17 @@ export default function TftCompDetailPage() {
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
 
   useEffect(() => {
+    // Detail uses the SAME window as /tft/patch/winners (30 days, min 50
+    // games) so any comp that's visible in the diff view always resolves
+    // here too. The previous 3-day default split the two views: a comp
+    // could show up as a patch winner (30d, min 50) and then "no data" in
+    // the detail (3d, min 30). User-Befund von 2026-06-07.
+    //
     // Pull the normal-bucket comp + the pro-pool variant in parallel so the
     // "Pro vs Solo Queue" section lights up as soon as both arrive.
     Promise.all([
-      fetch(`/api/tft/comps?region=${region}&bucket=${bucket}&slug=${encodeURIComponent(slug)}`).then(r => r.json()),
-      fetch(`/api/tft/comps?region=all&bucket=pro_pool&slug=${encodeURIComponent(slug)}&minGames=5`).then(r => r.ok ? r.json() : { comp: null }),
+      fetch(`/api/tft/comps?region=${region}&bucket=${bucket}&slug=${encodeURIComponent(slug)}&days=30&minGames=50`).then(r => r.json()),
+      fetch(`/api/tft/comps?region=all&bucket=pro_pool&slug=${encodeURIComponent(slug)}&days=30&minGames=5`).then(r => r.ok ? r.json() : { comp: null }),
     ]).then(([normal, pro]) => {
       setHasData(!!normal.hasData);
       setComp(normal.comp || null);

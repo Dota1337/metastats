@@ -24,6 +24,16 @@ const REGIONS = [
   { value: 'jp1', label: 'JP' },
 ] as const;
 
+// Trimmed tier filter — kein nackter Master/GM/Challenger weil oben
+// herum die Patch-Delta-Samples zu dünn werden. master_plus rollt
+// Master+GM+Challenger zusammen auf.
+type Tier = 'all' | 'diamond' | 'master_plus';
+const TIERS: { value: Tier; key: string }[] = [
+  { value: 'all',         key: 'tft.bucket.all' },
+  { value: 'diamond',     key: 'tft.bucket.diamond' },
+  { value: 'master_plus', key: 'tft.bucket.master_plus' },
+];
+
 interface DiffEntry {
   key: string;
   currentGames: number;
@@ -43,6 +53,7 @@ export default function TftPatchWinnersPage() {
   const { t } = useI18n();
   const [entity, setEntity] = useState<Entity>('unit');
   const [region, setRegion] = useState<string>('');
+  const [tier, setTier] = useState<Tier>('master_plus');
   const [winners, setWinners] = useState<DiffEntry[]>([]);
   const [losers, setLosers] = useState<DiffEntry[]>([]);
   const [info, setInfo] = useState<{ currentPatch: string | null; previousPatch: string | null }>({ currentPatch: null, previousPatch: null });
@@ -53,7 +64,7 @@ export default function TftPatchWinnersPage() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    const qs = new URLSearchParams({ entity });
+    const qs = new URLSearchParams({ entity, bucket: tier });
     if (region) qs.set('region', region);
     fetch(`/api/tft/patch-diff?${qs.toString()}`)
       .then(r => r.ok ? r.json() : { winners: [], losers: [] })
@@ -66,7 +77,7 @@ export default function TftPatchWinnersPage() {
       })
       .catch(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [entity, region]);
+  }, [entity, region, tier]);
 
   // Compute max-delta across both lists for proportional bar widths.
   const maxAbsDelta = Math.max(
@@ -136,10 +147,25 @@ export default function TftPatchWinnersPage() {
               </button>
             ))}
           </div>
+          <div className="flex gap-1 ml-auto">
+            {TIERS.map(tk => (
+              <button
+                key={tk.value}
+                onClick={() => setTier(tk.value)}
+                className={`px-3 py-1.5 text-xs rounded border ${
+                  tier === tk.value
+                    ? 'bg-[#7B61FF] border-[#7B61FF] text-white'
+                    : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5] hover:border-[#7B61FF]/40'
+                }`}
+              >
+                {t(tk.key as any)}
+              </button>
+            ))}
+          </div>
           <select
             value={region}
             onChange={e => setRegion(e.target.value)}
-            className="bg-[#141c2e] border border-[#1e2a3a] rounded text-white text-xs px-2 py-1.5 ml-auto"
+            className="bg-[#141c2e] border border-[#1e2a3a] rounded text-white text-xs px-2 py-1.5"
             aria-label={t('tft.filter.region')}
           >
             {REGIONS.map(r => (

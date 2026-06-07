@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 // with 57014). This runs server-side only, so bypassing RLS is fine.
 import { supabaseAdmin as supabase } from '../../../lib/supabase';
 import { getAvailablePatches } from '../../../lib/tft-supabase-reader';
+import { fetchHetznerPlayerMatches } from '../../../lib/tft-hetzner-matches';
 
 // /api/tft/onetricks?region=euw1&minShare=0.6
 //
@@ -79,16 +80,20 @@ export async function GET(request: NextRequest) {
   }
 
   const puuids = candidates.map(c => c.puuid);
-  let q = supabase
-    .from('tft_player_match_cache')
-    .select('puuid, units, traits, placement, set_number, queue_id, game_datetime')
-    .in('puuid', puuids)
-    .eq('queue_id', STANDARD_RANKED_QUEUE)
-    .order('game_datetime', { ascending: false })
-    .limit(puuids.length * 50);
-  if (setNumber != null) q = q.eq('set_number', setNumber);
-  const { data: matches, error: mErr } = await q;
-  if (mErr) return NextResponse.json({ error: mErr.message }, { status: 500 });
+  // Route through the Hetzner refresh-api — the Set-17 match cache lives
+  // on the Hetzner box, Supabase only has Set-15-era leftovers.
+  let matches: any[] = [];
+  try {
+    matches = await fetchHetznerPlayerMatches({
+      puuids,
+      setNumber: setNumber ?? undefined,
+      queueId: STANDARD_RANKED_QUEUE,
+      limitPerPuuid: 50,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'hetzner_unreachable';
+    return NextResponse.json({ error: message }, { status: 502 });
+  }
 
   const perPuuid = new Map<string, Map<string, { games: number; sumPlacement: number }>>();
   for (const row of (matches || []) as Array<CachedMatch & { puuid: string }>) {

@@ -13,6 +13,12 @@
  *   POST /explore-matches — { units, region, buckets, days, limit } → aggregate stats + sample
  *                            match-level explorer over tft_player_match_cache (Set 17 only,
  *                            uses GIN index idx_match_cache_units_gin_s17 on units jsonb)
+ *   POST /player-matches  — { puuids, set_number, queue_id?, limit_per_puuid? } → match rows
+ *                            Generic per-player cache read. The Hetzner box is the only
+ *                            source-of-truth for the Set-17 match cache (Supabase only has
+ *                            the marketvalue + season snapshots replicated, not the full
+ *                            per-match jsonb). All onetricks/coach/specialty/econ endpoints
+ *                            route through here.
  *
  * Auth: Bearer token from $REFRESH_API_TOKEN (managed by /etc/metastats-crawler/env).
  * Rate limit: 60s per (puuid, region) — protects Riot quota from spam.
@@ -440,6 +446,100 @@ async function handleExploreMatches(body) {
   };
 }
 
+// ─ Peer gold-left baseline (econ-score) ────────────────────────────────────
+// Global Set-17 mean gold_left for placement≥5 players. The legacy Supabase
+// query .limit(2000) sampled an arbitrary slice; we hold the same semantic
+// here but run it on Hetzner so it actually returns Set-17 data.
+async function handlePeerBaseline(body) {
+  const setNumber = Number.isFinite(Number(body?.set_number)) ? Number(body.set_number) : SET_NUMBER;
+  const minPlacement = Math.max(1, Math.min(8, Number(body?.min_placement) || 5));
+  const sampleLimit = Math.max(100, Math.min(10000, Number(body?.limit) || 2000));
+  const sql = `
+    SELECT AVG(gold_left)::float AS avg_gold_left, COUNT(*)::int AS sample
+    FROM (
+      SELECT gold_left FROM tft_player_match_cache
+      WHERE set_number = $1 AND queue_id = $2 AND placement >= $3 AND gold_left IS NOT NULL
+      LIMIT $4
+    ) s
+  `;
+  const r = await pool.query(sql, [setNumber, QUEUE_RANKED, minPlacement, sampleLimit]);
+  return { avgGoldLeft: r.rows[0]?.avg_gold_left ?? null, sample: r.rows[0]?.sample ?? 0 };
+}
+
+// ─ Per-player match-cache read ─────────────────────────────────────────────
+// Generic read endpoint for the app's match-driven views (onetricks,
+// coach, specialty, econ, positions/by-units). All of these used to read
+// from Supabase directly, but the per-match jsonb cache only lives on
+// Hetzner — Supabase only has the Set-15-era rows mirrored from way back.
+// So everything routes through here now.
+async function handlePlayerMatches(body) {
+  const puuids = Array.isArray(body?.puuids)
+    ? body.puuids.filter(p => typeof p === 'string' && p.length > 0).slice(0, 200)
+    : [];
+  if (puuids.length === 0) {
+    return { matches: [] };
+  }
+  const setNumber = Number.isFinite(Number(body?.set_number)) ? Number(body.set_number) : SET_NUMBER;
+  const queueId = body?.queue_id == null ? null : Number(body.queue_id);
+  const limitPerPuuid = Math.max(1, Math.min(500, Number(body?.limit_per_puuid) || 50));
+  const totalLimit = Math.max(1, Math.min(20000, Number(body?.limit) || puuids.length * limitPerPuuid));
+
+  // Compose a window-function query so each puuid gets up to limit_per_puuid
+  // most-recent matches (mirrors the legacy .limit(puuids.length * 50)
+  // behaviour but per-player instead of global).
+  const filters = ['puuid = ANY($1::text[])', 'set_number = $2'];
+  const params = [puuids, setNumber];
+  let p = 3;
+  if (queueId != null) {
+    filters.push(`queue_id = $${p}`);
+    params.push(queueId);
+    p++;
+  }
+  const where = filters.join(' AND ');
+  const sql = `
+    SELECT * FROM (
+      SELECT puuid, match_id, region, set_number, queue_id, game_datetime,
+             placement, level, last_round, total_damage, gold_left,
+             players_eliminated, comp_cluster_key, carry_unit,
+             units, traits, augments, carry_items,
+             ROW_NUMBER() OVER (PARTITION BY puuid ORDER BY game_datetime DESC) AS rn
+      FROM tft_player_match_cache
+      WHERE ${where}
+    ) sub
+    WHERE rn <= $${p}
+    ORDER BY puuid, game_datetime DESC
+    LIMIT ${totalLimit}
+  `;
+  params.push(limitPerPuuid);
+
+  const t0 = Date.now();
+  const rows = (await pool.query(sql, params)).rows;
+  return {
+    matches: rows.map(r => ({
+      puuid: r.puuid,
+      matchId: r.match_id,
+      region: r.region,
+      setNumber: r.set_number,
+      queueId: r.queue_id,
+      gameDatetime: Number(r.game_datetime),
+      placement: r.placement,
+      level: r.level,
+      lastRound: r.last_round,
+      totalDamage: r.total_damage,
+      goldLeft: r.gold_left,
+      playersEliminated: r.players_eliminated,
+      compClusterKey: r.comp_cluster_key,
+      carryUnit: r.carry_unit,
+      units: r.units,
+      traits: r.traits,
+      augments: r.augments,
+      carryItems: r.carry_items,
+    })),
+    queryMs: Date.now() - t0,
+    count: rows.length,
+  };
+}
+
 const server = http.createServer(async (req, res) => {
   // Liveness
   if (req.method === 'GET' && req.url === '/healthz') {
@@ -449,7 +549,9 @@ const server = http.createServer(async (req, res) => {
 
   const isRefresh = req.method === 'POST' && req.url === '/refresh-player';
   const isExplore = req.method === 'POST' && req.url === '/explore-matches';
-  if (!isRefresh && !isExplore) {
+  const isPlayerMatches = req.method === 'POST' && req.url === '/player-matches';
+  const isPeerBaseline = req.method === 'POST' && req.url === '/peer-baseline';
+  if (!isRefresh && !isExplore && !isPlayerMatches && !isPeerBaseline) {
     res.writeHead(404, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({ error: 'not_found' }));
   }
@@ -469,7 +571,10 @@ const server = http.createServer(async (req, res) => {
   }
 
   try {
-    const result = isExplore ? await handleExploreMatches(body) : await handleRefresh(body);
+    const result = isExplore ? await handleExploreMatches(body)
+                  : isPlayerMatches ? await handlePlayerMatches(body)
+                  : isPeerBaseline ? await handlePeerBaseline(body)
+                  : await handleRefresh(body);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(result));
   } catch (err) {

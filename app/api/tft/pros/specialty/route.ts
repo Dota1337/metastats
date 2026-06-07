@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '../../../../lib/supabase';
+import { fetchHetznerPlayerMatches } from '../../../../lib/tft-hetzner-matches';
 
 // /api/tft/pros/specialty?puuid=...
 //
@@ -88,18 +88,20 @@ export async function GET(request: NextRequest) {
   const setParam = searchParams.get('set');
   const setNumber = setParam && Number.isFinite(Number(setParam)) ? Number(setParam) : null;
 
-  let q = supabase
-    .from('tft_player_match_cache')
-    .select('match_id, set_number, queue_id, placement, level, last_round, units, traits')
-    .eq('puuid', puuid)
-    .eq('queue_id', STANDARD_RANKED_QUEUE)
-    .order('game_datetime', { ascending: false })
-    .limit(500);
-  if (setNumber != null) q = q.eq('set_number', setNumber);
-  const { data: matches, error } = await q;
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  const rows = (matches || []) as CachedMatch[];
+  // Match cache lives on Hetzner — route through refresh-api.
+  let rows: CachedMatch[] = [];
+  try {
+    const matches = await fetchHetznerPlayerMatches({
+      puuids: [puuid],
+      setNumber: setNumber ?? undefined,
+      queueId: STANDARD_RANKED_QUEUE,
+      limitPerPuuid: 500,
+    });
+    rows = matches as unknown as CachedMatch[];
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'hetzner_unreachable';
+    return NextResponse.json({ error: message }, { status: 502 });
+  }
   if (rows.length === 0) {
     return NextResponse.json({ puuid, totalGames: 0, classifiedGames: 0, comps: [], unitBuilds: [] });
   }

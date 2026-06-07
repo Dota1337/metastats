@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { supabaseAdmin } from '../../../lib/supabase';
+import { fetchHetznerPlayerMatches } from '../../../lib/tft-hetzner-matches';
 
 // POST /api/coach/chat
 // Body: { messages: [{role, content}], puuid?, region?, set? }
@@ -24,16 +25,15 @@ interface ChatMessage { role: 'user' | 'assistant'; content: string }
 
 async function buildPlayerContext(puuid: string, setNumber: number | null): Promise<string | null> {
   try {
-    let q = supabaseAdmin
-      .from('tft_player_match_cache')
-      .select('placement, level, last_round, gold_left, players_eliminated, total_damage, units, traits')
-      .eq('puuid', puuid)
-      .eq('queue_id', STANDARD_RANKED_QUEUE)
-      .order('game_datetime', { ascending: false })
-      .limit(60);
-    if (setNumber != null) q = q.eq('set_number', setNumber);
-    const { data: matches } = await q;
-    if (!matches || matches.length === 0) return null;
+    // Match cache lives on Hetzner — Supabase only has the marketvalue
+    // snapshots replicated, so read via the refresh-api proxy.
+    const matches = await fetchHetznerPlayerMatches({
+      puuids: [puuid],
+      setNumber: setNumber ?? undefined,
+      queueId: STANDARD_RANKED_QUEUE,
+      limitPerPuuid: 60,
+    });
+    if (matches.length === 0) return null;
 
     const games = matches.length;
     const sumP = matches.reduce((s: number, m: any) => s + (m.placement || 0), 0);
@@ -41,8 +41,8 @@ async function buildPlayerContext(puuid: string, setNumber: number | null): Prom
     const top1 = matches.filter((m: any) => m.placement === 1).length;
     const avgPlace = sumP / games;
     const avgLevel = matches.reduce((s: number, m: any) => s + (m.level || 0), 0) / games;
-    const avgGoldLeft = matches.reduce((s: number, m: any) => s + (m.gold_left || 0), 0) / games;
-    const avgDamage = matches.reduce((s: number, m: any) => s + (m.total_damage || 0), 0) / games;
+    const avgGoldLeft = matches.reduce((s: number, m: any) => s + (m.goldLeft || 0), 0) / games;
+    const avgDamage = matches.reduce((s: number, m: any) => s + (m.totalDamage || 0), 0) / games;
 
     // Top traits across last 20 games
     const traitCounts = new Map<string, number>();

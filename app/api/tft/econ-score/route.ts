@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase, supabaseAdmin } from '../../../lib/supabase';
 import { getAvailablePatches } from '../../../lib/tft-supabase-reader';
+import { fetchHetznerPlayerMatches, fetchHetznerPeerBaseline } from '../../../lib/tft-hetzner-matches';
 
 // /api/tft/econ-score?puuid=X
 // Sprint 5.4 — Econ-Discipline-Score. Compares the player's average
@@ -22,18 +22,20 @@ export async function GET(request: NextRequest) {
     setNumber = patches[0]?.set_number ?? null;
   }
 
-  let q = supabase
-    .from('tft_player_match_cache')
-    .select('gold_left, placement, level')
-    .eq('puuid', puuid)
-    .eq('queue_id', STANDARD_RANKED_QUEUE)
-    .order('game_datetime', { ascending: false })
-    .limit(100);
-  if (setNumber != null) q = q.eq('set_number', setNumber);
-  const { data: matches, error } = await q;
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  const rows = (matches || []) as { gold_left: number; placement: number; level: number }[];
+  // Match cache lives on Hetzner — route through refresh-api.
+  let rows: { gold_left: number; placement: number; level: number }[] = [];
+  try {
+    const matches = await fetchHetznerPlayerMatches({
+      puuids: [puuid],
+      setNumber: setNumber ?? undefined,
+      queueId: STANDARD_RANKED_QUEUE,
+      limitPerPuuid: 100,
+    });
+    rows = matches.map(m => ({ gold_left: m.goldLeft ?? 0, placement: m.placement, level: m.level }));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'hetzner_unreachable';
+    return NextResponse.json({ error: message }, { status: 502 });
+  }
   if (rows.length < 5) {
     return NextResponse.json({ puuid, hasData: false, reason: 'insufficient_samples', games: rows.length });
   }
@@ -49,20 +51,18 @@ export async function GET(request: NextRequest) {
     ? top4Rows.reduce((s, r) => s + (r.gold_left || 0), 0) / top4Rows.length
     : null;
 
-  // Service-role client: this cross-player read is too heavy for the anon
-  // role's short statement_timeout. Set-scoped + capped at 2000 rows.
-  let pq = supabaseAdmin
-    .from('tft_player_match_cache')
-    .select('gold_left')
-    .eq('queue_id', STANDARD_RANKED_QUEUE)
-    .gte('placement', 5)
-    .limit(2000);
-  if (setNumber != null) pq = pq.eq('set_number', setNumber);
-  const { data: peerRows } = await pq;
+  // Peer baseline: global Set-N mean gold_left for placement>=5 players,
+  // computed on Hetzner (Supabase doesn't have the per-match jsonb cache).
   let peerAvgGoldLeft: number | null = null;
-  if (peerRows && peerRows.length > 0) {
-    const peerSum = peerRows.reduce((s, r: any) => s + (Number(r.gold_left) || 0), 0);
-    peerAvgGoldLeft = peerSum / peerRows.length;
+  try {
+    const peer = await fetchHetznerPeerBaseline({
+      setNumber: setNumber ?? undefined,
+      minPlacement: 5,
+      limit: 2000,
+    });
+    peerAvgGoldLeft = peer.avgGoldLeft;
+  } catch {
+    // Non-fatal: score will be null, the player-side stats still render.
   }
 
   const score = peerAvgGoldLeft && peerAvgGoldLeft > 0

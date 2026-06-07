@@ -282,7 +282,9 @@ function baseComp(r: CompRow, participants: number) {
     pickRate: participants > 0 ? Number(r.games) / Number(participants) : null,
     avgLevel: r.games > 0 && r.sum_level ? Number(r.sum_level) / Number(r.games) : null,
     avgLastRound: r.games > 0 && r.sum_last_round ? Number(r.sum_last_round) / Number(r.games) : null,
-    typicalUnits: mergeJsonbCountArrays(r.typical_units_merged || [], 'characterId', 9),
+    typicalUnits: mergeJsonbCountArrays(r.typical_units_merged || [], 'characterId', 9, [
+      { field: 'topItems', innerKey: 'apiName', topN: 3 },
+    ]),
     typicalAugments: mergeJsonbCountArrays(r.typical_augments_merged || [], 'apiName', 6),
     carryItems: mergeCarryItems(r.carry_items_merged || []),
   };
@@ -292,7 +294,9 @@ function baseComp(r: CompRow, participants: number) {
 // + the death-round histogram and survival→top4 curve. Heavy enough that we
 // only run it for the single cluster a detail request asks for.
 function enrichComp(r: CompRow) {
-  const typicalUnits = mergeJsonbCountArrays(r.typical_units_merged || [], 'characterId', 9);
+  const typicalUnits = mergeJsonbCountArrays(r.typical_units_merged || [], 'characterId', 9, [
+    { field: 'topItems', innerKey: 'apiName', topN: 3 },
+  ]);
   // Sprint 6.3 — Comp-Flex-Score. Normalized entropy of the top-9 unit
   // distribution: 0 = locked (single dominant unit), 1 = fully even.
   const flexScore = (() => {

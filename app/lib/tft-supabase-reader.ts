@@ -185,27 +185,59 @@ export function mergeJsonbCountDicts(dicts: any[]): Record<string, number> {
 // the actual DMG-carry among the typical units (highest carryItemGames/count
 // ratio), which differs from the cluster_key carry (= unit with most items,
 // often a tank).
+//
+// nestedArrays: optional list of nested-array fields to also merge per entry,
+// e.g. { field: 'topItems', innerKey: 'apiName', topN: 3 } for items-per-unit
+// inside a comp. Without this, the nested arrays are dropped during the merge.
 export function mergeJsonbCountArrays<K extends string>(
   arrays: any[],
   keyName: K,
   topN: number,
-): Array<{ [k in K]: string } & { count: number; sumPlacement?: number; games?: number; carryItemGames?: number }> {
-  const merged = new Map<string, { count: number; sumPlacement: number; games: number; carryItemGames: number }>();
+  nestedArrays?: Array<{ field: string; innerKey: string; topN: number }>,
+): Array<{ [k in K]: string } & { count: number; sumPlacement?: number; games?: number; carryItemGames?: number; [extra: string]: any }> {
+  type Bucket = { count: number; sumPlacement: number; games: number; carryItemGames: number; nested: Map<string, Map<string, number>> };
+  const merged = new Map<string, Bucket>();
   for (const arr of arrays) {
     if (!Array.isArray(arr)) continue;
     for (const e of arr) {
       const key = e?.[keyName];
       if (!key) continue;
-      const cur = merged.get(key) || { count: 0, sumPlacement: 0, games: 0, carryItemGames: 0 };
+      const cur: Bucket = merged.get(key) || { count: 0, sumPlacement: 0, games: 0, carryItemGames: 0, nested: new Map() };
       cur.count += Number(e.count ?? e.games ?? 0);
       cur.sumPlacement += Number(e.sumPlacement ?? e.sum_placement ?? 0);
       cur.games += Number(e.games ?? 0);
       cur.carryItemGames += Number(e.carryItemGames ?? e.carry_item_games ?? 0);
+      if (nestedArrays) {
+        for (const cfg of nestedArrays) {
+          const inner = e[cfg.field];
+          if (!Array.isArray(inner)) continue;
+          const counter = cur.nested.get(cfg.field) || new Map<string, number>();
+          for (const item of inner) {
+            const ik = item?.[cfg.innerKey];
+            if (!ik) continue;
+            counter.set(ik, (counter.get(ik) || 0) + Number(item.count ?? item.games ?? 0));
+          }
+          cur.nested.set(cfg.field, counter);
+        }
+      }
       merged.set(key, cur);
     }
   }
   return [...merged.entries()]
     .sort((a, b) => b[1].count - a[1].count)
     .slice(0, topN)
-    .map(([key, v]) => ({ [keyName]: key, ...v } as any));
+    .map(([key, v]) => {
+      const out: any = { [keyName]: key, count: v.count, sumPlacement: v.sumPlacement, games: v.games, carryItemGames: v.carryItemGames };
+      if (nestedArrays) {
+        for (const cfg of nestedArrays) {
+          const counter = v.nested.get(cfg.field);
+          if (!counter || counter.size === 0) continue;
+          out[cfg.field] = [...counter.entries()]
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, cfg.topN)
+            .map(([apiName, count]) => ({ [cfg.innerKey]: apiName, count }));
+        }
+      }
+      return out;
+    });
 }

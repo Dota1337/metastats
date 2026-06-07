@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
 import {
   ResponsiveContainer, ComposedChart, AreaChart, Area, Bar, Line, XAxis, YAxis,
   Tooltip as RechartsTooltip, ReferenceLine, Cell,
@@ -16,17 +16,42 @@ import PositionHeatmap from '../../../components/tft/PositionHeatmap';
 import { formatStage } from '../../../lib/tft-stage';
 import { aggregateComponents } from '../../../lib/tft-components';
 
+// Same region set as /tft/patch/winners — the regions where the daily-crawl
+// has enough volume to make comp-detail rendering meaningful.
+const REGIONS = [
+  { value: 'all',  label: 'tft.filter.allRegions' },
+  { value: 'euw1', label: 'EUW' },
+  { value: 'kr',   label: 'KR' },
+  { value: 'na1',  label: 'NA' },
+  { value: 'eun1', label: 'EUNE' },
+  { value: 'br1',  label: 'BR' },
+  { value: 'jp1',  label: 'JP' },
+] as const;
+
 export default function TftCompDetailPage() {
   const { t } = useI18n();
   const params = useParams();
   const search = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const slug = decodeURIComponent(String(params?.slug || ''));
   // Region from the URL — the comps list passes ?region=… in the href and its
   // default is 'all'. Was hardcoded to 'euw1', which made the detail show
   // "no data" for any comp with <30 games in euw1 but popular across all
   // regions (list aggregated all regions, detail only queried euw1).
-  const region = search.get('region') || 'all';
+  const [region, setRegion] = useState<string>(search.get('region') || 'all');
   const [bucket, setBucket] = useState<TierBucket>((search.get('bucket') as TierBucket) || 'master_plus');
+
+  // Sync region/bucket changes back to the URL so refreshes + share-links keep
+  // the user's filter combo. router.replace avoids piling up history entries.
+  useEffect(() => {
+    if (!pathname) return;
+    const next = new URLSearchParams(search.toString());
+    if (region === 'all') next.delete('region'); else next.set('region', region);
+    if (bucket === 'master_plus') next.delete('bucket'); else next.set('bucket', bucket);
+    const q = next.toString();
+    router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
+  }, [region, bucket, pathname, router, search]);
   const [comp, setComp] = useState<any | null | undefined>(undefined);
   const [proComp, setProComp] = useState<any | null>(null);
   const [hasData, setHasData] = useState<boolean | null>(null);
@@ -53,8 +78,20 @@ export default function TftCompDetailPage() {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
         <a href="/tft/comps" className="text-[#7B61FF] text-xs hover:underline">← {t('nav.comps')}</a>
 
-        <div className="flex justify-end mt-2 mb-4">
+        <div className="flex flex-wrap items-center justify-end gap-2 mt-2 mb-4">
           <TierFilter value={bucket} onChange={setBucket} />
+          <select
+            value={region}
+            onChange={e => setRegion(e.target.value)}
+            className="bg-[#141c2e] border border-[#1e2a3a] rounded text-white text-xs px-2 py-1.5"
+            aria-label={t('tft.filter.region')}
+          >
+            {REGIONS.map(r => (
+              <option key={r.value} value={r.value}>
+                {r.value === 'all' ? t(r.label as any) : r.label}
+              </option>
+            ))}
+          </select>
         </div>
 
         {hasData === false && <EmptyData />}

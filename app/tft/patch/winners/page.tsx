@@ -246,11 +246,16 @@ function renderEntity(key: string, entity: Entity, assets: TftAssetsBundle | nul
       href: `/tft/comps/${encodeURIComponent(key)}`,
     };
   }
-  const [traitId, activation] = key.split('@');
-  const trait = assets?.traits[traitId];
+  // Trait entity: patch-diff collapses all activation tiers onto one row per
+  // trait name (no `@activation` suffix), so we never split off an activation.
+  // Earlier "(undefined)" came from .split('@') on a plain trait id.
+  const trait = assets?.traits[key];
+  const traitIcon = tftIconUrl(assets, trait?.icon);
   return {
-    name: `${trait?.name || traitId.replace(/^TFT\d+_/, '')} (${activation})`,
-    icon: <div className="w-7 h-7 rounded bg-[#1e2a3a]" />,
-    href: `/tft/traits/${encodeURIComponent(traitId)}`,
+    name: trait?.name || key.replace(/^TFT\d+_/, ''),
+    icon: traitIcon
+      ? <img src={traitIcon} alt="" className="w-7 h-7 rounded bg-[#1e2a3a]" />
+      : <div className="w-7 h-7 rounded bg-[#1e2a3a]" />,
+    href: `/tft/traits/${encodeURIComponent(key)}`,
   };
 }

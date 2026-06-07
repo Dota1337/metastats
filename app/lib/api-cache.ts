@@ -9,7 +9,7 @@ import { NextResponse } from 'next/server';
 // new data revalidates in the background — the user never waits on a cold RPC.
 // The tft-stats-cache-warm workflow pre-warms the popular combos at 09:30 UTC
 // so even the first morning visitor lands on a HIT.
-const STATS_CACHE_CONTROL = 'public, s-maxage=21600, stale-while-revalidate=86400';
+export const STATS_CACHE_CONTROL = 'public, s-maxage=21600, stale-while-revalidate=86400';
 
 export function cachedJson(data: unknown, opts: { cache?: string } = {}) {
   return NextResponse.json(data, {

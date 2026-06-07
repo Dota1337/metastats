@@ -10,6 +10,9 @@
  * Routes:
  *   GET  /healthz         — liveness probe
  *   POST /refresh-player  — { puuid, region } → snapshot result
+ *   POST /explore-matches — { units, region, buckets, days, limit } → aggregate stats + sample
+ *                            match-level explorer over tft_player_match_cache (Set 17 only,
+ *                            uses GIN index idx_match_cache_units_gin_s17 on units jsonb)
  *
  * Auth: Bearer token from $REFRESH_API_TOKEN (managed by /etc/metastats-crawler/env).
  * Rate limit: 60s per (puuid, region) — protects Riot quota from spam.
@@ -318,10 +321,123 @@ async function handleRefresh(body) {
 function readBody(req) {
   return new Promise((resolve, reject) => {
     let buf = '';
-    req.on('data', c => { buf += c; if (buf.length > 8192) reject(new Error('body too large')); });
+    req.on('data', c => { buf += c; if (buf.length > 65536) reject(new Error('body too large')); });
     req.on('end', () => resolve(buf));
     req.on('error', reject);
   });
+}
+
+// ─ Match-level explorer ────────────────────────────────────────────────────
+// Returns aggregate stats + sample matches for a unit-filter combo over the
+// Set-17 match cache. The units filter goes through the GIN index
+// idx_match_cache_units_gin_s17; bucket/region/days post-filter via btree
+// scan over the matching match-cache rows. Capped at 5000 matches to keep
+// the query bounded on the Hetzner pool.
+const SET_NUMBER = 17;
+const QUEUE_RANKED = 1100;
+const MAX_LIMIT = 5000;
+const REGION_BUCKETS = {
+  master_plus: { tiers: ['MASTER', 'GRANDMASTER', 'CHALLENGER'] },
+  challenger:  { tiers: ['CHALLENGER'] },
+  grandmaster: { tiers: ['GRANDMASTER'] },
+  master:      { tiers: ['MASTER'] },
+  diamond:     { tiers: ['DIAMOND'] },
+};
+
+async function handleExploreMatches(body) {
+  const units = Array.isArray(body?.units) ? body.units.filter(u => typeof u === 'string' && u.length > 0).slice(0, 6) : [];
+  const region = typeof body?.region === 'string' ? body.region : 'all';
+  const days = Math.max(1, Math.min(30, Number(body?.days) || 3));
+  const limit = Math.max(50, Math.min(MAX_LIMIT, Number(body?.limit) || 5000));
+
+  const sinceMs = Date.now() - days * 86_400_000;
+
+  // Build the units @> jsonb filter. Each requested character_id becomes
+  // its own contains clause so the GIN index can serve them via bitmap AND.
+  const filters = ['set_number = $1', 'queue_id = $2', 'game_datetime >= $3'];
+  const params = [SET_NUMBER, QUEUE_RANKED, sinceMs];
+  let p = 4;
+  for (const u of units) {
+    filters.push(`units @> $${p}::jsonb`);
+    params.push(JSON.stringify([{ characterId: u }]));
+    p++;
+  }
+  if (region !== 'all') {
+    filters.push(`region = $${p}`);
+    params.push(region);
+    p++;
+  }
+
+  const where = filters.join(' AND ');
+  // No ORDER BY: lets Postgres stop as soon as it hits LIMIT rows via the
+  // (set_number, queue_id, game_datetime) btree scan. Sample is sorted by
+  // recency in Node after the result-set is bounded.
+  const sql = `
+    SELECT puuid, match_id, region, placement, level, last_round,
+           total_damage, comp_cluster_key, carry_unit, game_datetime,
+           units
+    FROM tft_player_match_cache
+    WHERE ${where}
+    LIMIT ${limit}
+  `;
+
+  const t0 = Date.now();
+  const rows = (await pool.query(sql, params)).rows;
+  const queryMs = Date.now() - t0;
+
+  if (rows.length === 0) {
+    return { matchCount: 0, queryMs, units, region, days, sample: [], aggregate: null };
+  }
+
+  let sumPlacement = 0, top4 = 0, top1 = 0, sumLevel = 0, sumLastRound = 0, sumDamage = 0;
+  const regionDist = new Map();
+  for (const r of rows) {
+    sumPlacement += r.placement;
+    if (r.placement <= 4) top4++;
+    if (r.placement === 1) top1++;
+    sumLevel += r.level;
+    sumLastRound += r.last_round;
+    sumDamage += r.total_damage;
+    regionDist.set(r.region, (regionDist.get(r.region) || 0) + 1);
+  }
+
+  // Sort sample by recency in JS — cheap for ≤5k rows, free if we already
+  // pulled them; avoids the DB-side ORDER BY that doubles query time.
+  const sortedForSample = [...rows].sort((a, b) => Number(b.game_datetime) - Number(a.game_datetime));
+  const sample = sortedForSample.slice(0, 50).map(r => ({
+    matchId: r.match_id,
+    region: r.region,
+    placement: r.placement,
+    level: r.level,
+    lastRound: r.last_round,
+    totalDamage: r.total_damage,
+    compClusterKey: r.comp_cluster_key,
+    carryUnit: r.carry_unit,
+    gameDatetime: Number(r.game_datetime),
+    units: Array.isArray(r.units) ? r.units.map(u => ({
+      characterId: u.characterId || u.character_id,
+      tier: u.tier,
+      items: Array.isArray(u.itemNames) ? u.itemNames : (Array.isArray(u.items) ? u.items : []),
+    })) : [],
+  }));
+
+  return {
+    matchCount: rows.length,
+    queryMs,
+    units,
+    region,
+    days,
+    aggregate: {
+      avgPlacement: sumPlacement / rows.length,
+      top4Rate: top4 / rows.length,
+      top1Rate: top1 / rows.length,
+      avgLevel: sumLevel / rows.length,
+      avgLastRound: sumLastRound / rows.length,
+      avgDamage: sumDamage / rows.length,
+      regionDist: Object.fromEntries(regionDist),
+    },
+    sample,
+  };
 }
 
 const server = http.createServer(async (req, res) => {
@@ -331,7 +447,9 @@ const server = http.createServer(async (req, res) => {
     return res.end(JSON.stringify({ ok: true, ts: Date.now() }));
   }
 
-  if (req.method !== 'POST' || req.url !== '/refresh-player') {
+  const isRefresh = req.method === 'POST' && req.url === '/refresh-player';
+  const isExplore = req.method === 'POST' && req.url === '/explore-matches';
+  if (!isRefresh && !isExplore) {
     res.writeHead(404, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({ error: 'not_found' }));
   }
@@ -351,7 +469,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   try {
-    const result = await handleRefresh(body);
+    const result = isExplore ? await handleExploreMatches(body) : await handleRefresh(body);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(result));
   } catch (err) {

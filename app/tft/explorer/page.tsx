@@ -54,8 +54,33 @@ function compMatches(comp: Comp, units: string[], items: string[], traits: strin
   return true;
 }
 
+type Mode = 'comps' | 'matches';
+
+interface MatchSample {
+  matchId: string;
+  region: string;
+  placement: number;
+  level: number;
+  lastRound: number;
+  totalDamage: number;
+  compClusterKey: string | null;
+  carryUnit: string | null;
+  gameDatetime: number;
+  units: { characterId: string; tier: number; items: string[] }[];
+}
+interface MatchAggregate {
+  avgPlacement: number;
+  top4Rate: number;
+  top1Rate: number;
+  avgLevel: number;
+  avgLastRound: number;
+  avgDamage: number;
+  regionDist: Record<string, number>;
+}
+
 export default function TftExplorerPage() {
   const { t } = useI18n();
+  const [mode, setMode] = useState<Mode>('comps');
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
   const [comps, setComps] = useState<Comp[]>([]);
   const [loading, setLoading] = useState(false);
@@ -73,16 +98,56 @@ export default function TftExplorerPage() {
   const [itemQuery, setItemQuery] = useState('');
   const [traitQuery, setTraitQuery] = useState('');
 
+  // Match-level state
+  const [matchSample, setMatchSample] = useState<MatchSample[]>([]);
+  const [matchAggregate, setMatchAggregate] = useState<MatchAggregate | null>(null);
+  const [matchCount, setMatchCount] = useState<number>(0);
+  const [matchLoading, setMatchLoading] = useState(false);
+  const [matchError, setMatchError] = useState<string | null>(null);
+
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
 
   useEffect(() => {
+    if (mode !== 'comps') return;
     setLoading(true);
     fetch(`/api/tft/comps?region=${region}&bucket=${bucket}&days=${days}&patch=current&source=data`)
       .then(r => r.json())
       .then(d => setComps(d.comps || []))
       .catch(() => setComps([]))
       .finally(() => setLoading(false));
-  }, [bucket, region, days]);
+  }, [bucket, region, days, mode]);
+
+  // Match-level query runs only when at least 1 unit is picked + button click.
+  // Auto-trigger on unit/region/days change to keep it interactive but cap to
+  // skip empty unit-selection (would scan everything).
+  useEffect(() => {
+    if (mode !== 'matches') return;
+    if (units.length === 0) {
+      setMatchSample([]); setMatchAggregate(null); setMatchCount(0); setMatchError(null);
+      return;
+    }
+    setMatchLoading(true);
+    setMatchError(null);
+    fetch('/api/tft/explorer/matches', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ units, region, days, limit: 5000 }),
+    })
+      .then(async r => {
+        if (!r.ok) { throw new Error((await r.json()).error || `HTTP ${r.status}`); }
+        return r.json();
+      })
+      .then(d => {
+        setMatchSample(d.sample || []);
+        setMatchAggregate(d.aggregate || null);
+        setMatchCount(d.matchCount || 0);
+      })
+      .catch(err => {
+        setMatchError(err.message || 'fail');
+        setMatchSample([]); setMatchAggregate(null); setMatchCount(0);
+      })
+      .finally(() => setMatchLoading(false));
+  }, [mode, units, region, days]);
 
   // Build sortable champion / item / trait lists from assets, gated by current
   // set so we don't surface inactive units.
@@ -138,8 +203,20 @@ export default function TftExplorerPage() {
     <main className="min-h-screen bg-[#0e1525]">
       <Nav active="explorer" />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-        <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-5 mb-5">
+        <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-5 mb-5 flex items-center justify-between flex-wrap gap-3">
           <h1 className="text-white text-xl font-medium">{t('tft.explorer.title')}</h1>
+          <div className="flex gap-1 bg-[#141c2e] border border-[#1e2a3a] rounded p-1">
+            {(['comps', 'matches'] as Mode[]).map(m => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setMode(m)}
+                className={`px-3 py-1 text-xs rounded ${mode === m ? 'bg-[#7B61FF] text-white' : 'text-[#a0b0c5] hover:text-white'}`}
+              >
+                {t(`tft.explorer.mode.${m}`)}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Filter rail (left) + results (right) */}
@@ -231,47 +308,164 @@ export default function TftExplorerPage() {
 
           {/* Results */}
           <div className="space-y-3">
-            <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-3 flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-2">
-                {(['avg', 'top4', 'top1', 'games'] as SortKey[]).map(k => (
-                  <button
-                    key={k}
-                    type="button"
-                    onClick={() => setSortBy(k)}
-                    className={`px-2.5 py-1 text-[11px] rounded border ${sortBy === k ? 'bg-[#7B61FF] border-[#7B61FF] text-white' : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5]'}`}
-                  >
-                    {t(`tft.explorer.sort.${k}`)}
-                  </button>
-                ))}
-              </div>
-              {aggregate && (
-                <div className="flex items-center gap-3 text-[11px]">
-                  <span className="text-[#7a8aa0]">{aggregate.compCount} comps</span>
-                  <span className="text-white tabular-nums">Ø {aggregate.wAvg.toFixed(2)}</span>
-                  <span className="text-[#3ecf8e] tabular-nums">{(aggregate.wTop4 * 100).toFixed(1)}% T4</span>
-                  <span className="text-[#e0c75a] tabular-nums">{(aggregate.wTop1 * 100).toFixed(1)}% Win</span>
+            {mode === 'comps' && (
+              <>
+                <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-3 flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    {(['avg', 'top4', 'top1', 'games'] as SortKey[]).map(k => (
+                      <button
+                        key={k}
+                        type="button"
+                        onClick={() => setSortBy(k)}
+                        className={`px-2.5 py-1 text-[11px] rounded border ${sortBy === k ? 'bg-[#7B61FF] border-[#7B61FF] text-white' : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5]'}`}
+                      >
+                        {t(`tft.explorer.sort.${k}`)}
+                      </button>
+                    ))}
+                  </div>
+                  {aggregate && (
+                    <div className="flex items-center gap-3 text-[11px]">
+                      <span className="text-[#7a8aa0]">{aggregate.compCount} comps</span>
+                      <span className="text-white tabular-nums">Ø {aggregate.wAvg.toFixed(2)}</span>
+                      <span className="text-[#3ecf8e] tabular-nums">{(aggregate.wTop4 * 100).toFixed(1)}% T4</span>
+                      <span className="text-[#e0c75a] tabular-nums">{(aggregate.wTop1 * 100).toFixed(1)}% Win</span>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
 
-            {loading && <div className="text-[#7a8aa0] text-center py-8 text-sm">…</div>}
-            {!loading && filtered.length === 0 && comps.length > 0 && (
-              <EmptyData />
+                {loading && <div className="text-[#7a8aa0] text-center py-8 text-sm">…</div>}
+                {!loading && filtered.length === 0 && comps.length > 0 && (
+                  <EmptyData />
+                )}
+                {!loading && filtered.slice(0, 100).map((c, i) => (
+                  <CompCard
+                    key={c.slug}
+                    comp={c as any}
+                    rank={i + 1}
+                    assets={assets}
+                    href={`/tft/comps/${encodeURIComponent(c.slug)}?region=${region}&bucket=${bucket}`}
+                  />
+                ))}
+              </>
             )}
-            {!loading && filtered.slice(0, 100).map((c, i) => (
-              <CompCard
-                key={c.slug}
-                comp={c as any}
-                rank={i + 1}
-                assets={assets}
-                href={`/tft/comps/${encodeURIComponent(c.slug)}?region=${region}&bucket=${bucket}`}
-              />
-            ))}
+
+            {mode === 'matches' && (
+              <>
+                {units.length === 0 && (
+                  <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-6 text-center text-[#7a8aa0] text-sm">
+                    {t('tft.explorer.matches.pickUnits')}
+                  </div>
+                )}
+
+                {units.length > 0 && matchLoading && (
+                  <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-6 text-center text-[#7a8aa0] text-sm">
+                    {t('tft.explorer.matches.loading')}
+                  </div>
+                )}
+
+                {matchError && (
+                  <div className="bg-[#0d1526] border border-[#7B61FF]/40 rounded-lg p-3 text-[#a0b0c5] text-sm">
+                    {matchError}
+                  </div>
+                )}
+
+                {units.length > 0 && !matchLoading && matchAggregate && (
+                  <>
+                    <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-4">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <BigStat label={t('tft.avgPlacement')} value={matchAggregate.avgPlacement.toFixed(2)} />
+                        <BigStat label={t('tft.top4')} value={`${(matchAggregate.top4Rate * 100).toFixed(1)}%`} accent="#3ecf8e" />
+                        <BigStat label={t('tft.top1')} value={`${(matchAggregate.top1Rate * 100).toFixed(1)}%`} accent="#e0c75a" />
+                        <BigStat label={t('tft.explorer.matches.count')} value={matchCount.toLocaleString('de-DE')} />
+                      </div>
+                      <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-[#1e2a3a]">
+                        <Stat label={t('tft.explorer.matches.avgLevel')} value={matchAggregate.avgLevel.toFixed(1)} />
+                        <Stat label={t('tft.explorer.matches.avgLastRound')} value={matchAggregate.avgLastRound.toFixed(1)} />
+                        <Stat label={t('tft.explorer.matches.avgDamage')} value={matchAggregate.avgDamage.toFixed(0)} />
+                      </div>
+                    </div>
+
+                    <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg overflow-hidden">
+                      <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest px-3 py-2 border-b border-[#1e2a3a]">
+                        {t('tft.explorer.matches.recent')}
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-[11px] tabular-nums">
+                          <thead className="text-[#7a8aa0]">
+                            <tr className="border-b border-[#1e2a3a]">
+                              <th className="text-left px-2 py-1.5 font-normal">#</th>
+                              <th className="text-left px-2 py-1.5 font-normal">{t('tft.filter.region')}</th>
+                              <th className="text-left px-2 py-1.5 font-normal">{t('tft.explorer.matches.lvl')}</th>
+                              <th className="text-left px-2 py-1.5 font-normal">{t('tft.explorer.matches.board')}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {matchSample.map(m => (
+                              <tr key={m.matchId} className="border-b border-[#1e2a3a]/50 last:border-0">
+                                <td className="px-2 py-1.5 text-white">{m.placement}</td>
+                                <td className="px-2 py-1.5 text-[#a0b0c5] uppercase">{m.region}</td>
+                                <td className="px-2 py-1.5 text-[#a0b0c5]">{m.level}</td>
+                                <td className="px-2 py-1.5">
+                                  <div className="flex gap-0.5 flex-wrap">
+                                    {m.units.slice(0, 9).map(u => {
+                                      const ch = assets?.champions[u.characterId];
+                                      const url = tftChampionTileUrl(assets, ch);
+                                      const isCarry = u.characterId === m.carryUnit;
+                                      return url ? (
+                                        <a
+                                          key={u.characterId}
+                                          href={`/tft/units/${encodeURIComponent(u.characterId)}`}
+                                          className="block"
+                                          title={`${ch?.name || u.characterId} ★${u.tier}`}
+                                        >
+                                          <img
+                                            src={url}
+                                            alt={ch?.name || u.characterId}
+                                            className="w-6 h-6 rounded object-cover"
+                                            style={{ border: `1.5px solid ${isCarry ? '#c39bff' : ((ch as any)?.cost ? costColorOf((ch as any).cost) : '#1e2a3a')}` }}
+                                          />
+                                        </a>
+                                      ) : null;
+                                    })}
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {units.length > 0 && !matchLoading && !matchAggregate && !matchError && (
+                  <EmptyData />
+                )}
+              </>
+            )}
           </div>
         </div>
       </div>
       <Footer />
     </main>
+  );
+}
+
+function BigStat({ label, value, accent }: { label: string; value: string; accent?: string }) {
+  return (
+    <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-2.5">
+      <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">{label}</div>
+      <div className="text-lg font-medium tabular-nums" style={{ color: accent || '#ffffff' }}>{value}</div>
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">{label}</div>
+      <div className="text-sm text-white font-medium tabular-nums">{value}</div>
+    </div>
   );
 }
 

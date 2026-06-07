@@ -1,10 +1,20 @@
 [Unit]
-Description=Daily metastats TFT crawler (Master+ snapshot)
+Description=metastats TFT marketvalue crawler — 6h auto-restart during initial Diamond II+ cold fill
+Documentation=https://github.com/Dota1337/metastats
+
+# TEMPORARY (2026-06-07): the daily-aggregate timer is disabled while the
+# marketvalue crawler chews through the initial D2+ cold fill (~30k cold
+# players in kr+vn2). Without the daily OnSuccess= chain, nothing restarts
+# the marketvalue service after a natural round-robin completion, so this
+# 6h timer keeps it ticking with cursor-resume between runs. Once the fill
+# is done (all regions warm), re-mask this timer and re-enable
+# metastats-daily-crawl.timer so the OnSuccess chain takes over again.
 
 [Timer]
-OnCalendar=*-*-* 04:00:00 UTC
-Persistent=true
-RandomizedDelaySec=300
+OnCalendar=*-*-* 00,06,12,18:00:00 UTC
+Persistent=false
+RandomizedDelaySec=120
+Unit=metastats-crawler.service
 
 [Install]
 WantedBy=timers.target

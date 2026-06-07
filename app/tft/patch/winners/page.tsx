@@ -12,6 +12,18 @@ import {
 type Entity = 'unit' | 'item' | 'trait' | 'comp';
 const ENTITIES: Entity[] = ['unit', 'item', 'trait', 'comp'];
 
+// Same region set as /tft/onetricks — the regions where the daily-crawl
+// has enough Master+ volume to make patch-deltas meaningful.
+const REGIONS = [
+  { value: '', label: 'tft.filter.allRegions' },
+  { value: 'euw1', label: 'EUW' },
+  { value: 'kr', label: 'KR' },
+  { value: 'na1', label: 'NA' },
+  { value: 'eun1', label: 'EUNE' },
+  { value: 'br1', label: 'BR' },
+  { value: 'jp1', label: 'JP' },
+] as const;
+
 interface DiffEntry {
   key: string;
   currentGames: number;
@@ -30,6 +42,7 @@ interface DiffEntry {
 export default function TftPatchWinnersPage() {
   const { t } = useI18n();
   const [entity, setEntity] = useState<Entity>('unit');
+  const [region, setRegion] = useState<string>('');
   const [winners, setWinners] = useState<DiffEntry[]>([]);
   const [losers, setLosers] = useState<DiffEntry[]>([]);
   const [info, setInfo] = useState<{ currentPatch: string | null; previousPatch: string | null }>({ currentPatch: null, previousPatch: null });
@@ -40,7 +53,9 @@ export default function TftPatchWinnersPage() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fetch(`/api/tft/patch-diff?entity=${entity}`)
+    const qs = new URLSearchParams({ entity });
+    if (region) qs.set('region', region);
+    fetch(`/api/tft/patch-diff?${qs.toString()}`)
       .then(r => r.ok ? r.json() : { winners: [], losers: [] })
       .then(d => {
         if (cancelled) return;
@@ -51,7 +66,7 @@ export default function TftPatchWinnersPage() {
       })
       .catch(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [entity]);
+  }, [entity, region]);
 
   // Compute max-delta across both lists for proportional bar widths.
   const maxAbsDelta = Math.max(
@@ -105,20 +120,34 @@ export default function TftPatchWinnersPage() {
             : t('tft.patchWinners.subtitle')}
         </p>
 
-        <div className="flex gap-1 mb-4">
-          {ENTITIES.map(e => (
-            <button
-              key={e}
-              onClick={() => setEntity(e)}
-              className={`px-3 py-1.5 text-xs uppercase tracking-widest rounded border ${
-                entity === e
-                  ? 'bg-[#7B61FF] border-[#7B61FF] text-white'
-                  : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5] hover:border-[#7B61FF]/40'
-              }`}
-            >
-              {t(`nav.${e === 'unit' ? 'units' : e === 'item' ? 'items' : e === 'comp' ? 'comps' : 'traits'}` as const)}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <div className="flex gap-1">
+            {ENTITIES.map(e => (
+              <button
+                key={e}
+                onClick={() => setEntity(e)}
+                className={`px-3 py-1.5 text-xs uppercase tracking-widest rounded border ${
+                  entity === e
+                    ? 'bg-[#7B61FF] border-[#7B61FF] text-white'
+                    : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5] hover:border-[#7B61FF]/40'
+                }`}
+              >
+                {t(`nav.${e === 'unit' ? 'units' : e === 'item' ? 'items' : e === 'comp' ? 'comps' : 'traits'}` as const)}
+              </button>
+            ))}
+          </div>
+          <select
+            value={region}
+            onChange={e => setRegion(e.target.value)}
+            className="bg-[#141c2e] border border-[#1e2a3a] rounded text-white text-xs px-2 py-1.5 ml-auto"
+            aria-label={t('tft.filter.region')}
+          >
+            {REGIONS.map(r => (
+              <option key={r.value} value={r.value}>
+                {r.value === '' ? t(r.label as any) : r.label}
+              </option>
+            ))}
+          </select>
         </div>
 
         {loading && <div className="text-[#a0b0c5] text-center py-8">…</div>}

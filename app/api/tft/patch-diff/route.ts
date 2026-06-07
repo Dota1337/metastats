@@ -18,7 +18,7 @@ type Entity = 'unit' | 'item' | 'trait' | 'comp';
 
 interface UnitRow { character_id: string; games: number; sum_placement: number; top4: number; top1: number; participants: number }
 interface ItemRow { api_name: string; games: number; sum_placement: number; top4: number; total_item_slots: number }
-interface TraitRow { name: string; activation: number; games: number; sum_placement: number; top4: number; participants: number }
+interface TraitRow { name: string; activation: number | string; games: number; sum_placement: number; top4: number; participants: number }
 interface CompRow { cluster_key: string; games: number; sum_placement: number; top4: number; top1: number; participants: number }
 
 interface DiffEntry {
@@ -168,7 +168,11 @@ async function fetchEntityRows(
     }));
   }
   if (entity === 'item') {
-    const rows = await callRpc<ItemRow[]>('get_tft_item_stats', base);
+    // Use the lean RPC (Migration 0028) — the non-lean get_tft_item_stats
+    // does jsonb_agg of top_users for EVERY item × day combo, which 57014-
+    // times out on Supabase at 30d windows. The lean variant aggregates the
+    // top_users once at the end; same diff math, sub-second response.
+    const rows = await callRpc<ItemRow[]>('get_tft_item_stats_list', base);
     const participants = Number(rows[0]?.total_item_slots || 0);
     return rows.map(r => ({
       key: r.api_name,

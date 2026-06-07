@@ -49,12 +49,14 @@ function classifyComp(m: CachedMatch): string | null {
   return `${primary.name}@${primary.tier_current ?? 0}_${carryId}`;
 }
 
-// Pool: pull the full Master+ pool via the Hetzner refresh-api. The Supabase
+// Pool: pull the Master+ pool via the Hetzner refresh-api. The Supabase
 // RPC has a hard 1000-row PostgREST cap which only covers Challenger + GM
 // in big regions — Master (the largest tier) is silently truncated. We go
-// through Hetzner to get the full 2k–5k Master+ list, then cap the Hetzner
-// match call at 2000 puuids to keep latency around 5–6s.
-const TOP_PLAYERS = 2000;
+// through Hetzner to get the full Master+ list (5k+ in EUW), then cap the
+// match call at 1000 puuids to keep latency around 5–10s (1000 × 50 ≈
+// 50k matches, ~17 s DB + transfer with full 2000-cap; halving the input
+// roughly halves both).
+const TOP_PLAYERS = 1000;
 const MIN_GAMES_FLEX = 8;       // Pfad A — Top-2 ≥ minShareTop2
 const MIN_GAMES_TIGHT = 50;     // Pfad B — Top-1 ≥ minShareTop1 (über die letzten 50)
 const MIN_TOP1_SHARE_DEFAULT = 0.5;

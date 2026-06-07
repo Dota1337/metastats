@@ -459,15 +459,17 @@ async function handleMarketvaluePool(body) {
     : ['MASTER', 'GRANDMASTER', 'CHALLENGER'];
   const limit = Math.max(50, Math.min(10000, Number(body?.limit) || 3000));
 
+  const recencyDays = Math.max(1, Math.min(60, Number(body?.recency_days) || 14));
   const sql = `
     select distinct on (puuid)
       puuid, game_name, tag_line, tier, rank, lp, ladder_rank, final_value, snapshot_date
     from tft_player_marketvalue_snapshots
     where region = $1 and tier = ANY($2::text[])
+      and snapshot_date >= current_date - $3::int
     order by puuid, snapshot_date desc
   `;
   const t0 = Date.now();
-  const rows = (await pool.query(sql, [region, tiers])).rows;
+  const rows = (await pool.query(sql, [region, tiers, recencyDays])).rows;
   // Sort by final_value desc + cap to `limit`.
   rows.sort((a, b) => Number(b.final_value || 0) - Number(a.final_value || 0));
   const capped = rows.slice(0, limit);
@@ -515,7 +517,7 @@ async function handlePeerBaseline(body) {
 // So everything routes through here now.
 async function handlePlayerMatches(body) {
   const puuids = Array.isArray(body?.puuids)
-    ? body.puuids.filter(p => typeof p === 'string' && p.length > 0).slice(0, 200)
+    ? body.puuids.filter(p => typeof p === 'string' && p.length > 0).slice(0, 3000)
     : [];
   if (puuids.length === 0) {
     return { matches: [] };
@@ -523,35 +525,39 @@ async function handlePlayerMatches(body) {
   const setNumber = Number.isFinite(Number(body?.set_number)) ? Number(body.set_number) : SET_NUMBER;
   const queueId = body?.queue_id == null ? null : Number(body.queue_id);
   const limitPerPuuid = Math.max(1, Math.min(500, Number(body?.limit_per_puuid) || 50));
-  const totalLimit = Math.max(1, Math.min(20000, Number(body?.limit) || puuids.length * limitPerPuuid));
+  const totalLimit = Math.max(1, Math.min(200000, Number(body?.limit) || puuids.length * limitPerPuuid));
 
-  // Compose a window-function query so each puuid gets up to limit_per_puuid
-  // most-recent matches (mirrors the legacy .limit(puuids.length * 50)
-  // behaviour but per-player instead of global).
-  const filters = ['puuid = ANY($1::text[])', 'set_number = $2'];
+  // LATERAL JOIN to get up to limit_per_puuid most-recent matches PER puuid.
+  // The previous ROW_NUMBER+OUTER-LIMIT combo had a planner pathology with
+  // large puuid lists where the outer LIMIT clipped at ~20% of expected.
+  // LATERAL is the canonical per-group-LIMIT pattern and uses the
+  // (puuid, set_number, queue_id, game_datetime) btree directly.
   const params = [puuids, setNumber];
   let p = 3;
+  const innerFilters = [`c.puuid = req.puuid`, 'c.set_number = $2'];
   if (queueId != null) {
-    filters.push(`queue_id = $${p}`);
+    innerFilters.push(`c.queue_id = $${p}`);
     params.push(queueId);
     p++;
   }
-  const where = filters.join(' AND ');
+  params.push(limitPerPuuid);
+  const lpuuidPlaceholder = `$${p}`;
   const sql = `
-    SELECT * FROM (
-      SELECT puuid, match_id, region, set_number, queue_id, game_datetime,
-             placement, level, last_round, total_damage, gold_left,
-             players_eliminated, comp_cluster_key, carry_unit,
-             units, traits, augments, carry_items,
-             ROW_NUMBER() OVER (PARTITION BY puuid ORDER BY game_datetime DESC) AS rn
-      FROM tft_player_match_cache
-      WHERE ${where}
-    ) sub
-    WHERE rn <= $${p}
-    ORDER BY puuid, game_datetime DESC
+    SELECT m.puuid, m.match_id, m.region, m.set_number, m.queue_id, m.game_datetime,
+           m.placement, m.level, m.last_round, m.total_damage, m.gold_left,
+           m.players_eliminated, m.comp_cluster_key, m.carry_unit,
+           m.units, m.traits, m.augments, m.carry_items
+    FROM unnest($1::text[]) WITH ORDINALITY AS req(puuid, ord)
+    JOIN LATERAL (
+      SELECT *
+      FROM tft_player_match_cache c
+      WHERE ${innerFilters.join(' AND ')}
+      ORDER BY c.game_datetime DESC
+      LIMIT ${lpuuidPlaceholder}
+    ) m ON true
+    ORDER BY req.ord, m.game_datetime DESC
     LIMIT ${totalLimit}
   `;
-  params.push(limitPerPuuid);
 
   const t0 = Date.now();
   const rows = (await pool.query(sql, params)).rows;

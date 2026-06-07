@@ -55,22 +55,21 @@ export async function GET(request: NextRequest) {
 
   try {
     const filters = await resolveFilters(searchParams);
-    // Optional velocity layer (W1-A): ?velocity=N fires a second item-stats
-    // call shifted N days into the past, then computes per-item Δs in JS.
-    // Items don't have a dedicated velocity-RPC like comps do, but firing the
-    // lean list twice is cheap enough (sub-second warm) — and the comparison
-    // semantic is identical: delta = current − previous, mit `previous` als
-    // "letzte N Tage VOR dem aktuellen Window".
+    // Velocity-Layer (W1-A): ?velocity=N → dedizierte RPC mit FILTER-
+    // Aggregation für now/prev in EINEM Scan (Migration 0036). p_days bleibt
+    // das User-gewählte Tagesfenster; p_shift_days = velocity-Wert vom
+    // StatsFilterBar (3 = "48h", 7 = "7d"). prev-Fenster ist immer von
+    // current_date-(days+shift) bis current_date-shift — kein Overlap mit dem
+    // now-Fenster, exakt wie bei der Comp-Velocity.
     const velocityShift = Math.max(0, parseInt(searchParams.get('velocity') || '0', 10));
     const wantVelocity = velocityShift > 0;
-    const prevDays = filters.days;
 
     // Lean RPC (migration 0028): merges top_users to the top-8 carriers in SQL
     // instead of jsonb_agg-ing every per-day array. ~14x faster on the heavy
     // all-bucket/7d slice (76s→5.5s, no more 502) and ~126x on the diamond/3d
     // default (9s→72ms). Returns the same shape; the merged list is wrapped so
     // the mergeJsonbCountArrays call below still works unchanged.
-    const [rows, prevRows] = await Promise.all([
+    const [rows, velocityRows] = await Promise.all([
       callRpc<ItemListRow[]>('get_tft_item_stats_list', {
         p_regions: filters.regions,
         p_buckets: filters.buckets,
@@ -79,28 +78,26 @@ export async function GET(request: NextRequest) {
         p_set: filters.setNumber,
       }),
       wantVelocity
-        ? callRpc<ItemListRow[]>('get_tft_item_stats_list', {
+        ? callRpc<{
+            api_name: string;
+            games_now: number; games_prev: number;
+            sum_placement_now: number; sum_placement_prev: number;
+            top4_now: number; top4_prev: number;
+            total_slots_now: number; total_slots_prev: number;
+          }[]>('get_tft_item_velocity', {
             p_regions: filters.regions,
             p_buckets: filters.buckets,
-            // Previous window = days BEFORE the current N-day window. The lean
-            // RPC ranges from `current_date - p_days` to today; we approximate
-            // the prior window by widening p_days to (current+shift) and then
-            // subtracting in JS via the day_offset filter — but the simpler
-            // (and good-enough) signal is "shift days ago, same p_days length":
-            // we'd need a SQL helper for an exact prior-window slice. Until
-            // then we approximate by p_days = velocityShift, p_patch = null
-            // (don't patch-pin the prior window), and treat it as a baseline.
-            p_days: velocityShift,
-            p_patch: null,
             p_set: filters.setNumber,
-          }).catch(() => [] as ItemListRow[])
-        : Promise.resolve([] as ItemListRow[]),
+            p_patch: filters.patch,
+            p_days: filters.days,
+            p_shift_days: velocityShift,
+            p_min_games: 30,
+          }).catch(() => [])
+        : Promise.resolve([] as any[]),
     ]);
     const totalSlots = rows[0]?.total_item_slots || 0;
-    const prevTotalSlots = prevRows[0]?.total_item_slots || 0;
-    // Index prior-window rows by api_name for O(1) lookup during delta merge.
-    const prevByName = new Map<string, ItemListRow>();
-    for (const r of prevRows) prevByName.set(r.api_name, r);
+    const velocityByName = new Map<string, typeof velocityRows[number]>();
+    for (const v of velocityRows) velocityByName.set(v.api_name, v);
 
     const items = rows
       .filter(r => !isExcludedItem(r.api_name))
@@ -117,30 +114,36 @@ export async function GET(request: NextRequest) {
         const top4Rate = games > 0 ? Number(r.top4) / games : null;
         const pickRate = totalSlots > 0 ? games / totalSlots : null;
 
-        // Velocity delta (Δ): nur befüllt wenn ?velocity=N gesetzt war und die
-        // Prior-Window-Daten genug Sample-Size haben. Δ-Felder werden mit
-        // null geliefert wenn entweder das aktuelle ODER das prev Window
-        // unter 30 Games hat — damit das UI nicht "+99.00" Junk anzeigt.
+        // Velocity Δ (W1-A) — aus der dedizierten RPC-Aggregation. Die RPC
+        // liefert NUR Items, deren now+prev kombiniert ≥ 30 Games haben;
+        // jenseits davon prüfen wir hier nochmal individuelle Mindestschwellen
+        // damit das UI nicht "+99.00"-Ausreißer anzeigt.
         let velocity: any = null;
         if (wantVelocity) {
-          const prev = prevByName.get(r.api_name);
-          const prevGames = prev ? Number(prev.games) : 0;
-          if (games >= 30 && prevGames >= 30 && prev) {
-            const prevAvg = Number(prev.sum_placement) / prevGames;
-            const prevTop4 = Number(prev.top4) / prevGames;
-            const prevPick = prevTotalSlots > 0 ? prevGames / prevTotalSlots : null;
-            velocity = {
-              deltaAvgPlacement: (avgPlacement ?? 0) - prevAvg,
-              deltaTop4Rate: (top4Rate ?? 0) - prevTop4,
-              deltaPickRate: pickRate != null && prevPick != null ? pickRate - prevPick : null,
-              prevGames,
-              prevAvgPlacement: prevAvg,
-              prevTop4Rate: prevTop4,
-            };
-          } else if (games >= 30 && prevGames < 10) {
-            // Neuer Eintrag — Vergleich nicht sinnvoll. UI kann das als "NEW"
-            // markieren wenn gewünscht.
-            velocity = { isNew: true };
+          const v = velocityByName.get(r.api_name);
+          if (v) {
+            const gNow = Number(v.games_now);
+            const gPrev = Number(v.games_prev);
+            const slotsNow = Number(v.total_slots_now);
+            const slotsPrev = Number(v.total_slots_prev);
+            if (gNow >= 30 && gPrev >= 30) {
+              const avgNow = Number(v.sum_placement_now) / gNow;
+              const avgPrev = Number(v.sum_placement_prev) / gPrev;
+              const top4Now = Number(v.top4_now) / gNow;
+              const top4Prev = Number(v.top4_prev) / gPrev;
+              const pickNow = slotsNow > 0 ? gNow / slotsNow : null;
+              const pickPrev = slotsPrev > 0 ? gPrev / slotsPrev : null;
+              velocity = {
+                deltaAvgPlacement: avgNow - avgPrev,
+                deltaTop4Rate: top4Now - top4Prev,
+                deltaPickRate: pickNow != null && pickPrev != null ? pickNow - pickPrev : null,
+                prevGames: gPrev,
+                prevAvgPlacement: avgPrev,
+                prevTop4Rate: top4Prev,
+              };
+            } else if (gNow >= 30 && gPrev < 10) {
+              velocity = { isNew: true };
+            }
           }
         }
 

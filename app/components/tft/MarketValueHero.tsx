@@ -90,7 +90,7 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
     return Promise.all([
       fetch(`/api/tft/marktwert?name=${encodeURIComponent(fullName)}&region=${region}`, { signal })
         .then(async r => {
-          if (!r.ok) throw new Error('Marktwert nicht verfügbar');
+          if (!r.ok) throw new Error(t('tft.marketvalue.unavailable'));
           return r.json();
         }),
       fetch('/api/tft/sets/current', { signal })

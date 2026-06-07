@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import type { TftMatchSummary, TftParticipantSummary } from '../../lib/tft-match-processor';
 import { formatStage } from '../../lib/tft-stage';
+import { useI18n } from '../../lib/i18n';
 
 interface Props {
   match: TftMatchSummary;
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export default function MatchCard({ match, selfPuuid, region }: Props) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
 
@@ -44,7 +46,7 @@ export default function MatchCard({ match, selfPuuid, region }: Props) {
           <div className="flex-1 min-w-0">
             <ActivatedTraits participant={me} assets={assets} />
             <div className="text-[#a0b0c5] text-xs mt-1">
-              Lvl {me.level} · Stage {formatStage(me.lastRound)} · {minutes}:{seconds} · {ago}
+              {t('tft.match.lvl')} {me.level} · {t('tft.match.stage')} {formatStage(me.lastRound)} · {minutes}:{seconds} · {ago}
             </div>
           </div>
           <AugmentRow augments={me.augments} assets={assets} />
@@ -73,7 +75,7 @@ export default function MatchCard({ match, selfPuuid, region }: Props) {
             onClick={e => e.stopPropagation()}
             className="block text-right text-[10px] text-[#7B61FF] hover:text-[#a892ff] uppercase tracking-widest pt-1 border-t border-[#1e2a3a]"
           >
-            Match-Detail →
+            {t('tft.match.detail')}
           </a>
         </div>
       )}

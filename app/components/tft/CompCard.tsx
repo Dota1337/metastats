@@ -2,6 +2,7 @@
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
 import { tftIconUrl, tftChampionTileUrl } from '../../lib/tft-cdragon';
 import { costColor as costColorOf } from '../../lib/tft-ui';
+import { useI18n } from '../../lib/i18n';
 
 interface Comp {
   source?: 'data' | 'editorial';
@@ -41,6 +42,7 @@ export default function CompCard({
   assets: TftAssetsBundle | null;
   href?: string;
 }) {
+  const { t } = useI18n();
   const parts = parseClusterKey(comp.clusterKey);
   const traitMeta = parts && assets ? assets.traits[parts.trait] : null;
   // Stargazer (and similar themed traits) ships seven constellation variants
@@ -180,10 +182,10 @@ export default function CompCard({
         <div className="flex items-stretch gap-2 sm:text-right flex-wrap sm:flex-nowrap">
           <Stat label="Avg" value={comp.avgPlacement?.toFixed(2) ?? '—'} accent={tier.color} />
           <Stat label="Top 4" value={comp.top4Rate != null ? `${(comp.top4Rate * 100).toFixed(0)}%` : '—'} />
-          <Stat label="Sieg" value={comp.top1Rate != null ? `${(comp.top1Rate * 100).toFixed(0)}%` : '—'} />
+          <Stat label={t('tft.win')} value={comp.top1Rate != null ? `${(comp.top1Rate * 100).toFixed(0)}%` : '—'} />
           <Stat label="Pick" value={comp.pickRate != null ? `${(comp.pickRate * 100).toFixed(2)}%` : '—'} />
           <div className="flex flex-col items-end justify-center pl-2 border-l border-[#1e2a3a]">
-            <div className="text-[#7a8aa0] text-[9px] uppercase tracking-widest">Spiele</div>
+            <div className="text-[#7a8aa0] text-[9px] uppercase tracking-widest">{t('tft.games')}</div>
             <div className="text-[#a0b0c5] text-sm">{comp.games}</div>
           </div>
         </div>

@@ -144,7 +144,7 @@ export default function TftLeaderboardPage() {
           ))}
         </div>
 
-        {loading && <div className="text-[#7a8aa0] text-center py-8">Lade ...</div>}
+        {loading && <div className="text-[#7a8aa0] text-center py-8">{t('tft.loading')}</div>}
         {error && <div className="bg-red-500/10 border border-red-500/30 rounded p-4 text-red-400 text-sm">{error}</div>}
 
         {!loading && !error && (

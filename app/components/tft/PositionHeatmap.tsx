@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
 import { tftChampionTileUrl } from '../../lib/tft-cdragon';
+import { useI18n } from '../../lib/i18n';
 
 // Per-unit board heatmap for /tft/comps/[slug]. Fetches position data
 // aggregated from the Overwolf companion app's submissions and shows a
@@ -37,6 +38,7 @@ interface Props {
 }
 
 export default function PositionHeatmap({ units, carryCharacterId, clusterKey, assets }: Props) {
+  const { t } = useI18n();
   const [data, setData] = useState<Record<string, CellShare[]>>({});
   const [hasData, setHasData] = useState<boolean>(false);
   const [source, setSource] = useState<'comp' | 'global'>('global');

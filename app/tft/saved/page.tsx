@@ -70,6 +70,7 @@ function Section({
   hrefOf: (b: Bookmark) => string;
   onRemove: (b: Bookmark) => void;
 }) {
+  const { t } = useI18n();
   return (
     <div>
       <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-2">{title}</h2>
@@ -93,7 +94,7 @@ function Section({
               )}
               <button
                 onClick={() => onRemove(b)}
-                title="Bookmark entfernen"
+                title={t('tft.saved.remove')}
                 className="text-[#5a6a80] hover:text-[#e44040] text-sm transition-colors"
               >
                 ×

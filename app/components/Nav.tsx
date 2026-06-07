@@ -401,7 +401,7 @@ export default function Nav({ active }: NavProps) {
                   <div className="flex-1 min-w-0">
                     <div className="text-white text-sm font-medium truncate">{r.name}</div>
                     <div className="text-[#7a8aa0] text-xs">
-                      {r.type === 'champion' ? 'Champion' : 'Spieler suchen'}
+                      {r.type === 'champion' ? t('nav.champion') : t('nav.searchPlayer')}
                     </div>
                   </div>
                 </button>

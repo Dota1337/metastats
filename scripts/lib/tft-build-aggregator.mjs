@@ -158,13 +158,43 @@ function newCompBucket() {
   };
 }
 
+// Hero-Augment-Pattern: `TFT<N>_Augment_<UnitName>Carry` or `<UnitName>GodAugment`.
+// A participant holding one of these AUGMENTS clearly intends that unit as carry,
+// regardless of item count — overrides the item heuristic, which mis-picks tanks
+// who routinely hold 3 defensive items (Maokai/Cho'Gath/TahmKench).
+//
+// Returns the inferred carry character_id from a participant's augments, or null.
+function carryFromAugments(participant, units) {
+  const augs = participant.augments || [];
+  if (augs.length === 0) return null;
+  for (const a of augs) {
+    if (!a) continue;
+    // Extract the unit-name segment from the augment id.
+    const m = /^TFT\d+_Augment_(.+?)(?:Carry|GodAugment|HeroAugment)$/i.exec(a);
+    if (!m) continue;
+    const unitNameLower = m[1].toLowerCase();
+    // Match against the units actually on this board so we don't pin onto a
+    // unit the player never bought.
+    const hit = units.find(u => {
+      const cid = u.character_id || u.characterId || '';
+      return cid.toLowerCase().endsWith('_' + unitNameLower) || cid.toLowerCase().endsWith(unitNameLower);
+    });
+    if (hit) return hit.character_id || hit.characterId;
+  }
+  return null;
+}
+
 // Cluster a participant's board into a deterministic key:
 //   `${primaryActivatedTrait}@${level}_${carryUnit}`
-// primaryActivatedTrait = highest-style activated trait, ties broken by
-//   tier_current then alphabetical. carryUnit = unit holding the most items
-//   (ties broken by highest tier (star level), then highest cost rarity).
-// Falls all units have zero items, the highest-cost unit wins. Returns null
-// if the board is so sparse that we can't classify (e.g. early surrender).
+// Carry-detection priority:
+//   1. Hero-Augment (deterministic — if a player has a `XYZCarry` augment,
+//      XYZ is the carry, even when XYZ holds fewer items than a tank).
+//   2. Unit holding the most DAMAGE-carry items (offensive: AD, AP, hybrid,
+//      AS). Tanks holding 3 defensive items don't bubble up here.
+//   3. Fallback: unit with the most items (legacy heuristic), then highest
+//      tier then highest cost — for early-game boards where no real
+//      offensive items have been built yet.
+// Returns null if the board is too sparse to classify.
 function classifyComp(participant) {
   const traits = (participant.traits || []).filter(t => (t.style ?? 0) > 0);
   if (traits.length === 0) return null;
@@ -177,21 +207,48 @@ function classifyComp(participant) {
 
   const units = participant.units || [];
   if (units.length === 0) return null;
-  const ranked = [...units].sort((a, b) => {
-    const aItems = (a.itemNames || []).length;
-    const bItems = (b.itemNames || []).length;
-    if (bItems !== aItems) return bItems - aItems;
-    if ((b.tier ?? 1) !== (a.tier ?? 1)) return (b.tier ?? 1) - (a.tier ?? 1);
-    return (b.rarity ?? 0) - (a.rarity ?? 0);
-  });
-  const carry = ranked[0];
-  if (!carry?.character_id) return null;
+
+  // 1) Hero-Augment override.
+  const heroCarryId = carryFromAugments(participant, units);
+  let carry = heroCarryId ? units.find(u => (u.character_id || u.characterId) === heroCarryId) : null;
+
+  // 2) Most damage-carry items.
+  if (!carry) {
+    const byOffensiveItems = [...units]
+      .map(u => {
+        const items = u.itemNames || [];
+        const offensive = items.filter(i => DAMAGE_CARRY_ITEMS.has(i)).length;
+        return { u, offensive, total: items.length };
+      })
+      .filter(x => x.offensive > 0)
+      .sort((a, b) => {
+        if (b.offensive !== a.offensive) return b.offensive - a.offensive;
+        if (b.total !== a.total) return b.total - a.total;
+        if ((b.u.tier ?? 1) !== (a.u.tier ?? 1)) return (b.u.tier ?? 1) - (a.u.tier ?? 1);
+        return (b.u.rarity ?? 0) - (a.u.rarity ?? 0);
+      });
+    if (byOffensiveItems.length > 0) carry = byOffensiveItems[0].u;
+  }
+
+  // 3) Legacy fallback — most items total, then star, then cost.
+  if (!carry) {
+    const ranked = [...units].sort((a, b) => {
+      const aItems = (a.itemNames || []).length;
+      const bItems = (b.itemNames || []).length;
+      if (bItems !== aItems) return bItems - aItems;
+      if ((b.tier ?? 1) !== (a.tier ?? 1)) return (b.tier ?? 1) - (a.tier ?? 1);
+      return (b.rarity ?? 0) - (a.rarity ?? 0);
+    });
+    carry = ranked[0];
+  }
+  if (!carry?.character_id && !carry?.characterId) return null;
+  const carryId = carry.character_id || carry.characterId;
 
   return {
-    clusterKey: `${primaryTrait.name}@${primaryTrait.tier_current ?? 0}_${carry.character_id}`,
+    clusterKey: `${primaryTrait.name}@${primaryTrait.tier_current ?? 0}_${carryId}`,
     primaryTrait: primaryTrait.name,
     primaryTraitLevel: primaryTrait.tier_current ?? 0,
-    carryUnit: carry.character_id,
+    carryUnit: carryId,
     carryItems: (carry.itemNames || []).filter(Boolean).sort(),
   };
 }

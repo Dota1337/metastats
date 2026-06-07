@@ -306,11 +306,37 @@ function renderEntity(key: string, entity: Entity, assets: TftAssetsBundle | nul
     const m = /^(.+)@(\d+)_(.+)$/.exec(key);
     if (!m) return { name: key, icon: <div className="w-7 h-7 rounded bg-[#1e2a3a]" />, href: null as string | null };
     const trait = assets?.traits[m[1]];
-    const carry = assets?.champions[m[3]];
-    const url = tftChampionTileUrl(assets, carry);
+    // Case-insensitive champ lookup (same as the unit branch).
+    let carry = assets?.champions[m[3]];
+    if (!carry && assets) {
+      const lower = m[3].toLowerCase();
+      for (const [id, c] of Object.entries(assets.champions)) {
+        if (id.toLowerCase() === lower) { carry = c; break; }
+      }
+    }
+    // The aggregator's carry-detection picks "unit with the most items" —
+    // which mis-fires on tanks who routinely hold 3 defensive items
+    // (Maokai/Cho'gath etc). If every trait of this "carry" is a known
+    // tank/frontline trait, the cluster_key carry is almost certainly the
+    // wrong attribution. Drop the carry name from the display so the user
+    // sees just the trait theme instead of a misleading "Trait · Tank".
+    const carryIsTanky = carry && (() => {
+      const tk = (carry as any).traits;
+      if (!Array.isArray(tk) || tk.length === 0) return false;
+      const TANK_TRAITS = new Set(['Brawler', 'Bastion', 'Vanguard', 'Sentinel', 'Bulwark', 'Tank', 'Frontline']);
+      return tk.every((tr: string) => TANK_TRAITS.has(tr));
+    })();
+    const url = !carryIsTanky ? tftChampionTileUrl(assets, carry) : null;
+    const traitIcon = tftIconUrl(assets, (trait as any)?.icon);
     return {
-      name: `${trait?.name || m[1].replace(/^TFT\d+_/, '')} · ${carry?.name || m[3].replace(/^TFT\d+_/, '')}`,
-      icon: url ? <img src={url} alt="" className="w-7 h-7 rounded border border-[#c39bff]/60 object-cover" /> : <div className="w-7 h-7 rounded bg-[#1e2a3a]" />,
+      name: carryIsTanky
+        ? (trait?.name || m[1].replace(/^TFT\d+_/, ''))
+        : `${trait?.name || m[1].replace(/^TFT\d+_/, '')} · ${carry?.name || m[3].replace(/^TFT\d+_/, '')}`,
+      icon: url
+        ? <img src={url} alt="" className="w-7 h-7 rounded border border-[#c39bff]/60 object-cover" />
+        : traitIcon
+          ? <img src={traitIcon} alt="" className="w-7 h-7 rounded bg-[#1e2a3a]" />
+          : <div className="w-7 h-7 rounded bg-[#1e2a3a]" />,
       href: `/tft/comps/${encodeURIComponent(key)}`,
     };
   }

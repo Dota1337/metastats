@@ -194,9 +194,9 @@ async function fetchEntityRows(
     }
     return [...byName.values()];
   }
-  // entity === 'comp' — leverages the lean comp-stats RPC so we don't pull
-  // the 7-jsonb-column heavy version just for a sample-size diff.
-  const rows = await callRpc<CompRow[]>('get_tft_comp_stats_list', {
+  // entity === 'comp' — super-lean diff RPC (migration 0035), scalar-only.
+  // The list RPC carried 10 MB of jsonb_agg per call for fields we drop here.
+  const rows = await callRpc<CompRow[]>('get_tft_comp_stats_for_diff', {
     ...base,
     p_min_games: 50,
   });

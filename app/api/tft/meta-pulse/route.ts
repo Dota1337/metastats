@@ -88,7 +88,9 @@ export async function GET(request: NextRequest) {
         p_days: 7,
         p_min_games: 80,
       }).catch(() => [] as RegionRow[]),
-      previousPatch ? callRpc<CompStatsRow[]>('get_tft_comp_stats_list', {
+      // Super-lean diff RPC (migration 0035) — scalar-only, drops the 10 MB
+      // jsonb_agg payload the previous list-RPC carried for nothing here.
+      previousPatch ? callRpc<CompStatsRow[]>('get_tft_comp_stats_for_diff', {
         p_regions: filters.regions,
         p_buckets: buckets,
         p_days: 30,
@@ -96,7 +98,7 @@ export async function GET(request: NextRequest) {
         p_set: setNumber,
         p_min_games: 80,
       }).catch(() => [] as CompStatsRow[]) : Promise.resolve([] as CompStatsRow[]),
-      previousPatch ? callRpc<CompStatsRow[]>('get_tft_comp_stats_list', {
+      previousPatch ? callRpc<CompStatsRow[]>('get_tft_comp_stats_for_diff', {
         p_regions: filters.regions,
         p_buckets: buckets,
         p_days: 30,

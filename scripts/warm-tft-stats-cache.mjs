@@ -25,7 +25,9 @@ const BASE = (process.env.WARM_BASE_URL || 'https://www.metastats.gg').replace(/
 // cleanly). Warming is a background job, so the ~2-3min serial cold run is
 // fine. Override with WARM_CONCURRENCY only against a warm cache.
 const CONCURRENCY = Math.max(1, Number(process.env.WARM_CONCURRENCY) || 1);
-const TIMEOUT_MS = Math.max(5_000, Number(process.env.WARM_TIMEOUT_MS) || 30_000);
+// 60s default: covers the onetricks cold path (Hetzner pool + 1000-puuid
+// match fetch + classify, ~10-30s). Stats RPCs are all well under this.
+const TIMEOUT_MS = Math.max(5_000, Number(process.env.WARM_TIMEOUT_MS) || 60_000);
 
 // patch=current always: the stats pages never deep-link a specific patch, they
 // resolve "current" server-side to the newest established patch.
@@ -69,6 +71,16 @@ function buildUrls() {
     urls.add(`/api/tft/${ep}?${qs('diamond', 3, 'all')}`);
     urls.add(`/api/tft/${ep}?${qs('master_plus', 3, 'all')}`);
     urls.add(`/api/tft/${ep}?${qs('master_plus', 7, 'all')}`);
+  }
+
+  // Onetricks — region-scoped Master+ one-trick detection. Cold call goes
+  // through the Hetzner /marketvalue-pool + /player-matches chain and takes
+  // 10-30s (1000 puuids × 50 matches ≈ 40MB JSON transfer). Edge cache is
+  // 6h, so warming once a day right after the daily crawl finishes keeps
+  // every real user hit instant. Only the regions with enough Master+ pool
+  // to be worth warming.
+  for (const region of ['euw1', 'kr', 'na1', 'eun1', 'br1', 'jp1']) {
+    urls.add(`/api/tft/onetricks?region=${region}`);
   }
 
   return [...urls];

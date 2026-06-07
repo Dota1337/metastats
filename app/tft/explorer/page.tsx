@@ -149,31 +149,46 @@ export default function TftExplorerPage() {
       .finally(() => setMatchLoading(false));
   }, [mode, units, region, days]);
 
-  // Build sortable champion / item / trait lists from assets, gated by current
-  // set so we don't surface inactive units.
+  // Build sortable champion / item / trait lists from assets, gated by the
+  // current set so we don't surface inactive units, augments (Riot-tabu),
+  // or junk like recipes/components.
+  // The asset keys ARE the api-IDs (e.g. champions['TFT17_Karma'] not
+  // champions[i].characterId); the value-side `characterId` doesn't exist.
+  const SET_PREFIX = `TFT${assets?.set ?? 17}_`;
+
   const unitOptions = useMemo(() => {
     if (!assets) return [] as { id: string; name: string; cost: number }[];
-    return Object.values(assets.champions)
-      .filter(c => c && (c as any).cost > 0 && (c as any).cost <= 5)
-      .map(c => ({ id: (c as any).characterId, name: (c as any).name, cost: (c as any).cost }))
+    return Object.entries(assets.champions)
+      .filter(([id, c]) => id.startsWith(SET_PREFIX) && c && (c as any).cost > 0 && (c as any).cost <= 5)
+      .map(([id, c]) => ({ id, name: (c as any).name as string, cost: (c as any).cost as number }))
       .sort((a, b) => a.cost - b.cost || a.name.localeCompare(b.name));
-  }, [assets]);
+  }, [assets, SET_PREFIX]);
 
   const itemOptions = useMemo(() => {
     if (!assets) return [] as { id: string; name: string; icon: string | null }[];
     return Object.entries(assets.items)
+      .filter(([id, meta]) => {
+        const name = (meta as any)?.name;
+        if (!name) return false;
+        // Drop augments (Riot-tabu), components/recipes, set-specific stuff
+        // from other sets, and trait-emblems (rendered separately as traits).
+        if (/Augment/i.test(id)) return false;
+        if (/component|recipe/i.test(name)) return false;
+        if (/Emblem/i.test(id)) return false;
+        // Only current-set items + universal TFT_Item_* (cross-set base items).
+        return id.startsWith(SET_PREFIX) || id.startsWith('TFT_Item_');
+      })
       .map(([id, meta]) => ({ id, name: (meta as any).name as string, icon: (meta as any).icon || null }))
-      .filter(x => x.name && !/component|recipe/i.test(x.name))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [assets]);
+  }, [assets, SET_PREFIX]);
 
   const traitOptions = useMemo(() => {
     if (!assets) return [] as { id: string; name: string }[];
     return Object.entries(assets.traits)
+      .filter(([id, meta]) => id.startsWith(SET_PREFIX) && (meta as any)?.name)
       .map(([id, meta]) => ({ id, name: (meta as any).name as string }))
-      .filter(x => x.name)
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [assets]);
+  }, [assets, SET_PREFIX]);
 
   const filtered = useMemo(() => {
     const result = comps.filter(c => c.games >= minGames && compMatches(c, units, items, traits));
@@ -219,10 +234,12 @@ export default function TftExplorerPage() {
           </div>
         </div>
 
-        {/* Filter rail (left) + results (right) */}
+        {/* Filter rail (left) + results (right). Sticky rail with its own
+            inner scroll so the user doesn't have to scroll past 200+ comps
+            to reach the trait picker. */}
         <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4">
           {/* Filter rail */}
-          <div className="space-y-3 lg:sticky lg:top-4 self-start">
+          <div className="space-y-3 lg:sticky lg:top-4 self-start lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:pr-1">
             <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-3 space-y-3">
               <div>
                 <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest mb-1.5">{t('tft.filter.bucket')}</div>

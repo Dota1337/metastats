@@ -40,22 +40,25 @@ export default function TftUnitsPage() {
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
 
   useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     const qs = filtersToQueryString(filters);
     fetch(`/api/tft/units?${qs}`)
       .then(r => r.json())
       .then(d => {
+        if (cancelled) return;
         setHasData(!!d.hasData);
         setUnits(d.units || []);
         setPatches(d.patches || []);
         setLoading(false);
       })
-      .catch(() => { setHasData(false); setUnits([]); setLoading(false); });
+      .catch(() => { if (!cancelled) { setHasData(false); setUnits([]); setLoading(false); } });
     // Mirror filter state into the URL so links are shareable + Back/Fwd works.
     const url = `${pathname}?${qs}`;
     if (typeof window !== 'undefined' && window.location.pathname + window.location.search !== url) {
       router.replace(url, { scroll: false });
     }
+    return () => { cancelled = true; };
   }, [filters, pathname, router]);
 
   const filtered = useMemo(() => {

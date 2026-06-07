@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { checkRateLimit } from '../../../../lib/rate-limit';
 
 // On-demand single-player marketvalue refresh. The actual crunch happens
 // on the Hetzner crawler box — this route just authenticates the caller,
@@ -18,6 +19,10 @@ export async function POST(req: NextRequest) {
   if (!HETZNER_URL || !TOKEN) {
     return NextResponse.json({ error: 'refresh_disabled' }, { status: 503 });
   }
+  // 10 Refreshes pro IP pro Minute — schützt vor Riot-Quota-DoS durch
+  // PUUID-Rotation. Hetzner hat noch zusätzliches 60s-Lock pro (puuid,region).
+  const limited = checkRateLimit(req, { key: 'marktwert-refresh', max: 10, windowMs: 60_000 });
+  if (limited) return limited;
 
   let body: { puuid?: string; region?: string };
   try {

@@ -7,6 +7,7 @@ import {
   mergeJsonbCountDicts,
 } from '../../../lib/tft-supabase-reader';
 import { cachedJson } from '../../../lib/api-cache';
+import { isExcludedUnit, isExcludedItem } from '../../../lib/tft-excluded';
 
 // /api/tft/comps
 // List view: returns aggregated comp clusters that match the filter set.
@@ -307,7 +308,7 @@ function baseComp(r: CompRow, participants: number) {
     avgLastRound: r.games > 0 && r.sum_last_round ? Number(r.sum_last_round) / Number(r.games) : null,
     typicalUnits: mergeJsonbCountArrays(r.typical_units_merged || [], 'characterId', 9, [
       { field: 'topItems', innerKey: 'apiName', topN: 3 },
-    ]),
+    ]).filter(u => !isExcludedUnit((u as any).characterId)),
     typicalAugments: mergeJsonbCountArrays(r.typical_augments_merged || [], 'apiName', 6),
     carryItems: mergeCarryItems(r.carry_items_merged || []),
   };
@@ -319,7 +320,7 @@ function baseComp(r: CompRow, participants: number) {
 function enrichComp(r: CompRow) {
   const typicalUnits = mergeJsonbCountArrays(r.typical_units_merged || [], 'characterId', 9, [
     { field: 'topItems', innerKey: 'apiName', topN: 3 },
-  ]);
+  ]).filter(u => !isExcludedUnit((u as any).characterId));
   // Sprint 6.3 — Comp-Flex-Score. Normalized entropy of the top-9 unit
   // distribution: 0 = locked (single dominant unit), 1 = fully even.
   const flexScore = (() => {

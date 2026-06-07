@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '../../../lib/supabase';
 
-const API_KEY = '0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z';
+// Lolesports public web-client key. Riot publishes it openly via their site
+// (anyone who opens devtools on lolesports.com can read it), but env-var
+// hygiene > hardcode. Falls die Vercel-Env unset ist, fallen wir auf den
+// alten Wert zurück damit der Cron nicht bricht.
+const API_KEY = process.env.LOLESPORTS_API_KEY || '0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z';
 
 // Cron job: Fetches latest LoL Esports schedules, standings, and league data
 // Stores in Supabase site_config for fast access

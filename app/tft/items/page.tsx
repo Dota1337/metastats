@@ -48,21 +48,24 @@ export default function TftItemsPage() {
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
 
   useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     const qs = filtersToQueryString(filters);
     fetch(`/api/tft/items?${qs}`)
       .then(r => r.json())
       .then(d => {
+        if (cancelled) return;
         setHasData(!!d.hasData);
         setItems(d.items || []);
         setPatches(d.patches || []);
         setLoading(false);
       })
-      .catch(() => { setHasData(false); setItems([]); setLoading(false); });
+      .catch(() => { if (!cancelled) { setHasData(false); setItems([]); setLoading(false); } });
     const url = `${pathname}?${qs}`;
     if (typeof window !== 'undefined' && window.location.pathname + window.location.search !== url) {
       router.replace(url, { scroll: false });
     }
+    return () => { cancelled = true; };
   }, [filters, pathname, router]);
 
   const currentPatchLabel = patches[0]?.patch;

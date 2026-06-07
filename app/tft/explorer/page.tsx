@@ -109,12 +109,14 @@ export default function TftExplorerPage() {
 
   useEffect(() => {
     if (mode !== 'comps') return;
+    let cancelled = false;
     setLoading(true);
     fetch(`/api/tft/comps?region=${region}&bucket=${bucket}&days=${days}&patch=current&source=data`)
       .then(r => r.json())
-      .then(d => setComps(d.comps || []))
-      .catch(() => setComps([]))
-      .finally(() => setLoading(false));
+      .then(d => { if (!cancelled) setComps(d.comps || []); })
+      .catch(() => { if (!cancelled) setComps([]); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [bucket, region, days, mode]);
 
   // Match-level query runs only when at least 1 unit is picked + button click.
@@ -126,6 +128,7 @@ export default function TftExplorerPage() {
       setMatchSample([]); setMatchAggregate(null); setMatchCount(0); setMatchError(null);
       return;
     }
+    let cancelled = false;
     setMatchLoading(true);
     setMatchError(null);
     fetch('/api/tft/explorer/matches', {
@@ -138,15 +141,18 @@ export default function TftExplorerPage() {
         return r.json();
       })
       .then(d => {
+        if (cancelled) return;
         setMatchSample(d.sample || []);
         setMatchAggregate(d.aggregate || null);
         setMatchCount(d.matchCount || 0);
       })
       .catch(err => {
+        if (cancelled) return;
         setMatchError(err.message || 'fail');
         setMatchSample([]); setMatchAggregate(null); setMatchCount(0);
       })
-      .finally(() => setMatchLoading(false));
+      .finally(() => { if (!cancelled) setMatchLoading(false); });
+    return () => { cancelled = true; };
   }, [mode, units, region, days]);
 
   // Build sortable champion / item / trait lists from assets, gated by the

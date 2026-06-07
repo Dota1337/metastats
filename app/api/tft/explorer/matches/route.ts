@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { STATS_CACHE_CONTROL } from '../../../../lib/api-cache';
+import { checkRateLimit } from '../../../../lib/rate-limit';
 
 // Match-level Data Explorer endpoint. Proxies to the Hetzner refresh-api
 // `/explore-matches` route, which has the GIN index + 60 GB volume to serve
@@ -19,6 +20,10 @@ export async function POST(req: NextRequest) {
   if (!HETZNER_URL || !TOKEN) {
     return NextResponse.json({ error: 'explorer_disabled' }, { status: 503 });
   }
+  // 20 Explorer-Queries pro IP pro Minute — die Hetzner-DB-Last pro Query
+  // ist 5-25s, ein Angreifer könnte sonst die Box sättigen.
+  const limited = checkRateLimit(req, { key: 'explorer-matches', max: 20, windowMs: 60_000 });
+  if (limited) return limited;
 
   let body: { units?: unknown; region?: unknown; days?: unknown; limit?: unknown };
   try {

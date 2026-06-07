@@ -45,15 +45,18 @@ export default function TftRegionsPage() {
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
 
   useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     fetch(`/api/tft/regions/divergence?days=${days}&bucket=${bucket}&min=80`)
       .then(r => r.json())
       .then(d => {
+        if (cancelled) return;
         setHasData(!!d.hasData);
         setComps(d.comps || []);
         setLoading(false);
       })
-      .catch(() => { setHasData(false); setComps([]); setLoading(false); });
+      .catch(() => { if (!cancelled) { setHasData(false); setComps([]); setLoading(false); } });
+    return () => { cancelled = true; };
   }, [days, bucket]);
 
   // Re-rank by the selected lens. The API ships KR-ahead order by default;

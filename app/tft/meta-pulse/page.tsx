@@ -34,10 +34,12 @@ export default function TftMetaPulsePage() {
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
 
   useEffect(() => {
+    let cancelled = false;
     fetch('/api/tft/meta-pulse?bucket=master_plus')
       .then(r => r.json())
-      .then(d => { setData(d); setLoading(false); })
-      .catch(() => { setData({ hasData: false } as any); setLoading(false); });
+      .then(d => { if (!cancelled) { setData(d); setLoading(false); } })
+      .catch(() => { if (!cancelled) { setData(null); setLoading(false); } });
+    return () => { cancelled = true; };
   }, []);
 
   return (

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { checkRateLimit } from '../../../lib/rate-limit';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { fetchHetznerPlayerMatches } from '../../../lib/tft-hetzner-matches';
 
@@ -71,6 +72,12 @@ async function buildPlayerContext(puuid: string, setNumber: number | null): Prom
 }
 
 export async function POST(req: NextRequest) {
+  // 5 Coach-Calls pro IP pro Minute — Anthropic-Quota schützt sich indirekt
+  // schon (max_tokens cap), aber einen offen-stehenden POST-Endpoint mit
+  // teurer KI-Inferenz schützen wir hier zusätzlich.
+  const limited = checkRateLimit(req, { key: 'coach-chat', max: 5, windowMs: 60_000 });
+  if (limited) return limited;
+
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return NextResponse.json({ error: 'coach_unavailable', note: 'ANTHROPIC_API_KEY not configured' }, { status: 503 });

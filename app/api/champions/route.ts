@@ -16,7 +16,14 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const tier = searchParams.get('tier') || 'all';
   const role = searchParams.get('role') || 'all';
-  const region = searchParams.get('region') || 'euw1';
+  // Whitelist gegen Open-Redirect / SSRF: der region-Wert fließt in
+  // Filenames (`champion-stats-${region.replace('1','')}.json`) und URLs
+  // (self-fetch `${origin}/api/champions/collect?region=...`). Werte wie
+  // `//evil.com/x` oder `../../etc/passwd` würden sonst durchrutschen.
+  // Riot-Region-IDs sind ein kleines geschlossenes Set.
+  const ALLOWED_REGIONS = new Set(['euw1', 'na1', 'kr', 'eun1', 'br1', 'jp1', 'la1', 'la2', 'oc1', 'tr1', 'ru', 'me1', 'ph2', 'sg2', 'th2', 'tw2', 'vn2']);
+  const rawRegion = searchParams.get('region') || 'euw1';
+  const region = ALLOWED_REGIONS.has(rawRegion) ? rawRegion : 'euw1';
 
   try {
     // Fetch Data Dragon version + champion list

@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useMemo } from 'react';
-import { useI18n } from '../lib/i18n';
+import { useI18n, type TranslationKey } from '../lib/i18n';
 
 interface BuildEntry { items: number[]; games: number; wins: number }
 interface ItemEntry { item: number; games: number; wins: number }
@@ -192,7 +192,7 @@ export default function ChampionBuildsSection({ championKey }: Props) {
                   : 'border-transparent text-[#a0b0c5] hover:text-white'
               }`}
             >
-              <div className="font-medium">{t(rt.key as any)}</div>
+              <div className="font-medium">{t(rt.key as TranslationKey)}</div>
               <div className="text-[10px] text-[#7a8aa0]">{r.games} {t('champBuild.games')} · {wr}</div>
             </button>
           );

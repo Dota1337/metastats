@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import EmptyData from './EmptyData';
 import CompCard from './CompCard';
 import StatsFilterBar, { type Filters, type PatchInfo } from './StatsFilterBar';
-import { useI18n } from '../../lib/i18n';
+import { useI18n, type TranslationKey } from '../../lib/i18n';
 import { loadTftAssets, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import { tftPatchLabel } from '../../lib/tft-patch-label';
 
@@ -80,7 +80,7 @@ export default function CompList({ headless = false }: CompListProps) {
           onChange={e => setSortBy(e.target.value)}
           className="bg-[#141c2e] border border-[#1e2a3a] rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-[#7B61FF]/60"
         >
-          {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{t(o.labelKey as any)}</option>)}
+          {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{t(o.labelKey as TranslationKey)}</option>)}
         </select>
       </div>
 

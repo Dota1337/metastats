@@ -1,6 +1,6 @@
 'use client';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
-import { tftIconUrl, tftChampionTileUrl } from '../../lib/tft-cdragon';
+import { tftIconUrl, tftChampionTileUrl, findChampion, findItem } from '../../lib/tft-cdragon';
 import { costColor as costColorOf } from '../../lib/tft-ui';
 import { useI18n } from '../../lib/i18n';
 
@@ -130,7 +130,7 @@ export default function CompCard({
 
           <div className="flex flex-wrap items-start gap-1.5 mb-1.5">
             {typicalUnits.map(u => {
-              const ch = assets?.champions[u.characterId];
+              const ch = findChampion(assets, u.characterId);
               const isCarry = u.characterId === carryCid;
               const url = tftChampionTileUrl(assets, ch);
               const items = Array.isArray(u.topItems) ? u.topItems.slice(0, 3) : [];
@@ -151,7 +151,7 @@ export default function CompCard({
                   {items.length > 0 && (
                     <div className="flex items-center gap-[1px]">
                       {items.map(it => {
-                        const meta = assets?.items[it.apiName];
+                        const meta = findItem(assets, it.apiName);
                         const iconUrl = tftIconUrl(assets, meta?.icon);
                         return (
                           <a

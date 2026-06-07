@@ -83,6 +83,57 @@ export function loadTftAssets(): Promise<TftAssetsBundle | null> {
   return cached;
 }
 
+// Case-insensitive Asset-Lookups. Die Match-Cache + DB-Tabellen tragen
+// teils Lowercase-Varianten von IDs (z.B. `tft17_bardfollower`, von Riot
+// gemixt in tiefer api), während das Asset-Bundle alle Keys in der
+// kanonischen CamelCase-Form (`TFT17_BardFollower`) hat. Wer raw `assets.
+// champions[id]` aufruft, kriegt undefined → leere Icons + leere Namen.
+//
+// Diese Helper memoize'n eine Lowercase→Original Map pro Bundle (eine
+// einmalige WeakMap-Allocation), damit der Lookup O(1) bleibt.
+
+const champByLowerCache = new WeakMap<TftAssetsBundle, Map<string, TftChampion>>();
+const itemByLowerCache  = new WeakMap<TftAssetsBundle, Map<string, TftItem>>();
+const traitByLowerCache = new WeakMap<TftAssetsBundle, Map<string, TftTrait>>();
+
+function getOrBuildLowerMap<V>(
+  bundle: TftAssetsBundle,
+  cache: WeakMap<TftAssetsBundle, Map<string, V>>,
+  source: Record<string, V>,
+): Map<string, V> {
+  let m = cache.get(bundle);
+  if (!m) {
+    m = new Map();
+    for (const [key, val] of Object.entries(source)) m.set(key.toLowerCase(), val);
+    cache.set(bundle, m);
+  }
+  return m;
+}
+
+/** Case-insensitive Champion-Lookup. Returnt null wenn nicht vorhanden. */
+export function findChampion(bundle: TftAssetsBundle | null, id: string | null | undefined): TftChampion | null {
+  if (!bundle || !id) return null;
+  const direct = bundle.champions[id];
+  if (direct) return direct;
+  return getOrBuildLowerMap(bundle, champByLowerCache, bundle.champions).get(id.toLowerCase()) ?? null;
+}
+
+/** Case-insensitive Item-Lookup. */
+export function findItem(bundle: TftAssetsBundle | null, id: string | null | undefined): TftItem | null {
+  if (!bundle || !id) return null;
+  const direct = bundle.items[id];
+  if (direct) return direct;
+  return getOrBuildLowerMap(bundle, itemByLowerCache, bundle.items).get(id.toLowerCase()) ?? null;
+}
+
+/** Case-insensitive Trait-Lookup. */
+export function findTrait(bundle: TftAssetsBundle | null, id: string | null | undefined): TftTrait | null {
+  if (!bundle || !id) return null;
+  const direct = bundle.traits[id];
+  if (direct) return direct;
+  return getOrBuildLowerMap(bundle, traitByLowerCache, bundle.traits).get(id.toLowerCase()) ?? null;
+}
+
 // Resolve a CommunityDragon icon path to a full URL. The bundle stores
 // paths like "assets/maps/tft/icons/items/hexcore/tft_item_bluebuff.tft_set13.png"
 // which combine with the bundle's iconBase to a working raw.communitydragon.org URL.

@@ -1,6 +1,6 @@
 'use client';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
-import { tftChampionTileUrl } from '../../lib/tft-cdragon';
+import { tftChampionTileUrl, findChampion } from '../../lib/tft-cdragon';
 import { costColor as costColorOf } from '../../lib/tft-ui';
 import { useI18n } from '../../lib/i18n';
 import BookmarkButton from '../BookmarkButton';
@@ -187,7 +187,7 @@ export default function CompRow({
         </div>
         <div className="flex items-center gap-[2px]">
           {typicalUnits.slice(0, 9).map(u => {
-            const ch = assets?.champions[u.characterId];
+            const ch = findChampion(assets, u.characterId);
             const isCarry = u.characterId === carryCid;
             const url = tftChampionTileUrl(assets, ch);
             return (

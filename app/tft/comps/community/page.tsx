@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
-import { useI18n } from '../../../lib/i18n';
+import { useI18n, type TranslationKey } from '../../../lib/i18n';
 import { loadTftAssets, tftChampionTileUrl, tftIconUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 
 interface Placement { cell: number; characterId: string; items?: string[] }
@@ -74,7 +74,7 @@ export default function TftCommunityGalleryPage() {
                   ? 'bg-[#7B61FF] border-[#7B61FF] text-white'
                   : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5] hover:border-[#7B61FF]/40'
               }`}
-            >{t(`tft.community.sort.${s}` as any)}</button>
+            >{t(`tft.community.sort.${s}` as TranslationKey)}</button>
           ))}
         </div>
 

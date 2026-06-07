@@ -10,8 +10,8 @@ import Footer from '../../../components/Footer';
 import TierFilter, { type TierBucket } from '../../../components/tft/TierFilter';
 import EmptyData from '../../../components/tft/EmptyData';
 import CompCard from '../../../components/tft/CompCard';
-import { useI18n } from '../../../lib/i18n';
-import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import { useI18n, type TranslationKey } from '../../../lib/i18n';
+import { loadTftAssets, tftIconUrl, tftChampionTileUrl, findChampion, findItem, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import PositionHeatmap from '../../../components/tft/PositionHeatmap';
 import { formatStage } from '../../../lib/tft-stage';
 import { aggregateComponents } from '../../../lib/tft-components';
@@ -94,7 +94,7 @@ export default function TftCompDetailPage() {
           >
             {REGIONS.map(r => (
               <option key={r.value} value={r.value}>
-                {r.value === 'all' ? t(r.label as any) : r.label}
+                {r.value === 'all' ? t(r.label as TranslationKey) : r.label}
               </option>
             ))}
           </select>
@@ -220,7 +220,7 @@ export default function TftCompDetailPage() {
                               const hue = Math.round(120 * norm);
                               return (
                                 <div key={bk.bucket} className="flex items-center gap-2 text-[10px] tabular-nums">
-                                  <span className="text-[#a0b0c5] w-16 truncate">{t(`tft.bucket.${bk.bucket}` as any) || bk.bucket}</span>
+                                  <span className="text-[#a0b0c5] w-16 truncate">{t(`tft.bucket.${bk.bucket}` as TranslationKey) || bk.bucket}</span>
                                   <div className="flex-1 h-1 bg-[#1e2a3a] rounded overflow-hidden">
                                     <div className="h-full" style={{ width: `${(norm * 100).toFixed(0)}%`, backgroundColor: `hsl(${hue}, 60%, 50%)` }} />
                                   </div>
@@ -487,7 +487,7 @@ export default function TftCompDetailPage() {
                         </div>
                         <div className="flex gap-1.5">
                           {set.items.map((it, j) => {
-                            const meta = assets?.items[it];
+                            const meta = findItem(assets, it);
                             const url = tftIconUrl(assets, meta?.icon);
                             return (
                               <a
@@ -728,7 +728,7 @@ export default function TftCompDetailPage() {
                 <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.typicalUnits')}</h2>
                 <div className="flex flex-wrap gap-2">
                   {comp.typicalUnits.map((u: { characterId: string; count: number }) => {
-                    const ch = assets?.champions[u.characterId];
+                    const ch = findChampion(assets, u.characterId);
                     const url = tftChampionTileUrl(assets, ch);
                     const cost = ch?.cost ?? 1;
                     return (

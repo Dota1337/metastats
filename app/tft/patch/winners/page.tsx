@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
-import { useI18n } from '../../../lib/i18n';
+import { useI18n, type TranslationKey } from '../../../lib/i18n';
 import { loadTftAssets, tftChampionTileUrl, tftIconUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import {
   ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis,
@@ -190,7 +190,7 @@ export default function TftPatchWinnersPage() {
                     : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5] hover:border-[#7B61FF]/40'
                 }`}
               >
-                {t(tk.key as any)}
+                {t(tk.key as TranslationKey)}
               </button>
             ))}
           </div>
@@ -202,7 +202,7 @@ export default function TftPatchWinnersPage() {
           >
             {REGIONS.map(r => (
               <option key={r.value} value={r.value}>
-                {r.value === '' ? t(r.label as any) : r.label}
+                {r.value === '' ? t(r.label as TranslationKey) : r.label}
               </option>
             ))}
           </select>
@@ -327,7 +327,7 @@ function renderEntity(key: string, entity: Entity, assets: TftAssetsBundle | nul
       return tk.every((tr: string) => TANK_TRAITS.has(tr));
     })();
     const url = !carryIsTanky ? tftChampionTileUrl(assets, carry) : null;
-    const traitIcon = tftIconUrl(assets, (trait as any)?.icon);
+    const traitIcon = tftIconUrl(assets, trait?.icon);
     return {
       name: carryIsTanky
         ? (trait?.name || m[1].replace(/^TFT\d+_/, ''))

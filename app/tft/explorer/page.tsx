@@ -160,7 +160,9 @@ export default function TftExplorerPage() {
   // or junk like recipes/components.
   // The asset keys ARE the api-IDs (e.g. champions['TFT17_Karma'] not
   // champions[i].characterId); the value-side `characterId` doesn't exist.
-  const SET_PREFIX = `TFT${assets?.set ?? 17}_`;
+  // Wenn assets noch nicht geladen sind, returnen die useMemo-Listen []
+  // (Frühreturn unten), also brauchen wir keinen Set-Fallback hier.
+  const SET_PREFIX = assets ? `TFT${assets.set}_` : '';
 
   const unitOptions = useMemo(() => {
     if (!assets) return [] as { id: string; name: string; cost: number }[];

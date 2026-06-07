@@ -2,7 +2,7 @@
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import TftHero from '../../../components/tft/TftHero';
-import { useI18n } from '../../../lib/i18n';
+import { useI18n, type TranslationKey } from '../../../lib/i18n';
 
 // Order + weights mirror the skill-score model (see scripts/lib/tft-marketvalue.mjs).
 // The `key` doubles as the anchor id so SignalRow deep-links (…/methodik#performance)
@@ -51,10 +51,10 @@ export default function MarktwertMethodikPage() {
                 className="scroll-mt-24 bg-[#0d1526] border border-[#1e2a3a] rounded p-3"
               >
                 <div className="flex items-baseline justify-between gap-2 mb-1">
-                  <span className="text-white font-medium text-sm">{t(s.labelKey as any)}</span>
+                  <span className="text-white font-medium text-sm">{t(s.labelKey as TranslationKey)}</span>
                   <span className="text-[#7a8aa0] text-xs tabular-nums flex-shrink-0">{s.weight}%</span>
                 </div>
-                <p className="text-[#a0b0c5] text-xs leading-relaxed">{t(`tft.mv.method.sig.${s.key}` as any)}</p>
+                <p className="text-[#a0b0c5] text-xs leading-relaxed">{t(`tft.mv.method.sig.${s.key}` as TranslationKey)}</p>
               </div>
             ))}
           </div>

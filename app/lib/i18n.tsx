@@ -2351,7 +2351,7 @@ const translations = {
   ),
 } as const;
 
-type TranslationKey = keyof typeof translations;
+export type TranslationKey = keyof typeof translations;
 
 interface I18nContextType {
   lang: Lang;

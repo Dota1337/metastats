@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { ResponsiveContainer, LineChart, Line, BarChart, Bar, Cell, ReferenceLine, XAxis, YAxis, Tooltip as RechartsTooltip } from 'recharts';
-import { useI18n, LOCALE_MAP, type Lang } from '../../lib/i18n';
+import { useI18n, LOCALE_MAP, type Lang, type TranslationKey } from '../../lib/i18n';
 import SetTimeline, { type SetInfo } from './SetTimeline';
 import Link from 'next/link';
 
@@ -401,7 +401,7 @@ function ContributionChart({ agents }: { agents: SkillSignal[] }) {
     .sort((a, b) => b.contribution - a.contribution)
     .map(s => ({
       signal: s.signal,
-      name: SIGNAL_LABEL_KEYS[s.signal] ? t(SIGNAL_LABEL_KEYS[s.signal] as any) : s.signal,
+      name: SIGNAL_LABEL_KEYS[s.signal] ? t(SIGNAL_LABEL_KEYS[s.signal] as TranslationKey) : s.signal,
       value: Number(s.contribution.toFixed(3)),
     }));
   if (rows.length < 2) return null;
@@ -448,11 +448,11 @@ function ContributionChart({ agents }: { agents: SkillSignal[] }) {
 function SignalRow({ sig }: { sig: SkillSignal }) {
   const { t } = useI18n();
   const known = !!SIGNAL_LABEL_KEYS[sig.signal];
-  const label = known ? t(SIGNAL_LABEL_KEYS[sig.signal] as any) : sig.signal;
+  const label = known ? t(SIGNAL_LABEL_KEYS[sig.signal] as TranslationKey) : sig.signal;
   const weightPct = `${Math.round(sig.weight * 100)}%`;
   // Label deep-links to its explanation; hover shows the short description.
   const labelEl = known
-    ? <Link href={`/tft/marktwert/methodik#${sig.signal}`} title={t(`tft.mv.method.sig.${sig.signal}` as any)} className="hover:text-[#9d7bff] transition-colors">{label}</Link>
+    ? <Link href={`/tft/marktwert/methodik#${sig.signal}`} title={t(`tft.mv.method.sig.${sig.signal}` as TranslationKey)} className="hover:text-[#9d7bff] transition-colors">{label}</Link>
     : label;
 
   if (!sig.available) {

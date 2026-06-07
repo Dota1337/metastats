@@ -1,5 +1,5 @@
 'use client';
-import { useI18n } from '../../lib/i18n';
+import { useI18n, type TranslationKey } from '../../lib/i18n';
 
 export type TierBucket = 'all' | 'master_plus' | 'diamond' | 'master' | 'grandmaster' | 'challenger';
 
@@ -26,7 +26,7 @@ export default function TierFilter({ value, onChange }: { value: TierBucket; onC
               : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'
           }`}
         >
-          {t(o.key as any)}
+          {t(o.key as TranslationKey)}
         </button>
       ))}
     </div>

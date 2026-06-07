@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { useI18n } from '../../lib/i18n';
+import { useI18n, type TranslationKey } from '../../lib/i18n';
 
 // W1-C: Multi-Criteria-Filter — Pro-Tool, um versteckte Power-Comps zu finden
 // (z.B. „avgPlace<4.4 UND pickrate<5% UND games>500" = under-the-radar S-Tier).
@@ -127,7 +127,7 @@ export default function AdvancedCompFilters({ filters, onChange, resultCount, to
                   : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5] hover:border-[#3ecf8e]/40'
               }`}
             >
-              {t(p.labelKey as any)}
+              {t(p.labelKey as TranslationKey)}
             </button>
           );
         })}

@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { useI18n } from '../lib/i18n';
+import { useI18n, type TranslationKey } from '../lib/i18n';
 
 interface SynergyBreakdown {
   score: number;
@@ -95,7 +95,7 @@ export default function TeamSynergy({ roster, teamName, results, region }: TeamS
               return (
                 <div key={key}>
                   <div className="flex items-center justify-between mb-0.5">
-                    <span className="text-[#a0b0c5] text-[10px]">{cat?.icon} {cat ? t(cat.key as any) : key}</span>
+                    <span className="text-[#a0b0c5] text-[10px]">{cat?.icon} {cat ? t(cat.key as TranslationKey) : key}</span>
                     <span className="text-white text-[10px] font-medium">{val.score}</span>
                   </div>
                   <div className="w-full h-1 bg-[#1e2a3a] rounded-full">

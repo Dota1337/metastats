@@ -5,7 +5,7 @@ import Footer from '../../components/Footer';
 import TftHero from '../../components/tft/TftHero';
 import EmptyData from '../../components/tft/EmptyData';
 import { useI18n } from '../../lib/i18n';
-import { loadTftAssets, tftChampionTileUrl, type TftAssetsBundle, type TftChampion } from '../../lib/tft-cdragon';
+import { loadTftAssets, tftChampionTileUrl, findChampion, type TftAssetsBundle, type TftChampion } from '../../lib/tft-cdragon';
 import { costColor as costColorOf } from '../../lib/tft-ui';
 
 // W4-A: Lobby-Comp-Predictor — Pro tippt 3-5 sichtbare Units einer
@@ -177,7 +177,7 @@ export default function TftLobbyScoutPage() {
               ) : (
                 <div className="flex flex-wrap gap-1.5">
                   {selected.map(id => {
-                    const c = assets?.champions[id];
+                    const c = findChampion(assets, id);
                     const url = tftChampionTileUrl(assets, c);
                     return (
                       <button

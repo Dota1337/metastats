@@ -1,5 +1,5 @@
 'use client';
-import { useI18n } from '../../lib/i18n';
+import { useI18n, type TranslationKey } from '../../lib/i18n';
 import { tftPatchLabel } from '../../lib/tft-patch-label';
 
 // Region / bucket option lists kept in sync with tft-supabase-reader.ts.
@@ -110,7 +110,7 @@ export default function StatsFilterBar({ filters, patches, onChange }: Props) {
         >
           {BUCKET_OPTIONS.map(b => (
             <option key={b.value} value={b.value}>
-              {b.labelKey ? t(b.labelKey as any) : b.label}
+              {b.labelKey ? t(b.labelKey as TranslationKey) : b.label}
             </option>
           ))}
         </FilterSelect>
@@ -132,7 +132,7 @@ export default function StatsFilterBar({ filters, patches, onChange }: Props) {
         >
           {REGION_OPTIONS.map(r => (
             <option key={r.value} value={r.value}>
-              {r.labelKey ? t(r.labelKey as any) : r.label}
+              {r.labelKey ? t(r.labelKey as TranslationKey) : r.label}
             </option>
           ))}
         </FilterSelect>

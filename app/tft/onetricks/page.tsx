@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
 import { useI18n } from '../../lib/i18n';
-import { loadTftAssets, tftChampionTileUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
+import { loadTftAssets, tftChampionTileUrl, findChampion, findTrait, type TftAssetsBundle } from '../../lib/tft-cdragon';
 
 const REGIONS = ['euw1', 'kr', 'na1', 'eun1', 'br1', 'jp1', 'oc1', 'la1', 'la2', 'tr1', 'ru'] as const;
 type Region = typeof REGIONS[number];
@@ -115,10 +115,9 @@ export default function TftOneTricksPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {p.signatureComps.map(c => {
                     const parts = parseCluster(c.clusterKey);
-                    const traitName = parts && assets?.traits[parts.trait]?.name
-                      ? assets.traits[parts.trait].name
-                      : parts ? parts.trait.replace(/^TFT\d+_/, '') : '';
-                    const carry = parts && assets ? assets.champions[parts.carry] : null;
+                    const trait = parts ? findTrait(assets, parts.trait) : null;
+                    const traitName = trait?.name || (parts ? parts.trait.replace(/^TFT\d+_/, '') : '');
+                    const carry = parts ? findChampion(assets, parts.carry) : null;
                     return (
                       <a
                         key={c.clusterKey}

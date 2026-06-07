@@ -156,8 +156,17 @@ export default function TftBuilderPage() {
 
   const champions = useMemo(() => {
     if (!assets) return [] as { characterId: string; name: string; cost: number }[];
+    // Aktuelles Set pinnen — der Picker soll nur spielbare Set-N-Champs
+    // zeigen, nicht alle Sets aus der Asset-History. Plus min 1 Trait
+    // (PvE/FakeUnits raus, gleiche Logik wie der Explorer + Patch-Winners).
+    const setPrefix = `TFT${assets.set}_`;
     return Object.entries(assets.champions)
-      .filter(([id, c]: any) => /^TFT\d+_/.test(id) && c.name && (c.cost ?? 0) >= 1 && (c.cost ?? 0) <= 5)
+      .filter(([id, c]: any) =>
+        id.startsWith(setPrefix)
+        && c.name
+        && (c.cost ?? 0) >= 1 && (c.cost ?? 0) <= 5
+        && Array.isArray(c.traits) && c.traits.length > 0,
+      )
       .map(([id, c]: any) => ({ characterId: id, name: c.name, cost: c.cost ?? 1 }))
       .sort((a, b) => a.cost - b.cost || a.name.localeCompare(b.name));
   }, [assets]);
@@ -187,7 +196,10 @@ export default function TftBuilderPage() {
         cats.push('components');
       }
       if (cats.length === 1) {
-        if (/^TFT17_Item_/i.test(id)) cats.push('artifacts');
+        // Set-specific Artifact-Items folgen dem `TFT<N>_Item_` Prefix.
+        // Set-Number aus assets ableiten, nicht hartkodieren — sonst muss
+        // bei jedem Set-Drop die Zeile gepatched werden.
+        if (new RegExp(`^TFT${assets.set}_Item_`, 'i').test(id)) cats.push('artifacts');
       }
       out.push({ id, name: item.name, icon: item.icon, category: cats });
     }

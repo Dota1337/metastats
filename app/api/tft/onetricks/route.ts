@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-// Service-role client: the marketvalue RPC + 80-player match-cache read are
-// too heavy for the public anon role's short statement_timeout (they 500'd
-// with 57014). This runs server-side only, so bypassing RLS is fine.
-import { supabaseAdmin as supabase } from '../../../lib/supabase';
+// Pool + match cache both live on Hetzner — Supabase only carries marketvalue
+// snapshots (and even those caps at 1000 rows in PostgREST RPCs), so we read
+// directly via the refresh-api proxy.
 import { getAvailablePatches } from '../../../lib/tft-supabase-reader';
-import { fetchHetznerPlayerMatches } from '../../../lib/tft-hetzner-matches';
+import { fetchHetznerPlayerMatches, fetchHetznerMarketvaluePool } from '../../../lib/tft-hetzner-matches';
 
 // /api/tft/onetricks?region=euw1&minShare=0.6
 //
@@ -50,31 +49,56 @@ function classifyComp(m: CachedMatch): string | null {
   return `${primary.name}@${primary.tier_current ?? 0}_${carryId}`;
 }
 
-const TOP_PLAYERS = 80;
-const MIN_GAMES = 8;
+// Pool: pull the full Master+ pool via the Hetzner refresh-api. The Supabase
+// RPC has a hard 1000-row PostgREST cap which only covers Challenger + GM
+// in big regions — Master (the largest tier) is silently truncated. We go
+// through Hetzner to get the full 2k–5k Master+ list, then cap the Hetzner
+// match call at 2000 puuids to keep latency around 5–6s.
+const TOP_PLAYERS = 2000;
+const MIN_GAMES_FLEX = 8;       // Pfad A — Top-2 ≥ minShareTop2
+const MIN_GAMES_TIGHT = 50;     // Pfad B — Top-1 ≥ minShareTop1 (über die letzten 50)
+const MIN_TOP1_SHARE_DEFAULT = 0.5;
+const MIN_TOP2_SHARE_DEFAULT = 0.6;
+const MASTER_PLUS = new Set(['MASTER', 'GRANDMASTER', 'CHALLENGER']);
 const STANDARD_RANKED_QUEUE = 1100;
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const region = (searchParams.get('region') || 'euw1').toLowerCase();
-  const minShare = Math.max(0.4, Math.min(1, parseFloat(searchParams.get('minShare') || '0.6')));
+  const minShareTop2 = Math.max(0.3, Math.min(1, parseFloat(searchParams.get('minShareTop2') || searchParams.get('minShare') || String(MIN_TOP2_SHARE_DEFAULT))));
+  const minShareTop1 = Math.max(0.3, Math.min(1, parseFloat(searchParams.get('minShareTop1') || String(MIN_TOP1_SHARE_DEFAULT))));
   const setParam = searchParams.get('set');
   let setNumber = setParam && Number.isFinite(Number(setParam)) ? Number(setParam) : null;
   if (setNumber == null) {
     // Default to the current set. Without a set_number filter the cache read
-    // scans every set's matches for 80 players and order-by-datetime sorts the
-    // lot → 10s+ and intermittent statement timeouts. Pinning the set lets the
-    // (puuid, set_number, queue_id, game_datetime) index serve rows in order.
+    // scans every set's matches for 300 players and order-by-datetime sorts
+    // the lot → 10s+ and intermittent statement timeouts. Pinning the set
+    // lets the (puuid, set_number, queue_id, game_datetime) index serve rows
+    // in order.
     const patches = await getAvailablePatches();
     setNumber = patches[0]?.set_number ?? null;
   }
 
-  const { data: mvData, error: mvErr } = await supabase.rpc('get_tft_latest_marketvalues', {
-    p_region: region,
-    p_limit: TOP_PLAYERS,
-  });
-  if (mvErr) return NextResponse.json({ error: mvErr.message }, { status: 500 });
-  const candidates = (mvData || []) as Array<{ puuid: string; game_name: string | null; tag_line: string | null; tier: string; final_value: number }>;
+  // Pool fetch via Hetzner (bypasses PostgREST 1000-row cap so Master tier
+  // is actually represented). Already tier-filtered server-side.
+  let candidates: Array<{ puuid: string; game_name: string | null; tag_line: string | null; tier: string; final_value: number }> = [];
+  try {
+    const pool = await fetchHetznerMarketvaluePool({
+      region,
+      tiers: [...MASTER_PLUS],
+      limit: TOP_PLAYERS,
+    });
+    candidates = pool.map(p => ({
+      puuid: p.puuid,
+      game_name: p.gameName,
+      tag_line: p.tagLine,
+      tier: p.tier,
+      final_value: p.finalValue,
+    }));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'hetzner_pool_unreachable';
+    return NextResponse.json({ error: message }, { status: 502 });
+  }
   if (candidates.length === 0) {
     return NextResponse.json({ region, count: 0, onetricks: [] });
   }
@@ -113,13 +137,23 @@ export async function GET(request: NextRequest) {
     if (!m) continue;
     let total = 0;
     for (const e of m.values()) total += e.games;
-    if (total < MIN_GAMES) continue;
+    if (total < MIN_GAMES_FLEX) continue;
     const sorted = [...m.entries()].sort((a, b) => b[1].games - a[1].games);
     const top1 = sorted[0];
     const top2 = sorted[1];
     const top1Share = top1 ? top1[1].games / total : 0;
     const top2Share = top1Share + (top2 ? top2[1].games / total : 0);
-    if (top2Share < minShare) continue;
+
+    // Two qualification paths:
+    //   pathA (flex) — top-2 comps add up to ≥ minShareTop2 of all classified games
+    //   pathB (tight) — top-1 comp ≥ minShareTop1 over the last ≥50 games (limit_per_puuid).
+    //                   matches are already capped at the 50 latest by the Hetzner query,
+    //                   so total === 50 means the player has played ≥50 Set-17 ranked games
+    //                   and we're looking at exactly the last 50.
+    const qualifiesFlex = top2Share >= minShareTop2;
+    const qualifiesTight = total >= MIN_GAMES_TIGHT && top1Share >= minShareTop1;
+    if (!qualifiesFlex && !qualifiesTight) continue;
+
     onetricks.push({
       puuid: cand.puuid,
       gameName: cand.game_name,
@@ -129,6 +163,7 @@ export async function GET(request: NextRequest) {
       totalGames: total,
       top1Share,
       top2Share,
+      kind: qualifiesTight ? 'tight' : 'flex',
       signatureComps: [top1, top2].filter(Boolean).map(([cluster, e]) => ({
         clusterKey: cluster,
         games: e.games,
@@ -137,7 +172,10 @@ export async function GET(request: NextRequest) {
       })),
     });
   }
-  onetricks.sort((a, b) => b.top2Share - a.top2Share);
+  // Sort by top-1 share first (tight onetricks bubble up), then by top-2 share
+  // as the flex tiebreaker. Both metrics make the ranking intuitive: the most
+  // committed onetrick is on top.
+  onetricks.sort((a, b) => (b.top1Share - a.top1Share) || (b.top2Share - a.top2Share));
 
   return NextResponse.json({ region, count: onetricks.length, onetricks });
 }

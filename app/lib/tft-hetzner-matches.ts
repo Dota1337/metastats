@@ -65,6 +65,41 @@ export async function fetchHetznerPlayerMatches(opts: PlayerMatchesOpts): Promis
   return Array.isArray(data?.matches) ? data.matches as HetznerMatchRow[] : [];
 }
 
+export interface MarketvaluePoolPlayer {
+  puuid: string;
+  gameName: string | null;
+  tagLine: string | null;
+  tier: string;
+  rank: string | null;
+  lp: number | null;
+  ladderRank: number | null;
+  finalValue: number;
+  snapshotDate: string;
+}
+
+interface MarketvaluePoolOpts {
+  region: string;
+  tiers?: string[];          // default: MASTER, GRANDMASTER, CHALLENGER
+  limit?: number;            // default 3000
+  signalTimeoutMs?: number;
+}
+
+export async function fetchHetznerMarketvaluePool(opts: MarketvaluePoolOpts): Promise<MarketvaluePoolPlayer[]> {
+  if (!HETZNER_URL || !TOKEN) throw new Error('hetzner_disabled');
+  const res = await fetch(`${HETZNER_URL}/marketvalue-pool`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${TOKEN}` },
+    body: JSON.stringify({ region: opts.region, tiers: opts.tiers, limit: opts.limit }),
+    signal: AbortSignal.timeout(opts.signalTimeoutMs ?? 15_000),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`hetzner_mv_pool ${res.status}: ${text.slice(0, 200)}`);
+  }
+  const data = await res.json();
+  return Array.isArray(data?.players) ? data.players as MarketvaluePoolPlayer[] : [];
+}
+
 interface PeerBaselineOpts {
   setNumber?: number;
   minPlacement?: number;

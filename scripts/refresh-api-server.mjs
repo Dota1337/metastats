@@ -327,7 +327,7 @@ async function handleRefresh(body) {
 function readBody(req) {
   return new Promise((resolve, reject) => {
     let buf = '';
-    req.on('data', c => { buf += c; if (buf.length > 65536) reject(new Error('body too large')); });
+    req.on('data', c => { buf += c; if (buf.length > 1_048_576) reject(new Error('body too large')); });
     req.on('end', () => resolve(buf));
     req.on('error', reject);
   });
@@ -446,6 +446,47 @@ async function handleExploreMatches(body) {
   };
 }
 
+// ─ Marketvalue pool (Master+ players) ──────────────────────────────────────
+// PostgREST caps the public RPC at 1000 rows, so Master tier never makes it
+// out of get_tft_latest_marketvalues for big regions (Challenger + GM alone
+// take all 1000 slots). This endpoint queries the snapshot table directly
+// on Hetzner-PG (no PostgREST cap) and returns the full Master+ pool.
+async function handleMarketvaluePool(body) {
+  const region = typeof body?.region === 'string' ? body.region.toLowerCase() : null;
+  if (!region) throw new Error('region_required');
+  const tiers = Array.isArray(body?.tiers) && body.tiers.length > 0
+    ? body.tiers.filter(t => typeof t === 'string').map(t => t.toUpperCase())
+    : ['MASTER', 'GRANDMASTER', 'CHALLENGER'];
+  const limit = Math.max(50, Math.min(10000, Number(body?.limit) || 3000));
+
+  const sql = `
+    select distinct on (puuid)
+      puuid, game_name, tag_line, tier, rank, lp, ladder_rank, final_value, snapshot_date
+    from tft_player_marketvalue_snapshots
+    where region = $1 and tier = ANY($2::text[])
+    order by puuid, snapshot_date desc
+  `;
+  const t0 = Date.now();
+  const rows = (await pool.query(sql, [region, tiers])).rows;
+  // Sort by final_value desc + cap to `limit`.
+  rows.sort((a, b) => Number(b.final_value || 0) - Number(a.final_value || 0));
+  const capped = rows.slice(0, limit);
+  return {
+    region, tiers, count: capped.length, queryMs: Date.now() - t0,
+    players: capped.map(r => ({
+      puuid: r.puuid,
+      gameName: r.game_name,
+      tagLine: r.tag_line,
+      tier: r.tier,
+      rank: r.rank,
+      lp: r.lp,
+      ladderRank: r.ladder_rank,
+      finalValue: r.final_value,
+      snapshotDate: r.snapshot_date,
+    })),
+  };
+}
+
 // ─ Peer gold-left baseline (econ-score) ────────────────────────────────────
 // Global Set-17 mean gold_left for placement≥5 players. The legacy Supabase
 // query .limit(2000) sampled an arbitrary slice; we hold the same semantic
@@ -551,7 +592,8 @@ const server = http.createServer(async (req, res) => {
   const isExplore = req.method === 'POST' && req.url === '/explore-matches';
   const isPlayerMatches = req.method === 'POST' && req.url === '/player-matches';
   const isPeerBaseline = req.method === 'POST' && req.url === '/peer-baseline';
-  if (!isRefresh && !isExplore && !isPlayerMatches && !isPeerBaseline) {
+  const isMvPool = req.method === 'POST' && req.url === '/marketvalue-pool';
+  if (!isRefresh && !isExplore && !isPlayerMatches && !isPeerBaseline && !isMvPool) {
     res.writeHead(404, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({ error: 'not_found' }));
   }
@@ -574,6 +616,7 @@ const server = http.createServer(async (req, res) => {
     const result = isExplore ? await handleExploreMatches(body)
                   : isPlayerMatches ? await handlePlayerMatches(body)
                   : isPeerBaseline ? await handlePeerBaseline(body)
+                  : isMvPool ? await handleMarketvaluePool(body)
                   : await handleRefresh(body);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(result));

@@ -21,6 +21,15 @@ interface ItemRow {
   top4Rate: number | null;
   pickRate: number | null;
   topUsers: string[];
+  velocity?: {
+    deltaAvgPlacement?: number;
+    deltaTop4Rate?: number;
+    deltaPickRate?: number | null;
+    prevGames?: number;
+    prevAvgPlacement?: number;
+    prevTop4Rate?: number;
+    isNew?: boolean;
+  };
 }
 
 export default function TftItemsPage() {
@@ -76,7 +85,7 @@ export default function TftItemsPage() {
                 fill the row) → 4 stat columns. Name moves from 1fr to a
                 fixed 12rem so the TopUsers row gets the slack — that's
                 where the cost-bordered champion tiles want to breathe. */}
-            <div className="hidden md:grid grid-cols-[3rem_12rem_1fr_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#7a8aa0] bg-[#0a0e1a]">
+            <div className={`hidden md:grid ${filters.velocity > 0 ? 'grid-cols-[3rem_12rem_1fr_5rem_5rem_5rem_5rem_4rem]' : 'grid-cols-[3rem_12rem_1fr_5rem_5rem_5rem_5rem]'} gap-2 px-4 py-2 text-[10px] uppercase text-[#7a8aa0] bg-[#0a0e1a]`}>
               <div></div>
               <div>{t('nav.items')}</div>
               <div>{t('tft.topUsers')}</div>
@@ -84,6 +93,7 @@ export default function TftItemsPage() {
               <div className="text-right">{t('tft.pickRate')}</div>
               <div className="text-right">{t('tft.top4')}</div>
               <div className="text-right">{t('tft.gamesShort')}</div>
+              {filters.velocity > 0 && <div className="text-right">Δ Ø</div>}
             </div>
             <div className="md:hidden px-4 py-2 text-[10px] uppercase tracking-widest text-[#7a8aa0] bg-[#0a0e1a]">
               {t('nav.items')}
@@ -95,7 +105,7 @@ export default function TftItemsPage() {
                 <a
                   key={it.apiName}
                   href={`/tft/items/${encodeURIComponent(it.apiName)}?bucket=${filters.bucket}`}
-                  className="block md:grid md:grid-cols-[3rem_12rem_1fr_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 md:items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]"
+                  className={`block md:grid ${filters.velocity > 0 ? 'md:grid-cols-[3rem_12rem_1fr_5rem_5rem_5rem_5rem_4rem]' : 'md:grid-cols-[3rem_12rem_1fr_5rem_5rem_5rem_5rem]'} gap-2 px-4 py-2 md:items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]`}
                 >
                   {/* Icon + name row — icon on left, name flows on mobile;
                       on desktop participates in the parent grid via contents. */}
@@ -146,11 +156,14 @@ export default function TftItemsPage() {
                   </div>
                   {/* Stats: 4-column grid on mobile under the icon/users
                       block; explicit cells on desktop via contents. */}
-                  <div className="grid grid-cols-4 gap-2 mt-1.5 pl-12 md:pl-0 md:mt-0 md:contents">
+                  <div className={`grid ${filters.velocity > 0 ? 'grid-cols-5' : 'grid-cols-4'} gap-2 mt-1.5 pl-12 md:pl-0 md:mt-0 md:contents`}>
                     <Cell label={t('tft.avgPlacement')} value={it.avgPlacement?.toFixed(2) ?? '—'} accent="white" />
                     <Cell label={t('tft.pickRate')} value={it.pickRate != null ? `${(it.pickRate * 100).toFixed(1)}%` : '—'} />
                     <Cell label={t('tft.top4')} value={it.top4Rate != null ? `${(it.top4Rate * 100).toFixed(1)}%` : '—'} />
                     <Cell label={t('tft.gamesShort')} value={String(it.games)} accent="muted" />
+                    {filters.velocity > 0 && (
+                      <DeltaCell velocity={it.velocity} label="Δ Ø" />
+                    )}
                   </div>
                 </a>
               );
@@ -184,6 +197,47 @@ function Cell({ label, value, accent }: { label: string; value: string; accent?:
         <div className={`${valueClass} tabular-nums leading-tight`}>{value}</div>
       </div>
       <div className={`hidden md:block text-right ${valueClass} tabular-nums`}>{value}</div>
+    </>
+  );
+}
+
+// Δ-Spalte für den Velocity-Vergleich (W1-A). Negative Δ-avg-place = besser
+// geworden = grün; positive = schlechter = rot. "NEW" wenn Item im
+// Vergleichsfenster keine Sample-Size hat.
+function DeltaCell({ velocity, label }: { velocity?: { deltaAvgPlacement?: number; isNew?: boolean }; label: string }) {
+  if (!velocity) {
+    return (
+      <>
+        <div className="md:hidden">
+          <div className="text-[#7a8aa0] text-[9px] uppercase tracking-widest leading-tight">{label}</div>
+          <div className="text-[#5a6a80] tabular-nums leading-tight">—</div>
+        </div>
+        <div className="hidden md:block text-right text-[#5a6a80] tabular-nums">—</div>
+      </>
+    );
+  }
+  if (velocity.isNew) {
+    return (
+      <>
+        <div className="md:hidden">
+          <div className="text-[#7a8aa0] text-[9px] uppercase tracking-widest leading-tight">{label}</div>
+          <div className="text-[#7B61FF] tabular-nums leading-tight">NEW</div>
+        </div>
+        <div className="hidden md:block text-right text-[#7B61FF] tabular-nums">NEW</div>
+      </>
+    );
+  }
+  const d = velocity.deltaAvgPlacement ?? 0;
+  const sign = d < 0 ? '−' : d > 0 ? '+' : '';
+  const color = d < -0.02 ? '#3ecf8e' : d > 0.02 ? '#e44040' : '#a0b0c5';
+  const display = `${sign}${Math.abs(d).toFixed(2)}`;
+  return (
+    <>
+      <div className="md:hidden">
+        <div className="text-[#7a8aa0] text-[9px] uppercase tracking-widest leading-tight">{label}</div>
+        <div className="tabular-nums leading-tight font-medium" style={{ color }}>{display}</div>
+      </div>
+      <div className="hidden md:block text-right tabular-nums font-medium" style={{ color }}>{display}</div>
     </>
   );
 }

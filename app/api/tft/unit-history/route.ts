@@ -34,31 +34,36 @@ export async function GET(request: NextRequest) {
   const patches = allPatches.slice(0, patchCount);
   if (patches.length === 0) return cachedJson({ characterId, timeline: [] });
 
+  // Fire all patch RPCs in parallel — the previous sequential await loop
+  // was 5×5s = 25-30s cold. Promise.allSettled keeps a single failure from
+  // dropping the rest of the timeline.
+  const settled = await Promise.allSettled(patches.map(p =>
+    callRpc<UnitRow[]>('get_tft_unit_stats', {
+      p_regions: regions,
+      p_buckets: buckets,
+      p_days: 30,
+      p_patch: p.patch,
+      p_set: p.set_number,
+    }).then(rows => ({ p, rows }))
+  ));
+
   const timeline: any[] = [];
-  for (const p of patches) {
-    try {
-      const rows = await callRpc<UnitRow[]>('get_tft_unit_stats', {
-        p_regions: regions,
-        p_buckets: buckets,
-        p_days: 30,
-        p_patch: p.patch,
-        p_set: p.set_number,
+  for (const s of settled) {
+    if (s.status !== 'fulfilled') continue;
+    const { p, rows } = s.value;
+    const row = rows.find(r => r.character_id === characterId);
+    const participants = rows[0]?.participants || 0;
+    if (row && row.games > 0) {
+      timeline.push({
+        patch: p.patch,
+        firstDay: p.first_day,
+        lastDay: p.last_day,
+        games: Number(row.games),
+        avgPlacement: Number(row.sum_placement) / Number(row.games),
+        top4Rate: Number(row.top4) / Number(row.games),
+        top1Rate: Number(row.top1) / Number(row.games),
+        pickRate: participants > 0 ? Number(row.games) / Number(participants) : null,
       });
-      const row = rows.find(r => r.character_id === characterId);
-      const participants = rows[0]?.participants || 0;
-      if (row && row.games > 0) {
-        timeline.push({
-          patch: p.patch,
-          firstDay: p.first_day,
-          lastDay: p.last_day,
-          games: Number(row.games),
-          avgPlacement: Number(row.sum_placement) / Number(row.games),
-          top4Rate: Number(row.top4) / Number(row.games),
-          top1Rate: Number(row.top1) / Number(row.games),
-          pickRate: participants > 0 ? Number(row.games) / Number(participants) : null,
-        });
-      }
-    } catch {
     }
   }
   // Oldest patch left, newest right. Order by last_day (the patch's most

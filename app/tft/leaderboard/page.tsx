@@ -151,7 +151,7 @@ export default function TftLeaderboardPage() {
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
             <div className="hidden sm:grid grid-cols-[3rem_1fr_5rem_5rem_5rem_7rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#7a8aa0] bg-[#0a0e1a]">
               <div className="text-right">#</div>
-              <div>Spieler</div>
+              <div>{t('tft.pros.col.player')}</div>
               <div className="text-right">LP</div>
               <div className="text-right">{t('tft.gamesShort')}</div>
               <div className="text-right">WR</div>

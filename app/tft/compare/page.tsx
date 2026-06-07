@@ -329,7 +329,7 @@ export default function TftComparePage() {
 
             {/* Agent-Multiplier-Radar — 6 axes from marketvalue pipeline */}
             <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-4">
-              <div className="text-center text-[#a0b0c5] text-xs uppercase tracking-widest mb-2">Performance-Radar</div>
+              <div className="text-center text-[#a0b0c5] text-xs uppercase tracking-widest mb-2">{t('tft.compare.performanceRadar')}</div>
               {(() => {
                 const signalOrder = ['performance', 'metaRelative', 'consistency', 'flexMastery', 'gameSense', 'boardStrength'];
                 const signalLabels: Record<string, string> = {
@@ -508,13 +508,14 @@ export default function TftComparePage() {
 }
 
 function HeadToHeadBanner({ p1, p2, name1, name2 }: { p1: number; p2: number; name1: string; name2: string }) {
+  const { t } = useI18n();
   const total = p1 + p2 || 1;
   const w1 = (p1 / total) * 100;
   return (
     <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-4">
       <div className="flex items-center justify-between text-xs mb-2">
         <span className={`font-semibold truncate ${p1 > p2 ? 'text-[#7B61FF]' : 'text-[#a0b0c5]'}`}>{name1}</span>
-        <span className="text-[#7a8aa0] uppercase tracking-widest">Head-to-Head</span>
+        <span className="text-[#7a8aa0] uppercase tracking-widest">{t('tft.compare.headToHead')}</span>
         <span className={`font-semibold truncate ${p2 > p1 ? 'text-[#3ecf8e]' : 'text-[#a0b0c5]'}`}>{name2}</span>
       </div>
       <div className="relative h-2.5 rounded-full bg-[#1e2a3a] overflow-hidden">

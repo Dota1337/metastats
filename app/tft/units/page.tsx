@@ -99,7 +99,7 @@ export default function TftUnitsPage() {
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
             <div className="hidden md:grid grid-cols-[3rem_1fr_5rem_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#7a8aa0] bg-[#0a0e1a]">
               <div></div>
-              <div>Champion</div>
+              <div>{t('tft.champion')}</div>
               <div className="text-right">{t('tft.avgPlacement')}</div>
               <div className="text-right">{t('tft.pickRate')}</div>
               <div className="text-right">{t('tft.top4')}</div>

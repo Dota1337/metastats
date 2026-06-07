@@ -159,7 +159,7 @@ export default function TftTournamentDetailPage() {
               <div>{t('tft.pros.col.player')}</div>
               <div>{t('tft.pros.col.team')}</div>
               <div>{t('tft.pros.col.region')}</div>
-              <div className="text-right">Prize</div>
+              <div className="text-right">{t('tft.player.colPrize')}</div>
             </div>
             {tournament.results.map(r => {
               const placeColor = r.placement === 1 ? '#f0c040' : r.placement === 2 ? '#cfd6dc' : r.placement === 3 ? '#cd7f32' : '#a0b0c5';

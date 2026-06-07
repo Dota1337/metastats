@@ -83,6 +83,17 @@ function buildUrls() {
     urls.add(`/api/tft/onetricks?region=${region}`);
   }
 
+  // Meta-Pulse + Patch-Diff — landing-tier pages, both cold ~10s. Patch-diff
+  // matrix covers the 4 entity types × 2 default buckets users actually open.
+  // Meta-pulse is single-bucket per call.
+  urls.add(`/api/tft/meta-pulse?bucket=master_plus&days=3&patch=current`);
+  urls.add(`/api/tft/meta-pulse?bucket=diamond&days=3&patch=current`);
+  for (const entity of ['unit', 'item', 'trait', 'comp']) {
+    for (const bucket of ['master_plus', 'diamond']) {
+      urls.add(`/api/tft/patch-diff?entity=${entity}&bucket=${bucket}`);
+    }
+  }
+
   return [...urls];
 }
 

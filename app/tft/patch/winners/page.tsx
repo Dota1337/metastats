@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
@@ -61,6 +61,34 @@ export default function TftPatchWinnersPage() {
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
+
+  // Case-insensitive lookup map for champion-ids: the DB sometimes stores
+  // a lowercase variant (e.g. `tft17_bardfollower`) that the asset bundle
+  // doesn't have under that casing. Build the map once per assets bundle
+  // so we can map a raw key to the asset entry without exposing PvE-only
+  // entities like Bard's follower (which isn't in the asset bundle at all).
+  const champById = useMemo(() => {
+    const m = new Map<string, { id: string; champ: any }>();
+    if (!assets) return m;
+    for (const [id, champ] of Object.entries(assets.champions)) {
+      m.set(id.toLowerCase(), { id, champ });
+    }
+    return m;
+  }, [assets]);
+
+  // Strip non-playable units before they hit the winners/losers lists.
+  // A unit is "playable" when (a) it resolves in the asset bundle case-
+  // insensitively, (b) has at least one trait, and (c) the ID/name doesn't
+  // match a known PvE/follower/helper pattern (Bard's follower, Mini Black
+  // Hole, Apex Primordian etc.).
+  const isPlayableUnit = (key: string): boolean => {
+    if (/follower|helper|pet|minion|summon|enemy_|fakeunit/i.test(key)) return false;
+    const hit = champById.get(key.toLowerCase());
+    if (!hit) return false;
+    const traits = (hit.champ as any)?.traits;
+    return Array.isArray(traits) && traits.length > 0;
+  };
+
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -70,8 +98,12 @@ export default function TftPatchWinnersPage() {
       .then(r => r.ok ? r.json() : { winners: [], losers: [] })
       .then(d => {
         if (cancelled) return;
-        setWinners(d.winners || []);
-        setLosers(d.losers || []);
+        const w: DiffEntry[] = d.winners || [];
+        const l: DiffEntry[] = d.losers || [];
+        // For unit entity, drop PvE/follower/helper IDs that sneak through
+        // the aggregate but aren't actual playable champs.
+        setWinners(entity === 'unit' ? w.filter(e => isPlayableUnit(e.key)) : w);
+        setLosers(entity === 'unit' ? l.filter(e => isPlayableUnit(e.key)) : l);
         setInfo({ currentPatch: d.currentPatch || null, previousPatch: d.previousPatch || null });
         setLoading(false);
       })
@@ -242,12 +274,22 @@ export default function TftPatchWinnersPage() {
 
 function renderEntity(key: string, entity: Entity, assets: TftAssetsBundle | null) {
   if (entity === 'unit') {
-    const champ = assets?.champions[key];
+    // Case-insensitive lookup: the cache occasionally stores
+    // `tft17_xxx` lowercase where assets keys are `TFT17_Xxx`. Try the
+    // exact match first, then walk the keys once if needed.
+    let champ = assets?.champions[key];
+    let canonicalId = key;
+    if (!champ && assets) {
+      const lower = key.toLowerCase();
+      for (const [id, c] of Object.entries(assets.champions)) {
+        if (id.toLowerCase() === lower) { champ = c; canonicalId = id; break; }
+      }
+    }
     const url = tftChampionTileUrl(assets, champ);
     return {
       name: champ?.name || key.replace(/^TFT\d+_/, ''),
       icon: url ? <img src={url} alt="" className="w-8 h-8 rounded border border-[#c39bff]/60" /> : <div className="w-8 h-8 rounded bg-[#1e2a3a]" />,
-      href: `/tft/units/${encodeURIComponent(key)}`,
+      href: `/tft/units/${encodeURIComponent(canonicalId)}`,
     };
   }
   if (entity === 'item') {

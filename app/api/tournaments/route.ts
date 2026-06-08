@@ -21,7 +21,7 @@ const PRIORITY_LEAGUES = new Set([
 // Cache for 30 minutes (11 API calls per refresh)
 let cached: { data: any; time: number } | null = null;
 const CACHE_TTL = 30 * 60 * 1000;
-const API_KEY = '0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z';
+const API_KEY = process.env.LOLESPORTS_API_KEY || '0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z';
 
 async function fetchLoLEsports(pageToken?: string): Promise<any> {
   const url = pageToken

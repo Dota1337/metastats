@@ -34,12 +34,39 @@ const MAX_ITEMS_PER_UNIT = 3;
 const STORAGE_KEY = 'tft.savedComps';
 const HEX_CLIP = 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)';
 
+// Miss Fortune (Set 17) has a "Choose Trait" placeholder that resolves to
+// Challenger / Replicator / Conduit depending on the chosen Stance. The three
+// "Stance" items live in the asset bundle but are never picked from the items
+// palette — they're selected via the inline picker in the unit detail panel.
+const MF_CHAR_ID = 'TFT17_MissFortune';
+const MF_CHOOSE_TRAIT = 'Choose Trait';
+const MF_STANCE_ITEMS: Record<MfStance, string> = {
+  AS: 'TFT17_Item_MissFortuneUniqueASTraitStance',
+  Flex: 'TFT17_Item_MissFortuneUniqueFlexTraitStance',
+  Mana: 'TFT17_Item_MissFortuneUniqueManaTraitStance',
+};
+const MF_STANCE_TRAITS: Record<MfStance, string> = {
+  AS: 'Challenger',
+  Flex: 'Replicator',
+  Mana: 'Conduit',
+};
+const STANCE_ITEM_IDS = new Set(Object.values(MF_STANCE_ITEMS));
+
+// Universal artifacts that are no longer in the current rotation. Add IDs here
+// when the in-game pool changes — a long-term fix is exposing an `active.items`
+// whitelist from fetch-tft-assets.mjs analogous to `active.augments`.
+const DEAD_ARTIFACTS = new Set<string>([
+  'TFT_Item_Artifact_HorizonFocus',
+]);
+
 type Team = 'own' | 'opp';
+type MfStance = 'AS' | 'Flex' | 'Mana';
 
 interface Placement {
   cell: number;
   characterId: string;
   items: string[];
+  stance?: MfStance;
 }
 
 interface SavedComp {
@@ -50,20 +77,23 @@ interface SavedComp {
   createdAt: number;
 }
 
-type ItemTab = 'completed' | 'components' | 'radiant' | 'artifacts' | 'emblems' | 'all';
+type ItemTab = 'completed' | 'radiant' | 'psyonic' | 'artifacts' | 'emblems';
 
 interface ItemEntry {
   id: string;
   name: string;
   icon: string | null;
-  category: ItemTab[];
+  category: ItemTab;
 }
 
 function encodeState(own: Placement[], opp: Placement[]): string {
   if (own.length === 0 && opp.length === 0) return '';
   try {
-    const compact: any = { p: own.map(p => ({ c: p.cell, i: p.characterId, t: p.items })) };
-    if (opp.length > 0) compact.o = opp.map(p => ({ c: p.cell, i: p.characterId, t: p.items }));
+    const pack = (p: Placement) => p.stance
+      ? { c: p.cell, i: p.characterId, t: p.items, s: p.stance }
+      : { c: p.cell, i: p.characterId, t: p.items };
+    const compact: any = { p: own.map(pack) };
+    if (opp.length > 0) compact.o = opp.map(pack);
     return btoa(JSON.stringify(compact));
   } catch { return ''; }
 }
@@ -76,9 +106,10 @@ function decodePlacementArray(json: any): Placement[] {
       const cell = Number(e.c);
       const cid = String(e.i || '');
       const items = Array.isArray(e.t) ? e.t.filter((x: any) => typeof x === 'string').slice(0, MAX_ITEMS_PER_UNIT) : [];
+      const stance: MfStance | undefined = (e.s === 'AS' || e.s === 'Flex' || e.s === 'Mana') ? e.s : undefined;
       if (!Number.isFinite(cell) || cell < 0 || cell >= ROWS * COLS) return null;
       if (!cid) return null;
-      return { cell, characterId: cid, items };
+      return stance ? { cell, characterId: cid, items, stance } : { cell, characterId: cid, items };
     })
     .filter(Boolean) as Placement[];
 }
@@ -93,12 +124,35 @@ function decodeState(s: string): { own: Placement[]; opp: Placement[] } {
   } catch { return { own: [], opp: [] }; }
 }
 
-function categorizeItem(id: string, name: string): ItemTab[] {
-  const cats: ItemTab[] = ['all'];
-  if (/Emblem/i.test(id) || /Emblem/i.test(name)) cats.push('emblems');
-  else if (/Artifact/i.test(id)) cats.push('artifacts');
-  else if (/Radiant/i.test(id)) cats.push('radiant');
-  return cats;
+function categorizeItem(id: string, name: string, hasComp: boolean, setN: number): ItemTab | null {
+  // MF Stance items are never shown in the items palette — picked via the
+  // stance picker in the unit detail panel.
+  if (STANCE_ITEM_IDS.has(id)) return null;
+  // Emblems first — some emblem IDs also match later patterns.
+  if (/Emblem/i.test(id) || /Emblem/i.test(name)) return 'emblems';
+  // Psyonic = Set-N PsyOps trait items (base + radiant variants).
+  if (new RegExp(`^TFT${setN}_Item_PsyOps_`, 'i').test(id)) return 'psyonic';
+  // Set-specific artifacts.
+  if (new RegExp(`^TFT${setN}_Item_Artifact_`, 'i').test(id)) return 'artifacts';
+  // Universal artifacts, minus the dead-rotation list.
+  if (/^TFT_Item_Artifact_/i.test(id)) {
+    return DEAD_ARTIFACTS.has(id) ? null : 'artifacts';
+  }
+  // Real Set-N radiant items (universal + Anima Squad set-specific). Set 17
+  // doesn't ship classic per-completed-item radiant variants; the list stays
+  // short on purpose.
+  if (id === 'TFT_Item_RadiantVirtue') return 'radiant';
+  if (new RegExp(`^TFT${setN}_AnimaSquadItem_.*Radiant`, 'i').test(id)) return 'radiant';
+  // Universal completed items: composition of 2 components, no Corrupted
+  // legacy dupes (Set-13 Inkborn Fables left those behind with identical
+  // display names).
+  if (hasComp && /^TFT_Item_/i.test(id) && !/Corrupted/i.test(id)) {
+    // Raw components have no `composition` so they wouldn't reach here, but
+    // belt-and-suspenders against the asset bundle adding placeholder pairs.
+    if (/^TFT_Item_(BFSword|Bow|RodOfAges|RodOfTheJax|Tear|ChainVest|Cloak|GiantsBelt|SparringGloves|Spatula)$/i.test(id)) return null;
+    return 'completed';
+  }
+  return null;
 }
 
 export default function TftBuilderPage() {
@@ -122,7 +176,7 @@ export default function TftBuilderPage() {
   const [savedComps, setSavedComps] = useState<SavedComp[]>([]);
   const [shareToast, setShareToast] = useState(false);
   const [publishState, setPublishState] = useState<'idle' | 'sending' | 'ok' | 'err'>('idle');
-  const dragRef = useRef<{ from: 'palette' | 'board'; payload: string | number; fromTeam?: Team } | null>(null);
+  const dragRef = useRef<{ from: 'palette' | 'board' | 'item'; payload: string | number; fromTeam?: Team } | null>(null);
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
 
@@ -181,34 +235,28 @@ export default function TftBuilderPage() {
 
   const items = useMemo<ItemEntry[]>(() => {
     if (!assets) return [];
+    const setN = assets.set;
+    // Restrict to universal items (TFT_Item_*) and current-set items
+    // (TFT{setN}_*). Anything from other sets — e.g. TFT5_Item_*RadiantSpat —
+    // is dropped at the gate so categorizeItem never has to guess.
+    const setPrefixRe = new RegExp(`^TFT(_Item|${setN}_)`, 'i');
     const out: ItemEntry[] = [];
     for (const [id, item] of Object.entries(assets.items)) {
       if (/Augment/i.test(id)) continue;
-      if (!/^TFT(_|17_|Set\d+_)?Item/i.test(id)) continue;
+      if (!setPrefixRe.test(id)) continue;
       if (/Grant|Anvil|Orbs|Loot|Debug|Tutorial|Tactician|TheStar/i.test(id)) continue;
       if (!item.name) continue;
       const hasComp = !!(item.composition && item.composition.length === 2);
-      const cats = categorizeItem(id, item.name);
-      if (hasComp && !cats.includes('emblems') && !cats.includes('artifacts') && !cats.includes('radiant')) {
-        cats.push('completed');
-      }
-      if (/^TFT_Item_(BFSword|Bow|RodOfAges|RodOfTheJax|Tear|ChainVest|Cloak|GiantsBelt|SparringGloves|Spatula)/i.test(id)) {
-        cats.push('components');
-      }
-      if (cats.length === 1) {
-        // Set-specific Artifact-Items folgen dem `TFT<N>_Item_` Prefix.
-        // Set-Number aus assets ableiten, nicht hartkodieren — sonst muss
-        // bei jedem Set-Drop die Zeile gepatched werden.
-        if (new RegExp(`^TFT${assets.set}_Item_`, 'i').test(id)) cats.push('artifacts');
-      }
-      out.push({ id, name: item.name, icon: item.icon, category: cats });
+      const cat = categorizeItem(id, item.name, hasComp, setN);
+      if (!cat) continue;
+      out.push({ id, name: item.name, icon: item.icon, category: cat });
     }
     return out.sort((a, b) => a.name.localeCompare(b.name));
   }, [assets]);
 
   const filteredItems = useMemo(() => {
     return items.filter(i => {
-      if (!i.category.includes(itemTab)) return false;
+      if (i.category !== itemTab) return false;
       if (itemQuery && !i.name.toLowerCase().includes(itemQuery.toLowerCase())) return false;
       return true;
     });
@@ -226,7 +274,14 @@ export default function TftBuilderPage() {
       seen.add(p.characterId);
       const champ: any = assets.champions[p.characterId];
       if (!champ?.traits) continue;
-      for (const tr of champ.traits) {
+      for (const rawTrait of champ.traits) {
+        // Resolve MF "Choose Trait" placeholder via the picked stance.
+        // No stance → the slot doesn't count toward any trait.
+        let tr = rawTrait;
+        if (p.characterId === MF_CHAR_ID && rawTrait === MF_CHOOSE_TRAIT) {
+          if (!p.stance) continue;
+          tr = MF_STANCE_TRAITS[p.stance];
+        }
         const meta: any = assets.traits[tr] || Object.values(assets.traits).find((m: any) => m.name === tr);
         const displayName = meta?.name || tr;
         counts.set(displayName, (counts.get(displayName) || 0) + 1);
@@ -315,6 +370,28 @@ export default function TftBuilderPage() {
     }));
   }, [selectedCell, selectedTeam]);
 
+  // Used by item drag-and-drop onto an arbitrary occupied cell (no selection
+  // required). No-op if the cell is empty or the item is already on the unit.
+  const addItemToCell = useCallback((team: Team, cell: number, itemId: string) => {
+    setPlacementsFor(team, prev => prev.map(p => {
+      if (p.cell !== cell) return p;
+      if (p.items.length >= MAX_ITEMS_PER_UNIT) return p;
+      if (p.items.includes(itemId)) return p;
+      return { ...p, items: [...p.items, itemId] };
+    }));
+  }, []);
+
+  const setStanceFor = useCallback((team: Team, cell: number, stance: MfStance | null) => {
+    setPlacementsFor(team, prev => prev.map(p => {
+      if (p.cell !== cell) return p;
+      if (stance === null) {
+        const { stance: _omit, ...rest } = p;
+        return rest;
+      }
+      return { ...p, stance };
+    }));
+  }, []);
+
   const removeItemFromSelected = useCallback((itemId: string) => {
     if (selectedCell == null) return;
     setPlacementsFor(selectedTeam, prev => prev.map(p => p.cell === selectedCell
@@ -383,11 +460,20 @@ export default function TftBuilderPage() {
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', String(cell));
   }
+  function onDragStartItem(e: React.DragEvent, itemId: string) {
+    dragRef.current = { from: 'item', payload: itemId };
+    e.dataTransfer.effectAllowed = 'copy';
+    e.dataTransfer.setData('text/plain', itemId);
+  }
   function onDropCell(e: React.DragEvent, team: Team, cell: number) {
     e.preventDefault();
     const drag = dragRef.current;
     if (!drag) return;
-    if (drag.from === 'palette') {
+    if (drag.from === 'item') {
+      addItemToCell(team, cell, String(drag.payload));
+      setSelectedTeam(team);
+      setSelectedCell(cell);
+    } else if (drag.from === 'palette') {
       placeAt(team, cell, String(drag.payload));
     } else if (drag.from === 'board') {
       const from = Number(drag.payload);
@@ -613,9 +699,96 @@ export default function TftBuilderPage() {
       <Nav active="comps" />
       <TftHero pageTitle={t('tft.builderTitle')} subtitle={t('tft.builderSubtitle')} />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-2 pb-8">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5">
-          {/* LEFT */}
-          <div>
+        <div className="grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)_300px] gap-4">
+          {/* LEFT — Active traits + saved comps */}
+          <div className="flex flex-col gap-4 lg:sticky lg:top-4 lg:self-start order-2 lg:order-none">
+            <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-4">
+              <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">
+                {t('tft.builderTraits')}
+              </div>
+              {ownPlacements.length === 0 ? (
+                <div className="text-[#7a8aa0] text-xs">—</div>
+              ) : (
+                <div className="space-y-2">
+                  {activeTraits.map(tr => {
+                    const tierIdx = tr.activeIdx;
+                    const iconUrl = tftIconUrl(assets, tr.icon);
+                    const tier = tierIdx != null ? tr.tiers[tierIdx] : null;
+                    const styleColor = tier?.style === 5 ? '#c39bff'
+                      : tier?.style === 4 ? '#e0c75a'
+                      : tier?.style === 3 ? '#cfd6dc'
+                      : tier?.style === 1 ? '#a07a4d'
+                      : '#5a6a80';
+                    return (
+                      <div
+                        key={tr.apiName}
+                        className="flex items-center gap-2 p-1.5 rounded"
+                        style={{ backgroundColor: tier ? `${styleColor}15` : 'transparent' }}
+                      >
+                        {iconUrl ? (
+                          <img src={iconUrl} alt="" className="w-6 h-6 rounded" style={{ filter: tier ? 'none' : 'grayscale(1)' }} />
+                        ) : (
+                          <div className="w-6 h-6 rounded bg-[#1e2a3a]" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-white text-xs truncate">{tr.name}</div>
+                          <div className="flex items-center gap-0.5 mt-0.5">
+                            {tr.tiers.map((tierDef: any, i: number) => (
+                              <span
+                                key={i}
+                                className="text-[10px] tabular-nums px-1 rounded"
+                                style={{
+                                  color: i === tierIdx ? '#fff' : '#5a6a80',
+                                  backgroundColor: i === tierIdx ? styleColor : 'transparent',
+                                }}
+                              >
+                                {tierDef.minUnits}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="tabular-nums text-sm" style={{ color: tier ? styleColor : '#7a8aa0' }}>
+                          {tr.count}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {savedComps.length > 0 && (
+              <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-4">
+                <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">
+                  {t('tft.builderMyComps')}
+                </div>
+                <div className="space-y-1.5 max-h-[280px] overflow-y-auto pr-1">
+                  {savedComps.map(c => (
+                    <div key={c.id} className="flex items-center gap-2 p-1.5 rounded bg-[#0a0e1a]">
+                      <button
+                        onClick={() => loadSaved(c.id)}
+                        className="flex-1 text-left text-white text-xs hover:text-[#a892ff] truncate"
+                        title={c.name}
+                      >
+                        {c.name}
+                        <span className="text-[#5a6a80] ml-1.5">({c.placements.length + (c.oppPlacements?.length || 0)})</span>
+                      </button>
+                      <button
+                        onClick={() => deleteSaved(c.id)}
+                        className="text-[#5a6a80] hover:text-[#e44040] text-xs px-1"
+                        title={t('tft.builderDelete')}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* CENTER — Boards + champion palette */}
+          <div className="order-1 lg:order-none">
             {/* Toolbar */}
             <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
               <div className="text-[#a0b0c5] text-xs uppercase tracking-widest">
@@ -724,54 +897,10 @@ export default function TftBuilderPage() {
               </div>
             </div>
 
-            {/* Items palette */}
-            <div
-              className="bg-[#0d1526] border rounded-lg p-4"
-              style={{ borderColor: selectedPlacement ? '#a892ff66' : '#1e2a3a' }}
-            >
-              <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
-                <div className="flex items-center gap-1 flex-wrap">
-                  {(['completed', 'components', 'radiant', 'artifacts', 'emblems', 'all'] as ItemTab[]).map(tab => (
-                    <button
-                      key={tab}
-                      onClick={() => setItemTab(tab)}
-                      className={`px-2.5 py-1 rounded text-xs ${itemTab === tab ? 'bg-[#7B61FF] text-white' : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'}`}
-                    >
-                      {t('tft.builderItems' + tab.charAt(0).toUpperCase() + tab.slice(1) as any) || tab}
-                    </button>
-                  ))}
-                </div>
-                <input
-                  type="search"
-                  value={itemQuery}
-                  onChange={e => setItemQuery(e.target.value)}
-                  placeholder={t('tft.builderItemsSearch')}
-                  className="flex-1 min-w-[160px] bg-[#141c2e] border border-[#1e2a3a] rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-[#7B61FF]/60"
-                />
-              </div>
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(38px,1fr))] gap-1.5 max-h-[260px] overflow-y-auto pr-1">
-                {filteredItems.map(item => {
-                  const url = tftIconUrl(assets, item.icon);
-                  const onSelectedUnit = selectedPlacement?.items.includes(item.id);
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => addItemToSelected(item.id)}
-                      disabled={!selectedPlacement || (selectedPlacement.items.length >= MAX_ITEMS_PER_UNIT && !onSelectedUnit)}
-                      className="aspect-square rounded overflow-hidden border border-[#1e2a3a] hover:border-[#a892ff] transition disabled:opacity-30 disabled:cursor-not-allowed"
-                      style={{ boxShadow: onSelectedUnit ? '0 0 0 2px #a892ff inset' : 'none' }}
-                      title={item.name}
-                    >
-                      {url && <img src={url} alt={item.name} className="w-full h-full object-cover" />}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
           </div>
 
-          {/* RIGHT */}
-          <div className="flex flex-col gap-4 lg:sticky lg:top-4 lg:self-start">
+          {/* RIGHT — Selected unit (with MF stance picker) + items palette */}
+          <div className="flex flex-col gap-4 lg:sticky lg:top-4 lg:self-start order-3 lg:order-none">
             {selectedPlacement && (
               <div className="bg-[#0d1526] border border-[#a892ff]/40 rounded-lg p-4">
                 <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-2">
@@ -809,92 +938,81 @@ export default function TftBuilderPage() {
                     );
                   })}
                 </div>
+                {selectedPlacement.characterId === MF_CHAR_ID && (
+                  <div className="mt-3 pt-3 border-t border-[#1e2a3a]">
+                    <div className="text-[#a0b0c5] text-[10px] uppercase tracking-widest mb-2">
+                      {t('tft.builderMfStance')}
+                    </div>
+                    <div className="flex gap-1.5">
+                      {(['AS', 'Flex', 'Mana'] as MfStance[]).map(s => {
+                        const itemId = MF_STANCE_ITEMS[s];
+                        const stanceItem = assets?.items[itemId];
+                        const iurl = tftIconUrl(assets, stanceItem?.icon);
+                        const isActive = selectedPlacement.stance === s;
+                        return (
+                          <button
+                            key={s}
+                            onClick={() => setStanceFor(selectedTeam, selectedPlacement.cell, isActive ? null : s)}
+                            className="flex-1 aspect-square rounded overflow-hidden transition"
+                            style={{ border: `2px solid ${isActive ? '#a892ff' : '#1e2a3a'}` }}
+                            title={stanceItem?.name || s}
+                          >
+                            {iurl && <img src={iurl} alt={stanceItem?.name || ''} className="w-full h-full object-cover" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {selectedPlacement.stance && (
+                      <div className="text-[10px] text-[#a892ff] mt-1.5 text-center">
+                        {assets?.items[MF_STANCE_ITEMS[selectedPlacement.stance]]?.name}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
             <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-4">
-              <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">
-                {t('tft.builderTraits')}
+              <div className="flex flex-wrap items-center gap-1 mb-3">
+                {(['completed', 'radiant', 'psyonic', 'artifacts', 'emblems'] as ItemTab[]).map(tab => (
+                  <button
+                    key={tab}
+                    onClick={() => setItemTab(tab)}
+                    className={`px-2 py-1 rounded text-[11px] ${itemTab === tab ? 'bg-[#7B61FF] text-white' : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'}`}
+                  >
+                    {t('tft.builderItems' + tab.charAt(0).toUpperCase() + tab.slice(1) as any) || tab}
+                  </button>
+                ))}
               </div>
-              {ownPlacements.length === 0 ? (
-                <div className="text-[#7a8aa0] text-xs">—</div>
-              ) : (
-                <div className="space-y-2">
-                  {activeTraits.map(tr => {
-                    const tierIdx = tr.activeIdx;
-                    const iconUrl = tftIconUrl(assets, tr.icon);
-                    const tier = tierIdx != null ? tr.tiers[tierIdx] : null;
-                    const styleColor = tier?.style === 5 ? '#c39bff'
-                      : tier?.style === 4 ? '#e0c75a'
-                      : tier?.style === 3 ? '#cfd6dc'
-                      : tier?.style === 1 ? '#a07a4d'
-                      : '#5a6a80';
-                    return (
-                      <div
-                        key={tr.apiName}
-                        className="flex items-center gap-2 p-1.5 rounded"
-                        style={{ backgroundColor: tier ? `${styleColor}15` : 'transparent' }}
-                      >
-                        {iconUrl ? (
-                          <img src={iconUrl} alt="" className="w-6 h-6 rounded" style={{ filter: tier ? 'none' : 'grayscale(1)' }} />
-                        ) : (
-                          <div className="w-6 h-6 rounded bg-[#1e2a3a]" />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <div className="text-white text-xs truncate">{tr.name}</div>
-                          <div className="flex items-center gap-0.5 mt-0.5">
-                            {tr.tiers.map((tierDef: any, i: number) => (
-                              <span
-                                key={i}
-                                className="text-[10px] tabular-nums px-1 rounded"
-                                style={{
-                                  color: i === tierIdx ? '#fff' : '#5a6a80',
-                                  backgroundColor: i === tierIdx ? styleColor : 'transparent',
-                                }}
-                              >
-                                {tierDef.minUnits}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="tabular-nums text-sm" style={{ color: tier ? styleColor : '#7a8aa0' }}>
-                          {tr.count}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+              <input
+                type="search"
+                value={itemQuery}
+                onChange={e => setItemQuery(e.target.value)}
+                placeholder={t('tft.builderItemsSearch')}
+                className="w-full bg-[#141c2e] border border-[#1e2a3a] rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-[#7B61FF]/60 mb-3"
+              />
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(40px,1fr))] gap-1.5 max-h-[440px] overflow-y-auto pr-1">
+                {filteredItems.map(item => {
+                  const url = tftIconUrl(assets, item.icon);
+                  const onSelectedUnit = selectedPlacement?.items.includes(item.id);
+                  const fullOnSelected = selectedPlacement && selectedPlacement.items.length >= MAX_ITEMS_PER_UNIT && !onSelectedUnit;
+                  return (
+                    <button
+                      key={item.id}
+                      draggable
+                      onDragStart={(e) => onDragStartItem(e, item.id)}
+                      onClick={() => addItemToSelected(item.id)}
+                      disabled={!!fullOnSelected}
+                      className="aspect-square rounded overflow-hidden border border-[#1e2a3a] hover:border-[#a892ff] transition disabled:opacity-30 cursor-grab active:cursor-grabbing"
+                      style={{ boxShadow: onSelectedUnit ? '0 0 0 2px #a892ff inset' : 'none' }}
+                      title={item.name}
+                    >
+                      {url && <img src={url} alt={item.name} className="w-full h-full object-cover pointer-events-none" />}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-
-            {savedComps.length > 0 && (
-              <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-4">
-                <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">
-                  {t('tft.builderMyComps')}
-                </div>
-                <div className="space-y-1.5 max-h-[280px] overflow-y-auto pr-1">
-                  {savedComps.map(c => (
-                    <div key={c.id} className="flex items-center gap-2 p-1.5 rounded bg-[#0a0e1a]">
-                      <button
-                        onClick={() => loadSaved(c.id)}
-                        className="flex-1 text-left text-white text-xs hover:text-[#a892ff] truncate"
-                        title={c.name}
-                      >
-                        {c.name}
-                        <span className="text-[#5a6a80] ml-1.5">({c.placements.length + (c.oppPlacements?.length || 0)})</span>
-                      </button>
-                      <button
-                        onClick={() => deleteSaved(c.id)}
-                        className="text-[#5a6a80] hover:text-[#e44040] text-xs px-1"
-                        title={t('tft.builderDelete')}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>

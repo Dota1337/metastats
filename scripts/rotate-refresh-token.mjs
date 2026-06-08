@@ -70,14 +70,14 @@ function generateToken() {
 function updateVercelEnv(token) {
   for (const target of ['production', 'development']) {
     try {
-      run('vercel', ['env', 'rm', SECRET_NAME, target, '--yes'], { env: { ...process.env, NODE_TLS_REJECT_UNAUTHORIZED: '0' } });
+      run('vercel', ['env', 'rm', SECRET_NAME, target, '--yes'], { shell: true, env: { ...process.env, NODE_TLS_REJECT_UNAUTHORIZED: '0' } });
     } catch {
       // Token might not exist yet — first rotation. Ignore.
     }
-    const echo = spawnSync('printf', ['%s', token], { encoding: 'utf8' });
     const add = spawnSync('vercel', ['env', 'add', SECRET_NAME, target], {
-      input: echo.stdout,
+      input: token,
       stdio: ['pipe', 'inherit', 'inherit'],
+      shell: true,
       env: { ...process.env, NODE_TLS_REJECT_UNAUTHORIZED: '0' },
     });
     if (add.status !== 0) throw new Error(`vercel env add ${SECRET_NAME} ${target} failed`);

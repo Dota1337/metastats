@@ -16,7 +16,7 @@
  * frontend doesn't have to download CD's full 24 MB blob.
  */
 
-import { writeFileSync, readFileSync, existsSync } from 'node:fs';
+import { writeFileSync, readFileSync, existsSync, readdirSync } from 'node:fs';
 import { request as httpsRequest } from 'node:https';
 import { lookup as dnsLookup } from 'node:dns';
 
@@ -221,7 +221,32 @@ async function main() {
     };
   }
 
-  console.log(`       items: ${Object.keys(items).length}  champions: ${Object.keys(champions).length}  traits: ${Object.keys(traits).length}  augments: ${Object.keys(augments).length}  chibis: ${Object.keys(chibis).length}  tacticians: ${Object.keys(tacticians).length}`);
+  // Active items: Riot's setData[N].items is the pool that *could* drop in
+  // Set N, but Riot ships it permissively — universal artifacts that haven't
+  // seen a single play in 30 days across 9 regions are still listed. We pin
+  // the whitelist against the actual DB aggregates so retired items don't
+  // pollute the builder palette:
+  //
+  //   - set-specific IDs (TFT{N}_*)         optimistic, kept (might be new/rare)
+  //   - TFT5_Item_*Radiant                  CD's legacy canonical IDs for
+  //                                         classic radiants, kept as a family
+  //   - everything else (TFT_Item_*, etc.)  must be observed in any
+  //                                         public/tft-stats-{region}.json
+  //                                         byItem map for the current set
+  //
+  // First-run safety: if no snapshots exist on disk we fall back to Riot's
+  // raw list — better permissive than wiping the builder.
+  const playedIds = collectPlayedIds(active.number);
+  const setNPrefix = `TFT${active.number}_`;
+  const rawActive = (active.items || []).filter(x => typeof x === 'string');
+  const activeItems = Array.from(new Set(rawActive.filter(id => {
+    if (id.startsWith(setNPrefix)) return true;
+    if (/^TFT5_Item_.+Radiant$/i.test(id)) return true;
+    if (id === 'TFT_Item_RadiantVirtue') return true;
+    if (playedIds.size === 0) return true;
+    return playedIds.has(id);
+  }))).sort();
+  console.log(`       items: ${Object.keys(items).length}  active.items: ${activeItems.length}  champions: ${Object.keys(champions).length}  traits: ${Object.keys(traits).length}  augments: ${Object.keys(augments).length}  chibis: ${Object.keys(chibis).length}  tacticians: ${Object.keys(tacticians).length}`);
 
   console.log('[4/4] Write public/tft-assets.json + per-set archive');
   const payload = {
@@ -238,6 +263,9 @@ async function main() {
     augments,
     chibis,
     tacticians,
+    active: {
+      items: activeItems,
+    },
   };
   // Single 'live' file the frontend always reads + a per-set archive so we
   // can roll back if CD breaks. Old archives stay for diff/history.
@@ -302,6 +330,24 @@ function deriveAugmentTier(apiName, name, icon) {
   if (/prismatic|\bplusplus|\+\+/.test(both)) return 3;
   if (/\bplus\b|gold|_plus(?!plus)/.test(both)) return 2;
   return 1;
+}
+
+// Read every public/tft-stats-{region}.json crawl snapshot and collect the
+// union of item apiNames that actually showed up in matches for the given
+// set. Used by main() to pin the active.items whitelist against ground truth.
+function collectPlayedIds(setNumber) {
+  const played = new Set();
+  let files;
+  try { files = readdirSync('public'); } catch { return played; }
+  for (const f of files) {
+    if (!/^tft-stats-.+\.json$/i.test(f)) continue;
+    try {
+      const stats = JSON.parse(readFileSync(`public/${f}`, 'utf8'));
+      if (stats?.set != null && stats.set !== setNumber) continue;
+      for (const id of Object.keys(stats?.byItem || {})) played.add(id);
+    } catch { /* skip unreadable snapshot */ }
+  }
+  return played;
 }
 
 main().catch(err => { console.error('FAIL:', err.message); process.exit(1); });

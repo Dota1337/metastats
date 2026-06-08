@@ -52,46 +52,6 @@ const MF_STANCE_TRAITS: Record<MfStance, string> = {
 };
 const STANCE_ITEM_IDS = new Set(Object.values(MF_STANCE_ITEMS));
 
-// Cross-set artifact-style items that legitimately drop in Set 17 via specific
-// augments (Ornn artifact augments, Shimmerscale loot). Derived from the
-// DB byItem snapshot (public/tft-stats-euw1.json, 2026-06-06): every
-// TFT[479]_Item_* with non-zero plays in the 30-day window. Anything not in
-// here from those prefixes is a stale legacy item from that source set.
-const CROSS_SET_ARTIFACTS = new Set<string>([
-  'TFT4_Item_OrnnDeathsDefiance',
-  'TFT4_Item_OrnnInfinityForce',
-  'TFT4_Item_OrnnTheCollector',
-  'TFT4_Item_OrnnZhonyasParadox',
-  'TFT7_Item_ShimmerscaleGamblersBlade',
-  'TFT7_Item_ShimmerscaleMogulsMail',
-  'TFT9_Item_CrownOfDemacia',
-  'TFT9_Item_OrnnHorizonFocus',
-  'TFT9_Item_OrnnHullbreaker',
-]);
-
-// Universal artifacts that are not in the Set-17 rotation. Derived from the
-// Bundle ↔ DB-snapshot diff: every TFT_Item_Artifact_* in the asset bundle
-// that has zero entries in `public/tft-stats-euw1.json#byItem` (30-day euw1
-// window, snapshot 2026-06-06). Refresh this list at every set drop or do
-// the same diff against the latest daily snapshot — long-term, expose
-// `active.items` from fetch-tft-assets.mjs (analogous to `active.augments`)
-// and drop both DEAD_ARTIFACTS and CROSS_SET_ARTIFACTS entirely.
-const DEAD_ARTIFACTS = new Set<string>([
-  'TFT_Item_Artifact_CursedBlade',
-  'TFT_Item_Artifact_CursedVampiricScepter',
-  'TFT_Item_Artifact_ForbiddenIdol',
-  'TFT_Item_Artifact_HorizonFocus',
-  'TFT_Item_Artifact_InnervatingLocket',
-  'TFT_Item_Artifact_LesserMirroredPersona',
-  'TFT_Item_Artifact_Lightshield',
-  'TFT_Item_Artifact_MendingEchoes',
-  'TFT_Item_Artifact_MirroredPersona',
-  'TFT_Item_Artifact_ShadowPuppet',
-  'TFT_Item_Artifact_SpectralCutlass',
-  'TFT_Item_Artifact_SuspiciousTrenchCoat',
-  'TFT_Item_Artifact_UnendingDespair',
-  'TFT_Item_Artifact_WitheringRelic',
-]);
 
 type Team = 'own' | 'opp';
 type MfStance = 'AS' | 'Flex' | 'Mana';
@@ -158,39 +118,27 @@ function decodeState(s: string): { own: Placement[]; opp: Placement[] } {
   } catch { return { own: [], opp: [] }; }
 }
 
+// Sorts each whitelisted id into a builder tab. The whitelist itself comes
+// from `assets.active.items` (curated server-side in fetch-tft-assets.mjs
+// against the DB snapshots), so we only need pattern matching here — no
+// hand-maintained deny-lists for retired items.
 function categorizeItem(id: string, name: string, hasComp: boolean, setN: number): ItemTab | null {
-  // MF Stance items are never shown in the items palette — picked via the
-  // stance picker in the unit detail panel.
   if (STANCE_ITEM_IDS.has(id)) return null;
-  // Emblems first — some emblem IDs also match later patterns.
   if (/Emblem/i.test(id) || /Emblem/i.test(name)) return 'emblems';
-  // Radiant lives above the artifact rule so KayleArtifact_Radiant stays in
-  // the Kayle artifact group while the AnimaSquad RadiantField items below
-  // still classify as radiant.
+  // Radiant before the AnimaSquad rule so RadiantField items don't end up
+  // in the animasquad tab.
   if (new RegExp(`^TFT${setN}_AnimaSquadItem_.*Radiant`, 'i').test(id)) return 'radiant';
-  // Set-N trait-locked item families — own tab each, by user request.
   if (new RegExp(`^TFT${setN}_Item_PsyOps_`, 'i').test(id)) return 'psyonic';
   if (new RegExp(`^TFT${setN}_AnimaSquadItem_`, 'i').test(id)) return 'animasquad';
-  // Set-specific artifacts.
-  if (new RegExp(`^TFT${setN}_Item_Artifact_`, 'i').test(id)) return 'artifacts';
-  // Universal artifacts, minus the dead-rotation list.
-  if (/^TFT_Item_Artifact_/i.test(id)) {
-    return DEAD_ARTIFACTS.has(id) ? null : 'artifacts';
-  }
-  // Cross-set artifact-style items that drop in Set 17 via specific augments
-  // (Ornn artifact augments, Shimmerscale loot). Explicit whitelist from the
-  // DB byItem snapshot — pattern-matching catches 41 stale legacy IDs.
-  if (CROSS_SET_ARTIFACTS.has(id)) return 'artifacts';
-  // Classic radiant items via CommunityDragon's TFT5_Item_*Radiant canonical IDs,
-  // plus universal RadiantVirtue.
+  if (/Artifact/i.test(id)) return 'artifacts';
   if (/^TFT5_Item_.+Radiant$/i.test(id)) return 'radiant';
   if (id === 'TFT_Item_RadiantVirtue') return 'radiant';
+  // Cross-set artifact-style items (Ornn artifact augments, Shimmerscale loot,
+  // Crown of Demacia) — already filtered to "currently rotated" by active.items.
+  if (/^TFT[479]_Item_(Ornn|Shimmerscale|CrownOfDemacia)/i.test(id)) return 'artifacts';
   // Universal completed items: composition of 2 components, no Corrupted
-  // legacy dupes (Set-13 Inkborn Fables left those behind with identical
-  // display names).
+  // legacy dupes (Set-13 Inkborn Fables left those behind with identical names).
   if (hasComp && /^TFT_Item_/i.test(id) && !/Corrupted/i.test(id)) {
-    // Raw components have no `composition` so they wouldn't reach here, but
-    // belt-and-suspenders against the asset bundle adding placeholder pairs.
     if (/^TFT_Item_(BFSword|Bow|RodOfAges|RodOfTheJax|Tear|ChainVest|Cloak|GiantsBelt|SparringGloves|Spatula)$/i.test(id)) return null;
     return 'completed';
   }
@@ -278,27 +226,12 @@ export default function TftBuilderPage() {
   const items = useMemo<ItemEntry[]>(() => {
     if (!assets) return [];
     const setN = assets.set;
-    // Equippable-item id-prefix whitelist. Anything not matching is dropped at
-    // the gate so categorizeItem never has to reason about it.
-    //   - TFT_Item_*                universal items + universal artifacts + RadiantVirtue
-    //   - TFT{setN}_*               current-set items (PsyOps, AnimaSquad, Artifacts, …)
-    //   - TFT5_Item_*Radiant        legacy canonical IDs that CommunityDragon recycles
-    //                               for the classic radiant variants of completed
-    //                               items (still active in Set 17 via Prismatic
-    //                               augments / armory rolls).
-    //   - TFT[479]_Item_(Ornn|Shimmerscale|CrownOfDemacia)*   cross-set artifacts
-    //                               that legitimately drop in Set 17 via specific
-    //                               augments (verified via DB byItem snapshot).
-    const setPrefixRe = new RegExp(
-      `^TFT_Item_|^TFT${setN}_(Item_|AnimaSquadItem_)|^TFT5_Item_.+Radiant$`,
-      'i',
-    );
     // Game-mechanic noise that lives in `assets.items` but isn't equippable
     // gear: Chosen tracking markers, augment "offerings", Graves trait
     // modules, consumables, Sona command mods, Favored cause/effect markers,
-    // etc. These leak into the DB snapshot but the player never carries them
-    // on a unit.
-    const noiseRe = /^TFT\d*_(MarketOffering_|GravesTrait_|ChampionItem|Consumable_|Favored|SonaUnique_|.*Selector|EkkoOffering_)/i;
+    // armory/cypher items. These leak into Riot's setData[N].items pool but
+    // the player never carries them on a unit.
+    const noiseRe = /^TFT\d*_(MarketOffering_|GravesTrait_|ChampionItem|Consumable_|Favored|SonaUnique_|.*Selector|EkkoOffering_|CypherArmoryItem_)/i;
     const out: ItemEntry[] = [];
     const visit = (id: string, item: any) => {
       if (/Augment/i.test(id)) return;
@@ -306,16 +239,33 @@ export default function TftBuilderPage() {
       if (/Grant|Anvil|Orbs|Loot|Debug|Tutorial|Tactician|TheStar/i.test(id)) return;
       if (!item?.name) return;
       // Locale resolution failure = item is disabled in-game (Riot pulls the
-      // localised string when an item leaves rotation). Skips CursedBlade,
-      // HextechChestguard, the Hex_* buffs, retired Set-13 Inkborn dupes etc.
+      // localised string when an item leaves rotation). Belt-and-suspenders —
+      // active.items should already exclude these.
       if (item.name.startsWith('tft_item_name_')) return;
       const hasComp = !!(item.composition && item.composition.length === 2);
       const cat = categorizeItem(id, item.name, hasComp, setN);
       if (!cat) return;
       out.push({ id, name: item.name, icon: item.icon, category: cat });
     };
-    for (const [id, item] of Object.entries(assets.items)) {
-      if (setPrefixRe.test(id) || CROSS_SET_ARTIFACTS.has(id)) visit(id, item);
+    const activeIds = assets.active?.items;
+    if (activeIds && activeIds.length > 0) {
+      // Crawler-curated whitelist (Riot's setData[N].items ∩ DB-snapshot for
+      // universals + optimistic for set-specific / Set-5 legacy radiants).
+      // See fetch-tft-assets.mjs#collectPlayedIds.
+      for (const id of activeIds) {
+        const item = assets.items[id];
+        if (item) visit(id, item);
+      }
+    } else {
+      // Fallback for asset bundles fetched before active.items shipped —
+      // older deploys keep rendering until the next crawler run.
+      const setPrefixRe = new RegExp(
+        `^TFT_Item_|^TFT${setN}_(Item_|AnimaSquadItem_)|^TFT5_Item_.+Radiant$`,
+        'i',
+      );
+      for (const [id, item] of Object.entries(assets.items)) {
+        if (setPrefixRe.test(id)) visit(id, item);
+      }
     }
     return out.sort((a, b) => a.name.localeCompare(b.name));
   }, [assets]);

@@ -70,6 +70,9 @@ export interface TftAssetsBundle {
   augments: Record<string, TftAugment>;
   chibis?: Record<string, TftCompanion>;
   tacticians?: Record<string, TftCompanion>;
+  active?: {
+    items?: string[];
+  };
 }
 
 let cached: Promise<TftAssetsBundle | null> | null = null;

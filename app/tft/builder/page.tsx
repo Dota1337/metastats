@@ -55,12 +55,17 @@ const STANCE_ITEM_IDS = new Set(Object.values(MF_STANCE_ITEMS));
 
 type Team = 'own' | 'opp';
 type MfStance = 'AS' | 'Flex' | 'Mana';
+// 1-star is implicit (undefined) so we don't bloat URLs / saved comps with the
+// default. 4-star exists in Set 17 via Sona's command mods and Aurelion Sol
+// quest rewards — kept as an explicit option even though it's rare.
+type StarLevel = 2 | 3 | 4;
 
 interface Placement {
   cell: number;
   characterId: string;
   items: string[];
   stance?: MfStance;
+  star?: StarLevel;
 }
 
 interface SavedComp {
@@ -83,9 +88,12 @@ interface ItemEntry {
 function encodeState(own: Placement[], opp: Placement[]): string {
   if (own.length === 0 && opp.length === 0) return '';
   try {
-    const pack = (p: Placement) => p.stance
-      ? { c: p.cell, i: p.characterId, t: p.items, s: p.stance }
-      : { c: p.cell, i: p.characterId, t: p.items };
+    const pack = (p: Placement) => {
+      const o: any = { c: p.cell, i: p.characterId, t: p.items };
+      if (p.stance) o.s = p.stance;
+      if (p.star && p.star > 1) o.l = p.star;
+      return o;
+    };
     const compact: any = { p: own.map(pack) };
     if (opp.length > 0) compact.o = opp.map(pack);
     return btoa(JSON.stringify(compact));
@@ -101,9 +109,13 @@ function decodePlacementArray(json: any): Placement[] {
       const cid = String(e.i || '');
       const items = Array.isArray(e.t) ? e.t.filter((x: any) => typeof x === 'string').slice(0, MAX_ITEMS_PER_UNIT) : [];
       const stance: MfStance | undefined = (e.s === 'AS' || e.s === 'Flex' || e.s === 'Mana') ? e.s : undefined;
+      const star: StarLevel | undefined = (e.l === 2 || e.l === 3 || e.l === 4) ? e.l : undefined;
       if (!Number.isFinite(cell) || cell < 0 || cell >= ROWS * COLS) return null;
       if (!cid) return null;
-      return stance ? { cell, characterId: cid, items, stance } : { cell, characterId: cid, items };
+      const out: Placement = { cell, characterId: cid, items };
+      if (stance) out.stance = stance;
+      if (star) out.star = star;
+      return out;
     })
     .filter(Boolean) as Placement[];
 }
@@ -125,11 +137,16 @@ function decodeState(s: string): { own: Placement[]; opp: Placement[] } {
 function categorizeItem(id: string, name: string, hasComp: boolean, setN: number): ItemTab | null {
   if (STANCE_ITEM_IDS.has(id)) return null;
   if (/Emblem/i.test(id) || /Emblem/i.test(name)) return 'emblems';
-  // Radiant before the AnimaSquad rule so RadiantField items don't end up
-  // in the animasquad tab.
-  if (new RegExp(`^TFT${setN}_AnimaSquadItem_.*Radiant`, 'i').test(id)) return 'radiant';
-  if (new RegExp(`^TFT${setN}_Item_PsyOps_`, 'i').test(id)) return 'psyonic';
+  // AnimaSquad trait items — all tiers including the RadiantField variants
+  // (Solar Eclipse, Radiant Field) belong to the animasquad tab. They share
+  // a display name with no other item, so the "Radiant" suffix in the id is
+  // pure naming, not a category signal.
   if (new RegExp(`^TFT${setN}_AnimaSquadItem_`, 'i').test(id)) return 'animasquad';
+  // PsyOps trait items: only base variants. Every base PsyOps mod has a
+  // matching `_Radiant` upgrade with an identical display name — surfacing
+  // both is pure visual noise.
+  if (new RegExp(`^TFT${setN}_Item_PsyOps_(?!.*_Radiant$)`, 'i').test(id)) return 'psyonic';
+  if (new RegExp(`^TFT${setN}_Item_PsyOps_.*_Radiant$`, 'i').test(id)) return null;
   if (/Artifact/i.test(id)) return 'artifacts';
   if (/^TFT5_Item_.+Radiant$/i.test(id)) return 'radiant';
   if (id === 'TFT_Item_RadiantVirtue') return 'radiant';
@@ -405,6 +422,17 @@ export default function TftBuilderPage() {
         return rest;
       }
       return { ...p, stance };
+    }));
+  }, []);
+
+  const setStarFor = useCallback((team: Team, cell: number, star: StarLevel | null) => {
+    setPlacementsFor(team, prev => prev.map(p => {
+      if (p.cell !== cell) return p;
+      if (star === null) {
+        const { star: _omit, ...rest } = p;
+        return rest;
+      }
+      return { ...p, star };
     }));
   }, []);
 
@@ -688,6 +716,14 @@ export default function TftBuilderPage() {
                   {url && (
                     <img src={url} alt={champ?.name || ''} className="w-full h-full object-cover pointer-events-none" />
                   )}
+                  {p && (p.star ?? 1) > 1 && (
+                    <div
+                      className="absolute top-0.5 left-0 right-0 flex justify-center pointer-events-none text-[8px] sm:text-[9px] leading-none font-bold tracking-tight"
+                      style={{ color: starColorOf(p.star ?? 1), textShadow: '0 0 2px rgba(0,0,0,0.9)' }}
+                    >
+                      {'★'.repeat(p.star ?? 1)}
+                    </div>
+                  )}
                   {p && p.items.length > 0 && (
                     <div className="absolute bottom-0 left-0 right-0 flex gap-0.5 justify-center pb-0.5 pointer-events-none">
                       {p.items.map((iid) => {
@@ -889,6 +925,14 @@ export default function TftBuilderPage() {
                   const url = tftChampionTileUrl(assets, champ);
                   const onBoard = ownPlacements.some(p => p.characterId === c.characterId) || oppPlacements.some(p => p.characterId === c.characterId);
                   const isPicker = pickerChar === c.characterId;
+                  const traits = (champ?.traits || []).join(' · ');
+                  const ability = champ?.ability;
+                  const tooltip = [
+                    `${c.name} (${c.cost})`,
+                    traits || null,
+                    ability?.name ? `\n${ability.name}` : null,
+                    ability?.desc || null,
+                  ].filter(Boolean).join('\n');
                   return (
                     <button
                       key={c.characterId}
@@ -901,7 +945,7 @@ export default function TftBuilderPage() {
                         boxShadow: isPicker ? '0 0 0 2px rgba(168,146,255,0.4)' : 'none',
                         opacity: onBoard && !isPicker ? 0.45 : 1,
                       }}
-                      title={`${c.name} (${c.cost})`}
+                      title={tooltip}
                     >
                       {url && <img src={url} alt={c.name} className="w-full h-full object-cover" />}
                       <span className="absolute bottom-0 left-0 right-0 text-[9px] text-center text-white bg-black/60 truncate px-0.5">
@@ -937,23 +981,80 @@ export default function TftBuilderPage() {
                     );
                   })()}
                 </div>
+                <div className="mb-3">
+                  <div className="text-[#a0b0c5] text-[10px] uppercase tracking-widest mb-2">
+                    {t('tft.builderStarLevel')}
+                  </div>
+                  <div className="flex gap-1.5">
+                    {([1, 2, 3, 4] as const).map(n => {
+                      const isActive = (selectedPlacement.star ?? 1) === n;
+                      const color = starColorOf(n);
+                      return (
+                        <button
+                          key={n}
+                          onClick={() => setStarFor(selectedTeam, selectedPlacement.cell, n === 1 ? null : (n as StarLevel))}
+                          className="flex-1 py-1.5 rounded text-xs font-bold transition border-2"
+                          style={{
+                            borderColor: isActive ? color : '#1e2a3a',
+                            backgroundColor: isActive ? `${color}22` : '#0a0e1a',
+                            color: isActive ? color : '#5a6a80',
+                          }}
+                        >
+                          {n}★
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
                 <div className="flex gap-1.5">
                   {Array.from({ length: MAX_ITEMS_PER_UNIT }).map((_, slotIdx) => {
                     const iid = selectedPlacement.items[slotIdx];
                     const item = iid ? assets?.items[iid] : null;
                     const url = tftIconUrl(assets, item?.icon);
+                    const tooltip = item ? `${item.name}${item.desc ? '\n\n' + item.desc : ''}` : '';
                     return (
                       <button
                         key={slotIdx}
                         onClick={() => iid && removeItemFromSelected(iid)}
                         className="flex-1 aspect-square rounded border border-[#1e2a3a] overflow-hidden bg-[#0a0e1a] hover:border-[#e44040]/60 transition"
-                        title={item?.name || ''}
+                        title={tooltip}
                       >
                         {url && <img src={url} alt={item?.name || ''} className="w-full h-full object-cover" />}
                       </button>
                     );
                   })}
                 </div>
+                {(() => {
+                  const champ: any = assets?.champions[selectedPlacement.characterId];
+                  if (!champ?.ability?.name) return null;
+                  return (
+                    <div className="mt-3 pt-3 border-t border-[#1e2a3a]">
+                      <div className="text-[#a0b0c5] text-[10px] uppercase tracking-widest mb-1">
+                        {t('tft.builderAbility')}
+                      </div>
+                      <div className="text-white text-xs font-medium mb-1">{champ.ability.name}</div>
+                      {champ.ability.desc && (
+                        <div className="text-[#cbd5e1] text-[11px] leading-relaxed whitespace-pre-line">{champ.ability.desc}</div>
+                      )}
+                    </div>
+                  );
+                })()}
+                {selectedPlacement.items.length > 0 && (() => {
+                  const equipped = selectedPlacement.items
+                    .map(iid => ({ id: iid, item: assets?.items[iid] }))
+                    .filter(x => x.item?.desc);
+                  if (equipped.length === 0) return null;
+                  return (
+                    <div className="mt-3 pt-3 border-t border-[#1e2a3a] space-y-2">
+                      {equipped.map(({ id, item }) => (
+                        <div key={id}>
+                          <div className="text-white text-[11px] font-medium">{item!.name}</div>
+                          <div className="text-[#cbd5e1] text-[10px] leading-relaxed">{item!.desc}</div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
                 {selectedPlacement.characterId === MF_CHAR_ID && (
                   <div className="mt-3 pt-3 border-t border-[#1e2a3a]">
                     <div className="text-[#a0b0c5] text-[10px] uppercase tracking-widest mb-2">
@@ -1012,6 +1113,8 @@ export default function TftBuilderPage() {
                   const url = tftIconUrl(assets, item.icon);
                   const onSelectedUnit = selectedPlacement?.items.includes(item.id);
                   const fullOnSelected = selectedPlacement && selectedPlacement.items.length >= MAX_ITEMS_PER_UNIT && !onSelectedUnit;
+                  const fullItem = assets?.items[item.id];
+                  const tooltip = fullItem?.desc ? `${item.name}\n\n${fullItem.desc}` : item.name;
                   return (
                     <button
                       key={item.id}
@@ -1021,7 +1124,7 @@ export default function TftBuilderPage() {
                       disabled={!!fullOnSelected}
                       className="aspect-square rounded overflow-hidden border border-[#1e2a3a] hover:border-[#a892ff] transition disabled:opacity-30 cursor-grab active:cursor-grabbing"
                       style={{ boxShadow: onSelectedUnit ? '0 0 0 2px #a892ff inset' : 'none' }}
-                      title={item.name}
+                      title={tooltip}
                     >
                       {url && <img src={url} alt={item.name} className="w-full h-full object-cover pointer-events-none" />}
                     </button>
@@ -1039,4 +1142,10 @@ export default function TftBuilderPage() {
 
 function costColorOf(cost: number) {
   return cost === 1 ? '#9aa6b2' : cost === 2 ? '#3a8' : cost === 3 ? '#3a8ddc' : cost === 4 ? '#c39bff' : '#e0c75a';
+}
+
+// In-game TFT star colours: 1=grey, 2=silver, 3=gold, 4=prismatic (Set 17's
+// rare Sona / Aurelion Sol upgrade tier).
+function starColorOf(star: number) {
+  return star === 1 ? '#9aa6b2' : star === 2 ? '#cfd6dc' : star === 3 ? '#e0c75a' : '#c39bff';
 }

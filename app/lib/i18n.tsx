@@ -329,6 +329,8 @@ const translations = {
   'tft.builderItemsPsyonic': t6('Psyonic', 'Psyonic', '\uC0AC\uC774\uC624\uB2C9', '\u5FC3\u7075', 'Psi\u00F3nico', 'Psyonique'),
   'tft.builderItemsAnimasquad': t6('Anima', 'Anima', '\uC560\uB2C8\uB9C8', '\u7075\u7EB3', 'Anima', 'Anima'),
   'tft.builderMfStance': t6('Modus', 'Stance', '\uBAA8\uB4DC', '\u6A21\u5F0F', 'Modo', 'Mode'),
+  'tft.builderStarLevel': t6('Stern-Level', 'Star level', '\uBCC4 \uB808\uBCA8', '\u661F\u7EA7', 'Nivel de estrellas', 'Niveau d\u2019\u00E9toiles'),
+  'tft.builderAbility': t6('F\u00E4higkeit', 'Ability', '\uC2A4\uD0AC', '\u6280\u80FD', 'Habilidad', 'Capacit\u00E9'),
   'tft.builderItemsSearch': t6('Item suchen\u2026', 'Search item\u2026', '\uC544\uC774\uD15C \uAC80\uC0C9\u2026', '\u641C\u7D22\u88C5\u5907\u2026', 'Buscar item\u2026', 'Chercher un objet\u2026'),
   'tft.builderSave': t6('Speichern', 'Save', '\uC800\uC7A5', '\u4FDD\u5B58', 'Guardar', 'Enregistrer'),
   'tft.builderShare': t6('Link kopieren', 'Copy link', '\uB9C1\uD06C \uBCF5\uC0AC', '\u590D\u5236\u94FE\u63A5', 'Copiar enlace', 'Copier le lien'),

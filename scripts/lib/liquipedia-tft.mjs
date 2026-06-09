@@ -26,11 +26,20 @@ const LIQUIPEDIA_BASE = 'https://liquipedia.net';
 // occasionally double-counts when subprocess boundaries reset the in-process
 // counter. With the cross-process lock below this becomes globally enforced.
 const DEFAULT_MIN_DELAY_MS = 5000;
+// Hard cooldown applied when Liquipedia returns 429. The old behaviour
+// (5-step exponential backoff *per call*) actively made blocks worse: each
+// retry confirms to Liquipedia we're a runaway scraper, escalating the
+// block. New behaviour: a single 429 = stop network access for this many
+// hours and serve from cache only. The systemd-timer picks up the next
+// scheduled slot once the cooldown is past.
+const COOLDOWN_AFTER_429_MS = 12 * 60 * 60 * 1000;
 const USER_AGENT = 'metastats-bot/1.0 (https://metastats.gg; info@metastats.gg)';
 
 // Cross-process state files. Tiny (one int / one short string), atomic writes.
 const LOCK_FILE = process.env.METASTATS_LIQ_LOCK_FILE
   || join(tmpdir(), 'metastats-liquipedia-last-call');
+const COOLDOWN_FILE = process.env.METASTATS_LIQ_COOLDOWN_FILE
+  || join(tmpdir(), 'metastats-liquipedia-cooldown-until');
 const CACHE_DIR = process.env.METASTATS_LIQ_CACHE_DIR
   || join(tmpdir(), 'metastats-liquipedia-cache');
 // Cache entries older than this re-fetch unconditionally (still with ETag
@@ -38,10 +47,50 @@ const CACHE_DIR = process.env.METASTATS_LIQ_CACHE_DIR
 // a daily Re-Crawl picks up edits, long enough that a single weekly enrich
 // hits the cache for the same page on day 2+.
 const CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+// During cooldown we still serve cache entries even when they're old —
+// stale data is much better than escalating the rate-limit block.
+const CACHE_STALE_DURING_COOLDOWN_MS = 30 * 24 * 60 * 60 * 1000;
 
 let inProcessLastCallAt = 0;
 
+// Thrown when the cooldown is active and the cache doesn't have what the
+// caller asked for. Lets crawlers exit cleanly with "try again tomorrow"
+// rather than throwing a generic network error.
+export class LiquipediaCooldownError extends Error {
+  constructor(until) {
+    super(`Liquipedia in cooldown until ${new Date(until).toISOString()} — serving cache only`);
+    this.name = 'LiquipediaCooldownError';
+    this.until = until;
+  }
+}
+
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function readCooldownUntil() {
+  try {
+    if (!existsSync(COOLDOWN_FILE)) return 0;
+    const v = Number(readFileSync(COOLDOWN_FILE, 'utf8').trim()) || 0;
+    return v > Date.now() ? v : 0;
+  } catch { return 0; }
+}
+
+function writeCooldownUntil(ts) {
+  try { writeFileSync(COOLDOWN_FILE, String(ts)); } catch {}
+}
+
+// Manual reset hatch — `node -e "import('./scripts/lib/liquipedia-tft.mjs').then(m => m.clearCooldown())"`
+export function clearCooldown() {
+  try { writeFileSync(COOLDOWN_FILE, '0'); } catch {}
+}
+
+export function cooldownStatus() {
+  const until = readCooldownUntil();
+  return {
+    active: until > Date.now(),
+    until,
+    minutesRemaining: until > Date.now() ? Math.ceil((until - Date.now()) / 60_000) : 0,
+  };
+}
 
 // Cross-process gate. Reads the last-call timestamp from a tiny file shared
 // by every node process in this pipeline. Bumps it BEFORE sending the call
@@ -98,19 +147,33 @@ function writeCache(url, entry) {
 }
 
 // ─── Core JSON fetcher ──────────────────────────────────────────────────
-// 6-step exponential backoff for 429s. Total patience here is 30s + 60s +
-// 120s + 240s + 480s + 960s ≈ 32 minutes — long enough to ride out a
-// Cloudflare cool-off, short enough that a genuinely broken request fails
-// in finite time.
+// Strategy: cache-first; on cache miss go through the rate-limit gate;
+// on 429 set a 12h cooldown and serve any stale cache we have (even older
+// than CACHE_MAX_AGE_MS) — the alternative is to keep hammering Liquipedia
+// and escalate the block. Subsequent calls during cooldown ONLY check
+// cache. The systemd timers pick up again past the cooldown.
 export async function liquipediaJson(params, { minDelayMs, noCache } = {}) {
   const url = `${LIQUIPEDIA_API}?${new URLSearchParams({ ...params, format: 'json' })}`;
-  // Try cache before touching the network — never goes through the rate-
-  // limit gate, so a cache hit costs us zero rate budget.
+  // Fresh cache — never touches the network.
   if (!noCache) {
     const c = readCache(url);
-    if (c && c.body && Date.now() - (c.fetchedAt || 0) < CACHE_MAX_AGE_MS) {
+    if (c?.body && Date.now() - (c.fetchedAt || 0) < CACHE_MAX_AGE_MS) {
       return c.body;
     }
+  }
+
+  // If we're in cooldown, fall back to stale cache (up to 30d). If even
+  // that fails we throw LiquipediaCooldownError so the caller can decide
+  // whether to skip the row or abort the run.
+  const cooldownUntil = readCooldownUntil();
+  if (cooldownUntil > Date.now()) {
+    if (!noCache) {
+      const c = readCache(url);
+      if (c?.body && Date.now() - (c.fetchedAt || 0) < CACHE_STALE_DURING_COOLDOWN_MS) {
+        return c.body;
+      }
+    }
+    throw new LiquipediaCooldownError(cooldownUntil);
   }
 
   await rateLimitGate(minDelayMs);
@@ -125,37 +188,36 @@ export async function liquipediaJson(params, { minDelayMs, noCache } = {}) {
   if (cached?.etag) headers['If-None-Match'] = cached.etag;
   if (cached?.lastModified) headers['If-Modified-Since'] = cached.lastModified;
 
-  let backoff = 30_000;
-  for (let attempt = 0; attempt < 6; attempt++) {
-    const res = await fetch(url, { headers });
+  const res = await fetch(url, { headers });
 
-    if (res.status === 304 && cached) {
-      // Refresh fetchedAt so we don't re-validate every call.
-      writeCache(url, { ...cached, fetchedAt: Date.now() });
-      return cached.body;
-    }
-    if (res.ok) {
-      const body = await res.json();
-      writeCache(url, {
-        body,
-        etag: res.headers.get('etag') || undefined,
-        lastModified: res.headers.get('last-modified') || undefined,
-        fetchedAt: Date.now(),
-      });
-      return body;
-    }
-    if (res.status === 429 && attempt < 5) {
-      const retryAfter = Number(res.headers.get('Retry-After')) || 0;
-      const wait = Math.max(retryAfter * 1000, backoff);
-      console.log(`  [liquipedia] 429 — backoff ${Math.round(wait/1000)}s (attempt ${attempt+1}/6)`);
-      await sleep(wait);
-      backoff *= 2;
-      continue;
-    }
-    if (res.status === 404) return null;
-    throw new Error(`Liquipedia HTTP ${res.status}: ${url.slice(0, 200)}`);
+  if (res.status === 304 && cached) {
+    writeCache(url, { ...cached, fetchedAt: Date.now() });
+    return cached.body;
   }
-  throw new Error('Liquipedia 429 after 6 attempts');
+  if (res.ok) {
+    const body = await res.json();
+    writeCache(url, {
+      body,
+      etag: res.headers.get('etag') || undefined,
+      lastModified: res.headers.get('last-modified') || undefined,
+      fetchedAt: Date.now(),
+    });
+    return body;
+  }
+  if (res.status === 429) {
+    // Hard cool-off. No retry. Persist the until-timestamp so every other
+    // process in the pipeline sees the cooldown immediately.
+    const retryAfter = Number(res.headers.get('Retry-After')) || 0;
+    const minCooldown = Math.max(retryAfter * 1000, COOLDOWN_AFTER_429_MS);
+    const until = Date.now() + minCooldown;
+    writeCooldownUntil(until);
+    console.log(`  [liquipedia] 429 — entering ${Math.round(minCooldown/3600_000)}h cooldown (until ${new Date(until).toISOString()})`);
+    // Serve stale cache if we have it, otherwise propagate the cooldown.
+    if (cached?.body) return cached.body;
+    throw new LiquipediaCooldownError(until);
+  }
+  if (res.status === 404) return null;
+  throw new Error(`Liquipedia HTTP ${res.status}: ${url.slice(0, 200)}`);
 }
 
 // Rendered HTML for a page (`action=parse&prop=text`). Used for tables that

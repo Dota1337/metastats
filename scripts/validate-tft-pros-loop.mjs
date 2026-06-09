@@ -199,6 +199,21 @@ function runSubScript(scriptName, extraArgs = []) {
 
 async function modeWeeklyFull() {
   console.log(`[weekly-full] Pipeline start — run ${RUN_ID}`);
+  // Refuse to start if a Liquipedia cooldown is active — the steps would
+  // all skip with cache-only data anyway and we'd flood the log with
+  // "in cooldown" warnings.
+  try {
+    const { cooldownStatus } = await import('./lib/liquipedia-tft.mjs');
+    const c = cooldownStatus();
+    if (c.active) {
+      console.log(`[weekly-full] ABORTED — Liquipedia cooldown active for ${c.minutesRemaining}min more (until ${new Date(c.until).toISOString()})`);
+      await logEvent({
+        source: 'pipeline', status: 'warning', field: 'identity', severity: 2,
+        detail: `weekly-full skipped: Liquipedia cooldown active for ${c.minutesRemaining}min`,
+      });
+      return;
+    }
+  } catch {}
   const steps = [
     // Discovery first — finds Liquipedia pages we don't have yet (CN/KR
     // gaps especially). Logs them as "missing" events but does NOT yet

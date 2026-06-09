@@ -1,0 +1,10 @@
+[Unit]
+Description=Weekly TFT Pro full re-sync (Fridays)
+
+[Timer]
+OnCalendar=Fri *-*-* 03:00:00 UTC
+RandomizedDelaySec=900
+Persistent=true
+
+[Install]
+WantedBy=timers.target

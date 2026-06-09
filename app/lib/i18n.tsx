@@ -2231,6 +2231,27 @@ const translations = {
   'tft.pros.col.earnings': t6(
     'Preisgeld', 'Earnings', '\uC0C1\uAE08', '\u5956\u91D1', 'Premios', 'Gains'
   ),
+  'tft.pros.col.classification': t6(
+    'Status', 'Status', '\uC0C1\uD0DC', '\u72B6\u6001', 'Estado', 'Statut'
+  ),
+  'tft.pros.tab.verified': t6(
+    'Verifiziert', 'Verified', '\uC778\uC99D\uB428', '\u5DF2\u8BA4\u8BC1', 'Verificados', 'V\u00E9rifi\u00E9s'
+  ),
+  'tft.pros.tab.tpc': t6(
+    'TPC', 'TPC', 'TPC', 'TPC', 'TPC', 'TPC'
+  ),
+  'tft.pros.tab.tournament': t6(
+    'Turnier-Pros', 'Tournament', '\uD1A0\uB108\uBA3C\uD2B8', '\u9526\u6807\u8D5B', 'Torneos', 'Tournoi'
+  ),
+  'tft.pros.tab.streamer': t6(
+    'Streamer', 'Streamer', '\uC2A4\uD2B8\uB9AC\uBA38', '\u4E3B\u64AD', 'Streamer', 'Streamer'
+  ),
+  'tft.pros.tab.historic': t6(
+    'Historisch', 'Historic', '\uC774\uC804', '\u5386\u53F2', 'Hist\u00F3rico', 'Historique'
+  ),
+  'tft.pros.tab.all': t6(
+    'Alle', 'All', '\uC804\uCCB4', '\u5168\u90E8', 'Todos', 'Tous'
+  ),
   'tft.pros.tournaments': t6(
     'Turniere', 'Tournaments', '\uD1A0\uB108\uBA3C\uD2B8', '\u9526\u6807\u8D5B', 'Torneos', 'Tournois'
   ),

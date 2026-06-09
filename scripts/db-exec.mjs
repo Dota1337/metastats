@@ -55,12 +55,54 @@ async function main() {
   if (!dbUrl) { console.error('ERROR: DATABASE_URL not set'); process.exit(1); }
 
   const sql = readFileSync(resolve(file), 'utf8');
-  // Split on `;` at end-of-line, then strip whole-line comments from each
-  // chunk so a statement preceded by a `-- comment` line still runs.
-  const statements = sql
-    .split(/;\s*\n/)
+  // Split on `;` at statement boundary, but stay inside $$-quoted bodies
+  // (PG function bodies legitimately contain semicolons). Tags like `$$` or
+  // `$tag$` open/close a dollar-quoted block; the content between matching
+  // tags is opaque.
+  const statements = [];
+  let buf = '';
+  let dollarTag = null;
+  for (let i = 0; i < sql.length; i++) {
+    const c = sql[i];
+    if (dollarTag) {
+      // Look for the matching closing dollar tag.
+      if (c === '$' && sql.slice(i, i + dollarTag.length) === dollarTag) {
+        buf += dollarTag;
+        i += dollarTag.length - 1;
+        dollarTag = null;
+        continue;
+      }
+      buf += c;
+      continue;
+    }
+    if (c === '$') {
+      // Detect a `$tag$` opener.
+      const rest = sql.slice(i);
+      const m = rest.match(/^(\$[A-Za-z_][A-Za-z0-9_]*\$|\$\$)/);
+      if (m) {
+        dollarTag = m[1];
+        buf += dollarTag;
+        i += dollarTag.length - 1;
+        continue;
+      }
+    }
+    if (c === ';' && (sql[i + 1] === '\n' || sql[i + 1] === undefined || /\s/.test(sql[i + 1]))) {
+      // Statement boundary — flush.
+      statements.push(buf);
+      buf = '';
+      continue;
+    }
+    buf += c;
+  }
+  if (buf.trim()) statements.push(buf);
+  // Strip whole-line comments (the SQL parser ignores them, but they pollute
+  // the headline preview we print per statement).
+  const cleaned = statements
     .map(s => s.split('\n').filter(l => !l.trim().startsWith('--')).join('\n').trim())
     .filter(Boolean);
+  // Re-bind for the loop below.
+  statements.length = 0;
+  for (const s of cleaned) statements.push(s);
 
   const client = new pg.Client({ connectionString: encodePasswordInPgUrl(dbUrl), ssl: { rejectUnauthorized: false } });
   await client.connect();

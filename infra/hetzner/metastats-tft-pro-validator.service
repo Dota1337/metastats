@@ -1,0 +1,14 @@
+[Unit]
+Description=TFT Pro Watchdog — daily sample + anomaly detection
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/metastats-crawler
+EnvironmentFile=/etc/metastats-crawler/env
+Environment=NODE_OPTIONS=--use-system-ca
+ExecStart=/usr/bin/node scripts/validate-tft-pros-loop.mjs --mode=daily-sample --size=30 --open-issues
+TimeoutStartSec=1800
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,19 @@
+[Unit]
+Description=TFT TPC Pro-Circuit Roster Crawler (Liquipedia → tpc_verified flag)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/metastats-crawler
+EnvironmentFile=/etc/metastats-crawler/env
+Environment=NODE_OPTIONS=--use-system-ca
+ExecStart=/usr/bin/node scripts/crawl-tft-tpc-roster.mjs
+TimeoutStartSec=infinity
+TimeoutStopSec=300
+# After it finishes, classify pros so the tpc_verified flag immediately
+# propagates into classification + confidence_score.
+OnSuccess=metastats-tft-pro-classify.service
+
+[Install]
+WantedBy=multi-user.target

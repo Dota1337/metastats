@@ -1,14 +1,17 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
 import TftHero from '../../components/tft/TftHero';
 import { useI18n } from '../../lib/i18n';
 
-// TFT pro player directory. Sourced from Liquipedia (primary) + manual
-// streamer allowlist (fallback). The page joins by puuid to whatever data
-// we already have for the player on the TFT side (match cache, marketvalue
-// snapshot) so each row also links to their full profile.
+// TFT pro player directory with multi-source classification.
+// Default-View: TPC + Tournament Pros (the "verified" set). Streamer + Historic
+// + Inactive are behind opt-in tabs so the long Liquipedia tail doesn't drown
+// out actually-active competitive pros.
+
+type Classification = 'tpc' | 'tournament' | 'streamer' | 'historic' | 'inactive';
 
 interface TournamentResult {
   tournament: string;
@@ -29,11 +32,30 @@ interface Pro {
   role: string | null;
   country: string | null;
   source: 'liquipedia' | 'manual';
+  tpc_verified: boolean;
+  tpc_pro_points: number | null;
+  tpc_region: string | null;
+  classification: Classification;
+  confidence_score: number;
+  active_rank_tier: string | null;
+  active_rank_lp: number | null;
+  last_tournament_at: string | null;
   twitch_handle: string | null;
   twitter_handle: string | null;
   image_url: string | null;
   total_earnings_usd: number | null;
+  earnings_sources: Record<string, number>;
+  stream_platforms: Record<string, any>;
   tournament_results: TournamentResult[] | null;
+  last_full_validation_at: string | null;
+}
+
+interface Response {
+  pros: Pro[];
+  classCounts: Record<Classification, number>;
+  regionCounts: Record<string, number>;
+  teamCounts: Record<string, number>;
+  tpcRegionCounts: Record<string, number>;
 }
 
 function formatEarnings(v: number | null): string {
@@ -43,32 +65,67 @@ function formatEarnings(v: number | null): string {
   return '$' + v.toLocaleString('en-US');
 }
 
-interface Response {
-  pros: Pro[];
-  regionCounts: Record<string, number>;
-  teamCounts: Record<string, number>;
-}
-
-// Region selector mirrors /tft/marktwert. We show only regions that
-// actually have pros — derived from the aggregates response.
 const REGION_LABELS: Record<string, string> = {
   na1: 'NA', euw1: 'EUW', eun1: 'EUNE', kr: 'KR', jp1: 'JP',
   br1: 'BR', la1: 'LAN', la2: 'LAS', oc1: 'OCE', tr1: 'TR',
   ru: 'RU', vn2: 'VN', sg2: 'SG', tw2: 'TW', th2: 'TH', ph2: 'PH', me1: 'ME',
 };
 
+// Classification → display config. Order here also drives tab order.
+const TABS: { value: Classification | 'all'; labelKey: any; color: string; icon: string }[] = [
+  { value: 'tpc',        labelKey: 'tft.pros.tab.tpc',        color: '#e0c75a', icon: '🏆' },
+  { value: 'tournament', labelKey: 'tft.pros.tab.tournament', color: '#c39bff', icon: '🎯' },
+  { value: 'streamer',   labelKey: 'tft.pros.tab.streamer',   color: '#3ecf8e', icon: '📺' },
+  { value: 'historic',   labelKey: 'tft.pros.tab.historic',   color: '#7a8aa0', icon: '📚' },
+  { value: 'all',        labelKey: 'tft.pros.tab.all',        color: '#a0b0c5', icon: '∗' },
+];
+
+function classificationBadge(c: Classification) {
+  switch (c) {
+    case 'tpc':        return { label: 'TPC',        color: '#e0c75a', bg: '#e0c75a1f' };
+    case 'tournament': return { label: 'Tournament', color: '#c39bff', bg: '#c39bff1f' };
+    case 'streamer':   return { label: 'Streamer',   color: '#3ecf8e', bg: '#3ecf8e1f' };
+    case 'historic':   return { label: 'Historic',   color: '#7a8aa0', bg: '#7a8aa01f' };
+    default:           return { label: '—',          color: '#5a6a80', bg: '#5a6a801f' };
+  }
+}
+
 export default function TftProsPage() {
   const { t } = useI18n();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // Default tab from URL or "tpc"+"tournament" combined view ("verified").
+  const initialTab = (searchParams.get('tab') as Classification | 'all') || 'verified' as any;
+  const [tab, setTab] = useState<Classification | 'all' | 'verified'>(initialTab);
   const [data, setData] = useState<Response | null>(null);
   const [loading, setLoading] = useState(true);
-  const [region, setRegion] = useState<string>('');
-  const [team, setTeam] = useState<string>('');
+  const [region, setRegion] = useState<string>(searchParams.get('region') || '');
+  const [team, setTeam] = useState<string>(searchParams.get('team') || '');
   const [search, setSearch] = useState('');
+
+  // Sync filter state into URL so refresh/share keeps the user's view.
+  useEffect(() => {
+    const next = new URLSearchParams();
+    if (tab !== 'verified') next.set('tab', tab);
+    if (region) next.set('region', region);
+    if (team) next.set('team', team);
+    const qs = next.toString();
+    const url = qs ? `${pathname}?${qs}` : pathname;
+    if (typeof window !== 'undefined' && window.location.pathname + window.location.search !== url) {
+      router.replace(url, { scroll: false });
+    }
+  }, [tab, region, team, pathname, router]);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     const params = new URLSearchParams();
+    // "verified" = tpc + tournament merged
+    if (tab === 'verified') params.set('classification', 'tpc,tournament');
+    else if (tab !== 'all') params.set('classification', tab);
+    else params.set('classification', 'all');
     if (region) params.set('region', region);
     if (team) params.set('team', team);
     fetch(`/api/tft/pros?${params.toString()}`)
@@ -76,11 +133,9 @@ export default function TftProsPage() {
       .then(d => { if (!cancelled) { setData(d); setLoading(false); } })
       .catch(() => { if (!cancelled) { setData(null); setLoading(false); } });
     return () => { cancelled = true; };
-  }, [region, team]);
+  }, [tab, region, team]);
 
-  // Client-side fuzzy search on top of the server filters. We never round-
-  // trip for substring matches — the pro list is small enough (<1000) that
-  // local filtering stays instant.
+  // Client-side fuzzy search on top of server filters.
   const filteredPros = useMemo(() => {
     if (!data?.pros) return [];
     if (!search.trim()) return data.pros;
@@ -93,7 +148,6 @@ export default function TftProsPage() {
     );
   }, [data, search]);
 
-  // Region buttons: only show ones that actually have pros, sorted by count.
   const regionOptions = useMemo(() => {
     if (!data?.regionCounts) return [];
     return Object.entries(data.regionCounts)
@@ -101,8 +155,6 @@ export default function TftProsPage() {
       .map(([code, count]) => ({ code, count, label: REGION_LABELS[code] || code.toUpperCase() }));
   }, [data]);
 
-  // Top teams by pro count for the dropdown — capped at 30 so the
-  // selector stays usable on smaller screens.
   const teamOptions = useMemo(() => {
     if (!data?.teamCounts) return [];
     return Object.entries(data.teamCounts)
@@ -111,6 +163,14 @@ export default function TftProsPage() {
       .map(([name, count]) => ({ name, count }));
   }, [data]);
 
+  // Tab counts. "verified" = sum(tpc, tournament).
+  const tabCount = (value: typeof TABS[number]['value'] | 'verified'): number => {
+    if (!data?.classCounts) return 0;
+    if (value === 'verified') return (data.classCounts.tpc || 0) + (data.classCounts.tournament || 0);
+    if (value === 'all') return Object.values(data.classCounts).reduce((s, n) => s + n, 0);
+    return data.classCounts[value] || 0;
+  };
+
   return (
     <main className="min-h-screen bg-[#0e1525]">
       <Nav active="pros" />
@@ -118,7 +178,37 @@ export default function TftProsPage() {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-2 pb-6">
         <p className="text-[#a0b0c5] text-sm mb-4">{t('tft.pros.subtitle')}</p>
 
-        {/* Region filter */}
+        {/* Tab strip — primary classification filter */}
+        <div className="flex flex-wrap gap-1 mb-3 border-b border-[#1e2a3a]">
+          <button
+            onClick={() => setTab('verified')}
+            className={`px-3 py-2 text-xs font-medium uppercase tracking-widest border-b-2 -mb-px ${
+              tab === 'verified'
+                ? 'text-white border-[#7B61FF]'
+                : 'text-[#a0b0c5] border-transparent hover:text-white'
+            }`}
+          >
+            {t('tft.pros.tab.verified')}{' '}
+            <span className="text-[10px] opacity-70 ml-0.5">{tabCount('verified')}</span>
+          </button>
+          {TABS.map(o => (
+            <button
+              key={o.value}
+              onClick={() => setTab(o.value)}
+              className={`px-3 py-2 text-xs font-medium uppercase tracking-widest border-b-2 -mb-px ${
+                tab === o.value
+                  ? 'text-white border-[#7B61FF]'
+                  : 'text-[#a0b0c5] border-transparent hover:text-white'
+              }`}
+            >
+              <span style={{ color: tab === o.value ? o.color : undefined }}>{o.icon}</span>{' '}
+              {t(o.labelKey)}{' '}
+              <span className="text-[10px] opacity-70 ml-0.5">{tabCount(o.value)}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Region filter — only over the active tab */}
         {regionOptions.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mb-3">
             <button
@@ -139,7 +229,7 @@ export default function TftProsPage() {
           </div>
         )}
 
-        {/* Team + Role selectors + Search */}
+        {/* Team + Search */}
         <div className="flex flex-wrap gap-2 mb-4">
           <select
             value={team}
@@ -172,9 +262,10 @@ export default function TftProsPage() {
 
         {!loading && filteredPros.length > 0 && (
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
-            <div className="grid grid-cols-[2.5rem_1fr_7rem_4rem_5rem_3rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#7a8aa0] bg-[#0a0e1a]">
+            <div className="grid grid-cols-[2.5rem_1fr_5.5rem_6rem_4rem_5rem_3rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#7a8aa0] bg-[#0a0e1a]">
               <div></div>
               <div>{t('tft.pros.col.player')}</div>
+              <div>{t('tft.pros.col.classification')}</div>
               <div className="hidden sm:block">{t('tft.pros.col.team')}</div>
               <div className="hidden sm:block">{t('tft.pros.col.region')}</div>
               <div className="text-right">{t('tft.pros.col.earnings')}</div>
@@ -183,11 +274,17 @@ export default function TftProsPage() {
             {filteredPros.map(p => {
               const [gameName, tagLine] = p.riot_id.split('#');
               const slug = `${encodeURIComponent(gameName)}--${encodeURIComponent(tagLine || p.region.replace(/\d+$/, '').toUpperCase())}`;
+              const badge = classificationBadge(p.classification);
+              const earningsSources = p.earnings_sources || {};
+              const earningSourcesNonZero = Object.entries(earningsSources).filter(([, v]) => Number(v) > 0);
+              const earningsTooltip = earningSourcesNonZero.length > 0
+                ? earningSourcesNonZero.map(([src, v]) => `${src}: ${formatEarnings(Number(v))}`).join(' · ')
+                : undefined;
               return (
                 <a
                   key={p.puuid}
                   href={`/tft/player/${slug}?region=${p.region}`}
-                  className="grid grid-cols-[2.5rem_1fr_7rem_4rem_5rem_3rem] gap-2 px-4 py-2 items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]"
+                  className="grid grid-cols-[2.5rem_1fr_5.5rem_6rem_4rem_5rem_3rem] gap-2 px-4 py-2 items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]"
                 >
                   <div className="flex-shrink-0">
                     {p.image_url ? (
@@ -205,16 +302,41 @@ export default function TftProsPage() {
                     )}
                   </div>
                   <div className="min-w-0">
-                    <div className="text-white font-medium truncate">{p.pro_name}</div>
+                    <div className="text-white font-medium truncate flex items-center gap-1.5">
+                      {p.pro_name}
+                      {p.tpc_verified && p.tpc_region && (
+                        <span
+                          className="text-[9px] px-1 rounded font-semibold tabular-nums"
+                          style={{ color: '#e0c75a', backgroundColor: '#e0c75a1f', border: '1px solid #e0c75a40' }}
+                          title={`TPC ${p.tpc_region}`}
+                        >
+                          {p.tpc_region}
+                        </span>
+                      )}
+                    </div>
                     {(p.real_name || p.country) && (
                       <div className="text-[#7a8aa0] text-[10px] truncate">
                         {p.real_name}{p.real_name && p.country ? ' · ' : ''}{p.country}
                       </div>
                     )}
                   </div>
+                  <div>
+                    <span
+                      className="text-[10px] px-1.5 py-0.5 rounded font-medium"
+                      style={{ color: badge.color, backgroundColor: badge.bg, border: `1px solid ${badge.color}40` }}
+                      title={`Confidence: ${p.confidence_score ?? 0}/100`}
+                    >
+                      {badge.label}
+                    </span>
+                  </div>
                   <div className="hidden sm:block text-[#a0b0c5] truncate">{p.team || '—'}</div>
                   <div className="hidden sm:block text-[#a0b0c5]">{REGION_LABELS[p.region] || p.region.toUpperCase()}</div>
-                  <div className="text-[#c89b3c] text-right tabular-nums">{formatEarnings(p.total_earnings_usd)}</div>
+                  <div className="text-[#c89b3c] text-right tabular-nums" title={earningsTooltip}>
+                    {formatEarnings(p.total_earnings_usd)}
+                    {earningSourcesNonZero.length >= 2 && (
+                      <span className="text-[8px] text-[#7a8aa0] ml-0.5" title={earningsTooltip}>•{earningSourcesNonZero.length}</span>
+                    )}
+                  </div>
                   <div className="flex items-center justify-end gap-1.5 text-[#7a8aa0]">
                     {p.twitch_handle && (
                       <a

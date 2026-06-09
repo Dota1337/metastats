@@ -14,6 +14,15 @@ import { useI18n } from '../../lib/i18n';
 import { loadTftAssets, tftIconUrl, type TftAssetsBundle, type TftTraitTier } from '../../lib/tft-cdragon';
 import TftHero from '../../components/tft/TftHero';
 
+interface TraitVelocity {
+  deltaAvgPlace: number | null;
+  avgPlaceNow: number | null;
+  avgPlacePrev: number | null;
+  gamesNow: number;
+  gamesPrev: number;
+  isNew: boolean;
+}
+
 interface TraitRow {
   name: string;
   activation: number;
@@ -21,6 +30,7 @@ interface TraitRow {
   avgPlacement: number | null;
   top4Rate: number | null;
   pickRate: number | null;
+  velocity?: TraitVelocity | null;
 }
 
 // One row per trait — collapsing the per-activation rows the API returns.
@@ -34,6 +44,7 @@ interface GroupedTrait {
   bestActivation: number | null;
   avgTop4Rate: number | null;
   pickRate: number | null;
+  velocity: TraitVelocity | null;
 }
 
 // Visual map for trait activation styles — mirrors the in-game frame colors.
@@ -100,6 +111,14 @@ export default function TftTraitsPage() {
         (acc, r) => (acc == null || (r.avgPlacement ?? 9) < (acc.avgPlacement ?? 9)) ? r : acc, null);
       const totalTop4 = list.reduce((s, r) => s + (r.top4Rate != null ? r.top4Rate * r.games : 0), 0);
       const totalPick = list.reduce((s, r) => s + (r.pickRate != null ? r.pickRate * r.games : 0), 0);
+      // Velocity: API ships one per apiName, but several apiNames can share a
+      // display name (Stargazer's 7 constellations). Pick the one with the
+      // most current-window games as representative — that's the variant
+      // driving the headline number anyway.
+      const velList = list.map(r => r.velocity).filter((v): v is TraitVelocity => !!v);
+      const velocity = velList.length
+        ? velList.reduce<TraitVelocity>((acc, v) => v.gamesNow > acc.gamesNow ? v : acc, velList[0])
+        : null;
       out.push({
         name: displayName,
         totalGames,
@@ -107,6 +126,7 @@ export default function TftTraitsPage() {
         bestActivation: best?.activation ?? null,
         avgTop4Rate: totalGames > 0 ? totalTop4 / totalGames : null,
         pickRate: totalGames > 0 ? totalPick / totalGames : null,
+        velocity,
       });
     }
     return out.sort((a, b) => (a.bestAvg ?? 9) - (b.bestAvg ?? 9));
@@ -128,7 +148,7 @@ export default function TftTraitsPage() {
 
         {hasData && grouped.length > 0 && (
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
-            <div className="hidden md:grid grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#7a8aa0] bg-[#0a0e1a]">
+            <div className={`hidden md:grid ${filters.velocity > 0 ? 'grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem_4rem]' : 'grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem]'} gap-2 px-4 py-2 text-[10px] uppercase text-[#7a8aa0] bg-[#0a0e1a]`}>
               <div></div>
               <div>{t('nav.traits')}</div>
               <div>{t('tft.trait.tiers')}</div>
@@ -137,6 +157,11 @@ export default function TftTraitsPage() {
               <div className="text-right">{t('tft.pickRate')}</div>
               <div className="text-right">{t('tft.top4')}</div>
               <div className="text-right">{t('tft.gamesShort')}</div>
+              {filters.velocity > 0 && (
+                <div className="text-right text-[#c39bff]">
+                  {t('tft.velocity.deltaVs').replace('{n}', String(filters.velocity))}
+                </div>
+              )}
             </div>
             <div className="md:hidden px-4 py-2 text-[10px] uppercase tracking-widest text-[#7a8aa0] bg-[#0a0e1a]">{t('nav.traits')}</div>
             {grouped.map(g => {
@@ -156,7 +181,7 @@ export default function TftTraitsPage() {
                 <a
                   key={g.name}
                   href={`/tft/traits/${encodeURIComponent(g.name)}`}
-                  className="block md:grid md:grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 md:items-center text-xs border-t border-[#1e2a3a] hover:bg-white/5"
+                  className={`block md:grid ${filters.velocity > 0 ? 'md:grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem_4rem]' : 'md:grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem]'} gap-2 px-4 py-2 md:items-center text-xs border-t border-[#1e2a3a] hover:bg-white/5`}
                 >
                   <div className="flex items-center gap-3 md:contents">
                     {url ? (
@@ -178,11 +203,14 @@ export default function TftTraitsPage() {
                   <div className="hidden md:block text-right text-[#7B61FF] font-medium">
                     {g.bestActivation ?? '—'}
                   </div>
-                  <div className="grid grid-cols-4 gap-2 mt-1.5 pl-12 md:pl-0 md:mt-0 md:contents">
+                  <div className={`grid ${filters.velocity > 0 ? 'grid-cols-5' : 'grid-cols-4'} gap-2 mt-1.5 pl-12 md:pl-0 md:mt-0 md:contents`}>
                     <Cell label={t('tft.avgPlacement')} value={g.bestAvg?.toFixed(2) ?? '—'} accent="white" />
                     <Cell label={t('tft.pickRate')} value={g.pickRate != null ? `${(g.pickRate * 100).toFixed(1)}%` : '—'} />
                     <Cell label={t('tft.top4')} value={g.avgTop4Rate != null ? `${(g.avgTop4Rate * 100).toFixed(1)}%` : '—'} />
                     <Cell label={t('tft.gamesShort')} value={String(g.totalGames)} accent="muted" />
+                    {filters.velocity > 0 && (
+                      <VelocityCell velocity={g.velocity} label={t('tft.velocity.deltaVs').replace('{n}', String(filters.velocity))} t={t} />
+                    )}
                   </div>
                 </a>
               );
@@ -231,4 +259,56 @@ function Cell({ label, value, accent }: { label: string; value: string; accent?:
       <div className={`hidden md:block text-right ${valueClass} tabular-nums`}>{value}</div>
     </>
   );
+}
+
+// Same Δ-cell shape as /tft/units — lila label on mobile, color-coded value
+// with directional tooltip (besser/schlechter + Jetzt/Vorher).
+function VelocityCell({ velocity, label, t }: {
+  velocity?: TraitVelocity | null;
+  label: string;
+  t: (k: any) => string;
+}) {
+  const renderDesktop = (content: React.ReactNode, title?: string) => (
+    <div className="hidden md:block text-right tabular-nums" title={title}>{content}</div>
+  );
+  const renderMobile = (content: React.ReactNode, title?: string) => (
+    <div className="md:hidden" title={title}>
+      <div className="text-[#c39bff] text-[9px] uppercase tracking-widest leading-tight">{label}</div>
+      <div className="tabular-nums leading-tight">{content}</div>
+    </div>
+  );
+  if (!velocity) {
+    const tip = t('tft.velocity.notEnough') as string;
+    return (<>
+      {renderMobile(<span className="text-[#5a6a80]">—</span>, tip)}
+      {renderDesktop(<span className="text-[#5a6a80]">—</span>, tip)}
+    </>);
+  }
+  if (velocity.isNew) {
+    const txt = t('tft.velocity.newComp') as string;
+    return (<>
+      {renderMobile(<span className="text-[#c39bff] font-semibold">{txt}</span>)}
+      {renderDesktop(<span className="text-[#c39bff] font-semibold">{txt}</span>)}
+    </>);
+  }
+  if (velocity.deltaAvgPlace == null) {
+    const tip = t('tft.velocity.notEnough') as string;
+    return (<>
+      {renderMobile(<span className="text-[#5a6a80]">—</span>, tip)}
+      {renderDesktop(<span className="text-[#5a6a80]">—</span>, tip)}
+    </>);
+  }
+  const better = velocity.deltaAvgPlace < 0;
+  const color = better ? '#3ecf8e' : '#e44040';
+  const arrow = better ? '▲' : '▼';
+  const dirLabel = better ? (t('tft.velocity.better') as string) : (t('tft.velocity.worse') as string);
+  const nowStr = velocity.avgPlaceNow != null ? velocity.avgPlaceNow.toFixed(2) : '—';
+  const prevStr = velocity.avgPlacePrev != null ? velocity.avgPlacePrev.toFixed(2) : '—';
+  const detail = (t('tft.velocity.tooltipDetail') as string).replace('{now}', nowStr).replace('{prev}', prevStr);
+  const tip = `${dirLabel} — ${detail}`;
+  const value = `${arrow} ${Math.abs(velocity.deltaAvgPlace).toFixed(2)}`;
+  return (<>
+    {renderMobile(<span style={{ color }} className="font-medium">{value}</span>, tip)}
+    {renderDesktop(<span style={{ color }} className="font-medium">{value}</span>, tip)}
+  </>);
 }

@@ -11,26 +11,98 @@ interface TraitRow {
   participants: number;
 }
 
+interface TraitVelocityRow {
+  name: string;
+  games_now: number;
+  games_prev: number;
+  sum_placement_now: number;
+  sum_placement_prev: number;
+  top4_now: number;
+  top4_prev: number;
+  participants_now: number;
+  participants_prev: number;
+}
+
+const VELOCITY_MIN_GAMES = 30;
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   try {
     const filters = await resolveFilters(searchParams);
-    const rows = await callRpc<TraitRow[]>('get_tft_trait_stats', {
-      p_regions: filters.regions,
-      p_buckets: filters.buckets,
-      p_days: filters.days,
-      p_patch: filters.patch,
-      p_set: filters.setNumber,
-    });
+
+    // Δ-velocity (W1-A pattern, anchor-aware via 0039). Trait velocity is rolled
+    // up across activation levels — the UI also groups per display name, so
+    // per-activation Δs would only confuse the comparison.
+    const velocityShift = Math.max(0, parseInt(searchParams.get('velocity') || '0', 10));
+    const wantVelocity = velocityShift > 0;
+
+    const [rows, velocityRows] = await Promise.all([
+      callRpc<TraitRow[]>('get_tft_trait_stats', {
+        p_regions: filters.regions,
+        p_buckets: filters.buckets,
+        p_days: filters.days,
+        p_patch: filters.patch,
+        p_set: filters.setNumber,
+      }),
+      wantVelocity
+        ? callRpc<TraitVelocityRow[]>('get_tft_trait_velocity', {
+            p_regions: filters.regions,
+            p_buckets: filters.buckets,
+            p_set: filters.setNumber,
+            p_patch: filters.patch,
+            p_days: filters.requestedDays,
+            p_shift_days: velocityShift,
+            p_anchor_offset_days: filters.anchorOffsetDays,
+            p_min_games: 30,
+          }).catch(() => [] as TraitVelocityRow[])
+        : Promise.resolve([] as TraitVelocityRow[]),
+    ]);
+
     const denom = rows[0]?.participants || 0;
-    const traits = rows.map(r => ({
-      name: r.name,
-      activation: Number(r.activation),
-      games: Number(r.games),
-      avgPlacement: r.games > 0 ? Number(r.sum_placement) / Number(r.games) : null,
-      top4Rate: r.games > 0 ? Number(r.top4) / Number(r.games) : null,
-      pickRate: denom > 0 ? Number(r.games) / Number(denom) : null,
-    }));
+    const velocityByName = new Map<string, TraitVelocityRow>();
+    for (const v of velocityRows) velocityByName.set(v.name, v);
+
+    const traits = rows.map(r => {
+      const base = {
+        name: r.name,
+        activation: Number(r.activation),
+        games: Number(r.games),
+        avgPlacement: r.games > 0 ? Number(r.sum_placement) / Number(r.games) : null,
+        top4Rate: r.games > 0 ? Number(r.top4) / Number(r.games) : null,
+        pickRate: denom > 0 ? Number(r.games) / Number(denom) : null,
+      };
+      if (!wantVelocity) return base;
+      const v = velocityByName.get(r.name);
+      if (!v) return base;
+      const gNow = Number(v.games_now);
+      const gPrev = Number(v.games_prev);
+      const pNow = Number(v.participants_now);
+      const pPrev = Number(v.participants_prev);
+      const avgNow = gNow > 0 ? Number(v.sum_placement_now) / gNow : null;
+      const avgPrev = gPrev > 0 ? Number(v.sum_placement_prev) / gPrev : null;
+      const top4Now = gNow > 0 ? Number(v.top4_now) / gNow : null;
+      const top4Prev = gPrev > 0 ? Number(v.top4_prev) / gPrev : null;
+      const pickNow = pNow > 0 ? gNow / pNow : null;
+      const pickPrev = pPrev > 0 ? gPrev / pPrev : null;
+      const canDelta = gPrev >= VELOCITY_MIN_GAMES && gNow >= VELOCITY_MIN_GAMES;
+      return {
+        ...base,
+        velocity: {
+          gamesNow: gNow,
+          gamesPrev: gPrev,
+          avgPlaceNow: avgNow,
+          avgPlacePrev: avgPrev,
+          deltaAvgPlace: canDelta && avgNow != null && avgPrev != null ? avgNow - avgPrev : null,
+          top4RateNow: top4Now,
+          top4RatePrev: top4Prev,
+          deltaTop4Rate: canDelta && top4Now != null && top4Prev != null ? top4Now - top4Prev : null,
+          pickRateNow: pickNow,
+          pickRatePrev: pickPrev,
+          deltaPickRate: canDelta && pickNow != null && pickPrev != null ? pickNow - pickPrev : null,
+          isNew: gPrev < 5 && gNow >= VELOCITY_MIN_GAMES,
+        },
+      };
+    });
     traits.sort((a, b) => (a.avgPlacement ?? 9) - (b.avgPlacement ?? 9));
 
     const patches = await getAvailablePatches();
@@ -40,8 +112,11 @@ export async function GET(request: NextRequest) {
         region: filters.regionLabel,
         bucket: filters.bucketLabel,
         days: filters.days,
+        requestedDays: filters.requestedDays,
         patch: filters.patch,
         set: filters.setNumber,
+        velocityShift: wantVelocity ? velocityShift : null,
+        anchorOffsetDays: filters.anchorOffsetDays,
       },
       patches,
       traits,

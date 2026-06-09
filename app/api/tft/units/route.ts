@@ -27,6 +27,24 @@ interface UnitListRow {
   participants: number;
 }
 
+interface UnitVelocityRow {
+  character_id: string;
+  games_now: number;
+  games_prev: number;
+  sum_placement_now: number;
+  sum_placement_prev: number;
+  top4_now: number;
+  top4_prev: number;
+  top1_now: number;
+  top1_prev: number;
+  participants_now: number;
+  participants_prev: number;
+}
+
+// Same Δ-threshold used across comp/item velocity — below ~30 games per
+// window the Δs are too noisy to render with intent; the UI shows "—" instead.
+const VELOCITY_MIN_GAMES = 30;
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get('id');
@@ -125,24 +143,83 @@ export async function GET(request: NextRequest) {
   // Stats list — Supabase RPC with filter expansion.
   try {
     const filters = await resolveFilters(searchParams);
-    const rows = await callRpc<UnitListRow[]>('get_tft_unit_stats', {
-      p_regions: filters.regions,
-      p_buckets: filters.buckets,
-      p_days: filters.days,
-      p_patch: filters.patch,
-      p_set: filters.setNumber,
-    });
+
+    // Optional Δ-velocity layer (parallel to comps/items): when ?velocity=N is
+    // present the route fires a second RPC and merges per-character Δs into
+    // each row. Uses the raw user-requested window + anchor-offset, same
+    // semantics as get_tft_comp_velocity (see 0038/0039).
+    const velocityShift = Math.max(0, parseInt(searchParams.get('velocity') || '0', 10));
+    const wantVelocity = velocityShift > 0;
+
+    const [rows, velocityRows] = await Promise.all([
+      callRpc<UnitListRow[]>('get_tft_unit_stats', {
+        p_regions: filters.regions,
+        p_buckets: filters.buckets,
+        p_days: filters.days,
+        p_patch: filters.patch,
+        p_set: filters.setNumber,
+      }),
+      wantVelocity
+        ? callRpc<UnitVelocityRow[]>('get_tft_unit_velocity', {
+            p_regions: filters.regions,
+            p_buckets: filters.buckets,
+            p_set: filters.setNumber,
+            p_patch: filters.patch,
+            p_days: filters.requestedDays,
+            p_shift_days: velocityShift,
+            p_anchor_offset_days: filters.anchorOffsetDays,
+            p_min_games: 30,
+          }).catch(() => [] as UnitVelocityRow[])
+        : Promise.resolve([] as UnitVelocityRow[]),
+    ]);
+
     const participants = rows[0]?.participants || 0;
+    const velocityByCid = new Map<string, UnitVelocityRow>();
+    for (const v of velocityRows) velocityByCid.set(v.character_id, v);
+
     const units = rows
       .filter(r => !isExcludedUnit(r.character_id))
-      .map(r => ({
-        characterId: r.character_id,
-        games: Number(r.games),
-        avgPlacement: r.games > 0 ? Number(r.sum_placement) / Number(r.games) : null,
-        top4Rate: r.games > 0 ? Number(r.top4) / Number(r.games) : null,
-        top1Rate: r.games > 0 ? Number(r.top1) / Number(r.games) : null,
-        pickRate: participants > 0 ? Number(r.games) / Number(participants) : null,
-      }));
+      .map(r => {
+        const base = {
+          characterId: r.character_id,
+          games: Number(r.games),
+          avgPlacement: r.games > 0 ? Number(r.sum_placement) / Number(r.games) : null,
+          top4Rate: r.games > 0 ? Number(r.top4) / Number(r.games) : null,
+          top1Rate: r.games > 0 ? Number(r.top1) / Number(r.games) : null,
+          pickRate: participants > 0 ? Number(r.games) / Number(participants) : null,
+        };
+        if (!wantVelocity) return base;
+        const v = velocityByCid.get(r.character_id);
+        if (!v) return base;
+        const gNow = Number(v.games_now);
+        const gPrev = Number(v.games_prev);
+        const pNow = Number(v.participants_now);
+        const pPrev = Number(v.participants_prev);
+        const avgNow = gNow > 0 ? Number(v.sum_placement_now) / gNow : null;
+        const avgPrev = gPrev > 0 ? Number(v.sum_placement_prev) / gPrev : null;
+        const top4Now = gNow > 0 ? Number(v.top4_now) / gNow : null;
+        const top4Prev = gPrev > 0 ? Number(v.top4_prev) / gPrev : null;
+        const pickNow = pNow > 0 ? gNow / pNow : null;
+        const pickPrev = pPrev > 0 ? gPrev / pPrev : null;
+        const canDelta = gPrev >= VELOCITY_MIN_GAMES && gNow >= VELOCITY_MIN_GAMES;
+        return {
+          ...base,
+          velocity: {
+            gamesNow: gNow,
+            gamesPrev: gPrev,
+            avgPlaceNow: avgNow,
+            avgPlacePrev: avgPrev,
+            deltaAvgPlace: canDelta && avgNow != null && avgPrev != null ? avgNow - avgPrev : null,
+            top4RateNow: top4Now,
+            top4RatePrev: top4Prev,
+            deltaTop4Rate: canDelta && top4Now != null && top4Prev != null ? top4Now - top4Prev : null,
+            pickRateNow: pickNow,
+            pickRatePrev: pickPrev,
+            deltaPickRate: canDelta && pickNow != null && pickPrev != null ? pickNow - pickPrev : null,
+            isNew: gPrev < 5 && gNow >= VELOCITY_MIN_GAMES,
+          },
+        };
+      });
     units.sort((a, b) => (a.avgPlacement ?? 9) - (b.avgPlacement ?? 9));
 
     const patches = await getAvailablePatches();
@@ -152,8 +229,11 @@ export async function GET(request: NextRequest) {
         region: filters.regionLabel,
         bucket: filters.bucketLabel,
         days: filters.days,
+        requestedDays: filters.requestedDays,
         patch: filters.patch,
         set: filters.setNumber,
+        velocityShift: wantVelocity ? velocityShift : null,
+        anchorOffsetDays: filters.anchorOffsetDays,
       },
       patches,
       units,

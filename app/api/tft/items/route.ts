@@ -89,8 +89,12 @@ export async function GET(request: NextRequest) {
             p_buckets: filters.buckets,
             p_set: filters.setNumber,
             p_patch: filters.patch,
-            p_days: filters.days,
+            // User-requested window (pre-stale-bump) — see comps/route.ts for
+            // the same rationale: bumped days would silently turn "1d vs 3d"
+            // into "5d vs 5d" during erstfill staleness.
+            p_days: filters.requestedDays,
             p_shift_days: velocityShift,
+            p_anchor_offset_days: filters.anchorOffsetDays,
             p_min_games: 30,
           }).catch(() => [])
         : Promise.resolve([] as any[]),
@@ -166,9 +170,11 @@ export async function GET(request: NextRequest) {
         region: filters.regionLabel,
         bucket: filters.bucketLabel,
         days: filters.days,
+        requestedDays: filters.requestedDays,
         patch: filters.patch,
         set: filters.setNumber,
         velocityShift: wantVelocity ? velocityShift : null,
+        anchorOffsetDays: filters.anchorOffsetDays,
       },
       patches,
       items,

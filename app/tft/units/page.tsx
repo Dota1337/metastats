@@ -14,6 +14,15 @@ import { useI18n } from '../../lib/i18n';
 import { loadTftAssets, tftChampionTileUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import TftHero from '../../components/tft/TftHero';
 
+interface UnitVelocity {
+  deltaAvgPlace: number | null;
+  avgPlaceNow: number | null;
+  avgPlacePrev: number | null;
+  gamesNow: number;
+  gamesPrev: number;
+  isNew: boolean;
+}
+
 interface UnitRow {
   characterId: string;
   games: number;
@@ -21,6 +30,7 @@ interface UnitRow {
   top4Rate: number | null;
   top1Rate: number | null;
   pickRate: number | null;
+  velocity?: UnitVelocity | null;
 }
 
 export default function TftUnitsPage() {
@@ -100,7 +110,7 @@ export default function TftUnitsPage() {
 
         {hasData && filtered.length > 0 && (
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
-            <div className="hidden md:grid grid-cols-[3rem_1fr_5rem_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#7a8aa0] bg-[#0a0e1a]">
+            <div className={`hidden md:grid ${filters.velocity > 0 ? 'grid-cols-[3rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem]' : 'grid-cols-[3rem_1fr_5rem_5rem_5rem_5rem_5rem]'} gap-2 px-4 py-2 text-[10px] uppercase text-[#7a8aa0] bg-[#0a0e1a]`}>
               <div></div>
               <div>{t('tft.champion')}</div>
               <div className="text-right">{t('tft.avgPlacement')}</div>
@@ -108,6 +118,11 @@ export default function TftUnitsPage() {
               <div className="text-right">{t('tft.top4')}</div>
               <div className="text-right">{t('tft.top1')}</div>
               <div className="text-right">{t('tft.gamesShort')}</div>
+              {filters.velocity > 0 && (
+                <div className="text-right text-[#c39bff]">
+                  {t('tft.velocity.deltaVs').replace('{n}', String(filters.velocity))}
+                </div>
+              )}
             </div>
             {/* Mobile-only column hint */}
             <div className="md:hidden px-4 py-2 text-[10px] uppercase tracking-widest text-[#7a8aa0] bg-[#0a0e1a]">
@@ -122,10 +137,10 @@ export default function TftUnitsPage() {
                 <a
                   key={u.characterId}
                   href={`/tft/units/${encodeURIComponent(u.characterId)}?bucket=${filters.bucket}`}
-                  className="block md:grid md:grid-cols-[3rem_1fr_5rem_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 md:items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]"
+                  className={`block md:grid ${filters.velocity > 0 ? 'md:grid-cols-[3rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem]' : 'md:grid-cols-[3rem_1fr_5rem_5rem_5rem_5rem_5rem]'} gap-2 px-4 py-2 md:items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]`}
                 >
                   {/* Mobile: icon + name row, stats row below.
-                      Desktop: original 7-col grid. */}
+                      Desktop: 7-col grid (8-col when Δ active). */}
                   <div className="flex items-center gap-3 md:contents">
                     <div className="w-9 h-9 rounded border-2 overflow-hidden flex-shrink-0" style={{ borderColor: costColor }}>
                       {url && <img src={url} alt={ch!.name} className="w-full h-full object-cover" />}
@@ -134,12 +149,15 @@ export default function TftUnitsPage() {
                   </div>
                   {/* Stats: 4-column grid on mobile so the numbers stack
                       neatly under the icon row; explicit cells on desktop. */}
-                  <div className="grid grid-cols-4 gap-2 mt-1.5 pl-12 md:pl-0 md:mt-0 md:contents">
+                  <div className={`grid ${filters.velocity > 0 ? 'grid-cols-5' : 'grid-cols-4'} gap-2 mt-1.5 pl-12 md:pl-0 md:mt-0 md:contents`}>
                     <Cell label={t('tft.avgPlacement')} value={u.avgPlacement?.toFixed(2) ?? '—'} accent="white" />
                     <Cell label={t('tft.pickRate')} value={u.pickRate != null ? `${(u.pickRate * 100).toFixed(1)}%` : '—'} />
                     <Cell label={t('tft.top4')} value={u.top4Rate != null ? `${(u.top4Rate * 100).toFixed(1)}%` : '—'} />
                     <Cell label={t('tft.top1')} value={u.top1Rate != null ? `${(u.top1Rate * 100).toFixed(1)}%` : '—'} />
                     <div className="hidden md:block text-right text-[#7a8aa0]">{u.games}</div>
+                    {filters.velocity > 0 && (
+                      <VelocityCell velocity={u.velocity} label={t('tft.velocity.deltaVs').replace('{n}', String(filters.velocity))} t={t} />
+                    )}
                   </div>
                 </a>
               );
@@ -174,4 +192,57 @@ function Cell({ label, value, accent }: { label: string; value: string; accent?:
       <div className={`hidden md:block text-right ${valueClass} tabular-nums`}>{value}</div>
     </>
   );
+}
+
+// Δ-Vergleich-Zelle für die Units-Liste. Lila Trennlinie zur Stats-Strip,
+// grün/rot Pfeil mit Wert, "NEU" für frisch erschienene Units. Tooltip
+// liefert Jetzt/Vorher-Werte (damit die Zahl im Kontext steht).
+function VelocityCell({ velocity, label, t }: {
+  velocity?: { deltaAvgPlace: number | null; avgPlaceNow: number | null; avgPlacePrev: number | null; isNew: boolean } | null;
+  label: string;
+  t: (k: any) => string;
+}) {
+  const renderDesktop = (content: React.ReactNode, title?: string) => (
+    <div className="hidden md:block text-right tabular-nums" title={title}>{content}</div>
+  );
+  const renderMobile = (content: React.ReactNode, title?: string) => (
+    <div className="md:hidden" title={title}>
+      <div className="text-[#c39bff] text-[9px] uppercase tracking-widest leading-tight">{label}</div>
+      <div className="tabular-nums leading-tight">{content}</div>
+    </div>
+  );
+  if (!velocity) {
+    const tip = t('tft.velocity.notEnough');
+    return (<>
+      {renderMobile(<span className="text-[#5a6a80]">—</span>, tip)}
+      {renderDesktop(<span className="text-[#5a6a80]">—</span>, tip)}
+    </>);
+  }
+  if (velocity.isNew) {
+    const txt = t('tft.velocity.newComp');
+    return (<>
+      {renderMobile(<span className="text-[#c39bff] font-semibold">{txt}</span>)}
+      {renderDesktop(<span className="text-[#c39bff] font-semibold">{txt}</span>)}
+    </>);
+  }
+  if (velocity.deltaAvgPlace == null) {
+    const tip = t('tft.velocity.notEnough');
+    return (<>
+      {renderMobile(<span className="text-[#5a6a80]">—</span>, tip)}
+      {renderDesktop(<span className="text-[#5a6a80]">—</span>, tip)}
+    </>);
+  }
+  const better = velocity.deltaAvgPlace < 0;
+  const color = better ? '#3ecf8e' : '#e44040';
+  const arrow = better ? '▲' : '▼';
+  const dirLabel = better ? t('tft.velocity.better') : t('tft.velocity.worse');
+  const nowStr = velocity.avgPlaceNow != null ? velocity.avgPlaceNow.toFixed(2) : '—';
+  const prevStr = velocity.avgPlacePrev != null ? velocity.avgPlacePrev.toFixed(2) : '—';
+  const detail = (t('tft.velocity.tooltipDetail') as string).replace('{now}', nowStr).replace('{prev}', prevStr);
+  const tip = `${dirLabel} — ${detail}`;
+  const value = `${arrow} ${Math.abs(velocity.deltaAvgPlace).toFixed(2)}`;
+  return (<>
+    {renderMobile(<span style={{ color }} className="font-medium">{value}</span>, tip)}
+    {renderDesktop(<span style={{ color }} className="font-medium">{value}</span>, tip)}
+  </>);
 }

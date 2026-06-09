@@ -96,7 +96,11 @@ export default function TftItemsPage() {
               <div className="text-right">{t('tft.pickRate')}</div>
               <div className="text-right">{t('tft.top4')}</div>
               <div className="text-right">{t('tft.gamesShort')}</div>
-              {filters.velocity > 0 && <div className="text-right">Δ Ø</div>}
+              {filters.velocity > 0 && (
+                <div className="text-right text-[#c39bff]">
+                  {t('tft.velocity.deltaVs').replace('{n}', String(filters.velocity))}
+                </div>
+              )}
             </div>
             <div className="md:hidden px-4 py-2 text-[10px] uppercase tracking-widest text-[#7a8aa0] bg-[#0a0e1a]">
               {t('nav.items')}
@@ -165,7 +169,7 @@ export default function TftItemsPage() {
                     <Cell label={t('tft.top4')} value={it.top4Rate != null ? `${(it.top4Rate * 100).toFixed(1)}%` : '—'} />
                     <Cell label={t('tft.gamesShort')} value={String(it.games)} accent="muted" />
                     {filters.velocity > 0 && (
-                      <DeltaCell velocity={it.velocity} label="Δ Ø" />
+                      <DeltaCell velocity={it.velocity} label={t('tft.velocity.deltaVs').replace('{n}', String(filters.velocity))} />
                     )}
                   </div>
                 </a>

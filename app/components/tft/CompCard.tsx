@@ -4,6 +4,15 @@ import { tftIconUrl, tftChampionTileUrl, findChampion, findItem } from '../../li
 import { costColor as costColorOf } from '../../lib/tft-ui';
 import { useI18n } from '../../lib/i18n';
 
+interface CompVelocity {
+  deltaAvgPlace: number | null;
+  avgPlaceNow: number | null;
+  avgPlacePrev: number | null;
+  isNew: boolean;
+  gamesNow: number;
+  gamesPrev: number;
+}
+
 interface Comp {
   source?: 'data' | 'editorial';
   slug: string;
@@ -22,6 +31,7 @@ interface Comp {
   typicalAugments: { apiName: string; count: number | unknown; sumPlacement?: number | unknown }[];
   carryItems: { items: string[]; count: number | unknown }[];
   authorName?: string;
+  velocity?: CompVelocity | null;
 }
 
 const safeCount = (v: unknown): number => (typeof v === 'number' ? v : 1);
@@ -35,12 +45,17 @@ function tierBadge(avgPlacement: number | null): { label: string; color: string;
 }
 
 export default function CompCard({
-  comp, rank, assets, href,
+  comp, rank, assets, href, showVelocity = false, velocityShift = 0,
 }: {
   comp: Comp;
   rank?: number;
   assets: TftAssetsBundle | null;
   href?: string;
+  // When true the card renders an additional Δ pill at the end of the stats
+  // strip. Drives the landing-page Δ-comparison feature so the StatsFilterBar's
+  // velocity dropdown actually has a visible effect.
+  showVelocity?: boolean;
+  velocityShift?: number;
 }) {
   const { t } = useI18n();
   const parts = parseClusterKey(comp.clusterKey);
@@ -188,6 +203,7 @@ export default function CompCard({
             <div className="text-[#7a8aa0] text-[9px] uppercase tracking-widest">{t('tft.games')}</div>
             <div className="text-[#a0b0c5] text-sm">{comp.games}</div>
           </div>
+          {showVelocity && <VelocityStat velocity={comp.velocity} shift={velocityShift} t={t} />}
         </div>
       </div>
     </Wrapper>
@@ -199,6 +215,64 @@ function Stat({ label, value, accent }: { label: string; value: string; accent?:
     <div className="flex flex-col items-end justify-center min-w-[3.5rem]">
       <div className="text-[#7a8aa0] text-[9px] uppercase tracking-widest">{label}</div>
       <div className="text-base font-medium" style={{ color: accent || '#ffffff' }}>{value}</div>
+    </div>
+  );
+}
+
+// Δ-Vergleich-Pille — sitzt am Ende der Stats-Strip, links abgesetzt durch eine
+// lila Trennlinie (passt zum Filter-Akzent in der Bar). Zeigt ▲/▼ + Wert in
+// grün/rot, NEU für frisch erschienene Comps und "—" wenn unter Sample-Größe.
+function VelocityStat({
+  velocity, shift, t,
+}: {
+  velocity?: CompVelocity | null;
+  shift: number;
+  t: (key: any) => string;
+}) {
+  const label = shift > 0
+    ? (t('tft.velocity.deltaVs') as string).replace('{n}', String(shift))
+    : (t('tft.velocity.delta') as string);
+  if (!velocity) {
+    return (
+      <div className="flex flex-col items-end justify-center min-w-[3.5rem] pl-2 border-l border-[#c39bff]/30" title={t('tft.velocity.notEnough') as string}>
+        <div className="text-[#c39bff] text-[9px] uppercase tracking-widest">{label}</div>
+        <div className="text-[#5a6a80] text-base">—</div>
+      </div>
+    );
+  }
+  if (velocity.isNew) {
+    return (
+      <div className="flex flex-col items-end justify-center min-w-[3.5rem] pl-2 border-l border-[#c39bff]/30">
+        <div className="text-[#c39bff] text-[9px] uppercase tracking-widest">{label}</div>
+        <div className="text-[#c39bff] text-base font-semibold">{t('tft.velocity.newComp')}</div>
+      </div>
+    );
+  }
+  if (velocity.deltaAvgPlace == null) {
+    return (
+      <div className="flex flex-col items-end justify-center min-w-[3.5rem] pl-2 border-l border-[#c39bff]/30" title={t('tft.velocity.notEnough') as string}>
+        <div className="text-[#c39bff] text-[9px] uppercase tracking-widest">{label}</div>
+        <div className="text-[#5a6a80] text-base">—</div>
+      </div>
+    );
+  }
+  const better = velocity.deltaAvgPlace < 0;
+  const color = better ? '#3ecf8e' : '#e44040';
+  const arrow = better ? '▲' : '▼';
+  const directionLabel = better ? (t('tft.velocity.better') as string) : (t('tft.velocity.worse') as string);
+  const nowStr = velocity.avgPlaceNow != null ? velocity.avgPlaceNow.toFixed(2) : '—';
+  const prevStr = velocity.avgPlacePrev != null ? velocity.avgPlacePrev.toFixed(2) : '—';
+  const detail = (t('tft.velocity.tooltipDetail') as string)
+    .replace('{now}', nowStr).replace('{prev}', prevStr);
+  return (
+    <div
+      className="flex flex-col items-end justify-center min-w-[3.5rem] pl-2 border-l border-[#c39bff]/30"
+      title={`${directionLabel} — ${detail}`}
+    >
+      <div className="text-[#c39bff] text-[9px] uppercase tracking-widest">{label}</div>
+      <div className="text-base font-medium tabular-nums" style={{ color }}>
+        {arrow} {Math.abs(velocity.deltaAvgPlace).toFixed(2)}
+      </div>
     </div>
   );
 }

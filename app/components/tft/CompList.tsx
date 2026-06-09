@@ -17,11 +17,12 @@ interface CompListProps {
 // current patch · Diamond · last 3 days · all regions.
 const DEFAULT_FILTERS: Filters = { patch: 'current', bucket: 'diamond', days: 3, region: 'all', velocity: 0 };
 
-const SORT_OPTIONS: { value: string; labelKey: string }[] = [
+const SORT_OPTIONS: { value: string; labelKey: string; needsVelocity?: boolean }[] = [
   { value: 'avgPlacement', labelKey: 'tft.avgPlacement' },
   { value: 'top4Rate',     labelKey: 'tft.top4' },
   { value: 'top1Rate',     labelKey: 'tft.top1' },
   { value: 'pickRate',     labelKey: 'tft.pickRate' },
+  { value: 'velocity',     labelKey: 'tft.velocity.trending', needsVelocity: true },
 ];
 
 export default function CompList({ headless = false }: CompListProps) {
@@ -38,13 +39,18 @@ export default function CompList({ headless = false }: CompListProps) {
   useEffect(() => {
     setComps([]);
     setHasData(null);
-    const qs = new URLSearchParams({
+    const params: Record<string, string> = {
       patch: filters.patch,
       bucket: filters.bucket,
       days: String(filters.days),
       region: filters.region,
       source: 'data',
-    }).toString();
+    };
+    // Δ-Vergleich: velocity is only emitted when non-zero so the default URL
+    // stays clean. Without this, switching the StatsFilterBar's Δ dropdown on
+    // the landing page would never round-trip to the API.
+    if (filters.velocity > 0) params.velocity = String(filters.velocity);
+    const qs = new URLSearchParams(params).toString();
     fetch(`/api/tft/comps?${qs}`)
       .then(r => r.json())
       .then(d => {
@@ -62,8 +68,25 @@ export default function CompList({ headless = false }: CompListProps) {
     else if (sortBy === 'pickRate') c.sort((a, b) => (b.pickRate ?? 0) - (a.pickRate ?? 0));
     else if (sortBy === 'top4Rate') c.sort((a, b) => (b.top4Rate ?? 0) - (a.top4Rate ?? 0));
     else if (sortBy === 'top1Rate') c.sort((a, b) => (b.top1Rate ?? 0) - (a.top1Rate ?? 0));
+    else if (sortBy === 'velocity') {
+      // Most-improved first (most-negative Δ = biggest jump up in placement).
+      // Comps without Δ (no prev sample) sink so the trending set reads top-down.
+      c.sort((a, b) => {
+        const da = a.velocity?.deltaAvgPlace ?? Infinity;
+        const db = b.velocity?.deltaAvgPlace ?? Infinity;
+        return da - db;
+      });
+    }
     return c;
   }, [comps, sortBy]);
+
+  // Auto-flip sort to "Trending" when the Δ filter is enabled, and back to
+  // avgPlacement when it's turned off — same UX as /tft/comps.
+  useEffect(() => {
+    if (filters.velocity > 0 && sortBy === 'avgPlacement') setSortBy('velocity');
+    else if (filters.velocity === 0 && sortBy === 'velocity') setSortBy('avgPlacement');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.velocity]);
 
   return (
     <>
@@ -80,7 +103,9 @@ export default function CompList({ headless = false }: CompListProps) {
           onChange={e => setSortBy(e.target.value)}
           className="bg-[#141c2e] border border-[#1e2a3a] rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-[#7B61FF]/60"
         >
-          {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{t(o.labelKey as TranslationKey)}</option>)}
+          {SORT_OPTIONS
+            .filter(o => !o.needsVelocity || filters.velocity > 0)
+            .map(o => <option key={o.value} value={o.value}>{t(o.labelKey as TranslationKey)}</option>)}
         </select>
       </div>
 
@@ -106,6 +131,8 @@ export default function CompList({ headless = false }: CompListProps) {
             rank={i + 1}
             assets={assets}
             href={`/tft/comps/${encodeURIComponent(c.slug)}?bucket=${filters.bucket}&region=${filters.region}`}
+            showVelocity={filters.velocity > 0}
+            velocityShift={filters.velocity}
           />
         ))}
       </div>

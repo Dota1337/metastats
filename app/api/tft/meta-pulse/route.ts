@@ -101,7 +101,12 @@ export async function GET(request: NextRequest) {
         p_buckets: buckets,
         p_set: setNumber,
         p_patch: currentPatch,
-        p_days: 7,
+        // Follows the user-selected window. The KR-Ahead lens stays
+        // meaningful when the user looks at "last 1d" vs "last 7d" — we
+        // shouldn't be silently aggregating a fixed 7d slice underneath.
+        // For very small windows (<3d) we bump to 3 to keep the per-region
+        // sample meaningful since each region needs ≥80 games per cluster.
+        p_days: Math.max(3, filters.requestedDays),
         p_min_games: 80,
       }).catch(() => [] as RegionRow[]),
       // Super-lean diff RPC (migration 0035) — scalar-only, drops the 10 MB

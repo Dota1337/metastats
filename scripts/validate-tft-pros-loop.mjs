@@ -200,10 +200,26 @@ function runSubScript(scriptName, extraArgs = []) {
 async function modeWeeklyFull() {
   console.log(`[weekly-full] Pipeline start — run ${RUN_ID}`);
   const steps = [
+    // Discovery first — finds Liquipedia pages we don't have yet (CN/KR
+    // gaps especially). Logs them as "missing" events but does NOT yet
+    // resolve them (Riot-ID lookup) — that's the next step.
+    ['crawl-tft-pro-categories.mjs', []],
+    // Main Liquipedia ingest (parses Category:Players, resolves Riot-IDs).
     ['crawl-tft-pro-players.mjs', []],
+    // TPC roster overlay — stamps tpc_verified on the matched pros.
     ['crawl-tft-tpc-roster.mjs', []],
+    // Per-pro tournament history + lifetime earnings (~18min for 250 pros).
     ['enrich-tft-pro-history.mjs', []],
+    // 2026-current Top-Earners cross-check from Liquipedia's portal page.
+    // Cheap (1 request) and flags any discrepancy against per-pro enrichment.
+    ['crawl-tft-pro-portal-stats.mjs', []],
+    // Optional EsportsEarnings cross-check (currently low-value — TFT
+    // coverage there has gone stale). Skipped silently if no API key.
     ['enrich-tft-esportsearnings.mjs', []],
+    // Live rank lookup via Riot League-V1 — drives streamer-vs-historic
+    // classification (needs Master+ for streamer status).
+    ['validate-tft-pro-rank.mjs', []],
+    // Final classification — uses everything above.
     ['classify-tft-pros.mjs', []],
   ];
   for (const [script, a] of steps) {

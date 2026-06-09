@@ -45,11 +45,16 @@ export const BUCKET_GROUPS: Record<string, string[]> = {
 export interface ResolvedFilters {
   regions: string[];     // exact platform routings, expanded from groups
   buckets: string[];     // exact bucket names
-  days: number;          // 1-7
+  days: number;          // 1-7 — already bumped to cover stale-data lag
+  requestedDays: number; // 1-7 — raw user choice, pre-bump (use for Δ-windows)
   patch: string | null;  // null = no filter (any), else exact patch string
   setNumber: number | null;
   regionLabel: string;   // raw filter value for display ('all','west','euw1',…)
   bucketLabel: string;   // raw filter value for display
+  // Days between current_date and the latest available stats day. Velocity /
+  // Δ-windows must anchor at (current_date - anchorOffsetDays), otherwise a
+  // 1-day Δ-window over a 4-day-stale pipeline lands in an empty range.
+  anchorOffsetDays: number;
 }
 
 // Expand a filter param like "all" or "euw1,kr" into a flat region list.
@@ -151,17 +156,22 @@ export async function resolveFilters(searchParams: URLSearchParams): Promise<Res
   // weiter die User-gewählte Granularität, aber mit verschobener Range.
   const latestDay = patches[0]?.last_day;
   let days = requestedDays;
+  let anchorOffsetDays = 0;
   if (latestDay) {
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
     const latest = new Date(latestDay + 'T00:00:00Z');
-    const staleness = Math.floor((today.getTime() - latest.getTime()) / 86_400_000);
+    const staleness = Math.max(0, Math.floor((today.getTime() - latest.getTime()) / 86_400_000));
     // RPC-Filter ist `day > current_date - p_days::interval`. Wir brauchen
     // p_days >= staleness + 1 damit der letzte Stats-Tag im Fenster ist.
     if (staleness >= 1) days = Math.max(days, staleness + requestedDays);
+    anchorOffsetDays = staleness;
   }
 
-  return { regions, buckets, days, patch, setNumber, regionLabel, bucketLabel };
+  return {
+    regions, buckets, days, requestedDays, patch, setNumber,
+    regionLabel, bucketLabel, anchorOffsetDays,
+  };
 }
 
 // Variant of resolvePatch that takes the patch-list as input (avoids a second

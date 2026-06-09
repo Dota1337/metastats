@@ -40,6 +40,12 @@ export default function TftCompsPage() {
   const [sortBy, setSortBy] = useState<'avg' | 'win' | 'top4' | 'pick' | 'games' | 'velocity'>(
     (searchParams.get('sort') as any) || 'avg',
   );
+  // Whether the user manually picked a sort. As long as they haven't, toggling
+  // the Δ-filter automatically promotes "Trending" so the column they just
+  // enabled actually drives the order — otherwise the new column would render
+  // but the rows would stay sorted by avg-placement, which made the feature
+  // look broken in earlier sessions.
+  const [sortTouched, setSortTouched] = useState<boolean>(() => searchParams.has('sort'));
   const [comps, setComps] = useState<any[]>([]);
   const [hasData, setHasData] = useState<boolean | null>(null);
   const [patches, setPatches] = useState<PatchInfo[]>([]);
@@ -68,6 +74,19 @@ export default function TftCompsPage() {
       router.replace(url, { scroll: false });
     }
   }, [filters, adv, pathname, router]);
+
+  // Filter-change handler that also auto-flips the sort to "Trending" the
+  // first time the user enables Δ — and back to "avg" when they turn it off.
+  // Skips if they've explicitly chosen a sort already, so a manual decision
+  // is never overridden. Done in the change handler instead of an effect to
+  // avoid the setState-within-effect cascade lint flags warn about.
+  const handleFiltersChange = (next: Filters) => {
+    if (!sortTouched) {
+      if (next.velocity > 0 && filters.velocity === 0) setSortBy('velocity');
+      else if (next.velocity === 0 && filters.velocity > 0) setSortBy('avg');
+    }
+    setFilters(next);
+  };
 
   const currentPatchLabel = patches[0]?.patch;
 
@@ -103,7 +122,7 @@ export default function TftCompsPage() {
       <Nav active="comps" />
       <TftHero pageTitle={t('nav.comps')} patch={currentPatchLabel} />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-2 pb-6">
-        <StatsFilterBar filters={filters} patches={patches} onChange={setFilters} />
+        <StatsFilterBar filters={filters} patches={patches} onChange={handleFiltersChange} />
 
         <AdvancedCompFilters
           filters={adv}
@@ -116,7 +135,7 @@ export default function TftCompsPage() {
           <span className="text-[#7a8aa0]">{t('tft.sortBy')}:</span>
           <select
             value={sortBy}
-            onChange={e => setSortBy(e.target.value as any)}
+            onChange={e => { setSortTouched(true); setSortBy(e.target.value as any); }}
             className="bg-[#141c2e] border border-[#1e2a3a] rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-[#7B61FF]/60"
           >
             <option value="avg">{t('tft.avgPlacement')}</option>
@@ -152,7 +171,11 @@ export default function TftCompsPage() {
               <div className="text-right">{t('tft.top1')}</div>
               <div className="text-right">{t('tft.pickRate')}</div>
               <div className="text-right">{t('tft.gamesShort')}</div>
-              {filters.velocity > 0 && <div className="text-right">{t('tft.velocity.delta')}</div>}
+              {filters.velocity > 0 && (
+                <div className="text-right text-[#c39bff]">
+                  {t('tft.velocity.deltaVs').replace('{n}', String(filters.velocity))}
+                </div>
+              )}
               <div></div>
             </div>
             <div className="space-y-1">
@@ -164,6 +187,7 @@ export default function TftCompsPage() {
                   assets={assets}
                   href={`/tft/comps/${encodeURIComponent(c.slug)}?bucket=${filters.bucket}&region=${filters.region}`}
                   showVelocity={filters.velocity > 0}
+                  velocityShift={filters.velocity}
                 />
               ))}
             </div>

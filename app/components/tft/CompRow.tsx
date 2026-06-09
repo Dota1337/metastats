@@ -13,7 +13,10 @@ import BookmarkButton from '../BookmarkButton';
 interface CompVelocity {
   deltaAvgPlace: number | null;
   deltaPickRate: number | null;
+  avgPlaceNow: number | null;
+  avgPlacePrev: number | null;
   isNew: boolean;
+  gamesNow: number;
   gamesPrev: number;
 }
 
@@ -85,7 +88,7 @@ function descriptorTag(opts: {
 }
 
 export default function CompRow({
-  comp, rank, assets, href, showVelocity = false,
+  comp, rank, assets, href, showVelocity = false, velocityShift = 0,
 }: {
   comp: Comp;
   rank: number;
@@ -95,6 +98,10 @@ export default function CompRow({
   // match the header grid in the parent page — the comps page only enables
   // velocity if the API was queried with ?velocity=N.
   showVelocity?: boolean;
+  // Comparison window in days (1/2/3/7/14). Used in the Δ cell's tooltip so
+  // a glance at the value also shows what window it's against, instead of
+  // relying on the user remembering which filter they set.
+  velocityShift?: number;
 }) {
   const { t } = useI18n();
   const parts = parseClusterKey(comp.clusterKey);
@@ -225,24 +232,46 @@ export default function CompRow({
           <div className="hidden sm:block text-right tabular-nums">
             {(() => {
               const v = comp.velocity;
-              if (!v) return <span className="text-[#5a6a80]">—</span>;
+              if (!v) {
+                return (
+                  <span
+                    className="text-[#5a6a80]"
+                    title={t('tft.velocity.notEnough')}
+                  >—</span>
+                );
+              }
               if (v.isNew) {
                 return (
                   <span
                     className="inline-block px-1 rounded text-[10px] font-semibold"
                     style={{ color: '#c39bff', backgroundColor: '#c39bff1f', border: '1px solid #c39bff40' }}
+                    title={t('tft.velocity.newComp')}
                   >
                     {t('tft.velocity.newComp')}
                   </span>
                 );
               }
-              if (v.deltaAvgPlace == null) return <span className="text-[#5a6a80]">—</span>;
+              if (v.deltaAvgPlace == null) {
+                return (
+                  <span
+                    className="text-[#5a6a80]"
+                    title={t('tft.velocity.notEnough')}
+                  >—</span>
+                );
+              }
               // Lower placement = improvement → green ▲; higher = regression → red ▼.
               const better = v.deltaAvgPlace < 0;
               const color = better ? '#3ecf8e' : '#e44040';
               const arrow = better ? '▲' : '▼';
+              const label = better ? t('tft.velocity.better') : t('tft.velocity.worse');
+              const nowStr = v.avgPlaceNow != null ? v.avgPlaceNow.toFixed(2) : '—';
+              const prevStr = v.avgPlacePrev != null ? v.avgPlacePrev.toFixed(2) : '—';
+              const detail = t('tft.velocity.tooltipDetail')
+                .replace('{now}', nowStr)
+                .replace('{prev}', prevStr);
+              const tooltip = `${label} — ${detail}`;
               return (
-                <span style={{ color }} className="font-medium">
+                <span style={{ color }} className="font-medium" title={tooltip}>
                   {arrow} {Math.abs(v.deltaAvgPlace).toFixed(2)}
                 </span>
               );

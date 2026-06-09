@@ -141,10 +141,14 @@ export default function StatsFilterBar({ filters, patches, onChange }: Props) {
           label={t('tft.filter.velocity')}
           value={String(filters.velocity)}
           onChange={v => onChange({ ...filters, velocity: Number(v) })}
+          highlight={filters.velocity > 0}
         >
           <option value="0">{t('tft.filter.velocityOff')}</option>
-          <option value="3">{t('tft.filter.velocity48h')}</option>
+          <option value="1">{t('tft.filter.velocity1d')}</option>
+          <option value="2">{t('tft.filter.velocity2d')}</option>
+          <option value="3">{t('tft.filter.velocity3d')}</option>
           <option value="7">{t('tft.filter.velocity7d')}</option>
+          <option value="14">{t('tft.filter.velocity14d')}</option>
         </FilterSelect>
       </div>
     </div>
@@ -152,20 +156,28 @@ export default function StatsFilterBar({ filters, patches, onChange }: Props) {
 }
 
 function FilterSelect({
-  label, value, onChange, children,
+  label, value, onChange, children, highlight = false,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   children: React.ReactNode;
+  // Highlights the select with a purple accent when the filter is non-default,
+  // so an active Δ-comparison or other opt-in filter is visually scannable in
+  // a 5-up filter bar instead of disappearing into the chrome.
+  highlight?: boolean;
 }) {
   return (
     <div>
-      <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest mb-1">{label}</div>
+      <div className={`text-[10px] uppercase tracking-widest mb-1 ${highlight ? 'text-[#c39bff]' : 'text-[#7a8aa0]'}`}>{label}</div>
       <select
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="w-full bg-[#141c2e] border border-[#1e2a3a] rounded px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#7B61FF]/60"
+        className={`w-full bg-[#141c2e] rounded px-3 py-1.5 text-xs text-white focus:outline-none border ${
+          highlight
+            ? 'border-[#7B61FF]/70 ring-1 ring-[#7B61FF]/30'
+            : 'border-[#1e2a3a] focus:border-[#7B61FF]/60'
+        }`}
       >
         {children}
       </select>
@@ -175,11 +187,14 @@ function FilterSelect({
 
 // URL-state helpers — share filters via shareable URLs.
 
+// Allowed velocity shifts (days). 0 = off; otherwise prev-window starts N days
+// before the now-window. Anything else collapses to 0 so a stale URL can't
+// surface a shape the UI doesn't render.
+const VELOCITY_SHIFTS = new Set([0, 1, 2, 3, 7, 14]);
+
 export function filtersFromSearchParams(searchParams: URLSearchParams): Filters {
-  // Allowed velocity windows: 0 (off), 3 (48h shift), 7 (7d shift). Anything
-  // else collapses to 0 so a stale URL can't surface stale shapes.
   const velocityRaw = parseInt(searchParams.get('velocity') || '0', 10);
-  const velocity = velocityRaw === 3 || velocityRaw === 7 ? velocityRaw : 0;
+  const velocity = VELOCITY_SHIFTS.has(velocityRaw) ? velocityRaw : 0;
   return {
     patch: searchParams.get('patch') || 'current',
     bucket: searchParams.get('bucket') || 'diamond',

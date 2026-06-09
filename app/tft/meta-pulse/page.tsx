@@ -1,23 +1,32 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
 import TftHero from '../../components/tft/TftHero';
 import EmptyData from '../../components/tft/EmptyData';
+import StatsFilterBar, {
+  filtersFromSearchParams,
+  filtersToQueryString,
+  type Filters,
+  type PatchInfo,
+} from '../../components/tft/StatsFilterBar';
 import { useI18n } from '../../lib/i18n';
 import { loadTftAssets, tftChampionTileUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
 
 // W5: Meta-Pulse Landing — eine Seite, vier Pro-Sichtfenster:
-//   • Trending (was bewegt sich jetzt)
+//   • Trending (was bewegt sich jetzt) — folgt jetzt dem Δ-Vergleich-Filter
 //   • KR-Ahead (was spielt Korea vor dem Westen)
 //   • Patch-Movers (was hat der aktuelle Patch entschieden)
-// Alle Daten aus /api/tft/meta-pulse (eine Roundtrip).
 
 interface MetaPulse {
   hasData: boolean;
   currentPatch: string | null;
   previousPatch: string | null;
   bucket: string;
+  requestedDays: number;
+  velocityShift: number;
+  patches: PatchInfo[];
   rising: { clusterKey: string; deltaAvgPlace: number; avgPlaceNow: number; gamesNow: number }[];
   krAhead: { clusterKey: string; avgPlaceKr: number; avgPlaceEu: number; pickrateKr: number; pickrateEu: number; krAheadScore: number }[];
   patchWinners: { key: string; currentAvgPlacement: number; deltaAvgPlacement: number; currentGames: number }[];
@@ -27,6 +36,19 @@ interface MetaPulse {
 
 export default function TftMetaPulsePage() {
   const { t } = useI18n();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // Default Δ-shift = 3 days when the URL hasn't picked one. The Meta-Pulse
+  // page is the velocity view by definition — "off" isn't a valid state here,
+  // unlike the comps list where the Δ column is opt-in.
+  const [filters, setFilters] = useState<Filters>(() => {
+    const f = filtersFromSearchParams(new URLSearchParams(searchParams.toString()));
+    if (f.velocity === 0) f.velocity = 3;
+    if (!searchParams.has('bucket')) f.bucket = 'master_plus';
+    return f;
+  });
   const [data, setData] = useState<MetaPulse | null>(null);
   const [loading, setLoading] = useState(true);
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
@@ -35,18 +57,26 @@ export default function TftMetaPulsePage() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/tft/meta-pulse?bucket=master_plus')
+    setLoading(true);
+    const qs = filtersToQueryString(filters);
+    fetch(`/api/tft/meta-pulse?${qs}`)
       .then(r => r.json())
       .then(d => { if (!cancelled) { setData(d); setLoading(false); } })
       .catch(() => { if (!cancelled) { setData(null); setLoading(false); } });
+    const url = `${pathname}?${qs}`;
+    if (typeof window !== 'undefined' && window.location.pathname + window.location.search !== url) {
+      router.replace(url, { scroll: false });
+    }
     return () => { cancelled = true; };
-  }, []);
+  }, [filters, pathname, router]);
 
   return (
     <main className="min-h-screen bg-[#0e1525]">
       <Nav active="comps" />
       <TftHero pageTitle={t('tft.metaPulse.title')} subtitle={t('tft.metaPulse.subtitle')} patch={data?.currentPatch || undefined} />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-2 pb-6">
+        <StatsFilterBar filters={filters} patches={data?.patches || []} onChange={setFilters} />
+
         {loading && (
           <div className="text-[#7a8aa0] text-center py-12">…</div>
         )}
@@ -54,17 +84,19 @@ export default function TftMetaPulsePage() {
 
         {data?.hasData && (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {/* Rising — biggest Δ-avg-place vs the comparison window. */}
+            {/* Rising — biggest Δ-avg-place vs the user-selected Δ window. */}
             <PulseSection
               title={t('tft.metaPulse.rising')}
               accent="#3ecf8e"
               empty={data.rising.length === 0}
+              footer={t('tft.velocity.deltaVs').replace('{n}', String(data.velocityShift))}
             >
               {data.rising.map(r => (
                 <PulseRow
                   key={r.clusterKey}
                   clusterKey={r.clusterKey}
                   assets={assets}
+                  bucket={filters.bucket}
                   primary={`Ø ${r.avgPlaceNow.toFixed(2)}`}
                   secondary={`Δ ${r.deltaAvgPlace >= 0 ? '+' : ''}${r.deltaAvgPlace.toFixed(2)}`}
                   secondaryColor={r.deltaAvgPlace < 0 ? '#3ecf8e' : '#e44040'}
@@ -73,7 +105,6 @@ export default function TftMetaPulsePage() {
               ))}
             </PulseSection>
 
-            {/* KR-Ahead — what KR plays before EU. */}
             <PulseSection
               title={t('tft.metaPulse.krAhead')}
               accent="#c39bff"
@@ -84,6 +115,7 @@ export default function TftMetaPulsePage() {
                   key={r.clusterKey}
                   clusterKey={r.clusterKey}
                   assets={assets}
+                  bucket={filters.bucket}
                   primary={`KR Ø ${r.avgPlaceKr.toFixed(2)}`}
                   secondary={`EU Ø ${r.avgPlaceEu.toFixed(2)}`}
                   secondaryColor="#a0b0c5"
@@ -92,7 +124,6 @@ export default function TftMetaPulsePage() {
               ))}
             </PulseSection>
 
-            {/* Patch-Movers — biggest avg-place gain since previous patch. */}
             <PulseSection
               title={t('tft.metaPulse.patchWinners')}
               accent="#e0c75a"
@@ -104,6 +135,7 @@ export default function TftMetaPulsePage() {
                   key={r.key}
                   clusterKey={r.key}
                   assets={assets}
+                  bucket={filters.bucket}
                   primary={`Ø ${r.currentAvgPlacement.toFixed(2)}`}
                   secondary={`Δ ${r.deltaAvgPlacement.toFixed(2)}`}
                   secondaryColor={r.deltaAvgPlacement < 0 ? '#3ecf8e' : '#e44040'}
@@ -114,8 +146,6 @@ export default function TftMetaPulsePage() {
           </div>
         )}
 
-        {/* Pro-Workflow shortcuts. Mounted independent of hasData so the
-            scout link works even when crawls are still spinning up. */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-6">
           <a
             href="/tft/lobby-scout"
@@ -165,7 +195,7 @@ function PulseSection({
 }
 
 function PulseRow({
-  clusterKey, assets, primary, secondary, secondaryColor, meta,
+  clusterKey, assets, primary, secondary, secondaryColor, meta, bucket,
 }: {
   clusterKey: string;
   assets: TftAssetsBundle | null;
@@ -173,6 +203,7 @@ function PulseRow({
   secondary: string;
   secondaryColor: string;
   meta: string;
+  bucket: string;
 }) {
   const m = /^(.+)@(\d+)_(.+)$/.exec(clusterKey);
   const traitName = m && assets ? (assets.traits[m[1]]?.name || m[1].replace(/^TFT\d+_/, '')) : '';
@@ -181,7 +212,7 @@ function PulseRow({
 
   return (
     <a
-      href={`/tft/comps/${encodeURIComponent(clusterKey)}?bucket=master_plus`}
+      href={`/tft/comps/${encodeURIComponent(clusterKey)}?bucket=${bucket}`}
       className="block bg-[#141c2e] border border-[#1e2a3a] rounded p-2 hover:border-[#7B61FF]/40 transition-colors"
     >
       <div className="flex items-center gap-2">

@@ -250,8 +250,16 @@ export async function GET(request: NextRequest) {
             p_buckets: filters.buckets,
             p_set: filters.setNumber,
             p_patch: filters.patch,
-            p_days: filters.days,
+            // Use the user-requested window size (not the stale-bumped one) so
+            // "Letzter Tag + Δ vs vor 3 Tagen" really compares 1d vs 1d shifted
+            // by 3d. The bump on filters.days is a fallback for the main list
+            // when the pipeline is days behind — for Δ-comparisons it would
+            // collapse the semantics ("1d" suddenly meaning "5d").
+            p_days: filters.requestedDays,
             p_shift_days: velocityShift,
+            // Anchor both windows at the last available stats day; otherwise
+            // a 1d window on a 4d-stale pipeline lands in an empty range.
+            p_anchor_offset_days: filters.anchorOffsetDays,
             // Allow newer entries with only a current-window sample to surface
             // as "NEW" rather than being filtered out for lacking a baseline.
             p_min_games: Math.max(10, Math.floor(minGames / 3)),
@@ -278,9 +286,11 @@ export async function GET(request: NextRequest) {
         region: filters.regionLabel,
         bucket: filters.bucketLabel,
         days: filters.days,
+        requestedDays: filters.requestedDays,
         patch: filters.patch,
         set: filters.setNumber,
         velocityShift: wantVelocity ? velocityShift : null,
+        anchorOffsetDays: filters.anchorOffsetDays,
       },
       patches,
       minGames,

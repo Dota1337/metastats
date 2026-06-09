@@ -57,10 +57,23 @@ interface PatchDiffRow {
   deltaTop4Rate: number;
 }
 
+// Allowed velocity shifts mirror StatsFilterBar; anything else collapses to
+// the default so a stale URL can't produce a shape the SQL never tested.
+const VELOCITY_SHIFTS = new Set([1, 2, 3, 7, 14]);
+const DEFAULT_VELOCITY_SHIFT = 3;
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const filters = await resolveFilters(searchParams);
   const buckets = filters.buckets;
+
+  // Δ-window: how far back the comparison reaches. User-controlled via the
+  // same `velocity` param the Comps page uses, so a deep-link from one to
+  // the other carries the selection over. 0 (=off) still produces the
+  // "rising" list using the default shift, since the page IS the velocity
+  // view — there's no "off" state here.
+  const velocityRaw = parseInt(searchParams.get('velocity') || '0', 10);
+  const velocityShift = VELOCITY_SHIFTS.has(velocityRaw) ? velocityRaw : DEFAULT_VELOCITY_SHIFT;
 
   try {
     const patches = await getAvailablePatches();
@@ -77,8 +90,11 @@ export async function GET(request: NextRequest) {
         p_buckets: buckets,
         p_set: setNumber,
         p_patch: currentPatch,
-        p_days: 3,
-        p_shift_days: 3,
+        // Use the user-requested window (pre-stale-bump) for the Δ semantics
+        // to match what the filter bar promises ("Letzter Tag vs vor 3T").
+        p_days: filters.requestedDays,
+        p_shift_days: velocityShift,
+        p_anchor_offset_days: filters.anchorOffsetDays,
         p_min_games: 100,
       }).catch(() => [] as VelocityRow[]),
       callRpc<RegionRow[]>('get_tft_region_divergence', {
@@ -169,6 +185,10 @@ export async function GET(request: NextRequest) {
       currentPatch,
       previousPatch,
       bucket: filters.bucketLabel,
+      region: filters.regionLabel,
+      requestedDays: filters.requestedDays,
+      velocityShift,
+      patches,
       rising,
       krAhead,
       patchWinners,

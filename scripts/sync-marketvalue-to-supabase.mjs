@@ -20,9 +20,20 @@ import pg from 'pg';
 const args = process.argv.slice(2);
 const arg = (k, def) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : def; };
 
+// --date is the upper-bound day to sync; --window is how many days back to
+// include from there. Default 7d catches large regions whose crawl spans
+// >24h (euw1/na1/kr/vn2 all routinely take 18-30h, so a "today only" sync
+// would silently drop everything from yesterday's pass). --since X is a
+// shortcut for --window N where N = today - X.
 const DATE = arg('--date', new Date().toISOString().slice(0, 10));
+const WINDOW_DAYS = Math.max(1, parseInt(arg('--window', '7'), 10));
+const SINCE = arg('--since', null);   // YYYY-MM-DD, sets effective window
 const REGION_FILTER = arg('--region', null);
 const VERBOSE = args.includes('--verbose');
+
+// Effective sync range: [LOWER_BOUND, DATE]
+const LOWER_BOUND = SINCE || new Date(Date.parse(DATE) - WINDOW_DAYS * 86_400_000)
+  .toISOString().slice(0, 10);
 
 function loadEnv() {
   const candidates = ['/etc/metastats-crawler/env', resolve(process.cwd(), '.env.local')];
@@ -76,8 +87,14 @@ async function supaUpsert(table, rows, onConflict) {
 }
 
 async function syncSnapshots() {
-  const where = REGION_FILTER ? 'where snapshot_date = $1 and region = $2' : 'where snapshot_date = $1';
-  const params = REGION_FILTER ? [DATE, REGION_FILTER] : [DATE];
+  // Range filter so cross-day cluster runs (euw1, na1, kr, vn2 all need
+  // 18-30h) actually land in Supabase. Previous behaviour was `= $1` which
+  // silently dropped yesterday's snapshots when the cluster sync ran the
+  // next morning — that's how euw1 lost 7733 snapshots on 2026-06-06.
+  const where = REGION_FILTER
+    ? 'where snapshot_date >= $1::date and snapshot_date <= $2::date and region = $3'
+    : 'where snapshot_date >= $1::date and snapshot_date <= $2::date';
+  const params = REGION_FILTER ? [LOWER_BOUND, DATE, REGION_FILTER] : [LOWER_BOUND, DATE];
   const r = await pool.query(
     `select puuid, region, snapshot_date, game_name, tag_line, tier, rank, lp,
             ladder_rank, base_value, multiplier::float8, final_value, sample_size,
@@ -86,7 +103,7 @@ async function syncSnapshots() {
        ${where}`,
     params,
   );
-  console.log(`[snapshots] ${r.rows.length} rows for ${DATE}${REGION_FILTER ? ` / ${REGION_FILTER}` : ''}`);
+  console.log(`[snapshots] ${r.rows.length} rows for ${LOWER_BOUND}…${DATE}${REGION_FILTER ? ` / ${REGION_FILTER}` : ''}`);
   // Normalize snapshot_date to YYYY-MM-DD string (pg returns Date object)
   const rows = r.rows.map(row => ({
     ...row,
@@ -99,12 +116,12 @@ async function syncSnapshots() {
 }
 
 async function syncSeasonStats() {
-  // We push everything that was touched today — the updated_at column lets us
-  // skip stale rows even when a player wasn't in today's crawl set.
+  // Same range expansion as snapshots — a cluster that finishes the next day
+  // would otherwise skip yesterday's player rows.
   const where = REGION_FILTER
     ? "where updated_at >= $1::date and region = $2"
     : "where updated_at >= $1::date";
-  const params = REGION_FILTER ? [DATE, REGION_FILTER] : [DATE];
+  const params = REGION_FILTER ? [LOWER_BOUND, REGION_FILTER] : [LOWER_BOUND];
   const r = await pool.query(
     `select puuid, region, set_number, sample_size,
             avg_placement::float8, top4_rate::float8, top1_rate::float8,
@@ -121,7 +138,7 @@ async function syncSeasonStats() {
 }
 
 async function main() {
-  console.log(`=== Hetzner → Supabase sync (date ${DATE}) ===`);
+  console.log(`=== Hetzner → Supabase sync (range ${LOWER_BOUND} … ${DATE}) ===`);
   await syncSnapshots();
   if (VERBOSE) console.log('---');
   try {

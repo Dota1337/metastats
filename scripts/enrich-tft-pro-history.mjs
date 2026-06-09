@@ -64,26 +64,21 @@ const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!SKIP_SUPABASE && !SUPA_KEY) { console.error('SUPABASE_SERVICE_ROLE_KEY required'); process.exit(1); }
 
 // ─── Liquipedia ──────────────────────────────────────────────────────────
-async function liquipediaJson(params) {
-  const url = `${LIQUIPEDIA_API}?${new URLSearchParams({ ...params, format: 'json' })}`;
-  const res = await fetch(url, {
-    headers: { 'User-Agent': USER_AGENT, 'Accept-Encoding': 'gzip, deflate' },
-  });
-  if (!res.ok) throw new Error(`Liquipedia HTTP ${res.status}`);
-  return res.json();
-}
+// Shared helper: cross-process rate-limit lock + ETag cache (see
+// scripts/lib/liquipedia-tft.mjs).
+import { liquipediaHtml } from './lib/liquipedia-tft.mjs';
 
 async function fetchRenderedHtml(title) {
-  const j = await liquipediaJson({ action: 'parse', page: title, prop: 'text', disablelimitreport: '1' });
-  return j.parse?.text?.['*'] || '';
+  return liquipediaHtml(title);
 }
 
 // Liquipedia stores per-player tournament tables on a dedicated `/Results`
 // subpage (e.g. `Setsuko/Results`). The main page only carries an empty
-// `Achievements` heading with a link to the subpage. Returns '' on 404.
+// `Achievements` heading with a link to the subpage. Returns '' on 404 (the
+// shared helper resolves 404s to null which we coerce to '').
 async function fetchResultsSubpage(title) {
   try {
-    return await fetchRenderedHtml(`${title}/Results`);
+    return (await liquipediaHtml(`${title}/Results`)) || '';
   } catch {
     return '';
   }
@@ -278,13 +273,11 @@ async function main() {
 
   for (let i = 0; i < pros.length; i++) {
     const pro = pros[i];
-    await sleep(LIQUIPEDIA_DELAY_MS);
     try {
+      // The shared helper enforces the global rate-limit gate around each
+      // call, so manual sleeps here would just compound the wait.
       const html = await fetchRenderedHtml(pro.source_page);
       const image_url = extractImageUrl(html);
-      // Results live on a /Results subpage on Liquipedia. We respect the
-      // rate limit by sleeping between the two requests.
-      await sleep(LIQUIPEDIA_DELAY_MS);
       const resultsHtml = await fetchResultsSubpage(pro.source_page);
       const tournament_results = extractResults(resultsHtml || html);
       const total_earnings_usd = tournament_results.reduce((s, r) => s + (r.prize_usd || 0), 0);

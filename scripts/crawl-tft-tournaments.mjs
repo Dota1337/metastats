@@ -100,61 +100,41 @@ const SEED_TOURNAMENTS = [
 // ─────────────────────────────────────────────────────────────────────────────
 // Liquipedia fetch
 
-async function liquipediaJson(params) {
-  const url = `${LIQUIPEDIA_API}?${new URLSearchParams({ ...params, format: 'json' })}`;
-  const res = await fetch(url, {
-    headers: {
-      'User-Agent': USER_AGENT,
-      'Accept-Encoding': 'gzip, deflate',
-    },
-  });
-  if (!res.ok) throw new Error(`Liquipedia HTTP ${res.status}: ${url.slice(0, 200)}`);
-  return res.json();
-}
+// Shared helpers — cross-process rate-limit lock + ETag-based HTTP cache.
+import {
+  liquipediaJson,
+  liquipediaCategoryMembers,
+  expandTemplates as sharedExpandTemplates,
+} from './lib/liquipedia-tft.mjs';
 
 async function fetchTournamentWikitext(page) {
   const j = await liquipediaJson({
     action: 'parse', page, prop: 'wikitext|displaytitle',
   });
   return {
-    wikitext: j.parse?.wikitext?.['*'] || '',
-    displayTitle: j.parse?.displaytitle || page.replace(/_/g, ' '),
+    wikitext: j?.parse?.wikitext?.['*'] || '',
+    displayTitle: j?.parse?.displaytitle || page.replace(/_/g, ' '),
   };
 }
 
 // Ask Liquipedia to expand any wikitext server-side (resolves {{Template}}
-// references that aren't in our local TFT_SET_NAMES whitelist). On-demand only:
-// we call this for a `name`-field value if it still contains `{{…}}` after
-// local unwiki resolution — otherwise we skip the extra request entirely so
-// the 30s ToU delay doesn't compound on every page.
+// references that aren't in our local TFT_SET_NAMES whitelist). On-demand
+// only — every call still passes through the shared rate-limit gate, so
+// burst-resolving N templates costs N × 5s sequentially.
 async function expandTemplatesViaLiquipedia(text) {
   if (!text) return text;
   try {
-    const j = await liquipediaJson({ action: 'expandtemplates', text, prop: 'wikitext' });
-    return j.expandtemplates?.wikitext || text;
+    return await sharedExpandTemplates(text);
   } catch (e) {
     if (VERBOSE) console.warn(`  [expand-fail] ${e.message}`);
     return text;
   }
 }
 
-// All page titles in a Liquipedia category (handles cmcontinue paging). Each
-// API call still respects the 30s ToU delay.
+// Forwarder so existing callers don't change signature. The shared helper
+// already paginates cmcontinue + respects the rate-limit gate.
 async function fetchCategoryMembers(category) {
-  const pages = [];
-  let cmcontinue = null;
-  do {
-    const params = {
-      action: 'query', list: 'categorymembers',
-      cmtitle: `Category:${category}`, cmlimit: '500', cmtype: 'page',
-    };
-    if (cmcontinue) params.cmcontinue = cmcontinue;
-    const j = await liquipediaJson(params);
-    for (const m of j.query?.categorymembers || []) pages.push(m.title);
-    cmcontinue = j.continue?.cmcontinue || null;
-    if (cmcontinue) await sleep(LIQUIPEDIA_DELAY_MS);
-  } while (cmcontinue);
-  return pages;
+  return liquipediaCategoryMembers(category);
 }
 
 // Auto-discover tournament pages from Liquipedia's tier categories so new
@@ -170,7 +150,7 @@ async function discoverSeedFromCategories() {
   if (hasFlag('--include-b-tier')) cats.push({ cat: 'B-Tier_Tournaments', tier: 'B' });
   const discovered = [];
   for (let i = 0; i < cats.length; i++) {
-    if (i > 0) await sleep(LIQUIPEDIA_DELAY_MS);
+    // Rate-limit handled inside the shared liquipediaJson gate.
     try {
       const titles = await fetchCategoryMembers(cats[i].cat);
       for (const title of titles) {

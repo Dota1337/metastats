@@ -87,85 +87,38 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 // ─────────────────────────────────────────────────────────────────────────────
 // Liquipedia helpers
 
-async function liquipediaJson(params) {
-  const url = `${LIQUIPEDIA_API}?${new URLSearchParams({ ...params, format: 'json' })}`;
-  // 429 retry-loop with exponential back-off (Liquipedia rate-limits bursts).
-  let backoff = 10_000;
-  for (let attempt = 0; attempt < 4; attempt++) {
-    const res = await fetch(url, {
-      headers: {
-        'User-Agent': USER_AGENT,
-        'Accept-Encoding': 'gzip, deflate',
-      },
-    });
-    if (res.ok) return res.json();
-    if (res.status === 429 && attempt < 3) {
-      const retryAfter = Number(res.headers.get('Retry-After')) || 0;
-      const wait = Math.max(retryAfter * 1000, backoff);
-      console.log(`  [liquipedia] 429 — backoff ${Math.round(wait/1000)}s (attempt ${attempt + 1})`);
-      await sleep(wait);
-      backoff *= 2;
-      continue;
-    }
-    throw new Error(`Liquipedia HTTP ${res.status}: ${url.slice(0, 200)}`);
-  }
-  throw new Error('Liquipedia 429 after 4 attempts');
-}
+// Liquipedia API access — all calls go through the shared helper
+// (scripts/lib/liquipedia-tft.mjs). That gives us a cross-process rate-limit
+// lock (so subprocess boundaries don't burst-fire) + ETag-based HTTP cache
+// (so repeated wikitext fetches in a daily/weekly cron are mostly free).
+import {
+  liquipediaJson,
+  liquipediaCategoryMembers,
+  liquipediaWikitextsBatch,
+} from './lib/liquipedia-tft.mjs';
 
 async function fetchAllPlayerTitles() {
-  const out = [];
-  let cmcontinue = null;
-  do {
-    const params = {
-      action: 'query', list: 'categorymembers',
-      cmtitle: 'Category:Players', cmlimit: '500',
-    };
-    if (cmcontinue) params.cmcontinue = cmcontinue;
-    const j = await liquipediaJson(params);
-    for (const m of j.query?.categorymembers || []) {
-      if (m.ns === 0 && m.title) out.push(m.title);
-    }
-    cmcontinue = j.continue?.cmcontinue || null;
-    if (cmcontinue) await sleep(LIQUIPEDIA_DELAY_MS);
-  } while (cmcontinue);
-  return out;
+  // Shared helper paginates Category:Players transparently + respects the
+  // global rate-limit gate.
+  const titles = await liquipediaCategoryMembers('Players');
+  return titles.filter(Boolean);
 }
 
 async function fetchPlayerWikitext(title) {
   const j = await liquipediaJson({
     action: 'parse', page: title, prop: 'wikitext',
   });
-  return j.parse?.wikitext?.['*'] || '';
+  return j?.parse?.wikitext?.['*'] || '';
 }
 
 // Batched wikitext fetch via action=query&prop=revisions — supports up to 50
 // titles per request. Reduces a 400-page crawl to ~8 requests, staying
 // well within Liquipedia's rate limit. Returns Map<title, wikitext>.
 async function fetchPlayerWikitextsBatch(titles) {
-  const out = new Map();
-  const BATCH = 50;  // MediaWiki API supports up to 50 titles per query
-  for (let i = 0; i < titles.length; i += BATCH) {
-    const batch = titles.slice(i, i + BATCH);
-    const j = await liquipediaJson({
-      action: 'query',
-      prop: 'revisions',
-      titles: batch.join('|'),
-      rvprop: 'content',
-      rvslots: 'main',
-    });
-    const pages = j.query?.pages || {};
-    for (const p of Object.values(pages)) {
-      const title = p.title;
-      const content =
-        p.revisions?.[0]?.slots?.main?.['*'] ||
-        p.revisions?.[0]?.['*'] ||
-        '';
-      if (title) out.set(title, content);
-    }
-    if (i + BATCH < titles.length) await sleep(LIQUIPEDIA_DELAY_MS);
-  }
-  return out;
+  // Shared helper batches + rate-limits.
+  return liquipediaWikitextsBatch(titles);
 }
+
 
 
 // Lazy-tolerant parser: walks the {{Infobox player |k=v |...}} template and
@@ -335,7 +288,7 @@ async function main() {
       console.log('       [legacy] per-page action=parse walk');
       wikitextByTitle = new Map();
       for (const title of titles) {
-        await sleep(LIQUIPEDIA_DELAY_MS);
+        // Rate-limit handled by the shared liquipediaJson gate.
         try { wikitextByTitle.set(title, await fetchPlayerWikitext(title)); }
         catch (e) { if (VERBOSE) console.warn(`  [skip] ${title}: ${e.message}`); }
       }

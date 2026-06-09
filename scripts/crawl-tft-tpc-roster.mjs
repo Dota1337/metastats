@@ -36,6 +36,15 @@ import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { tmpdir } from 'node:os';
+// Shared Liquipedia helper — cross-process rate-limit lock + ETag cache +
+// template parser. Replaces the local copies of liquipediaJson +
+// findAllTemplates we used to keep here so this script doesn't drift
+// from the rest of the pipeline.
+import {
+  liquipediaJson as sharedLiquipediaJson,
+  liquipediaCategoryMembers,
+  findAllTemplates as sharedFindAllTemplates,
+} from './lib/liquipedia-tft.mjs';
 
 const args = process.argv.slice(2);
 const arg = (k, d) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : d; };
@@ -71,74 +80,10 @@ if (!SKIP_SUPABASE && !SUPA_KEY) { console.error('SUPABASE_SERVICE_ROLE_KEY requ
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-// ─── Liquipedia helpers (copied from crawl-tft-tournaments.mjs, kept minimal) ─
-// Long-form backoff. After a 429-burst Liquipedia typically unblocks in
-// ~5-10 minutes; aborting earlier wastes the work already done. The total
-// patience here is 30s + 60s + 120s + 240s + 480s ≈ 15min — enough for
-// every realistic block to clear.
-async function liquipediaJson(params) {
-  const url = `${LIQUIPEDIA_API}?${new URLSearchParams({ ...params, format: 'json' })}`;
-  let backoff = 30_000;
-  for (let attempt = 0; attempt < 6; attempt++) {
-    const res = await fetch(url, {
-      headers: { 'User-Agent': USER_AGENT, 'Accept-Encoding': 'gzip, deflate' },
-    });
-    if (res.ok) return res.json();
-    if (res.status === 429 && attempt < 5) {
-      const retryAfter = Number(res.headers.get('Retry-After')) || 0;
-      const wait = Math.max(retryAfter * 1000, backoff);
-      console.log(`  [liquipedia] 429 — backoff ${Math.round(wait/1000)}s (attempt ${attempt+1}/6)`);
-      await sleep(wait);
-      backoff *= 2;
-      continue;
-    }
-    if (res.status === 404) return null;
-    throw new Error(`Liquipedia HTTP ${res.status}: ${url.slice(0, 200)}`);
-  }
-  throw new Error('Liquipedia 429 after 6 attempts');
-}
-
-// Depth-balanced template body extractor — copied verbatim from
-// crawl-tft-tournaments.mjs:findTemplate so this script stays standalone.
-function findTemplate(wikitext, templateName, from = 0) {
-  const lower = templateName.charAt(0).toLowerCase() + templateName.slice(1);
-  const upper = templateName.charAt(0).toUpperCase() + templateName.slice(1);
-  const markers = upper === lower ? [`{{${lower}`] : [`{{${lower}`, `{{${upper}`];
-  let idx = from;
-  while (true) {
-    let start = -1, marker = '';
-    for (const mk of markers) {
-      const p = wikitext.indexOf(mk, idx);
-      if (p >= 0 && (start < 0 || p < start)) { start = p; marker = mk; }
-    }
-    if (start < 0) return null;
-    const next = wikitext[start + marker.length];
-    if (next !== '|' && next !== ' ' && next !== '\n' && next !== '}') {
-      idx = start + 1; continue;
-    }
-    let depth = 0, i = start;
-    while (i < wikitext.length) {
-      if (wikitext[i] === '{' && wikitext[i+1] === '{') { depth++; i += 2; continue; }
-      if (wikitext[i] === '}' && wikitext[i+1] === '}') {
-        depth--; i += 2;
-        if (depth === 0) return { start, end: i, body: wikitext.slice(start + marker.length, i - 2) };
-        continue;
-      }
-      i++;
-    }
-    return null;
-  }
-}
-
-function findAllTemplates(wikitext, templateName) {
-  const out = []; let from = 0;
-  while (true) {
-    const t = findTemplate(wikitext, templateName, from);
-    if (!t) break;
-    out.push(t); from = t.end;
-  }
-  return out;
-}
+// Re-bind shared helpers under the names this script already uses internally,
+// so the call-sites below stay readable without further renames.
+const liquipediaJson = sharedLiquipediaJson;
+const findAllTemplates = sharedFindAllTemplates;
 
 // ─── Set + cup discovery ─────────────────────────────────────────────────
 function resolveCurrentSetName() {
@@ -158,12 +103,9 @@ function resolveCurrentSetName() {
 // S-Tier category and filtering by "<set>/TFT_Pro_Circuit/<region>/" prefix.
 async function discoverCupPagesForSet(setName) {
   const setPrefix = setName.replace(/ /g, '_');
-  // Liquipedia categorymembers paged — usually fits in one call for S-tier.
-  const j = await liquipediaJson({
-    action: 'query', list: 'categorymembers',
-    cmtitle: 'Category:S-Tier_Tournaments', cmlimit: '500', cmtype: 'page',
-  });
-  const titles = (j?.query?.categorymembers || []).map(m => m.title.replace(/ /g, '_'));
+  // Shared helper paginates cmcontinue + respects the global rate-limit gate.
+  const raw = await liquipediaCategoryMembers('S-Tier_Tournaments');
+  const titles = raw.map(t => t.replace(/ /g, '_'));
   const byRegion = { AMER: [], APAC: [], EMEA: [], CN: [] };
   for (const t of titles) {
     if (!t.startsWith(`${setPrefix}/`)) continue;
@@ -296,7 +238,6 @@ async function main() {
     cupsByRegion = cache.cupsByRegion;
   } else {
     cupsByRegion = await discoverCupPagesForSet(setName);
-    await sleep(LIQUIPEDIA_DELAY_MS);
     writeCache({ setName, cupsByRegion, rostersByRegion: {} });
   }
 
@@ -315,12 +256,12 @@ async function main() {
     const roster = new Set();
     console.log(`[${region}] ${cups.length} cup(s): ${cups.map(c => c.split('/').pop()).join(', ')}`);
     for (const cupPage of cups) {
+      // Rate-limit handled inside the shared liquipediaJson gate.
       const j = await liquipediaJson({ action: 'parse', page: cupPage, prop: 'wikitext' });
       const wt = j?.parse?.wikitext?.['*'] || '';
       const names = extractRosterFromWikitext(wt);
       if (VERBOSE) console.log(`  [${cupPage.split('/').pop()}] ${names.length} participants`);
       for (const n of names) roster.add(n);
-      await sleep(LIQUIPEDIA_DELAY_MS);
     }
     rostersByRegion[region] = [...roster];
     console.log(`[${region}] unique roster: ${roster.size} pros`);

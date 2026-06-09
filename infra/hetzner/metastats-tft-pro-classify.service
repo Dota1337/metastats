@@ -5,7 +5,6 @@ Description=TFT Pro Classifier (recomputes classification + confidence_score)
 Type=oneshot
 WorkingDirectory=/opt/metastats-crawler
 EnvironmentFile=/etc/metastats-crawler/env
-Environment=NODE_OPTIONS=--use-system-ca
 ExecStart=/usr/bin/node scripts/classify-tft-pros.mjs
 
 [Install]

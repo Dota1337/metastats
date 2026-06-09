@@ -6,7 +6,6 @@ After=network-online.target
 Type=oneshot
 WorkingDirectory=/opt/metastats-crawler
 EnvironmentFile=/etc/metastats-crawler/env
-Environment=NODE_OPTIONS=--use-system-ca
 ExecStart=/usr/bin/node scripts/validate-tft-pros-loop.mjs --mode=weekly-full --open-issues
 # Liquipedia rate-limit + 4-step pipeline can take ~45 min; cap at 2h.
 TimeoutStartSec=7200

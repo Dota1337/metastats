@@ -185,11 +185,14 @@ async function detectAnomalies() {
 }
 
 // ─── Sub-pipeline runners ────────────────────────────────────────────────
+// Forward only the parent's existing NODE_OPTIONS — don't blindly inject
+// `--use-system-ca`, that flag is a Windows-only workaround and Node on
+// Linux rejects it from NODE_OPTIONS.
 function runSubScript(scriptName, extraArgs = []) {
   const node = process.execPath;
   const r = spawnSync(node, ['scripts/' + scriptName, ...extraArgs], {
     stdio: 'inherit',
-    env: { ...process.env, NODE_OPTIONS: '--use-system-ca' },
+    env: process.env,
   });
   return r.status === 0;
 }

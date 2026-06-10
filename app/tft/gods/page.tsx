@@ -28,6 +28,9 @@ interface GodMeta {
   baseApiName: string;
   category?: string;
   stageOfferings?: Record<'2-4' | '3-4' | '4-4', Offering[]>;
+  // Optional: re-route a sub-boon's icon to a different bundle entry. Used for
+  // AurelionSol's Quest picks, whose CDragon icons are placeholders or wrong.
+  boonIconOverrides?: Record<string, string>;
 }
 interface GodsDoc {
   set: number;
@@ -206,7 +209,13 @@ export default function TftGodsPage() {
                               <div className="text-[10px] uppercase tracking-widest text-[#c39bff] mb-1.5">{t('gods.section.variants')}</div>
                               <div className="space-y-1.5">
                                 {variants.map(b => {
-                                  const url = tftIconUrl(assets, b.data.icon);
+                                  const overrideId = g.meta.boonIconOverrides?.[b.apiName];
+                                  const overrideEntry = overrideId
+                                    ? (assets.augments[overrideId] || assets.items[overrideId])
+                                    : null;
+                                  const url = overrideEntry?.icon
+                                    ? tftIconUrl(assets, overrideEntry.icon)
+                                    : tftIconUrl(assets, b.data.icon);
                                   const loc = tftAugmentLocalised(b.data, lang);
                                   return (
                                     <div key={b.apiName} className="flex items-start gap-2 p-2 bg-[#141c2e] rounded">

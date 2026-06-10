@@ -76,7 +76,7 @@
               "en": "Make it rain!",
               "de": "Lass es regnen!"
             },
-            "iconApiName": "TFT11_Encounter_ChoiceItem_Gain8Gold"
+            "iconApiName": "TFT_Assist_Gold_8"
           },
           {
             "name": {
@@ -177,6 +177,11 @@
       "themeKey": "gods.theme.aurelionsol",
       "category": "Gold",
       "baseApiName": "TFT17_Augment_AurelionSolGodAugment",
+      "boonIconOverrides": {
+        "TFT17_Augment_AurelionSolGodAugment_SmallQuest": "TFT17_MarketOffering_CompletedAnvil",
+        "TFT17_Augment_AurelionSolGodAugment_MediumQuest": "TFT17_MarketOffering_CompletedAnvil",
+        "TFT17_Augment_AurelionSolGodAugment_LargeQuest": "TFT17_MarketOffering_CompletedAnvil"
+      },
       "stageOfferings": {
         "2-4": [
           {
@@ -611,39 +616,6 @@
           },
           {
             "name": {
-              "en": "Sparring Gloves",
-              "de": "Trainingshandschuhe"
-            },
-            "desc": {
-              "en": "Gain Sparring Gloves.",
-              "de": "Erhalte Trainingshandschuhe."
-            },
-            "iconApiName": "TFT_Item_SparringGloves"
-          },
-          {
-            "name": {
-              "en": "Recurve Bow",
-              "de": "Recurvebogen"
-            },
-            "desc": {
-              "en": "Gain a Recurve Bow.",
-              "de": "Erhalte einen Recurvebogen."
-            },
-            "iconApiName": "TFTTutorial_Item_RecurveBow"
-          },
-          {
-            "name": {
-              "en": "Tear of the Goddess",
-              "de": "Träne der Göttin"
-            },
-            "desc": {
-              "en": "Gain a Tear of the Goddess.",
-              "de": "Erhalte eine Träne der Göttin."
-            },
-            "iconApiName": "TFT_Item_TearOfTheGoddess"
-          },
-          {
-            "name": {
               "en": "Craftsmanship",
               "de": "Handwerkskunst"
             },
@@ -679,50 +651,6 @@
           },
           {
             "name": {
-              "en": "B.F. Sword",
-              "de": "B.F. Schwert"
-            },
-            "desc": {
-              "en": "Gain a B.F. Sword.",
-              "de": "Erhalte ein B.F. Schwert."
-            },
-            "iconApiName": "TFTTutorial_Item_BFSword"
-          },
-          {
-            "name": {
-              "en": "Needlessly Large Rod",
-              "de": "Unnötig großer Stab"
-            },
-            "desc": {
-              "en": "Gain a Needlessly Large Rod.",
-              "de": "Erhalte einen unnötig großen Stab."
-            },
-            "iconApiName": "TFTTutorial_Item_NeedlesslyLargeRod"
-          },
-          {
-            "name": {
-              "en": "Chain Vest",
-              "de": "Kettenweste"
-            },
-            "desc": {
-              "en": "Gain a Chain Vest.",
-              "de": "Erhalte eine Kettenweste."
-            },
-            "iconApiName": "TFTTutorial_Item_ChainVest"
-          },
-          {
-            "name": {
-              "en": "Negatron Cloak",
-              "de": "Negatronumhang"
-            },
-            "desc": {
-              "en": "Gain a Negatron Cloak.",
-              "de": "Erhalte einen Negatronumhang."
-            },
-            "iconApiName": "TFT_Item_NegatronCloak"
-          },
-          {
-            "name": {
               "en": "Divine Refund",
               "de": "Göttliche Erstattung"
             },
@@ -744,83 +672,6 @@
               "de": "Erhalte eine zufällige Item-Komponente."
             },
             "iconApiName": "TFT17_MarketOffering_RandomComponent"
-          },
-          {
-            "name": {
-              "en": "Sparring Gloves",
-              "de": "Trainingshandschuhe"
-            },
-            "desc": {
-              "en": "Gain Sparring Gloves.",
-              "de": "Erhalte Trainingshandschuhe."
-            },
-            "iconApiName": "TFT_Item_SparringGloves"
-          },
-          {
-            "name": {
-              "en": "Recurve Bow",
-              "de": "Recurvebogen"
-            },
-            "desc": {
-              "en": "Gain a Recurve Bow.",
-              "de": "Erhalte einen Recurvebogen."
-            },
-            "iconApiName": "TFTTutorial_Item_RecurveBow"
-          },
-          {
-            "name": {
-              "en": "Tear of the Goddess",
-              "de": "Träne der Göttin"
-            },
-            "desc": {
-              "en": "Gain a Tear of the Goddess.",
-              "de": "Erhalte eine Träne der Göttin."
-            },
-            "iconApiName": "TFT_Item_TearOfTheGoddess"
-          },
-          {
-            "name": {
-              "en": "B.F. Sword",
-              "de": "B.F. Schwert"
-            },
-            "desc": {
-              "en": "Gain a B.F. Sword.",
-              "de": "Erhalte ein B.F. Schwert."
-            },
-            "iconApiName": "TFTTutorial_Item_BFSword"
-          },
-          {
-            "name": {
-              "en": "Needlessly Large Rod",
-              "de": "Unnötig großer Stab"
-            },
-            "desc": {
-              "en": "Gain a Needlessly Large Rod.",
-              "de": "Erhalte einen unnötig großen Stab."
-            },
-            "iconApiName": "TFTTutorial_Item_NeedlesslyLargeRod"
-          },
-          {
-            "name": {
-              "en": "Chain Vest",
-              "de": "Kettenweste"
-            },
-            "desc": {
-              "en": "Gain a Chain Vest.",
-              "de": "Erhalte eine Kettenweste."
-            },
-            "iconApiName": "TFTTutorial_Item_ChainVest"
-          },
-          {
-            "name": {
-              "en": "Negatron Cloak",
-              "de": "Negatronumhang"
-            },
-            "desc": {
-              "en": "Gain a Negatron Cloak.",
-              "de": "Erhalte einen Negatronumhang."
-            },
-            "iconApiName": "TFT_Item_NegatronCloak"
           }
         ]
       }

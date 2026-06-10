@@ -60,6 +60,16 @@ function strip(s) {
 }
 
 function findIcon(en) {
+  // Gold picks: always prefer TFT_Assist_Gold_<N> (the assist-coin artwork
+  // Riot uses for the "Make it rain!" offerings) over older encounter-item
+  // recycles. Earlier the lookup found e.g. TFT11_Encounter_ChoiceItem_Gain8Gold
+  // first because it matches the literal name "8 gold" — that one's icon
+  // doesn't match the rest of Ahri's gold-pick set.
+  const goldM = en.match(/^(\d+)\s*gold\s*$/i);
+  if (goldM) {
+    const id = `TFT_Assist_Gold_${goldM[1]}`;
+    if (bundle.items[id] || bundle.augments[id]) return id;
+  }
   const direct = byName.get(en.toLowerCase().trim());
   if (direct) return direct;
   const stripped = strip(en);

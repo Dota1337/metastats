@@ -183,24 +183,14 @@ async function main() {
     }
   } catch (e) { console.warn(`       WARN: tier-override read failed: ${e.message}`); }
 
-  // Load the tactics.tools icon override. CDragon ships ONE icon per augment
-  // family even across tier variants ("Deadlier Blades" Prismatic uses the
-  // old Gold-era artwork because the `_iii.tex` Prismatic art doesn't exist
-  // on CDragon — HEAD-probed 2026-06-10). tactics.tools keeps a separate icon
-  // per (augment, tier) under https://ap.tft.tools/img/augments/<stem>.png
-  // (stem ends in 1/2/3 for tier). Run `scripts/refresh-augment-icons.mjs`
-  // before this to (re)build the file.
-  let iconOverride = { stems: {}, cdn: 'https://ap.tft.tools/img/augments/' };
-  try {
-    const path = `public/tft-augment-icons-${active.number}.json`;
-    if (existsSync(path)) {
-      const doc = JSON.parse(readFileSync(path, 'utf8'));
-      iconOverride = { stems: doc.stems || {}, cdn: doc.cdn || iconOverride.cdn };
-      console.log(`       icon-override: ${Object.keys(iconOverride.stems).length} augments pinned to tactics.tools CDN`);
-    } else {
-      console.warn(`       WARN: ${path} missing — augments will use CDragon icons (tier-incorrect for some)`);
-    }
-  } catch (e) { console.warn(`       WARN: icon-override read failed: ${e.message}`); }
+  // Augment icons come straight from CDragon (Riot's own artwork). We tried
+  // tactics.tools' tier-tagged CDN as an overlay (2026-06-10) — turned out
+  // their image files recycle across augments (ForgeAFriend1.png is byte-
+  // identical to ConstructACompanion2.png) and across +/++ variants, so it
+  // wasn't a reliable upgrade. MetaTFT's `cdn/augments/<tier>/<name>.png`
+  // route returns a 200 placeholder PNG for everything. No public source
+  // ships truly tier-specific artwork for every TFT augment — Riot itself
+  // only renders one icon file per family. We use what Riot ships.
 
   const augments = {};
   const itemsByName = new Map(items ? [] : []); // built below from cd.items
@@ -213,12 +203,9 @@ async function main() {
     const a = itemsByName.get(apiName);
     if (!a) continue;
     const rawDesc = stripHtml(a.desc || '');
-    const tacticsStem = iconOverride.stems[apiName];
     augments[apiName] = {
       name: a.name || apiName,
-      // Tier-correct icon URL preferred; fall back to CDragon's recycled art.
-      // Full https URL is detected and passed through by tftIconUrl().
-      icon: tacticsStem ? `${iconOverride.cdn}${tacticsStem}.png` : normalizeIconPath(a.icon || ''),
+      icon: normalizeIconPath(a.icon || ''),
       desc: resolveDescPlaceholders(rawDesc, a.effects),
       tier: deriveAugmentTier(apiName, a.name || '', a.icon || '', tierOverride),
     };

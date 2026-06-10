@@ -75,13 +75,6 @@ jobs:
         run: node scripts/refresh-augment-tiers.mjs
         continue-on-error: true
 
-      - name: Refresh TFT augment-icon override
-        # CDragon ships one icon file per augment family across all tiers;
-        # tactics.tools keeps tier-specific artwork. Run after tier-override
-        # (the latter writes the bundle that this script cross-references).
-        run: node scripts/refresh-augment-icons.mjs
-        continue-on-error: true
-
       - name: Refresh TFT asset bundle
         run: node scripts/fetch-tft-assets.mjs
         continue-on-error: true

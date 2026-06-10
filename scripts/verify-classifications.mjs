@@ -37,8 +37,6 @@ if (!bundle) { console.error('FAIL: public/tft-assets.json missing or invalid');
 const set = bundle.set;
 const overridePath = `public/tft-augment-tiers-${set}.json`;
 const override = loadJson(overridePath);
-const iconsPath = `public/tft-augment-icons-${set}.json`;
-const icons = loadJson(iconsPath);
 const godsPath = `public/tft-gods-${set}.json`;
 const gods = loadJson(godsPath);
 
@@ -46,7 +44,6 @@ console.log(`Verifying classifications for set ${set} (${bundle.setName})`);
 console.log(`  bundle augments: ${Object.keys(bundle.augments || {}).length}`);
 console.log(`  active.augments: ${bundle.active?.augments?.length || 0}`);
 console.log(`  tier-override:   ${override ? Object.keys(override.tiers || {}).length : 'MISSING'}`);
-console.log(`  icon-override:   ${icons ? Object.keys(icons.stems || {}).length : 'MISSING'}`);
 console.log(`  gods doc:        ${gods ? gods.gods?.length : 'MISSING'}`);
 console.log();
 
@@ -88,42 +85,19 @@ if (override?.tiers && activeList.length > 0) {
 const godLeaks = activeList.filter(id => /GodAugment/i.test(id));
 if (godLeaks.length > 0) fail(`active.augments contains ${godLeaks.length} GodAugment(s): ${godLeaks.slice(0, 3).join(', ')}…`);
 
-// 4b. Icon-Override coverage + per-augment match. Riot's CDragon ships
-//     ONE icon per family even across tiers — for Prismatic-tier augments
-//     whose family was Gold in earlier sets we'd render the wrong-tier
-//     artwork unless tactics.tools' tier-specific CDN URL is applied.
-if (icons?.stems) {
-  const pinned = activeList.filter(id => icons.stems[id]).length;
-  const pct = pinned / activeList.length;
-  console.log(`  icon-override coverage: ${pinned}/${activeList.length} (${(pct * 100).toFixed(1)} %)`);
-  if (pct < 0.9) fail(`Icon-override coverage ${(pct * 100).toFixed(1)} % is below 90 % threshold`);
-  let iconMismatch = 0;
-  for (const [apiName, stem] of Object.entries(icons.stems)) {
-    const a = bundle.augments[apiName];
-    if (!a) continue;
-    const expectUrl = `${icons.cdn || 'https://ap.tft.tools/img/augments/'}${stem}.png`;
-    if (a.icon !== expectUrl) {
-      if (iconMismatch < 5) fail(`Icon-mismatch: ${apiName} — bundle="${a.icon}", expected="${expectUrl}"`);
-      iconMismatch++;
-    }
+// 4b. Icon presence: every active augment must have a non-empty icon path.
+//     Augment icons come from CDragon (Riot's artwork) — there's no public
+//     source that ships truly tier-specific icons for every augment, see
+//     reference_tft_augment_icon_sources.md.
+let iconMissing = 0;
+for (const id of activeList) {
+  const a = bundle.augments[id];
+  if (!a?.icon || a.icon.trim() === '') {
+    if (iconMissing < 5) fail(`Icon missing: ${id} (${a?.name || ''})`);
+    iconMissing++;
   }
-  if (iconMismatch >= 5) fail(`… ${iconMismatch - 5} additional icon-mismatches not shown`);
-  // Tier-Suffix sanity: the icon stem must end in the digit matching the augment's tier.
-  let tierSuffixMismatch = 0;
-  for (const id of activeList) {
-    const stem = icons.stems[id];
-    if (!stem) continue;
-    const tier = bundle.augments[id]?.tier;
-    const lastDigit = parseInt(stem.slice(-1), 10);
-    if (lastDigit !== tier) {
-      if (tierSuffixMismatch < 5) fail(`Icon-Tier-Suffix mismatch: ${id} — bundle.tier=${tier}, icon stem ends "${lastDigit}" (${stem})`);
-      tierSuffixMismatch++;
-    }
-  }
-  if (tierSuffixMismatch >= 5) fail(`… ${tierSuffixMismatch - 5} additional tier-suffix mismatches not shown`);
-} else {
-  warn(`No icon-override file at ${iconsPath} — augments will render with CDragon's recycled wrong-tier art. Re-run scripts/refresh-augment-icons.mjs.`);
 }
+if (iconMissing >= 5) fail(`… ${iconMissing - 5} additional icon-missing entries not shown`);
 
 // 5. God doc → bundle linkage
 if (gods?.gods) {

@@ -143,9 +143,8 @@ export function findTrait(bundle: TftAssetsBundle | null, id: string | null | un
 // Resolve a CommunityDragon icon path to a full URL. The bundle stores
 // paths like "assets/maps/tft/icons/items/hexcore/tft_item_bluebuff.tft_set13.png"
 // which combine with the bundle's iconBase to a working raw.communitydragon.org URL.
-// Some augment icons are stored as full https URLs (tactics.tools CDN — tier-
-// correct artwork for cases where CDragon would ship the recycled wrong-tier
-// icon, see scripts/refresh-augment-icons.mjs). Those pass through verbatim.
+// Full https URLs pass through verbatim (safety net in case any future override
+// pipeline writes them directly).
 export function tftIconUrl(bundle: TftAssetsBundle | null, iconPath: string | null | undefined): string | null {
   if (!bundle || !iconPath) return null;
   if (iconPath.startsWith('http://') || iconPath.startsWith('https://')) return iconPath;

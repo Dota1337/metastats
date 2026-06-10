@@ -53,14 +53,6 @@ jobs:
         run: node scripts/refresh-augment-tiers.mjs
         continue-on-error: true
 
-      - name: Refresh TFT augment-icon override
-        # CDragon ships one icon file per augment family across all tiers;
-        # tactics.tools keeps tier-specific artwork. Used by the asset bundle
-        # step below so Prismatic-tier augments don't render with the old
-        # Gold-era icon Riot recycled.
-        run: node scripts/refresh-augment-icons.mjs
-        continue-on-error: true
-
       # Refresh CommunityDragon-sourced asset bundle (icons, names,
       # apiName→display mapping). Needed because Riot Data Dragon's TFT
       # data is set-13 frozen and uses item IDs that don't match Match-V1.

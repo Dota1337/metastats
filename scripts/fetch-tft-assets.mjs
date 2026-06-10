@@ -22,6 +22,18 @@ import { lookup as dnsLookup } from 'node:dns';
 
 const SOURCE_URL = 'https://raw.communitydragon.org/latest/cdragon/tft/en_us.json';
 const COMPANIONS_URL = 'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/companions.json';
+// CDragon ships the full tft JSON per locale. We pull all 6 UI languages so
+// the augment + boon text can be rendered natively in DE/EN/KO/ZH/ES/FR
+// instead of falling back to English. ~24MB per locale, kept off the wire by
+// only persisting the apiName→{name,desc} pairs we actually surface.
+const LOCALES = [
+  { code: 'de', file: 'de_de.json' },
+  { code: 'en', file: 'en_us.json' },
+  { code: 'ko', file: 'ko_kr.json' },
+  { code: 'zh', file: 'zh_cn.json' },
+  { code: 'es', file: 'es_es.json' },
+  { code: 'fr', file: 'fr_fr.json' },
+];
 
 function lookupIPv4(host) {
   return new Promise((resolve, reject) => {
@@ -88,6 +100,21 @@ async function main() {
   console.log('[2/4] Fetch companion catalog (Chibis + Tacticians)');
   const companions = await fetchJSON(COMPANIONS_URL);
   console.log('       companions total:', companions.length);
+
+  console.log('[2.5/4] Fetch non-English locales for augment text');
+  // Parallel fetch all locales except en_us (already loaded as `cd`).
+  // Each ~24MB; we only retain the items[].apiName → {name, desc} pairs.
+  const localeItems = { en: new Map((cd.items || []).map(it => [it.apiName, it])) };
+  await Promise.all(LOCALES.filter(l => l.code !== 'en').map(async (l) => {
+    try {
+      const json = await fetchJSON(`https://raw.communitydragon.org/latest/cdragon/tft/${l.file}`);
+      localeItems[l.code] = new Map((json.items || []).map(it => [it.apiName, it]));
+      console.log(`       ${l.code}: ${localeItems[l.code].size} item entries`);
+    } catch (e) {
+      console.warn(`       ${l.code}: FAILED (${e.message}) — augments will fall back to en`);
+      localeItems[l.code] = new Map();
+    }
+  }));
 
   console.log('[3/4] Pick active set + collect entries');
   const active = pickActiveSet(cd.setData || []);
@@ -197,33 +224,52 @@ async function main() {
   for (const it of cd.items || []) {
     if (it.apiName) itemsByName.set(it.apiName, it);
   }
+  // Build per-locale {name, desc} pairs for each augment. The English entry
+  // doubles as the default — same heuristic as before to handle sub-augments
+  // where desc==undefined or desc==name (e.g. Quest picks). For each non-EN
+  // locale we use the localised name/desc with the same effects-map (the
+  // @placeholders are language-agnostic numeric refs).
+  function buildI18nForAugment(apiName) {
+    const out = {};
+    for (const loc of LOCALES) {
+      const it = localeItems[loc.code]?.get(apiName);
+      if (!it) continue;
+      const nameDup = it.name && it.desc && it.name.trim() === it.desc.trim();
+      const hasSeparateDesc = !!(it.desc && it.desc.trim()) && !nameDup;
+      const nameIsTitle = it.name && it.name.length < 60 && !/[@.]/.test(it.name);
+      let displayName, sourceDesc;
+      if (hasSeparateDesc && nameIsTitle) {
+        displayName = it.name;
+        sourceDesc = it.desc;
+      } else {
+        // For "title is the long sentence" cases we keep the synthetic suffix
+        // title (en-only — every locale would otherwise get the same suffix
+        // and the user would see English titles on a translated page). Falling
+        // back to the suffix is fine because it's a stable game term.
+        displayName = (apiName.split('_').pop() || apiName).replace(/([a-z])([A-Z])/g, '$1 $2');
+        sourceDesc = it.name || '';
+      }
+      out[loc.code] = {
+        name: displayName,
+        desc: resolveDescPlaceholders(stripHtml(sourceDesc), it.effects),
+      };
+    }
+    return out;
+  }
+
   for (const augName of active.augments || []) {
     const apiName = typeof augName === 'string' ? augName : augName?.apiName;
     if (!apiName) continue;
     const a = itemsByName.get(apiName);
     if (!a) continue;
-    // Most augments have a short `name` plus a separate `desc`. But a few
-    // sub-augments (AurelionSol's Quest picks etc.) shove the full sentence
-    // into `name` and leave `desc` empty or duplicated — those would render
-    // as a giant unreadable title. Detect that, synthesise a short title from
-    // the apiName suffix ("MediumQuest" → "Medium Quest"), and treat the
-    // long sentence as the description instead.
-    const nameDup = a.name && a.desc && a.name.trim() === a.desc.trim();
-    const hasSeparateDesc = !!(a.desc && a.desc.trim()) && !nameDup;
-    const nameIsTitle = a.name && a.name.length < 60 && !/[@.]/.test(a.name);
-    let displayName, sourceDesc;
-    if (hasSeparateDesc && nameIsTitle) {
-      displayName = a.name;
-      sourceDesc = a.desc;
-    } else {
-      displayName = (apiName.split('_').pop() || apiName).replace(/([a-z])([A-Z])/g, '$1 $2');
-      sourceDesc = a.name || '';
-    }
+    const i18n = buildI18nForAugment(apiName);
+    const en = i18n.en || { name: apiName, desc: '' };
     augments[apiName] = {
-      name: displayName,
+      name: en.name,
       icon: normalizeIconPath(a.icon || ''),
-      desc: resolveDescPlaceholders(stripHtml(sourceDesc), a.effects),
+      desc: en.desc,
       tier: deriveAugmentTier(apiName, a.name || '', a.icon || '', tierOverride),
+      i18n,
     };
   }
 

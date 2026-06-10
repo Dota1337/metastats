@@ -4,7 +4,7 @@ import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
 import TftHero from '../../components/tft/TftHero';
 import { useI18n } from '../../lib/i18n';
-import { loadTftAssets, tftIconUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
+import { loadTftAssets, tftIconUrl, tftAugmentLocalised, type TftAssetsBundle } from '../../lib/tft-cdragon';
 
 // Pure REFERENCE catalog — Riot has restricted augment statistics, so this
 // page intentionally surfaces *only* name + description + tier from the
@@ -30,7 +30,7 @@ function iconTierFromPath(iconPath: string | null | undefined): number | null {
 }
 
 export default function TftAugmentsReferencePage() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
   const [tierFilter, setTierFilter] = useState<TierFilter>('all');
   const [query, setQuery] = useState('');
@@ -62,13 +62,19 @@ export default function TftAugmentsReferencePage() {
     const q = query.trim().toLowerCase();
     return augments
       .filter(a => tierFilter === 'all' || a.tier === tierFilter)
-      .filter(a => !q || a.name.toLowerCase().includes(q) || (a.desc || '').toLowerCase().includes(q))
+      .filter(a => {
+        if (!q) return true;
+        const loc = tftAugmentLocalised(a, lang);
+        return loc.name.toLowerCase().includes(q) || (loc.desc || '').toLowerCase().includes(q);
+      })
       .sort((a, b) => {
         // Hierarchical ascending: Silver → Gold → Prismatic, alphabetical within.
         if (a.tier !== b.tier) return a.tier - b.tier;
-        return a.name.localeCompare(b.name);
+        const an = tftAugmentLocalised(a, lang).name;
+        const bn = tftAugmentLocalised(b, lang).name;
+        return an.localeCompare(bn);
       });
-  }, [augments, tierFilter, query]);
+  }, [augments, tierFilter, query, lang]);
 
   const counts = useMemo(() => {
     const out: Record<TierFilter, number> = { all: augments.length, 1: 0, 2: 0, 3: 0 };
@@ -121,6 +127,7 @@ export default function TftAugmentsReferencePage() {
             {filtered.map(a => {
               const url = tftIconUrl(assets, a.icon);
               const tierColor = TIER_COLORS[a.tier] || '#7a8aa0';
+              const loc = tftAugmentLocalised(a, lang);
               // Riot recycles the same icon file across +/++ variants — e.g.
               // Deadlier Blades (Prismatic, tier 3) ships with the Gold-tier
               // `_ii` icon. Where the icon's tier doesn't match the bundle's
@@ -138,7 +145,7 @@ export default function TftAugmentsReferencePage() {
                 >
                   <div className="relative w-12 h-12 rounded border-2 overflow-hidden flex-shrink-0" style={{ borderColor: tierColor }}>
                     {url ? (
-                      <img src={url} alt={a.name} className="block w-full h-full" />
+                      <img src={url} alt={loc.name} className="block w-full h-full" />
                     ) : (
                       <div className="w-full h-full bg-[#1e2a3a]" />
                     )}
@@ -151,13 +158,13 @@ export default function TftAugmentsReferencePage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-white text-sm font-medium truncate">{a.name}</span>
+                      <span className="text-white text-sm font-medium truncate">{loc.name}</span>
                       <span className="text-[10px] uppercase tracking-widest tabular-nums flex-shrink-0" style={{ color: tierColor }}>
                         {TIER_LABELS[a.tier]}
                       </span>
                     </div>
-                    {a.desc && (
-                      <p className="text-[#a0b0c5] text-[11px] mt-1 leading-snug line-clamp-3">{a.desc}</p>
+                    {loc.desc && (
+                      <p className="text-[#a0b0c5] text-[11px] mt-1 leading-snug line-clamp-3">{loc.desc}</p>
                     )}
                   </div>
                 </a>

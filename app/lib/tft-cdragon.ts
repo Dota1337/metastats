@@ -43,6 +43,22 @@ export interface TftAugment {
   icon: string | null;
   desc?: string;
   tier: number;
+  // Per-locale name + desc from CDragon's localised TFT bundles.
+  // Built by scripts/fetch-tft-assets.mjs from {de,en,ko,zh,es,fr}_<region>.json.
+  i18n?: Partial<Record<'de' | 'en' | 'ko' | 'zh' | 'es' | 'fr', { name: string; desc: string }>>;
+}
+
+/** Pick the augment's localised name+desc; falls back to en, then top-level fields. */
+export function tftAugmentLocalised(
+  a: TftAugment | null | undefined,
+  lang: 'de' | 'en' | 'ko' | 'zh' | 'es' | 'fr',
+): { name: string; desc: string } {
+  if (!a) return { name: '', desc: '' };
+  const loc = a.i18n?.[lang];
+  if (loc && (loc.name || loc.desc)) return { name: loc.name || a.name, desc: loc.desc || a.desc || '' };
+  const en = a.i18n?.en;
+  if (en) return { name: en.name || a.name, desc: en.desc || a.desc || '' };
+  return { name: a.name, desc: a.desc || '' };
 }
 
 // Chibi-Champions (TFT-only premium companions) and Tacticians (Little Legends).

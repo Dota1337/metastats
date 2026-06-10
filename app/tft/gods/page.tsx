@@ -4,7 +4,7 @@ import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
 import TftHero from '../../components/tft/TftHero';
 import { useI18n, type TranslationKey } from '../../lib/i18n';
-import { loadTftAssets, tftIconUrl, type TftAssetsBundle, type TftAugment } from '../../lib/tft-cdragon';
+import { loadTftAssets, tftIconUrl, tftAugmentLocalised, type TftAssetsBundle, type TftAugment } from '../../lib/tft-cdragon';
 
 // Set 17 "Space Gods": 9 gods replace the traditional Carousel. Each game
 // rolls 2 of the 9 + Pengu as a backup offering. The favored god (the one
@@ -35,7 +35,7 @@ interface GodViewModel {
 }
 
 export default function TftGodsPage() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
   const [doc, setDoc] = useState<GodsDoc | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -117,20 +117,23 @@ export default function TftGodsPage() {
                   </div>
 
                   {/* Final Boon (Stage 4-7) — always visible, prominent */}
-                  {base && (
-                    <div className="px-3 pb-3">
-                      <div className="flex items-baseline justify-between mb-1.5">
-                        <span className="text-[10px] uppercase tracking-widest text-[#c39bff] font-semibold">{t('gods.stage.final')}</span>
-                        <span className="text-[10px] text-[#7a8aa0] tabular-nums">4-7</span>
+                  {base && (() => {
+                    const loc = tftAugmentLocalised(base.data, lang);
+                    return (
+                      <div className="px-3 pb-3">
+                        <div className="flex items-baseline justify-between mb-1.5">
+                          <span className="text-[10px] uppercase tracking-widest text-[#c39bff] font-semibold">{t('gods.stage.final')}</span>
+                          <span className="text-[10px] text-[#7a8aa0] tabular-nums">4-7</span>
+                        </div>
+                        <div className="bg-[#141c2e] border border-[#c39bff]/30 rounded p-2">
+                          <div className="text-white text-xs font-medium">{loc.name}</div>
+                          {loc.desc && (
+                            <p className="text-[#a0b0c5] text-[11px] mt-1 leading-snug">{loc.desc}</p>
+                          )}
+                        </div>
                       </div>
-                      <div className="bg-[#141c2e] border border-[#c39bff]/30 rounded p-2">
-                        <div className="text-white text-xs font-medium">{base.data.name}</div>
-                        {base.data.desc && (
-                          <p className="text-[#a0b0c5] text-[11px] mt-1 leading-snug">{base.data.desc}</p>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   {/* Variant boons — expandable */}
                   {hasVariants && (
@@ -154,17 +157,18 @@ export default function TftGodsPage() {
                         <div className="border-t border-[#1e2a3a] p-3 space-y-2">
                           {variants.map(b => {
                             const url = tftIconUrl(assets, b.data.icon);
+                            const loc = tftAugmentLocalised(b.data, lang);
                             return (
                               <div key={b.apiName} className="flex items-start gap-2 p-2 bg-[#141c2e] rounded">
                                 {url ? (
-                                  <img src={url} alt={b.data.name} className="w-10 h-10 rounded border border-[#1e2a3a]" />
+                                  <img src={url} alt={loc.name} className="w-10 h-10 rounded border border-[#1e2a3a]" />
                                 ) : (
                                   <div className="w-10 h-10 rounded border border-[#1e2a3a] bg-[#0d1526] flex-shrink-0" />
                                 )}
                                 <div className="flex-1 min-w-0">
-                                  <div className="text-white text-xs font-medium">{b.data.name}</div>
-                                  {b.data.desc && (
-                                    <p className="text-[#a0b0c5] text-[11px] mt-0.5 leading-snug">{b.data.desc}</p>
+                                  <div className="text-white text-xs font-medium">{loc.name}</div>
+                                  {loc.desc && (
+                                    <p className="text-[#a0b0c5] text-[11px] mt-0.5 leading-snug">{loc.desc}</p>
                                   )}
                                 </div>
                               </div>

@@ -17,6 +17,18 @@ type TierFilter = 'all' | 1 | 2 | 3;
 const TIER_LABELS: Record<number, string> = { 1: 'Silver', 2: 'Gold', 3: 'Prismatic' };
 const TIER_COLORS: Record<number, string> = { 1: '#9ab0bf', 2: '#e0c75a', 3: '#c39bff' };
 
+// Detect the tier the icon FILE belongs to from its CDragon path suffix.
+// Riot encodes it as `<name>_I.tex`, `_II`, `_III` (sometimes with `-` instead).
+// Returns 1/2/3 or null when no marker is found.
+function iconTierFromPath(iconPath: string | null | undefined): number | null {
+  if (!iconPath) return null;
+  const p = iconPath.toLowerCase();
+  if (/[_-]iii[._]/.test(p)) return 3;
+  if (/[_-]ii[._]/.test(p)) return 2;
+  if (/[_-]i[._]/.test(p)) return 1;
+  return null;
+}
+
 export default function TftAugmentsReferencePage() {
   const { t } = useI18n();
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
@@ -109,17 +121,34 @@ export default function TftAugmentsReferencePage() {
             {filtered.map(a => {
               const url = tftIconUrl(assets, a.icon);
               const tierColor = TIER_COLORS[a.tier] || '#7a8aa0';
+              // Riot recycles the same icon file across +/++ variants — e.g.
+              // Deadlier Blades (Prismatic, tier 3) ships with the Gold-tier
+              // `_ii` icon. Where the icon's tier doesn't match the bundle's
+              // tier we overlay a hue-blend layer in the target tier color
+              // so Prismatic-tier rows look Prismatic, Silver-tier look Silver.
+              // mix-blend-mode: hue takes only the overlay's hue and keeps the
+              // image's lightness + saturation, so artwork detail survives.
+              const iconTier = iconTierFromPath(a.icon);
+              const needsTint = iconTier !== null && iconTier !== a.tier;
               return (
                 <a
                   key={a.apiName}
                   href={`/tft/augments/${encodeURIComponent(a.apiName)}`}
                   className="flex items-start gap-3 p-3 bg-[#0d1526] border border-[#1e2a3a] rounded hover:border-[#7B61FF]/40 transition-colors"
                 >
-                  {url ? (
-                    <img src={url} alt={a.name} className="w-12 h-12 rounded border-2 flex-shrink-0" style={{ borderColor: tierColor }} />
-                  ) : (
-                    <div className="w-12 h-12 rounded border-2 bg-[#1e2a3a] flex-shrink-0" style={{ borderColor: tierColor }} />
-                  )}
+                  <div className="relative w-12 h-12 rounded border-2 overflow-hidden flex-shrink-0" style={{ borderColor: tierColor }}>
+                    {url ? (
+                      <img src={url} alt={a.name} className="block w-full h-full" />
+                    ) : (
+                      <div className="w-full h-full bg-[#1e2a3a]" />
+                    )}
+                    {needsTint && (
+                      <div
+                        className="absolute inset-0 pointer-events-none"
+                        style={{ backgroundColor: tierColor, mixBlendMode: 'hue' }}
+                      />
+                    )}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-white text-sm font-medium truncate">{a.name}</span>

@@ -46,6 +46,13 @@ jobs:
         run: node scripts/detect-tft-set.mjs
         continue-on-error: true
 
+      # Pull augment-tier ground-truth from tactics.tools. Must run before
+      # the asset-bundle step so deriveAugmentTier() overlays the override.
+      # CDragon has no tier field; icon-suffix is unreliable.
+      - name: Refresh TFT augment-tier override
+        run: node scripts/refresh-augment-tiers.mjs
+        continue-on-error: true
+
       # Refresh CommunityDragon-sourced asset bundle (icons, names,
       # apiName→display mapping). Needed because Riot Data Dragon's TFT
       # data is set-13 frozen and uses item IDs that don't match Match-V1.

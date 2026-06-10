@@ -167,6 +167,22 @@ async function main() {
   // lives in the top-level items[] list under the same apiName, keyed by the
   // `_Augment_` suffix. Earlier code iterated as objects and missed every
   // entry — the bundle landed with 0 augments. Same @VAR@ resolution as items.
+  //
+  // Load the tactics.tools tier override (if present) — the only public
+  // ground-truth for Silver/Gold/Prismatic (CDragon has no tier field; the
+  // icon-suffix is unreliable for Plus/PlusPlus variants). Run
+  // `scripts/refresh-augment-tiers.mjs` before this to (re)build the file.
+  let tierOverride = {};
+  try {
+    const path = `public/tft-augment-tiers-${active.number}.json`;
+    if (existsSync(path)) {
+      tierOverride = JSON.parse(readFileSync(path, 'utf8')).tiers || {};
+      console.log(`       tier-override: ${Object.keys(tierOverride).length} augments pinned by tactics.tools`);
+    } else {
+      console.warn(`       WARN: ${path} missing — tier resolution will fall back to heuristics`);
+    }
+  } catch (e) { console.warn(`       WARN: tier-override read failed: ${e.message}`); }
+
   const augments = {};
   const itemsByName = new Map(items ? [] : []); // built below from cd.items
   for (const it of cd.items || []) {
@@ -182,7 +198,7 @@ async function main() {
       name: a.name || apiName,
       icon: normalizeIconPath(a.icon || ''),
       desc: resolveDescPlaceholders(rawDesc, a.effects),
-      tier: deriveAugmentTier(apiName, a.name || '', a.icon || ''),
+      tier: deriveAugmentTier(apiName, a.name || '', a.icon || '', tierOverride),
     };
   }
 
@@ -331,31 +347,28 @@ function resolveDescPlaceholders(desc, vars) {
 }
 
 // Tier resolution for TFT augments. CDragon doesn't ship a numeric tier
-// field — we infer it from three signals, in this order:
+// field, and Riot's icon-path suffix (`_I/_II/_III`) is unreliable because
+// it gets recycled across `Plus/PlusPlus` variants (e.g. Heroic Grab Bag++
+// ships with the Gold base icon `Heroic-Grab-Bag-II.tex`). So the icon
+// alone is wrong for ~33 augments per set.
 //
-//   1. apiName suffix (strongest signal — Riot's own naming convention):
-//        *PlusPlus$       → 3 (Prismatic)
-//        *Plus$           → 2 (Gold)
-//        *Silver/Gold/Prismatic$ → 1/2/3
-//      This priority is essential: when an apiName ends in `PlusPlus` the
-//      icon is often the recycled Gold-base sprite, so trusting the icon
-//      mis-tiers ++-variants (e.g. Heroic Grab Bag++ shipped with the Gold
-//      icon `Heroic-Grab-Bag-II.tex` despite being Prismatic).
+// Ground-truth source = tactics.tools, fetched into public/tft-augment-
+// tiers-{N}.json by scripts/refresh-augment-tiers.mjs (run before this).
+// That covers ~95% of the set's augment pool. For unmatched augments we
+// fall back to:
 //
-//   2. Raw icon path tier marker (`-I.tex`, `_II.tex`, etc.):
-//      Pattern allows an optional `.<sub-suffix>` between the tier suffix
-//      and `.tex` because Riot tags set-specific assets with that infix
-//      (`UltraRapidFire_II.TFT_Set16.tex`, `DivineAmendment_II.TFT_Set17_PostLaunchAugments.tex`).
-//      MUST run before normalizeIconPath (which strips `.tex` → `.png`).
+//   1. apiName suffix (`*Silver/Gold/Prismatic$`)
+//   2. raw icon path tier marker `[_-](I|II|III)(\.<sub>)?\.tex$`
+//   3. Default Gold (2) — middle ground, never dump unknown into Silver
 //
-//   3. Default Gold (2): the safest middle when neither signal pins a tier.
-//      Old default was Silver (1), which dumped every unrecognised augment
-//      into the Silver tab. Gold is closer to the typical augment-pool tier
-//      mix and avoids hiding the unknown in the lowest bucket.
-function deriveAugmentTier(apiName, _name, rawIcon) {
+// NOTE on the old `Plus` heuristic (removed 2026-06-10): assuming `*Plus$`
+// = Gold and `*PlusPlus$` = Prismatic was wrong for many augments.
+// "Lucky Gloves+" is Prismatic, "Branching Out+" is Silver, etc.
+// Riot's naming convention is *not* tier-implying — only tactics.tools'
+// rendered tier list is.
+function deriveAugmentTier(apiName, _name, rawIcon, override) {
+  if (override && override[apiName] != null) return override[apiName];
   if (typeof apiName === 'string') {
-    if (/PlusPlus$/.test(apiName)) return 3;
-    if (/[^lP]Plus$/.test(apiName) || /^Plus$/.test(apiName) || /[a-z]Plus$/.test(apiName)) return 2;
     if (/Prismatic$/i.test(apiName)) return 3;
     if (/Gold$/i.test(apiName)) return 2;
     if (/Silver$/i.test(apiName)) return 1;

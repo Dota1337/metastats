@@ -67,6 +67,14 @@ jobs:
         run: node scripts/fetch-tft-roadmap.mjs
         continue-on-error: true
 
+      - name: Refresh TFT augment-tier override
+        # Pulled from tactics.tools — the only public ground-truth for
+        # augment tiers (CDragon ships no tier field; icon-suffix is
+        # unreliable). Must run before the asset bundle so the overlay
+        # applies in deriveAugmentTier().
+        run: node scripts/refresh-augment-tiers.mjs
+        continue-on-error: true
+
       - name: Refresh TFT asset bundle
         run: node scripts/fetch-tft-assets.mjs
         continue-on-error: true

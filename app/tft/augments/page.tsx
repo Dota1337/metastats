@@ -17,17 +17,6 @@ type TierFilter = 'all' | 1 | 2 | 3;
 const TIER_LABELS: Record<number, string> = { 1: 'Silver', 2: 'Gold', 3: 'Prismatic' };
 const TIER_COLORS: Record<number, string> = { 1: '#9ab0bf', 2: '#e0c75a', 3: '#c39bff' };
 
-// Riot ships one icon file per augment family (Gold-tinted base art),
-// so the Prismatic + Silver tabs show the same Gold-looking artwork.
-// We can't get tier-specific icons from any public source, so we re-tint
-// in CSS: rotate the gold hue into purple for Prismatic, desaturate for
-// Silver. Gold stays untouched since the base art is already gold.
-const TIER_FILTERS: Record<number, string> = {
-  1: 'saturate(0.4) brightness(1.1)',
-  2: 'none',
-  3: 'hue-rotate(245deg) saturate(1.3) brightness(1.05)',
-};
-
 export default function TftAugmentsReferencePage() {
   const { t } = useI18n();
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
@@ -127,12 +116,7 @@ export default function TftAugmentsReferencePage() {
                   className="flex items-start gap-3 p-3 bg-[#0d1526] border border-[#1e2a3a] rounded hover:border-[#7B61FF]/40 transition-colors"
                 >
                   {url ? (
-                    <img
-                      src={url}
-                      alt={a.name}
-                      className="w-12 h-12 rounded border-2 flex-shrink-0"
-                      style={{ borderColor: tierColor, filter: TIER_FILTERS[a.tier] }}
-                    />
+                    <img src={url} alt={a.name} className="w-12 h-12 rounded border-2 flex-shrink-0" style={{ borderColor: tierColor }} />
                   ) : (
                     <div className="w-12 h-12 rounded border-2 bg-[#1e2a3a] flex-shrink-0" style={{ borderColor: tierColor }} />
                   )}

@@ -72,6 +72,9 @@ export interface TftAssetsBundle {
   tacticians?: Record<string, TftCompanion>;
   active?: {
     items?: string[];
+    // setData[N].augments minus God-Augments — the source of truth for the
+    // /tft/augments wiki catalog. God-Augments live on /tft/gods.
+    augments?: string[];
   };
 }
 

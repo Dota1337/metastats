@@ -25,14 +25,24 @@ export default function TftAugmentsReferencePage() {
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
 
-  // Restrict to augments tagged with the current set's prefix so older-set
-  // carry-overs in the bundle don't pollute the catalog. Active set comes
-  // from the bundle header (`set: 17` etc).
+  // Source of truth for the catalog = `bundle.active.augments` (= Riot's
+  // setData[N].augments minus God-Augments, see scripts/fetch-tft-assets.mjs).
+  // That includes carry-overs from older sets (TFT10_*, TFT11_*…) Riot re-
+  // enabled for Set 17. Old logic only matched the current-set prefix, which
+  // missed ~240 of 276 entries. Falls back to setPrefix when an old bundle
+  // ships without `active.augments` (pre-2026-06-10).
   const augments = useMemo(() => {
     if (!assets) return [];
+    const whitelist = assets.active?.augments;
+    if (whitelist?.length) {
+      const set = new Set(whitelist);
+      return Object.entries(assets.augments)
+        .filter(([apiName]) => set.has(apiName))
+        .map(([apiName, a]) => ({ apiName, ...a }));
+    }
     const setPrefix = `TFT${assets.set}_`;
     return Object.entries(assets.augments)
-      .filter(([apiName]) => apiName.startsWith(setPrefix))
+      .filter(([apiName]) => apiName.startsWith(setPrefix) && !/GodAugment/i.test(apiName))
       .map(([apiName, a]) => ({ apiName, ...a }));
   }, [assets]);
 

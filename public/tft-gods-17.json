@@ -1,0 +1,60 @@
+{
+  "set": 17,
+  "_comment": "Static metadata for the 9 Space Gods (Set 17). Mechanics + boon descs come live from the asset bundle (TFT17_Augment_<id>GodAugment*). baseApiName pins the Stage 4-7 final boon so we can split offerings vs final without name-regex.",
+  "gods": [
+    {
+      "id": "Ahri",
+      "titleKey": "gods.title.ahri",
+      "themeKey": "gods.theme.ahri",
+      "baseApiName": "TFT17_Augment_AhriGodAugment"
+    },
+    {
+      "id": "AurelionSol",
+      "titleKey": "gods.title.aurelionsol",
+      "themeKey": "gods.theme.aurelionsol",
+      "baseApiName": "TFT17_Augment_AurelionSolGodAugment"
+    },
+    {
+      "id": "Ekko",
+      "titleKey": "gods.title.ekko",
+      "themeKey": "gods.theme.ekko",
+      "baseApiName": "TFT17_Augment_EkkoGodAugment"
+    },
+    {
+      "id": "Evelynn",
+      "titleKey": "gods.title.evelynn",
+      "themeKey": "gods.theme.evelynn",
+      "baseApiName": "TFT17_Augment_EvelynnGodAugment"
+    },
+    {
+      "id": "Kayle",
+      "titleKey": "gods.title.kayle",
+      "themeKey": "gods.theme.kayle",
+      "baseApiName": "TFT17_Augment_KayleGodAugment"
+    },
+    {
+      "id": "Soraka",
+      "titleKey": "gods.title.soraka",
+      "themeKey": "gods.theme.soraka",
+      "baseApiName": "TFT17_Augment_SorakaGodAugment"
+    },
+    {
+      "id": "Thresh",
+      "titleKey": "gods.title.thresh",
+      "themeKey": "gods.theme.thresh",
+      "baseApiName": "TFT17_Augment_ThreshGodAugment"
+    },
+    {
+      "id": "Varus",
+      "titleKey": "gods.title.varus",
+      "themeKey": "gods.theme.varus",
+      "baseApiName": "TFT17_Augment_VarusGodAugment_BoonOfStars"
+    },
+    {
+      "id": "Yasuo",
+      "titleKey": "gods.title.yasuo",
+      "themeKey": "gods.theme.yasuo",
+      "baseApiName": "TFT17_Augment_YasuoGodAugment_PaintedPower"
+    }
+  ]
+}

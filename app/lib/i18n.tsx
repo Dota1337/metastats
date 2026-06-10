@@ -74,6 +74,90 @@ const translations = {
   'nav.units': t6('Units', 'Units', '\uC720\uB2DB', '\u5355\u4F4D', 'Unidades', 'Unit\u00E9s'),
   'nav.items': t6('Items', 'Items', '\uC544\uC774\uD15C', '\u88C5\u5907', '\u00CDtems', 'Objets'),
   'nav.augments': t6('Augments', 'Augments', '\uC99D\uAC15', '\u5F3A\u5316\u7B26\u6587', 'Aumentos', 'Augments'),
+  'nav.gods': t6('G\u00F6tter', 'Gods', '\uC2E0\uB4E4', '\u4F17\u795E', 'Dioses', 'Dieux'),
+  'gods.section.offerings': t6('Angebote', 'Offerings', '\uC81C\uC758', '\u4F9B\u54C1', 'Ofrendas', 'Offrandes'),
+  'gods.section.finalBoon': t6('Finaler Segen', 'Final Boon', '\uCD5C\uC885 \uCD95\uBCF5', '\u6700\u7EC8\u6069\u8D50', 'Bendici\u00F3n Final', 'B\u00E9n\u00E9diction Finale'),
+  'gods.title.ahri': t6('G\u00F6ttin der Pracht', 'God of Opulence', '\uD48D\uC694\uC758 \uC2E0', '\u8C6A\u83EF\u4E4B\u795E', 'Diosa de la Opulencia', 'D\u00E9esse de l\'Opulence'),
+  'gods.title.aurelionsol': t6('Gott der Wunder', 'God of Wonders', '\uACBD\uC774\uC758 \uC2E0', '\u5947\u8FF9\u4E4B\u795E', 'Dios de las Maravillas', 'Dieu des Merveilles'),
+  'gods.title.ekko': t6('Gott der Zeit', 'God of Time', '\uC2DC\uAC04\uC758 \uC2E0', '\u65F6\u95F4\u4E4B\u795E', 'Dios del Tiempo', 'Dieu du Temps'),
+  'gods.title.evelynn': t6('G\u00F6ttin der Versuchung', 'God of Temptation', '\uC720\uD639\uC758 \uC2E0', '\u8BF1\u60D1\u4E4B\u795E', 'Diosa de la Tentaci\u00F3n', 'D\u00E9esse de la Tentation'),
+  'gods.title.kayle': t6('G\u00F6ttin der Ordnung', 'God of Order', '\uC9C8\uC11C\uC758 \uC2E0', '\u79E9\u5E8F\u4E4B\u795E', 'Diosa del Orden', 'D\u00E9esse de l\'Ordre'),
+  'gods.title.soraka': t6('G\u00F6ttin der Sterne', 'God of Stars', '\uBCC4\uC758 \uC2E0', '\u661F\u8FB0\u4E4B\u795E', 'Diosa de las Estrellas', 'D\u00E9esse des \u00C9toiles'),
+  'gods.title.thresh': t6('Gott der Pakte', 'God of Pacts', '\uACC4\uC57D\uC758 \uC2E0', '\u76DF\u7EA6\u4E4B\u795E', 'Dios de los Pactos', 'Dieu des Pactes'),
+  'gods.title.varus': t6('Gott der Liebe', 'God of Love', '\uC0AC\uB791\uC758 \uC2E0', '\u7231\u4E4B\u795E', 'Dios del Amor', 'Dieu de l\'Amour'),
+  'gods.title.yasuo': t6('Gott des Abgrunds', 'God of the Abyss', '\uC2EC\uC5F0\uC758 \uC2E0', '\u6DF1\u6E0A\u4E4B\u795E', 'Dios del Abismo', 'Dieu de l\'Ab\u00EEme'),
+  'gods.theme.ahri': t6(
+    'Verleiht zus\u00E4tzliches Gold f\u00FCr 3-Sterne-Pushes oder schnelles Fast-9.',
+    'Grants extra gold for 3-star pushes or rushing to level 9.',
+    '3\uC131 \uD478\uC2DC \uB610\uB294 \uBE60\uB978 9\uB808\uBCA8 \uB3CC\uC9C4\uC744 \uC704\uD55C \uCD94\uAC00 \uACE8\uB4DC\uB97C \uBD80\uC5EC\uD569\uB2C8\uB2E4.',
+    '\u63D0\u4F9B\u989D\u5916\u91D1\u5E01\u7528\u4E8E\u4E09\u661F\u6216\u51B2\u7B49\u7EA79\u3002',
+    'Otorga oro extra para 3 estrellas o subir r\u00E1pido a nivel 9.',
+    'Octroie de l\'or suppl\u00E9mentaire pour les 3 \u00E9toiles ou la mont\u00E9e niveau 9.'
+  ),
+  'gods.theme.aurelionsol': t6(
+    'W\u00E4hle eine Quest, um durch Erf\u00FCllung gro\u00DFe Belohnungen freizuschalten.',
+    'Choose a quest \u2014 completing it unlocks powerful rewards.',
+    '\uD035\uC2A4\uD2B8\uB97C \uC120\uD0DD\uD558\uC5EC \uC644\uB8CC \uC2DC \uAC15\uB825\uD55C \uBCF4\uC0C1\uC744 \uC5BB\uC73C\uC2ED\uC2DC\uC624.',
+    '\u9009\u62E9\u4EFB\u52A1\uFF0C\u5B8C\u6210\u540E\u83B7\u5F97\u5F3A\u5927\u5956\u52B1\u3002',
+    'Elige una misi\u00F3n; al completarla obtienes recompensas poderosas.',
+    'Choisis une qu\u00EAte ; sa r\u00E9ussite d\u00E9bloque de grandes r\u00E9compenses.'
+  ),
+  'gods.theme.ekko': t6(
+    'Nostalgische Boni: Units, Artefakte und sogar tempor\u00E4re Krabbeneier.',
+    'Nostalgic offerings: units, artifacts, even temporary Scuttle Crabs.',
+    '\uCD94\uC5B5\uC758 \uC81C\uC758: \uC720\uB2DB, \uC544\uD2F0\uD329\uD2B8, \uC2EC\uC9C0\uC5B4 \uC784\uC2DC \uBC14\uB2E4 \uAC8C\uACF5\uAE4C\uC9C0.',
+    '\u6000\u65E7\u4F9B\u54C1\uFF1A\u5355\u4F4D\u3001\u795E\u5668\uFF0C\u751A\u81F3\u4E34\u65F6\u5C0F\u8DA3\u86F9\u3002',
+    'Ofrendas nost\u00E1lgicas: unidades, artefactos e incluso cangrejos temporales.',
+    'Offrandes nostalgiques : unit\u00E9s, artefacts, m\u00EAme des Krabugnards temporaires.'
+  ),
+  'gods.theme.evelynn': t6(
+    'Hochrisiko-Boni \u2014 verlangt Tactician-HP oder Shop-Slots als Preis.',
+    'High-risk boons \u2014 demands Tactician HP or shop access as payment.',
+    '\uACE0\uC704\uD5D8 \uCD95\uBCF5 \u2014 \uC804\uC220\uAC00 \uCCB4\uB825\uC774\uB098 \uC0C1\uC810 \uC811\uADFC\uAD8C\uC744 \uB300\uAC00\uB85C \uC694\uAD6C\uD569\uB2C8\uB2E4.',
+    '\u9AD8\u98CE\u9669\u6069\u8D50 \u2014 \u4EE3\u4EF7\u4E3A\u6307\u6325\u5B98\u8840\u91CF\u6216\u5546\u5E97\u4F4D\u3002',
+    'Bendiciones de alto riesgo: requieren PS del Estratega o ranuras de tienda.',
+    'B\u00E9n\u00E9dictions \u00E0 haut risque \u2014 exige des PV du Tacticien ou des cases de boutique.'
+  ),
+  'gods.theme.kayle': t6(
+    'Geradlinig: Bietet ausschlie\u00DFlich Items und Item-Komponenten.',
+    'Straightforward \u2014 offers only items and components.',
+    '\uB2E8\uC21C\uBA85\uD050: \uC624\uC9C1 \uC544\uC774\uD15C\uACFC \uC870\uD569\uC2DD\uB9CC \uC81C\uACF5\uD569\uB2C8\uB2E4.',
+    '\u76F4\u63A5\u660E\u4E86\uFF1A\u53EA\u63D0\u4F9B\u88C5\u5907\u548C\u88C5\u5907\u90E8\u4EF6\u3002',
+    'Directa: ofrece exclusivamente \u00EDtems y componentes.',
+    'Direct \u2014 propose uniquement des objets et des composants.'
+  ),
+  'gods.theme.soraka': t6(
+    'Heilung und HP-Boni \u2014 ideal f\u00FCr Lose-Streak-Strategien.',
+    'Healing and HP bonuses \u2014 ideal for lose-streak strategies.',
+    '\uCE58\uC720\uC640 \uCCB4\uB825 \uBCF4\uB108\uC2A4 \u2014 \uC5F0\uD328 \uC804\uB7B5\uC5D0 \uC774\uC0C1\uC801\uC785\uB2C8\uB2E4.',
+    '\u6CBB\u7597\u4E0E\u751F\u547D\u52A0\u6210 \u2014 \u9002\u5408\u8FDE\u8F93\u7B56\u7565\u3002',
+    'Curaci\u00F3n y bonos de vida \u2014 ideal para estrategias de racha perdedora.',
+    'Soin et bonus de PV \u2014 id\u00E9al pour les strat\u00E9gies de d\u00E9faites encha\u00EEn\u00E9es.'
+  ),
+  'gods.theme.thresh': t6(
+    'Zufallsboni anderer G\u00F6tter mit extra Gold als Ausgleich.',
+    'Random boons from other gods, with extra gold as compensation.',
+    '\uB2E4\uB978 \uC2E0\uB4E4\uC758 \uBB34\uC791\uC704 \uCD95\uBCF5 + \uBCF4\uC0C1 \uACE8\uB4DC.',
+    '\u968F\u673A\u83B7\u5F97\u5176\u4ED6\u795E\u7684\u6069\u8D50\uFF0C\u9644\u9001\u989D\u5916\u91D1\u5E01\u3002',
+    'Bendiciones aleatorias de otros dioses, con oro extra de compensaci\u00F3n.',
+    'B\u00E9n\u00E9dictions al\u00E9atoires d\'autres dieux, avec de l\'or en compensation.'
+  ),
+  'gods.theme.varus': t6(
+    'Auswahl spezifischer Unit-Kosten \u2014 inkl. erh\u00F6hter 5-Cost-Chance.',
+    'Pick specific unit costs \u2014 including boosted 5-cost odds.',
+    '\uD2B9\uC815 \uBE44\uC6A9\uC758 \uC720\uB2DB \uC120\uD0DD \u2014 5\uBE44\uC6A9 \uD655\uB960 \uC99D\uAC00 \uD3EC\uD568.',
+    '\u9009\u62E9\u7279\u5B9A\u8D39\u7528\u5355\u4F4D \u2014 \u5305\u62EC\u63D05\u8D39\u7387\u3002',
+    'Elige costes de unidad espec\u00EDficos, con probabilidad de 5-coste aumentada.',
+    'Choisis des co\u00FBts d\'unit\u00E9 sp\u00E9cifiques \u2014 chance de 5-co\u00FBt augment\u00E9e.'
+  ),
+  'gods.theme.yasuo': t6(
+    'Verzauberte Hex-Felder belohnen clevere Einheiten-Positionierung.',
+    'Enchanted hexes reward smart unit positioning.',
+    '\uB9C8\uBC95 \uC721\uAC01\uD615 \uCE78 \u2014 \uC601\uB9AC\uD55C \uC720\uB2DB \uBC30\uCE58\uB97C \uBCF4\uC0C1\uD569\uB2C8\uB2E4.',
+    '\u9B54\u6CD5\u516D\u89D2\u683C \u2014 \u5956\u52B1\u806A\u660E\u7684\u5355\u4F4D\u5E03\u9635\u3002',
+    'Hex\u00E1gonos encantados que premian el posicionamiento inteligente.',
+    'Hexagones ench\u00E2nt\u00E9s r\u00E9compensant un placement astucieux.'
+  ),
   'nav.comps': t6('Comps', 'Comps', '\uC870\uD569', '\u9635\u5BB9', 'Comps', 'Comps'),
   'nav.meta': t6('Meta', 'Meta', '\uBA54\uD0C0', 'Meta', 'Meta', 'Meta'),
   'nav.traits': t6('Synergien', 'Traits', '\uC2DC\uB108\uC9C0', '\u7F81\u7ECA', 'Sinergias', 'Synergies'),

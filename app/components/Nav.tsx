@@ -9,7 +9,7 @@ import GameSwitcher from './GameSwitcher';
 interface NavProps {
   active?:
     | 'search' | 'leaderboard' | 'champions' | 'marktwert' | 'analyse' | 'teams' | 'ligen'
-    | 'units' | 'items' | 'augments' | 'comps' | 'traits' | 'tournaments' | 'saved' | 'builder' | 'pros' | 'regions'
+    | 'units' | 'items' | 'augments' | 'gods' | 'comps' | 'traits' | 'tournaments' | 'saved' | 'builder' | 'pros' | 'regions'
     | 'onetricks' | 'patch' | 'community' | 'coach' | 'explorer' | 'tools';
 }
 
@@ -164,6 +164,7 @@ export default function Nav({ active }: NavProps) {
                       <a href="/tft/units" className={metaItemClass('units')}>{t('nav.units')}</a>
                       <a href="/tft/items" className={metaItemClass('items')}>{t('nav.items')}</a>
                       <a href="/tft/augments" className={metaItemClass('augments')}>{t('nav.augments')}</a>
+                      <a href="/tft/gods" className={metaItemClass('gods')}>{t('nav.gods')}</a>
                       <a href="/tft/traits" className={metaItemClass('traits')}>{t('nav.traits')}</a>
                       <a href="/tft/onetricks" className={metaItemClass('onetricks')}>{t('nav.onetricks')}</a>
                       <a href="/tft/regions" className={metaItemClass('regions')}>{t('nav.regions')}</a>
@@ -422,6 +423,7 @@ export default function Nav({ active }: NavProps) {
               <a href="/tft/units" className={`pl-3 ${linkClass('units')}`} onClick={() => setMenuOpen(false)}>{t('nav.units')}</a>
               <a href="/tft/items" className={`pl-3 ${linkClass('items')}`} onClick={() => setMenuOpen(false)}>{t('nav.items')}</a>
               <a href="/tft/augments" className={`pl-3 ${linkClass('augments')}`} onClick={() => setMenuOpen(false)}>{t('nav.augments')}</a>
+              <a href="/tft/gods" className={`pl-3 ${linkClass('gods')}`} onClick={() => setMenuOpen(false)}>{t('nav.gods')}</a>
               <a href="/tft/traits" className={`pl-3 ${linkClass('traits')}`} onClick={() => setMenuOpen(false)}>{t('nav.traits')}</a>
               <a href="/tft/onetricks" className={`pl-3 ${linkClass('onetricks')}`} onClick={() => setMenuOpen(false)}>{t('nav.onetricks')}</a>
               <a href="/tft/regions" className={`pl-3 ${linkClass('regions')}`} onClick={() => setMenuOpen(false)}>{t('nav.regions')}</a>

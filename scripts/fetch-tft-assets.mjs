@@ -246,7 +246,21 @@ async function main() {
     if (playedIds.size === 0) return true;
     return playedIds.has(id);
   }))).sort();
-  console.log(`       items: ${Object.keys(items).length}  active.items: ${activeItems.length}  champions: ${Object.keys(champions).length}  traits: ${Object.keys(traits).length}  augments: ${Object.keys(augments).length}  chibis: ${Object.keys(chibis).length}  tacticians: ${Object.keys(tacticians).length}`);
+
+  // Augments-Whitelist: `setData[N].augments` is Riot's authoritative pool of
+  // augments that can drop in this set — incl. carry-overs from older sets
+  // (TFT10_Augment_*, TFT11_Augment_*…) that they re-enabled. We surface that
+  // full list to the /tft/augments wiki page, with two exclusions:
+  //   - God-Augments (`*GodAugment*`)  → live on /tft/gods, not the augment list
+  //   - Sub-variant boons              → ditto
+  // Stats-aggregator (DB) intentionally doesn't ship augment counts (Riot
+  // restriction), so we can't cross-check played-IDs like we do for items.
+  // First-run safety not needed here — the bundle is `setData`, always populated.
+  const rawAugments = (active.augments || [])
+    .map(a => typeof a === 'string' ? a : a?.apiName)
+    .filter(Boolean);
+  const activeAugments = Array.from(new Set(rawAugments.filter(id => !/GodAugment/i.test(id)))).sort();
+  console.log(`       items: ${Object.keys(items).length}  active.items: ${activeItems.length}  champions: ${Object.keys(champions).length}  traits: ${Object.keys(traits).length}  augments: ${Object.keys(augments).length}  active.augments: ${activeAugments.length}  chibis: ${Object.keys(chibis).length}  tacticians: ${Object.keys(tacticians).length}`);
 
   console.log('[4/4] Write public/tft-assets.json + per-set archive');
   const payload = {
@@ -265,6 +279,7 @@ async function main() {
     tacticians,
     active: {
       items: activeItems,
+      augments: activeAugments,
     },
   };
   // Single 'live' file the frontend always reads + a per-set archive so we

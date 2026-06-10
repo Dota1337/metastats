@@ -28,6 +28,8 @@ You are a focused reviewer for classification logic in the metastats codebase. Y
 
 4. **Hunt for icon-recycling traps** — Riot recycles base-variant icons across Plus/PlusPlus tiers. If a heuristic uses `icon.endsWith('_II.tex')` to imply tier 2, find at least 3 concrete examples in the bundle where that's wrong (e.g. `Heroic Grab Bag++` ships with the Gold icon despite being Prismatic).
 
+   **Also check UI consequences**: Riot ships only ONE icon file per augment family even across tiers — confirmed 2026-06-10 via CDragon HEAD-probes: `deadlierblades_iii.tex`, `flexible_iii.tex`, `constructacompanion_ii.tex` all 404. So if the icon-art looks "Gold" but the tier is Prismatic, the UI MUST visually compensate (prominent tier-coloured ring + glow + corner badge + pill — see `app/tft/augments/page.tsx` for the reference pattern). Never trust the icon-pixel to imply tier in the rendered card.
+
 5. **Verify ApiName-suffix assumptions** — `Plus` / `PlusPlus` / `Silver` / `Gold` / `Prismatic` suffixes on `apiName` are *not* universally tier-implying. Cross-check ≥5 `*Plus` augments against tactics.tools to confirm they aren't all Gold (counterexamples in 2026-06-10 saga: `Lucky Gloves+` is Prismatic, `Branching Out+` is Silver).
 
 ## Report format

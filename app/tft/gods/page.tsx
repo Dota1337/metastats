@@ -18,11 +18,16 @@ import { loadTftAssets, tftIconUrl, tftAugmentLocalised, type TftAssetsBundle, t
 // stages 2-4 / 3-4 / 4-4 — that turned out to be guesswork (sub-boons are
 // final-boon variants/quest picks, not stage offerings) and got removed.
 
+type Lang = 'de' | 'en' | 'ko' | 'zh' | 'es' | 'fr';
+interface I18nText { en: string; de?: string; ko?: string; zh?: string; es?: string; fr?: string }
+interface Offering { name: I18nText; desc: I18nText }
 interface GodMeta {
   id: string;
   titleKey: string;
   themeKey: string;
   baseApiName: string;
+  category?: string;
+  stageOfferings?: Record<'2-4' | '3-4' | '4-4', Offering[]>;
 }
 interface GodsDoc {
   set: number;
@@ -32,6 +37,10 @@ interface GodsDoc {
 interface GodViewModel {
   meta: GodMeta;
   boons: { apiName: string; data: TftAugment; isBase: boolean }[];
+}
+
+function pickI18n(text: I18nText, lang: Lang): string {
+  return text[lang] || text.en || '';
 }
 
 export default function TftGodsPage() {
@@ -135,8 +144,8 @@ export default function TftGodsPage() {
                     );
                   })()}
 
-                  {/* Variant boons — expandable */}
-                  {hasVariants && (
+                  {/* Stage Offerings (2-4 / 3-4 / 4-4) — collapsible */}
+                  {(g.meta.stageOfferings || hasVariants) && (
                     <>
                       <button
                         type="button"
@@ -144,7 +153,7 @@ export default function TftGodsPage() {
                         className="w-full flex items-center justify-between gap-2 px-3 py-2 border-t border-[#1e2a3a] text-left hover:bg-[#141c2e]/50"
                       >
                         <span className="text-[10px] uppercase tracking-widest text-[#9ab0bf]">
-                          {t('gods.section.variants')} · {variants.length}
+                          {t('gods.section.offerings')}
                         </span>
                         <svg
                           className={`w-4 h-4 text-[#7a8aa0] transition-transform ${isOpen ? 'rotate-180' : ''}`}
@@ -154,26 +163,55 @@ export default function TftGodsPage() {
                         </svg>
                       </button>
                       {isOpen && (
-                        <div className="border-t border-[#1e2a3a] p-3 space-y-2">
-                          {variants.map(b => {
-                            const url = tftIconUrl(assets, b.data.icon);
-                            const loc = tftAugmentLocalised(b.data, lang);
+                        <div className="border-t border-[#1e2a3a] p-3 space-y-3">
+                          {(['2-4', '3-4', '4-4'] as const).map(stage => {
+                            const offerings = g.meta.stageOfferings?.[stage] || [];
+                            if (offerings.length === 0) return null;
                             return (
-                              <div key={b.apiName} className="flex items-start gap-2 p-2 bg-[#141c2e] rounded">
-                                {url ? (
-                                  <img src={url} alt={loc.name} className="w-10 h-10 rounded border border-[#1e2a3a]" />
-                                ) : (
-                                  <div className="w-10 h-10 rounded border border-[#1e2a3a] bg-[#0d1526] flex-shrink-0" />
-                                )}
-                                <div className="flex-1 min-w-0">
-                                  <div className="text-white text-xs font-medium">{loc.name}</div>
-                                  {loc.desc && (
-                                    <p className="text-[#a0b0c5] text-[11px] mt-0.5 leading-snug">{loc.desc}</p>
-                                  )}
+                              <div key={stage}>
+                                <div className="flex items-baseline justify-between mb-1.5">
+                                  <span className="text-[10px] uppercase tracking-widest text-[#9ab0bf]">{t('gods.section.stage')} {stage}</span>
+                                  <span className="text-[10px] text-[#7a8aa0] tabular-nums">{offerings.length}</span>
+                                </div>
+                                <div className="space-y-1.5">
+                                  {offerings.map((o, i) => (
+                                    <div key={i} className="p-2 bg-[#141c2e] rounded">
+                                      <div className="text-white text-xs font-medium">{pickI18n(o.name, lang as Lang)}</div>
+                                      <p className="text-[#a0b0c5] text-[11px] mt-0.5 leading-snug">{pickI18n(o.desc, lang as Lang)}</p>
+                                    </div>
+                                  ))}
                                 </div>
                               </div>
                             );
                           })}
+                          {/* Boon variants from CDragon bundle (e.g. AurelionSol's Quest picks)
+                              — show under the stages so users see all wiki info in one place. */}
+                          {hasVariants && (
+                            <div>
+                              <div className="text-[10px] uppercase tracking-widest text-[#c39bff] mb-1.5">{t('gods.section.variants')}</div>
+                              <div className="space-y-1.5">
+                                {variants.map(b => {
+                                  const url = tftIconUrl(assets, b.data.icon);
+                                  const loc = tftAugmentLocalised(b.data, lang);
+                                  return (
+                                    <div key={b.apiName} className="flex items-start gap-2 p-2 bg-[#141c2e] rounded">
+                                      {url ? (
+                                        <img src={url} alt={loc.name} className="w-10 h-10 rounded border border-[#1e2a3a]" />
+                                      ) : (
+                                        <div className="w-10 h-10 rounded border border-[#1e2a3a] bg-[#0d1526] flex-shrink-0" />
+                                      )}
+                                      <div className="flex-1 min-w-0">
+                                        <div className="text-white text-xs font-medium">{loc.name}</div>
+                                        {loc.desc && (
+                                          <p className="text-[#a0b0c5] text-[11px] mt-0.5 leading-snug">{loc.desc}</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
                     </>

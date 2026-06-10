@@ -77,6 +77,8 @@ const translations = {
   'nav.gods': t6('G\u00F6tter', 'Gods', '\uC2E0\uB4E4', '\u4F17\u795E', 'Dioses', 'Dieux'),
   'gods.section.boons': t6('Segen & Varianten', 'Boons & Variants', '\uCD95\uBCF5 & \uBCC0\uD615', '\u6069\u8D50\u4E0E\u53D8\u4F53', 'Bendiciones y Variantes', 'B\u00E9n\u00E9dictions & Variantes'),
   'gods.section.variants': t6('Wahloptionen', 'Choices', '\uC120\uD0DD\uC9C0', '\u53EF\u9009\u9879', 'Opciones', 'Choix'),
+  'gods.section.offerings': t6('Angebote', 'Offerings', '\uC81C\uC758', '\u4F9B\u54C1', 'Ofrendas', 'Offrandes'),
+  'gods.section.stage': t6('Stage', 'Stage', '\uC2A4\uD14C\uC774\uC9C0', '\u9636\u6BB5', 'Etapa', '\u00C9tape'),
   'gods.boon.main': t6('Hauptsegen', 'Main Boon', '\uC8FC\uC694 \uCD95\uBCF5', '\u4E3B\u8981\u6069\u8D50', 'Bendici\u00F3n Principal', 'B\u00E9n\u00E9diction Principale'),
   'gods.stage.final': t6('Finaler Segen', 'Final Boon', '\uCD5C\uC885 \uCD95\uBCF5', '\u6700\u7EC8\u6069\u8D50', 'Bendici\u00F3n Final', 'B\u00E9n\u00E9diction Finale'),
   'gods.mechanic.intro': t6(

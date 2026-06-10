@@ -1,0 +1,32 @@
+#!/bin/sh
+# Pre-push hook for metastats.
+# Install: `npm run setup-hooks` (copies this file into .git/hooks/pre-push)
+# Skip:    `git push --no-verify`  (explicit opt-out only)
+#
+# Two gates:
+#   1. TypeScript type-check        — catches obvious code regressions
+#   2. Classification verifier      — catches Augment/Item/God classification
+#                                     regressions against ground-truth.
+#                                     See scripts/verify-classifications.mjs
+
+set -e
+
+echo "[pre-push 1/2] Running tsc --noEmit ..."
+if ! npx tsc --noEmit; then
+  echo ""
+  echo "TypeScript errors detected — push blocked."
+  exit 1
+fi
+echo "  tsc passed."
+
+echo "[pre-push 2/2] Running classification verifier ..."
+if ! node scripts/verify-classifications.mjs; then
+  echo ""
+  echo "Classification checks failed — push blocked."
+  echo "If this is intentional, re-run scripts/refresh-augment-tiers.mjs +"
+  echo "scripts/fetch-tft-assets.mjs to refresh ground-truth, then retry."
+  exit 1
+fi
+echo "  classification checks passed."
+
+echo "[pre-push] all checks green."

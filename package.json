@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "setup-hooks": "node scripts/setup-git-hooks.mjs",
+    "verify": "node scripts/verify-classifications.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.98.0",

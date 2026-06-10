@@ -10,24 +10,164 @@
       "baseApiName": "TFT17_Augment_AhriGodAugment",
       "stageOfferings": {
         "2-4": [
-          { "name": { "en": "6 gold", "de": "6 Gold" }, "desc": { "en": "Make it rain!", "de": "Lass es regnen!" } },
-          { "name": { "en": "6 XP", "de": "6 EP" }, "desc": { "en": "Learn and grow", "de": "Lernen und wachsen" } },
-          { "name": { "en": "Shared Wealth", "de": "Geteilter Wohlstand" }, "desc": { "en": "Gain 6 gold. If at least 5 players choose this, gain an additional 1 gold.", "de": "Erhalte 6 Gold. Wenn mindestens 5 Spieler dies wählen, erhalte zusätzlich 1 Gold." } },
-          { "name": { "en": "4 free rerolls", "de": "4 kostenlose Rerolls" }, "desc": { "en": "Just keep rolling", "de": "Einfach weiter rerollen" } },
-          { "name": { "en": "Divine Investment", "de": "Göttliche Investition" }, "desc": { "en": "Your maximum interest is increased by 1. Gain 4 gold.", "de": "Dein maximaler Zins erhöht sich um 1. Erhalte 4 Gold." } }
+          {
+            "name": {
+              "en": "6 gold",
+              "de": "6 Gold"
+            },
+            "desc": {
+              "en": "Make it rain!",
+              "de": "Lass es regnen!"
+            },
+            "iconApiName": "TFT_Assist_Gold_6"
+          },
+          {
+            "name": {
+              "en": "6 XP",
+              "de": "6 EP"
+            },
+            "desc": {
+              "en": "Learn and grow",
+              "de": "Lernen und wachsen"
+            },
+            "iconApiName": "TFT17_MarketOffering_XP_Small"
+          },
+          {
+            "name": {
+              "en": "Shared Wealth",
+              "de": "Geteilter Wohlstand"
+            },
+            "desc": {
+              "en": "Gain 6 gold. If at least 5 players choose this, gain an additional 1 gold.",
+              "de": "Erhalte 6 Gold. Wenn mindestens 5 Spieler dies wählen, erhalte zusätzlich 1 Gold."
+            },
+            "iconApiName": "TFT17_MarketOffering_SharedWealth_Stage2"
+          },
+          {
+            "name": {
+              "en": "4 free rerolls",
+              "de": "4 kostenlose Rerolls"
+            },
+            "desc": {
+              "en": "Just keep rolling",
+              "de": "Einfach weiter rerollen"
+            },
+            "iconApiName": "TFT17_MarketOffering_Rerolls_Small_Stage2"
+          },
+          {
+            "name": {
+              "en": "Divine Investment",
+              "de": "Göttliche Investition"
+            },
+            "desc": {
+              "en": "Your maximum interest is increased by 1. Gain 4 gold.",
+              "de": "Dein maximaler Zins erhöht sich um 1. Erhalte 4 Gold."
+            },
+            "iconApiName": "TFT17_MarketOffering_MaxInterest_Stage2"
+          }
         ],
         "3-4": [
-          { "name": { "en": "8 gold", "de": "8 Gold" }, "desc": { "en": "Make it rain!", "de": "Lass es regnen!" } },
-          { "name": { "en": "5 free rerolls", "de": "5 kostenlose Rerolls" }, "desc": { "en": "Just keep rolling", "de": "Einfach weiter rerollen" } },
-          { "name": { "en": "Shared Wealth +", "de": "Geteilter Wohlstand +" }, "desc": { "en": "Gain 8 gold. If at least 5 players choose this, gain an additional 2 gold.", "de": "Erhalte 8 Gold. Wenn mindestens 5 Spieler dies wählen, erhalte zusätzlich 2 Gold." } },
-          { "name": { "en": "8 XP", "de": "8 EP" }, "desc": { "en": "Learn and grow", "de": "Lernen und wachsen" } },
-          { "name": { "en": "Gold Every Turn", "de": "Gold pro Runde" }, "desc": { "en": "Gain 1 gold each round for the rest of the game.", "de": "Erhalte 1 Gold pro Runde für den Rest des Spiels." } },
-          { "name": { "en": "Blessing: Wealth", "de": "Segen: Wohlstand" }, "desc": { "en": "Permanently grant a champion 8% Attack Damage and Ability Power, and a 12% chance to generate 1 gold on takedown.", "de": "Gewähre dauerhaft einem Champion 8 % Angriffsschaden und Fähigkeitsstärke sowie 12 % Chance, bei einer Eliminierung 1 Gold zu generieren." } }
+          {
+            "name": {
+              "en": "8 gold",
+              "de": "8 Gold"
+            },
+            "desc": {
+              "en": "Make it rain!",
+              "de": "Lass es regnen!"
+            },
+            "iconApiName": "TFT11_Encounter_ChoiceItem_Gain8Gold"
+          },
+          {
+            "name": {
+              "en": "5 free rerolls",
+              "de": "5 kostenlose Rerolls"
+            },
+            "desc": {
+              "en": "Just keep rolling",
+              "de": "Einfach weiter rerollen"
+            },
+            "iconApiName": "TFT17_MarketOffering_Rerolls_Small"
+          },
+          {
+            "name": {
+              "en": "Shared Wealth +",
+              "de": "Geteilter Wohlstand +"
+            },
+            "desc": {
+              "en": "Gain 8 gold. If at least 5 players choose this, gain an additional 2 gold.",
+              "de": "Erhalte 8 Gold. Wenn mindestens 5 Spieler dies wählen, erhalte zusätzlich 2 Gold."
+            },
+            "iconApiName": "TFT17_MarketOffering_SharedWealth_Stage4"
+          },
+          {
+            "name": {
+              "en": "8 XP",
+              "de": "8 EP"
+            },
+            "desc": {
+              "en": "Learn and grow",
+              "de": "Lernen und wachsen"
+            },
+            "iconApiName": "TFT17_MarketOffering_XP_Medium_Stage3"
+          },
+          {
+            "name": {
+              "en": "Gold Every Turn",
+              "de": "Gold pro Runde"
+            },
+            "desc": {
+              "en": "Gain 1 gold each round for the rest of the game.",
+              "de": "Erhalte 1 Gold pro Runde für den Rest des Spiels."
+            },
+            "iconApiName": "TFT17_MarketOffering_GoldPerTurn_Stage3"
+          },
+          {
+            "name": {
+              "en": "Blessing: Wealth",
+              "de": "Segen: Wohlstand"
+            },
+            "desc": {
+              "en": "Permanently grant a champion 8% Attack Damage and Ability Power, and a 12% chance to generate 1 gold on takedown.",
+              "de": "Gewähre dauerhaft einem Champion 8 % Angriffsschaden und Fähigkeitsstärke sowie 12 % Chance, bei einer Eliminierung 1 Gold zu generieren."
+            },
+            "iconApiName": "TFT17_MarketOffering_BlessingWealth"
+          }
         ],
         "4-4": [
-          { "name": { "en": "10 gold", "de": "10 Gold" }, "desc": { "en": "Make it rain!", "de": "Lass es regnen!" } },
-          { "name": { "en": "Shared Wealth +", "de": "Geteilter Wohlstand +" }, "desc": { "en": "Gain 10 gold. If at least 5 players choose this, gain an additional 2 gold.", "de": "Erhalte 10 Gold. Wenn mindestens 5 Spieler dies wählen, erhalte zusätzlich 2 Gold." } },
-          { "name": { "en": "7 free rerolls", "de": "7 kostenlose Rerolls" }, "desc": { "en": "Just keep rolling", "de": "Einfach weiter rerollen" } }
+          {
+            "name": {
+              "en": "10 gold",
+              "de": "10 Gold"
+            },
+            "desc": {
+              "en": "Make it rain!",
+              "de": "Lass es regnen!"
+            },
+            "iconApiName": "TFT_Assist_Gold_10"
+          },
+          {
+            "name": {
+              "en": "Shared Wealth +",
+              "de": "Geteilter Wohlstand +"
+            },
+            "desc": {
+              "en": "Gain 10 gold. If at least 5 players choose this, gain an additional 2 gold.",
+              "de": "Erhalte 10 Gold. Wenn mindestens 5 Spieler dies wählen, erhalte zusätzlich 2 Gold."
+            },
+            "iconApiName": "TFT17_MarketOffering_SharedWealth_Stage4"
+          },
+          {
+            "name": {
+              "en": "7 free rerolls",
+              "de": "7 kostenlose Rerolls"
+            },
+            "desc": {
+              "en": "Just keep rolling",
+              "de": "Einfach weiter rerollen"
+            },
+            "iconApiName": "TFT17_MarketOffering_Rerolls_Large_Stage4"
+          }
         ]
       }
     },
@@ -39,17 +179,87 @@
       "baseApiName": "TFT17_Augment_AurelionSolGodAugment",
       "stageOfferings": {
         "2-4": [
-          { "name": { "en": "Wealth Quest", "de": "Reichtums-Quest" }, "desc": { "en": "When you reach 50 gold, gain a component anvil and 4 gold.", "de": "Wenn du 50 Gold erreichst, erhalte einen Komponenten-Amboss und 4 Gold." } },
-          { "name": { "en": "Trait Quest", "de": "Synergie-Quest" }, "desc": { "en": "After fielding 6 non-unique traits in a player combat, gain a random Emblem and a Reforger.", "de": "Nachdem du 6 nicht-einzigartige Synergien in einem Spielerkampf eingesetzt hast, erhalte ein zufälliges Emblem und einen Umschmiede-Stein." } }
+          {
+            "name": {
+              "en": "Wealth Quest",
+              "de": "Reichtums-Quest"
+            },
+            "desc": {
+              "en": "When you reach 50 gold, gain a component anvil and 4 gold.",
+              "de": "Wenn du 50 Gold erreichst, erhalte einen Komponenten-Amboss und 4 Gold."
+            },
+            "iconApiName": "TFT17_MarketOffering_AurelionSol_GoldQuest_Stage2"
+          },
+          {
+            "name": {
+              "en": "Trait Quest",
+              "de": "Synergie-Quest"
+            },
+            "desc": {
+              "en": "After fielding 6 non-unique traits in a player combat, gain a random Emblem and a Reforger.",
+              "de": "Nachdem du 6 nicht-einzigartige Synergien in einem Spielerkampf eingesetzt hast, erhalte ein zufälliges Emblem und einen Umschmiede-Stein."
+            },
+            "iconApiName": "TFT17_MarketOffering_AurelionSol_TraitQuest_Stage2"
+          }
         ],
         "3-4": [
-          { "name": { "en": "Starry Quest", "de": "Sternen-Quest" }, "desc": { "en": "The next time you star up a champion, gain 10 gold.", "de": "Wenn du das nächste Mal einen Champion aufsternst, erhalte 10 Gold." } },
-          { "name": { "en": "Trait Quest", "de": "Synergie-Quest" }, "desc": { "en": "After fielding 6 non-unique traits in a player combat, gain a random Emblem and a Reforger.", "de": "Nachdem du 6 nicht-einzigartige Synergien in einem Spielerkampf eingesetzt hast, erhalte ein zufälliges Emblem und einen Umschmiede-Stein." } }
+          {
+            "name": {
+              "en": "Starry Quest",
+              "de": "Sternen-Quest"
+            },
+            "desc": {
+              "en": "The next time you star up a champion, gain 10 gold.",
+              "de": "Wenn du das nächste Mal einen Champion aufsternst, erhalte 10 Gold."
+            },
+            "iconApiName": "TFT17_MarketOffering_AurelionSol_StarQuest_Stage3"
+          },
+          {
+            "name": {
+              "en": "Trait Quest",
+              "de": "Synergie-Quest"
+            },
+            "desc": {
+              "en": "After fielding 6 non-unique traits in a player combat, gain a random Emblem and a Reforger.",
+              "de": "Nachdem du 6 nicht-einzigartige Synergien in einem Spielerkampf eingesetzt hast, erhalte ein zufälliges Emblem und einen Umschmiede-Stein."
+            },
+            "iconApiName": "TFT17_MarketOffering_AurelionSol_TraitQuest_Stage2"
+          }
         ],
         "4-4": [
-          { "name": { "en": "Level Quest", "de": "Stufen-Quest" }, "desc": { "en": "When you reach level 9, gain 20 gold.", "de": "Wenn du Stufe 9 erreichst, erhalte 20 Gold." } },
-          { "name": { "en": "Low Health Quest", "de": "Niedrige-HP-Quest" }, "desc": { "en": "The first time you fall to 30 health, gain 21 gold.", "de": "Wenn du das erste Mal auf 30 HP fällst, erhalte 21 Gold." } },
-          { "name": { "en": "Reroll Quest", "de": "Reroll-Quest" }, "desc": { "en": "After rolling the shop 15 times, gain 2 component anvils.", "de": "Nachdem du den Shop 15 mal aktualisiert hast, erhalte 2 Komponenten-Ambosse." } }
+          {
+            "name": {
+              "en": "Level Quest",
+              "de": "Stufen-Quest"
+            },
+            "desc": {
+              "en": "When you reach level 9, gain 20 gold.",
+              "de": "Wenn du Stufe 9 erreichst, erhalte 20 Gold."
+            },
+            "iconApiName": "TFT17_MarketOffering_AurelionSol_LevelQuest_Stage4"
+          },
+          {
+            "name": {
+              "en": "Low Health Quest",
+              "de": "Niedrige-HP-Quest"
+            },
+            "desc": {
+              "en": "The first time you fall to 30 health, gain 21 gold.",
+              "de": "Wenn du das erste Mal auf 30 HP fällst, erhalte 21 Gold."
+            },
+            "iconApiName": "TFT17_MarketOffering_AurelionSol_LowHPQuest_Stage4"
+          },
+          {
+            "name": {
+              "en": "Reroll Quest",
+              "de": "Reroll-Quest"
+            },
+            "desc": {
+              "en": "After rolling the shop 15 times, gain 2 component anvils.",
+              "de": "Nachdem du den Shop 15 mal aktualisiert hast, erhalte 2 Komponenten-Ambosse."
+            },
+            "iconApiName": "TFT17_MarketOffering_AurelionSol_RerollQuest_Stage4"
+          }
         ]
       }
     },
@@ -61,21 +271,131 @@
       "baseApiName": "TFT17_Augment_EkkoGodAugment",
       "stageOfferings": {
         "2-4": [
-          { "name": { "en": "Artifact Item", "de": "Artefakt" }, "desc": { "en": "After 8 rounds, gain a random Artifact.", "de": "Nach 8 Runden erhalte ein zufälliges Artefakt." } },
-          { "name": { "en": "4-cost champion", "de": "4-Kosten-Champion" }, "desc": { "en": "After 3 rounds, gain a 4-cost champion.", "de": "Nach 3 Runden erhalte einen 4-Kosten-Champion." } },
-          { "name": { "en": "Divine Intervention", "de": "Göttliche Intervention" }, "desc": { "en": "After falling to 30 player health, gain a special loot orb.", "de": "Wenn du auf 30 Spieler-HP fällst, erhalte einen besonderen Beute-Orb." } }
+          {
+            "name": {
+              "en": "Artifact Item",
+              "de": "Artefakt"
+            },
+            "desc": {
+              "en": "After 8 rounds, gain a random Artifact.",
+              "de": "Nach 8 Runden erhalte ein zufälliges Artefakt."
+            },
+            "iconApiName": "TFT17_MarketOffering_DelayedRandomArtifact"
+          },
+          {
+            "name": {
+              "en": "4-cost champion",
+              "de": "4-Kosten-Champion"
+            },
+            "desc": {
+              "en": "After 3 rounds, gain a 4-cost champion.",
+              "de": "Nach 3 Runden erhalte einen 4-Kosten-Champion."
+            },
+            "iconApiName": "TFT17_MarketOffering_FourCostChampion"
+          },
+          {
+            "name": {
+              "en": "Divine Intervention",
+              "de": "Göttliche Intervention"
+            },
+            "desc": {
+              "en": "After falling to 30 player health, gain a special loot orb.",
+              "de": "Wenn du auf 30 Spieler-HP fällst, erhalte einen besonderen Beute-Orb."
+            },
+            "iconApiName": "TFT17_MarketOffering_Stimmy"
+          }
         ],
         "3-4": [
-          { "name": { "en": "Blessing: Speed", "de": "Segen: Tempo" }, "desc": { "en": "Permanently increase a champion's Attack Speed by 20% and decrease their size by 20%. (Consumable)", "de": "Erhöhe dauerhaft das Angriffstempo eines Champions um 20 % und verringere seine Größe um 20 %. (Verbrauchbar)" } },
-          { "name": { "en": "2 5-cost champions", "de": "2 5-Kosten-Champions" }, "desc": { "en": "After 4 rounds, gain 2 5-cost champions.", "de": "Nach 4 Runden erhalte 2 5-Kosten-Champions." } },
-          { "name": { "en": "Component Anvil", "de": "Komponenten-Amboss" }, "desc": { "en": "Drag this to the Shop to open an Armory full of component items. You will have 30 seconds to choose.", "de": "Ziehe diesen in den Shop, um ein Arsenal voller Komponenten zu öffnen. Du hast 30 Sekunden zur Auswahl." } }
+          {
+            "name": {
+              "en": "Blessing: Speed",
+              "de": "Segen: Tempo"
+            },
+            "desc": {
+              "en": "Permanently increase a champion's Attack Speed by 20% and decrease their size by 20%. (Consumable)",
+              "de": "Erhöhe dauerhaft das Angriffstempo eines Champions um 20 % und verringere seine Größe um 20 %. (Verbrauchbar)"
+            },
+            "iconApiName": "TFT14_Consumable_SpeedUp"
+          },
+          {
+            "name": {
+              "en": "2 5-cost champions",
+              "de": "2 5-Kosten-Champions"
+            },
+            "desc": {
+              "en": "After 4 rounds, gain 2 5-cost champions.",
+              "de": "Nach 4 Runden erhalte 2 5-Kosten-Champions."
+            },
+            "iconApiName": "TFT_Assist_2x5cost"
+          },
+          {
+            "name": {
+              "en": "Component Anvil",
+              "de": "Komponenten-Amboss"
+            },
+            "desc": {
+              "en": "Drag this to the Shop to open an Armory full of component items. You will have 30 seconds to choose.",
+              "de": "Ziehe diesen in den Shop, um ein Arsenal voller Komponenten zu öffnen. Du hast 30 Sekunden zur Auswahl."
+            },
+            "iconApiName": "TFT17_MarketOffering_ComponentAnvil"
+          }
         ],
         "4-4": [
-          { "name": { "en": "Blessing: Speed", "de": "Segen: Tempo" }, "desc": { "en": "Permanently increase a champion's Attack Speed by 20% and decrease their size by 20%. (Consumable)", "de": "Erhöhe dauerhaft das Angriffstempo eines Champions um 20 % und verringere seine Größe um 20 %. (Verbrauchbar)" } },
-          { "name": { "en": "Artifact Item", "de": "Artefakt" }, "desc": { "en": "After 5 rounds, gain a random Artifact.", "de": "Nach 5 Runden erhalte ein zufälliges Artefakt." } },
-          { "name": { "en": "5-cost shop", "de": "5-Kosten-Shop" }, "desc": { "en": "After 3 rounds, get a free shop reroll and your next shop contains all 5-cost champions.", "de": "Nach 3 Runden erhalte einen kostenlosen Reroll und dein nächster Shop enthält ausschließlich 5-Kosten-Champions." } },
-          { "name": { "en": "Cashflow", "de": "Geldfluss" }, "desc": { "en": "Gain 2 gold each round.", "de": "Erhalte 2 Gold pro Runde." } },
-          { "name": { "en": "Completed Item Anvil", "de": "Fertiges-Item-Amboss" }, "desc": { "en": "In 5 rounds, gain a Completed Item Anvil.", "de": "In 5 Runden erhalte einen Amboss für ein fertiges Item." } }
+          {
+            "name": {
+              "en": "Blessing: Speed",
+              "de": "Segen: Tempo"
+            },
+            "desc": {
+              "en": "Permanently increase a champion's Attack Speed by 20% and decrease their size by 20%. (Consumable)",
+              "de": "Erhöhe dauerhaft das Angriffstempo eines Champions um 20 % und verringere seine Größe um 20 %. (Verbrauchbar)"
+            },
+            "iconApiName": "TFT14_Consumable_SpeedUp"
+          },
+          {
+            "name": {
+              "en": "Artifact Item",
+              "de": "Artefakt"
+            },
+            "desc": {
+              "en": "After 5 rounds, gain a random Artifact.",
+              "de": "Nach 5 Runden erhalte ein zufälliges Artefakt."
+            },
+            "iconApiName": "TFT17_MarketOffering_DelayedRandomArtifact"
+          },
+          {
+            "name": {
+              "en": "5-cost shop",
+              "de": "5-Kosten-Shop"
+            },
+            "desc": {
+              "en": "After 3 rounds, get a free shop reroll and your next shop contains all 5-cost champions.",
+              "de": "Nach 3 Runden erhalte einen kostenlosen Reroll und dein nächster Shop enthält ausschließlich 5-Kosten-Champions."
+            },
+            "iconApiName": "TFT17_MarketOffering_Delayed5CostShop"
+          },
+          {
+            "name": {
+              "en": "Cashflow",
+              "de": "Geldfluss"
+            },
+            "desc": {
+              "en": "Gain 2 gold each round.",
+              "de": "Erhalte 2 Gold pro Runde."
+            },
+            "iconApiName": "TFT17_MarketOffering_Cashflow"
+          },
+          {
+            "name": {
+              "en": "Completed Item Anvil",
+              "de": "Fertiges-Item-Amboss"
+            },
+            "desc": {
+              "en": "In 5 rounds, gain a Completed Item Anvil.",
+              "de": "In 5 Runden erhalte einen Amboss für ein fertiges Item."
+            },
+            "iconApiName": "TFT17_MarketOffering_DelayedCompletedAnvil"
+          }
         ]
       }
     },
@@ -87,26 +407,186 @@
       "baseApiName": "TFT17_Augment_EvelynnGodAugment",
       "stageOfferings": {
         "2-4": [
-          { "name": { "en": "2-star 2-cost", "de": "2-Sterne 2-Kosten" }, "desc": { "en": "Gain a 2-star 2-cost champion. Lose 3 Tactician Health.", "de": "Erhalte einen 2-Sterne 2-Kosten-Champion. Verliere 3 Taktiker-HP." } },
-          { "name": { "en": "Blood Pact", "de": "Blutpakt" }, "desc": { "en": "Gain 8 gold. For each other player that picks this, lose 2 Tactician Health.", "de": "Erhalte 8 Gold. Für jeden anderen Spieler, der dies wählt, verliere 2 Taktiker-HP." } },
-          { "name": { "en": "Steamroll", "de": "Walze" }, "desc": { "en": "Gain a random 2-cost and 1 gold. Repeat after each player combat until you lose one.", "de": "Erhalte einen zufälligen 2-Kosten-Champion und 1 Gold. Wiederholt sich nach jedem Spielerkampf, bis du einen verlierst." } },
-          { "name": { "en": "4-cost", "de": "4-Kosten" }, "desc": { "en": "Gain a random 1-star 4-cost champion. Lose 4 Tactician Health.", "de": "Erhalte einen zufälligen 1-Sterne 4-Kosten-Champion. Verliere 4 Taktiker-HP." } },
-          { "name": { "en": "Finalist Gambit", "de": "Finalisten-Gambit" }, "desc": { "en": "Gain 4 gold. If you make it to top 4, gain 20 more gold.", "de": "Erhalte 4 Gold. Wenn du es in die Top 4 schaffst, erhalte weitere 20 Gold." } }
+          {
+            "name": {
+              "en": "2-star 2-cost",
+              "de": "2-Sterne 2-Kosten"
+            },
+            "desc": {
+              "en": "Gain a 2-star 2-cost champion. Lose 3 Tactician Health.",
+              "de": "Erhalte einen 2-Sterne 2-Kosten-Champion. Verliere 3 Taktiker-HP."
+            },
+            "iconApiName": "TFT17_MarketOffering_TwoCostChampion_TwoStar"
+          },
+          {
+            "name": {
+              "en": "Blood Pact",
+              "de": "Blutpakt"
+            },
+            "desc": {
+              "en": "Gain 8 gold. For each other player that picks this, lose 2 Tactician Health.",
+              "de": "Erhalte 8 Gold. Für jeden anderen Spieler, der dies wählt, verliere 2 Taktiker-HP."
+            },
+            "iconApiName": "TFT17_MarketOffering_BloodPact"
+          },
+          {
+            "name": {
+              "en": "Steamroll",
+              "de": "Walze"
+            },
+            "desc": {
+              "en": "Gain a random 2-cost and 1 gold. Repeat after each player combat until you lose one.",
+              "de": "Erhalte einen zufälligen 2-Kosten-Champion und 1 Gold. Wiederholt sich nach jedem Spielerkampf, bis du einen verlierst."
+            },
+            "iconApiName": "TFT17_MarketOffering_Steamroll"
+          },
+          {
+            "name": {
+              "en": "4-cost",
+              "de": "4-Kosten"
+            },
+            "desc": {
+              "en": "Gain a random 1-star 4-cost champion. Lose 4 Tactician Health.",
+              "de": "Erhalte einen zufälligen 1-Sterne 4-Kosten-Champion. Verliere 4 Taktiker-HP."
+            },
+            "iconApiName": "TFT17_MarketOffering_1star4cost_Eve"
+          },
+          {
+            "name": {
+              "en": "Finalist Gambit",
+              "de": "Finalisten-Gambit"
+            },
+            "desc": {
+              "en": "Gain 4 gold. If you make it to top 4, gain 20 more gold.",
+              "de": "Erhalte 4 Gold. Wenn du es in die Top 4 schaffst, erhalte weitere 20 Gold."
+            },
+            "iconApiName": "TFT17_MarketOffering_FinalistGambit"
+          }
         ],
         "3-4": [
-          { "name": { "en": "Random Emblem", "de": "Zufälliges Emblem" }, "desc": { "en": "Gain a random Emblem. Lose 3 Tactician Health.", "de": "Erhalte ein zufälliges Emblem. Verliere 3 Taktiker-HP." } },
-          { "name": { "en": "Blood Pact +", "de": "Blutpakt +" }, "desc": { "en": "Gain 10 gold. For each other player that picks this, lose 2 Tactician Health.", "de": "Erhalte 10 Gold. Für jeden anderen Spieler, der dies wählt, verliere 2 Taktiker-HP." } },
-          { "name": { "en": "Steamroll +", "de": "Walze +" }, "desc": { "en": "Gain a random 3-cost champion and 1 gold. Repeat after each player combat until you lose one.", "de": "Erhalte einen zufälligen 3-Kosten-Champion und 1 Gold. Wiederholt sich nach jedem Spielerkampf, bis du einen verlierst." } },
-          { "name": { "en": "2-star 3-cost", "de": "2-Sterne 3-Kosten" }, "desc": { "en": "Gain a random 2-star 3-cost champion. Lose 3 Tactician Health.", "de": "Erhalte einen zufälligen 2-Sterne 3-Kosten-Champion. Verliere 3 Taktiker-HP." } },
-          { "name": { "en": "3-star 1-cost", "de": "3-Sterne 1-Kosten" }, "desc": { "en": "Gain a random 3-star 1-cost champion. Lose 3 Tactician Health.", "de": "Erhalte einen zufälligen 3-Sterne 1-Kosten-Champion. Verliere 3 Taktiker-HP." } },
-          { "name": { "en": "12 gold", "de": "12 Gold" }, "desc": { "en": "Gain 12 gold. You cannot buy champions for 2 rounds.", "de": "Erhalte 12 Gold. Du kannst 2 Runden lang keine Champions kaufen." } }
+          {
+            "name": {
+              "en": "Random Emblem",
+              "de": "Zufälliges Emblem"
+            },
+            "desc": {
+              "en": "Gain a random Emblem. Lose 3 Tactician Health.",
+              "de": "Erhalte ein zufälliges Emblem. Verliere 3 Taktiker-HP."
+            },
+            "iconApiName": "TFT17_MarketOffering_RandomEmblem"
+          },
+          {
+            "name": {
+              "en": "Blood Pact +",
+              "de": "Blutpakt +"
+            },
+            "desc": {
+              "en": "Gain 10 gold. For each other player that picks this, lose 2 Tactician Health.",
+              "de": "Erhalte 10 Gold. Für jeden anderen Spieler, der dies wählt, verliere 2 Taktiker-HP."
+            },
+            "iconApiName": "TFT17_MarketOffering_BloodPactPlus"
+          },
+          {
+            "name": {
+              "en": "Steamroll +",
+              "de": "Walze +"
+            },
+            "desc": {
+              "en": "Gain a random 3-cost champion and 1 gold. Repeat after each player combat until you lose one.",
+              "de": "Erhalte einen zufälligen 3-Kosten-Champion und 1 Gold. Wiederholt sich nach jedem Spielerkampf, bis du einen verlierst."
+            },
+            "iconApiName": "TFT17_MarketOffering_Steamroll"
+          },
+          {
+            "name": {
+              "en": "2-star 3-cost",
+              "de": "2-Sterne 3-Kosten"
+            },
+            "desc": {
+              "en": "Gain a random 2-star 3-cost champion. Lose 3 Tactician Health.",
+              "de": "Erhalte einen zufälligen 2-Sterne 3-Kosten-Champion. Verliere 3 Taktiker-HP."
+            },
+            "iconApiName": "TFT17_MarketOffering_2star3cost_Eve"
+          },
+          {
+            "name": {
+              "en": "3-star 1-cost",
+              "de": "3-Sterne 1-Kosten"
+            },
+            "desc": {
+              "en": "Gain a random 3-star 1-cost champion. Lose 3 Tactician Health.",
+              "de": "Erhalte einen zufälligen 3-Sterne 1-Kosten-Champion. Verliere 3 Taktiker-HP."
+            },
+            "iconApiName": "TFT17_MarketOffering_3star1cost_Eve"
+          },
+          {
+            "name": {
+              "en": "12 gold",
+              "de": "12 Gold"
+            },
+            "desc": {
+              "en": "Gain 12 gold. You cannot buy champions for 2 rounds.",
+              "de": "Erhalte 12 Gold. Du kannst 2 Runden lang keine Champions kaufen."
+            },
+            "iconApiName": "TFT_Assist_Gold_12"
+          }
         ],
         "4-4": [
-          { "name": { "en": "Blood Pact ++", "de": "Blutpakt ++" }, "desc": { "en": "Gain 13 gold. For each other player that picks this, lose 1 Tactician Health.", "de": "Erhalte 13 Gold. Für jeden anderen Spieler, der dies wählt, verliere 1 Taktiker-HP." } },
-          { "name": { "en": "2-star 4-cost", "de": "2-Sterne 4-Kosten" }, "desc": { "en": "Gain a random 2-star 4-cost champion. Lose 4 Tactician Health.", "de": "Erhalte einen zufälligen 2-Sterne 4-Kosten-Champion. Verliere 4 Taktiker-HP." } },
-          { "name": { "en": "18 gold", "de": "18 Gold" }, "desc": { "en": "Gain 18 gold. You cannot buy champions for 2 rounds.", "de": "Erhalte 18 Gold. Du kannst 2 Runden lang keine Champions kaufen." } },
-          { "name": { "en": "Completed Item", "de": "Fertiges Item" }, "desc": { "en": "Gain a random completed item. Lose 5 Tactician Health.", "de": "Erhalte ein zufälliges fertiges Item. Verliere 5 Taktiker-HP." } },
-          { "name": { "en": "2 5-costs", "de": "2 5-Kosten" }, "desc": { "en": "Gain 2 random 1-star 5-cost champions. Lose 5 Tactician Health.", "de": "Erhalte 2 zufällige 1-Sterne 5-Kosten-Champions. Verliere 5 Taktiker-HP." } }
+          {
+            "name": {
+              "en": "Blood Pact ++",
+              "de": "Blutpakt ++"
+            },
+            "desc": {
+              "en": "Gain 13 gold. For each other player that picks this, lose 1 Tactician Health.",
+              "de": "Erhalte 13 Gold. Für jeden anderen Spieler, der dies wählt, verliere 1 Taktiker-HP."
+            },
+            "iconApiName": "TFT17_MarketOffering_BloodPactPlusPlus"
+          },
+          {
+            "name": {
+              "en": "2-star 4-cost",
+              "de": "2-Sterne 4-Kosten"
+            },
+            "desc": {
+              "en": "Gain a random 2-star 4-cost champion. Lose 4 Tactician Health.",
+              "de": "Erhalte einen zufälligen 2-Sterne 4-Kosten-Champion. Verliere 4 Taktiker-HP."
+            },
+            "iconApiName": "TFT17_MarketOffering_2star4cost_Eve"
+          },
+          {
+            "name": {
+              "en": "18 gold",
+              "de": "18 Gold"
+            },
+            "desc": {
+              "en": "Gain 18 gold. You cannot buy champions for 2 rounds.",
+              "de": "Erhalte 18 Gold. Du kannst 2 Runden lang keine Champions kaufen."
+            },
+            "iconApiName": "TFT_Assist_Gold_18"
+          },
+          {
+            "name": {
+              "en": "Completed Item",
+              "de": "Fertiges Item"
+            },
+            "desc": {
+              "en": "Gain a random completed item. Lose 5 Tactician Health.",
+              "de": "Erhalte ein zufälliges fertiges Item. Verliere 5 Taktiker-HP."
+            },
+            "iconApiName": "TFT17_MarketOffering_RandomCompleted_Eve"
+          },
+          {
+            "name": {
+              "en": "2 5-costs",
+              "de": "2 5-Kosten"
+            },
+            "desc": {
+              "en": "Gain 2 random 1-star 5-cost champions. Lose 5 Tactician Health.",
+              "de": "Erhalte 2 zufällige 1-Sterne 5-Kosten-Champions. Verliere 5 Taktiker-HP."
+            },
+            "iconApiName": "TFT17_MarketOffering_1star5cost_Eve"
+          }
         ]
       }
     },
@@ -118,30 +598,230 @@
       "baseApiName": "TFT17_Augment_KayleGodAugment",
       "stageOfferings": {
         "2-4": [
-          { "name": { "en": "Random Component", "de": "Zufällige Komponente" }, "desc": { "en": "Gain a random item component.", "de": "Erhalte eine zufällige Item-Komponente." } },
-          { "name": { "en": "Sparring Gloves", "de": "Trainingshandschuhe" }, "desc": { "en": "Gain Sparring Gloves.", "de": "Erhalte Trainingshandschuhe." } },
-          { "name": { "en": "Recurve Bow", "de": "Recurvebogen" }, "desc": { "en": "Gain a Recurve Bow.", "de": "Erhalte einen Recurvebogen." } },
-          { "name": { "en": "Tear of the Goddess", "de": "Träne der Göttin" }, "desc": { "en": "Gain a Tear of the Goddess.", "de": "Erhalte eine Träne der Göttin." } },
-          { "name": { "en": "Craftsmanship", "de": "Handwerkskunst" }, "desc": { "en": "Gain 1 Reforger now and one at the start of each stage. Whenever you use a Reforger, gain 2 gold.", "de": "Erhalte sofort 1 Umschmiede-Stein und einen zu Beginn jeder Phase. Erhalte 2 Gold pro genutztem Umschmiede-Stein." } },
-          { "name": { "en": "Anvil Transformation", "de": "Amboss-Transformation" }, "desc": { "en": "Whenever you would gain a component, gain a Component Anvil instead. Gain 2 gold.", "de": "Wenn du eine Komponente erhalten würdest, erhalte stattdessen einen Komponenten-Amboss. Erhalte 2 Gold." } }
+          {
+            "name": {
+              "en": "Random Component",
+              "de": "Zufällige Komponente"
+            },
+            "desc": {
+              "en": "Gain a random item component.",
+              "de": "Erhalte eine zufällige Item-Komponente."
+            },
+            "iconApiName": "TFT17_MarketOffering_RandomComponent"
+          },
+          {
+            "name": {
+              "en": "Sparring Gloves",
+              "de": "Trainingshandschuhe"
+            },
+            "desc": {
+              "en": "Gain Sparring Gloves.",
+              "de": "Erhalte Trainingshandschuhe."
+            },
+            "iconApiName": "TFT_Item_SparringGloves"
+          },
+          {
+            "name": {
+              "en": "Recurve Bow",
+              "de": "Recurvebogen"
+            },
+            "desc": {
+              "en": "Gain a Recurve Bow.",
+              "de": "Erhalte einen Recurvebogen."
+            },
+            "iconApiName": "TFTTutorial_Item_RecurveBow"
+          },
+          {
+            "name": {
+              "en": "Tear of the Goddess",
+              "de": "Träne der Göttin"
+            },
+            "desc": {
+              "en": "Gain a Tear of the Goddess.",
+              "de": "Erhalte eine Träne der Göttin."
+            },
+            "iconApiName": "TFT_Item_TearOfTheGoddess"
+          },
+          {
+            "name": {
+              "en": "Craftsmanship",
+              "de": "Handwerkskunst"
+            },
+            "desc": {
+              "en": "Gain 1 Reforger now and one at the start of each stage. Whenever you use a Reforger, gain 2 gold.",
+              "de": "Erhalte sofort 1 Umschmiede-Stein und einen zu Beginn jeder Phase. Erhalte 2 Gold pro genutztem Umschmiede-Stein."
+            },
+            "iconApiName": "TFT17_MarketOffering_Craftsmanship"
+          },
+          {
+            "name": {
+              "en": "Anvil Transformation",
+              "de": "Amboss-Transformation"
+            },
+            "desc": {
+              "en": "Whenever you would gain a component, gain a Component Anvil instead. Gain 2 gold.",
+              "de": "Wenn du eine Komponente erhalten würdest, erhalte stattdessen einen Komponenten-Amboss. Erhalte 2 Gold."
+            },
+            "iconApiName": "TFT17_MarketOffering_AnvilTransformation"
+          }
         ],
         "3-4": [
-          { "name": { "en": "Random Component", "de": "Zufällige Komponente" }, "desc": { "en": "Gain a random item component.", "de": "Erhalte eine zufällige Item-Komponente." } },
-          { "name": { "en": "B.F. Sword", "de": "B.F. Schwert" }, "desc": { "en": "Gain a B.F. Sword.", "de": "Erhalte ein B.F. Schwert." } },
-          { "name": { "en": "Needlessly Large Rod", "de": "Unnötig großer Stab" }, "desc": { "en": "Gain a Needlessly Large Rod.", "de": "Erhalte einen unnötig großen Stab." } },
-          { "name": { "en": "Chain Vest", "de": "Kettenweste" }, "desc": { "en": "Gain a Chain Vest.", "de": "Erhalte eine Kettenweste." } },
-          { "name": { "en": "Negatron Cloak", "de": "Negatronumhang" }, "desc": { "en": "Gain a Negatron Cloak.", "de": "Erhalte einen Negatronumhang." } },
-          { "name": { "en": "Divine Refund", "de": "Göttliche Erstattung" }, "desc": { "en": "Gain 2 gold. The next time you create an item, gain a copy of one of the components at random.", "de": "Erhalte 2 Gold. Wenn du das nächste Mal ein Item baust, erhalte zufällig eine Kopie einer der Komponenten." } }
+          {
+            "name": {
+              "en": "Random Component",
+              "de": "Zufällige Komponente"
+            },
+            "desc": {
+              "en": "Gain a random item component.",
+              "de": "Erhalte eine zufällige Item-Komponente."
+            },
+            "iconApiName": "TFT17_MarketOffering_RandomComponent"
+          },
+          {
+            "name": {
+              "en": "B.F. Sword",
+              "de": "B.F. Schwert"
+            },
+            "desc": {
+              "en": "Gain a B.F. Sword.",
+              "de": "Erhalte ein B.F. Schwert."
+            },
+            "iconApiName": "TFTTutorial_Item_BFSword"
+          },
+          {
+            "name": {
+              "en": "Needlessly Large Rod",
+              "de": "Unnötig großer Stab"
+            },
+            "desc": {
+              "en": "Gain a Needlessly Large Rod.",
+              "de": "Erhalte einen unnötig großen Stab."
+            },
+            "iconApiName": "TFTTutorial_Item_NeedlesslyLargeRod"
+          },
+          {
+            "name": {
+              "en": "Chain Vest",
+              "de": "Kettenweste"
+            },
+            "desc": {
+              "en": "Gain a Chain Vest.",
+              "de": "Erhalte eine Kettenweste."
+            },
+            "iconApiName": "TFTTutorial_Item_ChainVest"
+          },
+          {
+            "name": {
+              "en": "Negatron Cloak",
+              "de": "Negatronumhang"
+            },
+            "desc": {
+              "en": "Gain a Negatron Cloak.",
+              "de": "Erhalte einen Negatronumhang."
+            },
+            "iconApiName": "TFT_Item_NegatronCloak"
+          },
+          {
+            "name": {
+              "en": "Divine Refund",
+              "de": "Göttliche Erstattung"
+            },
+            "desc": {
+              "en": "Gain 2 gold. The next time you create an item, gain a copy of one of the components at random.",
+              "de": "Erhalte 2 Gold. Wenn du das nächste Mal ein Item baust, erhalte zufällig eine Kopie einer der Komponenten."
+            },
+            "iconApiName": "TFT17_MarketOffering_DivineRefund"
+          }
         ],
         "4-4": [
-          { "name": { "en": "Random Component", "de": "Zufällige Komponente" }, "desc": { "en": "Gain a random item component.", "de": "Erhalte eine zufällige Item-Komponente." } },
-          { "name": { "en": "Sparring Gloves", "de": "Trainingshandschuhe" }, "desc": { "en": "Gain Sparring Gloves.", "de": "Erhalte Trainingshandschuhe." } },
-          { "name": { "en": "Recurve Bow", "de": "Recurvebogen" }, "desc": { "en": "Gain a Recurve Bow.", "de": "Erhalte einen Recurvebogen." } },
-          { "name": { "en": "Tear of the Goddess", "de": "Träne der Göttin" }, "desc": { "en": "Gain a Tear of the Goddess.", "de": "Erhalte eine Träne der Göttin." } },
-          { "name": { "en": "B.F. Sword", "de": "B.F. Schwert" }, "desc": { "en": "Gain a B.F. Sword.", "de": "Erhalte ein B.F. Schwert." } },
-          { "name": { "en": "Needlessly Large Rod", "de": "Unnötig großer Stab" }, "desc": { "en": "Gain a Needlessly Large Rod.", "de": "Erhalte einen unnötig großen Stab." } },
-          { "name": { "en": "Chain Vest", "de": "Kettenweste" }, "desc": { "en": "Gain a Chain Vest.", "de": "Erhalte eine Kettenweste." } },
-          { "name": { "en": "Negatron Cloak", "de": "Negatronumhang" }, "desc": { "en": "Gain a Negatron Cloak.", "de": "Erhalte einen Negatronumhang." } }
+          {
+            "name": {
+              "en": "Random Component",
+              "de": "Zufällige Komponente"
+            },
+            "desc": {
+              "en": "Gain a random item component.",
+              "de": "Erhalte eine zufällige Item-Komponente."
+            },
+            "iconApiName": "TFT17_MarketOffering_RandomComponent"
+          },
+          {
+            "name": {
+              "en": "Sparring Gloves",
+              "de": "Trainingshandschuhe"
+            },
+            "desc": {
+              "en": "Gain Sparring Gloves.",
+              "de": "Erhalte Trainingshandschuhe."
+            },
+            "iconApiName": "TFT_Item_SparringGloves"
+          },
+          {
+            "name": {
+              "en": "Recurve Bow",
+              "de": "Recurvebogen"
+            },
+            "desc": {
+              "en": "Gain a Recurve Bow.",
+              "de": "Erhalte einen Recurvebogen."
+            },
+            "iconApiName": "TFTTutorial_Item_RecurveBow"
+          },
+          {
+            "name": {
+              "en": "Tear of the Goddess",
+              "de": "Träne der Göttin"
+            },
+            "desc": {
+              "en": "Gain a Tear of the Goddess.",
+              "de": "Erhalte eine Träne der Göttin."
+            },
+            "iconApiName": "TFT_Item_TearOfTheGoddess"
+          },
+          {
+            "name": {
+              "en": "B.F. Sword",
+              "de": "B.F. Schwert"
+            },
+            "desc": {
+              "en": "Gain a B.F. Sword.",
+              "de": "Erhalte ein B.F. Schwert."
+            },
+            "iconApiName": "TFTTutorial_Item_BFSword"
+          },
+          {
+            "name": {
+              "en": "Needlessly Large Rod",
+              "de": "Unnötig großer Stab"
+            },
+            "desc": {
+              "en": "Gain a Needlessly Large Rod.",
+              "de": "Erhalte einen unnötig großen Stab."
+            },
+            "iconApiName": "TFTTutorial_Item_NeedlesslyLargeRod"
+          },
+          {
+            "name": {
+              "en": "Chain Vest",
+              "de": "Kettenweste"
+            },
+            "desc": {
+              "en": "Gain a Chain Vest.",
+              "de": "Erhalte eine Kettenweste."
+            },
+            "iconApiName": "TFTTutorial_Item_ChainVest"
+          },
+          {
+            "name": {
+              "en": "Negatron Cloak",
+              "de": "Negatronumhang"
+            },
+            "desc": {
+              "en": "Gain a Negatron Cloak.",
+              "de": "Erhalte einen Negatronumhang."
+            },
+            "iconApiName": "TFT_Item_NegatronCloak"
+          }
         ]
       }
     },
@@ -153,26 +833,186 @@
       "baseApiName": "TFT17_Augment_SorakaGodAugment",
       "stageOfferings": {
         "2-4": [
-          { "name": { "en": "Giant's Belt", "de": "Riesengürtel" }, "desc": { "en": "Gain a Giant's Belt.", "de": "Erhalte einen Riesengürtel." } },
-          { "name": { "en": "Better Together", "de": "Gemeinsam stärker" }, "desc": { "en": "Gain 6 Tactician Health. If at least 5 players choose this, gain 2 gold.", "de": "Erhalte 6 Taktiker-HP. Wenn mindestens 5 Spieler dies wählen, erhalte 2 Gold." } },
-          { "name": { "en": "Soraka's Embrace", "de": "Sorakas Umarmung" }, "desc": { "en": "At combat start, grant the ally who died first the previous combat 500 to 900 Shield, based on the current Stage.", "de": "Zu Kampfbeginn erhält der Verbündete, der im vorherigen Kampf zuerst starb, 500 bis 900 Schild, abhängig von der aktuellen Phase." } },
-          { "name": { "en": "Blessing: Prosperity", "de": "Segen: Wohlstand" }, "desc": { "en": "Permanently grant a champion 80 Health, which increases by 4 Health for each interest you earn.", "de": "Gewähre dauerhaft einem Champion 80 HP, die sich um 4 HP pro Zins erhöhen, den du verdienst." } }
+          {
+            "name": {
+              "en": "Giant's Belt",
+              "de": "Riesengürtel"
+            },
+            "desc": {
+              "en": "Gain a Giant's Belt.",
+              "de": "Erhalte einen Riesengürtel."
+            },
+            "iconApiName": "TFT_Item_GiantsBelt"
+          },
+          {
+            "name": {
+              "en": "Better Together",
+              "de": "Gemeinsam stärker"
+            },
+            "desc": {
+              "en": "Gain 6 Tactician Health. If at least 5 players choose this, gain 2 gold.",
+              "de": "Erhalte 6 Taktiker-HP. Wenn mindestens 5 Spieler dies wählen, erhalte 2 Gold."
+            },
+            "iconApiName": "TFT17_MarketOffering_GroupHug"
+          },
+          {
+            "name": {
+              "en": "Soraka's Embrace",
+              "de": "Sorakas Umarmung"
+            },
+            "desc": {
+              "en": "At combat start, grant the ally who died first the previous combat 500 to 900 Shield, based on the current Stage.",
+              "de": "Zu Kampfbeginn erhält der Verbündete, der im vorherigen Kampf zuerst starb, 500 bis 900 Schild, abhängig von der aktuellen Phase."
+            },
+            "iconApiName": "TFT17_MarketOffering_SorakasEmbrace"
+          },
+          {
+            "name": {
+              "en": "Blessing: Prosperity",
+              "de": "Segen: Wohlstand"
+            },
+            "desc": {
+              "en": "Permanently grant a champion 80 Health, which increases by 4 Health for each interest you earn.",
+              "de": "Gewähre dauerhaft einem Champion 80 HP, die sich um 4 HP pro Zins erhöhen, den du verdienst."
+            },
+            "iconApiName": "TFT17_Consumable_BlessingProsperity"
+          }
         ],
         "3-4": [
-          { "name": { "en": "12 Tactician Health", "de": "12 Taktiker-HP" }, "desc": { "en": "Gain 12 Tactician Health.", "de": "Erhalte 12 Taktiker-HP." } },
-          { "name": { "en": "Giant's Belt", "de": "Riesengürtel" }, "desc": { "en": "Gain a Giant's Belt.", "de": "Erhalte einen Riesengürtel." } },
-          { "name": { "en": "Blessing: Size", "de": "Segen: Größe" }, "desc": { "en": "Permanently increase a champion's Health by 350 and size by 20%. (Consumable)", "de": "Erhöhe dauerhaft die HP eines Champions um 350 und seine Größe um 20 %. (Verbrauchbar)" } },
-          { "name": { "en": "Better Together +", "de": "Gemeinsam stärker +" }, "desc": { "en": "Gain 6 Tactician Health. If at least 5 players choose this, gain 3 gold.", "de": "Erhalte 6 Taktiker-HP. Wenn mindestens 5 Spieler dies wählen, erhalte 3 Gold." } },
-          { "name": { "en": "Soraka's Embrace", "de": "Sorakas Umarmung" }, "desc": { "en": "At combat start, grant the ally who died first the previous combat 500 to 900 Shield, based on the current Stage.", "de": "Zu Kampfbeginn erhält der Verbündete, der im vorherigen Kampf zuerst starb, 500 bis 900 Schild, abhängig von der aktuellen Phase." } },
-          { "name": { "en": "Divine Empathy", "de": "Göttliche Empathie" }, "desc": { "en": "At 66 and 33 player Health, gain a random component.", "de": "Bei 66 und 33 Spieler-HP erhalte eine zufällige Komponente." } },
-          { "name": { "en": "Blessing: Prosperity +", "de": "Segen: Wohlstand +" }, "desc": { "en": "Permanently grant a champion 80 Health, which increases by 6 Health for each interest you earn.", "de": "Gewähre dauerhaft einem Champion 80 HP, die sich um 6 HP pro Zins erhöhen, den du verdienst." } }
+          {
+            "name": {
+              "en": "12 Tactician Health",
+              "de": "12 Taktiker-HP"
+            },
+            "desc": {
+              "en": "Gain 12 Tactician Health.",
+              "de": "Erhalte 12 Taktiker-HP."
+            },
+            "iconApiName": "TFT17_MarketOffering_Health"
+          },
+          {
+            "name": {
+              "en": "Giant's Belt",
+              "de": "Riesengürtel"
+            },
+            "desc": {
+              "en": "Gain a Giant's Belt.",
+              "de": "Erhalte einen Riesengürtel."
+            },
+            "iconApiName": "TFT_Item_GiantsBelt"
+          },
+          {
+            "name": {
+              "en": "Blessing: Size",
+              "de": "Segen: Größe"
+            },
+            "desc": {
+              "en": "Permanently increase a champion's Health by 350 and size by 20%. (Consumable)",
+              "de": "Erhöhe dauerhaft die HP eines Champions um 350 und seine Größe um 20 %. (Verbrauchbar)"
+            },
+            "iconApiName": "TFT14_Consumable_SizeUp2"
+          },
+          {
+            "name": {
+              "en": "Better Together +",
+              "de": "Gemeinsam stärker +"
+            },
+            "desc": {
+              "en": "Gain 6 Tactician Health. If at least 5 players choose this, gain 3 gold.",
+              "de": "Erhalte 6 Taktiker-HP. Wenn mindestens 5 Spieler dies wählen, erhalte 3 Gold."
+            },
+            "iconApiName": "TFT17_MarketOffering_GroupHugPlus"
+          },
+          {
+            "name": {
+              "en": "Soraka's Embrace",
+              "de": "Sorakas Umarmung"
+            },
+            "desc": {
+              "en": "At combat start, grant the ally who died first the previous combat 500 to 900 Shield, based on the current Stage.",
+              "de": "Zu Kampfbeginn erhält der Verbündete, der im vorherigen Kampf zuerst starb, 500 bis 900 Schild, abhängig von der aktuellen Phase."
+            },
+            "iconApiName": "TFT17_MarketOffering_SorakasEmbrace"
+          },
+          {
+            "name": {
+              "en": "Divine Empathy",
+              "de": "Göttliche Empathie"
+            },
+            "desc": {
+              "en": "At 66 and 33 player Health, gain a random component.",
+              "de": "Bei 66 und 33 Spieler-HP erhalte eine zufällige Komponente."
+            },
+            "iconApiName": "TFT17_MarketOffering_DivineEmpathy"
+          },
+          {
+            "name": {
+              "en": "Blessing: Prosperity +",
+              "de": "Segen: Wohlstand +"
+            },
+            "desc": {
+              "en": "Permanently grant a champion 80 Health, which increases by 6 Health for each interest you earn.",
+              "de": "Gewähre dauerhaft einem Champion 80 HP, die sich um 6 HP pro Zins erhöhen, den du verdienst."
+            },
+            "iconApiName": "TFT17_Consumable_BlessingProsperityPlus"
+          }
         ],
         "4-4": [
-          { "name": { "en": "12 Tactician Health", "de": "12 Taktiker-HP" }, "desc": { "en": "Gain 12 Tactician Health.", "de": "Erhalte 12 Taktiker-HP." } },
-          { "name": { "en": "Giant's Belt", "de": "Riesengürtel" }, "desc": { "en": "Gain a Giant's Belt.", "de": "Erhalte einen Riesengürtel." } },
-          { "name": { "en": "Blessing: Size", "de": "Segen: Größe" }, "desc": { "en": "Permanently increase a champion's Health by 350 and size by 20%. (Consumable)", "de": "Erhöhe dauerhaft die HP eines Champions um 350 und seine Größe um 20 %. (Verbrauchbar)" } },
-          { "name": { "en": "Better Together +", "de": "Gemeinsam stärker +" }, "desc": { "en": "Gain 6 Tactician Health. If at least 5 players choose this, gain 3 gold.", "de": "Erhalte 6 Taktiker-HP. Wenn mindestens 5 Spieler dies wählen, erhalte 3 Gold." } },
-          { "name": { "en": "Soraka's Embrace", "de": "Sorakas Umarmung" }, "desc": { "en": "At combat start, grant the ally who died first the previous combat 500 to 900 Shield, based on the current Stage.", "de": "Zu Kampfbeginn erhält der Verbündete, der im vorherigen Kampf zuerst starb, 500 bis 900 Schild, abhängig von der aktuellen Phase." } }
+          {
+            "name": {
+              "en": "12 Tactician Health",
+              "de": "12 Taktiker-HP"
+            },
+            "desc": {
+              "en": "Gain 12 Tactician Health.",
+              "de": "Erhalte 12 Taktiker-HP."
+            },
+            "iconApiName": "TFT17_MarketOffering_Health"
+          },
+          {
+            "name": {
+              "en": "Giant's Belt",
+              "de": "Riesengürtel"
+            },
+            "desc": {
+              "en": "Gain a Giant's Belt.",
+              "de": "Erhalte einen Riesengürtel."
+            },
+            "iconApiName": "TFT_Item_GiantsBelt"
+          },
+          {
+            "name": {
+              "en": "Blessing: Size",
+              "de": "Segen: Größe"
+            },
+            "desc": {
+              "en": "Permanently increase a champion's Health by 350 and size by 20%. (Consumable)",
+              "de": "Erhöhe dauerhaft die HP eines Champions um 350 und seine Größe um 20 %. (Verbrauchbar)"
+            },
+            "iconApiName": "TFT14_Consumable_SizeUp2"
+          },
+          {
+            "name": {
+              "en": "Better Together +",
+              "de": "Gemeinsam stärker +"
+            },
+            "desc": {
+              "en": "Gain 6 Tactician Health. If at least 5 players choose this, gain 3 gold.",
+              "de": "Erhalte 6 Taktiker-HP. Wenn mindestens 5 Spieler dies wählen, erhalte 3 Gold."
+            },
+            "iconApiName": "TFT17_MarketOffering_GroupHugPlus"
+          },
+          {
+            "name": {
+              "en": "Soraka's Embrace",
+              "de": "Sorakas Umarmung"
+            },
+            "desc": {
+              "en": "At combat start, grant the ally who died first the previous combat 500 to 900 Shield, based on the current Stage.",
+              "de": "Zu Kampfbeginn erhält der Verbündete, der im vorherigen Kampf zuerst starb, 500 bis 900 Schild, abhängig von der aktuellen Phase."
+            },
+            "iconApiName": "TFT17_MarketOffering_SorakasEmbrace"
+          }
         ]
       }
     },
@@ -184,18 +1024,98 @@
       "baseApiName": "TFT17_Augment_ThreshGodAugment",
       "stageOfferings": {
         "2-4": [
-          { "name": { "en": "Mystery Loot", "de": "Mysteriöse Beute" }, "desc": { "en": "What could it be?", "de": "Was es wohl sein mag?" } },
-          { "name": { "en": "Random Boon", "de": "Zufälliger Segen" }, "desc": { "en": "Gain a random boon from ANY god, and 2 gold.", "de": "Erhalte einen zufälligen Segen von einem BELIEBIGEN Gott sowie 2 Gold." } },
-          { "name": { "en": "Mini Recombobulate", "de": "Mini-Rekombobulieren" }, "desc": { "en": "Transform all 1 and 2-Cost champions on your board into random ones of a higher cost.", "de": "Verwandle alle 1- und 2-Kosten-Champions auf deinem Feld in zufällige Champions höherer Kosten." } }
+          {
+            "name": {
+              "en": "Mystery Loot",
+              "de": "Mysteriöse Beute"
+            },
+            "desc": {
+              "en": "What could it be?",
+              "de": "Was es wohl sein mag?"
+            },
+            "iconApiName": "TFT17_MarketOffering_RandomLoot_Stage4"
+          },
+          {
+            "name": {
+              "en": "Random Boon",
+              "de": "Zufälliger Segen"
+            },
+            "desc": {
+              "en": "Gain a random boon from ANY god, and 2 gold.",
+              "de": "Erhalte einen zufälligen Segen von einem BELIEBIGEN Gott sowie 2 Gold."
+            },
+            "iconApiName": "TFT17_MarketOffering_RandomBoon_Stage3"
+          },
+          {
+            "name": {
+              "en": "Mini Recombobulate",
+              "de": "Mini-Rekombobulieren"
+            },
+            "desc": {
+              "en": "Transform all 1 and 2-Cost champions on your board into random ones of a higher cost.",
+              "de": "Verwandle alle 1- und 2-Kosten-Champions auf deinem Feld in zufällige Champions höherer Kosten."
+            },
+            "iconApiName": "TFT17_MarketOffering_Recombobulator_Stage2"
+          }
         ],
         "3-4": [
-          { "name": { "en": "Mystery Loot", "de": "Mysteriöse Beute" }, "desc": { "en": "What could it be?", "de": "Was es wohl sein mag?" } },
-          { "name": { "en": "Random Boon", "de": "Zufälliger Segen" }, "desc": { "en": "Gain a random boon from ANY god, and 3 gold.", "de": "Erhalte einen zufälligen Segen von einem BELIEBIGEN Gott sowie 3 Gold." } }
+          {
+            "name": {
+              "en": "Mystery Loot",
+              "de": "Mysteriöse Beute"
+            },
+            "desc": {
+              "en": "What could it be?",
+              "de": "Was es wohl sein mag?"
+            },
+            "iconApiName": "TFT17_MarketOffering_RandomLoot_Stage4"
+          },
+          {
+            "name": {
+              "en": "Random Boon",
+              "de": "Zufälliger Segen"
+            },
+            "desc": {
+              "en": "Gain a random boon from ANY god, and 3 gold.",
+              "de": "Erhalte einen zufälligen Segen von einem BELIEBIGEN Gott sowie 3 Gold."
+            },
+            "iconApiName": "TFT17_MarketOffering_RandomBoon_Stage3"
+          }
         ],
         "4-4": [
-          { "name": { "en": "Mystery Loot", "de": "Mysteriöse Beute" }, "desc": { "en": "What could it be?", "de": "Was es wohl sein mag?" } },
-          { "name": { "en": "Roll the Bones", "de": "Würfle die Knochen" }, "desc": { "en": "Roll 3 dice. Gain gold equal to the total.", "de": "Würfle 3 Würfel. Erhalte Gold in Höhe der Gesamtsumme." } },
-          { "name": { "en": "Random Boon", "de": "Zufälliger Segen" }, "desc": { "en": "Gain a random boon from ANY god, and 5 gold.", "de": "Erhalte einen zufälligen Segen von einem BELIEBIGEN Gott sowie 5 Gold." } }
+          {
+            "name": {
+              "en": "Mystery Loot",
+              "de": "Mysteriöse Beute"
+            },
+            "desc": {
+              "en": "What could it be?",
+              "de": "Was es wohl sein mag?"
+            },
+            "iconApiName": "TFT17_MarketOffering_RandomLoot_Stage4"
+          },
+          {
+            "name": {
+              "en": "Roll the Bones",
+              "de": "Würfle die Knochen"
+            },
+            "desc": {
+              "en": "Roll 3 dice. Gain gold equal to the total.",
+              "de": "Würfle 3 Würfel. Erhalte Gold in Höhe der Gesamtsumme."
+            },
+            "iconApiName": "TFT17_MarketOffering_RollTheBones"
+          },
+          {
+            "name": {
+              "en": "Random Boon",
+              "de": "Zufälliger Segen"
+            },
+            "desc": {
+              "en": "Gain a random boon from ANY god, and 5 gold.",
+              "de": "Erhalte einen zufälligen Segen von einem BELIEBIGEN Gott sowie 5 Gold."
+            },
+            "iconApiName": "TFT17_MarketOffering_RandomBoon_Stage3"
+          }
         ]
       }
     },
@@ -207,27 +1127,197 @@
       "baseApiName": "TFT17_Augment_VarusGodAugment_BoonOfStars",
       "stageOfferings": {
         "2-4": [
-          { "name": { "en": "Owned 3-cost", "de": "Eigener 3-Kosten" }, "desc": { "en": "Gain a copy of a 3-cost champion you own and 2 gold. If you don't own any 3-cost champions, gain a random one.", "de": "Erhalte eine Kopie eines 3-Kosten-Champions, den du besitzt, sowie 2 Gold. Falls du keinen 3-Kosten-Champion besitzt, erhalte einen zufälligen." } },
-          { "name": { "en": "The Lovers", "de": "Die Liebenden" }, "desc": { "en": "Gain a 3-cost and a 2-cost that share a trait.", "de": "Erhalte einen 3-Kosten- und einen 2-Kosten-Champion, die eine Synergie teilen." } },
-          { "name": { "en": "2 Tiny Duplicators", "de": "2 Mini-Duplikatoren" }, "desc": { "en": "Use on a 1-cost champion to create a 1-star copy of them.", "de": "Auf einen 1-Kosten-Champion anwenden, um eine 1-Sterne-Kopie zu erzeugen." } },
-          { "name": { "en": "3-Cost Shop", "de": "3-Kosten-Shop" }, "desc": { "en": "Your next shop contains all 3-cost units. The first one you buy is free.", "de": "Dein nächster Shop enthält nur 3-Kosten-Einheiten. Die erste gekaufte ist kostenlos." } },
-          { "name": { "en": "Super Parting Gift", "de": "Super-Abschiedsgeschenk" }, "desc": { "en": "The next time you select God Pengu's gift, gain an extra copy of the champion and 2 gold.", "de": "Wenn du das nächste Mal Gott Pengus Geschenk wählst, erhalte eine zusätzliche Kopie des Champions sowie 2 Gold." } }
+          {
+            "name": {
+              "en": "Owned 3-cost",
+              "de": "Eigener 3-Kosten"
+            },
+            "desc": {
+              "en": "Gain a copy of a 3-cost champion you own and 2 gold. If you don't own any 3-cost champions, gain a random one.",
+              "de": "Erhalte eine Kopie eines 3-Kosten-Champions, den du besitzt, sowie 2 Gold. Falls du keinen 3-Kosten-Champion besitzt, erhalte einen zufälligen."
+            },
+            "iconApiName": "TFT17_MarketOffering_ThreeCostChampion_Owned"
+          },
+          {
+            "name": {
+              "en": "The Lovers",
+              "de": "Die Liebenden"
+            },
+            "desc": {
+              "en": "Gain a 3-cost and a 2-cost that share a trait.",
+              "de": "Erhalte einen 3-Kosten- und einen 2-Kosten-Champion, die eine Synergie teilen."
+            },
+            "iconApiName": "TFT17_MarketOffering_Lovers"
+          },
+          {
+            "name": {
+              "en": "2 Tiny Duplicators",
+              "de": "2 Mini-Duplikatoren"
+            },
+            "desc": {
+              "en": "Use on a 1-cost champion to create a 1-star copy of them.",
+              "de": "Auf einen 1-Kosten-Champion anwenden, um eine 1-Sterne-Kopie zu erzeugen."
+            },
+            "iconApiName": "TFT17_MarketOffering_2TinyDupes"
+          },
+          {
+            "name": {
+              "en": "3-Cost Shop",
+              "de": "3-Kosten-Shop"
+            },
+            "desc": {
+              "en": "Your next shop contains all 3-cost units. The first one you buy is free.",
+              "de": "Dein nächster Shop enthält nur 3-Kosten-Einheiten. Die erste gekaufte ist kostenlos."
+            },
+            "iconApiName": "TFT17_MarketOffering_AllTierThreeShop"
+          },
+          {
+            "name": {
+              "en": "Super Parting Gift",
+              "de": "Super-Abschiedsgeschenk"
+            },
+            "desc": {
+              "en": "The next time you select God Pengu's gift, gain an extra copy of the champion and 2 gold.",
+              "de": "Wenn du das nächste Mal Gott Pengus Geschenk wählst, erhalte eine zusätzliche Kopie des Champions sowie 2 Gold."
+            },
+            "iconApiName": "TFT17_MarketOffering_PenguPairs"
+          }
         ],
         "3-4": [
-          { "name": { "en": "Lesser Champion Duplicator", "de": "Kleiner Champion-Duplikator" }, "desc": { "en": "Gain a Lesser Champion Duplicator and 3 gold.", "de": "Erhalte einen kleinen Champion-Duplikator sowie 3 Gold." } },
-          { "name": { "en": "Owned 3-cost", "de": "Eigener 3-Kosten" }, "desc": { "en": "Gain a copy of a 3-cost champion you own and 2 gold. If you don't own any 3-cost champions, gain a random one.", "de": "Erhalte eine Kopie eines 3-Kosten-Champions, den du besitzt, sowie 2 Gold. Falls du keinen 3-Kosten-Champion besitzt, erhalte einen zufälligen." } },
-          { "name": { "en": "Lovers +", "de": "Liebende +" }, "desc": { "en": "Gain a 4-cost and a 3-cost that share a trait.", "de": "Erhalte einen 4-Kosten- und einen 3-Kosten-Champion, die eine Synergie teilen." } },
-          { "name": { "en": "4-Cost Shop", "de": "4-Kosten-Shop" }, "desc": { "en": "Your next shop contains all 4-cost units. The first one you buy is free.", "de": "Dein nächster Shop enthält nur 4-Kosten-Einheiten. Die erste gekaufte ist kostenlos." } },
-          { "name": { "en": "Ephemeral Rerolls", "de": "Flüchtige Rerolls" }, "desc": { "en": "At the start of each round, if you don't have 5 free rerolls, gain a free reroll.", "de": "Zu Beginn jeder Runde: Falls du keine 5 kostenlosen Rerolls hast, erhalte einen kostenlosen Reroll." } },
-          { "name": { "en": "Super Parting Gift", "de": "Super-Abschiedsgeschenk" }, "desc": { "en": "The next time you select God Pengu's gift, gain an extra copy of the champion and 2 gold.", "de": "Wenn du das nächste Mal Gott Pengus Geschenk wählst, erhalte eine zusätzliche Kopie des Champions sowie 2 Gold." } },
-          { "name": { "en": "Starcrossed Upgrade", "de": "Sternenkreuz-Upgrade" }, "desc": { "en": "Your next shop contains all 2-cost units. The first one you buy is free and upgraded to 2-star.", "de": "Dein nächster Shop enthält nur 2-Kosten-Einheiten. Die erste gekaufte ist kostenlos und auf 2 Sterne aufgewertet." } }
+          {
+            "name": {
+              "en": "Lesser Champion Duplicator",
+              "de": "Kleiner Champion-Duplikator"
+            },
+            "desc": {
+              "en": "Gain a Lesser Champion Duplicator and 3 gold.",
+              "de": "Erhalte einen kleinen Champion-Duplikator sowie 3 Gold."
+            },
+            "iconApiName": "TFT17_MarketOffering_LesserDupe_Varus"
+          },
+          {
+            "name": {
+              "en": "Owned 3-cost",
+              "de": "Eigener 3-Kosten"
+            },
+            "desc": {
+              "en": "Gain a copy of a 3-cost champion you own and 2 gold. If you don't own any 3-cost champions, gain a random one.",
+              "de": "Erhalte eine Kopie eines 3-Kosten-Champions, den du besitzt, sowie 2 Gold. Falls du keinen 3-Kosten-Champion besitzt, erhalte einen zufälligen."
+            },
+            "iconApiName": "TFT17_MarketOffering_ThreeCostChampion_Owned"
+          },
+          {
+            "name": {
+              "en": "Lovers +",
+              "de": "Liebende +"
+            },
+            "desc": {
+              "en": "Gain a 4-cost and a 3-cost that share a trait.",
+              "de": "Erhalte einen 4-Kosten- und einen 3-Kosten-Champion, die eine Synergie teilen."
+            },
+            "iconApiName": "TFT17_MarketOffering_LoversPlus"
+          },
+          {
+            "name": {
+              "en": "4-Cost Shop",
+              "de": "4-Kosten-Shop"
+            },
+            "desc": {
+              "en": "Your next shop contains all 4-cost units. The first one you buy is free.",
+              "de": "Dein nächster Shop enthält nur 4-Kosten-Einheiten. Die erste gekaufte ist kostenlos."
+            },
+            "iconApiName": "TFT17_MarketOffering_AllTierFourShop"
+          },
+          {
+            "name": {
+              "en": "Ephemeral Rerolls",
+              "de": "Flüchtige Rerolls"
+            },
+            "desc": {
+              "en": "At the start of each round, if you don't have 5 free rerolls, gain a free reroll.",
+              "de": "Zu Beginn jeder Runde: Falls du keine 5 kostenlosen Rerolls hast, erhalte einen kostenlosen Reroll."
+            },
+            "iconApiName": "TFT17_MarketOffering_EphemeralRerolls"
+          },
+          {
+            "name": {
+              "en": "Super Parting Gift",
+              "de": "Super-Abschiedsgeschenk"
+            },
+            "desc": {
+              "en": "The next time you select God Pengu's gift, gain an extra copy of the champion and 2 gold.",
+              "de": "Wenn du das nächste Mal Gott Pengus Geschenk wählst, erhalte eine zusätzliche Kopie des Champions sowie 2 Gold."
+            },
+            "iconApiName": "TFT17_MarketOffering_PenguPairs"
+          },
+          {
+            "name": {
+              "en": "Starcrossed Upgrade",
+              "de": "Sternenkreuz-Upgrade"
+            },
+            "desc": {
+              "en": "Your next shop contains all 2-cost units. The first one you buy is free and upgraded to 2-star.",
+              "de": "Dein nächster Shop enthält nur 2-Kosten-Einheiten. Die erste gekaufte ist kostenlos und auf 2 Sterne aufgewertet."
+            },
+            "iconApiName": "TFT17_MarketOffering_StarlightPlus"
+          }
         ],
         "4-4": [
-          { "name": { "en": "Lovers ++", "de": "Liebende ++" }, "desc": { "en": "Gain a 5-cost and a 4-cost that share a trait.", "de": "Erhalte einen 5-Kosten- und einen 4-Kosten-Champion, die eine Synergie teilen." } },
-          { "name": { "en": "Owned 4-cost", "de": "Eigener 4-Kosten" }, "desc": { "en": "Gain a copy of a 4-cost champion you own and 2 gold. If you don't own any 4-cost champions, gain a random one.", "de": "Erhalte eine Kopie eines 4-Kosten-Champions, den du besitzt, sowie 2 Gold. Falls du keinen 4-Kosten-Champion besitzt, erhalte einen zufälligen." } },
-          { "name": { "en": "Lesser Champion Duplicator", "de": "Kleiner Champion-Duplikator" }, "desc": { "en": "Use on a 3-cost champion or less to create a 1-star copy on your bench.", "de": "Auf einen 3-Kosten-Champion oder günstiger anwenden, um eine 1-Sterne-Kopie auf der Bank zu erstellen." } },
-          { "name": { "en": "Duplicator Bundle", "de": "Duplikator-Bündel" }, "desc": { "en": "Gain 4 Tiny Champion Duplicators and 1 Lesser Champion Duplicator. (Consumable)", "de": "Erhalte 4 Mini-Champion-Duplikatoren und 1 kleinen Champion-Duplikator. (Verbrauchbar)" } },
-          { "name": { "en": "Super Parting Gift", "de": "Super-Abschiedsgeschenk" }, "desc": { "en": "The next time you select God Pengu's gift, gain an extra copy of the champion and 2 gold.", "de": "Wenn du das nächste Mal Gott Pengus Geschenk wählst, erhalte eine zusätzliche Kopie des Champions sowie 2 Gold." } }
+          {
+            "name": {
+              "en": "Lovers ++",
+              "de": "Liebende ++"
+            },
+            "desc": {
+              "en": "Gain a 5-cost and a 4-cost that share a trait.",
+              "de": "Erhalte einen 5-Kosten- und einen 4-Kosten-Champion, die eine Synergie teilen."
+            },
+            "iconApiName": "TFT17_MarketOffering_LoversPlusPlus"
+          },
+          {
+            "name": {
+              "en": "Owned 4-cost",
+              "de": "Eigener 4-Kosten"
+            },
+            "desc": {
+              "en": "Gain a copy of a 4-cost champion you own and 2 gold. If you don't own any 4-cost champions, gain a random one.",
+              "de": "Erhalte eine Kopie eines 4-Kosten-Champions, den du besitzt, sowie 2 Gold. Falls du keinen 4-Kosten-Champion besitzt, erhalte einen zufälligen."
+            },
+            "iconApiName": "TFT17_MarketOffering_FourCostChampion_Owned"
+          },
+          {
+            "name": {
+              "en": "Lesser Champion Duplicator",
+              "de": "Kleiner Champion-Duplikator"
+            },
+            "desc": {
+              "en": "Use on a 3-cost champion or less to create a 1-star copy on your bench.",
+              "de": "Auf einen 3-Kosten-Champion oder günstiger anwenden, um eine 1-Sterne-Kopie auf der Bank zu erstellen."
+            },
+            "iconApiName": "TFT17_MarketOffering_LesserDupe_Varus"
+          },
+          {
+            "name": {
+              "en": "Duplicator Bundle",
+              "de": "Duplikator-Bündel"
+            },
+            "desc": {
+              "en": "Gain 4 Tiny Champion Duplicators and 1 Lesser Champion Duplicator. (Consumable)",
+              "de": "Erhalte 4 Mini-Champion-Duplikatoren und 1 kleinen Champion-Duplikator. (Verbrauchbar)"
+            },
+            "iconApiName": "TFT17_MarketOffering_5TinyDupes"
+          },
+          {
+            "name": {
+              "en": "Super Parting Gift",
+              "de": "Super-Abschiedsgeschenk"
+            },
+            "desc": {
+              "en": "The next time you select God Pengu's gift, gain an extra copy of the champion and 2 gold.",
+              "de": "Wenn du das nächste Mal Gott Pengus Geschenk wählst, erhalte eine zusätzliche Kopie des Champions sowie 2 Gold."
+            },
+            "iconApiName": "TFT17_MarketOffering_PenguPairs"
+          }
         ]
       }
     },
@@ -239,26 +1329,186 @@
       "baseApiName": "TFT17_Augment_YasuoGodAugment_PaintedPower",
       "stageOfferings": {
         "2-4": [
-          { "name": { "en": "Solar Hex", "de": "Sonnen-Hexagon" }, "desc": { "en": "Place the hex on a champion. Allies in the hex deal 15% bonus magic damage over 5 seconds. This damage 33% Wounds and 1% Burns over the duration. (Consumable)", "de": "Platziere das Hex auf einem Champion. Verbündete im Hex verursachen 15 % zusätzlichen magischen Schaden über 5 Sekunden. Dieser Schaden verwundet zu 33 % und brennt zu 1 % über die Dauer. (Verbrauchbar)" } },
-          { "name": { "en": "Cryogenic Hex", "de": "Kryogen-Hexagon" }, "desc": { "en": "Place the hex on a champion. The first time an ally in the hex falls below 40% Health, they freeze for 1 second and heal 30% of their max Health. (Consumable)", "de": "Platziere das Hex auf einem Champion. Wenn ein Verbündeter im Hex zum ersten Mal unter 40 % HP fällt, friert er für 1 Sekunde ein und heilt sich um 30 % seiner maximalen HP. (Verbrauchbar)" } },
-          { "name": { "en": "Starlight Hex", "de": "Sternenlicht-Hexagon" }, "desc": { "en": "Place the hex on a champion. Allies in the hex gain 3 Mana Regen. (Consumable)", "de": "Platziere das Hex auf einem Champion. Verbündete im Hex erhalten 3 Mana-Regeneration. (Verbrauchbar)" } },
-          { "name": { "en": "Acceleration Hex", "de": "Beschleunigungs-Hexagon" }, "desc": { "en": "Place the hex on a champion. Allies in the hex gain 30% Attack Speed. (Consumable)", "de": "Platziere das Hex auf einem Champion. Verbündete im Hex erhalten 30 % Angriffstempo. (Verbrauchbar)" } },
-          { "name": { "en": "Cosmic Hex", "de": "Kosmisches Hexagon" }, "desc": { "en": "Place the hex on a champion. Allies in the hex gain 10% max Health, and gain 35 permanent Health each round.", "de": "Platziere das Hex auf einem Champion. Verbündete im Hex erhalten 10 % maximale HP und 35 permanente HP pro Runde." } },
-          { "name": { "en": "Storm Hex", "de": "Sturm-Hexagon" }, "desc": { "en": "Place the hex on a champion. The first time an ally in the hex hits an enemy with an Ability, that enemy is Stunned for 1.8 seconds. (Consumable)", "de": "Platziere das Hex auf einem Champion. Wenn ein Verbündeter im Hex zum ersten Mal einen Gegner mit einer Fähigkeit trifft, wird dieser Gegner für 1,8 Sekunden betäubt. (Verbrauchbar)" } }
+          {
+            "name": {
+              "en": "Solar Hex",
+              "de": "Sonnen-Hexagon"
+            },
+            "desc": {
+              "en": "Place the hex on a champion. Allies in the hex deal 15% bonus magic damage over 5 seconds. This damage 33% Wounds and 1% Burns over the duration. (Consumable)",
+              "de": "Platziere das Hex auf einem Champion. Verbündete im Hex verursachen 15 % zusätzlichen magischen Schaden über 5 Sekunden. Dieser Schaden verwundet zu 33 % und brennt zu 1 % über die Dauer. (Verbrauchbar)"
+            },
+            "iconApiName": "TFT17_MarketOffering_EmpoweredHex_Fire"
+          },
+          {
+            "name": {
+              "en": "Cryogenic Hex",
+              "de": "Kryogen-Hexagon"
+            },
+            "desc": {
+              "en": "Place the hex on a champion. The first time an ally in the hex falls below 40% Health, they freeze for 1 second and heal 30% of their max Health. (Consumable)",
+              "de": "Platziere das Hex auf einem Champion. Wenn ein Verbündeter im Hex zum ersten Mal unter 40 % HP fällt, friert er für 1 Sekunde ein und heilt sich um 30 % seiner maximalen HP. (Verbrauchbar)"
+            },
+            "iconApiName": "TFT17_MarketOffering_EmpoweredHex_Ice"
+          },
+          {
+            "name": {
+              "en": "Starlight Hex",
+              "de": "Sternenlicht-Hexagon"
+            },
+            "desc": {
+              "en": "Place the hex on a champion. Allies in the hex gain 3 Mana Regen. (Consumable)",
+              "de": "Platziere das Hex auf einem Champion. Verbündete im Hex erhalten 3 Mana-Regeneration. (Verbrauchbar)"
+            },
+            "iconApiName": "TFT17_MarketOffering_EmpoweredHex_Socialite"
+          },
+          {
+            "name": {
+              "en": "Acceleration Hex",
+              "de": "Beschleunigungs-Hexagon"
+            },
+            "desc": {
+              "en": "Place the hex on a champion. Allies in the hex gain 30% Attack Speed. (Consumable)",
+              "de": "Platziere das Hex auf einem Champion. Verbündete im Hex erhalten 30 % Angriffstempo. (Verbrauchbar)"
+            },
+            "iconApiName": "TFT17_MarketOffering_EmpoweredHex_Wind"
+          },
+          {
+            "name": {
+              "en": "Cosmic Hex",
+              "de": "Kosmisches Hexagon"
+            },
+            "desc": {
+              "en": "Place the hex on a champion. Allies in the hex gain 10% max Health, and gain 35 permanent Health each round.",
+              "de": "Platziere das Hex auf einem Champion. Verbündete im Hex erhalten 10 % maximale HP und 35 permanente HP pro Runde."
+            },
+            "iconApiName": "TFT17_MarketOffering_EmpoweredHex_Wood"
+          },
+          {
+            "name": {
+              "en": "Storm Hex",
+              "de": "Sturm-Hexagon"
+            },
+            "desc": {
+              "en": "Place the hex on a champion. The first time an ally in the hex hits an enemy with an Ability, that enemy is Stunned for 1.8 seconds. (Consumable)",
+              "de": "Platziere das Hex auf einem Champion. Wenn ein Verbündeter im Hex zum ersten Mal einen Gegner mit einer Fähigkeit trifft, wird dieser Gegner für 1,8 Sekunden betäubt. (Verbrauchbar)"
+            },
+            "iconApiName": "TFT17_MarketOffering_EmpoweredHex_Electric"
+          }
         ],
         "3-4": [
-          { "name": { "en": "Solar Hex", "de": "Sonnen-Hexagon" }, "desc": { "en": "Place the hex on a champion. Allies in the hex deal 15% bonus magic damage over 5 seconds. This damage 33% Wounds and 1% Burns over the duration. (Consumable)", "de": "Platziere das Hex auf einem Champion. Verbündete im Hex verursachen 15 % zusätzlichen magischen Schaden über 5 Sekunden. Dieser Schaden verwundet zu 33 % und brennt zu 1 % über die Dauer. (Verbrauchbar)" } },
-          { "name": { "en": "Cryogenic Hex", "de": "Kryogen-Hexagon" }, "desc": { "en": "Place the hex on a champion. The first time an ally in the hex falls below 40% Health, they freeze for 1 second and heal 30% of their max Health. (Consumable)", "de": "Platziere das Hex auf einem Champion. Wenn ein Verbündeter im Hex zum ersten Mal unter 40 % HP fällt, friert er für 1 Sekunde ein und heilt sich um 30 % seiner maximalen HP. (Verbrauchbar)" } },
-          { "name": { "en": "Starlight Hex", "de": "Sternenlicht-Hexagon" }, "desc": { "en": "Place the hex on a champion. Allies in the hex gain 3 Mana Regen. (Consumable)", "de": "Platziere das Hex auf einem Champion. Verbündete im Hex erhalten 3 Mana-Regeneration. (Verbrauchbar)" } },
-          { "name": { "en": "Acceleration Hex", "de": "Beschleunigungs-Hexagon" }, "desc": { "en": "Place the hex on a champion. Allies in the hex gain 30% Attack Speed. (Consumable)", "de": "Platziere das Hex auf einem Champion. Verbündete im Hex erhalten 30 % Angriffstempo. (Verbrauchbar)" } },
-          { "name": { "en": "Storm Hex", "de": "Sturm-Hexagon" }, "desc": { "en": "Place the hex on a champion. The first time an ally in the hex hits an enemy with an Ability, that enemy is Stunned for 1.8 seconds. (Consumable)", "de": "Platziere das Hex auf einem Champion. Wenn ein Verbündeter im Hex zum ersten Mal einen Gegner mit einer Fähigkeit trifft, wird dieser Gegner für 1,8 Sekunden betäubt. (Verbrauchbar)" } }
+          {
+            "name": {
+              "en": "Solar Hex",
+              "de": "Sonnen-Hexagon"
+            },
+            "desc": {
+              "en": "Place the hex on a champion. Allies in the hex deal 15% bonus magic damage over 5 seconds. This damage 33% Wounds and 1% Burns over the duration. (Consumable)",
+              "de": "Platziere das Hex auf einem Champion. Verbündete im Hex verursachen 15 % zusätzlichen magischen Schaden über 5 Sekunden. Dieser Schaden verwundet zu 33 % und brennt zu 1 % über die Dauer. (Verbrauchbar)"
+            },
+            "iconApiName": "TFT17_MarketOffering_EmpoweredHex_Fire"
+          },
+          {
+            "name": {
+              "en": "Cryogenic Hex",
+              "de": "Kryogen-Hexagon"
+            },
+            "desc": {
+              "en": "Place the hex on a champion. The first time an ally in the hex falls below 40% Health, they freeze for 1 second and heal 30% of their max Health. (Consumable)",
+              "de": "Platziere das Hex auf einem Champion. Wenn ein Verbündeter im Hex zum ersten Mal unter 40 % HP fällt, friert er für 1 Sekunde ein und heilt sich um 30 % seiner maximalen HP. (Verbrauchbar)"
+            },
+            "iconApiName": "TFT17_MarketOffering_EmpoweredHex_Ice"
+          },
+          {
+            "name": {
+              "en": "Starlight Hex",
+              "de": "Sternenlicht-Hexagon"
+            },
+            "desc": {
+              "en": "Place the hex on a champion. Allies in the hex gain 3 Mana Regen. (Consumable)",
+              "de": "Platziere das Hex auf einem Champion. Verbündete im Hex erhalten 3 Mana-Regeneration. (Verbrauchbar)"
+            },
+            "iconApiName": "TFT17_MarketOffering_EmpoweredHex_Socialite"
+          },
+          {
+            "name": {
+              "en": "Acceleration Hex",
+              "de": "Beschleunigungs-Hexagon"
+            },
+            "desc": {
+              "en": "Place the hex on a champion. Allies in the hex gain 30% Attack Speed. (Consumable)",
+              "de": "Platziere das Hex auf einem Champion. Verbündete im Hex erhalten 30 % Angriffstempo. (Verbrauchbar)"
+            },
+            "iconApiName": "TFT17_MarketOffering_EmpoweredHex_Wind"
+          },
+          {
+            "name": {
+              "en": "Storm Hex",
+              "de": "Sturm-Hexagon"
+            },
+            "desc": {
+              "en": "Place the hex on a champion. The first time an ally in the hex hits an enemy with an Ability, that enemy is Stunned for 1.8 seconds. (Consumable)",
+              "de": "Platziere das Hex auf einem Champion. Wenn ein Verbündeter im Hex zum ersten Mal einen Gegner mit einer Fähigkeit trifft, wird dieser Gegner für 1,8 Sekunden betäubt. (Verbrauchbar)"
+            },
+            "iconApiName": "TFT17_MarketOffering_EmpoweredHex_Electric"
+          }
         ],
         "4-4": [
-          { "name": { "en": "Solar Hex", "de": "Sonnen-Hexagon" }, "desc": { "en": "Place the hex on a champion. Allies in the hex deal 15% bonus magic damage over 5 seconds. This damage 33% Wounds and 1% Burns over the duration. (Consumable)", "de": "Platziere das Hex auf einem Champion. Verbündete im Hex verursachen 15 % zusätzlichen magischen Schaden über 5 Sekunden. Dieser Schaden verwundet zu 33 % und brennt zu 1 % über die Dauer. (Verbrauchbar)" } },
-          { "name": { "en": "Cryogenic Hex", "de": "Kryogen-Hexagon" }, "desc": { "en": "Place the hex on a champion. The first time an ally in the hex falls below 40% Health, they freeze for 1 second and heal 30% of their max Health. (Consumable)", "de": "Platziere das Hex auf einem Champion. Wenn ein Verbündeter im Hex zum ersten Mal unter 40 % HP fällt, friert er für 1 Sekunde ein und heilt sich um 30 % seiner maximalen HP. (Verbrauchbar)" } },
-          { "name": { "en": "Starlight Hex", "de": "Sternenlicht-Hexagon" }, "desc": { "en": "Place the hex on a champion. Allies in the hex gain 3 Mana Regen. (Consumable)", "de": "Platziere das Hex auf einem Champion. Verbündete im Hex erhalten 3 Mana-Regeneration. (Verbrauchbar)" } },
-          { "name": { "en": "Acceleration Hex", "de": "Beschleunigungs-Hexagon" }, "desc": { "en": "Place the hex on a champion. Allies in the hex gain 30% Attack Speed. (Consumable)", "de": "Platziere das Hex auf einem Champion. Verbündete im Hex erhalten 30 % Angriffstempo. (Verbrauchbar)" } },
-          { "name": { "en": "Storm Hex", "de": "Sturm-Hexagon" }, "desc": { "en": "Place the hex on a champion. The first time an ally in the hex hits an enemy with an Ability, that enemy is Stunned for 1.8 seconds. (Consumable)", "de": "Platziere das Hex auf einem Champion. Wenn ein Verbündeter im Hex zum ersten Mal einen Gegner mit einer Fähigkeit trifft, wird dieser Gegner für 1,8 Sekunden betäubt. (Verbrauchbar)" } }
+          {
+            "name": {
+              "en": "Solar Hex",
+              "de": "Sonnen-Hexagon"
+            },
+            "desc": {
+              "en": "Place the hex on a champion. Allies in the hex deal 15% bonus magic damage over 5 seconds. This damage 33% Wounds and 1% Burns over the duration. (Consumable)",
+              "de": "Platziere das Hex auf einem Champion. Verbündete im Hex verursachen 15 % zusätzlichen magischen Schaden über 5 Sekunden. Dieser Schaden verwundet zu 33 % und brennt zu 1 % über die Dauer. (Verbrauchbar)"
+            },
+            "iconApiName": "TFT17_MarketOffering_EmpoweredHex_Fire"
+          },
+          {
+            "name": {
+              "en": "Cryogenic Hex",
+              "de": "Kryogen-Hexagon"
+            },
+            "desc": {
+              "en": "Place the hex on a champion. The first time an ally in the hex falls below 40% Health, they freeze for 1 second and heal 30% of their max Health. (Consumable)",
+              "de": "Platziere das Hex auf einem Champion. Wenn ein Verbündeter im Hex zum ersten Mal unter 40 % HP fällt, friert er für 1 Sekunde ein und heilt sich um 30 % seiner maximalen HP. (Verbrauchbar)"
+            },
+            "iconApiName": "TFT17_MarketOffering_EmpoweredHex_Ice"
+          },
+          {
+            "name": {
+              "en": "Starlight Hex",
+              "de": "Sternenlicht-Hexagon"
+            },
+            "desc": {
+              "en": "Place the hex on a champion. Allies in the hex gain 3 Mana Regen. (Consumable)",
+              "de": "Platziere das Hex auf einem Champion. Verbündete im Hex erhalten 3 Mana-Regeneration. (Verbrauchbar)"
+            },
+            "iconApiName": "TFT17_MarketOffering_EmpoweredHex_Socialite"
+          },
+          {
+            "name": {
+              "en": "Acceleration Hex",
+              "de": "Beschleunigungs-Hexagon"
+            },
+            "desc": {
+              "en": "Place the hex on a champion. Allies in the hex gain 30% Attack Speed. (Consumable)",
+              "de": "Platziere das Hex auf einem Champion. Verbündete im Hex erhalten 30 % Angriffstempo. (Verbrauchbar)"
+            },
+            "iconApiName": "TFT17_MarketOffering_EmpoweredHex_Wind"
+          },
+          {
+            "name": {
+              "en": "Storm Hex",
+              "de": "Sturm-Hexagon"
+            },
+            "desc": {
+              "en": "Place the hex on a champion. The first time an ally in the hex hits an enemy with an Ability, that enemy is Stunned for 1.8 seconds. (Consumable)",
+              "de": "Platziere das Hex auf einem Champion. Wenn ein Verbündeter im Hex zum ersten Mal einen Gegner mit einer Fähigkeit trifft, wird dieser Gegner für 1,8 Sekunden betäubt. (Verbrauchbar)"
+            },
+            "iconApiName": "TFT17_MarketOffering_EmpoweredHex_Electric"
+          }
         ]
       }
     }

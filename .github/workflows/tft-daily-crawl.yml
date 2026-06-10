@@ -79,6 +79,12 @@ jobs:
         run: node scripts/fetch-tft-assets.mjs
         continue-on-error: true
 
+      - name: Re-annotate god offering icons
+        # Re-runs the apiName lookup for every offering in tft-gods-{set}.json
+        # so a fresh bundle (after a patch) keeps the icon references in sync.
+        run: node scripts/annotate-god-offerings.mjs
+        continue-on-error: true
+
       - name: Refresh TFT tier distribution
         run: node scripts/fetch-tft-tier-distribution.mjs
         continue-on-error: true

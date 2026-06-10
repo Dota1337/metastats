@@ -20,7 +20,7 @@ import { loadTftAssets, tftIconUrl, tftAugmentLocalised, type TftAssetsBundle, t
 
 type Lang = 'de' | 'en' | 'ko' | 'zh' | 'es' | 'fr';
 interface I18nText { en: string; de?: string; ko?: string; zh?: string; es?: string; fr?: string }
-interface Offering { name: I18nText; desc: I18nText }
+interface Offering { name: I18nText; desc: I18nText; iconApiName?: string }
 interface GodMeta {
   id: string;
   titleKey: string;
@@ -174,12 +174,27 @@ export default function TftGodsPage() {
                                   <span className="text-[10px] text-[#7a8aa0] tabular-nums">{offerings.length}</span>
                                 </div>
                                 <div className="space-y-1.5">
-                                  {offerings.map((o, i) => (
-                                    <div key={i} className="p-2 bg-[#141c2e] rounded">
-                                      <div className="text-white text-xs font-medium">{pickI18n(o.name, lang as Lang)}</div>
-                                      <p className="text-[#a0b0c5] text-[11px] mt-0.5 leading-snug">{pickI18n(o.desc, lang as Lang)}</p>
-                                    </div>
-                                  ))}
+                                  {offerings.map((o, i) => {
+                                    // Resolve the iconApiName via bundle.augments first, then bundle.items.
+                                    // We get the same Riot icons the in-game UI uses for each offering.
+                                    const bundleEntry = o.iconApiName
+                                      ? (assets.augments[o.iconApiName] || assets.items[o.iconApiName])
+                                      : null;
+                                    const iconUrl = bundleEntry?.icon ? tftIconUrl(assets, bundleEntry.icon) : null;
+                                    return (
+                                      <div key={i} className="flex items-start gap-2 p-2 bg-[#141c2e] rounded">
+                                        {iconUrl ? (
+                                          <img src={iconUrl} alt={pickI18n(o.name, lang as Lang)} className="w-9 h-9 rounded border border-[#1e2a3a] flex-shrink-0" />
+                                        ) : (
+                                          <div className="w-9 h-9 rounded border border-[#1e2a3a] bg-[#0d1526] flex-shrink-0" />
+                                        )}
+                                        <div className="flex-1 min-w-0">
+                                          <div className="text-white text-xs font-medium">{pickI18n(o.name, lang as Lang)}</div>
+                                          <p className="text-[#a0b0c5] text-[11px] mt-0.5 leading-snug">{pickI18n(o.desc, lang as Lang)}</p>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                               </div>
                             );

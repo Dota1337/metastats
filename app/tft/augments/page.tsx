@@ -52,9 +52,8 @@ export default function TftAugmentsReferencePage() {
       .filter(a => tierFilter === 'all' || a.tier === tierFilter)
       .filter(a => !q || a.name.toLowerCase().includes(q) || (a.desc || '').toLowerCase().includes(q))
       .sort((a, b) => {
-        // Higher tier first (Prismatic feels strongest visually as the lead),
-        // then alphabetical within tier.
-        if (a.tier !== b.tier) return b.tier - a.tier;
+        // Hierarchical ascending: Silver → Gold → Prismatic, alphabetical within.
+        if (a.tier !== b.tier) return a.tier - b.tier;
         return a.name.localeCompare(b.name);
       });
   }, [augments, tierFilter, query]);

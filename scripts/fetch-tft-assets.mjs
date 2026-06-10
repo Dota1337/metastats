@@ -330,21 +330,46 @@ function resolveDescPlaceholders(desc, vars) {
   return out;
 }
 
-// Riot doesn't expose the augment tier on the API directly. CDragon hides it
-// in the icon path filename suffix: `…/<Name>_I.<set>.tex` for Silver, `_II` for
-// Gold, `_III` for Prismatic. That's by far the most reliable hint (matches the
-// in-game category). Old fallbacks for apiName/name suffixes stay as a backstop
-// for assets without the underscore-tier convention.
-function deriveAugmentTier(apiName, name, icon) {
-  if (icon && typeof icon === 'string') {
-    if (/_III\.[^.]+\.tex$/i.test(icon)) return 3;
-    if (/_II\.[^.]+\.tex$/i.test(icon)) return 2;
-    if (/_I\.[^.]+\.tex$/i.test(icon)) return 1;
+// Tier resolution for TFT augments. CDragon doesn't ship a numeric tier
+// field — we infer it from three signals, in this order:
+//
+//   1. apiName suffix (strongest signal — Riot's own naming convention):
+//        *PlusPlus$       → 3 (Prismatic)
+//        *Plus$           → 2 (Gold)
+//        *Silver/Gold/Prismatic$ → 1/2/3
+//      This priority is essential: when an apiName ends in `PlusPlus` the
+//      icon is often the recycled Gold-base sprite, so trusting the icon
+//      mis-tiers ++-variants (e.g. Heroic Grab Bag++ shipped with the Gold
+//      icon `Heroic-Grab-Bag-II.tex` despite being Prismatic).
+//
+//   2. Raw icon path tier marker (`-I.tex`, `_II.tex`, etc.):
+//      Pattern allows an optional `.<sub-suffix>` between the tier suffix
+//      and `.tex` because Riot tags set-specific assets with that infix
+//      (`UltraRapidFire_II.TFT_Set16.tex`, `DivineAmendment_II.TFT_Set17_PostLaunchAugments.tex`).
+//      MUST run before normalizeIconPath (which strips `.tex` → `.png`).
+//
+//   3. Default Gold (2): the safest middle when neither signal pins a tier.
+//      Old default was Silver (1), which dumped every unrecognised augment
+//      into the Silver tab. Gold is closer to the typical augment-pool tier
+//      mix and avoids hiding the unknown in the lowest bucket.
+function deriveAugmentTier(apiName, _name, rawIcon) {
+  if (typeof apiName === 'string') {
+    if (/PlusPlus$/.test(apiName)) return 3;
+    if (/[^lP]Plus$/.test(apiName) || /^Plus$/.test(apiName) || /[a-z]Plus$/.test(apiName)) return 2;
+    if (/Prismatic$/i.test(apiName)) return 3;
+    if (/Gold$/i.test(apiName)) return 2;
+    if (/Silver$/i.test(apiName)) return 1;
   }
-  const both = `${apiName} ${name}`.toLowerCase();
-  if (/prismatic|\bplusplus|\+\+/.test(both)) return 3;
-  if (/\bplus\b|gold|_plus(?!plus)/.test(both)) return 2;
-  return 1;
+  if (typeof rawIcon === 'string') {
+    const m = rawIcon.match(/[_-](III|II|I)(?:\.[a-z0-9_]+)?\.tex$/i);
+    if (m) {
+      const s = m[1].toUpperCase();
+      if (s === 'III') return 3;
+      if (s === 'II') return 2;
+      return 1;
+    }
+  }
+  return 2;
 }
 
 // Read every public/tft-stats-{region}.json crawl snapshot and collect the

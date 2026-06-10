@@ -44,6 +44,19 @@ function get(url) {
     req.end();
   }));
 }
+function head(url) {
+  const u = new URL(url);
+  return lookupIPv4(u.hostname).then(ip => new Promise((res) => {
+    const r = request({
+      host: ip, servername: u.hostname, port: 443,
+      path: u.pathname + u.search, method: 'HEAD',
+      headers: { Host: u.hostname, 'User-Agent': 'Mozilla/5.0' },
+    }, x => res(x.statusCode));
+    r.on('error', () => res(0));
+    r.setTimeout(8000, () => { r.destroy(); res(0); });
+    r.end();
+  }));
+}
 function decodeHtml(s) {
   return s.replace(/&#x27;/g, "'").replace(/&#39;/g, "'").replace(/&amp;/g, '&').replace(/&quot;/g, '"');
 }
@@ -80,25 +93,53 @@ async function main() {
   ];
   console.log(`       parsed: ${all.length} augment cards with image stems`);
 
-  console.log('[2/3] Cross-reference with local TFT asset bundle');
+  console.log('[2/4] Cross-reference with local TFT asset bundle');
   const live = JSON.parse(readFileSync('public/tft-assets.json', 'utf8'));
   const byName = new Map();
   for (const e of all) byName.set(e.name.toLowerCase().trim(), e.stem);
-  const stems = {};
+  const candidates = {};
   let matched = 0, unmatched = 0;
   for (const [apiName, a] of Object.entries(live.augments)) {
     const stem = byName.get((a.name || '').toLowerCase().trim());
-    if (stem) { stems[apiName] = stem; matched++; } else unmatched++;
+    if (stem) { candidates[apiName] = stem; matched++; } else unmatched++;
   }
-  console.log(`       pinned: ${matched} augments  unmatched: ${unmatched}`);
+  console.log(`       name-matched: ${matched} augments  unmatched: ${unmatched}`);
 
-  console.log(`[3/3] Write public/tft-augment-icons-${live.set}.json`);
+  console.log('[3/4] HEAD-validate every candidate URL');
+  // tactics.tools sometimes lists an augment in their HTML but the actual
+  // image file isn't on their CDN yet (new set 17 augments often). We must
+  // drop those — otherwise the UI renders broken images. Augments dropped
+  // here fall back to CDragon's icon in fetch-tft-assets.mjs.
+  const entries = Object.entries(candidates);
+  const stems = {};
+  const dropped = [];
+  const BATCH = 16;
+  for (let i = 0; i < entries.length; i += BATCH) {
+    const batch = entries.slice(i, i + BATCH);
+    const results = await Promise.all(batch.map(async ([id, stem]) => {
+      const url = `${CDN_BASE}${stem}.png`;
+      const status = await head(url);
+      return { id, stem, status };
+    }));
+    for (const r of results) {
+      if (r.status === 200) stems[r.id] = r.stem;
+      else dropped.push({ id: r.id, stem: r.stem, status: r.status, name: live.augments[r.id]?.name });
+    }
+    process.stdout.write(`\r       ${Math.min(i + BATCH, entries.length)}/${entries.length} (kept=${Object.keys(stems).length} dropped=${dropped.length})`);
+  }
+  console.log();
+  if (dropped.length > 0) {
+    console.log(`       dropped ${dropped.length} stems with broken URLs (will fall back to CDragon):`);
+    for (const d of dropped) console.log(`         ${d.status} ${d.id} | ${d.name} | ${d.stem}`);
+  }
+
+  console.log(`[4/4] Write public/tft-augment-icons-${live.set}.json`);
   writeFileSync(`public/tft-augment-icons-${live.set}.json`, JSON.stringify({
     set: live.set,
     source: 'tactics.tools/info/augments',
     cdn: CDN_BASE,
     fetchedAt: new Date().toISOString(),
-    counts: { matched, unmatched },
+    counts: { matched, unmatched, kept: Object.keys(stems).length, dropped: dropped.length },
     stems,
   }, null, 2));
   console.log('       done.');

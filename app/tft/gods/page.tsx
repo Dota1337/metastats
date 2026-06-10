@@ -83,25 +83,23 @@ export default function TftGodsPage() {
         {assets && doc && gods.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {gods.map(g => {
-              const isOpen = expanded === g.meta.id;
-              // Portrait — prefer the base (final) boon's icon; fall back to first variant.
               const base = g.boons.find(b => b.isBase);
+              const variants = g.boons.filter(b => !b.isBase);
               const portrait = base?.data.icon
                 ? tftIconUrl(assets, base.data.icon)
                 : (g.boons[0]?.data.icon ? tftIconUrl(assets, g.boons[0].data.icon) : null);
               const displayName = g.meta.id === 'AurelionSol' ? 'Aurelion Sol' : g.meta.id;
+              const isOpen = expanded === g.meta.id;
+              const hasVariants = variants.length > 0;
               return (
                 <div
                   key={g.meta.id}
                   className={`bg-[#0d1526] border rounded transition-colors ${
-                    isOpen ? 'border-[#7B61FF]/60 lg:col-span-3 sm:col-span-2' : 'border-[#1e2a3a] hover:border-[#7B61FF]/40'
+                    isOpen ? 'border-[#7B61FF]/60' : 'border-[#1e2a3a] hover:border-[#7B61FF]/40'
                   }`}
                 >
-                  <button
-                    type="button"
-                    onClick={() => setExpanded(isOpen ? null : g.meta.id)}
-                    className="w-full flex items-start gap-3 p-3 text-left"
-                  >
+                  {/* Header: portrait + name + title + theme — always visible */}
+                  <div className="flex items-start gap-3 p-3">
                     {portrait ? (
                       <img
                         src={portrait}
@@ -112,49 +110,69 @@ export default function TftGodsPage() {
                       <div className="w-14 h-14 rounded border-2 border-[#1e2a3a] bg-[#141c2e] flex-shrink-0" />
                     )}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-white text-sm font-semibold">{displayName}</span>
+                      <div className="text-white text-sm font-semibold">{displayName}</div>
+                      <div className="text-[11px] uppercase tracking-widest text-[#c39bff] mt-0.5">{t(g.meta.titleKey as TranslationKey)}</div>
+                      <p className="text-[11px] text-[#a0b0c5] mt-1 leading-snug">{t(g.meta.themeKey as TranslationKey)}</p>
+                    </div>
+                  </div>
+
+                  {/* Final Boon (Stage 4-7) — always visible, prominent */}
+                  {base && (
+                    <div className="px-3 pb-3">
+                      <div className="flex items-baseline justify-between mb-1.5">
+                        <span className="text-[10px] uppercase tracking-widest text-[#c39bff] font-semibold">{t('gods.stage.final')}</span>
+                        <span className="text-[10px] text-[#7a8aa0] tabular-nums">4-7</span>
+                      </div>
+                      <div className="bg-[#141c2e] border border-[#c39bff]/30 rounded p-2">
+                        <div className="text-white text-xs font-medium">{base.data.name}</div>
+                        {base.data.desc && (
+                          <p className="text-[#a0b0c5] text-[11px] mt-1 leading-snug">{base.data.desc}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Variant boons — expandable */}
+                  {hasVariants && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setExpanded(isOpen ? null : g.meta.id)}
+                        className="w-full flex items-center justify-between gap-2 px-3 py-2 border-t border-[#1e2a3a] text-left hover:bg-[#141c2e]/50"
+                      >
+                        <span className="text-[10px] uppercase tracking-widest text-[#9ab0bf]">
+                          {t('gods.section.variants')} · {variants.length}
+                        </span>
                         <svg
-                          className={`w-4 h-4 text-[#7a8aa0] transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`}
+                          className={`w-4 h-4 text-[#7a8aa0] transition-transform ${isOpen ? 'rotate-180' : ''}`}
                           fill="none" stroke="currentColor" viewBox="0 0 24 24"
                         >
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                         </svg>
-                      </div>
-                      <div className="text-[11px] uppercase tracking-widest text-[#c39bff] mt-0.5">{t(g.meta.titleKey as TranslationKey)}</div>
-                      <p className="text-[11px] text-[#a0b0c5] mt-1 leading-snug line-clamp-2">{t(g.meta.themeKey as TranslationKey)}</p>
-                    </div>
-                  </button>
-                  {isOpen && (
-                    <div className="border-t border-[#1e2a3a] p-3">
-                      <div className="text-[10px] uppercase tracking-widest text-[#9ab0bf] mb-3">{t('gods.section.boons')}</div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        {g.boons.map(b => {
-                          const url = tftIconUrl(assets, b.data.icon);
-                          const accent = b.isBase ? '#c39bff' : '#7a8aa0';
-                          return (
-                            <div key={b.apiName} className="flex items-start gap-2 p-2 bg-[#141c2e] rounded">
-                              {url ? (
-                                <img src={url} alt={b.data.name} className="w-10 h-10 rounded border" style={{ borderColor: accent + '60' }} />
-                              ) : (
-                                <div className="w-10 h-10 rounded border bg-[#0d1526] flex-shrink-0" style={{ borderColor: accent + '60' }} />
-                              )}
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-baseline gap-2">
-                                  <span className="text-white text-xs font-medium">{b.data.name}</span>
-                                  {b.isBase && (
-                                    <span className="text-[9px] uppercase tracking-widest" style={{ color: accent }}>{t('gods.boon.main')}</span>
+                      </button>
+                      {isOpen && (
+                        <div className="border-t border-[#1e2a3a] p-3 space-y-2">
+                          {variants.map(b => {
+                            const url = tftIconUrl(assets, b.data.icon);
+                            return (
+                              <div key={b.apiName} className="flex items-start gap-2 p-2 bg-[#141c2e] rounded">
+                                {url ? (
+                                  <img src={url} alt={b.data.name} className="w-10 h-10 rounded border border-[#1e2a3a]" />
+                                ) : (
+                                  <div className="w-10 h-10 rounded border border-[#1e2a3a] bg-[#0d1526] flex-shrink-0" />
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-white text-xs font-medium">{b.data.name}</div>
+                                  {b.data.desc && (
+                                    <p className="text-[#a0b0c5] text-[11px] mt-0.5 leading-snug">{b.data.desc}</p>
                                   )}
                                 </div>
-                                {b.data.desc && (
-                                  <p className="text-[#a0b0c5] text-[11px] mt-0.5 leading-snug">{b.data.desc}</p>
-                                )}
                               </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               );

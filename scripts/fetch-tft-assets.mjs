@@ -202,11 +202,27 @@ async function main() {
     if (!apiName) continue;
     const a = itemsByName.get(apiName);
     if (!a) continue;
-    const rawDesc = stripHtml(a.desc || '');
+    // Most augments have a short `name` plus a separate `desc`. But a few
+    // sub-augments (AurelionSol's Quest picks etc.) shove the full sentence
+    // into `name` and leave `desc` empty or duplicated — those would render
+    // as a giant unreadable title. Detect that, synthesise a short title from
+    // the apiName suffix ("MediumQuest" → "Medium Quest"), and treat the
+    // long sentence as the description instead.
+    const nameDup = a.name && a.desc && a.name.trim() === a.desc.trim();
+    const hasSeparateDesc = !!(a.desc && a.desc.trim()) && !nameDup;
+    const nameIsTitle = a.name && a.name.length < 60 && !/[@.]/.test(a.name);
+    let displayName, sourceDesc;
+    if (hasSeparateDesc && nameIsTitle) {
+      displayName = a.name;
+      sourceDesc = a.desc;
+    } else {
+      displayName = (apiName.split('_').pop() || apiName).replace(/([a-z])([A-Z])/g, '$1 $2');
+      sourceDesc = a.name || '';
+    }
     augments[apiName] = {
-      name: a.name || apiName,
+      name: displayName,
       icon: normalizeIconPath(a.icon || ''),
-      desc: resolveDescPlaceholders(rawDesc, a.effects),
+      desc: resolveDescPlaceholders(stripHtml(sourceDesc), a.effects),
       tier: deriveAugmentTier(apiName, a.name || '', a.icon || '', tierOverride),
     };
   }

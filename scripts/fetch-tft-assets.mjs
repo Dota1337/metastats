@@ -183,6 +183,25 @@ async function main() {
     }
   } catch (e) { console.warn(`       WARN: tier-override read failed: ${e.message}`); }
 
+  // Load the tactics.tools icon override. CDragon ships ONE icon per augment
+  // family even across tier variants ("Deadlier Blades" Prismatic uses the
+  // old Gold-era artwork because the `_iii.tex` Prismatic art doesn't exist
+  // on CDragon — HEAD-probed 2026-06-10). tactics.tools keeps a separate icon
+  // per (augment, tier) under https://ap.tft.tools/img/augments/<stem>.png
+  // (stem ends in 1/2/3 for tier). Run `scripts/refresh-augment-icons.mjs`
+  // before this to (re)build the file.
+  let iconOverride = { stems: {}, cdn: 'https://ap.tft.tools/img/augments/' };
+  try {
+    const path = `public/tft-augment-icons-${active.number}.json`;
+    if (existsSync(path)) {
+      const doc = JSON.parse(readFileSync(path, 'utf8'));
+      iconOverride = { stems: doc.stems || {}, cdn: doc.cdn || iconOverride.cdn };
+      console.log(`       icon-override: ${Object.keys(iconOverride.stems).length} augments pinned to tactics.tools CDN`);
+    } else {
+      console.warn(`       WARN: ${path} missing — augments will use CDragon icons (tier-incorrect for some)`);
+    }
+  } catch (e) { console.warn(`       WARN: icon-override read failed: ${e.message}`); }
+
   const augments = {};
   const itemsByName = new Map(items ? [] : []); // built below from cd.items
   for (const it of cd.items || []) {
@@ -194,9 +213,12 @@ async function main() {
     const a = itemsByName.get(apiName);
     if (!a) continue;
     const rawDesc = stripHtml(a.desc || '');
+    const tacticsStem = iconOverride.stems[apiName];
     augments[apiName] = {
       name: a.name || apiName,
-      icon: normalizeIconPath(a.icon || ''),
+      // Tier-correct icon URL preferred; fall back to CDragon's recycled art.
+      // Full https URL is detected and passed through by tftIconUrl().
+      icon: tacticsStem ? `${iconOverride.cdn}${tacticsStem}.png` : normalizeIconPath(a.icon || ''),
       desc: resolveDescPlaceholders(rawDesc, a.effects),
       tier: deriveAugmentTier(apiName, a.name || '', a.icon || '', tierOverride),
     };

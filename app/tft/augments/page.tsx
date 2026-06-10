@@ -109,53 +109,21 @@ export default function TftAugmentsReferencePage() {
             {filtered.map(a => {
               const url = tftIconUrl(assets, a.icon);
               const tierColor = TIER_COLORS[a.tier] || '#7a8aa0';
-              const tierLetter = a.tier === 3 ? 'P' : a.tier === 2 ? 'G' : 'S';
               return (
                 <a
                   key={a.apiName}
                   href={`/tft/augments/${encodeURIComponent(a.apiName)}`}
                   className="flex items-start gap-3 p-3 bg-[#0d1526] border border-[#1e2a3a] rounded hover:border-[#7B61FF]/40 transition-colors"
                 >
-                  {/*
-                    Riot ships only ONE icon file per augment family, even when
-                    the same artwork exists across Silver/Gold/Prismatic tiers
-                    of that family. Confirmed via CDragon HEAD-probes (2026-06-10):
-                    the `_iii.tex` Prismatic variants of Deadlier Blades, Flexible,
-                    Construct a Companion etc. all 404. Consequence: the icon's
-                    base art can visually look "Gold" even when our tier (correctly
-                    Prismatic, pinned by tactics.tools) says otherwise. Compensate
-                    via a hard-to-miss tier indicator: solid tier-coloured ring
-                    via box-shadow + glow, plus a corner badge with the tier
-                    letter, plus a coloured pill in the title row.
-                  */}
-                  <div className="relative flex-shrink-0">
-                    {url ? (
-                      <img
-                        src={url}
-                        alt={a.name}
-                        className="w-12 h-12 rounded-md block"
-                        style={{ boxShadow: `0 0 0 2px ${tierColor}, 0 0 14px -2px ${tierColor}99` }}
-                      />
-                    ) : (
-                      <div
-                        className="w-12 h-12 rounded-md bg-[#1e2a3a]"
-                        style={{ boxShadow: `0 0 0 2px ${tierColor}, 0 0 14px -2px ${tierColor}99` }}
-                      />
-                    )}
-                    <div
-                      className="absolute -bottom-1 -right-1 w-[18px] h-[18px] rounded-full flex items-center justify-center"
-                      style={{ backgroundColor: tierColor, boxShadow: '0 0 0 2px #0d1526' }}
-                    >
-                      <span className="text-[9px] font-bold text-[#0e1525] leading-none">{tierLetter}</span>
-                    </div>
-                  </div>
+                  {url ? (
+                    <img src={url} alt={a.name} className="w-12 h-12 rounded border-2 flex-shrink-0" style={{ borderColor: tierColor }} />
+                  ) : (
+                    <div className="w-12 h-12 rounded border-2 bg-[#1e2a3a] flex-shrink-0" style={{ borderColor: tierColor }} />
+                  )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-white text-sm font-medium truncate">{a.name}</span>
-                      <span
-                        className="text-[10px] font-bold uppercase tracking-widest flex-shrink-0 px-2 py-0.5 rounded"
-                        style={{ backgroundColor: `${tierColor}22`, color: tierColor, border: `1px solid ${tierColor}88` }}
-                      >
+                      <span className="text-[10px] uppercase tracking-widest tabular-nums flex-shrink-0" style={{ color: tierColor }}>
                         {TIER_LABELS[a.tier]}
                       </span>
                     </div>

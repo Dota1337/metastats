@@ -7,7 +7,7 @@ import {
   mergeJsonbCountArrays,
 } from '../../../lib/tft-supabase-reader';
 import { isExcludedItem, isExcludedUnit } from '../../../lib/tft-excluded';
-import { cachedJson } from '../../../lib/api-cache';
+import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias } from '../../../lib/api-cache';
 
 interface ItemListRow {
   api_name: string;
@@ -54,6 +54,12 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    // Plan E + B (siehe comps/route.ts).
+    const patches = await getAvailablePatches();
+    const redirect = maybeRedirectByPatchAlias(request, patches);
+    if (redirect) return redirect;
+    const cacheControl = cacheControlForPatches(patches);
+
     const filters = await resolveFilters(searchParams);
     // Velocity-Layer (W1-A): ?velocity=N → dedizierte RPC mit FILTER-
     // Aggregation für now/prev in EINEM Scan (Migration 0036). p_days bleibt
@@ -163,7 +169,6 @@ export async function GET(request: NextRequest) {
       });
     items.sort((a, b) => (a.avgPlacement ?? 9) - (b.avgPlacement ?? 9));
 
-    const patches = await getAvailablePatches();
     return cachedJson({
       hasData: items.length > 0,
       filters: {
@@ -178,7 +183,7 @@ export async function GET(request: NextRequest) {
       },
       patches,
       items,
-    });
+    }, { cache: cacheControl });
   } catch (e: any) {
     return NextResponse.json({ hasData: false, items: [], error: e.message }, { status: 502 });
   }

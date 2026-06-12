@@ -38,6 +38,7 @@
 import { spawn } from 'node:child_process';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { revalidateEdge, MARKETVALUE_EDGE_PATHS } from './lib/revalidate-edge.mjs';
 
 const CLUSTERS = {
   europe:   ['euw1', 'eun1', 'tr1', 'ru', 'me1'],
@@ -200,6 +201,10 @@ async function main() {
     const next = order[i + 1];
     if (!next || REGION_CLUSTER[next] !== cluster) {
       await sync(`sync/${cluster}`);
+      // Plan A — Push-Invalidation des Marktwert-Edge-Caches nach jedem
+      // Cluster. Die Marktwert-Page sortiert nach Region — sobald ein Cluster
+      // durch ist, sind die zugehörigen Region-Filter aktualisierbar.
+      await revalidateEdge(MARKETVALUE_EDGE_PATHS, [], { label: `revalidate/${cluster}` });
     }
   }
 

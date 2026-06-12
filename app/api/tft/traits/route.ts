@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { resolveFilters, callRpc, getAvailablePatches } from '../../../lib/tft-supabase-reader';
-import { cachedJson } from '../../../lib/api-cache';
+import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias } from '../../../lib/api-cache';
 
 interface TraitRow {
   name: string;
@@ -28,6 +28,12 @@ const VELOCITY_MIN_GAMES = 30;
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   try {
+    // Plan E + B (siehe comps/route.ts).
+    const patches = await getAvailablePatches();
+    const redirect = maybeRedirectByPatchAlias(request, patches);
+    if (redirect) return redirect;
+    const cacheControl = cacheControlForPatches(patches);
+
     const filters = await resolveFilters(searchParams);
 
     // Δ-velocity (W1-A pattern, anchor-aware via 0039). Trait velocity is rolled
@@ -105,7 +111,6 @@ export async function GET(request: NextRequest) {
     });
     traits.sort((a, b) => (a.avgPlacement ?? 9) - (b.avgPlacement ?? 9));
 
-    const patches = await getAvailablePatches();
     return cachedJson({
       hasData: traits.length > 0,
       filters: {
@@ -120,7 +125,7 @@ export async function GET(request: NextRequest) {
       },
       patches,
       traits,
-    });
+    }, { cache: cacheControl });
   } catch (e: any) {
     return NextResponse.json({ hasData: false, traits: [], error: e.message }, { status: 502 });
   }

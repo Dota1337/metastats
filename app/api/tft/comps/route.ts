@@ -6,7 +6,7 @@ import {
   mergeJsonbCountArrays,
   mergeJsonbCountDicts,
 } from '../../../lib/tft-supabase-reader';
-import { cachedJson } from '../../../lib/api-cache';
+import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias } from '../../../lib/api-cache';
 import { isExcludedUnit, isExcludedItem } from '../../../lib/tft-excluded';
 
 // /api/tft/comps
@@ -132,6 +132,20 @@ export async function GET(request: NextRequest) {
   const minGames = Math.max(0, parseInt(searchParams.get('minGames') || '30', 10));
 
   try {
+    // Plan E — Per-Patch-Cache-Key. Lade die patches einmalig vorne und
+    // redirecte ?patch=current|previous auf den konkreten Patch-String, damit
+    // der Edge-Cache patch-spezifisch buckets statt einen langen 6h-Eintrag
+    // unter dem Alias zu halten der bei Patch-Wechsel stale wird. Der Aufruf
+    // ist gratis: resolveFilters() unten ruft `getAvailablePatches()` eh auf
+    // und die Funktion cached process-weit für 6h (siehe _patchCache).
+    const patches = await getAvailablePatches();
+    const redirect = maybeRedirectByPatchAlias(request, patches);
+    if (redirect) return redirect;
+    // Plan B — Patch-Changed-Boost: in den ersten 4h nach Patch-Drop liefere
+    // ein 5min-TTL statt 6h, damit das thin Pre-Patch-Sample nicht 6h lang
+    // den Cache prägt. Hilfsfunktion liest patches[0].first_day.
+    const cacheControl = cacheControlForPatches(patches);
+
     const filters = await resolveFilters(searchParams);
 
     // Detail view: full metrics (death-curve, comp-DNA, matchups) for the one
@@ -174,7 +188,7 @@ export async function GET(request: NextRequest) {
           }
         }
       }
-      if (!row) return cachedJson({ filters, hasData: false, comp: null });
+      if (!row) return cachedJson({ filters, hasData: false, comp: null }, { cache: cacheControl });
       const comp = { ...baseComp(row, participants), ...enrichComp(row), aliasedFrom };
 
       // Counter edges — single RPC for the same region/day/patch window.
@@ -220,7 +234,7 @@ export async function GET(request: NextRequest) {
             even: even.slice(0, 5),
           },
         },
-      });
+      }, { cache: cacheControl });
     }
 
     // List view: lean RPC — aggregates only the 3 jsonb columns the list
@@ -279,7 +293,6 @@ export async function GET(request: NextRequest) {
     });
     dataComps.sort((a, b) => (a.avgPlacement ?? 9) - (b.avgPlacement ?? 9));
 
-    const patches = await getAvailablePatches();
     return cachedJson({
       hasData: dataComps.length > 0,
       filters: {
@@ -296,7 +309,7 @@ export async function GET(request: NextRequest) {
       minGames,
       source,
       comps: source === 'editorial' ? [] : dataComps,
-    });
+    }, { cache: cacheControl });
   } catch (e: any) {
     return NextResponse.json({ hasData: false, comps: [], error: e.message }, { status: 502 });
   }

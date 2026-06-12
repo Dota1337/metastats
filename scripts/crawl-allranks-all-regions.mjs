@@ -23,6 +23,7 @@
  */
 
 import { spawn } from 'node:child_process';
+import { revalidateEdge, STATS_EDGE_PATHS } from './lib/revalidate-edge.mjs';
 
 const ALL_REGIONS = [
   'euw1', 'kr', 'na1', 'eun1',     // primary 4 — most traffic
@@ -83,6 +84,12 @@ async function main() {
       const { elapsed } = await runChild('node', cmdArgs, label);
       console.log(`[${label}] done in ${elapsed}s`);
       done++;
+      // Plan A — Push-Invalidation. Direkt nach jedem Region-Crawl-Fertig den
+      // Vercel-Edge-Cache invalidieren, damit die Stats-APIs nicht 6h auf die
+      // alte Antwort festkleben. revalidateEdge ist non-blocking-best-effort:
+      // wenn das Secret fehlt oder der Endpoint nicht antwortet, geht der
+      // Crawl trotzdem weiter — Cache läuft halt seine reguläre TTL ab.
+      await revalidateEdge(STATS_EDGE_PATHS, [], { label: `${label}/revalidate` });
     } catch (err) {
       console.error(`[${label}] FAILED: ${err.message}`);
       failed++;

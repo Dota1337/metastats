@@ -4,7 +4,7 @@ import {
   callRpc,
   getAvailablePatches,
 } from '../../../lib/tft-supabase-reader';
-import { cachedJson } from '../../../lib/api-cache';
+import { cachedJson, maybeRedirectByPatchAlias } from '../../../lib/api-cache';
 
 // W5: Meta-Pulse — die „ich öffne metastats vor jeder Ranked-Session"-Page.
 // Aggregiert die wichtigsten Pro-Signale in einer Server-Action:
@@ -77,6 +77,13 @@ export async function GET(request: NextRequest) {
 
   try {
     const patches = await getAvailablePatches();
+    // Plan E: redirect ?patch=current|previous auf konkreten Patch.
+    // Bei meta-pulse ignoriert der Backend-Code den patch-Param eh (rendert
+    // immer latestPatch), aber HTTP-Cache-Key wird patch-spezifisch — bei
+    // Patch-Wechsel kein stale Cache mehr. Kein Plan-B-Boost, weil die Route
+    // schon explizit 1h-TTL gewählt hat (kürzer als alle anderen Stats-APIs).
+    const redirect = maybeRedirectByPatchAlias(request, patches);
+    if (redirect) return redirect;
     const currentPatch = patches[0]?.patch ?? null;
     const previousPatch = patches[1]?.patch ?? null;
     const setNumber = patches[0]?.set_number ?? 17;

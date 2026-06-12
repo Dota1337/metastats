@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { loadTftStats, normalizeBucket, bucketParticipants } from '../../../lib/tft-stats-loader';
 import { resolveFilters, callRpc, getAvailablePatches } from '../../../lib/tft-supabase-reader';
 import { isExcludedUnit } from '../../../lib/tft-excluded';
-import { cachedJson } from '../../../lib/api-cache';
+import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias } from '../../../lib/api-cache';
 
 // /api/tft/units
 //   Filter params (Supabase-backed):
@@ -142,6 +142,13 @@ export async function GET(request: NextRequest) {
 
   // Stats list — Supabase RPC with filter expansion.
   try {
+    // Plan E + B (siehe comps/route.ts für Begründung): patches vorne, Alias
+    // redirecten, Cache-Control patch-frische-abhängig wählen.
+    const patches = await getAvailablePatches();
+    const redirect = maybeRedirectByPatchAlias(request, patches);
+    if (redirect) return redirect;
+    const cacheControl = cacheControlForPatches(patches);
+
     const filters = await resolveFilters(searchParams);
 
     // Optional Δ-velocity layer (parallel to comps/items): when ?velocity=N is
@@ -222,7 +229,6 @@ export async function GET(request: NextRequest) {
       });
     units.sort((a, b) => (a.avgPlacement ?? 9) - (b.avgPlacement ?? 9));
 
-    const patches = await getAvailablePatches();
     return cachedJson({
       hasData: units.length > 0,
       filters: {
@@ -237,7 +243,7 @@ export async function GET(request: NextRequest) {
       },
       patches,
       units,
-    });
+    }, { cache: cacheControl });
   } catch (e: any) {
     return NextResponse.json({ hasData: false, units: [], error: e.message }, { status: 502 });
   }

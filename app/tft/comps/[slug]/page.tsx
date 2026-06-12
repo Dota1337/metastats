@@ -56,8 +56,23 @@ export default function TftCompDetailPage() {
   const [proComp, setProComp] = useState<any | null>(null);
   const [hasData, setHasData] = useState<boolean | null>(null);
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
+  // Trends-Time-Series: per-day avg-place / top4-rate / games über die
+  // letzten N Tage. Standard 14 — User kann auf 30 umschalten.
+  const [trendDays, setTrendDays] = useState<14 | 30>(14);
+  const [trendPoints, setTrendPoints] = useState<Array<{
+    day: string; games: number; avgPlacement: number | null; top4Rate: number | null; top1Rate: number | null;
+  }>>([]);
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/tft/comps/trend?slug=${encodeURIComponent(slug)}&region=${region}&bucket=${bucket}&days=${trendDays}`)
+      .then(r => r.ok ? r.json() : { points: [] })
+      .then(d => { if (!cancelled) setTrendPoints(d.points || []); })
+      .catch(() => { if (!cancelled) setTrendPoints([]); });
+    return () => { cancelled = true; };
+  }, [slug, region, bucket, trendDays]);
 
   useEffect(() => {
     // Detail uses the SAME window as /tft/patch/winners (30 days, min 50
@@ -108,6 +123,84 @@ export default function TftCompDetailPage() {
         {comp && (
           <>
             <CompCard comp={comp} assets={assets} />
+
+            {/* Trend-Time-Series — per-day avg-place + games sample über
+                14/30 Tage. Hebt einen Patch-internen Anstieg/Fall hervor
+                (z.B. nach Hotfix oder Pro-Discovery), den die statischen
+                Patch-Snapshots oben nicht zeigen. */}
+            <div className="mt-4 bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-white text-sm font-medium">{t('tft.trend.title')}</h3>
+                <div className="flex gap-1 bg-[#141c2e] border border-[#1e2a3a] rounded p-0.5">
+                  {([14, 30] as const).map(d => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setTrendDays(d)}
+                      className={`px-2.5 py-0.5 text-[11px] rounded ${
+                        trendDays === d
+                          ? 'bg-[#7B61FF] text-white'
+                          : 'text-[#a0b0c5] hover:text-white'
+                      }`}
+                    >
+                      {t(d === 14 ? 'tft.trend.last14' : 'tft.trend.last30')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {trendPoints.length >= 2 ? (
+                <div style={{ width: '100%', height: 180 }}>
+                  <ResponsiveContainer>
+                    <ComposedChart data={trendPoints} margin={{ top: 8, right: 8, bottom: 0, left: -12 }}>
+                      <XAxis
+                        dataKey="day"
+                        tick={{ fill: '#7a8aa0', fontSize: 10 }}
+                        tickFormatter={(d: string) => d.slice(5)}
+                        axisLine={{ stroke: '#1e2a3a' }}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        yAxisId="place"
+                        domain={[3, 6]}
+                        reversed
+                        tick={{ fill: '#7a8aa0', fontSize: 10 }}
+                        axisLine={false}
+                        tickLine={false}
+                        width={30}
+                      />
+                      <YAxis
+                        yAxisId="games"
+                        orientation="right"
+                        tick={{ fill: '#5a6a80', fontSize: 10 }}
+                        axisLine={false}
+                        tickLine={false}
+                        width={40}
+                      />
+                      <RechartsTooltip
+                        contentStyle={{ backgroundColor: '#0a0e1a', border: '1px solid #1e2a3a', borderRadius: 4, fontSize: 11 }}
+                        labelStyle={{ color: '#a0b0c5' }}
+                        formatter={(value: any, name: any) => {
+                          if (name === 'avgPlacement') return [Number(value).toFixed(2), t('tft.avgPlacement')];
+                          if (name === 'games') return [value, t('tft.gamesShort')];
+                          return [value, String(name ?? '')];
+                        }}
+                      />
+                      <Bar yAxisId="games" dataKey="games" fill="#1e2a3a" radius={[2, 2, 0, 0]} />
+                      <Line
+                        yAxisId="place"
+                        dataKey="avgPlacement"
+                        stroke="#c39bff"
+                        strokeWidth={2}
+                        dot={{ fill: '#c39bff', r: 3 }}
+                        connectNulls
+                      />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="text-[#5a6a80] text-xs text-center py-6">{t('tft.trend.empty')}</div>
+              )}
+            </div>
 
             {/* Pro vs Solo-Queue divergence — only shown when the pro_pool
                 has at least a handful of games for this comp. Surfaces the

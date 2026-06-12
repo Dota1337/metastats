@@ -58,13 +58,13 @@ export interface ResolvedFilters {
 }
 
 // Expand a filter param like "all" or "euw1,kr" into a flat region list.
-function expandRegions(param: string | null): string[] {
+export function expandRegions(param: string | null): string[] {
   if (!param || param === 'all') return REGION_GROUPS.all;
   if (REGION_GROUPS[param]) return REGION_GROUPS[param];
   return param.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
 }
 
-function expandBuckets(param: string | null): string[] {
+export function expandBuckets(param: string | null): string[] {
   if (!param || param === 'all') return BUCKET_GROUPS.all;
   if (BUCKET_GROUPS[param]) return BUCKET_GROUPS[param];
   return param.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);

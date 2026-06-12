@@ -274,6 +274,11 @@ const translations = {
   'tft.builderPublishErr': t6('Fehler', 'Error', '\uC624\uB958', '\u9519\u8BEF', 'Error', 'Erreur'),
   // Cross-Drill ins Data-Explorer (Klick auf Detail-Page-Header)
   'tft.drill.openInExplorer': t6('Im Explorer \u00F6ffnen', 'Open in Explorer', '\uD0D0\uC0C9\uAE30\uC5D0\uC11C \uC5F4\uAE30', '\u5728\u6D4F\u89C8\u5668\u4E2D\u6253\u5F00', 'Abrir en Explorador', 'Ouvrir dans l\'Explorateur'),
+  // Trend-Time-Series-Chart auf Comp-Detail
+  'tft.trend.title': t6('Verlauf', 'Trend', '\uCD94\uC774', '\u8D70\u52BF', 'Tendencia', 'Tendance'),
+  'tft.trend.last14': t6('14 Tage', '14 days', '14\uC77C', '14\u5929', '14 d\u00EDas', '14 jours'),
+  'tft.trend.last30': t6('30 Tage', '30 days', '30\uC77C', '30\u5929', '30 d\u00EDas', '30 jours'),
+  'tft.trend.empty': t6('Noch kein Verlauf', 'No trend yet', '\uC544\uC9C1 \uCD94\uC774 \uC5C6\uC74C', '\u6682\u65E0\u8D70\u52BF', 'Sin tendencia', 'Pas de tendance'),
   // Carry-Cost-Filter f\u00FCr die Comps-Liste (Reroll / Mid / Fast 8-9)
   'tft.cost.label': t6('Kosten', 'Cost', '\uBE44\uC6A9', '\u8D39\u7528', 'Coste', 'Co\u00FBt'),
   'tft.cost.all': t6('Alle', 'All', '\uC804\uCCB4', '\u5168\u90E8', 'Todos', 'Tous'),

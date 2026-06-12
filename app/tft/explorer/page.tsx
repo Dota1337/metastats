@@ -415,9 +415,73 @@ export default function TftExplorerPage() {
                   )}
                 </div>
 
+                {/* Active-Filter-Chips: macht alle Pickers im Filter-Rail in
+                    einer Leiste sichtbar, damit keiner übersehen wird. Klick
+                    auf den ×-Chip entfernt den einzelnen Filter; der Header-
+                    Button rechts setzt alles auf einmal zurück. */}
+                {(units.length + items.length + traits.length) > 0 && (
+                  <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">
+                        {t('tft.explorer.activeFilters')}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { setUnits([]); setItems([]); setTraits([]); }}
+                        className="text-[10px] px-2 py-0.5 rounded bg-[#141c2e] border border-[#1e2a3a] text-[#a0b0c5] hover:text-white hover:border-[#7B61FF]/60"
+                      >
+                        × {t('tft.explorer.resetAll')}
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {units.map(id => (
+                        <FilterChip
+                          key={`u-${id}`}
+                          icon={tftChampionTileUrl(assets, assets?.champions[id]) || null}
+                          label={(assets?.champions[id] as any)?.name || id.replace(/^TFT\d+_/, '')}
+                          color="#7B61FF"
+                          onRemove={() => setUnits(prev => prev.filter(x => x !== id))}
+                        />
+                      ))}
+                      {items.map(id => (
+                        <FilterChip
+                          key={`i-${id}`}
+                          icon={tftIconUrl(assets, (assets?.items[id] as any)?.icon) || null}
+                          label={(assets?.items[id] as any)?.name || id.replace(/^TFT\d*_Item_/, '')}
+                          color="#e0c75a"
+                          onRemove={() => setItems(prev => prev.filter(x => x !== id))}
+                        />
+                      ))}
+                      {traits.map(id => (
+                        <FilterChip
+                          key={`t-${id}`}
+                          icon={tftIconUrl(assets, (assets?.traits[id] as any)?.icon) || null}
+                          label={(assets?.traits[id] as any)?.name || id.replace(/^TFT\d+_/, '')}
+                          color="#3ecf8e"
+                          onRemove={() => setTraits(prev => prev.filter(x => x !== id))}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {loading && <div className="text-[#7a8aa0] text-center py-8 text-sm">…</div>}
                 {!loading && filtered.length === 0 && comps.length > 0 && (
-                  <EmptyData />
+                  <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-6 text-center">
+                    <div className="text-[#a0b0c5] text-sm mb-2">{t('tft.explorer.noResults')}</div>
+                    <div className="text-[#5a6a80] text-[11px] tabular-nums mb-3">
+                      {comps.length} {t('tft.explorer.loaded')} · 0 {t('tft.explorer.afterFilter')}
+                    </div>
+                    {(units.length + items.length + traits.length) > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => { setUnits([]); setItems([]); setTraits([]); }}
+                        className="text-[11px] px-3 py-1.5 rounded bg-[#7B61FF]/15 border border-[#7B61FF]/40 text-[#a892ff] hover:bg-[#7B61FF]/25"
+                      >
+                        × {t('tft.explorer.resetAll')}
+                      </button>
+                    )}
+                  </div>
                 )}
                 {!loading && filtered.slice(0, 100).map((c, i) => (
                   <CompCard
@@ -604,5 +668,30 @@ function FilterPicker({
         })}
       </div>
     </div>
+  );
+}
+
+// Active-Filter-Pill mit Icon + Name + ×. Klick auf den ganzen Chip entfernt
+// den Filter — viel breiter als die kleinen "× N"-Reset-Links in den Pickern.
+function FilterChip({
+  icon, label, color, onRemove,
+}: {
+  icon: string | null;
+  label: string;
+  color: string;
+  onRemove: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onRemove}
+      className="flex items-center gap-1.5 px-2 py-1 rounded border text-[11px] hover:brightness-125 transition"
+      style={{ borderColor: `${color}60`, backgroundColor: `${color}1f`, color }}
+      aria-label={`Remove filter: ${label}`}
+    >
+      {icon && <img src={icon} alt="" className="w-3.5 h-3.5 rounded-sm object-cover" />}
+      <span>{label}</span>
+      <span className="text-[12px] leading-none">×</span>
+    </button>
   );
 }

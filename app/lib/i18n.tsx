@@ -274,6 +274,12 @@ const translations = {
   'tft.builderPublishErr': t6('Fehler', 'Error', '\uC624\uB958', '\u9519\u8BEF', 'Error', 'Erreur'),
   // Cross-Drill ins Data-Explorer (Klick auf Detail-Page-Header)
   'tft.drill.openInExplorer': t6('Im Explorer \u00F6ffnen', 'Open in Explorer', '\uD0D0\uC0C9\uAE30\uC5D0\uC11C \uC5F4\uAE30', '\u5728\u6D4F\u89C8\u5668\u4E2D\u6253\u5F00', 'Abrir en Explorador', 'Ouvrir dans l\'Explorateur'),
+  // Explorer Filter-Visibility (Chip-Leiste + Empty-State-Diagnose)
+  'tft.explorer.activeFilters': t6('Aktive Filter', 'Active filters', '\uD65C\uC131 \uD544\uD130', '\u5DF2\u9009\u7B5B\u9009', 'Filtros activos', 'Filtres actifs'),
+  'tft.explorer.resetAll': t6('Alle zur\u00FCcksetzen', 'Reset all', '\uBAA8\uB450 \uCD08\uAE30\uD654', '\u5168\u90E8\u91CD\u7F6E', 'Restablecer todo', 'Tout r\u00E9initialiser'),
+  'tft.explorer.noResults': t6('Keine Treffer f\u00FCr die aktiven Filter', 'No matches for the active filters', '\uD65C\uC131 \uD544\uD130\uC5D0 \uC77C\uCE58\uD558\uB294 \uACB0\uACFC \uC5C6\uC74C', '\u5F53\u524D\u7B5B\u9009\u65E0\u5339\u914D', 'Sin coincidencias para los filtros activos', 'Aucun r\u00E9sultat pour les filtres actifs'),
+  'tft.explorer.loaded': t6('geladen', 'loaded', '\uB85C\uB4DC\uB428', '\u5DF2\u52A0\u8F7D', 'cargado', 'charg\u00E9s'),
+  'tft.explorer.afterFilter': t6('nach Filter', 'after filter', '\uD544\uD130 \uD6C4', '\u7B5B\u9009\u540E', 'tras filtro', 'apr\u00E8s filtre'),
   // Trend-Time-Series-Chart auf Comp-Detail
   'tft.trend.title': t6('Verlauf', 'Trend', '\uCD94\uC774', '\u8D70\u52BF', 'Tendencia', 'Tendance'),
   'tft.trend.last14': t6('14 Tage', '14 days', '14\uC77C', '14\u5929', '14 d\u00EDas', '14 jours'),

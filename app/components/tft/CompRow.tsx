@@ -166,8 +166,7 @@ export default function CompRow({
           router.push(href);
         }
       }}
-      className="grid items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 rounded border border-[#1e2a3a] bg-[#0d1526] hover:bg-[#101a30] hover:border-[#7B61FF]/40 transition-colors text-xs sm:text-[13px] cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B61FF]/60"
-      style={{ gridTemplateColumns: 'minmax(0,1fr)' }}
+      className="block px-2 sm:px-3 py-2 rounded border border-[#1e2a3a] bg-[#0d1526] hover:bg-[#101a30] hover:border-[#7B61FF]/40 transition-colors text-xs sm:text-[13px] cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B61FF]/60"
     >
       {/* Mobile: stacked. Desktop: tight horizontal row. */}
       <div className={`grid grid-cols-[1.25rem_1.5rem_2.5rem_minmax(7rem,1fr)_minmax(0,auto)_auto] ${

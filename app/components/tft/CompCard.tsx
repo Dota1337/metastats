@@ -93,6 +93,7 @@ export default function CompCard({
     .sort((a, b) => (b.rate - a.rate) || (b._carry - a._carry))[0];
   const carryCid = carryByItems?.cid || parts?.carry;
   const carry = carryCid && assets ? assets.champions[carryCid] : null;
+  const carryTileUrl = tftChampionTileUrl(assets, carry);
 
   // Wrapper used to be an <a href> which nested ~40 inner <a> tags (carry,
   // trait, name, 9 unit tiles, up to 27 item tiles) — invalid HTML. When href
@@ -141,14 +142,14 @@ export default function CompCard({
                style={{ color: tier.color, backgroundColor: tier.bg, border: `1px solid ${tier.color}40` }}>
             {tier.label}
           </div>
-          {tftChampionTileUrl(assets, carry) ? (
+          {carryTileUrl ? (
             <a
               href={`/tft/units/${encodeURIComponent(carryCid!)}`}
               onClick={e => e.stopPropagation()}
               title={carry!.name}
               className="block hover:scale-105 transition-transform"
             >
-              <img src={tftChampionTileUrl(assets, carry)!} alt={carry!.name} className="w-12 h-12 rounded border-2 border-[#c39bff] object-cover" />
+              <img src={carryTileUrl} alt={carry!.name} className="w-12 h-12 rounded border-2 border-[#c39bff] object-cover" />
             </a>
           ) : (
             <div className="w-12 h-12 rounded bg-[#1e2a3a]" />

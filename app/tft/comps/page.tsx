@@ -92,7 +92,17 @@ export default function TftCompsPage() {
 
   // Apply advanced filters BEFORE sort so the result count + sort target match.
   // Client-side filter on the already-loaded comps — no extra API roundtrip.
-  const filteredComps = applyAdvancedFilters(comps, adv);
+  // Carry-Cost-Lookup: cluster_key = "<trait>@<level>_<carryCharacterId>".
+  // Bundle-Champions tragen den Cost direkt; null wenn der Carry-Asset fehlt
+  // (stale Carry-ID nach Set-Wechsel).
+  const carryCostLookup = (clusterKey: string): number | null => {
+    if (!assets) return null;
+    const m = /^(.+)@\d+_(.+)$/.exec(clusterKey);
+    if (!m) return null;
+    const ch = assets.champions[m[2]];
+    return typeof ch?.cost === 'number' ? ch.cost : null;
+  };
+  const filteredComps = applyAdvancedFilters(comps, adv, { carryCostLookup });
   const sortedComps = (() => {
     if (filteredComps.length === 0) return filteredComps;
     const copy = [...filteredComps];

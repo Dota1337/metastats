@@ -7,12 +7,19 @@ import { useI18n, type TranslationKey } from '../../lib/i18n';
 // Reine Client-Filterung über die bereits geladene Comp-Liste; keine zusätzlichen
 // API-Calls. Preset-Chips deck'n die häufigsten Pro-Fragen ab.
 
+// Carry-Kosten-Gruppen — mappt 1-2-Cost auf "Reroll", 3-Cost auf "Mid",
+// 4-5-Cost auf "Fast 8/9". Pro-Filter den metatft.com schon hat, bei uns
+// fehlte er bisher. Der costLookup im applyAdvancedFilters resolved den
+// Cluster-Key über das Asset-Bundle zum Carry-Cost.
+export type CostGroup = 'all' | 'reroll' | 'mid' | 'fast8';
+
 export interface AdvancedFilters {
   avgPlaceMax: number | null;     // Ø-Platzierung höchstens X (kleiner = besser)
   top4MinPct: number | null;      // Top-4-Rate mindestens X%
   top1MinPct: number | null;      // Top-1-Rate mindestens X%
   pickMaxPct: number | null;      // Pickrate höchstens X% (für versteckte Comps)
   gamesMin: number | null;        // Mindest-Samplegröße
+  costGroup: CostGroup;           // Reroll / Mid / Fast8 / Alle
 }
 
 export const ADV_DEFAULT: AdvancedFilters = {
@@ -21,12 +28,25 @@ export const ADV_DEFAULT: AdvancedFilters = {
   top1MinPct: null,
   pickMaxPct: null,
   gamesMin: null,
+  costGroup: 'all',
 };
 
 // Active when at least one constraint is set.
 export function isAdvActive(f: AdvancedFilters): boolean {
   return f.avgPlaceMax != null || f.top4MinPct != null || f.top1MinPct != null
-    || f.pickMaxPct != null || f.gamesMin != null;
+    || f.pickMaxPct != null || f.gamesMin != null || f.costGroup !== 'all';
+}
+
+// Carry-Cost-Bucket-Matcher. 1-2 = Reroll, 3 = Mid, 4-5 = Fast 8/9. Cost === 0
+// (Set-Boss / NPC) wird wie 1 gewertet, > 5 (Set-Sondermechanik) wie 5.
+function matchesCostGroup(group: CostGroup, cost: number | null): boolean {
+  if (group === 'all') return true;
+  if (cost == null) return false;
+  const c = Math.max(1, Math.min(5, cost));
+  if (group === 'reroll') return c <= 2;
+  if (group === 'mid') return c === 3;
+  if (group === 'fast8') return c >= 4;
+  return true;
 }
 
 // Apply filters to a list of comps (client-side). Comps with missing metric
@@ -38,13 +58,24 @@ export function applyAdvancedFilters<T extends {
   top1Rate: number | null;
   pickRate?: number | null;
   games: number;
-}>(comps: T[], f: AdvancedFilters): T[] {
+  clusterKey?: string;
+}>(comps: T[], f: AdvancedFilters, opts?: {
+  // Optional Asset-Bundle-getriebene Lookup-Funktion. Die Component selbst
+  // sieht die Assets nicht — die liegen in der Page als State — also wird der
+  // Lookup als Callback durchgereicht. null wenn der Carry nicht im Bundle
+  // gefunden wird (Stale-Daten nach Set-Wechsel etc.).
+  carryCostLookup?: (clusterKey: string) => number | null;
+}): T[] {
   return comps.filter(c => {
     if (f.avgPlaceMax != null && (c.avgPlacement == null || c.avgPlacement > f.avgPlaceMax)) return false;
     if (f.top4MinPct != null && (c.top4Rate == null || c.top4Rate * 100 < f.top4MinPct)) return false;
     if (f.top1MinPct != null && (c.top1Rate == null || c.top1Rate * 100 < f.top1MinPct)) return false;
     if (f.pickMaxPct != null && c.pickRate != null && c.pickRate * 100 > f.pickMaxPct) return false;
     if (f.gamesMin != null && c.games < f.gamesMin) return false;
+    if (f.costGroup !== 'all') {
+      const cost = opts?.carryCostLookup && c.clusterKey ? opts.carryCostLookup(c.clusterKey) : null;
+      if (!matchesCostGroup(f.costGroup, cost)) return false;
+    }
     return true;
   });
 }
@@ -58,6 +89,7 @@ export function advToUrlParam(f: AdvancedFilters): string | null {
   if (f.top1MinPct != null) parts.push(`top1Min=${f.top1MinPct}`);
   if (f.pickMaxPct != null) parts.push(`pickMax=${f.pickMaxPct}`);
   if (f.gamesMin != null) parts.push(`gamesMin=${f.gamesMin}`);
+  if (f.costGroup !== 'all') parts.push(`cost=${f.costGroup}`);
   return parts.length > 0 ? parts.join('_') : null;
 }
 
@@ -66,6 +98,10 @@ export function advFromUrlParam(raw: string | null): AdvancedFilters {
   const out: AdvancedFilters = { ...ADV_DEFAULT };
   for (const p of raw.split('_')) {
     const [k, v] = p.split('=');
+    if (k === 'cost') {
+      if (v === 'reroll' || v === 'mid' || v === 'fast8') out.costGroup = v;
+      continue;
+    }
     const n = Number(v);
     if (!Number.isFinite(n)) continue;
     if (k === 'avgMax') out.avgPlaceMax = n;
@@ -99,8 +135,39 @@ export default function AdvancedCompFilters({ filters, onChange, resultCount, to
   const [expanded, setExpanded] = useState(isAdvActive(filters));
   const active = isAdvActive(filters);
 
+  const COST_GROUPS: { value: CostGroup; labelKey: string }[] = [
+    { value: 'all',    labelKey: 'tft.cost.all' },
+    { value: 'reroll', labelKey: 'tft.cost.reroll' },
+    { value: 'mid',    labelKey: 'tft.cost.mid' },
+    { value: 'fast8',  labelKey: 'tft.cost.fast8' },
+  ];
+
   return (
-    <div className="mb-3">
+    <div className="mb-3 space-y-2">
+      {/* Cost-Bucket-Filter eigene Pill-Reihe — direkt sichtbar, kein
+          expansion nötig. Reroll/Mid/Fast 8 sind die Standard-Pro-Buckets
+          die jeden Tag genutzt werden. */}
+      <div className="flex flex-wrap items-center gap-1.5 text-xs">
+        <span className="text-[#7a8aa0] text-[10px] uppercase tracking-widest mr-1">{t('tft.cost.label')}:</span>
+        {COST_GROUPS.map(g => {
+          const isOn = filters.costGroup === g.value;
+          return (
+            <button
+              key={g.value}
+              type="button"
+              onClick={() => onChange({ ...filters, costGroup: g.value })}
+              className={`px-2.5 py-1 rounded border transition-colors ${
+                isOn
+                  ? 'bg-[#c39bff]/20 border-[#c39bff]/60 text-[#c39bff]'
+                  : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5] hover:border-[#c39bff]/40'
+              }`}
+            >
+              {t(g.labelKey as TranslationKey)}
+            </button>
+          );
+        })}
+      </div>
+
       <div className="flex flex-wrap items-center gap-2 text-xs">
         <button
           type="button"

@@ -272,6 +272,12 @@ const translations = {
   'tft.builderPublishHandle': t6('Dein Anzeigename (optional)', 'Your display name (optional)', '\uD45C\uC2DC \uC774\uB984 (\uC120\uD0DD)', '\u663E\u793A\u540D (\u53EF\u9009)', 'Tu nombre (opcional)', 'Ton nom (optionnel)'),
   'tft.builderPublished': t6('Geteilt', 'Published', '\uAC8C\uC2DC\uB428', '\u5DF2\u53D1\u5E03', 'Publicado', 'Publi\u00E9'),
   'tft.builderPublishErr': t6('Fehler', 'Error', '\uC624\uB958', '\u9519\u8BEF', 'Error', 'Erreur'),
+  // Carry-Cost-Filter f\u00FCr die Comps-Liste (Reroll / Mid / Fast 8-9)
+  'tft.cost.label': t6('Kosten', 'Cost', '\uBE44\uC6A9', '\u8D39\u7528', 'Coste', 'Co\u00FBt'),
+  'tft.cost.all': t6('Alle', 'All', '\uC804\uCCB4', '\u5168\u90E8', 'Todos', 'Tous'),
+  'tft.cost.reroll': t6('Reroll (1-2)', 'Reroll (1-2)', '\uB9AC\uB864 (1-2)', 'Reroll (1-2)', 'Reroll (1-2)', 'Reroll (1-2)'),
+  'tft.cost.mid': t6('Mid (3)', 'Mid (3)', '\uC911\uAC04 (3)', '\u4E2D\u8D39 (3)', 'Mid (3)', 'Mid (3)'),
+  'tft.cost.fast8': t6('Fast 8/9 (4-5)', 'Fast 8/9 (4-5)', 'Fast 8/9 (4-5)', 'Fast 8/9 (4-5)', 'Fast 8/9 (4-5)', 'Fast 8/9 (4-5)'),
   // In-Game Plan-Ahead Code Export (Riot Team Planner)
   'tft.planAhead.copy': t6('Plan-Ahead-Code', 'Plan Ahead code', 'Plan Ahead \uCF54\uB4DC', 'Plan Ahead \u4EE3\u7801', 'C\u00F3digo Plan Ahead', 'Code Plan Ahead'),
   'tft.planAhead.copied': t6('Kopiert!', 'Copied!', '\uBCF5\uC0AC\uB428!', '\u5DF2\u590D\u5236!', '\u00A1Copiado!', 'Copi\u00E9 !'),

@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftTraitDisplayName, type TftAssetsBundle } from '../../lib/tft-cdragon';
+import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftTraitDisplayName, tftTraitDescription, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import type { TftMatchSummary, TftParticipantSummary } from '../../lib/tft-match-processor';
 import { formatStage } from '../../lib/tft-stage';
 import { useI18n } from '../../lib/i18n';
@@ -112,6 +112,7 @@ function ActivatedTraits({ participant, assets }: { participant: TftParticipantS
             key={t.name}
             href={`/tft/traits/${encodeURIComponent(t.name)}`}
             onClick={e => e.stopPropagation()}
+            title={tftTraitDescription(assets, t.name) || undefined}
             className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] hover:brightness-125 transition"
             style={{ backgroundColor: `${styleColor}25`, color: styleColor }}
           >

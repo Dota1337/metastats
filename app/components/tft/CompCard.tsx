@@ -1,7 +1,7 @@
 'use client';
 import { useRouter } from 'next/navigation';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
-import { tftIconUrl, tftChampionTileUrl, findChampion, findItem } from '../../lib/tft-cdragon';
+import { tftIconUrl, tftChampionTileUrl, findChampion, findItem, tftTraitDisplayName, tftTraitDescription } from '../../lib/tft-cdragon';
 import { costColor as costColorOf } from '../../lib/tft-ui';
 import { useI18n } from '../../lib/i18n';
 import PlanAheadButton from './PlanAheadButton';
@@ -70,6 +70,10 @@ export default function CompCard({
   // of the ambiguous "Stargazer 6".
   const traitName = traitMeta?.name || (parts ? prettyTrait(parts.trait) : 'Unknown');
   const traitVariant = parts ? extractTraitVariant(parts.trait, traitName) : null;
+  // Authoritativer Trait-Display + Tooltip-Text aus desc (matched In-Game-
+  // Display für Stargazer-Constellations: Wolf→Boar, Shield→Altar).
+  const traitDisplay = parts ? tftTraitDisplayName(assets, parts.trait) : traitName;
+  const traitTooltip = parts ? tftTraitDescription(assets, parts.trait) : '';
   const tier = tierBadge(comp.avgPlacement);
 
   const typicalUnits = [...(comp.typicalUnits || [])]
@@ -159,17 +163,16 @@ export default function CompCard({
 
         <div className="min-w-0">
           <div className="flex items-center gap-2 mb-1.5">
-            <span className="text-white text-sm font-medium truncate">
+            <span className="text-white text-sm font-medium truncate" title={traitTooltip || undefined}>
               {parts ? (
                 <a
                   href={`/tft/traits/${encodeURIComponent(parts.trait)}`}
                   onClick={e => e.stopPropagation()}
                   className="hover:text-[#7B61FF] transition-colors"
                 >
-                  {traitName}
+                  {traitDisplay}
                 </a>
-              ) : traitName}
-              {traitVariant && <span className="text-[#a892ff]"> · {traitVariant}</span>}
+              ) : traitDisplay}
               {' · '}{carryCid ? (
                 <a
                   href={`/tft/units/${encodeURIComponent(carryCid)}`}

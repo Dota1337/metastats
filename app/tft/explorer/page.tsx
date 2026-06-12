@@ -6,7 +6,7 @@ import Footer from '../../components/Footer';
 import EmptyData from '../../components/tft/EmptyData';
 import CompCard from '../../components/tft/CompCard';
 import { useI18n } from '../../lib/i18n';
-import { loadTftAssets, tftChampionTileUrl, tftIconUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
+import { loadTftAssets, tftChampionTileUrl, tftIconUrl, tftTraitDisplayName, tftTraitDescription, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import { costColor as costColorOf } from '../../lib/tft-ui';
 import TierFilter, { type TierBucket } from '../../components/tft/TierFilter';
 
@@ -263,31 +263,19 @@ export default function TftExplorerPage() {
 
   const itemBucket = useMemo(() => itemOptionsByBucket, [itemOptionsByBucket]);
 
-  // Trait-Options mit Variant-Suffix für Multi-Variant-Familien (Stargazer
-  // Mountain/Serpent/Huntress/Medallion/Fountain/Wolf/Shield, Anima Squad
-  // Tier0-4, etc.). Vorher waren alle 7 Stargazer-Constellations als
-  // "Stargazer" gelistet — User-Befund. extractTraitVariant ist die gleiche
-  // Helper-Logik wie in CompCard/CompRow, hier inline weil's eine Zeile ist.
+  // Trait-Options nutzen den zentralen tftTraitDisplayName Helper, der den
+  // echten In-Game-Variant-Namen aus trait.desc parsed (Stargazer_Wolf zeigt
+  // als "Stargazer · Boar" weil in-game "The Boar" — apiName-Suffix wäre
+  // falsch). Description fließt als Tooltip durch.
   const traitOptions = useMemo(() => {
-    if (!assets) return [] as { id: string; name: string }[];
+    if (!assets) return [] as { id: string; name: string; tooltip: string }[];
     return Object.entries(assets.traits)
       .filter(([id, meta]) => id.startsWith(SET_PREFIX) && (meta as any)?.name)
-      .map(([id, meta]) => {
-        const baseName = (meta as any).name as string;
-        const stripped = id.replace(/^TFT\d+_/, '');
-        // Variant = was nach dem ersten "_" im stripped-Teil kommt.
-        // TFT17_Stargazer_Mountain → stripped "Stargazer_Mountain" → variant "Mountain"
-        // TFT17_Stargazer (base) → stripped "Stargazer" → kein Variant.
-        let variant: string | null = null;
-        if (stripped.includes('_')) {
-          const candidate = stripped.split('_').slice(1).join(' ');
-          if (candidate && candidate.toLowerCase() !== baseName.toLowerCase()) {
-            variant = candidate;
-          }
-        }
-        const display = variant ? `${baseName} · ${variant}` : baseName;
-        return { id, name: display };
-      })
+      .map(([id]) => ({
+        id,
+        name: tftTraitDisplayName(assets, id),
+        tooltip: tftTraitDescription(assets, id),
+      }))
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [assets, SET_PREFIX]);
 
@@ -663,7 +651,7 @@ function FilterPicker({
   assets: TftAssetsBundle | null;
   query: string;
   setQuery: (q: string) => void;
-  options: Array<{ id: string; name: string; cost?: number; icon?: string | null }>;
+  options: Array<{ id: string; name: string; cost?: number; icon?: string | null; tooltip?: string }>;
   selected: string[];
   toggle: (id: string) => void;
   clear: () => void;
@@ -695,6 +683,7 @@ function FilterPicker({
               key={o.id}
               type="button"
               onClick={() => toggle(o.id)}
+              title={o.tooltip || undefined}
               className={`w-full flex items-center gap-2 px-1.5 py-1 rounded text-left ${active ? 'bg-[#7B61FF]/20' : 'hover:bg-[#141c2e]'}`}
             >
               {iconUrl ? (

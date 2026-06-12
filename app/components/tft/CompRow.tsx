@@ -1,7 +1,7 @@
 'use client';
 import { useRouter } from 'next/navigation';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
-import { tftChampionTileUrl, findChampion } from '../../lib/tft-cdragon';
+import { tftChampionTileUrl, findChampion, tftTraitDisplayName, tftTraitDescription } from '../../lib/tft-cdragon';
 import { costColor as costColorOf } from '../../lib/tft-ui';
 import { useI18n } from '../../lib/i18n';
 import BookmarkButton from '../BookmarkButton';
@@ -111,6 +111,11 @@ export default function CompRow({
   const traitMeta = parts && assets ? assets.traits[parts.trait] : null;
   const traitName = traitMeta?.name || (parts ? prettyTrait(parts.trait) : 'Unknown');
   const traitVariant = parts ? extractTraitVariant(parts.trait, traitName) : null;
+  // Display-Name aus dem zentralen Helper (matched In-Game-Variant aus desc).
+  // Plus tooltip-Text damit Mouse-over über den Comp-Header die Trait-
+  // Beschreibung dieser Constellation zeigt.
+  const traitDisplay = parts ? tftTraitDisplayName(assets, parts.trait) : traitName;
+  const traitTooltip = parts ? tftTraitDescription(assets, parts.trait) : '';
 
   const typicalUnits = [...(comp.typicalUnits || [])]
     .map(u => ({
@@ -198,9 +203,8 @@ export default function CompRow({
           </div>
         )}
         <div className="min-w-0 leading-tight">
-          <div className="text-white font-medium truncate">
-            {traitName}
-            {traitVariant && <span className="text-[#a892ff]"> · {traitVariant}</span>}
+          <div className="text-white font-medium truncate" title={traitTooltip || undefined}>
+            {traitDisplay}
             {' · '}{carry?.name || (carryCid ? prettyChar(carryCid) : '')}
           </div>
           {(descriptor || comp.avgLevel != null) && (
@@ -315,7 +319,7 @@ export default function CompRow({
           <BookmarkButton
             type="comp"
             bookmarkKey={comp.slug}
-            label={`${traitName}${traitVariant ? ` · ${traitVariant}` : ''}${carry?.name ? ` · ${carry.name}` : ''}`}
+            label={`${traitDisplay}${carry?.name ? ` · ${carry.name}` : ''}`}
             size="sm"
           />
         </div>

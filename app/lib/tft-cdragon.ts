@@ -156,15 +156,30 @@ export function findTrait(bundle: TftAssetsBundle | null, id: string | null | un
   return getOrBuildLowerMap(bundle, traitByLowerCache, bundle.traits).get(id.toLowerCase()) ?? null;
 }
 
+// Riots interne apiName-Suffixe weichen für manche Sets vom in-Game Display
+// ab. Beispiel Stargazer-Constellations: TFT17_Stargazer_Wolf zeigt im Spiel
+// als "The Boar", _Shield als "The Altar". Der ECHTE Variant-Name steht im
+// trait.desc als "This game: The <Variant>." Patterne den raus statt blind
+// den apiName-Suffix zu nehmen.
+function variantFromDesc(desc: string | undefined | null): string | null {
+  if (!desc) return null;
+  // Riot schreibt "This game: The Mountain" (Punkt-frei, direkt anschließender
+  // Effekt-Text) oder "This game: The Boar." (mit Punkt). Pattern matched 1-2
+  // Title-Case-Wörter — egal ob mit/ohne Satzzeichen davor.
+  const m = /This game:\s*The\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/.exec(desc);
+  if (!m) return null;
+  return m[1].trim();
+}
+
 // Returnt den Display-Name eines Traits inkl. Variante. Beispiele:
-//   TFT17_Stargazer_Mountain  →  "Stargazer · Mountain"
-//   TFT17_Stargazer           →  "Stargazer"
-//   TFT17_AnimaSquad_Tier0    →  "Anima Squad · Tier0"
+//   TFT17_Stargazer_Wolf      →  "Stargazer · Boar"     (aus desc)
+//   TFT17_Stargazer_Shield    →  "Stargazer · Altar"    (aus desc)
+//   TFT17_Stargazer_Mountain  →  "Stargazer · Mountain" (auch aus desc)
+//   TFT17_Stargazer           →  "Stargazer"            (Base, kein Variant)
 // Riot modelliert Multi-Variant-Familien als separate Traits mit demselben
-// `name`-Feld; die Variante steckt im apiName (nach dem Set-Prefix + erstem _).
-// Damit alle UI-Stellen (Pickers, MatchCard-Pills, Comp-Header, Unit-Detail)
-// die gleichen Strings zeigen, gibt es diesen einen Helper. Vor 2026-06-12
-// war das in mehreren Files dupliziert mit subtilen Abweichungen.
+// `name`-Feld; die Variante steht im trait.desc ("This game: The X."). Fällt
+// die desc-Erkennung aus (alte Set-Bundles ohne diese Konvention), greift der
+// apiName-Suffix als Fallback.
 export function tftTraitDisplayName(
   bundle: TftAssetsBundle | null,
   apiName: string | null | undefined,
@@ -172,11 +187,40 @@ export function tftTraitDisplayName(
   if (!apiName) return '';
   const trait = findTrait(bundle, apiName);
   const base = trait?.name || apiName.replace(/^TFT\d+_/, '');
+  // 1) Variante aus desc (authoritativ — matched In-Game-Anzeige)
+  const descVariant = variantFromDesc(trait?.desc);
+  if (descVariant && descVariant.toLowerCase() !== base.toLowerCase()) {
+    return `${base} · ${descVariant}`;
+  }
+  // 2) Fallback: apiName-Suffix
   const stripped = apiName.replace(/^TFT\d+_/, '');
   if (!stripped.includes('_')) return base;
   const variant = stripped.split('_').slice(1).join(' ');
   if (!variant || variant.toLowerCase() === base.toLowerCase()) return base;
   return `${base} · ${variant}`;
+}
+
+// Returnt den Tooltip-Text für einen Trait — nimmt die variant-spezifische
+// Beschreibung aus trait.desc, ohne den generischen "Stargazers chart a
+// different constellation"-Boilerplate. Wenn keine Variant erkannt wird,
+// kommt der volle desc-Text zurück. Template-Variablen wie @MinUnits@ werden
+// nicht aufgelöst (das passiert in CDragon's tier-spezifischer Render-Logik,
+// die wir hier nicht haben) — der Spieler sieht den Roh-Platzhalter als
+// "(MinUnits) Allies …". Akzeptabel als Tooltip.
+export function tftTraitDescription(
+  bundle: TftAssetsBundle | null,
+  apiName: string | null | undefined,
+): string {
+  if (!apiName) return '';
+  const trait = findTrait(bundle, apiName);
+  if (!trait?.desc) return '';
+  // Strip basic HTML tags
+  let txt = trait.desc.replace(/<[^>]+>/g, '');
+  // Stargazer-Variants haben "This game: The X.<RestOfText>" — nimm nur den
+  // Rest, das ist die effektive Beschreibung dieser Constellation.
+  const m = /This game:\s*The\s+[A-Za-z][A-Za-z\s]*?[.!]\s*([\s\S]+)$/i.exec(txt);
+  if (m) txt = m[1].trim();
+  return txt;
 }
 
 // Resolve a CommunityDragon icon path to a full URL. The bundle stores

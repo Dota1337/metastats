@@ -1,0 +1,13 @@
+[Unit]
+Description=metastats Health-Probe alle 5 min
+Requires=metastats-health.service
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+RandomizedDelaySec=30
+# Holt verpasste Trigger nach Reboot direkt nach
+Persistent=true
+
+[Install]
+WantedBy=timers.target

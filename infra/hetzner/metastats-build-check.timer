@@ -1,0 +1,12 @@
+[Unit]
+Description=metastats Vercel-Build-Check alle 10 min
+Requires=metastats-build-check.service
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=10min
+RandomizedDelaySec=60
+Persistent=true
+
+[Install]
+WantedBy=timers.target

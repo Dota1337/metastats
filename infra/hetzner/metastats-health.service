@@ -1,0 +1,17 @@
+[Unit]
+Description=metastats Health-Probe (API + Supabase) + Auto-Restart
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/opt/metastats-crawler
+EnvironmentFile=/etc/metastats-crawler/env
+ExecStart=/usr/bin/node /opt/metastats-crawler/scripts/health-monitor.mjs
+TimeoutStartSec=180
+# Skript darf "fail" (exit 1) ohne dass systemd die Service als degraded markiert
+SuccessExitStatus=0 1
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,16 @@
+[Unit]
+Description=metastats Vercel-Build-Health-Check + Auto-Retrigger
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/opt/metastats-crawler
+EnvironmentFile=/etc/metastats-crawler/env
+ExecStart=/usr/bin/node /opt/metastats-crawler/scripts/vercel-build-check.mjs
+TimeoutStartSec=120
+SuccessExitStatus=0 1
+
+[Install]
+WantedBy=multi-user.target

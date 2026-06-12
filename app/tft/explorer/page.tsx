@@ -36,7 +36,13 @@ function parseTrait(key: string): string | null {
   return m ? m[1] : null;
 }
 
-function compMatches(comp: Comp, units: string[], items: string[], traits: string[]): boolean {
+function compMatches(
+  comp: Comp,
+  units: string[],
+  items: string[],
+  traits: string[],
+  assets: TftAssetsBundle | null,
+): boolean {
   if (units.length > 0) {
     const compUnits = new Set((comp.typicalUnits || []).map(u => u.characterId));
     for (const u of units) if (!compUnits.has(u)) return false;
@@ -48,9 +54,25 @@ function compMatches(comp: Comp, units: string[], items: string[], traits: strin
     for (const i of items) if (!compItems.has(i)) return false;
   }
   if (traits.length > 0) {
-    const compTrait = parseTrait(comp.clusterKey);
-    if (!compTrait) return false;
-    for (const tr of traits) if (compTrait !== tr) return false;
+    // Multi-Trait-AND: bei einem Trait reicht weiter der Lead-Trait-Match
+    // aus dem cluster_key (klassische "trait-dominated"-Comp). Bei mehreren
+    // Traits muss jeder Trait entweder Lead sein ODER über die typischen
+    // Units in der Comp vorhanden sein (≥1 Unit trägt ihn). Ohne Assets-
+    // Bundle können wir Unit-Traits nicht resolven — dann fällt der Filter
+    // auf die alte Lead-only-Logik zurück.
+    const leadTrait = parseTrait(comp.clusterKey);
+    if (!leadTrait) return false;
+    const unitTraitSet = new Set<string>();
+    if (assets) {
+      for (const u of (comp.typicalUnits || [])) {
+        const ch = assets.champions[u.characterId];
+        if (ch?.traits) for (const tr of ch.traits) unitTraitSet.add(tr);
+      }
+    }
+    for (const tr of traits) {
+      if (tr === leadTrait) continue;
+      if (assets ? !unitTraitSet.has(tr) : leadTrait !== tr) return false;
+    }
   }
   return true;
 }
@@ -233,7 +255,7 @@ export default function TftExplorerPage() {
   }, [assets, SET_PREFIX]);
 
   const filtered = useMemo(() => {
-    const result = comps.filter(c => c.games >= minGames && compMatches(c, units, items, traits));
+    const result = comps.filter(c => c.games >= minGames && compMatches(c, units, items, traits, assets));
     result.sort((a, b) => {
       switch (sortBy) {
         case 'avg':   return (a.avgPlacement ?? 9) - (b.avgPlacement ?? 9);
@@ -244,7 +266,7 @@ export default function TftExplorerPage() {
       }
     });
     return result;
-  }, [comps, units, items, traits, sortBy, minGames]);
+  }, [comps, units, items, traits, sortBy, minGames, assets]);
 
   const aggregate = useMemo(() => {
     if (filtered.length === 0) return null;

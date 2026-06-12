@@ -156,6 +156,29 @@ export function findTrait(bundle: TftAssetsBundle | null, id: string | null | un
   return getOrBuildLowerMap(bundle, traitByLowerCache, bundle.traits).get(id.toLowerCase()) ?? null;
 }
 
+// Returnt den Display-Name eines Traits inkl. Variante. Beispiele:
+//   TFT17_Stargazer_Mountain  →  "Stargazer · Mountain"
+//   TFT17_Stargazer           →  "Stargazer"
+//   TFT17_AnimaSquad_Tier0    →  "Anima Squad · Tier0"
+// Riot modelliert Multi-Variant-Familien als separate Traits mit demselben
+// `name`-Feld; die Variante steckt im apiName (nach dem Set-Prefix + erstem _).
+// Damit alle UI-Stellen (Pickers, MatchCard-Pills, Comp-Header, Unit-Detail)
+// die gleichen Strings zeigen, gibt es diesen einen Helper. Vor 2026-06-12
+// war das in mehreren Files dupliziert mit subtilen Abweichungen.
+export function tftTraitDisplayName(
+  bundle: TftAssetsBundle | null,
+  apiName: string | null | undefined,
+): string {
+  if (!apiName) return '';
+  const trait = findTrait(bundle, apiName);
+  const base = trait?.name || apiName.replace(/^TFT\d+_/, '');
+  const stripped = apiName.replace(/^TFT\d+_/, '');
+  if (!stripped.includes('_')) return base;
+  const variant = stripped.split('_').slice(1).join(' ');
+  if (!variant || variant.toLowerCase() === base.toLowerCase()) return base;
+  return `${base} · ${variant}`;
+}
+
 // Resolve a CommunityDragon icon path to a full URL. The bundle stores
 // paths like "assets/maps/tft/icons/items/hexcore/tft_item_bluebuff.tft_set13.png"
 // which combine with the bundle's iconBase to a working raw.communitydragon.org URL.

@@ -4,7 +4,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
-import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle, type TftTrait, type TftTraitTier } from '../../../lib/tft-cdragon';
+import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftTraitDisplayName, type TftAssetsBundle, type TftTrait, type TftTraitTier } from '../../../lib/tft-cdragon';
 import { buildExplorerUrl } from '../../../lib/tft-explorer-url';
 import {
   renderTraitDesc,
@@ -169,12 +169,12 @@ export default function TftTraitDetailPage() {
         <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-5 mb-5 mt-2">
           <div className="flex items-start gap-4 flex-wrap">
             {iconUrl ? (
-              <img src={iconUrl} alt={traitMeta?.name || apiName} className="w-16 h-16 rounded-lg border-2 border-[#7B61FF]" />
+              <img src={iconUrl} alt={tftTraitDisplayName(assets, apiName) || apiName} className="w-16 h-16 rounded-lg border-2 border-[#7B61FF]" />
             ) : (
               <div className="w-16 h-16 rounded-lg bg-[#1e2a3a]" />
             )}
             <div className="flex-1 min-w-0">
-              <h1 className="text-white text-2xl font-medium">{traitMeta?.name || prettyTrait(apiName)}</h1>
+              <h1 className="text-white text-2xl font-medium">{tftTraitDisplayName(assets, apiName) || prettyTrait(apiName)}</h1>
               {traitMeta?.innate && (
                 <p className="text-[#a892ff] text-xs mt-1">{traitMeta.innate}</p>
               )}

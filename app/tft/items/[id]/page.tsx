@@ -6,7 +6,7 @@ import Footer from '../../../components/Footer';
 import TierFilter, { type TierBucket } from '../../../components/tft/TierFilter';
 import EmptyData from '../../../components/tft/EmptyData';
 import { useI18n } from '../../../lib/i18n';
-import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftTraitDisplayName, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { buildExplorerUrl } from '../../../lib/tft-explorer-url';
 import tftSet from '../../../../public/tft-set.json';
 
@@ -195,8 +195,7 @@ export default function TftItemDetailPage() {
                   <div className="space-y-1.5">
                     {compsWithItem.map(c => {
                       const parts = parseClusterKey(c.clusterKey);
-                      const traitMeta = parts && assets ? assets.traits[parts.trait] : null;
-                      const traitName = traitMeta?.name || (parts ? prettyTrait(parts.trait) : '');
+                      const traitName = parts ? (tftTraitDisplayName(assets, parts.trait) || prettyTrait(parts.trait)) : '';
                       const carry = parts && assets ? assets.champions[parts.carry] : null;
                       const carryUrl = tftChampionTileUrl(assets, carry);
                       return (

@@ -130,6 +130,7 @@ export default function TftExplorerPage() {
   const [unitQuery, setUnitQuery] = useState('');
   const [itemQuery, setItemQuery] = useState('');
   const [traitQuery, setTraitQuery] = useState('');
+  const [itemTab, setItemTab] = useState<'standard' | 'artifact'>('standard');
 
   // Match-level state
   const [matchSample, setMatchSample] = useState<MatchSample[]>([]);
@@ -216,41 +217,77 @@ export default function TftExplorerPage() {
       .sort((a, b) => a.cost - b.cost || a.name.localeCompare(b.name));
   }, [assets, SET_PREFIX]);
 
-  const itemOptions = useMemo(() => {
-    if (!assets) return [] as { id: string; name: string; icon: string | null }[];
-    // Whitelist statt Blacklist — drei klare Kategorien:
-    //   1. Normale Combat-Items   →  TFT_Item_<Name>          (Deathblade, Infinity Edge …)
-    //   2. Artefakte              →  TFT_Item_Artifact_<Name> + TFT<set>_Item_Artifact_<Name>
-    //   3. Radiant-Versionen      →  TFT<n>_Item_<Name>Radiant
-    // Alles andere (Augments, Emblems, Spatulas, MarketOfferings, Hex-Buffs,
-    // Loot-Orbs, Anvils, Trait-Emblems, Debug-Items, Set-Mechanik-Mods,
-    // Tactician-Items, Tome-Items) fällt explizit raus.
-    const JUNK_NAME = /^@|^tft_item_name_|@[A-Za-z]+@/i;
-    return Object.entries(assets.items)
-      .filter(([id, meta]) => {
-        const name = (meta as any)?.name;
-        if (!name || JUNK_NAME.test(name)) return false;
-        // Artefakte aus jedem Set
-        if (/^TFT(\d+)?_Item_Artifact_/.test(id)) return true;
-        // Radiant-Items (TFT5_Item_*Radiant, TFT17_Item_*_Radiant)
-        if (/^TFT\d+_Item_.*Radiant$/.test(id)) return true;
-        // Normale Combat-Items: TFT_Item_<Name> ohne Junk-Suffix
-        if (id.startsWith('TFT_Item_')) {
-          if (/Grant|Anvil|Offering|Orb|Mod|Spat|Augment|Tome|Refund|Tactician|Choice|Test|Debug|Hex|Emblem|TestDummy|Crit|Capsule|Crown/i.test(id)) return false;
-          if (/component|recipe/i.test(name)) return false;
-          return true;
-        }
-        return false;
-      })
-      .map(([id, meta]) => ({ id, name: (meta as any).name as string, icon: (meta as any).icon || null }))
-      .sort((a, b) => a.name.localeCompare(b.name));
+  // Item-Picker mit zwei Buckets: "Standard" (Combat-Items, composition=2)
+  // und "Artefakte". Filter cross-checked gegen assets.active.items damit
+  // veraltete Set-IDs, Komponenten, Corrupted-Variants, doppelte Display-
+  // Namen alle automatisch wegfallen. Frühere Whitelist-Heuristik produzierte
+  // 25+ Duplicate-Namen (Corrupted*, Free*, Academy*) und enthielt Komponenten
+  // wie BFSword/ChainVest.
+  const JUNK_NAME = /^@|^tft_item_name_|@[A-Za-z]+@/i;
+  const itemOptionsByBucket = useMemo(() => {
+    const empty = { standard: [], artifact: [] } as {
+      standard: { id: string; name: string; icon: string | null }[];
+      artifact: { id: string; name: string; icon: string | null }[];
+    };
+    if (!assets) return empty;
+    const activeSet = new Set<string>(assets.active?.items || []);
+    const standard: typeof empty.standard = [];
+    const artifact: typeof empty.artifact = [];
+    for (const [id, metaRaw] of Object.entries(assets.items)) {
+      if (!activeSet.has(id)) continue;
+      const meta = metaRaw as any;
+      const name: string | undefined = meta?.name;
+      if (!name || JUNK_NAME.test(name)) continue;
+      const entry = { id, name, icon: (meta?.icon as string | null) || null };
+      // Artefakte: explizites Pattern. Riot bezeichnet sie konsistent als
+      // TFT(\d*)_Item_Artifact_<Name>.
+      if (/^TFT\d*_Item_Artifact_/.test(id)) {
+        artifact.push(entry);
+        continue;
+      }
+      // Standard-Combat-Items: composition.length === 2 = aus 2 Komponenten
+      // gebaut. Diese Definition matched alle "echten" Carry-/Tank-Items und
+      // schließt Komponenten (composition=[]) sowie Augment-/Quest-Items
+      // automatisch aus. Cross-Set-Radiants (TFT5_Item_*Radiant) und
+      // PsyOps/AnimaSquad-Trait-Items werden ebenfalls erkannt — falls Riot
+      // sie als 2-Komponenten-Build modelliert.
+      if (Array.isArray(meta?.composition) && meta.composition.length === 2) {
+        standard.push(entry);
+      }
+    }
+    const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name);
+    standard.sort(byName);
+    artifact.sort(byName);
+    return { standard, artifact };
   }, [assets]);
 
+  const itemBucket = useMemo(() => itemOptionsByBucket, [itemOptionsByBucket]);
+
+  // Trait-Options mit Variant-Suffix für Multi-Variant-Familien (Stargazer
+  // Mountain/Serpent/Huntress/Medallion/Fountain/Wolf/Shield, Anima Squad
+  // Tier0-4, etc.). Vorher waren alle 7 Stargazer-Constellations als
+  // "Stargazer" gelistet — User-Befund. extractTraitVariant ist die gleiche
+  // Helper-Logik wie in CompCard/CompRow, hier inline weil's eine Zeile ist.
   const traitOptions = useMemo(() => {
     if (!assets) return [] as { id: string; name: string }[];
     return Object.entries(assets.traits)
       .filter(([id, meta]) => id.startsWith(SET_PREFIX) && (meta as any)?.name)
-      .map(([id, meta]) => ({ id, name: (meta as any).name as string }))
+      .map(([id, meta]) => {
+        const baseName = (meta as any).name as string;
+        const stripped = id.replace(/^TFT\d+_/, '');
+        // Variant = was nach dem ersten "_" im stripped-Teil kommt.
+        // TFT17_Stargazer_Mountain → stripped "Stargazer_Mountain" → variant "Mountain"
+        // TFT17_Stargazer (base) → stripped "Stargazer" → kein Variant.
+        let variant: string | null = null;
+        if (stripped.includes('_')) {
+          const candidate = stripped.split('_').slice(1).join(' ');
+          if (candidate && candidate.toLowerCase() !== baseName.toLowerCase()) {
+            variant = candidate;
+          }
+        }
+        const display = variant ? `${baseName} · ${variant}` : baseName;
+        return { id, name: display };
+      })
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [assets, SET_PREFIX]);
 
@@ -363,16 +400,19 @@ export default function TftExplorerPage() {
               clear={() => setUnits([])}
             />
 
-            <FilterPicker
-              title={t('tft.explorer.items')}
-              icon="item"
+            <ItemFilterPicker
               assets={assets}
               query={itemQuery}
               setQuery={setItemQuery}
-              options={itemOptions.filter(o => o.name.toLowerCase().includes(itemQuery.toLowerCase())).slice(0, 60)}
+              tab={itemTab}
+              setTab={setItemTab}
+              standardOptions={itemBucket.standard.filter(o => o.name.toLowerCase().includes(itemQuery.toLowerCase()))}
+              artifactOptions={itemBucket.artifact.filter(o => o.name.toLowerCase().includes(itemQuery.toLowerCase()))}
               selected={items}
               toggle={(id) => setItems(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
               clear={() => setItems([])}
+              tStandard={t('tft.explorer.items.standard')}
+              tArtifact={t('tft.explorer.items.artifact')}
             />
 
             <FilterPicker
@@ -666,6 +706,100 @@ function FilterPicker({
             </button>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+// Item-Picker mit Standard/Artefakte-Tabs. Bucket-Counts in den Tab-Labels
+// so der User direkt sieht ob in einem Tab überhaupt was drin ist. Query
+// filtert in BEIDEN Tabs gleichzeitig — wenn der aktive Tab leer ist aber der
+// andere Treffer hätte, schubst ein "→ N im anderen Tab"-Hinweis um.
+function ItemFilterPicker({
+  assets, query, setQuery, tab, setTab,
+  standardOptions, artifactOptions, selected, toggle, clear,
+  tStandard, tArtifact,
+}: {
+  assets: TftAssetsBundle | null;
+  query: string;
+  setQuery: (q: string) => void;
+  tab: 'standard' | 'artifact';
+  setTab: (t: 'standard' | 'artifact') => void;
+  standardOptions: { id: string; name: string; icon: string | null }[];
+  artifactOptions: { id: string; name: string; icon: string | null }[];
+  selected: string[];
+  toggle: (id: string) => void;
+  clear: () => void;
+  tStandard: string;
+  tArtifact: string;
+}) {
+  const options = (tab === 'standard' ? standardOptions : artifactOptions).slice(0, 60);
+  const otherCount = tab === 'standard' ? artifactOptions.length : standardOptions.length;
+  const otherLabel = tab === 'standard' ? tArtifact : tStandard;
+  return (
+    <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-3">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex gap-1">
+          {(['standard', 'artifact'] as const).map(b => {
+            const label = b === 'standard' ? tStandard : tArtifact;
+            const count = b === 'standard' ? standardOptions.length : artifactOptions.length;
+            const active = b === tab;
+            return (
+              <button
+                key={b}
+                type="button"
+                onClick={() => setTab(b)}
+                className={`px-2 py-0.5 rounded text-[10px] uppercase tracking-widest ${
+                  active
+                    ? 'bg-[#7B61FF] text-white'
+                    : 'bg-[#141c2e] text-[#7a8aa0] hover:text-white'
+                }`}
+              >
+                {label} <span className="tabular-nums opacity-70">{count}</span>
+              </button>
+            );
+          })}
+        </div>
+        {selected.length > 0 && (
+          <button type="button" onClick={clear} className="text-[10px] text-[#7B61FF] hover:underline">
+            × {selected.length}
+          </button>
+        )}
+      </div>
+      <input
+        type="text" value={query} onChange={e => setQuery(e.target.value)}
+        placeholder=""
+        className="w-full bg-[#141c2e] border border-[#1e2a3a] rounded text-white text-xs px-2 py-1.5 mb-2"
+      />
+      <div className="max-h-40 overflow-y-auto space-y-0.5">
+        {options.map(o => {
+          const active = selected.includes(o.id);
+          const iconUrl = assets ? tftIconUrl(assets, (assets.items[o.id] as any)?.icon) || null : null;
+          return (
+            <button
+              key={o.id}
+              type="button"
+              onClick={() => toggle(o.id)}
+              className={`w-full flex items-center gap-2 px-1.5 py-1 rounded text-left ${active ? 'bg-[#7B61FF]/20' : 'hover:bg-[#141c2e]'}`}
+            >
+              {iconUrl ? (
+                <img src={iconUrl} alt="" className="w-5 h-5 rounded object-cover flex-none" />
+              ) : (
+                <div className="w-5 h-5 rounded bg-[#1e2a3a] flex-none" />
+              )}
+              <span className={`text-xs truncate ${active ? 'text-white' : 'text-[#a0b0c5]'}`}>{o.name}</span>
+            </button>
+          );
+        })}
+        {options.length === 0 && query && otherCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setTab(tab === 'standard' ? 'artifact' : 'standard')}
+            className="w-full text-[11px] text-[#a892ff] hover:underline py-2"
+          >
+            → {otherCount} in {otherLabel}
+          </button>
+        )}
       </div>
     </div>
   );

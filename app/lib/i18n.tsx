@@ -274,6 +274,9 @@ const translations = {
   'tft.builderPublishErr': t6('Fehler', 'Error', '\uC624\uB958', '\u9519\u8BEF', 'Error', 'Erreur'),
   // Cross-Drill ins Data-Explorer (Klick auf Detail-Page-Header)
   'tft.drill.openInExplorer': t6('Im Explorer \u00F6ffnen', 'Open in Explorer', '\uD0D0\uC0C9\uAE30\uC5D0\uC11C \uC5F4\uAE30', '\u5728\u6D4F\u89C8\u5668\u4E2D\u6253\u5F00', 'Abrir en Explorador', 'Ouvrir dans l\'Explorateur'),
+  // Explorer Item-Picker-Tabs (Standard-Combat vs Artefakte)
+  'tft.explorer.items.standard': t6('Standard', 'Standard', '\uAE30\uBCF8', '\u6807\u51C6', 'Est\u00E1ndar', 'Standard'),
+  'tft.explorer.items.artifact': t6('Artefakte', 'Artifacts', '\uC544\uD2F0\uD329\uD2B8', '\u795E\u5668', 'Artefactos', 'Artefacts'),
   // Explorer Filter-Visibility (Chip-Leiste + Empty-State-Diagnose)
   'tft.explorer.activeFilters': t6('Aktive Filter', 'Active filters', '\uD65C\uC131 \uD544\uD130', '\u5DF2\u9009\u7B5B\u9009', 'Filtros activos', 'Filtres actifs'),
   'tft.explorer.resetAll': t6('Alle zur\u00FCcksetzen', 'Reset all', '\uBAA8\uB450 \uCD08\uAE30\uD654', '\u5168\u90E8\u91CD\u7F6E', 'Restablecer todo', 'Tout r\u00E9initialiser'),

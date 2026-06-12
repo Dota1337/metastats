@@ -11,7 +11,7 @@ import TierFilter, { type TierBucket } from '../../../components/tft/TierFilter'
 import EmptyData from '../../../components/tft/EmptyData';
 import { useI18n } from '../../../lib/i18n';
 import { tftPatchLabel } from '../../../lib/tft-patch-label';
-import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftTraitDisplayName, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { buildExplorerUrl } from '../../../lib/tft-explorer-url';
 
 type ItemEntry = { item: string; games: number; avgPlacement: number | null; top4Rate: number | null };
@@ -133,7 +133,7 @@ export default function TftUnitDetailPage() {
                           href={`/tft/traits/${encodeURIComponent(tr)}`}
                           className="hover:text-[#7B61FF] transition-colors"
                         >
-                          {assets?.traits[tr]?.name || prettyChar(tr)}
+                          {tftTraitDisplayName(assets, tr) || prettyChar(tr)}
                         </a>
                       </span>
                     ))}

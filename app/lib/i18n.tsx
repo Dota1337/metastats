@@ -272,6 +272,8 @@ const translations = {
   'tft.builderPublishHandle': t6('Dein Anzeigename (optional)', 'Your display name (optional)', '\uD45C\uC2DC \uC774\uB984 (\uC120\uD0DD)', '\u663E\u793A\u540D (\u53EF\u9009)', 'Tu nombre (opcional)', 'Ton nom (optionnel)'),
   'tft.builderPublished': t6('Geteilt', 'Published', '\uAC8C\uC2DC\uB428', '\u5DF2\u53D1\u5E03', 'Publicado', 'Publi\u00E9'),
   'tft.builderPublishErr': t6('Fehler', 'Error', '\uC624\uB958', '\u9519\u8BEF', 'Error', 'Erreur'),
+  // Cross-Drill ins Data-Explorer (Klick auf Detail-Page-Header)
+  'tft.drill.openInExplorer': t6('Im Explorer \u00F6ffnen', 'Open in Explorer', '\uD0D0\uC0C9\uAE30\uC5D0\uC11C \uC5F4\uAE30', '\u5728\u6D4F\u89C8\u5668\u4E2D\u6253\u5F00', 'Abrir en Explorador', 'Ouvrir dans l\'Explorateur'),
   // Carry-Cost-Filter f\u00FCr die Comps-Liste (Reroll / Mid / Fast 8-9)
   'tft.cost.label': t6('Kosten', 'Cost', '\uBE44\uC6A9', '\u8D39\u7528', 'Coste', 'Co\u00FBt'),
   'tft.cost.all': t6('Alle', 'All', '\uC804\uCCB4', '\u5168\u90E8', 'Todos', 'Tous'),

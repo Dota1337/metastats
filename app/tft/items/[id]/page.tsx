@@ -7,6 +7,7 @@ import TierFilter, { type TierBucket } from '../../../components/tft/TierFilter'
 import EmptyData from '../../../components/tft/EmptyData';
 import { useI18n } from '../../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import { buildExplorerUrl } from '../../../lib/tft-explorer-url';
 import tftSet from '../../../../public/tft-set.json';
 
 interface ItemDetail {
@@ -141,7 +142,18 @@ export default function TftItemDetailPage() {
           )}
         </div>
 
-        <div className="flex justify-end mb-4">
+        <div className="flex justify-end items-center gap-2 mb-4">
+          <a
+            href={buildExplorerUrl({ items: [id], bucket })}
+            className="px-2.5 py-1.5 rounded text-xs bg-[#141c2e] border border-[#1e2a3a] text-[#a0b0c5] hover:text-white hover:border-[#7B61FF]/60 transition-colors flex items-center gap-1.5"
+            title={t('tft.drill.openInExplorer')}
+          >
+            <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <circle cx="4.5" cy="4.5" r="3" />
+              <line x1="6.6" y1="6.6" x2="9.5" y2="9.5" strokeLinecap="round" />
+            </svg>
+            <span className="hidden sm:inline">{t('tft.drill.openInExplorer')}</span>
+          </a>
           <TierFilter value={bucket} onChange={setBucket} />
         </div>
 

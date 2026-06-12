@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
 import EmptyData from '../../components/tft/EmptyData';
@@ -78,19 +79,29 @@ interface MatchAggregate {
   regionDist: Record<string, number>;
 }
 
+// Deep-Link-Parser für ?units=,items=,traits= damit der "Im Explorer öffnen"
+// Drilldown von den Detail-Pages funktioniert. Comma-separated, encoded.
+function parseCsvParam(raw: string | null): string[] {
+  if (!raw) return [];
+  return raw.split(',').map(s => decodeURIComponent(s).trim()).filter(Boolean);
+}
+
 export default function TftExplorerPage() {
   const { t } = useI18n();
+  const searchParams = useSearchParams();
   const [mode, setMode] = useState<Mode>('comps');
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
   const [comps, setComps] = useState<Comp[]>([]);
   const [loading, setLoading] = useState(false);
-  const [bucket, setBucket] = useState<TierBucket>('master_plus');
-  const [region, setRegion] = useState('all');
+  const [bucket, setBucket] = useState<TierBucket>(() =>
+    (searchParams.get('bucket') as TierBucket) || 'master_plus'
+  );
+  const [region, setRegion] = useState(() => searchParams.get('region') || 'all');
   const [days, setDays] = useState(3);
 
-  const [units, setUnits] = useState<string[]>([]);
-  const [items, setItems] = useState<string[]>([]);
-  const [traits, setTraits] = useState<string[]>([]);
+  const [units, setUnits] = useState<string[]>(() => parseCsvParam(searchParams.get('units')));
+  const [items, setItems] = useState<string[]>(() => parseCsvParam(searchParams.get('items')));
+  const [traits, setTraits] = useState<string[]>(() => parseCsvParam(searchParams.get('traits')));
   const [sortBy, setSortBy] = useState<SortKey>('avg');
   const [minGames, setMinGames] = useState(50);
 

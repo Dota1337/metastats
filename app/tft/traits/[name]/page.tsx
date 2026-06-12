@@ -5,6 +5,7 @@ import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle, type TftTrait, type TftTraitTier } from '../../../lib/tft-cdragon';
+import { buildExplorerUrl } from '../../../lib/tft-explorer-url';
 import {
   renderTraitDesc,
   findTraitItemPool,
@@ -186,6 +187,17 @@ export default function TftTraitDetailPage() {
                 </div>
               )}
             </div>
+            <a
+              href={buildExplorerUrl({ traits: [apiName] })}
+              className="px-2.5 py-1.5 rounded text-xs bg-[#141c2e] border border-[#1e2a3a] text-[#a0b0c5] hover:text-white hover:border-[#7B61FF]/60 transition-colors flex items-center gap-1.5 self-start"
+              title={t('tft.drill.openInExplorer')}
+            >
+              <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <circle cx="4.5" cy="4.5" r="3" />
+                <line x1="6.6" y1="6.6" x2="9.5" y2="9.5" strokeLinecap="round" />
+              </svg>
+              <span className="hidden sm:inline">{t('tft.drill.openInExplorer')}</span>
+            </a>
           </div>
           {(() => {
             // For multi-variant families we render the per-variant cards

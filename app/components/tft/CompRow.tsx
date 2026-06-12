@@ -5,6 +5,7 @@ import { tftChampionTileUrl, findChampion } from '../../lib/tft-cdragon';
 import { costColor as costColorOf } from '../../lib/tft-ui';
 import { useI18n } from '../../lib/i18n';
 import BookmarkButton from '../BookmarkButton';
+import PlanAheadButton from './PlanAheadButton';
 
 // Dense, scannable row layout for /tft/comps. Replaces the narrative
 // CompCard so pros can survey 20+ comps at a glance — avg-placement is
@@ -171,8 +172,8 @@ export default function CompRow({
       {/* Mobile: stacked. Desktop: tight horizontal row. */}
       <div className={`grid grid-cols-[1.25rem_1.5rem_2.5rem_minmax(7rem,1fr)_minmax(0,auto)_auto] ${
         showVelocity
-          ? 'sm:grid-cols-[1.25rem_1.5rem_2.5rem_minmax(11rem,1fr)_minmax(0,auto)_3rem_3rem_3rem_3rem_3rem_3.5rem_1.25rem]'
-          : 'sm:grid-cols-[1.25rem_1.5rem_2.5rem_minmax(11rem,1fr)_minmax(0,auto)_3rem_3rem_3rem_3rem_3rem_1.25rem]'
+          ? 'sm:grid-cols-[1.25rem_1.5rem_2.5rem_minmax(11rem,1fr)_minmax(0,auto)_3rem_3rem_3rem_3rem_3rem_3.5rem_3rem]'
+          : 'sm:grid-cols-[1.25rem_1.5rem_2.5rem_minmax(11rem,1fr)_minmax(0,auto)_3rem_3rem_3rem_3rem_3rem_3rem]'
       } items-center gap-2 sm:gap-3`}>
         <div className="text-[#7a8aa0] tabular-nums text-right">{rank}</div>
         <div
@@ -304,7 +305,13 @@ export default function CompRow({
             })()}
           </div>
         )}
-        <div className="hidden sm:flex items-center justify-end">
+        <div className="hidden sm:flex items-center justify-end gap-1">
+          <PlanAheadButton
+            characterIds={typicalUnits.slice(0, 10).map(u => u.characterId)}
+            setNumber={assets?.set ?? 17}
+            assets={assets}
+            size="sm"
+          />
           <BookmarkButton
             type="comp"
             bookmarkKey={comp.slug}

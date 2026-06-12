@@ -4,6 +4,7 @@ import type { TftAssetsBundle } from '../../lib/tft-cdragon';
 import { tftIconUrl, tftChampionTileUrl, findChampion, findItem } from '../../lib/tft-cdragon';
 import { costColor as costColorOf } from '../../lib/tft-ui';
 import { useI18n } from '../../lib/i18n';
+import PlanAheadButton from './PlanAheadButton';
 
 interface CompVelocity {
   deltaAvgPlace: number | null;
@@ -242,6 +243,14 @@ export default function CompCard({
             <div className="text-[#a0b0c5] text-sm">{comp.games}</div>
           </div>
           {showVelocity && <VelocityStat velocity={comp.velocity} shift={velocityShift} t={t} />}
+          <div className="flex items-center pl-2 border-l border-[#1e2a3a]">
+            <PlanAheadButton
+              characterIds={typicalUnits.slice(0, 10).map(u => u.characterId)}
+              setNumber={assets?.set ?? 17}
+              assets={assets}
+              size="md"
+            />
+          </div>
         </div>
       </div>
     </div>

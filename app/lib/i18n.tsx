@@ -272,6 +272,11 @@ const translations = {
   'tft.builderPublishHandle': t6('Dein Anzeigename (optional)', 'Your display name (optional)', '\uD45C\uC2DC \uC774\uB984 (\uC120\uD0DD)', '\u663E\u793A\u540D (\u53EF\u9009)', 'Tu nombre (opcional)', 'Ton nom (optionnel)'),
   'tft.builderPublished': t6('Geteilt', 'Published', '\uAC8C\uC2DC\uB428', '\u5DF2\u53D1\u5E03', 'Publicado', 'Publi\u00E9'),
   'tft.builderPublishErr': t6('Fehler', 'Error', '\uC624\uB958', '\u9519\u8BEF', 'Error', 'Erreur'),
+  // In-Game Plan-Ahead Code Export (Riot Team Planner)
+  'tft.planAhead.copy': t6('Plan-Ahead-Code', 'Plan Ahead code', 'Plan Ahead \uCF54\uB4DC', 'Plan Ahead \u4EE3\u7801', 'C\u00F3digo Plan Ahead', 'Code Plan Ahead'),
+  'tft.planAhead.copied': t6('Kopiert!', 'Copied!', '\uBCF5\uC0AC\uB428!', '\u5DF2\u590D\u5236!', '\u00A1Copiado!', 'Copi\u00E9 !'),
+  'tft.planAhead.failed': t6('Fehlgeschlagen', 'Failed', '\uC2E4\uD328', '\u5931\u8D25', 'Fall\u00F3', '\u00C9chec'),
+  'tft.planAhead.export': t6('In-Game-Code exportieren', 'Export in-game code', '\uC778\uAC8C\uC784 \uCF54\uB4DC \uB0B4\uBCF4\uB0B4\uAE30', '\u5BFC\u51FA\u6E38\u620F\u5185\u4EE3\u7801', 'Exportar c\u00F3digo en juego', 'Exporter code in-game'),
   'tft.community.title': t6('Community-Comps', 'Community Comps', '\uCEE4\uBBA4\uB2C8\uD2F0 \uC870\uD569', '\u793E\u533A\u9635\u5BB9', 'Comps de la comunidad', 'Comps communaut\u00E9'),
   'tft.community.subtitle': t6(
     'Von Spielern geteilte Comp-Builds \u2014 bewerte deine Favoriten.',

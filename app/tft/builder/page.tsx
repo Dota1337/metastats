@@ -6,6 +6,7 @@ import Footer from '../../components/Footer';
 import TftHero from '../../components/tft/TftHero';
 import { useI18n } from '../../lib/i18n';
 import { loadTftAssets, tftChampionTileUrl, tftIconUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
+import { buildPlanAheadCode } from '../../lib/tft-plan-ahead-code';
 
 // Visual comp-builder with TFT-standard 4×7 pointy-top hex board.
 // Row layout (cell indices) — matches in-game player POV:
@@ -183,6 +184,7 @@ export default function TftBuilderPage() {
   const [savedComps, setSavedComps] = useState<SavedComp[]>([]);
   const [shareToast, setShareToast] = useState(false);
   const [publishState, setPublishState] = useState<'idle' | 'sending' | 'ok' | 'err'>('idle');
+  const [planAheadState, setPlanAheadState] = useState<'idle' | 'ok' | 'err'>('idle');
   const dragRef = useRef<{ from: 'palette' | 'board' | 'item'; payload: string | number; fromTeam?: Team } | null>(null);
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
@@ -581,6 +583,29 @@ export default function TftBuilderPage() {
     } catch { /* ignore */ }
   }
 
+  // In-Game Plan-Ahead Code in den Clipboard kopieren. Nimmt die Champions
+  // in der Placement-Reihenfolge des eigenen Boards — der Riot Team Planner
+  // erwartet die Slots so sortiert wie der Spieler sie sehen will.
+  async function copyPlanAheadCode() {
+    if (!assets) return;
+    const ids = ownPlacements.map(p => p.characterId);
+    if (ids.length === 0) return;
+    const result = buildPlanAheadCode(ids, assets.set, assets);
+    if (!result || !result.code) {
+      setPlanAheadState('err');
+      setTimeout(() => setPlanAheadState('idle'), 1800);
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(result.code);
+      setPlanAheadState('ok');
+      setTimeout(() => setPlanAheadState('idle'), 1800);
+    } catch {
+      setPlanAheadState('err');
+      setTimeout(() => setPlanAheadState('idle'), 1800);
+    }
+  }
+
   // Publish to community gallery — anonymous, cookie-tracked.
   async function publishToCommunity() {
     if (typeof window === 'undefined' || ownPlacements.length === 0) return;
@@ -866,6 +891,22 @@ export default function TftBuilderPage() {
                   className="px-3 py-1.5 rounded text-xs bg-[#141c2e] text-[#a0b0c5] hover:text-white border border-[#1e2a3a] disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   {shareToast ? t('tft.builderShareCopied') : t('tft.builderShare')}
+                </button>
+                <button
+                  onClick={copyPlanAheadCode}
+                  disabled={ownPlacements.length === 0}
+                  className={`px-3 py-1.5 rounded text-xs border disabled:opacity-30 disabled:cursor-not-allowed ${
+                    planAheadState === 'ok'
+                      ? 'bg-[#3ecf8e]/15 border-[#3ecf8e]/60 text-[#3ecf8e]'
+                      : planAheadState === 'err'
+                      ? 'bg-[#e44040]/15 border-[#e44040]/60 text-[#e44040]'
+                      : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5] hover:text-white'
+                  }`}
+                  title={t('tft.planAhead.copy')}
+                >
+                  {planAheadState === 'ok' ? '✓ ' + t('tft.planAhead.copied')
+                    : planAheadState === 'err' ? t('tft.planAhead.failed')
+                    : t('tft.planAhead.export')}
                 </button>
                 <button
                   onClick={publishToCommunity}

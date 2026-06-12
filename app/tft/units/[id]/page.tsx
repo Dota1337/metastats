@@ -35,6 +35,9 @@ interface UnitDetail {
 }
 
 type StarTier = 'all' | '1' | '2' | '3';
+// Item-Count-Filter (0-3 Items pro Carry). null = kein Filter aktiv. Wird
+// zusammen mit StarTier zum 2D-Filter auf der Carry-Heatmap.
+type ItemCount = null | 0 | 1 | 2 | 3;
 
 interface CompWithUnit {
   slug: string;
@@ -52,6 +55,7 @@ export default function TftUnitDetailPage() {
   const initialBucket = (search.get('bucket') as TierBucket) || 'master_plus';
   const [bucket, setBucket] = useState<TierBucket>(initialBucket);
   const [star, setStar] = useState<StarTier>('all');
+  const [itemCount, setItemCount] = useState<ItemCount>(null);
   const [data, setData] = useState<UnitDetail | null | undefined>(undefined);
   const [hasData, setHasData] = useState<boolean | null>(null);
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
@@ -288,6 +292,10 @@ export default function TftUnitDetailPage() {
                 // (green better → red worse). Replaces the player-HP "damage
                 // atlas" (TFT API has no per-unit combat damage). Renders once
                 // the aggregator has populated carryPlacementByTier.
+                //
+                // Cells klickbar: setzt star + itemCount als 2D-Cross-Filter.
+                // Identifiziert den fokussierten Bin durch Border-Highlight +
+                // prominente Stat-Box oberhalb der Heatmap.
                 const perf = data.carryPlacementByTier;
                 if (!perf || Object.keys(perf).length === 0) return null;
                 const tiers = Object.keys(perf).sort();
@@ -302,9 +310,28 @@ export default function TftUnitDetailPage() {
                   const hue = Math.round(140 * (1 - (c - 3.0) / 2.5));
                   return `hsl(${hue}, 50%, 30%)`;
                 };
+                const focusedBin = (star !== 'all' && itemCount != null)
+                  ? perf[star]?.[String(itemCount)] || null
+                  : null;
                 return (
                   <Section title={t('tft.carryStrength')}>
                     <div className="text-[#7a8aa0] text-[11px] mb-2">{t('tft.carryStrengthCaption')}</div>
+                    {focusedBin && (
+                      <div className="bg-[#7B61FF]/10 border border-[#7B61FF]/40 rounded p-2.5 mb-2 flex flex-wrap items-center gap-3 text-[11px] tabular-nums">
+                        <span className="text-[#c39bff] font-medium">
+                          {star}★ · {itemCount} {t('tft.itemsShort')}
+                        </span>
+                        <span className="text-white">Ø {focusedBin.avgPlacement?.toFixed(2) ?? '—'}</span>
+                        <span className="text-[#3ecf8e]">{focusedBin.top4Rate != null ? `${(focusedBin.top4Rate * 100).toFixed(1)}% T4` : '—'}</span>
+                        <span className="text-[#e0c75a]">{focusedBin.top1Rate != null ? `${(focusedBin.top1Rate * 100).toFixed(1)}% T1` : '—'}</span>
+                        <span className="text-[#7a8aa0]">{focusedBin.games.toLocaleString('de-DE')} {t('tft.gamesShort')}</span>
+                        <button
+                          type="button"
+                          onClick={() => { setStar('all'); setItemCount(null); }}
+                          className="ml-auto text-[#7a8aa0] hover:text-white text-[11px]"
+                        >× {t('tft.adv.reset')}</button>
+                      </div>
+                    )}
                     <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3 overflow-x-auto">
                       <div
                         className="inline-grid gap-1 text-[11px] tabular-nums min-w-full"
@@ -320,15 +347,31 @@ export default function TftUnitDetailPage() {
                             {itemCounts.map(ic => {
                               const e = perf[tier]?.[String(ic)];
                               const place = e?.avgPlacement ?? null;
+                              const isFocused = star === tier && itemCount === ic;
+                              const isClickable = e != null;
                               return (
-                                <div
+                                <button
+                                  type="button"
                                   key={`${tier}-${ic}`}
-                                  className="rounded text-center py-2 text-white"
+                                  disabled={!isClickable}
+                                  onClick={() => {
+                                    if (!isClickable) return;
+                                    if (isFocused) {
+                                      setStar('all');
+                                      setItemCount(null);
+                                    } else {
+                                      setStar(tier as StarTier);
+                                      setItemCount(ic as ItemCount);
+                                    }
+                                  }}
+                                  className={`rounded text-center py-2 text-white transition-all ${
+                                    isClickable ? 'cursor-pointer hover:brightness-125' : 'cursor-default'
+                                  } ${isFocused ? 'ring-2 ring-[#c39bff] ring-offset-1 ring-offset-[#141c2e]' : ''}`}
                                   style={{ backgroundColor: colorFor(place) }}
                                   title={e ? `${tier}★ · ${ic} ${t('tft.itemsShort')} · Ø ${place?.toFixed(2)} · ${e.top4Rate != null ? `${(e.top4Rate * 100).toFixed(0)}% T4` : '—'} · ${e.games} ${t('tft.gamesShort')}` : undefined}
                                 >
                                   {place != null ? place.toFixed(2) : '·'}
-                                </div>
+                                </button>
                               );
                             })}
                           </Fragment>

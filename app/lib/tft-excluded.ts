@@ -25,6 +25,13 @@ const EXCLUDED_ITEMS_LOWER: ReadonlySet<string> = new Set([
   'tft_item_emptybag', // empty-bag placeholder
 ]);
 
+// Pattern-Filter für Items die nicht auf "best items" Listen gehören. Aktuell
+// nur Thief's Gloves in allen Varianten (Basis, Radiant, Shadow, Support,
+// Assist-Pickup) — das Item rolld pro Runde völlig zufällige Items und wäre
+// als "Top-Build" deshalb nur Lärm statt Signal. Die User-Vorgabe: "Top Item-
+// Builds müssen die besten/meistgespielten Items zeigen, nicht Random-Pulls."
+const EXCLUDED_ITEM_PATTERN = /thiefsgloves/i;
+
 export function isExcludedUnit(characterId: string | null | undefined): boolean {
   if (!characterId) return false;
   const lower = characterId.toLowerCase();
@@ -32,5 +39,18 @@ export function isExcludedUnit(characterId: string | null | undefined): boolean 
 }
 
 export function isExcludedItem(apiName: string | null | undefined): boolean {
-  return !!apiName && EXCLUDED_ITEMS_LOWER.has(apiName.toLowerCase());
+  if (!apiName) return false;
+  const lower = apiName.toLowerCase();
+  return EXCLUDED_ITEMS_LOWER.has(lower) || EXCLUDED_ITEM_PATTERN.test(lower);
+}
+
+// Für Item-Sets (Carry-Builds = mehrere Items zusammen). Wenn auch nur ein
+// Item im Set excluded ist, fliegt das ganze Set raus — denn ein Build mit
+// Thief's Gloves drin ist kein zielführender Build, sondern ein zufälliger
+// Snapshot. Wird in der API verwendet wo `topItemSets` und `carryItems`
+// gerendert werden.
+export function setContainsExcludedItem(items: string[] | null | undefined): boolean {
+  if (!items?.length) return false;
+  for (const it of items) if (isExcludedItem(it)) return true;
+  return false;
 }

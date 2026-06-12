@@ -7,7 +7,7 @@ import {
   mergeJsonbCountDicts,
 } from '../../../lib/tft-supabase-reader';
 import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias } from '../../../lib/api-cache';
-import { isExcludedUnit, isExcludedItem } from '../../../lib/tft-excluded';
+import { isExcludedUnit, isExcludedItem, setContainsExcludedItem } from '../../../lib/tft-excluded';
 
 // /api/tft/comps
 // List view: returns aggregated comp clusters that match the filter set.
@@ -331,7 +331,18 @@ function baseComp(r: CompRow, participants: number) {
     avgLastRound: r.games > 0 && r.sum_last_round ? Number(r.sum_last_round) / Number(r.games) : null,
     typicalUnits: mergeJsonbCountArrays(r.typical_units_merged || [], 'characterId', 9, [
       { field: 'topItems', innerKey: 'apiName', topN: 3 },
-    ]).filter(u => !isExcludedUnit((u as any).characterId)),
+    ])
+      .filter(u => !isExcludedUnit((u as any).characterId))
+      .map(u => {
+        // Filter Thief's Gloves & Co. aus dem per-Unit Top-Items-Array.
+        // mergeJsonbCountArrays cappte schon auf topN=3 — wenn ThG eins von
+        // den dreien war, bleiben evtl. nur 2; das ist akzeptabel weil die
+        // ehrlichste Antwort statt "Random Item draufknallen".
+        const topItems = Array.isArray((u as any).topItems)
+          ? (u as any).topItems.filter((it: any) => !isExcludedItem(it?.apiName))
+          : (u as any).topItems;
+        return { ...u, topItems };
+      }),
     typicalAugments: mergeJsonbCountArrays(r.typical_augments_merged || [], 'apiName', 6),
     carryItems: mergeCarryItems(r.carry_items_merged || []),
   };
@@ -343,7 +354,14 @@ function baseComp(r: CompRow, participants: number) {
 function enrichComp(r: CompRow) {
   const typicalUnits = mergeJsonbCountArrays(r.typical_units_merged || [], 'characterId', 9, [
     { field: 'topItems', innerKey: 'apiName', topN: 3 },
-  ]).filter(u => !isExcludedUnit((u as any).characterId));
+  ])
+    .filter(u => !isExcludedUnit((u as any).characterId))
+    .map(u => {
+      const topItems = Array.isArray((u as any).topItems)
+        ? (u as any).topItems.filter((it: any) => !isExcludedItem(it?.apiName))
+        : (u as any).topItems;
+      return { ...u, topItems };
+    });
   // Sprint 6.3 — Comp-Flex-Score. Normalized entropy of the top-9 unit
   // distribution: 0 = locked (single dominant unit), 1 = fully even.
   const flexScore = (() => {
@@ -496,6 +514,8 @@ function enrichComp(r: CompRow) {
 
 // Merge per-day carry-items lists ([{items:[…], count}, …]) into a single
 // top-N by count. Key on the sorted-tuple representation of the items list.
+// Sets, die ein excluded Item enthalten (z.B. Thief's Gloves), fliegen ganz
+// raus — der Build ist dann mehr Zufalls-Snapshot als "Top-Build".
 function mergeCarryItems(arrays: any[]): { items: string[]; count: number }[] {
   const map = new Map<string, { items: string[]; count: number }>();
   for (const arr of arrays) {
@@ -503,6 +523,7 @@ function mergeCarryItems(arrays: any[]): { items: string[]; count: number }[] {
     for (const e of arr) {
       const items = Array.isArray(e?.items) ? [...e.items].sort() : [];
       if (items.length === 0) continue;
+      if (setContainsExcludedItem(items)) continue;
       const key = items.join('|');
       const cur = map.get(key) || { items, count: 0 };
       cur.count += Number(e.count ?? 0);

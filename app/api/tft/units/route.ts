@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { loadTftStats, normalizeBucket, bucketParticipants } from '../../../lib/tft-stats-loader';
 import { resolveFilters, callRpc, getAvailablePatches } from '../../../lib/tft-supabase-reader';
-import { isExcludedUnit } from '../../../lib/tft-excluded';
+import { isExcludedUnit, isExcludedItem, setContainsExcludedItem } from '../../../lib/tft-excluded';
 import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias } from '../../../lib/api-cache';
 
 // /api/tft/units
@@ -73,28 +73,37 @@ export async function GET(request: NextRequest) {
         avgPlacement,
         top4Rate: data.games > 0 ? data.top4 / data.games : null,
         top1Rate: data.games > 0 ? data.top1 / data.games : null,
-        topItems: (data.topItems || []).map((it: any) => ({
-          item: it.item,
-          games: it.games,
-          avgPlacement: it.games > 0 ? it.sumPlacement / it.games : null,
-          top4Rate: it.games > 0 ? it.top4 / it.games : null,
-        })),
-        topItemSets: (data.topItemSets || []).map((s: any) => ({
-          items: s.items,
-          games: s.games,
-          avgPlacement: s.games > 0 ? s.sumPlacement / s.games : null,
-          top4Rate: s.games > 0 ? s.top4 / s.games : null,
-        })),
+        // Thief's Gloves & Co. raus — singulär aus den Item-Listen, als
+        // ganzes Set aus den Item-Set-Listen. "Top Item-Builds" sollen die
+        // bewussten Carry-Builds zeigen, nicht Random-Pulls.
+        topItems: (data.topItems || [])
+          .filter((it: any) => !isExcludedItem(it.item))
+          .map((it: any) => ({
+            item: it.item,
+            games: it.games,
+            avgPlacement: it.games > 0 ? it.sumPlacement / it.games : null,
+            top4Rate: it.games > 0 ? it.top4 / it.games : null,
+          })),
+        topItemSets: (data.topItemSets || [])
+          .filter((s: any) => !setContainsExcludedItem(s.items))
+          .map((s: any) => ({
+            items: s.items,
+            games: s.games,
+            avgPlacement: s.games > 0 ? s.sumPlacement / s.games : null,
+            top4Rate: s.games > 0 ? s.top4 / s.games : null,
+          })),
         topItemsByTier: data.topItemsByTier
           ? Object.fromEntries(
               Object.entries(data.topItemsByTier).map(([tier, arr]: [string, any]) => [
                 tier,
-                (arr || []).map((it: any) => ({
-                  item: it.item,
-                  games: it.games,
-                  avgPlacement: it.games > 0 ? it.sumPlacement / it.games : null,
-                  top4Rate: it.games > 0 ? it.top4 / it.games : null,
-                })),
+                (arr || [])
+                  .filter((it: any) => !isExcludedItem(it.item))
+                  .map((it: any) => ({
+                    item: it.item,
+                    games: it.games,
+                    avgPlacement: it.games > 0 ? it.sumPlacement / it.games : null,
+                    top4Rate: it.games > 0 ? it.top4 / it.games : null,
+                  })),
               ])
             )
           : null,
@@ -102,12 +111,14 @@ export async function GET(request: NextRequest) {
           ? Object.fromEntries(
               Object.entries(data.topItemSetsByTier).map(([tier, arr]: [string, any]) => [
                 tier,
-                (arr || []).map((s: any) => ({
-                  items: s.items,
-                  games: s.games,
-                  avgPlacement: s.games > 0 ? s.sumPlacement / s.games : null,
-                  top4Rate: s.games > 0 ? s.top4 / s.games : null,
-                })),
+                (arr || [])
+                  .filter((s: any) => !setContainsExcludedItem(s.items))
+                  .map((s: any) => ({
+                    items: s.items,
+                    games: s.games,
+                    avgPlacement: s.games > 0 ? s.sumPlacement / s.games : null,
+                    top4Rate: s.games > 0 ? s.top4 / s.games : null,
+                  })),
               ])
             )
           : null,
@@ -135,7 +146,21 @@ export async function GET(request: NextRequest) {
             )
           : null,
         // Item-Slot-Build-Order: { tier: { slotIdx: [{item, count}, ...] } }
-        itemSlotOrderByTier: data.itemSlotOrderByTier || null,
+        // Auch hier ThG raus — wenn ein Slot häufig Thief's Gloves zeigt, ist
+        // das eine Augment-Wahl, kein Build-Pfad.
+        itemSlotOrderByTier: data.itemSlotOrderByTier
+          ? Object.fromEntries(
+              Object.entries(data.itemSlotOrderByTier).map(([tier, slots]: [string, any]) => [
+                tier,
+                Object.fromEntries(
+                  Object.entries(slots || {}).map(([slotIdx, entries]: [string, any]) => [
+                    slotIdx,
+                    (entries || []).filter((e: any) => !isExcludedItem(e.item)),
+                  ])
+                ),
+              ])
+            )
+          : null,
       },
     });
   }

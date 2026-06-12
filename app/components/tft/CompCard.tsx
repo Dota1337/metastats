@@ -1,4 +1,5 @@
 'use client';
+import { useRouter } from 'next/navigation';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
 import { tftIconUrl, tftChampionTileUrl, findChampion, findItem } from '../../lib/tft-cdragon';
 import { costColor as costColorOf } from '../../lib/tft-ui';
@@ -58,6 +59,7 @@ export default function CompCard({
   velocityShift?: number;
 }) {
   const { t } = useI18n();
+  const router = useRouter();
   const parts = parseClusterKey(comp.clusterKey);
   const traitMeta = parts && assets ? assets.traits[parts.trait] : null;
   // Stargazer (and similar themed traits) ships seven constellation variants
@@ -92,9 +94,44 @@ export default function CompCard({
   const carryCid = carryByItems?.cid || parts?.carry;
   const carry = carryCid && assets ? assets.champions[carryCid] : null;
 
-  const Wrapper: any = href ? 'a' : 'div';
+  // Wrapper used to be an <a href> which nested ~40 inner <a> tags (carry,
+  // trait, name, 9 unit tiles, up to 27 item tiles) — invalid HTML. When href
+  // is provided we render a div with link semantics + router.push, preserving
+  // Cmd/Ctrl/Mid-click → new tab and Enter/Space keyboard activation.
+  const linkProps = href
+    ? {
+        role: 'link' as const,
+        tabIndex: 0,
+        onClick: (e: React.MouseEvent) => {
+          if (e.defaultPrevented) return;
+          if (e.metaKey || e.ctrlKey) {
+            window.open(href, '_blank', 'noopener');
+            return;
+          }
+          router.push(href);
+        },
+        onAuxClick: (e: React.MouseEvent) => {
+          if (e.button === 1) {
+            e.preventDefault();
+            window.open(href, '_blank', 'noopener');
+          }
+        },
+        onKeyDown: (e: React.KeyboardEvent) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            router.push(href);
+          }
+        },
+      }
+    : {};
+  const interactiveClass = href
+    ? 'cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B61FF]/60'
+    : '';
   return (
-    <Wrapper {...(href ? { href } : {})} className="block bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-3 hover:border-[#7B61FF]/40 transition-colors">
+    <div
+      {...linkProps}
+      className={`block bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-3 hover:border-[#7B61FF]/40 transition-colors ${interactiveClass}`}
+    >
       {/* Mobile: stack the carry header → units row → stats column vertically.
           Desktop: original 3-column grid keeps it dense. */}
       <div className="flex flex-col sm:grid sm:grid-cols-[auto_1fr_auto] gap-3 sm:gap-4 sm:items-center">
@@ -206,7 +243,7 @@ export default function CompCard({
           {showVelocity && <VelocityStat velocity={comp.velocity} shift={velocityShift} t={t} />}
         </div>
       </div>
-    </Wrapper>
+    </div>
   );
 }
 

@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n, type TranslationKey } from '../../../lib/i18n';
@@ -23,6 +24,7 @@ type Sort = 'top' | 'recent';
 
 export default function TftCommunityGalleryPage() {
   const { t } = useI18n();
+  const router = useRouter();
   const [sort, setSort] = useState<Sort>('top');
   const [comps, setComps] = useState<CommunityComp[]>([]);
   const [loading, setLoading] = useState(true);
@@ -128,11 +130,37 @@ export default function TftCommunityGalleryPage() {
                   {placements.slice(0, 10).map((p, i) => {
                     const ch = assets?.champions[p.characterId];
                     const url = tftChampionTileUrl(assets, ch);
+                    // Same nested-<a> fix as CompRow/CompCard: outer was an <a>
+                    // for the unit, inner <a>s for items — invalid HTML. Outer
+                    // is now a div with link semantics; inner item anchors
+                    // remain real <a> tags (they stopPropagation).
+                    const unitHref = `/tft/units/${encodeURIComponent(p.characterId)}`;
                     return (
-                      <a
+                      <div
                         key={i}
-                        href={`/tft/units/${encodeURIComponent(p.characterId)}`}
-                        className="relative w-9 h-9 rounded overflow-hidden border block hover:scale-110 transition-transform"
+                        role="link"
+                        tabIndex={0}
+                        onClick={(e) => {
+                          if (e.defaultPrevented) return;
+                          if (e.metaKey || e.ctrlKey) {
+                            window.open(unitHref, '_blank', 'noopener');
+                            return;
+                          }
+                          router.push(unitHref);
+                        }}
+                        onAuxClick={(e) => {
+                          if (e.button === 1) {
+                            e.preventDefault();
+                            window.open(unitHref, '_blank', 'noopener');
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            router.push(unitHref);
+                          }
+                        }}
+                        className="relative w-9 h-9 rounded overflow-hidden border block hover:scale-110 transition-transform cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B61FF]/60"
                         style={{ borderColor: ch ? costColorOf(ch.cost) : '#1e2a3a' }}
                         title={ch?.name || p.characterId}
                       >
@@ -158,7 +186,7 @@ export default function TftCommunityGalleryPage() {
                             })}
                           </div>
                         )}
-                      </a>
+                      </div>
                     );
                   })}
                 </div>

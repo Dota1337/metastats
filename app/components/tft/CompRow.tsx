@@ -1,4 +1,5 @@
 'use client';
+import { useRouter } from 'next/navigation';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
 import { tftChampionTileUrl, findChampion } from '../../lib/tft-cdragon';
 import { costColor as costColorOf } from '../../lib/tft-ui';
@@ -104,6 +105,7 @@ export default function CompRow({
   velocityShift?: number;
 }) {
   const { t } = useI18n();
+  const router = useRouter();
   const parts = parseClusterKey(comp.clusterKey);
   const traitMeta = parts && assets ? assets.traits[parts.trait] : null;
   const traitName = traitMeta?.name || (parts ? prettyTrait(parts.trait) : 'Unknown');
@@ -136,10 +138,35 @@ export default function CompRow({
     carryItemRate,
   });
 
+  // Outer wrapper used to be an <a href={href}>, which produced invalid HTML
+  // (nested <a> for the carry + 9 unit tiles inside). Replaced with a div that
+  // mimics native anchor behavior: Cmd/Ctrl/Mid-click opens in a new tab,
+  // Enter/Space activates, focus ring stays visible for keyboard nav.
   return (
-    <a
-      href={href}
-      className="grid items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 rounded border border-[#1e2a3a] bg-[#0d1526] hover:bg-[#101a30] hover:border-[#7B61FF]/40 transition-colors text-xs sm:text-[13px]"
+    <div
+      role="link"
+      tabIndex={0}
+      onClick={(e) => {
+        if (e.defaultPrevented) return;
+        if (e.metaKey || e.ctrlKey) {
+          window.open(href, '_blank', 'noopener');
+          return;
+        }
+        router.push(href);
+      }}
+      onAuxClick={(e) => {
+        if (e.button === 1) {
+          e.preventDefault();
+          window.open(href, '_blank', 'noopener');
+        }
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          router.push(href);
+        }
+      }}
+      className="grid items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 rounded border border-[#1e2a3a] bg-[#0d1526] hover:bg-[#101a30] hover:border-[#7B61FF]/40 transition-colors text-xs sm:text-[13px] cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B61FF]/60"
       style={{ gridTemplateColumns: 'minmax(0,1fr)' }}
     >
       {/* Mobile: stacked. Desktop: tight horizontal row. */}
@@ -301,6 +328,6 @@ export default function CompRow({
           <span className="text-[#7a8aa0]">{comp.games}</span>
         </div>
       </div>
-    </a>
+    </div>
   );
 }

@@ -27,37 +27,9 @@ const APEX_BUCKETS = ['master','grandmaster','challenger'];
 //
 // Hybrid items (Guinsoo's, Hextech Gunblade) and AS items (Red Buff = RFC,
 // Kraken's Fury = Runaan's) count because they only go on damage carries.
-// Sterak's Gage counts because in Set 17 it lands on bruiser-carries like
-// Riven; defensive-only tanks (Bramble, Dragon's Claw, Gargoyle, Warmog)
-// are excluded.
-const DAMAGE_CARRY_ITEMS = new Set([
-  // Pure AD
-  'TFT_Item_Bloodthirster',
-  'TFT_Item_Deathblade',
-  'TFT_Item_InfinityEdge',
-  'TFT_Item_LastWhisper',
-  'TFT_Item_SpearOfShojin',
-  // Pure AP
-  'TFT_Item_JeweledGauntlet',
-  'TFT_Item_ArchangelsStaff',
-  'TFT_Item_Morellonomicon',
-  'TFT_Item_RabadonsDeathcap',
-  'TFT_Item_NightHarvester',
-  'TFT_Item_Leviathan',     // Nashor's Tooth (Set-17 rename, same apiName)
-  'TFT_Item_StatikkShiv',   // Void Staff (Set-17 rename, same apiName)
-  'TFT_Item_RedBuff',       // Sunfire Cape (Set-17 rename, same apiName)
-  // Hybrid AD/AP — only ever on damage carries
-  'TFT_Item_GuinsoosRageblade',
-  'TFT_Item_HextechGunblade',
-  'TFT_Item_TitansResolve',
-  // Attack-speed — single-target / Runaan-spreader carry items
-  'TFT_Item_RapidFireCannon',
-  'TFT_Item_RunaansHurricane',
-  // Bruiser-carry only (off-tank like Riven)
-  'TFT_Item_SteraksGage',
-  // Mana-engine carry items
-  'TFT_Item_BlueBuff',
-]);
+// DAMAGE_CARRY_ITEMS + DEFENSIVE_ITEMS leben in scripts/lib/tft-item-classes.mjs
+// (Single-Source-of-Truth, parallel zu app/lib/tft-item-classes.ts).
+import { DAMAGE_CARRY_ITEMS, classifyBuildStyle } from './tft-item-classes.mjs';
 
 export function emptyAggregate() {
   return {
@@ -276,11 +248,19 @@ function classifyComp(participant) {
   // eine ganz andere Comp als die 2-Star-Push-Variante desselben Carry
   // (typisch Lvl 6/7 Reroll vs Lvl 8/9 Push). Mischen wir sie im selben
   // Cluster, ergeben Tempo/Death-Curve/avgEndStage einen unbrauchbaren
-  // Mittelwert. Ein `*3`-Suffix trennt sie ohne neue Tabelle, wirkt streng
-  // additiv (alte Schlüssel ohne Suffix bleiben gültig).
+  // Mittelwert. Ein `*3`-Suffix trennt sie ohne neue Tabelle.
   const carryStar = carry.tier ?? 2;
   const starSuffix = carryStar === 3 ? '*3' : '';
-  const baseKey = `${primaryTrait.name}@${primaryTrait.tier_current ?? 0}_${carryId}${starSuffix}`;
+  // Sub-Cluster via Build-Style — der Carry-Item-Pattern entscheidet, ob die
+  // Comp ein Damage-Push, Bruiser-Hybrid oder Tank-Build ist. Build-changing
+  // Augments wie *Two Tanky* manifestieren sich automatisch über die Tank-
+  // Item-Signatur des Carries — der Cluster trennt sich ohne Augment-Bezug.
+  //   damage  → kein Suffix (default)
+  //   bruiser → +b
+  //   tank    → +t
+  const buildStyle = classifyBuildStyle(carry.itemNames || []);
+  const buildSuffix = buildStyle === 'tank' ? '+t' : buildStyle === 'bruiser' ? '+b' : '';
+  const baseKey = `${primaryTrait.name}@${primaryTrait.tier_current ?? 0}_${carryId}${starSuffix}${buildSuffix}`;
   const clusterKey = secondaryCarry ? `${baseKey}#${secondaryCarry.cid}` : baseKey;
 
   return {
@@ -289,6 +269,7 @@ function classifyComp(participant) {
     primaryTraitLevel: primaryTrait.tier_current ?? 0,
     carryUnit: carryId,
     carryStar,
+    buildStyle,
     secondaryCarry: secondaryCarry?.cid || null,
     carryItems: (carry.itemNames || []).filter(Boolean).sort(),
   };
@@ -939,11 +920,12 @@ export function finalize(agg, opts = {}) {
     // Carry-Unit aus dem clusterKey extrahieren — sie bleibt IMMER in
     // typicalUnits, auch wenn ihr Cooccurrence-Wert unter dem Threshold liegt
     // (defensiv: ein Cluster kennt seinen Carry per Definition). Suffixe:
-    //   *3   → 3-Star-Reroll-Variante (carry-star sub-cluster)
+    //   *N   → N-Star-Carry-Variante (carry-star sub-cluster)
+    //   +t/b → Tank/Bruiser-Build-Variante (build-style sub-cluster)
     //   #ID  → Secondary-Damage-Carry-Variante
-    // Beide werden hier abgeknippt — wir wollen die nackte PRIMARY-Carry-ID.
+    // Alle werden hier abgeknippt — wir wollen die nackte PRIMARY-Carry-ID.
     const carryFromKey = (() => {
-      const m = /^.+@\d+_([^#*]+)(?:\*\d)?(?:#.+)?$/.exec(key);
+      const m = /^.+@\d+_([^#*+]+)(?:\*\d)?(?:\+[a-z])?(?:#.+)?$/.exec(key);
       return m ? m[1] : null;
     })();
     // Sekundäre Carry-Unit (aus #-Suffix) — ebenfalls immer in typicalUnits.

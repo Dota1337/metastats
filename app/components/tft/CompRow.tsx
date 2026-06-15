@@ -48,19 +48,17 @@ function tierBadge(avg: number | null) {
 }
 
 function parseClusterKey(key: string) {
-  // Cluster-Key Format:
-  //   <trait>@<level>_<carryUnit>                  → 2-Star Standard-Push
-  //   <trait>@<level>_<carryUnit>*3                → 3-Star-Reroll-Variante
-  //   <trait>@<level>_<carryUnit>#<unitId>         → Dual-Carry, 2-Star
-  //   <trait>@<level>_<carryUnit>*3#<unitId>       → Dual-Carry, 3-Star-Reroll
-  const m = /^(.+)@(\d+)_([^#*]+)(?:\*(\d))?(?:#(.+))?$/.exec(key);
+  // Cluster-Key Format: <trait>@<level>_<carryUnit>[*N][+t|+b][#<unitId>]
+  //   *N  = Carry-Star · +t = Tank-Build · +b = Bruiser-Build · #ID = Secondary-Carry
+  const m = /^(.+)@(\d+)_([^#*+]+)(?:\*(\d))?(?:\+([tb]))?(?:#(.+))?$/.exec(key);
   if (!m) return null;
   return {
     trait: m[1],
     level: Number(m[2]),
     carry: m[3],
     carryStar: m[4] ? Number(m[4]) : 2,
-    secondary: m[5] || null,
+    buildStyle: m[5] === 't' ? ('tank' as const) : m[5] === 'b' ? ('bruiser' as const) : ('damage' as const),
+    secondary: m[6] || null,
   };
 }
 
@@ -238,6 +236,22 @@ export default function CompRow({
                 title="3-Star Reroll-Variante"
               >
                 3★
+              </span>
+            )}
+            {parts?.buildStyle === 'tank' && (
+              <span
+                className="ml-1 inline-flex items-center px-1.5 py-[1px] rounded text-[9px] font-medium align-middle"
+                style={{ color: '#7ab9ec', backgroundColor: 'rgba(58,141,220,0.12)', border: '1px solid rgba(58,141,220,0.4)' }}
+              >
+                {t('tft.comp.build.tank')}
+              </span>
+            )}
+            {parts?.buildStyle === 'bruiser' && (
+              <span
+                className="ml-1 inline-flex items-center px-1.5 py-[1px] rounded text-[9px] font-medium align-middle"
+                style={{ color: '#c39bff', backgroundColor: 'rgba(123,97,255,0.12)', border: '1px solid rgba(123,97,255,0.4)' }}
+              >
+                {t('tft.comp.build.bruiser')}
               </span>
             )}
             {secondaryName && (

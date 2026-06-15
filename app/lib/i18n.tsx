@@ -1846,6 +1846,16 @@ const translations = {
     '({name} \uD3EC\uD568)', '(\u542B {name})',
     '(con {name})', '(avec {name})'
   ),
+  'tft.comp.build.tank': t6(
+    'Tank-Variante', 'Tank build',
+    '\uD0F1\uCEE4 \uBE4C\uB4DC', '\u5766\u514B\u6D41',
+    'Build de tanque', 'Build tank'
+  ),
+  'tft.comp.build.bruiser': t6(
+    'Bruiser-Variante', 'Bruiser build',
+    '\uBE0C\uB8E8\uC800 \uBE4C\uB4DC', '\u6218\u58EB\u6D41',
+    'Build bruiser', 'Build bruiser'
+  ),
   'tft.comp.topItemSets': t6(
     'H\u00E4ufigste Item-Sets am Carry', 'Most Common Item Sets on Carry',
     '\uCE90\uB9AC \uCD5C\uB2E4 \uC544\uC774\uD15C \uC138\uD2B8', '\u4E3BC\u6700\u5E38\u7528\u88C5\u5907\u7EC4\u5408',

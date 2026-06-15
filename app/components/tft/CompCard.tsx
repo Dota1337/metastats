@@ -215,6 +215,22 @@ export default function CompCard({
                   3★
                 </span>
               )}
+              {parts?.buildStyle === 'tank' && (
+                <span
+                  className="ml-1 inline-flex items-center px-1.5 py-[1px] rounded text-[10px] font-medium"
+                  style={{ color: '#7ab9ec', backgroundColor: 'rgba(58,141,220,0.12)', border: '1px solid rgba(58,141,220,0.4)' }}
+                >
+                  {t('tft.comp.build.tank')}
+                </span>
+              )}
+              {parts?.buildStyle === 'bruiser' && (
+                <span
+                  className="ml-1 inline-flex items-center px-1.5 py-[1px] rounded text-[10px] font-medium"
+                  style={{ color: '#c39bff', backgroundColor: 'rgba(123,97,255,0.12)', border: '1px solid rgba(123,97,255,0.4)' }}
+                >
+                  {t('tft.comp.build.bruiser')}
+                </span>
+              )}
               {secondaryName && (
                 <span className="text-[#a0b0c5] text-xs ml-1.5">
                   {(t('tft.comp.withSecondary') as string).replace(
@@ -370,20 +386,22 @@ function VelocityStat({
 
 function parseClusterKey(
   key: string,
-): { trait: string; level: number; carry: string; carryStar: number; secondary: string | null } | null {
-  // Cluster-Key Format:
-  //   <trait>@<level>_<carryUnit>                  → 2-Star Standard-Push
-  //   <trait>@<level>_<carryUnit>*3                → 3-Star-Reroll-Variante
-  //   <trait>@<level>_<carryUnit>#<unitId>         → Dual-Carry, 2-Star
-  //   <trait>@<level>_<carryUnit>*3#<unitId>       → Dual-Carry, 3-Star-Reroll
-  const m = /^(.+)@(\d+)_([^#*]+)(?:\*(\d))?(?:#(.+))?$/.exec(key);
+): { trait: string; level: number; carry: string; carryStar: number; buildStyle: 'damage'|'bruiser'|'tank'; secondary: string | null } | null {
+  // Cluster-Key Format (alle Suffixe optional, in dieser Reihenfolge):
+  //   <trait>@<level>_<carryUnit>[*N][+t|+b][#<unitId>]
+  //     *N  = Carry-Star (z.B. *3 = 3-Star-Reroll-Variante)
+  //     +t  = Tank-Build (Tank-Items auf Carry, z.B. Two-Tanky-Augment-Build)
+  //     +b  = Bruiser-Build (mix Tank + Damage)
+  //     #ID = Secondary-Damage-Carry-Variante
+  const m = /^(.+)@(\d+)_([^#*+]+)(?:\*(\d))?(?:\+([tb]))?(?:#(.+))?$/.exec(key);
   if (!m) return null;
   return {
     trait: m[1],
     level: Number(m[2]),
     carry: m[3],
     carryStar: m[4] ? Number(m[4]) : 2,
-    secondary: m[5] || null,
+    buildStyle: m[5] === 't' ? 'tank' : m[5] === 'b' ? 'bruiser' : 'damage',
+    secondary: m[6] || null,
   };
 }
 

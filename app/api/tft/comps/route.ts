@@ -363,17 +363,11 @@ export async function GET(request: NextRequest) {
 // greift auch auf ALTE Snapshots, bevor der nächste Aggregator-Lauf neue
 // Daten mit demselben Threshold auf der Source-Seite schreibt.
 function carryFromClusterKey(key: string): string | null {
-  // Suffixe abknippen: *3 (3-Star-Reroll-Variante) und #<secondary> (Dual-Carry).
-  const m = /^.+@\d+_([^#*]+)(?:\*\d)?(?:#.+)?$/.exec(key);
+  // Suffixe abknippen: *N (Star), +t/+b (Build-Style), #<sec> (Secondary).
+  const m = /^.+@\d+_([^#*+]+)(?:\*\d)?(?:\+[a-z])?(?:#.+)?$/.exec(key);
   return m ? m[1] : null;
 }
 function isUniqueTraitClusterKey(key: string): boolean {
-  // Pre-Fix-Daten (vor heutigem UniqueTrait-Filter im Aggregator) haben Mega-
-  // Cluster mit `TFT<N>_<Name>UniqueTrait` als primary trait — z.B. werden
-  // alle Boards mit Blitzcrank in EINEN BlitzcrankUniqueTrait@1-Cluster
-  // zusammengeworfen, obwohl die real-Comps völlig unterschiedlich sind.
-  // Der Aggregator-Fix wirkt ab nächstem Crawl; bis dahin (und für das
-  // 30d-Window danach) filtern wir solche Cluster im API-Layer aus.
   const m = /^(.+)@\d+_/.exec(key);
   return m ? /UniqueTrait$/.test(m[1]) : false;
 }
@@ -382,9 +376,14 @@ function secondaryFromClusterKey(key: string): string | null {
   return m ? m[1] : null;
 }
 function carryStarFromClusterKey(key: string): number {
-  // *<N> direkt nach der Carry-ID, vor optional #<secondary>. Default 2 (Push).
-  const m = /\*(\d)(?=#|$)/.exec(key);
+  // *<N> direkt nach der Carry-ID, vor optional +<build> oder #<sec>.
+  const m = /\*(\d)(?=[+#]|$)/.exec(key);
   return m ? Number(m[1]) : 2;
+}
+function buildStyleFromClusterKey(key: string): 'damage' | 'bruiser' | 'tank' {
+  // +t (tank) oder +b (bruiser) — direkt vor optional #<sec>. Default 'damage'.
+  const m = /\+([tb])(?=#|$)/.exec(key);
+  return m ? (m[1] === 't' ? 'tank' : 'bruiser') : 'damage';
 }
 function applyCooccurrenceFilter(
   units: Array<{ characterId: string; count: number } & Record<string, unknown>>,

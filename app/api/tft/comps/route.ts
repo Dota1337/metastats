@@ -219,6 +219,11 @@ export async function GET(request: NextRequest) {
         }
       }
       if (!row) return cachedJson({ filters, hasData: false, comp: null }, { cache: cacheControl });
+      // Stale UniqueTrait-Mega-Cluster aus pre-Fix-Daten ausblenden — siehe
+      // isUniqueTraitClusterKey-Kommentar oben.
+      if (isUniqueTraitClusterKey(row.cluster_key)) {
+        return cachedJson({ filters, hasData: false, comp: null }, { cache: cacheControl });
+      }
       const comp = { ...baseComp(row, participants), ...enrichComp(row), aliasedFrom };
 
       // Counter edges — single RPC for the same region/day/patch window.
@@ -234,6 +239,10 @@ export async function GET(request: NextRequest) {
       const even: CounterEdge[] = [];
       for (const p of pairs) {
         if (p.a_key !== slug && p.b_key !== slug) continue;
+        // Pre-Fix-UniqueTrait-Gegner aus den Counter-Listen halten — sie
+        // verzerren das Matchup-Bild bis die alten DB-Rows aus dem Window fallen.
+        const opponent = p.a_key === slug ? p.b_key : p.a_key;
+        if (isUniqueTraitClusterKey(opponent)) continue;
         const aWinRate = p.games > 0 ? Number(p.a_better) / Number(p.games) : 0.5;
         // Normalize so winRate is always THIS comp's win-rate vs the opponent,
         // regardless of which side it sits on in the sorted (a_key,b_key) pair.
@@ -315,12 +324,14 @@ export async function GET(request: NextRequest) {
     const velocityByKey = new Map<string, VelocityRow>();
     for (const v of velocityRows) velocityByKey.set(v.cluster_key, v);
 
-    const dataComps = rows.map(r => {
-      const base = baseComp(r, participants);
-      const v = velocityByKey.get(r.cluster_key);
-      if (!v) return base;
-      return { ...base, velocity: deriveVelocity(v) };
-    });
+    const dataComps = rows
+      .filter(r => !isUniqueTraitClusterKey(r.cluster_key))
+      .map(r => {
+        const base = baseComp(r, participants);
+        const v = velocityByKey.get(r.cluster_key);
+        if (!v) return base;
+        return { ...base, velocity: deriveVelocity(v) };
+      });
     dataComps.sort((a, b) => (a.avgPlacement ?? 9) - (b.avgPlacement ?? 9));
 
     return cachedJson({
@@ -355,6 +366,16 @@ function carryFromClusterKey(key: string): string | null {
   // Suffixe abknippen: *3 (3-Star-Reroll-Variante) und #<secondary> (Dual-Carry).
   const m = /^.+@\d+_([^#*]+)(?:\*\d)?(?:#.+)?$/.exec(key);
   return m ? m[1] : null;
+}
+function isUniqueTraitClusterKey(key: string): boolean {
+  // Pre-Fix-Daten (vor heutigem UniqueTrait-Filter im Aggregator) haben Mega-
+  // Cluster mit `TFT<N>_<Name>UniqueTrait` als primary trait — z.B. werden
+  // alle Boards mit Blitzcrank in EINEN BlitzcrankUniqueTrait@1-Cluster
+  // zusammengeworfen, obwohl die real-Comps völlig unterschiedlich sind.
+  // Der Aggregator-Fix wirkt ab nächstem Crawl; bis dahin (und für das
+  // 30d-Window danach) filtern wir solche Cluster im API-Layer aus.
+  const m = /^(.+)@\d+_/.exec(key);
+  return m ? /UniqueTrait$/.test(m[1]) : false;
 }
 function secondaryFromClusterKey(key: string): string | null {
   const m = /#(.+)$/.exec(key);

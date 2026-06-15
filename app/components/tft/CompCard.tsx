@@ -49,7 +49,6 @@ function tierBadge(avgPlacement: number | null): { label: string; color: string;
 
 export default function CompCard({
   comp, rank, assets, href, showVelocity = false, velocityShift = 0,
-  hideCarryTile = false,
 }: {
   comp: Comp;
   rank?: number;
@@ -60,10 +59,6 @@ export default function CompCard({
   // velocity dropdown actually has a visible effect.
   showVelocity?: boolean;
   velocityShift?: number;
-  // Detail-page nutzt das — der große Carry-Tile links ist auf der
-  // Detail-Seite reine Wiederholung der typicalUnits-Row (in der der Carry
-  // mit einem lila Border bereits markiert ist + seine Items zeigt).
-  hideCarryTile?: boolean;
 }) {
   const { t } = useI18n();
   const router = useRouter();
@@ -116,7 +111,6 @@ export default function CompCard({
     .sort((a, b) => (b.rate - a.rate) || (b._carry - a._carry))[0];
   const carryCid = carryByItems?.cid || parts?.carry;
   const carry = carryCid && assets ? assets.champions[carryCid] : null;
-  const carryTileUrl = tftChampionTileUrl(assets, carry);
   // Sub-Cluster: zweiter damage-carry aus dem clusterKey-Suffix (#<unitId>).
   // Wird im Comp-Header als „(mit <Name>)" hinter dem primary-Carry angezeigt.
   const secondaryCid = parts?.secondary || null;
@@ -170,20 +164,6 @@ export default function CompCard({
                style={{ color: tier.color, backgroundColor: tier.bg, border: `1px solid ${tier.color}40` }}>
             {tier.label}
           </div>
-          {!hideCarryTile && (
-            carryTileUrl ? (
-              <a
-                href={`/tft/units/${encodeURIComponent(carryCid!)}`}
-                onClick={e => e.stopPropagation()}
-                title={carry!.name}
-                className="block hover:scale-105 transition-transform"
-              >
-                <img src={carryTileUrl} alt={carry!.name} className="w-12 h-12 rounded border-2 border-[#c39bff] object-cover" />
-              </a>
-            ) : (
-              <div className="w-12 h-12 rounded bg-[#1e2a3a]" />
-            )
-          )}
         </div>
 
         <div className="min-w-0">

@@ -122,7 +122,7 @@ export default function TftCompDetailPage() {
 
         {comp && (
           <>
-            <CompCard comp={comp} assets={assets} hideCarryTile />
+            <CompCard comp={comp} assets={assets} />
 
             {/* Trend-Time-Series — per-day avg-place + games sample über
                 14/30 Tage. Hebt einen Patch-internen Anstieg/Fall hervor

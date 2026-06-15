@@ -37,7 +37,7 @@ export default function TftCompsPage() {
   const [adv, setAdv] = useState<AdvancedFilters>(() =>
     advFromUrlParam(searchParams.get('adv')),
   );
-  const [sortBy, setSortBy] = useState<'avg' | 'win' | 'top4' | 'pick' | 'games' | 'velocity'>(
+  const [sortBy, setSortBy] = useState<'avg' | 'win' | 'top4' | 'pick' | 'velocity'>(
     (searchParams.get('sort') as any) || 'avg',
   );
   // Whether the user manually picked a sort. As long as they haven't, toggling
@@ -110,7 +110,6 @@ export default function TftCompsPage() {
       case 'win':   copy.sort((a, b) => (b.top1Rate ?? 0) - (a.top1Rate ?? 0)); break;
       case 'top4':  copy.sort((a, b) => (b.top4Rate ?? 0) - (a.top4Rate ?? 0)); break;
       case 'pick':  copy.sort((a, b) => (b.pickRate ?? 0) - (a.pickRate ?? 0)); break;
-      case 'games': copy.sort((a, b) => (b.games ?? 0) - (a.games ?? 0)); break;
       case 'velocity':
         // Most-improved first (most-negative Δ = biggest jump up in placement).
         // Comps with null Δ (new comps or below sample-size threshold) fall to
@@ -152,7 +151,6 @@ export default function TftCompsPage() {
             <option value="top4">{t('tft.top4')}</option>
             <option value="win">{t('tft.top1')}</option>
             <option value="pick">{t('tft.pickRate')}</option>
-            <option value="games">{t('tft.gamesShort')}</option>
             {filters.velocity > 0 && (
               <option value="velocity">{t('tft.velocity.trending')}</option>
             )}

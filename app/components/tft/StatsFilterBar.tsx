@@ -215,3 +215,45 @@ export function filtersToQueryString(f: Filters): string {
   if (f.velocity > 0) sp.set('velocity', String(f.velocity));
   return sp.toString();
 }
+
+// localStorage-Schicht für Cross-Session-Persistenz. URL ist Single-Source-
+// of-Truth pro Tab (Sharing, Browser-History). localStorage liefert nur
+// den Default-Wert, wenn der User die Page OHNE Filter-Params besucht
+// (neuer Tab, Bookmark ohne Params). Filter werden global geteilt zwischen
+// allen Stats-Pages (Comps/Units/Items/Traits/Marktwert/Meta-Pulse) — die
+// Persona "Diamond+EUW+7d" gilt überall einheitlich.
+const STORAGE_KEY = 'metastats:tft-filters';
+
+export function loadInitialFilters(searchParams: URLSearchParams): Filters {
+  const fromUrl = filtersFromSearchParams(searchParams);
+  // Wenn KEINER der 5 Filter-Werte in URL gesetzt ist, versuche localStorage.
+  const hasUrlValues = ['patch', 'bucket', 'days', 'region', 'velocity']
+    .some(k => searchParams.has(k));
+  if (hasUrlValues) return fromUrl;
+  if (typeof window === 'undefined') return fromUrl;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return fromUrl;
+    const stored = JSON.parse(raw) as Partial<Filters>;
+    const velocityRaw = Number(stored.velocity);
+    return {
+      patch: typeof stored.patch === 'string' ? stored.patch : fromUrl.patch,
+      bucket: typeof stored.bucket === 'string' ? stored.bucket : fromUrl.bucket,
+      days: Number.isFinite(Number(stored.days))
+        ? Math.max(1, Math.min(7, Number(stored.days))) : fromUrl.days,
+      region: typeof stored.region === 'string' ? stored.region : fromUrl.region,
+      velocity: VELOCITY_SHIFTS.has(velocityRaw) ? velocityRaw : fromUrl.velocity,
+    };
+  } catch {
+    return fromUrl;
+  }
+}
+
+export function persistFilters(f: Filters): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(f));
+  } catch {
+    // Storage voll oder Privacy-Mode — Filter bleiben URL-only.
+  }
+}

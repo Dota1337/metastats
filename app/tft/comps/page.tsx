@@ -6,7 +6,8 @@ import Footer from '../../components/Footer';
 import EmptyData from '../../components/tft/EmptyData';
 import CompRow from '../../components/tft/CompRow';
 import StatsFilterBar, {
-  filtersFromSearchParams,
+  loadInitialFilters,
+  persistFilters,
   filtersToQueryString,
   type Filters,
   type PatchInfo,
@@ -32,7 +33,7 @@ export default function TftCompsPage() {
   const pathname = usePathname();
 
   const [filters, setFilters] = useState<Filters>(() =>
-    filtersFromSearchParams(new URLSearchParams(searchParams.toString())),
+    loadInitialFilters(new URLSearchParams(searchParams.toString())),
   );
   const [adv, setAdv] = useState<AdvancedFilters>(() =>
     advFromUrlParam(searchParams.get('adv')),
@@ -68,12 +69,18 @@ export default function TftCompsPage() {
         setLoading(false);
       })
       .catch(() => { setHasData(false); setComps([]); setLoading(false); });
+    // Filter in localStorage spiegeln → bei nächstem fresh visit (neuer Tab,
+    // Bookmark ohne Params) startet die Page mit der gleichen Persona.
+    persistFilters(filters);
     const advParam = advToUrlParam(adv);
-    const url = `${pathname}?${qs}${advParam ? `&adv=${advParam}` : ''}`;
+    // Sort in URL persistieren wenn vom User explizit gewählt — sonst fiel
+    // er beim Reload immer auf 'avg' zurück.
+    const sortParam = sortTouched && sortBy !== 'avg' ? `&sort=${sortBy}` : '';
+    const url = `${pathname}?${qs}${advParam ? `&adv=${advParam}` : ''}${sortParam}`;
     if (typeof window !== 'undefined' && window.location.pathname + window.location.search !== url) {
       router.replace(url, { scroll: false });
     }
-  }, [filters, adv, pathname, router]);
+  }, [filters, adv, sortBy, sortTouched, pathname, router]);
 
   // Filter-change handler that also auto-flips the sort to "Trending" the
   // first time the user enables Δ — and back to "avg" when they turn it off.

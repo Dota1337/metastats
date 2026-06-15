@@ -5,7 +5,8 @@ import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
 import EmptyData from '../../components/tft/EmptyData';
 import StatsFilterBar, {
-  filtersFromSearchParams,
+  loadInitialFilters,
+  persistFilters,
   filtersToQueryString,
   type Filters,
   type PatchInfo,
@@ -61,7 +62,7 @@ export default function TftTraitsPage() {
   const router = useRouter();
   const pathname = usePathname();
 
-  const [filters, setFilters] = useState<Filters>(() => filtersFromSearchParams(new URLSearchParams(searchParams.toString())));
+  const [filters, setFilters] = useState<Filters>(() => loadInitialFilters(new URLSearchParams(searchParams.toString())));
   const [rows, setRows] = useState<TraitRow[]>([]);
   const [hasData, setHasData] = useState<boolean | null>(null);
   const [patches, setPatches] = useState<PatchInfo[]>([]);
@@ -86,6 +87,7 @@ export default function TftTraitsPage() {
     if (typeof window !== 'undefined' && window.location.pathname + window.location.search !== url) {
       router.replace(url, { scroll: false });
     }
+    persistFilters(filters);
   }, [filters, pathname, router]);
 
   // Collapse per-activation rows into one entry per *display name* (not

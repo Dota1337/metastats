@@ -5,7 +5,8 @@ import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
 import EmptyData from '../../components/tft/EmptyData';
 import StatsFilterBar, {
-  filtersFromSearchParams,
+  loadInitialFilters,
+  persistFilters,
   filtersToQueryString,
   type Filters,
   type PatchInfo,
@@ -39,7 +40,7 @@ export default function TftUnitsPage() {
   const router = useRouter();
   const pathname = usePathname();
 
-  const [filters, setFilters] = useState<Filters>(() => filtersFromSearchParams(new URLSearchParams(searchParams.toString())));
+  const [filters, setFilters] = useState<Filters>(() => loadInitialFilters(new URLSearchParams(searchParams.toString())));
   const [units, setUnits] = useState<UnitRow[]>([]);
   const [hasData, setHasData] = useState<boolean | null>(null);
   const [patches, setPatches] = useState<PatchInfo[]>([]);
@@ -68,6 +69,7 @@ export default function TftUnitsPage() {
     if (typeof window !== 'undefined' && window.location.pathname + window.location.search !== url) {
       router.replace(url, { scroll: false });
     }
+    persistFilters(filters);
     return () => { cancelled = true; };
   }, [filters, pathname, router]);
 

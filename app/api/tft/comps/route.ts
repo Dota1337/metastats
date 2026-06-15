@@ -315,34 +315,59 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// Cooccurrence-Threshold (≥40 %): Hybrid-Edge-Case-Units rausfiltern, die nur
+// in einer Minderheit der Cluster-Spiele auftauchen. Beheben das Symptom, dass
+// z.B. Gnar in 30 % der Meeple-Corki-Spiele die Top-9 + irreführende Items
+// bringt. Der Carry aus dem clusterKey bleibt IMMER drin. Dieser Post-Filter
+// greift auch auf ALTE Snapshots, bevor der nächste Aggregator-Lauf neue
+// Daten mit demselben Threshold auf der Source-Seite schreibt.
+function carryFromClusterKey(key: string): string | null {
+  const m = /^.+@\d+_(.+)$/.exec(key);
+  return m ? m[1] : null;
+}
+function applyCooccurrenceFilter(
+  units: Array<{ characterId: string; count: number } & Record<string, unknown>>,
+  totalGames: number,
+  carry: string | null,
+) {
+  const minCo = Math.max(1, Math.floor(totalGames * 0.40));
+  return units.filter(u => (u.count || 0) >= minCo || u.characterId === carry);
+}
+
 // Lean per-comp shape — base stats + the unit/augment/carry tiles that the
 // comp LIST (CompRow) and landing CompCard render. No derived metrics.
 function baseComp(r: CompRow, participants: number) {
+  const carry = carryFromClusterKey(r.cluster_key);
+  const games = Number(r.games) || 0;
   return {
     source: 'data' as const,
     slug: r.cluster_key,
     clusterKey: r.cluster_key,
-    games: Number(r.games) || 0,
+    games,
     avgPlacement: r.games > 0 ? Number(r.sum_placement) / Number(r.games) : null,
     top4Rate: r.games > 0 ? Number(r.top4) / Number(r.games) : null,
     top1Rate: r.games > 0 ? Number(r.top1) / Number(r.games) : null,
     pickRate: participants > 0 ? Number(r.games) / Number(participants) : null,
     avgLevel: r.games > 0 && r.sum_level ? Number(r.sum_level) / Number(r.games) : null,
     avgLastRound: r.games > 0 && r.sum_last_round ? Number(r.sum_last_round) / Number(r.games) : null,
-    typicalUnits: mergeJsonbCountArrays(r.typical_units_merged || [], 'characterId', 9, [
-      { field: 'topItems', innerKey: 'apiName', topN: 3 },
-    ])
-      .filter(u => !isExcludedUnit((u as any).characterId))
-      .map(u => {
-        // Filter Thief's Gloves & Co. aus dem per-Unit Top-Items-Array.
-        // mergeJsonbCountArrays cappte schon auf topN=3 — wenn ThG eins von
-        // den dreien war, bleiben evtl. nur 2; das ist akzeptabel weil die
-        // ehrlichste Antwort statt "Random Item draufknallen".
-        const topItems = Array.isArray((u as any).topItems)
-          ? (u as any).topItems.filter((it: any) => !isExcludedItem(it?.apiName))
-          : (u as any).topItems;
-        return { ...u, topItems };
-      }),
+    typicalUnits: applyCooccurrenceFilter(
+      mergeJsonbCountArrays(r.typical_units_merged || [], 'characterId', 9, [
+        { field: 'topItems', innerKey: 'apiName', topN: 3 },
+      ])
+        .filter(u => !isExcludedUnit((u as any).characterId))
+        .map(u => {
+          // Filter Thief's Gloves & Co. aus dem per-Unit Top-Items-Array.
+          // mergeJsonbCountArrays cappte schon auf topN=3 — wenn ThG eins von
+          // den dreien war, bleiben evtl. nur 2; das ist akzeptabel weil die
+          // ehrlichste Antwort statt "Random Item draufknallen".
+          const topItems = Array.isArray((u as any).topItems)
+            ? (u as any).topItems.filter((it: any) => !isExcludedItem(it?.apiName))
+            : (u as any).topItems;
+          return { ...u, topItems };
+        }) as Array<{ characterId: string; count: number } & Record<string, unknown>>,
+      games,
+      carry,
+    ),
     typicalAugments: mergeJsonbCountArrays(r.typical_augments_merged || [], 'apiName', 6),
     carryItems: mergeCarryItems(r.carry_items_merged || []),
   };
@@ -352,16 +377,22 @@ function baseComp(r: CompRow, participants: number) {
 // + the death-round histogram and survival→top4 curve. Heavy enough that we
 // only run it for the single cluster a detail request asks for.
 function enrichComp(r: CompRow) {
-  const typicalUnits = mergeJsonbCountArrays(r.typical_units_merged || [], 'characterId', 9, [
-    { field: 'topItems', innerKey: 'apiName', topN: 3 },
-  ])
-    .filter(u => !isExcludedUnit((u as any).characterId))
-    .map(u => {
-      const topItems = Array.isArray((u as any).topItems)
-        ? (u as any).topItems.filter((it: any) => !isExcludedItem(it?.apiName))
-        : (u as any).topItems;
-      return { ...u, topItems };
-    });
+  const carry = carryFromClusterKey(r.cluster_key);
+  const games = Number(r.games) || 0;
+  const typicalUnits = applyCooccurrenceFilter(
+    mergeJsonbCountArrays(r.typical_units_merged || [], 'characterId', 9, [
+      { field: 'topItems', innerKey: 'apiName', topN: 3 },
+    ])
+      .filter(u => !isExcludedUnit((u as any).characterId))
+      .map(u => {
+        const topItems = Array.isArray((u as any).topItems)
+          ? (u as any).topItems.filter((it: any) => !isExcludedItem(it?.apiName))
+          : (u as any).topItems;
+        return { ...u, topItems };
+      }) as Array<{ characterId: string; count: number } & Record<string, unknown>>,
+    games,
+    carry,
+  );
   // Sprint 6.3 — Comp-Flex-Score. Normalized entropy of the top-9 unit
   // distribution: 0 = locked (single dominant unit), 1 = fully even.
   const flexScore = (() => {

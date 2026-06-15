@@ -196,7 +196,14 @@ function carryFromAugments(participant, units) {
 //      offensive items have been built yet.
 // Returns null if the board is too sparse to classify.
 function classifyComp(participant) {
-  const traits = (participant.traits || []).filter(t => (t.style ?? 0) > 0);
+  // *UniqueTrait* sind Unit-Innate-Traits (Shen/Sona/Zed/...), die nur der
+  // jeweilige Champion aktiviert und immer Tier 1 sind. Bei Level-9 Filler-
+  // Boards mit z.B. Shen drin haben sie den höchsten style-Wert und würden
+  // sonst den primaryTrait stellen → "Bulwark Bard"-Cluster statt der echten
+  // themed comp. Filter raus.
+  const traits = (participant.traits || []).filter(
+    t => (t.style ?? 0) > 0 && !/UniqueTrait$/.test(t.name || ''),
+  );
   if (traits.length === 0) return null;
   traits.sort((a, b) => {
     if ((b.style ?? 0) !== (a.style ?? 0)) return (b.style ?? 0) - (a.style ?? 0);
@@ -895,9 +902,23 @@ export function finalize(agg, opts = {}) {
   // Comp clusters
   for (const [key, buckets] of agg.byComp) {
     const slim = {};
+    // Carry-Unit aus dem clusterKey extrahieren — sie bleibt IMMER in
+    // typicalUnits, auch wenn ihr Cooccurrence-Wert unter dem Threshold liegt
+    // (defensiv: ein Cluster kennt seinen Carry per Definition).
+    const carryFromKey = (() => {
+      const m = /^.+@\d+_(.+)$/.exec(key);
+      return m ? m[1] : null;
+    })();
     for (const [bucket, b] of buckets) {
       if (b.games < minCompGames) continue;
+      // Cooccurrence-Threshold (≥40 %): Units, die nur in einer Minderheit
+      // der Cluster-Spiele auftauchen, sind Hybrid/Flex-Edge-Cases und gehören
+      // statistisch nicht in die "typische" Comp-Komposition. Behebt das
+      // Symptom, dass z.B. Gnar in 30 % der Meeple-Corki-Spiele die top-9
+      // füllt + irreführende top-Items mitbringt.
+      const minCo = Math.max(1, Math.floor(b.games * 0.40));
       const typicalUnits = [...b.typicalUnits.entries()]
+        .filter(([cid, e]) => (e.count || 0) >= minCo || cid === carryFromKey)
         .sort((a, b) => (b[1].count || 0) - (a[1].count || 0))
         .slice(0, 9)
         .map(([cid, e]) => {

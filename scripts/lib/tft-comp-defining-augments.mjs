@@ -20,12 +20,6 @@ export const COMP_DEFINING_AUGMENTS = new Map([
   // Two Tanky — fielding 2 copies of a champ grants +500 HP each; 3-star
   // gibt extra 2-star copy. Klassisches Reroll-Incentive-Augment.
   ['TFT_Augment_TwoTanky', 'TwoTanky'],
-  // Two Much Value — Reroll bonus pro unique 2-cost champion gefieldet.
-  // Stark in 2-Cost-Reroll-Comps.
-  ['TFT_Augment_TwoMuchValue', 'TwoMuchValue'],
-  // Two Trick — gewährt 2-Star copies von 1-/2-Cost champs; jumpstartet
-  // Low-Cost-Reroll-Strategien.
-  ['TFT_Augment_TwoTrick', 'TwoTrick'],
 ]);
 
 /**

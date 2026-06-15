@@ -4,8 +4,6 @@
 
 export const COMP_DEFINING_AUGMENTS = new Map<string, string>([
   ['TFT_Augment_TwoTanky', 'TwoTanky'],
-  ['TFT_Augment_TwoMuchValue', 'TwoMuchValue'],
-  ['TFT_Augment_TwoTrick', 'TwoTrick'],
 ]);
 
 export function compDefiningAugmentSlug(augments: readonly string[] | null | undefined): string | null {

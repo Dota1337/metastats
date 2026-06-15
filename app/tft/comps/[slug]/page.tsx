@@ -15,6 +15,7 @@ import { loadTftAssets, tftIconUrl, tftChampionTileUrl, findChampion, findItem, 
 import PositionHeatmap from '../../../components/tft/PositionHeatmap';
 import { formatStage } from '../../../lib/tft-stage';
 import { aggregateComponents } from '../../../lib/tft-components';
+import { compDefiningAugmentApiNameFromSlug } from '../../../lib/tft-comp-defining-augments';
 
 // Same region set as /tft/patch/winners — the regions where the daily-crawl
 // has enough volume to make comp-detail rendering meaningful.
@@ -525,12 +526,14 @@ export default function TftCompDetailPage() {
             {/* Matchups — counter edges from the comp-pair table. Beats /
                 even (45–55% coin-flips) / loses-to, each linking to the
                 opponent comp. Previously computed by the API but never shown. */}
-            {comp.counters && ((comp.counters.beats?.length ?? 0) + (comp.counters.even?.length ?? 0) + (comp.counters.losesTo?.length ?? 0)) > 0 && (
+            {comp.counters && ((comp.counters.beats?.length ?? 0) + (comp.counters.losesTo?.length ?? 0)) > 0 && (
               <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
                 <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.matchups')}</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* Even-Spalte (45-55 %) bewusst weggelassen — der Coin-Flip-Bereich
+                    bringt keine Entscheidungs-Information; Spieler interessieren sich
+                    nur für klare Vorteile/Nachteile. */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <MatchupColumn title={t('tft.comp.beats')}   color="#3ecf8e" edges={comp.counters.beats}   assets={assets} bucket={bucket} t={t} />
-                  <MatchupColumn title={t('tft.comp.even')}    color="#a0b0c5" edges={comp.counters.even}    assets={assets} bucket={bucket} t={t} />
                   <MatchupColumn title={t('tft.comp.losesTo')} color="#e44040" edges={comp.counters.losesTo} assets={assets} bucket={bucket} t={t} />
                 </div>
               </section>
@@ -881,17 +884,32 @@ export default function TftCompDetailPage() {
   );
 }
 
-function parseClusterKey(key: string): { trait: string; level: number; carry: string } | null {
+// Vollständiges Cluster-Key-Parsing inkl. aller Sub-Cluster-Suffixe:
+//   *N      = N-Star-Carry-Variante
+//   ~<slug> = Comp-definierendes Augment (z.B. ~TwoTanky)
+//   #<id>   = Secondary-Damage-Carry
+function parseClusterKey(key: string): {
+  trait: string; level: number; carry: string;
+  carryStar: number; augmentSlug: string | null; secondary: string | null;
+} | null {
   if (!key) return null;
-  const m = /^(.+)@(\d+)_(.+)$/.exec(key);
+  const m = /^(.+)@(\d+)_([^#*~]+)(?:\*(\d))?(?:~([A-Za-z]+))?(?:#(.+))?$/.exec(key);
   if (!m) return null;
-  return { trait: m[1], level: Number(m[2]), carry: m[3] };
+  return {
+    trait: m[1], level: Number(m[2]), carry: m[3],
+    carryStar: m[4] ? Number(m[4]) : 2,
+    augmentSlug: m[5] || null,
+    secondary: m[6] || null,
+  };
 }
 
 interface CounterEdge { opponent: string; games: number; winRate: number }
 
-// One matchup column (beats / even / loses-to). Each edge links to the
-// opponent comp's page and shows this comp's win-rate vs it + sample size.
+// One matchup column (beats / loses-to). Each edge linkt auf die Gegen-Comp
+// und zeigt Win-Rate + Sample-Size. Naming: Trait · Carry plus die gleichen
+// Variant-Badges (3★ / Augment / Secondary-Carry) wie in CompCard/CompRow,
+// damit der User auf einen Blick erkennt ob die Counter-Comp eine Reroll-,
+// Augment- oder Dual-Carry-Variante ist.
 function MatchupColumn({ title, color, edges, assets, bucket, t }: {
   title: string;
   color: string;
@@ -909,25 +927,55 @@ function MatchupColumn({ title, color, edges, assets, bucket, t }: {
         <div className="space-y-1.5">
           {edges.map(e => {
             const parts = parseClusterKey(e.opponent);
-            const traitName = parts && assets ? (assets.traits[parts.trait]?.name || parts.trait.replace(/^TFT\d+_/, '')) : '';
+            const traitName = parts && assets
+              ? (assets.traits[parts.trait]?.name || parts.trait.replace(/^TFT\d+_/, ''))
+              : '';
             const carry = parts && assets ? assets.champions[parts.carry] : null;
+            const carryName = carry?.name || (parts ? parts.carry.replace(/^TFT\d+_/, '') : e.opponent);
             const url = tftChampionTileUrl(assets, carry);
-            const label = carry?.name || (parts ? parts.carry.replace(/^TFT\d+_/, '') : e.opponent);
+            const secondaryCh = parts?.secondary && assets ? assets.champions[parts.secondary] : null;
+            const secondaryName = secondaryCh?.name || (parts?.secondary ? parts.secondary.replace(/^TFT\d+_/, '') : null);
+            const augApiName = parts?.augmentSlug
+              ? compDefiningAugmentApiNameFromSlug(parts.augmentSlug)
+              : null;
+            const augName = (augApiName && assets ? assets.items[augApiName]?.name : null) || parts?.augmentSlug;
             return (
               <a
                 key={e.opponent}
                 href={`/tft/comps/${encodeURIComponent(e.opponent)}?bucket=${bucket}`}
-                title={`${traitName} · ${label}`}
-                className="flex items-center gap-2 hover:opacity-80 transition"
+                title={`${traitName} · ${carryName}`}
+                className="flex items-start gap-2 hover:opacity-80 transition"
               >
                 {url ? (
-                  <img src={url} alt="" className="w-6 h-6 rounded border border-[#c39bff]/50 flex-shrink-0" />
+                  <img src={url} alt="" className="w-7 h-7 rounded border border-[#c39bff]/50 flex-shrink-0 mt-0.5" />
                 ) : (
-                  <div className="w-6 h-6 rounded bg-[#1e2a3a] flex-shrink-0" />
+                  <div className="w-7 h-7 rounded bg-[#1e2a3a] flex-shrink-0 mt-0.5" />
                 )}
-                <span className="text-white text-[11px] truncate flex-1 min-w-0">{label}</span>
-                <span className="text-[10px] tabular-nums flex-shrink-0" style={{ color }}>{(e.winRate * 100).toFixed(0)}%</span>
-                <span className="text-[#5a6a80] text-[9px] tabular-nums flex-shrink-0 w-7 text-right">{e.games}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[#a0b0c5] text-[9px] truncate">{traitName}</div>
+                  <div className="text-white text-[11px] truncate flex items-center gap-1">
+                    <span className="truncate">{carryName}</span>
+                    {parts?.carryStar === 3 && (
+                      <span
+                        className="inline-flex items-center px-1 py-[1px] rounded text-[8px] font-semibold tabular-nums flex-shrink-0"
+                        style={{ color: '#e0c75a', backgroundColor: 'rgba(224,199,90,0.15)', border: '1px solid rgba(224,199,90,0.4)' }}
+                      >3★</span>
+                    )}
+                    {augName && (
+                      <span
+                        className="inline-flex items-center px-1 py-[1px] rounded text-[8px] font-medium flex-shrink-0"
+                        style={{ color: '#c39bff', backgroundColor: 'rgba(123,97,255,0.12)', border: '1px solid rgba(123,97,255,0.4)' }}
+                      >{augName}</span>
+                    )}
+                  </div>
+                  {secondaryName && (
+                    <div className="text-[#7a8aa0] text-[9px] truncate">+ {secondaryName}</div>
+                  )}
+                </div>
+                <div className="flex flex-col items-end flex-shrink-0">
+                  <span className="text-[11px] tabular-nums font-medium" style={{ color }}>{(e.winRate * 100).toFixed(0)}%</span>
+                  <span className="text-[#5a6a80] text-[9px] tabular-nums">{e.games}</span>
+                </div>
               </a>
             );
           })}

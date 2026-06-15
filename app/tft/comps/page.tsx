@@ -32,9 +32,15 @@ export default function TftCompsPage() {
   const router = useRouter();
   const pathname = usePathname();
 
+  // useState-Init läuft im SSR-Pass ohne window → loadInitialFilters fällt dort
+  // auf URL-only zurück. Damit localStorage NICHT durch den ersten useEffect-
+  // Tick mit Defaults überschrieben wird, gibt es einen separaten Init-Effekt
+  // unten der nach Client-Mount setFilters() aus localStorage holt — UND ein
+  // `hydrated`-Gate, damit der persist-Pfad erst nach diesem Init feuert.
   const [filters, setFilters] = useState<Filters>(() =>
     loadInitialFilters(new URLSearchParams(searchParams.toString())),
   );
+  const [hydrated, setHydrated] = useState(false);
   const [adv, setAdv] = useState<AdvancedFilters>(() =>
     advFromUrlParam(searchParams.get('adv')),
   );
@@ -56,6 +62,22 @@ export default function TftCompsPage() {
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
 
+  // Init-Effekt: läuft EINMAL nach Client-Mount. Wenn die URL keine Filter
+  // mitbringt, ziehe sie aus localStorage. Erst danach öffnen wir das
+  // hydrated-Gate, damit der Haupt-Effekt unten persistieren darf.
+  useEffect(() => {
+    if (typeof window === 'undefined') { setHydrated(true); return; }
+    const params = new URLSearchParams(window.location.search);
+    const hasUrlFilters = ['patch', 'bucket', 'days', 'region', 'velocity']
+      .some(k => params.has(k));
+    if (!hasUrlFilters) {
+      const stored = loadInitialFilters(params);
+      setFilters(stored);
+    }
+    setHydrated(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     setLoading(true);
     const qs = filtersToQueryString(filters);
@@ -69,18 +91,17 @@ export default function TftCompsPage() {
         setLoading(false);
       })
       .catch(() => { setHasData(false); setComps([]); setLoading(false); });
-    // Filter in localStorage spiegeln → bei nächstem fresh visit (neuer Tab,
-    // Bookmark ohne Params) startet die Page mit der gleichen Persona.
-    persistFilters(filters);
+    // Persist NUR nach Hydration — sonst überschreibt der erste Effekt-Tick
+    // mit den (URL-only) Defaults die in localStorage gespeicherte Persona,
+    // bevor der Init-Effekt sie laden konnte.
+    if (hydrated) persistFilters(filters);
     const advParam = advToUrlParam(adv);
-    // Sort in URL persistieren wenn vom User explizit gewählt — sonst fiel
-    // er beim Reload immer auf 'avg' zurück.
     const sortParam = sortTouched && sortBy !== 'avg' ? `&sort=${sortBy}` : '';
     const url = `${pathname}?${qs}${advParam ? `&adv=${advParam}` : ''}${sortParam}`;
     if (typeof window !== 'undefined' && window.location.pathname + window.location.search !== url) {
       router.replace(url, { scroll: false });
     }
-  }, [filters, adv, sortBy, sortTouched, pathname, router]);
+  }, [filters, adv, sortBy, sortTouched, hydrated, pathname, router]);
 
   // Filter-change handler that also auto-flips the sort to "Trending" the
   // first time the user enables Δ — and back to "avg" when they turn it off.

@@ -63,6 +63,7 @@ export default function TftTraitsPage() {
   const pathname = usePathname();
 
   const [filters, setFilters] = useState<Filters>(() => loadInitialFilters(new URLSearchParams(searchParams.toString())));
+  const [hydrated, setHydrated] = useState(false);
   const [rows, setRows] = useState<TraitRow[]>([]);
   const [hasData, setHasData] = useState<boolean | null>(null);
   const [patches, setPatches] = useState<PatchInfo[]>([]);
@@ -70,6 +71,19 @@ export default function TftTraitsPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') { setHydrated(true); return; }
+    const params = new URLSearchParams(window.location.search);
+    const hasUrlFilters = ['patch', 'bucket', 'days', 'region', 'velocity']
+      .some(k => params.has(k));
+    if (!hasUrlFilters) {
+      const stored = loadInitialFilters(params);
+      setFilters(stored);
+    }
+    setHydrated(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -87,8 +101,8 @@ export default function TftTraitsPage() {
     if (typeof window !== 'undefined' && window.location.pathname + window.location.search !== url) {
       router.replace(url, { scroll: false });
     }
-    persistFilters(filters);
-  }, [filters, pathname, router]);
+    if (hydrated) persistFilters(filters);
+  }, [filters, hydrated, pathname, router]);
 
   // Collapse per-activation rows into one entry per *display name* (not
   // per apiName) so multi-variant families like Stargazer's 7

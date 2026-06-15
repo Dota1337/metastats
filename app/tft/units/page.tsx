@@ -40,7 +40,12 @@ export default function TftUnitsPage() {
   const router = useRouter();
   const pathname = usePathname();
 
+  // useState-Init im SSR-Pass kennt kein window → loadInitialFilters fällt
+  // dort auf URL-only zurück. Separater Init-Effekt hydratisiert nach Mount
+  // aus localStorage; `hydrated`-Gate verhindert dass der erste persist-Tick
+  // localStorage mit Defaults überschreibt.
   const [filters, setFilters] = useState<Filters>(() => loadInitialFilters(new URLSearchParams(searchParams.toString())));
+  const [hydrated, setHydrated] = useState(false);
   const [units, setUnits] = useState<UnitRow[]>([]);
   const [hasData, setHasData] = useState<boolean | null>(null);
   const [patches, setPatches] = useState<PatchInfo[]>([]);
@@ -49,6 +54,19 @@ export default function TftUnitsPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') { setHydrated(true); return; }
+    const params = new URLSearchParams(window.location.search);
+    const hasUrlFilters = ['patch', 'bucket', 'days', 'region', 'velocity']
+      .some(k => params.has(k));
+    if (!hasUrlFilters) {
+      const stored = loadInitialFilters(params);
+      setFilters(stored);
+    }
+    setHydrated(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -69,9 +87,9 @@ export default function TftUnitsPage() {
     if (typeof window !== 'undefined' && window.location.pathname + window.location.search !== url) {
       router.replace(url, { scroll: false });
     }
-    persistFilters(filters);
+    if (hydrated) persistFilters(filters);
     return () => { cancelled = true; };
-  }, [filters, pathname, router]);
+  }, [filters, hydrated, pathname, router]);
 
   const filtered = useMemo(() => {
     if (costFilter == null) return units;

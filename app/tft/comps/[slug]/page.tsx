@@ -377,122 +377,147 @@ export default function TftCompDetailPage() {
             {/* Death-Round + Survival-to-Top4 — unique to metastats. Shows
                 where this comp dies in the lobby distribution and at which
                 round the "you're safe to commit" inflection happens. */}
-            {comp.roundHistogram && comp.roundHistogram.length > 0 && (() => {
-              const hist: { round: number; games: number; top4: number }[] = comp.roundHistogram;
-              const survival: { round: number; atLeast: number; top4Rate: number | null }[] = comp.survivalToTop4 || [];
-              const maxGames = hist.reduce((m, p) => Math.max(m, p.games), 0) || 1;
-              const totalGames = comp.games || 1;
-              const modeBin = hist.reduce((best, p) => (p.games > best.games ? p : best), hist[0]);
-              // Survival inflection: lowest round at which top4-rate ≥ 0.5
-              const inflection = survival.find(p => (p.top4Rate ?? 0) >= 0.5);
-              const inflectionPct = inflection && inflection.atLeast
-                ? (inflection.atLeast / totalGames) * 100
-                : null;
+            {comp.deathStory && comp.roundHistogram && comp.roundHistogram.length > 0 && (() => {
+              const story = comp.deathStory as {
+                mostCommonRound: { round: number; share: number; phase: 'early'|'mid'|'late'|'end'; top4Rate: number | null } | null;
+                top4ThresholdRound: { round: number; top4Rate: number; share: number } | null;
+                stableRound: { round: number; top4Rate: number; share: number } | null;
+                phaseBreakdown: { phase: 'early'|'mid'|'late'|'end'; games: number; share: number; top4InPhase: number | null; cumTop4AfterPhase: number | null; survivorsAfterPhase: number | null }[];
+              };
+              const phaseLabel = (p: 'early'|'mid'|'late'|'end') => t(`tft.comp.phase.${p}` as TranslationKey) as string;
+              const phaseRangeLabel = (p: 'early'|'mid'|'late'|'end') =>
+                t(`tft.comp.phase.${p === 'early' ? 'earlyRange' : p === 'mid' ? 'midRange' : p === 'late' ? 'lateRange' : 'endRange'}` as TranslationKey) as string;
+              // Storyline-Satz aus den 2-3 stärksten KPIs zusammensetzen.
+              const storyParts: string[] = [];
+              if (story.mostCommonRound) {
+                storyParts.push(
+                  (t('tft.comp.death.story.dies') as string)
+                    .replace('{phase}', phaseLabel(story.mostCommonRound.phase))
+                    .replace('{stage}', formatStage(story.mostCommonRound.round)),
+                );
+              }
+              if (story.stableRound) {
+                storyParts.push(
+                  (t('tft.comp.death.story.stable') as string)
+                    .replace('{stage}', formatStage(story.stableRound.round))
+                    .replace('{pct}', String(Math.floor(story.stableRound.top4Rate * 100))),
+                );
+              } else if (story.top4ThresholdRound) {
+                storyParts.push(
+                  (t('tft.comp.death.story.threshold') as string)
+                    .replace('{stage}', formatStage(story.top4ThresholdRound.round))
+                    .replace('{pct}', String(Math.floor(story.top4ThresholdRound.top4Rate * 100))),
+                );
+              }
               return (
                 <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
                   <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">
-                    {t('tft.comp.deathCurve')}
+                    {t('tft.comp.death.title')}
                   </h2>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
-                    <Stat label={t('tft.comp.modeRound')} value={modeBin ? formatStage(modeBin.round) : '—'} />
-                    <Stat
-                      label={t('tft.comp.survivalInflection')}
-                      value={inflection ? `${formatStage(inflection.round)} (${(inflection.top4Rate! * 100).toFixed(0)}%)` : '—'}
+
+                  {/* Layer 1 — drei KPI-Karten */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+                    <DeathKpi
+                      label={t('tft.comp.modeRound') as string}
+                      value={story.mostCommonRound ? formatStage(story.mostCommonRound.round) : '—'}
+                      sub={story.mostCommonRound
+                        ? (t('tft.comp.death.commonSub') as string)
+                            .replace('{share}', (story.mostCommonRound.share * 100).toFixed(0))
+                            .replace('{phase}', phaseLabel(story.mostCommonRound.phase))
+                        : ''}
+                      accent="#e44040"
                     />
-                    <Stat
-                      label={t('tft.comp.inflectionShare')}
-                      value={inflectionPct != null ? `${inflectionPct.toFixed(0)}%` : '—'}
+                    <DeathKpi
+                      label={t('tft.comp.survivalInflection') as string}
+                      value={story.top4ThresholdRound
+                        ? `${formatStage(story.top4ThresholdRound.round)} · ${(story.top4ThresholdRound.top4Rate * 100).toFixed(0)}%`
+                        : '—'}
+                      sub={t('tft.comp.death.thresholdSub') as string}
+                      accent="#f0c040"
+                    />
+                    <DeathKpi
+                      label={t('tft.comp.death.stable') as string}
+                      value={story.stableRound
+                        ? `${formatStage(story.stableRound.round)} · ${(story.stableRound.top4Rate * 100).toFixed(0)}%`
+                        : '—'}
+                      sub={t('tft.comp.death.stableSub') as string}
+                      accent="#3ecf8e"
                     />
                   </div>
-                  <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3">
-                    {(() => {
-                      // Merge histogram + survival data into a single dataset
-                      // so Recharts renders the death-bar histogram + the
-                      // survival→top4 line over the same X-axis.
-                      const survByRound = new Map(survival.map(s => [s.round, s]));
-                      const chartData = hist.map(p => ({
-                        round: p.round,
-                        stage: formatStage(p.round),
-                        games: p.games,
-                        top4Rate: p.games > 0 ? (p.top4 / p.games) * 100 : 0,
-                        survivalRate: (survByRound.get(p.round)?.top4Rate ?? 0) * 100,
-                      }));
-                      return (
-                        <div style={{ width: '100%', height: 200 }}>
-                          <ResponsiveContainer>
-                            <ComposedChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
-                              <XAxis
-                                dataKey="stage"
-                                tick={{ fill: '#5a6a80', fontSize: 10 }}
-                                axisLine={{ stroke: '#1e2a3a' }}
-                                tickLine={false}
-                                interval="preserveStartEnd"
-                              />
-                              <YAxis
-                                yAxisId="left"
-                                tick={{ fill: '#5a6a80', fontSize: 10 }}
-                                axisLine={false}
-                                tickLine={false}
-                                width={28}
-                              />
-                              <YAxis
-                                yAxisId="right"
-                                orientation="right"
-                                domain={[0, 100]}
-                                tick={{ fill: '#3ecf8e', fontSize: 10 }}
-                                axisLine={false}
-                                tickLine={false}
-                                width={32}
-                                tickFormatter={v => `${v}%`}
-                              />
-                              <RechartsTooltip
-                                contentStyle={{
-                                  backgroundColor: '#0d1526',
-                                  border: '1px solid #1e2a3a',
-                                  borderRadius: 4,
-                                  fontSize: 11,
-                                }}
-                                labelStyle={{ color: '#a0b0c5' }}
-                                formatter={(value: any, name: any): any => {
-                                  if (name === 'games') return [value, t('tft.comp.dieHere')];
-                                  if (name === 'survivalRate') return [`${Number(value).toFixed(0)}%`, t('tft.comp.survivalChart')];
-                                  return [value, name];
-                                }}
-                              />
-                              {modeBin && (
-                                <ReferenceLine
-                                  yAxisId="left"
-                                  x={formatStage(modeBin.round)}
-                                  stroke="#7B61FF"
-                                  strokeDasharray="3 3"
-                                  strokeOpacity={0.6}
-                                />
-                              )}
-                              <Bar yAxisId="left" dataKey="games" radius={[2, 2, 0, 0]}>
-                                {chartData.map((d, idx) => {
-                                  const hue = Math.round(120 * (d.top4Rate / 100));
-                                  return <Cell key={idx} fill={`hsl(${hue}, 60%, 45%)`} />;
-                                })}
-                              </Bar>
-                              <Line
-                                yAxisId="right"
-                                type="monotone"
-                                dataKey="survivalRate"
-                                stroke="#3ecf8e"
-                                strokeWidth={2}
-                                dot={false}
-                                activeDot={{ r: 4, fill: '#3ecf8e' }}
-                              />
-                            </ComposedChart>
-                          </ResponsiveContainer>
-                        </div>
-                      );
-                    })()}
-                    <div className="flex justify-between text-[9px] text-[#5a6a80] mt-1.5">
-                      <span><span className="inline-block w-2 h-2 bg-[#e44040] rounded-sm mr-1"/>{t('tft.comp.dieHere')}</span>
-                      <span><span className="inline-block w-2 h-2 bg-[#3ecf8e] rounded-sm mr-1"/>{t('tft.comp.survivalChart')}</span>
+
+                  {/* Layer 2 — Storyline */}
+                  {storyParts.length > 0 && (
+                    <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3 mb-3 text-[#c5d0e0] text-[13px] leading-relaxed">
+                      {storyParts.join(' ')}
                     </div>
+                  )}
+
+                  {/* Layer 3 — 4-Phasen-Heatmap */}
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                    {story.phaseBreakdown.map(p => (
+                      <PhasePanel
+                        key={p.phase}
+                        title={phaseLabel(p.phase)}
+                        range={phaseRangeLabel(p.phase)}
+                        share={p.share}
+                        cumTop4={p.cumTop4AfterPhase}
+                        isEndPhase={p.phase === 'end'}
+                        t={t as (k: string) => string}
+                      />
+                    ))}
                   </div>
+
+                  {/* Layer 4 — Detail-Chart (collapsible) */}
+                  <details className="mt-3 group">
+                    <summary className="cursor-pointer text-[11px] text-[#7a8aa0] hover:text-white select-none">
+                      {t('tft.comp.death.detailsToggle')}
+                    </summary>
+                    <div className="mt-2 bg-[#141c2e] border border-[#1e2a3a] rounded p-3">
+                      {(() => {
+                        const hist = comp.roundHistogram as { round: number; games: number; top4: number }[];
+                        const survival = (comp.survivalToTop4 || []) as { round: number; atLeast: number; top4Rate: number | null }[];
+                        const survByRound = new Map(survival.map(s => [s.round, s]));
+                        const chartData = hist.map(p => ({
+                          round: p.round,
+                          stage: formatStage(p.round),
+                          games: p.games,
+                          top4Rate: p.games > 0 ? (p.top4 / p.games) * 100 : 0,
+                          survivalRate: (survByRound.get(p.round)?.top4Rate ?? 0) * 100,
+                        }));
+                        return (
+                          <div style={{ width: '100%', height: 200 }}>
+                            <ResponsiveContainer>
+                              <ComposedChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
+                                <XAxis dataKey="stage" tick={{ fill: '#5a6a80', fontSize: 10 }} axisLine={{ stroke: '#1e2a3a' }} tickLine={false} interval="preserveStartEnd" />
+                                <YAxis yAxisId="left" tick={{ fill: '#5a6a80', fontSize: 10 }} axisLine={false} tickLine={false} width={28} />
+                                <YAxis yAxisId="right" orientation="right" domain={[0, 100]} tick={{ fill: '#3ecf8e', fontSize: 10 }} axisLine={false} tickLine={false} width={32} tickFormatter={v => `${v}%`} />
+                                <RechartsTooltip
+                                  contentStyle={{ backgroundColor: '#0d1526', border: '1px solid #1e2a3a', borderRadius: 4, fontSize: 11 }}
+                                  labelStyle={{ color: '#a0b0c5' }}
+                                  formatter={(value: any, name: any): any => {
+                                    if (name === 'games') return [value, t('tft.comp.dieHere')];
+                                    if (name === 'survivalRate') return [`${Number(value).toFixed(0)}%`, t('tft.comp.survivalChart')];
+                                    return [value, name];
+                                  }}
+                                />
+                                <Bar yAxisId="left" dataKey="games" radius={[2, 2, 0, 0]}>
+                                  {chartData.map((d, idx) => {
+                                    const hue = Math.round(120 * (d.top4Rate / 100));
+                                    return <Cell key={idx} fill={`hsl(${hue}, 60%, 45%)`} />;
+                                  })}
+                                </Bar>
+                                <Line yAxisId="right" type="monotone" dataKey="survivalRate" stroke="#3ecf8e" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: '#3ecf8e' }} />
+                              </ComposedChart>
+                            </ResponsiveContainer>
+                          </div>
+                        );
+                      })()}
+                      <div className="flex justify-between text-[9px] text-[#5a6a80] mt-1.5">
+                        <span><span className="inline-block w-2 h-2 bg-[#e44040] rounded-sm mr-1"/>{t('tft.comp.dieHere')}</span>
+                        <span><span className="inline-block w-2 h-2 bg-[#3ecf8e] rounded-sm mr-1"/>{t('tft.comp.survivalChart')}</span>
+                      </div>
+                    </div>
+                  </details>
                 </section>
               );
             })()}
@@ -991,6 +1016,64 @@ function tempoLabel(avgLevel: number | null | undefined, avgRound: number | null
   if (avgLevel >= 8.5) return t('tft.comp.tempo.fastEight');
   if (avgLevel <= 7.0) return t('tft.comp.tempo.slowRoll');
   return t('tft.comp.tempo.balanced');
+}
+
+// Death-Story KPI-Karte: Hauptzahl + Sub-Beschreibung, akzentuiert in
+// passender Farbe (rot=Risiko, gelb=Übergang, grün=Safe).
+function DeathKpi({ label, value, sub, accent }: { label: string; value: string; sub: string; accent: string }) {
+  return (
+    <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3" style={{ borderLeft: `3px solid ${accent}` }}>
+      <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">{label}</div>
+      <div className="text-white text-lg font-medium mt-1 tabular-nums">{value}</div>
+      {sub && <div className="text-[#7a8aa0] text-[11px] mt-1">{sub}</div>}
+    </div>
+  );
+}
+
+// Phasen-Panel der 4-Bucket-Heatmap. Zeigt pro Phase den Anteil der Spiele
+// die HIER endeten + die Top-4-Rate für die, die diese Phase überlebt haben.
+// Farbe der Top-4-Bar mappt grün (90%+) → gelb → rot.
+function PhasePanel({
+  title, range, share, cumTop4, isEndPhase, t,
+}: {
+  title: string;
+  range: string;
+  share: number;
+  cumTop4: number | null;
+  isEndPhase: boolean;
+  t: (k: string) => string;
+}) {
+  const sharePct = Math.round(share * 100);
+  const top4Pct = cumTop4 != null ? Math.round(cumTop4 * 100) : null;
+  const hue = top4Pct != null ? Math.round(120 * (top4Pct / 100)) : 0;
+  return (
+    <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3">
+      <div className="flex items-baseline justify-between">
+        <span className="text-white text-sm font-medium">{title}</span>
+        <span className="text-[#5a6a80] text-[10px]">{range}</span>
+      </div>
+      <div className="mt-2 text-[10px] text-[#7a8aa0]">
+        {t('tft.comp.phase.diedHere')}
+      </div>
+      <div className="text-white text-base font-medium tabular-nums">{sharePct}%</div>
+      <div className="mt-1 h-1 bg-[#1e2a3a] rounded overflow-hidden">
+        <div className="h-full bg-[#e44040]" style={{ width: `${Math.min(100, sharePct * 2)}%` }} />
+      </div>
+      {!isEndPhase && top4Pct != null && (
+        <>
+          <div className="mt-2 text-[10px] text-[#7a8aa0]">
+            {t('tft.comp.phase.top4IfSurvived')}
+          </div>
+          <div className="text-white text-base font-medium tabular-nums" style={{ color: `hsl(${hue}, 60%, 60%)` }}>
+            {top4Pct}%
+          </div>
+          <div className="mt-1 h-1 bg-[#1e2a3a] rounded overflow-hidden">
+            <div className="h-full" style={{ width: `${top4Pct}%`, backgroundColor: `hsl(${hue}, 60%, 50%)` }} />
+          </div>
+        </>
+      )}
+    </div>
+  );
 }
 
 // Board-Komposition: pro Unit ein Slot mit Farbcode nach Cooccurrence-Klasse.

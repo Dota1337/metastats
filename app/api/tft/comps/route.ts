@@ -577,11 +577,97 @@ function enrichComp(r: CompRow) {
       round,
       atLeast: cumGames,
       top4Rate: cumGames > 0 ? cumTop4 / cumGames : null,
-    };
+    } as { round: number; atLeast: number; top4Rate: number | null };
     cumGames -= (roundGames[String(round)] || 0);
     cumTop4 -= (roundTop4[String(round)] || 0);
     return point;
   });
+  // Death-Story: Drei abgeleitete KPIs + 4-Phasen-Aggregation aus dem
+  // 27-Round-Histogramm, damit die Detail-Page eine verständliche Story
+  // statt einer dichten Composed-Chart zeigen kann.
+  //
+  // Stage-Round-Mapping (TFT-Konvention):
+  //   Stage 1: rounds 1-3 (PvE) · Stage 2: 4-10 · Stage 3: 11-17
+  //   Stage 4: 18-24 · Stage 5: 25-31 · Stage 6: 32-38 · Stage 7: 39-45
+  //   Stage 8+: 46+
+  //
+  // Phase-Buckets:
+  //   early = Stages 1-3 (round ≤ 17) — pre-level-7
+  //   mid   = Stage 4   (18-24)       — Lvl 7-8 inflection
+  //   late  = Stages 5-6 (25-38)       — Lvl 8-9 cap
+  //   end   = Stage 7+ (≥ 39)          — top-2 fight
+  const roundToPhase = (round: number): 'early' | 'mid' | 'late' | 'end' =>
+    round <= 17 ? 'early' : round <= 24 ? 'mid' : round <= 38 ? 'late' : 'end';
+  const phaseEndRound = { early: 17, mid: 24, late: 38, end: 99 } as const;
+  type DeathPhase = 'early' | 'mid' | 'late' | 'end';
+  const phaseAgg: Record<DeathPhase, { games: number; top4: number }> = {
+    early: { games: 0, top4: 0 }, mid: { games: 0, top4: 0 },
+    late: { games: 0, top4: 0 }, end: { games: 0, top4: 0 },
+  };
+  for (const h of roundHistogram) {
+    const p = roundToPhase(h.round);
+    phaseAgg[p].games += h.games;
+    phaseAgg[p].top4 += h.top4;
+  }
+  // Cumulative survival at each round — re-derive separately from survivalToTop4
+  // (which mutates cumGames in its build loop).
+  const cumByRound = new Map<number, { atLeast: number; top4Rate: number | null }>();
+  for (const s of survivalToTop4) {
+    cumByRound.set(s.round, { atLeast: s.atLeast, top4Rate: s.top4Rate });
+  }
+  const survivalAt = (cutoff: number): { atLeast: number; top4Rate: number | null } | null => {
+    // Größtes round ≤ cutoff aus den vorhandenen rounds nehmen.
+    let best: { atLeast: number; top4Rate: number | null } | null = null;
+    for (const round of roundsSorted) {
+      if (round > cutoff) break;
+      const v = cumByRound.get(round);
+      if (v) best = v;
+    }
+    return best;
+  };
+  const phaseBreakdown = (['early', 'mid', 'late', 'end'] as DeathPhase[]).map(phase => {
+    const pd = phaseAgg[phase];
+    const survAfter = phase === 'end' ? null : survivalAt(phaseEndRound[phase] + 1);
+    return {
+      phase,
+      games: pd.games,
+      share: totalGames > 0 ? pd.games / totalGames : 0,
+      top4InPhase: pd.games > 0 ? pd.top4 / pd.games : null,
+      cumTop4AfterPhase: survAfter?.top4Rate ?? null,
+      survivorsAfterPhase: survAfter?.atLeast ?? null,
+    };
+  });
+  // Most-common death round = bin mit max games.
+  const mostCommonEntry = roundHistogram.reduce<{ round: number; games: number; top4: number } | null>(
+    (max, p) => p.games > (max?.games ?? 0) ? p : max, null,
+  );
+  const mostCommonRound = mostCommonEntry ? {
+    round: mostCommonEntry.round,
+    games: mostCommonEntry.games,
+    share: totalGames > 0 ? mostCommonEntry.games / totalGames : 0,
+    phase: roundToPhase(mostCommonEntry.round),
+    top4Rate: mostCommonEntry.games > 0 ? mostCommonEntry.top4 / mostCommonEntry.games : null,
+  } : null;
+  // Top-4-Schwelle: erste round mit cum-Top-4-Rate ≥ 50 %.
+  const top4ThresholdEntry = survivalToTop4.find(p => p.top4Rate != null && p.top4Rate >= 0.5) ?? null;
+  // Stable: erste round mit cum-Top-4-Rate ≥ 90 %.
+  const stableEntry = survivalToTop4.find(p => p.top4Rate != null && p.top4Rate >= 0.9) ?? null;
+  const deathStory = {
+    mostCommonRound,
+    top4ThresholdRound: top4ThresholdEntry ? {
+      round: top4ThresholdEntry.round,
+      top4Rate: top4ThresholdEntry.top4Rate,
+      atLeast: top4ThresholdEntry.atLeast,
+      share: totalGames > 0 ? top4ThresholdEntry.atLeast / totalGames : 0,
+    } : null,
+    stableRound: stableEntry ? {
+      round: stableEntry.round,
+      top4Rate: stableEntry.top4Rate,
+      atLeast: stableEntry.atLeast,
+      share: totalGames > 0 ? stableEntry.atLeast / totalGames : 0,
+    } : null,
+    phaseBreakdown,
+  };
   // W3-A: Carry-Star outcome — merge the per-day jsonb dicts into a per-star
   // summary (games, avgPlacement, top4Rate, top1Rate). Reroll comps show
   // dramatically better numbers at 3★ than at 2★; pros use the gap to decide
@@ -715,6 +801,7 @@ function enrichComp(r: CompRow) {
     // dasteht.
     aggroLobbyAverage: 0.875,
     avgGoldLeft,
+    deathStory,
     levelingTempo,
     tempoMeta,
     skillCapIndex,

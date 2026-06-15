@@ -404,18 +404,31 @@ function enrichComp(r: CompRow) {
     carry,
     secondary,
   );
-  // Sprint 6.3 — Comp-Flex-Score. Normalized entropy of the top-9 unit
-  // distribution: 0 = locked (single dominant unit), 1 = fully even.
-  const flexScore = (() => {
-    const total = typicalUnits.reduce((s, u) => s + (u.count || 0), 0);
-    if (total <= 0 || typicalUnits.length === 0) return null;
-    let h = 0;
-    for (const u of typicalUnits) {
-      const p = (u.count || 0) / total;
-      if (p > 0) h -= p * Math.log(p);
-    }
-    const maxH = Math.log(typicalUnits.length);
-    return maxH > 0 ? h / maxH : null;
+  // Board-Composition: jeder Unit-Slot bekommt eine Kategorie aus seiner
+  // Cooccurrence-Quote in dieser Comp:
+  //   Core   ≥ 75 % — fast immer Pflicht
+  //   Flex   50-75 % — situativ
+  //   Tech   40-50 % — gezielter Konter / spätes Game
+  // Ersetzt die alte Shannon-Entropy-Metrik, die durch den 40 %-Cooccurrence-
+  // Pre-Filter eh fast immer 0.9-1.0 lag und damit keine sinnvolle Auflösung
+  // mehr lieferte.
+  const boardComposition = (() => {
+    if (games <= 0 || typicalUnits.length === 0) return null;
+    let core = 0, flex = 0, tech = 0;
+    const slots = typicalUnits.map(u => {
+      const co = (u.count || 0) / games;
+      let kind: 'core' | 'flex' | 'tech';
+      if (co >= 0.75) { core++; kind = 'core'; }
+      else if (co >= 0.50) { flex++; kind = 'flex'; }
+      else { tech++; kind = 'tech'; }
+      return {
+        characterId: (u as any).characterId,
+        count: (u as any).count,
+        cooccurrence: co,
+        kind,
+      };
+    });
+    return { core, flex, tech, slots };
   })();
   // Aggro-Index (Sprint 2.1): kills per game.
   const aggroIndex = r.games > 0 && r.sum_players_eliminated
@@ -446,6 +459,28 @@ function enrichComp(r: CompRow) {
         avgLastRound: g > 0 ? sumRound / g : null,
       };
     });
+  // Tempo-Klassifikation aus dem Peak der Level-Verteilung.
+  //   peak ≤ 7   → reroll   (1-/2-Cost 3-Star)
+  //   peak = 8   → standard (kontrollierter Push)
+  //   peak = 9   → fast9    (frühes Level-Up)
+  //   peak ≥ 10  → capout   (Max-Board)
+  const tempoMeta = (() => {
+    if (levelingTempo.length === 0) return null;
+    const sorted = [...levelingTempo].sort((a, b) => (b.share ?? 0) - (a.share ?? 0));
+    const peak = sorted[0];
+    if (!peak || peak.share == null) return null;
+    let category: 'reroll' | 'standard' | 'fast9' | 'capout';
+    if (peak.level <= 7) category = 'reroll';
+    else if (peak.level === 8) category = 'standard';
+    else if (peak.level === 9) category = 'fast9';
+    else category = 'capout';
+    return {
+      category,
+      peakLevel: peak.level,
+      peakShare: peak.share,
+      avgEndStage: peak.avgLastRound,
+    };
+  })();
   // Skill-Cap-Index (Sprint 2.3): spread of avgPlacement across rank-buckets
   // (only buckets with ≥ 20 games). Higher = execution-dependent.
   const buckets = r.bucket_breakdown || {};
@@ -458,10 +493,14 @@ function enrichComp(r: CompRow) {
   }
   let skillCapIndex: number | null = null;
   let skillCapBuckets: typeof bucketAvgs = [];
+  let skillCapCategory: 'consistent' | 'moderate' | 'high' | null = null;
   if (bucketAvgs.length >= 2) {
     const min = Math.min(...bucketAvgs.map(b => b.avgPlacement));
     const max = Math.max(...bucketAvgs.map(b => b.avgPlacement));
     skillCapIndex = max - min;
+    skillCapCategory = skillCapIndex < 0.3 ? 'consistent'
+      : skillCapIndex < 0.6 ? 'moderate'
+      : 'high';
     skillCapBuckets = bucketAvgs.sort((a, b) => {
       const order = ['challenger','grandmaster','master','master_plus','diamond','emerald','platinum','gold','silver','bronze','iron','all','pro_pool'];
       return order.indexOf(a.bucket) - order.indexOf(b.bucket);
@@ -551,7 +590,25 @@ function enrichComp(r: CompRow) {
       top1Rate: e.top1 / e.games,
     });
   }
-  return { roundHistogram, survivalToTop4, aggroIndex, avgGoldLeft, levelingTempo, skillCapIndex, skillCapBuckets, flexScore, carryStarOutcome, contestedOutcome };
+  return {
+    roundHistogram,
+    survivalToTop4,
+    aggroIndex,
+    // Mathematischer Lobby-Durchschnitt für players_eliminated: 7 Mitspieler
+    // verteilt auf 8 Plätze = 0.875 Eliminations pro Spieler im Schnitt.
+    // Frontend zeigt das als Referenz, damit der 1.30-Wert nicht ohne Anker
+    // dasteht.
+    aggroLobbyAverage: 0.875,
+    avgGoldLeft,
+    levelingTempo,
+    tempoMeta,
+    skillCapIndex,
+    skillCapBuckets,
+    skillCapCategory,
+    boardComposition,
+    carryStarOutcome,
+    contestedOutcome,
+  };
 }
 
 // Merge per-day carry-items lists ([{items:[…], count}, …]) into a single

@@ -258,51 +258,47 @@ export default function TftCompDetailPage() {
               </section>
             )}
 
-            {/* Comp-DNA: Aggro-Index + Skill-Cap-Index + Leveling-Tempo-Curve.
-                Sprint-2 stack — three data angles no other TFT site exposes. */}
-            {(comp.aggroIndex != null || comp.skillCapIndex != null || (comp.levelingTempo && comp.levelingTempo.length > 0) || comp.flexScore != null) && (
+            {/* Comp-DNA: Board-Composition + Aggro + Skill-Cap + Tempo.
+                Verständliche Labels statt abstrakter Scores. */}
+            {(comp.aggroIndex != null || comp.skillCapIndex != null || (comp.levelingTempo && comp.levelingTempo.length > 0) || comp.boardComposition != null) && (
               <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
                 <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.compDna')}</h2>
-                {comp.flexScore != null && (
-                  <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3 mb-3">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">{t('tft.comp.flexScore')}</span>
-                      <span className="text-white text-xl font-medium tabular-nums">{(comp.flexScore * 100).toFixed(0)}</span>
-                      <span className="text-[#a0b0c5] text-[11px]">
-                        {comp.flexScore >= 0.85 ? t('tft.comp.flex.flexible') :
-                         comp.flexScore >= 0.7 ? t('tft.comp.flex.adaptive') :
-                         t('tft.comp.flex.locked')}
-                      </span>
-                    </div>
-                    <div className="mt-1.5 h-1.5 bg-[#1e2a3a] rounded overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-[#e44040] via-[#f0c040] to-[#3ecf8e]" style={{ width: `${(comp.flexScore * 100).toFixed(0)}%` }} />
-                    </div>
-                  </div>
+                {comp.boardComposition && (
+                  <BoardCompositionPanel
+                    composition={comp.boardComposition}
+                    assets={assets}
+                    t={t as (k: string) => string}
+                  />
                 )}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                   {comp.aggroIndex != null && (
                     <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3">
                       <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">{t('tft.comp.aggroIndex')}</div>
-                      <div className="text-white text-xl font-medium mt-1 tabular-nums">{comp.aggroIndex.toFixed(2)}</div>
-                      <div className="text-[#a0b0c5] text-[11px] mt-1">
+                      <div className="flex items-baseline gap-1.5 mt-1">
+                        <span className="text-white text-2xl font-medium tabular-nums">{comp.aggroIndex.toFixed(2)}</span>
+                        <span className="text-[#7a8aa0] text-[11px]">{t('tft.comp.aggro.perGame')}</span>
+                      </div>
+                      {comp.aggroLobbyAverage != null && (
+                        <div className="text-[#5a6a80] text-[10px] tabular-nums mt-0.5">
+                          {t('tft.comp.aggro.lobbyAvg')}: {comp.aggroLobbyAverage.toFixed(2)}
+                        </div>
+                      )}
+                      <div className="text-[#c39bff] text-[11px] mt-1.5">
                         {comp.aggroIndex >= 1.2 ? t('tft.comp.aggro.push')
                           : comp.aggroIndex >= 0.7 ? t('tft.comp.aggro.balanced')
                           : t('tft.comp.aggro.econ')}
                       </div>
                     </div>
                   )}
-                  {comp.skillCapIndex != null && (
+                  {comp.skillCapCategory && (
                     <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3">
                       <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">{t('tft.comp.skillCap')}</div>
-                      <div className="text-white text-xl font-medium mt-1 tabular-nums">Δ {comp.skillCapIndex.toFixed(2)}</div>
-                      <div className="text-[#a0b0c5] text-[11px] mt-1">
-                        {comp.skillCapIndex >= 1.0 ? t('tft.comp.skillCap.execution')
-                          : comp.skillCapIndex >= 0.5 ? t('tft.comp.skillCap.medium')
+                      <div className="text-white text-lg font-medium mt-1">
+                        {comp.skillCapCategory === 'high' ? t('tft.comp.skillCap.execution')
+                          : comp.skillCapCategory === 'moderate' ? t('tft.comp.skillCap.medium')
                           : t('tft.comp.skillCap.consistent')}
                       </div>
                       {comp.skillCapBuckets && comp.skillCapBuckets.length > 0 && (() => {
-                        // Visual bar comparison: lower avg_place = better,
-                        // map 1..8 placement range to a 0..1 quality bar.
                         const minP = Math.min(...comp.skillCapBuckets.map((b: any) => b.avgPlacement));
                         const maxP = Math.max(...comp.skillCapBuckets.map((b: any) => b.avgPlacement));
                         const range = Math.max(0.01, maxP - minP);
@@ -326,47 +322,51 @@ export default function TftCompDetailPage() {
                       })()}
                     </div>
                   )}
-                  {comp.levelingTempo && comp.levelingTempo.length > 0 && (() => {
-                    // Tempo curve: share of games ending at each final level.
-                    // The peak shows where this comp typically tops out; the
-                    // tooltip carries the avg death-round per level.
-                    const pts = (comp.levelingTempo as { level: number; share: number | null; avgLastRound: number | null }[])
-                      .filter(p => p.share != null);
-                    if (pts.length === 0) return null;
-                    const chartData = pts.map(p => ({
-                      level: `Lvl ${p.level}`,
-                      share: Math.round((p.share || 0) * 100),
-                      avgLastRound: p.avgLastRound,
-                    }));
-                    return (
-                      <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3">
-                        <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest mb-1.5">{t('tft.comp.levelTempo')}</div>
-                        <div style={{ width: '100%', height: 132 }}>
-                          <ResponsiveContainer>
-                            <AreaChart data={chartData} margin={{ top: 4, right: 6, left: -26, bottom: 0 }}>
-                              <defs>
-                                <linearGradient id="tempoFill" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="0%" stopColor="#7B61FF" stopOpacity={0.5} />
-                                  <stop offset="100%" stopColor="#7B61FF" stopOpacity={0.05} />
-                                </linearGradient>
-                              </defs>
-                              <XAxis dataKey="level" tick={{ fill: '#5a6a80', fontSize: 9 }} axisLine={{ stroke: '#1e2a3a' }} tickLine={false} interval={0} />
-                              <YAxis tick={{ fill: '#5a6a80', fontSize: 9 }} axisLine={false} tickLine={false} width={30} tickFormatter={(v: any) => `${v}%`} />
-                              <RechartsTooltip
-                                contentStyle={{ backgroundColor: '#0d1526', border: '1px solid #1e2a3a', borderRadius: 4, fontSize: 11 }}
-                                labelStyle={{ color: '#a0b0c5' }}
-                                formatter={(value: any, _name: any, item: any) => {
-                                  const alr = item?.payload?.avgLastRound;
-                                  return [`${value}%${alr != null ? ` · Ø ${formatStage(alr)}` : ''}`, t('tft.comp.levelShare')];
-                                }}
-                              />
-                              <Area type="monotone" dataKey="share" stroke="#7B61FF" strokeWidth={2} fill="url(#tempoFill)" />
-                            </AreaChart>
-                          </ResponsiveContainer>
-                        </div>
+                  {comp.tempoMeta && (
+                    <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3">
+                      <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">{t('tft.comp.levelTempo')}</div>
+                      <div className="text-white text-lg font-medium mt-1">
+                        {comp.tempoMeta.category === 'reroll' ? t('tft.comp.tempo.reroll')
+                          : comp.tempoMeta.category === 'standard' ? t('tft.comp.tempo.standard')
+                          : comp.tempoMeta.category === 'fast9' ? t('tft.comp.tempo.fast9')
+                          : t('tft.comp.tempo.capout')}
                       </div>
-                    );
-                  })()}
+                      <div className="text-[#a0b0c5] text-[11px] mt-1.5 tabular-nums">
+                        {t('tft.comp.tempo.peakLevel')}: Lvl {comp.tempoMeta.peakLevel} ({(comp.tempoMeta.peakShare * 100).toFixed(0)}%)
+                      </div>
+                      {comp.tempoMeta.avgEndStage != null && (
+                        <div className="text-[#a0b0c5] text-[11px] tabular-nums">
+                          {t('tft.comp.tempo.avgEnd')}: {formatStage(comp.tempoMeta.avgEndStage)}
+                        </div>
+                      )}
+                      {comp.levelingTempo && comp.levelingTempo.length > 0 && (() => {
+                        const pts = (comp.levelingTempo as { level: number; share: number | null }[])
+                          .filter(p => p.share != null);
+                        if (pts.length === 0) return null;
+                        const chartData = pts.map(p => ({
+                          level: `Lvl ${p.level}`,
+                          share: Math.round((p.share || 0) * 100),
+                        }));
+                        return (
+                          <div style={{ width: '100%', height: 70 }} className="mt-2">
+                            <ResponsiveContainer>
+                              <AreaChart data={chartData} margin={{ top: 4, right: 4, left: -32, bottom: 0 }}>
+                                <defs>
+                                  <linearGradient id="tempoFill" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor="#7B61FF" stopOpacity={0.5} />
+                                    <stop offset="100%" stopColor="#7B61FF" stopOpacity={0.05} />
+                                  </linearGradient>
+                                </defs>
+                                <XAxis dataKey="level" tick={{ fill: '#5a6a80', fontSize: 8 }} axisLine={{ stroke: '#1e2a3a' }} tickLine={false} interval={0} />
+                                <YAxis tick={false} axisLine={false} tickLine={false} width={20} />
+                                <Area type="monotone" dataKey="share" stroke="#7B61FF" strokeWidth={1.5} fill="url(#tempoFill)" />
+                              </AreaChart>
+                            </ResponsiveContainer>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
                 </div>
               </section>
             )}
@@ -988,4 +988,58 @@ function tempoLabel(avgLevel: number | null | undefined, avgRound: number | null
   if (avgLevel >= 8.5) return t('tft.comp.tempo.fastEight');
   if (avgLevel <= 7.0) return t('tft.comp.tempo.slowRoll');
   return t('tft.comp.tempo.balanced');
+}
+
+// Board-Komposition: pro Unit ein Slot mit Farbcode nach Cooccurrence-Klasse.
+// Hover zeigt %-Cooccurrence; Core = immer dabei, Flex = situativ, Tech = gezielt.
+function BoardCompositionPanel({
+  composition,
+  assets,
+  t,
+}: {
+  composition: { core: number; flex: number; tech: number; slots: Array<{ characterId: string; count: number; cooccurrence: number; kind: 'core' | 'flex' | 'tech' }> };
+  assets: TftAssetsBundle | null;
+  t: (k: string) => string;
+}) {
+  const COLORS = {
+    core: { ring: '#7B61FF', label: '#c39bff', bg: 'rgba(123,97,255,0.15)' },
+    flex: { ring: '#3a8ddc', label: '#7ab9ec', bg: 'rgba(58,141,220,0.12)' },
+    tech: { ring: '#5a6a80', label: '#7a8aa0', bg: 'rgba(90,106,128,0.12)' },
+  } as const;
+  return (
+    <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3 mb-3">
+      <div className="flex items-baseline justify-between mb-2">
+        <span className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">{t('tft.comp.board.title')}</span>
+        <div className="flex gap-3 text-[11px] tabular-nums">
+          <span style={{ color: COLORS.core.label }}>{composition.core} {t('tft.comp.board.core')}</span>
+          <span style={{ color: COLORS.flex.label }}>{composition.flex} {t('tft.comp.board.flex')}</span>
+          <span style={{ color: COLORS.tech.label }}>{composition.tech} {t('tft.comp.board.tech')}</span>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {composition.slots.map(s => {
+          const ch = findChampion(assets, s.characterId);
+          const url = tftChampionTileUrl(assets, ch);
+          const c = COLORS[s.kind];
+          const pct = Math.round(s.cooccurrence * 100);
+          return (
+            <a
+              key={s.characterId}
+              href={`/tft/units/${encodeURIComponent(s.characterId)}`}
+              title={`${ch?.name || s.characterId} — ${pct}% ${t(`tft.comp.board.${s.kind}`)}`}
+              className="relative flex flex-col items-center gap-0.5 hover:scale-105 transition-transform"
+            >
+              <div
+                className="w-10 h-10 rounded border-2 overflow-hidden"
+                style={{ borderColor: c.ring, backgroundColor: c.bg }}
+              >
+                {url && <img src={url} alt={ch?.name || s.characterId} className="w-full h-full object-cover" />}
+              </div>
+              <span className="text-[9px] tabular-nums" style={{ color: c.label }}>{pct}%</span>
+            </a>
+          );
+        })}
+      </div>
+    </div>
+  );
 }

@@ -81,8 +81,8 @@ export default function CompCard({
   const traitTooltip = parts ? tftTraitDescription(assets, parts.trait) : '';
   const tier = tierBadge(comp.avgPlacement);
 
-  const typicalUnits = [...(comp.typicalUnits || [])]
-    .map(u => ({
+  const typicalUnits = (() => {
+    const all = [...(comp.typicalUnits || [])].map(u => ({
       ...u,
       _c: safeCount(u.count),
       // carryItemGames is a real number-or-missing field — DON'T fall back to
@@ -90,9 +90,21 @@ export default function CompCard({
       // selection pool on old aggregator rows and pick the unit with the
       // lowest count as the carry.
       _carry: typeof (u as any).carryItemGames === 'number' ? (u as any).carryItemGames : 0,
-    }))
-    .sort((a, b) => b._c - a._c)
-    .slice(0, 9);
+    }));
+    // Sort: primary carry first, secondary carry second, rest by count desc.
+    // Damit matched die Reihenfolge der Units das Comp-Naming
+    // ("Meeple Corki (mit Gnar)" → Corki zuerst, dann Gnar).
+    const primary = parts?.carry || null;
+    const secondary = parts?.secondary || null;
+    return all
+      .sort((a, b) => {
+        const pa = a.characterId === primary ? 0 : a.characterId === secondary ? 1 : 2;
+        const pb = b.characterId === primary ? 0 : b.characterId === secondary ? 1 : 2;
+        if (pa !== pb) return pa - pb;
+        return b._c - a._c;
+      })
+      .slice(0, 9);
+  })();
 
   // Real DMG-carry: unit with the highest share of games holding a
   // damage-carry item. Falls back to the cluster_key carry (lead champion)
@@ -104,6 +116,11 @@ export default function CompCard({
   const carryCid = carryByItems?.cid || parts?.carry;
   const carry = carryCid && assets ? assets.champions[carryCid] : null;
   const carryTileUrl = tftChampionTileUrl(assets, carry);
+  // Sub-Cluster: zweiter damage-carry aus dem clusterKey-Suffix (#<unitId>).
+  // Wird im Comp-Header als „(mit <Name>)" hinter dem primary-Carry angezeigt.
+  const secondaryCid = parts?.secondary || null;
+  const secondaryChamp = secondaryCid && assets ? assets.champions[secondaryCid] : null;
+  const secondaryName = secondaryChamp?.name || (secondaryCid ? prettyChar(secondaryCid) : null);
 
   // Wrapper used to be an <a href> which nested ~40 inner <a> tags (carry,
   // trait, name, 9 unit tiles, up to 27 item tiles) — invalid HTML. When href
@@ -189,6 +206,14 @@ export default function CompCard({
                   {carry?.name || prettyChar(carryCid)}
                 </a>
               ) : (carry?.name || '')}
+              {secondaryName && (
+                <span className="text-[#a0b0c5] text-xs ml-1.5">
+                  {(t('tft.comp.withSecondary') as string).replace(
+                    '{name}',
+                    secondaryName,
+                  )}
+                </span>
+              )}
             </span>
           </div>
 
@@ -334,10 +359,15 @@ function VelocityStat({
   );
 }
 
-function parseClusterKey(key: string): { trait: string; level: number; carry: string } | null {
-  const m = /^(.+)@(\d+)_(.+)$/.exec(key);
+function parseClusterKey(
+  key: string,
+): { trait: string; level: number; carry: string; secondary: string | null } | null {
+  // Cluster-Key Format:
+  //   <trait>@<level>_<carryUnit>            → Standard-Comp
+  //   <trait>@<level>_<carryUnit>#<unitId>   → Dual-Carry-Variante
+  const m = /^(.+)@(\d+)_([^#]+)(?:#(.+))?$/.exec(key);
   if (!m) return null;
-  return { trait: m[1], level: Number(m[2]), carry: m[3] };
+  return { trait: m[1], level: Number(m[2]), carry: m[3], secondary: m[4] || null };
 }
 
 // Pull a constellation/variant suffix out of trait apiNames that ship multiple

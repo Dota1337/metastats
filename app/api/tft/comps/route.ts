@@ -322,22 +322,30 @@ export async function GET(request: NextRequest) {
 // greift auch auf ALTE Snapshots, bevor der nächste Aggregator-Lauf neue
 // Daten mit demselben Threshold auf der Source-Seite schreibt.
 function carryFromClusterKey(key: string): string | null {
-  const m = /^.+@\d+_(.+)$/.exec(key);
+  const m = /^.+@\d+_([^#]+)(?:#.+)?$/.exec(key);
+  return m ? m[1] : null;
+}
+function secondaryFromClusterKey(key: string): string | null {
+  const m = /#(.+)$/.exec(key);
   return m ? m[1] : null;
 }
 function applyCooccurrenceFilter(
   units: Array<{ characterId: string; count: number } & Record<string, unknown>>,
   totalGames: number,
   carry: string | null,
+  secondary: string | null = null,
 ) {
   const minCo = Math.max(1, Math.floor(totalGames * 0.40));
-  return units.filter(u => (u.count || 0) >= minCo || u.characterId === carry);
+  return units.filter(
+    u => (u.count || 0) >= minCo || u.characterId === carry || u.characterId === secondary,
+  );
 }
 
 // Lean per-comp shape — base stats + the unit/augment/carry tiles that the
 // comp LIST (CompRow) and landing CompCard render. No derived metrics.
 function baseComp(r: CompRow, participants: number) {
   const carry = carryFromClusterKey(r.cluster_key);
+  const secondary = secondaryFromClusterKey(r.cluster_key);
   const games = Number(r.games) || 0;
   return {
     source: 'data' as const,
@@ -367,6 +375,7 @@ function baseComp(r: CompRow, participants: number) {
         }) as Array<{ characterId: string; count: number } & Record<string, unknown>>,
       games,
       carry,
+      secondary,
     ),
     typicalAugments: mergeJsonbCountArrays(r.typical_augments_merged || [], 'apiName', 6),
     carryItems: mergeCarryItems(r.carry_items_merged || []),
@@ -378,6 +387,7 @@ function baseComp(r: CompRow, participants: number) {
 // only run it for the single cluster a detail request asks for.
 function enrichComp(r: CompRow) {
   const carry = carryFromClusterKey(r.cluster_key);
+  const secondary = secondaryFromClusterKey(r.cluster_key);
   const games = Number(r.games) || 0;
   const typicalUnits = applyCooccurrenceFilter(
     mergeJsonbCountArrays(r.typical_units_merged || [], 'characterId', 9, [
@@ -392,6 +402,7 @@ function enrichComp(r: CompRow) {
       }) as Array<{ characterId: string; count: number } & Record<string, unknown>>,
     games,
     carry,
+    secondary,
   );
   // Sprint 6.3 — Comp-Flex-Score. Normalized entropy of the top-9 unit
   // distribution: 0 = locked (single dominant unit), 1 = fully even.

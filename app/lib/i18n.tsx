@@ -1808,6 +1808,11 @@ const translations = {
     '\uC870\uD569\uC744 \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.', '\u672A\u627E\u5230\u8BE5\u9635\u5BB9\u3002',
     'Comp no encontrada.', 'Comp introuvable.'
   ),
+  'tft.comp.withSecondary': t6(
+    '(mit {name})', '(with {name})',
+    '({name} \uD3EC\uD568)', '(\u542B {name})',
+    '(con {name})', '(avec {name})'
+  ),
   'tft.comp.topItemSets': t6(
     'H\u00E4ufigste Item-Sets am Carry', 'Most Common Item Sets on Carry',
     '\uCE90\uB9AC \uCD5C\uB2E4 \uC544\uC774\uD15C \uC138\uD2B8', '\u4E3BC\u6700\u5E38\u7528\u88C5\u5907\u7EC4\u5408',

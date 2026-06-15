@@ -48,9 +48,12 @@ function tierBadge(avg: number | null) {
 }
 
 function parseClusterKey(key: string) {
-  const m = /^(.+)@(\d+)_(.+)$/.exec(key);
+  // Cluster-Key Format:
+  //   <trait>@<level>_<carryUnit>            → Standard-Comp
+  //   <trait>@<level>_<carryUnit>#<unitId>   → Dual-Carry-Variante
+  const m = /^(.+)@(\d+)_([^#]+)(?:#(.+))?$/.exec(key);
   if (!m) return null;
-  return { trait: m[1], level: Number(m[2]), carry: m[3] };
+  return { trait: m[1], level: Number(m[2]), carry: m[3], secondary: m[4] || null };
 }
 
 function prettyTrait(s: string) { return s.replace(/^TFT\d+_/, ''); }
@@ -117,14 +120,28 @@ export default function CompRow({
   const traitDisplay = parts ? tftTraitDisplayName(assets, parts.trait) : traitName;
   const traitTooltip = parts ? tftTraitDescription(assets, parts.trait) : '';
 
-  const typicalUnits = [...(comp.typicalUnits || [])]
-    .map(u => ({
+  const typicalUnits = (() => {
+    const all = [...(comp.typicalUnits || [])].map(u => ({
       ...u,
       _c: safeCount(u.count),
       _carry: typeof (u as any).carryItemGames === 'number' ? (u as any).carryItemGames : 0,
-    }))
-    .sort((a, b) => b._c - a._c)
-    .slice(0, 9);
+    }));
+    // Sub-Cluster-Variants: Primary carry zuerst, secondary carry zweiter, dann
+    // restliche Units nach count desc — Reihenfolge matched das Comp-Naming.
+    const primary = parts?.carry || null;
+    const secondary = parts?.secondary || null;
+    return all
+      .sort((a, b) => {
+        const pa = a.characterId === primary ? 0 : a.characterId === secondary ? 1 : 2;
+        const pb = b.characterId === primary ? 0 : b.characterId === secondary ? 1 : 2;
+        if (pa !== pb) return pa - pb;
+        return b._c - a._c;
+      })
+      .slice(0, 9);
+  })();
+  const secondaryCid = parts?.secondary || null;
+  const secondaryChamp = secondaryCid && assets ? assets.champions[secondaryCid] : null;
+  const secondaryName = secondaryChamp?.name || (secondaryCid ? prettyChar(secondaryCid) : null);
 
   const carryByItems = typicalUnits
     .filter(u => u._c >= 5 && u._carry > 0)
@@ -206,6 +223,11 @@ export default function CompRow({
           <div className="text-white font-medium truncate" title={traitTooltip || undefined}>
             {traitDisplay}
             {' · '}{carry?.name || (carryCid ? prettyChar(carryCid) : '')}
+            {secondaryName && (
+              <span className="text-[#a0b0c5] text-[11px] ml-1">
+                {(t('tft.comp.withSecondary') as string).replace('{name}', secondaryName)}
+              </span>
+            )}
           </div>
           {(descriptor || comp.avgLevel != null) && (
             <div className="flex items-center gap-1.5 mt-0.5 text-[10px] tabular-nums">

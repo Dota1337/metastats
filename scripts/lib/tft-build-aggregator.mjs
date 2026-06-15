@@ -251,11 +251,35 @@ function classifyComp(participant) {
   if (!carry?.character_id && !carry?.characterId) return null;
   const carryId = carry.character_id || carry.characterId;
 
+  // Sub-Cluster via Secondary-Damage-Carry — splittet z.B. "Meeple Corki" auf
+  // in den Standard (kein zweiter damage-carrier, Riven/Bard/etc. tragen
+  // primär Tank/Support-Items) und die Dual-Carry-Variante (Gnar/zweite Unit
+  // hält ≥2 damage-carry-Items als parallel carry).
+  //   clusterKey ohne #suffix  → keine zweite Carry-Unit
+  //   clusterKey#<characterId> → diese Unit hält die zweitmeisten damage-items
+  const SECONDARY_MIN_DMG_ITEMS = 2;
+  const secondaryCarry = units
+    .map(u => {
+      const cid = u.character_id || u.characterId;
+      if (!cid || cid === carryId) return null;
+      const items = u.itemNames || [];
+      const dmgItems = items.filter(i => DAMAGE_CARRY_ITEMS.has(i)).length;
+      return dmgItems >= SECONDARY_MIN_DMG_ITEMS ? { cid, dmgItems, tier: u.tier ?? 1 } : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => {
+      if (b.dmgItems !== a.dmgItems) return b.dmgItems - a.dmgItems;
+      return (b.tier ?? 1) - (a.tier ?? 1);
+    })[0];
+  const baseKey = `${primaryTrait.name}@${primaryTrait.tier_current ?? 0}_${carryId}`;
+  const clusterKey = secondaryCarry ? `${baseKey}#${secondaryCarry.cid}` : baseKey;
+
   return {
-    clusterKey: `${primaryTrait.name}@${primaryTrait.tier_current ?? 0}_${carryId}`,
+    clusterKey,
     primaryTrait: primaryTrait.name,
     primaryTraitLevel: primaryTrait.tier_current ?? 0,
     carryUnit: carryId,
+    secondaryCarry: secondaryCarry?.cid || null,
     carryItems: (carry.itemNames || []).filter(Boolean).sort(),
   };
 }
@@ -904,9 +928,15 @@ export function finalize(agg, opts = {}) {
     const slim = {};
     // Carry-Unit aus dem clusterKey extrahieren — sie bleibt IMMER in
     // typicalUnits, auch wenn ihr Cooccurrence-Wert unter dem Threshold liegt
-    // (defensiv: ein Cluster kennt seinen Carry per Definition).
+    // (defensiv: ein Cluster kennt seinen Carry per Definition). Der optionale
+    // #<secondaryCarry>-Suffix wird ignoriert — wir wollen die PRIMARY-Carry.
     const carryFromKey = (() => {
-      const m = /^.+@\d+_(.+)$/.exec(key);
+      const m = /^.+@\d+_([^#]+)(?:#.+)?$/.exec(key);
+      return m ? m[1] : null;
+    })();
+    // Sekundäre Carry-Unit (aus #-Suffix) — ebenfalls immer in typicalUnits.
+    const secondaryFromKey = (() => {
+      const m = /#(.+)$/.exec(key);
       return m ? m[1] : null;
     })();
     for (const [bucket, b] of buckets) {
@@ -918,7 +948,7 @@ export function finalize(agg, opts = {}) {
       // füllt + irreführende top-Items mitbringt.
       const minCo = Math.max(1, Math.floor(b.games * 0.40));
       const typicalUnits = [...b.typicalUnits.entries()]
-        .filter(([cid, e]) => (e.count || 0) >= minCo || cid === carryFromKey)
+        .filter(([cid, e]) => (e.count || 0) >= minCo || cid === carryFromKey || cid === secondaryFromKey)
         .sort((a, b) => (b[1].count || 0) - (a[1].count || 0))
         .slice(0, 9)
         .map(([cid, e]) => {

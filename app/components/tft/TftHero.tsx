@@ -16,34 +16,21 @@ interface TftHeroProps {
   children?: React.ReactNode;
 }
 
-const SLOT_COUNT = 4;
-const ORBIT_DURATION_S = 20;
-// Per-slot content swap intervals — different prime-ish gaps so the cast
-// keeps cycling. Each slot picks a different figure than the others.
-const SWAP_MS = [7500, 9100, 10700, 12300];
+// Swap to the next figure every SWAP_MS with a CROSSFADE_MS-long crossfade
+// between outgoing and incoming. Float-loop runs continuously underneath
+// so the figure gently bobs up and down while present.
+const SWAP_MS = 8000;
+const CROSSFADE_MS = 900;
+const FLOAT_DURATION_S = 4;
 
-// Layout sizes:
-//   figure = front-figure rendered size (px) — back figure scales down by 0.45.
-//   radius = horizontal swing radius — keeps the cluster narrow.
-const FULL_LAYOUT = { figure: 182, radius: 91 };
-const COMPACT_LAYOUT = { figure: 104, radius: 47 };
+// figure = rendered size in px (one static figure per side, no scaled neighbours)
+const FULL_LAYOUT = { figure: 182 };
+const COMPACT_LAYOUT = { figure: 104 };
 
 function pickRandom<T>(arr: T[], exclude?: Set<T>): T | null {
   const candidates = exclude ? arr.filter(x => !exclude.has(x)) : arr;
   if (candidates.length === 0) return arr[0] || null;
   return candidates[Math.floor(Math.random() * candidates.length)];
-}
-
-function pickInitial<T>(arr: T[], n: number): T[] {
-  const taken = new Set<T>();
-  const out: T[] = [];
-  for (let i = 0; i < n; i++) {
-    const pick = pickRandom(arr, taken);
-    if (!pick) break;
-    taken.add(pick);
-    out.push(pick);
-  }
-  return out;
 }
 
 function dedupeByName(arr: TftCompanion[]): TftCompanion[] {
@@ -100,31 +87,22 @@ export default function TftHero({
       style={{ minHeight: heroMinHeight }}
     >
       <style>{`
-        /* Pseudo-3D carousel — figures swing horizontally on an elliptical path
-           with depth simulated via scale + opacity + z-index. The "front"
-           figure (0%/100% keyframe) is always crisp and centered on the slot
-           anchor; "back" (50%) is small and dim behind it; sides (25%/75%)
-           are medium width and partial-opacity. One slot is always near front
-           so the headline always has a clean focal figure beside it. */
-        @keyframes tftCarousel3DLeft {
-          0%,100% { transform: translateX(0)                     scale(1.00); opacity: 1.0;  z-index: 3; }
-          25%     { transform: translateX(var(--orbit-r))         scale(0.65); opacity: 0.82; z-index: 2; }
-          50%     { transform: translateX(0)                     scale(0.45); opacity: 0.45; z-index: 0; }
-          75%     { transform: translateX(calc(-1 * var(--orbit-r))) scale(0.65); opacity: 0.82; z-index: 2; }
+        /* Single figure per side. Gentle vertical float underneath a slow
+           crossfade swap to the next pool entry every SWAP_MS. */
+        @keyframes tftFloat {
+          0%, 100% { transform: translateY(0); }
+          50%      { transform: translateY(-7px); }
         }
-        @keyframes tftCarousel3DRight {
-          0%,100% { transform: translateX(0)                     scale(1.00); opacity: 1.0;  z-index: 3; }
-          25%     { transform: translateX(calc(-1 * var(--orbit-r))) scale(0.65); opacity: 0.82; z-index: 2; }
-          50%     { transform: translateX(0)                     scale(0.45); opacity: 0.45; z-index: 0; }
-          75%     { transform: translateX(var(--orbit-r))         scale(0.65); opacity: 0.82; z-index: 2; }
+        @keyframes tftFadeIn {
+          from { opacity: 0; }
+          to   { opacity: 1; }
         }
-        @keyframes tftFigFade {
-          from { opacity: 0; filter: blur(3px); }
-          to   { opacity: 1; filter: blur(0); }
+        @keyframes tftFadeOut {
+          from { opacity: 1; }
+          to   { opacity: 0; }
         }
-        .tft-fig-img { animation: tftFigFade 0.8s ease-out; }
         @media (prefers-reduced-motion: reduce) {
-          .tft-orbit-item { animation: none !important; }
+          .tft-float-layer { animation: none !important; }
         }
       `}</style>
 
@@ -188,55 +166,52 @@ function OrbitCluster({
   side: 'left' | 'right';
   pool: TftCompanion[];
   assets: TftAssetsBundle | null;
-  layout: { figure: number; radius: number };
+  layout: { figure: number };
   compact: boolean;
 }) {
-  const [slots, setSlots] = useState<(TftCompanion | null)[]>(() =>
-    Array(SLOT_COUNT).fill(null),
-  );
+  const [current, setCurrent] = useState<TftCompanion | null>(null);
+  const [previous, setPrevious] = useState<TftCompanion | null>(null);
 
+  // Initial pick once the pool is loaded.
   useEffect(() => {
     if (pool.length === 0) return;
-    const initial = pickInitial(pool, SLOT_COUNT);
-    setSlots(() => {
-      const next: (TftCompanion | null)[] = Array(SLOT_COUNT).fill(null);
-      for (let i = 0; i < SLOT_COUNT; i++) next[i] = initial[i] || null;
-      return next;
-    });
+    setCurrent(pickRandom(pool));
   }, [pool]);
 
+  // Periodic swap with a CROSSFADE_MS-long crossfade. Right side starts the
+  // cycle offset by SWAP_MS/2 so the two sides never swap simultaneously.
   useEffect(() => {
     if (pool.length < 2) return;
-    const timers = SWAP_MS.map((ms, i) =>
-      window.setInterval(() => {
-        setSlots(prev => {
-          const next = [...prev];
-          const inUse = new Set(prev.filter(Boolean) as TftCompanion[]);
-          const candidate = pickRandom(pool, inUse);
-          if (candidate) next[i] = candidate;
-          return next;
+    const offset = side === 'right' ? SWAP_MS / 2 : 0;
+    let interval: number | null = null;
+    const start = window.setTimeout(() => {
+      const swap = () => {
+        setCurrent(prev => {
+          setPrevious(prev);
+          const next = pickRandom(pool, prev ? new Set([prev]) : undefined);
+          return next ?? prev;
         });
-      }, ms),
-    );
+        // Drop the previous layer once the crossfade is done so it stops
+        // animating + can be GC'd.
+        window.setTimeout(() => setPrevious(null), CROSSFADE_MS + 50);
+      };
+      swap();
+      interval = window.setInterval(swap, SWAP_MS);
+    }, offset);
     return () => {
-      for (const t of timers) window.clearInterval(t);
+      window.clearTimeout(start);
+      if (interval !== null) window.clearInterval(interval);
     };
-  }, [pool]);
-
-  // Bounding box just needs to contain the side-position figures.
-  // Side figure render size = layout.figure * 0.65; centered on x = ±radius.
-  // Half-extent = radius + (figure * 0.65 / 2).
-  const halfExtent = layout.radius + (layout.figure * 0.65) / 2;
-  const boxWidth = halfExtent * 2;
-  const boxHeight = layout.figure + 24; // generous for drop-shadow + scale
+  }, [pool, side]);
 
   const anchorClass =
     side === 'left'
       ? 'hidden sm:block absolute left-2 sm:left-4 md:left-8'
       : 'hidden sm:block absolute right-2 sm:right-4 md:right-8';
 
-  const keyframeName =
-    side === 'left' ? 'tftCarousel3DLeft' : 'tftCarousel3DRight';
+  // Offset the two sides' float keyframes so they don't bob in lockstep.
+  const floatDelay = side === 'left' ? '0s' : `${FLOAT_DURATION_S / 2}s`;
+  const shadow = `drop-shadow(0 ${compact ? 3 : 6}px ${compact ? 8 : 14}px rgba(123,97,255,0.35))`;
 
   return (
     <div
@@ -244,55 +219,71 @@ function OrbitCluster({
       style={{
         top: '50%',
         transform: 'translateY(-50%)',
-        width: boxWidth,
-        height: boxHeight,
+        width: layout.figure,
+        height: layout.figure,
         pointerEvents: 'none',
         userSelect: 'none',
       }}
       aria-hidden="true"
     >
-      {/* Carousel anchor — 0px point at the cluster center. Children orbit
-          relative to this via translateX + scale in their keyframe. */}
-      <div className="absolute left-1/2 top-1/2" style={{ width: 0, height: 0 }}>
-        {slots.map((fig, i) => {
-          const url = tftCompanionIconUrl(assets, fig?.icon);
-          // Phase each slot 1/4 cycle ahead so all 4 positions
-          // (front / one side / back / other side) are always occupied.
-          const delay = -(i / SLOT_COUNT) * ORBIT_DURATION_S;
-          return (
-            <div
-              key={i}
-              className="tft-orbit-item absolute"
-              style={{
-                width: layout.figure,
-                height: layout.figure,
-                marginLeft: -layout.figure / 2,
-                marginTop: -layout.figure / 2,
-                animation: `${keyframeName} ${ORBIT_DURATION_S}s linear infinite`,
-                animationDelay: `${delay}s`,
-                ['--orbit-r' as unknown as string]: `${layout.radius}px`,
-              } as React.CSSProperties}
-            >
-              {url ? (
-                <img
-                  key={fig!.itemId}
-                  src={url}
-                  alt=""
-                  title={fig?.name}
-                  className="tft-fig-img w-full h-full object-contain"
-                  style={{
-                    filter: `drop-shadow(0 ${compact ? 3 : 6}px ${compact ? 8 : 14}px rgba(123,97,255,0.35))`,
-                  }}
-                  loading="lazy"
-                  onError={e => {
-                    (e.currentTarget as HTMLImageElement).style.opacity = '0';
-                  }}
-                />
-              ) : null}
-            </div>
-          );
-        })}
+      <div
+        className="tft-float-layer relative w-full h-full"
+        style={{
+          animation: `tftFloat ${FLOAT_DURATION_S}s ease-in-out infinite`,
+          animationDelay: floatDelay,
+        }}
+      >
+        {previous && (
+          <Figure
+            key={`prev-${previous.itemId}`}
+            fig={previous}
+            assets={assets}
+            shadow={shadow}
+            fadeOut
+          />
+        )}
+        {current && (
+          <Figure
+            key={`curr-${current.itemId}`}
+            fig={current}
+            assets={assets}
+            shadow={shadow}
+          />
+        )}
       </div>
     </div>
+  );
+}
+
+function Figure({
+  fig,
+  assets,
+  shadow,
+  fadeOut = false,
+}: {
+  fig: TftCompanion;
+  assets: TftAssetsBundle | null;
+  shadow: string;
+  fadeOut?: boolean;
+}) {
+  const url = tftCompanionIconUrl(assets, fig.icon);
+  if (!url) return null;
+  return (
+    <img
+      src={url}
+      alt=""
+      title={fig.name}
+      className="absolute inset-0 w-full h-full object-contain"
+      style={{
+        filter: shadow,
+        animation: fadeOut
+          ? `tftFadeOut ${CROSSFADE_MS}ms ease-out forwards`
+          : `tftFadeIn ${CROSSFADE_MS}ms ease-out forwards`,
+      }}
+      loading="lazy"
+      onError={e => {
+        (e.currentTarget as HTMLImageElement).style.opacity = '0';
+      }}
+    />
   );
 }

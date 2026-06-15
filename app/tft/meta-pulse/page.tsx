@@ -13,6 +13,8 @@ import StatsFilterBar, {
 } from '../../components/tft/StatsFilterBar';
 import { useI18n } from '../../lib/i18n';
 import { loadTftAssets, tftChampionTileUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
+import { dedupeByPrimaryCluster, primaryClusterKey, parseClusterKey } from '../../lib/tft-cluster';
+import { compDefiningAugmentApiNameFromSlug } from '../../lib/tft-comp-defining-augments';
 
 // W5: Meta-Pulse Landing — eine Seite, vier Pro-Sichtfenster:
 //   • Trending (was bewegt sich jetzt) — folgt jetzt dem Δ-Vergleich-Filter
@@ -70,6 +72,32 @@ export default function TftMetaPulsePage() {
     return () => { cancelled = true; };
   }, [filters, pathname, router]);
 
+  // Aggregat-Sichten dedupliziert nach Primary-Cluster (trait+carry+star+aug):
+  // sub-cluster mit unterschiedlichen Secondary-Carry-Suffixen werden zur
+  // Hauptform zusammengefasst, damit User nicht zwei optisch identische
+  // Comps untereinander sieht. Behalte den games-stärksten Sub-Cluster als
+  // Display, strippe den Secondary-Suffix.
+  const risingDedup = data?.rising
+    ? dedupeByPrimaryCluster(data.rising, r => r.clusterKey, r => r.gamesNow,
+        g => {
+          const top = [...g].sort((a, b) => b.gamesNow - a.gamesNow)[0];
+          return { ...top, clusterKey: primaryClusterKey(top.clusterKey) };
+        })
+    : [];
+  const krAheadDedup = data?.krAhead
+    ? dedupeByPrimaryCluster(data.krAhead, r => r.clusterKey, r => r.krAheadScore,
+        g => {
+          const top = [...g].sort((a, b) => b.krAheadScore - a.krAheadScore)[0];
+          return { ...top, clusterKey: primaryClusterKey(top.clusterKey) };
+        })
+    : [];
+  const patchWinnersDedup = data?.patchWinners
+    ? dedupeByPrimaryCluster(data.patchWinners, r => r.key, r => r.currentGames,
+        g => {
+          const top = [...g].sort((a, b) => b.currentGames - a.currentGames)[0];
+          return { ...top, key: primaryClusterKey(top.key) };
+        })
+    : [];
   return (
     <main className="min-h-screen bg-[#0e1525]">
       <Nav active="comps" />
@@ -91,7 +119,7 @@ export default function TftMetaPulsePage() {
               empty={data.rising.length === 0}
               footer={t('tft.velocity.deltaVs').replace('{n}', String(data.velocityShift))}
             >
-              {data.rising.map(r => (
+              {risingDedup.map(r => (
                 <PulseRow
                   key={r.clusterKey}
                   clusterKey={r.clusterKey}
@@ -110,7 +138,7 @@ export default function TftMetaPulsePage() {
               accent="#c39bff"
               empty={data.krAhead.length === 0}
             >
-              {data.krAhead.map(r => (
+              {krAheadDedup.map(r => (
                 <PulseRow
                   key={r.clusterKey}
                   clusterKey={r.clusterKey}
@@ -130,7 +158,7 @@ export default function TftMetaPulsePage() {
               empty={data.patchWinners.length === 0}
               footer={data.previousPatch ? `${data.previousPatch} → ${data.currentPatch}` : undefined}
             >
-              {data.patchWinners.map(r => (
+              {patchWinnersDedup.map(r => (
                 <PulseRow
                   key={r.key}
                   clusterKey={r.key}
@@ -205,10 +233,17 @@ function PulseRow({
   meta: string;
   bucket: string;
 }) {
-  const m = /^(.+)@(\d+)_(.+)$/.exec(clusterKey);
-  const traitName = m && assets ? (assets.traits[m[1]]?.name || m[1].replace(/^TFT\d+_/, '')) : '';
-  const carry = m && assets ? assets.champions[m[3]] : null;
+  const parts = parseClusterKey(clusterKey);
+  const traitName = parts && assets
+    ? (assets.traits[parts.trait]?.name || parts.trait.replace(/^TFT\d+_/, ''))
+    : '';
+  const carry = parts && assets ? assets.champions[parts.carry] : null;
+  const carryName = carry?.name || (parts ? parts.carry.replace(/^TFT\d+_/, '') : '');
   const carryUrl = tftChampionTileUrl(assets, carry);
+  const augApiName = parts?.augmentSlug
+    ? compDefiningAugmentApiNameFromSlug(parts.augmentSlug)
+    : null;
+  const augName = (augApiName && assets ? assets.items[augApiName]?.name : null) || parts?.augmentSlug;
 
   return (
     <a
@@ -222,8 +257,20 @@ function PulseRow({
           <div className="w-8 h-8 rounded bg-[#1e2a3a] flex-shrink-0" />
         )}
         <div className="flex-1 min-w-0">
-          <div className="text-white text-[11px] truncate">
-            {traitName} · {carry?.name || (m ? m[3].replace(/^TFT\d+_/, '') : '')}
+          <div className="text-white text-[11px] truncate flex items-center gap-1">
+            <span className="truncate">{traitName} · {carryName}</span>
+            {parts?.carryStar === 3 && (
+              <span
+                className="inline-flex items-center px-1 py-[1px] rounded text-[8px] font-semibold tabular-nums flex-shrink-0"
+                style={{ color: '#e0c75a', backgroundColor: 'rgba(224,199,90,0.15)', border: '1px solid rgba(224,199,90,0.4)' }}
+              >3★</span>
+            )}
+            {augName && (
+              <span
+                className="inline-flex items-center px-1 py-[1px] rounded text-[8px] font-medium flex-shrink-0"
+                style={{ color: '#c39bff', backgroundColor: 'rgba(123,97,255,0.12)', border: '1px solid rgba(123,97,255,0.4)' }}
+              >{augName}</span>
+            )}
           </div>
           <div className="text-[#7a8aa0] text-[10px] tabular-nums">{meta}</div>
         </div>

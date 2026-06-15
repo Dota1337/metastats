@@ -4,6 +4,7 @@ import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n, type TranslationKey } from '../../../lib/i18n';
 import { loadTftAssets, tftChampionTileUrl, tftIconUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import { dedupeByPrimaryCluster, primaryClusterKey, parseClusterKey } from '../../../lib/tft-cluster';
 import {
   ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis,
   ReferenceLine, Tooltip as RechartsTooltip,
@@ -101,9 +102,24 @@ export default function TftPatchWinnersPage() {
         const w: DiffEntry[] = d.winners || [];
         const l: DiffEntry[] = d.losers || [];
         // For unit entity, drop PvE/follower/helper IDs that sneak through
-        // the aggregate but aren't actual playable champs.
-        setWinners(entity === 'unit' ? w.filter(e => isPlayableUnit(e.key)) : w);
-        setLosers(entity === 'unit' ? l.filter(e => isPlayableUnit(e.key)) : l);
+        // the aggregate but aren't actual playable champs. Für comp-entity
+        // werden Sub-Cluster-Varianten desselben (trait, carry, star, aug)
+        // zusammengeführt, damit die Patch-Mover-Liste keine identisch-
+        // wirkenden Comp-Einträge nebeneinander zeigt.
+        const filteredW = entity === 'unit' ? w.filter(e => isPlayableUnit(e.key)) : w;
+        const filteredL = entity === 'unit' ? l.filter(e => isPlayableUnit(e.key)) : l;
+        const merge = (group: DiffEntry[]) => {
+          const top = [...group].sort((a, b) => b.currentGames - a.currentGames)[0];
+          return { ...top, key: primaryClusterKey(top.key) };
+        };
+        const dedupedW = entity === 'comp'
+          ? dedupeByPrimaryCluster(filteredW, e => e.key, e => e.currentGames, merge)
+          : filteredW;
+        const dedupedL = entity === 'comp'
+          ? dedupeByPrimaryCluster(filteredL, e => e.key, e => e.currentGames, merge)
+          : filteredL;
+        setWinners(dedupedW);
+        setLosers(dedupedL);
         setInfo({ currentPatch: d.currentPatch || null, previousPatch: d.previousPatch || null });
         setLoading(false);
       })
@@ -302,14 +318,18 @@ function renderEntity(key: string, entity: Entity, assets: TftAssetsBundle | nul
     };
   }
   if (entity === 'comp') {
-    // cluster_key: <trait>@<level>_<carry> — show carry portrait + "Trait · Carry"
-    const m = /^(.+)@(\d+)_(.+)$/.exec(key);
-    if (!m) return { name: key, icon: <div className="w-7 h-7 rounded bg-[#1e2a3a]" />, href: null as string | null };
-    const trait = assets?.traits[m[1]];
+    // cluster_key: <trait>@<level>_<carry>[*N][~aug][#sec] — parsen alle
+    // Sub-Cluster-Suffixe und zeige sauber "Trait · Carry" (+ optionaler
+    // Star/Augment Badge). Secondary-Carry-Suffix wird hier ignoriert; das
+    // Listing ist eine Aggregat-Sicht und wird vorher per dedupeByPrimaryCluster
+    // zusammengeführt.
+    const parts = parseClusterKey(key);
+    if (!parts) return { name: key, icon: <div className="w-7 h-7 rounded bg-[#1e2a3a]" />, href: null as string | null };
+    const trait = assets?.traits[parts.trait];
     // Case-insensitive champ lookup (same as the unit branch).
-    let carry = assets?.champions[m[3]];
+    let carry = assets?.champions[parts.carry];
     if (!carry && assets) {
-      const lower = m[3].toLowerCase();
+      const lower = parts.carry.toLowerCase();
       for (const [id, c] of Object.entries(assets.champions)) {
         if (id.toLowerCase() === lower) { carry = c; break; }
       }
@@ -328,10 +348,17 @@ function renderEntity(key: string, entity: Entity, assets: TftAssetsBundle | nul
     })();
     const url = !carryIsTanky ? tftChampionTileUrl(assets, carry) : null;
     const traitIcon = tftIconUrl(assets, trait?.icon);
+    const traitDisplay = trait?.name || parts.trait.replace(/^TFT\d+_/, '');
+    const carryDisplay = carry?.name || parts.carry.replace(/^TFT\d+_/, '');
+    // Star/Augment-Suffix dem Display-Namen anhängen, damit Sub-Cluster
+    // visuell unterscheidbar bleiben (Reroll-Variante etc.).
+    const suffix = parts.carryStar === 3
+      ? ' · 3★'
+      : parts.augmentSlug
+        ? ` · ${parts.augmentSlug}`
+        : '';
     return {
-      name: carryIsTanky
-        ? (trait?.name || m[1].replace(/^TFT\d+_/, ''))
-        : `${trait?.name || m[1].replace(/^TFT\d+_/, '')} · ${carry?.name || m[3].replace(/^TFT\d+_/, '')}`,
+      name: carryIsTanky ? traitDisplay : `${traitDisplay} · ${carryDisplay}${suffix}`,
       icon: url
         ? <img src={url} alt="" className="w-7 h-7 rounded border border-[#c39bff]/60 object-cover" />
         : traitIcon

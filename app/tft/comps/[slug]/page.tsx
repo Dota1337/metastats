@@ -16,6 +16,7 @@ import PositionHeatmap from '../../../components/tft/PositionHeatmap';
 import { formatStage } from '../../../lib/tft-stage';
 import { aggregateComponents } from '../../../lib/tft-components';
 import { compDefiningAugmentApiNameFromSlug } from '../../../lib/tft-comp-defining-augments';
+import { dedupeByPrimaryCluster, primaryClusterKey } from '../../../lib/tft-cluster';
 
 // Same region set as /tft/patch/winners — the regions where the daily-crawl
 // has enough volume to make comp-detail rendering meaningful.
@@ -910,6 +911,36 @@ interface CounterEdge { opponent: string; games: number; winRate: number }
 // Variant-Badges (3★ / Augment / Secondary-Carry) wie in CompCard/CompRow,
 // damit der User auf einen Blick erkennt ob die Counter-Comp eine Reroll-,
 // Augment- oder Dual-Carry-Variante ist.
+// Dedupliziert eine Edge-Liste nach `(trait, primary-carry, carry-star, augment)` —
+// Sub-Cluster mit unterschiedlichem Secondary-Carry-Suffix werden zusammen-
+// geführt. Behebt z.B. den Fall "Samira*3" + "Samira*3#Nami" als optisch
+// identische Doppel-Anzeige. Win-Rate wird games-gewichtet gemittelt, Spiele
+// summiert, der games-stärkste Sub-Cluster bleibt als Display-Anker.
+function dedupeMatchupEdges(edges: CounterEdge[] | undefined): CounterEdge[] {
+  if (!edges || edges.length === 0) return [];
+  return dedupeByPrimaryCluster(
+    edges,
+    e => e.opponent,
+    e => e.games,
+    group => {
+      const totalGames = group.reduce((s, e) => s + e.games, 0);
+      const weightedWin = totalGames > 0
+        ? group.reduce((s, e) => s + e.winRate * e.games, 0) / totalGames
+        : 0;
+      // Repräsentanten-Key: nimm den Sub-Cluster mit den meisten Spielen,
+      // strippe den Secondary-Suffix → Display zeigt die "Hauptform" ohne
+      // den Sekundär-Marker, der zwischen den Sub-Cluster oft nur Tank-vs-
+      // Caster-Item-Build unterscheidet.
+      const top = [...group].sort((a, b) => b.games - a.games)[0];
+      return {
+        opponent: primaryClusterKey(top.opponent),
+        games: totalGames,
+        winRate: weightedWin,
+      };
+    },
+  );
+}
+
 function MatchupColumn({ title, color, edges, assets, bucket, t }: {
   title: string;
   color: string;
@@ -918,14 +949,15 @@ function MatchupColumn({ title, color, edges, assets, bucket, t }: {
   bucket: string;
   t: (k: any) => string;
 }) {
+  const merged = dedupeMatchupEdges(edges);
   return (
     <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3">
       <div className="text-[10px] uppercase tracking-widest mb-2" style={{ color }}>{title}</div>
-      {!edges || edges.length === 0 ? (
+      {merged.length === 0 ? (
         <div className="text-[#7a8aa0] text-[10px] py-1">{t('tft.comp.noMatchupData')}</div>
       ) : (
         <div className="space-y-1.5">
-          {edges.map(e => {
+          {merged.map(e => {
             const parts = parseClusterKey(e.opponent);
             const traitName = parts && assets
               ? (assets.traits[parts.trait]?.name || parts.trait.replace(/^TFT\d+_/, ''))

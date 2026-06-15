@@ -227,10 +227,17 @@ function classifyComp(participant) {
   // Sub-Cluster via Secondary-Damage-Carry — splittet z.B. "Meeple Corki" auf
   // in den Standard (kein zweiter damage-carrier, Riven/Bard/etc. tragen
   // primär Tank/Support-Items) und die Dual-Carry-Variante (Gnar/zweite Unit
-  // hält ≥2 damage-carry-Items als parallel carry).
+  // hält ≥3 damage-carry-Items als parallel carry).
   //   clusterKey ohne #suffix  → keine zweite Carry-Unit
   //   clusterKey#<characterId> → diese Unit hält die zweitmeisten damage-items
-  const SECONDARY_MIN_DMG_ITEMS = 2;
+  //
+  // Threshold von 2 auf 3 erhöht (2026-06-15): Caster-Supports wie Nami mit
+  // 2 Caster-Items (Shojin + Morello als Mana-Engine) wurden fälschlich als
+  // Secondary-Carry markiert, obwohl sie effektiv Support-Rolle haben — das
+  // führte zu Pseudo-Sub-Clustern wie "Samira*3#Nami" neben "Samira*3" mit
+  // identischem Board. Echte Dual-Carry-Builds haben fast immer 3 volle
+  // Damage-Items auf der zweiten Unit (z.B. Lulu+Milio in Stargazer).
+  const SECONDARY_MIN_DMG_ITEMS = 3;
   const secondaryCarry = units
     .map(u => {
       const cid = u.character_id || u.characterId;

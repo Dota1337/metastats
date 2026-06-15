@@ -267,7 +267,7 @@ const translations = {
   'tft.comp.aggro.style': t6('Stil', 'Style', '\uC2A4\uD0C0\uC77C', '\u98CE\u683C', 'Estilo', 'Style'),
   'tft.comp.aggro.push': t6('Push-Streak-Comp', 'Push-streak comp', '\uC5F0\uC2B9 \uAC15\uD589 \uC870\uD569', '\u8FDE\u80DC\u63A8\u8FDB\u578B', 'Comp de racha agresiva', 'Comp push-streak'),
   'tft.comp.aggro.balanced': t6('Ausgewogen', 'Balanced', '\uADE0\uD615 \uC7A1\uD78C', '\u5E73\u8861\u578B', 'Equilibrada', '\u00C9quilibr\u00E9e'),
-  'tft.comp.aggro.econ': t6('Econ-Coast-Comp', 'Econ-coast comp', '\uACBD\uC81C \uB204\uC801\uD615', '\u7ECF\u6D4E\u82DF\u4F4F\u578B', 'Comp de econom\u00EDa', 'Comp econ-coast'),
+  'tft.comp.aggro.econ': t6('Econ-Cost-Comp', 'Econ-cost comp', '\uACBD\uC81C \uB204\uC801\uD615', '\u7ECF\u6D4E\u82DF\u4F4F\u578B', 'Comp de econom\u00EDa', 'Comp econ-cost'),
   'tft.comp.skillCap': t6('Schwierigkeit', 'Difficulty', '\uB09C\uC774\uB3C4', '\u96BE\u5EA6', 'Dificultad', 'Difficult\u00E9'),
   'tft.comp.skillCap.execution': t6('Skill-intensiv', 'Skill-intensive', '\uACE0\uB09C\uB3C4', '\u9AD8\u96BE\u5EA6', 'Exigente', 'Exigeante'),
   'tft.comp.skillCap.medium': t6('Erfordert \u00DCbung', 'Requires practice', '\uC5F0\uC2B5 \uD544\uC694', '\u9700\u8981\u7EC3\u4E60', 'Requiere pr\u00E1ctica', 'Demande de la pratique'),

@@ -49,11 +49,19 @@ function tierBadge(avg: number | null) {
 
 function parseClusterKey(key: string) {
   // Cluster-Key Format:
-  //   <trait>@<level>_<carryUnit>            → Standard-Comp
-  //   <trait>@<level>_<carryUnit>#<unitId>   → Dual-Carry-Variante
-  const m = /^(.+)@(\d+)_([^#]+)(?:#(.+))?$/.exec(key);
+  //   <trait>@<level>_<carryUnit>                  → 2-Star Standard-Push
+  //   <trait>@<level>_<carryUnit>*3                → 3-Star-Reroll-Variante
+  //   <trait>@<level>_<carryUnit>#<unitId>         → Dual-Carry, 2-Star
+  //   <trait>@<level>_<carryUnit>*3#<unitId>       → Dual-Carry, 3-Star-Reroll
+  const m = /^(.+)@(\d+)_([^#*]+)(?:\*(\d))?(?:#(.+))?$/.exec(key);
   if (!m) return null;
-  return { trait: m[1], level: Number(m[2]), carry: m[3], secondary: m[4] || null };
+  return {
+    trait: m[1],
+    level: Number(m[2]),
+    carry: m[3],
+    carryStar: m[4] ? Number(m[4]) : 2,
+    secondary: m[5] || null,
+  };
 }
 
 function prettyTrait(s: string) { return s.replace(/^TFT\d+_/, ''); }
@@ -223,6 +231,15 @@ export default function CompRow({
           <div className="text-white font-medium truncate" title={traitTooltip || undefined}>
             {traitDisplay}
             {' · '}{carry?.name || (carryCid ? prettyChar(carryCid) : '')}
+            {parts?.carryStar === 3 && (
+              <span
+                className="ml-1 inline-flex items-center px-1 py-[1px] rounded text-[9px] font-semibold tabular-nums align-middle"
+                style={{ color: '#e0c75a', backgroundColor: 'rgba(224,199,90,0.15)', border: '1px solid rgba(224,199,90,0.4)' }}
+                title="3-Star Reroll-Variante"
+              >
+                3★
+              </span>
+            )}
             {secondaryName && (
               <span className="text-[#a0b0c5] text-[11px] ml-1">
                 {(t('tft.comp.withSecondary') as string).replace('{name}', secondaryName)}

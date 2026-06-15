@@ -271,7 +271,16 @@ function classifyComp(participant) {
       if (b.dmgItems !== a.dmgItems) return b.dmgItems - a.dmgItems;
       return (b.tier ?? 1) - (a.tier ?? 1);
     })[0];
-  const baseKey = `${primaryTrait.name}@${primaryTrait.tier_current ?? 0}_${carryId}`;
+
+  // Sub-Cluster via Carry-Star — eine 3-Star-Reroll-Variante ist mechanisch
+  // eine ganz andere Comp als die 2-Star-Push-Variante desselben Carry
+  // (typisch Lvl 6/7 Reroll vs Lvl 8/9 Push). Mischen wir sie im selben
+  // Cluster, ergeben Tempo/Death-Curve/avgEndStage einen unbrauchbaren
+  // Mittelwert. Ein `*3`-Suffix trennt sie ohne neue Tabelle, wirkt streng
+  // additiv (alte Schlüssel ohne Suffix bleiben gültig).
+  const carryStar = carry.tier ?? 2;
+  const starSuffix = carryStar === 3 ? '*3' : '';
+  const baseKey = `${primaryTrait.name}@${primaryTrait.tier_current ?? 0}_${carryId}${starSuffix}`;
   const clusterKey = secondaryCarry ? `${baseKey}#${secondaryCarry.cid}` : baseKey;
 
   return {
@@ -279,6 +288,7 @@ function classifyComp(participant) {
     primaryTrait: primaryTrait.name,
     primaryTraitLevel: primaryTrait.tier_current ?? 0,
     carryUnit: carryId,
+    carryStar,
     secondaryCarry: secondaryCarry?.cid || null,
     carryItems: (carry.itemNames || []).filter(Boolean).sort(),
   };
@@ -928,10 +938,12 @@ export function finalize(agg, opts = {}) {
     const slim = {};
     // Carry-Unit aus dem clusterKey extrahieren — sie bleibt IMMER in
     // typicalUnits, auch wenn ihr Cooccurrence-Wert unter dem Threshold liegt
-    // (defensiv: ein Cluster kennt seinen Carry per Definition). Der optionale
-    // #<secondaryCarry>-Suffix wird ignoriert — wir wollen die PRIMARY-Carry.
+    // (defensiv: ein Cluster kennt seinen Carry per Definition). Suffixe:
+    //   *3   → 3-Star-Reroll-Variante (carry-star sub-cluster)
+    //   #ID  → Secondary-Damage-Carry-Variante
+    // Beide werden hier abgeknippt — wir wollen die nackte PRIMARY-Carry-ID.
     const carryFromKey = (() => {
-      const m = /^.+@\d+_([^#]+)(?:#.+)?$/.exec(key);
+      const m = /^.+@\d+_([^#*]+)(?:\*\d)?(?:#.+)?$/.exec(key);
       return m ? m[1] : null;
     })();
     // Sekundäre Carry-Unit (aus #-Suffix) — ebenfalls immer in typicalUnits.

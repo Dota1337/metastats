@@ -352,12 +352,18 @@ export async function GET(request: NextRequest) {
 // greift auch auf ALTE Snapshots, bevor der nächste Aggregator-Lauf neue
 // Daten mit demselben Threshold auf der Source-Seite schreibt.
 function carryFromClusterKey(key: string): string | null {
-  const m = /^.+@\d+_([^#]+)(?:#.+)?$/.exec(key);
+  // Suffixe abknippen: *3 (3-Star-Reroll-Variante) und #<secondary> (Dual-Carry).
+  const m = /^.+@\d+_([^#*]+)(?:\*\d)?(?:#.+)?$/.exec(key);
   return m ? m[1] : null;
 }
 function secondaryFromClusterKey(key: string): string | null {
   const m = /#(.+)$/.exec(key);
   return m ? m[1] : null;
+}
+function carryStarFromClusterKey(key: string): number {
+  // *<N> direkt nach der Carry-ID, vor optional #<secondary>. Default 2 (Push).
+  const m = /\*(\d)(?=#|$)/.exec(key);
+  return m ? Number(m[1]) : 2;
 }
 function applyCooccurrenceFilter(
   units: Array<{ characterId: string; count: number } & Record<string, unknown>>,
@@ -606,13 +612,19 @@ function enrichComp(r: CompRow) {
     const carryCost = setNumber != null
       ? loadChampionCostLookup(setNumber).get(carry || '') ?? null
       : null;
+    const carryStar = carryStarFromClusterKey(r.cluster_key);
     const totalStarGames = carryStarOutcome.reduce((s, e) => s + e.games, 0);
     const threeStarShare = totalStarGames > 0
       ? (carryStarOutcome.find(e => e.star === 3)?.games ?? 0) / totalStarGames
       : 0;
     let category: 'reroll' | 'standard' | 'fast9' | 'capout';
     let rerollCost: number | null = null;
-    if (threeStarShare >= 0.4 && carryCost != null && carryCost <= 3) {
+    // 3-Star-Sub-Cluster: per Definition Reroll-Variante, egal wie der Peak
+    // aussieht — der Cluster trennt 3-Star-Boards explizit von 2-Star-Push.
+    if (carryStar === 3 && carryCost != null && carryCost <= 3) {
+      category = 'reroll';
+      rerollCost = carryCost;
+    } else if (threeStarShare >= 0.4 && carryCost != null && carryCost <= 3) {
       category = 'reroll';
       rerollCost = carryCost;
     } else if (peakLevel <= 5 && carryCost === 1) {
@@ -625,9 +637,6 @@ function enrichComp(r: CompRow) {
       category = 'reroll';
       rerollCost = 3;
     } else if (peakLevel <= 7) {
-      // Niedriger Peak ohne Reroll-Pattern → entweder früh-stirbt-Comp (sehr
-      // schlechte Comp) oder ungewöhnlicher Lvl-7-Stop. Wir labeln als Standard
-      // statt fälschlich Reroll.
       category = 'standard';
     } else if (peakLevel === 8) {
       category = 'standard';
@@ -643,6 +652,7 @@ function enrichComp(r: CompRow) {
       avgEndStage: tempoPeak.avgEndStage,
       rerollCost,
       carryCost,
+      carryStar,
       threeStarShare,
     };
   })();

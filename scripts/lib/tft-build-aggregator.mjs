@@ -27,9 +27,10 @@ const APEX_BUCKETS = ['master','grandmaster','challenger'];
 //
 // Hybrid items (Guinsoo's, Hextech Gunblade) and AS items (Red Buff = RFC,
 // Kraken's Fury = Runaan's) count because they only go on damage carries.
-// DAMAGE_CARRY_ITEMS + DEFENSIVE_ITEMS leben in scripts/lib/tft-item-classes.mjs
-// (Single-Source-of-Truth, parallel zu app/lib/tft-item-classes.ts).
-import { DAMAGE_CARRY_ITEMS, classifyBuildStyle } from './tft-item-classes.mjs';
+// DAMAGE_CARRY_ITEMS lebt in scripts/lib/tft-item-classes.mjs (Single-Source-
+// of-Truth, parallel zu app/lib/tft-item-classes.ts).
+import { DAMAGE_CARRY_ITEMS } from './tft-item-classes.mjs';
+import { compDefiningAugmentSlug } from './tft-comp-defining-augments.mjs';
 
 export function emptyAggregate() {
   return {
@@ -246,21 +247,16 @@ function classifyComp(participant) {
 
   // Sub-Cluster via Carry-Star — eine 3-Star-Reroll-Variante ist mechanisch
   // eine ganz andere Comp als die 2-Star-Push-Variante desselben Carry
-  // (typisch Lvl 6/7 Reroll vs Lvl 8/9 Push). Mischen wir sie im selben
-  // Cluster, ergeben Tempo/Death-Curve/avgEndStage einen unbrauchbaren
-  // Mittelwert. Ein `*3`-Suffix trennt sie ohne neue Tabelle.
+  // (typisch Lvl 6/7 Reroll vs Lvl 8/9 Push).
   const carryStar = carry.tier ?? 2;
   const starSuffix = carryStar === 3 ? '*3' : '';
-  // Sub-Cluster via Build-Style — der Carry-Item-Pattern entscheidet, ob die
-  // Comp ein Damage-Push, Bruiser-Hybrid oder Tank-Build ist. Build-changing
-  // Augments wie *Two Tanky* manifestieren sich automatisch über die Tank-
-  // Item-Signatur des Carries — der Cluster trennt sich ohne Augment-Bezug.
-  //   damage  → kein Suffix (default)
-  //   bruiser → +b
-  //   tank    → +t
-  const buildStyle = classifyBuildStyle(carry.itemNames || []);
-  const buildSuffix = buildStyle === 'tank' ? '+t' : buildStyle === 'bruiser' ? '+b' : '';
-  const baseKey = `${primaryTrait.name}@${primaryTrait.tier_current ?? 0}_${carryId}${starSuffix}${buildSuffix}`;
+  // Sub-Cluster via comp-definierendes Augment — die Spielweise (Reroll-
+  // Incentive, 2-Cost-Stacking etc.) ändert sich substantiell und macht
+  // einen eigenen Sub-Cluster gerechtfertigt. Hero-Augments sind hier
+  // explizit NICHT enthalten (die wirken via carryFromAugments oben).
+  const augSlug = compDefiningAugmentSlug(participant.augments);
+  const augSuffix = augSlug ? `~${augSlug}` : '';
+  const baseKey = `${primaryTrait.name}@${primaryTrait.tier_current ?? 0}_${carryId}${starSuffix}${augSuffix}`;
   const clusterKey = secondaryCarry ? `${baseKey}#${secondaryCarry.cid}` : baseKey;
 
   return {
@@ -269,7 +265,7 @@ function classifyComp(participant) {
     primaryTraitLevel: primaryTrait.tier_current ?? 0,
     carryUnit: carryId,
     carryStar,
-    buildStyle,
+    compDefiningAugment: augSlug,
     secondaryCarry: secondaryCarry?.cid || null,
     carryItems: (carry.itemNames || []).filter(Boolean).sort(),
   };
@@ -920,12 +916,12 @@ export function finalize(agg, opts = {}) {
     // Carry-Unit aus dem clusterKey extrahieren — sie bleibt IMMER in
     // typicalUnits, auch wenn ihr Cooccurrence-Wert unter dem Threshold liegt
     // (defensiv: ein Cluster kennt seinen Carry per Definition). Suffixe:
-    //   *N   → N-Star-Carry-Variante (carry-star sub-cluster)
-    //   +t/b → Tank/Bruiser-Build-Variante (build-style sub-cluster)
-    //   #ID  → Secondary-Damage-Carry-Variante
+    //   *N      → N-Star-Carry-Variante
+    //   ~<slug> → comp-definierendes Augment (Two Tanky etc.)
+    //   #ID     → Secondary-Damage-Carry-Variante
     // Alle werden hier abgeknippt — wir wollen die nackte PRIMARY-Carry-ID.
     const carryFromKey = (() => {
-      const m = /^.+@\d+_([^#*+]+)(?:\*\d)?(?:\+[a-z])?(?:#.+)?$/.exec(key);
+      const m = /^.+@\d+_([^#*~]+)(?:\*\d)?(?:~[A-Za-z]+)?(?:#.+)?$/.exec(key);
       return m ? m[1] : null;
     })();
     // Sekundäre Carry-Unit (aus #-Suffix) — ebenfalls immer in typicalUnits.

@@ -363,8 +363,8 @@ export async function GET(request: NextRequest) {
 // greift auch auf ALTE Snapshots, bevor der nächste Aggregator-Lauf neue
 // Daten mit demselben Threshold auf der Source-Seite schreibt.
 function carryFromClusterKey(key: string): string | null {
-  // Suffixe abknippen: *N (Star), +t/+b (Build-Style), #<sec> (Secondary).
-  const m = /^.+@\d+_([^#*+]+)(?:\*\d)?(?:\+[a-z])?(?:#.+)?$/.exec(key);
+  // Suffixe abknippen: *N (Star), ~<slug> (comp-definer Augment), #<sec>.
+  const m = /^.+@\d+_([^#*~]+)(?:\*\d)?(?:~[A-Za-z]+)?(?:#.+)?$/.exec(key);
   return m ? m[1] : null;
 }
 function isUniqueTraitClusterKey(key: string): boolean {
@@ -376,14 +376,13 @@ function secondaryFromClusterKey(key: string): string | null {
   return m ? m[1] : null;
 }
 function carryStarFromClusterKey(key: string): number {
-  // *<N> direkt nach der Carry-ID, vor optional +<build> oder #<sec>.
-  const m = /\*(\d)(?=[+#]|$)/.exec(key);
+  const m = /\*(\d)(?=[~#]|$)/.exec(key);
   return m ? Number(m[1]) : 2;
 }
-function buildStyleFromClusterKey(key: string): 'damage' | 'bruiser' | 'tank' {
-  // +t (tank) oder +b (bruiser) — direkt vor optional #<sec>. Default 'damage'.
-  const m = /\+([tb])(?=#|$)/.exec(key);
-  return m ? (m[1] === 't' ? 'tank' : 'bruiser') : 'damage';
+function augmentSlugFromClusterKey(key: string): string | null {
+  // ~<Slug> direkt vor optional #<sec>. Default null.
+  const m = /~([A-Za-z]+)(?=#|$)/.exec(key);
+  return m ? m[1] : null;
 }
 function applyCooccurrenceFilter(
   units: Array<{ characterId: string; count: number } & Record<string, unknown>>,

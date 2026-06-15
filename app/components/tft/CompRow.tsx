@@ -6,6 +6,7 @@ import { costColor as costColorOf } from '../../lib/tft-ui';
 import { useI18n } from '../../lib/i18n';
 import BookmarkButton from '../BookmarkButton';
 import PlanAheadButton from './PlanAheadButton';
+import { compDefiningAugmentApiNameFromSlug } from '../../lib/tft-comp-defining-augments';
 
 // Dense, scannable row layout for /tft/comps. Replaces the narrative
 // CompCard so pros can survey 20+ comps at a glance — avg-placement is
@@ -48,16 +49,16 @@ function tierBadge(avg: number | null) {
 }
 
 function parseClusterKey(key: string) {
-  // Cluster-Key Format: <trait>@<level>_<carryUnit>[*N][+t|+b][#<unitId>]
-  //   *N  = Carry-Star · +t = Tank-Build · +b = Bruiser-Build · #ID = Secondary-Carry
-  const m = /^(.+)@(\d+)_([^#*+]+)(?:\*(\d))?(?:\+([tb]))?(?:#(.+))?$/.exec(key);
+  // Cluster-Key Format: <trait>@<level>_<carryUnit>[*N][~<augSlug>][#<unitId>]
+  //   *N = Carry-Star · ~<slug> = Comp-Augment · #ID = Secondary-Carry
+  const m = /^(.+)@(\d+)_([^#*~]+)(?:\*(\d))?(?:~([A-Za-z]+))?(?:#(.+))?$/.exec(key);
   if (!m) return null;
   return {
     trait: m[1],
     level: Number(m[2]),
     carry: m[3],
     carryStar: m[4] ? Number(m[4]) : 2,
-    buildStyle: m[5] === 't' ? ('tank' as const) : m[5] === 'b' ? ('bruiser' as const) : ('damage' as const),
+    augmentSlug: m[5] || null,
     secondary: m[6] || null,
   };
 }
@@ -238,22 +239,20 @@ export default function CompRow({
                 3★
               </span>
             )}
-            {parts?.buildStyle === 'tank' && (
-              <span
-                className="ml-1 inline-flex items-center px-1.5 py-[1px] rounded text-[9px] font-medium align-middle"
-                style={{ color: '#7ab9ec', backgroundColor: 'rgba(58,141,220,0.12)', border: '1px solid rgba(58,141,220,0.4)' }}
-              >
-                {t('tft.comp.build.tank')}
-              </span>
-            )}
-            {parts?.buildStyle === 'bruiser' && (
-              <span
-                className="ml-1 inline-flex items-center px-1.5 py-[1px] rounded text-[9px] font-medium align-middle"
-                style={{ color: '#c39bff', backgroundColor: 'rgba(123,97,255,0.12)', border: '1px solid rgba(123,97,255,0.4)' }}
-              >
-                {t('tft.comp.build.bruiser')}
-              </span>
-            )}
+            {parts?.augmentSlug && (() => {
+              const apiName = compDefiningAugmentApiNameFromSlug(parts.augmentSlug);
+              const augMeta = apiName && assets ? assets.items[apiName] : null;
+              const augName = augMeta?.name || parts.augmentSlug;
+              return (
+                <span
+                  className="ml-1 inline-flex items-center px-1.5 py-[1px] rounded text-[9px] font-medium align-middle"
+                  style={{ color: '#c39bff', backgroundColor: 'rgba(123,97,255,0.12)', border: '1px solid rgba(123,97,255,0.4)' }}
+                  title={augMeta?.desc?.replace(/<[^>]+>/g, '')}
+                >
+                  {augName}
+                </span>
+              );
+            })()}
             {secondaryName && (
               <span className="text-[#a0b0c5] text-[11px] ml-1">
                 {(t('tft.comp.withSecondary') as string).replace('{name}', secondaryName)}

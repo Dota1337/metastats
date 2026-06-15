@@ -4,6 +4,7 @@ import type { TftAssetsBundle } from '../../lib/tft-cdragon';
 import { tftIconUrl, tftChampionTileUrl, findChampion, findItem, tftTraitDisplayName, tftTraitDescription } from '../../lib/tft-cdragon';
 import { costColor as costColorOf } from '../../lib/tft-ui';
 import { useI18n } from '../../lib/i18n';
+import { compDefiningAugmentApiNameFromSlug } from '../../lib/tft-comp-defining-augments';
 import PlanAheadButton from './PlanAheadButton';
 
 interface CompVelocity {
@@ -215,22 +216,20 @@ export default function CompCard({
                   3★
                 </span>
               )}
-              {parts?.buildStyle === 'tank' && (
-                <span
-                  className="ml-1 inline-flex items-center px-1.5 py-[1px] rounded text-[10px] font-medium"
-                  style={{ color: '#7ab9ec', backgroundColor: 'rgba(58,141,220,0.12)', border: '1px solid rgba(58,141,220,0.4)' }}
-                >
-                  {t('tft.comp.build.tank')}
-                </span>
-              )}
-              {parts?.buildStyle === 'bruiser' && (
-                <span
-                  className="ml-1 inline-flex items-center px-1.5 py-[1px] rounded text-[10px] font-medium"
-                  style={{ color: '#c39bff', backgroundColor: 'rgba(123,97,255,0.12)', border: '1px solid rgba(123,97,255,0.4)' }}
-                >
-                  {t('tft.comp.build.bruiser')}
-                </span>
-              )}
+              {parts?.augmentSlug && (() => {
+                const apiName = compDefiningAugmentApiNameFromSlug(parts.augmentSlug);
+                const augMeta = apiName && assets ? assets.items[apiName] : null;
+                const augName = augMeta?.name || parts.augmentSlug;
+                return (
+                  <span
+                    className="ml-1 inline-flex items-center px-1.5 py-[1px] rounded text-[10px] font-medium"
+                    style={{ color: '#c39bff', backgroundColor: 'rgba(123,97,255,0.12)', border: '1px solid rgba(123,97,255,0.4)' }}
+                    title={augMeta?.desc?.replace(/<[^>]+>/g, '')}
+                  >
+                    {augName}
+                  </span>
+                );
+              })()}
               {secondaryName && (
                 <span className="text-[#a0b0c5] text-xs ml-1.5">
                   {(t('tft.comp.withSecondary') as string).replace(
@@ -386,21 +385,19 @@ function VelocityStat({
 
 function parseClusterKey(
   key: string,
-): { trait: string; level: number; carry: string; carryStar: number; buildStyle: 'damage'|'bruiser'|'tank'; secondary: string | null } | null {
-  // Cluster-Key Format (alle Suffixe optional, in dieser Reihenfolge):
-  //   <trait>@<level>_<carryUnit>[*N][+t|+b][#<unitId>]
-  //     *N  = Carry-Star (z.B. *3 = 3-Star-Reroll-Variante)
-  //     +t  = Tank-Build (Tank-Items auf Carry, z.B. Two-Tanky-Augment-Build)
-  //     +b  = Bruiser-Build (mix Tank + Damage)
-  //     #ID = Secondary-Damage-Carry-Variante
-  const m = /^(.+)@(\d+)_([^#*+]+)(?:\*(\d))?(?:\+([tb]))?(?:#(.+))?$/.exec(key);
+): { trait: string; level: number; carry: string; carryStar: number; augmentSlug: string | null; secondary: string | null } | null {
+  // Cluster-Key Format: <trait>@<level>_<carryUnit>[*N][~<augSlug>][#<unitId>]
+  //   *N      = Carry-Star (z.B. *3 = 3-Star-Reroll-Variante)
+  //   ~<slug> = Comp-definierendes Augment (z.B. ~TwoTanky)
+  //   #<id>   = Secondary-Damage-Carry
+  const m = /^(.+)@(\d+)_([^#*~]+)(?:\*(\d))?(?:~([A-Za-z]+))?(?:#(.+))?$/.exec(key);
   if (!m) return null;
   return {
     trait: m[1],
     level: Number(m[2]),
     carry: m[3],
     carryStar: m[4] ? Number(m[4]) : 2,
-    buildStyle: m[5] === 't' ? 'tank' : m[5] === 'b' ? 'bruiser' : 'damage',
+    augmentSlug: m[5] || null,
     secondary: m[6] || null,
   };
 }

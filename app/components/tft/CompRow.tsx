@@ -198,11 +198,16 @@ export default function CompRow({
       }}
       className="block px-2 sm:px-3 py-2 rounded border border-[#1e2a3a] bg-[#0d1526] hover:bg-[#101a30] hover:border-[#7B61FF]/40 transition-colors text-xs sm:text-[13px] cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B61FF]/60"
     >
-      {/* Mobile: stacked. Desktop: tight horizontal row. */}
-      <div className={`grid grid-cols-[1.25rem_1.5rem_2.5rem_minmax(7rem,1fr)_minmax(0,auto)_auto] ${
+      {/* Mobile: stacked. Desktop: tight horizontal row.
+          Großes Carry-Portrait raus — der Carry erscheint sowieso in der
+          typicalUnits-Strip mit lila Border + seinen Items. Doppelt =
+          Augen-Lärm + verwirrend (Identifikation einmal über Portrait,
+          einmal über Tile in Reihe). Grid-Spalte (vormals 2.5rem)
+          entsprechend entfernt. */}
+      <div className={`grid grid-cols-[1.25rem_1.5rem_minmax(7rem,1fr)_minmax(0,auto)_auto] ${
         showVelocity
-          ? 'sm:grid-cols-[1.25rem_1.5rem_2.5rem_minmax(11rem,1fr)_minmax(0,auto)_3rem_3rem_3rem_3rem_3rem_3.5rem_3rem]'
-          : 'sm:grid-cols-[1.25rem_1.5rem_2.5rem_minmax(11rem,1fr)_minmax(0,auto)_3rem_3rem_3rem_3rem_3rem_3rem]'
+          ? 'sm:grid-cols-[1.25rem_1.5rem_minmax(11rem,1fr)_minmax(0,auto)_3rem_3rem_3rem_3rem_3rem_3.5rem_3rem]'
+          : 'sm:grid-cols-[1.25rem_1.5rem_minmax(11rem,1fr)_minmax(0,auto)_3rem_3rem_3rem_3rem_3rem_3rem]'
       } items-center gap-2 sm:gap-3`}>
         <div className="text-[#7a8aa0] tabular-nums text-right">{rank}</div>
         <div
@@ -211,21 +216,6 @@ export default function CompRow({
         >
           {tier.label}
         </div>
-        {carryCid ? (
-          <a
-            href={`/tft/units/${encodeURIComponent(carryCid)}`}
-            onClick={e => e.stopPropagation()}
-            title={carry?.name || carryCid}
-            className="w-10 h-10 rounded border-2 overflow-hidden block hover:scale-105 transition-transform"
-            style={{ borderColor: '#c39bff' }}
-          >
-            {carryUrl && <img src={carryUrl} alt={carry?.name || ''} className="w-full h-full object-cover" />}
-          </a>
-        ) : (
-          <div className="w-10 h-10 rounded border-2 overflow-hidden" style={{ borderColor: '#c39bff' }}>
-            {carryUrl && <img src={carryUrl} alt={carry?.name || ''} className="w-full h-full object-cover" />}
-          </div>
-        )}
         <div className="min-w-0 leading-tight">
           <div className="text-white font-medium truncate" title={traitTooltip || undefined}>
             {traitDisplay}

@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import {
   resolveFilters,
   callRpc,
@@ -8,6 +10,34 @@ import {
 } from '../../../lib/tft-supabase-reader';
 import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias } from '../../../lib/api-cache';
 import { isExcludedUnit, isExcludedItem, setContainsExcludedItem } from '../../../lib/tft-excluded';
+
+// Lazy + memoized champion-cost lookup pro Set. Wird vom Tempo-Klassifikator
+// gebraucht, der Carry-Cost mit Peak-Level + 3-Star-Anteil in Beziehung setzt:
+// 1-Cost-Reroll lebt auf Lvl 5, 2-Cost auf Lvl 6, 3-Cost auf Lvl 7. Ohne den
+// Cost-Lookup würde jede Comp mit niedrigem Peak-Level fälschlich als Reroll
+// klassifiziert (z.B. eine Lulu-Push-Comp auf Lvl 7 ist KEIN Reroll).
+const costLookupCache = new Map<number, Map<string, number>>();
+function loadChampionCostLookup(setNumber: number): Map<string, number> {
+  const cached = costLookupCache.get(setNumber);
+  if (cached) return cached;
+  const fresh = new Map<string, number>();
+  try {
+    const file = path.join(process.cwd(), 'public', `tft-assets-${setNumber}.json`);
+    const bundle = JSON.parse(readFileSync(file, 'utf8')) as { champions?: Record<string, { cost?: number }> };
+    for (const [cid, c] of Object.entries(bundle.champions || {})) {
+      if (typeof c?.cost === 'number') fresh.set(cid, c.cost);
+    }
+  } catch {
+    // Bundle nicht vorhanden — Tempo-Klassifikator fällt auf reine
+    // Peak-Level-Heuristik zurück.
+  }
+  costLookupCache.set(setNumber, fresh);
+  return fresh;
+}
+function setNumberFromClusterKey(key: string): number | null {
+  const m = /^TFT(\d+)_/.exec(key);
+  return m ? Number(m[1]) : null;
+}
 
 // /api/tft/comps
 // List view: returns aggregated comp clusters that match the filter set.
@@ -459,23 +489,15 @@ function enrichComp(r: CompRow) {
         avgLastRound: g > 0 ? sumRound / g : null,
       };
     });
-  // Tempo-Klassifikation aus dem Peak der Level-Verteilung.
-  //   peak ≤ 7   → reroll   (1-/2-Cost 3-Star)
-  //   peak = 8   → standard (kontrollierter Push)
-  //   peak = 9   → fast9    (frühes Level-Up)
-  //   peak ≥ 10  → capout   (Max-Board)
-  const tempoMeta = (() => {
+  // Tempo-Klassifikation — Peak-Level + Carry-Cost + 3-Star-Anteil in
+  // Abhängigkeit zueinander setzen. tempoMeta wird VOLLSTÄNDIG erst nach
+  // carryStarOutcome zusammengebaut (s.u.); hier nur die Level-Peak-Vorstufe.
+  const tempoPeak = (() => {
     if (levelingTempo.length === 0) return null;
     const sorted = [...levelingTempo].sort((a, b) => (b.share ?? 0) - (a.share ?? 0));
     const peak = sorted[0];
     if (!peak || peak.share == null) return null;
-    let category: 'reroll' | 'standard' | 'fast9' | 'capout';
-    if (peak.level <= 7) category = 'reroll';
-    else if (peak.level === 8) category = 'standard';
-    else if (peak.level === 9) category = 'fast9';
-    else category = 'capout';
     return {
-      category,
       peakLevel: peak.level,
       peakShare: peak.share,
       avgEndStage: peak.avgLastRound,
@@ -562,6 +584,68 @@ function enrichComp(r: CompRow) {
       top1Rate: e.top1 / e.games,
     });
   }
+  // Tempo-Vollkomposition: Peak-Level × Carry-Cost × 3-Star-Anteil. Die
+  // ursprüngliche Heuristik "peak ≤ 7 = reroll" war zu naiv — ein 4-Cost-Push
+  // mit Peak Lvl 7 wäre fälschlich Reroll geworden, ein 3-Cost-Reroll mit
+  // Peak Lvl 6 (durch Pool-Kollision) auch.
+  //
+  // Riot Shop-Odds-Reroll-Tische:
+  //   1-Cost  Reroll → Lvl 5  (75 % Pool)
+  //   2-Cost  Reroll → Lvl 6  (50 % Pool)
+  //   3-Cost  Reroll → Lvl 7  (40 % Pool)
+  //   4-/5-Cost → kein Reroll (auf 9/10 cappen)
+  //
+  // Entscheidungsbaum:
+  //   1. Wenn ≥40 % der Spiele 3-Star-Carry erreichen → klares Reroll-Signal,
+  //      egal welcher Peak (Spieler hat genug investiert für die 3-Star).
+  //   2. Sonst: Peak-Level mit Cost in Beziehung setzen.
+  const tempoMeta = (() => {
+    if (!tempoPeak) return null;
+    const peakLevel = tempoPeak.peakLevel;
+    const setNumber = setNumberFromClusterKey(r.cluster_key);
+    const carryCost = setNumber != null
+      ? loadChampionCostLookup(setNumber).get(carry || '') ?? null
+      : null;
+    const totalStarGames = carryStarOutcome.reduce((s, e) => s + e.games, 0);
+    const threeStarShare = totalStarGames > 0
+      ? (carryStarOutcome.find(e => e.star === 3)?.games ?? 0) / totalStarGames
+      : 0;
+    let category: 'reroll' | 'standard' | 'fast9' | 'capout';
+    let rerollCost: number | null = null;
+    if (threeStarShare >= 0.4 && carryCost != null && carryCost <= 3) {
+      category = 'reroll';
+      rerollCost = carryCost;
+    } else if (peakLevel <= 5 && carryCost === 1) {
+      category = 'reroll';
+      rerollCost = 1;
+    } else if (peakLevel === 6 && carryCost != null && carryCost <= 2) {
+      category = 'reroll';
+      rerollCost = carryCost;
+    } else if (peakLevel === 7 && carryCost === 3) {
+      category = 'reroll';
+      rerollCost = 3;
+    } else if (peakLevel <= 7) {
+      // Niedriger Peak ohne Reroll-Pattern → entweder früh-stirbt-Comp (sehr
+      // schlechte Comp) oder ungewöhnlicher Lvl-7-Stop. Wir labeln als Standard
+      // statt fälschlich Reroll.
+      category = 'standard';
+    } else if (peakLevel === 8) {
+      category = 'standard';
+    } else if (peakLevel === 9) {
+      category = 'fast9';
+    } else {
+      category = 'capout';
+    }
+    return {
+      category,
+      peakLevel,
+      peakShare: tempoPeak.peakShare,
+      avgEndStage: tempoPeak.avgEndStage,
+      rerollCost,
+      carryCost,
+      threeStarShare,
+    };
+  })();
   // W4-B: Contested-Distribution — per "how many lobby players forced this
   // comp" bucket {games, sumPlacement, top4, top1}. Solo = 1, one rival = 2,
   // 2+ rivals = 3 (capped to keep the UI from listing a long tail).

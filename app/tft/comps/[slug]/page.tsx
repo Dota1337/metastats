@@ -326,7 +326,10 @@ export default function TftCompDetailPage() {
                     <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3">
                       <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">{t('tft.comp.levelTempo')}</div>
                       <div className="text-white text-lg font-medium mt-1">
-                        {comp.tempoMeta.category === 'reroll' ? t('tft.comp.tempo.reroll')
+                        {comp.tempoMeta.category === 'reroll'
+                          ? (comp.tempoMeta.rerollCost
+                              ? (t('tft.comp.tempo.rerollCost') as string).replace('{cost}', String(comp.tempoMeta.rerollCost))
+                              : t('tft.comp.tempo.reroll'))
                           : comp.tempoMeta.category === 'standard' ? t('tft.comp.tempo.standard')
                           : comp.tempoMeta.category === 'fast9' ? t('tft.comp.tempo.fast9')
                           : t('tft.comp.tempo.capout')}

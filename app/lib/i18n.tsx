@@ -258,6 +258,7 @@ const translations = {
   'tft.comp.tempo.peakLevel': t6('Schwerpunkt', 'Typically', '\uC8FC\uB825 \uB808\uBCA8', '\u4E3B\u529B\u7B49\u7EA7', 'Nivel t\u00EDpico', 'Niveau cible'),
   'tft.comp.tempo.avgEnd': t6('Spielende \u00D8', 'Ends around', '\uAC8C\uC784 \uC885\uB8CC \uD3C9\uADE0', '\u7ED3\u675F\u9636\u6BB5\u5747\u503C', 'Final t\u00EDpico', 'Fin moyenne'),
   'tft.comp.tempo.reroll': t6('Reroll', 'Reroll', '\uB9AC\uB864', 'Reroll', 'Reroll', 'Reroll'),
+  'tft.comp.tempo.rerollCost': t6('{cost}-Cost-Reroll', '{cost}-Cost Reroll', '{cost}\uCF54\uC2A4\uD2B8 \uB9AC\uB864', '{cost}\u8D39\u518D\u968F', 'Reroll de {cost} costes', 'Reroll {cost} co\u00FBts'),
   'tft.comp.tempo.standard': t6('Standard', 'Standard', '\uC2A4\uD0E0\uB2E4\uB4DC', '\u6807\u51C6', 'Est\u00E1ndar', 'Standard'),
   'tft.comp.tempo.fast9': t6('Fast-9', 'Fast-9', '\uD328\uC2A4\uD2B8 9', 'Fast-9', 'Fast-9', 'Fast-9'),
   'tft.comp.tempo.capout': t6('Cap-Out', 'Cap-Out', '\uCEA1 \uC544\uC6C3', '\u6781\u9650\u9635\u5BB9', 'Cap-Out', 'Cap-Out'),

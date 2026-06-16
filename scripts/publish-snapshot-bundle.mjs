@@ -205,13 +205,14 @@ async function publishPermutation(endpoint, apiPath, perm, patches) {
   }
   const t1 = Date.now();
   const blob = await put(key, body, {
-    access: 'public',
+    access: 'private',
     contentType: 'application/json',
     token: TOKEN,
     addRandomSuffix: false,
     allowOverwrite: true,
-    // Cache-Control auf dem Blob: 6h hard + 24h SWR matched STATS_CACHE_CONTROL
-    // unserer API-Routes — Vercel-Edge oben dran kann das selbst cachen.
+    // Cache-Control auf dem Blob: 6h hard. API-Route auf Vercel reads via
+    // BLOB_READ_WRITE_TOKEN und liefert JSON aus — Vercel-Edge cached die
+    // Route-Response, nicht den Blob direkt.
     cacheControlMaxAge: 21600,
   });
   const uploadMs = Date.now() - t1;
@@ -315,7 +316,7 @@ async function main() {
   const manifestBody = JSON.stringify(manifest);
   if (!DRY_RUN) {
     const manifestBlob = await put('tft/manifest.json', manifestBody, {
-      access: 'public',
+      access: 'private',
       contentType: 'application/json',
       token: TOKEN,
       addRandomSuffix: false,

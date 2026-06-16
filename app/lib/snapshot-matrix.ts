@@ -56,9 +56,9 @@ function buildListMatrix(opts: {
   return out;
 }
 
-// Comp-Listing: minGames skaliert mit Tagesfenster (40 × days), gecappt bei
+// Comp-Listing: minGames skaliert mit Tagesfenster (70 × days), gecappt bei
 // 14 Tagen. Muss synchron bleiben mit dem Default in app/api/tft/comps/route.ts.
-const compsMinGames = (days: number) => 40 * Math.min(days, 14);
+const compsMinGames = (days: number) => 70 * Math.min(days, 14);
 
 export const SNAPSHOT_MATRIX: Record<SnapshotEndpoint, SnapshotEndpointSpec> = {
   // /api/tft/comps default in der UI: bucket=master_plus, region=all, days=3.

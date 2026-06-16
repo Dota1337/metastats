@@ -64,9 +64,9 @@ function buildList({ patches, regions, days, buckets, minGames }) {
   return out;
 }
 
-// Comp-Listing: 40 Games × Tagesfenster, gecappt bei 14 Tagen. Muss synchron
+// Comp-Listing: 70 Games × Tagesfenster, gecappt bei 14 Tagen. Muss synchron
 // bleiben mit dem Default in app/api/tft/comps/route.ts + snapshot-matrix.ts.
-const compsMinGames = (days) => 40 * Math.min(days, 14);
+const compsMinGames = (days) => 70 * Math.min(days, 14);
 
 const MATRIX = {
   comps: {

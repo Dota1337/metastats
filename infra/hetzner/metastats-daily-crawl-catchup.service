@@ -1,0 +1,9 @@
+[Unit]
+Description=Catch-up trigger if the previous daily-crawl run crossed UTC midnight
+After=metastats-daily-crawl.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/metastats-daily-crawl-catchup.sh
+StandardOutput=journal
+StandardError=journal

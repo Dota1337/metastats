@@ -8,6 +8,11 @@ After=network-online.target
 # fetches, and sub-D2 players self-refresh via the /refresh-player button.
 # Conflicts= stays as a guard in case someone starts metastats-crawler manually.
 Conflicts=metastats-crawler.service
+# Catch-up hook: if this run crossed UTC midnight, the next 00:00 OnCalendar
+# trigger was swallowed (systemd ignores triggers while a Type=oneshot service
+# is still active). The catch-up service detects that and starts another run
+# immediately so we never lose a day's aggregation.
+OnSuccess=metastats-daily-crawl-catchup.service
 
 [Service]
 Type=oneshot

@@ -19,8 +19,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
   const secret = body.secret as string;
+  const cookieValue = await cookieValueForSecret(secret);
   const response = NextResponse.json({ ok: true, next: body.next || '/internal/3d-ops' });
-  response.cookies.set(INTERNAL_COOKIE, cookieValueForSecret(secret), {
+  response.cookies.set(INTERNAL_COOKIE, cookieValue, {
     httpOnly: true,
     secure: true,
     sameSite: 'lax',

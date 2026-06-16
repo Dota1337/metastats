@@ -22,7 +22,7 @@ export async function middleware(req: NextRequest) {
     if (isLoginPath) return NextResponse.next();
 
     const cookie = req.cookies.get(INTERNAL_COOKIE)?.value;
-    if (verifyCookieValue(cookie)) return NextResponse.next();
+    if (await verifyCookieValue(cookie)) return NextResponse.next();
 
     if (path.startsWith('/api/internal')) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });

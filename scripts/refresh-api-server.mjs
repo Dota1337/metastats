@@ -27,7 +27,71 @@
 import http from 'node:http';
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import pg from 'pg';
+
+const execFileAsync = promisify(execFile);
+
+// Liest systemd-Status für alle metastats-*.service Units. Dynamische Discovery
+// via `systemctl list-units` — keine hardgecodete Service-Liste, damit der
+// Aggregator bei neuem Service auf der Box automatisch aufnimmt.
+async function collectServiceStatus() {
+  // list-units --all liefert auch inactive Services; ohne --all würde
+  // ein gestoppter Service einfach fehlen statt mit `inactive` zu erscheinen.
+  const { stdout } = await execFileAsync('systemctl', [
+    'list-units', '--type=service', '--all', '--no-pager', '--no-legend',
+    '--plain', 'metastats-*',
+  ]);
+  const names = stdout
+    .split('\n')
+    .map(line => line.trim().split(/\s+/)[0])
+    .filter(n => n && n.endsWith('.service') && n.startsWith('metastats-'));
+  if (names.length === 0) return [];
+  // Bulk `show` ist ein einzelner Roundtrip statt 1 pro Service.
+  const props = [
+    'Id', 'ActiveState', 'SubState', 'Result',
+    'ActiveEnterTimestamp', 'ActiveExitTimestamp',
+    'InactiveEnterTimestamp', 'InactiveExitTimestamp',
+    'ExecMainStartTimestamp', 'ExecMainExitTimestamp',
+    'Type',
+  ];
+  const { stdout: showOut } = await execFileAsync('systemctl', [
+    'show', '--property=' + props.join(','), ...names,
+  ]);
+  const services = [];
+  let current = {};
+  for (const line of showOut.split('\n')) {
+    if (line === '') {
+      if (current.Id) services.push(normalizeServiceRecord(current));
+      current = {};
+      continue;
+    }
+    const eq = line.indexOf('=');
+    if (eq <= 0) continue;
+    current[line.slice(0, eq)] = line.slice(eq + 1);
+  }
+  if (current.Id) services.push(normalizeServiceRecord(current));
+  return services;
+}
+
+function normalizeServiceRecord(raw) {
+  // systemd-Timestamp ist locale-formatted, ISO-Konversion ist zuverlässiger.
+  const ts = v => v && v !== 'n/a' && v !== '' ? new Date(v).toISOString() : null;
+  return {
+    name: raw.Id,
+    type: raw.Type || null,
+    activeState: raw.ActiveState || null,
+    subState: raw.SubState || null,
+    result: raw.Result || null,
+    activeEnterTs: ts(raw.ActiveEnterTimestamp),
+    activeExitTs: ts(raw.ActiveExitTimestamp),
+    inactiveEnterTs: ts(raw.InactiveEnterTimestamp),
+    inactiveExitTs: ts(raw.InactiveExitTimestamp),
+    execMainStartTs: ts(raw.ExecMainStartTimestamp),
+    execMainExitTs: ts(raw.ExecMainExitTimestamp),
+  };
+}
 import { createRiotClient } from './lib/riot-client.mjs';
 import { refreshPlayerMatchCache, listSeasonMatches, backfillPlayerCacheToSupabase } from './lib/tft-match-cache-pg.mjs';
 import {
@@ -588,10 +652,25 @@ async function handlePlayerMatches(body) {
 }
 
 const server = http.createServer(async (req, res) => {
-  // Liveness
-  if (req.method === 'GET' && req.url === '/healthz') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    return res.end(JSON.stringify({ ok: true, ts: Date.now() }));
+  // Liveness + optional service-detail für das Internal-Ops-Dashboard.
+  // ?detail=services listet alle metastats-*.service Units mit ActiveState,
+  // SubState, Result, ActiveEnterTimestamp und InactiveEnterTimestamp.
+  // Dynamische Discovery via `systemctl list-units` — keine hardgecodete Liste.
+  if (req.method === 'GET' && req.url?.startsWith('/healthz')) {
+    const wantDetail = req.url.includes('detail=services');
+    const base = { ok: true, ts: Date.now() };
+    if (!wantDetail) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify(base));
+    }
+    try {
+      const services = await collectServiceStatus();
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+      return res.end(JSON.stringify({ ...base, services }));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ ...base, ok: false, error: String(err?.message || err) }));
+    }
   }
 
   const isRefresh = req.method === 'POST' && req.url === '/refresh-player';

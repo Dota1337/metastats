@@ -1,11 +1,38 @@
-// Refresh Supabase auth session on every request that hits an app route.
-// Without this, the session cookie expires silently and the user gets
-// signed out after ~1h even while actively browsing.
+// Middleware:
+//   1. Early-Return-Branch für /internal/* + /api/internal/* — eigene Cookie-
+//      Auth, KEIN Supabase-SSR-Call. Wenn Feature-Flag aus, 404. Wenn nicht
+//      authentifiziert, 401 für /api/internal/*, 307→/internal/login für Pages.
+//   2. Default-Pfad: Supabase-Session refreshen, sonst läuft der End-User-
+//      Cookie nach ~1h ab obwohl der User aktiv ist.
 
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { INTERNAL_COOKIE, verifyCookieValue, internalDashboardEnabled } from './app/lib/internal-auth';
 
 export async function middleware(req: NextRequest) {
+  const path = req.nextUrl.pathname;
+
+  // --- Internal-Dashboard Branch (no Supabase-SSR) -----------------------
+  if (path.startsWith('/internal') || path.startsWith('/api/internal')) {
+    if (!internalDashboardEnabled()) {
+      return new NextResponse('Not Found', { status: 404 });
+    }
+    // Login-Routes und Login-Page selbst nicht gaten — sonst Endlos-Redirect.
+    const isLoginPath = path === '/internal/login' || path === '/api/internal/login';
+    if (isLoginPath) return NextResponse.next();
+
+    const cookie = req.cookies.get(INTERNAL_COOKIE)?.value;
+    if (verifyCookieValue(cookie)) return NextResponse.next();
+
+    if (path.startsWith('/api/internal')) {
+      return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    }
+    const loginUrl = new URL('/internal/login', req.url);
+    loginUrl.searchParams.set('next', path);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  // --- Default Supabase-SSR-Pfad ---------------------------------------
   let response = NextResponse.next({ request: req });
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

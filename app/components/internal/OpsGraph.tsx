@@ -62,6 +62,89 @@ const STATUS_COLOR: Record<ServiceStatus, string> = {
   unknown: '#6b7280',
 };
 
+const STATUS_LABEL: Record<ServiceStatus, string> = {
+  healthy: 'Gesund',
+  working: 'Arbeitet',
+  stalled: 'Verzögert',
+  failed:  'Fehler',
+  unknown: 'Unbekannt',
+};
+
+// =========================================================================
+// Node-Beschreibungen — was tut jede Komponente in der Pipeline
+// =========================================================================
+
+const SERVICE_DESCRIPTIONS: Record<string, string> = {
+  'metastats-refresh-api.service':
+    'Persistenter HTTP-Server auf Port 4100. Bedient den /refresh-player-Button (Profil + Marktwert on-demand aktualisieren), liest Match-Cache + DB-Counts für das Ops-Dashboard.',
+  'metastats-daily-crawl.service':
+    'Daily-Aggregat-Crawler. Läuft 00:00 UTC, geht durch alle 17 Regionen, schreibt Daily-Stats in tft_daily_*_stats. Dauer typisch 9-12h. Kettet OnSuccess den Catchup + Snapshot-Publisher.',
+  'metastats-snapshot-publisher.service':
+    'Rendert nach jedem Daily-Crawl die Hot-Path-Permutationen aller Stats-APIs als statische JSON-Blobs nach Vercel-Blob. ~3 min Lauf, ~200 Snapshots. Ergebnis löst den ~1s-Cold-Start in /tft/* ab.',
+  'metastats-daily-crawl-catchup.service':
+    'Sicherheits-Hook. Wenn der Daily-Crawl Mitternacht überquert (>24h Lauf), wäre der nächste Tages-Trigger geschluckt — dieser Service detektiert das und startet sofort einen Nachhol-Lauf.',
+  'metastats-companion-backfill.service':
+    'Alle 10 Minuten. Verknüpft Overwolf-Companion-Position-Daten (LIVE_xxx synth-IDs) mit den echten Riot-Match-IDs sobald die Match in Match-V1 erscheint.',
+  'metastats-position-aggregator.service':
+    'Alle 15 Minuten. Aggregiert tft_position_observations zu tft_position_comp_cell für die Position-Heatmaps in den Comp-Detail-Pages.',
+  'metastats-build-check.service':
+    'Periodischer Smoke-Check der Crawler-Box (Node-Version, Disk-Space, env-File-Existenz). Reine Diagnose, schreibt nichts in die Pipeline.',
+  'metastats-health.service':
+    'Self-Health-Endpoint des Refresh-API-Servers. Periodischer Self-Test damit ein hängender Server-Prozess früh erkannt wird.',
+  'metastats-tft-pro-validator.service':
+    'Nightly. Validiert die Pro-Player-Accounts in public/pro-players.json gegen die 4 Quellen (trackingthepros, lolpros, op.gg, Riot-API). Markiert Roster-Wechsel.',
+  'metastats-tft-pro-fullsync.service':
+    'Freitags. Vollständiger Re-Crawl der Pro-Player-Datenbank aus Liquipedia + Cross-Validation. Updated tft_pro_players + Roster.',
+  'metastats-tft-pro-tpc-roster.service':
+    'Freitags. Crawlt competetft.com (TPC = TFT Pro Circuit) für offizielle Riot-Roster-Updates der Pro-Teams.',
+  'metastats-tft-pro-classify.service':
+    'Nightly. Klassifiziert TFT-Pro-Player nach Region + Sub-Region + Liga-Aktivität. Output speist die /tft/pros Page.',
+  'metastats-crawler.service':
+    'Legacy Marketvalue-Vollsweep. Seit 2026-06-16 deaktiviert (Timer masked, OnSuccess raus). Bleibt für ggf. manuellen Adhoc-Debug, sollte nicht automatisch starten.',
+  'metastats-lol-marketvalue.service':
+    'LoL-Marktwert-Crawler. Wird nur nach Riot-Dev-Key-Rotation getriggert (refresh-riot-key.mjs), kein Timer.',
+};
+
+const TABLE_DESCRIPTIONS: Record<string, string> = {
+  'tft_daily_comp_stats':
+    'Tägliche Aggregat-Stats pro Comp-Cluster × Region × Bucket × Patch. Geschrieben vom Daily-Crawl, gelesen von /api/tft/comps. Inkl. typical_units, carry_items, death-round-Histogramm, Skill-Cap-Buckets.',
+  'tft_player_marketvalue_snapshots':
+    'Daily-Snapshots der Marktwerte aller D2+-Spieler. Pro puuid × region × snapshot_date eine Zeile. Skill-Score-Multiplier × Base-Value = final_value. Snapshot-First, kein Live-Calc.',
+  'tft_player_match_cache':
+    'Per-Spieler Match-Cache (35 GB Volume-Tablespace). Quelle für Match-History, Pro-Specialty, Coach-Analyse. Wird vom Refresh-API + Marketvalue-Crawler gefüllt. Liegt auf Hetzner-PG, nicht Supabase.',
+};
+
+const API_DESCRIPTIONS: Record<string, string> = {
+  'comps':
+    '/api/tft/comps — Comp-Listing mit avgPlace, top4, pickRate, typical_units, carry_items. Patch-übergreifend aggregiert seit 2026-06-16. minGames skaliert 70×days.',
+  'units':
+    '/api/tft/units — Champion-Stats nach character_id. Top-Items by Tier, Damage-Atlas, Item-Slot-Order auf den Detail-Pages.',
+  'items':
+    '/api/tft/items — Item-Stats inkl. top_users (Carrier). Lean-RPC merged Carriers in SQL statt jsonb_agg → ~14x schneller.',
+  'traits':
+    '/api/tft/traits — Trait-Aktivierungs-Stats nach name + activation-level. Skalar-only, kein jsonb-Merging.',
+};
+
+function describeNode(node: NodeData): string {
+  if (node.id.startsWith('svc:')) {
+    return SERVICE_DESCRIPTIONS[node.serviceName || ''] || 'Hetzner-Service, keine Beschreibung hinterlegt.';
+  }
+  if (node.id.startsWith('db:')) {
+    const tbl = node.id.replace('db:', '');
+    return TABLE_DESCRIPTIONS[tbl] || 'Supabase-Tabelle, keine Beschreibung hinterlegt.';
+  }
+  if (node.id === 'blob:manifest') {
+    return 'Snapshot-Bundle auf Vercel-Blob. Manifest listet alle vorgerenderten JSON-Permutationen mit Build-Zeit. Der Snapshot-Publisher schreibt es nach jedem Daily-Crawl neu — die API-Routes lesen es zuerst, fallen erst bei Miss auf Live-RPC.';
+  }
+  if (node.id.startsWith('api:')) {
+    return API_DESCRIPTIONS[node.id.replace('api:', '')] || 'API-Route, keine Beschreibung hinterlegt.';
+  }
+  if (node.id === 'user') {
+    return 'Endpoint der Pipeline. Browser-Requests auf metastats.gg landen über Vercel-Edge bei den API-Routes — die meisten Hits bekommen einen Snapshot-Treffer und antworten unter 300 ms.';
+  }
+  return 'Keine Beschreibung verfügbar.';
+}
+
 // =========================================================================
 // Polling Hook — multi-tier per slice, mergt in einen Snapshot
 // =========================================================================
@@ -131,16 +214,19 @@ function ratePerSec(table: string, current: number | null): number | null {
 }
 
 // =========================================================================
-// Layout — 3 Layer in Y, X/Z innerhalb des Layers via Force-Free Spreading
+// Graph-Building
 // =========================================================================
 
 interface NodeData {
   id: string;
   label: string;
-  layer: number;     // 0 = unten (User), 1 = API, 2 = Blob, 3 = DB, 4 = Crawler
+  layer: number;
+  layerName: string;
   status: ServiceStatus;
   detail: string;
   rate: number | null;
+  serviceName?: string;
+  raw?: ServiceView | { estimated: number | null; today: number | null } | ManifestInfo | null;
 }
 
 interface EdgeData {
@@ -149,6 +235,8 @@ interface EdgeData {
   color: string;
   active: boolean;
 }
+
+const LAYER_NAMES = ['User', 'API', 'Snapshot', 'Datenbank', 'Crawler'];
 
 function buildGraph(snap: Snapshot | null): { nodes: NodeData[]; edges: EdgeData[] } {
   if (!snap) return { nodes: [], edges: [] };
@@ -162,12 +250,15 @@ function buildGraph(snap: Snapshot | null): { nodes: NodeData[]; edges: EdgeData
   // Layer 4 — Crawler-Services
   for (const s of services) {
     nodes.push({
-      id: s.name,
+      id: 'svc:' + s.name,
+      serviceName: s.name,
       label: s.name.replace('metastats-', '').replace('.service', ''),
       layer: 4,
+      layerName: LAYER_NAMES[4],
       status: s.status,
       detail: `${s.activeState}/${s.subState} · result=${s.result}` + (s.ageSinceLastRunMs ? ` · last ${humanAge(s.ageSinceLastRunMs)} ago` : ''),
       rate: null,
+      raw: s,
     });
   }
 
@@ -180,11 +271,13 @@ function buildGraph(snap: Snapshot | null): { nodes: NodeData[]; edges: EdgeData
       id: 'db:' + tbl,
       label: tbl.replace('tft_', ''),
       layer: 3,
+      layerName: LAYER_NAMES[3],
       status: c?.estimated != null ? 'healthy' : 'unknown',
       detail: c?.estimated != null
         ? `${fmt(c.estimated)} rows total${c.today != null ? ` · ${fmt(c.today)} heute` : ''}`
         : 'no data',
       rate,
+      raw: c,
     });
   }
 
@@ -197,9 +290,11 @@ function buildGraph(snap: Snapshot | null): { nodes: NodeData[]; edges: EdgeData
     id: 'blob:manifest',
     label: 'snapshot-bundle',
     layer: 2,
+    layerName: LAYER_NAMES[2],
     status: manifestStatus,
     detail: manifest ? `${manifest.entries} entries · built ${humanAge(manifestAge!)} ago` : 'no manifest',
     rate: null,
+    raw: manifest,
   });
 
   // Layer 1 — API-Endpoints
@@ -209,6 +304,7 @@ function buildGraph(snap: Snapshot | null): { nodes: NodeData[]; edges: EdgeData
       id: 'api:' + a,
       label: `/api/tft/${a}`,
       layer: 1,
+      layerName: LAYER_NAMES[1],
       status: 'healthy',
       detail: 'serves from snapshot bundle',
       rate: null,
@@ -216,7 +312,7 @@ function buildGraph(snap: Snapshot | null): { nodes: NodeData[]; edges: EdgeData
   }
 
   // Layer 0 — User
-  nodes.push({ id: 'user', label: 'User', layer: 0, status: 'healthy', detail: 'you', rate: null });
+  nodes.push({ id: 'user', label: 'User', layer: 0, layerName: LAYER_NAMES[0], status: 'healthy', detail: 'you', rate: null });
 
   // Edges: Daten-Flow
   const crawlerToDb: Record<string, string[]> = {
@@ -227,18 +323,15 @@ function buildGraph(snap: Snapshot | null): { nodes: NodeData[]; edges: EdgeData
     const svc = services.find(s => s.name === from);
     if (!svc) continue;
     for (const to of tos) {
-      edges.push({ from, to, color: '#facc15', active: svc.status === 'working' });
+      edges.push({ from: 'svc:' + from, to, color: '#facc15', active: svc.status === 'working' });
     }
   }
-  // DB → Blob (publisher reads DB to build snapshots)
   for (const tbl of tables) {
     edges.push({ from: 'db:' + tbl, to: 'blob:manifest', color: '#3b82f6', active: false });
   }
-  // Blob → API
   for (const a of apis) {
     edges.push({ from: 'blob:manifest', to: 'api:' + a, color: '#a855f7', active: !!manifest });
   }
-  // API → User
   for (const a of apis) {
     edges.push({ from: 'api:' + a, to: 'user', color: '#ec4899', active: true });
   }
@@ -251,49 +344,84 @@ function buildGraph(snap: Snapshot | null): { nodes: NodeData[]; edges: EdgeData
 // =========================================================================
 
 function positionFor(node: NodeData, idx: number, total: number): [number, number, number] {
-  const layerSpacing = 4;
-  const y = node.layer * layerSpacing - 8;
-  const radius = node.layer === 0 ? 0 : 5 + node.layer * 0.5;
+  const layerSpacing = 4.5;
+  const y = node.layer * layerSpacing - 9;
+  const radius = node.layer === 0 ? 0 : 4.5 + node.layer * 0.6;
   const angle = (idx / Math.max(1, total)) * Math.PI * 2;
   const x = Math.cos(angle) * radius;
   const z = Math.sin(angle) * radius;
   return [x, y, z];
 }
 
-function NodeMesh({ position, color, pulsing, label, detail, onHover }: {
+// Animierter Status-Ring um den Kern — gibt Tiefe + Status-Coloring auch aus
+// Entfernung gut sichtbar. Selektierte Nodes bekommen einen zweiten outer Ring.
+function NodeMesh({ position, color, pulsing, label, selected, onClick }: {
   position: [number, number, number];
   color: string;
   pulsing: boolean;
   label: string;
-  detail: string;
-  onHover: (info: { label: string; detail: string } | null) => void;
+  selected: boolean;
+  onClick: () => void;
 }) {
   const meshRef = useRef<THREE.Mesh>(null);
-  const glowRef = useRef<THREE.Mesh>(null);
+  const haloRef = useRef<THREE.Mesh>(null);
+  const ringRef = useRef<THREE.Mesh>(null);
+  const outerRingRef = useRef<THREE.Mesh>(null);
+
   useFrame(({ clock }) => {
-    if (!pulsing || !glowRef.current) return;
     const t = clock.getElapsedTime();
-    const scale = 1.3 + Math.sin(t * 3) * 0.2;
-    glowRef.current.scale.setScalar(scale);
+    if (haloRef.current) {
+      const intensity = pulsing ? 1 + Math.sin(t * 3) * 0.25 : 1;
+      haloRef.current.scale.setScalar(1.6 * intensity);
+      const mat = haloRef.current.material as THREE.MeshBasicMaterial;
+      mat.opacity = pulsing ? 0.18 + Math.sin(t * 3) * 0.08 : 0.10;
+    }
+    if (ringRef.current) {
+      ringRef.current.rotation.z = t * 0.4;
+      ringRef.current.lookAt(0, ringRef.current.parent!.position.y + 100, 100);
+    }
+    if (outerRingRef.current && selected) {
+      outerRingRef.current.rotation.z = -t * 0.6;
+    }
   });
+
   return (
     <group
       position={position}
-      onPointerOver={() => onHover({ label, detail })}
-      onPointerOut={() => onHover(null)}
+      onClick={e => { e.stopPropagation(); onClick(); }}
+      onPointerOver={e => { document.body.style.cursor = 'pointer'; }}
+      onPointerOut={e => { document.body.style.cursor = ''; }}
     >
+      {/* Glowing core */}
       <mesh ref={meshRef}>
-        <sphereGeometry args={[0.4, 24, 24]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.4} />
+        <sphereGeometry args={[0.32, 32, 32]} />
+        <meshStandardMaterial
+          color={color}
+          emissive={color}
+          emissiveIntensity={1.2}
+          roughness={0.3}
+          metalness={0.6}
+        />
       </mesh>
-      {pulsing && (
-        <mesh ref={glowRef}>
-          <sphereGeometry args={[0.5, 24, 24]} />
-          <meshBasicMaterial color={color} transparent opacity={0.15} />
+      {/* Soft halo */}
+      <mesh ref={haloRef}>
+        <sphereGeometry args={[0.48, 24, 24]} />
+        <meshBasicMaterial color={color} transparent opacity={0.12} depthWrite={false} />
+      </mesh>
+      {/* Status-Ring (Torus, billboard-facing) */}
+      <mesh ref={ringRef}>
+        <torusGeometry args={[0.6, 0.04, 12, 48]} />
+        <meshBasicMaterial color={color} transparent opacity={0.7} />
+      </mesh>
+      {/* Selection-Ring outer (nur wenn selected) */}
+      {selected && (
+        <mesh ref={outerRingRef}>
+          <torusGeometry args={[0.95, 0.025, 12, 64]} />
+          <meshBasicMaterial color={'#ffffff'} transparent opacity={0.85} />
         </mesh>
       )}
-      <Html distanceFactor={12} position={[0, 0.7, 0]} center>
-        <div className="text-[10px] text-gray-300 whitespace-nowrap select-none pointer-events-none">
+      <Html distanceFactor={11} position={[0, 0.85, 0]} center>
+        <div className={`text-[10px] whitespace-nowrap select-none pointer-events-none font-medium ${selected ? 'text-white' : 'text-gray-300'}`}>
           {label}
         </div>
       </Html>
@@ -319,10 +447,10 @@ function FlowEdge({ from, to, color, active }: {
   });
   return (
     <>
-      <Line points={[from, to]} color={color} lineWidth={1} opacity={0.3} transparent />
+      <Line points={[from, to]} color={color} lineWidth={1} opacity={0.25} transparent />
       {active && (
         <mesh ref={particleRef}>
-          <sphereGeometry args={[0.08, 8, 8]} />
+          <sphereGeometry args={[0.09, 12, 12]} />
           <meshBasicMaterial color={color} />
         </mesh>
       )}
@@ -330,7 +458,11 @@ function FlowEdge({ from, to, color, active }: {
   );
 }
 
-function Scene({ snap, onHover }: { snap: Snapshot | null; onHover: (i: { label: string; detail: string } | null) => void }) {
+function Scene({ snap, selectedId, onSelect }: {
+  snap: Snapshot | null;
+  selectedId: string | null;
+  onSelect: (n: NodeData | null) => void;
+}) {
   const graph = useMemo(() => buildGraph(snap), [snap]);
   const positions = useMemo(() => {
     const map = new Map<string, [number, number, number]>();
@@ -346,9 +478,18 @@ function Scene({ snap, onHover }: { snap: Snapshot | null; onHover: (i: { label:
 
   return (
     <>
-      <ambientLight intensity={0.4} />
-      <pointLight position={[10, 10, 10]} intensity={0.6} />
-      <pointLight position={[-10, -5, -10]} intensity={0.3} color="#7B61FF" />
+      <color attach="background" args={['#050810']} />
+      <fog attach="fog" args={['#050810', 16, 50]} />
+      <ambientLight intensity={0.3} />
+      <pointLight position={[10, 10, 10]} intensity={0.8} color="#ffffff" />
+      <pointLight position={[-10, -5, -10]} intensity={0.6} color="#7B61FF" />
+      <pointLight position={[0, 0, 8]} intensity={0.4} color="#22c55e" />
+
+      {/* Klick auf leere Fläche: Selektion clearen */}
+      <mesh position={[0, 0, -10]} onClick={() => onSelect(null)}>
+        <planeGeometry args={[200, 200]} />
+        <meshBasicMaterial transparent opacity={0} />
+      </mesh>
 
       {graph.nodes.map(n => {
         const pos = positions.get(n.id);
@@ -360,8 +501,8 @@ function Scene({ snap, onHover }: { snap: Snapshot | null; onHover: (i: { label:
             color={STATUS_COLOR[n.status]}
             pulsing={n.status === 'working' || (n.rate ?? 0) > 0.5}
             label={n.label}
-            detail={n.detail}
-            onHover={onHover}
+            selected={selectedId === n.id}
+            onClick={() => onSelect(n)}
           />
         );
       })}
@@ -395,19 +536,120 @@ function fmt(n: number): string {
   return String(n);
 }
 
+function NodeDetailPanel({ node, onClose }: { node: NodeData; onClose: () => void }) {
+  const description = describeNode(node);
+  const raw = node.raw as any;
+  return (
+    <div className="absolute top-3 right-3 z-20 w-[min(380px,calc(100vw-24px))] bg-[#0d1526]/95 backdrop-blur border border-[#1e2a3a] rounded-lg p-4 shadow-2xl text-sm space-y-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[10px] uppercase tracking-wider text-gray-500">{node.layerName}</div>
+          <div className="font-semibold text-white truncate">{node.label}</div>
+        </div>
+        <button
+          onClick={onClose}
+          className="text-gray-500 hover:text-white transition-colors flex-shrink-0"
+          aria-label="Schließen"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <path d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <span
+          className="inline-block w-2 h-2 rounded-full"
+          style={{ backgroundColor: STATUS_COLOR[node.status] }}
+        />
+        <span className="text-xs" style={{ color: STATUS_COLOR[node.status] }}>
+          {STATUS_LABEL[node.status]}
+        </span>
+        <span className="text-gray-600 text-xs">·</span>
+        <span className="text-gray-400 text-xs truncate">{node.detail}</span>
+      </div>
+
+      <div className="text-xs text-gray-300 leading-relaxed">
+        {description}
+      </div>
+
+      {/* Live-Daten je nach Node-Typ */}
+      {node.id.startsWith('svc:') && raw && (
+        <div className="pt-2 border-t border-[#1e2a3a] grid grid-cols-2 gap-2 text-[11px]">
+          <div className="text-gray-500">ActiveState</div>
+          <div className="text-gray-300 font-mono">{raw.activeState}</div>
+          <div className="text-gray-500">SubState</div>
+          <div className="text-gray-300 font-mono">{raw.subState}</div>
+          <div className="text-gray-500">Result</div>
+          <div className="text-gray-300 font-mono">{raw.result}</div>
+          {raw.kind && (<>
+            <div className="text-gray-500">Typ</div>
+            <div className="text-gray-300 font-mono">{raw.kind}</div>
+          </>)}
+          {raw.lastRunStart && (<>
+            <div className="text-gray-500">Letzter Start</div>
+            <div className="text-gray-300 font-mono">{new Date(raw.lastRunStart).toLocaleString('de-DE')}</div>
+          </>)}
+          {raw.lastRunEnd && (<>
+            <div className="text-gray-500">Letztes Ende</div>
+            <div className="text-gray-300 font-mono">{new Date(raw.lastRunEnd).toLocaleString('de-DE')}</div>
+          </>)}
+          {raw.ageSinceLastRunMs && (<>
+            <div className="text-gray-500">Seitdem</div>
+            <div className="text-gray-300 font-mono">{humanAge(raw.ageSinceLastRunMs)}</div>
+          </>)}
+          {raw.expectedMaxAgeMs && (<>
+            <div className="text-gray-500">Erwartete Cadence</div>
+            <div className="text-gray-300 font-mono">≤ {humanAge(raw.expectedMaxAgeMs)}</div>
+          </>)}
+        </div>
+      )}
+
+      {node.id.startsWith('db:') && raw && (
+        <div className="pt-2 border-t border-[#1e2a3a] grid grid-cols-2 gap-2 text-[11px]">
+          <div className="text-gray-500">Rows (estimated)</div>
+          <div className="text-gray-300 font-mono">{raw.estimated != null ? fmt(raw.estimated) : '—'}</div>
+          <div className="text-gray-500">Heute geschrieben</div>
+          <div className="text-gray-300 font-mono">{raw.today != null ? fmt(raw.today) : '—'}</div>
+          <div className="text-gray-500">Schreibrate</div>
+          <div className="text-gray-300 font-mono">{node.rate != null ? `${node.rate.toFixed(1)}/s` : '—'}</div>
+        </div>
+      )}
+
+      {node.id === 'blob:manifest' && raw && (
+        <div className="pt-2 border-t border-[#1e2a3a] grid grid-cols-2 gap-2 text-[11px]">
+          <div className="text-gray-500">Built</div>
+          <div className="text-gray-300 font-mono">{new Date(raw.builtAt).toLocaleString('de-DE')}</div>
+          <div className="text-gray-500">Entries</div>
+          <div className="text-gray-300 font-mono">{raw.entries}</div>
+          <div className="text-gray-500">Aktueller Patch</div>
+          <div className="text-gray-300 font-mono">{raw.patches?.current ?? '—'}</div>
+          <div className="text-gray-500">Voriger Patch</div>
+          <div className="text-gray-300 font-mono">{raw.patches?.previous ?? '—'}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function OpsGraph() {
   const { snap, lastUpdate } = useOpsSnapshot();
-  const [hover, setHover] = useState<{ label: string; detail: string } | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selectedNode = useMemo(() => {
+    if (!selectedId) return null;
+    const g = buildGraph(snap);
+    return g.nodes.find(n => n.id === selectedId) || null;
+  }, [snap, selectedId]);
 
   const errs = snap?.errors;
   const hasErrors = !!(errs?.services || errs?.db || errs?.manifest);
 
   return (
-    <div className="min-h-screen bg-[#0a0f1c] text-gray-200 relative overflow-hidden">
+    <div className="min-h-screen bg-[#050810] text-gray-200 relative overflow-hidden">
       <div className="absolute top-3 left-3 z-10 text-xs space-y-1">
-        <div className="font-semibold">metastats ops</div>
+        <div className="font-semibold tracking-wide text-white">metastats / ops</div>
         <div className="text-gray-500">
-          {lastUpdate ? `updated ${humanAge(Date.now() - lastUpdate.getTime())} ago` : 'loading…'}
+          {lastUpdate ? `aktualisiert vor ${humanAge(Date.now() - lastUpdate.getTime())}` : 'lade…'}
         </div>
         {hasErrors && (
           <div className="text-red-400 mt-2 space-y-0.5">
@@ -418,25 +660,18 @@ export default function OpsGraph() {
         )}
       </div>
 
-      <div className="absolute top-3 right-3 z-10 text-xs text-right space-y-1 max-w-xs">
-        {hover ? (
-          <>
-            <div className="font-semibold">{hover.label}</div>
-            <div className="text-gray-400">{hover.detail}</div>
-          </>
-        ) : (
-          <div className="text-gray-500">hover a node for details</div>
-        )}
-      </div>
+      {selectedNode && (
+        <NodeDetailPanel node={selectedNode} onClose={() => setSelectedId(null)} />
+      )}
 
-      <div className="absolute bottom-3 left-3 right-3 z-10 flex justify-between text-[10px] text-gray-500">
+      <div className="absolute bottom-3 left-3 right-3 z-10 flex justify-between text-[10px] text-gray-500 pointer-events-none">
         <div>L4 Crawler · L3 DB · L2 Snapshot · L1 API · L0 User</div>
-        <div>poll services/10s · db/60s · blob/120s</div>
+        <div>poll services/10s · db/60s · blob/120s · klick für details</div>
       </div>
 
       <div className="absolute inset-0">
-        <Canvas camera={{ position: [0, 0, 18], fov: 50 }} dpr={[1, 2]} frameloop="always">
-          <Scene snap={snap} onHover={setHover} />
+        <Canvas camera={{ position: [0, 0, 22], fov: 50 }} dpr={[1, 2]} frameloop="always">
+          <Scene snap={snap} selectedId={selectedId} onSelect={n => setSelectedId(n?.id || null)} />
         </Canvas>
       </div>
     </div>

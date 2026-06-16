@@ -510,6 +510,8 @@ const translations = {
   'tft.filter.region':  t6('Region', 'Region', '\uC9C0\uC5ED', '\u533A\u57DF', 'Regi\u00F3n', 'R\u00E9gion'),
   'tft.filter.current': t6('Aktueller Patch', 'Current patch', '\uD604\uC7AC \uD328\uCE58', '\u5F53\u524D\u7248\u672C', 'Parche actual', 'Patch actuel'),
   'tft.filter.previous':t6('Voriger Patch', 'Previous patch', '\uC774\uC804 \uD328\uCE58', '\u4E0A\u4E2A\u7248\u672C', 'Parche anterior', 'Patch pr\u00E9c\u00E9dent'),
+  'tft.filter.patchSince': t6('Patch {patch} \u00B7 seit {date}', 'Patch {patch} \u00B7 since {date}', '\uD328\uCE58 {patch} \u00B7 {date} \uBD80\uD130', '\u7248\u672C {patch} \u00B7 \u81EA {date}', 'Parche {patch} \u00B7 desde {date}', 'Patch {patch} \u00B7 depuis {date}'),
+  'tft.filter.patchAggregated': t6('Werte patch\u00FCbergreifend aggregiert', 'Values aggregated across patches', '\uD328\uCE58 \uAC04 \uC9D1\uACC4\uB41C \uAC12', '\u8DE8\u7248\u672C\u805A\u5408\u6570\u636E', 'Valores agregados entre parches', 'Valeurs agr\u00E9g\u00E9es sur plusieurs patchs'),
   'tft.filter.dayOne':  t6('Letzter Tag', 'Last day', '\uCD5C\uADFC 1\uC77C', '\u6700\u8FD11\u5929', '\u00DAltimo d\u00EDa', 'Dernier jour'),
   'tft.filter.dayN':    t6('Letzte {n} Tage', 'Last {n} days', '\uCD5C\uADFC {n}\uC77C', '\u6700\u8FD1{n}\u5929', '\u00DAltimos {n} d\u00EDas', '{n} derniers jours'),
   'tft.filter.allRegions': t6('Alle Regionen', 'All regions', '\uBAA8\uB4E0 \uC9C0\uC5ED', '\u6240\u6709\u533A\u57DF', 'Todas las regiones', 'Toutes les r\u00E9gions'),

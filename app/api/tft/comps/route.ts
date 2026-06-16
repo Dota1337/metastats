@@ -200,7 +200,7 @@ export async function GET(request: NextRequest) {
         p_regions: filters.regions,
         p_buckets: filters.buckets,
         p_days: filters.days,
-        p_patch: filters.patch,
+        p_patch: filters.patchFilter,
         p_set: filters.setNumber,
         p_min_games: minGames,
       });
@@ -241,7 +241,7 @@ export async function GET(request: NextRequest) {
       const pairs = await callRpc<CompPairRow[]>('get_tft_comp_pairs', {
         p_regions: filters.regions,
         p_days: filters.days,
-        p_patch: filters.patch,
+        p_patch: filters.patchFilter,
         p_set: filters.setNumber,
         p_min_games: 10,
       });
@@ -324,7 +324,7 @@ export async function GET(request: NextRequest) {
         p_regions: filters.regions,
         p_buckets: filters.buckets,
         p_days: filters.days,
-        p_patch: filters.patch,
+        p_patch: filters.patchFilter,
         p_set: filters.setNumber,
         p_min_games: minGames,
       }),
@@ -333,7 +333,7 @@ export async function GET(request: NextRequest) {
             p_regions: filters.regions,
             p_buckets: filters.buckets,
             p_set: filters.setNumber,
-            p_patch: filters.patch,
+            p_patch: filters.patchFilter,
             // Use the user-requested window size (not the stale-bumped one) so
             // "Letzter Tag + Δ vs vor 3 Tagen" really compares 1d vs 1d shifted
             // by 3d. The bump on filters.days is a fallback for the main list
@@ -373,6 +373,8 @@ export async function GET(request: NextRequest) {
         days: filters.days,
         requestedDays: filters.requestedDays,
         patch: filters.patch,
+        patchFilter: filters.patchFilter,
+        patchStartDay: filters.patchStartDay,
         set: filters.setNumber,
         velocityShift: wantVelocity ? velocityShift : null,
         anchorOffsetDays: filters.anchorOffsetDays,

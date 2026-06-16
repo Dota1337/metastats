@@ -47,7 +47,16 @@ export interface ResolvedFilters {
   buckets: string[];     // exact bucket names
   days: number;          // 1-7 — already bumped to cover stale-data lag
   requestedDays: number; // 1-7 — raw user choice, pre-bump (use for Δ-windows)
-  patch: string | null;  // null = no filter (any), else exact patch string
+  // patch (display): immer der konkrete Patch-String. Bei ?patch=current ist
+  //   das `patches[0].patch`, dient nur der UI-Anzeige ("Patch 17.5 seit …").
+  //   Wird AUCH als Cache-Key und Snapshot-Key benutzt.
+  // patchFilter (RPC-Filter): null = keine Filterung → patchübergreifende
+  //   Aggregation. Explicit Patch-String filtert die RPC auf diesen Patch.
+  //   Default-View (current) hat patchFilter=null — der Default-User sieht
+  //   aggregierte Daten und wird durch den Patch-Frische-Hinweis informiert.
+  patch: string | null;
+  patchFilter: string | null;
+  patchStartDay: string | null;  // ISO-day des display-patch first_day, für UI-Hint
   setNumber: number | null;
   regionLabel: string;   // raw filter value for display ('all','west','euw1',…)
   bucketLabel: string;   // raw filter value for display
@@ -144,7 +153,12 @@ export async function resolveFilters(searchParams: URLSearchParams): Promise<Res
   const regions = expandRegions(regionLabel);
   const buckets = expandBuckets(bucketLabel);
   const patches = await getAvailablePatches();
+  // patch (display) = der konkrete Patch-String (für UI + Cache-Key).
+  // patchFilter (RPC) = null wenn ?patch=current (patchübergreifend aggregieren)
+  //   oder ?patch=any, sonst der explizite Patch-String.
   const patch = await resolvePatchFromList(patches, patchParam);
+  const patchFilter = (patchParam === 'current' || patchParam === 'any') ? null : patch;
+  const patchStartDay = patches.find(p => p.patch === patch)?.first_day ?? null;
   const setNumber = setParam ? parseInt(setParam, 10) : null;
 
   // Stale-Data-Bump: während des Erstfills läuft der daily-Aggregator nicht,
@@ -169,8 +183,9 @@ export async function resolveFilters(searchParams: URLSearchParams): Promise<Res
   }
 
   return {
-    regions, buckets, days, requestedDays, patch, setNumber,
-    regionLabel, bucketLabel, anchorOffsetDays,
+    regions, buckets, days, requestedDays,
+    patch, patchFilter, patchStartDay,
+    setNumber, regionLabel, bucketLabel, anchorOffsetDays,
   };
 }
 

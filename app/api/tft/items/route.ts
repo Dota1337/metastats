@@ -98,7 +98,7 @@ export async function GET(request: NextRequest) {
         p_regions: filters.regions,
         p_buckets: filters.buckets,
         p_days: filters.days,
-        p_patch: filters.patch,
+        p_patch: filters.patchFilter,
         p_set: filters.setNumber,
       }),
       wantVelocity
@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
             p_regions: filters.regions,
             p_buckets: filters.buckets,
             p_set: filters.setNumber,
-            p_patch: filters.patch,
+            p_patch: filters.patchFilter,
             // User-requested window (pre-stale-bump) — see comps/route.ts for
             // the same rationale: bumped days would silently turn "1d vs 3d"
             // into "5d vs 5d" during erstfill staleness.
@@ -195,6 +195,8 @@ export async function GET(request: NextRequest) {
         days: filters.days,
         requestedDays: filters.requestedDays,
         patch: filters.patch,
+        patchFilter: filters.patchFilter,
+        patchStartDay: filters.patchStartDay,
         set: filters.setNumber,
         velocityShift: wantVelocity ? velocityShift : null,
         anchorOffsetDays: filters.anchorOffsetDays,

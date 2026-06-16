@@ -85,6 +85,23 @@ export default function StatsFilterBar({ filters, patches, onChange }: Props) {
   const newest = patches[0];
   const previous = patches[1];
 
+  // Patch-Hint: zeigt welcher Patch gerade aktiv ist + sein first_day. Bei
+  // Default-Filter (current = patchübergreifende Aggregation) wird zusätzlich
+  // "patchübergreifend aggregiert" angehängt, damit der User versteht warum
+  // 1d/7d-Switches in den ersten Patch-Tagen kaum unterschiedliche Daten zeigen.
+  const displayPatch = filters.patch === 'current'
+    ? newest
+    : filters.patch === 'previous'
+      ? previous
+      : patches.find(p => p.patch === filters.patch);
+  const isAggregated = filters.patch === 'current';
+  const patchHint = displayPatch ? (() => {
+    const base = t('tft.filter.patchSince')
+      .replace('{patch}', tftPatchLabel(displayPatch.patch))
+      .replace('{date}', formatPatchDate(displayPatch.first_day));
+    return isAggregated ? `${base} · ${t('tft.filter.patchAggregated')}` : base;
+  })() : null;
+
   return (
     <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-3 mb-4">
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
@@ -151,8 +168,20 @@ export default function StatsFilterBar({ filters, patches, onChange }: Props) {
           <option value="14">{t('tft.filter.velocity14d')}</option>
         </FilterSelect>
       </div>
+      {patchHint && (
+        <div className="mt-2 text-xs text-[#6b7a8f]">{patchHint}</div>
+      )}
     </div>
   );
+}
+
+// ISO-Date (YYYY-MM-DD) → kompaktes DD.MM.YYYY. Locale-spezifische Variants
+// kommen später, wenn klar ist ob das wirklich gebraucht wird; DD.MM.YYYY ist
+// in DE/EN/ES/FR lesbar genug.
+function formatPatchDate(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!m) return iso;
+  return `${m[3]}.${m[2]}.${m[1]}`;
 }
 
 function FilterSelect({

@@ -64,10 +64,13 @@ export function maybeRedirectByPatchAlias(
 ): NextResponse | null {
   const url = new URL(request.url);
   const requested = url.searchParams.get('patch');
-  if (requested !== 'current' && requested !== 'previous') return null;
-  const resolved = requested === 'current'
-    ? (patches[0]?.patch ?? null)
-    : (patches[1]?.patch ?? null);
+  // ?patch=current ist seit der Patch-Aggregations-Umstellung KEINE Alias-Form
+  // mehr, sondern eine eigene Semantik (patchübergreifende Aggregation +
+  // Display-Patch = der jüngste). Daher nicht redirecten — der Aggregations-
+  // Snapshot wird beim nächsten Crawl-Lauf regeneriert und kann unter dem
+  // stabilen Key "current" gecached werden.
+  if (requested !== 'previous') return null;
+  const resolved = patches[1]?.patch ?? null;
   if (!resolved || resolved === requested) return null;
   url.searchParams.set('patch', resolved);
   return NextResponse.redirect(url, {

@@ -14,15 +14,8 @@
 import { snapshotKey, normalizeSnapshotRequest, type SnapshotEndpoint } from './snapshot-matrix';
 
 const MANIFEST_URL_BASE = process.env.SNAPSHOT_MANIFEST_URL || '';
-// Bei private Blob-Store werden Reads via Token authentifiziert. Der Token
-// liegt server-side im Function-Env. Public-Store-Setups setzen ihn nicht.
-const BLOB_TOKEN = process.env.BLOB_READ_WRITE_TOKEN || '';
 const MANIFEST_TTL_MS = 5 * 60 * 1000;
 const SNAPSHOT_FETCH_TIMEOUT_MS = 3000;
-
-function blobAuthHeaders(): Record<string, string> {
-  return BLOB_TOKEN ? { Authorization: `Bearer ${BLOB_TOKEN}` } : {};
-}
 
 interface ManifestEntry {
   key: string;       // logischer Pfad analog snapshotKey()
@@ -56,7 +49,6 @@ async function loadManifest(): Promise<SnapshotManifest | null> {
       const res = await fetch(`${MANIFEST_URL_BASE}${sep}_min=${Math.floor(Date.now() / 60000)}`, {
         signal: ctrl.signal,
         cache: 'no-store',
-        headers: blobAuthHeaders(),
       });
       clearTimeout(t);
       if (!res.ok) {
@@ -120,7 +112,7 @@ export async function lookupSnapshot(
   try {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), SNAPSHOT_FETCH_TIMEOUT_MS);
-    const res = await fetch(entry.url, { signal: ctrl.signal, headers: blobAuthHeaders() });
+    const res = await fetch(entry.url, { signal: ctrl.signal });
     clearTimeout(t);
     if (!res.ok) return null;
     const payload = await res.json();

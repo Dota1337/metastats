@@ -205,7 +205,7 @@ async function publishPermutation(endpoint, apiPath, perm, patches) {
   }
   const t1 = Date.now();
   const blob = await put(key, body, {
-    access: 'private',
+    access: 'public',
     contentType: 'application/json',
     token: TOKEN,
     addRandomSuffix: false,
@@ -316,7 +316,7 @@ async function main() {
   const manifestBody = JSON.stringify(manifest);
   if (!DRY_RUN) {
     const manifestBlob = await put('tft/manifest.json', manifestBody, {
-      access: 'private',
+      access: 'public',
       contentType: 'application/json',
       token: TOKEN,
       addRandomSuffix: false,

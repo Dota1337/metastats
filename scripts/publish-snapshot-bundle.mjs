@@ -55,13 +55,18 @@ function buildList({ patches, regions, days, buckets, minGames }) {
     for (const region of regions) {
       for (const d of days) {
         for (const bucket of buckets) {
-          out.push({ patch, region, days: d, bucket, minGames });
+          const mg = typeof minGames === 'function' ? minGames(d) : minGames;
+          out.push({ patch, region, days: d, bucket, minGames: mg });
         }
       }
     }
   }
   return out;
 }
+
+// Comp-Listing: 40 Games × Tagesfenster, gecappt bei 14 Tagen. Muss synchron
+// bleiben mit dem Default in app/api/tft/comps/route.ts + snapshot-matrix.ts.
+const compsMinGames = (days) => 40 * Math.min(days, 14);
 
 const MATRIX = {
   comps: {
@@ -71,7 +76,7 @@ const MATRIX = {
       regions: PRIMARY_REGIONS,
       days: PRIMARY_DAYS,
       buckets: PRIMARY_BUCKETS,
-      minGames: 30,
+      minGames: compsMinGames,
     }),
   },
   units: {

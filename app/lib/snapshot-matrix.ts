@@ -38,20 +38,27 @@ function buildListMatrix(opts: {
   regions: ReadonlyArray<string>;
   days: ReadonlyArray<number>;
   buckets: ReadonlyArray<string>;
-  minGames: number;
+  minGames: number | ((days: number) => number);
 }): SnapshotPermutation[] {
   const out: SnapshotPermutation[] = [];
   for (const patch of opts.patches) {
     for (const region of opts.regions) {
       for (const days of opts.days) {
         for (const bucket of opts.buckets) {
-          out.push({ patch, region, days, bucket, minGames: opts.minGames });
+          const minGames = typeof opts.minGames === 'function'
+            ? opts.minGames(days)
+            : opts.minGames;
+          out.push({ patch, region, days, bucket, minGames });
         }
       }
     }
   }
   return out;
 }
+
+// Comp-Listing: minGames skaliert mit Tagesfenster (40 × days), gecappt bei
+// 14 Tagen. Muss synchron bleiben mit dem Default in app/api/tft/comps/route.ts.
+const compsMinGames = (days: number) => 40 * Math.min(days, 14);
 
 export const SNAPSHOT_MATRIX: Record<SnapshotEndpoint, SnapshotEndpointSpec> = {
   // /api/tft/comps default in der UI: bucket=master_plus, region=all, days=3.
@@ -64,7 +71,7 @@ export const SNAPSHOT_MATRIX: Record<SnapshotEndpoint, SnapshotEndpointSpec> = {
       regions: PRIMARY_REGIONS,
       days: PRIMARY_DAYS,
       buckets: PRIMARY_BUCKETS,
-      minGames: 30,
+      minGames: compsMinGames,
     }),
   },
   // /api/tft/units default: bucket=diamond, region=euw1, days=3.

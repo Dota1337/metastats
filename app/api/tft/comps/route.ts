@@ -160,7 +160,17 @@ export async function GET(request: NextRequest) {
   const sourceRaw = (searchParams.get('source') || 'data').toLowerCase();
   const source = VALID_SOURCES.has(sourceRaw) ? sourceRaw : 'data';
   const slug = searchParams.get('slug');
-  const minGames = Math.max(0, parseInt(searchParams.get('minGames') || '30', 10));
+  // minGames-Default skaliert mit dem Tagesfenster: 40 Games/Tag, gecappt bei
+  // 14 Tagen (max 560). Heißt: Last Day ≥40, 3 Days ≥120, 7 Days ≥280, 14 Days
+  // ≥560. Filtert verrauschte Sub-Cluster mit nur 1-2 Spielen/Tag raus, ohne
+  // dass etablierte Comps verschwinden. User-Override via ?minGames= bleibt
+  // möglich (z.B. Debug-Views oder explorative Filter).
+  const requestedDaysForMin = Math.max(1, Math.min(14, parseInt(searchParams.get('days') || '3', 10)));
+  const defaultMinGames = 40 * requestedDaysForMin;
+  const minGamesParam = searchParams.get('minGames');
+  const minGames = minGamesParam != null
+    ? Math.max(0, parseInt(minGamesParam, 10))
+    : defaultMinGames;
 
   try {
     // Plan E — Per-Patch-Cache-Key. Lade die patches einmalig vorne und

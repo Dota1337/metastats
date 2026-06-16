@@ -1,0 +1,19 @@
+[Unit]
+Description=metastats TFT snapshot bundle publisher (Vercel-Blob)
+After=metastats-daily-crawl.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/metastats-crawler
+EnvironmentFile=/etc/metastats-crawler/env
+# Publisher fetched die Live-API einmal pro Permutation (cold path) und schreibt
+# Snapshots nach Vercel-Blob. ~150 Permutationen × ~5-30s = bis zu ~15 min
+# parallel, ohne Cap (TimeoutStartSec=infinity).
+TimeoutStartSec=infinity
+TimeoutStopSec=120
+ExecStart=/usr/bin/node scripts/publish-snapshot-bundle.mjs --concurrency 3
+StandardOutput=journal
+StandardError=journal
+Nice=10
+IOSchedulingClass=best-effort

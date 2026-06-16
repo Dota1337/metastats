@@ -8,6 +8,7 @@ import {
 } from '../../../lib/tft-supabase-reader';
 import { isExcludedItem, isExcludedUnit } from '../../../lib/tft-excluded';
 import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias } from '../../../lib/api-cache';
+import { lookupSnapshot } from '../../../lib/snapshot-lookup';
 
 interface ItemListRow {
   api_name: string;
@@ -69,6 +70,23 @@ export async function GET(request: NextRequest) {
     // now-Fenster, exakt wie bei der Comp-Velocity.
     const velocityShift = Math.max(0, parseInt(searchParams.get('velocity') || '0', 10));
     const wantVelocity = velocityShift > 0;
+
+    // Snapshot-Pfad: gleiches Pattern wie /api/tft/comps. Velocity-Overlays
+    // werden nicht vorgerendert → fall through to live RPC bei wantVelocity.
+    if (!wantVelocity) {
+      const hit = await lookupSnapshot('items', {
+        patch: filters.patch,
+        region: filters.regionLabel,
+        days: filters.requestedDays,
+        bucket: filters.bucketLabel,
+        minGames: 0,
+      });
+      if (hit) {
+        const resp = cachedJson(hit.payload, { cache: cacheControl });
+        resp.headers.set('x-snapshot', hit.tag);
+        return resp;
+      }
+    }
 
     // Lean RPC (migration 0028): merges top_users to the top-8 carriers in SQL
     // instead of jsonb_agg-ing every per-day array. ~14x faster on the heavy

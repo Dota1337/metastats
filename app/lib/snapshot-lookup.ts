@@ -1,80 +1,132 @@
-// Snapshot-Lookup für vorgerenderte API-Responses.
+// Snapshot-Lookup für vorgerenderte API-Responses, ausgeliefert via Vercel-Blob.
 //
-// POC-Stand: ein einziger Snapshot für den Default-Filter von /api/tft/comps,
-// abgelegt unter `public/snapshots/tft/comps/v1-default.json`. Beim API-Hit
-// wird das File per FS-Read geliefert — kein Supabase-Roundtrip, keine schwere
-// RPC. Wenn der Beweis steht, expandieren wir auf alle Hot-Path-Permutationen
-// und können den Storage später auf Vercel-Blob umstellen ohne API-Änderung.
+// Pattern: der nightly Crawler-Hook auf Hetzner schreibt JSON-Files mit den
+// Hot-Path-Permutationen aus snapshot-matrix.ts nach Vercel-Blob. Das Manifest
+// (Liste aller verfügbaren Snapshots + Build-Time) liegt unter einer stabilen
+// public URL — API-Routes laden es einmal pro Prozess (5min TTL) und fetchen
+// die einzelnen Snapshots on-demand. Vercel-Edge-Cache cacht beide.
+//
+// Reads gehen über fetch() statt FS, weil Blob ein externer Storage ist —
+// das kostet 30-80ms intra-Region (Vercel-Function → Vercel-Blob), spart aber
+// jedes Mal eine schwere Supabase-RPC. Bei 6h Edge-TTL trifft das nur den
+// ersten User pro Cache-Cycle.
 
-import { readFileSync, existsSync } from 'node:fs';
-import path from 'node:path';
+import { snapshotKey, normalizeSnapshotRequest, type SnapshotEndpoint } from './snapshot-matrix';
 
-const SNAPSHOT_ROOT = path.join(process.cwd(), 'public', 'snapshots');
+const MANIFEST_URL_BASE = process.env.SNAPSHOT_MANIFEST_URL || '';
+const MANIFEST_TTL_MS = 5 * 60 * 1000;
+const SNAPSHOT_FETCH_TIMEOUT_MS = 3000;
 
-interface CachedSnapshot {
-  payload: unknown;
-  mtimeMs: number;
-  readAt: number;
+interface ManifestEntry {
+  key: string;       // logischer Pfad analog snapshotKey()
+  url: string;       // public URL auf Vercel-Blob
+  bytes: number;     // size, zur Diagnose
+  builtAt: string;   // ISO timestamp des Publishers
 }
 
-// Process-weit memoized — pro Prozess wird jedes File maximal einmal vom Disk
-// gelesen. Zweiter Hit ist reiner Map-Lookup.
-const cache = new Map<string, CachedSnapshot>();
-const CACHE_TTL_MS = 5 * 60 * 1000;
+interface SnapshotManifest {
+  version: string;
+  builtAt: string;
+  patches: { current: string; previous: string | null };
+  entries: Record<string, ManifestEntry>;
+}
 
-export interface CompFilterKey {
-  patch: string;            // resolved patch string, z.B. "17.4"
-  region: string;           // 'all' | 'west' | 'asia' | 'euw1' | ...
-  days: number;             // 1..7
-  bucket: string;           // 'master_plus' | 'all' | ...
+let _manifest: { ts: number; data: SnapshotManifest | null } | null = null;
+let _inflight: Promise<SnapshotManifest | null> | null = null;
+
+async function loadManifest(): Promise<SnapshotManifest | null> {
+  if (!MANIFEST_URL_BASE) return null;
+  if (_manifest && Date.now() - _manifest.ts < MANIFEST_TTL_MS) return _manifest.data;
+  if (_inflight) return _inflight;
+  _inflight = (async () => {
+    try {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), SNAPSHOT_FETCH_TIMEOUT_MS);
+      // Cache-Bust per minute: edge serves stale up to a minute, the function
+      // process re-validates 5min. Together: a freshly published manifest
+      // propagates to all functions within ~1min.
+      const sep = MANIFEST_URL_BASE.includes('?') ? '&' : '?';
+      const res = await fetch(`${MANIFEST_URL_BASE}${sep}_min=${Math.floor(Date.now() / 60000)}`, {
+        signal: ctrl.signal,
+        cache: 'no-store',
+      });
+      clearTimeout(t);
+      if (!res.ok) {
+        _manifest = { ts: Date.now(), data: null };
+        return null;
+      }
+      const data = (await res.json()) as SnapshotManifest;
+      _manifest = { ts: Date.now(), data };
+      return data;
+    } catch {
+      // Stale-serve: an inflight manifest fetch must never blank a stats page.
+      // If we ever had a successful manifest, keep using it; otherwise null →
+      // route falls through to live RPC.
+      _manifest = _manifest ?? { ts: Date.now(), data: null };
+      return _manifest.data;
+    } finally {
+      _inflight = null;
+    }
+  })();
+  return _inflight;
+}
+
+export interface LookupOptions {
+  patch: string | null;
+  region: string;
+  days: number;
+  bucket: string;
   minGames: number;
-  source: string;           // 'data' | 'editorial' | 'all'
-  velocityShift: number;    // 0 = no velocity overlay
+  // Erweiterte Felder, die das Snapshot NICHT bedient — Velocity, Slug-Detail,
+  // Source=editorial. Caller setzt sie auf true wenn das Snapshot übersprungen
+  // werden soll.
+  skip?: boolean;
 }
 
-// POC: genau der Default-Filter wird vom Publisher pre-gerendert. Wenn die
-// Anfrage exakt diesem Filter entspricht, gibt es einen Snapshot-Treffer.
-// Velocity-Overlays und Slug-Detail-Calls werden NICHT bedient — die fallen
-// auf den existierenden Live-Calc-Pfad zurück.
-const POC_DEFAULT: Omit<CompFilterKey, 'patch'> = {
-  region: 'all',
-  days: 3,
-  bucket: 'master_plus',
-  minGames: 30,
-  source: 'data',
-  velocityShift: 0,
-};
-
-export function matchesPocDefault(key: CompFilterKey): boolean {
-  return key.region === POC_DEFAULT.region
-    && key.days === POC_DEFAULT.days
-    && key.bucket === POC_DEFAULT.bucket
-    && key.minGames === POC_DEFAULT.minGames
-    && key.source === POC_DEFAULT.source
-    && key.velocityShift === POC_DEFAULT.velocityShift;
+export interface LookupHit {
+  payload: unknown;
+  tag: string;       // für x-snapshot Header
+  blobUrl: string;
+  blobBytes: number;
 }
 
-export function readSnapshot(relativePath: string): unknown | null {
-  const full = path.join(SNAPSHOT_ROOT, relativePath);
-  if (!existsSync(full)) return null;
-  const hit = cache.get(full);
-  if (hit && Date.now() - hit.readAt < CACHE_TTL_MS) return hit.payload;
+export async function lookupSnapshot(
+  endpoint: SnapshotEndpoint,
+  opts: LookupOptions,
+): Promise<LookupHit | null> {
+  if (opts.skip) return null;
+  const req = normalizeSnapshotRequest(opts);
+  if (!req) return null;
+  const manifest = await loadManifest();
+  if (!manifest) return null;
+  // Resolve patch alias against manifest — if the caller sends a literal patch
+  // string, use it as-is. Otherwise check whether it matches manifest.current.
+  const resolvedPatch = req.patch === manifest.patches.current
+    ? req.patch
+    : req.patch === manifest.patches.previous
+      ? req.patch
+      : req.patch;
+  const key = snapshotKey(endpoint, { ...req, patch: resolvedPatch });
+  const entry = manifest.entries[key];
+  if (!entry) return null;
   try {
-    const raw = readFileSync(full, 'utf8');
-    const payload = JSON.parse(raw);
-    cache.set(full, { payload, mtimeMs: 0, readAt: Date.now() });
-    return payload;
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), SNAPSHOT_FETCH_TIMEOUT_MS);
+    const res = await fetch(entry.url, { signal: ctrl.signal });
+    clearTimeout(t);
+    if (!res.ok) return null;
+    const payload = await res.json();
+    return { payload, tag: `${endpoint}-v1`, blobUrl: entry.url, blobBytes: entry.bytes };
   } catch {
     return null;
   }
 }
 
-export function readCompDefaultSnapshot(patch: string): { snapshot: any; tag: string } | null {
-  const payload = readSnapshot(`tft/comps/v1-default.json`) as any;
-  if (!payload) return null;
-  // Validate that the snapshot matches the requested patch — if the crawler
-  // hasn't rebuilt for the current patch yet, skip the snapshot rather than
-  // serve stale data.
-  if (payload?.filters?.patch && payload.filters.patch !== patch) return null;
-  return { snapshot: payload, tag: 'comps-v1-default' };
+export function manifestStatus(): { loaded: boolean; ageMs: number | null; entries: number } {
+  if (!_manifest?.data) return { loaded: false, ageMs: null, entries: 0 };
+  return {
+    loaded: true,
+    ageMs: Date.now() - _manifest.ts,
+    entries: Object.keys(_manifest.data.entries).length,
+  };
 }

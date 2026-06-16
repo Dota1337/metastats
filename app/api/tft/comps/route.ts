@@ -10,7 +10,7 @@ import {
 } from '../../../lib/tft-supabase-reader';
 import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias } from '../../../lib/api-cache';
 import { isExcludedUnit, isExcludedItem, setContainsExcludedItem } from '../../../lib/tft-excluded';
-import { matchesPocDefault, readCompDefaultSnapshot, type CompFilterKey } from '../../../lib/snapshot-lookup';
+import { lookupSnapshot } from '../../../lib/snapshot-lookup';
 
 // Lazy + memoized champion-cost lookup pro Set. Wird vom Tempo-Klassifikator
 // gebraucht, der Carry-Cost mit Peak-Level + 3-Star-Anteil in Beziehung setzt:
@@ -289,23 +289,21 @@ export async function GET(request: NextRequest) {
     const velocityShift = Math.max(0, parseInt(searchParams.get('velocity') || '0', 10));
     const wantVelocity = velocityShift > 0;
 
-    // POC Snapshot-Pfad: wenn der Filter dem hot-path Default entspricht und
-    // ein vorgerendertes File existiert, liefern wir es direkt vom Disk aus.
-    // Spart den Supabase-RPC-Roundtrip + die jsonb-Merges (FS-read <10ms vs.
-    // 150-3000ms RPC). Fallback auf Live-Calc bei Miss oder Patch-Mismatch.
-    const filterKey: CompFilterKey = {
-      patch: filters.patch || '',
-      region: filters.regionLabel,
-      days: filters.requestedDays,
-      bucket: filters.bucketLabel,
-      minGames,
-      source,
-      velocityShift,
-    };
-    if (matchesPocDefault(filterKey) && filters.patch) {
-      const hit = readCompDefaultSnapshot(filters.patch);
+    // Snapshot-Pfad: wenn das vorgerenderte Manifest einen passenden Eintrag
+    // hat, liefern wir den Blob direkt. Spart den Supabase-RPC-Roundtrip + die
+    // jsonb-Merges (Vercel-Blob fetch ~30-80ms vs. 150-3000ms RPC). Wir
+    // überspringen den Snapshot wenn der Caller velocity oder source=editorial
+    // verlangt — beides ist nicht im Bundle.
+    if (source === 'data' && velocityShift === 0) {
+      const hit = await lookupSnapshot('comps', {
+        patch: filters.patch,
+        region: filters.regionLabel,
+        days: filters.requestedDays,
+        bucket: filters.bucketLabel,
+        minGames,
+      });
       if (hit) {
-        const resp = cachedJson(hit.snapshot, { cache: cacheControl });
+        const resp = cachedJson(hit.payload, { cache: cacheControl });
         resp.headers.set('x-snapshot', hit.tag);
         return resp;
       }

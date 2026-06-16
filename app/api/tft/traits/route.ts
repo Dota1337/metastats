@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { resolveFilters, callRpc, getAvailablePatches } from '../../../lib/tft-supabase-reader';
 import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias } from '../../../lib/api-cache';
+import { lookupSnapshot } from '../../../lib/snapshot-lookup';
 
 interface TraitRow {
   name: string;
@@ -41,6 +42,22 @@ export async function GET(request: NextRequest) {
     // per-activation Δs would only confuse the comparison.
     const velocityShift = Math.max(0, parseInt(searchParams.get('velocity') || '0', 10));
     const wantVelocity = velocityShift > 0;
+
+    // Snapshot-Pfad — siehe /api/tft/comps.
+    if (!wantVelocity) {
+      const hit = await lookupSnapshot('traits', {
+        patch: filters.patch,
+        region: filters.regionLabel,
+        days: filters.requestedDays,
+        bucket: filters.bucketLabel,
+        minGames: 0,
+      });
+      if (hit) {
+        const resp = cachedJson(hit.payload, { cache: cacheControl });
+        resp.headers.set('x-snapshot', hit.tag);
+        return resp;
+      }
+    }
 
     const [rows, velocityRows] = await Promise.all([
       callRpc<TraitRow[]>('get_tft_trait_stats', {

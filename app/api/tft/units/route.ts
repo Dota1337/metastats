@@ -3,6 +3,7 @@ import { loadTftStats, normalizeBucket, bucketParticipants } from '../../../lib/
 import { resolveFilters, callRpc, getAvailablePatches } from '../../../lib/tft-supabase-reader';
 import { isExcludedUnit, isExcludedItem, setContainsExcludedItem } from '../../../lib/tft-excluded';
 import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias } from '../../../lib/api-cache';
+import { lookupSnapshot } from '../../../lib/snapshot-lookup';
 
 // /api/tft/units
 //   Filter params (Supabase-backed):
@@ -182,6 +183,24 @@ export async function GET(request: NextRequest) {
     // semantics as get_tft_comp_velocity (see 0038/0039).
     const velocityShift = Math.max(0, parseInt(searchParams.get('velocity') || '0', 10));
     const wantVelocity = velocityShift > 0;
+
+    // Snapshot-Pfad: gleiches Pattern wie /api/tft/comps. Wenn die Permutation
+    // im Bundle steckt, sparen wir den RPC-Roundtrip. Velocity-Overlays werden
+    // nicht vorgerendert → live RPC.
+    if (!wantVelocity) {
+      const hit = await lookupSnapshot('units', {
+        patch: filters.patch,
+        region: filters.regionLabel,
+        days: filters.requestedDays,
+        bucket: filters.bucketLabel,
+        minGames: 0,
+      });
+      if (hit) {
+        const resp = cachedJson(hit.payload, { cache: cacheControl });
+        resp.headers.set('x-snapshot', hit.tag);
+        return resp;
+      }
+    }
 
     const [rows, velocityRows] = await Promise.all([
       callRpc<UnitListRow[]>('get_tft_unit_stats', {

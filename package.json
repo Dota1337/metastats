@@ -15,6 +15,7 @@
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.100.0",
     "@vercel/analytics": "^2.0.1",
+    "@vercel/blob": "^2.4.0",
     "libsodium-wrappers": "^0.8.3",
     "next": "16.2.6",
     "pg": "^8.20.0",

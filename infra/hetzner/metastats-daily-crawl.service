@@ -13,6 +13,10 @@ Conflicts=metastats-crawler.service
 # is still active). The catch-up service detects that and starts another run
 # immediately so we never lose a day's aggregation.
 OnSuccess=metastats-daily-crawl-catchup.service
+# Snapshot publisher: rendert die Hot-Path-Permutationen unserer Stats-APIs als
+# statische JSON-Blobs nach Vercel-Blob. Sub-100ms-Lookups für die ~150 häufigsten
+# Filter-Combos, der Live-RPC-Pfad bleibt als Fallback erhalten.
+OnSuccess=metastats-snapshot-publisher.service
 
 [Service]
 Type=oneshot

@@ -229,12 +229,32 @@ interface NodeData {
   raw?: ServiceView | { estimated: number | null; today: number | null } | ManifestInfo | null;
 }
 
+type EdgeKind = 'write' | 'read' | 'serve' | 'request' | 'trigger';
+
 interface EdgeData {
   from: string;
   to: string;
   color: string;
   active: boolean;
+  kind: EdgeKind;
+  label: string;
 }
+
+const EDGE_KIND_COLOR: Record<EdgeKind, string> = {
+  write:   '#facc15', // Crawler schreibt in DB
+  read:    '#3b82f6', // Publisher liest aus DB
+  serve:   '#a855f7', // API liefert Snapshot
+  request: '#ec4899', // User hittet API
+  trigger: '#06b6d4', // Service triggert anderen Service
+};
+
+const EDGE_KIND_LABEL: Record<EdgeKind, string> = {
+  write:   'schreibt nach',
+  read:    'liest aus',
+  serve:   'liefert an',
+  request: 'fragt an',
+  trigger: 'triggert',
+};
 
 const LAYER_NAMES = ['User', 'API', 'Snapshot', 'Datenbank', 'Crawler'];
 
@@ -314,27 +334,54 @@ function buildGraph(snap: Snapshot | null): { nodes: NodeData[]; edges: EdgeData
   // Layer 0 — User
   nodes.push({ id: 'user', label: 'User', layer: 0, layerName: LAYER_NAMES[0], status: 'healthy', detail: 'you', rate: null });
 
-  // Edges: Daten-Flow
-  const crawlerToDb: Record<string, string[]> = {
-    'metastats-daily-crawl.service': ['db:tft_daily_comp_stats'],
-    'metastats-snapshot-publisher.service': ['blob:manifest'],
+  // ----- Edges: echte Pipeline-Abhängigkeiten -----
+  // Helper, ergänzt eine Edge nur wenn beide Endpoints existieren.
+  const nodeIds = new Set(nodes.map(n => n.id));
+  const addEdge = (from: string, to: string, kind: EdgeKind, active: boolean) => {
+    if (!nodeIds.has(from) || !nodeIds.has(to)) return;
+    edges.push({ from, to, color: EDGE_KIND_COLOR[kind], active, kind, label: EDGE_KIND_LABEL[kind] });
   };
-  for (const [from, tos] of Object.entries(crawlerToDb)) {
-    const svc = services.find(s => s.name === from);
-    if (!svc) continue;
-    for (const to of tos) {
-      edges.push({ from: 'svc:' + from, to, color: '#facc15', active: svc.status === 'working' });
-    }
-  }
-  for (const tbl of tables) {
-    edges.push({ from: 'db:' + tbl, to: 'blob:manifest', color: '#3b82f6', active: false });
-  }
+  const svcStatus = (name: string) =>
+    services.find(s => s.name === name)?.status || 'unknown';
+  const svcWorking = (name: string) => svcStatus(name) === 'working';
+
+  // Crawler-Services WRITE in DB-Tabellen
+  // daily-crawl schreibt alle 3 Daily-Aggregat-Tabellen (wir haben nur die comp-Tabelle im Graph,
+  // die anderen kommen mit V2 dazu).
+  addEdge('svc:metastats-daily-crawl.service', 'db:tft_daily_comp_stats', 'write',
+    svcWorking('metastats-daily-crawl.service'));
+  // refresh-api schreibt on-demand in Match-Cache + Marketvalue-Snapshots
+  addEdge('svc:metastats-refresh-api.service', 'db:tft_player_match_cache', 'write', false);
+  addEdge('svc:metastats-refresh-api.service', 'db:tft_player_marketvalue_snapshots', 'write', false);
+  // crawler (Legacy-Marketvalue-Vollsweep) schreibt auch dorthin — nur aktiv wenn manuell getriggert
+  addEdge('svc:metastats-crawler.service', 'db:tft_player_match_cache', 'write',
+    svcWorking('metastats-crawler.service'));
+  addEdge('svc:metastats-crawler.service', 'db:tft_player_marketvalue_snapshots', 'write',
+    svcWorking('metastats-crawler.service'));
+  // companion-backfill verknüpft Companion-IDs mit echten Match-IDs im Cache
+  addEdge('svc:metastats-companion-backfill.service', 'db:tft_player_match_cache', 'write',
+    svcWorking('metastats-companion-backfill.service'));
+
+  // Publisher READS aus DB (über die Live-API), schreibt nach Blob
+  addEdge('db:tft_daily_comp_stats', 'svc:metastats-snapshot-publisher.service', 'read',
+    svcWorking('metastats-snapshot-publisher.service'));
+  addEdge('svc:metastats-snapshot-publisher.service', 'blob:manifest', 'write',
+    svcWorking('metastats-snapshot-publisher.service'));
+
+  // Trigger-Edges: OnSuccess-Ketten
+  addEdge('svc:metastats-daily-crawl.service', 'svc:metastats-snapshot-publisher.service', 'trigger', false);
+  addEdge('svc:metastats-daily-crawl.service', 'svc:metastats-daily-crawl-catchup.service', 'trigger', false);
+
+  // Snapshot-Bundle SERVES API-Routes
   for (const a of apis) {
-    edges.push({ from: 'blob:manifest', to: 'api:' + a, color: '#a855f7', active: !!manifest });
+    addEdge('blob:manifest', 'api:' + a, 'serve', !!manifest);
   }
+  // API-Routes serve User (Read-Pfad für /tft/*)
   for (const a of apis) {
-    edges.push({ from: 'api:' + a, to: 'user', color: '#ec4899', active: true });
+    addEdge('api:' + a, 'user', 'request', true);
   }
+  // refresh-api serves User direkt (Refresh-Button-Pfad)
+  addEdge('svc:metastats-refresh-api.service', 'user', 'request', true);
 
   return { nodes, edges };
 }
@@ -429,15 +476,17 @@ function NodeMesh({ position, color, pulsing, label, selected, onClick }: {
   );
 }
 
-function FlowEdge({ from, to, color, active }: {
+function FlowEdge({ from, to, color, active, highlighted, dimmed }: {
   from: [number, number, number];
   to: [number, number, number];
   color: string;
   active: boolean;
+  highlighted: boolean;
+  dimmed: boolean;
 }) {
   const particleRef = useRef<THREE.Mesh>(null);
   useFrame(({ clock }) => {
-    if (!particleRef.current || !active) return;
+    if (!particleRef.current || (!active && !highlighted)) return;
     const t = (clock.getElapsedTime() * 0.3) % 1;
     particleRef.current.position.set(
       from[0] + (to[0] - from[0]) * t,
@@ -445,12 +494,16 @@ function FlowEdge({ from, to, color, active }: {
       from[2] + (to[2] - from[2]) * t,
     );
   });
+  // Highlight zeigt Selection, dimmed sind alle übrigen wenn etwas selektiert ist
+  const opacity = highlighted ? 0.85 : dimmed ? 0.05 : 0.25;
+  const lineWidth = highlighted ? 2 : 1;
+  const showParticle = active || highlighted;
   return (
     <>
-      <Line points={[from, to]} color={color} lineWidth={1} opacity={0.25} transparent />
-      {active && (
+      <Line points={[from, to]} color={color} lineWidth={lineWidth} opacity={opacity} transparent />
+      {showParticle && (
         <mesh ref={particleRef}>
-          <sphereGeometry args={[0.09, 12, 12]} />
+          <sphereGeometry args={[highlighted ? 0.11 : 0.09, 12, 12]} />
           <meshBasicMaterial color={color} />
         </mesh>
       )}
@@ -511,7 +564,20 @@ function Scene({ snap, selectedId, onSelect }: {
         const from = positions.get(e.from);
         const to = positions.get(e.to);
         if (!from || !to) return null;
-        return <FlowEdge key={i} from={from} to={to} color={e.color} active={e.active} />;
+        const touchesSelected = selectedId !== null && (e.from === selectedId || e.to === selectedId);
+        const highlighted = touchesSelected;
+        const dimmed = selectedId !== null && !touchesSelected;
+        return (
+          <FlowEdge
+            key={i}
+            from={from}
+            to={to}
+            color={e.color}
+            active={e.active}
+            highlighted={highlighted}
+            dimmed={dimmed}
+          />
+        );
       })}
 
       <OrbitControls enablePan zoomSpeed={0.8} />
@@ -536,7 +602,79 @@ function fmt(n: number): string {
   return String(n);
 }
 
-function NodeDetailPanel({ node, onClose }: { node: NodeData; onClose: () => void }) {
+// Sammelt die direkten Abhängigkeiten eines Nodes — ein/ausgehend, nach Edge-Typ.
+function dependenciesFor(nodeId: string, edges: EdgeData[], nodes: NodeData[]) {
+  const byId = new Map(nodes.map(n => [n.id, n]));
+  const out = { write: [] as NodeData[], read: [] as NodeData[], serve: [] as NodeData[], trigger: [] as NodeData[], request: [] as NodeData[] };
+  const in_ = { write: [] as NodeData[], read: [] as NodeData[], serve: [] as NodeData[], trigger: [] as NodeData[], request: [] as NodeData[] };
+  for (const e of edges) {
+    if (e.from === nodeId) {
+      const other = byId.get(e.to);
+      if (other) out[e.kind].push(other);
+    } else if (e.to === nodeId) {
+      const other = byId.get(e.from);
+      if (other) in_[e.kind].push(other);
+    }
+  }
+  return { out, in: in_ };
+}
+
+function DependenciesList({ deps, onSelectNode }: {
+  deps: ReturnType<typeof dependenciesFor>;
+  onSelectNode: (id: string) => void;
+}) {
+  const sections: Array<{ heading: string; items: NodeData[]; color: string }> = [
+    // Outgoing
+    { heading: 'Schreibt nach', items: deps.out.write, color: EDGE_KIND_COLOR.write },
+    { heading: 'Liest aus', items: deps.out.read, color: EDGE_KIND_COLOR.read },
+    { heading: 'Liefert an', items: deps.out.serve, color: EDGE_KIND_COLOR.serve },
+    { heading: 'Triggert', items: deps.out.trigger, color: EDGE_KIND_COLOR.trigger },
+    { heading: 'Bedient', items: deps.out.request, color: EDGE_KIND_COLOR.request },
+    // Incoming
+    { heading: 'Wird beschrieben von', items: deps.in.write, color: EDGE_KIND_COLOR.write },
+    { heading: 'Wird gelesen von', items: deps.in.read, color: EDGE_KIND_COLOR.read },
+    { heading: 'Wird beliefert von', items: deps.in.serve, color: EDGE_KIND_COLOR.serve },
+    { heading: 'Wird getriggert von', items: deps.in.trigger, color: EDGE_KIND_COLOR.trigger },
+    { heading: 'Wird angefragt von', items: deps.in.request, color: EDGE_KIND_COLOR.request },
+  ];
+  const visible = sections.filter(s => s.items.length > 0);
+  if (visible.length === 0) {
+    return <div className="text-[11px] text-gray-500 italic">Keine direkten Abhängigkeiten</div>;
+  }
+  return (
+    <div className="space-y-2">
+      {visible.map(section => (
+        <div key={section.heading}>
+          <div className="flex items-center gap-1.5 mb-1">
+            <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ backgroundColor: section.color }} />
+            <div className="text-[10px] uppercase tracking-wider text-gray-500">{section.heading}</div>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {section.items.map(n => (
+              <button
+                key={n.id}
+                onClick={() => onSelectNode(n.id)}
+                className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-[#1e2a3a] hover:bg-[#2a3a52] text-gray-300 hover:text-white transition-colors"
+                title={n.layerName}
+              >
+                {n.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function NodeDetailPanel({ node, edges, nodes, onClose, onSelectNode }: {
+  node: NodeData;
+  edges: EdgeData[];
+  nodes: NodeData[];
+  onClose: () => void;
+  onSelectNode: (id: string) => void;
+}) {
+  const deps = useMemo(() => dependenciesFor(node.id, edges, nodes), [node.id, edges, nodes]);
   const description = describeNode(node);
   const raw = node.raw as any;
   return (
@@ -628,6 +766,10 @@ function NodeDetailPanel({ node, onClose }: { node: NodeData; onClose: () => voi
           <div className="text-gray-300 font-mono">{raw.patches?.previous ?? '—'}</div>
         </div>
       )}
+
+      <div className="pt-2 border-t border-[#1e2a3a]">
+        <DependenciesList deps={deps} onSelectNode={onSelectNode} />
+      </div>
     </div>
   );
 }
@@ -635,11 +777,11 @@ function NodeDetailPanel({ node, onClose }: { node: NodeData; onClose: () => voi
 export default function OpsGraph() {
   const { snap, lastUpdate } = useOpsSnapshot();
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const selectedNode = useMemo(() => {
-    if (!selectedId) return null;
-    const g = buildGraph(snap);
-    return g.nodes.find(n => n.id === selectedId) || null;
-  }, [snap, selectedId]);
+  const graph = useMemo(() => buildGraph(snap), [snap]);
+  const selectedNode = useMemo(
+    () => (selectedId ? graph.nodes.find(n => n.id === selectedId) || null : null),
+    [graph, selectedId],
+  );
 
   const errs = snap?.errors;
   const hasErrors = !!(errs?.services || errs?.db || errs?.manifest);
@@ -661,8 +803,23 @@ export default function OpsGraph() {
       </div>
 
       {selectedNode && (
-        <NodeDetailPanel node={selectedNode} onClose={() => setSelectedId(null)} />
+        <NodeDetailPanel
+          node={selectedNode}
+          edges={graph.edges}
+          nodes={graph.nodes}
+          onClose={() => setSelectedId(null)}
+          onSelectNode={(id) => setSelectedId(id)}
+        />
       )}
+
+      {/* Legende für Edge-Farben links unten */}
+      <div className="absolute bottom-12 left-3 z-10 text-[10px] text-gray-500 space-y-1 pointer-events-none">
+        <div className="flex items-center gap-1.5"><span className="w-3 h-0.5" style={{ backgroundColor: EDGE_KIND_COLOR.write }} />schreibt</div>
+        <div className="flex items-center gap-1.5"><span className="w-3 h-0.5" style={{ backgroundColor: EDGE_KIND_COLOR.read }} />liest</div>
+        <div className="flex items-center gap-1.5"><span className="w-3 h-0.5" style={{ backgroundColor: EDGE_KIND_COLOR.serve }} />liefert</div>
+        <div className="flex items-center gap-1.5"><span className="w-3 h-0.5" style={{ backgroundColor: EDGE_KIND_COLOR.trigger }} />triggert</div>
+        <div className="flex items-center gap-1.5"><span className="w-3 h-0.5" style={{ backgroundColor: EDGE_KIND_COLOR.request }} />wird angefragt</div>
+      </div>
 
       <div className="absolute bottom-3 left-3 right-3 z-10 flex justify-between text-[10px] text-gray-500 pointer-events-none">
         <div>L4 Crawler · L3 DB · L2 Snapshot · L1 API · L0 User</div>

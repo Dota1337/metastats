@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "setup-hooks": "node scripts/setup-git-hooks.mjs",
-    "verify": "node scripts/verify-classifications.mjs"
+    "verify": "node scripts/verify-classifications.mjs",
+    "verify:coverage": "node scripts/verify-comp-augments-coverage.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.98.0",

@@ -555,12 +555,86 @@ const translations = {
   'tft.regions.mode.krAhead':   t6('KR-Vorsprung', 'KR ahead', 'KR \uC120\uD589', '\u97E9\u670D\u9886\u5148', 'KR adelantado', 'KR en avance'),
   'tft.regions.mode.westAhead': t6('West-Vorsprung', 'West ahead', '\uC11C\uC591 \uC120\uD589', '\u897F\u670D\u9886\u5148', 'Occidente adelantado', 'Ouest en avance'),
   'tft.regions.mode.mastery':   t6('Mastery-L\u00FCcke', 'Mastery gap', '\uC219\uB828\uB3C4 \uACA9\uCC28', '\u719F\u7EC3\u5EA6\u5DEE\u5F02', 'Diferencia de dominio', 'Ma\u00EEtrise'),
-  // Pattern-Badges
-  'tft.regions.pattern.krSecret':  t6('KR-Geheimtipp', 'KR secret', 'KR \uBE44\uBC00 \uD301', '\u97E9\u670D\u79D8\u96C6', 'Secreto KR', 'Astuce KR'),
-  'tft.regions.pattern.westTrend': t6('West-Trend', 'West trend', '\uC11C\uC591 \uD2B8\uB80C\uB4DC', '\u897F\u670D\u8D8B\u52BF', 'Tendencia Oeste', 'Tendance Ouest'),
-  'tft.regions.pattern.mastery':   t6('KR-Mastery', 'KR mastery', 'KR \uC219\uB828\uB3C4', '\u97E9\u670D\u719F\u7EC3', 'Dominio KR', 'Ma\u00EEtrise KR'),
-  'tft.regions.pattern.niche':     t6('Nische', 'Niche', '\uB2C8\uC2DC', '\u5C0F\u4F17', 'Nicho', 'Niche'),
-  'tft.regions.pattern.etabliert': t6('Etabliert', 'Established', '\uBCF4\uD3B8\uC801', '\u6210\u719F', 'Establecido', '\u00C9tabli'),
+  // Pattern-Badges (deskriptiv statt wertend \u2014 User-Feedback 2026-06-18)
+  'tft.regions.pattern.krSecret':  t6('St\u00E4rker in KR', 'Stronger in KR', 'KR\uC5D0\uC11C \uB354 \uAC15\uD568', '\u97E9\u670D\u66F4\u5F3A', 'M\u00E1s fuerte en KR', 'Plus forte en KR'),
+  'tft.regions.pattern.westTrend': t6('St\u00E4rker im Westen', 'Stronger in the West', '\uC11C\uC591\uC5D0\uC11C \uB354 \uAC15\uD568', '\u897F\u670D\u66F4\u5F3A', 'M\u00E1s fuerte en Occidente', 'Plus forte en Occident'),
+  'tft.regions.pattern.mastery':   t6('Besser in KR', 'Better in KR', 'KR\uC5D0\uC11C \uB354 \uC798\uD568', '\u97E9\u670D\u6253\u5F97\u66F4\u597D', 'Mejor en KR', 'Mieux en KR'),
+  'tft.regions.pattern.niche':     t6('Selten gespielt', 'Rarely played', '\uB4DC\uBB3C\uAC8C \uD50C\uB808\uC774', '\u5C11\u6709\u4EBA\u73A9', 'Rara vez jugada', 'Rarement jou\u00E9e'),
+  'tft.regions.pattern.etabliert': t6('Stabil verbreitet', 'Stable across regions', '\uC548\uC815\uC801\uC73C\uB85C \uBCF4\uAE09', '\u7A33\u5B9A\u6D41\u884C', 'Estable en todas las regiones', 'Stable partout'),
+  // Tooltip-Erkl\u00E4rungen (Mouse-Over / Tap-to-Show)
+  'tft.regions.pattern.krSecret.tooltip': t6(
+    'Diese Comp wird in Korea mind. 1.3\u00D7 h\u00E4ufiger gespielt als im Westen. Kann ein Indikator f\u00FCr einen aufkommenden KR-Trend sein.',
+    'This comp is played at least 1.3\u00D7 more often in Korea than in the West. May indicate an emerging KR trend.',
+    '\uC774 \uC870\uD569\uC740 \uD55C\uAD6D\uC5D0\uC11C \uC11C\uC591\uBCF4\uB2E4 \uCD5C\uC18C 1.3\uBC30 \uC790\uC8FC \uD50C\uB808\uC774\uB429\uB2C8\uB2E4. \uC0C8\uB85C\uC6B4 KR \uD2B8\uB80C\uB4DC\uC758 \uC9C0\uD45C\uC77C \uC218 \uC788\uC2B5\uB2C8\uB2E4.',
+    '\u8BE5\u9635\u5BB9\u5728\u97E9\u670D\u7684\u9009\u53D6\u7387\u6BD4\u897F\u670D\u81F3\u5C11\u9AD81.3\u500D\u3002\u53EF\u80FD\u662F\u65B0\u5174\u97E9\u670D\u8D8B\u52BF\u7684\u6307\u6807\u3002',
+    'Esta comp se juega al menos 1.3\u00D7 m\u00E1s en Corea que en Occidente. Puede indicar una tendencia KR emergente.',
+    'Cette compo est jou\u00E9e au moins 1,3\u00D7 plus souvent en Cor\u00E9e qu\'en Occident. Possible indicateur d\'une tendance KR \u00E9mergente.'
+  ),
+  'tft.regions.pattern.westTrend.tooltip': t6(
+    'Diese Comp wird im Westen mind. 1.3\u00D7 h\u00E4ufiger gespielt als in Korea.',
+    'This comp is played at least 1.3\u00D7 more often in the West than in Korea.',
+    '\uC774 \uC870\uD569\uC740 \uC11C\uC591\uC5D0\uC11C \uD55C\uAD6D\uBCF4\uB2E4 \uCD5C\uC18C 1.3\uBC30 \uC790\uC8FC \uD50C\uB808\uC774\uB429\uB2C8\uB2E4.',
+    '\u8BE5\u9635\u5BB9\u5728\u897F\u670D\u7684\u9009\u53D6\u7387\u6BD4\u97E9\u670D\u81F3\u5C11\u9AD81.3\u500D\u3002',
+    'Esta comp se juega al menos 1.3\u00D7 m\u00E1s en Occidente que en Corea.',
+    'Cette compo est jou\u00E9e au moins 1,3\u00D7 plus souvent en Occident qu\'en Cor\u00E9e.'
+  ),
+  'tft.regions.pattern.mastery.tooltip': t6(
+    'Bei vergleichbarer Pickrate erreicht KR mit dieser Comp eine signifikant bessere \u00D8-Platzierung (\u0394 \u2265 0.25).',
+    'At similar pick rates, KR achieves a significantly better avg-place with this comp (\u0394 \u2265 0.25).',
+    '\uC720\uC0AC\uD55C \uC120\uD0DD\uB960\uC5D0\uC11C KR\uC774 \uC774 \uC870\uD569\uC73C\uB85C \uD3C9\uADE0 \uC21C\uC704\uAC00 \uD604\uC800\uD788 \uB354 \uC88B\uC2B5\uB2C8\uB2E4 (\u0394 \u2265 0.25).',
+    '\u5728\u9009\u53D6\u7387\u76F8\u8FD1\u7684\u60C5\u51B5\u4E0B\uFF0C\u97E9\u670D\u7528\u6B64\u9635\u5BB9\u83B7\u5F97\u660E\u663E\u66F4\u597D\u7684\u5E73\u5747\u540D\u6B21 (\u0394 \u2265 0.25)\u3002',
+    'Con tasas de selecci\u00F3n similares, KR logra una plaza promedio significativamente mejor (\u0394 \u2265 0.25).',
+    '\u00C0 taux de s\u00E9lection similaires, la KR atteint une place moyenne nettement meilleure (\u0394 \u2265 0,25).'
+  ),
+  'tft.regions.pattern.niche.tooltip': t6(
+    'Pickrate unter 0.3% in allen drei Regionen \u2014 f\u00FCr statistische Aussagen sind die Daten d\u00FCnn.',
+    'Pick rate below 0.3% in all three regions \u2014 data is thin for statistical claims.',
+    '\uC138 \uC9C0\uC5ED \uBAA8\uB450\uC5D0\uC11C \uC120\uD0DD\uB960 0.3% \uBBF8\uB9CC \u2014 \uD1B5\uACC4\uC801 \uD310\uB2E8\uC744 \uC704\uD55C \uB370\uC774\uD130\uAC00 \uBD80\uC871\uD569\uB2C8\uB2E4.',
+    '\u4E09\u670D\u9009\u53D6\u7387\u5747\u4F4E\u4E8E0.3% \u2014 \u6570\u636E\u91CF\u4E0D\u8DB3\u4EE5\u652F\u6491\u7EDF\u8BA1\u7ED3\u8BBA\u3002',
+    'Tasa de selecci\u00F3n bajo 0.3% en las tres regiones \u2014 datos escasos para conclusiones estad\u00EDsticas.',
+    'Taux de s\u00E9lection sous 0,3% dans les trois r\u00E9gions \u2014 donn\u00E9es limit\u00E9es pour des conclusions statistiques.'
+  ),
+  'tft.regions.pattern.etabliert.tooltip': t6(
+    'Pickrate und \u00D8-Platz unterscheiden sich nur geringf\u00FCgig zwischen den Regionen.',
+    'Pick rate and avg-place differ only slightly between regions.',
+    '\uC9C0\uC5ED \uAC04 \uC120\uD0DD\uB960\uACFC \uD3C9\uADE0 \uC21C\uC704 \uCC28\uC774\uAC00 \uBBF8\uBBF8\uD569\uB2C8\uB2E4.',
+    '\u5404\u5730\u533A\u7684\u9009\u53D6\u7387\u4E0E\u5E73\u5747\u540D\u6B21\u5DEE\u5F02\u4E0D\u5927\u3002',
+    'Tasa de selecci\u00F3n y plaza promedio difieren poco entre regiones.',
+    'Le taux de s\u00E9lection et la place moyenne diff\u00E8rent peu entre les r\u00E9gions.'
+  ),
+  // Mode-Filter Tooltips
+  'tft.regions.mode.all.tooltip': t6(
+    'Zeigt alle Comps, sortiert nach St\u00E4rke des Regionen-Unterschieds.',
+    'Shows all comps, sorted by strength of regional difference.',
+    '\uC9C0\uC5ED \uCC28\uC774\uC758 \uAC15\uB3C4\uC21C\uC73C\uB85C \uBAA8\uB4E0 \uC870\uD569 \uD45C\uC2DC.',
+    '\u663E\u793A\u6240\u6709\u9635\u5BB9\uFF0C\u6309\u5730\u533A\u5DEE\u5F02\u5F3A\u5EA6\u6392\u5E8F\u3002',
+    'Muestra todas las comps, ordenadas por la fuerza de la diferencia regional.',
+    'Affiche toutes les compos, tri\u00E9es par force de la diff\u00E9rence r\u00E9gionale.'
+  ),
+  'tft.regions.mode.krAhead.tooltip': t6(
+    'Nur Comps die in KR mind. 1.3\u00D7 h\u00E4ufiger gespielt werden als im Westen.',
+    'Only comps played at least 1.3\u00D7 more often in KR than in the West.',
+    '\uC11C\uC591\uBCF4\uB2E4 KR\uC5D0\uC11C \uCD5C\uC18C 1.3\uBC30 \uC790\uC8FC \uD50C\uB808\uC774\uB418\uB294 \uC870\uD569\uB9CC.',
+    '\u4EC5\u663E\u793A\u97E9\u670D\u9009\u53D6\u7387\u6BD4\u897F\u670D\u9AD81.3\u500D\u4EE5\u4E0A\u7684\u9635\u5BB9\u3002',
+    'Solo comps que se juegan al menos 1.3\u00D7 m\u00E1s en KR que en Occidente.',
+    'Seulement les compos jou\u00E9es au moins 1,3\u00D7 plus souvent en KR qu\'en Occident.'
+  ),
+  'tft.regions.mode.westAhead.tooltip': t6(
+    'Nur Comps die im Westen mind. 1.3\u00D7 h\u00E4ufiger gespielt werden als in KR.',
+    'Only comps played at least 1.3\u00D7 more often in the West than in KR.',
+    'KR\uBCF4\uB2E4 \uC11C\uC591\uC5D0\uC11C \uCD5C\uC18C 1.3\uBC30 \uC790\uC8FC \uD50C\uB808\uC774\uB418\uB294 \uC870\uD569\uB9CC.',
+    '\u4EC5\u663E\u793A\u897F\u670D\u9009\u53D6\u7387\u6BD4\u97E9\u670D\u9AD81.3\u500D\u4EE5\u4E0A\u7684\u9635\u5BB9\u3002',
+    'Solo comps que se juegan al menos 1.3\u00D7 m\u00E1s en Occidente que en KR.',
+    'Seulement les compos jou\u00E9es au moins 1,3\u00D7 plus souvent en Occident qu\'en KR.'
+  ),
+  'tft.regions.mode.mastery.tooltip': t6(
+    'Nur Comps mit \u00E4hnlicher Pickrate aber signifikant besserer KR-\u00D8-Platzierung.',
+    'Only comps with similar pick rate but significantly better KR avg-place.',
+    '\uC120\uD0DD\uB960\uC774 \uBE44\uC2B7\uD558\uC9C0\uB9CC KR \uD3C9\uADE0 \uC21C\uC704\uAC00 \uD604\uC800\uD788 \uB354 \uC88B\uC740 \uC870\uD569\uB9CC.',
+    '\u4EC5\u663E\u793A\u9009\u53D6\u7387\u76F8\u8FD1\u4F46\u97E9\u670D\u5E73\u5747\u540D\u6B21\u660E\u663E\u66F4\u597D\u7684\u9635\u5BB9\u3002',
+    'Solo comps con tasa de selecci\u00F3n similar pero plaza promedio KR significativamente mejor.',
+    'Seulement les compos \u00E0 taux de s\u00E9lection similaire mais place moyenne KR nettement meilleure.'
+  ),
   // Narrative Templates pro Pattern. Placeholder: {factor} {avgDiff} {krAvg} {westAvg}
   'tft.regions.narrative.krSecret': t6(
     'KR spielt {factor} h\u00E4ufiger als der Westen \u00B7 \u00D8-Platz {avgDiff}',

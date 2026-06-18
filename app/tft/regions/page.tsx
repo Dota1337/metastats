@@ -121,14 +121,15 @@ export default function TftRegionsPage() {
         {/* Mode-Filter + Window-Controls */}
         <div className="flex flex-wrap items-center gap-2 mb-4">
           {([
-            { v: 'all'         as Mode, label: t('tft.regions.mode.all') },
-            { v: 'kr-ahead'    as Mode, label: t('tft.regions.mode.krAhead') },
-            { v: 'west-ahead'  as Mode, label: t('tft.regions.mode.westAhead') },
-            { v: 'mastery'     as Mode, label: t('tft.regions.mode.mastery') },
+            { v: 'all'         as Mode, label: t('tft.regions.mode.all'),       tip: t('tft.regions.mode.all.tooltip') },
+            { v: 'kr-ahead'    as Mode, label: t('tft.regions.mode.krAhead'),   tip: t('tft.regions.mode.krAhead.tooltip') },
+            { v: 'west-ahead'  as Mode, label: t('tft.regions.mode.westAhead'), tip: t('tft.regions.mode.westAhead.tooltip') },
+            { v: 'mastery'     as Mode, label: t('tft.regions.mode.mastery'),   tip: t('tft.regions.mode.mastery.tooltip') },
           ]).map(o => (
             <button
               key={o.v}
               onClick={() => setMode(o.v)}
+              title={o.tip}
               className={`px-3 py-1.5 rounded text-xs border transition-colors ${
                 mode === o.v
                   ? 'bg-[#7B61FF]/20 border-[#7B61FF]/60 text-white'
@@ -198,11 +199,12 @@ function RegionRowCard({
   const carryUrl = tftChampionTileUrl(assets, carry);
   const narrative = buildRegionNarrative(row, pattern, t);
   const badgeColor = PATTERN_COLORS[pattern];
-  const badgeLabel = t(`tft.regions.pattern.${
+  const patternKey =
     pattern === 'kr-secret' ? 'krSecret' :
     pattern === 'west-trend' ? 'westTrend' :
-    pattern
-  }` as any);
+    pattern;
+  const badgeLabel = t(`tft.regions.pattern.${patternKey}` as any);
+  const badgeTooltip = t(`tft.regions.pattern.${patternKey}.tooltip` as any);
 
   return (
     <a
@@ -221,14 +223,20 @@ function RegionRowCard({
               {traitName} · {carry?.name || (parts ? parts.carry.replace(/^TFT\d+_/, '') : '')}
             </span>
             <span
-              className="inline-flex items-center px-1.5 py-[1px] rounded text-[9px] font-semibold tabular-nums flex-shrink-0"
+              className="inline-flex items-center gap-1 px-1.5 py-[1px] rounded text-[9px] font-semibold tabular-nums flex-shrink-0 cursor-help"
               style={{
                 color: badgeColor,
                 backgroundColor: `${badgeColor}1f`,
                 border: `1px solid ${badgeColor}40`,
               }}
+              title={badgeTooltip}
+              onClick={(e) => e.preventDefault()}
             >
               {badgeLabel}
+              <svg width="9" height="9" viewBox="0 0 12 12" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.5" className="opacity-70">
+                <circle cx="6" cy="6" r="5" />
+                <path d="M6 4.5V3.5M6 6V8.5" strokeLinecap="round" />
+              </svg>
             </span>
           </div>
           {narrative && (

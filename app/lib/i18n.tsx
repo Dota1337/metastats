@@ -1919,6 +1919,34 @@ const translations = {
     'tftacademy.com\uC5D0\uC11C \uD050\uB808\uC774\uD305', '\u7531 tftacademy.com \u7B5B\u9009',
     'curado v\u00EDa tftacademy.com', 'cur\u00E9 via tftacademy.com'
   ),
+  'tft.comp.augments.group.ECON': t6('Econ', 'Econ', '\uACBD\uC81C', '\u7ECF\u6D4E', 'Eco', '\u00C9co'),
+  'tft.comp.augments.group.ITEMS': t6('Items', 'Items', '\uC544\uC774\uD15C', '\u88C5\u5907', 'Objetos', 'Objets'),
+  'tft.comp.augments.group.COMBAT': t6('Combat', 'Combat', '\uC804\uD22C', '\u6218\u6597', 'Combate', 'Combat'),
+  'tft.comp.augments.group.EMBLEM': t6('Emblem', 'Emblem', '\uC5E0\uBE14\uB7FC', '\u5FBD\u7AE0', 'Emblema', 'Embl\u00E8me'),
+  'tft.comp.augments.group.HERO': t6('Hero', 'Hero', '\uC601\uC6C5', '\u82F1\u96C4', 'H\u00E9roe', 'H\u00E9ros'),
+  'tft.comp.difficulty.EASY': t6('Einfach', 'Easy', '\uC26C\uC6C0', '\u7B80\u5355', 'F\u00E1cil', 'Facile'),
+  'tft.comp.difficulty.MEDIUM': t6('Mittel', 'Medium', '\uBCF4\uD1B5', '\u4E2D\u7B49', 'Medio', 'Moyen'),
+  'tft.comp.difficulty.HARD': t6('Schwer', 'Hard', '\uC5B4\uB824\uC6C0', '\u56F0\u96BE', 'Dif\u00EDcil', 'Difficile'),
+  'tft.comp.difficulty.CONDITIONAL': t6(
+    'Situativ', 'Conditional',
+    '\uC0C1\uD669\uC801', '\u6761\u4EF6\u6027',
+    'Condicional', 'Conditionnel'
+  ),
+  'tft.comp.earlyGame': t6(
+    'Early Game (Lvl 4-7)', 'Early Game (Lvl 4-7)',
+    '\uCD08\uBC18 \uAC8C\uC784 (Lvl 4-7)', '\u524D\u671F (4-7\u7EA7)',
+    'Juego temprano (Niv 4-7)', 'D\u00E9but de partie (Niv 4-7)'
+  ),
+  'tft.comp.carousel': t6(
+    'Carousel \u00B7 Runde 1', 'Carousel \u00B7 Round 1',
+    '\uCE90\uB7EC\uC140 \u00B7 \uB77C\uC6B4\uB4DC 1', '\u8F6C\u76D8 \u00B7 \u7B2C1\u8F6E',
+    'Carrusel \u00B7 Ronda 1', 'Carousel \u00B7 Manche 1'
+  ),
+  'tft.comp.stageTips': t6(
+    'Stage-Tipps', 'Stage Tips',
+    '\uC2A4\uD14C\uC774\uC9C0\uBCC4 \uD301', '\u9636\u6BB5\u63D0\u793A',
+    'Consejos por etapa', 'Conseils par \u00E9tape'
+  ),
   'tft.comp.variants': t6(
     'Varianten', 'Variants',
     '\uBCC0\uD615', '\u53D8\u4F53',

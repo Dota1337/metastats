@@ -67,8 +67,8 @@ if (!existsSync(slugMapPath)) {
   process.exit(1);
 }
 const slugMap = JSON.parse(readFileSync(slugMapPath, 'utf8'));
-const augsPath = resolve(__dirname, '..', 'public', `tft-comp-augments-${set}.json`);
-const compAugs = existsSync(augsPath) ? JSON.parse(readFileSync(augsPath, 'utf8')) : null;
+const guidesPath = resolve(__dirname, '..', 'public', `tft-comp-guides-${set}.json`);
+const compGuides = existsSync(guidesPath) ? JSON.parse(readFileSync(guidesPath, 'utf8')) : null;
 
 function parseFamily(family) {
   const m = /^(.+)@(\d+)_(.+)$/.exec(family);
@@ -148,11 +148,11 @@ async function main() {
     console.log();
   }
 
-  if (compAugs?.comps) {
+  if (compGuides?.comps) {
     const usedSlugs = new Set(matched.map(x => x.slug));
-    const orphans = Object.keys(compAugs.comps).filter(s => !usedSlugs.has(s));
+    const orphans = Object.keys(compGuides.comps).filter(s => !usedSlugs.has(s));
     if (orphans.length > 0) {
-      console.log(`Orphan slugs in tft-comp-augments-${set}.json (scraped but not in top-${topN} families):`);
+      console.log(`Orphan slugs in tft-comp-guides-${set}.json (scraped but not in top-${topN} families):`);
       for (const s of orphans.slice(0, 10)) console.log(`  ◦ ${s}`);
       if (orphans.length > 10) console.log(`    … ${orphans.length - 10} more`);
       console.log();

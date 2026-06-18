@@ -39,8 +39,8 @@ const overridePath = `public/tft-augment-tiers-${set}.json`;
 const override = loadJson(overridePath);
 const godsPath = `public/tft-gods-${set}.json`;
 const gods = loadJson(godsPath);
-const compAugPath = `public/tft-comp-augments-${set}.json`;
-const compAug = loadJson(compAugPath);
+const compGuidesPath = `public/tft-comp-guides-${set}.json`;
+const compGuides = loadJson(compGuidesPath);
 const compSlugMapPath = `public/tft-comp-slug-map-${set}.json`;
 const compSlugMap = loadJson(compSlugMapPath);
 
@@ -49,7 +49,7 @@ console.log(`  bundle augments: ${Object.keys(bundle.augments || {}).length}`);
 console.log(`  active.augments: ${bundle.active?.augments?.length || 0}`);
 console.log(`  tier-override:   ${override ? Object.keys(override.tiers || {}).length : 'MISSING'}`);
 console.log(`  gods doc:        ${gods ? gods.gods?.length : 'MISSING'}`);
-console.log(`  comp-augments:   ${compAug ? Object.keys(compAug.comps || {}).length : 'MISSING'}`);
+console.log(`  comp-guides:     ${compGuides ? Object.keys(compGuides.comps || {}).length : 'MISSING'}`);
 console.log(`  comp-slug-map:   ${compSlugMap ? Object.keys(compSlugMap.slugs || {}).length : 'MISSING'}`);
 console.log();
 
@@ -135,45 +135,88 @@ if (activeList.length > 0) {
   }
 }
 
-// 7. Comp-Augments (tftacademy.com) — apiName-Existenz + Tier-Distribution-Sanity
-if (compAug?.comps) {
+// 7. Comp-Guides (tftacademy.com) — schema + apiName-Existence + Tier-Sanity
+const VALID_AUG_GROUPS = new Set(['ECON', 'ITEMS', 'COMBAT', 'EMBLEM', 'HERO']);
+const VALID_DIFFICULTIES = new Set(['EASY', 'MEDIUM', 'HARD', 'CONDITIONAL']);
+
+if (compGuides?.comps) {
   let unknownAugs = 0;
-  let tierSkewed = 0;
-  for (const [slug, augList] of Object.entries(compAug.comps)) {
-    if (!Array.isArray(augList) || augList.length === 0) {
-      warn(`Comp slug "${slug}" has empty augment-list — scraper may have lost it`);
+  for (const [slug, guide] of Object.entries(compGuides.comps)) {
+    if (!guide || typeof guide !== 'object') {
+      fail(`Comp slug "${slug}": guide is not an object`);
       continue;
     }
-    // (a) Every apiName must exist in bundle.augments
-    for (const apiName of augList) {
-      if (!bundle.augments[apiName]) {
-        if (unknownAugs < 5) fail(`comp-augments slug "${slug}": ${apiName} not in bundle.augments`);
-        unknownAugs++;
+    // (a) Augments: every apiName in bundle.augments
+    if (!Array.isArray(guide.augments)) {
+      fail(`Comp slug "${slug}": augments is not an array`);
+    } else {
+      for (const apiName of guide.augments) {
+        if (!bundle.augments[apiName]) {
+          if (unknownAugs < 5) fail(`comp-guides slug "${slug}": augment ${apiName} not in bundle.augments`);
+          unknownAugs++;
+        }
+      }
+      // (b) Tier-Distribution-Sanity per slug: ≥85% in one tier → scraper drift
+      if (guide.augments.length > 0) {
+        const tierDist = { 1: 0, 2: 0, 3: 0, 0: 0 };
+        for (const apiName of guide.augments) {
+          const t = bundle.augments[apiName]?.tier ?? 0;
+          tierDist[t] = (tierDist[t] || 0) + 1;
+        }
+        for (const t of [1, 2, 3]) {
+          if (tierDist[t] / guide.augments.length > 0.85) {
+            warn(`Comp slug "${slug}": ${tierDist[t]}/${guide.augments.length} augments in tier ${t} (>85 %) — possible scraper drift`);
+            break;
+          }
+        }
       }
     }
-    // (b) Distribution-Sanity per slug: ≥85% in one tier → scraper drift
-    const tierDist = { 1: 0, 2: 0, 3: 0, 0: 0 };
-    for (const apiName of augList) {
-      const t = bundle.augments[apiName]?.tier ?? 0;
-      tierDist[t] = (tierDist[t] || 0) + 1;
-    }
-    const total = augList.length;
-    for (const t of [1, 2, 3]) {
-      if (tierDist[t] / total > 0.85) {
-        warn(`Comp slug "${slug}": ${tierDist[t]}/${total} augments in tier ${t} (>85 %) — possible scraper drift`);
-        tierSkewed++;
-        break;
+    // (c) augmentTypes: empty array OR same length as augments + valid labels
+    if (!Array.isArray(guide.augmentTypes)) {
+      fail(`Comp slug "${slug}": augmentTypes is not an array`);
+    } else if (guide.augmentTypes.length > 0) {
+      if (guide.augmentTypes.length !== guide.augments.length) {
+        warn(`Comp slug "${slug}": augmentTypes length ${guide.augmentTypes.length} != augments ${guide.augments.length}`);
       }
+      for (const g of guide.augmentTypes) {
+        if (!VALID_AUG_GROUPS.has(g)) {
+          fail(`Comp slug "${slug}": invalid augment group "${g}" (expected ECON/ITEMS/COMBAT/EMBLEM/HERO)`);
+          break;
+        }
+      }
+    }
+    // (d) earlyComp: array of {apiName, items[], stars} with valid champions
+    if (!Array.isArray(guide.earlyComp)) {
+      fail(`Comp slug "${slug}": earlyComp is not an array`);
+    } else {
+      for (const entry of guide.earlyComp) {
+        if (!entry?.apiName || !bundle.champions[entry.apiName]) {
+          warn(`Comp slug "${slug}": earlyComp champion "${entry?.apiName}" not in bundle.champions`);
+          break;
+        }
+      }
+    }
+    // (e) carousel: array of item apiNames
+    if (!Array.isArray(guide.carousel)) {
+      fail(`Comp slug "${slug}": carousel is not an array`);
+    }
+    // (f) tips: array of {stage, tip}
+    if (!Array.isArray(guide.tips)) {
+      fail(`Comp slug "${slug}": tips is not an array`);
+    }
+    // (g) difficulty: optional, but if set must be valid
+    if (guide.difficulty != null && !VALID_DIFFICULTIES.has(guide.difficulty)) {
+      fail(`Comp slug "${slug}": invalid difficulty "${guide.difficulty}"`);
     }
   }
-  if (unknownAugs >= 5) fail(`… ${unknownAugs - 5} additional unknown apiNames not shown`);
+  if (unknownAugs >= 5) fail(`… ${unknownAugs - 5} additional unknown augment apiNames not shown`);
 } else {
-  warn(`No comp-augments file at ${compAugPath} — Comp-Detail augment-section won't render. Re-run scripts/refresh-comp-augments.mjs.`);
+  warn(`No comp-guides file at ${compGuidesPath} — Comp-Detail guide-sections won't render. Re-run scripts/refresh-comp-augments.mjs.`);
 }
 
-// 8. Comp-Slug-Map — Schema, Bundle-Linkage, Augments-Reference
+// 8. Comp-Slug-Map — Schema, Bundle-Linkage, Guides-Reference
 if (compSlugMap?.slugs) {
-  const augSlugs = new Set(Object.keys(compAug?.comps || {}));
+  const augSlugs = new Set(Object.keys(compGuides?.comps || {}));
   for (const [slug, entry] of Object.entries(compSlugMap.slugs)) {
     if (!entry || typeof entry !== 'object') {
       fail(`Slug-map "${slug}": entry is not an object`);
@@ -195,10 +238,10 @@ if (compSlugMap?.slugs) {
         fail(`Slug-map "${slug}": primaryTrait "${entry.primaryTrait}" not in bundle.traits (no exact or prefix match)`);
       }
     }
-    // (c) augmentsRef (or slug itself) must point at a compAug.comps entry
+    // (c) augmentsRef (or slug itself) must point at a compGuides.comps entry
     const ref = entry.augmentsRef || slug;
     if (augSlugs.size > 0 && !augSlugs.has(ref)) {
-      fail(`Slug-map "${slug}": augmentsRef "${ref}" has no entry in tft-comp-augments-${set}.json`);
+      fail(`Slug-map "${slug}": augmentsRef "${ref}" has no entry in tft-comp-guides-${set}.json`);
     }
   }
 } else {

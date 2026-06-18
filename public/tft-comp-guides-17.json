@@ -1,0 +1,2371 @@
+{
+  "set": 17,
+  "source": "tftacademy.com/tierlist/comps (SvelteKit hydration data island)",
+  "fetchedAt": "2026-06-18T16:00:40.417Z",
+  "counts": {
+    "slugsIndexed": 33,
+    "populatedFull": 33,
+    "populatedPartial": 0,
+    "skipped": 0
+  },
+  "comps": {
+    "anima-reroll": {
+      "title": "Vanguard Diana",
+      "difficulty": "HARD",
+      "updated": "2026-06-17 18:41:09.381Z",
+      "augments": [
+        "TFT10_Augment_HeroicGrabBag",
+        "TFT_Augment_MagicRoll",
+        "TFT_Augment_PatienceIsAVirtue",
+        "TFT_Augment_BoxingLessons",
+        "TFT_Augment_TreasureHunt",
+        "TFT_Augment_SpreadingRoots",
+        "TFT_Augment_TraitTree",
+        "TFT_Augment_MagicRollMinus"
+      ],
+      "augmentTypes": [
+        "ECON",
+        "ECON",
+        "ECON",
+        "ITEMS",
+        "ITEMS",
+        "ITEMS",
+        "COMBAT",
+        "COMBAT"
+      ],
+      "augmentsTip": "Optimized version still being tested. Can also play for Zoe 3* or Challenger Miss Fortune 3* if you get excess sword / bow items and no Anima. Look for Arbiter that gives Resists or permanent HP per 3 attacks / 4 seconds / damage 10 times. Anima cash out is optional, but nice to hit extra copies of Illaoi / Aurora.",
+      "carousel": [
+        "TFT_Item_GuinsoosRageblade",
+        "TFT_Item_TitansResolve",
+        "TFT_Item_NeedlesslyLargeRod",
+        "TFT_Item_GiantsBelt"
+      ],
+      "earlyComp": [
+        {
+          "apiName": "TFT17_Leona",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Mordekaiser",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Zoe",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Diana",
+          "items": [],
+          "stars": 1
+        }
+      ],
+      "tips": [
+        {
+          "stage": "Stage 2",
+          "tip": "Ideally open with Arbiter to begin stacking Diana. Slam items to start gaining permanent HP stacks for her. Can also lose streak Anima but it's riskier."
+        },
+        {
+          "stage": "Stage 3",
+          "tip": "Look for an econ augment if you don't have one already. If win streaking, play for 3-7 Level 7. If  lose streaking / playing Anima, level at 3-5 and roll for 2*."
+        },
+        {
+          "stage": "Stage 4",
+          "tip": "Slow roll for 3* 3 cost. You should be hitting one by end of Stage 4. If you think you can't hit, take an econ augment. Once done, level to 8 for any 5 cost."
+        }
+      ]
+    },
+    "bonk-nasus": {
+      "title": "Bonk! Nasus",
+      "difficulty": "EASY",
+      "updated": "2026-06-17 18:41:09.359Z",
+      "augments": [
+        "TFT17_Augment_NasusCarry",
+        "TFT9_Augment_MissedConnections",
+        "TFT17_Augment_ApotheoticForge",
+        "TFT6_Augment_PortableForge",
+        "TFT_Augment_GroupHug1",
+        "TFT_Augment_Lineup",
+        "TFT9_Augment_Commander_Ascension",
+        "TFT9_Augment_JeweledLotus"
+      ],
+      "augmentTypes": [
+        "HERO",
+        "HERO",
+        "HERO",
+        "ITEMS",
+        "ITEMS",
+        "ITEMS",
+        "ECON",
+        "ECON"
+      ],
+      "augmentsTip": "Always aim for 6 Vanguard. If you can't hit Teemo 3, push levels for Leblanc instead. Preferably choose a tanky Arbiter trait. If you have Space Groove emblem, you can drop Leblanc for Nami.",
+      "carousel": [
+        "TFT_Item_GuinsoosRageblade",
+        "TFT_Item_Bloodthirster",
+        "TFT_Item_TitansResolve",
+        "TFT_Item_RecurveBow"
+      ],
+      "earlyComp": [
+        {
+          "apiName": "TFT17_Leona",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Nasus",
+          "items": [
+            "TFT_Item_GuinsoosRageblade",
+            "TFT_Item_Bloodthirster",
+            "TFT_Item_TitansResolve"
+          ],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Mordekaiser",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Zoe",
+          "items": [],
+          "stars": 1
+        }
+      ],
+      "tips": [
+        {
+          "stage": "Stage 2",
+          "tip": "Prioritize Nasus BIS and aim for a win streak if possible while farming kills for his permanent scaling. Aim for a Vanguard / Space Groove mix of units."
+        },
+        {
+          "stage": "Stage 3",
+          "tip": "Slow roll for Nasus 3. Leona 3 and Teemo 3 are luxury. If you highroll Leblanc early and are behind in Teemo count, consider carrying her instead."
+        },
+        {
+          "stage": "Stage 4",
+          "tip": "Finish your 3* and push levels for 6 Vanguard. You can flex in 5 Space Groove, Zoe, or a support 5 cost until you hit Blitzcrank."
+        }
+      ]
+    },
+    "challenger-miss-fortune": {
+      "title": "Challenger Miss Fortune",
+      "difficulty": "EASY",
+      "updated": "2026-06-17 18:41:09.371Z",
+      "augments": [
+        "TFT_Augment_Expedition",
+        "TFT_Augment_LegionOfThrees",
+        "TFT_Augment_TreasureHunt",
+        "TFT_Augment_ForgeSword",
+        "TFT_Augment_JustSlayer",
+        "TFT6_Augment_Electrocharge1",
+        "TFT9_Augment_ArmyBuilding",
+        "TFT_Augment_HeroicGrabBagPlusPlus"
+      ],
+      "augmentTypes": [
+        "ITEMS",
+        "ITEMS",
+        "ITEMS",
+        "COMBAT",
+        "COMBAT",
+        "COMBAT",
+        "ECON",
+        "ECON"
+      ],
+      "augmentsTip": "Challenger mode on Miss Fortune. If Ornn is contested, look for another 3 cost tank instead. If you have Diana items (listed in Flex spots) you can consider chasing Diana 3 and replace Bel'Veth.",
+      "carousel": [
+        "TFT_Item_BFSword",
+        "TFT_Item_Deathblade",
+        "TFT_Item_GiantsBelt",
+        "TFT_Item_GuinsoosRageblade"
+      ],
+      "earlyComp": [
+        {
+          "apiName": "TFT17_Briar",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_RekSai",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Belveth",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_MissFortune",
+          "items": [
+            "TFT_Item_GuinsoosRageblade",
+            "TFT_Item_Deathblade"
+          ],
+          "stars": 1
+        }
+      ],
+      "tips": [
+        {
+          "stage": "Stage 2",
+          "tip": "Ideally open with Miss Fortune + Primordian and win streak. Slam items for MF / Bel'Veth."
+        },
+        {
+          "stage": "Stage 3",
+          "tip": "If lose streaking, level to 7 at 3-5 and roll for 2* item holders. Win last two fights of Stage and econ up. If win streaking, you can aim to Level 7 end of Stage."
+        },
+        {
+          "stage": "Stage 4",
+          "tip": "Slow roll for 3* 3 cost. You should be hitting one by end of Stage 4. If you think you can't hit, take an econ augment. Once done, level to 8 for Kindred, Diana, or Akali for precision."
+        }
+      ]
+    },
+    "contract-killer-pyke": {
+      "title": "Contract Killer Pyke",
+      "difficulty": "EASY",
+      "updated": "2026-06-17 18:41:09.397Z",
+      "augments": [
+        "TFT17_Augment_PykeCarry",
+        "TFT9_Augment_JeweledLotus",
+        "TFT_Augment_HeroicGrabBagPlus",
+        "TFT_Augment_HomeCooking",
+        "TFT9_Augment_HealingOrbsII",
+        "TFT_Augment_ExclusiveCustomization",
+        "TFT_Augment_ForgeSword",
+        "TFT_Augment_AwakenedSoul"
+      ],
+      "augmentTypes": [
+        "HERO",
+        "HERO",
+        "HERO",
+        "ITEMS",
+        "ITEMS",
+        "ITEMS",
+        "ECON",
+        "ECON"
+      ],
+      "augmentsTip": "If you don't have good Psionic item, replace with Hand of Justice or Striker's Flail. Comp is flexible with number of Voyagers. Gragas 3 is not necessary since Brawler can be hard to fit unless you hit Tahm Kench.",
+      "carousel": [
+        "TFT_Item_InfinityEdge",
+        "TFT_Item_GuardianAngel",
+        "TFT_Item_GiantsBelt",
+        "TFT_Item_TearOfTheGoddess"
+      ],
+      "earlyComp": [
+        {
+          "apiName": "TFT17_Chogath",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Gragas",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_IvernMinion",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Pyke",
+          "items": [
+            "TFT_Item_InfinityEdge",
+            "TFT_Item_GuardianAngel"
+          ],
+          "stars": 1
+        }
+      ],
+      "tips": [
+        {
+          "stage": "Stage 2",
+          "tip": "Get Pyke online with items ASAP and try to win streak if possible. If lose streak, you can look for an econ engine like Primordian / Timebreaker."
+        },
+        {
+          "stage": "Stage 3",
+          "tip": "Level to 6 and roll for 2* Pyke and Gragas 2*. Econ back up to 50g and slow roll for 3* Pyke. Flex in Voyagers and Brawlers as needed."
+        },
+        {
+          "stage": "Stage 4",
+          "tip": "Finish your 3* then push levels for 4 Psionic and Voyagers. If you have Gragas 3, always play 2 Brawler. Sona / Karma with items cap the board."
+        }
+      ]
+    },
+    "corki-riven": {
+      "title": "Corki Riven",
+      "difficulty": "MEDIUM",
+      "updated": "2026-06-17 18:41:09.390Z",
+      "augments": [
+        "TFT_Augment_ComponentQuestSword",
+        "TFT_Augment_TraitTree",
+        "TFT_Augment_HomeCooking",
+        "TFT9_Augment_BigGrabBag",
+        "TFT_Augment_SwordOverflow",
+        "TFT_Augment_ForgeSword",
+        "TFT_Augment_ForgedInStrength",
+        "TFT6_Augment_PortableForge"
+      ],
+      "augmentTypes": [
+        "ITEMS",
+        "ITEMS",
+        "ITEMS",
+        "COMBAT",
+        "COMBAT",
+        "COMBAT",
+        "ECON",
+        "ECON"
+      ],
+      "augmentsTip": "Riven items are flexible, but make sure to have Sterak or IE or DB on her to activate AD form. DO NOT play Bard at lvl 8 over Voyager -- Instead, add him on lvl 9 with Shen over Poppy. Milio is worth itemizing if you have extra items as a 3rd damage carry.",
+      "carousel": [
+        "TFT_Item_Deathblade",
+        "TFT_Item_LastWhisper",
+        "TFT_Item_ChainVest",
+        "TFT_Item_BFSword"
+      ],
+      "earlyComp": [
+        {
+          "apiName": "TFT17_RekSai",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Ezreal",
+          "items": [
+            "TFT_Item_LastWhisper",
+            "TFT_Item_Deathblade"
+          ],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Gnar",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Pantheon",
+          "items": [
+            "TFT_Item_FrozenHeart",
+            "TFT_Item_Crownguard"
+          ],
+          "stars": 1
+        }
+      ],
+      "tips": [
+        {
+          "stage": "Stage 2",
+          "tip": "Play for a win streak around Meeple and Snipers. Slam items for Corki and Rammus first. Riven often takes leftover so don't prioritize too heavily."
+        },
+        {
+          "stage": "Stage 3",
+          "tip": "Level for more frontline / Meeple as needed. Add in Timebreaker if possible to farm resources. Finish your tank items before prioritizing full Corki + RIven items."
+        },
+        {
+          "stage": "Stage 4",
+          "tip": "Level to 8 and roll for Corki 2, Rammus 2, and Riven. Once stable, push for level 9 OR roll for 3* 4 cost"
+        }
+      ]
+    },
+    "dark-star": {
+      "title": "Dark Star Flex",
+      "difficulty": "MEDIUM",
+      "updated": "2026-06-17 18:41:09.339Z",
+      "augments": [
+        "TFT_Augment_SpreadingRoots",
+        "TFT_Augment_TraitTree",
+        "TFT_Augment_MayTheFoursBeWithYou",
+        "TFT_Augment_HoldTheLine",
+        "TFT_Augment_UrfsGambit",
+        "TFT6_Augment_MakeshiftArmor1",
+        "TFT_Augment_Lineup",
+        "TFT_Augment_BoxingLessons"
+      ],
+      "augmentTypes": [
+        "EMBLEM",
+        "EMBLEM",
+        "EMBLEM",
+        "ITEMS",
+        "ITEMS",
+        "ITEMS",
+        "COMBAT",
+        "COMBAT"
+      ],
+      "augmentsTip": "Always aim for 6 Dark Star. Late game if you lack AD items, prioritize: Jhin 2 > Kai'Sa 2 > Jhin 1. Level 7 and 8 are very flexible -- most common to play 4 Dark Star + Vanguards Shepherd (Illaoi / Meepsie) / Brawlers (Pantheon) / Rogues (Riven). Emblems are good: Dark Star > Sniper >> Voyager, Rogue, Tank.",
+      "carousel": [
+        "TFT_Item_BFSword",
+        "TFT_Item_SparringGloves",
+        "TFT_Item_TearOfTheGoddess",
+        "TFT_Item_RecurveBow"
+      ],
+      "earlyComp": [
+        {
+          "apiName": "TFT17_Briar",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Chogath",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_RekSai",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Kaisa",
+          "items": [
+            "TFT_Item_InfinityEdge",
+            "TFT_Item_SpearOfShojin"
+          ],
+          "stars": 1
+        }
+      ],
+      "tips": [
+        {
+          "stage": "Stage 2",
+          "tip": "Look for an econ engine like Primordian or Timebreaker that fit in Dark Star naturally. Slam items for Kai'Sa / Jhin and push levels."
+        },
+        {
+          "stage": "Stage 3",
+          "tip": "Level for more frontline / Dark Star as needed. 6 Dark Star is the big spike if you have emblem. You can flex in Voyager and Shepherd easily too."
+        },
+        {
+          "stage": "Stage 4",
+          "tip": "If you have extra rerolls / paired on 3 costs, consider rolling on 7 before going to 8 for Kai'Sa 2. Illaoi 2 is the cheapest tank to push for level 9 but can also tank Mighty Mech / Nunu / TK. Once stable, skip 8 to go 9."
+        }
+      ]
+    },
+    "dark-star-lissandra": {
+      "title": "Dark Star Lissandra",
+      "difficulty": "MEDIUM",
+      "updated": "2026-06-17 18:41:09.367Z",
+      "augments": [
+        "TFT_Augment_TreasureHunt",
+        "TFT9_Augment_MissedConnections",
+        "TFT_Augment_ConstructACompanion",
+        "TFT_Augment_WorthTheWaitGold",
+        "TFT_Augment_HoldTheLine",
+        "TFT_Augment_UrfsGambit",
+        "TFT17_Augment_DarkStar_WhiteHole",
+        "TFT_Augment_EarlyLearning"
+      ],
+      "augmentTypes": [
+        "ITEMS",
+        "ITEMS",
+        "ITEMS",
+        "ECON",
+        "ECON",
+        "ECON",
+        "COMBAT",
+        "COMBAT"
+      ],
+      "augmentsTip": "Play when you have lots of copies of Lissandra with strong likelihood of getting her AP Crit items. Dark Star emblem is strong so you can 6 Dark Star on level 8. Cap with Jhin and Karma taking leftover items. Prio ionic spark ASAP.",
+      "carousel": [
+        "TFT_Item_NeedlesslyLargeRod",
+        "TFT_Item_RecurveBow",
+        "TFT_Item_GiantsBelt",
+        "TFT_Item_TearOfTheGoddess"
+      ],
+      "earlyComp": [
+        {
+          "apiName": "TFT17_Chogath",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Ezreal",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Lissandra",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Pantheon",
+          "items": [],
+          "stars": 1
+        }
+      ],
+      "tips": [
+        {
+          "stage": "Stage 2",
+          "tip": "Play around early Lissandra 2 with slammed AP items for win streak. Don't level at all and focus on making econ intervals."
+        },
+        {
+          "stage": "Stage 3",
+          "tip": "Slow roll above 50g for Lissandra and Cho 3. If you hit Lissandra 3 quickly and have low copies of Cho, push levels and play for a different tank. Finish Liss items ASAP."
+        },
+        {
+          "stage": "Stage 4",
+          "tip": "Level for more Dark Stars. You will commonly play 4 Dark Star + Illaoi + Meepsie until Jhin. Karma can take leftover AP items. "
+        }
+      ]
+    },
+    "ez-cho": {
+      "title": "EZ CHO",
+      "difficulty": "EASY",
+      "updated": "2026-06-17 18:41:09.354Z",
+      "augments": [
+        "TFT6_Augment_GachaAddict",
+        "TFT9_Augment_MissedConnections",
+        "TFT6_Augment_TradeSector",
+        "TFT_Augment_EarlyLearning",
+        "TFT_Augment_NoScoutNoPivot",
+        "TFT_Augment_ConstructACompanion",
+        "TFT_Augment_SwordOverflow",
+        "TFT_Augment_TreasureHunt"
+      ],
+      "augmentTypes": [
+        "ECON",
+        "ECON",
+        "ECON",
+        "ITEMS",
+        "ITEMS",
+        "ITEMS",
+        "COMBAT",
+        "COMBAT"
+      ],
+      "augmentsTip": "Yasuo God Hex buffs can be very good for Cho'Gath. Ezreal and Cho'Gath permanently scales with takedowns so killing units early is good. Rush 4 Timebreaker after hitting to push levels.",
+      "carousel": [
+        "TFT_Item_GargoyleStoneplate",
+        "TFT_Item_SpearOfShojin",
+        "TFT_Item_InfinityEdge",
+        "TFT_Item_GiantsBelt"
+      ],
+      "earlyComp": [
+        {
+          "apiName": "TFT17_Chogath",
+          "items": [
+            "TFT_Item_RedBuff",
+            "TFT_Item_GargoyleStoneplate"
+          ],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Ezreal",
+          "items": [
+            "TFT_Item_SpearOfShojin",
+            "TFT_Item_InfinityEdge"
+          ],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Gnar",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Pantheon",
+          "items": [],
+          "stars": 1
+        }
+      ],
+      "tips": [
+        {
+          "stage": "Stage 2",
+          "tip": "Don't level early at all. Play around early Cho'Gath and a 1 cost carry. Focus on finishing Cho'Gath tank and Ezreal with leftover Sword items."
+        },
+        {
+          "stage": "Stage 3",
+          "tip": "Slow roll above 50g for Ezreal and Cho'Gath. Look for 4 Brawler + Ezreal on 5. Sniper is not important for Ezreal until later. Always play TK if you highroll him."
+        },
+        {
+          "stage": "Stage 4",
+          "tip": "Finish your 3* then level for traits. Put Sunder/Anti-heal on tankiest 2nd Brawler or Xayah / Kai'sa. Cap with Jhin."
+        }
+      ]
+    },
+    "fast-9-jhin-stargazer-version": {
+      "title": "Xayah Stargazer",
+      "difficulty": "MEDIUM",
+      "updated": "2026-06-17 18:41:08.926Z",
+      "augments": [
+        "TFT_Augment_ShimmerscaleEssence",
+        "TFT9_Augment_LearningFromExperience2",
+        "TFT_Augment_ComponentQuestBow",
+        "TFT6_Augment_PandorasItems",
+        "TFT_Augment_MayTheFoursBeWithYou",
+        "TFT_Augment_ComebackStory",
+        "TFT_Augment_HoldTheLine",
+        "TFT_Augment_AwakenedSoul"
+      ],
+      "augmentTypes": [
+        "ECON",
+        "ECON",
+        "ECON",
+        "ITEMS",
+        "ITEMS",
+        "ITEMS",
+        "COMBAT",
+        "COMBAT"
+      ],
+      "augmentsTip": "Best on Serpent, Boar, Altar, and Mountain Stargazer. Fountain is A tier. Huntress and Medallion are much weaker so avoid if possible. NOVA provides free Sunder. If you have Sunder, drop Aatrox for Shen.",
+      "carousel": [
+        "TFT_Item_RapidFireCannon",
+        "TFT_Item_RunaansHurricane",
+        "TFT_Item_RecurveBow",
+        "TFT_Item_BFSword"
+      ],
+      "earlyComp": [
+        {
+          "apiName": "TFT17_Aatrox",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_TwistedFate",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Talon",
+          "items": [
+            "TFT_Item_RapidFireCannon",
+            "TFT_Item_RunaansHurricane"
+          ],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Jax",
+          "items": [
+            "TFT_Item_FrozenHeart"
+          ],
+          "stars": 1
+        }
+      ],
+      "tips": [
+        {
+          "stage": "Stage 2",
+          "tip": "Play for win streak with Stargazers or an econ trait like Primordian. Talon and Bel'Veth are solid holders for Xayah items."
+        },
+        {
+          "stage": "Stage 3",
+          "tip": "If win streaking, prioritize playing strongest board over greeding econ traits. Upgraded 2 and 3 costs are often better than 1* high tier units here."
+        },
+        {
+          "stage": "Stage 4",
+          "tip": "Level to 8 and roll for Xayah 2 + upgraded frontline. Play Samira until Jhin. If you miss Tahm Kench, play another Vanguard for Nunu tank instead. "
+        }
+      ]
+    },
+    "fountain-lulu": {
+      "title": "Lulu Reroll",
+      "difficulty": "EASY",
+      "updated": "2026-06-17 18:41:09.375Z",
+      "augments": [
+        "TFT6_Augment_ThriftShop",
+        "TFT_Augment_PatienceIsAVirtue",
+        "TFT6_Augment_CalculatedLoss",
+        "TFT10_Augment_HeroicGrabBag",
+        "TFT9_Augment_ArmyBuilding",
+        "TFT_Augment_ForgeRod",
+        "TFT_Augment_GlassCannonII",
+        "TFT_Augment_ShimmerscaleEssence"
+      ],
+      "augmentTypes": [
+        "ITEMS",
+        "ITEMS",
+        "ITEMS",
+        "ECON",
+        "ECON",
+        "ECON",
+        "COMBAT",
+        "COMBAT"
+      ],
+      "augmentsTip": "Best on Mountain (stage 2) > Fountain  > Medallion. Other Stargazers are much worse: Boar > Huntress > Serpent / Altar. If on Medallion, Lulu still prints gold on casts even if Stargazer is not active. Your tank will likely change every game depending on what's available / contested (Pantheon 3 > Maokai 3 > Jax 3).",
+      "carousel": [
+        "TFT_Item_Leviathan",
+        "TFT_Item_JeweledGauntlet",
+        "TFT_Item_TearOfTheGoddess",
+        "TFT_Item_ChainVest"
+      ],
+      "earlyComp": [
+        {
+          "apiName": "TFT17_RekSai",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Milio",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Pantheon",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Lulu",
+          "items": [
+            "TFT_Item_JeweledGauntlet",
+            "TFT_Item_Leviathan"
+          ],
+          "stars": 1
+        }
+      ],
+      "tips": [
+        {
+          "stage": "Stage 2",
+          "tip": "Ideally open with early Lulu to itemize. Look for an econ engine: Timebreaker > Primordian. Slam items for Lulu / tank."
+        },
+        {
+          "stage": "Stage 3",
+          "tip": "Level to 6 at 3-2 and roll for 2* item holders. Try to win most of the fights on stage and econ up."
+        },
+        {
+          "stage": "Stage 4",
+          "tip": "Slow roll for 3* Lulu. You should be hitting end of Stage 4. If you think you can't hit, take an econ augment. Once done, level to 8 for Rhaast."
+        }
+      ]
+    },
+    "gnar-printer": {
+      "title": "Gnar Printer",
+      "difficulty": "MEDIUM",
+      "updated": "2026-06-17 18:41:08.949Z",
+      "augments": [
+        "TFT_Augment_TragicalBlade",
+        "TFT_Augment_MagicRollMinus",
+        "TFT_Augment_KickStart",
+        "TFT_Augment_ComponentQuestBow",
+        "TFT_Augment_HeavyIsTheCrown",
+        "TFT6_Augment_CyberneticImplants2",
+        "TFT_Augment_ForgeSword",
+        "TFT10_Augment_HeroicGrabBag"
+      ],
+      "augmentTypes": [
+        "ITEMS",
+        "ITEMS",
+        "ITEMS",
+        "ECON",
+        "ECON",
+        "ECON",
+        "COMBAT",
+        "COMBAT"
+      ],
+      "augmentsTip": "Roll on 6 to stabilize first on Gnar 2 + Timebreakers -> Push for 7 Meeple to print Gnar 3 -> Push for level 9. Ideally end game you end on only 3 Meeple with 5 costs, but most games you will play 5 Meeple.",
+      "carousel": [
+        "TFT_Item_GuinsoosRageblade",
+        "TFT_Item_Deathblade",
+        "TFT_Item_BFSword",
+        "TFT_Item_ChainVest"
+      ],
+      "earlyComp": [
+        {
+          "apiName": "TFT17_Aatrox",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Poppy",
+          "items": [
+            "TFT_Item_GargoyleStoneplate"
+          ],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_IvernMinion",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Gnar",
+          "items": [
+            "TFT_Item_GuinsoosRageblade",
+            "TFT_Item_Deathblade"
+          ],
+          "stars": 1
+        }
+      ],
+      "tips": [
+        {
+          "stage": "Stage 2",
+          "tip": "Play around early Gnar and 3 Meeple with slammed bow items for win streak. Tank Poppy until you find Rammus."
+        },
+        {
+          "stage": "Stage 3",
+          "tip": "Roll some on 6 for Gnar 2 + 3 Timebreakers to stabilize. Gnar 2 should be strong enough to win streak. Hold every Meeple to get 7 Meeple on level 8."
+        },
+        {
+          "stage": "Stage 4",
+          "tip": "Print Gnar 3 with 7 Meeple on level 8 and look for upgraded frontline. Once you get Gnar 3, drop down to 5 Meeple for better board quality. Go 9 for 5 costs."
+        }
+      ]
+    },
+    "graves-vex-9-5": {
+      "title": "NOVA Vex 9-5",
+      "difficulty": "HARD",
+      "updated": "2026-06-17 18:41:08.989Z",
+      "augments": [
+        "TFT_Augment_AuraFarming",
+        "TFT_Augment_DuoQueue",
+        "TFT_Augment_LateGameScaling",
+        "TFT11_Augment_Calltochaos",
+        "TFT7_Augment_LategameSpecialist",
+        "TFT6_Augment_BandOfThieves2Plus",
+        "TFT_Augment_ExplosiveGrowthPlus",
+        "TFT_Augment_ShimmerscaleEssence"
+      ],
+      "augmentTypes": [
+        "ECON",
+        "ECON",
+        "ECON",
+        "ITEMS",
+        "ITEMS",
+        "ITEMS",
+        "COMBAT",
+        "COMBAT"
+      ],
+      "augmentsTip": "Try to hold onto 1 Akali and 1 Aatrox when pushing so you have access to free Shred/Sunder. Graves build: Assault frame -> Buckshot ->  Buckshot+ -> Buckshot++ -> Laser Ballistics. If you have bad Graves items, go tank build or ditch Graves entirely for another upgraded 5 cost / Morgana.",
+      "carousel": [
+        "TFT_Item_GuinsoosRageblade",
+        "TFT_Item_RecurveBow",
+        "TFT_Item_BFSword",
+        "TFT_Item_NeedlesslyLargeRod"
+      ],
+      "earlyComp": [
+        {
+          "apiName": "TFT17_Leona",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Teemo",
+          "items": [
+            "TFT_Item_GuinsoosRageblade",
+            "TFT_Item_MadredsBloodrazor",
+            "TFT_Item_RabadonsDeathcap"
+          ],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Mordekaiser",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Zoe",
+          "items": [],
+          "stars": 1
+        }
+      ],
+      "tips": [
+        {
+          "stage": "Stage 2",
+          "tip": "Play a standard win streak AD opener with slammed items related to Graves / Vex. Save 1 Akali and 1 Aatrox while on streak if possible."
+        },
+        {
+          "stage": "Stage 3",
+          "tip": "If you snap win streak early Stage 3, abandon Fast 9 and pivot to another line. Early Graves Stage 3 = pivot immediately towards him."
+        },
+        {
+          "stage": "Stage 4",
+          "tip": "You should be healthy (80+ HP) -> you can lose all Stage 4 and econ heavily (take econ augment) to go level 9. If you still don't have items for Graves, carry with another 5 cost with Vex."
+        }
+      ]
+    },
+    "heat-death-mordekaiser": {
+      "title": "Heat Death Mordekaiser",
+      "difficulty": "CONDITIONAL",
+      "updated": "2026-06-17 18:41:09.349Z",
+      "augments": [
+        "TFT17_Augment_MordekaiserCarry",
+        "TFT_Augment_HeroicGrabBagPlus",
+        "TFT_Augment_BoxingLessons",
+        "TFT9_Augment_Commander_Ascension",
+        "TFT9_Augment_JeweledLotus",
+        "TFT_Augment_FindYourCenter",
+        "TFT7_Augment_UrfsGrabBag2",
+        "TFT16_Augment_UltraRapidFire"
+      ],
+      "augmentTypes": [
+        "HERO",
+        "HERO",
+        "HERO",
+        "ITEMS",
+        "ITEMS",
+        "ITEMS",
+        "ECON",
+        "ECON"
+      ],
+      "augmentsTip": "Mordekaiser Hero Augment required. Much stronger with Dark Star Emblem so consider taking things that give a Spatula. You can also duo carry Lissandra 3 > Karma if you find her rolling on 6. Leftover AD on Jhin.",
+      "carousel": [
+        "TFT_Item_JeweledGauntlet",
+        "TFT_Item_GuardianAngel",
+        "TFT_Item_NeedlesslyLargeRod",
+        "TFT_Item_GiantsBelt"
+      ],
+      "earlyComp": [
+        {
+          "apiName": "TFT17_Lissandra",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Teemo",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Mordekaiser",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Illaoi",
+          "items": [],
+          "stars": 1
+        }
+      ],
+      "tips": [
+        {
+          "stage": "Stage 2",
+          "tip": "Get Morde online with items ASAP and try to win streak if possible. If lose streak, you can look for an econ engine like Primordian / Timebreaker."
+        },
+        {
+          "stage": "Stage 3",
+          "tip": "Level to 6 and roll for 2* Mordekaiser and activate traits (Dark Star + Vanguard + Shepherd). Econ back up to 50g and slow roll for 3* Morde."
+        },
+        {
+          "stage": "Stage 4",
+          "tip": "Finish Morde 3 and push levels. Ideally tank Illaoi 3, but if it's contested just push for 6 Dark Star ASAP."
+        }
+      ]
+    },
+    "in-the-groove": {
+      "title": "In The Groove",
+      "difficulty": "EASY",
+      "updated": "2026-06-17 18:41:09.368Z",
+      "augments": [
+        "TFT_Augment_BranchingOut",
+        "TFT_Augment_SpreadingRoots",
+        "TFT_Augment_TraitTree",
+        "TFT_Augment_ClimbTheLadder1",
+        "TFT9_Augment_Commander_Ascension",
+        "TFT_Augment_GildedSteel",
+        "TFT16_Augment_UltraRapidFire",
+        "TFT11_Augment_Reinfourcement"
+      ],
+      "augmentTypes": [
+        "EMBLEM",
+        "EMBLEM",
+        "EMBLEM",
+        "ECON",
+        "ECON",
+        "ECON",
+        "ITEMS",
+        "ITEMS"
+      ],
+      "augmentsTip": "Ideally played with Space Groove Emblem. If you don't have Riven items, you instead play Tahm Kench 2 as primary tank with Space Groove emblem + full items and drop Riven entirely.",
+      "carousel": [
+        "TFT_Item_Leviathan",
+        "TFT_Item_JeweledGauntlet",
+        "TFT_Item_SparringGloves",
+        "TFT_Item_GiantsBelt"
+      ],
+      "earlyComp": [
+        {
+          "apiName": "TFT17_Nasus",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Teemo",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Mordekaiser",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Gwen",
+          "items": [
+            "TFT_Item_JeweledGauntlet",
+            "TFT_Item_Leviathan"
+          ],
+          "stars": 1
+        }
+      ],
+      "tips": [
+        {
+          "stage": "Stage 2",
+          "tip": "Play around upgraded Teemo and Nasus opener. Slam items on Teemo for Nami. Tank items on Nasus are also important."
+        },
+        {
+          "stage": "Stage 3",
+          "tip": "Add more Space Groove as you get them. Mix in Vanguards, Shepherd, Dark Star, as needed. Save econ and get ready for level 8 rolldown."
+        },
+        {
+          "stage": "Stage 4",
+          "tip": "Level to 8 and roll down for Nami 2, Riven, and 5 Space Groove. Look for either Kench 2 (best) or Rammus 2 or Nunu 2 as your frontline."
+        }
+      ]
+    },
+    "invader-zed": {
+      "title": "Invader Zed",
+      "difficulty": "HARD",
+      "updated": "2026-06-17 18:41:09.548Z",
+      "augments": [
+        "TFT17_Augment_InvaderZed",
+        "TFT_Augment_OneBuffTwoBuff",
+        "TFT_Augment_DuoQueue",
+        "TFT11_Augment_Calltochaos",
+        "TFT6_Augment_PortableForge",
+        "TFT17_Augment_ApotheoticForge",
+        "TFT_Augment_Misfits",
+        "TFT6_Augment_OneTwoFive"
+      ],
+      "augmentTypes": [
+        "HERO",
+        "HERO",
+        "HERO",
+        "ECON",
+        "ECON",
+        "ECON",
+        "ITEMS",
+        "ITEMS"
+      ],
+      "augmentsTip": "Situational comp played with Invader Zed augment. Zed can fit in a lot of comps as long as your frontline is strong (TK 2 + Maokai > Nunu 2 + Blitz). Zed is very good with Brawler or Meeple emblem (make sure to play 3+ Meeple).",
+      "carousel": [
+        "TFT_Item_GuardianAngel",
+        "TFT_Item_AdaptiveHelm",
+        "TFT_Item_SparringGloves",
+        "TFT_Item_GiantsBelt"
+      ],
+      "earlyComp": [
+        {
+          "apiName": "TFT17_Briar",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_RekSai",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Akali",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Belveth",
+          "items": [
+            "TFT_Item_GuardianAngel"
+          ],
+          "stars": 1
+        }
+      ],
+      "tips": [
+        {
+          "stage": "Stage 2",
+          "tip": "Play a standard win streak tempo opener. You can't aim to play this comp unless you specifically hit Zed's augments."
+        },
+        {
+          "stage": "Stage 3",
+          "tip": "Build Zed items ASAP: Edge of Night > Shojin. Slam items on anyone to preserve HP while focusing on econ. We will be rolling hard on level 8."
+        },
+        {
+          "stage": "Stage 4",
+          "tip": "Level to 8 and look for a 4 cost tank. Zed has no traits so be very flexible with front line / back line. Some ideas: 4 Bastions + Zed, NOVA + Rhaast/Morgana + Zed."
+        }
+      ]
+    },
+    "jainx": {
+      "title": "Jinx Challengers",
+      "difficulty": "EASY",
+      "updated": "2026-06-17 18:41:09.099Z",
+      "augments": [
+        "TFT_Augment_TreasureHunt",
+        "TFT6_Augment_PortableForge",
+        "TFT_Augment_ShimmerscaleEssence",
+        "TFT_Augment_SmallGrabBag",
+        "TFT_Augment_ForgeSword",
+        "TFT9_Augment_BigGrabBag",
+        "TFT_Augment_MagicRoll",
+        "TFT_Augment_NoScoutNoPivot"
+      ],
+      "augmentTypes": [
+        "ECON",
+        "ECON",
+        "ECON",
+        "ITEMS",
+        "ITEMS",
+        "ITEMS",
+        "COMBAT",
+        "COMBAT"
+      ],
+      "augmentsTip": "Item prio: Tank + Jinx > Bel'Veth > Akali take leftover items. Primordian packasge can be flexed out for other tanks if you can't get 3* Reksai/Briar. Challenger and Primordian emblems are strong for the comp too.",
+      "carousel": [
+        "TFT_Item_Deathblade",
+        "TFT_Item_RecurveBow",
+        "TFT_Item_NegatronCloak",
+        "TFT_Item_BFSword"
+      ],
+      "earlyComp": [
+        {
+          "apiName": "TFT17_Briar",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_RekSai",
+          "items": [
+            "TFT_Item_GargoyleStoneplate"
+          ],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Belveth",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Jinx",
+          "items": [
+            "TFT_Item_Deathblade"
+          ],
+          "stars": 1
+        }
+      ],
+      "tips": [
+        {
+          "stage": "Stage 2",
+          "tip": "Ideally play win streak with early Primordian to get econ. Prioritize 3 items on either Jinx / Bel'Veth for now (don't spread them out)."
+        },
+        {
+          "stage": "Stage 3",
+          "tip": "Level to 6 and roll for upgrades on your 2 costs / item holders. The goal is to win streak Stage 3. You can stay on Primordian if they are your only upgrades."
+        },
+        {
+          "stage": "Stage 4",
+          "tip": "Slow roll above 50g. Don't move up to 7 until you get at least Jax and Jinx to 3. On 7 add Kindred. On 8 add Rhaast. "
+        }
+      ]
+    },
+    "karnami-flex": {
+      "title": "KarNami Flex",
+      "difficulty": "HARD",
+      "updated": "2026-06-17 18:41:09.404Z",
+      "augments": [
+        "TFT6_Augment_TradeSector2",
+        "TFT11_Augment_Reinfourcement",
+        "TFT_Augment_TheBaronsLair",
+        "TFT_Augment_SmallGrabBag",
+        "TFT_Augment_ForgeRod",
+        "TFT9_Augment_BigGrabBag",
+        "TFT_Augment_HoldTheLine",
+        "TFT_Augment_ExclusiveCustomization"
+      ],
+      "augmentTypes": [
+        "ECON",
+        "ECON",
+        "ECON",
+        "ITEMS",
+        "ITEMS",
+        "ITEMS",
+        "COMBAT",
+        "COMBAT"
+      ],
+      "augmentsTip": "Last 2 slots are highly flexible. Most common setup will be 4 Vanguard, but you can also play Bastions, 5 costs, Voyagers, etc. Always prioritize whoever you 2* first on the rolldown. Composition needs lots of items so prioritize item Gods / augments.",
+      "carousel": [
+        "TFT_Item_TearOfTheGoddess",
+        "TFT_Item_NeedlesslyLargeRod",
+        "TFT_Item_SparringGloves",
+        "TFT_Item_GiantsBelt"
+      ],
+      "earlyComp": [
+        {
+          "apiName": "TFT17_Leona",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Teemo",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Mordekaiser",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Zoe",
+          "items": [
+            "TFT_Item_SpearOfShojin",
+            "TFT_Item_JeweledGauntlet",
+            "TFT_Item_Leviathan"
+          ],
+          "stars": 1
+        }
+      ],
+      "tips": [
+        {
+          "stage": "Stage 2",
+          "tip": "Ideally open with a strong AP opener based on Vanguard frontline. Econ engines are also strong: Arbiter > Timebreaker > Primordian."
+        },
+        {
+          "stage": "Stage 3",
+          "tip": "Keep your tempo high with 4 Vanguard + carry and win Stage 3. Because the composition is flexible, pretty much every AP item can be justified."
+        },
+        {
+          "stage": "Stage 4",
+          "tip": "Fast 8 and look for Karma and Nami with upgraded frontline. 4 Vanguard is the most common setup, but be flexible. Once stable, go 9 for Bard and 5 costs."
+        }
+      ]
+    },
+    "mecha-sol": {
+      "title": "Carrier Asol",
+      "difficulty": "EASY",
+      "updated": "2026-06-17 18:41:09.064Z",
+      "augments": [
+        "TFT11_Augment_Reinfourcement",
+        "TFT_Augment_PatienceIsAVirtue",
+        "TFT_Augment_TwinGuardians",
+        "TFT_Augment_ItemGargoyleStoneplate",
+        "TFT_Augment_Expedition",
+        "TFT_Augment_ForgedInStrength",
+        "TFT7_Augment_LivingForge",
+        "TFT9_Augment_Commander_Ascension"
+      ],
+      "augmentTypes": [
+        "ECON",
+        "ECON",
+        "ECON",
+        "ITEMS",
+        "ITEMS",
+        "ITEMS",
+        "COMBAT",
+        "COMBAT"
+      ],
+      "augmentsTip": "Ideally played with some special item (Anima cash out, Radiant item, 2+ Artifacts, etc) + Combat augment. Always keep everything in Mecha form. Can play Kench + Fiora/Yi instead of the N.O.V.A units (usually only with early kench 2).",
+      "carousel": [
+        "TFT_Item_GargoyleStoneplate",
+        "TFT_Item_RabadonsDeathcap",
+        "TFT_Item_StatikkShiv",
+        "TFT_Item_ChainVest"
+      ],
+      "earlyComp": [
+        {
+          "apiName": "TFT17_RekSai",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_TwistedFate",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Pantheon",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Milio",
+          "items": [
+            "TFT_Item_StatikkShiv",
+            "TFT_Item_RabadonsDeathcap"
+          ],
+          "stars": 1
+        }
+      ],
+      "tips": [
+        {
+          "stage": "Stage 2",
+          "tip": "Most common Mecha line will be lose streak to guarantee items. Look for an econ engine: Timebreaker > Primordian > Arbiter."
+        },
+        {
+          "stage": "Stage 3",
+          "tip": "Standard level 6 and 7 intervals (3-2 / 3-5 if streaking). Play around Brawler and Voyager. Always play Asol and transfer items."
+        },
+        {
+          "stage": "Stage 4",
+          "tip": "Level to 8 and roll hard. Don't push for 9 until you hit 2* Mecha units Look for Akali + Maokai until Fiora + Tahm Kench. Karma + Jhin can go in level 8/9 flexibly."
+        }
+      ]
+    },
+    "primordian-reroll": {
+      "title": "Primordian Reroll",
+      "difficulty": "MEDIUM",
+      "updated": "2026-06-17 18:41:09.099Z",
+      "augments": [
+        "TFT6_Augment_GachaAddict",
+        "TFT6_Augment_TradeSector",
+        "TFT9_Augment_MissedConnections",
+        "TFT_Augment_Waverider",
+        "TFT_Augment_BoxingLessons",
+        "TFT_Augment_NoScoutNoPivot",
+        "TFT_Augment_GroupHug1",
+        "TFT_Augment_FuriousBlows"
+      ],
+      "augmentTypes": [
+        "ITEMS",
+        "ITEMS",
+        "ITEMS",
+        "ECON",
+        "ECON",
+        "ECON",
+        "COMBAT",
+        "COMBAT"
+      ],
+      "augmentsTip": "Prioritize items on Briar > Bel'Veth / Kai'Sa. Positioning shown is for most of early and mid game, but late game you can play a standard default melee carry positioning. Rhaast on 8, Jhin on 9. Tahm 2 is a better tank than Reksai 3.",
+      "carousel": [
+        "TFT_Item_BFSword",
+        "TFT_Item_NegatronCloak",
+        "TFT_Item_GiantsBelt",
+        "TFT_Item_ChainVest"
+      ],
+      "earlyComp": [
+        {
+          "apiName": "TFT17_Chogath",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_RekSai",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Briar",
+          "items": [
+            "TFT_Item_Bloodthirster",
+            "TFT_Item_SteraksGage"
+          ],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Belveth",
+          "items": [],
+          "stars": 1
+        }
+      ],
+      "tips": [
+        {
+          "stage": "Stage 2",
+          "tip": "Field 3 Primordian and start collecting Primordians. Early game you can solo frontline Briar in top corner when you have Rogue activated."
+        },
+        {
+          "stage": "Stage 3",
+          "tip": "Slow roll on 5 for Primordian units and Cho 3 if very rich. Finish items for Briar, Rek'Sai, and Bel'Veth. If Briar solo frontline is falling off, change to default melee positioning."
+        },
+        {
+          "stage": "Stage 4",
+          "tip": "Finish your 3* then push levels for Rhaast / Kindred. Kai'sa takes any leftover items (can also hold Sunder / Anti-heal items). If no Cho 3, cap with Jhin instead."
+        }
+      ]
+    },
+    "pyke-gwen": {
+      "title": "Gwen Pyke Reroll",
+      "difficulty": "EASY",
+      "updated": "2026-06-17 18:41:09.475Z",
+      "augments": [
+        "TFT_Augment_Unforgotten",
+        "TFT_Augment_MagicRoll",
+        "TFT_Augment_PatienceIsAVirtue",
+        "TFT_Augment_TwinGuardians",
+        "TFT_Augment_HomeCooking",
+        "TFT_Augment_TreasureHunt",
+        "TFT_Augment_Retribution",
+        "TFT_Augment_AnExaltedAdventure"
+      ],
+      "augmentTypes": [
+        "ECON",
+        "ECON",
+        "ECON",
+        "ITEMS",
+        "ITEMS",
+        "ITEMS",
+        "COMBAT",
+        "COMBAT"
+      ],
+      "augmentsTip": "Positioning is very important! Follow guide and put Pyke one hex left or right from back center hex to be opposite side of enemy carry.  All psionic items are good except for drone, Target lock optics->Pyke, Biomatter->Panth/Gragas, All other Psionic items->Gwen.",
+      "carousel": [
+        "TFT_Item_BFSword",
+        "TFT_Item_TearOfTheGoddess",
+        "TFT_Item_SparringGloves",
+        "TFT_Item_ChainVest"
+      ],
+      "earlyComp": [
+        {
+          "apiName": "TFT17_Gragas",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Gwen",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Pantheon",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Pyke",
+          "items": [
+            "TFT_Item_InfinityEdge",
+            "TFT_Item_GuardianAngel",
+            "TFT17_Item_PsyOps_TargetlockMod"
+          ],
+          "stars": 1
+        }
+      ],
+      "tips": [
+        {
+          "stage": "Stage 2",
+          "tip": "If you have Two Much Value, level immediately and start collecting 2 free rerolls per turn. Look for Milio and Pantheon for max value. Slam items on Pyke / Gwen."
+        },
+        {
+          "stage": "Stage 3",
+          "tip": "Level to 6 and play all 2 costs. Roll until you have upgrades to win streak Stage 3. Finish Pyke and tank items."
+        },
+        {
+          "stage": "Stage 4",
+          "tip": "Finish your 3* then level for Riven. If you are win streaking hard, push to 9. Otherwise, roll hard on 8 for the rest of the game for 5 costs."
+        }
+      ]
+    },
+    "reach-for-the-stars-jax": {
+      "title": "Reach for the Stars Jax",
+      "difficulty": "EASY",
+      "updated": "2026-06-17 18:41:09.574Z",
+      "augments": [
+        "TFT17_Augment_JaxCarry",
+        "TFT_Augment_HeroicGrabBagPlus",
+        "TFT_Augment_Waverider",
+        "TFT6_Augment_GachaAddict",
+        "TFT9_Augment_MissedConnections",
+        "TFT_Augment_BronzeForLife2",
+        "TFT6_Augment_SecondWind1",
+        "TFT9_Augment_HealingOrbsII"
+      ],
+      "augmentTypes": [
+        "HERO",
+        "HERO",
+        "HERO",
+        "ITEMS",
+        "ITEMS",
+        "ITEMS",
+        "ECON",
+        "ECON"
+      ],
+      "augmentsTip": "Positioning example shown for Huntress. Best Stargazers: Mountain = Huntress  > Medallion > Altar > Fountain > Serpent > Boar. Take lots of item and econ augments to hit the board. Prioritize Jax items > Pantheon > Millio. Ideally hit Jax 3 on 4-1 to be on tempo. Don't need to build Shred because of Aatrox NOVA bonus.",
+      "carousel": [
+        "TFT_Item_Bloodthirster",
+        "TFT_Item_TitansResolve",
+        "TFT_Item_GuardianAngel",
+        "TFT_Item_RecurveBow"
+      ],
+      "earlyComp": [
+        {
+          "apiName": "TFT17_Aatrox",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Talon",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_TwistedFate",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Jax",
+          "items": [
+            "TFT_Item_Bloodthirster",
+            "TFT_Item_TitansResolve"
+          ],
+          "stars": 1
+        }
+      ],
+      "tips": [
+        {
+          "stage": "Stage 2",
+          "tip": "Get Jax online with items ASAP and try to win streak if possible. If lose streak, you can look for an econ engine like Primordian / Timebreaker."
+        },
+        {
+          "stage": "Stage 3",
+          "tip": "Level to 6 and roll for 2* Jax and the Stargazer NOVA board. Econ back up to 50g and slow roll for 3* Jax.  If hit a lot of upgrades early, can level to 7 for a stronger board and slowroll on 7."
+        },
+        {
+          "stage": "Stage 4",
+          "tip": "Try to finish the Jax 3* by 4-1, Rhaast goes in on 8.  Morgana goes in on 9."
+        }
+      ]
+    },
+    "samira-knock-up-copy": {
+      "title": "Samira Two Tanky",
+      "difficulty": "MEDIUM",
+      "updated": "2026-06-17 18:41:09.264Z",
+      "augments": [
+        "TFT10_Augment_HeroicGrabBag",
+        "TFT6_Augment_TradeSector",
+        "TFT6_Augment_CalculatedLoss",
+        "TFT_Augment_ExclusiveCustomization",
+        "TFT_Augment_PatienceIsAVirtue",
+        "TFT_Augment_LegionOfThrees",
+        "TFT_Augment_SpreadingRoots",
+        "TFT_Augment_TwoTanky"
+      ],
+      "augmentTypes": [
+        "ECON",
+        "ECON",
+        "ECON",
+        "ITEMS",
+        "ITEMS",
+        "ITEMS",
+        "COMBAT",
+        "COMBAT"
+      ],
+      "augmentsTip": "Only play this version with augment \"Two Tanky\". You can also go for alternative double tank if Ornn is too contested, such as Jax 3 + Jax 2 or two Nunus.",
+      "carousel": [
+        "TFT_Item_SpearOfShojin",
+        "TFT_Item_BFSword",
+        "TFT_Item_SparringGloves",
+        "TFT_Item_GiantsBelt"
+      ],
+      "earlyComp": [
+        {
+          "apiName": "TFT17_Ezreal",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_RekSai",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Pantheon",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Samira",
+          "items": [
+            "TFT_Item_SpearOfShojin",
+            "TFT_Item_Deathblade"
+          ],
+          "stars": 1
+        }
+      ],
+      "tips": [
+        {
+          "stage": "Stage 2",
+          "tip": "Ideally open with early Samira / Ornn to itemize. Look for an econ engine: Timebreaker > Primordian. Slam items for Samira / Ornn."
+        },
+        {
+          "stage": "Stage 3",
+          "tip": "If lose streaking, level to 7 at 3-5 and roll for 2* item holders. Win last two fights of Stage and econ up. If win streaking, you can aim to Level 7 end of Stage."
+        },
+        {
+          "stage": "Stage 4",
+          "tip": "Slow roll for 3* 3 cost. You should be hitting one by end of Stage 4. If you think you can't hit, take an econ augment. Once done, level to 8 for Blitz>2nd Nunu>Nasus."
+        }
+      ]
+    },
+    "self-destruct-gragas": {
+      "title": "Self Destruct Gragas",
+      "difficulty": "EASY",
+      "updated": "2026-06-17 18:41:09.407Z",
+      "augments": [
+        "TFT_Augment_BoxingLessons",
+        "TFT_Augment_GuardbreakerSpirit",
+        "TFT_Augment_GroupHug2",
+        "TFT_Augment_HeroicGrabBagPlus",
+        "TFT9_Augment_JeweledLotus",
+        "TFT_Augment_MagicRoll",
+        "TFT_Augment_ChargeTransfer1",
+        "TFT17_Augment_GragasCarry"
+      ],
+      "augmentTypes": [
+        "HERO",
+        "HERO",
+        "HERO",
+        "ITEMS",
+        "ITEMS",
+        "ITEMS",
+        "ECON",
+        "ECON"
+      ],
+      "augmentsTip": "Gragas Hero Augment required. +1 tier in strength when played with Sympathetic Implant for Gragas. Also good with +1 Bruiser Emblem so you can fit 6 Bruiser / 4 Psionic quicker. Bruiser emblem goes on Yi. Pyke 3 is only worth chasing if you have excess items.",
+      "carousel": [
+        "TFT17_Item_PsyOps_SympatheticImplantMod_Radiant",
+        "TFT_Item_JeweledGauntlet",
+        "TFT_Item_UnstableConcoction",
+        "TFT_Item_GiantsBelt"
+      ],
+      "earlyComp": [
+        {
+          "apiName": "TFT17_RekSai",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_IvernMinion",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Pyke",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Gragas",
+          "items": [
+            "TFT_Item_JeweledGauntlet",
+            "TFT_Item_UnstableConcoction",
+            "TFT17_Item_PsyOps_SympatheticImplantMod"
+          ],
+          "stars": 1
+        }
+      ],
+      "tips": [
+        {
+          "stage": "Stage 2",
+          "tip": "Get Gragas online with items ASAP and try to win streak if possible. If lose streak, you can look for an econ engine like Primordian / Timebreaker."
+        },
+        {
+          "stage": "Stage 3",
+          "tip": "Level to 6 and roll for 2* Gragas and activate traits (4 Brawler + Psionic. Econ back up to 50g and slow roll for 3* Gragas."
+        },
+        {
+          "stage": "Stage 4",
+          "tip": "Finish Gragas and push levels. Ideally tank Tahm 2 but you can use any upgraded Brawler. Cap with 6 Brawler / 4 Psionic. Before level 9, can run 4 Brawlers 4 Psyonic with Karma backline."
+        }
+      ]
+    },
+    "shepherd-pie": {
+      "title": "Shepherd Pie",
+      "difficulty": "MEDIUM",
+      "updated": "2026-06-17 18:41:09.060Z",
+      "augments": [
+        "TFT_Augment_SpreadingRoots",
+        "TFT_Augment_GildedSteel",
+        "TFT_Augment_GlassCannonII",
+        "TFT9_Augment_JeweledLotus",
+        "TFT_Augment_BoxingLessons",
+        "TFT_Augment_GroupHug1",
+        "TFT_Augment_UrfsGambit",
+        "TFT_Augment_HoldTheLine"
+      ],
+      "augmentTypes": [
+        "EMBLEM",
+        "EMBLEM",
+        "EMBLEM",
+        "ITEMS",
+        "ITEMS",
+        "ITEMS",
+        "COMBAT",
+        "COMBAT"
+      ],
+      "augmentsTip": "Always focus on strong frontline. If you get emblem, 7 Shepherd is worth chasing. Best with Arbiter that prints Leona for free Leona 3* or Arbiter that scales Leblanc's AP. Drop down to 2 Vanguard as your flex spots if 7 Shepherd or bad Arbiter. Play Mighty Mech over Karma on level 8 if you find Sona for 7 Shepherd.",
+      "carousel": [
+        "TFT_Item_GuinsoosRageblade",
+        "TFT_Item_NeedlesslyLargeRod",
+        "TFT_Item_TearOfTheGoddess",
+        "TFT_Item_ChainVest"
+      ],
+      "earlyComp": [
+        {
+          "apiName": "TFT17_Leona",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Lissandra",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Mordekaiser",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Zoe",
+          "items": [
+            "TFT_Item_GuinsoosRageblade",
+            "TFT_Item_ArchangelsStaff"
+          ],
+          "stars": 1
+        }
+      ],
+      "tips": [
+        {
+          "stage": "Stage 2",
+          "tip": "Play around early Arbiter AP win streak. If you take econ Arbiter, ditch it late game for a better tank option. "
+        },
+        {
+          "stage": "Stage 3",
+          "tip": "Level for 5 Shepherd when possible with Vanguards. Focus on econ management while preserving HP because we will roll heavily on level 8."
+        },
+        {
+          "stage": "Stage 4",
+          "tip": "Level and roll for 5 Shepherd + Vanguard frontline. If you don't hit Sona and you have strong AP Arbiter, keep Zoe in. Otherwise, flex in a duo carry like Karma or Bard."
+        }
+      ]
+    },
+    "shieldmaiden-leona": {
+      "title": "Shieldmaiden Leona",
+      "difficulty": "EASY",
+      "updated": "2026-06-17 18:41:09.453Z",
+      "augments": [
+        "TFT17_Augment_LeonaCarry",
+        "TFT9_Augment_MissedConnections",
+        "TFT9_Augment_Commander_Ascension",
+        "TFT_Augment_TheBaronsLair",
+        "TFT_Augment_BoxingLessons",
+        "TFT_Augment_GroupHug1",
+        "TFT9_Augment_JeweledLotus",
+        "TFT6_Augment_Electrocharge1"
+      ],
+      "augmentTypes": [
+        "HERO",
+        "HERO",
+        "HERO",
+        "ITEMS",
+        "ITEMS",
+        "ITEMS",
+        "ECON",
+        "ECON"
+      ],
+      "augmentsTip": "S tier with Arbiter that can print Leona so you can push levels. Max cap would be permanent Max HP since her ability scales with max HP and AD. Vex 2 / Bard 2 can replace backline Arbiters end game (especially if Leona print is your Arbiter since its irrelevant late game).",
+      "carousel": [
+        "TFT_Item_Bloodthirster",
+        "TFT_Item_TitansResolve",
+        "TFT_Item_SteraksGage",
+        "TFT_Item_RecurveBow"
+      ],
+      "earlyComp": [
+        {
+          "apiName": "TFT17_Nasus",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Teemo",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Leona",
+          "items": [
+            "TFT_Item_TitansResolve",
+            "TFT_Item_Bloodthirster"
+          ],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Zoe",
+          "items": [],
+          "stars": 1
+        }
+      ],
+      "tips": [
+        {
+          "stage": "Stage 2",
+          "tip": "If you have Arbiter that can print Leonas, push levels and aim for a winstreak. If no free Leona Arbiter, don't level early at all and econ up."
+        },
+        {
+          "stage": "Stage 3",
+          "tip": "If you have print Leona Arbiter, level on standard intervals (6 @ 3-2, 7 @ 3-5 if winstreaking). If not, then slow roll for Leona 3. Aim for 4 Vanguard and 3 Shepherd."
+        },
+        {
+          "stage": "Stage 4",
+          "tip": "Level for your 4 costs. Look for Leblanc as your duo carry with items. You can also put Leona 2 hexes inward (A3 / A5) if opponents are positioning around her."
+        }
+      ]
+    },
+    "stellar-combo-aatrox": {
+      "title": "Stellar Combo Aatrox",
+      "difficulty": "EASY",
+      "updated": "2026-06-17 18:41:09.489Z",
+      "augments": [
+        "TFT17_Augment_AatroxCarry",
+        "TFT9_Augment_MissedConnections",
+        "TFT17_Augment_ApotheoticForge",
+        "TFT6_Augment_PortableForge",
+        "TFT6_Augment_GachaAddict",
+        "TFT_Augment_Waverider",
+        "TFT_Augment_HomeCooking",
+        "TFT_Augment_ForgeSword"
+      ],
+      "augmentTypes": [
+        "HERO",
+        "HERO",
+        "HERO",
+        "ITEMS",
+        "ITEMS",
+        "ITEMS",
+        "ECON",
+        "ECON"
+      ],
+      "augmentsTip": "NOVA provides Shred/Sunder built into trait. If hit Aatrox early, can carry Caitlyn 2 into Corki and Poppy 2 tank items to Rammus/Morgana.",
+      "carousel": [
+        "TFT_Item_TitansResolve",
+        "TFT_Item_Bloodthirster",
+        "TFT_Item_SteraksGage",
+        "TFT_Item_RecurveBow"
+      ],
+      "earlyComp": [
+        {
+          "apiName": "TFT17_Caitlyn",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_TwistedFate",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Aatrox",
+          "items": [
+            "TFT_Item_Bloodthirster",
+            "TFT_Item_TitansResolve",
+            "TFT_Item_SteraksGage"
+          ],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Jax",
+          "items": [],
+          "stars": 1
+        }
+      ],
+      "tips": [
+        {
+          "stage": "Stage 2",
+          "tip": "Prioritize Aatrox BIS and aim for a win streak if possible, but don't level early. Aim for a NOVA + Bastion set up."
+        },
+        {
+          "stage": "Stage 3",
+          "tip": "Slow roll for Aatrox 3 and the other 1 costs. You often can't roll for every 3* at the same time due to bench space so prioritize units you can itemize."
+        },
+        {
+          "stage": "Stage 4",
+          "tip": "Aim to level to 8 and finish rolling down for your 4 costs, can aim to go 9 if board is mostly upgraded. Can play Ornn before hitting Shen."
+        }
+      ]
+    },
+    "termeepnal-velocity-poppy": {
+      "title": "Termeepnal Velocity Poppy",
+      "difficulty": "EASY",
+      "updated": "2026-06-17 18:41:09.463Z",
+      "augments": [
+        "TFT17_Augment_PoppyCarry",
+        "TFT9_Augment_MissedConnections",
+        "TFT_Augment_HeroicGrabBagPlus",
+        "TFT9_Augment_JeweledLotus",
+        "TFT_Augment_HeavyIsTheCrown",
+        "TFT6_Augment_SecondWind1",
+        "TFT9_Augment_Commander_Ascension",
+        "TFT_Augment_ForgeAFriend"
+      ],
+      "augmentTypes": [
+        "HERO",
+        "HERO",
+        "HERO",
+        "ITEMS",
+        "ITEMS",
+        "ITEMS",
+        "ECON",
+        "ECON"
+      ],
+      "augmentsTip": "Don't reroll on low levels. Instead, use the 2 star to tempo win streak and finish printing the 3 star with 7 meeple -> go fast 9 and 10. Board shown is only the end game cap so it's important to flex Stage 4 with units like Mighty Mech + Meepsie.",
+      "carousel": [
+        "TFT_Item_InfinityEdge",
+        "TFT_Item_BlueBuff",
+        "TFT_Item_MadredsBloodrazor",
+        "TFT_Item_RecurveBow"
+      ],
+      "earlyComp": [
+        {
+          "apiName": "TFT17_Aatrox",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Veigar",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Poppy",
+          "items": [
+            "TFT_Item_InfinityEdge",
+            "TFT_Item_BlueBuff"
+          ],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_IvernMinion",
+          "items": [],
+          "stars": 1
+        }
+      ],
+      "tips": [
+        {
+          "stage": "Stage 2",
+          "tip": "Get Poppy online with items ASAP and try to win streak if possible. We are getting poppy 3 with 7 meeple print later so just push levels as standard."
+        },
+        {
+          "stage": "Stage 3",
+          "tip": "Level for 5 Meeple + Bastions. Hold at least 1 copy of Meeple so you can get in 7 ASAP. It is worth leveling early (Stage 3-5) for 7 Meeple if you have it."
+        },
+        {
+          "stage": "Stage 4",
+          "tip": "Level to 8 and roll for 1 Rammus and Corki to get 7 Meeple. Play Mighty Mech + Meepsie on 8 before you hit Bard. Blitz Morde on 9. Rhaast on 10."
+        }
+      ]
+    },
+    "tf-reroll": {
+      "title": "Fateweaver Reroll",
+      "difficulty": "EASY",
+      "updated": "2026-06-17 18:41:09.088Z",
+      "augments": [
+        "TFT_Augment_Waverider",
+        "TFT6_Augment_GachaAddict",
+        "TFT_Augment_EarlyLearning",
+        "TFT_Augment_NoScoutNoPivot",
+        "TFT9_Augment_MissedConnections",
+        "TFT_Augment_ForgedInStrength",
+        "TFT7_Augment_LivingForge",
+        "TFT9_Augment_PandorasRadiantBox"
+      ],
+      "augmentTypes": [
+        "ITEMS",
+        "ITEMS",
+        "ITEMS",
+        "ECON",
+        "ECON",
+        "ECON",
+        "COMBAT",
+        "COMBAT"
+      ],
+      "augmentsTip": "Best on Mountain (stage2) > Medallion > Altar > Boar > Serpent Huntress. Item priority: Jax / TF > Caitlyn. 4 Fateweaver is the max cap but you can play Rhaast + Rogue until you find Corki.",
+      "carousel": [
+        "TFT_Item_GargoyleStoneplate",
+        "TFT_Item_RecurveBow",
+        "TFT_Item_GiantsBelt",
+        "TFT_Item_NeedlesslyLargeRod"
+      ],
+      "earlyComp": [
+        {
+          "apiName": "TFT17_Aatrox",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Caitlyn",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_TwistedFate",
+          "items": [
+            "TFT_Item_Leviathan",
+            "TFT_Item_RabadonsDeathcap"
+          ],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Jax",
+          "items": [
+            "TFT_Item_GargoyleStoneplate"
+          ],
+          "stars": 1
+        }
+      ],
+      "tips": [
+        {
+          "stage": "Stage 2",
+          "tip": "Don't level early at all. Play around early Twisted Fate with AP items. Focus on Twisted + Jax items. Can also have Talon hold items if he's your only upgrade."
+        },
+        {
+          "stage": "Stage 3",
+          "tip": "Slow roll above 50g for 3*. Prioritize Twisted Fate > Jax > Caitlyn / Talon > Aatrox as the priority for 3*. Jax 2 is better than Aatrox 3."
+        },
+        {
+          "stage": "Stage 4",
+          "tip": "Finish your 3* then level for 4 Fateweaver or Gwen/Rhaast. If very rich with resources, you can chase Corki 2 with items."
+        }
+      ]
+    },
+    "the-big-bang-meepsie": {
+      "title": "The Big Bang Meepsie",
+      "difficulty": "EASY",
+      "updated": "2026-06-17 18:41:09.102Z",
+      "augments": [
+        "TFT17_Augment_IvernMinionCarry",
+        "TFT_Augment_HeroicGrabBagPlus",
+        "TFT9_Augment_ArmyBuilding",
+        "TFT_Augment_HomeCooking",
+        "TFT_Augment_ExclusiveCustomization",
+        "TFT6_Augment_ThriftShop",
+        "TFT6_Augment_ForceOfNature",
+        "TFT7_Augment_CursedCrown"
+      ],
+      "augmentTypes": [
+        "HERO",
+        "HERO",
+        "HERO",
+        "ITEMS",
+        "ITEMS",
+        "ITEMS",
+        "ECON",
+        "ECON"
+      ],
+      "augmentsTip": "Positioning is key to get the middle of the board open for Pyke to jump on enemy carries. Good with extra team slots to play more Voyagers. Can also play Viktor as duo carry if your Psionic item is good for him (Drone > Implant). Rhaast and Nami can go in on at 8.",
+      "carousel": [
+        "TFT_Item_JeweledGauntlet",
+        "TFT_Item_UnstableConcoction",
+        "TFT_Item_GuardianAngel",
+        "TFT_Item_NeedlesslyLargeRod"
+      ],
+      "earlyComp": [
+        {
+          "apiName": "TFT17_Poppy",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Veigar",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Pyke",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_IvernMinion",
+          "items": [
+            "TFT_Item_JeweledGauntlet",
+            "TFT_Item_UnstableConcoction",
+            "TFT_Item_GuardianAngel"
+          ],
+          "stars": 1
+        }
+      ],
+      "tips": [
+        {
+          "stage": "Stage 2",
+          "tip": "Get Meepsie online with items ASAP and try to win streak if possible. If lose streak, you can look for an econ engine like Primordian / Timebreaker."
+        },
+        {
+          "stage": "Stage 3",
+          "tip": "Level to 6 and roll for 2* Meepsie and activate her traits (Meeple > Voyager > Shepherd priority). Econ back up to 50g and slow roll for 3* Meepsie."
+        },
+        {
+          "stage": "Stage 4",
+          "tip": "Finish Meepsie + Pyke 3* and push levels. Ideally tank Morde 3 but Illaoi 2 is fine temporarily. Level for Voyagers / Rhaast."
+        }
+      ]
+    },
+    "veigar-printer": {
+      "title": "Veigar Printer",
+      "difficulty": "MEDIUM",
+      "updated": "2026-06-17 18:41:09.384Z",
+      "augments": [
+        "TFT_Augment_EarlyLearning",
+        "TFT9_Augment_MissedConnections",
+        "TFT9_Augment_PandorasRadiantBox",
+        "TFT6_Augment_PandorasItems",
+        "TFT_Augment_Expedition",
+        "TFT_Augment_Waverider",
+        "TFT_Augment_TreasureHunt",
+        "TFT_Augment_WandOverflow"
+      ],
+      "augmentTypes": [
+        "ITEMS",
+        "ITEMS",
+        "ITEMS",
+        "ECON",
+        "ECON",
+        "ECON",
+        "COMBAT",
+        "COMBAT"
+      ],
+      "augmentsTip": "This comp is played in two ways: Standard 1 cost reroll of slow rolling above 50 at levels 4/5 or push for 7 Meeple to print Veigar 3 (example: Worth the Wait Poppy). Then move down to 5 Meeple for the board once you finish 3* Veigar.",
+      "carousel": [
+        "TFT_Item_RecurveBow",
+        "TFT_Item_GiantsBelt",
+        "TFT_Item_ChainVest",
+        "TFT_Item_TearOfTheGoddess"
+      ],
+      "earlyComp": [
+        {
+          "apiName": "TFT17_Lissandra",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Poppy",
+          "items": [
+            "TFT_Item_GargoyleStoneplate"
+          ],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Veigar",
+          "items": [
+            "TFT_Item_JeweledGauntlet",
+            "TFT_Item_Leviathan"
+          ],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_IvernMinion",
+          "items": [],
+          "stars": 1
+        }
+      ],
+      "tips": [
+        {
+          "stage": "Stage 2",
+          "tip": "Play around early Veigar 2 with slammed AP items for win streak. If rerolling, don't level at all."
+        },
+        {
+          "stage": "Stage 3",
+          "tip": "If rerolling, slow roll above 50g for Veigar, Poppy, and Lissandra. If tempoing, level for 5 Meeple + Bastion. Rush 7 Meeple if you have emblem."
+        },
+        {
+          "stage": "Stage 4",
+          "tip": "Print Veigar 3 and look for Rammus 2. Play Rhaast until Bard. Itemize Rammus 2* instead of Poppy 3*"
+        }
+      ]
+    },
+    "vex-9-5": {
+      "title": "AP Shepherd 9-5",
+      "difficulty": "HARD",
+      "updated": "2026-06-17 18:41:09.381Z",
+      "augments": [
+        "TFT_Augment_LateGameScaling",
+        "TFT11_Augment_Slammin",
+        "TFT_Augment_ComponentQuestRod",
+        "TFT_Augment_ExplosiveGrowthPlus",
+        "TFT_Augment_MagicRoll",
+        "TFT6_Augment_Electrocharge1",
+        "TFT_Augment_GroupHug1",
+        "TFT_Augment_DuoQueue"
+      ],
+      "augmentTypes": [
+        "ECON",
+        "ECON",
+        "ECON",
+        "ITEMS",
+        "ITEMS",
+        "ITEMS",
+        "COMBAT",
+        "COMBAT"
+      ],
+      "augmentsTip": "Ideally played from a win streak with lots of resources and items for backline. Save tears for Nunu items. 4 Vanguard is shown but frontline is quite flexible. Sona likes leftover mana / utility items. Bard likes AP items. Vex is also another 5 cost to flex in over Bard if you have items for her. Always keep Rhaast on the board.",
+      "carousel": [
+        "TFT_Item_NeedlesslyLargeRod",
+        "TFT_Item_TearOfTheGoddess",
+        "TFT_Item_ChainVest",
+        "TFT_Item_NegatronCloak"
+      ],
+      "earlyComp": [
+        {
+          "apiName": "TFT17_Teemo",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Leona",
+          "items": [
+            "TFT_Item_GargoyleStoneplate"
+          ],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Mordekaiser",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Zoe",
+          "items": [
+            "TFT_Item_StatikkShiv",
+            "TFT_Item_Morellonomicon",
+            "TFT_Item_JeweledGauntlet"
+          ],
+          "stars": 1
+        }
+      ],
+      "tips": [
+        {
+          "stage": "Stage 2",
+          "tip": "Play a standard AP win streak board around Vanguards. Take econ/item augments if you can."
+        },
+        {
+          "stage": "Stage 3",
+          "tip": "Continue leveling and win streaking. Look for upgraded 2 and 3 cost units to hold items. Vanguards and Shepherds is a good core to play towards."
+        },
+        {
+          "stage": "Stage 4",
+          "tip": "If far ahead in HP / win streaking, you can sac Stage 4 with Timebreaker for rerolls. Otherwise, roll on 8 to stabilize first. At 9, always prioritize itemizing whichever upgraded units you hit first."
+        }
+      ]
+    },
+    "viktor-b4l": {
+      "title": "Viktor Nami",
+      "difficulty": "EASY",
+      "updated": "2026-06-17 18:41:09.392Z",
+      "augments": [
+        "TFT_Augment_BronzeForLifeI",
+        "TFT_Augment_BronzeForLife2",
+        "TFT_Augment_PatienceIsAVirtue",
+        "TFT6_Augment_TradeSector2",
+        "TFT_Augment_LegionOfThrees",
+        "TFT6_Augment_Diversify1",
+        "TFT_Augment_GlassCannonII",
+        "TFT9_Augment_JeweledLotus"
+      ],
+      "augmentTypes": [
+        "ECON",
+        "ECON",
+        "ECON",
+        "ITEMS",
+        "ITEMS",
+        "ITEMS",
+        "COMBAT",
+        "COMBAT"
+      ],
+      "augmentsTip": "Nami takes leftover AP and utility items. Often you will be contested so level to 8 and play for 2* only -> aim for Top 4.",
+      "carousel": [
+        "TFT_Item_RabadonsDeathcap",
+        "TFT_Item_NeedlesslyLargeRod",
+        "TFT_Item_SparringGloves",
+        "TFT_Item_GiantsBelt"
+      ],
+      "earlyComp": [
+        {
+          "apiName": "TFT17_Leona",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Mordekaiser",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Zoe",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Viktor",
+          "items": [
+            "TFT17_Item_PsyOps_DroneMod"
+          ],
+          "stars": 1
+        }
+      ],
+      "tips": [
+        {
+          "stage": "Stage 2",
+          "tip": "Ideally open with Viktor with Drone or a strong AP opener. Look for an econ engine: Timebreaker > Arbiter > Primordian. Slam items for Viktor."
+        },
+        {
+          "stage": "Stage 3",
+          "tip": "If lose streaking, level to 7 at 3-5 and roll for 2* item holders. Win last two fights of Stage and econ up. If win streaking, you can aim to Level 7 end of Stage."
+        },
+        {
+          "stage": "Stage 4",
+          "tip": "If uncontested, roll on 7. Otherwise, level to 8 and look for Viktor 2 with upgraded frontline. When stable, go 9 for Bard and 5 costs."
+        }
+      ]
+    },
+    "yi-marawlers": {
+      "title": "Yi Marawlers",
+      "difficulty": "MEDIUM",
+      "updated": "2026-06-17 18:41:09.264Z",
+      "augments": [
+        "TFT_Augment_JustSlayer",
+        "TFT_Augment_GroupHug1",
+        "TFT_Augment_BoxingLessons",
+        "TFT_Augment_HomeCooking",
+        "TFT_Augment_FuriousBlows",
+        "TFT_Augment_ComponentQuestSword",
+        "TFT_Augment_EpicRolldown",
+        "TFT_Augment_ForgeSword"
+      ],
+      "augmentTypes": [
+        "ECON",
+        "ECON",
+        "ECON",
+        "ITEMS",
+        "ITEMS",
+        "ITEMS",
+        "COMBAT",
+        "COMBAT"
+      ],
+      "augmentsTip": "Tempo composition that is best played from ahead and with a strong special item. Best Psionic = Malware Matrix on Yi. Related trait emblems are good: Marauder > Brawler = Psionic > Challenger. Sunder is very important but only build 1 of Last Whisper or Evenshroud (not both as shown).",
+      "carousel": [
+        "TFT_Item_GuardianAngel",
+        "TFT_Item_MadredsBloodrazor",
+        "TFT_Item_RecurveBow",
+        "TFT_Item_GiantsBelt"
+      ],
+      "earlyComp": [
+        {
+          "apiName": "TFT17_Chogath",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_RekSai",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Briar",
+          "items": [
+            "TFT_Item_GuardianAngel",
+            "TFT_Item_MadredsBloodrazor"
+          ],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Belveth",
+          "items": [],
+          "stars": 1
+        }
+      ],
+      "tips": [
+        {
+          "stage": "Stage 2",
+          "tip": "Best played from high tempo + econ engine like Primordian or Timebreaker. Slam items on Bel'Veth or Briar as an item holder. "
+        },
+        {
+          "stage": "Stage 3",
+          "tip": "Standard level 6 and 7 intervals (3-2 / 3-5 if streaking). Play around 4 Brawler + Marauder + NOVA. Master Yi 1 can immediately go in with items."
+        },
+        {
+          "stage": "Stage 4",
+          "tip": "Level to 8 at a natural interval and roll until Master Yi 2 with upgraded Brawlers. Kindred takes leftover bow items. Fiora takes leftover fighter items."
+        }
+      ]
+    }
+  },
+  "skipped": []
+}

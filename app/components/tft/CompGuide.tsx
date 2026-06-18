@@ -1,0 +1,231 @@
+'use client';
+import type { TftAssetsBundle } from '../../lib/tft-cdragon';
+import { tftIconUrl, tftChampionTileUrl, findChampion, findItem } from '../../lib/tft-cdragon';
+import { costColor as costColorOf } from '../../lib/tft-ui';
+import { useI18n } from '../../lib/i18n';
+import {
+  type CompGuide as CompGuideData,
+  augmentTierBorderColor,
+  groupAugmentsBySlot,
+  difficultyColor,
+} from '../../lib/tft-comp-guides';
+
+// CompGuide — renders the curated tftacademy.com build data as a stack of
+// sub-sections (per architect verdict 2026-06-18): augments grouped by
+// slot label (Econ/Items/Combat/Emblem/Hero) with tier-border-color, an
+// early-game 4-champ board with items+stars, a round-1 carousel hint, and
+// stage-by-stage tips. Difficulty badge inlined in the parent's header.
+
+interface AugmentMeta {
+  name?: string;
+  desc?: string;
+  icon?: string;
+  tier?: number;
+}
+
+function AugmentTile({ apiName, assets }: { apiName: string; assets: TftAssetsBundle | null }) {
+  const meta = assets?.items?.[apiName] as AugmentMeta | undefined;
+  const iconUrl = meta?.icon ? tftIconUrl(assets, meta.icon) : null;
+  const tier = typeof meta?.tier === 'number' ? meta.tier : null;
+  return (
+    <a
+      href={`/tft/augments/${encodeURIComponent(apiName)}`}
+      className="flex flex-col items-center w-16 hover:scale-105 transition"
+      title={meta?.desc?.replace(/<[^>]+>/g, '') || meta?.name || apiName}
+    >
+      <div
+        className="w-14 h-14 rounded overflow-hidden border-2"
+        style={{ borderColor: augmentTierBorderColor(tier) }}
+      >
+        {iconUrl ? (
+          <img src={iconUrl} alt={meta?.name || apiName} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full bg-[#1e2a3a]" />
+        )}
+      </div>
+      <div className="text-white text-[10px] mt-0.5 text-center truncate w-full">
+        {meta?.name || apiName.replace(/^TFT\d*_Augment_/, '')}
+      </div>
+    </a>
+  );
+}
+
+function EarlyChampionTile({
+  apiName, items, stars, assets,
+}: {
+  apiName: string;
+  items: string[];
+  stars: number;
+  assets: TftAssetsBundle | null;
+}) {
+  const ch = findChampion(assets, apiName);
+  const url = tftChampionTileUrl(assets, ch);
+  const cost = ch?.cost ?? 1;
+  return (
+    <div className="flex flex-col items-center gap-1 w-14">
+      <a
+        href={`/tft/units/${encodeURIComponent(apiName)}`}
+        className="relative block w-12 h-12 rounded border-2 overflow-hidden hover:scale-105 transition"
+        style={{ borderColor: costColorOf(cost) }}
+        title={ch?.name || apiName}
+      >
+        {url && <img src={url} alt={ch?.name || apiName} className="w-full h-full object-cover" />}
+        {stars >= 2 && (
+          <div
+            className="absolute top-0 left-0 right-0 text-center text-[10px] font-bold leading-3 px-0.5"
+            style={{
+              color: stars === 3 ? '#e0c75a' : '#c0c0c0',
+              textShadow: '0 0 2px #000, 0 0 2px #000',
+            }}
+          >
+            {'★'.repeat(Math.min(3, stars))}
+          </div>
+        )}
+      </a>
+      {items.length > 0 && (
+        <div className="flex items-center gap-[1px]">
+          {items.slice(0, 3).map((it, idx) => {
+            const meta = findItem(assets, it);
+            const iconUrl = tftIconUrl(assets, meta?.icon);
+            return (
+              <a
+                key={`${it}-${idx}`}
+                href={`/tft/items/${encodeURIComponent(it)}`}
+                className="w-3 h-3 rounded-sm bg-[#0a0e1a] border border-[#1e2a3a] overflow-hidden block"
+                title={meta?.name || it}
+              >
+                {iconUrl && <img src={iconUrl} alt={meta?.name || it} className="w-full h-full object-cover" />}
+              </a>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CarouselItemTile({ apiName, assets }: { apiName: string; assets: TftAssetsBundle | null }) {
+  const meta = findItem(assets, apiName);
+  const iconUrl = tftIconUrl(assets, meta?.icon);
+  return (
+    <a
+      href={`/tft/items/${encodeURIComponent(apiName)}`}
+      className="flex flex-col items-center gap-1 hover:scale-105 transition"
+      title={meta?.name || apiName}
+    >
+      <div className="w-8 h-8 rounded border border-[#1e2a3a] overflow-hidden">
+        {iconUrl && <img src={iconUrl} alt={meta?.name || apiName} className="w-full h-full object-cover" />}
+      </div>
+      <div className="text-white text-[9px] text-center truncate max-w-[60px]">
+        {meta?.name || apiName.replace(/^TFT\d*_Item_/, '')}
+      </div>
+    </a>
+  );
+}
+
+export default function CompGuide({
+  guide,
+  assets,
+}: {
+  guide: CompGuideData;
+  assets: TftAssetsBundle | null;
+}) {
+  const { t } = useI18n();
+  const groups = groupAugmentsBySlot(guide);
+  const hasGroupedAugments = guide.augmentTypes.length === guide.augments.length;
+
+  return (
+    <>
+      {/* 1) Augments — grouped if augmentTypes present, otherwise flat. */}
+      {guide.augments.length > 0 && (
+        <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
+          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest">{t('tft.comp.augments')}</h2>
+              {guide.difficulty && (
+                <span
+                  className="inline-flex items-center px-1.5 py-[1px] rounded text-[9px] font-semibold tabular-nums"
+                  style={{
+                    color: difficultyColor(guide.difficulty),
+                    backgroundColor: `${difficultyColor(guide.difficulty)}1f`,
+                    border: `1px solid ${difficultyColor(guide.difficulty)}40`,
+                  }}
+                  title={t(`tft.comp.difficulty.${guide.difficulty}` as any) || guide.difficulty}
+                >
+                  {t(`tft.comp.difficulty.${guide.difficulty}` as any) || guide.difficulty}
+                </span>
+              )}
+            </div>
+            <span className="text-[#5a6a80] text-[10px]">{t('tft.comp.augments.source')}</span>
+          </div>
+          {hasGroupedAugments ? (
+            <div className="flex flex-col gap-3">
+              {groups.map((group, idx) => (
+                <div key={`${group.label}-${idx}`} className="flex flex-col gap-1.5">
+                  <div className="text-[#7a8aa0] text-[10px] uppercase tracking-wider">
+                    {t(`tft.comp.augments.group.${group.label}` as any) || group.label}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {group.augments.map(a => <AugmentTile key={a} apiName={a} assets={assets} />)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {guide.augments.map(a => <AugmentTile key={a} apiName={a} assets={assets} />)}
+            </div>
+          )}
+          {guide.augmentsTip && (
+            <p className="text-[#a0b0c5] text-xs mt-3 leading-snug">{guide.augmentsTip}</p>
+          )}
+        </section>
+      )}
+
+      {/* 2) Early Game Board (4 champions with items + stars) */}
+      {guide.earlyComp.length > 0 && (
+        <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
+          <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.earlyGame')}</h2>
+          <div className="flex flex-wrap gap-3">
+            {guide.earlyComp.map((e, i) => (
+              <EarlyChampionTile
+                key={`${e.apiName}-${i}`}
+                apiName={e.apiName}
+                items={e.items}
+                stars={e.stars}
+                assets={assets}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* 3) Round-1 Carousel suggestion */}
+      {guide.carousel.length > 0 && (
+        <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
+          <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.carousel')}</h2>
+          <div className="flex flex-wrap gap-3">
+            {guide.carousel.map((c, i) => (
+              <CarouselItemTile key={`${c}-${i}`} apiName={c} assets={assets} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* 4) Stage-by-Stage tips */}
+      {guide.tips.length > 0 && (
+        <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
+          <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.stageTips')}</h2>
+          <div className="flex flex-col gap-2">
+            {guide.tips.map((tip, i) => (
+              <div key={`${tip.stage}-${i}`} className="flex gap-3">
+                <div className="text-[#c39bff] text-xs font-medium min-w-[4.5rem]">{tip.stage}</div>
+                <div className="text-[#a0b0c5] text-xs leading-snug flex-1">{tip.tip}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+    </>
+  );
+}

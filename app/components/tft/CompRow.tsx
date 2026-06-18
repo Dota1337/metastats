@@ -1,7 +1,7 @@
 'use client';
 import { useRouter } from 'next/navigation';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
-import { tftChampionTileUrl, findChampion, tftTraitDisplayName, tftTraitDescription } from '../../lib/tft-cdragon';
+import { tftIconUrl, tftChampionTileUrl, findChampion, findItem, tftTraitDisplayName, tftTraitDescription } from '../../lib/tft-cdragon';
 import { costColor as costColorOf } from '../../lib/tft-ui';
 import { useI18n } from '../../lib/i18n';
 import BookmarkButton from '../BookmarkButton';
@@ -34,7 +34,12 @@ interface Comp {
   pickRate?: number | null;
   avgLevel?: number | null;
   avgLastRound?: number | null;
-  typicalUnits: { characterId: string; count: number | unknown; carryItemGames?: number | unknown }[];
+  typicalUnits: {
+    characterId: string;
+    count: number | unknown;
+    carryItemGames?: number | unknown;
+    topItems?: { apiName: string; count: number | unknown }[];
+  }[];
   velocity?: CompVelocity | null;
 }
 
@@ -197,7 +202,7 @@ export default function CompRow({
           router.push(href);
         }
       }}
-      className="block px-2 sm:px-3 py-2 rounded border border-[#1e2a3a] bg-[#0d1526] hover:bg-[#101a30] hover:border-[#7B61FF]/40 transition-colors text-xs sm:text-[13px] cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B61FF]/60"
+      className="block px-2 sm:px-3 py-2 rounded border border-[#1e2a3a] bg-[#0d1526] hover:bg-[#101a30] hover:border-[#7B61FF]/40 transition-colors text-xs sm:text-sm cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B61FF]/60"
     >
       {/* Mobile: stacked. Desktop: tight horizontal row.
           Großes Carry-Portrait raus — der Carry erscheint sowieso in der
@@ -207,8 +212,8 @@ export default function CompRow({
           entsprechend entfernt. */}
       <div className={`grid grid-cols-[1.25rem_1.5rem_minmax(7rem,1fr)_minmax(0,auto)_auto] ${
         showVelocity
-          ? 'sm:grid-cols-[1.25rem_1.5rem_minmax(11rem,1fr)_minmax(0,auto)_3rem_3rem_3rem_3rem_3rem_3.5rem_3rem]'
-          : 'sm:grid-cols-[1.25rem_1.5rem_minmax(11rem,1fr)_minmax(0,auto)_3rem_3rem_3rem_3rem_3rem_3rem]'
+          ? 'sm:grid-cols-[1.25rem_1.5rem_minmax(13rem,1fr)_minmax(0,auto)_3rem_3rem_3rem_3rem_3rem_3.5rem_3rem]'
+          : 'sm:grid-cols-[1.25rem_1.5rem_minmax(13rem,1fr)_minmax(0,auto)_3rem_3rem_3rem_3rem_3rem_3rem]'
       } items-center gap-2 sm:gap-3`}>
         <div className="text-[#7a8aa0] tabular-nums text-right">{rank}</div>
         <div
@@ -266,22 +271,46 @@ export default function CompRow({
             </div>
           )}
         </div>
-        <div className="flex items-center gap-[2px]">
+        <div className="flex items-start gap-1 flex-wrap sm:flex-nowrap">
           {typicalUnits.slice(0, 9).map(u => {
             const ch = findChampion(assets, u.characterId);
             const isCarry = u.characterId === carryCid;
             const url = tftChampionTileUrl(assets, ch);
+            const items = Array.isArray(u.topItems) ? u.topItems.slice(0, 3) : [];
             return (
-              <a
+              <div
                 key={u.characterId}
-                href={`/tft/units/${encodeURIComponent(u.characterId)}`}
-                onClick={e => e.stopPropagation()}
-                className="w-6 h-6 rounded border overflow-hidden flex-shrink-0 block hover:scale-110 transition-transform"
-                style={{ borderColor: isCarry ? '#c39bff' : (ch ? costColorOf(ch.cost) : '#1e2a3a') }}
-                title={ch?.name || u.characterId}
+                className="flex flex-col items-center gap-0.5 flex-shrink-0"
               >
-                {url && <img src={url} alt={ch?.name || ''} className="w-full h-full object-cover" />}
-              </a>
+                <a
+                  href={`/tft/units/${encodeURIComponent(u.characterId)}`}
+                  onClick={e => e.stopPropagation()}
+                  className="w-9 h-9 rounded border-2 overflow-hidden block hover:scale-110 transition-transform"
+                  style={{ borderColor: isCarry ? '#c39bff' : (ch ? costColorOf(ch.cost) : '#1e2a3a') }}
+                  title={ch?.name || u.characterId}
+                >
+                  {url && <img src={url} alt={ch?.name || ''} className="w-full h-full object-cover" />}
+                </a>
+                {items.length > 0 && (
+                  <div className="flex items-center gap-[1px]">
+                    {items.map(it => {
+                      const meta = findItem(assets, it.apiName);
+                      const iconUrl = tftIconUrl(assets, meta?.icon);
+                      return (
+                        <a
+                          key={it.apiName}
+                          href={`/tft/items/${encodeURIComponent(it.apiName)}`}
+                          onClick={e => e.stopPropagation()}
+                          className="w-[11px] h-[11px] rounded-sm bg-[#0a0e1a] border border-[#1e2a3a] overflow-hidden block hover:border-[#c39bff]/60"
+                          title={meta?.name || it.apiName}
+                        >
+                          {iconUrl && <img src={iconUrl} alt={meta?.name || it.apiName} className="w-full h-full object-cover" />}
+                        </a>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>

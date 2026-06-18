@@ -938,12 +938,14 @@ export function finalize(agg, opts = {}) {
     })();
     for (const [bucket, b] of buckets) {
       if (b.games < minCompGames) continue;
-      // Cooccurrence-Threshold (≥40 %): Units, die nur in einer Minderheit
-      // der Cluster-Spiele auftauchen, sind Hybrid/Flex-Edge-Cases und gehören
-      // statistisch nicht in die "typische" Comp-Komposition. Behebt das
-      // Symptom, dass z.B. Gnar in 30 % der Meeple-Corki-Spiele die top-9
-      // füllt + irreführende top-Items mitbringt.
-      const minCo = Math.max(1, Math.floor(b.games * 0.40));
+      // Cooccurrence-Threshold (15 % ODER ≥3 Games, je nachdem was höher
+      // ist): bei hohem Sample setzt die Prozent-Schranke, bei niedrigem
+      // Sample die 3-Game-Untergrenze. Gesenkt von 40% (2026-06-18) damit
+      // flexible Reroll-Comps (Samira *3, MF) konsistent 9 Units zeigen
+      // statt nur die rigide Core (5-7). 15 % schneidet Low-Sample-Noise
+      // (Position 9 mit 1-2 Games) weiterhin ab. Primary + Secondary aus
+      // dem cluster_key bleiben unabhängig vom Threshold immer drin.
+      const minCo = Math.max(3, Math.floor(b.games * 0.15));
       const typicalUnits = [...b.typicalUnits.entries()]
         .filter(([cid, e]) => (e.count || 0) >= minCo || cid === carryFromKey || cid === secondaryFromKey)
         .sort((a, b) => (b[1].count || 0) - (a[1].count || 0))

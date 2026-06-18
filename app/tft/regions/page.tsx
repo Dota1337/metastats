@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
 import TftHero from '../../components/tft/TftHero';
@@ -7,10 +8,18 @@ import EmptyData from '../../components/tft/EmptyData';
 import { useI18n } from '../../lib/i18n';
 import { loadTftAssets, tftChampionTileUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import { parseClusterKey } from '../../lib/tft-cluster';
+import {
+  classifyRegionPattern,
+  regionPatternSortScore,
+  buildRegionNarrative,
+  type RegionPattern,
+} from '../../lib/tft-region-pattern';
 
-// W2-A: Region-Meta-Divergence — Pro-Tool um zu sehen, was KR vor dem
-// Westen spielt. Datenquelle: /api/tft/regions/divergence (Migration 0032).
-// Bewusst KEIN Statistik-Stream pro Augment/Item, sondern nur Comp-Ebene.
+// W2-A Region-Meta-Divergence — Redesign 2026-06-18 (User-Feedback):
+//   Statt 3 Tabs (KR-voraus / EU-voraus / NA-voraus) eine Hauptliste mit
+//   Pattern-Klassifikation pro Row. Mode-Filter darüber, narrative Δ-Zeile
+//   statt Roh-Zahlen. Thresholds in app/lib/tft-region-pattern.ts kalibriert
+//   gegen DB-Realität (data-skeptic verdict 2026-06-18).
 
 interface Row {
   cluster_key: string;
@@ -31,11 +40,35 @@ interface Row {
   krAheadNa: number | null;
 }
 
-type Lens = 'kr-ahead' | 'eu-ahead' | 'na-ahead';
+type Mode = 'all' | 'kr-ahead' | 'west-ahead' | 'mastery';
+const VALID_MODES: Mode[] = ['all', 'kr-ahead', 'west-ahead', 'mastery'];
+
+function modeFilter(mode: Mode, pattern: RegionPattern): boolean {
+  if (mode === 'all') return true;
+  if (mode === 'kr-ahead') return pattern === 'kr-secret';
+  if (mode === 'west-ahead') return pattern === 'west-trend';
+  if (mode === 'mastery') return pattern === 'mastery';
+  return true;
+}
+
+const PATTERN_COLORS: Record<RegionPattern, string> = {
+  'kr-secret':  '#3ecf8e',   // green — Geheimtipp
+  'west-trend': '#7B61FF',   // purple — West-Trend
+  'mastery':    '#e0c75a',   // gold — Mastery
+  'etabliert':  '#5a6a80',   // muted — etabliert
+  'niche':      '#3a8ddc',   // blue — Niche
+};
 
 export default function TftRegionsPage() {
   const { t } = useI18n();
-  const [lens, setLens] = useState<Lens>('kr-ahead');
+  const router = useRouter();
+  const pathname = usePathname();
+  const search = useSearchParams();
+
+  const initialMode = (search.get('mode') as Mode | null);
+  const [mode, setMode] = useState<Mode>(
+    initialMode && VALID_MODES.includes(initialMode) ? initialMode : 'all',
+  );
   const [days, setDays] = useState(7);
   const [bucket, setBucket] = useState('master_plus');
   const [comps, setComps] = useState<Row[]>([]);
@@ -44,6 +77,15 @@ export default function TftRegionsPage() {
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
+
+  // URL-Sync (per architect verdict): no localStorage, mode is session-bound.
+  useEffect(() => {
+    if (!pathname) return;
+    const next = new URLSearchParams(search.toString());
+    if (mode === 'all') next.delete('mode'); else next.set('mode', mode);
+    const q = next.toString();
+    router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
+  }, [mode, pathname, router, search]);
 
   useEffect(() => {
     let cancelled = false;
@@ -60,42 +102,35 @@ export default function TftRegionsPage() {
     return () => { cancelled = true; };
   }, [days, bucket]);
 
-  // Re-rank by the selected lens. The API ships KR-ahead order by default;
-  // EU/NA lenses just flip the sign of the relevant Δ.
-  const sorted = useMemo(() => {
-    const copy = [...comps];
-    if (lens === 'kr-ahead') {
-      copy.sort((a, b) => (b.krAheadEu ?? -1e9) - (a.krAheadEu ?? -1e9));
-    } else if (lens === 'eu-ahead') {
-      copy.sort((a, b) => -((b.krAheadEu ?? 1e9) - (a.krAheadEu ?? 1e9)));
-    } else {
-      // NA-ahead: comps where NA pickrate > KR pickrate (= West ahead of KR).
-      copy.sort((a, b) => {
-        const sa = a.krAheadNa != null ? -a.krAheadNa : -1e9;
-        const sb = b.krAheadNa != null ? -b.krAheadNa : -1e9;
-        return sb - sa;
-      });
-    }
-    return copy.slice(0, 30);
-  }, [comps, lens]);
+  // Classify + filter + sort. Pattern wird einmal pro Row berechnet,
+  // gefiltert nach mode, dann nach Pattern-Score sortiert (Geheimtipps
+  // oben, Niche unten).
+  const rows = useMemo(() => {
+    return comps
+      .map(r => ({ row: r, pattern: classifyRegionPattern(r) }))
+      .filter(x => modeFilter(mode, x.pattern))
+      .sort((a, b) => regionPatternSortScore(b.pattern, b.row) - regionPatternSortScore(a.pattern, a.row))
+      .slice(0, 50);
+  }, [comps, mode]);
 
   return (
     <main className="min-h-screen bg-[#0e1525]">
       <Nav active="comps" />
       <TftHero pageTitle={t('tft.regions.title')} subtitle={t('tft.regions.subtitle')} />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-2 pb-6">
-        {/* Lens + window controls */}
+        {/* Mode-Filter + Window-Controls */}
         <div className="flex flex-wrap items-center gap-2 mb-4">
           {([
-            { v: 'kr-ahead' as Lens, label: t('tft.regions.lensKr') },
-            { v: 'eu-ahead' as Lens, label: t('tft.regions.lensEu') },
-            { v: 'na-ahead' as Lens, label: t('tft.regions.lensNa') },
+            { v: 'all'         as Mode, label: t('tft.regions.mode.all') },
+            { v: 'kr-ahead'    as Mode, label: t('tft.regions.mode.krAhead') },
+            { v: 'west-ahead'  as Mode, label: t('tft.regions.mode.westAhead') },
+            { v: 'mastery'     as Mode, label: t('tft.regions.mode.mastery') },
           ]).map(o => (
             <button
               key={o.v}
-              onClick={() => setLens(o.v)}
+              onClick={() => setMode(o.v)}
               className={`px-3 py-1.5 rounded text-xs border transition-colors ${
-                lens === o.v
+                mode === o.v
                   ? 'bg-[#7B61FF]/20 border-[#7B61FF]/60 text-white'
                   : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5] hover:border-[#7B61FF]/40'
               }`}
@@ -129,10 +164,16 @@ export default function TftRegionsPage() {
         )}
         {hasData === false && !loading && <EmptyData />}
 
-        {hasData && sorted.length > 0 && (
+        {hasData && rows.length > 0 && (
           <div className="space-y-2">
-            {sorted.map(r => (
-              <RegionRow key={r.cluster_key} row={r} assets={assets} t={t} />
+            {rows.map(({ row, pattern }) => (
+              <RegionRowCard
+                key={row.cluster_key}
+                row={row}
+                pattern={pattern}
+                assets={assets}
+                t={t}
+              />
             ))}
           </div>
         )}
@@ -142,13 +183,26 @@ export default function TftRegionsPage() {
   );
 }
 
-
-function RegionRow({ row, assets, t }: { row: Row; assets: TftAssetsBundle | null; t: (k: any) => string }) {
+function RegionRowCard({
+  row, pattern, assets, t,
+}: {
+  row: Row;
+  pattern: RegionPattern;
+  assets: TftAssetsBundle | null;
+  t: (k: any) => string;
+}) {
   const parts = parseClusterKey(row.cluster_key);
   const trait = parts && assets ? assets.traits[parts.trait] : null;
   const traitName = trait?.name || (parts ? parts.trait.replace(/^TFT\d+_/, '') : '');
   const carry = parts && assets ? assets.champions[parts.carry] : null;
   const carryUrl = tftChampionTileUrl(assets, carry);
+  const narrative = buildRegionNarrative(row, pattern, t);
+  const badgeColor = PATTERN_COLORS[pattern];
+  const badgeLabel = t(`tft.regions.pattern.${
+    pattern === 'kr-secret' ? 'krSecret' :
+    pattern === 'west-trend' ? 'westTrend' :
+    pattern
+  }` as any);
 
   return (
     <a
@@ -162,22 +216,30 @@ function RegionRow({ row, assets, t }: { row: Row; assets: TftAssetsBundle | nul
           <div className="w-10 h-10 rounded bg-[#1e2a3a] flex-shrink-0" />
         )}
         <div className="flex-1 min-w-0">
-          <div className="text-white text-sm font-medium truncate">
-            {traitName} · {carry?.name || (parts ? parts.carry.replace(/^TFT\d+_/, '') : '')}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-white text-sm font-medium truncate">
+              {traitName} · {carry?.name || (parts ? parts.carry.replace(/^TFT\d+_/, '') : '')}
+            </span>
+            <span
+              className="inline-flex items-center px-1.5 py-[1px] rounded text-[9px] font-semibold tabular-nums flex-shrink-0"
+              style={{
+                color: badgeColor,
+                backgroundColor: `${badgeColor}1f`,
+                border: `1px solid ${badgeColor}40`,
+              }}
+            >
+              {badgeLabel}
+            </span>
           </div>
-          <div className="text-[#7a8aa0] text-[10px]">{trait?.name ? '' : row.cluster_key}</div>
+          {narrative && (
+            <div className="text-[#a0b0c5] text-[11px] mt-0.5 leading-snug">{narrative}</div>
+          )}
         </div>
       </div>
       <div className="grid grid-cols-3 gap-2 mt-3">
-        <RegionCell label="KR" avgPlace={row.avg_place_kr} pickRate={row.pickrate_kr} games={row.games_kr} />
+        <RegionCell label="KR"  avgPlace={row.avg_place_kr} pickRate={row.pickrate_kr} games={row.games_kr} />
         <RegionCell label="EUW" avgPlace={row.avg_place_eu} pickRate={row.pickrate_eu} games={row.games_eu} />
-        <RegionCell label="NA" avgPlace={row.avg_place_na} pickRate={row.pickrate_na} games={row.games_na} />
-      </div>
-      {/* Δ-row: shows the per-region gap relative to KR. Color follows whether
-          KR is ahead (green if higher pickrate/lower placement). */}
-      <div className="grid grid-cols-2 gap-2 mt-2 text-[10px] tabular-nums">
-        <DeltaTag label={t('tft.regions.vsEu')} dPick={row.dPickEu} dPlace={row.dPlaceEu} />
-        <DeltaTag label={t('tft.regions.vsNa')} dPick={row.dPickNa} dPlace={row.dPlaceNa} />
+        <RegionCell label="NA"  avgPlace={row.avg_place_na} pickRate={row.pickrate_na} games={row.games_na} />
       </div>
     </a>
   );
@@ -203,20 +265,5 @@ function RegionCell({ label, avgPlace, pickRate, games }: {
         <span className="text-[#5a6a80]"> · {games}</span>
       </div>
     </div>
-  );
-}
-
-function DeltaTag({ label, dPick, dPlace }: { label: string; dPick: number | null; dPlace: number | null }) {
-  if (dPick == null && dPlace == null) return <span className="text-[#5a6a80]">— {label}</span>;
-  // Lower placement = better; higher pickrate = more played. KR-positive on
-  // both = strongly ahead (green).
-  const krAhead = (dPick ?? 0) > 0 && (dPlace ?? 0) > 0;
-  const krBehind = (dPick ?? 0) < 0 && (dPlace ?? 0) < 0;
-  const color = krAhead ? '#3ecf8e' : krBehind ? '#e44040' : '#a0b0c5';
-  return (
-    <span style={{ color }}>
-      {label}: {dPick != null ? `${dPick >= 0 ? '+' : ''}${(dPick * 100).toFixed(2)}%` : '—'}
-      {dPlace != null ? ` / Ø ${dPlace >= 0 ? '+' : ''}${dPlace.toFixed(2)}` : ''}
-    </span>
   );
 }

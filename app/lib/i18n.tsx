@@ -550,6 +550,58 @@ const translations = {
   'tft.regions.lensKr':        t6('KR voraus', 'KR ahead', 'KR \uC55E\uC11C', '\u97E9\u670D\u9886\u5148', 'KR adelantado', 'KR en avance'),
   'tft.regions.lensEu':        t6('EU voraus', 'EU ahead', 'EU \uC55E\uC11C', '\u6B27\u670D\u9886\u5148', 'EU adelantado', 'EU en avance'),
   'tft.regions.lensNa':        t6('NA voraus', 'NA ahead', 'NA \uC55E\uC11C', '\u7F8E\u670D\u9886\u5148', 'NA adelantado', 'NA en avance'),
+  // Mode-Filter (neu)
+  'tft.regions.mode.all':       t6('Alle Trends', 'All trends', '\uBAA8\uB4E0 \uD2B8\uB80C\uB4DC', '\u6240\u6709\u8D8B\u52BF', 'Todas las tendencias', 'Toutes les tendances'),
+  'tft.regions.mode.krAhead':   t6('KR-Vorsprung', 'KR ahead', 'KR \uC120\uD589', '\u97E9\u670D\u9886\u5148', 'KR adelantado', 'KR en avance'),
+  'tft.regions.mode.westAhead': t6('West-Vorsprung', 'West ahead', '\uC11C\uC591 \uC120\uD589', '\u897F\u670D\u9886\u5148', 'Occidente adelantado', 'Ouest en avance'),
+  'tft.regions.mode.mastery':   t6('Mastery-L\u00FCcke', 'Mastery gap', '\uC219\uB828\uB3C4 \uACA9\uCC28', '\u719F\u7EC3\u5EA6\u5DEE\u5F02', 'Diferencia de dominio', 'Ma\u00EEtrise'),
+  // Pattern-Badges
+  'tft.regions.pattern.krSecret':  t6('KR-Geheimtipp', 'KR secret', 'KR \uBE44\uBC00 \uD301', '\u97E9\u670D\u79D8\u96C6', 'Secreto KR', 'Astuce KR'),
+  'tft.regions.pattern.westTrend': t6('West-Trend', 'West trend', '\uC11C\uC591 \uD2B8\uB80C\uB4DC', '\u897F\u670D\u8D8B\u52BF', 'Tendencia Oeste', 'Tendance Ouest'),
+  'tft.regions.pattern.mastery':   t6('KR-Mastery', 'KR mastery', 'KR \uC219\uB828\uB3C4', '\u97E9\u670D\u719F\u7EC3', 'Dominio KR', 'Ma\u00EEtrise KR'),
+  'tft.regions.pattern.niche':     t6('Nische', 'Niche', '\uB2C8\uC2DC', '\u5C0F\u4F17', 'Nicho', 'Niche'),
+  'tft.regions.pattern.etabliert': t6('Etabliert', 'Established', '\uBCF4\uD3B8\uC801', '\u6210\u719F', 'Establecido', '\u00C9tabli'),
+  // Narrative Templates pro Pattern. Placeholder: {factor} {avgDiff} {krAvg} {westAvg}
+  'tft.regions.narrative.krSecret': t6(
+    'KR spielt {factor} h\u00E4ufiger als der Westen \u00B7 \u00D8-Platz {avgDiff}',
+    'KR plays {factor} more than the West \u00B7 Avg-Place {avgDiff}',
+    'KR\uC774 \uC11C\uC591\uBCF4\uB2E4 {factor} \uB354 \uC790\uC8FC \uD50C\uB808\uC774 \u00B7 \uD3C9\uADE0 \uC21C\uC704 {avgDiff}',
+    '\u97E9\u670D\u6BD4\u897F\u65B9\u591A\u73A9{factor} \u00B7 \u5E73\u5747\u540D\u6B21{avgDiff}',
+    'KR juega {factor} m\u00E1s que Occidente \u00B7 Plaza prom. {avgDiff}',
+    'La KR joue {factor} plus que l\'Ouest \u00B7 Place moy. {avgDiff}'
+  ),
+  'tft.regions.narrative.westTrend': t6(
+    'Westen spielt {factor} h\u00E4ufiger als KR \u00B7 \u00D8-Platz {avgDiff}',
+    'West plays {factor} more than KR \u00B7 Avg-Place {avgDiff}',
+    '\uC11C\uC591\uC774 KR\uBCF4\uB2E4 {factor} \uB354 \uC790\uC8FC \uD50C\uB808\uC774 \u00B7 \uD3C9\uADE0 \uC21C\uC704 {avgDiff}',
+    '\u897F\u65B9\u6BD4\u97E9\u670D\u591A\u73A9{factor} \u00B7 \u5E73\u5747\u540D\u6B21{avgDiff}',
+    'Occidente juega {factor} m\u00E1s que KR \u00B7 Plaza prom. {avgDiff}',
+    'L\'Ouest joue {factor} plus que la KR \u00B7 Place moy. {avgDiff}'
+  ),
+  'tft.regions.narrative.mastery': t6(
+    'KR spielt sie deutlich besser: {krAvg} vs Westen {westAvg}',
+    'KR plays it significantly better: {krAvg} vs West {westAvg}',
+    'KR\uAC00 \uD6E8\uC52C \uC798 \uD50C\uB808\uC774\uD568: {krAvg} vs \uC11C\uC591 {westAvg}',
+    '\u97E9\u670D\u73A9\u5F97\u660E\u663E\u66F4\u597D\uFF1A{krAvg} vs \u897F\u65B9 {westAvg}',
+    'KR juega mucho mejor: {krAvg} vs Oeste {westAvg}',
+    'La KR la joue nettement mieux : {krAvg} vs Ouest {westAvg}'
+  ),
+  'tft.regions.narrative.niche': t6(
+    'Niedriges Spielaufkommen in allen Regionen',
+    'Low play volume across all regions',
+    '\uBAA8\uB4E0 \uC9C0\uC5ED\uC5D0\uC11C \uC801\uC740 \uD50C\uB808\uC774',
+    '\u6240\u6709\u5730\u533A\u73A9\u6CD5\u91CF\u5C11',
+    'Bajo volumen de juego en todas las regiones',
+    'Faible volume de jeu dans toutes les r\u00E9gions'
+  ),
+  'tft.regions.narrative.etabliert': t6(
+    'Pickrate und \u00D8-Platz \u00FCber alle Regionen vergleichbar',
+    'Pick-rate and avg-place comparable across all regions',
+    '\uBAA8\uB4E0 \uC9C0\uC5ED\uC5D0\uC11C \uC120\uD0DD\uB960\uACFC \uD3C9\uADE0 \uC21C\uC704 \uBE44\uC2B7',
+    '\u5404\u5730\u533A\u9009\u53D6\u7387\u4E0E\u5E73\u5747\u540D\u6B21\u76F8\u4F3C',
+    'Tasa de selecci\u00F3n y plaza prom. comparables en todas las regiones',
+    'Taux de s\u00E9lection et place moy. similaires dans toutes les r\u00E9gions'
+  ),
   'tft.regions.vsEu':          t6('vs EU', 'vs EU', 'EU \uB300\uBE44', '\u5BF9\u6B27\u670D', 'vs EU', 'vs EU'),
   'tft.regions.vsNa':          t6('vs NA', 'vs NA', 'NA \uB300\uBE44', '\u5BF9\u7F8E\u670D', 'vs NA', 'vs NA'),
   'nav.regions':               t6('Regionen', 'Regions', '\uC9C0\uC5ED', '\u5730\u533A', 'Regiones', 'R\u00E9gions'),

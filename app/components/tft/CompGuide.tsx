@@ -7,7 +7,6 @@ import {
   type CompGuide as CompGuideData,
   augmentTierBorderColor,
   groupAugmentsBySlot,
-  difficultyColor,
 } from '../../lib/tft-comp-guides';
 
 // CompGuide — renders the curated tftacademy.com build data as a stack of
@@ -139,25 +138,7 @@ export default function CompGuide({
       {/* 1) Augments — grouped if augmentTypes present, otherwise flat. */}
       {guide.augments.length > 0 && (
         <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
-          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-            <div className="flex items-center gap-2">
-              <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest">{t('tft.comp.augments')}</h2>
-              {guide.difficulty && (
-                <span
-                  className="inline-flex items-center px-1.5 py-[1px] rounded text-[9px] font-semibold tabular-nums"
-                  style={{
-                    color: difficultyColor(guide.difficulty),
-                    backgroundColor: `${difficultyColor(guide.difficulty)}1f`,
-                    border: `1px solid ${difficultyColor(guide.difficulty)}40`,
-                  }}
-                  title={t(`tft.comp.difficulty.${guide.difficulty}` as any) || guide.difficulty}
-                >
-                  {t(`tft.comp.difficulty.${guide.difficulty}` as any) || guide.difficulty}
-                </span>
-              )}
-            </div>
-            <span className="text-[#5a6a80] text-[10px]">{t('tft.comp.augments.source')}</span>
-          </div>
+          <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.augments')}</h2>
           {hasGroupedAugments ? (
             <div className="flex flex-col gap-3">
               {groups.map((group, idx) => (

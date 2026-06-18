@@ -459,21 +459,6 @@ export default function TftCompDetailPage() {
                     </div>
                   )}
 
-                  {/* Layer 3 — 4-Phasen-Heatmap */}
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-                    {story.phaseBreakdown.map(p => (
-                      <PhasePanel
-                        key={p.phase}
-                        title={phaseLabel(p.phase)}
-                        range={phaseRangeLabel(p.phase)}
-                        share={p.share}
-                        cumTop4={p.cumTop4AfterPhase}
-                        isEndPhase={p.phase === 'end'}
-                        t={t as (k: string) => string}
-                      />
-                    ))}
-                  </div>
-
                   {/* Layer 4 — Detail-Chart (collapsible) */}
                   <details className="mt-3 group">
                     <summary className="cursor-pointer text-[11px] text-[#7a8aa0] hover:text-white select-none">

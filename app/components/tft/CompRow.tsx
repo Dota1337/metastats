@@ -73,14 +73,32 @@ function extractTraitVariant(traitApiName: string, traitDisplayName: string): st
 // / Consistent / High WR". Priority order matters: tempo wins over difficulty,
 // win-rate wins over consistency. Pros want one quick label to recognise the
 // archetype, not a stack of competing tags.
+// Mappt Carry-Cost auf das typische Roll-Level einer Reroll-Comp:
+// 1-Cost rollt typisch auf Lvl 5 (5-3-Reroll), 2-Cost auf 6, 3-Cost auf 7,
+// 4-Cost (selten als Reroll) auf 8. Wird nur aufgerufen wenn der Cluster
+// einen 3★-Carry im Key trägt (= eindeutige Reroll-Comp).
+function rerollLevelForCost(cost: number): number {
+  if (cost <= 1) return 5;
+  return cost + 4;
+}
+
 function descriptorTag(opts: {
   avgLevel?: number | null;
   top1Rate?: number | null;
   top4Rate?: number | null;
   carryCost?: number;
   carryItemRate?: number;
+  carryStar?: number;
 }): { label: string; color: string } | null {
-  const { avgLevel, top1Rate, top4Rate, carryCost, carryItemRate } = opts;
+  const { avgLevel, top1Rate, top4Rate, carryCost, carryItemRate, carryStar } = opts;
+  // Reroll-Cluster (3★-Carry im Key) hat Vorrang vor avg-Level. Nach dem
+  // 3★-Hit leveln die Spieler oft auf 8-9 weiter — der Cluster bleibt aber
+  // strategisch eine Slow-Roll-Comp und sollte nicht als Fast-8 verkauft
+  // werden. Label inkludiert das Roll-Level, damit man sofort sieht ob das
+  // eine 2-Cost-(Lvl 6), 3-Cost-(Lvl 7) oder 1-Cost-(Lvl 5)-Reroll ist.
+  if (carryStar === 3 && carryCost != null && carryCost > 0) {
+    return { label: `Slow Roll Lvl ${rerollLevelForCost(carryCost)}`, color: '#3a8ddc' };
+  }
   if (avgLevel != null) {
     if (avgLevel >= 8.5) return { label: 'Fast 8', color: '#e0c75a' };
     if (avgLevel <= 7.0) return { label: 'Reroll', color: '#3a8ddc' };
@@ -168,6 +186,7 @@ export default function CompRow({
     top4Rate: comp.top4Rate,
     carryCost: carry?.cost,
     carryItemRate,
+    carryStar: parts?.carryStar,
   });
 
   // Outer wrapper used to be an <a href={href}>, which produced invalid HTML

@@ -30,7 +30,24 @@
  */
 import { request } from 'node:https';
 import { lookup } from 'node:dns';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import Anthropic from '@anthropic-ai/sdk';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// Load .env.local so ANTHROPIC_API_KEY is available when running standalone
+// (Daily-Crawl Workflow already injects env via repository secrets).
+function loadDotEnvLocal() {
+  const envPath = resolve(__dirname, '..', '.env.local');
+  if (!existsSync(envPath)) return;
+  for (const line of readFileSync(envPath, 'utf8').split(/\r?\n/)) {
+    const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
+    if (m && !process.env[m[1]]) process.env[m[1]] = m[2];
+  }
+}
+loadDotEnvLocal();
 
 function lookupIPv4(host) {
   return new Promise((res, rej) => lookup(host, { family: 4 }, (e, a) => e ? rej(e) : res(a)));
@@ -68,6 +85,61 @@ function get(url) {
 }
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// Paraphrase + localize the raw augmentsTip via Anthropic. Returns
+// { de, en, ko, zh, es, fr } when the response parses + validates,
+// otherwise null (UI then renders no tip rather than fake content).
+async function paraphraseTip(anthropic, rawTip, compTitle, carryName) {
+  if (!rawTip || rawTip.trim().length === 0) return null;
+  const prompt = `You're paraphrasing a Teamfight Tactics comp build tip so it reads in our own words rather than the source phrasing. Preserve EVERY proper noun and game term:
+- Champion names (e.g. Lulu, Pantheon, Gnar)
+- Trait, variant, constellation names (e.g. Mountain, Fountain, Stargazer, Medallion)
+- Augment names
+- Star levels (3-star, Pantheon 3)
+- Stage references (Stage 2, stage 4-1)
+- Conditional logic ("if A then B")
+- Comparisons ("X > Y")
+
+Comp: ${compTitle} (carry: ${carryName})
+Original tip:
+"${rawTip}"
+
+Output exactly one JSON object with paraphrased translations into 6 languages. Each translation MUST keep the proper nouns identical (do not translate champion/trait/augment names). Each translation under 280 characters. No preamble, no markdown, just JSON:
+{"de":"...","en":"...","ko":"...","zh":"...","es":"...","fr":"..."}`;
+
+  let response;
+  try {
+    response = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1500,
+      messages: [{ role: 'user', content: prompt }],
+    });
+  } catch (e) {
+    process.stdout.write(`        ⚠ Anthropic API error: ${e.message}\n`);
+    return null;
+  }
+  const text = response.content?.[0]?.type === 'text' ? response.content[0].text : '';
+  // Strip any accidental code-fence wrapping
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) return null;
+  let parsed;
+  try { parsed = JSON.parse(jsonMatch[0]); } catch { return null; }
+  const langs = ['de', 'en', 'ko', 'zh', 'es', 'fr'];
+  for (const k of langs) {
+    if (typeof parsed[k] !== 'string' || parsed[k].trim().length === 0) return null;
+  }
+  // Anti-hallucination guard: at least 3 proper-noun tokens from the original
+  // must appear in the English paraphrase (case-insensitive). Catches LLM
+  // outputs that summarised away the strategic detail.
+  const propers = [...new Set((rawTip.match(/\b[A-Z][a-z]{2,}|\b\d-?(?:star|cost)|stage\s*\d-?\d?/gi) || []))];
+  const enLower = parsed.en.toLowerCase();
+  const matched = propers.filter(p => enLower.includes(p.toLowerCase())).length;
+  if (propers.length >= 3 && matched < 3) {
+    process.stdout.write(`        ⚠ Paraphrase dropped — only ${matched}/${propers.length} proper nouns preserved\n`);
+    return null;
+  }
+  return parsed;
+}
 
 function extractSlugsFromIndex(html, setNumber) {
   const re = new RegExp(`/tierlist/comps/set-${setNumber}-([a-z0-9-]+)`, 'g');
@@ -229,6 +301,16 @@ async function main() {
   const bundleAugs = new Set(Object.keys(liveBundle.augments || {}));
   const bundleChamps = new Set(Object.keys(liveBundle.champions || {}));
 
+  // Anthropic client for tip paraphrase+translation. Optional — if key is
+  // missing, the scraper still runs but emits raw tips (back-compat).
+  let anthropic = null;
+  if (process.env.ANTHROPIC_API_KEY) {
+    anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    console.log('       Anthropic SDK initialised — tips will be paraphrased + localised');
+  } else {
+    console.log('       ANTHROPIC_API_KEY missing — tips will stay as raw English copy');
+  }
+
   console.log(`[1/3] Fetch tftacademy index for Set ${setNumber}`);
   const indexHtml = await get('https://tftacademy.com/tierlist/comps');
   const slugs = extractSlugsFromIndex(indexHtml, setNumber);
@@ -256,7 +338,6 @@ async function main() {
       const slotHeaders = (extractStringArray(chunk, 'augmentTypes') || [])
         .filter(t => VALID_AUGMENT_TYPES.has(t));
       const augmentTypes = expandAugmentTypes(augments, slotHeaders);
-      const augmentsTip = extractStringField(chunk, 'augmentsTip') || '';
       const carousel = (extractApiNameArray(chunk, 'carousel') || []);
       const earlyComp = (extractEarlyComp(chunk) || []).filter(e => bundleChamps.has(e.apiName));
       const tips = (extractTips(chunk) || []).filter(t => t.tip && t.tip.trim());
@@ -264,6 +345,16 @@ async function main() {
       const difficulty = VALID_DIFFICULTIES.has(rawDifficulty) ? rawDifficulty : null;
       const title = extractStringField(chunk, 'title');
       const updated = extractStringField(chunk, 'updated');
+      const rawAugmentsTip = extractStringField(chunk, 'augmentsTip') || '';
+      // Paraphrase + localise via Anthropic so the rendered tip is in our
+      // own words (avoid wholesale text re-use). When the API call fails
+      // or validation drops the result, we render no tip at all rather
+      // than fall back to the verbatim source.
+      let augmentsTip = null;
+      if (anthropic && rawAugmentsTip) {
+        const carryName = (title || slug).split(/\s+/).slice(-1)[0];
+        augmentsTip = await paraphraseTip(anthropic, rawAugmentsTip, title || slug, carryName);
+      }
 
       const entry = {
         title: title || slug,

@@ -20,13 +20,20 @@ export interface StageTip {
   tip: string;
 }
 
+// LLM-paraphrased + localised augments tip (one paraphrase per language).
+// Null when paraphrase failed validation — UI then renders no tip rather
+// than the verbatim source-text (`feedback_no_fake_values`).
+export type LocalizedTip = {
+  de: string; en: string; ko: string; zh: string; es: string; fr: string;
+} | null;
+
 export interface CompGuide {
   title: string;
   difficulty: Difficulty | null;
   updated: string | null;
   augments: string[];           // 0-8 augment apiNames, slot-ordered
   augmentTypes: AugmentGroup[]; // parallel to augments, empty when mismatched
-  augmentsTip: string;
+  augmentsTip: LocalizedTip;
   carousel: string[];           // round-1 item apiNames
   earlyComp: EarlyChampion[];   // 0-4 champions
   tips: StageTip[];             // 0-N stage tips

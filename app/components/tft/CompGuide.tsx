@@ -129,9 +129,15 @@ export default function CompGuide({
   guide: CompGuideData;
   assets: TftAssetsBundle | null;
 }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const groups = groupAugmentsBySlot(guide);
   const hasGroupedAugments = guide.augmentTypes.length === guide.augments.length;
+  // Localised augmentsTip — falls back to EN when current lang isn't a key
+  // in the paraphrase. Renders nothing when the LLM-paraphrase failed
+  // validation (the scraper writes null in that case).
+  const localisedTip = guide.augmentsTip
+    ? guide.augmentsTip[lang as keyof typeof guide.augmentsTip] || guide.augmentsTip.en
+    : null;
 
   return (
     <>
@@ -157,8 +163,8 @@ export default function CompGuide({
               {guide.augments.map(a => <AugmentTile key={a} apiName={a} assets={assets} />)}
             </div>
           )}
-          {guide.augmentsTip && (
-            <p className="text-[#a0b0c5] text-xs mt-3 leading-snug">{guide.augmentsTip}</p>
+          {localisedTip && (
+            <p className="text-[#a0b0c5] text-xs mt-3 leading-snug">{localisedTip}</p>
           )}
         </section>
       )}

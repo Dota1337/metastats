@@ -150,16 +150,17 @@ export default function CompRow({
   const secondaryChamp = secondaryCid && assets ? assets.champions[secondaryCid] : null;
   const secondaryName = secondaryChamp?.name || (secondaryCid ? prettyChar(secondaryCid) : null);
 
-  const carryByItems = typicalUnits
-    .filter(u => u._c >= 5 && u._carry > 0)
-    .map(u => ({ cid: u.characterId, rate: u._carry / u._c, _carry: u._carry }))
-    .sort((a, b) => (b.rate - a.rate) || (b._carry - a._carry))[0];
-  const carryCid = carryByItems?.cid || parts?.carry;
+  const carryCid = parts?.carry || null;
   const carry = carryCid && assets ? assets.champions[carryCid] : null;
   const carryUrl = tftChampionTileUrl(assets, carry);
 
   const tier = tierBadge(comp.avgPlacement);
-  const carryItemRate = carryByItems ? carryByItems.rate : 0;
+  // Rate des Primary-Carry (aus cluster_key) für „Items Dep"-Descriptor.
+  // 0 wenn die Primary-Unit < 5 Spiele hat (zu sparse für eine verlässliche Rate).
+  const primaryUnit = typicalUnits.find(u => u.characterId === carryCid);
+  const carryItemRate = primaryUnit && primaryUnit._c >= 5
+    ? primaryUnit._carry / primaryUnit._c
+    : 0;
   const descriptor = descriptorTag({
     avgLevel: comp.avgLevel,
     top1Rate: comp.top1Rate,

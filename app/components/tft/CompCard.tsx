@@ -102,14 +102,7 @@ export default function CompCard({
       .slice(0, 9);
   })();
 
-  // Real DMG-carry: unit with the highest share of games holding a
-  // damage-carry item. Falls back to the cluster_key carry (lead champion)
-  // when no typical unit has carryItemGames data yet (old aggregator rows).
-  const carryByItems = typicalUnits
-    .filter(u => u._c >= 5 && u._carry > 0)
-    .map(u => ({ cid: u.characterId, rate: u._carry / u._c, _carry: u._carry }))
-    .sort((a, b) => (b.rate - a.rate) || (b._carry - a._carry))[0];
-  const carryCid = carryByItems?.cid || parts?.carry;
+  const carryCid = parts?.carry || null;
   const carry = carryCid && assets ? assets.champions[carryCid] : null;
   // Sub-Cluster: zweiter damage-carry aus dem clusterKey-Suffix (#<unitId>).
   // Wird im Comp-Header als „(mit <Name>)" hinter dem primary-Carry angezeigt.

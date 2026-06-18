@@ -39,12 +39,18 @@ const overridePath = `public/tft-augment-tiers-${set}.json`;
 const override = loadJson(overridePath);
 const godsPath = `public/tft-gods-${set}.json`;
 const gods = loadJson(godsPath);
+const compAugPath = `public/tft-comp-augments-${set}.json`;
+const compAug = loadJson(compAugPath);
+const compSlugMapPath = `public/tft-comp-slug-map-${set}.json`;
+const compSlugMap = loadJson(compSlugMapPath);
 
 console.log(`Verifying classifications for set ${set} (${bundle.setName})`);
 console.log(`  bundle augments: ${Object.keys(bundle.augments || {}).length}`);
 console.log(`  active.augments: ${bundle.active?.augments?.length || 0}`);
 console.log(`  tier-override:   ${override ? Object.keys(override.tiers || {}).length : 'MISSING'}`);
 console.log(`  gods doc:        ${gods ? gods.gods?.length : 'MISSING'}`);
+console.log(`  comp-augments:   ${compAug ? Object.keys(compAug.comps || {}).length : 'MISSING'}`);
+console.log(`  comp-slug-map:   ${compSlugMap ? Object.keys(compSlugMap.slugs || {}).length : 'MISSING'}`);
 console.log();
 
 // 1. Tier values are valid
@@ -127,6 +133,76 @@ if (activeList.length > 0) {
     if (dist[t] === 0) fail(`No augments classified as tier ${t} — likely a filter/default regression`);
     if (dist[t] / activeList.length > 0.7) fail(`Tier ${t} holds ${((dist[t] / activeList.length) * 100).toFixed(0)} % of augments — likely default-fallthrough regression`);
   }
+}
+
+// 7. Comp-Augments (tftacademy.com) — apiName-Existenz + Tier-Distribution-Sanity
+if (compAug?.comps) {
+  let unknownAugs = 0;
+  let tierSkewed = 0;
+  for (const [slug, augList] of Object.entries(compAug.comps)) {
+    if (!Array.isArray(augList) || augList.length === 0) {
+      warn(`Comp slug "${slug}" has empty augment-list — scraper may have lost it`);
+      continue;
+    }
+    // (a) Every apiName must exist in bundle.augments
+    for (const apiName of augList) {
+      if (!bundle.augments[apiName]) {
+        if (unknownAugs < 5) fail(`comp-augments slug "${slug}": ${apiName} not in bundle.augments`);
+        unknownAugs++;
+      }
+    }
+    // (b) Distribution-Sanity per slug: ≥85% in one tier → scraper drift
+    const tierDist = { 1: 0, 2: 0, 3: 0, 0: 0 };
+    for (const apiName of augList) {
+      const t = bundle.augments[apiName]?.tier ?? 0;
+      tierDist[t] = (tierDist[t] || 0) + 1;
+    }
+    const total = augList.length;
+    for (const t of [1, 2, 3]) {
+      if (tierDist[t] / total > 0.85) {
+        warn(`Comp slug "${slug}": ${tierDist[t]}/${total} augments in tier ${t} (>85 %) — possible scraper drift`);
+        tierSkewed++;
+        break;
+      }
+    }
+  }
+  if (unknownAugs >= 5) fail(`… ${unknownAugs - 5} additional unknown apiNames not shown`);
+} else {
+  warn(`No comp-augments file at ${compAugPath} — Comp-Detail augment-section won't render. Re-run scripts/refresh-comp-augments.mjs.`);
+}
+
+// 8. Comp-Slug-Map — Schema, Bundle-Linkage, Augments-Reference
+if (compSlugMap?.slugs) {
+  const augSlugs = new Set(Object.keys(compAug?.comps || {}));
+  for (const [slug, entry] of Object.entries(compSlugMap.slugs)) {
+    if (!entry || typeof entry !== 'object') {
+      fail(`Slug-map "${slug}": entry is not an object`);
+      continue;
+    }
+    // (a) primaryCarry must exist in bundle.champions (set-bound)
+    if (!entry.primaryCarry || typeof entry.primaryCarry !== 'string') {
+      fail(`Slug-map "${slug}": missing or invalid primaryCarry`);
+    } else if (!bundle.champions[entry.primaryCarry]) {
+      fail(`Slug-map "${slug}": primaryCarry "${entry.primaryCarry}" not in bundle.champions`);
+    }
+    // (b) primaryTrait may be empty string (= match-by-carry-only). When set,
+    //     it must exist in bundle.traits OR be a prefix that matches at least
+    //     one trait (e.g. "TFT17_Stargazer" matches Mountain/Serpent variants).
+    if (entry.primaryTrait !== undefined && entry.primaryTrait !== '') {
+      const traitMatch = bundle.traits[entry.primaryTrait]
+        || Object.keys(bundle.traits || {}).some(k => k.startsWith(entry.primaryTrait + '_'));
+      if (!traitMatch) {
+        fail(`Slug-map "${slug}": primaryTrait "${entry.primaryTrait}" not in bundle.traits (no exact or prefix match)`);
+      }
+    }
+    // (c) augmentsRef (or slug itself) must point at a compAug.comps entry
+    const ref = entry.augmentsRef || slug;
+    if (augSlugs.size > 0 && !augSlugs.has(ref)) {
+      fail(`Slug-map "${slug}": augmentsRef "${ref}" has no entry in tft-comp-augments-${set}.json`);
+    }
+  }
+} else {
+  warn(`No comp-slug-map at ${compSlugMapPath} — Comp-Detail augment-section won't surface for any cluster.`);
 }
 
 console.log();

@@ -11,6 +11,7 @@ import {
 import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias } from '../../../lib/api-cache';
 import { isExcludedUnit, isExcludedItem, setContainsExcludedItem } from '../../../lib/tft-excluded';
 import { lookupSnapshot } from '../../../lib/snapshot-lookup';
+import { parseClusterKey } from '../../../lib/tft-cluster';
 
 // Lazy + memoized champion-cost lookup pro Set. Wird vom Tempo-Klassifikator
 // gebraucht, der Carry-Cost mit Peak-Level + 3-Star-Anteil in Beziehung setzt:
@@ -395,27 +396,24 @@ export async function GET(request: NextRequest) {
 // bringt. Der Carry aus dem clusterKey bleibt IMMER drin. Dieser Post-Filter
 // greift auch auf ALTE Snapshots, bevor der nächste Aggregator-Lauf neue
 // Daten mit demselben Threshold auf der Source-Seite schreibt.
+// Cluster-key field accessors — descriptive wrappers around the shared
+// parseClusterKey helper in app/lib/tft-cluster.ts. Single source of truth
+// for the cluster-key regex.
 function carryFromClusterKey(key: string): string | null {
-  // Suffixe abknippen: *N (Star), ~<slug> (comp-definer Augment), #<sec>.
-  const m = /^.+@\d+_([^#*~]+)(?:\*\d)?(?:~[A-Za-z]+)?(?:#.+)?$/.exec(key);
-  return m ? m[1] : null;
+  return parseClusterKey(key)?.carry ?? null;
 }
 function isUniqueTraitClusterKey(key: string): boolean {
-  const m = /^(.+)@\d+_/.exec(key);
-  return m ? /UniqueTrait$/.test(m[1]) : false;
+  const trait = parseClusterKey(key)?.trait;
+  return trait ? /UniqueTrait$/.test(trait) : false;
 }
 function secondaryFromClusterKey(key: string): string | null {
-  const m = /#(.+)$/.exec(key);
-  return m ? m[1] : null;
+  return parseClusterKey(key)?.secondary ?? null;
 }
 function carryStarFromClusterKey(key: string): number {
-  const m = /\*(\d)(?=[~#]|$)/.exec(key);
-  return m ? Number(m[1]) : 2;
+  return parseClusterKey(key)?.carryStar ?? 2;
 }
 function augmentSlugFromClusterKey(key: string): string | null {
-  // ~<Slug> direkt vor optional #<sec>. Default null.
-  const m = /~([A-Za-z]+)(?=#|$)/.exec(key);
-  return m ? m[1] : null;
+  return parseClusterKey(key)?.augmentSlug ?? null;
 }
 function applyCooccurrenceFilter(
   units: Array<{ characterId: string; count: number } & Record<string, unknown>>,

@@ -6,6 +6,7 @@ import TftHero from '../../components/tft/TftHero';
 import EmptyData from '../../components/tft/EmptyData';
 import { useI18n } from '../../lib/i18n';
 import { loadTftAssets, tftChampionTileUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
+import { parseClusterKey } from '../../lib/tft-cluster';
 
 // W2-A: Region-Meta-Divergence — Pro-Tool um zu sehen, was KR vor dem
 // Westen spielt. Datenquelle: /api/tft/regions/divergence (Migration 0032).
@@ -141,11 +142,6 @@ export default function TftRegionsPage() {
   );
 }
 
-function parseClusterKey(key: string) {
-  const m = /^(.+)@(\d+)_(.+)$/.exec(key);
-  if (!m) return null;
-  return { trait: m[1], level: Number(m[2]), carry: m[3] };
-}
 
 function RegionRow({ row, assets, t }: { row: Row; assets: TftAssetsBundle | null; t: (k: any) => string }) {
   const parts = parseClusterKey(row.cluster_key);

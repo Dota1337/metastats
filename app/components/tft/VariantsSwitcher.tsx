@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
 import { findChampion } from '../../lib/tft-cdragon';
 import { useI18n } from '../../lib/i18n';
-import { compFamilyKey } from '../../lib/tft-cluster';
+import { compFamilyKey, parseClusterKey } from '../../lib/tft-cluster';
 
 // Variants-Switcher: surfaces all sub-cluster variants of a comp family on
 // the Comp-Detail page. Family = (trait, level, carry) without *N / ~aug /
@@ -34,16 +34,6 @@ interface VariantsResponse {
   family: string;
   familyTotal: number;
   variants: Variant[];
-}
-
-function parseClusterKey(key: string) {
-  const m = /^(.+)@(\d+)_([^#*~]+)(?:\*(\d))?(?:~([A-Za-z]+))?(?:#(.+))?$/.exec(key);
-  if (!m) return null;
-  return {
-    carryStar: m[4] ? Number(m[4]) : 2,
-    augmentSlug: m[5] || null,
-    secondary: m[6] || null,
-  };
 }
 
 function prettyChar(s: string) { return s.replace(/^TFT\d+_/, ''); }

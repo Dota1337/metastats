@@ -13,6 +13,7 @@ import { useI18n } from '../../../lib/i18n';
 import { tftPatchLabel } from '../../../lib/tft-patch-label';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftTraitDisplayName, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { buildExplorerUrl } from '../../../lib/tft-explorer-url';
+import { parseClusterKey } from '../../../lib/tft-cluster';
 
 type ItemEntry = { item: string; games: number; avgPlacement: number | null; top4Rate: number | null };
 type ItemSetEntry = { items: string[]; games: number; avgPlacement: number | null; top4Rate: number | null };
@@ -594,11 +595,6 @@ function ItemIcon({ apiName, assets, size = 10 }: { apiName: string; assets: Tft
 function prettyItem(s: string) { return s.replace(/^TFT\d*_Item_/, '').slice(0, 8); }
 function prettyChar(s: string) { return s.replace(/^TFT\d+_/, ''); }
 
-function parseClusterKey(key: string) {
-  const m = /^(.+)@(\d+)_(.+)$/.exec(key);
-  if (!m) return null;
-  return { trait: m[1], level: Number(m[2]), carry: m[3] };
-}
 
 function extractTraitVariant(traitApiName: string, traitDisplayName: string): string | null {
   const stripped = traitApiName.replace(/^TFT\d+_/, '');

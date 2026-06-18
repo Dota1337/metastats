@@ -7,6 +7,7 @@ import { useI18n } from '../../lib/i18n';
 import BookmarkButton from '../BookmarkButton';
 import PlanAheadButton from './PlanAheadButton';
 import { compDefiningAugmentApiNameFromSlug } from '../../lib/tft-comp-defining-augments';
+import { parseClusterKey } from '../../lib/tft-cluster';
 
 // Dense, scannable row layout for /tft/comps. Replaces the narrative
 // CompCard so pros can survey 20+ comps at a glance — avg-placement is
@@ -53,20 +54,6 @@ function tierBadge(avg: number | null) {
   return { label: 'C', color: '#5a6a80' };
 }
 
-function parseClusterKey(key: string) {
-  // Cluster-Key Format: <trait>@<level>_<carryUnit>[*N][~<augSlug>][#<unitId>]
-  //   *N = Carry-Star · ~<slug> = Comp-Augment · #ID = Secondary-Carry
-  const m = /^(.+)@(\d+)_([^#*~]+)(?:\*(\d))?(?:~([A-Za-z]+))?(?:#(.+))?$/.exec(key);
-  if (!m) return null;
-  return {
-    trait: m[1],
-    level: Number(m[2]),
-    carry: m[3],
-    carryStar: m[4] ? Number(m[4]) : 2,
-    augmentSlug: m[5] || null,
-    secondary: m[6] || null,
-  };
-}
 
 function prettyTrait(s: string) { return s.replace(/^TFT\d+_/, ''); }
 function prettyChar(s: string) { return s.replace(/^TFT\d+_/, ''); }

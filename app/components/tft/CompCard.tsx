@@ -6,6 +6,7 @@ import { costColor as costColorOf } from '../../lib/tft-ui';
 import { useI18n } from '../../lib/i18n';
 import { compDefiningAugmentApiNameFromSlug } from '../../lib/tft-comp-defining-augments';
 import PlanAheadButton from './PlanAheadButton';
+import { parseClusterKey } from '../../lib/tft-cluster';
 
 interface CompVelocity {
   deltaAvgPlace: number | null;
@@ -356,24 +357,6 @@ function VelocityStat({
   );
 }
 
-function parseClusterKey(
-  key: string,
-): { trait: string; level: number; carry: string; carryStar: number; augmentSlug: string | null; secondary: string | null } | null {
-  // Cluster-Key Format: <trait>@<level>_<carryUnit>[*N][~<augSlug>][#<unitId>]
-  //   *N      = Carry-Star (z.B. *3 = 3-Star-Reroll-Variante)
-  //   ~<slug> = Comp-definierendes Augment (z.B. ~TwoTanky)
-  //   #<id>   = Secondary-Damage-Carry
-  const m = /^(.+)@(\d+)_([^#*~]+)(?:\*(\d))?(?:~([A-Za-z]+))?(?:#(.+))?$/.exec(key);
-  if (!m) return null;
-  return {
-    trait: m[1],
-    level: Number(m[2]),
-    carry: m[3],
-    carryStar: m[4] ? Number(m[4]) : 2,
-    augmentSlug: m[5] || null,
-    secondary: m[6] || null,
-  };
-}
 
 // Pull a constellation/variant suffix out of trait apiNames that ship multiple
 // flavours of the same name. Set 17 Stargazer has seven: Mountain, Serpent,

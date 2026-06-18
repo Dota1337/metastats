@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { resolveFilters } from '../../../../lib/tft-supabase-reader';
 import { STATS_CACHE_CONTROL, cacheControlForPatches, maybeRedirectByPatchAlias } from '../../../../lib/api-cache';
 import { getAvailablePatches } from '../../../../lib/tft-supabase-reader';
+import { parseClusterKey } from '../../../../lib/tft-cluster';
 
 // Variants-Switcher API: returns all sub-cluster variants of a comp family
 // (same trait + level + carry, different *N / ~aug / #secondary suffixes).
@@ -44,19 +45,6 @@ interface Variant {
   augmentSlug: string | null;
   secondary: string | null;
   belowThreshold: boolean;
-}
-
-function parseClusterKey(key: string) {
-  const m = /^(.+)@(\d+)_([^#*~]+)(?:\*(\d))?(?:~([A-Za-z]+))?(?:#(.+))?$/.exec(key);
-  if (!m) return null;
-  return {
-    trait: m[1],
-    level: Number(m[2]),
-    carry: m[3],
-    carryStar: m[4] ? Number(m[4]) : 2,
-    augmentSlug: m[5] || null,
-    secondary: m[6] || null,
-  };
 }
 
 // Slug = cluster_key direct, matching the existing /api/tft/comps response

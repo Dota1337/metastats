@@ -17,7 +17,7 @@ import VariantsSwitcher from '../../../components/tft/VariantsSwitcher';
 import { formatStage } from '../../../lib/tft-stage';
 import { aggregateComponents } from '../../../lib/tft-components';
 import { compDefiningAugmentApiNameFromSlug } from '../../../lib/tft-comp-defining-augments';
-import { dedupeByPrimaryCluster, primaryClusterKey } from '../../../lib/tft-cluster';
+import { dedupeByPrimaryCluster, primaryClusterKey, parseClusterKey } from '../../../lib/tft-cluster';
 import { loadCompAugmentsBundle, findCompAugments, augmentTierBorderColor } from '../../../lib/tft-comp-augments';
 
 // Same region set as /tft/patch/winners — the regions where the daily-crawl
@@ -943,25 +943,6 @@ export default function TftCompDetailPage() {
       <Footer />
     </main>
   );
-}
-
-// Vollständiges Cluster-Key-Parsing inkl. aller Sub-Cluster-Suffixe:
-//   *N      = N-Star-Carry-Variante
-//   ~<slug> = Comp-definierendes Augment (z.B. ~TwoTanky)
-//   #<id>   = Secondary-Damage-Carry
-function parseClusterKey(key: string): {
-  trait: string; level: number; carry: string;
-  carryStar: number; augmentSlug: string | null; secondary: string | null;
-} | null {
-  if (!key) return null;
-  const m = /^(.+)@(\d+)_([^#*~]+)(?:\*(\d))?(?:~([A-Za-z]+))?(?:#(.+))?$/.exec(key);
-  if (!m) return null;
-  return {
-    trait: m[1], level: Number(m[2]), carry: m[3],
-    carryStar: m[4] ? Number(m[4]) : 2,
-    augmentSlug: m[5] || null,
-    secondary: m[6] || null,
-  };
 }
 
 interface CounterEdge { opponent: string; games: number; winRate: number }

@@ -8,6 +8,7 @@ import EmptyData from '../../../components/tft/EmptyData';
 import { useI18n } from '../../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftTraitDisplayName, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { buildExplorerUrl } from '../../../lib/tft-explorer-url';
+import { parseClusterKey } from '../../../lib/tft-cluster';
 import tftSet from '../../../../public/tft-set.json';
 
 interface ItemDetail {
@@ -270,8 +271,3 @@ function Stat({ label, value }: { label: string; value: string }) {
 function prettyApi(s: string) { return s.replace(/^TFT\d*_Item_/, ''); }
 function prettyChar(id: string) { return id.replace(/^TFT\d+_/, ''); }
 function prettyTrait(s: string) { return s.replace(/^TFT\d+_/, ''); }
-function parseClusterKey(key: string) {
-  const m = /^(.+)@(\d+)_(.+)$/.exec(key);
-  if (!m) return null;
-  return { trait: m[1], level: Number(m[2]), carry: m[3] };
-}

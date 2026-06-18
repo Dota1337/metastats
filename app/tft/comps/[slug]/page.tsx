@@ -17,6 +17,7 @@ import { formatStage } from '../../../lib/tft-stage';
 import { aggregateComponents } from '../../../lib/tft-components';
 import { compDefiningAugmentApiNameFromSlug } from '../../../lib/tft-comp-defining-augments';
 import { dedupeByPrimaryCluster, primaryClusterKey } from '../../../lib/tft-cluster';
+import { loadCompAugmentsBundle, findCompAugments, augmentTierBorderColor } from '../../../lib/tft-comp-augments';
 
 // Same region set as /tft/patch/winners — the regions where the daily-crawl
 // has enough volume to make comp-detail rendering meaningful.
@@ -58,6 +59,7 @@ export default function TftCompDetailPage() {
   const [proComp, setProComp] = useState<any | null>(null);
   const [hasData, setHasData] = useState<boolean | null>(null);
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
+  const [compAugBundle, setCompAugBundle] = useState<Awaited<ReturnType<typeof loadCompAugmentsBundle>> | null>(null);
   // Trends-Time-Series: per-day avg-place / top4-rate / games über die
   // letzten N Tage. Standard 14 — User kann auf 30 umschalten.
   const [trendDays, setTrendDays] = useState<14 | 30>(14);
@@ -66,6 +68,7 @@ export default function TftCompDetailPage() {
   }>>([]);
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
+  useEffect(() => { loadCompAugmentsBundle().then(setCompAugBundle); }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -876,6 +879,53 @@ export default function TftCompDetailPage() {
                 </div>
               </section>
             )}
+
+            {/* Curated augment recommendations (tftacademy.com) — only renders
+                when a slug-map entry exists for this comp's trait+carry.
+                No empty-state text per `feedback_no_info_texts`. */}
+            {(() => {
+              const parts = parseClusterKey(comp.clusterKey);
+              if (!parts) return null;
+              const augs = findCompAugments(compAugBundle, { trait: parts.trait, carry: parts.carry });
+              if (!augs || augs.length === 0) return null;
+              return (
+                <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest">{t('tft.comp.augments')}</h2>
+                    <span className="text-[#5a6a80] text-[10px]">{t('tft.comp.augments.source')}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {augs.map(apiName => {
+                      const meta = assets?.items?.[apiName] as ({ name?: string; desc?: string; icon?: string; tier?: number } | undefined);
+                      const iconUrl = meta?.icon ? tftIconUrl(assets, meta.icon) : null;
+                      const tier = typeof meta?.tier === 'number' ? meta.tier : null;
+                      return (
+                        <a
+                          key={apiName}
+                          href={`/tft/augments/${encodeURIComponent(apiName)}`}
+                          className="flex flex-col items-center w-16 hover:scale-105 transition"
+                          title={meta?.desc?.replace(/<[^>]+>/g, '') || meta?.name || apiName}
+                        >
+                          <div
+                            className="w-14 h-14 rounded overflow-hidden border-2"
+                            style={{ borderColor: augmentTierBorderColor(tier) }}
+                          >
+                            {iconUrl ? (
+                              <img src={iconUrl} alt={meta?.name || apiName} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full bg-[#1e2a3a]" />
+                            )}
+                          </div>
+                          <div className="text-white text-[10px] mt-0.5 text-center truncate w-full">
+                            {meta?.name || apiName.replace(/^TFT\d*_Augment_/, '')}
+                          </div>
+                        </a>
+                      );
+                    })}
+                  </div>
+                </section>
+              );
+            })()}
 
           </>
         )}

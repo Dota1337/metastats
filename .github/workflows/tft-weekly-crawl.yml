@@ -64,6 +64,10 @@ jobs:
         run: node scripts/annotate-god-offerings.mjs
         continue-on-error: true
 
+      - name: Refresh curated comp augments (tftacademy.com)
+        run: node scripts/refresh-comp-augments.mjs
+        continue-on-error: true
+
       - name: Crawl TFT all-ranks (EUW)
         if: env.RIOT_API_KEY_TFT != ''
         run: node scripts/collect-tft-allranks.mjs --region euw1

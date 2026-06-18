@@ -1909,6 +1909,16 @@ const translations = {
     '\uC720\uC758\uBBF8\uD55C \uB370\uC774\uD130 \uC5C6\uC74C', '\u65E0\u663E\u8457\u6570\u636E',
     'Sin datos significativos', 'Pas de donn\u00E9es significatives'
   ),
+  'tft.comp.augments': t6(
+    'Empfohlene Augments', 'Recommended Augments',
+    '\uCD94\uCC9C \uC99D\uAC15\uCCB4', '\u63A8\u8350\u5F3A\u5316',
+    'Aumentos recomendados', 'Augmentations recommand\u00E9es'
+  ),
+  'tft.comp.augments.source': t6(
+    'kuratiert via tftacademy.com', 'curated via tftacademy.com',
+    'tftacademy.com\uC5D0\uC11C \uD050\uB808\uC774\uD305', '\u7531 tftacademy.com \u7B5B\u9009',
+    'curado v\u00EDa tftacademy.com', 'cur\u00E9 via tftacademy.com'
+  ),
 
   // \u2500 Item Detail Page (recipe + siblings) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   'tft.item.recipe': t6(

@@ -1,0 +1,339 @@
+{
+  "set": 17,
+  "source": "tftacademy.com/tierlist/comps",
+  "fetchedAt": "2026-06-18T13:30:01.409Z",
+  "counts": {
+    "slugs": 33,
+    "populated": 33,
+    "skipped": 0
+  },
+  "comps": {
+    "anima-reroll": [
+      "TFT10_Augment_HeroicGrabBag",
+      "TFT_Augment_MagicRoll",
+      "TFT_Augment_PatienceIsAVirtue",
+      "TFT_Augment_BoxingLessons",
+      "TFT_Augment_TreasureHunt",
+      "TFT_Augment_SpreadingRoots",
+      "TFT_Augment_TraitTree",
+      "TFT_Augment_MagicRollMinus"
+    ],
+    "bonk-nasus": [
+      "TFT17_Augment_NasusCarry",
+      "TFT17_Augment_PykeCarry",
+      "TFT9_Augment_MissedConnections",
+      "TFT17_Augment_ApotheoticForge",
+      "TFT6_Augment_PortableForge",
+      "TFT_Augment_GroupHug1",
+      "TFT_Augment_Lineup",
+      "TFT9_Augment_JeweledLotus"
+    ],
+    "challenger-miss-fortune": [
+      "TFT_Augment_Expedition",
+      "TFT_Augment_LegionOfThrees",
+      "TFT_Augment_TreasureHunt",
+      "TFT_Augment_ForgeSword",
+      "TFT_Augment_JustSlayer",
+      "TFT6_Augment_Electrocharge1",
+      "TFT9_Augment_ArmyBuilding",
+      "TFT_Augment_HeroicGrabBagPlusPlus"
+    ],
+    "contract-killer-pyke": [
+      "TFT17_Augment_PykeCarry",
+      "TFT9_Augment_JeweledLotus",
+      "TFT_Augment_HeroicGrabBagPlus",
+      "TFT_Augment_HomeCooking",
+      "TFT9_Augment_HealingOrbsII",
+      "TFT_Augment_ExclusiveCustomization",
+      "TFT_Augment_ForgeSword",
+      "TFT_Augment_AwakenedSoul"
+    ],
+    "corki-riven": [
+      "TFT_Augment_ComponentQuestSword",
+      "TFT_Augment_TraitTree",
+      "TFT_Augment_HomeCooking",
+      "TFT9_Augment_BigGrabBag",
+      "TFT_Augment_SwordOverflow",
+      "TFT_Augment_ForgeSword",
+      "TFT_Augment_ForgedInStrength",
+      "TFT6_Augment_PortableForge"
+    ],
+    "dark-star": [
+      "TFT_Augment_SpreadingRoots",
+      "TFT_Augment_TraitTree",
+      "TFT_Augment_MayTheFoursBeWithYou",
+      "TFT_Augment_HoldTheLine",
+      "TFT_Augment_UrfsGambit",
+      "TFT6_Augment_MakeshiftArmor1",
+      "TFT_Augment_Lineup",
+      "TFT_Augment_BoxingLessons"
+    ],
+    "dark-star-lissandra": [
+      "TFT_Augment_TreasureHunt",
+      "TFT9_Augment_MissedConnections",
+      "TFT_Augment_ConstructACompanion",
+      "TFT_Augment_WorthTheWaitGold",
+      "TFT_Augment_HoldTheLine",
+      "TFT_Augment_UrfsGambit",
+      "TFT_Augment_EarlyLearning"
+    ],
+    "ez-cho": [
+      "TFT6_Augment_GachaAddict",
+      "TFT9_Augment_MissedConnections",
+      "TFT6_Augment_TradeSector",
+      "TFT_Augment_EarlyLearning",
+      "TFT_Augment_NoScoutNoPivot",
+      "TFT_Augment_ConstructACompanion",
+      "TFT_Augment_SwordOverflow",
+      "TFT_Augment_TreasureHunt"
+    ],
+    "fast-9-jhin-stargazer-version": [
+      "TFT_Augment_TwoTanky",
+      "TFT_Augment_ShimmerscaleEssence",
+      "TFT9_Augment_LearningFromExperience2",
+      "TFT_Augment_ComponentQuestBow",
+      "TFT6_Augment_PandorasItems",
+      "TFT_Augment_MayTheFoursBeWithYou",
+      "TFT_Augment_ComebackStory",
+      "TFT_Augment_HoldTheLine"
+    ],
+    "fountain-lulu": [
+      "TFT6_Augment_ThriftShop",
+      "TFT_Augment_PatienceIsAVirtue",
+      "TFT6_Augment_CalculatedLoss",
+      "TFT10_Augment_HeroicGrabBag",
+      "TFT9_Augment_ArmyBuilding",
+      "TFT_Augment_ForgeRod",
+      "TFT_Augment_GlassCannonII",
+      "TFT_Augment_ShimmerscaleEssence"
+    ],
+    "gnar-printer": [
+      "TFT_Augment_TwoTanky",
+      "TFT_Augment_TragicalBlade",
+      "TFT_Augment_MagicRollMinus",
+      "TFT_Augment_KickStart",
+      "TFT_Augment_ComponentQuestBow",
+      "TFT_Augment_HeavyIsTheCrown",
+      "TFT6_Augment_CyberneticImplants2",
+      "TFT_Augment_ForgeSword"
+    ],
+    "graves-vex-9-5": [
+      "TFT_Augment_AuraFarming",
+      "TFT_Augment_DuoQueue",
+      "TFT_Augment_LateGameScaling",
+      "TFT11_Augment_Calltochaos",
+      "TFT7_Augment_LategameSpecialist",
+      "TFT6_Augment_BandOfThieves2Plus",
+      "TFT_Augment_ExplosiveGrowthPlus",
+      "TFT_Augment_ShimmerscaleEssence"
+    ],
+    "heat-death-mordekaiser": [
+      "TFT17_Augment_MordekaiserCarry",
+      "TFT17_Augment_PoppyCarry",
+      "TFT17_Augment_NasusCarry",
+      "TFT17_Augment_PykeCarry",
+      "TFT_Augment_HeroicGrabBagPlus",
+      "TFT_Augment_BoxingLessons",
+      "TFT9_Augment_JeweledLotus",
+      "TFT_Augment_FindYourCenter"
+    ],
+    "in-the-groove": [
+      "TFT_Augment_BranchingOut",
+      "TFT_Augment_SpreadingRoots",
+      "TFT_Augment_TraitTree",
+      "TFT_Augment_ClimbTheLadder1",
+      "TFT_Augment_GildedSteel",
+      "TFT16_Augment_UltraRapidFire",
+      "TFT11_Augment_Reinfourcement"
+    ],
+    "invader-zed": [
+      "TFT17_Augment_InvaderZed",
+      "TFT_Augment_OneBuffTwoBuff",
+      "TFT_Augment_DuoQueue",
+      "TFT11_Augment_Calltochaos",
+      "TFT6_Augment_PortableForge",
+      "TFT17_Augment_ApotheoticForge",
+      "TFT_Augment_Misfits",
+      "TFT6_Augment_OneTwoFive"
+    ],
+    "jainx": [
+      "TFT_Augment_TreasureHunt",
+      "TFT6_Augment_PortableForge",
+      "TFT_Augment_ShimmerscaleEssence",
+      "TFT_Augment_SmallGrabBag",
+      "TFT_Augment_ForgeSword",
+      "TFT9_Augment_BigGrabBag",
+      "TFT_Augment_MagicRoll",
+      "TFT_Augment_NoScoutNoPivot"
+    ],
+    "karnami-flex": [
+      "TFT6_Augment_TradeSector2",
+      "TFT11_Augment_Reinfourcement",
+      "TFT_Augment_TheBaronsLair",
+      "TFT_Augment_SmallGrabBag",
+      "TFT_Augment_ForgeRod",
+      "TFT9_Augment_BigGrabBag",
+      "TFT_Augment_HoldTheLine",
+      "TFT_Augment_ExclusiveCustomization"
+    ],
+    "mecha-sol": [
+      "TFT11_Augment_Reinfourcement",
+      "TFT_Augment_PatienceIsAVirtue",
+      "TFT_Augment_TwinGuardians",
+      "TFT_Augment_ItemGargoyleStoneplate",
+      "TFT_Augment_Expedition",
+      "TFT_Augment_ForgedInStrength",
+      "TFT7_Augment_LivingForge"
+    ],
+    "primordian-reroll": [
+      "TFT6_Augment_GachaAddict",
+      "TFT6_Augment_TradeSector",
+      "TFT9_Augment_MissedConnections",
+      "TFT_Augment_Waverider",
+      "TFT_Augment_BoxingLessons",
+      "TFT_Augment_NoScoutNoPivot",
+      "TFT_Augment_GroupHug1",
+      "TFT_Augment_FuriousBlows"
+    ],
+    "pyke-gwen": [
+      "TFT_Augment_Unforgotten",
+      "TFT_Augment_MagicRoll",
+      "TFT_Augment_PatienceIsAVirtue",
+      "TFT_Augment_TwinGuardians",
+      "TFT_Augment_HomeCooking",
+      "TFT_Augment_TreasureHunt",
+      "TFT_Augment_Retribution",
+      "TFT_Augment_AnExaltedAdventure"
+    ],
+    "reach-for-the-stars-jax": [
+      "TFT17_Augment_JaxCarry",
+      "TFT17_Augment_AatroxCarry",
+      "TFT17_Augment_MordekaiserCarry",
+      "TFT17_Augment_PoppyCarry",
+      "TFT17_Augment_NasusCarry",
+      "TFT17_Augment_PykeCarry",
+      "TFT_Augment_HeroicGrabBagPlus",
+      "TFT_Augment_Waverider"
+    ],
+    "samira-knock-up-copy": [
+      "TFT_Augment_TwoTanky",
+      "TFT10_Augment_HeroicGrabBag",
+      "TFT6_Augment_TradeSector",
+      "TFT6_Augment_CalculatedLoss",
+      "TFT_Augment_ExclusiveCustomization",
+      "TFT_Augment_PatienceIsAVirtue",
+      "TFT_Augment_LegionOfThrees",
+      "TFT_Augment_SpreadingRoots"
+    ],
+    "self-destruct-gragas": [
+      "TFT17_Augment_GragasCarry",
+      "TFT_Augment_BoxingLessons",
+      "TFT_Augment_GuardbreakerSpirit",
+      "TFT_Augment_GroupHug2",
+      "TFT_Augment_HeroicGrabBagPlus",
+      "TFT9_Augment_JeweledLotus",
+      "TFT_Augment_MagicRoll",
+      "TFT_Augment_ChargeTransfer1"
+    ],
+    "shepherd-pie": [
+      "TFT_Augment_SpreadingRoots",
+      "TFT_Augment_GildedSteel",
+      "TFT_Augment_GlassCannonII",
+      "TFT9_Augment_JeweledLotus",
+      "TFT_Augment_BoxingLessons",
+      "TFT_Augment_GroupHug1",
+      "TFT_Augment_UrfsGambit",
+      "TFT_Augment_HoldTheLine"
+    ],
+    "shieldmaiden-leona": [
+      "TFT17_Augment_LeonaCarry",
+      "TFT17_Augment_JaxCarry",
+      "TFT17_Augment_AatroxCarry",
+      "TFT17_Augment_MordekaiserCarry",
+      "TFT17_Augment_PoppyCarry",
+      "TFT17_Augment_NasusCarry",
+      "TFT17_Augment_PykeCarry"
+    ],
+    "stellar-combo-aatrox": [
+      "TFT17_Augment_AatroxCarry",
+      "TFT17_Augment_MordekaiserCarry",
+      "TFT17_Augment_PoppyCarry",
+      "TFT17_Augment_NasusCarry",
+      "TFT17_Augment_PykeCarry",
+      "TFT9_Augment_MissedConnections",
+      "TFT17_Augment_ApotheoticForge",
+      "TFT6_Augment_PortableForge"
+    ],
+    "termeepnal-velocity-poppy": [
+      "TFT17_Augment_PoppyCarry",
+      "TFT17_Augment_NasusCarry",
+      "TFT17_Augment_PykeCarry",
+      "TFT9_Augment_MissedConnections",
+      "TFT_Augment_HeroicGrabBagPlus",
+      "TFT9_Augment_JeweledLotus",
+      "TFT_Augment_HeavyIsTheCrown",
+      "TFT6_Augment_SecondWind1"
+    ],
+    "tf-reroll": [
+      "TFT_Augment_Waverider",
+      "TFT6_Augment_GachaAddict",
+      "TFT_Augment_EarlyLearning",
+      "TFT_Augment_NoScoutNoPivot",
+      "TFT9_Augment_MissedConnections",
+      "TFT_Augment_ForgedInStrength",
+      "TFT7_Augment_LivingForge",
+      "TFT9_Augment_PandorasRadiantBox"
+    ],
+    "the-big-bang-meepsie": [
+      "TFT17_Augment_IvernMinionCarry",
+      "TFT17_Augment_InvaderZed",
+      "TFT17_Augment_LeonaCarry",
+      "TFT17_Augment_JaxCarry",
+      "TFT17_Augment_AatroxCarry",
+      "TFT17_Augment_MordekaiserCarry",
+      "TFT17_Augment_PoppyCarry",
+      "TFT17_Augment_NasusCarry"
+    ],
+    "veigar-printer": [
+      "TFT_Augment_EarlyLearning",
+      "TFT9_Augment_MissedConnections",
+      "TFT9_Augment_PandorasRadiantBox",
+      "TFT6_Augment_PandorasItems",
+      "TFT_Augment_Expedition",
+      "TFT_Augment_Waverider",
+      "TFT_Augment_TreasureHunt",
+      "TFT_Augment_WandOverflow"
+    ],
+    "vex-9-5": [
+      "TFT_Augment_LateGameScaling",
+      "TFT11_Augment_Slammin",
+      "TFT_Augment_ComponentQuestRod",
+      "TFT_Augment_ExplosiveGrowthPlus",
+      "TFT_Augment_MagicRoll",
+      "TFT6_Augment_Electrocharge1",
+      "TFT_Augment_GroupHug1",
+      "TFT_Augment_DuoQueue"
+    ],
+    "viktor-b4l": [
+      "TFT_Augment_BronzeForLifeI",
+      "TFT_Augment_BronzeForLife2",
+      "TFT_Augment_PatienceIsAVirtue",
+      "TFT6_Augment_TradeSector2",
+      "TFT_Augment_LegionOfThrees",
+      "TFT6_Augment_Diversify1",
+      "TFT_Augment_GlassCannonII",
+      "TFT9_Augment_JeweledLotus"
+    ],
+    "yi-marawlers": [
+      "TFT_Augment_JustSlayer",
+      "TFT_Augment_GroupHug1",
+      "TFT_Augment_BoxingLessons",
+      "TFT_Augment_HomeCooking",
+      "TFT_Augment_FuriousBlows",
+      "TFT_Augment_ComponentQuestSword",
+      "TFT_Augment_EpicRolldown",
+      "TFT_Augment_ForgeSword"
+    ]
+  },
+  "unmatched": []
+}

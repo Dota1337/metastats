@@ -85,6 +85,13 @@ jobs:
         run: node scripts/annotate-god-offerings.mjs
         continue-on-error: true
 
+      - name: Refresh curated comp augments (tftacademy.com)
+        # Editorial slug-map lives in public/tft-comp-slug-map-{set}.json and
+        # is hand-curated. This scraper only refreshes the augment-list per
+        # tftacademy-slug — slug-map changes go through PRs.
+        run: node scripts/refresh-comp-augments.mjs
+        continue-on-error: true
+
       - name: Refresh TFT tier distribution
         run: node scripts/fetch-tft-tier-distribution.mjs
         continue-on-error: true

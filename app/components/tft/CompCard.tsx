@@ -1,4 +1,5 @@
 'use client';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
 import { tftIconUrl, tftChampionTileUrl, findChampion, findItem, tftTraitDisplayName, tftTraitDescription } from '../../lib/tft-cdragon';
@@ -7,6 +8,7 @@ import { useI18n } from '../../lib/i18n';
 import { compDefiningAugmentApiNameFromSlug } from '../../lib/tft-comp-defining-augments';
 import PlanAheadButton from './PlanAheadButton';
 import { parseClusterKey } from '../../lib/tft-cluster';
+import { loadCompGuidesBundle, findCompGuide, difficultyColor } from '../../lib/tft-comp-guides';
 
 interface CompVelocity {
   deltaAvgPlace: number | null;
@@ -65,6 +67,11 @@ export default function CompCard({
   const router = useRouter();
   const parts = parseClusterKey(comp.clusterKey);
   const traitMeta = parts && assets ? assets.traits[parts.trait] : null;
+  // Curated guide indicator: tiny difficulty badge in the header when this
+  // comp has an editorial slug-map entry pointing at a tftacademy guide.
+  const [guideBundle, setGuideBundle] = useState<Awaited<ReturnType<typeof loadCompGuidesBundle>> | null>(null);
+  useEffect(() => { loadCompGuidesBundle().then(setGuideBundle); }, []);
+  const guideMatch = parts ? findCompGuide(guideBundle, { trait: parts.trait, carry: parts.carry }) : null;
   // Stargazer (and similar themed traits) ships seven constellation variants
   // — Mountain, Serpent, Huntress, Medallion, Fountain, Wolf, Shield — all of
   // which share the same `name`. The constellation suffix lives in the
@@ -210,6 +217,19 @@ export default function CompCard({
                     '{name}',
                     secondaryName,
                   )}
+                </span>
+              )}
+              {guideMatch?.guide?.difficulty && (
+                <span
+                  className="ml-1.5 inline-flex items-center px-1.5 py-[1px] rounded text-[10px] font-medium align-middle"
+                  style={{
+                    color: difficultyColor(guideMatch.guide.difficulty),
+                    backgroundColor: `${difficultyColor(guideMatch.guide.difficulty)}1f`,
+                    border: `1px solid ${difficultyColor(guideMatch.guide.difficulty)}40`,
+                  }}
+                  title={`tftacademy.com guide — ${guideMatch.guide.title}`}
+                >
+                  {t(`tft.comp.difficulty.${guideMatch.guide.difficulty}` as any) || guideMatch.guide.difficulty}
                 </span>
               )}
             </span>

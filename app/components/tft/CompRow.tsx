@@ -1,4 +1,5 @@
 'use client';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
 import { tftIconUrl, tftChampionTileUrl, findChampion, findItem, tftTraitDisplayName, tftTraitDescription } from '../../lib/tft-cdragon';
@@ -8,6 +9,7 @@ import BookmarkButton from '../BookmarkButton';
 import PlanAheadButton from './PlanAheadButton';
 import { compDefiningAugmentApiNameFromSlug } from '../../lib/tft-comp-defining-augments';
 import { parseClusterKey } from '../../lib/tft-cluster';
+import { loadCompGuidesBundle, findCompGuide, difficultyColor } from '../../lib/tft-comp-guides';
 
 // Dense, scannable row layout for /tft/comps. Replaces the narrative
 // CompCard so pros can survey 20+ comps at a glance — avg-placement is
@@ -113,6 +115,13 @@ export default function CompRow({
   const traitMeta = parts && assets ? assets.traits[parts.trait] : null;
   const traitName = traitMeta?.name || (parts ? prettyTrait(parts.trait) : 'Unknown');
   const traitVariant = parts ? extractTraitVariant(parts.trait, traitName) : null;
+
+  // Curated guide indicator: tiny difficulty badge in the header when this
+  // comp has an editorial slug-map entry pointing at a tftacademy guide.
+  // Cached bundle load — runs once per page session despite N rows.
+  const [guideBundle, setGuideBundle] = useState<Awaited<ReturnType<typeof loadCompGuidesBundle>> | null>(null);
+  useEffect(() => { loadCompGuidesBundle().then(setGuideBundle); }, []);
+  const guideMatch = parts ? findCompGuide(guideBundle, { trait: parts.trait, carry: parts.carry }) : null;
   // Display-Name aus dem zentralen Helper (matched In-Game-Variant aus desc).
   // Plus tooltip-Text damit Mouse-over über den Comp-Header die Trait-
   // Beschreibung dieser Constellation zeigt.
@@ -239,6 +248,19 @@ export default function CompRow({
             {secondaryName && (
               <span className="text-[#a0b0c5] text-[11px] ml-1">
                 {(t('tft.comp.withSecondary') as string).replace('{name}', secondaryName)}
+              </span>
+            )}
+            {guideMatch?.guide?.difficulty && (
+              <span
+                className="ml-1 inline-flex items-center px-1.5 py-[1px] rounded text-[9px] font-medium align-middle"
+                style={{
+                  color: difficultyColor(guideMatch.guide.difficulty),
+                  backgroundColor: `${difficultyColor(guideMatch.guide.difficulty)}1f`,
+                  border: `1px solid ${difficultyColor(guideMatch.guide.difficulty)}40`,
+                }}
+                title={`tftacademy.com guide — ${guideMatch.guide.title}`}
+              >
+                {t(`tft.comp.difficulty.${guideMatch.guide.difficulty}` as any) || guideMatch.guide.difficulty}
               </span>
             )}
           </div>

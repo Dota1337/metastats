@@ -1919,6 +1919,31 @@ const translations = {
     'tftacademy.com\uC5D0\uC11C \uD050\uB808\uC774\uD305', '\u7531 tftacademy.com \u7B5B\u9009',
     'curado v\u00EDa tftacademy.com', 'cur\u00E9 via tftacademy.com'
   ),
+  'tft.comp.variants': t6(
+    'Varianten', 'Variants',
+    '\uBCC0\uD615', '\u53D8\u4F53',
+    'Variantes', 'Variantes'
+  ),
+  'tft.comp.variant.base': t6(
+    'Basis', 'Base',
+    '\uAE30\uBCF8', '\u57FA\u7840',
+    'Base', 'Base'
+  ),
+  'tft.comp.variant.reroll3': t6(
+    '3\u2605 Reroll', '3\u2605 Reroll',
+    '3\uC131 \uB9AC\uB864', '3\u661F\u91CD\u6447',
+    '3\u2605 Reroll', '3\u2605 Reroll'
+  ),
+  'tft.comp.variant.with': t6(
+    'mit {name}', 'with {name}',
+    '{name} \uD3EC\uD568', '\u642D\u914D {name}',
+    'con {name}', 'avec {name}'
+  ),
+  'tft.comp.variant.lowSample': t6(
+    'Niedrige Stichprobe', 'Low sample',
+    '\uB0AE\uC740 \uD45C\uBCF8', '\u6837\u672C\u4E0D\u8DB3',
+    'Muestra baja', '\u00C9chantillon faible'
+  ),
 
   // \u2500 Item Detail Page (recipe + siblings) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   'tft.item.recipe': t6(

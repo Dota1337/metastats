@@ -43,6 +43,21 @@ export function primaryClusterKey(clusterKey: string): string {
   return `${parts.trait}@${parts.level}_${parts.carry}${star}${aug}`;
 }
 
+/** Reduziert den clusterKey auf die "Family"-Identität: Trait + Level + Carry,
+ *  ohne irgendwelche Sub-Cluster-Suffixe (`*N`, `~aug`, `#secondary`). Ergibt
+ *  den Aufhänger für den Variants-Switcher — alle Cluster mit gleicher Family
+ *  sind Geschwister (Reroll, Push, Dual-Carry-Variants, Augment-Variants).
+ *
+ *  Beispiele:
+ *    `TFT17_Stargazer@8_TFT17_Lulu*3#TFT17_Milio` → `TFT17_Stargazer@8_TFT17_Lulu`
+ *    `TFT17_SpaceGroove@3_TFT17_Samira#TFT17_Nami` → `TFT17_SpaceGroove@3_TFT17_Samira`
+ */
+export function compFamilyKey(clusterKey: string): string {
+  const parts = parseClusterKey(clusterKey);
+  if (!parts) return clusterKey;
+  return `${parts.trait}@${parts.level}_${parts.carry}`;
+}
+
 /** Generischer Dedup-Reducer für Aggregat-Listen mit Cluster-Keys. Gruppiert
  *  Einträge nach `primaryClusterKey()`; pro Gruppe wird der Eintrag mit der
  *  höchsten `weight` (typisch Spielanzahl) als Repräsentant behalten und alle

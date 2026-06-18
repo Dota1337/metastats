@@ -13,6 +13,7 @@ import CompCard from '../../../components/tft/CompCard';
 import { useI18n, type TranslationKey } from '../../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, findChampion, findItem, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import PositionHeatmap from '../../../components/tft/PositionHeatmap';
+import VariantsSwitcher from '../../../components/tft/VariantsSwitcher';
 import { formatStage } from '../../../lib/tft-stage';
 import { aggregateComponents } from '../../../lib/tft-components';
 import { compDefiningAugmentApiNameFromSlug } from '../../../lib/tft-comp-defining-augments';
@@ -841,6 +842,15 @@ export default function TftCompDetailPage() {
             {/* Position heatmap per typical unit — renders empty when the
                 Overwolf companion app hasn't submitted enough observations
                 yet for the units in this comp. */}
+            <VariantsSwitcher
+              clusterKey={comp.clusterKey}
+              region={region}
+              bucket={bucket}
+              days={3}
+              patch={null}
+              assets={assets}
+            />
+
             {comp.typicalUnits && comp.typicalUnits.length > 0 && (
               <PositionHeatmap
                 units={comp.typicalUnits}

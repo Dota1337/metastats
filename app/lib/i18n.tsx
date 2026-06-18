@@ -1947,6 +1947,10 @@ const translations = {
     '\uC2A4\uD14C\uC774\uC9C0\uBCC4 \uD301', '\u9636\u6BB5\u63D0\u793A',
     'Consejos por etapa', 'Conseils par \u00E9tape'
   ),
+  'tft.comp.stage.2': t6('Stage 2', 'Stage 2', '\uC2A4\uD14C\uC774\uC9C0 2', '\u9636\u6BB5 2', 'Etapa 2', '\u00C9tape 2'),
+  'tft.comp.stage.3': t6('Stage 3', 'Stage 3', '\uC2A4\uD14C\uC774\uC9C0 3', '\u9636\u6BB5 3', 'Etapa 3', '\u00C9tape 3'),
+  'tft.comp.stage.4': t6('Stage 4', 'Stage 4', '\uC2A4\uD14C\uC774\uC9C0 4', '\u9636\u6BB5 4', 'Etapa 4', '\u00C9tape 4'),
+  'tft.comp.stage.5': t6('Stage 5', 'Stage 5', '\uC2A4\uD14C\uC774\uC9C0 5', '\u9636\u6BB5 5', 'Etapa 5', '\u00C9tape 5'),
   'tft.comp.variants': t6(
     'Varianten', 'Variants',
     '\uBCC0\uD615', '\u53D8\u4F53',

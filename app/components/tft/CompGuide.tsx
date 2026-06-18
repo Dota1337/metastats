@@ -217,12 +217,23 @@ export default function CompGuide({
         <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
           <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.stageTips')}</h2>
           <div className="flex flex-col gap-2">
-            {guide.tips.map((tip, i) => (
-              <div key={`${tip.stage}-${i}`} className="flex gap-3">
-                <div className="text-[#c39bff] text-xs font-medium min-w-[4.5rem]">{tip.stage}</div>
-                <div className="text-[#a0b0c5] text-xs leading-snug flex-1">{tip.tip}</div>
-              </div>
-            ))}
+            {guide.tips.map((tip, i) => {
+              // Localise the stage prefix ("Stage 2" → user's language). The
+              // tip body itself stays in English — tftacademy is the source
+              // of truth, machine-translation would degrade quality
+              // (`feedback_no_fake_values` analogue: don't invent content).
+              const stageNumMatch = /Stage\s+(\d+)/.exec(tip.stage);
+              const stageNum = stageNumMatch?.[1];
+              const stageLabel = stageNum
+                ? (t(`tft.comp.stage.${stageNum}` as any) || tip.stage)
+                : tip.stage;
+              return (
+                <div key={`${tip.stage}-${i}`} className="flex gap-3">
+                  <div className="text-[#c39bff] text-xs font-medium min-w-[4.5rem]">{stageLabel}</div>
+                  <div className="text-[#a0b0c5] text-xs leading-snug flex-1">{tip.tip}</div>
+                </div>
+              );
+            })}
           </div>
         </section>
       )}

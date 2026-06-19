@@ -422,10 +422,22 @@ function applyCooccurrenceFilter(
   carry: string | null,
   secondary: string | null = null,
 ) {
-  const minCo = Math.max(1, Math.floor(totalGames * 0.40));
-  return units.filter(
+  // 30% (was 40%) — niche-clusters like TFT17_SpaceGroove@1_TFT17_Blitzcrank
+  // have 221 games spread across many sub-variants, where legitimate support
+  // units sit at 30-38% co-occurrence. 40% stripped all but the carry and
+  // gave a useless "solo carry" comp row. 30% keeps the cards informative
+  // without polluting them with 1-off picks.
+  const minCo = Math.max(1, Math.floor(totalGames * 0.30));
+  const filtered = units.filter(
     u => (u.count || 0) >= minCo || u.characterId === carry || u.characterId === secondary,
   );
+  // Floor guard: a comp card with <5 units shows zero archetype signal —
+  // worse than showing top-5 by count regardless of co-occurrence. The 40%
+  // ceiling was tuned to comps with 1000+ games where support slots show up
+  // in 50%+ of plays; below that the variance dominates and the filter eats
+  // the whole roster.
+  if (filtered.length < 5) return units.slice(0, Math.min(5, units.length));
+  return filtered;
 }
 
 // Lean per-comp shape — base stats + the unit/augment/carry tiles that the

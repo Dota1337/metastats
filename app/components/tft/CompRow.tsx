@@ -10,7 +10,7 @@ import PlanAheadButton from './PlanAheadButton';
 import { compDefiningAugmentApiNameFromSlug } from '../../lib/tft-comp-defining-augments';
 import { parseClusterKey } from '../../lib/tft-cluster';
 import { loadCompGuidesBundle, findCompGuide, difficultyColor } from '../../lib/tft-comp-guides';
-import { loadTierCutoffs, tierLetterOfSync, TIER_COLORS, type TierLetter } from '../../lib/tft-tier-letter';
+import { tierLetterOfSync, TIER_COLORS, type TierLetter, type TierCutoffs } from '../../lib/tft-tier-letter';
 
 // Dense, scannable row layout for /tft/comps. Replaces the narrative
 // CompCard so pros can survey 20+ comps at a glance — avg-placement is
@@ -119,20 +119,19 @@ function descriptorTag(opts: {
 }
 
 export default function CompRow({
-  comp, rank, assets, href, showVelocity = false, velocityShift = 0,
+  comp, rank, assets, href, showVelocity = false, velocityShift = 0, tierCutoffs = null,
 }: {
   comp: Comp;
   rank: number;
   assets: TftAssetsBundle | null;
   href: string;
-  // When true the row reserves an extra column for the Δ-place delta. Must
-  // match the header grid in the parent page — the comps page only enables
-  // velocity if the API was queried with ?velocity=N.
   showVelocity?: boolean;
-  // Comparison window in days (1/2/3/7/14). Used in the Δ cell's tooltip so
-  // a glance at the value also shows what window it's against, instead of
-  // relying on the user remembering which filter they set.
   velocityShift?: number;
+  // Loaded once in the parent page (CompsPage / CompList) and passed down
+  // to all rows. Earlier this hooked a useEffect per row which fired one
+  // fetch + setState per CompRow on mount — 100 rows = 100 effects. The
+  // parent-load pattern keeps it O(1) regardless of row count.
+  tierCutoffs?: TierCutoffs | null;
 }) {
   const { t } = useI18n();
   const router = useRouter();
@@ -181,9 +180,7 @@ export default function CompRow({
   const carryUrl = tftChampionTileUrl(assets, carry);
 
   // Tier-letter from central helper with sample-gate + pickrate-penalty.
-  // Falls back to avg-only color while the cutoffs JSON is in flight.
-  const [tierCutoffs, setTierCutoffs] = useState<Awaited<ReturnType<typeof loadTierCutoffs>> | null>(null);
-  useEffect(() => { loadTierCutoffs(assets?.set ?? null).then(setTierCutoffs); }, [assets?.set]);
+  // tierCutoffs comes from the parent page (single load for the whole list).
   const tierLetter: TierLetter | null = tierCutoffs
     ? tierLetterOfSync({ avgPlacement: comp.avgPlacement, pickRate: comp.pickRate, games: comp.games }, 'comps', tierCutoffs)
     : null;

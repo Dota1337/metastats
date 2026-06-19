@@ -14,6 +14,7 @@ import StatsFilterBar, {
 } from '../../components/tft/StatsFilterBar';
 import { useI18n } from '../../lib/i18n';
 import { loadTftAssets, type TftAssetsBundle } from '../../lib/tft-cdragon';
+import { loadTierCutoffs, type TierCutoffs } from '../../lib/tft-tier-letter';
 import TftHero from '../../components/tft/TftHero';
 import AdvancedCompFilters, {
   ADV_DEFAULT,
@@ -59,8 +60,10 @@ export default function TftCompsPage() {
   const [minGames, setMinGames] = useState<number | null>(null);
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
   const [loading, setLoading] = useState(false);
+  const [tierCutoffs, setTierCutoffs] = useState<TierCutoffs | null>(null);
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
+  useEffect(() => { loadTierCutoffs(assets?.set ?? null).then(setTierCutoffs); }, [assets?.set]);
 
   // Init-Effekt: läuft EINMAL nach Client-Mount. Wenn die URL keine Filter
   // mitbringt, ziehe sie aus localStorage. Erst danach öffnen wir das
@@ -223,6 +226,7 @@ export default function TftCompsPage() {
                   href={`/tft/comps/${encodeURIComponent(c.slug)}?bucket=${filters.bucket}&region=${filters.region}`}
                   showVelocity={filters.velocity > 0}
                   velocityShift={filters.velocity}
+                  tierCutoffs={tierCutoffs}
                 />
               ))}
             </div>

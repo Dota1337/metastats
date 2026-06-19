@@ -116,10 +116,37 @@ export async function lookupSnapshot(
     clearTimeout(t);
     if (!res.ok) return null;
     const payload = await res.json();
-    return { payload, tag: `${endpoint}-v1`, blobUrl: entry.url, blobBytes: entry.bytes };
+    // Defensive field-check: if the snapshot was generated before Phase A1
+    // (winShare / top4Share on units+comps) or A3 (top1Rate on items), skip
+    // it and fall through to live RPC. Republished snapshots will pass the
+    // check on next 09:30 UTC cycle (or manual `publish-snapshot-bundle.mjs`).
+    if (!hasRequiredFields(endpoint, payload)) return null;
+    return { payload, tag: `${endpoint}-v2`, blobUrl: entry.url, blobBytes: entry.bytes };
   } catch {
     return null;
   }
+}
+
+// Per-endpoint required-field marker. Bump these whenever a new top-level
+// field is added that the UI now depends on. `null`-check (not `undefined`)
+// because the API explicitly returns null for sample-gated entries.
+function hasRequiredFields(endpoint: SnapshotEndpoint, payload: any): boolean {
+  if (endpoint === 'units') {
+    const sample = payload?.units?.[0];
+    if (!sample) return true; // empty list = nothing to verify
+    return 'winShare' in sample && 'top4Share' in sample;
+  }
+  if (endpoint === 'comps') {
+    const sample = payload?.comps?.[0];
+    if (!sample) return true;
+    return 'winShare' in sample && 'top4Share' in sample;
+  }
+  if (endpoint === 'items') {
+    const sample = payload?.items?.[0];
+    if (!sample) return true;
+    return 'top1Rate' in sample;
+  }
+  return true;
 }
 
 export function manifestStatus(): { loaded: boolean; ageMs: number | null; entries: number } {

@@ -26,7 +26,7 @@ interface TierCutoffsBundle {
   perSet?: Record<string, Partial<TierCutoffs>>;
 }
 
-interface TierCutoffs {
+export interface TierCutoffs {
   scoreCutoffs: { S: number; A: number; B: number; C: number };
   pickratePenalty: number;
   pickrateAnchor: number;

@@ -1,0 +1,31 @@
+[Unit]
+Description=metastats TFT marketvalue daily snapshot (D2+, all active regions)
+Wants=network-online.target postgresql.service
+After=network-online.target postgresql.service
+# Wir teilen den Riot-Key mit mehreren Services. Conflicts= verhindert Doppelläufe
+# die im selben App-Wide-Limit-Bucket (500/10s) sitzen würden:
+#   - daily-crawl + pro-fullsync sind die regulären Geschwister-Crawls
+#   - crawler.service ist der Bootstrap-Sweep (Phase A3, temporär)
+Conflicts=metastats-daily-crawl.service
+Conflicts=metastats-crawler.service
+Conflicts=metastats-tft-pro-fullsync.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/metastats-crawler
+EnvironmentFile=/etc/metastats-crawler/env
+# Per-Region-Iteration läuft sequenziell durch 15 Regionen. Realistische
+# Laufzeit (Multi-Review-Verdict 2026-06-19): 1-3h Steady-State, bis zu 4-6h
+# am Patch-Day. Kein artificial cap — riot-client gated den Rate sauber.
+TimeoutStartSec=infinity
+# Graceful-stop headroom: der Child fängt SIGTERM und schließt die aktuelle
+# Region sauber ab (= Backup-Table erhalten, kein partial-Snapshot-Salat).
+TimeoutStopSec=600
+ExecStart=/usr/bin/node scripts/daily-marketvalue-snapshot.mjs --region all
+StandardOutput=journal
+StandardError=journal
+Nice=10
+IOSchedulingClass=best-effort
+
+[Install]
+WantedBy=multi-user.target

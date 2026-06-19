@@ -1,0 +1,17 @@
+[Unit]
+Description=metastats marketvalue watchdog (18:00 UTC)
+# Wenn der OnSuccess-Pfad an metastats-daily-crawl.service stockt (Daily-Crawl
+# fail oder Pro-Fullsync zu lang), füllt der Watchdog die Lücke ab 18:00 UTC.
+# Daily-Crawl ist normalerweise um ~14:30 UTC fertig + OnSuccess-Kette (Catchup
+# + Snapshot-Publisher + Bootstrap/Marketvalue) braucht 0-4h — 18:00 UTC gibt
+# Puffer für die normale Kette und greift erst wenn was kaputt ist.
+
+[Timer]
+OnCalendar=*-*-* 18:00:00 UTC
+# Persistent=true: wenn die Box zwischen 18:00 UTC und nächstem Restart down
+# war, läuft der Watchdog beim Boot nach (verhindert verpasste Tage).
+Persistent=true
+RandomizedDelaySec=60
+
+[Install]
+WantedBy=timers.target

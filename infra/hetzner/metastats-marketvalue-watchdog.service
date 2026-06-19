@@ -1,0 +1,14 @@
+[Unit]
+Description=metastats marketvalue watchdog (per-region snapshot-freshness check)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/metastats-crawler
+EnvironmentFile=/etc/metastats-crawler/env
+# Watchdog ist Kurz-Job (Sekunden) — kein TimeoutStartSec=infinity nötig.
+TimeoutStartSec=300
+ExecStart=/usr/local/bin/metastats-marketvalue-watchdog.sh
+StandardOutput=journal
+StandardError=journal

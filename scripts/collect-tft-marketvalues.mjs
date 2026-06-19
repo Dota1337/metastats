@@ -29,14 +29,19 @@ import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import pg from 'pg';
 import { createRiotClient } from './lib/riot-client.mjs';
-import { computeBaseValue } from './lib/tft-marketvalue.mjs';
-import { extractRawMetrics, buildCompMeta, applyMeta, buildPopulation, scoreSkill } from './lib/tft-skill-score.mjs';
-import { refreshPlayerMatchCache, listSeasonMatches } from './lib/tft-match-cache-pg.mjs';
+import { buildCompMeta, applyMeta, buildPopulation } from './lib/tft-skill-score.mjs';
 import {
-  upsertSeasonStats,
   buildHotCompKeys,
   buildRecommendedItems,
 } from './lib/tft-season-aggregator.mjs';
+import {
+  getRegionalCluster,
+  loadCurrentSet,
+  loadGraph,
+  gatherPlayer,
+  persistPopulation,
+  snapshotPlayer,
+} from './lib/tft-marketvalue-pipeline.mjs';
 
 const args = process.argv.slice(2);
 const arg = (k, def) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : def; };
@@ -72,12 +77,7 @@ if (SNAPSHOT_DATE_RAW && !SNAPSHOT_DATE) {
 const PUUIDS_RAW = arg('--puuids', null);
 const PUUIDS = PUUIDS_RAW ? PUUIDS_RAW.split(',').map(s => s.trim()).filter(Boolean) : null;
 
-const REGIONAL = ({
-  euw1: 'europe', eun1: 'europe', tr1: 'europe', ru: 'europe', me1: 'europe',
-  na1: 'americas', br1: 'americas', la1: 'americas', la2: 'americas',
-  kr: 'asia', jp1: 'asia',
-  oc1: 'sea', ph2: 'sea', sg2: 'sea', th2: 'sea', tw2: 'sea', vn2: 'sea',
-})[REGION] || 'europe';
+const REGIONAL = getRegionalCluster(REGION);
 
 // Load .env style file from /etc/metastats-crawler/env (production) or
 // .env.local (local dev) — supports either as the env source.
@@ -236,132 +236,11 @@ async function loadPlayersByPuuids(puuids) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// per-region context: KG, current set
+// per-region context: KG, current set, per-player pipeline
+// → loadGraph/loadCurrentSet/gatherPlayer/persistPopulation/snapshotPlayer
+//   leben in scripts/lib/tft-marketvalue-pipeline.mjs (shared mit dem
+//   neuen daily-marketvalue-snapshot Driver, Phase A4).
 // ─────────────────────────────────────────────────────────────────────────────
-
-function loadGraph() {
-  const path = resolve(process.cwd(), 'public', `tft-graph-${REGION}.json`);
-  if (!existsSync(path)) return null;
-  try { return JSON.parse(readFileSync(path, 'utf8')); }
-  catch { return null; }
-}
-
-function loadCurrentSet() {
-  const path = resolve(process.cwd(), 'public', 'tft-set.json');
-  if (!existsSync(path)) {
-    console.error('public/tft-set.json missing — set detection unavailable');
-    return null;
-  }
-  try {
-    const j = JSON.parse(readFileSync(path, 'utf8'));
-    return j.currentSet?.number ?? j.setNumber ?? null;
-  } catch { return null; }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// per-player pipeline
-// ─────────────────────────────────────────────────────────────────────────────
-
-async function fetchAccount(puuid) {
-  const r = await rl(`https://${REGIONAL}.api.riotgames.com/riot/account/v1/accounts/by-puuid/${puuid}?api_key=${API_KEY}`);
-  if (!r || r._status) return null;
-  return { gameName: r.gameName || null, tagLine: r.tagLine || null };
-}
-
-// Pass 1: refresh cache, read matches, write season stats, extract raw metrics.
-// metaRelM is deferred (compMetaAvg=null) until the cohort benchmark is built.
-async function gatherPlayer(p, ctx) {
-  const { setNumber, hotCompKeys, recommendedItems, startTimeSec, maxIds } = ctx;
-  if (!SKIP_CACHE_REFRESH) {
-    await refreshPlayerMatchCache(pool, p.puuid, REGION, REGIONAL, riot, {
-      force: FORCE_REFRESH,
-      startTimeSec,   // only walk the current set's matches, not full history
-      maxIds,         // cap the cold backfill
-      concurrency: MATCH_FETCH_CONCURRENCY,  // fill the rate-limit headroom on cold players
-      log: VERBOSE ? (msg) => console.log(`    ${msg}`) : undefined,
-    });
-  }
-  const matches = await listSeasonMatches(pool, p.puuid, setNumber);
-  // Always write season stats (even <5 matches → 0-sample row the UI shows honestly)
-  await upsertSeasonStats(pool, p.puuid, REGION, setNumber, { matches, hotCompKeys, recommendedItems });
-  if (matches.length < 5) return { skip: true, sampleSize: matches.length };
-  return { raw: extractRawMetrics(matches, { wins: p.wins, losses: p.losses }, null), sampleSize: matches.length };
-}
-
-// Persist the region/set population (medians + expected dmg + cohort comp benchmark)
-// so the on-demand single-player refresh can normalise against the same population.
-async function persistPopulation(setNumber, pop, compMeta, playerCount) {
-  await pool.query(
-    `insert into tft_mv_population_stats (region, set_number, medians, expected_dmg, comp_meta, player_count, computed_at)
-     values ($1, $2, $3::jsonb, $4::jsonb, $5::jsonb, $6, now())
-     on conflict (region, set_number) do update set
-       medians = excluded.medians, expected_dmg = excluded.expected_dmg,
-       comp_meta = excluded.comp_meta, player_count = excluded.player_count, computed_at = now()`,
-    [REGION, setNumber, JSON.stringify(pop.medians), JSON.stringify(pop.expectedDmg),
-     JSON.stringify(Object.fromEntries(compMeta)), playerCount],
-  );
-  // Mirror to Supabase so the Vercel live-calc fallback can read it. Best-effort.
-  if (SUPA_URL && SUPA_KEY) {
-    await fetch(`${SUPA_URL}/rest/v1/tft_mv_population_stats?on_conflict=region,set_number`, {
-      method: 'POST',
-      signal: AbortSignal.timeout(15_000),
-      headers: {
-        apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`,
-        'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal',
-      },
-      body: JSON.stringify([{
-        region: REGION, set_number: setNumber,
-        medians: pop.medians, expected_dmg: pop.expectedDmg,
-        comp_meta: Object.fromEntries(compMeta), player_count: playerCount,
-      }]),
-    }).then(r => { if (!r.ok) console.error(`  [pop→supabase] HTTP ${r.status}`); })
-      .catch(e => console.error(`  [pop→supabase] ${e.message}`));
-  }
-}
-
-// Pass 2: base value × skill-score multiplier → snapshot.
-async function snapshotPlayer(p, raw, pop) {
-  const base = computeBaseValue(
-    { tier: p.tier, rank: p.rank || 'I', leaguePoints: p.lp, wins: p.wins, losses: p.losses },
-    p.tier === 'CHALLENGER' ? p.ladderRank : undefined,
-  );
-  if (!base.rated) return { snapshotted: false, reason: base.notRatedReason };
-  const sk = scoreSkill(raw, pop);
-  const baseValue = Math.round(base.baseValue);
-  const finalValue = Math.round(base.baseValue * sk.multiplier);
-
-  const acc = await fetchAccount(p.puuid);
-  const snapshotDateExpr = SNAPSHOT_DATE ? '$3::date' : 'current_date';
-  const baseParams = SNAPSHOT_DATE ? [SNAPSHOT_DATE] : [];
-  await pool.query(
-    `insert into tft_player_marketvalue_snapshots (
-       puuid, region, snapshot_date, game_name, tag_line, tier, rank, lp, ladder_rank,
-       base_value, multiplier, final_value, sample_size, damping, agents
-     ) values ($1, $2, ${snapshotDateExpr}, $${3 + baseParams.length}, $${4 + baseParams.length}, $${5 + baseParams.length}, $${6 + baseParams.length}, $${7 + baseParams.length}, $${8 + baseParams.length}, $${9 + baseParams.length}, $${10 + baseParams.length}, $${11 + baseParams.length}, $${12 + baseParams.length}, $${13 + baseParams.length}, $${14 + baseParams.length}::jsonb)
-     on conflict (puuid, region, snapshot_date) do update set
-       game_name   = excluded.game_name,
-       tag_line    = excluded.tag_line,
-       tier        = excluded.tier,
-       rank        = excluded.rank,
-       lp          = excluded.lp,
-       ladder_rank = excluded.ladder_rank,
-       base_value  = excluded.base_value,
-       multiplier  = excluded.multiplier,
-       final_value = excluded.final_value,
-       sample_size = excluded.sample_size,
-       damping     = excluded.damping,
-       agents      = excluded.agents`,
-    [
-      p.puuid, REGION,
-      ...baseParams,
-      acc?.gameName ?? null, acc?.tagLine ?? null,
-      p.tier, p.rank ?? 'I', p.lp, p.ladderRank ?? null,
-      baseValue, sk.multiplier, finalValue,
-      sk.sampleSize, sk.damping, JSON.stringify(sk.signals),
-    ],
-  );
-  return { snapshotted: true, finalValue };
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // main
@@ -375,7 +254,7 @@ async function main() {
   if (setNumber == null) { console.error('No current set, aborting'); process.exit(1); }
   console.log(`  current set: ${setNumber}`);
 
-  const graph = loadGraph();
+  const graph = loadGraph(REGION);
   console.log(`  graph: ${graph ? 'loaded' : 'not available'}`);
   const hotCompKeys = buildHotCompKeys(graph);
   const recommendedItems = buildRecommendedItems(graph);
@@ -398,7 +277,13 @@ async function main() {
   console.log(`  cache-refresh window: matches since ${new Date(startTimeSec * 1000).toISOString().slice(0, 10)} (current set), cap ${maxColdIds} ids/player`);
 
   console.log(`\n[1/3] ${players.length} players — Pass 1: cache refresh + raw metrics`);
-  const ctx = { setNumber, hotCompKeys, recommendedItems, startTimeSec, maxIds: maxColdIds };
+  const ctx = {
+    region: REGION, regional: REGIONAL,
+    setNumber, hotCompKeys, recommendedItems,
+    startTimeSec, maxIds: maxColdIds,
+    concurrency: MATCH_FETCH_CONCURRENCY,
+    force: FORCE_REFRESH, skipCacheRefresh: SKIP_CACHE_REFRESH, verbose: VERBOSE,
+  };
   const gathered = [];
   let p1 = 0, tooFew = 0, failed = 0;
   for (const p of players) {
@@ -407,7 +292,7 @@ async function main() {
       break;
     }
     try {
-      const g = await gatherPlayer(p, ctx);
+      const g = await gatherPlayer(pool, riot, p, ctx);
       p1++;
       if (g.skip) tooFew++; else gathered.push({ p, raw: g.raw });
       if (VERBOSE || p1 % 25 === 0 || p1 === players.length) {
@@ -430,7 +315,9 @@ async function main() {
   const compMeta = buildCompMeta(gathered.map(g => g.raw));
   for (const g of gathered) applyMeta(g.raw, compMeta);
   const pop = buildPopulation(gathered.map(g => g.raw));
-  await persistPopulation(setNumber, pop, compMeta, gathered.length);
+  await persistPopulation(pool, REGION, setNumber, pop, compMeta, gathered.length, {
+    supaUrl: SUPA_URL, supaKey: SUPA_KEY,
+  });
   console.log(`  comp-benchmark: ${compMeta.size} comps · population persisted`);
 
   // Pass 2 must NOT bail on `aborting` — it's cheap (DB writes only, no Riot
@@ -444,9 +331,13 @@ async function main() {
   // somehow gets stuck — systemd SIGKILLs after the grace period.
   console.log(`\n[3/3] Pass 2: score + snapshot (runs to completion regardless of SIGTERM)`);
   let snapshotted = 0, unrated = 0;
+  const snapshotCtx = {
+    region: REGION, regional: REGIONAL,
+    apiKey: API_KEY, snapshotDate: SNAPSHOT_DATE,
+  };
   for (const g of gathered) {
     try {
-      const r = await snapshotPlayer(g.p, g.raw, pop);
+      const r = await snapshotPlayer(pool, riot, g.p, g.raw, pop, snapshotCtx);
       if (r.snapshotted) snapshotted++; else unrated++;
     } catch (err) {
       failed++;

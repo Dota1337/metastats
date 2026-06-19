@@ -2113,6 +2113,36 @@ const translations = {
     '\u00CDtems con componentes compartidos', 'Objets avec composants partag\u00E9s'
   ),
 
+  // Item bucket filter (analog to tactics.tools/metatft Standard/Artifact/Emblem/Radiant)
+  'tft.item.bucket.all': t6('Alle', 'All', '\uC804\uCCB4', '\u5168\u90E8', 'Todos', 'Tous'),
+  'tft.item.bucket.standard': t6('Standard', 'Standard', '\uAE30\uBCF8', '\u6807\u51C6', 'Est\u00E1ndar', 'Standard'),
+  'tft.item.bucket.artifact': t6('Artefakte', 'Artifacts', '\uC544\uD2F0\uD329\uD2B8', '\u795E\u5668', 'Artefactos', 'Artefacts'),
+  'tft.item.bucket.emblem': t6('Embleme', 'Emblems', '\uBB38\uC7A5', '\u5FBD\u7AE0', 'Emblemas', 'Embl\u00E8mes'),
+  'tft.item.bucket.radiant': t6('Radiant', 'Radiant', '\uB798\uB514\uC5B8\uD2B8', '\u706F\u706C', 'Radiantes', 'Radieux'),
+
+  // Item detail: per-carrier stats table (Avg-Place + Top4 + Games)
+  'tft.item.topCarrier.title': t6(
+    'Top-Tr\u00E4ger', 'Top Carriers',
+    '\uC8FC\uC694 \uCC54\uD53C\uC5B8', '\u70ED\u95E8\u643A\u5E26\u8005',
+    'Portadores principales', 'Porteurs principaux'
+  ),
+  'tft.item.topCarrier.carrier': t6('Tr\u00E4ger', 'Carrier', '\uCC54\uD53C\uC5B8', '\u643A\u5E26\u8005', 'Portador', 'Porteur'),
+
+  // Item detail: item-combos (Top item-sets this item appears in)
+  'tft.item.combos.title': t6(
+    'Top Item-Kombinationen', 'Top Item Combinations',
+    '\uC8FC\uC694 \uC544\uC774\uD15C \uC870\uD569', '\u70ED\u95E8\u88C5\u5907\u7EC4\u5408',
+    'Combinaciones de \u00EDtems principales', 'Meilleures combinaisons d\'objets'
+  ),
+  'tft.item.combos.caption': t6(
+    'St\u00E4rkste Builds, in denen dieses Item vorkommt \u2014 \u00FCber alle Comps gewichtet.',
+    'Strongest builds containing this item \u2014 weighted across all comps.',
+    '\uC774 \uC544\uC774\uD15C\uC774 \uD3EC\uD568\uB41C \uAC00\uC7A5 \uAC15\uB825\uD55C \uBE4C\uB4DC \u2014 \uBAA8\uB4E0 \uC870\uD569 \uAC00\uC911\uCE58 \uC801\uC6A9.',
+    '\u5305\u542B\u8BE5\u88C5\u5907\u7684\u6700\u5F3A\u6784\u5EFA \u2014 \u8DE8\u9635\u5BB9\u52A0\u6743\u3002',
+    'Las builds m\u00E1s fuertes que contienen este \u00EDtem \u2014 ponderado a trav\u00E9s de todas las comps.',
+    'Builds les plus fortes contenant cet objet \u2014 pond\u00E9r\u00E9es sur l\'ensemble des comps.'
+  ),
+
   // \u2500 Augment Detail Page \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   'tft.augment.allTiers': t6(
     'Alle Tiers', 'All tiers',

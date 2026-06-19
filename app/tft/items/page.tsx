@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
@@ -13,6 +13,7 @@ import StatsFilterBar, {
 } from '../../components/tft/StatsFilterBar';
 import { useI18n } from '../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
+import { itemBucketOf, ITEM_BUCKETS, type ItemBucket } from '../../lib/tft-item-bucket';
 import TftHero from '../../components/tft/TftHero';
 
 interface ItemRow {
@@ -46,6 +47,10 @@ export default function TftItemsPage() {
   const [patches, setPatches] = useState<PatchInfo[]>([]);
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
   const [loading, setLoading] = useState(false);
+  // Client-side bucket filter analog to /tft/units cost-filter pattern.
+  // null = "Alle" (default). Other items (PsyOps base, AnimaSquad tier) fall
+  // into "other" and are only reachable via "Alle".
+  const [bucket, setBucket] = useState<ItemBucket | null>(null);
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
 
@@ -86,6 +91,11 @@ export default function TftItemsPage() {
 
   const currentPatchLabel = patches[0]?.patch;
 
+  const filtered = useMemo(() => {
+    if (!bucket) return items;
+    return items.filter(it => itemBucketOf(it.apiName, assets) === bucket);
+  }, [items, bucket, assets]);
+
   return (
     <main className="min-h-screen bg-[#0e1525]">
       <Nav active="items" />
@@ -93,12 +103,30 @@ export default function TftItemsPage() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-2 pb-6">
         <StatsFilterBar filters={filters} patches={patches} onChange={setFilters} />
 
+        <div className="flex flex-wrap gap-1 mb-4">
+          <button
+            onClick={() => setBucket(null)}
+            className={`px-3 py-1 rounded text-xs ${bucket == null ? 'bg-[#7B61FF] text-white' : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'}`}
+          >
+            {t('tft.item.bucket.all')}
+          </button>
+          {ITEM_BUCKETS.map(b => (
+            <button
+              key={b}
+              onClick={() => setBucket(b)}
+              className={`px-3 py-1 rounded text-xs ${bucket === b ? 'bg-[#7B61FF] text-white' : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'}`}
+            >
+              {t(`tft.item.bucket.${b}` as any)}
+            </button>
+          ))}
+        </div>
+
         {loading && hasData === null && (
           <div className="text-[#7a8aa0] text-center py-8">{t('tft.noDataYet').replace('Noch keine Daten', 'Lade')}</div>
         )}
         {hasData === false && <EmptyData />}
 
-        {hasData && items.length > 0 && (
+        {hasData && filtered.length > 0 && (
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
             {/* Grid: icon (3rem) → name (12rem) → TopUsers (1fr, grows to
                 fill the row) → 4 stat columns. Name moves from 1fr to a
@@ -121,7 +149,7 @@ export default function TftItemsPage() {
             <div className="md:hidden px-4 py-2 text-[10px] uppercase tracking-widest text-[#7a8aa0] bg-[#0a0e1a]">
               {t('nav.items')}
             </div>
-            {items.map(it => {
+            {filtered.map(it => {
               const meta = assets?.items[it.apiName];
               const url = tftIconUrl(assets, meta?.icon);
               return (

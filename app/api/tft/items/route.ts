@@ -45,10 +45,16 @@ export async function GET(request: NextRequest) {
         games: data.games,
         avgPlacement: data.games > 0 ? data.sumPlacement / data.games : null,
         top4Rate: data.games > 0 ? data.top4 / data.games : null,
+        // Per-carrier top4Rate + top1Rate land in the snapshot from the
+        // aggregator-patch (2026-06-19). Older JSON snapshots without
+        // u.top4 / u.top1 surface as null so the UI shows "—" instead of
+        // a fake zero — gets filled in on the next daily-crawl cycle.
         topUsers: (data.topUsers || []).map((u: any) => ({
           characterId: u.characterId,
           games: u.games,
           avgPlacement: u.games > 0 ? u.sumPlacement / u.games : null,
+          top4Rate: u.games > 0 && u.top4 != null ? u.top4 / u.games : null,
+          top1Rate: u.games > 0 && u.top1 != null ? u.top1 / u.games : null,
         })),
       },
     });

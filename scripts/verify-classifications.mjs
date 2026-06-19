@@ -248,6 +248,60 @@ if (compSlugMap?.slugs) {
   warn(`No comp-slug-map at ${compSlugMapPath} — Comp-Detail augment-section won't surface for any cluster.`);
 }
 
+// 9. Item-Bucket-Classification — sanity check that itemBucketOf produces a
+// sensible distribution across the bundle's active items. The actual classifier
+// lives in app/lib/tft-item-bucket.ts; we mirror the same patterns here so a
+// drift between the classifier and our expectations is caught at push time.
+// Specifically: we want a reasonable count in each known bucket, and we want
+// the "edge cases" from reference_tft_asset_quirks.md to land in the bucket
+// they're memory-documented for.
+const activeItems = bundle.active?.items || [];
+if (activeItems.length > 0) {
+  const bucketOf = (id) => {
+    const meta = bundle.items?.[id];
+    const name = meta?.name || '';
+    if (/^TFT\d*_Item_Artifact_/i.test(id)) return 'artifact';
+    const isEmblem =
+      /EmblemItem$/.test(id) ||
+      / Emblem$/.test(name) ||
+      (Array.isArray(meta?.tags) && meta.tags.some(t => String(t).toLowerCase() === 'emblem'));
+    if (isEmblem) return 'emblem';
+    if (/Radiant$/.test(id) || /\bRadiant\b/.test(name)) return 'radiant';
+    if (Array.isArray(meta?.composition) && meta.composition.length === 2) return 'standard';
+    return 'other';
+  };
+
+  const dist = { standard: 0, artifact: 0, emblem: 0, radiant: 0, other: 0 };
+  for (const id of activeItems) {
+    const b = bucketOf(id);
+    dist[b] = (dist[b] || 0) + 1;
+  }
+
+  // Each named bucket should have at least 5 entries in any healthy set —
+  // protects against regex breaking silently and dumping everything into "other".
+  for (const b of ['standard', 'artifact', 'emblem', 'radiant']) {
+    if (dist[b] < 5) fail(`Item-Bucket "${b}" has only ${dist[b]} items — classifier regression likely.`);
+  }
+
+  // Known edge-case checks from reference_tft_asset_quirks.md.
+  // (a) Classic Set-5 cross-set Radiants must land in 'radiant'
+  const set5Sample = activeItems.find(id => /^TFT5_Item_.+Radiant$/.test(id));
+  if (set5Sample && bucketOf(set5Sample) !== 'radiant') {
+    fail(`Edge-case: ${set5Sample} should be 'radiant', got '${bucketOf(set5Sample)}'`);
+  }
+  // (b) Artifact pattern must catch universal AND set-prefixed Artifacts
+  const artifactSample = activeItems.find(id => /_Item_Artifact_/i.test(id));
+  if (artifactSample && bucketOf(artifactSample) !== 'artifact') {
+    fail(`Edge-case: ${artifactSample} should be 'artifact', got '${bucketOf(artifactSample)}'`);
+  }
+  // (c) PsyOps_*_Radiant must land in 'radiant' (per memory: Riot's Trait-
+  //     Radiant variants share the Radiant suffix and are correctly classified)
+  const psyOpsRadiant = activeItems.find(id => /PsyOps.*_Radiant$/i.test(id));
+  if (psyOpsRadiant && bucketOf(psyOpsRadiant) !== 'radiant') {
+    fail(`Edge-case: ${psyOpsRadiant} should be 'radiant', got '${bucketOf(psyOpsRadiant)}'`);
+  }
+}
+
 console.log();
 if (WARN.length > 0) {
   console.log('Warnings:');

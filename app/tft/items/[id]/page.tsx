@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
@@ -9,6 +9,7 @@ import { useI18n } from '../../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftTraitDisplayName, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { buildExplorerUrl } from '../../../lib/tft-explorer-url';
 import { parseClusterKey } from '../../../lib/tft-cluster';
+import { costColor as costColorOf } from '../../../lib/tft-ui';
 import tftSet from '../../../../public/tft-set.json';
 
 interface ItemDetail {
@@ -16,7 +17,13 @@ interface ItemDetail {
   games: number;
   avgPlacement: number | null;
   top4Rate: number | null;
-  topUsers: { characterId: string; games: number; avgPlacement: number | null }[];
+  topUsers: {
+    characterId: string;
+    games: number;
+    avgPlacement: number | null;
+    top4Rate?: number | null;
+    top1Rate?: number | null;
+  }[];
 }
 
 export default function TftItemDetailPage() {
@@ -28,6 +35,8 @@ export default function TftItemDetailPage() {
   const [data, setData] = useState<ItemDetail | null | undefined>(undefined);
   const [hasData, setHasData] = useState<boolean | null>(null);
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
+  // ALL comps that contain this item — we slice top-6 for the "comps with item"
+  // display, but use the full list to aggregate item-combo stats below.
   const [compsWithItem, setCompsWithItem] = useState<any[]>([]);
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
@@ -45,12 +54,47 @@ export default function TftItemDetailPage() {
         const filtered = (d.comps || [])
           .filter((c: any) =>
             (c.carryItems || []).some((ci: any) => (ci.items || []).includes(id)),
-          )
-          .slice(0, 6);
+          );
         setCompsWithItem(filtered);
       })
       .catch(() => setCompsWithItem([]));
   }, [bucket, id]);
+
+  // Item-Combo-Aggregation: cross all comps that contain this item, sum the
+  // per-comp carryItems-counts weighted by comp avg-place + top4. Result = the
+  // strongest 2er/3er-Sets globally that contain this item. Approximation
+  // because we inherit comp-level stats (not per-set), but the count weights
+  // the average toward the actually-played sets — accurate enough as a "what
+  // builds work" surface without a new backend aggregation.
+  const itemCombos = useMemo(() => {
+    type ComboAgg = { items: string[]; count: number; wPlace: number; wTop4: number };
+    const bySig = new Map<string, ComboAgg>();
+    for (const c of compsWithItem) {
+      const sets = c.carryItems || [];
+      const avg = c.avgPlacement;
+      const t4 = c.top4Rate;
+      if (avg == null) continue;
+      for (const s of sets) {
+        const set: string[] = s.items || [];
+        if (!set.includes(id)) continue;
+        const cnt = Number(s.count) || 0;
+        if (cnt <= 0) continue;
+        const sig = [...set].sort().join('|');
+        const e = bySig.get(sig) || { items: set, count: 0, wPlace: 0, wTop4: 0 };
+        e.count += cnt;
+        e.wPlace += cnt * Number(avg);
+        if (t4 != null) e.wTop4 += cnt * Number(t4);
+        bySig.set(sig, e);
+      }
+    }
+    return [...bySig.values()]
+      .filter(e => e.count >= 5)
+      .map(e => ({ items: e.items, games: e.count, avgPlacement: e.wPlace / e.count, top4Rate: e.wTop4 / e.count }))
+      .sort((a, b) => a.avgPlacement - b.avgPlacement)
+      .slice(0, 8);
+  }, [compsWithItem, id]);
+
+  const compsTop6 = useMemo(() => compsWithItem.slice(0, 6), [compsWithItem]);
 
   const itemMeta = assets?.items[id];
   const url = tftIconUrl(assets, itemMeta?.icon);
@@ -170,19 +214,42 @@ export default function TftItemDetailPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">
               {data.topUsers.length > 0 && (
                 <div>
-                  <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-2">{t('tft.topUsers')}</h2>
-                  <div className="flex flex-wrap gap-2">
+                  <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-2">{t('tft.item.topCarrier.title')}</h2>
+                  {/* 1D-Carrier-Tabelle: Carrier × (Avg-Place, Top4%, Games).
+                      avgPlacement war schon im Aggregator (sumPlacement/games),
+                      vorher nur nicht angezeigt. top4Rate seit 2026-06-19
+                      Aggregator-Touch verfügbar — alte Snapshots ohne den
+                      Top4-Bucket rendern "—" statt eines erfundenen Werts
+                      (feedback_no_fake_values), füllt sich beim nächsten
+                      Daily-Crawl auf. */}
+                  <div className="bg-[#141c2e] border border-[#1e2a3a] rounded overflow-hidden">
+                    <div className="grid grid-cols-[1fr_4rem_4rem_4rem] gap-2 px-3 py-1.5 text-[10px] uppercase tracking-widest text-[#7a8aa0] bg-[#0a0e1a]">
+                      <div>{t('tft.item.topCarrier.carrier')}</div>
+                      <div className="text-right">{t('tft.avgPlacement')}</div>
+                      <div className="text-right">{t('tft.top4')}</div>
+                      <div className="text-right">{t('tft.gamesShort')}</div>
+                    </div>
                     {data.topUsers.map(u => {
                       const ch = assets?.champions[u.characterId];
                       const churl = tftChampionTileUrl(assets, ch);
+                      const cost = (ch as any)?.cost ?? 1;
                       return (
-                        <a key={u.characterId} href={`/tft/units/${encodeURIComponent(u.characterId)}?bucket=${bucket}`}
-                           className="flex flex-col items-center gap-1 bg-[#141c2e] border border-[#1e2a3a] rounded p-2 w-20 hover:border-[#7B61FF]/50">
-                          {churl
-                            ? <img src={churl} alt={ch!.name} className="w-10 h-10 rounded object-cover" />
-                            : <div className="w-10 h-10 rounded bg-[#1e2a3a]" />}
-                          <div className="text-[10px] text-white text-center truncate w-full">{ch?.name || prettyChar(u.characterId)}</div>
-                          <div className="text-[10px] text-[#7a8aa0]">{u.games} {t('tft.gamesShort')}</div>
+                        <a
+                          key={u.characterId}
+                          href={`/tft/units/${encodeURIComponent(u.characterId)}?bucket=${bucket}`}
+                          className="grid grid-cols-[1fr_4rem_4rem_4rem] gap-2 items-center px-3 py-1.5 text-xs hover:bg-white/5 border-t border-[#1e2a3a]"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            {churl ? (
+                              <img src={churl} alt={ch!.name} className="w-7 h-7 rounded border-2 object-cover flex-shrink-0" style={{ borderColor: costColorOf(cost) }} />
+                            ) : (
+                              <div className="w-7 h-7 rounded bg-[#1e2a3a] flex-shrink-0" />
+                            )}
+                            <span className="text-white truncate">{ch?.name || prettyChar(u.characterId)}</span>
+                          </div>
+                          <div className="text-right text-white tabular-nums">{u.avgPlacement?.toFixed(2) ?? '—'}</div>
+                          <div className="text-right text-[#3ecf8e] tabular-nums">{u.top4Rate != null ? `${(u.top4Rate * 100).toFixed(0)}%` : '—'}</div>
+                          <div className="text-right text-[#7a8aa0] tabular-nums">{u.games}</div>
                         </a>
                       );
                     })}
@@ -190,11 +257,11 @@ export default function TftItemDetailPage() {
                 </div>
               )}
 
-              {compsWithItem.length > 0 && (
+              {compsTop6.length > 0 && (
                 <div>
                   <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-2">{t('tft.compsWithItem')}</h2>
                   <div className="space-y-1.5">
-                    {compsWithItem.map(c => {
+                    {compsTop6.map(c => {
                       const parts = parseClusterKey(c.clusterKey);
                       const traitName = parts ? (tftTraitDisplayName(assets, parts.trait) || prettyTrait(parts.trait)) : '';
                       const carry = parts && assets ? assets.champions[parts.carry] : null;
@@ -225,6 +292,47 @@ export default function TftItemDetailPage() {
               )}
             </div>
           </>
+        )}
+
+        {/* Item-Combos: strongest 2er/3er builds containing this item, weighted
+            from the comps payload. Approximation — comp-level avg/top4 are
+            applied to each contained item-set, weighted by the per-comp count
+            of that set. A true per-combo aggregation would need an aggregator-
+            touch; this client-side cross gets us the ranking without backend
+            work. ≥5 games gate so noise doesn't dominate. */}
+        {itemCombos.length > 0 && (
+          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-5">
+            <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-1">{t('tft.item.combos.title')}</h2>
+            <p className="text-[#7a8aa0] text-[11px] mb-3">{t('tft.item.combos.caption')}</p>
+            <div className="space-y-1.5">
+              {itemCombos.map((s, i) => (
+                <div key={i} className="grid grid-cols-[1fr_4rem_4rem_4rem] gap-3 items-center bg-[#141c2e] border border-[#1e2a3a] rounded px-3 py-2">
+                  <div className="flex items-center gap-1.5">
+                    {s.items.map((it, j) => {
+                      const im = assets?.items[it];
+                      const iurl = tftIconUrl(assets, im?.icon);
+                      return iurl ? (
+                        <a
+                          key={j}
+                          href={`/tft/items/${encodeURIComponent(it)}?bucket=${bucket}`}
+                          onClick={e => e.stopPropagation()}
+                          title={im?.name || it}
+                          className="hover:scale-110 transition-transform"
+                        >
+                          <img src={iurl} alt={im?.name || it} className={`w-7 h-7 rounded ${it === id ? 'ring-2 ring-[#7B61FF]' : ''}`} />
+                        </a>
+                      ) : (
+                        <div key={j} className="w-7 h-7 rounded bg-[#1e2a3a]" />
+                      );
+                    })}
+                  </div>
+                  <div className="text-right text-white tabular-nums text-xs">{s.avgPlacement.toFixed(2)}</div>
+                  <div className="text-right text-[#3ecf8e] tabular-nums text-xs">{(s.top4Rate * 100).toFixed(0)}% T4</div>
+                  <div className="text-right text-[#7a8aa0] tabular-nums text-xs">{s.games}</div>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
 
         {/* Sibling items — completed items that share a component with this

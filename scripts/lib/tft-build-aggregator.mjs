@@ -467,9 +467,15 @@ export function aggregateMatch(rawMatch, agg, opts) {
           ib.games++;
           ib.sumPlacement += placement;
           if (top4) ib.top4++;
-          const userEntry = getOrCreate(ib.users, cid, () => ({ games: 0, sumPlacement: 0 }));
+          // Per-carrier outcomes — we already had games + sumPlacement, top4/
+          // top1 now too so the item-detail page can show "Avg-Place + T4% +
+          // T1% per Top-Carrier" instead of just games-count. Pre-existing
+          // snapshots stay valid (writers/readers default-zero when absent).
+          const userEntry = getOrCreate(ib.users, cid, () => ({ games: 0, sumPlacement: 0, top4: 0, top1: 0 }));
           userEntry.games++;
           userEntry.sumPlacement += placement;
+          if (top4) userEntry.top4++;
+          if (placement === 1) userEntry.top1++;
         }
       }
     }
@@ -878,7 +884,13 @@ export function finalize(agg, opts = {}) {
       // 8 after applying the exclusion list — the items-list column has
       // space for 8 cost-bordered tiles.
       const topUsers = [...b.users.entries()]
-        .map(([cid, e]) => ({ characterId: cid, games: e.games, sumPlacement: e.sumPlacement }))
+        .map(([cid, e]) => ({
+          characterId: cid,
+          games: e.games,
+          sumPlacement: e.sumPlacement,
+          top4: e.top4 || 0,
+          top1: e.top1 || 0,
+        }))
         .sort((a, b) => b.games - a.games)
         .slice(0, 10);
       out.byItem[item][bucket] = {

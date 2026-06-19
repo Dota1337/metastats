@@ -8,6 +8,7 @@ import CompCard from '../../components/tft/CompCard';
 import { useI18n } from '../../lib/i18n';
 import { loadTftAssets, tftChampionTileUrl, tftIconUrl, tftTraitDisplayName, tftTraitDescription, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import { costColor as costColorOf } from '../../lib/tft-ui';
+import { itemBucketOf } from '../../lib/tft-item-bucket';
 import TierFilter, { type TierBucket } from '../../components/tft/TierFilter';
 
 // Data Explorer: cross-cut the comp dataset by champion(s), item(s), trait(s)
@@ -218,11 +219,11 @@ export default function TftExplorerPage() {
   }, [assets, SET_PREFIX]);
 
   // Item-Picker mit zwei Buckets: "Standard" (Combat-Items, composition=2)
-  // und "Artefakte". Filter cross-checked gegen assets.active.items damit
-  // veraltete Set-IDs, Komponenten, Corrupted-Variants, doppelte Display-
-  // Namen alle automatisch wegfallen. Frühere Whitelist-Heuristik produzierte
-  // 25+ Duplicate-Namen (Corrupted*, Free*, Academy*) und enthielt Komponenten
-  // wie BFSword/ChainVest.
+  // und "Artefakte". Beide Buckets kommen aus dem zentralen itemBucketOf
+  // Helper (app/lib/tft-item-bucket.ts) — gleiche Klassifikation wie der
+  // Items-List Bucket-Filter, damit beide Surfaces synchron sind. Active-
+  // Items + Junk-Name-Filter bleiben hier, weil der Picker spezifischer
+  // (nur 2 Tabs, andere Buckets wären für den Explorer Lärm).
   const JUNK_NAME = /^@|^tft_item_name_|@[A-Za-z]+@/i;
   const itemOptionsByBucket = useMemo(() => {
     const empty = { standard: [], artifact: [] } as {
@@ -239,21 +240,9 @@ export default function TftExplorerPage() {
       const name: string | undefined = meta?.name;
       if (!name || JUNK_NAME.test(name)) continue;
       const entry = { id, name, icon: (meta?.icon as string | null) || null };
-      // Artefakte: explizites Pattern. Riot bezeichnet sie konsistent als
-      // TFT(\d*)_Item_Artifact_<Name>.
-      if (/^TFT\d*_Item_Artifact_/.test(id)) {
-        artifact.push(entry);
-        continue;
-      }
-      // Standard-Combat-Items: composition.length === 2 = aus 2 Komponenten
-      // gebaut. Diese Definition matched alle "echten" Carry-/Tank-Items und
-      // schließt Komponenten (composition=[]) sowie Augment-/Quest-Items
-      // automatisch aus. Cross-Set-Radiants (TFT5_Item_*Radiant) und
-      // PsyOps/AnimaSquad-Trait-Items werden ebenfalls erkannt — falls Riot
-      // sie als 2-Komponenten-Build modelliert.
-      if (Array.isArray(meta?.composition) && meta.composition.length === 2) {
-        standard.push(entry);
-      }
+      const b = itemBucketOf(id, assets);
+      if (b === 'artifact') artifact.push(entry);
+      else if (b === 'standard') standard.push(entry);
     }
     const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name);
     standard.sort(byName);

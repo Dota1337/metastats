@@ -33,6 +33,14 @@
  *   node scripts/crawl-all-regions.mjs --skip-sync           # crawl only
  *   node scripts/crawl-all-regions.mjs --include-diamond     # extend scope
  *   node scripts/crawl-all-regions.mjs --reset-cursor        # ignore + clear saved cursor
+ *
+ * Bootstrap-Mode (Phase A3, manueller One-Shot über 5-7 Nächte):
+ *   node scripts/crawl-all-regions.mjs --include-diamond \
+ *        --max-cold-ids 400 --match-concurrency 4 --reset-cursor
+ *
+ * --max-cold-ids 400 weil startTime in der Pipeline auf set-start zurückgeht
+ * (Default 200 reicht nicht für 7+ Tage Lücke). --match-concurrency 4 schont
+ * Refresh-API-Headroom während des langen Bootstrap-Laufs.
  */
 
 import { spawn } from 'node:child_process';
@@ -40,11 +48,14 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { revalidateEdge, MARKETVALUE_EDGE_PATHS } from './lib/revalidate-edge.mjs';
 
+// ph2/th2 raus seit 2026-06-19 — 0 D2+ Spieler, 0 Crawl-Meta letzte 14 Tage.
+// Bleiben aber gültige Riot-Routings (siehe app/lib/regions.ts). me1 bleibt
+// trotz Pop=68 drin (Marktwert macht Pop-Stats-Bypass dort, kommt mit A4).
 const CLUSTERS = {
   europe:   ['euw1', 'eun1', 'tr1', 'ru', 'me1'],
   americas: ['na1', 'br1', 'la1', 'la2'],
   asia:     ['kr', 'jp1'],
-  sea:      ['oc1', 'ph2', 'sg2', 'th2', 'tw2', 'vn2'],
+  sea:      ['oc1', 'sg2', 'tw2', 'vn2'],
 };
 
 // Canonical flat region order = clusters in definition order, regions within.
@@ -71,6 +82,17 @@ const EXTRA = [];
 if (hasFlag('--include-diamond')) EXTRA.push('--include-diamond');
 if (hasFlag('--verbose')) EXTRA.push('--verbose');
 if (hasFlag('--force-refresh')) EXTRA.push('--force-refresh');
+// --max-cold-ids für Bootstrap-Phase (A3) durchreichen — Default 200 reicht
+// für Daily-Incremental, aber für Erstfill nach >7-Tage-Lücke braucht's eher
+// 400 weil startTime einen großen Set-Range zurückgeht. Perf-Critic-Verdict
+// 2026-06-19 für die Phase-0-Migration.
+const MAX_COLD_IDS = arg('--max-cold-ids');
+if (MAX_COLD_IDS) EXTRA.push('--max-cold-ids', MAX_COLD_IDS);
+// --match-concurrency durchreichen, damit Bootstrap mit conc=4 (statt Default 6)
+// laufen kann — schont Refresh-API-Headroom, der bei langem Bootstrap geteilt
+// wird mit User-Refresh-Button und Pro-Validator.
+const MATCH_CONCURRENCY = arg('--match-concurrency');
+if (MATCH_CONCURRENCY) EXTRA.push('--match-concurrency', MATCH_CONCURRENCY);
 
 // Cursor lives OUTSIDE /opt/metastats-crawler: remote-deploy.sh runs
 // `git reset --hard` with a `git clean -fd` fallback, which would wipe an

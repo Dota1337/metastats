@@ -1,14 +1,14 @@
 {
   "queue": "RANKED_SOLO_5x5",
-  "month": "April 2026",
-  "fetchedAt": "2026-06-12T12:55:33.074Z",
+  "month": "June 2026",
+  "fetchedAt": "2026-06-19T16:00:21.276Z",
   "source": "esportstales.com (data: leagueofgraphs.com)",
   "tiers": [
     {
       "key": "IRON",
       "label": "Iron",
       "color": "#6b6b6b",
-      "pct": 2.6
+      "pct": 3.1
     },
     {
       "key": "BRONZE",
@@ -20,7 +20,7 @@
       "key": "SILVER",
       "label": "Silver",
       "color": "#8fa0a8",
-      "pct": 23
+      "pct": 22
     },
     {
       "key": "GOLD",
@@ -38,31 +38,31 @@
       "key": "EMERALD",
       "label": "Emerald",
       "color": "#00a86b",
-      "pct": 11
+      "pct": 12
     },
     {
       "key": "DIAMOND",
       "label": "Dia",
       "color": "#576cce",
-      "pct": 3.7
+      "pct": 4
     },
     {
       "key": "MASTER",
       "label": "Master",
       "color": "#9d48e0",
-      "pct": 1.1
+      "pct": 0.84
     },
     {
       "key": "GRANDMASTER",
       "label": "GM",
       "color": "#e44040",
-      "pct": 0.073
+      "pct": 0.062
     },
     {
       "key": "CHALLENGER",
       "label": "Chall",
       "color": "#f0c040",
-      "pct": 0.031
+      "pct": 0.025
     }
   ]
 }

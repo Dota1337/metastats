@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   const limited = checkRateLimit(req, { key: 'explorer-matches', max: 20, windowMs: 60_000 });
   if (limited) return limited;
 
-  let body: { units?: unknown; region?: unknown; days?: unknown; limit?: unknown };
+  let body: { units?: unknown; region?: unknown; days?: unknown; limit?: unknown; starLevels?: unknown; itemCounts?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -41,6 +41,14 @@ export async function POST(req: NextRequest) {
   const region = typeof body.region === 'string' && VALID_REGIONS.has(body.region) ? body.region : 'all';
   const days = Math.max(1, Math.min(30, Number(body.days) || 3));
   const limit = Math.max(50, Math.min(5000, Number(body.limit) || 5000));
+  // Phase A2: optional Star-Level + Items-Count filters. Empty arrays mean
+  // "no filter" — preserves backwards compatibility with the old caller.
+  const starLevels = Array.isArray(body.starLevels)
+    ? body.starLevels.map(n => Number(n)).filter(n => Number.isInteger(n) && n >= 1 && n <= 4)
+    : [];
+  const itemCounts = Array.isArray(body.itemCounts)
+    ? body.itemCounts.map(n => Number(n)).filter(n => Number.isInteger(n) && n >= 0 && n <= 3)
+    : [];
 
   let upstream: Response;
   try {
@@ -50,7 +58,7 @@ export async function POST(req: NextRequest) {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${TOKEN}`,
       },
-      body: JSON.stringify({ units, region, days, limit }),
+      body: JSON.stringify({ units, region, days, limit, starLevels, itemCounts }),
       // 60s cap — the Hetzner side hits ~25s worst-case with all-region
       // selective filters; padding for network jitter.
       signal: AbortSignal.timeout(60_000),

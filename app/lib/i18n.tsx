@@ -2182,6 +2182,34 @@ const translations = {
   'tft.unit.trait.allTraits': t6('Alle Traits', 'All traits', '\uBAA8\uB4E0 \uD2B9\uC131', '\u6240\u6709\u7F81\u7ECA', 'Todos los rasgos', 'Toutes les origines'),
   'tft.unit.trait.label': t6('Trait', 'Trait', '\uD2B9\uC131', '\u7F81\u7ECA', 'Rasgo', 'Origine'),
 
+  // Explorer Star / Items-Count filters (Phase A2)
+  'tft.explorer.starLevel': t6('Sterne', 'Star level', '\uC131\uAE09', '\u661F\u7EA7', 'Nivel de estrella', 'Niveau d\'\u00E9toile'),
+  'tft.explorer.itemsCount': t6('Items', 'Items', '\uC544\uC774\uD15C', '\u88C5\u5907\u6570', '\u00CDtems', 'Objets'),
+  'tft.explorer.starItems.help': t6(
+    'Wirkt pro Unit: jede gew\u00E4hlte Unit muss diesen Stern + diese Item-Anzahl haben.',
+    'Per-unit: each selected unit must match this star + item count.',
+    '\uC720\uB2DB\uBCC4: \uAC01 \uC120\uD0DD\uB41C \uC720\uB2DB\uC774 \uC774 \uC131\uAE09 + \uC544\uC774\uD15C \uC218\uC640 \uC77C\uCE58\uD574\uC57C \uD568.',
+    '\u9010\u82F1\u96C4\u751F\u6548\uFF1A\u6BCF\u4E2A\u9009\u4E2D\u82F1\u96C4\u9700\u5339\u914D\u6B64\u661F\u7EA7 + \u88C5\u5907\u6570\u3002',
+    'Por unidad: cada unidad seleccionada debe coincidir con esta estrella + cantidad de \u00EDtems.',
+    'Par unit\u00E9 : chaque unit\u00E9 s\u00E9lectionn\u00E9e doit correspondre \u00E0 cette \u00E9toile + nombre d\'objets.'
+  ),
+  'tft.explorer.lowSample': t6(
+    'Niedrige Sample-Size ({n} Spiele) \u2014 Stats nur orientierend',
+    'Low sample size ({n} matches) \u2014 stats are indicative only',
+    '\uB0AE\uC740 \uC0D8\uD50C \uC218 ({n}\uACBD\uAE30) \u2014 \uD1B5\uACC4\uB294 \uCC38\uACE0\uC6A9',
+    '\u6837\u672C\u91CF\u4F4E ({n}\u573A\u5BF9\u5C40) \u2014 \u6570\u636E\u4EC5\u4F9B\u53C2\u8003',
+    'Tama\u00F1o de muestra bajo ({n} partidas) \u2014 estad\u00EDsticas orientativas',
+    '\u00C9chantillon faible ({n} parties) \u2014 statistiques indicatives'
+  ),
+  'tft.explorer.patchMixWarning': t6(
+    'Zeitraum \u00FCberspannt mehrere Patches',
+    'Window spans multiple patches',
+    '\uAE30\uAC04\uC774 \uC5EC\uB7EC \uD328\uCE58 \uD3EC\uD568',
+    '\u65F6\u95F4\u8303\u56F4\u8DE8\u8D8A\u591A\u4E2A\u7248\u672C',
+    'El periodo abarca varios parches',
+    'La fen\u00EAtre couvre plusieurs patchs'
+  ),
+
   // Item bucket filter (analog to tactics.tools/metatft Standard/Artifact/Emblem/Radiant)
   'tft.item.bucket.all': t6('Alle', 'All', '\uC804\uCCB4', '\u5168\u90E8', 'Todos', 'Tous'),
   'tft.item.bucket.standard': t6('Standard', 'Standard', '\uAE30\uBCF8', '\u6807\u51C6', 'Est\u00E1ndar', 'Standard'),

@@ -419,23 +419,66 @@ async function handleExploreMatches(body) {
   const region = typeof body?.region === 'string' ? body.region : 'all';
   const days = Math.max(1, Math.min(30, Number(body?.days) || 3));
   const limit = Math.max(50, Math.min(MAX_LIMIT, Number(body?.limit) || 5000));
+  // Star / items-count filters (Phase A2). Default = all tiers + all item-
+  // counts to keep parity with aggregate stats. Empty array OR not provided
+  // means "no filter". `1..4` for stars (TFT supports 4★ from Set 17), `0..3`
+  // for items-count (each carrier slot holds 0-3 items).
+  const starLevels = Array.isArray(body?.starLevels)
+    ? body.starLevels.map(n => Number(n)).filter(n => n >= 1 && n <= 4)
+    : [];
+  const itemCounts = Array.isArray(body?.itemCounts)
+    ? body.itemCounts.map(n => Number(n)).filter(n => n >= 0 && n <= 3)
+    : [];
 
   const sinceMs = Date.now() - days * 86_400_000;
 
-  // Build the units @> jsonb filter. Each requested character_id becomes
-  // its own contains clause so the GIN index can serve them via bitmap AND.
+  // Build the units @> jsonb filter. Each requested character_id becomes its
+  // own contains clause so the GIN(jsonb_ops) index can serve them via bitmap
+  // AND. When star-levels are provided, we expand to one contains-clause per
+  // (char × tier) and OR them per character — the index still does the pre-
+  // filter via bitmap-OR/AND, then EXISTS post-filter validates items-count
+  // (array_length isn't indexable on jsonb_ops anyway, so it'd be heap-filter
+  // either way; doing it post-prefilter keeps the heap set small).
   const filters = ['set_number = $1', 'queue_id = $2', 'game_datetime >= $3'];
   const params = [SET_NUMBER, QUEUE_RANKED, sinceMs];
   let p = 4;
   for (const u of units) {
-    filters.push(`units @> $${p}::jsonb`);
-    params.push(JSON.stringify([{ characterId: u }]));
-    p++;
+    if (starLevels.length > 0) {
+      const orClauses = [];
+      for (const t of starLevels) {
+        orClauses.push(`units @> $${p}::jsonb`);
+        params.push(JSON.stringify([{ characterId: u, tier: t }]));
+        p++;
+      }
+      filters.push('(' + orClauses.join(' OR ') + ')');
+    } else {
+      filters.push(`units @> $${p}::jsonb`);
+      params.push(JSON.stringify([{ characterId: u }]));
+      p++;
+    }
   }
   if (region !== 'all') {
     filters.push(`region = $${p}`);
     params.push(region);
     p++;
+  }
+  // EXISTS post-filter for items-count + per-unit star validation. Runs on
+  // the already-shrunk heap set from the GIN prefilter above.
+  if (itemCounts.length > 0 || (starLevels.length > 0 && units.length > 1)) {
+    for (const u of units) {
+      const checks = [`u->>'characterId' = $${p}`];
+      params.push(u); p++;
+      if (starLevels.length > 0) {
+        checks.push(`(u->>'tier')::int = ANY($${p}::int[])`);
+        params.push(starLevels); p++;
+      }
+      if (itemCounts.length > 0) {
+        // itemNames is the modern jsonb key; fall back to items for older rows.
+        checks.push(`jsonb_array_length(COALESCE(u->'itemNames', u->'items', '[]'::jsonb)) = ANY($${p}::int[])`);
+        params.push(itemCounts); p++;
+      }
+      filters.push(`EXISTS (SELECT 1 FROM jsonb_array_elements(units) u WHERE ${checks.join(' AND ')})`);
+    }
   }
 
   const where = filters.join(' AND ');
@@ -456,7 +499,7 @@ async function handleExploreMatches(body) {
   const queryMs = Date.now() - t0;
 
   if (rows.length === 0) {
-    return { matchCount: 0, queryMs, units, region, days, sample: [], aggregate: null };
+    return { matchCount: 0, queryMs, units, region, days, starLevels, itemCounts, sample: [], aggregate: null };
   }
 
   let sumPlacement = 0, top4 = 0, top1 = 0, sumLevel = 0, sumLastRound = 0, sumDamage = 0;
@@ -497,6 +540,8 @@ async function handleExploreMatches(body) {
     units,
     region,
     days,
+    starLevels,
+    itemCounts,
     aggregate: {
       avgPlacement: sumPlacement / rows.length,
       top4Rate: top4 / rows.length,

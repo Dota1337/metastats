@@ -133,6 +133,13 @@ export default function TftExplorerPage() {
   const [traitQuery, setTraitQuery] = useState('');
   const [itemTab, setItemTab] = useState<'standard' | 'artifact'>('standard');
 
+  // Phase A2: Star-Level + Items-Count filters. Match-Mode only. Empty array
+  // = "no filter" (default = all stars, all item counts) — keeps parity with
+  // aggregate stats. data-skeptic flagged that defaulting to a subset would
+  // silently break Avg-Place comparison to /tft/units.
+  const [starLevels, setStarLevels] = useState<number[]>([]);
+  const [itemCounts, setItemCounts] = useState<number[]>([]);
+
   // Match-level state
   const [matchSample, setMatchSample] = useState<MatchSample[]>([]);
   const [matchAggregate, setMatchAggregate] = useState<MatchAggregate | null>(null);
@@ -154,41 +161,45 @@ export default function TftExplorerPage() {
     return () => { cancelled = true; };
   }, [bucket, region, days, mode]);
 
-  // Match-level query runs only when at least 1 unit is picked + button click.
-  // Auto-trigger on unit/region/days change to keep it interactive but cap to
-  // skip empty unit-selection (would scan everything).
+  // Match-level query runs only when at least 1 unit is picked. perf-critic-
+  // mandated 500ms trailing debounce so rapid toggle-clicks on Star/Items-
+  // pickers don't fire 5 requests in 1s. AbortController cancels in-flight
+  // when filter mutates so the user never sees stale results.
   useEffect(() => {
     if (mode !== 'matches') return;
     if (units.length === 0) {
       setMatchSample([]); setMatchAggregate(null); setMatchCount(0); setMatchError(null);
       return;
     }
-    let cancelled = false;
-    setMatchLoading(true);
-    setMatchError(null);
-    fetch('/api/tft/explorer/matches', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ units, region, days, limit: 5000 }),
-    })
-      .then(async r => {
-        if (!r.ok) { throw new Error((await r.json()).error || `HTTP ${r.status}`); }
-        return r.json();
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      setMatchLoading(true);
+      setMatchError(null);
+      fetch('/api/tft/explorer/matches', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ units, region, days, limit: 5000, starLevels, itemCounts }),
+        signal: controller.signal,
       })
-      .then(d => {
-        if (cancelled) return;
-        setMatchSample(d.sample || []);
-        setMatchAggregate(d.aggregate || null);
-        setMatchCount(d.matchCount || 0);
-      })
-      .catch(err => {
-        if (cancelled) return;
-        setMatchError(err.message || 'fail');
-        setMatchSample([]); setMatchAggregate(null); setMatchCount(0);
-      })
-      .finally(() => { if (!cancelled) setMatchLoading(false); });
-    return () => { cancelled = true; };
-  }, [mode, units, region, days]);
+        .then(async r => {
+          if (!r.ok) { throw new Error((await r.json()).error || `HTTP ${r.status}`); }
+          return r.json();
+        })
+        .then(d => {
+          if (controller.signal.aborted) return;
+          setMatchSample(d.sample || []);
+          setMatchAggregate(d.aggregate || null);
+          setMatchCount(d.matchCount || 0);
+        })
+        .catch(err => {
+          if (controller.signal.aborted || err.name === 'AbortError') return;
+          setMatchError(err.message || 'fail');
+          setMatchSample([]); setMatchAggregate(null); setMatchCount(0);
+        })
+        .finally(() => { if (!controller.signal.aborted) setMatchLoading(false); });
+    }, 500);
+    return () => { controller.abort(); clearTimeout(timer); };
+  }, [mode, units, region, days, starLevels, itemCounts]);
 
   // Build sortable champion / item / trait lists from assets, gated by the
   // current set so we don't surface inactive units, augments (Riot-tabu),
@@ -514,6 +525,71 @@ export default function TftExplorerPage() {
 
             {mode === 'matches' && (
               <>
+                {units.length > 0 && (
+                  <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-3 space-y-2">
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">{t('tft.explorer.starLevel')}</div>
+                        {starLevels.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setStarLevels([])}
+                            className="text-[10px] text-[#7B61FF] hover:underline"
+                          >× {t('tft.explorer.resetAll')}</button>
+                        )}
+                      </div>
+                      <div className="flex gap-1">
+                        {[1, 2, 3, 4].map(s => {
+                          const active = starLevels.includes(s);
+                          const color = s === 1 ? '#9aa6b2' : s === 2 ? '#3a8' : s === 3 ? '#e0c75a' : '#c39bff';
+                          return (
+                            <button
+                              key={s}
+                              type="button"
+                              onClick={() => setStarLevels(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])}
+                              className={`flex-1 py-1.5 text-xs rounded border tabular-nums ${active ? 'text-white' : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5]'}`}
+                              style={active ? { backgroundColor: `${color}30`, borderColor: color } : undefined}
+                              title={s === 4 ? '4★ — selten (Sona Command Mods, Aurelion Sol Quest)' : undefined}
+                            >
+                              {s}★
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">{t('tft.explorer.itemsCount')}</div>
+                        {itemCounts.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setItemCounts([])}
+                            className="text-[10px] text-[#7B61FF] hover:underline"
+                          >× {t('tft.explorer.resetAll')}</button>
+                        )}
+                      </div>
+                      <div className="flex gap-1">
+                        {[0, 1, 2, 3].map(c => {
+                          const active = itemCounts.includes(c);
+                          return (
+                            <button
+                              key={c}
+                              type="button"
+                              onClick={() => setItemCounts(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c])}
+                              className={`flex-1 py-1.5 text-xs rounded border tabular-nums ${active ? 'bg-[#7B61FF]/30 border-[#7B61FF] text-white' : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5]'}`}
+                            >
+                              {c}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    {(starLevels.length > 0 || itemCounts.length > 0) && (
+                      <div className="text-[10px] text-[#7a8aa0] leading-snug">{t('tft.explorer.starItems.help')}</div>
+                    )}
+                  </div>
+                )}
+
                 {units.length === 0 && (
                   <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-6 text-center text-[#7a8aa0] text-sm">
                     {t('tft.explorer.matches.pickUnits')}
@@ -534,6 +610,16 @@ export default function TftExplorerPage() {
 
                 {units.length > 0 && !matchLoading && matchAggregate && (
                   <>
+                    {(matchCount < 30 || days >= 7) && (
+                      <div className="bg-[#7B61FF]/10 border border-[#7B61FF]/40 rounded-lg p-3 text-[11px] text-[#a892ff] space-y-1">
+                        {matchCount < 30 && (
+                          <div>{t('tft.explorer.lowSample').replace('{n}', String(matchCount))}</div>
+                        )}
+                        {days >= 7 && (
+                          <div>{t('tft.explorer.patchMixWarning')}</div>
+                        )}
+                      </div>
+                    )}
                     <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-4">
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         <BigStat label={t('tft.avgPlacement')} value={matchAggregate.avgPlacement.toFixed(2)} />

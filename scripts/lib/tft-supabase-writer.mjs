@@ -111,6 +111,7 @@ export async function writeTftStatsToSupabase(opts) {
       itemRows.push({
         ...baseRow, bucket, api_name: apiName,
         games: b.games, sum_placement: b.sumPlacement, top4: b.top4,
+        top1: b.top1 ?? 0,
         top_users: b.topUsers || [],
       });
     }

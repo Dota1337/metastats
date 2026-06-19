@@ -22,6 +22,7 @@ interface ItemRow {
   games: number;
   avgPlacement: number | null;
   top4Rate: number | null;
+  top1Rate: number | null;
   pickRate: number | null;
   topUsers: string[];
   velocity?: {
@@ -135,7 +136,7 @@ export default function TftItemsPage() {
                 fill the row) → 4 stat columns. Name moves from 1fr to a
                 fixed 12rem so the TopUsers row gets the slack — that's
                 where the cost-bordered champion tiles want to breathe. */}
-            <div className={`hidden md:grid ${filters.velocity > 0 ? 'grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_4rem]' : 'grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem]'} gap-2 px-4 py-2 text-[10px] uppercase text-[#7a8aa0] bg-[#0a0e1a]`}>
+            <div className={`hidden md:grid ${filters.velocity > 0 ? 'grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem]' : 'grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_5rem]'} gap-2 px-4 py-2 text-[10px] uppercase text-[#7a8aa0] bg-[#0a0e1a]`}>
               <div></div>
               <div></div>
               <div>{t('nav.items')}</div>
@@ -143,6 +144,7 @@ export default function TftItemsPage() {
               <div className="text-right">{t('tft.avgPlacement')}</div>
               <div className="text-right">{t('tft.pickRate')}</div>
               <div className="text-right">{t('tft.top4')}</div>
+              <div className="text-right">{t('tft.top1')}</div>
               <div className="text-right">{t('tft.gamesShort')}</div>
               {filters.velocity > 0 && (
                 <div className="text-right text-[#c39bff]">
@@ -161,7 +163,7 @@ export default function TftItemsPage() {
                 <a
                   key={it.apiName}
                   href={`/tft/items/${encodeURIComponent(it.apiName)}?bucket=${filters.bucket}`}
-                  className={`block md:grid ${filters.velocity > 0 ? 'md:grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_4rem]' : 'md:grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem]'} gap-2 px-4 py-2 md:items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]`}
+                  className={`block md:grid ${filters.velocity > 0 ? 'md:grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem]' : 'md:grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_5rem]'} gap-2 px-4 py-2 md:items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]`}
                 >
                   <div className="hidden md:flex justify-center">
                     <TierBadge letter={letter} t={t} />
@@ -216,10 +218,11 @@ export default function TftItemsPage() {
                   </div>
                   {/* Stats: 4-column grid on mobile under the icon/users
                       block; explicit cells on desktop via contents. */}
-                  <div className={`grid ${filters.velocity > 0 ? 'grid-cols-5' : 'grid-cols-4'} gap-2 mt-1.5 pl-12 md:pl-0 md:mt-0 md:contents`}>
+                  <div className={`grid ${filters.velocity > 0 ? 'grid-cols-6' : 'grid-cols-5'} gap-2 mt-1.5 pl-12 md:pl-0 md:mt-0 md:contents`}>
                     <Cell label={t('tft.avgPlacement')} value={it.avgPlacement?.toFixed(2) ?? '—'} accent="white" />
                     <Cell label={t('tft.pickRate')} value={it.pickRate != null ? `${(it.pickRate * 100).toFixed(1)}%` : '—'} />
                     <Cell label={t('tft.top4')} value={it.top4Rate != null ? `${(it.top4Rate * 100).toFixed(1)}%` : '—'} />
+                    <Cell label={t('tft.top1')} value={it.top1Rate != null ? `${(it.top1Rate * 100).toFixed(1)}%` : '—'} />
                     <Cell label={t('tft.gamesShort')} value={String(it.games)} accent="muted" />
                     {filters.velocity > 0 && (
                       <DeltaCell velocity={it.velocity} label={t('tft.velocity.deltaVs').replace('{n}', String(filters.velocity))} />

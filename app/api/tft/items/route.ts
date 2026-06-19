@@ -15,6 +15,7 @@ interface ItemListRow {
   games: number;
   sum_placement: number;
   top4: number;
+  top1: number;
   total_item_slots: number;
   top_users_merged: any[][];
 }
@@ -146,6 +147,12 @@ export async function GET(request: NextRequest) {
         const games = Number(r.games);
         const avgPlacement = games > 0 ? Number(r.sum_placement) / games : null;
         const top4Rate = games > 0 ? Number(r.top4) / games : null;
+        // Top1 forward-fills only — historical rows have top1=NULL aggregated
+        // as 0 in the RPC. data-skeptic: keep `top1Rate = null` when the
+        // aggregated top1 is 0, so the UI shows "—" instead of 0% while the
+        // first 7-10 daily-crawls bootstrap (feedback_no_fake_values).
+        const top1Raw = Number(r.top1);
+        const top1Rate = games > 0 && top1Raw > 0 ? top1Raw / games : null;
         const pickRate = totalSlots > 0 ? games / totalSlots : null;
 
         // Velocity Δ (W1-A) — aus der dedizierten RPC-Aggregation. Die RPC
@@ -186,6 +193,7 @@ export async function GET(request: NextRequest) {
           games,
           avgPlacement,
           top4Rate,
+          top1Rate,
           pickRate,
           topUsers,
           ...(velocity ? { velocity } : {}),

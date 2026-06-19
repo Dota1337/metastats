@@ -84,8 +84,8 @@ function newUnitBucket() {
 }
 function newItemBucket() {
   return {
-    games: 0, sumPlacement: 0, top4: 0,
-    users: new Map(),       // characterId -> { games, sumPlacement }
+    games: 0, sumPlacement: 0, top4: 0, top1: 0,
+    users: new Map(),       // characterId -> { games, sumPlacement, top4, top1 }
   };
 }
 function newAugmentBucket() {
@@ -467,6 +467,7 @@ export function aggregateMatch(rawMatch, agg, opts) {
           ib.games++;
           ib.sumPlacement += placement;
           if (top4) ib.top4++;
+          if (placement === 1) ib.top1++;
           // Per-carrier outcomes — we already had games + sumPlacement, top4/
           // top1 now too so the item-detail page can show "Avg-Place + T4% +
           // T1% per Top-Carrier" instead of just games-count. Pre-existing
@@ -894,7 +895,7 @@ export function finalize(agg, opts = {}) {
         .sort((a, b) => b.games - a.games)
         .slice(0, 10);
       out.byItem[item][bucket] = {
-        games: b.games, sumPlacement: b.sumPlacement, top4: b.top4, topUsers,
+        games: b.games, sumPlacement: b.sumPlacement, top4: b.top4, top1: b.top1, topUsers,
       };
     }
   }

@@ -7,7 +7,13 @@ import * as THREE from 'three';
 
 // Multi-Tier-Polling-Intervalle wie vom Perf-Critic empfohlen. Schreibrate
 // wird Client-side via localStorage gemerkt — kein Server-State nötig.
-const POLL_SERVICES_MS = 10_000;
+// Polling-Cadenz für die 3 Slices. Services-Tier von 10s auf 30s erhöht
+// 2026-06-20 — Multi-Review-Verdict (perf-critic): bei 10s = 8.640 Invocations/
+// Tag/Browser, bei 3 Tabs offen ~25k/Tag NICHT-User-Traffic. 30s reicht für
+// Service-Health-Anzeige (oneshot-Status ändert sich nicht in 10s-Auflösung).
+// Plus document.visibilityState-Check unten pausiert Polling bei verstecktem
+// Tab → ~80% Invocations gespart vs. vorher.
+const POLL_SERVICES_MS = 30_000;
 const POLL_DB_MS = 60_000;
 const POLL_MANIFEST_MS = 120_000;
 
@@ -156,6 +162,9 @@ function useOpsSnapshot(): { snap: Snapshot | null; lastUpdate: Date | null } {
   useEffect(() => {
     let alive = true;
     async function pull(slice: 'services' | 'db' | 'manifest' | 'all') {
+      // Visibility-Gate: bei verstecktem Tab keine Polls feuern. Spart bei
+      // im-Hintergrund-laufenden Dashboards ~100% der Invocations.
+      if (typeof document !== 'undefined' && document.hidden) return;
       try {
         const res = await fetch(`/api/internal/ops-snapshot?slice=${slice}`, { cache: 'no-store' });
         if (!res.ok) return;
@@ -176,7 +185,25 @@ function useOpsSnapshot(): { snap: Snapshot | null; lastUpdate: Date | null } {
     const tServices = setInterval(() => pull('services'), POLL_SERVICES_MS);
     const tDb = setInterval(() => pull('db'), POLL_DB_MS);
     const tManifest = setInterval(() => pull('manifest'), POLL_MANIFEST_MS);
-    return () => { alive = false; clearInterval(tServices); clearInterval(tDb); clearInterval(tManifest); };
+
+    // Bei Tab-visible-again sofort einmal frisch ziehen — User soll nicht
+    // 30s auf den ersten Update warten nach Tab-Switch.
+    function onVisibilityChange() {
+      if (typeof document !== 'undefined' && !document.hidden) {
+        pull('all');
+      }
+    }
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', onVisibilityChange);
+    }
+
+    return () => {
+      alive = false;
+      clearInterval(tServices); clearInterval(tDb); clearInterval(tManifest);
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', onVisibilityChange);
+      }
+    };
   }, []);
 
   return { snap, lastUpdate };

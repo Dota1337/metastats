@@ -47,7 +47,7 @@
  *   --verbose
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync } from 'node:fs';
+import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync, unlinkSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import pg from 'pg';
 import { createRiotClient } from './lib/riot-client.mjs';
@@ -238,13 +238,22 @@ function readCursor() {
 }
 
 function writeCursor(cursor) {
+  // Atomic write via tmp-file + rename. Logic-Flow-Critic 2026-06-20: direkt
+  // writeFileSync ist nicht crash-safe — SIGKILL während des Writes könnte den
+  // Cursor truncated/corrupt hinterlassen. readCursor würde dann als "leer"
+  // behandeln → alle 15 Regionen morgen neu iterieren (~30k Riot-Calls
+  // Verschwendung). tmp+rename ist POSIX-atomic auf demselben Filesystem.
   try {
     mkdirSync(dirname(CURSOR_PATH), { recursive: true });
-    writeFileSync(CURSOR_PATH, JSON.stringify({
+    const tmpPath = `${CURSOR_PATH}.tmp`;
+    writeFileSync(tmpPath, JSON.stringify({
       day: cursor.day,
       completed: cursor.completed,
       updatedAt: new Date().toISOString(),
     }, null, 2));
+    // rename() ist atomic auf POSIX → entweder altes File oder neues File,
+    // nie ein truncated File.
+    renameSync(tmpPath, CURSOR_PATH);
   } catch (err) {
     console.error(`[cursor] persist failed (${CURSOR_PATH}): ${err.message}`);
   }

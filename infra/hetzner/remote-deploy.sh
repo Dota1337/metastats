@@ -30,9 +30,14 @@ git fetch origin --quiet
 # every in-flight state explicitly.
 crawl_running() {
   local u state
+  # Liste konsistent mit dem Watchdog-Skip-Check
+  # (infra/hetzner/metastats-marketvalue-watchdog.sh).
+  # Logic-Flow-Critic 2026-06-20: tft-pro-fullsync war asymmetrisch — Watchdog
+  # checkte ihn, deploy nicht. Jetzt synchron.
   for u in metastats-crawler.service \
            metastats-daily-crawl.service \
-           metastats-marketvalue-snapshot.service; do
+           metastats-marketvalue-snapshot.service \
+           metastats-tft-pro-fullsync.service; do
     state=$(systemctl is-active "$u" 2>/dev/null || true)
     if [ "$state" = active ] || [ "$state" = activating ] || [ "$state" = reloading ]; then
       echo "$u is $state"

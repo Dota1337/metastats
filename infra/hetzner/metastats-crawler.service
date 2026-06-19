@@ -8,6 +8,12 @@ After=network-online.target postgresql.service
 # Snapshot-Service ist Cursor-aware: schon-fertige Regionen werden geskippt.
 # Conflicts= in marketvalue-snapshot.service schützt gegen Doppelläufe.
 OnSuccess=metastats-marketvalue-snapshot.service
+# Failure-Cascade-Schutz (Logic-Flow-Critic 2026-06-20): wenn der Bootstrap
+# scheitert (non-zero exit), würde OnSuccess NICHT feuern und die Snapshot-
+# Pipeline läuft die Nacht stillschweigend nie. OnFailure fängt das ab — die
+# Snapshot-Pipeline ist idempotent (Cursor + Backup) und schadet nicht wenn
+# sie nach einem Bootstrap-Fail noch versucht die Regionen zu refreshen.
+OnFailure=metastats-marketvalue-snapshot.service
 
 [Service]
 # No artificial cap — a full Diamond-II+ crawl can legitimately run many hours;

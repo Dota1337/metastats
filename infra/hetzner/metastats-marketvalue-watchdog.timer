@@ -7,9 +7,16 @@ Description=metastats marketvalue watchdog (18:00 UTC)
 # Puffer für die normale Kette und greift erst wenn was kaputt ist.
 
 [Timer]
+# Zwei Trigger pro Tag (Logic-Flow-Critic 2026-06-20):
+#  18:00 UTC — fängt den Normal-Fall ab (Bootstrap fertig oder daily-crawl
+#              fail → Snapshot-Pipeline läuft die Lücke nach)
+#  22:00 UTC — fängt späte Crashes ab. Wenn Bootstrap 17:55 success → snapshot
+#              startet 18:00 → crasht 22:00, hätte der 18:00-Watchdog die
+#              Recovery verpasst. 22:00-Tick versucht's nochmal vor Mitternacht.
 OnCalendar=*-*-* 18:00:00 UTC
-# Persistent=true: wenn die Box zwischen 18:00 UTC und nächstem Restart down
-# war, läuft der Watchdog beim Boot nach (verhindert verpasste Tage).
+OnCalendar=*-*-* 22:00:00 UTC
+# Persistent=true: wenn die Box zwischen den Triggern down war, läuft der
+# Watchdog beim Boot nach (verhindert verpasste Tage).
 Persistent=true
 RandomizedDelaySec=60
 

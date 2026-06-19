@@ -15,9 +15,12 @@ Wenn der User mit `Code:` einen nicht-trivialen Task anfragt (mehr als ein einze
    - `metastats-data-skeptic` — bei Stats/Filter/Aggregation/DB-Datenlage/Sample-Size/Patch-Frische
    - `metastats-perf-critic` — bei API-Routes/Cache/DB-Queries/Snapshot-Pipeline/Cold-Start
    - `metastats-architect` — bei neuen Pattern/Storage-Wahl/mehrere synchron zu haltende Files/Rollback-Pfaden
+   - `metastats-logic-flow-critic` — bei systemd-Service-Files/OnSuccess/Conflicts/Watchdog/Cursor/State-Machines/Multi-Driver-Cascade
    - `classification-reviewer` — bei Klassifikation/Tier-Listing/Whitelist/Filter-Buckets
 
    Auswahl: ≥2 davon die zum Task-Domain passen. Calls in EINER Message für parallele Ausführung.
+
+   **Auch ohne `Code:`-Prefix Pflicht:** wenn der User-Befehl semantisch eine Implementierungs-Aufgabe ist ("deploy X", "setze um", "mach weiter"), gilt die Multi-Review-Pflicht weiterhin. Der UserPromptSubmit-Hook fängt nur explizite `Code:`-Tasks ab — bei impliziten Implementierungs-Aufträgen muss ich SELBST die Multi-Review fahren.
 
 3. **Verdicts dem User transparent zeigen** (eine Zeile pro Agent + zusammengefasste Empfehlung).
 

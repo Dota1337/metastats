@@ -2,6 +2,12 @@
 Description=metastats TFT marketvalue crawler (Master+ daily)
 Wants=network-online.target postgresql.service
 After=network-online.target postgresql.service
+# Phase-A3 Auto-Cascade: nach Bootstrap-Region(en) sofort den Daily-Snapshot-
+# Service für ALLE anderen Regionen triggern, damit jede Region täglich
+# einmal aktualisiert wird statt nur die Bootstrap-Tagesregion. Der
+# Snapshot-Service ist Cursor-aware: schon-fertige Regionen werden geskippt.
+# Conflicts= in marketvalue-snapshot.service schützt gegen Doppelläufe.
+OnSuccess=metastats-marketvalue-snapshot.service
 
 [Service]
 # No artificial cap — a full Diamond-II+ crawl can legitimately run many hours;

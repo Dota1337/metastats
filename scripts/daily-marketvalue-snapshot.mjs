@@ -47,8 +47,8 @@
  *   --verbose
  */
 
-import { readFileSync, existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
 import pg from 'pg';
 import { createRiotClient } from './lib/riot-client.mjs';
 import { buildCompMeta, applyMeta, buildPopulation } from './lib/tft-skill-score.mjs';
@@ -94,6 +94,15 @@ const DEFAULT_CONCURRENCY = 4;
 // um Tagesgrenzen, 1h Puffer gegen Off-by-one-Verluste.
 const START_TIME_OVERLAP_SEC = 60 * 60;
 
+// Region-Cursor lebt OUTSIDE /opt/metastats-crawler — remote-deploy.sh würde
+// einen In-Repo-Cursor mit `git clean -fd` killen. Lokal-Dev fällt auf cwd.
+// Cursor pro UTC-Tag: enthält die heute schon fertigen Regionen. Bei Tagesgrenze
+// resetet sich der Cursor automatisch (date-stamp im File).
+const CURSOR_PATH = process.env.MV_SNAPSHOT_CURSOR
+  || (existsSync('/etc/metastats-crawler')
+      ? '/etc/metastats-crawler/marketvalue-snapshot-cursor.json'
+      : resolve(process.cwd(), '.mv-snapshot-cursor.json'));
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Args
 // ─────────────────────────────────────────────────────────────────────────────
@@ -108,6 +117,7 @@ const MAX_IDS = parseInt(arg('--max-ids', String(DEFAULT_MAX_IDS)), 10);
 const MATCH_CONCURRENCY = parseInt(arg('--match-concurrency', String(DEFAULT_CONCURRENCY)), 10);
 const LIMIT = parseInt(arg('--limit', '0'), 10);
 const SKIP_BACKUP = hasFlag('--skip-backup');
+const RESET_CURSOR = hasFlag('--reset-cursor');
 const VERBOSE = hasFlag('--verbose');
 
 if (!Number.isFinite(MAX_IDS) || MAX_IDS < 1 || MAX_IDS > 1000) {
@@ -203,8 +213,46 @@ let aborting = false;
 process.on('SIGTERM', () => {
   if (aborting) return;
   aborting = true;
-  console.log('\n  [signal] SIGTERM — finishing current region, then exiting');
+  console.log('\n  [signal] SIGTERM — finishing current region, then exiting (cursor preserved)');
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Region-Cursor: tagsweise "schon fertig"-Liste
+// ─────────────────────────────────────────────────────────────────────────────
+
+function todayUtcIso() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function readCursor() {
+  if (RESET_CURSOR) return { day: todayUtcIso(), completed: [] };
+  try {
+    const raw = JSON.parse(readFileSync(CURSOR_PATH, 'utf8'));
+    // Cursor wird pro UTC-Tag resetet — gestern fertige Regionen brauchen heute
+    // wieder einen frischen Snapshot.
+    if (raw.day !== todayUtcIso()) return { day: todayUtcIso(), completed: [] };
+    return { day: raw.day, completed: Array.isArray(raw.completed) ? raw.completed : [] };
+  } catch {
+    return { day: todayUtcIso(), completed: [] };
+  }
+}
+
+function writeCursor(cursor) {
+  try {
+    mkdirSync(dirname(CURSOR_PATH), { recursive: true });
+    writeFileSync(CURSOR_PATH, JSON.stringify({
+      day: cursor.day,
+      completed: cursor.completed,
+      updatedAt: new Date().toISOString(),
+    }, null, 2));
+  } catch (err) {
+    console.error(`[cursor] persist failed (${CURSOR_PATH}): ${err.message}`);
+  }
+}
+
+function clearCursor() {
+  try { unlinkSync(CURSOR_PATH); } catch { /* ignore */ }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Synthetic-null-pop für me1-Bypass
@@ -441,21 +489,55 @@ async function main() {
   console.log(`=== Daily Marktwert-Snapshot ===`);
   console.log(`    regions: ${REGIONS.join(', ')}`);
   console.log(`    max-ids: ${MAX_IDS} | concurrency: ${MATCH_CONCURRENCY} | limit: ${LIMIT || 'unlimited'}`);
-  console.log(`    dry-run: ${DRY_RUN} | skip-backup: ${SKIP_BACKUP}`);
+  console.log(`    dry-run: ${DRY_RUN} | skip-backup: ${SKIP_BACKUP} | reset-cursor: ${RESET_CURSOR}`);
+
+  // Cursor laden (oder leer wenn neuer UTC-Tag / --reset-cursor)
+  const cursor = readCursor();
+  const todoRegions = REGIONS.filter(r => !cursor.completed.includes(r));
+  if (cursor.completed.length > 0) {
+    console.log(`    cursor: ${cursor.completed.length}/${REGIONS.length} schon heute fertig (${cursor.completed.join(',')})`);
+    console.log(`    todo: ${todoRegions.join(',')}`);
+  } else {
+    console.log(`    cursor: ${CURSOR_PATH} (frischer Tag oder reset)`);
+  }
+
+  if (todoRegions.length === 0) {
+    console.log(`\n=== Alle Regionen heute schon fertig — No-Op ===`);
+    await pool.end().catch(() => {});
+    return;
+  }
 
   const t0 = Date.now();
   const results = [];
   try {
-    for (const region of REGIONS) {
-      if (aborting) break;
+    for (const region of todoRegions) {
+      if (aborting) {
+        console.log(`[${region}] skipped — SIGTERM (cursor: ${cursor.completed.length}/${REGIONS.length} done)`);
+        break;
+      }
       try {
         const r = await processRegion(region);
         results.push(r);
+        // Region als "heute fertig" markieren (auch bei dry-run nicht, weil
+        // dort keine echten Snapshots geschrieben wurden — aber dry-run hat
+        // sowieso keinen Side-Effect).
+        if (!DRY_RUN) {
+          cursor.completed.push(region);
+          writeCursor(cursor);
+        }
       } catch (err) {
+        // Bei Fatal-Fehler einer Region NICHT als completed markieren →
+        // nächster Lauf resumed bei dieser Region.
         console.error(`[${region}] FATAL: ${err.message}`);
         if (VERBOSE) console.error(err.stack);
         results.push({ region, error: err.message });
       }
+    }
+    // Wenn alle Regionen durch (und nicht aborted): Cursor löschen für sauberen
+    // nächsten Tagesstart (statt darauf zu warten dass der UTC-Tag wechselt).
+    if (!aborting && !DRY_RUN && cursor.completed.length === REGIONS.length) {
+      console.log(`[cursor] alle ${REGIONS.length} Regionen heute fertig — cursor cleared`);
+      clearCursor();
     }
   } finally {
     await pool.end().catch(() => {});

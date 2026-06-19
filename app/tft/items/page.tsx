@@ -96,9 +96,26 @@ export default function TftItemsPage() {
   const currentPatchLabel = patches[0]?.patch;
 
   const filtered = useMemo(() => {
-    if (!bucket) return items;
-    return items.filter(it => itemBucketOf(it.apiName, assets) === bucket);
-  }, [items, bucket, assets]);
+    const inBucket = bucket
+      ? items.filter(it => itemBucketOf(it.apiName, assets) === bucket)
+      : items;
+    // Sub-150-game items lose their tier-badge (Items min-games gate) — sorting
+    // them to the bottom keeps the noisy 1.4-avg-with-56-games entries from
+    // dominating the top of the list. Within each segment, existing avg-place
+    // sort stays. tierCutoffs is loaded async, so during the brief window
+    // before it lands we keep the original order.
+    if (!tierCutoffs) return inBucket;
+    const tiered: ItemRow[] = [];
+    const untiered: ItemRow[] = [];
+    for (const it of inBucket) {
+      if (tierLetterOfSync({ avgPlacement: it.avgPlacement, pickRate: it.pickRate, games: it.games }, 'items', tierCutoffs)) {
+        tiered.push(it);
+      } else {
+        untiered.push(it);
+      }
+    }
+    return [...tiered, ...untiered];
+  }, [items, bucket, assets, tierCutoffs]);
 
   return (
     <main className="min-h-screen bg-[#0e1525]">

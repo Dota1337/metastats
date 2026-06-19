@@ -121,13 +121,28 @@ export default function TftUnitsPage() {
   }, [units, assets]);
 
   const filtered = useMemo(() => {
-    return units.filter(u => {
+    const passFilter = units.filter(u => {
       const ch = assets?.champions[u.characterId];
       if (costFilter != null && (ch?.cost ?? -1) !== costFilter) return false;
       if (traitFilter && !ch?.traits?.includes(traitFilter)) return false;
       return true;
     });
-  }, [units, assets, costFilter, traitFilter]);
+    // Same sub-gate sort as /tft/items: untiered (low-sample) units go to
+    // the bottom, tiered units keep their api-sorted order. Without this a
+    // niche unit with 200 games + 3.2 avg sits above the popular meta carry
+    // with 50k games + 3.4 avg, which doesn't match user intent.
+    if (!tierCutoffs) return passFilter;
+    const tiered: UnitRow[] = [];
+    const untiered: UnitRow[] = [];
+    for (const u of passFilter) {
+      if (tierLetterOfSync({ avgPlacement: u.avgPlacement, pickRate: u.pickRate, games: u.games }, 'units', tierCutoffs)) {
+        tiered.push(u);
+      } else {
+        untiered.push(u);
+      }
+    }
+    return [...tiered, ...untiered];
+  }, [units, assets, costFilter, traitFilter, tierCutoffs]);
 
   const currentPatchLabel = patches[0]?.patch;
 

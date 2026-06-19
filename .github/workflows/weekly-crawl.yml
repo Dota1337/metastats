@@ -34,11 +34,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Riot LoL key pre-flight
-        uses: ./.github/actions/riot-preflight
-        with:
-          game: lol
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -47,15 +42,38 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Riot LoL key pre-flight — sets a job-level output instead of aborting.
+      # Pro-Player-Crawl, Season-Detect, Tier-Distribution + TFT-Set-Detect run
+      # without any Riot API call, so a stale LoL Dev-Key shouldn't block the
+      # whole weekly job. Champion-Stats step gates on this output.
+      - name: Riot LoL key pre-flight
+        id: riotcheck
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+          if [ -z "${RIOT_API_KEY:-}" ]; then
+            echo "lol_key_ok=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::RIOT_API_KEY secret is empty — skipping Champion-Stats crawl."
+            exit 0
+          fi
+          STATUS=$(curl -sS -o /dev/null -w "%{http_code}" -H "X-Riot-Token: $RIOT_API_KEY" "https://euw1.api.riotgames.com/lol/status/v4/platform-data")
+          if [ "$STATUS" = "200" ]; then
+            echo "lol_key_ok=true" >> "$GITHUB_OUTPUT"
+            echo "Riot LoL key OK (HTTP 200)."
+          else
+            echo "lol_key_ok=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Riot LoL key invalid (HTTP $STATUS) — skipping Champion-Stats crawl, continuing with key-less steps."
+          fi
+
       # Pro Player Crawler (no Riot API key needed)
       - name: Crawl Pro Players
         run: node scripts/crawl-pro-players.mjs
 
-      # Champion Stats Crawler — EUW (needs valid Riot API key)
-      # Korea is split into weekly-crawl-kr.yml because the combined run
-      # was hitting the 360min GHA cap with Solo+Flex + the build aggregator.
+      # Champion Stats Crawler — EUW (needs valid Riot API key).
+      # Gated on the pre-flight step so a stale Dev-Key just skips this step
+      # instead of failing the whole job.
       - name: Crawl Champion Stats (EUW)
-        if: env.RIOT_API_KEY != ''
+        if: steps.riotcheck.outputs.lol_key_ok == 'true'
         run: node scripts/collect-highelo.mjs
 
       # Season detection — runs no Riot API, only Data Dragon. Updates

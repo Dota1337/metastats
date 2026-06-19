@@ -31,11 +31,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Riot LoL key pre-flight
-        uses: ./.github/actions/riot-preflight
-        with:
-          game: lol
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -44,8 +39,32 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Riot LoL key pre-flight — tolerant. A stale Dev-Key skips the crawl
+      # step (the only Riot-dependent step in this workflow) with a warning
+      # instead of failing the whole job + spamming the user with notification
+      # mails. Once the key is rotated via scripts/refresh-riot-key.mjs, the
+      # next scheduled run picks it up automatically.
+      - name: Riot LoL key pre-flight
+        id: riotcheck
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+          if [ -z "${RIOT_API_KEY:-}" ]; then
+            echo "lol_key_ok=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::RIOT_API_KEY secret is empty — skipping Champion-Stats crawl."
+            exit 0
+          fi
+          STATUS=$(curl -sS -o /dev/null -w "%{http_code}" -H "X-Riot-Token: $RIOT_API_KEY" "https://kr.api.riotgames.com/lol/status/v4/platform-data")
+          if [ "$STATUS" = "200" ]; then
+            echo "lol_key_ok=true" >> "$GITHUB_OUTPUT"
+            echo "Riot LoL key OK (HTTP 200)."
+          else
+            echo "lol_key_ok=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Riot LoL key invalid (HTTP $STATUS) — skipping Champion-Stats crawl."
+          fi
+
       - name: Crawl Champion Stats (Korea)
-        if: env.RIOT_API_KEY != ''
+        if: steps.riotcheck.outputs.lol_key_ok == 'true'
         run: node scripts/collect-kr-cn.mjs
 
       - name: Commit data updates

@@ -14,6 +14,7 @@ import StatsFilterBar, {
 import { useI18n } from '../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import { itemBucketOf, ITEM_BUCKETS, type ItemBucket } from '../../lib/tft-item-bucket';
+import { loadTierCutoffs, tierLetterOfSync, TIER_COLORS, type TierLetter } from '../../lib/tft-tier-letter';
 import TftHero from '../../components/tft/TftHero';
 
 interface ItemRow {
@@ -51,8 +52,10 @@ export default function TftItemsPage() {
   // null = "Alle" (default). Other items (PsyOps base, AnimaSquad tier) fall
   // into "other" and are only reachable via "Alle".
   const [bucket, setBucket] = useState<ItemBucket | null>(null);
+  const [tierCutoffs, setTierCutoffs] = useState<Awaited<ReturnType<typeof loadTierCutoffs>> | null>(null);
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
+  useEffect(() => { loadTierCutoffs(assets?.set ?? null).then(setTierCutoffs); }, [assets?.set]);
 
   useEffect(() => {
     if (typeof window === 'undefined') { setHydrated(true); return; }
@@ -132,7 +135,8 @@ export default function TftItemsPage() {
                 fill the row) → 4 stat columns. Name moves from 1fr to a
                 fixed 12rem so the TopUsers row gets the slack — that's
                 where the cost-bordered champion tiles want to breathe. */}
-            <div className={`hidden md:grid ${filters.velocity > 0 ? 'grid-cols-[3rem_12rem_1fr_5rem_5rem_5rem_5rem_4rem]' : 'grid-cols-[3rem_12rem_1fr_5rem_5rem_5rem_5rem]'} gap-2 px-4 py-2 text-[10px] uppercase text-[#7a8aa0] bg-[#0a0e1a]`}>
+            <div className={`hidden md:grid ${filters.velocity > 0 ? 'grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_4rem]' : 'grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem]'} gap-2 px-4 py-2 text-[10px] uppercase text-[#7a8aa0] bg-[#0a0e1a]`}>
+              <div></div>
               <div></div>
               <div>{t('nav.items')}</div>
               <div>{t('tft.topUsers')}</div>
@@ -152,15 +156,20 @@ export default function TftItemsPage() {
             {filtered.map(it => {
               const meta = assets?.items[it.apiName];
               const url = tftIconUrl(assets, meta?.icon);
+              const letter = tierCutoffs ? tierLetterOfSync({ avgPlacement: it.avgPlacement, pickRate: it.pickRate, games: it.games }, 'items', tierCutoffs) : null;
               return (
                 <a
                   key={it.apiName}
                   href={`/tft/items/${encodeURIComponent(it.apiName)}?bucket=${filters.bucket}`}
-                  className={`block md:grid ${filters.velocity > 0 ? 'md:grid-cols-[3rem_12rem_1fr_5rem_5rem_5rem_5rem_4rem]' : 'md:grid-cols-[3rem_12rem_1fr_5rem_5rem_5rem_5rem]'} gap-2 px-4 py-2 md:items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]`}
+                  className={`block md:grid ${filters.velocity > 0 ? 'md:grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_4rem]' : 'md:grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem]'} gap-2 px-4 py-2 md:items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]`}
                 >
-                  {/* Icon + name row — icon on left, name flows on mobile;
-                      on desktop participates in the parent grid via contents. */}
+                  <div className="hidden md:flex justify-center">
+                    <TierBadge letter={letter} t={t} />
+                  </div>
                   <div className="flex items-center gap-3 md:contents">
+                    <div className="md:hidden">
+                      <TierBadge letter={letter} t={t} />
+                    </div>
                     {url ? (
                       <img src={url} alt={meta!.name} className="w-9 h-9 rounded flex-shrink-0" />
                     ) : (
@@ -228,6 +237,25 @@ export default function TftItemsPage() {
 }
 
 function prettyApi(s: string) { return s.replace(/^TFT\d*_Item_/, '').slice(0, 10); }
+
+function TierBadge({ letter, t }: { letter: TierLetter | null; t: (k: any) => string }) {
+  if (!letter) {
+    return (
+      <span
+        className="inline-flex items-center justify-center w-7 h-6 rounded text-[10px] font-medium text-[#5a6a80] bg-[#141c2e] border border-[#1e2a3a]"
+        title={t('tft.tier.tooltip.empty')}
+      >—</span>
+    );
+  }
+  const color = TIER_COLORS[letter];
+  return (
+    <span
+      className="inline-flex items-center justify-center w-7 h-6 rounded text-[11px] font-bold tabular-nums"
+      style={{ color, backgroundColor: `${color}1f`, border: `1px solid ${color}50` }}
+      title={t(`tft.tier.tooltip.${letter}` as any)}
+    >{letter}</span>
+  );
+}
 
 function costToColor(cost: number) {
   return cost === 1 ? '#9aa6b2' : cost === 2 ? '#3a8' : cost === 3 ? '#3a8ddc' : cost === 4 ? '#c39bff' : '#e0c75a';

@@ -4,6 +4,7 @@ import { resolveFilters, callRpc, getAvailablePatches } from '../../../lib/tft-s
 import { isExcludedUnit, isExcludedItem, setContainsExcludedItem } from '../../../lib/tft-excluded';
 import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias } from '../../../lib/api-cache';
 import { lookupSnapshot } from '../../../lib/snapshot-lookup';
+import { computeShares } from '../../../lib/tft-shares';
 
 // /api/tft/units
 //   Filter params (Supabase-backed):
@@ -231,6 +232,15 @@ export async function GET(request: NextRequest) {
     const units = rows
       .filter(r => !isExcludedUnit(r.character_id))
       .map(r => {
+        // Win/Top4 Share — MetaTFT-equivalent. Same `participants` denominator
+        // used for pickRate above (sum of player-instances across the filter
+        // set). computeShares applies the 8-players-per-match conversion and
+        // returns null when the sample is below threshold.
+        const shares = computeShares({
+          top1: Number(r.top1),
+          top4: Number(r.top4),
+          participants: Number(participants),
+        });
         const base = {
           characterId: r.character_id,
           games: Number(r.games),
@@ -238,6 +248,8 @@ export async function GET(request: NextRequest) {
           top4Rate: r.games > 0 ? Number(r.top4) / Number(r.games) : null,
           top1Rate: r.games > 0 ? Number(r.top1) / Number(r.games) : null,
           pickRate: participants > 0 ? Number(r.games) / Number(participants) : null,
+          winShare: shares.winShare,
+          top4Share: shares.top4Share,
         };
         if (!wantVelocity) return base;
         const v = velocityByCid.get(r.character_id);

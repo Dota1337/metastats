@@ -12,6 +12,7 @@ import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias } from '.
 import { isExcludedUnit, isExcludedItem, setContainsExcludedItem } from '../../../lib/tft-excluded';
 import { lookupSnapshot } from '../../../lib/snapshot-lookup';
 import { parseClusterKey } from '../../../lib/tft-cluster';
+import { computeShares } from '../../../lib/tft-shares';
 
 // Lazy + memoized champion-cost lookup pro Set. Wird vom Tempo-Klassifikator
 // gebraucht, der Carry-Cost mit Peak-Level + 3-Star-Anteil in Beziehung setzt:
@@ -433,6 +434,14 @@ function baseComp(r: CompRow, participants: number) {
   const carry = carryFromClusterKey(r.cluster_key);
   const secondary = secondaryFromClusterKey(r.cluster_key);
   const games = Number(r.games) || 0;
+  // Win/Top4 Share — comps sum to ~100% across rows (each match has exactly
+  // one winner). computeShares returns null when the sample is below the
+  // 500-match gate or the per-comp 20/30 top1/top4 floor.
+  const shares = computeShares({
+    top1: Number(r.top1),
+    top4: Number(r.top4),
+    participants: Number(participants),
+  });
   return {
     source: 'data' as const,
     slug: r.cluster_key,
@@ -442,6 +451,8 @@ function baseComp(r: CompRow, participants: number) {
     top4Rate: r.games > 0 ? Number(r.top4) / Number(r.games) : null,
     top1Rate: r.games > 0 ? Number(r.top1) / Number(r.games) : null,
     pickRate: participants > 0 ? Number(r.games) / Number(participants) : null,
+    winShare: shares.winShare,
+    top4Share: shares.top4Share,
     avgLevel: r.games > 0 && r.sum_level ? Number(r.sum_level) / Number(r.games) : null,
     avgLastRound: r.games > 0 && r.sum_last_round ? Number(r.sum_last_round) / Number(r.games) : null,
     typicalUnits: applyCooccurrenceFilter(

@@ -1,0 +1,11 @@
+{
+  "version": "2026-06-19",
+  "_doc": "Tier-Letter score cutoffs for /tft/units, /tft/items, /tft/comps. The Helper in app/lib/tft-tier-letter.ts reads `default` if no set-specific block is present. Cutoffs calibrated against public/tft-stats-euw1.json so the live snapshot lands ~10/15/25/30/20% across S/A/B/C/D. Re-calibrate after each set drop. minGames keeps low-sample noise out of the badge — `null` is shown instead.",
+  "default": {
+    "scoreCutoffs": { "S": 0.40, "A": 0.20, "B": 0.00, "C": -0.25 },
+    "pickratePenalty": 0.10,
+    "pickrateAnchor": 0.005,
+    "minGames": { "units": 200, "items": 150, "comps": 50 }
+  },
+  "perSet": {}
+}

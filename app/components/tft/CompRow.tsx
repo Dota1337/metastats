@@ -10,6 +10,7 @@ import PlanAheadButton from './PlanAheadButton';
 import { compDefiningAugmentApiNameFromSlug } from '../../lib/tft-comp-defining-augments';
 import { parseClusterKey } from '../../lib/tft-cluster';
 import { loadCompGuidesBundle, findCompGuide, difficultyColor } from '../../lib/tft-comp-guides';
+import { loadTierCutoffs, tierLetterOfSync, TIER_COLORS, type TierLetter } from '../../lib/tft-tier-letter';
 
 // Dense, scannable row layout for /tft/comps. Replaces the narrative
 // CompCard so pros can survey 20+ comps at a glance — avg-placement is
@@ -35,6 +36,8 @@ interface Comp {
   top4Rate: number | null;
   top1Rate: number | null;
   pickRate?: number | null;
+  winShare?: number | null;
+  top4Share?: number | null;
   avgLevel?: number | null;
   avgLastRound?: number | null;
   typicalUnits: {
@@ -48,12 +51,16 @@ interface Comp {
 
 const safeCount = (v: unknown): number => (typeof v === 'number' ? v : 1);
 
-function tierBadge(avg: number | null) {
-  if (avg == null) return { label: '?', color: '#5a6a80' };
-  if (avg < 3.8) return { label: 'S', color: '#e0c75a' };
-  if (avg < 4.2) return { label: 'A', color: '#7B61FF' };
-  if (avg < 4.5) return { label: 'B', color: '#3a8ddc' };
-  return { label: 'C', color: '#5a6a80' };
+// Legacy avg-only badge kept ONLY as a tier-color fallback for the placement
+// cell rendering (the cell color tracks the tier). The actual letter+gating
+// now comes from the central tierLetterOfSync helper with sample-gate +
+// pickrate-penalty. See app/lib/tft-tier-letter.ts.
+function tierColorByAvg(avg: number | null) {
+  if (avg == null) return '#5a6a80';
+  if (avg < 3.8) return TIER_COLORS.S;
+  if (avg < 4.2) return TIER_COLORS.A;
+  if (avg < 4.5) return TIER_COLORS.B;
+  return TIER_COLORS.C;
 }
 
 
@@ -173,7 +180,21 @@ export default function CompRow({
   const carry = carryCid && assets ? assets.champions[carryCid] : null;
   const carryUrl = tftChampionTileUrl(assets, carry);
 
-  const tier = tierBadge(comp.avgPlacement);
+  // Tier-letter from central helper with sample-gate + pickrate-penalty.
+  // Falls back to avg-only color while the cutoffs JSON is in flight.
+  const [tierCutoffs, setTierCutoffs] = useState<Awaited<ReturnType<typeof loadTierCutoffs>> | null>(null);
+  useEffect(() => { loadTierCutoffs(assets?.set ?? null).then(setTierCutoffs); }, [assets?.set]);
+  const tierLetter: TierLetter | null = tierCutoffs
+    ? tierLetterOfSync({ avgPlacement: comp.avgPlacement, pickRate: comp.pickRate, games: comp.games }, 'comps', tierCutoffs)
+    : null;
+  const tierColor = tierLetter ? TIER_COLORS[tierLetter] : tierColorByAvg(comp.avgPlacement);
+  const tier = { label: tierLetter ?? '—', color: tierColor };
+  const winShareTip = comp.winShare != null
+    ? t('tft.shares.winShareTooltip.comp').replace('{share}', (comp.winShare * 100).toFixed(1))
+    : undefined;
+  const top4ShareTip = comp.top4Share != null
+    ? t('tft.shares.top4ShareTooltip.comp').replace('{share}', (comp.top4Share * 100).toFixed(1))
+    : undefined;
   // Rate des Primary-Carry (aus cluster_key) für „Items Dep"-Descriptor.
   // 0 wenn die Primary-Unit < 5 Spiele hat (zu sparse für eine verlässliche Rate).
   const primaryUnit = typicalUnits.find(u => u.characterId === carryCid);
@@ -234,6 +255,7 @@ export default function CompRow({
         <div
           className="w-6 h-6 rounded flex items-center justify-center font-bold text-[11px]"
           style={{ color: tier.color, backgroundColor: `${tier.color}25`, border: `1px solid ${tier.color}40` }}
+          title={tierLetter ? t(`tft.tier.tooltip.${tierLetter}` as any) : t('tft.tier.tooltip.empty')}
         >
           {tier.label}
         </div>
@@ -347,10 +369,10 @@ export default function CompRow({
         <div className="hidden sm:block text-right tabular-nums font-medium text-base" style={{ color: tier.color }}>
           {comp.avgPlacement != null ? comp.avgPlacement.toFixed(2) : '—'}
         </div>
-        <div className="hidden sm:block text-right tabular-nums text-[#a0b0c5]">
+        <div className="hidden sm:block text-right tabular-nums text-[#a0b0c5]" title={top4ShareTip}>
           {comp.top4Rate != null ? `${(comp.top4Rate * 100).toFixed(0)}%` : '—'}
         </div>
-        <div className="hidden sm:block text-right tabular-nums text-[#a0b0c5]">
+        <div className="hidden sm:block text-right tabular-nums text-[#a0b0c5]" title={winShareTip}>
           {comp.top1Rate != null ? `${(comp.top1Rate * 100).toFixed(0)}%` : '—'}
         </div>
         <div className="hidden sm:block text-right tabular-nums text-[#a0b0c5]">

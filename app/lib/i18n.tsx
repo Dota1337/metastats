@@ -2113,6 +2113,75 @@ const translations = {
     '\u00CDtems con componentes compartidos', 'Objets avec composants partag\u00E9s'
   ),
 
+  // Tier-Letter badge (S/A/B/C/D) \u2014 Phase-A1, market standard analog MetaTFT/MetaBot/u.gg.
+  'tft.tier.S': t6('S', 'S', 'S', 'S', 'S', 'S'),
+  'tft.tier.A': t6('A', 'A', 'A', 'A', 'A', 'A'),
+  'tft.tier.B': t6('B', 'B', 'B', 'B', 'B', 'B'),
+  'tft.tier.C': t6('C', 'C', 'C', 'C', 'C', 'C'),
+  'tft.tier.D': t6('D', 'D', 'D', 'D', 'D', 'D'),
+  'tft.tier.tooltip.S': t6('Meta-pr\u00E4gend', 'Meta-defining', '\uBA54\uD0C0 \uC815\uC758', '\u7248\u672C\u4E3B\u5BFC', 'Define el meta', 'D\u00E9finit le m\u00E9ta'),
+  'tft.tier.tooltip.A': t6('Stark', 'Strong', '\uAC15\uB825', '\u5F3A\u529B', 'Fuerte', 'Solide'),
+  'tft.tier.tooltip.B': t6('Solide', 'Viable', '\uC4F8 \uB9CC\uD568', '\u53EF\u7528', 'Viable', 'Viable'),
+  'tft.tier.tooltip.C': t6('Situativ', 'Situational', '\uC0C1\uD669\uBCC4', '\u60C5\u5883', 'Situacional', 'Situationnel'),
+  'tft.tier.tooltip.D': t6('Schwach', 'Below average', '\uD3C9\uADE0 \uC774\uD558', '\u4F4E\u4E8E\u5E73\u5747', 'Bajo el promedio', 'En dessous de la moyenne'),
+  'tft.tier.tooltip.empty': t6('Zu wenig Daten', 'Not enough data', '\uB370\uC774\uD130 \uBD80\uC871', '\u6570\u636E\u4E0D\u8DB3', 'Datos insuficientes', 'Donn\u00E9es insuffisantes'),
+
+  // Win Share / Top4 Share \u2014 MetaTFT-equivalent metrics, surfaced as tooltips.
+  'tft.shares.winShareLabel': t6('Win-Anteil', 'Win Share', '\uC2B9\uB9AC \uC810\uC720', '\u80DC\u573A\u5360\u6BD4', 'Cuota de victoria', 'Part de victoires'),
+  'tft.shares.top4ShareLabel': t6('Top-4-Anteil', 'Top 4 Share', '\uD1B14 \uC810\uC720', '\u524D4\u5360\u6BD4', 'Cuota de Top 4', 'Part Top 4'),
+  'tft.shares.winShareTooltip.unit': t6(
+    '{share}% aller Gewinner-Boards enthalten diese Unit',
+    '{share}% of all winning boards contain this unit',
+    '\uBAA8\uB4E0 \uC2B9\uB9AC \uBCF4\uB4DC\uC758 {share}%\uC5D0 \uC774 \uC720\uB2DB\uC774 \uD3EC\uD568',
+    '{share}% \u7684\u80DC\u5229\u68CB\u76D8\u5305\u542B\u6B64\u82F1\u96C4',
+    '{share}% de los tableros ganadores incluyen esta unidad',
+    '{share}% des plateaux gagnants contiennent cette unit\u00E9'
+  ),
+  'tft.shares.top4ShareTooltip.unit': t6(
+    '{share}% aller Top-4-Boards enthalten diese Unit',
+    '{share}% of all Top-4 boards contain this unit',
+    '\uBAA8\uB4E0 \uD1B14 \uBCF4\uB4DC\uC758 {share}%\uC5D0 \uC774 \uC720\uB2DB\uC774 \uD3EC\uD568',
+    '{share}% \u7684\u524D4\u68CB\u76D8\u5305\u542B\u6B64\u82F1\u96C4',
+    '{share}% de los tableros Top 4 incluyen esta unidad',
+    '{share}% des plateaux Top 4 contiennent cette unit\u00E9'
+  ),
+  'tft.shares.winShareTooltip.item': t6(
+    '{share}% aller Gewinner-Boards bauten dieses Item',
+    '{share}% of all winning boards built this item',
+    '\uBAA8\uB4E0 \uC2B9\uB9AC \uBCF4\uB4DC\uC758 {share}%\uAC00 \uC774 \uC544\uC774\uD15C \uC0AC\uC6A9',
+    '{share}% \u7684\u80DC\u5229\u68CB\u76D8\u643A\u5E26\u6B64\u88C5\u5907',
+    '{share}% de los tableros ganadores construyeron este \u00EDtem',
+    '{share}% des plateaux gagnants ont cet objet'
+  ),
+  'tft.shares.top4ShareTooltip.item': t6(
+    '{share}% aller Top-4-Boards bauten dieses Item',
+    '{share}% of all Top-4 boards built this item',
+    '\uBAA8\uB4E0 \uD1B14 \uBCF4\uB4DC\uC758 {share}%\uAC00 \uC774 \uC544\uC774\uD15C \uC0AC\uC6A9',
+    '{share}% \u7684\u524D4\u68CB\u76D8\u643A\u5E26\u6B64\u88C5\u5907',
+    '{share}% de los tableros Top 4 construyeron este \u00EDtem',
+    '{share}% des plateaux Top 4 ont cet objet'
+  ),
+  'tft.shares.winShareTooltip.comp': t6(
+    '{share}% aller Wins werden mit dieser Comp erzielt',
+    '{share}% of all wins are with this comp',
+    '\uBAA8\uB4E0 \uC2B9\uB9AC\uC758 {share}%\uAC00 \uC774 \uC870\uD569',
+    '{share}% \u7684\u80DC\u573A\u6765\u81EA\u6B64\u9635\u5BB9',
+    '{share}% de las victorias son con esta comp',
+    '{share}% des victoires viennent de cette comp'
+  ),
+  'tft.shares.top4ShareTooltip.comp': t6(
+    '{share}% aller Top 4 werden mit dieser Comp erzielt',
+    '{share}% of all Top 4 are with this comp',
+    '\uBAA8\uB4E0 \uD1B14\uC758 {share}%\uAC00 \uC774 \uC870\uD569',
+    '{share}% \u7684\u524D4\u6765\u81EA\u6B64\u9635\u5BB9',
+    '{share}% de los Top 4 son con esta comp',
+    '{share}% des Top 4 viennent de cette comp'
+  ),
+
+  // Trait filter on /tft/units (Phase A1)
+  'tft.unit.trait.allTraits': t6('Alle Traits', 'All traits', '\uBAA8\uB4E0 \uD2B9\uC131', '\u6240\u6709\u7F81\u7ECA', 'Todos los rasgos', 'Toutes les origines'),
+  'tft.unit.trait.label': t6('Trait', 'Trait', '\uD2B9\uC131', '\u7F81\u7ECA', 'Rasgo', 'Origine'),
+
   // Item bucket filter (analog to tactics.tools/metatft Standard/Artifact/Emblem/Radiant)
   'tft.item.bucket.all': t6('Alle', 'All', '\uC804\uCCB4', '\u5168\u90E8', 'Todos', 'Tous'),
   'tft.item.bucket.standard': t6('Standard', 'Standard', '\uAE30\uBCF8', '\u6807\u51C6', 'Est\u00E1ndar', 'Standard'),

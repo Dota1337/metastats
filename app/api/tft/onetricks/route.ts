@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 // directly via the refresh-api proxy.
 import { getAvailablePatches } from '../../../lib/tft-supabase-reader';
 import { fetchHetznerPlayerMatches, fetchHetznerMarketvaluePool } from '../../../lib/tft-hetzner-matches';
+import { cachedJson, STATS_CACHE_CONTROL } from '../../../lib/api-cache';
 
 // /api/tft/onetricks?region=euw1&minShare=0.6
 //
@@ -102,7 +103,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: message }, { status: 502 });
   }
   if (candidates.length === 0) {
-    return NextResponse.json({ region, count: 0, onetricks: [] });
+    return cachedJson({ region, count: 0, onetricks: [] });
   }
 
   const puuids = candidates.map(c => c.puuid);
@@ -179,5 +180,10 @@ export async function GET(request: NextRequest) {
   // committed onetrick is on top.
   onetricks.sort((a, b) => (b.top1Share - a.top1Share) || (b.top2Share - a.top2Share));
 
-  return NextResponse.json({ region, count: onetricks.length, onetricks });
+  // Onetricks-Daten ändern sich nur durch den Daily-Crawl (Marktwert-Pool +
+  // Match-Cache). 6h s-maxage + 24h SWR ist konservativ — selbst nach Cold-Miss
+  // ist die Response unter ~3s (Hetzner-Pool + 1000 Puuids × Match-Cache).
+  return new NextResponse(JSON.stringify({ region, count: onetricks.length, onetricks }), {
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': STATS_CACHE_CONTROL },
+  });
 }

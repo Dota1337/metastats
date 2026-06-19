@@ -145,7 +145,8 @@ async function fetchEntityRows(
   // and let the SQL match on a wildcard. The reader resolves 'all' through
   // its filter helper; here we just pass the literal so the RPC's ANY()
   // clause matches each crawled region individually.
-  const allRegions = ['euw1', 'eun1', 'kr', 'na1', 'br1', 'jp1', 'la1', 'la2', 'oc1', 'tr1', 'ru', 'me1', 'ph2', 'sg2', 'th2', 'tw2', 'vn2'];
+  // ph2/th2 raus — leer im TFT-Crawl (siehe tft-supabase-reader.ts).
+  const allRegions = ['euw1', 'eun1', 'kr', 'na1', 'br1', 'jp1', 'la1', 'la2', 'oc1', 'tr1', 'ru', 'me1', 'sg2', 'tw2', 'vn2'];
   const effectiveRegions = regions ? regions : allRegions;
 
   const base = {

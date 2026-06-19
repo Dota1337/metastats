@@ -25,11 +25,14 @@
 import { spawn } from 'node:child_process';
 import { revalidateEdge, STATS_EDGE_PATHS } from './lib/revalidate-edge.mjs';
 
+// ph2/th2 raus — 0 D2+ Spieler in TFT (verifiziert 2026-06-19 gegen
+// tft_daily_crawl_meta letzte 14 Tage). me1 bleibt drin trotz n=68 Pop
+// (Marktwert macht dort Pop-Stats-Bypass, alles andere zählt normal).
 const ALL_REGIONS = [
   'euw1', 'kr', 'na1', 'eun1',     // primary 4 — most traffic
   'br1', 'jp1', 'tr1', 'ru', 'me1',
   'la1', 'la2',
-  'oc1', 'ph2', 'sg2', 'th2', 'tw2', 'vn2',
+  'oc1', 'sg2', 'tw2', 'vn2',
 ];
 
 const args = process.argv.slice(2);

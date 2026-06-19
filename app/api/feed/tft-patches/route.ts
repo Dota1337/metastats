@@ -21,7 +21,8 @@ function escapeXml(s: string): string {
   ));
 }
 
-const ALL_REGIONS = ['euw1','kr','na1','eun1','br1','jp1','la1','la2','oc1','tr1','ru','me1','ph2','sg2','th2','tw2','vn2'];
+// ph2/th2 raus — leer im TFT-Crawl (siehe tft-supabase-reader.ts).
+const ALL_REGIONS = ['euw1','kr','na1','eun1','br1','jp1','la1','la2','oc1','tr1','ru','me1','sg2','tw2','vn2'];
 const APEX = ['master','grandmaster','challenger'];
 
 export async function GET(_request: NextRequest) {

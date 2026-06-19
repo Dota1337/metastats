@@ -8,10 +8,14 @@
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
-// Riot's 17 platform routings. Used for the "all" region group.
+// Riot's 17 TFT platform routings. ph2 + th2 sind im TFT-Crawl heute leer
+// (0 D2+ Spieler, 0 Crawl-Meta-Rows letzte 14 Tage — verifiziert 2026-06-19),
+// daher aus den Aggregations-Listen rausgenommen. Die Routings selbst bleiben
+// in app/lib/regions.ts gültige Whitelist-Werte (für direkte API-Calls /
+// Pro-Profile mit ph2/th2-Tag).
 export const ALL_REGIONS = [
   'euw1', 'kr', 'na1', 'eun1', 'br1', 'jp1', 'oc1',
-  'la1', 'la2', 'tr1', 'ru', 'me1', 'ph2', 'sg2', 'th2', 'tw2', 'vn2',
+  'la1', 'la2', 'tr1', 'ru', 'me1', 'sg2', 'tw2', 'vn2',
 ];
 // Visual / cultural groupings — Western servers play a more individual-comp
 // meta, Asian servers lean into the strongest comp first. Splitting them
@@ -20,7 +24,7 @@ export const ALL_REGIONS = [
 export const WEST_REGIONS = [
   'euw1', 'eun1', 'na1', 'br1', 'la1', 'la2', 'tr1', 'ru', 'me1',
 ];
-export const ASIA_REGIONS = ['kr', 'jp1', 'oc1', 'ph2', 'sg2', 'th2', 'tw2', 'vn2'];
+export const ASIA_REGIONS = ['kr', 'jp1', 'oc1', 'sg2', 'tw2', 'vn2'];
 
 export const REGION_GROUPS: Record<string, string[]> = {
   all: ALL_REGIONS,

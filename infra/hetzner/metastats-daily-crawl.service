@@ -2,11 +2,9 @@
 Description=metastats TFT daily stats crawl (all regions, all ranks)
 Wants=network-online.target
 After=network-online.target
-# Safety net only — metastats-crawler is no longer auto-triggered (timer masked,
-# OnSuccess removed 2026-06-16). The full D2+ sweep is decommissioned: the daily
-# all-ranks crawl warms every region, marktwert is computed from those profile
-# fetches, and sub-D2 players self-refresh via the /refresh-player button.
-# Conflicts= stays as a guard in case someone starts metastats-crawler manually.
+# Conflicts= bidirektional: wenn daily-crawl um 00:00 UTC startet, wird ein
+# eventuell noch laufender Bootstrap-Crawler sauber via SIGTERM gestoppt
+# (Cursor in /etc/metastats-crawler/mv-region-cursor.json bleibt erhalten).
 Conflicts=metastats-crawler.service
 # Catch-up hook: if this run crossed UTC midnight, the next 00:00 OnCalendar
 # trigger was swallowed (systemd ignores triggers while a Type=oneshot service
@@ -17,6 +15,12 @@ OnSuccess=metastats-daily-crawl-catchup.service
 # statische JSON-Blobs nach Vercel-Blob. Sub-100ms-Lookups für die ~150 häufigsten
 # Filter-Combos, der Live-RPC-Pfad bleibt als Fallback erhalten.
 OnSuccess=metastats-snapshot-publisher.service
+# TEMPORÄR (Phase A3, 2026-06-20): re-aktiviert die OnSuccess-Kette zum
+# Marktwert-Bootstrap-Crawler. Sobald der bestehende Match-Cache aller
+# 15 Regionen wieder warm + die Marktwert-Snapshots aktuell sind (~5-7 Nächte),
+# wird diese Zeile durch metastats-marketvalue-snapshot.service ersetzt (Phase A5).
+# 2026-06-16 wurde diese Kette versehentlich entfernt → Pipeline 4 Tage still.
+OnSuccess=metastats-crawler.service
 
 [Service]
 Type=oneshot

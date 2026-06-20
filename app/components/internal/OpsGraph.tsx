@@ -16,6 +16,10 @@ import * as THREE from 'three';
 const POLL_SERVICES_MS = 30_000;
 const POLL_DB_MS = 60_000;
 const POLL_MANIFEST_MS = 120_000;
+// Riot-Status-Endpoint hat 5min In-Process-Cache — Client-Poll alle 60s
+// trifft also höchstens 1× pro 5min den Origin. Visibility-gate teilt dasselbe
+// Pattern wie die Ops-Polls weiter unten.
+const POLL_RIOT_STATUS_MS = 60_000;
 
 // =========================================================================
 // Types
@@ -207,6 +211,155 @@ function useOpsSnapshot(): { snap: Snapshot | null; lastUpdate: Date | null } {
   }, []);
 
   return { snap, lastUpdate };
+}
+
+// =========================================================================
+// Riot-Status (TFT-Platform-Status pro Region)
+// =========================================================================
+
+type RiotSeverity = 'info' | 'warning' | 'critical';
+type RiotRegionStatus = 'ok' | RiotSeverity | 'unknown';
+
+interface RiotRegionEntry {
+  region: string;
+  status: RiotRegionStatus;
+  activeIncidents: number;
+  activeMaintenances: number;
+  worstSeverity: RiotSeverity | null;
+  summary: string | null;
+  error?: string;
+}
+
+interface RiotStatusPayload {
+  cachedAt: string;
+  regions: RiotRegionEntry[];
+}
+
+const RIOT_SEVERITY_RANK: Record<RiotSeverity, number> = { info: 1, warning: 2, critical: 3 };
+const RIOT_SEVERITY_COLOR: Record<RiotSeverity, string> = {
+  info: '#3b82f6',
+  warning: '#f97316',
+  critical: '#ef4444',
+};
+const RIOT_SEVERITY_LABEL: Record<RiotSeverity, string> = {
+  info: 'Info',
+  warning: 'Warnung',
+  critical: 'Kritisch',
+};
+
+function useRiotStatus(): RiotStatusPayload | null {
+  const [data, setData] = useState<RiotStatusPayload | null>(null);
+  useEffect(() => {
+    let alive = true;
+    async function pull() {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      try {
+        const res = await fetch('/api/internal/riot-status', { cache: 'no-store' });
+        if (!res.ok) return;
+        const json = await res.json() as RiotStatusPayload;
+        if (!alive) return;
+        setData(json);
+      } catch { /* swallow */ }
+    }
+    pull();
+    const t = setInterval(pull, POLL_RIOT_STATUS_MS);
+    function onVisibilityChange() {
+      if (typeof document !== 'undefined' && !document.hidden) pull();
+    }
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', onVisibilityChange);
+    }
+    return () => {
+      alive = false;
+      clearInterval(t);
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', onVisibilityChange);
+      }
+    };
+  }, []);
+  return data;
+}
+
+function summarizeRiotStatus(payload: RiotStatusPayload | null): {
+  worstSeverity: RiotSeverity | null;
+  affectedRegions: RiotRegionEntry[];
+  unknownRegions: RiotRegionEntry[];
+  hasAnything: boolean;
+} {
+  if (!payload) return { worstSeverity: null, affectedRegions: [], unknownRegions: [], hasAnything: false };
+  const affected = payload.regions.filter(r => r.worstSeverity != null || r.activeIncidents > 0 || r.activeMaintenances > 0);
+  const unknown = payload.regions.filter(r => r.status === 'unknown');
+  let worst: RiotSeverity | null = null;
+  for (const r of affected) {
+    if (!r.worstSeverity) continue;
+    if (!worst || RIOT_SEVERITY_RANK[r.worstSeverity] > RIOT_SEVERITY_RANK[worst]) {
+      worst = r.worstSeverity;
+    }
+  }
+  return {
+    worstSeverity: worst,
+    affectedRegions: affected,
+    unknownRegions: unknown,
+    hasAnything: affected.length > 0 || unknown.length > 0,
+  };
+}
+
+function RiotStatusBanner({ payload }: { payload: RiotStatusPayload | null }) {
+  const [expanded, setExpanded] = useState(false);
+  const { worstSeverity, affectedRegions, unknownRegions, hasAnything } = useMemo(
+    () => summarizeRiotStatus(payload),
+    [payload],
+  );
+  // Stiller Mode: kein Banner wenn alles ok / nichts zu zeigen. Vermeidet
+  // permanente „alles OK" Info-Texte (siehe feedback_no_info_texts).
+  if (!hasAnything) return null;
+
+  const accentColor = worstSeverity ? RIOT_SEVERITY_COLOR[worstSeverity] : '#6b7280';
+  const headline = worstSeverity
+    ? `Riot: ${RIOT_SEVERITY_LABEL[worstSeverity]} in ${affectedRegions.length} Region${affectedRegions.length === 1 ? '' : 'en'}`
+    : `Riot-Status: ${unknownRegions.length} Region${unknownRegions.length === 1 ? '' : 'en'} nicht erreichbar`;
+
+  return (
+    <div
+      className="bg-[#0d1526]/95 backdrop-blur border rounded px-2.5 py-1.5 cursor-pointer hover:bg-[#11192a] transition-colors"
+      style={{ borderColor: accentColor }}
+      onClick={() => setExpanded(e => !e)}
+    >
+      <div className="flex items-center gap-2 text-xs">
+        <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: accentColor }} />
+        <span style={{ color: accentColor }}>{headline}</span>
+        <span className="text-gray-500 text-[10px] ml-auto">{expanded ? '▴' : '▾'}</span>
+      </div>
+      {expanded && (
+        <div className="mt-2 pt-2 border-t border-[#1e2a3a] space-y-1 text-[11px] max-h-64 overflow-y-auto">
+          {affectedRegions.map(r => (
+            <div key={r.region} className="flex items-start gap-2">
+              <span
+                className="inline-block w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0"
+                style={{ backgroundColor: r.worstSeverity ? RIOT_SEVERITY_COLOR[r.worstSeverity] : '#6b7280' }}
+              />
+              <div className="min-w-0">
+                <div className="font-mono text-gray-300">
+                  {r.region}
+                  <span className="text-gray-500 ml-2">
+                    {r.activeIncidents > 0 && `${r.activeIncidents} Incident${r.activeIncidents === 1 ? '' : 's'}`}
+                    {r.activeIncidents > 0 && r.activeMaintenances > 0 && ' · '}
+                    {r.activeMaintenances > 0 && `${r.activeMaintenances} Wartung${r.activeMaintenances === 1 ? '' : 'en'}`}
+                  </span>
+                </div>
+                {r.summary && <div className="text-gray-400 leading-snug">{r.summary}</div>}
+              </div>
+            </div>
+          ))}
+          {unknownRegions.length > 0 && (
+            <div className="text-gray-500 pt-1 border-t border-[#1e2a3a]/50">
+              {unknownRegions.length} nicht erreichbar: {unknownRegions.map(r => r.region).join(', ')}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // =========================================================================
@@ -803,6 +956,7 @@ function NodeDetailPanel({ node, edges, nodes, onClose, onSelectNode }: {
 
 export default function OpsGraph() {
   const { snap, lastUpdate } = useOpsSnapshot();
+  const riotStatus = useRiotStatus();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const graph = useMemo(() => buildGraph(snap), [snap]);
   const selectedNode = useMemo(
@@ -815,11 +969,12 @@ export default function OpsGraph() {
 
   return (
     <div className="min-h-screen bg-[#050810] text-gray-200 relative overflow-hidden">
-      <div className="absolute top-3 left-3 z-10 text-xs space-y-1">
+      <div className="absolute top-3 left-3 z-10 text-xs space-y-1 max-w-[min(420px,calc(100vw-24px))]">
         <div className="font-semibold tracking-wide text-white">metastats / ops</div>
         <div className="text-gray-500">
           {lastUpdate ? `aktualisiert vor ${humanAge(Date.now() - lastUpdate.getTime())}` : 'lade…'}
         </div>
+        <RiotStatusBanner payload={riotStatus} />
         {hasErrors && (
           <div className="text-red-400 mt-2 space-y-0.5">
             {errs?.services && <div>hetzner: {errs.services}</div>}

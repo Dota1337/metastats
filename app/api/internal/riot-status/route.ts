@@ -10,19 +10,13 @@
 // Quota-Bedarf bei 15 Regionen × 1 Call alle 5 min = 3 req/min — trivial.
 
 import { NextRequest, NextResponse } from 'next/server';
+import { ACTIVE_REGIONS } from '@/app/lib/active-regions';
 
 export const dynamic = 'force-dynamic';
 
 // Auth-Schutz: middleware.ts hat Early-Return-Branch für /api/internal/*
 // und validiert den __metastats_internal Cookie. Hier braucht's daher
 // keinen expliziten Auth-Check (siehe reference_internal_ops_dashboard.md).
-
-const ACTIVE_REGIONS = [
-  'euw1', 'eun1', 'tr1', 'ru', 'me1',
-  'na1', 'br1', 'la1', 'la2',
-  'kr', 'jp1',
-  'oc1', 'sg2', 'tw2', 'vn2',
-];
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 4000;

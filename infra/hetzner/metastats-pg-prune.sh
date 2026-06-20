@@ -43,4 +43,73 @@ if [ "$OLD" -gt 0 ]; then
   echo "  vacuum..."
   psqlc "vacuum (analyze) tft_player_match_cache;" >/dev/null
 fi
+
+# ──────────────────────────────────────────────────────────────────────────
+# Backup-Tables aus dem Marktwert-Daily-Driver pruning (A3, 2026-06-20).
+#
+# `scripts/daily-marketvalue-snapshot.mjs` schreibt vor jedem scharfen Region-
+# Lauf ein Backup-Table-Snapshot `tft_pmvs_backup_YYYYMMDD_<region>` (siehe
+# reference_marketvalue_daily_pipeline.md). Ohne Pruning sammeln sich pro
+# Region täglich neue Backup-Tables → DB-Bloat + Catalog-Druck.
+#
+# Multi-Review-Verdict (architect + data-skeptic + logic-flow-critic):
+#   • Window 21 Tage (data-skeptic) — Aggregator-Bugs werden oft erst nach
+#     2-3 Patch-Cycles sichtbar; 7d hätte Backups gepruned bevor Bugs auffallen.
+#   • Regex-anchored Pattern (logic-flow): `LIKE 'tft_pmvs_backup_%'` würde
+#     rogue Tables treffen.
+#   • 2-Tage-TODAY-Guard (logic-flow): pg-prune läuft Sonntags 03:00 UTC während
+#     daily-crawl bei 00:00 UTC schon Backups produziert hat — niemals
+#     heutige/gestrige Backups droppen.
+#   • Advisory-Lock (logic-flow): falls Driver jemals selber prunet, wir wollen
+#     keine Race auf DROP TABLE.
+# ──────────────────────────────────────────────────────────────────────────
+
+PRUNE_AFTER_DAYS=21
+PRUNE_TODAY_GUARD_DAYS=2
+ADVISORY_LOCK_KEY=68740620   # arbitrary 32-bit int — eindeutig für pg-prune-backup
+
+echo "$(date -u +%FT%TZ) backup-prune: window=${PRUNE_AFTER_DAYS}d, guard=${PRUNE_TODAY_GUARD_DAYS}d"
+
+# pg_try_advisory_lock returnt true wenn der Lock geholt werden konnte. Bei
+# false: ein anderer Prozess prunet gerade — wir skippen ohne zu warten.
+LOCK_OK=$(psqlc "select pg_try_advisory_lock($ADVISORY_LOCK_KEY);")
+if [ "$LOCK_OK" != "t" ]; then
+  echo "  advisory lock held by another process — skipping backup-prune"
+else
+  # Tabellen-Liste holen: Regex-anchored auf das Driver-Naming-Pattern.
+  # Format: tft_pmvs_backup_YYYYMMDD_<region> (region kann Ziffern enthalten,
+  # daher [a-z0-9]+).
+  CANDIDATES=$(psqlc "
+    select tablename
+    from pg_tables
+    where schemaname = 'public'
+      and tablename ~ '^tft_pmvs_backup_[0-9]{8}_[a-z0-9]+$'
+    order by tablename;
+  ")
+
+  CUT_OFF=$(date -u -d "$PRUNE_AFTER_DAYS days ago" +%Y%m%d)
+  TODAY_GUARD=$(date -u -d "$PRUNE_TODAY_GUARD_DAYS days ago" +%Y%m%d)
+  echo "  cutoff=$CUT_OFF (drop wenn datum davor) — keep wenn datum >= $TODAY_GUARD (today-guard)"
+
+  DROPPED=0
+  KEPT=0
+  for tbl in $CANDIDATES; do
+    # Date-Component aus dem Namen extrahieren: tft_pmvs_backup_YYYYMMDD_xxx
+    DATE_PART=$(echo "$tbl" | sed -E 's/^tft_pmvs_backup_([0-9]{8})_.+$/\1/')
+    # Safety: nur droppen wenn Date strikt vor CUT_OFF UND strikt vor TODAY_GUARD.
+    # Letzteres garantiert dass selbst bei einem versehentlichen CUT_OFF=heute
+    # die jüngsten Backups nicht erwischt werden.
+    if [ "$DATE_PART" -lt "$CUT_OFF" ] && [ "$DATE_PART" -lt "$TODAY_GUARD" ]; then
+      psqlc "drop table if exists \"$tbl\";" >/dev/null
+      echo "  dropped: $tbl (date=$DATE_PART)"
+      DROPPED=$((DROPPED + 1))
+    else
+      KEPT=$((KEPT + 1))
+    fi
+  done
+  echo "  backup-prune done: dropped=$DROPPED, kept=$KEPT"
+
+  psqlc "select pg_advisory_unlock($ADVISORY_LOCK_KEY);" >/dev/null
+fi
+
 echo "$(date -u +%FT%TZ) prune done."

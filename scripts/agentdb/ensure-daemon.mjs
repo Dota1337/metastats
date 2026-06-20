@@ -11,8 +11,10 @@
 // Exit-Codes: 0 = daemon running, 1 = failed to start, 2 = startup timeout
 
 import { spawn } from 'node:child_process';
-import { resolve, dirname } from 'node:path';
+import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import os from 'node:os';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = parseInt(process.env.AGENTDB_PORT || '7878', 10);
@@ -55,10 +57,39 @@ async function waitReady(deadline) {
   return false;
 }
 
+function checkDailyExport() {
+  // Triggert export-jsonl.mjs wenn letzter Export >24h alt.
+  // Detached spawn damit ensure-daemon nicht auf Export-Completion wartet.
+  try {
+    const stateDir = join(os.homedir(), '.claude', 'agentdb');
+    if (!existsSync(stateDir)) mkdirSync(stateDir, { recursive: true });
+    const stampFile = join(stateDir, 'last-export.txt');
+    const now = Math.floor(Date.now() / 1000);
+    let lastExport = 0;
+    if (existsSync(stampFile)) {
+      try { lastExport = parseInt(readFileSync(stampFile, 'utf8').trim(), 10) || 0; } catch {}
+    }
+    const ageHours = (now - lastExport) / 3600;
+    if (ageHours >= 24) {
+      const exportPath = resolve(__dirname, 'export-jsonl.mjs');
+      const child = spawn(process.execPath, [exportPath], {
+        detached: true, stdio: 'ignore', windowsHide: true,
+        env: { ...process.env, NODE_OPTIONS: process.env.NODE_OPTIONS || '--use-system-ca' },
+      });
+      child.unref();
+      writeFileSync(stampFile, String(now), 'utf8');
+      if (!process.argv.includes('--quiet')) console.log(`[ensure-daemon] daily-export triggered (last ${ageHours.toFixed(1)}h ago)`);
+    }
+  } catch (err) {
+    if (!process.argv.includes('--quiet')) console.error(`[ensure-daemon] export check failed: ${err.message}`);
+  }
+}
+
 async function main() {
   // Schon up?
   if (await checkHealth()) {
     if (!process.argv.includes('--quiet')) console.log(`[ensure-daemon] already running on :${PORT}`);
+    checkDailyExport();
     process.exit(0);
   }
 
@@ -73,6 +104,7 @@ async function main() {
     process.exit(2);
   }
   if (!process.argv.includes('--quiet')) console.log(`[ensure-daemon] ready on :${PORT}`);
+  checkDailyExport();
   process.exit(0);
 }
 

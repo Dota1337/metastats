@@ -331,7 +331,7 @@ export default function TftCompsPage() {
     <main className="min-h-screen bg-[#0e1525]">
       <Nav active="comps" />
       <TftHero pageTitle={t('nav.comps')} patch={currentPatchLabel} />
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-2 pb-6">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-2 pb-6">
         <StatsFilterBar filters={filters} patches={patches} onChange={handleFiltersChange} />
 
         <AdvancedCompFilters
@@ -367,8 +367,8 @@ export default function TftCompsPage() {
           <>
             <div className={`hidden sm:grid items-center gap-4 px-3.5 py-2 text-[11px] uppercase tracking-widest text-[#a0b0c5] font-medium ${
               filters.velocity > 0
-                ? 'grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_3.25rem_3.25rem_3.25rem_3.25rem_3.25rem_3.75rem_3rem]'
-                : 'grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_3.25rem_3.25rem_3.25rem_3.25rem_3.25rem_3rem]'
+                ? 'grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_3.75rem_3.5rem_3.5rem_3.5rem_3.5rem_3.75rem_3rem]'
+                : 'grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_3.75rem_3.5rem_3.5rem_3.5rem_3.5rem_3rem]'
             }`}>
               <div></div>
               <div></div>

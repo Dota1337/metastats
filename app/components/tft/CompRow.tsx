@@ -81,6 +81,7 @@ function extractTraitVariant(traitApiName: string, traitDisplayName: string): st
 
 export default function CompRow({
   comp, rank, assets, href, showVelocity = false, velocityShift = 0, tierCutoffs = null,
+  expandToggle = null,
 }: {
   comp: Comp;
   rank: number;
@@ -93,6 +94,11 @@ export default function CompRow({
   // fetch + setState per CompRow on mount — 100 rows = 100 effects. The
   // parent-load pattern keeps it O(1) regardless of row count.
   tierCutoffs?: TierCutoffs | null;
+  // Optional Drop-Down-Toggle (für CompFamilyRow). Wenn gesetzt, rendert
+  // CompRow einen Pfeil-Button rechts. Click auf den Pfeil triggert onToggle
+  // (mit stopPropagation), Click auf den Rest der Card navigiert weiterhin
+  // zur Detail-Page wie gewohnt.
+  expandToggle?: { expanded: boolean; onToggle: () => void } | null;
 }) {
   const { t } = useI18n();
   const router = useRouter();
@@ -120,15 +126,22 @@ export default function CompRow({
       _carry: typeof (u as any).carryItemGames === 'number' ? (u as any).carryItemGames : 0,
     }));
     // Sub-Cluster-Variants: Primary carry zuerst, secondary carry zweiter, dann
-    // restliche Units nach count desc — Reihenfolge matched das Comp-Naming.
+    // restliche Units nach Cost desc (mit characterId als deterministischem
+    // Tie-Break). Konsistente Reihenfolge über Sub-Variants derselben Family —
+    // User-Fix 2026-06-20: vorher count-desc, was bei Sub-Variants zu chaoti-
+    // scher Champion-Reihenfolge führte ("Welche Sub-Variant unterscheidet sich
+    // worin?" war visuell unklar).
     const primary = parts?.carry || null;
     const secondary = parts?.secondary || null;
+    const costOf = (cid: string) => assets?.champions[cid]?.cost ?? 1;
     return all
       .sort((a, b) => {
         const pa = a.characterId === primary ? 0 : a.characterId === secondary ? 1 : 2;
         const pb = b.characterId === primary ? 0 : b.characterId === secondary ? 1 : 2;
         if (pa !== pb) return pa - pb;
-        return b._c - a._c;
+        const costDelta = costOf(b.characterId) - costOf(a.characterId);
+        if (costDelta !== 0) return costDelta;
+        return a.characterId.localeCompare(b.characterId);
       })
       .slice(0, 9);
   })();
@@ -398,6 +411,21 @@ export default function CompRow({
           </div>
         )}
         <div className="hidden sm:flex items-center justify-end gap-1">
+          {expandToggle && (
+            <button
+              type="button"
+              onClick={e => {
+                e.stopPropagation();
+                expandToggle.onToggle();
+              }}
+              className="w-6 h-6 flex items-center justify-center text-[#7a8aa0] hover:text-white hover:bg-[#1e2a3a]/60 rounded transition-colors"
+              aria-expanded={expandToggle.expanded}
+              aria-label={expandToggle.expanded ? 'Varianten einklappen' : 'Varianten ausklappen'}
+              style={{ transform: expandToggle.expanded ? 'rotate(180deg)' : 'rotate(0)' }}
+            >
+              ▾
+            </button>
+          )}
           <PlanAheadButton
             characterIds={typicalUnits.slice(0, 10).map(u => u.characterId)}
             setNumber={assets?.set ?? 17}

@@ -125,23 +125,19 @@ export default function CompRow({
       _c: safeCount(u.count),
       _carry: typeof (u as any).carryItemGames === 'number' ? (u as any).carryItemGames : 0,
     }));
-    // Sub-Cluster-Variants: Primary carry zuerst, secondary carry zweiter, dann
-    // restliche Units nach Cost desc (mit characterId als deterministischem
-    // Tie-Break). Konsistente Reihenfolge über Sub-Variants derselben Family —
-    // User-Fix 2026-06-20: vorher count-desc, was bei Sub-Variants zu chaoti-
-    // scher Champion-Reihenfolge führte ("Welche Sub-Variant unterscheidet sich
-    // worin?" war visuell unklar).
-    const primary = parts?.carry || null;
-    const secondary = parts?.secondary || null;
+    // Strikt Cost ASC + Name ASC (Alphabet erstes Zeichen) — User-Vorgabe
+    // 2026-06-20: „grundsätzlich die Units bei den Comps von links nach
+    // rechts nach der jeweiligen Cost hierarchisch abbilden, angefangen mit
+    // 1-cost, dann 2-cost usw. Bei 2 2-Cost gehen wir nach dem Alphabet".
+    // Carry-Differenzierung bleibt visuell über den lila Tile-Border erhalten.
     const costOf = (cid: string) => assets?.champions[cid]?.cost ?? 1;
+    const nameOf = (cid: string) =>
+      (assets?.champions[cid]?.name || cid.replace(/^TFT\d+_/, '')).toLowerCase();
     return all
       .sort((a, b) => {
-        const pa = a.characterId === primary ? 0 : a.characterId === secondary ? 1 : 2;
-        const pb = b.characterId === primary ? 0 : b.characterId === secondary ? 1 : 2;
-        if (pa !== pb) return pa - pb;
-        const costDelta = costOf(b.characterId) - costOf(a.characterId);
+        const costDelta = costOf(a.characterId) - costOf(b.characterId);
         if (costDelta !== 0) return costDelta;
-        return a.characterId.localeCompare(b.characterId);
+        return nameOf(a.characterId).localeCompare(nameOf(b.characterId));
       })
       .slice(0, 9);
   })();

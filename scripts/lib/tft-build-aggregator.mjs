@@ -311,11 +311,13 @@ function classifyComp(participant, opts = {}) {
       return (b.tier ?? 1) - (a.tier ?? 1);
     })[0];
 
-  // Sub-Cluster via Carry-Star — eine 3-Star-Reroll-Variante ist mechanisch
-  // eine ganz andere Comp als die 2-Star-Push-Variante desselben Carry
-  // (typisch Lvl 6/7 Reroll vs Lvl 8/9 Push).
+  // Carry-Star wird NICHT mehr in cluster_key kodiert (User-Vorgabe 2026-06-20):
+  // 2★ und 3★ desselben Trait+Carry sind dieselbe Comp ("Meeple-Gnar bleibt
+  // Meeple-Gnar, egal ob 2★ oder 3★"). Liste konsolidiert auf Trait+Carry-
+  // Ebene, Detail-Page rendert Star-Verteilung via carryStarDist (Migration
+  // 0033 — bereits im Schema).
   const carryStar = carry.tier ?? 2;
-  const starSuffix = carryStar === 3 ? '*3' : '';
+  const starSuffix = '';
   // Sub-Cluster via comp-definierendes Augment — die Spielweise (Reroll-
   // Incentive, 2-Cost-Stacking etc.) ändert sich substantiell und macht
   // einen eigenen Sub-Cluster gerechtfertigt. Hero-Augments sind hier
@@ -342,8 +344,14 @@ function classifyComp(participant, opts = {}) {
   // (Unit-Dup-Detection) ergeben identische Suffixe → kein Sub-Cluster-Split.
   const effectiveAug = augSlug || (hasUnitDuplicate ? 'TwoTanky' : null);
   const augSuffix = effectiveAug ? `~${effectiveAug}` : '';
-  const baseKey = `${primaryTrait.name}@${primaryTrait.tier_current ?? 0}_${carryId}${starSuffix}${augSuffix}`;
-  const clusterKey = secondaryCarry ? `${baseKey}#${secondaryCarry.cid}` : baseKey;
+  // Secondary-Carry-Suffix (#X) ebenfalls raus aus cluster_key (User-Vorgabe
+  // 2026-06-20): Bard/Jhin/Corki als Secondary-Filler bei Meeple-Gnar sind
+  // dieselbe Spielweise, nur mit anderem Pre-9-Filler. Konsolidieren auf
+  // Trait+Carry. Augment-Sub-Cluster (~TwoTanky) bleiben separat — TwoTanky
+  // verändert die Units (2× selbe), das ist tatsächlich andere Spielweise.
+  const clusterKey = `${primaryTrait.name}@${primaryTrait.tier_current ?? 0}_${carryId}${starSuffix}${augSuffix}`;
+  // secondaryCarry bleibt in `return` für aggregator-internes Tracking
+  // (typicalUnits + classifyComp-Caller), aber NICHT mehr im cluster_key.
 
   return {
     clusterKey,

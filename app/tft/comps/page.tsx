@@ -227,15 +227,56 @@ export default function TftCompsPage() {
       groups.get(k)!.push(c);
     }
     const out: CompFamily[] = [];
-    for (const [familyKey, variants] of groups) {
+    for (const [familyKey, rawVariants] of groups) {
       // Trait + Carry aus dem ersten Variant-ClusterKey holen (architect F1:
       // alter `familyKey.split('@')[0]`-Pfad würde bei neuem Key-Format
       // `<trait>__<carry>` den Carry mit in den Trait-String packen).
-      const parts = parseClusterKey(variants[0].slug || variants[0].clusterKey);
+      const parts = parseClusterKey(rawVariants[0].slug || rawVariants[0].clusterKey);
       const trait = parts?.trait ?? familyKey;
       const carry = parts?.carry ?? '';
       const level = parts?.level ?? 0;
-      // Main-Variante = sort-besten (nicht zwingend meistgespielt).
+      // Build-Identity-Konsolidierung (User-Wortlaut 2026-06-21): „3x die
+      // gleiche Comp (gleiche Units)" → Sub-Cluster mit IDENTISCHEM
+      // typicalUnits-Set (Champion-IDs, Reihenfolge egal) werden zu EINER
+      // Sub-Variant gemerged. Andere Builds bleiben separate Drop-Down-Einträge.
+      // Hash über sortierte unique characterIds — Items werden NICHT in die
+      // Identität einbezogen (User-Erwartung „gleiche Units" = gleiche Champions).
+      const buildHash = (v: any): string => {
+        const ids = ((v.typicalUnits || []) as Array<{ characterId: string }>)
+          .map(u => u.characterId)
+          .filter(Boolean);
+        if (ids.length === 0) return `~empty~${v.slug || v.clusterKey}`;
+        return [...new Set(ids)].sort().join('|');
+      };
+      const byBuild = new Map<string, any[]>();
+      for (const v of rawVariants) {
+        const h = buildHash(v);
+        if (!byBuild.has(h)) byBuild.set(h, []);
+        byBuild.get(h)!.push(v);
+      }
+      // Pro Build-Group: weighted Stats + Anker = games-stärkster Sub-Cluster.
+      // Single-Build-Group bleibt unverändert (keine Re-Aggregation nötig).
+      const variants: any[] = [];
+      for (const group of byBuild.values()) {
+        if (group.length === 1) { variants.push(group[0]); continue; }
+        const gTotal = group.reduce((s, v) => s + (v.games || 0), 0);
+        const w = (key: string) => gTotal > 0
+          ? group.reduce((s, v) => s + ((v[key] ?? 0) as number) * (v.games || 0), 0) / gTotal
+          : null;
+        const anchor = [...group].sort((a, b) => (b.games || 0) - (a.games || 0))[0];
+        const consolidated = {
+          ...anchor,
+          games: gTotal,
+          avgPlacement: w('avgPlacement'),
+          top4Rate: w('top4Rate'),
+          top1Rate: w('top1Rate'),
+          avgLevel: w('avgLevel'),
+          pickRate: group.reduce((s, v) => s + (v.pickRate ?? 0), 0),
+          _mergedFromBuilds: group.map(v => v.slug || v.clusterKey),
+        };
+        variants.push(consolidated);
+      }
+      // Main-Variante = sort-besten der konsolidierten Build-Groups.
       const variantsBySort = [...variants].sort((a, b) => sortKey(a) - sortKey(b));
       const mainComp = variantsBySort[0];
       // Weighted Family-Stats über alle Variants.

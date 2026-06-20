@@ -87,13 +87,13 @@ export default function CompFamilyRow({
 
   // Family-Wrapper grenzt Hauptcomp + Sub-Variants als visuelle Einheit von
   // der nachfolgenden Comp ab — linke orange Akzent-Border (matched Pfeil-
-  // Farbe), leichter Background-Tint, mb-3 Abstand zur nächsten Family-Card.
+  // Farbe), leichter Background-Tint, mb-4 Abstand zur nächsten Family-Card.
   return (
     <div
-      className="mb-3 pl-1.5 rounded overflow-hidden"
+      className="mb-4 pl-2 rounded-md overflow-hidden"
       style={{
-        borderLeft: '3px solid rgba(249,115,22,0.4)',
-        backgroundColor: 'rgba(249,115,22,0.04)',
+        borderLeft: '4px solid rgba(249,115,22,0.55)',
+        backgroundColor: 'rgba(249,115,22,0.07)',
       }}
     >
       <CompRow
@@ -109,23 +109,39 @@ export default function CompFamilyRow({
 
       {/* Drop-Down — Sub-Variants als reguläre CompRows rendern (identisches
           Layout zur Hauptcomp, Stats-Spalten sauber untereinander). rank=0
-          → CompRow rendert die rank-Spalte leer als visueller Indent. */}
-      {expanded && subVariants.length > 0 && (
-        <div className="mt-1 space-y-0.5">
-          {subVariants.map(v => (
-            <CompRow
-              key={v.clusterKey}
-              comp={v as Parameters<typeof CompRow>[0]['comp']}
-              rank={0}
-              assets={assets}
-              href={familyHref(v, region, bucket)}
-              showVelocity={showVelocity}
-              velocityShift={velocityShift}
-              tierCutoffs={tierCutoffs}
-            />
-          ))}
+          → CompRow rendert die rank-Spalte leer als visueller Indent.
+          grid-rows-Animation: aufgeklappt = 1fr, zugeklappt = 0fr → max-height
+          ungebunden bei Aufklappen, gleichzeitig sauber animiertes Ein-/Aus-
+          schieben. */}
+      <div
+        className="grid transition-[grid-template-rows] duration-300 ease-out"
+        style={{ gridTemplateRows: expanded ? '1fr' : '0fr' }}
+      >
+        <div className="overflow-hidden">
+          {subVariants.length > 0 && (
+            <div className="mt-1.5 mb-0.5 space-y-1 pl-1 relative">
+              {/* Indent-Marker: dünne vertikale Linie als visueller „gehört zur Familie"-Indikator */}
+              <div
+                className="absolute left-0 top-1 bottom-1 w-px"
+                style={{ backgroundColor: 'rgba(249,115,22,0.35)' }}
+                aria-hidden="true"
+              />
+              {subVariants.map(v => (
+                <CompRow
+                  key={v.clusterKey}
+                  comp={v as Parameters<typeof CompRow>[0]['comp']}
+                  rank={0}
+                  assets={assets}
+                  href={familyHref(v, region, bucket)}
+                  showVelocity={showVelocity}
+                  velocityShift={velocityShift}
+                  tierCutoffs={tierCutoffs}
+                />
+              ))}
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

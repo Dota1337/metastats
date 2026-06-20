@@ -205,7 +205,7 @@ export default function CompRow({
           router.push(href);
         }
       }}
-      className="block px-2 sm:px-3 py-2 rounded border border-[#1e2a3a] bg-[#0d1526] hover:bg-[#101a30] hover:border-[#7B61FF]/40 transition-colors text-xs sm:text-sm cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B61FF]/60"
+      className="block px-2.5 sm:px-3.5 py-2.5 sm:py-3 rounded-md border border-[#1e2a3a] bg-[#0d1526] hover:bg-[#101a30] hover:border-[#7B61FF]/40 transition-colors text-xs sm:text-sm cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B61FF]/60"
     >
       {/* Mobile: stacked. Desktop: tight horizontal row.
           Großes Carry-Portrait raus — der Carry erscheint sowieso in der
@@ -213,25 +213,25 @@ export default function CompRow({
           Augen-Lärm + verwirrend (Identifikation einmal über Portrait,
           einmal über Tile in Reihe). Grid-Spalte (vormals 2.5rem)
           entsprechend entfernt. */}
-      <div className={`grid grid-cols-[1.25rem_1.5rem_minmax(7rem,1fr)_minmax(0,auto)_auto] ${
+      <div className={`grid grid-cols-[1.5rem_1.75rem_minmax(7rem,1fr)_minmax(0,auto)_auto] ${
         showVelocity
-          ? 'sm:grid-cols-[1.25rem_1.5rem_minmax(13rem,1fr)_minmax(0,auto)_3rem_3rem_3rem_3rem_3rem_3.5rem_3rem]'
-          : 'sm:grid-cols-[1.25rem_1.5rem_minmax(13rem,1fr)_minmax(0,auto)_3rem_3rem_3rem_3rem_3rem_3rem]'
-      } items-center gap-2 sm:gap-3`}>
-        <div className="text-[#7a8aa0] tabular-nums text-right">{rank > 0 ? rank : ''}</div>
+          ? 'sm:grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_3.25rem_3.25rem_3.25rem_3.25rem_3.25rem_3.75rem_3rem]'
+          : 'sm:grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_3.25rem_3.25rem_3.25rem_3.25rem_3.25rem_3rem]'
+      } items-center gap-2.5 sm:gap-4`}>
+        <div className="text-[#7a8aa0] tabular-nums text-right text-[13px] font-medium">{rank > 0 ? rank : ''}</div>
         <div
-          className="w-6 h-6 rounded flex items-center justify-center font-bold text-[11px]"
-          style={{ color: tier.color, backgroundColor: `${tier.color}25`, border: `1px solid ${tier.color}40` }}
+          className="w-[30px] h-[30px] rounded-md flex items-center justify-center font-bold text-sm shadow-sm"
+          style={{ color: tier.color, backgroundColor: `${tier.color}28`, border: `1.5px solid ${tier.color}55` }}
           title={tierLetter ? t(`tft.tier.tooltip.${tierLetter}` as any) : t('tft.tier.tooltip.empty')}
         >
           {tier.label}
         </div>
         <div className="min-w-0 leading-tight flex items-center gap-2">
         <div className="min-w-0 flex-1 leading-tight">
-          <div className="text-white font-medium truncate">
-            <span title={traitTooltip || undefined}>{traitDisplay}</span>
-            {' · '}
-            <span title={tftChampionTooltip(assets, carryCid) || undefined}>
+          <div className="text-white font-semibold text-sm sm:text-[15px] truncate">
+            <span title={traitTooltip || undefined} className="text-[#cdd6e0]">{traitDisplay}</span>
+            <span className="text-[#5a6a80] mx-1">·</span>
+            <span title={tftChampionTooltip(assets, carryCid) || undefined} className="text-white">
               {carry?.name || (carryCid ? prettyChar(carryCid) : '')}
             </span>
             {parts?.carryStar === 3 && (
@@ -298,21 +298,32 @@ export default function CompRow({
               e.stopPropagation();
               expandToggle.onToggle();
             }}
-            className="w-8 h-8 flex items-center justify-center rounded transition-all flex-shrink-0 text-xl font-bold"
+            className="w-9 h-9 flex items-center justify-center rounded-md transition-all flex-shrink-0 hover:scale-110"
             aria-expanded={expandToggle.expanded}
             aria-label={expandToggle.expanded ? 'Varianten einklappen' : 'Varianten ausklappen'}
             style={{
               color: '#f97316',
-              backgroundColor: expandToggle.expanded ? 'rgba(249,115,22,0.2)' : 'rgba(249,115,22,0.1)',
-              border: '1px solid rgba(249,115,22,0.5)',
-              transform: expandToggle.expanded ? 'rotate(180deg)' : 'rotate(0)',
+              backgroundColor: expandToggle.expanded ? 'rgba(249,115,22,0.22)' : 'rgba(249,115,22,0.10)',
+              border: '1.5px solid rgba(249,115,22,0.55)',
             }}
           >
-            ▾
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="w-5 h-5 transition-transform duration-200"
+              style={{ transform: expandToggle.expanded ? 'rotate(180deg)' : 'rotate(0)' }}
+              aria-hidden="true"
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
           </button>
         )}
         </div>
-        <div className="flex items-start gap-1 flex-wrap sm:flex-nowrap">
+        <div className="flex items-start gap-1.5 flex-wrap sm:flex-nowrap">
           {typicalUnits.slice(0, 9).map(u => {
             const ch = findChampion(assets, u.characterId);
             const isCarry = u.characterId === carryCid;
@@ -322,24 +333,24 @@ export default function CompRow({
             return (
               <div
                 key={u.characterId}
-                className="flex flex-col items-center gap-0.5 flex-shrink-0"
+                className="flex flex-col items-center gap-1 flex-shrink-0"
               >
                 <a
                   href={`/tft/units/${encodeURIComponent(u.characterId)}`}
                   onClick={e => e.stopPropagation()}
-                  className="w-9 h-9 rounded border-2 overflow-hidden block hover:scale-110 transition-transform relative"
+                  className="w-10 h-10 rounded-md border-2 overflow-hidden block hover:scale-110 transition-transform relative shadow-sm"
                   style={{ borderColor: isCarry ? '#c39bff' : (ch ? costColorOf(ch.cost) : '#1e2a3a') }}
                   title={ch?.name || u.characterId}
                 >
                   {url && <img src={url} alt={ch?.name || ''} className="w-full h-full object-cover" />}
                   {showDouble && (
-                    <div className="absolute -top-1 -right-1 bg-[#7B61FF] text-white text-[7px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center shadow leading-none">
+                    <div className="absolute -top-1 -right-1 bg-[#7B61FF] text-white text-[8px] font-bold rounded-full w-4 h-4 flex items-center justify-center shadow leading-none">
                       ×2
                     </div>
                   )}
                 </a>
                 {items.length > 0 && (
-                  <div className="flex items-center gap-[1px]">
+                  <div className="flex items-center gap-[2px]">
                     {items.map(it => {
                       const meta = findItem(assets, it.apiName);
                       const iconUrl = tftIconUrl(assets, meta?.icon);
@@ -348,7 +359,7 @@ export default function CompRow({
                           key={it.apiName}
                           href={`/tft/items/${encodeURIComponent(it.apiName)}`}
                           onClick={e => e.stopPropagation()}
-                          className="w-[11px] h-[11px] rounded-sm bg-[#0a0e1a] border border-[#1e2a3a] overflow-hidden block hover:border-[#c39bff]/60"
+                          className="w-[14px] h-[14px] rounded-sm bg-[#0a0e1a] border border-[#1e2a3a] overflow-hidden block hover:border-[#c39bff]/60"
                           title={meta?.name || it.apiName}
                         >
                           {iconUrl && <img src={iconUrl} alt={meta?.name || it.apiName} className="w-full h-full object-cover" />}
@@ -363,19 +374,19 @@ export default function CompRow({
         </div>
 
         {/* Stats: mobile = single column on the right; desktop = 4-5 columns */}
-        <div className="hidden sm:block text-right tabular-nums font-medium text-base" style={{ color: tier.color }}>
+        <div className="hidden sm:block text-right tabular-nums font-semibold text-lg" style={{ color: tier.color }}>
           {comp.avgPlacement != null ? comp.avgPlacement.toFixed(2) : '—'}
         </div>
-        <div className="hidden sm:block text-right tabular-nums text-[#a0b0c5]" title={top4ShareTip}>
+        <div className="hidden sm:block text-right tabular-nums text-[#cdd6e0] text-[13px]" title={top4ShareTip}>
           {comp.top4Rate != null ? `${(comp.top4Rate * 100).toFixed(0)}%` : '—'}
         </div>
-        <div className="hidden sm:block text-right tabular-nums text-[#a0b0c5]" title={winShareTip}>
+        <div className="hidden sm:block text-right tabular-nums text-[#cdd6e0] text-[13px]" title={winShareTip}>
           {comp.top1Rate != null ? `${(comp.top1Rate * 100).toFixed(0)}%` : '—'}
         </div>
-        <div className="hidden sm:block text-right tabular-nums text-[#a0b0c5]">
+        <div className="hidden sm:block text-right tabular-nums text-[#a0b0c5] text-[13px]">
           {comp.pickRate != null ? `${(comp.pickRate * 100).toFixed(2)}%` : '—'}
         </div>
-        <div className="hidden sm:block text-right tabular-nums text-[#7a8aa0]">
+        <div className="hidden sm:block text-right tabular-nums text-[#7a8aa0] text-[12px]">
           {comp.games}
         </div>
         {showVelocity && (
@@ -444,14 +455,14 @@ export default function CompRow({
         </div>
 
         {/* Mobile-only inline stats */}
-        <div className="sm:hidden flex items-center gap-2 col-span-full justify-end tabular-nums">
-          <span className="font-medium text-base" style={{ color: tier.color }}>
+        <div className="sm:hidden flex items-center gap-2.5 col-span-full justify-end tabular-nums">
+          <span className="font-semibold text-lg" style={{ color: tier.color }}>
             {comp.avgPlacement != null ? comp.avgPlacement.toFixed(2) : '—'}
           </span>
-          <span className="text-[#a0b0c5]">
+          <span className="text-[#cdd6e0]">
             {comp.top4Rate != null ? `${(comp.top4Rate * 100).toFixed(0)}%` : '—'}
           </span>
-          <span className="text-[#a0b0c5]">
+          <span className="text-[#cdd6e0]">
             {comp.pickRate != null ? `${(comp.pickRate * 100).toFixed(1)}%` : '—'}
           </span>
           <span className="text-[#7a8aa0]">{comp.games}</span>

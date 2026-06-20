@@ -270,6 +270,25 @@ export default function TftCompsPage() {
         .sort((a, b) => b[1] - a[1])
         .slice(0, 3)
         .map(([apiName, count]) => ({ apiName, count }));
+      // Family-Velocity-Override: bei sortBy='velocity' sortiert die Family-Liste
+      // nach Min-Δ aller Sub-Variants, die Hauptcomp-Anzeige zeigte aber den
+      // mainComp-Δ — inkonsistente UX. Wir setzen den Family-Min-Δ auf die
+      // mainComp.velocity wenn velocity sortiert wird, damit die angezeigte
+      // Velocity-Zahl mit der Sortierung übereinstimmt.
+      if (sortBy === 'velocity') {
+        let bestΔ = Infinity;
+        let bestSrc: any = null;
+        for (const v of variants) {
+          const δ = (v as any).velocity?.deltaAvgPlace;
+          if (typeof δ === 'number' && δ < bestΔ) {
+            bestΔ = δ;
+            bestSrc = (v as any).velocity;
+          }
+        }
+        if (bestSrc) {
+          (mainComp as any).velocity = bestSrc;
+        }
+      }
       out.push({
         familyKey,
         trait,
@@ -346,10 +365,10 @@ export default function TftCompsPage() {
 
         {hasData && families.length > 0 && (
           <>
-            <div className={`hidden sm:grid items-center gap-3 px-3 py-1.5 text-[10px] uppercase tracking-widest text-[#7a8aa0] ${
+            <div className={`hidden sm:grid items-center gap-4 px-3.5 py-2 text-[11px] uppercase tracking-widest text-[#a0b0c5] font-medium ${
               filters.velocity > 0
-                ? 'grid-cols-[1.25rem_1.5rem_minmax(11rem,1fr)_minmax(0,auto)_3rem_3rem_3rem_3rem_3rem_3.5rem_1.25rem]'
-                : 'grid-cols-[1.25rem_1.5rem_minmax(11rem,1fr)_minmax(0,auto)_3rem_3rem_3rem_3rem_3rem_1.25rem]'
+                ? 'grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_3.25rem_3.25rem_3.25rem_3.25rem_3.25rem_3.75rem_3rem]'
+                : 'grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_3.25rem_3.25rem_3.25rem_3.25rem_3.25rem_3rem]'
             }`}>
               <div></div>
               <div></div>
@@ -367,7 +386,7 @@ export default function TftCompsPage() {
               )}
               <div></div>
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               {families.map((f, i) => (
                 <CompFamilyRow
                   key={f.familyKey}

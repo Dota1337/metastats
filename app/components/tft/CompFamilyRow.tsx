@@ -116,47 +116,29 @@ export default function CompFamilyRow({
     : null;
   const familyTierColor = familyTierLetter ? TIER_COLORS[familyTierLetter] : '#7a8aa0';
 
-  // Sub-Variants — sortiert by games desc für die Drop-Down-Reihenfolge.
-  const subVariants = [...family.variants].sort((a, b) => (b.games || 0) - (a.games || 0));
+  // Sub-Variants ohne die Main — sortiert by games desc für die Drop-Down-Reihenfolge.
+  const subVariants = [...family.variants]
+    .filter(v => v.clusterKey !== family.mainComp.clusterKey)
+    .sort((a, b) => (b.games || 0) - (a.games || 0));
 
   return (
     <div className="rounded border border-[#1e2a3a] bg-[#0d1526] overflow-hidden mb-1">
-      {/* Collapsed Header — clickable to expand. Trait+Carry + Aggregat-Stats
-          + Emblems + Augments + Toggle-Pfeil. */}
+      {/* Kompakter Family-Title-Strip — Trait+Carry + Variants-Count + Aug/Emblems
+          + Pfeil rechts. Augments/Emblems sind family-aggregiert (most-played
+          über alle Variants), bleiben sichtbar auch wenn collapsed. */}
       <button
         type="button"
         onClick={() => setExpanded(e => !e)}
-        className="w-full text-left px-2 sm:px-3 py-2 flex items-center gap-2 sm:gap-3 hover:bg-[#11192a] transition-colors"
+        className="w-full text-left px-2 sm:px-3 py-1.5 flex items-center gap-2 hover:bg-[#11192a] transition-colors border-b border-[#1e2a3a]/60"
         aria-expanded={expanded}
       >
-        <span className="text-[#7a8aa0] tabular-nums text-xs w-5 text-right">{rank}</span>
-        <span
-          className="w-6 h-6 rounded flex items-center justify-center font-bold text-[11px] flex-shrink-0"
-          style={{ color: familyTierColor, backgroundColor: `${familyTierColor}25`, border: `1px solid ${familyTierColor}40` }}
-        >
-          {familyTierLetter ?? '—'}
-        </span>
-        {carryChamp && (() => {
-          const tileUrl = tftChampionTileUrl(assets, carryChamp);
-          return tileUrl ? (
-            <span
-              className="w-7 h-7 rounded overflow-hidden border-2 flex-shrink-0"
-              style={{ borderColor: '#c39bff' }}
-            >
-              <img src={tileUrl} alt={carryName} className="w-full h-full object-cover" />
-            </span>
-          ) : null;
-        })()}
-        <span className="flex flex-col min-w-0 flex-1">
-          <span className="text-white text-sm font-medium truncate">
-            {traitDisplay} <span className="text-[#a0b0c5]">· {carryName}</span>
-          </span>
-          <span className="text-[#7a8aa0] text-[10px] uppercase tracking-wider">
-            {family.variants.length} {t('tft.comp.variants')}
+        <span className="text-white text-[13px] font-medium truncate flex-1">
+          {traitDisplay} <span className="text-[#a0b0c5]">· {carryName}</span>
+          <span className="text-[#7a8aa0] text-[10px] uppercase tracking-wider ml-2">
+            +{subVariants.length} {t('tft.comp.variants')}
           </span>
         </span>
-
-        {/* Augments — most-played in der Family. User-Vorgabe: bleiben im Header. */}
+        {/* Augments — most-played in der Family. */}
         {family.augments.length > 0 && (
           <span className="hidden sm:flex items-center gap-0.5 flex-shrink-0">
             {family.augments.slice(0, 3).map(a => {
@@ -174,7 +156,6 @@ export default function CompFamilyRow({
             })}
           </span>
         )}
-
         {/* Emblems — most-played in der Family. */}
         {family.emblems.length > 0 && (
           <span className="hidden sm:flex items-center gap-0.5 flex-shrink-0">
@@ -193,24 +174,6 @@ export default function CompFamilyRow({
             })}
           </span>
         )}
-
-        {/* Family-Aggregat-Stats — gleiches Spalten-Layout wie reguläre CompRow */}
-        <span className="hidden sm:flex items-center gap-3 tabular-nums text-xs flex-shrink-0">
-          <span className="w-12 text-right text-base font-medium" style={{ color: familyTierColor }}>
-            {family.weightedAvgPlacement != null ? family.weightedAvgPlacement.toFixed(2) : '—'}
-          </span>
-          <span className="w-10 text-right text-[#a0b0c5]">
-            {family.weightedTop4Rate != null ? `${(family.weightedTop4Rate * 100).toFixed(0)}%` : '—'}
-          </span>
-          <span className="w-10 text-right text-[#a0b0c5]">
-            {family.weightedTop1Rate != null ? `${(family.weightedTop1Rate * 100).toFixed(0)}%` : '—'}
-          </span>
-          <span className="w-12 text-right text-[#a0b0c5]">
-            {family.familyPickRate != null ? `${(family.familyPickRate * 100).toFixed(2)}%` : '—'}
-          </span>
-          <span className="w-12 text-right text-[#7a8aa0]">{family.totalGames}</span>
-        </span>
-
         {/* Toggle-Pfeil */}
         <span
           className="text-[#7a8aa0] text-base transition-transform flex-shrink-0"
@@ -220,8 +183,21 @@ export default function CompFamilyRow({
         </span>
       </button>
 
-      {/* Drop-Down — Sub-Variants als kompakte Mini-Rows */}
-      {expanded && (
+      {/* Main-Comp IMMER sichtbar (MetaTFT-Style) — die meistgespielte Variante
+          rendert als regular CompRow mit Champions + Items + Stats direkt unter
+          dem Family-Title. User-Vorgabe 2026-06-20. */}
+      <CompRow
+        comp={family.mainComp as Parameters<typeof CompRow>[0]['comp']}
+        rank={rank}
+        assets={assets}
+        href={familyHref(family.mainComp, region, bucket)}
+        showVelocity={showVelocity}
+        velocityShift={velocityShift}
+        tierCutoffs={tierCutoffs}
+      />
+
+      {/* Drop-Down — Sub-Variants (ohne Main) als kompakte Mini-Rows */}
+      {expanded && subVariants.length > 0 && (
         <div className="border-t border-[#1e2a3a]/60 divide-y divide-[#1e2a3a]/40">
           {subVariants.map(v => {
             const parts = parseClusterKey(v.clusterKey);

@@ -231,21 +231,6 @@ export default function CompRow({
           {tier.label}
         </div>
         <div className="min-w-0 leading-tight flex items-center gap-2">
-          {expandToggle && (
-            <button
-              type="button"
-              onClick={e => {
-                e.stopPropagation();
-                expandToggle.onToggle();
-              }}
-              className="w-7 h-7 flex items-center justify-center text-[#7a8aa0] hover:text-white hover:bg-[#1e2a3a]/80 rounded transition-colors text-lg flex-shrink-0"
-              aria-expanded={expandToggle.expanded}
-              aria-label={expandToggle.expanded ? 'Varianten einklappen' : 'Varianten ausklappen'}
-              style={{ transform: expandToggle.expanded ? 'rotate(180deg)' : 'rotate(0)' }}
-            >
-              ▾
-            </button>
-          )}
         <div className="min-w-0 flex-1 leading-tight">
           <div className="text-white font-medium truncate">
             <span title={traitTooltip || undefined}>{traitDisplay}</span>
@@ -310,6 +295,26 @@ export default function CompRow({
             </div>
           )}
         </div>
+        {expandToggle && (
+          <button
+            type="button"
+            onClick={e => {
+              e.stopPropagation();
+              expandToggle.onToggle();
+            }}
+            className="w-8 h-8 flex items-center justify-center rounded transition-all flex-shrink-0 text-xl font-bold"
+            aria-expanded={expandToggle.expanded}
+            aria-label={expandToggle.expanded ? 'Varianten einklappen' : 'Varianten ausklappen'}
+            style={{
+              color: '#f97316',
+              backgroundColor: expandToggle.expanded ? 'rgba(249,115,22,0.2)' : 'rgba(249,115,22,0.1)',
+              border: '1px solid rgba(249,115,22,0.5)',
+              transform: expandToggle.expanded ? 'rotate(180deg)' : 'rotate(0)',
+            }}
+          >
+            ▾
+          </button>
+        )}
         </div>
         <div className="flex items-start gap-1 flex-wrap sm:flex-nowrap">
           {typicalUnits.slice(0, 9).map(u => {

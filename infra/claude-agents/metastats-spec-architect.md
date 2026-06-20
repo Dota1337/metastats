@@ -14,6 +14,29 @@ Der Hauptagent hat heute mehrfach Logik-Fehler produziert (Star-Konsolidierung b
 
 ## Pflicht-Workflow
 
+### 0. AgentDB-Daemon ensure + Vector-Search auf relevante Memories
+
+VOR allen anderen Schritten:
+
+```bash
+# Daemon hochfahren wenn nicht läuft (idempotent, ~10ms wenn schon up)
+node scripts/agentdb/ensure-daemon.mjs --quiet
+
+# Top-K Memory-Sections semantisch suchen mit User-Prompt als Query
+# Optional: --topic Filter (tft|infra|workflow|coding) wenn klar
+curl -s -X POST -H "Content-Type: application/json" \
+  -d '{"query":"<User-Prompt-Auszug>","top_k":8}' \
+  http://127.0.0.1:7878/search
+```
+
+Output enthält Top-K Treffer mit `distance`, `topic_tag`, `is_stale`-Marker, `excerpt`. Diese sind die **relevanten Memory-Anker** für die folgenden Spec-Schritte — sie ersetzen die heuristische Memory-Lade-Heuristik (statt zu raten welche Memory-Files relevant sind, semantisch matchen).
+
+**Pflicht:**
+- Mindestens 5 Memory-Sections aus dem Search-Result lesen (via Read-Tool den vollen Section-Inhalt aus `file_path` ziehen)
+- Stale-markierte Treffer (`is_stale: true`) im Spec-Output mit Warnung kennzeichnen — Inhalt kann veraltet sein
+- Bei `distance > 0.85` Match-Qualität: Treffer ist semantisch weit → vielleicht keine relevante Memory vorhanden, das ist OK
+- Top-K=8 deckt die meisten Memory-Cluster ab; bei Multi-Domain-Prompts (z.B. TFT + Infra) zweite Search mit `topic`-Filter
+
 ### 1. User-Beispiele identifizieren
 - Welche konkreten Beispiele hat der User in der Prompt erwähnt? (Comps, URLs, Champion-Namen, Stats)
 - Was IST der Befund des Users, was ist die GEWÜNSCHTE Lösung?
@@ -40,10 +63,11 @@ Bei Aggregations-Aufgaben PFLICHT: gegen `reference_tft_aggregation_hierarchy.md
 - Bei Konflikt: User-Vorgabe gewinnt, aber EXPLIZIT benennen.
 
 ### 5. Memory-Konflikt-Sektion (inline Self-Critique)
-Lade die Top-5 relevanten `feedback_*`-Memories und prüfe:
+Aus den Schritt-0-Vector-Search-Ergebnissen die Top-5 `feedback_*`-Treffer ziehen und prüfen:
 - Verstößt die geplante Implementation gegen eine Memory-Regel?
-- Welche Memory-Anker sind relevant? (mind. 3 nennen)
+- Welche Memory-Anker sind relevant? Konkret nennen mit `file_path`, `section_title`, `distance` und einer Zeile WAS die Memory sagt
 - Wo bin ich UNSICHER und sollte User-Bestätigung holen statt zu raten?
+- Bei stale-markierten Treffern explizit notieren: „Memory X ist Y Tage alt > Threshold, Inhalt vor Anwendung verifizieren"
 
 ### 6. Akzeptanzkriterien
 - Was muss am Ende sichtbar sein damit der Task „done" ist?
@@ -79,6 +103,13 @@ Bei Unsicherheit: Spec fahren. False-Positive Spec kostet 60s, False-Negative Sp
 ```markdown
 # Spec: <Kurz-Titel>
 
+## Vector-Search Memory-Anker (Schritt 0)
+- Query: "<User-Prompt-Auszug>"
+- Top-K Treffer:
+  1. `<file_path>` › <section_title> (dist=X.XX, <topic>) — was die Memory sagt in 1 Zeile
+  2. ...
+- Stale-Markierungen: ...
+
 ## User-Beispiele
 - ...
 
@@ -92,7 +123,7 @@ Bei Unsicherheit: Spec fahren. False-Positive Spec kostet 60s, False-Negative Sp
 - ...
 
 ## Memory-Konflikte / Verify-Punkte
-- Memory X sagt Y → meine geplante Lösung tut Z → konsistent? [JA/NEIN/UNSICHER]
+- Memory X (aus Vector-Search Schritt 0) sagt Y → meine geplante Lösung tut Z → konsistent? [JA/NEIN/UNSICHER]
 - Verify-Probe vor Implementation: ...
 
 ## Akzeptanzkriterien

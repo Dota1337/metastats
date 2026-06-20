@@ -66,7 +66,14 @@ Bei Unsicherheit: Spec fahren.
 
 ## Schritt 2: metastats-spec-architect-Subagent spawnen
 
-Via `Agent`-Tool mit `subagent_type: metastats-spec-architect`. Brief: aktueller User-Prompt + relevante Memory-Anker.
+Via `Agent`-Tool mit `subagent_type: metastats-spec-architect`. Brief: aktueller User-Prompt.
+
+Der Subagent macht intern als Schritt 0 automatisch:
+1. `node scripts/agentdb/ensure-daemon.mjs --quiet` (Daemon hochfahren wenn nicht läuft)
+2. `curl http://127.0.0.1:7878/search` mit User-Prompt-Query → Top-K semantisch relevante Memory-Sections
+3. Top-K Treffer als Memory-Anker im Spec-Output zitieren mit `distance` + `topic_tag` + Stale-Marker
+
+Damit ersetzen wir die heuristische Memory-Lade-Heuristik durch semantischen Recall — der Agent muss nicht mehr raten welche Memory relevant ist.
 
 Output enthält strukturiert:
 - User-Beispiele-Walkthrough

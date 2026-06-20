@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
-import { tftIconUrl, tftChampionTileUrl, findChampion, findItem, tftTraitDisplayName, tftTraitDescription } from '../../lib/tft-cdragon';
+import { tftIconUrl, tftChampionTileUrl, findChampion, findItem, tftTraitDisplayName, tftTraitDescription, tftChampionTooltip } from '../../lib/tft-cdragon';
 import { costColor as costColorOf } from '../../lib/tft-ui';
 import { useI18n } from '../../lib/i18n';
 import BookmarkButton from '../BookmarkButton';
@@ -218,9 +218,12 @@ export default function CompRow({
           {tier.label}
         </div>
         <div className="min-w-0 leading-tight">
-          <div className="text-white font-medium truncate" title={traitTooltip || undefined}>
-            {traitDisplay}
-            {' · '}{carry?.name || (carryCid ? prettyChar(carryCid) : '')}
+          <div className="text-white font-medium truncate">
+            <span title={traitTooltip || undefined}>{traitDisplay}</span>
+            {' · '}
+            <span title={tftChampionTooltip(assets, carryCid) || undefined}>
+              {carry?.name || (carryCid ? prettyChar(carryCid) : '')}
+            </span>
             {parts?.carryStar === 3 && (
               <span
                 className="ml-1 inline-flex items-center px-1 py-[1px] rounded text-[9px] font-semibold tabular-nums align-middle"

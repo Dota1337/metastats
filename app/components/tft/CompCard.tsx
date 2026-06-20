@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
-import { tftIconUrl, tftChampionTileUrl, findChampion, findItem, tftTraitDisplayName, tftTraitDescription } from '../../lib/tft-cdragon';
+import { tftIconUrl, tftChampionTileUrl, findChampion, findItem, tftTraitDisplayName, tftTraitDescription, tftChampionTooltip } from '../../lib/tft-cdragon';
 import { costColor as costColorOf } from '../../lib/tft-ui';
 import { useI18n } from '../../lib/i18n';
 import { compDefiningAugmentApiNameFromSlug } from '../../lib/tft-comp-defining-augments';
@@ -169,12 +169,13 @@ export default function CompCard({
 
         <div className="min-w-0">
           <div className="flex items-center gap-2 mb-1.5">
-            <span className="text-white text-sm font-medium truncate" title={traitTooltip || undefined}>
+            <span className="text-white text-sm font-medium truncate">
               {parts ? (
                 <a
                   href={`/tft/traits/${encodeURIComponent(parts.trait)}`}
                   onClick={e => e.stopPropagation()}
                   className="hover:text-[#7B61FF] transition-colors"
+                  title={traitTooltip || undefined}
                 >
                   {traitDisplay}
                 </a>
@@ -184,6 +185,7 @@ export default function CompCard({
                   href={`/tft/units/${encodeURIComponent(carryCid)}`}
                   onClick={e => e.stopPropagation()}
                   className="hover:text-[#7B61FF] transition-colors"
+                  title={tftChampionTooltip(assets, carryCid) || undefined}
                 >
                   {carry?.name || prettyChar(carryCid)}
                 </a>

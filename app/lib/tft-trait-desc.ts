@@ -99,13 +99,25 @@ function buildHashFallback(tier: { variables?: Record<string, unknown> }, fullDe
   return map;
 }
 
+// Riot's inline-reference tokens `{{TFT17_SpaceGroove_TheGroove}}` reference
+// in-game buff/item icons. In a plain-text tooltip we replace them with a
+// human-readable label: take the LAST underscore segment and CamelCase-split.
+// Example: `{{TFT17_SpaceGroove_TheGroove}}` → `The Groove`.
+function replaceInlineRefs(text: string): string {
+  return text.replace(/\{\{[A-Z]+\d*_[\w]+(?:_([\w]+))?\}\}/g, (_full, lastSeg) => {
+    const seg = lastSeg as string | undefined;
+    if (!seg) return '';
+    return seg.replace(/([a-z])([A-Z])/g, '$1 $2');
+  });
+}
+
 function substituteVars(
   text: string,
   tier: { minUnits: number; variables?: Record<string, unknown> },
   fullDesc: string,
   traitName?: string,
 ): string {
-  let out = text;
+  let out = replaceInlineRefs(text);
   const hashFallback = buildHashFallback(tier, fullDesc);
 
   const lookupVar = (name: string): number | null => {

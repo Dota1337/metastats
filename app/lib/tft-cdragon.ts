@@ -248,6 +248,47 @@ export function tftTraitDescription(
   return parts.join('\n') || stripped;
 }
 
+// Returnt einen Mouse-Over-Tooltip-Text für einen Champion. Format:
+// "<Ability-Name> — <gestrippte Desc>". Strippt @VarName@ / %i:icon% /
+// {{TFT_*_*}} / HTML-Tags analog zur Trait-Tooltip-Logik. Returnt leeren
+// String wenn kein Champion / keine Ability.
+export function tftChampionTooltip(
+  bundle: TftAssetsBundle | null,
+  characterId: string | null | undefined,
+): string {
+  if (!bundle || !characterId) return '';
+  const ch = bundle.champions[characterId];
+  const ability = (ch as any)?.ability;
+  if (!ability) return '';
+  const abilityName: string = ability.name || ch?.name || '';
+  let body: string = ability.desc || '';
+  if (!body) return abilityName;
+  // HTML-Tags raus (Riot streut <br>, <b>, <font color="…"> ein).
+  body = body.replace(/<[^>]+>/g, '');
+  // Inline-Refs wie {{TFT17_SpaceGroove_TheGroove}} → "The Groove".
+  body = body.replace(/\{\{[A-Z]+\d*_[\w]+(?:_([\w]+))?\}\}/g, (_full, lastSeg) => {
+    const seg = lastSeg as string | undefined;
+    if (!seg) return '';
+    return seg.replace(/([a-z])([A-Z])/g, '$1 $2');
+  });
+  // @TFTUnitProperty.…@ raus (cross-unit/-item Stats die wir nicht resolven können).
+  body = body.replace(/@TFTUnitProperty\.[^@]*@%?/g, '');
+  // %i:scaleHealth% etc. — kurze Labels analog renderTraitDesc.
+  const icons: Record<string, string> = {
+    scaleHealth: 'Health', scaleAS: 'AS', scaleAD: 'AD', scaleAP: 'AP',
+    scaleArmor: 'Armor', scaleMR: 'MR', scaleMana: 'Mana', scaleCrit: 'Crit',
+    scaleDodge: 'Dodge', scaleHeal: 'Heal', scaleShield: 'Shield',
+    scaleHPRegen: 'HP Regen',
+  };
+  body = body.replace(/%i:([\w]+)%/g, (_full, icon) => icons[icon] || '');
+  // Restliche unresolvte @Var@-Tokens entfernen (Werte sind level-/star-
+  // abhängig und ohne Variables nicht ableitbar).
+  body = body.replace(/@[\w.:]+\*?\d*@/g, '');
+  // Whitespace + verwaiste Punktuation
+  body = body.replace(/\s+/g, ' ').replace(/\s+([,.;:])/g, '$1').trim();
+  return abilityName ? `${abilityName} — ${body}` : body;
+}
+
 // Resolve a CommunityDragon icon path to a full URL. The bundle stores
 // paths like "assets/maps/tft/icons/items/hexcore/tft_item_bluebuff.tft_set13.png"
 // which combine with the bundle's iconBase to a working raw.communitydragon.org URL.

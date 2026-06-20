@@ -326,55 +326,6 @@ function startTimeForPlayer(player) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Patch-Drift-Detection (A2 MVP, 2026-06-20)
-//
-// Per Multi-Review-Verdict (data-skeptic + logic-flow-critic 2026-06-20):
-// die Quelle der Wahrheit für "ist heute ein Patch-Tag" ist `tft_daily_crawl_meta
-// .patch` per Region — NICHT `public/tft-set.json` (zu lazy aktualisiert,
-// weekly cron-getrieben + lebt nicht auf der Hetzner-Box).
-//
-// MVP-Ziel (heute): Drift erkennen + loggen, MAX_IDS NICHT ändern. Sammelt
-// 2-4 Wochen Daten zur Frage ob die volle Auto-Detection-Logik (Sticky-Window,
-// persistenter Cursor-Marker, 15-Region-Vollendung-Lifecycle) den
-// Komplexitäts-Overhead lohnt. Heutige manuelle CLI-Lösung `--max-ids 100`
-// bleibt unverändert.
-// ─────────────────────────────────────────────────────────────────────────────
-
-async function detectPatchDrift(region) {
-  // Vergleicht den heutigen Patch (= MAX(day) der Region) mit dem gestern
-  // gesehenen Patch. Bei Mismatch wird gelogged. data-skeptic-Verdict:
-  // per-region nötig weil kr/br/euw etc. ihren neuen Patch an unterschiedlichen
-  // Tagen aktiviert kriegen.
-  try {
-    const r = await pool.query(
-      `with by_day as (
-         select day, patch
-         from tft_daily_crawl_meta
-         where region = $1
-         order by day desc
-         limit 14
-       )
-       select
-         (select patch from by_day limit 1) as today_patch,
-         (select patch from by_day offset 1 limit 1) as yesterday_patch`,
-      [region],
-    );
-    const today = r.rows[0]?.today_patch || null;
-    const yesterday = r.rows[0]?.yesterday_patch || null;
-    if (today && yesterday && today !== yesterday) {
-      console.log(`  [patch-drift] ${region}: ${yesterday} → ${today} | MAX_IDS=${MAX_IDS} (manuell). A2.2-Voll-Impl. wenn MVP-Daten lohnen.`);
-      return { drift: true, from: yesterday, to: today };
-    }
-    return { drift: false, current: today };
-  } catch (err) {
-    // Drift-Detection ist non-fatal — bei Fehler einfach weiter mit
-    // bestehenden Defaults.
-    console.log(`  [patch-drift] ${region}: detect failed (${err.message}) — non-fatal, continuing`);
-    return { drift: false, error: err.message };
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Backup-Pattern für Rollback
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -419,9 +370,6 @@ async function processRegion(region) {
   let players = await loadIterationTargets(region);
   console.log(`  [iter] ${players.length} D2+ Spieler ohne heutigen Snapshot`);
   if (LIMIT > 0) players = players.slice(0, LIMIT);
-
-  // A2 MVP: Patch-Drift erkennen + loggen. MAX_IDS bleibt manuell.
-  await detectPatchDrift(region);
 
   // Dry-Run: nur Estimate ausgeben, keine Riot-Calls, kein Schreib
   if (DRY_RUN) {

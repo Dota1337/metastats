@@ -13,7 +13,11 @@ import { tftPatchLabel } from '../../../../lib/tft-patch-label';
 //   - today's % progress through the set window
 //
 // Cached because the data changes at most daily.
-
+// `force-dynamic`: skip statisches Pre-Render beim Build — die Route ruft
+// einen Supabase-RPC der gelegentlich > 60s braucht und damit den ganzen
+// Vercel-Build kippt (Build-Timeout 2026-06-21). Mit dynamic wird die Route
+// erst beim ersten Request evaluiert und über `revalidate` für 1 h gecacht.
+export const dynamic = 'force-dynamic';
 export const revalidate = 3600;
 
 interface Patch {

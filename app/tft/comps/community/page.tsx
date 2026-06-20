@@ -59,7 +59,7 @@ export default function TftCommunityGalleryPage() {
   return (
     <main className="min-h-screen bg-[#0e1525]">
       <Nav active="comps" />
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
         <div className="flex items-baseline justify-between mb-1">
           <h1 className="text-white text-2xl font-medium">{t('tft.community.title')}</h1>
           <a href="/tft/builder" className="text-[#a892ff] text-xs hover:underline">{t('tft.community.buildOwn')} →</a>

@@ -102,7 +102,7 @@ export default function TftMetaPulsePage() {
     <main className="min-h-screen bg-[#0e1525]">
       <Nav active="comps" />
       <TftHero pageTitle={t('tft.metaPulse.title')} subtitle={t('tft.metaPulse.subtitle')} patch={data?.currentPatch || undefined} />
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-2 pb-6">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-2 pb-6">
         <StatsFilterBar filters={filters} patches={data?.patches || []} onChange={setFilters} />
 
         {loading && (

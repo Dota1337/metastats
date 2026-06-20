@@ -154,7 +154,7 @@ export default function TftTraitsPage() {
     <main className="min-h-screen bg-[#0e1525]">
       <Nav active="traits" />
       <TftHero pageTitle={t('nav.traits')} patch={currentPatchLabel} />
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-2 pb-6">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-2 pb-6">
         <StatsFilterBar filters={filters} patches={patches} onChange={setFilters} />
 
         {loading && hasData === null && (

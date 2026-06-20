@@ -80,7 +80,7 @@ export default function TftGodsPage() {
     <main className="min-h-screen bg-[#0e1525]">
       <Nav active="gods" />
       <TftHero pageTitle={t('nav.gods')} subtitle={assets?.setName} />
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-2 pb-10">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-2 pb-10">
         {/* Mechanic intro — user explicitly asked for info texts on this page. */}
         <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-4">
           <p className="text-[#a0b0c5] text-xs leading-relaxed">{t('gods.mechanic.intro')}</p>

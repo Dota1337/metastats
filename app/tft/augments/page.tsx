@@ -86,7 +86,7 @@ export default function TftAugmentsReferencePage() {
     <main className="min-h-screen bg-[#0e1525]">
       <Nav active="augments" />
       <TftHero pageTitle={t('nav.augments')} subtitle={assets?.setName} />
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-2 pb-6">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-2 pb-6">
         {/* Filter + search row. Keep it tight — no info-texts, just controls. */}
         <div className="flex flex-wrap items-center gap-2 mb-4">
           {(['all', 3, 2, 1] as TierFilter[]).map(tk => {

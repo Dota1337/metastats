@@ -12,7 +12,7 @@ export default function TftLandingPage() {
     <main className="min-h-screen bg-[#0e1525]">
       <Nav active="comps" />
       <TftHero pageTitle={t('nav.comps')} subtitle={t('tft.heroSubtitle')} />
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-2 pb-6">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-2 pb-6">
         <TwitchLiveStrip first={8} />
         <CompList headless />
       </div>

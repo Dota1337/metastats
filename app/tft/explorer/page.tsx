@@ -306,7 +306,7 @@ export default function TftExplorerPage() {
   return (
     <main className="min-h-screen bg-[#0e1525]">
       <Nav active="explorer" />
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
         <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-5 mb-5 flex items-center justify-between flex-wrap gap-3">
           <h1 className="text-white text-xl font-medium">{t('tft.explorer.title')}</h1>
           <div className="flex gap-1 bg-[#141c2e] border border-[#1e2a3a] rounded p-1">

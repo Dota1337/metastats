@@ -105,7 +105,7 @@ export default function TftLobbyScoutPage() {
     <main className="min-h-screen bg-[#0e1525]">
       <Nav active="comps" />
       <TftHero pageTitle={t('tft.lobby.title')} subtitle={t('tft.lobby.subtitle')} />
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-2 pb-6 grid grid-cols-1 lg:grid-cols-[1fr_22rem] gap-4">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-2 pb-6 grid grid-cols-1 lg:grid-cols-[1fr_22rem] gap-4">
 
         {/* Left — picker */}
         <div>

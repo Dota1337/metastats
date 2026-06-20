@@ -117,7 +117,7 @@ export default function TftRegionsPage() {
     <main className="min-h-screen bg-[#0e1525]">
       <Nav active="comps" />
       <TftHero pageTitle={t('tft.regions.title')} subtitle={t('tft.regions.subtitle')} />
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-2 pb-6">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-2 pb-6">
         {/* Mode-Filter + Window-Controls */}
         <div className="flex flex-wrap items-center gap-2 mb-4">
           {([

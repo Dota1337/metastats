@@ -2043,6 +2043,11 @@ const translations = {
     '{pct}% 3\uC131 \uCE90\uB9AC', '{pct}% \u4E09\u661F\u6838\u5FC3',
     '{pct}% con carry 3\u2605', '{pct}% avec carry 3\u2605'
   ),
+  'tft.comp.levelOutcome.units': t6(
+    'Units', 'units',
+    '\uC720\uB2DB', '\u5355\u4F4D',
+    'unidades', 'unit\u00E9s'
+  ),
   'tft.comp.familyMode.banner': t6(
     'Familien-Ansicht \u2014 Stats \u00FCber alle Build-Varianten gemittelt',
     'Family view \u2014 stats averaged across all build variants',

@@ -13,7 +13,6 @@ import CompCard from '../../../components/tft/CompCard';
 import { useI18n, type TranslationKey } from '../../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, findChampion, findItem, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import PositionHeatmap from '../../../components/tft/PositionHeatmap';
-import VariantsSwitcher from '../../../components/tft/VariantsSwitcher';
 import CompGuide from '../../../components/tft/CompGuide';
 import CompFlexUnits from '../../../components/tft/CompFlexUnits';
 import { formatStage } from '../../../lib/tft-stage';
@@ -710,54 +709,109 @@ export default function TftCompDetailPage() {
               );
             })()}
 
-            {/* LevelOutcome — Trait-Aktivierungs-Level-Splits (C-Konsolidierung
-                2026-06-21). Family-Card-Avg blendet die Skill-Ceiling-Aktivierung
-                (z.B. Stargazer auf 6 vs auf 3) ein. Block rekonstruiert die
-                Sub-Cluster-Spread aus den Family-Member-Rows. Nur rendern wenn
-                ≥ 2 Levels mit gemeinsamer Sample-Größe (sonst kein Mehrwert). */}
+            {/* Boards nach Trait-Aktivierungs-Stufe (User-Wortlaut 2026-06-21:
+                „welche Units auf welchem Level gespielt werden + maxed-out
+                Boards + Durchschnittswerte"). Pro Aktivierungs-Level eine
+                Card mit Unit-Tiles + Stats. Sortiert klein → groß = Power-
+                Curve von Reroll bis Maxed-Out. Beste Variante visuell
+                hervorgehoben (grüne Border). */}
             {(comp.levelOutcome && comp.levelOutcome.length >= 2) && (() => {
               const rows = comp.levelOutcome as Array<{
                 level: number; games: number; share: number; avgPlacement: number;
                 top4Rate: number; top1Rate: number; star3Games: number;
+                typicalUnits: Array<{
+                  characterId: string; count: number; cooccurrence: number;
+                  topItems: Array<{ apiName: string; count: number }>;
+                }>;
               }>;
               const totalGames = rows.reduce((s, x) => s + x.games, 0);
               if (totalGames === 0) return null;
               const bestAvg = Math.min(...rows.map(x => x.avgPlacement));
+              const carryCid = parseClusterKey(comp.clusterKey)?.carry || null;
               return (
                 <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
                   <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.levelOutcome')}</h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  <div className="space-y-3">
                     {rows.map(row => {
                       const share = totalGames > 0 ? (row.games / totalGames) * 100 : 0;
                       const star3Share = row.games > 0 ? (row.star3Games / row.games) * 100 : 0;
                       const isBest = row.avgPlacement === bestAvg;
                       const accentColor = isBest ? '#3ecf8e' : '#7B61FF';
+                      // Sortiere Units nach Cost asc, dann Name asc — gleiches Pattern
+                      // wie typicalUnits-Section.
+                      const sortedUnits = [...row.typicalUnits].sort((a, b) => {
+                        const ca = assets?.champions[a.characterId]?.cost ?? 1;
+                        const cb = assets?.champions[b.characterId]?.cost ?? 1;
+                        if (ca !== cb) return ca - cb;
+                        const na = (assets?.champions[a.characterId]?.name || a.characterId).toLowerCase();
+                        const nb = (assets?.champions[b.characterId]?.name || b.characterId).toLowerCase();
+                        return na.localeCompare(nb);
+                      });
                       return (
-                        <div key={row.level} className="bg-[#141c2e] border rounded p-3" style={{ borderColor: `${accentColor}40` }}>
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-base font-medium" style={{ color: accentColor }}>
+                        <div
+                          key={row.level}
+                          className="bg-[#141c2e] border rounded p-3"
+                          style={{ borderColor: `${accentColor}60`, borderWidth: isBest ? 2 : 1 }}
+                        >
+                          {/* Header: Aktivierungs-Stufe + Unit-Count + Stats-Zeile */}
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-2">
+                            <span className="text-base font-semibold" style={{ color: accentColor }}>
                               {(t('tft.comp.levelOutcome.activation') as string).replace('{n}', String(row.level))}
                             </span>
-                            <span className="text-[#7a8aa0] text-[10px] tabular-nums">
-                              {share.toFixed(0)}% · {row.games}
+                            <span className="text-[#a0b0c5] text-xs tabular-nums">
+                              {row.typicalUnits.length} {t('tft.comp.levelOutcome.units')}
                             </span>
-                          </div>
-                          <div className="grid grid-cols-3 gap-1 text-[11px] tabular-nums">
-                            <div>
-                              <div className="text-[#7a8aa0] text-[9px] uppercase tracking-widest">{t('tft.avgPlacement')}</div>
-                              <div className="text-white text-base font-medium">{row.avgPlacement.toFixed(2)}</div>
-                            </div>
-                            <div>
-                              <div className="text-[#7a8aa0] text-[9px] uppercase tracking-widest">{t('tft.top4')}</div>
-                              <div className="text-white text-base font-medium">{(row.top4Rate * 100).toFixed(0)}%</div>
-                            </div>
-                            <div>
-                              <div className="text-[#7a8aa0] text-[9px] uppercase tracking-widest">{t('tft.top1')}</div>
-                              <div className="text-white text-base font-medium">{(row.top1Rate * 100).toFixed(0)}%</div>
+                            <div className="ml-auto flex items-center gap-3 text-xs tabular-nums">
+                              <span className="text-[#7a8aa0]">{row.games} {t('tft.gamesShort')} · {share.toFixed(0)}%</span>
+                              <span><span className="text-[#7a8aa0]">{t('tft.avgPlacement')} </span><span className="text-white font-semibold">{row.avgPlacement.toFixed(2)}</span></span>
+                              <span className="hidden sm:inline"><span className="text-[#7a8aa0]">{t('tft.top4')} </span><span className="text-white font-medium">{(row.top4Rate * 100).toFixed(0)}%</span></span>
+                              <span className="hidden md:inline"><span className="text-[#7a8aa0]">{t('tft.top1')} </span><span className="text-white font-medium">{(row.top1Rate * 100).toFixed(0)}%</span></span>
                             </div>
                           </div>
+                          {/* Unit-Strip: gleicher Stil wie typicalUnits-Section */}
+                          {sortedUnits.length > 0 && (
+                            <div className="flex flex-wrap items-start gap-1.5">
+                              {sortedUnits.map(u => {
+                                const ch = findChampion(assets, u.characterId);
+                                const url = tftChampionTileUrl(assets, ch);
+                                const cost = ch?.cost ?? 1;
+                                const isCarry = u.characterId === carryCid;
+                                const items = Array.isArray(u.topItems) ? u.topItems.slice(0, 3) : [];
+                                return (
+                                  <div key={u.characterId} className="flex flex-col items-center gap-1 flex-shrink-0">
+                                    <a
+                                      href={`/tft/units/${encodeURIComponent(u.characterId)}?bucket=${bucket}`}
+                                      className="w-10 h-10 rounded-md border-2 overflow-hidden block hover:scale-110 transition-transform shadow-sm"
+                                      style={{ borderColor: isCarry ? '#c39bff' : costColor(cost) }}
+                                      title={ch?.name || u.characterId}
+                                    >
+                                      {url && <img src={url} alt={ch?.name || ''} className="w-full h-full object-cover" />}
+                                    </a>
+                                    {items.length > 0 && (
+                                      <div className="flex items-center gap-[2px]">
+                                        {items.map(it => {
+                                          const meta = findItem(assets, it.apiName);
+                                          const iconUrl = tftIconUrl(assets, meta?.icon);
+                                          return (
+                                            <a
+                                              key={it.apiName}
+                                              href={`/tft/items/${encodeURIComponent(it.apiName)}`}
+                                              className="w-[14px] h-[14px] rounded-sm bg-[#0a0e1a] border border-[#1e2a3a] overflow-hidden block hover:border-[#c39bff]/60"
+                                              title={meta?.name || it.apiName}
+                                            >
+                                              {iconUrl && <img src={iconUrl} alt={meta?.name || it.apiName} className="w-full h-full object-cover" />}
+                                            </a>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
                           {star3Share >= 10 && (
-                            <div className="text-[#c39bff] text-[10px] mt-1.5 tabular-nums">
+                            <div className="text-[#c39bff] text-[10px] mt-2 tabular-nums">
                               {(t('tft.comp.levelOutcome.star3Share') as string).replace('{pct}', star3Share.toFixed(0))}
                             </div>
                           )}
@@ -917,20 +971,15 @@ export default function TftCompDetailPage() {
               );
             })()}
 
+            {/* VariantsSwitcher entfernt 2026-06-21 (User-Wortlaut):
+                „Lvl 5 · 3★ Reroll" als Variant-Button war für Spieler
+                verwirrend (mischt Aktivierungs-Level mit Reroll-Spielweise).
+                Die Information „welche Units auf welchem Level" liefert
+                jetzt der erweiterte levelOutcome-Block weiter oben. */}
+
             {/* Position heatmap per typical unit — renders empty when the
                 Overwolf companion app hasn't submitted enough observations
                 yet for the units in this comp. */}
-            <VariantsSwitcher
-              clusterKey={comp.clusterKey}
-              region={region}
-              bucket={bucket}
-              days={3}
-              patch={null}
-              assets={assets}
-              familyMergeActive={comp.variantMode === 'family' && !!comp.aliasedFromFamily}
-              familySize={comp.aliasedFromFamily?.mergedFrom?.length ?? 1}
-            />
-
             {comp.typicalUnits && comp.typicalUnits.length > 0 && (
               <PositionHeatmap
                 units={comp.typicalUnits}

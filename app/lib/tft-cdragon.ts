@@ -248,6 +248,19 @@ export function tftTraitDescription(
   return parts.join('\n') || stripped;
 }
 
+// Set-aware Emblem-Detection. Set-17-Emblems folgen dem Pattern
+// `^TFT<set>_Item_.+EmblemItem$` (verifiziert 2026-06-20: 19 Treffer in
+// Set 17, kein False-Positive). Bei Set 18 zieht der Bundle-`set`-Field
+// das Pattern transparent nach.
+export function tftIsEmblem(
+  bundle: TftAssetsBundle | null,
+  apiName: string | null | undefined,
+): boolean {
+  if (!bundle || !apiName) return false;
+  const set = bundle.set;
+  return new RegExp(`^TFT${set}_Item_.+EmblemItem$`).test(apiName);
+}
+
 // Returnt einen Mouse-Over-Tooltip-Text für einen Champion. Format:
 // "<Ability-Name> — <gestrippte Desc>". Strippt @VarName@ / %i:icon% /
 // {{TFT_*_*}} / HTML-Tags analog zur Trait-Tooltip-Logik. Returnt leeren

@@ -2040,6 +2040,16 @@ const translations = {
     '\uCD94\uCC9C \uC99D\uAC15\uCCB4', '\u63A8\u8350\u5F3A\u5316',
     'Aumentos recomendados', 'Augmentations recommand\u00E9es'
   ),
+  'tft.comp.moreVariants': t6(
+    'Weitere Varianten', 'More variants',
+    '\uB2E4\uB978 \uBCC0\uD615', '\u5176\u4ED6\u53D8\u4F53',
+    'M\u00E1s variantes', 'Autres variantes'
+  ),
+  'tft.comp.topEmblems': t6(
+    'Top Embleme', 'Top emblems',
+    '\uC8FC\uC694 \uC5E0\uBE14\uB7FC', '\u4E3B\u8981\u5FBD\u7AE0',
+    'Emblemas principales', 'Embl\u00E8mes principaux'
+  ),
   'tft.comp.augments.source': t6(
     'kuratiert via tftacademy.com', 'curated via tftacademy.com',
     'tftacademy.com\uC5D0\uC11C \uD050\uB808\uC774\uD305', '\u7531 tftacademy.com \u7B5B\u9009',

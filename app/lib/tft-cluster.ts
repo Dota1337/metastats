@@ -58,6 +58,25 @@ export function compFamilyKey(clusterKey: string): string {
   return `${parts.trait}@${parts.level}_${parts.carry}`;
 }
 
+/** Reduziert den clusterKey auf die TRAIT-Family-Identität: nur Trait + Level.
+ *  Alle Carries des Traits (Reroll, Push, Augment-Varianten, Secondary-Carry-
+ *  Variationen) landen in derselben Family. Genutzt für die Comp-Liste:
+ *  statt 270 Cluster-Cards zeigen wir ~50 Trait+Level-Family-Cards mit
+ *  Inline-Sub-Variant-Pills.
+ *
+ *  Trait+Level (NICHT Trait alleine), weil z.B. DarkStar@3 (3-Cost-Reroll)
+ *  und DarkStar@2 (5-Cost-Vertical) verschiedene Spielweisen sind.
+ *
+ *  Beispiele:
+ *    `TFT17_Stargazer@8_TFT17_Lulu*3#TFT17_Milio` → `TFT17_Stargazer@8`
+ *    `TFT17_SpaceGroove@3_TFT17_Samira#TFT17_Nami` → `TFT17_SpaceGroove@3`
+ */
+export function compTraitFamilyKey(clusterKey: string): string {
+  const parts = parseClusterKey(clusterKey);
+  if (!parts) return clusterKey;
+  return `${parts.trait}@${parts.level}`;
+}
+
 /** Generischer Dedup-Reducer für Aggregat-Listen mit Cluster-Keys. Gruppiert
  *  Einträge nach `primaryClusterKey()`; pro Gruppe wird der Eintrag mit der
  *  höchsten `weight` (typisch Spielanzahl) als Repräsentant behalten und alle

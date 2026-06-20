@@ -1,10 +1,13 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
 import EmptyData from '../../components/tft/EmptyData';
 import CompRow from '../../components/tft/CompRow';
+import CompFamilyRow, { type CompFamily, type FamilyComp } from '../../components/tft/CompFamilyRow';
+import { compTraitFamilyKey, parseClusterKey } from '../../lib/tft-cluster';
+import { tftIsEmblem } from '../../lib/tft-cdragon';
 import StatsFilterBar, {
   loadInitialFilters,
   persistFilters,
@@ -134,28 +137,104 @@ export default function TftCompsPage() {
     return typeof ch?.cost === 'number' ? ch.cost : null;
   };
   const filteredComps = applyAdvancedFilters(comps, adv, { carryCostLookup });
-  const sortedComps = (() => {
-    if (filteredComps.length === 0) return filteredComps;
-    const copy = [...filteredComps];
-    switch (sortBy) {
-      case 'win':   copy.sort((a, b) => (b.top1Rate ?? 0) - (a.top1Rate ?? 0)); break;
-      case 'top4':  copy.sort((a, b) => (b.top4Rate ?? 0) - (a.top4Rate ?? 0)); break;
-      case 'pick':  copy.sort((a, b) => (b.pickRate ?? 0) - (a.pickRate ?? 0)); break;
-      case 'velocity':
-        // Most-improved first (most-negative Δ = biggest jump up in placement).
-        // Comps with null Δ (new comps or below sample-size threshold) fall to
-        // the bottom so the trending set always reads top-down.
-        copy.sort((a, b) => {
-          const da = a.velocity?.deltaAvgPlace ?? Infinity;
-          const db = b.velocity?.deltaAvgPlace ?? Infinity;
-          return da - db;
-        });
-        break;
-      case 'avg':
-      default:      copy.sort((a, b) => (a.avgPlacement ?? 9) - (b.avgPlacement ?? 9));
+
+  // Family-Aggregation: gruppiert auf <trait>@<level>. Pro Family Family-
+  // Aggregat (sum games, weighted avg-Placement/Top4/Top1) + Main-Comp =
+  // die nach aktueller Sort-Metrik beste Variante (architect-Verdict 2026-06-20:
+  // bei „Sort by Top1" zeigt Card-Headline die top-WR Variante, nicht die
+  // meistgespielte — sonst wirkt der Sort-Klick wirkungslos). Plus Most-Played
+  // Emblems: aggregiert aus topItems aller Family-Variants, gefiltert per
+  // set-aware Pattern (^TFT<set>_Item_*EmblemItem$).
+  const families: CompFamily[] = useMemo(() => {
+    if (filteredComps.length === 0) return [];
+    // Sort-key Helper für Main-Pick + Family-Sort.
+    const sortKey = (c: any): number => {
+      switch (sortBy) {
+        case 'win':  return -(c.top1Rate ?? 0);
+        case 'top4': return -(c.top4Rate ?? 0);
+        case 'pick': return -(c.pickRate ?? 0);
+        case 'velocity':
+          return c.velocity?.deltaAvgPlace ?? Infinity;
+        case 'avg':
+        default:     return c.avgPlacement ?? 9;
+      }
+    };
+    const groups = new Map<string, any[]>();
+    for (const c of filteredComps) {
+      const k = compTraitFamilyKey(c.slug || c.clusterKey);
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k)!.push(c);
     }
-    return copy;
-  })();
+    const out: CompFamily[] = [];
+    for (const [familyKey, variants] of groups) {
+      const parts = parseClusterKey(variants[0].slug || variants[0].clusterKey);
+      const trait = parts?.trait ?? familyKey.split('@')[0];
+      const level = parts?.level ?? 0;
+      // Main-Variante = sort-besten (nicht zwingend meistgespielt).
+      const variantsBySort = [...variants].sort((a, b) => sortKey(a) - sortKey(b));
+      const mainComp = variantsBySort[0];
+      // Weighted Family-Stats über alle Variants.
+      const totalGames = variants.reduce((s, v) => s + (v.games || 0), 0);
+      const weightedAvgPlacement = totalGames > 0
+        ? variants.reduce((s, v) => s + (v.avgPlacement ?? 0) * (v.games || 0), 0) / totalGames
+        : null;
+      const weightedTop4Rate = totalGames > 0
+        ? variants.reduce((s, v) => s + (v.top4Rate ?? 0) * (v.games || 0), 0) / totalGames
+        : null;
+      const weightedTop1Rate = totalGames > 0
+        ? variants.reduce((s, v) => s + (v.top1Rate ?? 0) * (v.games || 0), 0) / totalGames
+        : null;
+      const familyPickRate = variants.reduce((s, v) => s + (v.pickRate ?? 0), 0);
+      // Emblem-Aggregation aus typicalUnits[].topItems aller Variants. Set-aware
+      // Pattern (tftIsEmblem) gegen public/tft-assets-N.json verifiziert.
+      const emblemMap = new Map<string, number>();
+      for (const v of variants) {
+        for (const u of v.typicalUnits || []) {
+          for (const it of (u.topItems || [])) {
+            if (!tftIsEmblem(assets, it.apiName)) continue;
+            emblemMap.set(it.apiName, (emblemMap.get(it.apiName) || 0) + (it.count || 0));
+          }
+        }
+      }
+      const emblems = [...emblemMap.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([apiName, count]) => ({ apiName, count }));
+      out.push({
+        familyKey,
+        trait,
+        level,
+        variants: variants as FamilyComp[],
+        mainComp: mainComp as FamilyComp,
+        totalGames,
+        familyPickRate,
+        weightedAvgPlacement,
+        weightedTop4Rate,
+        weightedTop1Rate,
+        emblems,
+      });
+    }
+    // Sort families nach aktueller Sort-Metrik. Bei Sort-by-Avg nutzen wir
+    // das Family-weighted-Aggregat (Sort by Top1/Pick analog).
+    out.sort((a, b) => {
+      switch (sortBy) {
+        case 'win':  return -(a.weightedTop1Rate ?? 0) - -(b.weightedTop1Rate ?? 0);
+        case 'top4': return -(a.weightedTop4Rate ?? 0) - -(b.weightedTop4Rate ?? 0);
+        case 'pick': return (b.familyPickRate ?? 0) - (a.familyPickRate ?? 0);
+        case 'velocity':
+          // Family-Velocity = Min-Δ über Variants (most-improved sub-variant
+          // drückt die Family nach oben).
+          {
+            const aΔ = Math.min(...a.variants.map(v => (v as any).velocity?.deltaAvgPlace ?? Infinity));
+            const bΔ = Math.min(...b.variants.map(v => (v as any).velocity?.deltaAvgPlace ?? Infinity));
+            return aΔ - bΔ;
+          }
+        case 'avg':
+        default: return (a.weightedAvgPlacement ?? 9) - (b.weightedAvgPlacement ?? 9);
+      }
+    });
+    return out;
+  }, [filteredComps, sortBy, assets]);
 
   return (
     <main className="min-h-screen bg-[#0e1525]">
@@ -193,7 +272,7 @@ export default function TftCompsPage() {
         )}
         {hasData === false && <EmptyData />}
 
-        {hasData && sortedComps.length > 0 && (
+        {hasData && families.length > 0 && (
           <>
             <div className={`hidden sm:grid items-center gap-3 px-3 py-1.5 text-[10px] uppercase tracking-widest text-[#7a8aa0] ${
               filters.velocity > 0
@@ -217,13 +296,14 @@ export default function TftCompsPage() {
               <div></div>
             </div>
             <div className="space-y-1">
-              {sortedComps.map((c, i) => (
-                <CompRow
-                  key={c.slug}
-                  comp={c}
+              {families.map((f, i) => (
+                <CompFamilyRow
+                  key={f.familyKey}
+                  family={f}
                   rank={i + 1}
                   assets={assets}
-                  href={`/tft/comps/${encodeURIComponent(c.slug)}?bucket=${filters.bucket}&region=${filters.region}`}
+                  region={filters.region}
+                  bucket={filters.bucket}
                   showVelocity={filters.velocity > 0}
                   velocityShift={filters.velocity}
                   tierCutoffs={tierCutoffs}

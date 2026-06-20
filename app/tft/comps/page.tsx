@@ -167,8 +167,12 @@ export default function TftCompsPage() {
     }
     const out: CompFamily[] = [];
     for (const [familyKey, variants] of groups) {
+      // Trait + Carry aus dem ersten Variant-ClusterKey holen (architect F1:
+      // alter `familyKey.split('@')[0]`-Pfad würde bei neuem Key-Format
+      // `<trait>__<carry>` den Carry mit in den Trait-String packen).
       const parts = parseClusterKey(variants[0].slug || variants[0].clusterKey);
-      const trait = parts?.trait ?? familyKey.split('@')[0];
+      const trait = parts?.trait ?? familyKey;
+      const carry = parts?.carry ?? '';
       const level = parts?.level ?? 0;
       // Main-Variante = sort-besten (nicht zwingend meistgespielt).
       const variantsBySort = [...variants].sort((a, b) => sortKey(a) - sortKey(b));
@@ -188,6 +192,9 @@ export default function TftCompsPage() {
       // Emblem-Aggregation aus typicalUnits[].topItems aller Variants. Set-aware
       // Pattern (tftIsEmblem) gegen public/tft-assets-N.json verifiziert.
       const emblemMap = new Map<string, number>();
+      // Augment-Aggregation aus typicalAugments aller Variants — User-Vorgabe
+      // 2026-06-20: „most-played emblems sowie augments bleibt bestehen".
+      const augmentMap = new Map<string, number>();
       for (const v of variants) {
         for (const u of v.typicalUnits || []) {
           for (const it of (u.topItems || [])) {
@@ -195,14 +202,23 @@ export default function TftCompsPage() {
             emblemMap.set(it.apiName, (emblemMap.get(it.apiName) || 0) + (it.count || 0));
           }
         }
+        for (const a of ((v as any).typicalAugments || []) as Array<{ apiName: string; count: number }>) {
+          if (!a?.apiName) continue;
+          augmentMap.set(a.apiName, (augmentMap.get(a.apiName) || 0) + (a.count || 0));
+        }
       }
       const emblems = [...emblemMap.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([apiName, count]) => ({ apiName, count }));
+      const augments = [...augmentMap.entries()]
         .sort((a, b) => b[1] - a[1])
         .slice(0, 3)
         .map(([apiName, count]) => ({ apiName, count }));
       out.push({
         familyKey,
         trait,
+        carry,
         level,
         variants: variants as FamilyComp[],
         mainComp: mainComp as FamilyComp,
@@ -212,6 +228,7 @@ export default function TftCompsPage() {
         weightedTop4Rate,
         weightedTop1Rate,
         emblems,
+        augments,
       });
     }
     // Sort families nach aktueller Sort-Metrik. Bei Sort-by-Avg nutzen wir

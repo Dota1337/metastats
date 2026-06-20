@@ -58,23 +58,28 @@ export function compFamilyKey(clusterKey: string): string {
   return `${parts.trait}@${parts.level}_${parts.carry}`;
 }
 
-/** Reduziert den clusterKey auf die TRAIT-Family-Identität: nur Trait + Level.
- *  Alle Carries des Traits (Reroll, Push, Augment-Varianten, Secondary-Carry-
- *  Variationen) landen in derselben Family. Genutzt für die Comp-Liste:
- *  statt 270 Cluster-Cards zeigen wir ~50 Trait+Level-Family-Cards mit
- *  Inline-Sub-Variant-Pills.
+/** Reduziert den clusterKey auf die TRAIT+CARRY-Family-Identität.
+ *  Alle Level-Varianten, Star-Varianten, Augment-Sub-Cluster und Secondary-
+ *  Carry-Varianten desselben Trait+Carry-Paares landen in derselben Family.
+ *  Genutzt für die Comp-Liste mit Drop-Down — User-Vorgabe 2026-06-20:
+ *  „2 Stargazer-Mountain-Lulu-Comps, die sich nur durch 1 Unit auf Lvl 9
+ *  unterscheiden" müssen in eine Card.
  *
- *  Trait+Level (NICHT Trait alleine), weil z.B. DarkStar@3 (3-Cost-Reroll)
- *  und DarkStar@2 (5-Cost-Vertical) verschiedene Spielweisen sind.
+ *  Star wird absichtlich NICHT in den Key aufgenommen (data-skeptic-Verdict
+ *  2026-06-20: Carry-Star ist im byComp-Snapshot nicht stabil ableitbar).
  *
  *  Beispiele:
- *    `TFT17_Stargazer@8_TFT17_Lulu*3#TFT17_Milio` → `TFT17_Stargazer@8`
- *    `TFT17_SpaceGroove@3_TFT17_Samira#TFT17_Nami` → `TFT17_SpaceGroove@3`
+ *    `TFT17_Stargazer_Mountain@8_TFT17_Lulu*3#TFT17_Milio` → `TFT17_Stargazer_Mountain__TFT17_Lulu`
+ *    `TFT17_Stargazer_Mountain@9_TFT17_Lulu*3` → `TFT17_Stargazer_Mountain__TFT17_Lulu`
+ *    `TFT17_SpaceGroove@3_TFT17_Samira~TwoTanky` → `TFT17_SpaceGroove__TFT17_Samira`
+ *
+ *  Doppel-Underscore als Separator vermeidet Kollisionen mit Trait-Namen, die
+ *  selbst Underscores enthalten (z.B. `TFT17_Stargazer_Mountain`).
  */
 export function compTraitFamilyKey(clusterKey: string): string {
   const parts = parseClusterKey(clusterKey);
   if (!parts) return clusterKey;
-  return `${parts.trait}@${parts.level}`;
+  return `${parts.trait}__${parts.carry}`;
 }
 
 /** Generischer Dedup-Reducer für Aggregat-Listen mit Cluster-Keys. Gruppiert

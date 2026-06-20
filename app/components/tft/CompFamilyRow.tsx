@@ -1,20 +1,23 @@
 'use client';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
-import { tftIconUrl, tftIsEmblem, findItem, findChampion, tftChampionTileUrl, tftTraitDisplayName } from '../../lib/tft-cdragon';
+import { tftIconUrl, findItem, findChampion, tftChampionTileUrl, tftTraitDisplayName } from '../../lib/tft-cdragon';
 import { costColor as costColorOf } from '../../lib/tft-ui';
 import { useI18n } from '../../lib/i18n';
 import { parseClusterKey } from '../../lib/tft-cluster';
-import { type TierCutoffs, tierLetterOfSync, TIER_COLORS } from '../../lib/tft-tier-letter';
+import { type TierCutoffs, tierLetterOfSync, TIER_COLORS, type TierLetter } from '../../lib/tft-tier-letter';
 import CompRow from './CompRow';
 
-// CompFamilyRow — rendert eine Trait+Level-Family-Card. Headline ist die nach
-// aktueller Sort-Metrik beste Variante (oder die meistgespielte als Default).
-// Drunter: kleinere Pills mit den anderen Carries derselben Family. Rechts:
-// Most-Played Emblems (top 3, gewichtet über alle Family-Variants).
+// CompFamilyRow — Trait+Carry-Family-Card mit Drop-Down (MetaTFT-Style).
+// Default: collapsed. Header zeigt Trait+Carry-Name + Family-Aggregat-Stats
+// + Most-Played Emblems + Most-Played Augments + Toggle-Pfeil. Beim Klick
+// öffnet sich der Drop-Down mit allen Sub-Variants als kompakte Mini-Rows
+// (Champion-Strip + Avg-Place + Games, Klick → Detail-Page der Variante).
 //
-// Bei Single-Variant-Family wird stattdessen einfach <CompRow> direkt
-// gerendert — der Drop-Down/Pill-Strip wäre leer und nur Lärm.
+// Bei Single-Variant-Family wird direkt die reguläre CompRow gerendert —
+// 89% aller Families sind laut data-skeptic-Probe Singletons, ein leerer
+// Drop-Down wäre nur Lärm.
 
 export interface FamilyComp {
   slug: string;
@@ -29,39 +32,34 @@ export interface FamilyComp {
 }
 
 export interface CompFamily {
-  familyKey: string;          // <trait>@<level>
+  familyKey: string;           // <trait>__<carry>
   trait: string;
-  level: number;
+  carry: string;
+  level: number;               // primary level der ersten Variante (Display-only)
   variants: FamilyComp[];
-  mainComp: FamilyComp;       // sort-besten oder meistgespielten
+  mainComp: FamilyComp;        // sort-besten oder meistgespielten
   totalGames: number;
   familyPickRate: number | null;
   weightedAvgPlacement: number | null;
   weightedTop4Rate: number | null;
   weightedTop1Rate: number | null;
   emblems: Array<{ apiName: string; count: number }>;
+  augments: Array<{ apiName: string; count: number }>;
 }
 
 function familyHref(comp: FamilyComp, region: string, bucket: string): string {
   return `/tft/comps/${encodeURIComponent(comp.slug)}?bucket=${bucket}&region=${region}`;
 }
 
-function variantLabel(
-  comp: FamilyComp,
-  assets: TftAssetsBundle | null,
-): { carryName: string; suffix: string } {
+function variantSubLabel(comp: FamilyComp): string {
   const parts = parseClusterKey(comp.clusterKey);
-  if (!parts) return { carryName: '?', suffix: '' };
-  const ch = findChampion(assets, parts.carry);
-  const carryName = ch?.name || parts.carry.replace(/^TFT\d+_/, '');
-  let suffix = '';
-  if (parts.carryStar === 3) suffix += ' 3★';
-  if (parts.augmentSlug) suffix += ` · ${parts.augmentSlug}`;
-  if (parts.secondary) {
-    const sec = findChampion(assets, parts.secondary);
-    suffix += ` · +${sec?.name || parts.secondary.replace(/^TFT\d+_/, '')}`;
-  }
-  return { carryName, suffix };
+  if (!parts) return '';
+  const bits: string[] = [];
+  bits.push(`Lvl ${parts.level}`);
+  if (parts.carryStar === 3) bits.push('3★');
+  if (parts.augmentSlug) bits.push(parts.augmentSlug);
+  if (parts.secondary) bits.push(`+${parts.secondary.replace(/^TFT\d+_/, '')}`);
+  return bits.join(' · ');
 }
 
 export default function CompFamilyRow({
@@ -85,9 +83,9 @@ export default function CompFamilyRow({
 }) {
   const { t } = useI18n();
   const router = useRouter();
+  const [expanded, setExpanded] = useState(false);
 
-  // Single-Variant-Family: direkt als regular CompRow rendern — der Family-
-  // Header + leere Pill-Strip wäre nur Lärm.
+  // Single-Variant-Family: regular CompRow ohne Toggle-Lärm.
   if (family.variants.length === 1) {
     return (
       <CompRow
@@ -102,18 +100,14 @@ export default function CompFamilyRow({
     );
   }
 
-  // Multi-Variant: Family-Card mit Main-CompRow + Sub-Variant-Pills + Emblems
-  const mainHref = familyHref(family.mainComp, region, bucket);
+  // Multi-Variant: Family-Card mit collapsed Header + optionaler Drop-Down
   const traitMeta = assets ? assets.traits[family.trait] : null;
   const traitDisplay = tftTraitDisplayName(assets, family.trait) || traitMeta?.name || family.trait;
-
-  // Sub-Variants (alle ohne Main) — sortiert by games desc.
-  const subVariants = family.variants
-    .filter(v => v.clusterKey !== family.mainComp.clusterKey)
-    .sort((a, b) => (b.games || 0) - (a.games || 0));
+  const carryChamp = assets ? assets.champions[family.carry] : null;
+  const carryName = carryChamp?.name || family.carry.replace(/^TFT\d+_/, '');
 
   // Family-Aggregat-Tier-Letter (sample-gewichtet).
-  const familyTierLetter = tierCutoffs && family.weightedAvgPlacement != null
+  const familyTierLetter: TierLetter | null = tierCutoffs && family.weightedAvgPlacement != null
     ? tierLetterOfSync({
         avgPlacement: family.weightedAvgPlacement,
         pickRate: family.familyPickRate,
@@ -122,90 +116,179 @@ export default function CompFamilyRow({
     : null;
   const familyTierColor = familyTierLetter ? TIER_COLORS[familyTierLetter] : '#7a8aa0';
 
+  // Sub-Variants — sortiert by games desc für die Drop-Down-Reihenfolge.
+  const subVariants = [...family.variants].sort((a, b) => (b.games || 0) - (a.games || 0));
+
   return (
     <div className="rounded border border-[#1e2a3a] bg-[#0d1526] overflow-hidden mb-1">
-      {/* Family-Header: Trait-Display + Family-Aggregat-Stats + Emblems */}
-      <div className="px-2 sm:px-3 pt-2 pb-1 flex items-center justify-between gap-3 border-b border-[#1e2a3a]/60">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-[#7a8aa0] tabular-nums text-xs">#{rank}</span>
-          <span
-            className="px-1.5 py-0.5 rounded text-[10px] font-bold tabular-nums"
-            style={{ color: familyTierColor, backgroundColor: `${familyTierColor}1a`, border: `1px solid ${familyTierColor}40` }}
-          >
-            {familyTierLetter ?? '—'}
-          </span>
-          <span className="text-white font-semibold text-sm truncate">{traitDisplay}</span>
-          <span className="text-[#7a8aa0] text-[10px] uppercase tracking-wider hidden sm:inline">
-            · {family.variants.length} {t('tft.comp.variants')}
-          </span>
-        </div>
-        {family.emblems.length > 0 && (
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            <span className="text-[#7a8aa0] text-[10px] uppercase tracking-wider hidden sm:inline">{t('tft.comp.topEmblems')}</span>
-            <div className="flex items-center gap-1">
-              {family.emblems.slice(0, 3).map(em => {
-                const meta = findItem(assets, em.apiName);
-                const iconUrl = tftIconUrl(assets, meta?.icon);
-                return (
-                  <div
-                    key={em.apiName}
-                    className="w-5 h-5 rounded-sm bg-[#0a0e1a] border border-[#c39bff]/40 overflow-hidden"
-                    title={`${meta?.name || em.apiName} · ${em.count}× gespielt`}
-                  >
-                    {iconUrl && <img src={iconUrl} alt={meta?.name || em.apiName} className="w-full h-full object-cover" />}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Main-Variante als regular CompRow */}
-      <CompRow
-        comp={family.mainComp as Parameters<typeof CompRow>[0]['comp']}
-        rank={rank}
-        assets={assets}
-        href={mainHref}
-        showVelocity={showVelocity}
-        velocityShift={velocityShift}
-        tierCutoffs={tierCutoffs}
-      />
-
-      {/* Sub-Variants als Pill-Strip darunter */}
-      <div className="px-2 sm:px-3 py-1.5 flex items-center gap-1.5 flex-wrap bg-[#0a1020]/40 border-t border-[#1e2a3a]/60">
-        <span className="text-[#7a8aa0] text-[10px] uppercase tracking-wider mr-1">{t('tft.comp.moreVariants')}</span>
-        {subVariants.map(v => {
-          const { carryName, suffix } = variantLabel(v, assets);
-          const parts = parseClusterKey(v.clusterKey);
-          const ch = parts?.carry ? findChampion(assets, parts.carry) : null;
-          const tileUrl = tftChampionTileUrl(assets, ch);
-          const carryCost = ch?.cost ?? 1;
-          const href = familyHref(v, region, bucket);
-          return (
-            <button
-              key={v.clusterKey}
-              onClick={e => {
-                e.stopPropagation();
-                if (e.metaKey || e.ctrlKey) window.open(href, '_blank', 'noopener');
-                else router.push(href);
-              }}
-              className="flex items-center gap-1.5 px-1.5 py-0.5 rounded-md bg-[#141c2e] hover:bg-[#1a2540] border border-[#1e2a3a] hover:border-[#7B61FF]/40 transition-colors text-[11px] text-white"
-              title={`${carryName}${suffix} · ${v.games} ${t('tft.gamesShort')}`}
+      {/* Collapsed Header — clickable to expand. Trait+Carry + Aggregat-Stats
+          + Emblems + Augments + Toggle-Pfeil. */}
+      <button
+        type="button"
+        onClick={() => setExpanded(e => !e)}
+        className="w-full text-left px-2 sm:px-3 py-2 flex items-center gap-2 sm:gap-3 hover:bg-[#11192a] transition-colors"
+        aria-expanded={expanded}
+      >
+        <span className="text-[#7a8aa0] tabular-nums text-xs w-5 text-right">{rank}</span>
+        <span
+          className="w-6 h-6 rounded flex items-center justify-center font-bold text-[11px] flex-shrink-0"
+          style={{ color: familyTierColor, backgroundColor: `${familyTierColor}25`, border: `1px solid ${familyTierColor}40` }}
+        >
+          {familyTierLetter ?? '—'}
+        </span>
+        {carryChamp && (() => {
+          const tileUrl = tftChampionTileUrl(assets, carryChamp);
+          return tileUrl ? (
+            <span
+              className="w-7 h-7 rounded overflow-hidden border-2 flex-shrink-0"
+              style={{ borderColor: '#c39bff' }}
             >
-              {tileUrl && (
-                <span className="w-4 h-4 rounded-sm overflow-hidden block border" style={{ borderColor: costColorOf(carryCost) }}>
-                  <img src={tileUrl} alt={carryName} className="w-full h-full object-cover" />
+              <img src={tileUrl} alt={carryName} className="w-full h-full object-cover" />
+            </span>
+          ) : null;
+        })()}
+        <span className="flex flex-col min-w-0 flex-1">
+          <span className="text-white text-sm font-medium truncate">
+            {traitDisplay} <span className="text-[#a0b0c5]">· {carryName}</span>
+          </span>
+          <span className="text-[#7a8aa0] text-[10px] uppercase tracking-wider">
+            {family.variants.length} {t('tft.comp.variants')}
+          </span>
+        </span>
+
+        {/* Augments — most-played in der Family. User-Vorgabe: bleiben im Header. */}
+        {family.augments.length > 0 && (
+          <span className="hidden sm:flex items-center gap-0.5 flex-shrink-0">
+            {family.augments.slice(0, 3).map(a => {
+              const meta = findItem(assets, a.apiName);
+              const iconUrl = tftIconUrl(assets, meta?.icon);
+              return (
+                <span
+                  key={a.apiName}
+                  className="w-5 h-5 rounded-sm bg-[#0a0e1a] border border-[#7B61FF]/40 overflow-hidden"
+                  title={`${meta?.name || a.apiName} · ${a.count}×`}
+                >
+                  {iconUrl && <img src={iconUrl} alt={meta?.name || a.apiName} className="w-full h-full object-cover" />}
                 </span>
-              )}
-              <span>{carryName}{suffix}</span>
-              <span className="text-[#7a8aa0] tabular-nums text-[10px]">{v.avgPlacement?.toFixed(2) ?? '—'}</span>
-              <span className="text-[#5a6a80] text-[10px]">·</span>
-              <span className="text-[#5a6a80] tabular-nums text-[10px]">{v.games}</span>
-            </button>
-          );
-        })}
-      </div>
+              );
+            })}
+          </span>
+        )}
+
+        {/* Emblems — most-played in der Family. */}
+        {family.emblems.length > 0 && (
+          <span className="hidden sm:flex items-center gap-0.5 flex-shrink-0">
+            {family.emblems.slice(0, 3).map(em => {
+              const meta = findItem(assets, em.apiName);
+              const iconUrl = tftIconUrl(assets, meta?.icon);
+              return (
+                <span
+                  key={em.apiName}
+                  className="w-5 h-5 rounded-sm bg-[#0a0e1a] border border-[#c39bff]/40 overflow-hidden"
+                  title={`${meta?.name || em.apiName} · ${em.count}×`}
+                >
+                  {iconUrl && <img src={iconUrl} alt={meta?.name || em.apiName} className="w-full h-full object-cover" />}
+                </span>
+              );
+            })}
+          </span>
+        )}
+
+        {/* Family-Aggregat-Stats — gleiches Spalten-Layout wie reguläre CompRow */}
+        <span className="hidden sm:flex items-center gap-3 tabular-nums text-xs flex-shrink-0">
+          <span className="w-12 text-right text-base font-medium" style={{ color: familyTierColor }}>
+            {family.weightedAvgPlacement != null ? family.weightedAvgPlacement.toFixed(2) : '—'}
+          </span>
+          <span className="w-10 text-right text-[#a0b0c5]">
+            {family.weightedTop4Rate != null ? `${(family.weightedTop4Rate * 100).toFixed(0)}%` : '—'}
+          </span>
+          <span className="w-10 text-right text-[#a0b0c5]">
+            {family.weightedTop1Rate != null ? `${(family.weightedTop1Rate * 100).toFixed(0)}%` : '—'}
+          </span>
+          <span className="w-12 text-right text-[#a0b0c5]">
+            {family.familyPickRate != null ? `${(family.familyPickRate * 100).toFixed(2)}%` : '—'}
+          </span>
+          <span className="w-12 text-right text-[#7a8aa0]">{family.totalGames}</span>
+        </span>
+
+        {/* Toggle-Pfeil */}
+        <span
+          className="text-[#7a8aa0] text-base transition-transform flex-shrink-0"
+          style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0)' }}
+        >
+          ▾
+        </span>
+      </button>
+
+      {/* Drop-Down — Sub-Variants als kompakte Mini-Rows */}
+      {expanded && (
+        <div className="border-t border-[#1e2a3a]/60 divide-y divide-[#1e2a3a]/40">
+          {subVariants.map(v => {
+            const parts = parseClusterKey(v.clusterKey);
+            const isMain = v.clusterKey === family.mainComp.clusterKey;
+            const variantTier = tierCutoffs
+              ? tierLetterOfSync({
+                  avgPlacement: v.avgPlacement,
+                  pickRate: v.pickRate,
+                  games: v.games,
+                }, 'comps', tierCutoffs)
+              : null;
+            const variantTierColor = variantTier ? TIER_COLORS[variantTier] : '#7a8aa0';
+            const href = familyHref(v, region, bucket);
+            const subLabel = variantSubLabel(v);
+            const units = (v.typicalUnits || []).slice(0, 8);
+            return (
+              <button
+                key={v.clusterKey}
+                type="button"
+                onClick={e => {
+                  e.stopPropagation();
+                  if (e.metaKey || e.ctrlKey) window.open(href, '_blank', 'noopener');
+                  else router.push(href);
+                }}
+                className="w-full text-left px-2 sm:px-3 py-1.5 flex items-center gap-2 hover:bg-[#11192a] transition-colors"
+              >
+                <span className="w-5 text-center text-[10px]" title={isMain ? t('tft.comp.mainVariant') : undefined}>
+                  {isMain ? <span className="text-[#c39bff]">●</span> : <span className="text-[#3a4a60]">○</span>}
+                </span>
+                <span
+                  className="px-1 py-0.5 rounded text-[9px] font-bold tabular-nums w-5 text-center flex-shrink-0"
+                  style={{ color: variantTierColor, backgroundColor: `${variantTierColor}1a`, border: `1px solid ${variantTierColor}40` }}
+                >
+                  {variantTier ?? '—'}
+                </span>
+                <span className="text-[10px] text-[#7a8aa0] flex-shrink-0 w-20 truncate" title={subLabel}>
+                  {subLabel}
+                </span>
+                <span className="flex items-center gap-0.5 flex-1 overflow-hidden">
+                  {units.map(u => {
+                    const ch = findChampion(assets, u.characterId);
+                    const tileUrl = tftChampionTileUrl(assets, ch);
+                    const isCarryUnit = parts?.carry === u.characterId;
+                    return (
+                      <span
+                        key={u.characterId}
+                        className="w-6 h-6 rounded-sm overflow-hidden border flex-shrink-0"
+                        style={{ borderColor: isCarryUnit ? '#c39bff' : (ch ? costColorOf(ch.cost) : '#1e2a3a') }}
+                        title={ch?.name || u.characterId}
+                      >
+                        {tileUrl && <img src={tileUrl} alt={ch?.name || u.characterId} className="w-full h-full object-cover" />}
+                      </span>
+                    );
+                  })}
+                </span>
+                <span className="hidden sm:flex items-center gap-3 tabular-nums text-[11px] flex-shrink-0">
+                  <span className="w-12 text-right text-white">{v.avgPlacement?.toFixed(2) ?? '—'}</span>
+                  <span className="w-10 text-right text-[#a0b0c5]">{v.top4Rate != null ? `${(v.top4Rate * 100).toFixed(0)}%` : '—'}</span>
+                  <span className="w-10 text-right text-[#a0b0c5]">{v.top1Rate != null ? `${(v.top1Rate * 100).toFixed(0)}%` : '—'}</span>
+                  <span className="w-12 text-right text-[#a0b0c5]">{v.pickRate != null ? `${(v.pickRate * 100).toFixed(2)}%` : '—'}</span>
+                  <span className="w-12 text-right text-[#7a8aa0]">{v.games}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

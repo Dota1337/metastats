@@ -2045,6 +2045,11 @@ const translations = {
     '\uB2E4\uB978 \uBCC0\uD615', '\u5176\u4ED6\u53D8\u4F53',
     'M\u00E1s variantes', 'Autres variantes'
   ),
+  'tft.comp.mainVariant': t6(
+    'Hauptvariante', 'Main variant',
+    '\uC8FC\uC694 \uBCC0\uD615', '\u4E3B\u8981\u53D8\u4F53',
+    'Variante principal', 'Variante principale'
+  ),
   'tft.comp.topEmblems': t6(
     'Top Embleme', 'Top emblems',
     '\uC8FC\uC694 \uC5E0\uBE14\uB7FC', '\u4E3B\u8981\u5FBD\u7AE0',

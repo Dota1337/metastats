@@ -1,4 +1,5 @@
 'use client';
+import { useState } from 'react';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
 import { type TierCutoffs } from '../../lib/tft-tier-letter';
 import CompRow from './CompRow';
@@ -62,25 +63,85 @@ export default function CompFamilyRow({
   velocityShift?: number;
   tierCutoffs?: TierCutoffs | null;
 }) {
-  // C-Konsolidierung 2026-06-21 (User-Wortlaut): „3x die gleiche Comp (gleiche
-  // Units). Wir müssen den Durchschnitt der Comp abbilden und nicht wie sie
-  // platziert, wenn alles gehittet wird oder gar nichts gehittet wird. Das
-  // ist für Spieler irreführend."
-  //
-  // Konsequenz: kein Drop-Down mehr. Jede Family rendert EINE Row mit
-  // weighted Family-Stats (Override passiert in page.tsx Family-Loop). Sub-
-  // Cluster-Inspektion bleibt verfügbar via Detail-Page (VariantsSwitcher +
-  // levelOutcome-Block). Single-Variant- und Multi-Variant-Family rendern
-  // identisch → Listing-Optik einheitlich.
+  const [expanded, setExpanded] = useState(false);
+
+  // Single-Variant-Family: regular CompRow ohne Toggle.
+  if (family.variants.length === 1) {
+    return (
+      <CompRow
+        comp={family.mainComp as Parameters<typeof CompRow>[0]['comp']}
+        rank={rank}
+        assets={assets}
+        href={familyHref(family.mainComp, region, bucket)}
+        showVelocity={showVelocity}
+        velocityShift={velocityShift}
+        tierCutoffs={tierCutoffs}
+      />
+    );
+  }
+
+  // Sub-Variants ohne Main — sortiert by games desc.
+  const subVariants = [...family.variants]
+    .filter(v => v.clusterKey !== family.mainComp.clusterKey)
+    .sort((a, b) => (b.games || 0) - (a.games || 0));
+
+  // Family-Wrapper grenzt Hauptcomp + Sub-Variants als visuelle Einheit von
+  // der nachfolgenden Comp ab — linke orange Akzent-Border (matched Pfeil-
+  // Farbe), leichter Background-Tint, mb-4 Abstand zur nächsten Family-Card.
   return (
-    <CompRow
-      comp={family.mainComp as Parameters<typeof CompRow>[0]['comp']}
-      rank={rank}
-      assets={assets}
-      href={familyHref(family.mainComp, region, bucket)}
-      showVelocity={showVelocity}
-      velocityShift={velocityShift}
-      tierCutoffs={tierCutoffs}
-    />
+    <div
+      className="mb-4 pl-2 rounded-md overflow-hidden"
+      style={{
+        borderLeft: '4px solid rgba(249,115,22,0.55)',
+        backgroundColor: 'rgba(249,115,22,0.07)',
+      }}
+    >
+      <CompRow
+        comp={family.mainComp as Parameters<typeof CompRow>[0]['comp']}
+        rank={rank}
+        assets={assets}
+        href={familyHref(family.mainComp, region, bucket)}
+        showVelocity={showVelocity}
+        velocityShift={velocityShift}
+        tierCutoffs={tierCutoffs}
+        expandToggle={{ expanded, onToggle: () => setExpanded(e => !e) }}
+      />
+
+      {/* Drop-Down — Sub-Variants als reguläre CompRows rendern (identisches
+          Layout zur Hauptcomp, Stats-Spalten sauber untereinander). rank=0
+          → CompRow rendert die rank-Spalte leer als visueller Indent.
+          grid-rows-Animation: aufgeklappt = 1fr, zugeklappt = 0fr → max-height
+          ungebunden bei Aufklappen, gleichzeitig sauber animiertes Ein-/Aus-
+          schieben. */}
+      <div
+        className="grid transition-[grid-template-rows] duration-300 ease-out"
+        style={{ gridTemplateRows: expanded ? '1fr' : '0fr' }}
+      >
+        <div className="overflow-hidden">
+          {subVariants.length > 0 && (
+            <div className="mt-1.5 mb-0.5 space-y-1 pl-1 relative">
+              {/* Indent-Marker: dünne vertikale Linie als visueller „gehört zur Familie"-Indikator */}
+              <div
+                className="absolute left-0 top-1 bottom-1 w-px"
+                style={{ backgroundColor: 'rgba(249,115,22,0.35)' }}
+                aria-hidden="true"
+              />
+              {subVariants.map(v => (
+                <CompRow
+                  key={v.clusterKey}
+                  comp={v as Parameters<typeof CompRow>[0]['comp']}
+                  rank={0}
+                  assets={assets}
+                  href={familyHref(v, region, bucket)}
+                  showVelocity={showVelocity}
+                  velocityShift={velocityShift}
+                  tierCutoffs={tierCutoffs}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

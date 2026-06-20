@@ -164,7 +164,7 @@ export default function TftTraitsPage() {
 
         {hasData && grouped.length > 0 && (
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
-            <div className={`hidden md:grid ${filters.velocity > 0 ? 'grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem_4rem]' : 'grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 text-[11px] uppercase tracking-widest text-[#a0b0c5] font-medium bg-[#0a0e1a]`}>
+            <div className={`hidden md:grid ${filters.velocity > 0 ? 'grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem_4rem]' : 'grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 text-[11px] text-[#a0b0c5] font-semibold whitespace-nowrap bg-[#0a0e1a]`}>
               <div></div>
               <div>{t('nav.traits')}</div>
               <div>{t('tft.trait.tiers')}</div>

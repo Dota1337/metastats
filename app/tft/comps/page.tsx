@@ -365,10 +365,10 @@ export default function TftCompsPage() {
 
         {hasData && families.length > 0 && (
           <>
-            <div className={`hidden sm:grid items-center gap-4 px-3.5 py-2 text-[11px] uppercase tracking-widest text-[#a0b0c5] font-medium ${
+            <div className={`hidden sm:grid items-center gap-4 px-3.5 py-2 text-[11px] text-[#a0b0c5] font-semibold whitespace-nowrap ${
               filters.velocity > 0
-                ? 'grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_3.75rem_3.5rem_3.5rem_3.5rem_3.5rem_3.75rem_3rem]'
-                : 'grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_3.75rem_3.5rem_3.5rem_3.5rem_3.5rem_3rem]'
+                ? 'grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_5rem_3.5rem_3.5rem_3.5rem_3.5rem_3.75rem_3rem]'
+                : 'grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_5rem_3.5rem_3.5rem_3.5rem_3.5rem_3rem]'
             }`}>
               <div></div>
               <div></div>

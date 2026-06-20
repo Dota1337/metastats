@@ -215,8 +215,8 @@ export default function CompRow({
           entsprechend entfernt. */}
       <div className={`grid grid-cols-[1.5rem_1.75rem_minmax(7rem,1fr)_minmax(0,auto)_auto] ${
         showVelocity
-          ? 'sm:grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_3.75rem_3.5rem_3.5rem_3.5rem_3.5rem_3.75rem_3rem]'
-          : 'sm:grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_3.75rem_3.5rem_3.5rem_3.5rem_3.5rem_3rem]'
+          ? 'sm:grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_5rem_3.5rem_3.5rem_3.5rem_3.5rem_3.75rem_3rem]'
+          : 'sm:grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_5rem_3.5rem_3.5rem_3.5rem_3.5rem_3rem]'
       } items-center gap-2.5 sm:gap-4`}>
         <div className="text-[#7a8aa0] tabular-nums text-right text-[13px] font-medium">{rank > 0 ? rank : ''}</div>
         <div

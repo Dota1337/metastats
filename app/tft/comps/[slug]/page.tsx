@@ -48,6 +48,10 @@ export default function TftCompDetailPage() {
   // regions (list aggregated all regions, detail only queried euw1).
   const [region, setRegion] = useState<string>(search.get('region') || 'all');
   const [bucket, setBucket] = useState<TierBucket>((search.get('bucket') as TierBucket) || 'master_plus');
+  // Variant-Mode: family (default — alle Sub-Cluster der Family aggregiert) oder
+  // exact (Single-Sub-Cluster). Wird live aus searchParams gelesen, damit der
+  // Toggle im VariantsSwitcher ohne Page-Reload reagiert.
+  const variantMode = search.get('variant') === 'exact' ? 'exact' : 'family';
 
   // Sync region/bucket changes back to the URL so refreshes + share-links keep
   // the user's filter combo. router.replace avoids piling up history entries.
@@ -76,12 +80,19 @@ export default function TftCompDetailPage() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/tft/comps/trend?slug=${encodeURIComponent(slug)}&region=${region}&bucket=${bucket}&days=${trendDays}`)
+    // Trend folgt dem Variant-Mode des Detail-Calls. Im Family-Mode reichen wir
+    // explizit die Family-Slugs durch — die kamen mit comp.aliasedFromFamily,
+    // also nutzen wir den Detail-Response. Wenn comp noch nicht da ist: erst
+    // Single-Slug-Trend, später beim Re-Fetch korrekt.
+    const familySlugs = variantMode === 'family' && comp?.aliasedFromFamily?.mergedFrom?.length > 1
+      ? `&familySlugs=${comp.aliasedFromFamily.mergedFrom.map((s: string) => encodeURIComponent(s)).join(',')}`
+      : '';
+    fetch(`/api/tft/comps/trend?slug=${encodeURIComponent(slug)}&region=${region}&bucket=${bucket}&days=${trendDays}&variant=${variantMode}${familySlugs}`)
       .then(r => r.ok ? r.json() : { points: [] })
       .then(d => { if (!cancelled) setTrendPoints(d.points || []); })
       .catch(() => { if (!cancelled) setTrendPoints([]); });
     return () => { cancelled = true; };
-  }, [slug, region, bucket, trendDays]);
+  }, [slug, region, bucket, trendDays, variantMode, comp]);
 
   useEffect(() => {
     // Detail uses the SAME window as /tft/patch/winners (30 days, min 50
@@ -97,14 +108,14 @@ export default function TftCompDetailPage() {
       // 30d-Default lag 44 % der Daten im Vorgänger-Patch; 14d reduziert das,
       // löst es aber nicht komplett (Patch-Wechsel <14d ago → weiter Mix).
       // minGames proportional auf 30 (war 50, halbierter Window halbiert Sample).
-      fetch(`/api/tft/comps?region=${region}&bucket=${bucket}&slug=${encodeURIComponent(slug)}&days=14&minGames=30`).then(r => r.json()),
-      fetch(`/api/tft/comps?region=all&bucket=pro_pool&slug=${encodeURIComponent(slug)}&days=14&minGames=5`).then(r => r.ok ? r.json() : { comp: null }),
+      fetch(`/api/tft/comps?region=${region}&bucket=${bucket}&slug=${encodeURIComponent(slug)}&days=14&minGames=30&variant=${variantMode}`).then(r => r.json()),
+      fetch(`/api/tft/comps?region=all&bucket=pro_pool&slug=${encodeURIComponent(slug)}&days=14&minGames=5&variant=${variantMode}`).then(r => r.ok ? r.json() : { comp: null }),
     ]).then(([normal, pro]) => {
       setHasData(!!normal.hasData);
       setComp(normal.comp || null);
       setProComp(pro.comp || null);
     }).catch(() => { setHasData(false); setComp(null); });
-  }, [bucket, slug, region]);
+  }, [bucket, slug, region, variantMode]);
 
   return (
     <main className="min-h-screen bg-[#0e1525]">
@@ -854,6 +865,8 @@ export default function TftCompDetailPage() {
               days={3}
               patch={null}
               assets={assets}
+              familyMergeActive={comp.variantMode === 'family' && !!comp.aliasedFromFamily}
+              familySize={comp.aliasedFromFamily?.mergedFrom?.length ?? 1}
             />
 
             {comp.typicalUnits && comp.typicalUnits.length > 0 && (

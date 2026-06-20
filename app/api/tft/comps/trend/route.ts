@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { callRpc, expandRegions, expandBuckets } from '../../../../lib/tft-supabase-reader';
 import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias } from '../../../../lib/api-cache';
 import { getAvailablePatches } from '../../../../lib/tft-supabase-reader';
+import { selectFamilyMembers, familyKeyForMerge } from '../../../../lib/tft-comp-family-merge';
 
 // /api/tft/comps/trend
 //   ?slug=<cluster_key>&region=<group|exact>&bucket=<group|exact>&days=N
@@ -28,6 +29,13 @@ export async function GET(request: NextRequest) {
   const regionParam = searchParams.get('region') || 'all';
   const bucketParam = searchParams.get('bucket') || 'diamond';
   const days = Math.max(1, Math.min(60, parseInt(searchParams.get('days') || '14', 10)));
+  // Family-Mode (Default für die Detail-Page-Trend-Linie): die RPC bekommt
+  // ALLE Sub-Cluster der Family. ?variant=exact = Single-Slug-Sicht.
+  const variantMode = searchParams.get('variant') === 'exact' ? 'exact' : 'family';
+  // Optional: comma-separated Liste der Family-Slugs vom Detail-Page-Caller.
+  // Spart Trend-Endpoint einen eigenen RPC-Roundtrip zur Family-Auflösung.
+  const familySlugsParam = searchParams.get('familySlugs');
+  const explicitFamilySlugs = familySlugsParam ? familySlugsParam.split(',').filter(Boolean) : null;
 
   try {
     const patches = await getAvailablePatches();
@@ -38,11 +46,22 @@ export async function GET(request: NextRequest) {
     const regions = expandRegions(regionParam);
     const buckets = expandBuckets(bucketParam);
 
+    // Im Family-Mode: wenn der Caller explizite Family-Slugs übergibt, nutzen
+    // wir die direkt. Sonst nimmt die RPC den Single-Slug-Pfad (Backward-
+    // Compat) — Caller die Family-Slugs nicht kennen bekommen Single-Slug-
+    // Sicht trotz ?variant=family.
+    const useFamily = variantMode === 'family' && explicitFamilySlugs && explicitFamilySlugs.length > 1;
+    // Bei Single-Slug-Family kein min-games-Floor (Backward-Compat); bei echter
+    // Family wir wollen verrauschte Daily-Linien rauskippen (data-skeptic F4).
+    const minGamesPerDay = useFamily ? 20 : 0;
+
     const rows = await callRpc<DailyTrendRow[]>('get_tft_comp_daily_trend', {
       p_cluster_key: slug,
       p_regions: regions,
       p_buckets: buckets,
       p_days: days,
+      p_cluster_keys: useFamily ? explicitFamilySlugs : null,
+      p_min_games_per_day: minGamesPerDay,
     });
 
     const points = (rows || []).map(r => {
@@ -65,6 +84,8 @@ export async function GET(request: NextRequest) {
       region: regionParam,
       bucket: bucketParam,
       days,
+      variantMode,
+      familySize: useFamily ? explicitFamilySlugs!.length : 1,
       points,
     }, { cache: cacheControl });
   } catch (e: any) {

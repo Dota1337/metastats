@@ -2025,6 +2025,38 @@ const translations = {
     '\uD50C\uB809\uC2A4 \uC2AC\uB86F', '\u673A\u52A8\u4F4D',
     'Espacios Flex', 'Emplacements Flex'
   ),
+  'tft.comp.familyMode.banner': t6(
+    'Familien-Ansicht: {n} Sub-Varianten zusammengefasst',
+    'Family view: {n} sub-variants combined',
+    '\uD328\uBC00\uB9AC \uBCF4\uAE30: {n}\uAC1C \uC11C\uBE0C \uBCC0\uD615 \uACB0\uD569',
+    '\u65CF\u7CFB\u89C6\u56FE\uFF1A\u5408\u5E76 {n} \u4E2A\u5B50\u53D8\u4F53',
+    'Vista de familia: {n} subvariantes combinadas',
+    'Vue Famille : {n} sous-variantes combin\u00E9es'
+  ),
+  'tft.comp.familyMode.toggleToExact': t6(
+    '\u2192 Nur diese Variante',
+    '\u2192 This variant only',
+    '\u2192 \uC774 \uBCC0\uD615\uB9CC',
+    '\u2192 \u4EC5\u6B64\u53D8\u4F53',
+    '\u2192 Solo esta variante',
+    '\u2192 Cette variante seulement'
+  ),
+  'tft.comp.familyMode.exactNotice': t6(
+    'Du siehst nur diese eine Sub-Variante',
+    'You see only this single sub-variant',
+    '\uC774 \uC11C\uBE0C \uBCC0\uD615\uB9CC \uD45C\uC2DC',
+    '\u4EC5\u663E\u793A\u8BE5\u5B50\u53D8\u4F53',
+    'Solo ves esta \u00FAnica subvariante',
+    'Vous voyez uniquement cette sous-variante'
+  ),
+  'tft.comp.familyMode.toggleToFamily': t6(
+    '\u2192 Familien-Ansicht',
+    '\u2192 Family view',
+    '\u2192 \uD328\uBC00\uB9AC \uBCF4\uAE30',
+    '\u2192 \u65CF\u7CFB\u89C6\u56FE',
+    '\u2192 Vista de familia',
+    '\u2192 Vue Famille'
+  ),
   'tft.comp.flexUnits.pickrate': t6(
     'Pick', 'Pick',
     '\uD53D', '\u9009\u62E9',

@@ -13,6 +13,7 @@ import { isExcludedUnit, isExcludedItem, setContainsExcludedItem } from '../../.
 import { lookupSnapshot } from '../../../lib/snapshot-lookup';
 import { parseClusterKey } from '../../../lib/tft-cluster';
 import { computeShares } from '../../../lib/tft-shares';
+import { selectFamilyMembers, mergeFamilyRows, familyKeyForMerge } from '../../../lib/tft-comp-family-merge';
 
 // Lazy + memoized champion-cost lookup pro Set. Wird vom Tempo-Klassifikator
 // gebraucht, der Carry-Cost mit Peak-Level + 3-Star-Anteil in Beziehung setzt:
@@ -237,7 +238,36 @@ export async function GET(request: NextRequest) {
       if (isUniqueTraitClusterKey(row.cluster_key)) {
         return cachedJson({ filters, hasData: false, comp: null }, { cache: cacheControl });
       }
-      const comp = { ...baseComp(row, participants), ...enrichComp(row), aliasedFrom };
+      // Family-Mode (Default): mergt alle Sub-Cluster derselben Family-Identität
+      // (= compFamilyKey + ~aug) zu einem Aggregat. Behebt das Listing↔Detail-
+      // Mismatch wo Listing eine Family-Card mit Sum-Games zeigt, Detail aber
+      // nur den meistgespielten Sub-Cluster (data-skeptic-Phase-1-Finding F4).
+      // ?variant=exact = Opt-Out, zeigt die alte Single-Sub-Cluster-Sicht.
+      const variantMode = searchParams.get('variant') === 'exact' ? 'exact' : 'family';
+      let mergedRow = row;
+      let aliasedFromFamily: { anchorSlug: string; mergedFrom: string[] } | null = null;
+      let familySlugs: string[] = [row.cluster_key];
+      if (variantMode === 'family') {
+        const members = selectFamilyMembers(rows, row.cluster_key);
+        familySlugs = members.map(m => m.cluster_key);
+        if (members.length > 1) {
+          mergedRow = mergeFamilyRows(members);
+          aliasedFromFamily = {
+            anchorSlug: row.cluster_key,
+            mergedFrom: familySlugs,
+          };
+        }
+      }
+      const comp = {
+        ...baseComp(mergedRow, participants),
+        ...enrichComp(mergedRow),
+        // aliasedFrom (Legacy sameCore-Fallback) ist redundant wenn Family-Merge
+        // greift — die Geschwister-Suche passiert dort schon. Nur exact-Mode
+        // behält den alten Marker.
+        aliasedFrom: variantMode === 'exact' ? aliasedFrom : null,
+        aliasedFromFamily,
+        variantMode,
+      };
 
       // Counter edges — single RPC for the same region/day/patch window.
       const pairs = await callRpc<CompPairRow[]>('get_tft_comp_pairs', {
@@ -247,33 +277,63 @@ export async function GET(request: NextRequest) {
         p_set: filters.setNumber,
         p_min_games: 10,
       });
+      // Set-Lookup statt Linear-Scan (perf-critic F6) — bei großen Familien
+      // (10-15 Sub-Cluster) und 500-2000 Pairs deutlich günstiger.
+      const familySet = new Set(familySlugs);
       const beats: CounterEdge[] = [];
       const losesTo: CounterEdge[] = [];
       const even: CounterEdge[] = [];
       for (const p of pairs) {
-        if (p.a_key !== slug && p.b_key !== slug) continue;
-        // Pre-Fix-UniqueTrait-Gegner aus den Counter-Listen halten — sie
-        // verzerren das Matchup-Bild bis die alten DB-Rows aus dem Window fallen.
-        const opponent = p.a_key === slug ? p.b_key : p.a_key;
+        const aInFamily = familySet.has(p.a_key);
+        const bInFamily = familySet.has(p.b_key);
+        if (!aInFamily && !bInFamily) continue;
+        // Intra-Family-Pairs ausschließen — Meeple-Gnar @3*2 vs @3*3 ist kein
+        // sinnvolles Matchup (gleiche Comp, andere Variante).
+        if (aInFamily && bInFamily) continue;
+        const opponent = aInFamily ? p.b_key : p.a_key;
         if (isUniqueTraitClusterKey(opponent)) continue;
         const aWinRate = p.games > 0 ? Number(p.a_better) / Number(p.games) : 0.5;
-        // Normalize so winRate is always THIS comp's win-rate vs the opponent,
-        // regardless of which side it sits on in the sorted (a_key,b_key) pair.
-        const selfIsA = p.a_key === slug;
         const edge: CounterEdge = {
-          opponent: selfIsA ? p.b_key : p.a_key,
+          opponent,
           games: Number(p.games),
-          winRate: selfIsA ? aWinRate : 1 - aWinRate,
+          winRate: aInFamily ? aWinRate : 1 - aWinRate,
         };
         if (edge.winRate >= 0.55) beats.push(edge);
         else if (edge.winRate <= 0.45) losesTo.push(edge);
         else even.push(edge);   // 45–55% band — the near-even matchups
       }
-      beats.sort((a, b) => b.winRate - a.winRate);
-      losesTo.sort((a, b) => a.winRate - b.winRate);
+      // Im Family-Mode: Opponent-Edges nach Opponent-Family-Key konsolidieren —
+      // sonst sieht User dreimal "Mecha Fiora" mit unterschiedlichen Sub-
+      // Cluster-Suffixen. Gewichteter Win-Rate (games-weighted) + Sum-Games.
+      const consolidateByOpponentFamily = (edges: CounterEdge[]): CounterEdge[] => {
+        if (variantMode !== 'family') return edges;
+        const map = new Map<string, { games: number; weightedWin: number; sampleKey: string }>();
+        for (const e of edges) {
+          const k = familyKeyForMerge(e.opponent);
+          const cur = map.get(k);
+          if (!cur) {
+            map.set(k, { games: e.games, weightedWin: e.games * e.winRate, sampleKey: e.opponent });
+          } else {
+            // Anker bleibt der games-stärkste Sub-Cluster für UI-Label-Wahl.
+            if (e.games > cur.games) cur.sampleKey = e.opponent;
+            cur.games += e.games;
+            cur.weightedWin += e.games * e.winRate;
+          }
+        }
+        return [...map.entries()].map(([_k, v]) => ({
+          opponent: v.sampleKey,
+          games: v.games,
+          winRate: v.games > 0 ? v.weightedWin / v.games : 0.5,
+        }));
+      };
+      const beatsOut = consolidateByOpponentFamily(beats);
+      const losesToOut = consolidateByOpponentFamily(losesTo);
+      const evenOut = consolidateByOpponentFamily(even);
+      beatsOut.sort((a, b) => b.winRate - a.winRate);
+      losesToOut.sort((a, b) => a.winRate - b.winRate);
       // Even matchups ranked by sample size — the most-played coin-flips are
       // the most decision-relevant.
-      even.sort((a, b) => b.games - a.games);
+      evenOut.sort((a, b) => b.games - a.games);
 
       return cachedJson({
         filters,
@@ -281,9 +341,9 @@ export async function GET(request: NextRequest) {
         comp: {
           ...comp,
           counters: {
-            beats: beats.slice(0, 5),
-            losesTo: losesTo.slice(0, 5),
-            even: even.slice(0, 5),
+            beats: beatsOut.slice(0, 5),
+            losesTo: losesToOut.slice(0, 5),
+            even: evenOut.slice(0, 5),
           },
         },
       }, { cache: cacheControl });

@@ -85,11 +85,17 @@ export default function CompFamilyRow({
     .filter(v => v.clusterKey !== family.mainComp.clusterKey)
     .sort((a, b) => (b.games || 0) - (a.games || 0));
 
+  // Family-Wrapper grenzt Hauptcomp + Sub-Variants als visuelle Einheit von
+  // der nachfolgenden Comp ab — linke orange Akzent-Border (matched Pfeil-
+  // Farbe), leichter Background-Tint, mb-3 Abstand zur nächsten Family-Card.
   return (
-    <div className="mb-1">
-      {/* Hauptcomp als reguläre CompRow mit Toggle-Pfeil rechts neben den
-          Action-Buttons. Click auf den Pfeil expandiert/collapsed — Click auf
-          den Rest der Card navigiert zur Detail-Page wie gewohnt. */}
+    <div
+      className="mb-3 pl-1.5 rounded overflow-hidden"
+      style={{
+        borderLeft: '3px solid rgba(249,115,22,0.4)',
+        backgroundColor: 'rgba(249,115,22,0.04)',
+      }}
+    >
       <CompRow
         comp={family.mainComp as Parameters<typeof CompRow>[0]['comp']}
         rank={rank}
@@ -105,7 +111,7 @@ export default function CompFamilyRow({
           Layout zur Hauptcomp, Stats-Spalten sauber untereinander). rank=0
           → CompRow rendert die rank-Spalte leer als visueller Indent. */}
       {expanded && subVariants.length > 0 && (
-        <div className="mt-0.5 space-y-0.5">
+        <div className="mt-1 space-y-0.5">
           {subVariants.map(v => (
             <CompRow
               key={v.clusterKey}

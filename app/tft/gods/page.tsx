@@ -83,7 +83,7 @@ export default function TftGodsPage() {
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-2 pb-10">
         {/* Mechanic intro — user explicitly asked for info texts on this page. */}
         <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-4">
-          <p className="text-[#a0b0c5] text-xs leading-relaxed">{t('gods.mechanic.intro')}</p>
+          <p className="text-[#a0b0c5] text-sm leading-relaxed">{t('gods.mechanic.intro')}</p>
           <div className="flex flex-wrap gap-2 mt-3">
             <StageChip label="2-4" />
             <StageChip label="3-4" />

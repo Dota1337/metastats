@@ -332,11 +332,11 @@ export default function TftExplorerPage() {
           <div className="space-y-3 lg:sticky lg:top-4 self-start lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto lg:pr-1 lg:[scrollbar-gutter:stable]">
             <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-3 space-y-3">
               <div>
-                <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest mb-1.5">{t('tft.filter.bucket')}</div>
+                <div className="text-[#7a8aa0] text-[11px] uppercase tracking-widest mb-1.5 font-medium">{t('tft.filter.bucket')}</div>
                 <TierFilter value={bucket} onChange={setBucket} />
               </div>
               <div>
-                <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest mb-1.5">{t('tft.filter.region')}</div>
+                <div className="text-[#7a8aa0] text-[11px] uppercase tracking-widest mb-1.5 font-medium">{t('tft.filter.region')}</div>
                 <select
                   value={region}
                   onChange={e => setRegion(e.target.value)}
@@ -352,7 +352,7 @@ export default function TftExplorerPage() {
                 </select>
               </div>
               <div>
-                <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest mb-1.5">{t('tft.filter.days')}</div>
+                <div className="text-[#7a8aa0] text-[11px] uppercase tracking-widest mb-1.5 font-medium">{t('tft.filter.days')}</div>
                 <div className="flex gap-1">
                   {[1, 3, 7].map(d => (
                     <button
@@ -367,7 +367,7 @@ export default function TftExplorerPage() {
                 </div>
               </div>
               <div>
-                <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest mb-1.5">{t('tft.explorer.minGames')}</div>
+                <div className="text-[#7a8aa0] text-[11px] uppercase tracking-widest mb-1.5 font-medium">{t('tft.explorer.minGames')}</div>
                 <input
                   type="number" min={0} value={minGames}
                   onChange={e => setMinGames(Math.max(0, Number(e.target.value) || 0))}

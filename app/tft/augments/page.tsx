@@ -123,7 +123,7 @@ export default function TftAugmentsReferencePage() {
         </div>
 
         {assets && filtered.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {filtered.map(a => {
               const url = tftIconUrl(assets, a.icon);
               const tierColor = TIER_COLORS[a.tier] || '#7a8aa0';
@@ -158,13 +158,13 @@ export default function TftAugmentsReferencePage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-white text-sm font-medium truncate">{loc.name}</span>
-                      <span className="text-[10px] uppercase tracking-widest tabular-nums flex-shrink-0" style={{ color: tierColor }}>
+                      <span className="text-white text-sm font-semibold truncate">{loc.name}</span>
+                      <span className="text-[11px] uppercase tracking-widest tabular-nums flex-shrink-0 font-medium" style={{ color: tierColor }}>
                         {TIER_LABELS[a.tier]}
                       </span>
                     </div>
                     {loc.desc && (
-                      <p className="text-[#a0b0c5] text-[11px] mt-1 leading-snug line-clamp-3">{loc.desc}</p>
+                      <p className="text-[#a0b0c5] text-xs mt-1.5 leading-snug line-clamp-3">{loc.desc}</p>
                     )}
                   </div>
                 </a>

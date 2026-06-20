@@ -153,7 +153,7 @@ export default function TftItemsPage() {
                 fill the row) → 4 stat columns. Name moves from 1fr to a
                 fixed 12rem so the TopUsers row gets the slack — that's
                 where the cost-bordered champion tiles want to breathe. */}
-            <div className={`hidden md:grid ${filters.velocity > 0 ? 'grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem]' : 'grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_5rem]'} gap-2 px-4 py-2 text-[10px] uppercase text-[#7a8aa0] bg-[#0a0e1a]`}>
+            <div className={`hidden md:grid ${filters.velocity > 0 ? 'grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem]' : 'grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 text-[11px] uppercase tracking-widest text-[#a0b0c5] font-medium bg-[#0a0e1a]`}>
               <div></div>
               <div></div>
               <div>{t('nav.items')}</div>
@@ -180,7 +180,7 @@ export default function TftItemsPage() {
                 <a
                   key={it.apiName}
                   href={`/tft/items/${encodeURIComponent(it.apiName)}?bucket=${filters.bucket}`}
-                  className={`block md:grid ${filters.velocity > 0 ? 'md:grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem]' : 'md:grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_5rem]'} gap-2 px-4 py-2 md:items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]`}
+                  className={`block md:grid ${filters.velocity > 0 ? 'md:grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem]' : 'md:grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 md:items-center text-[13px] sm:text-sm hover:bg-white/5 border-t border-[#1e2a3a]`}
                 >
                   <div className="hidden md:flex justify-center">
                     <TierBadge letter={letter} t={t} />
@@ -190,11 +190,11 @@ export default function TftItemsPage() {
                       <TierBadge letter={letter} t={t} />
                     </div>
                     {url ? (
-                      <img src={url} alt={meta!.name} className="w-9 h-9 rounded flex-shrink-0" />
+                      <img src={url} alt={meta!.name} className="w-10 h-10 rounded-md flex-shrink-0 shadow-sm" />
                     ) : (
-                      <div className="w-9 h-9 rounded bg-[#1e2a3a] flex items-center justify-center text-[8px] text-[#7a8aa0] px-0.5 text-center flex-shrink-0">{prettyApi(it.apiName)}</div>
+                      <div className="w-10 h-10 rounded-md bg-[#1e2a3a] flex items-center justify-center text-[9px] text-[#7a8aa0] px-0.5 text-center flex-shrink-0">{prettyApi(it.apiName)}</div>
                     )}
-                    <div className="text-white truncate flex-1 md:flex-initial">{meta?.name || prettyApi(it.apiName)}</div>
+                    <div className="text-white font-medium truncate flex-1 md:flex-initial">{meta?.name || prettyApi(it.apiName)}</div>
                   </div>
                   {/* Top users — 8 cost-bordered champion tiles. On mobile
                       the row still scrolls horizontally (overflow-x-auto)
@@ -212,7 +212,7 @@ export default function TftItemsPage() {
                           key={i}
                           href={`/tft/units/${encodeURIComponent(cid)}?bucket=${filters.bucket}`}
                           onClick={e => e.stopPropagation()}
-                          className="w-8 h-8 rounded border-2 overflow-hidden flex-shrink-0 hover:scale-110 transition"
+                          className="w-10 h-10 rounded-md border-2 overflow-hidden flex-shrink-0 hover:scale-110 transition shadow-sm"
                           style={{ borderColor }}
                           title={ch?.name}
                         >

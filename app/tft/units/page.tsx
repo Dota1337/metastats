@@ -189,7 +189,7 @@ export default function TftUnitsPage() {
 
         {hasData && filtered.length > 0 && (
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
-            <div className={`hidden md:grid ${filters.velocity > 0 ? 'grid-cols-[2rem_3rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem]' : 'grid-cols-[2rem_3rem_1fr_5rem_5rem_5rem_5rem_5rem]'} gap-2 px-4 py-2 text-[10px] uppercase text-[#7a8aa0] bg-[#0a0e1a]`}>
+            <div className={`hidden md:grid ${filters.velocity > 0 ? 'grid-cols-[2rem_3rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem]' : 'grid-cols-[2rem_3rem_1fr_5rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 text-[11px] uppercase tracking-widest text-[#a0b0c5] font-medium bg-[#0a0e1a]`}>
               <div></div>
               <div></div>
               <div>{t('tft.champion')}</div>
@@ -224,7 +224,7 @@ export default function TftUnitsPage() {
                 <a
                   key={u.characterId}
                   href={`/tft/units/${encodeURIComponent(u.characterId)}?bucket=${filters.bucket}`}
-                  className={`block md:grid ${filters.velocity > 0 ? 'md:grid-cols-[2rem_3rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem]' : 'md:grid-cols-[2rem_3rem_1fr_5rem_5rem_5rem_5rem_5rem]'} gap-2 px-4 py-2 md:items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]`}
+                  className={`block md:grid ${filters.velocity > 0 ? 'md:grid-cols-[2rem_3rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem]' : 'md:grid-cols-[2rem_3rem_1fr_5rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 md:items-center text-[13px] sm:text-sm hover:bg-white/5 border-t border-[#1e2a3a]`}
                 >
                   {/* Mobile: tier badge inline next to the icon; desktop has its own column. */}
                   <div className="hidden md:flex justify-center">
@@ -234,10 +234,10 @@ export default function TftUnitsPage() {
                     <div className="md:hidden">
                       <TierBadge letter={letter} t={t} />
                     </div>
-                    <div className="w-9 h-9 rounded border-2 overflow-hidden flex-shrink-0" style={{ borderColor: costColor }}>
+                    <div className="w-10 h-10 rounded-md border-2 overflow-hidden flex-shrink-0 shadow-sm" style={{ borderColor: costColor }}>
                       {url && <img src={url} alt={ch!.name} className="w-full h-full object-cover" />}
                     </div>
-                    <div className="text-white truncate flex-1 md:flex-initial">{ch?.name || prettyCharId(u.characterId)}</div>
+                    <div className="text-white font-medium truncate flex-1 md:flex-initial">{ch?.name || prettyCharId(u.characterId)}</div>
                   </div>
                   <div className={`grid ${filters.velocity > 0 ? 'grid-cols-5' : 'grid-cols-4'} gap-2 mt-1.5 pl-12 md:pl-0 md:mt-0 md:contents`}>
                     <Cell label={t('tft.avgPlacement')} value={u.avgPlacement?.toFixed(2) ?? '—'} accent="white" />

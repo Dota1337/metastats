@@ -88,7 +88,7 @@ export default function TftCommunityGalleryPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
           {comps.map(c => {
             const carry = c.carryUnit && assets ? assets.champions[c.carryUnit] : null;
             const carryUrl = tftChampionTileUrl(assets, carry);
@@ -106,11 +106,11 @@ export default function TftCommunityGalleryPage() {
                     </a>
                   )}
                   <div className="flex-1 min-w-0">
-                    <div className="text-white text-sm font-medium truncate">{c.name}</div>
+                    <div className="text-white text-sm font-semibold truncate">{c.name}</div>
                     {c.traitLabel && (
-                      <div className="text-[#a892ff] text-[11px] truncate">{c.traitLabel}</div>
+                      <div className="text-[#a892ff] text-xs truncate">{c.traitLabel}</div>
                     )}
-                    <div className="text-[#7a8aa0] text-[10px]">
+                    <div className="text-[#7a8aa0] text-[11px]">
                       {c.authorHandle || 'anonymous'} · {timeAgo(c.createdAt)}
                       {c.views > 0 && ` · ${c.views} views`}
                     </div>

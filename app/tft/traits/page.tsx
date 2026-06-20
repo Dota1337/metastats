@@ -164,7 +164,7 @@ export default function TftTraitsPage() {
 
         {hasData && grouped.length > 0 && (
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
-            <div className={`hidden md:grid ${filters.velocity > 0 ? 'grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem_4rem]' : 'grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem]'} gap-2 px-4 py-2 text-[10px] uppercase text-[#7a8aa0] bg-[#0a0e1a]`}>
+            <div className={`hidden md:grid ${filters.velocity > 0 ? 'grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem_4rem]' : 'grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 text-[11px] uppercase tracking-widest text-[#a0b0c5] font-medium bg-[#0a0e1a]`}>
               <div></div>
               <div>{t('nav.traits')}</div>
               <div>{t('tft.trait.tiers')}</div>
@@ -197,16 +197,16 @@ export default function TftTraitsPage() {
                 <a
                   key={g.name}
                   href={`/tft/traits/${encodeURIComponent(g.name)}`}
-                  className={`block md:grid ${filters.velocity > 0 ? 'md:grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem_4rem]' : 'md:grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem]'} gap-2 px-4 py-2 md:items-center text-xs border-t border-[#1e2a3a] hover:bg-white/5`}
+                  className={`block md:grid ${filters.velocity > 0 ? 'md:grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem_4rem]' : 'md:grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 md:items-center text-[13px] sm:text-sm border-t border-[#1e2a3a] hover:bg-white/5`}
                 >
                   <div className="flex items-center gap-3 md:contents">
                     {url ? (
-                      <img src={url} alt={meta!.name} className="w-9 h-9 rounded flex-shrink-0" />
+                      <img src={url} alt={meta!.name} className="w-10 h-10 rounded-md flex-shrink-0 shadow-sm" />
                     ) : (
-                      <div className="w-9 h-9 rounded bg-[#1e2a3a] flex-shrink-0" />
+                      <div className="w-10 h-10 rounded-md bg-[#1e2a3a] flex-shrink-0" />
                     )}
                     <div className="flex-1 min-w-0 md:flex-initial">
-                      <div className="text-white truncate">{meta?.name || prettyTrait(g.name)}</div>
+                      <div className="text-white font-medium truncate">{meta?.name || prettyTrait(g.name)}</div>
                       {/* Mobile-only: best-activation hint as small subtitle */}
                       <div className="md:hidden text-[#7B61FF] text-[10px]">
                         {t('tft.trait.bestAt')} {g.bestActivation ?? '—'}

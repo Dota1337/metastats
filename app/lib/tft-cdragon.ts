@@ -10,6 +10,8 @@
 //   trait apiName e.g. "TFT17_APTrait"
 //   augment apiName e.g. "TFT17_Augment_Stuff"
 
+import { renderTraitDesc } from './tft-trait-desc';
+
 export interface TftItem {
   name: string;
   icon: string | null;
@@ -202,11 +204,10 @@ export function tftTraitDisplayName(
 
 // Returnt den Tooltip-Text für einen Trait — nimmt die variant-spezifische
 // Beschreibung aus trait.desc, ohne den generischen "Stargazers chart a
-// different constellation"-Boilerplate. Wenn keine Variant erkannt wird,
-// kommt der volle desc-Text zurück. Template-Variablen wie @MinUnits@ werden
-// nicht aufgelöst (das passiert in CDragon's tier-spezifischer Render-Logik,
-// die wir hier nicht haben) — der Spieler sieht den Roh-Platzhalter als
-// "(MinUnits) Allies …". Akzeptabel als Tooltip.
+// different constellation"-Boilerplate. Template-Variablen wie @MinUnits@,
+// @VarName@, %i:icon%, @TFTUnitProperty.trait:X@ werden via renderTraitDesc()
+// substituiert — sonst sieht der User Roh-Tokens im Tooltip statt sauberen
+// Text (Bug-Report 2026-06-20).
 export function tftTraitDescription(
   bundle: TftAssetsBundle | null,
   apiName: string | null | undefined,
@@ -214,13 +215,37 @@ export function tftTraitDescription(
   if (!apiName) return '';
   const trait = findTrait(bundle, apiName);
   if (!trait?.desc) return '';
-  // Strip basic HTML tags
-  let txt = trait.desc.replace(/<[^>]+>/g, '');
-  // Stargazer-Variants haben "This game: The X.<RestOfText>" — nimm nur den
-  // Rest, das ist die effektive Beschreibung dieser Constellation.
-  const m = /This game:\s*The\s+[A-Za-z][A-Za-z\s]*?[.!]\s*([\s\S]+)$/i.exec(txt);
-  if (m) txt = m[1].trim();
-  return txt;
+
+  // Stargazer-Preamble + "This game: The X." raus, BEVOR HTML strippt — damit
+  // die Regex auf dem Original-Format matcht. Setzt einen variant-spezifischen
+  // Body, sonst den vollen desc.
+  let raw = trait.desc;
+  const m = /This game:\s*The\s+[A-Za-z][A-Za-z\s]*?[.!]\s*([\s\S]+)$/i.exec(raw);
+  if (m) raw = m[1].trim();
+
+  // HTML-Tags strippen, damit renderTraitDesc nicht durch <b>/<br>/etc. irritiert
+  // wird (es operiert auf Klartext + Riot-Tokens).
+  const stripped = raw.replace(/<[^>]+>/g, '');
+
+  // renderTraitDesc nutzt das volle traitMeta um die Tier-Variablen zu binden.
+  // Wir übergeben ein "synthetisches" desc-only-Meta mit gestrippter Variante,
+  // aber den ORIGINAL-Tier-Variablen aus dem Bundle, damit @VarName@-Lookups
+  // funktionieren.
+  const rendered = renderTraitDesc({
+    name: trait.name || '',
+    apiName,
+    desc: stripped,
+    tiers: trait.tiers as any,
+  });
+
+  // Tooltip-Format: General-Desc + Tier-Breakpoints zeilenweise. Falls keine
+  // Tier-Texte (rare, z.B. Innate-only Traits), fällt auf General zurück.
+  const parts: string[] = [];
+  if (rendered.generalDesc) parts.push(rendered.generalDesc);
+  for (const tier of rendered.tiers) {
+    parts.push(`(${tier.minUnits}) ${tier.text}`);
+  }
+  return parts.join('\n') || stripped;
 }
 
 // Resolve a CommunityDragon icon path to a full URL. The bundle stores

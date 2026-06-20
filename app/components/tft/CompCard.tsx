@@ -227,7 +227,6 @@ export default function CompCard({
                     backgroundColor: `${difficultyColor(guideMatch.guide.difficulty)}1f`,
                     border: `1px solid ${difficultyColor(guideMatch.guide.difficulty)}40`,
                   }}
-                  title={`tftacademy.com guide — ${guideMatch.guide.title}`}
                 >
                   {t(`tft.comp.difficulty.${guideMatch.guide.difficulty}` as any) || guideMatch.guide.difficulty}
                 </span>

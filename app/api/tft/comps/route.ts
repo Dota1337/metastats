@@ -526,16 +526,16 @@ function enrichComp(r: CompRow) {
   // Flex-Units (Detail-Page): Tail-Units außerhalb der Core-Liste mit
   // Pickrate ≥ 10 % UND ≥ 20 Picks. Win-Rate (Top1) wird in der UI erst ab
   // n ≥ 50 angezeigt (Binomial-σ ≈ 4.7 pp), Avg-Placement ab n ≥ 20.
-  // Win-Rate-Nenner ist `gamesWithUnitOutcome` (NICHT `gamesWithUnit`) —
-  // alte Snapshot-Rows ohne Outcome-Felder zählen so nicht in die Rate
-  // (Phase-1-Backfill-Mitigation, sonst systematische 0-Verzerrung).
+  // Win-Rate-Nenner ist `gamesWithOutcome` (NICHT `gamesWithUnit`) — alte
+  // Snapshot-Rows ohne Outcome-Felder zählen so nicht in die Rate (Phase-1-
+  // Backfill-Mitigation, sonst systematische 0-Verzerrung).
   const coreIds = new Set(typicalUnits.map(u => (u as any).characterId));
   const flexUnits = allUnitsMerged
     .filter(u => !coreIds.has((u as any).characterId))
     .map(u => {
       const u2 = u as any;
       const pickN = Number(u2.gamesWithUnit ?? u2.count ?? 0);
-      const outcomeN = Number(u2.gamesWithUnitOutcome ?? 0);
+      const outcomeN = Number(u2.gamesWithOutcome ?? 0);
       const top1 = Number(u2.top1 ?? 0);
       const top4 = Number(u2.top4 ?? 0);
       const sumPl = Number(u2.sumPlacement ?? 0);

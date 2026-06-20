@@ -243,13 +243,14 @@ export function mergeJsonbCountArrays<K extends string>(
   topN: number,
   nestedArrays?: Array<{ field: string; innerKey: string; topN: number }>,
 ): Array<{ [k in K]: string } & { count: number; sumPlacement?: number; games?: number; carryItemGames?: number; [extra: string]: any }> {
-  // Per-Unit Outcome-Felder werden für die Flex-Sektion der Detail-Page
-  // gebraucht. gamesWithUnitOutcome ist der Win-Rate-Nenner — alte JSONB-
-  // Rows ohne diese Felder addieren 0 zum Nenner UND 0 zum Zähler →
-  // verlässliche Win-Rate sobald die ersten Tage neuer Schema-Rows da sind.
+  // Per-Element Outcome-Felder für Flex-Sektion (Detail-Page) — sowohl für
+  // typical_units (gamesWithUnit) als auch typical_augments (count selbst ist
+  // schon Pickrate-Nenner). gamesWithOutcome ist semantisch neutral und in
+  // Lock-Step mit top1/top4 — alte JSONB-Rows ohne diese Felder addieren 0
+  // zu Zähler UND Nenner → keine Verzerrung beim Merge.
   type Bucket = {
     count: number; sumPlacement: number; games: number; carryItemGames: number;
-    gamesWithUnit: number; gamesWithUnitOutcome: number; top1: number; top4: number;
+    gamesWithUnit: number; gamesWithOutcome: number; top1: number; top4: number;
     nested: Map<string, Map<string, number>>;
   };
   const merged = new Map<string, Bucket>();
@@ -260,7 +261,7 @@ export function mergeJsonbCountArrays<K extends string>(
       if (!key) continue;
       const cur: Bucket = merged.get(key) || {
         count: 0, sumPlacement: 0, games: 0, carryItemGames: 0,
-        gamesWithUnit: 0, gamesWithUnitOutcome: 0, top1: 0, top4: 0,
+        gamesWithUnit: 0, gamesWithOutcome: 0, top1: 0, top4: 0,
         nested: new Map(),
       };
       cur.count += Number(e.count ?? e.games ?? 0);
@@ -268,7 +269,11 @@ export function mergeJsonbCountArrays<K extends string>(
       cur.games += Number(e.games ?? 0);
       cur.carryItemGames += Number(e.carryItemGames ?? e.carry_item_games ?? 0);
       cur.gamesWithUnit += Number(e.gamesWithUnit ?? e.games_with_unit ?? 0);
-      cur.gamesWithUnitOutcome += Number(e.gamesWithUnitOutcome ?? e.games_with_unit_outcome ?? 0);
+      // Lese-Alias `gamesWithUnitOutcome` für Backward-Compat mit pre-Phase-2-
+      // Aggregator-Schreibseite (jetzt unified auf `gamesWithOutcome`).
+      cur.gamesWithOutcome += Number(
+        e.gamesWithOutcome ?? e.gamesWithUnitOutcome ?? e.games_with_outcome ?? e.games_with_unit_outcome ?? 0
+      );
       cur.top1 += Number(e.top1 ?? 0);
       cur.top4 += Number(e.top4 ?? 0);
       if (nestedArrays) {
@@ -293,7 +298,7 @@ export function mergeJsonbCountArrays<K extends string>(
     .map(([key, v]) => {
       const out: any = {
         [keyName]: key, count: v.count, sumPlacement: v.sumPlacement, games: v.games, carryItemGames: v.carryItemGames,
-        gamesWithUnit: v.gamesWithUnit, gamesWithUnitOutcome: v.gamesWithUnitOutcome, top1: v.top1, top4: v.top4,
+        gamesWithUnit: v.gamesWithUnit, gamesWithOutcome: v.gamesWithOutcome, top1: v.top1, top4: v.top4,
       };
       if (nestedArrays) {
         for (const cfg of nestedArrays) {

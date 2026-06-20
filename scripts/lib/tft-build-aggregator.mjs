@@ -654,7 +654,7 @@ export function aggregateMatch(rawMatch, agg, opts) {
           const ue = getOrCreate(cb.typicalUnits, u.character_id, () => ({
             count: 0,
             gamesWithUnit: 0,
-            gamesWithUnitOutcome: 0, // Σ gamesWithUnit der Rows die Outcome-Felder schreiben (= Win-Rate-Nenner)
+            gamesWithOutcome: 0, // Σ gamesWithUnit der Rows die Outcome-Felder schreiben (= Win-Rate-Nenner)
             dupGames: 0,
             carryItemGames: 0,
             sumPlacement: 0,         // Σ placement der Participants die diese Unit hatten
@@ -685,12 +685,12 @@ export function aggregateMatch(rawMatch, agg, opts) {
           ue.gamesWithUnit++;
           if (n >= 2) ue.dupGames++;
           // Per-Unit Outcome (Flex-Units, Detail-Page): Σ placement / top1 / top4
-          // der Participants die diese Unit hatten. gamesWithUnitOutcome ist
+          // der Participants die diese Unit hatten. gamesWithOutcome ist
           // der Nenner — er bleibt im Lock-Step mit den Outcome-Sums damit
           // ältere JSONB-Rows ohne diese Felder beim Merge sauber „nicht-
-          // gezählt" werden (top1=0 / gamesWithUnitOutcome=0 → UI graut aus,
+          // gezählt" werden (top1=0 / gamesWithOutcome=0 → UI graut aus,
           // statt einer 0-verzerrten Win-Rate).
-          ue.gamesWithUnitOutcome++;
+          ue.gamesWithOutcome++;
           ue.sumPlacement += placement;
           if (top4) ue.top4++;
           if (top1) ue.top1++;
@@ -1117,12 +1117,12 @@ export function finalize(agg, opts = {}) {
             carryItemGames: e.carryItemGames || 0,
             multiplicity,
             topItems,
-            // Flex-Units Outcome-Felder (Detail-Page). gamesWithUnitOutcome
+            // Flex-Units Outcome-Felder (Detail-Page). gamesWithOutcome
             // ist der Win-Rate-Nenner; bei alten Snapshots ohne diese Felder
             // bleibt der Wert 0 → Reader-Merge zählt sie nicht in Win-Rate
             // (verhindert Phase-1-Backfill-Verzerrung).
             gamesWithUnit: e.gamesWithUnit || 0,
-            gamesWithUnitOutcome: e.gamesWithUnitOutcome || 0,
+            gamesWithOutcome: e.gamesWithOutcome || 0,
             sumPlacement: e.sumPlacement || 0,
             top1: e.top1 || 0,
             top4: e.top4 || 0,
@@ -1151,7 +1151,7 @@ export function finalize(agg, opts = {}) {
             multiplicity,
             topItems,
             gamesWithUnit: e.gamesWithUnit || 0,
-            gamesWithUnitOutcome: e.gamesWithUnitOutcome || 0,
+            gamesWithOutcome: e.gamesWithOutcome || 0,
             sumPlacement: e.sumPlacement || 0,
             top1: e.top1 || 0,
             top4: e.top4 || 0,

@@ -93,8 +93,12 @@ export default function TftCompDetailPage() {
     // Pull the normal-bucket comp + the pro-pool variant in parallel so the
     // "Pro vs Solo Queue" section lights up as soon as both arrive.
     Promise.all([
-      fetch(`/api/tft/comps?region=${region}&bucket=${bucket}&slug=${encodeURIComponent(slug)}&days=30&minGames=50`).then(r => r.json()),
-      fetch(`/api/tft/comps?region=all&bucket=pro_pool&slug=${encodeURIComponent(slug)}&days=30&minGames=5`).then(r => r.ok ? r.json() : { comp: null }),
+      // Detail-Window auf 14d gesenkt (war 30d) — gegen Patch-Mix. Bei aktuellem
+      // 30d-Default lag 44 % der Daten im Vorgänger-Patch; 14d reduziert das,
+      // löst es aber nicht komplett (Patch-Wechsel <14d ago → weiter Mix).
+      // minGames proportional auf 30 (war 50, halbierter Window halbiert Sample).
+      fetch(`/api/tft/comps?region=${region}&bucket=${bucket}&slug=${encodeURIComponent(slug)}&days=14&minGames=30`).then(r => r.json()),
+      fetch(`/api/tft/comps?region=all&bucket=pro_pool&slug=${encodeURIComponent(slug)}&days=14&minGames=5`).then(r => r.ok ? r.json() : { comp: null }),
     ]).then(([normal, pro]) => {
       setHasData(!!normal.hasData);
       setComp(normal.comp || null);

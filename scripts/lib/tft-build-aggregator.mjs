@@ -29,8 +29,30 @@ const APEX_BUCKETS = ['master','grandmaster','challenger'];
 // Kraken's Fury = Runaan's) count because they only go on damage carries.
 // DAMAGE_CARRY_ITEMS lebt in scripts/lib/tft-item-classes.mjs (Single-Source-
 // of-Truth, parallel zu app/lib/tft-item-classes.ts).
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { DAMAGE_CARRY_ITEMS } from './tft-item-classes.mjs';
 import { compDefiningAugmentSlug } from './tft-comp-defining-augments.mjs';
+
+// Lazy-loaded Champion-Cost-Map aus `public/tft-assets-<set>.json`. Genutzt
+// vom Cost-Aware-Carry-Swap (Fast-8 → 4-Cost-Bevorzugung). Fallback: Set 17.
+const _costMapCache = new Map();
+function loadCostMap(setNumber) {
+  const set = setNumber || 17;
+  if (_costMapCache.has(set)) return _costMapCache.get(set);
+  try {
+    const bundle = JSON.parse(readFileSync(resolve(process.cwd(), `public/tft-assets-${set}.json`), 'utf8'));
+    const map = new Map();
+    for (const [cid, ch] of Object.entries(bundle.champions || {})) {
+      if (typeof ch?.cost === 'number') map.set(cid, ch.cost);
+    }
+    _costMapCache.set(set, map);
+    return map;
+  } catch {
+    _costMapCache.set(set, new Map());
+    return _costMapCache.get(set);
+  }
+}
 
 export function emptyAggregate() {
   return {
@@ -168,7 +190,8 @@ function carryFromAugments(participant, units) {
 //      tier then highest cost — for early-game boards where no real
 //      offensive items have been built yet.
 // Returns null if the board is too sparse to classify.
-function classifyComp(participant) {
+function classifyComp(participant, opts = {}) {
+  const costMap = loadCostMap(opts.currentSet);
   // *UniqueTrait* sind Unit-Innate-Traits (Shen/Sona/Zed/...), die nur der
   // jeweilige Champion aktiviert und immer Tier 1 sind. Bei Level-9 Filler-
   // Boards mit z.B. Shen drin haben sie den höchsten style-Wert und würden
@@ -208,6 +231,42 @@ function classifyComp(participant) {
         return (b.u.rarity ?? 0) - (a.u.rarity ?? 0);
       });
     if (byOffensiveItems.length > 0) carry = byOffensiveItems[0].u;
+
+    // 2b) Cost-Aware-Swap: bei Fast-Lvl-8 sind 4-Cost-Carries der intended
+    //     Carry, 5-Cost-Units sind Lvl-9-Filler. User-Vorgabe 2026-06-20.
+    //     Multi-Review-Verfeinerungen (data-skeptic + architect):
+    //     - level == 8 ODER (level == 9 AND top1.offensive <= top2.offensive)
+    //     - Top-1 ist 5-Cost, Top-2 ist 4-Cost
+    //     - 4-Cost-Unit hat ≥ Items wie 5-Cost-Unit (Items-Differenz-Guard)
+    //     - Dual-Carry-Guard: wenn BEIDE ≥3 offensive Items, KEIN Swap
+    //       (Mecha-A'Sol/Fiora-Dual-Carry-Edge-Case)
+    //     - UniqueTrait-Schutz: wenn ANY participant.trait endet auf
+    //       UniqueTrait mit style > 0, KEIN Swap (Vex Doomer bleibt Vex,
+    //       Blitz Party Animal etc.)
+    if (carry && byOffensiveItems.length >= 2 && !heroCarryId) {
+      const top1 = byOffensiveItems[0];
+      const top2 = byOffensiveItems[1];
+      const top1Cid = top1.u.character_id || top1.u.characterId || '';
+      const top2Cid = top2.u.character_id || top2.u.characterId || '';
+      const top1Cost = costMap.get(top1Cid) ?? 0;
+      const top2Cost = costMap.get(top2Cid) ?? 0;
+      const level = Number(participant.level || 0);
+      const fastEight = level === 8;
+      const lvlNineFillerCase = level === 9 && top1.offensive <= top2.offensive;
+      // UniqueTrait-Schutz: greift gegen RAW traits (nicht primaryTrait), weil
+      // UniqueTrait-Traits aus der primaryTrait-Sortierung gefiltert werden.
+      const hasActiveUniqueTrait = (participant.traits || []).some(
+        t => (t.style ?? 0) > 0 && /UniqueTrait$/.test(t.name || ''),
+      );
+      const dualCarry = top1.offensive >= 3 && top2.offensive >= 3;
+      if ((fastEight || lvlNineFillerCase)
+          && top1Cost === 5 && top2Cost === 4
+          && top2.offensive >= top1.offensive
+          && !hasActiveUniqueTrait
+          && !dualCarry) {
+        carry = top2.u;
+      }
+    }
   }
 
   // 3) Legacy fallback — most items total, then star, then cost.
@@ -350,7 +409,7 @@ export function aggregateMatch(rawMatch, agg, opts) {
   // bucket of the player whose lobby it represents.
 
   // Pre-classify each participant's comp for the comp + pair aggregations.
-  const compClass = participants.map(p => classifyComp(p));
+  const compClass = participants.map(p => classifyComp(p, { currentSet }));
 
   // W4-B: count cluster_key occurrences in this lobby so we can attribute a
   // contested-level (1 / 2 / 3+) to every participant when we hit the comp

@@ -245,6 +245,14 @@ export default function CompCard({
               // Multiplicity ≥ 1.5 → Two-Tanky-Variante (zweite 2★-Kopie via
               // Augment). Backward-Compat: alte Snapshots ohne multiplicity → 1.
               const showDouble = (((u as unknown) as { multiplicity?: number }).multiplicity ?? 1) >= 1.5;
+              // Core/Flex/Tech-Klassifikation aus per-Unit Cooccurrence-Rate
+              // (siehe baseComp). ≥75% = Core (voll), ≥50% = Flex (leichte
+              // Transparenz), <50% = Tech (deutlich ausgegraut + dashed).
+              // Carry bleibt immer voll opak.
+              const co = ((u as unknown) as { cooccurrence?: number }).cooccurrence ?? 1;
+              const kind: 'core' | 'flex' | 'tech' = co >= 0.75 ? 'core' : co >= 0.5 ? 'flex' : 'tech';
+              const tileOpacity = isCarry ? 1 : kind === 'core' ? 1 : kind === 'flex' ? 0.9 : 0.6;
+              const tileBorderStyle = !isCarry && kind === 'tech' ? 'dashed' : 'solid';
               return (
                 <a
                   key={u.characterId}
@@ -255,7 +263,11 @@ export default function CompCard({
                 >
                   <div
                     className="w-11 h-11 rounded border-2 overflow-hidden relative"
-                    style={{ borderColor: isCarry ? '#c39bff' : (ch ? costColorOf(ch.cost) : '#1e2a3a') }}
+                    style={{
+                      borderColor: isCarry ? '#c39bff' : (ch ? costColorOf(ch.cost) : '#1e2a3a'),
+                      borderStyle: tileBorderStyle,
+                      opacity: tileOpacity,
+                    }}
                   >
                     {url && <img src={url} alt={ch?.name || u.characterId} className="w-full h-full object-cover rounded-sm" />}
                     {showDouble && (

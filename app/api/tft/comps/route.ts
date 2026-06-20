@@ -425,18 +425,18 @@ function applyCooccurrenceFilter(
   // 30% (was 40%) — niche-clusters like TFT17_SpaceGroove@1_TFT17_Blitzcrank
   // have 221 games spread across many sub-variants, where legitimate support
   // units sit at 30-38% co-occurrence. 40% stripped all but the carry and
-  // gave a useless "solo carry" comp row. 30% keeps the cards informative
-  // without polluting them with 1-off picks.
+  // gave a useless "solo carry" comp row.
   const minCo = Math.max(1, Math.floor(totalGames * 0.30));
   const filtered = units.filter(
     u => (u.count || 0) >= minCo || u.characterId === carry || u.characterId === secondary,
   );
-  // Floor guard: a comp card with <5 units shows zero archetype signal —
-  // worse than showing top-5 by count regardless of co-occurrence. The 40%
-  // ceiling was tuned to comps with 1000+ games where support slots show up
-  // in 50%+ of plays; below that the variance dominates and the filter eats
-  // the whole roster.
-  if (filtered.length < 5) return units.slice(0, Math.min(5, units.length));
+  // Floor 8 (von 5 erhöht 2026-06-20): wenn der Cooccurrence-Filter weniger
+  // als 8 Units übrig lässt, zeigen wir die top-8 by count. Begründung:
+  // User-Befund Meeple-Gnar vs Meeple-Corki — identische Comps sahen wegen
+  // 6 vs 7 angezeigter Units unterschiedlich aus. Mit konsistenten 8 Slots
+  // ist die Spielweise sofort erkennbar; Cooccurrence-Marker (s. baseComp)
+  // sagt dem User welche davon Core (≥75%), Flex (≥50%) oder Tech (<50%) sind.
+  if (filtered.length < 8) return units.slice(0, Math.min(8, units.length));
   return filtered;
 }
 
@@ -480,7 +480,12 @@ function baseComp(r: CompRow, participants: number) {
           const topItems = Array.isArray((u as any).topItems)
             ? (u as any).topItems.filter((it: any) => !isExcludedItem(it?.apiName))
             : (u as any).topItems;
-          return { ...u, topItems };
+          // Cooccurrence-Rate für Liste-View. Frontend rendert daraus den
+          // Core/Flex/Tech-Marker (≥75% / ≥50% / <50%) — Detail-Page hatte
+          // das schon in enrichComp.boardComposition, jetzt auch in der Liste
+          // damit identische Comps sofort als solche erkennbar sind.
+          const cooccurrence = games > 0 ? ((u as any).count || 0) / games : 0;
+          return { ...u, topItems, cooccurrence };
         }) as Array<{ characterId: string; count: number } & Record<string, unknown>>,
       games,
       carry,

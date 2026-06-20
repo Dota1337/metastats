@@ -2044,12 +2044,12 @@ const translations = {
     '{pct}% con carry 3\u2605', '{pct}% avec carry 3\u2605'
   ),
   'tft.comp.familyMode.banner': t6(
-    'Familien-Ansicht: {n} Sub-Varianten zusammengefasst',
-    'Family view: {n} sub-variants combined',
-    '\uD328\uBC00\uB9AC \uBCF4\uAE30: {n}\uAC1C \uC11C\uBE0C \uBCC0\uD615 \uACB0\uD569',
-    '\u65CF\u7CFB\u89C6\u56FE\uFF1A\u5408\u5E76 {n} \u4E2A\u5B50\u53D8\u4F53',
-    'Vista de familia: {n} subvariantes combinadas',
-    'Vue Famille : {n} sous-variantes combin\u00E9es'
+    'Familien-Ansicht \u2014 Stats \u00FCber alle Build-Varianten gemittelt',
+    'Family view \u2014 stats averaged across all build variants',
+    '\uD328\uBC00\uB9AC \uBCF4\uAE30 \u2014 \uBAA8\uB4E0 \uBE4C\uB4DC \uBCC0\uD615 \uD1B5\uACC4 \uD3C9\uADE0',
+    '\u65CF\u7CFB\u89C6\u56FE \u2014 \u6240\u6709\u53D8\u4F53\u52A0\u6743\u5E73\u5747',
+    'Vista de familia \u2014 promedio sobre todas las variantes',
+    'Vue Famille \u2014 moyenne sur toutes les variantes'
   ),
   'tft.comp.familyMode.toggleToExact': t6(
     '\u2192 Nur diese Variante',
@@ -2173,9 +2173,9 @@ const translations = {
     'Base', 'Base'
   ),
   'tft.comp.variant.reroll3': t6(
-    '3\u2605 Reroll', '3\u2605 Reroll',
-    '3\uC131 \uB9AC\uB864', '3\u661F\u91CD\u6447',
-    '3\u2605 Reroll', '3\u2605 Reroll'
+    '3\u2605', '3\u2605',
+    '3\uC131', '3\u661F',
+    '3\u2605', '3\u2605'
   ),
   'tft.comp.variant.with': t6(
     'mit {name}', 'with {name}',

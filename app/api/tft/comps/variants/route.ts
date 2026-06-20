@@ -32,6 +32,9 @@ interface VariantRow {
   sum_placement: number;
   top4: number;
   top1: number;
+  // Build-Identity: typical_units_merged ist ein jsonb-array of arrays von
+  // { characterId, count, ... }. Reicht für character-id-Set-Vergleich.
+  typical_units_merged: any[][] | null;
 }
 
 interface Variant {
@@ -84,7 +87,7 @@ export async function GET(request: NextRequest) {
     // weil `<trait>__<carry>`-Format kein DB-Prefix ist. Pro trait sind das
     // typisch 10-50 cluster_keys, performant.
     const params = new URLSearchParams();
-    params.set('select', 'cluster_key,games,sum_placement,top4,top1');
+    params.set('select', 'cluster_key,games,sum_placement,top4,top1,typical_units_merged');
     params.set('cluster_key', `like.${familyTrait}@*`);
     params.set('region', `in.(${filters.regions.join(',')})`);
     params.set('bucket', `in.(${filters.buckets.join(',')})`);
@@ -114,52 +117,108 @@ export async function GET(request: NextRequest) {
 
     const rows = (await res.json()) as VariantRow[];
 
-    // Aggregate per cluster_key across day/region/bucket rows + Carry-Filter
-    // (C-Konsolidierung: nur cluster_keys mit gleichem Carry behalten).
-    const byKey = new Map<string, { games: number; sumPlacement: number; top4: number; top1: number }>();
+    // Per cluster_key: Top-Counts + Top-Character-IDs für Build-Hash.
+    // Build-Identity-Konsolidierung (User-Klarstellung 2026-06-21): zwei
+    // Sub-Cluster mit IDENTISCHEM Champion-Set werden zu EINER Variante
+    // zusammengeführt — sonst zeigt der Switcher 3x die gleiche Comp mit
+    // unterschiedlichen Stats. Wir akkumulieren typical_units pro Cluster
+    // und bilden danach den Hash über sortierte unique characterIds.
+    type ClusterAgg = {
+      games: number; sumPlacement: number; top4: number; top1: number;
+      unitCounts: Map<string, number>;
+    };
+    const byKey = new Map<string, ClusterAgg>();
     for (const r of rows) {
       const parts = parseClusterKey(r.cluster_key);
       if (parts?.carry !== familyCarry) continue;
-      const prev = byKey.get(r.cluster_key) || { games: 0, sumPlacement: 0, top4: 0, top1: 0 };
-      byKey.set(r.cluster_key, {
-        games: prev.games + Number(r.games || 0),
-        sumPlacement: prev.sumPlacement + Number(r.sum_placement || 0),
-        top4: prev.top4 + Number(r.top4 || 0),
-        top1: prev.top1 + Number(r.top1 || 0),
-      });
+      const prev = byKey.get(r.cluster_key) || {
+        games: 0, sumPlacement: 0, top4: 0, top1: 0,
+        unitCounts: new Map<string, number>(),
+      };
+      prev.games += Number(r.games || 0);
+      prev.sumPlacement += Number(r.sum_placement || 0);
+      prev.top4 += Number(r.top4 || 0);
+      prev.top1 += Number(r.top1 || 0);
+      // typical_units_merged ist Array<Array<{characterId,count,...}>> (1 Sub-
+      // Array pro Daily-Row). Wir summieren count pro characterId.
+      const tu = r.typical_units_merged;
+      if (Array.isArray(tu)) {
+        for (const dayArr of tu) {
+          if (!Array.isArray(dayArr)) continue;
+          for (const u of dayArr) {
+            const cid = u?.characterId;
+            if (typeof cid !== 'string' || !cid) continue;
+            const c = Number(u?.count || 0);
+            prev.unitCounts.set(cid, (prev.unitCounts.get(cid) || 0) + c);
+          }
+        }
+      }
+      byKey.set(r.cluster_key, prev);
     }
 
-    const familyTotal = [...byKey.values()].reduce((s, v) => s + v.games, 0);
-    // min-Sample-Threshold pro Sub-Cluster (data-skeptic 2026-06-21):
-    // 30g absolute UND 5% Family-Share. Tiefer als der Listing-min-Filter
-    // damit User die Sub-Strategien einer mid-played Family noch sehen kann.
+    // Build-Hash pro cluster_key = sortierte unique characterIds gegen einen
+    // 15%-Threshold (Cooccurrence-Filter analog Aggregator). Filter verhindert
+    // dass seltene Tech-Picks den Build-Hash verändern.
+    const buildHashOf = (agg: ClusterAgg): string => {
+      if (agg.games <= 0) return '~empty~';
+      const minCo = Math.max(3, Math.floor(agg.games * 0.15));
+      const ids = [...agg.unitCounts.entries()]
+        .filter(([_, c]) => c >= minCo)
+        .map(([cid]) => cid)
+        .sort();
+      return ids.length > 0 ? ids.join('|') : `~empty~`;
+    };
+
+    // Build-Identity-Groups bilden: Sub-Cluster mit gleichem buildHash → eine
+    // Variante, weighted Stats. Anker = games-stärkster Sub-Cluster (für slug
+    // + carryStar/aug/secondary-Display).
+    type Group = {
+      members: string[]; games: number; sumPlacement: number;
+      top4: number; top1: number; anchor: string;
+    };
+    const byBuild = new Map<string, Group>();
+    for (const [clusterKey, agg] of byKey.entries()) {
+      const h = buildHashOf(agg);
+      const g = byBuild.get(h) || {
+        members: [], games: 0, sumPlacement: 0, top4: 0, top1: 0, anchor: clusterKey,
+      };
+      g.members.push(clusterKey);
+      g.games += agg.games;
+      g.sumPlacement += agg.sumPlacement;
+      g.top4 += agg.top4;
+      g.top1 += agg.top1;
+      // Anker = games-stärkster Sub-Cluster (für Display-Labels)
+      const anchorAgg = byKey.get(g.anchor);
+      if (!anchorAgg || agg.games > anchorAgg.games) g.anchor = clusterKey;
+      byBuild.set(h, g);
+    }
+
+    const familyTotal = [...byBuild.values()].reduce((s, g) => s + g.games, 0);
+    // min-Sample-Threshold pro Build-Group (data-skeptic 2026-06-21):
+    // 30g absolute UND 5% Family-Share.
     const MIN_ABS = 30;
     const MIN_SHARE = 0.05;
 
-    const variants: Variant[] = [...byKey.entries()]
-      .map(([clusterKey, agg]) => {
-        const parts = parseClusterKey(clusterKey);
+    const variants: Variant[] = [...byBuild.values()]
+      .map((g): Variant | null => {
+        const parts = parseClusterKey(g.anchor);
         if (!parts) return null;
-        const share = familyTotal > 0 ? agg.games / familyTotal : 0;
-        const belowThreshold = agg.games < MIN_ABS || share < MIN_SHARE;
+        const share = familyTotal > 0 ? g.games / familyTotal : 0;
+        const belowThreshold = g.games < MIN_ABS || share < MIN_SHARE;
         return {
-          clusterKey,
-          slug: clusterKey,
-          games: agg.games,
-          avgPlacement: agg.games > 0 ? agg.sumPlacement / agg.games : 0,
-          top4Rate: agg.games > 0 ? agg.top4 / agg.games : 0,
-          top1Rate: agg.games > 0 ? agg.top1 / agg.games : 0,
+          clusterKey: g.anchor,
+          slug: g.anchor,
+          games: g.games,
+          avgPlacement: g.games > 0 ? g.sumPlacement / g.games : 0,
+          top4Rate: g.games > 0 ? g.top4 / g.games : 0,
+          top1Rate: g.games > 0 ? g.top1 / g.games : 0,
           carryStar: parts.carryStar,
           augmentSlug: parts.augmentSlug,
           secondary: parts.secondary,
           belowThreshold,
-        } as Variant;
+        };
       })
       .filter((v): v is Variant => v !== null)
-      // Filter below-threshold, sort by Sample-Größe (most-played zuerst —
-      // data-skeptic F1 2026-06-21: Skill-Ceiling-Variante ist nicht zwingend
-      // der Modal-Pick, aber Sample-Sort ist die User-erwartete Default-View).
-      // Frontend re-adds the active variant when missing. Top-6 sichtbar.
       .filter(v => !v.belowThreshold)
       .sort((a, b) => b.games - a.games)
       .slice(0, 6);

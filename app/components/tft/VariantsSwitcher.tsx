@@ -147,7 +147,7 @@ export default function VariantsSwitcher({
       {showFamilyBanner && (
         <div className="mb-3 flex items-center justify-between gap-2 px-3 py-2 bg-[#7B61FF]/8 border border-[#7B61FF]/30 rounded">
           <div className="text-xs text-[#cdd6e0]">
-            {t('tft.comp.familyMode.banner').replace('{n}', String(familySize))}
+            {t('tft.comp.familyMode.banner')}
           </div>
           <button
             onClick={toggleVariantMode}

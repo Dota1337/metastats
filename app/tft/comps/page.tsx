@@ -159,8 +159,63 @@ export default function TftCompsPage() {
         default:     return c.avgPlacement ?? 9;
       }
     };
-    const groups = new Map<string, any[]>();
+    // Frontend-Pre-Konsolidierung: Star-Suffix (*N) und Secondary-Suffix (#X)
+    // aus cluster_key strippen damit 2★ und 3★ (sowie verschiedene Filler-
+    // Secondaries) als EINE Variante zählen. Aggregator-Konsolidierung ist
+    // deployed (commit 50d8f7c), aber die heutigen Daily-Crawl-Daten haben
+    // noch alte Suffixe → Frontend muss konsolidieren bis das rolling-30d-
+    // Window mit neuen Daten durchgelaufen ist.
+    const normalizeKey = (key: string): string => {
+      const parts = parseClusterKey(key);
+      if (!parts) return key;
+      const aug = parts.augmentSlug ? `~${parts.augmentSlug}` : '';
+      return `${parts.trait}@${parts.level}_${parts.carry}${aug}`;
+    };
+    const consolidated = new Map<string, any>();
     for (const c of filteredComps) {
+      const normKey = normalizeKey(c.slug || c.clusterKey);
+      const existing = consolidated.get(normKey);
+      if (!existing) {
+        consolidated.set(normKey, {
+          ...c,
+          slug: normKey,
+          clusterKey: normKey,
+          _mergedFrom: [c.slug || c.clusterKey],
+          _mainOrigSlug: c.slug || c.clusterKey,
+        });
+        continue;
+      }
+      // Merge: weighted Stats + games-sum + pickRate-sum
+      const ag = existing.games || 0;
+      const bg = c.games || 0;
+      const total = ag + bg;
+      const wAvg = (a: any, b: any) => total > 0
+        ? ((a ?? 0) * ag + (b ?? 0) * bg) / total
+        : null;
+      existing.games = total;
+      existing.avgPlacement = wAvg(existing.avgPlacement, c.avgPlacement);
+      existing.top4Rate = wAvg(existing.top4Rate, c.top4Rate);
+      existing.top1Rate = wAvg(existing.top1Rate, c.top1Rate);
+      existing.pickRate = (existing.pickRate ?? 0) + (c.pickRate ?? 0);
+      existing.avgLevel = wAvg(existing.avgLevel, c.avgLevel);
+      // typicalUnits + topItems: take meistgespielte Source-Cluster
+      if (bg > ag) {
+        existing.typicalUnits = c.typicalUnits;
+        existing.typicalAugments = c.typicalAugments;
+        existing._mainOrigSlug = c.slug || c.clusterKey;
+      }
+      existing._mergedFrom.push(c.slug || c.clusterKey);
+    }
+    // Slug auf Detail-Page-Variante zeigen die am meisten Games hat (sonst 404
+    // weil normalizedKey nicht in DB ist)
+    for (const v of consolidated.values()) {
+      v.slug = v._mainOrigSlug;
+      v.clusterKey = v._mainOrigSlug;
+    }
+    const consolidatedList = [...consolidated.values()];
+
+    const groups = new Map<string, any[]>();
+    for (const c of consolidatedList) {
       const k = compTraitFamilyKey(c.slug || c.clusterKey);
       if (!groups.has(k)) groups.set(k, []);
       groups.get(k)!.push(c);

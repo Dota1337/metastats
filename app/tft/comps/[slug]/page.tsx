@@ -15,6 +15,7 @@ import { loadTftAssets, tftIconUrl, tftChampionTileUrl, findChampion, findItem, 
 import PositionHeatmap from '../../../components/tft/PositionHeatmap';
 import VariantsSwitcher from '../../../components/tft/VariantsSwitcher';
 import CompGuide from '../../../components/tft/CompGuide';
+import CompFlexUnits from '../../../components/tft/CompFlexUnits';
 import { formatStage } from '../../../lib/tft-stage';
 import { aggregateComponents } from '../../../lib/tft-components';
 import { compDefiningAugmentApiNameFromSlug } from '../../../lib/tft-comp-defining-augments';
@@ -901,6 +902,17 @@ export default function TftCompDetailPage() {
                 </div>
               </section>
             )}
+
+            {/* Flex Slots — Units außerhalb des Core-Rosters mit Pickrate ≥ 10%.
+                Sub-Cluster-Scope (NICHT Familien-Total) — Doku: Flex-Liste der
+                meistgespielten Star-Variante. Familien-Merge ist Phase-2-Sprint.
+                Komponente rendert nichts bei leerer Liste (`feedback_no_info_texts`). */}
+            <CompFlexUnits
+              units={comp.flexUnits || []}
+              assets={assets}
+              bucket={bucket}
+              t={t}
+            />
 
             {/* Curated comp guide (tftacademy.com) — augments grouped by slot,
                 early-game board, carousel picks, stage tips, difficulty badge.

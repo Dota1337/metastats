@@ -503,21 +503,56 @@ function enrichComp(r: CompRow) {
   const carry = carryFromClusterKey(r.cluster_key);
   const secondary = secondaryFromClusterKey(r.cluster_key);
   const games = Number(r.games) || 0;
+  // mergeJsonbCountArrays mit topN=18 — Aggregator schreibt seit Flex-Patch
+  // bis zu 18 Slots (Core 9 + bis zu 9 Flex-Tail). Core wird via Cooccurrence-
+  // Filter wie bisher auf max 9 reduziert; die 10-18-Slots wandern in
+  // flexUnits (separater Block weiter unten, ohne applyCooccurrenceFilter).
+  const allUnitsMerged = mergeJsonbCountArrays(r.typical_units_merged || [], 'characterId', 18, [
+    { field: 'topItems', innerKey: 'apiName', topN: 3 },
+  ])
+    .filter(u => !isExcludedUnit((u as any).characterId))
+    .map(u => {
+      const topItems = Array.isArray((u as any).topItems)
+        ? (u as any).topItems.filter((it: any) => !isExcludedItem(it?.apiName))
+        : (u as any).topItems;
+      return { ...u, topItems };
+    });
   const typicalUnits = applyCooccurrenceFilter(
-    mergeJsonbCountArrays(r.typical_units_merged || [], 'characterId', 9, [
-      { field: 'topItems', innerKey: 'apiName', topN: 3 },
-    ])
-      .filter(u => !isExcludedUnit((u as any).characterId))
-      .map(u => {
-        const topItems = Array.isArray((u as any).topItems)
-          ? (u as any).topItems.filter((it: any) => !isExcludedItem(it?.apiName))
-          : (u as any).topItems;
-        return { ...u, topItems };
-      }) as Array<{ characterId: string; count: number } & Record<string, unknown>>,
+    allUnitsMerged.slice(0, 9) as Array<{ characterId: string; count: number } & Record<string, unknown>>,
     games,
     carry,
     secondary,
   );
+  // Flex-Units (Detail-Page): Tail-Units außerhalb der Core-Liste mit
+  // Pickrate ≥ 10 % UND ≥ 20 Picks. Win-Rate (Top1) wird in der UI erst ab
+  // n ≥ 50 angezeigt (Binomial-σ ≈ 4.7 pp), Avg-Placement ab n ≥ 20.
+  // Win-Rate-Nenner ist `gamesWithUnitOutcome` (NICHT `gamesWithUnit`) —
+  // alte Snapshot-Rows ohne Outcome-Felder zählen so nicht in die Rate
+  // (Phase-1-Backfill-Mitigation, sonst systematische 0-Verzerrung).
+  const coreIds = new Set(typicalUnits.map(u => (u as any).characterId));
+  const flexUnits = allUnitsMerged
+    .filter(u => !coreIds.has((u as any).characterId))
+    .map(u => {
+      const u2 = u as any;
+      const pickN = Number(u2.gamesWithUnit ?? u2.count ?? 0);
+      const outcomeN = Number(u2.gamesWithUnitOutcome ?? 0);
+      const top1 = Number(u2.top1 ?? 0);
+      const top4 = Number(u2.top4 ?? 0);
+      const sumPl = Number(u2.sumPlacement ?? 0);
+      return {
+        characterId: u2.characterId as string,
+        pickrate: games > 0 ? pickN / games : 0,
+        n: pickN,
+        nOutcome: outcomeN,
+        avgPlacement: outcomeN >= 20 && sumPl > 0 ? sumPl / outcomeN : null,
+        top1Rate: outcomeN >= 50 ? top1 / outcomeN : null,
+        top4Rate: outcomeN >= 30 ? top4 / outcomeN : null,
+        topItems: Array.isArray(u2.topItems) ? u2.topItems : [],
+      };
+    })
+    .filter(u => u.pickrate >= 0.10 && u.n >= 20)
+    .sort((a, b) => b.pickrate - a.pickrate)
+    .slice(0, 10);
   // Board-Composition: jeder Unit-Slot bekommt eine Kategorie aus seiner
   // Cooccurrence-Quote in dieser Comp:
   //   Core   ≥ 75 % — fast immer Pflicht
@@ -865,6 +900,7 @@ function enrichComp(r: CompRow) {
     skillCapBuckets,
     skillCapCategory,
     boardComposition,
+    flexUnits,
     carryStarOutcome,
     contestedOutcome,
   };

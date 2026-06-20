@@ -2020,6 +2020,26 @@ const translations = {
     '\uC77C\uBC18\uC801\uC778 \uC720\uB2DB', '\u5E38\u7528\u5355\u4F4D',
     'Unidades T\u00EDpicas', 'Unit\u00E9s typiques'
   ),
+  'tft.comp.flexUnits.title': t6(
+    'Flex Slots', 'Flex Slots',
+    '\uD50C\uB809\uC2A4 \uC2AC\uB86F', '\u673A\u52A8\u4F4D',
+    'Espacios Flex', 'Emplacements Flex'
+  ),
+  'tft.comp.flexUnits.pickrate': t6(
+    'Pick', 'Pick',
+    '\uD53D', '\u9009\u62E9',
+    'Pick', 'Pick'
+  ),
+  'tft.comp.flexUnits.top1': t6(
+    'Top1', 'Top1',
+    'Top1', '\u7B2C\u4E00',
+    'Top1', 'Top1'
+  ),
+  'tft.comp.flexUnits.avgPlc': t6(
+    'Plc', 'Plc',
+    '\uD3C9\uADE0', '\u540D\u6B21',
+    'Pos', 'Pos'
+  ),
   'tft.comp.strongAgainst': t6(
     'Stark gegen', 'Strong Against',
     '\uAC15\uD55C \uC0C1\uB300', '\u514B\u5236',

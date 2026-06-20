@@ -243,18 +243,34 @@ export function mergeJsonbCountArrays<K extends string>(
   topN: number,
   nestedArrays?: Array<{ field: string; innerKey: string; topN: number }>,
 ): Array<{ [k in K]: string } & { count: number; sumPlacement?: number; games?: number; carryItemGames?: number; [extra: string]: any }> {
-  type Bucket = { count: number; sumPlacement: number; games: number; carryItemGames: number; nested: Map<string, Map<string, number>> };
+  // Per-Unit Outcome-Felder werden für die Flex-Sektion der Detail-Page
+  // gebraucht. gamesWithUnitOutcome ist der Win-Rate-Nenner — alte JSONB-
+  // Rows ohne diese Felder addieren 0 zum Nenner UND 0 zum Zähler →
+  // verlässliche Win-Rate sobald die ersten Tage neuer Schema-Rows da sind.
+  type Bucket = {
+    count: number; sumPlacement: number; games: number; carryItemGames: number;
+    gamesWithUnit: number; gamesWithUnitOutcome: number; top1: number; top4: number;
+    nested: Map<string, Map<string, number>>;
+  };
   const merged = new Map<string, Bucket>();
   for (const arr of arrays) {
     if (!Array.isArray(arr)) continue;
     for (const e of arr) {
       const key = e?.[keyName];
       if (!key) continue;
-      const cur: Bucket = merged.get(key) || { count: 0, sumPlacement: 0, games: 0, carryItemGames: 0, nested: new Map() };
+      const cur: Bucket = merged.get(key) || {
+        count: 0, sumPlacement: 0, games: 0, carryItemGames: 0,
+        gamesWithUnit: 0, gamesWithUnitOutcome: 0, top1: 0, top4: 0,
+        nested: new Map(),
+      };
       cur.count += Number(e.count ?? e.games ?? 0);
       cur.sumPlacement += Number(e.sumPlacement ?? e.sum_placement ?? 0);
       cur.games += Number(e.games ?? 0);
       cur.carryItemGames += Number(e.carryItemGames ?? e.carry_item_games ?? 0);
+      cur.gamesWithUnit += Number(e.gamesWithUnit ?? e.games_with_unit ?? 0);
+      cur.gamesWithUnitOutcome += Number(e.gamesWithUnitOutcome ?? e.games_with_unit_outcome ?? 0);
+      cur.top1 += Number(e.top1 ?? 0);
+      cur.top4 += Number(e.top4 ?? 0);
       if (nestedArrays) {
         for (const cfg of nestedArrays) {
           const inner = e[cfg.field];
@@ -275,7 +291,10 @@ export function mergeJsonbCountArrays<K extends string>(
     .sort((a, b) => b[1].count - a[1].count)
     .slice(0, topN)
     .map(([key, v]) => {
-      const out: any = { [keyName]: key, count: v.count, sumPlacement: v.sumPlacement, games: v.games, carryItemGames: v.carryItemGames };
+      const out: any = {
+        [keyName]: key, count: v.count, sumPlacement: v.sumPlacement, games: v.games, carryItemGames: v.carryItemGames,
+        gamesWithUnit: v.gamesWithUnit, gamesWithUnitOutcome: v.gamesWithUnitOutcome, top1: v.top1, top4: v.top4,
+      };
       if (nestedArrays) {
         for (const cfg of nestedArrays) {
           const counter = v.nested.get(cfg.field);

@@ -654,9 +654,13 @@ export function aggregateMatch(rawMatch, agg, opts) {
           const ue = getOrCreate(cb.typicalUnits, u.character_id, () => ({
             count: 0,
             gamesWithUnit: 0,
+            gamesWithUnitOutcome: 0, // Σ gamesWithUnit der Rows die Outcome-Felder schreiben (= Win-Rate-Nenner)
             dupGames: 0,
             carryItemGames: 0,
-            items: new Map(),     // apiName -> games-on-this-unit-in-this-comp
+            sumPlacement: 0,         // Σ placement der Participants die diese Unit hatten
+            top4: 0,                 // # Participants mit Unit die Top-4 erreichten
+            top1: 0,                 // # Participants mit Unit die Top-1 erreichten
+            items: new Map(),        // apiName -> games-on-this-unit-in-this-comp
           }));
           ue.count++;
           const items = Array.isArray(u.itemNames) ? u.itemNames : [];
@@ -680,6 +684,16 @@ export function aggregateMatch(rawMatch, agg, opts) {
           if (!ue) continue;
           ue.gamesWithUnit++;
           if (n >= 2) ue.dupGames++;
+          // Per-Unit Outcome (Flex-Units, Detail-Page): Σ placement / top1 / top4
+          // der Participants die diese Unit hatten. gamesWithUnitOutcome ist
+          // der Nenner — er bleibt im Lock-Step mit den Outcome-Sums damit
+          // ältere JSONB-Rows ohne diese Felder beim Merge sauber „nicht-
+          // gezählt" werden (top1=0 / gamesWithUnitOutcome=0 → UI graut aus,
+          // statt einer 0-verzerrten Win-Rate).
+          ue.gamesWithUnitOutcome++;
+          ue.sumPlacement += placement;
+          if (top4) ue.top4++;
+          if (top1) ue.top1++;
         }
         const augs = Array.isArray(p.augments) ? p.augments : [];
         for (const a of augs) {
@@ -1075,6 +1089,11 @@ export function finalize(agg, opts = {}) {
       // statt nur die rigide Core (5-7). 15 % schneidet Low-Sample-Noise
       // (Position 9 mit 1-2 Games) weiterhin ab. Primary + Secondary aus
       // dem cluster_key bleiben unabhängig vom Threshold immer drin.
+      // Core-Threshold: 15 % Cooccurrence ODER ≥3 Games. Gibt der Card-View
+      // die rigide Core-Roster. Pro Bucket-Row schreiben wir aber bis zu 18
+      // Slots — die zusätzlichen Tail-Units (5-18) füttern die Flex-Sektion
+      // der Detail-Page (Schwelle dort 10 % / n≥20, Auswertung in route.ts).
+      // Slice-Erhöhung kostet ~+1 KB JSONB pro Row, vernachlässigbar.
       const minCo = Math.max(3, Math.floor(b.games * 0.15));
       const typicalUnits = [...b.typicalUnits.entries()]
         .filter(([cid, e]) => (e.count || 0) >= minCo || cid === carryFromKey || cid === secondaryFromKey)
@@ -1098,8 +1117,47 @@ export function finalize(agg, opts = {}) {
             carryItemGames: e.carryItemGames || 0,
             multiplicity,
             topItems,
+            // Flex-Units Outcome-Felder (Detail-Page). gamesWithUnitOutcome
+            // ist der Win-Rate-Nenner; bei alten Snapshots ohne diese Felder
+            // bleibt der Wert 0 → Reader-Merge zählt sie nicht in Win-Rate
+            // (verhindert Phase-1-Backfill-Verzerrung).
+            gamesWithUnit: e.gamesWithUnit || 0,
+            gamesWithUnitOutcome: e.gamesWithUnitOutcome || 0,
+            sumPlacement: e.sumPlacement || 0,
+            top1: e.top1 || 0,
+            top4: e.top4 || 0,
           };
         });
+      // Flex-Reserve: zusätzliche Slots 10-18 (max 9 weitere) für die Detail-
+      // Page-Flex-Sektion. Konsolidiert mit Core in einer Spalte (Single-Path),
+      // Frontend trennt via Pickrate-Threshold. Keine Schema-Migration nötig.
+      const coreIds = new Set(typicalUnits.map(u => u.characterId));
+      const flexExtras = [...b.typicalUnits.entries()]
+        .filter(([cid, e]) => !coreIds.has(cid) && /^TFT\d+_[A-Z]/.test(cid) && (e.count || 0) >= 3)
+        .sort((a, b) => (b[1].count || 0) - (a[1].count || 0))
+        .slice(0, 9)
+        .map(([cid, e]) => {
+          const topItems = e.items
+            ? [...e.items.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3)
+                .map(([apiName, count]) => ({ apiName, count }))
+            : [];
+          const multiplicity = (e.gamesWithUnit || 0) >= 5
+            ? 1 + ((e.dupGames || 0) / e.gamesWithUnit)
+            : 1;
+          return {
+            characterId: cid,
+            count: e.count,
+            carryItemGames: e.carryItemGames || 0,
+            multiplicity,
+            topItems,
+            gamesWithUnit: e.gamesWithUnit || 0,
+            gamesWithUnitOutcome: e.gamesWithUnitOutcome || 0,
+            sumPlacement: e.sumPlacement || 0,
+            top1: e.top1 || 0,
+            top4: e.top4 || 0,
+          };
+        });
+      typicalUnits.push(...flexExtras);
       const typicalAugments = [...b.typicalAugments.entries()]
         .sort((a, b) => b[1].count - a[1].count)
         .slice(0, 6)

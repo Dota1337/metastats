@@ -160,7 +160,7 @@ export default function Nav({ active }: NavProps) {
                     <div className="fixed inset-0 z-30" onClick={() => setMetaOpen(false)} />
                     <div className="absolute left-0 top-full mt-1 z-40 bg-[#0d1526] border border-[#1e2a3a] rounded shadow-lg overflow-hidden min-w-[150px]">
                       <a href="/tft/meta-pulse" className="block px-4 py-2 text-sm text-[#3ecf8e] hover:bg-[#141c2e] border-b border-[#1e2a3a]">⚡ {t('nav.metaPulse')}</a>
-                      <a href="/tft" className={metaItemClass('comps')}>{t('nav.comps')}</a>
+                      <a href="/tft/comps" className={metaItemClass('comps')}>{t('nav.comps')}</a>
                       <a href="/tft/units" className={metaItemClass('units')}>{t('nav.units')}</a>
                       <a href="/tft/items" className={metaItemClass('items')}>{t('nav.items')}</a>
                       <a href="/tft/augments" className={metaItemClass('augments')}>{t('nav.augments')}</a>
@@ -419,7 +419,7 @@ export default function Nav({ active }: NavProps) {
             <>
               <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">{t('nav.meta')}</div>
               <a href="/tft/meta-pulse" className="pl-3 text-sm text-[#3ecf8e]" onClick={() => setMenuOpen(false)}>⚡ {t('nav.metaPulse')}</a>
-              <a href="/tft" className={`pl-3 ${linkClass('comps')}`} onClick={() => setMenuOpen(false)}>{t('nav.comps')}</a>
+              <a href="/tft/comps" className={`pl-3 ${linkClass('comps')}`} onClick={() => setMenuOpen(false)}>{t('nav.comps')}</a>
               <a href="/tft/units" className={`pl-3 ${linkClass('units')}`} onClick={() => setMenuOpen(false)}>{t('nav.units')}</a>
               <a href="/tft/items" className={`pl-3 ${linkClass('items')}`} onClick={() => setMenuOpen(false)}>{t('nav.items')}</a>
               <a href="/tft/augments" className={`pl-3 ${linkClass('augments')}`} onClick={() => setMenuOpen(false)}>{t('nav.augments')}</a>

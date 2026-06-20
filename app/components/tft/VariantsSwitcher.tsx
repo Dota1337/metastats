@@ -4,7 +4,7 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
 import { findChampion } from '../../lib/tft-cdragon';
 import { useI18n } from '../../lib/i18n';
-import { compFamilyKey, parseClusterKey } from '../../lib/tft-cluster';
+import { compTraitFamilyKey, parseClusterKey } from '../../lib/tft-cluster';
 
 // Variants-Switcher: surfaces all sub-cluster variants of a comp family on
 // the Comp-Detail page. Family = (trait, level, carry) without *N / ~aug /
@@ -39,12 +39,17 @@ interface VariantsResponse {
 function prettyChar(s: string) { return s.replace(/^TFT\d+_/, ''); }
 
 function variantLabel(
-  v: { carryStar: number; secondary: string | null },
+  v: { clusterKey: string; carryStar: number; augmentSlug: string | null; secondary: string | null },
   t: (key: any) => string,
   assets: TftAssetsBundle | null,
 ): string {
   const parts: string[] = [];
+  // Level-Suffix damit Buttons in der C-Konsolidierungs-Sicht differenzierbar
+  // sind (architect F7 2026-06-21: ohne Level wären alle 4 Buttons „Base").
+  const cluster = parseClusterKey(v.clusterKey);
+  if (cluster && cluster.level > 0) parts.push(`Lvl ${cluster.level}`);
   if (v.carryStar === 3) parts.push(t('tft.comp.variant.reroll3'));
+  if (v.augmentSlug) parts.push(`~${v.augmentSlug}`);
   if (v.secondary) {
     const ch = findChampion(assets, v.secondary);
     const name = ch?.name || prettyChar(v.secondary);
@@ -76,7 +81,10 @@ export default function VariantsSwitcher({
   const pathname = usePathname();
   const search = useSearchParams();
   const [data, setData] = useState<VariantsResponse | null>(null);
-  const family = compFamilyKey(clusterKey);
+  // C-Konsolidierung (User-Entscheid 2026-06-21): compTraitFamilyKey statt
+  // compFamilyKey — Family umfasst alle Sub-Cluster derselben Trait+Carry-
+  // Identität (über Levels und Augments hinweg).
+  const family = compTraitFamilyKey(clusterKey);
 
   useEffect(() => {
     const params = new URLSearchParams({

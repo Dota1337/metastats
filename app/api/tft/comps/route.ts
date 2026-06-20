@@ -14,6 +14,7 @@ import { lookupSnapshot } from '../../../lib/snapshot-lookup';
 import { parseClusterKey } from '../../../lib/tft-cluster';
 import { computeShares } from '../../../lib/tft-shares';
 import { selectFamilyMembers, mergeFamilyRows, familyKeyForMerge } from '../../../lib/tft-comp-family-merge';
+import { buildLevelOutcome } from '../../../lib/tft-comp-level-outcome';
 
 // Lazy + memoized champion-cost lookup pro Set. Wird vom Tempo-Klassifikator
 // gebraucht, der Carry-Cost mit Peak-Level + 3-Star-Anteil in Beziehung setzt:
@@ -247,6 +248,7 @@ export async function GET(request: NextRequest) {
       let mergedRow = row;
       let aliasedFromFamily: { anchorSlug: string; mergedFrom: string[] } | null = null;
       let familySlugs: string[] = [row.cluster_key];
+      let levelOutcome: ReturnType<typeof buildLevelOutcome> | null = null;
       if (variantMode === 'family') {
         const members = selectFamilyMembers(rows, row.cluster_key);
         familySlugs = members.map(m => m.cluster_key);
@@ -256,6 +258,10 @@ export async function GET(request: NextRequest) {
             anchorSlug: row.cluster_key,
             mergedFrom: familySlugs,
           };
+          // levelOutcome aus Family-Member-Rows (User-Entscheid 2026-06-21):
+          // rekonstruiert Aktivierungs-Level-Splits, die durch den C-Merge in
+          // der Card-Aggregat-Avg verschwinden. data-skeptic F3 KRITISCH.
+          levelOutcome = buildLevelOutcome(members);
         }
       }
       const comp = {
@@ -266,6 +272,7 @@ export async function GET(request: NextRequest) {
         // behält den alten Marker.
         aliasedFrom: variantMode === 'exact' ? aliasedFrom : null,
         aliasedFromFamily,
+        levelOutcome,
         variantMode,
       };
 

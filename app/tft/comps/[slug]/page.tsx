@@ -84,8 +84,11 @@ export default function TftCompDetailPage() {
     // explizit die Family-Slugs durch — die kamen mit comp.aliasedFromFamily,
     // also nutzen wir den Detail-Response. Wenn comp noch nicht da ist: erst
     // Single-Slug-Trend, später beim Re-Fetch korrekt.
+    // .sort() für stabile Cache-Keys (architect 2026-06-21): unsortierte
+    // Slug-Reihenfolge würde sonst zwei verschiedene Cache-Einträge für
+    // semantisch identische Requests erzeugen.
     const familySlugs = variantMode === 'family' && comp?.aliasedFromFamily?.mergedFrom?.length > 1
-      ? `&familySlugs=${comp.aliasedFromFamily.mergedFrom.map((s: string) => encodeURIComponent(s)).join(',')}`
+      ? `&familySlugs=${[...comp.aliasedFromFamily.mergedFrom].sort().map((s: string) => encodeURIComponent(s)).join(',')}`
       : '';
     fetch(`/api/tft/comps/trend?slug=${encodeURIComponent(slug)}&region=${region}&bucket=${bucket}&days=${trendDays}&variant=${variantMode}${familySlugs}`)
       .then(r => r.ok ? r.json() : { points: [] })
@@ -699,6 +702,65 @@ export default function TftCompDetailPage() {
                               <div className="text-white">{(row.top1Rate * 100).toFixed(0)}%</div>
                             </div>
                           </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              );
+            })()}
+
+            {/* LevelOutcome — Trait-Aktivierungs-Level-Splits (C-Konsolidierung
+                2026-06-21). Family-Card-Avg blendet die Skill-Ceiling-Aktivierung
+                (z.B. Stargazer auf 6 vs auf 3) ein. Block rekonstruiert die
+                Sub-Cluster-Spread aus den Family-Member-Rows. Nur rendern wenn
+                ≥ 2 Levels mit gemeinsamer Sample-Größe (sonst kein Mehrwert). */}
+            {(comp.levelOutcome && comp.levelOutcome.length >= 2) && (() => {
+              const rows = comp.levelOutcome as Array<{
+                level: number; games: number; share: number; avgPlacement: number;
+                top4Rate: number; top1Rate: number; star3Games: number;
+              }>;
+              const totalGames = rows.reduce((s, x) => s + x.games, 0);
+              if (totalGames === 0) return null;
+              const bestAvg = Math.min(...rows.map(x => x.avgPlacement));
+              return (
+                <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
+                  <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.levelOutcome')}</h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    {rows.map(row => {
+                      const share = totalGames > 0 ? (row.games / totalGames) * 100 : 0;
+                      const star3Share = row.games > 0 ? (row.star3Games / row.games) * 100 : 0;
+                      const isBest = row.avgPlacement === bestAvg;
+                      const accentColor = isBest ? '#3ecf8e' : '#7B61FF';
+                      return (
+                        <div key={row.level} className="bg-[#141c2e] border rounded p-3" style={{ borderColor: `${accentColor}40` }}>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-base font-medium" style={{ color: accentColor }}>
+                              {(t('tft.comp.levelOutcome.activation') as string).replace('{n}', String(row.level))}
+                            </span>
+                            <span className="text-[#7a8aa0] text-[10px] tabular-nums">
+                              {share.toFixed(0)}% · {row.games}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-1 text-[11px] tabular-nums">
+                            <div>
+                              <div className="text-[#7a8aa0] text-[9px] uppercase tracking-widest">{t('tft.avgPlacement')}</div>
+                              <div className="text-white text-base font-medium">{row.avgPlacement.toFixed(2)}</div>
+                            </div>
+                            <div>
+                              <div className="text-[#7a8aa0] text-[9px] uppercase tracking-widest">{t('tft.top4')}</div>
+                              <div className="text-white text-base font-medium">{(row.top4Rate * 100).toFixed(0)}%</div>
+                            </div>
+                            <div>
+                              <div className="text-[#7a8aa0] text-[9px] uppercase tracking-widest">{t('tft.top1')}</div>
+                              <div className="text-white text-base font-medium">{(row.top1Rate * 100).toFixed(0)}%</div>
+                            </div>
+                          </div>
+                          {star3Share >= 10 && (
+                            <div className="text-[#c39bff] text-[10px] mt-1.5 tabular-nums">
+                              {(t('tft.comp.levelOutcome.star3Share') as string).replace('{pct}', star3Share.toFixed(0))}
+                            </div>
+                          )}
                         </div>
                       );
                     })}

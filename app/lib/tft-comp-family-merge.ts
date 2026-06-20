@@ -48,15 +48,19 @@ export interface CompRowLike {
   bucket_breakdown: Record<string, { games: number; sum_placement: number }> | null;
 }
 
-/** Familien-Identität für den Detail-Merge: `<trait>@<level>_<carry>` plus
- *  `~augmentSlug` (oder leer). Anker-Slug bestimmt die Familie — alle Rows
- *  die diesen Key matchen sind Geschwister.
+/** Familien-Identität für den Detail-Merge: `<trait>__<carry>` (User-Entscheid
+ *  2026-06-21 / Option C). Level UND Augment werden konsolidiert. Die
+ *  Skill-Ceiling-Strategie bleibt sichtbar via VariantsSwitcher (Sub-Cluster
+ *  individuell klickbar), via `?variant=exact` (isolierte mainComp-Stats),
+ *  und via `levelOutcome`-Block in Detail-Page (rekonstruiert aus
+ *  level_dist_merged). Vorher (bis 2026-06-20): `<trait>@<level>_<carry>~aug`.
+ *  Anker-Slug bestimmt die Familie — alle Rows die diesen Key matchen sind
+ *  Geschwister.
  */
 export function familyKeyForMerge(clusterKey: string): string {
   const parts = parseClusterKey(clusterKey);
   if (!parts) return clusterKey;
-  const aug = parts.augmentSlug ? `~${parts.augmentSlug}` : '';
-  return `${parts.trait}@${parts.level}_${parts.carry}${aug}`;
+  return `${parts.trait}__${parts.carry}`;
 }
 
 /** Filtert aus dem RPC-Result alle Family-Members für den Anker-Slug.

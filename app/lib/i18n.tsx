@@ -2025,6 +2025,24 @@ const translations = {
     '\uD50C\uB809\uC2A4 \uC2AC\uB86F', '\u673A\u52A8\u4F4D',
     'Espacios Flex', 'Emplacements Flex'
   ),
+  'tft.comp.levelOutcome': t6(
+    'Trait-Aktivierung \u2014 Performance pro Stufe',
+    'Trait activation \u2014 performance per tier',
+    '\uD2B9\uC131 \uD65C\uC131\uD654 \u2014 \uB2E8\uACC4\uBCC4 \uC131\uACFC',
+    '\u7F81\u7ECA\u6FC0\u6D3B \u2014 \u5404\u7B49\u7EA7\u8868\u73B0',
+    'Activaci\u00F3n de rasgo \u2014 rendimiento por nivel',
+    'Activation de trait \u2014 performance par palier'
+  ),
+  'tft.comp.levelOutcome.activation': t6(
+    'Aktivierung {n}', 'Tier {n}',
+    '{n}\uB2E8\uACC4', '{n} \u7EA7',
+    'Nivel {n}', 'Palier {n}'
+  ),
+  'tft.comp.levelOutcome.star3Share': t6(
+    '{pct}% mit 3\u2605-Carry', '{pct}% with 3\u2605 carry',
+    '{pct}% 3\uC131 \uCE90\uB9AC', '{pct}% \u4E09\u661F\u6838\u5FC3',
+    '{pct}% con carry 3\u2605', '{pct}% avec carry 3\u2605'
+  ),
   'tft.comp.familyMode.banner': t6(
     'Familien-Ansicht: {n} Sub-Varianten zusammengefasst',
     'Family view: {n} sub-variants combined',

@@ -165,6 +165,12 @@ export default function TftCompsPage() {
     // deployed (commit 50d8f7c), aber die heutigen Daily-Crawl-Daten haben
     // noch alte Suffixe → Frontend muss konsolidieren bis das rolling-30d-
     // Window mit neuen Daten durchgelaufen ist.
+    // Stufe-1-Konsolidierung der API-Comp-Rows. Behält Level + Augment, strippt
+    // Star und Secondary (User-Vorgabe Pre-Override: Star/Secondary identisch,
+    // Level/Aug separat). Mit C-Konsolidierung 2026-06-21 ist die Stufe-2-
+    // Gruppierung unten (compTraitFamilyKey) das Aggregat — Stufe-1 hilft nur
+    // noch beim Backward-Compat-Merge der Rolling-30d-Window-Daten die noch
+    // Star/Secondary-Suffixe tragen (Sunset nach Set-Bump oder 2026-07-20).
     const normalizeKey = (key: string): string => {
       const parts = parseClusterKey(key);
       if (!parts) return key;
@@ -270,6 +276,21 @@ export default function TftCompsPage() {
         .sort((a, b) => b[1] - a[1])
         .slice(0, 3)
         .map(([apiName, count]) => ({ apiName, count }));
+      // Family-Stats-Override (User-Entscheid 2026-06-21 / architect F1): die
+      // Listing-Card zeigte heute mainComp-Stats (= eines Sub-Clusters). Mit
+      // C-Konsolidierung (familyKeyForMerge auf <trait>__<carry>) mergt die
+      // Detail-Page-API alle Sub-Cluster — das Card-Avg müsste sonst von der
+      // Detail-Avg abweichen. Wir injizieren die weighted-Family-Stats in
+      // mainComp damit CompRow die Aggregat-Werte rendert (Listing↔Detail-
+      // Konsistenz). Single-Variant-Family: weighted = mainComp.avgPlacement
+      // → keine sichtbare Änderung.
+      if (variants.length > 1) {
+        (mainComp as any).avgPlacement = weightedAvgPlacement;
+        (mainComp as any).top4Rate = weightedTop4Rate;
+        (mainComp as any).top1Rate = weightedTop1Rate;
+        (mainComp as any).games = totalGames;
+        (mainComp as any).pickRate = familyPickRate;
+      }
       // Family-Velocity-Override: bei sortBy='velocity' sortiert die Family-Liste
       // nach Min-Δ aller Sub-Variants, die Hauptcomp-Anzeige zeigte aber den
       // mainComp-Δ — inkonsistente UX. Wir setzen den Family-Min-Δ auf die

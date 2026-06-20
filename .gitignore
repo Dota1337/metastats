@@ -46,3 +46,6 @@ next-env.d.ts
 .claude/
 .claude-flow/
 .swarm/
+
+# fastembed-js Modell-Cache (Onnx-Modelle, ~30-500MB pro Modell)
+/local_cache/

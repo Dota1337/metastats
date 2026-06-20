@@ -36,9 +36,12 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "archiver": "^8.0.0",
+    "better-sqlite3": "^12.11.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
+    "fastembed": "^2.1.0",
     "png-to-ico": "^3.0.1",
+    "sqlite-vec": "^0.1.9",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

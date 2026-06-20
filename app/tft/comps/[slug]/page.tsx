@@ -20,6 +20,7 @@ import { aggregateComponents } from '../../../lib/tft-components';
 import { compDefiningAugmentApiNameFromSlug } from '../../../lib/tft-comp-defining-augments';
 import { dedupeByPrimaryCluster, primaryClusterKey, parseClusterKey } from '../../../lib/tft-cluster';
 import { loadCompGuidesBundle, findCompGuide } from '../../../lib/tft-comp-guides';
+import { descriptorTag } from '../../../lib/tft-comp-descriptor';
 
 // Same region set as /tft/patch/winners — the regions where the daily-crawl
 // has enough volume to make comp-detail rendering meaningful.
@@ -256,7 +257,20 @@ export default function TftCompDetailPage() {
               <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3">
                 <Stat label={t('tft.comp.avgLevel')} value={comp.avgLevel != null ? comp.avgLevel.toFixed(1) : '—'} />
                 <Stat label={t('tft.comp.avgLastRound')} value={comp.avgLastRound != null ? formatStage(comp.avgLastRound) : '—'} />
-                <Stat label={t('tft.comp.tempo')} value={tempoLabel(comp.avgLevel, comp.avgLastRound, t)} />
+                {(() => {
+                  // Single-Source-Descriptor (app/lib/tft-comp-descriptor.ts) —
+                  // matched die Liste, inkl. Roll-Level-Suffix für 3★-Reroll-Cluster.
+                  const parts = parseClusterKey(comp.clusterKey);
+                  const carryChamp = parts?.carry && assets ? assets.champions[parts.carry] : null;
+                  const tag = descriptorTag({
+                    avgLevel: comp.avgLevel,
+                    top1Rate: comp.top1Rate,
+                    top4Rate: comp.top4Rate,
+                    carryCost: carryChamp?.cost,
+                    carryStar: parts?.carryStar,
+                  });
+                  return <Stat label={t('tft.comp.tempo')} value={tag?.label ?? '—'} />;
+                })()}
                 {/* Comp-Eco (migration 0024) — only shown once the crawl has filled sum_gold_left */}
                 {comp.avgGoldLeft != null && (
                   <Stat label={t('tft.avgGoldLeft')} value={comp.avgGoldLeft.toFixed(1)} />
@@ -851,20 +865,32 @@ export default function TftCompDetailPage() {
               <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
                 <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.typicalUnits')}</h2>
                 <div className="flex flex-wrap gap-2">
-                  {comp.typicalUnits.map((u: { characterId: string; count: number }) => {
+                  {comp.typicalUnits.map((u: { characterId: string; count: number; multiplicity?: number }) => {
                     const ch = findChampion(assets, u.characterId);
                     const url = tftChampionTileUrl(assets, ch);
                     const cost = ch?.cost ?? 1;
+                    // Multiplicity ≥ 1.5 = Mehrheit der Comp-Participants hat
+                    // diese Unit 2× im Brett → Two-Tanky-Signatur. Bei null/
+                    // alten Snapshots ohne multiplicity-Feld: stille 1.0.
+                    const showDouble = (u.multiplicity ?? 1) >= 1.5;
                     return (
                       <a
                         key={u.characterId}
                         href={`/tft/units/${encodeURIComponent(u.characterId)}?bucket=${bucket}`}
-                        className="flex flex-col items-center hover:scale-105 transition"
+                        className="flex flex-col items-center hover:scale-105 transition relative"
                       >
                         {url ? (
                           <img src={url} alt={ch!.name} className="w-12 h-12 rounded object-cover border-2" style={{ borderColor: costColor(cost) }} />
                         ) : (
                           <div className="w-12 h-12 rounded bg-[#1e2a3a]" />
+                        )}
+                        {showDouble && (
+                          <div
+                            className="absolute -top-1.5 -right-1.5 bg-[#7B61FF] text-white text-[9px] font-bold rounded-full w-5 h-5 flex items-center justify-center shadow"
+                            title="Two-Tanky-Variante — zweite 2★-Kopie über das Augment"
+                          >
+                            ×2
+                          </div>
                         )}
                         <div className="text-white text-[10px] mt-0.5 text-center max-w-[60px] truncate">
                           {ch?.name || u.characterId.replace(/^TFT\d+_/, '')}
@@ -1078,16 +1104,9 @@ function DeltaStat({
 }
 
 
-// Light heuristic: comps that hit higher avg level for the same last-round
-// were leveling faster than the lobby average, so we tag them "early-level"
-// vs "slow-roll". Threshold is loose — there's no objective truth here, but
-// avg-level <= 7 with similar last-round signals a reroll archetype.
-function tempoLabel(avgLevel: number | null | undefined, avgRound: number | null | undefined, t: (k: any) => string): string {
-  if (avgLevel == null) return '—';
-  if (avgLevel >= 8.5) return t('tft.comp.tempo.fastEight');
-  if (avgLevel <= 7.0) return t('tft.comp.tempo.slowRoll');
-  return t('tft.comp.tempo.balanced');
-}
+// tempoLabel ersetzt durch descriptorTag aus app/lib/tft-comp-descriptor.ts —
+// die divergente Logik (kein carryStar-Precedence, kein Roll-Level) wurde
+// gegen den Liste-konsistenten Single-Source-Descriptor getauscht. 2026-06-20.
 
 // Death-Story KPI-Karte: Hauptzahl + Sub-Beschreibung, akzentuiert in
 // passender Farbe (rot=Risiko, gelb=Übergang, grün=Safe).

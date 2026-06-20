@@ -262,7 +262,27 @@ function classifyComp(participant) {
   // einen eigenen Sub-Cluster gerechtfertigt. Hero-Augments sind hier
   // explizit NICHT enthalten (die wirken via carryFromAugments oben).
   const augSlug = compDefiningAugmentSlug(participant.augments);
-  const augSuffix = augSlug ? `~${augSlug}` : '';
+  // Two-Tanky-Augment-Detection (Set 17 — Cross-Cutting-Augment, spawnt eine
+  // zweite 2★-Kopie zweier Units). Match-V1 `augments` ist seit 2026-06-15
+  // leer (0% in 12M Rows verifiziert), aber das Augment hinterlässt eine
+  // unverkennbare Signatur: der Participant hat ≥1 Champion 2× im units[].
+  // Pre-Filter gegen Summons (Bard-Followers, lowercase prefix).
+  const hasUnitDuplicate = (() => {
+    const counts = new Map();
+    for (const u of units) {
+      const cid = u.character_id || u.characterId;
+      if (!cid) continue;
+      if (!/^TFT\d+_[A-Z]/.test(cid)) continue;
+      counts.set(cid, (counts.get(cid) || 0) + 1);
+    }
+    for (const n of counts.values()) if (n >= 2) return true;
+    return false;
+  })();
+  // Slug = 'TwoTanky' identisch zur COMP_DEFINING_AUGMENTS-Map →
+  // Cluster-Keys von alten Daten (augments-Feld noch befüllt) und neuen
+  // (Unit-Dup-Detection) ergeben identische Suffixe → kein Sub-Cluster-Split.
+  const effectiveAug = augSlug || (hasUnitDuplicate ? 'TwoTanky' : null);
+  const augSuffix = effectiveAug ? `~${effectiveAug}` : '';
   const baseKey = `${primaryTrait.name}@${primaryTrait.tier_current ?? 0}_${carryId}${starSuffix}${augSuffix}`;
   const clusterKey = secondaryCarry ? `${baseKey}#${secondaryCarry.cid}` : baseKey;
 
@@ -547,10 +567,27 @@ export function aggregateMatch(rawMatch, agg, opts) {
         cb.sumLastRound += Number(p.last_round ?? 0);
         if (top4) cb.top4++;
         if (top1) cb.top1++;
+        // Per-participant Unit-Aggregation. Wir tracken (a) `count` =
+        // Σ Vorkommen (kann bei Two-Tanky-Spielen >1 pro Participant sein —
+        // wenn Two-Tanky 2× Samira spawnt, taucht Samira 2× im `units[]`
+        // dieses Participants auf), (b) `gamesWithUnit` = Σ Participants
+        // die diese Unit überhaupt haben (1 pro Participant), (c) `dupGames`
+        // = Σ Participants die diese Unit MIND. 2× haben. Daraus rechnen
+        // wir später eine `multiplicity`-Rate für die UI — wenn Samira in
+        // einer Comp im Schnitt 1.6× pro Participant dabei ist, weiß der
+        // Spieler dass die Two-Tanky-Variante das ist.
+        //
+        // Bard-Followers (`tft17_bardfollower` lowercase prefix) NICHT
+        // dup-counten — die sind 4× pro Comp Standard (Bard-Summons), nicht
+        // augment-getrieben. Sample-Probe data-skeptic 2026-06-20.
+        const unitCountThisParticipant = new Map();
         for (const u of p.units || []) {
           if (!u.character_id) continue;
+          unitCountThisParticipant.set(u.character_id, (unitCountThisParticipant.get(u.character_id) || 0) + 1);
           const ue = getOrCreate(cb.typicalUnits, u.character_id, () => ({
             count: 0,
+            gamesWithUnit: 0,
+            dupGames: 0,
             carryItemGames: 0,
             items: new Map(),     // apiName -> games-on-this-unit-in-this-comp
           }));
@@ -563,6 +600,19 @@ export function aggregateMatch(rawMatch, agg, opts) {
             seen.add(it);
             ue.items.set(it, (ue.items.get(it) || 0) + 1);
           }
+        }
+        // Pro Participant Pro Unit: gamesWithUnit++ und dupGames++ wenn 2×.
+        // Hier 2× iteration weil wir erst alle Vorkommen sehen müssen bevor
+        // wir den Duplikat-Marker setzen können.
+        for (const [cid, n] of unitCountThisParticipant) {
+          // Pre-Filter gegen Bard-Followers / Summons. Echte Champion-IDs
+          // beginnen mit `TFT<N>_<UpperCase>` (Aatrox, Samira, …), Summons
+          // mit lowercase (`tft17_bardfollower`, `tft17_kayn_slay`).
+          if (!/^TFT\d+_[A-Z]/.test(cid)) continue;
+          const ue = cb.typicalUnits.get(cid);
+          if (!ue) continue;
+          ue.gamesWithUnit++;
+          if (n >= 2) ue.dupGames++;
         }
         const augs = Array.isArray(p.augments) ? p.augments : [];
         for (const a of augs) {
@@ -968,10 +1018,18 @@ export function finalize(agg, opts = {}) {
             ? [...e.items.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3)
                 .map(([apiName, count]) => ({ apiName, count }))
             : [];
+          // Multiplicity: 1 + Anteil Participants mit ≥2 dieser Unit. Range
+          // 1.0 (nie dupliziert) bis 2.0 (immer 2×). Display-Schwelle ≥1.5
+          // = „die Mehrheit der Spieler in dieser Comp hat 2× dieser Unit"
+          // → ×2-Badge sichtbar. Min-Sample 5 sonst neutral 1.0 (Noise).
+          const multiplicity = (e.gamesWithUnit || 0) >= 5
+            ? 1 + ((e.dupGames || 0) / e.gamesWithUnit)
+            : 1;
           return {
             characterId: cid,
             count: e.count,
             carryItemGames: e.carryItemGames || 0,
+            multiplicity,
             topItems,
           };
         });

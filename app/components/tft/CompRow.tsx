@@ -11,6 +11,7 @@ import { compDefiningAugmentApiNameFromSlug } from '../../lib/tft-comp-defining-
 import { parseClusterKey } from '../../lib/tft-cluster';
 import { loadCompGuidesBundle, findCompGuide, difficultyColor } from '../../lib/tft-comp-guides';
 import { tierLetterOfSync, TIER_COLORS, type TierLetter, type TierCutoffs } from '../../lib/tft-tier-letter';
+import { descriptorTag } from '../../lib/tft-comp-descriptor';
 
 // Dense, scannable row layout for /tft/comps. Replaces the narrative
 // CompCard so pros can survey 20+ comps at a glance — avg-placement is
@@ -76,47 +77,7 @@ function extractTraitVariant(traitApiName: string, traitDisplayName: string): st
   return variant;
 }
 
-// Single primary descriptor per comp, like tactics.tools' "Items Dep / Fast 8
-// / Consistent / High WR". Priority order matters: tempo wins over difficulty,
-// win-rate wins over consistency. Pros want one quick label to recognise the
-// archetype, not a stack of competing tags.
-// Mappt Carry-Cost auf das typische Roll-Level einer Reroll-Comp:
-// 1-Cost rollt typisch auf Lvl 5 (5-3-Reroll), 2-Cost auf 6, 3-Cost auf 7,
-// 4-Cost (selten als Reroll) auf 8. Wird nur aufgerufen wenn der Cluster
-// einen 3★-Carry im Key trägt (= eindeutige Reroll-Comp).
-function rerollLevelForCost(cost: number): number {
-  if (cost <= 1) return 5;
-  return cost + 4;
-}
-
-function descriptorTag(opts: {
-  avgLevel?: number | null;
-  top1Rate?: number | null;
-  top4Rate?: number | null;
-  carryCost?: number;
-  carryItemRate?: number;
-  carryStar?: number;
-}): { label: string; color: string } | null {
-  const { avgLevel, top1Rate, top4Rate, carryCost, carryItemRate, carryStar } = opts;
-  // Reroll-Cluster (3★-Carry im Key) hat Vorrang vor avg-Level. Nach dem
-  // 3★-Hit leveln die Spieler oft auf 8-9 weiter — der Cluster bleibt aber
-  // strategisch eine Slow-Roll-Comp und sollte nicht als Fast-8 verkauft
-  // werden. Label inkludiert das Roll-Level, damit man sofort sieht ob das
-  // eine 2-Cost-(Lvl 6), 3-Cost-(Lvl 7) oder 1-Cost-(Lvl 5)-Reroll ist.
-  if (carryStar === 3 && carryCost != null && carryCost > 0) {
-    return { label: `Slow Roll Lvl ${rerollLevelForCost(carryCost)}`, color: '#3a8ddc' };
-  }
-  if (avgLevel != null) {
-    if (avgLevel >= 8.5) return { label: 'Fast 8', color: '#e0c75a' };
-    if (avgLevel <= 7.0) return { label: 'Reroll', color: '#3a8ddc' };
-  }
-  if (carryCost != null && carryCost >= 4 && (carryItemRate ?? 0) > 0.55) {
-    return { label: 'Items Dep', color: '#c39bff' };
-  }
-  if ((top1Rate ?? 0) > 0.18) return { label: 'High WR', color: '#3ecf8e' };
-  if ((top4Rate ?? 0) > 0.65) return { label: 'Consistent', color: '#3a8ddc' };
-  return null;
-}
+// descriptorTag + rerollLevelForCost ausgelagert nach app/lib/tft-comp-descriptor.ts
 
 export default function CompRow({
   comp, rank, assets, href, showVelocity = false, velocityShift = 0, tierCutoffs = null,
@@ -323,6 +284,7 @@ export default function CompRow({
             const isCarry = u.characterId === carryCid;
             const url = tftChampionTileUrl(assets, ch);
             const items = Array.isArray(u.topItems) ? u.topItems.slice(0, 3) : [];
+            const showDouble = (((u as unknown) as { multiplicity?: number }).multiplicity ?? 1) >= 1.5;
             return (
               <div
                 key={u.characterId}
@@ -331,11 +293,16 @@ export default function CompRow({
                 <a
                   href={`/tft/units/${encodeURIComponent(u.characterId)}`}
                   onClick={e => e.stopPropagation()}
-                  className="w-9 h-9 rounded border-2 overflow-hidden block hover:scale-110 transition-transform"
+                  className="w-9 h-9 rounded border-2 overflow-hidden block hover:scale-110 transition-transform relative"
                   style={{ borderColor: isCarry ? '#c39bff' : (ch ? costColorOf(ch.cost) : '#1e2a3a') }}
                   title={ch?.name || u.characterId}
                 >
                   {url && <img src={url} alt={ch?.name || ''} className="w-full h-full object-cover" />}
+                  {showDouble && (
+                    <div className="absolute -top-1 -right-1 bg-[#7B61FF] text-white text-[7px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center shadow leading-none">
+                      ×2
+                    </div>
+                  )}
                 </a>
                 {items.length > 0 && (
                   <div className="flex items-center gap-[1px]">

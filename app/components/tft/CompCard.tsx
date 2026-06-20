@@ -240,6 +240,9 @@ export default function CompCard({
               const isCarry = u.characterId === carryCid;
               const url = tftChampionTileUrl(assets, ch);
               const items = Array.isArray(u.topItems) ? u.topItems.slice(0, 3) : [];
+              // Multiplicity ≥ 1.5 → Two-Tanky-Variante (zweite 2★-Kopie via
+              // Augment). Backward-Compat: alte Snapshots ohne multiplicity → 1.
+              const showDouble = (((u as unknown) as { multiplicity?: number }).multiplicity ?? 1) >= 1.5;
               return (
                 <a
                   key={u.characterId}
@@ -249,10 +252,18 @@ export default function CompCard({
                   title={ch?.name || u.characterId}
                 >
                   <div
-                    className="w-11 h-11 rounded border-2 overflow-hidden"
+                    className="w-11 h-11 rounded border-2 overflow-hidden relative"
                     style={{ borderColor: isCarry ? '#c39bff' : (ch ? costColorOf(ch.cost) : '#1e2a3a') }}
                   >
                     {url && <img src={url} alt={ch?.name || u.characterId} className="w-full h-full object-cover rounded-sm" />}
+                    {showDouble && (
+                      <div
+                        className="absolute -top-1 -right-1 bg-[#7B61FF] text-white text-[8px] font-bold rounded-full w-4 h-4 flex items-center justify-center shadow"
+                        title="Two-Tanky-Variante"
+                      >
+                        ×2
+                      </div>
+                    )}
                   </div>
                   {items.length > 0 && (
                     <div className="flex items-center gap-[1px]">

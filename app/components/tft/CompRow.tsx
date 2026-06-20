@@ -288,10 +288,6 @@ export default function CompRow({
             const url = tftChampionTileUrl(assets, ch);
             const items = Array.isArray(u.topItems) ? u.topItems.slice(0, 3) : [];
             const showDouble = (((u as unknown) as { multiplicity?: number }).multiplicity ?? 1) >= 1.5;
-            const co = ((u as unknown) as { cooccurrence?: number }).cooccurrence ?? 1;
-            const kind: 'core' | 'flex' | 'tech' = co >= 0.75 ? 'core' : co >= 0.5 ? 'flex' : 'tech';
-            const tileOpacity = isCarry ? 1 : kind === 'core' ? 1 : kind === 'flex' ? 0.9 : 0.6;
-            const tileBorderStyle = !isCarry && kind === 'tech' ? 'dashed' : 'solid';
             return (
               <div
                 key={u.characterId}
@@ -301,11 +297,7 @@ export default function CompRow({
                   href={`/tft/units/${encodeURIComponent(u.characterId)}`}
                   onClick={e => e.stopPropagation()}
                   className="w-9 h-9 rounded border-2 overflow-hidden block hover:scale-110 transition-transform relative"
-                  style={{
-                    borderColor: isCarry ? '#c39bff' : (ch ? costColorOf(ch.cost) : '#1e2a3a'),
-                    borderStyle: tileBorderStyle,
-                    opacity: tileOpacity,
-                  }}
+                  style={{ borderColor: isCarry ? '#c39bff' : (ch ? costColorOf(ch.cost) : '#1e2a3a') }}
                   title={ch?.name || u.characterId}
                 >
                   {url && <img src={url} alt={ch?.name || ''} className="w-full h-full object-cover" />}

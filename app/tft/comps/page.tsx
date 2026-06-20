@@ -374,7 +374,7 @@ export default function TftCompsPage() {
               <div></div>
               <div>{t('nav.comps')}</div>
               <div></div>
-              <div className="text-right">{t('tft.avgPlacement')}</div>
+              <div className="text-center">{t('tft.avgPlacement')}</div>
               <div className="text-right">{t('tft.top4')}</div>
               <div className="text-right">{t('tft.top1')}</div>
               <div className="text-right">{t('tft.pickRate')}</div>

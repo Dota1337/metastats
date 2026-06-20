@@ -374,7 +374,7 @@ export default function CompRow({
         </div>
 
         {/* Stats: mobile = single column on the right; desktop = 4-5 columns */}
-        <div className="hidden sm:block text-right tabular-nums font-semibold text-lg" style={{ color: tier.color }}>
+        <div className="hidden sm:block text-center tabular-nums font-semibold text-lg" style={{ color: tier.color }}>
           {comp.avgPlacement != null ? comp.avgPlacement.toFixed(2) : '—'}
         </div>
         <div className="hidden sm:block text-right tabular-nums text-[#cdd6e0] text-[13px]" title={top4ShareTip}>

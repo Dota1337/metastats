@@ -158,7 +158,7 @@ export default function TftItemsPage() {
               <div></div>
               <div>{t('nav.items')}</div>
               <div>{t('tft.topUsers')}</div>
-              <div className="text-right">{t('tft.avgPlacement')}</div>
+              <div className="text-center">{t('tft.avgPlacement')}</div>
               <div className="text-right">{t('tft.pickRate')}</div>
               <div className="text-right">{t('tft.top4')}</div>
               <div className="text-right">{t('tft.top1')}</div>
@@ -236,7 +236,7 @@ export default function TftItemsPage() {
                   {/* Stats: 4-column grid on mobile under the icon/users
                       block; explicit cells on desktop via contents. */}
                   <div className={`grid ${filters.velocity > 0 ? 'grid-cols-6' : 'grid-cols-5'} gap-2 mt-1.5 pl-12 md:pl-0 md:mt-0 md:contents`}>
-                    <Cell label={t('tft.avgPlacement')} value={it.avgPlacement?.toFixed(2) ?? '—'} accent="white" />
+                    <Cell label={t('tft.avgPlacement')} value={it.avgPlacement?.toFixed(2) ?? '—'} accent="white" align="center" />
                     <Cell label={t('tft.pickRate')} value={it.pickRate != null ? `${(it.pickRate * 100).toFixed(1)}%` : '—'} />
                     <Cell label={t('tft.top4')} value={it.top4Rate != null ? `${(it.top4Rate * 100).toFixed(1)}%` : '—'} />
                     <Cell label={t('tft.top1')} value={it.top1Rate != null ? `${(it.top1Rate * 100).toFixed(1)}%` : '—'} />
@@ -287,15 +287,16 @@ function costToColor(cost: number) {
 // games hidden on mobile but visible on desktop), but Cell only emits 1
 // desktop cell. The extra `<div className="hidden md:block">{games}</div>`
 // after the Cells covers the 5th column.
-function Cell({ label, value, accent }: { label: string; value: string; accent?: 'white' | 'muted' }) {
+function Cell({ label, value, accent, align = 'right' }: { label: string; value: string; accent?: 'white' | 'muted'; align?: 'right' | 'center' }) {
   const valueClass = accent === 'white' ? 'text-white' : accent === 'muted' ? 'text-[#7a8aa0]' : 'text-[#a0b0c5]';
+  const alignClass = align === 'center' ? 'text-center' : 'text-right';
   return (
     <>
       <div className="md:hidden">
         <div className="text-[#7a8aa0] text-[9px] uppercase tracking-widest leading-tight">{label}</div>
         <div className={`${valueClass} tabular-nums leading-tight`}>{value}</div>
       </div>
-      <div className={`hidden md:block text-right ${valueClass} tabular-nums`}>{value}</div>
+      <div className={`hidden md:block ${alignClass} ${valueClass} tabular-nums`}>{value}</div>
     </>
   );
 }

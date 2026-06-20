@@ -193,7 +193,7 @@ export default function TftUnitsPage() {
               <div></div>
               <div></div>
               <div>{t('tft.champion')}</div>
-              <div className="text-right">{t('tft.avgPlacement')}</div>
+              <div className="text-center">{t('tft.avgPlacement')}</div>
               <div className="text-right">{t('tft.pickRate')}</div>
               <div className="text-right">{t('tft.top4')}</div>
               <div className="text-right">{t('tft.top1')}</div>
@@ -240,7 +240,7 @@ export default function TftUnitsPage() {
                     <div className="text-white font-medium truncate flex-1 md:flex-initial">{ch?.name || prettyCharId(u.characterId)}</div>
                   </div>
                   <div className={`grid ${filters.velocity > 0 ? 'grid-cols-5' : 'grid-cols-4'} gap-2 mt-1.5 pl-12 md:pl-0 md:mt-0 md:contents`}>
-                    <Cell label={t('tft.avgPlacement')} value={u.avgPlacement?.toFixed(2) ?? '—'} accent="white" />
+                    <Cell label={t('tft.avgPlacement')} value={u.avgPlacement?.toFixed(2) ?? '—'} accent="white" align="center" />
                     <Cell label={t('tft.pickRate')} value={u.pickRate != null ? `${(u.pickRate * 100).toFixed(1)}%` : '—'} title={top4ShareTip} />
                     <Cell label={t('tft.top4')} value={u.top4Rate != null ? `${(u.top4Rate * 100).toFixed(1)}%` : '—'} title={top4ShareTip} />
                     <Cell label={t('tft.top1')} value={u.top1Rate != null ? `${(u.top1Rate * 100).toFixed(1)}%` : '—'} title={winShareTip} />
@@ -271,15 +271,16 @@ function prettyCharId(id: string) {
 // aligned in a 4-col mobile grid) and desktop (right-aligned single value
 // in the parent's explicit grid column). `display: contents` on the
 // desktop side makes the parent grid pull this through transparently.
-function Cell({ label, value, accent, title }: { label: string; value: string; accent?: 'white'; title?: string }) {
+function Cell({ label, value, accent, title, align = 'right' }: { label: string; value: string; accent?: 'white'; title?: string; align?: 'right' | 'center' }) {
   const valueClass = accent === 'white' ? 'text-white' : 'text-[#a0b0c5]';
+  const alignClass = align === 'center' ? 'text-center' : 'text-right';
   return (
     <>
       <div className="md:hidden" title={title}>
         <div className="text-[#7a8aa0] text-[9px] uppercase tracking-widest leading-tight">{label}</div>
         <div className={`${valueClass} tabular-nums leading-tight`}>{value}</div>
       </div>
-      <div className={`hidden md:block text-right ${valueClass} tabular-nums`} title={title}>{value}</div>
+      <div className={`hidden md:block ${alignClass} ${valueClass} tabular-nums`} title={title}>{value}</div>
     </>
   );
 }

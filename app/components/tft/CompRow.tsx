@@ -222,7 +222,7 @@ export default function CompRow({
           ? 'sm:grid-cols-[1.25rem_1.5rem_minmax(13rem,1fr)_minmax(0,auto)_3rem_3rem_3rem_3rem_3rem_3.5rem_3rem]'
           : 'sm:grid-cols-[1.25rem_1.5rem_minmax(13rem,1fr)_minmax(0,auto)_3rem_3rem_3rem_3rem_3rem_3rem]'
       } items-center gap-2 sm:gap-3`}>
-        <div className="text-[#7a8aa0] tabular-nums text-right">{rank}</div>
+        <div className="text-[#7a8aa0] tabular-nums text-right">{rank > 0 ? rank : ''}</div>
         <div
           className="w-6 h-6 rounded flex items-center justify-center font-bold text-[11px]"
           style={{ color: tier.color, backgroundColor: `${tier.color}25`, border: `1px solid ${tier.color}40` }}
@@ -230,7 +230,23 @@ export default function CompRow({
         >
           {tier.label}
         </div>
-        <div className="min-w-0 leading-tight">
+        <div className="min-w-0 leading-tight flex items-center gap-2">
+          {expandToggle && (
+            <button
+              type="button"
+              onClick={e => {
+                e.stopPropagation();
+                expandToggle.onToggle();
+              }}
+              className="w-7 h-7 flex items-center justify-center text-[#7a8aa0] hover:text-white hover:bg-[#1e2a3a]/80 rounded transition-colors text-lg flex-shrink-0"
+              aria-expanded={expandToggle.expanded}
+              aria-label={expandToggle.expanded ? 'Varianten einklappen' : 'Varianten ausklappen'}
+              style={{ transform: expandToggle.expanded ? 'rotate(180deg)' : 'rotate(0)' }}
+            >
+              ▾
+            </button>
+          )}
+        <div className="min-w-0 flex-1 leading-tight">
           <div className="text-white font-medium truncate">
             <span title={traitTooltip || undefined}>{traitDisplay}</span>
             {' · '}
@@ -293,6 +309,7 @@ export default function CompRow({
               )}
             </div>
           )}
+        </div>
         </div>
         <div className="flex items-start gap-1 flex-wrap sm:flex-nowrap">
           {typicalUnits.slice(0, 9).map(u => {
@@ -411,21 +428,6 @@ export default function CompRow({
           </div>
         )}
         <div className="hidden sm:flex items-center justify-end gap-1">
-          {expandToggle && (
-            <button
-              type="button"
-              onClick={e => {
-                e.stopPropagation();
-                expandToggle.onToggle();
-              }}
-              className="w-6 h-6 flex items-center justify-center text-[#7a8aa0] hover:text-white hover:bg-[#1e2a3a]/60 rounded transition-colors"
-              aria-expanded={expandToggle.expanded}
-              aria-label={expandToggle.expanded ? 'Varianten einklappen' : 'Varianten ausklappen'}
-              style={{ transform: expandToggle.expanded ? 'rotate(180deg)' : 'rotate(0)' }}
-            >
-              ▾
-            </button>
-          )}
           <PlanAheadButton
             characterIds={typicalUnits.slice(0, 10).map(u => u.characterId)}
             setNumber={assets?.set ?? 17}

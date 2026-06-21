@@ -12,6 +12,7 @@ import { loadTftAssets, tftIconUrl, tftChampionTileUrl, findChampion, findItem, 
 import PositionHeatmap from '../../../components/tft/PositionHeatmap';
 import VariantsSwitcher from '../../../components/tft/VariantsSwitcher';
 import CompActiveTraits from '../../../components/tft/CompActiveTraits';
+import CompLevelActiveTraits from '../../../components/tft/CompLevelActiveTraits';
 import CompGuide from '../../../components/tft/CompGuide';
 import CompFlexUnits from '../../../components/tft/CompFlexUnits';
 
@@ -412,6 +413,11 @@ export default function TftCompDetailPage() {
                               {(t('tft.comp.levelOutcome.star3Share') as string).replace('{pct}', star3Share.toFixed(0))}
                             </div>
                           )}
+                          <CompLevelActiveTraits
+                            typicalUnits={row.typicalUnits}
+                            clusterKey={comp.clusterKey}
+                            assets={assets}
+                          />
                         </div>
                       );
                     })}
@@ -479,7 +485,12 @@ export default function TftCompDetailPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     {(comp.carryStarOutcome as { star: number; games: number; avgPlacement: number; top4Rate: number; top1Rate: number }[]).map((row) => {
                       const share = totalGames > 0 ? (row.games / totalGames) * 100 : 0;
-                      const starColor = row.star === 3 ? '#c39bff' : row.star === 2 ? '#e0c75a' : '#9ab0bf';
+                      // Star-Color: 1=grau, 2=gold, 3=prismatic, 4=chromatic
+                      // (Set-14-Mechanik: Sona Command Mods + Aurelion Sol Quest Rewards)
+                      const starColor = row.star === 4 ? '#e75480'
+                        : row.star === 3 ? '#c39bff'
+                        : row.star === 2 ? '#e0c75a'
+                        : '#9ab0bf';
                       const lowSample = row.games < MIN_GAMES_PER_OUTCOME_CARD;
                       return (
                         <div

@@ -2403,14 +2403,6 @@ const translations = {
     'Estimado por nivel (sin datos de comp-guide)',
     'Estimé selon le tier (pas de données de guide)'
   ),
-  'tft.augment.stage.fromGuides': t6(
-    'aus {n} Comp-Guide-Slots aggregiert',
-    'aggregated from {n} comp-guide slots',
-    '{n}개 가이드 슬롯에서 집계',
-    '从 {n} 个攻略槽位汇总',
-    'agregado de {n} slots de comp-guide',
-    'agrégé de {n} emplacements de guide'
-  ),
   'tft.search.noResults': t6(
     'Kein Treffer für „{q}"', 'No match for „{q}"',
     '„{q}" 검색 결과 없음', '没有找到 „{q}"',

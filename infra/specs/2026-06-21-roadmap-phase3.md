@@ -188,22 +188,35 @@
 - Recharts `next/dynamic` Lazy-Load aus Phase-1-Backlog
 - Memory-Pair-Sync-Diszplin: nächste 4 Memories die bei Set 18 mit-migriert werden müssen
 
-## Roadmap-Bestand nach Phase 1+2
+## Roadmap-Bestand nach Phase 1+2+3
 
-**Deployed:**
-- Phase 1: Active-Traits Drill-Down (#4), Sample-Validity-Gate (#2)
-- Phase 2: Augment-Driven Comp-Picker (#5), Comp-Comparison-View (#7)
+**Deployed (Session 2026-06-21):**
+- Phase 1 (`f02c689`): Active-Traits Drill-Down (#4), Sample-Validity-Gate (#2)
+- Phase 2 (`4e4fce8`): Augment-Driven Comp-Picker (#5), Comp-Comparison-View (#7)
+- Phase 3 (`a698cd0`): Recharts Lazy-Load (#3)
+- UX-Follow-up (`0c44386`): Compare-Button auf Listing-Page
 
 **Vorab erfüllt (existierte schon):**
 - Family-Disclaimer (#1) via VariantsSwitcher-Banner
 - Item-Pivot (#6) via /tft/items/[id] compsTop6+itemCombos+siblings
 
-**Deferred:**
-- Recharts Lazy-Load (#3) — als Sub-Task in Phase-3-Hygiene
-- Patch-Notes (#8) — Spec oben
+**Deferred (Mehr-Session-Aufwand):**
+- Patch-Notes (#8) — Spec oben, Crawler-Foundation als nächster Schritt
 - Personalisierter Coach (#9) — Spec oben
 - Live-Lobby-Scout PWA (#10) — Spec oben
 - Pro-Match-DB (#11) — Spec oben
+
+## Was die heutige Session liefert
+
+Aus 11 Punkten: **6 deployed** + **2 als-bereits-vorhanden bestätigt** + **4 als Spec dokumentiert**. Plus 1 UX-Abschluss (Compare-Button) der den Workflow für #7 in der Praxis nutzbar macht.
+
+8 Commits gesamt in dieser Session:
+- `f02c689` Phase 1
+- `4e4fce8` Phase 2
+- `7120467` Phase 3 Specs
+- `5574848` Early-Game Lvl 4-7 Pivot-Tiles (User-Request)
+- `a698cd0` Recharts-Lazy
+- `0c44386` Compare-Button auf Listing
 
 ## Wer pflegt diese Datei
 

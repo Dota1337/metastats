@@ -103,9 +103,22 @@ const PATCH_MIN_GAMES = 100_000;
 // until it has ~half a crawl day anyway, so it can't surface as "current" early.
 const PATCH_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 
+// Negative-Cache für Cold-Lambda + RPC-down: 60 s statt 6 h. Damit erholt sich
+// die Listing-Page schnell sobald Supabase wieder antwortet (statt 6h Stale-
+// EmptyData wenn der Cold-Path während eines Outages stirbt).
+const PATCH_NEGATIVE_CACHE_TTL_MS = 60 * 1000;
+let _patchCacheNegativeTs = 0;
+
 export async function getAvailablePatches(days = 30): Promise<PatchInfo[]> {
   if (_patchCache && Date.now() - _patchCache.ts < PATCH_CACHE_TTL_MS) {
     return _patchCache.rows;
+  }
+  // Negative-Cache: wenn der letzte Call gerade fehlgeschlagen ist, NICHT
+  // sofort wieder probieren — sonst blockiert jede Listing-Request 30-60s
+  // bis zum nächsten Cloudflare-522. Für 60s leere Liste ausliefern, dann
+  // Retry.
+  if (_patchCacheNegativeTs && Date.now() - _patchCacheNegativeTs < PATCH_NEGATIVE_CACHE_TTL_MS) {
+    return [];
   }
   try {
     const rows = (await callRpc<PatchInfo[]>('get_tft_available_patches', { p_days: days })) || [];
@@ -113,14 +126,25 @@ export async function getAvailablePatches(days = 30): Promise<PatchInfo[]> {
     // set launch) keep the raw list so the page still shows the best available.
     const established = rows.filter(r => Number(r.total_matches) >= PATCH_MIN_GAMES);
     _patchCache = { ts: Date.now(), rows: established.length > 0 ? established : rows };
+    _patchCacheNegativeTs = 0;
     return _patchCache.rows;
   } catch (e) {
     // Stale-serve: a cold-buffer statement timeout on this pre-flight query must
     // not blank the patch dropdown or 502 the whole stats page. Fall back to the
-    // last good list (even if expired) when we have one; only propagate if we've
-    // never successfully loaded patches.
+    // last good list (even if expired) when we have one.
     if (_patchCache) return _patchCache.rows;
-    throw e;
+    // Cold-Lambda + RPC-down: KEIN throw mehr (code-analyzer-Verdict
+    // 2026-06-21 — würde sonst alle 4 Listing-Routes mit EmptyData killen
+    // weil sie getAvailablePatches als Pre-Flight aufrufen). Stattdessen
+    // leere Liste + Negative-Cache. resolveFilters läuft mit patchFilter=
+    // null durch → Stats-RPCs aggregieren patchübergreifend → User sieht
+    // Daten statt EmptyData.
+    console.error(
+      '[tft] getAvailablePatches failed without cache, returning empty for 60s:',
+      (e as Error).message,
+    );
+    _patchCacheNegativeTs = Date.now();
+    return [];
   }
 }
 

@@ -11,6 +11,7 @@ import { useI18n } from '../../lib/i18n';
 
 interface ProEntry {
   puuid: string;
+  proName: string | null;
   gameName: string | null;
   tagLine: string | null;
   region: string | null;
@@ -79,7 +80,7 @@ export default function ProsByCompSection({ familyKey, setNumber }: Props) {
       <h2 className="text-lg font-semibold text-[#cfd8dc] mb-3">{t('tft.comp.detail.prosPlayingThis')}</h2>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         {pros.map(p => {
-          const display = p.gameName || '???';
+          const display = p.proName || p.gameName || '???';
           const tag = p.tagLine ? `#${p.tagLine}` : '';
           const region = p.region || 'euw1';
           const playerHref = p.gameName && p.tagLine

@@ -20,8 +20,8 @@ const PRO_CLASSIFICATIONS = ['streamer', 'tpc'];
 
 interface ProRow {
   puuid: string;
-  game_name: string | null;
-  tag_line: string | null;
+  pro_name: string | null;
+  riot_id: string | null;
   region: string | null;
   classification: string | null;
 }
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
   // Pull Pro-Player-Liste aus Supabase (active = streamer + tpc).
   const { data: pros, error } = await supabase
     .from('tft_pro_players')
-    .select('puuid,game_name,tag_line,region,classification')
+    .select('puuid,pro_name,riot_id,region,classification')
     .in('classification', PRO_CLASSIFICATIONS)
     .not('puuid', 'is', null);
 
@@ -69,14 +69,20 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: message }, { status: 502 });
   }
 
-  // Join Aggregat mit Pro-Names.
+  // Join Aggregat mit Pro-Names. riot_id-Format ist `gameName#tagLine` —
+  // split fuer Player-Page-Link.
   const proByPuuid = new Map(proRows.map(r => [r.puuid, r]));
   const enriched = result.pros.map(p => {
     const meta = proByPuuid.get(p.puuid);
+    const riotId = meta?.riot_id || null;
+    const hashIdx = riotId ? riotId.indexOf('#') : -1;
+    const gameName = riotId && hashIdx > 0 ? riotId.slice(0, hashIdx) : null;
+    const tagLine = riotId && hashIdx > 0 ? riotId.slice(hashIdx + 1) : null;
     return {
       puuid: p.puuid,
-      gameName: meta?.game_name ?? null,
-      tagLine: meta?.tag_line ?? null,
+      proName: meta?.pro_name ?? gameName,
+      gameName,
+      tagLine,
       region: meta?.region ?? null,
       classification: meta?.classification ?? null,
       games: p.games,

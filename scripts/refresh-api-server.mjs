@@ -35,7 +35,6 @@ import { resolve } from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import pg from 'pg';
-import { classifyComp as classifyCompUnified } from './lib/tft-classify-comp.mjs';
 
 const execFileAsync = promisify(execFile);
 
@@ -734,40 +733,57 @@ async function handleProsByComp(body) {
     throw e;
   }
 
-  // Live-Re-Classify: jsonb lesen, classifyComp on-the-fly. Pflicht solange
-  // Bestand nicht vollstaendig re-klassifiziert ist (Bestand hat alte
-  // UniqueTrait-fragmentierte cluster_keys). Bei ~119 puuids × 500 matches =
-  // ~60k rows ist das in ~60s machbar.
+  // Pro-Cohort wurde 2026-06-21 via scripts/reclassify-match-cache.mjs mit der
+  // unifizierten Klassifikations-Lib re-klassifiziert (~41k rows, ~81% delta).
+  // Cache haelt jetzt korrekte cluster_keys, kein Live-Re-Classify mehr noetig.
+  //
+  // Cluster-Mode: exact match auf comp_cluster_key (Index-Hit).
+  // Family-Mode: load (puuid, placement, comp_cluster_key) der Cohort + parse
+  // family aus cluster_key in JS. Drei Spalten statt vier JSONB → ~10x
+  // schneller als der Live-Re-Classify-Vorgaenger.
   const t0 = Date.now();
-  const sql = `
-    SELECT puuid, placement, units, traits, augments, level
-      FROM tft_player_match_cache
-     WHERE set_number = $1
-       AND queue_id = $2
-       AND puuid = ANY($3::text[])
-       ${sinceMs ? 'AND game_datetime > $4' : ''}
-  `;
-  const params = [setNumber, QUEUE_RANKED, puuids];
-  if (sinceMs) params.push(sinceMs);
+  let sql, params;
+  if (clusterKey && !familyKey) {
+    sql = `
+      SELECT puuid, placement
+        FROM tft_player_match_cache
+       WHERE set_number = $1
+         AND queue_id = $2
+         AND puuid = ANY($3::text[])
+         AND comp_cluster_key = $4
+         ${sinceMs ? 'AND game_datetime > $5' : ''}
+    `;
+    params = [setNumber, QUEUE_RANKED, puuids, clusterKey];
+    if (sinceMs) params.push(sinceMs);
+  } else {
+    sql = `
+      SELECT puuid, placement, comp_cluster_key
+        FROM tft_player_match_cache
+       WHERE set_number = $1
+         AND queue_id = $2
+         AND puuid = ANY($3::text[])
+         AND comp_cluster_key IS NOT NULL
+         ${sinceMs ? 'AND game_datetime > $4' : ''}
+    `;
+    params = [setNumber, QUEUE_RANKED, puuids];
+    if (sinceMs) params.push(sinceMs);
+  }
   const r = await pool.query(sql, params);
   const queryMs = Date.now() - t0;
 
-  // Family-Key bauen aus classifyComp-Output (trait+carry, suffix-frei).
+  // Family-Key parsen: `<trait>@<level>_<carry>[*~#suffix]` → `<trait>__<carry>`.
+  const parseFamily = (key) => {
+    const m = /^(.+)@\d+_([^*~#]+)/.exec(key || '');
+    return m ? `${m[1]}__${m[2]}` : null;
+  };
+
   const acc = new Map();
   let matchedCount = 0;
   for (const row of r.rows) {
-    const cls = classifyCompUnified({
-      traits: row.traits || [],
-      units: row.units || [],
-      augments: row.augments || [],
-      level: row.level ?? 0,
-    }, { currentSet: setNumber, withAugmentSuffix: false });
-    if (!cls) continue;
-    if (clusterKey && cls.clusterKey !== clusterKey) continue;
     if (familyKey) {
-      const fk = `${cls.primaryTrait}__${cls.carryUnit}`;
-      if (fk !== familyKey) continue;
+      if (parseFamily(row.comp_cluster_key) !== familyKey) continue;
     }
+    // Cluster-Mode wurde im SQL gefiltert, kein zusaetzlicher Check noetig.
     matchedCount++;
     const e = acc.get(row.puuid) || { games: 0, sumPlacement: 0, top4: 0, top1: 0 };
     const p = row.placement || 9;

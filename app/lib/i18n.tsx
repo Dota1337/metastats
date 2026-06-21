@@ -2375,6 +2375,55 @@ const translations = {
     '대회 또는 지역 검색…', '搜索赛事或地区…',
     'Buscar torneo o región…', 'Rechercher tournoi ou région…'
   ),
+  'tft.augment.stage.label': t6(
+    'Stage', 'Stage',
+    '스테이지', '阶段',
+    'Etapa', 'Étape'
+  ),
+  'tft.augment.stage.all': t6(
+    'Alle Stages', 'All stages',
+    '모든 스테이지', '所有阶段',
+    'Todas las etapas', 'Toutes les étapes'
+  ),
+  'tft.augment.sort.tier': t6(
+    'nach Tier', 'by Tier',
+    '등급순', '按等级',
+    'por nivel', 'par tier'
+  ),
+  'tft.augment.sort.stage': t6(
+    'nach Stage', 'by Stage',
+    '스테이지순', '按阶段',
+    'por etapa', 'par étape'
+  ),
+  'tft.augment.stage.appearsIn': t6(
+    'Erscheint in folgenden Stages',
+    'Appears in these stages',
+    '다음 스테이지에 등장',
+    '在以下阶段出现',
+    'Aparece en estas etapas',
+    'Apparaît dans ces étapes'
+  ),
+  'tft.augment.stage.unknown': t6(
+    'Stage-Daten nicht verfügbar', 'Stage data not available',
+    '스테이지 데이터 없음', '阶段数据不可用',
+    'Datos de etapa no disponibles', 'Données d\'étape indisponibles'
+  ),
+  'tft.augment.stage.sourceNote': t6(
+    '{n} Augments mit Stage-Daten (tactics.tools)',
+    '{n} augments with stage data (tactics.tools)',
+    '{n}개 증강에 스테이지 데이터 있음 (tactics.tools)',
+    '{n} 个强化有阶段数据 (tactics.tools)',
+    '{n} aumentos con datos de etapa (tactics.tools)',
+    '{n} augmentations avec données d\'étape (tactics.tools)'
+  ),
+  'tft.augment.stage.sourceFooter': t6(
+    'Quelle: tactics.tools (öffentliche Spielmechanik-Ground-Truth)',
+    'Source: tactics.tools (public game-mechanic ground truth)',
+    '출처: tactics.tools (공개 게임 메커니즘 정보)',
+    '来源: tactics.tools (公开游戏机制数据)',
+    'Fuente: tactics.tools (datos públicos de mecánica)',
+    'Source : tactics.tools (mécanique de jeu publique)'
+  ),
   'tft.search.noResults': t6(
     'Kein Treffer für „{q}"', 'No match for „{q}"',
     '„{q}" 검색 결과 없음', '没有找到 „{q}"',

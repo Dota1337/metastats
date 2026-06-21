@@ -53,6 +53,12 @@ jobs:
         run: node scripts/refresh-augment-tiers.mjs
         continue-on-error: true
 
+      # Augment-Stage-Constraints (2-1 / 3-2 / 4-2) aus tactics.tools.
+      # Selbe Source wie tier-override, separates JSON pro Augment-API-Name.
+      - name: Refresh TFT augment-stage override
+        run: node scripts/refresh-augment-stages.mjs
+        continue-on-error: true
+
       # Refresh CommunityDragon-sourced asset bundle (icons, names,
       # apiName→display mapping). Needed because Riot Data Dragon's TFT
       # data is set-13 frozen and uses item IDs that don't match Match-V1.

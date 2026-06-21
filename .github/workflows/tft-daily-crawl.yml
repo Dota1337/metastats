@@ -75,6 +75,15 @@ jobs:
         run: node scripts/refresh-augment-tiers.mjs
         continue-on-error: true
 
+      - name: Refresh TFT augment-stage override
+        # Pulled from tactics.tools — same source as tier-override. Pro
+        # Augment die erlaubten Pick-Stages (2-1 / 3-2 / 4-2). CDragon hat
+        # KEINE Stage-Info, Match-V1 augments-Feld tot. Output JSON wird
+        # in /tft/augments + /tft/augments/[name] gerendert. Siehe
+        # feedback_augment_stage_spec_fail.md fuer Lessons.
+        run: node scripts/refresh-augment-stages.mjs
+        continue-on-error: true
+
       - name: Refresh TFT asset bundle
         run: node scripts/fetch-tft-assets.mjs
         continue-on-error: true

@@ -6,6 +6,13 @@ import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, findChampion, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { loadCompGuidesBundle, type CompGuide } from '../../../lib/tft-comp-guides';
+import {
+  loadAugmentStages,
+  augmentStagesFor,
+  stageColor,
+  type AugmentStage,
+  type AugmentStagesOverride,
+} from '../../../lib/tft-augment-stages';
 
 // Pure reference detail — Riot has restricted augment-statistics display, so
 // this page intentionally surfaces only name + description + tier from the
@@ -33,14 +40,17 @@ export default function TftAugmentReferenceDetailPage() {
   const apiName = decodeURIComponent(String(params?.name || ''));
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
   const [compGuidesBundle, setCompGuidesBundle] = useState<Awaited<ReturnType<typeof loadCompGuidesBundle>> | null>(null);
+  const [stagesOverride, setStagesOverride] = useState<AugmentStagesOverride | null>(null);
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
   useEffect(() => { loadCompGuidesBundle().then(setCompGuidesBundle); }, []);
+  useEffect(() => { loadAugmentStages().then(setStagesOverride); }, []);
 
   const meta = assets?.augments[apiName];
   const tier = meta?.tier ?? 0;
   const tierColor = TIER_COLORS[tier] || '#7a8aa0';
   const iconUrl = tftIconUrl(assets, meta?.icon);
+  const augStages = augmentStagesFor(stagesOverride, apiName);
 
   // Reverse-Lookup: alle Comps die dieses Augment in ihren kuratierten
   // Augments listen. Slug-Map gibt trait+carry pro Comp.
@@ -115,6 +125,47 @@ export default function TftAugmentReferenceDetailPage() {
                 {meta.desc && (
                   <p className="text-[#a0b0c5] text-sm mt-3 leading-relaxed whitespace-pre-line">{meta.desc}</p>
                 )}
+              </div>
+            </div>
+            {/* Stage-Constraint-Anzeige aus tactics.tools-Override
+                (refresh-augment-stages.mjs). Wir rendern alle 3 Stage-Pills
+                (2-1/3-2/4-2), inactive sind dezent grayed-out. KEIN
+                Verteilungs-Chart mit Counts/Stats (feedback_no_augment_stats
+                Zeile 13: „Augment-by-Stage-Charts mit Stats" verboten). */}
+            <div className="mt-4 pt-4 border-t border-[#1e2a3a]">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-[#a0b0c5] text-[10px] uppercase tracking-widest">
+                  {t('tft.augment.stage.appearsIn')}
+                </span>
+              </div>
+              {augStages ? (
+                <div className="flex flex-wrap gap-2">
+                  {(['2-1', '3-2', '4-2'] as const).map(s => {
+                    const c = stageColor(s);
+                    const isActive = augStages.includes(s);
+                    return (
+                      <span
+                        key={s}
+                        className="text-xs tabular-nums px-3 py-1 rounded border font-medium transition-opacity"
+                        style={{
+                          color: isActive ? c : '#5a6a80',
+                          backgroundColor: isActive ? `${c}1a` : 'transparent',
+                          borderColor: isActive ? `${c}55` : '#1e2a3a',
+                          opacity: isActive ? 1 : 0.45,
+                        }}
+                      >
+                        Stage {s}
+                      </span>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-[#7a8aa0] text-[11px] italic">
+                  {t('tft.augment.stage.unknown')}
+                </div>
+              )}
+              <div className="text-[#5a6a80] text-[10px] italic mt-2">
+                {t('tft.augment.stage.sourceFooter')}
               </div>
             </div>
           </div>

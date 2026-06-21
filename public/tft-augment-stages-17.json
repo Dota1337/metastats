@@ -1,0 +1,890 @@
+{
+  "set": 17,
+  "source": "tactics.tools/info/augments",
+  "fetchedAt": "2026-06-21T13:05:06.464Z",
+  "counts": {
+    "cards": 265,
+    "pinned": 256,
+    "unmatched": 9,
+    "patterns": {
+      "2-1": 96,
+      "2-1|3-2": 21,
+      "2-1|3-2|4-2": 10,
+      "3-2|4-2": 66,
+      "3-2": 38,
+      "(none)": 3,
+      "4-2": 22
+    }
+  },
+  "stages": {
+    "TFT7_Augment_AFK": [
+      "2-1"
+    ],
+    "TFT_Augment_PowerUp": [
+      "2-1",
+      "3-2"
+    ],
+    "TFT_Augment_ComponentQuestBow": [
+      "2-1"
+    ],
+    "TFT7_Augment_BandOfThieves1": [
+      "2-1",
+      "3-2",
+      "4-2"
+    ],
+    "TFT7_Augment_BestFriends1": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT17_Augment_NasusCarry": [
+      "2-1"
+    ],
+    "TFT_Augment_BoxingLessons": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT_Augment_BranchingOut": [
+      "2-1"
+    ],
+    "TFT_Augment_BranchingOutPlus": [
+      "3-2"
+    ],
+    "TFT9_Augment_BardPlaybook1": [
+      "2-1"
+    ],
+    "TFT_Augment_ComponentQuestSword": [
+      "2-1"
+    ],
+    "TFT_Augment_ChargeTransfer1": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT_Augment_ClimbTheLadder1": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT_Augment_CognitiveTax": [
+      "2-1"
+    ],
+    "TFT_Augment_CognitiveTaxPlus": [
+      "3-2"
+    ],
+    "TFT_Augment_ComponentQuestRod": [
+      "2-1"
+    ],
+    "TFT_Augment_Corrosion": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT_Augment_CraftedCrafting": [
+      "2-1"
+    ],
+    "TFT_Augment_ComponentQuestGlove": [
+      "2-1"
+    ],
+    "TFT_Augment_Dummify": [
+      "3-2"
+    ],
+    "TFT6_Augment_Electrocharge1": [
+      "2-1",
+      "3-2",
+      "4-2"
+    ],
+    "TFT6_Augment_Distancing": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT_Augment_Expedition": [
+      "2-1"
+    ],
+    "TFT_Augment_FeelingLucky": [
+      "3-2"
+    ],
+    "TFT_Augment_FindYourCenter": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT_Augment_FiresalePlus": [],
+    "TFT_Augment_ComponentQuestTear": [
+      "2-1"
+    ],
+    "TFT_Augment_MarksMan": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT_Augment_ForgeAFriend": [
+      "4-2"
+    ],
+    "TFT_Augment_GlassCannonI": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT10_Augment_GoodForSomethingSilver": [
+      "2-1"
+    ],
+    "TFT_Augment_GroupHug1": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT9_Augment_HealingOrbsI": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT9_Augment_IronAssets": [
+      "2-1"
+    ],
+    "TFT6_Augment_ItemGrabBag1": [
+      "2-1",
+      "3-2",
+      "4-2"
+    ],
+    "TFT_Augment_KickStart": [
+      "2-1"
+    ],
+    "TFT7_Augment_LategameSpecialist": [
+      "3-2"
+    ],
+    "TFT9_Augment_LongTimeCrafting": [
+      "2-1"
+    ],
+    "TFT_Augment_Lineup": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT11_Augment_BloodBank": [
+      "2-1",
+      "3-2"
+    ],
+    "TFT6_Augment_MakeshiftArmor1": [
+      "2-1",
+      "3-2"
+    ],
+    "TFT9_Augment_MissedConnections": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT_Augment_Waverider": [
+      "3-2"
+    ],
+    "TFT9_Augment_OneTwosThree": [
+      "2-1"
+    ],
+    "TFT6_Augment_OneTwoFive": [
+      "4-2"
+    ],
+    "TFT6_Augment_PandorasItems": [
+      "2-1",
+      "3-2",
+      "4-2"
+    ],
+    "TFT9_Augment_Commander_PartialAscension": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT_Augment_PatienceIsAVirtue": [
+      "2-1"
+    ],
+    "TFT6_Augment_Recombobulator": [
+      "3-2"
+    ],
+    "TFT_Augment_RestartMission": [
+      "3-2"
+    ],
+    "TFT9_Augment_RiskyMoves": [
+      "2-1"
+    ],
+    "TFT9_Augment_Commander_RollingForDays": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT6_Augment_SecondWind1": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT17_Augment_LeonaCarry": [
+      "2-1"
+    ],
+    "TFT9_Augment_SilverSpoon": [
+      "2-1"
+    ],
+    "TFT_Augment_SizeMatters": [
+      "3-2"
+    ],
+    "TFT_Augment_SliceOfLife": [
+      "2-1"
+    ],
+    "TFT_Augment_MagicRollMinus": [
+      "2-1"
+    ],
+    "TFT_Augment_SmallGrabBag": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT6_Augment_Diversify1": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT17_Augment_AatroxCarry": [
+      "2-1"
+    ],
+    "TFT_Augment_Survivor": [
+      "2-1"
+    ],
+    "TFT9_Augment_ArmyBuilding": [
+      "2-1",
+      "3-2"
+    ],
+    "TFT9_Augment_Commander_TeamingUp1": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT17_Augment_PoppyCarry": [
+      "2-1"
+    ],
+    "TFT_Augment_TheTower": [
+      "2-1",
+      "3-2",
+      "4-2"
+    ],
+    "TFT6_Augment_TinyTitans": [
+      "2-1"
+    ],
+    "TFT_Augment_TwinGuardians": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT_Augment_Dhampyr1": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT_Augment_MagicRoll": [
+      "3-2"
+    ],
+    "TFT_Augment_AdvancedLoan": [
+      "2-1"
+    ],
+    "TFT_Augment_AdvancedLoanPlus": [
+      "3-2"
+    ],
+    "TFT17_Augment_AnimaSquad_Commander": [
+      "2-1"
+    ],
+    "TFT17_Augment_ApotheoticForge": [
+      "2-1",
+      "3-2",
+      "4-2"
+    ],
+    "TFT_Augment_ArcaneViktory": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT9_Augment_Commander_Ascension": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT_Augment_AuraFarming": [
+      "2-1"
+    ],
+    "TFT_Augment_BacklineBlueprint": [
+      "2-1"
+    ],
+    "TFT7_Augment_BestFriends2": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT9_Augment_BigGrabBag": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT_Augment_BirthdayReunion": [
+      "2-1"
+    ],
+    "TFT_Augment_TheDarkinBlade": [
+      "2-1",
+      "3-2"
+    ],
+    "TFT_Augment_BodyguardTraining": [
+      "2-1"
+    ],
+    "TFT_Augment_BoosterPack": [
+      "2-1"
+    ],
+    "TFT_Augment_BoosterPackPlus": [
+      "3-2"
+    ],
+    "TFT_Augment_BronzeForLifeI": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT6_Augment_CalculatedLoss": [
+      "2-1"
+    ],
+    "TFT_Augment_HomeCooking": [
+      "3-2"
+    ],
+    "TFT_Augment_ChargeTransfer2": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT6_Augment_ClearMind": [
+      "2-1"
+    ],
+    "TFT_Augment_ClimbTheLadder2": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT_Augment_ClockworkAccelerator": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT7_Augment_ClutteredMind": [
+      "2-1"
+    ],
+    "TFT_Augment_CognitiveOverload": [
+      "3-2"
+    ],
+    "TFT17_Augment_Concentration": [
+      "2-1"
+    ],
+    "TFT_Augment_ConstructACompanion": [
+      "3-2"
+    ],
+    "TFT17_Augment_PykeCarry": [
+      "2-1"
+    ],
+    "TFT_Augment_CosmicRestart": [
+      "3-2"
+    ],
+    "TFT10_Augment_CrashTestDummies": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT_Augment_CryMeARiver": [
+      "2-1",
+      "3-2"
+    ],
+    "TFT6_Augment_CyberneticImplants2": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT6_Augment_CyberneticUplink2": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT17_Augment_Arbiter_DivineAmendment": [
+      "3-2"
+    ],
+    "TFT_Augment_DuoQueue": [
+      "4-2"
+    ],
+    "TFT_Augment_EarlyLearning": [
+      "2-1"
+    ],
+    "TFT6_Augment_Electrocharge2": [
+      "2-1",
+      "3-2",
+      "4-2"
+    ],
+    "TFT_Augment_EpicRolldown": [
+      "3-2"
+    ],
+    "TFT11_Augment_Epoch": [
+      "2-1"
+    ],
+    "TFT11_Augment_EpochPlus": [
+      "3-2"
+    ],
+    "TFT_Augment_ExclusiveCustomization": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT6_Augment_Distancing2": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT_Augment_ExplosiveGrowth": [
+      "3-2"
+    ],
+    "TFT_Augment_ExplosiveGrowthPlus": [
+      "4-2"
+    ],
+    "TFT_Augment_FeedTheFlames": [
+      "2-1",
+      "3-2"
+    ],
+    "TFT_Augment_ForwardThinking": [
+      "3-2"
+    ],
+    "TFT_Augment_FrontlineFoundation": [
+      "2-1"
+    ],
+    "TFT_Augment_GildedSteel": [
+      "4-2"
+    ],
+    "TFT_Augment_GlassCannonII": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT_Augment_GroupHug2": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT9_Augment_HealingOrbsII": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT_Augment_WarmogsBuckle": [
+      "2-1"
+    ],
+    "TFT17_Augment_MordekaiserCarry": [
+      "2-1"
+    ],
+    "TFT_Augment_HeavyIsTheCrown": [
+      "2-1",
+      "3-2"
+    ],
+    "TFT10_Augment_HeroicGrabBag": [
+      "2-1"
+    ],
+    "TFT_Augment_HeroicGrabBagPlus": [
+      "3-2"
+    ],
+    "TFT_Augment_HeroicGrabBagPlusPlus": [
+      "4-2"
+    ],
+    "TFT_Augment_HighVoltage": [
+      "2-1",
+      "3-2"
+    ],
+    "TFT6_Augment_HyperRoll": [
+      "2-1"
+    ],
+    "TFT_Augment_JustSlayer": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT_Augment_InfinityProtection": [
+      "2-1"
+    ],
+    "TFT17_Augment_InvaderZed": [
+      "3-2"
+    ],
+    "TFT9_Augment_JeweledLotus": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT_Augment_FuriousBlows": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT_Augment_LateGameScaling": [
+      "2-1"
+    ],
+    "TFT_Augment_LegionOfThrees": [
+      "2-1"
+    ],
+    "TFT10_Augment_LittleBuddies": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT17_Augment_DarkStar_WhiteHole": [
+      "2-1"
+    ],
+    "TFT_Augment_GuardbreakerSpirit": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT6_Augment_MakeshiftArmor2": [
+      "2-1",
+      "3-2"
+    ],
+    "TFT_Augment_MirroredMonetization": [
+      "4-2"
+    ],
+    "TFT_Augment_MayTheFoursBeWithYou": [
+      "4-2"
+    ],
+    "TFT_Augment_Misfits": [
+      "3-2"
+    ],
+    "TFT_Augment_MoneyHungry": [
+      "2-1"
+    ],
+    "TFT_Augment_NoScoutNoPivot": [
+      "2-1"
+    ],
+    "TFT9_Augment_PandorasItems2": [
+      "2-1",
+      "3-2",
+      "4-2"
+    ],
+    "TFT9_Augment_LearningFromExperience2": [
+      "2-1"
+    ],
+    "TFT_Augment_Pilfer": [
+      "3-2"
+    ],
+    "TFT_Augment_PlotArmor": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT6_Augment_PortableForge": [
+      "2-1",
+      "3-2",
+      "4-2"
+    ],
+    "TFT11_Augment_Prizefighter": [
+      "2-1"
+    ],
+    "TFT17_Augment_JaxCarry": [
+      "2-1"
+    ],
+    "TFT11_Augment_Reinfourcement": [
+      "4-2"
+    ],
+    "TFT_Augment_Replication": [
+      "2-1",
+      "3-2"
+    ],
+    "TFT6_Augment_SalvageBin": [
+      "2-1"
+    ],
+    "TFT8_Augment_SalvageBinPlus": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT_Augment_SavingsAccount": [
+      "2-1"
+    ],
+    "TFT6_Augment_SecondWind2": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT17_Augment_GragasCarry": [
+      "2-1"
+    ],
+    "TFT_Augment_SeraphimsStaff": [
+      "2-1",
+      "3-2"
+    ],
+    "TFT_Augment_SideEffects": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT11_Augment_Slammin": [
+      "2-1"
+    ],
+    "TFT11_Augment_Slammin_Plus": [
+      "3-2"
+    ],
+    "TFT_Augment_SoloLeveling": [
+      "2-1"
+    ],
+    "TFT_Augment_ItemGargoyleStoneplate": [
+      "2-1",
+      "3-2"
+    ],
+    "TFT_Augment_SpeedyDoubleKill": [
+      "2-1"
+    ],
+    "TFT_Augment_ItemSpiritVisage": [
+      "2-1",
+      "3-2"
+    ],
+    "TFT_Augment_SpreadingRoots": [
+      "2-1"
+    ],
+    "TFT_Augment_SpreadingRootsPlus": [
+      "3-2"
+    ],
+    "TFT_Augment_ForgeRod": [
+      "4-2"
+    ],
+    "TFT6_Augment_SunfireBoard": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT_Augment_ForgeSword": [
+      "4-2"
+    ],
+    "TFT17_Augment_IvernMinionCarry": [
+      "2-1"
+    ],
+    "TFT_Augment_TheGoldenDragon": [],
+    "TFT17_Augment_Timebreaker_Timestream": [
+      "2-1"
+    ],
+    "TFT9_Augment_TonsOfStats": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT17_Augment_TourOfTheGalaxy": [
+      "2-1",
+      "3-2"
+    ],
+    "TFT6_Augment_TradeSector": [
+      "2-1"
+    ],
+    "TFT_Augment_TreasureHunt": [
+      "2-1"
+    ],
+    "TFT_Augment_Trifecta1": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT_Augment_TwoMuchValue": [],
+    "TFT_Augment_TwoTanky": [
+      "2-1",
+      "3-2"
+    ],
+    "TFT_Augment_UrfsGambit": [
+      "3-2"
+    ],
+    "TFT_Augment_Unforgotten": [
+      "2-1",
+      "3-2"
+    ],
+    "TFT_Augment_Warpath": [
+      "2-1"
+    ],
+    "TFT_Augment_WorthTheWaitGold": [
+      "2-1"
+    ],
+    "TFT_Augment_TheVidalion": [
+      "2-1"
+    ],
+    "TFT9_Augment_YouHaveMyBow": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT_Augment_AnExaltedAdventure": [
+      "2-1"
+    ],
+    "TFT11_Augment_AtWhatCost": [
+      "2-1"
+    ],
+    "TFT6_Augment_BandOfThieves2": [
+      "2-1"
+    ],
+    "TFT6_Augment_BandOfThieves2Plus": [
+      "3-2"
+    ],
+    "TFT6_Augment_BandOfThieves2PlusPlus": [
+      "4-2"
+    ],
+    "TFT_Augment_TheBaronsLair": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT_Augment_BeltOverflow": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT7_Augment_BirthdayPresents": [
+      "2-1"
+    ],
+    "TFT_Augment_BronzeForLife2": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT11_Augment_Buildabud": [
+      "2-1"
+    ],
+    "TFT9_Augment_BuildingACollectionPlusPlus": [
+      "2-1"
+    ],
+    "TFT11_Augment_Calltochaos": [
+      "4-2"
+    ],
+    "TFT_Augment_ComebackStory": [
+      "2-1"
+    ],
+    "TFT6_Augment_TradeSector2": [
+      "4-2"
+    ],
+    "TFT_Augment_MuseumHeist": [
+      "4-2"
+    ],
+    "TFT7_Augment_CursedCrown": [
+      "2-1",
+      "3-2"
+    ],
+    "TFT_Augment_TragicalBlade": [
+      "2-1"
+    ],
+    "TFT_Augment_DeadlierCaps": [
+      "2-1"
+    ],
+    "TFT_Augment_ExclusiveCustomization2": [
+      "4-2"
+    ],
+    "TFT_Augment_ExpectedUnexpectedness": [
+      "2-1"
+    ],
+    "TFT_Augment_Flexible": [
+      "2-1"
+    ],
+    "TFT_Augment_ForgedInStrength": [
+      "2-1"
+    ],
+    "TFT_Augment_GiantAndMighty": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT10_Augment_GoingLong": [
+      "2-1"
+    ],
+    "TFT_Augment_GoldenGamble": [
+      "2-1"
+    ],
+    "TFT_Augment_GoldenGamblePlus": [
+      "3-2"
+    ],
+    "TFT_Augment_GoldenGamblePlusPlus": [
+      "4-2"
+    ],
+    "TFT_Augment_HardCommit": [
+      "2-1"
+    ],
+    "TFT17_Augment_PrimordianPrismaticAugment": [
+      "2-1"
+    ],
+    "TFT9_Augment_HedgeFund": [
+      "2-1"
+    ],
+    "TFT9_Augment_HedgeFundPlus": [
+      "3-2"
+    ],
+    "TFT_Augment_HoldTheLine": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT_Augment_InvestedPlus": [
+      "3-2"
+    ],
+    "TFT_Augment_InvestedPlusPlus": [
+      "4-2"
+    ],
+    "TFT9_Augment_GreaterJeweledLotus": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT6_Augment_MaxLevel10": [
+      "2-1"
+    ],
+    "TFT7_Augment_LivingForge": [
+      "2-1"
+    ],
+    "TFT7_Augment_LuckyGloves": [
+      "2-1"
+    ],
+    "TFT7_Augment_LuckyGlovesPlus": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT_Augment_LuxurySubscription": [
+      "3-2"
+    ],
+    "TFT_Augment_MinMaxer": [
+      "3-2"
+    ],
+    "TFT_Augment_MoneyMonsoon": [
+      "4-2"
+    ],
+    "TFT6_Augment_ForceOfNature": [
+      "3-2"
+    ],
+    "TFT6_Augment_ForceOfNaturePlus": [
+      "4-2"
+    ],
+    "TFT_Augment_OneBuffTwoBuff": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT9_Augment_PandorasRadiantBox": [
+      "2-1",
+      "3-2"
+    ],
+    "TFT6_Augment_GachaAddict": [
+      "2-1",
+      "3-2"
+    ],
+    "TFT9_Augment_RollTheDice": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT_Augment_Retribution": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT_Augment_ShimmerscaleEssence": [
+      "2-1"
+    ],
+    "TFT9_Augment_Legend_HighEndSector": [
+      "2-1"
+    ],
+    "TFT_Augment_AwakenedSoul": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT_Augment_SubscriptionService": [
+      "2-1"
+    ],
+    "TFT_Augment_SweetTreats": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT_Augment_SwordOverflow": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT_Augment_TacticiansKitchen": [
+      "2-1"
+    ],
+    "TFT6_Augment_TheGoldenEgg": [
+      "4-2"
+    ],
+    "TFT_Augment_TraitTree": [
+      "2-1"
+    ],
+    "TFT_Augment_TraitTreePlus": [
+      "3-2"
+    ],
+    "TFT9_Augment_TiniestTitanPlus": [
+      "3-2"
+    ],
+    "TFT11_Augment_TinyButDeadly": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT_Augment_Trifecta2": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT_Augment_UpwardMobility": [
+      "2-1",
+      "3-2",
+      "4-2"
+    ],
+    "TFT7_Augment_UrfsGrabBag2": [
+      "4-2"
+    ],
+    "TFT_Augment_WandOverflow": [
+      "3-2",
+      "4-2"
+    ],
+    "TFT_Augment_WeStickTogether": [
+      "2-1"
+    ],
+    "TFT_Augment_WinOut": [
+      "3-2"
+    ],
+    "TFT6_Augment_ThriftShop": [
+      "2-1",
+      "3-2"
+    ],
+    "TFT_Augment_WorthTheWaitPrismatic": [
+      "2-1"
+    ]
+  }
+}

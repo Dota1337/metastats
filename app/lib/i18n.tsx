@@ -2175,6 +2175,72 @@ const translations = {
     '\uB370\uC774\uD130 \uBD80\uC871', '\u6837\u672C\u4E0D\u8DB3',
     'pocos datos', 'peu de donn\u00E9es'
   ),
+  'tft.augment.compsPlayingThis': t6(
+    'Comps mit diesem Augment', 'Comps using this Augment',
+    '\uC774 \uC99D\uAC15\uCCB4\uB97C \uC0AC\uC6A9\uD558\uB294 \uC870\uD569', '\u4F7F\u7528\u6B64\u5F3A\u5316\u7684\u9635\u5BB9',
+    'Comps con este aumento', 'Compositions avec cette augmentation'
+  ),
+  'tft.augment.compsPlayingThis.note': t6(
+    'Kuratiert \u2014 keine Live-Stats. Riot exposiert keine Augment-Stats mehr.',
+    'Curated \u2014 no live stats. Riot no longer exposes augment statistics.',
+    '\uD050\uB808\uC774\uD305 \u2014 \uB77C\uC774\uBE0C \uD1B5\uACC4 \uC5C6\uC74C. Riot\uC740 \uB354 \uC774\uC0C1 \uC99D\uAC15 \uD1B5\uACC4\uB97C \uC81C\uACF5\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.',
+    '\u7CBE\u9009 \u2014 \u65E0\u5B9E\u65F6\u6570\u636E\u3002Riot \u4E0D\u518D\u516C\u5F00\u5F3A\u5316\u6570\u636E\u3002',
+    'Seleccionado \u2014 sin estad\u00EDsticas en vivo. Riot ya no expone estad\u00EDsticas de aumentos.',
+    'S\u00E9lectionn\u00E9 \u2014 pas de statistiques en direct. Riot ne divulgue plus les statistiques d\'augmentation.'
+  ),
+  'tft.item.compsPlayingThis': t6(
+    'Comps mit diesem Item', 'Comps using this Item',
+    '\uC774 \uC544\uC774\uD15C\uC744 \uC0AC\uC6A9\uD558\uB294 \uC870\uD569', '\u4F7F\u7528\u6B64\u88C5\u5907\u7684\u9635\u5BB9',
+    'Comps con este objeto', 'Compositions avec cet objet'
+  ),
+  'tft.compare.title': t6(
+    'Comp-Vergleich', 'Comp Comparison',
+    '\uC870\uD569 \uBE44\uAD50', '\u9635\u5BB9\u5BF9\u6BD4',
+    'Comparaci\u00F3n de comps', 'Comparaison de comps'
+  ),
+  'tft.compare.pickTwo': t6(
+    'Zwei Comps zum Vergleichen w\u00E4hlen', 'Pick two comps to compare',
+    '\uBE44\uAD50\uD560 \uB450 \uC870\uD569 \uC120\uD0DD', '\u9009\u62E9\u4E24\u4E2A\u9635\u5BB9\u8FDB\u884C\u5BF9\u6BD4',
+    'Elige dos comps para comparar', 'S\u00E9lectionnez deux comps \u00E0 comparer'
+  ),
+  'tft.compare.pickTwo.hint': t6(
+    'URL-Format: ?a=<slug>&b=<slug>. Compare-Buttons auf der Comp-Liste folgen.',
+    'URL format: ?a=<slug>&b=<slug>. Compare-buttons on the comp list coming soon.',
+    'URL \uD615\uC2DD: ?a=<slug>&b=<slug>. \uC870\uD569 \uBAA9\uB85D \uBE44\uAD50 \uBC84\uD2BC\uC740 \uACE7 \uCD94\uAC00\uB429\uB2C8\uB2E4.',
+    'URL \u683C\u5F0F: ?a=<slug>&b=<slug>\u3002\u9635\u5BB9\u5217\u8868\u7684\u5BF9\u6BD4\u6309\u94AE\u5373\u5C06\u63A8\u51FA\u3002',
+    'Formato URL: ?a=<slug>&b=<slug>. Botones de comparaci\u00F3n en la lista pr\u00F3ximamente.',
+    'Format URL : ?a=<slug>&b=<slug>. Boutons de comparaison \u00E0 venir.'
+  ),
+  'tft.compare.goToList': t6(
+    'Zur Comp-Liste', 'Go to comp list',
+    '\uC870\uD569 \uBAA9\uB85D\uC73C\uB85C', '\u524D\u5F80\u9635\u5BB9\u5217\u8868',
+    'Ir a la lista de comps', 'Aller \u00E0 la liste des comps'
+  ),
+  'tft.compare.notFound': t6(
+    'Comp nicht gefunden', 'Comp not found',
+    '\uC870\uD569\uC744 \uCC3E\uC744 \uC218 \uC5C6\uC74C', '\u672A\u627E\u5230\u9635\u5BB9',
+    'Comp no encontrado', 'Comp introuvable'
+  ),
+  'tft.compare.traits': t6(
+    'Synergie-Vergleich', 'Synergy Diff',
+    '\uC2DC\uB108\uC9C0 \uBE44\uAD50', '\u7F81\u7ECA\u5BF9\u6BD4',
+    'Comparaci\u00F3n de sinergias', 'Comparaison de synergies'
+  ),
+  'tft.compare.traits.shared': t6(
+    'Gemeinsam', 'Shared',
+    '\uACF5\uD1B5', '\u5171\u6709',
+    'Compartidas', 'Communes'
+  ),
+  'tft.compare.traits.onlyA': t6(
+    'Nur A', 'A only',
+    'A \uC804\uC6A9', '\u4EC5 A',
+    'Solo A', 'A uniquement'
+  ),
+  'tft.compare.traits.onlyB': t6(
+    'Nur B', 'B only',
+    'B \uC804\uC6A9', '\u4EC5 B',
+    'Solo B', 'B uniquement'
+  ),
   'tft.comp.augments.tier.silver': t6(
     'Silver', 'Silver',
     '\uC2E4\uBC84', '\u94F6\u8272',

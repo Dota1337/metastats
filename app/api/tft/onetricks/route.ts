@@ -1,53 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-// Pool + match cache both live on Hetzner — Supabase only carries marketvalue
-// snapshots (and even those caps at 1000 rows in PostgREST RPCs), so we read
-// directly via the refresh-api proxy.
 import { getAvailablePatches } from '../../../lib/tft-supabase-reader';
 import { fetchHetznerPlayerMatches, fetchHetznerMarketvaluePool } from '../../../lib/tft-hetzner-matches';
 import { cachedJson, STATS_CACHE_CONTROL } from '../../../lib/api-cache';
+import { classifyComp } from '../../../lib/tft-classify-comp';
 
 // /api/tft/onetricks?region=euw1&minShare=0.6
 //
 // High-Elo players whose top-2 comps make up ≥ minShare of their last N
-// classifiable games. Reads marketvalue top-N + their match cache.
+// classifiable games. Klassifikation via unifizierte Library
+// (app/lib/tft-classify-comp.ts == scripts/lib/tft-classify-comp.mjs).
 
 interface CachedMatch {
-  // Unit shape differs by writer: the Hetzner crawler stores {characterId,
-  // tier, items}; the legacy Vercel path stores {character_id, tier, rarity,
-  // items}. Neither writes `itemNames`. Accept every key so comps classify
-  // regardless of source (otherwise Hetzner-sourced rows never classify and
-  // the page renders empty).
   units: { character_id?: string; characterId?: string; tier?: number; rarity?: number; items?: string[]; itemNames?: string[] }[];
   traits: { name?: string; tier_current?: number; style?: number; num_units?: number }[];
+  augments?: string[];
+  level?: number;
   placement: number;
-}
-
-function classifyComp(m: CachedMatch): string | null {
-  const active = (m.traits || []).filter(t => (t.style ?? 0) > 0);
-  if (active.length === 0) return null;
-  // Prefer real comp traits (≥2 units) — single-unit "UniqueTrait"s otherwise
-  // fragment the same comp. Fall back to all if none qualify (legacy rows).
-  const pool = active.filter(t => (t.num_units ?? 0) >= 2);
-  const traits = pool.length ? pool : active;
-  traits.sort((a, b) => {
-    if ((b.style ?? 0) !== (a.style ?? 0)) return (b.style ?? 0) - (a.style ?? 0);
-    if ((b.tier_current ?? 0) !== (a.tier_current ?? 0)) return (b.tier_current ?? 0) - (a.tier_current ?? 0);
-    return (a.name || '').localeCompare(b.name || '');
-  });
-  const primary = traits[0];
-  const units = m.units || [];
-  if (units.length === 0) return null;
-  const ranked = [...units].sort((a, b) => {
-    const ai = (a.items ?? a.itemNames ?? []).length;
-    const bi = (b.items ?? b.itemNames ?? []).length;
-    if (bi !== ai) return bi - ai;
-    if ((b.tier ?? 1) !== (a.tier ?? 1)) return (b.tier ?? 1) - (a.tier ?? 1);
-    return (b.rarity ?? 0) - (a.rarity ?? 0);
-  });
-  const carry = ranked[0];
-  const carryId = carry?.characterId ?? carry?.character_id;
-  if (!carryId) return null;
-  return `${primary.name}@${primary.tier_current ?? 0}_${carryId}`;
 }
 
 // Pool: pull the Master+ pool via the Hetzner refresh-api. The Supabase
@@ -124,14 +92,19 @@ export async function GET(request: NextRequest) {
 
   const perPuuid = new Map<string, Map<string, { games: number; sumPlacement: number }>>();
   for (const row of (matches || []) as Array<CachedMatch & { puuid: string }>) {
-    const cluster = classifyComp(row);
-    if (!cluster) continue;
+    const cls = classifyComp({
+      traits: row.traits,
+      units: row.units,
+      augments: row.augments,
+      level: row.level,
+    }, { withAugmentSuffix: false });
+    if (!cls) continue;
     let m = perPuuid.get(row.puuid);
     if (!m) { m = new Map(); perPuuid.set(row.puuid, m); }
-    const e = m.get(cluster) || { games: 0, sumPlacement: 0 };
+    const e = m.get(cls.clusterKey) || { games: 0, sumPlacement: 0 };
     e.games++;
     e.sumPlacement += (row.placement || 9);
-    m.set(cluster, e);
+    m.set(cls.clusterKey, e);
   }
 
   const onetricks: any[] = [];

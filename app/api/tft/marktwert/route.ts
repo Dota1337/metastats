@@ -4,6 +4,7 @@ import { extractRawMetrics, scoreSkill, type CompMetaEntry } from '../../../lib/
 import { getRegionalRouting } from '../../../lib/regions';
 import { processTftMatch } from '../../../lib/tft-match-processor';
 import { supabase } from '../../../lib/supabase';
+import { classifyComp as classifyCompUnified } from '../../../lib/tft-classify-comp';
 
 // /api/tft/marktwert?name=Caps#EUW&region=euw1
 //
@@ -169,30 +170,16 @@ export async function GET(request: NextRequest) {
   });
 }
 
-// Same shape as scripts/lib/tft-build-aggregator.mjs#classifyComp but
-// runs on the processed-match output rather than the raw DTO.
+// Wrapper auf die unifizierte Klassifikations-Library. processed-match output
+// nutzt camelCase (tierCurrent) — die Lib akzeptiert beide Casings.
 function classify(p: any) {
-  const traits = (p.traits || []).filter((t: any) => (t.style ?? 0) > 0);
-  if (traits.length === 0) return undefined;
-  traits.sort((a: any, b: any) => {
-    if ((b.style ?? 0) !== (a.style ?? 0)) return (b.style ?? 0) - (a.style ?? 0);
-    if ((b.tierCurrent ?? 0) !== (a.tierCurrent ?? 0)) return (b.tierCurrent ?? 0) - (a.tierCurrent ?? 0);
-    return (a.name || '').localeCompare(b.name || '');
-  });
-  const primary = traits[0];
-  const ranked = [...(p.units || [])].sort((a: any, b: any) => {
-    const aItems = (a.items || []).length, bItems = (b.items || []).length;
-    if (bItems !== aItems) return bItems - aItems;
-    if ((b.tier ?? 1) !== (a.tier ?? 1)) return (b.tier ?? 1) - (a.tier ?? 1);
-    return (b.rarity ?? 0) - (a.rarity ?? 0);
-  });
-  const carry = ranked[0];
-  if (!carry?.characterId) return undefined;
+  const result = classifyCompUnified(p, { withAugmentSuffix: false });
+  if (!result) return undefined;
   return {
-    clusterKey: `${primary.name}@${primary.tierCurrent ?? 0}_${carry.characterId}`,
-    primaryTrait: primary.name,
-    primaryTraitLevel: primary.tierCurrent ?? 0,
-    carryUnit: carry.characterId,
-    carryItems: (carry.items || []).filter(Boolean).sort(),
+    clusterKey: result.clusterKey,
+    primaryTrait: result.primaryTrait,
+    primaryTraitLevel: result.primaryTraitLevel,
+    carryUnit: result.carryUnit,
+    carryItems: result.carryItems,
   };
 }

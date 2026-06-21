@@ -9,6 +9,8 @@
 // app/lib/tft-marketvalue/skill-score.ts. The old agent model was deleted
 // 2026-05-25 (it was dead on every live path).
 
+import { classifyComp as classifyCompUnified } from './tft-classify-comp.mjs';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // base-value
 // ─────────────────────────────────────────────────────────────────────────────
@@ -90,29 +92,19 @@ function detectSetNumber(participants) {
   return undefined;
 }
 
+// Cache-Writer-Klassifikation. Delegiert an die Single-Source-Library mit
+// withAugmentSuffix=false — Cache haelt cluster_key flat (suffix-frei), die
+// Listing-Page matcht ueber compTraitFamilyKey() ohnehin nicht ueber den
+// Augment-Suffix.
 function classifyComp(p) {
-  const traits = (p.traits || []).filter(t => (t.style ?? 0) > 0);
-  if (traits.length === 0) return undefined;
-  traits.sort((a, b) => {
-    if ((b.style ?? 0) !== (a.style ?? 0)) return (b.style ?? 0) - (a.style ?? 0);
-    if ((b.tier_current ?? 0) !== (a.tier_current ?? 0)) return (b.tier_current ?? 0) - (a.tier_current ?? 0);
-    return (a.name || '').localeCompare(b.name || '');
-  });
-  const primary = traits[0];
-  const ranked = [...(p.units || [])].sort((a, b) => {
-    const aItems = (a.itemNames || []).length, bItems = (b.itemNames || []).length;
-    if (bItems !== aItems) return bItems - aItems;
-    if ((b.tier ?? 1) !== (a.tier ?? 1)) return (b.tier ?? 1) - (a.tier ?? 1);
-    return (b.rarity ?? 0) - (a.rarity ?? 0);
-  });
-  const carry = ranked[0];
-  if (!carry?.character_id) return undefined;
+  const result = classifyCompUnified(p, { withAugmentSuffix: false });
+  if (!result) return undefined;
   return {
-    clusterKey: `${primary.name}@${primary.tier_current ?? 0}_${carry.character_id}`,
-    primaryTrait: primary.name,
-    primaryTraitLevel: primary.tier_current ?? 0,
-    carryUnit: carry.character_id,
-    carryItems: (carry.itemNames || []).filter(Boolean).sort(),
+    clusterKey: result.clusterKey,
+    primaryTrait: result.primaryTrait,
+    primaryTraitLevel: result.primaryTraitLevel,
+    carryUnit: result.carryUnit,
+    carryItems: result.carryItems,
   };
 }
 

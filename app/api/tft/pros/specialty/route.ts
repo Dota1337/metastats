@@ -1,17 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchHetznerPlayerMatches } from '../../../../lib/tft-hetzner-matches';
+import { classifyComp } from '../../../../lib/tft-classify-comp';
 
 // /api/tft/pros/specialty?puuid=...
 //
-// Reads this pro's cached matches from tft_player_match_cache, classifies
-// every board into the same cluster_key the aggregator uses, then ships:
-//   - Pro-Specialty (Sprint 3.2): top comps this pro plays + share/avg place
-//   - Pro-Build-Drift (Sprint 3.3): per-carry-unit item-build distribution
-// Pure read-side aggregation — no new write path needed.
+// Reads this pro's cached matches from tft_player_match_cache, klassifiziert
+// jedes Board ueber die unifizierte Klassifikations-Library
+// (app/lib/tft-classify-comp.ts == scripts/lib/tft-classify-comp.mjs), dann:
+//   - Pro-Specialty: top comps this pro plays + share/avg place
+//   - Pro-Build-Drift: per-carry-unit item-build distribution
+//
+// Vor 2026-06-21: route hatte eigene classifyComp die anders war als die
+// Aggregator-Klassifikation → Top-Cluster `BlitzcrankUniqueTrait@1_...`
+// (Single-Unit-Fragment) statt echter Comps. Reference:
+// reference_tft_classification_bridge.md.
 
-// Shape mirrors fetchHetznerPlayerMatches's HetznerMatchRow — only the fields
-// this endpoint actually reads. The Hetzner refresh-api serves camelCase, so
-// the interface is camelCase end-to-end (no more lying snake_case cast).
 interface CachedMatch {
   matchId: string;
   setNumber: number;
@@ -19,67 +22,9 @@ interface CachedMatch {
   placement: number;
   level: number;
   lastRound: number;
-  // Unit shape differs by writer (Hetzner crawler: {characterId, tier, items};
-  // legacy Vercel: {character_id, tier, rarity, items}). Neither writes
-  // `itemNames`. Accept every key so Hetzner-sourced rows classify too.
+  augments?: string[];
   units: { character_id?: string; characterId?: string; tier?: number; rarity?: number; items?: string[]; itemNames?: string[] }[];
   traits: { name?: string; tier_current?: number; style?: number; num_units?: number }[];
-}
-
-interface ClassifiedComp {
-  clusterKey: string;
-  carryUnit: string;
-}
-
-// Tank/defensive items (+ trait emblems) don't make a unit a carry. The carry
-// is whoever holds the most genuinely offensive items — tanks routinely hold 3
-// defensive items (Warmog's/Gargoyle/Bramble…), so plain item-count mis-picks
-// them (Illaoi was wrongly flagged carry in every comp; rarity tiebreak is dead
-// because the Hetzner cache shape stores no rarity).
-const DEFENSIVE_ITEMS = new Set([
-  'TFT_Item_WarmogsArmor', 'TFT_Item_DragonsClaw', 'TFT_Item_GargoyleStoneplate',
-  'TFT_Item_BrambleVest', 'TFT_Item_SunfireCape', 'TFT_Item_Redemption',
-  'TFT_Item_FrozenHeart', 'TFT_Item_IonicSpark', 'TFT_Item_AdaptiveHelm',
-  'TFT_Item_ProtectorsVow', 'TFT_Item_SteadfastHeart', 'TFT_Item_Evenshroud',
-  'TFT_Item_SpectralGauntlet',
-]);
-function carryItemCount(u: { items?: string[]; itemNames?: string[] }): number {
-  return (u.items ?? u.itemNames ?? []).filter(it => !DEFENSIVE_ITEMS.has(it) && !/Emblem/.test(it)).length;
-}
-
-function classifyComp(m: CachedMatch): ClassifiedComp | null {
-  const active = (m.traits || []).filter(t => (t.style ?? 0) > 0);
-  if (active.length === 0) return null;
-  // Prefer real comp traits (≥2 units) as the primary — single-unit personal
-  // "UniqueTrait"s (num_units=1, e.g. BlitzcrankUniqueTrait/GravesTrait) otherwise
-  // win the style-sort and fragment the same comp into many cluster keys. Fall
-  // back to all active traits if none qualify (legacy rows lack num_units).
-  const pool = active.filter(t => (t.num_units ?? 0) >= 2);
-  const traits = pool.length ? pool : active;
-  traits.sort((a, b) => {
-    if ((b.style ?? 0) !== (a.style ?? 0)) return (b.style ?? 0) - (a.style ?? 0);
-    if ((b.tier_current ?? 0) !== (a.tier_current ?? 0)) return (b.tier_current ?? 0) - (a.tier_current ?? 0);
-    return (a.name || '').localeCompare(b.name || '');
-  });
-  const primary = traits[0];
-  const units = m.units || [];
-  if (units.length === 0) return null;
-  // Rank by offensive-item count first (not raw item count) so a 3-tank-item
-  // bruiser never outranks the real damage carry; then total items, then star.
-  const ranked = [...units].sort((a, b) => {
-    const ca = carryItemCount(a), cb = carryItemCount(b);
-    if (cb !== ca) return cb - ca;
-    const ai = (a.items ?? a.itemNames ?? []).length, bi = (b.items ?? b.itemNames ?? []).length;
-    if (bi !== ai) return bi - ai;
-    return (b.tier ?? 1) - (a.tier ?? 1);
-  });
-  const carry = ranked[0];
-  const carryId = carry?.characterId ?? carry?.character_id;
-  if (!carryId) return null;
-  return {
-    clusterKey: `${primary.name}@${primary.tier_current ?? 0}_${carryId}`,
-    carryUnit: carryId,
-  };
 }
 
 const STANDARD_RANKED_QUEUE = 1100;
@@ -117,7 +62,12 @@ export async function GET(request: NextRequest) {
 
   let totalClassified = 0;
   for (const m of rows) {
-    const cls = classifyComp(m);
+    const cls = classifyComp({
+      traits: m.traits,
+      units: m.units,
+      augments: m.augments,
+      level: m.level,
+    }, { withAugmentSuffix: false });
     if (!cls) continue;
     totalClassified++;
     const place = m.placement || 9;

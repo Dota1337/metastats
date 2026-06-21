@@ -2140,6 +2140,16 @@ const translations = {
     '\uB2E4\uC74C \uB2E8\uACC4\uAE4C\uC9C0 {n}', '\u8FD8\u9700{n}\u4E2A\u5230\u4E0B\u4E00\u7EA7',
     '{n} m\u00E1s para siguiente nivel', '{n} de plus pour le palier suivant'
   ),
+  'tft.comp.activeTraits.contributors': t6(
+    '{n} Units tragen bei', '{n} units contribute',
+    '{n} \uC720\uB2DB \uAE30\uC5EC', '{n} \u4E2A\u5355\u4F4D\u8D21\u732E',
+    '{n} unidades contribuyen', '{n} unit\u00E9s contribuent'
+  ),
+  'tft.comp.activeTraits.multiplicityStack': t6(
+    'Zweite Kopie via Augment (\u00D72)', 'Second copy via augment (\u00D72)',
+    '\uC99D\uAC15 \uD6A8\uACFC\uB85C \uB450 \uBC88\uC9F8 \uC0AC\uBCF8 (\u00D72)', '\u901A\u8FC7\u5F3A\u5316\u83B7\u5F97\u7B2C\u4E8C\u4EFD\u526F\u672C (\u00D72)',
+    'Segunda copia v\u00EDa aumento (\u00D72)', 'Deuxi\u00E8me copie via augmentation (\u00D72)'
+  ),
   'tft.comp.block.live': t6(
     'In der Runde', 'In Round',
     '\uB77C\uC6B4\uB4DC \uC911', '\u5BF9\u5C40\u4E2D',
@@ -2159,6 +2169,11 @@ const translations = {
     'Patch {p}', 'Patch {p}',
     '\uD328\uCE58 {p}', '\u7248\u672C {p}',
     'Parche {p}', 'Patch {p}'
+  ),
+  'tft.comp.lowSample': t6(
+    'wenig Daten', 'low sample',
+    '\uB370\uC774\uD130 \uBD80\uC871', '\u6837\u672C\u4E0D\u8DB3',
+    'pocos datos', 'peu de donn\u00E9es'
   ),
   'tft.comp.augments.tier.silver': t6(
     'Silver', 'Silver',

@@ -24,6 +24,12 @@ import { dedupeByPrimaryCluster, primaryClusterKey, parseClusterKey } from '../.
 import { loadCompGuidesBundle, findCompGuide } from '../../../lib/tft-comp-guides';
 import { descriptorTag } from '../../../lib/tft-comp-descriptor';
 
+// Sample-Validity-Gate: Cards unter dieser Games-Schwelle werden dezent
+// grayed-out + Low-Sample-Badge bekommen (data-skeptic-Befund 2026-06-21:
+// Section-Gate ≥2 Rows reicht NICHT — pro Card-Sample-Validität auch nötig
+// damit der User Noise-Cards visuell unterscheidet von belastbaren).
+const MIN_GAMES_PER_OUTCOME_CARD = 30;
+
 // Same region set as /tft/patch/winners — the regions where the daily-crawl
 // has enough volume to make comp-detail rendering meaningful.
 const REGIONS = [
@@ -164,6 +170,7 @@ export default function TftCompDetailPage() {
               typicalUnits={comp.typicalUnits}
               clusterKey={comp.clusterKey}
               assets={assets}
+              bucket={bucket}
             />
 
             <BlockHeadline label={t('tft.comp.block.live')} />
@@ -297,6 +304,7 @@ export default function TftCompDetailPage() {
                       const star3Share = row.games > 0 ? (row.star3Games / row.games) * 100 : 0;
                       const isBest = row.avgPlacement === bestAvg;
                       const accentColor = isBest ? '#3ecf8e' : '#7B61FF';
+                      const lowSample = row.games < MIN_GAMES_PER_OUTCOME_CARD;
                       const sortedUnits = [...row.typicalUnits].sort((a, b) => {
                         const ca = assets?.champions[a.characterId]?.cost ?? 1;
                         const cb = assets?.champions[b.characterId]?.cost ?? 1;
@@ -309,7 +317,7 @@ export default function TftCompDetailPage() {
                         <div
                           key={row.level}
                           className="bg-[#141c2e] border rounded p-3"
-                          style={{ borderColor: `${accentColor}60`, borderWidth: isBest ? 2 : 1 }}
+                          style={{ borderColor: `${accentColor}60`, borderWidth: isBest ? 2 : 1, opacity: lowSample ? 0.55 : 1 }}
                         >
                           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-2">
                             <span className="text-base font-semibold" style={{ color: accentColor }}>
@@ -318,6 +326,15 @@ export default function TftCompDetailPage() {
                             <span className="text-[#a0b0c5] text-xs tabular-nums">
                               {row.typicalUnits.length} {t('tft.comp.levelOutcome.units')}
                             </span>
+                            {lowSample && (
+                              <span
+                                className="text-[8px] uppercase tracking-wider px-1 py-[1px] rounded"
+                                style={{ color: '#e0a040', backgroundColor: 'rgba(224,160,64,0.12)', border: '1px solid rgba(224,160,64,0.35)' }}
+                                title={`${row.games} ${t('tft.gamesShort')} < ${MIN_GAMES_PER_OUTCOME_CARD}`}
+                              >
+                                {t('tft.comp.lowSample')}
+                              </span>
+                            )}
                             <div className="ml-auto flex items-center gap-3 text-xs tabular-nums">
                               <span className="text-[#7a8aa0]">{row.games} {t('tft.gamesShort')} · {share.toFixed(0)}%</span>
                               <span><span className="text-[#7a8aa0]">{t('tft.avgPlacement')} </span><span className="text-white font-semibold">{row.avgPlacement.toFixed(2)}</span></span>
@@ -439,15 +456,31 @@ export default function TftCompDetailPage() {
                     {(comp.carryStarOutcome as { star: number; games: number; avgPlacement: number; top4Rate: number; top1Rate: number }[]).map((row) => {
                       const share = totalGames > 0 ? (row.games / totalGames) * 100 : 0;
                       const starColor = row.star === 3 ? '#c39bff' : row.star === 2 ? '#e0c75a' : '#9ab0bf';
+                      const lowSample = row.games < MIN_GAMES_PER_OUTCOME_CARD;
                       return (
-                        <div key={row.star} className="bg-[#141c2e] border rounded p-3" style={{ borderColor: `${starColor}40` }}>
+                        <div
+                          key={row.star}
+                          className="bg-[#141c2e] border rounded p-3"
+                          style={{ borderColor: `${starColor}40`, opacity: lowSample ? 0.55 : 1 }}
+                        >
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-base font-medium" style={{ color: starColor }}>
                               {'★'.repeat(row.star)}
                             </span>
-                            <span className="text-[#7a8aa0] text-[10px] tabular-nums">
-                              {share.toFixed(0)}% · {row.games}
-                            </span>
+                            <div className="flex items-center gap-1.5">
+                              {lowSample && (
+                                <span
+                                  className="text-[8px] uppercase tracking-wider px-1 py-[1px] rounded"
+                                  style={{ color: '#e0a040', backgroundColor: 'rgba(224,160,64,0.12)', border: '1px solid rgba(224,160,64,0.35)' }}
+                                  title={`${row.games} ${t('tft.gamesShort')} < ${MIN_GAMES_PER_OUTCOME_CARD}`}
+                                >
+                                  {t('tft.comp.lowSample')}
+                                </span>
+                              )}
+                              <span className="text-[#7a8aa0] text-[10px] tabular-nums">
+                                {share.toFixed(0)}% · {row.games}
+                              </span>
+                            </div>
                           </div>
                           <div className="grid grid-cols-3 gap-1 text-[11px] tabular-nums">
                             <div>
@@ -487,13 +520,29 @@ export default function TftCompDetailPage() {
                       const label = row.contested === 1 ? t('tft.comp.contestedSolo')
                                   : row.contested === 2 ? t('tft.comp.contestedDuo')
                                   : t('tft.comp.contestedTriple');
+                      const lowSample = row.games < MIN_GAMES_PER_OUTCOME_CARD;
                       return (
-                        <div key={row.contested} className="bg-[#141c2e] border rounded p-3" style={{ borderColor: `${accentColor}40` }}>
+                        <div
+                          key={row.contested}
+                          className="bg-[#141c2e] border rounded p-3"
+                          style={{ borderColor: `${accentColor}40`, opacity: lowSample ? 0.55 : 1 }}
+                        >
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-xs font-medium uppercase tracking-widest" style={{ color: accentColor }}>{label}</span>
-                            <span className="text-[#7a8aa0] text-[10px] tabular-nums">
-                              {share.toFixed(0)}% · {row.games}
-                            </span>
+                            <div className="flex items-center gap-1.5">
+                              {lowSample && (
+                                <span
+                                  className="text-[8px] uppercase tracking-wider px-1 py-[1px] rounded"
+                                  style={{ color: '#e0a040', backgroundColor: 'rgba(224,160,64,0.12)', border: '1px solid rgba(224,160,64,0.35)' }}
+                                  title={`${row.games} ${t('tft.gamesShort')} < ${MIN_GAMES_PER_OUTCOME_CARD}`}
+                                >
+                                  {t('tft.comp.lowSample')}
+                                </span>
+                              )}
+                              <span className="text-[#7a8aa0] text-[10px] tabular-nums">
+                                {share.toFixed(0)}% · {row.games}
+                              </span>
+                            </div>
                           </div>
                           <div className="grid grid-cols-3 gap-1 text-[11px] tabular-nums">
                             <div>

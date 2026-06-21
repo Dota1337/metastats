@@ -25,6 +25,10 @@ export interface ActiveTrait {
   nextStyleMinUnits: number | null;  // Schwelle für den nächsthöheren Style (null = max erreicht)
   nextStyle: number | null; // Style-Wert des nächsten Tiers
   desc?: string;
+  // Drill-Down: welche Units tragen zu dieser Trait-Aktivierung bei. stack=2
+  // bei TwoTanky-Multiplicity, sonst 1. Reihenfolge entspricht typicalUnits-
+  // Reihenfolge (= meist-gespielt zuerst).
+  contributingUnits: Array<{ characterId: string; stack: number }>;
 }
 
 interface TypicalUnit {
@@ -70,8 +74,9 @@ export function computeActiveTraits(
   const slugTraitMeta = slugTrait ? findTrait(bundle, slugTrait) : null;
   const slugTraitDisplayName = slugTraitMeta?.name || null;
 
-  // 1) Pro Unit: aggregiere Trait-Counts (multiplicity-aware für TwoTanky-Pattern)
+  // 1) Pro Unit: aggregiere Trait-Counts + tracke contributing Units pro Trait.
   const traitCounts = new Map<string, number>(); // apiName → count
+  const traitContrib = new Map<string, Array<{ characterId: string; stack: number }>>();
   for (const unit of typicalUnits) {
     const champ = findChampion(bundle, unit.characterId);
     const champTraits = champ?.traits ?? [];
@@ -83,6 +88,8 @@ export function computeActiveTraits(
       const apiName = resolveTraitApiName(bundle, displayName, slugTrait, slugTraitDisplayName);
       if (!apiName) continue;
       traitCounts.set(apiName, (traitCounts.get(apiName) || 0) + stack);
+      if (!traitContrib.has(apiName)) traitContrib.set(apiName, []);
+      traitContrib.get(apiName)!.push({ characterId: unit.characterId, stack });
     }
   }
 
@@ -107,6 +114,7 @@ export function computeActiveTraits(
       nextStyleMinUnits: higher?.minUnits ?? null,
       nextStyle: higher?.style ?? null,
       desc: trait.desc,
+      contributingUnits: traitContrib.get(apiName) || [],
     });
   }
 

@@ -16,7 +16,7 @@ import StatsFilterBar, {
   type PatchInfo,
 } from '../../components/tft/StatsFilterBar';
 import { useI18n } from '../../lib/i18n';
-import { loadTftAssets, type TftAssetsBundle } from '../../lib/tft-cdragon';
+import { loadTftAssets, tftChampionTileUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import { loadTierCutoffs, type TierCutoffs } from '../../lib/tft-tier-letter';
 import TftHero from '../../components/tft/TftHero';
 import AdvancedCompFilters, {
@@ -64,6 +64,18 @@ export default function TftCompsPage() {
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
   const [loading, setLoading] = useState(false);
   const [tierCutoffs, setTierCutoffs] = useState<TierCutoffs | null>(null);
+
+  // Compare-Selection State (für /tft/comps/compare User-Flow): bis zu 2 Slugs
+  // gleichzeitig. Bei 3. Click rotiert die Liste (FIFO) — User kann ohne Reset
+  // schnell die zweite Comp wechseln.
+  const [compareSelection, setCompareSelection] = useState<string[]>([]);
+  const toggleCompare = (slug: string) => {
+    setCompareSelection(prev => {
+      if (prev.includes(slug)) return prev.filter(s => s !== slug);
+      if (prev.length < 2) return [...prev, slug];
+      return [prev[1], slug];
+    });
+  };
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
   useEffect(() => { loadTierCutoffs(assets?.set ?? null).then(setTierCutoffs); }, [assets?.set]);
@@ -408,6 +420,16 @@ export default function TftCompsPage() {
           totalCount={comps.length}
         />
 
+        {compareSelection.length > 0 && (
+          <CompareBanner
+            selection={compareSelection}
+            families={families}
+            assets={assets}
+            t={t}
+            onReset={() => setCompareSelection([])}
+          />
+        )}
+
         <div className="flex items-center justify-end gap-2 mb-3 -mt-1 text-xs">
           <span className="text-[#7a8aa0]">{t('tft.sortBy')}:</span>
           <select
@@ -465,6 +487,8 @@ export default function TftCompsPage() {
                   showVelocity={filters.velocity > 0}
                   velocityShift={filters.velocity}
                   tierCutoffs={tierCutoffs}
+                  compareSelected={compareSelection.includes(f.mainComp.slug)}
+                  onCompareToggle={() => toggleCompare(f.mainComp.slug)}
                 />
               ))}
             </div>
@@ -473,5 +497,76 @@ export default function TftCompsPage() {
       </div>
       <Footer />
     </main>
+  );
+}
+
+// Compare-Banner: zeigt selected Slugs + Mini-Carry-Preview + Compare-CTA
+// (aktiv ab 2 selected) + Reset. Sticky am Viewport-Top damit User beim
+// Scrollen weiter selecten kann ohne den CTA zu verlieren.
+function CompareBanner({
+  selection, families, assets, t, onReset,
+}: {
+  selection: string[];
+  families: CompFamily[];
+  assets: TftAssetsBundle | null;
+  t: (k: any) => string;
+  onReset: () => void;
+}) {
+  const selectedFamilies = selection
+    .map(slug => families.find(f => f.mainComp.slug === slug))
+    .filter(Boolean) as CompFamily[];
+  const canCompare = selection.length === 2;
+  const compareHref = canCompare
+    ? `/tft/comps/compare?a=${encodeURIComponent(selection[0])}&b=${encodeURIComponent(selection[1])}`
+    : '#';
+  return (
+    <div className="sticky top-2 z-30 mb-3">
+      <div className="bg-[#0d1526]/95 backdrop-blur-sm border border-[#7B61FF]/50 rounded-lg px-3 py-2 shadow-lg flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <span className="text-white text-xs font-medium whitespace-nowrap">
+            {(t('tft.compare.selectedCount') as string).replace('{n}', String(selection.length))}
+          </span>
+          <div className="flex items-center gap-2 min-w-0">
+            {selectedFamilies.map(f => {
+              const carry = f.carry && assets ? assets.champions[f.carry] : null;
+              const url = tftChampionTileUrl(assets, carry);
+              return (
+                <div key={f.familyKey} className="flex items-center gap-1.5 min-w-0">
+                  {url ? (
+                    <img src={url} alt="" className="w-6 h-6 rounded border border-[#7B61FF]/60 flex-shrink-0" />
+                  ) : (
+                    <div className="w-6 h-6 rounded bg-[#1e2a3a] flex-shrink-0" />
+                  )}
+                  <span className="text-white text-[11px] truncate hidden sm:inline">
+                    {carry?.name || f.carry.replace(/^TFT\d+_/, '')}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            type="button"
+            onClick={onReset}
+            className="text-[#a0b0c5] text-[11px] hover:text-white px-2 py-1 transition-colors"
+          >
+            {t('tft.compare.reset')}
+          </button>
+          {canCompare ? (
+            <a
+              href={compareHref}
+              className="bg-[#7B61FF] hover:bg-[#8B71FF] text-white text-xs font-medium px-3 py-1.5 rounded transition-colors"
+            >
+              {t('tft.compare.action')} →
+            </a>
+          ) : (
+            <span className="bg-[#1e2a3a] text-[#5a6a80] text-xs font-medium px-3 py-1.5 rounded cursor-not-allowed">
+              {t('tft.compare.action')}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

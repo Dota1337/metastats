@@ -82,6 +82,8 @@ function extractTraitVariant(traitApiName: string, traitDisplayName: string): st
 export default function CompRow({
   comp, rank, assets, href, showVelocity = false, velocityShift = 0, tierCutoffs = null,
   expandToggle = null,
+  compareSelected = false,
+  onCompareToggle = null,
 }: {
   comp: Comp;
   rank: number;
@@ -99,6 +101,11 @@ export default function CompRow({
   // (mit stopPropagation), Click auf den Rest der Card navigiert weiterhin
   // zur Detail-Page wie gewohnt.
   expandToggle?: { expanded: boolean; onToggle: () => void } | null;
+  // Compare-Selection (User-Flow für /tft/comps/compare): wenn
+  // onCompareToggle gesetzt, rendert die Card einen Compare-Toggle-Button.
+  // compareSelected steuert visuelles Highlight + Title-Text.
+  compareSelected?: boolean;
+  onCompareToggle?: (() => void) | null;
 }) {
   const { t } = useI18n();
   const router = useRouter();
@@ -440,6 +447,31 @@ export default function CompRow({
           </div>
         )}
         <div className="hidden sm:flex items-center justify-end gap-1">
+          {onCompareToggle && (
+            <button
+              type="button"
+              onClick={e => { e.stopPropagation(); onCompareToggle(); }}
+              className="w-7 h-7 flex items-center justify-center rounded transition-colors flex-shrink-0"
+              style={{
+                color: compareSelected ? '#7B61FF' : '#5a6a80',
+                backgroundColor: compareSelected ? 'rgba(123,97,255,0.14)' : 'transparent',
+                border: `1px solid ${compareSelected ? 'rgba(123,97,255,0.6)' : 'rgba(90,106,128,0.25)'}`,
+              }}
+              title={
+                compareSelected
+                  ? t('tft.compare.tooltip.selected')
+                  : t('tft.compare.tooltip.toggle')
+              }
+              aria-pressed={compareSelected}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="17 1 21 5 17 9" />
+                <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+                <polyline points="7 23 3 19 7 15" />
+                <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+              </svg>
+            </button>
+          )}
           <PlanAheadButton
             characterIds={typicalUnits.slice(0, 10).map(u => u.characterId)}
             setNumber={assets?.set ?? 17}

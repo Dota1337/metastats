@@ -53,6 +53,8 @@ export default function CompFamilyRow({
   showVelocity = false,
   velocityShift = 0,
   tierCutoffs,
+  compareSelected = false,
+  onCompareToggle = null,
 }: {
   family: CompFamily;
   rank: number;
@@ -62,6 +64,10 @@ export default function CompFamilyRow({
   showVelocity?: boolean;
   velocityShift?: number;
   tierCutoffs?: TierCutoffs | null;
+  // Compare-Toggle (User-Flow für /tft/comps/compare). Listing-Page hält den
+  // Selection-State + reicht hier mit dem Family-Main-Slug durch.
+  compareSelected?: boolean;
+  onCompareToggle?: (() => void) | null;
 }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -76,6 +82,8 @@ export default function CompFamilyRow({
         showVelocity={showVelocity}
         velocityShift={velocityShift}
         tierCutoffs={tierCutoffs}
+        compareSelected={compareSelected}
+        onCompareToggle={onCompareToggle}
       />
     );
   }
@@ -105,6 +113,8 @@ export default function CompFamilyRow({
         velocityShift={velocityShift}
         tierCutoffs={tierCutoffs}
         expandToggle={{ expanded, onToggle: () => setExpanded(e => !e) }}
+        compareSelected={compareSelected}
+        onCompareToggle={onCompareToggle}
       />
 
       {/* Drop-Down — Sub-Variants als reguläre CompRows rendern (identisches

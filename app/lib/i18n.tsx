@@ -2241,6 +2241,34 @@ const translations = {
     'B \uC804\uC6A9', '\u4EC5 B',
     'Solo B', 'B uniquement'
   ),
+  'tft.compare.selectedCount': t6(
+    '{n} / 2 zum Vergleichen ausgew\u00E4hlt',
+    '{n} / 2 selected for compare',
+    '{n} / 2 \uBE44\uAD50 \uC120\uD0DD\uB428',
+    '\u5DF2\u9009\u62E9 {n} / 2 \u8FDB\u884C\u5BF9\u6BD4',
+    '{n} / 2 seleccionadas para comparar',
+    '{n} / 2 s\u00E9lectionn\u00E9es pour comparer'
+  ),
+  'tft.compare.action': t6(
+    'Vergleichen', 'Compare',
+    '\uBE44\uAD50\uD558\uAE30', '\u5BF9\u6BD4',
+    'Comparar', 'Comparer'
+  ),
+  'tft.compare.reset': t6(
+    'Zur\u00FCcksetzen', 'Reset',
+    '\uCD08\uAE30\uD654', '\u91CD\u7F6E',
+    'Reiniciar', 'R\u00E9initialiser'
+  ),
+  'tft.compare.tooltip.toggle': t6(
+    'Zum Vergleich ausw\u00E4hlen', 'Add to compare',
+    '\uBE44\uAD50\uC5D0 \uCD94\uAC00', '\u6DFB\u52A0\u5230\u5BF9\u6BD4',
+    'A\u00F1adir a la comparaci\u00F3n', 'Ajouter \u00E0 la comparaison'
+  ),
+  'tft.compare.tooltip.selected': t6(
+    'Ausgew\u00E4hlt \u2014 klicken zum Entfernen', 'Selected \u2014 click to remove',
+    '\uC120\uD0DD\uB428 \u2014 \uD074\uB9AD\uD558\uC5EC \uC81C\uAC70', '\u5DF2\u9009\u62E9 \u2014 \u70B9\u51FB\u79FB\u9664',
+    'Seleccionada \u2014 clic para quitar', 'S\u00E9lectionn\u00E9e \u2014 cliquez pour retirer'
+  ),
   'tft.comp.augments.tier.silver': t6(
     'Silver', 'Silver',
     '\uC2E4\uBC84', '\u94F6\u8272',

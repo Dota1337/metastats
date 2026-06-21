@@ -12,6 +12,7 @@ import { loadTftAssets, tftIconUrl, tftChampionTileUrl, findChampion, findItem, 
 import PositionHeatmap from '../../../components/tft/PositionHeatmap';
 import VariantsSwitcher from '../../../components/tft/VariantsSwitcher';
 import CompActiveTraits from '../../../components/tft/CompActiveTraits';
+import ProsByCompSection from '../../../components/tft/ProsByCompSection';
 import CompLevelActiveTraits from '../../../components/tft/CompLevelActiveTraits';
 import CompGuide from '../../../components/tft/CompGuide';
 import CompFlexUnits from '../../../components/tft/CompFlexUnits';
@@ -625,6 +626,16 @@ export default function TftCompDetailPage() {
                 Trend-Verlauf, Positionierung
                 ═══════════════════════════════════════════════════════════ */}
             <BlockHeadline label={t('tft.comp.block.deep')} />
+
+            {/* Pros-by-Comp: welche Pro-Player spielen diese Comp am haeufigsten.
+                Family-Mode matcht alle Sub-Cluster (Level/Star/Augment). Live-
+                Re-Classify im Hetzner-Endpoint. */}
+            {(() => {
+              const parts = parseClusterKey(comp.clusterKey);
+              if (!parts) return null;
+              const familyKey = `${parts.trait}__${parts.carry}`;
+              return <ProsByCompSection familyKey={familyKey} setNumber={17} />;
+            })()}
 
             {/* Comp-DNA: BoardComposition + AggroIndex + SkillCap (Tempo-Mini-
                 AreaChart entfernt — redundant zum Econ-ROI-Chart unten). */}

@@ -158,7 +158,7 @@ async function fetchEntityRows(
   };
 
   if (entity === 'unit') {
-    const rows = await callRpc<UnitRow[]>('get_tft_unit_stats', base);
+    const rows = await callRpc<UnitRow[]>('get_tft_unit_stats', base, 20000);
     const participants = Number(rows[0]?.participants || 0);
     return rows.map(r => ({
       key: r.character_id,
@@ -173,7 +173,7 @@ async function fetchEntityRows(
     // does jsonb_agg of top_users for EVERY item × day combo, which 57014-
     // times out on Supabase at 30d windows. The lean variant aggregates the
     // top_users once at the end; same diff math, sub-second response.
-    const rows = await callRpc<ItemRow[]>('get_tft_item_stats_list', base);
+    const rows = await callRpc<ItemRow[]>('get_tft_item_stats_list', base, 20000);
     const participants = Number(rows[0]?.total_item_slots || 0);
     return rows.map(r => ({
       key: r.api_name,
@@ -184,7 +184,7 @@ async function fetchEntityRows(
     }));
   }
   if (entity === 'trait') {
-    const rows = await callRpc<TraitRow[]>('get_tft_trait_stats', base);
+    const rows = await callRpc<TraitRow[]>('get_tft_trait_stats', base, 20000);
     const participants = Number(rows[0]?.participants || 0);
     // Collapse per-activation rows so we have one entry per trait name. We
     // sum across activation levels because the "did this trait get
@@ -204,7 +204,7 @@ async function fetchEntityRows(
   const rows = await callRpc<CompRow[]>('get_tft_comp_stats_for_diff', {
     ...base,
     p_min_games: 50,
-  });
+  }, 20000);
   const participants = Number(rows[0]?.participants || 0);
   return rows.map(r => ({
     key: r.cluster_key,

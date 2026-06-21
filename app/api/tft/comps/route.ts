@@ -200,6 +200,10 @@ export async function GET(request: NextRequest) {
     // The full RPC aggregates all 7 jsonb columns; only the detail path needs
     // the 4 detail-only ones, so the list path below uses the lean variant.
     if (slug) {
+      // Detail-RPC: aggregiert ALLE 7 jsonb-Spalten + sucht im Result auch
+      // nach sameCore-Family-Members → cold easily 5-15 s. Per-RPC Timeout
+      // 20 s (code-analyzer-Verdict 2026-06-21) — Default-8 s killt sonst
+      // Detail-Pages mit AbortError → hasData:false.
       const rows = await callRpc<CompRow[]>('get_tft_comp_stats', {
         p_regions: filters.regions,
         p_buckets: filters.buckets,
@@ -207,7 +211,7 @@ export async function GET(request: NextRequest) {
         p_patch: filters.patchFilter,
         p_set: filters.setNumber,
         p_min_games: minGames,
-      });
+      }, 20000);
       const participants = rows[0]?.participants || 0;
       let row = rows.find(r => r.cluster_key === slug);
       let aliasedFrom: string | null = null;
@@ -277,13 +281,14 @@ export async function GET(request: NextRequest) {
       };
 
       // Counter edges — single RPC for the same region/day/patch window.
+      // Pairs-Tabelle ist groß (~500-2000 pairs) — 20s Timeout (Detail-Pfad-Konsistenz).
       const pairs = await callRpc<CompPairRow[]>('get_tft_comp_pairs', {
         p_regions: filters.regions,
         p_days: filters.days,
         p_patch: filters.patchFilter,
         p_set: filters.setNumber,
         p_min_games: 10,
-      });
+      }, 20000);
       // Set-Lookup statt Linear-Scan (perf-critic F6) — bei großen Familien
       // (10-15 Sub-Cluster) und 500-2000 Pairs deutlich günstiger.
       const familySet = new Set(familySlugs);

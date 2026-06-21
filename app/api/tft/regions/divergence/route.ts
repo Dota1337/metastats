@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
       p_patch: patch,
       p_days: days,
       p_min_games: minGames,
-    });
+    }, 20000);
 
     // KR-Ahead score: weight pickrate-Δ higher than avg-place-Δ because the
     // pickrate gap is what makes a meta shift visible — avg-place difference

@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
         p_shift_days: velocityShift,
         p_anchor_offset_days: filters.anchorOffsetDays,
         p_min_games: 100,
-      }).catch(() => [] as VelocityRow[]),
+      }, 20000).catch(() => [] as VelocityRow[]),
       callRpc<RegionRow[]>('get_tft_region_divergence', {
         p_buckets: buckets,
         p_set: setNumber,
@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
         // sample meaningful since each region needs ≥80 games per cluster.
         p_days: Math.max(3, filters.requestedDays),
         p_min_games: 80,
-      }).catch(() => [] as RegionRow[]),
+      }, 20000).catch(() => [] as RegionRow[]),
       // Super-lean diff RPC (migration 0035) — scalar-only, drops the 10 MB
       // jsonb_agg payload the previous list-RPC carried for nothing here.
       previousPatch ? callRpc<CompStatsRow[]>('get_tft_comp_stats_for_diff', {
@@ -125,7 +125,7 @@ export async function GET(request: NextRequest) {
         p_patch: currentPatch,
         p_set: setNumber,
         p_min_games: 80,
-      }).catch(() => [] as CompStatsRow[]) : Promise.resolve([] as CompStatsRow[]),
+      }, 20000).catch(() => [] as CompStatsRow[]) : Promise.resolve([] as CompStatsRow[]),
       previousPatch ? callRpc<CompStatsRow[]>('get_tft_comp_stats_for_diff', {
         p_regions: filters.regions,
         p_buckets: buckets,
@@ -133,7 +133,7 @@ export async function GET(request: NextRequest) {
         p_patch: previousPatch,
         p_set: setNumber,
         p_min_games: 80,
-      }).catch(() => [] as CompStatsRow[]) : Promise.resolve([] as CompStatsRow[]),
+      }, 20000).catch(() => [] as CompStatsRow[]) : Promise.resolve([] as CompStatsRow[]),
     ]);
 
     // Velocity → Top Rising (most-improved avg-place over the comparison

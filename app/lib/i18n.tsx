@@ -2375,6 +2375,19 @@ const translations = {
     '대회 또는 지역 검색…', '搜索赛事或地区…',
     'Buscar torneo o región…', 'Rechercher tournoi ou région…'
   ),
+  'tft.patchNotes.changes': t6(
+    'Was hat sich geändert?', 'What changed?',
+    '무엇이 바뀌었나요?', '什么发生了变化?',
+    '¿Qué cambió?', 'Qu\'est-ce qui a changé ?'
+  ),
+  'tft.patchNotes.changes.source': t6(
+    'Quelle: tactics.tools (gescraped pro Patch)',
+    'Source: tactics.tools (scraped per patch)',
+    '출처: tactics.tools (패치별 스크랩)',
+    '来源: tactics.tools (按补丁抓取)',
+    'Fuente: tactics.tools (scraped por parche)',
+    'Source : tactics.tools (extrait par patch)'
+  ),
   'tft.augment.stage.label': t6(
     'Stage', 'Stage',
     '스테이지', '阶段',

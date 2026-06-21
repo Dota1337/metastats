@@ -84,6 +84,14 @@ jobs:
         run: node scripts/refresh-augment-stages.mjs
         continue-on-error: true
 
+      - name: Refresh TFT patch-notes override (current patch only)
+        # Pro Patch die Change-Liste aus tactics.tools. Daily-Lauf scraped
+        # nur den aktuellen Patch (kein Riot-Hammer-Loop). Weekly-Lauf
+        # macht den Bootstrap fuer alle Set-Patches. Source-Doku:
+        # reference_tft_patch_notes_source.md.
+        run: node scripts/refresh-patch-notes.mjs
+        continue-on-error: true
+
       - name: Refresh TFT asset bundle
         run: node scripts/fetch-tft-assets.mjs
         continue-on-error: true

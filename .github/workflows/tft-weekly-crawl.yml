@@ -59,6 +59,13 @@ jobs:
         run: node scripts/refresh-augment-stages.mjs
         continue-on-error: true
 
+      # Patch-Notes-Content aus tactics.tools (alle Set-Patches via
+      # --bootstrap). Daily-Lauf scraped nur aktuellen Patch, Weekly
+      # macht Vollscan + nachträglich gepatchte Aenderungen.
+      - name: Refresh TFT patch-notes override (bootstrap all)
+        run: node scripts/refresh-patch-notes.mjs --bootstrap
+        continue-on-error: true
+
       # Refresh CommunityDragon-sourced asset bundle (icons, names,
       # apiName→display mapping). Needed because Riot Data Dragon's TFT
       # data is set-13 frozen and uses item IDs that don't match Match-V1.

@@ -6,6 +6,7 @@ import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { riotPatchNotesUrl } from '../page';
+import { loadPatchNotes, patchNotesFor, patchEntityHref, type PatchNoteOverride } from '../../../lib/tft-patch-notes';
 import {
   ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis,
   ReferenceLine, Tooltip as RechartsTooltip,
@@ -55,8 +56,10 @@ export default function TftPatchDetailPage() {
   const [diff, setDiff] = useState<DiffResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
+  const [patchNotesOverride, setPatchNotesOverride] = useState<PatchNoteOverride | null>(null);
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
+  useEffect(() => { loadPatchNotes().then(setPatchNotesOverride); }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -95,6 +98,66 @@ export default function TftPatchDetailPage() {
             {diff.sampleSize != null && ` · ${diff.sampleSize} ${t('tft.patchNotes.entitiesCompared')}`}
           </p>
         )}
+
+        {/* Patch-Notes-Inhalt aus tactics.tools-Override
+            (refresh-patch-notes.mjs). Render NUR wenn der Override-File
+            diesen Patch enthält — sonst zeigt nur der existing Winners/
+            Losers-Diff (Phase 1). Pattern matched feedback_no_info_texts:
+            keine „kommt gleich"-Placeholder bei fehlenden Daten. */}
+        {(() => {
+          const notes = patchNotesFor(patchNotesOverride, version);
+          if (!notes || notes.sections.length === 0) return null;
+          return (
+            <section className="mb-5 bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-4">
+              <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">
+                {t('tft.patchNotes.changes')}
+              </h2>
+              <div className="space-y-4">
+                {notes.sections.map((sec, si) => (
+                  <div key={si}>
+                    <div className="text-[#7B61FF] text-[10px] uppercase tracking-widest font-semibold mb-2">
+                      {sec.category}
+                    </div>
+                    <div className="space-y-1.5">
+                      {sec.entries.map((e, ei) => {
+                        const href = patchEntityHref(e.apiName);
+                        const Tag = href ? 'a' : 'div';
+                        return (
+                          <Tag
+                            key={ei}
+                            {...(href ? { href } : {})}
+                            className={`block bg-[#141c2e] border border-[#1e2a3a] rounded p-2.5 text-xs ${
+                              href ? 'hover:border-[#7B61FF]/40 transition-colors cursor-pointer' : ''
+                            }`}
+                          >
+                            <div className="flex items-start gap-2">
+                              {e.apiName && (
+                                <span className="text-[#a892ff] text-[10px] uppercase tracking-wider font-medium flex-shrink-0 mt-0.5">
+                                  {e.displayName || '—'}
+                                </span>
+                              )}
+                              {!e.apiName && e.displayName && (
+                                <span className="text-[#7a8aa0] text-[10px] uppercase tracking-wider flex-shrink-0 mt-0.5">
+                                  {e.displayName}
+                                </span>
+                              )}
+                              <span className="text-[#cdd6e0] text-xs leading-snug">
+                                {e.change}
+                              </span>
+                            </div>
+                          </Tag>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="text-[#5a6a80] text-[10px] italic mt-3">
+                {t('tft.patchNotes.changes.source')}
+              </div>
+            </section>
+          );
+        })()}
 
         {/* Entity tabs */}
         <div className="flex gap-1 border-b border-[#1e2a3a] mb-4">

@@ -1,0 +1,2277 @@
+{
+  "set": 17,
+  "source": "tactics.tools/info/patch-notes",
+  "fetchedAt": "2026-06-21T13:27:36.064Z",
+  "patches": {
+    "17.1": {
+      "scrapedAt": "2026-06-21T13:27:36.585Z",
+      "sections": [
+        {
+          "category": "LARGE CHANGES",
+          "entries": [
+            {
+              "apiName": null,
+              "displayName": "Nine Lives",
+              "change": "Nine Lives"
+            },
+            {
+              "apiName": null,
+              "displayName": "At What Cost",
+              "change": "At What Cost"
+            },
+            {
+              "apiName": null,
+              "displayName": "Build a Bud",
+              "change": "Build a Bud"
+            },
+            {
+              "apiName": null,
+              "displayName": "Clockwork Accelerator",
+              "change": "Clockwork Accelerator"
+            },
+            {
+              "apiName": null,
+              "displayName": "Crafted Crafting",
+              "change": "Crafted Crafting"
+            },
+            {
+              "apiName": null,
+              "displayName": "Cybernetic Implants",
+              "change": "Cybernetic Implants (reworked)"
+            },
+            {
+              "apiName": null,
+              "displayName": "Cybernetic Uplink",
+              "change": "Cybernetic Uplink (reworked)"
+            },
+            {
+              "apiName": null,
+              "displayName": "New Recruit",
+              "change": "New Recruit"
+            },
+            {
+              "apiName": null,
+              "displayName": "Partial Ascension",
+              "change": "Partial Ascension"
+            },
+            {
+              "apiName": null,
+              "displayName": "Second Wind",
+              "change": "Second Wind"
+            },
+            {
+              "apiName": null,
+              "displayName": "Subscription Service",
+              "change": "Subscription Service"
+            },
+            {
+              "apiName": null,
+              "displayName": "Sunfire Board",
+              "change": "Sunfire Board"
+            },
+            {
+              "apiName": null,
+              "displayName": "Tiny Titans",
+              "change": "Tiny Titans"
+            },
+            {
+              "apiName": null,
+              "displayName": "Two Tanky",
+              "change": "Two Tanky"
+            },
+            {
+              "apiName": null,
+              "displayName": "U.R.F",
+              "change": "U.R.F."
+            },
+            {
+              "apiName": null,
+              "displayName": "Wise Spending",
+              "change": "Wise Spending"
+            },
+            {
+              "apiName": null,
+              "displayName": "Dummify",
+              "change": "Dummify HP% Gain: 80% ⇒ 60%, HP per stage 1500 ⇒ 1250"
+            },
+            {
+              "apiName": null,
+              "displayName": "Electrocharge I",
+              "change": "Electrocharge I Trigger: Whenever an ally is critically struck ⇒ Whenever an ally is attacked 4 times"
+            },
+            {
+              "apiName": null,
+              "displayName": "Glass Cannon I",
+              "change": "Glass Cannon I Damage Amp: 17% ⇒ 16%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Lunch Money",
+              "change": "Lunch Money Damage Required: 7 ⇒ 8"
+            },
+            {
+              "apiName": null,
+              "displayName": "Size Matters",
+              "change": "Size Matters Health Requirement: 3800 ⇒ 3600"
+            },
+            {
+              "apiName": null,
+              "displayName": "Partial Ascension",
+              "change": "Partial Ascension Delay: 15 ⇒ 12 seconds, Damage Amp: 30% ⇒ 25%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Bodyguard Training",
+              "change": "Bodyguard Training Resist Per Player Level: 3 ⇒ 2"
+            },
+            {
+              "apiName": null,
+              "displayName": "Crash Test Dummies",
+              "change": "Crash Test Dummies Stun Duration: 1.25 seconds ⇒ 1 second"
+            },
+            {
+              "apiName": null,
+              "displayName": "Cybernetic Implants",
+              "change": "Cybernetic Implants (Gold, 3-2 and 4-2) [REWORKED]: Allies holding an item gain 100 Health and 15% Attack Damage. Gain a B.F. Sword"
+            },
+            {
+              "apiName": null,
+              "displayName": "Cybernetic Uplink",
+              "change": "Cybernetic Uplink (Gold, 3-2 and 4-2) [REWORKED]: Allies holding an item gain 100 Health and 2 Mana Regen. Gain a Tear of the Goddess"
+            },
+            {
+              "apiName": null,
+              "displayName": "Early Learnings",
+              "change": "Early Learnings Initial AD/AP: 8% ⇒ 4%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Glass Cannon I",
+              "change": "Glass Cannon II Damage Amp: 30% ⇒ 25%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Electrocharge I",
+              "change": "Electrocharge II Trigger: Whenever an ally is critically struck ⇒ Whenever an ally is attacked 4 times"
+            },
+            {
+              "apiName": null,
+              "displayName": "Infinity Protection",
+              "change": "Infinity Protection Initial Gold: 4 ⇒ 3, HP Percent Shield: 15% ⇒ 12%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Legion of Threes",
+              "change": "Legion of Threes Health: 200 ⇒ 150"
+            },
+            {
+              "apiName": null,
+              "displayName": "Little Buddies",
+              "change": "Little Buddies Now has a stat tracker in its tooltip showing current Health and AS from the augment"
+            },
+            {
+              "apiName": null,
+              "displayName": "Malicious Monetization",
+              "change": "Malicious Monetization Initial Gold: 7 ⇒ 4"
+            },
+            {
+              "apiName": null,
+              "displayName": "Pilfer",
+              "change": "Pilfer Gold Required: 25 ⇒ 21"
+            },
+            {
+              "apiName": null,
+              "displayName": "Slammin'",
+              "change": "Slammin’ No longer grants a component, Now grants 3 gold for Slammin and 8 gold for Slammin+"
+            },
+            {
+              "apiName": null,
+              "displayName": "Warlord's Honor",
+              "change": "Warlord’s Honor AD/AP per stack: 6% ⇒ 5%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Buried Treasures",
+              "change": "Buried Treasures Total Components: 6 ⇒ 5"
+            },
+            {
+              "apiName": null,
+              "displayName": "Comeback Story",
+              "change": "Comeback Story Health Per Missing Player HP: 5 ⇒ 4"
+            },
+            {
+              "apiName": null,
+              "displayName": "Component Heist",
+              "change": "Component Heist Round Delay: 5 ⇒ 6"
+            },
+            {
+              "apiName": null,
+              "displayName": "Exclusive Customization",
+              "change": "Exclusive Customization Now has a Prismatic tier available on 4-2: Grants 2 Lucky Item Chests, a Magnetic Remover, and 10 gold"
+            },
+            {
+              "apiName": null,
+              "displayName": "Expected Unexpectedness",
+              "change": "Expected Unexpectedness Stage 3: 2 Lesser Dupes + 10g ⇒ 2 Lesser Dupes + 5g / 1 Completed Item Anvil + 8 Gold ⇒ 1 Completed Item Anvil + 3 gold"
+            },
+            {
+              "apiName": null,
+              "displayName": "Going Long",
+              "change": "Going Long Initial Gold: 8 ⇒ 13"
+            },
+            {
+              "apiName": null,
+              "displayName": "Soul Awakening",
+              "change": "Soul Awakening AD/AP per Sec: 2% ⇒ 1.5%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Sword Overflow",
+              "change": "Sword Overflow AS per Sword: 5% ⇒ 4%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Tiniest Titan",
+              "change": "Tiniest Titan Initial Gold: 15 ⇒ 10"
+            },
+            {
+              "apiName": null,
+              "displayName": "We Stick Together",
+              "change": "We Stick Together Bugfix: Now gives Attack Speed to champions with the Stargazer trait. Attack Speed: 25% ⇒ 30%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Win Out",
+              "change": "Win Out Rerolls: 2 ⇒ 8"
+            },
+            {
+              "apiName": null,
+              "displayName": "Adaptive Helm",
+              "change": "Adaptive Helm Tank/Fighter Bonus Resists: 45 ⇒ 30"
+            },
+            {
+              "apiName": null,
+              "displayName": "Bramble Vest",
+              "change": "Bramble Vest Bonus Health: 9% ⇒ 6%, Armor: 65 ⇒ 50"
+            },
+            {
+              "apiName": null,
+              "displayName": "Dragon's Claw",
+              "change": "Dragon’s Claw Bonus Health: 9% ⇒ 6%, Magic Resist: 75 ⇒ 60"
+            },
+            {
+              "apiName": null,
+              "displayName": "Gargoyle Stoneplate",
+              "change": "Gargoyle Stoneplate Base Resists: 30 ⇒ 25"
+            },
+            {
+              "apiName": null,
+              "displayName": "Evenshroud",
+              "change": "Evenshroud Temporary Resists: 25 ⇒ 15"
+            },
+            {
+              "apiName": null,
+              "displayName": "Nashor's Tooth",
+              "change": "Nashor’s Tooth Ability Power: 18 ⇒ 15"
+            },
+            {
+              "apiName": null,
+              "displayName": "Rabadon's Deathcap",
+              "change": "Rabadon’s Deathcap Ability Power: 50 ⇒ 55"
+            },
+            {
+              "apiName": null,
+              "displayName": "Spirit Visage",
+              "change": "Spirit Visage Durability: 10% ⇒ 8%, Healing: 2.5% ⇒ 2%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Sterak's Gage",
+              "change": "Sterak’s Gage Shield Amount: 50% max HP ⇒ 40% max HP, Attack Damage: 40% ⇒ 45%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Steadfast Heart",
+              "change": "Steadfast Heart Durability: 10-18% ⇒ 5-15%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Radiant Adaptive Helm",
+              "change": "Radiant Adaptive Helm Tank/Fighter Bonus Resists: 100 ⇒ 80"
+            },
+            {
+              "apiName": null,
+              "displayName": "Radiant Bramble Vest",
+              "change": "Radiant Bramble Vest Percent Health: 18% ⇒ 12%, Armor: 130 ⇒ 100"
+            },
+            {
+              "apiName": null,
+              "displayName": "Radiant Dragon's Claw",
+              "change": "Radiant Dragon’s Claw Magic Resist: 150 ⇒ 120"
+            },
+            {
+              "apiName": null,
+              "displayName": "Radiant Gargoyle Stoneplate",
+              "change": "Radiant Gargoyle Stoneplate Base Resists: 60 ⇒ 50"
+            },
+            {
+              "apiName": null,
+              "displayName": "Radiant Nashor's Tooth",
+              "change": "Radiant Nashor’s Tooth Ability Power: 35 ⇒ 30"
+            },
+            {
+              "apiName": null,
+              "displayName": "Radiant Rabadon's Deathcap",
+              "change": "Radiant Rabadon’s Deathcap Ability Power: 100 ⇒ 110"
+            },
+            {
+              "apiName": null,
+              "displayName": "Radiant Spirit Visage",
+              "change": "Radiant Spirit Visage Durability: 20% ⇒ 15%, Healing: 5% ⇒ 4%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Radiant Sterak's Gage",
+              "change": "Radiant Sterak’s Gage Shield Amount: 100% ⇒ 80%, Attack Damage: 80% ⇒ 90%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Radiant Steadfast Heart",
+              "change": "Radiant Steadfast Heart Durability: 20-36% ⇒ 10-30%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Ahri's Aura",
+              "change": "Ahri's AuraAP: 20%Mana per Second: 4The holder is orbited by 3 foxfires. Each one deals 50% (AP) magic damage and the orbit expands to hit the holder's current target. For every 20 Mana the holder spends, foxfires travel 5% faster for the rest of combat."
+            },
+            {
+              "apiName": null,
+              "displayName": "Ekko's Patience",
+              "change": "Ekko's PatienceAD: 25AP: 25Total Ability damage is increased by 45%, but is dealt over 2 seconds instead."
+            },
+            {
+              "apiName": null,
+              "displayName": "Evelynn's Instinct",
+              "change": "Evelynn's InstinctAS: 40%Omnivamp: 15%When switching targets, blink to the next target. Attacks and Abilities execute the holder's target below 12% of their Health. Kills grant the holder 50% Attack Speed decaying over 3 seconds."
+            },
+            {
+              "apiName": null,
+              "displayName": "Kayle's Exaltation",
+              "change": "Kayle's ExaltationAD: 25%AP: 25%AS: 15%After 18 seconds of combat, this and all completed items on the holder become Radiant."
+            },
+            {
+              "apiName": null,
+              "displayName": "Soraka's Miracle",
+              "change": "Soraka's MiracleDurability: 10%The first 2 times the holder drops below 50% Health, a Miracle occurs, healing them for 20% of their max Health.If the holder survives player combat, gain 1 player Health for each Miracle this combat."
+            },
+            {
+              "apiName": null,
+              "displayName": "Thresh's Lantern",
+              "change": "Thresh's LanternHP: 400Armor: 25Magic Resist: 25After 6 seconds of combat, pull the leftmost benched unit onto the battlefield. While that unit lives, 20% of all damage the holder would take is redirected to them. Traits of champions flung onto the board do not become active."
+            },
+            {
+              "apiName": null,
+              "displayName": "Varus's Obsession",
+              "change": "Varus's ObsessionDamage Amp: 15%Combat Start: Your strongest Tank becomes the Soulmate. For each second they are alive, the holder gains 3% stacking Attack Damage and Ability Power. The Soulmate heals for 20% of damage the holder deals."
+            },
+            {
+              "apiName": null,
+              "displayName": "Yasuo's Bladework",
+              "change": "Yasuo's BladeworkAD: 30%AS: 10%Every 3.5 seconds, your next attack is a double attack."
+            },
+            {
+              "apiName": null,
+              "displayName": "Aegis of Dawn",
+              "change": "Aegis of Dawn Base HP: 300 ⇒ 400, Armor Steal: 5 ⇒ 3"
+            },
+            {
+              "apiName": null,
+              "displayName": "Aegis of Dusk",
+              "change": "Aegis of Dusk Base HP: 300 ⇒ 400, MR Steal: 5 ⇒ 3"
+            },
+            {
+              "apiName": null,
+              "displayName": "Blighting Jewel",
+              "change": "Blighting Jewel Magic Resist Reduction: 2 ⇒ 4"
+            },
+            {
+              "apiName": null,
+              "displayName": "Cappa Juice",
+              "change": "Cappa Juice Base AS: 20% ⇒ 25%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Eternal Pact",
+              "change": "Eternal Pact Ally Shield: 150% of AP ⇒ 200% of AP, Wearer bonus on tank cast: 6 ⇒ 15 mana"
+            },
+            {
+              "apiName": null,
+              "displayName": "Flickerblades",
+              "change": "Flickerblades Attack Speed: 12% ⇒ 20%, AD/AP Gain: Every 5 attacks ⇒ Every 3 attacks"
+            },
+            {
+              "apiName": null,
+              "displayName": "Gambler's Blade",
+              "change": "Gambler’s Blade Base AS: 45% ⇒ 55%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Hellfire Hatchet",
+              "change": "Hellfire Hatchet Bonus Damage HP Ratio: 2% ⇒ 3%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Lich Bane",
+              "change": "Lich Bane Proc Damage: 240/320/450/525/600 ⇒ 250/350/500/600/700"
+            },
+            {
+              "apiName": null,
+              "displayName": "Luden's Tempest",
+              "change": "Luden’s Tempest AD/AP: 50% ⇒ 55%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Mogul's Mail",
+              "change": "Mogul’s Mail HP Per Stack: 5 ⇒ 8"
+            },
+            {
+              "apiName": null,
+              "displayName": "Prowler's Claw",
+              "change": "Prowler’s Claw Base HP: 200 ⇒ 300"
+            },
+            {
+              "apiName": null,
+              "displayName": "Statikk Shiv",
+              "change": "Statikk Shiv Ability Power Ratio: 40% ⇒ 50%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Titanic Hydra",
+              "change": "Titanic Hydra Proc HP Ratio: 3% ⇒ 4%"
+            }
+          ]
+        }
+      ],
+      "counts": {
+        "totalEntries": 88,
+        "withApiName": 0
+      }
+    },
+    "17.2": {
+      "scrapedAt": "2026-06-21T13:27:38.711Z",
+      "sections": [
+        {
+          "category": "17.2 APRIL 29TH MID-PATCH UPDATE",
+          "entries": [
+            {
+              "apiName": "TFT17_Augment_PrimordianPrismaticAugment3",
+              "displayName": "Heart of the Swarm",
+              "change": "Heart of the Swarm (Primordian) Disabled due to a bug"
+            },
+            {
+              "apiName": "TFT17_Augment_MordekaiserCarry2",
+              "displayName": "Heat Death",
+              "change": "Heat Death (Mordekaiser) Shield Amount: 175/200/250 AP ⇒ 225/250/300 AP"
+            },
+            {
+              "apiName": null,
+              "displayName": "New Recruit",
+              "change": "New Recruit Number of Four-costs: 3 ⇒ 1"
+            },
+            {
+              "apiName": "TFT17_Augment_LeonaCarry1",
+              "displayName": "Shieldmaiden",
+              "change": "Shieldmaiden (Leona) Ability Damage AD: 110/165/250 AD ⇒ 90/135/225 AD"
+            },
+            {
+              "apiName": "TFT17_Timebreaker",
+              "displayName": "Timebreaker 0",
+              "change": "Timebreaker XP Per Stage (2-6): 2/3/4/4/4 ⇒ 1/2/2/3/4, Rerolls Per Stage (2-6): 1/2/2/3/3 ⇒ 1/1/2/2/3"
+            },
+            {
+              "apiName": "TFT17_Briar",
+              "displayName": "Briar",
+              "change": "Briar Ability Damage: 130/195/320 AD ⇒ 120/180/285 AD"
+            },
+            {
+              "apiName": "TFT17_Leona",
+              "displayName": "Leona",
+              "change": "Leona Shield: 420/500/685 AP ⇒ 420/480/620 AP"
+            },
+            {
+              "apiName": "TFT17_Jax",
+              "displayName": "Jax",
+              "change": "Jax Shield Amount: 400/500/625 AP ⇒ 400/470/550 AP"
+            },
+            {
+              "apiName": "TFT17_Masteryi",
+              "displayName": "Master Yi",
+              "change": "Master Yi's dash is no longer slower than intended."
+            },
+            {
+              "apiName": null,
+              "displayName": "Flexible",
+              "change": "Flexible and Climb the Ladder augments no longer count summons."
+            }
+          ]
+        },
+        {
+          "category": "SYSTEMS",
+          "entries": [
+            {
+              "apiName": "TFT17_Gwen",
+              "displayName": "Gwen",
+              "change": "Gwen's Gifts"
+            }
+          ]
+        },
+        {
+          "category": "",
+          "entries": [
+            {
+              "apiName": "TFT17_Augment_KayleGodAugment1",
+              "displayName": "Kayle's Boon",
+              "change": "Kayle's Boon [Reworked]: For each unique completed item on your team, your team gains 15 Health, 1% Attack Damage, and 1% Ability Power."
+            },
+            {
+              "apiName": "TFT17_Augment_ThreshGodAugment1",
+              "displayName": "Thresh's Boon",
+              "change": "Thresh's Boon Now rolls on 5-1:5 gold ⇒ 6 gold2x 4-costs ⇒ 2x 3-costAttack Speed: 5% ⇒ 6%Health: 65 ⇒ 75Yasuo's Boon2-Hex Gold: 12 ⇒ 8"
+            },
+            {
+              "apiName": null,
+              "displayName": "Yasuo's Boon",
+              "change": "Yasuo's Boon"
+            }
+          ]
+        },
+        {
+          "category": "",
+          "entries": [
+            {
+              "apiName": null,
+              "displayName": "Cosmic Hex",
+              "change": "Cosmic Hex Health Per Turn: 30 ⇒ 35"
+            },
+            {
+              "apiName": null,
+              "displayName": "Cryogenic Hex",
+              "change": "Cryogenic Hex Heal: 35% ⇒ 30%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Solar Hex",
+              "change": "Solar Hex Bonus Magic Damage: 18% ⇒ 15%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Storm Hex",
+              "change": "Storm Hex Stun Duration: 2s ⇒ 1.75s"
+            }
+          ]
+        },
+        {
+          "category": "",
+          "entries": [
+            {
+              "apiName": "TFT17_Animasquad",
+              "displayName": "Anima 0",
+              "change": "Anima Squad Armory Time: 35s ⇒ 28s"
+            },
+            {
+              "apiName": "TFT17_Hptank",
+              "displayName": "Brawler 0",
+              "change": "Brawler Bonus Health: 20/40/60% ⇒ 25/45/65%"
+            },
+            {
+              "apiName": "TFT17_Astrait",
+              "displayName": "Challenger 0",
+              "change": "Challenger Attack Speed (4/5): 36/48% ⇒ 40/55%"
+            },
+            {
+              "apiName": "TFT17_Mecha",
+              "displayName": "Mecha 0",
+              "change": "Mecha AD/AP: 20/35% ⇒ 25/45%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Biomatter Preserver",
+              "change": "Biomatter Preserver Base Health: 400 ⇒ 550"
+            },
+            {
+              "apiName": null,
+              "displayName": "Drone Uplink",
+              "change": "Drone Uplink Ability Power: 25 ⇒ 30, Repeated Damage: 20 ⇒ 25%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Sympathetic Implant",
+              "change": "Sympathetic Implant Base Mana Regen: 2 ⇒ 4, True Damage: 20% ⇒ 25%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Target-Lock Optics",
+              "change": "Target-Lock Optics Base AD: 15% ⇒ 25%, Heal: 15% ⇒ 20%"
+            },
+            {
+              "apiName": "TFT17_Timebreaker",
+              "displayName": "Timebreaker 0",
+              "change": "Timebreaker (2): Your team gains 15% Attack Speed"
+            }
+          ]
+        },
+        {
+          "category": "",
+          "entries": [
+            {
+              "apiName": "TFT17_Caitlyn",
+              "displayName": "Caitlyn",
+              "change": "Caitlyn Headshot's missile size is now larger at high damage values. Headshot missile speed: 2500 ⇒ 3000"
+            },
+            {
+              "apiName": "TFT17_Chogath",
+              "displayName": "Cho'Gath",
+              "change": "Cho'Gath Base HP: 650 ⇒ 700, Bonus Health: 25/35/65/110 ⇒ 30/40/70/115"
+            },
+            {
+              "apiName": "TFT17_Ezreal",
+              "displayName": "Ezreal",
+              "change": "Ezreal Ability Damage: 155/235/355 AD ⇒ 160/240/365 AD, Ability Damage: 10/15/25 AP ⇒ 14/21/32 AP"
+            },
+            {
+              "apiName": "TFT17_Talon",
+              "displayName": "Talon",
+              "change": "Talon Ability damage now correctly benefits from Omnivamp, AS: 0.8 ⇒ 0.75, Ability Damage: 460/690/1090 ⇒ 430/645/1000"
+            },
+            {
+              "apiName": "TFT17_Gnar",
+              "displayName": "Gnar",
+              "change": "Gnar Ability Damage: 225/340/525/860 ⇒ 225/340/560/860"
+            },
+            {
+              "apiName": "TFT17_Gragas",
+              "displayName": "Gragas",
+              "change": "Gragas Healing: 385/440/600/760 ⇒ 415/470/630/790"
+            },
+            {
+              "apiName": "TFT17_Jinx",
+              "displayName": "Jinx",
+              "change": "Jinx AD Ability Damage: 27/40/60/102 ⇒ 29/44/65/110"
+            },
+            {
+              "apiName": "TFT17_Milio",
+              "displayName": "Milio",
+              "change": "Milio Ability Damage: 230/345/520/885 ⇒ 255/380/575/975, Bounce Damage: 75/115/175/300 ⇒ 85/130/190/325"
+            },
+            {
+              "apiName": "TFT17_Diana",
+              "displayName": "Diana",
+              "change": "Diana Shield: 225/275/375 ⇒ 250/290/375, Ability Damage: 45/70/110 ⇒ 50/75/120, Magic On-Hit Damage: 50/75/130 ⇒ 52/78/135"
+            },
+            {
+              "apiName": "TFT17_Lulu",
+              "displayName": "Lulu",
+              "change": "Lulu Mana: 0/60 ⇒ 0/55."
+            },
+            {
+              "apiName": "TFT17_Maokai",
+              "displayName": "Maokai",
+              "change": "Maokai Max HP % Passive: 45 ⇒ 50"
+            },
+            {
+              "apiName": "TFT17_Missfortune",
+              "displayName": "Miss Fortune",
+              "change": "Miss Fortune Channeler Ability Damage: 65/100/155 AD ⇒ 72/108/173 AD"
+            },
+            {
+              "apiName": "TFT17_Samira",
+              "displayName": "Samira",
+              "change": "Samira Ability Damage: 380/570/915 AD ⇒ 360/540/860 AD"
+            },
+            {
+              "apiName": "TFT17_Viktor",
+              "displayName": "Viktor",
+              "change": "Viktor Ability Damage: 200/300/530 AP ⇒ 185/275/475 AP"
+            },
+            {
+              "apiName": "TFT17_Urgot",
+              "displayName": "Urgot",
+              "change": "Urgot Mecha Passive AD: 250% basic AD ⇒ 225% basic AD"
+            },
+            {
+              "apiName": "TFT17_Corki",
+              "displayName": "Corki",
+              "change": "Corki AD Ability damage: 28/42/280 ⇒ 30/44/280"
+            },
+            {
+              "apiName": "TFT17_Karma",
+              "displayName": "Karma",
+              "change": "Karma Attack Speed: 0.75 ⇒ 0.8"
+            },
+            {
+              "apiName": "TFT17_Kindred",
+              "displayName": "Kindred",
+              "change": "Kindred Spell Damage: 60/90 AD ⇒ 75/115 AD"
+            },
+            {
+              "apiName": "TFT17_Leblanc",
+              "displayName": "LeBlanc",
+              "change": "LeBlanc Passive Damage: 57/86 AP ⇒ 62/93 AP"
+            },
+            {
+              "apiName": "TFT17_Masteryi",
+              "displayName": "Master Yi",
+              "change": "Master Yi Passive Damage: 60/90 AD ⇒ 70/105 AD, Move Speed within his spell reduced to avoid targeting bugs"
+            },
+            {
+              "apiName": "TFT17_Xayah",
+              "displayName": "Xayah",
+              "change": "Xayah Spell Damage: 48/72 AD ⇒ 45/68 AD"
+            },
+            {
+              "apiName": "TFT17_Galio",
+              "displayName": "The Mighty Mech",
+              "change": "The Mighty Mech Base Ability Heal: 850/1200/3000 AP ⇒ 900/1300/3000 AP"
+            },
+            {
+              "apiName": "TFT17_Tahmkench",
+              "displayName": "Tahm Kench",
+              "change": "Tahm Kench Oracle Rewards scale less with Tahm Kench rounds fielded. Gold chance/Tailored Champion Chance decreased."
+            },
+            {
+              "apiName": "TFT17_Graves",
+              "displayName": "Graves",
+              "change": "Graves Spell Damage: 360/540 AD ⇒ 390/585 AD"
+            },
+            {
+              "apiName": "TFT17_Jhin",
+              "displayName": "Jhin",
+              "change": "Jhin Ability AD damage: 38/57/644 ⇒ 41/62/644"
+            },
+            {
+              "apiName": "TFT17_Fiora",
+              "displayName": "Fiora",
+              "change": "Fiora Mana: 0/80 ⇒ 0/70"
+            },
+            {
+              "apiName": "TFT17_Shen",
+              "displayName": "Shen",
+              "change": "Shen On-Hit Spell Damage: 40/60 AP ⇒ 45/75 AP"
+            },
+            {
+              "apiName": "TFT17_Sona",
+              "displayName": "Sona",
+              "change": "Sona Debris Initial Damage: 260/390 AP ⇒ 280/420 AP"
+            },
+            {
+              "apiName": "TFT17_Vex",
+              "displayName": "Vex",
+              "change": "Vex Autoattack Range: 8 Hexes ⇒ 5 Hexes, Ability Damage: 140/210/1000 ⇒ 130/195/1000"
+            }
+          ]
+        },
+        {
+          "category": "",
+          "entries": [
+            {
+              "apiName": null,
+              "displayName": "Pandora's Bench",
+              "change": "Pandora's Bench"
+            }
+          ]
+        },
+        {
+          "category": "",
+          "entries": [
+            {
+              "apiName": null,
+              "displayName": "AFK",
+              "change": "AFK Gold: 20 ⇒ 17"
+            },
+            {
+              "apiName": null,
+              "displayName": "At What Cost",
+              "change": "At What Cost XP: 12 ⇒ 8"
+            },
+            {
+              "apiName": null,
+              "displayName": "Anima Commander",
+              "change": "Anima Commander HP: 10 ⇒ 5"
+            },
+            {
+              "apiName": "TFT17_Augment_IvernMinionCarry2",
+              "displayName": "The Big Bang",
+              "change": "The Big Bang (Meepsie) Ability Damage: 265/400/600/1000 AP ⇒ 240/360/560/950 AP, Falloff Per Hex: 35% ⇒ 45%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Bronze For Life I",
+              "change": "Bronze for Life I Damage Amp: 2.5% ⇒ 2%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Bronze For Life II",
+              "change": "Bronze for Life II Damage Amp: 2.5% ⇒ 2%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Cosmic Restart",
+              "change": "Cosmic Restart can no longer appear if a Hero Augment was selected."
+            },
+            {
+              "apiName": null,
+              "displayName": "Dummify",
+              "change": "Dummify can no longer appear if a Hero Augment was selected."
+            },
+            {
+              "apiName": null,
+              "displayName": "Early Learnings",
+              "change": "Early Learnings Initial AD & AP: 4 ⇒ 1"
+            },
+            {
+              "apiName": null,
+              "displayName": "Expedition",
+              "change": "Expedition Gold: 27 ⇒ 20"
+            },
+            {
+              "apiName": null,
+              "displayName": "Forged in Strength",
+              "change": "Forged in Strength Health Threshold: 40 ⇒ 35"
+            },
+            {
+              "apiName": null,
+              "displayName": "Golden Gamble",
+              "change": "Golden Gamble 2-1, 3-2, and 4-2 versions are all now excluded from each other."
+            },
+            {
+              "apiName": null,
+              "displayName": "Hedge Fund",
+              "change": "Hedge Fund Gold: 25 ⇒ 22"
+            },
+            {
+              "apiName": null,
+              "displayName": "Heroic Grab Bag",
+              "change": "Heroic Grab Bag Gold: 5 ⇒ 4"
+            },
+            {
+              "apiName": null,
+              "displayName": "New Recruit",
+              "change": "New Recruit +1 Team Size + 1 Champion Duplicator ⇒ +1 Team Size + 3 4-cost champions"
+            },
+            {
+              "apiName": null,
+              "displayName": "NO SCOUT NO PIVOT",
+              "change": "No Scout No Pivot AD&AP per round: 1.5% ⇒ 1.0%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Cosmic Restart",
+              "change": "Cosmic Restart, Dummify, and Restart Mission can no longer be offered with No Scout No Pivot."
+            },
+            {
+              "apiName": null,
+              "displayName": "On a Roll",
+              "change": "On a Roll Rerolls: 2 ⇒ 1, Gold: 2 ⇒ 6"
+            },
+            {
+              "apiName": null,
+              "displayName": "Patience is a Virtue",
+              "change": "Patience is a Virtue Rerolls Per Turn: 2 ⇒ 1, Initial Rerolls: 0 ⇒ 4"
+            },
+            {
+              "apiName": null,
+              "displayName": "Prismatic Ticket",
+              "change": "Prismatic Ticket Reroll Chance: 50% ⇒ 45%"
+            },
+            {
+              "apiName": "TFT17_Augment_JaxCarry2",
+              "displayName": "Reach for the Stars",
+              "change": "Reach for the Stars (Jax) Resists: 45 ⇒ 50"
+            },
+            {
+              "apiName": null,
+              "displayName": "Restart Mission",
+              "change": "Restart Mission can no longer appear if a Hero Augment was selected."
+            },
+            {
+              "apiName": null,
+              "displayName": "Savings Account",
+              "change": "Savings Account Gold: 30 ⇒ 25"
+            },
+            {
+              "apiName": null,
+              "displayName": "Slightly Magic Roll",
+              "change": "Slightly Magic Roll Gold: 10 ⇒ 8"
+            },
+            {
+              "apiName": null,
+              "displayName": "Solo Plate",
+              "change": "Solo Plate Max HP: 20% ⇒ 17%"
+            },
+            {
+              "apiName": "TFT17_Augment_PoppyCarry1",
+              "displayName": "Termeepnal Velocity",
+              "change": "Termeepnal Velocity (Poppy) Ability Damage: 320/480/800/1200 AD ⇒ 340/510/850/1450 AD"
+            },
+            {
+              "apiName": null,
+              "displayName": "The Tower",
+              "change": "The Tower Dummy HP per stage: 800/1100/1900/2400 ⇒ 600/900/1500/2000"
+            },
+            {
+              "apiName": null,
+              "displayName": "Twin Guardians",
+              "change": "Twin Guardians AR/MR: 45 ⇒ 35"
+            },
+            {
+              "apiName": null,
+              "displayName": "Two Tanky",
+              "change": "Two Tanky HP: 600 ⇒ 500"
+            },
+            {
+              "apiName": null,
+              "displayName": "Two Much Value",
+              "change": "Two Much Value Disabled"
+            }
+          ]
+        },
+        {
+          "category": "",
+          "entries": [
+            {
+              "apiName": "TFT17_Darkstar",
+              "displayName": "Dark Star 0",
+              "change": "Dark Star Emblem AD/AP: 25% ⇒ 18%"
+            },
+            {
+              "apiName": "TFT17_Assassintrait",
+              "displayName": "Rogue 0",
+              "change": "Rogue Emblem Damage Amp: 15% ⇒ 10%"
+            },
+            {
+              "apiName": "TFT17_Summontrait",
+              "displayName": "Shepherd 0",
+              "change": "Shepherd Emblem Mana Regen: 3 ⇒ 2, Mana Share: 12% ⇒ 8%"
+            },
+            {
+              "apiName": "TFT17_Spacegroove",
+              "displayName": "Space Groove 0",
+              "change": "Space Groove Emblem Mana Regen: 3 ⇒ 0, Health: 0 ⇒ 200, Groove Duration on Cast: 3s ⇒ 2.5s. Can no longer trigger more than 1 time every 4 seconds."
+            },
+            {
+              "apiName": "TFT17_Timebreaker",
+              "displayName": "Timebreaker 0",
+              "change": "Timebreaker Emblem Health: 300 ⇒ 200"
+            },
+            {
+              "apiName": "TFT17_Shieldtank",
+              "displayName": "Vanguard 0",
+              "change": "Vanguard Emblem Health: 150 ⇒ 0, AP Per Shield: 3 ⇒ 2"
+            },
+            {
+              "apiName": "TFT17_Flextrait",
+              "displayName": "Voyager 0",
+              "change": "Voyager Emblem, Omnivamp: 18% ⇒ 10%, Bonus Resists: 15 ⇒ 10"
+            }
+          ]
+        },
+        {
+          "category": "",
+          "entries": [
+            {
+              "apiName": null,
+              "displayName": "Ahri's Aura",
+              "change": "Ahri's Aura Foxfire Damage: 55% AP ⇒ 50% AP"
+            },
+            {
+              "apiName": null,
+              "displayName": "Dawncore",
+              "change": "Dawncore Mana Regen: 0 ⇒ 2, AD/AP: 20% ⇒ 15%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Ekko's Patience",
+              "change": "Ekko's Patience Bonus Ability Damage: 45% ⇒ 40%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Kayle's Exaltation",
+              "change": "Kayle's Exaltation Removed"
+            },
+            {
+              "apiName": null,
+              "displayName": "Titanic Hydra",
+              "change": "Titanic Hydra Splash Damage: 8% AD ⇒ 6% AD"
+            },
+            {
+              "apiName": null,
+              "displayName": "Thresh's Lantern",
+              "change": "Thresh's Lantern Armor/Magic Resist: 25 ⇒ 35"
+            },
+            {
+              "apiName": null,
+              "displayName": "Yasuo's Bladework",
+              "change": "Yasuo's Bladework Bonus Attack Interval: 3.5s ⇒ 3s"
+            }
+          ]
+        },
+        {
+          "category": "",
+          "entries": [
+            {
+              "apiName": "TFT17_Galio",
+              "displayName": "The Mighty Mech",
+              "change": "The Mighty Mech Durability: 90% ⇒ 60%, Ability Damage AoE: 1500% AD ⇒ 800% AD, Ability Damage Line: 4000% AD ⇒ 2000% AD"
+            },
+            {
+              "apiName": "TFT17_Aurelionsol",
+              "displayName": "Aurelion Sol",
+              "change": "Aurelion Sol Fighter Damage: 450 AP ⇒ 275 AP"
+            },
+            {
+              "apiName": "TFT17_Leblanc",
+              "displayName": "LeBlanc",
+              "change": "LeBlanc Passive Damage: 400 AP ⇒ 250 AP"
+            }
+          ]
+        },
+        {
+          "category": "BUG FIXES",
+          "entries": [
+            {
+              "apiName": null,
+              "displayName": "Pilfer",
+              "change": "Pilfer can no longer grant an enemy player's Zed."
+            },
+            {
+              "apiName": "TFT17_Meleetrait",
+              "displayName": "Marauder 0",
+              "change": "Marauder no longer grants a shield when activated during the planning phase, causing an unintended interaction with the Vanguard emblem."
+            },
+            {
+              "apiName": "TFT17_Illaoi",
+              "displayName": "Illaoi",
+              "change": "Illaoi will no longer jump to the corner of the battlefield if no targetable enemies exist when her Ability ends."
+            },
+            {
+              "apiName": null,
+              "displayName": "Lucky Gloves",
+              "change": "Lucky Gloves and Invader Zed are now mutually exclusive due to a bug."
+            }
+          ]
+        }
+      ],
+      "counts": {
+        "totalEntries": 108,
+        "withApiName": 60
+      }
+    },
+    "17.3": {
+      "scrapedAt": "2026-06-21T13:27:40.857Z",
+      "sections": [
+        {
+          "category": "17.3 MAY 13TH MID-PATCH UPDATE",
+          "entries": [
+            {
+              "apiName": "TFT17_Aurelionsol",
+              "displayName": "Aurelion Sol",
+              "change": "Aurelion Sol’s ability no longer exceeds its visual range"
+            },
+            {
+              "apiName": null,
+              "displayName": "New Recruit",
+              "change": "New Recruit ( Augment) now correctly provides plus one to team size"
+            },
+            {
+              "apiName": null,
+              "displayName": "Loot Singularity",
+              "change": "Loot Singularity (Augment) incorrectly can grant a spatula as a reward"
+            },
+            {
+              "apiName": null,
+              "displayName": "Retribution",
+              "change": "Retribution (Augment) does not apply its 15% bonus Crit Chance"
+            },
+            {
+              "apiName": "TFT17_Admin",
+              "displayName": "Arbiter 0",
+              "change": "Arbiter no longer generates more rewards than intended"
+            }
+          ]
+        },
+        {
+          "category": "SYSTEMS",
+          "entries": [
+            {
+              "apiName": "TFT17_Augment_KayleGodAugment1",
+              "displayName": "Kayle's Boon",
+              "change": "Kayle’s Boon: HP Per Item: 15 ⇒ 10"
+            },
+            {
+              "apiName": "TFT17_Augment_SorakaGodAugment1",
+              "displayName": "Soraka's Boon",
+              "change": "Soraka’s Boon: HP Per Missing Player Health: 2 ⇒ 2.5"
+            },
+            {
+              "apiName": null,
+              "displayName": "Varus's Boon",
+              "change": "Varus’s Boon: HP Per Star Level: 18 ⇒ 15. No longer counts Dark Star Black Holes and Zed clones for its bonus."
+            },
+            {
+              "apiName": "TFT17_Augment_ApotheoticForge2",
+              "displayName": "Apotheotic Forge",
+              "change": "Apotheotic Forge"
+            },
+            {
+              "apiName": null,
+              "displayName": "Forged in Strength",
+              "change": "Forged in Strength"
+            },
+            {
+              "apiName": null,
+              "displayName": "Portable Forge",
+              "change": "Portable Forge"
+            },
+            {
+              "apiName": null,
+              "displayName": "Living Forge",
+              "change": "Living Forge"
+            },
+            {
+              "apiName": null,
+              "displayName": "Sweet Treats",
+              "change": "Sweet Treats"
+            },
+            {
+              "apiName": null,
+              "displayName": "Heroic Grab Bag",
+              "change": "Heroic Grab Bag"
+            },
+            {
+              "apiName": null,
+              "displayName": "Team Building",
+              "change": "Team Building"
+            },
+            {
+              "apiName": null,
+              "displayName": "Branching Out",
+              "change": "Branching out"
+            },
+            {
+              "apiName": null,
+              "displayName": "Cosmic Restart",
+              "change": "Cosmic Restart"
+            },
+            {
+              "apiName": null,
+              "displayName": "Cursed Crown",
+              "change": "Cursed Crown"
+            },
+            {
+              "apiName": null,
+              "displayName": "Flexible",
+              "change": "Flexible"
+            },
+            {
+              "apiName": null,
+              "displayName": "Hard Commit",
+              "change": "Hard commit"
+            },
+            {
+              "apiName": null,
+              "displayName": "Legion of Threes",
+              "change": "Legion of Threes"
+            },
+            {
+              "apiName": null,
+              "displayName": "New Recruit",
+              "change": "New Recruit"
+            },
+            {
+              "apiName": null,
+              "displayName": "Spreading Roots",
+              "change": "Spreading Roots"
+            },
+            {
+              "apiName": null,
+              "displayName": "Tactician's Kitchen",
+              "change": "Tactician’s Kitchen"
+            },
+            {
+              "apiName": null,
+              "displayName": "Urf's Gambit",
+              "change": "Urf’s Gambit"
+            },
+            {
+              "apiName": null,
+              "displayName": "Urf's Grab Bag",
+              "change": "Urf’s Grab Bag"
+            },
+            {
+              "apiName": null,
+              "displayName": "We Stick Together",
+              "change": "We Stick Together"
+            },
+            {
+              "apiName": null,
+              "displayName": "Calculated Loss",
+              "change": "Calculated Loss"
+            },
+            {
+              "apiName": null,
+              "displayName": "On a Roll",
+              "change": "On a Roll"
+            },
+            {
+              "apiName": null,
+              "displayName": "Prismatic Ticket",
+              "change": "Prismatic Ticket"
+            }
+          ]
+        },
+        {
+          "category": "LARGE CHANGES",
+          "entries": [
+            {
+              "apiName": "TFT17_Animasquad",
+              "displayName": "Anima 0",
+              "change": "Anima Squad (6) Loot gained every win ⇒ After every player combat"
+            },
+            {
+              "apiName": "TFT17_Admin",
+              "displayName": "Arbiter 0",
+              "change": "Arbiter Deal Damage Input Resists Gained: 16/24 ⇒ 12/18"
+            },
+            {
+              "apiName": "TFT17_Meleetrait",
+              "displayName": "Marauder 0",
+              "change": "Marauder AD: 20/40/60% ⇒ 18/35/55% AD"
+            },
+            {
+              "apiName": "TFT17_Stargazer",
+              "displayName": "Stargazer 0",
+              "change": "Stargazer Fountain Re-enabled: Allies in empowered hexes heal 1% max Health every 2 seconds. Stargazers in empowered hexes heal an additional 2.5% and gain stacking Attack Damage and Ability Power every 2 seconds."
+            },
+            {
+              "apiName": "TFT17_Briar",
+              "displayName": "Briar",
+              "change": "Briar Base AD: 40 ⇒ 35"
+            },
+            {
+              "apiName": "TFT17_Leona",
+              "displayName": "Leona",
+              "change": "Leona Base AR/MR: 45 ⇒ 40"
+            },
+            {
+              "apiName": "TFT17_Twistedfate",
+              "displayName": "Twisted Fate",
+              "change": "Twisted Fate Minimum Damage AP: 190/285/430/730 ⇒ 180/270/405/690"
+            },
+            {
+              "apiName": "TFT17_Teemo",
+              "displayName": "Teemo",
+              "change": "Teemo Damage AP: 70/105/190/325 ⇒ 65/95/170/300"
+            },
+            {
+              "apiName": "TFT17_Akali",
+              "displayName": "Akali",
+              "change": "Akali Spell Damage AD: 34/50/80/135 ⇒ 37/56/84/140"
+            },
+            {
+              "apiName": "TFT17_Belveth",
+              "displayName": "Bel'Veth",
+              "change": "Bel’veth Spell Damage AD: 20/30/45/77 ⇒ 18/27/41/69"
+            },
+            {
+              "apiName": "TFT17_Gnar",
+              "displayName": "Gnar",
+              "change": "Gnar Base AD: 45 ⇒ 50"
+            },
+            {
+              "apiName": "TFT17_Jax",
+              "displayName": "Jax",
+              "change": "Jax Flat Damage Reduction AP: 15/25/35/45 ⇒ 15/20/25/30"
+            },
+            {
+              "apiName": "TFT17_Jinx",
+              "displayName": "Jinx",
+              "change": "Jinx Spell Damage AD: 29/44/65 ⇒ 29/44/70"
+            },
+            {
+              "apiName": "TFT17_Diana",
+              "displayName": "Diana",
+              "change": "Diana Shield: 250/290/375 AP ⇒ 275/325/475 AP"
+            },
+            {
+              "apiName": "TFT17_Fizz",
+              "displayName": "Fizz",
+              "change": "Fizz Dash Damage AP: 110/165/265 ⇒ 120/180/290"
+            },
+            {
+              "apiName": "TFT17_Kaisa",
+              "displayName": "Kai'Sa",
+              "change": "Kai’Sa Spell Damage AD: 32/48/77 ⇒ 30/45/72"
+            },
+            {
+              "apiName": "TFT17_Lulu",
+              "displayName": "Lulu",
+              "change": "Lulu Serpent Pattern MR Shred: 5/7/10 ⇒ 4/6/8"
+            },
+            {
+              "apiName": "TFT17_Missfortune",
+              "displayName": "Miss Fortune",
+              "change": "Miss Fortune Challenger Secondary Hit Damage: 30% ⇒ 35%"
+            },
+            {
+              "apiName": "TFT17_Ornn",
+              "displayName": "Ornn",
+              "change": "Ornn Shield AP: 100/150/500 ⇒ 125/200/500"
+            },
+            {
+              "apiName": "TFT17_Samira",
+              "displayName": "Samira",
+              "change": "Samira AD Spell Damage: 360/540/860 ⇒ 375/560/900"
+            },
+            {
+              "apiName": "TFT17_Aurelionsol",
+              "displayName": "Aurelion Sol",
+              "change": "Aurelion Sol Mech Form Fighter Damage: 78/118/275 ⇒ 82/123/275"
+            },
+            {
+              "apiName": "TFT17_Karma",
+              "displayName": "Karma",
+              "change": "Karma Spell Secondary Damage AP: 150/225 ⇒ 180/270"
+            },
+            {
+              "apiName": "TFT17_Leblanc",
+              "displayName": "LeBlanc",
+              "change": "Leblanc Spell Damage AP: 70/105 ⇒ 80/120"
+            },
+            {
+              "apiName": "TFT17_Masteryi",
+              "displayName": "Master Yi",
+              "change": "Master Yi Omnivamp: 15% ⇒ 10%"
+            },
+            {
+              "apiName": "TFT17_Nami",
+              "displayName": "Nami",
+              "change": "Nami Spell Damage: 410/615/5000 ⇒ 440/660/5000"
+            },
+            {
+              "apiName": "TFT17_Xayah",
+              "displayName": "Xayah",
+              "change": "Xayah Spell Duration: 4 seconds ⇒ 6 attacks. Spell deals 10/15/200 AD bonus damage per feather to her current target."
+            },
+            {
+              "apiName": "TFT17_Morgana",
+              "displayName": "Morgana",
+              "change": "Morgana:Moved to a 4-costRole: Magic Fighter ⇒ Magic TankDark Lady: Your team gains 4% Durability, increased to 10% when Morgana is in her Dark Form.Mana: 20/60 ⇒ 30/90Attack Speed: .90 ⇒ .65HP: 800 ⇒ 1300Resists: 50 ⇒ 70AD: 50 ⇒ 60Ability Rework: Transform for 3 seconds, gaining 525/625/2500 AP + 10% HP Health and tethering to nearby champions. Over the duration, deal 100/150/3000 AP magic damage to the closest 3 enemies and restore 100/150/3000 AP health to the closest 2 injured allies."
+            },
+            {
+              "apiName": "TFT17_Morganauniquetrait",
+              "displayName": "Dark Lady 0",
+              "change": "Dark Lady: Your team gains 4% Durability, increased to 10% when Morgana is in her Dark Form."
+            },
+            {
+              "apiName": "TFT17_Shen",
+              "displayName": "Shen",
+              "change": "Shen Shield HP Scalar: 10% ⇒ 15%"
+            },
+            {
+              "apiName": "TFT17_Sona",
+              "displayName": "Sona",
+              "change": "Sona Ability targeting adjusted to sort by nearest Row rather than nearest unit. Less likely to target backliners with early casts."
+            },
+            {
+              "apiName": "TFT17_Zed",
+              "displayName": "Zed",
+              "change": "Zed Clone Health Reduction: 33% ⇒ 33/40/40%"
+            },
+            {
+              "apiName": "TFT17_Augment_Concentration2",
+              "displayName": "Concentration",
+              "change": "Concentration: Conduit Abilities last 25% to 50% longer, depending on the Ability. Gain a Zoe and a Mordekaiser."
+            },
+            {
+              "apiName": "TFT17_Augment_PrimordianPrismaticAugment3",
+              "displayName": "Heart of the Swarm",
+              "change": "Heart of the Swarm: All 3-star champions now count towards Swarmling power. At level 9, while fielding 6 unique 3-star champions, Primordians summon the Apex Primordian. Gain a Briar, Bel'veth, and 2-star Rek'sai."
+            },
+            {
+              "apiName": null,
+              "displayName": "Loot Singularity",
+              "change": "Loot Singularity: When the Black Hole consumes enemies, it turns them into space matter. After acquiring enough, the Black Hole turns it into loot! Gain a Cho'gath and a Lissandra. Space matter and loot quality increase each time. Gain 2/3/4 space matter depending on Dark Star breakpoint."
+            },
+            {
+              "apiName": "TFT17_Augment_TourOfTheGalaxy2",
+              "displayName": "Tour of the Galaxy",
+              "change": "Tour of the Galaxy: Voyagers gain 130 Health, 13% Attack Damage, and 13% Ability Power, increased by 10% each time you fight a new player. You prefer to fight players you haven't fought recently. Gain a Pyke and a Meepsie."
+            },
+            {
+              "apiName": null,
+              "displayName": "Timestream",
+              "change": "Timestream: Timebreakers gain 2 Health and 0.25% Attack Speed every time you reroll (including free rerolls). Gain an Ezreal and a Pantheon."
+            },
+            {
+              "apiName": "TFT17_Augment_LeonaCarry1",
+              "displayName": "Shieldmaiden",
+              "change": "Shieldmaiden (Leona): Primary Target Health Ratio: 28% of Leona’s max HP ⇒ 24% of Leona’s max HP"
+            },
+            {
+              "apiName": "TFT17_Augment_PoppyCarry1",
+              "displayName": "Termeepnal Velocity",
+              "change": "Termeepnal Velocity (Poppy) AS: 0.7 ⇒ 0.75"
+            },
+            {
+              "apiName": "TFT17_Augment_IvernMinionCarry2",
+              "displayName": "The Big Bang",
+              "change": "The Big Bang (Meepsie) Falloff Per Hex: 45% ⇒ 35%"
+            },
+            {
+              "apiName": "TFT17_Augment_NasusCarry1",
+              "displayName": "Bonk!",
+              "change": "Bonk! (Nasus) Resists: 40 ⇒ 45"
+            },
+            {
+              "apiName": "TFT17_Augment_MordekaiserCarry2",
+              "displayName": "Heat Death",
+              "change": "Heat Death (Mordekaiser) Mana: 20/50 ⇒ 10/40"
+            },
+            {
+              "apiName": "TFT17_Augment_JaxCarry2",
+              "displayName": "Reach for the Stars",
+              "change": "Reach for the Stars (Jax) Spell Damage: 155/230/375 AP ⇒ 170/250/450 AP"
+            },
+            {
+              "apiName": "TFT17_Augment_AatroxCarry1",
+              "displayName": "Stellar Combo",
+              "change": "Stellar Combo (Aatrox) 2nd Cast Damage: 100/150/2250 AD ⇒ 110/165/275 AD"
+            },
+            {
+              "apiName": null,
+              "displayName": "Flexible",
+              "change": "Flexible HP Per Emblem: 40 ⇒ 30"
+            },
+            {
+              "apiName": null,
+              "displayName": "Kahunahuna",
+              "change": "Kahunahuna Bonus True Damage: 150% AD ⇒ 125% AD"
+            },
+            {
+              "apiName": null,
+              "displayName": "May the Fours Be With You",
+              "change": "May the Fours Be With You Health: 254 ⇒ 144"
+            },
+            {
+              "apiName": null,
+              "displayName": "The Tower",
+              "change": "The Tower Health: 600/900/1500/2000 ⇒ 450/700/1250/1600"
+            },
+            {
+              "apiName": null,
+              "displayName": "New Recruit",
+              "change": "New Recruit: 4-2 version added that grants 2 4-costs"
+            },
+            {
+              "apiName": null,
+              "displayName": "Vampiric Vitality I",
+              "change": "Vampiric Vitality II Removed"
+            },
+            {
+              "apiName": null,
+              "displayName": "Edge of Night",
+              "change": "Edge of Night Missing Health Heal: 30% ⇒ 20%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Horizon Focus",
+              "change": "Horizon Focus Disabled"
+            },
+            {
+              "apiName": null,
+              "displayName": "Titanic Hydra",
+              "change": "Titanic Hydra: Xayah will only trigger the AoE effect on her primary basic attack."
+            }
+          ]
+        },
+        {
+          "category": "SMALL CHANGES",
+          "entries": [
+            {
+              "apiName": null,
+              "displayName": "Buried Treasures",
+              "change": "Buried Treasures Rounds: 5 ⇒ 4"
+            },
+            {
+              "apiName": null,
+              "displayName": "Cosmic Restart",
+              "change": "Cosmic Restart Rerolls: 11 ⇒ 8"
+            },
+            {
+              "apiName": null,
+              "displayName": "Exclusive Customization",
+              "change": "Exclusive Customization I Gold: 10 ⇒ 7"
+            },
+            {
+              "apiName": null,
+              "displayName": "Golden Gamble",
+              "change": "Golden Gamble+ Gold: 4 ⇒ 2"
+            },
+            {
+              "apiName": null,
+              "displayName": "Mace's Will",
+              "change": "Mace’s Will No longer grants Attack Speed. Critical Strike Chance: 20% ⇒ 25%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Retribution",
+              "change": "Retribution Also grants the holder 15% Critical Strike Chance."
+            }
+          ]
+        },
+        {
+          "category": "BUG FIXES",
+          "entries": [
+            {
+              "apiName": null,
+              "displayName": "Varus's Obsession",
+              "change": "Varus’s Obsession now will only target champions as the strongest Tank."
+            },
+            {
+              "apiName": null,
+              "displayName": "Malware Matrix",
+              "change": "Malware Matrix’s Armor Reduction is now properly reduced on Attacks with modified On-Hit Effectiveness, such as Graves and Xayah."
+            },
+            {
+              "apiName": "TFT17_Graves",
+              "displayName": "Graves",
+              "change": "Graves’ Fragmentation Rounds no longer count as Critical Strikes for Battle Bunny Crossbow."
+            },
+            {
+              "apiName": null,
+              "displayName": "Hold the Line",
+              "change": "Hold the Line and Twin Guardians are now mutually exclusive."
+            }
+          ]
+        }
+      ],
+      "counts": {
+        "totalEntries": 92,
+        "withApiName": 47
+      }
+    },
+    "17.4": {
+      "scrapedAt": "2026-06-21T13:27:43.009Z",
+      "sections": [
+        {
+          "category": "Mid-Patch Updates",
+          "entries": [
+            {
+              "apiName": "TFT17_Ezreal",
+              "displayName": "Ezreal",
+              "change": "Ezreal Base AD: 40 ⇒ 45"
+            },
+            {
+              "apiName": "TFT17_Talon",
+              "displayName": "Talon",
+              "change": "Talon Ability Damage: 430/645/1000 AD ⇒ 400/600/1000 AD"
+            },
+            {
+              "apiName": "TFT17_Zoe",
+              "displayName": "Zoe",
+              "change": "Zoe Ability Damage: 73/110/180% AP ⇒ 68/102/180 AP"
+            },
+            {
+              "apiName": "TFT17_Aurelionsol",
+              "displayName": "Aurelion Sol",
+              "change": "Aurelion Sol Mech Ability Damage: 82/123 AP ⇒ 86/130 AP"
+            },
+            {
+              "apiName": "TFT17_Morgana",
+              "displayName": "Morgana",
+              "change": "Morgana Mana: 30/90 ⇒ 30/80"
+            },
+            {
+              "apiName": "TFT17_Xayah",
+              "displayName": "Xayah",
+              "change": "Xayah Base AD: 52 ⇒ 49"
+            },
+            {
+              "apiName": "TFT17_Blitzcrank",
+              "displayName": "Blitzcrank",
+              "change": "Blitzcrank max Mana nerf: 20/100 ⇒ 30/120"
+            },
+            {
+              "apiName": "TFT17_Vex",
+              "displayName": "Vex",
+              "change": "Vex Ability Damage: 30/45 AP ⇒ 27/40 AP"
+            },
+            {
+              "apiName": "TFT17_Admin",
+              "displayName": "Arbiter 0",
+              "change": "Arbiter, Gain Leona, Every 3 Attacks: 10/18% ⇒ 8/12%"
+            },
+            {
+              "apiName": "TFT17_Spacegroove",
+              "displayName": "Space Groove 0",
+              "change": "Space Groove (3) Groove Duration: 3s ⇒ 4s"
+            },
+            {
+              "apiName": "TFT17_Stargazer",
+              "displayName": "Stargazer 0",
+              "change": "Stargazer Huntress Base AS: 12% ⇒ 15%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Misfits",
+              "change": "Misfits no longer offered on 4-2"
+            }
+          ]
+        },
+        {
+          "category": "",
+          "entries": [
+            {
+              "apiName": null,
+              "displayName": "Ekko's Patience",
+              "change": "Ekko’s Patience (Artifact) has been temporarily disabled due to a bug."
+            }
+          ]
+        },
+        {
+          "category": "SYSTEMS",
+          "entries": [
+            {
+              "apiName": "TFT17_Augment_EkkoGodAugment1",
+              "displayName": "Ekko's Boon",
+              "change": "Ekko’s Boon: Specialist Star Damage: 85 ⇒ 70"
+            }
+          ]
+        },
+        {
+          "category": "LARGE CHANGES",
+          "entries": [
+            {
+              "apiName": "TFT17_Astrait",
+              "displayName": "Challenger 0",
+              "change": "Challenger Attack Speed: 15/22/40/55% ⇒ 15/28/42/55%"
+            },
+            {
+              "apiName": "TFT17_Darkstar",
+              "displayName": "Dark Star 0",
+              "change": "Dark Star (6) Bonus: 85% ⇒ 70%"
+            },
+            {
+              "apiName": "TFT17_Aatrox",
+              "displayName": "Aatrox",
+              "change": "Aatrox Damage: 50% of spell damage ⇒ 65% of spell damage"
+            },
+            {
+              "apiName": "TFT17_Akali",
+              "displayName": "Akali",
+              "change": "Akali Bonus Bleed Per Shuriken: 10% ⇒ 12%"
+            },
+            {
+              "apiName": "TFT17_Kindred",
+              "displayName": "Kindred",
+              "change": "Kindred Damage Amp: 5% ⇒ 10%"
+            },
+            {
+              "apiName": "TFT17_Astronaut",
+              "displayName": "Meeple 0",
+              "change": "Meeple Emblem Bonus: 1 Mana Regen Per Meep ⇒ 50 Health + 4% Damage Amp Per Meep"
+            },
+            {
+              "apiName": "TFT17_Psyops",
+              "displayName": "Psionic 0",
+              "change": "Psionic (2) Drone Uplink Damage Amp: 15%"
+            },
+            {
+              "apiName": "TFT17_Rangedtrait",
+              "displayName": "Sniper 0",
+              "change": "Sniper Baseline Damage Amp: 18/24/28% ⇒ 18/25/35%"
+            },
+            {
+              "apiName": "TFT17_Spacegroove",
+              "displayName": "Space Groove 0",
+              "change": "Space Groove 7 Space Groove Bonus: 10% ⇒ 15%"
+            },
+            {
+              "apiName": "TFT17_Stargazer",
+              "displayName": "Stargazer 0",
+              "change": "Stargazer Fountain Stargazer Healing: 2.5% ⇒ 3%"
+            },
+            {
+              "apiName": "TFT17_Admin",
+              "displayName": "Arbiter 0",
+              "change": "Arbiter Inputs are now grouped into three categories; One input from each category will always be offeredConsistent:Every 4 Seconds:For each Arbiter Star Level:Conditional:When an Arbiter Attacks 3 timesWhen an Arbiter spends 50 ManaEconomy Based:For each interest you would gainIf you rerolled last turn"
+            },
+            {
+              "apiName": "TFT17_Leona",
+              "displayName": "Leona",
+              "change": "Leona Chance: 50/100% ⇒ 70/125%"
+            },
+            {
+              "apiName": "TFT17_Admin",
+              "displayName": "Arbiter 0",
+              "change": "Arbiters gain Mana"
+            },
+            {
+              "apiName": "TFT17_Aatrox",
+              "displayName": "Aatrox",
+              "change": "Aatrox Heal: 300/375/575 AP ⇒ 325/400/650 AP"
+            },
+            {
+              "apiName": "TFT17_Twistedfate",
+              "displayName": "Twisted Fate",
+              "change": "Twisted Fate Minimum Damage AP: 180/270/405/690 ⇒ 190/285/430/730"
+            },
+            {
+              "apiName": "TFT17_Belveth",
+              "displayName": "Bel'Veth",
+              "change": "Bel’Veth Spell Damage AD: 18/27/41/69 ⇒ 20/30/45/77"
+            },
+            {
+              "apiName": "TFT17_Gnar",
+              "displayName": "Gnar",
+              "change": "Gnar Base AS: 0.7 ⇒ 0.75"
+            },
+            {
+              "apiName": "TFT17_Gwen",
+              "displayName": "Gwen",
+              "change": "Gwen Resists: 45 ⇒ 50"
+            },
+            {
+              "apiName": "TFT17_Jax",
+              "displayName": "Jax",
+              "change": "Jax Flat Damage Reduction: 15/20/25 AP ⇒ 20/25/30 (no AP scaling)"
+            },
+            {
+              "apiName": "TFT17_Zoe",
+              "displayName": "Zoe",
+              "change": "Zoe Spell Damage: 68/102/153% AP ⇒ 73/110/180 AP"
+            },
+            {
+              "apiName": "TFT17_Aurora",
+              "displayName": "Aurora",
+              "change": "Aurora Split Damage AP: 370/555/890 AP ⇒ 400/600/960 AP"
+            },
+            {
+              "apiName": "TFT17_Lulu",
+              "displayName": "Lulu",
+              "change": "Lulu Mountain Spell Stun Duration: 0.5s ⇒ 0.25s"
+            },
+            {
+              "apiName": "TFT17_Missfortune",
+              "displayName": "Miss Fortune",
+              "change": "Miss Fortune (Replicator) Spell Damage: 250/375/600 AD ⇒ 275/415/660 AD"
+            },
+            {
+              "apiName": "TFT17_Ornn",
+              "displayName": "Ornn",
+              "change": "Ornn Base Health: 850 ⇒ 950"
+            },
+            {
+              "apiName": "TFT17_Rhaast",
+              "displayName": "Rhaast",
+              "change": "Rhaast Redeemer Attack Speed: 2/2.5/3% ⇒ 2/2/2%"
+            },
+            {
+              "apiName": "TFT17_Viktor",
+              "displayName": "Viktor",
+              "change": "Viktor Spell Damage: 185/275/475 AP ⇒ 190/290/500 AP"
+            },
+            {
+              "apiName": "TFT17_Corki",
+              "displayName": "Corki",
+              "change": "Corki Missile Damage: 30/44% AD ⇒ 28/42% AD"
+            },
+            {
+              "apiName": "TFT17_Morgana",
+              "displayName": "Morgana",
+              "change": "Morgana Range: 2 ⇒ 1"
+            },
+            {
+              "apiName": "TFT17_Nami",
+              "displayName": "Nami",
+              "change": "Nami Mana: 25/70 ⇒ 20/65"
+            },
+            {
+              "apiName": "TFT17_Xayah",
+              "displayName": "Xayah",
+              "change": "Xayah Base AD: 50 ⇒ 52"
+            },
+            {
+              "apiName": "TFT17_Fiora",
+              "displayName": "Fiora",
+              "change": "Fiora Spell True Damage: 40/60 AD ⇒ 37/56 AD"
+            },
+            {
+              "apiName": "TFT17_Graves",
+              "displayName": "Graves",
+              "change": "Graves Base AS: 0.7 ⇒ 0.75"
+            },
+            {
+              "apiName": "TFT17_Shen",
+              "displayName": "Shen",
+              "change": "Shen Mana: 10/70 ⇒ 20/70"
+            },
+            {
+              "apiName": "TFT17_Zed",
+              "displayName": "Zed",
+              "change": "Zed Clone Health %: 33/40% ⇒ 33/45%"
+            },
+            {
+              "apiName": "TFT17_Augment_LeonaCarry1",
+              "displayName": "Shieldmaiden",
+              "change": "Shieldmaiden (Leona) Mana: 10/40 ⇒ 20/50"
+            },
+            {
+              "apiName": "TFT17_Augment_JaxCarry2",
+              "displayName": "Reach for the Stars",
+              "change": "Reach for the Stars (Jax) Spell Damage: 170/250/450 AP ⇒ 160/240/420 AP"
+            },
+            {
+              "apiName": null,
+              "displayName": "One Two Three",
+              "change": "One Two Three Num 1-costs: 1 ⇒ 2"
+            },
+            {
+              "apiName": null,
+              "displayName": "Booster Pack",
+              "change": "Booster Pack Total Value: 10g ⇒ 12g"
+            },
+            {
+              "apiName": null,
+              "displayName": "Charge Transfer I",
+              "change": "Charge Transfer I Damage Amp: 5% ⇒ 7%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Climb The Ladder I",
+              "change": "Climb the Ladder I Stats: 3 ⇒ 3.5"
+            },
+            {
+              "apiName": null,
+              "displayName": "Hard Commit",
+              "change": "Hard Commit Gold Per Stage: 4 ⇒ 3"
+            },
+            {
+              "apiName": null,
+              "displayName": "Heroic Grab Bag",
+              "change": "Heroic Grab Bag Gold: 4 ⇒ 5"
+            },
+            {
+              "apiName": null,
+              "displayName": "Heart of Steel",
+              "change": "Heart of Steel Health Per Growth: 12 ⇒ 16"
+            },
+            {
+              "apiName": "TFT17_Augment_PrimordianPrismaticAugment3",
+              "displayName": "Heart of the Swarm",
+              "change": "Heart of the Swarm Also grants 2 Tiny Duplicators"
+            },
+            {
+              "apiName": null,
+              "displayName": "Hold the Line",
+              "change": "Hold the Line Bonus AD: 9% ⇒ 8%, Bonus AP: 10% ⇒ 9%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Group Hug I",
+              "change": "Group Hug I Resists: 7 ⇒ 6"
+            },
+            {
+              "apiName": null,
+              "displayName": "Kahunahuna",
+              "change": "Kahunahuna Bonus True Damage: 125% AD ⇒ 100% AD"
+            },
+            {
+              "apiName": null,
+              "displayName": "Luxury Subscription",
+              "change": "Luxury Subscription Gold Per Trigger: 5 ⇒ 7"
+            },
+            {
+              "apiName": null,
+              "displayName": "Mace's Will",
+              "change": "Mace’s Will No longer offered on 2-1"
+            },
+            {
+              "apiName": null,
+              "displayName": "Sweet Treats",
+              "change": "Sweet Treats Health Per Item: 20 ⇒ 16"
+            },
+            {
+              "apiName": null,
+              "displayName": "Sunfire Board",
+              "change": "Sunfire Board No longer offered on 2-1"
+            },
+            {
+              "apiName": null,
+              "displayName": "Timestream",
+              "change": "Timestream Health Per Reroll: 2 ⇒ 7"
+            },
+            {
+              "apiName": null,
+              "displayName": "Radiant Adaptive Helm",
+              "change": "Radiant Adaptive Helm Non-Tank AD/AP: 25 ⇒ 40"
+            },
+            {
+              "apiName": null,
+              "displayName": "Radiant Dragon's Claw",
+              "change": "Radiant Dragon’s Claw Percent Max Health: 22% ⇒ 28%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Radiant Guinsoo's Rageblade",
+              "change": "Radiant Guinsoo’s Rageblade Attack Speed Per Second: 14% ⇒ 16%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Radiant Nashor's Tooth",
+              "change": "Radiant Nashor’s Tooth On-Crit Mana On Attack: 8 ⇒ 6"
+            },
+            {
+              "apiName": null,
+              "displayName": "Blighting Jewel",
+              "change": "Blighting Jewel MR Reduction: 4 ⇒ 6"
+            },
+            {
+              "apiName": null,
+              "displayName": "Ekko's Patience",
+              "change": "Ekko’s Patience Damage Amp: 40% ⇒ 45%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Luden's Tempest",
+              "change": "Luden’s Tempest AD/AP: 55% ⇒ 60%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Yasuo's Bladework",
+              "change": "Yasuo’s Bladework Attack Speed: 10% ⇒ 20%"
+            },
+            {
+              "apiName": "TFT17_Admin",
+              "displayName": "Arbiter 0",
+              "change": "Arbiter Emblem Attack Speed: 20% ⇒ 30%"
+            },
+            {
+              "apiName": "TFT17_Assassintrait",
+              "displayName": "Rogue 0",
+              "change": "Rogue Emblem Omnivamp: 40% ⇒ 25%"
+            }
+          ]
+        },
+        {
+          "category": "BUG FIXES",
+          "entries": [
+            {
+              "apiName": "TFT17_Timebreaker",
+              "displayName": "Timebreaker 0",
+              "change": "Timebreaker’s Tooltip in Tocker’s Trials corrected"
+            },
+            {
+              "apiName": "TFT17_Darkstar",
+              "displayName": "Dark Star 0",
+              "change": "Dark Star 6’s mini Black Holes no longer benefit from Exiles and Two Tanky"
+            },
+            {
+              "apiName": null,
+              "displayName": "Luden's Tempest",
+              "change": "Luden’s Tempest tooltip corrected"
+            },
+            {
+              "apiName": null,
+              "displayName": "Loot Singularity",
+              "change": "Loot Singularity properly disabled in Tocker’s Trials"
+            },
+            {
+              "apiName": null,
+              "displayName": "Soraka's Miracle",
+              "change": "Soraka’s Miracle functions properly when a champion is equipped with more than one"
+            }
+          ]
+        }
+      ],
+      "counts": {
+        "totalEntries": 81,
+        "withApiName": 53
+      }
+    },
+    "17.5": {
+      "scrapedAt": "2026-06-21T13:27:45.356Z",
+      "sections": [
+        {
+          "category": "SYSTEMS",
+          "entries": [
+            {
+              "apiName": "TFT17_Leblanc",
+              "displayName": "LeBlanc",
+              "change": "LeBlanc's Stage 3 Augments Removed"
+            },
+            {
+              "apiName": "TFT17_Aurelionsol",
+              "displayName": "Aurelion Sol",
+              "change": "Aurelion Sol Low HP Quest 18 gold ⇒ 21 gold"
+            }
+          ]
+        },
+        {
+          "category": "LARGE CHANGES",
+          "entries": [
+            {
+              "apiName": "TFT17_Admin",
+              "displayName": "Arbiter 0",
+              "change": "Arbiter, Every 3 Attacks, Gain Leona: 8/12% ⇒ 5/8%"
+            },
+            {
+              "apiName": "TFT17_Astronaut",
+              "displayName": "Meeple 0",
+              "change": "Meeple Flat HP bonus: 100/400/400/500 ⇒ 100/350/450/550"
+            },
+            {
+              "apiName": "TFT17_Spacegroove",
+              "displayName": "Space Groove 0",
+              "change": "Space Groove Health Regen Per Groovian: 0.95% ⇒ 0.85%"
+            },
+            {
+              "apiName": "TFT17_Stargazer",
+              "displayName": "Stargazer 0",
+              "change": "Stargazer, Serpent, Fixed a bug where the poison was doing more damage than intended."
+            },
+            {
+              "apiName": "TFT17_Caitlyn",
+              "displayName": "Caitlyn",
+              "change": "Caitlyn Headshot Damage AD: 170/255/510/875 ⇒ 190/285/540/925"
+            },
+            {
+              "apiName": "TFT17_Ezreal",
+              "displayName": "Ezreal",
+              "change": "Ezreal Ability Damage AD: 160/240/365/620 AD ⇒ 170/255/380/650 AD"
+            },
+            {
+              "apiName": "TFT17_Nasus",
+              "displayName": "Nasus",
+              "change": "Nasus Flat Health gained: 250/350/550/750 ⇒ 300/400/600/800"
+            },
+            {
+              "apiName": "TFT17_Teemo",
+              "displayName": "Teemo",
+              "change": "Teemo Spell Damage: 65/95/170/300 ⇒ 70/105/190/325"
+            },
+            {
+              "apiName": "TFT17_Veigar",
+              "displayName": "Veigar",
+              "change": "Veigar Spell Damage AP: 310/465/700/1190 ⇒ 330/495/750/1200"
+            },
+            {
+              "apiName": "TFT17_Akali",
+              "displayName": "Akali",
+              "change": "Akali Spell Damage AD: 37/56/84 ⇒ 39/59/88"
+            },
+            {
+              "apiName": "TFT17_Belveth",
+              "displayName": "Bel'Veth",
+              "change": "Bel'Veth Spell Damage AD: 20/30/45 >> 22/33/50"
+            },
+            {
+              "apiName": "TFT17_Gwen",
+              "displayName": "Gwen",
+              "change": "Gwen Attack Speed: 0.85 ⇒ 0.8"
+            },
+            {
+              "apiName": "TFT17_Mordekaiser",
+              "displayName": "Mordekaiser",
+              "change": "Mordekaiser Initial Shield: 300/375/500 ⇒ 350/425/550"
+            },
+            {
+              "apiName": "TFT17_Fizz",
+              "displayName": "Fizz",
+              "change": "Fizz Dash Damage AP: 120/180/290 ⇒ 140/210/310"
+            },
+            {
+              "apiName": "TFT17_Ornn",
+              "displayName": "Ornn",
+              "change": "Ornn Groove Duration: 3s ⇒ 2.5s"
+            },
+            {
+              "apiName": "TFT17_Kindred",
+              "displayName": "Kindred",
+              "change": "Kindred Base AD: 55 ⇒ 58"
+            },
+            {
+              "apiName": "TFT17_Leblanc",
+              "displayName": "LeBlanc",
+              "change": "LeBlanc Sigil Damage: 80/120 ⇒ 85/130"
+            },
+            {
+              "apiName": "TFT17_Rammus",
+              "displayName": "Rammus",
+              "change": "Rammus Meeple bonus Damage Reduction per Meep: 4 ⇒ 3"
+            },
+            {
+              "apiName": "TFT17_Bard",
+              "displayName": "Bard",
+              "change": "Bard Spell Damage: 220/330 >> 240/360"
+            },
+            {
+              "apiName": "TFT17_Vex",
+              "displayName": "Vex",
+              "change": "Vex Spell Damage: 130/195 AP ⇒ 140/210 AP"
+            },
+            {
+              "apiName": "TFT17_Augment_NasusCarry1",
+              "displayName": "Bonk!",
+              "change": "Bonk! (Nasus) Spell Damage: 280/420/670/1000 AD ⇒ 290/435/730/1250 AD"
+            },
+            {
+              "apiName": null,
+              "displayName": "Buried Treasures",
+              "change": "Buried Treasures Rounds of Items: 4 ⇒ 5"
+            },
+            {
+              "apiName": null,
+              "displayName": "Call to Chaos",
+              "change": "Call to Chaos: Radiant Lucky Item Chest + 15g ⇒ Radiant Lucky Item Chest + 8g, 58 Gold ⇒ 52 Gold, 64 XP ⇒ 58 XP, Rerolls: 40 ⇒ 36"
+            },
+            {
+              "apiName": null,
+              "displayName": "Care Package",
+              "change": "Care Package Gold reduced for all rewards"
+            },
+            {
+              "apiName": null,
+              "displayName": "Continuous Conjuration",
+              "change": "Continuous Conjuration Magic Damage Needed: 38,000 ⇒ 42,000"
+            },
+            {
+              "apiName": null,
+              "displayName": "Cry Me A River",
+              "change": "Cry Me a River Enhanced Mana Regen: 3 ⇒ 4"
+            },
+            {
+              "apiName": null,
+              "displayName": "Early Learnings",
+              "change": "Early Learnings Initial AD/AP: 1% ⇒ 8%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Forge a Friend",
+              "change": "Forge a Friend Gold: 2 ⇒ 5"
+            },
+            {
+              "apiName": null,
+              "displayName": "Healing Orbs I",
+              "change": "Healing Orbs I/II Heal: 220/500 ⇒ 250/575"
+            },
+            {
+              "apiName": "TFT17_Augment_PrimordianPrismaticAugment3",
+              "displayName": "Heart of the Swarm",
+              "change": "Heart of the Swarm (Primordian) Initial Briars: 1 ⇒ 3"
+            },
+            {
+              "apiName": null,
+              "displayName": "A Magic Roll",
+              "change": "A Magic Roll Pile of Champions: Number of 2* 3-costs: 2 ⇒ 1, Number of 2* 2-costs: 1 ⇒ 2, Number of 2* 1-costs: 0 ⇒ 1"
+            },
+            {
+              "apiName": null,
+              "displayName": "Late Game Specialist",
+              "change": "Late Game Specialist Gold: 36 ⇒ 30"
+            },
+            {
+              "apiName": null,
+              "displayName": "Level Up!",
+              "change": "Level Up! Initial XP: 10 ⇒ 6"
+            },
+            {
+              "apiName": null,
+              "displayName": "Little Buddies",
+              "change": "Little Buddies Health: 55 ⇒ 65, Attack Speed: 6% ⇒ 7%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Risky Moves",
+              "change": "Risky Moves Gold: 30 ⇒ 26"
+            },
+            {
+              "apiName": null,
+              "displayName": "Savings Account",
+              "change": "Savings Account Initial Gold: 4 ⇒ 2"
+            },
+            {
+              "apiName": null,
+              "displayName": "Slammin'",
+              "change": "Slammin'+ Initial Gold: 8 ⇒ 4"
+            },
+            {
+              "apiName": null,
+              "displayName": "Sunfire Board",
+              "change": "Sunfire Board Duration: 15s ⇒ 18s"
+            },
+            {
+              "apiName": null,
+              "displayName": "Tiny, but Deadly",
+              "change": "Tiny, but Deadly Attack Speed: 30% ⇒ 33%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Upward Mobility",
+              "change": "Upward Mobility Rerolls per Level: 2 ⇒ 1"
+            },
+            {
+              "apiName": null,
+              "displayName": "U.R.F",
+              "change": "U.R.F Attack Speed: 15% ⇒ 20%, Mana Regen: 2 ⇒ 3"
+            },
+            {
+              "apiName": null,
+              "displayName": "Win Out",
+              "change": "Win Out Initial XP: 6 ⇒ 10"
+            },
+            {
+              "apiName": null,
+              "displayName": "Mogul's Mail",
+              "change": "Mogul's Mail Health Per Stack: 8 ⇒ 5"
+            },
+            {
+              "apiName": null,
+              "displayName": "Deathblade",
+              "change": "Deathblade Attack Damage: 110% ⇒ 100%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Protector's Vow",
+              "change": "Protector's Vow Shield Amount: 40% ⇒ 50%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Morellonomicon",
+              "change": "Morellonomicon Ability Power: 40 ⇒ 35"
+            },
+            {
+              "apiName": null,
+              "displayName": "Quicksilver",
+              "change": "Quicksilver Base AS: 30% ⇒ 40%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Rabadon's Deathcap",
+              "change": "Rabadon's Deathcap Ability Power: 110% ⇒ 100%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Red Buff",
+              "change": "Red Buff Attack Speed: 90% ⇒ 80%"
+            }
+          ]
+        }
+      ],
+      "counts": {
+        "totalEntries": 51,
+        "withApiName": 24
+      }
+    }
+  }
+}

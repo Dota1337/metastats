@@ -69,6 +69,7 @@ export default function TftTraitsPage() {
   const [patches, setPatches] = useState<PatchInfo[]>([]);
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
   const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState('');
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
 
@@ -148,6 +149,12 @@ export default function TftTraitsPage() {
     return out.sort((a, b) => (a.bestAvg ?? 9) - (b.bestAvg ?? 9));
   }, [rows, assets]);
 
+  const visibleGrouped = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return grouped;
+    return grouped.filter(g => g.name.toLowerCase().includes(q));
+  }, [grouped, search]);
+
   const currentPatchLabel = patches[0]?.patch;
 
   return (
@@ -157,12 +164,22 @@ export default function TftTraitsPage() {
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-2 pb-6">
         <StatsFilterBar filters={filters} patches={patches} onChange={setFilters} />
 
+        <div className="mb-3">
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder={t('tft.search.traits')}
+            className="w-full sm:w-80 bg-[#141c2e] border border-[#1e2a3a] rounded px-3 py-1.5 text-sm text-white placeholder:text-[#5a6a80] outline-none focus:border-[#7B61FF]/60"
+          />
+        </div>
+
         {loading && hasData === null && (
           <div className="text-[#7a8aa0] text-center py-8">{t('tft.loading')}</div>
         )}
         {hasData === false && <EmptyData />}
 
-        {hasData && grouped.length > 0 && (
+        {hasData && visibleGrouped.length > 0 && (
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
             <div className={`hidden md:grid ${filters.velocity > 0 ? 'grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem_4rem]' : 'grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 text-[11px] text-[#a0b0c5] font-semibold whitespace-nowrap bg-[#0a0e1a]`}>
               <div></div>
@@ -180,7 +197,7 @@ export default function TftTraitsPage() {
               )}
             </div>
             <div className="md:hidden px-4 py-2 text-[10px] uppercase tracking-widest text-[#7a8aa0] bg-[#0a0e1a]">{t('nav.traits')}</div>
-            {grouped.map(g => {
+            {visibleGrouped.map(g => {
               // g.name is now the display name. Look up the trait by
               // matching display name across all variants and prefer the
               // root variant (no per-mechanic suffix) for the header icon.

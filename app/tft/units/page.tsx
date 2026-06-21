@@ -55,6 +55,7 @@ export default function TftUnitsPage() {
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
   const [costFilter, setCostFilter] = useState<number | null>(null);
   const [traitFilter, setTraitFilter] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
   // Tier-letter cutoffs are loaded once and cached. tierLetterOfSync uses
   // them on every row — async-per-row would blow up render. Falls back to
@@ -121,10 +122,15 @@ export default function TftUnitsPage() {
   }, [units, assets]);
 
   const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
     const passFilter = units.filter(u => {
       const ch = assets?.champions[u.characterId];
       if (costFilter != null && (ch?.cost ?? -1) !== costFilter) return false;
       if (traitFilter && !ch?.traits?.includes(traitFilter)) return false;
+      if (q) {
+        const name = (ch?.name || u.characterId.replace(/^TFT\d+_/, '')).toLowerCase();
+        if (!name.includes(q) && !u.characterId.toLowerCase().includes(q)) return false;
+      }
       return true;
     });
     // Same sub-gate sort as /tft/items: untiered (low-sample) units go to
@@ -142,7 +148,7 @@ export default function TftUnitsPage() {
       }
     }
     return [...tiered, ...untiered];
-  }, [units, assets, costFilter, traitFilter, tierCutoffs]);
+  }, [units, assets, costFilter, traitFilter, search, tierCutoffs]);
 
   const currentPatchLabel = patches[0]?.patch;
 
@@ -153,6 +159,15 @@ export default function TftUnitsPage() {
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-2 pb-6">
         <StatsFilterBar filters={filters} patches={patches} onChange={setFilters} />
 
+        <div className="mb-3">
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder={t('tft.search.units')}
+            className="w-full sm:w-80 bg-[#141c2e] border border-[#1e2a3a] rounded px-3 py-1.5 text-sm text-white placeholder:text-[#5a6a80] outline-none focus:border-[#7B61FF]/60"
+          />
+        </div>
         <div className="flex flex-wrap gap-1 mb-4 items-center">
           <button
             onClick={() => setCostFilter(null)}

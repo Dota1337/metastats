@@ -2330,6 +2330,36 @@ const translations = {
     '다른 증강과 비교', '与其他强化对比',
     'Comparar con otro aumento', 'Comparer avec une autre augmentation'
   ),
+  'tft.search.units': t6(
+    'Champion suchen…', 'Search champion…',
+    '챔피언 검색…', '搜索英雄…',
+    'Buscar campeón…', 'Rechercher un champion…'
+  ),
+  'tft.search.items': t6(
+    'Item suchen…', 'Search item…',
+    '아이템 검색…', '搜索装备…',
+    'Buscar objeto…', 'Rechercher un objet…'
+  ),
+  'tft.search.augments': t6(
+    'Augment suchen…', 'Search augment…',
+    '증강 검색…', '搜索强化…',
+    'Buscar aumento…', 'Rechercher une augmentation…'
+  ),
+  'tft.search.traits': t6(
+    'Synergie suchen…', 'Search trait…',
+    '시너지 검색…', '搜索羁绊…',
+    'Buscar sinergia…', 'Rechercher une synergie…'
+  ),
+  'tft.search.gods': t6(
+    'Gott suchen…', 'Search god…',
+    '신 검색…', '搜索神…',
+    'Buscar dios…', 'Rechercher un dieu…'
+  ),
+  'tft.search.noResults': t6(
+    'Kein Treffer für „{q}"', 'No match for „{q}"',
+    '„{q}" 검색 결과 없음', '没有找到 „{q}"',
+    'Sin resultados para „{q}"', 'Aucun résultat pour „{q}"'
+  ),
   'tft.patchNotes.officialLinkHint': t6(
     'Externe Riot-Seite \u2014 Detail-\u00C4nderungen pro Champion / Trait / Augment / Item',
     'External Riot page \u2014 detail changes per champion / trait / augment / item',

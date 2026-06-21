@@ -53,6 +53,7 @@ export default function TftItemsPage() {
   // null = "Alle" (default). Other items (PsyOps base, AnimaSquad tier) fall
   // into "other" and are only reachable via "Alle".
   const [bucket, setBucket] = useState<ItemBucket | null>(null);
+  const [search, setSearch] = useState('');
   const [tierCutoffs, setTierCutoffs] = useState<Awaited<ReturnType<typeof loadTierCutoffs>> | null>(null);
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
@@ -96,9 +97,15 @@ export default function TftItemsPage() {
   const currentPatchLabel = patches[0]?.patch;
 
   const filtered = useMemo(() => {
-    const inBucket = bucket
-      ? items.filter(it => itemBucketOf(it.apiName, assets) === bucket)
-      : items;
+    const q = search.trim().toLowerCase();
+    const inBucket = items.filter(it => {
+      if (bucket && itemBucketOf(it.apiName, assets) !== bucket) return false;
+      if (q) {
+        const name = (assets?.items[it.apiName]?.name || it.apiName.replace(/^TFT\d+_Item_/, '')).toLowerCase();
+        if (!name.includes(q) && !it.apiName.toLowerCase().includes(q)) return false;
+      }
+      return true;
+    });
     // Sub-150-game items lose their tier-badge (Items min-games gate) — sorting
     // them to the bottom keeps the noisy 1.4-avg-with-56-games entries from
     // dominating the top of the list. Within each segment, existing avg-place
@@ -115,7 +122,7 @@ export default function TftItemsPage() {
       }
     }
     return [...tiered, ...untiered];
-  }, [items, bucket, assets, tierCutoffs]);
+  }, [items, bucket, search, assets, tierCutoffs]);
 
   return (
     <main className="min-h-screen bg-[#0e1525]">
@@ -124,6 +131,15 @@ export default function TftItemsPage() {
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-2 pb-6">
         <StatsFilterBar filters={filters} patches={patches} onChange={setFilters} />
 
+        <div className="mb-3">
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder={t('tft.search.items')}
+            className="w-full sm:w-80 bg-[#141c2e] border border-[#1e2a3a] rounded px-3 py-1.5 text-sm text-white placeholder:text-[#5a6a80] outline-none focus:border-[#7B61FF]/60"
+          />
+        </div>
         <div className="flex flex-wrap gap-1 mb-4">
           <button
             onClick={() => setBucket(null)}

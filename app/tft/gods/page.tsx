@@ -51,6 +51,7 @@ export default function TftGodsPage() {
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
   const [doc, setDoc] = useState<GodsDoc | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     loadTftAssets().then(setAssets);
@@ -92,9 +93,26 @@ export default function TftGodsPage() {
           </div>
         </div>
 
+        <div className="mb-3">
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder={t('tft.search.gods')}
+            className="w-full sm:w-80 bg-[#141c2e] border border-[#1e2a3a] rounded px-3 py-1.5 text-sm text-white placeholder:text-[#5a6a80] outline-none focus:border-[#7B61FF]/60"
+          />
+        </div>
+
         {assets && doc && gods.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {gods.map(g => {
+            {gods
+              .filter(g => {
+                const q = search.trim().toLowerCase();
+                if (!q) return true;
+                const displayName = g.meta.id === 'AurelionSol' ? 'Aurelion Sol' : g.meta.id;
+                return displayName.toLowerCase().includes(q);
+              })
+              .map(g => {
               const base = g.boons.find(b => b.isBase);
               const variants = g.boons.filter(b => !b.isBase);
               const portrait = base?.data.icon

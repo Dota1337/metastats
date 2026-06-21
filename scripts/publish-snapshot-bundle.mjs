@@ -186,6 +186,9 @@ async function fetchPayload(url, attempt = 1) {
 
 // Resolved patches kommen aus dem ersten erfolgreichen comps-Call (Default-
 // Filter), wo wir filters.patch ablesen können. Wird einmal pro Run gecached.
+// Fallback: wenn die API null returnt (get_tft_available_patches Supabase-RPC
+// timeoutet), ziehen wir die Patches aus dem existierenden Manifest — das ist
+// die Source-of-Truth, die wir gerade aktualisieren.
 let _patchInfo = null;
 async function resolvePatches() {
   if (_patchInfo) return _patchInfo;
@@ -199,10 +202,25 @@ async function resolvePatches() {
     fetchPayload(currentUrl).catch(() => null),
     fetchPayload(previousUrl).catch(() => null),
   ]);
-  _patchInfo = {
-    current: cur?.filters?.patch || null,
-    previous: prev?.filters?.patch || null,
-  };
+  let current = cur?.filters?.patch || null;
+  let previous = prev?.filters?.patch || null;
+  if (!current || !previous) {
+    // Manifest-Fallback: wenn Supabase-RPC fuer Patches haengt, lesen wir die
+    // patches aus dem zuletzt veroeffentlichten Manifest. Das Manifest ist
+    // ohnehin die Source-of-Truth fuer den Lookup-Pfad.
+    const manifestUrl = process.env.SNAPSHOT_MANIFEST_URL;
+    if (manifestUrl) {
+      try {
+        const m = await fetchPayload(manifestUrl);
+        if (!current && m?.patches?.current) current = m.patches.current;
+        if (!previous && m?.patches?.previous) previous = m.patches.previous;
+        console.log(`[${ts()}] Manifest-fallback patches: current=${current}, previous=${previous}`);
+      } catch (err) {
+        console.log(`[${ts()}] Manifest-fallback failed: ${err?.message || err}`);
+      }
+    }
+  }
+  _patchInfo = { current, previous };
   console.log(`[${ts()}] Resolved patches: current=${_patchInfo.current}, previous=${_patchInfo.previous}`);
   return _patchInfo;
 }

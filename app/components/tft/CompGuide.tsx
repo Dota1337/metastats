@@ -49,6 +49,39 @@ function AugmentTile({ apiName, assets }: { apiName: string; assets: TftAssetsBu
   );
 }
 
+// Mid-Game-Pivot-Tile: kleiner Champion-Tile mit Lvl-Badge oben rechts.
+// Dezenter als Opener-Tiles (kein Star-Overlay, kein Items-Strip) — diese
+// Units werden erst nach dem Lvl-4-Opener gepickt, kein Stage-2-Start.
+function PivotChampionTile({
+  apiName, level, assets, t,
+}: {
+  apiName: string;
+  level: number;
+  assets: TftAssetsBundle | null;
+  t: (k: any) => string;
+}) {
+  const ch = findChampion(assets, apiName);
+  const url = tftChampionTileUrl(assets, ch);
+  const cost = ch?.cost ?? 1;
+  return (
+    <div className="flex flex-col items-center gap-1 w-14">
+      <a
+        href={`/tft/units/${encodeURIComponent(apiName)}`}
+        className="relative block w-12 h-12 rounded border-2 overflow-hidden hover:scale-105 transition opacity-80 hover:opacity-100"
+        style={{ borderColor: costColorOf(cost) }}
+        title={`${ch?.name || apiName} — ${t('tft.comp.earlyGame.pivot')} Lvl ${level}`}
+      >
+        {url && <img src={url} alt={ch?.name || apiName} className="w-full h-full object-cover" />}
+        <div
+          className="absolute top-0 right-0 px-1 bg-[#0a0e1a]/85 text-[#7a8aa0] text-[8px] font-bold leading-tight rounded-bl"
+        >
+          L{level}
+        </div>
+      </a>
+    </div>
+  );
+}
+
 function EarlyChampionTile({
   apiName, items, stars, assets,
 }: {
@@ -106,9 +139,15 @@ function EarlyChampionTile({
 export default function CompGuide({
   guide,
   assets,
+  typicalUnits,
 }: {
   guide: CompGuideData;
   assets: TftAssetsBundle | null;
+  // Optional — wenn vorhanden, werden 3 Mid-Game-Pivot-Tiles nach den 4
+  // curated Lvl-4-Champs gerendert. Damit matched die Sektion das Label
+  // „Lvl 4-7" (4 Opener + 3 Pivots = 7 Champions). Pivots = typicalUnits
+  // die NICHT in earlyComp sind, sortiert nach count desc.
+  typicalUnits?: Array<{ characterId: string; count?: number | unknown }>;
 }) {
   const { t, lang } = useI18n();
   // Tier-Gruppierung statt Slot-Gruppierung (User-Override 2026-06-21):
@@ -162,23 +201,49 @@ export default function CompGuide({
         </section>
       )}
 
-      {/* 2) Early Game Board (4 champions with items + stars) */}
-      {guide.earlyComp.length > 0 && (
-        <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
-          <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.earlyGame')}</h2>
-          <div className="flex flex-wrap gap-3">
-            {guide.earlyComp.map((e, i) => (
-              <EarlyChampionTile
-                key={`${e.apiName}-${i}`}
-                apiName={e.apiName}
-                items={e.items}
-                stars={e.stars}
-                assets={assets}
-              />
-            ))}
-          </div>
-        </section>
-      )}
+      {/* 2) Early Game Board: 4 curated Opener-Champs (Lvl 4) + bis zu 3
+          Mid-Game-Pivot-Tiles aus typicalUnits (Lvl 5-7). Damit zeigt die
+          Sektion 7 Champions = matched „Lvl 4-7"-Label. Pivots sind die
+          häufigsten Units die NICHT im Opener sind. */}
+      {guide.earlyComp.length > 0 && (() => {
+        const openerSet = new Set(guide.earlyComp.map(e => e.apiName));
+        const pivots = (typicalUnits || [])
+          .filter(u => !openerSet.has(u.characterId))
+          .map(u => ({ characterId: u.characterId, count: typeof u.count === 'number' ? u.count : 0 }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 3);
+        return (
+          <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
+            <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.earlyGame')}</h2>
+            <div className="flex flex-wrap items-start gap-3">
+              {/* Curated Opener (Lvl 4) */}
+              {guide.earlyComp.map((e, i) => (
+                <EarlyChampionTile
+                  key={`opener-${e.apiName}-${i}`}
+                  apiName={e.apiName}
+                  items={e.items}
+                  stars={e.stars}
+                  assets={assets}
+                />
+              ))}
+              {/* Mid-Game-Pivots (Lvl 5-7) — dezenter dargestellt mit
+                  Pivot-Badge damit User sieht "kommt erst später". */}
+              {pivots.length > 0 && (
+                <div className="self-stretch border-l border-[#1e2a3a] mx-1" aria-hidden="true" />
+              )}
+              {pivots.map((p, idx) => (
+                <PivotChampionTile
+                  key={`pivot-${p.characterId}-${idx}`}
+                  apiName={p.characterId}
+                  level={5 + idx}
+                  assets={assets}
+                  t={t}
+                />
+              ))}
+            </div>
+          </section>
+        );
+      })()}
 
       {/* Stage-by-Stage tips */}
       {guide.tips.length > 0 && (

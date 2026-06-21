@@ -2274,6 +2274,11 @@ const translations = {
     '\uCD08\uBC18 \uAC8C\uC784 (Lvl 4-7)', '\u524D\u671F (4-7\u7EA7)',
     'Juego temprano (Niv 4-7)', 'D\u00E9but de partie (Niv 4-7)'
   ),
+  'tft.comp.earlyGame.pivot': t6(
+    'Pivot', 'Pivot',
+    '\uD53C\uBC97', '\u8FC7\u6E21',
+    'Pivote', 'Pivot'
+  ),
   'tft.comp.carousel': t6(
     'Carousel \u00B7 Runde 1', 'Carousel \u00B7 Round 1',
     '\uCE90\uB7EC\uC140 \u00B7 \uB77C\uC6B4\uB4DC 1', '\u8F6C\u76D8 \u00B7 \u7B2C1\u8F6E',

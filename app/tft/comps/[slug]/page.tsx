@@ -183,7 +183,7 @@ export default function TftCompDetailPage() {
               if (!parts) return null;
               const match = findCompGuide(compGuidesBundle, { trait: parts.trait, carry: parts.carry });
               if (!match) return null;
-              return <CompGuide guide={match.guide} assets={assets} />;
+              return <CompGuide guide={match.guide} assets={assets} typicalUnits={comp.typicalUnits} />;
             })()}
 
             {/* Komponent-Priority — Carousel-Pick-Priorität aus Carry-Item-

@@ -2160,6 +2160,21 @@ const translations = {
     '\uD328\uCE58 {p}', '\u7248\u672C {p}',
     'Parche {p}', 'Patch {p}'
   ),
+  'tft.comp.augments.tier.silver': t6(
+    'Silver', 'Silver',
+    '\uC2E4\uBC84', '\u94F6\u8272',
+    'Plata', 'Argent'
+  ),
+  'tft.comp.augments.tier.gold': t6(
+    'Gold', 'Gold',
+    '\uACE8\uB4DC', '\u91D1\u8272',
+    'Oro', 'Or'
+  ),
+  'tft.comp.augments.tier.prismatic': t6(
+    'Prismatic', 'Prismatic',
+    '\uD504\uB9AC\uC988\uB9E4\uD2F1', '\u68F1\u5F69',
+    'Prism\u00E1tico', 'Prismatique'
+  ),
   'tft.comp.augments.group.ECON': t6('Econ', 'Econ', '\uACBD\uC81C', '\u7ECF\u6D4E', 'Eco', '\u00C9co'),
   'tft.comp.augments.group.ITEMS': t6('Items', 'Items', '\uC544\uC774\uD15C', '\u88C5\u5907', 'Objetos', 'Objets'),
   'tft.comp.augments.group.COMBAT': t6('Combat', 'Combat', '\uC804\uD22C', '\u6218\u6597', 'Combate', 'Combat'),

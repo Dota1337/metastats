@@ -127,6 +127,41 @@ export function groupAugmentsBySlot(guide: CompGuide): Array<{ label: AugmentGro
   return out;
 }
 
+// Group augments by their tier (Silver/Gold/Prismatic) using the bundle's
+// per-augment tier field (set by tactics.tools override via
+// scripts/refresh-augment-tiers.mjs). User-Override 2026-06-21: nicht mehr
+// nach Slot-Typ (Econ/Items/Combat) gruppieren — die tftacademy-Slot-Labels
+// haben sich als unzuverlässig erwiesen (User-Beobachtung "viele Fehler").
+// Tier-Grouping ist Ground-Truth-basiert: `reference_tft_augment_tier_source.md`.
+//
+// Returns an empty array when no augments resolve to a known tier — UI then
+// renders flat without grouping.
+export function groupAugmentsByTier(
+  guide: CompGuide,
+  // Akzeptiert TftAssetsBundle (oder kompatibles Object). Der tier-Wert wird
+  // von scripts/fetch-tft-assets.mjs runtime in items[apiName].tier
+  // injiziert; static TftItem-Type kennt das Feld nicht, daher local cast.
+  assets: { items?: Record<string, unknown> } | null,
+): Array<{ tier: 1 | 2 | 3; label: 'silver' | 'gold' | 'prismatic'; augments: string[] }> {
+  if (guide.augments.length === 0) return [];
+  const tierMap = new Map<number, string[]>();
+  for (const apiName of guide.augments) {
+    const meta = assets?.items?.[apiName] as { tier?: number } | undefined;
+    const tier = meta?.tier ?? 0;
+    if (!tierMap.has(tier)) tierMap.set(tier, []);
+    tierMap.get(tier)!.push(apiName);
+  }
+  const out: Array<{ tier: 1 | 2 | 3; label: 'silver' | 'gold' | 'prismatic'; augments: string[] }> = [];
+  for (const t of [1, 2, 3] as const) {
+    const list = tierMap.get(t);
+    if (list && list.length > 0) {
+      const label = t === 1 ? 'silver' : t === 2 ? 'gold' : 'prismatic';
+      out.push({ tier: t, label, augments: list });
+    }
+  }
+  return out;
+}
+
 // Difficulty color mapping for the badge.
 export function difficultyColor(d: Difficulty | null): string {
   switch (d) {

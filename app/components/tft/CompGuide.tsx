@@ -6,7 +6,7 @@ import { useI18n } from '../../lib/i18n';
 import {
   type CompGuide as CompGuideData,
   augmentTierBorderColor,
-  groupAugmentsBySlot,
+  groupAugmentsByTier,
 } from '../../lib/tft-comp-guides';
 
 // CompGuide — renders the curated tftacademy.com build data as a stack of
@@ -111,8 +111,11 @@ export default function CompGuide({
   assets: TftAssetsBundle | null;
 }) {
   const { t, lang } = useI18n();
-  const groups = groupAugmentsBySlot(guide);
-  const hasGroupedAugments = guide.augmentTypes.length === guide.augments.length;
+  // Tier-Gruppierung statt Slot-Gruppierung (User-Override 2026-06-21):
+  // tftacademy's augmentTypes-Slot-Labels (ECON/ITEMS/COMBAT) hatten viele
+  // Klassifikations-Fehler. Bundle.items[apiName].tier ist Ground-Truth via
+  // tactics.tools-Override (reference_tft_augment_tier_source.md).
+  const tierGroups = groupAugmentsByTier(guide, assets);
   // Localised augmentsTip — falls back to EN when current lang isn't a key
   // in the paraphrase. Renders nothing when the LLM-paraphrase failed
   // validation (the scraper writes null in that case).
@@ -122,22 +125,31 @@ export default function CompGuide({
 
   return (
     <>
-      {/* 1) Augments — grouped if augmentTypes present, otherwise flat. */}
+      {/* 1) Augments — gruppiert nach Tier (Silver/Gold/Prismatic), absteigend
+          aufsteigend nach Stärke. Fallback auf flache Liste wenn kein Augment
+          einen bekannten Tier hat (sollte selten passieren, weil tactics.tools-
+          Override 99%+ Coverage hat). */}
       {guide.augments.length > 0 && (
         <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
           <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.augments')}</h2>
-          {hasGroupedAugments ? (
+          {tierGroups.length > 0 ? (
             <div className="flex flex-col gap-3">
-              {groups.map((group, idx) => (
-                <div key={`${group.label}-${idx}`} className="flex flex-col gap-1.5">
-                  <div className="text-[#7a8aa0] text-[10px] uppercase tracking-wider">
-                    {t(`tft.comp.augments.group.${group.label}` as any) || group.label}
+              {tierGroups.map((group) => {
+                const tierColor = augmentTierBorderColor(group.tier);
+                return (
+                  <div key={group.label} className="flex flex-col gap-1.5">
+                    <div
+                      className="text-[10px] uppercase tracking-wider font-semibold"
+                      style={{ color: tierColor }}
+                    >
+                      {t(`tft.comp.augments.tier.${group.label}` as any) || group.label}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {group.augments.map(a => <AugmentTile key={a} apiName={a} assets={assets} />)}
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {group.augments.map(a => <AugmentTile key={a} apiName={a} assets={assets} />)}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="flex flex-wrap gap-2">

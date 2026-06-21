@@ -2269,6 +2269,19 @@ const translations = {
     '\uC120\uD0DD\uB428 \u2014 \uD074\uB9AD\uD558\uC5EC \uC81C\uAC70', '\u5DF2\u9009\u62E9 \u2014 \u70B9\u51FB\u79FB\u9664',
     'Seleccionada \u2014 clic para quitar', 'S\u00E9lectionn\u00E9e \u2014 cliquez pour retirer'
   ),
+  'tft.patchNotes.officialLink': t6(
+    'Offizielle Riot Patch Notes', 'Official Riot Patch Notes',
+    '\uACF5\uC2DD Riot \uD328\uCE58 \uB178\uD2B8', '\u5B98\u65B9 Riot \u8865\u4E01\u8BF4\u660E',
+    'Notas oficiales del parche Riot', 'Notes officielles du patch Riot'
+  ),
+  'tft.patchNotes.officialLinkHint': t6(
+    'Externe Riot-Seite \u2014 Detail-\u00C4nderungen pro Champion / Trait / Augment / Item',
+    'External Riot page \u2014 detail changes per champion / trait / augment / item',
+    '\uC678\uBD80 Riot \uD398\uC774\uC9C0 \u2014 \uCC54\uD53C\uC5B8 / \uC2DC\uB108\uC9C0 / \uC99D\uAC15 / \uC544\uC774\uD15C\uBCC4 \uC0C1\uC138 \uBCC0\uACBD',
+    '\u5916\u90E8 Riot \u9875\u9762 \u2014 \u6BCF\u4E2A\u82F1\u96C4 / \u7F81\u7ECA / \u5F3A\u5316 / \u88C5\u5907\u7684\u8BE6\u7EC6\u53D8\u66F4',
+    'P\u00E1gina externa de Riot \u2014 cambios detallados por campe\u00F3n / sinergia / aumento / objeto',
+    'Page externe Riot \u2014 modifications d\u00E9taill\u00E9es par champion / synergie / augmentation / objet'
+  ),
   'tft.comp.augments.tier.silver': t6(
     'Silver', 'Silver',
     '\uC2E4\uBC84', '\u94F6\u8272',

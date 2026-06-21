@@ -5,6 +5,7 @@ import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import { riotPatchNotesUrl } from '../page';
 import {
   ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis,
   ReferenceLine, Tooltip as RechartsTooltip,
@@ -45,7 +46,7 @@ interface DiffResponse {
 }
 
 export default function TftPatchDetailPage() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const params = useParams();
   const search = useSearchParams();
   const version = decodeURIComponent(String(params?.version || ''));
@@ -71,7 +72,23 @@ export default function TftPatchDetailPage() {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
         <a href="/tft/patch" className="text-[#7B61FF] text-xs hover:underline">← {t('tft.patchNotes.title')}</a>
 
-        <h1 className="text-white text-2xl font-medium mt-3 mb-1">Patch {version}</h1>
+        <div className="flex items-start justify-between gap-3 mt-3 mb-1 flex-wrap">
+          <h1 className="text-white text-2xl font-medium">Patch {version}</h1>
+          <a
+            href={riotPatchNotesUrl(version, lang)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-[#141c2e] border border-[#1e2a3a] text-[#a0b0c5] hover:text-white hover:border-[#7B61FF]/50 text-xs transition-colors"
+            title={t('tft.patchNotes.officialLinkHint')}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+              <polyline points="15 3 21 3 21 9" />
+              <line x1="10" y1="14" x2="21" y2="3" />
+            </svg>
+            {t('tft.patchNotes.officialLink')}
+          </a>
+        </div>
         {diff?.previousPatch && (
           <p className="text-[#a0b0c5] text-sm mb-4">
             {t('tft.patchNotes.comparedTo')} <strong className="text-white">Patch {diff.previousPatch}</strong>

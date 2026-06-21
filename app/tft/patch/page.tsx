@@ -17,6 +17,17 @@ interface PatchInfo {
   total_matches: number;
 }
 
+// Riot-Patch-Notes-URL je Locale. Pattern ist konsistent
+// /<locale>/news/game-updates/teamfight-tactics-patch-X-Y-notes/.
+export function riotPatchNotesUrl(patch: string, lang: string): string {
+  const localeMap: Record<string, string> = {
+    de: 'de-de', en: 'en-us', ko: 'ko-kr', zh: 'zh-cn', es: 'es-es', fr: 'fr-fr',
+  };
+  const locale = localeMap[lang] || 'en-us';
+  const slug = patch.replace(/\./g, '-');
+  return `https://www.leagueoflegends.com/${locale}/news/game-updates/teamfight-tactics-patch-${slug}-notes/`;
+}
+
 export default function TftPatchListPage() {
   const { t, lang } = useI18n();
   const [patches, setPatches] = useState<PatchInfo[]>([]);
@@ -47,13 +58,15 @@ export default function TftPatchListPage() {
         {!loading && patches.length > 0 && (
           <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
             {patches.map((p, i) => (
-              <a
+              <div
                 key={`${p.patch}-${p.set_number}`}
-                href={`/tft/patch/${encodeURIComponent(p.patch)}`}
-                className={`block px-4 py-3 hover:bg-white/5 ${i === 0 ? '' : 'border-t border-[#1e2a3a]'}`}
+                className={`px-4 py-3 hover:bg-white/5 ${i === 0 ? '' : 'border-t border-[#1e2a3a]'}`}
               >
                 <div className="flex items-center justify-between gap-3 flex-wrap">
-                  <div>
+                  <a
+                    href={`/tft/patch/${encodeURIComponent(p.patch)}`}
+                    className="flex-1 min-w-0"
+                  >
                     <div className="text-white text-base font-medium">
                       Patch {p.patch}
                       {i === 0 && (
@@ -65,17 +78,34 @@ export default function TftPatchListPage() {
                     <div className="text-[#a0b0c5] text-xs mt-0.5">
                       Set {p.set_number} · {new Date(p.first_day).toLocaleDateString()} – {new Date(p.last_day).toLocaleDateString()}
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-[#7B61FF] text-sm font-medium tabular-nums">
-                      {p.total_matches.toLocaleString()}
-                    </div>
-                    <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">
-                      {t('tft.patchNotes.matches')}
+                  </a>
+                  <div className="flex items-center gap-4">
+                    <a
+                      href={riotPatchNotesUrl(p.patch, lang)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={e => e.stopPropagation()}
+                      className="text-[10px] uppercase tracking-widest text-[#a0b0c5] hover:text-[#7B61FF] flex items-center gap-1 transition-colors"
+                      title={t('tft.patchNotes.officialLinkHint')}
+                    >
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                        <polyline points="15 3 21 3 21 9" />
+                        <line x1="10" y1="14" x2="21" y2="3" />
+                      </svg>
+                      <span className="hidden sm:inline">{t('tft.patchNotes.officialLink')}</span>
+                    </a>
+                    <div className="text-right">
+                      <div className="text-[#7B61FF] text-sm font-medium tabular-nums">
+                        {p.total_matches.toLocaleString()}
+                      </div>
+                      <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">
+                        {t('tft.patchNotes.matches')}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </a>
+              </div>
             ))}
           </div>
         )}

@@ -17,15 +17,19 @@ interface PatchInfo {
   total_matches: number;
 }
 
-// Riot-Patch-Notes-URL je Locale. Pattern ist konsistent
-// /<locale>/news/game-updates/teamfight-tactics-patch-X-Y-notes/.
+// Riot-Patch-Notes-URL je Locale. KORRIGIERT 2026-06-21 nach classification-
+// reviewer Spot-Check: richtige Subdomain ist `teamfighttactics.leagueof
+// legends.com` (NICHT www.leagueoflegends.com), und das `-notes`-Suffix
+// gehört NICHT mehr in den URL-Pfad (Set 17 hat `patch-X-Y/`, nicht
+// `patch-X-Y-notes/`). Konsistent mit dem existing tftPatchUrl()-Helper
+// in app/api/tft/patch-notes/route.ts.
 export function riotPatchNotesUrl(patch: string, lang: string): string {
   const localeMap: Record<string, string> = {
     de: 'de-de', en: 'en-us', ko: 'ko-kr', zh: 'zh-cn', es: 'es-es', fr: 'fr-fr',
   };
   const locale = localeMap[lang] || 'en-us';
   const slug = patch.replace(/\./g, '-');
-  return `https://www.leagueoflegends.com/${locale}/news/game-updates/teamfight-tactics-patch-${slug}-notes/`;
+  return `https://teamfighttactics.leagueoflegends.com/${locale}/news/game-updates/teamfight-tactics-patch-${slug}/`;
 }
 
 export default function TftPatchListPage() {

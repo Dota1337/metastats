@@ -204,14 +204,30 @@ export async function GET(request: NextRequest) {
       // nach sameCore-Family-Members → cold easily 5-15 s. Per-RPC Timeout
       // 20 s (code-analyzer-Verdict 2026-06-21) — Default-8 s killt sonst
       // Detail-Pages mit AbortError → hasData:false.
-      const rows = await callRpc<CompRow[]>('get_tft_comp_stats', {
-        p_regions: filters.regions,
-        p_buckets: filters.buckets,
-        p_days: filters.days,
-        p_patch: filters.patchFilter,
-        p_set: filters.setNumber,
-        p_min_games: minGames,
-      }, 20000);
+      //
+      // Pairs-RPC laeuft PARALLEL zu comp_stats (perf-critic-Verdict
+      // 2026-06-21): pairs braucht keinen slug + keine comp_stats-Result-
+      // Abhaengigkeit. Sequenz ergab in cold-path 8-20s, parallel spart
+      // ~2-5s indem die langsamere der beiden RPCs den Wallclock dominiert
+      // statt der Summe. JS-Filter nach Family-Members laeuft wie bisher
+      // post-await.
+      const [rows, pairs] = await Promise.all([
+        callRpc<CompRow[]>('get_tft_comp_stats', {
+          p_regions: filters.regions,
+          p_buckets: filters.buckets,
+          p_days: filters.days,
+          p_patch: filters.patchFilter,
+          p_set: filters.setNumber,
+          p_min_games: minGames,
+        }, 20000),
+        callRpc<CompPairRow[]>('get_tft_comp_pairs', {
+          p_regions: filters.regions,
+          p_days: filters.days,
+          p_patch: filters.patchFilter,
+          p_set: filters.setNumber,
+          p_min_games: 10,
+        }, 20000),
+      ]);
       const participants = rows[0]?.participants || 0;
       let row = rows.find(r => r.cluster_key === slug);
       let aliasedFrom: string | null = null;
@@ -280,15 +296,8 @@ export async function GET(request: NextRequest) {
         variantMode,
       };
 
-      // Counter edges — single RPC for the same region/day/patch window.
-      // Pairs-Tabelle ist groß (~500-2000 pairs) — 20s Timeout (Detail-Pfad-Konsistenz).
-      const pairs = await callRpc<CompPairRow[]>('get_tft_comp_pairs', {
-        p_regions: filters.regions,
-        p_days: filters.days,
-        p_patch: filters.patchFilter,
-        p_set: filters.setNumber,
-        p_min_games: 10,
-      }, 20000);
+      // Counter edges — pairs wurde bereits in der parallelen Promise.all
+      // oben await't. Hier nur noch JS-Filter auf den Family-Members.
       // Set-Lookup statt Linear-Scan (perf-critic F6) — bei großen Familien
       // (10-15 Sub-Cluster) und 500-2000 Pairs deutlich günstiger.
       const familySet = new Set(familySlugs);

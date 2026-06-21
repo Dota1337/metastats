@@ -77,7 +77,9 @@ export interface LookupOptions {
   days: number;
   bucket: string;
   minGames: number;
-  // Erweiterte Felder, die das Snapshot NICHT bedient — Velocity, Slug-Detail,
+  // Nur fuer endpoint='comps-detail': cluster_key der angefragten Comp.
+  slug?: string;
+  // Erweiterte Felder, die das Snapshot NICHT bedient — Velocity,
   // Source=editorial. Caller setzt sie auf true wenn das Snapshot übersprungen
   // werden soll.
   skip?: boolean;
@@ -145,6 +147,13 @@ function hasRequiredFields(endpoint: SnapshotEndpoint, payload: any): boolean {
     const sample = payload?.items?.[0];
     if (!sample) return true;
     return 'top1Rate' in sample;
+  }
+  if (endpoint === 'comps-detail') {
+    // Detail-Payload Struktur: { filters, hasData, comp: {...} }. Snapshot ohne
+    // hasData oder mit comp:null wird abgelehnt — Live-Fallback haelt.
+    if (!payload?.hasData || !payload?.comp) return false;
+    // comp.clusterKey ist Pflicht-Feld der Detail-Page.
+    return typeof payload.comp.clusterKey === 'string';
   }
   return true;
 }

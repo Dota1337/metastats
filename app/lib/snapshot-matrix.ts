@@ -10,7 +10,7 @@
 // theoretisch mögliche. Was nicht abgedeckt ist, fällt graceful auf den
 // existierenden Live-Calc-Pfad zurück.
 
-export type SnapshotEndpoint = 'comps' | 'units' | 'items' | 'traits';
+export type SnapshotEndpoint = 'comps' | 'units' | 'items' | 'traits' | 'comps-detail';
 
 export interface SnapshotPermutation {
   patch: 'current' | 'previous';   // alias-Form, der Publisher resolved
@@ -18,6 +18,7 @@ export interface SnapshotPermutation {
   days: number;                    // 1..7
   bucket: string;                  // 'master_plus' | 'all' | 'diamond_plus' | ...
   minGames: number;                // RPC-Threshold, identisch zu Route-Default
+  slug?: string;                   // nur fuer comps-detail: cluster_key
 }
 
 interface SnapshotEndpointSpec {
@@ -113,6 +114,17 @@ export const SNAPSHOT_MATRIX: Record<SnapshotEndpoint, SnapshotEndpointSpec> = {
   // /api/tft/augments wird bewusst NICHT vorgerendert — die Route liefert
   // per Design `hasData:false` (Riot-Restriction auf Augment-Stats). Das
   // /tft/augments-Listing rendert aus dem statischen CDragon-Asset-Bundle.
+  //
+  // /api/tft/comps?slug=… (Detail-Pfad) ist in der Matrix mit leerer
+  // permutations-Liste, weil Top-N-Slugs erst zur Laufzeit aus dem
+  // Listing-Snapshot-Output extrahiert werden (perf-critic Phase 2). Der
+  // Publisher iteriert in einer 2. Phase ueber listingPayload.comps[0..30]
+  // und produziert pro slug × Default-Achse (region × days × patch ×
+  // bucket=master_plus × variant=family) ~24 Permutationen.
+  'comps-detail': {
+    apiPath: '/api/tft/comps',
+    permutations: [],
+  },
 };
 
 // Stabiler, dateisystem-sicherer Lookup-Key. ResolvedPatch (z.B. "17.5") statt
@@ -124,10 +136,15 @@ export function snapshotKey(endpoint: SnapshotEndpoint, p: {
   days: number;
   bucket: string;
   minGames: number;
+  slug?: string;
 }): string {
   const patch = p.patch.replace(/[^A-Za-z0-9._-]/g, '_');
   const region = p.region.replace(/[^a-z0-9]/gi, '_');
   const bucket = p.bucket.replace(/[^a-z0-9_]/gi, '_');
+  if (endpoint === 'comps-detail') {
+    const slugSafe = (p.slug || '').replace(/[^A-Za-z0-9._-]/g, '_');
+    return `${endpoint}/${patch}/${slugSafe}__${region}__${p.days}d__${bucket}.json`;
+  }
   return `${endpoint}/${patch}/${region}__${p.days}d__${bucket}__mg${p.minGames}.json`;
 }
 
@@ -138,7 +155,8 @@ export function normalizeSnapshotRequest(p: {
   days: number;
   bucket: string;
   minGames: number;
-}): { patch: string; region: string; days: number; bucket: string; minGames: number } | null {
+  slug?: string;
+}): { patch: string; region: string; days: number; bucket: string; minGames: number; slug?: string } | null {
   if (!p.patch) return null;
   return {
     patch: p.patch,
@@ -146,5 +164,6 @@ export function normalizeSnapshotRequest(p: {
     days: p.days,
     bucket: p.bucket || 'master_plus',
     minGames: p.minGames,
+    slug: p.slug,
   };
 }

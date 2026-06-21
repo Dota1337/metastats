@@ -200,6 +200,28 @@ export async function GET(request: NextRequest) {
     // The full RPC aggregates all 7 jsonb columns; only the detail path needs
     // the 4 detail-only ones, so the list path below uses the lean variant.
     if (slug) {
+      // Detail-Snapshot-Fast-Path (Phase 2 2026-06-21): wenn der Slug zu den
+      // Top-N-Family-Anchors gehoert + Default-Filter-Achsen, liefert ein
+      // Vercel-Blob das Aggregat in ~150ms statt 8-20s RPC. variant=exact +
+      // velocity skipt Snapshot (kein Pre-Render). Architect+perf-critic-
+      // Verdict siehe reference_tft_comp_detail_snapshot.md.
+      const detailVariantMode = searchParams.get('variant') === 'exact' ? 'exact' : 'family';
+      const detailVelocity = Math.max(0, parseInt(searchParams.get('velocity') || '0', 10));
+      const detailHit = await lookupSnapshot('comps-detail', {
+        patch: filters.patch,
+        region: filters.regionLabel,
+        days: filters.requestedDays,
+        bucket: filters.bucketLabel,
+        minGames,
+        slug,
+        skip: detailVariantMode === 'exact' || detailVelocity !== 0 || source === 'editorial',
+      });
+      if (detailHit) {
+        const resp = cachedJson(detailHit.payload, { cache: cacheControl });
+        resp.headers.set('x-snapshot', detailHit.tag);
+        return resp;
+      }
+
       // Detail-RPC: aggregiert ALLE 7 jsonb-Spalten + sucht im Result auch
       // nach sameCore-Family-Members → cold easily 5-15 s. Per-RPC Timeout
       // 20 s (code-analyzer-Verdict 2026-06-21) — Default-8 s killt sonst

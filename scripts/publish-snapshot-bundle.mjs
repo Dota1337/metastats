@@ -111,14 +111,33 @@ const MATRIX = {
   },
   // augments-Endpoint wird nicht vorgerendert — Route liefert per Design
   // hasData:false (Riot-Restriction). UI rendert aus CDragon-Bundle.
+  //
+  // comps-detail wird in einer 2. Phase erzeugt (Top-N-Slugs aus Listing-
+  // Snapshot), siehe publishDetailPermutation + DETAIL_* Konstanten oben.
+  'comps-detail': {
+    apiPath: '/api/tft/comps',
+    permutations: [],
+  },
 };
 
 function snapshotKey(endpoint, p) {
   const patch = p.patch.replace(/[^A-Za-z0-9._-]/g, '_');
   const region = p.region.replace(/[^a-z0-9]/gi, '_');
   const bucket = p.bucket.replace(/[^a-z0-9_]/gi, '_');
+  if (endpoint === 'comps-detail') {
+    const slugSafe = (p.slug || '').replace(/[^A-Za-z0-9._-]/g, '_');
+    return `${endpoint}/${patch}/${slugSafe}__${region}__${p.days}d__${bucket}.json`;
+  }
   return `${endpoint}/${patch}/${region}__${p.days}d__${bucket}__mg${p.minGames}.json`;
 }
+
+// Detail-Snapshot-Achsen (Phase 2 2026-06-21, perf-critic-Empfehlung).
+// 4 regions × 3 days × 2 patches × 1 bucket × top-30 slugs = 720 Permutationen.
+const DETAIL_REGIONS = ['all', 'west', 'asia', 'kr'];
+const DETAIL_DAYS = [1, 3, 7];
+const DETAIL_PATCHES = ['current', 'previous'];
+const DETAIL_BUCKET = 'master_plus';
+const DETAIL_TOP_N = 30;
 
 // === Helpers ============================================================ //
 
@@ -232,6 +251,56 @@ async function publishPermutation(endpoint, apiPath, perm, patches) {
   };
 }
 
+async function publishDetailPermutation(perm, patches) {
+  const resolvedPatch = perm.patch === 'current'
+    ? patches.current
+    : perm.patch === 'previous' ? patches.previous : perm.patch;
+  if (!resolvedPatch) {
+    return { skipped: true, reason: `no resolved patch for alias ${perm.patch}` };
+  }
+  const qs = new URLSearchParams({
+    patch: perm.patch,
+    region: perm.region,
+    days: String(perm.days),
+    bucket: perm.bucket,
+    slug: perm.slug,
+    source: 'data',
+  });
+  if (perm.minGames > 0) qs.set('minGames', String(perm.minGames));
+  const url = `${BASE}/api/tft/comps?${qs.toString()}`;
+  const t0 = Date.now();
+  const payload = await fetchPayload(url);
+  const fetchMs = Date.now() - t0;
+  if (!payload || payload.hasData === false || !payload.comp) {
+    return { skipped: true, reason: 'empty payload', fetchMs };
+  }
+  const key = snapshotKey('comps-detail', { ...perm, patch: resolvedPatch });
+  const body = JSON.stringify(payload);
+  const bytes = Buffer.byteLength(body, 'utf8');
+  if (DRY_RUN) {
+    return { uploaded: false, key, bytes, fetchMs, builtAt: ts(), url: '(dry-run)' };
+  }
+  const t1 = Date.now();
+  const blob = await put(key, body, {
+    access: 'public',
+    contentType: 'application/json',
+    token: TOKEN,
+    addRandomSuffix: false,
+    allowOverwrite: true,
+    cacheControlMaxAge: 21600,
+  });
+  const uploadMs = Date.now() - t1;
+  return {
+    uploaded: true,
+    key,
+    bytes,
+    fetchMs,
+    uploadMs,
+    url: blob.url,
+    builtAt: ts(),
+  };
+}
+
 async function processWithConcurrency(items, fn, concurrency) {
   const results = new Array(items.length);
   let idx = 0;
@@ -273,6 +342,9 @@ async function main() {
 
   for (const [endpoint, spec] of Object.entries(MATRIX)) {
     if (ENDPOINT_FILTER && endpoint !== ENDPOINT_FILTER) continue;
+    // comps-detail wird separat behandelt (Top-N-Slugs aus Listing-Phase).
+    if (endpoint === 'comps-detail') continue;
+    if (spec.permutations.length === 0) continue;
     const t0 = Date.now();
     console.log(`[${ts()}] === ${endpoint}: ${spec.permutations.length} permutations ===`);
 
@@ -309,6 +381,79 @@ async function main() {
     }
     const dt = ((Date.now() - t0) / 1000).toFixed(1);
     console.log(`[${ts()}] ${endpoint}: ${endpointOk}/${spec.permutations.length} ok in ${dt}s`);
+  }
+
+  // Phase 2: Comp-Detail-Snapshots fuer Top-N Family-Anchors.
+  // Slugs werden aus dem Default-Listing-Result extrahiert (patch=current,
+  // region=all, days=3, bucket=master_plus) - das ist die UI-Default-Sicht.
+  if (!ENDPOINT_FILTER || ENDPOINT_FILTER === 'comps-detail') {
+    const dT0 = Date.now();
+    console.log(`[${ts()}] === comps-detail: extracting top-${DETAIL_TOP_N} slugs from listing ===`);
+    let topSlugs = [];
+    try {
+      const listingUrl = buildUrl('/api/tft/comps', {
+        patch: 'current', region: 'all', days: 3, bucket: 'master_plus', minGames: compsMinGames(3),
+      });
+      const listing = await fetchPayload(listingUrl);
+      const comps = Array.isArray(listing?.comps) ? listing.comps : [];
+      topSlugs = comps.slice(0, DETAIL_TOP_N).map(c => c.clusterKey).filter(Boolean);
+    } catch (err) {
+      console.log(`  ✗ comps-detail: failed to extract top slugs: ${err?.message || err}`);
+    }
+    if (topSlugs.length === 0) {
+      console.log(`[${ts()}] comps-detail: no slugs to publish, skipping`);
+    } else {
+      const detailPerms = [];
+      for (const slug of topSlugs) {
+        for (const patch of DETAIL_PATCHES) {
+          for (const region of DETAIL_REGIONS) {
+            for (const days of DETAIL_DAYS) {
+              detailPerms.push({
+                patch, region, days,
+                bucket: DETAIL_BUCKET,
+                minGames: compsMinGames(days),
+                slug,
+              });
+            }
+          }
+        }
+      }
+      console.log(`[${ts()}] comps-detail: ${topSlugs.length} slugs × ${detailPerms.length / topSlugs.length} axes = ${detailPerms.length} permutations`);
+
+      const results = await processWithConcurrency(
+        detailPerms,
+        async (perm) => publishDetailPermutation(perm, patches),
+        CONCURRENCY,
+      );
+
+      let detailOk = 0;
+      for (let i = 0; i < results.length; i++) {
+        const r = results[i];
+        const p = detailPerms[i];
+        if (r?.error) {
+          totalErrors++;
+          console.log(`  ✗ comps-detail ${p.slug}/${p.patch}/${p.region}/${p.days}d: ${r.error}`);
+          continue;
+        }
+        if (r?.skipped) {
+          totalSkipped++;
+          continue;
+        }
+        if (r?.uploaded || DRY_RUN) {
+          totalUploaded += r.uploaded ? 1 : 0;
+          detailOk++;
+          totalBytes += r.bytes;
+          manifestEntries[r.key] = {
+            key: r.key,
+            url: r.url,
+            bytes: r.bytes,
+            builtAt: r.builtAt,
+          };
+        }
+      }
+      const dDt = ((Date.now() - dT0) / 1000).toFixed(1);
+      console.log(`[${ts()}] comps-detail: ${detailOk}/${detailPerms.length} ok in ${dDt}s`);
+    }
   }
 
   // Manifest schreiben — single source of truth für Lookup.

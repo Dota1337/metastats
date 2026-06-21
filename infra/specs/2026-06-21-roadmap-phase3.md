@@ -208,15 +208,45 @@
 
 ## Was die heutige Session liefert
 
-Aus 11 Punkten: **6 deployed** + **2 als-bereits-vorhanden bestätigt** + **4 als Spec dokumentiert**. Plus 1 UX-Abschluss (Compare-Button) der den Workflow für #7 in der Praxis nutzbar macht.
+Aus 11 Punkten: **7 deployed** (6 voll + 1 als MVP-Phase-1) + **2 als-bereits-vorhanden bestätigt** + **3 als Spec dokumentiert** + **diverse UX-Polish**.
 
-8 Commits gesamt in dieser Session:
-- `f02c689` Phase 1
-- `4e4fce8` Phase 2
-- `7120467` Phase 3 Specs
+14 Commits gesamt in dieser Session:
+- `f02c689` Phase 1 (#4 Active-Traits Drill-Down + #2 Sample-Validity-Gate)
+- `4e4fce8` Phase 2 (#5 Augment-Comp-Picker + #7 Comp-Comparison-View)
+- `7120467` Phase 3 Specs (#8-11)
 - `5574848` Early-Game Lvl 4-7 Pivot-Tiles (User-Request)
-- `a698cd0` Recharts-Lazy
+- `a698cd0` Recharts-Lazy (#3)
 - `0c44386` Compare-Button auf Listing
+- `9e75b4c` Roadmap-Spec-Update Mid-Session
+- `dcf4f28` Riot-Patch-Notes-Link (#8 MVP-Phase-1)
+- `3f0811b` Star-4-Support + Active-Traits pro Boards-by-Activation
+- `9fdc1da` Compare-from-Detail-Button (bidirektionaler Compare-Flow)
+
+## Updated Roadmap-Bestand (Session-Ende 2026-06-21)
+
+**Deployed (7/11):**
+- #2 Sample-Validity-Gate ✓
+- #3 Recharts Lazy-Load ✓
+- #4 Active-Traits Drill-Down ✓
+- #5 Augment-Driven Comp-Picker ✓
+- #7 Comp-Comparison-View + Compare-Button-UX (Listing + Detail) ✓
+- #8 Patch-Notes-Surface MVP-Phase-1 (Riot-Link) ✓
+
+**Vorab erfüllt (2/11):**
+- #1 Family-Disclaimer via VariantsSwitcher-Banner
+- #6 Item-Pivot via /tft/items/[id]
+
+**Offen (3/11):**
+- #8 Patch-Notes-Phase-2 (Scraper + DB-Persistierung) — Spec
+- #9 Personalisierter Coach — Spec
+- #10 Live-Lobby-Scout PWA — Spec
+- #11 Pro-Match-Database — Spec
+
+**Plus UX-Polish die nicht im 11-Punkte-Plan war:**
+- Star-4-Color-Support (Set-17-Bug-Fix)
+- Active-Traits-Mini-Strip pro Boards-by-Activation-Level-Card
+- Compare-Workflow bidirektional (Listing ↔ Detail)
+- Early-Game Lvl-4-7 matched mit Pivot-Tiles
 
 ## Wer pflegt diese Datei
 

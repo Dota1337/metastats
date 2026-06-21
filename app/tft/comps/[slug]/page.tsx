@@ -1,10 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
-import {
-  ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis,
-  Tooltip as RechartsTooltip, ReferenceLine, Cell,
-} from 'recharts';
+import dynamic from 'next/dynamic';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import TierFilter, { type TierBucket } from '../../../components/tft/TierFilter';
@@ -17,6 +14,33 @@ import VariantsSwitcher from '../../../components/tft/VariantsSwitcher';
 import CompActiveTraits from '../../../components/tft/CompActiveTraits';
 import CompGuide from '../../../components/tft/CompGuide';
 import CompFlexUnits from '../../../components/tft/CompFlexUnits';
+
+// Recharts-Komponenten lazy via next/dynamic — sparen ~95 KB Bundle aus
+// initial-Load der Detail-Page (perf-critic-Verdict 2026-06-21). Skeleton
+// matched die Chart-Höhe damit kein Layout-Shift entsteht. ssr:false weil
+// Recharts ResizeObserver braucht — kein Server-Render möglich.
+const CompTrendChart = dynamic(() => import('../../../components/tft/CompTrendChart'), {
+  ssr: false,
+  loading: () => <ChartSkeleton height={220} className="mt-5 rounded-lg" />,
+});
+const CompEconChart = dynamic(() => import('../../../components/tft/CompEconChart'), {
+  ssr: false,
+  loading: () => <ChartSkeleton height={260} className="mt-5 rounded" />,
+});
+const CompDeathChart = dynamic(() => import('../../../components/tft/CompDeathChart'), {
+  ssr: false,
+  loading: () => <ChartSkeleton height={220} className="rounded" />,
+});
+
+function ChartSkeleton({ height, className = '' }: { height: number; className?: string }) {
+  return (
+    <div
+      className={`bg-[#0d1526] border border-[#1e2a3a] ${className}`}
+      style={{ height }}
+      aria-hidden="true"
+    />
+  );
+}
 import { formatStage } from '../../../lib/tft-stage';
 import { aggregateComponents } from '../../../lib/tft-components';
 import { compDefiningAugmentApiNameFromSlug } from '../../../lib/tft-comp-defining-augments';
@@ -658,69 +682,7 @@ export default function TftCompDetailPage() {
                 avgRound: p.avgLastRound,
                 avgStage: p.avgLastRound != null ? formatStage(p.avgLastRound) : '—',
               }));
-              return (
-                <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
-                  <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.econRoi')}</h2>
-                  <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3">
-                    <div style={{ width: '100%', height: 200 }}>
-                      <ResponsiveContainer>
-                        <ComposedChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
-                          <XAxis
-                            dataKey="label"
-                            tick={{ fill: '#5a6a80', fontSize: 10 }}
-                            axisLine={{ stroke: '#1e2a3a' }}
-                            tickLine={false}
-                          />
-                          <YAxis
-                            yAxisId="left"
-                            tick={{ fill: '#5a6a80', fontSize: 10 }}
-                            axisLine={false}
-                            tickLine={false}
-                            width={28}
-                            tickFormatter={(v: any) => `${v}%`}
-                          />
-                          <YAxis
-                            yAxisId="right"
-                            orientation="right"
-                            tick={{ fill: '#3ecf8e', fontSize: 10 }}
-                            axisLine={false}
-                            tickLine={false}
-                            width={36}
-                            tickFormatter={(v: any) => formatStage(Number(v))}
-                            domain={[(dataMin: number) => Math.max(8, dataMin - 2), (dataMax: number) => dataMax + 2]}
-                          />
-                          <RechartsTooltip
-                            contentStyle={{ backgroundColor: '#0d1526', border: '1px solid #1e2a3a', borderRadius: 4, fontSize: 11 }}
-                            labelStyle={{ color: '#a0b0c5' }}
-                            formatter={(value: any, name: any, item: any): any => {
-                              if (name === 'share') return [`${value}%`, t('tft.comp.levelShare')];
-                              if (name === 'avgRound') {
-                                const stage = item?.payload?.avgStage;
-                                return [stage, t('tft.comp.avgLastRound')];
-                              }
-                              return [value, name];
-                            }}
-                          />
-                          <Bar yAxisId="left" dataKey="share" fill="#7B61FF" radius={[2, 2, 0, 0]} />
-                          <Line
-                            yAxisId="right"
-                            type="monotone"
-                            dataKey="avgRound"
-                            stroke="#3ecf8e"
-                            strokeWidth={2}
-                            dot={{ r: 3, fill: '#3ecf8e' }}
-                            activeDot={{ r: 5, fill: '#3ecf8e' }}
-                          />
-                        </ComposedChart>
-                      </ResponsiveContainer>
-                    </div>
-                    <div className="flex justify-between text-[9px] text-[#5a6a80] mt-1.5">
-                      <span><span className="inline-block w-2 h-2 bg-[#7B61FF] rounded-sm mr-1"/>{t('tft.comp.levelShare')}</span>
-                      <span><span className="inline-block w-2 h-2 bg-[#3ecf8e] rounded-sm mr-1"/>{t('tft.comp.avgLastRound')}</span>
-                    </div>
-                  </div>
-                </section>
-              );
+              return <CompEconChart chartData={chartData} />;
             })()}
 
             {/* Death-Round + Survival */}
@@ -796,49 +758,10 @@ export default function TftCompDetailPage() {
                       {t('tft.comp.death.detailsToggle')}
                     </summary>
                     <div className="mt-2 bg-[#141c2e] border border-[#1e2a3a] rounded p-3">
-                      {(() => {
-                        const hist = comp.roundHistogram as { round: number; games: number; top4: number }[];
-                        const survival = (comp.survivalToTop4 || []) as { round: number; atLeast: number; top4Rate: number | null }[];
-                        const survByRound = new Map(survival.map(s => [s.round, s]));
-                        const chartData = hist.map(p => ({
-                          round: p.round,
-                          stage: formatStage(p.round),
-                          games: p.games,
-                          top4Rate: p.games > 0 ? (p.top4 / p.games) * 100 : 0,
-                          survivalRate: (survByRound.get(p.round)?.top4Rate ?? 0) * 100,
-                        }));
-                        return (
-                          <div style={{ width: '100%', height: 200 }}>
-                            <ResponsiveContainer>
-                              <ComposedChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
-                                <XAxis dataKey="stage" tick={{ fill: '#5a6a80', fontSize: 10 }} axisLine={{ stroke: '#1e2a3a' }} tickLine={false} interval="preserveStartEnd" />
-                                <YAxis yAxisId="left" tick={{ fill: '#5a6a80', fontSize: 10 }} axisLine={false} tickLine={false} width={28} />
-                                <YAxis yAxisId="right" orientation="right" domain={[0, 100]} tick={{ fill: '#3ecf8e', fontSize: 10 }} axisLine={false} tickLine={false} width={32} tickFormatter={v => `${v}%`} />
-                                <RechartsTooltip
-                                  contentStyle={{ backgroundColor: '#0d1526', border: '1px solid #1e2a3a', borderRadius: 4, fontSize: 11 }}
-                                  labelStyle={{ color: '#a0b0c5' }}
-                                  formatter={(value: any, name: any): any => {
-                                    if (name === 'games') return [value, t('tft.comp.dieHere')];
-                                    if (name === 'survivalRate') return [`${Number(value).toFixed(0)}%`, t('tft.comp.survivalChart')];
-                                    return [value, name];
-                                  }}
-                                />
-                                <Bar yAxisId="left" dataKey="games" radius={[2, 2, 0, 0]}>
-                                  {chartData.map((d, idx) => {
-                                    const hue = Math.round(120 * (d.top4Rate / 100));
-                                    return <Cell key={idx} fill={`hsl(${hue}, 60%, 45%)`} />;
-                                  })}
-                                </Bar>
-                                <Line yAxisId="right" type="monotone" dataKey="survivalRate" stroke="#3ecf8e" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: '#3ecf8e' }} />
-                              </ComposedChart>
-                            </ResponsiveContainer>
-                          </div>
-                        );
-                      })()}
-                      <div className="flex justify-between text-[9px] text-[#5a6a80] mt-1.5">
-                        <span><span className="inline-block w-2 h-2 bg-[#e44040] rounded-sm mr-1"/>{t('tft.comp.dieHere')}</span>
-                        <span><span className="inline-block w-2 h-2 bg-[#3ecf8e] rounded-sm mr-1"/>{t('tft.comp.survivalChart')}</span>
-                      </div>
+                      <CompDeathChart
+                        roundHistogram={comp.roundHistogram as { round: number; games: number; top4: number }[]}
+                        survivalToTop4={(comp.survivalToTop4 || []) as { round: number; atLeast: number; top4Rate: number | null }[]}
+                      />
                     </div>
                   </details>
                 </section>
@@ -894,93 +817,12 @@ export default function TftCompDetailPage() {
             )}
 
             {/* Trend-Time-Series mit Patch-Drop-ReferenceLine */}
-            <div className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-white text-sm font-medium">{t('tft.trend.title')}</h3>
-                <div className="flex gap-1 bg-[#141c2e] border border-[#1e2a3a] rounded p-0.5">
-                  {([14, 30] as const).map(d => (
-                    <button
-                      key={d}
-                      type="button"
-                      onClick={() => setTrendDays(d)}
-                      className={`px-2.5 py-0.5 text-[11px] rounded ${
-                        trendDays === d
-                          ? 'bg-[#7B61FF] text-white'
-                          : 'text-[#a0b0c5] hover:text-white'
-                      }`}
-                    >
-                      {t(d === 14 ? 'tft.trend.last14' : 'tft.trend.last30')}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {trendPoints.length >= 2 ? (
-                <div style={{ width: '100%', height: 180 }}>
-                  <ResponsiveContainer>
-                    <ComposedChart data={trendPoints} margin={{ top: 8, right: 8, bottom: 0, left: -12 }}>
-                      <XAxis
-                        dataKey="day"
-                        tick={{ fill: '#7a8aa0', fontSize: 10 }}
-                        tickFormatter={(d: string) => d.slice(5)}
-                        axisLine={{ stroke: '#1e2a3a' }}
-                        tickLine={false}
-                      />
-                      <YAxis
-                        yAxisId="place"
-                        domain={[3, 6]}
-                        reversed
-                        tick={{ fill: '#7a8aa0', fontSize: 10 }}
-                        axisLine={false}
-                        tickLine={false}
-                        width={30}
-                      />
-                      <YAxis
-                        yAxisId="games"
-                        orientation="right"
-                        tick={{ fill: '#5a6a80', fontSize: 10 }}
-                        axisLine={false}
-                        tickLine={false}
-                        width={40}
-                      />
-                      <RechartsTooltip
-                        contentStyle={{ backgroundColor: '#0a0e1a', border: '1px solid #1e2a3a', borderRadius: 4, fontSize: 11 }}
-                        labelStyle={{ color: '#a0b0c5' }}
-                        formatter={(value: any, name: any) => {
-                          if (name === 'avgPlacement') return [Number(value).toFixed(2), t('tft.avgPlacement')];
-                          if (name === 'games') return [value, t('tft.gamesShort')];
-                          return [value, String(name ?? '')];
-                        }}
-                      />
-                      <Bar yAxisId="games" dataKey="games" fill="#1e2a3a" radius={[2, 2, 0, 0]} />
-                      <Line
-                        yAxisId="place"
-                        dataKey="avgPlacement"
-                        stroke="#c39bff"
-                        strokeWidth={2}
-                        dot={{ fill: '#c39bff', r: 3 }}
-                        connectNulls
-                      />
-                      {patchBoundary && (
-                        <ReferenceLine
-                          yAxisId="place"
-                          x={patchBoundary.day}
-                          stroke="#e0c75a"
-                          strokeDasharray="3 3"
-                          label={{
-                            value: (t('tft.trend.patchLine') as string).replace('{p}', patchBoundary.patch),
-                            position: 'top',
-                            fill: '#e0c75a',
-                            fontSize: 10,
-                          }}
-                        />
-                      )}
-                    </ComposedChart>
-                  </ResponsiveContainer>
-                </div>
-              ) : (
-                <div className="text-[#5a6a80] text-xs text-center py-6">{t('tft.trend.empty')}</div>
-              )}
-            </div>
+            <CompTrendChart
+              trendPoints={trendPoints}
+              trendDays={trendDays}
+              onTrendDaysChange={setTrendDays}
+              patchBoundary={patchBoundary}
+            />
 
             {/* Position Heatmap (Companion-Daten) */}
             {comp.typicalUnits && comp.typicalUnits.length > 0 && (

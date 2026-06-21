@@ -2355,6 +2355,16 @@ const translations = {
     '신 검색…', '搜索神…',
     'Buscar dios…', 'Rechercher un dieu…'
   ),
+  'tft.search.comps': t6(
+    'Comp suchen (Trait oder Carry)…', 'Search comp (trait or carry)…',
+    '조합 검색 (시너지 또는 캐리)…', '搜索阵容 (羁绊或核心)…',
+    'Buscar comp (sinergia o carry)…', 'Rechercher comp (synergie ou carry)…'
+  ),
+  'tft.search.pros': t6(
+    'Pro suchen (Name, Team)…', 'Search pro (name, team)…',
+    '프로 검색 (이름, 팀)…', '搜索职业选手 (姓名、队伍)…',
+    'Buscar pro (nombre, equipo)…', 'Rechercher pro (nom, équipe)…'
+  ),
   'tft.search.noResults': t6(
     'Kein Treffer für „{q}"', 'No match for „{q}"',
     '„{q}" 검색 결과 없음', '没有找到 „{q}"',

@@ -65,6 +65,11 @@ export default function TftCompsPage() {
   const [loading, setLoading] = useState(false);
   const [tierCutoffs, setTierCutoffs] = useState<TierCutoffs | null>(null);
 
+  // Search-Filter (client-side): trim+lowercase auf Trait-Display + Carry-Name
+  // + raw apiNames. Bei leerer Query passiert nichts. Memo-Stage nach
+  // families damit Sort + Family-Aggregation intakt bleiben.
+  const [search, setSearch] = useState('');
+
   // Compare-Selection State (für /tft/comps/compare User-Flow): bis zu 2 Slugs
   // gleichzeitig. Bei 3. Click rotiert die Liste (FIFO) — User kann ohne Reset
   // schnell die zweite Comp wechseln.
@@ -413,12 +418,39 @@ export default function TftCompsPage() {
     return out;
   }, [filteredComps, sortBy, assets]);
 
+  // Search-Filter über die finale Family-Liste — matched gegen Trait-Display-
+  // Name + Carry-Display-Name + raw apiNames. Lookup nutzt assets-cache.
+  const visibleFamilies = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q || !assets) return families;
+    return families.filter(f => {
+      const traitMeta = assets.traits[f.trait];
+      const carryChamp = assets.champions[f.carry];
+      const traitName = (traitMeta?.name || f.trait.replace(/^TFT\d+_/, '')).toLowerCase();
+      const carryName = (carryChamp?.name || f.carry.replace(/^TFT\d+_/, '')).toLowerCase();
+      return traitName.includes(q)
+        || carryName.includes(q)
+        || f.trait.toLowerCase().includes(q)
+        || f.carry.toLowerCase().includes(q);
+    });
+  }, [families, search, assets]);
+
   return (
     <main className="min-h-screen bg-[#0e1525]">
       <Nav active="comps" />
       <TftHero pageTitle={t('nav.comps')} patch={currentPatchLabel} />
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-2 pb-6">
         <StatsFilterBar filters={filters} patches={patches} onChange={handleFiltersChange} />
+
+        <div className="mb-3">
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder={t('tft.search.comps')}
+            className="w-full sm:w-96 bg-[#141c2e] border border-[#1e2a3a] rounded px-3 py-1.5 text-sm text-white placeholder:text-[#5a6a80] outline-none focus:border-[#7B61FF]/60"
+          />
+        </div>
 
         <AdvancedCompFilters
           filters={adv}
@@ -459,7 +491,7 @@ export default function TftCompsPage() {
         )}
         {hasData === false && <EmptyData />}
 
-        {hasData && families.length > 0 && (
+        {hasData && visibleFamilies.length > 0 && (
           <>
             <div className={`hidden sm:grid items-center gap-4 px-3.5 py-2 text-[11px] text-[#a0b0c5] font-semibold whitespace-nowrap ${
               filters.velocity > 0
@@ -483,7 +515,7 @@ export default function TftCompsPage() {
               <div></div>
             </div>
             <div className="space-y-1.5">
-              {families.map((f, i) => (
+              {visibleFamilies.map((f, i) => (
                 <CompFamilyRow
                   key={f.familyKey}
                   family={f}

@@ -2274,6 +2274,19 @@ const translations = {
     '\uACF5\uC2DD Riot \uD328\uCE58 \uB178\uD2B8', '\u5B98\u65B9 Riot \u8865\u4E01\u8BF4\u660E',
     'Notas oficiales del parche Riot', 'Notes officielles du patch Riot'
   ),
+  'tft.compare.fromDetail': t6(
+    'Mit anderer Comp vergleichen', 'Compare with another comp',
+    '다른 조합과 비교', '与其他阵容对比',
+    'Comparar con otra comp', 'Comparer avec une autre comp'
+  ),
+  'tft.compare.firstSelected': t6(
+    'Erste Comp ausgewählt — jetzt zweite Comp wählen',
+    'First comp selected — now pick the second',
+    '첫 번째 조합 선택됨 — 두 번째 선택',
+    '已选择第一个阵容 — 现在选择第二个',
+    'Primera comp seleccionada — ahora elige la segunda',
+    'Première comp sélectionnée — choisissez la seconde'
+  ),
   'tft.patchNotes.officialLinkHint': t6(
     'Externe Riot-Seite \u2014 Detail-\u00C4nderungen pro Champion / Trait / Augment / Item',
     'External Riot page \u2014 detail changes per champion / trait / augment / item',

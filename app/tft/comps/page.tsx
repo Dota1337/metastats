@@ -68,7 +68,14 @@ export default function TftCompsPage() {
   // Compare-Selection State (für /tft/comps/compare User-Flow): bis zu 2 Slugs
   // gleichzeitig. Bei 3. Click rotiert die Liste (FIFO) — User kann ohne Reset
   // schnell die zweite Comp wechseln.
-  const [compareSelection, setCompareSelection] = useState<string[]>([]);
+  //
+  // Pre-Population aus URL-Param ?compareA=<slug>: wenn User vom Compare-
+  // Button auf der Comp-Detail-Page hierher navigiert, ist die erste Comp
+  // bereits vorbelegt — User wählt nur noch die zweite.
+  const initialCompareA = searchParams.get('compareA');
+  const [compareSelection, setCompareSelection] = useState<string[]>(
+    initialCompareA ? [decodeURIComponent(initialCompareA)] : [],
+  );
   const toggleCompare = (slug: string) => {
     setCompareSelection(prev => {
       if (prev.includes(slug)) return prev.filter(s => s !== slug);

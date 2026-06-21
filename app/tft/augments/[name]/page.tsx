@@ -6,6 +6,7 @@ import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, findChampion, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { loadCompGuidesBundle, type CompGuide } from '../../../lib/tft-comp-guides';
+import { buildAugmentSlotMap, augmentStageInfo, stageColor } from '../../../lib/tft-augment-stages';
 
 // Pure reference detail — Riot has restricted augment-statistics display, so
 // this page intentionally surfaces only name + description + tier from the
@@ -41,6 +42,18 @@ export default function TftAugmentReferenceDetailPage() {
   const tier = meta?.tier ?? 0;
   const tierColor = TIER_COLORS[tier] || '#7a8aa0';
   const iconUrl = tftIconUrl(assets, meta?.icon);
+
+  // Stage-Info: dominante Stage + raw Slot-Verteilung. Bei Comp-Guide-
+  // Datenpunkt wird die Verteilung als Mini-Bars rendert, sonst Hinweis
+  // dass die Stage aus dem Tier abgeleitet wurde.
+  const slotMap = useMemo(
+    () => buildAugmentSlotMap(compGuidesBundle?.guides ?? null),
+    [compGuidesBundle],
+  );
+  const stageData = useMemo(
+    () => augmentStageInfo(apiName, slotMap, tier),
+    [apiName, slotMap, tier],
+  );
 
   // Reverse-Lookup: alle Comps die dieses Augment in ihren kuratierten
   // Augments listen. Slug-Map gibt trait+carry pro Comp.
@@ -117,6 +130,66 @@ export default function TftAugmentReferenceDetailPage() {
                 )}
               </div>
             </div>
+            {meta && (() => {
+              const stageColorVal = stageColor(stageData.stage);
+              const dist = stageData.distribution;
+              const total = dist ? dist[0] + dist[1] + dist[2] : 0;
+              return (
+                <div className="mt-4 pt-4 border-t border-[#1e2a3a]">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-[#a0b0c5] text-[10px] uppercase tracking-widest">
+                      {t('tft.augment.stage.label')}
+                    </span>
+                    <span
+                      className="text-[11px] tabular-nums px-2 py-0.5 rounded border font-medium"
+                      style={{
+                        color: stageColorVal,
+                        backgroundColor: `${stageColorVal}1a`,
+                        borderColor: `${stageColorVal}55`,
+                      }}
+                    >
+                      Stage {stageData.stage}
+                    </span>
+                  </div>
+                  {dist && total > 0 ? (
+                    <div className="space-y-1">
+                      {(['2-1', '3-2', '4-2'] as const).map((s, idx) => {
+                        const count = dist[idx];
+                        const pct = total > 0 ? (count / total) * 100 : 0;
+                        const c = stageColor(s);
+                        return (
+                          <div key={s} className="flex items-center gap-2">
+                            <span className="text-[10px] text-[#7a8aa0] tabular-nums w-14 flex-shrink-0">
+                              Stage {s}
+                            </span>
+                            <div className="flex-1 h-2 bg-[#0a0e1a] rounded overflow-hidden">
+                              <div
+                                className="h-full rounded transition-all"
+                                style={{
+                                  width: `${pct}%`,
+                                  backgroundColor: c,
+                                  opacity: count > 0 ? 0.85 : 0,
+                                }}
+                              />
+                            </div>
+                            <span className="text-[10px] text-[#a0b0c5] tabular-nums w-12 text-right flex-shrink-0">
+                              {count}× ({pct.toFixed(0)}%)
+                            </span>
+                          </div>
+                        );
+                      })}
+                      <div className="text-[#5a6a80] text-[10px] italic mt-1.5">
+                        {t('tft.augment.stage.fromGuides').replace('{n}', String(total))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-[#7a8aa0] text-[11px] italic">
+                      {t('tft.augment.stage.heuristic')}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         )}
 

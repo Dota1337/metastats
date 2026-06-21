@@ -97,10 +97,17 @@ export async function lookupSnapshot(
   opts: LookupOptions,
 ): Promise<LookupHit | null> {
   if (opts.skip) return null;
-  const req = normalizeSnapshotRequest(opts);
-  if (!req) return null;
   const manifest = await loadManifest();
   if (!manifest) return null;
+  // Fallback fuer den Cold-Supabase-Fall (2026-06-21): wenn
+  // getAvailablePatches() timeouts hat → patches-Cache leer → opts.patch=null.
+  // Manifest selbst kennt manifest.patches.current — wir nutzen den als
+  // Fallback statt zu null-faulten + Live-RPC aufzurufen. Spart 8s Timeout
+  // bei jeder Cold-Function-Lambda.
+  const effectivePatch = opts.patch ?? manifest.patches.current;
+  if (!effectivePatch) return null;
+  const req = normalizeSnapshotRequest({ ...opts, patch: effectivePatch });
+  if (!req) return null;
   // Resolve patch alias against manifest — if the caller sends a literal patch
   // string, use it as-is. Otherwise check whether it matches manifest.current.
   const resolvedPatch = req.patch === manifest.patches.current

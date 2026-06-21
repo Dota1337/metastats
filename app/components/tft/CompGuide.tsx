@@ -103,25 +103,6 @@ function EarlyChampionTile({
   );
 }
 
-function CarouselItemTile({ apiName, assets }: { apiName: string; assets: TftAssetsBundle | null }) {
-  const meta = findItem(assets, apiName);
-  const iconUrl = tftIconUrl(assets, meta?.icon);
-  return (
-    <a
-      href={`/tft/items/${encodeURIComponent(apiName)}`}
-      className="flex flex-col items-center gap-1 hover:scale-105 transition"
-      title={meta?.name || apiName}
-    >
-      <div className="w-8 h-8 rounded border border-[#1e2a3a] overflow-hidden">
-        {iconUrl && <img src={iconUrl} alt={meta?.name || apiName} className="w-full h-full object-cover" />}
-      </div>
-      <div className="text-white text-[9px] text-center truncate max-w-[60px]">
-        {meta?.name || apiName.replace(/^TFT\d*_Item_/, '')}
-      </div>
-    </a>
-  );
-}
-
 export default function CompGuide({
   guide,
   assets,
@@ -187,19 +168,7 @@ export default function CompGuide({
         </section>
       )}
 
-      {/* 3) Round-1 Carousel suggestion */}
-      {guide.carousel.length > 0 && (
-        <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
-          <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.carousel')}</h2>
-          <div className="flex flex-wrap gap-3">
-            {guide.carousel.map((c, i) => (
-              <CarouselItemTile key={`${c}-${i}`} apiName={c} assets={assets} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* 4) Stage-by-Stage tips */}
+      {/* Stage-by-Stage tips */}
       {guide.tips.length > 0 && (
         <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
           <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.stageTips')}</h2>

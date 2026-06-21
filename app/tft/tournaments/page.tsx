@@ -59,6 +59,7 @@ export default function TftTournamentsPage() {
   const [region, setRegion] = useState<string>('');
   const [tier, setTier] = useState<string>('');
   const [set_, setSet] = useState<string>('');
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -74,9 +75,18 @@ export default function TftTournamentsPage() {
     return () => { cancelled = true; };
   }, [region, tier, set_]);
 
-  const live = useMemo(() => tournaments.filter(x => x.status === 'live'), [tournaments]);
-  const upcoming = useMemo(() => tournaments.filter(x => x.status === 'upcoming'), [tournaments]);
-  const past = useMemo(() => tournaments.filter(x => x.status === 'past'), [tournaments]);
+  const searchFiltered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return tournaments;
+    return tournaments.filter(x =>
+      cleanTournamentName(x.name).toLowerCase().includes(q)
+      || (x.region || '').toLowerCase().includes(q)
+      || (REGION_LABELS[x.region || ''] || '').toLowerCase().includes(q),
+    );
+  }, [tournaments, search]);
+  const live = useMemo(() => searchFiltered.filter(x => x.status === 'live'), [searchFiltered]);
+  const upcoming = useMemo(() => searchFiltered.filter(x => x.status === 'upcoming'), [searchFiltered]);
+  const past = useMemo(() => searchFiltered.filter(x => x.status === 'past'), [searchFiltered]);
 
   // Region/tier/set option sets — derived from the loaded data so we never
   // show a filter with zero matches behind it.
@@ -90,6 +100,16 @@ export default function TftTournamentsPage() {
       <TftHero pageTitle={t('tft.tournaments.title')} />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-2 pb-6">
         <p className="text-[#a0b0c5] text-sm mb-4">{t('tft.tournaments.subtitle')}</p>
+
+        <div className="mb-3">
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder={t('tft.search.tournaments')}
+            className="w-full sm:w-80 bg-[#141c2e] border border-[#1e2a3a] rounded px-3 py-1.5 text-sm text-white placeholder:text-[#5a6a80] outline-none focus:border-[#7B61FF]/60"
+          />
+        </div>
 
         {/* Filter bar — only renders rows that have ≥2 options so we don't
             crowd the layout with single-choice "filters". */}

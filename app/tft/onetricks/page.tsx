@@ -37,6 +37,7 @@ export default function TftOneTricksPage() {
   const [data, setData] = useState<OneTrick[]>([]);
   const [loading, setLoading] = useState(false);
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
+  const [search, setSearch] = useState('');
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
   useEffect(() => {
@@ -55,6 +56,16 @@ export default function TftOneTricksPage() {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
         <h1 className="text-white text-2xl font-medium mb-1">{t('tft.onetricks.title')}</h1>
         <p className="text-[#a0b0c5] text-sm mb-5">{t('tft.onetricks.subtitle')}</p>
+
+        <div className="mb-3">
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder={t('tft.search.player')}
+            className="w-full sm:w-80 bg-[#141c2e] border border-[#1e2a3a] rounded px-3 py-1.5 text-sm text-white placeholder:text-[#5a6a80] outline-none focus:border-[#7B61FF]/60"
+          />
+        </div>
 
         <div className="flex flex-wrap gap-1 mb-4">
           {REGIONS.map(r => (
@@ -76,7 +87,14 @@ export default function TftOneTricksPage() {
         )}
 
         <div className="space-y-2">
-          {data.map((p, idx) => {
+          {data
+            .filter(p => {
+              const q = search.trim().toLowerCase();
+              if (!q) return true;
+              return (p.gameName || '').toLowerCase().includes(q)
+                || (p.tagLine || '').toLowerCase().includes(q);
+            })
+            .map((p, idx) => {
             const display = p.gameName || '—';
             // Tier-color the specialty score: 90%+=purple, 75-90%=violet, else green
             const specPct = p.top2Share * 100;

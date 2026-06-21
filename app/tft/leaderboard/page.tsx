@@ -37,6 +37,7 @@ export default function TftLeaderboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tierDist, setTierDist] = useState<{ month: string; tiers: { key: string; label: string; pct: number; color: string }[] } | null>(null);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     fetch('/tft-tier-distribution.json')
@@ -131,6 +132,16 @@ export default function TftLeaderboardPage() {
           ))}
         </div>
 
+        <div className="mb-3">
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder={t('tft.search.player')}
+            className="w-full sm:w-80 bg-[#141c2e] border border-[#1e2a3a] rounded px-3 py-1.5 text-sm text-white placeholder:text-[#5a6a80] outline-none focus:border-[#7B61FF]/60"
+          />
+        </div>
+
         <div className="flex flex-wrap gap-1 mb-4">
           {TIERS.map(tr => (
             <button
@@ -157,7 +168,16 @@ export default function TftLeaderboardPage() {
               <div className="text-right">WR</div>
               <div className="text-right">{t('tft.marketValue')}</div>
             </div>
-            {players.map(p => {
+            {(() => {
+              const q = search.trim().toLowerCase();
+              const visible = q
+                ? players.filter(p =>
+                    (p.gameName || '').toLowerCase().includes(q)
+                    || (p.tagLine || '').toLowerCase().includes(q),
+                  )
+                : players;
+              return visible;
+            })().map(p => {
               const total = p.wins + p.losses;
               const wr = total > 0 ? Math.round((p.wins / total) * 100) : 0;
               const slug = p.gameName ? `${encodeURIComponent(p.gameName)}--${encodeURIComponent(p.tagLine || 'EUW')}` : null;

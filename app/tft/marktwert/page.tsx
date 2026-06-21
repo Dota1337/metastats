@@ -87,6 +87,27 @@ export default function TftMarktwertPage() {
   // Per-player value sparklines (top tab), keyed by puuid. Fetched once per
   // region — independent of the tier filter.
   const [sparks, setSparks] = useState<Record<string, { date: string; value: number }[]>>({});
+  const [search, setSearch] = useState('');
+
+  // Client-side Search-Filter: matched gameName + tagLine case-insensitive.
+  // Filter passiert im Parent damit beide Tabs (Top + Movers) gleichen
+  // Filter sehen.
+  const filteredLeaderboard = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return leaderboard;
+    return leaderboard.filter(p =>
+      (p.gameName || '').toLowerCase().includes(q)
+      || (p.tagLine || '').toLowerCase().includes(q),
+    );
+  }, [leaderboard, search]);
+  const filteredMovers = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return movers;
+    return movers.filter(m =>
+      (m.gameName || '').toLowerCase().includes(q)
+      || (m.tagLine || '').toLowerCase().includes(q),
+    );
+  }, [movers, search]);
 
   // Leaderboard fetch — drives the Top tab and the Distribution tab (we
   // derive the histogram client-side from the leaderboard data).
@@ -186,6 +207,18 @@ export default function TftMarktwertPage() {
           ))}
         </div>
 
+        {(tab === 'top' || tab === 'movers') && (
+          <div className="mb-3">
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder={t('tft.search.player')}
+              className="w-full sm:w-80 bg-[#141c2e] border border-[#1e2a3a] rounded px-3 py-1.5 text-sm text-white placeholder:text-[#5a6a80] outline-none focus:border-[#7B61FF]/60"
+            />
+          </div>
+        )}
+
         {/* Tab strip */}
         <div className="flex gap-1 border-b border-[#1e2a3a] mb-4">
           {TABS.map(tt => (
@@ -211,7 +244,7 @@ export default function TftMarktwertPage() {
 
         {tab === 'top' && (
           <TopTab
-            players={leaderboard}
+            players={filteredLeaderboard}
             loading={loading}
             region={region}
             tierFilter={tierFilter}
@@ -224,7 +257,7 @@ export default function TftMarktwertPage() {
 
         {tab === 'movers' && (
           <MoversTab
-            movers={movers}
+            movers={filteredMovers}
             loading={moversLoading}
             region={region}
             direction={moverDirection}

@@ -2365,6 +2365,16 @@ const translations = {
     '프로 검색 (이름, 팀)…', '搜索职业选手 (姓名、队伍)…',
     'Buscar pro (nombre, equipo)…', 'Rechercher pro (nom, équipe)…'
   ),
+  'tft.search.player': t6(
+    'Spieler suchen…', 'Search player…',
+    '플레이어 검색…', '搜索玩家…',
+    'Buscar jugador…', 'Rechercher un joueur…'
+  ),
+  'tft.search.tournaments': t6(
+    'Turnier oder Region suchen…', 'Search tournament or region…',
+    '대회 또는 지역 검색…', '搜索赛事或地区…',
+    'Buscar torneo o región…', 'Rechercher tournoi ou région…'
+  ),
   'tft.search.noResults': t6(
     'Kein Treffer für „{q}"', 'No match for „{q}"',
     '„{q}" 검색 결과 없음', '没有找到 „{q}"',

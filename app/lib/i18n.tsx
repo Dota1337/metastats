@@ -2287,6 +2287,49 @@ const translations = {
     'Primera comp seleccionada — ahora elige la segunda',
     'Première comp sélectionnée — choisissez la seconde'
   ),
+  'tft.augmentsCompare.title': t6(
+    'Augment-Vergleich', 'Augment Comparison',
+    '증강 비교', '强化对比',
+    'Comparación de aumentos', 'Comparaison d\'augmentations'
+  ),
+  'tft.augmentsCompare.pickTwo': t6(
+    'Zwei Augments zum Vergleichen wählen', 'Pick two augments to compare',
+    '비교할 두 증강 선택', '选择两个强化进行对比',
+    'Elige dos aumentos para comparar', 'Sélectionnez deux augmentations à comparer'
+  ),
+  'tft.augmentsCompare.pickTwo.hint': t6(
+    'URL-Format: ?a=<apiName>&b=<apiName>',
+    'URL format: ?a=<apiName>&b=<apiName>',
+    'URL 형식: ?a=<apiName>&b=<apiName>',
+    'URL 格式: ?a=<apiName>&b=<apiName>',
+    'Formato URL: ?a=<apiName>&b=<apiName>',
+    'Format URL : ?a=<apiName>&b=<apiName>'
+  ),
+  'tft.augmentsCompare.goToList': t6(
+    'Zur Augment-Liste', 'Go to augment list',
+    '증강 목록으로', '前往强化列表',
+    'Ir a la lista de aumentos', 'Aller à la liste des augmentations'
+  ),
+  'tft.augmentsCompare.notFound': t6(
+    'Augment nicht gefunden', 'Augment not found',
+    '증강을 찾을 수 없음', '未找到强化',
+    'Aumento no encontrado', 'Augmentation introuvable'
+  ),
+  'tft.augmentsCompare.compsCount': t6(
+    '{n} Comps spielen dieses Augment', '{n} comps use this augment',
+    '{n}개 조합이 이 증강 사용', '{n} 个阵容使用此强化',
+    '{n} comps usan este aumento', '{n} comps utilisent cette augmentation'
+  ),
+  'tft.augmentsCompare.more': t6(
+    'weitere', 'more',
+    '더', '更多',
+    'más', 'plus'
+  ),
+  'tft.augmentsCompare.fromDetail': t6(
+    'Mit anderem Augment vergleichen', 'Compare with another augment',
+    '다른 증강과 비교', '与其他强化对比',
+    'Comparar con otro aumento', 'Comparer avec une autre augmentation'
+  ),
   'tft.patchNotes.officialLinkHint': t6(
     'Externe Riot-Seite \u2014 Detail-\u00C4nderungen pro Champion / Trait / Augment / Item',
     'External Riot page \u2014 detail changes per champion / trait / augment / item',

@@ -67,7 +67,24 @@ export default function TftAugmentReferenceDetailPage() {
     <main className="min-h-screen bg-[#0e1525]">
       <Nav active="augments" />
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6">
-        <a href="/tft/augments" className="text-[#7B61FF] text-xs hover:underline">← {t('nav.augments')}</a>
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <a href="/tft/augments" className="text-[#7B61FF] text-xs hover:underline">← {t('nav.augments')}</a>
+          {meta && (
+            <a
+              href={`/tft/augments/compare?a=${encodeURIComponent(apiName)}`}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-[#141c2e] border border-[#1e2a3a] text-[#a0b0c5] hover:text-white hover:border-[#7B61FF]/50 text-xs transition-colors"
+              title={t('tft.augmentsCompare.fromDetail')}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="17 1 21 5 17 9" />
+                <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+                <polyline points="7 23 3 19 7 15" />
+                <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+              </svg>
+              <span className="hidden sm:inline">{t('tft.augmentsCompare.fromDetail')}</span>
+            </a>
+          )}
+        </div>
 
         {assets && !meta && (
           <div className="mt-4 bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#a0b0c5] text-sm">

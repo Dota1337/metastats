@@ -216,22 +216,44 @@ async function resolvePatchFromList(patches: PatchInfo[], param: string): Promis
   return param;
 }
 
-export async function callRpc<T = any>(fn: string, args: Record<string, unknown>): Promise<T> {
+// Default-Timeout für ALLE Supabase-RPC-Calls. Ohne AbortSignal hängt der
+// fetch ggf. > 60s bis Vercel die Function killt → 502 für den User.
+// 8 s ist großzügig genug für Cold-Buffer-Scans (typische Stats-RPCs laufen
+// 200-1500ms warm) aber harmlos gegen Cloudflare-522 Edge-Hänger.
+const RPC_TIMEOUT_MS = 8000;
+
+export async function callRpc<T = any>(
+  fn: string,
+  args: Record<string, unknown>,
+  timeoutMs = RPC_TIMEOUT_MS,
+): Promise<T> {
   if (!SUPA_URL || !SUPA_KEY) throw new Error('Supabase env vars missing');
-  const res = await fetch(`${SUPA_URL}/rest/v1/rpc/${fn}`, {
-    method: 'POST',
-    headers: {
-      apikey: SUPA_KEY,
-      Authorization: `Bearer ${SUPA_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(args),
-  });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`RPC ${fn} failed: HTTP ${res.status} ${body.slice(0, 300)}`);
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${SUPA_URL}/rest/v1/rpc/${fn}`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPA_KEY,
+        Authorization: `Bearer ${SUPA_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(args),
+      signal: ctl.signal,
+    });
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`RPC ${fn} failed: HTTP ${res.status} ${body.slice(0, 300)}`);
+    }
+    return (await res.json()) as T;
+  } catch (e) {
+    if ((e as any)?.name === 'AbortError') {
+      throw new Error(`RPC ${fn} timeout after ${timeoutMs}ms`);
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
   }
-  return (await res.json()) as T;
 }
 
 // Merge a list of jsonb dicts (key -> int) by summing values per key.

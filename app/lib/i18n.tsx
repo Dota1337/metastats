@@ -2375,34 +2375,6 @@ const translations = {
     '대회 또는 지역 검색…', '搜索赛事或地区…',
     'Buscar torneo o región…', 'Rechercher tournoi ou région…'
   ),
-  'tft.augment.stage.label': t6(
-    'Stage', 'Stage',
-    '스테이지', '阶段',
-    'Etapa', 'Étape'
-  ),
-  'tft.augment.stage.all': t6(
-    'Alle Stages', 'All stages',
-    '모든 스테이지', '所有阶段',
-    'Todas las etapas', 'Toutes les étapes'
-  ),
-  'tft.augment.sort.tier': t6(
-    'nach Tier', 'by Tier',
-    '등급순', '按等级',
-    'por nivel', 'par tier'
-  ),
-  'tft.augment.sort.stage': t6(
-    'nach Stage', 'by Stage',
-    '스테이지순', '按阶段',
-    'por etapa', 'par étape'
-  ),
-  'tft.augment.stage.heuristic': t6(
-    'Geschätzt aus Tier (keine Comp-Guide-Daten)',
-    'Estimated from tier (no comp-guide data)',
-    '등급으로 추정 (가이드 데이터 없음)',
-    '由等级估算 (无攻略数据)',
-    'Estimado por nivel (sin datos de comp-guide)',
-    'Estimé selon le tier (pas de données de guide)'
-  ),
   'tft.search.noResults': t6(
     'Kein Treffer für „{q}"', 'No match for „{q}"',
     '„{q}" 검색 결과 없음', '没有找到 „{q}"',

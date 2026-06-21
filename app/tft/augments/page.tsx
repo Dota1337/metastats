@@ -5,14 +5,6 @@ import Footer from '../../components/Footer';
 import TftHero from '../../components/tft/TftHero';
 import { useI18n } from '../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftAugmentLocalised, type TftAssetsBundle } from '../../lib/tft-cdragon';
-import { loadCompGuidesBundle } from '../../lib/tft-comp-guides';
-import {
-  buildAugmentSlotMap,
-  augmentStageInfo,
-  augmentStageSortKey,
-  stageColor,
-  type AugmentStage,
-} from '../../lib/tft-augment-stages';
 
 // Pure REFERENCE catalog — Riot has restricted augment statistics, so this
 // page intentionally surfaces *only* name + description + tier from the
@@ -41,20 +33,9 @@ export default function TftAugmentsReferencePage() {
   const { t, lang } = useI18n();
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
   const [tierFilter, setTierFilter] = useState<TierFilter>('all');
-  const [stageFilter, setStageFilter] = useState<'all' | AugmentStage>('all');
   const [query, setQuery] = useState('');
-  const [sortMode, setSortMode] = useState<'tier' | 'stage'>('tier');
-  const [compGuidesBundle, setCompGuidesBundle] = useState<Awaited<ReturnType<typeof loadCompGuidesBundle>> | null>(null);
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
-  useEffect(() => { loadCompGuidesBundle().then(setCompGuidesBundle); }, []);
-
-  // Slot-Map einmalig pro Bundle-Load — pro Augment Slot-Counts aus den 33
-  // kuratierten Comp-Guides. Lookup ist O(1) im sort/filter-Hot-Path.
-  const slotMap = useMemo(
-    () => buildAugmentSlotMap(compGuidesBundle?.guides ?? null),
-    [compGuidesBundle],
-  );
 
   // Source of truth for the catalog = `bundle.active.augments` (= Riot's
   // setData[N].augments minus God-Augments, see scripts/fetch-tft-assets.mjs).
@@ -82,32 +63,18 @@ export default function TftAugmentsReferencePage() {
     return augments
       .filter(a => tierFilter === 'all' || a.tier === tierFilter)
       .filter(a => {
-        if (stageFilter === 'all') return true;
-        return augmentStageInfo(a.apiName, slotMap, a.tier).stage === stageFilter;
-      })
-      .filter(a => {
         if (!q) return true;
         const loc = tftAugmentLocalised(a, lang);
         return loc.name.toLowerCase().includes(q) || (loc.desc || '').toLowerCase().includes(q);
       })
       .sort((a, b) => {
-        if (sortMode === 'stage') {
-          // Stage-Sort: 2-1 → 3-2 → 4-2. Tier-Heuristik-Augments sortieren
-          // innerhalb derselben Stage hinter Guides-basierte (siehe lib).
-          const ka = augmentStageSortKey(augmentStageInfo(a.apiName, slotMap, a.tier));
-          const kb = augmentStageSortKey(augmentStageInfo(b.apiName, slotMap, b.tier));
-          if (ka !== kb) return ka - kb;
-          // Tiebreaker: Tier asc, dann Name asc
-          if (a.tier !== b.tier) return a.tier - b.tier;
-          return tftAugmentLocalised(a, lang).name.localeCompare(tftAugmentLocalised(b, lang).name);
-        }
-        // Default Tier-Sort: Silver → Gold → Prismatic, alphabetical within.
+        // Hierarchical ascending: Silver → Gold → Prismatic, alphabetical within.
         if (a.tier !== b.tier) return a.tier - b.tier;
         const an = tftAugmentLocalised(a, lang).name;
         const bn = tftAugmentLocalised(b, lang).name;
         return an.localeCompare(bn);
       });
-  }, [augments, tierFilter, stageFilter, query, lang, slotMap, sortMode]);
+  }, [augments, tierFilter, query, lang]);
 
   const counts = useMemo(() => {
     const out: Record<TierFilter, number> = { all: augments.length, 1: 0, 2: 0, 3: 0 };
@@ -155,56 +122,6 @@ export default function TftAugmentsReferencePage() {
           />
         </div>
 
-        {/* Stage-Filter + Sort-Toggle. Stage-Daten kommen aus den 33
-            kuratierten tftacademy-Comp-Guides (Slot-Position) + Fallback
-            auf Tier-Heuristik (Silver→2-1, Gold→3-2, Prismatic→4-2). */}
-        <div className="flex flex-wrap items-center gap-2 mb-4">
-          <span className="text-[#7a8aa0] text-[10px] uppercase tracking-widest mr-1">{t('tft.augment.stage.label')}:</span>
-          {(['all', '2-1', '3-2', '4-2'] as const).map(s => {
-            const active = stageFilter === s;
-            const color = s === 'all' ? '#7B61FF' : stageColor(s as AugmentStage);
-            return (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setStageFilter(s)}
-                className={`px-2.5 py-1 rounded text-xs border transition-colors ${
-                  active
-                    ? 'text-white'
-                    : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5] hover:border-[#7B61FF]/40'
-                }`}
-                style={active ? { backgroundColor: `${color}25`, borderColor: `${color}80`, color } : undefined}
-              >
-                {s === 'all' ? t('tft.augment.stage.all') : `Stage ${s}`}
-              </button>
-            );
-          })}
-          <div className="w-px h-5 bg-[#1e2a3a] mx-1" />
-          <span className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">{t('tft.sortBy')}:</span>
-          <button
-            type="button"
-            onClick={() => setSortMode('tier')}
-            className={`px-2.5 py-1 rounded text-xs border transition-colors ${
-              sortMode === 'tier'
-                ? 'bg-[#7B61FF]/25 border-[#7B61FF]/80 text-[#a892ff]'
-                : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5] hover:border-[#7B61FF]/40'
-            }`}
-          >
-            {t('tft.augment.sort.tier')}
-          </button>
-          <button
-            type="button"
-            onClick={() => setSortMode('stage')}
-            className={`px-2.5 py-1 rounded text-xs border transition-colors ${
-              sortMode === 'stage'
-                ? 'bg-[#7B61FF]/25 border-[#7B61FF]/80 text-[#a892ff]'
-                : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5] hover:border-[#7B61FF]/40'
-            }`}
-          >
-            {t('tft.augment.sort.stage')}
-          </button>
-        </div>
-
         {assets && filtered.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {filtered.map(a => {
@@ -220,8 +137,6 @@ export default function TftAugmentsReferencePage() {
               // image's lightness + saturation, so artwork detail survives.
               const iconTier = iconTierFromPath(a.icon);
               const needsTint = iconTier !== null && iconTier !== a.tier;
-              const stageData = augmentStageInfo(a.apiName, slotMap, a.tier);
-              const stageColorVal = stageColor(stageData.stage);
               return (
                 <a
                   key={a.apiName}
@@ -246,24 +161,6 @@ export default function TftAugmentsReferencePage() {
                       <span className="text-white text-sm font-semibold truncate">{loc.name}</span>
                       <span className="text-[11px] uppercase tracking-widest tabular-nums flex-shrink-0 font-medium" style={{ color: tierColor }}>
                         {TIER_LABELS[a.tier]}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 mt-1">
-                      <span
-                        className="text-[10px] tabular-nums px-1.5 py-0.5 rounded border"
-                        style={{
-                          color: stageColorVal,
-                          backgroundColor: `${stageColorVal}1a`,
-                          borderColor: `${stageColorVal}55`,
-                          opacity: stageData.source === 'tier-heuristic' ? 0.65 : 1,
-                        }}
-                        title={
-                          stageData.distribution
-                            ? `Stage ${stageData.stage} · ${stageData.distribution[0]}×2-1, ${stageData.distribution[1]}×3-2, ${stageData.distribution[2]}×4-2 (aus Guides)`
-                            : t('tft.augment.stage.heuristic')
-                        }
-                      >
-                        Stage {stageData.stage}
                       </span>
                     </div>
                     {loc.desc && (

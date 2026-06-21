@@ -100,6 +100,59 @@ export async function fetchHetznerMarketvaluePool(opts: MarketvaluePoolOpts): Pr
   return Array.isArray(data?.players) ? data.players as MarketvaluePoolPlayer[] : [];
 }
 
+// Reverse-Lookup: welche Pros spielen eine bestimmte Comp. Family-Mode
+// (recommended) ueber `<trait>__<carry>` matched alle Sub-Cluster (Level/Star/
+// Augment) der gleichen Comp-Familie. Voraussetzung: Cache muss mit
+// unifizierter Klassifikations-Lib re-klassifiziert sein.
+export interface ProsByCompResult {
+  puuid: string;
+  games: number;
+  avgPlacement: number | null;
+  top4Rate: number | null;
+  top1Rate: number | null;
+}
+
+interface ProsByCompOpts {
+  puuids: string[];
+  familyKey?: string;
+  clusterKey?: string;
+  setNumber?: number;
+  minGames?: number;
+  topN?: number;
+  sinceMs?: number;
+  signalTimeoutMs?: number;
+}
+
+export async function fetchHetznerProsByComp(opts: ProsByCompOpts): Promise<{ pros: ProsByCompResult[]; totalGames: number }> {
+  if (!HETZNER_URL || !TOKEN) throw new Error('hetzner_disabled');
+  if (opts.puuids.length === 0) return { pros: [], totalGames: 0 };
+  if (!opts.familyKey && !opts.clusterKey) return { pros: [], totalGames: 0 };
+  const body: Record<string, unknown> = {
+    puuids: opts.puuids,
+    set_number: opts.setNumber,
+    min_games: opts.minGames ?? 2,
+    top_n: opts.topN ?? 10,
+  };
+  if (opts.familyKey) body.family_key = opts.familyKey;
+  if (opts.clusterKey) body.cluster_key = opts.clusterKey;
+  if (opts.sinceMs) body.since_ms = opts.sinceMs;
+  const res = await fetch(`${HETZNER_URL}/pros-by-comp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${TOKEN}` },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(opts.signalTimeoutMs ?? 20_000),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`hetzner_pros_by_comp ${res.status}: ${text.slice(0, 200)}`);
+  }
+  const data = await res.json();
+  return {
+    pros: Array.isArray(data?.pros) ? data.pros : [],
+    totalGames: Number(data?.totalGames) || 0,
+  };
+}
+
 interface PeerBaselineOpts {
   setNumber?: number;
   minPlacement?: number;

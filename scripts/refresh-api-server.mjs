@@ -19,6 +19,11 @@
  *                            the marketvalue + season snapshots replicated, not the full
  *                            per-match jsonb). All onetricks/coach/specialty/econ endpoints
  *                            route through here.
+ *   POST /pros-by-comp    — { puuids, family_key | cluster_key, set_number?, min_games?, top_n?, since_ms? }
+ *                            Reverse-lookup: welche Pro-Players spielen eine bestimmte Comp.
+ *                            Cluster-Key Exact-Match ODER Family-Mode (<trait>__<carry>).
+ *                            Voraussetzung: Cache muss mit unifizierter Klassifikations-Lib
+ *                            re-klassifiziert sein (reference_tft_classification_bridge.md).
  *
  * Auth: Bearer token from $REFRESH_API_TOKEN (managed by /etc/metastats-crawler/env).
  * Rate limit: 60s per (puuid, region) — protects Riot quota from spam.
@@ -30,6 +35,7 @@ import { resolve } from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import pg from 'pg';
+import { classifyComp as classifyCompUnified } from './lib/tft-classify-comp.mjs';
 
 const execFileAsync = promisify(execFile);
 
@@ -696,6 +702,97 @@ async function handlePlayerMatches(body) {
   };
 }
 
+// ─ Pros-by-Comp: welche Pros spielen eine bestimmte Comp? ──────────────────
+// Cross-Lookup von Aggregator-Listing-Comp (cluster_key oder Family-Key) zu
+// den Pro-Players die diese Comp am haeufigsten gespielt haben. Aggregat
+// pro Pro: games, sumPlacement, top4, top1.
+//
+// Klassifikations-Bridge-Voraussetzung: tft_player_match_cache muss mit der
+// unifizierten Lib (scripts/lib/tft-classify-comp.mjs) re-klassifiziert sein —
+// sonst matchen die cluster_keys nicht. Siehe reference_tft_classification_bridge.md.
+//
+// Family-Mode (recommended): family_key = `<trait>__<carry>` — matched alle
+// Cluster mit gleichem Trait+Carry, unabhaengig von Level/Star/Augment. JS-
+// post-filter ueber substring-Parse von comp_cluster_key.
+async function handleProsByComp(body) {
+  const puuids = Array.isArray(body?.puuids)
+    ? body.puuids.filter(p => typeof p === 'string' && p.length > 0).slice(0, 500)
+    : [];
+  if (puuids.length === 0) return { pros: [], totalGames: 0 };
+
+  const setNumber = Number.isFinite(Number(body?.set_number)) ? Number(body.set_number) : SET_NUMBER;
+  const familyKey = typeof body?.family_key === 'string' ? body.family_key : null;
+  const clusterKey = typeof body?.cluster_key === 'string' ? body.cluster_key : null;
+  const minGames = Math.max(1, Math.min(20, Number(body?.min_games) || 2));
+  const topN = Math.max(1, Math.min(50, Number(body?.top_n) || 10));
+  // Optional Time-Window (epoch ms, exclusive lower bound)
+  const sinceMs = Number.isFinite(Number(body?.since_ms)) ? Number(body.since_ms) : null;
+
+  if (!familyKey && !clusterKey) {
+    const e = new Error('family_key or cluster_key required');
+    e.status = 400;
+    throw e;
+  }
+
+  // Live-Re-Classify: jsonb lesen, classifyComp on-the-fly. Pflicht solange
+  // Bestand nicht vollstaendig re-klassifiziert ist (Bestand hat alte
+  // UniqueTrait-fragmentierte cluster_keys). Bei ~119 puuids × 500 matches =
+  // ~60k rows ist das in ~60s machbar.
+  const t0 = Date.now();
+  const sql = `
+    SELECT puuid, placement, units, traits, augments, level
+      FROM tft_player_match_cache
+     WHERE set_number = $1
+       AND queue_id = $2
+       AND puuid = ANY($3::text[])
+       ${sinceMs ? 'AND game_datetime > $4' : ''}
+  `;
+  const params = [setNumber, QUEUE_RANKED, puuids];
+  if (sinceMs) params.push(sinceMs);
+  const r = await pool.query(sql, params);
+  const queryMs = Date.now() - t0;
+
+  // Family-Key bauen aus classifyComp-Output (trait+carry, suffix-frei).
+  const acc = new Map();
+  let matchedCount = 0;
+  for (const row of r.rows) {
+    const cls = classifyCompUnified({
+      traits: row.traits || [],
+      units: row.units || [],
+      augments: row.augments || [],
+      level: row.level ?? 0,
+    }, { currentSet: setNumber, withAugmentSuffix: false });
+    if (!cls) continue;
+    if (clusterKey && cls.clusterKey !== clusterKey) continue;
+    if (familyKey) {
+      const fk = `${cls.primaryTrait}__${cls.carryUnit}`;
+      if (fk !== familyKey) continue;
+    }
+    matchedCount++;
+    const e = acc.get(row.puuid) || { games: 0, sumPlacement: 0, top4: 0, top1: 0 };
+    const p = row.placement || 9;
+    e.games++;
+    e.sumPlacement += p;
+    if (p <= 4) e.top4++;
+    if (p === 1) e.top1++;
+    acc.set(row.puuid, e);
+  }
+
+  const pros = [...acc.entries()]
+    .map(([puuid, e]) => ({
+      puuid,
+      games: e.games,
+      avgPlacement: e.games > 0 ? e.sumPlacement / e.games : null,
+      top4Rate: e.games > 0 ? e.top4 / e.games : null,
+      top1Rate: e.games > 0 ? e.top1 / e.games : null,
+    }))
+    .filter(p => p.games >= minGames)
+    .sort((a, b) => b.games - a.games)
+    .slice(0, topN);
+
+  return { pros, totalGames: matchedCount, queryMs };
+}
+
 const server = http.createServer(async (req, res) => {
   // Liveness + optional service-detail für das Internal-Ops-Dashboard.
   // ?detail=services listet alle metastats-*.service Units mit ActiveState,
@@ -723,7 +820,8 @@ const server = http.createServer(async (req, res) => {
   const isPlayerMatches = req.method === 'POST' && req.url === '/player-matches';
   const isPeerBaseline = req.method === 'POST' && req.url === '/peer-baseline';
   const isMvPool = req.method === 'POST' && req.url === '/marketvalue-pool';
-  if (!isRefresh && !isExplore && !isPlayerMatches && !isPeerBaseline && !isMvPool) {
+  const isProsByComp = req.method === 'POST' && req.url === '/pros-by-comp';
+  if (!isRefresh && !isExplore && !isPlayerMatches && !isPeerBaseline && !isMvPool && !isProsByComp) {
     res.writeHead(404, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({ error: 'not_found' }));
   }
@@ -747,6 +845,7 @@ const server = http.createServer(async (req, res) => {
                   : isPlayerMatches ? await handlePlayerMatches(body)
                   : isPeerBaseline ? await handlePeerBaseline(body)
                   : isMvPool ? await handleMarketvaluePool(body)
+                  : isProsByComp ? await handleProsByComp(body)
                   : await handleRefresh(body);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(result));

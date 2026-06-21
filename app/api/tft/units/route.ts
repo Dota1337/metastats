@@ -196,7 +196,10 @@ export async function GET(request: NextRequest) {
         bucket: filters.bucketLabel,
         minGames: 0,
       });
-      if (hit) {
+      // Guard 2026-06-21: kein leeres Snapshot-Bundle ausliefern → sonst
+      // EmptyData trotz frischer DB-Daten. Siehe Pattern in /api/tft/comps.
+      const payload = hit?.payload as { hasData?: boolean; units?: unknown[] } | undefined;
+      if (hit && payload?.hasData && Array.isArray(payload.units) && payload.units.length > 0) {
         const resp = cachedJson(hit.payload, { cache: cacheControl });
         resp.headers.set('x-snapshot', hit.tag);
         return resp;

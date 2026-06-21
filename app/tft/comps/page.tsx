@@ -277,8 +277,13 @@ export default function TftCompsPage() {
         variants.push(consolidated);
       }
       // Main-Variante = sort-besten der konsolidierten Build-Groups.
+      // CLONE statt Reference — Code-Analyzer-F3 2026-06-21: das spätere
+      // (mainComp as any).avgPlacement = weightedAvgPlacement würde sonst
+      // das Original-Objekt in variants[] mutieren und beim Re-Render mit
+      // anderem sortBy einen bereits-aggregierten Wert als Input für die
+      // nächste Aggregation nutzen (Cascade-Drift).
       const variantsBySort = [...variants].sort((a, b) => sortKey(a) - sortKey(b));
-      const mainComp = variantsBySort[0];
+      const mainComp = { ...variantsBySort[0] };
       // Weighted Family-Stats über alle Variants.
       const totalGames = variants.reduce((s, v) => s + (v.games || 0), 0);
       const weightedAvgPlacement = totalGames > 0

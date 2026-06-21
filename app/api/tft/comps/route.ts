@@ -381,7 +381,13 @@ export async function GET(request: NextRequest) {
         bucket: filters.bucketLabel,
         minGames,
       });
-      if (hit) {
+      // Guard (Code-Analyzer-Verdict 2026-06-21): nie einen Snapshot mit
+      // hasData:false oder leerem comps-Array ausliefern. Sonst zeigt die
+      // Listing-Page „Noch keine Daten" obwohl die Live-RPC frische Comps
+      // hätte. Snapshot mit `hasData:true && comps.length > 0` ist Pflicht
+      // für den Fast-Path.
+      const payload = hit?.payload as { hasData?: boolean; comps?: unknown[] } | undefined;
+      if (hit && payload?.hasData && Array.isArray(payload.comps) && payload.comps.length > 0) {
         const resp = cachedJson(hit.payload, { cache: cacheControl });
         resp.headers.set('x-snapshot', hit.tag);
         return resp;

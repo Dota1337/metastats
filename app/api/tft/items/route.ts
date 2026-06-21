@@ -88,7 +88,9 @@ export async function GET(request: NextRequest) {
         bucket: filters.bucketLabel,
         minGames: 0,
       });
-      if (hit) {
+      // Guard 2026-06-21: kein leeres Snapshot-Bundle ausliefern.
+      const payload = hit?.payload as { hasData?: boolean; items?: unknown[] } | undefined;
+      if (hit && payload?.hasData && Array.isArray(payload.items) && payload.items.length > 0) {
         const resp = cachedJson(hit.payload, { cache: cacheControl });
         resp.headers.set('x-snapshot', hit.tag);
         return resp;

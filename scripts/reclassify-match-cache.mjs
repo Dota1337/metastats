@@ -3,32 +3,49 @@
  * Re-klassifiziert comp_cluster_key + carry_unit in tft_player_match_cache mit
  * der unifizierten Klassifikations-Library (scripts/lib/tft-classify-comp.mjs).
  *
- * Hintergrund (2026-06-21): die alte Cache-Klassifikation (inline in
- * tft-marketvalue.mjs#classifyComp) hatte KEINEN UniqueTrait-Filter und einfache
- * most-items-Carry-Detection. Aggregator hatte UniqueTrait-Filter + Hero-
- * Augment + Cost-Aware-Swap → Pro-Cache-Top war `BlitzcrankUniqueTrait@1_...`
- * (Single-Unit-Fragment), Aggregator-Top war `TFT17_GravesTrait@1_TFT17_Vex`
- * (echte Comp) → Cross-Join 0 Matches.
+ * Hintergrund (2026-06-21): siehe reference_tft_classification_bridge.md.
+ * Probe-Ergebnis 1000 rows: delta=794 (79.4%) → erhebliche Drift im Bestand.
  *
- * Script:
- *  - Liest tft_player_match_cache rows in Batches (Default 1000)
- *  - Klassifiziert aus persistierter units/traits/augments JSONB neu
- *  - UPDATE comp_cluster_key + carry_unit + carry_items
- *  - Idempotent (wenn nichts ändert: no-op)
- *  - Reentrant via match_id-Cursor (gespeichert in `.reclassify-cursor`)
+ * Modi:
+ *  - `--puuids p1,p2,...` (ODER `--puuid-file path`): nur diese puuids
+ *    re-klassifizieren. Schnell-Pfad fuer Pro-Player-Cohort (~190 Pros × 500
+ *    matches = ~95k rows statt 16M).
+ *  - ohne Filter: full-table re-classify ueber alle Set-X-Matches (sehr lang,
+ *    Tage-Lauf — fuer Bestands-Bereinigung in Hintergrund-Job).
+ *
+ * Cursor:
+ *  - Filter-Mode: (puuid, match_id)-Cursor nutzt PK-Index
+ *  - Full-Mode: match_id-Cursor (Sequential-Scan, langsam)
  *
  * Usage:
- *   PG_URL=postgres://... node scripts/reclassify-match-cache.mjs [--set 17] [--batch 1000] [--dry-run]
+ *   PG_URL=postgres://... node scripts/reclassify-match-cache.mjs [opts]
+ *
+ * Opts:
+ *   --set <N>             Set-Number (default: 17)
+ *   --batch <N>           Batch-Groesse (default: 1000)
+ *   --dry-run             Read-only, kein UPDATE
+ *   --puuids p1,p2,...    Komma-Liste von puuids (Filter-Mode)
+ *   --puuid-file <path>   Eine puuid pro Zeile (Filter-Mode)
  */
 import { writeFileSync, readFileSync, existsSync } from 'node:fs';
 import pg from 'pg';
 import { classifyComp } from './lib/tft-classify-comp.mjs';
 
 const args = process.argv.slice(2);
-const SET = Number(args[args.indexOf('--set') + 1]) || 17;
-const BATCH = Number(args[args.indexOf('--batch') + 1]) || 1000;
+function argv(name) { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : null; }
+const SET = Number(argv('--set')) || 17;
+const BATCH = Number(argv('--batch')) || 1000;
 const DRY = args.includes('--dry-run');
-const CURSOR_FILE = '.reclassify-cursor';
+const PUUIDS_INLINE = argv('--puuids');
+const PUUID_FILE = argv('--puuid-file');
+
+let PUUID_FILTER = null;
+if (PUUIDS_INLINE) {
+  PUUID_FILTER = PUUIDS_INLINE.split(',').map(s => s.trim()).filter(Boolean);
+} else if (PUUID_FILE) {
+  PUUID_FILTER = readFileSync(PUUID_FILE, 'utf8').split('\n').map(s => s.trim()).filter(Boolean);
+}
+const CURSOR_FILE = PUUID_FILTER ? '.reclassify-cursor-cohort' : '.reclassify-cursor';
 
 const PG_URL = process.env.PG_URL || process.env.DATABASE_URL;
 if (!PG_URL) {
@@ -37,9 +54,9 @@ if (!PG_URL) {
 }
 
 function loadCursor() {
-  if (!existsSync(CURSOR_FILE)) return { lastMatchId: '', processed: 0, updated: 0 };
+  if (!existsSync(CURSOR_FILE)) return { lastPuuid: '', lastMatchId: '', processed: 0, updated: 0 };
   try { return JSON.parse(readFileSync(CURSOR_FILE, 'utf8')); }
-  catch { return { lastMatchId: '', processed: 0, updated: 0 }; }
+  catch { return { lastPuuid: '', lastMatchId: '', processed: 0, updated: 0 }; }
 }
 function saveCursor(state) {
   writeFileSync(CURSOR_FILE, JSON.stringify(state, null, 2));
@@ -48,7 +65,9 @@ function saveCursor(state) {
 async function main() {
   const pool = new pg.Pool({ connectionString: PG_URL });
   const state = loadCursor();
-  console.log(`[reclassify] set=${SET} batch=${BATCH} dry=${DRY} resume-cursor=${state.lastMatchId || '(none)'}`);
+  const mode = PUUID_FILTER ? `cohort(${PUUID_FILTER.length} puuids)` : 'full-table';
+  console.log(`[reclassify] set=${SET} batch=${BATCH} dry=${DRY} mode=${mode}`);
+  console.log(`[reclassify] resume-cursor=puuid=${state.lastPuuid || '(none)'} match=${state.lastMatchId || '(none)'}`);
   console.log(`[reclassify] already-processed: ${state.processed}, already-updated: ${state.updated}`);
 
   let totalDelta = 0;
@@ -57,14 +76,29 @@ async function main() {
   let totalProcessed = state.processed;
 
   while (true) {
-    const r = await pool.query(
-      `select puuid, match_id, comp_cluster_key, carry_unit, units, traits, augments, level
-         from tft_player_match_cache
-         where set_number = $1 and match_id > $2
-         order by match_id
-         limit $3`,
-      [SET, state.lastMatchId, BATCH],
-    );
+    let r;
+    if (PUUID_FILTER) {
+      // Cohort-Mode: (puuid, match_id)-Cursor nutzt PK-Index, dramatisch schneller.
+      r = await pool.query(
+        `select puuid, match_id, comp_cluster_key, carry_unit, units, traits, augments, level
+           from tft_player_match_cache
+           where set_number = $1
+             and puuid = any($2::text[])
+             and (puuid, match_id) > ($3, $4)
+           order by puuid, match_id
+           limit $5`,
+        [SET, PUUID_FILTER, state.lastPuuid, state.lastMatchId, BATCH],
+      );
+    } else {
+      r = await pool.query(
+        `select puuid, match_id, comp_cluster_key, carry_unit, units, traits, augments, level
+           from tft_player_match_cache
+           where set_number = $1 and match_id > $2
+           order by match_id
+           limit $3`,
+        [SET, state.lastMatchId, BATCH],
+      );
+    }
     if (r.rows.length === 0) break;
 
     const updates = [];
@@ -119,7 +153,9 @@ async function main() {
       }
     }
 
-    state.lastMatchId = r.rows[r.rows.length - 1].match_id;
+    const last = r.rows[r.rows.length - 1];
+    state.lastPuuid = last.puuid;
+    state.lastMatchId = last.match_id;
     state.processed = totalProcessed;
     state.updated = totalUpdated;
     saveCursor(state);

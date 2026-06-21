@@ -2130,10 +2130,35 @@ const translations = {
     '\uC8FC\uC694 \uC5E0\uBE14\uB7FC', '\u4E3B\u8981\u5FBD\u7AE0',
     'Emblemas principales', 'Embl\u00E8mes principaux'
   ),
-  'tft.comp.augments.source': t6(
-    'kuratiert via tftacademy.com', 'curated via tftacademy.com',
-    'tftacademy.com\uC5D0\uC11C \uD050\uB808\uC774\uD305', '\u7531 tftacademy.com \u7B5B\u9009',
-    'curado v\u00EDa tftacademy.com', 'cur\u00E9 via tftacademy.com'
+  'tft.comp.activeTraits': t6(
+    'Aktive Synergien', 'Active Synergies',
+    '\uD65C\uC131 \uC2DC\uB108\uC9C0', '\u6FC0\u6D3B\u7FC1\u7D46',
+    'Sinergias activas', 'Synergies actives'
+  ),
+  'tft.comp.activeTraits.nextHint': t6(
+    'noch {n} f\u00FCr n\u00E4chste Stufe', '{n} more to next tier',
+    '\uB2E4\uC74C \uB2E8\uACC4\uAE4C\uC9C0 {n}', '\u8FD8\u9700{n}\u4E2A\u5230\u4E0B\u4E00\u7EA7',
+    '{n} m\u00E1s para siguiente nivel', '{n} de plus pour le palier suivant'
+  ),
+  'tft.comp.block.live': t6(
+    'In der Runde', 'In Round',
+    '\uB77C\uC6B4\uB4DC \uC911', '\u5BF9\u5C40\u4E2D',
+    'En la ronda', 'En partie'
+  ),
+  'tft.comp.block.strategy': t6(
+    'Strategie', 'Strategy',
+    '\uC804\uB7B5', '\u7B56\u7565',
+    'Estrategia', 'Strat\u00E9gie'
+  ),
+  'tft.comp.block.deep': t6(
+    'Detail-Analyse', 'Deep Analysis',
+    '\uC2EC\uCE35 \uBD84\uC11D', '\u6DF1\u5EA6\u5206\u6790',
+    'An\u00E1lisis profundo', 'Analyse approfondie'
+  ),
+  'tft.trend.patchLine': t6(
+    'Patch {p}', 'Patch {p}',
+    '\uD328\uCE58 {p}', '\u7248\u672C {p}',
+    'Parche {p}', 'Patch {p}'
   ),
   'tft.comp.augments.group.ECON': t6('Econ', 'Econ', '\uACBD\uC81C', '\u7ECF\u6D4E', 'Eco', '\u00C9co'),
   'tft.comp.augments.group.ITEMS': t6('Items', 'Items', '\uC544\uC774\uD15C', '\u88C5\u5907', 'Objetos', 'Objets'),

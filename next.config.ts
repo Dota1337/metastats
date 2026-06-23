@@ -6,6 +6,15 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(__dirname),
   },
+  async redirects() {
+    return [
+      {
+        source: '/tft',
+        destination: '/tft/comps',
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

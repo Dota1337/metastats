@@ -29,7 +29,6 @@ import AdvancedCompFilters, {
 
 // Filter shape and URL-sync mirror /tft/units and /tft/items so the
 // three stats pages behave identically (patch / bucket / days / region).
-// CompList stays as-is for the TFT landing page (compact widget).
 export default function TftCompsPage() {
   const { t } = useI18n();
   const searchParams = useSearchParams();
@@ -438,7 +437,7 @@ export default function TftCompsPage() {
   return (
     <main className="min-h-screen bg-[#0e1525]">
       <Nav active="comps" />
-      <TftHero pageTitle={t('nav.comps')} patch={currentPatchLabel} />
+      <TftHero pageTitle={t('nav.comps')} subtitle={t('tft.heroSubtitle')} patch={currentPatchLabel} />
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-2 pb-6">
         <StatsFilterBar filters={filters} patches={patches} onChange={handleFiltersChange} />
 

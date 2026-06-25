@@ -32,6 +32,7 @@ import { put } from '@vercel/blob';
 import {
   SNAPSHOT_MATRIX as MATRIX,
   snapshotKey,
+  compsMinGames,
   DETAIL_REGIONS,
   DETAIL_DAYS,
   DETAIL_PATCHES,

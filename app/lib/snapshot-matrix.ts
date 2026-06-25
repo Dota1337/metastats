@@ -29,12 +29,28 @@ interface SnapshotEndpointSpec {
 // Hot-Path Filter-Achsen: die UI-Defaults plus die häufigsten Switch-Operationen.
 // patch=current ist immer dabei; patch=previous nur für Stats-Endpoints, weil
 // die Velocity / Patch-Diff-Surfaces den Vergleich brauchen.
-const PRIMARY_REGIONS = ['all', 'west', 'asia', 'euw1', 'na1', 'kr'] as const;
-const SECONDARY_REGIONS = ['eun1', 'br1', 'sg2', 'jp1', 'tw2'] as const;
-const PRIMARY_DAYS = [1, 3, 7] as const;
-const PRIMARY_BUCKETS = ['master_plus', 'all', 'diamond_plus'] as const;
+//
+// Exported damit publish-snapshot-bundle.mjs sie via auto-generated
+// snapshot-matrix.generated.mjs (siehe scripts/build-snapshot-matrix.mjs)
+// importieren kann — Single-Source-of-Truth ohne Drift-Risiko zwischen
+// TS-Konsumenten (Vercel-Routes) und MJS-Konsumenten (Hetzner-Publisher).
+// Multi-Review-Verdict 2026-06-25: Option C (TS-SoT + tsc-Generate).
+export const PRIMARY_REGIONS = ['all', 'west', 'asia', 'euw1', 'na1', 'kr'] as const;
+export const SECONDARY_REGIONS = ['eun1', 'br1', 'sg2', 'jp1', 'tw2'] as const;
+export const PRIMARY_DAYS = [1, 3, 7] as const;
+export const PRIMARY_BUCKETS = ['master_plus', 'all', 'diamond_plus'] as const;
 
-function buildListMatrix(opts: {
+// Detail-Permutationen-Achsen (publish-snapshot-bundle.mjs Detail-Welle).
+// Vor 2026-06-25 lebten diese NUR im Publisher (echte Drift) — wandern jetzt
+// in den SoT damit TS-Layer auch davon weiß und potentielle Detail-Lookup-
+// Validation auf publizierte Achsen möglich wird (YAGNI: nicht jetzt einbauen).
+export const DETAIL_REGIONS = ['all', 'west', 'asia', 'kr'] as const;
+export const DETAIL_DAYS = [1, 3, 7] as const;
+export const DETAIL_PATCHES = ['current', 'previous'] as const;
+export const DETAIL_BUCKET = 'master_plus' as const;
+export const DETAIL_TOP_N = 30 as const;
+
+export function buildListMatrix(opts: {
   patches: Array<'current' | 'previous'>;
   regions: ReadonlyArray<string>;
   days: ReadonlyArray<number>;
@@ -59,7 +75,7 @@ function buildListMatrix(opts: {
 
 // Comp-Listing: minGames skaliert mit Tagesfenster (70 × days), gecappt bei
 // 14 Tagen. Muss synchron bleiben mit dem Default in app/api/tft/comps/route.ts.
-const compsMinGames = (days: number) => 70 * Math.min(days, 14);
+export const compsMinGames = (days: number) => 70 * Math.min(days, 14);
 
 export const SNAPSHOT_MATRIX: Record<SnapshotEndpoint, SnapshotEndpointSpec> = {
   // /api/tft/comps default in der UI: bucket=master_plus, region=all, days=3.

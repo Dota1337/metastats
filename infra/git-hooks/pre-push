@@ -11,7 +11,7 @@
 
 set -e
 
-echo "[pre-push 1/2] Running tsc --noEmit ..."
+echo "[pre-push 1/3] Running tsc --noEmit ..."
 if ! npx tsc --noEmit; then
   echo ""
   echo "TypeScript errors detected — push blocked."
@@ -19,7 +19,20 @@ if ! npx tsc --noEmit; then
 fi
 echo "  tsc passed."
 
-echo "[pre-push 2/2] Running classification verifier ..."
+echo "[pre-push 2/3] Checking snapshot-matrix.generated.mjs freshness ..."
+# Wenn snapshot-matrix.ts neuer ist als die generated.mjs, ist der commit stale.
+# Schützt gegen Drift im Auto-Generate-Pattern (reference_dual_module_patterns.md).
+if [ -f app/lib/snapshot-matrix.ts ] && [ -f app/lib/snapshot-matrix.generated.mjs ]; then
+  if [ app/lib/snapshot-matrix.ts -nt app/lib/snapshot-matrix.generated.mjs ]; then
+    echo ""
+    echo "snapshot-matrix.ts ist neuer als snapshot-matrix.generated.mjs — push blocked."
+    echo "Run: npm run build:snapshot-matrix && git add app/lib/snapshot-matrix.generated.mjs"
+    exit 1
+  fi
+fi
+echo "  snapshot-matrix freshness OK."
+
+echo "[pre-push 3/3] Running classification verifier ..."
 if ! node scripts/verify-classifications.mjs; then
   echo ""
   echo "Classification checks failed — push blocked."

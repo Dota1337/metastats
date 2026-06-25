@@ -23,6 +23,22 @@
 
 import { put } from '@vercel/blob';
 
+// Single-Source-of-Truth: TS-Datei app/lib/snapshot-matrix.ts wird via
+// `npm run build:snapshot-matrix` (Multi-Review 2026-06-25 Option C) zu
+// snapshot-matrix.generated.mjs transpiliert. Dieses File ist im Git
+// committed — Hetzner-Box braucht nicht tsc bei jedem Publish zu laufen.
+// Bei Änderungen an snapshot-matrix.ts MUSS regeneriert + committed werden
+// (Pre-Push-Hook empfohlen). Memory: reference_dual_module_patterns.md.
+import {
+  SNAPSHOT_MATRIX as MATRIX,
+  snapshotKey,
+  DETAIL_REGIONS,
+  DETAIL_DAYS,
+  DETAIL_PATCHES,
+  DETAIL_BUCKET,
+  DETAIL_TOP_N,
+} from '../app/lib/snapshot-matrix.generated.mjs';
+
 const TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
 const BASE = process.env.PUBLIC_BASE_URL
   || (process.argv.includes('--base-url') ? process.argv[process.argv.indexOf('--base-url') + 1] : null)
@@ -38,106 +54,6 @@ const ENDPOINT_FILTER = (() => {
   const i = args.indexOf('--endpoint');
   return i >= 0 ? args[i + 1] : null;
 })();
-
-// === Filter-Matrix — kopiert aus app/lib/snapshot-matrix.ts ============== //
-// Bewusst dupliziert statt importiert: das App-Modul ist TypeScript mit
-// path-rooted Imports und der Publisher läuft als nacktes Node-Skript.
-// Single source of truth bleibt das TS-File; sync via PR-Review.
-
-const PRIMARY_REGIONS = ['all', 'west', 'asia', 'euw1', 'na1', 'kr'];
-const SECONDARY_REGIONS = ['eun1', 'br1', 'sg2', 'jp1', 'tw2'];
-const PRIMARY_DAYS = [1, 3, 7];
-const PRIMARY_BUCKETS = ['master_plus', 'all', 'diamond_plus'];
-
-function buildList({ patches, regions, days, buckets, minGames }) {
-  const out = [];
-  for (const patch of patches) {
-    for (const region of regions) {
-      for (const d of days) {
-        for (const bucket of buckets) {
-          const mg = typeof minGames === 'function' ? minGames(d) : minGames;
-          out.push({ patch, region, days: d, bucket, minGames: mg });
-        }
-      }
-    }
-  }
-  return out;
-}
-
-// Comp-Listing: 70 Games × Tagesfenster, gecappt bei 14 Tagen. Muss synchron
-// bleiben mit dem Default in app/api/tft/comps/route.ts + snapshot-matrix.ts.
-const compsMinGames = (days) => 70 * Math.min(days, 14);
-
-const MATRIX = {
-  comps: {
-    apiPath: '/api/tft/comps',
-    permutations: buildList({
-      patches: ['current', 'previous'],
-      regions: PRIMARY_REGIONS,
-      days: PRIMARY_DAYS,
-      buckets: PRIMARY_BUCKETS,
-      minGames: compsMinGames,
-    }),
-  },
-  units: {
-    apiPath: '/api/tft/units',
-    permutations: buildList({
-      patches: ['current', 'previous'],
-      regions: [...PRIMARY_REGIONS, ...SECONDARY_REGIONS],
-      days: PRIMARY_DAYS,
-      buckets: PRIMARY_BUCKETS,
-      minGames: 0,
-    }),
-  },
-  items: {
-    apiPath: '/api/tft/items',
-    permutations: buildList({
-      patches: ['current', 'previous'],
-      regions: [...PRIMARY_REGIONS, ...SECONDARY_REGIONS],
-      days: PRIMARY_DAYS,
-      buckets: PRIMARY_BUCKETS,
-      minGames: 0,
-    }),
-  },
-  traits: {
-    apiPath: '/api/tft/traits',
-    permutations: buildList({
-      patches: ['current', 'previous'],
-      regions: PRIMARY_REGIONS,
-      days: PRIMARY_DAYS,
-      buckets: PRIMARY_BUCKETS,
-      minGames: 0,
-    }),
-  },
-  // augments-Endpoint wird nicht vorgerendert — Route liefert per Design
-  // hasData:false (Riot-Restriction). UI rendert aus CDragon-Bundle.
-  //
-  // comps-detail wird in einer 2. Phase erzeugt (Top-N-Slugs aus Listing-
-  // Snapshot), siehe publishDetailPermutation + DETAIL_* Konstanten oben.
-  'comps-detail': {
-    apiPath: '/api/tft/comps',
-    permutations: [],
-  },
-};
-
-function snapshotKey(endpoint, p) {
-  const patch = p.patch.replace(/[^A-Za-z0-9._-]/g, '_');
-  const region = p.region.replace(/[^a-z0-9]/gi, '_');
-  const bucket = p.bucket.replace(/[^a-z0-9_]/gi, '_');
-  if (endpoint === 'comps-detail') {
-    const slugSafe = (p.slug || '').replace(/[^A-Za-z0-9._-]/g, '_');
-    return `${endpoint}/${patch}/${slugSafe}__${region}__${p.days}d__${bucket}.json`;
-  }
-  return `${endpoint}/${patch}/${region}__${p.days}d__${bucket}__mg${p.minGames}.json`;
-}
-
-// Detail-Snapshot-Achsen (Phase 2 2026-06-21, perf-critic-Empfehlung).
-// 4 regions × 3 days × 2 patches × 1 bucket × top-30 slugs = 720 Permutationen.
-const DETAIL_REGIONS = ['all', 'west', 'asia', 'kr'];
-const DETAIL_DAYS = [1, 3, 7];
-const DETAIL_PATCHES = ['current', 'previous'];
-const DETAIL_BUCKET = 'master_plus';
-const DETAIL_TOP_N = 30;
 
 // === Helpers ============================================================ //
 

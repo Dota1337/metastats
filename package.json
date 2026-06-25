@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "setup-hooks": "node scripts/setup-git-hooks.mjs",
+    "build:snapshot-matrix": "node scripts/build-snapshot-matrix.mjs",
     "verify": "node scripts/verify-classifications.mjs",
     "verify:coverage": "node scripts/verify-comp-augments-coverage.mjs",
     "verify:full": "node scripts/verify-classifications.mjs && node scripts/verify-comp-augments-coverage.mjs"

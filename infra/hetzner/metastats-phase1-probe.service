@@ -1,0 +1,18 @@
+[Unit]
+Description=metastats Phase-1 Aggregator-Readiness Probe (daily monitoring)
+# Spec: infra/specs/2026-06-25-stats-aggregator-v2.md
+After=network.target metastats-snapshot-publisher.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/metastats-crawler
+EnvironmentFile=/etc/metastats-crawler/env
+# Append JSON line per run to log. Logrotate handles rotation.
+ExecStart=/bin/sh -c 'mkdir -p /var/log/metastats && node scripts/probe-aggregator-readiness.mjs --json >> /var/log/metastats/phase1-probes.log'
+TimeoutStartSec=120
+Nice=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

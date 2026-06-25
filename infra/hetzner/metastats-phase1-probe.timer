@@ -1,0 +1,13 @@
+[Unit]
+Description=metastats Phase-1 Probe Timer (daily 09:30 UTC, nach daily-crawl + publisher)
+# Spec: infra/specs/2026-06-25-stats-aggregator-v2.md
+
+[Timer]
+# 09:30 UTC: daily-crawl ist ~ab 14:30 vortags durch (14h Laufzeit),
+# publisher hat OnSuccess + Re-Runs Zeit. Probe misst die nach-Pipeline-Wirkung.
+OnCalendar=*-*-* 09:30:00 UTC
+Persistent=true
+RandomizedDelaySec=180
+
+[Install]
+WantedBy=timers.target

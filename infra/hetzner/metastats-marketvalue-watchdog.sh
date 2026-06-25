@@ -76,6 +76,26 @@ if [[ -z "$MISSING" ]]; then
   exit 0
 fi
 
+# Inflight-Awareness (architect F8 aus Multi-Review 2026-06-25): differenziert
+# im Log "Resume-Run" (Region hat bereits Inflight-Rows aus abgebrochenem Lauf)
+# vs "Full-Run" (Region startet von 0). KEINE Skip-Logik — beide Fälle triggern
+# dasselbe (snapshot-service start), aber Diagnose ist klarer und Memory-Anker
+# bei Vorfall-Untersuchung. Tabelle existiert seit Migration 0046.
+INFLIGHT_REGIONS=$(psql "$DATABASE_URL" -t -A -c "
+  select string_agg(region || ':' || cnt, ',' order by region)
+    from (
+      select region, count(*)::int as cnt
+        from tft_mv_inflight_raw
+       where day = current_date
+       group by region
+    ) t;
+" 2>/dev/null || echo "")
+INFLIGHT_REGIONS=$(echo "$INFLIGHT_REGIONS" | tr -d '[:space:]')
+
+if [[ -n "$INFLIGHT_REGIONS" ]]; then
+  echo "${LOG_PREFIX} inflight-state: ${INFLIGHT_REGIONS} (resume-runs)"
+fi
+
 echo "${LOG_PREFIX} fehlende Regionen: ${MISSING} — triggere snapshot-service"
 systemctl start --no-block metastats-marketvalue-snapshot.service
 exit 0

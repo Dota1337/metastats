@@ -89,6 +89,22 @@ const DEFAULT_CONCURRENCY = 4;
 // um Tagesgrenzen, 1h Puffer gegen Off-by-one-Verluste.
 const START_TIME_OVERLAP_SEC = 60 * 60;
 
+// Sub-Region-Resume Inflight-Tabelle (Migration 0046, 2026-06-25).
+// Schwelle: nur Regionen mit >= 500 Spielern aktivieren Inflight (Region-
+// Laufzeit ~10min als Mindest-ROI). Skip-Liste: me1 (n~90), br1/la1/la2
+// (~1200 alle), oc1 (~900) — kleine Regionen sind atomar genug.
+// (Multi-Review perf-critic F8: Schwelle player-count-basiert, nicht magic 100)
+const INFLIGHT_MIN_PLAYERS = 500;
+
+// Feature-Flag für Inflight-Resume. Default OFF für erste 2-3 Wochen Production
+// (architect F5: Rollback in 60s ohne Code-Deploy via systemd Environment=).
+// Driver schreibt Inflight wenn Flag=true, sonst Bypass komplett.
+const USE_INFLIGHT_RESUME = (process.env.MV_USE_INFLIGHT_RESUME || 'false').toLowerCase() === 'true';
+
+// Cursor-Schema-Version. Bei Major-Schema-Änderung bumpen, alt-Driver
+// erkennen Mismatch und resetten Cursor sauber (logic-flow F6).
+const CURSOR_SCHEMA_VERSION = 2;
+
 // Region-Cursor lebt OUTSIDE /opt/metastats-crawler — remote-deploy.sh würde
 // einen In-Repo-Cursor mit `git clean -fd` killen. Lokal-Dev fällt auf cwd.
 // Cursor pro UTC-Tag: enthält die heute schon fertigen Regionen. Bei Tagesgrenze
@@ -219,16 +235,125 @@ function todayUtcIso() {
   return new Date().toISOString().slice(0, 10);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Inflight-Tabelle Helper (Sub-Region-Resume, Migration 0046)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Cleanup stale Inflight beim Driver-Start. Architect F3: day-cleanup REICHT
+// NICHT — Set-Bump zwischen 23:55 (Set 17) und 00:05 (Set 18) würde stale Set-17
+// Inflight stehen lassen. Cleanup-Condition: day < today OR set_number != current.
+async function cleanupStaleInflight(currentSetNumber) {
+  if (!USE_INFLIGHT_RESUME) return;
+  try {
+    const r = await pool.query(
+      `delete from tft_mv_inflight_raw
+       where day < $1 or set_number != $2`,
+      [todayUtcIso(), currentSetNumber],
+    );
+    if (r.rowCount > 0) {
+      console.log(`  [inflight] cleaned ${r.rowCount} stale rows (day<today OR set != ${currentSetNumber})`);
+    }
+  } catch (err) {
+    console.error(`  [inflight] cleanupStale failed: ${err.message}`);
+  }
+}
+
+// `--reset-cursor` Cascade: löscht Cursor + alle heutigen Inflight-Rows.
+async function clearTodayInflight() {
+  if (!USE_INFLIGHT_RESUME) return;
+  try {
+    const r = await pool.query(
+      `delete from tft_mv_inflight_raw where day = $1`,
+      [todayUtcIso()],
+    );
+    if (r.rowCount > 0) {
+      console.log(`  [inflight] reset: ${r.rowCount} heute-Rows gelöscht`);
+    }
+  } catch (err) {
+    console.error(`  [inflight] reset failed: ${err.message}`);
+  }
+}
+
+// Pass-1-Eintritt: lese alle bereits gather-ten Spieler für diese Region.
+// Truth-Source für Skip-Set (logic-flow F2: cursor.persistedCount ist NUR
+// Anzeige-Telemetrie, NIE Skip-Threshold).
+async function loadInflightForRegion(region) {
+  if (!USE_INFLIGHT_RESUME) return new Map();
+  try {
+    const r = await pool.query(
+      `select puuid, raw_metrics
+       from tft_mv_inflight_raw
+       where region = $1 and day = $2`,
+      [region, todayUtcIso()],
+    );
+    return new Map(r.rows.map(row => [row.puuid, row.raw_metrics]));
+  } catch (err) {
+    console.error(`  [inflight] load failed (${region}): ${err.message}`);
+    return new Map();
+  }
+}
+
+// Pro Spieler nach erfolgreichem gatherPlayer: persistiere Raw-Metriken.
+// PK (puuid, region, day) — UPSERT idempotent bei Re-Run.
+async function insertInflight(region, setNumber, puuid, rawMetrics) {
+  if (!USE_INFLIGHT_RESUME) return;
+  try {
+    await pool.query(
+      `insert into tft_mv_inflight_raw (puuid, region, day, set_number, raw_metrics)
+       values ($1, $2, $3, $4, $5)
+       on conflict (puuid, region, day) do update set raw_metrics = excluded.raw_metrics, persisted_at = now()`,
+      [puuid, region, todayUtcIso(), setNumber, rawMetrics],
+    );
+  } catch (err) {
+    // Inflight-Write-Failure ist nicht fatal — Driver läuft ohne Resume
+    // weiter, nur Crash-Recovery für diesen Spieler ist weg.
+    if (VERBOSE) console.error(`  [inflight] insert failed ${puuid.slice(0, 8)}…: ${err.message}`);
+  }
+}
+
+// Region-Done-Cleanup. NICHT atomar mit Cursor-Write — Reihenfolge umgekehrt
+// (logic-flow F1: Cursor zuerst). Bei Crash zwischen Cursor-Write und Cleanup
+// bleibt stale Inflight, wird beim nächsten Driver-Start via cleanupStaleInflight
+// gefangen.
+async function cleanupRegionInflight(region) {
+  if (!USE_INFLIGHT_RESUME) return;
+  try {
+    const r = await pool.query(
+      `delete from tft_mv_inflight_raw where region = $1 and day = $2`,
+      [region, todayUtcIso()],
+    );
+    if (VERBOSE && r.rowCount > 0) {
+      console.log(`  [inflight] region-done cleanup ${region}: ${r.rowCount} rows`);
+    }
+  } catch (err) {
+    console.error(`  [inflight] region-done cleanup ${region}: ${err.message}`);
+  }
+}
+
 function readCursor() {
-  if (RESET_CURSOR) return { day: todayUtcIso(), completed: [] };
+  if (RESET_CURSOR) return { day: todayUtcIso(), completed: [], inflight: null };
   try {
     const raw = JSON.parse(readFileSync(CURSOR_PATH, 'utf8'));
     // Cursor wird pro UTC-Tag resetet — gestern fertige Regionen brauchen heute
     // wieder einen frischen Snapshot.
-    if (raw.day !== todayUtcIso()) return { day: todayUtcIso(), completed: [] };
-    return { day: raw.day, completed: Array.isArray(raw.completed) ? raw.completed : [] };
+    if (raw.day !== todayUtcIso()) return { day: todayUtcIso(), completed: [], inflight: null };
+    // Bei Schema-Version-Mismatch: fail-loud (logic-flow F6). Aktuell V1->V2
+    // ist tolerant lesbar (inflight fehlt = null), aber zukünftige V2->V3
+    // soll explizit migrationspflicht sein.
+    const version = raw.cursorVersion ?? 1;
+    if (version > CURSOR_SCHEMA_VERSION) {
+      console.error(`[cursor] schema version ${version} unsupported (driver supports ${CURSOR_SCHEMA_VERSION}) — resetting`);
+      return { day: todayUtcIso(), completed: [], inflight: null };
+    }
+    return {
+      day: raw.day,
+      completed: Array.isArray(raw.completed) ? raw.completed : [],
+      // inflight ist Anzeige-only (logic-flow F2). Skip-Set kommt IMMER aus
+      // loadInflightForRegion() DB-Query, NIE aus cursor.inflight.persistedCount.
+      inflight: raw.inflight && typeof raw.inflight === 'object' ? raw.inflight : null,
+    };
   } catch {
-    return { day: todayUtcIso(), completed: [] };
+    return { day: todayUtcIso(), completed: [], inflight: null };
   }
 }
 
@@ -241,11 +366,18 @@ function writeCursor(cursor) {
   try {
     mkdirSync(dirname(CURSOR_PATH), { recursive: true });
     const tmpPath = `${CURSOR_PATH}.tmp`;
-    writeFileSync(tmpPath, JSON.stringify({
+    const payload = {
+      cursorVersion: CURSOR_SCHEMA_VERSION,
       day: cursor.day,
       completed: cursor.completed,
       updatedAt: new Date().toISOString(),
-    }, null, 2));
+    };
+    // inflight ist optional + Anzeige-only. NUR setzen wenn aktiv vorhanden,
+    // sonst weglassen — vermeidet stale `inflight` nach Region-Done.
+    if (cursor.inflight && typeof cursor.inflight === 'object') {
+      payload.inflight = cursor.inflight;
+    }
+    writeFileSync(tmpPath, JSON.stringify(payload, null, 2));
     // rename() ist atomic auf POSIX → entweder altes File oder neues File,
     // nie ein truncated File.
     renameSync(tmpPath, CURSOR_PATH);
@@ -409,12 +541,35 @@ async function processRegion(region) {
   const hotCompKeys = buildHotCompKeys(graph);
   const recommendedItems = buildRecommendedItems(graph);
 
+  // Inflight-Aktivierungs-Check: nur ab >=500 Spielern lohnt sich Resume-
+  // Granularität (perf-critic F8: kleine Regionen sind in 2-5min durch,
+  // Resume-Wert null). me1/br1/la1/la2/oc1 skippen automatisch.
+  const inflightActive = USE_INFLIGHT_RESUME && players.length >= INFLIGHT_MIN_PLAYERS;
+  const inflightMap = inflightActive ? await loadInflightForRegion(region) : new Map();
+  if (inflightActive) {
+    console.log(`  [inflight] active — ${inflightMap.size} puuids im Skip-Set (resume mode)`);
+  } else if (USE_INFLIGHT_RESUME) {
+    console.log(`  [inflight] skipped — region <${INFLIGHT_MIN_PLAYERS} players`);
+  }
+
   const gathered = [];
-  let p1 = 0, tooFew = 0, failed = 0;
+  let p1 = 0, tooFew = 0, failed = 0, fromInflight = 0;
+  let pass1Aborted = false;
   for (const p of players) {
     if (aborting) {
-      console.log(`  [signal] Pass 1 stopped at ${p1}/${players.length}`);
+      console.log(`  [signal] Pass 1 stopped at ${p1}/${players.length} (region NOT marked completed, ${gathered.length} usable so far)`);
+      pass1Aborted = true;
       break;
+    }
+    // Inflight-Skip: wenn Spieler im Resume-Set, raw_metrics direkt nutzen
+    // (data-skeptic F1: Time-Skew-Bias <0.5% bei 2h-Gap akzeptiert — Inflight
+    // ist Zeitpunkt-Freeze, nicht reproduzierbar mit Frisch-Stand. Akzeptable
+    // Granularität bei Daily-Snapshots).
+    if (inflightMap.has(p.puuid)) {
+      gathered.push({ p, raw: inflightMap.get(p.puuid) });
+      fromInflight++;
+      p1++;
+      continue;
     }
     try {
       const startTimeSec = startTimeForPlayer(p);
@@ -430,10 +585,18 @@ async function processRegion(region) {
       };
       const g = await gatherPlayer(pool, riot, p, ctx);
       p1++;
-      if (g.skip) tooFew++; else gathered.push({ p, raw: g.raw });
+      if (g.skip) {
+        tooFew++;
+      } else {
+        gathered.push({ p, raw: g.raw });
+        // Inflight-Persist nach erfolgreichem Gather. Best-effort — Failure
+        // ist non-fatal (Driver läuft ohne Resume für diesen Player weiter).
+        await insertInflight(region, setNumber, p.puuid, g.raw);
+      }
       if (VERBOSE || p1 % 50 === 0 || p1 === players.length) {
         const dt = ((Date.now() - t0) / 1000).toFixed(0);
-        console.log(`  [pass1] ${p1}/${players.length} | ${gathered.length} usable, ${tooFew} too-few | ${dt}s`);
+        const inflightSuffix = inflightActive ? `, ${fromInflight} resumed` : '';
+        console.log(`  [pass1] ${p1}/${players.length} | ${gathered.length} usable, ${tooFew} too-few${inflightSuffix} | ${dt}s`);
       }
     } catch (err) {
       failed++;
@@ -447,6 +610,15 @@ async function processRegion(region) {
   }
 
   // 3. Population-Recompute aus aktiver Sub-Kohorte
+  //
+  // Pop-Determinismus-Pflicht (architect F9): gathered nach puuid sortieren
+  // VOR buildCompMeta/buildPopulation. Bei Resume-Mix (Inflight+Frisch) kommt
+  // gathered in der Reihenfolge "alle Frisch nach DB-Order, dann übersprungene
+  // Inflight in DB-Order" — nicht puuid-sortiert. Single-Run wäre direkt
+  // puuid-sortiert (loadIterationTargets ORDER BY puuid). Sort macht Pop
+  // bitwise reproduzierbar zwischen den Pfaden.
+  gathered.sort((a, b) => a.p.puuid.localeCompare(b.p.puuid));
+
   let pop;
   let compMetaSize = 0;
   if (POP_BYPASS_REGIONS.has(region)) {
@@ -454,6 +626,10 @@ async function processRegion(region) {
     console.log(`  [pop] ${region} bypassed (n=${gathered.length} zu klein für valide z-Verteilung) — multiplier=1.0`);
   } else {
     const compMeta = buildCompMeta(gathered.map(g => g.raw));
+    // applyMeta über GESAMTE gathered-Liste (Inflight + Frisch) — data-skeptic
+    // F2: metaRelM wird in-place in raw_metrics geschrieben. Wenn applyMeta
+    // nur über Frisch läuft, fehlt metaRelative-z für Inflight-Spieler →
+    // unrated-Cascade in Pass 2.
     for (const g of gathered) applyMeta(g.raw, compMeta);
     pop = buildPopulation(gathered.map(g => g.raw));
     compMetaSize = compMeta.size;
@@ -464,6 +640,15 @@ async function processRegion(region) {
   }
 
   // 4. Pass 2: snapshotPlayer pro Spieler
+  //
+  // Iteriert über die kombinierte gathered-Liste (Inflight + Frisch nach
+  // puuid-Sort). Bei Crash zwischen Pass 1 und Pass 2 ist die Liste nicht
+  // mehr in-Memory (logic-flow F4) — DAFÜR sorgt aber der Inflight-Resume
+  // beim Re-Start: cleanupStaleInflight läuft NICHT auf heutige Rows, der
+  // nächste Pass-1-Lauf für die Region findet Inflight-Map = volle Liste,
+  // alle Spieler gehen direkt nach gathered (kein Gather nötig), Pop wird
+  // neu gebaut, Pass 2 läuft über die volle Liste. Idempotent via
+  // UPSERT in tft_player_marketvalue_snapshots.
   let snapshotted = 0, unrated = 0;
   const snapshotCtx = {
     region, regional,
@@ -481,8 +666,10 @@ async function processRegion(region) {
   }
 
   const dt = ((Date.now() - t0) / 1000).toFixed(0);
-  console.log(`  [done] ${snapshotted} snapshots | ${gathered.length} usable / ${players.length} total | ${tooFew} too-few, ${unrated} unrated, ${failed} failed | ${dt}s`);
-  return { region, players: players.length, gathered: gathered.length, snapshots: snapshotted, unrated, failed, backup: backupTbl };
+  const inflightSuffix = inflightActive ? `, ${fromInflight} from-inflight` : '';
+  const abortedSuffix = pass1Aborted ? ' [ABORTED — region not completed]' : '';
+  console.log(`  [done] ${snapshotted} snapshots | ${gathered.length} usable / ${players.length} total | ${tooFew} too-few, ${unrated} unrated, ${failed} failed${inflightSuffix} | ${dt}s${abortedSuffix}`);
+  return { region, players: players.length, gathered: gathered.length, snapshots: snapshotted, unrated, failed, backup: backupTbl, fromInflight, aborted: pass1Aborted };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -494,6 +681,7 @@ async function main() {
   console.log(`    regions: ${REGIONS.join(', ')}`);
   console.log(`    max-ids: ${MAX_IDS} | concurrency: ${MATCH_CONCURRENCY} | limit: ${LIMIT || 'unlimited'}`);
   console.log(`    dry-run: ${DRY_RUN} | skip-backup: ${SKIP_BACKUP} | reset-cursor: ${RESET_CURSOR}`);
+  console.log(`    inflight-resume: ${USE_INFLIGHT_RESUME ? 'ON' : 'OFF (default — set MV_USE_INFLIGHT_RESUME=true to enable)'}`);
 
   // Cursor laden (oder leer wenn neuer UTC-Tag / --reset-cursor)
   const cursor = readCursor();
@@ -503,6 +691,17 @@ async function main() {
     console.log(`    todo: ${todoRegions.join(',')}`);
   } else {
     console.log(`    cursor: ${CURSOR_PATH} (frischer Tag oder reset)`);
+  }
+
+  // Inflight-Stale-Cleanup beim Start. Pflicht VOR jeglichen Region-Reads.
+  // Architect F3: Cleanup-Condition `day < today OR set_number != current`.
+  // Bei --reset-cursor zusätzlich heutige Inflight wipen.
+  if (USE_INFLIGHT_RESUME && !DRY_RUN) {
+    const currentSet = loadCurrentSet();
+    if (currentSet != null) {
+      await cleanupStaleInflight(currentSet);
+      if (RESET_CURSOR) await clearTodayInflight();
+    }
   }
 
   if (todoRegions.length === 0) {
@@ -525,9 +724,25 @@ async function main() {
         // Region als "heute fertig" markieren (auch bei dry-run nicht, weil
         // dort keine echten Snapshots geschrieben wurden — aber dry-run hat
         // sowieso keinen Side-Effect).
-        if (!DRY_RUN) {
+        //
+        // Region-Done-Reihenfolge (logic-flow F1): Cursor-Write ZUERST,
+        // Inflight-Cleanup DANACH. Wenn Cleanup-DELETE crashed bleiben stale
+        // Inflight-Rows — werden beim nächsten Driver-Start via
+        // cleanupStaleInflight gefangen. Umgekehrt wäre teurer: Cleanup-OK
+        // aber Cursor-Crash → 14k Re-Fetches morgen.
+        //
+        // ABORTED-Pass-1 (logic-flow F3): wenn aborting mid-Pass-1, hat
+        // processRegion zwar Pop+Pass-2 für die bisher gather-ten Spieler
+        // durchgezogen (Snapshots in DB), aber Region ist NICHT komplett
+        // durchlaufen. Region als pending lassen → nächster Lauf resumed
+        // via Inflight-Map (alle bisher gather-ten kommen aus Inflight,
+        // Riot-Calls nur für Rest).
+        if (!DRY_RUN && !r.aborted) {
           cursor.completed.push(region);
           writeCursor(cursor);
+          await cleanupRegionInflight(region);
+        } else if (r.aborted) {
+          console.log(`[${region}] cursor preserved (aborted), inflight retained for resume`);
         }
       } catch (err) {
         // Bei Fatal-Fehler einer Region NICHT als completed markieren →

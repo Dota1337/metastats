@@ -30,6 +30,16 @@ export const ALL_BUCKETS = [
 export const BUCKET_GROUPS: Record<string, string[]> = {
   all: ALL_BUCKETS,
   master_plus: ['master', 'grandmaster', 'challenger'],
+  // diamond_plus expands to diamond + master_plus tiers. War vor 2026-06-25
+  // ein BUG: snapshot-matrix.ts hatte `diamond_plus` in PRIMARY_BUCKETS, aber
+  // BUCKET_GROUPS hatte keinen Eintrag → expandBuckets() fiel zu ['diamond_plus']
+  // durch → matched 0 Rows in tft_daily_comp_stats (kein `bucket='diamond_plus'`-
+  // Row existiert in der DB) → 36 Permutationen schrieben hasData:false und
+  // wurden als skipped behandelt → 502-Symptom bei Live-API-Calls auf
+  // diamond_plus-Filter. Multi-Review 2026-06-25 (perf-critic F8 + data-skeptic
+  // F8) konvergent. DB-Probe verifiziert: aggregiert = 16410 rows, 1097 clusters,
+  // 719k games über 7d Set 17 → substantielle Daten verfügbar.
+  diamond_plus: ['diamond', 'master', 'grandmaster', 'challenger'],
   // pro_pool is a synthetic bucket: rows are written by the aggregator
   // alongside tier-bucket rows when a TFT pro participated in the match.
   // Exposed as an identity group so callers can pass bucket=pro_pool and

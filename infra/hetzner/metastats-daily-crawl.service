@@ -11,10 +11,10 @@ Conflicts=metastats-crawler.service
 # is still active). The catch-up service detects that and starts another run
 # immediately so we never lose a day's aggregation.
 OnSuccess=metastats-daily-crawl-catchup.service
-# Snapshot publisher: rendert die Hot-Path-Permutationen unserer Stats-APIs als
-# statische JSON-Blobs nach Vercel-Blob. Sub-100ms-Lookups für die ~150 häufigsten
-# Filter-Combos, der Live-RPC-Pfad bleibt als Fallback erhalten.
-OnSuccess=metastats-snapshot-publisher.service
+# Snapshot publisher wird NICHT mehr via OnSuccess getriggert (Audit HIGH-1,
+# 2026-06-28): der Driver ruft den Publisher selbst, aber nur wenn er real >=1
+# Region gecrawlt hat (done > 0) — einheitlich für den 00:00-Lauf und die
+# --resume-gaps-Resumes, ohne No-Op-Publishes.
 # TEMPORÄR (Phase A3, 2026-06-20): re-aktiviert die OnSuccess-Kette zum
 # Marktwert-Bootstrap-Crawler. Sobald der bestehende Match-Cache aller
 # 15 Regionen wieder warm + die Marktwert-Snapshots aktuell sind (~5-7 Nächte),

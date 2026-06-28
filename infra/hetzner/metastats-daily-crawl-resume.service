@@ -4,15 +4,14 @@ Wants=network-online.target
 After=network-online.target
 # NO Conflicts= anywhere in this chain: a Conflicts= SIGTERM would KILL a
 # running crawl instead of protecting it. Concurrency against the shared Riot
-# bucket is prevented by the watchdog's is-active skip-check, not Conflicts
-# (logic-flow-critic W1, 2026-06-28).
+# bucket is prevented by the driver's shared advisory lock + the watchdog's
+# is-active skip-check, not Conflicts (logic-flow-critic W1, 2026-06-28).
 #
-# Re-publish snapshots once the resumed regions land, so the user-facing
-# availability cushion (/tft/comps listing snapshots) reflects the now-complete
-# day instead of the partial data the 00:00 OnSuccess published. Deliberately
-# NOT chaining the marketvalue/bootstrap crawler (would re-spend Riot quota) and
-# NOT the catch-up service (that handles midnight-crossing of the 00:00 run only).
-OnSuccess=metastats-snapshot-publisher.service
+# NO OnSuccess=publisher here (Audit HIGH-1, 2026-06-28): with --resume-gaps a
+# No-Op (no incomplete day) is the COMMON case, and OnSuccess fires on every
+# clean exit -> the publisher would run a full ~150-permutation REPLACE ~3x/day
+# for zero new data. Instead the driver itself triggers the publisher, but only
+# when it actually crawled >=1 region this run (done > 0).
 
 [Service]
 Type=oneshot
@@ -21,10 +20,11 @@ EnvironmentFile=/etc/metastats-crawler/env
 # No artificial cap — a resume may still have to crawl several full regions.
 TimeoutStartSec=infinity
 TimeoutStopSec=600
-# mode=auto -> the driver pins targetDay D-2 and crawls only ACTIVE_REGIONS not
-# yet recorded in /etc/metastats-crawler/daily-crawl-cursor.json for that day;
-# it No-Ops if the 00:00 run already completed all regions.
-ExecStart=/usr/bin/node scripts/crawl-allranks-all-regions.mjs --mode auto --region-timeout=0
+# --resume-gaps -> the driver re-selects the OLDEST still-incomplete day in the
+# last K days (per-day cursors in /etc/metastats-crawler/daily-crawl-cursor-*.json)
+# under the shared lock, crawls only its un-settled regions, and No-Ops if there
+# is no incomplete day. Audit F2b/F3.
+ExecStart=/usr/bin/node scripts/crawl-allranks-all-regions.mjs --resume-gaps --region-timeout=0
 StandardOutput=journal
 StandardError=journal
 Nice=10

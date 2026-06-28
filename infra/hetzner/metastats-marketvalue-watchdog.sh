@@ -28,6 +28,7 @@ ACTIVE_REGIONS=(euw1 eun1 tr1 ru me1 na1 br1 la1 la2 kr jp1 oc1 sg2 tw2 vn2)
 for svc in metastats-marketvalue-snapshot \
            metastats-crawler \
            metastats-daily-crawl \
+           metastats-daily-crawl-resume \
            metastats-tft-pro-fullsync; do
   state=$(systemctl is-active "${svc}.service" 2>/dev/null) || true
   if [[ "$state" == "active" || "$state" == "activating" ]]; then

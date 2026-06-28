@@ -79,7 +79,8 @@ export const compsMinGames = (days: number) => 70 * Math.min(days, 14);
 
 export const SNAPSHOT_MATRIX: Record<SnapshotEndpoint, SnapshotEndpointSpec> = {
   // /api/tft/comps default in der UI: bucket=diamond_plus, region=all, days=3.
-  // minGames=30 ist der Route-Default; weniger riskiert noisy comps.
+  // minGames für comps = compsMinGames(days) = 70×min(days,14) (Route-Default,
+  // comps/route.ts) — NICHT 30. Skaliert mit dem Window gegen noisy comps.
   // Primary-Regionen + Primary-Buckets × 3 Days × 2 Patches = 108 Permutationen.
   comps: {
     apiPath: '/api/tft/comps',

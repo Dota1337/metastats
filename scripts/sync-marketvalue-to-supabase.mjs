@@ -60,7 +60,7 @@ if (!DATABASE_URL || !SUPA_URL || !SUPA_KEY) {
   process.exit(1);
 }
 
-const pool = new pg.Pool({ connectionString: DATABASE_URL, max: 3 });
+const pool = new pg.Pool({ connectionString: DATABASE_URL, max: 3, statement_timeout: 60_000 });
 const BATCH = 200;
 
 async function supaUpsert(table, rows, onConflict) {

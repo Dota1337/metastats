@@ -51,6 +51,11 @@ async function call(token, method, path, body) {
       Accept: 'application/json',
     },
     body: body ? JSON.stringify(body) : undefined,
+    // Bound every Management-API call — this script runs precisely when the DB
+    // is unreachable, so an un-timed fetch would hang the restart indefinitely
+    // (and waitHealthy's wall-clock guard is meaningless during a blocking
+    // await). Audit H5, 2026-06-28.
+    signal: AbortSignal.timeout(15_000),
   });
   const text = await res.text();
   let data;

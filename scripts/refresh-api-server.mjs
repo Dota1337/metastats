@@ -159,7 +159,10 @@ if (!AUTH_TOKEN || !RIOT_KEY || !DB_URL || !SUPA_URL || !SUPA_KEY) {
   process.exit(1);
 }
 
-const pool = new pg.Pool({ connectionString: DB_URL, max: 5 });
+// statement_timeout bounds every query so a Supabase/PG stall can't pin all 5
+// connections forever and exhaust the pool — this is an always-on service, so
+// pool exhaustion = total unresponsiveness until restart. Audit H2, 2026-06-28.
+const pool = new pg.Pool({ connectionString: DB_URL, max: 5, statement_timeout: 30_000 });
 
 // Single shared riot client — the rate-limiter is process-wide so a burst of
 // refresh calls doesn't trip 429s. Capped at ~180/10s = 90% of Riot's
@@ -381,10 +384,12 @@ async function handleRefresh(body) {
 
   const promise = (async () => {
     try {
-      const result = await refreshOnePlayer(puuid, region);
-      recent.set(key, Date.now());
-      return result;
+      return await refreshOnePlayer(puuid, region);
     } finally {
+      // Stamp the cooldown on BOTH success and failure — a failing Riot endpoint
+      // must not be hammered with zero backoff on every retry (retry-storm that
+      // burns Riot quota + DB connections). Audit M1, 2026-06-28.
+      recent.set(key, Date.now());
       inflight.delete(key);
     }
   })();
@@ -395,6 +400,9 @@ async function handleRefresh(body) {
 // ─ HTTP server ─────────────────────────────────────────────────────────────
 function readBody(req) {
   return new Promise((resolve, reject) => {
+    // Bound slow-body clients so they can't pin a connection (and, with the
+    // capped pool, contribute to exhaustion). Audit M2, 2026-06-28.
+    req.setTimeout(10_000, () => req.destroy(new Error('request body timeout')));
     let buf = '';
     req.on('data', c => { buf += c; if (buf.length > 1_048_576) reject(new Error('body too large')); });
     req.on('end', () => resolve(buf));

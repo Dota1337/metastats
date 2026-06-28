@@ -133,7 +133,7 @@ const rl = url => riot.fetchJson(url, { safe: true });
 // 200/10s even at ~0.3s/request while cutting cold-player time ~5x.
 const MATCH_FETCH_CONCURRENCY = parseInt(arg('--match-concurrency', '6'), 10);
 
-const pool = new pg.Pool({ connectionString: DATABASE_URL, max: 5 });
+const pool = new pg.Pool({ connectionString: DATABASE_URL, max: 5, statement_timeout: 60_000 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // discovery

@@ -63,7 +63,7 @@ function saveCursor(state) {
 }
 
 async function main() {
-  const pool = new pg.Pool({ connectionString: PG_URL });
+  const pool = new pg.Pool({ connectionString: PG_URL, statement_timeout: 60_000 });
   const state = loadCursor();
   const mode = PUUID_FILTER ? `cohort(${PUUID_FILTER.length} puuids)` : 'full-table';
   console.log(`[reclassify] set=${SET} batch=${BATCH} dry=${DRY} mode=${mode}`);

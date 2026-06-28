@@ -46,7 +46,7 @@ if (!HETZNER_DB) { console.error('DATABASE_URL required'); process.exit(1); }
 const BATCH_SIZE = 1000;
 const SOURCE_KEY = 'tft_position_observations';
 
-const pool = new pg.Pool({ connectionString: HETZNER_DB, max: 3 });
+const pool = new pg.Pool({ connectionString: HETZNER_DB, max: 3, statement_timeout: 60_000 });
 
 async function supaSelect(table, query) {
   const url = `${SUPA_URL}/rest/v1/${table}?${query}`;

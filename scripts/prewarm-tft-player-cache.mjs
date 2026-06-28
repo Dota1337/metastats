@@ -27,12 +27,8 @@ const TOP_DIAMOND = Number(arg('--top-diamond', '1000'));
 const SLEEP_BETWEEN_PLAYERS_MS = Number(arg('--sleep-ms', '50'));
 const LIMIT = Number(arg('--limit', '0'));   // 0 = no cap (process every player)
 
-const REGIONAL = ({
-  euw1: 'europe', eun1: 'europe', tr1: 'europe', ru: 'europe', me1: 'europe',
-  na1: 'americas', br1: 'americas', la1: 'americas', la2: 'americas',
-  kr: 'asia', jp1: 'asia',
-  oc1: 'sea', ph2: 'sea', sg2: 'sea', th2: 'sea', tw2: 'sea', vn2: 'sea',
-})[REGION] || 'europe';
+import { getRegionalRouting } from './lib/regional-routing.mjs';
+const REGIONAL = getRegionalRouting(REGION);
 
 const API_KEY = process.env.RIOT_API_KEY_TFT;
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;

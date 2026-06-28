@@ -19,19 +19,14 @@ import { extractRawMetrics, scoreSkill } from './tft-skill-score.mjs';
 import { refreshPlayerMatchCache, listSeasonMatches } from './tft-match-cache-pg.mjs';
 import { upsertSeasonStats } from './tft-season-aggregator.mjs';
 
-// Platform-Routing → regional cluster (für Account-V1 + Match-V1).
-// ph2/th2 stehen drin als gültige Riot-Routings (Pro-Profile, direkte API-Calls),
-// auch wenn die TFT-Aggregations-Pipeline sie seit 2026-06-19 nicht mehr crawlt.
-export const REGIONAL_CLUSTER = Object.freeze({
-  euw1: 'europe', eun1: 'europe', tr1: 'europe', ru: 'europe', me1: 'europe',
-  na1: 'americas', br1: 'americas', la1: 'americas', la2: 'americas',
-  kr: 'asia', jp1: 'asia',
-  oc1: 'sea', ph2: 'sea', sg2: 'sea', th2: 'sea', tw2: 'sea', vn2: 'sea',
-});
-
-export function getRegionalCluster(region) {
-  return REGIONAL_CLUSTER[region] || 'europe';
-}
+// Platform-Routing → regional cluster (für Account-V1 + Match-V1). Single-Source
+// in ./regional-routing.mjs (Audit drift-#5). Re-Export hält die bestehende API
+// (REGIONAL_CLUSTER + getRegionalCluster) für collect-tft-marketvalues +
+// daily-marketvalue-snapshot erhalten.
+export {
+  REGIONAL_ROUTING as REGIONAL_CLUSTER,
+  getRegionalRouting as getRegionalCluster,
+} from './regional-routing.mjs';
 
 // Aktuelles Set aus public/tft-set.json laden — Single-Source-of-Truth fürs
 // Setnummer-Lookup. Returns null wenn das File fehlt oder kaputt ist.

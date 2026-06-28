@@ -47,12 +47,8 @@ const RESUME_FROM = parseInt(getArg('--resume') || '0', 10);
 const BASE_URL = getArg('--url') || 'http://localhost:3000';
 const DELAY_MS = parseInt(getArg('--delay') || '95000', 10); // 95s between players (safe for 100 req/2min)
 
-const REGIONAL = {
-  euw1: 'europe', eun1: 'europe', tr1: 'europe', ru: 'europe', me1: 'europe',
-  na1: 'americas', br1: 'americas', la1: 'americas', la2: 'americas',
-  kr: 'asia', jp1: 'asia',
-  oc1: 'sea', ph2: 'sea', sg2: 'sea', th2: 'sea', tw2: 'sea', vn2: 'sea',
-}[REGION] || 'europe';
+import { getRegionalRouting } from './lib/regional-routing.mjs';
+const REGIONAL = getRegionalRouting(REGION);
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 

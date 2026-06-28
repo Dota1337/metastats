@@ -47,10 +47,7 @@ if (!SUPA_URL || !SUPA_KEY || !RIOT_KEY) {
 // still being narrow enough to avoid claiming the wrong match if a
 // user plays back-to-back.
 const TS_WINDOW_MS = 15 * 60 * 1000;
-const REGION_TO_CLUSTER = { euw1: 'europe', eun1: 'europe', tr1: 'europe', ru: 'europe', me1: 'europe',
-                            na1: 'americas', br1: 'americas', la1: 'americas', la2: 'americas',
-                            kr: 'asia', jp1: 'asia',
-                            oc1: 'sea', ph2: 'sea', sg2: 'sea', th2: 'sea', tw2: 'sea', vn2: 'sea' };
+import { REGIONAL_ROUTING as REGION_TO_CLUSTER } from './lib/regional-routing.mjs';
 
 const sb = (path, init = {}) => fetch(`${SUPA_URL}${path}`, {
   ...init,

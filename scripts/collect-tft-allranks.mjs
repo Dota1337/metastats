@@ -73,12 +73,8 @@ const SAMPLE_SIZES = {
   EMERALD:     Number(arg('--max-emerald',     '400')),
   DIAMOND:     Number(arg('--max-diamond',    '1000')),
 };
-const REGIONAL = ({
-  euw1: 'europe', eun1: 'europe', tr1: 'europe', ru: 'europe', me1: 'europe',
-  na1: 'americas', br1: 'americas', la1: 'americas', la2: 'americas',
-  kr: 'asia', jp1: 'asia',
-  oc1: 'sea', ph2: 'sea', sg2: 'sea', th2: 'sea', tw2: 'sea', vn2: 'sea',
-})[REGION] || 'europe';
+import { getRegionalRouting } from './lib/regional-routing.mjs';
+const REGIONAL = getRegionalRouting(REGION);
 
 const API_KEY = process.env.RIOT_API_KEY_TFT;
 if (!API_KEY) { console.error('RIOT_API_KEY_TFT env var required'); process.exit(1); }

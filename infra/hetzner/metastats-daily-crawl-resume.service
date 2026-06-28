@@ -1,0 +1,31 @@
+[Unit]
+Description=metastats TFT daily-crawl resume (missing regions only, cursor-aware)
+Wants=network-online.target
+After=network-online.target
+# NO Conflicts= anywhere in this chain: a Conflicts= SIGTERM would KILL a
+# running crawl instead of protecting it. Concurrency against the shared Riot
+# bucket is prevented by the watchdog's is-active skip-check, not Conflicts
+# (logic-flow-critic W1, 2026-06-28).
+#
+# Re-publish snapshots once the resumed regions land, so the user-facing
+# availability cushion (/tft/comps listing snapshots) reflects the now-complete
+# day instead of the partial data the 00:00 OnSuccess published. Deliberately
+# NOT chaining the marketvalue/bootstrap crawler (would re-spend Riot quota) and
+# NOT the catch-up service (that handles midnight-crossing of the 00:00 run only).
+OnSuccess=metastats-snapshot-publisher.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/metastats-crawler
+EnvironmentFile=/etc/metastats-crawler/env
+# No artificial cap — a resume may still have to crawl several full regions.
+TimeoutStartSec=infinity
+TimeoutStopSec=600
+# mode=auto -> the driver pins targetDay D-2 and crawls only ACTIVE_REGIONS not
+# yet recorded in /etc/metastats-crawler/daily-crawl-cursor.json for that day;
+# it No-Ops if the 00:00 run already completed all regions.
+ExecStart=/usr/bin/node scripts/crawl-allranks-all-regions.mjs --mode auto --region-timeout=0
+StandardOutput=journal
+StandardError=journal
+Nice=10
+IOSchedulingClass=best-effort

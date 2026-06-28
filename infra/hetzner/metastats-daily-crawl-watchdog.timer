@@ -1,0 +1,23 @@
+[Unit]
+Description=metastats daily-crawl watchdog (16:00 / 20:00 / 23:00 UTC)
+# Daily-crawl starts 00:00 UTC, ~14h -> ~14:00 done + OnSuccess chain. 16:00
+# catches a partial outage (some regions missing) once the chain has settled.
+# 20:00 + 23:00 are safety ticks: if an earlier tick still found the crawl
+# running and skipped, a later one retries before the day ends. (Residual gap:
+# a crawl that runs past 23:00 won't be resumed that day — very rare; the
+# catch-up service handles the separate midnight-crossing case.)
+
+[Timer]
+OnCalendar=*-*-* 16:00:00 UTC
+OnCalendar=*-*-* 20:00:00 UTC
+OnCalendar=*-*-* 23:00:00 UTC
+# Persistent=false ON PURPOSE: a missed recovery tick has little value to catch
+# up hours later, and Persistent=true would fire an immediate kick on first
+# enable. On day one there is no cursor yet, so an immediate kick would see
+# "all 15 regions todo" and launch a full 14h crawl on top of the day's run.
+# A recovery watchdog must wait for its next real tick instead.
+Persistent=false
+RandomizedDelaySec=60
+
+[Install]
+WantedBy=timers.target

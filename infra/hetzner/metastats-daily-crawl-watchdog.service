@@ -1,0 +1,16 @@
+[Unit]
+Description=metastats daily-crawl watchdog (resume missing regions after partial outage)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/metastats-crawler
+EnvironmentFile=/etc/metastats-crawler/env
+# Watchdog is a seconds-long check (no DB query, just is-active probes) — no
+# TimeoutStartSec=infinity needed. The long-running work is the resume service
+# it kicks via systemctl start --no-block.
+TimeoutStartSec=300
+ExecStart=/usr/local/bin/metastats-daily-crawl-watchdog.sh
+StandardOutput=journal
+StandardError=journal

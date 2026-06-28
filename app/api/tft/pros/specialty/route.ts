@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
       units: m.units,
       augments: m.augments,
       level: m.level,
-    }, { withAugmentSuffix: false });
+    }, { withAugmentSuffix: false, currentSet: setNumber ?? undefined });
     if (!cls) continue;
     totalClassified++;
     const place = m.placement || 9;

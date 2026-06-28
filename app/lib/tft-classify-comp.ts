@@ -6,10 +6,15 @@
 // marktwert) und muss bit-identisch zu mjs klassifizieren — sonst kommt der
 // Klassifikations-Drift wieder zurueck, den wir gerade unifiziert haben.
 //
-// costMap-Loading laeuft hier ueber das gebundelte public/tft-assets-<set>.json
-// (das bei Build-Time im Vercel-Bundle landet), waehrend die mjs-Version das
-// File zur Runtime liest. Format und Inhalt sind identisch.
+// costMap wird hier — wie in der mjs — zur Runtime aus public/tft-assets-<set>.json
+// via fs gelesen (App-Router Node-Runtime, Pattern wie comps/route.ts:25-41).
+// Vor dem Fix 2026-06-28 war das NICHT implementiert: costMap kam nur aus opts,
+// kein Caller uebergab sie -> der Cost-Aware-Swap lief auf dem Vercel-Read-Pfad
+// NIE, waehrend die mjs (Write-Pfad) ihn ausfuehrte -> carryUnit/clusterKey
+// divergierten im Fast-8/9-5-vs-4-Cost-Korridor (Audit D1).
 
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { DAMAGE_CARRY_ITEMS } from './tft-item-classes';
 import { compDefiningAugmentSlug } from './tft-comp-defining-augments';
 
@@ -86,8 +91,35 @@ function carryFromAugments(participant: ClassifyParticipant, units: ClassifyUnit
   return null;
 }
 
+// Runtime-Mirror von tft-classify-comp.mjs::loadCostMap — identische Quelle,
+// identisches Caching. App-Router-Default ist Node-Runtime (kein Edge), fs ist
+// erlaubt. Bei leerem/fehlendem Bundle: leere Map cachen (Swap wird dann No-Op).
+const _costMapCache = new Map<number, Map<string, number>>();
+function loadCostMap(setNumber: number): Map<string, number> {
+  const set = setNumber || 17;
+  const cached = _costMapCache.get(set);
+  if (cached) return cached;
+  try {
+    const bundle = JSON.parse(
+      readFileSync(resolve(process.cwd(), `public/tft-assets-${set}.json`), 'utf8'),
+    ) as { champions?: Record<string, { cost?: number }> };
+    const map = new Map<string, number>();
+    for (const [cid, ch] of Object.entries(bundle.champions || {})) {
+      if (typeof ch?.cost === 'number') map.set(cid, ch.cost);
+    }
+    _costMapCache.set(set, map);
+    return map;
+  } catch {
+    const empty = new Map<string, number>();
+    _costMapCache.set(set, empty);
+    return empty;
+  }
+}
+
 export function classifyComp(participant: ClassifyParticipant, opts: ClassifyOpts = {}): ClassifyResult | null {
-  const { withAugmentSuffix = false, costMap } = opts;
+  const { currentSet = 17, withAugmentSuffix = false, costMap: costMapOverride } = opts;
+  // Self-load the cost map (D1): the swap was dead because no caller passed it.
+  const costMap = costMapOverride ?? loadCostMap(currentSet);
 
   const traits = (participant.traits || []).filter(
     t => (t.style ?? 0) > 0 && !/UniqueTrait$/.test(t.name || ''),
@@ -125,7 +157,7 @@ export function classifyComp(participant: ClassifyParticipant, opts: ClassifyOpt
     if (byOffensiveItems.length > 0) carry = byOffensiveItems[0].u;
 
     // 2b) Cost-Aware-Swap
-    if (carry && byOffensiveItems.length >= 2 && !heroCarryId && costMap) {
+    if (carry && byOffensiveItems.length >= 2 && !heroCarryId) {
       const top1 = byOffensiveItems[0];
       const top2 = byOffensiveItems[1];
       const top1Cost = costMap.get(unitCid(top1.u)) ?? 0;

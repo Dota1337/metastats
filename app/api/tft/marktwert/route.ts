@@ -98,7 +98,7 @@ export async function GET(request: NextRequest) {
       placement: me.placement,
       setNumber: m.setNumber,
       augments: me.augments,
-      comp: classify(me),
+      comp: classify(me, m.setNumber),
       units: me.units.map((u: any) => ({ characterId: u.characterId, tier: u.tier, items: u.items })),
       // Extra metrics for flexMastery / gameSense agents (snake_case in raw,
       // camelCase on processed match objects — try both)
@@ -172,8 +172,8 @@ export async function GET(request: NextRequest) {
 
 // Wrapper auf die unifizierte Klassifikations-Library. processed-match output
 // nutzt camelCase (tierCurrent) — die Lib akzeptiert beide Casings.
-function classify(p: any) {
-  const result = classifyCompUnified(p, { withAugmentSuffix: false });
+function classify(p: any, setNumber?: number) {
+  const result = classifyCompUnified(p, { withAugmentSuffix: false, currentSet: setNumber });
   if (!result) return undefined;
   return {
     clusterKey: result.clusterKey,

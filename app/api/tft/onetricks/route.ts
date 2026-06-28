@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
       units: row.units,
       augments: row.augments,
       level: row.level,
-    }, { withAugmentSuffix: false });
+    }, { withAugmentSuffix: false, currentSet: setNumber ?? undefined });
     if (!cls) continue;
     let m = perPuuid.get(row.puuid);
     if (!m) { m = new Map(); perPuuid.set(row.puuid, m); }

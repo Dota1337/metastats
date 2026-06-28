@@ -118,10 +118,14 @@ function deriveProjectRef(url) {
 }
 
 async function triggerRestart(token, ref) {
-  const res = await fetch(`https://api.supabase.com/v1/projects/${ref}/restart-services`, {
+  // Correct Management-API endpoint is POST /restart WITHOUT a body. The old
+  // /restart-services returns HTTP 404 — verified in the 2026-06-28 live outage
+  // (see scripts/supabase-restart.mjs). This is the auto-restart path, so a 404
+  // here means the health monitor detects the outage but never recovers it.
+  // Keep in sync with supabase-restart.mjs.
+  const res = await fetch(`https://api.supabase.com/v1/projects/${ref}/restart`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ services: ['postgresql'] }),
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
     signal: AbortSignal.timeout(15_000),
   });
   return { ok: res.ok, status: res.status };

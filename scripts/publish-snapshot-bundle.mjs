@@ -320,6 +320,9 @@ async function publishDetailPermutation(perm, patches) {
     addRandomSuffix: false,
     allowOverwrite: true,
     cacheControlMaxAge: 21600,
+    // Bound the upload so a hung blob PUT can't block all workers and hold the
+    // publish lock indefinitely. Audit M3, 2026-06-28.
+    abortSignal: AbortSignal.timeout(120_000),
   });
   const uploadMs = Date.now() - t1;
   return {

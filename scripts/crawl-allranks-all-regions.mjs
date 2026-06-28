@@ -182,7 +182,15 @@ async function main() {
   // Cursor is intentionally NOT deleted on full success: the 16:00 watchdog must
   // be able to read it and see "all done -> nothing to do". Next day's run gets
   // a fresh cursor automatically via the day-key mismatch in readCursor.
-  if (failed > 0 && failed === todo.length) process.exit(1);
+  // Exit non-zero on SUBSTANTIAL failure (>=50% of regions) so systemd does NOT
+  // fire the OnSuccess chain — snapshot-publisher would otherwise replace the
+  // manifest with near-empty data for a mostly-missing day. Minor failures exit
+  // 0: those regions stay out of the cursor and the watchdog resume completes +
+  // re-publishes them. Audit H1, 2026-06-28.
+  if (failed > 0 && failed >= Math.ceil(todo.length / 2)) {
+    console.error(`[exit 1] ${failed}/${todo.length} regions failed — suppressing OnSuccess chain`);
+    process.exit(1);
+  }
 }
 
 // Only run when executed directly — importing for tests must not crawl.

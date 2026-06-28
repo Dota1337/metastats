@@ -21,7 +21,7 @@
 //   node scripts/health-monitor.mjs                # eine probe + ggf. Aktion
 //   node scripts/health-monitor.mjs --check        # nur Probe, keine Aktion
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 const STATE_DIR = '/var/lib/metastats-health';
@@ -56,7 +56,12 @@ function loadState() {
 function saveState(s) {
   try {
     mkdirSync(dirname(STATE_FILE), { recursive: true });
-    writeFileSync(STATE_FILE, JSON.stringify(s, null, 2));
+    // Atomic tmp+rename: a truncated state.json reads back as defaults
+    // (restartsLast24h=[]), which silently bypasses the MAX_RESTARTS_PER_DAY
+    // guard — the DB could be restarted past the cap. Audit M4, 2026-06-28.
+    const tmp = `${STATE_FILE}.tmp`;
+    writeFileSync(tmp, JSON.stringify(s, null, 2));
+    renameSync(tmp, STATE_FILE);
   } catch (e) {
     console.error(`[state] write failed: ${e.message}`);
   }

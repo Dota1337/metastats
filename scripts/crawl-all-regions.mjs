@@ -44,7 +44,7 @@
  */
 
 import { spawn } from 'node:child_process';
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { revalidateEdge, MARKETVALUE_EDGE_PATHS } from './lib/revalidate-edge.mjs';
 
@@ -113,10 +113,15 @@ function readCursor() {
 function writeCursor(region) {
   try {
     mkdirSync(dirname(CURSOR_PATH), { recursive: true });
+    // Atomic tmp+rename: a SIGKILL mid-write (OOM / disk event) must not leave a
+    // truncated cursor — that resets the rotation to euw1 and re-crawls already-
+    // done regions, wasting up to ~10h of quota. Audit H4, 2026-06-28.
+    const tmp = `${CURSOR_PATH}.tmp`;
     writeFileSync(
-      CURSOR_PATH,
+      tmp,
       JSON.stringify({ lastCompletedRegion: region, updatedAt: new Date().toISOString() }, null, 2),
     );
+    renameSync(tmp, CURSOR_PATH);
   } catch (err) {
     console.error(`[cursor] failed to persist (${CURSOR_PATH}): ${err.message}`);
   }

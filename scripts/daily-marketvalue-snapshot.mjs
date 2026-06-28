@@ -218,6 +218,7 @@ const pool = new pg.Pool({
   connectionString: isRemote ? encodePasswordInPgUrl(DATABASE_URL) : DATABASE_URL,
   ssl: isRemote ? { rejectUnauthorized: false } : undefined,
   max: 6,
+  statement_timeout: 60_000, // bound query hangs (Audit H2, 2026-06-28)
 });
 
 let aborting = false;
@@ -609,6 +610,17 @@ async function processRegion(region) {
     return { region, players: players.length, snapshots: 0, failed, backup: backupTbl };
   }
 
+  // Sanity-Floor (Audit H3): ein degradiertes Sample (z.B. Riot-429-Storm hat
+  // 90% der gathers verworfen) darf die gute Population NICHT via on-conflict-
+  // Upsert überschreiben → sonst sind die Marktwerte der ganzen Region für den
+  // Tag falsch. Unter 30% der iterierten Spieler: Region überspringen, die
+  // bestehende Population/Snapshots (≤1 Tag alt) bleiben erhalten. Der
+  // mv-watchdog re-triggert die Region (kein heutiger Snapshot) für einen Retry.
+  if (!POP_BYPASS_REGIONS.has(region) && gathered.length < players.length * 0.3) {
+    console.error(`  [pop] DEGRADED: nur ${gathered.length}/${players.length} usable (<30%) — Region übersprungen, bestehende Population erhalten`);
+    return { region, players: players.length, snapshots: 0, failed, degraded: true, backup: backupTbl };
+  }
+
   // 3. Population-Recompute aus aktiver Sub-Kohorte
   //
   // Pop-Determinismus-Pflicht (architect F9): gathered nach puuid sortieren
@@ -770,6 +782,18 @@ async function main() {
     if (r.error) console.log(`  ${r.region}: ERROR ${r.error}`);
     else if (r.dryRun) console.log(`  ${r.region}: ${r.players} would-iterate`);
     else console.log(`  ${r.region}: ${r.snapshots || 0} snapshots / ${r.players} players / ${r.failed || 0} failed${r.backup ? ` | backup=${r.backup}` : ''}`);
+  }
+
+  // Exit non-zero on SUBSTANTIAL region failure (>=50%) so systemd does NOT fire
+  // the OnSuccess chain (snapshot-publisher would publish stale/empty marketvalue
+  // data). Per-region errors are otherwise swallowed into results → exit 0.
+  // Audit M5, 2026-06-28.
+  if (!DRY_RUN) {
+    const errored = results.filter(r => r.error).length;
+    if (errored > 0 && errored >= Math.ceil(results.length / 2)) {
+      console.error(`[exit 1] ${errored}/${results.length} Regionen mit Fatal-Error — OnSuccess-Kette unterdrückt`);
+      process.exit(1);
+    }
   }
 }
 

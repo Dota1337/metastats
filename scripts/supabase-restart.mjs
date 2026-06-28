@@ -64,8 +64,10 @@ async function health(token, ref) {
   return r;
 }
 
-async function restart(token, ref, services = ['postgresql']) {
-  return call(token, 'POST', `/v1/projects/${ref}/restart-services`, { services });
+async function restart(token, ref) {
+  // Korrekter Management-API-Endpoint ist /restart (ohne Body).
+  // /restart-services existiert nicht → HTTP 404 (verifiziert 2026-06-28).
+  return call(token, 'POST', `/v1/projects/${ref}/restart`);
 }
 
 async function waitHealthy(token, ref, timeoutMs = 180_000) {
@@ -122,8 +124,8 @@ async function main() {
   }
   if (checkOnly) return;
 
-  console.log('[3/3] Triggering postgresql restart…');
-  const rr = await restart(token, ref, ['postgresql']);
+  console.log('[3/3] Triggering project restart…');
+  const rr = await restart(token, ref);
   if (!rr.ok) {
     console.error(`      FAIL: HTTP ${rr.status}`, rr.data);
     process.exit(2);

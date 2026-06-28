@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
   if (!slug) return NextResponse.json({ error: 'slug required' }, { status: 400 });
 
   const regionParam = searchParams.get('region') || 'all';
-  const bucketParam = searchParams.get('bucket') || 'diamond';
+  const bucketParam = searchParams.get('bucket') || 'diamond_plus';
   const days = Math.max(1, Math.min(60, parseInt(searchParams.get('days') || '14', 10)));
   // Family-Mode (Default für die Detail-Page-Trend-Linie): die RPC bekommt
   // ALLE Sub-Cluster der Family. ?variant=exact = Single-Slug-Sicht.

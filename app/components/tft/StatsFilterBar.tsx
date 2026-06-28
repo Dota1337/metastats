@@ -34,6 +34,7 @@ const BUCKET_OPTIONS: Option[] = [
   { value: 'pro_pool',    labelKey: 'tft.filter.proOnly' },
   { value: 'all',         labelKey: 'tft.filter.allRanks' },
   { value: 'master_plus', labelKey: 'tft.filter.masterPlus' },
+  { value: 'diamond_plus', labelKey: 'tft.filter.diamondPlus' },
   { value: 'challenger',  labelKey: 'tft.bucket.challenger' },
   { value: 'grandmaster', labelKey: 'tft.bucket.grandmaster' },
   { value: 'master',      labelKey: 'tft.bucket.master' },
@@ -226,7 +227,7 @@ export function filtersFromSearchParams(searchParams: URLSearchParams): Filters 
   const velocity = VELOCITY_SHIFTS.has(velocityRaw) ? velocityRaw : 0;
   return {
     patch: searchParams.get('patch') || 'current',
-    bucket: searchParams.get('bucket') || 'diamond',
+    bucket: searchParams.get('bucket') || 'diamond_plus',
     days: Math.max(1, Math.min(7, parseInt(searchParams.get('days') || '3', 10))),
     region: searchParams.get('region') || 'all',
     velocity,

@@ -520,6 +520,7 @@ const translations = {
   'tft.filter.asia':       t6('Asien', 'Asia', '\uC544\uC2DC\uC544', '\u4E9A\u6D32', 'Asia', 'Asie'),
   'tft.filter.allRanks':   t6('Alle R\u00E4nge', 'All ranks', '\uBAA8\uB4E0 \uB7AD\uD06C', '\u6240\u6709\u6BB5\u4F4D', 'Todos los rangos', 'Tous les rangs'),
   'tft.filter.masterPlus': t6('Master+', 'Master+', '\uB9C8\uC2A4\uD130+', '\u5927\u5E08+', 'Maestro+', 'Ma\u00EEtre+'),
+  'tft.filter.diamondPlus': t6('Diamant+', 'Diamond+', '\uB2E4\uC774\uC544+', '\u94BB\u77F3+', 'Diamante+', 'Diamant+'),
   'tft.filter.velocity':   t6('\u0394-Vergleich', '\u0394 comparison', '\u0394 \uBE44\uAD50', '\u0394 \u5BF9\u6BD4', 'Comparaci\u00F3n \u0394', 'Comparaison \u0394'),
   'tft.filter.velocityOff':t6('Aus', 'Off', '\uB044\uAE30', '\u5173', 'Desactivado', 'D\u00E9sactiv\u00E9'),
   'tft.filter.velocity1d': t6('vs Vortag', 'vs day before', '\uC804\uB0A0 \uB300\uBE44', '\u5BF9\u524D\u4E00\u5929', 'vs d\u00EDa anterior', 'vs la veille'),

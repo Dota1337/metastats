@@ -51,14 +51,14 @@ function buildUrls() {
   const urls = new Set();
 
   // Comps — full matrix (lean RPC, all slices fast).
-  for (const bucket of ['diamond', 'master_plus', 'all']) {
+  for (const bucket of ['diamond_plus', 'master_plus', 'all']) {
     for (const days of [3, 7]) {
       urls.add(`/api/tft/comps?${qs(bucket, days, 'all')}&source=data`);
     }
   }
   // Region split for the two top buckets at the default 3-day window — the
   // comp meta is region-specific and these are the common region toggles.
-  for (const bucket of ['diamond', 'master_plus']) {
+  for (const bucket of ['diamond_plus', 'master_plus']) {
     for (const region of ['all', 'west', 'asia', 'euw1', 'kr', 'na1']) {
       urls.add(`/api/tft/comps?${qs(bucket, 3, region)}&source=data`);
     }
@@ -68,7 +68,7 @@ function buildUrls() {
   // items got the lean RPC in migration 0028 (all-bucket/7d 76s→5.5s), so it
   // now warms the same matrix as the others instead of just the safe defaults.
   for (const ep of ['units', 'items', 'traits']) {
-    urls.add(`/api/tft/${ep}?${qs('diamond', 3, 'all')}`);
+    urls.add(`/api/tft/${ep}?${qs('diamond_plus', 3, 'all')}`);
     urls.add(`/api/tft/${ep}?${qs('master_plus', 3, 'all')}`);
     urls.add(`/api/tft/${ep}?${qs('master_plus', 7, 'all')}`);
   }

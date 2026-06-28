@@ -78,7 +78,7 @@ export function buildListMatrix(opts: {
 export const compsMinGames = (days: number) => 70 * Math.min(days, 14);
 
 export const SNAPSHOT_MATRIX: Record<SnapshotEndpoint, SnapshotEndpointSpec> = {
-  // /api/tft/comps default in der UI: bucket=master_plus, region=all, days=3.
+  // /api/tft/comps default in der UI: bucket=diamond_plus, region=all, days=3.
   // minGames=30 ist der Route-Default; weniger riskiert noisy comps.
   // Primary-Regionen + Primary-Buckets × 3 Days × 2 Patches = 108 Permutationen.
   comps: {
@@ -91,7 +91,7 @@ export const SNAPSHOT_MATRIX: Record<SnapshotEndpoint, SnapshotEndpointSpec> = {
       minGames: compsMinGames,
     }),
   },
-  // /api/tft/units default: bucket=diamond, region=euw1, days=3.
+  // /api/tft/units default: bucket=diamond_plus, region=all, days=3.
   // Units-Listing wird häufig pro Region angesehen → mehr Regionen rein.
   // 11 Regionen × 3 Days × 3 Buckets × 2 Patches = 198. Etwas reich, aber
   // /tft/units ist eine der meist-besuchten Pages.

@@ -174,7 +174,7 @@ async function resolvePatch(param: string | null): Promise<string | null> {
 
 export async function resolveFilters(searchParams: URLSearchParams): Promise<ResolvedFilters> {
   const regionLabel = searchParams.get('region') || 'all';
-  const bucketLabel = searchParams.get('bucket') || 'diamond';
+  const bucketLabel = searchParams.get('bucket') || 'diamond_plus';
   const requestedDays = Math.max(1, Math.min(7, parseInt(searchParams.get('days') || '3', 10)));
   const patchParam = searchParams.get('patch') || 'current';
   const setParam = searchParams.get('set');

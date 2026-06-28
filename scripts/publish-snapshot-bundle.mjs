@@ -11,17 +11,37 @@
 // finishes — at that point all aggregates are fresh and the Vercel-Edge cache
 // hasn't been hit yet for the new day.
 //
+// Manifest write modes (Lücke B, Multi-Review 2026-06-28):
+//   * full run (no filter)  -> REPLACE the manifest entries. The authoritative
+//                              nightly rebuild; this is the only path that prunes
+//                              stale keys (e.g. last patch's keys after a bump).
+//   * partial run (--endpoint / --listing-only) -> MERGE the published keys into
+//                              the existing manifest, so a quick outage-time
+//                              re-publish does NOT clobber the keys it didn't
+//                              build (e.g. comps-detail when re-publishing comps).
+// The manifest is the source of truth for which snapshot is *lookup-able*, NOT
+// for which blobs physically exist; orphan-blob cleanup is a separate prune job.
+// At a Set bump a full run is REQUIRED (merge alone never prunes old-set keys).
+//
 // Usage:
 //   node scripts/publish-snapshot-bundle.mjs [--base-url <url>] [--concurrency N]
 //                                            [--endpoint comps|units|...]
+//                                            [--listing-only] [--manifest-mode replace|merge]
 //                                            [--dry-run]
+//   --listing-only          publishes comps/units/items/traits (skips comps-detail);
+//                           implies merge. The fast outage-recovery path (~2.4×).
+//   --manifest-mode         override the auto-derived replace/merge decision.
 //
 // Env:
 //   BLOB_READ_WRITE_TOKEN   Vercel-Blob token (Required, kommt aus Vercel-Env
 //                           bei Connect-to-Project automatisch).
 //   PUBLIC_BASE_URL         Defaults to https://www.metastats.gg
+//   SNAPSHOT_MANIFEST_URL   Existing manifest (read for merge-base + patch pin).
+//   PUBLISH_LOCK_PATH       Override the cross-invocation lockfile path.
 
 import { put } from '@vercel/blob';
+import { openSync, closeSync, writeSync, readFileSync, existsSync, unlinkSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 // Single-Source-of-Truth: TS-Datei app/lib/snapshot-matrix.ts wird via
 // `npm run build:snapshot-matrix` (Multi-Review 2026-06-25 Option C) zu
@@ -55,10 +75,93 @@ const ENDPOINT_FILTER = (() => {
   const i = args.indexOf('--endpoint');
   return i >= 0 ? args[i + 1] : null;
 })();
+const LISTING_ONLY = args.includes('--listing-only');
+const MANIFEST_MODE_OVERRIDE = (() => {
+  const i = args.indexOf('--manifest-mode');
+  const v = i >= 0 ? args[i + 1] : null;
+  if (v && v !== 'replace' && v !== 'merge') {
+    console.error(`ERROR: --manifest-mode must be 'replace' or 'merge', got '${v}'`);
+    process.exit(2);
+  }
+  return v;
+})();
+// A partial run (endpoint-filtered or listing-only) MUST merge — it would
+// otherwise clobber the keys it didn't publish. A bare full run replaces (and
+// thereby prunes stale keys). --manifest-mode overrides the derivation.
+const MERGE_MODE = MANIFEST_MODE_OVERRIDE
+  ? MANIFEST_MODE_OVERRIDE === 'merge'
+  : (Boolean(ENDPOINT_FILTER) || LISTING_ONLY);
+
+// Cross-invocation advisory lock. The nightly systemd run and any ad-hoc manual
+// run execute THIS script, so the lock lives here (systemd Conflicts= can't
+// guard ad-hoc `node` calls). Without it, a merge + a concurrent replace would
+// splice two writers' partial states into tft/manifest.json (Vercel-Blob has no
+// CAS) — logic-flow-critic Hazard D, 2026-06-28.
+const LOCK_PATH = process.env.PUBLISH_LOCK_PATH
+  || (existsSync('/run/lock') ? '/run/lock/metastats-snapshot-publish.lock' : '.snapshot-publish.lock');
+let lockAcquired = false;
 
 // === Helpers ============================================================ //
 
 function ts() { return new Date().toISOString(); }
+
+function pidAlive(pid) {
+  if (!pid) return false;
+  try { process.kill(pid, 0); return true; } catch (err) { return err.code === 'EPERM'; }
+}
+
+// Acquire the advisory lock via exclusive-create. If the lockfile exists and its
+// holder PID is still alive, another publish is running -> return false. A stale
+// lock (holder dead, e.g. SIGKILL) is removed and retried.
+function acquireLock() {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const fd = openSync(LOCK_PATH, 'wx');
+      writeSync(fd, String(process.pid));
+      closeSync(fd);
+      return true;
+    } catch (err) {
+      if (err.code !== 'EEXIST') throw err;
+      let holder = NaN;
+      try { holder = Number(readFileSync(LOCK_PATH, 'utf8').trim()); } catch { /* race: gone */ }
+      if (pidAlive(holder)) return false;
+      try { unlinkSync(LOCK_PATH); } catch { /* already removed */ }
+    }
+  }
+  return false;
+}
+
+function releaseLock() {
+  try {
+    const holder = Number(readFileSync(LOCK_PATH, 'utf8').trim());
+    if (holder === process.pid) unlinkSync(LOCK_PATH);
+  } catch { /* already gone */ }
+}
+// Release on every exit path, including process.exit() and SIGTERM (systemd
+// stop). SIGKILL can't be caught -> the stale-PID check above reclaims it.
+process.on('exit', () => { if (lockAcquired) releaseLock(); });
+process.on('SIGTERM', () => process.exit(143));
+
+// Loads the currently-published manifest ONCE per run (memoized). Both the
+// patch-resolution fallback and the MERGE_MODE entry-merge read from this, so
+// there is exactly one GET against the manifest blob per run. _fetchFailed is
+// true ONLY when SNAPSHOT_MANIFEST_URL is set but the GET failed (distinct from
+// "no URL" = legitimate first run with an empty merge base).
+let _oldManifest;
+let _oldManifestFetchFailed = false;
+async function loadOldManifest() {
+  if (_oldManifest !== undefined) return _oldManifest;
+  const url = process.env.SNAPSHOT_MANIFEST_URL;
+  if (!url) { _oldManifest = null; return null; }
+  try {
+    _oldManifest = await fetchPayload(url);
+  } catch (err) {
+    _oldManifest = null;
+    _oldManifestFetchFailed = true;
+    console.log(`[${ts()}] old-manifest fetch failed: ${err?.message || err}`);
+  }
+  return _oldManifest;
+}
 
 function buildUrl(apiPath, p) {
   const qs = new URLSearchParams({
@@ -123,18 +226,12 @@ async function resolvePatches() {
   let previous = prev?.filters?.patch || null;
   if (!current || !previous) {
     // Manifest-Fallback: wenn Supabase-RPC fuer Patches haengt, lesen wir die
-    // patches aus dem zuletzt veroeffentlichten Manifest. Das Manifest ist
-    // ohnehin die Source-of-Truth fuer den Lookup-Pfad.
-    const manifestUrl = process.env.SNAPSHOT_MANIFEST_URL;
-    if (manifestUrl) {
-      try {
-        const m = await fetchPayload(manifestUrl);
-        if (!current && m?.patches?.current) current = m.patches.current;
-        if (!previous && m?.patches?.previous) previous = m.patches.previous;
-        console.log(`[${ts()}] Manifest-fallback patches: current=${current}, previous=${previous}`);
-      } catch (err) {
-        console.log(`[${ts()}] Manifest-fallback failed: ${err?.message || err}`);
-      }
+    // patches aus dem zuletzt veroeffentlichten Manifest (shared memoized load).
+    const m = await loadOldManifest();
+    if (m?.patches) {
+      if (!current && m.patches.current) current = m.patches.current;
+      if (!previous && m.patches.previous) previous = m.patches.previous;
+      console.log(`[${ts()}] Manifest-fallback patches: current=${current}, previous=${previous}`);
     }
   }
   _patchInfo = { current, previous };
@@ -261,9 +358,39 @@ async function main() {
     console.error('ERROR: BLOB_READ_WRITE_TOKEN env var required (set --dry-run to skip uploads).');
     process.exit(2);
   }
-  console.log(`[${ts()}] publisher base=${BASE}, conc=${CONCURRENCY}, dryRun=${DRY_RUN}${ENDPOINT_FILTER ? ', endpoint=' + ENDPOINT_FILTER : ''}`);
+  if (!DRY_RUN) {
+    if (!acquireLock()) {
+      console.log(`[${ts()}] another publish holds ${LOCK_PATH} — skipping (a concurrent publish is active)`);
+      return; // benign skip, exit 0 — the active run handles this publish
+    }
+    lockAcquired = true;
+  }
+  console.log(`[${ts()}] publisher base=${BASE}, conc=${CONCURRENCY}, dryRun=${DRY_RUN}${ENDPOINT_FILTER ? ', endpoint=' + ENDPOINT_FILTER : ''}${LISTING_ONLY ? ', listing-only' : ''}`);
 
-  const patches = await resolvePatches();
+  let patches = await resolvePatches();
+
+  // Merge-base load (logic-flow Blocker A/B): in MERGE_MODE read the existing
+  // manifest UNCONDITIONALLY and EARLY — before any blob upload — so a partial
+  // run preserves the keys it doesn't publish, and a fetch failure aborts with
+  // zero side effects rather than clobbering the manifest.
+  let baseEntries = {};
+  if (MERGE_MODE) {
+    const base = await loadOldManifest();
+    if (_oldManifestFetchFailed) {
+      console.error(`[${ts()}] FATAL: merge needs the existing manifest but SNAPSHOT_MANIFEST_URL fetch failed — aborting before any upload to avoid clobbering it`);
+      process.exit(4);
+    }
+    baseEntries = (base && base.entries && typeof base.entries === 'object') ? base.entries : {};
+    // Blocker C: pin patches to the merge-base so this run's new keys are built
+    // under the SAME patch as the preserved keys. Otherwise a patch bump mid-run
+    // would key new listing data under X while preserved detail sits under W,
+    // and the manifest's top-level patches would match only one of them.
+    if (base?.patches?.current) patches = base.patches;
+    console.log(`[${ts()}] manifest-mode=MERGE — base ${Object.keys(baseEntries).length} entries preserved, patches pinned to base (current=${patches.current})`);
+  } else {
+    console.log(`[${ts()}] manifest-mode=REPLACE (full run) — manifest rebuilt from scratch, stale keys pruned`);
+  }
+
   if (!patches.current) {
     console.error(`[${ts()}] FATAL: could not resolve "current" patch — aborting`);
     process.exit(3);
@@ -321,7 +448,7 @@ async function main() {
   // Phase 2: Comp-Detail-Snapshots fuer Top-N Family-Anchors.
   // Slugs werden aus dem Default-Listing-Result extrahiert (patch=current,
   // region=all, days=3, bucket=master_plus) - das ist die UI-Default-Sicht.
-  if (!ENDPOINT_FILTER || ENDPOINT_FILTER === 'comps-detail') {
+  if (!LISTING_ONLY && (!ENDPOINT_FILTER || ENDPOINT_FILTER === 'comps-detail')) {
     const dT0 = Date.now();
     console.log(`[${ts()}] === comps-detail: extracting top-${DETAIL_TOP_N} slugs from listing ===`);
     let topSlugs = [];
@@ -391,14 +518,20 @@ async function main() {
     }
   }
 
-  // Manifest schreiben — single source of truth für Lookup.
+  // Manifest schreiben — single source of truth für den Lookup-Pfad.
+  // MERGE_MODE: published keys overlay the preserved base (new wins key-genau).
+  // REPLACE: only this run's keys -> prunes stale keys.
+  const finalEntries = MERGE_MODE ? { ...baseEntries, ...manifestEntries } : manifestEntries;
   const manifest = {
     version: 'v1',
     builtAt: ts(),
     patches,
-    entries: manifestEntries,
+    entries: finalEntries,
   };
   const manifestBody = JSON.stringify(manifest);
+  const entryCountMsg = MERGE_MODE
+    ? `${Object.keys(finalEntries).length} entries (merged: ${Object.keys(baseEntries).length} base + ${Object.keys(manifestEntries).length} new)`
+    : `${Object.keys(finalEntries).length} entries (full replace)`;
   if (!DRY_RUN) {
     const manifestBlob = await put('tft/manifest.json', manifestBody, {
       access: 'public',
@@ -409,17 +542,24 @@ async function main() {
       // Manifest soll häufig revalidieren — 60s edge + 5min SWR.
       cacheControlMaxAge: 60,
     });
-    console.log(`[${ts()}] Manifest: ${manifestBlob.url} (${Buffer.byteLength(manifestBody)} B, ${Object.keys(manifestEntries).length} entries)`);
+    console.log(`[${ts()}] Manifest: ${manifestBlob.url} (${Buffer.byteLength(manifestBody)} B, ${entryCountMsg})`);
     console.log(`[${ts()}] >>> Set SNAPSHOT_MANIFEST_URL=${manifestBlob.url} in Vercel + .env.local <<<`);
   } else {
-    console.log(`[${ts()}] DRY-RUN: manifest would contain ${Object.keys(manifestEntries).length} entries (${Buffer.byteLength(manifestBody)} B)`);
+    console.log(`[${ts()}] DRY-RUN: manifest would contain ${entryCountMsg} (${Buffer.byteLength(manifestBody)} B)`);
   }
 
   console.log(`[${ts()}] DONE: uploaded=${totalUploaded}, skipped=${totalSkipped}, errors=${totalErrors}, totalBytes=${(totalBytes / 1024 / 1024).toFixed(2)} MB`);
   if (totalErrors > 0) process.exit(1);
 }
 
-main().catch(err => {
-  console.error(`[${ts()}] FATAL:`, err);
-  process.exit(1);
-});
+// Exported for unit tests (the lock runs only in non-dry-run prod paths).
+export { acquireLock, releaseLock, pidAlive, LOCK_PATH };
+
+// Only crawl/publish when executed directly — importing for tests must not run.
+const isMain = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
+if (isMain) {
+  main().catch(err => {
+    console.error(`[${ts()}] FATAL:`, err);
+    process.exit(1);
+  });
+}

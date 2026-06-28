@@ -11,7 +11,7 @@
 
 set -e
 
-echo "[pre-push 1/3] Running tsc --noEmit ..."
+echo "[pre-push 1/4] Running tsc --noEmit ..."
 if ! npx tsc --noEmit; then
   echo ""
   echo "TypeScript errors detected — push blocked."
@@ -19,7 +19,7 @@ if ! npx tsc --noEmit; then
 fi
 echo "  tsc passed."
 
-echo "[pre-push 2/3] Checking snapshot-matrix.generated.mjs freshness ..."
+echo "[pre-push 2/4] Checking snapshot-matrix.generated.mjs freshness ..."
 # Wenn snapshot-matrix.ts neuer ist als die generated.mjs, ist der commit stale.
 # Schützt gegen Drift im Auto-Generate-Pattern (reference_dual_module_patterns.md).
 if [ -f app/lib/snapshot-matrix.ts ] && [ -f app/lib/snapshot-matrix.generated.mjs ]; then
@@ -32,7 +32,7 @@ if [ -f app/lib/snapshot-matrix.ts ] && [ -f app/lib/snapshot-matrix.generated.m
 fi
 echo "  snapshot-matrix freshness OK."
 
-echo "[pre-push 3/3] Running classification verifier ..."
+echo "[pre-push 3/4] Running classification verifier ..."
 if ! node scripts/verify-classifications.mjs; then
   echo ""
   echo "Classification checks failed — push blocked."
@@ -41,5 +41,14 @@ if ! node scripts/verify-classifications.mjs; then
   exit 1
 fi
 echo "  classification checks passed."
+
+echo "[pre-push 4/4] Checking out-of-band region-list drift ..."
+if ! node scripts/check-drift.mjs; then
+  echo ""
+  echo "Region-list drift detected — push blocked."
+  echo "Sync the listed files with scripts/lib/active-regions.mjs, then retry."
+  exit 1
+fi
+echo "  region-list drift check passed."
 
 echo "[pre-push] all checks green."

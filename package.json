@@ -11,7 +11,8 @@
     "build:snapshot-matrix": "node scripts/build-snapshot-matrix.mjs",
     "verify": "node scripts/verify-classifications.mjs",
     "verify:coverage": "node scripts/verify-comp-augments-coverage.mjs",
-    "verify:full": "node scripts/verify-classifications.mjs && node scripts/verify-comp-augments-coverage.mjs"
+    "check:drift": "node scripts/check-drift.mjs",
+    "verify:full": "node scripts/verify-classifications.mjs && node scripts/verify-comp-augments-coverage.mjs && node scripts/check-drift.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.98.0",

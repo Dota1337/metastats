@@ -25,7 +25,7 @@
  * Memory-Anker: reference_supabase_outage_runbook.md, reference_internal_ops_dashboard.md
  */
 
-import { SNAPSHOT_MATRIX } from '../app/lib/snapshot-matrix.generated.mjs';
+import { SNAPSHOT_MATRIX, snapshotKey } from '../app/lib/snapshot-matrix.generated.mjs';
 
 const BASE = process.env.PUBLIC_BASE_URL || 'https://www.metastats.gg';
 const MANIFEST_URL = 'https://unyv1wum3kbegjer.public.blob.vercel-storage.com/tft/manifest.json';
@@ -63,10 +63,10 @@ async function probeManifestCoverage() {
         const resolvedPatch = p.patch === 'current' ? currentPatch : (p.patch === 'previous' ? previousPatch : p.patch);
         if (!resolvedPatch) continue;
         expected++;
-        const region = p.region.replace(/[^a-z0-9]/gi, '_');
-        const bucket = p.bucket.replace(/[^a-z0-9_]/gi, '_');
-        const patchSafe = resolvedPatch.replace(/[^A-Za-z0-9._-]/g, '_');
-        const key = `${endpoint}/${patchSafe}/${region}__${p.days}d__${bucket}__mg${p.minGames}.json`;
+        // Use the canonical snapshotKey() (same one the publisher writes) instead
+        // of re-deriving the key inline — an inline copy drifts from the real key
+        // format and would silently report wrong 0% coverage. Audit drift-#3.
+        const key = snapshotKey(endpoint, { ...p, patch: resolvedPatch });
         if (entries.has(key)) inManifest++;
       }
       counts[endpoint] = { expected, in_manifest: inManifest, pct: expected > 0 ? Math.round((inManifest / expected) * 1000) / 10 : 0 };

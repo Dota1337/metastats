@@ -25,24 +25,63 @@ const PERSIST_BUCKETS = [
 
 const BATCH = 200;
 
-async function upsertRows(table, rows, conflictCols) {
+// Transient-failure resilience (Backlog-Item 2, L1). A Supabase compute
+// saturation event answers with Cloudflare 522/504 or drops the connection
+// entirely (fetch rejects). Before this layer a single such blip on the very
+// first upsert (crawl_meta) aborted the whole region for the day — the
+// 2026-06-23 outage lost all 15 regions this way. We retry the batch a few
+// times with growing backoff that spans a full Supabase restart (~60-120s),
+// and bound every attempt with a fetch timeout so a wedged socket can't hang
+// the crawl indefinitely (the old code had no timeout at all).
+const RETRY_STATUS = new Set([429, 500, 502, 503, 504, 522, 524]);
+const RETRY_BACKOFF_MS = [30_000, 60_000, 120_000];
+const FETCH_TIMEOUT_MS = 30_000;
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function upsertRows(table, rows, conflictCols, log = console.log) {
   if (rows.length === 0) return;
+  const headers = {
+    apikey: SUPA_KEY,
+    Authorization: `Bearer ${SUPA_KEY}`,
+    'Content-Type': 'application/json',
+    Prefer: 'resolution=merge-duplicates,return=minimal',
+  };
   for (let i = 0; i < rows.length; i += BATCH) {
     const batch = rows.slice(i, i + BATCH);
     const url = `${SUPA_URL}/rest/v1/${table}?on_conflict=${conflictCols}`;
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        apikey: SUPA_KEY,
-        Authorization: `Bearer ${SUPA_KEY}`,
-        'Content-Type': 'application/json',
-        Prefer: 'resolution=merge-duplicates,return=minimal',
-      },
-      body: JSON.stringify(batch),
-    });
-    if (!res.ok) {
-      const body = await res.text();
-      throw new Error(`Supabase upsert ${table} failed: HTTP ${res.status} ${body.slice(0, 300)}`);
+    const body = JSON.stringify(batch);
+    for (let attempt = 0; ; attempt++) {
+      let res = null;
+      let netErr = null;
+      try {
+        res = await fetch(url, {
+          method: 'POST',
+          headers,
+          body,
+          signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+        });
+      } catch (err) {
+        // fetch rejects on connection refused/reset (TypeError) or on the
+        // AbortSignal timeout (TimeoutError). Both are transient → retriable.
+        netErr = err;
+      }
+      if (res && res.ok) break;
+
+      const retriable = netErr != null || RETRY_STATUS.has(res.status);
+      if (retriable && attempt < RETRY_BACKOFF_MS.length) {
+        const waitMs = RETRY_BACKOFF_MS[attempt];
+        const reason = netErr ? `${netErr.name || 'fetch error'}` : `HTTP ${res.status}`;
+        log(`  [supabase] upsert ${table} transient ${reason} — retry ${attempt + 1}/${RETRY_BACKOFF_MS.length} in ${waitMs / 1000}s`);
+        await sleep(waitMs);
+        continue;
+      }
+
+      if (netErr) {
+        throw new Error(`Supabase upsert ${table} failed: ${netErr.name || 'fetch error'} ${netErr.message || ''}`.trim());
+      }
+      const errBody = await res.text();
+      throw new Error(`Supabase upsert ${table} failed: HTTP ${res.status} ${errBody.slice(0, 300)}`);
     }
   }
 }

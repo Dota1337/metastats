@@ -24,6 +24,7 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { aggregateMatch, finalize, emptyAggregate } from './lib/tft-build-aggregator.mjs';
 import { createRiotClient } from './lib/riot-client.mjs';
 import { writeTftStatsToSupabase } from './lib/tft-supabase-writer.mjs';
+import { computeWindow } from './lib/tft-crawl-window.mjs';
 
 const args = process.argv.slice(2);
 const arg = (k, def) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : def; };
@@ -85,37 +86,9 @@ if (!API_KEY) { console.error('RIOT_API_KEY_TFT env var required'); process.exit
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://bwawxwgxxfafbruebixa.supabase.co';
 const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// 24h window anchored at 05:00 UTC.
-//
-// mode='auto'  → most recent completed 24h window [yesterday 05, today 05).
-//                Used by the 05:15 UTC final daily run; day = yesterday.
-//                Falls back to the previous slice if invoked before 05:00 UTC
-//                (manual dispatch) so we never ask Riot for "future" matches.
-//
-// mode='today' → rolling window [today 05 UTC, now). day = today. Used by the
-//                intraday runs (11/17/23 UTC) so the current day's aggregates
-//                grow throughout the day. Each intraday upsert overwrites the
-//                previous one for the same (region, bucket, patch, set, day, …)
-//                key, and the next morning's 05:15 final run closes the day
-//                with the full 24h window.
-//                If invoked before today 05 UTC, falls back to mode='auto'
-//                semantics so we don't crawl a zero-length window.
-function computeWindow(now = new Date(), mode = 'auto', dayOverride = null) {
-  if (dayOverride) {
-    const startTime = new Date(dayOverride + 'T05:00:00Z');
-    const endTime = new Date(startTime.getTime() + 86_400_000);
-    return { startTime, endTime };
-  }
-  const today5 = new Date(Date.UTC(
-    now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 5, 0, 0, 0,
-  ));
-  if (mode === 'today' && now >= today5) {
-    return { startTime: today5, endTime: now };
-  }
-  const endTime = now < today5 ? new Date(today5.getTime() - 86_400_000) : today5;
-  const startTime = new Date(endTime.getTime() - 86_400_000);
-  return { startTime, endTime };
-}
+// 24h window anchored at 05:00 UTC. computeWindow now lives in
+// ./lib/tft-crawl-window.mjs (single source — the all-regions driver imports
+// the same logic to pin a run-wide targetDay; see Backlog-Item 2 L2).
 const WINDOW = computeWindow(new Date(), MODE, DAY_OVERRIDE);
 const WINDOW_START_SEC = Math.floor(WINDOW.startTime.getTime() / 1000);
 const WINDOW_END_SEC = Math.floor(WINDOW.endTime.getTime() / 1000);

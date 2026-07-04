@@ -119,7 +119,75 @@ async function discoverCupPagesForSet(setName) {
 }
 
 // ─── Roster extraction from a single cup page ────────────────────────────
-function extractRosterFromWikitext(wikitext) {
+
+// Set-17 broke the "one cup page = one regional roster" assumption: "travel"
+// cups (Dark Star Cup) host 16 home + 16 VISITING players of another region on
+// ONE page, drafted into mixed lobbies — prize-pool slots and per-game lobby
+// lists mix both regions, so page-wide SoloOpponent extraction attributed 16
+// AMER players to the EMEA roster (data-skeptic 2026-07-05). The ONLY
+// region-scoped source on those pages is the {{ParticipantTable}} →
+// {{ParticipantSection|title={{Banner/EMEA}} EMEA Players|count=16|p1=…|p2=…}}
+// blocks (plain pN= params, no SoloOpponent). Strategy: if ParticipantSections
+// exist, use exclusively them — region-filtered by section title when any
+// section carries a region token, all sections otherwise (single-region page).
+// Pages without ParticipantSections fall back to the legacy page-wide scan.
+const TPC_REGION_TOKENS = ['AMER', 'APAC', 'EMEA', 'CN'];
+function extractFromParticipantSections(wikitext, region) {
+  const sections = findAllTemplates(wikitext, 'ParticipantSection');
+  if (sections.length === 0) {
+    // Some cups skip sections: ONE {{ParticipantTable}} holds {{SoloOpponent}}
+    // entries directly (Stargazer Cup). Scope to the table body — the page-wide
+    // legacy scan additionally grabs bracket/showmatch names (36 vs real 32).
+    const tables = findAllTemplates(wikitext, 'ParticipantTable');
+    if (tables.length === 0) return null;
+    const names = [];
+    for (const tbl of tables) {
+      for (const opp of findAllTemplates(tbl.body, 'SoloOpponent')) {
+        const first = opp.body.split('|')[1] || opp.body.split('|')[0] || '';
+        const name = first.trim();
+        if (name && !/^(TBD|Bye|TBA)$/i.test(name)) names.push(name);
+      }
+    }
+    return names.length > 0 ? names : null;   // empty table → legacy fallback
+  }
+  const tokenRe = (t) => new RegExp(`(^|[^A-Za-z])${t}([^A-Za-z]|$)`, 'i');
+  const titled = sections.map((tpl) => {
+    // title= value may contain a nested {{Banner/…}} — allow one brace level.
+    const t = /title\s*=\s*((?:\{\{[^{}]*\}\}|[^|])*)/.exec(tpl.body);
+    return { body: tpl.body, title: (t?.[1] || '').trim() };
+  });
+  const anyRegional = titled.some((s) => TPC_REGION_TOKENS.some((t) => tokenRe(t).test(s.title)));
+  const mine = anyRegional ? titled.filter((s) => tokenRe(region).test(s.title)) : titled;
+  const names = [];
+  for (const s of mine) {
+    // p1=Name | p2=Name … (pnote/pflag etc. are separate params and don't match)
+    const pRe = /\|\s*p(\d+)\s*=\s*([^|{}\n]+)/g;
+    let m;
+    while ((m = pRe.exec(s.body))) {
+      const name = m[2].trim();
+      if (name && !/^(TBD|Bye|TBA)$/i.test(name)) names.push(name);
+    }
+    // Older sections may nest {{SoloOpponent|Name}} instead of pN params.
+    for (const opp of findAllTemplates(s.body, 'SoloOpponent')) {
+      const first = opp.body.split('|')[1] || opp.body.split('|')[0] || '';
+      const name = first.trim();
+      if (name && !/^(TBD|Bye|TBA)$/i.test(name)) names.push(name);
+    }
+  }
+  return names;
+}
+
+function extractRosterFromWikitext(wikitext, region) {
+  const fromSections = extractFromParticipantSections(wikitext, region);
+  if (fromSections !== null) {
+    const seen = new Set();
+    return fromSections.filter((n) => {
+      const k = n.toLowerCase();
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  }
   // Strategy: pull every {{SoloOpponent|Name|…}} entry that sits inside a
   // {{Slot|…|{{SoloOpponent|…}}}} or {{SoloPrizePool|…}} block. Standings &
   // bracket rounds reuse the same template, so a unique-by-name dedupe per
@@ -254,17 +322,21 @@ async function main() {
       console.log(`[${region}] no cup pages discovered`);
       continue;
     }
-    const roster = new Set();
+    // Cross-cup union is case-INSENSITIVE: participant tables write pN=kubixon
+    // while prize slots write {{SoloOpponent|Kubixon}} — a raw Set counted both
+    // (39 instead of ~32 for EMEA). First-seen casing wins; the DB name-match
+    // lowercases anyway.
+    const roster = new Map();
     console.log(`[${region}] ${cups.length} cup(s): ${cups.map(c => c.split('/').pop()).join(', ')}`);
     for (const cupPage of cups) {
       // Rate-limit handled inside the shared liquipediaJson gate.
       const j = await liquipediaJson({ action: 'parse', page: cupPage, prop: 'wikitext' });
       const wt = j?.parse?.wikitext?.['*'] || '';
-      const names = extractRosterFromWikitext(wt);
+      const names = extractRosterFromWikitext(wt, region);
       if (VERBOSE) console.log(`  [${cupPage.split('/').pop()}] ${names.length} participants`);
-      for (const n of names) roster.add(n);
+      for (const n of names) if (!roster.has(n.toLowerCase())) roster.set(n.toLowerCase(), n);
     }
-    rostersByRegion[region] = [...roster];
+    rostersByRegion[region] = [...roster.values()];
     console.log(`[${region}] unique roster: ${roster.size} pros`);
     // Persist after each region — partial progress survives 429-cuts.
     writeCache({ setName, cupsByRegion, rostersByRegion });

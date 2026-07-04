@@ -330,6 +330,33 @@ let EXISTING = { byName: new Map(), puuidBySourcePage: new Map(), sourcePageByPu
 // (data-skeptic 2026-07-04). Strict `country === 'China'`: Taiwan/Hong Kong
 // players have Riot-covered servers and must keep going through the normal
 // resolution path.
+// Shared builder for puuid-less rows (CN pros + targeted stale-riot-id pros).
+// NO puuid / riot_id keys: they stay honest NULL via column default on insert,
+// and an omitted key can never clobber a later puuid upgrade (the
+// on_conflict=source_page merge turns a resolved riot-id into a plain UPDATE).
+// Enrichment-owned fields omitted per the W3 contract.
+function buildNoPuuidRow(info, title, idField, region, country) {
+  // Anti-clobber: a page whose row already resolved to a puuid (Chinese pros on
+  // na1 like BigBol, or a re-resolved rename) must never be degraded back to a
+  // puuid-less row by a transient failure.
+  if (EXISTING.puuidBySourcePage.get(title)) return null;
+  return {
+    pro_name: idField,
+    real_name: cleanWikiField(info.name),
+    region,
+    team: cleanWikiField(info.team) || cleanWikiField(info.team_history) || cleanWikiField(info.team1) || null,
+    role: cleanWikiField(info.role) || 'Player',
+    country,
+    source: 'liquipedia',
+    source_page: title,
+    twitch_handle: cleanWikiField(info.twitch),
+    twitter_handle: cleanWikiField(info.twitter),
+    youtube_handle: cleanWikiField(info.youtube),
+    instagram_handle: cleanWikiField(info.instagram),
+    last_validated_at: new Date().toISOString(),
+  };
+}
+
 function maybeCnRow(info, title, idField) {
   // Liquipedia infoboxes carry BOTH forms: `country=China` and the ISO code
   // `country=cn` (verified live: BXSJ vs Bohetang). Normalize; stay strict —
@@ -337,28 +364,8 @@ function maybeCnRow(info, title, idField) {
   // going through the normal resolution path.
   const rawCountry = cleanWikiField(info.country) || cleanWikiField(info.nationality);
   if (!['china', 'cn', 'chn'].includes((rawCountry || '').trim().toLowerCase())) return null;
-  // Anti-clobber: Chinese pros playing on Riot servers (BigBol/Flancy/J or C on
-  // na1) already have a resolved row for this source_page — a transient Riot
-  // failure must not degrade them to a puuid-less region='cn' row.
-  if (EXISTING.puuidBySourcePage.get(title)) return null;
-  return {
-    pro_name: idField,
-    real_name: cleanWikiField(info.name),
-    region: 'cn',   // non-Riot marker; invariant: region='cn' ⇒ puuid IS NULL
-    team: cleanWikiField(info.team) || cleanWikiField(info.team_history) || cleanWikiField(info.team1) || null,
-    role: cleanWikiField(info.role) || 'Player',
-    country: 'China',   // normalized (raw value may be the ISO code 'cn')
-    source: 'liquipedia',
-    source_page: title,
-    twitch_handle: cleanWikiField(info.twitch),
-    twitter_handle: cleanWikiField(info.twitter),
-    youtube_handle: cleanWikiField(info.youtube),
-    instagram_handle: cleanWikiField(info.instagram),
-    // NO puuid / riot_id keys: they stay honest NULL via column default on
-    // insert, and an omitted key can never clobber a later puuid upgrade.
-    // Enrichment-owned fields omitted per the W3 contract.
-    last_validated_at: new Date().toISOString(),
-  };
+  // region 'cn' = non-Riot marker; invariant: region='cn' ⇒ puuid IS NULL.
+  return buildNoPuuidRow(info, title, idField, 'cn', 'China');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -438,6 +445,23 @@ async function main() {
       if (!puuid) {
         const cn = maybeCnRow(info, title, idField);
         if (cn) { cnRows.push(cn); skipReasons.cn_ingested++; continue; }
+        // TARGETED mode only: an explicitly-fed pro (TPC missing list) whose
+        // Liquipedia riot-id is stale (player renamed → account-v1 404; live
+        // verified 2026-07-05: 11 active TPC-EMEA pros) still gets a puuid-less
+        // row — same degradation as CN rows (no rank/matches/player-link, but
+        // listed with team/results/earnings via enrich). Self-healing: once
+        // Liquipedia fixes the lolchess link, the next crawl upgrades the row
+        // in place via the source_page conflict key. The broad category crawl
+        // keeps its strict semantics (no puuid-less West rows from drive-by).
+        if (PAGES_OVERRIDE) {
+          const stale = buildNoPuuidRow(info, title, idField, accountSpec.region,
+            cleanWikiField(info.country) || cleanWikiField(info.nationality));
+          if (stale) {
+            cnRows.push(stale);   // same key signature / batch as CN rows
+            skipReasons.stale_riot_id_ingested = (skipReasons.stale_riot_id_ingested || 0) + 1;
+            continue;
+          }
+        }
         skipped++;
         skipReasons.puuid_fail_by_region[accountSpec.region] = (skipReasons.puuid_fail_by_region[accountSpec.region] || 0) + 1;
         if (VERBOSE) console.warn(`  [skip] ${title}: puuid resolution failed for ${accountSpec.gameName}#${accountSpec.tagLine} (${accountSpec.region})`);

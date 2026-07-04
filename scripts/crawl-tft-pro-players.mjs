@@ -34,6 +34,11 @@ const LIMIT = parseInt(arg('--limit', '0'), 10);
 const SKIP_SUPABASE = hasFlag('--no-supabase');
 const SKIP_LIQUIPEDIA = hasFlag('--skip-liquipedia');
 const VERBOSE = hasFlag('--verbose');
+// Targeted mode (W2, 2026-07-04): crawl explicit page titles instead of
+// Category:Players — the insert path for TPC-roster members that
+// crawl-tft-tpc-roster.mjs logged as "not in tft_pro_players" (severity 3).
+// Reuses the exact parse→lolchess→PUUID chain (no second implementation).
+const PAGES_OVERRIDE = arg('--pages', '');
 // Legacy mode: walk Category:Players + action=parse per page (~400 requests).
 // Default is now Cargo (1-2 requests, ~400× less traffic, avoids IP bans).
 const LEGACY = hasFlag('--legacy');
@@ -47,6 +52,14 @@ const USER_AGENT = 'metastats-bot/1.0 (https://metastats.gg; info@metastats.gg)'
 // Liquipedia stores `lolchess=na/setsuko1-NA1` and similar; only the prefix
 // (before the first '/') is the region. NA1/EUW1 suffixes are part of the
 // Riot-ID tagline which we keep separately.
+//
+// `cn` is DELIBERATELY absent: Riot's public API does not cover the Chinese
+// server, so CN pros can never resolve to a PUUID — and puuid is this table's
+// PK. CN players still appear in tournament standings (tft_tournament_results
+// keys on pro_name, no FK). Giving them full profiles would need a schema
+// rework (surrogate PK, nullable puuid) — deliberate product decision pending,
+// see reference memory (W2 2026-07-04). Do NOT add a synthetic-PUUID hack:
+// every Riot-API consumer would need a guard, a recurring-bug class.
 const LOLCHESS_REGION_MAP = {
   na: 'na1', euw: 'euw1', eune: 'eun1', kr: 'kr', jp: 'jp1',
   br: 'br1', lan: 'la1', las: 'la2', oce: 'oc1', tr: 'tr1',
@@ -183,7 +196,14 @@ function cleanWikiField(raw) {
 // Returns null if the field doesn't carry a recognizable region prefix.
 function parseLolchess(field) {
   if (!field) return null;
-  const m = /^([a-zA-Z]+)\/(.+)$/.exec(field.trim());
+  let s = field.trim();
+  // Robustness (W2, 2026-07-04): Liquipedia values can be URL-encoded
+  // ("na/FNC%20Dishsoap-NA2") and may carry a "/setNN" deep-link suffix
+  // ("…-NA2/set12") — both silently broke the parse before (skip without
+  // insert). Decode + strip before splitting.
+  try { s = decodeURIComponent(s); } catch { /* malformed escape → keep raw */ }
+  s = s.replace(/\/set\d+.*$/i, '');
+  const m = /^([a-zA-Z]+)\/(.+)$/.exec(s);
   if (!m) return null;
   const regionCode = m[1].toLowerCase();
   const region = LOLCHESS_REGION_MAP[regionCode];
@@ -219,6 +239,19 @@ async function resolvePuuid(region, gameName, tagLine) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Supabase upsert
+
+// lower(pro_name) → puuid of every existing row; the ambiguity guard in
+// targeted mode compares against it before inserting.
+async function fetchExistingProNames() {
+  const res = await fetch(`${SUPA_URL}/rest/v1/tft_pro_players?select=puuid,pro_name`, {
+    headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` },
+  });
+  if (!res.ok) throw new Error(`fetchExistingProNames failed: HTTP ${res.status}`);
+  const rows = await res.json();
+  const m = new Map();
+  for (const r of rows || []) if (r.pro_name && r.puuid) m.set(r.pro_name.toLowerCase(), r.puuid);
+  return m;
+}
 
 async function upsertPros(rows) {
   if (rows.length === 0) return;
@@ -270,9 +303,23 @@ async function main() {
   const rows = [];
   let parsed = 0, resolved = 0, skipped = 0;
 
+  // Coverage instrumentation (W2): the old single `skipped` counter hid WHY the
+  // list is bounded (0 VN/TW/SEA pros despite mapped regions). Count per reason
+  // — puuid failures per region — and print + persist a run summary.
+  const skipReasons = {
+    no_wikitext: 0, no_infobox: 0, no_id: 0,
+    no_lolchess_field: 0, unparseable_lolchess: 0, puuid_fail_by_region: {},
+  };
+
   if (!SKIP_LIQUIPEDIA) {
-    console.log('[1/3] Fetching Liquipedia Category:Players …');
-    let titles = await fetchAllPlayerTitles();
+    let titles;
+    if (PAGES_OVERRIDE) {
+      titles = PAGES_OVERRIDE.split(',').map((t) => t.trim()).filter(Boolean);
+      console.log(`[1/3] Targeted mode — ${titles.length} explicit page title(s)`);
+    } else {
+      console.log('[1/3] Fetching Liquipedia Category:Players …');
+      titles = await fetchAllPlayerTitles();
+    }
     if (LIMIT > 0) titles = titles.slice(0, LIMIT);
     const requestEstimate = LEGACY ? titles.length : Math.ceil(titles.length / 50);
     console.log(`       ${titles.length} player pages → ~${requestEstimate} Liquipedia request(s)\n`);
@@ -295,15 +342,26 @@ async function main() {
     // Parse + Riot-resolve
     for (const title of titles) {
       const wikitext = wikitextByTitle.get(title) || '';
-      if (!wikitext) { skipped++; continue; }
+      if (!wikitext) { skipped++; skipReasons.no_wikitext++; continue; }
       const info = parseInfobox(wikitext);
-      if (!info) { skipped++; continue; }
+      if (!info) { skipped++; skipReasons.no_infobox++; continue; }
       parsed++;
       const idField = info.id || info.ID || info.player;
       const accountSpec = parseLolchess(info.lolchess) || parseLolchess(info.lolchess2);
-      if (!idField || !accountSpec) { skipped++; continue; }
+      if (!idField) { skipped++; skipReasons.no_id++; if (VERBOSE) console.warn(`  [skip] ${title}: no id field`); continue; }
+      if (!accountSpec) {
+        skipped++;
+        if (info.lolchess || info.lolchess2) { skipReasons.unparseable_lolchess++; if (VERBOSE) console.warn(`  [skip] ${title}: unparseable lolchess "${info.lolchess || info.lolchess2}"`); }
+        else skipReasons.no_lolchess_field++;
+        continue;
+      }
       const puuid = await resolvePuuid(accountSpec.region, accountSpec.gameName, accountSpec.tagLine);
-      if (!puuid) { skipped++; continue; }
+      if (!puuid) {
+        skipped++;
+        skipReasons.puuid_fail_by_region[accountSpec.region] = (skipReasons.puuid_fail_by_region[accountSpec.region] || 0) + 1;
+        if (VERBOSE) console.warn(`  [skip] ${title}: puuid resolution failed for ${accountSpec.gameName}#${accountSpec.tagLine} (${accountSpec.region})`);
+        continue;
+      }
       resolved++;
       // Clean team / role / country / socials: Liquipedia leaks HTML
       // comments ("<!--Leave blank-->") and [[Wikilinks]] into raw fields.
@@ -381,6 +439,23 @@ async function main() {
   }
   console.log(`       deduped: ${unique.length}`);
 
+  // Ambiguity guard (W2, data-skeptic): a name-based targeted feed can resolve
+  // a page whose pro_name already exists under a DIFFERENT puuid — the
+  // kurumx-dupe class that makes name joins nondeterministic. Skip + log loud;
+  // the normal category run refreshes by puuid and passes through unchanged.
+  let toWrite = unique;
+  if (PAGES_OVERRIDE && !SKIP_SUPABASE) {
+    const existing = await fetchExistingProNames();
+    toWrite = unique.filter((r) => {
+      const other = existing.get(r.pro_name.toLowerCase());
+      if (other && other !== r.puuid) {
+        console.warn(`  [ambiguous] "${r.pro_name}" already exists under a different puuid — skipped, resolve manually`);
+        return false;
+      }
+      return true;
+    });
+  }
+
   // 4) Upsert
   console.log('\n[3/3] Writing to Supabase …');
   // Team is enrichment-authoritative: the wikitext rarely carries `|team=`
@@ -389,13 +464,14 @@ async function main() {
   // HTML. A null team from this crawler must therefore not clobber an
   // enrich-written value — split the bulk upsert (PostgREST needs uniform keys
   // per payload): rows WITH a parsed team update it, null-team rows omit the key.
-  const withTeam = unique.filter((r) => r.team != null);
-  const withoutTeam = unique.filter((r) => r.team == null).map(({ team, ...rest }) => rest);
+  const withTeam = toWrite.filter((r) => r.team != null);
+  const withoutTeam = toWrite.filter((r) => r.team == null).map(({ team, ...rest }) => rest);
   await upsertPros(withTeam);
   await upsertPros(withoutTeam);
 
   const total = ((Date.now() - t0) / 1000).toFixed(0);
-  console.log(`\nDone. ${unique.length} pros in ${total}s.`);
+  console.log(`\nDone. ${toWrite.length} pros in ${total}s.`);
+  console.log(`Coverage skip summary: ${JSON.stringify(skipReasons)}`);
 }
 
 main().catch(err => { console.error('FAIL:', err.message); console.error(err.stack); process.exit(1); });

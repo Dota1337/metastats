@@ -53,13 +53,15 @@ const USER_AGENT = 'metastats-bot/1.0 (https://metastats.gg; info@metastats.gg)'
 // (before the first '/') is the region. NA1/EUW1 suffixes are part of the
 // Riot-ID tagline which we keep separately.
 //
-// `cn` is DELIBERATELY absent: Riot's public API does not cover the Chinese
-// server, so CN pros can never resolve to a PUUID — and puuid is this table's
-// PK. CN players still appear in tournament standings (tft_tournament_results
-// keys on pro_name, no FK). Giving them full profiles would need a schema
-// rework (surrogate PK, nullable puuid) — deliberate product decision pending,
-// see reference memory (W2 2026-07-04). Do NOT add a synthetic-PUUID hack:
-// every Riot-API consumer would need a guard, a recurring-bug class.
+// `cn` is DELIBERATELY absent from this map (and from REGIONAL_ROUTING):
+// Riot's public API does not cover the Chinese server, so CN pros can never
+// resolve to a PUUID. Since migration 0050 (user decision 2026-07-04) they are
+// ingested anyway — as rows with puuid/riot_id NULL and region='cn' (the
+// non-Riot marker; invariant: region='cn' implies puuid IS NULL, so every
+// Riot-API consumer stays protected by its existing puuid guard). The CN
+// fallback hooks into the no-account skip paths below. Do NOT add a
+// synthetic-PUUID hack: every Riot-API consumer would need a guard, a
+// recurring-bug class.
 const LOLCHESS_REGION_MAP = {
   na: 'na1', euw: 'euw1', eune: 'eun1', kr: 'kr', jp: 'jp1',
   br: 'br1', lan: 'la1', las: 'la2', oce: 'oc1', tr: 'tr1',
@@ -240,26 +242,52 @@ async function resolvePuuid(region, gameName, tagLine) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Supabase upsert
 
-// lower(pro_name) → puuid of every existing row; the ambiguity guard in
-// targeted mode compares against it before inserting.
-async function fetchExistingProNames() {
-  const res = await fetch(`${SUPA_URL}/rest/v1/tft_pro_players?select=puuid,pro_name`, {
+// One snapshot of the existing table, turned into the three lookup maps the
+// run needs: name→puuid (targeted-mode ambiguity guard), source_page→puuid
+// (CN anti-clobber: never degrade an already-resolved row), puuid→source_page
+// (row routing: a puuid that exists under a different/NULL source_page must
+// upsert on_conflict=puuid, or the batch dies on the unique(puuid) violation —
+// the Liquipedia-page-rename / manual-row-fill cases, architect 2026-07-04).
+async function fetchExistingPros() {
+  const res = await fetch(`${SUPA_URL}/rest/v1/tft_pro_players?select=puuid,pro_name,source_page`, {
     headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` },
   });
-  if (!res.ok) throw new Error(`fetchExistingProNames failed: HTTP ${res.status}`);
+  if (!res.ok) throw new Error(`fetchExistingPros failed: HTTP ${res.status}`);
   const rows = await res.json();
-  const m = new Map();
-  for (const r of rows || []) if (r.pro_name && r.puuid) m.set(r.pro_name.toLowerCase(), r.puuid);
-  return m;
+  const byName = new Map(), puuidBySourcePage = new Map(), sourcePageByPuuid = new Map();
+  for (const r of rows || []) {
+    if (r.pro_name && r.puuid) byName.set(r.pro_name.toLowerCase(), r.puuid);
+    if (r.source_page) puuidBySourcePage.set(r.source_page, r.puuid ?? null);
+    if (r.puuid) sourcePageByPuuid.set(r.puuid, r.source_page ?? null);
+  }
+  return { byName, puuidBySourcePage, sourcePageByPuuid };
 }
 
-async function upsertPros(rows) {
+// Team is enrichment-authoritative: the wikitext rarely carries `|team=`
+// (rosters live in `|history={{THA}}` = LPDB-rendered, not parseable locally);
+// enrich-tft-pro-history extracts the CURRENT team from the rendered infobox
+// HTML. A null team from this crawler must therefore not clobber an
+// enrich-written value — split each bulk upsert (PostgREST needs uniform keys
+// per payload): rows WITH a parsed team update it, null-team rows omit the key.
+async function upsertGrouped(rows, conflictKey) {
+  const withTeam = rows.filter((r) => r.team != null);
+  const withoutTeam = rows.filter((r) => r.team == null).map(({ team, ...rest }) => rest);
+  await upsertPros(withTeam, conflictKey);
+  await upsertPros(withoutTeam, conflictKey);
+}
+
+// Conflict-key rule (ONE function, parametrized — no drift): rows WITH a
+// source_page upsert on_conflict=source_page (so a later puuid resolution for a
+// CN row is a plain UPDATE); rows WITHOUT one (manual streamer path) and rows
+// whose puuid already exists under a different source_page (page rename /
+// manual-row-fill) go on_conflict=puuid. Routing happens in main().
+async function upsertPros(rows, conflictKey) {
   if (rows.length === 0) return;
   if (SKIP_SUPABASE) {
     console.log(`  [supabase] --no-supabase set, skipping ${rows.length} rows`);
     return;
   }
-  const url = `${SUPA_URL}/rest/v1/tft_pro_players?on_conflict=puuid`;
+  const url = `${SUPA_URL}/rest/v1/tft_pro_players?on_conflict=${conflictKey}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: {
@@ -290,11 +318,56 @@ function loadStreamerAllowlist() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// CN ingestion (2026-07-04, user decision — see LOLCHESS_REGION_MAP comment)
+
+// Filled from fetchExistingPros() at run start (empty in --no-supabase dry-runs).
+let EXISTING = { byName: new Map(), puuidBySourcePage: new Map(), sourcePageByPuuid: new Map() };
+
+// Build a puuid-less CN row for a player page that has no resolvable Riot
+// account. Fires on ALL no-account skip paths (no lolchess field, unparseable
+// lolchess, puuid failure) — 5/5 sampled CN pages carry no lolchess field at
+// all, so hooking only the puuid-failure branch would catch almost nobody
+// (data-skeptic 2026-07-04). Strict `country === 'China'`: Taiwan/Hong Kong
+// players have Riot-covered servers and must keep going through the normal
+// resolution path.
+function maybeCnRow(info, title, idField) {
+  // Liquipedia infoboxes carry BOTH forms: `country=China` and the ISO code
+  // `country=cn` (verified live: BXSJ vs Bohetang). Normalize; stay strict —
+  // Taiwan ('tw') and Hong Kong ('hk') have Riot-covered servers and must keep
+  // going through the normal resolution path.
+  const rawCountry = cleanWikiField(info.country) || cleanWikiField(info.nationality);
+  if (!['china', 'cn', 'chn'].includes((rawCountry || '').trim().toLowerCase())) return null;
+  // Anti-clobber: Chinese pros playing on Riot servers (BigBol/Flancy/J or C on
+  // na1) already have a resolved row for this source_page — a transient Riot
+  // failure must not degrade them to a puuid-less region='cn' row.
+  if (EXISTING.puuidBySourcePage.get(title)) return null;
+  return {
+    pro_name: idField,
+    real_name: cleanWikiField(info.name),
+    region: 'cn',   // non-Riot marker; invariant: region='cn' ⇒ puuid IS NULL
+    team: cleanWikiField(info.team) || cleanWikiField(info.team_history) || cleanWikiField(info.team1) || null,
+    role: cleanWikiField(info.role) || 'Player',
+    country: 'China',   // normalized (raw value may be the ISO code 'cn')
+    source: 'liquipedia',
+    source_page: title,
+    twitch_handle: cleanWikiField(info.twitch),
+    twitter_handle: cleanWikiField(info.twitter),
+    youtube_handle: cleanWikiField(info.youtube),
+    instagram_handle: cleanWikiField(info.instagram),
+    // NO puuid / riot_id keys: they stay honest NULL via column default on
+    // insert, and an omitted key can never clobber a later puuid upgrade.
+    // Enrichment-owned fields omitted per the W3 contract.
+    last_validated_at: new Date().toISOString(),
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // main
 
 async function main() {
   const t0 = Date.now();
   console.log('=== TFT Pro Player Crawler ===\n');
+  if (!SKIP_SUPABASE) EXISTING = await fetchExistingPros();
 
   // Batched wikitext fetch — 50 titles per request. ~8 Liquipedia requests
   // total instead of ~400. Cargo isn't available on the TFT wiki, so this
@@ -309,7 +382,11 @@ async function main() {
   const skipReasons = {
     no_wikitext: 0, no_infobox: 0, no_id: 0,
     no_lolchess_field: 0, unparseable_lolchess: 0, puuid_fail_by_region: {},
+    cn_ingested: 0,
   };
+  // CN rows lack the puuid/riot_id keys → different JSON key signature than the
+  // West rows (PostgREST bulk payloads need uniform keys) → own array + batch.
+  const cnRows = [];
 
   if (!SKIP_LIQUIPEDIA) {
     let titles;
@@ -350,6 +427,8 @@ async function main() {
       const accountSpec = parseLolchess(info.lolchess) || parseLolchess(info.lolchess2);
       if (!idField) { skipped++; skipReasons.no_id++; if (VERBOSE) console.warn(`  [skip] ${title}: no id field`); continue; }
       if (!accountSpec) {
+        const cn = maybeCnRow(info, title, idField);
+        if (cn) { cnRows.push(cn); skipReasons.cn_ingested++; continue; }
         skipped++;
         if (info.lolchess || info.lolchess2) { skipReasons.unparseable_lolchess++; if (VERBOSE) console.warn(`  [skip] ${title}: unparseable lolchess "${info.lolchess || info.lolchess2}"`); }
         else skipReasons.no_lolchess_field++;
@@ -357,6 +436,8 @@ async function main() {
       }
       const puuid = await resolvePuuid(accountSpec.region, accountSpec.gameName, accountSpec.tagLine);
       if (!puuid) {
+        const cn = maybeCnRow(info, title, idField);
+        if (cn) { cnRows.push(cn); skipReasons.cn_ingested++; continue; }
         skipped++;
         skipReasons.puuid_fail_by_region[accountSpec.region] = (skipReasons.puuid_fail_by_region[accountSpec.region] || 0) + 1;
         if (VERBOSE) console.warn(`  [skip] ${title}: puuid resolution failed for ${accountSpec.gameName}#${accountSpec.tagLine} (${accountSpec.region})`);
@@ -429,25 +510,36 @@ async function main() {
   }
   console.log(`       ${streamers.length} streamer entries, ${rows.length} total after merge`);
 
-  // De-dup by puuid (Liquipedia + streamer list may overlap)
+  // De-dup. NOT puuid-only: CN rows carry no puuid — the first would park
+  // `undefined` in the set and swallow all 295 others (architect 2026-07-04).
+  // source_page is the identity of Liquipedia rows, puuid of manual ones.
+  const dedupKey = (r) => r.source_page ?? r.puuid;
   const seen = new Set();
   const unique = [];
   for (const r of rows) {
-    if (seen.has(r.puuid)) continue;
-    seen.add(r.puuid);
+    const k = dedupKey(r);
+    if (seen.has(k)) continue;
+    seen.add(k);
     unique.push(r);
   }
-  console.log(`       deduped: ${unique.length}`);
+  const uniqueCn = [];
+  for (const r of cnRows) {
+    const k = dedupKey(r);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    uniqueCn.push(r);
+  }
+  console.log(`       deduped: ${unique.length} riot + ${uniqueCn.length} cn`);
 
   // Ambiguity guard (W2, data-skeptic): a name-based targeted feed can resolve
   // a page whose pro_name already exists under a DIFFERENT puuid — the
   // kurumx-dupe class that makes name joins nondeterministic. Skip + log loud;
-  // the normal category run refreshes by puuid and passes through unchanged.
+  // the normal category run refreshes by identity keys and passes unchanged.
+  // Riot rows only — CN identity is source_page, name collisions are legal.
   let toWrite = unique;
   if (PAGES_OVERRIDE && !SKIP_SUPABASE) {
-    const existing = await fetchExistingProNames();
     toWrite = unique.filter((r) => {
-      const other = existing.get(r.pro_name.toLowerCase());
+      const other = EXISTING.byName.get(r.pro_name.toLowerCase());
       if (other && other !== r.puuid) {
         console.warn(`  [ambiguous] "${r.pro_name}" already exists under a different puuid — skipped, resolve manually`);
         return false;
@@ -456,21 +548,28 @@ async function main() {
     });
   }
 
+  // Row routing onto the two conflict keys (see upsertPros): rows without a
+  // source_page (manual streamer path) and rows whose puuid already exists
+  // under a DIFFERENT (or NULL) source_page — Liquipedia page rename or a
+  // manual row gaining its page — must merge by puuid, or the INSERT trips the
+  // unique(puuid) constraint and kills the whole batch.
+  const puuidKeyRows = [];
+  const pageKeyRows = [];
+  for (const r of toWrite) {
+    if (!r.source_page) { puuidKeyRows.push(r); continue; }
+    const known = EXISTING.sourcePageByPuuid.has(r.puuid) ? EXISTING.sourcePageByPuuid.get(r.puuid) : undefined;
+    if (known !== undefined && known !== r.source_page) { puuidKeyRows.push(r); continue; }
+    pageKeyRows.push(r);
+  }
+
   // 4) Upsert
   console.log('\n[3/3] Writing to Supabase …');
-  // Team is enrichment-authoritative: the wikitext rarely carries `|team=`
-  // (rosters live in `|history={{THA}}` = LPDB-rendered, not parseable locally);
-  // enrich-tft-pro-history extracts the CURRENT team from the rendered infobox
-  // HTML. A null team from this crawler must therefore not clobber an
-  // enrich-written value — split the bulk upsert (PostgREST needs uniform keys
-  // per payload): rows WITH a parsed team update it, null-team rows omit the key.
-  const withTeam = toWrite.filter((r) => r.team != null);
-  const withoutTeam = toWrite.filter((r) => r.team == null).map(({ team, ...rest }) => rest);
-  await upsertPros(withTeam);
-  await upsertPros(withoutTeam);
+  await upsertGrouped(puuidKeyRows, 'puuid');
+  await upsertGrouped(pageKeyRows, 'source_page');
+  await upsertGrouped(uniqueCn, 'source_page');
 
   const total = ((Date.now() - t0) / 1000).toFixed(0);
-  console.log(`\nDone. ${toWrite.length} pros in ${total}s.`);
+  console.log(`\nDone. ${toWrite.length + uniqueCn.length} pros (${uniqueCn.length} cn) in ${total}s.`);
   console.log(`Coverage skip summary: ${JSON.stringify(skipReasons)}`);
 }
 

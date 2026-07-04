@@ -25,6 +25,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { proRowFilter } from './lib/pro-row-filter.mjs';
 
 const args = process.argv.slice(2);
 const arg = (k, d) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : d; };
@@ -109,7 +110,7 @@ async function main() {
   console.log(`=== EsportsEarnings cross-check — run ${runId} ===`);
 
   // 1. Load existing pros for name-matching (case-insensitive).
-  const pros = await sbFetch('tft_pro_players?select=puuid,pro_name,real_name,total_earnings_usd,earnings_sources');
+  const pros = await sbFetch('tft_pro_players?select=id,puuid,pro_name,real_name,total_earnings_usd,earnings_sources');
   const byHandle = new Map();
   const byRealName = new Map();
   for (const p of pros) {
@@ -156,7 +157,7 @@ async function main() {
       }
 
       if (!SKIP_SUPABASE) {
-        await sbFetch(`tft_pro_players?puuid=eq.${encodeURIComponent(match.puuid)}`, {
+        await sbFetch(`tft_pro_players?${proRowFilter(match)}`, {
           method: 'PATCH',
           body: JSON.stringify({ earnings_sources: sources }),
         });

@@ -36,6 +36,7 @@ import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { tmpdir } from 'node:os';
+import { proRowFilter } from './lib/pro-row-filter.mjs';
 // Shared Liquipedia helper — cross-process rate-limit lock + ETag cache +
 // template parser. Replaces the local copies of liquipediaJson +
 // findAllTemplates we used to keep here so this script doesn't drift
@@ -160,7 +161,7 @@ async function sbFetch(path, init = {}) {
 }
 
 async function loadAllPros() {
-  return sbFetch('tft_pro_players?select=puuid,pro_name,region,tpc_verified,tpc_region');
+  return sbFetch('tft_pro_players?select=id,puuid,pro_name,region,tpc_verified,tpc_region');
 }
 
 // Case-insensitive name → tft_pro_players match. Liquipedia stores e.g.
@@ -173,8 +174,8 @@ function buildNameIndex(pros) {
   return m;
 }
 
-async function upsertTpcFlag(puuid, region) {
-  await sbFetch(`tft_pro_players?puuid=eq.${encodeURIComponent(puuid)}`, {
+async function upsertTpcFlag(pro, region) {
+  await sbFetch(`tft_pro_players?${proRowFilter(pro)}`, {
     method: 'PATCH',
     body: JSON.stringify({
       tpc_verified: true,
@@ -294,7 +295,7 @@ async function main() {
           `TPC ${region} roster member not in tft_pro_players — needs Riot-ID/PUUID resolution via the regular Liquipedia crawl`);
         continue;
       }
-      await upsertTpcFlag(pro.puuid, region);
+      await upsertTpcFlag(pro, region);
       matched++;
     }
   }

@@ -22,6 +22,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { liquipediaHtml } from './lib/liquipedia-tft.mjs';
+import { proRowFilter } from './lib/pro-row-filter.mjs';
 
 const args = process.argv.slice(2);
 const arg = (k, d) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : d; };
@@ -140,7 +141,7 @@ async function main() {
   // Match against existing tft_pro_players. Liquipedia's `source_page` field
   // is the Wiki page title (with underscores → spaces), so case-sensitive
   // exact match is the right join key.
-  const pros = await sb('tft_pro_players?select=puuid,pro_name,source_page,earnings_sources,total_earnings_usd');
+  const pros = await sb('tft_pro_players?select=id,puuid,pro_name,source_page,earnings_sources,total_earnings_usd');
   const byPage = new Map();
   const byNameLower = new Map();
   for (const p of pros) {
@@ -182,7 +183,7 @@ async function main() {
         divergent++;
       }
     }
-    await sb(`tft_pro_players?puuid=eq.${encodeURIComponent(pro.puuid)}`, {
+    await sb(`tft_pro_players?${proRowFilter(pro)}`, {
       method: 'PATCH',
       body: JSON.stringify({ earnings_sources: sources }),
     });

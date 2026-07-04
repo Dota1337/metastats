@@ -67,6 +67,7 @@ if (!SKIP_SUPABASE && !SUPA_KEY) { console.error('SUPABASE_SERVICE_ROLE_KEY requ
 // Shared helper: cross-process rate-limit lock + ETag cache (see
 // scripts/lib/liquipedia-tft.mjs).
 import { liquipediaHtml } from './lib/liquipedia-tft.mjs';
+import { proRowFilter } from './lib/pro-row-filter.mjs';
 
 async function fetchRenderedHtml(title) {
   return liquipediaHtml(title);
@@ -234,7 +235,7 @@ function extractResults(html) {
 // ─── Supabase ────────────────────────────────────────────────────────────
 
 async function loadPros() {
-  const url = `${SUPA_URL}/rest/v1/tft_pro_players?source=eq.liquipedia&select=puuid,pro_name,source_page&order=pro_name.asc`;
+  const url = `${SUPA_URL}/rest/v1/tft_pro_players?source=eq.liquipedia&select=id,puuid,pro_name,source_page&order=pro_name.asc`;
   const res = await fetch(url, {
     headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` },
   });
@@ -242,8 +243,10 @@ async function loadPros() {
   return res.json();
 }
 
-async function updatePro(puuid, patch) {
-  const url = `${SUPA_URL}/rest/v1/tft_pro_players?puuid=eq.${encodeURIComponent(puuid)}`;
+async function updatePro(pro, patch) {
+  // id-keyed (CN wave): puuid=eq.null would be a silent 200/0-rows no-op for
+  // puuid-less CN rows — see scripts/lib/pro-row-filter.mjs.
+  const url = `${SUPA_URL}/rest/v1/tft_pro_players?${proRowFilter(pro)}`;
   const res = await fetch(url, {
     method: 'PATCH',
     headers: {
@@ -256,7 +259,7 @@ async function updatePro(puuid, patch) {
   });
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`Supabase update failed for ${puuid}: HTTP ${res.status} ${body.slice(0, 200)}`);
+    throw new Error(`Supabase update failed for ${pro.pro_name}: HTTP ${res.status} ${body.slice(0, 200)}`);
   }
 }
 
@@ -303,7 +306,7 @@ async function main() {
       }
 
       if (!SKIP_SUPABASE) {
-        await updatePro(pro.puuid, {
+        await updatePro(pro, {
           tournament_results,
           total_earnings_usd,
           image_url,

@@ -23,11 +23,12 @@ interface TournamentResult {
 }
 
 interface Pro {
-  puuid: string;
+  // NULL for Chinese-server pros (region='cn', migration 0050) — no Riot identity.
+  puuid: string | null;
   pro_name: string;
   real_name: string | null;
   region: string;
-  riot_id: string;
+  riot_id: string | null;
   team: string | null;
   role: string | null;
   country: string | null;
@@ -69,6 +70,8 @@ const REGION_LABELS: Record<string, string> = {
   na1: 'NA', euw1: 'EUW', eun1: 'EUNE', kr: 'KR', jp1: 'JP',
   br1: 'BR', la1: 'LAN', la2: 'LAS', oc1: 'OCE', tr1: 'TR',
   ru: 'RU', vn2: 'VN', sg2: 'SG', tw2: 'TW', th2: 'TH', ph2: 'PH', me1: 'ME',
+  // Non-Riot marker (Chinese-server pros, no puuid/riot_id — migration 0050).
+  cn: 'CN',
 };
 
 // Classification → display config. Order here also drives tab order.
@@ -144,7 +147,7 @@ export default function TftProsPage() {
       p.pro_name.toLowerCase().includes(q) ||
       (p.real_name?.toLowerCase().includes(q) ?? false) ||
       (p.team?.toLowerCase().includes(q) ?? false) ||
-      p.riot_id.toLowerCase().includes(q)
+      (p.riot_id?.toLowerCase().includes(q) ?? false)
     );
   }, [data, search]);
 
@@ -272,8 +275,13 @@ export default function TftProsPage() {
               <div></div>
             </div>
             {filteredPros.map(p => {
-              const [gameName, tagLine] = p.riot_id.split('#');
-              const slug = `${encodeURIComponent(gameName)}--${encodeURIComponent(tagLine || p.region.replace(/\d+$/, '').toUpperCase())}`;
+              // CN pros carry no Riot identity (riot_id/puuid NULL, region='cn')
+              // — there is no player page to link to, so the row renders as a
+              // plain (unlinked) anchor.
+              const [gameName, tagLine] = (p.riot_id ?? '').split('#');
+              const slug = p.riot_id
+                ? `${encodeURIComponent(gameName)}--${encodeURIComponent(tagLine || p.region.replace(/\d+$/, '').toUpperCase())}`
+                : null;
               const badge = classificationBadge(p.classification);
               const earningsSources = p.earnings_sources || {};
               const earningSourcesNonZero = Object.entries(earningsSources).filter(([, v]) => Number(v) > 0);
@@ -282,8 +290,8 @@ export default function TftProsPage() {
                 : undefined;
               return (
                 <a
-                  key={p.puuid}
-                  href={`/tft/player/${slug}?region=${p.region}`}
+                  key={p.puuid ?? p.pro_name}
+                  href={slug ? `/tft/player/${slug}?region=${p.region}` : undefined}
                   className="grid grid-cols-[2.5rem_1fr_5.5rem_6rem_4rem_5rem_3rem] gap-2 px-4 py-2 items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]"
                 >
                   <div className="flex-shrink-0">

@@ -21,6 +21,7 @@
 
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { proRowFilter } from './lib/pro-row-filter.mjs';
 
 const args = process.argv.slice(2);
 const hasFlag = (k) => args.includes(k);
@@ -127,7 +128,7 @@ function classifyAndScore(p, now = new Date()) {
 }
 
 async function main() {
-  const pros = await sb('tft_pro_players?select=puuid,pro_name,tpc_verified,tournament_results,total_earnings_usd,earnings_sources,stream_platforms,twitch_handle,youtube_handle,twitter_handle,active_rank_tier,real_name,country');
+  const pros = await sb('tft_pro_players?select=id,puuid,pro_name,tpc_verified,tournament_results,total_earnings_usd,earnings_sources,stream_platforms,twitch_handle,youtube_handle,twitter_handle,active_rank_tier,real_name,country');
   console.log(`Classifying ${pros.length} pros…`);
 
   const counts = {};
@@ -137,7 +138,7 @@ async function main() {
     counts[classification] = (counts[classification] || 0) + 1;
     if (VERBOSE) console.log(`  ${p.pro_name.padEnd(25)} ${classification.padEnd(10)} score=${score}`);
     if (!DRY) {
-      await sb(`tft_pro_players?puuid=eq.${encodeURIComponent(p.puuid)}`, {
+      await sb(`tft_pro_players?${proRowFilter(p)}`, {
         method: 'PATCH',
         body: JSON.stringify({
           classification,

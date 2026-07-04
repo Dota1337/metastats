@@ -21,11 +21,13 @@
  *   node scripts/crawl-allranks-all-regions.mjs --day 2026-05-15 # backfill a specific day (waits for lock)
  *   node scripts/crawl-allranks-all-regions.mjs --regions=euw1,kr
  *   node scripts/crawl-allranks-all-regions.mjs --reset-cursor   # drop the target day's cursor, full re-crawl
+ *   node scripts/crawl-allranks-all-regions.mjs --vacuum-only    # run only the post-crawl VACUUM (manual/recovery)
  */
 
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, unlinkSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import pg from 'pg';
 import { revalidateEdge, STATS_EDGE_PATHS } from './lib/revalidate-edge.mjs';
 import { ACTIVE_REGIONS } from './lib/active-regions.mjs';
 import { resolveDailyTargetDay } from './lib/tft-crawl-window.mjs';
@@ -50,6 +52,7 @@ const DAY_OVERRIDE = arg('--day');
 const RESUME_GAPS = hasFlag('--resume-gaps');
 const regionFilter = arg('--regions');
 const RESET_CURSOR = hasFlag('--reset-cursor');
+const VACUUM_ONLY = hasFlag('--vacuum-only');
 const regions = regionFilter ? regionFilter.split(',').map((r) => r.trim()).filter(Boolean) : ACTIVE_REGIONS;
 
 // mode=today is the rolling intraday run — no cursor, no lock (unchanged).
@@ -77,6 +80,91 @@ function triggerPublisher() {
     else console.log('    [publisher] triggered (work done this run)');
   } catch (err) {
     console.log(`    [publisher] trigger skipped: ${err.message}`);
+  }
+}
+
+// Supabase passwords often contain reserved URL chars (#, @, …); pg's URL parser
+// rejects those unless percent-encoded. Same helper as db-exec.mjs / apply-migrations.
+function encodePasswordInPgUrl(url) {
+  const schemeEnd = url.indexOf('://');
+  if (schemeEnd < 0) return url;
+  const after = url.slice(schemeEnd + 3);
+  const atIdx = after.lastIndexOf('@');
+  if (atIdx < 0) return url;
+  const userinfo = after.slice(0, atIdx);
+  const rest = after.slice(atIdx);
+  const colonIdx = userinfo.indexOf(':');
+  if (colonIdx < 0) return url;
+  const user = userinfo.slice(0, colonIdx);
+  const pass = userinfo.slice(colonIdx + 1);
+  return `${url.slice(0, schemeEnd + 3)}${user}:${encodeURIComponent(pass)}${rest}`;
+}
+
+// C1 — post-crawl VACUUM (ANALYZE) targets. After a bulk-upsert the Supabase
+// visibility map goes cold and index-only-scans degrade to mass heap-fetches
+// (measured 153k fetches / 9s on get_tft_distinct_patches_for_set → 0 / 0.88s
+// after VACUUM). These are exactly the crawl-write targets from
+// tft-supabase-writer.mjs, plus the marketvalue snapshot table (leaderboard).
+// The aggregates live only on Supabase (see reference_hetzner_supabase_db_split),
+// NOT on the crawler's Hetzner-local PG — hence a dedicated Supabase connection.
+// Heaviest first; marketvalue_snapshots (slowest, unbounded growth) LAST so it
+// can never delay the user-facing tft_daily_* tables. This does NOT fix the
+// detoast-bound diamond perms (~22s, CPU-bound, VACUUM-immune) — that's C3.
+const MAINTENANCE_TABLES = [
+  'tft_daily_comp_stats',
+  'tft_daily_unit_stats',
+  'tft_daily_item_stats',
+  'tft_daily_trait_stats',
+  'tft_daily_comp_pairs',
+  'tft_daily_augment_stats',
+  'tft_daily_trait_unitcount_stats',
+  'tft_daily_crawl_meta',
+  'tft_player_marketvalue_snapshots',
+];
+const VACUUM_TOTAL_BUDGET_MS = 6 * 60_000; // wall-clock cap across all tables
+
+// Best-effort maintenance: ONE dedicated Supabase session-pooler connection,
+// each VACUUM fault-isolated so a failure on one table never aborts the rest,
+// never blocks the publisher, and never changes the driver exit code.
+// statement_timeout (4 min) + lock_timeout (10 s) bound a hung statement — a
+// concurrent anti-wraparound autovacuum does NOT auto-cancel, so without
+// lock_timeout a manual VACUUM could hold the Riot-bucket lock forever waiting
+// on the ShareUpdateExclusiveLock. NEVER throws.
+async function runMaintenanceVacuum() {
+  const dbUrl = process.env.SUPABASE_DB_URL;
+  if (!dbUrl) {
+    console.log('    [vacuum] skipped: SUPABASE_DB_URL not set');
+    return;
+  }
+  let client;
+  try {
+    client = new pg.Client({
+      connectionString: encodePasswordInPgUrl(dbUrl),
+      ssl: { rejectUnauthorized: false },
+      connectionTimeoutMillis: 15_000,
+    });
+    await client.connect();
+    await client.query('SET statement_timeout = 240000');
+    await client.query('SET lock_timeout = 10000');
+    const started = Date.now();
+    for (const table of MAINTENANCE_TABLES) {
+      if (Date.now() - started > VACUUM_TOTAL_BUDGET_MS) {
+        console.log(`    [vacuum] budget ${VACUUM_TOTAL_BUDGET_MS / 1000}s exceeded — skipping remaining tables`);
+        break;
+      }
+      const t0 = Date.now();
+      try {
+        // table names come from the hardcoded constant above, not user input.
+        await client.query(`VACUUM (ANALYZE) ${table}`);
+        console.log(`    [vacuum] ${table} OK (${Date.now() - t0}ms)`);
+      } catch (err) {
+        console.log(`    [vacuum] ${table} ERR ${err.code || ''} ${err.message}`);
+      }
+    }
+  } catch (err) {
+    console.log(`    [vacuum] skipped: ${err.code || ''} ${err.message}`);
+  } finally {
+    if (client) { try { await client.end(); } catch { /* ignore */ } }
   }
 }
 
@@ -116,6 +204,7 @@ async function runTodayMode() {
 }
 
 async function main() {
+  if (VACUUM_ONLY) { await runMaintenanceVacuum(); return; }
   if (!RESUMABLE) return runTodayMode();
 
   // 1) Acquire the shared Riot-bucket lock.
@@ -177,7 +266,14 @@ async function main() {
   console.log(`\n=== complete in ${((Date.now() - t0) / 60_000).toFixed(1)} min — ${done} done, ${failed} failed ===`);
 
   // Publish only when this run actually crawled something. Audit HIGH-1.
-  if (done > 0) triggerPublisher();
+  // C1: VACUUM (ANALYZE) the just-upserted aggregates BEFORE the publisher —
+  // warms the Supabase visibility map so the publisher's per-permutation RPC
+  // fetches (and the next morning's user reads) hit fresh index-only-scans
+  // instead of the cold-map heap-fetch degradation. Best-effort, never blocks.
+  if (done > 0) {
+    await runMaintenanceVacuum();
+    triggerPublisher();
+  }
 
   // Substantial failure -> exit 1 so even a manual chain wouldn't treat it as a
   // clean success; the failed regions stay un-settled for the next resume tick.

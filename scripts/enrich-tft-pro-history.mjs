@@ -112,6 +112,18 @@ function extractImageUrl(html) {
   return null;
 }
 
+// Current team from the rendered infobox "Team:" row. Team membership is NOT in
+// the wikitext (pages carry `|history={{THA}}` which expands server-side from
+// LPDB), so the rendered HTML — already fetched for the image — is the only
+// reliable source (W3, 2026-07-04). An absent row means teamless, which is the
+// norm for TFT pros → null is the authoritative answer, not a parse failure.
+function extractTeam(html) {
+  const m = html.match(/infobox-description">\s*Team:\s*<\/div>\s*<div[^>]*>([\s\S]{0,300}?)<\/div>/i);
+  if (!m) return null;
+  const name = stripTags(m[1]).trim();
+  return name || null;
+}
+
 // Splits the rendered HTML at heading anchors and returns the segment
 // belonging to one heading (until the next <h1..h6>). Liquipedia uses
 // `<h2 id="Achievements">` directly (no `mw-headline` span like Leaguepedia).
@@ -278,12 +290,13 @@ async function main() {
       // call, so manual sleeps here would just compound the wait.
       const html = await fetchRenderedHtml(pro.source_page);
       const image_url = extractImageUrl(html);
+      const team = extractTeam(html);
       const resultsHtml = await fetchResultsSubpage(pro.source_page);
       const tournament_results = extractResults(resultsHtml || html);
       const total_earnings_usd = tournament_results.reduce((s, r) => s + (r.prize_usd || 0), 0);
 
       if (VERBOSE || SKIP_SUPABASE) {
-        console.log(`${pro.pro_name} (${pro.source_page}): ${tournament_results.length} results, $${total_earnings_usd}, image=${image_url ? 'yes' : 'no'}`);
+        console.log(`${pro.pro_name} (${pro.source_page}): ${tournament_results.length} results, $${total_earnings_usd}, team=${team ?? '—'}, image=${image_url ? 'yes' : 'no'}`);
         if (tournament_results.length > 0) {
           console.log('  sample:', tournament_results.slice(0, 3));
         }
@@ -294,6 +307,9 @@ async function main() {
           tournament_results,
           total_earnings_usd,
           image_url,
+          // Authoritative (see extractTeam): null = genuinely teamless, and it
+          // heals stale rosters that a previous run wrote.
+          team,
         });
       }
 
@@ -301,7 +317,9 @@ async function main() {
       if (image_url) imagesFilled++;
     } catch (e) {
       errors++;
-      if (VERBOSE) console.warn(`  [skip] ${pro.pro_name}: ${e.message}`);
+      // Always loud: the silent variant hid whatever aborted the historical
+      // full run after pro #7 — 0/259 enriched went unnoticed for weeks.
+      console.warn(`  [skip] ${pro.pro_name}: ${e.message}`);
     }
 
     if ((i + 1) % 25 === 0 || i === pros.length - 1) {

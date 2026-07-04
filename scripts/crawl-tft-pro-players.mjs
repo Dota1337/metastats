@@ -327,7 +327,11 @@ async function main() {
         twitter_handle: cleanWikiField(info.twitter),
         youtube_handle: cleanWikiField(info.youtube),
         instagram_handle: cleanWikiField(info.instagram),
-        tournament_results: [],
+        // tournament_results / total_earnings_usd / image_url are enrichment-owned
+        // (enrich-tft-pro-history.mjs). They MUST NOT appear in this payload: the
+        // merge-duplicates upsert would reset them on every weekly run — exactly
+        // the wipe that kept 0/259 pros classified as tournament/historic
+        // (classification-review 2026-07-04). Omitted keys survive the merge.
         last_validated_at: new Date().toISOString(),
       });
       if (rows.length % 25 === 0) {
@@ -361,7 +365,7 @@ async function main() {
       twitter_handle: s.twitter || null,
       youtube_handle: s.youtube || null,
       instagram_handle: s.instagram || null,
-      tournament_results: [],
+      // No enrichment-owned keys here either (see the Liquipedia row above).
       last_validated_at: new Date().toISOString(),
     });
   }
@@ -379,7 +383,16 @@ async function main() {
 
   // 4) Upsert
   console.log('\n[3/3] Writing to Supabase …');
-  await upsertPros(unique);
+  // Team is enrichment-authoritative: the wikitext rarely carries `|team=`
+  // (rosters live in `|history={{THA}}` = LPDB-rendered, not parseable locally);
+  // enrich-tft-pro-history extracts the CURRENT team from the rendered infobox
+  // HTML. A null team from this crawler must therefore not clobber an
+  // enrich-written value — split the bulk upsert (PostgREST needs uniform keys
+  // per payload): rows WITH a parsed team update it, null-team rows omit the key.
+  const withTeam = unique.filter((r) => r.team != null);
+  const withoutTeam = unique.filter((r) => r.team == null).map(({ team, ...rest }) => rest);
+  await upsertPros(withTeam);
+  await upsertPros(withoutTeam);
 
   const total = ((Date.now() - t0) / 1000).toFixed(0);
   console.log(`\nDone. ${unique.length} pros in ${total}s.`);

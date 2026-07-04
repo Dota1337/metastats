@@ -16,6 +16,12 @@ import { computeShares } from '../../../lib/tft-shares';
 import { selectFamilyMembers, mergeFamilyRows, familyKeyForMerge } from '../../../lib/tft-comp-family-merge';
 import { buildLevelOutcome } from '../../../lib/tft-comp-level-outcome';
 
+// C3 (2026-07-04): the snapshot publisher fetches this route per permutation;
+// a heavy detoast perm (diamond_plus kr/asia/7d, ~22s) exceeds the Vercel Node
+// default (~15s) → 504 → the publisher silently skips those keys, leaving the
+// snapshot gap. 60s covers it, paired with the publisher's own 60s AbortController.
+export const maxDuration = 60;
+
 // Lazy + memoized champion-cost lookup pro Set. Wird vom Tempo-Klassifikator
 // gebraucht, der Carry-Cost mit Peak-Level + 3-Star-Anteil in Beziehung setzt:
 // 1-Cost-Reroll lebt auf Lvl 5, 2-Cost auf Lvl 6, 3-Cost auf Lvl 7. Ohne den

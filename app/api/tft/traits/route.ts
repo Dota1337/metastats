@@ -3,6 +3,10 @@ import { resolveFilters, callRpc, getAvailablePatches } from '../../../lib/tft-s
 import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias } from '../../../lib/api-cache';
 import { lookupSnapshot } from '../../../lib/snapshot-lookup';
 
+// C3 (2026-07-04): raised so the snapshot publisher's per-permutation fetch of a
+// heavy detoast perm doesn't 504 on the Vercel default (~15s) and leave a gap.
+export const maxDuration = 60;
+
 interface TraitRow {
   name: string;
   activation: number;

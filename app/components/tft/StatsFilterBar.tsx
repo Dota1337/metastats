@@ -38,7 +38,10 @@ const BUCKET_OPTIONS: Option[] = [
   { value: 'challenger',  labelKey: 'tft.bucket.challenger' },
   { value: 'grandmaster', labelKey: 'tft.bucket.grandmaster' },
   { value: 'master',      labelKey: 'tft.bucket.master' },
-  { value: 'diamond',     labelKey: 'tft.bucket.diamond' },
+  // 'diamond' (single-tier) removed 2026-07-04 (C3): no snapshot coverage and the
+  // highest-traffic 521-causer on the heavy detoast RPCs. diamond_plus (above) is
+  // its strict superset and IS snapshot-covered. A direct ?bucket=diamond URL is
+  // coerced to diamond_plus server-side in resolveFilters().
   { value: 'emerald',     labelKey: 'tft.bucket.emerald' },
   { value: 'platinum',    labelKey: 'tft.bucket.platinum' },
   { value: 'gold',        labelKey: 'tft.bucket.gold' },

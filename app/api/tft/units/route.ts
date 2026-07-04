@@ -6,6 +6,10 @@ import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias } from '.
 import { lookupSnapshot } from '../../../lib/snapshot-lookup';
 import { computeShares } from '../../../lib/tft-shares';
 
+// C3 (2026-07-04): raised so the snapshot publisher's per-permutation fetch of a
+// heavy detoast perm doesn't 504 on the Vercel default (~15s) and leave a gap.
+export const maxDuration = 60;
+
 // /api/tft/units
 //   Filter params (Supabase-backed):
 //     region  = all | west | asia | <single, e.g. 'euw1'>

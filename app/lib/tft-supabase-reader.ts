@@ -174,7 +174,15 @@ async function resolvePatch(param: string | null): Promise<string | null> {
 
 export async function resolveFilters(searchParams: URLSearchParams): Promise<ResolvedFilters> {
   const regionLabel = searchParams.get('region') || 'all';
-  const bucketLabel = searchParams.get('bucket') || 'diamond_plus';
+  // C3 (2026-07-04): single-tier `diamond` has no snapshot coverage and was the
+  // highest-traffic 521-causer on the heavy detoast RPCs. diamond_plus is its
+  // strict superset (diamond+master+GM+chall) and IS snapshot-covered. Coerce
+  // centrally here so a direct ?bucket=diamond API hit — not just the removed
+  // dropdown option — resolves onto the snapshot. Only the resolveFilters-fed
+  // stats routes are affected; regions/patch parse bucket independently and keep
+  // single-tier diamond.
+  const rawBucket = searchParams.get('bucket') || 'diamond_plus';
+  const bucketLabel = rawBucket === 'diamond' ? 'diamond_plus' : rawBucket;
   const requestedDays = Math.max(1, Math.min(7, parseInt(searchParams.get('days') || '3', 10)));
   const patchParam = searchParams.get('patch') || 'current';
   const setParam = searchParams.get('set');

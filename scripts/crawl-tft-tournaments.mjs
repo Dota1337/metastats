@@ -34,6 +34,7 @@
 
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { getUsdRate } from './lib/fx-rates.mjs';
 
 const args = process.argv.slice(2);
 const arg = (k, d) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : d; };
@@ -307,11 +308,39 @@ function parseDate(s) {
   return null;
 }
 
+// Parse a prize amount into whole units. Handles both thousand-separator styles
+// ("10,000,000" / "1.234.567") and decimal tails: a trailing 1-2-digit group
+// after a separator is a decimal part (US "1,234.56" or EU "1.234,56") and is
+// dropped — the old digit-strip turned "1,234.56" into 123456 (100x error).
+// Amounts <= 0 count as "no prize" (usdprize=0 must fall through to localprize).
 function parsePrize(s) {
   if (!s) return null;
-  // Strip currency + commas; keep numbers
-  const num = s.replace(/[^0-9]/g, '');
-  return num ? parseInt(num, 10) : null;
+  let t = String(s).replace(/[^\d.,]/g, '');
+  if (!t) return null;
+  const dec = /^(.+)[.,](\d{1,2})$/.exec(t);
+  if (dec) t = dec[1];
+  const num = t.replace(/[^\d]/g, '');
+  const n = num ? parseInt(num, 10) : null;
+  return n && n > 0 ? n : null;
+}
+
+// Page-level currency of {{SoloPrizePool}} local prizes + the infobox prizepool.
+// Liquipedia semantics: a bare `prizepool=` / `usdprize=` is USD; `localprize=`
+// values are in the page's `localcurrency=` (template param `localcurrency=` /
+// `localcurrency1..N=` or infobox field). Returns the uppercase ISO code, null
+// (no localcurrency anywhere → prizes are USD), or 'MIXED' (conflicting codes on
+// one page → caller must NOT convert, keep native + log).
+function detectPageCurrency(wikitext, infoboxFields) {
+  const found = new Set();
+  const add = (v) => { const c = String(v || '').trim().toUpperCase(); if (/^[A-Z]{3}$/.test(c)) found.add(c); };
+  add(infoboxFields.localcurrency);
+  for (const body of findAllTemplates(wikitext, 'SoloPrizePool')) {
+    const f = parseTemplateFields(body);
+    for (const [k, v] of Object.entries(f)) if (/^localcurrency\d*$/.test(k)) add(v);
+  }
+  if (found.size === 0) return null;
+  if (found.size > 1) return 'MIXED';
+  return [...found][0];
 }
 
 function deriveStatus(startDate, endDate) {
@@ -397,12 +426,19 @@ function parseTemplateArgs(body) {
 function extractPlacements(wikitext) {
   const placements = [];
   const seen = new Set();
-  const push = (place, proName, country, prizeUsd, team) => {
+  // prizeUsdRaw = explicit usdprize= param (genuinely USD). prizeLocalRaw =
+  // localprize= param, denominated in the page's localcurrency — conversion
+  // happens in main() where the page currency + event date are known. The old
+  // `usdprize || localprize` collapse is exactly what stored ₩20M as "$20M".
+  const push = (place, proName, country, prizeUsdRaw, prizeLocalRaw, team) => {
     if (!place || !proName) return;
     const key = `${place}::${proName.toLowerCase()}`;
     if (seen.has(key)) return;   // de-dupe nested per-day + overall blocks
     seen.add(key);
-    placements.push({ placement: place, proName, team: team || null, country: country || null, prizeUsd: prizeUsd ?? null });
+    placements.push({
+      placement: place, proName, team: team || null, country: country || null,
+      prizeUsdRaw: prizeUsdRaw ?? null, prizeLocalRaw: prizeLocalRaw ?? null,
+    });
   };
 
   // Modern {{Slot}} + nested {{SoloOpponent}}. Slots are in rank order and
@@ -413,14 +449,15 @@ function extractPlacements(wikitext) {
   for (const body of findAllTemplates(wikitext, 'Slot')) {
     const f = parseTemplateFields(body);
     const base = f.place ? parseInt(f.place, 10) : rank;
-    const prize = parsePrize(f.usdprize || f.localprize);
+    const usdRaw = parsePrize(f.usdprize);
+    const localRaw = usdRaw == null ? parsePrize(f.localprize) : null;
     const opps = findAllTemplates(body, 'SoloOpponent');
     let n = 0;
     for (const oppBody of opps) {
       const { positional, keyed } = parseTemplateArgs(oppBody);
       const proName = unwiki(positional[0] || keyed['1'] || keyed.p1 || '');
       if (!proName) continue;
-      push(base, proName, keyed.flag || null, prize, null);
+      push(base, proName, keyed.flag || null, usdRaw, localRaw, null);
       n++;
     }
     rank = base + Math.max(1, n);
@@ -432,7 +469,9 @@ function extractPlacements(wikitext) {
       const f = parseTemplateFields(body);
       const place = parseInt(f.place || '0', 10);
       const proName = unwiki(f.p1 || f.player || f['1'] || '');
-      push(place, proName, f.c1 || f.p1flag || f.flag || null, parsePrize(f.usdprize), unwiki(f.team || '') || null);
+      const usdRaw = parsePrize(f.usdprize);
+      const localRaw = usdRaw == null ? parsePrize(f.localprize) : null;
+      push(place, proName, f.c1 || f.p1flag || f.flag || null, usdRaw, localRaw, unwiki(f.team || '') || null);
     }
   }
   return placements;
@@ -526,7 +565,7 @@ async function main() {
 
   console.log('[2/3] Fetching + parsing + writing each page …');
   let totalTournaments = 0, totalResults = 0;
-  let parsed = 0, skipped = 0;
+  let parsed = 0, skipped = 0, fxSkipped = 0;
   for (const s of seed) {
     if (parsed > 0) await sleep(LIQUIPEDIA_DELAY_MS);
     let wikitext, displayTitle;
@@ -565,6 +604,45 @@ async function main() {
     const infoboxCount = parseInt(fields.team_number || fields.player_number || '0', 10) || null;
     const numParticipants = infoboxCount || placements.length || countParticipants(wikitext);
 
+    // ── Prize-money currency (W1, 2026-07-04). Detect the page currency, then
+    // resolve ONE event-dated FX rate per page (cached in data/fx-rates.json).
+    // Conversion rules (feedback_no_fake_values — never guess a rate):
+    //   usdprize=            → genuinely USD, no conversion
+    //   localprize + known currency + rate + event date → converted USD
+    //   localprize + (MIXED | no localcurrency | no rate | no date) → prize_usd
+    //   NULL, native amount + currency persisted, [fx-skip] logged
+    const pageCurrency = detectPageCurrency(wikitext, fields);
+    const fxEventDate = endDate || startDate || null;   // 35/280 events have neither
+    let fx = null;
+    const needsFx = pageCurrency && pageCurrency !== 'MIXED' && pageCurrency !== 'USD';
+    if (needsFx && fxEventDate) fx = await getUsdRate(pageCurrency, fxEventDate);
+    const fxSkipReason = !pageCurrency ? null
+      : pageCurrency === 'MIXED' ? 'mixed localcurrency codes on page'
+      : pageCurrency === 'USD' ? null
+      : !fxEventDate ? 'no start/end date for event-dated rate'
+      : !fx ? `no ECB rate for ${pageCurrency}`
+      : null;
+    if (fxSkipReason) { console.warn(`  [fx-skip] ${s.page}: ${fxSkipReason} — native amounts kept, prize_usd NULL`); fxSkipped++; }
+
+    // localAmount → { prize_usd, native, currency, rate, date } under the rules above.
+    const convertLocal = (localRaw) => {
+      if (localRaw == null) return null;
+      if (!pageCurrency || pageCurrency === 'MIXED') return { usd: null, native: localRaw, currency: pageCurrency === 'MIXED' ? 'MIXED' : null, rate: null, date: null };
+      if (pageCurrency === 'USD') return { usd: localRaw, native: null, currency: 'USD', rate: null, date: null };
+      if (!fx) return { usd: null, native: localRaw, currency: pageCurrency, rate: null, date: null };
+      return { usd: Math.round(localRaw * fx.rate), native: localRaw, currency: pageCurrency, rate: fx.rate, date: fx.effectiveDate };
+    };
+
+    // Infobox prizepool: prizepoolusd= is explicit USD; a bare prizepool= is USD
+    // by Liquipedia convention UNLESS the page sets a localcurrency.
+    const poolUsdExplicit = parsePrize(fields.prizepoolusd);
+    const poolRaw = parsePrize(fields.prizepool);
+    let pool = { usd: poolUsdExplicit ?? null, native: null, currency: poolUsdExplicit != null ? 'USD' : null, rate: null, date: null };
+    if (poolUsdExplicit == null && poolRaw != null) {
+      pool = needsFx || pageCurrency === 'MIXED' ? convertLocal(poolRaw)
+        : { usd: poolRaw, native: null, currency: 'USD', rate: null, date: null };
+    }
+
     const tour = {
       id,
       liquipedia_page: s.page,
@@ -577,7 +655,11 @@ async function main() {
       start_date: startDate,
       end_date: endDate,
       status,
-      prize_pool_usd: parsePrize(fields.prizepool),
+      prize_pool_usd: pool.usd,
+      prize_pool_native: pool.native,
+      prize_pool_currency: pool.currency,
+      fx_rate: pool.rate,
+      fx_date: pool.date,
       twitch_channel: fields.twitch || null,
       format: unwiki(fields.format) || null,
       num_participants: numParticipants,
@@ -586,15 +668,24 @@ async function main() {
       last_validated_at: new Date().toISOString(),
     };
 
-    const results = placements.map(p => ({
-      tournament_id: id,
-      placement: p.placement,
-      pro_name: p.proName,
-      pro_puuid: proPuuidByName.get(p.proName.toLowerCase()) || null,
-      team: p.team,
-      country: p.country,
-      prize_usd: p.prizeUsd,
-    }));
+    const results = placements.map(p => {
+      const conv = p.prizeUsdRaw != null
+        ? { usd: p.prizeUsdRaw, native: null, currency: 'USD', rate: null, date: null }
+        : (convertLocal(p.prizeLocalRaw) ?? { usd: null, native: null, currency: null, rate: null, date: null });
+      return {
+        tournament_id: id,
+        placement: p.placement,
+        pro_name: p.proName,
+        pro_puuid: proPuuidByName.get(p.proName.toLowerCase()) || null,
+        team: p.team,
+        country: p.country,
+        prize_usd: conv.usd,
+        prize_native: conv.native,
+        prize_currency: conv.currency,
+        fx_rate: conv.rate,
+        fx_date: conv.date,
+      };
+    });
 
     // Write incrementally: a 2.5h discovery run must persist partial progress
     // and never POST one huge results payload. Results are replaced per event.
@@ -612,7 +703,7 @@ async function main() {
   }
 
   const total = ((Date.now() - t0) / 1000).toFixed(0);
-  console.log(`\nDone. ${totalTournaments} tournaments, ${totalResults} placements in ${total}s (skipped: ${skipped})`);
+  console.log(`\nDone. ${totalTournaments} tournaments, ${totalResults} placements in ${total}s (skipped: ${skipped}, fx-skipped: ${fxSkipped})`);
 }
 
 main().catch(err => { console.error('FAIL:', err.message); console.error(err.stack); process.exit(1); });

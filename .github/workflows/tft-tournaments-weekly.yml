@@ -7,8 +7,11 @@ on:
     - cron: '0 9 * * 3'
   workflow_dispatch:
 
+# contents: write — the crawler resolves event-dated FX rates (prize-money
+# conversion) and caches them in data/fx-rates.json, committed back below so
+# re-runs are deterministic and offline-capable.
 permissions:
-  contents: read
+  contents: write
 
 env:
   NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
@@ -38,3 +41,23 @@ jobs:
 
       - name: Crawl TFT tournaments
         run: node scripts/crawl-tft-tournaments.mjs
+
+      # Commit-back of the FX-rate cache (same race-safe retry pattern as the
+      # daily/weekly crawl workflows). Without this, every weekly run re-fetches
+      # the same historical rates and a frankfurter outage would silently NULL
+      # newly crawled prize conversions.
+      - name: Commit FX-rate cache
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/fx-rates.json 2>/dev/null || true
+          if git diff --staged --quiet; then
+            echo "No new FX rates."
+          else
+            git commit -m "chore: weekly TFT tournament FX-rate cache"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main && git push && break
+              echo "Push attempt $attempt failed, retrying..."
+              sleep 5
+            done
+          fi

@@ -1,10 +1,10 @@
 {
   "set": 17,
   "source": "tftacademy.com/tierlist/comps (SvelteKit hydration data island)",
-  "fetchedAt": "2026-06-18T17:21:38.839Z",
+  "fetchedAt": "2026-07-04T08:38:23.354Z",
   "counts": {
-    "slugsIndexed": 33,
-    "populatedFull": 33,
+    "slugsIndexed": 36,
+    "populatedFull": 36,
     "populatedPartial": 0,
     "skipped": 0
   },
@@ -12,7 +12,7 @@
     "anima-reroll": {
       "title": "Vanguard Diana",
       "difficulty": "HARD",
-      "updated": "2026-06-17 18:41:09.381Z",
+      "updated": "2026-07-04 04:09:43.485Z",
       "augments": [
         "TFT10_Augment_HeroicGrabBag",
         "TFT_Augment_MagicRoll",
@@ -33,14 +33,7 @@
         "COMBAT",
         "COMBAT"
       ],
-      "augmentsTip": {
-        "de": "Diese Version wird noch optimiert. Du kannst auch auf Zoe 3* oder Challenger Miss Fortune 3* spielen, wenn du überschüssige Sword/Bow Items und kein Anima hast. Suche nach Arbiter mit Resists oder permanentem HP pro 3 Attacken/4 Sekunden/10x Damage. Anima auscashen ist optional, hilft aber bei Illaoi/Aurora Kopien.",
-        "en": "Still testing the optimal version. If you have extra sword and bow items with no Anima, pivot to Zoe 3* or Challenger Miss Fortune 3* instead. Hunt for Arbiter augments that grant Resists or permanent HP per 3 attacks, 4 seconds, or 10 damage instances. Anima cash out is nice-to-have but not required—prioritize hitting extra copies of Illaoi and Aurora.",
-        "ko": "최적화 버전을 계속 테스트 중입니다. Sword/Bow 아이템이 많고 Anima가 없으면 Zoe 3* 또는 Challenger Miss Fortune 3*로 전환하세요. Resists 또는 3번 공격/4초/10번 대미지당 영구 HP를 주는 Arbiter를 찾으세요. Anima 현금화는 선택사항이지만 Illaoi/Aurora 복사본을 더 확보하면 좋습니다.",
-        "zh": "该版本仍在优化测试中。如果你有多余的Sword/Bow物品且没有Anima，可以改为使用Zoe 3*或Challenger Miss Fortune 3*。寻找提供Resists或每3次攻击/4秒/10次伤害时获得永久HP的Arbiter。Anima现金出局是可选的，但有助于获得更多Illaoi/Aurora副本。",
-        "es": "Aún estamos optimizando esta versión. Si tienes objetos Sword/Bow excedentes sin Anima, puedes optar por Zoe 3* o Challenger Miss Fortune 3*. Busca Arbiter que otorgue Resists o HP permanente cada 3 ataques, 4 segundos o 10 daños. El cash out de Anima es opcional pero útil para conseguir copias extra de Illaoi y Aurora.",
-        "fr": "Cette version est encore en optimisation. Si tu as des objets Sword/Bow en excès sans Anima, tu peux pivoter vers Zoe 3* ou Challenger Miss Fortune 3*. Cherche Arbiter donnant Resists ou HP permanent tous les 3 attaques, 4 secondes ou 10 dégâts. Encaisser Anima est optionnel mais utile pour obtenir des copies supplémentaires de Illaoi et Aurora."
-      },
+      "augmentsTip": null,
       "carousel": [
         "TFT_Item_GuinsoosRageblade",
         "TFT_Item_TitansResolve",
@@ -87,7 +80,7 @@
     "bonk-nasus": {
       "title": "Bonk! Nasus",
       "difficulty": "EASY",
-      "updated": "2026-06-17 18:41:09.359Z",
+      "updated": "2026-07-04 04:09:43.486Z",
       "augments": [
         "TFT17_Augment_NasusCarry",
         "TFT9_Augment_MissedConnections",
@@ -108,14 +101,7 @@
         "ECON",
         "ECON"
       ],
-      "augmentsTip": {
-        "de": "Strebe nach 6 Vanguard. Falls du Teemo 3 nicht erreichst, level auf Leblanc auf. Wähle idealerweise ein tanky Arbiter Trait. Mit Space Groove Emblem kannst du Leblanc durch Nami ersetzen.",
-        "en": "Target 6 Vanguard whenever possible. If Teemo 3 isn't achievable, level up for Leblanc instead. A tanky Arbiter trait is the best option. With Space Groove emblem, swap Leblanc out for Nami.",
-        "ko": "6 Vanguard를 목표로 삼아라. Teemo 3를 못 맞추면 Leblanc을 위해 레벨을 올려라. 탱키한 Arbiter 트레잇을 선택하는 것이 좋다. Space Groove 엠블렘이 있으면 Leblanc을 Nami로 바꿀 수 있다.",
-        "zh": "始终瞄准6个Vanguard。如果无法达到Teemo 3，则升级以获得Leblanc。优先选择坦克型Arbiter特性。如果你有Space Groove纹章，可以用Nami替换Leblanc。",
-        "es": "Busca siempre 6 Vanguard. Si no puedes conseguir Teemo 3, sube de nivel para Leblanc. Prefiere un trait Arbiter tankero. Con emblema Space Groove, puedes cambiar Leblanc por Nami.",
-        "fr": "Vise toujours 6 Vanguard. Si tu ne peux pas obtenir Teemo 3, monte de niveau pour Leblanc. Privilégie un trait Arbiter tanky. Avec l'emblème Space Groove, tu peux remplacer Leblanc par Nami."
-      },
+      "augmentsTip": null,
       "carousel": [
         "TFT_Item_GuinsoosRageblade",
         "TFT_Item_Bloodthirster",
@@ -163,88 +149,10 @@
         }
       ]
     },
-    "challenger-miss-fortune": {
-      "title": "Challenger Miss Fortune",
-      "difficulty": "EASY",
-      "updated": "2026-06-17 18:41:09.371Z",
-      "augments": [
-        "TFT_Augment_Expedition",
-        "TFT_Augment_LegionOfThrees",
-        "TFT_Augment_TreasureHunt",
-        "TFT_Augment_ForgeSword",
-        "TFT_Augment_JustSlayer",
-        "TFT6_Augment_Electrocharge1",
-        "TFT9_Augment_ArmyBuilding",
-        "TFT_Augment_HeroicGrabBagPlusPlus"
-      ],
-      "augmentTypes": [
-        "ITEMS",
-        "ITEMS",
-        "ITEMS",
-        "COMBAT",
-        "COMBAT",
-        "COMBAT",
-        "ECON",
-        "ECON"
-      ],
-      "augmentsTip": {
-        "de": "Challenger auf Miss Fortune spielen. Falls Ornn umstritten ist, wähle einen anderen 3-Cost Tank. Wenn du Diana Items hast, kannst du Diana 3 anstreben und Bel'Veth ersetzen.",
-        "en": "Run Challenger on Miss Fortune as your carry. If Ornn is being picked up, pivot to a different 3-cost tank instead. When you hit Diana items, consider pivoting to Diana 3 and swapping out Bel'Veth.",
-        "ko": "Miss Fortune를 Challenger로 운영합니다. Ornn이 경쟁적이면 다른 3코스트 탱커를 찾으세요. Diana 아이템이 있으면 Diana 3를 노리고 Bel'Veth를 교체할 수 있습니다.",
-        "zh": "以Challenger为主的Miss Fortune阵容。如果Ornn被争抢，改用其他3费坦克。若有Diana装备，可考虑追Diana 3星并替换Bel'Veth。",
-        "es": "Juega Challenger en Miss Fortune. Si Ornn está disputado, busca otro tanque de 3 costos. Si tienes items de Diana, considera hacer Diana 3 y reemplazar a Bel'Veth.",
-        "fr": "Jouez Challenger sur Miss Fortune. Si Ornn est très demandé, optez pour un autre tank 3-coût. Si vous avez les items Diana, envisagez de viser Diana 3 et remplacer Bel'Veth."
-      },
-      "carousel": [
-        "TFT_Item_BFSword",
-        "TFT_Item_Deathblade",
-        "TFT_Item_GiantsBelt",
-        "TFT_Item_GuinsoosRageblade"
-      ],
-      "earlyComp": [
-        {
-          "apiName": "TFT17_Briar",
-          "items": [],
-          "stars": 1
-        },
-        {
-          "apiName": "TFT17_RekSai",
-          "items": [],
-          "stars": 1
-        },
-        {
-          "apiName": "TFT17_Belveth",
-          "items": [],
-          "stars": 1
-        },
-        {
-          "apiName": "TFT17_MissFortune",
-          "items": [
-            "TFT_Item_GuinsoosRageblade",
-            "TFT_Item_Deathblade"
-          ],
-          "stars": 1
-        }
-      ],
-      "tips": [
-        {
-          "stage": "Stage 2",
-          "tip": "Ideally open with Miss Fortune + Primordian and win streak. Slam items for MF / Bel'Veth."
-        },
-        {
-          "stage": "Stage 3",
-          "tip": "If lose streaking, level to 7 at 3-5 and roll for 2* item holders. Win last two fights of Stage and econ up. If win streaking, you can aim to Level 7 end of Stage."
-        },
-        {
-          "stage": "Stage 4",
-          "tip": "Slow roll for 3* 3 cost. You should be hitting one by end of Stage 4. If you think you can't hit, take an econ augment. Once done, level to 8 for Kindred, Diana, or Akali for precision."
-        }
-      ]
-    },
     "contract-killer-pyke": {
       "title": "Contract Killer Pyke",
       "difficulty": "EASY",
-      "updated": "2026-06-17 18:41:09.397Z",
+      "updated": "2026-07-04 04:09:43.216Z",
       "augments": [
         "TFT17_Augment_PykeCarry",
         "TFT9_Augment_JeweledLotus",
@@ -265,14 +173,7 @@
         "ECON",
         "ECON"
       ],
-      "augmentsTip": {
-        "de": "Wenn du kein gutes Psionic-Item hast, nimm stattdessen Hand of Justice oder Striker's Flail. Die Comp ist flexibel bei der Anzahl der Voyagers. Gragas 3 ist nicht notwendig, da Brawler schwer zu integrieren ist, außer du triffst Tahm Kench.",
-        "en": "If you lack a strong Psionic item, swap in Hand of Justice or Striker's Flail instead. This comp adapts well to varying numbers of Voyagers. You don't need Gragas 3 since fitting Brawler can be awkward unless you hit Tahm Kench.",
-        "ko": "좋은 Psionic 아이템이 없으면 Hand of Justice 또는 Striker's Flail로 교체하세요. 이 조합은 Voyager 개수에 유연합니다. Tahm Kench를 획득하지 않으면 Brawler를 맞추기 어려우므로 Gragas 3은 필수가 아닙니다.",
-        "zh": "如果没有好的 Psionic 装备，可以用 Hand of Justice 或 Striker's Flail 替代。此阵容对 Voyager 数量很灵活。Gragas 3 不是必需的，因为除非你获得 Tahm Kench，否则 Brawler 很难融入。",
-        "es": "Si no tienes un buen item Psionic, cámbialo por Hand of Justice o Striker's Flail. Esta comp es flexible con la cantidad de Voyagers. Gragas 3 no es necesario porque encajar Brawler es difícil a menos que consigas Tahm Kench.",
-        "fr": "Sans bon item Psionic, remplacez-le par Hand of Justice ou Striker's Flail. Cette comp s'adapte facilement au nombre de Voyagers. Gragas 3 n'est pas indispensable car intégrer Brawler est difficile sauf si tu rolls Tahm Kench."
-      },
+      "augmentsTip": null,
       "carousel": [
         "TFT_Item_InfinityEdge",
         "TFT_Item_GuardianAngel",
@@ -322,7 +223,7 @@
     "corki-riven": {
       "title": "Corki Riven",
       "difficulty": "MEDIUM",
-      "updated": "2026-06-17 18:41:09.390Z",
+      "updated": "2026-07-04 04:09:43.483Z",
       "augments": [
         "TFT_Augment_ComponentQuestSword",
         "TFT_Augment_TraitTree",
@@ -343,14 +244,7 @@
         "ECON",
         "ECON"
       ],
-      "augmentsTip": {
-        "de": "Rivens Items sind flexibel, aber stelle sicher, dass sie Sterak, IE oder DB trägt, um AD-Form zu aktivieren. Spielé Bard nicht auf Lvl 8 statt Voyager -- Füge ihn stattdessen auf Lvl 9 mit Shen statt Poppy hinzu. Milio lohnt sich zu itemisieren, wenn du extra Items als 3. Damage Carry hast.",
-        "en": "Riven's items have flexibility, but ensure she has Sterak, IE, or DB equipped to trigger AD form. Don't add Bard at lvl 8 over Voyager -- Instead, include him at lvl 9 with Shen replacing Poppy. Milio deserves items if you have spare gear for a 3rd damage carry.",
-        "ko": "Riven의 아이템은 유연하지만, AD 형태를 활성화하기 위해 Sterak, IE, 또는 DB를 장착했는지 확인하세요. Voyager 대신 lvl 8에서 Bard를 플레이하지 마세요 -- 대신 lvl 9에서 Poppy 대신 Shen과 함께 추가하세요. 3번째 Damage Carry로 여분의 아이템이 있으면 Milio에 아이템을 주는 것이 가치있습니다.",
-        "zh": "Riven的装备灵活多变,但确保她装备Sterak、IE或DB以激活AD形态。不要在lvl 8用Bard替代Voyager -- 相反,在lvl 9用Shen替代Poppy加入Bard。如果你有多余装备作为第3个伤害输出,Milio值得装备。",
-        "es": "Los items de Riven son flexibles, pero asegúrate de que tenga Sterak, IE o DB equipado para activar forma AD. No juegues Bard en lvl 8 en lugar de Voyager -- En su lugar, añádelo en lvl 9 con Shen en lugar de Poppy. Milio merece items si tienes equipo extra para un 3er damage carry.",
-        "fr": "Les items de Riven sont flexibles, mais assure-toi qu'elle porte Sterak, IE ou DB pour activer la forme AD. Ne joue pas Bard au lvl 8 à la place de Voyager -- À la place, ajoute-le au lvl 9 avec Shen à la place de Poppy. Milio mérite des items si tu as des équipements supplémentaires pour un 3e damage carry."
-      },
+      "augmentsTip": null,
       "carousel": [
         "TFT_Item_Deathblade",
         "TFT_Item_LastWhisper",
@@ -403,7 +297,7 @@
     "dark-star": {
       "title": "Dark Star Flex",
       "difficulty": "MEDIUM",
-      "updated": "2026-06-17 18:41:09.339Z",
+      "updated": "2026-07-04 04:09:43.209Z",
       "augments": [
         "TFT_Augment_SpreadingRoots",
         "TFT_Augment_TraitTree",
@@ -424,14 +318,7 @@
         "COMBAT",
         "COMBAT"
       ],
-      "augmentsTip": {
-        "de": "Ziel auf 6 Dark Star hin. Spät: Ohne AD-Items: Jhin 2 > Kai'Sa 2 > Jhin 1. Level 7-8 flexibel: 4 Dark Star + Vanguards Shepherd (Illaoi/Meepsie)/Brawlers (Pantheon)/Rogues (Riven). Embleme: Dark Star > Sniper >> Voyager, Rogue, Tank.",
-        "en": "Work toward 6 Dark Star units. In late game without AD items, prefer Jhin 2 > Kai'Sa 2 > Jhin 1. At Level 7 and 8, you have flexibility -- typically run 4 Dark Star paired with Vanguards Shepherd (Illaoi/Meepsie), Brawlers (Pantheon), or Rogues (Riven). Best Emblems: Dark Star > Sniper >> Voyager, Rogue, Tank.",
-        "ko": "6 Dark Star를 목표로 진행. 후반부에 AD 아이템이 부족하면 Jhin 2 > Kai'Sa 2 > Jhin 1 우선순위. Level 7-8은 유연함: 4 Dark Star + Vanguards Shepherd(Illaoi/Meepsie)/Brawlers(Pantheon)/Rogues(Riven). 추천 Emblems: Dark Star > Sniper >> Voyager, Rogue, Tank.",
-        "zh": "以6个Dark Star为目标。后期缺少AD装备时优先级：Jhin 2 > Kai'Sa 2 > Jhin 1。Level 7和8灵活配置：4 Dark Star搭配Vanguards Shepherd(Illaoi/Meepsie)/Brawlers(Pantheon)/Rogues(Riven)。Emblems推荐：Dark Star > Sniper >> Voyager, Rogue, Tank。",
-        "es": "Busca 6 Dark Star. Late game sin items AD: Jhin 2 > Kai'Sa 2 > Jhin 1. Level 7-8 flexible: 4 Dark Star + Vanguards Shepherd (Illaoi/Meepsie)/Brawlers (Pantheon)/Rogues (Riven). Emblems: Dark Star > Sniper >> Voyager, Rogue, Tank.",
-        "fr": "Vise 6 Dark Star. Late game sans items AD : Jhin 2 > Kai'Sa 2 > Jhin 1. Level 7-8 flexible : 4 Dark Star + Vanguards Shepherd (Illaoi/Meepsie)/Brawlers (Pantheon)/Rogues (Riven). Emblems : Dark Star > Sniper >> Voyager, Rogue, Tank."
-      },
+      "augmentsTip": null,
       "carousel": [
         "TFT_Item_BFSword",
         "TFT_Item_SparringGloves",
@@ -481,7 +368,7 @@
     "dark-star-lissandra": {
       "title": "Dark Star Lissandra",
       "difficulty": "MEDIUM",
-      "updated": "2026-06-17 18:41:09.367Z",
+      "updated": "2026-07-04 04:09:43.478Z",
       "augments": [
         "TFT_Augment_TreasureHunt",
         "TFT9_Augment_MissedConnections",
@@ -502,14 +389,7 @@
         "COMBAT",
         "COMBAT"
       ],
-      "augmentsTip": {
-        "de": "Spielbar wenn du viele Lissandra-Kopien hast und gute Chancen auf AP Crit Items. Dark Star Emblem ist stark, sodass du auf Level 8 6 Dark Star erreichen kannst. Schließe mit Jhin und Karma ab, die restliche Items nehmen. Priorisiere Ionic Spark sofort.",
-        "en": "Viable when you have multiple Lissandra copies and strong odds of hitting AP Crit items. Dark Star Emblem is powerful, allowing you to stack 6 Dark Star at level 8. Round out with Jhin and Karma using remaining items. Prioritize Ionic Spark immediately.",
-        "ko": "여러 Lissandra 사본이 있고 AP Crit 아이템을 얻을 가능성이 높을 때 플레이 가능. Dark Star Emblem이 강력해서 레벨 8에서 6 Dark Star를 구성할 수 있음. Jhin과 Karma로 마무리하고 남은 아이템 장착. Ionic Spark를 우선순위로 챙김.",
-        "zh": "当你有多个Lissandra复制体且获得AP Crit物品概率高时可行。Dark Star Emblem强力，允许你在8级时堆满6 Dark Star。用Jhin和Karma补满，装备剩余物品。优先速冲Ionic Spark。",
-        "es": "Viable cuando tienes múltiples copias de Lissandra con altas probabilidades de conseguir items AP Crit. Dark Star Emblem es fuerte, permitiéndote stackear 6 Dark Star en nivel 8. Completa con Jhin y Karma llevando items restantes. Prioriza Ionic Spark inmediatamente.",
-        "fr": "Jouable quand tu as plusieurs copies de Lissandra et bonnes chances d'obtenir items AP Crit. Dark Star Emblem est puissant, te permettant de stack 6 Dark Star au niveau 8. Complète avec Jhin et Karma portant les items restants. Priorise Ionic Spark immédiatement."
-      },
+      "augmentsTip": null,
       "carousel": [
         "TFT_Item_NeedlesslyLargeRod",
         "TFT_Item_RecurveBow",
@@ -556,7 +436,7 @@
     "ez-cho": {
       "title": "EZ CHO",
       "difficulty": "EASY",
-      "updated": "2026-06-17 18:41:09.354Z",
+      "updated": "2026-07-04 04:09:43.209Z",
       "augments": [
         "TFT6_Augment_GachaAddict",
         "TFT9_Augment_MissedConnections",
@@ -577,14 +457,7 @@
         "COMBAT",
         "COMBAT"
       ],
-      "augmentsTip": {
-        "de": "Yasuo God Hex kann für Cho'Gath sehr wertvoll sein. Ezreal und Cho'Gath skalieren dauerhaft mit Takedowns, daher ist frühes Töten wichtig. Nach dem Hit schnell auf 4 Timebreaker upgraden, um Level zu pushen.",
-        "en": "Yasuo God Hex augments work well for Cho'Gath carries. Since Ezreal and Cho'Gath gain permanent scaling from takedowns, eliminating units early matters. Build toward 4 Timebreaker once you hit your comp to accelerate leveling.",
-        "ko": "Yasuo God Hex는 Cho'Gath에게 매우 좋습니다. Ezreal과 Cho'Gath는 킬로 영구 스케일링되므로 초반 처치가 중요합니다. 컴프 완성 후 4 Timebreaker로 빠르게 업그레이드하여 레벨을 올리세요.",
-        "zh": "Yasuo God Hex对Cho'Gath很有帮助。Ezreal和Cho'Gath通过击杀永久成长，所以早期消灭单位很重要。达到阵容后快速凑齐4 Timebreaker来加快升级。",
-        "es": "Yasuo God Hex es muy útil para Cho'Gath. Ezreal y Cho'Gath escalan permanentemente con derrotas, así que eliminar unidades temprano es clave. Apunta a 4 Timebreaker después de completar el comp para acelerar niveles.",
-        "fr": "Yasuo God Hex fonctionne bien pour Cho'Gath carry. Comme Ezreal et Cho'Gath montent en puissance de façon permanente via les abattages, éliminer des unités tôt compte. Atteignez 4 Timebreaker après votre comp pour accélérer les niveaux."
-      },
+      "augmentsTip": null,
       "carousel": [
         "TFT_Item_GargoyleStoneplate",
         "TFT_Item_SpearOfShojin",
@@ -637,7 +510,7 @@
     "fast-9-jhin-stargazer-version": {
       "title": "Xayah Stargazer",
       "difficulty": "MEDIUM",
-      "updated": "2026-06-17 18:41:08.926Z",
+      "updated": "2026-07-04 04:09:43.136Z",
       "augments": [
         "TFT_Augment_ShimmerscaleEssence",
         "TFT9_Augment_LearningFromExperience2",
@@ -658,14 +531,7 @@
         "COMBAT",
         "COMBAT"
       ],
-      "augmentsTip": {
-        "de": "Xayah Stargazer funktioniert am besten mit Serpent, Boar, Altar und Mountain Stargazer. Fountain ist Tier A. Huntress und Medallion sind viel schwächer, also vermeiden wenn möglich. NOVA gibt kostenlosen Sunder. Mit Sunder solltest du Aatrox durch Shen ersetzen.",
-        "en": "Xayah Stargazer performs best with Serpent, Boar, Altar, and Mountain Stargazer. Fountain ranks A tier. Huntress and Medallion are significantly weaker, so skip them if you can. NOVA grants free Sunder. If you secure Sunder, swap Aatrox out for Shen.",
-        "ko": "Xayah Stargazer는 Serpent, Boar, Altar, Mountain Stargazer와 함께 가장 잘 작동합니다. Fountain은 A 티어입니다. Huntress와 Medallion은 훨씬 약하므로 가능하면 피하세요. NOVA는 무료 Sunder를 제공합니다. Sunder가 있으면 Aatrox를 Shen으로 교체하세요.",
-        "zh": "Xayah Stargazer 与 Serpent、Boar、Altar 和 Mountain Stargazer 配合效果最佳。Fountain 是 A 级。Huntress 和 Medallion 弱得多，如果可能避免选择。NOVA 提供免费 Sunder。如果获得 Sunder，将 Aatrox 替换为 Shen。",
-        "es": "Xayah Stargazer funciona mejor con Serpent, Boar, Altar y Mountain Stargazer. Fountain es de clasificación A. Huntress y Medallion son mucho más débiles, así que evítalos si es posible. NOVA otorga Sunder gratis. Si tienes Sunder, cambia Aatrox por Shen.",
-        "fr": "Xayah Stargazer fonctionne mieux avec Serpent, Boar, Altar et Mountain Stargazer. Fountain est rang A. Huntress et Medallion sont beaucoup plus faibles, donc évitez-les si possible. NOVA accorde Sunder gratuit. Si vous avez Sunder, remplacez Aatrox par Shen."
-      },
+      "augmentsTip": null,
       "carousel": [
         "TFT_Item_RapidFireCannon",
         "TFT_Item_RunaansHurricane",
@@ -717,7 +583,7 @@
     "fountain-lulu": {
       "title": "Lulu Reroll",
       "difficulty": "EASY",
-      "updated": "2026-06-17 18:41:09.375Z",
+      "updated": "2026-07-04 04:09:43.446Z",
       "augments": [
         "TFT6_Augment_ThriftShop",
         "TFT_Augment_PatienceIsAVirtue",
@@ -738,14 +604,7 @@
         "COMBAT",
         "COMBAT"
       ],
-      "augmentsTip": {
-        "de": "Mountain ist auf Stage 2 am besten > Fountain > Medallion. Andere Stargazers sind viel schwächer: Boar > Huntress > Serpent / Altar. Bei Medallion generiert Lulu Gold durch Fähigkeiten, auch wenn Stargazer inaktiv ist. Dein Tank wechselt je nach Verfügbarkeit: Pantheon 3 > Maokai 3 > Jax 3.",
-        "en": "Mountain works best on stage 2 > Fountain > Medallion. Other Stargazers are significantly weaker: Boar > Huntress > Serpent / Altar. With Medallion, Lulu generates gold from abilities even when Stargazer is inactive. Your tank choice varies by game availability: Pantheon 3 > Maokai 3 > Jax 3.",
-        "ko": "Mountain는 Stage 2에서 최고 > Fountain > Medallion. 다른 Stargazers는 훨씬 약함: Boar > Huntress > Serpent / Altar. Medallion에서 Lulu는 Stargazer 비활성화 시에도 스킬로 골드 생성. 탱크는 가용성에 따라 변함: Pantheon 3 > Maokai 3 > Jax 3.",
-        "zh": "Mountain在Stage 2最佳 > Fountain > Medallion。其他Stargazers远弱于此：Boar > Huntress > Serpent / Altar。使用Medallion时，即使Stargazer不活跃，Lulu也能通过释放技能获得金币。坦克根据可用性而变：Pantheon 3 > Maokai 3 > Jax 3。",
-        "es": "Mountain es mejor en Stage 2 > Fountain > Medallion. Otros Stargazers son mucho peores: Boar > Huntress > Serpent / Altar. Con Medallion, Lulu genera oro con habilidades incluso sin Stargazer activo. Tu tanque varía según disponibilidad: Pantheon 3 > Maokai 3 > Jax 3.",
-        "fr": "Mountain fonctionne mieux à Stage 2 > Fountain > Medallion. Les autres Stargazers sont bien plus faibles : Boar > Huntress > Serpent / Altar. Avec Medallion, Lulu génère de l'or via ses sorts même si Stargazer est inactif. Ton tank varie selon la disponibilité : Pantheon 3 > Maokai 3 > Jax 3."
-      },
+      "augmentsTip": null,
       "carousel": [
         "TFT_Item_Leviathan",
         "TFT_Item_JeweledGauntlet",
@@ -795,7 +654,7 @@
     "gnar-printer": {
       "title": "Gnar Printer",
       "difficulty": "MEDIUM",
-      "updated": "2026-06-17 18:41:08.949Z",
+      "updated": "2026-07-04 04:09:43.435Z",
       "augments": [
         "TFT_Augment_TragicalBlade",
         "TFT_Augment_MagicRollMinus",
@@ -816,14 +675,7 @@
         "COMBAT",
         "COMBAT"
       ],
-      "augmentsTip": {
-        "de": "Rollen Sie auf 6, um zunächst Gnar 2 + Timebreakers zu stabilisieren → Streben Sie nach 7 Meeple, um Gnar 3 zu drucken → Streben Sie nach Level 9. Im Idealfall enden Sie mit nur 3 Meeple und 5 Costs, aber in den meisten Spielen spielen Sie 5 Meeple.",
-        "en": "Roll to level 6 to stabilize Gnar 2 + Timebreakers early → target 7 Meeple to get Gnar 3 online → push toward level 9. Ideally you finish with just 3 Meeple and 5 costs, though most games you'll run 5 Meeple instead.",
-        "ko": "6 레벨로 롤링하여 초반에 Gnar 2 + Timebreakers 안정화 → 7 Meeple을 목표로 Gnar 3 달성 → 레벨 9 추진. 이상적으로는 3 Meeple과 5 costs로만 마무리하지만, 대부분의 게임에서는 5 Meeple을 운영합니다.",
-        "zh": "滚动至6级以稳定前期Gnar 2 + Timebreakers → 目标7个Meeple来打出Gnar 3 → 推向9级。理想情况下仅用3个Meeple和5费单位结束游戏，但大多数局你会运营5个Meeple。",
-        "es": "Rollead a nivel 6 para estabilizar Gnar 2 + Timebreakers temprano → apunten a 7 Meeple para sacar Gnar 3 → empujen hacia nivel 9. Idealmente terminan con solo 3 Meeple y 5 costs, pero en la mayoría de juegos jugarán 5 Meeple.",
-        "fr": "Rolllez au niveau 6 pour stabiliser Gnar 2 + Timebreakers en début → visez 7 Meeple pour sortir Gnar 3 → poussez vers le niveau 9. Idéalement vous finissez avec seulement 3 Meeple et 5 costs, mais dans la plupart des jeux vous jouerez 5 Meeple."
-      },
+      "augmentsTip": null,
       "carousel": [
         "TFT_Item_GuinsoosRageblade",
         "TFT_Item_Deathblade",
@@ -875,7 +727,7 @@
     "graves-vex-9-5": {
       "title": "NOVA Vex 9-5",
       "difficulty": "HARD",
-      "updated": "2026-06-17 18:41:08.989Z",
+      "updated": "2026-07-04 04:09:43.116Z",
       "augments": [
         "TFT_Augment_AuraFarming",
         "TFT_Augment_DuoQueue",
@@ -896,14 +748,7 @@
         "COMBAT",
         "COMBAT"
       ],
-      "augmentsTip": {
-        "de": "Behalte 1 Akali und 1 Aatrox, um kostenlosen Shred/Sunder zu sichern. Graves-Build: Assault frame → Buckshot → Buckshot+ → Buckshot++ → Laser Ballistics. Bei schlechten Graves-Items: Tank-Build oder ersetze Graves durch eine andere 5-Cost/Morgana.",
-        "en": "Keep 1 Akali and 1 Aatrox on your bench for free Shred/Sunder access. Graves build path: Assault frame → Buckshot → Buckshot+ → Buckshot++ → Laser Ballistics. If Graves items are weak, pivot to tank build or swap Graves for another 5-cost or Morgana.",
-        "ko": "Akali 1개와 Aatrox 1개를 보유하여 무료 Shred/Sunder에 접근하세요. Graves 빌드: Assault frame → Buckshot → Buckshot+ → Buckshot++ → Laser Ballistics. Graves 아이템이 약하면 탱크 빌드로 전환하거나 Graves를 다른 5비용/Morgana로 교체하세요.",
-        "zh": "保留1个Akali和1个Aatrox以获得免费Shred/Sunder。Graves装备路线：Assault frame→Buckshot→Buckshot+→Buckshot++→Laser Ballistics。若Graves装备差，转向坦克流或用其他5费/Morgana替换Graves。",
-        "es": "Mantén 1 Akali y 1 Aatrox para acceso libre a Shred/Sunder. Build de Graves: Assault frame → Buckshot → Buckshot+ → Buckshot++ → Laser Ballistics. Si los items de Graves son débiles, pivotea a build tank o cambia Graves por otro 5-cost/Morgana.",
-        "fr": "Conserve 1 Akali et 1 Aatrox pour accéder gratuitement à Shred/Sunder. Build Graves : Assault frame → Buckshot → Buckshot+ → Buckshot++ → Laser Ballistics. Si les items de Graves sont faibles, basculez vers un build tank ou remplacez Graves par un autre 5-cost/Morgana."
-      },
+      "augmentsTip": null,
       "carousel": [
         "TFT_Item_GuinsoosRageblade",
         "TFT_Item_RecurveBow",
@@ -939,22 +784,22 @@
       "tips": [
         {
           "stage": "Stage 2",
-          "tip": "Play a standard win streak AD opener with slammed items related to Graves / Vex. Save 1 Akali and 1 Aatrox while on streak if possible."
+          "tip": "The most important aspect of Fast 9 is to win streak early. Slam items aggressively for Graves / Vex. Save 1 Akali and 1 Aatrox if possible."
         },
         {
           "stage": "Stage 3",
-          "tip": "If you snap win streak early Stage 3, abandon Fast 9 and pivot to another line. Early Graves Stage 3 = pivot immediately towards him."
+          "tip": "If you snap win streak early Stage 3 without a big econ augment, abandon Fast 9 and pivot. Early Graves Stage 3 is worth investing in."
         },
         {
           "stage": "Stage 4",
-          "tip": "You should be healthy (80+ HP) -> you can lose all Stage 4 and econ heavily (take econ augment) to go level 9. If you still don't have items for Graves, carry with another 5 cost with Vex."
+          "tip": "You should be healthy (80+ HP) otherwise abandon Fast 9. It's okay to lose all Stage 4 and econ heavily with ideally 3 Timebreaker in. Use end of Stage 4 to transition."
         }
       ]
     },
     "heat-death-mordekaiser": {
       "title": "Heat Death Mordekaiser",
       "difficulty": "CONDITIONAL",
-      "updated": "2026-06-17 18:41:09.349Z",
+      "updated": "2026-07-04 04:09:43.485Z",
       "augments": [
         "TFT17_Augment_MordekaiserCarry",
         "TFT_Augment_HeroicGrabBagPlus",
@@ -975,14 +820,7 @@
         "ECON",
         "ECON"
       ],
-      "augmentsTip": {
-        "de": "Mordekaiser Hero Augment ist erforderlich. Mit Dark Star Emblem deutlich stärker, daher sollten Sie nach Spatula-Items suchen. Lissandra 3 > Karma als zweiter Carry möglich, wenn Sie sie bei 6 findet. Überschüssiges AD auf Jhin.",
-        "en": "You need the Mordekaiser Hero Augment. A Dark Star Emblem makes this comp significantly better, so prioritize items that grant a Spatula. You can also dual carry with Lissandra 3 > Karma if you hit her rolling at 6. Put leftover AD on Jhin.",
-        "ko": "Mordekaiser Hero Augment이 필수입니다. Dark Star Emblem이 있으면 훨씬 강해지므로 Spatula를 주는 아이템을 고려하세요. 6에서 Lissandra 3 > Karma를 찾으면 듀얼 캐리도 가능합니다. 남은 AD는 Jhin에게 줍니다.",
-        "zh": "需要Mordekaiser Hero Augment。带Dark Star Emblem会强得多，因此考虑获取给予Spatula的物品。如果在6级找到Lissandra 3 > Karma也可以双核心。剩余的AD留给Jhin。",
-        "es": "Requiere el Augment Mordekaiser Hero. Mucho más fuerte con Dark Star Emblem, así que busca objetos que otorguen Spatula. También puedes llevar Lissandra 3 > Karma como segundo carry si la encuentras en nivel 6. El AD restante va a Jhin.",
-        "fr": "L'Augment Mordekaiser Hero est obligatoire. Beaucoup plus fort avec Dark Star Emblem, donc cherchez des objets qui donnent une Spatula. Vous pouvez aussi porter Lissandra 3 > Karma en second carry si vous la trouvez au niveau 6. L'AD restant va à Jhin."
-      },
+      "augmentsTip": null,
       "carousel": [
         "TFT_Item_JeweledGauntlet",
         "TFT_Item_GuardianAngel",
@@ -1029,7 +867,7 @@
     "in-the-groove": {
       "title": "In The Groove",
       "difficulty": "EASY",
-      "updated": "2026-06-17 18:41:09.368Z",
+      "updated": "2026-07-04 04:09:43.158Z",
       "augments": [
         "TFT_Augment_BranchingOut",
         "TFT_Augment_SpreadingRoots",
@@ -1050,14 +888,7 @@
         "ITEMS",
         "ITEMS"
       ],
-      "augmentsTip": {
-        "de": "Ideal mit Space Groove Emblem spielen. Falls du keine Riven-Items hast, nutze stattdessen Tahm Kench 2 als Haupt-Tank mit Space Groove Emblem und vollständiger Ausrüstung und entferne Riven komplett.",
-        "en": "Best played with Space Groove Emblem. If you lack Riven items, use Tahm Kench 2 as your main tank with Space Groove Emblem and full items instead, removing Riven from the comp.",
-        "ko": "Space Groove Emblem과 함께 플레이하는 것이 이상적입니다. Riven 아이템이 없다면 Space Groove Emblem과 풀 아이템을 갖춘 Tahm Kench 2를 주 탱크로 사용하고 Riven을 제거하세요.",
-        "zh": "理想情况下与 Space Groove Emblem 搭配使用。如果你没有 Riven 的装备,则改用配备 Space Groove Emblem 和完整装备的 Tahm Kench 2 作为主坦克,完全移除 Riven。",
-        "es": "Ideal jugar con Space Groove Emblem. Si no tienes items para Riven, usa Tahm Kench 2 como tanque principal con Space Groove Emblem e items completos, eliminando Riven del comp.",
-        "fr": "Idéalement joué avec Space Groove Emblem. Si tu n'as pas d'items pour Riven, utilise Tahm Kench 2 comme tank principal avec Space Groove Emblem et items complets à la place, en supprimant Riven."
-      },
+      "augmentsTip": null,
       "carousel": [
         "TFT_Item_Leviathan",
         "TFT_Item_JeweledGauntlet",
@@ -1107,7 +938,7 @@
     "invader-zed": {
       "title": "Invader Zed",
       "difficulty": "HARD",
-      "updated": "2026-06-17 18:41:09.548Z",
+      "updated": "2026-07-04 04:09:43.215Z",
       "augments": [
         "TFT17_Augment_InvaderZed",
         "TFT_Augment_OneBuffTwoBuff",
@@ -1128,14 +959,7 @@
         "ITEMS",
         "ITEMS"
       ],
-      "augmentsTip": {
-        "de": "Situatives Comp mit Invader Zed Augment. Zed passt in viele Comps, solange dein Frontline stark ist (TK 2 + Maokai > Nunu 2 + Blitz). Zed funktioniert sehr gut mit Brawler oder Meeple Emblem (stelle sicher, 3+ Meeple zu spielen).",
-        "en": "Flex comp using the Invader Zed augment. Zed slots into many builds as long as you have a solid frontline (TK 2 + Maokai > Nunu 2 + Blitz). Zed works exceptionally well with Brawler or Meeple emblem (aim for 3+ Meeple).",
-        "ko": "Invader Zed 증강으로 운영하는 상황 대응형 컴프. Zed는 강한 프론트라인이 있으면 많은 조합에 들어갈 수 있음 (TK 2 + Maokai > Nunu 2 + Blitz). Zed는 Brawler나 Meeple 엠블럼과 아주 잘 어울림 (3+ Meeple 확보).",
-        "zh": "使用 Invader Zed 增强的灵活阵容。只要前排足够强（TK 2 + Maokai > Nunu 2 + Blitz），Zed 可以融入许多配置。Zed 与 Brawler 或 Meeple 纹章配合极佳（确保拥有 3+ Meeple）。",
-        "es": "Comp situacional con el aumento Invader Zed. Zed encaja en muchas composiciones si tienes una buena primera línea (TK 2 + Maokai > Nunu 2 + Blitz). Zed funciona muy bien con emblema Brawler o Meeple (asegúrate de jugar 3+ Meeple).",
-        "fr": "Comp flexible utilisant l'augment Invader Zed. Zed s'adapte à de nombreuses compositions si vous avez un frontline solide (TK 2 + Maokai > Nunu 2 + Blitz). Zed fonctionne très bien avec l'emblème Brawler ou Meeple (visez 3+ Meeple)."
-      },
+      "augmentsTip": null,
       "carousel": [
         "TFT_Item_GuardianAngel",
         "TFT_Item_AdaptiveHelm",
@@ -1182,18 +1006,18 @@
       ]
     },
     "jainx": {
-      "title": "Jinx Challengers",
+      "title": "Primordian Jinx",
       "difficulty": "EASY",
-      "updated": "2026-06-17 18:41:09.099Z",
+      "updated": "2026-07-04 04:09:43.148Z",
       "augments": [
         "TFT_Augment_TreasureHunt",
         "TFT6_Augment_PortableForge",
-        "TFT_Augment_ShimmerscaleEssence",
-        "TFT_Augment_SmallGrabBag",
         "TFT_Augment_ForgeSword",
         "TFT9_Augment_BigGrabBag",
         "TFT_Augment_MagicRoll",
-        "TFT_Augment_NoScoutNoPivot"
+        "TFT_Augment_NoScoutNoPivot",
+        "TFT_Augment_TragicalBlade",
+        "TFT_Augment_ComponentQuestSword"
       ],
       "augmentTypes": [
         "ECON",
@@ -1205,14 +1029,7 @@
         "COMBAT",
         "COMBAT"
       ],
-      "augmentsTip": {
-        "de": "Item-Priorität: Tank + Jinx > Bel'Veth > Akali erhält übrige Items. Primordian Package kann gegen andere Tanks getauscht werden, wenn du 3* Reksai/Briar nicht bekommst. Challenger und Primordian Embleme sind auch stark für das Comp.",
-        "en": "Prioritize items on Tank + Jinx > Bel'Veth > Akali takes remaining items. You can swap Primordian Package for other tanks if you can't hit 3* Reksai/Briar. Challenger and Primordian Emblems work well for this comp too.",
-        "ko": "아이템 우선순위: Tank + Jinx > Bel'Veth > Akali는 남은 아이템 획득. 3* Reksai/Briar를 못 맞추면 Primordian Package를 다른 탱커로 유연하게 변경 가능. Challenger와 Primordian Emblem도 이 comp에 강력함.",
-        "zh": "装备优先级：Tank + Jinx > Bel'Veth > Akali获得剩余装备。如果无法凑出3* Reksai/Briar，可以用其他坦克替换Primordian Package。Challenger和Primordian徽章对此阵容也很强力。",
-        "es": "Prioridad de objetos: Tank + Jinx > Bel'Veth > Akali toma los objetos restantes. Puedes cambiar Primordian Package por otros tanques si no logras 3* Reksai/Briar. Los emblemas Challenger y Primordian también funcionan bien para este comp.",
-        "fr": "Priorité d'items : Tank + Jinx > Bel'Veth > Akali prend les items restants. Tu peux échanger Primordian Package contre d'autres tanks si tu ne peux pas 3* Reksai/Briar. Les emblèmes Challenger et Primordian marchent aussi très bien pour ce comp."
-      },
+      "augmentsTip": null,
       "carousel": [
         "TFT_Item_Deathblade",
         "TFT_Item_RecurveBow",
@@ -1263,7 +1080,7 @@
     "karnami-flex": {
       "title": "KarNami Flex",
       "difficulty": "HARD",
-      "updated": "2026-06-17 18:41:09.404Z",
+      "updated": "2026-07-04 04:09:43.331Z",
       "augments": [
         "TFT6_Augment_TradeSector2",
         "TFT11_Augment_Reinfourcement",
@@ -1284,14 +1101,7 @@
         "COMBAT",
         "COMBAT"
       ],
-      "augmentsTip": {
-        "de": "Die letzten 2 Plätze sind sehr flexibel. Häufig wird 4 Vanguard gespielt, aber auch Bastions, 5 costs, Voyagers etc. sind möglich. Priorisiere immer, wer zuerst 2* wird. Das Comp braucht viele Items, daher item Gods / Augments bevorzugen.",
-        "en": "Your final 2 slots have lots of room to adapt. 4 Vanguard is the go-to choice, but Bastions, 5 costs, Voyagers, and more all work. Grab whoever reaches 2* first during your rolldown. This build is item-hungry, so prioritize item Gods and strong Augments.",
-        "ko": "마지막 2칸은 매우 유연합니다. 4 Vanguard가 가장 일반적이지만, Bastions, 5 costs, Voyagers 등도 가능합니다. 롤다운 중 2*가 되는 챔피언을 우선적으로 픽하세요. 이 조합은 아이템을 많이 필요로 하므로 item Gods와 강력한 Augment를 우선시하세요.",
-        "zh": "最后2个位置很灵活。4 Vanguard是最常见的选择,但Bastions、5 costs、Voyagers等也都可以。在轮转中优先升级最先达到2*的英雄。这套阵容需要大量物品,所以要优先考虑item Gods和增强。",
-        "es": "Los últimos 2 espacios son muy flexibles. 4 Vanguard es la opción más común, pero también puedes jugar Bastions, 5 costs, Voyagers, etc. Siempre prioriza quién llegue a 2* primero. Esta composición necesita muchos items, así que enfócate en item Gods y Augments fuertes.",
-        "fr": "Vos 2 derniers emplacements offrent beaucoup de flexibilité. 4 Vanguard est le choix principal, mais Bastions, 5 costs, Voyagers et autres fonctionnent aussi. Priorisez le champion qui atteint 2* en premier lors de vos roll. Cette compo nécessite beaucoup d'items, privilégiez les item Gods et bons Augments."
-      },
+      "augmentsTip": null,
       "carousel": [
         "TFT_Item_TearOfTheGoddess",
         "TFT_Item_NeedlesslyLargeRod",
@@ -1342,7 +1152,7 @@
     "mecha-sol": {
       "title": "Carrier Asol",
       "difficulty": "EASY",
-      "updated": "2026-06-17 18:41:09.064Z",
+      "updated": "2026-07-04 04:09:43.172Z",
       "augments": [
         "TFT11_Augment_Reinfourcement",
         "TFT_Augment_PatienceIsAVirtue",
@@ -1363,14 +1173,7 @@
         "COMBAT",
         "COMBAT"
       ],
-      "augmentsTip": {
-        "de": "Idealerweise mit speziellem Item (Anima Cash-out, Radiant Item, 2+ Artifacts, etc.) + Combat Augment spielen. Alles immer in Mecha Form halten. Kench + Fiora/Yi können die N.O.V.A Units ersetzen (meist nur bei frühem Kench 2).",
-        "en": "Best played with a special item (Anima cash out, Radiant item, 2+ Artifacts, etc) alongside a Combat augment. Keep all units in Mecha form at all times. You can swap N.O.V.A units for Kench + Fiora/Yi instead (typically only viable with early Kench 2).",
-        "ko": "특수 아이템(Anima 현금화, Radiant 아이템, 2개 이상의 Artifacts 등) + Combat 증강과 함께 플레이하는 것이 이상적입니다. 모든 유닛을 항상 Mecha 형태로 유지하세요. N.O.V.A 유닛 대신 Kench + Fiora/Yi를 사용할 수 있습니다(보통 초반 Kench 2일 때만).",
-        "zh": "最好搭配特殊物品(Anima现金兑现、Radiant物品、2+件神器等)+Combat增强来玩。始终保持所有单位处于Mecha形态。可以用Kench + Fiora/Yi替换N.O.V.A单位(通常仅在早期Kench 2时有效)。",
-        "es": "Se juega idealmente con un objeto especial (Anima cash out, objeto Radiant, 2+ Artefactos, etc.) + aumentación Combat. Mantén todo en forma Mecha siempre. Puedes cambiar los N.O.V.A por Kench + Fiora/Yi (generalmente solo con Kench 2 temprano).",
-        "fr": "Idéalement joué avec un objet spécial (Anima cash out, objet Radiant, 2+ Artefacts, etc.) + augment Combat. Gardez tout en forme Mecha en permanence. Vous pouvez remplacer les N.O.V.A par Kench + Fiora/Yi (généralement seulement avec Kench 2 précoce)."
-      },
+      "augmentsTip": null,
       "carousel": [
         "TFT_Item_GargoyleStoneplate",
         "TFT_Item_RabadonsDeathcap",
@@ -1379,26 +1182,28 @@
       ],
       "earlyComp": [
         {
-          "apiName": "TFT17_RekSai",
-          "items": [],
-          "stars": 1
-        },
-        {
-          "apiName": "TFT17_TwistedFate",
-          "items": [],
-          "stars": 1
-        },
-        {
-          "apiName": "TFT17_Pantheon",
-          "items": [],
-          "stars": 1
-        },
-        {
-          "apiName": "TFT17_Milio",
+          "apiName": "TFT17_Zoe",
           "items": [
-            "TFT_Item_StatikkShiv",
-            "TFT_Item_RabadonsDeathcap"
+            "TFT_Item_RabadonsDeathcap",
+            "TFT_Item_StatikkShiv"
           ],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Leona",
+          "items": [
+            "TFT_Item_GargoyleStoneplate"
+          ],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Mordekaiser",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Lissandra",
+          "items": [],
           "stars": 1
         }
       ],
@@ -1413,14 +1218,153 @@
         },
         {
           "stage": "Stage 4",
-          "tip": "Level to 8 and roll hard. Don't push for 9 until you hit 2* Mecha units Look for Akali + Maokai until Fiora + Tahm Kench. Karma + Jhin can go in level 8/9 flexibly."
+          "tip": "Level to 8 and roll hard. Don't push for 9 until you hit 2* Mecha units. Morgana 2 can temporarily tank until you find Mech 2."
+        }
+      ]
+    },
+    "nova-kindred": {
+      "title": "NOVA Kindred",
+      "difficulty": "EASY",
+      "updated": "2026-07-04 04:09:43.486Z",
+      "augments": [
+        "TFT11_Augment_Slammin",
+        "TFT9_Augment_LearningFromExperience2",
+        "TFT_Augment_ClimbTheLadder2",
+        "TFT_Augment_GroupHug2",
+        "TFT9_Augment_Commander_RollingForDays",
+        "TFT_Augment_EpicRolldown",
+        "TFT_Augment_ExpectedUnexpectedness",
+        "TFT6_Augment_TradeSector2"
+      ],
+      "augmentTypes": [
+        "ECON",
+        "ECON",
+        "ECON",
+        "ITEMS",
+        "ITEMS",
+        "ITEMS",
+        "COMBAT",
+        "COMBAT"
+      ],
+      "augmentsTip": null,
+      "carousel": [
+        "TFT_Item_GuinsoosRageblade",
+        "TFT_Item_RecurveBow",
+        "TFT_Item_NegatronCloak",
+        "TFT_Item_GiantsBelt"
+      ],
+      "earlyComp": [
+        {
+          "apiName": "TFT17_Aatrox",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_TwistedFate",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Caitlyn",
+          "items": [
+            "TFT_Item_GuinsoosRageblade",
+            "TFT_Item_RunaansHurricane"
+          ],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Jax",
+          "items": [],
+          "stars": 1
+        }
+      ],
+      "tips": [
+        {
+          "stage": "Stage 2",
+          "tip": "Look for an econ engine like Primordian or Timebreaker. Slam items on Caitlyn as an item holder for Kindred. "
+        },
+        {
+          "stage": "Stage 3",
+          "tip": "Standard level 6 and 7 intervals (3-2 / 3-5 if streaking). Play around Brawler / NOVA frontline. Kindred 1 can go in immediately."
+        },
+        {
+          "stage": "Stage 4",
+          "tip": "Level to 8 at a natural interval and roll until Kindred 2 / Morgana 2. TK 2 can also tank instead of Morgana. Once stable, push levels for Shen."
+        }
+      ]
+    },
+    "nova-reroll": {
+      "title": "N.O.V.A Reroll",
+      "difficulty": "EASY",
+      "updated": "2026-07-04 04:09:43.203Z",
+      "augments": [
+        "TFT_Augment_TreasureHunt",
+        "TFT_Augment_ItemGargoyleStoneplate",
+        "TFT6_Augment_GachaAddict",
+        "TFT_Augment_SwordOverflow",
+        "TFT_Augment_ForgeSword",
+        "TFT_Augment_ComponentQuestSword",
+        "TFT_Augment_HomeCooking",
+        "TFT9_Augment_MissedConnections"
+      ],
+      "augmentTypes": [
+        "ECON",
+        "ECON",
+        "ECON",
+        "ITEMS",
+        "ITEMS",
+        "ITEMS",
+        "COMBAT",
+        "COMBAT"
+      ],
+      "augmentsTip": null,
+      "carousel": [
+        "TFT_Item_GargoyleStoneplate",
+        "TFT_Item_GuinsoosRageblade",
+        "TFT_Item_NegatronCloak",
+        "TFT_Item_ChainVest"
+      ],
+      "earlyComp": [
+        {
+          "apiName": "TFT17_Aatrox",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Caitlyn",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_TwistedFate",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Jax",
+          "items": [],
+          "stars": 1
+        }
+      ],
+      "tips": [
+        {
+          "stage": "Stage 2",
+          "tip": "If possible, play for win streak early with Caitlyn 2 and Aatrox 2. It's often better to start with 2 tank items and 1 item Cait as opposed to the other way around."
+        },
+        {
+          "stage": "Stage 3",
+          "tip": "Slow roll for Caitlyn 3 and Aatrox 3. Ideally finish a 3* by end of Stage 3. If you hit Kindred early, 5 NOVA is nice but not that strong if you don't have 3*."
+        },
+        {
+          "stage": "Stage 4",
+          "tip": "If you still haven't hit 3*, take an econ augment and all in. Finish your 3* and push levels for 4 costs. Cap with Shen."
         }
       ]
     },
     "primordian-reroll": {
       "title": "Primordian Reroll",
       "difficulty": "MEDIUM",
-      "updated": "2026-06-17 18:41:09.099Z",
+      "updated": "2026-07-04 04:09:43.444Z",
       "augments": [
         "TFT6_Augment_GachaAddict",
         "TFT6_Augment_TradeSector",
@@ -1441,14 +1385,7 @@
         "COMBAT",
         "COMBAT"
       ],
-      "augmentsTip": {
-        "de": "Fokussiere Items auf Briar > Bel'Veth / Kai'Sa. Die gezeigte Positionierung funktioniert in Early und Mid Game, aber in Late Game kannst du eine Standard-Melee-Carry-Positionierung spielen. Rhaast auf 8, Jhin auf 9. Tahm 2 ist ein besserer Tank als Reksai 3.",
-        "en": "Prioritize items on Briar > Bel'Veth / Kai'Sa. Use the positioning shown for early and mid game, but switch to standard melee carry positioning in late game. Place Rhaast at 8, Jhin at 9. Tahm 2 is a stronger tank than Reksai 3.",
-        "ko": "Briar > Bel'Veth / Kai'Sa에 아이템 우선 배치. 표시된 포지셔닝은 초반과 중반에 사용하되, 후반에는 표준 근접 캐리 포지셔닝으로 변경. Rhaast는 8번, Jhin은 9번 배치. Tahm 2가 Reksai 3보다 더 좋은 탱크.",
-        "zh": "优先在 Briar > Bel'Veth / Kai'Sa 装备。前期和中期使用显示的站位，后期切换为标准近战输出手站位。Rhaast 放 8 号位，Jhin 放 9 号位。Tahm 2 是比 Reksai 3 更强的坦克。",
-        "es": "Prioriza objetos en Briar > Bel'Veth / Kai'Sa. Usa la posición mostrada en early y mid game, pero cambia a posición estándar de carry melee en late game. Coloca Rhaast en 8, Jhin en 9. Tahm 2 es un tanque más fuerte que Reksai 3.",
-        "fr": "Priorise les objets sur Briar > Bel'Veth / Kai'Sa. Utilise le positionnement affiché pour early et mid game, mais bascule sur un positionnement standard de carry melee en late game. Place Rhaast en 8, Jhin en 9. Tahm 2 est un meilleur tank que Reksai 3."
-      },
+      "augmentsTip": null,
       "carousel": [
         "TFT_Item_BFSword",
         "TFT_Item_NegatronCloak",
@@ -1498,7 +1435,7 @@
     "pyke-gwen": {
       "title": "Gwen Pyke Reroll",
       "difficulty": "EASY",
-      "updated": "2026-06-17 18:41:09.475Z",
+      "updated": "2026-07-04 04:09:43.451Z",
       "augments": [
         "TFT_Augment_Unforgotten",
         "TFT_Augment_MagicRoll",
@@ -1519,14 +1456,7 @@
         "COMBAT",
         "COMBAT"
       ],
-      "augmentsTip": {
-        "de": "Positionierung ist entscheidend! Folge der Anleitung und platziere Pyke ein Feld links oder rechts von der hinteren Mittelhexe, gegenüber vom gegnerischen Carry. Alle Psionic-Items sind gut außer Drone. Target Lock Optics → Pyke, Biomatter → Panth/Gragas, alle anderen Psionic-Items → Gwen.",
-        "en": "Positioning matters greatly! Follow the guide and place Pyke one hex to the left or right of the back center hex, opposite from the enemy carry. All Psionic items work well except Drone. Give Target Lock Optics to Pyke, Biomatter to Panth or Gragas, and other Psionic items to Gwen.",
-        "ko": "위치 배치가 매우 중요합니다! 가이드를 따르고 Pyke를 뒷줄 중앙 육각형에서 한 칸 좌우에 배치하여 적 캐리의 반대편에 놓으세요. Drone를 제외한 모든 Psionic 아이템이 좋습니다. Target Lock Optics→Pyke, Biomatter→Panth/Gragas, 기타 Psionic 아이템→Gwen.",
-        "zh": "位置非常重要！按照指南将Pyke放在后排中心格子左右一格的位置，与敌方Carry相反。除了Drone外，所有Psionic物品都很好。Target Lock Optics→Pyke，Biomatter→Panth/Gragas，其他Psionic物品→Gwen。",
-        "es": "¡La posición es muy importante! Sigue la guía y coloca Pyke un hex a la izquierda o derecha del hex central trasero, opuesto al carry enemigo. Todos los items Psionic son buenos excepto Drone. Target Lock Optics→Pyke, Biomatter→Panth/Gragas, otros items Psionic→Gwen.",
-        "fr": "Le positionnement est crucial ! Suis le guide et place Pyke à une case à gauche ou à droite du hex central arrière, face au carry ennemi. Tous les items Psionic sont bons sauf Drone. Target Lock Optics→Pyke, Biomatter→Panth/Gragas, autres items Psionic→Gwen."
-      },
+      "augmentsTip": null,
       "carousel": [
         "TFT_Item_BFSword",
         "TFT_Item_TearOfTheGoddess",
@@ -1577,7 +1507,7 @@
     "reach-for-the-stars-jax": {
       "title": "Reach for the Stars Jax",
       "difficulty": "EASY",
-      "updated": "2026-06-17 18:41:09.574Z",
+      "updated": "2026-07-04 04:09:43.213Z",
       "augments": [
         "TFT17_Augment_JaxCarry",
         "TFT_Augment_HeroicGrabBagPlus",
@@ -1598,14 +1528,7 @@
         "ECON",
         "ECON"
       ],
-      "augmentsTip": {
-        "de": "Positionierungsbeispiel für Huntress. Beste Stargazers: Mountain = Huntress > Medallion > Altar > Fountain > Serpent > Boar. Nimm viele Item- und Econ-Augmente. Priorisiere Jax Items > Pantheon > Millio. Ideal: Jax 3 auf 4-1 erreichen. Shred nicht nötig wegen Aatrox NOVA Bonus.",
-        "en": "Positioning example shown for Huntress. Best Stargazers: Mountain = Huntress > Medallion > Altar > Fountain > Serpent > Boar. Stack item and econ augments to hit your board. Prioritize Jax items > Pantheon > Millio. Aim to hit Jax 3 by 4-1 to stay on tempo. Skip Shred since Aatrox NOVA bonus covers it.",
-        "ko": "Huntress 포지셔닝 예시. 최고의 Stargazers: Mountain = Huntress > Medallion > Altar > Fountain > Serpent > Boar. 아이템과 이코노미 강화를 많이 챙겨 보드를 갖춰라. Jax 아이템 > Pantheon > Millio 순으로 우선순위. 4-1에서 Jax 3성 달성을 목표로 템포 유지. Aatrox NOVA 보너스가 있으니 Shred는 불필요.",
-        "zh": "展示了Huntress的站位示例。最佳Stargazers排序：Mountain = Huntress > Medallion > Altar > Fountain > Serpent > Boar。选择大量物品和经济强化来完善阵容。优先级：Jax装备 > Pantheon > Millio。目标在4-1阶段达到Jax 3星保持节奏。由于Aatrox NOVA加成，无需构建Shred。",
-        "es": "Ejemplo de posicionamiento para Huntress. Mejores Stargazers: Mountain = Huntress > Medallion > Altar > Fountain > Serpent > Boar. Acumula aumentos de objeto y economía. Prioriza items de Jax > Pantheon > Millio. Busca alcanzar Jax 3 en 4-1 para mantener ritmo. No necesitas Shred gracias al bonus NOVA de Aatrox.",
-        "fr": "Exemple de positionnement pour Huntress. Meilleurs Stargazers : Mountain = Huntress > Medallion > Altar > Fountain > Serpent > Boar. Prends beaucoup d'augments d'objet et d'économie. Priorise items Jax > Pantheon > Millio. Vise Jax 3 en 4-1 pour rester en tempo. Pas besoin de Shred grâce au bonus NOVA d'Aatrox."
-      },
+      "augmentsTip": null,
       "carousel": [
         "TFT_Item_Bloodthirster",
         "TFT_Item_TitansResolve",
@@ -1652,10 +1575,81 @@
         }
       ]
     },
+    "replicator-mf-reroll": {
+      "title": "Replicator MF Reroll",
+      "difficulty": "EASY",
+      "updated": "2026-07-04 04:09:43.484Z",
+      "augments": [
+        "TFT10_Augment_HeroicGrabBag",
+        "TFT6_Augment_GachaAddict",
+        "TFT_Augment_LegionOfThrees",
+        "TFT_Augment_SwordOverflow",
+        "TFT_Augment_ForgeSword",
+        "TFT_Augment_SizeMatters",
+        "TFT7_Augment_LivingForge",
+        "TFT_Augment_TragicalBlade"
+      ],
+      "augmentTypes": [
+        "ITEMS",
+        "ITEMS",
+        "ITEMS",
+        "ECON",
+        "ECON",
+        "ECON",
+        "COMBAT",
+        "COMBAT"
+      ],
+      "augmentsTip": null,
+      "carousel": [
+        "TFT_Item_BFSword",
+        "TFT_Item_TearOfTheGoddess",
+        "TFT_Item_RecurveBow",
+        "TFT_Item_GiantsBelt"
+      ],
+      "earlyComp": [
+        {
+          "apiName": "TFT17_Chogath",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Lissandra",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Pantheon",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_MissFortune",
+          "items": [
+            "TFT_Item_SpearOfShojin",
+            "TFT_Item_InfinityEdge"
+          ],
+          "stars": 1
+        }
+      ],
+      "tips": [
+        {
+          "stage": "Stage 2",
+          "tip": "Ideally open with one of the 3-cost Replicators to itemize. This comp is both econ and item hungry so take those as you see them."
+        },
+        {
+          "stage": "Stage 3",
+          "tip": "If lose streaking, level to 7 at 3-5 and roll for 2* item holders. Win last two fights of Stage and econ up. If win streaking, you can aim to Level 7 end of Stage."
+        },
+        {
+          "stage": "Stage 4",
+          "tip": "Slow roll for 3* 3 cost. You should be hitting one by end of Stage 4. If you think you can't hit, take an econ augment. Once done, level to 8 for Rhaast / Morgana."
+        }
+      ]
+    },
     "samira-knock-up-copy": {
       "title": "Samira Two Tanky",
       "difficulty": "MEDIUM",
-      "updated": "2026-06-17 18:41:09.264Z",
+      "updated": "2026-07-04 04:09:43.083Z",
       "augments": [
         "TFT10_Augment_HeroicGrabBag",
         "TFT6_Augment_TradeSector",
@@ -1676,14 +1670,7 @@
         "COMBAT",
         "COMBAT"
       ],
-      "augmentsTip": {
-        "de": "Spiele diese Version nur mit dem Augment Two Tanky. Falls Ornn zu stark umkämpft ist, kannst du alternativ zwei andere Tanks nehmen, wie Jax 3 + Jax 2 oder zwei Nunus.",
-        "en": "This comp only works well with the Two Tanky augment. If Ornn is too contested, consider swapping to alternative double tank setups like Jax 3 + Jax 2 or dual Nunus instead.",
-        "ko": "Two Tanky 증강으로만 이 조합을 플레이하세요. Ornn이 너무 경쟁적이면 Jax 3 + Jax 2나 두 개의 Nunu 같은 다른 이중 탱크 옵션을 고려하세요.",
-        "zh": "仅用Two Tanky增强来玩这个阵容。如果Ornn争夺过激，可以改用其他双坦克方案，如Jax 3 + Jax 2或双Nunu。",
-        "es": "Solo juega esta versión con el aumento Two Tanky. Si Ornn está muy disputado, considera alternativas de doble tanque como Jax 3 + Jax 2 o dos Nunus.",
-        "fr": "Ne jouez cette version qu'avec l'augment Two Tanky. Si Ornn est trop contesté, optez pour des doubles tanks alternatifs comme Jax 3 + Jax 2 ou deux Nunus."
-      },
+      "augmentsTip": null,
       "carousel": [
         "TFT_Item_SpearOfShojin",
         "TFT_Item_BFSword",
@@ -1733,7 +1720,7 @@
     "self-destruct-gragas": {
       "title": "Self Destruct Gragas",
       "difficulty": "EASY",
-      "updated": "2026-06-17 18:41:09.407Z",
+      "updated": "2026-07-04 04:09:43.485Z",
       "augments": [
         "TFT_Augment_BoxingLessons",
         "TFT_Augment_GuardbreakerSpirit",
@@ -1754,14 +1741,7 @@
         "ECON",
         "ECON"
       ],
-      "augmentsTip": {
-        "de": "Gragas Hero Augment ist erforderlich. +1 Kraft-Stufe mit Sympathetic Implant für Gragas. +1 Bruiser Emblem hilft, schneller 6 Bruiser / 4 Psionic zu erreichen. Bruiser Emblem auf Yi. Pyke 3 nur verfolgen, wenn du überschüssige Items hast.",
-        "en": "You need Gragas Hero Augment. Pair it with Sympathetic Implant to gain +1 strength on Gragas. A +1 Bruiser Emblem also helps you hit 6 Bruiser / 4 Psionic faster. Put the Bruiser Emblem on Yi. Only chase Pyke 3 if you have leftover items.",
-        "ko": "Gragas Hero Augment이 필수입니다. Sympathetic Implant과 함께 사용하면 Gragas의 강도가 +1 증가합니다. +1 Bruiser Emblem도 6 Bruiser / 4 Psionic을 더 빠르게 달성하는 데 도움이 됩니다. Bruiser Emblem을 Yi에 장착하세요. 여유 아이템이 있을 때만 Pyke 3을 추구하세요.",
-        "zh": "需要Gragas Hero Augment。配合Sympathetic Implant可为Gragas +1强度。+1 Bruiser Emblem也能帮助更快达成6 Bruiser / 4 Psionic。将Bruiser Emblem放在Yi上。只有在有多余装备时才追求Pyke 3。",
-        "es": "Necesitas Gragas Hero Augment. Combínalo con Sympathetic Implant para +1 en fuerza de Gragas. Un +1 Bruiser Emblem también te ayuda a alcanzar 6 Bruiser / 4 Psionic más rápido. Coloca el Bruiser Emblem en Yi. Solo persigue Pyke 3 si tienes objetos sobrantes.",
-        "fr": "Vous avez besoin de Gragas Hero Augment. Associez-le à Sympathetic Implant pour +1 en force pour Gragas. Un +1 Bruiser Emblem aide aussi à obtenir 6 Bruiser / 4 Psionic plus rapidement. Placez le Bruiser Emblem sur Yi. Ne cherchez Pyke 3 que si vous avez des objets supplémentaires."
-      },
+      "augmentsTip": null,
       "carousel": [
         "TFT17_Item_PsyOps_SympatheticImplantMod_Radiant",
         "TFT_Item_JeweledGauntlet",
@@ -1812,7 +1792,7 @@
     "shepherd-pie": {
       "title": "Shepherd Pie",
       "difficulty": "MEDIUM",
-      "updated": "2026-06-17 18:41:09.060Z",
+      "updated": "2026-07-04 04:09:43.207Z",
       "augments": [
         "TFT_Augment_SpreadingRoots",
         "TFT_Augment_GildedSteel",
@@ -1833,19 +1813,12 @@
         "COMBAT",
         "COMBAT"
       ],
-      "augmentsTip": {
-        "de": "Starke Frontline ist essentiell. Mit Emblem lohnt sich 7 Shepherd. Ideal mit Arbiter für kostenlose Leona 3* oder AP-Skalierung für Leblanc. Bei schlechtem Arbiter auf 2 Vanguard reduzieren. Auf Level 8 Mighty Mech über Karma spielen, wenn Sona für 7 Shepherd gefunden wird.",
-        "en": "Prioritize a strong frontline. If you get an emblem, pushing for 7 Shepherd is worth the investment. Pair it with Arbiter that generates free Leona 3* or one that boosts Leblanc's AP. Fall back to 2 Vanguard as flex slots if 7 Shepherd isn't viable or your Arbiter is weak. On level 8, pick Mighty Mech over Karma if you hit Sona for 7 Shepherd.",
-        "ko": "강한 프론트라인을 우선시하세요. 엠블럼을 얻으면 7 Shepherd를 추구할 가치가 있습니다. 무료 Leona 3*를 생성하거나 Leblanc의 AP를 강화하는 Arbiter와 조합하세요. 7 Shepherd가 불가능하거나 Arbiter가 약하면 2 Vanguard로 축소하세요. 레벨 8에서 Sona를 찾으면 Karma 대신 Mighty Mech를 선택하세요.",
-        "zh": "优先考虑强大的前排。如果获得徽章，追求7 Shepherd值得投入。与生成免费Leona 3*或增强Leblanc AP的Arbiter配对。如果7 Shepherd不可行或Arbiter较弱，降至2 Vanguard。8级时，如果找到Sona实现7 Shepherd，选择Mighty Mech而非Karma。",
-        "es": "Prioriza una primera línea fuerte. Si obtienes emblema, perseguir 7 Shepherd vale la pena. Combina con Arbiter que genera Leona 3* gratis o potencia el AP de Leblanc. Si 7 Shepherd no es viable o tu Arbiter es débil, reduce a 2 Vanguard. En nivel 8, elige Mighty Mech sobre Karma si consigues Sona para 7 Shepherd.",
-        "fr": "Privilégiez une première ligne solide. Avec un emblème, poursuivre 7 Shepherd vaut l'effort. Associez-le à Arbiter qui génère Leona 3* gratuit ou renforce l'AP de Leblanc. Réduisez à 2 Vanguard si 7 Shepherd n'est pas viable ou Arbiter faible. Au niveau 8, choisissez Mighty Mech plutôt que Karma si vous trouvez Sona pour 7 Shepherd."
-      },
+      "augmentsTip": null,
       "carousel": [
         "TFT_Item_GuinsoosRageblade",
+        "TFT_Item_StatikkShiv",
         "TFT_Item_NeedlesslyLargeRod",
-        "TFT_Item_TearOfTheGoddess",
-        "TFT_Item_ChainVest"
+        "TFT_Item_GiantsBelt"
       ],
       "earlyComp": [
         {
@@ -1867,7 +1840,7 @@
           "apiName": "TFT17_Zoe",
           "items": [
             "TFT_Item_GuinsoosRageblade",
-            "TFT_Item_ArchangelsStaff"
+            "TFT_Item_StatikkShiv"
           ],
           "stars": 1
         }
@@ -1875,7 +1848,7 @@
       "tips": [
         {
           "stage": "Stage 2",
-          "tip": "Play around early Arbiter AP win streak. If you take econ Arbiter, ditch it late game for a better tank option. "
+          "tip": "Can play from win or lose-streak but you need really good items to play from winstreak. "
         },
         {
           "stage": "Stage 3",
@@ -1890,7 +1863,7 @@
     "shieldmaiden-leona": {
       "title": "Shieldmaiden Leona",
       "difficulty": "EASY",
-      "updated": "2026-06-17 18:41:09.453Z",
+      "updated": "2026-07-04 04:09:43.487Z",
       "augments": [
         "TFT17_Augment_LeonaCarry",
         "TFT9_Augment_MissedConnections",
@@ -1911,14 +1884,7 @@
         "ECON",
         "ECON"
       ],
-      "augmentsTip": {
-        "de": "S-Tier mit Arbiter, der Leona druckt und Level-Push ermöglicht. Permanent Max HP ist optimal, da ihre Fähigkeit mit Max HP und AD skaliert. Vex 2 / Bard 2 können End-Game Backline Arbiters ersetzen (besonders wenn Leona print dein Arbiter ist).",
-        "en": "S tier when Arbiter can generate Leona copies to help you level up. Permanent Max HP is the best cap since Leona's ability scales with both max HP and AD. Late game, Vex 2 or Bard 2 can substitute for backline Arbiters (especially if your Leona print Arbiter becomes irrelevant).",
-        "ko": "Leona를 생성할 수 있는 Arbiter와 함께라면 S 티어. 레벨을 올리면서 Leona 사본을 만들 수 있습니다. 그녀의 능력이 Max HP와 AD로 스케일되므로 Permanent Max HP가 최고의 캡입니다. 후반부에는 Vex 2 또는 Bard 2가 백라인 Arbiters를 대체할 수 있습니다.",
-        "zh": "配合Arbiter能复制Leona时为S级，可助力升级。永久Max HP是最优选择，因为Leona技能随Max HP和AD增长。后期可用Vex 2或Bard 2替代后排Arbiters（尤其是Leona复制Arbiter此时已无用）。",
-        "es": "S tier con Arbiter que pueda copiar Leona para acelerar el leveo. Cap permanente de Max HP es lo mejor, ya que la habilidad de Leona escala con Max HP y AD. En late game, Vex 2 o Bard 2 pueden reemplazar los Arbiters de backline (especialmente si tu Arbiter de copia Leona se vuelve irrelevante).",
-        "fr": "S tier avec Arbiter capable de copier Leona pour progresser en niveau. Cap permanent de Max HP est optimal car l'habilité de Leona scale avec Max HP et AD. En fin de partie, Vex 2 ou Bard 2 peuvent remplacer les Arbiters backline (surtout si ta copie Leona Arbiter devient obsolète)."
-      },
+      "augmentsTip": null,
       "carousel": [
         "TFT_Item_Bloodthirster",
         "TFT_Item_TitansResolve",
@@ -1968,7 +1934,7 @@
     "stellar-combo-aatrox": {
       "title": "Stellar Combo Aatrox",
       "difficulty": "EASY",
-      "updated": "2026-06-17 18:41:09.489Z",
+      "updated": "2026-07-04 04:09:43.493Z",
       "augments": [
         "TFT17_Augment_AatroxCarry",
         "TFT9_Augment_MissedConnections",
@@ -1989,14 +1955,7 @@
         "ECON",
         "ECON"
       ],
-      "augmentsTip": {
-        "de": "NOVA bietet Shred/Sunder direkt durch das Trait. Falls du Aatrox früh findest, kannst du Caitlyn 2 zu Corki führen und Poppy 2 mit Tank-Items zu Rammus/Morgana bringen.",
-        "en": "NOVA gives you Shred/Sunder as part of the trait itself. If you manage to hit Aatrox early, you can transition Caitlyn 2 into Corki while moving tank items onto Poppy 2, then shift to Rammus/Morgana.",
-        "ko": "NOVA는 트레이트에 Shred/Sunder를 내장하고 있습니다. Aatrox를 일찍 얻으면 Caitlyn 2를 Corki로 전환하고 탱크 아이템을 Poppy 2에 싣은 후 Rammus/Morgana로 이동할 수 있습니다.",
-        "zh": "NOVA在特性中自带Shred/Sunder。如果早期获得Aatrox，可以用Caitlyn 2过渡到Corki，将坦克装备给Poppy 2，然后转向Rammus/Morgana。",
-        "es": "NOVA te proporciona Shred/Sunder integrado en el trait. Si consigues Aatrox temprano, puedes transicionar Caitlyn 2 hacia Corki y mover items de tanque a Poppy 2 para luego pasar a Rammus/Morgana.",
-        "fr": "NOVA fournit Shred/Sunder directement via le trait. Si tu obtiens Aatrox tôt, tu peux passer de Caitlyn 2 à Corki en donnant les items tank à Poppy 2, puis basculer vers Rammus/Morgana."
-      },
+      "augmentsTip": null,
       "carousel": [
         "TFT_Item_TitansResolve",
         "TFT_Item_Bloodthirster",
@@ -2047,7 +2006,7 @@
     "termeepnal-velocity-poppy": {
       "title": "Termeepnal Velocity Poppy",
       "difficulty": "EASY",
-      "updated": "2026-06-17 18:41:09.463Z",
+      "updated": "2026-07-04 04:09:43.484Z",
       "augments": [
         "TFT17_Augment_PoppyCarry",
         "TFT9_Augment_MissedConnections",
@@ -2068,14 +2027,7 @@
         "ECON",
         "ECON"
       ],
-      "augmentsTip": {
-        "de": "Verzichte auf Rerolls in frühen Leveln. Nutze stattdessen dein 2-star Poppy zum Tempo-Winstreak und komplettiere die 3-star mit 7 meeple -> gehe schnell auf 9 und 10. Das gezeigte Board ist nur das Late-Game-Setup, daher flexe Stage 4 mit Units wie Mighty Mech + Meepsie.",
-        "en": "Skip rerolling at low levels. Instead, leverage your 2-star Poppy for tempo win streaks and complete the 3-star using 7 meeple -> fast roll to 9 and 10. The board shown is just the endgame setup, so flex Stage 4 with units like Mighty Mech + Meepsie.",
-        "ko": "낮은 레벨에서 리롤하지 마세요. 대신 2-star Poppy로 템포 윈스트릭을 만들고 7 meeple로 3-star를 완성하세요 -> 빠르게 9와 10으로 올라가세요. 보여진 보드는 게임 후반 구성일 뿐이니 Stage 4에서 Mighty Mech + Meepsie 같은 유닛으로 플렉스하세요.",
-        "zh": "别在低等级时重铸。改为用2-star Poppy维持连胜节奏并用7 meeple完成3-star -> 快速升至9和10。显示的棋盘仅是后期配置，所以在Stage 4用Mighty Mech + Meepsie等单位灵活调整。",
-        "es": "No hagas rerolls en niveles bajos. En su lugar, usa tu 2-star Poppy para mantener racha ganadora y completa la 3-star con 7 meeple -> sube rápido a 9 y 10. El tablero mostrado es solo la configuración de juego tardío, así que flexiona Stage 4 con unidades como Mighty Mech + Meepsie.",
-        "fr": "Évitez les rerolls aux bas niveaux. Utilisez plutôt votre 2-star Poppy pour maintenir une streak gagnante et complétez la 3-star avec 7 meeple -> montez rapidement à 9 et 10. Le board présenté est seulement le setup de fin de partie, donc flexez Stage 4 avec des units comme Mighty Mech + Meepsie."
-      },
+      "augmentsTip": null,
       "carousel": [
         "TFT_Item_InfinityEdge",
         "TFT_Item_BlueBuff",
@@ -2125,7 +2077,7 @@
     "tf-reroll": {
       "title": "Fateweaver Reroll",
       "difficulty": "EASY",
-      "updated": "2026-06-17 18:41:09.088Z",
+      "updated": "2026-07-04 04:09:43.224Z",
       "augments": [
         "TFT_Augment_Waverider",
         "TFT6_Augment_GachaAddict",
@@ -2146,14 +2098,7 @@
         "COMBAT",
         "COMBAT"
       ],
-      "augmentsTip": {
-        "de": "Mountain (Stage 2) ist optimal > Medallion > Altar > Boar > Serpent Huntress. Priorisiere Items für Jax / TF > Caitlyn. 4 Fateweaver ist das Maximum, aber du kannst Rhaast + Rogue spielen, bis du Corki findest.",
-        "en": "Mountain at stage 2 is ideal > Medallion > Altar > Boar > Serpent Huntress. Prioritize items for Jax / TF > Caitlyn. 4 Fateweaver is your cap, but play Rhaast + Rogue until you hit Corki.",
-        "ko": "Stage 2에서 Mountain이 최적 > Medallion > Altar > Boar > Serpent Huntress. Jax / TF > Caitlyn 아이템 우선순위. 4 Fateweaver가 상한이지만 Corki를 찾을 때까지 Rhaast + Rogue를 운영.",
-        "zh": "Stage 2 时 Mountain 最优 > Medallion > Altar > Boar > Serpent Huntress。优先给 Jax / TF > Caitlyn 配装。4 Fateweaver 是上限，但可用 Rhaast + Rogue 过渡直到找到 Corki。",
-        "es": "Mountain en stage 2 es ideal > Medallion > Altar > Boar > Serpent Huntress. Prioriza objetos para Jax / TF > Caitlyn. 4 Fateweaver es tu límite, pero juega Rhaast + Rogue hasta encontrar Corki.",
-        "fr": "Mountain au stage 2 est optimal > Medallion > Altar > Boar > Serpent Huntress. Priorise les objets pour Jax / TF > Caitlyn. 4 Fateweaver est ton plafond, mais joue Rhaast + Rogue jusqu'à obtenir Corki."
-      },
+      "augmentsTip": null,
       "carousel": [
         "TFT_Item_GargoyleStoneplate",
         "TFT_Item_RecurveBow",
@@ -2205,7 +2150,7 @@
     "the-big-bang-meepsie": {
       "title": "The Big Bang Meepsie",
       "difficulty": "EASY",
-      "updated": "2026-06-17 18:41:09.102Z",
+      "updated": "2026-07-04 04:09:43.481Z",
       "augments": [
         "TFT17_Augment_IvernMinionCarry",
         "TFT_Augment_HeroicGrabBagPlus",
@@ -2226,14 +2171,7 @@
         "ECON",
         "ECON"
       ],
-      "augmentsTip": {
-        "de": "Positionierung ist entscheidend, um Pyke freie Raum in der Mitte zum Angriff auf gegnerische Carry zu geben. Funktioniert gut mit zusätzlichen Team-Slots für mehr Voyagers. Viktor kann als zweiter Carry gespielt werden, wenn dein Psionic-Item gut für ihn ist (Drone > Implant). Rhaast und Nami können bei 8 hinzugefügt werden.",
-        "en": "Position your units to keep the board center open so Pyke can jump onto enemy carries. Works well when you have extra team slots to fit in more Voyagers. You can also use Viktor as a secondary carry if your Psionic item is strong on him (Drone > Implant). Rhaast and Nami become available to add at 8.",
-        "ko": "보드 중앙을 열어두어 Pyke가 적 캐리에게 뛸 수 있도록 포지셔닝하세요. 추가 팀 슬롯이 있어서 더 많은 Voyagers를 배치할 수 있으면 좋습니다. Psionic 아이템이 Viktor에게 좋다면(Drone > Implant) 그를 부 캐리로 사용할 수 있습니다. 8에서 Rhaast와 Nami를 추가하세요.",
-        "zh": "调整位置以保持棋盘中央开放，让Pyke可以跳到敌方核心输出手身上。拥有额外队伍槽位以容纳更多Voyagers时效果更佳。如果你的Psionic物品对Viktor很好(Drone > Implant)，也可以用他作为副核心。在8时可加入Rhaast和Nami。",
-        "es": "Posiciona tus unidades para dejar el centro del tablero abierto para que Pyke salte sobre los carries enemigos. Funciona bien cuando tienes espacios de equipo adicionales para más Voyagers. También puedes usar Viktor como carry secundario si tu objeto Psionic es fuerte en él (Drone > Implant). Agrega Rhaast y Nami en 8.",
-        "fr": "Positionnez vos unités pour garder le centre du plateau dégagé afin que Pyke puisse sauter sur les carries ennemis. Fonctionne bien quand vous avez des emplacements d'équipe supplémentaires pour ajouter plus de Voyagers. Vous pouvez aussi utiliser Viktor comme carry secondaire si votre objet Psionic est bon sur lui (Drone > Implant). Ajoutez Rhaast et Nami à 8."
-      },
+      "augmentsTip": null,
       "carousel": [
         "TFT_Item_JeweledGauntlet",
         "TFT_Item_UnstableConcoction",
@@ -2281,10 +2219,83 @@
         }
       ]
     },
+    "vanguard-zoe": {
+      "title": "Conduit Zoe",
+      "difficulty": "EASY",
+      "updated": "2026-07-04 04:09:43.453Z",
+      "augments": [
+        "TFT_Augment_TreasureHunt",
+        "TFT17_Augment_Concentration",
+        "TFT_Augment_HomeCooking",
+        "TFT_Augment_ComponentQuestRod",
+        "TFT_Augment_WandOverflow",
+        "TFT_Augment_KickStart",
+        "TFT_Augment_WorthTheWaitPrismatic",
+        "TFT9_Augment_BardPlaybook1"
+      ],
+      "augmentTypes": [
+        "ITEMS",
+        "ITEMS",
+        "ITEMS",
+        "COMBAT",
+        "COMBAT",
+        "COMBAT",
+        "ECON",
+        "ECON"
+      ],
+      "augmentsTip": null,
+      "carousel": [
+        "TFT_Item_GargoyleStoneplate",
+        "TFT_Item_RabadonsDeathcap",
+        "TFT_Item_StatikkShiv",
+        "TFT_Item_NeedlesslyLargeRod"
+      ],
+      "earlyComp": [
+        {
+          "apiName": "TFT17_Lissandra",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Leona",
+          "items": [
+            "TFT_Item_GargoyleStoneplate"
+          ],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Mordekaiser",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Zoe",
+          "items": [
+            "TFT_Item_RabadonsDeathcap",
+            "TFT_Item_StatikkShiv"
+          ],
+          "stars": 1
+        }
+      ],
+      "tips": [
+        {
+          "stage": "Stage 2",
+          "tip": "Ideally play around early Zoe and Leona and win streak. Slam items on Zoe and Leona as you get them."
+        },
+        {
+          "stage": "Stage 3",
+          "tip": "Level to 6 and roll for 4 Vanguard + 3 Shepherd. You can also play 3 Arbiter with Diana temporarily. Always go for 3* tank at lvl 6."
+        },
+        {
+          "stage": "Stage 4",
+          "tip": "Finish your 3* then level for the 4 costs and more Conduits. You can flex in Karma + Pyke, Illaoi + Shepherds, or Morgana as other frontline."
+        }
+      ]
+    },
     "veigar-printer": {
       "title": "Veigar Printer",
       "difficulty": "MEDIUM",
-      "updated": "2026-06-17 18:41:09.384Z",
+      "updated": "2026-07-04 04:09:43.445Z",
       "augments": [
         "TFT_Augment_EarlyLearning",
         "TFT9_Augment_MissedConnections",
@@ -2305,14 +2316,7 @@
         "COMBAT",
         "COMBAT"
       ],
-      "augmentsTip": {
-        "de": "Zwei Spielweisen: Entweder langsam reroll bei Level 4/5 mit über 50 Gold oder auf 7 Meeple pushen, um Veigar 3 zu drucken (z.B. Worth the Wait Poppy). Dann auf 5 Meeple reduzieren, sobald Veigar 3-star fertig ist.",
-        "en": "Play this comp two ways: either slow roll at levels 4/5 while sitting above 50 gold, or push to 7 Meeple to print Veigar 3 (such as with Worth the Wait Poppy). Once Veigar 3-star is complete, drop down to 5 Meeple for your board.",
-        "ko": "두 가지 방법으로 플레이: 레벨 4/5에서 50 이상의 골드를 유지하며 천천히 리롤하거나, 7 Meeple로 푸시하여 Veigar 3을 프린트 (예: Worth the Wait Poppy). Veigar 3-star 완성 후 5 Meeple로 감소.",
-        "zh": "两种方式:在4/5级别缓速转盘同时保持50以上金币,或推进到7 Meeple来打印Veigar 3(如Worth the Wait Poppy)。完成Veigar 3-star后,降低到5 Meeple布阵。",
-        "es": "Juega este comp de dos formas: reroll lento en niveles 4/5 manteniendo más de 50 oro, o pushea a 7 Meeple para printear Veigar 3 (como Worth the Wait Poppy). Una vez Veigar 3-star está listo, baja a 5 Meeple.",
-        "fr": "Deux façons de jouer: soit reroll lent aux niveaux 4/5 en gardant plus de 50 or, soit push à 7 Meeple pour printer Veigar 3 (par exemple Worth the Wait Poppy). Une fois Veigar 3-star terminé, descendez à 5 Meeple."
-      },
+      "augmentsTip": null,
       "carousel": [
         "TFT_Item_RecurveBow",
         "TFT_Item_GiantsBelt",
@@ -2362,9 +2366,9 @@
       ]
     },
     "vex-9-5": {
-      "title": "AP Shepherd 9-5",
+      "title": "Bard Blitz Sona 9-5",
       "difficulty": "HARD",
-      "updated": "2026-06-17 18:41:09.381Z",
+      "updated": "2026-07-04 04:09:43.488Z",
       "augments": [
         "TFT_Augment_LateGameScaling",
         "TFT11_Augment_Slammin",
@@ -2385,14 +2389,7 @@
         "COMBAT",
         "COMBAT"
       ],
-      "augmentsTip": {
-        "de": "Ideal mit Gewinnsträhne und vielen Ressourcen für Backline-Items spielen. Tränen für Nunu sparen. 4 Vanguard gezeigt, aber Frontline ist flexibel. Sona mag Mana/Utility-Items. Bard braucht AP-Items. Vex als Alternative zu Bard, falls Items vorhanden. Rhaast immer auf dem Board halten.",
-        "en": "Best played from a win streak with plenty of resources and backline items. Reserve tears for Nunu gear. 4 Vanguard shown but frontline composition is flexible. Sona uses leftover mana and utility items well. Bard wants AP items. Vex works as an alternate 5-cost over Bard if you have her items. Always keep Rhaast in play.",
-        "ko": "승리 연승과 충분한 자원, 백라인 아이템으로 플레이하기. 눈누 아이템을 위해 눈물 아이템 아껴두기. 4 Vanguard 예시이지만 프론트라인은 유연함. Sona는 남은 마나/유틸 아이템 선호. Bard는 AP 아이템 필요. 아이템이 있으면 Bard 대신 Vex 플렉스 가능. Rhaast는 항상 보드에 유지.",
-        "zh": "理想情况下通过连胜和充足资源来玩，为后排积累物品。为Nunu物品保留眼泪。显示4 Vanguard但前排灵活。Sona喜欢剩余的法力/工具物品。Bard需要AP物品。如果有物品则可用Vex替换Bard的5费英雄。始终保持Rhaast在场。",
-        "es": "Idealmente jugado desde racha ganadora con muchos recursos e items de backline. Guardar lágrimas para items de Nunu. Se muestra 4 Vanguard pero frontline es flexible. Sona aprovecha items de maná/utilidad sobrantes. Bard quiere items de AP. Vex funciona como alternativa de 5-cost sobre Bard si tienes sus items. Mantén Rhaast siempre en juego.",
-        "fr": "Mieux joué avec une série de victoires et beaucoup de ressources pour items backline. Réserver les larmes pour Nunu. 4 Vanguard montré mais frontline flexible. Sona aime les items maná/utilitaire restants. Bard veut des items AP. Vex peut remplacer Bard comme 5-cost si vous avez ses items. Gardez toujours Rhaast en jeu."
-      },
+      "augmentsTip": null,
       "carousel": [
         "TFT_Item_NeedlesslyLargeRod",
         "TFT_Item_TearOfTheGoddess",
@@ -2430,7 +2427,7 @@
       "tips": [
         {
           "stage": "Stage 2",
-          "tip": "Play a standard AP win streak board around Vanguards. Take econ/item augments if you can."
+          "tip": "Play a standard AP win streak board around Vanguards. Take econ/item augments if you can. Leona Arbiter print is a strong opener with itemized Zoe."
         },
         {
           "stage": "Stage 3",
@@ -2445,7 +2442,7 @@
     "viktor-b4l": {
       "title": "Viktor Nami",
       "difficulty": "EASY",
-      "updated": "2026-06-17 18:41:09.392Z",
+      "updated": "2026-07-04 04:09:43.445Z",
       "augments": [
         "TFT_Augment_BronzeForLifeI",
         "TFT_Augment_BronzeForLife2",
@@ -2466,14 +2463,7 @@
         "COMBAT",
         "COMBAT"
       ],
-      "augmentsTip": {
-        "de": "Nami erhält übrige AP und Utility Items. Da die Komposition oft umstritten ist, levele auf 8 und spiele nur für 2* -> anstreben Top 4.",
-        "en": "Nami uses leftover AP and Utility items. Since this comp is frequently contested, level up to 8 and focus on 2* units only -> target Top 4 finish.",
-        "ko": "Nami는 남은 AP와 유틸리티 아이템을 가져갑니다. 이 조합이 자주 경쟁되므로 8렙으로 올리고 2* 유닛만 노려서 플레이하세요 -> Top 4를 목표로 하세요.",
-        "zh": "Nami 使用剩余的 AP 和功能性物品。由于此配置经常有人抢，升级到 8 级并仅专注 2* 单位 -> 目标获得 Top 4。",
-        "es": "Nami recibe los objetos de AP y utilidad sobrantes. Como esta comp es muy disputada, sube a nivel 8 y enfócate solo en unidades 2* -> apunta a Top 4.",
-        "fr": "Nami prend les objets AP et utilitaires restants. Comme cette compo est très contestée, montez au niveau 8 et concentrez-vous uniquement sur les unités 2* -> visez Top 4."
-      },
+      "augmentsTip": null,
       "carousel": [
         "TFT_Item_RabadonsDeathcap",
         "TFT_Item_NeedlesslyLargeRod",
@@ -2522,7 +2512,7 @@
     "yi-marawlers": {
       "title": "Yi Marawlers",
       "difficulty": "MEDIUM",
-      "updated": "2026-06-17 18:41:09.264Z",
+      "updated": "2026-07-04 04:09:43.357Z",
       "augments": [
         "TFT_Augment_JustSlayer",
         "TFT_Augment_GroupHug1",
@@ -2543,19 +2533,12 @@
         "COMBAT",
         "COMBAT"
       ],
-      "augmentsTip": {
-        "de": "Tempo-Komposition, die am besten gespielt wird, wenn man im Vorteil ist und starke Items hat. Beste Psionic = Malware Matrix auf Yi. Verwandte Embleme: Marauder > Brawler = Psionic > Challenger. Sunder ist wichtig, aber baue nur 1x Last Whisper oder Evenshroud (nicht beide).",
-        "en": "Fast-paced comp that performs best when you're ahead and have strong items. Malware Matrix on Yi is the optimal Psionic choice. Related emblems ranked: Marauder > Brawler = Psionic > Challenger. Sunder is essential, but pick either Last Whisper or Evenshroud—never both.",
-        "ko": "앞서갈 때와 강한 아이템이 있을 때 가장 잘 작동하는 템포 조합. Yi에게 Malware Matrix가 최고의 Psionic. 관련 엠블럼: Marauder > Brawler = Psionic > Challenger. Sunder는 필수지만 Last Whisper나 Evenshroud 중 하나만 선택 (둘 다 금지).",
-        "zh": "快速节奏阵容，最好在领先且有强力装备时使用。Yi的最佳Psionic选择是Malware Matrix。相关徽章排序：Marauder > Brawler = Psionic > Challenger。Sunder很重要，但只选Last Whisper或Evenshroud之一（不能两个都选）。",
-        "es": "Composición de tempo que funciona mejor cuando vas adelante y tienes items fuertes. Malware Matrix en Yi es el mejor Psionic. Emblemas relacionados: Marauder > Brawler = Psionic > Challenger. Sunder es esencial, pero elige Last Whisper o Evenshroud—nunca ambos.",
-        "fr": "Compo tempo qui performe mieux quand vous êtes devant et avec des items forts. Malware Matrix sur Yi est le meilleur Psionic. Emblèmes connexes : Marauder > Brawler = Psionic > Challenger. Sunder est crucial, mais ne prenez que Last Whisper ou Evenshroud (pas les deux)."
-      },
+      "augmentsTip": null,
       "carousel": [
         "TFT_Item_GuardianAngel",
-        "TFT_Item_MadredsBloodrazor",
         "TFT_Item_RecurveBow",
-        "TFT_Item_GiantsBelt"
+        "TFT_Item_GiantsBelt",
+        "TFT_Item_NegatronCloak"
       ],
       "earlyComp": [
         {
@@ -2571,8 +2554,7 @@
         {
           "apiName": "TFT17_Briar",
           "items": [
-            "TFT_Item_GuardianAngel",
-            "TFT_Item_MadredsBloodrazor"
+            "TFT_Item_GuardianAngel"
           ],
           "stars": 1
         },

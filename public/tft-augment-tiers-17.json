@@ -1,12 +1,12 @@
 {
   "set": 17,
   "source": "tactics.tools/info/augments",
-  "fetchedAt": "2026-06-10T10:33:43.068Z",
+  "fetchedAt": "2026-07-04T08:36:28.297Z",
   "counts": {
     "silver": 70,
     "gold": 124,
     "prismatic": 71,
-    "pinned": 257
+    "pinned": 256
   },
   "tiers": {
     "TFT7_Augment_AFK": 1,
@@ -190,7 +190,6 @@
     "TFT_Augment_Trifecta1": 2,
     "TFT_Augment_TwoMuchValue": 2,
     "TFT_Augment_TwoTanky": 2,
-    "TFT16_Augment_UltraRapidFire": 2,
     "TFT_Augment_UrfsGambit": 2,
     "TFT_Augment_Unforgotten": 2,
     "TFT_Augment_Warpath": 2,

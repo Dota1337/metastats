@@ -1,10 +1,10 @@
 {
   "set": 17,
   "source": "tactics.tools/info/patch-notes",
-  "fetchedAt": "2026-06-21T13:27:36.064Z",
+  "fetchedAt": "2026-07-04T08:36:28.575Z",
   "patches": {
     "17.1": {
-      "scrapedAt": "2026-06-21T13:27:36.585Z",
+      "scrapedAt": "2026-07-04T08:36:29.000Z",
       "sections": [
         {
           "category": "LARGE CHANGES",
@@ -458,7 +458,7 @@
       }
     },
     "17.2": {
-      "scrapedAt": "2026-06-21T13:27:38.711Z",
+      "scrapedAt": "2026-07-04T08:36:31.392Z",
       "sections": [
         {
           "category": "17.2 APRIL 29TH MID-PATCH UPDATE",
@@ -1067,7 +1067,7 @@
       }
     },
     "17.3": {
-      "scrapedAt": "2026-06-21T13:27:40.857Z",
+      "scrapedAt": "2026-07-04T08:36:33.865Z",
       "sections": [
         {
           "category": "17.3 MAY 13TH MID-PATCH UPDATE",
@@ -1561,7 +1561,7 @@
       }
     },
     "17.4": {
-      "scrapedAt": "2026-06-21T13:27:43.009Z",
+      "scrapedAt": "2026-07-04T08:36:35.928Z",
       "sections": [
         {
           "category": "Mid-Patch Updates",
@@ -2000,8 +2000,38 @@
       }
     },
     "17.5": {
-      "scrapedAt": "2026-06-21T13:27:45.356Z",
+      "scrapedAt": "2026-07-04T08:36:38.454Z",
       "sections": [
+        {
+          "category": "Mid-Patch Updates",
+          "entries": [
+            {
+              "apiName": "TFT17_Samira",
+              "displayName": "Samira",
+              "change": "Samira Mana nerf: 0/60 ⇒ 0/65"
+            },
+            {
+              "apiName": "TFT17_Stargazer",
+              "displayName": "Stargazer 0",
+              "change": "Stargazer, Serpent Poison Damage: 18/35/50% ⇒ 25/45/60%"
+            },
+            {
+              "apiName": "TFT17_Summontrait",
+              "displayName": "Shepherd 0",
+              "change": "Shepherd Summon Bonus AP Per Cast: 20 ⇒ 15"
+            },
+            {
+              "apiName": "TFT17_Spacegroove",
+              "displayName": "Space Groove 0",
+              "change": "Space Groove (7) Bonus: 15% ⇒ 10%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Two Tanky",
+              "change": "Two Tanky (Augment) Health: 500 ⇒ 450"
+            }
+          ]
+        },
         {
           "category": "SYSTEMS",
           "entries": [
@@ -2269,8 +2299,282 @@
         }
       ],
       "counts": {
-        "totalEntries": 51,
-        "withApiName": 24
+        "totalEntries": 56,
+        "withApiName": 28
+      }
+    },
+    "17.6": {
+      "scrapedAt": "2026-07-04T08:36:40.740Z",
+      "sections": [
+        {
+          "category": "LARGE CHANGES",
+          "entries": [
+            {
+              "apiName": "TFT17_Animasquad",
+              "displayName": "Anima 0",
+              "change": "Anima Squad (6)15g cashout removed3x 4-cost cashout removed2x Lesser Duplicator ⇒ 2x Lesser Duplicator + 5gMore likely to receive Component/Emblem rewards"
+            },
+            {
+              "apiName": "TFT17_Admin",
+              "displayName": "Arbiter 0",
+              "change": "Arbiter Input - Rerolled Last Turn:Gain Attack Speed: 35/55% ⇒ 40/65%Gain Resists: 45/70 ⇒ 55/80Gain Shield: 44/66% ⇒ 48/70%Gain Gold: 30% ⇒ 35%"
+            },
+            {
+              "apiName": "TFT17_Caitlyn",
+              "displayName": "Caitlyn",
+              "change": "Caitlyn Headshot Damage: 40% ⇒ 50%"
+            },
+            {
+              "apiName": "TFT17_Akali",
+              "displayName": "Akali",
+              "change": "Akali Damage: 12/18/24/30% AD ⇒ 15/22/28/34% AD"
+            },
+            {
+              "apiName": "TFT17_Kindred",
+              "displayName": "Kindred",
+              "change": "Kindred Damage Amp: 10% ⇒ 15%"
+            },
+            {
+              "apiName": "TFT17_Admin",
+              "displayName": "Arbiter 0",
+              "change": "Arbiter Output: Combat Start Shield Duration: 8s ⇒ 10s"
+            },
+            {
+              "apiName": "TFT17_Astronaut",
+              "displayName": "Meeple 0",
+              "change": "Meeple (7) Gold per 2-cost Cloned: 5 ⇒ 3"
+            },
+            {
+              "apiName": "TFT17_Mecha",
+              "displayName": "Mecha 0",
+              "change": "Mecha AD/AP: 25/45/35% ⇒ 25/40/40%"
+            },
+            {
+              "apiName": "TFT17_Summontrait",
+              "displayName": "Shepherd 0",
+              "change": "Shepherd (5) Tail Sweep Damage: 200 AP ⇒ 230 AP"
+            },
+            {
+              "apiName": "TFT17_Twistedfate",
+              "displayName": "Twisted Fate",
+              "change": "Twisted Fate Min Ability Damage AP: 190/285/430/730 ⇒ 205/305/460/800"
+            },
+            {
+              "apiName": "TFT17_Gnar",
+              "displayName": "Gnar",
+              "change": "Gnar Base AD: 50 ⇒ 48"
+            },
+            {
+              "apiName": "TFT17_Mordekaiser",
+              "displayName": "Mordekaiser",
+              "change": "Mordekaiser Initial Shield: 350/425/550 ⇒ 350/450/625"
+            },
+            {
+              "apiName": "TFT17_Viktor",
+              "displayName": "Viktor",
+              "change": "Viktor Ability Damage: 190/290/500 ⇒ 200/300/530"
+            },
+            {
+              "apiName": "TFT17_Lulu",
+              "displayName": "Lulu",
+              "change": "Lulu Altar Spell Damage: 150/225/375 AP ⇒ 160/240/400 AP"
+            },
+            {
+              "apiName": "TFT17_Aurelionsol",
+              "displayName": "Aurelion Sol",
+              "change": "Aurelion Sol Non-Mech Spell Damage: 320/480 AP ⇒ 335/505 AP"
+            },
+            {
+              "apiName": "TFT17_Karma",
+              "displayName": "Karma",
+              "change": "Karma Split Damage AP: 570/855 ⇒ 630/945"
+            },
+            {
+              "apiName": "TFT17_Leblanc",
+              "displayName": "LeBlanc",
+              "change": "LeBlanc Passive Damage AP: 62/93 ⇒ 66/99"
+            },
+            {
+              "apiName": "TFT17_Morgana",
+              "displayName": "Morgana",
+              "change": "Morgana Health Gain AP: 525/625 ⇒ 600/700"
+            },
+            {
+              "apiName": "TFT17_Masteryi",
+              "displayName": "Master Yi",
+              "change": "Master Yi Spell Damage AD: 50/75 AD ⇒ 55/85 AD"
+            },
+            {
+              "apiName": "TFT17_Nami",
+              "displayName": "Nami",
+              "change": "Nami Primary Spell Damage: 440/660 AP ⇒ 460/690 AP"
+            },
+            {
+              "apiName": "TFT17_Shen",
+              "displayName": "Shen",
+              "change": "Shen will always gain his Attack Speed bonus after casting his ability, even if it does not hit himself."
+            },
+            {
+              "apiName": null,
+              "displayName": "Loot Singularity",
+              "change": "Loot Singularity:Cashouts 17-20 removed30 Matter: 1 Reforger/Remover ⇒ 1 component70 Matter: 1 component ⇒ 1 Reforger/Remover + 1 gold150 Matter: 1 Lesser Duplicator ⇒ 1 Component300 Matter: 1 Component ⇒ 1 Lesser Duplicator + 1 goldCashout 16 Threshold: 555 ⇒ 777Cashout 16 Reward: Ahri’s Aura/Varus’ Obsession/Soraka’s Miracle + 3 Removers"
+            },
+            {
+              "apiName": null,
+              "displayName": "Band of Thieves II",
+              "change": "Band of Thieves II Turn Delay: 8 ⇒ 6"
+            },
+            {
+              "apiName": null,
+              "displayName": "Best Friends I",
+              "change": "Best Friends I/II now also grants Magic Resist. Armor/Magic Resist: 13/22 ⇒ 9/14"
+            },
+            {
+              "apiName": null,
+              "displayName": "Birthday Reunion",
+              "change": "Birthday Reunion initially grants 3 gold. 2-star 2-cost champion granted at Level 5."
+            },
+            {
+              "apiName": null,
+              "displayName": "Blood Offering",
+              "change": "Blood Offering HP Loss: 20% max HP ⇒ 15% max HP. Shield Amount: 30% max HP ⇒ 20% max HP. Stats Granted: 10% AD ⇒ 12% AP and AD"
+            },
+            {
+              "apiName": null,
+              "displayName": "Bodyguard Training",
+              "change": "Bodyguard Training Base Resists: 10 ⇒ 15"
+            },
+            {
+              "apiName": "TFT17_Augment_PykeCarry2",
+              "displayName": "Contract Killer",
+              "change": "Contract Killer (Pyke) Bonus Tank Damage: 60% ⇒ 75%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Critical Success",
+              "change": "Critical Success Disabled"
+            },
+            {
+              "apiName": null,
+              "displayName": "Deadlier Caps",
+              "change": "Deadlier Caps Rabadon Deathcaps also grant 1 Mana Regen."
+            },
+            {
+              "apiName": null,
+              "displayName": "Early Learnings",
+              "change": "Early Learnings Initial AD/AP: 8 ⇒ 5"
+            },
+            {
+              "apiName": null,
+              "displayName": "Expedition",
+              "change": "Expedition Gold: 20 ⇒ 15. Made Mutually Exclusive to 1 Player"
+            },
+            {
+              "apiName": null,
+              "displayName": "Forged in Strength",
+              "change": "Forged in Strength Health Threshold: 35 ⇒ 30"
+            },
+            {
+              "apiName": null,
+              "displayName": "Forward Thinking",
+              "change": "Forward Thinking Rounds: 5 ⇒ 6, Gold: 70 ⇒ 62"
+            },
+            {
+              "apiName": null,
+              "displayName": "Going Long",
+              "change": "Going Long Initial Gold: 13 ⇒ 16"
+            },
+            {
+              "apiName": null,
+              "displayName": "Golden Gamble",
+              "change": "Golden Gamble Gold: 1 ⇒ 2"
+            },
+            {
+              "apiName": "TFT17_Augment_MordekaiserCarry2",
+              "displayName": "Heat Death",
+              "change": "Heat Death (Mordekaiser) Active Ability Damage AP: 50/75/115 ⇒ 55/82/140"
+            },
+            {
+              "apiName": null,
+              "displayName": "High Voltage",
+              "change": "High Voltage Bonus Damage: 20% ⇒ 25%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Late Game Specialist",
+              "change": "Late Game Specialist no longer exclusive with Level Up! Gold: 30 ⇒ 27"
+            },
+            {
+              "apiName": null,
+              "displayName": "Living Forge",
+              "change": "Living Forge Rounds: 8 ⇒ 9"
+            },
+            {
+              "apiName": null,
+              "displayName": "Lucky Gloves",
+              "change": "Lucky Gloves 2-1 version also grants 4 gold"
+            },
+            {
+              "apiName": null,
+              "displayName": "Pilfer",
+              "change": "Pilfer Gold for TG: 21 ⇒ 19"
+            },
+            {
+              "apiName": null,
+              "displayName": "Recombobulator",
+              "change": "Recombobulator Also grants 3 free rerolls"
+            },
+            {
+              "apiName": null,
+              "displayName": "ReinFOURcement",
+              "change": "ReinFOURcement Gold: 5 ⇒ 7"
+            },
+            {
+              "apiName": null,
+              "displayName": "Restart Mission",
+              "change": "Restart Mission mutually exclusive from: Expedition, Clear Mind and AFK"
+            },
+            {
+              "apiName": null,
+              "displayName": "Retribution",
+              "change": "Retribution Removed"
+            },
+            {
+              "apiName": null,
+              "displayName": "Shimmerscale Essence",
+              "change": "Shimmerscale Essence Rounds: 6 ⇒ 7"
+            },
+            {
+              "apiName": null,
+              "displayName": "Timestream",
+              "change": "Timestream also grants all allies 100 Health. AS Per Reroll: 0.25% ⇒ 0.3%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Treasure Hunt",
+              "change": "Treasure Hunt Gold Per Chest: 16g ⇒ 18g. 5th Treasure Chest is now always 1 Artifact Anvil + 4 Gold"
+            },
+            {
+              "apiName": null,
+              "displayName": "Two Tanky",
+              "change": "Two Tanky Health: 450 ⇒ 375. Shield Amount: 40% ⇒ 35%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Urf's Gambit",
+              "change": "Urf’s Gambit Gold: 6 ⇒ 3"
+            },
+            {
+              "apiName": null,
+              "displayName": "Wise Spending",
+              "change": "Wise Spending Gold: 3 ⇒ 1"
+            }
+          ]
+        }
+      ],
+      "counts": {
+        "totalEntries": 52,
+        "withApiName": 23
       }
     }
   }

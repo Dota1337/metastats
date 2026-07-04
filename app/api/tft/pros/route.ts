@@ -61,9 +61,12 @@ export async function GET(request: NextRequest) {
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Aggregate counts for filter chips and tab badges. Cheap second RPC — same
-  // table, no join. We compute counts across ALL classifications regardless of
-  // the current filter so the tab labels stay stable when switching tabs.
+  // Aggregate counts for filter chips and tab badges. Cheap second query — same
+  // table, no join. Tab badges (classCounts) span ALL classifications so each
+  // tab shows its own total. Region/team chips MUST count the same
+  // classification set the active tab renders — the old hardcoded
+  // tpc+tournament+streamer set showed "EUW 42" while the verified tab
+  // rendered 6 rows (badge ≠ list, user-visible bug 2026-07-05).
   const { data: allClassified } = await supabase
     .from('tft_pro_players')
     .select('classification,region,team,tpc_verified,tpc_region', { head: false });
@@ -75,9 +78,7 @@ export async function GET(request: NextRequest) {
   for (const row of (allClassified || []) as any[]) {
     const c = row.classification || 'inactive';
     classCounts[c] = (classCounts[c] || 0) + 1;
-    // region + team counts only over the "useful" pros (default classifications +
-    // streamer) so the dropdowns don't get cluttered with historic-only entries.
-    if (['tpc', 'tournament', 'streamer'].includes(c)) {
+    if (!classifications || classifications.includes(c)) {
       regionCounts[row.region] = (regionCounts[row.region] || 0) + 1;
       if (row.team) teamCounts[row.team] = (teamCounts[row.team] || 0) + 1;
     }

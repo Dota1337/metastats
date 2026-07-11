@@ -1,18 +1,18 @@
 {
   "set": 17,
   "source": "tftacademy.com/tierlist/comps (SvelteKit hydration data island)",
-  "fetchedAt": "2026-07-04T08:38:23.354Z",
+  "fetchedAt": "2026-07-11T07:56:42.354Z",
   "counts": {
     "slugsIndexed": 36,
-    "populatedFull": 36,
-    "populatedPartial": 0,
+    "populatedFull": 35,
+    "populatedPartial": 1,
     "skipped": 0
   },
   "comps": {
     "anima-reroll": {
       "title": "Vanguard Diana",
       "difficulty": "HARD",
-      "updated": "2026-07-04 04:09:43.485Z",
+      "updated": "2026-07-09 18:40:14.749Z",
       "augments": [
         "TFT10_Augment_HeroicGrabBag",
         "TFT_Augment_MagicRoll",
@@ -80,7 +80,7 @@
     "bonk-nasus": {
       "title": "Bonk! Nasus",
       "difficulty": "EASY",
-      "updated": "2026-07-04 04:09:43.486Z",
+      "updated": "2026-07-09 18:40:15.138Z",
       "augments": [
         "TFT17_Augment_NasusCarry",
         "TFT9_Augment_MissedConnections",
@@ -152,7 +152,7 @@
     "contract-killer-pyke": {
       "title": "Contract Killer Pyke",
       "difficulty": "EASY",
-      "updated": "2026-07-04 04:09:43.216Z",
+      "updated": "2026-07-09 18:40:14.733Z",
       "augments": [
         "TFT17_Augment_PykeCarry",
         "TFT9_Augment_JeweledLotus",
@@ -223,7 +223,7 @@
     "corki-riven": {
       "title": "Corki Riven",
       "difficulty": "MEDIUM",
-      "updated": "2026-07-04 04:09:43.483Z",
+      "updated": "2026-07-09 18:40:15.068Z",
       "augments": [
         "TFT_Augment_ComponentQuestSword",
         "TFT_Augment_TraitTree",
@@ -297,7 +297,7 @@
     "dark-star": {
       "title": "Dark Star Flex",
       "difficulty": "MEDIUM",
-      "updated": "2026-07-04 04:09:43.209Z",
+      "updated": "2026-07-09 18:40:15.142Z",
       "augments": [
         "TFT_Augment_SpreadingRoots",
         "TFT_Augment_TraitTree",
@@ -368,7 +368,7 @@
     "dark-star-lissandra": {
       "title": "Dark Star Lissandra",
       "difficulty": "MEDIUM",
-      "updated": "2026-07-04 04:09:43.478Z",
+      "updated": "2026-07-09 18:40:15.145Z",
       "augments": [
         "TFT_Augment_TreasureHunt",
         "TFT9_Augment_MissedConnections",
@@ -436,7 +436,7 @@
     "ez-cho": {
       "title": "EZ CHO",
       "difficulty": "EASY",
-      "updated": "2026-07-04 04:09:43.209Z",
+      "updated": "2026-07-09 18:40:15.067Z",
       "augments": [
         "TFT6_Augment_GachaAddict",
         "TFT9_Augment_MissedConnections",
@@ -510,7 +510,7 @@
     "fast-9-jhin-stargazer-version": {
       "title": "Xayah Stargazer",
       "difficulty": "MEDIUM",
-      "updated": "2026-07-04 04:09:43.136Z",
+      "updated": "2026-07-09 18:40:14.593Z",
       "augments": [
         "TFT_Augment_ShimmerscaleEssence",
         "TFT9_Augment_LearningFromExperience2",
@@ -583,7 +583,7 @@
     "fountain-lulu": {
       "title": "Lulu Reroll",
       "difficulty": "EASY",
-      "updated": "2026-07-04 04:09:43.446Z",
+      "updated": "2026-07-09 18:40:15.195Z",
       "augments": [
         "TFT6_Augment_ThriftShop",
         "TFT_Augment_PatienceIsAVirtue",
@@ -654,7 +654,7 @@
     "gnar-printer": {
       "title": "Gnar Printer",
       "difficulty": "MEDIUM",
-      "updated": "2026-07-04 04:09:43.435Z",
+      "updated": "2026-07-09 18:40:15.137Z",
       "augments": [
         "TFT_Augment_TragicalBlade",
         "TFT_Augment_MagicRollMinus",
@@ -727,7 +727,7 @@
     "graves-vex-9-5": {
       "title": "NOVA Vex 9-5",
       "difficulty": "HARD",
-      "updated": "2026-07-04 04:09:43.116Z",
+      "updated": "2026-07-09 18:40:15.137Z",
       "augments": [
         "TFT_Augment_AuraFarming",
         "TFT_Augment_DuoQueue",
@@ -799,7 +799,7 @@
     "heat-death-mordekaiser": {
       "title": "Heat Death Mordekaiser",
       "difficulty": "CONDITIONAL",
-      "updated": "2026-07-04 04:09:43.485Z",
+      "updated": "2026-07-09 18:40:15.146Z",
       "augments": [
         "TFT17_Augment_MordekaiserCarry",
         "TFT_Augment_HeroicGrabBagPlus",
@@ -867,7 +867,7 @@
     "in-the-groove": {
       "title": "In The Groove",
       "difficulty": "EASY",
-      "updated": "2026-07-04 04:09:43.158Z",
+      "updated": "2026-07-09 18:40:14.628Z",
       "augments": [
         "TFT_Augment_BranchingOut",
         "TFT_Augment_SpreadingRoots",
@@ -938,7 +938,7 @@
     "invader-zed": {
       "title": "Invader Zed",
       "difficulty": "HARD",
-      "updated": "2026-07-04 04:09:43.215Z",
+      "updated": "2026-07-09 18:40:14.868Z",
       "augments": [
         "TFT17_Augment_InvaderZed",
         "TFT_Augment_OneBuffTwoBuff",
@@ -1008,7 +1008,7 @@
     "jainx": {
       "title": "Primordian Jinx",
       "difficulty": "EASY",
-      "updated": "2026-07-04 04:09:43.148Z",
+      "updated": "2026-07-09 18:40:15.075Z",
       "augments": [
         "TFT_Augment_TreasureHunt",
         "TFT6_Augment_PortableForge",
@@ -1073,14 +1073,14 @@
         },
         {
           "stage": "Stage 4",
-          "tip": "Slow roll above 50g. Don't move up to 7 until you get at least Jax and Jinx to 3. On 7 add Kindred. On 8 add Rhaast. "
+          "tip": "Slow roll above 50g. Don't move up to 7 until you get at least Jax and Jinx to 3. On 7 add Kindred. On 8 add Rhaast or Miss Fortune with sword items."
         }
       ]
     },
     "karnami-flex": {
       "title": "KarNami Flex",
       "difficulty": "HARD",
-      "updated": "2026-07-04 04:09:43.331Z",
+      "updated": "2026-07-09 18:40:15.065Z",
       "augments": [
         "TFT6_Augment_TradeSector2",
         "TFT11_Augment_Reinfourcement",
@@ -1152,7 +1152,7 @@
     "mecha-sol": {
       "title": "Carrier Asol",
       "difficulty": "EASY",
-      "updated": "2026-07-04 04:09:43.172Z",
+      "updated": "2026-07-09 18:40:15.139Z",
       "augments": [
         "TFT11_Augment_Reinfourcement",
         "TFT_Augment_PatienceIsAVirtue",
@@ -1182,27 +1182,17 @@
       ],
       "earlyComp": [
         {
-          "apiName": "TFT17_Zoe",
-          "items": [
-            "TFT_Item_RabadonsDeathcap",
-            "TFT_Item_StatikkShiv"
-          ],
-          "stars": 1
-        },
-        {
-          "apiName": "TFT17_Leona",
-          "items": [
-            "TFT_Item_GargoyleStoneplate"
-          ],
-          "stars": 1
-        },
-        {
-          "apiName": "TFT17_Mordekaiser",
+          "apiName": "TFT17_Briar",
           "items": [],
           "stars": 1
         },
         {
-          "apiName": "TFT17_Lissandra",
+          "apiName": "TFT17_Jinx",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Aurora",
           "items": [],
           "stars": 1
         }
@@ -1225,7 +1215,7 @@
     "nova-kindred": {
       "title": "NOVA Kindred",
       "difficulty": "EASY",
-      "updated": "2026-07-04 04:09:43.486Z",
+      "updated": "2026-07-09 18:40:15.144Z",
       "augments": [
         "TFT11_Augment_Slammin",
         "TFT9_Augment_LearningFromExperience2",
@@ -1296,7 +1286,7 @@
     "nova-reroll": {
       "title": "N.O.V.A Reroll",
       "difficulty": "EASY",
-      "updated": "2026-07-04 04:09:43.203Z",
+      "updated": "2026-07-09 18:40:15.133Z",
       "augments": [
         "TFT_Augment_TreasureHunt",
         "TFT_Augment_ItemGargoyleStoneplate",
@@ -1364,7 +1354,7 @@
     "primordian-reroll": {
       "title": "Primordian Reroll",
       "difficulty": "MEDIUM",
-      "updated": "2026-07-04 04:09:43.444Z",
+      "updated": "2026-07-09 18:40:15.192Z",
       "augments": [
         "TFT6_Augment_GachaAddict",
         "TFT6_Augment_TradeSector",
@@ -1435,7 +1425,7 @@
     "pyke-gwen": {
       "title": "Gwen Pyke Reroll",
       "difficulty": "EASY",
-      "updated": "2026-07-04 04:09:43.451Z",
+      "updated": "2026-07-09 18:40:14.717Z",
       "augments": [
         "TFT_Augment_Unforgotten",
         "TFT_Augment_MagicRoll",
@@ -1507,7 +1497,7 @@
     "reach-for-the-stars-jax": {
       "title": "Reach for the Stars Jax",
       "difficulty": "EASY",
-      "updated": "2026-07-04 04:09:43.213Z",
+      "updated": "2026-07-09 18:40:15.143Z",
       "augments": [
         "TFT17_Augment_JaxCarry",
         "TFT_Augment_HeroicGrabBagPlus",
@@ -1578,7 +1568,7 @@
     "replicator-mf-reroll": {
       "title": "Replicator MF Reroll",
       "difficulty": "EASY",
-      "updated": "2026-07-04 04:09:43.484Z",
+      "updated": "2026-07-09 18:40:15.063Z",
       "augments": [
         "TFT10_Augment_HeroicGrabBag",
         "TFT6_Augment_GachaAddict",
@@ -1649,7 +1639,7 @@
     "samira-knock-up-copy": {
       "title": "Samira Two Tanky",
       "difficulty": "MEDIUM",
-      "updated": "2026-07-04 04:09:43.083Z",
+      "updated": "2026-07-09 18:40:14.425Z",
       "augments": [
         "TFT10_Augment_HeroicGrabBag",
         "TFT6_Augment_TradeSector",
@@ -1720,7 +1710,7 @@
     "self-destruct-gragas": {
       "title": "Self Destruct Gragas",
       "difficulty": "EASY",
-      "updated": "2026-07-04 04:09:43.485Z",
+      "updated": "2026-07-09 18:40:15.064Z",
       "augments": [
         "TFT_Augment_BoxingLessons",
         "TFT_Augment_GuardbreakerSpirit",
@@ -1792,16 +1782,16 @@
     "shepherd-pie": {
       "title": "Shepherd Pie",
       "difficulty": "MEDIUM",
-      "updated": "2026-07-04 04:09:43.207Z",
+      "updated": "2026-07-09 18:40:14.658Z",
       "augments": [
-        "TFT_Augment_SpreadingRoots",
+        "TFT_Augment_HoldTheLine",
         "TFT_Augment_GildedSteel",
         "TFT_Augment_GlassCannonII",
-        "TFT9_Augment_JeweledLotus",
         "TFT_Augment_BoxingLessons",
-        "TFT_Augment_GroupHug1",
         "TFT_Augment_UrfsGambit",
-        "TFT_Augment_HoldTheLine"
+        "TFT_Augment_WandOverflow",
+        "TFT_Augment_ComponentQuestRod",
+        "TFT_Augment_TheBaronsLair"
       ],
       "augmentTypes": [
         "EMBLEM",
@@ -1863,7 +1853,7 @@
     "shieldmaiden-leona": {
       "title": "Shieldmaiden Leona",
       "difficulty": "EASY",
-      "updated": "2026-07-04 04:09:43.487Z",
+      "updated": "2026-07-09 18:40:14.748Z",
       "augments": [
         "TFT17_Augment_LeonaCarry",
         "TFT9_Augment_MissedConnections",
@@ -1934,7 +1924,7 @@
     "stellar-combo-aatrox": {
       "title": "Stellar Combo Aatrox",
       "difficulty": "EASY",
-      "updated": "2026-07-04 04:09:43.493Z",
+      "updated": "2026-07-09 18:40:15.202Z",
       "augments": [
         "TFT17_Augment_AatroxCarry",
         "TFT9_Augment_MissedConnections",
@@ -2006,7 +1996,7 @@
     "termeepnal-velocity-poppy": {
       "title": "Termeepnal Velocity Poppy",
       "difficulty": "EASY",
-      "updated": "2026-07-04 04:09:43.484Z",
+      "updated": "2026-07-09 18:40:15.138Z",
       "augments": [
         "TFT17_Augment_PoppyCarry",
         "TFT9_Augment_MissedConnections",
@@ -2077,7 +2067,7 @@
     "tf-reroll": {
       "title": "Fateweaver Reroll",
       "difficulty": "EASY",
-      "updated": "2026-07-04 04:09:43.224Z",
+      "updated": "2026-07-09 18:40:15.137Z",
       "augments": [
         "TFT_Augment_Waverider",
         "TFT6_Augment_GachaAddict",
@@ -2150,7 +2140,7 @@
     "the-big-bang-meepsie": {
       "title": "The Big Bang Meepsie",
       "difficulty": "EASY",
-      "updated": "2026-07-04 04:09:43.481Z",
+      "updated": "2026-07-09 18:40:14.747Z",
       "augments": [
         "TFT17_Augment_IvernMinionCarry",
         "TFT_Augment_HeroicGrabBagPlus",
@@ -2222,7 +2212,7 @@
     "vanguard-zoe": {
       "title": "Conduit Zoe",
       "difficulty": "EASY",
-      "updated": "2026-07-04 04:09:43.453Z",
+      "updated": "2026-07-09 18:41:28.054Z",
       "augments": [
         "TFT_Augment_TreasureHunt",
         "TFT17_Augment_Concentration",
@@ -2295,16 +2285,16 @@
     "veigar-printer": {
       "title": "Veigar Printer",
       "difficulty": "MEDIUM",
-      "updated": "2026-07-04 04:09:43.445Z",
+      "updated": "2026-07-09 18:40:15.195Z",
       "augments": [
         "TFT_Augment_EarlyLearning",
         "TFT9_Augment_MissedConnections",
         "TFT9_Augment_PandorasRadiantBox",
         "TFT6_Augment_PandorasItems",
-        "TFT_Augment_Expedition",
         "TFT_Augment_Waverider",
         "TFT_Augment_TreasureHunt",
-        "TFT_Augment_WandOverflow"
+        "TFT_Augment_WandOverflow",
+        "TFT_Augment_DeadlierCaps"
       ],
       "augmentTypes": [
         "ITEMS",
@@ -2368,7 +2358,7 @@
     "vex-9-5": {
       "title": "Bard Blitz Sona 9-5",
       "difficulty": "HARD",
-      "updated": "2026-07-04 04:09:43.488Z",
+      "updated": "2026-07-09 18:40:15.132Z",
       "augments": [
         "TFT_Augment_LateGameScaling",
         "TFT11_Augment_Slammin",
@@ -2442,7 +2432,7 @@
     "viktor-b4l": {
       "title": "Viktor Nami",
       "difficulty": "EASY",
-      "updated": "2026-07-04 04:09:43.445Z",
+      "updated": "2026-07-09 18:40:15.072Z",
       "augments": [
         "TFT_Augment_BronzeForLifeI",
         "TFT_Augment_BronzeForLife2",
@@ -2512,7 +2502,7 @@
     "yi-marawlers": {
       "title": "Yi Marawlers",
       "difficulty": "MEDIUM",
-      "updated": "2026-07-04 04:09:43.357Z",
+      "updated": "2026-07-09 18:40:35.814Z",
       "augments": [
         "TFT_Augment_JustSlayer",
         "TFT_Augment_GroupHug1",

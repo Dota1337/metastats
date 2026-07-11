@@ -1,12 +1,12 @@
 {
   "set": 17,
   "source": "tactics.tools/info/augments",
-  "fetchedAt": "2026-07-04T08:36:28.297Z",
+  "fetchedAt": "2026-07-11T07:54:58.574Z",
   "counts": {
     "silver": 70,
     "gold": 124,
     "prismatic": 71,
-    "pinned": 256
+    "pinned": 255
   },
   "tiers": {
     "TFT7_Augment_AFK": 1,
@@ -27,7 +27,6 @@
     "TFT_Augment_ComponentQuestRod": 1,
     "TFT_Augment_Corrosion": 1,
     "TFT_Augment_CraftedCrafting": 1,
-    "TFT_Augment_ComponentQuestGlove": 1,
     "TFT_Augment_Dummify": 1,
     "TFT6_Augment_Electrocharge1": 1,
     "TFT6_Augment_Distancing": 1,

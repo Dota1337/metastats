@@ -1,10 +1,10 @@
 {
   "set": 17,
   "source": "tactics.tools/info/patch-notes",
-  "fetchedAt": "2026-07-04T08:36:28.575Z",
+  "fetchedAt": "2026-07-11T07:54:58.826Z",
   "patches": {
     "17.1": {
-      "scrapedAt": "2026-07-04T08:36:29.000Z",
+      "scrapedAt": "2026-07-11T07:54:58.910Z",
       "sections": [
         {
           "category": "LARGE CHANGES",
@@ -458,7 +458,7 @@
       }
     },
     "17.2": {
-      "scrapedAt": "2026-07-04T08:36:31.392Z",
+      "scrapedAt": "2026-07-11T07:55:01.289Z",
       "sections": [
         {
           "category": "17.2 APRIL 29TH MID-PATCH UPDATE",
@@ -1067,7 +1067,7 @@
       }
     },
     "17.3": {
-      "scrapedAt": "2026-07-04T08:36:33.865Z",
+      "scrapedAt": "2026-07-11T07:55:03.320Z",
       "sections": [
         {
           "category": "17.3 MAY 13TH MID-PATCH UPDATE",
@@ -1561,7 +1561,7 @@
       }
     },
     "17.4": {
-      "scrapedAt": "2026-07-04T08:36:35.928Z",
+      "scrapedAt": "2026-07-11T07:55:05.429Z",
       "sections": [
         {
           "category": "Mid-Patch Updates",
@@ -2000,7 +2000,7 @@
       }
     },
     "17.5": {
-      "scrapedAt": "2026-07-04T08:36:38.454Z",
+      "scrapedAt": "2026-07-11T07:55:07.491Z",
       "sections": [
         {
           "category": "Mid-Patch Updates",
@@ -2304,7 +2304,7 @@
       }
     },
     "17.6": {
-      "scrapedAt": "2026-07-04T08:36:40.740Z",
+      "scrapedAt": "2026-07-11T07:55:09.518Z",
       "sections": [
         {
           "category": "LARGE CHANGES",

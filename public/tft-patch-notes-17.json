@@ -1,10 +1,10 @@
 {
   "set": 17,
   "source": "tactics.tools/info/patch-notes",
-  "fetchedAt": "2026-07-11T07:54:58.826Z",
+  "fetchedAt": "2026-07-18T06:43:32.942Z",
   "patches": {
     "17.1": {
-      "scrapedAt": "2026-07-11T07:54:58.910Z",
+      "scrapedAt": "2026-07-18T06:43:33.031Z",
       "sections": [
         {
           "category": "LARGE CHANGES",
@@ -458,7 +458,7 @@
       }
     },
     "17.2": {
-      "scrapedAt": "2026-07-11T07:55:01.289Z",
+      "scrapedAt": "2026-07-18T06:43:35.072Z",
       "sections": [
         {
           "category": "17.2 APRIL 29TH MID-PATCH UPDATE",
@@ -1067,7 +1067,7 @@
       }
     },
     "17.3": {
-      "scrapedAt": "2026-07-11T07:55:03.320Z",
+      "scrapedAt": "2026-07-18T06:43:37.111Z",
       "sections": [
         {
           "category": "17.3 MAY 13TH MID-PATCH UPDATE",
@@ -1561,7 +1561,7 @@
       }
     },
     "17.4": {
-      "scrapedAt": "2026-07-11T07:55:05.429Z",
+      "scrapedAt": "2026-07-18T06:43:39.155Z",
       "sections": [
         {
           "category": "Mid-Patch Updates",
@@ -2000,7 +2000,7 @@
       }
     },
     "17.5": {
-      "scrapedAt": "2026-07-11T07:55:07.491Z",
+      "scrapedAt": "2026-07-18T06:43:41.338Z",
       "sections": [
         {
           "category": "Mid-Patch Updates",
@@ -2304,7 +2304,7 @@
       }
     },
     "17.6": {
-      "scrapedAt": "2026-07-11T07:55:09.518Z",
+      "scrapedAt": "2026-07-18T06:43:43.605Z",
       "sections": [
         {
           "category": "LARGE CHANGES",
@@ -2575,6 +2575,120 @@
       "counts": {
         "totalEntries": 52,
         "withApiName": 23
+      }
+    },
+    "17.7": {
+      "scrapedAt": "2026-07-18T06:43:45.640Z",
+      "sections": [
+        {
+          "category": "LARGE CHANGES",
+          "entries": [
+            {
+              "apiName": "TFT17_Animasquad",
+              "displayName": "Anima 0",
+              "change": "Anima Squad Trait Breakpoint: 3/6 ⇒ 3/5"
+            },
+            {
+              "apiName": "TFT17_Flextrait",
+              "displayName": "Voyager 0",
+              "change": "Voyager Emblem + 3g ⇒ Voyager Emblem"
+            },
+            {
+              "apiName": "TFT17_Astrait",
+              "displayName": "Challenger 0",
+              "change": "Challenger Emblem + 5g ⇒ Challenger Emblem + 1g"
+            },
+            {
+              "apiName": "TFT17_Aptrait",
+              "displayName": "Replicator 0",
+              "change": "Replicator Spell Effectiveness: 22/45% ⇒ 22/50%"
+            },
+            {
+              "apiName": "TFT17_Assassintrait",
+              "displayName": "Rogue 0",
+              "change": "Rogue AD/AP: 12/25/40/55% ⇒ 12/25/45/60%"
+            },
+            {
+              "apiName": "TFT17_Ezreal",
+              "displayName": "Ezreal",
+              "change": "Ezreal Takedowns Per Drone: 8 ⇒ 7"
+            },
+            {
+              "apiName": "TFT17_Talon",
+              "displayName": "Talon",
+              "change": "Talon Spell Damage AD: 400/600/1000/1700 ⇒ 400/600/1100/1850"
+            },
+            {
+              "apiName": "TFT17_Zoe",
+              "displayName": "Zoe",
+              "change": "Zoe Secondary Spell Damage AP: 34/51/77 ⇒ 36/54/88 AP"
+            },
+            {
+              "apiName": "TFT17_Diana",
+              "displayName": "Diana",
+              "change": "Diana Shield AP: 275/325/475 ⇒ 275/325/515 AP, Spell Damage AP: 60/90/145 ⇒ 60/90/160 AP"
+            },
+            {
+              "apiName": "TFT17_Urgot",
+              "displayName": "Urgot",
+              "change": "Urgot Transformed Passive Damage: 225% AD ⇒ 250% AD"
+            },
+            {
+              "apiName": "TFT17_Masteryi",
+              "displayName": "Master Yi",
+              "change": "Master Yi Mana: 30/70 ⇒ 20/60"
+            },
+            {
+              "apiName": "TFT17_Graves",
+              "displayName": "Graves",
+              "change": "Graves Upgrade Costs all reduced to 1"
+            },
+            {
+              "apiName": "TFT17_Shen",
+              "displayName": "Shen",
+              "change": "Shen New Trait: Timebreaker"
+            },
+            {
+              "apiName": "TFT17_Vex",
+              "displayName": "Vex",
+              "change": "Vex New Trait: Stargazer"
+            },
+            {
+              "apiName": "TFT17_Zed",
+              "displayName": "Zed",
+              "change": "Zed Health Penalty: 33/45% ⇒ 33/40%"
+            },
+            {
+              "apiName": "TFT17_Augment_NasusCarry1",
+              "displayName": "Bonk!",
+              "change": "Bonk! Base AS: 0.75 ⇒ 0.8"
+            },
+            {
+              "apiName": null,
+              "displayName": "Birthday Reunion",
+              "change": "Birthday Reunion Gold: 3 ⇒ 1"
+            },
+            {
+              "apiName": "TFT17_Augment_PrimordianPrismaticAugment3",
+              "displayName": "Heart of the Swarm",
+              "change": "Heart of the Swarm Apex Primordian Resists: 60 ⇒ 75, Mana: 30/90 ⇒ 30/70, Passive Sword Damage AD/AP: 50 ⇒ 75"
+            },
+            {
+              "apiName": "TFT17_Augment_AatroxCarry1",
+              "displayName": "Stellar Combo",
+              "change": "Stellar Combo 2nd Hit Damage: 110/165/275/470 AD ⇒ 125/185/315/525 AD, 3rd Hit Damage: 200/300/475/800 AD ⇒ 210/315/520/885 AD, 5 Nova Strike Damage: 120/180/270/405 AD ⇒ 135/200/300/515 AD"
+            },
+            {
+              "apiName": "TFT17_Augment_PoppyCarry1",
+              "displayName": "Termeepnal Velocity",
+              "change": "Termeepnal Velocity Mana: 10/55 ⇒ 10/50"
+            }
+          ]
+        }
+      ],
+      "counts": {
+        "totalEntries": 20,
+        "withApiName": 19
       }
     }
   }

@@ -1,7 +1,7 @@
 {
   "set": 17,
   "source": "tactics.tools/info/augments",
-  "fetchedAt": "2026-07-11T07:54:58.751Z",
+  "fetchedAt": "2026-07-18T06:43:32.867Z",
   "counts": {
     "cards": 265,
     "pinned": 255,
@@ -10,9 +10,9 @@
       "2-1": 95,
       "2-1|3-2": 21,
       "2-1|3-2|4-2": 10,
-      "3-2|4-2": 66,
+      "3-2|4-2": 65,
       "3-2": 38,
-      "(none)": 3,
+      "(none)": 4,
       "4-2": 22
     }
   },
@@ -810,10 +810,7 @@
       "3-2",
       "4-2"
     ],
-    "TFT_Augment_Retribution": [
-      "3-2",
-      "4-2"
-    ],
+    "TFT_Augment_Retribution": [],
     "TFT_Augment_ShimmerscaleEssence": [
       "2-1"
     ],

@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-07-17T06:57:13.315Z",
-  "totalPlayers": 1291,
+  "updatedAt": "2026-07-24T07:01:12.861Z",
+  "totalPlayers": 1310,
   "withAccounts": 1231,
   "players": [
     {
@@ -195,14 +195,23 @@
       ]
     },
     {
-      "proName": "Gato",
+      "proName": "Intio",
       "team": "3v Team",
-      "role": "Jungle",
+      "role": "ADC",
       "country": "Colombia",
       "accounts": [
-        "Gatinho",
-        "Gato",
-        "Gatorgg"
+        "Intio",
+        "Intioo"
+      ]
+    },
+    {
+      "proName": "Mitir",
+      "team": "3v Team",
+      "role": "Coach",
+      "country": "Colombia",
+      "accounts": [
+        "Mitir",
+        "Rythmind"
       ]
     },
     {
@@ -357,6 +366,15 @@
       ]
     },
     {
+      "proName": "Lesmart",
+      "team": "9z Globant",
+      "role": "Coach",
+      "country": "Argentina",
+      "accounts": [
+        "Lesmart"
+      ]
+    },
+    {
       "proName": "Apoka",
       "team": "9z Globant",
       "role": "Jungle",
@@ -445,6 +463,15 @@
       ]
     },
     {
+      "proName": "Lipsoul",
+      "team": "Absolved",
+      "role": "Jungle",
+      "country": "Bulgaria",
+      "accounts": [
+        "Lipsoul"
+      ]
+    },
+    {
       "proName": "Emil2",
       "team": "Absolved",
       "role": "Mid",
@@ -464,12 +491,22 @@
       ]
     },
     {
-      "proName": "Drakehero",
+      "proName": "Cormac",
+      "team": "Absolved",
+      "role": "Top",
+      "country": "Republic of Ireland",
+      "accounts": [
+        "Cormac"
+      ]
+    },
+    {
+      "proName": "MeniinaMá",
       "team": "Abstract (Brazilian Team)",
-      "role": "Jungle",
+      "role": "Streamer",
       "country": "Brazil",
       "accounts": [
-        "Drakehero"
+        "Meni",
+        "MeniinaMá"
       ]
     },
     {
@@ -489,16 +526,6 @@
       "country": "Brazil",
       "accounts": [
         "Gragolandia"
-      ]
-    },
-    {
-      "proName": "MeniinaMá",
-      "team": "Abstract (Brazilian Team)",
-      "role": "Streamer",
-      "country": "Brazil",
-      "accounts": [
-        "Meni",
-        "MeniinaMá"
       ]
     },
     {
@@ -546,15 +573,6 @@
       "country": "Germany",
       "accounts": [
         "Mack"
-      ]
-    },
-    {
-      "proName": "Unchained",
-      "team": "AceGaming",
-      "role": "Mid",
-      "country": "Germany",
-      "accounts": [
-        "Unchained"
       ]
     },
     {
@@ -631,23 +649,23 @@
       ]
     },
     {
-      "proName": "Clef",
-      "team": "Aeterna Esports",
-      "role": "ADC",
-      "country": "Germany",
-      "accounts": [
-        "Babsi",
-        "Clef",
-        "Fabienne"
-      ]
-    },
-    {
-      "proName": "Pericolo",
+      "proName": "Kyte",
       "team": "Aeterna Esports",
       "role": "ADC",
       "country": "Italy",
       "accounts": [
-        "Pericolo"
+        "Kyte"
+      ]
+    },
+    {
+      "proName": "Lefos",
+      "team": "Aeterna Esports",
+      "role": "ADC",
+      "country": "Greece",
+      "accounts": [
+        "Lefos",
+        "Lefterakiss",
+        "Leuterakiss"
       ]
     },
     {
@@ -661,34 +679,32 @@
       ]
     },
     {
-      "proName": "Alvanai",
+      "proName": "Goliah",
       "team": "Aeterna Esports",
-      "role": "Mid",
-      "country": "Albania",
+      "role": "Jungle",
+      "country": "Italy",
       "accounts": [
-        "Alvanai"
+        "Goliah",
+        "Goliahh"
       ]
     },
     {
-      "proName": "Banino",
+      "proName": "Fame",
+      "team": "Aeterna Esports",
+      "role": "Jungle",
+      "country": "Greece",
+      "accounts": [
+        "Fame"
+      ]
+    },
+    {
+      "proName": "CloudStrikee",
       "team": "Aeterna Esports",
       "role": "Support",
       "country": "Italy",
       "accounts": [
-        "Banino",
-        "ErPirotBlue",
-        "MattyNarcy",
-        "Paninocuccioloso"
-      ]
-    },
-    {
-      "proName": "Strava",
-      "team": "Aeterna Esports",
-      "role": "Top",
-      "country": "Italy",
-      "accounts": [
-        "Strava",
-        "Stravagante"
+        "CloudStrike",
+        "CloudStrikee"
       ]
     },
     {
@@ -756,30 +772,60 @@
       ]
     },
     {
-      "proName": "Zanzarah",
-      "team": "All for One Gaming",
-      "role": "Coach",
-      "country": "Russia",
-      "accounts": [
-        "Zanzarah"
-      ]
-    },
-    {
-      "proName": "Glupanda",
-      "team": "All for One Gaming",
-      "role": "Coach",
-      "country": "Germany",
-      "accounts": [
-        "Glupanda"
-      ]
-    },
-    {
       "proName": "Shanks",
       "team": "Anyone's Legend",
       "role": "Mid",
       "country": "China",
       "accounts": [
         "Shanks"
+      ]
+    },
+    {
+      "proName": "GLFS",
+      "team": "Anyone's Legend.Young",
+      "role": "Jungle",
+      "country": "China",
+      "accounts": [
+        "GLFS"
+      ]
+    },
+    {
+      "proName": "Wunai3",
+      "team": "Anyone's Legend.Young",
+      "role": "Support",
+      "country": "China",
+      "accounts": [
+        "WuNai",
+        "Wunai3"
+      ]
+    },
+    {
+      "proName": "Bazz",
+      "team": "Apex Mission Impossible",
+      "role": "ADC",
+      "country": "Canada",
+      "accounts": [
+        "Bazz",
+        "Bazz1"
+      ]
+    },
+    {
+      "proName": "Bio",
+      "team": "Apex Mission Impossible",
+      "role": "Jungle",
+      "country": "United States",
+      "accounts": [
+        "Bio"
+      ]
+    },
+    {
+      "proName": "Pockus",
+      "team": "Apex Mission Impossible",
+      "role": "Support",
+      "country": "Canada",
+      "accounts": [
+        "Fockus",
+        "Pockus"
       ]
     },
     {
@@ -1217,6 +1263,25 @@
       ]
     },
     {
+      "proName": "Sande3r",
+      "team": "B2U",
+      "role": "Coach",
+      "country": "Sweden",
+      "accounts": [
+        "Sande3r",
+        "SNOKEN"
+      ]
+    },
+    {
+      "proName": "Alexx",
+      "team": "B2U",
+      "role": "Jungle",
+      "country": "Sweden",
+      "accounts": [
+        "Alexx"
+      ]
+    },
+    {
       "proName": "Nord",
       "team": "B2U",
       "role": "Jungle",
@@ -1251,6 +1316,16 @@
       "country": "Sweden",
       "accounts": [
         "Guvez"
+      ]
+    },
+    {
+      "proName": "SirVicta",
+      "team": "B2U",
+      "role": "Top",
+      "country": "Sweden",
+      "accounts": [
+        "SirVicta",
+        "Victa"
       ]
     },
     {
@@ -1311,6 +1386,35 @@
         "JiT",
         "Justintime",
         "JustlnTime"
+      ]
+    },
+    {
+      "proName": "Unchained",
+      "team": "Babos Gaming",
+      "role": "Mid",
+      "country": "Germany",
+      "accounts": [
+        "Unchained"
+      ]
+    },
+    {
+      "proName": "PsYcraw",
+      "team": "Babos Gaming",
+      "role": "Support",
+      "country": "Germany",
+      "accounts": [
+        "Celle",
+        "PsYcraw",
+        "StarZscream"
+      ]
+    },
+    {
+      "proName": "Sprotte",
+      "team": "Babos Gaming",
+      "role": "Top",
+      "country": "Germany",
+      "accounts": [
+        "Sprotte"
       ]
     },
     {
@@ -1434,15 +1538,6 @@
       ]
     },
     {
-      "proName": "Pauporter",
-      "team": "Barça eSports",
-      "role": "Mid",
-      "country": "Spain",
-      "accounts": [
-        "Pauporter"
-      ]
-    },
-    {
       "proName": "Macaquinho",
       "team": "Barça eSports",
       "role": "Mid",
@@ -1451,6 +1546,15 @@
         "Macaco",
         "Macaquinho",
         "Macaquiño"
+      ]
+    },
+    {
+      "proName": "Pauporter",
+      "team": "Barça eSports",
+      "role": "Mid",
+      "country": "Spain",
+      "accounts": [
+        "Pauporter"
       ]
     },
     {
@@ -1696,18 +1800,6 @@
       "accounts": []
     },
     {
-      "proName": "Chieh",
-      "team": "Bilibili Gaming",
-      "role": "Coach",
-      "country": "Taiwan",
-      "accounts": [
-        "Cheih",
-        "Chieh",
-        "啊杰",
-        "龍膽石班"
-      ]
-    },
-    {
       "proName": "Ben",
       "team": "Bilibili Gaming",
       "role": "Coach",
@@ -1731,6 +1823,18 @@
       "role": "Coach",
       "country": "China",
       "accounts": []
+    },
+    {
+      "proName": "Chieh",
+      "team": "Bilibili Gaming",
+      "role": "Coach",
+      "country": "Taiwan",
+      "accounts": [
+        "Cheih",
+        "Chieh",
+        "啊杰",
+        "龍膽石班"
+      ]
     },
     {
       "proName": "Xun",
@@ -1770,6 +1874,13 @@
     },
     {
       "proName": "Bin (Chen Ze-Bin)",
+      "team": "Bilibili Gaming",
+      "role": "Top",
+      "country": "China",
+      "accounts": []
+    },
+    {
+      "proName": "Wenbo (Yang Wen-Bo)",
       "team": "Bilibili Gaming",
       "role": "Top",
       "country": "China",
@@ -1824,15 +1935,6 @@
       ]
     },
     {
-      "proName": "TheHank",
-      "team": "Bilibili Gaming Junior",
-      "role": "Support",
-      "country": "China",
-      "accounts": [
-        "TheHank"
-      ]
-    },
-    {
       "proName": "Miyi",
       "team": "Bilibili Gaming Junior",
       "role": "Support",
@@ -1842,48 +1944,21 @@
       ]
     },
     {
+      "proName": "TheHank",
+      "team": "Bilibili Gaming Junior",
+      "role": "Support",
+      "country": "China",
+      "accounts": [
+        "TheHank"
+      ]
+    },
+    {
       "proName": "Liangchen",
       "team": "Bilibili Gaming Junior",
       "role": "Top",
       "country": "China",
       "accounts": [
         "Liangchen"
-      ]
-    },
-    {
-      "proName": "Wenbo (Yang Wen-Bo)",
-      "team": "Bilibili Gaming Junior",
-      "role": "Top",
-      "country": "China",
-      "accounts": []
-    },
-    {
-      "proName": "Kinaynne",
-      "team": "Bitfix RG",
-      "role": "Jungle",
-      "country": "Bulgaria",
-      "accounts": [
-        "Kinaynne"
-      ]
-    },
-    {
-      "proName": "Xero (Victor Kim-Long Hov)",
-      "team": "Bitfix RG",
-      "role": "Mid",
-      "country": "Norway",
-      "accounts": [
-        "5cean",
-        "Gosu",
-        "Xero"
-      ]
-    },
-    {
-      "proName": "Redstrike",
-      "team": "Bitfix RG",
-      "role": "Support",
-      "country": "Germany",
-      "accounts": [
-        "Redstrike"
       ]
     },
     {
@@ -1924,26 +1999,6 @@
       ]
     },
     {
-      "proName": "Zilax",
-      "team": "Black Lion",
-      "role": "Mid",
-      "country": "Germany",
-      "accounts": [
-        "Zilax",
-        "ZLX"
-      ]
-    },
-    {
-      "proName": "Sundax",
-      "team": "Black Lion",
-      "role": "Support",
-      "country": "Tunisia",
-      "accounts": [
-        "Sadnaks",
-        "Sundax"
-      ]
-    },
-    {
       "proName": "TobbaTaco",
       "team": "Black Lion",
       "role": "Top",
@@ -1979,15 +2034,6 @@
       "country": "United States",
       "accounts": [
         "Levitate"
-      ]
-    },
-    {
-      "proName": "Dionrray",
-      "team": "Blue Otter",
-      "role": "Coach",
-      "country": "Switzerland",
-      "accounts": [
-        "Dionrray"
       ]
     },
     {
@@ -2066,6 +2112,15 @@
       ]
     },
     {
+      "proName": "Snurmi",
+      "team": "BlueWhites",
+      "role": "ADC",
+      "country": "Finland",
+      "accounts": [
+        "Snurmi"
+      ]
+    },
+    {
       "proName": "Lari",
       "team": "BlueWhites",
       "role": "ADC",
@@ -2084,12 +2139,21 @@
       ]
     },
     {
-      "proName": "Sammey",
+      "proName": "Merza",
       "team": "BlueWhites",
-      "role": "Support",
+      "role": "Mid",
       "country": "Finland",
       "accounts": [
-        "Sammey"
+        "Merza"
+      ]
+    },
+    {
+      "proName": "Karwox",
+      "team": "BlueWhites",
+      "role": "Top",
+      "country": "Finland",
+      "accounts": [
+        "Karwox"
       ]
     },
     {
@@ -2282,15 +2346,6 @@
       ]
     },
     {
-      "proName": "TTobias",
-      "team": "Bomba Team",
-      "role": "Streamer",
-      "country": "Poland",
-      "accounts": [
-        "TTobias"
-      ]
-    },
-    {
       "proName": "Hyper720",
       "team": "Bomba Team",
       "role": "Support",
@@ -2416,16 +2471,6 @@
       "country": "",
       "accounts": [
         "Kasane"
-      ]
-    },
-    {
-      "proName": "Yukiko",
-      "team": "Brest Esport",
-      "role": "Top",
-      "country": "France",
-      "accounts": [
-        "Yukikko",
-        "Yukiko"
       ]
     },
     {
@@ -2610,25 +2655,37 @@
       "role": "ADC",
       "country": "Russia",
       "accounts": [
-        "Demonadc"
+        "Demonadc",
+        "DemonadcL9"
       ]
     },
     {
-      "proName": "D4SH",
+      "proName": "TinjaNurtles",
       "team": "Bubliki",
       "role": "Jungle",
       "country": "Portugal",
       "accounts": [
-        "D4SH"
+        "TinjaNurtle",
+        "TinjaNurtles"
       ]
     },
     {
-      "proName": "CrabLord",
+      "proName": "ArutnevJr",
+      "team": "Bubliki",
+      "role": "Mid",
+      "country": "Portugal",
+      "accounts": [
+        "ArutnevJr"
+      ]
+    },
+    {
+      "proName": "Lekcyc",
       "team": "Bubliki",
       "role": "Support",
       "country": "Russia",
       "accounts": [
-        "CrabLord"
+        "Lekcyc",
+        "LeKCyCC"
       ]
     },
     {
@@ -3216,52 +3273,12 @@
       ]
     },
     {
-      "proName": "Cocytos",
-      "team": "Circus Kittens",
-      "role": "ADC",
-      "country": "Greece",
-      "accounts": [
-        "Cocytos",
-        "Leventor"
-      ]
-    },
-    {
       "proName": "Xavis",
       "team": "CITA Kaizen",
       "role": "ADC",
       "country": "Czech Republic",
       "accounts": [
         "Xavis"
-      ]
-    },
-    {
-      "proName": "Softorious",
-      "team": "CITA Kaizen",
-      "role": "Coach",
-      "country": "Sweden",
-      "accounts": [
-        "Softorious"
-      ]
-    },
-    {
-      "proName": "AseL",
-      "team": "CITA Kaizen",
-      "role": "Coach",
-      "country": "Spain",
-      "accounts": [
-        "AseL"
-      ]
-    },
-    {
-      "proName": "Anonymouss",
-      "team": "CITA Kaizen",
-      "role": "Jungle",
-      "country": "Austria",
-      "accounts": [
-        "Ano",
-        "Anomymouss",
-        "Anonymouss",
-        "Konkai"
       ]
     },
     {
@@ -3275,32 +3292,12 @@
       ]
     },
     {
-      "proName": "Nan0",
-      "team": "CITA Kaizen",
-      "role": "Mid",
-      "country": "India",
-      "accounts": [
-        "Nan0",
-        "OnePunchNano"
-      ]
-    },
-    {
-      "proName": "J3rkie",
-      "team": "CITA Kaizen",
-      "role": "Support",
+      "proName": "Blek",
+      "team": "CITA Kaizen Academy",
+      "role": "ADC",
       "country": "Czech Republic",
       "accounts": [
-        "J3rkie"
-      ]
-    },
-    {
-      "proName": "Robocop",
-      "team": "CITA Kaizen",
-      "role": "Top",
-      "country": "Czech Republic",
-      "accounts": [
-        "Robocop",
-        "RXBXCXP"
+        "Blek"
       ]
     },
     {
@@ -3311,25 +3308,6 @@
       "accounts": [
         "Tan0",
         "TNO"
-      ]
-    },
-    {
-      "proName": "Blek",
-      "team": "CITA Kaizen Academy",
-      "role": "ADC",
-      "country": "Czech Republic",
-      "accounts": [
-        "Blek"
-      ]
-    },
-    {
-      "proName": "Ranorr",
-      "team": "CITA Kaizen Academy",
-      "role": "Support",
-      "country": "Czech Republic",
-      "accounts": [
-        "Ranor",
-        "Ranorr"
       ]
     },
     {
@@ -3479,16 +3457,6 @@
       ]
     },
     {
-      "proName": "1334mat",
-      "team": "Cloud eSport",
-      "role": "Jungle",
-      "country": "Poland",
-      "accounts": [
-        "1334mat",
-        "Lucretia"
-      ]
-    },
-    {
       "proName": "Tactical",
       "team": "Cloud9",
       "role": "ADC",
@@ -3561,17 +3529,17 @@
       ]
     },
     {
-      "proName": "Loki (Lee Sang-min)",
-      "team": "Cloud9",
-      "role": "Mid",
-      "country": "South Korea",
-      "accounts": []
-    },
-    {
       "proName": "APA (Eain Stearns)",
       "team": "Cloud9",
       "role": "Mid",
       "country": "United States",
+      "accounts": []
+    },
+    {
+      "proName": "Loki (Lee Sang-min)",
+      "team": "Cloud9",
+      "role": "Mid",
+      "country": "South Korea",
       "accounts": []
     },
     {
@@ -3637,23 +3605,49 @@
       ]
     },
     {
-      "proName": "Fragola",
+      "proName": "Herna",
       "team": "Colossal Gaming",
-      "role": "Jungle",
-      "country": "Italy",
+      "role": "Coach",
+      "country": "",
       "accounts": [
-        "Fragola",
-        "Freestylin",
-        "QtFragola"
+        "Herna"
       ]
     },
     {
-      "proName": "Sharon",
+      "proName": "Jeykup",
       "team": "Colossal Gaming",
-      "role": "Mid",
+      "role": "Jungle",
       "country": "Turkey",
       "accounts": [
-        "Sharon"
+        "Jeykup"
+      ]
+    },
+    {
+      "proName": "Azuka",
+      "team": "Colossal Gaming",
+      "role": "Mid",
+      "country": "Germany",
+      "accounts": [
+        "Azuka"
+      ]
+    },
+    {
+      "proName": "Shredder",
+      "team": "Colossal Gaming",
+      "role": "Support",
+      "country": "Italy",
+      "accounts": [
+        "Shredder"
+      ]
+    },
+    {
+      "proName": "SkaR",
+      "team": "Colossal Gaming",
+      "role": "Top",
+      "country": "Italy",
+      "accounts": [
+        "Skaerus",
+        "SkaR"
       ]
     },
     {
@@ -4021,41 +4015,58 @@
       ]
     },
     {
-      "proName": "Glimpse",
-      "team": "Crusaders",
-      "role": "ADC",
-      "country": "Portugal",
+      "proName": "Nardoš",
+      "team": "Cryptova",
+      "role": "Manager",
+      "country": "Czech Republic",
       "accounts": [
-        "Glimpse",
-        "GlimpseofUs"
+        "Nardoš"
       ]
     },
     {
-      "proName": "Faetski",
-      "team": "devils.one inStreamly",
+      "proName": "Schow",
+      "team": "Crystal Rose (French Team)",
       "role": "ADC",
       "country": "Denmark",
       "accounts": [
-        "Faetski"
+        "Schow"
       ]
     },
     {
-      "proName": "XKruchyX",
-      "team": "devils.one inStreamly",
+      "proName": "Druk",
+      "team": "Crystal Rose (French Team)",
       "role": "Coach",
-      "country": "Poland",
+      "country": "Italy",
       "accounts": [
-        "Kruchy",
-        "XKruchyX"
+        "Druk"
       ]
     },
     {
-      "proName": "Calmsky",
-      "team": "devils.one inStreamly",
+      "proName": "Syklash",
+      "team": "Crystal Rose (French Team)",
+      "role": "Coach",
+      "country": "Portugal",
+      "accounts": [
+        "Syklash"
+      ]
+    },
+    {
+      "proName": "Inzuh",
+      "team": "Crystal Rose (French Team)",
+      "role": "Mid",
+      "country": "",
+      "accounts": [
+        "Inzuh",
+        "Lnzuh"
+      ]
+    },
+    {
+      "proName": "Wuis",
+      "team": "Crystal Rose (French Team)",
       "role": "Support",
       "country": "Portugal",
       "accounts": [
-        "Calmsky"
+        "Wuis"
       ]
     },
     {
@@ -4063,27 +4074,21 @@
       "team": "Dignitas",
       "role": "ADC",
       "country": "Australia",
-      "accounts": [
-        "FBI"
-      ]
+      "accounts": []
     },
     {
       "proName": "Swiffer",
       "team": "Dignitas",
       "role": "Coach",
       "country": "Australia",
-      "accounts": [
-        "Swiffer"
-      ]
+      "accounts": []
     },
     {
       "proName": "Emi",
       "team": "Dignitas",
       "role": "Coach",
       "country": "Romania",
-      "accounts": [
-        "Emi"
-      ]
+      "accounts": []
     },
     {
       "proName": "eXyu",
@@ -4097,58 +4102,28 @@
       "team": "Dignitas",
       "role": "Mid",
       "country": "United States",
-      "accounts": [
-        "Palafox",
-        "W0WFIXZ"
-      ]
+      "accounts": []
     },
     {
       "proName": "V1per",
       "team": "Dignitas",
       "role": "Streamer",
       "country": "Syria",
-      "accounts": [
-        "RepiV",
-        "V1per"
-      ]
+      "accounts": []
     },
     {
       "proName": "Ignar",
       "team": "Dignitas",
       "role": "Support",
       "country": "South Korea",
-      "accounts": [
-        "Ignar",
-        "IgNar1"
-      ]
+      "accounts": []
     },
     {
       "proName": "Denathor",
       "team": "Dignitas",
       "role": "Top",
       "country": "United States",
-      "accounts": [
-        "Denathor"
-      ]
-    },
-    {
-      "proName": "Projko",
-      "team": "Dimokritos Esports",
-      "role": "Support",
-      "country": "Greece",
-      "accounts": [
-        "Projko"
-      ]
-    },
-    {
-      "proName": "Brandini",
-      "team": "Disguised",
-      "role": "Coach",
-      "country": "United States",
-      "accounts": [
-        "Brandini",
-        "BrandonFTW"
-      ]
+      "accounts": []
     },
     {
       "proName": "KryRa",
@@ -4363,12 +4338,12 @@
       ]
     },
     {
-      "proName": "CLEARS",
+      "proName": "Dionrray",
       "team": "DMG Esports",
-      "role": "Jungle",
-      "country": "Germany",
+      "role": "Coach",
+      "country": "Switzerland",
       "accounts": [
-        "CLEARS"
+        "Dionrray"
       ]
     },
     {
@@ -4381,12 +4356,12 @@
       ]
     },
     {
-      "proName": "JayJay",
+      "proName": "Artoria",
       "team": "DMG Esports",
       "role": "Mid",
-      "country": "Poland",
+      "country": "France",
       "accounts": [
-        "JayJay"
+        "Artoria"
       ]
     },
     {
@@ -4546,6 +4521,15 @@
       ]
     },
     {
+      "proName": "Kokos",
+      "team": "DOCISK",
+      "role": "Jungle",
+      "country": "Poland",
+      "accounts": [
+        "Kokos"
+      ]
+    },
+    {
       "proName": "FullClear",
       "team": "DOCISK",
       "role": "Jungle",
@@ -4553,6 +4537,15 @@
       "accounts": [
         "FullClear",
         "FullClearIntoWin"
+      ]
+    },
+    {
+      "proName": "Birkyy",
+      "team": "DOCISK",
+      "role": "Mid",
+      "country": "Poland",
+      "accounts": [
+        "Birkyy"
       ]
     },
     {
@@ -4576,30 +4569,24 @@
       ]
     },
     {
-      "proName": "Młody G",
+      "proName": "MKT",
       "team": "DOCISK Academy",
-      "role": "Mid",
+      "role": "Coach",
       "country": "Poland",
       "accounts": [
-        "MłodyG"
+        "MKT"
       ]
     },
     {
-      "proName": "Nirbi",
+      "proName": "Syrpy",
       "team": "DOCISK Academy",
       "role": "Support",
       "country": "Poland",
       "accounts": [
-        "Nirbi"
-      ]
-    },
-    {
-      "proName": "Destro",
-      "team": "DOCISK Academy",
-      "role": "Top",
-      "country": "Poland",
-      "accounts": [
-        "Destro"
+        "Astray",
+        "KMŚ",
+        "Meager",
+        "Syrpy"
       ]
     },
     {
@@ -4694,15 +4681,6 @@
       "country": "Poland",
       "accounts": [
         "Teoden"
-      ]
-    },
-    {
-      "proName": "Maciejka",
-      "team": "Domino Computer",
-      "role": "Jungle",
-      "country": "Poland",
-      "accounts": [
-        "Maciejka"
       ]
     },
     {
@@ -4847,13 +4825,6 @@
       "accounts": []
     },
     {
-      "proName": "cvMax",
-      "team": "Dplus Kia",
-      "role": "Coach",
-      "country": "South Korea",
-      "accounts": []
-    },
-    {
       "proName": "Hachani",
       "team": "Dplus Kia",
       "role": "Coach",
@@ -4871,6 +4842,13 @@
         "ManDu",
         "PoohManDu"
       ]
+    },
+    {
+      "proName": "cvMax",
+      "team": "Dplus Kia",
+      "role": "Coach",
+      "country": "South Korea",
+      "accounts": []
     },
     {
       "proName": "Lucid (Choi Yong-hyeok)",
@@ -4942,6 +4920,13 @@
       "accounts": []
     },
     {
+      "proName": "Woong (Kim Sun-woong)",
+      "team": "Dplus Kia Challengers",
+      "role": "Coach",
+      "country": "South Korea",
+      "accounts": []
+    },
+    {
       "proName": "Sungmin",
       "team": "Dplus Kia Challengers",
       "role": "Coach",
@@ -4949,13 +4934,6 @@
       "accounts": [
         "Sungmin"
       ]
-    },
-    {
-      "proName": "Woong (Kim Sun-woong)",
-      "team": "Dplus Kia Challengers",
-      "role": "Coach",
-      "country": "South Korea",
-      "accounts": []
     },
     {
       "proName": "Solid (Nam Hyeon-seo)",
@@ -5040,22 +5018,40 @@
       ]
     },
     {
-      "proName": "Flashpowa",
+      "proName": "Pinki",
       "team": "Dream Esports",
       "role": "ADC",
-      "country": "France",
+      "country": "Serbia",
       "accounts": [
-        "Flashpowa"
+        "Pinki",
+        "PPPPinki"
       ]
     },
     {
-      "proName": "Varin",
+      "proName": "CLEARS",
+      "team": "Dream Esports",
+      "role": "Jungle",
+      "country": "Germany",
+      "accounts": [
+        "CLEARS"
+      ]
+    },
+    {
+      "proName": "Tochas",
       "team": "Dream Esports",
       "role": "Support",
-      "country": "Turkey",
+      "country": "Portugal",
       "accounts": [
-        "Varin",
-        "Varin1"
+        "Tochas"
+      ]
+    },
+    {
+      "proName": "Cha0s",
+      "team": "Dream Esports",
+      "role": "Top",
+      "country": "Sweden",
+      "accounts": [
+        "Cha0s"
       ]
     },
     {
@@ -5157,15 +5153,6 @@
       ]
     },
     {
-      "proName": "Watsky",
-      "team": "Dynasty",
-      "role": "Manager",
-      "country": "Netherlands",
-      "accounts": [
-        "Watsky"
-      ]
-    },
-    {
       "proName": "TheCooperMan",
       "team": "Dynasty",
       "role": "Manager",
@@ -5173,6 +5160,15 @@
       "accounts": [
         "Bangooie",
         "TheCooperMan"
+      ]
+    },
+    {
+      "proName": "Watsky",
+      "team": "Dynasty",
+      "role": "Manager",
+      "country": "Netherlands",
+      "accounts": [
+        "Watsky"
       ]
     },
     {
@@ -5396,6 +5392,17 @@
       ]
     },
     {
+      "proName": "Kog",
+      "team": "Ei Nerd Esports",
+      "role": "ADC",
+      "country": "Brazil",
+      "accounts": [
+        "Kog",
+        "Kogudo",
+        "Mrkz"
+      ]
+    },
+    {
       "proName": "Damage",
       "team": "Ei Nerd Esports",
       "role": "Coach",
@@ -5405,12 +5412,23 @@
       ]
     },
     {
-      "proName": "Dizin",
+      "proName": "Drakehero",
       "team": "Ei Nerd Esports",
       "role": "Jungle",
       "country": "Brazil",
       "accounts": [
-        "Dizin"
+        "Drakehero"
+      ]
+    },
+    {
+      "proName": "Elkinho",
+      "team": "Ei Nerd Esports",
+      "role": "Support",
+      "country": "Brazil",
+      "accounts": [
+        "Elkinho",
+        "Elkinho1",
+        "Elkinhoo"
       ]
     },
     {
@@ -5558,30 +5576,22 @@
       ]
     },
     {
-      "proName": "Alessio",
+      "proName": "Mihai",
       "team": "EKO Esports",
       "role": "ADC",
-      "country": "Italy",
+      "country": "Romania",
       "accounts": [
-        "Alessio"
+        "Mihai",
+        "MihaiBaros"
       ]
     },
     {
-      "proName": "Izo",
-      "team": "EKO Esports",
-      "role": "Jungle",
-      "country": "Poland",
-      "accounts": [
-        "Izo"
-      ]
-    },
-    {
-      "proName": "BeWhite",
+      "proName": "Crocomux",
       "team": "EKO Esports",
       "role": "Mid",
       "country": "Italy",
       "accounts": [
-        "BeWhite"
+        "Crocomux"
       ]
     },
     {
@@ -5594,6 +5604,45 @@
         "Corrifrog",
         "Corriragazz",
         "Corriragazzo"
+      ]
+    },
+    {
+      "proName": "Kaylem",
+      "team": "EKO Esports",
+      "role": "Top",
+      "country": "Romania",
+      "accounts": [
+        "Kaylem"
+      ]
+    },
+    {
+      "proName": "Epic",
+      "team": "Embrace Whatever Happens",
+      "role": "Jungle",
+      "country": "Hong Kong",
+      "accounts": [
+        "Epic",
+        "EpicL",
+        "EpicLeeSinHK"
+      ]
+    },
+    {
+      "proName": "Zoey",
+      "team": "Embrace Whatever Happens",
+      "role": "Mid",
+      "country": "Taiwan",
+      "accounts": [
+        "RouZoe",
+        "Zoey"
+      ]
+    },
+    {
+      "proName": "Yuji (Yang Xi-Qi)",
+      "team": "Embrace Whatever Happens",
+      "role": "Top",
+      "country": "China",
+      "accounts": [
+        "Yuji"
       ]
     },
     {
@@ -5685,45 +5734,6 @@
       ]
     },
     {
-      "proName": "Epic",
-      "team": "Equinox Core",
-      "role": "Jungle",
-      "country": "Hong Kong",
-      "accounts": [
-        "Epic",
-        "EpicL",
-        "EpicLeeSinHK"
-      ]
-    },
-    {
-      "proName": "Zoey",
-      "team": "Equinox Core",
-      "role": "Mid",
-      "country": "Taiwan",
-      "accounts": [
-        "RouZoe",
-        "Zoey"
-      ]
-    },
-    {
-      "proName": "Mese",
-      "team": "Equinox Core",
-      "role": "Support",
-      "country": "Taiwan",
-      "accounts": [
-        "Mese"
-      ]
-    },
-    {
-      "proName": "Yuji (Yang Xi-Qi)",
-      "team": "Equinox Core",
-      "role": "Top",
-      "country": "China",
-      "accounts": [
-        "Yuji"
-      ]
-    },
-    {
       "proName": "Skrímsli",
       "team": "Erm",
       "role": "Top",
@@ -5767,16 +5777,6 @@
       "accounts": [
         "Yen",
         "YeniaR"
-      ]
-    },
-    {
-      "proName": "Shemek",
-      "team": "Esprit Shōnen",
-      "role": "Coach",
-      "country": "France",
-      "accounts": [
-        "Shemek",
-        "Shemekk"
       ]
     },
     {
@@ -5923,17 +5923,6 @@
       ]
     },
     {
-      "proName": "IanaTheAlpha",
-      "team": "Eterna",
-      "role": "Coach",
-      "country": "Romania",
-      "accounts": [
-        "Iana",
-        "IanaTheAlpha",
-        "Lanathealpha"
-      ]
-    },
-    {
       "proName": "Thorn",
       "team": "Eterna",
       "role": "Jungle",
@@ -5968,6 +5957,17 @@
       "country": "France",
       "accounts": [
         "Sashy"
+      ]
+    },
+    {
+      "proName": "IanaTheAlpha",
+      "team": "Eterna",
+      "role": "Support",
+      "country": "Romania",
+      "accounts": [
+        "Iana",
+        "IanaTheAlpha",
+        "Lanathealpha"
       ]
     },
     {
@@ -6086,6 +6086,15 @@
       ]
     },
     {
+      "proName": "KNEZA",
+      "team": "EXILE esports",
+      "role": "ADC",
+      "country": "Czech Republic",
+      "accounts": [
+        "KNEZA"
+      ]
+    },
+    {
       "proName": "LANDY",
       "team": "EXILE esports",
       "role": "ADC",
@@ -6094,15 +6103,6 @@
         "Adam1",
         "LANDY",
         "LANDYX"
-      ]
-    },
-    {
-      "proName": "KNEZA",
-      "team": "EXILE esports",
-      "role": "ADC",
-      "country": "Czech Republic",
-      "accounts": [
-        "KNEZA"
       ]
     },
     {
@@ -6444,21 +6444,21 @@
       ]
     },
     {
-      "proName": "Son",
-      "team": "FENNEL",
-      "role": "Coach",
-      "country": "South Korea",
-      "accounts": [
-        "Son"
-      ]
-    },
-    {
       "proName": "Motive",
       "team": "FENNEL",
       "role": "Coach",
       "country": "South Korea",
       "accounts": [
         "Motive"
+      ]
+    },
+    {
+      "proName": "Son",
+      "team": "FENNEL",
+      "role": "Coach",
+      "country": "South Korea",
+      "accounts": [
+        "Son"
       ]
     },
     {
@@ -6537,15 +6537,6 @@
       ]
     },
     {
-      "proName": "Alexx",
-      "team": "FlameHard",
-      "role": "Jungle",
-      "country": "Sweden",
-      "accounts": [
-        "Alexx"
-      ]
-    },
-    {
       "proName": "Snabi",
       "team": "FlameHard",
       "role": "Support",
@@ -6575,15 +6566,6 @@
       ]
     },
     {
-      "proName": "Doraikon",
-      "team": "Florida Southern College",
-      "role": "Jungle",
-      "country": "Brazil",
-      "accounts": [
-        "Doraikon"
-      ]
-    },
-    {
       "proName": "Dreto",
       "team": "Florida Southern College",
       "role": "Jungle",
@@ -6592,6 +6574,15 @@
         "Dragowski",
         "Dreto",
         "DrQuetzal"
+      ]
+    },
+    {
+      "proName": "Doraikon",
+      "team": "Florida Southern College",
+      "role": "Jungle",
+      "country": "Brazil",
+      "accounts": [
+        "Doraikon"
       ]
     },
     {
@@ -6691,6 +6682,16 @@
       "country": "Brazil",
       "accounts": [
         "ProDelta"
+      ]
+    },
+    {
+      "proName": "Zothve",
+      "team": "Fluxo W7M",
+      "role": "Top",
+      "country": "Chile",
+      "accounts": [
+        "Zothve",
+        "Zzzothve"
       ]
     },
     {
@@ -7023,6 +7024,15 @@
       ]
     },
     {
+      "proName": "Pretender",
+      "team": "Frank Esports",
+      "role": "Mid",
+      "country": "Hong Kong",
+      "accounts": [
+        "Pretender"
+      ]
+    },
+    {
       "proName": "MoonBlack",
       "team": "Frank Esports",
       "role": "Mid",
@@ -7031,15 +7041,6 @@
         "MoonBlack",
         "Moonblackk",
         "月黑"
-      ]
-    },
-    {
-      "proName": "Pretender",
-      "team": "Frank Esports",
-      "role": "Mid",
-      "country": "Hong Kong",
-      "accounts": [
-        "Pretender"
       ]
     },
     {
@@ -7390,15 +7391,6 @@
       ]
     },
     {
-      "proName": "Thaizz",
-      "team": "FUSE",
-      "role": "Mid",
-      "country": "Netherlands",
-      "accounts": [
-        "Thaizz"
-      ]
-    },
-    {
       "proName": "Zethzuz",
       "team": "FUSION (Latin American Team)",
       "role": "Coach",
@@ -7477,6 +7469,22 @@
       ]
     },
     {
+      "proName": "Isma (Ismael Pedraza)",
+      "team": "G2 Esports",
+      "role": "Coach",
+      "country": "Colombia",
+      "accounts": []
+    },
+    {
+      "proName": "Memento",
+      "team": "G2 Esports",
+      "role": "Coach",
+      "country": "Sweden",
+      "accounts": [
+        "Memento"
+      ]
+    },
+    {
       "proName": "Dylan Falco",
       "team": "G2 Esports",
       "role": "Coach",
@@ -7492,22 +7500,6 @@
         "Perks",
         "Perkz"
       ]
-    },
-    {
-      "proName": "Memento",
-      "team": "G2 Esports",
-      "role": "Coach",
-      "country": "Sweden",
-      "accounts": [
-        "Memento"
-      ]
-    },
-    {
-      "proName": "Isma (Ismael Pedraza)",
-      "team": "G2 Esports",
-      "role": "Coach",
-      "country": "Colombia",
-      "accounts": []
     },
     {
       "proName": "SkewMond",
@@ -7538,13 +7530,13 @@
       ]
     },
     {
-      "proName": "Trayton",
+      "proName": "Brizz",
       "team": "G2 Esports",
       "role": "Streamer",
-      "country": "France",
+      "country": "Italy",
       "accounts": [
-        "Trayt0n",
-        "Trayton"
+        "Brizz",
+        "Brizz22"
       ]
     },
     {
@@ -7558,13 +7550,13 @@
       ]
     },
     {
-      "proName": "Brizz",
+      "proName": "Trayton",
       "team": "G2 Esports",
       "role": "Streamer",
-      "country": "Italy",
+      "country": "France",
       "accounts": [
-        "Brizz",
-        "Brizz22"
+        "Trayt0n",
+        "Trayton"
       ]
     },
     {
@@ -7937,6 +7929,15 @@
       ]
     },
     {
+      "proName": "Magvayer",
+      "team": "GAM3RS X",
+      "role": "Caster",
+      "country": "Poland",
+      "accounts": [
+        "Magvayer"
+      ]
+    },
+    {
       "proName": "CzarnyPiotruś",
       "team": "GAM3RS X",
       "role": "Caster",
@@ -7952,15 +7953,6 @@
       "country": "Poland",
       "accounts": [
         "Bialito"
-      ]
-    },
-    {
-      "proName": "Magvayer",
-      "team": "GAM3RS X",
-      "role": "Caster",
-      "country": "Poland",
-      "accounts": [
-        "Magvayer"
       ]
     },
     {
@@ -8619,6 +8611,15 @@
       ]
     },
     {
+      "proName": "Izo",
+      "team": "GMBLERS Esports",
+      "role": "Jungle",
+      "country": "Poland",
+      "accounts": [
+        "Izo"
+      ]
+    },
+    {
       "proName": "Pyres",
       "team": "GMBLERS Esports",
       "role": "Manager",
@@ -8628,49 +8629,24 @@
       ]
     },
     {
-      "proName": "Loeloal",
-      "team": "GMBLERS Esports",
-      "role": "Mid",
-      "country": "Italy",
-      "accounts": [
-        "Loeloal"
-      ]
-    },
-    {
-      "proName": "DejaVu",
-      "team": "GMBLERS Esports",
-      "role": "Mid",
-      "country": "Italy",
-      "accounts": [
-        "DejaVu"
-      ]
-    },
-    {
-      "proName": "Shredder",
+      "proName": "Darkchri",
       "team": "GMBLERS Esports",
       "role": "Support",
       "country": "Italy",
       "accounts": [
-        "Shredder"
+        "Dakchri99",
+        "Darkchri",
+        "DarkChri99"
       ]
     },
     {
-      "proName": "SkaR",
+      "proName": "Strava",
       "team": "GMBLERS Esports",
       "role": "Top",
       "country": "Italy",
       "accounts": [
-        "Skaerus",
-        "SkaR"
-      ]
-    },
-    {
-      "proName": "Sveglia",
-      "team": "GMBLERS Esports",
-      "role": "Top",
-      "country": "Italy",
-      "accounts": [
-        "Sveglia"
+        "Strava",
+        "Stravagante"
       ]
     },
     {
@@ -8900,6 +8876,25 @@
       ]
     },
     {
+      "proName": "Emiryae",
+      "team": "Good Chi Sakura",
+      "role": "ADC",
+      "country": "Poland",
+      "accounts": [
+        "Emiryae"
+      ]
+    },
+    {
+      "proName": "Spelldance",
+      "team": "Good Chi Sakura",
+      "role": "Mid",
+      "country": "Germany",
+      "accounts": [
+        "Katty",
+        "Spelldance"
+      ]
+    },
+    {
       "proName": "Leleo",
       "team": "Grand View University",
       "role": "ADC",
@@ -8985,13 +8980,15 @@
       ]
     },
     {
-      "proName": "Shunn",
+      "proName": "Betty",
       "team": "Ground Zero Gaming",
       "role": "ADC",
       "country": "Taiwan",
       "accounts": [
-        "Shunn",
-        "阿舜"
+        "Betty",
+        "Betty206046",
+        "Doublered",
+        "Redred"
       ]
     },
     {
@@ -9031,13 +9028,23 @@
       ]
     },
     {
-      "proName": "JimieN",
+      "proName": "Uniboy",
       "team": "Ground Zero Gaming",
       "role": "Mid",
       "country": "Taiwan",
       "accounts": [
-        "JimieN",
-        "Vrysty"
+        "Ubao",
+        "Uniboy",
+        "長的帥怎麼了"
+      ]
+    },
+    {
+      "proName": "Kaiwing",
+      "team": "Ground Zero Gaming",
+      "role": "Support",
+      "country": "Hong Kong",
+      "accounts": [
+        "Kaiwing"
       ]
     },
     {
@@ -9048,78 +9055,6 @@
       "accounts": [
         "1Jiang",
         "JiangOo"
-      ]
-    },
-    {
-      "proName": "Skypper",
-      "team": "GTZ Esports",
-      "role": "ADC",
-      "country": "Portugal",
-      "accounts": [
-        "Skypper"
-      ]
-    },
-    {
-      "proName": "Sockz",
-      "team": "GTZ Esports",
-      "role": "Coach",
-      "country": "Portugal",
-      "accounts": [
-        "Sockz"
-      ]
-    },
-    {
-      "proName": "Ruras",
-      "team": "GTZ Esports",
-      "role": "Coach",
-      "country": "Portugal",
-      "accounts": [
-        "Ruras"
-      ]
-    },
-    {
-      "proName": "RealR",
-      "team": "GTZ Esports",
-      "role": "Jungle",
-      "country": "Portugal",
-      "accounts": [
-        "RealR"
-      ]
-    },
-    {
-      "proName": "DIGA",
-      "team": "GTZ Esports",
-      "role": "Mid",
-      "country": "Portugal",
-      "accounts": [
-        "DIGA"
-      ]
-    },
-    {
-      "proName": "Semide",
-      "team": "GTZ Esports",
-      "role": "Mid",
-      "country": "Portugal",
-      "accounts": [
-        "Semide"
-      ]
-    },
-    {
-      "proName": "Chambel",
-      "team": "GTZ Esports",
-      "role": "Support",
-      "country": "Portugal",
-      "accounts": [
-        "Chambel"
-      ]
-    },
-    {
-      "proName": "Zezin",
-      "team": "GTZ Esports",
-      "role": "Top",
-      "country": "Portugal",
-      "accounts": [
-        "Zezin"
       ]
     },
     {
@@ -9733,21 +9668,21 @@
       ]
     },
     {
-      "proName": "Cristo",
-      "team": "HMBLE",
-      "role": "Coach",
-      "country": "Italy",
-      "accounts": [
-        "Cristo"
-      ]
-    },
-    {
       "proName": "Spale",
       "team": "HMBLE",
       "role": "Coach",
       "country": "Serbia",
       "accounts": [
         "Spale"
+      ]
+    },
+    {
+      "proName": "Cristo",
+      "team": "HMBLE",
+      "role": "Coach",
+      "country": "Italy",
+      "accounts": [
+        "Cristo"
       ]
     },
     {
@@ -9892,26 +9827,6 @@
       ]
     },
     {
-      "proName": "Rahkys",
-      "team": "Ilha das Lendas",
-      "role": "Streamer",
-      "country": "Brazil",
-      "accounts": [
-        "Rahkys"
-      ]
-    },
-    {
-      "proName": "Baiano",
-      "team": "Ilha das Lendas",
-      "role": "Streamer",
-      "country": "Brazil",
-      "accounts": [
-        "Baiano",
-        "Byano",
-        "OwninG"
-      ]
-    },
-    {
       "proName": "Minerva",
       "team": "Ilha das Lendas",
       "role": "Streamer",
@@ -9949,212 +9864,225 @@
       ]
     },
     {
-      "proName": "Ranger",
-      "team": "Ilha das Lendas",
-      "role": "Streamer",
-      "country": "Brazil",
-      "accounts": [
-        "Ranger"
-      ]
-    },
-    {
-      "proName": "Tay",
-      "team": "Ilha das Lendas",
-      "role": "Streamer",
-      "country": "Brazil",
-      "accounts": [
-        "TaeYeon",
-        "Tay"
-      ]
-    },
-    {
-      "proName": "Toucouille",
-      "team": "Ilha das Lendas",
-      "role": "Streamer",
-      "country": "France",
-      "accounts": [
-        "Toucouille",
-        "Toucouillee"
-      ]
-    },
-    {
-      "proName": "Accez",
-      "team": "Ilha das Lendas",
-      "role": "Streamer",
-      "country": "Brazil",
-      "accounts": [
-        "Accez",
-        "Lucao"
-      ]
-    },
-    {
-      "proName": "CMD ATK",
-      "team": "Illinois State University",
-      "role": "Coach",
-      "country": "United States",
-      "accounts": [
-        "Command",
-        "CommandAttack"
-      ]
-    },
-    {
-      "proName": "Schoon",
-      "team": "Illinois Wesleyan University",
-      "role": "Coach",
-      "country": "United States",
-      "accounts": [
-        "Schoon",
-        "Schoonmaakster",
-        "Schoonmakster"
-      ]
-    },
-    {
-      "proName": "Sharkive",
-      "team": "Illinois Wesleyan University",
-      "role": "Jungle",
-      "country": "United States",
-      "accounts": [
-        "Sharkive",
-        "Sharks"
-      ]
-    },
-    {
-      "proName": "Talli",
-      "team": "Illinois Wesleyan University",
-      "role": "Mid",
-      "country": "United States",
-      "accounts": [
-        "Talli"
-      ]
-    },
-    {
-      "proName": "Ruthless",
-      "team": "Illinois Wesleyan University",
-      "role": "Support",
-      "country": "United States",
-      "accounts": [
-        "Ruthless"
-      ]
-    },
-    {
-      "proName": "Fable",
-      "team": "Illinois Wesleyan University",
-      "role": "Support",
-      "country": "United States",
-      "accounts": [
-        "Fable",
-        "Wigeon"
-      ]
-    },
-    {
-      "proName": "Animosity",
-      "team": "Illinois Wesleyan University",
-      "role": "Top",
-      "country": "United States",
-      "accounts": [
-        "Animosity"
-      ]
-    },
-    {
-      "proName": "Parth",
-      "team": "Immortals",
-      "role": "Manager",
-      "country": "United States",
-      "accounts": [
-        "Parth"
-      ]
-    },
-    {
-      "proName": "Raticait",
-      "team": "IMProve Team",
-      "role": "Manager",
-      "country": "Poland",
-      "accounts": [
-        "Raticait"
-      ]
-    },
-    {
-      "proName": "No1",
-      "team": "Inari Esports (British Team)",
-      "role": "Mid",
-      "country": "Denmark",
-      "accounts": [
-        "N01",
-        "No1",
-        "Sadoq"
-      ]
-    },
-    {
-      "proName": "Sacura",
-      "team": "Inari Esports (British Team)",
-      "role": "Support",
-      "country": "Lithuania",
-      "accounts": [
-        "Sacura"
-      ]
-    },
-    {
-      "proName": "Lokidosi",
-      "team": "Indiana University Bloomington",
-      "role": "ADC",
-      "country": "United States",
-      "accounts": [
-        "Lokidosi"
-      ]
-    },
-    {
-      "proName": "Hiccup1357",
-      "team": "Indiana University Bloomington",
-      "role": "Support",
-      "country": "United States",
-      "accounts": [
-        "Hiccup",
-        "Hiccup1357"
-      ]
-    },
-    {
-      "proName": "JubSSal",
-      "team": "Inferno Drive Tokyo",
-      "role": "Coach",
-      "country": "South Korea",
-      "accounts": [
-        "JubSSal"
-      ]
-    },
-    {
-      "proName": "Saii",
-      "team": "Inferno Drive Tokyo",
-      "role": "Coach",
-      "country": "Taiwan",
-      "accounts": [
-        "Saii"
-      ]
-    },
-    {
-      "proName": "JustFocus",
-      "team": "Inferno Drive Tokyo",
-      "role": "Support",
-      "country": "South Korea",
-      "accounts": [
-        "JustFocus"
-      ]
-    },
-    {
-      "proName": "Poipi",
-      "team": "Inferno Drive Tokyo",
-      "role": "Support",
-      "country": "Japan",
-      "accounts": [
-        "Poipi"
-      ]
-    },
-    {
       "proName": "1jw",
       "team": "Inferno Esports (Filipino Team)",
       "role": "Top",
       "country": "Malaysia",
       "accounts": [
         "1jw"
+      ]
+    },
+    {
+      "proName": "Mystiques",
+      "team": "International Love",
+      "role": "Support",
+      "country": "Poland",
+      "accounts": [
+        "Mystiq",
+        "Mystiques"
+      ]
+    },
+    {
+      "proName": "Netuno",
+      "team": "INTZ",
+      "role": "ADC",
+      "country": "Brazil",
+      "accounts": [
+        "Netuno"
+      ]
+    },
+    {
+      "proName": "Patron",
+      "team": "INTZ",
+      "role": "Coach",
+      "country": "Brazil",
+      "accounts": [
+        "Patron"
+      ]
+    },
+    {
+      "proName": "StineR",
+      "team": "INTZ",
+      "role": "Jungle",
+      "country": "Brazil",
+      "accounts": [
+        "StineR"
+      ]
+    },
+    {
+      "proName": "Leleko",
+      "team": "INTZ",
+      "role": "Mid",
+      "country": "Brazil",
+      "accounts": [
+        "Lelek0",
+        "Leleko",
+        "LLKO"
+      ]
+    },
+    {
+      "proName": "Kiari",
+      "team": "INTZ",
+      "role": "Top",
+      "country": "Brazil",
+      "accounts": [
+        "Kiari"
+      ]
+    },
+    {
+      "proName": "JiaQi",
+      "team": "Invictus Gaming",
+      "role": "ADC",
+      "country": "China",
+      "accounts": [
+        "JiaQi"
+      ]
+    },
+    {
+      "proName": "Assum",
+      "team": "Invictus Gaming",
+      "role": "ADC",
+      "country": "China",
+      "accounts": [
+        "Assum"
+      ]
+    },
+    {
+      "proName": "Kezman",
+      "team": "Invictus Gaming",
+      "role": "Manager",
+      "country": "South Korea",
+      "accounts": [
+        "Kezman"
+      ]
+    },
+    {
+      "proName": "Rookie",
+      "team": "Invictus Gaming",
+      "role": "Mid",
+      "country": "South Korea",
+      "accounts": [
+        "RoOk1E",
+        "Rookie"
+      ]
+    },
+    {
+      "proName": "WXZ",
+      "team": "Invictus Gaming",
+      "role": "Owner",
+      "country": "China",
+      "accounts": [
+        "WXZ"
+      ]
+    },
+    {
+      "proName": "Meiko",
+      "team": "Invictus Gaming",
+      "role": "Support",
+      "country": "China",
+      "accounts": [
+        "Meiko",
+        "田野"
+      ]
+    },
+    {
+      "proName": "TheShy",
+      "team": "Invictus Gaming",
+      "role": "Top",
+      "country": "South Korea",
+      "accounts": [
+        "TheShy"
+      ]
+    },
+    {
+      "proName": "Rasse",
+      "team": "Invokers",
+      "role": "Owner",
+      "country": "Brazil",
+      "accounts": [
+        "Rasse"
+      ]
+    },
+    {
+      "proName": "Mutes",
+      "team": "Inygon",
+      "role": "Caster",
+      "country": "Portugal",
+      "accounts": [
+        "Mutes"
+      ]
+    },
+    {
+      "proName": "Guerreiro",
+      "team": "Inygon",
+      "role": "Caster",
+      "country": "Portugal",
+      "accounts": [
+        "Guerreiro"
+      ]
+    },
+    {
+      "proName": "Hackali",
+      "team": "Inygon",
+      "role": "Coach",
+      "country": "France",
+      "accounts": [
+        "Hackali"
+      ]
+    },
+    {
+      "proName": "Halls",
+      "team": "Iowa State University",
+      "role": "Jungle",
+      "country": "United States",
+      "accounts": [
+        "Halls"
+      ]
+    },
+    {
+      "proName": "Miyahara",
+      "team": "Iron Clutch",
+      "role": "Jungle",
+      "country": "Brazil",
+      "accounts": [
+        "Miyahara"
+      ]
+    },
+    {
+      "proName": "Ashtart",
+      "team": "Iron Clutch",
+      "role": "Mid",
+      "country": "Chile",
+      "accounts": [
+        "Ashtart"
+      ]
+    },
+    {
+      "proName": "Lilit",
+      "team": "Iron Clutch",
+      "role": "Support",
+      "country": "Chile",
+      "accounts": [
+        "Huskyy",
+        "Lilit"
+      ]
+    },
+    {
+      "proName": "Weiss",
+      "team": "Iron Clutch",
+      "role": "Top",
+      "country": "Brazil",
+      "accounts": [
+        "Weiss"
+      ]
+    },
+    {
+      "proName": "TymMio",
+      "team": "Irvine Valley College",
+      "role": "Support",
+      "country": "United States",
+      "accounts": [
+        "TymMio"
       ]
     },
     {
@@ -10768,6 +10696,13 @@
       ]
     },
     {
+      "proName": "Clément (Clément Thillier)",
+      "team": "Karmine Corp",
+      "role": "Coach",
+      "country": "France",
+      "accounts": []
+    },
+    {
       "proName": "Reapered",
       "team": "Karmine Corp",
       "role": "Coach",
@@ -10784,13 +10719,6 @@
       "accounts": [
         "Zeph"
       ]
-    },
-    {
-      "proName": "Clément (Clément Thillier)",
-      "team": "Karmine Corp",
-      "role": "Coach",
-      "country": "France",
-      "accounts": []
     },
     {
       "proName": "Yike",
@@ -10847,21 +10775,21 @@
       ]
     },
     {
-      "proName": "Fara",
-      "team": "Karmine Corp Blue",
-      "role": "Coach",
-      "country": "France",
-      "accounts": [
-        "Fara"
-      ]
-    },
-    {
       "proName": "Blidzy",
       "team": "Karmine Corp Blue",
       "role": "Coach",
       "country": "France",
       "accounts": [
         "Blidzy"
+      ]
+    },
+    {
+      "proName": "Fara",
+      "team": "Karmine Corp Blue",
+      "role": "Coach",
+      "country": "France",
+      "accounts": [
+        "Fara"
       ]
     },
     {
@@ -11126,15 +11054,6 @@
       ]
     },
     {
-      "proName": "Etoo",
-      "team": "KIA.eSuba Academy",
-      "role": "ADC",
-      "country": "Czech Republic",
-      "accounts": [
-        "Etoo"
-      ]
-    },
-    {
       "proName": "Pulzer",
       "team": "KIA.eSuba Academy",
       "role": "Mid",
@@ -11210,6 +11129,15 @@
       ]
     },
     {
+      "proName": "Dimitry",
+      "team": "Kits Esports",
+      "role": "Jungle",
+      "country": "Dominican Republic",
+      "accounts": [
+        "Dimitry"
+      ]
+    },
+    {
       "proName": "Adler",
       "team": "Kits Esports",
       "role": "Jungle",
@@ -11218,15 +11146,6 @@
         "Addlercass",
         "Adler",
         "AdlerCass"
-      ]
-    },
-    {
-      "proName": "Dimitry",
-      "team": "Kits Esports",
-      "role": "Jungle",
-      "country": "Dominican Republic",
-      "accounts": [
-        "Dimitry"
       ]
     },
     {
@@ -11249,15 +11168,6 @@
       ]
     },
     {
-      "proName": "Diaakc",
-      "team": "Kits Esports",
-      "role": "Top",
-      "country": "Peru",
-      "accounts": [
-        "Diaakc"
-      ]
-    },
-    {
       "proName": "Cacahuate",
       "team": "Kits Esports",
       "role": "Top",
@@ -11265,6 +11175,15 @@
       "accounts": [
         "Cacahuate",
         "Chanteur"
+      ]
+    },
+    {
+      "proName": "Diaakc",
+      "team": "Kits Esports",
+      "role": "Top",
+      "country": "Peru",
+      "accounts": [
+        "Diaakc"
       ]
     },
     {
@@ -11474,15 +11393,6 @@
       ]
     },
     {
-      "proName": "Score",
-      "team": "KT Rolster",
-      "role": "Coach",
-      "country": "South Korea",
-      "accounts": [
-        "Score"
-      ]
-    },
-    {
       "proName": "Sonstar",
       "team": "KT Rolster",
       "role": "Coach",
@@ -11504,31 +11414,34 @@
       ]
     },
     {
+      "proName": "Score",
+      "team": "KT Rolster",
+      "role": "Coach",
+      "country": "South Korea",
+      "accounts": [
+        "Score"
+      ]
+    },
+    {
       "proName": "Cuzz",
       "team": "KT Rolster",
       "role": "Jungle",
       "country": "South Korea",
-      "accounts": [
-        "Cuzz"
-      ]
+      "accounts": []
     },
     {
       "proName": "Bdd",
       "team": "KT Rolster",
       "role": "Mid",
       "country": "South Korea",
-      "accounts": [
-        "Bdd"
-      ]
+      "accounts": []
     },
     {
       "proName": "Effort",
       "team": "KT Rolster",
       "role": "Support",
       "country": "South Korea",
-      "accounts": [
-        "Effort"
-      ]
+      "accounts": []
     },
     {
       "proName": "PerfecT (Lee Seung-min)",
@@ -11542,37 +11455,28 @@
       "team": "KT Rolster Academy",
       "role": "ADC",
       "country": "South Korea",
-      "accounts": [
-        "Precede"
-      ]
+      "accounts": []
     },
     {
       "proName": "Zzus",
       "team": "KT Rolster Academy",
       "role": "Coach",
       "country": "South Korea",
-      "accounts": [
-        "Elroy",
-        "Zzus"
-      ]
+      "accounts": []
     },
     {
       "proName": "Nerion",
       "team": "KT Rolster Academy",
       "role": "Jungle",
       "country": "South Korea",
-      "accounts": [
-        "Nerion"
-      ]
+      "accounts": []
     },
     {
       "proName": "Loid",
       "team": "KT Rolster Academy",
       "role": "Mid",
       "country": "",
-      "accounts": [
-        "Loid"
-      ]
+      "accounts": []
     },
     {
       "proName": "FLOW (Oh Chi-hoon)",
@@ -11586,9 +11490,7 @@
       "team": "KT Rolster Academy",
       "role": "Top",
       "country": "",
-      "accounts": [
-        "Zealot"
-      ]
+      "accounts": []
     },
     {
       "proName": "FenRir (Park Kang-jun)",
@@ -11616,31 +11518,24 @@
       "team": "KT Rolster Challengers",
       "role": "Jungle",
       "country": "South Korea",
-      "accounts": [
-        "BoKGo",
-        "Sylvie"
-      ]
+      "accounts": []
     },
     {
       "proName": "Hwichan",
       "team": "KT Rolster Challengers",
       "role": "Mid",
       "country": "South Korea",
-      "accounts": [
-        "Hwichan"
-      ]
-    },
-    {
-      "proName": "Pollu",
-      "team": "KT Rolster Challengers",
-      "role": "Support",
-      "country": "South Korea",
-      "accounts": [
-        "Pollu"
-      ]
+      "accounts": []
     },
     {
       "proName": "Ghost (Jang Yong-jun)",
+      "team": "KT Rolster Challengers",
+      "role": "Support",
+      "country": "South Korea",
+      "accounts": []
+    },
+    {
+      "proName": "Pollu",
       "team": "KT Rolster Challengers",
       "role": "Support",
       "country": "South Korea",
@@ -11651,90 +11546,275 @@
       "team": "KT Rolster Challengers",
       "role": "Top",
       "country": "South Korea",
+      "accounts": []
+    },
+    {
+      "proName": "Quax",
+      "team": "Liga Ace",
+      "role": "",
+      "country": "",
       "accounts": [
-        "Sero"
+        "Quax"
       ]
     },
     {
-      "proName": "Sardic",
-      "team": "Kuma e-Sports",
-      "role": "Coach",
+      "proName": "FourY4",
+      "team": "Liga Ace",
+      "role": "",
       "country": "Brazil",
       "accounts": [
-        "Sardic"
+        "FourY4"
       ]
     },
     {
-      "proName": "Nightwing",
-      "team": "Kuma e-Sports",
-      "role": "Coach",
+      "proName": "Juliostito",
+      "team": "Liga Ace",
+      "role": "Analyst",
+      "country": "Chile",
+      "accounts": [
+        "Juliostito"
+      ]
+    },
+    {
+      "proName": "Beatdown",
+      "team": "Liga Ace",
+      "role": "Caster",
+      "country": "Canada",
+      "accounts": [
+        "Beatdown",
+        "BeatdownBlvd"
+      ]
+    },
+    {
+      "proName": "DrKoala",
+      "team": "Liga Ace",
+      "role": "Caster",
+      "country": "Mexico",
+      "accounts": [
+        "DrKoala"
+      ]
+    },
+    {
+      "proName": "MatuteWolf",
+      "team": "Liga Ace",
+      "role": "Caster",
+      "country": "Argentina",
+      "accounts": [
+        "MatuteWolf"
+      ]
+    },
+    {
+      "proName": "Raafaa",
+      "team": "Liga Ace",
+      "role": "Caster",
+      "country": "United States",
+      "accounts": [
+        "Raafaa"
+      ]
+    },
+    {
+      "proName": "Decerux",
+      "team": "Liga Ace",
+      "role": "Caster",
+      "country": "United States",
+      "accounts": [
+        "Decerux"
+      ]
+    },
+    {
+      "proName": "Cubby",
+      "team": "Liga Ace",
+      "role": "Caster",
+      "country": "United States",
+      "accounts": [
+        "Cubby",
+        "Cubbyx"
+      ]
+    },
+    {
+      "proName": "Mazel",
+      "team": "Liga Ace",
+      "role": "Caster",
+      "country": "United States",
+      "accounts": [
+        "Mazel"
+      ]
+    },
+    {
+      "proName": "Mila",
+      "team": "Liga Ace",
+      "role": "Caster",
+      "country": "Chile",
+      "accounts": [
+        "Mila"
+      ]
+    },
+    {
+      "proName": "Nachittus",
+      "team": "Liga Ace",
+      "role": "Caster",
+      "country": "Argentina",
+      "accounts": [
+        "Nachittus"
+      ]
+    },
+    {
+      "proName": "Yanni",
+      "team": "Liga Ace",
+      "role": "Caster",
+      "country": "United States",
+      "accounts": [
+        "Yanni"
+      ]
+    },
+    {
+      "proName": "Miczek",
+      "team": "Liga Grimm",
+      "role": "Caster",
+      "country": "Poland",
+      "accounts": [
+        "Miczek"
+      ]
+    },
+    {
+      "proName": "Preminos",
+      "team": "LigaGG",
+      "role": "Caster",
       "country": "Brazil",
       "accounts": [
-        "Nightwing"
+        "Preminos"
       ]
     },
     {
-      "proName": "Azeez",
-      "team": "Kuma e-Sports",
-      "role": "Manager",
-      "country": "Brazil",
+      "proName": "S34NDR0M3",
+      "team": "Lightning Esports",
+      "role": "ADC",
+      "country": "Peru",
       "accounts": [
-        "Azeez"
+        "S34NDR0M3"
       ]
     },
     {
-      "proName": "Charmander",
-      "team": "Kuma e-Sports",
+      "proName": "Uparela",
+      "team": "Lightning Esports",
+      "role": "Jungle",
+      "country": "Colombia",
+      "accounts": [
+        "Uparela"
+      ]
+    },
+    {
+      "proName": "Jacklong",
+      "team": "Lightning Esports",
       "role": "Mid",
-      "country": "Brazil",
+      "country": "Peru",
       "accounts": [
-        "Charmander"
+        "Jacklong"
       ]
     },
     {
-      "proName": "DarkHarvest",
-      "team": "Kuma e-Sports",
-      "role": "Mid",
-      "country": "Brazil",
-      "accounts": [
-        "DarkHarvest"
-      ]
-    },
-    {
-      "proName": "Louris",
-      "team": "Kuma e-Sports",
-      "role": "Mid",
-      "country": "Brazil",
-      "accounts": [
-        "Louris"
-      ]
-    },
-    {
-      "proName": "Severo",
-      "team": "Kuma e-Sports",
+      "proName": "Leinad",
+      "team": "Lightning Esports",
       "role": "Support",
-      "country": "Brazil",
+      "country": "Peru",
       "accounts": [
-        "Severo"
+        "Leinad"
       ]
     },
     {
-      "proName": "Dande",
-      "team": "Kuma e-Sports",
+      "proName": "ByFalco",
+      "team": "Lightning Esports",
       "role": "Top",
-      "country": "Brazil",
+      "country": "Peru",
       "accounts": [
-        "Dande",
-        "Dandelions"
+        "ByFalco"
       ]
     },
     {
-      "proName": "TiRAn",
-      "team": "Kuma e-Sports",
-      "role": "Top",
-      "country": "Brazil",
+      "proName": "Vespa",
+      "team": "Lille Esport",
+      "role": "ADC",
+      "country": "France",
       "accounts": [
-        "TiRAn"
+        "Ascend",
+        "Vespa"
+      ]
+    },
+    {
+      "proName": "Kerigan",
+      "team": "Lille Esport",
+      "role": "Coach",
+      "country": "France",
+      "accounts": [
+        "Kerigan"
+      ]
+    },
+    {
+      "proName": "Seelame",
+      "team": "Lille Esport",
+      "role": "Coach",
+      "country": "France",
+      "accounts": [
+        "Seelame"
+      ]
+    },
+    {
+      "proName": "MélyaP",
+      "team": "Lille Esport",
+      "role": "Mid",
+      "country": "France",
+      "accounts": [
+        "Mathieuf",
+        "MélyaP"
+      ]
+    },
+    {
+      "proName": "Satto",
+      "team": "Lille Esport",
+      "role": "Support",
+      "country": "France",
+      "accounts": [
+        "Satto"
+      ]
+    },
+    {
+      "proName": "Sukru",
+      "team": "Lille Esport",
+      "role": "Top",
+      "country": "Turkey",
+      "accounts": [
+        "Sukru"
+      ]
+    },
+    {
+      "proName": "Breeze",
+      "team": "LIT Team",
+      "role": "ADC",
+      "country": "Taiwan",
+      "accounts": [
+        "Breeze"
+      ]
+    },
+    {
+      "proName": "DreamSha",
+      "team": "LIT Team",
+      "role": "Coach",
+      "country": "Taiwan",
+      "accounts": [
+        "DreamSha",
+        "Julian"
+      ]
+    },
+    {
+      "proName": "RB",
+      "team": "LIT Team",
+      "role": "Jungle",
+      "country": "Taiwan",
+      "accounts": [
+        "K7RB",
+        "RB",
+        "RB世誠",
+        "世誠同學"
       ]
     },
     {
@@ -11747,11 +11827,63 @@
       ]
     },
     {
+      "proName": "Xiasu",
+      "team": "LNG Esports",
+      "role": "Coach",
+      "country": "China",
+      "accounts": [
+        "RalnesYoga",
+        "Spicy",
+        "Xiasu",
+        "Yoga"
+      ]
+    },
+    {
+      "proName": "LvMao",
+      "team": "LNG Esports",
+      "role": "Coach",
+      "country": "China",
+      "accounts": [
+        "LvMao",
+        "ZZjm"
+      ]
+    },
+    {
+      "proName": "Weiwei",
+      "team": "LNG Esports",
+      "role": "Jungle",
+      "country": "China",
+      "accounts": [
+        "Weiwei"
+      ]
+    },
+    {
+      "proName": "Nia (Zou Guang-Lu)",
+      "team": "LNG Esports",
+      "role": "Mid",
+      "country": "China",
+      "accounts": []
+    },
+    {
+      "proName": "Ycx",
+      "team": "LNG Esports",
+      "role": "Support",
+      "country": "China",
+      "accounts": [
+        "Jump",
+        "Jump7",
+        "Ycx"
+      ]
+    },
+    {
       "proName": "MISSING",
       "team": "LNG Esports",
       "role": "Support",
       "country": "China",
-      "accounts": []
+      "accounts": [
+        "Hunamu",
+        "MISSING"
+      ]
     },
     {
       "proName": "sheer",
@@ -11761,67 +11893,22 @@
       "accounts": []
     },
     {
-      "proName": "Lynzu",
-      "team": "Lotus (North American Team)",
+      "proName": "Vamir",
+      "team": "Locked In (Dutch Team)",
       "role": "Coach",
-      "country": "United States",
+      "country": "Netherlands",
       "accounts": [
-        "Lynzu"
+        "Self:Vamir",
+        "Vamir"
       ]
     },
     {
-      "proName": "Shernfire",
-      "team": "Lotus (North American Team)",
+      "proName": "Mac Abert",
+      "team": "Locked In (Dutch Team)",
       "role": "Jungle",
-      "country": "Malaysia",
+      "country": "Germany",
       "accounts": [
-        "Shernfire"
-      ]
-    },
-    {
-      "proName": "Reppy",
-      "team": "Lotus (North American Team)",
-      "role": "Mid",
-      "country": "United States",
-      "accounts": [
-        "Reppy"
-      ]
-    },
-    {
-      "proName": "Geiger",
-      "team": "Lotus (North American Team)",
-      "role": "Top",
-      "country": "United States",
-      "accounts": [
-        "Geiger"
-      ]
-    },
-    {
-      "proName": "Rabelo",
-      "team": "LOUD",
-      "role": "ADC",
-      "country": "Brazil",
-      "accounts": [
-        "Rabelo",
-        "Rabeloko"
-      ]
-    },
-    {
-      "proName": "Raise",
-      "team": "LOUD",
-      "role": "Coach",
-      "country": "South Korea",
-      "accounts": [
-        "Raise"
-      ]
-    },
-    {
-      "proName": "Sephis",
-      "team": "LOUD",
-      "role": "Coach",
-      "country": "Brazil",
-      "accounts": [
-        "Sephis"
+        "Macabert"
       ]
     },
     {
@@ -11879,15 +11966,6 @@
       ]
     },
     {
-      "proName": "Neki",
-      "team": "LØS",
-      "role": "Coach",
-      "country": "Brazil",
-      "accounts": [
-        "Neki"
-      ]
-    },
-    {
       "proName": "Brandão",
       "team": "LØS",
       "role": "Coach",
@@ -11916,6 +11994,15 @@
       ]
     },
     {
+      "proName": "Neki",
+      "team": "LØS",
+      "role": "Coach",
+      "country": "Brazil",
+      "accounts": [
+        "Neki"
+      ]
+    },
+    {
       "proName": "Feisty",
       "team": "LØS",
       "role": "Mid",
@@ -11940,15 +12027,6 @@
       "country": "Brazil",
       "accounts": [
         "Beifong"
-      ]
-    },
-    {
-      "proName": "Nukenin",
-      "team": "LØS Academy",
-      "role": "Mid",
-      "country": "Brazil",
-      "accounts": [
-        "Nukenin"
       ]
     },
     {
@@ -12054,12 +12132,22 @@
       ]
     },
     {
-      "proName": "Goldenpenny",
+      "proName": "BunnyBeast",
       "team": "Lund Esports Organization",
       "role": "ADC",
       "country": "Sweden",
       "accounts": [
-        "Goldenpenny"
+        "BunnyBeast"
+      ]
+    },
+    {
+      "proName": "Ranorr",
+      "team": "Lund Esports Organization",
+      "role": "Coach",
+      "country": "Czech Republic",
+      "accounts": [
+        "Ranor",
+        "Ranorr"
       ]
     },
     {
@@ -12072,22 +12160,77 @@
       ]
     },
     {
-      "proName": "Slice",
+      "proName": "1334mat",
       "team": "Lund Esports Organization",
       "role": "Jungle",
-      "country": "Sweden",
+      "country": "Poland",
       "accounts": [
-        "Slice"
+        "1334mat",
+        "Lucretia"
       ]
     },
     {
-      "proName": "Furby",
+      "proName": "Zilax",
       "team": "Lund Esports Organization",
       "role": "Mid",
+      "country": "Germany",
+      "accounts": [
+        "Zilax",
+        "ZLX"
+      ]
+    },
+    {
+      "proName": "Dovendyr",
+      "team": "Lund Esports Organization",
+      "role": "Support",
+      "country": "Denmark",
+      "accounts": [
+        "Dovendyr"
+      ]
+    },
+    {
+      "proName": "Kaplica",
+      "team": "Lund Esports Organization",
+      "role": "Top",
+      "country": "Poland",
+      "accounts": [
+        "Kaplica"
+      ]
+    },
+    {
+      "proName": "Lejon",
+      "team": "Lundqvist Darkside",
+      "role": "Manager",
       "country": "Sweden",
       "accounts": [
-        "Furby",
-        "ImFurby"
+        "Lejon"
+      ]
+    },
+    {
+      "proName": "Soboc",
+      "team": "Lundqvist Darkside",
+      "role": "Top",
+      "country": "Sweden",
+      "accounts": [
+        "Soboc"
+      ]
+    },
+    {
+      "proName": "Bjoernen",
+      "team": "Lundqvist Lightside",
+      "role": "ADC",
+      "country": "Denmark",
+      "accounts": [
+        "Bjoernen"
+      ]
+    },
+    {
+      "proName": "Spiderlair",
+      "team": "Lundqvist Lightside",
+      "role": "Jungle",
+      "country": "Sweden",
+      "accounts": [
+        "Spiderlair"
       ]
     }
   ]

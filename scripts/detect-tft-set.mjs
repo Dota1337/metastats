@@ -26,6 +26,24 @@ const SET_NAMES = {
   15: 'K.O. Coliseum',
   16: 'Lore & Legends',
   17: 'Space Gods',
+  // 18: '<Marketing-Name>' — BEWUSST leer bis Riot ihn announced. Der Fallback
+  // `Set 18` ist ehrlich; ein geratener Name waere ein erfundener Wert
+  // (Memory feedback_no_fake_values). Beim Bump hier UND in
+  // scripts/crawl-tft-tournaments.mjs TFT_SET_NAMES eintragen
+  // (Memory reference_tft_set_names.md: zwei Stellen synchron halten).
+};
+
+// Fruehestes Datum (UTC, YYYY-MM-DD), ab dem ein Bump auf das jeweilige Set
+// akzeptiert wird. CommunityDragon `latest` folgt dem Live-Client-Build und
+// traegt die Set-Daten typischerweise 1-2 Tage VOR dem Release. Ohne dieses
+// Gate wuerde der naechtliche Workflow praeemptiv auf das neue Set flippen,
+// committen und via deploy-hetzner auf die Box ausrollen — der Crawler
+// filtert dann auf ein Set, das noch niemand spielt, und die Aggregate
+// laufen leer. Schlimmer: der naechste Lauf wuerde einen manuellen Rollback
+// sofort wieder ueberschreiben, es gaebe also faktisch keinen Rueckweg.
+// Env-Override SET_BUMP_ALLOWED_AFTER='YYYY-MM-DD' fuer manuelles Vorziehen.
+const SET_BUMP_EARLIEST = {
+  18: '2026-08-13',   // Set-18-Release lt. User-Vorgabe 2026-08-01
 };
 
 // TFT-Patch numbering is NOT exposed by any Riot API — Match-V1's
@@ -45,11 +63,29 @@ const SET_NAMES = {
 // (LoL 16.8 = TFT 17.1, LoL 16.10 = TFT 17.3).
 const SET_LAUNCH_LOL = {
   17: '16.7',   // Set 17 "Space Gods" anchors at LoL 16.7 → TFT 17.1 = LoL 16.8
+  // Set 18 (Release 2026-08-13): LoL stand am 2026-07-31 auf 16.15.1, Riot
+  // faehrt ~2-Wochen-Kadenz → der Launch-Patch ist voraussichtlich LoL 16.16,
+  // also Anchor 16.15 (LoL 16.16 = TFT 18.1).
+  // ACHTUNG: AM BUMP-TAG gegen die reale LoL-Version verifizieren
+  // (ddragon versions.json). Ist der Launch-Patch 16.17, muss hier 16.16
+  // stehen — sonst wird jeder Patch um eins verschoben gelabelt.
+  18: '16.15',
 };
 
 function tftPatchFromLol(lolVersion, setNumber) {
   const launch = SET_LAUNCH_LOL[setNumber];
-  if (!launch || !lolVersion) return lolVersion;
+  // Fehlender Anchor ist KEIN harmloser Fallback: der rohe LoL-String wandert
+  // via tft-set.json.latestPatch in collect-tft-allranks, das daraus einen
+  // plausibel aussehenden, aber falschen Patch wie "18.16" baut und nach
+  // Supabase schreibt. Genau das musste Migration 0023 beim Set-17-Bump
+  // nachtraeglich reparieren. Lieber laut abbrechen und den alten Stand
+  // behalten, als still falsche Labels persistieren.
+  if (!launch) {
+    console.error(`FATAL: kein SET_LAUNCH_LOL-Anchor fuer Set ${setNumber}.`);
+    console.error('       Eintrag in scripts/detect-tft-set.mjs ergaenzen.');
+    process.exit(1);
+  }
+  if (!lolVersion) return lolVersion;
   const [curMajor, curMinor] = lolVersion.split('.').slice(0, 2).map(Number);
   const [launchMajor, launchMinor] = launch.split('.').map(Number);
   if ([curMajor, curMinor, launchMajor, launchMinor].some(n => Number.isNaN(n))) return lolVersion;
@@ -122,7 +158,35 @@ async function main() {
     console.error('ERROR: no live set found in CommunityDragon data');
     process.exit(1);
   }
-  const live = liveSets.sort((a, b) => (b.number || 0) - (a.number || 0))[0];
+  let live = liveSets.sort((a, b) => (b.number || 0) - (a.number || 0))[0];
+
+  // --- Bump-Gate -----------------------------------------------------------
+  // CDragon zeigt das neue Set schon vor dem Live-Go. Wenn wir ihm blind
+  // folgen, flippt die ganze Pipeline praeemptiv. Deshalb: ein Bump auf ein
+  // Set mit Datums-Gate wird erst ab diesem Datum akzeptiert; davor bleibt
+  // der gespeicherte Stand stehen (kein Write, kein Commit, kein Deploy).
+  const storedNow = existsSync(OUT) ? JSON.parse(readFileSync(OUT, 'utf8')) : null;
+  if (storedNow?.setNumber && live.number > storedNow.setNumber) {
+    const gate = process.env.SET_BUMP_ALLOWED_AFTER || SET_BUMP_EARLIEST[live.number];
+    const todayUtc = new Date().toISOString().slice(0, 10);
+    if (gate && todayUtc < gate) {
+      console.warn(`      GATE: CDragon zeigt Set ${live.number}, aber Bump erst ab ${gate} erlaubt (heute ${todayUtc}).`);
+      console.warn(`      -> bleibe auf Set ${storedNow.setNumber}. Vorziehen via SET_BUMP_ALLOWED_AFTER.`);
+      const held = liveSets.find(s => s.number === storedNow.setNumber);
+      if (!held) {
+        console.error(`FATAL: Set ${storedNow.setNumber} nicht mehr in CDragon — Gate kann nicht halten.`);
+        process.exit(1);
+      }
+      live = held;
+      setOutput('set-changed', 'false');
+      setOutput('set-bump-gated', String(live.number));
+    } else if (!gate) {
+      // Kein Gate hinterlegt: nicht still durchwinken, sondern sichtbar machen.
+      console.warn(`      WARN: Bump auf Set ${live.number} ohne SET_BUMP_EARLIEST-Eintrag — ungated.`);
+    }
+  }
+  // -------------------------------------------------------------------------
+
   const displayName = SET_NAMES[live.number] || `Set ${live.number}`;
   console.log(`      live set: ${live.number} "${displayName}" (mutator ${live.mutator})`);
 

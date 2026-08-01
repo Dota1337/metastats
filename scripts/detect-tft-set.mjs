@@ -43,7 +43,14 @@ const SET_NAMES = {
 // sofort wieder ueberschreiben, es gaebe also faktisch keinen Rueckweg.
 // Env-Override SET_BUMP_ALLOWED_AFTER='YYYY-MM-DD' fuer manuelles Vorziehen.
 const SET_BUMP_EARLIEST = {
-  18: '2026-08-13',   // Set-18-Release lt. User-Vorgabe 2026-08-01
+  // Set 18 "Enchanted Wilds": Riot nennt den 2026-08-26 offiziell
+  // (teamfighttactics.leagueoflegends.com — Enchanted Wilds Overview:
+  // "when the set goes live on August 26th"), bestaetigt via Liquipedia
+  // Patch TFT18.1. Der frueher kursierende 12./13.08. war der urspruengliche
+  // Plan — Riot hat die PBE-Phase von 2 auf 4 Wochen verlaengert, weil Set 18
+  // das erste Set auf der Unreal Engine ist. Viele Sekundaerquellen
+  // (tactics.tools, mobalytics) tragen das alte Datum weiterhin.
+  18: '2026-08-26',
 };
 
 // TFT-Patch numbering is NOT exposed by any Riot API — Match-V1's
@@ -63,13 +70,16 @@ const SET_BUMP_EARLIEST = {
 // (LoL 16.8 = TFT 17.1, LoL 16.10 = TFT 17.3).
 const SET_LAUNCH_LOL = {
   17: '16.7',   // Set 17 "Space Gods" anchors at LoL 16.7 → TFT 17.1 = LoL 16.8
-  // Set 18 (Release 2026-08-13): LoL stand am 2026-07-31 auf 16.15.1, Riot
-  // faehrt ~2-Wochen-Kadenz → der Launch-Patch ist voraussichtlich LoL 16.16,
-  // also Anchor 16.15 (LoL 16.16 = TFT 18.1).
-  // ACHTUNG: AM BUMP-TAG gegen die reale LoL-Version verifizieren
-  // (ddragon versions.json). Ist der Launch-Patch 16.17, muss hier 16.16
-  // stehen — sonst wird jeder Patch um eins verschoben gelabelt.
-  18: '16.15',
+  // Set 18 "Enchanted Wilds" (Release 2026-08-26): LoL stand am 2026-07-31 auf
+  // 16.15.1; laut LoL-Patch-Schedule faellt der 26.08. auf LoL 16.17 (Riot
+  // zaehlt intern weiter 16.x, das Marketing nennt es 26.17 — game_version
+  // liefert 16.17). Anchor = Launch-Minor MINUS 1, also 16.16
+  // (LoL 16.17 = TFT 18.1).
+  // ACHTUNG: das ist eine Ableitung aus dem Patch-Schedule, KEINE direkte
+  // Bestaetigung. AM BUMP-TAG gegen ddragon versions.json UND gegen die erste
+  // echte Set-18-game_version verifizieren — ein Off-by-one hier verschiebt
+  // JEDES Patch-Label des Sets.
+  18: '16.16',
 };
 
 function tftPatchFromLol(lolVersion, setNumber) {

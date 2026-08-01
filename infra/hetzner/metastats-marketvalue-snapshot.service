@@ -14,6 +14,23 @@ Conflicts=metastats-tft-pro-fullsync.service
 Type=oneshot
 WorkingDirectory=/opt/metastats-crawler
 EnvironmentFile=/etc/metastats-crawler/env
+# Sub-Region-Resume scharf (2026-08-01). Ohne das verwirft JEDER Abbruch die
+# komplette Gather-Arbeit der laufenden Region — bei euw1 sind das ~6h und
+# ~10.000 Riot-Call-Ketten. Der Lauf wird um 00:00 UTC durch das Conflicts=
+# des Daily-Crawls beendet, der Fall tritt also planmaessig taeglich ein.
+#
+# Der Schalter stand seit 2026-06-25 bewusst auf Default false, weil
+# buildPopulation.expectedDmg eine reihenfolgesensitive Float-Summe ist und ein
+# Resume-Mix theoretisch eine andere Population erzeugen koennte als ein Lauf
+# am Stueck. Abnahme dazu gefahren am 2026-08-01:
+# `node scripts/verify-inflight-determinism.mjs` -> PASS, A/B/C byte-identisch
+# (C ist exakt der Inflight-Mix). Der puuid-Sort vor buildPopulation traegt.
+#
+# Residual: die Live-Demo mit Mid-Run-SIGKILL gegen die echte DB steht aus —
+# der deterministische Test deckt die Mathematik ab, nicht den DB-Roundtrip.
+# Bei Auffaelligkeiten in den Multiplier-Verteilungen: hier auf false und
+# neu starten, das ist der 60-Sekunden-Rollback.
+Environment=MV_USE_INFLIGHT_RESUME=true
 # Per-Region-Iteration läuft sequenziell durch 15 Regionen. Realistische
 # Laufzeit (Multi-Review-Verdict 2026-06-19): 1-3h Steady-State, bis zu 4-6h
 # am Patch-Day. Kein artificial cap — riot-client gated den Rate sauber.

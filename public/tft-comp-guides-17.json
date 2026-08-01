@@ -1,7 +1,7 @@
 {
   "set": 17,
   "source": "tftacademy.com/tierlist/comps (SvelteKit hydration data island)",
-  "fetchedAt": "2026-07-25T06:53:09.800Z",
+  "fetchedAt": "2026-08-01T06:56:22.460Z",
   "counts": {
     "slugsIndexed": 38,
     "populatedFull": 37,
@@ -12,7 +12,7 @@
     "akali-reroll": {
       "title": "NOVA Akali",
       "difficulty": "MEDIUM",
-      "updated": "2026-07-24 07:44:16.926Z",
+      "updated": "2026-07-31 21:46:41.436Z",
       "augments": [
         "TFT_Augment_InfinityProtection",
         "TFT_Augment_GroupHug1",
@@ -83,7 +83,7 @@
     "anima-reroll": {
       "title": "Vanguard Diana",
       "difficulty": "HARD",
-      "updated": "2026-07-24 07:44:15.138Z",
+      "updated": "2026-07-31 21:46:40.567Z",
       "augments": [
         "TFT10_Augment_HeroicGrabBag",
         "TFT_Augment_MagicRoll",
@@ -151,7 +151,7 @@
     "bonk-nasus": {
       "title": "Bonk! Nasus",
       "difficulty": "EASY",
-      "updated": "2026-07-24 07:44:15.189Z",
+      "updated": "2026-07-31 21:46:41.261Z",
       "augments": [
         "TFT17_Augment_NasusCarry",
         "TFT9_Augment_MissedConnections",
@@ -189,8 +189,7 @@
           "apiName": "TFT17_Nasus",
           "items": [
             "TFT_Item_GuinsoosRageblade",
-            "TFT_Item_Bloodthirster",
-            "TFT_Item_TitansResolve"
+            "TFT_Item_Bloodthirster"
           ],
           "stars": 1
         },
@@ -220,10 +219,84 @@
         }
       ]
     },
+    "conduit-mf-reroll": {
+      "title": "Conduit Reroll",
+      "difficulty": "EASY",
+      "updated": "2026-07-31 21:46:40.553Z",
+      "augments": [
+        "TFT7_Augment_LivingForge",
+        "TFT_Augment_ForgedInStrength",
+        "TFT_Augment_HomeCooking",
+        "TFT9_Augment_LongTimeCrafting",
+        "TFT6_Augment_GachaAddict",
+        "TFT_Augment_LegionOfThrees",
+        "TFT9_Augment_BigGrabBag",
+        "TFT10_Augment_HeroicGrabBag"
+      ],
+      "augmentTypes": [
+        "ECON",
+        "ECON",
+        "ECON",
+        "ITEMS",
+        "ITEMS",
+        "ITEMS",
+        "COMBAT",
+        "COMBAT"
+      ],
+      "augmentsTip": null,
+      "carousel": [
+        "TFT_Item_NeedlesslyLargeRod",
+        "TFT_Item_BFSword",
+        "TFT_Item_GiantsBelt",
+        "TFT_Item_ChainVest"
+      ],
+      "earlyComp": [
+        {
+          "apiName": "TFT17_Chogath",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Gragas",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_MissFortune",
+          "items": [
+            "TFT_Item_InfinityEdge",
+            "TFT17_Item_PsyOps_TargetlockMod"
+          ],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Viktor",
+          "items": [
+            "TFT_Item_RabadonsDeathcap",
+            "TFT17_Item_PsyOps_DroneMod"
+          ],
+          "stars": 1
+        }
+      ],
+      "tips": [
+        {
+          "stage": "Stage 2",
+          "tip": "Ideally open with one of the 3-cost Conduits to itemize. Look for an econ engine: Timebreaker > Arbiter > Primordian."
+        },
+        {
+          "stage": "Stage 3",
+          "tip": "If lose streaking, level to 7 at 3-5 and roll for 2* item holders. Win last two fights of Stage and econ up. If win streaking, you can aim to Level 7 end of Stage."
+        },
+        {
+          "stage": "Stage 4",
+          "tip": "Slow roll for 3* 3 cost. You should be hitting one by end of Stage 4. If you think you can't hit, take an econ augment. Once done, level to 8 for Bard / Conduit."
+        }
+      ]
+    },
     "contract-killer-pyke": {
       "title": "Contract Killer Pyke",
       "difficulty": "EASY",
-      "updated": "2026-07-24 07:44:15.146Z",
+      "updated": "2026-07-31 21:46:40.890Z",
       "augments": [
         "TFT17_Augment_PykeCarry",
         "TFT9_Augment_JeweledLotus",
@@ -294,7 +367,7 @@
     "corki-riven": {
       "title": "Corki Riven",
       "difficulty": "MEDIUM",
-      "updated": "2026-07-24 07:44:15.078Z",
+      "updated": "2026-07-31 21:46:41.435Z",
       "augments": [
         "TFT_Augment_ComponentQuestSword",
         "TFT_Augment_TraitTree",
@@ -368,7 +441,7 @@
     "dark-star": {
       "title": "Dark Star Flex",
       "difficulty": "MEDIUM",
-      "updated": "2026-07-24 07:44:15.024Z",
+      "updated": "2026-07-31 21:46:40.538Z",
       "augments": [
         "TFT_Augment_SpreadingRoots",
         "TFT_Augment_TraitTree",
@@ -439,7 +512,7 @@
     "dark-star-lissandra": {
       "title": "Dark Star Reroll",
       "difficulty": "MEDIUM",
-      "updated": "2026-07-24 07:44:15.022Z",
+      "updated": "2026-07-31 21:46:41.213Z",
       "augments": [
         "TFT_Augment_TreasureHunt",
         "TFT9_Augment_MissedConnections",
@@ -507,7 +580,7 @@
     "ez-cho": {
       "title": "EZ CHO",
       "difficulty": "EASY",
-      "updated": "2026-07-24 07:44:15.106Z",
+      "updated": "2026-07-31 21:46:40.569Z",
       "augments": [
         "TFT6_Augment_GachaAddict",
         "TFT9_Augment_MissedConnections",
@@ -578,83 +651,10 @@
         }
       ]
     },
-    "fast-9-jhin-stargazer-version": {
-      "title": "Xayah Stargazer",
-      "difficulty": "MEDIUM",
-      "updated": "2026-07-24 07:44:14.962Z",
-      "augments": [
-        "TFT_Augment_ShimmerscaleEssence",
-        "TFT9_Augment_LearningFromExperience2",
-        "TFT_Augment_ComponentQuestBow",
-        "TFT6_Augment_PandorasItems",
-        "TFT_Augment_MayTheFoursBeWithYou",
-        "TFT_Augment_ComebackStory",
-        "TFT_Augment_HoldTheLine",
-        "TFT_Augment_AwakenedSoul"
-      ],
-      "augmentTypes": [
-        "ECON",
-        "ECON",
-        "ECON",
-        "ITEMS",
-        "ITEMS",
-        "ITEMS",
-        "COMBAT",
-        "COMBAT"
-      ],
-      "augmentsTip": null,
-      "carousel": [
-        "TFT_Item_RapidFireCannon",
-        "TFT_Item_RunaansHurricane",
-        "TFT_Item_RecurveBow",
-        "TFT_Item_BFSword"
-      ],
-      "earlyComp": [
-        {
-          "apiName": "TFT17_Aatrox",
-          "items": [],
-          "stars": 1
-        },
-        {
-          "apiName": "TFT17_TwistedFate",
-          "items": [],
-          "stars": 1
-        },
-        {
-          "apiName": "TFT17_Talon",
-          "items": [
-            "TFT_Item_RapidFireCannon",
-            "TFT_Item_RunaansHurricane"
-          ],
-          "stars": 1
-        },
-        {
-          "apiName": "TFT17_Jax",
-          "items": [
-            "TFT_Item_FrozenHeart"
-          ],
-          "stars": 1
-        }
-      ],
-      "tips": [
-        {
-          "stage": "Stage 2",
-          "tip": "Play for win streak with Stargazers or an econ trait like Primordian. Talon and Bel'Veth are solid holders for Xayah items."
-        },
-        {
-          "stage": "Stage 3",
-          "tip": "If win streaking, prioritize playing strongest board over greeding econ traits. Upgraded 2 and 3 costs are often better than 1* high tier units here."
-        },
-        {
-          "stage": "Stage 4",
-          "tip": "Level to 8 and roll for Xayah 2 + upgraded frontline. Play Samira until Jhin. If you miss Tahm Kench, play another Vanguard for Nunu tank instead. "
-        }
-      ]
-    },
     "fountain-lulu": {
       "title": "Lulu Reroll",
       "difficulty": "EASY",
-      "updated": "2026-07-24 07:44:15.024Z",
+      "updated": "2026-07-31 21:46:41.430Z",
       "augments": [
         "TFT6_Augment_ThriftShop",
         "TFT_Augment_PatienceIsAVirtue",
@@ -725,7 +725,7 @@
     "gnar-printer": {
       "title": "Gnar Printer",
       "difficulty": "MEDIUM",
-      "updated": "2026-07-24 07:44:15.072Z",
+      "updated": "2026-07-31 21:46:41.364Z",
       "augments": [
         "TFT_Augment_TragicalBlade",
         "TFT_Augment_MagicRollMinus",
@@ -798,7 +798,7 @@
     "graves-vex-9-5": {
       "title": "NOVA Vex 9-5",
       "difficulty": "HARD",
-      "updated": "2026-07-24 07:44:15.132Z",
+      "updated": "2026-07-31 21:46:40.942Z",
       "augments": [
         "TFT_Augment_AuraFarming",
         "TFT_Augment_DuoQueue",
@@ -870,7 +870,7 @@
     "heat-death-mordekaiser": {
       "title": "Heat Death Mordekaiser",
       "difficulty": "CONDITIONAL",
-      "updated": "2026-07-24 07:44:15.130Z",
+      "updated": "2026-07-31 21:46:41.461Z",
       "augments": [
         "TFT17_Augment_MordekaiserCarry",
         "TFT_Augment_HeroicGrabBagPlus",
@@ -938,7 +938,7 @@
     "in-the-groove": {
       "title": "In The Groove",
       "difficulty": "EASY",
-      "updated": "2026-07-24 07:44:15.022Z",
+      "updated": "2026-07-31 21:46:41.001Z",
       "augments": [
         "TFT_Augment_SpreadingRoots",
         "TFT_Augment_TraitTree",
@@ -1009,7 +1009,7 @@
     "invader-zed": {
       "title": "Invader Zed",
       "difficulty": "HARD",
-      "updated": "2026-07-24 07:44:15.150Z",
+      "updated": "2026-07-31 21:46:41.250Z",
       "augments": [
         "TFT17_Augment_InvaderZed",
         "TFT_Augment_OneBuffTwoBuff",
@@ -1079,7 +1079,7 @@
     "jainx": {
       "title": "Primordian Jinx",
       "difficulty": "EASY",
-      "updated": "2026-07-24 07:44:15.077Z",
+      "updated": "2026-07-31 21:46:40.573Z",
       "augments": [
         "TFT_Augment_TreasureHunt",
         "TFT6_Augment_PortableForge",
@@ -1151,7 +1151,7 @@
     "karnami-flex": {
       "title": "KarNami Flex",
       "difficulty": "HARD",
-      "updated": "2026-07-24 07:44:15.076Z",
+      "updated": "2026-07-31 21:46:41.243Z",
       "augments": [
         "TFT6_Augment_TradeSector2",
         "TFT11_Augment_Reinfourcement",
@@ -1223,7 +1223,7 @@
     "mecha-sol": {
       "title": "Carrier Asol",
       "difficulty": "EASY",
-      "updated": "2026-07-24 07:44:15.027Z",
+      "updated": "2026-07-31 21:49:58.232Z",
       "augments": [
         "TFT11_Augment_Reinfourcement",
         "TFT_Augment_PatienceIsAVirtue",
@@ -1283,19 +1283,19 @@
         }
       ]
     },
-    "nova-kindred": {
-      "title": "NOVA Kindred",
-      "difficulty": "EASY",
-      "updated": "2026-07-24 07:44:15.027Z",
+    "mountain-riven": {
+      "title": "Mountain Stargazer",
+      "difficulty": "MEDIUM",
+      "updated": "2026-07-31 21:46:40.360Z",
       "augments": [
-        "TFT11_Augment_Slammin",
-        "TFT9_Augment_LearningFromExperience2",
-        "TFT_Augment_ClimbTheLadder2",
-        "TFT_Augment_GroupHug2",
-        "TFT9_Augment_Commander_RollingForDays",
         "TFT_Augment_EpicRolldown",
-        "TFT_Augment_ExpectedUnexpectedness",
-        "TFT6_Augment_TradeSector2"
+        "TFT11_Augment_Reinfourcement",
+        "TFT6_Augment_SalvageBin",
+        "TFT_Augment_ForgeSword",
+        "TFT6_Augment_TradeSector2",
+        "TFT_Augment_ClimbTheLadder1",
+        "TFT9_Augment_OneTwosThree",
+        "TFT9_Augment_Commander_RollingForDays"
       ],
       "augmentTypes": [
         "ECON",
@@ -1309,10 +1309,10 @@
       ],
       "augmentsTip": null,
       "carousel": [
-        "TFT_Item_GuinsoosRageblade",
+        "TFT_Item_RunaansHurricane",
         "TFT_Item_RecurveBow",
         "TFT_Item_NegatronCloak",
-        "TFT_Item_GiantsBelt"
+        "TFT_Item_BFSword"
       ],
       "earlyComp": [
         {
@@ -1326,9 +1326,9 @@
           "stars": 1
         },
         {
-          "apiName": "TFT17_Caitlyn",
+          "apiName": "TFT17_Talon",
           "items": [
-            "TFT_Item_GuinsoosRageblade",
+            "TFT_Item_Bloodthirster",
             "TFT_Item_RunaansHurricane"
           ],
           "stars": 1
@@ -1342,22 +1342,94 @@
       "tips": [
         {
           "stage": "Stage 2",
-          "tip": "Look for an econ engine like Primordian or Timebreaker. Slam items on Caitlyn as an item holder for Kindred. "
+          "tip": "Always keep at least 3 Stargazer in for the Emblem. Look for a Rageblade start on Twisted Fate 2 or Riven items on Talon 2."
         },
         {
           "stage": "Stage 3",
-          "tip": "Standard level 6 and 7 intervals (3-2 / 3-5 if streaking). Play around Brawler / NOVA frontline. Kindred 1 can go in immediately."
+          "tip": "Add more Stargazers as you level. Tech in Timebreaker when you can. The 1 cost carries fall off by end of Stage 3 so expect losses or transition to higher tier carries. "
         },
         {
           "stage": "Stage 4",
-          "tip": "Level to 8 at a natural interval and roll until Kindred 2 / Morgana 2. TK 2 can also tank instead of Morgana. Once stable, push levels for Shen."
+          "tip": "Level to 8 and roll for Riven, Nunu, and Xayah. Always play Shen. Once you hit at least 2 of the 3 units, you can consider pushing to 9."
+        }
+      ]
+    },
+    "nova-kindred": {
+      "title": "NOVA Kindred Akali",
+      "difficulty": "EASY",
+      "updated": "2026-07-31 21:46:40.366Z",
+      "augments": [
+        "TFT9_Augment_Commander_RollingForDays",
+        "TFT_Augment_EpicRolldown",
+        "TFT_Augment_ExpectedUnexpectedness",
+        "TFT11_Augment_Epoch",
+        "TFT_Augment_SoloLeveling",
+        "TFT_Augment_TragicalBlade",
+        "TFT_Augment_ItemGargoyleStoneplate",
+        "TFT_Augment_BodyguardTraining"
+      ],
+      "augmentTypes": [
+        "ECON",
+        "ECON",
+        "ECON",
+        "ITEMS",
+        "ITEMS",
+        "ITEMS",
+        "COMBAT",
+        "COMBAT"
+      ],
+      "augmentsTip": null,
+      "carousel": [
+        "TFT_Item_HextechGunblade",
+        "TFT_Item_GargoyleStoneplate",
+        "TFT_Item_NegatronCloak",
+        "TFT_Item_GiantsBelt"
+      ],
+      "earlyComp": [
+        {
+          "apiName": "TFT17_Briar",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_RekSai",
+          "items": [
+            "TFT_Item_GargoyleStoneplate"
+          ],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Belveth",
+          "items": [],
+          "stars": 1
+        },
+        {
+          "apiName": "TFT17_Akali",
+          "items": [
+            "TFT_Item_HextechGunblade"
+          ],
+          "stars": 1
+        }
+      ],
+      "tips": [
+        {
+          "stage": "Stage 2",
+          "tip": "Look for an econ engine like Primordian or Timebreaker. Slam items for Akali / Kindred on any upgraded AD carry."
+        },
+        {
+          "stage": "Stage 3",
+          "tip": "Standard level 6 and 7 intervals (3-2 / 3-5 if streaking). Play around Brawler / NOVA frontline. Always play 5 NOVA when you get it."
+        },
+        {
+          "stage": "Stage 4",
+          "tip": "Level to 8 at a natural interval and roll until Akali 2 + Kindred + upgraded tank. Position Akali on the same side as enemy carries to wrap backline."
         }
       ]
     },
     "nova-reroll": {
       "title": "N.O.V.A Reroll",
       "difficulty": "EASY",
-      "updated": "2026-07-24 07:44:15.108Z",
+      "updated": "2026-07-31 21:46:41.434Z",
       "augments": [
         "TFT_Augment_TreasureHunt",
         "TFT_Augment_ItemGargoyleStoneplate",
@@ -1425,7 +1497,7 @@
     "primordian-reroll": {
       "title": "Primordian Reroll",
       "difficulty": "MEDIUM",
-      "updated": "2026-07-24 07:44:15.185Z",
+      "updated": "2026-07-31 21:46:41.459Z",
       "augments": [
         "TFT6_Augment_GachaAddict",
         "TFT6_Augment_TradeSector",
@@ -1496,7 +1568,7 @@
     "pyke-gwen": {
       "title": "Gwen Pyke Reroll",
       "difficulty": "EASY",
-      "updated": "2026-07-24 07:44:15.148Z",
+      "updated": "2026-07-31 21:46:41.427Z",
       "augments": [
         "TFT_Augment_Unforgotten",
         "TFT_Augment_MagicRoll",
@@ -1568,7 +1640,7 @@
     "reach-for-the-stars-jax": {
       "title": "Reach for the Stars Jax",
       "difficulty": "EASY",
-      "updated": "2026-07-24 07:44:15.195Z",
+      "updated": "2026-07-31 21:46:41.415Z",
       "augments": [
         "TFT17_Augment_JaxCarry",
         "TFT_Augment_HeroicGrabBagPlus",
@@ -1639,7 +1711,7 @@
     "replicator-mf-reroll": {
       "title": "Replicator MF Reroll",
       "difficulty": "EASY",
-      "updated": "2026-07-24 07:44:15.106Z",
+      "updated": "2026-07-31 21:46:40.578Z",
       "augments": [
         "TFT10_Augment_HeroicGrabBag",
         "TFT6_Augment_GachaAddict",
@@ -1710,7 +1782,7 @@
     "samira-knock-up-copy": {
       "title": "Samira Two Tanky",
       "difficulty": "MEDIUM",
-      "updated": "2026-07-24 07:44:15.076Z",
+      "updated": "2026-07-31 21:46:40.575Z",
       "augments": [
         "TFT10_Augment_HeroicGrabBag",
         "TFT6_Augment_TradeSector",
@@ -1781,7 +1853,7 @@
     "self-destruct-gragas": {
       "title": "Self Destruct Gragas",
       "difficulty": "EASY",
-      "updated": "2026-07-24 07:44:15.151Z",
+      "updated": "2026-07-31 21:46:41.274Z",
       "augments": [
         "TFT_Augment_BoxingLessons",
         "TFT_Augment_GuardbreakerSpirit",
@@ -1853,7 +1925,7 @@
     "shepherd-pie": {
       "title": "Shepherd Pie",
       "difficulty": "MEDIUM",
-      "updated": "2026-07-24 07:44:15.081Z",
+      "updated": "2026-07-31 21:46:41.249Z",
       "augments": [
         "TFT_Augment_HoldTheLine",
         "TFT_Augment_GildedSteel",
@@ -1924,7 +1996,7 @@
     "shieldmaiden-leona": {
       "title": "Shieldmaiden Leona",
       "difficulty": "EASY",
-      "updated": "2026-07-24 07:44:15.195Z",
+      "updated": "2026-07-31 21:46:40.987Z",
       "augments": [
         "TFT17_Augment_LeonaCarry",
         "TFT9_Augment_MissedConnections",
@@ -1995,7 +2067,7 @@
     "stellar-combo-aatrox": {
       "title": "Stellar Combo Aatrox",
       "difficulty": "EASY",
-      "updated": "2026-07-24 07:44:15.148Z",
+      "updated": "2026-07-31 21:46:41.413Z",
       "augments": [
         "TFT17_Augment_AatroxCarry",
         "TFT9_Augment_MissedConnections",
@@ -2067,7 +2139,7 @@
     "termeepnal-velocity-poppy": {
       "title": "Termeepnal Velocity Poppy",
       "difficulty": "EASY",
-      "updated": "2026-07-24 07:44:15.188Z",
+      "updated": "2026-07-31 21:46:41.434Z",
       "augments": [
         "TFT17_Augment_PoppyCarry",
         "TFT9_Augment_MissedConnections",
@@ -2138,7 +2210,7 @@
     "tf-reroll": {
       "title": "Fateweaver Reroll",
       "difficulty": "EASY",
-      "updated": "2026-07-24 07:44:15.169Z",
+      "updated": "2026-07-31 21:46:41.230Z",
       "augments": [
         "TFT_Augment_Waverider",
         "TFT6_Augment_GachaAddict",
@@ -2211,7 +2283,7 @@
     "the-big-bang-meepsie": {
       "title": "The Big Bang Meepsie",
       "difficulty": "EASY",
-      "updated": "2026-07-24 07:44:15.193Z",
+      "updated": "2026-07-31 21:46:41.257Z",
       "augments": [
         "TFT17_Augment_IvernMinionCarry",
         "TFT_Augment_HeroicGrabBagPlus",
@@ -2281,9 +2353,9 @@
       ]
     },
     "vanguard-zoe": {
-      "title": "Conduit Zoe",
+      "title": "Conduit Reroll",
       "difficulty": "EASY",
-      "updated": "2026-07-24 07:44:15.147Z",
+      "updated": "2026-07-31 21:46:40.356Z",
       "augments": [
         "TFT_Augment_TreasureHunt",
         "TFT17_Augment_Concentration",
@@ -2356,7 +2428,7 @@
     "veigar-printer": {
       "title": "Veigar Printer",
       "difficulty": "MEDIUM",
-      "updated": "2026-07-24 07:44:15.082Z",
+      "updated": "2026-07-31 21:46:41.247Z",
       "augments": [
         "TFT_Augment_EarlyLearning",
         "TFT9_Augment_MissedConnections",
@@ -2429,7 +2501,7 @@
     "vex-9-5": {
       "title": "Bard Blitz Sona 9-5",
       "difficulty": "HARD",
-      "updated": "2026-07-24 07:44:15.074Z",
+      "updated": "2026-07-31 21:46:41.395Z",
       "augments": [
         "TFT_Augment_LateGameScaling",
         "TFT11_Augment_Slammin",
@@ -2500,80 +2572,10 @@
         }
       ]
     },
-    "viktor-b4l": {
-      "title": "Viktor Nami",
-      "difficulty": "EASY",
-      "updated": "2026-07-24 07:44:15.134Z",
-      "augments": [
-        "TFT_Augment_BronzeForLifeI",
-        "TFT_Augment_BronzeForLife2",
-        "TFT_Augment_PatienceIsAVirtue",
-        "TFT6_Augment_TradeSector2",
-        "TFT_Augment_LegionOfThrees",
-        "TFT6_Augment_Diversify1",
-        "TFT_Augment_GlassCannonII",
-        "TFT9_Augment_JeweledLotus"
-      ],
-      "augmentTypes": [
-        "ECON",
-        "ECON",
-        "ECON",
-        "ITEMS",
-        "ITEMS",
-        "ITEMS",
-        "COMBAT",
-        "COMBAT"
-      ],
-      "augmentsTip": null,
-      "carousel": [
-        "TFT_Item_RabadonsDeathcap",
-        "TFT_Item_NeedlesslyLargeRod",
-        "TFT_Item_SparringGloves",
-        "TFT_Item_GiantsBelt"
-      ],
-      "earlyComp": [
-        {
-          "apiName": "TFT17_Leona",
-          "items": [],
-          "stars": 1
-        },
-        {
-          "apiName": "TFT17_Mordekaiser",
-          "items": [],
-          "stars": 1
-        },
-        {
-          "apiName": "TFT17_Zoe",
-          "items": [],
-          "stars": 1
-        },
-        {
-          "apiName": "TFT17_Viktor",
-          "items": [
-            "TFT17_Item_PsyOps_DroneMod"
-          ],
-          "stars": 1
-        }
-      ],
-      "tips": [
-        {
-          "stage": "Stage 2",
-          "tip": "Ideally open with Viktor with Drone or a strong AP opener. Look for an econ engine: Timebreaker > Arbiter > Primordian. Slam items for Viktor."
-        },
-        {
-          "stage": "Stage 3",
-          "tip": "If lose streaking, level to 7 at 3-5 and roll for 2* item holders. Win last two fights of Stage and econ up. If win streaking, you can aim to Level 7 end of Stage."
-        },
-        {
-          "stage": "Stage 4",
-          "tip": "If uncontested, roll on 7. Otherwise, level to 8 and look for Viktor 2 with upgraded frontline. When stable, go 9 for Bard and 5 costs."
-        }
-      ]
-    },
     "voyager-crab": {
       "title": "Voyager Crab",
       "difficulty": "MEDIUM",
-      "updated": "2026-07-24 07:44:15.195Z",
+      "updated": "2026-07-31 21:46:41.457Z",
       "augments": [
         "TFT_Augment_LegionOfThrees",
         "TFT_Augment_PatienceIsAVirtue",
@@ -2641,7 +2643,7 @@
     "yi-marawlers": {
       "title": "Yi Marawlers",
       "difficulty": "MEDIUM",
-      "updated": "2026-07-24 07:44:15.028Z",
+      "updated": "2026-07-31 21:46:40.523Z",
       "augments": [
         "TFT_Augment_JustSlayer",
         "TFT_Augment_GroupHug1",

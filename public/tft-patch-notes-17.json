@@ -1,10 +1,10 @@
 {
   "set": 17,
   "source": "tactics.tools/info/patch-notes",
-  "fetchedAt": "2026-07-25T06:51:21.828Z",
+  "fetchedAt": "2026-08-01T06:54:33.852Z",
   "patches": {
     "17.1": {
-      "scrapedAt": "2026-07-25T06:51:22.386Z",
+      "scrapedAt": "2026-08-01T06:54:34.156Z",
       "sections": [
         {
           "category": "LARGE CHANGES",
@@ -458,7 +458,7 @@
       }
     },
     "17.2": {
-      "scrapedAt": "2026-07-25T06:51:24.735Z",
+      "scrapedAt": "2026-08-01T06:54:36.179Z",
       "sections": [
         {
           "category": "17.2 APRIL 29TH MID-PATCH UPDATE",
@@ -1067,7 +1067,7 @@
       }
     },
     "17.3": {
-      "scrapedAt": "2026-07-25T06:51:26.958Z",
+      "scrapedAt": "2026-08-01T06:54:38.549Z",
       "sections": [
         {
           "category": "17.3 MAY 13TH MID-PATCH UPDATE",
@@ -1561,7 +1561,7 @@
       }
     },
     "17.4": {
-      "scrapedAt": "2026-07-25T06:51:29.203Z",
+      "scrapedAt": "2026-08-01T06:54:40.833Z",
       "sections": [
         {
           "category": "Mid-Patch Updates",
@@ -2000,7 +2000,7 @@
       }
     },
     "17.5": {
-      "scrapedAt": "2026-07-25T06:51:31.456Z",
+      "scrapedAt": "2026-08-01T06:54:43.100Z",
       "sections": [
         {
           "category": "Mid-Patch Updates",
@@ -2304,7 +2304,7 @@
       }
     },
     "17.6": {
-      "scrapedAt": "2026-07-25T06:51:33.857Z",
+      "scrapedAt": "2026-08-01T06:54:45.386Z",
       "sections": [
         {
           "category": "LARGE CHANGES",
@@ -2578,7 +2578,7 @@
       }
     },
     "17.7": {
-      "scrapedAt": "2026-07-25T06:51:36.134Z",
+      "scrapedAt": "2026-08-01T06:54:47.409Z",
       "sections": [
         {
           "category": "LARGE CHANGES",
@@ -2689,6 +2689,125 @@
       "counts": {
         "totalEntries": 20,
         "withApiName": 19
+      }
+    },
+    "17.8": {
+      "scrapedAt": "2026-08-01T06:54:49.426Z",
+      "sections": [
+        {
+          "category": "LARGE CHANGES",
+          "entries": [
+            {
+              "apiName": "TFT17_Animasquad",
+              "displayName": "Anima 0",
+              "change": "Anima Squad Items:The Annihilator: AP: 30% ⇒ 25%, Mana Regen: 5 ⇒ 4Iceblast Armor: Stun Duration: 2s ⇒ 1.5s, Shield Amount: 25% ⇒ 20%Lioness’ Lament: Armor + Magic Resist: 30 ⇒ 25, Resist Steal: 4 ⇒ 3"
+            },
+            {
+              "apiName": null,
+              "displayName": "The Annihilator",
+              "change": "The Annihilator: AP: 30% ⇒ 25%, Mana Regen: 5 ⇒ 4"
+            },
+            {
+              "apiName": null,
+              "displayName": "Iceblast Armor",
+              "change": "Iceblast Armor: Stun Duration: 2s ⇒ 1.5s, Shield Amount: 25% ⇒ 20%"
+            },
+            {
+              "apiName": "TFT17_Animasquad",
+              "displayName": "Anima 0",
+              "change": "Anima Squad (5) Loot Table:New Options: 9 Gold / 2x 4-cost / 3x Tiny Duplicators + 3gRemoved Options: 1x Thieve’s Gloves / Voyager EmblemAdjusted Options: 2x 5-cost + 1g ⇒ 1x 5-cost + 3g, Challenger Emblem + 1g ⇒ Challenger Emblem, 1x Component + 5g ⇒ 1x Component + 2g"
+            },
+            {
+              "apiName": "TFT17_Manatrait",
+              "displayName": "Conduit 0",
+              "change": "Conduit (5) Ally Mana: 3 Mana Regen ⇒ 2 Mana Regen"
+            },
+            {
+              "apiName": "TFT17_Psyops",
+              "displayName": "Psionic 0",
+              "change": "Psionic (4) Items:Biomatter Preserver: Base Health: 550 ⇒ 650, Increased Healing: 22% ⇒ 30%Drone Uplink: 2nd Drone Damage: 20% ⇒ 30%Malware Matrix: Damage Amp: 10% ⇒ 15%, Cleave Damage: 75% AD ⇒ 100% ADTarget-Lock Optics: AP/AD: 20% ⇒ 30%, Heal: 20% ⇒ 30%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Biomatter Preserver",
+              "change": "Biomatter Preserver: Base Health: 550 ⇒ 650, Increased Healing: 22% ⇒ 30%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Drone Uplink",
+              "change": "Drone Uplink: 2nd Drone Damage: 20% ⇒ 30%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Malware Matrix",
+              "change": "Malware Matrix: Damage Amp: 10% ⇒ 15%, Cleave Damage: 75% AD ⇒ 100% AD"
+            },
+            {
+              "apiName": null,
+              "displayName": "Target-Lock Optics",
+              "change": "Target-Lock Optics: AP/AD: 20% ⇒ 30%, Heal: 20% ⇒ 30%"
+            },
+            {
+              "apiName": "TFT17_Briar",
+              "displayName": "Briar",
+              "change": "Briar AD: 35 ⇒ 40"
+            },
+            {
+              "apiName": "TFT17_Twistedfate",
+              "displayName": "Twisted Fate",
+              "change": "Twisted Fate Maximum Spell Damage: 410/610/920/1565 AP ⇒ 450/675/1015/1725 AP"
+            },
+            {
+              "apiName": "TFT17_Akali",
+              "displayName": "Akali",
+              "change": "Akali N.O.V.A. Strike Damage per Second: 15/22/28 AD ⇒ 14/18/25 AD"
+            },
+            {
+              "apiName": "TFT17_Gnar",
+              "displayName": "Gnar",
+              "change": "Gnar is now also a Brawler"
+            },
+            {
+              "apiName": "TFT17_Missfortune",
+              "displayName": "Miss Fortune",
+              "change": "Miss Fortune Replicator Damage AD: 275/415/660 AD ⇒ 300/450/675 AD"
+            },
+            {
+              "apiName": "TFT17_Samira",
+              "displayName": "Samira",
+              "change": "Samira Passive Damage: 55/80/130 AD ⇒ 45/68/115 AD"
+            },
+            {
+              "apiName": "TFT17_Diana",
+              "displayName": "Diana",
+              "change": "Diana Mana: 0/50 ⇒ 0/40"
+            },
+            {
+              "apiName": "TFT17_Morgana",
+              "displayName": "Morgana",
+              "change": "Morgana is now also a Conduit"
+            },
+            {
+              "apiName": "TFT17_Riven",
+              "displayName": "Riven",
+              "change": "Riven Small Cast Damage: 90/135 AD ⇒ 100/150 AD"
+            },
+            {
+              "apiName": "TFT17_Zed",
+              "displayName": "Zed",
+              "change": "Zed Health Penalty: 33/40% ⇒ 25/35%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Cosmic Restart",
+              "change": "Cosmic Restart Rerolls: 8 ⇒ 15"
+            }
+          ]
+        }
+      ],
+      "counts": {
+        "totalEntries": 21,
+        "withApiName": 14
       }
     }
   }

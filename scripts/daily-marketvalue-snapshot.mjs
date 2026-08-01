@@ -124,6 +124,7 @@ const hasFlag = (k) => args.includes(k);
 
 const REGION_ARG = (arg('--region', 'all') || 'all').toLowerCase();
 const DRY_RUN = hasFlag('--dry-run');
+const MAX_IDS_EXPLICIT = process.argv.includes('--max-ids');
 const MAX_IDS = parseInt(arg('--max-ids', String(DEFAULT_MAX_IDS)), 10);
 const MATCH_CONCURRENCY = parseInt(arg('--match-concurrency', String(DEFAULT_CONCURRENCY)), 10);
 const LIMIT = parseInt(arg('--limit', '0'), 10);
@@ -458,6 +459,21 @@ function startTimeForPlayer(player) {
   return Math.floor(t) - START_TIME_OVERLAP_SEC;
 }
 
+// Wieviele Match-IDs braucht DIESER Spieler? Der fixe Wert war doppelt falsch:
+// er wurde bis 2026-08-01 gar nicht durchgereicht (der Cache holte immer 200),
+// und selbst korrekt durchgereicht ist eine feste 30 im Nachhol-Fall zu klein —
+// bei einer Woche Rueckstand hat ein aktiver Spieler weit mehr Matches, und die
+// nicht geholten fehlen DAUERHAFT, weil startTime danach weiterwandert.
+// Deshalb: aus dem Rueckstand ableiten. ~25 Ranked-Spiele/Tag ist die Obergrenze
+// eines sehr aktiven Spielers; gedeckelt auf 200 (Riots Seitengroesse).
+const GAMES_PER_DAY_CEILING = 25;
+function maxIdsForPlayer(player) {
+  if (MAX_IDS_EXPLICIT) return MAX_IDS;   // CLI-Override gewinnt immer
+  const gapMs = Date.now() - player.lastSnapshotDate.getTime();
+  const gapDays = Math.max(1, Math.ceil(gapMs / 86_400_000));
+  return Math.min(200, Math.max(DEFAULT_MAX_IDS, gapDays * GAMES_PER_DAY_CEILING));
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Backup-Pattern für Rollback
 // ─────────────────────────────────────────────────────────────────────────────
@@ -578,7 +594,7 @@ async function processRegion(region) {
         region, regional,
         setNumber, hotCompKeys, recommendedItems,
         startTimeSec,
-        maxIds: MAX_IDS,
+        maxIds: maxIdsForPlayer(p),
         concurrency: MATCH_CONCURRENCY,
         force: false,
         skipCacheRefresh: false,
@@ -691,7 +707,10 @@ async function processRegion(region) {
 async function main() {
   console.log(`=== Daily Marktwert-Snapshot ===`);
   console.log(`    regions: ${REGIONS.join(', ')}`);
-  console.log(`    max-ids: ${MAX_IDS} | concurrency: ${MATCH_CONCURRENCY} | limit: ${LIMIT || 'unlimited'}`);
+  const maxIdsLabel = MAX_IDS_EXPLICIT
+    ? `${MAX_IDS} (CLI-Override)`
+    : `adaptiv ${DEFAULT_MAX_IDS}-200 (aus Rueckstand)`;
+  console.log(`    max-ids: ${maxIdsLabel} | concurrency: ${MATCH_CONCURRENCY} | limit: ${LIMIT || 'unlimited'}`);
   console.log(`    dry-run: ${DRY_RUN} | skip-backup: ${SKIP_BACKUP} | reset-cursor: ${RESET_CURSOR}`);
   console.log(`    inflight-resume: ${USE_INFLIGHT_RESUME ? 'ON' : 'OFF (default — set MV_USE_INFLIGHT_RESUME=true to enable)'}`);
 

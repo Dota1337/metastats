@@ -54,7 +54,16 @@ export async function refreshPlayerMatchCache(db, puuid, region, regional, riot,
   }
 
   // Pull recent ids first — if everything is already cached we exit cheap.
-  const recentIds = await fetchIds(regional, puuid, riot, 0, RIOT_HISTORY_PAGE, startTimeSec);
+  // `maxIds` MUSS hier durchgereicht werden: vorher stand hier fix
+  // RIOT_HISTORY_PAGE (200), womit `--max-ids 30` des Daily-Drivers wirkungslos
+  // war — pro Spieler wurden bis zu 200 IDs geholt und deren Details gefetcht
+  // und persistiert. Das trieb sowohl die Laufzeit (~2,2s statt ~1,2s/Spieler)
+  // als auch das Wachstum des 39-GB-Match-Caches. Die Backfill-Schleife unten
+  // laeuft ab RIOT_HISTORY_PAGE und ist bei maxIds < 200 ohnehin ein No-Op,
+  // es entsteht also keine Luecke. Caller ohne maxIds (player-stats,
+  // refresh-api) bekommen ueber RIOT_HISTORY_MAX weiterhin die vollen 200.
+  const firstPageSize = Math.min(maxIds, RIOT_HISTORY_PAGE);
+  const recentIds = await fetchIds(regional, puuid, riot, 0, firstPageSize, startTimeSec);
   if (recentIds.length === 0) {
     await upsertFetchState(db, puuid, region, null, 0, false);
     return { cached: 0, newMatches: 0, skippedFresh: false };

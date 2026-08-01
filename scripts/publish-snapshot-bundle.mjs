@@ -188,8 +188,16 @@ async function fetchPayload(url, attempt = 1) {
     });
     clearTimeout(t);
     if (!res.ok) {
-      if (attempt < 3 && (res.status === 502 || res.status === 503 || res.status === 504)) {
-        await new Promise(r => setTimeout(r, 2000 * attempt));
+      if (attempt < 4 && (res.status === 502 || res.status === 503 || res.status === 504)) {
+        // Backoff bewusst lang (5s / 20s / 45s statt 2s / 4s): die 502er hier
+        // sind KEINE sporadischen Netzfehler, sondern serverseitige Timeouts
+        // auf schweren jsonb-Aggregaten (7d-Fenster). Ein sofortiger Retry
+        // faehrt in dieselbe kalte Query und timeoutet erneut — der erste
+        // Versuch waermt aber Visibility-Map und Plan-Cache auf, sodass ein
+        // spaeterer Versuch echte Chancen hat. Siehe
+        // reference_tft_stats_vacuum_perf.md.
+        const backoffMs = [5_000, 20_000, 45_000][attempt - 1];
+        await new Promise(r => setTimeout(r, backoffMs));
         return fetchPayload(url, attempt + 1);
       }
       throw new Error(`HTTP ${res.status}`);
@@ -400,6 +408,11 @@ async function main() {
   }
 
   const manifestEntries = {};
+  // Pro-Endpoint-Abdeckung: ein Gesamt-Fehlerquotient allein kann verbergen,
+  // dass ein ganzer Endpoint komplett ausgefallen ist (z.B. alle 108 comps-
+  // Permutationen tot, aber 500 units/items/traits gruen -> Quotient sieht
+  // harmlos aus). Deshalb zusaetzlich pro Endpoint pruefen.
+  const endpointStats = {};
   let totalUploaded = 0;
   let totalSkipped = 0;
   let totalErrors = 0;
@@ -445,6 +458,7 @@ async function main() {
       }
     }
     const dt = ((Date.now() - t0) / 1000).toFixed(1);
+    endpointStats[endpoint] = { ok: endpointOk, total: spec.permutations.length };
     console.log(`[${ts()}] ${endpoint}: ${endpointOk}/${spec.permutations.length} ok in ${dt}s`);
   }
 
@@ -517,7 +531,34 @@ async function main() {
         }
       }
       const dDt = ((Date.now() - dT0) / 1000).toFixed(1);
+      endpointStats['comps-detail'] = { ok: detailOk, total: detailPerms.length };
       console.log(`[${ts()}] comps-detail: ${detailOk}/${detailPerms.length} ok in ${dDt}s`);
+    }
+  }
+
+  // --- Abbruch-Guards VOR dem Manifest-Write --------------------------------
+  // Das Manifest ist die einzige Lookup-Wahrheit fuer den Read-Pfad. Ein
+  // REPLACE-Lauf, der wenig oder nichts hochgeladen hat, wuerde den letzten
+  // funktionierenden Stand clobbern und die Site auf Empty-States setzen —
+  // besonders gefaehrlich in der Set-Bump-Woche, wenn die neuen Aggregate noch
+  // duenn sind. Lieber gar nicht schreiben als leer schreiben.
+  const attempted = totalUploaded + totalSkipped + totalErrors;
+  const deadEndpoints = Object.entries(endpointStats)
+    .filter(([, s]) => s.total > 0 && s.ok === 0)
+    .map(([name]) => name);
+
+  if (!DRY_RUN && !MERGE_MODE) {
+    if (Object.keys(manifestEntries).length === 0) {
+      console.error(`[${ts()}] ABORT: REPLACE-Lauf hat 0 Entries erzeugt — Manifest NICHT geschrieben.`);
+      console.error(`[${ts()}]        Der bestehende Manifest-Stand bleibt unveraendert erhalten.`);
+      process.exit(5);
+    }
+    // Bei einem Voll-Lauf ist ein Einbruch unter 50% der versuchten
+    // Permutationen kein "Teil-Erfolg" mehr, sondern ein Systemproblem.
+    if (attempted > 0 && totalUploaded / attempted < 0.5) {
+      console.error(`[${ts()}] ABORT: nur ${totalUploaded}/${attempted} Permutationen erfolgreich (<50%) — Manifest NICHT geschrieben.`);
+      console.error(`[${ts()}]        Tote Endpoints: ${deadEndpoints.join(', ') || '(keine, breiter Ausfall)'}`);
+      process.exit(5);
     }
   }
 
@@ -552,7 +593,30 @@ async function main() {
   }
 
   console.log(`[${ts()}] DONE: uploaded=${totalUploaded}, skipped=${totalSkipped}, errors=${totalErrors}, totalBytes=${(totalBytes / 1024 / 1024).toFixed(2)} MB`);
-  if (totalErrors > 0) process.exit(1);
+
+  // --- Exit-Semantik --------------------------------------------------------
+  // Vorher: JEDER Fehler -> exit 1. Folge: der Service stand dauerhaft auf
+  // "failed", weil reproduzierbar dieselben 5 von 1089 Permutationen (comps
+  // mit 7d-Fenster, Heavy-jsonb) timeouten. Ein Dauer-Rot maskiert echte
+  // Ausfaelle — niemand schaut mehr hin. Jetzt drei Bedingungen statt einer:
+  //   1. Fehlerquotient unter Toleranz UND
+  //   2. kein Endpoint komplett tot UND
+  //   3. Manifest geschrieben (oben per Guard sichergestellt).
+  const ERROR_TOLERANCE = 0.02;   // 2% — bei 1089 Permutationen sind das ~21
+  const errorRatio = attempted > 0 ? totalErrors / attempted : 0;
+
+  if (deadEndpoints.length > 0) {
+    console.error(`[${ts()}] FAIL: Endpoint(s) ohne einen einzigen Erfolg: ${deadEndpoints.join(', ')}`);
+    process.exit(1);
+  }
+  if (errorRatio > ERROR_TOLERANCE) {
+    console.error(`[${ts()}] FAIL: Fehlerquote ${(errorRatio * 100).toFixed(1)}% ueber Toleranz ${(ERROR_TOLERANCE * 100)}% (${totalErrors}/${attempted}).`);
+    process.exit(1);
+  }
+  if (totalErrors > 0) {
+    console.log(`[${ts()}] OK mit ${totalErrors} tolerierten Fehlern (${(errorRatio * 100).toFixed(2)}% < ${(ERROR_TOLERANCE * 100)}%).`);
+    console.log(`[${ts()}] Hinweis: wiederkehrende Fehler gehoeren untersucht, nicht dauerhaft toleriert.`);
+  }
 }
 
 // Exported for unit tests (the lock runs only in non-dry-run prod paths).

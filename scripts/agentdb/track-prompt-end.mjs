@@ -20,24 +20,48 @@ if (!state.trajectory_id || state.ended_at) process.exit(0);
 let verdict = 'success';
 let summary = '';
 
+const REPO = 'C:/Users/dtaub/metastats';
+const git = (args) => execSync(`git -C "${REPO}" ${args} 2>&1`, {
+  encoding: 'utf8', maxBuffer: 4 * 1024 * 1024,
+}).trim();
+
 try {
-  // 1. Recent commits seit Trajectory-Start
-  const recentCommits = execSync(
-    `git -C "C:/Users/dtaub/metastats" log --since="${state.started_at}" --format="%h %s" 2>&1`,
-    { encoding: 'utf8', maxBuffer: 1024 * 1024 },
-  ).trim();
-  const commitCount = recentCommits ? recentCommits.split('\n').length : 0;
-  summary = `${commitCount} commits since prompt`;
+  // Ein Commit-ZAEHLER ist als Gedaechtnis wertlos: ein Agent, der spaeter
+  // "1 commits since prompt" liest, weiss hinterher nichts. Wir schreiben
+  // deshalb WAS passiert ist — Commit-Subjects (die tragen bei uns die
+  // Begruendung) plus die beruehrten Bereiche. Das ist der Unterschied
+  // zwischen einer Log-Zeile und einer abrufbaren Erkenntnis.
+  const subjects = git(`log --since="${state.started_at}" --format=%s`)
+    .split('\n').filter(Boolean);
+  const commitCount = subjects.length;
+
   if (commitCount === 0) {
-    // Keine Commits → entweder Diskussion ohne Code oder abgebrochen
+    // Kein Commit heisst NICHT "nichts gelernt" — Diagnose-, Recherche- und
+    // Entscheidungs-Turns sind oft die wertvollsten. Als partial markieren,
+    // aber den Prompt als Kontext behalten.
     verdict = 'partial';
-    summary += ' (no code commits)';
+    summary = `Kein Commit — Diskussion/Diagnose. Prompt: ${(state.prompt_excerpt || '').slice(0, 160)}`;
+  } else {
+    // Betroffene Bereiche aus den geaenderten Pfaden ableiten (2 Ebenen tief,
+    // dedupliziert) — damit ist spaeter suchbar "was hing schon mal an X".
+    let areas = [];
+    try {
+      areas = [...new Set(
+        git(`log --since="${state.started_at}" --name-only --format=`)
+          .split('\n').filter(Boolean)
+          .map(p => p.split('/').slice(0, 2).join('/')),
+      )].slice(0, 12);
+    } catch { /* Pfade sind Bonus, nicht kritisch */ }
+
+    summary = subjects.slice(0, 6).map(s => `• ${s}`).join('\n');
+    if (commitCount > 6) summary += `\n• …und ${commitCount - 6} weitere`;
+    if (areas.length) summary += `\nBereiche: ${areas.join(', ')}`;
   }
 
-  // 2. revert-Commits in recent → failure-Signal
-  if (/revert/i.test(recentCommits)) {
+  // revert im Zeitfenster ist ein Warnsignal: da wurde etwas zurueckgenommen.
+  if (subjects.some(s => /revert/i.test(s))) {
     verdict = 'partial';
-    summary += ' [revert detected]';
+    summary += '\n[revert im Zeitfenster — hier ist etwas schiefgegangen]';
   }
 } catch (err) {
   summary = `verdict heuristic failed: ${err.message}`;

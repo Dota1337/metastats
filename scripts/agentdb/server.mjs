@@ -100,6 +100,53 @@ async function handleTrajectoryStart(body) {
   return { trajectory_id: Number(result.lastInsertRowid), prompt_hash: promptHash };
 }
 
+// Topic-Tag aus dem Text ableiten — gleiche Buckets wie der Memory-Indexer,
+// damit der topic-Filter in /search auch auf Trajektorien wirkt.
+function inferTopic(text) {
+  const t = text.toLowerCase();
+  if (/\btft\b|comp|champion|trait|augment|cluster|aggregat|patch|set \d/.test(t)) return 'tft';
+  if (/hetzner|systemd|crawler|deploy|vercel|supabase|volume|backup|cron/.test(t)) return 'infra';
+  if (/review|spec|plan|workflow|memory|agent|feedback/.test(t)) return 'workflow';
+  if (/next\.?js|react|typescript|api-route|component/.test(t)) return 'coding';
+  return 'general';
+}
+
+// Eine abgeschlossene Trajektorie in den Vektor-Index schreiben, damit /search
+// sie findet. Ohne das liegen Trajektorien in einer eigenen Tabelle und sind
+// fuer die Agenten unsichtbar — der Graph kennt dann die Doku, aber nicht die
+// tatsaechlich geleistete Arbeit.
+async function indexTrajectory(trajectoryId, promptExcerpt, summary, setVersion) {
+  const content = `Aufgabe: ${promptExcerpt}\n\nErgebnis:\n${summary}`;
+  const title = (promptExcerpt || `Trajektorie ${trajectoryId}`).replace(/\s+/g, ' ').slice(0, 120);
+  const vec = await embedOne(content);
+  const nowSec = Math.floor(Date.now() / 1000);
+  const hash = createHash('sha256').update(content).digest('hex');
+
+  const row = db.prepare(`
+    INSERT INTO memory_sections(
+      file_path, section_title, content, content_hash, embedding_model,
+      section_type, topic_tag, set_version, stale_after_days, frontmatter_meta,
+      last_validated_at, indexed_at
+    ) VALUES (?, ?, ?, ?, ?, 'trajectory', ?, ?, 90, NULL, ?, ?)
+    ON CONFLICT(file_path, section_title) DO UPDATE SET
+      content=excluded.content, content_hash=excluded.content_hash,
+      last_validated_at=excluded.last_validated_at, indexed_at=excluded.indexed_at
+    RETURNING id
+  `).get(
+    `trajectory/${trajectoryId}`, title, content, hash, EMBEDDING_MODEL,
+    inferTopic(content), setVersion, nowSec, nowSec,
+  );
+
+  // BigInt ist PFLICHT fuer die vec0-Tabelle: sqlite-vec lehnt einen normalen
+  // JS-Number-rowid mit "Only integers are allows for primary key values on
+  // memory_vec" ab, obwohl 477 sehr wohl ein Integer ist. Empirisch verifiziert
+  // (BigInt -> OK, Number -> throw). Nicht "vereinfachen".
+  const vecRowId = BigInt(row.id);
+  db.prepare('DELETE FROM memory_vec WHERE rowid = ?').run(vecRowId);
+  db.prepare('INSERT INTO memory_vec(rowid, embedding) VALUES (?, ?)').run(vecRowId, vecToJson(vec));
+  return Number(row.id);
+}
+
 async function handleTrajectoryEnd(body) {
   const { trajectory_id, verdict, verdict_source = 'auto', summary, tool_calls_count = 0 } = body;
   if (!trajectory_id) return { error: 'trajectory_id required' };
@@ -109,7 +156,21 @@ async function handleTrajectoryEnd(body) {
     SET ended_at = ?, verdict = ?, verdict_source = ?, summary = ?, tool_calls_count = ?
     WHERE id = ?
   `).run(endedAt, verdict, verdict_source, summary, tool_calls_count, trajectory_id);
-  return { trajectory_id, verdict };
+
+  // Nur substanzielle Trajektorien indexieren. Ein "kein Commit"-Turn ohne
+  // Inhalt wuerde den Index sonst mit Rauschen fluten und die Trefferqualitaet
+  // fuer echte Erkenntnisse senken.
+  let indexed = null;
+  try {
+    const t = db.prepare('SELECT prompt_excerpt, set_version FROM trajectories WHERE id = ?').get(trajectory_id);
+    const worthIndexing = summary && summary.length >= 40 && /•|Bereiche:/.test(summary);
+    if (worthIndexing && t) {
+      indexed = await indexTrajectory(trajectory_id, t.prompt_excerpt || '', summary, t.set_version ?? null);
+    }
+  } catch (err) {
+    console.error(`[daemon] trajectory-index failed: ${err.message}`);  // nie den End-Call scheitern lassen
+  }
+  return { trajectory_id, verdict, indexed_section_id: indexed };
 }
 
 async function handleRescore(body) {

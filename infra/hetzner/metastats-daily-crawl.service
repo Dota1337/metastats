@@ -15,12 +15,22 @@ OnSuccess=metastats-daily-crawl-catchup.service
 # 2026-06-28): der Driver ruft den Publisher selbst, aber nur wenn er real >=1
 # Region gecrawlt hat (done > 0) — einheitlich für den 00:00-Lauf und die
 # --resume-gaps-Resumes, ohne No-Op-Publishes.
-# TEMPORÄR (Phase A3, 2026-06-20): re-aktiviert die OnSuccess-Kette zum
-# Marktwert-Bootstrap-Crawler. Sobald der bestehende Match-Cache aller
-# 15 Regionen wieder warm + die Marktwert-Snapshots aktuell sind (~5-7 Nächte),
-# wird diese Zeile durch metastats-marketvalue-snapshot.service ersetzt (Phase A5).
+# Phase A5 vollzogen (2026-08-01): der Bootstrap-Crawler ist RAUS aus der
+# Nacht-Kette, der Marktwert-Snapshot haengt jetzt direkt dran.
+#
+# Warum: der Bootstrap (Phase A3, 2026-06-20) ist seit dem 2026-06-30 durch —
+# mv-region-cursor steht auf la2, alle 15 Regionen haben Snapshots. Er lief
+# aber weiter und brauchte 668 min. Zusammen mit den ~14h des Daily-Crawls
+# waren das ~25h, also MEHR als das 24h-Fenster: der Marktwert-Snapshot kam in
+# der Kette faktisch nie dran und schrieb zuletzt 6-8 statt ~52.000 Snapshots
+# pro Tag. Mit diesem Switch bekommt er den Block von ~14:00 bis 00:00 UTC.
+#
+# metastats-crawler.service bleibt bestehen (static) fuer die woechentliche
+# Aufsteiger-Discovery per manuellem/Sonntags-Trigger — nur eben nicht mehr
+# jede Nacht. Der Timer war und bleibt masked.
 # 2026-06-16 wurde diese Kette versehentlich entfernt → Pipeline 4 Tage still.
-OnSuccess=metastats-crawler.service
+# Deshalb: diese Zeile NICHT loeschen, sondern nur ihr Ziel wechseln.
+OnSuccess=metastats-marketvalue-snapshot.service
 
 [Service]
 Type=oneshot

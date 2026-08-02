@@ -119,7 +119,9 @@ const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || null;
 // fetches the cold-fill crawled at ~3 req/s (~60s/cold player), so the apex
 // regions never finished before the next 00:02 aggregate crawl killed the run.
 const riot = createRiotClient({
-  shortWindowRequests: 180,    // 90% of match-detail 200/10s
+  // 130 statt 180 (2026-08-02) — geteilter Key-Bucket, Budget siehe Kommentar
+  // in scripts/daily-marketvalue-snapshot.mjs.
+  shortWindowRequests: 130,
   shortWindowMs: 10_500,
   longWindowRequests: 28000,   // 93% of app 30000/600s
   longWindowMs: 605_000,

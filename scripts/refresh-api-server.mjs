@@ -164,10 +164,17 @@ const pool = new pg.Pool({ connectionString: DB_URL, max: 5, statement_timeout: 
 // match-detail 200/10s method limit (the external API limit). If a crawl
 // overlaps this always-on server, riot-client's 429 Retry-After handling
 // reconciles the shared bucket — no artificial sub-limit beyond Riot's own.
+// Eigene, kleine Reserve im geteilten Key-Bucket (2026-08-02): 60 statt 180
+// pro 10,5s. Dieser Dienst ist nutzerseitig und laeuft immer, die Batch-
+// Prozesse laufen stundenlang — mit je 180 kamen beide zusammen auf das
+// 1,8-Fache des Match-Detail-Limits. Ein einzelner Spieler-Refresh braucht
+// ~30 Calls, mit 60/10,5s also ~5s Wartezeit im Limiter statt ~2s. Die Route
+// hat 90s Timeout, das traegt. Budget-Herleitung siehe
+// scripts/daily-marketvalue-snapshot.mjs.
 const riot = createRiotClient({
   shortWindowRequests: 18,
   shortWindowMs: 1100,
-  longWindowRequests: 180,
+  longWindowRequests: 60,
   longWindowMs: 10_500,
 });
 

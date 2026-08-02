@@ -165,7 +165,11 @@ const CURRENT_PATCH = setMeta?.latestPatch ?? null;
 // match-detail method-limit 200:10). We cap below the match-detail method
 // (the bottleneck) so we never blow it across alternating endpoints.
 const riot = createRiotClient({
-  shortWindowRequests: 180,    // 90% of match-detail 200/10s
+  // 130 statt 180 (2026-08-02): 180 waren 86% des Match-Detail-Limits
+  // (200/10s) und produzierten schon solo abgefangene 429er — 16 binnen drei
+  // Tagen. Alle Prozesse teilen EINEN Key-Bucket; Budget siehe Kommentar in
+  // scripts/daily-marketvalue-snapshot.mjs.
+  shortWindowRequests: 130,
   shortWindowMs: 10_500,
   longWindowRequests: 28000,   // 93% of app 30000/600s
   longWindowMs: 605_000,

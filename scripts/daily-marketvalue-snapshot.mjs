@@ -188,8 +188,19 @@ const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || null;
 // Setup
 // ─────────────────────────────────────────────────────────────────────────────
 
+// RIOT-BUDGET, aufgeteilt (2026-08-02). Alle vier Prozesse teilen sich EINEN
+// Key-Bucket, hatten aber je 180/10,5s = 86% des Match-Detail-Limits (200/10s).
+// Solo schon zu dicht am Rand — gemessen 39 abgefangene 429er im Marktwert-Lauf
+// und 16 im Daily-Crawl binnen drei Tagen. Bei Ueberlappung mit der stets
+// laufenden refresh-api entsprechend mehr.
+//
+// Aufteilung: Batch-Prozesse 130, refresh-api 60. Zwei Batch-Prozesse laufen
+// nie gleichzeitig (Conflicts=), also ist der reale Worst Case
+// 130 + 60 = 190/10,5s = 18,1 req/s gegen 20 req/s Limit.
+// Fuer den Marktwert-Lauf unkritisch: durch die Aktivitaetserkennung braucht er
+// nur noch einen Bruchteil der Calls.
 const riot = createRiotClient({
-  shortWindowRequests: 180,
+  shortWindowRequests: 130,
   shortWindowMs: 10_500,
   longWindowRequests: 28000,
   longWindowMs: 605_000,

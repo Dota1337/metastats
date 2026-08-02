@@ -33,6 +33,24 @@ const DEFAULT_MIN_DELAY_MS = 5000;
 // hours and serve from cache only. The systemd-timer picks up the next
 // scheduled slot once the cooldown is past.
 const COOLDOWN_AFTER_429_MS = 12 * 60 * 60 * 1000;
+// ABGESTUFT seit 2026-08-02. Die 12h-Vollsperre bei JEDEM einzelnen 429 war
+// fuer den Fall gebaut, dass Liquipedia unsere IP dauerhaft blockt (Hetzner).
+// Auf einem frischen GitHub-Runner ist ein 429 dagegen normales Rate-Limiting:
+// im Lauf 30761900575 kam er nach ~6 Minuten Crawlen, und die 12h haben alle
+// folgenden Schritte desselben Laufs abgewuergt — Turnier-Historie und
+// Portal-Gegenprobe kamen gar nicht mehr dran.
+//
+// Neue Staffel: die ersten Treffer sind kurze Pausen (Retry-After, sonst 60s),
+// danach greift die lange Sperre. Damit ueberlebt ein Lauf normales
+// Rate-Limiting, waehrend der Runaway-Scraper-Schutz fuer den echten
+// Block-Fall erhalten bleibt.
+const SOFT_429_MAX_STRIKES = 2;
+// Env-Override nur, damit der Test nicht real 60s wartet. Im Betrieb nie setzen.
+const SOFT_429_MIN_WAIT_MS = Number(process.env.METASTATS_LIQ_429_MIN_WAIT_MS) || 60 * 1000;
+const SOFT_429_MAX_WAIT_MS = Number(process.env.METASTATS_LIQ_429_MAX_WAIT_MS) || 5 * 60 * 1000;
+// Aelter als das → der Zaehler faengt von vorn an. Verhindert, dass zwei
+// vereinzelte 429 an verschiedenen Tagen zusammen die harte Sperre ausloesen.
+const STRIKE_WINDOW_MS = 30 * 60 * 1000;
 const USER_AGENT = 'metastats-bot/1.0 (https://metastats.gg; info@metastats.gg)';
 
 // Cross-process state files. Tiny (one int / one short string), atomic writes.
@@ -42,6 +60,11 @@ const COOLDOWN_FILE = process.env.METASTATS_LIQ_COOLDOWN_FILE
   || join(tmpdir(), 'metastats-liquipedia-cooldown-until');
 const CACHE_DIR = process.env.METASTATS_LIQ_CACHE_DIR
   || join(tmpdir(), 'metastats-liquipedia-cache');
+// Muss wie der Cooldown cross-process sein: die Pipeline startet pro Schritt
+// einen eigenen node-Prozess, ein In-Memory-Zaehler waere jedes Mal wieder 0
+// und die Staffel wuerde nie eskalieren.
+const STRIKE_FILE = process.env.METASTATS_LIQ_STRIKE_FILE
+  || join(tmpdir(), 'metastats-liquipedia-429-strikes');
 // Cache entries older than this re-fetch unconditionally (still with ETag
 // so a quick 304 is possible if Liquipedia agrees). 24h is short enough that
 // a daily Re-Crawl picks up edits, long enough that a single weekly enrich
@@ -81,6 +104,34 @@ function writeCooldownUntil(ts) {
 // Manual reset hatch — `node -e "import('./scripts/lib/liquipedia-tft.mjs').then(m => m.clearCooldown())"`
 export function clearCooldown() {
   try { writeFileSync(COOLDOWN_FILE, '0'); } catch {}
+  resetStrikes();
+}
+
+// ─── 429-Staffel ────────────────────────────────────────────────────────
+// Dateiformat: "<count>:<lastAtMs>". Bewusst kein JSON — die Datei wird von
+// mehreren Prozessen geschrieben, und ein halb geschriebener Wert soll beim
+// Lesen einfach als 0 durchgehen statt zu werfen.
+
+export function readStrikes(now = Date.now()) {
+  try {
+    if (!existsSync(STRIKE_FILE)) return 0;
+    const [countRaw, atRaw] = readFileSync(STRIKE_FILE, 'utf8').trim().split(':');
+    const count = Number(countRaw) || 0;
+    const at = Number(atRaw) || 0;
+    // Ausserhalb des Fensters zaehlt der alte Stand nicht mehr.
+    if (now - at > STRIKE_WINDOW_MS) return 0;
+    return count;
+  } catch { return 0; }
+}
+
+function bumpStrikes(now = Date.now()) {
+  const next = readStrikes(now) + 1;
+  try { writeFileSync(STRIKE_FILE, `${next}:${now}`); } catch {}
+  return next;
+}
+
+export function resetStrikes() {
+  try { writeFileSync(STRIKE_FILE, '0:0'); } catch {}
 }
 
 export function cooldownStatus() {
@@ -152,7 +203,7 @@ function writeCache(url, entry) {
 // than CACHE_MAX_AGE_MS) — the alternative is to keep hammering Liquipedia
 // and escalate the block. Subsequent calls during cooldown ONLY check
 // cache. The systemd timers pick up again past the cooldown.
-export async function liquipediaJson(params, { minDelayMs, noCache } = {}) {
+export async function liquipediaJson(params, { minDelayMs, noCache, attempt = 0 } = {}) {
   const url = `${LIQUIPEDIA_API}?${new URLSearchParams({ ...params, format: 'json' })}`;
   // Fresh cache — never touches the network.
   if (!noCache) {
@@ -190,11 +241,16 @@ export async function liquipediaJson(params, { minDelayMs, noCache } = {}) {
 
   const res = await fetch(url, { headers });
 
+  // Erfolg setzt die Staffel zurueck. Ohne das wuerden sich ueber einen langen
+  // Lauf hinweg vereinzelte 429 aufaddieren, bis irgendwann die 12h-Sperre
+  // greift, obwohl zwischendurch hunderte Anfragen sauber durchliefen.
   if (res.status === 304 && cached) {
+    resetStrikes();
     writeCache(url, { ...cached, fetchedAt: Date.now() });
     return cached.body;
   }
   if (res.ok) {
+    resetStrikes();
     const body = await res.json();
     writeCache(url, {
       body,
@@ -205,13 +261,27 @@ export async function liquipediaJson(params, { minDelayMs, noCache } = {}) {
     return body;
   }
   if (res.status === 429) {
-    // Hard cool-off. No retry. Persist the until-timestamp so every other
+    const retryAfterMs = (Number(res.headers.get('Retry-After')) || 0) * 1000;
+    const strikes = bumpStrikes();
+
+    // Die ersten Treffer: kurz warten und EINMAL neu versuchen. Kein globaler
+    // Cooldown — sonst stirbt der Rest des Laufs an normalem Rate-Limiting.
+    if (strikes <= SOFT_429_MAX_STRIKES && attempt < SOFT_429_MAX_STRIKES) {
+      const waitMs = Math.min(
+        Math.max(retryAfterMs, SOFT_429_MIN_WAIT_MS),
+        SOFT_429_MAX_WAIT_MS,
+      );
+      console.log(`  [liquipedia] 429 (${strikes}/${SOFT_429_MAX_STRIKES + 1}) — warte ${Math.round(waitMs / 1000)}s und versuche erneut`);
+      await sleep(waitMs);
+      return liquipediaJson(params, { minDelayMs, noCache, attempt: attempt + 1 });
+    }
+
+    // Ab hier: harte Sperre. Persist the until-timestamp so every other
     // process in the pipeline sees the cooldown immediately.
-    const retryAfter = Number(res.headers.get('Retry-After')) || 0;
-    const minCooldown = Math.max(retryAfter * 1000, COOLDOWN_AFTER_429_MS);
+    const minCooldown = Math.max(retryAfterMs, COOLDOWN_AFTER_429_MS);
     const until = Date.now() + minCooldown;
     writeCooldownUntil(until);
-    console.log(`  [liquipedia] 429 — entering ${Math.round(minCooldown/3600_000)}h cooldown (until ${new Date(until).toISOString()})`);
+    console.log(`  [liquipedia] 429 zum ${strikes}. Mal — ${Math.round(minCooldown / 3600_000)}h Sperre (bis ${new Date(until).toISOString()})`);
     // Serve stale cache if we have it, otherwise propagate the cooldown.
     if (cached?.body) return cached.body;
     throw new LiquipediaCooldownError(until);

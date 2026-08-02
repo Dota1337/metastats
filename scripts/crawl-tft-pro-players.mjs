@@ -25,6 +25,7 @@
 
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const args = process.argv.slice(2);
 const arg = (k, d) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : d; };
@@ -276,11 +277,55 @@ async function upsertGrouped(rows, conflictKey) {
   await upsertPros(withoutTeam, conflictKey);
 }
 
-// Conflict-key rule (ONE function, parametrized — no drift): rows WITH a
-// source_page upsert on_conflict=source_page (so a later puuid resolution for a
-// CN row is a plain UPDATE); rows WITHOUT one (manual streamer path) and rows
-// whose puuid already exists under a different source_page (page rename /
-// manual-row-fill) go on_conflict=puuid. Routing happens in main().
+// Verteilt die Zeilen auf die beiden Conflict-Keys — exportiert, damit
+// scripts/test-pro-upsert-routing.mjs die Regeln pruefen kann.
+//
+// VORGESCHICHTE (der Grund fuer die Umstellung): Der woechentliche Pro-Crawl
+// starb ab 2026-06-28 fuenf Laeufe in Folge an
+//   23505 duplicate key ... tft_pro_players_puuid_key
+// Die alte Regel verglich NUR gegen den DB-Stand: eine Zeile ging auf den
+// puuid-Key, wenn ihre puuid dort unter einer ANDEREN source_page bekannt war.
+// Zwei Luecken blieben:
+//
+//   1) Reihenfolge. puuidKeyRows werden zuerst geschrieben. Aendert eine davon
+//      die source_page der bestehenden Zeile, findet die nachfolgende
+//      Seiten-Zeile ihr Ziel nicht mehr, versucht ein INSERT — und kollidiert
+//      mit unique(puuid). Genau der Trikpi-Fall.
+//   2) Duplikate INNERHALB eines Batches. Zwei Liquipedia-Seiten, die auf
+//      dieselbe puuid aufloesen (Rename, Alias), landeten beide auf dem
+//      source_page-Key und damit als zwei INSERTs auf dieselbe puuid.
+//
+// Neue Regel, robust gegen beides:
+//   - keine source_page            -> puuid-Key (manueller Streamer-Pfad)
+//   - keine puuid                  -> source_page-Key (CN-Zeilen)
+//   - puuid im DB-Stand bekannt    -> puuid-Key (egal unter welcher Seite:
+//                                     die puuid IST die Identitaet)
+//   - sonst                        -> source_page-Key
+// Zusaetzlich: pro puuid bleibt genau EINE Zeile im Batch. Die erste gewinnt,
+// die weiteren werden verworfen und protokolliert statt den Lauf zu killen.
+export function routeUpsertRows(rows, sourcePageByPuuid) {
+  const puuidKeyRows = [];
+  const pageKeyRows = [];
+  const dropped = [];
+  const seenPuuid = new Map();   // puuid -> source_page der behaltenen Zeile
+
+  for (const r of rows) {
+    if (r.puuid) {
+      if (seenPuuid.has(r.puuid)) {
+        dropped.push({ puuid: r.puuid, source_page: r.source_page, keptPage: seenPuuid.get(r.puuid) });
+        continue;
+      }
+      seenPuuid.set(r.puuid, r.source_page ?? null);
+    }
+    if (!r.source_page) { puuidKeyRows.push(r); continue; }
+    if (r.puuid && sourcePageByPuuid.has(r.puuid)) { puuidKeyRows.push(r); continue; }
+    pageKeyRows.push(r);
+  }
+  return { puuidKeyRows, pageKeyRows, dropped };
+}
+
+// Conflict-key rule (ONE function, parametrized — no drift): siehe
+// routeUpsertRows oben. Routing happens in main().
 async function upsertPros(rows, conflictKey) {
   if (rows.length === 0) return;
   if (SKIP_SUPABASE) {
@@ -577,13 +622,12 @@ async function main() {
   // under a DIFFERENT (or NULL) source_page — Liquipedia page rename or a
   // manual row gaining its page — must merge by puuid, or the INSERT trips the
   // unique(puuid) constraint and kills the whole batch.
-  const puuidKeyRows = [];
-  const pageKeyRows = [];
-  for (const r of toWrite) {
-    if (!r.source_page) { puuidKeyRows.push(r); continue; }
-    const known = EXISTING.sourcePageByPuuid.has(r.puuid) ? EXISTING.sourcePageByPuuid.get(r.puuid) : undefined;
-    if (known !== undefined && known !== r.source_page) { puuidKeyRows.push(r); continue; }
-    pageKeyRows.push(r);
+  const { puuidKeyRows, pageKeyRows, dropped } = routeUpsertRows(toWrite, EXISTING.sourcePageByPuuid);
+  if (dropped.length > 0) {
+    console.log(`  [route] ${dropped.length} Duplikat-Zeile(n) verworfen (gleiche puuid, mehrere Seiten):`);
+    for (const d of dropped.slice(0, 10)) {
+      console.log(`          ${d.source_page} == ${d.keptPage} (puuid ${String(d.puuid).slice(0, 10)}…)`);
+    }
   }
 
   // 4) Upsert
@@ -597,4 +641,10 @@ async function main() {
   console.log(`Coverage skip summary: ${JSON.stringify(skipReasons)}`);
 }
 
-main().catch(err => { console.error('FAIL:', err.message); console.error(err.stack); process.exit(1); });
+// Nur bei direktem Aufruf crawlen — der Import fuer den Routing-Test
+// (scripts/test-pro-upsert-routing.mjs) darf keinen Liquipedia-Lauf starten.
+const isMain = process.argv[1]
+  && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
+if (isMain) {
+  main().catch(err => { console.error('FAIL:', err.message); console.error(err.stack); process.exit(1); });
+}

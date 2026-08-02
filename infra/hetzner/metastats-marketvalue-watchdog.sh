@@ -51,22 +51,56 @@ if [[ -z "${DATABASE_URL:-}" ]]; then
   exit 2
 fi
 
-# Per-Region Frische-Check. NOT EXISTS Subquery ist index-only (PK auf
-# (puuid, region, snapshot_date) deckt das ab). Region-Liste hardcoded statt
-# dynamisch aus ACTIVE_REGIONS gebaut — DB-Side-Liste verhindert Shell-Quoting-
-# Bugs und bleibt synchron, weil Set-Wechsel hier ohnehin Memory-Audit triggert.
+# Per-Region ABDECKUNGS-Check (vorher: reiner Existenz-Check).
+#
+# Das alte `not exists (… snapshot_date = current_date)` war blind fuer
+# Teilabdeckung: EINE geschriebene Zeile liess eine Region als "heute frisch"
+# gelten. Eine zu 5% fertige Region — der Normalfall nach einem Abbruch —
+# loeste damit nie eine Nachholung aus. Genau das hat mitgetragen, dass die
+# Pipeline wochenlang 6-8 statt ~52.000 Snapshots pro Tag schrieb, ohne dass
+# der Watchdog anschlug.
+#
+# Jetzt: heutige Anzahl gegen den besten Tag der letzten 7 Tage. Unter 80%
+# gilt die Region als unvollstaendig. Der Referenzwert ist selbstkalibrierend
+# (Regionen sind unterschiedlich gross) und braucht keine gepflegte Sollgroesse.
+#
+# Wichtig fuer die Gueltigkeit: der inkrementelle Umbau (2026-08-02) spart nur
+# RIOT-Calls fuer inaktive Spieler — Pass 2 und damit der Snapshot laeuft
+# weiterhin fuer ALLE. Die Tagesanzahl bleibt also ~Grundgesamtheit und ist
+# weiter als Abdeckungsmass brauchbar.
+#
+# Ohne Referenz (neue Region, oder 7 Tage ohne jeden Lauf) faellt die Regel auf
+# das alte Verhalten zurueck: nur "gar keine Zeile heute" gilt als fehlend.
 MISSING=$(psql "$DATABASE_URL" -t -A -c "
-  select string_agg(r.region, ',' order by r.region)
-    from (values
+  with regions(region) as (values
       ('euw1'),('eun1'),('tr1'),('ru'),('me1'),
       ('na1'),('br1'),('la1'),('la2'),
       ('kr'),('jp1'),
       ('oc1'),('sg2'),('tw2'),('vn2')
-    ) as r(region)
-    where not exists (
-      select 1 from tft_player_marketvalue_snapshots s
-      where s.region = r.region and s.snapshot_date = current_date
-    );
+  ),
+  heute as (
+    select region, count(*)::int as n
+      from tft_player_marketvalue_snapshots
+     where snapshot_date = current_date
+     group by region
+  ),
+  referenz as (
+    select region, max(n)::int as n from (
+      select region, snapshot_date, count(*)::int as n
+        from tft_player_marketvalue_snapshots
+       where snapshot_date >= current_date - 7
+         and snapshot_date <  current_date
+       group by region, snapshot_date
+    ) t group by region
+  )
+  select string_agg(r.region || '(' || coalesce(h.n,0) || '/' || coalesce(ref.n,0) || ')', ',' order by r.region)
+    from regions r
+    left join heute h   on h.region   = r.region
+    left join referenz ref on ref.region = r.region
+   where case
+           when coalesce(ref.n,0) = 0 then coalesce(h.n,0) = 0
+           else coalesce(h.n,0) < ref.n * 0.8
+         end;
 " 2>/dev/null || echo "")
 
 # Trim whitespace

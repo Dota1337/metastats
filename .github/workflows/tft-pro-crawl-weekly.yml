@@ -19,11 +19,11 @@ env:
 jobs:
   crawl:
     runs-on: ubuntu-latest
-    # Budget (gemessen 2026-08-02): Spielerseiten-Crawl ~30 min, Turnier-
-    # Historie 150 Spieler × 8,8s ≈ 22 min, Discovery + Portal + Klassifikation
-    # ~5 min. Zusammen ~57 min — das alte 60er-Limit haette mitten in der
-    # Turnier-Historie abgewuergt und halb geschriebene Zeilen hinterlassen.
-    # Der Deckel dafuer sitzt in PIPELINE_STEPS (--max 150), nicht hier.
+    # Budget: Spielerseiten-Crawl ~3,5 min, Discovery ~1,5 min, Roster ~1,5 min,
+    # Klassifikation ~2 min. Dazu die Turnier-Historie: Liquipedia erlaubt fuer
+    # action=parse nur 1 Request / 30 s, und der Schritt holt zwei gerenderte
+    # Seiten pro Spieler — also 1 Minute pro Spieler. Bei --max 40 sind das
+    # ~40 min, zusammen ~50 min. Der Deckel sitzt in PIPELINE_STEPS, nicht hier.
     timeout-minutes: 120
 
     steps:

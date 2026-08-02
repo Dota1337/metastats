@@ -26,6 +26,16 @@ const LIQUIPEDIA_BASE = 'https://liquipedia.net';
 // occasionally double-counts when subprocess boundaries reset the in-process
 // counter. With the cross-process lock below this becomes globally enforced.
 const DEFAULT_MIN_DELAY_MS = 5000;
+// Liquipedias API-Bedingungen nennen ZWEI Grenzen, und die zweite haben wir
+// jahrelang verletzt:
+//   "Rate limit all HTTP requests to no more than 1 request per 2 seconds."
+//   "API 'action=parse' requests should not exceed 1 request per 30 seconds."
+// Der Enrich-Schritt holt gerenderte Seiten (action=parse) und tat das mit
+// 2,1s Abstand — dem Vierzehnfachen des Erlaubten. Daher das 429-Dauerfeuer
+// genau dort, waehrend die billigeren query-Schritte davor sauber durchlaufen.
+// Das ist mutmasslich auch die Vorgeschichte des "enrich starb nach Pro #7"
+// und ein plausibler Grund fuer die eskalierte Sperre der Hetzner-IP.
+const PARSE_MIN_DELAY_MS = 30_000;
 // Hard cooldown applied when Liquipedia returns 429. The old behaviour
 // (5-step exponential backoff *per call*) actively made blocks worse: each
 // retry confirms to Liquipedia we're a runaway scraper, escalating the
@@ -227,7 +237,15 @@ export async function liquipediaJson(params, { minDelayMs, noCache, attempt = 0 
     throw new LiquipediaCooldownError(cooldownUntil);
   }
 
-  await rateLimitGate(minDelayMs);
+  // Der teurere parse-Endpunkt hat sein eigenes, viel strengeres Limit. Der
+  // Aufrufer kann es nicht unterlaufen: ein kleineres minDelayMs wird hier
+  // hochgezogen, sonst genuegt ein vergessenes Argument in einem Script, um
+  // die Sperre fuer die ganze Pipeline auszuloesen.
+  const isParse = params?.action === 'parse';
+  const effectiveDelay = isParse
+    ? Math.max(minDelayMs ?? 0, PARSE_MIN_DELAY_MS)
+    : minDelayMs;
+  await rateLimitGate(effectiveDelay);
   const cached = !noCache ? readCache(url) : null;
   const headers = {
     'User-Agent': USER_AGENT,

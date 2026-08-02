@@ -687,6 +687,38 @@ async function processRegion(region) {
     return { region, players: players.length, snapshots: 0, failed, backup: backupTbl };
   }
 
+  // Abbruch-Riegel: nach einem SIGTERM mitten in Pass 1 haben wir nur einen
+  // WILLKUERLICHEN Ausschnitt der Region — die Spieler, die zufaellig vor dem
+  // Signal dran waren. Frueher lief Pass 2 damit trotzdem durch. Die Folge war
+  // ein stiller Datenfehler, kein Absturz:
+  //
+  //   Lauf 1 bricht ab, schreibt Snapshots fuer Teil-Kohorte A und persistiert
+  //   eine Population, die NUR aus A gebaut ist. Lauf 2 schliesst genau diese
+  //   Spieler aus (snapshot_date < current_date), baut die Population aus dem
+  //   Rest B und ueberschreibt sie. Ergebnis: die Multiplier derselben Region
+  //   sind gegen zwei verschiedene Bezugsgroessen gerechnet und untereinander
+  //   nicht vergleichbar.
+  //
+  // Der 30%-Floor unten faengt das NICHT: er prueft die Groesse des Samples,
+  // nicht ob es vollstaendig ist. Ein Abbruch bei 60% besteht ihn anstandslos.
+  //
+  // Deshalb: bei Abbruch gar nichts schreiben. Die Gather-Arbeit ist nicht
+  // verloren — sie liegt in tft_mv_inflight_raw und der naechste Lauf rechnet
+  // ueber die vollstaendige Kohorte. Die Region bleibt unvollstaendig (Cursor
+  // nicht auf completed), der Watchdog holt sie nach.
+  if (pass1Aborted) {
+    const inflightNote = inflightActive
+      ? 'Gather-Arbeit liegt in tft_mv_inflight_raw, naechster Lauf setzt fort'
+      : 'ACHTUNG: Inflight-Resume ist AUS, die Gather-Arbeit dieser Region ist verloren';
+    console.warn(`  [abort] Pass 2 uebersprungen — Teil-Kohorte ${gathered.length}/${players.length}`);
+    console.warn(`  [abort] Keine Snapshots, keine Population geschrieben. ${inflightNote}.`);
+    return {
+      region, players: players.length, gathered: gathered.length,
+      snapshots: 0, unrated: 0, failed, backup: backupTbl,
+      fromInflight, aborted: true,
+    };
+  }
+
   // Sanity-Floor (Audit H3): ein degradiertes Sample (z.B. Riot-429-Storm hat
   // 90% der gathers verworfen) darf die gute Population NICHT via on-conflict-
   // Upsert überschreiben → sonst sind die Marktwerte der ganzen Region für den

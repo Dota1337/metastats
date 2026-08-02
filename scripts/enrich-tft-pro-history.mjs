@@ -50,6 +50,9 @@ const SKIP_SUPABASE = hasFlag('--no-supabase');
 const VERBOSE = hasFlag('--verbose');
 const FORCE = hasFlag('--force');
 const MAX_PER_RUN = Math.max(1, parseInt(arg('--max', '250'), 10));
+// Wie viele davon zusaetzlich die /Results-Unterseite bekommen. Jeder kostet
+// 30 Sekunden extra (action=parse-Limit), deshalb bewusst klein.
+const DEEP_MAX_PER_RUN = Math.max(0, parseInt(arg('--deep-max', '10'), 10));
 
 // Staleness-Fenster. Wer aktiv Wettkaempfe spielt, aendert seine Historie
 // woechentlich; wer seit ueber einem Jahr kein Turnier hatte, praktisch nie.
@@ -142,6 +145,32 @@ function extractTeam(html) {
   if (!m) return null;
   const name = stripTags(m[1]).trim();
   return name || null;
+}
+
+// Gesamtpreisgeld aus der Infobox-Zeile "Approx. Total Winnings:".
+//
+// Warum das jetzt gebraucht wird: die Summe kam frueher aus den Eintraegen der
+// /Results-Unterseite. Die holen wir nur noch in langsamer Rotation (Liquipedia
+// erlaubt 1 parse-Request / 30 s), und die Hauptseite listet nur die besten
+// Platzierungen — bei Setsuko 11 statt 55. Wuerden wir weiter summieren, faellt
+// das Preisgeld beim flachen Lauf auf einen Bruchteil.
+//
+// Liquipedias eigener Aggregatwert ist ohnehin die bessere Quelle: er ist
+// vollstaendig und genau der Wert, gegen den crawl-tft-pro-portal-stats
+// gegenprueft.
+//
+// Rueckgabe null heisst "nicht gefunden" und darf NICHT als 0 geschrieben
+// werden — sonst loeschen wir bei einer Markup-Aenderung stillschweigend alle
+// Preisgelder.
+export function extractTotalWinnings(html) {
+  const m = html.match(/infobox-description">\s*Approx\.?\s*Total\s+Winnings:\s*<\/div>\s*<div[^>]*>([\s\S]{0,200}?)<\/div>/i);
+  if (!m) return null;
+  const txt = stripTags(m[1]).trim();
+  // Format ist "$102,158" — Tausendertrenner raus, alles andere verwerfen.
+  const digits = txt.replace(/[^0-9]/g, '');
+  if (!digits) return null;
+  const n = Number(digits);
+  return Number.isFinite(n) ? n : null;
 }
 
 // Splits the rendered HTML at heading anchors and returns the segment
@@ -309,8 +338,34 @@ export function selectProsToEnrich(rows, { now = Date.now(), maxCount = Infinity
   };
 }
 
+/**
+ * Bestimmt, wer in diesem Lauf zusaetzlich die /Results-Unterseite bekommt.
+ *
+ * Reine Funktion, testbar. Auswahl unter den ohnehin schon selektierten
+ * Spielern, aelteste Historie zuerst (NULL = nie geholt ganz vorn). Der eigene
+ * Deckel ist noetig, weil jeder tiefe Spieler den Lauf um 30 Sekunden
+ * verlaengert — Liquipedia erlaubt nur 1 parse-Request alle 30 s.
+ *
+ * Gibt ein Set von source_page zurueck.
+ */
+export function markDeepTargets(pros, { maxDeep = 10, force = false, now = Date.now() } = {}) {
+  if (force) return new Set(pros.map((p) => p.source_page).filter(Boolean));
+
+  const sorted = pros
+    .filter((p) => p.source_page)
+    .slice()
+    .sort((a, b) => {
+      const ta = a.last_history_enriched_at ? Date.parse(a.last_history_enriched_at) : -Infinity;
+      const tb = b.last_history_enriched_at ? Date.parse(b.last_history_enriched_at) : -Infinity;
+      if (ta !== tb) return ta - tb;
+      return String(a.pro_name || '').localeCompare(String(b.pro_name || ''));
+    });
+
+  return new Set(sorted.slice(0, maxDeep).map((p) => p.source_page));
+}
+
 async function loadPros() {
-  const url = `${SUPA_URL}/rest/v1/tft_pro_players?source=eq.liquipedia&select=id,puuid,pro_name,source_page,last_enriched_at,last_tournament_at,tpc_verified&order=pro_name.asc`;
+  const url = `${SUPA_URL}/rest/v1/tft_pro_players?source=eq.liquipedia&select=id,puuid,pro_name,source_page,last_enriched_at,last_history_enriched_at,last_tournament_at,tpc_verified&order=pro_name.asc`;
   const res = await fetch(url, {
     headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` },
   });
@@ -345,8 +400,12 @@ async function main() {
   console.log('=== TFT Pro Player History Enrichment ===\n');
 
   let pros;
+  // source_page der Spieler, die in diesem Lauf die volle Historie bekommen.
+  let deepPages = new Set();
   if (SINGLE_PLAYER) {
     pros = [{ puuid: 'DRY-RUN', pro_name: SINGLE_PLAYER, source_page: SINGLE_PLAYER }];
+    // Beim Einzelabruf will man die vollen Daten sehen, nicht den flachen Lauf.
+    deepPages = new Set([SINGLE_PLAYER]);
   } else if (SKIP_SUPABASE) {
     console.error('Either --player <Name> or Supabase access is required.');
     process.exit(1);
@@ -354,11 +413,16 @@ async function main() {
     const all = await loadPros();
     const pick = selectProsToEnrich(all, { maxCount: MAX_PER_RUN, force: FORCE });
     pros = pick.selected;
+    // Tiefe Rotation: die Ausgewaehlten mit der aeltesten Historie bekommen
+    // zusaetzlich die /Results-Unterseite. Jeder tiefe Spieler kostet 30s
+    // extra, deshalb ein eigener, kleiner Deckel.
+    deepPages = markDeepTargets(pros, { maxDeep: DEEP_MAX_PER_RUN, force: FORCE });
     console.log(
       `${all.length} liquipedia rows, ${pick.totalWithPage} with source_page, `
       + `${pick.staleCount} stale${FORCE ? ' (--force: alle)' : ''} → ${pros.length} in diesem Lauf`
       + (pick.deferred > 0 ? `, ${pick.deferred} auf naechsten Lauf verschoben (--max ${MAX_PER_RUN})` : ''),
     );
+    console.log(`   davon ${deepPages.size} mit voller Turnier-Historie (--deep-max ${DEEP_MAX_PER_RUN})`);
   }
   if (LIMIT > 0) pros = pros.slice(0, LIMIT);
   pros = pros.filter((p) => p.source_page);
@@ -367,41 +431,73 @@ async function main() {
   let tournamentsTotal = 0;
   let imagesFilled = 0;
   let errors = 0;
+  let deepDone = 0;
+  let missingWinnings = 0;
 
   for (let i = 0; i < pros.length; i++) {
     const pro = pros[i];
     try {
       // The shared helper enforces the global rate-limit gate around each
       // call, so manual sleeps here would just compound the wait.
+      const deep = deepPages.has(pro.source_page);
       const html = await fetchRenderedHtml(pro.source_page);
       const image_url = extractImageUrl(html);
       const team = extractTeam(html);
-      const resultsHtml = await fetchResultsSubpage(pro.source_page);
-      const tournament_results = extractResults(resultsHtml || html);
-      const total_earnings_usd = tournament_results.reduce((s, r) => s + (r.prize_usd || 0), 0);
+      // Liquipedias eigener Aggregatwert aus der Infobox. Beim flachen Lauf ist
+      // er die EINZIGE korrekte Quelle: die Hauptseite listet nur die besten
+      // Platzierungen, eine Summe daraus waere ein Bruchteil des echten Werts.
+      const infoboxWinnings = extractTotalWinnings(html);
+
+      let tournament_results = null;
+      if (deep) {
+        const resultsHtml = await fetchResultsSubpage(pro.source_page);
+        tournament_results = extractResults(resultsHtml || html);
+        deepDone++;
+      }
+
+      // Infobox gewinnt, weil vollstaendig. Nur wenn sie fehlt (Markup-Aenderung)
+      // und wir gerade die volle Historie geholt haben, summieren wir ersatzweise.
+      const summed = tournament_results
+        ? tournament_results.reduce((s, r) => s + (r.prize_usd || 0), 0)
+        : null;
+      const total_earnings_usd = infoboxWinnings ?? summed;
+      if (infoboxWinnings === null) missingWinnings++;
 
       if (VERBOSE || SKIP_SUPABASE) {
-        console.log(`${pro.pro_name} (${pro.source_page}): ${tournament_results.length} results, $${total_earnings_usd}, team=${team ?? '—'}, image=${image_url ? 'yes' : 'no'}`);
-        if (tournament_results.length > 0) {
+        console.log(`${pro.pro_name} (${pro.source_page})${deep ? ' [tief]' : ''}: ${tournament_results ? tournament_results.length + ' results' : 'Historie unveraendert'}, $${total_earnings_usd ?? '—'}, team=${team ?? '—'}, image=${image_url ? 'yes' : 'no'}`);
+        if (tournament_results?.length > 0) {
           console.log('  sample:', tournament_results.slice(0, 3));
         }
       }
 
       if (!SKIP_SUPABASE) {
-        await updatePro(pro, {
-          tournament_results,
-          total_earnings_usd,
+        const now = new Date().toISOString();
+        const patch = {
           image_url,
           // Authoritative (see extractTeam): null = genuinely teamless, and it
           // heals stale rosters that a previous run wrote.
           team,
           // Nur im Erfolgsfall — ein fehlgeschlagener Pro muss beim naechsten
           // Lauf wieder vorne stehen, nicht 7 Tage als "frisch" gelten.
-          last_enriched_at: new Date().toISOString(),
-        });
+          last_enriched_at: now,
+        };
+        // WICHTIG: tournament_results nur schreiben, wenn wir die Unterseite
+        // wirklich geholt haben. Sonst wuerde der flache Lauf die volle
+        // Historie mit dem Teilstand der Hauptseite ueberschreiben — bei
+        // Setsuko 11 statt 55 Eintraegen.
+        if (tournament_results !== null) {
+          patch.tournament_results = tournament_results;
+          patch.last_history_enriched_at = now;
+        }
+        // null hiesse "nicht gefunden". Das darf die vorhandene Summe nicht
+        // loeschen — siehe extractTotalWinnings.
+        if (total_earnings_usd !== null && total_earnings_usd !== undefined) {
+          patch.total_earnings_usd = total_earnings_usd;
+        }
+        await updatePro(pro, patch);
       }
 
-      tournamentsTotal += tournament_results.length;
+      tournamentsTotal += tournament_results?.length ?? 0;
       if (image_url) imagesFilled++;
     } catch (e) {
       errors++;
@@ -416,7 +512,12 @@ async function main() {
     }
   }
 
-  console.log(`\nDone. Processed ${pros.length} pros: ${tournamentsTotal} tournament rows, ${imagesFilled} images, ${errors} errors.`);
+  console.log(`\nDone. Processed ${pros.length} pros (${deepDone} mit voller Historie): ${tournamentsTotal} tournament rows, ${imagesFilled} images, ${errors} errors.`);
+  if (missingWinnings > 0) {
+    // Laut heisst hier: wenn Liquipedia die Infobox-Zeile umbenennt, faellt es
+    // sofort auf, statt dass die Preisgelder stillschweigend einfrieren.
+    console.warn(`WARNUNG: bei ${missingWinnings}/${pros.length} Spielern war keine "Approx. Total Winnings"-Zeile lesbar — Preisgeld unveraendert gelassen.`);
+  }
 }
 
 // Nur ausfuehren, wenn direkt aufgerufen — sonst startet ein Import von

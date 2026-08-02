@@ -9,7 +9,7 @@
  *
  *   node scripts/test-enrich-selection.mjs
  */
-import { selectProsToEnrich } from './enrich-tft-pro-history.mjs';
+import { selectProsToEnrich, markDeepTargets, extractTotalWinnings } from './enrich-tft-pro-history.mjs';
 
 const NOW = Date.parse('2026-08-02T12:00:00Z');
 const DAY = 24 * 60 * 60 * 1000;
@@ -111,6 +111,66 @@ check('--force respektiert den Deckel', pick(many, { force: true, maxCount: 1 })
     clock += 7 * DAY;
   }
   check('kein Pro verhungert ueber 4 Runden', seen.size === 10, `nur ${seen.size}/10 gesehen`);
+}
+
+// ── markDeepTargets: wer bekommt die teure /Results-Unterseite? ────────────
+// Nur diese Unterseite traegt die volle Historie, kostet aber 30s extra
+// (action=parse-Limit). Die Rotation muss deshalb zuverlaessig die aeltesten
+// zuerst nehmen, sonst bekommen immer dieselben Spieler frische Daten.
+console.log('\nmarkDeepTargets\n');
+{
+  const pros = [
+    { pro_name: 'nie', source_page: 'nie', last_history_enriched_at: null },
+    { pro_name: 'alt', source_page: 'alt', last_history_enriched_at: ago(90) },
+    { pro_name: 'frisch', source_page: 'frisch', last_history_enriched_at: ago(2) },
+  ];
+  const d = markDeepTargets(pros, { maxDeep: 2, now: NOW });
+  check('nie geholt kommt zuerst', d.has('nie'));
+  check('danach die aelteste Historie', d.has('alt'));
+  check('die frische bleibt aussen vor', !d.has('frisch'));
+  check('Deckel wird eingehalten', d.size === 2);
+}
+{
+  const pros = [{ pro_name: 'a', source_page: 'a', last_history_enriched_at: ago(2) }];
+  check('maxDeep 0 waehlt niemanden', markDeepTargets(pros, { maxDeep: 0, now: NOW }).size === 0);
+  check('--force nimmt alle', markDeepTargets(pros, { maxDeep: 0, force: true, now: NOW }).size === 1);
+  check('ohne source_page nie tief',
+    markDeepTargets([{ pro_name: 'x', source_page: null }], { maxDeep: 5, now: NOW }).size === 0);
+}
+{
+  // Rotation ueber Runden: 6 Spieler, 2 tiefe Plaetze pro Lauf -> nach 3
+  // Runden muss jeder einmal seine volle Historie bekommen haben.
+  const pool = Array.from({ length: 6 }, (_, i) => ({
+    pro_name: `q${i}`, source_page: `q${i}`,
+    last_history_enriched_at: new Date(NOW - (100 - i) * DAY).toISOString(),
+  }));
+  const seen = new Set();
+  let clock = NOW;
+  for (let r = 0; r < 3; r++) {
+    for (const page of markDeepTargets(pool, { maxDeep: 2, now: clock })) {
+      seen.add(page);
+      pool.find((p) => p.source_page === page).last_history_enriched_at = new Date(clock).toISOString();
+    }
+    clock += 7 * DAY;
+  }
+  check('tiefe Rotation erfasst jeden', seen.size === 6, `nur ${seen.size}/6`);
+}
+
+// ── extractTotalWinnings ──────────────────────────────────────────────────
+// Kritisch: null darf NIE als 0 durchgehen, sonst loescht eine
+// Markup-Aenderung stillschweigend saemtliche Preisgelder.
+console.log('\nextractTotalWinnings\n');
+{
+  const real = '<div class="infobox-cell-2 infobox-description">Approx. Total Winnings:</div><div style="width:50%">$102,158</div></div>';
+  check('liest die echte Infobox-Zeile', extractTotalWinnings(real) === 102158);
+  check('Summe mit mehreren Trennern', extractTotalWinnings(real.replace('$102,158', '$1,392,271')) === 1392271);
+  check('ohne Trenner', extractTotalWinnings(real.replace('$102,158', '$500')) === 500);
+  check('fehlende Zeile -> null', extractTotalWinnings('<div>nichts hier</div>') === null);
+  check('leerer Wert -> null, nicht 0', extractTotalWinnings(real.replace('$102,158', '')) === null);
+  check('Text ohne Ziffern -> null', extractTotalWinnings(real.replace('$102,158', 'unbekannt')) === null);
+  check('echte Null bleibt 0', extractTotalWinnings(real.replace('$102,158', '$0')) === 0);
+  check('verlinkter Wert wird entpackt',
+    extractTotalWinnings(real.replace('$102,158', '<a href="/x">$7,500</a>')) === 7500);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

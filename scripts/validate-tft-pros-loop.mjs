@@ -225,13 +225,16 @@ const PIPELINE_STEPS = [
   // laufen, sonst haben frisch gestempelte TPC-Pros keine tournament_results
   // und loesen den Anomalie-Detektor aus.
   { script: 'crawl-tft-tpc-roster.mjs', args: [], group: 'liquipedia' },
-  // Turnier-Historie + Preisgelder pro Spieler. Mit Abstand teuerster Schritt:
-  // er holt zwei GERENDERTE Seiten pro Spieler, und fuer action=parse erlaubt
-  // Liquipedia nur 1 Request / 30 Sekunden. Das sind 60 Sekunden pro Spieler,
-  // nicht die frueher angenommenen 8,8. Der Deckel muss deshalb klein bleiben:
-  // 40 Spieler ≈ 40 Minuten. Die Staleness-Auswahl sorgt dafuer, dass die
-  // Plaetze an die aeltesten Eintraege gehen.
-  { script: 'enrich-tft-pro-history.mjs', args: ['--max', '40'], group: 'liquipedia' },
+  // Turnier-Historie + Preisgelder pro Spieler. Teuerster Schritt: Liquipedia
+  // erlaubt fuer action=parse nur 1 Request / 30 Sekunden.
+  //
+  // Deshalb zweistufig. Der flache Durchgang holt nur die Hauptseite (Bild,
+  // Team, Infobox-Gesamtpreisgeld) — 30s pro Spieler. Die volle Historie
+  // liegt auf der /Results-Unterseite und kostet 30s extra; die bekommen pro
+  // Lauf nur die 10 Spieler mit der aeltesten Historie, in Rotation.
+  //
+  // Budget: 80 × 30s + 10 × 30s ≈ 45 Minuten.
+  { script: 'enrich-tft-pro-history.mjs', args: ['--max', '80', '--deep-max', '10'], group: 'liquipedia' },
   // Top-Earners-Gegenprobe von der Portal-Seite. Billig (1 Request).
   { script: 'crawl-tft-pro-portal-stats.mjs', args: [], group: 'liquipedia' },
   // Optionaler EsportsEarnings-Abgleich; skippt still ohne API-Key.

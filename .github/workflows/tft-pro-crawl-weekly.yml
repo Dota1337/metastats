@@ -21,9 +21,9 @@ jobs:
     runs-on: ubuntu-latest
     # Budget: Spielerseiten-Crawl ~3,5 min, Discovery ~1,5 min, Roster ~1,5 min,
     # Klassifikation ~2 min. Dazu die Turnier-Historie: Liquipedia erlaubt fuer
-    # action=parse nur 1 Request / 30 s, und der Schritt holt zwei gerenderte
-    # Seiten pro Spieler — also 1 Minute pro Spieler. Bei --max 40 sind das
-    # ~40 min, zusammen ~50 min. Der Deckel sitzt in PIPELINE_STEPS, nicht hier.
+    # action=parse nur 1 Request / 30 s. Der flache Durchgang holt eine Seite
+    # pro Spieler (80 = 40 min), die volle Historie nur fuer 10 Spieler in
+    # Rotation (+5 min). Zusammen ~55 min. Die Deckel sitzen in PIPELINE_STEPS.
     timeout-minutes: 120
 
     steps:

@@ -44,21 +44,10 @@ function encodePasswordInPgUrl(url) {
   return `${url.slice(0, schemeEnd + 3)}${user}:${encodeURIComponent(pass)}${rest}`;
 }
 
-async function main() {
-  const file = process.argv[2];
-  if (!file) {
-    console.error('usage: node scripts/db-exec.mjs <file.sql>');
-    process.exit(1);
-  }
-  const env = { ...process.env, ...readEnv() };
-  const dbUrl = env.SUPABASE_DB_URL || env.DATABASE_URL;
-  if (!dbUrl) { console.error('ERROR: DATABASE_URL not set'); process.exit(1); }
-
-  const sql = readFileSync(resolve(file), 'utf8');
-  // Split on `;` at statement boundary, but stay inside $$-quoted bodies
-  // (PG function bodies legitimately contain semicolons). Tags like `$$` or
-  // `$tag$` open/close a dollar-quoted block; the content between matching
-  // tags is opaque.
+// Zerlegt eine .sql-Datei in Einzel-Statements. Ein Semikolon trennt NUR,
+// wenn es nicht in einem Kommentar, String-Literal oder $$-Block steht.
+// Exportiert, damit scripts/test-db-exec-split.mjs das pruefen kann.
+export function splitStatements(sql) {
   const statements = [];
   let buf = '';
   let dollarTag = null;
@@ -73,6 +62,44 @@ async function main() {
         continue;
       }
       buf += c;
+      continue;
+    }
+    // `--` line comment: bis zum Zeilenende opak. Ohne das trennt ein
+    // Semikolon IM Kommentar das Statement und der Rest landet als eigenes
+    // "Statement" beim Server ("syntax error at or near ..."). Genau das ist
+    // am 2026-08-02 mit Migration 0051 passiert.
+    if (c === '-' && sql[i + 1] === '-') {
+      const nl = sql.indexOf('\n', i);
+      const end = nl === -1 ? sql.length : nl;
+      buf += sql.slice(i, end);
+      i = end - 1;
+      continue;
+    }
+    // `/* … */` Blockkommentar — dito. Postgres erlaubt Verschachtelung,
+    // deshalb mitzaehlen statt beim ersten `*/` aufzuhoeren.
+    if (c === '/' && sql[i + 1] === '*') {
+      let depth = 1;
+      let j = i + 2;
+      while (j < sql.length && depth > 0) {
+        if (sql[j] === '/' && sql[j + 1] === '*') { depth++; j += 2; continue; }
+        if (sql[j] === '*' && sql[j + 1] === '/') { depth--; j += 2; continue; }
+        j++;
+      }
+      buf += sql.slice(i, j);
+      i = j - 1;
+      continue;
+    }
+    // Einfach gequoteter String — ein Semikolon darin ist Nutzlast, kein
+    // Trenner. '' innerhalb ist das SQL-Escape fuer ein Apostroph.
+    if (c === "'") {
+      let j = i + 1;
+      while (j < sql.length) {
+        if (sql[j] === "'" && sql[j + 1] === "'") { j += 2; continue; }
+        if (sql[j] === "'") { j++; break; }
+        j++;
+      }
+      buf += sql.slice(i, j);
+      i = j - 1;
       continue;
     }
     if (c === '$') {
@@ -99,10 +126,34 @@ async function main() {
   // the headline preview we print per statement).
   const cleaned = statements
     .map(s => s.split('\n').filter(l => !l.trim().startsWith('--')).join('\n').trim())
-    .filter(Boolean);
+    // Ein Rest, der nur noch aus einem Blockkommentar besteht, ist kein
+    // Statement. Postgres nimmt es zwar klaglos an, aber es taucht als
+    // sinnloses "0 rows" im Protokoll auf. Die Ersetzung dient NUR dem
+    // Leer-Test — abgeschickt wird der unveraenderte Text.
+    .filter(s => s.replace(/\/\*[\s\S]*?\*\//g, '').trim().length > 0);
+  // BEKANNTE GRENZE: die `--`-Zeilenfilterung oben greift auch INNERHALB von
+  // $$-Bloecken, entfernt dort also Kommentare aus dem gespeicherten
+  // Funktionsrumpf. Fuer uns bisher folgenlos (unsere Funktionen tragen keine
+  // Zeilenkommentare), aber beim naechsten Anlass sauber loesen statt hier
+  // still weiterzuleben.
   // Re-bind for the loop below.
   statements.length = 0;
   for (const s of cleaned) statements.push(s);
+  return statements;
+}
+
+async function main() {
+  const file = process.argv[2];
+  if (!file) {
+    console.error('usage: node scripts/db-exec.mjs <file.sql>');
+    process.exit(1);
+  }
+  const env = { ...process.env, ...readEnv() };
+  const dbUrl = env.SUPABASE_DB_URL || env.DATABASE_URL;
+  if (!dbUrl) { console.error('ERROR: DATABASE_URL not set'); process.exit(1); }
+
+  const sql = readFileSync(resolve(file), 'utf8');
+  const statements = splitStatements(sql);
 
   const client = new pg.Client({ connectionString: encodePasswordInPgUrl(dbUrl), ssl: { rejectUnauthorized: false } });
   await client.connect();
@@ -130,4 +181,9 @@ async function main() {
   if (failures > 0) process.exit(1);
 }
 
-main().catch(err => { console.error('FATAL:', err.message); process.exit(1); });
+// Nur ausfuehren, wenn direkt aufgerufen — der Import fuer den Splitter-Test
+// (scripts/test-db-exec-split.mjs) darf keine DB-Verbindung aufmachen.
+const isMain = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
+if (isMain) {
+  main().catch(err => { console.error('FATAL:', err.message); process.exit(1); });
+}

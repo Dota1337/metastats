@@ -303,11 +303,17 @@ async function upsertGrouped(rows, conflictKey) {
 //   - sonst                        -> source_page-Key
 // Zusaetzlich: pro puuid bleibt genau EINE Zeile im Batch. Die erste gewinnt,
 // die weiteren werden verworfen und protokolliert statt den Lauf zu killen.
-export function routeUpsertRows(rows, sourcePageByPuuid) {
+// `seenPuuid` kann von aussen durchgereicht werden, damit MEHRERE Batches sich
+// eine Dedup-Sicht teilen. Genau daran starb der Lauf: die CN-Zeilen gingen als
+// einziger Batch komplett am Routing vorbei (upsertGrouped(uniqueCn, ...)), also
+// weder durch die Conflict-Key-Wahl noch durch die Dedup. Eine CN-Seite, die auf
+// eine bereits existierende puuid aufloest, wurde damit als INSERT geschrieben
+// und riss mit 23505 den ganzen Lauf ab — jede Woche, seit Wochen. Folge: von
+// 247 geparsten CN-Zeilen war KEINE einzige in der DB.
+export function routeUpsertRows(rows, sourcePageByPuuid, seenPuuid = new Map()) {
   const puuidKeyRows = [];
   const pageKeyRows = [];
   const dropped = [];
-  const seenPuuid = new Map();   // puuid -> source_page der behaltenen Zeile
 
   for (const r of rows) {
     if (r.puuid) {
@@ -622,10 +628,20 @@ async function main() {
   // under a DIFFERENT (or NULL) source_page — Liquipedia page rename or a
   // manual row gaining its page — must merge by puuid, or the INSERT trips the
   // unique(puuid) constraint and kills the whole batch.
-  const { puuidKeyRows, pageKeyRows, dropped } = routeUpsertRows(toWrite, EXISTING.sourcePageByPuuid);
-  if (dropped.length > 0) {
-    console.log(`  [route] ${dropped.length} Duplikat-Zeile(n) verworfen (gleiche puuid, mehrere Seiten):`);
-    for (const d of dropped.slice(0, 10)) {
+  // Geteilte Dedup-Sicht ueber BEIDE Batches: eine puuid kann in den Riot- und
+  // in den CN-Zeilen vorkommen (CN-Seite eines Pros, der auch eine normale
+  // Liquipedia-Seite hat). Zwei getrennte Routing-Laeufe wuerden das nicht
+  // sehen und beide Zeilen einfuegen.
+  const seenPuuid = new Map();
+  const { puuidKeyRows, pageKeyRows, dropped } = routeUpsertRows(toWrite, EXISTING.sourcePageByPuuid, seenPuuid);
+  // CN-Zeilen laufen jetzt durch dieselbe Regel. Sie bleiben ein eigener
+  // Upsert-Aufruf, weil ihr Spaltensatz vom Riot-Pfad abweicht (Schema B2,
+  // puuid-lose Rows) und PostgREST pro Payload einheitliche Keys verlangt.
+  const cn = routeUpsertRows(uniqueCn, EXISTING.sourcePageByPuuid, seenPuuid);
+  const allDropped = [...dropped, ...cn.dropped];
+  if (allDropped.length > 0) {
+    console.log(`  [route] ${allDropped.length} Duplikat-Zeile(n) verworfen (gleiche puuid, mehrere Seiten):`);
+    for (const d of allDropped.slice(0, 10)) {
       console.log(`          ${d.source_page} == ${d.keptPage} (puuid ${String(d.puuid).slice(0, 10)}…)`);
     }
   }
@@ -634,7 +650,8 @@ async function main() {
   console.log('\n[3/3] Writing to Supabase …');
   await upsertGrouped(puuidKeyRows, 'puuid');
   await upsertGrouped(pageKeyRows, 'source_page');
-  await upsertGrouped(uniqueCn, 'source_page');
+  await upsertGrouped(cn.puuidKeyRows, 'puuid');
+  await upsertGrouped(cn.pageKeyRows, 'source_page');
 
   const total = ((Date.now() - t0) / 1000).toFixed(0);
   console.log(`\nDone. ${toWrite.length + uniqueCn.length} pros (${uniqueCn.length} cn) in ${total}s.`);

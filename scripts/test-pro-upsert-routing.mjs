@@ -97,6 +97,54 @@ console.log('=== routeUpsertRows ===');
   check('Invariante: keine puuid doppelt nach dem Routing', all.length, new Set(all).size);
 }
 
+// ── Geteilte Dedup-Sicht ueber mehrere Batches ───────────────────────────────
+// Regression 2026-08-02: die CN-Zeilen liefen als einziger Batch komplett an
+// routeUpsertRows vorbei (upsertGrouped(uniqueCn, 'source_page')). Eine
+// CN-Seite, die auf eine schon existierende puuid aufloest, wurde damit als
+// INSERT geschrieben und riss den Lauf mit 23505 ab. Sichtbare Folge: von 247
+// geparsten CN-Zeilen war KEINE in der DB — die Tabelle hatte 625 liquipedia
+// + 2 manual und null cn.
+{
+  const seen = new Map();
+  const known = new Map([['P1', 'IiLucky']]);
+  const riot = routeUpsertRows([{ puuid: 'P1', source_page: 'IiLucky' }], known, seen);
+  check('Batch 1: bekannte puuid -> puuid-Key', [riot.puuidKeyRows.length, riot.pageKeyRows.length], [1, 0]);
+
+  const cn = routeUpsertRows([{ puuid: 'P1', source_page: 'CN_Lucky' }], known, seen);
+  check('Batch 2: dieselbe puuid wird nicht erneut geschrieben',
+    [cn.puuidKeyRows.length, cn.pageKeyRows.length], [0, 0]);
+  check('Batch 2: die Dublette ist protokolliert', cn.dropped.length, 1);
+}
+{
+  // Neue puuid, in der DB unbekannt, in beiden Batches: genau EINE Zeile darf
+  // geschrieben werden, sonst kollidieren zwei INSERTs miteinander.
+  const seen = new Map();
+  const a = routeUpsertRows([{ puuid: 'NEU', source_page: 'Seite_A' }], new Map(), seen);
+  const b = routeUpsertRows([{ puuid: 'NEU', source_page: 'Seite_B' }], new Map(), seen);
+  const written = a.puuidKeyRows.length + a.pageKeyRows.length
+    + b.puuidKeyRows.length + b.pageKeyRows.length;
+  check('neue puuid in zwei Batches -> genau eine Zeile', written, 1);
+}
+{
+  // Schema B2: puuid-lose CN-Zeilen muessen weiterhin alle durchgehen.
+  const seen = new Map();
+  const r = routeUpsertRows(
+    [{ puuid: null, source_page: 'CN_A' }, { puuid: null, source_page: 'CN_B' }],
+    new Map(), seen,
+  );
+  check('puuid-lose CN-Zeilen gehen alle auf den source_page-Key',
+    [r.pageKeyRows.length, r.dropped.length], [2, 0]);
+}
+{
+  // Ein geteilter Zustand darf den Default-Fall nicht veraendern: ohne
+  // uebergebene Map muss jeder Aufruf fuer sich stehen.
+  const known = new Map();
+  const x = routeUpsertRows([{ puuid: 'Q', source_page: 'S1' }], known);
+  const y = routeUpsertRows([{ puuid: 'Q', source_page: 'S1' }], known);
+  check('ohne geteilte Map bleiben Aufrufe unabhaengig',
+    [x.pageKeyRows.length, y.pageKeyRows.length], [1, 1]);
+}
+
 console.log('');
 if (failed > 0) { console.error(`=== ${failed} FEHLER ===`); process.exit(1); }
 console.log('=== alle Tests gruen ===');

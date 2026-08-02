@@ -63,10 +63,28 @@ export async function fetchD2PlusEntries(region, rl, apiKey, opts = {}) {
   let calls = 0;
 
   // 1) Apex — je ein Call, liefert die komplette Liga am Stueck.
+  //
+  // GRENZE (2026-08-02 gemessen): der Endpoint deckelt bei 10.000 Eintraegen.
+  // euw1 und kr liefern beide exakt 10.000, also ist das ein Cap, kein Zufall,
+  // und ein `page`-Parameter existiert nicht. In grossen Regionen fehlen daher
+  // Master-Spieler jenseits der 10.000. Das ist bewusst nicht schlimm: wer
+  // keinen Eintrag hat, gilt in splitByActivity als AKTIV und wird ganz normal
+  // geladen — wir verlieren Ersparnis, nie Korrektheit.
   for (const tier of APEX_TIERS) {
-    const data = await rl(
-      `https://${region}.api.riotgames.com/tft/league/v1/${tier}?api_key=${apiKey}`,
-    );
+    let data;
+    try {
+      data = await rl(
+        `https://${region}.api.riotgames.com/tft/league/v1/${tier}?api_key=${apiKey}`,
+      );
+    } catch (err) {
+      // Pro Tier auffangen. Ohne das reisst ein einzelner 504 — bei den
+      // grossen Apex-Antworten real beobachtet — den kompletten Regions-Abruf
+      // mit, und ALLE Spieler der Region gelten wieder als aktiv. Ein
+      // Teilergebnis ist deutlich mehr wert als gar keins.
+      log(`  [entries] ${tier}: Abruf fehlgeschlagen (${err.message}) — Tier uebersprungen`);
+      calls++;
+      continue;
+    }
     calls++;
     const entries = data?.entries;
     if (!Array.isArray(entries)) {
@@ -87,19 +105,34 @@ export async function fetchD2PlusEntries(region, rl, apiKey, opts = {}) {
     let page = 1;
     let got = 0;
     while (page <= PAGE_GUARD) {
-      const data = await rl(
-        `https://${region}.api.riotgames.com/tft/league/v1/entries/DIAMOND/${div}`
-        + `?page=${page}&api_key=${apiKey}`,
-      );
+      let data;
+      try {
+        data = await rl(
+          `https://${region}.api.riotgames.com/tft/league/v1/entries/DIAMOND/${div}`
+          + `?page=${page}&api_key=${apiKey}`,
+        );
+      } catch (err) {
+        // Seite verloren -> Division hier abbrechen, aber das bisher Geholte
+        // behalten. Die Spieler der fehlenden Seiten gelten dann als aktiv.
+        log(`  [entries] DIAMOND ${div} Seite ${page}: ${err.message} — Rest der Division uebersprungen`);
+        calls++;
+        break;
+      }
       calls++;
       if (!Array.isArray(data) || data.length === 0) break;
+      let added = 0;
       for (const e of data) {
         if (!e?.puuid) continue;
         // Apex gewinnt: ein Spieler kann waehrend des Abrufs aufgestiegen sein
         // und dann in beiden Listen auftauchen.
-        if (!out.has(e.puuid)) out.set(e.puuid, normalize(e, 'DIAMOND'));
+        if (!out.has(e.puuid)) { out.set(e.puuid, normalize(e, 'DIAMOND')); added++; }
       }
-      got += data.length;
+      got += added;
+      // Bringt eine Seite ausschliesslich Duplikate, laeuft die Paginierung
+      // ins Leere (API liefert dieselbe Seite erneut, oder wir sind am Ende
+      // und bekommen Ueberlappung). Sofort abbrechen statt bis PAGE_GUARD
+      // weiterzufragen — das waeren sonst bis zu 60 nutzlose Calls je Division.
+      if (added === 0) break;
       page++;
     }
     log(`  [entries] DIAMOND ${div}: ${got}`);

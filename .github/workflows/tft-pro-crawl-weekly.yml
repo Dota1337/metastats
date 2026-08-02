@@ -43,3 +43,20 @@ jobs:
       - name: Crawl TFT pro players
         if: env.RIOT_API_KEY_TFT != ''
         run: node scripts/crawl-tft-pro-players.mjs
+
+      # Von der Hetzner-Box hierher verlagert (2026-08-02): Liquipedia
+      # beantwortet Anfragen der Box-IP durchgaengig mit 429 — auch einen
+      # nackten siteinfo-Call, unabhaengig von User-Agent und Endpoint. Jeder
+      # Versuch loeste dort nur einen neuen 12h-Cooldown aus. Von GitHub
+      # Actions aus laeuft derselbe Code problemlos (1082 Spielerseiten im
+      # Lauf davor).
+      #
+      # Reihenfolge ist wichtig: erst die Pro-Zeilen anlegen, dann die
+      # TPC-Roster darauf abbilden — der Roster setzt nur ein Flag auf
+      # existierenden Spielern.
+      #
+      # continue-on-error, weil ein Liquipedia-Ausfall den vorangegangenen,
+      # erfolgreichen Pro-Crawl nicht rot faerben soll.
+      - name: Crawl TPC roster (Liquipedia)
+        continue-on-error: true
+        run: node scripts/crawl-tft-tpc-roster.mjs

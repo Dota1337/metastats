@@ -1,3 +1,14 @@
+# STILLGELEGT 2026-08-02 — NICHT wieder aktivieren.
+#
+# Liquipedia beantwortet Anfragen der Box-IP durchgaengig mit 429, auch einen
+# nackten siteinfo-Call und unabhaengig von User-Agent oder Endpoint. Jeder
+# Versuch loeste nur einen neuen 12h-Cooldown aus, der Service stand dauerhaft
+# auf failed. Derselbe Code laeuft von GitHub Actions problemlos.
+#
+# Der Roster-Crawl haengt jetzt als Schritt in
+# .github/workflows/tft-pro-crawl-weekly.yml (sonntags, nach dem Pro-Crawl).
+# Wenn die IP-Sperre je faellt oder ein Liquipedia-API-Key vorliegt, kann der
+# Timer zurueck — dann aber den Workflow-Schritt entfernen, nicht beides.
 [Unit]
 Description=Weekly TPC roster refresh (competetft.com via Liquipedia)
 

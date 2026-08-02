@@ -65,6 +65,7 @@ import {
   snapshotPlayer,
 } from './lib/tft-marketvalue-pipeline.mjs';
 import { ACTIVE_REGIONS } from './lib/active-regions.mjs';
+import { fetchD2PlusEntries, splitByActivity } from './lib/tft-league-entries.mjs';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Konstanten
@@ -427,7 +428,7 @@ async function loadIterationTargets(region) {
   const r = await pool.query(
     `with latest as (
        select distinct on (puuid)
-         puuid, region, tier, rank, lp, ladder_rank, snapshot_date
+         puuid, region, tier, rank, lp, ladder_rank, snapshot_date, games_played
        from tft_player_marketvalue_snapshots
        where region = $1
        order by puuid, snapshot_date desc
@@ -444,6 +445,10 @@ async function loadIterationTargets(region) {
     lp: row.lp,
     ladderRank: row.ladder_rank ?? undefined,
     lastSnapshotDate: row.snapshot_date,
+    // Spielzaehler des letzten Snapshots. NULL heisst "unbekannt" und fuehrt in
+    // splitByActivity bewusst zu AKTIV — beim ersten Lauf nach Migration 0051
+    // rechnet also alles einmal durch, danach greift die Inkrementalitaet.
+    gamesPlayed: row.games_played ?? null,
     // wins/losses fehlen — der Daily-Refresh fragt sie nicht frisch ab
     // (würde extra by-puuid-Call kosten). Skill-Score nutzt sie nur als
     // Bayesian-Prior für top4Blend; bei wins=losses=0 fällt der Score auf
@@ -519,6 +524,58 @@ async function processRegion(region) {
   let players = await loadIterationTargets(region);
   console.log(`  [iter] ${players.length} D2+ Spieler ohne heutigen Snapshot`);
   if (LIMIT > 0) players = players.slice(0, LIMIT);
+
+  // --- Aktivitaetserkennung -------------------------------------------------
+  // Bis 2026-08-02 bekam JEDER dieser Spieler eine eigene Riot-Call-Kette, auch
+  // die grosse Mehrheit ohne ein einziges neues Spiel. Die Liga-Eintraege
+  // liefern gebuendelt (~30-60 Calls statt ~10.876) pro Spieler wins+losses;
+  // bewegt sich die Summe nicht, hat er nicht gespielt.
+  //
+  // WICHTIG — "nicht gespielt" heisst NICHT "Wert unveraendert": der Multiplier
+  // ist populations-relativ, verschiebt sich also mit den anderen. Inaktive
+  // ueberspringen waere fachlich falsch. Gespart werden nur die RIOT-Calls;
+  // gerechnet wird weiterhin fuer alle (gemessen: 36 ms/Spieler, ~31 min fuer
+  // die gesamte Grundgesamtheit — siehe infra/specs/2026-08-02-*.md).
+  let entries = new Map();
+  {
+    // Bewusst AUCH im Dry-Run: der Abruf ist rein lesend (~30-60 Calls) und ist
+    // die einzige Moeglichkeit, die Aktivitaets-Aufteilung zu pruefen, ohne
+    // einen Snapshot zu schreiben. Ein Dry-Run, der den neuen Pfad ueberspringt,
+    // testet nichts.
+    try {
+      entries = await fetchD2PlusEntries(region, url => riot.fetchJson(url), API_KEY, { log: m => console.log(m) });
+    } catch (err) {
+      // Kein Abbruch: ohne Eintraege gelten alle als aktiv, der Lauf verhaelt
+      // sich exakt wie vor dem Umbau. Teurer, aber korrekt.
+      console.error(`  [entries] FEHLER (${err.message}) → alle Spieler gelten als aktiv`);
+      entries = new Map();
+    }
+  }
+  const { active, inactive } = splitByActivity(players, entries);
+  const inactiveSet = new Set(inactive.map(p => p.puuid));
+  // Frische Rang-Daten aus den Liga-Eintraegen uebernehmen. Bisher kamen tier/
+  // rank/lp aus dem Snapshot des VORTAGS — der Code nahm bewusst in Kauf, dass
+  // sie einen Tag alt sind. Das erklaert vermutlich beobachtete Basiswert-
+  // Spruenge. ladder_rank bleibt aus dem Snapshot: den liefern die Eintraege
+  // nicht, und er stammt aus dem Daily-Crawler.
+  let refreshedRank = 0;
+  for (const p of players) {
+    const e = entries.get(p.puuid);
+    if (!e) continue;
+    if (p.tier !== e.tier || p.rank !== e.rank || p.lp !== e.lp) refreshedRank++;
+    p.tier = e.tier;
+    p.rank = e.rank;
+    p.lp = e.lp;
+    p.wins = e.wins;
+    p.losses = e.losses;
+    // Ab hier traegt gamesPlayed den AKTUELLEN Stand — die Aufteilung oben hat
+    // den Vortageswert bereits verbraucht. Dieser Wert wird in den Snapshot
+    // geschrieben und ist morgen die Vergleichsbasis.
+    p.gamesPlayed = e.games;
+  }
+  console.log(`  [aktiv] ${active.length} gespielt / ${inactive.length} inaktiv`
+    + ` | ${refreshedRank} mit frischem Rang`
+    + (entries.size === 0 ? ' | KEINE Liga-Eintraege → alle aktiv' : ''));
 
   // Dry-Run: nur Estimate ausgeben, keine Riot-Calls, kein Schreib
   if (DRY_RUN) {
@@ -597,7 +654,11 @@ async function processRegion(region) {
         maxIds: maxIdsForPlayer(p),
         concurrency: MATCH_CONCURRENCY,
         force: false,
-        skipCacheRefresh: false,
+        // DER Kern des inkrementellen Umbaus: wer laut Liga-Eintrag nicht
+        // gespielt hat, braucht keinen Riot-Abruf. gatherPlayer liest dann nur
+        // den Cache und extrahiert die Roh-Metriken — dieselbe Rechnung, ohne
+        // die teure Beschaffung.
+        skipCacheRefresh: inactiveSet.has(p.puuid),
         verbose: VERBOSE,
       };
       const g = await gatherPlayer(pool, riot, p, ctx);

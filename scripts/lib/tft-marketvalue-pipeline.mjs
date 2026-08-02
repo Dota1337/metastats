@@ -198,8 +198,8 @@ export async function snapshotPlayer(pool, riot, player, raw, pop, ctx) {
   await pool.query(
     `insert into tft_player_marketvalue_snapshots (
        puuid, region, snapshot_date, game_name, tag_line, tier, rank, lp, ladder_rank,
-       base_value, multiplier, final_value, sample_size, damping, agents
-     ) values ($1, $2, ${snapshotDateExpr}, $${3 + baseParams.length}, $${4 + baseParams.length}, $${5 + baseParams.length}, $${6 + baseParams.length}, $${7 + baseParams.length}, $${8 + baseParams.length}, $${9 + baseParams.length}, $${10 + baseParams.length}, $${11 + baseParams.length}, $${12 + baseParams.length}, $${13 + baseParams.length}, $${14 + baseParams.length}::jsonb)
+       base_value, multiplier, final_value, sample_size, damping, agents, games_played
+     ) values ($1, $2, ${snapshotDateExpr}, $${3 + baseParams.length}, $${4 + baseParams.length}, $${5 + baseParams.length}, $${6 + baseParams.length}, $${7 + baseParams.length}, $${8 + baseParams.length}, $${9 + baseParams.length}, $${10 + baseParams.length}, $${11 + baseParams.length}, $${12 + baseParams.length}, $${13 + baseParams.length}, $${14 + baseParams.length}::jsonb, $${15 + baseParams.length})
      on conflict (puuid, region, snapshot_date) do update set
        game_name   = excluded.game_name,
        tag_line    = excluded.tag_line,
@@ -212,7 +212,12 @@ export async function snapshotPlayer(pool, riot, player, raw, pop, ctx) {
        final_value = excluded.final_value,
        sample_size = excluded.sample_size,
        damping     = excluded.damping,
-       agents      = excluded.agents`,
+       agents      = excluded.agents,
+       -- coalesce: ein Pfad ohne Spielzaehler (refresh-api-Button, aelterer
+       -- Caller) darf einen bereits gespeicherten Wert NICHT auf NULL
+       -- zuruecksetzen — sonst gilt der Spieler beim naechsten Lauf faelschlich
+       -- als aktiv und wird unnoetig neu gecrawlt.
+       games_played = coalesce(excluded.games_played, tft_player_marketvalue_snapshots.games_played)`,
     [
       player.puuid, region,
       ...baseParams,
@@ -220,6 +225,7 @@ export async function snapshotPlayer(pool, riot, player, raw, pop, ctx) {
       player.tier, player.rank ?? 'I', player.lp ?? 0, player.ladderRank ?? null,
       baseValue, sk.multiplier, finalValue,
       sk.sampleSize, sk.damping, JSON.stringify(sk.signals),
+      player.gamesPlayed ?? null,
     ],
   );
   return { snapshotted: true, finalValue };

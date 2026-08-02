@@ -15,19 +15,30 @@
  *   than crashing) when the page deviates from the expected structure.
  *
  * Usage:
- *   node scripts/enrich-tft-pro-history.mjs                # full run
+ *   node scripts/enrich-tft-pro-history.mjs                # stale pros only
+ *   node scripts/enrich-tft-pro-history.mjs --force        # ignore staleness
+ *   node scripts/enrich-tft-pro-history.mjs --max 100      # cap this run
  *   node scripts/enrich-tft-pro-history.mjs --limit 10     # smoke test
  *   node scripts/enrich-tft-pro-history.mjs --no-supabase  # dry-run, prints results
  *   node scripts/enrich-tft-pro-history.mjs --player Setsuko  # single player
  *
- * Liquipedia ToU: 2s minimum between requests; we honor strictly. Full run
- * over ~400 pros takes ~15-25 min.
+ * Liquipedia ToU: 2s minimum between requests; we honor strictly.
+ *
+ * Warum es eine Staleness-Auswahl gibt: der Lauf holte frueher IMMER alle
+ * Rows. Bei inzwischen ~627 Liquipedia-Pros à 2 Seiten sind das 45-90 Minuten
+ * — zu lang fuer das 60-Minuten-Limit eines GitHub-Actions-Jobs, und der
+ * Grossteil davon holt Historien, die sich seit Monaten nicht bewegt haben.
+ * selectProsToEnrich() zieht deshalb nur, was wirklich veraltet ist, immer
+ * aelteste zuerst. Der --max-Deckel macht die Laufzeit planbar, ohne dass
+ * jemand verhungert: wer diesmal nicht drankommt, rutscht naechste Woche
+ * automatisch nach vorn.
  *
  * Prerequisite: supabase/migrations/0015_tft_pro_player_history.sql applied.
  */
 
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const args = process.argv.slice(2);
 const arg = (k, d) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : d; };
@@ -37,6 +48,14 @@ const LIMIT = parseInt(arg('--limit', '0'), 10);
 const SINGLE_PLAYER = arg('--player', null);
 const SKIP_SUPABASE = hasFlag('--no-supabase');
 const VERBOSE = hasFlag('--verbose');
+const FORCE = hasFlag('--force');
+const MAX_PER_RUN = Math.max(1, parseInt(arg('--max', '250'), 10));
+
+// Staleness-Fenster. Wer aktiv Wettkaempfe spielt, aendert seine Historie
+// woechentlich; wer seit ueber einem Jahr kein Turnier hatte, praktisch nie.
+const FRESH_WINDOW_ACTIVE_MS = 7 * 24 * 60 * 60 * 1000;
+const FRESH_WINDOW_DORMANT_MS = 30 * 24 * 60 * 60 * 1000;
+const ACTIVE_TOURNAMENT_WINDOW_MS = 365 * 24 * 60 * 60 * 1000;
 
 const LIQUIPEDIA_API = 'https://liquipedia.net/teamfighttactics/api.php';
 const LIQUIPEDIA_BASE = 'https://liquipedia.net';
@@ -234,8 +253,64 @@ function extractResults(html) {
 
 // ─── Supabase ────────────────────────────────────────────────────────────
 
+/**
+ * Waehlt aus, welche Pros dieser Lauf anfasst.
+ *
+ * Reine Funktion (keine Zeit-, Netz- oder DB-Zugriffe ausser den Parametern),
+ * damit sie testbar bleibt — siehe scripts/test-enrich-selection.mjs.
+ *
+ * Regeln, absteigend nach Prioritaet:
+ *   1. Noch nie angereichert (last_enriched_at IS NULL) → immer. Das sind neue
+ *      Rows aus dem Crawler, die ohne Historie sonst als "inactive" gelten.
+ *   2. Aktiv (tpc_verified ODER Turnier innerhalb 365 Tagen) → nach 7 Tagen.
+ *   3. Ruhend → nach 30 Tagen.
+ *
+ * Sortierung ist immer "aelteste zuerst" (NULL ganz vorn). Zusammen mit dem
+ * Deckel ergibt das ein Round-Robin: niemand verhungert dauerhaft, weil jeder
+ * uebersprungene Pro mit jeder Woche weiter nach vorn rutscht.
+ *
+ * Bewusst NICHT server-seitig gefiltert: die OR-Verschachtelung waere in
+ * PostgREST schwer lesbar, und 627 Zeilen mit vier Feldern sind ein einziger
+ * billiger Request. Die Regel gehoert dorthin, wo man sie testen kann.
+ */
+export function selectProsToEnrich(rows, { now = Date.now(), maxCount = Infinity, force = false } = {}) {
+  const withPage = rows.filter((p) => p.source_page);
+
+  const isStale = (p) => {
+    if (force) return true;
+    if (!p.last_enriched_at) return true;
+    const enrichedAt = Date.parse(p.last_enriched_at);
+    // Unparsebarer Zeitstempel: lieber neu holen als still ueberspringen.
+    if (Number.isNaN(enrichedAt)) return true;
+    const age = now - enrichedAt;
+    const lastTournament = p.last_tournament_at ? Date.parse(p.last_tournament_at) : NaN;
+    const competesRecently = !Number.isNaN(lastTournament)
+      && (now - lastTournament) <= ACTIVE_TOURNAMENT_WINDOW_MS;
+    const active = p.tpc_verified === true || competesRecently;
+    return age >= (active ? FRESH_WINDOW_ACTIVE_MS : FRESH_WINDOW_DORMANT_MS);
+  };
+
+  const stale = withPage.filter(isStale);
+
+  stale.sort((a, b) => {
+    const ta = a.last_enriched_at ? Date.parse(a.last_enriched_at) : -Infinity;
+    const tb = b.last_enriched_at ? Date.parse(b.last_enriched_at) : -Infinity;
+    if (ta !== tb) return ta - tb;
+    // Stabiler Tie-Break, damit zwei Laeufe mit identischen Zeitstempeln nicht
+    // in zufaellig unterschiedlicher Reihenfolge kappen.
+    return String(a.pro_name || '').localeCompare(String(b.pro_name || ''));
+  });
+
+  return {
+    selected: stale.slice(0, maxCount),
+    totalWithPage: withPage.length,
+    staleCount: stale.length,
+    deferred: Math.max(0, stale.length - maxCount),
+  };
+}
+
 async function loadPros() {
-  const url = `${SUPA_URL}/rest/v1/tft_pro_players?source=eq.liquipedia&select=id,puuid,pro_name,source_page&order=pro_name.asc`;
+  const url = `${SUPA_URL}/rest/v1/tft_pro_players?source=eq.liquipedia&select=id,puuid,pro_name,source_page,last_enriched_at,last_tournament_at,tpc_verified&order=pro_name.asc`;
   const res = await fetch(url, {
     headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` },
   });
@@ -276,7 +351,14 @@ async function main() {
     console.error('Either --player <Name> or Supabase access is required.');
     process.exit(1);
   } else {
-    pros = await loadPros();
+    const all = await loadPros();
+    const pick = selectProsToEnrich(all, { maxCount: MAX_PER_RUN, force: FORCE });
+    pros = pick.selected;
+    console.log(
+      `${all.length} liquipedia rows, ${pick.totalWithPage} with source_page, `
+      + `${pick.staleCount} stale${FORCE ? ' (--force: alle)' : ''} → ${pros.length} in diesem Lauf`
+      + (pick.deferred > 0 ? `, ${pick.deferred} auf naechsten Lauf verschoben (--max ${MAX_PER_RUN})` : ''),
+    );
   }
   if (LIMIT > 0) pros = pros.slice(0, LIMIT);
   pros = pros.filter((p) => p.source_page);
@@ -313,6 +395,9 @@ async function main() {
           // Authoritative (see extractTeam): null = genuinely teamless, and it
           // heals stale rosters that a previous run wrote.
           team,
+          // Nur im Erfolgsfall — ein fehlgeschlagener Pro muss beim naechsten
+          // Lauf wieder vorne stehen, nicht 7 Tage als "frisch" gelten.
+          last_enriched_at: new Date().toISOString(),
         });
       }
 
@@ -334,4 +419,10 @@ async function main() {
   console.log(`\nDone. Processed ${pros.length} pros: ${tournamentsTotal} tournament rows, ${imagesFilled} images, ${errors} errors.`);
 }
 
-main().catch((err) => { console.error('FAIL:', err.message); console.error(err.stack); process.exit(1); });
+// Nur ausfuehren, wenn direkt aufgerufen — sonst startet ein Import von
+// selectProsToEnrich() (Test!) den kompletten Liquipedia-Lauf.
+const invokedDirectly = process.argv[1]
+  && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (invokedDirectly) {
+  main().catch((err) => { console.error('FAIL:', err.message); console.error(err.stack); process.exit(1); });
+}

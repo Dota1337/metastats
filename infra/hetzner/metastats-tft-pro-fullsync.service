@@ -1,14 +1,43 @@
+# Freitags-Haelfte der Pro-Pipeline: alles OHNE Liquipedia.
+#
+# Bis 2026-08-02 fuhr dieser Service die komplette 8-Schritt-Kette. Das ging
+# still kaputt: Liquipedia sperrt die Box-IP (429 auf jede Anfrage, auch auf
+# einen nackten siteinfo-Call). Der Cooldown-Guard liess den Lauf starten, der
+# erste Liquipedia-Schritt bewaffnete den 12h-Cooldown, alle folgenden
+# servierten stillschweigend Cache — und weil die Loop Step-Fehler schluckte,
+# meldete systemd Result=success bei ~2 statt ~45 Minuten Laufzeit.
+#
+# Die 5 Liquipedia-Schritte laufen jetzt sonntags in GitHub Actions
+# (.github/workflows/tft-pro-crawl-weekly.yml, --steps=liquipedia). Hier
+# bleiben EsportsEarnings, Riot-Rank und die Klassifikation.
+#
+# Die Klassifikation laeuft bewusst in BEIDEN Haelften — sie ist idempotent,
+# und ohne sie am Ende des Actions-Laufs traegen frisch angelegte Rows
+# tagelang classification=NULL, was die API als "inactive" bucketet.
+#
+# Der Lauf enthaelt ausserdem das Freshness-Gate: findet er keinen
+# Liquipedia-Lauf der letzten 10 Tage, exitet er 1. Das ist der einzige
+# Watchdog fuer die Actions-Seite — GitHub-Crons koennen ausfallen und kennen
+# kein Persistent=true.
+#
+# Rueckweg, falls Liquipedia die Box-IP je wieder freigibt: --steps=local
+# entfernen (dann faehrt die Unit wieder alle 8 Schritte) UND den Schritt im
+# Workflow loeschen — nie beides aktiv lassen.
+
 [Unit]
-Description=TFT Pro Full-Sync — Liquipedia crawl + TPC roster + enrich + classify
+Description=TFT Pro Sync (ohne Liquipedia) — EsportsEarnings + Riot-Rank + Klassifikation
 After=network-online.target
 
 [Service]
 Type=oneshot
 WorkingDirectory=/opt/metastats-crawler
 EnvironmentFile=/etc/metastats-crawler/env
-ExecStart=/usr/bin/node scripts/validate-tft-pros-loop.mjs --mode=weekly-full --open-issues
-# Liquipedia rate-limit + 4-step pipeline can take ~45 min; cap at 2h.
-TimeoutStartSec=7200
+ExecStart=/usr/bin/node scripts/validate-tft-pros-loop.mjs --mode=weekly-full --steps=local --open-issues
+# Gemessen ~2-5 min (Riot-Rank ueber ~627 Pros + Klassifikation + Scan). Die
+# alten 2h stammten aus der Zeit mit Liquipedia-Schritten; so lange wuerde ein
+# haengender Riot-Call die Unit auf "activating" halten, was ein
+# is-active-basierter Watchdog als "laeuft noch" liest.
+TimeoutStartSec=1800
 
 [Install]
 WantedBy=multi-user.target

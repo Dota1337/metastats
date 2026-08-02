@@ -63,6 +63,10 @@ const MODE = modeArg();
 const SAMPLE_SIZE = Math.max(1, parseInt(arg('size', '30'), 10));
 const VERBOSE = args.includes('--verbose');
 const OPEN_GH_ISSUES = args.includes('--open-issues');
+// --steps=all | liquipedia | local   (siehe PIPELINE_STEPS)
+const STEPS_FILTER = (args.find((a) => a.startsWith('--steps='))?.slice(8)) || 'all';
+// Woechentlicher Actions-Lauf + Puffer fuer einen verzoegerten GitHub-Cron.
+const LIQUIPEDIA_FRESHNESS_MAX_DAYS = 10;
 
 function loadEnv() {
   const p = resolve(process.cwd(), '.env.local');
@@ -197,59 +201,160 @@ function runSubScript(scriptName, extraArgs = []) {
   return r.status === 0;
 }
 
+/**
+ * Die kanonische Pro-Pipeline. EINZIGE Quelle der Schrittliste — der
+ * GitHub-Workflow ruft diesen Loop auf und wiederholt die Schritte nicht als
+ * eigene `run:`-Zeilen, sonst driften zwei Listen auseinander.
+ *
+ * `group` sagt, wo ein Schritt laufen KANN:
+ *   liquipedia — braucht liquipedia.net. Laeuft nur noch auf GitHub Actions,
+ *                weil die Hetzner-Box dort per IP gesperrt ist (429 auf alles).
+ *   local      — braucht Liquipedia nicht (fremde API / Riot / nur DB) und
+ *                laeuft weiter auf der Box.
+ *   both       — muss in BEIDEN Laeufen ans Ende. Betrifft nur die
+ *                Klassifikation: sie liest alles Vorherige, und ohne sie
+ *                tragen frisch angelegte Rows tagelang classification=NULL,
+ *                was die API als "inactive" bucketet.
+ */
+const PIPELINE_STEPS = [
+  // Discovery — findet Liquipedia-Seiten, die wir noch nicht haben (v.a. CN/KR).
+  { script: 'crawl-tft-pro-categories.mjs', args: [], group: 'liquipedia' },
+  // Haupt-Ingest: parst Category:Players, loest Riot-IDs auf.
+  { script: 'crawl-tft-pro-players.mjs', args: [], group: 'liquipedia' },
+  // TPC-Roster-Overlay — stempelt tpc_verified. MUSS vor enrich-history
+  // laufen, sonst haben frisch gestempelte TPC-Pros keine tournament_results
+  // und loesen den Anomalie-Detektor aus.
+  { script: 'crawl-tft-tpc-roster.mjs', args: [], group: 'liquipedia' },
+  // Turnier-Historie + Preisgelder pro Spieler. Teuerster Schritt (~8,8s pro
+  // Spieler), deshalb mit Staleness-Auswahl und Deckel — siehe dort.
+  { script: 'enrich-tft-pro-history.mjs', args: ['--max', '150'], group: 'liquipedia' },
+  // Top-Earners-Gegenprobe von der Portal-Seite. Billig (1 Request).
+  { script: 'crawl-tft-pro-portal-stats.mjs', args: [], group: 'liquipedia' },
+  // Optionaler EsportsEarnings-Abgleich; skippt still ohne API-Key.
+  { script: 'enrich-tft-esportsearnings.mjs', args: [], group: 'local' },
+  // Live-Rang via Riot League-V1 — treibt die Streamer-Einstufung.
+  { script: 'validate-tft-pro-rank.mjs', args: [], group: 'local' },
+  // Endgueltige Einstufung — nutzt alles Vorherige.
+  { script: 'classify-tft-pros.mjs', args: [], group: 'both' },
+];
+
+function stepsFor(filter) {
+  if (filter === 'all') return PIPELINE_STEPS;
+  if (filter !== 'liquipedia' && filter !== 'local') {
+    console.error(`Unknown --steps=${filter} (erwartet: all | liquipedia | local)`);
+    process.exit(1);
+  }
+  return PIPELINE_STEPS.filter((s) => s.group === filter || s.group === 'both');
+}
+
 async function modeWeeklyFull() {
-  console.log(`[weekly-full] Pipeline start — run ${RUN_ID}`);
-  // Refuse to start if a Liquipedia cooldown is active — the steps would
-  // all skip with cache-only data anyway and we'd flood the log with
-  // "in cooldown" warnings.
-  try {
-    const { cooldownStatus } = await import('./lib/liquipedia-tft.mjs');
-    const c = cooldownStatus();
-    if (c.active) {
-      console.log(`[weekly-full] ABORTED — Liquipedia cooldown active for ${c.minutesRemaining}min more (until ${new Date(c.until).toISOString()})`);
-      await logEvent({
-        source: 'pipeline', status: 'warning', field: 'identity', severity: 2,
-        detail: `weekly-full skipped: Liquipedia cooldown active for ${c.minutesRemaining}min`,
-      });
-      return;
-    }
-  } catch {}
-  const steps = [
-    // Discovery first — finds Liquipedia pages we don't have yet (CN/KR
-    // gaps especially). Logs them as "missing" events but does NOT yet
-    // resolve them (Riot-ID lookup) — that's the next step.
-    ['crawl-tft-pro-categories.mjs', []],
-    // Main Liquipedia ingest (parses Category:Players, resolves Riot-IDs).
-    ['crawl-tft-pro-players.mjs', []],
-    // TPC roster overlay — stamps tpc_verified on the matched pros.
-    ['crawl-tft-tpc-roster.mjs', []],
-    // Per-pro tournament history + lifetime earnings (~18min for 250 pros).
-    ['enrich-tft-pro-history.mjs', []],
-    // 2026-current Top-Earners cross-check from Liquipedia's portal page.
-    // Cheap (1 request) and flags any discrepancy against per-pro enrichment.
-    ['crawl-tft-pro-portal-stats.mjs', []],
-    // Optional EsportsEarnings cross-check (currently low-value — TFT
-    // coverage there has gone stale). Skipped silently if no API key.
-    ['enrich-tft-esportsearnings.mjs', []],
-    // Live rank lookup via Riot League-V1 — drives streamer-vs-historic
-    // classification (needs Master+ for streamer status).
-    ['validate-tft-pro-rank.mjs', []],
-    // Final classification — uses everything above.
-    ['classify-tft-pros.mjs', []],
-  ];
-  for (const [script, a] of steps) {
+  console.log(`[weekly-full] Pipeline start — run ${RUN_ID}  (steps=${STEPS_FILTER})`);
+  const steps = stepsFor(STEPS_FILTER);
+  const touchesLiquipedia = steps.some((s) => s.group === 'liquipedia');
+  // Sammelt Step-Fehler, damit sie denselben GH-Issue-Pfad nehmen wie die
+  // Anomalien. Vorher landeten sie nur per logEvent() in der DB und wurden
+  // vom severity>=4-Filter nie gesehen — es gab noch nie ein Issue.
+  const criticalEvents = [];
+
+  // Der Cooldown-Guard gilt NUR fuer den Liquipedia-Lauf. Auf der Box (steps=
+  // local) faesst kein Schritt mehr Liquipedia an; ein dort herumliegender
+  // Cooldown wuerde sonst Rang-Check und Klassifikation mit abwuergen. Die
+  // Cooldown-Datei liegt in tmpdir() und ueberlebt keinen Reboot — dieses
+  // Verhalten waere also noch dazu nicht-deterministisch.
+  if (touchesLiquipedia) {
+    try {
+      const { cooldownStatus } = await import('./lib/liquipedia-tft.mjs');
+      const c = cooldownStatus();
+      if (c.active) {
+        // Frueher ein stilles `return` mit Exit 0 — der Lauf sah gruen aus,
+        // obwohl er nichts getan hat. Jetzt laut.
+        const detail = `weekly-full abgebrochen: Liquipedia-Cooldown noch ${c.minutesRemaining}min aktiv (bis ${new Date(c.until).toISOString()})`;
+        console.error(`[weekly-full] ABORTED — ${detail}`);
+        const ev = { source: 'pipeline', status: 'error', field: 'identity', severity: 4, detail };
+        await logEvent(ev);
+        criticalEvents.push({ ...ev, proName: 'pipeline' });
+        process.exitCode = 1;
+        await modeAnomaliesOnly(criticalEvents);
+        return;
+      }
+    } catch {}
+  }
+  console.log(`[weekly-full] ${steps.length} Schritt(e): ${steps.map((s) => s.script).join(', ')}`);
+
+  let failed = 0;
+  for (const { script, args: stepArgs } of steps) {
     console.log(`\n[weekly-full] running ${script}…`);
-    const ok = runSubScript(script, a);
+    const ok = runSubScript(script, stepArgs);
     if (!ok) {
-      await logEvent({
+      failed++;
+      const ev = {
         source: 'pipeline', status: 'error', field: 'identity', severity: 4,
         detail: `Step ${script} failed`,
-      });
+      };
+      await logEvent(ev);
+      criticalEvents.push({ ...ev, proName: 'pipeline' });
       console.error(`Step ${script} failed — continuing with next`);
     }
   }
+
+  // Der wichtigste Check: hat ein Liquipedia-Schritt WAEHREND des Laufs einen
+  // Cooldown bewaffnet? Genau das passierte am 31.07. — der Start-Guard liess
+  // durch, Schritt 1 lief in 429, und alle folgenden Schritte servierten
+  // stillschweigend Cache. Sub-Scripts terminieren dabei mit 0, Exit-Codes
+  // allein wuerden das also nie aufdecken.
+  if (touchesLiquipedia) {
+    try {
+      const { cooldownStatus } = await import('./lib/liquipedia-tft.mjs');
+      const c = cooldownStatus();
+      if (c.active) {
+        const detail = `Liquipedia-Cooldown wurde WAEHREND des Laufs bewaffnet (noch ${c.minutesRemaining}min) — die folgenden Schritte haben nur Cache serviert, die Daten sind unvollstaendig`;
+        console.error(`[weekly-full] ${detail}`);
+        const ev = { source: 'pipeline', status: 'error', field: 'identity', severity: 5, detail };
+        await logEvent(ev);
+        criticalEvents.push({ ...ev, proName: 'pipeline' });
+        failed++;
+      }
+    } catch {}
+  }
+
+  // Freshness-Gate: der Box-Lauf ist der einzige Watchdog fuer die
+  // Actions-Seite. GitHub-`schedule`-Crons werden unter Last verzoegert oder
+  // ganz ausgelassen, und Actions kennt kein Persistent=true — ein verpasster
+  // Sonntag hiesse sonst eine Woche keine Liquipedia-Daten ohne jedes Signal.
+  // last_enriched_at ist dafuer das praeziseste Feld: nur der Liquipedia-Lauf
+  // schreibt es.
+  if (!touchesLiquipedia) {
+    try {
+      const [newest] = await sb('tft_pro_players?select=last_enriched_at&last_enriched_at=not.is.null&order=last_enriched_at.desc&limit=1');
+      const ts = newest?.last_enriched_at ? Date.parse(newest.last_enriched_at) : NaN;
+      const ageDays = Number.isNaN(ts) ? Infinity : (Date.now() - ts) / 86_400_000;
+      if (ageDays > LIQUIPEDIA_FRESHNESS_MAX_DAYS) {
+        const detail = Number.isNaN(ts)
+          ? 'Kein einziger Pro traegt last_enriched_at — der Liquipedia-Lauf (GitHub Actions) hat noch nie geschrieben'
+          : `Juengster Liquipedia-Lauf ist ${ageDays.toFixed(1)} Tage alt (Grenze ${LIQUIPEDIA_FRESHNESS_MAX_DAYS}) — der woechentliche GitHub-Actions-Job faellt vermutlich aus`;
+        console.error(`[weekly-full] ${detail}`);
+        const ev = { source: 'pipeline', status: 'error', field: 'identity', severity: 4, detail };
+        await logEvent(ev);
+        criticalEvents.push({ ...ev, proName: 'pipeline' });
+        failed++;
+      } else {
+        console.log(`[weekly-full] Liquipedia-Frische ok: juengster Lauf vor ${ageDays.toFixed(1)} Tagen`);
+      }
+    } catch (e) {
+      console.error(`[weekly-full] Freshness-Gate konnte nicht pruefen: ${e.message}`);
+    }
+  }
+
   // Final anomaly scan after enrichment
-  await modeAnomaliesOnly();
+  await modeAnomaliesOnly(criticalEvents);
+
+  if (failed > 0) {
+    console.error(`[weekly-full] ${failed} Schritt(e) fehlgeschlagen — Exit 1`);
+    // Type=oneshot respektiert das: der systemd-Service geht auf failed, und
+    // erst dadurch greift ueberhaupt ein OnFailure=. Vorher endete auch ein
+    // komplett leergelaufener Lauf mit Result=success.
+    process.exitCode = 1;
+  }
 }
 
 async function modeDailySample() {
@@ -275,7 +380,16 @@ async function modeDailySample() {
   await modeAnomaliesOnly();
 }
 
-async function modeAnomaliesOnly() {
+/**
+ * @param extraCritical Pipeline-Fehler aus modeWeeklyFull. Die wurden frueher
+ *   nur per logEvent() in die DB geschrieben und landeten NICHT in diesem
+ *   Array — der severity>=4-Filter unten hat sie also nie gesehen. Da kein
+ *   einziger Anomalie-Detektor je ueber 3 hinausgeht (Maximum: die
+ *   classification-Anomalie mit 3), hat --open-issues strukturell noch NIE
+ *   ein Issue erzeugt. Verifiziert: `gh issue list --label pro-watchdog
+ *   --state all` war leer.
+ */
+async function modeAnomaliesOnly(extraCritical = []) {
   console.log(`[anomalies-only] scanning…`);
   const anomalies = await detectAnomalies();
   console.log(`Found ${anomalies.length} anomaly events`);
@@ -288,11 +402,21 @@ async function modeAnomaliesOnly() {
 
   // Open GH Issues for critical anomalies if requested.
   if (OPEN_GH_ISSUES) {
-    const critical = anomalies.filter(a => a.severity >= 4);
+    const critical = [...anomalies, ...extraCritical].filter(a => a.severity >= 4);
+    if (critical.length > 0 && !process.env.GH_TOKEN && !process.env.GITHUB_TOKEN) {
+      // Sonst verschwindet ein fehlendes Token lautlos und der einzige
+      // Alarmkanal ist wieder tot, ohne dass es jemand merkt.
+      console.error(`[anomalies-only] ${critical.length} kritische Events, aber weder GH_TOKEN noch GITHUB_TOKEN gesetzt — kein Issue moeglich`);
+    }
     for (const c of critical) {
       const title = `[pro-watchdog] ${c.proName || c.puuid}: ${c.detail.slice(0, 60)}`;
       const body = `**Run ID:** ${RUN_ID}\n**Pro:** ${c.proName}\n**Source:** ${c.source}\n**Field:** ${c.field}\n**Detail:** ${c.detail}\n\nExpected: \`${JSON.stringify(c.expected)}\`\nActual: \`${JSON.stringify(c.actual)}\``;
-      spawnSync('gh', ['issue', 'create', '--title', title, '--body', body, '--label', 'pro-watchdog'], { stdio: 'inherit' });
+      const r = spawnSync('gh', ['issue', 'create', '--title', title, '--body', body, '--label', 'pro-watchdog'], { stdio: 'inherit' });
+      // Rueckgabestatus wurde frueher ignoriert: ein fehlendes `gh` (ENOENT)
+      // auf der Box verschwand spurlos.
+      if (r.error || r.status !== 0) {
+        console.error(`  gh issue create fehlgeschlagen: ${r.error?.message || `exit ${r.status}`}`);
+      }
     }
   }
 }

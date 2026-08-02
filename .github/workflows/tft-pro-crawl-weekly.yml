@@ -19,9 +19,12 @@ env:
 jobs:
   crawl:
     runs-on: ubuntu-latest
-    # ~400 player pages × 2.1s Liquipedia delay ≈ 14 minutes Liquipedia time,
-    # plus Riot resolves ~1.5s each (account-v1 is unrated). ~30 min worst case.
-    timeout-minutes: 60
+    # Budget (gemessen 2026-08-02): Spielerseiten-Crawl ~30 min, Turnier-
+    # Historie 150 Spieler × 8,8s ≈ 22 min, Discovery + Portal + Klassifikation
+    # ~5 min. Zusammen ~57 min — das alte 60er-Limit haette mitten in der
+    # Turnier-Historie abgewuergt und halb geschriebene Zeilen hinterlassen.
+    # Der Deckel dafuer sitzt in PIPELINE_STEPS (--max 150), nicht hier.
+    timeout-minutes: 120
 
     steps:
       - name: Checkout repository
@@ -40,23 +43,24 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Crawl TFT pro players
+      # Die komplette Liquipedia-Haelfte der Pro-Pipeline, von der Hetzner-Box
+      # hierher verlagert (2026-08-02): Liquipedia beantwortet Anfragen der
+      # Box-IP durchgaengig mit 429 — auch einen nackten siteinfo-Call,
+      # unabhaengig von User-Agent und Endpoint. Jeder Versuch dort loeste nur
+      # einen neuen 12h-Cooldown aus. Von GitHub Actions laeuft derselbe Code
+      # problemlos.
+      #
+      # Bewusst der Loop-Aufruf und NICHT die Einzelscripts: die Schrittliste
+      # steht ausschliesslich in scripts/validate-tft-pros-loop.mjs
+      # (PIPELINE_STEPS). Wuerden wir sie hier nochmal als run:-Zeilen
+      # aufzaehlen, gaebe es zwei Listen, die auseinanderdriften.
+      # --steps=liquipedia waehlt die 5 Liquipedia-Schritte plus die
+      # abschliessende Klassifikation; die uebrigen laufen freitags auf der Box.
+      #
+      # GH_TOKEN ist Pflicht: der Loop oeffnet Issues per `gh`, und
+      # permissions: issues: write allein reicht dafuer nicht.
+      - name: TFT pro pipeline — Liquipedia steps
         if: env.RIOT_API_KEY_TFT != ''
-        run: node scripts/crawl-tft-pro-players.mjs
-
-      # Von der Hetzner-Box hierher verlagert (2026-08-02): Liquipedia
-      # beantwortet Anfragen der Box-IP durchgaengig mit 429 — auch einen
-      # nackten siteinfo-Call, unabhaengig von User-Agent und Endpoint. Jeder
-      # Versuch loeste dort nur einen neuen 12h-Cooldown aus. Von GitHub
-      # Actions aus laeuft derselbe Code problemlos (1082 Spielerseiten im
-      # Lauf davor).
-      #
-      # Reihenfolge ist wichtig: erst die Pro-Zeilen anlegen, dann die
-      # TPC-Roster darauf abbilden — der Roster setzt nur ein Flag auf
-      # existierenden Spielern.
-      #
-      # continue-on-error, weil ein Liquipedia-Ausfall den vorangegangenen,
-      # erfolgreichen Pro-Crawl nicht rot faerben soll.
-      - name: Crawl TPC roster (Liquipedia)
-        continue-on-error: true
-        run: node scripts/crawl-tft-tpc-roster.mjs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/validate-tft-pros-loop.mjs --mode=weekly-full --steps=liquipedia --open-issues

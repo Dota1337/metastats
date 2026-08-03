@@ -523,6 +523,18 @@
       "onPush": true
     },
     {
+      "file": "metatft-comps-daily.yml",
+      "name": "MetaTFT-Comps daily",
+      "schedule": [
+        "30 5 * * *"
+      ],
+      "scripts": [
+        "scripts/refresh-metatft-comps.mjs"
+      ],
+      "manualDispatch": true,
+      "onPush": false
+    },
+    {
       "file": "pro-teams-weekly.yml",
       "name": "Pro-Teams weekly",
       "schedule": [
@@ -807,6 +819,9 @@
     ],
     "metastats-snapshot-publisher.service": [
       "snapshot/manifest-frische"
+    ],
+    ".github/workflows/metatft-comps-daily.yml": [
+      "metatft-comps/datei-frische"
     ],
     ".github/workflows/pro-teams-weekly.yml": [
       "pro-teams/datei-frische"

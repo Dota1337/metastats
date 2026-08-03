@@ -1,0 +1,59 @@
+name: MetaTFT-Comps daily
+
+# Haelt public/tft-metatft-comps-{set}.json aktuell — die Comp-Guides-Quelle,
+# die tftacademy ersetzt (Entscheidung 2026-08-04).
+#
+# Warum taeglich: MetaTFT reclustert laufend (sourceUpdated liegt typisch
+# Minuten zurueck), und das Meta verschiebt sich mit jedem Patch. Ein
+# Wochenrhythmus wie bei den Team-Daten waere hier zu traege.
+#
+# Keine Secrets noetig — die Comps-API ist oeffentlich lesbar.
+#
+# Set-Wechsel: Das Script bricht ab, wenn unser Set und das von MetaTFT
+# auseinanderlaufen. Rund um den Set-18-Release (2026-08-26) wird dieser
+# Workflow also rot, bis MetaTFT drueben umgestellt hat. Das ist gewollt —
+# lieber ein sichtbarer Fehlschlag als still die Comps des alten Sets.
+
+on:
+  schedule:
+    - cron: '30 5 * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: metatft-comps
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci --no-audit --no-fund
+
+      - name: Comps von MetaTFT holen
+        # Das Script haelt selbst einen Floor (min. 40 Comps, max. 30 % Rueckgang)
+        # und ein Set-Gate — ein kaputter Lauf ueberschreibt die Datei nicht.
+        run: node scripts/refresh-metatft-comps.mjs
+
+      - name: Aenderungen committen
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/tft-metatft-comps-*.json
+          if git diff --staged --quiet; then
+            echo "Keine Aenderungen an den Comp-Daten"
+          else
+            git commit -m "chore: daily metatft comps update"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main && git push origin main && break
+              echo "Push-Versuch $attempt fehlgeschlagen, neuer Versuch ..."
+              sleep 10
+            done
+          fi

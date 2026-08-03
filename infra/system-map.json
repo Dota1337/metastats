@@ -1,0 +1,764 @@
+{
+  "$comment": [
+    "GENERIERT von scripts/build-system-map.mjs — nicht von Hand editieren.",
+    "Neu bauen: npm run build:system-map. Prüfen: npm run check:system-map.",
+    "Die Karte beantwortet: welcher Timer startet welchen Service, welches",
+    "Script laeuft dort, wer triggert wen aus dem Code heraus, und welche",
+    "Pipeline hat einen Laufzeit-Vertrag (infra/contracts.json)."
+  ],
+  "units": [
+    {
+      "name": "metastats-build-check.service",
+      "kind": "service",
+      "description": "metastats Vercel-Build-Health-Check + Auto-Retrigger",
+      "scripts": [
+        "scripts/vercel-build-check.mjs"
+      ]
+    },
+    {
+      "name": "metastats-build-check.timer",
+      "kind": "timer",
+      "description": "metastats Vercel-Build-Check alle 10 min",
+      "scripts": [],
+      "Requires": [
+        "metastats-build-check.service"
+      ],
+      "onCalendar": [],
+      "interval": [
+        "OnBootSec=5min",
+        "OnUnitActiveSec=10min"
+      ],
+      "activates": "metastats-build-check.service",
+      "persistent": true
+    },
+    {
+      "name": "metastats-companion-backfill.service",
+      "kind": "service",
+      "description": "metastats — backfill placement + Riot match-id into companion observations",
+      "scripts": [
+        "scripts/backfill-companion-placements.mjs"
+      ]
+    },
+    {
+      "name": "metastats-companion-backfill.timer",
+      "kind": "timer",
+      "description": "Companion backfill — every 10 minutes",
+      "scripts": [],
+      "onCalendar": [],
+      "interval": [
+        "OnBootSec=2min",
+        "OnUnitActiveSec=10min"
+      ],
+      "activates": "metastats-companion-backfill.service",
+      "persistent": false
+    },
+    {
+      "name": "metastats-contracts.service",
+      "kind": "service",
+      "description": "metastats Laufzeit-Vertraege (produzieren die Pipelines, was sie versprechen?)",
+      "scripts": [
+        "scripts/check-contracts.mjs"
+      ]
+    },
+    {
+      "name": "metastats-contracts.timer",
+      "kind": "timer",
+      "description": "metastats Laufzeit-Vertraege taeglich pruefen (23:00 UTC)",
+      "scripts": [],
+      "onCalendar": [
+        "*-*-* 23:00:00 UTC"
+      ],
+      "interval": [],
+      "activates": "metastats-contracts.service",
+      "persistent": true
+    },
+    {
+      "name": "metastats-crawler.service",
+      "kind": "service",
+      "description": "metastats TFT marketvalue crawler (Master+ daily)",
+      "scripts": [
+        "scripts/crawl-all-regions.mjs"
+      ],
+      "OnSuccess": [
+        "metastats-marketvalue-snapshot.service"
+      ],
+      "OnFailure": [
+        "metastats-marketvalue-snapshot.service"
+      ],
+      "Wants": [
+        "postgresql.service"
+      ],
+      "After": [
+        "postgresql.service"
+      ]
+    },
+    {
+      "name": "metastats-crawler.timer",
+      "kind": "timer",
+      "description": "metastats TFT marketvalue crawler — 6h auto-restart during initial Diamond II+ cold fill",
+      "scripts": [],
+      "onCalendar": [
+        "*-*-* 00,06,12,18:00:00 UTC"
+      ],
+      "interval": [],
+      "activates": "metastats-crawler.service",
+      "persistent": false
+    },
+    {
+      "name": "metastats-daily-crawl-catchup.service",
+      "kind": "service",
+      "description": "Catch-up trigger if the previous daily-crawl run crossed UTC midnight",
+      "scripts": [
+        "infra/hetzner/metastats-daily-crawl-catchup.sh"
+      ],
+      "After": [
+        "metastats-daily-crawl.service"
+      ]
+    },
+    {
+      "name": "metastats-daily-crawl-resume.service",
+      "kind": "service",
+      "description": "metastats TFT daily-crawl resume (missing regions only, cursor-aware)",
+      "scripts": [
+        "scripts/crawl-allranks-all-regions.mjs"
+      ]
+    },
+    {
+      "name": "metastats-daily-crawl-watchdog.service",
+      "kind": "service",
+      "description": "metastats daily-crawl watchdog (resume missing regions after partial outage)",
+      "scripts": [
+        "infra/hetzner/metastats-daily-crawl-watchdog.sh"
+      ]
+    },
+    {
+      "name": "metastats-daily-crawl-watchdog.timer",
+      "kind": "timer",
+      "description": "metastats daily-crawl watchdog (16:00 / 20:00 / 23:00 UTC)",
+      "scripts": [],
+      "onCalendar": [
+        "*-*-* 16:00:00 UTC",
+        "*-*-* 20:00:00 UTC",
+        "*-*-* 23:00:00 UTC"
+      ],
+      "interval": [],
+      "activates": "metastats-daily-crawl-watchdog.service",
+      "persistent": false
+    },
+    {
+      "name": "metastats-daily-crawl.service",
+      "kind": "service",
+      "description": "metastats TFT daily stats crawl (all regions, all ranks)",
+      "scripts": [
+        "scripts/crawl-allranks-all-regions.mjs"
+      ],
+      "OnSuccess": [
+        "metastats-daily-crawl-catchup.service",
+        "metastats-marketvalue-snapshot.service"
+      ],
+      "Conflicts": [
+        "metastats-crawler.service"
+      ]
+    },
+    {
+      "name": "metastats-daily-crawl.timer",
+      "kind": "timer",
+      "description": "Daily TFT all-ranks crawl — fires 00:00 UTC, runs as long as needed",
+      "scripts": [],
+      "onCalendar": [
+        "*-*-* 00:00:00 UTC"
+      ],
+      "interval": [],
+      "activates": "metastats-daily-crawl.service",
+      "persistent": true
+    },
+    {
+      "name": "metastats-health.service",
+      "kind": "service",
+      "description": "metastats Health-Probe (API + Supabase) + Auto-Restart",
+      "scripts": [
+        "scripts/health-monitor.mjs"
+      ]
+    },
+    {
+      "name": "metastats-health.timer",
+      "kind": "timer",
+      "description": "metastats Health-Probe alle 5 min",
+      "scripts": [],
+      "Requires": [
+        "metastats-health.service"
+      ],
+      "onCalendar": [],
+      "interval": [
+        "OnBootSec=2min",
+        "OnUnitActiveSec=5min"
+      ],
+      "activates": "metastats-health.service",
+      "persistent": true
+    },
+    {
+      "name": "metastats-lol-marketvalue.service",
+      "kind": "service",
+      "description": "metastats LoL high-elo marketvalue refresh (event-driven: kicked by refresh-riot-key.mjs after a key rotation; self-throttled to ~weekly)",
+      "scripts": [
+        "scripts/lol-marketvalue-weekly.mjs"
+      ]
+    },
+    {
+      "name": "metastats-marketvalue-snapshot.service",
+      "kind": "service",
+      "description": "metastats TFT marketvalue daily snapshot (D2+, all active regions)",
+      "scripts": [
+        "scripts/daily-marketvalue-snapshot.mjs"
+      ],
+      "Conflicts": [
+        "metastats-daily-crawl.service",
+        "metastats-crawler.service",
+        "metastats-tft-pro-fullsync.service"
+      ],
+      "Wants": [
+        "postgresql.service"
+      ],
+      "After": [
+        "postgresql.service"
+      ]
+    },
+    {
+      "name": "metastats-marketvalue-sync.service",
+      "kind": "service",
+      "description": "metastats Marktwert-Spiegel Hetzner -> Supabase",
+      "scripts": [
+        "scripts/sync-marketvalue-to-supabase.mjs"
+      ]
+    },
+    {
+      "name": "metastats-marketvalue-sync.timer",
+      "kind": "timer",
+      "description": "metastats Marktwert-Spiegel alle 6h",
+      "scripts": [],
+      "onCalendar": [
+        "*-*-* 01,07,13,19:15:00 UTC"
+      ],
+      "interval": [],
+      "activates": "metastats-marketvalue-sync.service",
+      "persistent": true
+    },
+    {
+      "name": "metastats-marketvalue-watchdog.service",
+      "kind": "service",
+      "description": "metastats marketvalue watchdog (per-region snapshot-freshness check)",
+      "scripts": [
+        "infra/hetzner/metastats-marketvalue-watchdog.sh"
+      ]
+    },
+    {
+      "name": "metastats-marketvalue-watchdog.timer",
+      "kind": "timer",
+      "description": "metastats marketvalue watchdog (18:00 UTC)",
+      "scripts": [],
+      "onCalendar": [
+        "*-*-* 18:00:00 UTC",
+        "*-*-* 22:00:00 UTC"
+      ],
+      "interval": [],
+      "activates": "metastats-marketvalue-watchdog.service",
+      "persistent": true
+    },
+    {
+      "name": "metastats-phase1-probe.service",
+      "kind": "service",
+      "description": "metastats Phase-1 Aggregator-Readiness Probe (daily monitoring)",
+      "scripts": [
+        "scripts/probe-aggregator-readiness.mjs"
+      ],
+      "After": [
+        "metastats-snapshot-publisher.service"
+      ]
+    },
+    {
+      "name": "metastats-phase1-probe.timer",
+      "kind": "timer",
+      "description": "metastats Phase-1 Probe Timer (daily 09:30 UTC, nach daily-crawl + publisher)",
+      "scripts": [],
+      "onCalendar": [
+        "*-*-* 09:30:00 UTC"
+      ],
+      "interval": [],
+      "activates": "metastats-phase1-probe.service",
+      "persistent": true
+    },
+    {
+      "name": "metastats-position-aggregator.service",
+      "kind": "service",
+      "description": "metastats — aggregate companion position observations into tft_position_comp_cell",
+      "scripts": [
+        "scripts/aggregate-position-observations.mjs"
+      ]
+    },
+    {
+      "name": "metastats-position-aggregator.timer",
+      "kind": "timer",
+      "description": "Companion position aggregator — every 15 minutes",
+      "scripts": [],
+      "onCalendar": [],
+      "interval": [
+        "OnBootSec=5min",
+        "OnUnitActiveSec=15min"
+      ],
+      "activates": "metastats-position-aggregator.service",
+      "persistent": false
+    },
+    {
+      "name": "metastats-refresh-api.service",
+      "kind": "service",
+      "description": "metastats TFT on-demand refresh API",
+      "scripts": [
+        "scripts/refresh-api-server.mjs"
+      ],
+      "Wants": [
+        "postgresql.service"
+      ],
+      "After": [
+        "postgresql.service"
+      ]
+    },
+    {
+      "name": "metastats-snapshot-publisher.service",
+      "kind": "service",
+      "description": "metastats TFT snapshot bundle publisher (Vercel-Blob)",
+      "scripts": [
+        "scripts/publish-snapshot-bundle.mjs"
+      ],
+      "After": [
+        "metastats-daily-crawl.service"
+      ]
+    },
+    {
+      "name": "metastats-tft-pro-classify.service",
+      "kind": "service",
+      "description": "TFT Pro Classifier (recomputes classification + confidence_score)",
+      "scripts": [
+        "scripts/classify-tft-pros.mjs"
+      ]
+    },
+    {
+      "name": "metastats-tft-pro-fullsync.service",
+      "kind": "service",
+      "description": "TFT Pro Sync (ohne Liquipedia) — EsportsEarnings + Riot-Rank + Klassifikation",
+      "scripts": [
+        "scripts/validate-tft-pros-loop.mjs"
+      ]
+    },
+    {
+      "name": "metastats-tft-pro-fullsync.timer",
+      "kind": "timer",
+      "description": "Weekly TFT Pro full re-sync (Fridays)",
+      "scripts": [],
+      "onCalendar": [
+        "Fri *-*-* 03:00:00 UTC"
+      ],
+      "interval": [],
+      "activates": "metastats-tft-pro-fullsync.service",
+      "persistent": true
+    },
+    {
+      "name": "metastats-tft-pro-tpc-roster.service",
+      "kind": "service",
+      "description": "TFT TPC Pro-Circuit Roster Crawler (Liquipedia → tpc_verified flag)",
+      "scripts": [
+        "scripts/crawl-tft-tpc-roster.mjs"
+      ],
+      "OnSuccess": [
+        "metastats-tft-pro-classify.service"
+      ]
+    },
+    {
+      "name": "metastats-tft-pro-tpc-roster.timer",
+      "kind": "timer",
+      "description": "Weekly TPC roster refresh (competetft.com via Liquipedia)",
+      "scripts": [],
+      "onCalendar": [
+        "Fri *-*-* 04:00:00 UTC"
+      ],
+      "interval": [],
+      "activates": "metastats-tft-pro-tpc-roster.service",
+      "persistent": true
+    },
+    {
+      "name": "metastats-tft-pro-validator.service",
+      "kind": "service",
+      "description": "TFT Pro Watchdog — daily sample + anomaly detection",
+      "scripts": [
+        "scripts/validate-tft-pros-loop.mjs"
+      ]
+    },
+    {
+      "name": "metastats-tft-pro-validator.timer",
+      "kind": "timer",
+      "description": "Daily TFT Pro watchdog sample",
+      "scripts": [],
+      "onCalendar": [
+        "*-*-* 02:00:00 UTC"
+      ],
+      "interval": [],
+      "activates": "metastats-tft-pro-validator.service",
+      "persistent": true
+    }
+  ],
+  "timers": [
+    {
+      "timer": "metastats-build-check.timer",
+      "activates": "metastats-build-check.service",
+      "onCalendar": []
+    },
+    {
+      "timer": "metastats-companion-backfill.timer",
+      "activates": "metastats-companion-backfill.service",
+      "onCalendar": []
+    },
+    {
+      "timer": "metastats-contracts.timer",
+      "activates": "metastats-contracts.service",
+      "onCalendar": [
+        "*-*-* 23:00:00 UTC"
+      ]
+    },
+    {
+      "timer": "metastats-crawler.timer",
+      "activates": "metastats-crawler.service",
+      "onCalendar": [
+        "*-*-* 00,06,12,18:00:00 UTC"
+      ]
+    },
+    {
+      "timer": "metastats-daily-crawl-watchdog.timer",
+      "activates": "metastats-daily-crawl-watchdog.service",
+      "onCalendar": [
+        "*-*-* 16:00:00 UTC",
+        "*-*-* 20:00:00 UTC",
+        "*-*-* 23:00:00 UTC"
+      ]
+    },
+    {
+      "timer": "metastats-daily-crawl.timer",
+      "activates": "metastats-daily-crawl.service",
+      "onCalendar": [
+        "*-*-* 00:00:00 UTC"
+      ]
+    },
+    {
+      "timer": "metastats-health.timer",
+      "activates": "metastats-health.service",
+      "onCalendar": []
+    },
+    {
+      "timer": "metastats-marketvalue-sync.timer",
+      "activates": "metastats-marketvalue-sync.service",
+      "onCalendar": [
+        "*-*-* 01,07,13,19:15:00 UTC"
+      ]
+    },
+    {
+      "timer": "metastats-marketvalue-watchdog.timer",
+      "activates": "metastats-marketvalue-watchdog.service",
+      "onCalendar": [
+        "*-*-* 18:00:00 UTC",
+        "*-*-* 22:00:00 UTC"
+      ]
+    },
+    {
+      "timer": "metastats-phase1-probe.timer",
+      "activates": "metastats-phase1-probe.service",
+      "onCalendar": [
+        "*-*-* 09:30:00 UTC"
+      ]
+    },
+    {
+      "timer": "metastats-position-aggregator.timer",
+      "activates": "metastats-position-aggregator.service",
+      "onCalendar": []
+    },
+    {
+      "timer": "metastats-tft-pro-fullsync.timer",
+      "activates": "metastats-tft-pro-fullsync.service",
+      "onCalendar": [
+        "Fri *-*-* 03:00:00 UTC"
+      ]
+    },
+    {
+      "timer": "metastats-tft-pro-tpc-roster.timer",
+      "activates": "metastats-tft-pro-tpc-roster.service",
+      "onCalendar": [
+        "Fri *-*-* 04:00:00 UTC"
+      ]
+    },
+    {
+      "timer": "metastats-tft-pro-validator.timer",
+      "activates": "metastats-tft-pro-validator.service",
+      "onCalendar": [
+        "*-*-* 02:00:00 UTC"
+      ]
+    }
+  ],
+  "workflows": [
+    {
+      "file": "deploy-hetzner.yml",
+      "name": "Deploy crawler to Hetzner",
+      "schedule": [],
+      "scripts": [],
+      "manualDispatch": true,
+      "onPush": true
+    },
+    {
+      "file": "tft-daily-crawl.yml",
+      "name": "TFT Daily Crawl",
+      "schedule": [],
+      "scripts": [
+        "scripts/detect-tft-set.mjs",
+        "scripts/fetch-tft-roadmap.mjs",
+        "scripts/refresh-augment-tiers.mjs",
+        "scripts/refresh-augment-stages.mjs",
+        "scripts/refresh-patch-notes.mjs",
+        "scripts/fetch-tft-assets.mjs",
+        "scripts/annotate-god-offerings.mjs",
+        "scripts/refresh-comp-augments.mjs",
+        "scripts/fetch-tft-tier-distribution.mjs",
+        "scripts/collect-tft-allranks.mjs"
+      ],
+      "manualDispatch": true,
+      "onPush": false
+    },
+    {
+      "file": "tft-player-cache-prewarm.yml",
+      "name": "TFT Player Cache Pre-Warm",
+      "schedule": [
+        "0 6 * * *"
+      ],
+      "scripts": [
+        "scripts/prewarm-tft-player-cache.mjs"
+      ],
+      "manualDispatch": true,
+      "onPush": false
+    },
+    {
+      "file": "tft-pro-crawl-weekly.yml",
+      "name": "TFT Pro Player Weekly Crawl",
+      "schedule": [
+        "0 8 * * 0"
+      ],
+      "scripts": [
+        "scripts/validate-tft-pros-loop.mjs"
+      ],
+      "manualDispatch": true,
+      "onPush": false
+    },
+    {
+      "file": "tft-stats-cache-warm.yml",
+      "name": "TFT Stats Cache Warm",
+      "schedule": [
+        "30 9 * * *"
+      ],
+      "scripts": [
+        "scripts/warm-tft-stats-cache.mjs"
+      ],
+      "manualDispatch": true,
+      "onPush": false
+    },
+    {
+      "file": "tft-tournaments-weekly.yml",
+      "name": "TFT Tournament Weekly Crawl",
+      "schedule": [
+        "0 9 * * 3"
+      ],
+      "scripts": [
+        "scripts/crawl-tft-tournaments.mjs"
+      ],
+      "manualDispatch": true,
+      "onPush": false
+    },
+    {
+      "file": "tft-weekly-crawl.yml",
+      "name": "TFT Weekly Crawl",
+      "schedule": [
+        "0 6 * * 6"
+      ],
+      "scripts": [
+        "scripts/detect-tft-set.mjs",
+        "scripts/refresh-augment-tiers.mjs",
+        "scripts/refresh-augment-stages.mjs",
+        "scripts/refresh-patch-notes.mjs",
+        "scripts/fetch-tft-assets.mjs",
+        "scripts/annotate-god-offerings.mjs",
+        "scripts/refresh-comp-augments.mjs",
+        "scripts/collect-tft-allranks.mjs",
+        "scripts/build-tft-knowledge-graph.mjs",
+        "scripts/fetch-tft-tier-distribution.mjs"
+      ],
+      "manualDispatch": true,
+      "onPush": false
+    },
+    {
+      "file": "weekly-crawl-kr.yml",
+      "name": "Weekly Data Crawl (KR)",
+      "schedule": [
+        "0 18 * * 5"
+      ],
+      "scripts": [
+        "scripts/refresh-riot-key.mjs",
+        "scripts/collect-kr-cn.mjs"
+      ],
+      "manualDispatch": true,
+      "onPush": false
+    },
+    {
+      "file": "weekly-crawl.yml",
+      "name": "Weekly Data Crawl (EUW)",
+      "schedule": [
+        "0 6 * * 5"
+      ],
+      "scripts": [
+        "scripts/crawl-pro-players.mjs",
+        "scripts/collect-highelo.mjs",
+        "scripts/detect-season.mjs",
+        "scripts/fetch-tier-distribution.mjs",
+        "scripts/detect-tft-set.mjs"
+      ],
+      "manualDispatch": true,
+      "onPush": false
+    }
+  ],
+  "scriptEdges": [
+    {
+      "from": "scripts/check-system-map.mjs",
+      "to": "scripts/db-exec.mjs",
+      "via": "spawn"
+    },
+    {
+      "from": "scripts/check-system-map.mjs",
+      "to": "scripts/build-system-map.mjs",
+      "via": "spawn"
+    },
+    {
+      "from": "scripts/crawl-all-regions.mjs",
+      "to": "scripts/sync-marketvalue-to-supabase.mjs",
+      "via": "spawn"
+    },
+    {
+      "from": "scripts/crawl-all-regions.mjs",
+      "to": "scripts/collect-tft-marketvalues.mjs",
+      "via": "spawn"
+    },
+    {
+      "from": "scripts/crawl-allranks-all-regions.mjs",
+      "to": "metastats-snapshot-publisher.service",
+      "via": "systemctl-start"
+    },
+    {
+      "from": "scripts/crawl-allranks-all-regions.mjs",
+      "to": "scripts/collect-tft-allranks.mjs",
+      "via": "spawn"
+    },
+    {
+      "from": "scripts/lol-marketvalue-weekly.mjs",
+      "to": "scripts/refresh-highelo-marketvalues.mjs",
+      "via": "spawn"
+    },
+    {
+      "from": "scripts/refresh-riot-key.mjs",
+      "to": "metastats-lol-marketvalue.service",
+      "via": "systemctl-start"
+    },
+    {
+      "from": "scripts/refresh-riot-key.mjs",
+      "to": "metastats-refresh-api.service",
+      "via": "systemctl-start"
+    },
+    {
+      "from": "scripts/refresh-top50-all-regions.mjs",
+      "to": "scripts/refresh-highelo-marketvalues.mjs",
+      "via": "spawn"
+    }
+  ],
+  "npmScripts": [
+    {
+      "name": "setup-hooks",
+      "scripts": [
+        "scripts/setup-git-hooks.mjs"
+      ]
+    },
+    {
+      "name": "build:snapshot-matrix",
+      "scripts": [
+        "scripts/build-snapshot-matrix.mjs"
+      ]
+    },
+    {
+      "name": "verify",
+      "scripts": [
+        "scripts/verify-classifications.mjs"
+      ]
+    },
+    {
+      "name": "verify:coverage",
+      "scripts": [
+        "scripts/verify-comp-augments-coverage.mjs"
+      ]
+    },
+    {
+      "name": "check:drift",
+      "scripts": [
+        "scripts/check-drift.mjs"
+      ]
+    },
+    {
+      "name": "check:contracts",
+      "scripts": [
+        "scripts/check-contracts.mjs"
+      ]
+    },
+    {
+      "name": "verify:full",
+      "scripts": [
+        "scripts/verify-classifications.mjs",
+        "scripts/verify-comp-augments-coverage.mjs",
+        "scripts/check-drift.mjs",
+        "scripts/check-system-map.mjs"
+      ]
+    },
+    {
+      "name": "build:system-map",
+      "scripts": [
+        "scripts/build-system-map.mjs"
+      ]
+    },
+    {
+      "name": "check:system-map",
+      "scripts": [
+        "scripts/check-system-map.mjs"
+      ]
+    }
+  ],
+  "contractsByOwner": {
+    "metastats-daily-crawl.service": [
+      "daily-crawl/comp-stats",
+      "daily-crawl/crawl-meta",
+      "daily-crawl/unit-stats",
+      "daily-crawl/item-stats",
+      "daily-crawl/trait-stats",
+      "daily-crawl/keine-luecken"
+    ],
+    "metastats-marketvalue-snapshot.service": [
+      "marketvalue/hetzner-snapshots"
+    ],
+    "scripts/sync-marketvalue-to-supabase.mjs": [
+      "marketvalue/supabase-mirror",
+      "marketvalue/sync-parity"
+    ],
+    "metastats-tft-pro-fullsync.service": [
+      "pro-crawl/roster"
+    ],
+    "metastats-tft-pro-validator.service": [
+      "pro-crawl/validation-freshness"
+    ]
+  }
+}

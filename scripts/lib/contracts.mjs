@@ -227,14 +227,20 @@ export async function checkContract(c) {
           ? (await supaDistinctDays(c.table, c.dateColumn, from)).map(d => d.slice(0, 10))
           : (await pgDistinctDays(c.table, c.dateColumn, from)).map(d => d.slice(0, 10)),
       );
+      // Bewusst akzeptierte Lücken (Daten nicht mehr nachziehbar) zählen nicht
+      // als Bruch — ein dauerhaft roter Vertrag wird ignoriert und schützt dann
+      // gar nichts mehr. Sie laufen automatisch aus dem Fenster.
+      const accepted = new Set(c.knownGaps || []);
       const missing = [];
       for (let t = Date.parse(from); t <= Date.parse(upto); t += 86_400_000) {
         const day = new Date(t).toISOString().slice(0, 10);
-        if (!present.has(day)) missing.push(day);
+        if (!present.has(day) && !accepted.has(day)) missing.push(day);
       }
+      const stillAccepted = [...accepted].filter(d => d >= from && d <= upto);
+      const suffix = stillAccepted.length ? ` (akzeptiert: ${stillAccepted.join(', ')})` : '';
       return missing.length === 0
-        ? r('ok', `keine Lücken in ${c.noGapsInDays}d (bis ${upto})`)
-        : r('broken', `fehlende Tage: ${missing.join(', ')}`);
+        ? r('ok', `keine neuen Lücken in ${c.noGapsInDays}d${suffix}`)
+        : r('broken', `fehlende Tage: ${missing.join(', ')}${suffix}`);
     }
 
     // Standard: Frische + Volumen am neuesten vorhandenen Tag.

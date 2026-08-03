@@ -11,7 +11,7 @@
 
 set -e
 
-echo "[pre-push 1/4] Running tsc --noEmit ..."
+echo "[pre-push 1/5] Running tsc --noEmit ..."
 if ! npx tsc --noEmit; then
   echo ""
   echo "TypeScript errors detected — push blocked."
@@ -19,7 +19,7 @@ if ! npx tsc --noEmit; then
 fi
 echo "  tsc passed."
 
-echo "[pre-push 2/4] Checking snapshot-matrix.generated.mjs freshness ..."
+echo "[pre-push 2/5] Checking snapshot-matrix.generated.mjs freshness ..."
 # Wenn snapshot-matrix.ts neuer ist als die generated.mjs, ist der commit stale.
 # Schützt gegen Drift im Auto-Generate-Pattern (reference_dual_module_patterns.md).
 if [ -f app/lib/snapshot-matrix.ts ] && [ -f app/lib/snapshot-matrix.generated.mjs ]; then
@@ -32,7 +32,7 @@ if [ -f app/lib/snapshot-matrix.ts ] && [ -f app/lib/snapshot-matrix.generated.m
 fi
 echo "  snapshot-matrix freshness OK."
 
-echo "[pre-push 3/4] Running classification verifier ..."
+echo "[pre-push 3/5] Running classification verifier ..."
 if ! node scripts/verify-classifications.mjs; then
   echo ""
   echo "Classification checks failed — push blocked."
@@ -42,7 +42,27 @@ if ! node scripts/verify-classifications.mjs; then
 fi
 echo "  classification checks passed."
 
-echo "[pre-push 4/4] Checking out-of-band region-list drift ..."
+echo "[pre-push 4/5] Checking system-map freshness + broken chains ..."
+# Die Karte wird generiert. Wer eine Unit anfasst und sie nicht neu baut,
+# bekommt eine Architektur-Doku, die luegt — schlimmer als keine.
+if ! node scripts/build-system-map.mjs --check; then
+  echo ""
+  echo "system-map veraltet — push blocked."
+  echo "Run: npm run build:system-map && git add infra/system-map.json"
+  exit 1
+fi
+# Kaputte Ketten (ExecStart auf fehlendes Script, OnSuccess auf unbekannte
+# Unit, Timer ohne Ziel) sind Fehler. Hinweise (verwaiste Scripts, fehlende
+# Vertraege) blocken bewusst nicht — sonst wird der Hook abgeschaltet.
+if ! node scripts/check-system-map.mjs > /dev/null; then
+  node scripts/check-system-map.mjs
+  echo ""
+  echo "Kaputte Referenzen in der Systemkarte — push blocked."
+  exit 1
+fi
+echo "  system-map OK."
+
+echo "[pre-push 5/5] Checking out-of-band region-list drift ..."
 if ! node scripts/check-drift.mjs; then
   echo ""
   echo "Region-list drift detected — push blocked."

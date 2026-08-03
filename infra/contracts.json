@@ -83,7 +83,8 @@
       "dateColumn": "day",
       "maxLagDays": 3,
       "noGapsInDays": 14,
-      "note": "Die Frischeprüfung sieht nur den neuesten Tag. Der 27.07.2026 fehlte komplett (Lauf per SIGTERM abgebrochen, Catchup hängt an OnSuccess= und lief deshalb nie) und blieb eine Woche unbemerkt."
+      "knownGaps": ["2026-07-21", "2026-07-27"],
+      "note": "Die Frischeprüfung sieht nur den neuesten Tag. Der 27.07.2026 fehlte komplett (Lauf per SIGTERM abgebrochen, Catchup hängt an OnSuccess= und lief deshalb nie) und blieb eine Woche unbemerkt; der 21.07. fiel erst durch diesen Check auf. Beide Tage sind bewusst nicht nachgezogen — der Match-Cache enthält den Zeitraum nicht mehr, es bräuchte einen ~13h-Vollcrawl, der den nächtlichen Lauf blockieren würde. Sie laufen von selbst aus dem 14-Tage-Fenster."
     },
 
     {

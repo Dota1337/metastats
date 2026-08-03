@@ -468,7 +468,9 @@ async function main() {
         if (t.Image && t.Name) {
           const imgName = String(t.Image).replace(/ /g, '_');
           const url = `https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/${imgName}`;
-          leaguepediaLogos[t.Name.toLowerCase()] = url;
+          // String() ist Pflicht: Cargo liefert rein numerische Teamnamen
+          // ("100" für 100 Thieves) als Number, .toLowerCase() wirft dann.
+          leaguepediaLogos[String(t.Name).toLowerCase()] = url;
           if (t.Short) leaguepediaLogos[String(t.Short).toLowerCase()] = url;
         }
       }
@@ -503,12 +505,33 @@ async function main() {
   }
 
   const fs = await import('fs');
+
+  // Populations-Floor: public/pro-teams.json speist /teams, /ligen, den
+  // Knowledge-Graph und die Transfer-Predictions live. Ein Lauf, bei dem
+  // Leaguepedia rate-limitet oder die Esports-API zickt, darf 392 Teams nicht
+  // durch eine Handvoll ersetzen — lieber der alte Stand als ein leerer.
+  const FLOOR = 0.8;
+  let previousCount = 0;
+  try {
+    previousCount = JSON.parse(fs.readFileSync('public/pro-teams.json', 'utf8')).totalTeams || 0;
+  } catch { /* erster Lauf: kein Vergleichswert */ }
+
+  if (previousCount > 0 && teamsDB.length < previousCount * FLOOR) {
+    console.error(
+      `\n  ABBRUCH: nur ${teamsDB.length} Teams gegenüber ${previousCount} zuvor `
+      + `(< ${FLOOR * 100} %). Datei bleibt unverändert — vermutlich hat eine `
+      + `Quelle rate-limitet. Mit --force überschreiben, wenn der Rückgang echt ist.`,
+    );
+    if (!process.argv.includes('--force')) process.exit(1);
+    console.error('  --force gesetzt, schreibe trotzdem.');
+  }
+
   fs.writeFileSync('public/pro-teams.json', JSON.stringify({
     updatedAt: new Date().toISOString(),
     totalTeams: teamsDB.length,
     teams: teamsDB,
   }));
-  console.log('\n  -> public/pro-teams.json gespeichert');
+  console.log(`\n  -> public/pro-teams.json gespeichert (${teamsDB.length} Teams, zuvor ${previousCount})`);
 
   console.log('\n=== Top 10 Teams ===');
   teamsDB.slice(0, 10).forEach((t, i) => {

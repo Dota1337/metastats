@@ -1,0 +1,62 @@
+name: Pro-Teams weekly
+
+# Haelt public/pro-teams.json aktuell. Die Datei speist live /teams,
+# /teams/[id], /ligen, /api/homepage-stats, /api/knowledge-graph und
+# /api/transfer-predictions.
+#
+# Warum es diesen Workflow gibt: der Crawler existierte, hatte aber keinerlei
+# Scheduler — weder Unit noch Workflow. Die Datei stand deshalb vom 21.05. bis
+# 03.08.2026 unbemerkt still, waehrend die Seiten sie weiter ausgeliefert
+# haben. Aufgefallen ist das erst durch den Systemkarten-Check.
+#
+# Keine Secrets noetig: das Script zieht aus der oeffentlichen Leaguepedia-
+# Cargo-API und liest public/pro-players.json aus dem Repo.
+
+on:
+  schedule:
+    # Montags 04:00 UTC — nach dem Wochenend-Spielbetrieb, damit Rosterwechsel
+    # und Turnierergebnisse der Woche drin sind. Bewusst versetzt zu
+    # weekly-crawl.yml (03:00), damit nicht beide gleichzeitig auf main pushen.
+    - cron: '0 4 * * 1'
+  workflow_dispatch: {}
+
+concurrency:
+  group: pro-teams-weekly
+  cancel-in-progress: false
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    # Der Lauf zieht ~96k Ergebniszeilen in ~190 Batches; 60 Min ist reichlich.
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci --no-audit --no-fund
+
+      - name: Team-Daten crawlen
+        # Das Script bricht selbst ab, wenn die Teamzahl unter 80 % des
+        # vorigen Stands faellt (Populations-Floor) — ein rate-limitierter
+        # Lauf ueberschreibt die Live-Daten also nicht mit Muell.
+        run: node scripts/crawl-pro-teams.mjs
+
+      - name: Aenderungen committen
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/pro-teams.json
+          if git diff --staged --quiet; then
+            echo "Keine Aenderungen an den Team-Daten"
+          else
+            git commit -m "chore: weekly pro-teams update"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main && git push origin main && break
+              echo "Push-Versuch $attempt fehlgeschlagen, neuer Versuch ..."
+              sleep 10
+            done
+          fi

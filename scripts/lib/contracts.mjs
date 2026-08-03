@@ -183,6 +183,7 @@ export async function checkContract(c) {
 
   try {
     if (c.type === 'mirror') return await checkMirror(c, r);
+    if (c.type === 'file') return checkFile(c, r);
 
     if (c.backend === 'hetzner' && !isOnBox()) {
       return r('skipped', 'nur auf der Hetzner-Box prüfbar');
@@ -265,6 +266,40 @@ export async function checkContract(c) {
     // an genau der Stelle, die Silent Success verhindern soll.
     return r('error', err.message);
   }
+}
+
+/**
+ * Datei-Vertrag: statische Produktionsdaten im Repo, die eine Seite live
+ * ausliefert. Nicht jeder Datenbestand liegt in einer DB — public/pro-teams.json
+ * stand vom 21.05. bis 03.08.2026 still, während /teams und /ligen sie weiter
+ * anzeigten. Geprüft wird das Feld aus `dateField` (Default `updatedAt`).
+ */
+function checkFile(c, r) {
+  const path = resolve(REPO_ROOT, c.path);
+  if (!existsSync(path)) return r('broken', `${c.path} existiert nicht`);
+
+  let parsed;
+  try {
+    parsed = JSON.parse(readFileSync(path, 'utf8'));
+  } catch (err) {
+    return r('broken', `${c.path} ist kein gültiges JSON: ${err.message}`);
+  }
+
+  const stamp = parsed[c.dateField || 'updatedAt'];
+  if (!stamp) return r('broken', `${c.path} hat kein Feld ${c.dateField || 'updatedAt'}`);
+
+  const ageDays = Math.floor((Date.now() - Date.parse(stamp)) / 86_400_000);
+  if (Number.isNaN(ageDays)) return r('broken', `${c.path}: ${stamp} ist kein Datum`);
+
+  if (c.minEntries) {
+    const n = Array.isArray(parsed[c.entriesField]) ? parsed[c.entriesField].length : null;
+    if (n == null) return r('broken', `${c.path}: Feld ${c.entriesField} ist keine Liste`);
+    if (n < c.minEntries) return r('broken', `${c.path}: nur ${n} Einträge (min ${c.minEntries})`);
+  }
+
+  return ageDays <= c.maxAgeDays
+    ? r('ok', `${c.path} ist ${ageDays}d alt (max ${c.maxAgeDays}d)`)
+    : r('broken', `${c.path} ist ${ageDays}d alt, erlaubt sind ${c.maxAgeDays}d — Aktualisierung ausgefallen`);
 }
 
 /** Spiegel-Vertrag: Ziel muss ~so viele Rows haben wie die Quelle. */

@@ -130,9 +130,13 @@ const allScripts = readdirSync(resolve(ROOT, 'scripts'))
 const orphans = allScripts.filter(s => !called.has(s) && !MANUAL_ONLY.has(s) && !TEAM_DATA_MAINTAINERS.has(s));
 
 // Eingefrorene Live-Daten sind ein echter Befund, kein Aufraeum-Hinweis.
+// Den Grundbestand hält pro-teams-weekly.yml aktuell; die hier gelisteten
+// Schritte reichern zusätzlich an (Turnierhistorie, Roster-Validierung,
+// Account-Verknüpfung) und laufen bisher nur von Hand.
 const stranded = [...TEAM_DATA_MAINTAINERS].filter(s => !called.has(s) && existsSync(resolve(ROOT, s)));
 if (stranded.length) {
-  notes.push(`${stranded.length} Pfleger von public/pro-teams.json ohne Scheduler — die Datei speist /teams, /ligen, Knowledge-Graph und Transfer-Predictions und wird von nichts mehr aktualisiert.`);
+  notes.push(`${stranded.length} Anreicherungs-Schritte für public/pro-teams.json ohne Scheduler (Grundbestand deckt pro-teams-weekly.yml ab):`);
+  for (const s of stranded) notes.push(`    ${s}`);
 }
 
 // Eine Liste aus 45 Zeilen liest niemand. Werkzeuge, die schon am Namen als

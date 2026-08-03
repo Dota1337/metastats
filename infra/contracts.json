@@ -120,6 +120,18 @@
     },
 
     {
+      "id": "pro-teams/datei-frische",
+      "owner": ".github/workflows/pro-teams-weekly.yml",
+      "type": "file",
+      "path": "public/pro-teams.json",
+      "dateField": "updatedAt",
+      "entriesField": "teams",
+      "minEntries": 300,
+      "maxAgeDays": 10,
+      "note": "Speist /teams, /teams/[id], /ligen, homepage-stats, knowledge-graph und transfer-predictions. Der Crawler existierte, hatte aber keinen Scheduler — die Datei stand vom 21.05. bis 03.08.2026 still. 10 Tage lassen einen ausgefallenen Wochenlauf durchgehen, zwei nicht."
+    },
+
+    {
       "id": "pro-crawl/roster",
       "owner": "metastats-tft-pro-fullsync.service",
       "backend": "supabase",

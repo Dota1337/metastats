@@ -523,6 +523,18 @@
       "onPush": true
     },
     {
+      "file": "pro-teams-weekly.yml",
+      "name": "Pro-Teams weekly",
+      "schedule": [
+        "0 4 * * 1"
+      ],
+      "scripts": [
+        "scripts/crawl-pro-teams.mjs"
+      ],
+      "manualDispatch": true,
+      "onPush": false
+    },
+    {
       "file": "tft-daily-crawl.yml",
       "name": "TFT Daily Crawl",
       "schedule": [],
@@ -791,6 +803,9 @@
     "scripts/sync-marketvalue-to-supabase.mjs": [
       "marketvalue/supabase-mirror",
       "marketvalue/sync-parity"
+    ],
+    ".github/workflows/pro-teams-weekly.yml": [
+      "pro-teams/datei-frische"
     ],
     "metastats-tft-pro-fullsync.service": [
       "pro-crawl/roster"

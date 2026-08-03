@@ -108,6 +108,19 @@
       "note": "BRICHT AKTUELL ABSICHTLICH. Der Read-Path von Vercel liest hier; ohne diesen Vertrag bleibt ein toter Sync unsichtbar (HOCH-1)."
     },
     {
+      "id": "marketvalue/regionen-abdeckung",
+      "owner": "metastats-marketvalue-snapshot.service",
+      "type": "coverage",
+      "backend": "supabase",
+      "table": "tft_player_marketvalue_snapshots",
+      "groupColumn": "region",
+      "dateColumn": "snapshot_date",
+      "groups": ["euw1", "eun1", "tr1", "ru", "me1", "na1", "br1", "la1", "la2", "kr", "jp1", "oc1", "sg2", "tw2", "vn2"],
+      "maxLagDays": 10,
+      "note": "STEHT ANFANGS AUF ROT und färbt sich über die nächsten Tage grün. Ein Gesamt-Frischecheck war blind dafür, dass einzelne Regionen zurückfielen: am 03.08.2026 standen jp1/oc1/sg2/tw2 auf dem 12.06. (52 Tage), weil der Driver die Regionen in fester Reihenfolge abarbeitete und nachts vom Daily-Crawl per Conflicts= gestoppt wurde. Seit der Staleness-Sortierung rotieren alle durch; bleibt eine Region über 10 Tage, reicht die Rotation nicht und der Durchsatz muss angefasst werden."
+    },
+
+    {
       "id": "marketvalue/sync-parity",
       "owner": "scripts/sync-marketvalue-to-supabase.mjs",
       "type": "mirror",

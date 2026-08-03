@@ -185,6 +185,7 @@ export async function checkContract(c) {
     if (c.type === 'mirror') return await checkMirror(c, r);
     if (c.type === 'file') return checkFile(c, r);
     if (c.type === 'endpoint') return await checkEndpoint(c, r);
+    if (c.type === 'coverage') return await checkCoverage(c, r);
 
     if (c.backend === 'hetzner' && !isOnBox()) {
       return r('skipped', 'nur auf der Hetzner-Box prüfbar');
@@ -343,6 +344,62 @@ async function checkEndpoint(c, r) {
   return ageDays <= c.maxAgeDays
     ? r('ok', `${ageDays.toFixed(1)}d alt (max ${c.maxAgeDays}d)`)
     : r('broken', `${ageDays.toFixed(1)}d alt, erlaubt sind ${c.maxAgeDays}d — Veröffentlichung ausgefallen`);
+}
+
+/**
+ * Abdeckungs-Vertrag: KEINE Gruppe darf zurückfallen.
+ *
+ * Ein Gesamt-Frischecheck sieht nur die jüngste Zeile und ist deshalb blind
+ * dafür, dass einzelne Gruppen seit Wochen leer ausgehen. Genau so standen am
+ * 03.08.2026 fünf Regionen auf Marktwerten vom 12.06. (52 Tage), während die
+ * Tabelle insgesamt taufrisch aussah — der Driver arbeitete die Regionen in
+ * fester Reihenfolge ab und kam nie hinten an.
+ */
+async function checkCoverage(c, r) {
+  if (c.backend === 'hetzner' && !isOnBox()) {
+    return r('skipped', 'nur auf der Hetzner-Box prüfbar');
+  }
+  const isSupa = c.backend === 'supabase';
+
+  let rows;
+  if (isSupa) {
+    // PostgREST kann kein GROUP BY — je Gruppe die jüngste Zeile holen.
+    rows = [];
+    for (const g of c.groups) {
+      const res = await supaGet(
+        `${c.table}?select=${c.dateColumn}&${c.groupColumn}=eq.${g}`
+        + `&order=${c.dateColumn}.desc&limit=1`,
+      );
+      const j = await res.json();
+      rows.push({ grp: g, newest: j[0]?.[c.dateColumn] ?? null });
+    }
+  } else {
+    const pool = await hetznerPool();
+    const q = await pool.query(
+      `select ${c.groupColumn} as grp, max(${c.dateColumn}) as newest
+         from ${c.table} group by ${c.groupColumn}`,
+    );
+    rows = q.rows;
+  }
+
+  const seen = new Map(rows.map(x => [
+    String(x.grp),
+    x.newest ? Math.floor((Date.now() - Date.parse(x.newest)) / 86_400_000) : null,
+  ]));
+
+  const stale = [];
+  for (const g of c.groups) {
+    const age = seen.get(g);
+    if (age == null) stale.push(`${g}(nie)`);
+    else if (age > c.maxLagDays) stale.push(`${g}(${age}d)`);
+  }
+
+  if (stale.length === 0) {
+    const worst = Math.max(...[...seen.values()].filter(v => v != null), 0);
+    return r('ok', `alle ${c.groups.length} ${c.groupColumn}s ≤ ${c.maxLagDays}d (ältestes ${worst}d)`);
+  }
+  return r('broken',
+    `${stale.length}/${c.groups.length} ${c.groupColumn}s über ${c.maxLagDays}d: ${stale.join(' ')}`);
 }
 
 /** Spiegel-Vertrag: Ziel muss ~so viele Rows haben wie die Quelle. */

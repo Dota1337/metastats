@@ -798,7 +798,8 @@
       "daily-crawl/keine-luecken"
     ],
     "metastats-marketvalue-snapshot.service": [
-      "marketvalue/hetzner-snapshots"
+      "marketvalue/hetzner-snapshots",
+      "marketvalue/regionen-abdeckung"
     ],
     "scripts/sync-marketvalue-to-supabase.mjs": [
       "marketvalue/supabase-mirror",

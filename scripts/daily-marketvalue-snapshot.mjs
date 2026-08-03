@@ -143,6 +143,9 @@ if (!Number.isFinite(MATCH_CONCURRENCY) || MATCH_CONCURRENCY < 1 || MATCH_CONCUR
   process.exit(1);
 }
 
+// Rollback-Schalter: stellt die alte, statische ACTIVE_REGIONS-Reihenfolge her.
+const STATIC_REGION_ORDER = args.includes('--static-region-order');
+
 const REGIONS = REGION_ARG === 'all'
   ? [...ACTIVE_REGIONS]
   : [REGION_ARG];
@@ -152,6 +155,65 @@ for (const r of REGIONS) {
     console.error(`Unknown or inactive region: ${r}`);
     console.error(`Active: ${ACTIVE_REGIONS.join(', ')}`);
     process.exit(1);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Region-Reihenfolge: älteste Daten zuerst
+//
+// Bis 2026-08-03 lief der Driver stur die ACTIVE_REGIONS-Reihenfolge ab —
+// euw1 (10.878 Spieler, der größte Brocken) also immer zuerst. Da ein
+// Vollzyklus über alle 15 Regionen deutlich länger als einen Tag braucht und
+// der Cursor jede Nacht zurückgesetzt wird, kamen die hinteren Regionen nie
+// an die Reihe: jp1, oc1, sg2, tw2 und vn2 standen am 03.08. auf Marktwerten
+// vom 12.06. — 52 Tage alt, bei 20.399 betroffenen Spielern.
+//
+// Sortierung jetzt: zuerst Regionen, die heute schon angefangen, aber nicht
+// abgeschlossen wurden (sonst bliebe deren Teilarbeit liegen — sie gälten am
+// nächsten Tag als "frisch" und rutschten wieder ans Ende), danach die mit
+// dem ältesten Snapshot. Regionen ganz ohne Snapshots kommen zuerst.
+//
+// Fällt die Abfrage aus, bleibt es bei der statischen Reihenfolge — eine
+// kaputte Sortierung darf den Lauf nicht verhindern.
+// ─────────────────────────────────────────────────────────────────────────────
+async function orderByStaleness(regions) {
+  if (regions.length <= 1 || STATIC_REGION_ORDER) return regions;
+  try {
+    const { rows } = await pool.query(`
+      select region,
+             max(snapshot_date)                                        as newest,
+             count(*) filter (where snapshot_date = current_date) > 0  as started_today
+        from tft_player_marketvalue_snapshots
+       where region = any($1::text[])
+       group by region
+    `, [regions]);
+
+    const info = new Map(rows.map(r => [r.region, r]));
+    const rank = (r) => {
+      const i = info.get(r);
+      if (!i) return { started: 0, newest: 0 };            // nie gecrawlt → ganz nach vorn
+      return {
+        started: i.started_today ? -1 : 0,                  // angefangen → vor allen anderen
+        newest: i.newest ? Date.parse(i.newest) : 0,
+      };
+    };
+
+    const ordered = [...regions].sort((a, b) => {
+      const ra = rank(a), rb = rank(b);
+      if (ra.started !== rb.started) return ra.started - rb.started;
+      return ra.newest - rb.newest;                          // ältester Snapshot zuerst
+    });
+
+    const age = (r) => {
+      const i = info.get(r);
+      if (!i?.newest) return 'nie';
+      return `${Math.round((Date.now() - Date.parse(i.newest)) / 86_400_000)}d`;
+    };
+    console.log(`    Reihenfolge nach Rückstand: ${ordered.map(r => `${r}(${age(r)})`).join(' ')}`);
+    return ordered;
+  } catch (err) {
+    console.error(`    [warn] Staleness-Sortierung fehlgeschlagen (${err.message}) — statische Reihenfolge`);
+    return regions;
   }
 }
 
@@ -821,7 +883,9 @@ async function main() {
 
   // Cursor laden (oder leer wenn neuer UTC-Tag / --reset-cursor)
   const cursor = readCursor();
-  const todoRegions = REGIONS.filter(r => !cursor.completed.includes(r));
+  const todoRegions = await orderByStaleness(
+    REGIONS.filter(r => !cursor.completed.includes(r)),
+  );
   if (cursor.completed.length > 0) {
     console.log(`    cursor: ${cursor.completed.length}/${REGIONS.length} schon heute fertig (${cursor.completed.join(',')})`);
     console.log(`    todo: ${todoRegions.join(',')}`);

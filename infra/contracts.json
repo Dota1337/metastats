@@ -76,6 +76,17 @@
     },
 
     {
+      "id": "daily-crawl/keine-luecken",
+      "owner": "metastats-daily-crawl.service",
+      "backend": "supabase",
+      "table": "tft_daily_crawl_meta",
+      "dateColumn": "day",
+      "maxLagDays": 3,
+      "noGapsInDays": 14,
+      "note": "Die Frischeprüfung sieht nur den neuesten Tag. Der 27.07.2026 fehlte komplett (Lauf per SIGTERM abgebrochen, Catchup hängt an OnSuccess= und lief deshalb nie) und blieb eine Woche unbemerkt."
+    },
+
+    {
       "id": "marketvalue/hetzner-snapshots",
       "owner": "metastats-marketvalue-snapshot.service",
       "backend": "hetzner",

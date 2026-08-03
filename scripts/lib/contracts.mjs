@@ -102,6 +102,21 @@ async function supaCount(table, filter = '') {
   return Number(total);
 }
 
+/** Distinct-Tage ab `from`, als YYYY-MM-DD. Paginiert, damit grosse Tabellen nicht abschneiden. */
+async function supaDistinctDays(table, col, from) {
+  const seen = new Set();
+  const PAGE = 1000;
+  for (let offset = 0; offset < 200_000; offset += PAGE) {
+    const res = await supaGet(
+      `${table}?select=${col}&${col}=gte.${from}&order=${col}.asc&limit=${PAGE}&offset=${offset}`,
+    );
+    const rows = await res.json();
+    for (const row of rows) if (row[col]) seen.add(String(row[col]).slice(0, 10));
+    if (rows.length < PAGE) break;
+  }
+  return [...seen];
+}
+
 // ---------------------------------------------------------------- Hetzner
 
 let pgPoolPromise = null;
@@ -131,6 +146,15 @@ async function pgMaxDate(table, col) {
   const v = r.rows[0]?.m;
   if (!v) return null;
   return v instanceof Date ? v.toISOString().slice(0, 10) : String(v).slice(0, 10);
+}
+
+async function pgDistinctDays(table, col, from) {
+  const pool = await hetznerPool();
+  const r = await pool.query(
+    `select distinct ${col}::date as d from ${table} where ${col} >= $1::date order by d`,
+    [from],
+  );
+  return r.rows.map(x => (x.d instanceof Date ? x.d.toISOString().slice(0, 10) : String(x.d)));
 }
 
 async function pgCountAll(table) {
@@ -189,6 +213,28 @@ export async function checkContract(c) {
       return n >= c.minRows
         ? r('ok', `${n} Rows in ${c.windowDays}d (min ${c.minRows})`)
         : r('broken', `nur ${n} Rows in ${c.windowDays}d, erwartet mindestens ${c.minRows}`);
+    }
+
+    // Lückenprüfung: fehlt in den letzten N Tagen ein Tag ganz? Die
+    // Frischeprüfung unten sieht nur den neuesten Tag und übersieht Löcher in
+    // der Historie — so blieb der komplett fehlende 27.07. unbemerkt, weil ein
+    // abgebrochener Lauf keinen OnSuccess-Catchup auslöst.
+    if (c.noGapsInDays) {
+      const from = new Date(Date.now() - c.noGapsInDays * 86_400_000).toISOString().slice(0, 10);
+      const upto = new Date(Date.now() - c.maxLagDays * 86_400_000).toISOString().slice(0, 10);
+      const present = new Set(
+        isSupa
+          ? (await supaDistinctDays(c.table, c.dateColumn, from)).map(d => d.slice(0, 10))
+          : (await pgDistinctDays(c.table, c.dateColumn, from)).map(d => d.slice(0, 10)),
+      );
+      const missing = [];
+      for (let t = Date.parse(from); t <= Date.parse(upto); t += 86_400_000) {
+        const day = new Date(t).toISOString().slice(0, 10);
+        if (!present.has(day)) missing.push(day);
+      }
+      return missing.length === 0
+        ? r('ok', `keine Lücken in ${c.noGapsInDays}d (bis ${upto})`)
+        : r('broken', `fehlende Tage: ${missing.join(', ')}`);
     }
 
     // Standard: Frische + Volumen am neuesten vorhandenen Tag.

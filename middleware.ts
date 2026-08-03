@@ -17,9 +17,17 @@ export async function middleware(req: NextRequest) {
     if (!internalDashboardEnabled()) {
       return new NextResponse('Not Found', { status: 404 });
     }
-    // Login-Routes und Login-Page selbst nicht gaten — sonst Endlos-Redirect.
-    const isLoginPath = path === '/internal/login' || path === '/api/internal/login';
-    if (isLoginPath) return NextResponse.next();
+    // Nicht gaten: Login (sonst Endlos-Redirect) und Routen mit eigener,
+    // maschinentauglicher Auth. /api/internal/revalidate authentifiziert per
+    // HMAC-Signatur + ±5min-Timestamp-Window und hard-failt ohne Secret — der
+    // Crawler auf der Hetzner-Box hat keine Browser-Session und lief hier von
+    // 2026-06-16 bis 2026-08-03 in einen 401, wodurch nach jedem Crawl die
+    // Edge-Caches stehen blieben. ops-snapshot und riot-status haben KEINE
+    // eigene Auth und müssen hinter der Cookie-Gate bleiben.
+    const isSelfAuthedPath = path === '/internal/login'
+      || path === '/api/internal/login'
+      || path === '/api/internal/revalidate';
+    if (isSelfAuthedPath) return NextResponse.next();
 
     const cookie = req.cookies.get(INTERNAL_COOKIE)?.value;
     if (await verifyCookieValue(cookie)) return NextResponse.next();

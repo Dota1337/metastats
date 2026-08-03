@@ -44,6 +44,31 @@ const MANUAL_ONLY = new Set([
   'scripts/db-exec.mjs',
   'scripts/build-system-map.mjs',
   'scripts/check-system-map.mjs',
+  // Secret-/Env-Rotation — laufen bewusst von Hand, nie automatisch.
+  'scripts/deploy-revalidate-secret.mjs',
+  'scripts/refresh-supabase-key.mjs',
+  'scripts/rotate-refresh-token.mjs',
+  'scripts/sync-github-secrets.mjs',
+  'scripts/sync-vercel-blob-env.mjs',
+  // Ops-Eingriffe und Diagnose.
+  'scripts/supabase-restart.mjs',      // Schritt im Supabase-Outage-Runbook
+  'scripts/check-companion-data.mjs',
+  'scripts/refresh-pros-marketvalue.mjs',
+  'scripts/reclassify-match-cache.mjs', // Backlog: 16M Full-Table-Re-Classify
+]);
+
+/**
+ * Scripts, die pro-teams.json pflegen. Sie haben KEINEN automatischen Aufrufer
+ * mehr, sind aber nicht verwaist: /teams, /ligen, der Knowledge-Graph und die
+ * Transfer-Predictions lesen diese Datei live. Nicht loeschen — hier fehlt ein
+ * Scheduler, kein Code. Stand 2026-08-03 ist die Datei vom 21.05. eingefroren,
+ * und zwei der Crawler haengen an der abgeschalteten Riot-eSports-API.
+ */
+const TEAM_DATA_MAINTAINERS = new Set([
+  'scripts/crawl-pro-teams.mjs',
+  'scripts/crawl-team-history.mjs',
+  'scripts/crawl-rosters-validated.mjs',
+  'scripts/link-team-rosters.mjs',
 ]);
 
 const map = JSON.parse(readFileSync(resolve(ROOT, 'infra', 'system-map.json'), 'utf8'));
@@ -102,7 +127,13 @@ for (const e of map.scriptEdges) if (e.via === 'spawn') called.add(e.to);
 const allScripts = readdirSync(resolve(ROOT, 'scripts'))
   .filter(f => f.endsWith('.mjs'))
   .map(f => `scripts/${f}`);
-const orphans = allScripts.filter(s => !called.has(s) && !MANUAL_ONLY.has(s));
+const orphans = allScripts.filter(s => !called.has(s) && !MANUAL_ONLY.has(s) && !TEAM_DATA_MAINTAINERS.has(s));
+
+// Eingefrorene Live-Daten sind ein echter Befund, kein Aufraeum-Hinweis.
+const stranded = [...TEAM_DATA_MAINTAINERS].filter(s => !called.has(s) && existsSync(resolve(ROOT, s)));
+if (stranded.length) {
+  notes.push(`${stranded.length} Pfleger von public/pro-teams.json ohne Scheduler — die Datei speist /teams, /ligen, Knowledge-Graph und Transfer-Predictions und wird von nichts mehr aktualisiert.`);
+}
 
 // Eine Liste aus 45 Zeilen liest niemand. Werkzeuge, die schon am Namen als
 // Einmal-/Diagnose-Skript erkennbar sind, werden nur gezählt; übrig bleibt,
@@ -121,12 +152,33 @@ if (tools.length) {
 }
 
 // --- 6. Services ohne Laufzeit-Vertrag --------------------------------------
+// Nicht jeder Service produziert Daten. Überwachung, Hilfsjobs und Dauerdienste
+// haben nichts, was man vertraglich zusichern könnte — sie hier zu listen,
+// würde den Hinweis dauerhaft verrauschen und damit wertlos machen.
+const NO_CONTRACT_NEEDED = new Set([
+  'metastats-contracts.service',              // prüft die Verträge selbst
+  'metastats-health.service',                 // Überwachung
+  'metastats-daily-crawl-watchdog.service',   // Überwachung
+  'metastats-marketvalue-watchdog.service',   // Überwachung
+  'metastats-build-check.service',            // prüft den Vercel-Build
+  'metastats-phase1-probe.service',           // Diagnose-Sonde
+  'metastats-daily-crawl-catchup.service',    // Hilfsjob, startet nur den Crawl neu
+  'metastats-daily-crawl-resume.service',     // Hilfsjob, deckt derselbe Vertrag ab
+  'metastats-refresh-api.service',            // Dauerdienst, kein Batch-Ergebnis
+  'metastats-crawler.service',                // Legacy-Pfad, ruht seit 2026-08-01
+]);
+
 const owners = new Set(Object.keys(map.contractsByOwner));
+// Ein Vertrag kann auf die Unit ODER auf das Script hinter ExecStart lauten —
+// der Marktwert-Spiegel etwa gehört dem Script, weil ihn zwei Pfade aufrufen.
+const covered = (u) => owners.has(u.name) || u.scripts.some(s => owners.has(s));
+
 const uncovered = map.units
-  .filter(u => u.kind === 'service' && u.scripts.length && !owners.has(u.name))
+  .filter(u => u.kind === 'service' && u.scripts.length
+    && !covered(u) && !NO_CONTRACT_NEEDED.has(u.name))
   .map(u => u.name);
 if (uncovered.length) {
-  notes.push(`${uncovered.length} Services ohne Laufzeit-Vertrag in infra/contracts.json:`);
+  notes.push(`${uncovered.length} datenschreibende Services ohne Laufzeit-Vertrag:`);
   for (const s of uncovered) notes.push(`    ${s}`);
 }
 

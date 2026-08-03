@@ -106,9 +106,12 @@ function parseWorkflow(file) {
 function parseScriptEdges() {
   const edges = [];
   const dir = resolve(ROOT, 'scripts');
-  // Der Generator selbst enthält Regex-Literale wie 'foo.service' und würde
-  // sich sonst selbst als Kante melden.
-  const files = listDir(dir, /\.mjs$/).filter(f => f !== basename(fileURLToPath(import.meta.url)));
+  // Generator und Checker führen Script- und Unit-Namen als DATEN (Regex-
+  // Literale, Whitelists). Würde man sie mitlesen, gälte jedes dort gelistete
+  // Script als "aufgerufen" — die Whitelist würde den Detektor blind machen,
+  // der sie befüllt.
+  const SELF = new Set(['build-system-map.mjs', 'check-system-map.mjs']);
+  const files = listDir(dir, /\.mjs$/).filter(f => !SELF.has(f));
   for (const f of files) {
     const text = read(resolve(dir, f));
     const from = `scripts/${f}`;
@@ -126,6 +129,15 @@ function parseScriptEdges() {
     // Direkter Aufruf eines anderen Scripts via spawn/execFile/fork.
     for (const m of text.matchAll(/['"](scripts\/[\w./-]+\.mjs)['"]/g)) {
       if (m[1] !== from) edges.push({ from, to: m[1], via: 'spawn' });
+    }
+    // Aufruf über den blossen Dateinamen — so führt validate-tft-pros-loop.mjs
+    // seine Schritt-Registry (`{ script: 'crawl-tft-pro-players.mjs' }`). Ohne
+    // diesen Fall meldet die Karte acht aktive Scripts als verwaist.
+    for (const m of text.matchAll(/['"]([\w-]+\.mjs)['"]/g)) {
+      const target = `scripts/${m[1]}`;
+      if (target !== from && existsSync(resolve(ROOT, target))) {
+        edges.push({ from, to: target, via: 'spawn' });
+      }
     }
   }
   // Duplikate zusammenfassen.

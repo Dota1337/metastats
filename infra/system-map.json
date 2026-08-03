@@ -642,16 +642,6 @@
   ],
   "scriptEdges": [
     {
-      "from": "scripts/check-system-map.mjs",
-      "to": "scripts/db-exec.mjs",
-      "via": "spawn"
-    },
-    {
-      "from": "scripts/check-system-map.mjs",
-      "to": "scripts/build-system-map.mjs",
-      "via": "spawn"
-    },
-    {
       "from": "scripts/crawl-all-regions.mjs",
       "to": "scripts/sync-marketvalue-to-supabase.mjs",
       "via": "spawn"
@@ -687,8 +677,43 @@
       "via": "systemctl-start"
     },
     {
-      "from": "scripts/refresh-top50-all-regions.mjs",
-      "to": "scripts/refresh-highelo-marketvalues.mjs",
+      "from": "scripts/validate-tft-pros-loop.mjs",
+      "to": "scripts/crawl-tft-pro-categories.mjs",
+      "via": "spawn"
+    },
+    {
+      "from": "scripts/validate-tft-pros-loop.mjs",
+      "to": "scripts/crawl-tft-pro-players.mjs",
+      "via": "spawn"
+    },
+    {
+      "from": "scripts/validate-tft-pros-loop.mjs",
+      "to": "scripts/crawl-tft-tpc-roster.mjs",
+      "via": "spawn"
+    },
+    {
+      "from": "scripts/validate-tft-pros-loop.mjs",
+      "to": "scripts/enrich-tft-pro-history.mjs",
+      "via": "spawn"
+    },
+    {
+      "from": "scripts/validate-tft-pros-loop.mjs",
+      "to": "scripts/crawl-tft-pro-portal-stats.mjs",
+      "via": "spawn"
+    },
+    {
+      "from": "scripts/validate-tft-pros-loop.mjs",
+      "to": "scripts/enrich-tft-esportsearnings.mjs",
+      "via": "spawn"
+    },
+    {
+      "from": "scripts/validate-tft-pros-loop.mjs",
+      "to": "scripts/validate-tft-pro-rank.mjs",
+      "via": "spawn"
+    },
+    {
+      "from": "scripts/validate-tft-pros-loop.mjs",
+      "to": "scripts/classify-tft-pros.mjs",
       "via": "spawn"
     }
   ],

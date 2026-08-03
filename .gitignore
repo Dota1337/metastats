@@ -47,5 +47,11 @@ next-env.d.ts
 .claude-flow/
 .swarm/
 
+# MCP-Server-Konfiguration: Workstation-Config, per Dropbox-Symlink zwischen
+# Laptop und Desktop gesynct (wie .env* und .claude/). NICHT tracken — die
+# Datei ist lokal ein Symlink, ein Commit wuerde daraus einen Blob mit
+# absolutem Windows-Pfad machen. Quelle: Dropbox\Metastats\repo-config\.mcp.json
+.mcp.json
+
 # fastembed-js Modell-Cache (Onnx-Modelle, ~30-500MB pro Modell)
 /local_cache/

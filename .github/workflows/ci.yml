@@ -1,0 +1,56 @@
+name: CI
+
+# Sicherheitsnetz fuer die Faelle, in denen der pre-push-Hook NICHT laeuft:
+#   • Commits der woechentlichen Daten-Workflows (Bot pusht direkt nach main)
+#   • `git push --no-verify`
+#   • Pushes von einer Maschine ohne `npm run setup-hooks`
+# Genau so kam die Slug-Map-Drift vom 01.08.2026 unbemerkt herein.
+#
+# Bewusst NICHT hier: `next build` und die DB-abhaengigen Verifier.
+# Den Build faehrt Vercel bei jedem Push ohnehin (next.config setzt kein
+# ignoreBuildErrors, Typfehler brechen ihn also), und alles was DATABASE_URL
+# braucht gehoert in den taeglichen Vertrags-Lauf auf der Box, nicht in die CI.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install
+        run: npm ci --no-audit --no-fund
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Unit-Tests
+        run: npm test
+
+      - name: Klassifikations-Verifier
+        run: node scripts/verify-classifications.mjs
+
+      - name: Region-Listen-Drift
+        run: node scripts/check-drift.mjs
+
+      - name: Systemkarte frisch?
+        run: node scripts/build-system-map.mjs --check
+
+      - name: Systemkarte konsistent?
+        run: node scripts/check-system-map.mjs

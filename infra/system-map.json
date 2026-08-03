@@ -502,6 +502,19 @@
   ],
   "workflows": [
     {
+      "file": "ci.yml",
+      "name": "CI",
+      "schedule": [],
+      "scripts": [
+        "scripts/verify-classifications.mjs",
+        "scripts/check-drift.mjs",
+        "scripts/build-system-map.mjs",
+        "scripts/check-system-map.mjs"
+      ],
+      "manualDispatch": true,
+      "onPush": true
+    },
+    {
       "file": "deploy-hetzner.yml",
       "name": "Deploy crawler to Hetzner",
       "schedule": [],

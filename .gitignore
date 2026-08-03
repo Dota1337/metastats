@@ -55,3 +55,6 @@ next-env.d.ts
 
 # fastembed-js Modell-Cache (Onnx-Modelle, ~30-500MB pro Modell)
 /local_cache/
+
+# Artefakte des Playwright-MCP (Snapshots, Konsolen-Logs)
+.playwright-mcp/

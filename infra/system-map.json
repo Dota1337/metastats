@@ -804,8 +804,14 @@
       "marketvalue/supabase-mirror",
       "marketvalue/sync-parity"
     ],
+    "metastats-snapshot-publisher.service": [
+      "snapshot/manifest-frische"
+    ],
     ".github/workflows/pro-teams-weekly.yml": [
       "pro-teams/datei-frische"
+    ],
+    "metastats-lol-marketvalue.service": [
+      "lol-marketvalue/history"
     ],
     "metastats-tft-pro-fullsync.service": [
       "pro-crawl/roster"

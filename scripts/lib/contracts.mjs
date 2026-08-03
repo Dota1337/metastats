@@ -184,6 +184,7 @@ export async function checkContract(c) {
   try {
     if (c.type === 'mirror') return await checkMirror(c, r);
     if (c.type === 'file') return checkFile(c, r);
+    if (c.type === 'endpoint') return await checkEndpoint(c, r);
 
     if (c.backend === 'hetzner' && !isOnBox()) {
       return r('skipped', 'nur auf der Hetzner-Box prüfbar');
@@ -255,8 +256,15 @@ export async function checkContract(c) {
       return r('broken', `letzter Tag ${latest} ist ${lag}d alt, erlaubt sind ${c.maxLagDays}d`);
     }
 
+    // Bei Timestamp-Spalten trifft `eq.<Datum>` nur exakt Mitternacht und
+    // zählt deshalb fast immer 0. Der ganze Tag ist ein Halb-offenes Intervall.
+    const dayFilter = c.dateType === 'timestamp'
+      ? `&${c.dateColumn}=gte.${latest}T00:00:00&${c.dateColumn}=lt.`
+        + `${new Date(Date.parse(latest) + 86_400_000).toISOString().slice(0, 10)}T00:00:00`
+      : `&${c.dateColumn}=eq.${latest}`;
+
     const n = isSupa
-      ? await supaCount(c.table, `&${c.dateColumn}=eq.${latest}`)
+      ? await supaCount(c.table, dayFilter)
       : await pgCountOnDay(c.table, c.dateColumn, latest);
     return n >= c.minRows
       ? r('ok', `${latest}: ${n} Rows (min ${c.minRows}, Lag ${lag}d)`)
@@ -300,6 +308,41 @@ function checkFile(c, r) {
   return ageDays <= c.maxAgeDays
     ? r('ok', `${c.path} ist ${ageDays}d alt (max ${c.maxAgeDays}d)`)
     : r('broken', `${c.path} ist ${ageDays}d alt, erlaubt sind ${c.maxAgeDays}d — Aktualisierung ausgefallen`);
+}
+
+/**
+ * Endpoint-Vertrag: veröffentlichte Artefakte, die weder in einer DB noch im
+ * Repo liegen. Das Snapshot-Manifest im Vercel-Blob ist beides — Perf-Schicht
+ * und Ausfallpuffer, wenn Supabase klemmt. Veraltet es unbemerkt, liefert die
+ * Seite im Ernstfall alte Daten aus und niemand weiß, seit wann.
+ */
+async function checkEndpoint(c, r) {
+  // Env hat Vorrang: zieht der Blob-Store um, wird die Umgebung angepasst,
+  // nicht das Vertragsregister. `url` ist nur der Fallback für Umgebungen,
+  // in denen die Variable nicht gesetzt ist (Workstation, CI).
+  const url = process.env[c.urlEnv || ''] || c.url;
+  if (!url) return r('error', `keine URL (weder url noch ${c.urlEnv})`);
+
+  const res = await fetch(url, { signal: AbortSignal.timeout(20_000) });
+  if (!res.ok) return r('broken', `${url} antwortet HTTP ${res.status}`);
+
+  const body = await res.json();
+  const stamp = body[c.dateField];
+  if (!stamp) return r('broken', `Antwort hat kein Feld ${c.dateField}`);
+
+  const ageDays = (Date.now() - Date.parse(stamp)) / 86_400_000;
+  if (Number.isNaN(ageDays)) return r('broken', `${c.dateField}=${stamp} ist kein Datum`);
+
+  if (c.minEntries) {
+    const raw = body[c.entriesField];
+    const n = Array.isArray(raw) ? raw.length : (raw && typeof raw === 'object' ? Object.keys(raw).length : null);
+    if (n == null) return r('broken', `Feld ${c.entriesField} fehlt oder ist kein Container`);
+    if (n < c.minEntries) return r('broken', `nur ${n} Einträge (min ${c.minEntries})`);
+  }
+
+  return ageDays <= c.maxAgeDays
+    ? r('ok', `${ageDays.toFixed(1)}d alt (max ${c.maxAgeDays}d)`)
+    : r('broken', `${ageDays.toFixed(1)}d alt, erlaubt sind ${c.maxAgeDays}d — Veröffentlichung ausgefallen`);
 }
 
 /** Spiegel-Vertrag: Ziel muss ~so viele Rows haben wie die Quelle. */

@@ -120,6 +120,19 @@
     },
 
     {
+      "id": "snapshot/manifest-frische",
+      "owner": "metastats-snapshot-publisher.service",
+      "type": "endpoint",
+      "urlEnv": "SNAPSHOT_MANIFEST_URL",
+      "url": "https://unyv1wum3kbegjer.public.blob.vercel-storage.com/tft/manifest.json",
+      "dateField": "builtAt",
+      "entriesField": "entries",
+      "minEntries": 800,
+      "maxAgeDays": 3,
+      "note": "Das Manifest ist Perf-Schicht UND Ausfallpuffer bei Supabase-Problemen — veraltet es unbemerkt, liefert die Seite im Ernstfall alte Daten. Normal 1156 Einträge, täglich neu gebaut; der Publisher wird aus crawl-allranks-all-regions.mjs per systemctl getriggert, hängt also am Crawl."
+    },
+
+    {
       "id": "pro-teams/datei-frische",
       "owner": ".github/workflows/pro-teams-weekly.yml",
       "type": "file",
@@ -129,6 +142,18 @@
       "minEntries": 300,
       "maxAgeDays": 10,
       "note": "Speist /teams, /teams/[id], /ligen, homepage-stats, knowledge-graph und transfer-predictions. Der Crawler existierte, hatte aber keinen Scheduler — die Datei stand vom 21.05. bis 03.08.2026 still. 10 Tage lassen einen ausgefallenen Wochenlauf durchgehen, zwei nicht."
+    },
+
+    {
+      "id": "lol-marketvalue/history",
+      "owner": "metastats-lol-marketvalue.service",
+      "backend": "supabase",
+      "table": "market_value_history",
+      "dateColumn": "recorded_at",
+      "dateType": "timestamp",
+      "maxLagDays": 10,
+      "minRows": 1,
+      "note": "Wöchentlicher LoL-Marktwert-Lauf, 2038 Rows gesamt, zuletzt 01.08.2026. 10 Tage lassen einen ausgefallenen Wochenlauf durch, zwei nicht. minRows 1, weil pro Lauf nur die veränderten Spieler geschrieben werden."
     },
 
     {

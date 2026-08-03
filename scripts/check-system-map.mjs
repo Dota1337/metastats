@@ -170,6 +170,18 @@ const NO_CONTRACT_NEEDED = new Set([
   'metastats-daily-crawl-resume.service',     // Hilfsjob, deckt derselbe Vertrag ab
   'metastats-refresh-api.service',            // Dauerdienst, kein Batch-Ergebnis
   'metastats-crawler.service',                // Legacy-Pfad, ruht seit 2026-08-01
+  // Companion-Pipeline: die Overwolf-App ist nicht veröffentlicht, es gibt
+  // also keine Beobachtungen. Der Aggregator läuft alle 15 Min sauber und
+  // meldet "0 observations" — ein Vertrag stünde dauerhaft auf Rot und wäre
+  // nach drei Tagen Rauschen. Vor der App-Store-Submission nachziehen.
+  'metastats-companion-backfill.service',
+  'metastats-position-aggregator.service',
+  // Schreiben beide in tft_pro_players, dessen Bestand und Validierungs-
+  // frische bereits pro-crawl/roster und pro-crawl/validation-freshness
+  // zusichern. Ein eigener Vertrag bräuchte ein Feld mit stabiler Rate —
+  // `team` ist mit 19 von 627 Rows dafür zu dünn besetzt.
+  'metastats-tft-pro-classify.service',
+  'metastats-tft-pro-tpc-roster.service',
 ]);
 
 const owners = new Set(Object.keys(map.contractsByOwner));

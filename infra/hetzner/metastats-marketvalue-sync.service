@@ -1,0 +1,22 @@
+[Unit]
+Description=metastats Marktwert-Spiegel Hetzner -> Supabase
+Wants=network-online.target
+After=network-online.target
+# Kein OnSuccess= und keine Kette: dieser Sync muss auch dann laufen, wenn der
+# Snapshot-Lauf abgebrochen ist — gerade dann liegen Rows ungespiegelt herum.
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/metastats-crawler
+EnvironmentFile=/etc/metastats-crawler/env
+# 38k Rows in 200er-Batches brauchen wenige Minuten; 30 min ist reichlich Puffer.
+TimeoutStartSec=1800
+# Das Script spiegelt ein rollierendes Fenster statt nur "heute". Der
+# Snapshot-Lauf braucht pro Vollzyklus >24h, ein Tages-Sync wuerde deshalb
+# regelmaessig Rows verlieren (euw1 verlor so am 06.06. 7733 Snapshots).
+ExecStart=/usr/bin/node scripts/sync-marketvalue-to-supabase.mjs --window 3
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

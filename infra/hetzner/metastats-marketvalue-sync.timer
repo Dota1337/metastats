@@ -1,0 +1,15 @@
+[Unit]
+Description=metastats Marktwert-Spiegel alle 6h
+
+[Timer]
+# Alle 6h statt einmal taeglich: der Snapshot-Lauf schreibt ueber den ganzen
+# Tag verteilt regionsweise, ein Tages-Sync liesse die Website bis zu 24h auf
+# alten Werten stehen. Vier Laeufe sind billig — das Script upsertet.
+OnCalendar=*-*-* 01,07,13,19:15:00 UTC
+# 23:00 UTC prueft metastats-contracts.timer; der 19:15-Lauf liegt bewusst
+# davor, damit ein Ausfall am selben Tag noch gemeldet wird.
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

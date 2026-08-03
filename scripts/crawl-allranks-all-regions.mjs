@@ -32,6 +32,7 @@ import { revalidateEdge, STATS_EDGE_PATHS } from './lib/revalidate-edge.mjs';
 import { ACTIVE_REGIONS } from './lib/active-regions.mjs';
 import { resolveDailyTargetDay } from './lib/tft-crawl-window.mjs';
 import { tryAcquire, blockAcquire, releaseLock } from './lib/advisory-lock.mjs';
+import { assertContracts } from './lib/contracts.mjs';
 import {
   DEFAULT_K, DEFAULT_MAX_ATTEMPTS, cursorPath, startSeed, readCursor,
   markCompleted, recordAttempt, isSettled, selectTodo, selectGapDay,
@@ -273,6 +274,17 @@ async function main() {
   if (done > 0) {
     await runMaintenanceVacuum();
     triggerPublisher();
+
+    // Laufzeit-Vertrag: hat der Lauf wirklich Aggregate geschrieben? Nicht-fatal,
+    // damit die Publisher-/OnSuccess-Kette intakt bleibt — der zentrale
+    // check-contracts-Timer meldet einen Bruch hart. Siehe infra/contracts.json.
+    await assertContracts([
+      'daily-crawl/comp-stats',
+      'daily-crawl/crawl-meta',
+      'daily-crawl/unit-stats',
+      'daily-crawl/item-stats',
+      'daily-crawl/trait-stats',
+    ]).catch(err => console.error('[contract] Prüfung fehlgeschlagen:', err.message));
   }
 
   // Substantial failure -> exit 1 so even a manual chain wouldn't treat it as a

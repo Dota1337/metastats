@@ -1,0 +1,16 @@
+[Unit]
+Description=metastats Laufzeit-Vertraege taeglich pruefen (23:00 UTC)
+
+[Timer]
+# 23:00 UTC liegt nach der kompletten Nachtkette: Daily-Crawl ist ~14:30 UTC
+# fertig, die OnSuccess-Kette braucht 0-4h, und der Marketvalue-Watchdog hat um
+# 18:00 und 22:00 UTC seine Recovery-Versuche hinter sich. Wer um 23:00 immer
+# noch nichts geschrieben hat, hat es heute nicht mehr vor.
+OnCalendar=*-*-* 23:00:00 UTC
+# War die Box zur Trigger-Zeit down, wird beim Boot nachgeholt — ein
+# uebersprungener Tag waere genau die Luecke, die wir sichtbar machen wollen.
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,20 @@
+[Unit]
+Description=metastats Laufzeit-Vertraege (produzieren die Pipelines, was sie versprechen?)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/metastats-crawler
+EnvironmentFile=/etc/metastats-crawler/env
+TimeoutStartSec=300
+# Exit != 0 bei Vertragsbruch ist hier ERWUENSCHT: die Unit taucht dann in
+# `systemctl --failed` auf, das ist der Sichtbarkeits-Mechanismus. Deshalb darf
+# an dieser Unit NIEMALS ein OnSuccess= haengen und sie darf in keiner Kette
+# stehen — sonst wuerde ein gemeldeter Bruch eine Pipeline stoppen.
+ExecStart=/usr/bin/node scripts/check-contracts.mjs --out /var/lib/metastats/contracts-status.json
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

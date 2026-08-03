@@ -66,6 +66,7 @@ import {
 } from './lib/tft-marketvalue-pipeline.mjs';
 import { ACTIVE_REGIONS } from './lib/active-regions.mjs';
 import { fetchD2PlusEntries, splitByActivity } from './lib/tft-league-entries.mjs';
+import { assertContracts } from './lib/contracts.mjs';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Konstanten
@@ -911,6 +912,13 @@ async function main() {
   // the OnSuccess chain (snapshot-publisher would publish stale/empty marketvalue
   // data). Per-region errors are otherwise swallowed into results → exit 0.
   // Audit M5, 2026-06-28.
+  // Laufzeit-Vertrag: hat der Lauf Snapshots ins lokale PG geschrieben?
+  // Nicht-fatal — der Exit-Code steuert unten bewusst die OnSuccess-Kette.
+  if (!DRY_RUN) {
+    await assertContracts(['marketvalue/hetzner-snapshots'])
+      .catch(err => console.error('[contract] Prüfung fehlgeschlagen:', err.message));
+  }
+
   if (!DRY_RUN) {
     const errored = results.filter(r => r.error).length;
     if (errored > 0 && errored >= Math.ceil(results.length / 2)) {

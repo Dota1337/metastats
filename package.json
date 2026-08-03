@@ -12,6 +12,7 @@
     "verify": "node scripts/verify-classifications.mjs",
     "verify:coverage": "node scripts/verify-comp-augments-coverage.mjs",
     "check:drift": "node scripts/check-drift.mjs",
+    "check:contracts": "node scripts/check-contracts.mjs",
     "verify:full": "node scripts/verify-classifications.mjs && node scripts/verify-comp-augments-coverage.mjs && node scripts/check-drift.mjs"
   },
   "dependencies": {

@@ -16,6 +16,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import pg from 'pg';
+import { assertContracts } from './lib/contracts.mjs';
 
 const args = process.argv.slice(2);
 const arg = (k, def) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : def; };
@@ -150,6 +151,12 @@ async function main() {
     } else throw err;
   }
   await pool.end();
+
+  // Laufzeit-Vertrag: ist der Spiegel wirklich angekommen? Genau dieser Check
+  // hätte den toten Sync ab Ende Juli am ersten Tag sichtbar gemacht, statt
+  // ihn zwei Wochen später zufällig aufzudecken.
+  await assertContracts(['marketvalue/supabase-mirror', 'marketvalue/sync-parity'])
+    .catch(err => console.error('[contract] Prüfung fehlgeschlagen:', err.message));
 }
 
 main().catch(err => {

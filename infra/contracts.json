@@ -1,0 +1,131 @@
+{
+  "$comment": [
+    "Laufzeit-Verträge: was jede Pipeline zu produzieren verspricht.",
+    "Geprüft von scripts/check-contracts.mjs — täglich zentral und am Ende",
+    "jedes Drivers für den eigenen Vertrag.",
+    "",
+    "Warum das existiert: tsc und Code-Review sehen nicht, dass ein Prozess",
+    "still 0 Rows schreibt oder gar nicht mehr startet. Genau daran sind der",
+    "Marktwert-Supabase-Sync (still tot seit ~27.07.) und der Pro-Crawl",
+    "(5 Wochen Fehler 23505) unbemerkt vorbeigelaufen.",
+    "",
+    "Schwellen stammen aus den echten Tagesraten vom 24.07.-01.08.2026,",
+    "gemessen, nicht geschätzt. minRows liegt bewusst deutlich unter dem",
+    "Normalwert — der Vertrag soll Ausfälle melden, nicht Schwankungen.",
+    "",
+    "backend: 'supabase' wird immer über REST geprüft (überall erreichbar).",
+    "'hetzner' braucht DATABASE_URL auf der Box und wird sonst übersprungen.",
+    "ACHTUNG: DATABASE_URL zeigt auf der Box auf das lokale PG, auf einer",
+    "Workstation auf Supabase. Deshalb wird 'hetzner' nur geprüft, wenn",
+    "/etc/metastats-crawler/env existiert.",
+    "",
+    "maxLagDays zählt ab heute. Die Aggregate sind run-weit auf D-2 gepinnt,",
+    "deshalb ist 3 für die Crawl-Tabellen normal und keine Verspätung."
+  ],
+
+  "contracts": [
+    {
+      "id": "daily-crawl/comp-stats",
+      "owner": "metastats-daily-crawl.service",
+      "backend": "supabase",
+      "table": "tft_daily_comp_stats",
+      "dateColumn": "day",
+      "maxLagDays": 3,
+      "minRows": 3000,
+      "note": "Normalrate 5000-6500/Tag. Speist /tft/comps."
+    },
+    {
+      "id": "daily-crawl/crawl-meta",
+      "owner": "metastats-daily-crawl.service",
+      "backend": "supabase",
+      "table": "tft_daily_crawl_meta",
+      "dateColumn": "day",
+      "maxLagDays": 3,
+      "minRows": 100,
+      "note": "Normalrate 136-140/Tag = Regionen x Buckets. Fällt das ab, hat eine Region gar nicht gecrawlt."
+    },
+    {
+      "id": "daily-crawl/unit-stats",
+      "owner": "metastats-daily-crawl.service",
+      "backend": "supabase",
+      "table": "tft_daily_unit_stats",
+      "dateColumn": "day",
+      "maxLagDays": 3,
+      "minRows": 5000,
+      "note": "Normalrate 8100-13500/Tag."
+    },
+    {
+      "id": "daily-crawl/item-stats",
+      "owner": "metastats-daily-crawl.service",
+      "backend": "supabase",
+      "table": "tft_daily_item_stats",
+      "dateColumn": "day",
+      "maxLagDays": 3,
+      "minRows": 8000,
+      "note": "Normalrate 13800-20200/Tag."
+    },
+    {
+      "id": "daily-crawl/trait-stats",
+      "owner": "metastats-daily-crawl.service",
+      "backend": "supabase",
+      "table": "tft_daily_trait_stats",
+      "dateColumn": "day",
+      "maxLagDays": 3,
+      "minRows": 6000,
+      "note": "Normalrate 9100-13700/Tag."
+    },
+
+    {
+      "id": "marketvalue/hetzner-snapshots",
+      "owner": "metastats-marketvalue-snapshot.service",
+      "backend": "hetzner",
+      "table": "tft_player_marketvalue_snapshots",
+      "dateColumn": "snapshot_date",
+      "maxLagDays": 2,
+      "minRows": 2000,
+      "note": "Der Lauf schreibt über den Tag verteilt und dauert >24h; geprüft wird der neueste vorhandene Tag, nicht zwingend heute."
+    },
+    {
+      "id": "marketvalue/supabase-mirror",
+      "owner": "scripts/sync-marketvalue-to-supabase.mjs",
+      "backend": "supabase",
+      "table": "tft_player_marketvalue_snapshots",
+      "dateColumn": "snapshot_date",
+      "maxLagDays": 2,
+      "minRows": 2000,
+      "note": "BRICHT AKTUELL ABSICHTLICH. Der Read-Path von Vercel liest hier; ohne diesen Vertrag bleibt ein toter Sync unsichtbar (HOCH-1)."
+    },
+    {
+      "id": "marketvalue/sync-parity",
+      "owner": "scripts/sync-marketvalue-to-supabase.mjs",
+      "type": "mirror",
+      "sourceBackend": "hetzner",
+      "targetBackend": "supabase",
+      "table": "tft_player_marketvalue_snapshots",
+      "dateColumn": "snapshot_date",
+      "minRatio": 0.9,
+      "note": "Kernvertrag gegen HOCH-1: Supabase muss mindestens 90% der Hetzner-Rows desselben Tages haben. Nur auf der Box prüfbar."
+    },
+
+    {
+      "id": "pro-crawl/roster",
+      "owner": "metastats-tft-pro-fullsync.service",
+      "backend": "supabase",
+      "table": "tft_pro_players",
+      "totalRowsMin": 500,
+      "note": "627 Pros am 03.08.2026. Ein Einbruch heisst, der Crawl hat Rows verloren statt ergaenzt."
+    },
+    {
+      "id": "pro-crawl/validation-freshness",
+      "owner": "metastats-tft-pro-validator.service",
+      "backend": "supabase",
+      "table": "tft_pro_players",
+      "dateColumn": "last_validated_at",
+      "dateType": "timestamp",
+      "maxLagDays": 3,
+      "minRows": 300,
+      "windowDays": 7,
+      "note": "613 von 627 in 7 Tagen validiert. Genau hier lief der 23505-Fehler 5 Wochen unbemerkt: der Service lief, schrieb aber nichts."
+    }
+  ]
+}

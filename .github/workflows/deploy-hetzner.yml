@@ -18,6 +18,7 @@ on:
       - 'package-lock.json'
       - 'public/tft-graph-*.json'
       - 'public/tft-set.json'
+      - 'infra/contracts.json'
       - 'infra/hetzner/remote-deploy.sh'
       - '.github/workflows/deploy-hetzner.yml'
   workflow_dispatch: {}

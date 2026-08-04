@@ -41,11 +41,25 @@ export function loadCurrentSet(repoRoot = process.cwd()) {
 
 // Optional Knowledge-Graph für eine Region — region-spezifisch, daher kein
 // Default-Pfad. Driver lädt das selbst und gibt's via ctx an gatherPlayer weiter.
+//
+// "Optional" hiess bisher auch "lautlos": bei null liefern buildHotCompKeys und
+// buildRecommendedItems ihrerseits null, der Lauf schreibt Snapshots ohne
+// Comp-Kontext weiter und im Log steht nichts. Die Graph-Files sind untracked,
+// remote-deploy.sh kann sie im `git clean`-Fallback mitnehmen — genau der Fall,
+// den man Tage später an dünnen Daten merkt statt sofort am Log. Deshalb warnen
+// wir und benennen den erwarteten Pfad; abbrechen wäre falsch, der Rest des
+// Snapshots ist ohne Graph vollständig.
 export function loadGraph(region, repoRoot = process.cwd()) {
   const path = resolve(repoRoot, 'public', `tft-graph-${region}.json`);
-  if (!existsSync(path)) return null;
+  if (!existsSync(path)) {
+    console.warn(`  [warn] Kein Knowledge-Graph für ${region} (${path}) — hot_comp_keys und recommended_items bleiben null`);
+    return null;
+  }
   try { return JSON.parse(readFileSync(path, 'utf8')); }
-  catch { return null; }
+  catch (e) {
+    console.warn(`  [warn] Knowledge-Graph für ${region} unlesbar (${path}): ${e.message} — hot_comp_keys und recommended_items bleiben null`);
+    return null;
+  }
 }
 
 // Account-Lookup für game_name + tag_line. Wird in snapshotPlayer aufgerufen.

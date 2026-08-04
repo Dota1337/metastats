@@ -110,7 +110,10 @@ function parseScriptEdges() {
   // Literale, Whitelists). Würde man sie mitlesen, gälte jedes dort gelistete
   // Script als "aufgerufen" — die Whitelist würde den Detektor blind machen,
   // der sie befüllt.
-  const SELF = new Set(['build-system-map.mjs', 'check-system-map.mjs']);
+  // check-drift.mjs gehört seit 2026-08-04 dazu: seine ALLOWED-Liste der
+  // Limiter-Literale nennt drei Scripts, die es nie startet. Es ruft selbst
+  // nichts auf — der Verlust an Erkennung ist damit null.
+  const SELF = new Set(['build-system-map.mjs', 'check-system-map.mjs', 'check-drift.mjs']);
   const files = listDir(dir, /\.mjs$/).filter(f => !SELF.has(f));
   for (const f of files) {
     const text = read(resolve(dir, f));

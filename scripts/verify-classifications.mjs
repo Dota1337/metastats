@@ -39,18 +39,16 @@ const overridePath = `public/tft-augment-tiers-${set}.json`;
 const override = loadJson(overridePath);
 const godsPath = `public/tft-gods-${set}.json`;
 const gods = loadJson(godsPath);
-const compGuidesPath = `public/tft-comp-guides-${set}.json`;
-const compGuides = loadJson(compGuidesPath);
-const compSlugMapPath = `public/tft-comp-slug-map-${set}.json`;
-const compSlugMap = loadJson(compSlugMapPath);
+const compsPath = `public/tft-metatft-comps-${set}.json`;
+const metatftComps = loadJson(compsPath);
 
 console.log(`Verifying classifications for set ${set} (${bundle.setName})`);
 console.log(`  bundle augments: ${Object.keys(bundle.augments || {}).length}`);
 console.log(`  active.augments: ${bundle.active?.augments?.length || 0}`);
 console.log(`  tier-override:   ${override ? Object.keys(override.tiers || {}).length : 'MISSING'}`);
 console.log(`  gods doc:        ${gods ? gods.gods?.length : 'MISSING'}`);
-console.log(`  comp-guides:     ${compGuides ? Object.keys(compGuides.comps || {}).length : 'MISSING'}`);
-console.log(`  comp-slug-map:   ${compSlugMap ? Object.keys(compSlugMap.slugs || {}).length : 'MISSING'}`);
+console.log(`  metatft-comps:   ${metatftComps ? (metatftComps.comps || []).length : 'MISSING'}`);
+console.log(`  family-map:      ${metatftComps ? Object.keys(metatftComps.familyMap || {}).length : 'MISSING'}`);
 console.log();
 
 // 1. Tier values are valid
@@ -135,117 +133,121 @@ if (activeList.length > 0) {
   }
 }
 
-// 7. Comp-Guides (tftacademy.com) — schema + apiName-Existence + Tier-Sanity
-const VALID_AUG_GROUPS = new Set(['ECON', 'ITEMS', 'COMBAT', 'EMBLEM', 'HERO']);
-const VALID_DIFFICULTIES = new Set(['EASY', 'MEDIUM', 'HARD', 'CONDITIONAL']);
-
-if (compGuides?.comps) {
-  let unknownAugs = 0;
-  for (const [slug, guide] of Object.entries(compGuides.comps)) {
-    if (!guide || typeof guide !== 'object') {
-      fail(`Comp slug "${slug}": guide is not an object`);
-      continue;
+// 7. MetaTFT-Comps — Schema, Bundle-Linkage, Familien-Map-Integritaet.
+//
+// Loest die frueheren Checks 7 (tftacademy-Guides) und 8 (redaktionelle
+// Slug-Map) ab. Der Unterschied: die Familien-Map wird generiert, nicht
+// gepflegt — also pruefen wir nicht mehr auf Pflegefehler, sondern auf
+// Verweis-Integritaet zwischen Map, Comps und Details.
+if (metatftComps) {
+  const comps = Array.isArray(metatftComps.comps) ? metatftComps.comps : null;
+  if (!comps) {
+    fail(`${compsPath}: comps is not an array`);
+  } else {
+    if (Number(metatftComps.set) !== Number(set)) {
+      fail(`${compsPath}: set ${metatftComps.set} != bundle set ${set} — Comps waeren aus dem falschen Set`);
     }
-    // (a) Augments: every apiName in bundle.augments
-    if (!Array.isArray(guide.augments)) {
-      fail(`Comp slug "${slug}": augments is not an array`);
-    } else {
-      for (const apiName of guide.augments) {
-        if (!bundle.augments[apiName]) {
-          if (unknownAugs < 5) fail(`comp-guides slug "${slug}": augment ${apiName} not in bundle.augments`);
-          unknownAugs++;
+
+    const VALID_AUG_GRADES = new Set(['S', 'A', 'B', 'C', 'D']);
+    const compIds = new Set();
+    let unknownAugs = 0;
+    let unknownUnits = 0;
+    let totalAugRefs = 0;
+    for (const comp of comps) {
+      if (!comp?.id) { fail(`${compsPath}: comp ohne id`); continue; }
+      if (compIds.has(comp.id)) fail(`${compsPath}: doppelte comp id "${comp.id}"`);
+      compIds.add(comp.id);
+
+      // (a) Augments: `tier` ist MetaTFTs Performance-Grade S-D in dieser Comp,
+      //     NICHT die Rarity 1-3. Die UI gruppiert danach — ein unbekannter
+      //     Buchstabe wuerde die Gruppe stumm verschlucken.
+      //     Nicht jedes gerankte Augment ist in unserem Set-Bundle: MetaTFT
+      //     rankt ueber Sets hinweg, gemessen 1,6 % Drift. Deshalb Warnung,
+      //     und erst ein Fail, wenn ein grosser Anteil fehlt.
+      if (!Array.isArray(comp.augments)) {
+        fail(`Comp "${comp.id}": augments ist kein Array`);
+      } else {
+        for (const a of comp.augments) {
+          if (!bundle.augments[a?.id]) {
+            if (unknownAugs < 5) warn(`Comp "${comp.id}": Augment ${a?.id} nicht in bundle.augments (wird nicht gerendert)`);
+            unknownAugs++;
+          }
+          if (!VALID_AUG_GRADES.has(a?.tier)) {
+            fail(`Comp "${comp.id}": Augment ${a?.id} hat Grade "${a?.tier}" (erwartet S/A/B/C/D)`);
+          }
         }
+        totalAugRefs += comp.augments.length;
       }
-      // (b) Tier-Distribution-Sanity per slug: ≥85% in one tier → scraper drift
-      if (guide.augments.length > 0) {
-        const tierDist = { 1: 0, 2: 0, 3: 0, 0: 0 };
-        for (const apiName of guide.augments) {
-          const t = bundle.augments[apiName]?.tier ?? 0;
-          tierDist[t] = (tierDist[t] || 0) + 1;
-        }
-        for (const t of [1, 2, 3]) {
-          if (tierDist[t] / guide.augments.length > 0.85) {
-            warn(`Comp slug "${slug}": ${tierDist[t]}/${guide.augments.length} augments in tier ${t} (>85 %) — possible scraper drift`);
-            break;
+
+      // (b) Units muessen Champions des Sets sein.
+      if (!Array.isArray(comp.units)) {
+        fail(`Comp "${comp.id}": units ist kein Array`);
+      } else {
+        for (const u of comp.units) {
+          if (!bundle.champions[u]) {
+            if (unknownUnits < 5) warn(`Comp "${comp.id}": Unit ${u} nicht in bundle.champions`);
+            unknownUnits++;
           }
         }
       }
-    }
-    // (c) augmentTypes: empty array OR same length as augments + valid labels
-    if (!Array.isArray(guide.augmentTypes)) {
-      fail(`Comp slug "${slug}": augmentTypes is not an array`);
-    } else if (guide.augmentTypes.length > 0) {
-      if (guide.augmentTypes.length !== guide.augments.length) {
-        warn(`Comp slug "${slug}": augmentTypes length ${guide.augmentTypes.length} != augments ${guide.augments.length}`);
-      }
-      for (const g of guide.augmentTypes) {
-        if (!VALID_AUG_GROUPS.has(g)) {
-          fail(`Comp slug "${slug}": invalid augment group "${g}" (expected ECON/ITEMS/COMBAT/EMBLEM/HERO)`);
-          break;
-        }
-      }
-    }
-    // (d) earlyComp: array of {apiName, items[], stars} with valid champions
-    if (!Array.isArray(guide.earlyComp)) {
-      fail(`Comp slug "${slug}": earlyComp is not an array`);
-    } else {
-      for (const entry of guide.earlyComp) {
-        if (!entry?.apiName || !bundle.champions[entry.apiName]) {
-          warn(`Comp slug "${slug}": earlyComp champion "${entry?.apiName}" not in bundle.champions`);
-          break;
-        }
-      }
-    }
-    // (e) carousel: array of item apiNames
-    if (!Array.isArray(guide.carousel)) {
-      fail(`Comp slug "${slug}": carousel is not an array`);
-    }
-    // (f) tips: array of {stage, tip}
-    if (!Array.isArray(guide.tips)) {
-      fail(`Comp slug "${slug}": tips is not an array`);
-    }
-    // (g) difficulty: optional, but if set must be valid
-    if (guide.difficulty != null && !VALID_DIFFICULTIES.has(guide.difficulty)) {
-      fail(`Comp slug "${slug}": invalid difficulty "${guide.difficulty}"`);
-    }
-  }
-  if (unknownAugs >= 5) fail(`… ${unknownAugs - 5} additional unknown augment apiNames not shown`);
-} else {
-  warn(`No comp-guides file at ${compGuidesPath} — Comp-Detail guide-sections won't render. Re-run scripts/refresh-comp-augments.mjs.`);
-}
 
-// 8. Comp-Slug-Map — Schema, Bundle-Linkage, Guides-Reference
-if (compSlugMap?.slugs) {
-  const augSlugs = new Set(Object.keys(compGuides?.comps || {}));
-  for (const [slug, entry] of Object.entries(compSlugMap.slugs)) {
-    if (!entry || typeof entry !== 'object') {
-      fail(`Slug-map "${slug}": entry is not an object`);
-      continue;
-    }
-    // (a) primaryCarry must exist in bundle.champions (set-bound)
-    if (!entry.primaryCarry || typeof entry.primaryCarry !== 'string') {
-      fail(`Slug-map "${slug}": missing or invalid primaryCarry`);
-    } else if (!bundle.champions[entry.primaryCarry]) {
-      fail(`Slug-map "${slug}": primaryCarry "${entry.primaryCarry}" not in bundle.champions`);
-    }
-    // (b) primaryTrait may be empty string (= match-by-carry-only). When set,
-    //     it must exist in bundle.traits OR be a prefix that matches at least
-    //     one trait (e.g. "TFT17_Stargazer" matches Mountain/Serpent variants).
-    if (entry.primaryTrait !== undefined && entry.primaryTrait !== '') {
-      const traitMatch = bundle.traits[entry.primaryTrait]
-        || Object.keys(bundle.traits || {}).some(k => k.startsWith(entry.primaryTrait + '_'));
-      if (!traitMatch) {
-        fail(`Slug-map "${slug}": primaryTrait "${entry.primaryTrait}" not in bundle.traits (no exact or prefix match)`);
+      if (typeof comp.games !== 'number' || comp.games <= 0) {
+        fail(`Comp "${comp.id}": games ist ${comp.games} (erwartet > 0)`);
       }
     }
-    // (c) augmentsRef (or slug itself) must point at a compGuides.comps entry
-    const ref = entry.augmentsRef || slug;
-    if (augSlugs.size > 0 && !augSlugs.has(ref)) {
-      fail(`Slug-map "${slug}": augmentsRef "${ref}" has no entry in tft-comp-guides-${set}.json`);
+    if (unknownAugs >= 5) warn(`… ${unknownAugs - 5} weitere unbekannte Augment-apiNames nicht gezeigt`);
+    if (unknownUnits >= 5) warn(`… ${unknownUnits - 5} weitere unbekannte Units nicht gezeigt`);
+    // Ueber 10 % heisst nicht Drift, sondern falsches Set oder kaputter Import.
+    if (totalAugRefs > 0 && unknownAugs / totalAugRefs > 0.1) {
+      fail(`${unknownAugs}/${totalAugRefs} Augment-Referenzen (${((unknownAugs / totalAugRefs) * 100).toFixed(1)} %) nicht in bundle.augments — Set-Drift oder kaputter Import`);
+    }
+
+    // (c) Familien-Map: keine Waisen. Jeder Wert muss auf eine vorhandene Comp
+    //     zeigen — sonst zeigt die Comp-Seite fuer die Familie gar nichts an,
+    //     obwohl die Map einen Treffer meldet.
+    const familyMap = metatftComps.familyMap || {};
+    const familyKeys = Object.keys(familyMap);
+    if (familyKeys.length === 0) {
+      fail(`${compsPath}: familyMap ist leer — keine Comp-Seite bekommt einen Guide`);
+    }
+    let orphans = 0;
+    for (const [familyKey, clusterId] of Object.entries(familyMap)) {
+      if (!compIds.has(clusterId)) {
+        if (orphans < 5) fail(`familyMap["${familyKey}"] -> "${clusterId}" hat keine Comp`);
+        orphans++;
+      }
+      // Schluesselform `<trait>__<carry>` (User-Override 2026-06-21). Ein
+      // abweichendes Format trifft in findCompGuide nie.
+      const m = /^(.+)__(.+)$/.exec(familyKey);
+      if (!m) {
+        fail(`familyMap: Schluessel "${familyKey}" nicht im Format <trait>__<carry>`);
+      } else if (!bundle.champions[m[2]]) {
+        fail(`familyMap["${familyKey}"]: Carry "${m[2]}" nicht in bundle.champions`);
+      }
+    }
+    if (orphans >= 5) fail(`… ${orphans - 5} weitere Waisen in familyMap nicht gezeigt`);
+
+    // (d) Kollisionen: ein Cluster darf mehrere Familien bedienen (Dual-Carry
+    //     ist real), aber wenn einer sehr viele bedient, ist die Ableitung zu
+    //     grob und die Familien bekommen einen unpassenden Guide.
+    const perCluster = new Map();
+    for (const clusterId of Object.values(familyMap)) {
+      perCluster.set(clusterId, (perCluster.get(clusterId) || 0) + 1);
+    }
+    for (const [clusterId, count] of perCluster) {
+      if (count > 8) warn(`Cluster "${clusterId}" bedient ${count} Familien — Ableitung moeglicherweise zu grob`);
+    }
+
+    // (e) Details muessen auf existierende Comps zeigen.
+    for (const clusterId of Object.keys(metatftComps.details || {})) {
+      if (!compIds.has(clusterId)) fail(`details["${clusterId}"] hat keine Comp`);
+    }
+    if (metatftComps.detailsCarriedForward) {
+      warn(`${compsPath}: details stammen aus einem frueheren Lauf (detailsCarriedForward)`);
     }
   }
 } else {
-  warn(`No comp-slug-map at ${compSlugMapPath} — Comp-Detail augment-section won't surface for any cluster.`);
+  warn(`Keine MetaTFT-Comps unter ${compsPath} — Comp-Detail-Guides rendern nicht. Neu holen: node scripts/refresh-metatft-comps.mjs`);
 }
 
 // 9. Item-Bucket-Classification — sanity check that itemBucketOf produces a

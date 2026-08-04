@@ -2452,20 +2452,11 @@ const translations = {
     'P\u00E1gina externa de Riot \u2014 cambios detallados por campe\u00F3n / sinergia / aumento / objeto',
     'Page externe Riot \u2014 modifications d\u00E9taill\u00E9es par champion / synergie / augmentation / objet'
   ),
-  'tft.comp.augments.tier.silver': t6(
-    'Silver', 'Silver',
-    '\uC2E4\uBC84', '\u94F6\u8272',
-    'Plata', 'Argent'
-  ),
-  'tft.comp.augments.tier.gold': t6(
-    'Gold', 'Gold',
-    '\uACE8\uB4DC', '\u91D1\u8272',
-    'Oro', 'Or'
-  ),
-  'tft.comp.augments.tier.prismatic': t6(
-    'Prismatic', 'Prismatic',
-    '\uD504\uB9AC\uC988\uB9E4\uD2F1', '\u68F1\u5F69',
-    'Prism\u00E1tico', 'Prismatique'
+  // Suffix hinter dem Grade-Buchstaben: \u201ES-Tier", \u201EA-Tier", \u2026
+  'tft.comp.augments.grade': t6(
+    'Tier', 'Tier',
+    '\uD2F0\uC5B4', '\u7EA7',
+    'Nivel', 'Palier'
   ),
   'tft.comp.augments.group.ECON': t6('Econ', 'Econ', '\uACBD\uC81C', '\u7ECF\u6D4E', 'Eco', '\u00C9co'),
   'tft.comp.augments.group.ITEMS': t6('Items', 'Items', '\uC544\uC774\uD15C', '\u88C5\u5907', 'Objetos', 'Objets'),
@@ -2481,29 +2472,25 @@ const translations = {
     'Condicional', 'Conditionnel'
   ),
   'tft.comp.earlyGame': t6(
-    'Early Game (Lvl 4-7)', 'Early Game (Lvl 4-7)',
-    '\uCD08\uBC18 \uAC8C\uC784 (Lvl 4-7)', '\u524D\u671F (4-7\u7EA7)',
-    'Juego temprano (Niv 4-7)', 'D\u00E9but de partie (Niv 4-7)'
+    'Early Game', 'Early Game',
+    '\uCD08\uBC18 \uAC8C\uC784', '\u524D\u671F',
+    'Juego temprano', 'D\u00E9but de partie'
   ),
-  'tft.comp.earlyGame.pivot': t6(
-    'Pivot', 'Pivot',
-    '\uD53C\uBC97', '\u8FC7\u6E21',
-    'Pivote', 'Pivot'
+  'tft.comp.avgPlacement': t6(
+    '\u00D8 Platz', 'Avg place',
+    '\uD3C9\uADE0 \uC21C\uC704', '\u5E73\u5747\u6392\u540D',
+    'Puesto medio', 'Place moy.'
+  ),
+  'tft.comp.games': t6(
+    'Spiele', 'games',
+    '\uAC8C\uC784', '\u5C40',
+    'partidas', 'parties'
   ),
   'tft.comp.carousel': t6(
     'Carousel \u00B7 Runde 1', 'Carousel \u00B7 Round 1',
     '\uCE90\uB7EC\uC140 \u00B7 \uB77C\uC6B4\uB4DC 1', '\u8F6C\u76D8 \u00B7 \u7B2C1\u8F6E',
     'Carrusel \u00B7 Ronda 1', 'Carousel \u00B7 Manche 1'
   ),
-  'tft.comp.stageTips': t6(
-    'Stage-Tipps', 'Stage Tips',
-    '\uC2A4\uD14C\uC774\uC9C0\uBCC4 \uD301', '\u9636\u6BB5\u63D0\u793A',
-    'Consejos por etapa', 'Conseils par \u00E9tape'
-  ),
-  'tft.comp.stage.2': t6('Stage 2', 'Stage 2', '\uC2A4\uD14C\uC774\uC9C0 2', '\u9636\u6BB5 2', 'Etapa 2', '\u00C9tape 2'),
-  'tft.comp.stage.3': t6('Stage 3', 'Stage 3', '\uC2A4\uD14C\uC774\uC9C0 3', '\u9636\u6BB5 3', 'Etapa 3', '\u00C9tape 3'),
-  'tft.comp.stage.4': t6('Stage 4', 'Stage 4', '\uC2A4\uD14C\uC774\uC9C0 4', '\u9636\u6BB5 4', 'Etapa 4', '\u00C9tape 4'),
-  'tft.comp.stage.5': t6('Stage 5', 'Stage 5', '\uC2A4\uD14C\uC774\uC9C0 5', '\u9636\u6BB5 5', 'Etapa 5', '\u00C9tape 5'),
   'tft.comp.variants': t6(
     'Varianten', 'Variants',
     '\uBCC0\uD615', '\u53D8\u4F53',

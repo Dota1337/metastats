@@ -214,7 +214,7 @@ export default function TftCompDetailPage() {
 
             <BlockHeadline label={t('tft.comp.block.live')} />
 
-            {/* Curated comp guide — Augments + Early Game + Stage-Tipps.
+            {/* Comp-Guide aus MetaTFT — Augments + Early Game + Carousel.
                 Kritischste Live-Game-Entscheidungs-Hilfe für Augment-Picks
                 in Stage 2-1 / 3-2 / 4-2 + Early Game in Stage 2. */}
             {(() => {
@@ -222,7 +222,7 @@ export default function TftCompDetailPage() {
               if (!parts) return null;
               const match = findCompGuide(compGuidesBundle, { trait: parts.trait, carry: parts.carry });
               if (!match) return null;
-              return <CompGuide guide={match.guide} assets={assets} typicalUnits={comp.typicalUnits} />;
+              return <CompGuide guide={match.guide} assets={assets} />;
             })()}
 
             {/* Komponent-Priority — Carousel-Pick-Priorität aus Carry-Item-

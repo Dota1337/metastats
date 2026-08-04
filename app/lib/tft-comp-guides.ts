@@ -1,101 +1,249 @@
-// Comp-Guide Reader — curated build data from tftacademy.com per cluster
-// family. Sourced via scripts/refresh-comp-augments.mjs which parses the
-// SvelteKit hydration data island into a typed JSON blob.
+// Comp-Guide-Reader — Quelle ist seit 2026-08-04 MetaTFT statt tftacademy.
 //
-// Why curated, not statistical: Riot stopped exposing `augments` in
-// Match-V1 sometime in 2026 (verified 2026-06-18 across 12M cache rows:
-// 0% populated). Statistical aggregation from player data is dead.
+// Warum gewechselt: tftacademy pflegte redaktionell und deckte 38 Comps ab,
+// 47 % unseres Volumens mit fallender Tendenz; 22 von 30 fehlenden Familien
+// führte es überhaupt nicht. MetaTFT clustert automatisch aus Match-Daten und
+// deckt gemessen 33 der Top-50-Familien und 72,9 % des Volumens ab.
+//
+// Der Import (`scripts/refresh-metatft-comps.mjs`) schreibt eine einzige Datei:
+// Comps, Detail-Blöcke und die Familien-Map liegen zusammen, weil sie aus
+// demselben Lauf stammen und nur gemeinsam konsistent sind — die Cluster-IDs
+// tragen die MetaTFT-Generation im Präfix und wechseln geschlossen.
 
-export type AugmentGroup = 'ECON' | 'ITEMS' | 'COMBAT' | 'EMBLEM' | 'HERO';
-export type Difficulty = 'EASY' | 'MEDIUM' | 'HARD' | 'CONDITIONAL';
+// Set-Nummer des Lesepfads. Muss beim Set-Wechsel mitgezogen werden; der Guard
+// in loadCompGuidesBundle meldet einen Mismatch, statt still nichts anzuzeigen.
+const GUIDE_SET = 17;
 
-export interface EarlyChampion {
-  apiName: string;
-  items: string[];   // item apiNames; usually empty for early units
-  stars: number;     // 1-3
+export type Difficulty = 'EASY' | 'MEDIUM' | 'HARD';
+
+/**
+ * MetaTFTs Augment-Grade — wie gut das Augment IN DIESER COMP abschneidet.
+ *
+ * Nicht zu verwechseln mit der Rarity (Silver/Gold/Prismatic, 1-3), die im
+ * Asset-Bundle steht. Der Grade ist die für den Pick nützlichere Größe: die
+ * Rarity sieht der Spieler im Angebot ohnehin, die comp-spezifische Stärke
+ * nicht. Beides wird gerendert — Grade als Gruppe, Rarity als Tile-Rand.
+ */
+export type AugmentGrade = 'S' | 'A' | 'B' | 'C' | 'D';
+
+const GRADE_ORDER: AugmentGrade[] = ['S', 'A', 'B', 'C', 'D'];
+
+/**
+ * Wie viele Augments je Comp gerendert werden.
+ *
+ * MetaTFT liefert bis zu 41 pro Comp — das ist keine Empfehlung mehr, sondern
+ * eine Liste. 12 deckt die Stage-2-1/3-2/4-2-Picks ab, ohne dass der Spieler
+ * scrollen muss.
+ */
+const MAX_AUGMENTS = 12;
+
+export interface CompBuild {
+  unit: string;
+  buildName: string[];
+  count: number;
+  avg: number;
 }
 
-export interface StageTip {
-  stage: string;     // e.g. "Stage 2"
-  tip: string;
+export interface EarlyOption {
+  units: string[];
+  count: number | null;
+  avg: number | null;
+  win: number | null;
 }
 
-// LLM-paraphrased + localised augments tip (one paraphrase per language).
-// Null when paraphrase failed validation — UI then renders no tip rather
-// than the verbatim source-text (`feedback_no_fake_values`).
-export type LocalizedTip = {
-  de: string; en: string; ko: string; zh: string; es: string; fr: string;
-} | null;
+export interface CarouselPick {
+  item: string;
+  count: number | null;
+  avg: number | null;
+}
 
-export interface CompGuide {
-  title: string;
-  difficulty: Difficulty | null;
-  updated: string | null;
-  augments: string[];           // 0-8 augment apiNames, slot-ordered
-  augmentTypes: AugmentGroup[]; // parallel to augments, empty when mismatched
-  augmentsTip: LocalizedTip;
-  carousel: string[];           // round-1 item apiNames
-  earlyComp: EarlyChampion[];   // 0-4 champions
-  tips: StageTip[];             // 0-N stage tips
+export interface LevelStep {
+  level: number;
+  stage: string;
+  round: string;
+  count: number | null;
+}
+
+export interface CompDetails {
+  early: EarlyOption[];
+  carousel: CarouselPick[];
+  levels: LevelStep[];
+  // Import-only: meistgespielte Zelle je Unit (0-basiert) und Star-Verteilung
+  // der Carrys. Aktuell nicht gerendert.
+  positions: Record<string, { cell: number; count: number | null }>;
+  carryStars: Record<string, Array<{ star: number; pcnt: number; avg: number }>>;
+  rerolls: Record<string, unknown> | null;
+}
+
+export interface MetaTftComp {
+  id: string;
+  name: string | null;
+  units: string[];
+  traits: string[];
+  games: number;
+  avgPlacement: number | null;
+  /** Zentrierter Zahlenwert (beobachtet -0,21 … +0,12), KEINE Stufe. */
+  difficulty: number | null;
+  /** "lvl 5".."lvl 7", "Fast 8", "Fast 9", "Standard". */
+  levelling: string | null;
+  itemNames: string[];
+  builds: CompBuild[];
+  /** `tier` ist MetaTFTs Performance-Grade IN DIESER COMP, nicht die Rarity. */
+  augments: Array<{ id: string; tier: AugmentGrade }>;
 }
 
 export interface CompGuidesBundle {
   set: number;
   source: string;
+  clusterId: number;
   fetchedAt: string;
-  comps: Record<string, CompGuide>;
+  detailsCarriedForward?: boolean;
+  /** `<trait>__<carry>` -> Cluster-ID. */
+  familyMap: Record<string, string>;
+  comps: MetaTftComp[];
+  details: Record<string, CompDetails>;
 }
 
-export interface SlugMapEntry {
-  primaryTrait: string;
-  primaryCarry: string;
-  augmentsRef?: string;
+/** Was die UI je Comp zu sehen bekommt. */
+export interface CompGuide {
+  id: string;
+  title: string;
+  difficulty: Difficulty | null;
+  levelling: string | null;
+  games: number;
+  /** Augment-apiNames, nach Grade absteigend, auf MAX_AUGMENTS gekappt. */
+  augments: string[];
+  augmentGrades: Record<string, AugmentGrade>;
+  early: EarlyOption[];
+  carousel: CarouselPick[];
+  levels: LevelStep[];
+  details: CompDetails | null;
 }
 
-export interface CompSlugMap {
-  set: number;
-  source: string;
-  fetchedAt: string;
-  slugs: Record<string, SlugMapEntry>;
+export interface LoadedGuides {
+  bundle: CompGuidesBundle | null;
+  /** Terzil-Grenzen der difficulty über alle Comps. */
+  cuts: { low: number; high: number } | null;
 }
 
-let cached: Promise<{ guides: CompGuidesBundle | null; map: CompSlugMap | null }> | null = null;
+let cached: Promise<LoadedGuides> | null = null;
 
-export function loadCompGuidesBundle(): Promise<{ guides: CompGuidesBundle | null; map: CompSlugMap | null }> {
+/**
+ * Lädt das Comp-Bundle. Modul-globaler Promise-Cache: die Datei wird pro
+ * Seitenaufruf genau einmal geholt, auch wenn mehrere Komponenten sie
+ * gleichzeitig anfragen (Comps-Liste rendert eine Zeile je Comp).
+ */
+export function loadCompGuidesBundle(): Promise<LoadedGuides> {
   if (!cached) {
-    cached = Promise.all([
-      fetch('/tft-comp-guides-17.json').then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch('/tft-comp-slug-map-17.json').then(r => r.ok ? r.json() : null).catch(() => null),
-    ]).then(([guides, map]) => ({ guides, map }));
+    cached = fetch(`/tft-metatft-comps-${GUIDE_SET}.json`)
+      .then(r => (r.ok ? r.json() : null))
+      .catch(() => null)
+      .then((bundle: CompGuidesBundle | null) => {
+        if (!bundle) return { bundle: null, cuts: null };
+        // Set-Guard: eine Datei des falschen Sets wäre schlimmer als keine —
+        // sie zeigte plausible, aber veraltete Comps.
+        if (Number(bundle.set) !== GUIDE_SET) {
+          console.warn(`[comp-guides] Set-Mismatch: Datei ist Set ${bundle.set}, erwartet ${GUIDE_SET}`);
+          return { bundle: null, cuts: null };
+        }
+        return { bundle, cuts: difficultyCuts(bundle.comps) };
+      });
   }
   return cached;
 }
 
-// Reverse-lookup: cluster-key parts → curated guide. Returns null when no
-// editorial slug-map entry matches the family — UI must NOT render an
-// empty section (`feedback_no_info_texts`).
-export function findCompGuide(
-  bundle: { guides: CompGuidesBundle | null; map: CompSlugMap | null } | null,
-  parts: { trait: string; carry: string } | null,
-): { slug: string; guide: CompGuide } | null {
-  if (!bundle?.guides || !bundle?.map || !parts) return null;
-  for (const [slug, entry] of Object.entries(bundle.map.slugs)) {
-    const traitMatch =
-      parts.trait === entry.primaryTrait
-      || parts.trait.startsWith(entry.primaryTrait + '_')
-      || entry.primaryTrait.startsWith(parts.trait + '_');
-    if (!traitMatch) continue;
-    if (parts.carry !== entry.primaryCarry) continue;
-    const ref = entry.augmentsRef || slug;
-    const guide = bundle.guides.comps[ref];
-    if (guide) return { slug: ref, guide };
-  }
-  return null;
+/**
+ * Terzil-Grenzen der difficulty-Verteilung.
+ *
+ * MetaTFT liefert difficulty als zentrierten Zahlenwert, nicht als Stufe. Feste
+ * Schwellen wären geraten; die Terzile teilen das Feld in drei etwa gleich
+ * große Gruppen und bleiben gültig, wenn sich die Verteilung mit dem Patch
+ * verschiebt.
+ */
+function difficultyCuts(comps: MetaTftComp[]): { low: number; high: number } | null {
+  const vals = comps.map(c => c.difficulty).filter((d): d is number => typeof d === 'number').sort((a, b) => a - b);
+  if (vals.length < 3) return null;
+  return {
+    low: vals[Math.floor(vals.length / 3)],
+    high: vals[Math.floor((vals.length * 2) / 3)],
+  };
 }
 
-// Tier-Border-Color for an augment by Silver/Gold/Prismatic tier (read from
-// bundle.augments[apiName].tier — set by fetch-tft-assets's deriveAugmentTier
-// + tactics.tools override). Returns the surface-neutral border when unknown.
+function bucketOf(difficulty: number | null, cuts: { low: number; high: number } | null): Difficulty | null {
+  if (typeof difficulty !== 'number' || !cuts) return null;
+  if (difficulty <= cuts.low) return 'EASY';
+  if (difficulty >= cuts.high) return 'HARD';
+  return 'MEDIUM';
+}
+
+function toGuide(comp: MetaTftComp, details: CompDetails | null, cuts: LoadedGuides['cuts']): CompGuide {
+  const rank = (g: AugmentGrade) => {
+    const i = GRADE_ORDER.indexOf(g);
+    return i < 0 ? GRADE_ORDER.length : i;
+  };
+  const augs = [...(comp.augments || [])]
+    .sort((a, b) => rank(a.tier) - rank(b.tier))
+    .slice(0, MAX_AUGMENTS);
+  return {
+    id: comp.id,
+    title: comp.name || comp.id,
+    difficulty: bucketOf(comp.difficulty, cuts),
+    levelling: comp.levelling,
+    games: comp.games,
+    augments: augs.map(a => a.id),
+    augmentGrades: Object.fromEntries(augs.map(a => [a.id, a.tier])),
+    early: details?.early || [],
+    carousel: details?.carousel || [],
+    levels: details?.levels || [],
+    details,
+  };
+}
+
+/**
+ * Familie → Guide. `parts` kommt aus dem cluster_key der Comp-Seite.
+ *
+ * Kein Fuzzy-Matching auf den Trait-Namen: die Familien-Map wird mit derselben
+ * classifyComp-Lib gebildet, aus der auch die cluster_keys stammen, also ist
+ * der Schlüssel exakt. Ein Prefix-Match wie in der tftacademy-Fassung würde
+ * hier nur falsche Treffer erzeugen.
+ */
+export function findCompGuide(
+  loaded: LoadedGuides | null,
+  parts: { trait: string; carry: string } | null,
+): { slug: string; guide: CompGuide } | null {
+  if (!loaded?.bundle || !parts) return null;
+  const clusterId = loaded.bundle.familyMap[`${parts.trait}__${parts.carry}`];
+  if (!clusterId) return null;
+  const comp = loaded.bundle.comps.find(c => c.id === clusterId);
+  if (!comp) return null;
+  return { slug: clusterId, guide: toGuide(comp, loaded.bundle.details[clusterId] || null, loaded.cuts) };
+}
+
+/**
+ * Alle Guides mit ihrer Familie — für die Augment-Seiten, die von einem
+ * Augment aus rückwärts nach Comps suchen.
+ */
+export function allGuides(loaded: LoadedGuides | null): Array<{
+  slug: string; guide: CompGuide; trait: string; carry: string;
+}> {
+  if (!loaded?.bundle) return [];
+  const out: Array<{ slug: string; guide: CompGuide; trait: string; carry: string }> = [];
+  for (const [familyKey, clusterId] of Object.entries(loaded.bundle.familyMap)) {
+    const comp = loaded.bundle.comps.find(c => c.id === clusterId);
+    if (!comp) continue;
+    const [trait, carry] = familyKey.split('__');
+    out.push({
+      slug: clusterId,
+      guide: toGuide(comp, loaded.bundle.details[clusterId] || null, loaded.cuts),
+      trait: trait || '',
+      carry: carry || '',
+    });
+  }
+  return out;
+}
+
+// Rand-Farbe eines Augment-Tiles nach Rarity (Silver/Gold/Prismatic). Die
+// Rarity steht im Asset-Bundle unter assets.augments[apiName].tier.
 export function augmentTierBorderColor(tier: number | null | undefined): string {
   switch (tier) {
     case 1: return '#9aa5b4';   // Silver
@@ -105,70 +253,52 @@ export function augmentTierBorderColor(tier: number | null | undefined): string 
   }
 }
 
-// Group augments by their tftacademy-curated slot label, preserving the
-// curator's slot order (Stage 2-1 → 3-2 → 4-2). The label-order is
-// comp-specific: one comp may go ECON→ITEMS→COMBAT, another HERO→ITEMS→ECON
-// — the round-augment slot is the load-bearing axis, not the label.
-//
-// Returns an empty array when augmentTypes is missing or length-mismatched
-// (UI then renders flat without slot grouping).
-export function groupAugmentsBySlot(guide: CompGuide): Array<{ label: AugmentGroup; augments: string[] }> {
-  if (guide.augmentTypes.length !== guide.augments.length || guide.augments.length === 0) return [];
-  const out: Array<{ label: AugmentGroup; augments: string[] }> = [];
-  for (let i = 0; i < guide.augments.length; i++) {
-    const label = guide.augmentTypes[i];
-    const last = out[out.length - 1];
-    if (last && last.label === label) {
-      last.augments.push(guide.augments[i]);
-    } else {
-      out.push({ label, augments: [guide.augments[i]] });
-    }
+// Farbe eines Performance-Grades.
+export function augmentGradeColor(grade: AugmentGrade | null | undefined): string {
+  switch (grade) {
+    case 'S': return '#e0c75a';
+    case 'A': return '#3ecf8e';
+    case 'B': return '#5aa7e0';
+    case 'C': return '#7a8aa0';
+    case 'D': return '#5a6a80';
+    default: return '#5a6a80';
   }
-  return out;
 }
 
-// Group augments by their tier (Silver/Gold/Prismatic) using the bundle's
-// per-augment tier field (set by tactics.tools override via
-// scripts/refresh-augment-tiers.mjs). User-Override 2026-06-21: nicht mehr
-// nach Slot-Typ (Econ/Items/Combat) gruppieren — die tftacademy-Slot-Labels
-// haben sich als unzuverlässig erwiesen (User-Beobachtung "viele Fehler").
-// Tier-Grouping ist Ground-Truth-basiert: `reference_tft_augment_tier_source.md`.
-//
-// Returns an empty array when no augments resolve to a known tier — UI then
-// renders flat without grouping.
-export function groupAugmentsByTier(
+/**
+ * Augments nach Performance-Grade gruppieren (S zuerst).
+ *
+ * Vorher war das eine Gruppierung nach Rarity, die die Rarity aus
+ * `assets.items[...]` las — dort stand sie nie (fetch-tft-assets schreibt sie
+ * nach `assets.augments`), also war jede Gruppe leer und der leere Fall durch
+ * einen Guard maskiert. Mit MetaTFT als Quelle gruppieren wir stattdessen nach
+ * dem comp-spezifischen Grade, der ohne Asset-Bundle auskommt.
+ */
+export function groupAugmentsByGrade(
   guide: CompGuide,
-  // Akzeptiert TftAssetsBundle (oder kompatibles Object). Der tier-Wert wird
-  // von scripts/fetch-tft-assets.mjs runtime in items[apiName].tier
-  // injiziert; static TftItem-Type kennt das Feld nicht, daher local cast.
-  assets: { items?: Record<string, unknown> } | null,
-): Array<{ tier: 1 | 2 | 3; label: 'silver' | 'gold' | 'prismatic'; augments: string[] }> {
+): Array<{ grade: AugmentGrade; augments: string[] }> {
   if (guide.augments.length === 0) return [];
-  const tierMap = new Map<number, string[]>();
+  const byGrade = new Map<AugmentGrade, string[]>();
   for (const apiName of guide.augments) {
-    const meta = assets?.items?.[apiName] as { tier?: number } | undefined;
-    const tier = meta?.tier ?? 0;
-    if (!tierMap.has(tier)) tierMap.set(tier, []);
-    tierMap.get(tier)!.push(apiName);
+    const grade = guide.augmentGrades[apiName];
+    if (!grade) continue;
+    if (!byGrade.has(grade)) byGrade.set(grade, []);
+    byGrade.get(grade)!.push(apiName);
   }
-  const out: Array<{ tier: 1 | 2 | 3; label: 'silver' | 'gold' | 'prismatic'; augments: string[] }> = [];
-  for (const t of [1, 2, 3] as const) {
-    const list = tierMap.get(t);
-    if (list && list.length > 0) {
-      const label = t === 1 ? 'silver' : t === 2 ? 'gold' : 'prismatic';
-      out.push({ tier: t, label, augments: list });
-    }
+  const out: Array<{ grade: AugmentGrade; augments: string[] }> = [];
+  for (const g of GRADE_ORDER) {
+    const list = byGrade.get(g);
+    if (list?.length) out.push({ grade: g, augments: list });
   }
   return out;
 }
 
-// Difficulty color mapping for the badge.
+// Difficulty-Farbe für das Badge.
 export function difficultyColor(d: Difficulty | null): string {
   switch (d) {
     case 'EASY': return '#3ecf8e';
     case 'MEDIUM': return '#e0c75a';
     case 'HARD': return '#e44040';
-    case 'CONDITIONAL': return '#c39bff';
     default: return '#5a6a80';
   }
 }

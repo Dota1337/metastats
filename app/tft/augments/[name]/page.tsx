@@ -5,7 +5,7 @@ import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, findChampion, type TftAssetsBundle } from '../../../lib/tft-cdragon';
-import { loadCompGuidesBundle, type CompGuide } from '../../../lib/tft-comp-guides';
+import { loadCompGuidesBundle, allGuides, type CompGuide } from '../../../lib/tft-comp-guides';
 import {
   loadAugmentStages,
   augmentStagesFor,
@@ -19,8 +19,8 @@ import {
 // CommunityDragon asset bundle. No Match-V1 derived metrics.
 //
 // Plus #5 Augment-Driven Comp-Picker (2026-06-21): Reverse-Lookup auf
-// tft-comp-guides-17.json + tft-comp-slug-map-17.json zeigt welche
-// kuratierten Comps dieses Augment in ihrer Augment-Liste haben.
+// tft-metatft-comps-17.json zeigt welche Comps dieses Augment in ihrer
+// Augment-Liste haben.
 // Adressiert die kritische Stage-2-1/3-2/4-2-Pick-Entscheidung — User
 // sieht Augment-Optionen, klickt eine an, sieht passende Comps.
 
@@ -52,26 +52,13 @@ export default function TftAugmentReferenceDetailPage() {
   const iconUrl = tftIconUrl(assets, meta?.icon);
   const augStages = augmentStagesFor(stagesOverride, apiName);
 
-  // Reverse-Lookup: alle Comps die dieses Augment in ihren kuratierten
-  // Augments listen. Slug-Map gibt trait+carry pro Comp.
-  const matchingComps: CompMatch[] = useMemo(() => {
-    if (!compGuidesBundle?.guides || !compGuidesBundle?.map) return [];
-    const out: CompMatch[] = [];
-    for (const [slug, guide] of Object.entries(compGuidesBundle.guides.comps)) {
-      if (!guide.augments.includes(apiName)) continue;
-      // Slug-Map-Entry mit augmentsRef=slug ODER mit dem slug direkt
-      const mapEntry = compGuidesBundle.map.slugs[slug]
-        || Object.values(compGuidesBundle.map.slugs).find(e => e.augmentsRef === slug);
-      if (!mapEntry) continue;
-      out.push({
-        slug,
-        guide,
-        trait: mapEntry.primaryTrait,
-        carry: mapEntry.primaryCarry,
-      });
-    }
-    return out;
-  }, [compGuidesBundle, apiName]);
+  // Reverse-Lookup: alle Comps die dieses Augment listen. allGuides liefert
+  // trait+carry aus der Familien-Map mit — ein Cluster kann dabei unter
+  // mehreren Familien erscheinen, was gewollt ist (Dual-Carry-Comps).
+  const matchingComps: CompMatch[] = useMemo(
+    () => allGuides(compGuidesBundle).filter(g => g.guide.augments.includes(apiName)),
+    [compGuidesBundle, apiName],
+  );
 
   return (
     <main className="min-h-screen bg-[#0e1525]">

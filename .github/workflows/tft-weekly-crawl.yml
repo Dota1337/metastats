@@ -77,10 +77,6 @@ jobs:
         run: node scripts/annotate-god-offerings.mjs
         continue-on-error: true
 
-      - name: Refresh curated comp augments (tftacademy.com)
-        run: node scripts/refresh-comp-augments.mjs
-        continue-on-error: true
-
       - name: Crawl TFT all-ranks (EUW)
         if: env.RIOT_API_KEY_TFT != ''
         run: node scripts/collect-tft-allranks.mjs --region euw1
@@ -102,7 +98,7 @@ jobs:
           # invocation with `|| true` so an empty glob (e.g. a class with no committed set-file
           # yet) can never atomically abort the mandatory add above. Set-agnostic globs survive
           # set bumps. The mandatory add stays loud (no `|| true`) by design.
-          git add public/tft-augment-tiers-*.json public/tft-augment-stages-*.json public/tft-comp-guides-*.json public/tft-patch-notes-*.json public/tft-gods-*.json 2>/dev/null || true
+          git add public/tft-augment-tiers-*.json public/tft-augment-stages-*.json public/tft-patch-notes-*.json public/tft-gods-*.json 2>/dev/null || true
           if git diff --staged --quiet; then
             echo "No data changes to commit"
           else

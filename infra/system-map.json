@@ -558,7 +558,6 @@
         "scripts/refresh-patch-notes.mjs",
         "scripts/fetch-tft-assets.mjs",
         "scripts/annotate-god-offerings.mjs",
-        "scripts/refresh-comp-augments.mjs",
         "scripts/fetch-tft-tier-distribution.mjs",
         "scripts/collect-tft-allranks.mjs"
       ],
@@ -626,7 +625,6 @@
         "scripts/refresh-patch-notes.mjs",
         "scripts/fetch-tft-assets.mjs",
         "scripts/annotate-god-offerings.mjs",
-        "scripts/refresh-comp-augments.mjs",
         "scripts/collect-tft-allranks.mjs",
         "scripts/build-tft-knowledge-graph.mjs",
         "scripts/fetch-tft-tier-distribution.mjs"
@@ -763,7 +761,7 @@
     {
       "name": "verify:coverage",
       "scripts": [
-        "scripts/verify-comp-augments-coverage.mjs"
+        "scripts/verify-metatft-family-coverage.mjs"
       ]
     },
     {
@@ -782,7 +780,7 @@
       "name": "verify:full",
       "scripts": [
         "scripts/verify-classifications.mjs",
-        "scripts/verify-comp-augments-coverage.mjs",
+        "scripts/verify-metatft-family-coverage.mjs",
         "scripts/check-drift.mjs",
         "scripts/check-system-map.mjs"
       ]

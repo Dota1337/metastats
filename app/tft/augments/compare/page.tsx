@@ -5,7 +5,7 @@ import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, findChampion, type TftAssetsBundle } from '../../../lib/tft-cdragon';
-import { loadCompGuidesBundle, type CompGuide as CompGuideData } from '../../../lib/tft-comp-guides';
+import { loadCompGuidesBundle, allGuides, type CompGuide as CompGuideData } from '../../../lib/tft-comp-guides';
 
 // Augment-Compare-View — zwei Augments nebeneinander mit Tier-Badge,
 // Description und Reverse-Lookup auf Comps die sie spielen. User-Flow
@@ -95,23 +95,10 @@ function AugmentPanel({
   const iconUrl = tftIconUrl(assets, meta?.icon);
   const accentColor = side === 'a' ? '#7B61FF' : '#3ecf8e';
 
-  const matchingComps: CompMatch[] = useMemo(() => {
-    if (!compGuidesBundle?.guides || !compGuidesBundle?.map) return [];
-    const out: CompMatch[] = [];
-    for (const [slug, guide] of Object.entries(compGuidesBundle.guides.comps)) {
-      if (!guide.augments.includes(apiName)) continue;
-      const mapEntry = compGuidesBundle.map.slugs[slug]
-        || Object.values(compGuidesBundle.map.slugs).find(e => e.augmentsRef === slug);
-      if (!mapEntry) continue;
-      out.push({
-        slug,
-        guide,
-        trait: mapEntry.primaryTrait,
-        carry: mapEntry.primaryCarry,
-      });
-    }
-    return out;
-  }, [compGuidesBundle, apiName]);
+  const matchingComps: CompMatch[] = useMemo(
+    () => allGuides(compGuidesBundle).filter(g => g.guide.augments.includes(apiName)),
+    [compGuidesBundle, apiName],
+  );
 
   if (assets && !meta) {
     return (

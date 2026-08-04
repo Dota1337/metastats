@@ -10,10 +10,10 @@
     "setup-hooks": "node scripts/setup-git-hooks.mjs",
     "build:snapshot-matrix": "node scripts/build-snapshot-matrix.mjs",
     "verify": "node scripts/verify-classifications.mjs",
-    "verify:coverage": "node scripts/verify-comp-augments-coverage.mjs",
+    "verify:coverage": "node scripts/verify-metatft-family-coverage.mjs",
     "check:drift": "node scripts/check-drift.mjs",
     "check:contracts": "node scripts/check-contracts.mjs",
-    "verify:full": "node scripts/verify-classifications.mjs && node scripts/verify-comp-augments-coverage.mjs && node scripts/check-drift.mjs && node scripts/check-system-map.mjs",
+    "verify:full": "node scripts/verify-classifications.mjs && node scripts/verify-metatft-family-coverage.mjs && node scripts/check-drift.mjs && node scripts/check-system-map.mjs",
     "build:system-map": "node scripts/build-system-map.mjs",
     "check:system-map": "node scripts/check-system-map.mjs",
     "test": "node --test \"scripts/**/*.test.mjs\""

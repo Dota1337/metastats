@@ -15,7 +15,7 @@
  *
  * Behaviour:
  *   - Sliding-window check against BOTH short + long limits
- *   - 429 → respects Retry-After + clears windows + retries
+ *   - 429 → globale Sperre für ALLE Worker dieses Clients (Retry-After), dann Retry
  */
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -65,10 +65,31 @@ export function createRiotClient(opts = {}) {
   const shortWindow = [];
   const longWindow = [];
 
-  async function rateLimitedFetch(url, init) {
+  // Globale 429-Sperre für alle Worker DIESES Clients.
+  //
+  // Bis 2026-08-04 pausierte nur die Coroutine, die den 429 kassiert hatte —
+  // die übrigen `concurrency - 1` Worker feuerten währenddessen weiter und
+  // kassierten ihrerseits 429er. Das ist eine positive Rückkopplung, kein
+  // Backoff: je höher die Concurrency, desto größer der Einschlag. Deshalb
+  // hält jetzt ein gemeinsamer Zeitstempel alle Worker an.
+  let penaltyUntil = 0;
+
+  // Ein 429 darf nicht endlos im Kreis retryen. Nach MAX_429_RETRIES geben wir
+  // die Response an den Caller zurück (safe:true sieht dann `{_status:429}`)
+  // — mit einem lauten Log, weil ein stiller Verlust hier als "Spieler hatte
+  // keine neuen Matches" durchgeht und nie wieder nachgeholt wird.
+  const MAX_429_RETRIES = 5;
+
+  async function rateLimitedFetch(url, init, retry429 = 0) {
     // Acquire a slot in both windows before firing
     while (true) {
       const now = Date.now();
+
+      if (penaltyUntil > now) {
+        await sleep(Math.min(penaltyUntil - now, 2000));
+        continue;
+      }
+
       while (shortWindow.length && shortWindow[0] < now - shortWindowMs) shortWindow.shift();
       while (longWindow.length && longWindow[0] < now - longWindowMs) longWindow.shift();
 
@@ -94,13 +115,26 @@ export function createRiotClient(opts = {}) {
 
     if (res.status === 429) {
       const retryAfter = parseInt(res.headers.get('retry-after') || '10', 10);
-      log(`  [429] Rate limited, waiting ${retryAfter}s...`);
-      await sleep(retryAfter * 1000 + 1000);
-      // Reset windows after explicit 429 — Riot's internal counters
-      // were ahead of ours, so the safest restart is from a clean slate.
-      shortWindow.length = 0;
-      longWindow.length = 0;
-      return rateLimitedFetch(url, init);
+
+      if (retry429 >= MAX_429_RETRIES) {
+        log(`  [429] AUFGEGEBEN nach ${MAX_429_RETRIES} Versuchen: ${url}`);
+        return res;
+      }
+
+      // Sperre nur verlängern, nie verkürzen: parallele Worker, die im selben
+      // Fenster einen 429 kassieren, dürfen die Sperre des ersten nicht kippen.
+      const until = Date.now() + retryAfter * 1000 + 1000;
+      if (until > penaltyUntil) {
+        penaltyUntil = until;
+        log(`  [429] Rate limited — alle Worker pausieren ${retryAfter}s`);
+      }
+
+      // Fenster bewusst NICHT leeren. Ein Reset machte den Client nach einem
+      // Verstoß permissiver statt vorsichtiger: die nächsten N Requests gingen
+      // sofort durch, während Riots Fenster noch voll war. Die echte Historie
+      // stehen zu lassen ist die konservative Variante; sie altert von selbst
+      // aus, und der Retry-After oben ist der eigentliche Backoff.
+      return rateLimitedFetch(url, init, retry429 + 1);
     }
 
     return res;

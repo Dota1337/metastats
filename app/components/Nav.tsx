@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { useI18n, LANGUAGES } from '../lib/i18n';
 import { detectGameFromPath } from '../lib/games';
+import { TFT_COACH_ENABLED } from '../lib/feature-flags';
 import { useAuth } from '../lib/auth-context';
 import GameSwitcher from './GameSwitcher';
 
@@ -182,7 +183,9 @@ export default function Nav({ active }: NavProps) {
               <a href="/tft/builder" className={linkClass('builder')}>{t('tft.builderTitle')}</a>
               <a href="/tft/lobby-scout" className="text-sm text-[#a0b0c5] hover:text-white">{t('nav.lobbyScout')}</a>
               <a href="/tft/comps/community" className={linkClass('community')}>{t('nav.community')}</a>
-              <a href="/tft/coach" className={linkClass('coach')}>{t('nav.coach')}</a>
+              {TFT_COACH_ENABLED && (
+                <a href="/tft/coach" className={linkClass('coach')}>{t('nav.coach')}</a>
+              )}
               <a href="/tft/saved" className={linkClass('saved')} title={t('tft.savedTitle')}>★</a>
             </>
           ) : (

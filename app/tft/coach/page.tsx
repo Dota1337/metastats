@@ -1,9 +1,10 @@
 'use client';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, notFound } from 'next/navigation';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
 import { useI18n } from '../../lib/i18n';
+import { TFT_COACH_ENABLED } from '../../lib/feature-flags';
 
 // AI-Coach (Sprint 7+). Streaming chat with optional player-context
 // injection — pass ?puuid=...&region=... to get advice grounded in the
@@ -12,7 +13,15 @@ import { useI18n } from '../../lib/i18n';
 
 interface Message { role: 'user' | 'assistant'; content: string }
 
+// Guard im Wrapper, damit die Hooks in CoachChat unbedingt bleiben
+// (Rules of Hooks). Bei deaktiviertem Feature ist die Route per Deep-Link
+// nicht mehr erreichbar; der Nav-Link ist ohnehin ausgeblendet.
 export default function TftCoachPage() {
+  if (!TFT_COACH_ENABLED) notFound();
+  return <CoachChat />;
+}
+
+function CoachChat() {
   const { t, lang } = useI18n();
   const search = useSearchParams();
   const puuid = search.get('puuid');

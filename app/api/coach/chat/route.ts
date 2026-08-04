@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { checkRateLimit } from '../../../lib/rate-limit';
+import { TFT_COACH_ENABLED } from '../../../lib/feature-flags';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { fetchHetznerPlayerMatches } from '../../../lib/tft-hetzner-matches';
 
@@ -72,6 +73,13 @@ async function buildPlayerContext(puuid: string, setNumber: number | null): Prom
 }
 
 export async function POST(req: NextRequest) {
+  // Feature-Kill-Switch VOR allem anderen: kein Rate-Limit-State, kein
+  // DB-Zugriff, keine Anthropic-Inferenz. 404 statt 503, damit der Endpoint
+  // für Scraper nicht wie ein temporär gestörter Dienst aussieht.
+  if (!TFT_COACH_ENABLED) {
+    return NextResponse.json({ error: 'not_found' }, { status: 404 });
+  }
+
   // 5 Coach-Calls pro IP pro Minute — Anthropic-Quota schützt sich indirekt
   // schon (max_tokens cap), aber einen offen-stehenden POST-Endpoint mit
   // teurer KI-Inferenz schützen wir hier zusätzlich.

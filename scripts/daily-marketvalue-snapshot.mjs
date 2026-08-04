@@ -41,7 +41,7 @@
  *   --region <name|all>       Region (oder 'all' für alle 15 aktiven)
  *   --dry-run                 Keine Riot-Calls, kein Schreiben. Estimate aus DB-Reads.
  *   --max-ids <N>             Cap für startTime-bounded Match-ID-Pull (Default 30, Patch-Day 100)
- *   --match-concurrency <N>   Match-Detail-Concurrency (Default 4, schont Refresh-API-Headroom)
+ *   --match-concurrency <N>   Match-Detail-Concurrency (Default 8, Env: MV_MATCH_CONCURRENCY)
  *   --limit <N>               Nur N Spieler pro Region (Smoke-Mode)
  *   --skip-backup             Backup-Table-Step skippen (für Tests)
  *   --verbose
@@ -68,6 +68,14 @@ import { ACTIVE_REGIONS } from './lib/active-regions.mjs';
 import { fetchD2PlusEntries, splitByActivity } from './lib/tft-league-entries.mjs';
 import { assertContracts } from './lib/contracts.mjs';
 
+// Env MUSS vor den Konstanten geladen sein. Bis 2026-08-04 stand der Aufruf
+// erst hinter dem Args-Block — Konstanten wie MV_MATCH_CONCURRENCY oder
+// MV_SNAPSHOT_CURSOR lasen also ein noch leeres process.env und funktionierten
+// nur über systemd `Environment=`, nie über `.env.local`. Lokal getestete
+// Overrides waren damit wirkungslos, ohne dass es auffiel.
+// (loadEnv ist eine Function-Declaration weiter unten und daher gehoisted.)
+loadEnv();
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Konstanten
 // ─────────────────────────────────────────────────────────────────────────────
@@ -85,7 +93,16 @@ const D2_TIERS = ['DIAMOND', 'MASTER', 'GRANDMASTER', 'CHALLENGER'];
 // Default-Caps für Daily-Lauf — bewusst klein, weil startTime den
 // Match-ID-Range schon stark einschränkt. Patch-Day-Override via --max-ids 100.
 const DEFAULT_MAX_IDS = 30;
-const DEFAULT_CONCURRENCY = 4;
+
+// Match-Detail-Concurrency. Bis 2026-08-04: 4 — gemessen 9,4 s/Spieler und
+// damit 8 Regionen mit 35-54 Tagen Rueckstand. Der Engpass war nie das
+// Rate-Limit (0 abgefangene 429er im Lauf), sondern Concurrency x Latenz:
+// 4 / 0,55 s = 7,3 req/s bei einem Budget von 14,3 req/s pro Route.
+//
+// 8 saettigt den Limiter (8 / 0,55 s = 14,5 req/s), mehr vergroessert nur den
+// Radius eines 429-Sturms, ohne Durchsatz zu bringen. Override per Env fuer
+// Notfall-Drosselung ohne Deploy (systemd Environment= ODER .env.local).
+const DEFAULT_CONCURRENCY = parseInt(process.env.MV_MATCH_CONCURRENCY || '8', 10);
 
 // Sicherheits-Overlap beim startTime-Filter — Match-V1 schneidet manchmal
 // um Tagesgrenzen, 1h Puffer gegen Off-by-one-Verluste.
@@ -236,7 +253,7 @@ function loadEnv() {
     break;
   }
 }
-loadEnv();
+// Aufruf steht bewusst ganz oben (siehe Kommentar dort), nicht hier.
 
 const API_KEY = process.env.RIOT_API_KEY_TFT;
 if (!API_KEY) { console.error('RIOT_API_KEY_TFT env var required'); process.exit(1); }
@@ -251,26 +268,62 @@ const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || null;
 // Setup
 // ─────────────────────────────────────────────────────────────────────────────
 
-// RIOT-BUDGET, aufgeteilt (2026-08-02). Alle vier Prozesse teilen sich EINEN
-// Key-Bucket, hatten aber je 180/10,5s = 86% des Match-Detail-Limits (200/10s).
-// Solo schon zu dicht am Rand — gemessen 39 abgefangene 429er im Marktwert-Lauf
-// und 16 im Daily-Crawl binnen drei Tagen. Bei Ueberlappung mit der stets
-// laufenden refresh-api entsprechend mehr.
+// RIOT-BUDGET PRO REGIONAL-ROUTE (gemessen 2026-08-04, Header-Probe auf allen
+// vier Routes mit demselben Key: asia stand bei 3096/600s, americas gleichzeitig
+// bei 1/600s). Jede Route hat einen eigenen, unabhaengigen Bucket — das bis
+// dahin angenommene globale Budget existiert nicht.
 //
-// Aufteilung: Batch-Prozesse 130, refresh-api 60. Zwei Batch-Prozesse laufen
-// nie gleichzeitig (Conflicts=), also ist der reale Worst Case
-// 130 + 60 = 190/10,5s = 18,1 req/s gegen 20 req/s Limit.
-// Fuer den Marktwert-Lauf unkritisch: durch die Aktivitaetserkennung braucht er
-// nur noch einen Bruchteil der Calls.
-const riot = createRiotClient({
-  shortWindowRequests: 130,
-  shortWindowMs: 10_500,
-  longWindowRequests: 28000,
-  longWindowMs: 605_000,
-});
+// Bindend ist nicht das App-Limit (500:10), sondern das Method-Limit von
+// `/tft/match/v1/matches/{id}`, und das unterscheidet sich je Route:
+//
+//   asia, sea            250 / 10s   →  250 - 60 (refresh-api) - 25 (Companion-
+//                                       Backfill, laeuft ungedrosselt alle
+//                                       10 min) = 165, minus 10% Sicherheit
+//   europe, americas     200 / 10s   →  analog 115, minus 10% Sicherheit
+//
+// Die 10% sind kein Ritual: unser 10,5-s-Fenster und Riots 10-s-Fenster laufen
+// nicht synchron, an der Kante zaehlen wir gegen ein volleres Fenster als wir
+// glauben. Gerechnet wird Anzahl gegen Anzahl — der Limiter feuert greedy, alle
+// N Requests koennen innerhalb einer Sekunde landen, eine Umrechnung in req/s
+// wuerde die Spitze wegmitteln.
+//
+// europe/americas liegen mit 100 UNTER dem alten globalen Wert 130: dort war die
+// Konfiguration bereits uebersubskribiert, was die 39 abgefangenen 429er des
+// Marktwert-Laufs erklaert. Der Durchsatzgewinn kommt aus asia/sea, wo 5 der 8
+// Rueckstandsregionen liegen.
+const CLUSTER_SHORT_WINDOW = { asia: 150, sea: 150, europe: 100, americas: 100 };
+const FALLBACK_SHORT_WINDOW = 100;   // unbekannter Cluster → vorsichtigster Wert
 
-// pg.Pool max=6 (Perf-Critic-Verdict: schont Refresh-API-Headroom während
-// des langen Laufs; Default 10 würde Companion-Backfill alle 10 min killen).
+// EIN Client PRO CLUSTER, nicht pro Region und nicht global.
+//
+// Global war falsch, weil ein gemeinsames Fenster drei Viertel des Budgets
+// verschenkt. Pro Region waere ebenfalls falsch: fuenf Regionen teilen sich
+// europe, vier sea. Ein Neubau an jeder Regionsgrenze wirft das gefuellte
+// Fenster weg und feuert mit vollem Kontingent gegen einen Host, der eine
+// Sekunde vorher saturiert war — deterministisch, nicht nur unwahrscheinlich.
+const riotClients = new Map();
+function riotForCluster(cluster) {
+  let client = riotClients.get(cluster);
+  if (!client) {
+    client = createRiotClient({
+      shortWindowRequests: CLUSTER_SHORT_WINDOW[cluster] ?? FALLBACK_SHORT_WINDOW,
+      shortWindowMs: 10_500,
+      // Long-Window ist ebenfalls per Route (siehe Messung oben), vier
+      // unabhaengige Fenster sind also korrekt und nicht additiv gegen 30000.
+      longWindowRequests: 28_000,
+      longWindowMs: 605_000,
+    });
+    riotClients.set(cluster, client);
+  }
+  return client;
+}
+
+// pg.Pool max=6 (Perf-Critic-Verdict: schont Refresh-API-Headroom während des
+// langen Laufs). Der Pool ist NICHT im Concurrency-Pfad: der Worker-Pool in
+// tft-match-cache-pg.mjs macht ausschliesslich riot.fetchJson und keine
+// db.query, die DB-Arbeit laeuft davor und danach seriell. Ein hoeherer Wert
+// bringt hier also nichts — die frueher hier notierte Begruendung
+// ("Default 10 wuerde Companion-Backfill killen") war sachlich falsch.
 //
 // DATABASE_URL kann Hetzner-local (kein Encoding, kein SSL) oder Supabase-
 // Pooler (URL-encoded Password + SSL) sein. Auto-detect per Hostname.
@@ -591,7 +644,11 @@ async function createBackup(region) {
 
 async function processRegion(region) {
   const regional = getRegionalCluster(region);
-  console.log(`\n=== ${region} (cluster=${regional}) ===`);
+  // Client kommt aus der Cluster-Map — bei aufeinanderfolgenden Regionen
+  // desselben Clusters ist es exakt dasselbe Objekt inkl. Fenster-Historie.
+  const riot = riotForCluster(regional);
+  const limit = CLUSTER_SHORT_WINDOW[regional] ?? FALLBACK_SHORT_WINDOW;
+  console.log(`\n=== ${region} (cluster=${regional}, limiter=${limit}/10,5s, concurrency=${MATCH_CONCURRENCY}) ===`);
   const t0 = Date.now();
 
   // 0. Player-Liste aus Snapshot-Tabelle (Option Z, vereinfacht)
@@ -757,8 +814,21 @@ async function processRegion(region) {
   }
 
   if (gathered.length === 0) {
-    console.log(`  [done] keine usable Spieler → keine Snapshots geschrieben`);
-    return { region, players: players.length, snapshots: 0, failed, backup: backupTbl };
+    // Dieser Return trug bis 2026-08-04 weder `aborted` noch `degraded`. Folge:
+    // die Region wanderte in cursor.completed UND ihre Inflight-Rows wurden
+    // geloescht, obwohl null Snapshots geschrieben wurden — sie war fuer den
+    // Rest des Tages gesperrt, und der Watchdog konnte sie nicht nachholen,
+    // weil er zwar die fehlende DB-Abdeckung sieht, der Driver aber den Cursor
+    // liest und die Region ueberspringt.
+    //
+    // Unterschieden wird nach Ursache: sind alle Spieler sauber als too-few
+    // ausgesortiert worden, ist das ein legitimer No-Op und die Region gilt als
+    // fertig. Gab es Fehler oder ein SIGTERM, ist sie es nicht.
+    console.log(`  [done] keine usable Spieler (${tooFew} too-few, ${failed} failed) → keine Snapshots geschrieben`);
+    return {
+      region, players: players.length, snapshots: 0, failed, backup: backupTbl,
+      aborted: pass1Aborted, degraded: failed > 0,
+    };
   }
 
   // Abbruch-Riegel: nach einem SIGTERM mitten in Pass 1 haben wir nur einen
@@ -797,11 +867,19 @@ async function processRegion(region) {
   // 90% der gathers verworfen) darf die gute Population NICHT via on-conflict-
   // Upsert überschreiben → sonst sind die Marktwerte der ganzen Region für den
   // Tag falsch. Unter 30% der iterierten Spieler: Region überspringen, die
-  // bestehende Population/Snapshots (≤1 Tag alt) bleiben erhalten. Der
-  // mv-watchdog re-triggert die Region (kein heutiger Snapshot) für einen Retry.
+  // bestehende Population/Snapshots (≤1 Tag alt) bleiben erhalten.
+  //
+  // Der Kommentar behauptete hier bis 2026-08-04, der mv-watchdog re-triggere
+  // die Region. Das konnte er nicht: der Return setzte kein Flag, das den
+  // Cursor-Write unten verhindert, also galt die Region als heute fertig.
+  // Watchdog (urteilt nach DB-Abdeckung) und Driver (urteilt nach Cursor-File)
+  // liefen still auseinander. `degraded` wird jetzt unten mit ausgewertet.
   if (!POP_BYPASS_REGIONS.has(region) && gathered.length < players.length * 0.3) {
     console.error(`  [pop] DEGRADED: nur ${gathered.length}/${players.length} usable (<30%) — Region übersprungen, bestehende Population erhalten`);
-    return { region, players: players.length, snapshots: 0, failed, degraded: true, backup: backupTbl };
+    return {
+      region, players: players.length, snapshots: 0, failed,
+      degraded: true, aborted: pass1Aborted, backup: backupTbl,
+    };
   }
 
   // 3. Population-Recompute aus aktiver Sub-Kohorte
@@ -937,12 +1015,17 @@ async function main() {
         // durchlaufen. Region als pending lassen → nächster Lauf resumed
         // via Inflight-Map (alle bisher gather-ten kommen aus Inflight,
         // Riot-Calls nur für Rest).
-        if (!DRY_RUN && !r.aborted) {
+        //
+        // DEGRADED (2026-08-04): auch ein degradierter Lauf darf die Region
+        // nicht als fertig markieren — sonst sperrt der Cursor sie fuer den Tag
+        // und der Watchdog laeuft ins Leere.
+        if (!DRY_RUN && !r.aborted && !r.degraded) {
           cursor.completed.push(region);
           writeCursor(cursor);
           await cleanupRegionInflight(region);
-        } else if (r.aborted) {
-          console.log(`[${region}] cursor preserved (aborted), inflight retained for resume`);
+        } else if (r.aborted || r.degraded) {
+          const why = r.aborted ? 'aborted' : 'degraded';
+          console.log(`[${region}] cursor preserved (${why}), inflight retained for resume`);
         }
       } catch (err) {
         // Bei Fatal-Fehler einer Region NICHT als completed markieren →

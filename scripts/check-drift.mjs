@@ -44,7 +44,32 @@ function read(path) {
   check('mv-watchdog.sh SQL-VALUES', [...sh.matchAll(/\('([a-z0-9]+)'\)/g)].map((m) => m[1]));
 }
 
-// 3) Riot-Limiter-Literale. `scripts/lib/riot-limits.mjs` ist die SoT; jedes
+// 3) infra/contracts.json — jeder Abdeckungs-Vertrag mit groupColumn "region"
+// führt die 15 Regionen als JSON-Literal. Kommt eine Region dazu und wird die
+// Liste hier vergessen, prüft der Vertrag sie schlicht nicht — er bleibt grün
+// und meldet gerade NICHT, dass die neue Region nie beliefert wird. Das ist die
+// unauffälligste Art, eine Überwachung zu verlieren.
+{
+  let contracts = [];
+  try {
+    contracts = JSON.parse(read('infra/contracts.json')).contracts ?? [];
+  } catch (e) {
+    console.error(`✗ DRIFT: infra/contracts.json nicht lesbar (${e.message})`);
+    failures++;
+  }
+  const regionCoverage = contracts.filter(
+    (c) => c.type === 'coverage' && c.groupColumn === 'region' && Array.isArray(c.groups),
+  );
+  if (regionCoverage.length === 0 && contracts.length > 0) {
+    console.error('✗ DRIFT: kein Abdeckungs-Vertrag mit groupColumn "region" gefunden');
+    console.error('    → wurde er umbenannt oder gelöscht? Ohne ihn fällt eine einzelne');
+    console.error('      eingefrorene Region wieder monatelang niemandem auf.');
+    failures++;
+  }
+  for (const c of regionCoverage) check(`contracts.json ${c.id}`, c.groups);
+}
+
+// 4) Riot-Limiter-Literale. `scripts/lib/riot-limits.mjs` ist die SoT; jedes
 // nackte `shortWindowRequests: <zahl>` daneben ist potentielle Drift. Genau so
 // ist prewarm-tft-player-cache.mjs auf 180 stehengeblieben, als die Box-Batches
 // am 2026-08-02 auf 130 gesenkt wurden — off-box, von keinem Conflicts= erfasst

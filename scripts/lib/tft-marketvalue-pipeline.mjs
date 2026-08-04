@@ -231,7 +231,14 @@ export async function snapshotPlayer(pool, riot, player, raw, pop, ctx) {
        -- Caller) darf einen bereits gespeicherten Wert NICHT auf NULL
        -- zuruecksetzen — sonst gilt der Spieler beim naechsten Lauf faelschlich
        -- als aktiv und wird unnoetig neu gecrawlt.
-       games_played = coalesce(excluded.games_played, tft_player_marketvalue_snapshots.games_played)`,
+       games_played = coalesce(excluded.games_played, tft_player_marketvalue_snapshots.games_played),
+       -- created_at traegt seit 2026-08-04 den ZULETZT-geschrieben-Zeitpunkt,
+       -- nicht den ersten. Es ist der einzige Zeitstempel der Tabelle, und der
+       -- Rundlauf im Daily-Driver braucht Stunden-Aufloesung: snapshot_date ist
+       -- eine DATE-Spalte und kann 25h nicht von 47h unterscheiden. Ohne diese
+       -- Zeile wuerde der Wert beim ersten Insert des Tages stehenbleiben und
+       -- ueber die Frische luegen.
+       created_at = now()`,
     [
       player.puuid, region,
       ...baseParams,

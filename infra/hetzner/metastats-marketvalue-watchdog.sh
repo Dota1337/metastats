@@ -119,9 +119,13 @@ fi
 INFLIGHT_REGIONS=$(psql "$DATABASE_URL" -t -A -c "
   select string_agg(region || ':' || cnt, ',' order by region)
     from (
+      -- Alters- statt Tagesfilter: der Resume-Puffer ueberlebt seit 2026-08-04
+      -- bewusst die Tagesgrenze (sonst verlor jede nachts abgebrochene Region
+      -- ihre Gather-Arbeit). `day = current_date` haette hier ab dem Morgen
+      -- danach nichts mehr gefunden und den Resume-Fall als Full-Run gemeldet.
       select region, count(*)::int as cnt
         from tft_mv_inflight_raw
-       where day = current_date
+       where persisted_at > now() - interval '48 hours'
        group by region
     ) t;
 " 2>/dev/null || echo "")

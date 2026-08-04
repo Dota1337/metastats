@@ -117,7 +117,19 @@
       "dateColumn": "snapshot_date",
       "groups": ["euw1", "eun1", "tr1", "ru", "me1", "na1", "br1", "la1", "la2", "kr", "jp1", "oc1", "sg2", "tw2", "vn2"],
       "maxLagDays": 10,
-      "note": "STEHT ANFANGS AUF ROT und färbt sich über die nächsten Tage grün. Ein Gesamt-Frischecheck war blind dafür, dass einzelne Regionen zurückfielen: am 03.08.2026 standen jp1/oc1/sg2/tw2 auf dem 12.06. (52 Tage), weil der Driver die Regionen in fester Reihenfolge abarbeitete und nachts vom Daily-Crawl per Conflicts= gestoppt wurde. Seit der Staleness-Sortierung rotieren alle durch; bleibt eine Region über 10 Tage, reicht die Rotation nicht und der Durchsatz muss angefasst werden."
+      "note": "STEHT ANFANGS AUF ROT und färbt sich über die nächsten Tage grün. Ein Gesamt-Frischecheck war blind dafür, dass einzelne Regionen zurückfielen: am 03.08.2026 standen jp1/oc1/sg2/tw2 auf dem 12.06. (52 Tage), weil der Driver die Regionen in fester Reihenfolge abarbeitete und nachts vom Daily-Crawl per Conflicts= gestoppt wurde. Prüft den Spiegel auf Supabase und damit die Kette Driver→Sync; die Schwelle bleibt bewusst weiter als beim Hetzner-Pendant, weil der Sync auf einem eigenen 6h-Timer läuft. Ziel ist 36h — anzufassen ist dann der Durchsatz, nicht diese Zahl."
+    },
+    {
+      "id": "marketvalue/regionen-abdeckung-hetzner",
+      "owner": "metastats-marketvalue-snapshot.service",
+      "type": "coverage",
+      "backend": "hetzner",
+      "table": "tft_player_marketvalue_snapshots",
+      "groupColumn": "region",
+      "dateColumn": "snapshot_date",
+      "groups": ["euw1", "eun1", "tr1", "ru", "me1", "na1", "br1", "la1", "la2", "kr", "jp1", "oc1", "sg2", "tw2", "vn2"],
+      "maxLagDays": 2,
+      "note": "Der eigentliche Rhythmus-Wächter, direkt an der Quelle. Ziel des Rundlaufs (2026-08-04) ist: jede Region spätestens alle 36h neu berechnet. Der bestehende globale Vertrag marketvalue/hetzner-snapshots kann das nicht sehen — er prüft die Tabelle als Ganzes und stand die vollen 53 Tage auf grün, während neun Regionen eingefroren waren, weil euw1 allein die 2000 Zeilen lieferte. maxLagDays 2 statt 1,5, weil snapshot_date eine DATE-Spalte ist: eine Region, die gestern um 02:00 lief und heute um 22:00 wieder drankommt, liegt bei 44h und darf nicht fälschlich Alarm auslösen. Schlägt der Vertrag an, reicht der Durchsatz nicht mehr für den Rundlauf."
     },
 
     {

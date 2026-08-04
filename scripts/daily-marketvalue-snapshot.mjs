@@ -9,10 +9,36 @@
  *
  * Iterations-Quelle (Option Z aus Multi-Review-Verdict 2026-06-19):
  *   • tft_player_marketvalue_snapshots WHERE tier IN (D2+)
- *                                        AND snapshot_date < today
+ *                                        AND created_at älter als MIN_REFRESH_HOURS
  *                                        AND region = X
- * Das ist die D2+-Kohorte die heute noch keinen Snapshot hat. Aufsteiger
- * werden vom wöchentlichen Discovery-Lauf abgefangen.
+ * Das ist die D2+-Kohorte deren Marktwert überfällig ist. Aufsteiger werden vom
+ * wöchentlichen Discovery-Lauf abgefangen.
+ *
+ * RUNDLAUF STATT TAGESRASTER (2026-08-04)
+ * ---------------------------------------
+ * Bis dahin war der Lauf an den UTC-Kalendertag gebunden: Iterations-Kriterium
+ * `snapshot_date < current_date`, Cursor mit Tagesstempel, Inflight-Cleanup
+ * `day < today`. Das hatte drei Folgen, die sich gegenseitig verstärkten:
+ *
+ *   1. Der nächtliche SIGTERM (Conflicts=metastats-daily-crawl) brach Pass 1 ab.
+ *      Der nächste Lauf löschte die Gather-Arbeit als "von gestern" — die Region
+ *      begann wieder bei Spieler 1 und kam nie durch. Die Log-Zeile "nächster
+ *      Lauf setzt fort" war schlicht unwahr.
+ *   2. Je länger eine Region zurücklag, desto teurer wurde jeder ihrer Spieler
+ *      (maxIdsForPlayer skaliert mit dem Rückstand, 25 IDs/Tag bis 200). Rückstand
+ *      war damit selbstverstärkend: 0,2 s/Spieler frisch gegen 4,2 s/Spieler kalt.
+ *   3. Ein zweiter Durchlauf am selben Tag fand grundsätzlich nichts zu tun.
+ *
+ * Jetzt: kein Kalendertag mehr im Steuerpfad. Fällig ist, wer länger als
+ * MIN_REFRESH_HOURS keinen Schreibvorgang gesehen hat; Regionen laufen nach
+ * Rückstand sortiert im Rundlauf, bis nichts mehr fällig ist. Die Gather-Arbeit
+ * überlebt die Nacht (Inflight verfällt nach Alter, nicht nach Datum), also ist
+ * der zweite Anlauf einer großen Region fast gratis.
+ *
+ * Der Prozess läuft dabei NICHT rund um die Uhr: er endet, wenn nichts fällig
+ * ist. Das ist Absicht — remote-deploy.sh fällt bei laufendem Service auf
+ * Code-only-Sync zurück (kein npm ci, kein Timer-Re-Arm), und assertContracts
+ * läuft erst am Ende von main(). Ein Dauerprozess würde beides aushebeln.
  *
  * Pro Spieler:
  *   1. refreshPlayerMatchCache mit startTime = last_snapshot_date - 1h
@@ -44,11 +70,13 @@
  *   --match-concurrency <N>   Match-Detail-Concurrency (Default 8, Env: MV_MATCH_CONCURRENCY)
  *   --limit <N>               Nur N Spieler pro Region (Smoke-Mode)
  *   --skip-backup             Backup-Table-Step skippen (für Tests)
+ *   --min-refresh-hours <N>   Ab wann ein Spieler fällig ist (Default 20, Env: MV_REFRESH_MIN_HOURS)
+ *   --max-cycles <N>          Sicherheitsdeckel für den Rundlauf (Default 20)
  *   --verbose
  */
 
-import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync, unlinkSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
+import { readFileSync, existsSync, unlinkSync } from 'node:fs';
+import { resolve } from 'node:path';
 import pg from 'pg';
 import { createRiotClient } from './lib/riot-client.mjs';
 import { batchBudget, riotWindowFor } from './lib/riot-limits.mjs';
@@ -121,15 +149,34 @@ const INFLIGHT_MIN_PLAYERS = 500;
 // Driver schreibt Inflight wenn Flag=true, sonst Bypass komplett.
 const USE_INFLIGHT_RESUME = (process.env.MV_USE_INFLIGHT_RESUME || 'false').toLowerCase() === 'true';
 
-// Cursor-Schema-Version. Bei Major-Schema-Änderung bumpen, alt-Driver
-// erkennen Mismatch und resetten Cursor sauber (logic-flow F6).
-const CURSOR_SCHEMA_VERSION = 2;
+// Verfallszeit für Inflight-Rows. Ersetzt den früheren Tagesstempel-Cleanup:
+// eine Region, die um 23:50 abbricht, muss ihre Gather-Arbeit am nächsten
+// Nachmittag noch vorfinden. 48h deckt den ungünstigsten Fall (Abbruch kurz vor
+// Mitternacht, nächster Start erst nach dem ~14h-Daily-Crawl) mit Reserve ab.
+//
+// Obergrenze ist keine Willkür: die Roh-Metriken sind ein Zeitpunkt-Freeze. Je
+// älter sie beim Verrechnen sind, desto weiter driftet die Population von der
+// Realität weg. Länger als der angestrebte Refresh-Rhythmus darf sie nicht sein.
+const INFLIGHT_TTL_HOURS = 48;
 
-// Region-Cursor lebt OUTSIDE /opt/metastats-crawler — remote-deploy.sh würde
-// einen In-Repo-Cursor mit `git clean -fd` killen. Lokal-Dev fällt auf cwd.
-// Cursor pro UTC-Tag: enthält die heute schon fertigen Regionen. Bei Tagesgrenze
-// resetet sich der Cursor automatisch (date-stamp im File).
-const CURSOR_PATH = process.env.MV_SNAPSHOT_CURSOR
+// Ab wann ein Spieler wieder fällig ist. 20h statt 24h, damit ein Lauf, der
+// gestern um 20:00 fertig wurde, heute um 16:00 wieder drankommt und nicht erst
+// morgen — sonst würde sich der Rhythmus mit jedem Tag nach hinten schieben,
+// bis er das 36h-Ziel reißt.
+//
+// Der Wert deckt zusätzlich die Tages-Granularität der Snapshot-Tabelle ab:
+// der Primärschlüssel enthält snapshot_date (DATE), zwei Läufe am selben
+// UTC-Tag würden dieselbe Zeile überschreiben statt Historie zu schreiben.
+// Solange die Schwelle nahe 24h liegt, kann das nicht passieren. Wer sie
+// deutlich senkt, braucht vorher einen Zeitstempel im Primärschlüssel.
+const MIN_REFRESH_HOURS = parseFloat(process.env.MV_REFRESH_MIN_HOURS || '20');
+
+// Legacy-Cursor. Der Tagesstempel-Cursor ist mit dem Rundlauf entfallen: er war
+// die zweite, mit der DB konkurrierende Wahrheit darüber, was heute schon fertig
+// ist — Watchdog (urteilt nach DB-Abdeckung) und Driver (urteilte nach File)
+// liefen dadurch auseinander. Fälligkeit steht jetzt ausschließlich in der DB.
+// Der Pfad bleibt nur, um ein zurückgelassenes File einmalig aufzuräumen.
+const LEGACY_CURSOR_PATH = process.env.MV_SNAPSHOT_CURSOR
   || (existsSync('/etc/metastats-crawler')
       ? '/etc/metastats-crawler/marketvalue-snapshot-cursor.json'
       : resolve(process.cwd(), '.mv-snapshot-cursor.json'));
@@ -151,6 +198,12 @@ const LIMIT = parseInt(arg('--limit', '0'), 10);
 const SKIP_BACKUP = hasFlag('--skip-backup');
 const RESET_CURSOR = hasFlag('--reset-cursor');
 const VERBOSE = hasFlag('--verbose');
+const REFRESH_HOURS = parseFloat(arg('--min-refresh-hours', String(MIN_REFRESH_HOURS)));
+// Deckel gegen eine Endlosschleife, falls eine Region dauerhaft fällig bleibt
+// (z.B. weil ihre Spieler reihenweise unter der 5-Match-Schwelle liegen und nie
+// einen Snapshot bekommen). Ohne Deckel liefe der Rundlauf gegen dieselbe Region
+// bis zum SIGTERM.
+const MAX_CYCLES = parseInt(arg('--max-cycles', '20'), 10);
 
 if (!Number.isFinite(MAX_IDS) || MAX_IDS < 1 || MAX_IDS > 1000) {
   console.error(`Invalid --max-ids ${MAX_IDS}, expected 1..1000`);
@@ -158,6 +211,14 @@ if (!Number.isFinite(MAX_IDS) || MAX_IDS < 1 || MAX_IDS > 1000) {
 }
 if (!Number.isFinite(MATCH_CONCURRENCY) || MATCH_CONCURRENCY < 1 || MATCH_CONCURRENCY > 20) {
   console.error(`Invalid --match-concurrency ${MATCH_CONCURRENCY}, expected 1..20`);
+  process.exit(1);
+}
+if (!Number.isFinite(REFRESH_HOURS) || REFRESH_HOURS < 1 || REFRESH_HOURS > 240) {
+  console.error(`Invalid --min-refresh-hours ${REFRESH_HOURS}, expected 1..240`);
+  process.exit(1);
+}
+if (!Number.isFinite(MAX_CYCLES) || MAX_CYCLES < 1 || MAX_CYCLES > 100) {
+  console.error(`Invalid --max-cycles ${MAX_CYCLES}, expected 1..100`);
   process.exit(1);
 }
 
@@ -177,55 +238,53 @@ for (const r of REGIONS) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Region-Reihenfolge: älteste Daten zuerst
+// Region-Reihenfolge: am längsten nicht bearbeitet zuerst
 //
 // Bis 2026-08-03 lief der Driver stur die ACTIVE_REGIONS-Reihenfolge ab —
 // euw1 (10.878 Spieler, der größte Brocken) also immer zuerst. Da ein
 // Vollzyklus über alle 15 Regionen deutlich länger als einen Tag braucht und
-// der Cursor jede Nacht zurückgesetzt wird, kamen die hinteren Regionen nie
+// der Cursor jede Nacht zurückgesetzt wurde, kamen die hinteren Regionen nie
 // an die Reihe: jp1, oc1, sg2, tw2 und vn2 standen am 03.08. auf Marktwerten
 // vom 12.06. — 52 Tage alt, bei 20.399 betroffenen Spielern.
 //
-// Sortierung jetzt: zuerst Regionen, die heute schon angefangen, aber nicht
-// abgeschlossen wurden (sonst bliebe deren Teilarbeit liegen — sie gälten am
-// nächsten Tag als "frisch" und rutschten wieder ans Ende), danach die mit
-// dem ältesten Snapshot. Regionen ganz ohne Snapshots kommen zuerst.
+// Sortiert wird nach max(created_at), NICHT nach max(snapshot_date). Letzteres
+// ist eine DATE-Spalte und kann 25h nicht von 47h unterscheiden — bei einem Ziel
+// von "spätestens alle 36h" ist das zu grob, und bei Gleichstand entschied die
+// Array-Reihenfolge, also wieder die feste Liste. created_at trägt seit
+// 2026-08-04 den Zeitpunkt des letzten Schreibvorgangs (siehe snapshotPlayer).
+//
+// Das frühere Kriterium "heute schon angefangen zuerst" ist entfallen: es war
+// über den Refresh-Button der API hijackbar (ein einzelner User-Klick schreibt
+// eine Zeile mit heutigem Datum in eine beliebige Region) und wird nicht mehr
+// gebraucht, seit angefangene Arbeit im Inflight-Puffer die Nacht überlebt.
+//
+// Das Fenster grenzt die Abfrage auf den Index ein; Regionen ohne Zeile darin
+// gelten als maximal überfällig und kommen zuerst.
 //
 // Fällt die Abfrage aus, bleibt es bei der statischen Reihenfolge — eine
 // kaputte Sortierung darf den Lauf nicht verhindern.
 // ─────────────────────────────────────────────────────────────────────────────
+const STALENESS_WINDOW_DAYS = 90;
+
 async function orderByStaleness(regions) {
   if (regions.length <= 1 || STATIC_REGION_ORDER) return regions;
   try {
     const { rows } = await pool.query(`
-      select region,
-             max(snapshot_date)                                        as newest,
-             count(*) filter (where snapshot_date = current_date) > 0  as started_today
+      select region, max(created_at) as newest
         from tft_player_marketvalue_snapshots
        where region = any($1::text[])
+         and snapshot_date >= current_date - $2::int
        group by region
-    `, [regions]);
+    `, [regions, STALENESS_WINDOW_DAYS]);
 
-    const info = new Map(rows.map(r => [r.region, r]));
-    const rank = (r) => {
-      const i = info.get(r);
-      if (!i) return { started: 0, newest: 0 };            // nie gecrawlt → ganz nach vorn
-      return {
-        started: i.started_today ? -1 : 0,                  // angefangen → vor allen anderen
-        newest: i.newest ? Date.parse(i.newest) : 0,
-      };
-    };
-
-    const ordered = [...regions].sort((a, b) => {
-      const ra = rank(a), rb = rank(b);
-      if (ra.started !== rb.started) return ra.started - rb.started;
-      return ra.newest - rb.newest;                          // ältester Snapshot zuerst
-    });
+    const newestOf = new Map(rows.map(r => [r.region, r.newest ? Date.parse(r.newest) : 0]));
+    // 0 = nie bearbeitet (oder länger als das Fenster her) → ganz nach vorn.
+    const ordered = [...regions].sort((a, b) => (newestOf.get(a) ?? 0) - (newestOf.get(b) ?? 0));
 
     const age = (r) => {
-      const i = info.get(r);
-      if (!i?.newest) return 'nie';
-      return `${Math.round((Date.now() - Date.parse(i.newest)) / 86_400_000)}d`;
+      const t = newestOf.get(r);
+      if (!t) return '>90d';
+      return `${((Date.now() - t) / 3_600_000).toFixed(0)}h`;
     };
     console.log(`    Reihenfolge nach Rückstand: ${ordered.map(r => `${r}(${age(r)})`).join(' ')}`);
     return ordered;
@@ -331,6 +390,9 @@ const pool = new pg.Pool({
   statement_timeout: 60_000, // bound query hangs (Audit H2, 2026-06-28)
 });
 
+// Set-Nummer, für die zuletzt aufgeräumt wurde (siehe processRegion).
+let lastCleanupSet = null;
+
 let aborting = false;
 process.on('SIGTERM', () => {
   if (aborting) return;
@@ -339,46 +401,70 @@ process.on('SIGTERM', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Region-Cursor: tagsweise "schon fertig"-Liste
+// Lauf-Tag: EINMAL beim Prozessstart eingefroren
+//
+// todayUtcIso() wurde vorher an jeder Verwendungsstelle neu ausgewertet. In
+// einem Lauf über Mitternacht schrieb insertInflight die erste Hälfte einer
+// Region mit day=D und die zweite mit day=D+1, während loadInflightForRegion nur
+// eine der beiden fand — die halbe Gather-Arbeit verschwand lautlos.
 // ─────────────────────────────────────────────────────────────────────────────
 
-function todayUtcIso() {
-  return new Date().toISOString().slice(0, 10);
+const RUN_DAY = new Date().toISOString().slice(0, 10);
+
+// Aufräumen eines zurückgelassenen Tages-Cursors aus der Zeit vor dem Rundlauf.
+// Einmalig; ein vorhandenes File hat keine Wirkung mehr, würde bei einer
+// Fehlersuche aber falsche Fährten legen.
+function removeLegacyCursor() {
+  try {
+    if (!existsSync(LEGACY_CURSOR_PATH)) return;
+    unlinkSync(LEGACY_CURSOR_PATH);
+    console.log(`    [cursor] Alt-Cursor entfernt (${LEGACY_CURSOR_PATH}) — Fälligkeit kommt jetzt aus der DB`);
+  } catch { /* nicht kritisch */ }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Inflight-Tabelle Helper (Sub-Region-Resume, Migration 0046)
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Cleanup stale Inflight beim Driver-Start. Architect F3: day-cleanup REICHT
-// NICHT — Set-Bump zwischen 23:55 (Set 17) und 00:05 (Set 18) würde stale Set-17
-// Inflight stehen lassen. Cleanup-Condition: day < today OR set_number != current.
+// Cleanup stale Inflight. Zwei Gründe, eine Abfrage:
+//
+//   • ALTER statt Datum. Der frühere Cleanup `day < today` lief bei JEDEM
+//     Driver-Start und löschte damit exakt das, was der nächtliche SIGTERM
+//     hinterlassen hatte: eine Region, die um 23:50 abbrach, verlor am nächsten
+//     Nachmittag ihre komplette Gather-Arbeit und begann wieder bei Spieler 1.
+//     Genau daran sind euw1 und eun1 wochenlang gescheitert, ohne dass es im Log
+//     als Fehler auftauchte — dort stand "nächster Lauf setzt fort".
+//   • Set-Bump. Ein Wechsel zwischen 23:55 (Set 17) und 00:05 (Set 18) würde
+//     Set-17-Rohdaten als Set-18-Daten weiterlaufen lassen (Architect F3).
+//     Deshalb wird das zusätzlich beim Betreten jeder Region geprüft, nicht nur
+//     einmal beim Start — ein Lauf kann inzwischen über den Wechsel hinweggehen.
 async function cleanupStaleInflight(currentSetNumber) {
   if (!USE_INFLIGHT_RESUME) return;
   try {
     const r = await pool.query(
       `delete from tft_mv_inflight_raw
-       where day < $1 or set_number != $2`,
-      [todayUtcIso(), currentSetNumber],
+       where persisted_at < now() - ($1::text || ' hours')::interval
+          or set_number != $2`,
+      [INFLIGHT_TTL_HOURS, currentSetNumber],
     );
     if (r.rowCount > 0) {
-      console.log(`  [inflight] cleaned ${r.rowCount} stale rows (day<today OR set != ${currentSetNumber})`);
+      console.log(`  [inflight] cleaned ${r.rowCount} stale rows (älter als ${INFLIGHT_TTL_HOURS}h ODER set != ${currentSetNumber})`);
     }
   } catch (err) {
     console.error(`  [inflight] cleanupStale failed: ${err.message}`);
   }
 }
 
-// `--reset-cursor` Cascade: löscht Cursor + alle heutigen Inflight-Rows.
-async function clearTodayInflight() {
+// `--reset-cursor` Cascade: verwirft den Resume-Puffer der Regionen im Scope.
+async function clearScopedInflight(regions) {
   if (!USE_INFLIGHT_RESUME) return;
   try {
     const r = await pool.query(
-      `delete from tft_mv_inflight_raw where day = $1`,
-      [todayUtcIso()],
+      `delete from tft_mv_inflight_raw where region = any($1::text[])`,
+      [regions],
     );
     if (r.rowCount > 0) {
-      console.log(`  [inflight] reset: ${r.rowCount} heute-Rows gelöscht`);
+      console.log(`  [inflight] reset: ${r.rowCount} Rows gelöscht (${regions.length} Regionen)`);
     }
   } catch (err) {
     console.error(`  [inflight] reset failed: ${err.message}`);
@@ -386,16 +472,25 @@ async function clearTodayInflight() {
 }
 
 // Pass-1-Eintritt: lese alle bereits gather-ten Spieler für diese Region.
-// Truth-Source für Skip-Set (logic-flow F2: cursor.persistedCount ist NUR
-// Anzeige-Telemetrie, NIE Skip-Threshold).
-async function loadInflightForRegion(region) {
+// Truth-Source für Skip-Set (logic-flow F2: Zähler aus einem Cursor-File waren
+// NUR Anzeige-Telemetrie, NIE Skip-Threshold).
+//
+// Bewusst OHNE Datumsfilter: der Puffer darf über die Tagesgrenze getragen
+// werden, sonst gäbe es kein Fortsetzen (siehe cleanupStaleInflight). Grenze ist
+// allein das Alter. Bricht eine Region über zwei Nächte ab, können für denselben
+// Spieler Zeilen aus zwei Tagen liegen — nach persisted_at aufsteigend gelesen
+// gewinnt die jüngste.
+async function loadInflightForRegion(region, setNumber) {
   if (!USE_INFLIGHT_RESUME) return new Map();
   try {
     const r = await pool.query(
       `select puuid, raw_metrics
        from tft_mv_inflight_raw
-       where region = $1 and day = $2`,
-      [region, todayUtcIso()],
+       where region = $1
+         and set_number = $2
+         and persisted_at > now() - ($3::text || ' hours')::interval
+       order by persisted_at asc`,
+      [region, setNumber, INFLIGHT_TTL_HOURS],
     );
     return new Map(r.rows.map(row => [row.puuid, row.raw_metrics]));
   } catch (err) {
@@ -413,7 +508,7 @@ async function insertInflight(region, setNumber, puuid, rawMetrics) {
       `insert into tft_mv_inflight_raw (puuid, region, day, set_number, raw_metrics)
        values ($1, $2, $3, $4, $5)
        on conflict (puuid, region, day) do update set raw_metrics = excluded.raw_metrics, persisted_at = now()`,
-      [puuid, region, todayUtcIso(), setNumber, rawMetrics],
+      [puuid, region, RUN_DAY, setNumber, rawMetrics],
     );
   } catch (err) {
     // Inflight-Write-Failure ist nicht fatal — Driver läuft ohne Resume
@@ -422,16 +517,17 @@ async function insertInflight(region, setNumber, puuid, rawMetrics) {
   }
 }
 
-// Region-Done-Cleanup. NICHT atomar mit Cursor-Write — Reihenfolge umgekehrt
-// (logic-flow F1: Cursor zuerst). Bei Crash zwischen Cursor-Write und Cleanup
-// bleibt stale Inflight, wird beim nächsten Driver-Start via cleanupStaleInflight
-// gefangen.
+// Region-Done-Cleanup. Läuft NACH dem erfolgreichen Pass 2. Schlägt das DELETE
+// fehl, bleiben Rows liegen — die fängt der Alters-Cleanup beim nächsten Start.
+// Ohne Datumsfilter, sonst blieben Zeilen einer über Mitternacht gelaufenen
+// Region als Leichen zurück und würden beim nächsten Durchlauf als gültiger
+// Resume-Stand gelesen.
 async function cleanupRegionInflight(region) {
   if (!USE_INFLIGHT_RESUME) return;
   try {
     const r = await pool.query(
-      `delete from tft_mv_inflight_raw where region = $1 and day = $2`,
-      [region, todayUtcIso()],
+      `delete from tft_mv_inflight_raw where region = $1`,
+      [region],
     );
     if (VERBOSE && r.rowCount > 0) {
       console.log(`  [inflight] region-done cleanup ${region}: ${r.rowCount} rows`);
@@ -439,66 +535,6 @@ async function cleanupRegionInflight(region) {
   } catch (err) {
     console.error(`  [inflight] region-done cleanup ${region}: ${err.message}`);
   }
-}
-
-function readCursor() {
-  if (RESET_CURSOR) return { day: todayUtcIso(), completed: [], inflight: null };
-  try {
-    const raw = JSON.parse(readFileSync(CURSOR_PATH, 'utf8'));
-    // Cursor wird pro UTC-Tag resetet — gestern fertige Regionen brauchen heute
-    // wieder einen frischen Snapshot.
-    if (raw.day !== todayUtcIso()) return { day: todayUtcIso(), completed: [], inflight: null };
-    // Bei Schema-Version-Mismatch: fail-loud (logic-flow F6). Aktuell V1->V2
-    // ist tolerant lesbar (inflight fehlt = null), aber zukünftige V2->V3
-    // soll explizit migrationspflicht sein.
-    const version = raw.cursorVersion ?? 1;
-    if (version > CURSOR_SCHEMA_VERSION) {
-      console.error(`[cursor] schema version ${version} unsupported (driver supports ${CURSOR_SCHEMA_VERSION}) — resetting`);
-      return { day: todayUtcIso(), completed: [], inflight: null };
-    }
-    return {
-      day: raw.day,
-      completed: Array.isArray(raw.completed) ? raw.completed : [],
-      // inflight ist Anzeige-only (logic-flow F2). Skip-Set kommt IMMER aus
-      // loadInflightForRegion() DB-Query, NIE aus cursor.inflight.persistedCount.
-      inflight: raw.inflight && typeof raw.inflight === 'object' ? raw.inflight : null,
-    };
-  } catch {
-    return { day: todayUtcIso(), completed: [], inflight: null };
-  }
-}
-
-function writeCursor(cursor) {
-  // Atomic write via tmp-file + rename. Logic-Flow-Critic 2026-06-20: direkt
-  // writeFileSync ist nicht crash-safe — SIGKILL während des Writes könnte den
-  // Cursor truncated/corrupt hinterlassen. readCursor würde dann als "leer"
-  // behandeln → alle 15 Regionen morgen neu iterieren (~30k Riot-Calls
-  // Verschwendung). tmp+rename ist POSIX-atomic auf demselben Filesystem.
-  try {
-    mkdirSync(dirname(CURSOR_PATH), { recursive: true });
-    const tmpPath = `${CURSOR_PATH}.tmp`;
-    const payload = {
-      cursorVersion: CURSOR_SCHEMA_VERSION,
-      day: cursor.day,
-      completed: cursor.completed,
-      updatedAt: new Date().toISOString(),
-    };
-    // inflight ist optional + Anzeige-only. NUR setzen wenn aktiv vorhanden,
-    // sonst weglassen — vermeidet stale `inflight` nach Region-Done.
-    if (cursor.inflight && typeof cursor.inflight === 'object') {
-      payload.inflight = cursor.inflight;
-    }
-    writeFileSync(tmpPath, JSON.stringify(payload, null, 2));
-    // rename() ist atomic auf POSIX → entweder altes File oder neues File,
-    // nie ein truncated File.
-    renameSync(tmpPath, CURSOR_PATH);
-  } catch (err) {
-    console.error(`[cursor] persist failed (${CURSOR_PATH}): ${err.message}`);
-  }
-}
-
-function clearCursor() {
-  try { unlinkSync(CURSOR_PATH); } catch { /* ignore */ }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -533,18 +569,29 @@ async function loadIterationTargets(region) {
   // Wir gehen davon aus, dass das Tier nicht im letzten Tag um mehr als 1
   // Division gerutscht ist — wenn doch, korrigiert sich das im nächsten
   // wöchentlichen Discovery-Lauf (= alter Crawler mit --include-diamond).
+  //
+  // Fälligkeit hängt an created_at (Zeitpunkt des letzten Schreibvorgangs),
+  // nicht mehr an `snapshot_date < current_date`. Der Tagesvergleich hatte zwei
+  // Defekte: ein zweiter Durchlauf am selben UTC-Tag fand grundsätzlich nichts
+  // zu tun (der Rundlauf wäre damit nach einem Durchgang tot gewesen), und eine
+  // Region, die kurz nach Mitternacht fertig wurde, galt sofort wieder als
+  // komplett überfällig.
+  //
+  // `order by ... created_at desc` als zweites Kriterium: bei mehreren Zeilen
+  // desselben Tages — möglich, seit der Refresh-Button der API in dieselbe Zeile
+  // schreibt — soll die zuletzt geschriebene gewinnen.
   const r = await pool.query(
     `with latest as (
        select distinct on (puuid)
-         puuid, region, tier, rank, lp, ladder_rank, snapshot_date, games_played
+         puuid, region, tier, rank, lp, ladder_rank, snapshot_date, games_played, created_at
        from tft_player_marketvalue_snapshots
        where region = $1
-       order by puuid, snapshot_date desc
+       order by puuid, snapshot_date desc, created_at desc
      )
      select * from latest
      where tier = any($2::text[])
-       and snapshot_date < current_date`,
-    [region, D2_TIERS],
+       and created_at < now() - ($3::text || ' hours')::interval`,
+    [region, D2_TIERS, REFRESH_HOURS],
   );
   return r.rows.map(row => ({
     puuid: row.puuid,
@@ -591,13 +638,21 @@ function maxIdsForPlayer(player) {
 // Backup-Pattern für Rollback
 // ─────────────────────────────────────────────────────────────────────────────
 
-function backupTableName(region) {
-  const d = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  return `tft_pmvs_backup_${d}_${region}`;
+// Backup und Snapshot MÜSSEN denselben Tag benutzen. Bis 2026-08-04 zog jede
+// Stelle ihr Datum selbst: das Backup aus new Date(), der Insert aus dem
+// SQL-seitigen current_date, ausgewertet PRO ZEILE. Ein Pass 2 über Mitternacht
+// (bei euw1 rund 10.900 serielle Account-Abrufe, gut eine Viertelstunde) zerriss
+// die Region damit in zwei Kohorten mit zwei Snapshot-Tagen — und die Hälfte von
+// gestern galt sofort wieder als fällig, baute eine Population aus dem Rest und
+// überschrieb die der ersten Hälfte. Ergebnis wären zwei Multiplier-Sätze
+// derselben Region gegen zwei verschiedene Bezugsgrößen: genau der stille
+// Datenfehler, gegen den weiter unten der Abbruch-Riegel steht.
+function backupTableName(region, day) {
+  return `tft_pmvs_backup_${day.replace(/-/g, '')}_${region}`;
 }
 
-async function createBackup(region) {
-  const tbl = backupTableName(region);
+async function createBackup(region, day) {
+  const tbl = backupTableName(region, day);
   // CREATE IF NOT EXISTS-Pattern: bei Re-Run am gleichen Tag bleibt das
   // ursprüngliche Backup erhalten (= state VOR allen heutigen Schreibwegen).
   const exists = await pool.query(
@@ -611,8 +666,8 @@ async function createBackup(region) {
   await pool.query(
     `create table ${tbl} as
      select * from tft_player_marketvalue_snapshots
-     where region = $1 and snapshot_date = current_date`,
-    [region],
+     where region = $1 and snapshot_date = $2::date`,
+    [region, day],
   );
   const cnt = await pool.query(`select count(*)::int as n from ${tbl}`);
   console.log(`  [backup] ${tbl} — ${cnt.rows[0].n} Rows gesichert`);
@@ -631,10 +686,27 @@ async function processRegion(region) {
   console.log(`\n=== ${region} (cluster=${regional}, limiter=${batchBudget(regional)}/10,5s, concurrency=${MATCH_CONCURRENCY}) ===`);
   const t0 = Date.now();
 
+  // Der Tag dieser Region — EINMAL hier festgelegt, siehe backupTableName().
+  const regionDay = new Date().toISOString().slice(0, 10);
+
   // 0. Player-Liste aus Snapshot-Tabelle (Option Z, vereinfacht)
   let players = await loadIterationTargets(region);
-  console.log(`  [iter] ${players.length} D2+ Spieler ohne heutigen Snapshot`);
+  console.log(`  [iter] ${players.length} D2+ Spieler mit fälligem Marktwert (>${REFRESH_HOURS}h)`);
   if (LIMIT > 0) players = players.slice(0, LIMIT);
+
+  // Leerlauf-Kurzschluss VOR dem Liga-Abruf.
+  //
+  // Der Check stand bis 2026-08-04 hinter fetchD2PlusEntries — eine Region ohne
+  // Arbeit kostete trotzdem 30-60 Riot-Calls (bei euw1/kr je 10.000 Apex-
+  // Einträge plus Diamond-Paginierung). Im Tagesraster fiel das nicht auf, weil
+  // es höchstens einmal pro Region und Tag passierte. Im Rundlauf ist "nichts zu
+  // tun" der häufigste Fall: der abschließende Durchgang prüft alle 15 Regionen
+  // und darf dafür nicht das Riot-Kontingent verbrennen, das nachts dem
+  // Daily-Crawl gehört.
+  if (players.length === 0) {
+    console.log(`  [done] nichts fällig — übersprungen`);
+    return { region, players: 0, snapshots: 0, noop: true };
+  }
 
   // --- Aktivitaetserkennung -------------------------------------------------
   // Bis 2026-08-02 bekam JEDER dieser Spieler eine eigene Riot-Call-Kette, auch
@@ -705,15 +777,10 @@ async function processRegion(region) {
     return { region, players: players.length, snapshots: 0, dryRun: true };
   }
 
-  if (players.length === 0) {
-    console.log(`  [done] nichts zu tun — alle Spieler haben heutigen Snapshot`);
-    return { region, players: 0, snapshots: 0 };
-  }
-
   // 1. Backup vor scharfem Lauf
   let backupTbl = null;
   if (!SKIP_BACKUP) {
-    backupTbl = await createBackup(region);
+    backupTbl = await createBackup(region, regionDay);
   }
 
   // 2. Pass 1: gatherPlayer pro Spieler
@@ -721,6 +788,14 @@ async function processRegion(region) {
   if (setNumber == null) {
     console.error('  [error] No current set, aborting');
     return { region, players: players.length, snapshots: 0, failed: 1 };
+  }
+  // Set-Prüfung bei JEDEM Region-Eintritt, nicht nur beim Prozessstart: der Set
+  // wird pro Region frisch von Platte gelesen, und ein Lauf kann inzwischen über
+  // einen Set-Bump hinweggehen. Ohne das würden Rohdaten des alten Sets als neue
+  // weiterverrechnet.
+  if (USE_INFLIGHT_RESUME && setNumber !== lastCleanupSet) {
+    await cleanupStaleInflight(setNumber);
+    lastCleanupSet = setNumber;
   }
   const graph = loadGraph(region);
   const hotCompKeys = buildHotCompKeys(graph);
@@ -730,7 +805,7 @@ async function processRegion(region) {
   // Granularität (perf-critic F8: kleine Regionen sind in 2-5min durch,
   // Resume-Wert null). me1/br1/la1/la2/oc1 skippen automatisch.
   const inflightActive = USE_INFLIGHT_RESUME && players.length >= INFLIGHT_MIN_PLAYERS;
-  const inflightMap = inflightActive ? await loadInflightForRegion(region) : new Map();
+  const inflightMap = inflightActive ? await loadInflightForRegion(region, setNumber) : new Map();
   if (inflightActive) {
     console.log(`  [inflight] active — ${inflightMap.size} puuids im Skip-Set (resume mode)`);
   } else if (USE_INFLIGHT_RESUME) {
@@ -906,7 +981,8 @@ async function processRegion(region) {
   const snapshotCtx = {
     region, regional,
     apiKey: API_KEY,
-    snapshotDate: null,  // default = current_date
+    // Fest, NICHT current_date pro Zeile — siehe backupTableName().
+    snapshotDate: regionDay,
   };
   for (const g of gathered) {
     try {
@@ -936,90 +1012,91 @@ async function main() {
     ? `${MAX_IDS} (CLI-Override)`
     : `adaptiv ${DEFAULT_MAX_IDS}-200 (aus Rueckstand)`;
   console.log(`    max-ids: ${maxIdsLabel} | concurrency: ${MATCH_CONCURRENCY} | limit: ${LIMIT || 'unlimited'}`);
-  console.log(`    dry-run: ${DRY_RUN} | skip-backup: ${SKIP_BACKUP} | reset-cursor: ${RESET_CURSOR}`);
-  console.log(`    inflight-resume: ${USE_INFLIGHT_RESUME ? 'ON' : 'OFF (default — set MV_USE_INFLIGHT_RESUME=true to enable)'}`);
+  console.log(`    dry-run: ${DRY_RUN} | skip-backup: ${SKIP_BACKUP} | reset: ${RESET_CURSOR}`);
+  console.log(`    fällig ab: ${REFRESH_HOURS}h ohne Aktualisierung | max-cycles: ${MAX_CYCLES}`);
+  console.log(`    inflight-resume: ${USE_INFLIGHT_RESUME ? `ON (Verfall ${INFLIGHT_TTL_HOURS}h)` : 'OFF (default — set MV_USE_INFLIGHT_RESUME=true to enable)'}`);
 
-  // Cursor laden (oder leer wenn neuer UTC-Tag / --reset-cursor)
-  const cursor = readCursor();
-  const todoRegions = await orderByStaleness(
-    REGIONS.filter(r => !cursor.completed.includes(r)),
-  );
-  if (cursor.completed.length > 0) {
-    console.log(`    cursor: ${cursor.completed.length}/${REGIONS.length} schon heute fertig (${cursor.completed.join(',')})`);
-    console.log(`    todo: ${todoRegions.join(',')}`);
-  } else {
-    console.log(`    cursor: ${CURSOR_PATH} (frischer Tag oder reset)`);
-  }
+  removeLegacyCursor();
 
   // Inflight-Stale-Cleanup beim Start. Pflicht VOR jeglichen Region-Reads.
-  // Architect F3: Cleanup-Condition `day < today OR set_number != current`.
-  // Bei --reset-cursor zusätzlich heutige Inflight wipen.
   if (USE_INFLIGHT_RESUME && !DRY_RUN) {
     const currentSet = loadCurrentSet();
     if (currentSet != null) {
+      if (RESET_CURSOR) await clearScopedInflight(REGIONS);
       await cleanupStaleInflight(currentSet);
-      if (RESET_CURSOR) await clearTodayInflight();
+      lastCleanupSet = currentSet;
     }
-  }
-
-  if (todoRegions.length === 0) {
-    console.log(`\n=== Alle Regionen heute schon fertig — No-Op ===`);
-    await pool.end().catch(() => {});
-    return;
   }
 
   const t0 = Date.now();
   const results = [];
   try {
-    for (const region of todoRegions) {
-      if (aborting) {
-        console.log(`[${region}] skipped — SIGTERM (cursor: ${cursor.completed.length}/${REGIONS.length} done)`);
+    // Rundlauf: pro Durchgang die fälligen Regionen nach Rückstand abarbeiten,
+    // danach neu bewerten. Ein zweiter Durchgang lohnt sich, weil ein Durchlauf
+    // Stunden dauert — Regionen, die beim Start noch frisch waren, können
+    // inzwischen fällig geworden sein.
+    //
+    // Beendet wird, wenn ein Durchgang keine Arbeit mehr gefunden hat. Der
+    // Prozess läuft bewusst NICHT endlos weiter (siehe Datei-Kopf): erst sein
+    // Ende gibt Deploy und Vertragsprüfung frei. Den nächsten Start übernehmen
+    // die bestehenden Wege — OnSuccess des Daily-Crawls und der Watchdog.
+    // Regionen, die in diesem Prozess einen Anlauf hatten und dabei keinen
+    // einzigen Snapshot geschrieben haben (Degradation, Fatal-Error, oder alle
+    // Spieler unter der 5-Match-Schwelle). Sie bleiben fällig, weil nichts
+    // geschrieben wurde — ohne diese Sperre würde der Rundlauf sie sofort wieder
+    // aufgreifen und pro Anlauf erneut den Liga-Abruf bezahlen, bis der
+    // Sicherheitsdeckel greift. Der nächste Prozessstart versucht es neu.
+    const noProgress = new Set();
+
+    for (let cycle = 1; cycle <= MAX_CYCLES && !aborting; cycle++) {
+      const todoRegions = (await orderByStaleness([...REGIONS]))
+        .filter(r => !noProgress.has(r));
+      let worked = 0;
+
+      for (const region of todoRegions) {
+        if (aborting) {
+          console.log(`[${region}] übersprungen — SIGTERM`);
+          break;
+        }
+        try {
+          const r = await processRegion(region);
+          if (r.noop) continue;             // nichts fällig, zählt nicht als Arbeit
+          results.push(r);
+          worked++;
+          if (!(r.snapshots > 0)) noProgress.add(region);
+
+          // Inflight-Cleanup NUR nach einem sauber durchgelaufenen Region-Pass.
+          //
+          // Abbruch (SIGTERM mitten in Pass 1) und Degradation (<30% verwertbar)
+          // müssen den Resume-Puffer behalten — er ist die einzige Stelle, an
+          // der die Gather-Arbeit liegt, und genau sein früheres Löschen hat
+          // dafür gesorgt, dass große Regionen nie fertig wurden.
+          if (!DRY_RUN && !r.aborted && !r.degraded) {
+            await cleanupRegionInflight(region);
+          } else if (r.aborted || r.degraded) {
+            const why = r.aborted ? 'abgebrochen' : 'degradiert';
+            console.log(`[${region}] ${why} — Resume-Puffer bleibt für den nächsten Anlauf erhalten`);
+          }
+        } catch (err) {
+          console.error(`[${region}] FATAL: ${err.message}`);
+          if (VERBOSE) console.error(err.stack);
+          results.push({ region, error: err.message });
+          worked++;
+          noProgress.add(region);
+        }
+      }
+
+      if (worked === 0) {
+        console.log(`\n=== Durchgang ${cycle}: nichts mehr fällig — Lauf beendet ===`);
         break;
       }
-      try {
-        const r = await processRegion(region);
-        results.push(r);
-        // Region als "heute fertig" markieren (auch bei dry-run nicht, weil
-        // dort keine echten Snapshots geschrieben wurden — aber dry-run hat
-        // sowieso keinen Side-Effect).
-        //
-        // Region-Done-Reihenfolge (logic-flow F1): Cursor-Write ZUERST,
-        // Inflight-Cleanup DANACH. Wenn Cleanup-DELETE crashed bleiben stale
-        // Inflight-Rows — werden beim nächsten Driver-Start via
-        // cleanupStaleInflight gefangen. Umgekehrt wäre teurer: Cleanup-OK
-        // aber Cursor-Crash → 14k Re-Fetches morgen.
-        //
-        // ABORTED-Pass-1 (logic-flow F3): wenn aborting mid-Pass-1, hat
-        // processRegion zwar Pop+Pass-2 für die bisher gather-ten Spieler
-        // durchgezogen (Snapshots in DB), aber Region ist NICHT komplett
-        // durchlaufen. Region als pending lassen → nächster Lauf resumed
-        // via Inflight-Map (alle bisher gather-ten kommen aus Inflight,
-        // Riot-Calls nur für Rest).
-        //
-        // DEGRADED (2026-08-04): auch ein degradierter Lauf darf die Region
-        // nicht als fertig markieren — sonst sperrt der Cursor sie fuer den Tag
-        // und der Watchdog laeuft ins Leere.
-        if (!DRY_RUN && !r.aborted && !r.degraded) {
-          cursor.completed.push(region);
-          writeCursor(cursor);
-          await cleanupRegionInflight(region);
-        } else if (r.aborted || r.degraded) {
-          const why = r.aborted ? 'aborted' : 'degraded';
-          console.log(`[${region}] cursor preserved (${why}), inflight retained for resume`);
-        }
-      } catch (err) {
-        // Bei Fatal-Fehler einer Region NICHT als completed markieren →
-        // nächster Lauf resumed bei dieser Region.
-        console.error(`[${region}] FATAL: ${err.message}`);
-        if (VERBOSE) console.error(err.stack);
-        results.push({ region, error: err.message });
+      // Ein Probelauf schreibt nichts, also wäre jede Region im nächsten
+      // Durchgang wieder fällig — genau einer reicht.
+      if (DRY_RUN) break;
+      console.log(`\n=== Durchgang ${cycle} fertig: ${worked} Region(en) bearbeitet ===`);
+      if (cycle === MAX_CYCLES) {
+        console.warn(`[warn] max-cycles (${MAX_CYCLES}) erreicht — Lauf beendet, obwohl noch Regionen fällig sind.`);
       }
-    }
-    // Wenn alle Regionen durch (und nicht aborted): Cursor löschen für sauberen
-    // nächsten Tagesstart (statt darauf zu warten dass der UTC-Tag wechselt).
-    if (!aborting && !DRY_RUN && cursor.completed.length === REGIONS.length) {
-      console.log(`[cursor] alle ${REGIONS.length} Regionen heute fertig — cursor cleared`);
-      clearCursor();
     }
   } finally {
     await pool.end().catch(() => {});

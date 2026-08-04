@@ -48,14 +48,24 @@ if (!SUPA_URL || !SUPA_KEY || !RIOT_KEY) {
 // user plays back-to-back.
 const TS_WINDOW_MS = 15 * 60 * 1000;
 import { REGIONAL_ROUTING as REGION_TO_CLUSTER } from './lib/regional-routing.mjs';
+import { createRiotClient } from './lib/riot-client.mjs';
+import { riotWindowFor } from './lib/riot-limits.mjs';
 
 const sb = (path, init = {}) => fetch(`${SUPA_URL}${path}`, {
   ...init,
   headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, ...(init.headers || {}) },
 });
 
+// Dieser Job lief bis 2026-08-04 komplett ungedrosselt: kein Limiter, alle
+// 10 Minuten per Timer, und er ruft mit `/tft/match/v1/matches/{id}` genau den
+// method-limitierten Endpoint auf, um den sich alle anderen Prozesse streiten.
+// Er steht ausserdem in keinem `Conflicts=`, kann also jederzeit mitten in
+// einen Batch-Lauf hineinfunken. Sein Budget ist in riot-limits.mjs reserviert
+// — bisher war die Reservierung eine Annahme, jetzt wird sie durchgesetzt.
+const riot = createRiotClient(riotWindowFor('companion-backfill'));
+
 async function riotFetch(url, label) {
-  const res = await fetch(url, { headers: { 'X-Riot-Token': RIOT_KEY } });
+  const res = await riot.fetch(url, { headers: { 'X-Riot-Token': RIOT_KEY } });
   if (!res.ok) {
     const body = await res.text();
     throw new Error(`riot ${label} ${res.status}: ${body.slice(0, 100)}`);

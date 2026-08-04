@@ -17,6 +17,7 @@
 // Run via the daily GHA workflow — does not write JSON files, only Supabase.
 
 import { createRiotClient } from './lib/riot-client.mjs';
+import { riotWindowFor } from './lib/riot-limits.mjs';
 
 const args = process.argv.slice(2);
 const arg = (k, def) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : def; };
@@ -36,15 +37,13 @@ const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!API_KEY) { console.error('RIOT_API_KEY_TFT required'); process.exit(1); }
 if (!SUPA_URL || !SUPA_KEY) { console.error('Supabase env vars required'); process.exit(1); }
 
-// Production-key match-v1 method limit is 200/10s per regional routing.
-// 18 in parallel per 1s wave = 18 req/s steady, leaves headroom for the
-// occasional 429.
-const riot = createRiotClient({
-  shortWindowRequests: 180,
-  shortWindowMs: 10_500,
-  longWindowRequests: 28000,
-  longWindowMs: 605_000,
-});
+// Budget kommt aus scripts/lib/riot-limits.mjs. Der frühere Wert 180 war eine
+// Drift: am 2026-08-02 wurden die Batch-Prozesse auf der Box von 180 auf 130
+// gesenkt, dieses Script blieb stehen — es läuft als GitHub-Action off-box und
+// wird von keinem `Conflicts=` erfasst, fiel bei der Umstellung also durch das
+// Raster. Gemessen am Lauf 2026-08-04 (kr): ~42 Requests pro 10,5 s, die Decke
+// von 180 wurde nie auch nur annähernd erreicht.
+const riot = createRiotClient(riotWindowFor('prewarm'));
 
 async function fetchApex(tier) {
   const r = await riot.fetch(`https://${REGION}.api.riotgames.com/tft/league/v1/${tier}?api_key=${API_KEY}`);

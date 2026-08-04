@@ -51,6 +51,7 @@ import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync, unlinkS
 import { resolve, dirname } from 'node:path';
 import pg from 'pg';
 import { createRiotClient } from './lib/riot-client.mjs';
+import { batchBudget, riotWindowFor } from './lib/riot-limits.mjs';
 import { buildCompMeta, applyMeta, buildPopulation } from './lib/tft-skill-score.mjs';
 import {
   buildHotCompKeys,
@@ -273,27 +274,12 @@ const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || null;
 // bei 1/600s). Jede Route hat einen eigenen, unabhaengigen Bucket — das bis
 // dahin angenommene globale Budget existiert nicht.
 //
-// Bindend ist nicht das App-Limit (500:10), sondern das Method-Limit von
-// `/tft/match/v1/matches/{id}`, und das unterscheidet sich je Route:
+// Die Zahlen und ihre Herleitung stehen in scripts/lib/riot-limits.mjs — dort
+// UND NUR DORT werden sie gepflegt. europe/americas liegen mit 103 unter dem
+// frueheren globalen 130: dort war die Konfiguration uebersubskribiert, was die
+// 39 abgefangenen 429er des Marktwert-Laufs erklaert. Der Durchsatzgewinn kommt
+// aus asia/sea (148), wo 5 der 8 Rueckstandsregionen liegen.
 //
-//   asia, sea            250 / 10s   →  250 - 60 (refresh-api) - 25 (Companion-
-//                                       Backfill, laeuft ungedrosselt alle
-//                                       10 min) = 165, minus 10% Sicherheit
-//   europe, americas     200 / 10s   →  analog 115, minus 10% Sicherheit
-//
-// Die 10% sind kein Ritual: unser 10,5-s-Fenster und Riots 10-s-Fenster laufen
-// nicht synchron, an der Kante zaehlen wir gegen ein volleres Fenster als wir
-// glauben. Gerechnet wird Anzahl gegen Anzahl — der Limiter feuert greedy, alle
-// N Requests koennen innerhalb einer Sekunde landen, eine Umrechnung in req/s
-// wuerde die Spitze wegmitteln.
-//
-// europe/americas liegen mit 100 UNTER dem alten globalen Wert 130: dort war die
-// Konfiguration bereits uebersubskribiert, was die 39 abgefangenen 429er des
-// Marktwert-Laufs erklaert. Der Durchsatzgewinn kommt aus asia/sea, wo 5 der 8
-// Rueckstandsregionen liegen.
-const CLUSTER_SHORT_WINDOW = { asia: 150, sea: 150, europe: 100, americas: 100 };
-const FALLBACK_SHORT_WINDOW = 100;   // unbekannter Cluster → vorsichtigster Wert
-
 // EIN Client PRO CLUSTER, nicht pro Region und nicht global.
 //
 // Global war falsch, weil ein gemeinsames Fenster drei Viertel des Budgets
@@ -305,14 +291,9 @@ const riotClients = new Map();
 function riotForCluster(cluster) {
   let client = riotClients.get(cluster);
   if (!client) {
-    client = createRiotClient({
-      shortWindowRequests: CLUSTER_SHORT_WINDOW[cluster] ?? FALLBACK_SHORT_WINDOW,
-      shortWindowMs: 10_500,
-      // Long-Window ist ebenfalls per Route (siehe Messung oben), vier
-      // unabhaengige Fenster sind also korrekt und nicht additiv gegen 30000.
-      longWindowRequests: 28_000,
-      longWindowMs: 605_000,
-    });
+    // Long-Window ist ebenfalls per Route, vier unabhaengige Fenster sind also
+    // korrekt und nicht additiv gegen 30000.
+    client = createRiotClient(riotWindowFor('batch', cluster));
     riotClients.set(cluster, client);
   }
   return client;
@@ -647,8 +628,7 @@ async function processRegion(region) {
   // Client kommt aus der Cluster-Map — bei aufeinanderfolgenden Regionen
   // desselben Clusters ist es exakt dasselbe Objekt inkl. Fenster-Historie.
   const riot = riotForCluster(regional);
-  const limit = CLUSTER_SHORT_WINDOW[regional] ?? FALLBACK_SHORT_WINDOW;
-  console.log(`\n=== ${region} (cluster=${regional}, limiter=${limit}/10,5s, concurrency=${MATCH_CONCURRENCY}) ===`);
+  console.log(`\n=== ${region} (cluster=${regional}, limiter=${batchBudget(regional)}/10,5s, concurrency=${MATCH_CONCURRENCY}) ===`);
   const t0 = Date.now();
 
   // 0. Player-Liste aus Snapshot-Tabelle (Option Z, vereinfacht)

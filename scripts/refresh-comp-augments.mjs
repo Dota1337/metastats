@@ -86,11 +86,52 @@ function get(url) {
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+// ─── Anthropic-Ausgabebremse ────────────────────────────────────────────────
+// Dieses Script ist der einzige metastats-Code, der noch mit einem Live-Key
+// gegen die Anthropic-API läuft (die Coach-Route ist seit 2026-08-04 hinter
+// TFT_COACH_ENABLED aus). Ein Lauf macht normal ~1 Call pro Tipp, also grob
+// 100–200 bei ~38 Comp-Guides. Ohne Deckel würde eine Scraper-Änderung, ein
+// Retry-Loop oder ein versehentlicher Mehrfachlauf unbemerkt Guthaben ziehen.
+//
+// Der Deckel bricht NICHT ab — überzählige Tipps bleiben einfach als rohes
+// Englisch stehen (dasselbe Verhalten wie ohne Key). Lieber unvollständige
+// Übersetzungen als eine leergelaufene Kreditkarte.
+// Vorsicht beim Parsen: Number("abc") ist NaN, und jeder Vergleich gegen NaN
+// ist false — ein Tippfehler in der Env-Var würde den Deckel also lautlos
+// entfernen statt ihn zu setzen. Deshalb explizit auf endliche, nicht-negative
+// Zahlen prüfen und sonst auf den Default zurückfallen.
+const TIP_CALL_DEFAULT = 250;
+function parseTipBudget(raw) {
+  if (raw === undefined || raw === '') return TIP_CALL_DEFAULT;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0) {
+    console.warn(`       ⚠ REFRESH_TIPS_MAX_CALLS="${raw}" ist keine gültige Zahl — nutze Default ${TIP_CALL_DEFAULT}.`);
+    return TIP_CALL_DEFAULT;
+  }
+  return Math.floor(n);
+}
+const MAX_TIP_CALLS = parseTipBudget(process.env.REFRESH_TIPS_MAX_CALLS);
+let tipCallsUsed = 0;
+let tipBudgetWarned = false;
+
 // Paraphrase + localize the raw augmentsTip via Anthropic. Returns
 // { de, en, ko, zh, es, fr } when the response parses + validates,
 // otherwise null (UI then renders no tip rather than fake content).
 async function paraphraseTip(anthropic, rawTip, compTitle, carryName) {
   if (!rawTip || rawTip.trim().length === 0) return null;
+
+  if (tipCallsUsed >= MAX_TIP_CALLS) {
+    if (!tipBudgetWarned) {
+      tipBudgetWarned = true;
+      process.stdout.write(
+        `        ⚠ Anthropic-Call-Budget erschöpft (${MAX_TIP_CALLS}). ` +
+        `Restliche Tipps bleiben roh-englisch. ` +
+        `Höher setzen via REFRESH_TIPS_MAX_CALLS, wenn das gewollt ist.\n`
+      );
+    }
+    return null;
+  }
+  tipCallsUsed++;
   const prompt = `You're paraphrasing a Teamfight Tactics comp build tip so it reads in our own words rather than the source phrasing. Preserve EVERY proper noun and game term:
 - Champion names (e.g. Lulu, Pantheon, Gnar)
 - Trait, variant, constellation names (e.g. Mountain, Fountain, Stargazer, Medallion)
@@ -403,6 +444,9 @@ async function main() {
     skipped,
   };
   writeFileSync(`public/tft-comp-guides-${setNumber}.json`, JSON.stringify(out, null, 2));
+  if (anthropic) {
+    console.log(`       Anthropic-Calls: ${tipCallsUsed}/${MAX_TIP_CALLS}${tipBudgetWarned ? ' (Budget erschöpft)' : ''}`);
+  }
   console.log(`       done.`);
 }
 

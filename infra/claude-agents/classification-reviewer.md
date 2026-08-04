@@ -14,7 +14,7 @@ we already reached once.
 
 ```bash
 node scripts/agentdb/ensure-daemon.mjs --quiet
-curl -s -X POST -H "Content-Type: application/json"   -d '{"query":"<core of your review task>","top_k":6}'   http://127.0.0.1:7878/search
+node scripts/agentdb/recall.mjs "<core of your review task>" --top-k 6
 ```
 
 **Required:**

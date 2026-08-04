@@ -17,12 +17,18 @@ console.log(`[index] Embedding-Model: ${EMBEDDING_MODEL}`);
 
 const t0 = Date.now();
 const db = openDb();
+// `_`-Praefix markiert generierte Dateien — allen voran _TIER1_BUNDLE.md, das
+// saemtliche Tier-1-Memories noch einmal wortgleich enthaelt. Wuerde man es
+// mitindexieren, konkurrierte jede Verhaltensregel mit ihrer eigenen Kopie um
+// die Top-K-Plaetze und halbierte damit die nutzbare Trefferliste.
+// MEMORY.md ist der Index, kein Inhalt.
 const files = readdirSync(MEMORY_DIR)
-  .filter(f => f.endsWith('.md') && f !== 'MEMORY.md')
+  .filter(f => f.endsWith('.md') && f !== 'MEMORY.md' && !f.startsWith('_'))
   .map(f => join(MEMORY_DIR, f));
 console.log(`[index] ${files.length} Markdown-Files gefunden`);
 
 const allSections = [];
+let readFailures = 0;
 for (const filePath of files) {
   try {
     const md = readFileSync(filePath, 'utf8');
@@ -31,10 +37,52 @@ for (const filePath of files) {
       allSections.push({ filePath, ...s });
     }
   } catch (err) {
+    readFailures++;
     console.error(`[index] Skip ${filePath}: ${err.message}`);
   }
 }
 console.log(`[index] ${allSections.length} Sections nach Splitting`);
+
+// Prune: Sections aus geloeschten, umbenannten oder neu ausgeschlossenen Dateien
+// (und geloeschte Ueberschriften innerhalb bestehender Dateien). Der Indexer hat
+// bisher nur geschrieben, nie entfernt — verwaiste Eintraege blieben im
+// Vektor-Index und konkurrierten weiter um die Top-K-Plaetze.
+//
+// Trajectory-Sections sind ausgenommen: die haben keine Markdown-Quelle,
+// werden vom Daemon geschrieben und wuerden hier sonst restlos geloescht.
+//
+// Bei einem Lesefehler wird gar nicht geprunt — sonst leert ein voruebergehend
+// nicht lesbares File (Sync-Lock, offener Editor) still seinen halben Index.
+if (readFailures > 0) {
+  console.warn(`[index] Prune uebersprungen — ${readFailures} File(s) nicht lesbar`);
+} else {
+  const liveKeys = new Set(allSections.map(s => `${s.filePath}#${s.section_title || ''}`));
+  const stale = db.prepare(`
+    SELECT id, file_path, section_title FROM memory_sections
+    WHERE section_type IS NULL OR section_type != 'trajectory'
+  `).all().filter(r => !liveKeys.has(`${r.file_path}#${r.section_title || ''}`));
+
+  if (stale.length > 0) {
+    const delSec = db.prepare('DELETE FROM memory_sections WHERE id = ?');
+    const delVec = db.prepare('DELETE FROM memory_vec WHERE rowid = ?');
+    // trajectory_memory_refs haelt einen Foreign Key auf memory_sections; ohne
+    // dieses DELETE schlaegt der Prune mit SQLITE_CONSTRAINT_FOREIGNKEY fehl.
+    // Die Lernspur geht damit verloren — das ist richtig so: "Memory X wurde
+    // abgerufen" ist wertlos, sobald X nicht mehr existiert.
+    const delRefs = db.prepare('DELETE FROM trajectory_memory_refs WHERE memory_section_id = ?');
+    let refsDropped = 0;
+    db.transaction(() => {
+      for (const r of stale) {
+        refsDropped += delRefs.run(r.id).changes;
+        try { delVec.run(BigInt(r.id)); } catch { /* kein Vektor vorhanden */ }
+        delSec.run(r.id);
+      }
+    })();
+    if (refsDropped > 0) console.log(`[index] ${refsDropped} zugehoerige Memory-Refs entfernt`);
+    const byFile = [...new Set(stale.map(r => r.file_path.split(/[\\/]/).pop()))];
+    console.log(`[index] ${stale.length} verwaiste Sections entfernt (${byFile.slice(0, 5).join(', ')}${byFile.length > 5 ? ', …' : ''})`);
+  }
+}
 
 // Existing hashes lesen → Skip-Logic für unveränderte Sections
 const existingHashes = new Map();

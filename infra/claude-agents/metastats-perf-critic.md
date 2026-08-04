@@ -14,7 +14,7 @@ herzuleiten, die wir schon einmal gezogen haben.
 
 ```bash
 node scripts/agentdb/ensure-daemon.mjs --quiet
-curl -s -X POST -H "Content-Type: application/json"   -d '{"query":"<Kern deines Review-Auftrags>","top_k":6}'   http://127.0.0.1:7878/search
+node scripts/agentdb/recall.mjs "<Kern deines Review-Auftrags>" --top-k 6
 ```
 
 **Pflicht:**

@@ -105,6 +105,17 @@ function ensureSchema(db) {
   upsert.run('schema_version', SCHEMA_VERSION);
   upsert.run('embedding_model', EMBEDDING_MODEL);
   upsert.run('embedding_dim', String(EMBEDDING_DIM));
+
+  // Ab wann die Lernschleife tatsaechlich geschlossen war. Die Hooks liefen
+  // monatelang ins Leere: Trajectories wurden geschrieben, aber ohne
+  // trajectory_memory_refs und fast alle mit verdict 'abandoned'. Wer spaeter
+  // auswertet "wie oft hat ein Recall geholfen?", muss diese Alt-Trajectories
+  // ausschliessen, sonst rechnet er gegen einen Nenner aus Rauschen.
+  // DO NOTHING: einmal gesetzt, nie ueberschrieben.
+  db.prepare(`
+    INSERT INTO schema_meta(key, value) VALUES('loop_enabled_at', ?)
+    ON CONFLICT(key) DO NOTHING
+  `).run(String(Math.floor(Date.now() / 1000)));
 }
 
 // Check ob aktuelles Embedding-Model mit DB-State übereinstimmt.

@@ -1,0 +1,38 @@
+{
+  "_comment": [
+    "Git-getrackte Quelle der AgentDB-Trajectory-Hooks.",
+    "Installation: `npm run setup-hooks` merged das hier nach .claude/settings.json.",
+    "Warum nicht direkt in settings.json gepflegt: die Datei ist ein Symlink in einen",
+    "Dropbox-Ordner. Am 28.06. ist die dort gepflegte Hook-Konfiguration spurlos",
+    "verschwunden (belegt durch eine verwaiste current-trajectory.json mit einer",
+    "echten Trajectory von diesem Tag) — vermutlich ein Conflicted Copy. Hier liegt",
+    "sie unter Versionskontrolle und ist reproduzierbar.",
+    "",
+    "timeout ist in SEKUNDEN. Die Hooks selbst beenden sich immer mit 0; das",
+    "Timeout ist nur die Reissleine gegen einen haengenden Daemon."
+  ],
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/agentdb/track-prompt-start.mjs\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/agentdb/track-prompt-end.mjs\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

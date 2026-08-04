@@ -13,13 +13,15 @@ const HOST = '127.0.0.1';
 
 const startTime = Date.now();
 
-console.log('[daemon] Pre-warming fastembed pipeline...');
-await getPipeline();
-const warmTime = Date.now() - startTime;
-console.log(`[daemon] Pipeline warm in ${warmTime}ms`);
-
+// Der Port ist unser Mutex. Frueher lief `await getPipeline()` VOR dem listen();
+// in diesem Fenster (bis 23s bei kaltem Modell-Cache) antwortete /healthz nicht,
+// also hielt jeder neue Prompt den Daemon fuer tot und spawnte einen weiteren —
+// der erst ~300MB Modell lud und dann an EADDRINUSE starb. Mit Rueckkopplung:
+// mehr Spawns -> langsamere Maschine -> laengeres Fenster -> mehr Spawns.
+// Jetzt binden wir zuerst und waermen danach; /healthz meldet solange 'warming'.
 const db = openDb();
-console.log(`[daemon] DB ready, embedding-model: ${EMBEDDING_MODEL}`);
+let warmState = 'warming';
+let warmError = null;
 
 async function handleHealthz() {
   const counts = {
@@ -28,7 +30,8 @@ async function handleHealthz() {
     trajectories: db.prepare('SELECT COUNT(*) as n FROM trajectories').get().n,
   };
   return {
-    status: 'ok',
+    status: warmState,
+    warm_error: warmError,
     uptime_sec: Math.floor((Date.now() - startTime) / 1000),
     embedding_model: EMBEDDING_MODEL,
     counts,
@@ -36,7 +39,10 @@ async function handleHealthz() {
 }
 
 async function handleSearch(body) {
-  const { query, top_k = 5, topic = null, set_version = null } = body;
+  const {
+    query, top_k = 5, topic = null, set_version = null,
+    include_trajectories = false, trajectory_id = null,
+  } = body;
   if (!query) return { error: 'query required' };
   const t0 = Date.now();
   const queryVec = await embedOne(query);
@@ -49,6 +55,15 @@ async function handleSearch(body) {
     whereClauses.push('(ms.set_version IS NULL OR ms.set_version = $setVer)');
     params.setVer = set_version;
   }
+  // Trajektorien wachsen taeglich, kuratierte Memories nicht. Ohne diesen Filter
+  // verdraengen sie binnen Monaten die Doku aus den Top-K. Opt-in statt Default.
+  if (!include_trajectories) whereClauses.push("ms.section_type != 'trajectory'");
+
+  // Der Filter greift NACH der KNN-Suche (sqlite-vec kann nicht vorfiltern):
+  // `MATCH ... AND k = N` holt die N naechsten, erst danach wirft das WHERE
+  // Zeilen weg. Mit kleinem k liefert eine gefilterte Suche also still weniger
+  // als top_k Treffer. Deshalb holen wir bei aktivem Filter deutlich breiter.
+  const knnK = whereClauses.length > 0 ? top_k * 10 : top_k * 3;
   const whereSql = whereClauses.length > 0 ? `AND ${whereClauses.join(' AND ')}` : '';
 
   const sql = `
@@ -60,7 +75,7 @@ async function handleSearch(body) {
     FROM memory_vec v
     JOIN memory_sections ms ON ms.id = v.rowid
     WHERE v.embedding MATCH $qvec
-      AND k = ${top_k * 3}
+      AND k = ${knnK}
       ${whereSql}
     ORDER BY v.distance
     LIMIT ${top_k}
@@ -68,9 +83,34 @@ async function handleSearch(body) {
   const results = db.prepare(sql).all({ qvec: vecToJson(queryVec), ...params });
   const tSearch = Date.now();
 
+  // Der eigentliche Lern-Loop: festhalten, WELCHE Memory bei WELCHEM Prompt
+  // ausgeliefert wurde. Ohne diese Verknuepfung ist die Trajektorien-Tabelle
+  // nur eine Prompt-Liste. Der Daemon ist der einzige Writer auf die DB —
+  // ein zweiter Prozess gegen die dauerhaft offene WAL waere SQLITE_BUSY-Flaeche.
+  let refs_written = 0;
+  if (trajectory_id) {
+    try {
+      const exists = db.prepare('SELECT 1 FROM trajectories WHERE id = ?').get(trajectory_id);
+      if (exists) {
+        // OR IGNORE: dieselbe Suche zweimal im selben Turn ist normal und darf
+        // den Recall nicht mit SQLITE_CONSTRAINT in einen 500er kippen.
+        const ins = db.prepare(`
+          INSERT OR IGNORE INTO trajectory_memory_refs(trajectory_id, memory_section_id, applied_at)
+          VALUES (?, ?, ?)
+        `);
+        const nowRef = Math.floor(Date.now() / 1000);
+        for (const r of results) refs_written += ins.run(trajectory_id, r.id, nowRef).changes;
+      }
+    } catch (err) {
+      // Refs sind Telemetrie, nicht das Suchergebnis. Nie den Recall scheitern lassen.
+      console.error(`[daemon] ref-write failed: ${err.message}`);
+    }
+  }
+
   const nowSec = Math.floor(Date.now() / 1000);
   return {
     query,
+    refs_written,
     timing: { embed_ms: tEmbed - t0, search_ms: tSearch - tEmbed, total_ms: tSearch - t0 },
     results: results.map(r => ({
       id: r.id,
@@ -151,11 +191,18 @@ async function handleTrajectoryEnd(body) {
   const { trajectory_id, verdict, verdict_source = 'auto', summary, tool_calls_count = 0 } = body;
   if (!trajectory_id) return { error: 'trajectory_id required' };
   const endedAt = Math.floor(Date.now() / 1000);
-  db.prepare(`
+  // `AND ended_at IS NULL` macht den Call idempotent. Ohne den Guard konnte ein
+  // vom Hook-Timeout gekillter Stop-Lauf spaeter als 'abandoned' ueber ein
+  // bereits geschriebenes gutes Verdict laufen — waehrend der zugehoerige Text
+  // im Vektor-Index stehenblieb. Tabelle und Index divergierten dann still.
+  const upd = db.prepare(`
     UPDATE trajectories
     SET ended_at = ?, verdict = ?, verdict_source = ?, summary = ?, tool_calls_count = ?
-    WHERE id = ?
+    WHERE id = ? AND ended_at IS NULL
   `).run(endedAt, verdict, verdict_source, summary, tool_calls_count, trajectory_id);
+  if (upd.changes === 0) {
+    return { trajectory_id, verdict: null, already_ended: true, indexed_section_id: null };
+  }
 
   // Nur substanzielle Trajektorien indexieren. Ein "kein Commit"-Turn ohne
   // Inhalt wuerde den Index sonst mit Rauschen fluten und die Trefferqualitaet
@@ -222,8 +269,31 @@ const server = createServer(async (req, res) => {
   }
 });
 
+// EADDRINUSE ist kein Fehler, sondern die Antwort "es laeuft schon einer".
+// Ohne diesen Handler war es eine unhandled exception — und weil die Spawner
+// mit stdio:'ignore' starten, war der Crash unsichtbar.
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`[daemon] port ${PORT} already in use — another daemon is live, exiting`);
+    process.exit(0);
+  }
+  console.error(`[daemon] listen error: ${err.message}`);
+  process.exit(1);
+});
+
 server.listen(PORT, HOST, () => {
-  console.log(`[daemon] Listening on http://${HOST}:${PORT}`);
+  console.log(`[daemon] Listening on http://${HOST}:${PORT} (warming)`);
+  // Erst binden, dann waermen — siehe Kommentar am Dateikopf.
+  getPipeline()
+    .then(() => {
+      warmState = 'ok';
+      console.log(`[daemon] Pipeline warm in ${Date.now() - startTime}ms, model: ${EMBEDDING_MODEL}`);
+    })
+    .catch((err) => {
+      warmState = 'error';
+      warmError = err.message;
+      console.error(`[daemon] Pipeline warmup FAILED: ${err.message}`);
+    });
 });
 
 process.on('SIGTERM', () => { console.log('[daemon] SIGTERM, shutting down'); db.close(); server.close(); });

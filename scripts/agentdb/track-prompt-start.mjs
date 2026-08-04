@@ -1,64 +1,76 @@
 #!/usr/bin/env node
-// UserPromptSubmit-Hook: triggert /trajectory/start im Daemon und persistiert
-// trajectory_id für den späteren Stop-Hook. Idempotent — vorheriger Stop wird
-// erzwungen falls neuer Prompt vor altem Stop kommt.
+// UserPromptSubmit-Hook: oeffnet eine Trajectory im Daemon und legt die
+// trajectory_id fuer den Stop-Hook und fuer recall.mjs ab.
+//
+// Harte Regel dieses Scripts: es darf den Prompt des Users NIE spuerbar
+// verzoegern und NIE blockieren.
+//   - Exit immer 0. Exit 2 wuerde den Prompt loeschen.
+//   - Kein Warten auf einen kalten Daemon. Frueher stand hier eine
+//     15s-Polling-Schleife; ein toter Daemon hat damit jeden Prompt um 15s
+//     verzoegert. Jetzt wird nur angestossen und sofort zurueckgekehrt — der
+//     erste Prompt nach einem Kaltstart hat dann eben keine Trajectory.
+//   - Nichts auf stdout: stdout eines UserPromptSubmit-Hooks wird bei Exit 0
+//     in den Prompt-Kontext injiziert. Diagnose geht auf stderr.
 
-import { writeFileSync, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import os from 'node:os';
 import { spawn } from 'node:child_process';
+import { readdirSync } from 'node:fs';
+import {
+  stateFileFor, writeState, readState, pruneOldStates,
+  readStdinJson, fetchJson, DAEMON_URL,
+} from './lib/hook-state.mjs';
 
-const STATE_FILE = join(os.homedir(), '.claude', 'agentdb', 'current-trajectory.json');
-const DAEMON_URL = 'http://127.0.0.1:7878';
+const HEALTHZ_TIMEOUT_MS = 250;
 
-// Read prompt from stdin (UserPromptSubmit-Hook-Convention)
-let stdinData = '';
-process.stdin.setEncoding('utf8');
-for await (const chunk of process.stdin) stdinData += chunk;
-let payload = {};
-try { payload = JSON.parse(stdinData); } catch { /* not JSON, treat as raw prompt */ }
-const prompt = payload.prompt || payload.user_prompt || stdinData.slice(0, 500);
-
-if (!prompt || prompt.length < 5) process.exit(0);  // silent skip
-
-// Ensure Daemon (synchronously block until ready; quiet mode)
-async function ensureDaemonRunning() {
+// Es gibt keine zentrale Set-Konstante im Repo; die faktische Quelle ist der
+// Dateiname public/tft-assets-<N>.json. Hoechstes N gewinnt, damit der Wert
+// beim naechsten Set nicht wieder haendisch nachgezogen werden muss.
+function currentSetVersion() {
   try {
-    const ctl = new AbortController();
-    const timer = setTimeout(() => ctl.abort(), 1000);
-    const r = await fetch(`${DAEMON_URL}/healthz`, { signal: ctl.signal });
-    clearTimeout(timer);
-    if (r.ok) return true;
-  } catch { /* not running */ }
-
-  // Spawn detached
-  const child = spawn(process.execPath, [join(import.meta.dirname, 'server.mjs')], {
-    detached: true, stdio: 'ignore', windowsHide: true,
-    env: { ...process.env, NODE_OPTIONS: process.env.NODE_OPTIONS || '--use-system-ca' },
-  });
-  child.unref();
-
-  // Wait up to 15s for ready
-  const deadline = Date.now() + 15000;
-  while (Date.now() < deadline) {
-    await new Promise(r => setTimeout(r, 200));
-    try {
-      const r = await fetch(`${DAEMON_URL}/healthz`);
-      if (r.ok) return true;
-    } catch { /* wait */ }
-  }
-  return false;
+    const dir = join(process.env.CLAUDE_PROJECT_DIR || process.cwd(), 'public');
+    const sets = readdirSync(dir)
+      .map((f) => /^tft-assets-(\d+)\.json$/.exec(f))
+      .filter(Boolean)
+      .map((m) => parseInt(m[1], 10));
+    if (sets.length) return Math.max(...sets);
+  } catch {}
+  return null;
 }
 
-const ready = await ensureDaemonRunning();
-if (!ready) process.exit(0);  // silent — Hook darf User-Prompt nicht blockieren
+async function main() {
+  const { payload, raw } = await readStdinJson();
+  const prompt = payload.prompt || payload.user_prompt || raw.slice(0, 500);
+  if (!prompt || prompt.length < 5) return;
 
-// Force-end vorherige Trajectory wenn noch offen
-if (existsSync(STATE_FILE)) {
+  const stateFile = stateFileFor(payload.session_id);
+  pruneOldStates();
+
+  // Ein Fehlschlag hier ist ECONNREFUSED in wenigen Millisekunden; das
+  // Timeout greift nur gegen einen haengenden (nicht toten) Daemon.
+  let healthy = false;
   try {
-    const prev = JSON.parse(readFileSync(STATE_FILE, 'utf8'));
-    if (prev.trajectory_id && !prev.ended_at) {
-      await fetch(`${DAEMON_URL}/trajectory/end`, {
+    const h = await fetchJson(`${DAEMON_URL}/healthz`, {}, HEALTHZ_TIMEOUT_MS);
+    healthy = h.status === 'ok';
+  } catch {}
+
+  if (!healthy) {
+    // Anstossen und gehen. Der naechste Prompt findet den Daemon warm vor.
+    try {
+      const child = spawn(process.execPath, [join(import.meta.dirname, 'ensure-daemon.mjs'), '--quiet'], {
+        detached: true, stdio: 'ignore', windowsHide: true,
+        env: { ...process.env, NODE_OPTIONS: process.env.NODE_OPTIONS || '--use-system-ca' },
+      });
+      child.unref();
+    } catch {}
+    return;
+  }
+
+  // Vorherige Trajectory derselben Session schliessen, falls der Stop-Hook
+  // ausgefallen ist. Betrifft ausschliesslich die eigene Session-Datei.
+  const prev = readState(stateFile);
+  if (prev?.trajectory_id && !prev.ended_at) {
+    try {
+      await fetchJson(`${DAEMON_URL}/trajectory/end`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -67,28 +79,29 @@ if (existsSync(STATE_FILE)) {
           verdict_source: 'auto',
           summary: 'New prompt received before previous trajectory ended',
         }),
+      }, 1000);
+    } catch {}
+  }
+
+  try {
+    const data = await fetchJson(`${DAEMON_URL}/trajectory/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, set_version: currentSetVersion() }),
+    }, 1500);
+    if (data.trajectory_id) {
+      writeState(stateFile, {
+        trajectory_id: data.trajectory_id,
+        session_id: payload.session_id || null,
+        prompt_hash: data.prompt_hash,
+        started_at: Math.floor(Date.now() / 1000),
+        prompt_excerpt: prompt.slice(0, 200),
+        ended_at: null,
       });
     }
-  } catch { /* silent */ }
+  } catch {}
 }
 
-// Start new trajectory
-try {
-  const res = await fetch(`${DAEMON_URL}/trajectory/start`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt, set_version: 17 }),
-  });
-  const data = await res.json();
-  if (data.trajectory_id) {
-    writeFileSync(STATE_FILE, JSON.stringify({
-      trajectory_id: data.trajectory_id,
-      prompt_hash: data.prompt_hash,
-      started_at: Math.floor(Date.now() / 1000),
-      prompt_excerpt: prompt.slice(0, 200),
-      ended_at: null,
-    }), 'utf8');
-  }
-} catch { /* silent */ }
-
-process.exit(0);
+main()
+  .catch((err) => { console.error(`[track-start] ${err.message}`); })
+  .finally(() => process.exit(0));

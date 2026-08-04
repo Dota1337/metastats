@@ -24,10 +24,14 @@ node scripts/agentdb/ensure-daemon.mjs --quiet
 
 # Top-K Memory-Sections semantisch suchen mit User-Prompt als Query
 # Optional: --topic Filter (tft|infra|workflow|coding) wenn klar
-curl -s -X POST -H "Content-Type: application/json" \
-  -d '{"query":"<User-Prompt-Auszug>","top_k":8}' \
-  http://127.0.0.1:7878/search
+node scripts/agentdb/recall.mjs "<User-Prompt-Auszug>" --top-k 8
 ```
+
+`recall.mjs` ist der einzige zulässige Einstieg — es hängt die laufende
+`trajectory_id` an die Suche, wodurch der Daemon in `trajectory_memory_refs`
+verbucht, welche Memory bei welchem Ausgang abgerufen wurde. Ein direkter
+`curl` auf `/search` liefert dieselben Treffer, aber ohne diese Verknüpfung —
+und ohne sie lernt das System nichts aus dem Lauf.
 
 Output enthält Top-K Treffer mit `distance`, `topic_tag`, `is_stale`-Marker, `excerpt`. Diese sind die **relevanten Memory-Anker** für die folgenden Spec-Schritte — sie ersetzen die heuristische Memory-Lade-Heuristik (statt zu raten welche Memory-Files relevant sind, semantisch matchen).
 

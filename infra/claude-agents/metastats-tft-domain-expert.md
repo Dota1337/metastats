@@ -153,7 +153,7 @@ Wenn der Review-Trigger eine Klassifikations-, Whitelist- oder Aggregations-Frag
 | `npm run verify` (`scripts/verify-classifications.mjs`) | Tier-Match + Override-Coverage ≥90% + GodAugment-Leak + Default-Fallthrough-Detection |
 | `node scripts/db-exec.mjs <file.sql>` | One-Off-SQL gegen Supabase für Aggregat-Stichproben |
 | `ssh root@37.27.219.140 'set -a; . /etc/metastats-crawler/env; set +a; psql "$DATABASE_URL" -c "<query>"'` | Hetzner-Local-PG für per-Spieler-Cache-Probes (`tft_player_match_cache`) |
-| `node scripts/agentdb/search.mjs "<query>"` | Vector-Search in eigenen Memories für versteckte Konflikte (wenn AgentDB-Daemon läuft) |
+| `node scripts/agentdb/recall.mjs "<query>"` | Vector-Search in eigenen Memories für versteckte Konflikte (wenn AgentDB-Daemon läuft) |
 | Bundle-Quick-Probe: `node -e "const a=require('./public/tft-assets-{set}.json'); console.log(a.items['<apiName>']?.name || 'NOT FOUND')"` | Whitelist-Match vor jedem Augment-/Trait-/Item-Statement |
 | DB-Live-Drift-Probe: `node -e "const s=require('./public/tft-stats-euw1.json'); console.log(Object.keys(s.byAugment).filter(k => !require('./public/tft-assets-17.json').active.augments.includes(k)))"` | Augments die in DB gespielt werden aber nicht in Whitelist sind — Crawler-Stale-Indicator |
 

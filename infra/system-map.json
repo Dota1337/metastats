@@ -809,7 +809,8 @@
     ],
     "metastats-marketvalue-snapshot.service": [
       "marketvalue/hetzner-snapshots",
-      "marketvalue/regionen-abdeckung"
+      "marketvalue/regionen-abdeckung",
+      "marketvalue/regionen-abdeckung-hetzner"
     ],
     "scripts/sync-marketvalue-to-supabase.mjs": [
       "marketvalue/supabase-mirror",

@@ -2852,6 +2852,14 @@ const translations = {
     'Riot Games, Inc. (EE.UU.) \u2014 API de datos de partida.',
     'Riot Games, Inc. (USA) \u2014 API de donn\u00E9es de jeu.'
   ),
+  'legal.privacy.processorSentry': t6(
+    'Sentry (Functional Software, Inc., USA) — Fehler-Überwachung. Erhält Fehlermeldungen und Stack-Traces bei technischen Störungen. Kein Performance-Tracking, keine IP-Adressen.',
+    'Sentry (Functional Software, Inc., USA) — error monitoring. Receives error messages and stack traces on technical faults. No performance tracking, no IP addresses.',
+    'Sentry(미국) — 오류 모니터링. IP 주소 없음.',
+    'Sentry（美国）— 错误监控。不记录 IP 地址。',
+    'Sentry (EE.UU.) — supervisión de errores. Sin direcciones IP.',
+    'Sentry (USA) — surveillance des erreurs. Sans adresses IP.'
+  ),
   'legal.privacy.processorCdragon': t6(
     'CommunityDragon (CDN) \u2014 statische Asset-Auslieferung (Icons, Bilder). Keine personenbezogene Verarbeitung.',
     'CommunityDragon (CDN) \u2014 static asset delivery (icons, images). No personal data processing.',

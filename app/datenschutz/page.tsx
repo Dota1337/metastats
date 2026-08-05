@@ -48,6 +48,7 @@ export default function DatenschutzPage() {
               <li>{t('legal.privacy.processorSupabase')}</li>
               <li>{t('legal.privacy.processorRiot')}</li>
               <li>{t('legal.privacy.processorCdragon')}</li>
+              <li>{t('legal.privacy.processorSentry')}</li>
             </ul>
           </div>
 

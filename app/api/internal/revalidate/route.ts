@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { revalidatePath, revalidateTag } from 'next/cache';
+import * as Sentry from '@sentry/nextjs';
 
 // Push-Invalidation-Endpoint für den Hetzner-Crawler. Nach einem erfolgreichen
 // Crawl ruft das Crawler-Script diesen POST mit der Liste der Edge-Cache-Pfade
@@ -71,6 +72,12 @@ export async function POST(request: NextRequest) {
     // Hard-fail wenn der Server nicht konfiguriert ist — sonst würde jede
     // Push-Invalidation in einen 401 laufen ohne dass jemand merkt, dass der
     // Secret-Sync fehlgeschlagen ist.
+    //
+    // captureMessage statt throw: eine Fehler-Antwort ist keine Exception und
+    // taucht in onRequestError (instrumentation.ts) nicht auf. Genau diese
+    // Klasse — "Endpoint antwortet sauber mit einem Fehler" — lief hier von
+    // 2026-06-16 bis 2026-08-03 sieben Wochen unbemerkt.
+    Sentry.captureMessage('revalidate: REVALIDATE_SECRET fehlt auf dem Server', 'error');
     return deny(500, 'server not configured');
   }
 
@@ -87,7 +94,14 @@ export async function POST(request: NextRequest) {
   const raw = await request.text();
   if (raw.length > MAX_BODY_BYTES) return deny(413);
 
-  if (!verifySignature(timestamp, raw, signature)) return deny(401);
+  if (!verifySignature(timestamp, raw, signature)) {
+    // Bewusst nur die Signatur-Abweichung melden, nicht die fehlenden Header
+    // weiter oben: Letzteres schickt jeder Port-Scanner, Ersteres heisst, dass
+    // ein echter Aufrufer mit dem falschen Secret laeuft — also Secret-Drift
+    // zwischen Vercel und /etc/metastats-crawler/env.
+    Sentry.captureMessage('revalidate: HMAC-Signatur ungueltig (Secret-Drift?)', 'warning');
+    return deny(401);
+  }
 
   let payload: unknown;
   try {

@@ -826,7 +826,8 @@
       "snapshot/manifest-frische"
     ],
     ".github/workflows/metatft-comps-daily.yml": [
-      "metatft-comps/datei-frische"
+      "metatft-comps/datei-frische",
+      "metatft-comps/familien-abdeckung"
     ],
     ".github/workflows/pro-teams-weekly.yml": [
       "pro-teams/datei-frische"

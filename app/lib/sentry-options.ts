@@ -15,12 +15,18 @@
 // Diese Datei importiert bewusst NICHTS aus @sentry/*, damit sie in beiden
 // Bundles ohne Laufzeit-Kosten liegt.
 
-export const SENTRY_DSN = process.env.NEXT_PUBLIC_SENTRY_DSN;
+// Bewusst OHNE NEXT_PUBLIC_-Präfix. Gemessen am 2026-08-05: mit dem Präfix
+// wird der Wert zur BUILD-Zeit einkompiliert — ein Server, der ohne die
+// Variable startet, sendet dann trotzdem weiter (verifiziert gegen eine lokale
+// Envelope-Senke). Ohne Präfix wird er zur Laufzeit gelesen und der Kill-Switch
+// unten stimmt auch wirklich. Sentry läuft hier ausschliesslich server-seitig,
+// der Client braucht den Wert also ohnehin nicht.
+export const SENTRY_DSN = process.env.SENTRY_DSN;
 
 // Kill-Switch. Rollback über `git revert` allein genügt nicht: bereits gebaute
 // Vercel-Deployments sind immutable und würden mit eingebackenem DSN
-// weitersenden. DSN aus den Env-Vars entfernen + Redeploy schaltet ab, ohne
-// dass Code angefasst werden muss.
+// weitersenden. DSN aus den Env-Vars entfernen + Restart schaltet ab, ohne
+// dass Code angefasst oder neu gebaut werden muss.
 export const SENTRY_ENABLED =
   process.env.NODE_ENV === 'production' && !!SENTRY_DSN;
 

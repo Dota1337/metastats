@@ -16,7 +16,7 @@
     "verify:full": "node scripts/verify-classifications.mjs && node scripts/verify-metatft-family-coverage.mjs && node scripts/check-drift.mjs && node scripts/check-system-map.mjs",
     "build:system-map": "node scripts/build-system-map.mjs",
     "check:system-map": "node scripts/check-system-map.mjs",
-    "test": "node --test \"scripts/**/*.test.mjs\""
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/lib/ts-test-hook.mjs --test \"scripts/**/*.test.mjs\" \"app/**/*.test.mjs\""
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.98.0",
@@ -46,6 +46,7 @@
     "better-sqlite3": "^12.11.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
+    "fast-check": "^4.9.0",
     "fastembed": "^2.1.0",
     "png-to-ico": "^3.0.1",
     "sqlite-vec": "^0.1.9",

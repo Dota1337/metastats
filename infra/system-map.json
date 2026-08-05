@@ -796,6 +796,12 @@
       "scripts": [
         "scripts/check-system-map.mjs"
       ]
+    },
+    {
+      "name": "test",
+      "scripts": [
+        "scripts/lib/ts-test-hook.mjs"
+      ]
     }
   ],
   "contractsByOwner": {

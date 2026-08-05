@@ -124,6 +124,7 @@ async function loadPopulation(pool, region, setNumber) {
 }
 
 import { REGIONAL_ROUTING as REGIONAL } from './lib/regional-routing.mjs';
+import { CURRENT_SET, loadCurrentSet } from './lib/current-set.mjs';
 
 // ─ env loader (matches crawler) ────────────────────────────────────────────
 function loadEnv() {
@@ -197,14 +198,9 @@ function getRegionCtx(region) {
   kgCache.set(region, ctx);
   return ctx;
 }
-function loadCurrentSet() {
-  const path = resolve(process.cwd(), 'public', 'tft-set.json');
-  if (!existsSync(path)) return null;
-  try {
-    const j = JSON.parse(readFileSync(path, 'utf8'));
-    return j.currentSet?.number ?? j.setNumber ?? null;
-  } catch { return null; }
-}
+// loadCurrentSet lag hier als Zeile-fuer-Zeile-Kopie von
+// scripts/lib/tft-marketvalue-pipeline.mjs — und 220 Zeilen weiter unten stand
+// trotzdem `const SET_NUMBER = 17`. Beides ersetzt durch die geteilte Lib.
 
 // ─ Supabase push of one snapshot + one season-stats row ────────────────────
 async function pushToSupabase(snapshotRow, seasonRow) {
@@ -418,7 +414,7 @@ function readBody(req) {
 // idx_match_cache_units_gin_s17; bucket/region/days post-filter via btree
 // scan over the matching match-cache rows. Capped at 5000 matches to keep
 // the query bounded on the Hetzner pool.
-const SET_NUMBER = 17;
+const SET_NUMBER = CURRENT_SET;
 const QUEUE_RANKED = 1100;
 const MAX_LIMIT = 5000;
 const REGION_BUCKETS = {

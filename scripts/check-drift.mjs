@@ -5,7 +5,7 @@
 // watchdog false-positives) — this catches it mechanically before push.
 
 import { ACTIVE_REGIONS } from './lib/active-regions.mjs';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 
 const norm = (arr) => [...new Set(arr)].sort().join(',');
 const SOT = norm(ACTIVE_REGIONS);
@@ -110,45 +110,80 @@ function read(path) {
   }
 }
 
-// 5) Set-Literale. Es gibt keine CURRENT_SET-Konstante; die einzige Wahrheit ist
-// public/tft-assets.json .set, und die wird zur Laufzeit geladen. Verstreut im
-// Code stehen hartkodierte Fallbacks (`setNumber ?? 17`, `currentSet = 17`,
-// `const GUIDE_SET = 17`), die beim Set-Wechsel einzeln nachgezogen werden
-// muessen — und genau dann uebersieht man zwei davon.
+// 5) Set-Kopplung. Bis zum Set-18-Umbau stand hier eine Liste hartkodierter
+// Set-Literale (PINNED, 14 Stellen in 10 Dateien) — der Wecker beim Bump.
+// Diese Literale sind weg: CURRENT_SET aus public/tft-set.json ist die einzige
+// Quelle, jede Stelle zieht automatisch mit.
 //
-// Bewusst KEIN Dauerverbot: die Regel schlaegt erst an, wenn ein Literal vom
-// tatsaechlichen Set abweicht. Zwoelf gleichzeitige Blocker bei einem Push, der
-// mit dem Set nichts zu tun hat, waeren die zuverlaessigste Art, sich
-// `--no-verify` anzugewoehnen. So ist es ein Wecker beim Bump statt Dauerlaerm.
+// Damit waere dieser Block eine Attrappe, die `0 Stellen, 0 Dateien gepinnt`
+// meldet und nichts mehr prueft — ein Netto-Verlust an Sicherheit, denn beim
+// Bump bleibt weiterhin Handarbeit uebrig. Er wacht deshalb jetzt ueber:
+//
+//   a) keine NEUEN Set-Literale. Der alte Zweck, jetzt ohne Ausnahmenliste:
+//      wer ein Literal einfuehrt statt CURRENT_SET zu nutzen, wird gemeldet.
+//   b) tft-set.json == tft-assets.json. Die beiden Dateien sind getrennte
+//      Laeufe desselben Workflows; tft-set.json ist gegated, tft-assets.json
+//      folgte frueher ungegatet der CDragon-Datenlage und sprang Tage zu
+//      frueh (gefixt in fetch-tft-assets.mjs:pickActiveSet). Divergieren sie
+//      je wieder, ist genau dieser Fix kaputt.
+//   c) die set-nummerierten Datenfiles existieren fuers aktuelle Set. Ohne
+//      tft-assets-{set}.json liefert loadCostMap eine leere Cost-Map und der
+//      Carry-Swap wird still zum No-Op.
+//   d) SET_LAUNCH_LOL kennt das aktuelle Set. Fehlt der Anker, ist JEDES
+//      Patch-Label des Sets verschoben.
 //
 // Der Bundle-Commit kommt vom Daten-Workflow und sieht nie einen lokalen Hook —
 // der Wecker klingelt also zuerst in der CI, beim Menschen erst nach dem Pull.
-//
-// PINNED haelt zusaetzlich fest, WIEVIELE Stellen pro Datei bekannt sind. Wer
-// ein neues Literal einfuehrt statt das Set durchzureichen, muss diese Zahl
-// anfassen — und denkt damit darueber nach, ob der Fallback ueberhaupt sein muss.
 {
-  const PINNED = {
-    'app/api/tft/comps/variants/route.ts': 1,
-    'app/api/tft/meta-pulse/route.ts': 1,
-    'app/components/tft/CompCard.tsx': 1,
-    'app/components/tft/CompRow.tsx': 1,
-    'app/lib/tft-classify-comp.ts': 2,
-    'app/lib/tft-comp-guides.ts': 1,
-    'scripts/lib/metatft-cluster-family.mjs': 3,
-    'scripts/lib/tft-classify-comp.mjs': 2,
-    'scripts/reclassify-match-cache.mjs': 1,
-    'scripts/refresh-api-server.mjs': 1,
-  };
+  // Keine Ausnahmen mehr: nach dem Umbau darf keine Datei ein Set-Literal
+  // tragen. Wer eines braucht, traegt es hier bewusst ein und begruendet es.
+  const PINNED = {};
 
+  // SoT ist tft-set.json, NICHT tft-assets.json — nur erstere kennt das
+  // Bump-Gate aus detect-tft-set.mjs. Begruendung in scripts/lib/current-set.mjs.
   let currentSet = null;
-  try { currentSet = JSON.parse(read('public/tft-assets.json')).set; } catch { /* unten */ }
+  try { currentSet = JSON.parse(read('public/tft-set.json')).setNumber; } catch { /* unten */ }
 
   if (typeof currentSet !== 'number') {
-    console.error('✗ DRIFT: public/tft-assets.json hat kein numerisches .set');
-    console.error('    → ohne diese SoT kann der Set-Literal-Check nichts pruefen.');
+    console.error('✗ DRIFT: public/tft-set.json hat kein numerisches setNumber');
+    console.error('    → ohne diese SoT kann der Set-Check nichts pruefen.');
     failures++;
   } else {
+    // b) Gegenprobe gegen die ungegatete Asset-Datei.
+    let assetSet = null;
+    try { assetSet = JSON.parse(read('public/tft-assets.json')).set; } catch { /* siehe unten */ }
+    // setDrift sammelt ALLE Befunde dieses Blocks — auch b/c/d. Zaehlten die
+    // auf `failures` statt hierhin, druckte der Erfolgszweig unten trotzdem
+    // sein Haekchen neben die Fehler. Verifiziert: genau das passierte in der
+    // Set-18-Gegenprobe.
+    let setDrift = 0;
+
+    if (typeof assetSet !== 'number') {
+      console.error('✗ DRIFT: public/tft-assets.json hat kein numerisches .set');
+      setDrift++;
+    } else if (assetSet !== currentSet) {
+      console.error(`✗ DRIFT: tft-set.json sagt Set ${currentSet}, tft-assets.json sagt ${assetSet}`);
+      console.error('    → fetch-tft-assets.mjs soll dem Gate folgen (pickActiveSet).');
+      console.error('    → Divergenz heisst: der Gate-Fix ist kaputt oder wurde umgangen.');
+      setDrift++;
+    }
+
+    // c) Datenfiles fuers aktuelle Set.
+    for (const f of [`public/tft-assets-${currentSet}.json`, `public/tft-metatft-comps-${currentSet}.json`]) {
+      if (!existsSync(f)) {
+        console.error(`✗ DRIFT: ${f} fehlt fuer Set ${currentSet}`);
+        console.error('    → ohne diese Datei klassifiziert der Lesepfad still gegen eine leere Map.');
+        setDrift++;
+      }
+    }
+
+    // d) Patch-Anker.
+    if (!new RegExp(`^\\s*${currentSet}:`, 'm').test(read('scripts/detect-tft-set.mjs'))) {
+      console.error(`✗ DRIFT: SET_LAUNCH_LOL in detect-tft-set.mjs kennt Set ${currentSet} nicht`);
+      console.error('    → ohne Anker ist jedes Patch-Label dieses Sets verschoben.');
+      setDrift++;
+    }
+
     // Zwei Einschraenkungen, beide noetig — einzeln ist jede zu locker:
     //
     //  a) "set" als eigenes Wort in einem Bezeichner, nicht als Teilstring.
@@ -186,19 +221,18 @@ function read(path) {
       });
     }
 
-    let setDrift = 0;
     for (const [f, hits] of Object.entries(found)) {
       for (const h of hits) {
         if (h.value !== currentSet) {
           console.error(`✗ DRIFT: ${f}:${h.line} kodiert Set ${h.value}, aktuell ist ${currentSet}`);
-          console.error(`    → tft-assets.json ist auf Set ${currentSet} gesprungen; dieses Literal nachziehen.`);
+          console.error(`    → CURRENT_SET nutzen (app/lib/current-set.ts bzw. scripts/lib/current-set.mjs).`);
           setDrift++;
         }
       }
       const expected = PINNED[f];
       if (expected === undefined) {
         console.error(`✗ DRIFT: ${f} fuehrt ${hits.length} neue(s) Set-Literal(e) ein`);
-        console.error(`    → Set durchreichen statt hartkodieren, oder bewusst in PINNED aufnehmen.`);
+        console.error(`    → CURRENT_SET importieren statt hartkodieren; nur mit Begruendung in PINNED aufnehmen.`);
         setDrift++;
       } else if (expected !== hits.length) {
         console.error(`✗ DRIFT: ${f} hat ${hits.length} Set-Literale, PINNED sagt ${expected}`);
@@ -217,7 +251,12 @@ function read(path) {
     failures += setDrift;
     if (!setDrift) {
       const total = Object.values(found).reduce((s, h) => s + h.length, 0);
-      console.log(`✓ Set-Literale auf Set ${currentSet} (${total} Stellen, ${Object.keys(PINNED).length} Dateien gepinnt)`);
+      const pinned = Object.keys(PINNED).length;
+      console.log(
+        `✓ Set-Kopplung auf Set ${currentSet}`
+        + ` (tft-set.json == tft-assets.json, Datenfiles da, Patch-Anker da,`
+        + ` ${total} Set-Literale${pinned ? `, ${pinned} bewusst gepinnt` : ''})`,
+      );
     }
   }
 }

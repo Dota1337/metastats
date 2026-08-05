@@ -5,6 +5,7 @@ import {
   getAvailablePatches,
 } from '../../../lib/tft-supabase-reader';
 import { cachedJson, maybeRedirectByPatchAlias } from '../../../lib/api-cache';
+import { CURRENT_SET } from '../../../lib/current-set';
 
 // W5: Meta-Pulse — die „ich öffne metastats vor jeder Ranked-Session"-Page.
 // Aggregiert die wichtigsten Pro-Signale in einer Server-Action:
@@ -86,7 +87,7 @@ export async function GET(request: NextRequest) {
     if (redirect) return redirect;
     const currentPatch = patches[0]?.patch ?? null;
     const previousPatch = patches[1]?.patch ?? null;
-    const setNumber = patches[0]?.set_number ?? 17;
+    const setNumber = patches[0]?.set_number ?? CURRENT_SET;
 
     // Fan out: all four queries in parallel. Velocity + region-divergence
     // are single-scan FILTER aggregates (cheap on Nano). Patch-diff is two

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
 import { tftIconUrl, tftChampionTileUrl, findChampion, findItem, tftTraitDisplayName, tftTraitDescription, tftChampionTooltip } from '../../lib/tft-cdragon';
 import { costColor as costColorOf } from '../../lib/tft-ui';
+import { CURRENT_SET } from '../../lib/current-set';
 import { useI18n } from '../../lib/i18n';
 import BookmarkButton from '../BookmarkButton';
 import PlanAheadButton from './PlanAheadButton';
@@ -474,7 +475,7 @@ export default function CompRow({
           )}
           <PlanAheadButton
             characterIds={typicalUnits.slice(0, 10).map(u => u.characterId)}
-            setNumber={assets?.set ?? 17}
+            setNumber={assets?.set ?? CURRENT_SET}
             assets={assets}
             size="sm"
           />

@@ -3,6 +3,7 @@ import { resolveFilters } from '../../../../lib/tft-supabase-reader';
 import { STATS_CACHE_CONTROL, cacheControlForPatches, maybeRedirectByPatchAlias } from '../../../../lib/api-cache';
 import { getAvailablePatches } from '../../../../lib/tft-supabase-reader';
 import { parseClusterKey } from '../../../../lib/tft-cluster';
+import { CURRENT_SET } from '../../../../lib/current-set';
 
 // Variants-Switcher API: returns all sub-cluster variants of a comp family.
 //
@@ -81,7 +82,7 @@ export async function GET(request: NextRequest) {
     const cacheControl = cacheControlForPatches(patches) || STATS_CACHE_CONTROL;
 
     const filters = await resolveFilters(searchParams);
-    const setNumber = filters.setNumber ?? 17;
+    const setNumber = filters.setNumber ?? CURRENT_SET;
 
     // PostgREST broad prefix-match auf trait — Carry-Filter passiert JS-seitig
     // weil `<trait>__<carry>`-Format kein DB-Prefix ist. Pro trait sind das

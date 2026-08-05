@@ -13,9 +13,16 @@
 // demselben Lauf stammen und nur gemeinsam konsistent sind — die Cluster-IDs
 // tragen die MetaTFT-Generation im Präfix und wechseln geschlossen.
 
-// Set-Nummer des Lesepfads. Muss beim Set-Wechsel mitgezogen werden; der Guard
-// in loadCompGuidesBundle meldet einen Mismatch, statt still nichts anzuzeigen.
-const GUIDE_SET = 17;
+// Set-Nummer des Lesepfads. Kommt aus public/tft-set.json und zieht beim
+// Set-Wechsel automatisch mit; der Guard in loadCompGuidesBundle meldet
+// weiterhin einen Mismatch, statt still nichts anzuzeigen.
+//
+// Bewusst der JSON-Import und NICHT /api/tft/sets/current: diese Datei laeuft
+// im Browser-Bundle, und die Route ist force-dynamic mit Supabase-RPC — ein
+// 503 der Datenbank wuerde sonst den Guide-Lesepfad mitreissen.
+import { CURRENT_SET } from './current-set';
+
+const GUIDE_SET = CURRENT_SET;
 
 export type Difficulty = 'EASY' | 'MEDIUM' | 'HARD';
 

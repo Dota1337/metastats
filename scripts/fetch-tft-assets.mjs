@@ -19,6 +19,7 @@
 import { writeFileSync, readFileSync, existsSync, readdirSync } from 'node:fs';
 import { request as httpsRequest } from 'node:https';
 import { lookup as dnsLookup } from 'node:dns';
+import { loadCurrentSet } from './lib/current-set.mjs';
 
 const SOURCE_URL = 'https://raw.communitydragon.org/latest/cdragon/tft/en_us.json';
 const COMPANIONS_URL = 'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/companions.json';
@@ -76,9 +77,42 @@ function normalizeIconPath(raw) {
     .toLowerCase();
 }
 
+// Das aktive Set kommt aus public/tft-set.json, NICHT aus der CDragon-Datenlage.
+//
+// Frueher stand hier "highest TFTSet<N> mutator wins — same logic as
+// detect-tft-set.mjs". Das war einmal wahr und ist es seit dem Bump-Gate
+// (detect-tft-set.mjs:173) nicht mehr: detect haelt bewusst auf dem alten Set,
+// bis SET_BUMP_EARLIEST erreicht ist, waehrend diese Funktion ungegatet der
+// hoechsten Nummer folgte.
+//
+// Beide laufen im selben Daily-Crawl und committen ihre Datei. Sobald CDragon
+// das neue Set fuehrt — typischerweise Tage vor dem Live-Go — schrieb
+// tft-assets.json also `set: 18`, waehrend tft-set.json auf 17 stand. Folgen:
+// check-drift meldet alle Set-Literale als Drift und blockiert JEDEN Push, und
+// loadCostMap(18) findet ein Bundle, das die Pipeline gar nicht spielen will.
+//
+// Reihenfolge im Workflow (detect vor fetch) ist damit auch inhaltlich
+// begruendet und nicht mehr nur zufaellig richtig.
 function pickActiveSet(setData) {
-  // Highest TFTSet<N> mutator wins — same logic as detect-tft-set.mjs
   const live = setData.filter(s => /^TFTSet\d+$/.test(s.mutator || ''));
+  if (live.length === 0) return null;
+
+  const gated = loadCurrentSet();
+  if (typeof gated === 'number') {
+    const held = live.find(s => s.number === gated);
+    if (held) return held;
+    // tft-set.json nennt ein Set, das CDragon nicht (mehr) fuehrt. Nicht still
+    // auf die hoechste Nummer ausweichen — das waere genau der ungegatete
+    // Sprung, den dieser Code verhindern soll.
+    console.error(`FATAL: tft-set.json sagt Set ${gated}, CDragon fuehrt es nicht.`);
+    console.error(`       verfuegbar: ${live.map(s => s.number).join(', ')}`);
+    console.error('       -> erst detect-tft-set.mjs klaeren, dann Assets ziehen.');
+    process.exit(1);
+  }
+
+  // Kein lesbares tft-set.json: Erstlauf oder kaputte Datei. Hier ist die
+  // CDragon-Wahl der einzig moegliche Weg — aber sichtbar, nicht stillschweigend.
+  console.warn('WARN: public/tft-set.json nicht lesbar — falle auf CDragon-Hoechstnummer zurueck (ungegatet).');
   return live.sort((a, b) => (b.number || 0) - (a.number || 0))[0] || null;
 }
 

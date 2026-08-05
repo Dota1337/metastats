@@ -29,16 +29,11 @@ export {
   getRegionalRouting as getRegionalCluster,
 } from './regional-routing.mjs';
 
-// Aktuelles Set aus public/tft-set.json laden — Single-Source-of-Truth fürs
-// Setnummer-Lookup. Returns null wenn das File fehlt oder kaputt ist.
-export function loadCurrentSet(repoRoot = process.cwd()) {
-  const path = resolve(repoRoot, 'public', 'tft-set.json');
-  if (!existsSync(path)) return null;
-  try {
-    const j = JSON.parse(readFileSync(path, 'utf8'));
-    return j.currentSet?.number ?? j.setNumber ?? null;
-  } catch { return null; }
-}
+// Aktuelles Set aus public/tft-set.json — die Implementierung liegt seit dem
+// Set-18-Umbau in ./current-set.mjs, damit sie nicht zum dritten Mal kopiert
+// wird (sie stand hier und identisch in refresh-api-server.mjs). Re-Export,
+// damit die bestehenden Importeure unveraendert bleiben.
+export { loadCurrentSet } from './current-set.mjs';
 
 // Optional Knowledge-Graph für eine Region — region-spezifisch, daher kein
 // Default-Pfad. Driver lädt das selbst und gibt's via ctx an gatherPlayer weiter.

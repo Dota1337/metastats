@@ -235,6 +235,7 @@ function read(path) {
     'app/lib/tft-classify-comp.test.mjs',
     'app/lib/tft-comp-family-merge.test.mjs',
     'app/lib/tft-comp-level-outcome.test.mjs',
+    'app/lib/tft-comp-guides.test.mjs',
   ];
   const missing = EXPECTED_TESTS.filter((f) => read(f) === '');
   if (missing.length) {

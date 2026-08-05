@@ -9,12 +9,14 @@ import {
   augmentTierBorderColor,
   augmentGradeColor,
   groupAugmentsByGrade,
+  parseLevelling,
+  significantLevelSteps,
 } from '../../lib/tft-comp-guides';
 
 // CompGuide — rendert die aus MetaTFT-Clustern abgeleiteten Build-Daten als
-// Stapel von Sub-Sektionen: Augments nach Tier, die meistgespielten Early-Game-
-// Boards mit Placement, und die Round-1-Carousel-Picks. Difficulty-Badge sitzt
-// im Header der Elternseite.
+// Stapel von Sub-Sektionen: Levelplan, Augments nach Tier, die meistgespielten
+// Early-Game-Boards mit Placement, und die Round-1-Carousel-Picks.
+// Difficulty-Badge sitzt im Header der Elternseite.
 //
 // Die Stage-Tipps der tftacademy-Fassung sind ersatzlos entfallen — MetaTFT
 // clustert aus Match-Daten und hat keinen redaktionellen Fließtext. Ein
@@ -122,9 +124,50 @@ export default function CompGuide({
   // Rarity — die sieht der Spieler im Angebot ohnehin. Der Tile-Rand trägt
   // die Rarity weiterhin, so bleiben beide Größen sichtbar.
   const gradeGroups = groupAugmentsByGrade(guide);
+  const plan = parseLevelling(guide.levelling);
+  const steps = significantLevelSteps(guide.levels);
+  // Ein einzelner Schritt ist kein Plan — dann bleibt nur die Strategie-Zeile.
+  const planSteps = steps.length >= 2 ? steps : [];
+
+  const planLabel = plan
+    ? plan.kind === 'standard'
+      ? (t('tft.comp.levelling.standard') as string)
+      : (t(`tft.comp.levelling.${plan.kind}`) as string).replace('{level}', String(plan.level))
+    : null;
 
   return (
     <>
+      {/* 0) Levelplan — die erste Frage in einer laufenden Runde ist „bleibe
+          ich auf diesem Level oder pushe ich?". Steht deshalb vor den
+          Augments. Beide Hälften sind unabhängig optional: unbekanntes
+          Levelling-Kürzel und zu dünne Schritte fallen je einzeln weg, statt
+          die ganze Sektion zu kippen oder einen Wert zu erfinden. */}
+      {(planLabel || planSteps.length > 0) && (
+        <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
+          <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.levelling')}</h2>
+          {planLabel && (
+            <div className="text-white text-sm font-semibold mb-3">{planLabel}</div>
+          )}
+          {planSteps.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {planSteps.map(step => (
+                <div
+                  key={step.level}
+                  className="flex flex-col items-center bg-[#111c2e] border border-[#1e2a3a] rounded px-2.5 py-1.5 min-w-[3.5rem]"
+                >
+                  <div className="text-white text-xs font-semibold">
+                    {(t('tft.comp.levelling.step') as string).replace('{level}', String(step.level))}
+                  </div>
+                  <div className="text-[#7a8aa0] text-[11px] tabular-nums">
+                    {step.stage}-{step.round}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
       {/* 1) Augments — gruppiert nach Grade. Fallback auf flache Liste, wenn
           kein Augment einen Grade trägt. */}
       {guide.augments.length > 0 && (

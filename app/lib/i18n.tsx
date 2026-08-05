@@ -2027,6 +2027,34 @@ const translations = {
     '\uD50C\uB809\uC2A4 \uC2AC\uB86F', '\u673A\u52A8\u4F4D',
     'Espacios Flex', 'Emplacements Flex'
   ),
+  // Levelplan. MetaTFT liefert die Strategie als Kuerzel ("lvl 6", "Fast 8"),
+  // das mechanisch in die falsche Richtung liest: "lvl 6" heisst nicht "auf 6
+  // leveln", sondern "auf 6 bleiben und rerollen". Deshalb ausgeschrieben.
+  'tft.comp.levelling': t6(
+    'Levelplan', 'Levelling plan',
+    '레벨링 계획', '升级路线',
+    'Plan de niveles', 'Plan de niveaux'
+  ),
+  'tft.comp.levelling.reroll': t6(
+    'Level {level} Reroll', 'Level {level} reroll',
+    '{level}레벨 리롤', '{level} 级 Reroll',
+    'Reroll en nivel {level}', 'Reroll au niveau {level}'
+  ),
+  'tft.comp.levelling.fast': t6(
+    'Schnell auf Level {level}', 'Fast to level {level}',
+    '빠르게 {level}레벨', '快速 {level} 级',
+    'Subir rápido a nivel {level}', 'Montée rapide au niveau {level}'
+  ),
+  'tft.comp.levelling.standard': t6(
+    'Standard-Kurve', 'Standard curve',
+    '표준 진행', '标准节奏',
+    'Curva estándar', 'Courbe standard'
+  ),
+  'tft.comp.levelling.step': t6(
+    'Lv {level}', 'Lv {level}',
+    '{level}레벨', '{level} 级',
+    'Nv {level}', 'Niv {level}'
+  ),
   'tft.comp.levelOutcome': t6(
     'Trait-Aktivierung \u2014 Performance pro Stufe',
     'Trait activation \u2014 performance per tier',

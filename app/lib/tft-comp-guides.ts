@@ -3,7 +3,10 @@
 // Warum gewechselt: tftacademy pflegte redaktionell und deckte 38 Comps ab,
 // 47 % unseres Volumens mit fallender Tendenz; 22 von 30 fehlenden Familien
 // führte es überhaupt nicht. MetaTFT clustert automatisch aus Match-Daten und
-// deckt gemessen 33 der Top-50-Familien und 72,9 % des Volumens ab.
+// deckt gemessen 28 der Top-50-Familien und 70,0 % des Volumens ab. (Die
+// früher hier genannten 33 / 72,9 % stammten aus einem Verifier, der Familien
+// pro Trait-Level doppelt zählte — korrigiert am 2026-08-05, siehe Migration
+// 0054. Der Vertrag metatft-comps/familien-abdeckung wacht seitdem darüber.)
 //
 // Der Import (`scripts/refresh-metatft-comps.mjs`) schreibt eine einzige Datei:
 // Comps, Detail-Blöcke und die Familien-Map liegen zusammen, weil sie aus
@@ -68,11 +71,20 @@ export interface CompDetails {
   early: EarlyOption[];
   carousel: CarouselPick[];
   levels: LevelStep[];
-  // Import-only: meistgespielte Zelle je Unit (0-basiert) und Star-Verteilung
-  // der Carrys. Aktuell nicht gerendert.
+  // Import-only: meistgespielte Zelle je Unit (0-basiert). Nicht gerendert und
+  // nicht ohne Weiteres renderbar — gemessen stehen hier 22 bis 72 Units auf
+  // einem 28-Zellen-Board, also die Häufigkeitswolke aller je gespielten Units
+  // und keine Aufstellung. Ein Board bräuchte eine eigene Auswahl-Logik (welche
+  // ~9 Units sind final) plus Kollisionsauflösung, wenn zwei Units dieselbe
+  // Zelle als Modus haben. Eigenes Feature, bewusst offen.
   positions: Record<string, { cell: number; count: number | null }>;
-  carryStars: Record<string, Array<{ star: number; pcnt: number; avg: number }>>;
   rerolls: Record<string, unknown> | null;
+  // `carryStars` steht weiter im Bundle, wird hier aber bewusst nicht getippt:
+  // die Comp-Detail-Seite rendert dieselbe Aussage bereits als
+  // `carryStarOutcome` aus unseren eigenen Match-Daten, und zwar reicher
+  // (games, avgPlacement, top4Rate, top1Rate statt nur pcnt/avg) und für alle
+  // Comps statt nur 59 von 69. Zwei Quellen für eine Zahl auf einer Seite wäre
+  // genau der Widerspruch, den ein Nutzer als Fehler liest.
 }
 
 export interface MetaTftComp {
@@ -240,6 +252,57 @@ export function allGuides(loaded: LoadedGuides | null): Array<{
     });
   }
   return out;
+}
+
+/**
+ * Die Levelling-Strategie einer Comp, aufgelöst statt roh.
+ *
+ * MetaTFT liefert Kürzel: "lvl 5".."lvl 7", "Fast 8", "Fast 9", "Standard".
+ * Roh ausgeliefert läse sich "lvl 6" mechanisch falsch herum — es heisst nicht
+ * "auf 6 leveln", sondern "auf 6 bleiben und rerollen", also das Gegenteil von
+ * "Fast 8". Deshalb wird hier in Absicht + Level zerlegt und in der UI
+ * ausgeschrieben.
+ *
+ * Unbekannte Werte geben null: MetaTFT kann jederzeit ein neues Kürzel
+ * einführen, und eine falsch geratene Strategie ist schlechter als keine.
+ */
+export type LevellingPlan =
+  | { kind: 'reroll'; level: number }
+  | { kind: 'fast'; level: number }
+  | { kind: 'standard' };
+
+export function parseLevelling(raw: string | null | undefined): LevellingPlan | null {
+  if (!raw) return null;
+  const s = raw.trim();
+  if (/^standard$/i.test(s)) return { kind: 'standard' };
+  const reroll = /^lvl\s*(\d+)$/i.exec(s);
+  if (reroll) return { kind: 'reroll', level: Number(reroll[1]) };
+  const fast = /^fast\s*(\d+)$/i.exec(s);
+  if (fast) return { kind: 'fast', level: Number(fast[1]) };
+  return null;
+}
+
+/**
+ * Levelschritte ohne die statistisch bedeutungslosen.
+ *
+ * Der Fahrplan ist ein Durchschnitt über alle Spieler der Comp, und am oberen
+ * Ende bricht die Grundlage weg: beobachtet 1.094 Spieler auf Level 4, aber 39
+ * auf Level 9. Solche Schritte als Empfehlung zu zeigen wäre eine erfundene
+ * Genauigkeit.
+ *
+ * Gefiltert wird relativ zum stärksten Schritt der Comp, nicht gegen eine feste
+ * Zahl. Gemessen über alle 69 Comps machen die beiden Verfahren an 35 von 425
+ * Schritten etwas Unterschiedliches, und zwar in beide Richtungen: eine feste
+ * 100er-Grenze behält einen Level-10-Schritt mit 308 Beobachtungen bei einer
+ * Comp, deren Peak bei 7.985 liegt (3,9 % — Rauschen), und wirft bei einer
+ * kleinen Comp mit Peak 186 einen Schritt mit 46 weg (25 % — belastbar). Es
+ * bleiben 4 bis 7 Schritte je Comp.
+ */
+export function significantLevelSteps(levels: LevelStep[], minShare = 0.1): LevelStep[] {
+  if (!levels?.length) return [];
+  const peak = Math.max(...levels.map(s => s.count ?? 0));
+  if (peak <= 0) return [];
+  return levels.filter(s => (s.count ?? 0) >= peak * minShare);
 }
 
 // Rand-Farbe eines Augment-Tiles nach Rarity (Silver/Gold/Prismatic). Die

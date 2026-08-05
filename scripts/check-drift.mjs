@@ -230,6 +230,11 @@ function read(path) {
   const EXPECTED_TESTS = [
     'scripts/lib/pro-row-filter.test.mjs',
     'scripts/lib/tft-crawl-window.test.mjs',
+    'scripts/lib/tft-classify-comp.test.mjs',
+    'scripts/lib/tft-skill-score.test.mjs',
+    'app/lib/tft-classify-comp.test.mjs',
+    'app/lib/tft-comp-family-merge.test.mjs',
+    'app/lib/tft-comp-level-outcome.test.mjs',
   ];
   const missing = EXPECTED_TESTS.filter((f) => read(f) === '');
   if (missing.length) {

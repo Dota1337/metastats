@@ -96,6 +96,7 @@ import {
 import { ACTIVE_REGIONS } from './lib/active-regions.mjs';
 import { fetchD2PlusEntries, splitByActivity } from './lib/tft-league-entries.mjs';
 import { assertContracts } from './lib/contracts.mjs';
+import { formatTimings, resetTimings, timingEnabled } from './lib/perf-timing.mjs';
 
 // Env MUSS vor den Konstanten geladen sein. Bis 2026-08-04 stand der Aufruf
 // erst hinter dem Args-Block — Konstanten wie MV_MATCH_CONCURRENCY oder
@@ -685,6 +686,9 @@ async function processRegion(region) {
   const riot = riotForCluster(regional);
   console.log(`\n=== ${region} (cluster=${regional}, limiter=${batchBudget(regional)}/10,5s, concurrency=${MATCH_CONCURRENCY}) ===`);
   const t0 = Date.now();
+  // Pro Region ein sauberer Schnitt — Regionen unterscheiden sich stark in
+  // Kohortengröße und Cache-Alter, eine Summe über alle wäre nicht deutbar.
+  if (timingEnabled) resetTimings();
 
   // Der Tag dieser Region — EINMAL hier festgelegt, siehe backupTableName().
   const regionDay = new Date().toISOString().slice(0, 10);
@@ -861,6 +865,10 @@ async function processRegion(region) {
         const dt = ((Date.now() - t0) / 1000).toFixed(0);
         const inflightSuffix = inflightActive ? `, ${fromInflight} resumed` : '';
         console.log(`  [pass1] ${p1}/${players.length} | ${gathered.length} usable, ${tooFew} too-few${inflightSuffix} | ${dt}s`);
+        // Nur mit MV_TIMING=1 — sonst liefert formatTimings() einen leeren
+        // String und die Ausgabe bleibt exakt wie bisher.
+        const t = formatTimings();
+        if (t) console.log(t);
       }
     } catch (err) {
       failed++;

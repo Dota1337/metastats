@@ -18,6 +18,7 @@ import { computeBaseValue } from './tft-marketvalue.mjs';
 import { extractRawMetrics, scoreSkill } from './tft-skill-score.mjs';
 import { refreshPlayerMatchCache, listSeasonMatches } from './tft-match-cache-pg.mjs';
 import { upsertSeasonStats } from './tft-season-aggregator.mjs';
+import { timed, bump } from './perf-timing.mjs';
 
 // Platform-Routing → regional cluster (für Account-V1 + Match-V1). Single-Source
 // in ./regional-routing.mjs (Audit drift-#5). Re-Export hält die bestehende API
@@ -102,6 +103,12 @@ export async function gatherPlayer(pool, riot, player, ctx) {
     force = false, skipCacheRefresh = false, verbose = false,
   } = ctx;
 
+  // Die drei Schritte nach dem Cache-Refresh laufen für JEDEN Spieler, auch
+  // für die ~84 %, die seit dem letzten Lauf nichts gespielt haben. Ob das der
+  // eigentliche Kostentreiber ist, entscheidet die Messung — nicht die
+  // Vermutung. Siehe scripts/lib/perf-timing.mjs.
+  bump(skipCacheRefresh ? 'players.cacheOnly' : 'players.fetching');
+
   if (!skipCacheRefresh) {
     await refreshPlayerMatchCache(pool, player.puuid, region, regional, riot, {
       force,
@@ -111,14 +118,14 @@ export async function gatherPlayer(pool, riot, player, ctx) {
       log: verbose ? (msg) => console.log(`    ${msg}`) : undefined,
     });
   }
-  const matches = await listSeasonMatches(pool, player.puuid, setNumber);
+  const matches = await timed('listSeasonMatches', () => listSeasonMatches(pool, player.puuid, setNumber));
   // Season-Stats immer schreiben (auch <5 → 0-sample-row die UI ehrlich zeigt)
-  await upsertSeasonStats(pool, player.puuid, region, setNumber, {
+  await timed('upsertSeasonStats', () => upsertSeasonStats(pool, player.puuid, region, setNumber, {
     matches, hotCompKeys, recommendedItems,
-  });
+  }));
   if (matches.length < 5) return { skip: true, sampleSize: matches.length };
   return {
-    raw: extractRawMetrics(matches, { wins: player.wins, losses: player.losses }, null),
+    raw: timed('extractRawMetrics', () => extractRawMetrics(matches, { wins: player.wins, losses: player.losses }, null)),
     sampleSize: matches.length,
   };
 }

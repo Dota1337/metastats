@@ -10,6 +10,7 @@
 // the PK so upserts are safe under concurrent crawls.
 
 import { buildSnapshotForPlayer } from './tft-marketvalue.mjs';
+import { timed } from './perf-timing.mjs';
 
 // Match-V1 detail endpoint has a 200/10s method limit per routing cluster.
 // riot-client.mjs enforces a sliding window, so callers can fetch with bounded
@@ -43,10 +44,10 @@ export async function refreshPlayerMatchCache(db, puuid, region, regional, riot,
   const maxIds = opts.maxIds ?? RIOT_HISTORY_MAX;
 
   if (!opts.force) {
-    const stateRow = await db.query(
+    const stateRow = await timed('cache.fetchState', () => db.query(
       'select last_fetched_at, total_cached_matches, initial_backfill_done from tft_player_fetch_state where puuid = $1 and region = $2',
       [puuid, region],
-    );
+    ));
     const state = stateRow.rows[0];
     if (state && Date.now() - new Date(state.last_fetched_at).getTime() < maxStale * 60_000) {
       return { cached: state.total_cached_matches, newMatches: 0, skippedFresh: true };
@@ -63,12 +64,12 @@ export async function refreshPlayerMatchCache(db, puuid, region, regional, riot,
   // es entsteht also keine Luecke. Caller ohne maxIds (player-stats,
   // refresh-api) bekommen ueber RIOT_HISTORY_MAX weiterhin die vollen 200.
   const firstPageSize = Math.min(maxIds, RIOT_HISTORY_PAGE);
-  const recentIds = await fetchIds(regional, puuid, riot, 0, firstPageSize, startTimeSec);
+  const recentIds = await timed('cache.fetchIds', () => fetchIds(regional, puuid, riot, 0, firstPageSize, startTimeSec));
   if (recentIds.length === 0) {
-    await upsertFetchState(db, puuid, region, null, 0, false);
+    await timed('cache.upsertFetchState', () => upsertFetchState(db, puuid, region, null, 0, false));
     return { cached: 0, newMatches: 0, skippedFresh: false };
   }
-  const cachedRecent = await listCachedIds(db, puuid, recentIds);
+  const cachedRecent = await timed('cache.listCachedIds', () => listCachedIds(db, puuid, recentIds));
   const cachedSet = new Set(cachedRecent);
   const missingRecent = recentIds.filter(id => !cachedSet.has(id));
 
@@ -81,12 +82,12 @@ export async function refreshPlayerMatchCache(db, puuid, region, regional, riot,
     initialBackfill = true;
     const fullIds = [...recentIds];
     for (let start = RIOT_HISTORY_PAGE; start < maxIds; start += RIOT_HISTORY_PAGE) {
-      const page = await fetchIds(regional, puuid, riot, start, RIOT_HISTORY_PAGE, startTimeSec);
+      const page = await timed('cache.fetchIds', () => fetchIds(regional, puuid, riot, start, RIOT_HISTORY_PAGE, startTimeSec));
       if (page.length === 0) break;
       fullIds.push(...page);
       if (page.length < RIOT_HISTORY_PAGE) break;
     }
-    const alreadyCached = await listCachedIds(db, puuid, fullIds);
+    const alreadyCached = await timed('cache.listCachedIds', () => listCachedIds(db, puuid, fullIds));
     const acSet = new Set(alreadyCached);
     allMissing = fullIds.filter(id => !acSet.has(id));
     log(`[cache] first-time fill: ${fullIds.length} ids on Riot, ${allMissing.length} new`);
@@ -96,8 +97,8 @@ export async function refreshPlayerMatchCache(db, puuid, region, regional, riot,
   }
 
   if (allMissing.length === 0) {
-    const total = await countCachedTotal(db, puuid);
-    await upsertFetchState(db, puuid, region, recentIds[0], total, true);
+    const total = await timed('cache.countCachedTotal', () => countCachedTotal(db, puuid));
+    await timed('cache.upsertFetchState', () => upsertFetchState(db, puuid, region, recentIds[0], total, true));
     return { cached: total, newMatches: 0, skippedFresh: false };
   }
 
@@ -119,36 +120,41 @@ export async function refreshPlayerMatchCache(db, puuid, region, regional, riot,
     const row = buildCachedRow(raw, puuid, region);
     if (row) newRows.push(row);
   };
-  if (concurrency === 1) {
-    for (const id of allMissing) await fetchOne(id);
-  } else {
-    // Simple fixed-size worker pool draining a shared index cursor.
-    let cursor = 0;
-    const worker = async () => {
-      while (cursor < allMissing.length) {
-        const id = allMissing[cursor++];
-        await fetchOne(id);
-      }
-    };
-    await Promise.all(Array.from({ length: Math.min(concurrency, allMissing.length) }, worker));
-  }
+  // Wandzeit des ganzen Detail-Abrufs, nicht pro Match — das ist die Zahl, die
+  // gegen die anderen Segmente steht. Bei concurrency > 1 wäre eine Summe der
+  // Einzelfetches irreführend hoch.
+  await timed('cache.fetchDetails', async () => {
+    if (concurrency === 1) {
+      for (const id of allMissing) await fetchOne(id);
+    } else {
+      // Simple fixed-size worker pool draining a shared index cursor.
+      let cursor = 0;
+      const worker = async () => {
+        while (cursor < allMissing.length) {
+          const id = allMissing[cursor++];
+          await fetchOne(id);
+        }
+      };
+      await Promise.all(Array.from({ length: Math.min(concurrency, allMissing.length) }, worker));
+    }
+  });
 
   if (newRows.length > 0) {
-    await upsertMatchRows(db, newRows);
+    await timed('cache.upsertMatchRows', () => upsertMatchRows(db, newRows));
     // Mirror to Supabase so Vercel-side aggregations see the new matches.
     // Failure is non-fatal — Hetzner-PG is the source of truth, Supabase is
     // the read-replica.
     if (opts.syncSupabase !== false) {
       try {
-        await syncPlayerCacheToSupabase(newRows, { log });
+        await timed('cache.syncSupabase', () => syncPlayerCacheToSupabase(newRows, { log }));
       } catch (e) {
         log(`[cache] supabase mirror failed: ${e.message}`);
       }
     }
   }
 
-  const total = await countCachedTotal(db, puuid);
-  await upsertFetchState(db, puuid, region, recentIds[0], total, initialBackfill || true);
+  const total = await timed('cache.countCachedTotal', () => countCachedTotal(db, puuid));
+  await timed('cache.upsertFetchState', () => upsertFetchState(db, puuid, region, recentIds[0], total, initialBackfill || true));
 
   log(`[cache] +${newRows.length} new matches, ${total} cached total`);
   return { cached: total, newMatches: newRows.length, skippedFresh: false };

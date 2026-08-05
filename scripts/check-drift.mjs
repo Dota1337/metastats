@@ -110,6 +110,140 @@ function read(path) {
   }
 }
 
+// 5) Set-Literale. Es gibt keine CURRENT_SET-Konstante; die einzige Wahrheit ist
+// public/tft-assets.json .set, und die wird zur Laufzeit geladen. Verstreut im
+// Code stehen hartkodierte Fallbacks (`setNumber ?? 17`, `currentSet = 17`,
+// `const GUIDE_SET = 17`), die beim Set-Wechsel einzeln nachgezogen werden
+// muessen — und genau dann uebersieht man zwei davon.
+//
+// Bewusst KEIN Dauerverbot: die Regel schlaegt erst an, wenn ein Literal vom
+// tatsaechlichen Set abweicht. Zwoelf gleichzeitige Blocker bei einem Push, der
+// mit dem Set nichts zu tun hat, waeren die zuverlaessigste Art, sich
+// `--no-verify` anzugewoehnen. So ist es ein Wecker beim Bump statt Dauerlaerm.
+//
+// Der Bundle-Commit kommt vom Daten-Workflow und sieht nie einen lokalen Hook —
+// der Wecker klingelt also zuerst in der CI, beim Menschen erst nach dem Pull.
+//
+// PINNED haelt zusaetzlich fest, WIEVIELE Stellen pro Datei bekannt sind. Wer
+// ein neues Literal einfuehrt statt das Set durchzureichen, muss diese Zahl
+// anfassen — und denkt damit darueber nach, ob der Fallback ueberhaupt sein muss.
+{
+  const PINNED = {
+    'app/api/tft/comps/variants/route.ts': 1,
+    'app/api/tft/meta-pulse/route.ts': 1,
+    'app/components/tft/CompCard.tsx': 1,
+    'app/components/tft/CompRow.tsx': 1,
+    'app/lib/tft-classify-comp.ts': 2,
+    'app/lib/tft-comp-guides.ts': 1,
+    'scripts/lib/metatft-cluster-family.mjs': 3,
+    'scripts/lib/tft-classify-comp.mjs': 2,
+    'scripts/reclassify-match-cache.mjs': 1,
+    'scripts/refresh-api-server.mjs': 1,
+  };
+
+  let currentSet = null;
+  try { currentSet = JSON.parse(read('public/tft-assets.json')).set; } catch { /* unten */ }
+
+  if (typeof currentSet !== 'number') {
+    console.error('✗ DRIFT: public/tft-assets.json hat kein numerisches .set');
+    console.error('    → ohne diese SoT kann der Set-Literal-Check nichts pruefen.');
+    failures++;
+  } else {
+    // Zwei Einschraenkungen, beide noetig — einzeln ist jede zu locker:
+    //
+    //  a) "set" als eigenes Wort in einem Bezeichner, nicht als Teilstring.
+    //     Sonst meldet jedes `offset = 20` einen Fehlalarm.
+    //  b) plausibler Set-Wertebereich. `set`-Token allein trifft sonst jeden
+    //     React-Setter (`const [x, setX] = useState(0)` — "setX" zerfaellt zu
+    //     "set"+"X") und jedes `new Set(...)`. TFT-Sets sind zweistellig; damit
+    //     fallen die 0/1/5/8-Treffer weg, ohne echte Fundstellen zu verlieren.
+    const SET_RANGE = [10, 30];
+    const hasSetToken = (s) => {
+      for (const id of s.match(/[A-Za-z_$][\w$]*/g) || []) {
+        const parts = id.replace(/([a-z0-9])([A-Z])/g, '$1 $2').split(/[_\s]+/);
+        if (parts.some((p) => p.toLowerCase() === 'set')) return true;
+      }
+      return /--set\b/.test(s);
+    };
+
+    const sources = (dir) => readdirSync(dir, { recursive: true })
+      .map((f) => `${dir}/${String(f).replace(/\\/g, '/')}`)
+      .filter((f) => /\.(ts|tsx|mjs|js)$/.test(f))
+      .filter((f) => !f.includes('/node_modules/') && !f.includes('/.next/'));
+
+    const found = {};
+    for (const f of [...sources('app'), ...sources('scripts')]) {
+      read(f).split(/\r?\n/).forEach((raw, i) => {
+        if (/^\s*[*/]/.test(raw)) return;                 // reine Kommentarzeile
+        const line = raw.replace(/\/\/.*$/, '').replace(/\/\*[\s\S]*?\*\//g, '');
+        if (!hasSetToken(line)) return;
+        // Zuweisung / Default / Coalesce — bewusst NICHT <=, >=, ==, !=.
+        const m = line.match(/(?:\|\||\?\?|(?<![<>=!])=(?!=))\s*(\d{2})\b/);
+        if (!m) return;
+        const value = Number(m[1]);
+        if (value < SET_RANGE[0] || value > SET_RANGE[1]) return;
+        (found[f] ??= []).push({ line: i + 1, value });
+      });
+    }
+
+    let setDrift = 0;
+    for (const [f, hits] of Object.entries(found)) {
+      for (const h of hits) {
+        if (h.value !== currentSet) {
+          console.error(`✗ DRIFT: ${f}:${h.line} kodiert Set ${h.value}, aktuell ist ${currentSet}`);
+          console.error(`    → tft-assets.json ist auf Set ${currentSet} gesprungen; dieses Literal nachziehen.`);
+          setDrift++;
+        }
+      }
+      const expected = PINNED[f];
+      if (expected === undefined) {
+        console.error(`✗ DRIFT: ${f} fuehrt ${hits.length} neue(s) Set-Literal(e) ein`);
+        console.error(`    → Set durchreichen statt hartkodieren, oder bewusst in PINNED aufnehmen.`);
+        setDrift++;
+      } else if (expected !== hits.length) {
+        console.error(`✗ DRIFT: ${f} hat ${hits.length} Set-Literale, PINNED sagt ${expected}`);
+        console.error(`    → Zahl in check-drift.mjs nachziehen, damit die Liste ehrlich bleibt.`);
+        setDrift++;
+      }
+    }
+    for (const f of Object.keys(PINNED)) {
+      if (!found[f]) {
+        console.error(`✗ DRIFT: ${f} hat keine Set-Literale mehr, steht aber in PINNED`);
+        console.error(`    → Eintrag entfernen.`);
+        setDrift++;
+      }
+    }
+
+    failures += setDrift;
+    if (!setDrift) {
+      const total = Object.values(found).reduce((s, h) => s + h.length, 0);
+      console.log(`✓ Set-Literale auf Set ${currentSet} (${total} Stellen, ${Object.keys(PINNED).length} Dateien gepinnt)`);
+    }
+  }
+}
+
+// 6) Test-Dateien. `node --test` exitet mit 0, wenn der Glob NICHTS findet —
+// verifiziert mit Node 22.20. Das pre-push-Gate 2 waere dann still wirkungslos,
+// und nichts wuerde es melden. Ein Rename auf .spec.mjs, ein Verschieben nach
+// app/lib oder eine Glob-Aenderung in package.json reichen dafuer aus.
+{
+  const EXPECTED_TESTS = [
+    'scripts/lib/pro-row-filter.test.mjs',
+    'scripts/lib/tft-crawl-window.test.mjs',
+  ];
+  const missing = EXPECTED_TESTS.filter((f) => read(f) === '');
+  if (missing.length) {
+    for (const f of missing) {
+      console.error(`✗ DRIFT: Testdatei ${f} fehlt oder ist leer`);
+    }
+    console.error(`    → verschoben/umbenannt? Dann den Glob in package.json UND diese Liste nachziehen.`);
+    console.error(`      Bewusst geloescht? Eintrag hier entfernen — sonst faellt der stille Ausfall niemandem auf.`);
+    failures += missing.length;
+  } else {
+    console.log(`✓ Testdateien vorhanden (${EXPECTED_TESTS.length} erwartet)`);
+  }
+}
+
 if (failures) {
   console.error(`\n${failures} Drift(s) — vor dem Push mit der jeweiligen SoT synchronisieren.`);
   process.exit(1);

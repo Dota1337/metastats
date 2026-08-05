@@ -3,15 +3,30 @@
 # Install: `npm run setup-hooks` (copies this file into .git/hooks/pre-push)
 # Skip:    `git push --no-verify`  (explicit opt-out only)
 #
-# Two gates:
+# Six gates:
 #   1. TypeScript type-check        — catches obvious code regressions
-#   2. Classification verifier      — catches Augment/Item/God classification
+#   2. Unit tests                   — node --test, catches logic regressions in
+#                                     the pure lib functions
+#   3. snapshot-matrix freshness    — catches Auto-Generate-Drift
+#   4. Classification verifier      — catches Augment/Item/God classification
 #                                     regressions against ground-truth.
 #                                     See scripts/verify-classifications.mjs
+#   5. system-map freshness         — catches luegende Architektur-Doku
+#   6. Out-of-band drift            — catches Region-Listen + Set-Literale
 
 set -e
 
-echo "[pre-push 1/5] Running tsc --noEmit ..."
+# Gate 0: der Hook prueft seine eigene Veraltung. .git/hooks wird nicht
+# gesynct und nichts triggert setup-hooks automatisch — ohne diese Zeile
+# pusht Workstation 2 stumm mit einem alten Hook weiter.
+if [ -f infra/git-hooks/pre-push ] && ! cmp -s "$0" infra/git-hooks/pre-push; then
+  echo ""
+  echo "Installierter Hook weicht von infra/git-hooks/pre-push ab — push blocked."
+  echo "Run: npm run setup-hooks"
+  exit 1
+fi
+
+echo "[pre-push 1/6] Running tsc --noEmit ..."
 if ! npx tsc --noEmit; then
   echo ""
   echo "TypeScript errors detected — push blocked."
@@ -19,7 +34,17 @@ if ! npx tsc --noEmit; then
 fi
 echo "  tsc passed."
 
-echo "[pre-push 2/5] Checking snapshot-matrix.generated.mjs freshness ..."
+echo "[pre-push 2/6] Running unit tests ..."
+# Frueh in der Kette: die Tests laufen in <1s und haengen an nichts, was die
+# spaeteren Gates tun. Ein roter Test soll nicht hinter 60s tsc+Verifier warten.
+if ! npm test; then
+  echo ""
+  echo "Unit tests failed — push blocked."
+  exit 1
+fi
+echo "  unit tests passed."
+
+echo "[pre-push 3/6] Checking snapshot-matrix.generated.mjs freshness ..."
 # Wenn snapshot-matrix.ts neuer ist als die generated.mjs, ist der commit stale.
 # Schützt gegen Drift im Auto-Generate-Pattern (reference_dual_module_patterns.md).
 if [ -f app/lib/snapshot-matrix.ts ] && [ -f app/lib/snapshot-matrix.generated.mjs ]; then
@@ -32,7 +57,7 @@ if [ -f app/lib/snapshot-matrix.ts ] && [ -f app/lib/snapshot-matrix.generated.m
 fi
 echo "  snapshot-matrix freshness OK."
 
-echo "[pre-push 3/5] Running classification verifier ..."
+echo "[pre-push 4/6] Running classification verifier ..."
 if ! node scripts/verify-classifications.mjs; then
   echo ""
   echo "Classification checks failed — push blocked."
@@ -42,7 +67,7 @@ if ! node scripts/verify-classifications.mjs; then
 fi
 echo "  classification checks passed."
 
-echo "[pre-push 4/5] Checking system-map freshness + broken chains ..."
+echo "[pre-push 5/6] Checking system-map freshness + broken chains ..."
 # Die Karte wird generiert. Wer eine Unit anfasst und sie nicht neu baut,
 # bekommt eine Architektur-Doku, die luegt — schlimmer als keine.
 if ! node scripts/build-system-map.mjs --check; then
@@ -62,7 +87,7 @@ if ! node scripts/check-system-map.mjs > /dev/null; then
 fi
 echo "  system-map OK."
 
-echo "[pre-push 5/5] Checking out-of-band region-list drift ..."
+echo "[pre-push 6/6] Checking out-of-band region-list drift ..."
 if ! node scripts/check-drift.mjs; then
   echo ""
   echo "Region-list drift detected — push blocked."

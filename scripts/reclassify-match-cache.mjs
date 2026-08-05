@@ -102,6 +102,10 @@ function loadCursor() {
   catch { return { ...EMPTY_CURSOR }; }
 }
 function saveCursor(state) {
+  // Beim Dry-Run NICHT schreiben. Sonst hinterlaesst die Probe einen Cursor,
+  // und der anschliessende echte Lauf ueberspringt genau den Bereich, den die
+  // Probe gelesen hat — ohne dass irgendwo etwas rot wird.
+  if (DRY) return;
   writeFileSync(CURSOR_FILE, JSON.stringify(state, null, 2));
 }
 

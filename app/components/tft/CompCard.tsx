@@ -247,27 +247,35 @@ export default function CompCard({
               // Augment). Backward-Compat: alte Snapshots ohne multiplicity → 1.
               const showDouble = (((u as unknown) as { multiplicity?: number }).multiplicity ?? 1) >= 1.5;
               return (
-                <a
+                // Unit-Link und Item-Links sind Geschwister, nicht verschachtelt:
+                // ein <a> im <a> ist ungültiges HTML und hat die Hydration
+                // brechen lassen. Die Spalte bleibt der Hover-/Layout-Container,
+                // verlinkt wird die Kachel selbst.
+                <div
                   key={u.characterId}
-                  href={`/tft/units/${encodeURIComponent(u.characterId)}`}
-                  onClick={e => e.stopPropagation()}
                   className="flex flex-col items-center gap-0.5 hover:scale-105 transition"
-                  title={ch?.name || u.characterId}
                 >
-                  <div
-                    className="w-11 h-11 rounded border-2 overflow-hidden relative"
-                    style={{ borderColor: isCarry ? '#c39bff' : (ch ? costColorOf(ch.cost) : '#1e2a3a') }}
+                  <a
+                    href={`/tft/units/${encodeURIComponent(u.characterId)}`}
+                    onClick={e => e.stopPropagation()}
+                    className="block"
+                    title={ch?.name || u.characterId}
                   >
-                    {url && <img src={url} alt={ch?.name || u.characterId} className="w-full h-full object-cover rounded-sm" />}
-                    {showDouble && (
-                      <div
-                        className="absolute -top-1 -right-1 bg-[#7B61FF] text-white text-[8px] font-bold rounded-full w-4 h-4 flex items-center justify-center shadow"
-                        title="Two-Tanky-Variante"
-                      >
-                        ×2
-                      </div>
-                    )}
-                  </div>
+                    <div
+                      className="w-11 h-11 rounded border-2 overflow-hidden relative"
+                      style={{ borderColor: isCarry ? '#c39bff' : (ch ? costColorOf(ch.cost) : '#1e2a3a') }}
+                    >
+                      {url && <img src={url} alt={ch?.name || u.characterId} className="w-full h-full object-cover rounded-sm" />}
+                      {showDouble && (
+                        <div
+                          className="absolute -top-1 -right-1 bg-[#7B61FF] text-white text-[8px] font-bold rounded-full w-4 h-4 flex items-center justify-center shadow"
+                          title="Two-Tanky-Variante"
+                        >
+                          ×2
+                        </div>
+                      )}
+                    </div>
+                  </a>
                   {items.length > 0 && (
                     <div className="flex items-center gap-[1px]">
                       {items.map(it => {
@@ -287,7 +295,7 @@ export default function CompCard({
                       })}
                     </div>
                   )}
-                </a>
+                </div>
               );
             })}
           </div>

@@ -316,37 +316,67 @@ export async function checkContract(c) {
 }
 
 /**
+ * Laufendes Set aus der Single Source of Truth. Bewusst ohne den
+ * tft-assets.json-Notnagel aus scripts/lib/current-set.mjs: ein Vertrag, der
+ * sich auf eine Ersatzquelle stuetzt, meldet im Zweifel gruen fuer das falsche
+ * Set. Hier ist "weiss ich nicht" das ehrlichere Ergebnis.
+ * Gibt null zurueck, wenn die Datei fehlt oder keine Nummer enthaelt.
+ */
+function readCurrentSet() {
+  const setPath = resolve(REPO_ROOT, 'public', 'tft-set.json');
+  if (!existsSync(setPath)) return null;
+  let json;
+  try {
+    json = JSON.parse(readFileSync(setPath, 'utf8'));
+  } catch {
+    return null;
+  }
+  const set = Number(json.setNumber ?? json.currentSet?.number ?? json.set ?? json.current);
+  return Number.isFinite(set) ? set : null;
+}
+
+/**
  * Datei-Vertrag: statische Produktionsdaten im Repo, die eine Seite live
  * ausliefert. Nicht jeder Datenbestand liegt in einer DB — public/pro-teams.json
  * stand vom 21.05. bis 03.08.2026 still, während /teams und /ligen sie weiter
  * anzeigten. Geprüft wird das Feld aus `dateField` (Default `updatedAt`).
  */
 function checkFile(c, r) {
-  const path = resolve(REPO_ROOT, c.path);
-  if (!existsSync(path)) return r('broken', `${c.path} existiert nicht`);
+  // `{set}` im Pfad wird aus public/tft-set.json aufgeloest. Ohne das stuende
+  // die Set-Nummer im Vertragsregister — also genau dort, wo sie beim
+  // Set-Wechsel niemand nachzieht, waehrend der Vertrag weiter gruen meldet,
+  // weil er die alte (eingefrorene) Datei prueft.
+  let relPath = c.path;
+  if (relPath.includes('{set}')) {
+    const set = readCurrentSet();
+    if (set == null) return r('error', 'public/tft-set.json fehlt oder hat keine Set-Nummer');
+    relPath = relPath.replace('{set}', String(set));
+  }
+  const path = resolve(REPO_ROOT, relPath);
+  if (!existsSync(path)) return r('broken', `${relPath} existiert nicht`);
 
   let parsed;
   try {
     parsed = JSON.parse(readFileSync(path, 'utf8'));
   } catch (err) {
-    return r('broken', `${c.path} ist kein gültiges JSON: ${err.message}`);
+    return r('broken', `${relPath} ist kein gültiges JSON: ${err.message}`);
   }
 
   const stamp = parsed[c.dateField || 'updatedAt'];
-  if (!stamp) return r('broken', `${c.path} hat kein Feld ${c.dateField || 'updatedAt'}`);
+  if (!stamp) return r('broken', `${relPath} hat kein Feld ${c.dateField || 'updatedAt'}`);
 
   const ageDays = Math.floor((Date.now() - Date.parse(stamp)) / 86_400_000);
-  if (Number.isNaN(ageDays)) return r('broken', `${c.path}: ${stamp} ist kein Datum`);
+  if (Number.isNaN(ageDays)) return r('broken', `${relPath}: ${stamp} ist kein Datum`);
 
   if (c.minEntries) {
     const n = Array.isArray(parsed[c.entriesField]) ? parsed[c.entriesField].length : null;
-    if (n == null) return r('broken', `${c.path}: Feld ${c.entriesField} ist keine Liste`);
-    if (n < c.minEntries) return r('broken', `${c.path}: nur ${n} Einträge (min ${c.minEntries})`);
+    if (n == null) return r('broken', `${relPath}: Feld ${c.entriesField} ist keine Liste`);
+    if (n < c.minEntries) return r('broken', `${relPath}: nur ${n} Einträge (min ${c.minEntries})`);
   }
 
   return ageDays <= c.maxAgeDays
-    ? r('ok', `${c.path} ist ${ageDays}d alt (max ${c.maxAgeDays}d)`)
-    : r('broken', `${c.path} ist ${ageDays}d alt, erlaubt sind ${c.maxAgeDays}d — Aktualisierung ausgefallen`);
+    ? r('ok', `${relPath} ist ${ageDays}d alt (max ${c.maxAgeDays}d)`)
+    : r('broken', `${relPath} ist ${ageDays}d alt, erlaubt sind ${c.maxAgeDays}d — Aktualisierung ausgefallen`);
 }
 
 /**
@@ -467,11 +497,8 @@ async function checkCoverage(c, r) {
 async function checkGuideCoverage(c, r) {
   // Set aus der Single Source of Truth, nicht aus dem Vertrag: sonst wäre der
   // Vertrag beim Set-Wechsel genau der Ort, an dem niemand nachzieht.
-  const setPath = resolve(REPO_ROOT, 'public', 'tft-set.json');
-  if (!existsSync(setPath)) return r('error', 'public/tft-set.json fehlt');
-  const setJson = JSON.parse(readFileSync(setPath, 'utf8'));
-  const set = Number(setJson.set ?? setJson.setNumber ?? setJson.current);
-  if (!Number.isFinite(set)) return r('error', 'public/tft-set.json hat keine Set-Nummer');
+  const set = readCurrentSet();
+  if (set == null) return r('error', 'public/tft-set.json fehlt oder hat keine Set-Nummer');
 
   const bundlePath = (c.bundlePath || 'public/tft-metatft-comps-{set}.json')
     .replace('{set}', String(set));

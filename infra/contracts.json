@@ -163,12 +163,12 @@
       "id": "metatft-comps/datei-frische",
       "owner": ".github/workflows/metatft-comps-daily.yml",
       "type": "file",
-      "path": "public/tft-metatft-comps-17.json",
+      "path": "public/tft-metatft-comps-{set}.json",
       "dateField": "fetchedAt",
       "entriesField": "comps",
       "minEntries": 40,
       "maxAgeDays": 4,
-      "note": "Ersetzt die tftacademy-Guides (69 statt 38 Comps, automatisch geclustert statt redaktionell). 4 Tage lassen einen ausgefallenen Tageslauf durch, eine Woche Stillstand nicht. Rund um den Set-18-Release bricht der Import bewusst ab, bis MetaTFT umgestellt hat — dann ist dieser Vertrag der Melder. Pfad enthält die Set-Nummer und muss beim Set-Wechsel mitgezogen werden."
+      "note": "Ersetzt die tftacademy-Guides (69 statt 38 Comps, automatisch geclustert statt redaktionell). 4 Tage lassen einen ausgefallenen Tageslauf durch, eine Woche Stillstand nicht. Rund um den Set-18-Release bricht der Import bewusst ab, bis MetaTFT umgestellt hat — dann ist dieser Vertrag der Melder. `{set}` im Pfad wird zur Laufzeit aus public/tft-set.json aufgelöst, damit hier beim Set-Wechsel nichts von Hand nachgezogen werden muss."
     },
 
     {

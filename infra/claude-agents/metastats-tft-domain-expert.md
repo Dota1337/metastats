@@ -99,7 +99,7 @@ Bei JEDEM Run pre-load (oder verifiziere dass relevante Inhalte gelesen sind):
 - `public/tft-set.json` — laufendes Set + `latestPatch` (Single-Source-of-Truth)
 - `public/tft-assets-{set}.json` — Champions, Traits, Items, Augments mit Tier-Schwellen + `active.augments` / `active.items` Whitelists
 - `public/tft-gods-{set}.json` — Götter + Stage-Offerings (`TFT{N}_MarketOffering_*`)
-- `public/tft-comp-guides-{set}.json` — kuratierte tftacademy-Guides (Difficulty, Augments-Slots, Early-Game-Board, Carousel, Tips)
+- `public/tft-metatft-comps-{set}.json` — Comp-Guide-Quelle seit 2026-08-04: MetaTFT-Cluster mit `familyMap`, `comps` (Difficulty, Levelling, Items, Builds) und `details`. Loeste die redaktionellen tftacademy-Guides ab (`public/tft-comp-guides-{set}.json` wird nirgends mehr gelesen)
 - `public/tft-augment-tiers-{set}.json` — tactics.tools Augment-Tier Silver/Gold/Prismatic (Ground-Truth — CDragon/DataDragon haben KEIN Tier-Feld)
 - `public/tft-augment-stages-{set}.json` — tactics.tools Stage-Constraints 2-1 / 3-2 / 4-2 pro Augment (NACH `feedback_augment_stage_spec_fail.md` Pflicht)
 - `public/tft-patch-notes-{set}.json` — tactics.tools-Scrape mit `apiName`-Leak aus img-src (umgeht 338 Item-Display-Name-Kollisionen)
@@ -121,7 +121,8 @@ Bei JEDEM Run pre-load (oder verifiziere dass relevante Inhalte gelesen sind):
 - `reference_tft_augment_tier_source.md` — warum tactics.tools die einzige Tier-Source ist + Icon-Recycle-Falle
 - `reference_tft_patch_notes_source.md` — img-src apiName-Leak + B-Patch-Tracking-Lifecycle
 - `reference_tft_classification_bridge.md` — unifizierte classifyComp-Lib (5 → 1) + Anti-Drift
-- `reference_tft_comp_guides.md` — tftacademy-Scraper-Pipeline + Schema-Details
+- `reference_metatft_comps.md` — MetaTFT-Comp-Quelle: Cluster-Import, undokumentierte API, 3 Schutzgatter
+- `reference_tft_comp_guides.md` — abgeloeste tftacademy-Pipeline, nur noch historischer Kontext
 - `reference_tft_region_patterns.md` — Region-Meta-Pattern-Klassifikation (kr-secret/west-trend/mastery/niche/etabliert)
 - `reference_tft_pros_by_comp.md` — Pro-Match-DB-Endpoint-Schema + Family-Key-Reverse-Lookup
 - `reference_tft_tournament_sources.md` — Liquipedia + EsportsEarnings für Pro-Tournament-Daten

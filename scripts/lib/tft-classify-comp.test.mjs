@@ -56,6 +56,41 @@ test('nur UniqueTraits aktiv → null statt Fragment-Cluster', () => {
   assert.equal(res, null);
 });
 
+test('Fragment-Trait ohne UniqueTrait-Suffix wird trotzdem gefiltert (GravesTrait)', () => {
+  // Der Fall, den das alte Namensmuster verfehlt hat: TFT17_GravesTrait hat
+  // genau eine Stufe ab 1 Unit, heißt aber nicht *UniqueTrait. Erkannt wird er
+  // nur über die Bundle-Ableitung aus public/tft-assets-17.json.
+  const res = classifyComp({
+    traits: [trait('TFT17_GravesTrait', 4, 1), trait('TFT17_Stargazer', 1, 2)],
+    units: [unit('TFT17_Vex', DMG.slice(0, 2))],
+  });
+  assert.equal(res.primaryTrait, 'TFT17_Stargazer');
+});
+
+test('SpaceGroove ist KEIN Fragment-Trait und bleibt Primary', () => {
+  // Gegenprobe zum Test darüber. SpaceGroove hat fünf Stufen (1/3/5/7/10) und
+  // ist ein normaler Comp-Trait — ein zu grober Filter hätte hier eine echte
+  // Comp-Linie zerstört.
+  const res = classifyComp({
+    traits: [trait('TFT17_SpaceGroove', 3, 3)],
+    units: [unit('TFT17_Nami', DMG.slice(0, 2))],
+  });
+  assert.equal(res.primaryTrait, 'TFT17_SpaceGroove');
+});
+
+test('MadredsBloodrazor zählt als Damage-Item', () => {
+  // Giant Slayer (Set-17-Rename). Fehlte in DAMAGE_CARRY_ITEMS, wodurch
+  // Carries mit diesem Item in der Item-Zählung hinter Nebeneinheiten fielen.
+  const res = classifyComp({
+    traits: [trait('TFT17_Stargazer', 3, 6)],
+    units: [
+      unit('TFT17_Lulu', ['TFT_Item_MadredsBloodrazor', 'TFT_Item_InfinityEdge']),
+      unit('TFT17_Rammus', DMG.slice(0, 1)),
+    ],
+  });
+  assert.equal(res.carryUnit, 'TFT17_Lulu');
+});
+
 test('inaktive Traits (style 0) zählen nicht', () => {
   assert.equal(classifyComp({ traits: [trait('TFT17_Stargazer', 0, 2)], units: [unit('TFT17_Lulu')] }), null);
 });

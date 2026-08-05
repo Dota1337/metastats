@@ -44,8 +44,14 @@ const ITEMS = [
   'TFT_Item_WarmogsArmor',
   'TFT_Item_DragonsClaw',
 ];
+// Bewusst gemischt: zwei normale Comp-Traits, ein Fragment-Trait ohne
+// UniqueTrait-Suffix (GravesTrait — nur ueber die Bundle-Ableitung erkennbar)
+// und zwei mit Suffix. Zwei normale Traits sind noetig, damit nach dem
+// Fragment-Filter ueberhaupt noch eine Sortierentscheidung uebrig bleibt —
+// mit nur einem waere jeder gefilterte Fall trivial null.
 const TRAIT_NAMES = [
   'TFT17_Stargazer',
+  'TFT17_SpaceGroove',
   'TFT17_GravesTrait',
   'TFT17_BlitzcrankUniqueTrait',
   'TFT17_FioraUniqueTrait',

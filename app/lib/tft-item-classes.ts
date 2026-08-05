@@ -26,6 +26,7 @@ export const DAMAGE_CARRY_ITEMS = new Set<string>([
   // Attack-speed — single-target / Runaan-spreader carry items
   'TFT_Item_RapidFireCannon',
   'TFT_Item_RunaansHurricane',
+  'TFT_Item_MadredsBloodrazor',  // Giant Slayer (Set-17 rename) — %-max-HP-Schaden, nur auf Carries
   // Bruiser-carry only (off-tank like Riven)
   'TFT_Item_SteraksGage',
   // Mana-engine carry items

@@ -19,19 +19,25 @@
 // Damage-Item-Count, und die Items kommen aus dem meistgespielten Build je
 // Unit. Ein separates "Hard-Gate Carry" braucht es deshalb nicht.
 //
-// **Nicht auf Ground-Truth umstellen ohne Reclassify.** classifyComp filtert
-// UniqueTraits per Regex `/UniqueTrait$/`. Die Bundle-Ground-Truth
-// (`traits[t].tiers[0].minUnits === 1`) nennt zwei weitere: TFT17_SpaceGroove
-// und TFT17_GravesTrait. Der Regex ist insofern unvollständig — aber die
-// bestehenden cluster_keys in der DB sind MIT dem Regex gebildet. Würden wir
-// hier strenger filtern, entstünden Keys, die es in der DB nicht gibt, und das
-// Mapping bräche genau bei GravesTrait-Comps. Filter-Fix und Reclassify gehören
-// zusammen und in einen eigenen Lauf.
+// **Filter-Fix und Reclassify gehören zusammen.** Seit 2026-08-05 filtert
+// classifyComp Fragment-Traits nicht mehr per Regex `/UniqueTrait$/`, sondern
+// per Bundle-Ground-Truth (genau EINE Stufe, die ab 1 Unit greift) vereinigt
+// mit dem Regex. Das ergänzt in Set 17 genau einen Trait: TFT17_GravesTrait.
+//
+// TFT17_SpaceGroove gehört ausdrücklich NICHT dazu — der hat fünf Stufen
+// (1/3/5/7/10) und ist ein normaler Comp-Trait. Ein früherer Kommentar an
+// dieser Stelle behauptete das Gegenteil; wer ihn gefiltert hätte, hätte eine
+// echte Comp-Linie zerstört.
+//
+// Wichtig bleibt die Kopplung: die cluster_keys in der DB sind nach der
+// jeweils geltenden Regel gebildet. Ändert sich der Filter, muss der
+// Reclassify hinterher, sonst zeigt das Mapping auf Keys, die es nicht gibt.
 
 import { classifyComp } from './tft-classify-comp.mjs';
 import { DAMAGE_CARRY_ITEMS } from './tft-item-classes.mjs';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { CURRENT_SET } from './current-set.mjs';
 
 /** "TFT17_DRX_2" -> { name: "TFT17_DRX", tier: 2 } */
 function parseTrait(raw) {
@@ -42,7 +48,7 @@ function parseTrait(raw) {
 
 const _styleCache = new Map();
 function loadTraitStyles(setNumber) {
-  const set = setNumber || 17;
+  const set = setNumber || CURRENT_SET;
   if (_styleCache.has(set)) return _styleCache.get(set);
   let map = new Map();
   try {
@@ -73,13 +79,17 @@ function styleFor(styles, name, tier) {
   return list[Math.min(tier, list.length) - 1] ?? tier;
 }
 
-// Ein Build zählt als Carry-Build ab dieser Zahl Damage-Items. Eins genügt und
-// mehr wäre schädlich: DAMAGE_CARRY_ITEMS führt nur 20 Items und kennt
-// verbreitete Carry-Items wie MadredsBloodrazor nicht (12.002 Builds). Mit
-// Schwelle 2 fiel MasterYi aus seiner eigenen Comp heraus, weil von seinem
-// BiS nur ein Item in der Liste steht. Die Liste zu erweitern wäre der
-// sauberere Fix, ändert aber die Klassifikation in Cache und Aggregator mit
-// und verlangt einen Reclassify — eigener Lauf, nicht dieser.
+// Ein Build zählt als Carry-Build ab dieser Zahl Damage-Items.
+//
+// Historie: die Schwelle stand auf 1, weil DAMAGE_CARRY_ITEMS
+// MadredsBloodrazor (Giant Slayer, 12.002 Builds) nicht kannte und MasterYi
+// deshalb mit Schwelle 2 aus seiner eigenen Comp fiel. Das Item ist seit
+// 2026-08-05 in der Liste — der sauberere Fix, der damals nur deshalb
+// aufgeschoben war, weil er einen Reclassify verlangt.
+//
+// Die Schwelle bleibt trotzdem bei 1: sie zu heben wäre eine zweite
+// Verhaltensänderung im selben Lauf, ohne Messung dafür. Die Trennschärfe
+// kommt ohnehin aus dem Volumen (siehe unten).
 //
 // Die Trennschärfe kommt ohnehin aus dem Volumen: reine Tanks haben null
 // Damage-Items (Nunu mit Crownguard und zwei FrozenHeart) und fallen hier
@@ -194,8 +204,8 @@ export function clusterFamilies(cluster, opts = {}) {
     // lieber keinen Key als einen geratenen.
     if (!units.includes(cand.carry)) continue;
 
-    const res = classifyComp(clusterToParticipant(cluster, cand.carry, opts.currentSet ?? 17), {
-      currentSet: opts.currentSet ?? 17,
+    const res = classifyComp(clusterToParticipant(cluster, cand.carry, opts.currentSet ?? CURRENT_SET), {
+      currentSet: opts.currentSet ?? CURRENT_SET,
     });
     if (!res) continue;
     // Sicherung gegen stille Drift, falls classifyComp seine Carry-Regel

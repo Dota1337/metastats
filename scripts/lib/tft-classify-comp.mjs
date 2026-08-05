@@ -32,23 +32,48 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { DAMAGE_CARRY_ITEMS } from './tft-item-classes.mjs';
 import { compDefiningAugmentSlug } from './tft-comp-defining-augments.mjs';
+import { CURRENT_SET } from './current-set.mjs';
 
-const _costMapCache = new Map();
-function loadCostMap(setNumber) {
-  const set = setNumber || 17;
-  if (_costMapCache.has(set)) return _costMapCache.get(set);
+// Beides aus EINEM Bundle-Parse, per Set memoisiert:
+//   costMap        — characterId → cost, fuer den Cost-Aware-Swap
+//   fragmentTraits — Traits, die kein echter Comp-Trait sind (siehe unten)
+//
+// Fragment-Traits sind die Ein-Personen-Mechanik-Traits: genau EINE Stufe, die
+// schon ab 1 Einheit greift. Sie beschreiben keine Comp, sondern haengen an
+// einem einzelnen Champion — als Primary-Trait erzeugen sie Cluster wie
+// `TFT17_GravesTrait@1_TFT17_Vex`, wo Vex traegt und Graves nur danebensteht.
+//
+// Warum aus dem Bundle statt per Namensmuster: das Muster `/UniqueTrait$/` traf
+// in Set 17 elf der zwoelf, verfehlte aber `TFT17_GravesTrait` — 8 % aller
+// Comp-Spiele. Ein hartkodiertes `TFT\d+_GravesTrait` waere derselbe Fehler mit
+// Ansage, weil Set 18 sein eigenes Gegenstueck mit eigenem Namen bringt.
+//
+// Die Regex bleibt trotzdem als Fail-Safe bestehen (Union, NICHT Ersatz): faellt
+// der Bundle-Read aus, ist fragmentTraits leer — und ohne Filter werden
+// Fragment-Traits wieder Primary, also exakt der Bug von 2026-06-21. Ein
+// leerer Set darf hier nie "alles erlaubt" bedeuten.
+const _bundleCache = new Map();
+function loadBundleDerived(setNumber) {
+  const set = setNumber || CURRENT_SET;
+  if (_bundleCache.has(set)) return _bundleCache.get(set);
+  const derived = { costMap: new Map(), fragmentTraits: new Set() };
   try {
     const bundle = JSON.parse(readFileSync(resolve(process.cwd(), `public/tft-assets-${set}.json`), 'utf8'));
-    const map = new Map();
     for (const [cid, ch] of Object.entries(bundle.champions || {})) {
-      if (typeof ch?.cost === 'number') map.set(cid, ch.cost);
+      if (typeof ch?.cost === 'number') derived.costMap.set(cid, ch.cost);
     }
-    _costMapCache.set(set, map);
-    return map;
-  } catch {
-    _costMapCache.set(set, new Map());
-    return _costMapCache.get(set);
-  }
+    for (const [name, tr] of Object.entries(bundle.traits || {})) {
+      const tiers = tr?.tiers;
+      if (Array.isArray(tiers) && tiers.length === 1 && tiers[0]?.minUnits === 1) {
+        derived.fragmentTraits.add(name);
+      }
+    }
+  } catch { /* leere Defaults, Regex-Fail-Safe greift */ }
+  _bundleCache.set(set, derived);
+  return derived;
+}
+function loadCostMap(setNumber) {
+  return loadBundleDerived(setNumber).costMap;
 }
 
 // Hero-Augment-Pattern: `TFT<N>_Augment_<UnitName>Carry` oder `<UnitName>GodAugment`.
@@ -91,14 +116,15 @@ function unitCid(u) {
  * @returns {{ clusterKey, primaryTrait, primaryTraitLevel, carryUnit, carryStar, compDefiningAugment, secondaryCarry, carryItems } | null}
  */
 export function classifyComp(participant, opts = {}) {
-  const { currentSet = 17, withAugmentSuffix = false } = opts;
-  const costMap = loadCostMap(currentSet);
+  const { currentSet = CURRENT_SET, withAugmentSuffix = false } = opts;
+  const { costMap, fragmentTraits } = loadBundleDerived(currentSet);
 
-  // UniqueTrait-Filter via Regex (robust gegen fehlende num_units in
-  // Bestands-Cache-Rows). UniqueTraits sind immer Tier 1 und enden auf
-  // `UniqueTrait` (Set 17: Blitzcrank/Fiora/MissFortune/Graves/etc.).
+  // Fragment-Trait-Filter: Bundle-Ground-Truth vereinigt mit dem alten
+  // Namensmuster. Begruendung an loadBundleDerived.
+  const isFragmentTrait = (name) => /UniqueTrait$/.test(name || '') || fragmentTraits.has(name || '');
+
   const traits = (participant.traits || []).filter(
-    t => (t.style ?? 0) > 0 && !/UniqueTrait$/.test(t.name || ''),
+    t => (t.style ?? 0) > 0 && !isFragmentTrait(t.name),
   );
   if (traits.length === 0) return null;
   traits.sort((a, b) => {
@@ -143,6 +169,20 @@ export function classifyComp(participant, opts = {}) {
       const level = Number(participant.level || 0);
       const fastEight = level === 8;
       const lvlNineFillerCase = level === 9 && top1.offensive <= top2.offensive;
+      // ACHTUNG: bewusst weiterhin das NAMENSMUSTER, nicht isFragmentTrait.
+      //
+      // Hier hat die Pruefung eine andere Bedeutung als beim Primary-Filter
+      // oben. Dort geht es um "taugt der Trait als Comp-Name" — hier um "ist
+      // der Traeger die intendierte Carry, also Finger weg vom Swap".
+      //
+      // Bei den *UniqueTrait-Traegern traegt diese Annahme. Bei GravesTrait
+      // nicht: Graves ist ein 5-Koster und steht auf ~10 % der Boards, meist
+      // als Filler. Wuerde er die Suppression ausloesen, blockierte er den
+      // Cost-Aware-Swap genau in dessen Kern-Anwendungsfall (Level 9,
+      // 5-Koster-Filler mit Items neben echtem 4-Koster-Carry).
+      //
+      // Die Divergenz zum Filter ist also gewollt und nicht Drift. Ob
+      // GravesTrait hier mit soll, ist eine eigene Messung — siehe Backlog.
       const hasActiveUniqueTrait = (participant.traits || []).some(
         t => (t.style ?? 0) > 0 && /UniqueTrait$/.test(t.name || ''),
       );

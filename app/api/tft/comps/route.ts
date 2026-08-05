@@ -12,6 +12,7 @@ import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias } from '.
 import { isExcludedUnit, isExcludedItem, setContainsExcludedItem } from '../../../lib/tft-excluded';
 import { lookupSnapshot } from '../../../lib/snapshot-lookup';
 import { parseClusterKey } from '../../../lib/tft-cluster';
+import { isFragmentTraitName } from '../../../lib/tft-classify-comp';
 import { computeShares } from '../../../lib/tft-shares';
 import { selectFamilyMembers, mergeFamilyRows, familyKeyForMerge } from '../../../lib/tft-comp-family-merge';
 import { buildLevelOutcome } from '../../../lib/tft-comp-level-outcome';
@@ -282,9 +283,9 @@ export async function GET(request: NextRequest) {
         }
       }
       if (!row) return cachedJson({ filters, hasData: false, comp: null }, { cache: cacheControl });
-      // Stale UniqueTrait-Mega-Cluster aus pre-Fix-Daten ausblenden — siehe
-      // isUniqueTraitClusterKey-Kommentar oben.
-      if (isUniqueTraitClusterKey(row.cluster_key)) {
+      // Stale Fragment-Trait-Mega-Cluster aus pre-Fix-Daten ausblenden — siehe
+      // isFragmentTraitClusterKey-Kommentar unten.
+      if (isFragmentTraitClusterKey(row.cluster_key)) {
         return cachedJson({ filters, hasData: false, comp: null }, { cache: cacheControl });
       }
       // Family-Mode (Default): mergt alle Sub-Cluster derselben Family-Identität
@@ -340,7 +341,7 @@ export async function GET(request: NextRequest) {
         // sinnvolles Matchup (gleiche Comp, andere Variante).
         if (aInFamily && bInFamily) continue;
         const opponent = aInFamily ? p.b_key : p.a_key;
-        if (isUniqueTraitClusterKey(opponent)) continue;
+        if (isFragmentTraitClusterKey(opponent)) continue;
         const aWinRate = p.games > 0 ? Number(p.a_better) / Number(p.games) : 0.5;
         const edge: CounterEdge = {
           opponent,
@@ -473,7 +474,7 @@ export async function GET(request: NextRequest) {
     for (const v of velocityRows) velocityByKey.set(v.cluster_key, v);
 
     const dataComps = rows
-      .filter(r => !isUniqueTraitClusterKey(r.cluster_key))
+      .filter(r => !isFragmentTraitClusterKey(r.cluster_key))
       .map(r => {
         const base = baseComp(r, participants);
         const v = velocityByKey.get(r.cluster_key);
@@ -518,9 +519,19 @@ export async function GET(request: NextRequest) {
 function carryFromClusterKey(key: string): string | null {
   return parseClusterKey(key)?.carry ?? null;
 }
-function isUniqueTraitClusterKey(key: string): boolean {
+// Fragment-Trait-Cluster ausblenden. Der Test selbst lebt in
+// tft-classify-comp.ts (Bundle-Ground-Truth + UniqueTrait-Regex als Fail-Safe)
+// — hier NUR die Cluster-Key-Huelle, damit Read- und Write-Pfad nicht wieder
+// auseinanderlaufen.
+//
+// Die Set-Nummer kommt aus dem Trait-Prefix, nicht aus CURRENT_SET: alte
+// Snapshots und der Patch-Filter koennen Cluster aus einem frueheren Set
+// liefern, und deren Fragment-Traits stehen nur im Bundle ihres eigenen Sets.
+function isFragmentTraitClusterKey(key: string): boolean {
   const trait = parseClusterKey(key)?.trait;
-  return trait ? /UniqueTrait$/.test(trait) : false;
+  if (!trait) return false;
+  const setFromTrait = /^TFT(\d+)_/.exec(trait);
+  return isFragmentTraitName(trait, setFromTrait ? Number(setFromTrait[1]) : undefined);
 }
 function secondaryFromClusterKey(key: string): string | null {
   return parseClusterKey(key)?.secondary ?? null;

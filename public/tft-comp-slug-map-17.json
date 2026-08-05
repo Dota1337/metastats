@@ -3,8 +3,8 @@
   "source": "editorial — based on tftacademy.com slugs cross-referenced with tft_daily_comp_stats top-clusters (last 5d, set 17, patch 17.5)",
   "fetchedAt": "2026-06-18T13:35:00Z",
   "note": "primaryTrait can be empty string '' which means match-by-carry-only — used when the slug isn't clearly trait-bound (e.g. carry-printer / reroll / flex variants).",
+  "note2": "2026-08-05: 'graves-vex-9-5' (primaryTrait TFT17_GravesTrait) entfernt. GravesTrait ist ein Fragment-Trait (eine Stufe ab 1 Unit) und kann seit dem Klassifikations-Fix nie mehr Primary sein — der Eintrag haette nach dem Reclassify auf keine einzige Comp mehr gematcht. Die betroffenen Boards laufen jetzt unter ihrem echten Trait und werden von 'vex-9-5' (TFT17_ShieldTank) abgedeckt.",
   "slugs": {
-    "graves-vex-9-5": { "primaryTrait": "TFT17_GravesTrait", "primaryCarry": "TFT17_Vex" },
     "gnar-printer": { "primaryTrait": "TFT17_Astronaut", "primaryCarry": "TFT17_Gnar" },
     "samira-knock-up-copy": { "primaryTrait": "TFT17_SpaceGroove", "primaryCarry": "TFT17_Samira" },
     "corki-riven": { "primaryTrait": "TFT17_Astronaut", "primaryCarry": "TFT17_Corki" },

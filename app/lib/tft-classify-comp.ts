@@ -17,6 +17,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { DAMAGE_CARRY_ITEMS } from './tft-item-classes';
 import { compDefiningAugmentSlug } from './tft-comp-defining-augments';
+import { CURRENT_SET } from './current-set';
 
 export interface ClassifyTrait {
   name?: string;
@@ -94,35 +95,75 @@ function carryFromAugments(participant: ClassifyParticipant, units: ClassifyUnit
 // Runtime-Mirror von tft-classify-comp.mjs::loadCostMap — identische Quelle,
 // identisches Caching. App-Router-Default ist Node-Runtime (kein Edge), fs ist
 // erlaubt. Bei leerem/fehlendem Bundle: leere Map cachen (Swap wird dann No-Op).
-const _costMapCache = new Map<number, Map<string, number>>();
-function loadCostMap(setNumber: number): Map<string, number> {
-  const set = setNumber || 17;
-  const cached = _costMapCache.get(set);
+// Beides aus EINEM Bundle-Parse, per Set memoisiert:
+//   costMap        — characterId → cost, fuer den Cost-Aware-Swap
+//   fragmentTraits — Traits, die kein echter Comp-Trait sind (siehe unten)
+//
+// Fragment-Traits sind die Ein-Personen-Mechanik-Traits: genau EINE Stufe, die
+// schon ab 1 Einheit greift. Sie beschreiben keine Comp, sondern haengen an
+// einem einzelnen Champion — als Primary-Trait erzeugen sie Cluster wie
+// `TFT17_GravesTrait@1_TFT17_Vex`, wo Vex traegt und Graves nur danebensteht.
+//
+// Warum aus dem Bundle statt per Namensmuster: das Muster `/UniqueTrait$/` traf
+// in Set 17 elf der zwoelf, verfehlte aber `TFT17_GravesTrait` — 8 % aller
+// Comp-Spiele. Ein hartkodiertes `TFT\d+_GravesTrait` waere derselbe Fehler mit
+// Ansage, weil Set 18 sein eigenes Gegenstueck mit eigenem Namen bringt.
+//
+// Die Regex bleibt trotzdem als Fail-Safe bestehen (Union, NICHT Ersatz): faellt
+// der Bundle-Read aus, ist fragmentTraits leer — und ohne Filter werden
+// Fragment-Traits wieder Primary, also exakt der Bug von 2026-06-21. Ein
+// leerer Set darf hier nie "alles erlaubt" bedeuten.
+interface BundleDerived {
+  costMap: Map<string, number>;
+  fragmentTraits: Set<string>;
+}
+const _bundleCache = new Map<number, BundleDerived>();
+function loadBundleDerived(setNumber: number): BundleDerived {
+  const set = setNumber || CURRENT_SET;
+  const cached = _bundleCache.get(set);
   if (cached) return cached;
+  const derived: BundleDerived = { costMap: new Map(), fragmentTraits: new Set() };
   try {
     const bundle = JSON.parse(
       readFileSync(resolve(process.cwd(), `public/tft-assets-${set}.json`), 'utf8'),
-    ) as { champions?: Record<string, { cost?: number }> };
-    const map = new Map<string, number>();
+    ) as {
+      champions?: Record<string, { cost?: number }>;
+      traits?: Record<string, { tiers?: { minUnits?: number }[] }>;
+    };
     for (const [cid, ch] of Object.entries(bundle.champions || {})) {
-      if (typeof ch?.cost === 'number') map.set(cid, ch.cost);
+      if (typeof ch?.cost === 'number') derived.costMap.set(cid, ch.cost);
     }
-    _costMapCache.set(set, map);
-    return map;
-  } catch {
-    const empty = new Map<string, number>();
-    _costMapCache.set(set, empty);
-    return empty;
-  }
+    for (const [name, tr] of Object.entries(bundle.traits || {})) {
+      const tiers = tr?.tiers;
+      if (Array.isArray(tiers) && tiers.length === 1 && tiers[0]?.minUnits === 1) {
+        derived.fragmentTraits.add(name);
+      }
+    }
+  } catch { /* leere Defaults, Regex-Fail-Safe greift */ }
+  _bundleCache.set(set, derived);
+  return derived;
+}
+
+// Exportiert, weil derselbe Test an zwei Stellen gebraucht wird: hier beim
+// Klassifizieren (Write-Pfad) und in app/api/tft/comps/route.ts beim
+// Ausblenden alter Fragment-Cluster (Read-Pfad). Zwei Kopien waeren genau der
+// Drift, den wir bei UniqueTrait schon einmal hatten.
+export function isFragmentTraitName(name?: string, setNumber: number = CURRENT_SET): boolean {
+  if (!name) return false;
+  return /UniqueTrait$/.test(name) || loadBundleDerived(setNumber).fragmentTraits.has(name);
 }
 
 export function classifyComp(participant: ClassifyParticipant, opts: ClassifyOpts = {}): ClassifyResult | null {
-  const { currentSet = 17, withAugmentSuffix = false, costMap: costMapOverride } = opts;
+  const { currentSet = CURRENT_SET, withAugmentSuffix = false, costMap: costMapOverride } = opts;
   // Self-load the cost map (D1): the swap was dead because no caller passed it.
-  const costMap = costMapOverride ?? loadCostMap(currentSet);
+  const derived = loadBundleDerived(currentSet);
+  const costMap = costMapOverride ?? derived.costMap;
 
+  // Fragment-Trait-Filter: Bundle-Ground-Truth vereinigt mit dem alten
+  // Namensmuster. Begruendung an loadBundleDerived. Bewusst NICHT an
+  // costMapOverride gekoppelt — der Override ersetzt nur die Kosten.
   const traits = (participant.traits || []).filter(
-    t => (t.style ?? 0) > 0 && !/UniqueTrait$/.test(t.name || ''),
+    t => (t.style ?? 0) > 0 && !isFragmentTraitName(t.name, currentSet),
   );
   if (traits.length === 0) return null;
   traits.sort((a, b) => {
@@ -165,6 +206,12 @@ export function classifyComp(participant: ClassifyParticipant, opts: ClassifyOpt
       const level = Number(participant.level || 0);
       const fastEight = level === 8;
       const lvlNineFillerCase = level === 9 && top1.offensive <= top2.offensive;
+      // ACHTUNG: bewusst weiterhin das NAMENSMUSTER, nicht isFragmentTrait.
+      // Andere Bedeutung als beim Primary-Filter oben: hier geht es um "ist der
+      // Traeger die intendierte Carry, also Finger weg vom Swap". Bei
+      // GravesTrait traegt diese Annahme nicht (5-Koster-Filler auf ~10 % der
+      // Boards) — er wuerde den Swap in dessen Kernfall blockieren. Die
+      // Divergenz ist gewollt, nicht Drift. Details in der mjs.
       const hasActiveUniqueTrait = (participant.traits || []).some(
         t => (t.style ?? 0) > 0 && /UniqueTrait$/.test(t.name || ''),
       );

@@ -5,6 +5,7 @@
 //   TFT_Item_RedBuff       = Sunfire Cape (Set 17) — AoE-DoT-Damage → DAMAGE
 //   TFT_Item_Leviathan     = Nashor's Tooth (Set 17) — Caster-Carry-Item → DAMAGE
 //   TFT_Item_StatikkShiv   = Void Staff (Set 17) — Caster-Carry-Item → DAMAGE
+//   TFT_Item_MadredsBloodrazor = Giant Slayer (Set 17) — Carry-Item → DAMAGE
 // Diese gehören eindeutig in DAMAGE_CARRY_ITEMS, nicht in DEFENSIVE.
 //
 // **Mirror**: `app/lib/tft-item-classes.ts` re-exportiert die gleichen Sets
@@ -34,6 +35,7 @@ export const DAMAGE_CARRY_ITEMS = new Set([
   // Attack-speed — single-target / Runaan-spreader carry items
   'TFT_Item_RapidFireCannon',
   'TFT_Item_RunaansHurricane',
+  'TFT_Item_MadredsBloodrazor',  // Giant Slayer (Set-17 rename) — %-max-HP-Schaden, nur auf Carries
   // Bruiser-carry only (off-tank like Riven)
   'TFT_Item_SteraksGage',
   // Mana-engine carry items

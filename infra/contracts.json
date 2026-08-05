@@ -116,8 +116,9 @@
       "groupColumn": "region",
       "dateColumn": "snapshot_date",
       "groups": ["euw1", "eun1", "tr1", "ru", "me1", "na1", "br1", "la1", "la2", "kr", "jp1", "oc1", "sg2", "tw2", "vn2"],
-      "maxLagDays": 10,
-      "note": "STEHT ANFANGS AUF ROT und färbt sich über die nächsten Tage grün. Ein Gesamt-Frischecheck war blind dafür, dass einzelne Regionen zurückfielen: am 03.08.2026 standen jp1/oc1/sg2/tw2 auf dem 12.06. (52 Tage), weil der Driver die Regionen in fester Reihenfolge abarbeitete und nachts vom Daily-Crawl per Conflicts= gestoppt wurde. Prüft den Spiegel auf Supabase und damit die Kette Driver→Sync; die Schwelle bleibt bewusst weiter als beim Hetzner-Pendant, weil der Sync auf einem eigenen 6h-Timer läuft. Ziel ist 36h — anzufassen ist dann der Durchsatz, nicht diese Zahl."
+      "compareTo": "hetzner",
+      "maxLagDays": 1,
+      "note": "DIFFERENZ-MODUS seit 2026-08-05: misst je Region NUR den Spiegelverzug Supabase↔Hetzner, nicht mehr das absolute Alter. Vorher steckten beide Ursachen in einer Zahl, und der Vertrag meldete am 04.08. oc1 mit 53 Tagen, obwohl oc1 am selben Tag 951 Snapshots geschrieben hatte — es fehlte nur der Spiegellauf. Die absolute Frische liegt jetzt allein bei marketvalue/regionen-abdeckung-hetzner (maxLagDays 2); dieser Vertrag wacht über die Kette Quelle→Spiegel. maxLagDays 1, weil der Sync alle 6h läuft: alles darüber wäre bei diesem Takt bedeutungslos. Der laufende Tag ist implizit ausgeschlossen, weil gegen den Hetzner-Stand verglichen wird und nicht gegen heute."
     },
     {
       "id": "marketvalue/regionen-abdeckung-hetzner",
@@ -141,7 +142,8 @@
       "table": "tft_player_marketvalue_snapshots",
       "dateColumn": "snapshot_date",
       "minRatio": 0.9,
-      "note": "Kernvertrag gegen HOCH-1: Supabase muss mindestens 90% der Hetzner-Rows desselben Tages haben. Nur auf der Box prüfbar."
+      "windowDays": 7,
+      "note": "Kernvertrag gegen HOCH-1: Supabase muss mindestens 90% der Hetzner-Rows haben. Seit 2026-08-05 über ein 7-Tage-FENSTER ohne den laufenden Tag statt über max(snapshot_date) — der neueste Tag wird gerade geschrieben, der Spiegel läuft aber nur alle 6h, und der Vertrag meldete deshalb am 04.08. 23:01 '72%, Sync läuft nicht', während beide DBs für alle 19 Tage seit dem 15.07. zeilengleich waren. Die Fenstersumme fängt zusätzlich eine Klasse, die der Einzeltag nie sah: das Sync-Script hat ein rollierendes --window 3, ein bei längerem Ausfall herausgefallener Tag bleibt DAUERHAFT ungespiegelt (Vorfall 24.07.-03.08., 38.197 nachgezogene Snapshots). minRatio bleibt bei 0.9 — der Fehler lag im Messzeitpunkt, nicht in der Schwelle. Nur auf der Box prüfbar."
     },
 
     {

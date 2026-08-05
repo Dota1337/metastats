@@ -172,6 +172,21 @@ async function pgCountOnDay(table, col, day) {
   return r.rows[0].c;
 }
 
+async function pgCountInRange(table, col, from, to) {
+  const pool = await hetznerPool();
+  const r = await pool.query(
+    `select count(*)::int as c from ${table}
+      where ${col}::date >= $1::date and ${col}::date <= $2::date`,
+    [from, to],
+  );
+  return r.rows[0].c;
+}
+
+/** Tag relativ zu heute, UTC, als YYYY-MM-DD. `utcDay(-1)` = gestern. */
+function utcDay(offsetDays) {
+  return new Date(Date.now() + offsetDays * 86_400_000).toISOString().slice(0, 10);
+}
+
 // ---------------------------------------------------------------- Prüfung
 
 /**
@@ -359,6 +374,7 @@ async function checkCoverage(c, r) {
   if (c.backend === 'hetzner' && !isOnBox()) {
     return r('skipped', 'nur auf der Hetzner-Box prüfbar');
   }
+  if (c.compareTo) return checkCoverageLag(c, r);
   const isSupa = c.backend === 'supabase';
 
   let rows;
@@ -402,21 +418,115 @@ async function checkCoverage(c, r) {
     `${stale.length}/${c.groups.length} ${c.groupColumn}s über ${c.maxLagDays}d: ${stale.join(' ')}`);
 }
 
-/** Spiegel-Vertrag: Ziel muss ~so viele Rows haben wie die Quelle. */
+/**
+ * Abdeckungs-Vertrag im Differenz-Modus (`compareTo`): misst je Gruppe NUR den
+ * Spiegelverzug Ziel↔Quelle, nicht das absolute Alter.
+ *
+ * Vorher mass der Supabase-Abdeckungsvertrag beides in einer Zahl — Quellalter
+ * PLUS Spiegelverzug. Am 04.08.2026 meldete er oc1 mit 53 Tagen, obwohl oc1
+ * am selben Tag gelaufen war und 951 Snapshots geschrieben hatte; es fehlte
+ * nur der Spiegellauf. Eine Zahl, zwei Ursachen, keine Diagnose.
+ *
+ * Jetzt gilt die Arbeitsteilung: `*-hetzner` (maxLagDays 2) wacht über die
+ * Frische an der Quelle, dieser hier über die Kette Quelle→Spiegel. Jeder
+ * Vertrag sagt genau eine Sache. Wichtig: der Verzug wird gegen die Quelle
+ * gemessen, nicht gegen heute — eine Region, die an der Quelle seit Wochen
+ * still steht, ist hier korrekt grün und drüben rot.
+ */
+async function checkCoverageLag(c, r) {
+  if (!isOnBox()) return r('skipped', 'Differenz-Vergleich braucht beide DBs (nur auf der Box)');
+
+  // Der laufende Tag ist quellseitig ausgeschlossen: eine Region, die vor
+  // Minuten fertig geschrieben wurde, wartet zwangsläufig bis zum nächsten
+  // 6h-Spiegellauf. Ohne diesen Ausschluss meldet der Vertrag genau den
+  // Normalbetrieb als Bruch — dieselbe Fehlalarm-Klasse, die er beheben soll,
+  // nur durch die Hintertür (beim ersten Testlauf am 05.08. prompt passiert:
+  // sg2 wurde 13:5x fertig und stand sofort mit "54d hinter Hetzner" drin).
+  const pool = await hetznerPool();
+  const q = await pool.query(
+    `select ${c.groupColumn} as grp, max(${c.dateColumn}) as newest
+       from ${c.table} where ${c.dateColumn}::date < current_date
+       group by ${c.groupColumn}`,
+  );
+  const srcDay = new Map(q.rows.map(x => [
+    String(x.grp),
+    x.newest ? String(x.newest instanceof Date ? x.newest.toISOString().slice(0, 10) : x.newest).slice(0, 10) : null,
+  ]));
+
+  const behind = [];
+  for (const g of c.groups) {
+    const src = srcDay.get(g);
+    if (!src) continue;   // an der Quelle nie vorhanden → Sache des Frische-Vertrags
+    const res = await supaGet(
+      `${c.table}?select=${c.dateColumn}&${c.groupColumn}=eq.${g}`
+      + `&order=${c.dateColumn}.desc&limit=1`,
+    );
+    const j = await res.json();
+    const dst = j[0]?.[c.dateColumn] ? String(j[0][c.dateColumn]).slice(0, 10) : null;
+    if (!dst) { behind.push(`${g}(nie gespiegelt)`); continue; }
+    const lag = Math.round((Date.parse(src) - Date.parse(dst)) / 86_400_000);
+    if (lag > c.maxLagDays) behind.push(`${g}(${lag}d hinter Hetzner)`);
+  }
+
+  return behind.length === 0
+    ? r('ok', `alle ${c.groups.length} ${c.groupColumn}s ≤ ${c.maxLagDays}d hinter der Quelle`)
+    : r('broken',
+        `${behind.length}/${c.groups.length} ${c.groupColumn}s über ${c.maxLagDays}d Spiegelverzug: ${behind.join(' ')}`);
+}
+
+/**
+ * Spiegel-Vertrag: Ziel muss ~so viele Rows haben wie die Quelle.
+ *
+ * Geprüft wird ein FENSTER (Default 7 Tage), das den laufenden Tag ausschliesst
+ * — nicht der neueste Tag. Drei Gründe, alle am 05.08.2026 gemessen:
+ *
+ * 1. `max(snapshot_date)` ist per Konstruktion der Tag, der GERADE geschrieben
+ *    wird. Der Spiegel läuft auf einem eigenen 6h-Timer (01/07/13/19:15 UTC),
+ *    der zentrale Vertragslauf um 23:00. Am 04.08. meldete dieser Vertrag
+ *    deshalb "72%, Sync läuft nicht", während jeder Sync-Lauf selbst 100%
+ *    Parität meldete und beide DBs für alle 19 Tage seit dem 15.07.
+ *    zeilengleich waren. Ein Vertrag mit vier Fehlalarmen pro Tag wird
+ *    stummgeschaltet und schützt dann gar nichts.
+ * 2. Ein Einzeltag kann im Rundlauf leer sein (am 04.08. hatten 13 von 15
+ *    Regionen null Rows). Bei `src === 0` ging die alte Ratio auf 1 und der
+ *    Vertrag wurde vakuum-grün.
+ * 3. Das Sync-Script hat ein rollierendes Fenster (`--window 3`). Fällt der
+ *    Sync länger als drei Tage aus, ist der herausgefallene Tag DAUERHAFT
+ *    ungespiegelt — genau die Klasse des Vorfalls 24.07.–03.08. (38.197
+ *    nachgezogene Snapshots). Ein Einzeltags-Check sah das nach der Recovery
+ *    nie wieder; die Fenstersumme sieht es.
+ *
+ * `minRatio` bleibt bewusst unangetastet — der Fehler lag im Messzeitpunkt,
+ * nicht in der Schwelle. Die Schwelle ratio-basiert zu definieren ("neuester
+ * Tag, der die Ratio erfüllt") wäre eine Tautologie: der Vertrag könnte dann
+ * per Konstruktion nie brechen.
+ */
 async function checkMirror(c, r) {
   if (!isOnBox()) return r('skipped', 'Mirror-Vergleich braucht beide DBs (nur auf der Box)');
 
-  const srcDay = await pgMaxDate(c.table, c.dateColumn);
-  if (!srcDay) return r('broken', `Quelle ${c.table} ist leer`);
+  const windowDays = c.windowDays ?? 7;
+  const from = utcDay(-windowDays);
+  const to = utcDay(-1);
+  const span = `${from}…${to}`;
 
-  const src = await pgCountOnDay(c.table, c.dateColumn, srcDay);
-  const dst = await supaCount(c.table, `&${c.dateColumn}=eq.${srcDay}`);
-  const ratio = src === 0 ? 1 : dst / src;
+  const src = await pgCountInRange(c.table, c.dateColumn, from, to);
+  // src === 0 ist KEIN Erfolg: dann hat die Quelle eine ganze Woche nichts
+  // produziert. Das ist ein Fall für den Frische-Vertrag, aber stillschweigend
+  // grün darf er hier nicht werden.
+  if (src === 0) {
+    return r('broken', `${span}: Hetzner hat im Fenster keine Rows — Quelle prüfen`);
+  }
+
+  const dst = await supaCount(
+    c.table,
+    `&${c.dateColumn}=gte.${from}&${c.dateColumn}=lte.${to}`,
+  );
+  const ratio = dst / src;
 
   return ratio >= c.minRatio
-    ? r('ok', `${srcDay}: Supabase ${dst} / Hetzner ${src} (${(ratio * 100).toFixed(0)}%)`)
+    ? r('ok', `${span}: Supabase ${dst} / Hetzner ${src} (${(ratio * 100).toFixed(0)}%)`)
     : r('broken',
-        `${srcDay}: Supabase hat nur ${dst} von ${src} Hetzner-Rows ` +
+        `${span}: Supabase hat nur ${dst} von ${src} Hetzner-Rows ` +
         `(${(ratio * 100).toFixed(0)}%, erwartet ${(c.minRatio * 100).toFixed(0)}%) — Sync läuft nicht`);
 }
 

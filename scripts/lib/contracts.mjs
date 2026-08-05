@@ -117,6 +117,28 @@ async function supaDistinctDays(table, col, from) {
   return [...seen];
 }
 
+/**
+ * Ruft eine Postgres-Funktion über PostgREST auf.
+ *
+ * Der Weg über ein RPC ist kein Umweg, sondern der einzige: PostgREST kann
+ * weder GROUP BY noch regexp_replace, und Aggregate wie die Familien-Abdeckung
+ * lassen sich nicht aus Einzelabfragen zusammenstückeln, ohne die Aggregation
+ * ein zweites Mal in JS nachzubauen — und damit zwei Definitionen derselben
+ * Kennzahl zu haben, die auseinanderlaufen.
+ */
+async function supaRpc(fn, args) {
+  const res = await fetch(`${supaBase()}/rpc/${fn}`, {
+    method: 'POST',
+    headers: { ...supaHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(args),
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!res.ok) {
+    throw new Error(`Supabase RPC ${fn} HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  }
+  return res.json();
+}
+
 // ---------------------------------------------------------------- Hetzner
 
 let pgPoolPromise = null;
@@ -201,6 +223,7 @@ export async function checkContract(c) {
     if (c.type === 'file') return checkFile(c, r);
     if (c.type === 'endpoint') return await checkEndpoint(c, r);
     if (c.type === 'coverage') return await checkCoverage(c, r);
+    if (c.type === 'guide-coverage') return await checkGuideCoverage(c, r);
 
     if (c.backend === 'hetzner' && !isOnBox()) {
       return r('skipped', 'nur auf der Hetzner-Box prüfbar');
@@ -416,6 +439,97 @@ async function checkCoverage(c, r) {
   }
   return r('broken',
     `${stale.length}/${c.groups.length} ${c.groupColumn}s über ${c.maxLagDays}d: ${stale.join(' ')}`);
+}
+
+/**
+ * Guide-Abdeckungs-Vertrag: deckt die Comp-Guide-Quelle noch das ab, was
+ * tatsächlich gespielt wird?
+ *
+ * Der einzige Vertrag, der eine DB-Aggregation gegen eine Repo-Datei hält —
+ * beide Seiten können unabhängig voneinander wegdriften, und die interessante
+ * Größe ist ihr Schnitt. Die Guides kommen aus MetaTFTs Auto-Clustering, die
+ * gespielten Familien aus unseren eigenen Match-Daten. Verschiebt ein Patch das
+ * Meta, sinkt die Abdeckung ohne dass irgendein Job fehlschlägt: das Bundle ist
+ * frisch, die Tabelle ist frisch, nur passen sie nicht mehr zueinander. Die
+ * `datei-frische` daneben sieht das strukturell nicht.
+ *
+ * Die Aggregation steht in der DB (Migration 0054) und wird vom Verifier
+ * (`npm run verify:coverage`) mit denselben Parametern aufgerufen — der Vertrag
+ * misst also exakt die Zahl, die man lokal nachstellen kann.
+ *
+ * Die Schwelle ist bewusst locker: gemessen über 37 Fenster lag die Abdeckung
+ * bei 67,4 % ± 0,7 pp. Ein Gate auf dem aktuellen Wert wäre an jedem einzelnen
+ * historischen Fenster rot gewesen. 64 % liegt ~5 sd unter dem Mittel und
+ * schlägt erst an, wenn wirklich etwas kaputt ist — ein Meta-Shift ohne
+ * MetaTFT-Refresh, ein Import mit halber Familien-Map, ein Set-Wechsel, bei dem
+ * das Bundle nachhinkt.
+ */
+async function checkGuideCoverage(c, r) {
+  // Set aus der Single Source of Truth, nicht aus dem Vertrag: sonst wäre der
+  // Vertrag beim Set-Wechsel genau der Ort, an dem niemand nachzieht.
+  const setPath = resolve(REPO_ROOT, 'public', 'tft-set.json');
+  if (!existsSync(setPath)) return r('error', 'public/tft-set.json fehlt');
+  const setJson = JSON.parse(readFileSync(setPath, 'utf8'));
+  const set = Number(setJson.set ?? setJson.setNumber ?? setJson.current);
+  if (!Number.isFinite(set)) return r('error', 'public/tft-set.json hat keine Set-Nummer');
+
+  const bundlePath = (c.bundlePath || 'public/tft-metatft-comps-{set}.json')
+    .replace('{set}', String(set));
+  const abs = resolve(REPO_ROOT, bundlePath);
+  if (!existsSync(abs)) return r('broken', `${bundlePath} existiert nicht`);
+
+  let familyMap;
+  try {
+    familyMap = JSON.parse(readFileSync(abs, 'utf8')).familyMap;
+  } catch (err) {
+    return r('broken', `${bundlePath} ist kein gültiges JSON: ${err.message}`);
+  }
+  if (!familyMap || Object.keys(familyMap).length === 0) {
+    return r('broken', `${bundlePath} hat keine familyMap — Import unvollständig`);
+  }
+
+  const rows = await supaRpc(c.rpc, {
+    p_days: c.days ?? 7,
+    p_set: set,
+    p_top: c.top ?? 50,
+  });
+  if (!Array.isArray(rows)) return r('error', `${c.rpc} lieferte kein Array`);
+
+  // Ohne Datenlage ist ein Verhältnis bedeutungslos: 3 von 3 wären 100 %. Der
+  // Fall tritt real auf, wenn der Daily-Crawl steht oder das Set frisch
+  // gewechselt hat — beides soll hier laut sein, nicht grün.
+  const minFamilies = c.minFamilies ?? Math.floor((c.top ?? 50) * 0.8);
+  if (rows.length < minFamilies) {
+    return r('broken',
+      `nur ${rows.length} Familien über der Spielgrenze (min ${minFamilies}) — `
+      + `zu dünne Datenlage für eine Abdeckungs-Aussage, Set ${set}`);
+  }
+
+  // Gemessen wird der Anteil der SPIELE mit Guide, nicht der Anteil der
+  // Familien. Beides ist verfügbar und die Zahlen liegen weit auseinander —
+  // aktuell 28/50 Familien (56 %) bei 70 % Volumen —, weil die gedeckten
+  // Familien die grossen sind. Für die Frage „wie oft steht ein Spieler vor
+  // einer Comp-Seite ohne Guide" zählt das Volumen; der Familien-Zähler würde
+  // eine Long-Tail-Familie mit 120 Spielen genauso gewichten wie DRX__Kindred
+  // mit 44.865. Der Familien-Stand steht trotzdem im Detail, weil er die
+  // schnellere Diagnose ist.
+  const missing = rows.filter(x => !familyMap[x.family_key]);
+  const matchedRows = rows.length - missing.length;
+  const totalGames = rows.reduce((s, x) => s + Number(x.total_games), 0);
+  const missingGames = missing.reduce((s, x) => s + Number(x.total_games), 0);
+  if (totalGames === 0) return r('error', `${c.rpc} lieferte nur Zeilen ohne Spiele`);
+
+  const ratio = (totalGames - missingGames) / totalGames;
+  const pct = (ratio * 100).toFixed(1);
+  const min = (c.minRatio * 100).toFixed(0);
+  const stand = `${pct} % Volumen (min ${min} %), ${matchedRows}/${rows.length} Familien`;
+
+  if (ratio >= c.minRatio) return r('ok', stand);
+
+  const worst = missing
+    .slice(0, 3)
+    .map(x => `${x.family_key.replace(/TFT\d+_/g, '')}(${x.total_games})`);
+  return r('broken', `nur ${stand} — grösste Lücken: ${worst.join(' ')}`);
 }
 
 /**

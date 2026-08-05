@@ -172,6 +172,20 @@
     },
 
     {
+      "id": "metatft-comps/familien-abdeckung",
+      "owner": ".github/workflows/metatft-comps-daily.yml",
+      "type": "guide-coverage",
+      "backend": "supabase",
+      "rpc": "get_metatft_family_coverage",
+      "bundlePath": "public/tft-metatft-comps-{set}.json",
+      "days": 7,
+      "top": 50,
+      "minFamilies": 40,
+      "minRatio": 0.64,
+      "note": "Die datei-frische daneben prüft, DASS das Bundle ankommt — nicht, ob es noch das abdeckt, was gespielt wird. Beide Seiten driften unabhängig: MetaTFT clustert neu, unser Meta verschiebt sich mit dem Patch. Sinkt der Schnitt, ist jeder Job grün und die Guide-Sektion trotzdem für einen wachsenden Teil der Comp-Seiten leer. minRatio zielt auf den Anteil der SPIELE, nicht der Familien: aktuell 70,0 % Volumen bei nur 28/50 Familien, weil die gedeckten Familien die grossen sind. Streuung des Volumens über 37 Fenster 67,4 % ± 0,7 pp, deshalb greift die Schwelle erst bei 64 % (~5 sd) und markiert echten Bruch statt Rauschen. Set kommt aus public/tft-set.json, ist also set-wechselfest. Dieselbe Zahl liefert `npm run verify:coverage`."
+    },
+
+    {
       "id": "pro-teams/datei-frische",
       "owner": ".github/workflows/pro-teams-weekly.yml",
       "type": "file",

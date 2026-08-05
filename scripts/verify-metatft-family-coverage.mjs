@@ -64,39 +64,35 @@ async function main() {
 
   const client = new pg.Client({ connectionString: encodePasswordInPgUrl(DATABASE_URL) });
   await client.connect();
-  const sql = `
-    SELECT
-      regexp_replace(cluster_key, '(\\*\\d|~[A-Za-z]+|#.+)', '', 'g') AS family,
-      SUM(games)::int AS games
-    FROM tft_daily_comp_stats
-    WHERE day >= current_date - $1::int
-      AND set_number = $2
-      AND bucket IN ('master', 'grandmaster', 'challenger')
-    GROUP BY family
-    HAVING SUM(games) >= 100
-    ORDER BY games DESC
-    LIMIT $3;
-  `;
-  const r = await client.query(sql, [days, set, topN]);
+  // Die Aggregation steht in der DB (Migration 0054), nicht hier. Grund: der
+  // Laufzeit-Vertrag `metatft-comps/familien-abdeckung` misst dieselbe Zahl von
+  // der Box aus über PostgREST, und PostgREST kann kein GROUP BY mit
+  // regexp_replace. Zwei Kopien derselben SQL wären garantiert irgendwann
+  // uneinig darüber, was „abgedeckt" heisst.
+  //
+  // Was die Funktion normalisiert und warum das VOR dem GROUP BY passieren
+  // muss, steht in der Migration. Kurzfassung: bis 2026-08-05 wurde das
+  // `@<level>` erst hier in JS entfernt — also nach Aggregation und Top-N-Cut.
+  // Jede Familie zählte einmal pro Trait-Level, `ManaTrait__Bard` stand mit
+  // 5.325 und 3.845 doppelt in der Miss-Liste statt einmal mit 12.038, und das
+  // Ergebnis war um +4,4 pp zu hoch (74,4 % statt 70,0 %).
+  const r = await client.query(
+    'SELECT family_key, total_games FROM get_metatft_family_coverage($1::int, $2::int, $3::int)',
+    [days, set, topN],
+  );
   await client.end();
-
-  // DB-Familie ist `<trait>@<level>_<carry>`; unsere Map konsolidiert Level und
-  // Augment weg (`<trait>__<carry>`, User-Override 2026-06-21).
-  const toFamilyKey = (dbFamily) => {
-    const m = /^(.*)@\d+_(.*)$/.exec(dbFamily);
-    return m ? `${m[1]}__${m[2]}` : null;
-  };
 
   const matched = [];
   const missing = [];
   for (const row of r.rows) {
-    const key = toFamilyKey(row.family);
-    if (key && familyMap[key]) matched.push({ ...row, key, cluster: familyMap[key] });
-    else missing.push({ ...row, key });
+    // `family_key` ist bereits der Map-Schlüssel. Ein cluster_key ohne
+    // `@<level>` bleibt unverändert und findet dann schlicht keinen Guide.
+    if (familyMap[row.family_key]) matched.push({ ...row, cluster: familyMap[row.family_key] });
+    else missing.push({ ...row });
   }
 
-  const totalGames = r.rows.reduce((s, x) => s + Number(x.games), 0);
-  const matchedGames = matched.reduce((s, x) => s + Number(x.games), 0);
+  const totalGames = r.rows.reduce((s, x) => s + Number(x.total_games), 0);
+  const matchedGames = matched.reduce((s, x) => s + Number(x.total_games), 0);
   const distinctClusters = new Set(matched.map(x => x.cluster)).size;
 
   console.log(`  Familien getroffen : ${matched.length}/${r.rows.length}`);
@@ -106,7 +102,7 @@ async function main() {
   if (missing.length) {
     console.log(`\n  ohne Guide (Top 15):`);
     for (const x of missing.slice(0, 15)) {
-      console.log(`    ${String(x.games).padStart(7)}  ${(x.key || x.family).replace(/TFT\d+_/g, '')}`);
+      console.log(`    ${String(x.total_games).padStart(7)}  ${x.family_key.replace(/TFT\d+_/g, '')}`);
     }
   }
 }

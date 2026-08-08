@@ -1,19 +1,19 @@
 {
   "set": 17,
   "source": "tactics.tools/info/augments",
-  "fetchedAt": "2026-08-01T06:54:33.785Z",
+  "fetchedAt": "2026-08-08T06:18:39.763Z",
   "counts": {
     "cards": 265,
-    "pinned": 255,
-    "unmatched": 10,
+    "pinned": 251,
+    "unmatched": 14,
     "patterns": {
       "2-1": 95,
       "2-1|3-2": 21,
       "2-1|3-2|4-2": 10,
-      "3-2|4-2": 65,
-      "3-2": 38,
+      "3-2|4-2": 64,
+      "3-2": 36,
       "(none)": 4,
-      "4-2": 22
+      "4-2": 21
     }
   },
   "stages": {
@@ -253,9 +253,6 @@
     "TFT_Augment_Dhampyr1": [
       "3-2",
       "4-2"
-    ],
-    "TFT_Augment_MagicRoll": [
-      "3-2"
     ],
     "TFT_Augment_AdvancedLoan": [
       "2-1"
@@ -734,12 +731,6 @@
     "TFT_Augment_GoldenGamble": [
       "2-1"
     ],
-    "TFT_Augment_GoldenGamblePlus": [
-      "3-2"
-    ],
-    "TFT_Augment_GoldenGamblePlusPlus": [
-      "4-2"
-    ],
     "TFT_Augment_HardCommit": [
       "2-1"
     ],
@@ -792,10 +783,6 @@
       "3-2"
     ],
     "TFT6_Augment_ForceOfNaturePlus": [
-      "4-2"
-    ],
-    "TFT_Augment_OneBuffTwoBuff": [
-      "3-2",
       "4-2"
     ],
     "TFT9_Augment_PandorasRadiantBox": [

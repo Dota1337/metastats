@@ -1,12 +1,12 @@
 {
   "set": 17,
   "source": "tactics.tools/info/augments",
-  "fetchedAt": "2026-08-01T06:54:33.638Z",
+  "fetchedAt": "2026-08-08T06:18:39.610Z",
   "counts": {
     "silver": 70,
     "gold": 124,
     "prismatic": 71,
-    "pinned": 255
+    "pinned": 251
   },
   "tiers": {
     "TFT7_Augment_AFK": 1,
@@ -77,7 +77,6 @@
     "TFT6_Augment_TinyTitans": 1,
     "TFT_Augment_TwinGuardians": 1,
     "TFT_Augment_Dhampyr1": 1,
-    "TFT_Augment_MagicRoll": 2,
     "TFT_Augment_AdvancedLoan": 2,
     "TFT_Augment_AdvancedLoanPlus": 2,
     "TFT17_Augment_AnimaSquad_Commander": 2,
@@ -220,8 +219,6 @@
     "TFT_Augment_GiantAndMighty": 3,
     "TFT10_Augment_GoingLong": 3,
     "TFT_Augment_GoldenGamble": 3,
-    "TFT_Augment_GoldenGamblePlus": 3,
-    "TFT_Augment_GoldenGamblePlusPlus": 3,
     "TFT_Augment_HardCommit": 3,
     "TFT17_Augment_PrimordianPrismaticAugment": 3,
     "TFT9_Augment_HedgeFund": 3,
@@ -239,7 +236,6 @@
     "TFT_Augment_MoneyMonsoon": 3,
     "TFT6_Augment_ForceOfNature": 3,
     "TFT6_Augment_ForceOfNaturePlus": 3,
-    "TFT_Augment_OneBuffTwoBuff": 3,
     "TFT9_Augment_PandorasRadiantBox": 3,
     "TFT6_Augment_GachaAddict": 3,
     "TFT9_Augment_RollTheDice": 3,

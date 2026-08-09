@@ -226,7 +226,10 @@ export default function CompRow({
           ? 'sm:grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_5rem_3.5rem_3.5rem_3.5rem_3.5rem_3.75rem_3rem]'
           : 'sm:grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_5rem_3.5rem_3.5rem_3.5rem_3.5rem_3rem]'
       } items-center gap-2.5 sm:gap-4`}>
-        <div className="text-[#7a8aa0] tabular-nums text-right text-[13px] font-medium">{rank > 0 ? rank : ''}</div>
+        {/* Rang ist eine Ordnungszahl, kein Messwert — vorher trug er als
+            einzige Zahl der Zeile font-medium, während top4/top1 in Regular
+            standen. Die Hierarchie zeigte also auf die unwichtigste Zahl. */}
+        <div className="text-fg-muted tabular-nums text-right text-[13px]">{rank > 0 ? rank : ''}</div>
         <div
           className="w-[30px] h-[30px] rounded-md flex items-center justify-center font-bold text-sm shadow-sm"
           style={{ color: tier.color, backgroundColor: `${tier.color}28`, border: `1.5px solid ${tier.color}55` }}
@@ -236,10 +239,14 @@ export default function CompRow({
         </div>
         <div className="min-w-0 leading-tight flex items-center gap-2">
         <div className="min-w-0 flex-1 leading-tight">
-          <div className="text-white font-semibold text-sm sm:text-[15px] truncate">
-            <span title={traitTooltip || undefined} className="text-[#cdd6e0]">{traitDisplay}</span>
-            <span className="text-[#5a6a80] mx-1">·</span>
-            <span title={tftChampionTooltip(assets, carryCid) || undefined} className="text-white">
+          {/* Trait und Carry standen beide in font-semibold und unterschieden
+              sich nur über zwei benachbarte Grautöne. Der Carry ist die
+              Identität der Comp, das Trait der Kontext — deshalb Carry weiß +
+              semibold, Trait eine Stufe leichter. Größen bleiben unverändert. */}
+          <div className="text-fg-primary font-semibold text-sm sm:text-[15px] truncate">
+            <span title={traitTooltip || undefined} className="text-fg-bright font-medium">{traitDisplay}</span>
+            <span className="text-fg-faint mx-1">·</span>
+            <span title={tftChampionTooltip(assets, carryCid) || undefined} className="text-fg-primary">
               {carry?.name || (carryCid ? prettyChar(carryCid) : '')}
             </span>
             {parts?.carryStar === 3 && (
@@ -266,7 +273,7 @@ export default function CompRow({
               );
             })()}
             {secondaryName && (
-              <span className="text-[#a0b0c5] text-[11px] ml-1">
+              <span className="text-fg-secondary text-[11px] font-normal ml-1">
                 {(t('tft.comp.withSecondary') as string).replace('{name}', secondaryName)}
               </span>
             )}
@@ -294,7 +301,7 @@ export default function CompRow({
                 </span>
               )}
               {comp.avgLevel != null && (
-                <span className="text-[#7a8aa0]">Lvl Ø {comp.avgLevel.toFixed(1)}</span>
+                <span className="text-fg-muted">Lvl Ø {comp.avgLevel.toFixed(1)}</span>
               )}
             </div>
           )}
@@ -385,16 +392,21 @@ export default function CompRow({
         <div className="hidden sm:block text-center tabular-nums font-semibold text-lg" style={{ color: tier.color }}>
           {comp.avgPlacement != null ? comp.avgPlacement.toFixed(2) : '—'}
         </div>
-        <div className="hidden sm:block text-right tabular-nums text-[#cdd6e0] text-[13px]" title={top4ShareTip}>
+        {/* Drei Stufen statt vier fast gleicher Grautöne, alle in identischer
+            Schriftgröße wie vorher:
+            Entscheidungswerte (Top4/Top1) hell + semibold,
+            Kontextwert (Pickrate) sekundär + medium,
+            Stichprobe (Games) gedämpft + regular. */}
+        <div className="hidden sm:block text-right tabular-nums text-fg-bright font-semibold text-[13px]" title={top4ShareTip}>
           {comp.top4Rate != null ? `${(comp.top4Rate * 100).toFixed(0)}%` : '—'}
         </div>
-        <div className="hidden sm:block text-right tabular-nums text-[#cdd6e0] text-[13px]" title={winShareTip}>
+        <div className="hidden sm:block text-right tabular-nums text-fg-bright font-semibold text-[13px]" title={winShareTip}>
           {comp.top1Rate != null ? `${(comp.top1Rate * 100).toFixed(0)}%` : '—'}
         </div>
-        <div className="hidden sm:block text-right tabular-nums text-[#a0b0c5] text-[13px]">
+        <div className="hidden sm:block text-right tabular-nums text-fg-secondary font-medium text-[13px]">
           {comp.pickRate != null ? `${(comp.pickRate * 100).toFixed(2)}%` : '—'}
         </div>
-        <div className="hidden sm:block text-right tabular-nums text-[#7a8aa0] text-[12px]">
+        <div className="hidden sm:block text-right tabular-nums text-fg-muted text-[12px]">
           {comp.games}
         </div>
         {showVelocity && (
@@ -404,7 +416,7 @@ export default function CompRow({
               if (!v) {
                 return (
                   <span
-                    className="text-[#5a6a80]"
+                    className="text-fg-faint"
                     title={t('tft.velocity.notEnough')}
                   >—</span>
                 );
@@ -423,7 +435,7 @@ export default function CompRow({
               if (v.deltaAvgPlace == null) {
                 return (
                   <span
-                    className="text-[#5a6a80]"
+                    className="text-fg-faint"
                     title={t('tft.velocity.notEnough')}
                   >—</span>
                 );
@@ -492,13 +504,15 @@ export default function CompRow({
           <span className="font-semibold text-lg" style={{ color: tier.color }}>
             {comp.avgPlacement != null ? comp.avgPlacement.toFixed(2) : '—'}
           </span>
-          <span className="text-[#cdd6e0]">
+          {/* Gleiche drei Stufen wie Desktop. Die Pickrate stand mobil auf
+              demselben Hellton wie Top4 und wirkte dadurch gleich wichtig. */}
+          <span className="text-fg-bright font-semibold">
             {comp.top4Rate != null ? `${(comp.top4Rate * 100).toFixed(0)}%` : '—'}
           </span>
-          <span className="text-[#cdd6e0]">
+          <span className="text-fg-secondary font-medium">
             {comp.pickRate != null ? `${(comp.pickRate * 100).toFixed(1)}%` : '—'}
           </span>
-          <span className="text-[#7a8aa0]">{comp.games}</span>
+          <span className="text-fg-muted">{comp.games}</span>
         </div>
       </div>
     </div>

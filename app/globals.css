@@ -55,8 +55,20 @@
   --accent-lol: #c89b3c;
   --accent-tft: #7B61FF;
   --accent: var(--accent-lol);
-  --accent-soft: color-mix(in srgb, var(--accent) 15%, transparent);
-  --accent-glow: color-mix(in srgb, var(--accent) 30%, transparent);
+
+  /* Derselbe Accent als RGB-Tripel, für transparente Ableitungen:
+     rgb(var(--accent-rgb) / 15%). Das Tripel muss beim Wechsel der Hex-Werte
+     oben mitgeführt werden — dafür braucht es keinen Fallback und keine
+     verdoppelten Regeln (siehe Begründung unten bei den Premium-Klassen).
+
+     KEINE fertig abgeleiteten Tokens hier (`--accent-soft: rgb(...)` o.ä.):
+     ein var() im WERT einer Custom-Property wird dort aufgelöst, wo die
+     Property DEKLARIERT ist — also auf :root, wo der Accent Gold ist. So ein
+     Token erbt sich als fertiges Gold nach unten und ignoriert
+     [data-game="tft"] still. Die Ableitung gehört in die konsumierende Regel. */
+  --accent-lol-rgb: 200 155 60;
+  --accent-tft-rgb: 123 97 255;
+  --accent-rgb: var(--accent-lol-rgb);
 
   /* --- Semantik ------------------------------------------------------------
      WELLE-2-SCHULD: Win/Loss läuft heute über ZWEI parallele Systeme —
@@ -104,6 +116,9 @@
    du eine lila LoL-Seite, wenn der Cookie auf tft steht. */
 [data-game="tft"] {
   --accent: var(--accent-tft);
+  /* Muss mit --accent zusammen umgeschaltet werden — sonst bleiben alle
+     transparenten Ableitungen gold, während die Volltöne lila werden. */
+  --accent-rgb: var(--accent-tft-rgb);
 }
 
 /* @theme inline registriert die Tokens als Tailwind-Utilities
@@ -164,16 +179,27 @@ body {
 }
 
 /* ============================================================================
-   PREMIUM-KLASSEN  ·  Welle 1, Commit B1
+   PREMIUM-KLASSEN  ·  Welle 1, Commit B1 + B2
    ----------------------------------------------------------------------------
    Lagen bis 2026-08-09 als Inline-<style>-Block in app/page.tsx und waren
    damit auf 51 von 52 Routen technisch nicht verfügbar — u.a. hat
    ApiUnavailable.tsx `className="glass"` gesetzt, ohne dass die Klasse dort
    je definiert war.
 
-   Farben sind hier noch hart kodiert (Ist-Zustand). Die Umstellung auf
-   var(--accent) folgt in Commit B2 — erst danach glühen sie auf TFT-Seiten
-   lila statt gold.
+   Seit B2 folgen alle Akzentfarben hier dem Game-Accent statt rgba(200,155,60,…).
+   Damit glühen Glas-Kanten, Partikel und Hover-Schatten auf /tft-Seiten lila
+   statt gold. Auf LoL-Seiten ist das Ergebnis identisch zu vorher:
+   rgb(var(--accent-rgb) / X%) mit dem Tripel 200 155 60 == rgba(200,155,60,X).
+
+   WARUM RGB-TRIPEL UND NICHT color-mix():
+   color-mix(in srgb, var(--accent) 15%, transparent) ist die schönere
+   Schreibweise, aber Lightning CSS kann sie mit einem var()-Argument nicht
+   auswerten und schreibt deshalb zu jeder Regel eine Fallback-Kopie —
+   mit VOLL DECKENDEM Accent. Auf Browsern vor ~Mitte 2023 hätte jede
+   Glaskarte eine satte Volltonkante und jeder Hover einen harten Glow
+   bekommen. Dazu kamen ~770 B verdoppelte Regeln. `rgb(<triple> / X%)`
+   ist seit Chrome 65 / Safari 12.1 überall da und braucht keinen Fallback.
+   Preis: --accent-rgb muss oben zusammen mit --accent gepflegt werden.
 
    EINSATZREGEL für backdrop-filter (.glass/.glass-strong):
    nur auf Overlays und Containern, die sich NICHT relativ zu ihrem Backdrop
@@ -199,26 +225,28 @@ body {
   position: absolute;
   width: 2px;
   height: 2px;
-  background: #c89b3c;
+  background: var(--accent);
   border-radius: 50%;
-  box-shadow: 0 0 6px #c89b3c, 0 0 12px #c89b3c40;
+  /* #c89b3c40 war Alpha 0x40 = 25 %. */
+  box-shadow: 0 0 6px var(--accent),
+              0 0 12px rgb(var(--accent-rgb) / 25%);
   pointer-events: none;
 }
 
 .glass {
-  background: rgba(13, 21, 38, 0.6);
+  background: var(--glass-bg);
   /* -webkit- ist für iOS < 18 Pflicht. Fehlte im ursprünglichen Inline-Block,
      wodurch .glass auf älteren iPhones schlicht wirkungslos war. */
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(200, 155, 60, 0.15);
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid rgb(var(--accent-rgb) / 15%);
 }
 
 .glass-strong {
-  background: rgba(13, 21, 38, 0.8);
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(200, 155, 60, 0.2);
+  background: var(--glass-bg-strong);
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong));
+  backdrop-filter: blur(var(--glass-blur-strong));
+  border: 1px solid rgb(var(--accent-rgb) / 20%);
 }
 
 /* `transform-style: preserve-3d` stand hier ursprünglich in der Basis-Regel
@@ -234,7 +262,8 @@ body {
 
 .card-3d:hover {
   transform: translateY(-4px) perspective(800px) rotateX(2deg);
-  box-shadow: 0 12px 40px rgba(200, 155, 60, 0.1), 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 12px 40px rgb(var(--accent-rgb) / 10%),
+              var(--elevation-2);
 }
 
 .hero-animate {
@@ -245,8 +274,9 @@ body {
    die Verwendungsstelle in page.tsx in Welle 2 migriert ist. */
 .accent-border,
 .gold-border {
-  border: 1px solid rgba(200, 155, 60, 0.3);
-  box-shadow: 0 0 20px rgba(200, 155, 60, 0.05), inset 0 0 20px rgba(200, 155, 60, 0.02);
+  border: 1px solid rgb(var(--accent-rgb) / 30%);
+  box-shadow: 0 0 20px rgb(var(--accent-rgb) / 5%),
+              inset 0 0 20px rgb(var(--accent-rgb) / 2%);
 }
 
 /* Die Partikel auf / setzen ihre `animation` als INLINE-Style und lassen sich

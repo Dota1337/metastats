@@ -1,7 +1,13 @@
 // Single source of truth for the multi-game setup. Both LoL and TFT use the
 // same metastats domain; the active game is derived from the URL prefix
-// (`/tft/...` -> tft, otherwise lol). The user's last choice is persisted in
-// the metastats-game cookie so a fresh visit to / restores their preference.
+// (`/tft/...` -> tft, otherwise lol).
+//
+// Der metastats-game-Cookie wird zwar geschrieben (GameStrip), aber NIRGENDS
+// gelesen — weder hier, noch in middleware.ts, noch server-seitig. Er stellt
+// insbesondere KEINE Präferenz wieder her; der frühere Kommentar an dieser
+// Stelle behauptete das und war schlicht falsch. Das aktive Spiel ist eine
+// reine Funktion des Pfads, und das muss so bleiben: eine Cookie-Quelle würde
+// eine lila LoL-Seite erzeugen, sobald der Cookie auf tft steht.
 
 export type Game = 'lol' | 'tft';
 
@@ -28,7 +34,7 @@ const PAGE_MAP_LOL_TO_TFT: { match: RegExp; to: string }[] = [
   { match: /^\/compare(\/.*)?$/,      to: '/tft/compare' },
   { match: /^\/ligen(\/.*)?$/,        to: '/tft/tournaments' },     // leagues → TFT tournaments
   { match: /^\/player\/(.+)$/,        to: '/tft/player/$1' },
-  { match: /^\/?$/,                   to: '/tft' },
+  { match: /^\/?$/,                   to: '/tft/comps' },
 ];
 
 const PAGE_MAP_TFT_TO_LOL: { match: RegExp; to: string }[] = [
@@ -46,14 +52,22 @@ const PAGE_MAP_TFT_TO_LOL: { match: RegExp; to: string }[] = [
 ];
 
 export function detectGameFromPath(pathname: string): Game {
-  return pathname.startsWith('/tft') ? 'tft' : 'lol';
+  // Exakt `/tft` oder ein Segment darunter — nicht startsWith('/tft'), sonst
+  // würde eine künftige Top-Level-Route wie /tftips still als TFT gelten.
+  return pathname === '/tft' || pathname.startsWith('/tft/') ? 'tft' : 'lol';
 }
 
 export function mapPathToGame(pathname: string, target: Game): string {
   const rules = target === 'tft' ? PAGE_MAP_LOL_TO_TFT : PAGE_MAP_TFT_TO_LOL;
   for (const rule of rules) {
     const m = pathname.match(rule.match);
-    if (m) return rule.to.replace('$1', m[1] ?? '');
+    // split/join statt replace: String.replace interpretiert $&, $' und $` im
+    // Ersetzungs-String. Über die UI ist das nicht erreichbar (Slugs sind
+    // encodeURIComponent-kodiert), über eine handgetippte URL schon.
+    if (m) return rule.to.split('$1').join(m[1] ?? '');
   }
-  return target === 'tft' ? '/tft' : '/';
+  // NICHT '/tft': next.config.ts leitet das mit 308 auf /tft/comps um, und der
+  // Umweg kostet gemessen 158 ms — rund 40 % des Fensters, das die Transition
+  // im Game-Streifen überbrücken soll.
+  return target === 'tft' ? '/tft/comps' : '/';
 }

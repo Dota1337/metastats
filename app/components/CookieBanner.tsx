@@ -34,14 +34,14 @@ export default function CookieBanner() {
     <div
       role="dialog"
       aria-labelledby="cookie-banner-title"
-      className="fixed bottom-3 left-3 right-3 sm:left-auto sm:right-3 sm:max-w-md z-50 bg-surface-base border border-[#7B61FF]/40 rounded-lg shadow-xl p-4 text-sm"
+      className="fixed bottom-3 left-3 right-3 sm:left-auto sm:right-3 sm:max-w-md z-50 bg-surface-base border border-brand-a40 rounded-lg shadow-xl p-4 text-sm"
     >
       <div id="cookie-banner-title" className="text-white font-medium mb-1.5">
         {t('cookie.title')}
       </div>
       <p className="text-fg-secondary text-xs leading-relaxed mb-3">
         {t('cookie.body')}{' '}
-        <a href="/datenschutz" className="text-[#7B61FF] hover:underline">
+        <a href="/datenschutz" className="text-brand hover:underline">
           {t('legal.privacy')}
         </a>
         .
@@ -49,7 +49,7 @@ export default function CookieBanner() {
       <div className="flex gap-2">
         <button
           onClick={() => persist('accepted')}
-          className="flex-1 bg-[#7B61FF] hover:bg-[#7B61FF]/80 text-white text-xs px-3 py-2 rounded font-medium"
+          className="flex-1 bg-brand hover:bg-brand-a80 text-white text-xs px-3 py-2 rounded font-medium"
         >
           {t('cookie.accept')}
         </button>

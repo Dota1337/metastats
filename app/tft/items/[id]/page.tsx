@@ -136,10 +136,10 @@ export default function TftItemDetailPage() {
       <Nav active="items" />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
         <div className="bg-surface-base border border-border-subtle rounded-lg p-5 mb-5">
-          <a href="/tft/items" className="text-[#7B61FF] text-xs hover:underline">← {t('nav.items')}</a>
+          <a href="/tft/items" className="text-accent text-xs hover:underline">← {t('nav.items')}</a>
           <div className="flex items-center gap-4 mt-2">
             {url ? (
-              <img src={url} alt={itemMeta!.name} className="w-16 h-16 rounded-lg border-2 border-[#7B61FF]" />
+              <img src={url} alt={itemMeta!.name} className="w-16 h-16 rounded-lg border-2 border-accent" />
             ) : (
               <div className="w-16 h-16 rounded-lg bg-surface-overlay" />
             )}
@@ -164,7 +164,7 @@ export default function TftItemDetailPage() {
                       <a
                         href={`/tft/items/${encodeURIComponent(compId)}?bucket=${bucket}`}
                         title={compMeta?.name || compId}
-                        className="flex items-center gap-2 bg-surface-raised border border-border-subtle rounded px-2 py-1 hover:border-[#7B61FF]/50"
+                        className="flex items-center gap-2 bg-surface-raised border border-border-subtle rounded px-2 py-1 hover:border-accent-a50"
                       >
                         {compUrl ? (
                           <img src={compUrl} alt={compMeta!.name} className="w-8 h-8 rounded" />
@@ -173,12 +173,12 @@ export default function TftItemDetailPage() {
                         )}
                         <span className="text-white text-xs">{compMeta?.name || prettyApi(compId)}</span>
                       </a>
-                      {i === 0 && <span className="text-[#7B61FF] text-lg font-medium">+</span>}
+                      {i === 0 && <span className="text-accent text-lg font-medium">+</span>}
                     </div>
                   );
                 })}
-                <span className="text-[#7B61FF] text-lg font-medium">=</span>
-                <div className="flex items-center gap-2 bg-[#7B61FF]/10 border border-[#7B61FF]/30 rounded px-2 py-1">
+                <span className="text-accent text-lg font-medium">=</span>
+                <div className="flex items-center gap-2 bg-accent-a10 border border-accent-a30 rounded px-2 py-1">
                   {url && <img src={url} alt={itemMeta!.name} className="w-8 h-8 rounded" />}
                   <span className="text-white text-xs font-medium">{itemMeta?.name || prettyApi(id)}</span>
                 </div>
@@ -190,7 +190,7 @@ export default function TftItemDetailPage() {
         <div className="flex justify-end items-center gap-2 mb-4">
           <a
             href={buildExplorerUrl({ items: [id], bucket })}
-            className="px-2.5 py-1.5 rounded text-xs bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-[#7B61FF]/60 transition-colors flex items-center gap-1.5"
+            className="px-2.5 py-1.5 rounded text-xs bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-accent-a60 transition-colors flex items-center gap-1.5"
             title={t('tft.drill.openInExplorer')}
           >
             <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -270,7 +270,7 @@ export default function TftItemDetailPage() {
                         <a
                           key={c.slug}
                           href={`/tft/comps/${encodeURIComponent(c.slug)}?bucket=${bucket}&region=euw1`}
-                          className="flex items-center gap-2 bg-surface-raised border border-border-subtle rounded p-2 hover:border-[#7B61FF]/40 transition-colors"
+                          className="flex items-center gap-2 bg-surface-raised border border-border-subtle rounded p-2 hover:border-accent-a40 transition-colors"
                         >
                           {carryUrl && (
                             <img src={carryUrl} alt="" className="w-8 h-8 rounded border border-[#c39bff]/60 object-cover flex-shrink-0" />
@@ -319,7 +319,7 @@ export default function TftItemDetailPage() {
                           title={im?.name || it}
                           className="hover:scale-110 transition-transform"
                         >
-                          <img src={iurl} alt={im?.name || it} className={`w-7 h-7 rounded ${it === id ? 'ring-2 ring-[#7B61FF]' : ''}`} />
+                          <img src={iurl} alt={im?.name || it} className={`w-7 h-7 rounded ${it === id ? 'ring-2 ring-accent' : ''}`} />
                         </a>
                       ) : (
                         <div key={j} className="w-7 h-7 rounded bg-surface-overlay" />
@@ -348,7 +348,7 @@ export default function TftItemDetailPage() {
                   <a
                     key={k}
                     href={`/tft/items/${encodeURIComponent(k)}?bucket=${bucket}`}
-                    className="flex items-center gap-2 bg-surface-raised border border-border-subtle rounded p-2 hover:border-[#7B61FF]/50"
+                    className="flex items-center gap-2 bg-surface-raised border border-border-subtle rounded p-2 hover:border-accent-a50"
                   >
                     {sUrl ? (
                       <img src={sUrl} alt={v.name} className="w-8 h-8 rounded" />

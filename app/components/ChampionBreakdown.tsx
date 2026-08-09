@@ -63,7 +63,7 @@ export default function ChampionBreakdown({ matches, ddVersion }: Props) {
               onClick={() => setSortBy(key)}
               className={`px-3 py-1 rounded text-xs transition-colors ${
                 sortBy === key
-                  ? 'bg-[#c89b3c]/20 text-[#c89b3c] border border-[#c89b3c]/30'
+                  ? 'bg-accent-a20 text-accent border border-accent-a30'
                   : 'text-fg-muted hover:text-fg-secondary'
               }`}
             >

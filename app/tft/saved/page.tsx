@@ -85,7 +85,7 @@ function Section({
             >
               <a
                 href={hrefOf(b)}
-                className="flex-1 min-w-0 text-white text-sm truncate hover:text-[#7B61FF] transition-colors"
+                className="flex-1 min-w-0 text-white text-sm truncate hover:text-accent transition-colors"
               >
                 {b.label}
               </a>

@@ -615,7 +615,7 @@ function TftTournamentRow({
           </div>
         </div>
         {tournament.prize_pool_usd != null && (
-          <div className="text-[#7B61FF] text-[10px] font-medium tabular-nums flex-shrink-0">
+          <div className="text-brand text-[10px] font-medium tabular-nums flex-shrink-0">
             ${(tournament.prize_pool_usd / 1000).toFixed(0)}k
           </div>
         )}

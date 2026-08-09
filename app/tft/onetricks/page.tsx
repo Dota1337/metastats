@@ -63,7 +63,7 @@ export default function TftOneTricksPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder={t('tft.search.player')}
-            className="w-full sm:w-80 bg-surface-raised border border-border-subtle rounded px-3 py-1.5 text-sm text-white placeholder:text-fg-faint outline-none focus:border-[#7B61FF]/60"
+            className="w-full sm:w-80 bg-surface-raised border border-border-subtle rounded px-3 py-1.5 text-sm text-white placeholder:text-fg-faint outline-none focus:border-accent-a60"
           />
         </div>
 
@@ -74,8 +74,8 @@ export default function TftOneTricksPage() {
               onClick={() => setRegion(r)}
               className={`px-3 py-1.5 text-xs uppercase tracking-widest rounded border transition-colors ${
                 region === r
-                  ? 'bg-[#7B61FF] border-[#7B61FF] text-white'
-                  : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-[#7B61FF]/40'
+                  ? 'bg-accent border-accent text-white'
+                  : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-accent-a40'
               }`}
             >{r}</button>
           ))}
@@ -105,7 +105,7 @@ export default function TftOneTricksPage() {
               : '#3a8ddc';
             const top1Width = p.top2Share > 0 ? (p.signatureComps[0]?.share ?? 0) / p.top2Share * 100 : 0;
             return (
-              <div key={p.puuid} className="bg-surface-base border border-border-subtle rounded p-3 hover:border-[#7B61FF]/30 transition-colors">
+              <div key={p.puuid} className="bg-surface-base border border-border-subtle rounded p-3 hover:border-accent-a30 transition-colors">
                 <div className="flex items-center gap-3 mb-2">
                   <span className="text-fg-muted text-xs tabular-nums w-6 font-medium">#{idx + 1}</span>
                   <span className="text-[9px] tabular-nums uppercase tracking-widest px-1.5 py-0.5 rounded font-medium" style={{ backgroundColor: `${tierBg}20`, color: tierBg }}>
@@ -140,7 +140,7 @@ export default function TftOneTricksPage() {
                       <a
                         key={c.clusterKey}
                         href={`/tft/comps/${encodeURIComponent(c.clusterKey)}`}
-                        className="flex items-center gap-2 bg-surface-raised border border-border-subtle rounded p-2 hover:border-[#7B61FF]/40"
+                        className="flex items-center gap-2 bg-surface-raised border border-border-subtle rounded p-2 hover:border-accent-a40"
                       >
                         {tftChampionTileUrl(assets, carry) && (
                           <img src={tftChampionTileUrl(assets, carry)!} alt="" className="w-8 h-8 rounded border border-[#c39bff]/60 flex-shrink-0" />

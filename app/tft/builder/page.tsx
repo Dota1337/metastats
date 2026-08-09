@@ -881,7 +881,7 @@ export default function TftBuilderPage() {
                 <button
                   onClick={saveCurrent}
                   disabled={ownPlacements.length === 0 && oppPlacements.length === 0}
-                  className="px-3 py-1.5 rounded text-xs bg-[#7B61FF] text-white hover:bg-[#9981FF] disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="px-3 py-1.5 rounded text-xs bg-accent text-white hover:bg-[#9981FF] disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   {t('tft.builderSave')}
                 </button>
@@ -937,7 +937,7 @@ export default function TftBuilderPage() {
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => setCostFilter(null)}
-                    className={`px-2.5 py-1 rounded text-xs ${costFilter == null ? 'bg-[#7B61FF] text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
+                    className={`px-2.5 py-1 rounded text-xs ${costFilter == null ? 'bg-accent text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
                   >
                     {t('tft.bucket.all')}
                   </button>
@@ -957,7 +957,7 @@ export default function TftBuilderPage() {
                   value={champQuery}
                   onChange={e => setChampQuery(e.target.value)}
                   placeholder={t('tft.builderSearch')}
-                  className="flex-1 min-w-[160px] bg-surface-raised border border-border-subtle rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-[#7B61FF]/60"
+                  className="flex-1 min-w-[160px] bg-surface-raised border border-border-subtle rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-accent-a60"
                 />
               </div>
               <div className="grid grid-cols-[repeat(auto-fill,minmax(54px,1fr))] gap-1.5">
@@ -1136,7 +1136,7 @@ export default function TftBuilderPage() {
                   <button
                     key={tab}
                     onClick={() => setItemTab(tab)}
-                    className={`px-2 py-1 rounded text-[11px] ${itemTab === tab ? 'bg-[#7B61FF] text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
+                    className={`px-2 py-1 rounded text-[11px] ${itemTab === tab ? 'bg-accent text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
                   >
                     {t('tft.builderItems' + tab.charAt(0).toUpperCase() + tab.slice(1) as any) || tab}
                   </button>
@@ -1147,7 +1147,7 @@ export default function TftBuilderPage() {
                 value={itemQuery}
                 onChange={e => setItemQuery(e.target.value)}
                 placeholder={t('tft.builderItemsSearch')}
-                className="w-full bg-surface-raised border border-border-subtle rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-[#7B61FF]/60 mb-3"
+                className="w-full bg-surface-raised border border-border-subtle rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-accent-a60 mb-3"
               />
               <div className="grid grid-cols-[repeat(auto-fill,minmax(40px,1fr))] gap-1.5 max-h-[440px] overflow-y-auto pr-1">
                 {filteredItems.map(item => {

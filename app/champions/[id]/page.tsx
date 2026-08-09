@@ -215,7 +215,7 @@ export default function ChampionDetailPage() {
               <img
                 src={`https://ddragon.leagueoflegends.com/cdn/${version}/img/champion/${champion.id}.png`}
                 alt={champion.name}
-                className="w-24 h-24 rounded-lg border-2 border-[#c89b3c] shadow-lg"
+                className="w-24 h-24 rounded-lg border-2 border-accent shadow-lg"
               />
               <div>
                 <a
@@ -225,7 +225,7 @@ export default function ChampionDetailPage() {
                   &larr; {t('champDetail.back')}
                 </a>
                 <h1 className="text-white text-3xl font-bold">{champion.name}</h1>
-                <p className="text-[#c89b3c] text-sm mt-1">{champion.title}</p>
+                <p className="text-accent text-sm mt-1">{champion.title}</p>
                 <div className="flex gap-2 mt-3">
                   {champion.tags.map((tag) => (
                     <span
@@ -265,7 +265,7 @@ export default function ChampionDetailPage() {
                         : Math.round(stat.value)}
                     </div>
                     {stat.growth > 0 && (
-                      <div className="text-[#c89b3c] text-xs mt-0.5">
+                      <div className="text-accent text-xs mt-0.5">
                         +{stat.isPercent ? `${stat.growth}%` : stat.growth} / {t('champDetail.perLevel')}
                       </div>
                     )}
@@ -281,7 +281,7 @@ export default function ChampionDetailPage() {
                 {/* Passive */}
                 <div className="bg-surface-base border border-border-subtle rounded p-4 flex gap-4">
                   <div className="flex-shrink-0 flex flex-col items-center gap-1">
-                    <span className="text-xs font-bold text-[#c89b3c] bg-[#c89b3c20] px-2 py-0.5 rounded">
+                    <span className="text-xs font-bold text-accent bg-[#c89b3c20] px-2 py-0.5 rounded">
                       P
                     </span>
                     <img
@@ -307,7 +307,7 @@ export default function ChampionDetailPage() {
                     className="bg-surface-base border border-border-subtle rounded p-4 flex gap-4"
                   >
                     <div className="flex-shrink-0 flex flex-col items-center gap-1">
-                      <span className="text-xs font-bold text-[#c89b3c] bg-[#c89b3c20] px-2 py-0.5 rounded">
+                      <span className="text-xs font-bold text-accent bg-[#c89b3c20] px-2 py-0.5 rounded">
                         {SPELL_KEYS[i]}
                       </span>
                       <img
@@ -398,7 +398,7 @@ export default function ChampionDetailPage() {
                         onClick={() => setSelectedSkin(i)}
                         className={`flex-shrink-0 w-16 h-16 rounded overflow-hidden border-2 transition-all ${
                           selectedSkin === i
-                            ? 'border-[#c89b3c] ring-1 ring-[#c89b3c]/50'
+                            ? 'border-accent ring-1 ring-accent-a50'
                             : 'border-transparent opacity-60 hover:opacity-100'
                         }`}
                       >

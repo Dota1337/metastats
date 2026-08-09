@@ -74,7 +74,7 @@ export default function TftPatchListPage() {
                     <div className="text-white text-base font-medium">
                       Patch {p.patch}
                       {i === 0 && (
-                        <span className="ml-2 text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded bg-[#7B61FF]/20 text-[#7B61FF]">
+                        <span className="ml-2 text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded bg-accent-a20 text-accent">
                           {t('tft.patchNotes.current')}
                         </span>
                       )}
@@ -89,7 +89,7 @@ export default function TftPatchListPage() {
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={e => e.stopPropagation()}
-                      className="text-[10px] uppercase tracking-widest text-fg-secondary hover:text-[#7B61FF] flex items-center gap-1 transition-colors"
+                      className="text-[10px] uppercase tracking-widest text-fg-secondary hover:text-accent flex items-center gap-1 transition-colors"
                       title={t('tft.patchNotes.officialLinkHint')}
                     >
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -100,7 +100,7 @@ export default function TftPatchListPage() {
                       <span className="hidden sm:inline">{t('tft.patchNotes.officialLink')}</span>
                     </a>
                     <div className="text-right">
-                      <div className="text-[#7B61FF] text-sm font-medium tabular-nums">
+                      <div className="text-accent text-sm font-medium tabular-nums">
                         {p.total_matches.toLocaleString()}
                       </div>
                       <div className="text-fg-muted text-[10px] uppercase tracking-widest">

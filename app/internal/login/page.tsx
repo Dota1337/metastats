@@ -42,14 +42,14 @@ export default function InternalLoginPage() {
           value={secret}
           onChange={e => setSecret(e.target.value)}
           placeholder="Secret"
-          className="w-full px-3 py-2 bg-[#0a0f1c] border border-border-subtle rounded text-sm focus:outline-none focus:border-[#7B61FF]"
+          className="w-full px-3 py-2 bg-[#0a0f1c] border border-border-subtle rounded text-sm focus:outline-none focus:border-brand"
           autoFocus
         />
         {err && <div className="text-xs text-red-400">{err}</div>}
         <button
           type="submit"
           disabled={busy || !secret}
-          className="w-full py-2 bg-[#7B61FF] hover:bg-[#6a52e0] disabled:bg-[#3a3a4a] disabled:cursor-not-allowed rounded text-sm font-medium transition-colors"
+          className="w-full py-2 bg-brand hover:bg-[#6a52e0] disabled:bg-[#3a3a4a] disabled:cursor-not-allowed rounded text-sm font-medium transition-colors"
         >
           {busy ? 'Verifiziere…' : 'Login'}
         </button>

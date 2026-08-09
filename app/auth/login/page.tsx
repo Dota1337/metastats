@@ -55,11 +55,11 @@ export default function LoginPage() {
           <div className="flex gap-1 mb-5 border-b border-border-subtle">
             <button
               onClick={() => setMode('login')}
-              className={`px-4 py-2 text-sm ${mode === 'login' ? 'text-white border-b-2 border-[#7B61FF]' : 'text-fg-secondary hover:text-white'}`}
+              className={`px-4 py-2 text-sm ${mode === 'login' ? 'text-white border-b-2 border-brand' : 'text-fg-secondary hover:text-white'}`}
             >{t('auth.login')}</button>
             <button
               onClick={() => setMode('signup')}
-              className={`px-4 py-2 text-sm ${mode === 'signup' ? 'text-white border-b-2 border-[#7B61FF]' : 'text-fg-secondary hover:text-white'}`}
+              className={`px-4 py-2 text-sm ${mode === 'signup' ? 'text-white border-b-2 border-brand' : 'text-fg-secondary hover:text-white'}`}
             >{t('auth.signup')}</button>
           </div>
 
@@ -72,7 +72,7 @@ export default function LoginPage() {
                 onChange={e => setEmail(e.target.value)}
                 required
                 autoComplete="email"
-                className="w-full bg-surface-raised border border-border-subtle rounded px-3 py-2 text-sm text-white mt-1 outline-none focus:border-[#7B61FF]/60"
+                className="w-full bg-surface-raised border border-border-subtle rounded px-3 py-2 text-sm text-white mt-1 outline-none focus:border-brand-a60"
               />
             </div>
             <div>
@@ -84,7 +84,7 @@ export default function LoginPage() {
                 required
                 autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                 minLength={6}
-                className="w-full bg-surface-raised border border-border-subtle rounded px-3 py-2 text-sm text-white mt-1 outline-none focus:border-[#7B61FF]/60"
+                className="w-full bg-surface-raised border border-border-subtle rounded px-3 py-2 text-sm text-white mt-1 outline-none focus:border-brand-a60"
               />
             </div>
             {error && <div className="text-[#e44040] text-xs">{error}</div>}
@@ -94,7 +94,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={status === 'sending'}
-              className="w-full bg-[#7B61FF] text-white py-2 rounded text-sm font-medium hover:bg-[#9981FF] disabled:opacity-50"
+              className="w-full bg-brand text-white py-2 rounded text-sm font-medium hover:bg-[#9981FF] disabled:opacity-50"
             >
               {status === 'sending' ? '…' : mode === 'login' ? t('auth.login') : t('auth.signup')}
             </button>
@@ -109,15 +109,15 @@ export default function LoginPage() {
           <div className="space-y-2">
             <button
               onClick={() => oauth('google')}
-              className="w-full bg-surface-raised border border-border-subtle hover:border-[#7B61FF]/40 text-white py-2 rounded text-sm"
+              className="w-full bg-surface-raised border border-border-subtle hover:border-brand-a40 text-white py-2 rounded text-sm"
             >Google</button>
             <button
               onClick={() => oauth('discord')}
-              className="w-full bg-surface-raised border border-border-subtle hover:border-[#7B61FF]/40 text-white py-2 rounded text-sm"
+              className="w-full bg-surface-raised border border-border-subtle hover:border-brand-a40 text-white py-2 rounded text-sm"
             >Discord</button>
             <button
               onClick={() => oauth('twitch')}
-              className="w-full bg-surface-raised border border-border-subtle hover:border-[#7B61FF]/40 text-white py-2 rounded text-sm"
+              className="w-full bg-surface-raised border border-border-subtle hover:border-brand-a40 text-white py-2 rounded text-sm"
             >Twitch</button>
           </div>
         </div>

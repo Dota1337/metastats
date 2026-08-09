@@ -293,13 +293,13 @@ export default function PlayerPage() {
                 <img
                   src={'https://ddragon.leagueoflegends.com/cdn/' + ddVersion + '/img/profileicon/' + player.summoner.profileIconId + '.png'}
                   alt="icon"
-                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-[#c89b3c]"
+                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-accent"
                 />
                 <div className="flex-1 min-w-0">
                   <h1 className="text-white text-xl sm:text-2xl font-medium flex flex-wrap items-center gap-2 sm:gap-3">
                     <span className="truncate">{player.summoner.name}</span>
                     {proInfo && (
-                      <span className="inline-flex items-center gap-1.5 bg-[#c89b3c]/15 text-[#c89b3c] text-xs font-bold px-2.5 py-0.5 rounded-full border border-[#c89b3c]/40">
+                      <span className="inline-flex items-center gap-1.5 bg-accent-a15 text-accent text-xs font-bold px-2.5 py-0.5 rounded-full border border-accent-a40">
                         PRO
                       </span>
                     )}
@@ -312,7 +312,7 @@ export default function PlayerPage() {
                   </h1>
                   <div className="text-fg-secondary text-sm mt-1">
                     {proInfo ? (
-                      <span><span className="text-[#c89b3c]">{proInfo.proName}</span> · {proInfo.team}{proInfo.league ? ` · ${proInfo.league}` : ''} · </span>
+                      <span><span className="text-accent">{proInfo.proName}</span> · {proInfo.team}{proInfo.league ? ` · ${proInfo.league}` : ''} · </span>
                     ) : null}
                     Level {player.summoner.summonerLevel} · {region.toUpperCase().replace('1', '')} · {roleLabels[marketValue.role] || '-'}
                   </div>
@@ -320,7 +320,7 @@ export default function PlayerPage() {
                 <div className="sm:text-right">
                   <div className="text-fg-secondary text-xs mb-1">{t('player.aiMarketValue')}</div>
                   {marketValue.rated ? (
-                    <div className="text-[#c89b3c] text-2xl sm:text-3xl font-medium">{marketValue.formatted}</div>
+                    <div className="text-accent text-2xl sm:text-3xl font-medium">{marketValue.formatted}</div>
                   ) : (
                     <div className="text-fg-muted text-lg">Not Rated</div>
                   )}
@@ -331,7 +331,7 @@ export default function PlayerPage() {
                 {proInfo && (
                   <div className="bg-surface-raised rounded p-4 text-center">
                     <div className="text-fg-secondary text-xs mb-1">Team</div>
-                    <div className="text-[#c89b3c] font-medium text-sm">{proInfo.team}</div>
+                    <div className="text-accent font-medium text-sm">{proInfo.team}</div>
                     <div className="text-fg-muted text-xs mt-1">{proInfo.role || ''}{proInfo.league ? ` · ${proInfo.league}` : ''}</div>
                   </div>
                 )}
@@ -340,7 +340,7 @@ export default function PlayerPage() {
                   <div className="text-white font-medium text-sm">
                     {ranked ? formatRankedQueue(ranked) : t('player.unranked')}
                   </div>
-                  {ranked && <div className="text-[#c89b3c] text-xs mt-1">{ranked.leaguePoints} LP</div>}
+                  {ranked && <div className="text-accent text-xs mt-1">{ranked.leaguePoints} LP</div>}
                   {ranked && (
                     <div className="text-fg-muted text-xs mt-1">
                       {ranked.wins + ranked.losses} Spiele
@@ -354,7 +354,7 @@ export default function PlayerPage() {
                   <div className="text-white font-medium text-sm">
                     {flex ? formatRankedQueue(flex) : t('player.unranked')}
                   </div>
-                  {flex && <div className="text-[#c89b3c] text-xs mt-1">{flex.leaguePoints} LP</div>}
+                  {flex && <div className="text-accent text-xs mt-1">{flex.leaguePoints} LP</div>}
                   {flex && (
                     <div className="text-fg-muted text-xs mt-1">
                       {flex.wins + flex.losses} Spiele
@@ -397,11 +397,11 @@ export default function PlayerPage() {
                 <div className="space-y-2">
                   {/* Main Account */}
                   {proInfo.mainAccount && (
-                    <div className="flex items-center gap-3 bg-surface-raised border border-[#c89b3c]/30 rounded p-3">
-                      <div className="text-[10px] text-[#c89b3c] font-bold uppercase tracking-wider w-10 shrink-0">Main</div>
+                    <div className="flex items-center gap-3 bg-surface-raised border border-accent-a30 rounded p-3">
+                      <div className="text-[10px] text-accent font-bold uppercase tracking-wider w-10 shrink-0">Main</div>
                       <a
                         href={`/player/${encodeURIComponent(proInfo.mainAccount.name)}--${encodeURIComponent(proInfo.mainAccount.tag)}?region=${proInfo.mainAccount.region === 'kr' ? 'kr' : proInfo.mainAccount.region === 'na' ? 'na1' : 'euw1'}`}
-                        className="text-white hover:text-[#c89b3c] font-medium text-sm transition-colors"
+                        className="text-white hover:text-accent font-medium text-sm transition-colors"
                       >
                         {proInfo.mainAccount.name}<span className="text-fg-muted">#{proInfo.mainAccount.tag}</span>
                       </a>
@@ -460,7 +460,7 @@ export default function PlayerPage() {
                   </div>
                   <div className="bg-surface-raised rounded p-3 text-center">
                     <div className="text-fg-secondary text-xs mb-1">{t('player.finalValue')}</div>
-                    <div className="text-[#c89b3c] text-lg font-medium">{marketValue.formatted}</div>
+                    <div className="text-accent text-lg font-medium">{marketValue.formatted}</div>
                   </div>
                 </div>
                 <div className="flex flex-col gap-1">
@@ -622,7 +622,7 @@ export default function PlayerPage() {
                                     ))}
                                   </div>
                                   <div className="absolute inset-0 flex items-center justify-center">
-                                    <span className="bg-[#c89b3c]/10 border border-[#c89b3c]/30 text-[#c89b3c] text-xs px-3 py-1 rounded-full">
+                                    <span className="bg-accent-a10 border border-accent-a30 text-accent text-xs px-3 py-1 rounded-full">
                                       +{cat.details.length - 2} Stats — {t('stats.premiumBadge')}
                                     </span>
                                   </div>
@@ -639,7 +639,7 @@ export default function PlayerPage() {
                 {!isPremium && (
                   <div className="mt-4 pt-3 border-t border-border-subtle text-center">
                     <div className="text-[#6a7a90] text-xs mb-2">{t('stats.premiumHint')}</div>
-                    <button className="bg-gradient-to-r from-[#c89b3c] to-[#a07830] text-black text-xs font-bold px-6 py-2 rounded hover:brightness-110 transition">
+                    <button className="bg-gradient-to-r from-accent to-[#a07830] text-black text-xs font-bold px-6 py-2 rounded hover:brightness-110 transition">
                       {t('stats.unlockDetails')}
                     </button>
                   </div>
@@ -668,10 +668,10 @@ export default function PlayerPage() {
                         <img
                           src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/champion/${champId}.png`}
                           alt={champDisplayName}
-                          className="w-12 h-12 rounded-full border-2 border-[#c89b3c]"
+                          className="w-12 h-12 rounded-full border-2 border-accent"
                         />
                         <div className="text-white text-sm font-medium">{champDisplayName}</div>
-                        <div className="text-[#c89b3c] text-xs font-bold">Level {m.championLevel}</div>
+                        <div className="text-accent text-xs font-bold">Level {m.championLevel}</div>
                         <div className="text-fg-secondary text-xs">{m.championPoints?.toLocaleString()} Punkte</div>
                       </div>
                     );
@@ -720,7 +720,7 @@ export default function PlayerPage() {
                         onClick={() => setRoleFilter(r)}
                         className={`px-2.5 py-1 rounded text-xs transition-colors ${
                           roleFilter === r
-                            ? 'bg-[#c89b3c]/20 text-[#c89b3c] border border-[#c89b3c]/30'
+                            ? 'bg-accent-a20 text-accent border border-accent-a30'
                             : 'text-fg-muted hover:text-fg-secondary'
                         }`}
                       >
@@ -748,7 +748,7 @@ export default function PlayerPage() {
                   <button
                     onClick={loadMoreMatches}
                     disabled={loadingMore}
-                    className="mt-4 w-full py-2.5 rounded bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-[#c89b3c]/50 text-xs transition-colors disabled:opacity-50"
+                    className="mt-4 w-full py-2.5 rounded bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-accent-a50 text-xs transition-colors disabled:opacity-50"
                   >
                     {loadingMore ? 'Lade...' : 'Mehr Matches laden'}
                   </button>

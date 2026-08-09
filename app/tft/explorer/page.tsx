@@ -315,7 +315,7 @@ export default function TftExplorerPage() {
                 key={m}
                 type="button"
                 onClick={() => setMode(m)}
-                className={`px-3 py-1 text-xs rounded ${mode === m ? 'bg-[#7B61FF] text-white' : 'text-fg-secondary hover:text-white'}`}
+                className={`px-3 py-1 text-xs rounded ${mode === m ? 'bg-accent text-white' : 'text-fg-secondary hover:text-white'}`}
               >
                 {t(`tft.explorer.mode.${m}`)}
               </button>
@@ -359,7 +359,7 @@ export default function TftExplorerPage() {
                       key={d}
                       type="button"
                       onClick={() => setDays(d)}
-                      className={`flex-1 py-1.5 text-xs rounded border ${days === d ? 'bg-[#7B61FF]/20 border-[#7B61FF] text-white' : 'bg-surface-raised border-border-subtle text-fg-secondary'}`}
+                      className={`flex-1 py-1.5 text-xs rounded border ${days === d ? 'bg-accent-a20 border-accent text-white' : 'bg-surface-raised border-border-subtle text-fg-secondary'}`}
                     >
                       {d}d
                     </button>
@@ -427,7 +427,7 @@ export default function TftExplorerPage() {
                         key={k}
                         type="button"
                         onClick={() => setSortBy(k)}
-                        className={`px-2.5 py-1 text-[11px] rounded border ${sortBy === k ? 'bg-[#7B61FF] border-[#7B61FF] text-white' : 'bg-surface-raised border-border-subtle text-fg-secondary'}`}
+                        className={`px-2.5 py-1 text-[11px] rounded border ${sortBy === k ? 'bg-accent border-accent text-white' : 'bg-surface-raised border-border-subtle text-fg-secondary'}`}
                       >
                         {t(`tft.explorer.sort.${k}`)}
                       </button>
@@ -456,7 +456,7 @@ export default function TftExplorerPage() {
                       <button
                         type="button"
                         onClick={() => { setUnits([]); setItems([]); setTraits([]); }}
-                        className="text-[10px] px-2 py-0.5 rounded bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-[#7B61FF]/60"
+                        className="text-[10px] px-2 py-0.5 rounded bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-accent-a60"
                       >
                         × {t('tft.explorer.resetAll')}
                       </button>
@@ -504,7 +504,7 @@ export default function TftExplorerPage() {
                       <button
                         type="button"
                         onClick={() => { setUnits([]); setItems([]); setTraits([]); }}
-                        className="text-[11px] px-3 py-1.5 rounded bg-[#7B61FF]/15 border border-[#7B61FF]/40 text-[#a892ff] hover:bg-[#7B61FF]/25"
+                        className="text-[11px] px-3 py-1.5 rounded bg-accent-a15 border border-accent-a40 text-[#a892ff] hover:bg-accent-a25"
                       >
                         × {t('tft.explorer.resetAll')}
                       </button>
@@ -534,7 +534,7 @@ export default function TftExplorerPage() {
                           <button
                             type="button"
                             onClick={() => setStarLevels([])}
-                            className="text-[10px] text-[#7B61FF] hover:underline"
+                            className="text-[10px] text-accent hover:underline"
                           >× {t('tft.explorer.resetAll')}</button>
                         )}
                       </div>
@@ -564,7 +564,7 @@ export default function TftExplorerPage() {
                           <button
                             type="button"
                             onClick={() => setItemCounts([])}
-                            className="text-[10px] text-[#7B61FF] hover:underline"
+                            className="text-[10px] text-accent hover:underline"
                           >× {t('tft.explorer.resetAll')}</button>
                         )}
                       </div>
@@ -576,7 +576,7 @@ export default function TftExplorerPage() {
                               key={c}
                               type="button"
                               onClick={() => setItemCounts(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c])}
-                              className={`flex-1 py-1.5 text-xs rounded border tabular-nums ${active ? 'bg-[#7B61FF]/30 border-[#7B61FF] text-white' : 'bg-surface-raised border-border-subtle text-fg-secondary'}`}
+                              className={`flex-1 py-1.5 text-xs rounded border tabular-nums ${active ? 'bg-accent-a30 border-accent text-white' : 'bg-surface-raised border-border-subtle text-fg-secondary'}`}
                             >
                               {c}
                             </button>
@@ -603,7 +603,7 @@ export default function TftExplorerPage() {
                 )}
 
                 {matchError && (
-                  <div className="bg-surface-base border border-[#7B61FF]/40 rounded-lg p-3 text-fg-secondary text-sm">
+                  <div className="bg-surface-base border border-accent-a40 rounded-lg p-3 text-fg-secondary text-sm">
                     {matchError}
                   </div>
                 )}
@@ -611,7 +611,7 @@ export default function TftExplorerPage() {
                 {units.length > 0 && !matchLoading && matchAggregate && (
                   <>
                     {(matchCount < 30 || days >= 7) && (
-                      <div className="bg-[#7B61FF]/10 border border-[#7B61FF]/40 rounded-lg p-3 text-[11px] text-[#a892ff] space-y-1">
+                      <div className="bg-accent-a10 border border-accent-a40 rounded-lg p-3 text-[11px] text-[#a892ff] space-y-1">
                         {matchCount < 30 && (
                           <div>{t('tft.explorer.lowSample').replace('{n}', String(matchCount))}</div>
                         )}
@@ -736,7 +736,7 @@ function FilterPicker({
       <div className="flex items-center justify-between mb-2">
         <div className="text-fg-muted text-[10px] uppercase tracking-widest">{title}</div>
         {selected.length > 0 && (
-          <button type="button" onClick={clear} className="text-[10px] text-[#7B61FF] hover:underline">
+          <button type="button" onClick={clear} className="text-[10px] text-accent hover:underline">
             × {selected.length}
           </button>
         )}
@@ -759,7 +759,7 @@ function FilterPicker({
               type="button"
               onClick={() => toggle(o.id)}
               title={o.tooltip || undefined}
-              className={`w-full flex items-center gap-2 px-1.5 py-1 rounded text-left ${active ? 'bg-[#7B61FF]/20' : 'hover:bg-surface-raised'}`}
+              className={`w-full flex items-center gap-2 px-1.5 py-1 rounded text-left ${active ? 'bg-accent-a20' : 'hover:bg-surface-raised'}`}
             >
               {iconUrl ? (
                 <img src={iconUrl} alt="" className="w-5 h-5 rounded object-cover flex-none" style={{ border: icon === 'champion' && o.cost ? `1px solid ${costColorOf(o.cost)}` : undefined }} />
@@ -815,7 +815,7 @@ function ItemFilterPicker({
                 onClick={() => setTab(b)}
                 className={`px-2 py-0.5 rounded text-[10px] uppercase tracking-widest ${
                   active
-                    ? 'bg-[#7B61FF] text-white'
+                    ? 'bg-accent text-white'
                     : 'bg-surface-raised text-fg-muted hover:text-white'
                 }`}
               >
@@ -825,7 +825,7 @@ function ItemFilterPicker({
           })}
         </div>
         {selected.length > 0 && (
-          <button type="button" onClick={clear} className="text-[10px] text-[#7B61FF] hover:underline">
+          <button type="button" onClick={clear} className="text-[10px] text-accent hover:underline">
             × {selected.length}
           </button>
         )}
@@ -844,7 +844,7 @@ function ItemFilterPicker({
               key={o.id}
               type="button"
               onClick={() => toggle(o.id)}
-              className={`w-full flex items-center gap-2 px-1.5 py-1 rounded text-left ${active ? 'bg-[#7B61FF]/20' : 'hover:bg-surface-raised'}`}
+              className={`w-full flex items-center gap-2 px-1.5 py-1 rounded text-left ${active ? 'bg-accent-a20' : 'hover:bg-surface-raised'}`}
             >
               {iconUrl ? (
                 <img src={iconUrl} alt="" className="w-5 h-5 rounded object-cover flex-none" />

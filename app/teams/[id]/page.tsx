@@ -55,7 +55,7 @@ export default function TeamDetailPage() {
         <Nav />
         <div className="max-w-4xl mx-auto px-6 py-20 text-center">
           <div className="text-red-400 text-xl mb-4">{t('team.notFound')}</div>
-          <a href="/teams" className="text-[#c89b3c] text-sm hover:underline">&larr; {t('team.allTeams')}</a>
+          <a href="/teams" className="text-accent text-sm hover:underline">&larr; {t('team.allTeams')}</a>
         </div>
       </main>
     );
@@ -110,7 +110,7 @@ export default function TeamDetailPage() {
             {team.logo ? (
               <img src={team.logo} alt={team.short} className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-contain bg-surface-raised p-2" />
             ) : (
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg bg-surface-raised flex items-center justify-center text-[#c89b3c] text-xl sm:text-2xl font-bold">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg bg-surface-raised flex items-center justify-center text-accent text-xl sm:text-2xl font-bold">
                 {team.short}
               </div>
             )}
@@ -121,7 +121,7 @@ export default function TeamDetailPage() {
             {team.totalPrizeMoney > 0 && (
               <div className="sm:text-right">
                 <div className="text-fg-secondary text-xs mb-1">{t('team.prizeMoney')}</div>
-                <div className="text-[#c89b3c] text-xl sm:text-2xl font-medium">{formatPrize(team.totalPrizeMoney)}</div>
+                <div className="text-accent text-xl sm:text-2xl font-medium">{formatPrize(team.totalPrizeMoney)}</div>
               </div>
             )}
           </div>
@@ -143,7 +143,7 @@ export default function TeamDetailPage() {
                   </div>
                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-surface-sunken border border-border-subtle rounded text-xs text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-lg">
                     <div className="font-medium">{t.event}</div>
-                    <div className="text-[#c89b3c]">{t.place}. Platz</div>
+                    <div className="text-accent">{t.place}. Platz</div>
                     {t.date && <div className="text-fg-muted">{t.date}</div>}
                   </div>
                 </div>
@@ -168,7 +168,7 @@ export default function TeamDetailPage() {
                 const link = makePlayerLink(m);
                 const Card = link ? 'a' : 'div';
                 return (
-                  <Card key={i} href={link || undefined} className={`bg-surface-base border border-border-subtle rounded p-4 text-center ${link ? 'hover:border-[#c89b3c]/40 transition-colors cursor-pointer' : ''}`}>
+                  <Card key={i} href={link || undefined} className={`bg-surface-base border border-border-subtle rounded p-4 text-center ${link ? 'hover:border-accent-a40 transition-colors cursor-pointer' : ''}`}>
                     {m.image ? (
                       <img src={m.image} alt={m.name}
                         className="w-16 h-16 rounded-full mx-auto mb-2 object-cover border-2 border-border-subtle bg-surface-raised"
@@ -178,9 +178,9 @@ export default function TeamDetailPage() {
                     <div className={`w-16 h-16 rounded-full mx-auto mb-2 bg-surface-raised border-2 border-border-subtle items-center justify-center text-fg-muted text-xl ${m.image ? 'hidden' : 'flex'}`}>?</div>
                     <div className="text-white text-sm font-medium">{m.name}</div>
                     {m.firstName && <div className="text-fg-muted text-[10px]">{m.firstName} {m.lastName}</div>}
-                    <div className="text-[#c89b3c] text-xs mt-1">{m.role}</div>
+                    <div className="text-accent text-xs mt-1">{m.role}</div>
                     {m.country && <div className="text-fg-muted text-xs mt-0.5">{m.country}</div>}
-                    {link && <div className="text-fg-muted text-[10px] mt-1 hover:text-[#c89b3c]">{t('team.viewProfile')}</div>}
+                    {link && <div className="text-fg-muted text-[10px] mt-1 hover:text-accent">{t('team.viewProfile')}</div>}
                   </Card>
                 );
               })}
@@ -197,7 +197,7 @@ export default function TeamDetailPage() {
                 const link = makePlayerLink(m);
                 const Card = link ? 'a' : 'div';
                 return (
-                  <Card key={i} href={link || undefined} className={`bg-surface-base border border-border-subtle rounded p-3 flex items-center gap-3 ${link ? 'hover:border-[#c89b3c]/40 transition-colors cursor-pointer' : ''}`}>
+                  <Card key={i} href={link || undefined} className={`bg-surface-base border border-border-subtle rounded p-3 flex items-center gap-3 ${link ? 'hover:border-accent-a40 transition-colors cursor-pointer' : ''}`}>
                     <div className="w-10 h-10 rounded-full bg-surface-raised border border-border-subtle flex items-center justify-center text-fg-muted text-sm flex-shrink-0">
                       ?
                     </div>
@@ -296,7 +296,7 @@ function TournamentHistory({ results, formatPrize }: { results: any[]; formatPri
               onClick={() => setYearFilter(y)}
               className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
                 yearFilter === y
-                  ? 'bg-[#c89b3c]/15 text-[#c89b3c] border border-[#c89b3c]/30'
+                  ? 'bg-accent-a15 text-accent border border-accent-a30'
                   : 'text-fg-muted hover:text-fg-secondary'
               }`}
             >
@@ -307,7 +307,7 @@ function TournamentHistory({ results, formatPrize }: { results: any[]; formatPri
         <div className="sm:ml-auto flex gap-4 text-xs">
           <span className="text-fg-secondary">{filtered.length} {t('team.tournaments')}</span>
           <span className="text-[#f0c040]">{wins}x {t('team.firstPlace')}</span>
-          {totalPrize > 0 && <span className="text-[#c89b3c]">{formatPrize(totalPrize)}</span>}
+          {totalPrize > 0 && <span className="text-accent">{formatPrize(totalPrize)}</span>}
         </div>
       </div>
 
@@ -343,7 +343,7 @@ function TournamentHistory({ results, formatPrize }: { results: any[]; formatPri
                 <div className={`text-center text-sm font-medium ${placeColor(r.place)}`}>
                   {r.place}
                 </div>
-                <div className="text-[#c89b3c] text-sm text-right" title={r.originalPrize || ''}>
+                <div className="text-accent text-sm text-right" title={r.originalPrize || ''}>
                   {(r.prizeUSD || r.prize || 0) > 0 ? formatPrize(r.prizeUSD || r.prize) : '-'}
                 </div>
                 <div className="text-fg-muted text-xs text-right">{r.date ? r.date.slice(0, 7) : '-'}</div>
@@ -365,7 +365,7 @@ function TournamentHistory({ results, formatPrize }: { results: any[]; formatPri
                 <div className="text-right flex-shrink-0">
                   <div className={`text-sm font-medium ${placeColor(r.place)}`}>{r.place}.</div>
                   {(r.prizeUSD || r.prize || 0) > 0 && (
-                    <div className="text-[#c89b3c] text-xs">{formatPrize(r.prizeUSD || r.prize)}</div>
+                    <div className="text-accent text-xs">{formatPrize(r.prizeUSD || r.prize)}</div>
                   )}
                 </div>
               </div>

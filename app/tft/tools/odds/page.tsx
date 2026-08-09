@@ -164,7 +164,7 @@ export default function TftRollOddsPage() {
               <input
                 type="range" min={2} max={11} value={level}
                 onChange={e => setLevel(Number(e.target.value))}
-                className="w-full accent-[#7B61FF]"
+                className="w-full accent-accent"
               />
               <div className="flex justify-between text-fg-faint text-[10px] mt-1 tabular-nums">
                 <span>2</span><span>4</span><span>6</span><span>8</span><span>10</span>
@@ -179,7 +179,7 @@ export default function TftRollOddsPage() {
               <input
                 type="range" min={0} max={BAG_SIZE[cost]} value={copiesOwned}
                 onChange={e => setCopiesOwned(Number(e.target.value))}
-                className="w-full accent-[#7B61FF]"
+                className="w-full accent-accent"
               />
             </div>
 
@@ -191,7 +191,7 @@ export default function TftRollOddsPage() {
               <input
                 type="range" min={0} max={BAG_SIZE[cost] - copiesOwned} value={Math.min(copiesContested, BAG_SIZE[cost] - copiesOwned)}
                 onChange={e => setCopiesContested(Number(e.target.value))}
-                className="w-full accent-[#7B61FF]"
+                className="w-full accent-accent"
               />
             </div>
 
@@ -246,7 +246,7 @@ export default function TftRollOddsPage() {
                       return (
                         <tr
                           key={lvl}
-                          className={`border-b border-border-subtle/50 last:border-0 cursor-pointer transition-colors ${isActive ? 'bg-[#7B61FF]/10' : 'hover:bg-surface-raised'}`}
+                          className={`border-b border-border-subtle/50 last:border-0 cursor-pointer transition-colors ${isActive ? 'bg-accent-a10' : 'hover:bg-surface-raised'}`}
                           onClick={() => setLevel(Number(lvl))}
                         >
                           <td className={`px-2 py-1.5 ${isActive ? 'text-[#c39bff] font-medium' : 'text-white'}`}>{lvl}</td>

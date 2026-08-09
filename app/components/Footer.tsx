@@ -46,7 +46,7 @@ export default function Footer() {
                 >
                   <img src={l.flagUrl} alt="" className="w-5 h-auto rounded-sm" />
                   <span>{l.label}</span>
-                  {l.code === lang && <span className="ml-auto text-[#7B61FF]">✓</span>}
+                  {l.code === lang && <span className="ml-auto text-brand">✓</span>}
                 </button>
               ))}
             </div>

@@ -148,12 +148,12 @@ export default function TftCompDetailPage() {
     <main className="min-h-screen bg-surface-page">
       <Nav active="comps" />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
-        <a href="/tft/comps" className="text-[#7B61FF] text-xs hover:underline">← {t('nav.comps')}</a>
+        <a href="/tft/comps" className="text-accent text-xs hover:underline">← {t('nav.comps')}</a>
 
         <div className="flex flex-wrap items-center justify-end gap-2 mt-2 mb-4">
           <a
             href={`/tft/comps?compareA=${encodeURIComponent(slug)}`}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-[#7B61FF]/50 text-xs transition-colors"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-accent-a50 text-xs transition-colors"
             title={t('tft.compare.fromDetail')}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -263,7 +263,7 @@ export default function TftCompDetailPage() {
                             {meta?.name?.split(' ').pop() || c.component.split('_').pop()}
                           </div>
                           <div className="w-full h-1 bg-surface-overlay rounded mt-1 overflow-hidden">
-                            <div className="h-full bg-[#7B61FF]" style={{ width: `${pct}%` }} />
+                            <div className="h-full bg-accent" style={{ width: `${pct}%` }} />
                           </div>
                           <div className="text-fg-secondary text-[10px] tabular-nums">{pct}%</div>
                         </a>
@@ -288,7 +288,7 @@ export default function TftCompDetailPage() {
                           <span className="text-fg-secondary text-[10px] uppercase tracking-widest">
                             {t('tft.comp.itemSet')} {i + 1}
                           </span>
-                          <span className="text-[#7B61FF] text-xs font-medium tabular-nums">
+                          <span className="text-accent text-xs font-medium tabular-nums">
                             {pct.toFixed(0)}%
                           </span>
                         </div>

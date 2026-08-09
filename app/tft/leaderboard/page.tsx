@@ -125,7 +125,7 @@ export default function TftLeaderboardPage() {
             <button
               key={r.value}
               onClick={() => setRegion(r.value)}
-              className={`px-3 py-1.5 rounded text-xs font-medium ${region === r.value ? 'bg-[#7B61FF] text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
+              className={`px-3 py-1.5 rounded text-xs font-medium ${region === r.value ? 'bg-accent text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
             >
               {r.label}
             </button>
@@ -138,7 +138,7 @@ export default function TftLeaderboardPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder={t('tft.search.player')}
-            className="w-full sm:w-80 bg-surface-raised border border-border-subtle rounded px-3 py-1.5 text-sm text-white placeholder:text-fg-faint outline-none focus:border-[#7B61FF]/60"
+            className="w-full sm:w-80 bg-surface-raised border border-border-subtle rounded px-3 py-1.5 text-sm text-white placeholder:text-fg-faint outline-none focus:border-accent-a60"
           />
         </div>
 
@@ -206,7 +206,7 @@ export default function TftLeaderboardPage() {
                       {p.leaguePoints} LP · {total} {t('tft.gamesShort')} · {wr}% WR
                     </span>
                     {mv != null
-                      ? <span className="text-[#7B61FF] font-medium">{fmtEur(mv)}</span>
+                      ? <span className="text-accent font-medium">{fmtEur(mv)}</span>
                       : <span className="text-fg-muted">—</span>
                     }
                   </div>

@@ -132,7 +132,7 @@ export default function TftAugmentsReferencePage() {
                 className={`px-3 py-1 rounded text-xs border transition-colors ${
                   active
                     ? 'text-white'
-                    : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-[#7B61FF]/40'
+                    : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-accent-a40'
                 }`}
                 style={active ? { backgroundColor: `${color}25`, borderColor: `${color}80`, color } : undefined}
               >
@@ -146,7 +146,7 @@ export default function TftAugmentsReferencePage() {
             placeholder={t('tft.augment.searchPlaceholder')}
             value={query}
             onChange={e => setQuery(e.target.value)}
-            className="flex-1 min-w-[140px] bg-surface-raised border border-border-subtle rounded px-3 py-1 text-xs text-white focus:outline-none focus:border-[#7B61FF]/60"
+            className="flex-1 min-w-[140px] bg-surface-raised border border-border-subtle rounded px-3 py-1 text-xs text-white focus:outline-none focus:border-accent-a60"
           />
         </div>
 
@@ -166,7 +166,7 @@ export default function TftAugmentsReferencePage() {
                 className={`px-2.5 py-1 rounded text-xs border transition-colors ${
                   active
                     ? 'text-white'
-                    : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-[#7B61FF]/40'
+                    : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-accent-a40'
                 }`}
                 style={active ? { backgroundColor: `${color}25`, borderColor: `${color}80`, color } : undefined}
               >
@@ -181,8 +181,8 @@ export default function TftAugmentsReferencePage() {
             onClick={() => setSortMode('tier')}
             className={`px-2.5 py-1 rounded text-xs border transition-colors ${
               sortMode === 'tier'
-                ? 'bg-[#7B61FF]/25 border-[#7B61FF]/80 text-[#a892ff]'
-                : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-[#7B61FF]/40'
+                ? 'bg-accent-a25 border-accent-a80 text-[#a892ff]'
+                : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-accent-a40'
             }`}
           >
             {t('tft.augment.sort.tier')}
@@ -192,8 +192,8 @@ export default function TftAugmentsReferencePage() {
             onClick={() => setSortMode('stage')}
             className={`px-2.5 py-1 rounded text-xs border transition-colors ${
               sortMode === 'stage'
-                ? 'bg-[#7B61FF]/25 border-[#7B61FF]/80 text-[#a892ff]'
-                : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-[#7B61FF]/40'
+                ? 'bg-accent-a25 border-accent-a80 text-[#a892ff]'
+                : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-accent-a40'
             }`}
           >
             {t('tft.augment.sort.stage')}
@@ -226,7 +226,7 @@ export default function TftAugmentsReferencePage() {
                 <a
                   key={a.apiName}
                   href={`/tft/augments/${encodeURIComponent(a.apiName)}`}
-                  className="flex items-start gap-3 p-3 bg-surface-base border border-border-subtle rounded hover:border-[#7B61FF]/40 transition-colors"
+                  className="flex items-start gap-3 p-3 bg-surface-base border border-border-subtle rounded hover:border-accent-a40 transition-colors"
                 >
                   <div className="relative w-12 h-12 rounded border-2 overflow-hidden flex-shrink-0" style={{ borderColor: tierColor }}>
                     {url ? (

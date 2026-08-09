@@ -144,7 +144,7 @@ export default function TftPatchWinnersPage() {
       <Wrapper
         key={e.key}
         {...(display.href ? { href: display.href } : {})}
-        className={`block bg-surface-raised border border-border-subtle rounded p-2.5 ${display.href ? 'hover:border-[#7B61FF]/40 transition-colors' : ''}`}
+        className={`block bg-surface-raised border border-border-subtle rounded p-2.5 ${display.href ? 'hover:border-accent-a40 transition-colors' : ''}`}
       >
         <div className="flex items-center gap-2">
           <span className="text-fg-muted text-[10px] w-4 tabular-nums">#{idx + 1}</span>
@@ -187,8 +187,8 @@ export default function TftPatchWinnersPage() {
                 onClick={() => setEntity(e)}
                 className={`px-3 py-1.5 text-xs uppercase tracking-widest rounded border ${
                   entity === e
-                    ? 'bg-[#7B61FF] border-[#7B61FF] text-white'
-                    : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-[#7B61FF]/40'
+                    ? 'bg-accent border-accent text-white'
+                    : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-accent-a40'
                 }`}
               >
                 {t(`nav.${e === 'unit' ? 'units' : e === 'item' ? 'items' : e === 'comp' ? 'comps' : 'traits'}` as const)}
@@ -202,8 +202,8 @@ export default function TftPatchWinnersPage() {
                 onClick={() => setTier(tk.value)}
                 className={`px-3 py-1.5 text-xs rounded border ${
                   tier === tk.value
-                    ? 'bg-[#7B61FF] border-[#7B61FF] text-white'
-                    : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-[#7B61FF]/40'
+                    ? 'bg-accent border-accent text-white'
+                    : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-accent-a40'
                 }`}
               >
                 {t(tk.key as TranslationKey)}

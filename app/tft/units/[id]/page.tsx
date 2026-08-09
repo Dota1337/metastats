@@ -113,10 +113,10 @@ export default function TftUnitDetailPage() {
       <Nav active="units" />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
         <div className="bg-surface-base border border-border-subtle rounded-lg p-5 mb-5">
-          <a href="/tft/units" className="text-[#7B61FF] text-xs hover:underline">← {t('nav.units')}</a>
+          <a href="/tft/units" className="text-accent text-xs hover:underline">← {t('nav.units')}</a>
           <div className="flex items-center gap-4 mt-2">
             {tftChampionTileUrl(assets, champ) ? (
-              <img src={tftChampionTileUrl(assets, champ)!} alt={champ!.name} className="w-16 h-16 rounded-lg border-2 border-[#7B61FF] object-cover" />
+              <img src={tftChampionTileUrl(assets, champ)!} alt={champ!.name} className="w-16 h-16 rounded-lg border-2 border-accent object-cover" />
             ) : (
               <div className="w-16 h-16 rounded-lg bg-surface-overlay" />
             )}
@@ -132,7 +132,7 @@ export default function TftUnitDetailPage() {
                         {i > 0 && ' · '}
                         <a
                           href={`/tft/traits/${encodeURIComponent(tr)}`}
-                          className="hover:text-[#7B61FF] transition-colors"
+                          className="hover:text-accent transition-colors"
                         >
                           {tftTraitDisplayName(assets, tr) || prettyChar(tr)}
                         </a>
@@ -148,7 +148,7 @@ export default function TftUnitDetailPage() {
         <div className="flex justify-end items-center gap-2 mb-4">
           <a
             href={buildExplorerUrl({ units: [id], bucket })}
-            className="px-2.5 py-1.5 rounded text-xs bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-[#7B61FF]/60 transition-colors flex items-center gap-1.5"
+            className="px-2.5 py-1.5 rounded text-xs bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-accent-a60 transition-colors flex items-center gap-1.5"
             title={t('tft.drill.openInExplorer')}
           >
             <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -191,10 +191,10 @@ export default function TftUnitDetailPage() {
                         onClick={() => setStar(k)}
                         className={`px-2.5 py-1 text-[11px] rounded border transition-colors ${
                           active
-                            ? 'bg-[#7B61FF] border-[#7B61FF] text-white'
+                            ? 'bg-accent border-accent text-white'
                             : disabled
                             ? 'bg-surface-raised border-border-subtle text-[#3a4555] cursor-not-allowed'
-                            : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-[#7B61FF]/40'
+                            : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-accent-a40'
                         }`}
                       >
                         {label}
@@ -285,7 +285,7 @@ export default function TftUnitDetailPage() {
                                 <div key={i} className="flex items-center gap-2">
                                   <ItemIcon apiName={e.item} assets={assets} size={9} />
                                   <div className="flex-1 h-1.5 bg-surface-overlay rounded overflow-hidden">
-                                    <div className="h-full bg-[#7B61FF]" style={{ width: `${(e.count / total) * 100}%` }} />
+                                    <div className="h-full bg-accent" style={{ width: `${(e.count / total) * 100}%` }} />
                                   </div>
                                   <span className="text-[11px] text-fg-secondary tabular-nums w-10 text-right">{((e.count / total) * 100).toFixed(0)}%</span>
                                 </div>
@@ -330,7 +330,7 @@ export default function TftUnitDetailPage() {
                   <Section title={t('tft.carryStrength')}>
                     <div className="text-fg-muted text-[11px] mb-2">{t('tft.carryStrengthCaption')}</div>
                     {focusedBin && (
-                      <div className="bg-[#7B61FF]/10 border border-[#7B61FF]/40 rounded p-2.5 mb-2 flex flex-wrap items-center gap-3 text-[11px] tabular-nums">
+                      <div className="bg-accent-a10 border border-accent-a40 rounded p-2.5 mb-2 flex flex-wrap items-center gap-3 text-[11px] tabular-nums">
                         <span className="text-[#c39bff] font-medium">
                           {star}★ · {itemCount} {t('tft.itemsShort')}
                         </span>
@@ -525,7 +525,7 @@ export default function TftUnitDetailPage() {
                         <a
                           key={c.slug}
                           href={`/tft/comps/${encodeURIComponent(c.slug)}?bucket=${bucket}&region=euw1`}
-                          className="flex items-center gap-2 bg-surface-raised border border-border-subtle rounded p-2 hover:border-[#7B61FF]/40 transition-colors"
+                          className="flex items-center gap-2 bg-surface-raised border border-border-subtle rounded p-2 hover:border-accent-a40 transition-colors"
                         >
                           {carryUrl && (
                             <img src={carryUrl} alt="" className="w-8 h-8 rounded border border-[#c39bff]/60 object-cover flex-shrink-0" />

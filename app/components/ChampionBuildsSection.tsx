@@ -167,7 +167,7 @@ export default function ChampionBuildsSection({ championKey }: Props) {
               <button
                 key={r.value}
                 onClick={() => setRegion(r.value)}
-                className={`px-3 py-1.5 text-xs uppercase ${region === r.value ? 'bg-surface-overlay text-[#c89b3c]' : 'text-fg-secondary hover:text-white'}`}
+                className={`px-3 py-1.5 text-xs uppercase ${region === r.value ? 'bg-surface-overlay text-accent' : 'text-fg-secondary hover:text-white'}`}
               >
                 {r.label}
               </button>
@@ -188,7 +188,7 @@ export default function ChampionBuildsSection({ championKey }: Props) {
               onClick={() => setActiveRole(rt.value)}
               className={`px-4 py-2 text-sm border-b-2 transition-colors ${
                 isActive
-                  ? 'border-[#c89b3c] text-[#c89b3c]'
+                  ? 'border-accent text-accent'
                   : 'border-transparent text-fg-secondary hover:text-white'
               }`}
             >

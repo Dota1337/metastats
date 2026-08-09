@@ -198,7 +198,7 @@ export default function TftMarktwertPage() {
               onClick={() => setRegion(r.value)}
               className={`px-2.5 py-1 rounded text-xs font-medium flex-shrink-0 ${
                 region === r.value
-                  ? 'bg-[#7B61FF] text-white'
+                  ? 'bg-accent text-white'
                   : 'bg-surface-raised text-fg-secondary hover:text-white'
               }`}
             >
@@ -214,7 +214,7 @@ export default function TftMarktwertPage() {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder={t('tft.search.player')}
-              className="w-full sm:w-80 bg-surface-raised border border-border-subtle rounded px-3 py-1.5 text-sm text-white placeholder:text-fg-faint outline-none focus:border-[#7B61FF]/60"
+              className="w-full sm:w-80 bg-surface-raised border border-border-subtle rounded px-3 py-1.5 text-sm text-white placeholder:text-fg-faint outline-none focus:border-accent-a60"
             />
           </div>
         )}
@@ -227,7 +227,7 @@ export default function TftMarktwertPage() {
               onClick={() => setTab(tt)}
               className={`px-4 py-2 text-xs font-medium uppercase tracking-widest ${
                 tab === tt
-                  ? 'text-white border-b-2 border-[#7B61FF]'
+                  ? 'text-white border-b-2 border-accent'
                   : 'text-fg-secondary hover:text-white'
               }`}
             >
@@ -310,7 +310,7 @@ function TopTab({
             onClick={() => onTierFilter(tr)}
             className={`px-3 py-1.5 rounded text-xs font-medium ${
               tierFilter === tr
-                ? 'bg-[#7B61FF] text-white'
+                ? 'bg-accent text-white'
                 : 'bg-surface-raised text-fg-secondary hover:text-white'
             }`}
           >
@@ -369,7 +369,7 @@ function TopTab({
                   <span className="text-fg-muted text-[10px] sm:hidden">
                     {p.lp} LP · ×{p.multiplier.toFixed(2)}
                   </span>
-                  <span className="text-[#7B61FF] font-medium tabular-nums">
+                  <span className="text-accent font-medium tabular-nums">
                     {fmtEur(p.finalValue, lang)}
                   </span>
                 </div>
@@ -428,7 +428,7 @@ function MoversTab({
               key={w}
               onClick={() => setWindow(w)}
               className={`px-3 py-1.5 rounded text-xs font-medium ${
-                window_ === w ? 'bg-[#7B61FF] text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'
+                window_ === w ? 'bg-accent text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'
               }`}
             >
               {w}d

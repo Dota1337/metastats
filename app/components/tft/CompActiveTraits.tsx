@@ -177,7 +177,7 @@ function TraitDrillDown({
                 )}
                 {u.stack >= 2 && (
                   <div
-                    className="absolute -top-1 -right-1 bg-[#7B61FF] text-white text-[8px] font-bold rounded-full w-4 h-4 flex items-center justify-center shadow leading-none"
+                    className="absolute -top-1 -right-1 bg-accent text-white text-[8px] font-bold rounded-full w-4 h-4 flex items-center justify-center shadow leading-none"
                     title={t('tft.comp.activeTraits.multiplicityStack')}
                   >
                     ×2

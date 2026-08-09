@@ -66,13 +66,13 @@ export default function TeamSynergy({ roster, teamName, results, region }: TeamS
     <div>
       <button
         onClick={analyze}
-        className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#c89b3c]/10 border border-[#c89b3c]/20 text-[#c89b3c] text-[10px] font-medium hover:bg-[#c89b3c]/20 transition-colors"
+        className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-accent-a10 border border-accent-a20 text-accent text-[10px] font-medium hover:bg-accent-a20 transition-colors"
       >
         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
         </svg>
         {t('synergy.analyze')}
-        {loading && <div className="w-3 h-3 border border-[#c89b3c] border-t-transparent rounded-full animate-spin" />}
+        {loading && <div className="w-3 h-3 border border-accent border-t-transparent rounded-full animate-spin" />}
       </button>
 
       {expanded && synergy && (
@@ -118,7 +118,7 @@ export default function TeamSynergy({ roster, teamName, results, region }: TeamS
             <div className="border-t border-border-subtle pt-2 space-y-1">
               {synergy.insights.map((insight, i) => (
                 <div key={i} className="text-fg-secondary text-[11px] flex items-start gap-1.5">
-                  <span className="text-[#c89b3c] mt-0.5">·</span>
+                  <span className="text-accent mt-0.5">·</span>
                   {insight}
                 </div>
               ))}

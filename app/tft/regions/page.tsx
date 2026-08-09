@@ -132,8 +132,8 @@ export default function TftRegionsPage() {
               title={o.tip}
               className={`px-3 py-1.5 rounded text-xs border transition-colors ${
                 mode === o.v
-                  ? 'bg-[#7B61FF]/20 border-[#7B61FF]/60 text-white'
-                  : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-[#7B61FF]/40'
+                  ? 'bg-accent-a20 border-accent-a60 text-white'
+                  : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-accent-a40'
               }`}
             >
               {o.label}
@@ -143,7 +143,7 @@ export default function TftRegionsPage() {
           <select
             value={String(days)}
             onChange={e => setDays(Number(e.target.value))}
-            className="bg-surface-raised border border-border-subtle rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-[#7B61FF]/60"
+            className="bg-surface-raised border border-border-subtle rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-accent-a60"
           >
             <option value="3">{t('tft.filter.dayN').replace('{n}', '3')}</option>
             <option value="7">{t('tft.filter.dayN').replace('{n}', '7')}</option>
@@ -152,7 +152,7 @@ export default function TftRegionsPage() {
           <select
             value={bucket}
             onChange={e => setBucket(e.target.value)}
-            className="bg-surface-raised border border-border-subtle rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-[#7B61FF]/60"
+            className="bg-surface-raised border border-border-subtle rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-accent-a60"
           >
             <option value="master_plus">{t('tft.filter.masterPlus')}</option>
             <option value="challenger">{t('tft.bucket.challenger')}</option>
@@ -209,7 +209,7 @@ function RegionRowCard({
   return (
     <a
       href={`/tft/comps/${encodeURIComponent(row.cluster_key)}?bucket=master_plus`}
-      className="block bg-surface-base border border-border-subtle rounded p-3 hover:border-[#7B61FF]/40 transition-colors"
+      className="block bg-surface-base border border-border-subtle rounded p-3 hover:border-accent-a40 transition-colors"
     >
       <div className="flex items-center gap-3">
         {carryUrl ? (

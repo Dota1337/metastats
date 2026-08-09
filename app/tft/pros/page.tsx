@@ -187,7 +187,7 @@ export default function TftProsPage() {
             onClick={() => setTab('verified')}
             className={`px-3 py-2 text-xs font-medium uppercase tracking-widest border-b-2 -mb-px ${
               tab === 'verified'
-                ? 'text-white border-[#7B61FF]'
+                ? 'text-white border-accent'
                 : 'text-fg-secondary border-transparent hover:text-white'
             }`}
           >
@@ -200,7 +200,7 @@ export default function TftProsPage() {
               onClick={() => setTab(o.value)}
               className={`px-3 py-2 text-xs font-medium uppercase tracking-widest border-b-2 -mb-px ${
                 tab === o.value
-                  ? 'text-white border-[#7B61FF]'
+                  ? 'text-white border-accent'
                   : 'text-fg-secondary border-transparent hover:text-white'
               }`}
             >
@@ -216,7 +216,7 @@ export default function TftProsPage() {
           <div className="flex flex-wrap gap-1.5 mb-3">
             <button
               onClick={() => setRegion('')}
-              className={`px-2.5 py-1 rounded text-xs font-medium ${region === '' ? 'bg-[#7B61FF] text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
+              className={`px-2.5 py-1 rounded text-xs font-medium ${region === '' ? 'bg-accent text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
             >
               {t('tft.filter.allRegions')}
             </button>
@@ -224,7 +224,7 @@ export default function TftProsPage() {
               <button
                 key={r.code}
                 onClick={() => setRegion(r.code)}
-                className={`px-2.5 py-1 rounded text-xs font-medium ${region === r.code ? 'bg-[#7B61FF] text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
+                className={`px-2.5 py-1 rounded text-xs font-medium ${region === r.code ? 'bg-accent text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
               >
                 {r.label} <span className="text-[10px] opacity-70">{r.count}</span>
               </button>
@@ -249,7 +249,7 @@ export default function TftProsPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder={t('tft.pros.searchPlaceholder')}
-            className="flex-1 min-w-[180px] bg-surface-raised border border-border-subtle rounded px-3 py-1 text-xs text-white outline-none focus:border-[#7B61FF]/60"
+            className="flex-1 min-w-[180px] bg-surface-raised border border-border-subtle rounded px-3 py-1 text-xs text-white outline-none focus:border-accent-a60"
           />
         </div>
 
@@ -339,7 +339,7 @@ export default function TftProsPage() {
                   </div>
                   <div className="hidden sm:block text-fg-secondary truncate">{p.team || '—'}</div>
                   <div className="hidden sm:block text-fg-secondary">{REGION_LABELS[p.region] || p.region.toUpperCase()}</div>
-                  <div className="text-[#c89b3c] text-right tabular-nums" title={earningsTooltip}>
+                  <div className="text-gold-earnings text-right tabular-nums" title={earningsTooltip}>
                     {formatEarnings(p.total_earnings_usd)}
                     {earningSourcesNonZero.length >= 2 && (
                       <span className="text-[8px] text-fg-muted ml-0.5" title={earningsTooltip}>•{earningSourcesNonZero.length}</span>
@@ -364,7 +364,7 @@ export default function TftProsPage() {
                         target="_blank"
                         rel="noreferrer"
                         onClick={e => e.stopPropagation()}
-                        className="hover:text-[#7B61FF]"
+                        className="hover:text-accent"
                         title={`X: ${p.twitter_handle}`}
                       >
                         𝕏

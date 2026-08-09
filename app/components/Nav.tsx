@@ -46,7 +46,7 @@ export default function Nav({ active }: NavProps) {
   const metaActive = active === 'comps' || active === 'units' || active === 'items' || active === 'traits'
     || active === 'onetricks' || active === 'patch';
   const metaItemClass = (key: NavProps['active']) =>
-    `block px-3 py-2 text-xs transition-colors ${key === active ? 'bg-[#7B61FF]/10 text-[#7B61FF]' : 'text-fg-secondary hover:text-white hover:bg-surface-raised'}`;
+    `block px-3 py-2 text-xs transition-colors ${key === active ? 'bg-brand-a10 text-brand' : 'text-fg-secondary hover:text-white hover:bg-surface-raised'}`;
 
   const currentLang = LANGUAGES.find(l => l.code === lang) || LANGUAGES[0];
 
@@ -263,13 +263,13 @@ export default function Nav({ active }: NavProps) {
               <>
                 <button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="flex items-center gap-1.5 bg-surface-raised border border-border-default rounded px-2 py-1 text-xs hover:border-[#7B61FF] transition-colors"
+                  className="flex items-center gap-1.5 bg-surface-raised border border-border-default rounded px-2 py-1 text-xs hover:border-brand transition-colors"
                   title={user.email || ''}
                 >
                   {user.avatarUrl ? (
                     <img src={user.avatarUrl} alt="" className="w-5 h-5 rounded-full object-cover" />
                   ) : (
-                    <div className="w-5 h-5 rounded-full bg-[#7B61FF] text-white text-[10px] flex items-center justify-center font-medium">
+                    <div className="w-5 h-5 rounded-full bg-brand text-white text-[10px] flex items-center justify-center font-medium">
                       {(user.name || user.email || '?').slice(0, 1).toUpperCase()}
                     </div>
                   )}
@@ -290,7 +290,7 @@ export default function Nav({ active }: NavProps) {
             ) : (
               <a
                 href={`/auth/login?next=${encodeURIComponent(pathname)}`}
-                className="bg-surface-raised border border-border-default rounded px-2.5 py-1 text-xs text-fg-secondary hover:text-white hover:border-[#7B61FF] transition-colors"
+                className="bg-surface-raised border border-border-default rounded px-2.5 py-1 text-xs text-fg-secondary hover:text-white hover:border-brand transition-colors"
               >{t('nav.login')}</a>
             )}
           </div>

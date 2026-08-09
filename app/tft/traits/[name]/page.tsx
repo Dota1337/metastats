@@ -163,13 +163,13 @@ export default function TftTraitDetailPage() {
     <main className="min-h-screen bg-surface-page">
       <Nav active="traits" />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
-        <a href="/tft/traits" className="text-[#7B61FF] text-xs hover:underline">← {t('nav.traits')}</a>
+        <a href="/tft/traits" className="text-accent text-xs hover:underline">← {t('nav.traits')}</a>
 
         {/* Header: icon + name + tier-pill row */}
         <div className="bg-surface-base border border-border-subtle rounded-lg p-5 mb-5 mt-2">
           <div className="flex items-start gap-4 flex-wrap">
             {iconUrl ? (
-              <img src={iconUrl} alt={tftTraitDisplayName(assets, apiName) || apiName} className="w-16 h-16 rounded-lg border-2 border-[#7B61FF]" />
+              <img src={iconUrl} alt={tftTraitDisplayName(assets, apiName) || apiName} className="w-16 h-16 rounded-lg border-2 border-accent" />
             ) : (
               <div className="w-16 h-16 rounded-lg bg-surface-overlay" />
             )}
@@ -189,7 +189,7 @@ export default function TftTraitDetailPage() {
             </div>
             <a
               href={buildExplorerUrl({ traits: [apiName] })}
-              className="px-2.5 py-1.5 rounded text-xs bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-[#7B61FF]/60 transition-colors flex items-center gap-1.5 self-start"
+              className="px-2.5 py-1.5 rounded text-xs bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-accent-a60 transition-colors flex items-center gap-1.5 self-start"
               title={t('tft.drill.openInExplorer')}
             >
               <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -217,7 +217,7 @@ export default function TftTraitDetailPage() {
                   <ul className="space-y-1.5">
                     {rendered.tiers.map(tier => (
                       <li key={tier.minUnits} className="flex gap-2 items-start">
-                        <span className="text-[#7B61FF] font-semibold tabular-nums shrink-0 w-7 text-right">({tier.minUnits})</span>
+                        <span className="text-accent font-semibold tabular-nums shrink-0 w-7 text-right">({tier.minUnits})</span>
                         <span>{tier.text}</span>
                       </li>
                     ))}
@@ -262,7 +262,7 @@ export default function TftTraitDetailPage() {
                   const r = renderTraitDesc(cleanedMeta as any);
                   return (
                     <div key={v.apiName} className="bg-surface-sunken border border-border-subtle rounded p-3">
-                      <div className="text-[#7B61FF] text-sm font-semibold mb-2">{constellation}</div>
+                      <div className="text-accent text-sm font-semibold mb-2">{constellation}</div>
                       {r.generalDesc && (
                         <p className="text-fg-secondary text-xs leading-relaxed mb-2">{r.generalDesc}</p>
                       )}
@@ -270,7 +270,7 @@ export default function TftTraitDetailPage() {
                         <ul className="space-y-1 text-xs">
                           {r.tiers.map(tier => (
                             <li key={tier.minUnits} className="flex gap-2 items-start">
-                              <span className="text-[#7B61FF] font-semibold tabular-nums shrink-0 w-6 text-right">({tier.minUnits})</span>
+                              <span className="text-accent font-semibold tabular-nums shrink-0 w-6 text-right">({tier.minUnits})</span>
                               <span className="text-fg-secondary">{tier.text}</span>
                             </li>
                           ))}
@@ -306,7 +306,7 @@ export default function TftTraitDetailPage() {
                   <ul className="space-y-1.5">
                     {causes.map(c => (
                       <li key={c.apiName} className="bg-surface-sunken border border-border-subtle rounded px-3 py-2 text-xs">
-                        <div className="text-[#7B61FF] font-medium mb-0.5">{c.label}</div>
+                        <div className="text-accent font-medium mb-0.5">{c.label}</div>
                         <div className="text-fg-secondary leading-snug">{c.desc}</div>
                       </li>
                     ))}
@@ -319,7 +319,7 @@ export default function TftTraitDetailPage() {
                   <ul className="space-y-1.5">
                     {effects.map(e => (
                       <li key={e.apiName} className="bg-surface-sunken border border-border-subtle rounded px-3 py-2 text-xs">
-                        <div className="text-[#7B61FF] font-medium mb-0.5">{e.label}</div>
+                        <div className="text-accent font-medium mb-0.5">{e.label}</div>
                         <div className="text-fg-secondary leading-snug">{e.desc}</div>
                       </li>
                     ))}
@@ -420,7 +420,7 @@ export default function TftTraitDetailPage() {
               const styleColor = tier ? STYLE_COLORS[tier.style] : null;
               return (
                 <div key={s.activation} className="grid grid-cols-[4rem_1fr_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 items-center text-xs border-t border-border-subtle">
-                  <div className="text-right text-[#7B61FF] font-medium">{s.activation}</div>
+                  <div className="text-right text-accent font-medium">{s.activation}</div>
                   <div>
                     {styleColor && (
                       <span
@@ -454,7 +454,7 @@ export default function TftTraitDetailPage() {
                   <a
                     key={u.characterId}
                     href={`/tft/units/${encodeURIComponent(u.characterId)}?bucket=${bucket}`}
-                    className="flex flex-col items-center bg-surface-raised border border-border-subtle rounded p-2 hover:border-[#7B61FF]/50 transition"
+                    className="flex flex-col items-center bg-surface-raised border border-border-subtle rounded p-2 hover:border-accent-a50 transition"
                   >
                     {champUrl ? (
                       <img src={champUrl} alt={champion!.name} className="w-12 h-12 rounded object-cover border-2" style={{ borderColor: costColor(cost) }} />
@@ -493,7 +493,7 @@ export default function TftTraitDetailPage() {
                   <a
                     key={c.slug}
                     href={`/tft/comps/${encodeURIComponent(c.slug)}?bucket=${bucket}&region=${region}`}
-                    className="flex items-center gap-3 bg-surface-raised border border-border-subtle rounded p-2.5 hover:border-[#7B61FF]/40 transition-colors"
+                    className="flex items-center gap-3 bg-surface-raised border border-border-subtle rounded p-2.5 hover:border-accent-a40 transition-colors"
                   >
                     {carryUrl && (
                       <img src={carryUrl} alt="" className="w-9 h-9 rounded border border-[#c39bff]/60 object-cover flex-shrink-0" />

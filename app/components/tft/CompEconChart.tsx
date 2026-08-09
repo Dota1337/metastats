@@ -78,7 +78,7 @@ export default function CompEconChart({
           </ResponsiveContainer>
         </div>
         <div className="flex justify-between text-[9px] text-fg-faint mt-1.5">
-          <span><span className="inline-block w-2 h-2 bg-[#7B61FF] rounded-sm mr-1"/>{t('tft.comp.levelShare')}</span>
+          <span><span className="inline-block w-2 h-2 bg-accent rounded-sm mr-1"/>{t('tft.comp.levelShare')}</span>
           <span><span className="inline-block w-2 h-2 bg-[#3ecf8e] rounded-sm mr-1"/>{t('tft.comp.avgLastRound')}</span>
         </div>
       </div>

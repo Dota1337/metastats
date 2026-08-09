@@ -70,6 +70,22 @@
   --accent-tft-rgb: 123 97 255;
   --accent-rgb: var(--accent-lol-rgb);
 
+  /* --- Feste Farben, die NICHT dem Game folgen ------------------------------
+     Beide sehen aus wie ein Accent, sind aber keiner. Ohne eigene Namen
+     landen sie beim Migrieren auf --accent und kippen dann die Farbe:
+     das Marken-Lila wuerde auf LoL-Seiten gold, das Preisgeld-Gold auf
+     TFT-Seiten lila.
+
+     --brand: Nav, Footer, CookieBanner, Login-Seiten. Die Marke ist lila,
+     unabhaengig davon, welches Spiel die Seite zeigt.
+     --gold-earnings: Preisgelder (Pro-Seiten). Gold heisst hier "Geld".
+
+     Hier ist :root richtig, weil der WERT ein Hex ist und kein var() --
+     die Warnung oben gilt nur fuer Ableitungen aus --accent.            */
+  --brand: #7B61FF;
+  --brand-rgb: 123 97 255;
+  --gold-earnings: #c89b3c;
+
   /* --- Semantik ------------------------------------------------------------
      WELLE-2-SCHULD: Win/Loss läuft heute über ZWEI parallele Systeme —
      diese Hexe (24×/13×) und Tailwind-Namen text-green-400 (45×) /
@@ -157,6 +173,51 @@
   --color-accent: var(--accent);
   --color-accent-lol: var(--accent-lol);
   --color-accent-tft: var(--accent-tft);
+
+  --color-brand: var(--brand);
+  --color-gold-earnings: var(--gold-earnings);
+
+  /* Transparente Accent-Stufen.
+     Warum hier und nicht als `accent/40`: Tailwinds Slash-Syntax baut daraus
+     color-mix() und legt ausserhalb des @supports-Blocks einen VOLLTON als
+     Fallback ab. Bei einem gesaettigten Lila ist das kein "etwas kraeftiger",
+     sondern ein voller Rand statt eines Hauchs. rgb(<tripel> / X%) braucht
+     weder color-mix noch @supports und trifft das Alpha exakt.
+
+     Die Stufen sind die im Markup tatsaechlich vorkommenden -- keine auf
+     Vorrat. Neue Stufe = hier eine Zeile, nicht ein Roh-Hex im Markup.
+
+     Schreibweise ist bewusst `-a40` und nicht `-40`: `accent/40` (nativ) und
+     `accent-40` waeren zwei Schreibweisen fuer dieselbe Absicht. Das `a`
+     macht die Stufen greppbar und verwechslungsfrei.                    */
+  --color-accent-a5:  rgb(var(--accent-rgb) / 5%);
+  --color-accent-a8:  rgb(var(--accent-rgb) / 8%);
+  --color-accent-a10: rgb(var(--accent-rgb) / 10%);
+  --color-accent-a15: rgb(var(--accent-rgb) / 15%);
+  --color-accent-a20: rgb(var(--accent-rgb) / 20%);
+  --color-accent-a25: rgb(var(--accent-rgb) / 25%);
+  --color-accent-a30: rgb(var(--accent-rgb) / 30%);
+  --color-accent-a40: rgb(var(--accent-rgb) / 40%);
+  --color-accent-a50: rgb(var(--accent-rgb) / 50%);
+  --color-accent-a60: rgb(var(--accent-rgb) / 60%);
+  --color-accent-a70: rgb(var(--accent-rgb) / 70%);
+  --color-accent-a80: rgb(var(--accent-rgb) / 80%);
+
+  /* Dieselben Stufen fuer das feste Marken-Lila (Nav/Footer/Login/Chrome).
+     Bewusst dieselbe Leiter wie beim Accent, damit beim Umhaengen einer
+     Fundstelle zwischen brand und accent nicht die Stufe fehlt.          */
+  --color-brand-a5:  rgb(var(--brand-rgb) / 5%);
+  --color-brand-a8:  rgb(var(--brand-rgb) / 8%);
+  --color-brand-a10: rgb(var(--brand-rgb) / 10%);
+  --color-brand-a15: rgb(var(--brand-rgb) / 15%);
+  --color-brand-a20: rgb(var(--brand-rgb) / 20%);
+  --color-brand-a25: rgb(var(--brand-rgb) / 25%);
+  --color-brand-a30: rgb(var(--brand-rgb) / 30%);
+  --color-brand-a40: rgb(var(--brand-rgb) / 40%);
+  --color-brand-a50: rgb(var(--brand-rgb) / 50%);
+  --color-brand-a60: rgb(var(--brand-rgb) / 60%);
+  --color-brand-a70: rgb(var(--brand-rgb) / 70%);
+  --color-brand-a80: rgb(var(--brand-rgb) / 80%);
 
   --color-pos-win: var(--pos-win);
   --color-pos-loss: var(--pos-loss);

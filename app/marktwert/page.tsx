@@ -124,7 +124,7 @@ export default function MarktwertPage() {
                   key={r.value}
                   onClick={() => setRegion(r.value)}
                   className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-                    region === r.value ? 'bg-[#c89b3c] text-surface-sunken' : 'bg-surface-raised text-fg-secondary hover:text-white'
+                    region === r.value ? 'bg-accent text-surface-sunken' : 'bg-surface-raised text-fg-secondary hover:text-white'
                   }`}
                 >
                   {r.label}
@@ -162,7 +162,7 @@ export default function MarktwertPage() {
             <div className="text-fg-secondary text-sm mb-2">{t('mv.noData')}</div>
             <div className="text-fg-muted text-xs">
               {t('mv.noDataDesc')}
-              <br />{t('mv.buildDb')} <a href="/" className="text-[#c89b3c] hover:text-white">{t('mv.searchOnHome')}</a>{t('mv.buildDbEnd')}
+              <br />{t('mv.buildDb')} <a href="/" className="text-accent hover:text-white">{t('mv.searchOnHome')}</a>{t('mv.buildDbEnd')}
             </div>
           </div>
         ) : (
@@ -222,7 +222,7 @@ export default function MarktwertPage() {
                       <div className="text-fg-muted text-xs">{formatTier(p.tier, p.rank)}{p.lp != null ? ` · ${p.lp} LP` : ''} · {p.winrate}%</div>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <div className="text-[#c89b3c] text-sm font-medium">{formatValue(p.marketValue)}</div>
+                      <div className="text-accent text-sm font-medium">{formatValue(p.marketValue)}</div>
                       {p.weeklyChange !== 0 && (
                         <div className={`text-xs ${p.weeklyChange > 0 ? 'text-green-400' : 'text-red-400'}`}>
                           {formatChange(p.weeklyChange)}
@@ -255,7 +255,7 @@ export default function MarktwertPage() {
                       </span>
                     </div>
                     <div className="text-right">
-                      <span className="text-[#c89b3c] text-sm font-medium">{formatValue(p.marketValue)}</span>
+                      <span className="text-accent text-sm font-medium">{formatValue(p.marketValue)}</span>
                     </div>
                     <div className="text-right">
                       {p.weeklyChange !== 0 ? (

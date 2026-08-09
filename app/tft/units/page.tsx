@@ -165,13 +165,13 @@ export default function TftUnitsPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder={t('tft.search.units')}
-            className="w-full sm:w-80 bg-surface-raised border border-border-subtle rounded px-3 py-1.5 text-sm text-white placeholder:text-fg-faint outline-none focus:border-[#7B61FF]/60"
+            className="w-full sm:w-80 bg-surface-raised border border-border-subtle rounded px-3 py-1.5 text-sm text-white placeholder:text-fg-faint outline-none focus:border-accent-a60"
           />
         </div>
         <div className="flex flex-wrap gap-1 mb-4 items-center">
           <button
             onClick={() => setCostFilter(null)}
-            className={`px-3 py-1 rounded text-xs ${costFilter == null ? 'bg-[#7B61FF] text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
+            className={`px-3 py-1 rounded text-xs ${costFilter == null ? 'bg-accent text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
           >
             {t('tft.bucket.all')}
           </button>
@@ -179,7 +179,7 @@ export default function TftUnitsPage() {
             <button
               key={c}
               onClick={() => setCostFilter(c)}
-              className={`px-3 py-1 rounded text-xs ${costFilter === c ? 'bg-[#7B61FF] text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
+              className={`px-3 py-1 rounded text-xs ${costFilter === c ? 'bg-accent text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
             >
               {c}-Cost
             </button>
@@ -188,7 +188,7 @@ export default function TftUnitsPage() {
           <select
             value={traitFilter ?? ''}
             onChange={e => setTraitFilter(e.target.value || null)}
-            className="px-2 py-1 rounded text-xs bg-surface-raised text-fg-secondary border border-border-subtle focus:outline-none focus:border-[#7B61FF]/60"
+            className="px-2 py-1 rounded text-xs bg-surface-raised text-fg-secondary border border-border-subtle focus:outline-none focus:border-accent-a60"
           >
             <option value="">{t('tft.unit.trait.allTraits')}</option>
             {traitOptions.map(tr => (

@@ -73,7 +73,7 @@ export default function TftPatchDetailPage() {
     <main className="min-h-screen bg-surface-page">
       <Nav active="comps" />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
-        <a href="/tft/patch" className="text-[#7B61FF] text-xs hover:underline">← {t('tft.patchNotes.title')}</a>
+        <a href="/tft/patch" className="text-accent text-xs hover:underline">← {t('tft.patchNotes.title')}</a>
 
         <div className="flex items-start justify-between gap-3 mt-3 mb-1 flex-wrap">
           <h1 className="text-white text-2xl font-medium">Patch {version}</h1>
@@ -81,7 +81,7 @@ export default function TftPatchDetailPage() {
             href={riotPatchNotesUrl(version, lang)}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-[#7B61FF]/50 text-xs transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-accent-a50 text-xs transition-colors"
             title={t('tft.patchNotes.officialLinkHint')}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -115,7 +115,7 @@ export default function TftPatchDetailPage() {
               <div className="space-y-4">
                 {notes.sections.map((sec, si) => (
                   <div key={si}>
-                    <div className="text-[#7B61FF] text-[10px] uppercase tracking-widest font-semibold mb-2">
+                    <div className="text-accent text-[10px] uppercase tracking-widest font-semibold mb-2">
                       {sec.category}
                     </div>
                     <div className="space-y-1.5">
@@ -127,7 +127,7 @@ export default function TftPatchDetailPage() {
                             key={ei}
                             {...(href ? { href } : {})}
                             className={`block bg-surface-raised border border-border-subtle rounded p-2.5 text-xs ${
-                              href ? 'hover:border-[#7B61FF]/40 transition-colors cursor-pointer' : ''
+                              href ? 'hover:border-accent-a40 transition-colors cursor-pointer' : ''
                             }`}
                           >
                             <div className="flex items-start gap-2">
@@ -166,7 +166,7 @@ export default function TftPatchDetailPage() {
               key={e}
               onClick={() => setEntity(e)}
               className={`px-4 py-2 text-xs font-medium uppercase tracking-widest ${
-                entity === e ? 'text-white border-b-2 border-[#7B61FF]' : 'text-fg-secondary hover:text-white'
+                entity === e ? 'text-white border-b-2 border-accent' : 'text-fg-secondary hover:text-white'
               }`}
             >
               {t(`tft.patchNotes.entity.${e}` as const)}
@@ -180,7 +180,7 @@ export default function TftPatchDetailPage() {
             <button
               key={b}
               onClick={() => setBucket(b)}
-              className={`px-3 py-1 rounded text-xs ${bucket === b ? 'bg-[#7B61FF] text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
+              className={`px-3 py-1 rounded text-xs ${bucket === b ? 'bg-accent text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
             >
               {b.replace('_plus', '+').replace(/^./, c => c.toUpperCase())}
             </button>

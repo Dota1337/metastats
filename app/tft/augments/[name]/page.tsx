@@ -65,11 +65,11 @@ export default function TftAugmentReferenceDetailPage() {
       <Nav active="augments" />
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6">
         <div className="flex items-center justify-between gap-2 flex-wrap">
-          <a href="/tft/augments" className="text-[#7B61FF] text-xs hover:underline">← {t('nav.augments')}</a>
+          <a href="/tft/augments" className="text-accent text-xs hover:underline">← {t('nav.augments')}</a>
           {meta && (
             <a
               href={`/tft/augments/compare?a=${encodeURIComponent(apiName)}`}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-[#7B61FF]/50 text-xs transition-colors"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-accent-a50 text-xs transition-colors"
               title={t('tft.augmentsCompare.fromDetail')}
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -180,7 +180,7 @@ export default function TftAugmentReferenceDetailPage() {
                   <a
                     key={m.slug}
                     href={`/tft/comps/${encodeURIComponent(compSlug)}`}
-                    className="flex items-center gap-3 p-3 rounded-md bg-surface-raised border border-border-subtle hover:border-[#7B61FF]/50 transition-colors"
+                    className="flex items-center gap-3 p-3 rounded-md bg-surface-raised border border-border-subtle hover:border-accent-a50 transition-colors"
                   >
                     {carryUrl ? (
                       <img

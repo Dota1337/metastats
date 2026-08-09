@@ -103,7 +103,7 @@ export default function MarketInsights() {
         className="w-full px-4 py-3 flex items-center justify-between hover:bg-surface-raised transition-colors"
       >
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#c89b3c] to-[#785a28] flex items-center justify-center text-[10px] font-bold text-white">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-accent to-[#785a28] flex items-center justify-center text-[10px] font-bold text-white">
             AI
           </div>
           <div>
@@ -140,7 +140,7 @@ export default function MarketInsights() {
 
           {loading ? (
             <div className="flex items-center justify-center py-8">
-              <div className="w-5 h-5 border-2 border-[#c89b3c] border-t-transparent rounded-full animate-spin" />
+              <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
             </div>
           ) : tab === 'transfers' ? (
             <div className="space-y-2">
@@ -157,7 +157,7 @@ export default function MarketInsights() {
                     <Wrapper
                       key={i}
                       {...(playerLink ? { href: playerLink } : {})}
-                      className={`block bg-surface-raised border border-border-subtle rounded-lg px-4 py-3 ${playerLink ? 'hover:border-[#c89b3c]/40 cursor-pointer transition-colors' : ''}`}
+                      className={`block bg-surface-raised border border-border-subtle rounded-lg px-4 py-3 ${playerLink ? 'hover:border-accent-a40 cursor-pointer transition-colors' : ''}`}
                     >
                       {/* Row 1: Name + Probability */}
                       <div className="flex items-center justify-between mb-2">
@@ -172,7 +172,7 @@ export default function MarketInsights() {
                         </div>
                         <div className="text-right">
                           <span className={`text-lg font-bold ${
-                            tp.probability >= 60 ? 'text-red-400' : tp.probability >= 40 ? 'text-[#c89b3c]' : 'text-fg-secondary'
+                            tp.probability >= 60 ? 'text-red-400' : tp.probability >= 40 ? 'text-accent' : 'text-fg-secondary'
                           }`}>
                             {tp.probability}%
                           </span>
@@ -205,7 +205,7 @@ export default function MarketInsights() {
                           )}
                           {tp.marketValue && (
                             <div className="text-center">
-                              <div className="text-xs font-medium text-[#c89b3c] flex items-center gap-1">
+                              <div className="text-xs font-medium text-accent flex items-center gap-1">
                                 ${tp.marketValue.toLocaleString(locale)}
                                 <span className={TREND_ICONS[tp.marketTrend]?.color || ''}>
                                   {TREND_ICONS[tp.marketTrend]?.icon || ''}
@@ -252,7 +252,7 @@ export default function MarketInsights() {
                         <div className="space-y-0.5 flex-1">
                           {tp.reasons.map((r, j) => (
                             <div key={j} className="text-fg-secondary text-xs flex items-start gap-1.5">
-                              <span className="text-[#c89b3c] mt-0.5">·</span>{r}
+                              <span className="text-accent mt-0.5">·</span>{r}
                             </div>
                           ))}
                         </div>
@@ -288,7 +288,7 @@ export default function MarketInsights() {
                     <Wrapper
                       key={i}
                       {...(playerLink ? { href: playerLink } : {})}
-                      className={`block ${colors.bg} border ${colors.border} rounded-lg px-4 py-3 ${playerLink ? 'hover:border-[#c89b3c]/40 cursor-pointer transition-colors' : ''}`}
+                      className={`block ${colors.bg} border ${colors.border} rounded-lg px-4 py-3 ${playerLink ? 'hover:border-accent-a40 cursor-pointer transition-colors' : ''}`}
                     >
                       {/* Header: Icon + Name + Badge */}
                       <div className="flex items-center justify-between mb-2">
@@ -334,7 +334,7 @@ export default function MarketInsights() {
                         )}
                         {a.marketValue != null && a.marketValue > 0 && (
                           <div className="text-center">
-                            <div className="text-xs font-medium text-[#c89b3c]">${a.marketValue.toLocaleString(locale)}</div>
+                            <div className="text-xs font-medium text-accent">${a.marketValue.toLocaleString(locale)}</div>
                             <div className="text-fg-muted text-[10px]">{t('mv.marketValue')}</div>
                           </div>
                         )}

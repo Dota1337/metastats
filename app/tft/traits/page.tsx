@@ -170,7 +170,7 @@ export default function TftTraitsPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder={t('tft.search.traits')}
-            className="w-full sm:w-80 bg-surface-raised border border-border-subtle rounded px-3 py-1.5 text-sm text-white placeholder:text-fg-faint outline-none focus:border-[#7B61FF]/60"
+            className="w-full sm:w-80 bg-surface-raised border border-border-subtle rounded px-3 py-1.5 text-sm text-white placeholder:text-fg-faint outline-none focus:border-accent-a60"
           />
         </div>
 
@@ -225,7 +225,7 @@ export default function TftTraitsPage() {
                     <div className="flex-1 min-w-0 md:flex-initial">
                       <div className="text-white font-medium truncate">{meta?.name || prettyTrait(g.name)}</div>
                       {/* Mobile-only: best-activation hint as small subtitle */}
-                      <div className="md:hidden text-[#7B61FF] text-[10px]">
+                      <div className="md:hidden text-accent text-[10px]">
                         {t('tft.trait.bestAt')} {g.bestActivation ?? '—'}
                       </div>
                     </div>
@@ -233,7 +233,7 @@ export default function TftTraitsPage() {
                   <div className="mt-1.5 pl-12 md:pl-0 md:mt-0">
                     <TierStrip tiers={tiers} />
                   </div>
-                  <div className="hidden md:block text-right text-[#7B61FF] font-medium">
+                  <div className="hidden md:block text-right text-accent font-medium">
                     {g.bestActivation ?? '—'}
                   </div>
                   <div className={`grid ${filters.velocity > 0 ? 'grid-cols-5' : 'grid-cols-4'} gap-2 mt-1.5 pl-12 md:pl-0 md:mt-0 md:contents`}>

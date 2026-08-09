@@ -300,7 +300,7 @@ export default function TftPlayerPage() {
                   <img
                     src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/profileicon/${data.summoner.profileIconId}.png`}
                     alt=""
-                    className="w-16 h-16 rounded-lg border-2 border-[#7B61FF]"
+                    className="w-16 h-16 rounded-lg border-2 border-accent"
                   />
                 )}
                 <div className="flex-1 min-w-0">
@@ -397,7 +397,7 @@ function Pagination({ page, totalPages, onChange, loading }: { page: number; tot
       <button
         onClick={() => onChange(Math.max(0, page - 1))}
         disabled={page === 0 || loading}
-        className="px-3 py-1.5 rounded bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-[#7B61FF]/40 disabled:opacity-40 disabled:cursor-not-allowed"
+        className="px-3 py-1.5 rounded bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-accent-a40 disabled:opacity-40 disabled:cursor-not-allowed"
       >
         {t('tft.player.prev')}
       </button>
@@ -408,7 +408,7 @@ function Pagination({ page, totalPages, onChange, loading }: { page: number; tot
             onClick={() => onChange(i)}
             disabled={loading}
             className={`w-8 h-8 rounded text-xs font-medium ${
-              i === page ? 'bg-[#7B61FF] text-white' : 'bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white'
+              i === page ? 'bg-accent text-white' : 'bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white'
             }`}
           >
             {i + 1}
@@ -418,7 +418,7 @@ function Pagination({ page, totalPages, onChange, loading }: { page: number; tot
       <button
         onClick={() => onChange(Math.min(totalPages - 1, page + 1))}
         disabled={page >= totalPages - 1 || loading}
-        className="px-3 py-1.5 rounded bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-[#7B61FF]/40 disabled:opacity-40 disabled:cursor-not-allowed"
+        className="px-3 py-1.5 rounded bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-accent-a40 disabled:opacity-40 disabled:cursor-not-allowed"
       >
         {t('tft.player.next')}
       </button>
@@ -569,7 +569,7 @@ function UnitChip({ rank, characterId, games, avg, assets, lobbyAvg }: { rank: n
     <a
       href={`/tft/units/${encodeURIComponent(characterId)}`}
       title={`#${rank} ${name} — ${games} ${t('tft.gamesShort')}, Ø ${avg.toFixed(2)}${lobbyAvg != null ? ` (Lobby Ø ${lobbyAvg.toFixed(2)})` : ''}`}
-      className="flex items-center gap-2.5 bg-surface-sunken border border-border-subtle rounded-md px-2.5 py-2 hover:border-[#7B61FF]/50 hover:bg-[#101729] transition"
+      className="flex items-center gap-2.5 bg-surface-sunken border border-border-subtle rounded-md px-2.5 py-2 hover:border-accent-a50 hover:bg-[#101729] transition"
     >
       <RankBadge rank={rank} />
       <div className="w-10 h-10 rounded border-2 overflow-hidden flex-shrink-0" style={{ borderColor: costColor }}>
@@ -653,7 +653,7 @@ function PlayStyle({
                     <div className="bg-surface-base border border-border-subtle rounded p-2.5 max-w-[280px] shadow-lg">
                       <div className="flex items-baseline gap-2 mb-1">
                         <span className="text-white text-xs font-medium">{d.axis}</span>
-                        <span className="text-[#7B61FF] text-sm font-semibold tabular-nums">{d.value}/100</span>
+                        <span className="text-accent text-sm font-semibold tabular-nums">{d.value}/100</span>
                       </div>
                       {d.current && <div className="text-fg-secondary text-[11px] tabular-nums">{d.current}</div>}
                       {d.formula && <div className="text-fg-muted text-[10px] leading-snug mt-1">{d.formula}</div>}
@@ -717,7 +717,7 @@ function ProBadge({ pro }: { pro: ProPlayer }) {
   return (
     <span
       title={`${t('tft.player.verifiedPro')} · ${pro.team} ${pro.role}`}
-      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#7B61FF]/15 text-[#7B61FF] text-[10px] uppercase tracking-widest font-medium border border-[#7B61FF]/40"
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent-a15 text-accent text-[10px] uppercase tracking-widest font-medium border border-accent-a40"
     >
       {t('tft.player.verifiedProBadge')}
     </span>
@@ -754,7 +754,7 @@ function TournamentHistory({ pro }: { pro: TftProRecord }) {
         <div className="text-xs text-fg-secondary">
           <span className="text-white">{all.length}</span> {t('tft.player.tournaments')} ·{' '}
           <span className="text-[#f0c040]">{wins}× 1.</span> ·{' '}
-          <span className="text-[#c89b3c]">{formatProEarnings(pro.total_earnings_usd)}</span>
+          <span className="text-gold-earnings">{formatProEarnings(pro.total_earnings_usd)}</span>
         </div>
       </div>
       <div className="hidden sm:grid grid-cols-[6rem_3rem_1fr_5rem_6rem] gap-2 text-[10px] uppercase text-fg-muted pb-2 border-b border-border-subtle">
@@ -783,7 +783,7 @@ function TournamentHistory({ pro }: { pro: TftProRecord }) {
             )}
           </div>
           <div className="text-fg-muted hidden sm:block">{r.tier || '—'}</div>
-          <div className="text-[#c89b3c] text-right tabular-nums">{formatProEarnings(r.prize_usd)}</div>
+          <div className="text-gold-earnings text-right tabular-nums">{formatProEarnings(r.prize_usd)}</div>
         </div>
       ))}
       {all.length > 10 && (
@@ -844,7 +844,7 @@ function RankBlock({ ranked, seasonRanks }: { ranked: SummonerData['ranked']; se
         <>
           <button
             onClick={() => setOpen(o => !o)}
-            className="mt-2 text-[10px] text-[#7B61FF] hover:text-[#a892ff] uppercase tracking-widest"
+            className="mt-2 text-[10px] text-accent hover:text-[#a892ff] uppercase tracking-widest"
           >
             {t('tft.player.allSeasons').replace('{n}', String(pastSeasons.length))} {open ? '▲' : '▼'}
           </button>
@@ -1016,7 +1016,7 @@ function ProSpecialty({ puuid, setNumber, assets, t }: {
                     {tftChampionTileUrl(assets, unitAsset) && (
                       <img src={tftChampionTileUrl(assets, unitAsset)!} alt={unitAsset?.name || u.unitId} className="w-8 h-8 rounded border border-[#c39bff]/60 group-hover:border-[#c39bff]" />
                     )}
-                    <span className="text-white text-[11px] group-hover:text-[#7B61FF] transition-colors">{unitAsset?.name || u.unitId.replace(/^TFT\d+_/, '')}</span>
+                    <span className="text-white text-[11px] group-hover:text-accent transition-colors">{unitAsset?.name || u.unitId.replace(/^TFT\d+_/, '')}</span>
                     <span className="text-fg-muted text-[10px] tabular-nums ml-auto">{u.games} {t('tft.gamesShort')}</span>
                   </a>
                   <div className="space-y-1">

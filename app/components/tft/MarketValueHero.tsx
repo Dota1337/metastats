@@ -213,7 +213,7 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
   return (
     <div className="bg-gradient-to-br from-surface-base to-[#0e1830] border border-border-subtle rounded-lg p-5 mb-5 relative overflow-hidden">
       {/* Accent stripe to make the hero visually distinct from the other cards */}
-      <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#7B61FF] via-[#9d48e0] to-[#f0c040]" />
+      <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-accent via-[#9d48e0] to-[#f0c040]" />
 
       <div className="flex items-stretch justify-between gap-6 flex-wrap">
         {/* Left: Big EUR value + 7d delta */}
@@ -256,7 +256,7 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
           </div>
           <button
             onClick={() => setShowDetails(d => !d)}
-            className="mt-2 text-[10px] text-[#7B61FF] hover:text-[#a892ff] uppercase tracking-widest text-left"
+            className="mt-2 text-[10px] text-accent hover:text-[#a892ff] uppercase tracking-widest text-left"
           >
             {t('tft.marketValue.howCalculated')} {showDetails ? '▲' : '▼'}
           </button>
@@ -347,7 +347,7 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
           </div>
           <Link
             href="/tft/marktwert/methodik"
-            className="inline-flex items-center gap-1 mt-3 text-[11px] text-[#7B61FF] hover:text-[#9d7bff] transition-colors"
+            className="inline-flex items-center gap-1 mt-3 text-[11px] text-accent hover:text-[#9d7bff] transition-colors"
           >
             <span aria-hidden>ⓘ</span> {t('tft.mv.method.link')}
           </Link>
@@ -367,7 +367,7 @@ function PatchTimeline({ info, lang }: { info: SetInfo; lang: Lang }) {
   return (
     <div className="mt-2">
       <div className="relative h-1 rounded-full bg-surface-overlay">
-        <span className="absolute left-0 -top-[3px] h-[7px] w-[7px] rounded-full bg-[#7B61FF]" />
+        <span className="absolute left-0 -top-[3px] h-[7px] w-[7px] rounded-full bg-accent" />
         <span className="absolute right-0 -top-[3px] h-[7px] w-[7px] rounded-full bg-[#9d48e0]" />
       </div>
       <div className="flex items-center justify-between mt-1 text-[10px] text-fg-muted tabular-nums">

@@ -99,7 +99,7 @@ export default function TftGodsPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder={t('tft.search.gods')}
-            className="w-full sm:w-80 bg-surface-raised border border-border-subtle rounded px-3 py-1.5 text-sm text-white placeholder:text-fg-faint outline-none focus:border-[#7B61FF]/60"
+            className="w-full sm:w-80 bg-surface-raised border border-border-subtle rounded px-3 py-1.5 text-sm text-white placeholder:text-fg-faint outline-none focus:border-accent-a60"
           />
         </div>
 
@@ -125,7 +125,7 @@ export default function TftGodsPage() {
                 <div
                   key={g.meta.id}
                   className={`bg-surface-base border rounded transition-colors ${
-                    isOpen ? 'border-[#7B61FF]/60' : 'border-border-subtle hover:border-[#7B61FF]/40'
+                    isOpen ? 'border-accent-a60' : 'border-border-subtle hover:border-accent-a40'
                   }`}
                 >
                   {/* Header: portrait + name + title + theme — always visible */}
@@ -134,7 +134,7 @@ export default function TftGodsPage() {
                       <img
                         src={portrait}
                         alt={displayName}
-                        className="w-14 h-14 rounded border-2 border-[#7B61FF]/40 flex-shrink-0"
+                        className="w-14 h-14 rounded border-2 border-accent-a40 flex-shrink-0"
                       />
                     ) : (
                       <div className="w-14 h-14 rounded border-2 border-border-subtle bg-surface-raised flex-shrink-0" />

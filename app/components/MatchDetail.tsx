@@ -122,7 +122,7 @@ export default function MatchDetail({ match, ddVersion, isExpanded, onToggle, fo
         </div>
         <div className="flex items-center gap-1 sm:gap-2 ml-auto flex-shrink-0">
           {match.pentaKills > 0 && <span className="bg-[#f0c040]/20 text-[#f0c040] text-[10px] font-bold px-1.5 py-0.5 rounded">PENTA</span>}
-          {!match.pentaKills && match.quadraKills > 0 && <span className="bg-[#c89b3c]/20 text-[#c89b3c] text-[10px] font-bold px-1.5 py-0.5 rounded">QUADRA</span>}
+          {!match.pentaKills && match.quadraKills > 0 && <span className="bg-accent-a20 text-accent text-[10px] font-bold px-1.5 py-0.5 rounded">QUADRA</span>}
           {!match.pentaKills && !match.quadraKills && match.tripleKills > 0 && <span className="bg-fg-secondary/20 text-fg-secondary text-[10px] font-bold px-1.5 py-0.5 rounded">TRIPLE</span>}
           <div className={'text-xs sm:text-sm font-medium ' + (match.win ? 'text-green-400' : 'text-red-400')}>
             {match.win ? t('match.win') : t('match.loss')}
@@ -142,8 +142,8 @@ export default function MatchDetail({ match, ddVersion, isExpanded, onToggle, fo
         <span>{t('match.ctrlWards')}: {match.controlWardsPlaced}</span>
         {match.soloKills > 0 && <span>{t('match.soloKills')}: {match.soloKills}</span>}
         {match.doubleKills > 0 && <span>{t('match.double')}: {match.doubleKills}</span>}
-        {match.tripleKills > 0 && <span className="text-[#c89b3c]">{t('match.triple')}: {match.tripleKills}</span>}
-        {match.quadraKills > 0 && <span className="text-[#c89b3c]">{t('match.quadra')}: {match.quadraKills}</span>}
+        {match.tripleKills > 0 && <span className="text-accent">{t('match.triple')}: {match.tripleKills}</span>}
+        {match.quadraKills > 0 && <span className="text-accent">{t('match.quadra')}: {match.quadraKills}</span>}
         {match.pentaKills > 0 && <span className="text-[#f0c040] font-bold">PENTA!</span>}
         {match.turretKills > 0 && <span>{t('match.turrets')}: {match.turretKills}</span>}
         {match.firstBloodKill && <span className="text-red-400">{t('match.firstBlood')}</span>}
@@ -160,7 +160,7 @@ export default function MatchDetail({ match, ddVersion, isExpanded, onToggle, fo
                 onClick={(e) => { e.stopPropagation(); setActiveTab(tab); }}
                 className={`px-3 py-1 rounded text-xs transition-colors ${
                   activeTab === tab
-                    ? 'bg-[#c89b3c]/20 text-[#c89b3c] border border-[#c89b3c]/30'
+                    ? 'bg-accent-a20 text-accent border border-accent-a30'
                     : 'text-fg-muted hover:text-fg-secondary'
                 }`}
               >
@@ -241,7 +241,7 @@ export default function MatchDetail({ match, ddVersion, isExpanded, onToggle, fo
                             </div>
                             <div className="text-fg-secondary text-center">{p.cs}</div>
                             <div className="text-fg-secondary text-center">{(p.damageDealtToChampions / 1000).toFixed(1)}k</div>
-                            <div className="text-[#c89b3c] text-center">{(p.goldEarned / 1000).toFixed(1)}k</div>
+                            <div className="text-accent text-center">{(p.goldEarned / 1000).toFixed(1)}k</div>
                             <div className="text-fg-secondary text-center">{p.visionScore}</div>
                             <div className="flex gap-0.5 justify-center">
                               {p.items.filter(id => id > 0).map((itemId, ii) => (

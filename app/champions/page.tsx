@@ -164,7 +164,7 @@ export default function ChampionsPage() {
   const SortHeader = ({ label, sKey, className }: { label: string; sKey: SortKey; className?: string }) => (
     <button
       onClick={() => handleSort(sKey)}
-      className={`text-xs uppercase tracking-wider hover:text-white transition-colors flex items-center gap-1 ${className || ''} ${sortKey === sKey ? 'text-[#c89b3c]' : 'text-fg-secondary'}`}
+      className={`text-xs uppercase tracking-wider hover:text-white transition-colors flex items-center gap-1 ${className || ''} ${sortKey === sKey ? 'text-accent' : 'text-fg-secondary'}`}
     >
       {label}
       {sortKey === sKey && (
@@ -196,7 +196,7 @@ export default function ChampionsPage() {
                     onClick={() => setTier(tr.value)}
                     className={`px-3 py-1.5 rounded text-xs font-medium transition-colors flex-shrink-0 ${
                       tier === tr.value
-                        ? 'bg-[#c89b3c] text-surface-sunken'
+                        ? 'bg-accent text-surface-sunken'
                         : 'bg-surface-raised text-fg-secondary hover:text-white hover:bg-[#1a2438]'
                     }`}
                     style={tier === tr.value && tr.value !== 'all' ? { backgroundColor: tierColors[tr.value] || '#c89b3c' } : {}}
@@ -217,7 +217,7 @@ export default function ChampionsPage() {
                     onClick={() => setRole(r.value)}
                     className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
                       role === r.value
-                        ? 'bg-[#c89b3c] text-surface-sunken'
+                        ? 'bg-accent text-surface-sunken'
                         : 'bg-surface-raised text-fg-secondary hover:text-white hover:bg-[#1a2438]'
                     }`}
                   >
@@ -237,7 +237,7 @@ export default function ChampionsPage() {
                     onClick={() => setRegion(r.value)}
                     className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
                       region === r.value
-                        ? 'bg-[#c89b3c] text-surface-sunken'
+                        ? 'bg-accent text-surface-sunken'
                         : 'bg-surface-raised text-fg-secondary hover:text-white hover:bg-[#1a2438]'
                     }`}
                   >
@@ -275,13 +275,13 @@ export default function ChampionsPage() {
           <div className="bg-surface-raised border border-border-default rounded p-3 mb-4 text-center">
             {collecting ? (
               <div className="flex items-center justify-center gap-2">
-                <div className="w-3 h-3 border-2 border-[#c89b3c] border-t-transparent rounded-full animate-spin" />
-                <div className="text-[#c89b3c] text-xs">{t('champ.loadFromApi')} ({REGIONS.find(r => r.value === region)?.label})...</div>
+                <div className="w-3 h-3 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+                <div className="text-accent text-xs">{t('champ.loadFromApi')} ({REGIONS.find(r => r.value === region)?.label})...</div>
               </div>
             ) : (
               <div className="text-fg-secondary text-xs">
                 {t('champ.statsCollecting')}
-                <button onClick={triggerCollection} className="ml-2 text-[#c89b3c] hover:underline">
+                <button onClick={triggerCollection} className="ml-2 text-accent hover:underline">
                   {t('champ.loadNow')}
                 </button>
               </div>

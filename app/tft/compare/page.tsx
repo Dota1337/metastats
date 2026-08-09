@@ -245,7 +245,7 @@ export default function TftComparePage() {
               onClick={() => setRegion(r.value)}
               className={`px-2.5 py-1 rounded text-xs font-medium ${
                 region === r.value
-                  ? 'bg-[#7B61FF] text-white'
+                  ? 'bg-accent text-white'
                   : 'bg-surface-raised text-fg-secondary hover:text-white'
               }`}
             >
@@ -262,14 +262,14 @@ export default function TftComparePage() {
               value={v}
               onChange={e => setInputs(prev => prev.map((p, idx) => idx === i ? e.target.value : p))}
               placeholder={`${t('tft.compare.player')} ${i + 1} (Name#Tag)`}
-              className="bg-surface-raised border border-border-subtle rounded px-3 py-2 text-white text-sm outline-none focus:border-[#7B61FF]/60"
+              className="bg-surface-raised border border-border-subtle rounded px-3 py-2 text-white text-sm outline-none focus:border-accent-a60"
             />
           ))}
         </div>
         <button
           onClick={compare}
           disabled={loading}
-          className="bg-[#7B61FF] hover:bg-[#7B61FF]/80 text-white text-sm px-4 py-2 rounded mb-5 disabled:opacity-50"
+          className="bg-accent hover:bg-accent-a80 text-white text-sm px-4 py-2 rounded mb-5 disabled:opacity-50"
         >
           {loading ? t('tft.compare.comparing') : t('tft.compare.button')}
         </button>
@@ -300,7 +300,7 @@ export default function TftComparePage() {
                     const [gn, tl] = r.name.split('#');
                     const slug = `${encodeURIComponent(gn)}--${encodeURIComponent(tl || region.replace(/\d+$/, '').toUpperCase())}`;
                     return (
-                      <a href={`/tft/player/${slug}?region=${region}`} className="text-white text-base font-medium hover:text-[#7B61FF] transition-colors block truncate">
+                      <a href={`/tft/player/${slug}?region=${region}`} className="text-white text-base font-medium hover:text-accent transition-colors block truncate">
                         {r.name}
                       </a>
                     );
@@ -308,7 +308,7 @@ export default function TftComparePage() {
                   <div className="text-fg-secondary text-xs mb-2">
                     {r.tier ? formatTier(r.tier, r.rank) : 'Unranked'}{r.lp != null ? ` · ${r.lp} LP` : ''}
                   </div>
-                  <div className="text-[#7B61FF] text-xl font-semibold tabular-nums">
+                  <div className="text-accent text-xl font-semibold tabular-nums">
                     {r.rated && r.marketValue != null
                       ? new Intl.NumberFormat(LOCALE_MAP[lang], { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(r.marketValue)
                       : '—'}
@@ -384,7 +384,7 @@ export default function TftComparePage() {
               <div className="bg-surface-base border border-border-subtle rounded p-4 mb-4">
                 <div className="text-center text-fg-secondary text-xs uppercase tracking-widest mb-3">
                   Platzierungs-Verteilung
-                  {(s1.refreshing || s2.refreshing) && <span className="ml-2 text-[#7B61FF]">· wird geladen…</span>}
+                  {(s1.refreshing || s2.refreshing) && <span className="ml-2 text-accent">· wird geladen…</span>}
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   {s1.placementDistribution.some(c => c > 0)
@@ -514,13 +514,13 @@ function HeadToHeadBanner({ p1, p2, name1, name2 }: { p1: number; p2: number; na
   return (
     <div className="bg-surface-base border border-border-subtle rounded p-4 mb-4">
       <div className="flex items-center justify-between text-xs mb-2">
-        <span className={`font-semibold truncate ${p1 > p2 ? 'text-[#7B61FF]' : 'text-fg-secondary'}`}>{name1}</span>
+        <span className={`font-semibold truncate ${p1 > p2 ? 'text-accent' : 'text-fg-secondary'}`}>{name1}</span>
         <span className="text-fg-muted uppercase tracking-widest">{t('tft.compare.headToHead')}</span>
         <span className={`font-semibold truncate ${p2 > p1 ? 'text-[#3ecf8e]' : 'text-fg-secondary'}`}>{name2}</span>
       </div>
       <div className="relative h-2.5 rounded-full bg-surface-overlay overflow-hidden">
         <div
-          className="absolute left-0 top-0 h-full bg-gradient-to-r from-[#7B61FF] to-[#9d48e0] transition-all duration-700"
+          className="absolute left-0 top-0 h-full bg-gradient-to-r from-accent to-[#9d48e0] transition-all duration-700"
           style={{ width: `${w1}%`, boxShadow: '0 0 8px rgba(123,97,255,0.45)' }}
         />
         <div
@@ -529,7 +529,7 @@ function HeadToHeadBanner({ p1, p2, name1, name2 }: { p1: number; p2: number; na
         />
       </div>
       <div className="flex items-center justify-between text-[10px] mt-1.5 tabular-nums">
-        <span className={p1 > p2 ? 'text-[#7B61FF] font-bold' : 'text-fg-muted'}>{p1} {p1 === 1 ? 'Kategorie' : 'Kategorien'}</span>
+        <span className={p1 > p2 ? 'text-accent font-bold' : 'text-fg-muted'}>{p1} {p1 === 1 ? 'Kategorie' : 'Kategorien'}</span>
         <span className={p2 > p1 ? 'text-[#3ecf8e] font-bold' : 'text-fg-muted'}>{p2} {p2 === 1 ? 'Kategorie' : 'Kategorien'}</span>
       </div>
     </div>
@@ -548,7 +548,7 @@ function CompareStatBar({ label, v1, v2, fmt1, fmt2, lowerIsBetter = false }: { 
     <div className="mb-3">
       <div className="text-center text-fg-secondary text-[10px] uppercase tracking-widest mb-1">{label}</div>
       <div className="flex items-center gap-2">
-        <span className={`text-xs sm:text-sm w-20 sm:w-28 text-right shrink-0 tabular-nums font-medium ${p1Wins ? 'text-[#7B61FF]' : 'text-white'}`}>{fmt1}</span>
+        <span className={`text-xs sm:text-sm w-20 sm:w-28 text-right shrink-0 tabular-nums font-medium ${p1Wins ? 'text-accent' : 'text-white'}`}>{fmt1}</span>
         <div className="flex-1 flex gap-1">
           <div className="flex-1 flex justify-end">
             <div className="h-4 rounded-l transition-all duration-500" style={{ width: `${pct1}%`, backgroundColor: c1, boxShadow: p1Wins ? '0 0 10px rgba(123,97,255,0.45)' : 'none' }} />

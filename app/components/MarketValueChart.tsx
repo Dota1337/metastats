@@ -104,7 +104,7 @@ export default function MarketValueChart({ puuid, currentValue }: Props) {
         <select
           value={season}
           onChange={e => setSeason(e.target.value)}
-          className="bg-surface-raised border border-border-subtle rounded px-3 py-1.5 text-xs text-fg-secondary focus:outline-none focus:border-[#c89b3c]/50"
+          className="bg-surface-raised border border-border-subtle rounded px-3 py-1.5 text-xs text-fg-secondary focus:outline-none focus:border-accent-a50"
         >
           {seasons.map(s => (
             <option key={s.value} value={s.value}>{s.label}</option>
@@ -147,7 +147,7 @@ export default function MarketValueChart({ puuid, currentValue }: Props) {
                 return (
                   <div className="bg-surface-base border border-border-subtle rounded px-3 py-2 text-xs shadow-lg">
                     <div className="text-fg-secondary mb-1">{d?.label}</div>
-                    <div className="text-[#c89b3c] font-medium">
+                    <div className="text-accent font-medium">
                       ${d?.value?.toLocaleString('de-DE')}
                     </div>
                   </div>

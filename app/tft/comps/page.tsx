@@ -458,7 +458,7 @@ export default function TftCompsPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder={t('tft.search.comps')}
-            className="w-full sm:w-96 bg-surface-raised border border-border-subtle rounded px-3 py-1.5 text-sm text-white placeholder:text-fg-faint outline-none focus:border-[#7B61FF]/60"
+            className="w-full sm:w-96 bg-surface-raised border border-border-subtle rounded px-3 py-1.5 text-sm text-white placeholder:text-fg-faint outline-none focus:border-accent-a60"
           />
         </div>
 
@@ -484,7 +484,7 @@ export default function TftCompsPage() {
           <select
             value={sortBy}
             onChange={e => { setSortTouched(true); setSortBy(e.target.value as any); }}
-            className="bg-surface-raised border border-border-subtle rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-[#7B61FF]/60"
+            className="bg-surface-raised border border-border-subtle rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-accent-a60"
           >
             <option value="avg">{t('tft.avgPlacement')}</option>
             <option value="top4">{t('tft.top4')}</option>
@@ -570,7 +570,7 @@ function CompareBanner({
     : '#';
   return (
     <div className="sticky top-2 z-30 mb-3">
-      <div className="bg-surface-base/95 backdrop-blur-sm border border-[#7B61FF]/50 rounded-lg px-3 py-2 shadow-lg flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-surface-base/95 backdrop-blur-sm border border-accent-a50 rounded-lg px-3 py-2 shadow-lg flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <span className="text-white text-xs font-medium whitespace-nowrap">
             {(t('tft.compare.selectedCount') as string).replace('{n}', String(selection.length))}
@@ -582,7 +582,7 @@ function CompareBanner({
               return (
                 <div key={f.familyKey} className="flex items-center gap-1.5 min-w-0">
                   {url ? (
-                    <img src={url} alt="" className="w-6 h-6 rounded border border-[#7B61FF]/60 flex-shrink-0" />
+                    <img src={url} alt="" className="w-6 h-6 rounded border border-accent-a60 flex-shrink-0" />
                   ) : (
                     <div className="w-6 h-6 rounded bg-surface-overlay flex-shrink-0" />
                   )}
@@ -605,7 +605,7 @@ function CompareBanner({
           {canCompare ? (
             <a
               href={compareHref}
-              className="bg-[#7B61FF] hover:bg-[#8B71FF] text-white text-xs font-medium px-3 py-1.5 rounded transition-colors"
+              className="bg-accent hover:bg-[#8B71FF] text-white text-xs font-medium px-3 py-1.5 rounded transition-colors"
             >
               {t('tft.compare.action')} →
             </a>

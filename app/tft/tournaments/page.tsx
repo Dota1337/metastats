@@ -107,7 +107,7 @@ export default function TftTournamentsPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder={t('tft.search.tournaments')}
-            className="w-full sm:w-80 bg-surface-raised border border-border-subtle rounded px-3 py-1.5 text-sm text-white placeholder:text-fg-faint outline-none focus:border-[#7B61FF]/60"
+            className="w-full sm:w-80 bg-surface-raised border border-border-subtle rounded px-3 py-1.5 text-sm text-white placeholder:text-fg-faint outline-none focus:border-accent-a60"
           />
         </div>
 
@@ -186,7 +186,7 @@ function TournamentRow({ t, locale }: { t: Tournament; locale: string }) {
   return (
     <a
       href={`/tft/tournaments/${encodeURIComponent(t.id)}`}
-      className="block bg-surface-base border border-border-subtle rounded p-3 sm:p-4 hover:border-[#7B61FF]/40 transition-colors"
+      className="block bg-surface-base border border-border-subtle rounded p-3 sm:p-4 hover:border-accent-a40 transition-colors"
     >
       <div className="flex items-start gap-3 flex-wrap">
         {/* Tier badge */}
@@ -215,7 +215,7 @@ function TournamentRow({ t, locale }: { t: Tournament; locale: string }) {
         </div>
         {t.prize_pool_usd != null && (
           <div className="text-right">
-            <div className="text-[#7B61FF] text-base font-semibold tabular-nums">
+            <div className="text-accent text-base font-semibold tabular-nums">
               ${t.prize_pool_usd.toLocaleString('en-US')}
             </div>
             <div className="text-fg-muted text-[10px] uppercase tracking-widest">Prize Pool</div>

@@ -151,7 +151,7 @@ function ParticipantCard({
             {slug ? (
               <a
                 href={`/tft/player/${slug}?region=${region}`}
-                className="text-white text-sm font-medium hover:text-[#7B61FF] truncate max-w-[160px] sm:max-w-none"
+                className="text-white text-sm font-medium hover:text-accent truncate max-w-[160px] sm:max-w-none"
               >
                 {gameName}
                 {tagLine && <span className="text-fg-muted text-xs"> #{tagLine}</span>}

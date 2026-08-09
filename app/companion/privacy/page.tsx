@@ -9,7 +9,7 @@ export default function CompanionPrivacyPage() {
   return (
     <main className="min-h-screen bg-surface-page text-[#cfd6dc]">
       <div className="max-w-3xl mx-auto px-6 py-12">
-        <a href="/tft" className="text-[#7B61FF] text-xs hover:underline">← zurück</a>
+        <a href="/tft" className="text-brand text-xs hover:underline">← zurück</a>
         <h1 className="text-white text-3xl font-medium mt-3 mb-6">Datenschutz · Companion App</h1>
 
         <p className="text-sm text-fg-secondary mb-6">Stand: 17. Mai 2026</p>
@@ -18,7 +18,7 @@ export default function CompanionPrivacyPage() {
           <h2 className="text-white text-lg font-medium mt-6">1. Verantwortlich</h2>
           <p>
             Verantwortlich für die Verarbeitung der durch die <strong>metastats.gg Companion</strong> Overwolf-App
-            erhobenen Daten ist Dominik Taubinger, Kontakt: <a href="mailto:d.taubinger@web.de" className="text-[#7B61FF] hover:underline">d.taubinger@web.de</a>. Weitere Angaben finden sich im <a href="/impressum" className="text-[#7B61FF] hover:underline">Impressum</a>.
+            erhobenen Daten ist Dominik Taubinger, Kontakt: <a href="mailto:d.taubinger@web.de" className="text-brand hover:underline">d.taubinger@web.de</a>. Weitere Angaben finden sich im <a href="/impressum" className="text-brand hover:underline">Impressum</a>.
           </p>
 
           <h2 className="text-white text-lg font-medium mt-6">2. Welche Daten verarbeitet die Companion App?</h2>
@@ -43,7 +43,7 @@ export default function CompanionPrivacyPage() {
           <h2 className="text-white text-lg font-medium mt-6">4. Zweck der Verarbeitung</h2>
           <p>
             Die erhobenen Daten dienen ausschließlich der Berechnung anonymisierter Aggregat-Statistiken (Position-Heatmaps,
-            Comp-Performance, Augment-Win-Rates), die auf <a href="https://metastats.gg" className="text-[#7B61FF] hover:underline">metastats.gg</a> öffentlich dargestellt werden. Es findet keine individuelle Auswertung statt; einzelne
+            Comp-Performance, Augment-Win-Rates), die auf <a href="https://metastats.gg" className="text-brand hover:underline">metastats.gg</a> öffentlich dargestellt werden. Es findet keine individuelle Auswertung statt; einzelne
             Match-Daten werden nicht an Dritte weitergegeben.
           </p>
 
@@ -68,14 +68,14 @@ export default function CompanionPrivacyPage() {
 
           <h2 className="text-white text-lg font-medium mt-6">8. Deine Rechte</h2>
           <p>Du hast jederzeit das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung sowie Datenübertragbarkeit
-            deiner Daten. Sende dazu eine Email an <a href="mailto:d.taubinger@web.de" className="text-[#7B61FF] hover:underline">d.taubinger@web.de</a> unter Angabe deiner Riot-PUUID.
+            deiner Daten. Sende dazu eine Email an <a href="mailto:d.taubinger@web.de" className="text-brand hover:underline">d.taubinger@web.de</a> unter Angabe deiner Riot-PUUID.
             Du hast außerdem das Recht, dich bei einer Aufsichtsbehörde zu beschweren.</p>
 
           <h2 className="text-white text-lg font-medium mt-6">9. Overwolf-Plattform</h2>
           <p>
             Die App nutzt die offizielle Overwolf-Plattform zur Datenerfassung. Es gelten zusätzlich die
             Datenschutzbestimmungen von Overwolf:{' '}
-            <a href="https://www.overwolf.com/legal/privacy/" className="text-[#7B61FF] hover:underline" target="_blank" rel="noopener noreferrer">www.overwolf.com/legal/privacy/</a>.
+            <a href="https://www.overwolf.com/legal/privacy/" className="text-brand hover:underline" target="_blank" rel="noopener noreferrer">www.overwolf.com/legal/privacy/</a>.
           </p>
 
           <h2 className="text-white text-lg font-medium mt-6">10. Änderungen</h2>

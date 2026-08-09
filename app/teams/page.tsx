@@ -135,7 +135,7 @@ export default function TeamsPage() {
       onClick={() => handleSort(sKey)}
       className={`px-3 py-1.5 rounded text-xs font-medium transition-colors flex items-center gap-1 ${
         sortKey === sKey
-          ? 'bg-[#c89b3c]/15 text-[#c89b3c] border border-[#c89b3c]/30'
+          ? 'bg-accent-a15 text-accent border border-accent-a30'
           : 'bg-surface-raised text-fg-secondary hover:text-white hover:bg-[#1a2438]'
       }`}
     >
@@ -165,7 +165,7 @@ export default function TeamsPage() {
                     onClick={() => setRegionFilter(r.value)}
                     className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
                       regionFilter === r.value
-                        ? 'bg-[#c89b3c] text-surface-sunken'
+                        ? 'bg-accent text-surface-sunken'
                         : 'bg-surface-raised text-fg-secondary hover:text-white hover:bg-[#1a2438]'
                     }`}
                   >
@@ -231,7 +231,7 @@ export default function TeamsPage() {
           </div>
           <div className="bg-surface-base border border-border-subtle rounded p-3 text-center">
             <div className="text-fg-secondary text-xs">{t('teams.totalPrize')}</div>
-            <div className="text-[#c89b3c] text-xl font-medium">{formatPrize(filtered.reduce((s, t) => s + t.totalPrizeMoney, 0))}</div>
+            <div className="text-accent text-xl font-medium">{formatPrize(filtered.reduce((s, t) => s + t.totalPrizeMoney, 0))}</div>
           </div>
         </div>
 
@@ -254,7 +254,7 @@ export default function TeamsPage() {
                 <a
                   key={team.id}
                   href={`/teams/${team.id}`}
-                  className="bg-surface-base border border-border-subtle rounded p-4 hover:border-[#c89b3c]/40 transition-colors group"
+                  className="bg-surface-base border border-border-subtle rounded p-4 hover:border-accent-a40 transition-colors group"
                 >
                   <div className="flex items-center gap-3 sm:gap-4">
                     {/* Rank */}
@@ -268,14 +268,14 @@ export default function TeamsPage() {
                     {team.logo ? (
                       <img src={team.logo} alt={team.short} className="w-10 h-10 rounded object-contain bg-surface-raised p-1 flex-shrink-0" />
                     ) : (
-                      <div className="w-10 h-10 rounded bg-surface-raised flex items-center justify-center text-[#c89b3c] text-sm font-bold flex-shrink-0">
+                      <div className="w-10 h-10 rounded bg-surface-raised flex items-center justify-center text-accent text-sm font-bold flex-shrink-0">
                         {team.short}
                       </div>
                     )}
 
                     {/* Name + Region */}
                     <div className="flex-1 min-w-0">
-                      <div className="text-white text-sm font-medium group-hover:text-[#c89b3c] transition-colors truncate">{team.name}</div>
+                      <div className="text-white text-sm font-medium group-hover:text-accent transition-colors truncate">{team.name}</div>
                       <div className="text-fg-muted text-xs">{team.region} · {players.length} {t('teams.players')}{staff.length > 0 ? ` · ${staff.length} ${t('team.staff')}` : ''}</div>
                     </div>
 
@@ -300,7 +300,7 @@ export default function TeamsPage() {
 
                     {/* Prize */}
                     <div className="text-right flex-shrink-0">
-                      <div className="text-[#c89b3c] text-sm font-medium">
+                      <div className="text-accent text-sm font-medium">
                         {formatPrize(team.totalPrizeMoney)}
                       </div>
                       {seasonPrize !== null && seasonPrize > 0 && (

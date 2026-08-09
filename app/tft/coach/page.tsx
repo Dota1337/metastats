@@ -120,7 +120,7 @@ function CoachChat() {
                   <button
                     key={i}
                     onClick={() => setInput(s)}
-                    className="text-left px-3 py-2 bg-surface-raised border border-border-subtle rounded text-[12px] text-fg-secondary hover:border-[#7B61FF]/40 hover:text-white"
+                    className="text-left px-3 py-2 bg-surface-raised border border-border-subtle rounded text-[12px] text-fg-secondary hover:border-accent-a40 hover:text-white"
                   >{s}</button>
                 ))}
               </div>
@@ -131,7 +131,7 @@ function CoachChat() {
               <div
                 className={`inline-block max-w-[85%] px-3 py-2 rounded-lg text-sm whitespace-pre-wrap ${
                   m.role === 'user'
-                    ? 'bg-[#7B61FF] text-white'
+                    ? 'bg-accent text-white'
                     : 'bg-surface-raised border border-border-subtle text-[#e0e6f0]'
                 }`}
               >
@@ -149,12 +149,12 @@ function CoachChat() {
             onChange={e => setInput(e.target.value)}
             placeholder={t('tft.coach.placeholder')}
             disabled={streaming}
-            className="flex-1 bg-surface-raised border border-border-subtle rounded px-3 py-2 text-sm text-white outline-none focus:border-[#7B61FF]/60 disabled:opacity-50"
+            className="flex-1 bg-surface-raised border border-border-subtle rounded px-3 py-2 text-sm text-white outline-none focus:border-accent-a60 disabled:opacity-50"
           />
           <button
             type="submit"
             disabled={streaming || !input.trim()}
-            className="px-5 py-2 bg-[#7B61FF] text-white rounded text-sm font-medium hover:bg-[#9981FF] disabled:opacity-30 disabled:cursor-not-allowed"
+            className="px-5 py-2 bg-accent text-white rounded text-sm font-medium hover:bg-[#9981FF] disabled:opacity-30 disabled:cursor-not-allowed"
           >{streaming ? '…' : t('tft.coach.send')}</button>
         </form>
       </div>

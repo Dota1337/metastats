@@ -61,7 +61,7 @@ export default function TftCompsComparePage() {
     <main className="min-h-screen bg-surface-page">
       <Nav active="comps" />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-        <a href="/tft/comps" className="text-[#7B61FF] text-xs hover:underline">← {t('nav.comps')}</a>
+        <a href="/tft/comps" className="text-accent text-xs hover:underline">← {t('nav.comps')}</a>
 
         <div className="flex flex-wrap items-center justify-between gap-3 mt-2 mb-5">
           <h1 className="text-white text-xl font-medium">{t('tft.compare.title')}</h1>
@@ -78,7 +78,7 @@ export default function TftCompsComparePage() {
             </div>
             <a
               href="/tft/comps"
-              className="inline-block mt-3 px-3 py-1.5 text-xs bg-[#7B61FF] text-white rounded hover:bg-[#8B71FF] transition-colors"
+              className="inline-block mt-3 px-3 py-1.5 text-xs bg-accent text-white rounded hover:bg-[#8B71FF] transition-colors"
             >
               {t('tft.compare.goToList')}
             </a>

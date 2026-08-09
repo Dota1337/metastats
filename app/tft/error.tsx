@@ -20,7 +20,7 @@ export default function TftError({ error, reset }: { error: Error & { digest?: s
           <div className="text-red-400 font-medium mb-3">Etwas ist schiefgelaufen.</div>
           <button
             onClick={reset}
-            className="px-4 py-1.5 rounded bg-[#7B61FF] text-white text-sm hover:bg-[#6a52e0] transition-colors"
+            className="px-4 py-1.5 rounded bg-accent text-white text-sm hover:bg-[#6a52e0] transition-colors"
           >
             Erneut versuchen
           </button>

@@ -150,12 +150,12 @@ export default function CompCard({
       }
     : {};
   const interactiveClass = href
-    ? 'cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B61FF]/60'
+    ? 'cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-a60'
     : '';
   return (
     <div
       {...linkProps}
-      className={`block bg-surface-base border border-border-subtle rounded-lg p-3 hover:border-[#7B61FF]/40 transition-colors ${interactiveClass}`}
+      className={`block bg-surface-base border border-border-subtle rounded-lg p-3 hover:border-accent-a40 transition-colors ${interactiveClass}`}
     >
       {/* Mobile: stack the carry header → units row → stats column vertically.
           Desktop: original 3-column grid keeps it dense. */}
@@ -175,7 +175,7 @@ export default function CompCard({
                 <a
                   href={`/tft/traits/${encodeURIComponent(parts.trait)}`}
                   onClick={e => e.stopPropagation()}
-                  className="hover:text-[#7B61FF] transition-colors"
+                  className="hover:text-accent transition-colors"
                   title={traitTooltip || undefined}
                 >
                   {traitDisplay}
@@ -185,7 +185,7 @@ export default function CompCard({
                 <a
                   href={`/tft/units/${encodeURIComponent(carryCid)}`}
                   onClick={e => e.stopPropagation()}
-                  className="hover:text-[#7B61FF] transition-colors"
+                  className="hover:text-accent transition-colors"
                   title={tftChampionTooltip(assets, carryCid) || undefined}
                 >
                   {carry?.name || prettyChar(carryCid)}
@@ -268,7 +268,7 @@ export default function CompCard({
                       {url && <img src={url} alt={ch?.name || u.characterId} className="w-full h-full object-cover rounded-sm" />}
                       {showDouble && (
                         <div
-                          className="absolute -top-1 -right-1 bg-[#7B61FF] text-white text-[8px] font-bold rounded-full w-4 h-4 flex items-center justify-center shadow"
+                          className="absolute -top-1 -right-1 bg-accent text-white text-[8px] font-bold rounded-full w-4 h-4 flex items-center justify-center shadow"
                           title="Two-Tanky-Variante"
                         >
                           ×2

@@ -73,7 +73,7 @@ export default function MatchCard({ match, selfPuuid, region }: Props) {
           <a
             href={`/tft/match/${encodeURIComponent(match.matchId)}`}
             onClick={e => e.stopPropagation()}
-            className="block text-right text-[10px] text-[#7B61FF] hover:text-[#a892ff] uppercase tracking-widest pt-1 border-t border-border-subtle"
+            className="block text-right text-[10px] text-accent hover:text-[#a892ff] uppercase tracking-widest pt-1 border-t border-border-subtle"
           >
             {t('tft.match.detail')}
           </a>
@@ -163,7 +163,7 @@ function ParticipantRow({ participant, isSelf, assets, region }: { participant: 
     : null;
   const displayName = gameName || participant.puuid.slice(0, 8);
   return (
-    <div className={`flex flex-col md:flex-row md:items-center gap-2 px-2 py-2 rounded ${isSelf ? 'bg-[#7B61FF]/10 border border-[#7B61FF]/30' : 'hover:bg-white/5'}`}>
+    <div className={`flex flex-col md:flex-row md:items-center gap-2 px-2 py-2 rounded ${isSelf ? 'bg-accent-a10 border border-accent-a30' : 'hover:bg-white/5'}`}>
       <div className="flex items-center gap-2 md:w-44 flex-shrink-0">
         <PlacementBadge placement={participant.placement} />
         <div className="min-w-0 flex-1">
@@ -171,7 +171,7 @@ function ParticipantRow({ participant, isSelf, assets, region }: { participant: 
             <a
               href={`/tft/player/${slug}?region=${region}`}
               onClick={e => e.stopPropagation()}
-              className="text-white text-xs truncate block hover:text-[#7B61FF] transition-colors"
+              className="text-white text-xs truncate block hover:text-accent transition-colors"
             >
               {displayName}
             </a>

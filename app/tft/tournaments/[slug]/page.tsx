@@ -91,7 +91,7 @@ export default function TftTournamentDetailPage() {
     <main className="min-h-screen bg-surface-page">
       <Nav active="tournaments" />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
-        <a href="/tft/tournaments" className="text-[#7B61FF] text-xs hover:underline">← {t('tft.tournaments.title')}</a>
+        <a href="/tft/tournaments" className="text-accent text-xs hover:underline">← {t('tft.tournaments.title')}</a>
 
         {/* Header */}
         <div className="bg-surface-base border border-border-subtle rounded-lg p-5 mb-5 mt-2">
@@ -123,7 +123,7 @@ export default function TftTournamentDetailPage() {
             </div>
             {tournament.prize_pool_usd != null && (
               <div className="text-right">
-                <div className="text-[#7B61FF] text-2xl font-semibold tabular-nums">
+                <div className="text-accent text-2xl font-semibold tabular-nums">
                   ${tournament.prize_pool_usd.toLocaleString('en-US')}
                 </div>
                 <div className="text-fg-muted text-[10px] uppercase tracking-widest">Prize Pool</div>
@@ -184,7 +184,7 @@ export default function TftTournamentDetailPage() {
                   <div className="hidden sm:block text-fg-secondary">{r.country || '—'}</div>
                   <div className="flex sm:block items-center justify-between mt-1 sm:mt-0 sm:text-right tabular-nums">
                     <span className="text-fg-muted text-[10px] sm:hidden">{r.team}{r.team && r.country ? ' · ' : ''}{r.country}</span>
-                    <span className="text-[#7B61FF] font-medium">
+                    <span className="text-accent font-medium">
                       {r.prizeUsd != null ? `$${r.prizeUsd.toLocaleString('en-US')}` : '—'}
                     </span>
                   </div>
@@ -227,7 +227,7 @@ function PlayerNameLink({ puuid, name }: { puuid: string; name: string }) {
 
   if (link) {
     return (
-      <a href={link} className="text-white font-medium hover:text-[#7B61FF] truncate">
+      <a href={link} className="text-white font-medium hover:text-accent truncate">
         {name}
       </a>
     );

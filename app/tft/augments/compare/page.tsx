@@ -37,7 +37,7 @@ export default function TftAugmentsComparePage() {
     <main className="min-h-screen bg-surface-page">
       <Nav active="augments" />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-        <a href="/tft/augments" className="text-[#7B61FF] text-xs hover:underline">← {t('nav.augments')}</a>
+        <a href="/tft/augments" className="text-accent text-xs hover:underline">← {t('nav.augments')}</a>
 
         <h1 className="text-white text-xl font-medium mt-2 mb-5">{t('tft.augmentsCompare.title')}</h1>
 
@@ -49,7 +49,7 @@ export default function TftAugmentsComparePage() {
             </div>
             <a
               href="/tft/augments"
-              className="inline-block mt-3 px-3 py-1.5 text-xs bg-[#7B61FF] text-white rounded hover:bg-[#8B71FF] transition-colors"
+              className="inline-block mt-3 px-3 py-1.5 text-xs bg-accent text-white rounded hover:bg-[#8B71FF] transition-colors"
             >
               {t('tft.augmentsCompare.goToList')}
             </a>
@@ -167,7 +167,7 @@ function AugmentPanel({
                 <a
                   key={m.slug}
                   href={`/tft/comps/${encodeURIComponent(compSlug)}`}
-                  className="flex items-center gap-2 p-2 rounded bg-surface-raised border border-border-subtle hover:border-[#7B61FF]/50 transition-colors"
+                  className="flex items-center gap-2 p-2 rounded bg-surface-raised border border-border-subtle hover:border-accent-a50 transition-colors"
                 >
                   {carryUrl ? (
                     <img

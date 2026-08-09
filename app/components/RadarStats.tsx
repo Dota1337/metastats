@@ -70,7 +70,7 @@ export default function RadarStats({ categories }: Props) {
               return (
                 <div className="bg-surface-base border border-border-subtle rounded px-3 py-2 text-xs shadow-lg">
                   <div className="text-white font-medium">{d?.axis}</div>
-                  <div className="text-[#c89b3c]">Score: {d?.score}/100</div>
+                  <div className="text-accent">Score: {d?.score}/100</div>
                 </div>
               );
             }}

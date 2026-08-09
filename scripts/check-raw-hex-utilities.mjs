@@ -21,8 +21,14 @@ import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
 // Deckel fuer Stufe 2. Beim Senken auch dieses Kommentar-Datum mitziehen.
-// Stand nach Welle 2 / Commit A (2026-08-09): 766.
-const BASELINE = 766;
+// Stand nach Welle 2 / Commit B (2026-08-09): 321.
+//
+// Warum die Accent-Familie NICHT in MIGRATED (harte Null) steht, obwohl sie
+// jetzt Tokens hat: es bleiben bewusst Roh-Hexe stehen, die kein Token
+// bekommen duerfen -- Gold im Root-Chrome (Nav/Footer, 43x) und zwei
+// Fundstellen in Dateien, die keine Route erreicht. Eine harte Null wuerde
+// genau die melden. Sie kommt, wenn diese Reste geklaert sind.
+const BASELINE = 321;
 
 // Die 10 Farben aus app/globals.css, die seit Commit A ein Token haben.
 const MIGRATED = new Set([

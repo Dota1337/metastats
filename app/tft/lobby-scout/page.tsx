@@ -116,8 +116,8 @@ export default function TftLobbyScoutPage() {
                 onClick={() => setCostFilter(c)}
                 className={`px-2.5 py-1 rounded text-xs border transition-colors ${
                   costFilter === c
-                    ? 'bg-[#7B61FF]/20 border-[#7B61FF]/60 text-white'
-                    : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-[#7B61FF]/40'
+                    ? 'bg-accent-a20 border-accent-a60 text-white'
+                    : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-accent-a40'
                 }`}
               >
                 {c === 'all' ? t('tft.lobby.allCosts') : `${c} ${t('tft.cost') || ''}`}
@@ -128,7 +128,7 @@ export default function TftLobbyScoutPage() {
               placeholder={t('tft.lobby.searchPlaceholder')}
               value={query}
               onChange={e => setQuery(e.target.value)}
-              className="flex-1 min-w-[140px] bg-surface-raised border border-border-subtle rounded px-3 py-1 text-xs text-white focus:outline-none focus:border-[#7B61FF]/60"
+              className="flex-1 min-w-[140px] bg-surface-raised border border-border-subtle rounded px-3 py-1 text-xs text-white focus:outline-none focus:border-accent-a60"
             />
           </div>
 
@@ -142,7 +142,7 @@ export default function TftLobbyScoutPage() {
                     key={id}
                     onClick={() => togglePick(id)}
                     className={`group relative bg-surface-raised rounded border-2 transition-all hover:bg-[#1a2742] ${
-                      isSelected ? 'ring-2 ring-[#7B61FF]' : ''
+                      isSelected ? 'ring-2 ring-accent' : ''
                     }`}
                     style={{ borderColor: isSelected ? '#7B61FF' : costColorOf(c.cost) }}
                   >
@@ -153,7 +153,7 @@ export default function TftLobbyScoutPage() {
                     )}
                     <div className="text-white text-[9px] truncate px-0.5 py-0.5">{c.name}</div>
                     {isSelected && (
-                      <span className="absolute top-1 right-1 bg-[#7B61FF] text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
+                      <span className="absolute top-1 right-1 bg-accent text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
                         ✓
                       </span>
                     )}
@@ -217,7 +217,7 @@ export default function TftLobbyScoutPage() {
                       <a
                         key={m.comp.slug}
                         href={`/tft/comps/${encodeURIComponent(m.comp.slug)}?bucket=master_plus`}
-                        className="block bg-surface-raised border border-border-subtle rounded p-2 hover:border-[#7B61FF]/40 transition-colors"
+                        className="block bg-surface-raised border border-border-subtle rounded p-2 hover:border-accent-a40 transition-colors"
                       >
                         <div className="flex items-center gap-2">
                           {carryUrl ? (
@@ -234,11 +234,11 @@ export default function TftLobbyScoutPage() {
                             </div>
                           </div>
                           <div className="text-right">
-                            <div className="text-[#7B61FF] text-sm font-medium tabular-nums">{confidence}%</div>
+                            <div className="text-accent text-sm font-medium tabular-nums">{confidence}%</div>
                           </div>
                         </div>
                         <div className="mt-1 h-1 bg-surface-base rounded overflow-hidden">
-                          <div className="h-full bg-[#7B61FF]" style={{ width: `${confidence}%` }} />
+                          <div className="h-full bg-accent" style={{ width: `${confidence}%` }} />
                         </div>
                       </a>
                     );

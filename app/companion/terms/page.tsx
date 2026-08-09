@@ -9,7 +9,7 @@ export default function CompanionTermsPage() {
   return (
     <main className="min-h-screen bg-surface-page text-[#cfd6dc]">
       <div className="max-w-3xl mx-auto px-6 py-12">
-        <a href="/tft" className="text-[#7B61FF] text-xs hover:underline">← zurück</a>
+        <a href="/tft" className="text-brand text-xs hover:underline">← zurück</a>
         <h1 className="text-white text-3xl font-medium mt-3 mb-6">Nutzungsbedingungen · Companion App</h1>
 
         <p className="text-sm text-fg-secondary mb-6">Stand: 17. Mai 2026</p>
@@ -60,7 +60,7 @@ export default function CompanionTermsPage() {
           <h2 className="text-white text-lg font-medium mt-6">7. Datenschutz</h2>
           <p>
             Welche Daten die App erhebt und wie sie verarbeitet werden, regelt die separate{' '}
-            <a href="/companion/privacy" className="text-[#7B61FF] hover:underline">Datenschutzerklärung</a>.
+            <a href="/companion/privacy" className="text-brand hover:underline">Datenschutzerklärung</a>.
           </p>
 
           <h2 className="text-white text-lg font-medium mt-6">8. Schlussbestimmungen</h2>

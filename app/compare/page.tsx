@@ -209,7 +209,7 @@ function ComparisonBar({ label, value1, value2, format1, format2 }: {
     <div className="mb-4">
       <div className="text-center text-fg-secondary text-xs mb-1">{label}</div>
       <div className="flex items-center gap-2">
-        <span className={`text-xs sm:text-sm w-16 sm:w-24 text-right shrink-0 tabular-nums font-medium ${p1Wins ? 'text-[#c89b3c]' : 'text-white'}`}>{format1}</span>
+        <span className={`text-xs sm:text-sm w-16 sm:w-24 text-right shrink-0 tabular-nums font-medium ${p1Wins ? 'text-accent' : 'text-white'}`}>{format1}</span>
         <div className="flex-1 flex gap-1">
           <div className="flex-1 flex justify-end">
             <div
@@ -224,7 +224,7 @@ function ComparisonBar({ label, value1, value2, format1, format2 }: {
             />
           </div>
         </div>
-        <span className={`text-xs sm:text-sm w-16 sm:w-24 shrink-0 tabular-nums font-medium ${p2Wins ? 'text-[#c89b3c]' : 'text-white'}`}>{format2}</span>
+        <span className={`text-xs sm:text-sm w-16 sm:w-24 shrink-0 tabular-nums font-medium ${p2Wins ? 'text-accent' : 'text-white'}`}>{format2}</span>
       </div>
     </div>
   );
@@ -238,19 +238,19 @@ function HeadToHeadBanner({ p1, p2, name1, name2 }: { p1: number; p2: number; na
   return (
     <div className="mb-6">
       <div className="flex items-center justify-between text-xs mb-2">
-        <span className={`font-semibold ${p1 > p2 ? 'text-[#c89b3c]' : 'text-fg-secondary'}`}>{name1}</span>
+        <span className={`font-semibold ${p1 > p2 ? 'text-accent' : 'text-fg-secondary'}`}>{name1}</span>
         <span className="text-fg-muted">Head-to-Head</span>
-        <span className={`font-semibold ${p2 > p1 ? 'text-[#c89b3c]' : 'text-fg-secondary'}`}>{name2}</span>
+        <span className={`font-semibold ${p2 > p1 ? 'text-accent' : 'text-fg-secondary'}`}>{name2}</span>
       </div>
       <div className="relative h-2.5 rounded-full bg-surface-overlay overflow-hidden">
         <div
-          className="absolute left-0 top-0 h-full bg-gradient-to-r from-[#c89b3c] to-[#d4a94a] transition-all duration-700"
+          className="absolute left-0 top-0 h-full bg-gradient-to-r from-accent to-[#d4a94a] transition-all duration-700"
           style={{ width: `${w1}%`, boxShadow: '0 0 8px rgba(200,155,60,0.45)' }}
         />
       </div>
       <div className="flex items-center justify-between text-[10px] mt-1.5 tabular-nums">
-        <span className={p1 > p2 ? 'text-[#c89b3c] font-bold' : 'text-fg-muted'}>{p1} {p1 === 1 ? 'Kategorie' : 'Kategorien'}</span>
-        <span className={p2 > p1 ? 'text-[#c89b3c] font-bold' : 'text-fg-muted'}>{p2} {p2 === 1 ? 'Kategorie' : 'Kategorien'}</span>
+        <span className={p1 > p2 ? 'text-accent font-bold' : 'text-fg-muted'}>{p1} {p1 === 1 ? 'Kategorie' : 'Kategorien'}</span>
+        <span className={p2 > p1 ? 'text-accent font-bold' : 'text-fg-muted'}>{p2} {p2 === 1 ? 'Kategorie' : 'Kategorien'}</span>
       </div>
     </div>
   );
@@ -339,7 +339,7 @@ function DamageBreakdownBar({ breakdown }: { breakdown: { phys: number; mag: num
 function MiniStatCard({ label, value, accent }: { label: string; value: string | number; accent?: boolean }) {
   return (
     <div className="bg-surface-sunken border border-border-subtle rounded p-2 text-center">
-      <div className={`text-base font-semibold tabular-nums ${accent ? 'text-[#c89b3c]' : 'text-white'}`}>{value}</div>
+      <div className={`text-base font-semibold tabular-nums ${accent ? 'text-accent' : 'text-white'}`}>{value}</div>
       <div className="text-[9px] uppercase tracking-widest text-fg-muted mt-0.5">{label}</div>
     </div>
   );
@@ -434,13 +434,13 @@ export default function AnalysePage() {
         <div className="flex gap-2 mb-6">
           <button
             onClick={() => setMode('compare')}
-            className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${mode === 'compare' ? 'bg-[#c89b3c]/10 text-[#c89b3c] border border-[#c89b3c]/30' : 'text-fg-muted hover:text-fg-secondary'}`}
+            className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${mode === 'compare' ? 'bg-accent-a10 text-accent border border-accent-a30' : 'text-fg-muted hover:text-fg-secondary'}`}
           >
             {t('compare.title')}
           </button>
           <button
             onClick={() => setMode('multi')}
-            className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${mode === 'multi' ? 'bg-[#c89b3c]/10 text-[#c89b3c] border border-[#c89b3c]/30' : 'text-fg-muted hover:text-fg-secondary'}`}
+            className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${mode === 'multi' ? 'bg-accent-a10 text-accent border border-accent-a30' : 'text-fg-muted hover:text-fg-secondary'}`}
           >
             {t('multi.title')}
           </button>
@@ -521,7 +521,7 @@ function MultiSearchTab({ region, setRegion }: { region: string; setRegion: (r: 
           onChange={e => setInput(e.target.value)}
           placeholder={t('compare.placeholder')}
           rows={4}
-          className="w-full bg-surface-page border border-border-subtle rounded-lg p-3 text-white text-sm placeholder-fg-muted focus:outline-none focus:border-[#c89b3c] resize-none"
+          className="w-full bg-surface-page border border-border-subtle rounded-lg p-3 text-white text-sm placeholder-fg-muted focus:outline-none focus:border-accent resize-none"
         />
         <div className="flex flex-wrap items-center gap-3 mt-3">
           <select value={region} onChange={e => setRegion(e.target.value)}
@@ -529,7 +529,7 @@ function MultiSearchTab({ region, setRegion }: { region: string; setRegion: (r: 
             {REGIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
           </select>
           <button onClick={handleSearch} disabled={searching || !input.trim()}
-            className="bg-[#c89b3c] hover:bg-[#d4a94e] disabled:opacity-50 text-black font-semibold px-6 py-2 rounded text-sm transition-colors">
+            className="bg-accent hover:bg-[#d4a94e] disabled:opacity-50 text-black font-semibold px-6 py-2 rounded text-sm transition-colors">
             {searching ? t('common.loading') : t('home.searchBtn')}
           </button>
         </div>
@@ -562,7 +562,7 @@ function MultiSearchTab({ region, setRegion }: { region: string; setRegion: (r: 
 
             return (
               <a key={i} href={getPlayerLink(player)}
-                className="bg-surface-base border border-border-subtle rounded-lg p-4 flex items-center gap-3 hover:border-[#c89b3c]/40 transition-colors">
+                className="bg-surface-base border border-border-subtle rounded-lg p-4 flex items-center gap-3 hover:border-accent-a40 transition-colors">
                 {summoner?.profileIconId ? (
                   <img src={`https://ddragon.leagueoflegends.com/cdn/14.1.1/img/profileicon/${summoner.profileIconId}.png`}
                     alt="" className="w-10 h-10 rounded-full border border-border-subtle flex-shrink-0" />
@@ -588,7 +588,7 @@ function MultiSearchTab({ region, setRegion }: { region: string; setRegion: (r: 
                 </div>
                 <div className="text-right flex-shrink-0">
                   {marketValue ? (
-                    <span className="text-[#c89b3c] text-sm font-semibold">{formatMarketValue(marketValue)}</span>
+                    <span className="text-accent text-sm font-semibold">{formatMarketValue(marketValue)}</span>
                   ) : <span className="text-fg-muted text-xs">-</span>}
                 </div>
               </a>
@@ -692,14 +692,14 @@ function CompareTab({ region, setRegion }: { region: string; setRegion: (r: stri
             <input type="text" placeholder="Name#Tag" value={player1Input}
               onChange={e => setPlayer1Input(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleCompare()}
-              className="w-full bg-surface-page border border-border-subtle rounded px-3 py-2 text-white text-sm placeholder-fg-muted outline-none focus:border-[#c89b3c]" />
+              className="w-full bg-surface-page border border-border-subtle rounded px-3 py-2 text-white text-sm placeholder-fg-muted outline-none focus:border-accent" />
           </div>
           <div>
             <label className="block text-fg-secondary text-xs mb-1">{t('compare.player2')}</label>
             <input type="text" placeholder="Name#Tag" value={player2Input}
               onChange={e => setPlayer2Input(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleCompare()}
-              className="w-full bg-surface-page border border-border-subtle rounded px-3 py-2 text-white text-sm placeholder-fg-muted outline-none focus:border-[#c89b3c]" />
+              className="w-full bg-surface-page border border-border-subtle rounded px-3 py-2 text-white text-sm placeholder-fg-muted outline-none focus:border-accent" />
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -708,7 +708,7 @@ function CompareTab({ region, setRegion }: { region: string; setRegion: (r: stri
             {REGIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
           </select>
           <button onClick={handleCompare} disabled={loading}
-            className="flex-1 sm:flex-none bg-[#c89b3c] hover:bg-[#b08a34] text-black font-semibold text-sm px-6 py-2 rounded transition-colors disabled:opacity-50">
+            className="flex-1 sm:flex-none bg-accent hover:bg-[#b08a34] text-black font-semibold text-sm px-6 py-2 rounded transition-colors disabled:opacity-50">
             {loading ? t('common.loading') : t('compare.title')}
           </button>
         </div>
@@ -723,7 +723,7 @@ function CompareTab({ region, setRegion }: { region: string; setRegion: (r: stri
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2 sm:gap-3">
               <img src={`https://ddragon.leagueoflegends.com/cdn/14.10.1/img/profileicon/${player1.summoner.summoner.profileIconId}.png`}
-                alt="" className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-[#c89b3c]" />
+                alt="" className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-accent" />
               <div>
                 <div className="text-white text-sm font-semibold truncate max-w-[100px] sm:max-w-none">{player1.summoner.summoner.name}</div>
                 <div className="text-fg-secondary text-xs">Lvl {player1.summoner.summoner.summonerLevel}</div>
@@ -736,7 +736,7 @@ function CompareTab({ region, setRegion }: { region: string; setRegion: (r: stri
                 <div className="text-fg-secondary text-xs">Lvl {player2.summoner.summoner.summonerLevel}</div>
               </div>
               <img src={`https://ddragon.leagueoflegends.com/cdn/14.10.1/img/profileicon/${player2.summoner.summoner.profileIconId}.png`}
-                alt="" className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-[#c89b3c]" />
+                alt="" className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-accent" />
             </div>
           </div>
 

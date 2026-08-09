@@ -102,7 +102,7 @@ export default function PositionHeatmap({ units, carryCharacterId, clusterKey, a
                   />
                 )}
                 <div className="flex-1 min-w-0">
-                  <div className="text-white text-xs font-medium truncate group-hover:text-[#7B61FF] transition-colors">{ch?.name || u.characterId}</div>
+                  <div className="text-white text-xs font-medium truncate group-hover:text-accent transition-colors">{ch?.name || u.characterId}</div>
                   {isCarry && <div className="text-[#a892ff] text-[10px] uppercase tracking-widest">Carry</div>}
                 </div>
               </a>

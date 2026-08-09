@@ -73,8 +73,8 @@ export default function TftCommunityGalleryPage() {
               onClick={() => setSort(s)}
               className={`px-3 py-1.5 text-xs uppercase tracking-widest rounded border transition-colors ${
                 sort === s
-                  ? 'bg-[#7B61FF] border-[#7B61FF] text-white'
-                  : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-[#7B61FF]/40'
+                  ? 'bg-accent border-accent text-white'
+                  : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-accent-a40'
               }`}
             >{t(`tft.community.sort.${s}` as TranslationKey)}</button>
           ))}
@@ -94,7 +94,7 @@ export default function TftCommunityGalleryPage() {
             const carryUrl = tftChampionTileUrl(assets, carry);
             const placements = c.boardConfig?.placements || [];
             return (
-              <div key={c.id} className="bg-surface-base border border-border-subtle rounded p-3 hover:border-[#7B61FF]/30 transition-colors">
+              <div key={c.id} className="bg-surface-base border border-border-subtle rounded p-3 hover:border-accent-a30 transition-colors">
                 <div className="flex items-start gap-3 mb-2">
                   {carryUrl && c.carryUnit && (
                     <a
@@ -160,7 +160,7 @@ export default function TftCommunityGalleryPage() {
                             router.push(unitHref);
                           }
                         }}
-                        className="relative w-9 h-9 rounded overflow-hidden border block hover:scale-110 transition-transform cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B61FF]/60"
+                        className="relative w-9 h-9 rounded overflow-hidden border block hover:scale-110 transition-transform cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-a60"
                         style={{ borderColor: ch ? costColorOf(ch.cost) : '#1e2a3a' }}
                         title={ch?.name || p.characterId}
                       >

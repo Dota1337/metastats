@@ -137,13 +137,13 @@ export default function TftItemsPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder={t('tft.search.items')}
-            className="w-full sm:w-80 bg-surface-raised border border-border-subtle rounded px-3 py-1.5 text-sm text-white placeholder:text-fg-faint outline-none focus:border-[#7B61FF]/60"
+            className="w-full sm:w-80 bg-surface-raised border border-border-subtle rounded px-3 py-1.5 text-sm text-white placeholder:text-fg-faint outline-none focus:border-accent-a60"
           />
         </div>
         <div className="flex flex-wrap gap-1 mb-4">
           <button
             onClick={() => setBucket(null)}
-            className={`px-3 py-1 rounded text-xs ${bucket == null ? 'bg-[#7B61FF] text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
+            className={`px-3 py-1 rounded text-xs ${bucket == null ? 'bg-accent text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
           >
             {t('tft.item.bucket.all')}
           </button>
@@ -151,7 +151,7 @@ export default function TftItemsPage() {
             <button
               key={b}
               onClick={() => setBucket(b)}
-              className={`px-3 py-1 rounded text-xs ${bucket === b ? 'bg-[#7B61FF] text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
+              className={`px-3 py-1 rounded text-xs ${bucket === b ? 'bg-accent text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
             >
               {t(`tft.item.bucket.${b}` as any)}
             </button>
@@ -337,9 +337,9 @@ function DeltaCell({ velocity, label }: { velocity?: { deltaAvgPlacement?: numbe
       <>
         <div className="md:hidden">
           <div className="text-fg-muted text-[9px] uppercase tracking-widest leading-tight">{label}</div>
-          <div className="text-[#7B61FF] tabular-nums leading-tight">NEW</div>
+          <div className="text-accent tabular-nums leading-tight">NEW</div>
         </div>
-        <div className="hidden md:block text-right text-[#7B61FF] tabular-nums">NEW</div>
+        <div className="hidden md:block text-right text-accent tabular-nums">NEW</div>
       </>
     );
   }

@@ -174,8 +174,8 @@ export default function AdvancedCompFilters({ filters, onChange, resultCount, to
           onClick={() => setExpanded(e => !e)}
           className={`px-3 py-1 rounded border transition-colors ${
             active
-              ? 'bg-[#7B61FF]/15 border-[#7B61FF]/60 text-[#a892ff]'
-              : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-[#7B61FF]/40'
+              ? 'bg-accent-a15 border-accent-a60 text-[#a892ff]'
+              : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-accent-a40'
           }`}
         >
           {expanded ? '−' : '+'} {t('tft.adv.title')}
@@ -252,7 +252,7 @@ function NumField({
             const n = Number(raw);
             onChange(Number.isFinite(n) ? n : null);
           }}
-          className="w-full bg-surface-raised border border-border-subtle rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-[#7B61FF]/60"
+          className="w-full bg-surface-raised border border-border-subtle rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-accent-a60"
         />
         {suffix && <span className="text-fg-muted text-[10px] ml-1">{suffix}</span>}
       </div>

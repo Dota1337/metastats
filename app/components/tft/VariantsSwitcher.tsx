@@ -145,13 +145,13 @@ export default function VariantsSwitcher({
   return (
     <section className="mt-3 bg-surface-base border border-border-subtle rounded p-3">
       {showFamilyBanner && (
-        <div className="mb-3 flex items-center justify-between gap-2 px-3 py-2 bg-[#7B61FF]/8 border border-[#7B61FF]/30 rounded">
+        <div className="mb-3 flex items-center justify-between gap-2 px-3 py-2 bg-accent-a8 border border-accent-a30 rounded">
           <div className="text-xs text-fg-bright">
             {t('tft.comp.familyMode.banner')}
           </div>
           <button
             onClick={toggleVariantMode}
-            className="text-[10px] uppercase tracking-widest px-2 py-1 bg-surface-sunken border border-[#7B61FF]/40 text-fg-bright hover:text-white hover:border-[#7B61FF] rounded transition-colors"
+            className="text-[10px] uppercase tracking-widest px-2 py-1 bg-surface-sunken border border-accent-a40 text-fg-bright hover:text-white hover:border-accent rounded transition-colors"
           >
             {t('tft.comp.familyMode.toggleToExact')}
           </button>
@@ -164,7 +164,7 @@ export default function VariantsSwitcher({
           </div>
           <button
             onClick={toggleVariantMode}
-            className="text-[10px] uppercase tracking-widest px-2 py-1 bg-surface-sunken border border-border-subtle text-fg-secondary hover:text-white hover:border-[#7B61FF]/40 rounded transition-colors"
+            className="text-[10px] uppercase tracking-widest px-2 py-1 bg-surface-sunken border border-border-subtle text-fg-secondary hover:text-white hover:border-accent-a40 rounded transition-colors"
           >
             {t('tft.comp.familyMode.toggleToFamily')}
           </button>
@@ -184,8 +184,8 @@ export default function VariantsSwitcher({
               onClick={() => { if (!isActive) router.push(url); }}
               className={`px-3 py-1.5 rounded border text-xs transition-colors ${
                 isActive
-                  ? 'bg-[#7B61FF]/15 border-[#7B61FF] text-white cursor-default'
-                  : 'bg-surface-sunken border-border-subtle text-fg-secondary hover:border-[#7B61FF]/40 hover:text-white cursor-pointer'
+                  ? 'bg-accent-a15 border-accent text-white cursor-default'
+                  : 'bg-surface-sunken border-border-subtle text-fg-secondary hover:border-accent-a40 hover:text-white cursor-pointer'
               }`}
               title={
                 v.belowThreshold

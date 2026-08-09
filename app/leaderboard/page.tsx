@@ -178,7 +178,7 @@ export default function Leaderboard() {
                   onClick={() => setPage(p as number)}
                   className={`min-w-[2rem] px-2 py-1 rounded text-xs font-medium transition-colors ${
                     page === p
-                      ? 'bg-[#c89b3c]/15 text-[#c89b3c] border border-[#c89b3c]/30'
+                      ? 'bg-accent-a15 text-accent border border-accent-a30'
                       : 'text-fg-secondary hover:text-white hover:bg-surface-raised'
                   }`}
                 >
@@ -236,7 +236,7 @@ export default function Leaderboard() {
               key={r.value}
               onClick={() => { setRegion(r.value); setPage(1); }}
               className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-                region === r.value ? 'bg-[#c89b3c] text-surface-sunken' : 'bg-surface-raised text-fg-secondary hover:text-white'
+                region === r.value ? 'bg-accent text-surface-sunken' : 'bg-surface-raised text-fg-secondary hover:text-white'
               }`}
             >
               {r.label}
@@ -376,7 +376,7 @@ export default function Leaderboard() {
             <span className="text-fg-secondary text-xs">
               {t('lb.searchResult')} "{search}" — {entries.length} {t('lb.playersFound')}
             </span>
-            <button onClick={() => setSearch('')} className="text-[#c89b3c] text-xs hover:text-white">
+            <button onClick={() => setSearch('')} className="text-accent text-xs hover:text-white">
               {t('lb.clearSearch')}
             </button>
           </div>
@@ -443,13 +443,13 @@ export default function Leaderboard() {
                     <div className="text-white text-sm font-medium flex items-center gap-1.5 truncate">
                       {entry.summonerName || <span className="text-fg-muted">#{entry.rank}</span>}
                       {entry.summonerName && lookupPro(proLookup, entry.summonerName) && (
-                        <span className="inline-flex items-center bg-[#c89b3c]/15 text-[#c89b3c] text-[10px] font-bold px-1.5 py-0 rounded-full border border-[#c89b3c]/40 leading-4">PRO</span>
+                        <span className="inline-flex items-center bg-accent-a15 text-accent text-[10px] font-bold px-1.5 py-0 rounded-full border border-accent-a40 leading-4">PRO</span>
                       )}
                     </div>
                     <div className="text-fg-muted text-xs">{entry.leaguePoints != null ? entry.leaguePoints + ' LP' : ''} · {entry.winrate}%</div>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <span className="text-[#c89b3c] text-sm font-medium">{formatValue(entry.marketValue)}</span>
+                    <span className="text-accent text-sm font-medium">{formatValue(entry.marketValue)}</span>
                   </div>
                 </div>
                 {/* Desktop layout */}
@@ -479,7 +479,7 @@ export default function Leaderboard() {
                     <div className="text-white text-sm font-medium flex items-center gap-1.5">
                       {entry.summonerName || <span className="text-fg-muted">{t('lb.unknownPlayer')} #{entry.rank}</span>}
                       {entry.summonerName && lookupPro(proLookup, entry.summonerName) && (
-                        <span className="inline-flex items-center bg-[#c89b3c]/15 text-[#c89b3c] text-[10px] font-bold px-1.5 py-0 rounded-full border border-[#c89b3c]/40 leading-4">
+                        <span className="inline-flex items-center bg-accent-a15 text-accent text-[10px] font-bold px-1.5 py-0 rounded-full border border-accent-a40 leading-4">
                           PRO
                         </span>
                       )}
@@ -487,12 +487,12 @@ export default function Leaderboard() {
                     {entry.summonerName && (() => {
                       const pro = lookupPro(proLookup, entry.summonerName);
                       return pro
-                        ? <div className="text-[#c89b3c] text-xs">{pro.proName} · {pro.team}</div>
+                        ? <div className="text-accent text-xs">{pro.proName} · {pro.team}</div>
                         : <div className="text-fg-muted text-xs">Level {entry.level || '?'}</div>;
                     })()}
                   </div>
                   <div className="text-right">
-                    <div className="text-[#c89b3c] text-sm font-medium">
+                    <div className="text-accent text-sm font-medium">
                       {entry.leaguePoints != null ? entry.leaguePoints : '-'} LP
                     </div>
                     {entry.playerRank && !['CHALLENGER', 'GRANDMASTER', 'MASTER'].includes(entry.tier) && (
@@ -515,7 +515,7 @@ export default function Leaderboard() {
                     {(entry.region || '').toUpperCase().replace('1', '')}
                   </div>
                   <div className="text-right">
-                    <span className="text-[#c89b3c] text-sm font-medium">
+                    <span className="text-accent text-sm font-medium">
                       {formatValue(entry.marketValue)}
                     </span>
                   </div>

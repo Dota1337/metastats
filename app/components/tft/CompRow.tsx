@@ -213,7 +213,7 @@ export default function CompRow({
           router.push(href);
         }
       }}
-      className="block px-2.5 sm:px-3.5 py-2.5 sm:py-3 rounded-md border border-border-subtle bg-surface-base hover:bg-[#101a30] hover:border-[#7B61FF]/40 transition-colors text-xs sm:text-sm cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B61FF]/60"
+      className="block px-2.5 sm:px-3.5 py-2.5 sm:py-3 rounded-md border border-border-subtle bg-surface-base hover:bg-[#101a30] hover:border-accent-a40 transition-colors text-xs sm:text-sm cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-a60"
     >
       {/* Mobile: stacked. Desktop: tight horizontal row.
           Großes Carry-Portrait raus — der Carry erscheint sowieso in der
@@ -359,7 +359,7 @@ export default function CompRow({
                 >
                   {url && <img src={url} alt={ch?.name || ''} className="w-full h-full object-cover" />}
                   {showDouble && (
-                    <div className="absolute -top-1 -right-1 bg-[#7B61FF] text-white text-[8px] font-bold rounded-full w-4 h-4 flex items-center justify-center shadow leading-none">
+                    <div className="absolute -top-1 -right-1 bg-accent text-white text-[8px] font-bold rounded-full w-4 h-4 flex items-center justify-center shadow leading-none">
                       ×2
                     </div>
                   )}

@@ -293,6 +293,134 @@ body {
   .card-3d:hover {
     transform: none;
   }
+  .game-strip-half,
+  .game-strip-target {
+    transition: none;
+  }
+}
+
+/* ============================================================================
+   GAME-STREIFEN  ·  Welle 1.5
+   ----------------------------------------------------------------------------
+   Vollbreiter Streifen unter dem Prototyp-Banner, gerendert aus dem
+   Root-Layout (app/components/GameStrip.tsx).
+
+   ER BENUTZT ABSICHTLICH NICHT var(--accent). Der Streifen liegt oberhalb des
+   Accent-Ankers aus app/tft/layout.tsx und zeigt ausserdem BEIDE Spielfarben
+   gleichzeitig — var(--accent) würde dort für beide Hälften denselben Wert
+   liefern und auf LoL-Routen zusätzlich einfach Gold erben. Die benannten
+   Varianten sind hier die einzig richtige Quelle.
+
+   --gs-rgb ist unkritisch auf dem Element deklarierbar: --accent-lol-rgb und
+   --accent-tft-rgb sind feste Tripel in :root, keine game-abhängige Ableitung.
+   (Die Falle aus dem Kopf dieser Datei gilt nur für var(--accent).)
+
+   Animiert werden ausschliesslich `transform`, `opacity` und `background-color`
+   — kein clip-path, keine Breiten. Ein animiertes clip-path würde pro Frame
+   über die volle Streifenbreite neu gerastert. */
+.game-strip {
+  display: flex;
+  width: 100%;
+  height: 28px;
+  background: var(--surface-sunken);
+  border-bottom: 1px solid var(--border-subtle);
+  overflow: hidden;
+}
+
+@media (min-width: 640px) {
+  .game-strip {
+    height: 32px;
+  }
+}
+
+.game-strip-half {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+  position: relative;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  color: var(--fg-muted);
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.game-strip-half[data-half="lol"] {
+  --gs: var(--accent-lol);
+  --gs-rgb: var(--accent-lol-rgb);
+}
+
+.game-strip-half[data-half="tft"] {
+  --gs: var(--accent-tft);
+  --gs-rgb: var(--accent-tft-rgb);
+}
+
+.game-strip-half.is-active {
+  color: var(--gs);
+  background: linear-gradient(
+    to bottom,
+    rgb(var(--gs-rgb) / 4%),
+    rgb(var(--gs-rgb) / 18%)
+  );
+  box-shadow: inset 0 -2px 0 var(--gs);
+}
+
+.game-strip-half:not(.is-active):hover {
+  color: var(--fg-bright);
+  background: rgb(var(--gs-rgb) / 8%);
+}
+
+.game-strip-icon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.game-strip-half:not(.is-active) .game-strip-icon {
+  opacity: 0.55;
+  transition: opacity 0.2s ease;
+}
+
+.game-strip-half:not(.is-active):hover .game-strip-icon {
+  opacity: 1;
+}
+
+.game-strip-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Ziel-Reveal: nennt beim Hover die Seite, auf der der Klick landet. Klappt
+   per opacity/transform auf, damit kein Layout pro Frame anfällt. */
+.game-strip-target {
+  color: var(--fg-faint);
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.game-strip-target::before {
+  content: "→ ";
+}
+
+.game-strip-half:hover .game-strip-target,
+.game-strip-half:focus-visible .game-strip-target {
+  opacity: 1;
+  transform: none;
+}
+
+/* Auf schmalen Viewports ist neben Icon + Spielname kein Platz für das Ziel. */
+@media (max-width: 639px) {
+  .game-strip-target {
+    display: none;
+  }
 }
 
 /* Accessible focus ring for keyboard navigation (mouse users unaffected).

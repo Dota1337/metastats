@@ -176,6 +176,7 @@ const translations = {
   'game.switch': t6('Spiel wechseln', 'Switch game', '\uAC8C\uC784 \uC804\uD658', '\u5207\u6362\u6E38\u620F', 'Cambiar juego', 'Changer de jeu'),
   'game.lol': t6('League of Legends', 'League of Legends', '\uB9AC\uADF8 \uC624\uBE0C \uB808\uC804\uB4DC', '\u82F1\u96C4\u8054\u76DF', 'League of Legends', 'League of Legends'),
   'game.tft': t6('Teamfight Tactics', 'Teamfight Tactics', '\uC804\uB7B5\uC801 \uD300 \uC804\uD22C', '\u4E91\u9876\u4E4B\u5F08', 'Teamfight Tactics', 'Teamfight Tactics'),
+  'gamestrip.home': t6('Startseite', 'Home', '\uD648', '\u9996\u9875', 'Inicio', 'Accueil'),
   'tft.heroSubtitle': t6(
     'Aktuelle Meta-Comps der Top-Spieler',
     'Current meta comps from top players',

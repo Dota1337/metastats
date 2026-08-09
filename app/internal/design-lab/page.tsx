@@ -316,28 +316,49 @@ function FinalDraft({ pool }: { pool: TftHeroUnit[] }) {
               <span className="text-xs text-fg-muted">letzte 7 Tage · EUW</span>
             </div>
             <div className="grid grid-cols-3 gap-4">
+              {/* Aufbau wie live in app/page.tsx: Splash als Kartenkopf, Name und
+                  Zahlen darauf. Sonst vergleicht die Vorschau zwei verschiedene
+                  Karten und nicht zwei Farbklimas. */}
               {(champs ?? [null, null, null]).slice(0, 3).map((c, i) => (
                 <div
                   key={c?.id ?? i}
-                  className="rounded-lg border border-border-subtle bg-surface-raised p-4"
+                  className="overflow-hidden rounded-xl border border-border-subtle bg-surface-raised"
                 >
-                  {c ? (
-                    <>
-                      <div className="text-sm font-semibold text-fg-primary">{c.name}</div>
-                      <div className="mt-1 text-xs text-fg-muted">
-                        {c.games.toLocaleString('de-DE')} Spiele
-                      </div>
-                      <div className="mt-3 text-xl font-bold text-accent">
-                        {c.winRate.toLocaleString('de-DE', { minimumFractionDigits: 1 })} %
-                      </div>
-                    </>
-                  ) : (
-                    <div className="space-y-2">
-                      <div className="h-4 w-24 animate-pulse rounded bg-surface-overlay" />
-                      <div className="h-3 w-16 animate-pulse rounded bg-surface-overlay" />
-                      <div className="h-6 w-20 animate-pulse rounded bg-surface-overlay" />
-                    </div>
-                  )}
+                  <div className="relative h-36 overflow-hidden">
+                    {c ? (
+                      <>
+                        <img
+                          src={`${DD}/${c.id}_0.jpg`}
+                          alt={c.name}
+                          className="h-full w-full object-cover object-top"
+                          style={{ filter: 'brightness(0.5)' }}
+                        />
+                        <div
+                          className="pointer-events-none absolute inset-0"
+                          style={{
+                            background: `linear-gradient(to top, var(--surface-raised) 0%, ${PAGE(0)} 60%)`,
+                          }}
+                        />
+                        <div className="absolute bottom-3 left-4">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="rounded px-1.5 py-0.5 text-xs font-bold text-accent"
+                              style={{ background: 'rgb(var(--accent-rgb) / 20%)' }}
+                            >
+                              #{i + 1}
+                            </span>
+                            <span className="text-lg font-semibold text-fg-primary">{c.name}</span>
+                          </div>
+                          <div className="mt-0.5 text-xs text-fg-secondary">
+                            {c.games.toLocaleString('de-DE')} Spiele ·{' '}
+                            {c.winRate.toLocaleString('de-DE', { minimumFractionDigits: 1 })} % WR
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="h-full w-full animate-pulse bg-surface-overlay" />
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

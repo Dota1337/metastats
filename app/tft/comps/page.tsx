@@ -108,18 +108,28 @@ export default function TftCompsPage() {
   }, []);
 
   useEffect(() => {
+    // Abbruch im Cleanup: /api/tft/comps liefert bis zu 841 KB und geht bei
+    // einem Snapshot-Miss auf die RPC. Zwei schnelle Filter-Wechsel können
+    // deshalb out-of-order eintreffen — die alte Liste würde die neue
+    // überschreiben, während die Filter-Chips schon das neue Set zeigen.
+    const ctl = new AbortController();
+    const { signal } = ctl;
     setLoading(true);
     const qs = filtersToQueryString(filters);
-    fetch(`/api/tft/comps?${qs}&source=data`)
+    fetch(`/api/tft/comps?${qs}&source=data`, { signal })
       .then(r => r.json())
       .then(d => {
+        if (signal.aborted) return;
         setHasData(!!d.hasData);
         setComps(d.comps || []);
         setPatches(d.patches || []);
         setMinGames(typeof d.minGames === 'number' ? d.minGames : null);
         setLoading(false);
       })
-      .catch(() => { setHasData(false); setComps([]); setLoading(false); });
+      .catch(() => {
+        if (signal.aborted) return;
+        setHasData(false); setComps([]); setLoading(false);
+      });
     // Persist NUR nach Hydration — sonst überschreibt der erste Effekt-Tick
     // mit den (URL-only) Defaults die in localStorage gespeicherte Persona,
     // bevor der Init-Effekt sie laden konnte.
@@ -130,6 +140,7 @@ export default function TftCompsPage() {
     if (typeof window !== 'undefined' && window.location.pathname + window.location.search !== url) {
       router.replace(url, { scroll: false });
     }
+    return () => ctl.abort();
   }, [filters, adv, sortBy, sortTouched, hydrated, pathname, router]);
 
   // Filter-change handler that also auto-flips the sort to "Trending" the

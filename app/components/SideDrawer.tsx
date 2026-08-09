@@ -69,6 +69,42 @@ export default function SideDrawer() {
   const [liveCount, setLiveCount] = useState(0);
   const drawerRef = useRef<HTMLDivElement>(null);
 
+  // Seit der Game-Streifen per router.push navigiert (statt window.location.href)
+  // überlebt dieser Drawer den Spielwechsel — vorher hat der Full-Reload jeden
+  // laufenden Fetch gekillt und die Komponente neu montiert. Ohne Guards gewinnt
+  // jetzt die zuletzt eintreffende Antwort, nicht die zuletzt angeforderte.
+  //
+  // EIN Controller für den Inhalt reicht, weil immer nur ein Inhalt sichtbar ist:
+  // ein Tab, ein Spiel. Patches, LoL-Turniere und TFT-Turniere schliessen einander
+  // aus — wer startet, bricht den Vorgänger ab, egal welcher Art. Genau deshalb
+  // bleibt auch `loading` als einzelner Slot korrekt: es gibt nie zwei parallele
+  // Inhalts-Requests, deren Spinner sich gegenseitig ausknipsen könnten.
+  const contentCtl = useRef<AbortController | null>(null);
+  // Der Live-Badge hängt an keinem Tab und läuft unabhängig davon — eigener
+  // Controller. Er teilt sich einen State-Slot über zwei Endpoints mit
+  // UNTERSCHIEDLICHER Einheit (LoL: Matches, TFT: Turniere); eine verspätete
+  // Antwort zeigt also nicht nur eine alte, sondern eine falsch benannte Zahl.
+  const liveCtl = useRef<AbortController | null>(null);
+  // Für welches Spiel die Patches geladen sind. Ersetzt den früheren
+  // setPatches([])-Reset-Effect: der lief NACH dem Lade-Effect (Effects laufen in
+  // Deklarations-Reihenfolge), leerte also den Array, nachdem der einzige
+  // Nachlade-Pfad schon vorbei war — dauerhaft leerer Patches-Tab.
+  // `patches` darf NICHT in die Deps des Lade-Effects: die API liefert legitim
+  // auch mal [], das wäre eine Endlosschleife.
+  const patchesLoadedFor = useRef<Game | null>(null);
+
+  const startContentFetch = () => {
+    contentCtl.current?.abort();
+    const ctl = new AbortController();
+    contentCtl.current = ctl;
+    return ctl.signal;
+  };
+
+  useEffect(() => () => {
+    contentCtl.current?.abort();
+    liveCtl.current?.abort();
+  }, []);
+
   // Close on click outside
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -95,20 +131,12 @@ export default function SideDrawer() {
   // user actually needs for the page they're on.
   useEffect(() => {
     if (!open) return;
-    if (tab === 'patches' && patches.length === 0) fetchPatches();
+    if (tab === 'patches' && patchesLoadedFor.current !== game) fetchPatches();
     if (tab === 'tournaments') {
       if (game === 'tft' && tftTournaments.length === 0) fetchTftTournaments();
       if (game === 'lol' && tournaments.length === 0) fetchTournaments();
     }
   }, [open, tab, game]);
-
-  // Reset patches when the active game changes — otherwise the drawer keeps
-  // showing the previous game's patches (LoL on a TFT page after switching).
-  // The cached states for tournaments stay because each game has its own
-  // state variable, but patches share one slot.
-  useEffect(() => {
-    setPatches([]);
-  }, [game]);
 
   // Re-fetch tournaments when filter changes (only the LoL path has filters;
   // TFT drawer shows the unfiltered live + upcoming list).
@@ -119,66 +147,84 @@ export default function SideDrawer() {
   // Live-count badge — counts the live ones for the active game so the
   // pulsing dot is in-context.
   useEffect(() => {
-    if (game === 'tft') {
-      fetch('/api/tft/tournaments?status=live')
-        .then(r => r.json())
-        .then(d => setLiveCount((d.tournaments || []).length))
-        .catch(() => {});
-    } else {
-      fetch('/api/tournaments?filter=live')
-        .then(r => r.json())
-        .then(d => setLiveCount(d.totalMatches || 0))
-        .catch(() => {});
-    }
+    liveCtl.current?.abort();
+    const ctl = new AbortController();
+    liveCtl.current = ctl;
+    const { signal } = ctl;
+    const url = game === 'tft' ? '/api/tft/tournaments?status=live' : '/api/tournaments?filter=live';
+    fetch(url, { signal })
+      .then(r => r.json())
+      .then(d => {
+        if (signal.aborted) return;
+        setLiveCount(game === 'tft' ? (d.tournaments || []).length : (d.totalMatches || 0));
+      })
+      .catch(() => {});
   }, [game]);
 
   const fetchTftTournaments = async () => {
+    const signal = startContentFetch();
     setLoading(true);
     try {
       // Drawer surfaces what's actually relevant right now — live + upcoming.
       // Past events live on the /tft/tournaments full page if a user wants
       // to browse history.
       const [live, upcoming] = await Promise.all([
-        fetch('/api/tft/tournaments?status=live').then(r => r.json()).catch(() => ({ tournaments: [] })),
-        fetch('/api/tft/tournaments?status=upcoming&limit=20').then(r => r.json()).catch(() => ({ tournaments: [] })),
+        fetch('/api/tft/tournaments?status=live', { signal }).then(r => r.json()).catch(() => ({ tournaments: [] })),
+        fetch('/api/tft/tournaments?status=upcoming&limit=20', { signal }).then(r => r.json()).catch(() => ({ tournaments: [] })),
       ]);
+      // Der Guard MUSS hier stehen und nicht im catch: die beiden .catch oben
+      // fangen den AbortError ab und liefern ein erfolgreich aussehendes
+      // { tournaments: [] }. Ohne diese Zeile würde ein abgebrochener Request
+      // die Turnierliste aktiv leeren — schlimmer als gar kein Abbruch.
+      if (signal.aborted) return;
       setTftTournaments([
         ...(live.tournaments || []),
         ...(upcoming.tournaments || []),
       ]);
     } catch {} finally {
-      setLoading(false);
+      // Nur der aktuelle Request darf den Spinner ausschalten. Ein abgebrochener
+      // Vorgänger erreicht sein finally sofort und wäre sonst vor dem Gewinner
+      // dran — der Nutzer sähe die Leer-Meldung statt des Spinners.
+      if (!signal.aborted) setLoading(false);
     }
   };
 
   const fetchPatches = async () => {
+    const signal = startContentFetch();
+    const loadingFor = game;
     setLoading(true);
     try {
       // Game-aware patch source: TFT pulls from our own crawl_meta-derived
       // list (URLs point to teamfighttactics.lol...); LoL keeps the existing
       // DDragon-driven endpoint.
       const endpoint = game === 'tft' ? '/api/tft/patch-notes' : '/api/patch-notes';
-      const res = await fetch(endpoint);
+      const res = await fetch(endpoint, { signal });
       const data = await res.json();
-      if (data.patches) setPatches(data.patches);
+      if (signal.aborted) return;
+      if (data.patches) {
+        setPatches(data.patches);
+        patchesLoadedFor.current = loadingFor;
+      }
     } catch {} finally {
-      setLoading(false);
+      if (!signal.aborted) setLoading(false);
     }
   };
 
   const fetchTournaments = async () => {
+    const signal = startContentFetch();
     setLoading(true);
     try {
       const params = new URLSearchParams();
       if (tournamentFilter !== 'all') params.set('filter', tournamentFilter);
       if (leagueFilter) params.set('league', leagueFilter);
-      const res = await fetch(`/api/tournaments?${params}`);
+      const res = await fetch(`/api/tournaments?${params}`, { signal });
       const data = await res.json();
+      if (signal.aborted) return;
       if (data.tournaments) setTournaments(data.tournaments);
       if (data.sortedLeagues) setSortedLeagues(data.sortedLeagues);
       if (data.leagueMap) setLeagueMap(data.leagueMap);
     } catch {} finally {
-      setLoading(false);
+      if (!signal.aborted) setLoading(false);
     }
   };
 

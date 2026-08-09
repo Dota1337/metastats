@@ -81,15 +81,21 @@ export default function ChampionsPage() {
     { value: 'support', label: t('role.support') },
   ];
 
+  // Abbruch im Cleanup: zwei schnelle Filter-Klicks starten zwei Requests, und
+  // ohne Guard gewinnt der zuletzt EINTREFFENDE statt des zuletzt angeforderten
+  // — sichtbar als falsche Champion-Liste bei korrekt markiertem Filter.
   useEffect(() => {
-    fetchChampions();
+    const ctl = new AbortController();
+    fetchChampions(ctl.signal);
+    return () => ctl.abort();
   }, [tier, role, region]);
 
-  const fetchChampions = async () => {
+  const fetchChampions = async (signal: AbortSignal) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/champions?tier=${tier}&role=${role}&region=${region}`);
+      const res = await fetch(`/api/champions?tier=${tier}&role=${role}&region=${region}`, { signal });
       const data = await res.json();
+      if (signal.aborted) return;
       if (data.champions) {
         setChampions(data.champions);
         setVersion(data.version);
@@ -100,9 +106,10 @@ export default function ChampionsPage() {
         triggerCollection();
       }
     } catch {
+      if (signal.aborted) return;
       setChampions([]);
     }
-    setLoading(false);
+    if (!signal.aborted) setLoading(false);
   };
 
   const triggerCollection = async () => {

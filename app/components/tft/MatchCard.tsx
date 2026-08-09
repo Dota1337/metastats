@@ -45,7 +45,7 @@ export default function MatchCard({ match, selfPuuid, region }: Props) {
           <PlacementBadge placement={placement} />
           <div className="flex-1 min-w-0">
             <ActivatedTraits participant={me} assets={assets} />
-            <div className="text-[#a0b0c5] text-xs mt-1">
+            <div className="text-fg-secondary text-xs mt-1">
               {t('tft.match.lvl')} {me.level} · {t('tft.match.stage')} {formatStage(me.lastRound)} · {minutes}:{seconds} · {ago}
             </div>
           </div>
@@ -66,14 +66,14 @@ export default function MatchCard({ match, selfPuuid, region }: Props) {
           the user keeps the win/loss signal while the panel itself sits
           offset to the right. */}
       {open && (
-        <div className={`ml-12 mr-3 mt-2 rounded border-l-4 ${barColor} bg-[#0a0e1a] p-3 space-y-2`}>
+        <div className={`ml-12 mr-3 mt-2 rounded border-l-4 ${barColor} bg-surface-sunken p-3 space-y-2`}>
           {match.participants.slice().sort((a, b) => a.placement - b.placement).map(p => (
             <ParticipantRow key={p.puuid} participant={p} isSelf={p.puuid === selfPuuid} assets={assets} region={region || regionFromMatchId(match.matchId)} />
           ))}
           <a
             href={`/tft/match/${encodeURIComponent(match.matchId)}`}
             onClick={e => e.stopPropagation()}
-            className="block text-right text-[10px] text-[#7B61FF] hover:text-[#a892ff] uppercase tracking-widest pt-1 border-t border-[#1e2a3a]"
+            className="block text-right text-[10px] text-[#7B61FF] hover:text-[#a892ff] uppercase tracking-widest pt-1 border-t border-border-subtle"
           >
             {t('tft.match.detail')}
           </a>
@@ -94,7 +94,7 @@ function PlacementBadge({ placement }: { placement: number }) {
   return (
     <div className="flex flex-col items-center justify-center w-12 h-12 rounded-lg border-2" style={{ borderColor: color }}>
       <div className="text-lg font-bold leading-none" style={{ color }}>{placement}</div>
-      <div className="text-[9px] text-[#a0b0c5]">{ordinal}</div>
+      <div className="text-[9px] text-fg-secondary">{ordinal}</div>
     </div>
   );
 }
@@ -141,8 +141,8 @@ function AugmentRow({ augments, assets }: { augments: string[]; assets: TftAsset
         const inner = url ? (
           <img src={url} alt={info!.name} title={info!.name} className="w-6 h-6 sm:w-7 sm:h-7 rounded border-2 hover:scale-110 transition" style={{ borderColor: tierColor }} />
         ) : (
-          <div className="w-6 h-6 sm:w-7 sm:h-7 rounded border-2 bg-[#141c2e] flex items-center justify-center hover:brightness-125 transition" style={{ borderColor: tierColor }} title={info?.name || a}>
-            <span className="text-[7px] sm:text-[8px] text-[#a0b0c5] truncate px-0.5">{(info?.name || a).slice(0, 4)}</span>
+          <div className="w-6 h-6 sm:w-7 sm:h-7 rounded border-2 bg-surface-raised flex items-center justify-center hover:brightness-125 transition" style={{ borderColor: tierColor }} title={info?.name || a}>
+            <span className="text-[7px] sm:text-[8px] text-fg-secondary truncate px-0.5">{(info?.name || a).slice(0, 4)}</span>
           </div>
         );
         return (
@@ -176,9 +176,9 @@ function ParticipantRow({ participant, isSelf, assets, region }: { participant: 
               {displayName}
             </a>
           ) : (
-            <div className="text-[#7a8aa0] text-xs truncate">{displayName}</div>
+            <div className="text-fg-muted text-xs truncate">{displayName}</div>
           )}
-          <div className="text-[#7a8aa0] text-[10px]">Lvl {participant.level} · R{participant.lastRound}</div>
+          <div className="text-fg-muted text-[10px]">Lvl {participant.level} · R{participant.lastRound}</div>
         </div>
       </div>
       <div className="flex-1 flex flex-wrap items-center gap-1.5">
@@ -229,7 +229,7 @@ function UnitTile({ unit, assets, small, interactive }: { unit: any; assets: Tft
       <div className={`relative ${sz} rounded border-2 overflow-hidden`} style={{ borderColor: costColor }}>
         {url
           ? <img src={url} alt={name} className="w-full h-full object-cover" />
-          : <div className="w-full h-full bg-[#1e2a3a]" />}
+          : <div className="w-full h-full bg-surface-overlay" />}
         {unit.tier > 1 && (
           <div
             className="absolute bottom-0 left-1/2 -translate-x-1/2 text-[9px] leading-tight px-1 rounded-t bg-black/70 font-bold"
@@ -256,7 +256,7 @@ function UnitTile({ unit, assets, small, interactive }: { unit: any; assets: Tft
                 <img src={iurl} alt={itemName} className={`${itemSz} rounded-sm`} />
               </a>
             ) : (
-              <div key={i} className={`${itemSz} rounded-sm bg-[#1e2a3a]`} title={it} />
+              <div key={i} className={`${itemSz} rounded-sm bg-surface-overlay`} title={it} />
             );
           })}
         </div>

@@ -18,15 +18,15 @@ interface CompareRadarProps {
 export default function CompareRadar({ data, name1, name2 }: CompareRadarProps) {
   return (
     <div className="mb-6">
-      <div className="text-center text-[#a0b0c5] text-xs mb-2">Performance Radar</div>
+      <div className="text-center text-fg-secondary text-xs mb-2">Performance Radar</div>
       <div className="flex justify-center items-center gap-4 mb-2">
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded-full bg-[#c89b3c]" />
-          <span className="text-[#a0b0c5] text-xs truncate max-w-[80px] sm:max-w-none">{name1}</span>
+          <span className="text-fg-secondary text-xs truncate max-w-[80px] sm:max-w-none">{name1}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded-full bg-[#4488ee]" />
-          <span className="text-[#a0b0c5] text-xs truncate max-w-[80px] sm:max-w-none">{name2}</span>
+          <span className="text-fg-secondary text-xs truncate max-w-[80px] sm:max-w-none">{name2}</span>
         </div>
       </div>
       <ResponsiveContainer width="100%" height={280}>

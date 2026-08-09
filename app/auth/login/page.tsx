@@ -48,35 +48,35 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav />
       <div className="max-w-md mx-auto px-4 py-10">
-        <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-6">
-          <div className="flex gap-1 mb-5 border-b border-[#1e2a3a]">
+        <div className="bg-surface-base border border-border-subtle rounded-lg p-6">
+          <div className="flex gap-1 mb-5 border-b border-border-subtle">
             <button
               onClick={() => setMode('login')}
-              className={`px-4 py-2 text-sm ${mode === 'login' ? 'text-white border-b-2 border-[#7B61FF]' : 'text-[#a0b0c5] hover:text-white'}`}
+              className={`px-4 py-2 text-sm ${mode === 'login' ? 'text-white border-b-2 border-[#7B61FF]' : 'text-fg-secondary hover:text-white'}`}
             >{t('auth.login')}</button>
             <button
               onClick={() => setMode('signup')}
-              className={`px-4 py-2 text-sm ${mode === 'signup' ? 'text-white border-b-2 border-[#7B61FF]' : 'text-[#a0b0c5] hover:text-white'}`}
+              className={`px-4 py-2 text-sm ${mode === 'signup' ? 'text-white border-b-2 border-[#7B61FF]' : 'text-fg-secondary hover:text-white'}`}
             >{t('auth.signup')}</button>
           </div>
 
           <form onSubmit={submit} className="space-y-3">
             <div>
-              <label className="text-[#7a8aa0] text-[11px] uppercase tracking-widest">{t('auth.email')}</label>
+              <label className="text-fg-muted text-[11px] uppercase tracking-widest">{t('auth.email')}</label>
               <input
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 required
                 autoComplete="email"
-                className="w-full bg-[#141c2e] border border-[#1e2a3a] rounded px-3 py-2 text-sm text-white mt-1 outline-none focus:border-[#7B61FF]/60"
+                className="w-full bg-surface-raised border border-border-subtle rounded px-3 py-2 text-sm text-white mt-1 outline-none focus:border-[#7B61FF]/60"
               />
             </div>
             <div>
-              <label className="text-[#7a8aa0] text-[11px] uppercase tracking-widest">{t('auth.password')}</label>
+              <label className="text-fg-muted text-[11px] uppercase tracking-widest">{t('auth.password')}</label>
               <input
                 type="password"
                 value={password}
@@ -84,7 +84,7 @@ export default function LoginPage() {
                 required
                 autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                 minLength={6}
-                className="w-full bg-[#141c2e] border border-[#1e2a3a] rounded px-3 py-2 text-sm text-white mt-1 outline-none focus:border-[#7B61FF]/60"
+                className="w-full bg-surface-raised border border-border-subtle rounded px-3 py-2 text-sm text-white mt-1 outline-none focus:border-[#7B61FF]/60"
               />
             </div>
             {error && <div className="text-[#e44040] text-xs">{error}</div>}
@@ -100,24 +100,24 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="flex items-center gap-3 my-4 text-[#5a6a80] text-[10px] uppercase tracking-widest">
-            <div className="flex-1 h-px bg-[#1e2a3a]" />
+          <div className="flex items-center gap-3 my-4 text-fg-faint text-[10px] uppercase tracking-widest">
+            <div className="flex-1 h-px bg-surface-overlay" />
             {t('auth.or')}
-            <div className="flex-1 h-px bg-[#1e2a3a]" />
+            <div className="flex-1 h-px bg-surface-overlay" />
           </div>
 
           <div className="space-y-2">
             <button
               onClick={() => oauth('google')}
-              className="w-full bg-[#141c2e] border border-[#1e2a3a] hover:border-[#7B61FF]/40 text-white py-2 rounded text-sm"
+              className="w-full bg-surface-raised border border-border-subtle hover:border-[#7B61FF]/40 text-white py-2 rounded text-sm"
             >Google</button>
             <button
               onClick={() => oauth('discord')}
-              className="w-full bg-[#141c2e] border border-[#1e2a3a] hover:border-[#7B61FF]/40 text-white py-2 rounded text-sm"
+              className="w-full bg-surface-raised border border-border-subtle hover:border-[#7B61FF]/40 text-white py-2 rounded text-sm"
             >Discord</button>
             <button
               onClick={() => oauth('twitch')}
-              className="w-full bg-[#141c2e] border border-[#1e2a3a] hover:border-[#7B61FF]/40 text-white py-2 rounded text-sm"
+              className="w-full bg-surface-raised border border-border-subtle hover:border-[#7B61FF]/40 text-white py-2 rounded text-sm"
             >Twitch</button>
           </div>
         </div>

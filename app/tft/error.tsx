@@ -13,10 +13,10 @@ export default function TftError({ error, reset }: { error: Error & { digest?: s
   }, [error]);
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
-      <div className="h-14 border-b border-[#1e2a3a] bg-[#0d1526]" />
+    <main className="min-h-screen bg-surface-page">
+      <div className="h-14 border-b border-border-subtle bg-surface-base" />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-16 flex justify-center">
-        <div className="bg-[#0d1526] border border-red-500/40 rounded-lg p-8 text-center max-w-md">
+        <div className="bg-surface-base border border-red-500/40 rounded-lg p-8 text-center max-w-md">
           <div className="text-red-400 font-medium mb-3">Etwas ist schiefgelaufen.</div>
           <button
             onClick={reset}

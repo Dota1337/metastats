@@ -70,7 +70,7 @@ export default function TftPatchDetailPage() {
   }, [version, entity, bucket]);
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav active="comps" />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
         <a href="/tft/patch" className="text-[#7B61FF] text-xs hover:underline">← {t('tft.patchNotes.title')}</a>
@@ -81,7 +81,7 @@ export default function TftPatchDetailPage() {
             href={riotPatchNotesUrl(version, lang)}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-[#141c2e] border border-[#1e2a3a] text-[#a0b0c5] hover:text-white hover:border-[#7B61FF]/50 text-xs transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-[#7B61FF]/50 text-xs transition-colors"
             title={t('tft.patchNotes.officialLinkHint')}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -93,7 +93,7 @@ export default function TftPatchDetailPage() {
           </a>
         </div>
         {diff?.previousPatch && (
-          <p className="text-[#a0b0c5] text-sm mb-4">
+          <p className="text-fg-secondary text-sm mb-4">
             {t('tft.patchNotes.comparedTo')} <strong className="text-white">Patch {diff.previousPatch}</strong>
             {diff.sampleSize != null && ` · ${diff.sampleSize} ${t('tft.patchNotes.entitiesCompared')}`}
           </p>
@@ -108,8 +108,8 @@ export default function TftPatchDetailPage() {
           const notes = patchNotesFor(patchNotesOverride, version);
           if (!notes || notes.sections.length === 0) return null;
           return (
-            <section className="mb-5 bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-4">
-              <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">
+            <section className="mb-5 bg-surface-base border border-border-subtle rounded-lg p-4">
+              <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">
                 {t('tft.patchNotes.changes')}
               </h2>
               <div className="space-y-4">
@@ -126,7 +126,7 @@ export default function TftPatchDetailPage() {
                           <Tag
                             key={ei}
                             {...(href ? { href } : {})}
-                            className={`block bg-[#141c2e] border border-[#1e2a3a] rounded p-2.5 text-xs ${
+                            className={`block bg-surface-raised border border-border-subtle rounded p-2.5 text-xs ${
                               href ? 'hover:border-[#7B61FF]/40 transition-colors cursor-pointer' : ''
                             }`}
                           >
@@ -137,11 +137,11 @@ export default function TftPatchDetailPage() {
                                 </span>
                               )}
                               {!e.apiName && e.displayName && (
-                                <span className="text-[#7a8aa0] text-[10px] uppercase tracking-wider flex-shrink-0 mt-0.5">
+                                <span className="text-fg-muted text-[10px] uppercase tracking-wider flex-shrink-0 mt-0.5">
                                   {e.displayName}
                                 </span>
                               )}
-                              <span className="text-[#cdd6e0] text-xs leading-snug">
+                              <span className="text-fg-bright text-xs leading-snug">
                                 {e.change}
                               </span>
                             </div>
@@ -152,7 +152,7 @@ export default function TftPatchDetailPage() {
                   </div>
                 ))}
               </div>
-              <div className="text-[#5a6a80] text-[10px] italic mt-3">
+              <div className="text-fg-faint text-[10px] italic mt-3">
                 {t('tft.patchNotes.changes.source')}
               </div>
             </section>
@@ -160,13 +160,13 @@ export default function TftPatchDetailPage() {
         })()}
 
         {/* Entity tabs */}
-        <div className="flex gap-1 border-b border-[#1e2a3a] mb-4">
+        <div className="flex gap-1 border-b border-border-subtle mb-4">
           {ENTITIES.map(e => (
             <button
               key={e}
               onClick={() => setEntity(e)}
               className={`px-4 py-2 text-xs font-medium uppercase tracking-widest ${
-                entity === e ? 'text-white border-b-2 border-[#7B61FF]' : 'text-[#a0b0c5] hover:text-white'
+                entity === e ? 'text-white border-b-2 border-[#7B61FF]' : 'text-fg-secondary hover:text-white'
               }`}
             >
               {t(`tft.patchNotes.entity.${e}` as const)}
@@ -180,7 +180,7 @@ export default function TftPatchDetailPage() {
             <button
               key={b}
               onClick={() => setBucket(b)}
-              className={`px-3 py-1 rounded text-xs ${bucket === b ? 'bg-[#7B61FF] text-white' : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'}`}
+              className={`px-3 py-1 rounded text-xs ${bucket === b ? 'bg-[#7B61FF] text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
             >
               {b.replace('_plus', '+').replace(/^./, c => c.toUpperCase())}
             </button>
@@ -188,13 +188,13 @@ export default function TftPatchDetailPage() {
         </div>
 
         {loading && (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#a0b0c5] text-sm">
+          <div className="bg-surface-base border border-border-subtle rounded p-6 text-center text-fg-secondary text-sm">
             {t('tft.loading')}
           </div>
         )}
 
         {!loading && (!diff?.hasData) && (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#a0b0c5] text-sm">
+          <div className="bg-surface-base border border-border-subtle rounded p-6 text-center text-fg-secondary text-sm">
             {diff?.reason === 'single_patch'
               ? t('tft.patchNotes.singlePatch')
               : t('tft.patchNotes.empty')}
@@ -226,8 +226,8 @@ export default function TftPatchDetailPage() {
           if (rows.length === 0) return null;
           const max = Math.max(0.05, ...rows.map(r => Math.abs(r.swing)));
           return (
-            <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-4">
-              <div className="text-[#a0b0c5] text-[10px] uppercase tracking-widest mb-2">{t('tft.patchWinners.swingChart')}</div>
+            <div className="bg-surface-base border border-border-subtle rounded p-4 mb-4">
+              <div className="text-fg-secondary text-[10px] uppercase tracking-widest mb-2">{t('tft.patchWinners.swingChart')}</div>
               <div style={{ width: '100%', height: rows.length * 22 + 12 }}>
                 <ResponsiveContainer>
                   <BarChart data={rows} layout="vertical" margin={{ top: 0, right: 12, bottom: 0, left: 12 }}>
@@ -285,12 +285,12 @@ function DiffColumn({
 }) {
   const headerColor = direction === 'up' ? 'text-[#3ecf8e]' : 'text-[#e44040]';
   return (
-    <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
-      <div className={`px-4 py-2 bg-[#0a0e1a] text-xs uppercase tracking-widest ${headerColor}`}>
+    <div className="bg-surface-base border border-border-subtle rounded overflow-hidden">
+      <div className={`px-4 py-2 bg-surface-sunken text-xs uppercase tracking-widest ${headerColor}`}>
         {direction === 'up' ? '▲' : '▼'} {title}
       </div>
       {entries.length === 0 ? (
-        <div className="p-4 text-[#7a8aa0] text-xs text-center">—</div>
+        <div className="p-4 text-fg-muted text-xs text-center">—</div>
       ) : entries.map(e => (
         <DiffRow key={e.key} entry={e} entity={entity} assets={assets} />
       ))}
@@ -312,7 +312,7 @@ function DiffRow({ entry, entity, assets }: { entry: DiffEntry; entity: Entity; 
     const churl = tftChampionTileUrl(assets, champ);
     imageEl = churl
       ? <img src={churl} alt={champ?.name || ''} className="w-9 h-9 rounded object-cover" />
-      : <div className="w-9 h-9 rounded bg-[#1e2a3a]" />;
+      : <div className="w-9 h-9 rounded bg-surface-overlay" />;
     displayName = champ?.name || entry.key.replace(/^TFT\d+_/, '');
     href = `/tft/units/${encodeURIComponent(entry.key)}`;
   } else if (entity === 'item') {
@@ -320,7 +320,7 @@ function DiffRow({ entry, entity, assets }: { entry: DiffEntry; entity: Entity; 
     const iurl = tftIconUrl(assets, item?.icon);
     imageEl = iurl
       ? <img src={iurl} alt={item?.name || ''} className="w-9 h-9 rounded" />
-      : <div className="w-9 h-9 rounded bg-[#1e2a3a]" />;
+      : <div className="w-9 h-9 rounded bg-surface-overlay" />;
     displayName = item?.name || entry.key.replace(/^TFT\d*_Item_/, '');
     href = `/tft/items/${encodeURIComponent(entry.key)}`;
   } else if (entity === 'comp') {
@@ -330,7 +330,7 @@ function DiffRow({ entry, entity, assets }: { entry: DiffEntry; entity: Entity; 
     const churl = tftChampionTileUrl(assets, carry);
     imageEl = churl
       ? <img src={churl} alt={carry?.name || ''} className="w-9 h-9 rounded border border-[#c39bff]/60 object-cover" />
-      : <div className="w-9 h-9 rounded bg-[#1e2a3a]" />;
+      : <div className="w-9 h-9 rounded bg-surface-overlay" />;
     displayName = m
       ? `${trait?.name || m[1].replace(/^TFT\d+_/, '')} · ${carry?.name || m[3].replace(/^TFT\d+_/, '')}`
       : entry.key;
@@ -341,7 +341,7 @@ function DiffRow({ entry, entity, assets }: { entry: DiffEntry; entity: Entity; 
     const turl = tftIconUrl(assets, trait?.icon);
     imageEl = turl
       ? <img src={turl} alt={trait?.name || ''} className="w-9 h-9 rounded" />
-      : <div className="w-9 h-9 rounded bg-[#1e2a3a]" />;
+      : <div className="w-9 h-9 rounded bg-surface-overlay" />;
     displayName = `${trait?.name || traitId.replace(/^TFT\d+_/, '')}${activation ? ` (${activation})` : ''}`;
     href = `/tft/traits/${encodeURIComponent(traitId)}`;
   }
@@ -350,12 +350,12 @@ function DiffRow({ entry, entity, assets }: { entry: DiffEntry; entity: Entity; 
   return (
     <a
       href={href}
-      className="grid grid-cols-[2.5rem_1fr_5rem_4rem] gap-2 px-4 py-2 items-center text-xs border-t border-[#1e2a3a] hover:bg-white/5"
+      className="grid grid-cols-[2.5rem_1fr_5rem_4rem] gap-2 px-4 py-2 items-center text-xs border-t border-border-subtle hover:bg-white/5"
     >
       {imageEl}
       <div className="text-white truncate">
         {displayName}
-        <div className="text-[#7a8aa0] text-[10px]">
+        <div className="text-fg-muted text-[10px]">
           {entry.currentAvgPlacement.toFixed(2)} ← {entry.previousAvgPlacement.toFixed(2)}
         </div>
       </div>
@@ -363,9 +363,9 @@ function DiffRow({ entry, entity, assets }: { entry: DiffEntry; entity: Entity; 
         <div className="font-medium" style={{ color: deltaColor }}>
           {entry.deltaAvgPlacement > 0 ? '+' : ''}{entry.deltaAvgPlacement.toFixed(2)}
         </div>
-        <div className="text-[#7a8aa0] text-[10px]">avg Δ</div>
+        <div className="text-fg-muted text-[10px]">avg Δ</div>
       </div>
-      <div className="text-right text-[#7a8aa0] text-[10px]">
+      <div className="text-right text-fg-muted text-[10px]">
         {entry.currentGames.toLocaleString()}
       </div>
     </a>

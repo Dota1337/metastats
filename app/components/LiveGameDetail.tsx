@@ -98,7 +98,7 @@ export default function LiveGameDetail({ gameData, ddVersion, championMap, regio
         <div className="text-white text-sm font-medium">{teamLabel}</div>
         {teamBans.length > 0 && (
           <div className="flex items-center gap-1">
-            <span className="text-[#7a8aa0] text-xs mr-1">Bans:</span>
+            <span className="text-fg-muted text-xs mr-1">Bans:</span>
             {teamBans.map((b: any, i: number) => {
               const c = championMap[b.championId];
               return c ? (
@@ -124,7 +124,7 @@ export default function LiveGameDetail({ gameData, ddVersion, championMap, regio
           const spell2 = SUMMONER_SPELL_MAP[p.spell2Id];
 
           return (
-            <div key={i} className="grid grid-cols-[2.5rem_1.2rem_1.2rem_1fr_6rem_3.5rem] gap-2 items-center bg-[#141c2e] rounded px-2 py-1.5">
+            <div key={i} className="grid grid-cols-[2.5rem_1.2rem_1.2rem_1fr_6rem_3.5rem] gap-2 items-center bg-surface-raised rounded px-2 py-1.5">
               <img
                 src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/champion/${p.champion}.png`}
                 alt={p.champion}
@@ -150,18 +150,18 @@ export default function LiveGameDetail({ gameData, ddVersion, championMap, regio
               </div>
               <div>
                 <div className="text-white text-xs font-medium truncate">{p.summonerName}</div>
-                <div className="text-[#7a8aa0] text-[10px]">{p.champion}</div>
+                <div className="text-fg-muted text-[10px]">{p.champion}</div>
               </div>
               <div className="text-right">
                 {p.loading ? (
-                  <div className="text-[#7a8aa0] text-xs">...</div>
+                  <div className="text-fg-muted text-xs">...</div>
                 ) : p.ranked ? (
                   <>
-                    <div className="text-[#a0b0c5] text-xs font-medium">{formatTier(p.ranked.tier, p.ranked.rank)}</div>
-                    <div className="text-[#7a8aa0] text-[10px]">{p.ranked.leaguePoints} LP</div>
+                    <div className="text-fg-secondary text-xs font-medium">{formatTier(p.ranked.tier, p.ranked.rank)}</div>
+                    <div className="text-fg-muted text-[10px]">{p.ranked.leaguePoints} LP</div>
                   </>
                 ) : (
-                  <div className="text-[#7a8aa0] text-xs">Unranked</div>
+                  <div className="text-fg-muted text-xs">Unranked</div>
                 )}
               </div>
               <div className="text-right">
@@ -170,7 +170,7 @@ export default function LiveGameDetail({ gameData, ddVersion, championMap, regio
                     {wr}% WR
                   </span>
                 ) : (
-                  <span className="text-[#7a8aa0] text-xs">-</span>
+                  <span className="text-fg-muted text-xs">-</span>
                 )}
               </div>
             </div>
@@ -181,24 +181,24 @@ export default function LiveGameDetail({ gameData, ddVersion, championMap, regio
   );
 
   return (
-    <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 mb-4">
+    <div className="bg-surface-base border border-border-subtle rounded p-6 mb-4">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <span className="inline-flex items-center gap-1 bg-green-500/20 text-green-400 text-xs font-bold px-2 py-0.5 rounded-full border border-green-500/40">
             <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
             LIVE
           </span>
-          <span className="text-[#a0b0c5] text-xs uppercase tracking-widest">
+          <span className="text-fg-secondary text-xs uppercase tracking-widest">
             Live Game
           </span>
         </div>
         {gameDuration > 0 && (
-          <div className="text-[#7a8aa0] text-xs">{gameDuration} Min.</div>
+          <div className="text-fg-muted text-xs">{gameDuration} Min.</div>
         )}
       </div>
 
       {renderTeam(team1, 'Blaue Seite', team1Bans)}
-      <div className="border-t border-[#1e2a3a] my-3" />
+      <div className="border-t border-border-subtle my-3" />
       {renderTeam(team2, 'Rote Seite', team2Bans)}
     </div>
   );

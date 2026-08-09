@@ -22,9 +22,9 @@ export default function CompEconChart({
 }) {
   const { t } = useI18n();
   return (
-    <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
-      <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.econRoi')}</h2>
-      <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3">
+    <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
+      <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.econRoi')}</h2>
+      <div className="bg-surface-raised border border-border-subtle rounded p-3">
         <div style={{ width: '100%', height: 200 }}>
           <ResponsiveContainer>
             <ComposedChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
@@ -77,7 +77,7 @@ export default function CompEconChart({
             </ComposedChart>
           </ResponsiveContainer>
         </div>
-        <div className="flex justify-between text-[9px] text-[#5a6a80] mt-1.5">
+        <div className="flex justify-between text-[9px] text-fg-faint mt-1.5">
           <span><span className="inline-block w-2 h-2 bg-[#7B61FF] rounded-sm mr-1"/>{t('tft.comp.levelShare')}</span>
           <span><span className="inline-block w-2 h-2 bg-[#3ecf8e] rounded-sm mr-1"/>{t('tft.comp.avgLastRound')}</span>
         </div>

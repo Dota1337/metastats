@@ -143,35 +143,35 @@ export default function VariantsSwitcher({
   if (variants.length <= 1 && !showFamilyBanner) return null;
 
   return (
-    <section className="mt-3 bg-[#0d1526] border border-[#1e2a3a] rounded p-3">
+    <section className="mt-3 bg-surface-base border border-border-subtle rounded p-3">
       {showFamilyBanner && (
         <div className="mb-3 flex items-center justify-between gap-2 px-3 py-2 bg-[#7B61FF]/8 border border-[#7B61FF]/30 rounded">
-          <div className="text-xs text-[#cdd6e0]">
+          <div className="text-xs text-fg-bright">
             {t('tft.comp.familyMode.banner')}
           </div>
           <button
             onClick={toggleVariantMode}
-            className="text-[10px] uppercase tracking-widest px-2 py-1 bg-[#0a0e1a] border border-[#7B61FF]/40 text-[#cdd6e0] hover:text-white hover:border-[#7B61FF] rounded transition-colors"
+            className="text-[10px] uppercase tracking-widest px-2 py-1 bg-surface-sunken border border-[#7B61FF]/40 text-fg-bright hover:text-white hover:border-[#7B61FF] rounded transition-colors"
           >
             {t('tft.comp.familyMode.toggleToExact')}
           </button>
         </div>
       )}
       {!familyMergeActive && (
-        <div className="mb-3 flex items-center justify-between gap-2 px-3 py-2 bg-[#0a0e1a] border border-[#1e2a3a] rounded">
-          <div className="text-xs text-[#a0b0c5]">
+        <div className="mb-3 flex items-center justify-between gap-2 px-3 py-2 bg-surface-sunken border border-border-subtle rounded">
+          <div className="text-xs text-fg-secondary">
             {t('tft.comp.familyMode.exactNotice')}
           </div>
           <button
             onClick={toggleVariantMode}
-            className="text-[10px] uppercase tracking-widest px-2 py-1 bg-[#0a0e1a] border border-[#1e2a3a] text-[#a0b0c5] hover:text-white hover:border-[#7B61FF]/40 rounded transition-colors"
+            className="text-[10px] uppercase tracking-widest px-2 py-1 bg-surface-sunken border border-border-subtle text-fg-secondary hover:text-white hover:border-[#7B61FF]/40 rounded transition-colors"
           >
             {t('tft.comp.familyMode.toggleToFamily')}
           </button>
         </div>
       )}
       <div className="flex items-center gap-2 mb-2">
-        <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest">{t('tft.comp.variants')}</h2>
+        <h2 className="text-fg-secondary text-xs uppercase tracking-widest">{t('tft.comp.variants')}</h2>
       </div>
       <div className="flex flex-wrap gap-2">
         {variants.map(v => {
@@ -185,7 +185,7 @@ export default function VariantsSwitcher({
               className={`px-3 py-1.5 rounded border text-xs transition-colors ${
                 isActive
                   ? 'bg-[#7B61FF]/15 border-[#7B61FF] text-white cursor-default'
-                  : 'bg-[#0a0e1a] border-[#1e2a3a] text-[#a0b0c5] hover:border-[#7B61FF]/40 hover:text-white cursor-pointer'
+                  : 'bg-surface-sunken border-border-subtle text-fg-secondary hover:border-[#7B61FF]/40 hover:text-white cursor-pointer'
               }`}
               title={
                 v.belowThreshold
@@ -195,12 +195,12 @@ export default function VariantsSwitcher({
             >
               <span className="font-medium">{label}</span>
               {!v.belowThreshold && (
-                <span className="ml-2 text-[#7a8aa0] tabular-nums">
+                <span className="ml-2 text-fg-muted tabular-nums">
                   {v.avgPlacement.toFixed(2)} · {v.games}
                 </span>
               )}
               {v.belowThreshold && (
-                <span className="ml-2 text-[#5a6a80] text-[10px]">
+                <span className="ml-2 text-fg-faint text-[10px]">
                   {t('tft.comp.variant.lowSample')}
                 </span>
               )}

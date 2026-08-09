@@ -153,7 +153,7 @@ export default function TftUnitsPage() {
   const currentPatchLabel = patches[0]?.patch;
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav active="units" />
       <TftHero pageTitle={t('nav.units')} patch={currentPatchLabel} />
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-2 pb-6">
@@ -165,13 +165,13 @@ export default function TftUnitsPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder={t('tft.search.units')}
-            className="w-full sm:w-80 bg-[#141c2e] border border-[#1e2a3a] rounded px-3 py-1.5 text-sm text-white placeholder:text-[#5a6a80] outline-none focus:border-[#7B61FF]/60"
+            className="w-full sm:w-80 bg-surface-raised border border-border-subtle rounded px-3 py-1.5 text-sm text-white placeholder:text-fg-faint outline-none focus:border-[#7B61FF]/60"
           />
         </div>
         <div className="flex flex-wrap gap-1 mb-4 items-center">
           <button
             onClick={() => setCostFilter(null)}
-            className={`px-3 py-1 rounded text-xs ${costFilter == null ? 'bg-[#7B61FF] text-white' : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'}`}
+            className={`px-3 py-1 rounded text-xs ${costFilter == null ? 'bg-[#7B61FF] text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
           >
             {t('tft.bucket.all')}
           </button>
@@ -179,16 +179,16 @@ export default function TftUnitsPage() {
             <button
               key={c}
               onClick={() => setCostFilter(c)}
-              className={`px-3 py-1 rounded text-xs ${costFilter === c ? 'bg-[#7B61FF] text-white' : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'}`}
+              className={`px-3 py-1 rounded text-xs ${costFilter === c ? 'bg-[#7B61FF] text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
             >
               {c}-Cost
             </button>
           ))}
-          <div className="w-px h-5 bg-[#1e2a3a] mx-1" />
+          <div className="w-px h-5 bg-surface-overlay mx-1" />
           <select
             value={traitFilter ?? ''}
             onChange={e => setTraitFilter(e.target.value || null)}
-            className="px-2 py-1 rounded text-xs bg-[#141c2e] text-[#a0b0c5] border border-[#1e2a3a] focus:outline-none focus:border-[#7B61FF]/60"
+            className="px-2 py-1 rounded text-xs bg-surface-raised text-fg-secondary border border-border-subtle focus:outline-none focus:border-[#7B61FF]/60"
           >
             <option value="">{t('tft.unit.trait.allTraits')}</option>
             {traitOptions.map(tr => (
@@ -198,13 +198,13 @@ export default function TftUnitsPage() {
         </div>
 
         {loading && hasData === null && (
-          <div className="text-[#7a8aa0] text-center py-8">{t('tft.noDataYet').replace('Noch keine Daten', 'Lade')}</div>
+          <div className="text-fg-muted text-center py-8">{t('tft.noDataYet').replace('Noch keine Daten', 'Lade')}</div>
         )}
         {hasData === false && <EmptyData />}
 
         {hasData && filtered.length > 0 && (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
-            <div className={`hidden md:grid ${filters.velocity > 0 ? 'grid-cols-[2rem_3rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem]' : 'grid-cols-[2rem_3rem_1fr_5rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 text-[11px] text-[#a0b0c5] font-semibold whitespace-nowrap bg-[#0a0e1a]`}>
+          <div className="bg-surface-base border border-border-subtle rounded overflow-hidden">
+            <div className={`hidden md:grid ${filters.velocity > 0 ? 'grid-cols-[2rem_3rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem]' : 'grid-cols-[2rem_3rem_1fr_5rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 text-[11px] text-fg-secondary font-semibold whitespace-nowrap bg-surface-sunken`}>
               <div></div>
               <div></div>
               <div>{t('tft.champion')}</div>
@@ -220,7 +220,7 @@ export default function TftUnitsPage() {
               )}
             </div>
             {/* Mobile-only column hint */}
-            <div className="md:hidden px-4 py-2 text-[10px] uppercase tracking-widest text-[#7a8aa0] bg-[#0a0e1a]">
+            <div className="md:hidden px-4 py-2 text-[10px] uppercase tracking-widest text-fg-muted bg-surface-sunken">
               Champion
             </div>
             {filtered.map(u => {
@@ -239,7 +239,7 @@ export default function TftUnitsPage() {
                 <a
                   key={u.characterId}
                   href={`/tft/units/${encodeURIComponent(u.characterId)}?bucket=${filters.bucket}`}
-                  className={`block md:grid ${filters.velocity > 0 ? 'md:grid-cols-[2rem_3rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem]' : 'md:grid-cols-[2rem_3rem_1fr_5rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 md:items-center text-[13px] sm:text-sm hover:bg-white/5 border-t border-[#1e2a3a]`}
+                  className={`block md:grid ${filters.velocity > 0 ? 'md:grid-cols-[2rem_3rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem]' : 'md:grid-cols-[2rem_3rem_1fr_5rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 md:items-center text-[13px] sm:text-sm hover:bg-white/5 border-t border-border-subtle`}
                 >
                   {/* Mobile: tier badge inline next to the icon; desktop has its own column. */}
                   <div className="hidden md:flex justify-center">
@@ -259,7 +259,7 @@ export default function TftUnitsPage() {
                     <Cell label={t('tft.pickRate')} value={u.pickRate != null ? `${(u.pickRate * 100).toFixed(1)}%` : '—'} title={top4ShareTip} />
                     <Cell label={t('tft.top4')} value={u.top4Rate != null ? `${(u.top4Rate * 100).toFixed(1)}%` : '—'} title={top4ShareTip} />
                     <Cell label={t('tft.top1')} value={u.top1Rate != null ? `${(u.top1Rate * 100).toFixed(1)}%` : '—'} title={winShareTip} />
-                    <div className="hidden md:block text-right text-[#7a8aa0]">{u.games}</div>
+                    <div className="hidden md:block text-right text-fg-muted">{u.games}</div>
                     {filters.velocity > 0 && (
                       <VelocityCell velocity={u.velocity} label={t('tft.velocity.deltaVs').replace('{n}', String(filters.velocity))} t={t} />
                     )}
@@ -287,12 +287,12 @@ function prettyCharId(id: string) {
 // in the parent's explicit grid column). `display: contents` on the
 // desktop side makes the parent grid pull this through transparently.
 function Cell({ label, value, accent, title, align = 'right' }: { label: string; value: string; accent?: 'white'; title?: string; align?: 'right' | 'center' }) {
-  const valueClass = accent === 'white' ? 'text-white' : 'text-[#a0b0c5]';
+  const valueClass = accent === 'white' ? 'text-white' : 'text-fg-secondary';
   const alignClass = align === 'center' ? 'text-center' : 'text-right';
   return (
     <>
       <div className="md:hidden" title={title}>
-        <div className="text-[#7a8aa0] text-[9px] uppercase tracking-widest leading-tight">{label}</div>
+        <div className="text-fg-muted text-[9px] uppercase tracking-widest leading-tight">{label}</div>
         <div className={`${valueClass} tabular-nums leading-tight`}>{value}</div>
       </div>
       <div className={`hidden md:block ${alignClass} ${valueClass} tabular-nums`} title={title}>{value}</div>
@@ -307,7 +307,7 @@ function TierBadge({ letter, t }: { letter: TierLetter | null; t: (k: any) => st
   if (!letter) {
     return (
       <span
-        className="inline-flex items-center justify-center w-7 h-6 rounded text-[10px] font-medium text-[#5a6a80] bg-[#141c2e] border border-[#1e2a3a]"
+        className="inline-flex items-center justify-center w-7 h-6 rounded text-[10px] font-medium text-fg-faint bg-surface-raised border border-border-subtle"
         title={t('tft.tier.tooltip.empty')}
       >—</span>
     );
@@ -342,8 +342,8 @@ function VelocityCell({ velocity, label, t }: {
   if (!velocity) {
     const tip = t('tft.velocity.notEnough');
     return (<>
-      {renderMobile(<span className="text-[#5a6a80]">—</span>, tip)}
-      {renderDesktop(<span className="text-[#5a6a80]">—</span>, tip)}
+      {renderMobile(<span className="text-fg-faint">—</span>, tip)}
+      {renderDesktop(<span className="text-fg-faint">—</span>, tip)}
     </>);
   }
   if (velocity.isNew) {
@@ -356,8 +356,8 @@ function VelocityCell({ velocity, label, t }: {
   if (velocity.deltaAvgPlace == null) {
     const tip = t('tft.velocity.notEnough');
     return (<>
-      {renderMobile(<span className="text-[#5a6a80]">—</span>, tip)}
-      {renderDesktop(<span className="text-[#5a6a80]">—</span>, tip)}
+      {renderMobile(<span className="text-fg-faint">—</span>, tip)}
+      {renderDesktop(<span className="text-fg-faint">—</span>, tip)}
     </>);
   }
   const better = velocity.deltaAvgPlace < 0;

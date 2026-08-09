@@ -153,14 +153,14 @@ export default function Leaderboard() {
     };
 
     return (
-      <div className="flex items-center justify-center gap-2 bg-[#0d1526] border border-[#1e2a3a] rounded px-3 sm:px-4 py-3">
+      <div className="flex items-center justify-center gap-2 bg-surface-base border border-border-subtle rounded px-3 sm:px-4 py-3">
         <button
           onClick={() => setPage(p => Math.max(1, p - 1))}
           disabled={page <= 1}
           className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
             page <= 1
-              ? 'bg-[#141c2e] text-[#7a8aa0] cursor-not-allowed'
-              : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white hover:bg-[#1a2438]'
+              ? 'bg-surface-raised text-fg-muted cursor-not-allowed'
+              : 'bg-surface-raised text-fg-secondary hover:text-white hover:bg-[#1a2438]'
           }`}
         >
           {t('team.prev')}
@@ -171,7 +171,7 @@ export default function Leaderboard() {
           <div className="hidden sm:flex items-center gap-1">
             {getVisiblePages().map((p, i) =>
               p === '...' ? (
-                <span key={`e${i}`} className="text-[#7a8aa0] text-xs px-1">...</span>
+                <span key={`e${i}`} className="text-fg-muted text-xs px-1">...</span>
               ) : (
                 <button
                   key={p}
@@ -179,7 +179,7 @@ export default function Leaderboard() {
                   className={`min-w-[2rem] px-2 py-1 rounded text-xs font-medium transition-colors ${
                     page === p
                       ? 'bg-[#c89b3c]/15 text-[#c89b3c] border border-[#c89b3c]/30'
-                      : 'text-[#a0b0c5] hover:text-white hover:bg-[#141c2e]'
+                      : 'text-fg-secondary hover:text-white hover:bg-surface-raised'
                   }`}
                 >
                   {p}
@@ -193,7 +193,7 @@ export default function Leaderboard() {
         <select
           value={page}
           onChange={e => setPage(Number(e.target.value))}
-          className="bg-[#141c2e] border border-[#2a3a50] rounded px-2 py-1 text-white text-xs outline-none"
+          className="bg-surface-raised border border-border-default rounded px-2 py-1 text-white text-xs outline-none"
         >
           {Array.from({ length: totalPages || Math.max(page + 1, 1) }, (_, i) => i + 1).map(p => (
             <option key={p} value={p}>{t('team.page')} {p}</option>
@@ -201,7 +201,7 @@ export default function Leaderboard() {
         </select>
 
         {totalPlayers && (
-          <span className="text-[#7a8aa0] text-xs hidden sm:inline">({totalPlayers.toLocaleString(numLocale)})</span>
+          <span className="text-fg-muted text-xs hidden sm:inline">({totalPlayers.toLocaleString(numLocale)})</span>
         )}
 
         <button
@@ -209,8 +209,8 @@ export default function Leaderboard() {
           disabled={!hasNextPage}
           className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
             !hasNextPage
-              ? 'bg-[#141c2e] text-[#7a8aa0] cursor-not-allowed'
-              : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white hover:bg-[#1a2438]'
+              ? 'bg-surface-raised text-fg-muted cursor-not-allowed'
+              : 'bg-surface-raised text-fg-secondary hover:text-white hover:bg-[#1a2438]'
           }`}
         >
           {t('team.next')}
@@ -226,7 +226,7 @@ export default function Leaderboard() {
   };
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav active="leaderboard" />
 
       <PageHero title={t('lb.title')} subtitle={t('lb.subtitle')} leftChampion="Ahri" rightChampion="DrMundo">
@@ -236,7 +236,7 @@ export default function Leaderboard() {
               key={r.value}
               onClick={() => { setRegion(r.value); setPage(1); }}
               className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-                region === r.value ? 'bg-[#c89b3c] text-[#0a0e1a]' : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'
+                region === r.value ? 'bg-[#c89b3c] text-surface-sunken' : 'bg-surface-raised text-fg-secondary hover:text-white'
               }`}
             >
               {r.label}
@@ -247,13 +247,13 @@ export default function Leaderboard() {
 
       <div className="max-w-6xl mx-auto px-6 pb-8">
         {/* Search */}
-        <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-4">
+        <div className="bg-surface-base border border-border-subtle rounded p-4 mb-4">
           <input
             type="text"
             placeholder={t('lb.searchPlaceholder')}
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full bg-[#141c2e] border border-[#2a3a50] rounded px-4 py-2.5 text-white text-sm outline-none placeholder-[#7a8aa0]"
+            className="w-full bg-surface-raised border border-border-default rounded px-4 py-2.5 text-white text-sm outline-none placeholder-fg-muted"
           />
         </div>
 
@@ -261,11 +261,11 @@ export default function Leaderboard() {
             esportstales.com (which sources leagueofgraphs). Refreshed weekly
             by scripts/fetch-tier-distribution.mjs. Hidden during search. */}
         {!search.trim() && tierDist && tierDist.tiers.length > 0 && (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-4">
+          <div className="bg-surface-base border border-border-subtle rounded p-4 mb-4">
             <div className="flex items-baseline justify-between mb-4">
-              <div className="text-[#a0b0c5] text-xs uppercase tracking-widest">{t('champ.rankDistribution')}</div>
+              <div className="text-fg-secondary text-xs uppercase tracking-widest">{t('champ.rankDistribution')}</div>
               {tierDist.month && (
-                <div className="text-[#7a8aa0] text-[10px]">{tierDist.month}</div>
+                <div className="text-fg-muted text-[10px]">{tierDist.month}</div>
               )}
             </div>
             <div className="flex items-end gap-2 h-40 mb-3">
@@ -324,8 +324,8 @@ export default function Leaderboard() {
                     }}
                     className={`px-3 py-2 rounded text-xs font-medium transition-colors flex items-center gap-1 ${
                       isActive
-                        ? 'text-[#0a0e1a]'
-                        : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'
+                        ? 'text-surface-sunken'
+                        : 'bg-surface-raised text-fg-secondary hover:text-white'
                     }`}
                     style={isActive ? { backgroundColor: tr.color } : {}}
                   >
@@ -342,7 +342,7 @@ export default function Leaderboard() {
 
                   {/* Division Dropdown */}
                   {!isApex && isDropdownOpen && (
-                    <div className="absolute top-full left-0 mt-1 z-20 bg-[#0d1526] border border-[#1e2a3a] rounded shadow-lg overflow-hidden min-w-[80px]">
+                    <div className="absolute top-full left-0 mt-1 z-20 bg-surface-base border border-border-subtle rounded shadow-lg overflow-hidden min-w-[80px]">
                       {DIVISIONS.map(div => (
                         <button
                           key={div}
@@ -354,8 +354,8 @@ export default function Leaderboard() {
                           }}
                           className={`w-full px-3 py-1.5 text-xs text-left transition-colors ${
                             tier === tr.value && division === div
-                              ? 'text-[#0a0e1a] font-medium'
-                              : 'text-[#a0b0c5] hover:text-white hover:bg-[#141c2e]'
+                              ? 'text-surface-sunken font-medium'
+                              : 'text-fg-secondary hover:text-white hover:bg-surface-raised'
                           }`}
                           style={tier === tr.value && division === div ? { backgroundColor: tr.color } : {}}
                         >
@@ -372,8 +372,8 @@ export default function Leaderboard() {
 
         {/* Search indicator */}
         {search.trim() && source === 'search' && (
-          <div className="bg-[#141c2e] border border-[#2a3a50] rounded p-3 mb-4 flex items-center justify-between">
-            <span className="text-[#a0b0c5] text-xs">
+          <div className="bg-surface-raised border border-border-default rounded p-3 mb-4 flex items-center justify-between">
+            <span className="text-fg-secondary text-xs">
               {t('lb.searchResult')} "{search}" — {entries.length} {t('lb.playersFound')}
             </span>
             <button onClick={() => setSearch('')} className="text-[#c89b3c] text-xs hover:text-white">
@@ -387,30 +387,30 @@ export default function Leaderboard() {
 
         {/* Content */}
         {loading ? (
-          <div className="text-center text-[#a0b0c5] py-20">{t('lb.loading')}</div>
+          <div className="text-center text-fg-secondary py-20">{t('lb.loading')}</div>
         ) : message && entries.length === 0 ? (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-8 text-center">
-            <div className="text-[#a0b0c5] text-sm mb-2">{message}</div>
-            <div className="text-[#7a8aa0] text-xs">
+          <div className="bg-surface-base border border-border-subtle rounded p-8 text-center">
+            <div className="text-fg-secondary text-sm mb-2">{message}</div>
+            <div className="text-fg-muted text-xs">
               {t('champ.statsCollecting')}
             </div>
           </div>
         ) : entries.length === 0 ? (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-8 text-center">
-            <div className="text-[#a0b0c5] text-sm">{t('lb.noPlayers')}</div>
+          <div className="bg-surface-base border border-border-subtle rounded p-8 text-center">
+            <div className="text-fg-secondary text-sm">{t('lb.noPlayers')}</div>
           </div>
         ) : (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
+          <div className="bg-surface-base border border-border-subtle rounded overflow-hidden">
             {/* Table Header — Desktop */}
-            <div className="hidden md:grid grid-cols-[3rem_2.5rem_1fr_5rem_4rem_5rem_5rem_6rem] gap-3 px-4 py-2.5 border-b border-[#1e2a3a] bg-[#0a0e1a]">
-              <div className="text-[#a0b0c5] text-xs">#</div>
+            <div className="hidden md:grid grid-cols-[3rem_2.5rem_1fr_5rem_4rem_5rem_5rem_6rem] gap-3 px-4 py-2.5 border-b border-border-subtle bg-surface-sunken">
+              <div className="text-fg-secondary text-xs">#</div>
               <div />
-              <div className="text-[#a0b0c5] text-xs">{t('lb.player')}</div>
-              <div className="text-[#a0b0c5] text-xs text-right">LP</div>
-              <div className="text-[#a0b0c5] text-xs text-right">W/L</div>
-              <div className="text-[#a0b0c5] text-xs text-right">{t('home.winrate')}</div>
-              <div className="text-[#a0b0c5] text-xs text-right">{t('lb.region')}</div>
-              <div className="text-[#a0b0c5] text-xs text-right">{t('lb.marketValue')}</div>
+              <div className="text-fg-secondary text-xs">{t('lb.player')}</div>
+              <div className="text-fg-secondary text-xs text-right">LP</div>
+              <div className="text-fg-secondary text-xs text-right">W/L</div>
+              <div className="text-fg-secondary text-xs text-right">{t('home.winrate')}</div>
+              <div className="text-fg-secondary text-xs text-right">{t('lb.region')}</div>
+              <div className="text-fg-secondary text-xs text-right">{t('lb.marketValue')}</div>
             </div>
 
             {/* Rows */}
@@ -418,7 +418,7 @@ export default function Leaderboard() {
               <a
                 key={i}
                 href={makePlayerLink(entry.summonerName, entry.region)}
-                className="block md:grid md:grid-cols-[3rem_2.5rem_1fr_5rem_4rem_5rem_5rem_6rem] gap-3 px-4 py-3 border-b border-[#1e2a3a]/30 hover:bg-[#141c2e] transition-colors items-center"
+                className="block md:grid md:grid-cols-[3rem_2.5rem_1fr_5rem_4rem_5rem_5rem_6rem] gap-3 px-4 py-3 border-b border-border-subtle/30 hover:bg-surface-raised transition-colors items-center"
               >
                 {/* Mobile layout */}
                 <div className="md:hidden flex items-center gap-3">
@@ -426,7 +426,7 @@ export default function Leaderboard() {
                     entry.rank === 1 ? 'text-yellow-400' :
                     entry.rank === 2 ? 'text-gray-300' :
                     entry.rank === 3 ? 'text-amber-600' :
-                    'text-[#7a8aa0]'
+                    'text-fg-muted'
                   }`}>
                     {entry.rank}
                   </div>
@@ -434,19 +434,19 @@ export default function Leaderboard() {
                     <img
                       src={`https://ddragon.leagueoflegends.com/cdn/14.1.1/img/profileicon/${entry.profileIcon}.png`}
                       alt=""
-                      className="w-8 h-8 rounded-full border border-[#2a3a50] flex-shrink-0"
+                      className="w-8 h-8 rounded-full border border-border-default flex-shrink-0"
                     />
                   ) : (
-                    <div className="w-8 h-8 rounded-full bg-[#1a2438] border border-[#2a3a50] flex items-center justify-center text-[#7a8aa0] text-xs flex-shrink-0">?</div>
+                    <div className="w-8 h-8 rounded-full bg-[#1a2438] border border-border-default flex items-center justify-center text-fg-muted text-xs flex-shrink-0">?</div>
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="text-white text-sm font-medium flex items-center gap-1.5 truncate">
-                      {entry.summonerName || <span className="text-[#7a8aa0]">#{entry.rank}</span>}
+                      {entry.summonerName || <span className="text-fg-muted">#{entry.rank}</span>}
                       {entry.summonerName && lookupPro(proLookup, entry.summonerName) && (
                         <span className="inline-flex items-center bg-[#c89b3c]/15 text-[#c89b3c] text-[10px] font-bold px-1.5 py-0 rounded-full border border-[#c89b3c]/40 leading-4">PRO</span>
                       )}
                     </div>
-                    <div className="text-[#7a8aa0] text-xs">{entry.leaguePoints != null ? entry.leaguePoints + ' LP' : ''} · {entry.winrate}%</div>
+                    <div className="text-fg-muted text-xs">{entry.leaguePoints != null ? entry.leaguePoints + ' LP' : ''} · {entry.winrate}%</div>
                   </div>
                   <div className="text-right flex-shrink-0">
                     <span className="text-[#c89b3c] text-sm font-medium">{formatValue(entry.marketValue)}</span>
@@ -458,7 +458,7 @@ export default function Leaderboard() {
                     entry.rank === 1 ? 'text-yellow-400' :
                     entry.rank === 2 ? 'text-gray-300' :
                     entry.rank === 3 ? 'text-amber-600' :
-                    'text-[#7a8aa0]'
+                    'text-fg-muted'
                   }`}>
                     {entry.rank}
                   </div>
@@ -467,17 +467,17 @@ export default function Leaderboard() {
                       <img
                         src={`https://ddragon.leagueoflegends.com/cdn/14.1.1/img/profileicon/${entry.profileIcon}.png`}
                         alt=""
-                        className="w-8 h-8 rounded-full border border-[#2a3a50]"
+                        className="w-8 h-8 rounded-full border border-border-default"
                       />
                     ) : (
-                      <div className="w-8 h-8 rounded-full bg-[#1a2438] border border-[#2a3a50] flex items-center justify-center text-[#7a8aa0] text-xs">
+                      <div className="w-8 h-8 rounded-full bg-[#1a2438] border border-border-default flex items-center justify-center text-fg-muted text-xs">
                         ?
                       </div>
                     )}
                   </div>
                   <div>
                     <div className="text-white text-sm font-medium flex items-center gap-1.5">
-                      {entry.summonerName || <span className="text-[#7a8aa0]">{t('lb.unknownPlayer')} #{entry.rank}</span>}
+                      {entry.summonerName || <span className="text-fg-muted">{t('lb.unknownPlayer')} #{entry.rank}</span>}
                       {entry.summonerName && lookupPro(proLookup, entry.summonerName) && (
                         <span className="inline-flex items-center bg-[#c89b3c]/15 text-[#c89b3c] text-[10px] font-bold px-1.5 py-0 rounded-full border border-[#c89b3c]/40 leading-4">
                           PRO
@@ -488,7 +488,7 @@ export default function Leaderboard() {
                       const pro = lookupPro(proLookup, entry.summonerName);
                       return pro
                         ? <div className="text-[#c89b3c] text-xs">{pro.proName} · {pro.team}</div>
-                        : <div className="text-[#7a8aa0] text-xs">Level {entry.level || '?'}</div>;
+                        : <div className="text-fg-muted text-xs">Level {entry.level || '?'}</div>;
                     })()}
                   </div>
                   <div className="text-right">
@@ -496,10 +496,10 @@ export default function Leaderboard() {
                       {entry.leaguePoints != null ? entry.leaguePoints : '-'} LP
                     </div>
                     {entry.playerRank && !['CHALLENGER', 'GRANDMASTER', 'MASTER'].includes(entry.tier) && (
-                      <div className="text-[#7a8aa0] text-xs">{entry.tier} {entry.playerRank}</div>
+                      <div className="text-fg-muted text-xs">{entry.tier} {entry.playerRank}</div>
                     )}
                   </div>
-                  <div className="text-[#a0b0c5] text-xs text-right">
+                  <div className="text-fg-secondary text-xs text-right">
                     {entry.wins != null ? `${entry.wins}W ${entry.losses}L` : '-'}
                   </div>
                   <div className="text-right">
@@ -511,7 +511,7 @@ export default function Leaderboard() {
                       {entry.winrate}%
                     </span>
                   </div>
-                  <div className="text-[#a0b0c5] text-xs text-right">
+                  <div className="text-fg-secondary text-xs text-right">
                     {(entry.region || '').toUpperCase().replace('1', '')}
                   </div>
                   <div className="text-right">

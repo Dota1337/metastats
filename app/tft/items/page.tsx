@@ -125,7 +125,7 @@ export default function TftItemsPage() {
   }, [items, bucket, search, assets, tierCutoffs]);
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav active="items" />
       <TftHero pageTitle={t('nav.items')} patch={currentPatchLabel} />
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-2 pb-6">
@@ -137,13 +137,13 @@ export default function TftItemsPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder={t('tft.search.items')}
-            className="w-full sm:w-80 bg-[#141c2e] border border-[#1e2a3a] rounded px-3 py-1.5 text-sm text-white placeholder:text-[#5a6a80] outline-none focus:border-[#7B61FF]/60"
+            className="w-full sm:w-80 bg-surface-raised border border-border-subtle rounded px-3 py-1.5 text-sm text-white placeholder:text-fg-faint outline-none focus:border-[#7B61FF]/60"
           />
         </div>
         <div className="flex flex-wrap gap-1 mb-4">
           <button
             onClick={() => setBucket(null)}
-            className={`px-3 py-1 rounded text-xs ${bucket == null ? 'bg-[#7B61FF] text-white' : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'}`}
+            className={`px-3 py-1 rounded text-xs ${bucket == null ? 'bg-[#7B61FF] text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
           >
             {t('tft.item.bucket.all')}
           </button>
@@ -151,7 +151,7 @@ export default function TftItemsPage() {
             <button
               key={b}
               onClick={() => setBucket(b)}
-              className={`px-3 py-1 rounded text-xs ${bucket === b ? 'bg-[#7B61FF] text-white' : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'}`}
+              className={`px-3 py-1 rounded text-xs ${bucket === b ? 'bg-[#7B61FF] text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
             >
               {t(`tft.item.bucket.${b}` as any)}
             </button>
@@ -159,17 +159,17 @@ export default function TftItemsPage() {
         </div>
 
         {loading && hasData === null && (
-          <div className="text-[#7a8aa0] text-center py-8">{t('tft.noDataYet').replace('Noch keine Daten', 'Lade')}</div>
+          <div className="text-fg-muted text-center py-8">{t('tft.noDataYet').replace('Noch keine Daten', 'Lade')}</div>
         )}
         {hasData === false && <EmptyData />}
 
         {hasData && filtered.length > 0 && (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
+          <div className="bg-surface-base border border-border-subtle rounded overflow-hidden">
             {/* Grid: icon (3rem) → name (12rem) → TopUsers (1fr, grows to
                 fill the row) → 4 stat columns. Name moves from 1fr to a
                 fixed 12rem so the TopUsers row gets the slack — that's
                 where the cost-bordered champion tiles want to breathe. */}
-            <div className={`hidden md:grid ${filters.velocity > 0 ? 'grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem]' : 'grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 text-[11px] text-[#a0b0c5] font-semibold whitespace-nowrap bg-[#0a0e1a]`}>
+            <div className={`hidden md:grid ${filters.velocity > 0 ? 'grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem]' : 'grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 text-[11px] text-fg-secondary font-semibold whitespace-nowrap bg-surface-sunken`}>
               <div></div>
               <div></div>
               <div>{t('nav.items')}</div>
@@ -185,7 +185,7 @@ export default function TftItemsPage() {
                 </div>
               )}
             </div>
-            <div className="md:hidden px-4 py-2 text-[10px] uppercase tracking-widest text-[#7a8aa0] bg-[#0a0e1a]">
+            <div className="md:hidden px-4 py-2 text-[10px] uppercase tracking-widest text-fg-muted bg-surface-sunken">
               {t('nav.items')}
             </div>
             {filtered.map(it => {
@@ -196,7 +196,7 @@ export default function TftItemsPage() {
                 <a
                   key={it.apiName}
                   href={`/tft/items/${encodeURIComponent(it.apiName)}?bucket=${filters.bucket}`}
-                  className={`block md:grid ${filters.velocity > 0 ? 'md:grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem]' : 'md:grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 md:items-center text-[13px] sm:text-sm hover:bg-white/5 border-t border-[#1e2a3a]`}
+                  className={`block md:grid ${filters.velocity > 0 ? 'md:grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem]' : 'md:grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 md:items-center text-[13px] sm:text-sm hover:bg-white/5 border-t border-border-subtle`}
                 >
                   <div className="hidden md:flex justify-center">
                     <TierBadge letter={letter} t={t} />
@@ -208,7 +208,7 @@ export default function TftItemsPage() {
                     {url ? (
                       <img src={url} alt={meta!.name} className="w-10 h-10 rounded-md flex-shrink-0 shadow-sm" />
                     ) : (
-                      <div className="w-10 h-10 rounded-md bg-[#1e2a3a] flex items-center justify-center text-[9px] text-[#7a8aa0] px-0.5 text-center flex-shrink-0">{prettyApi(it.apiName)}</div>
+                      <div className="w-10 h-10 rounded-md bg-surface-overlay flex items-center justify-center text-[9px] text-fg-muted px-0.5 text-center flex-shrink-0">{prettyApi(it.apiName)}</div>
                     )}
                     <div className="text-white font-medium truncate flex-1 md:flex-initial">{meta?.name || prettyApi(it.apiName)}</div>
                   </div>
@@ -243,7 +243,7 @@ export default function TftItemsPage() {
                               }}
                             />
                           ) : (
-                            <div className="w-full h-full bg-[#1e2a3a]" />
+                            <div className="w-full h-full bg-surface-overlay" />
                           )}
                         </a>
                       );
@@ -278,7 +278,7 @@ function TierBadge({ letter, t }: { letter: TierLetter | null; t: (k: any) => st
   if (!letter) {
     return (
       <span
-        className="inline-flex items-center justify-center w-7 h-6 rounded text-[10px] font-medium text-[#5a6a80] bg-[#141c2e] border border-[#1e2a3a]"
+        className="inline-flex items-center justify-center w-7 h-6 rounded text-[10px] font-medium text-fg-faint bg-surface-raised border border-border-subtle"
         title={t('tft.tier.tooltip.empty')}
       >—</span>
     );
@@ -304,12 +304,12 @@ function costToColor(cost: number) {
 // desktop cell. The extra `<div className="hidden md:block">{games}</div>`
 // after the Cells covers the 5th column.
 function Cell({ label, value, accent, align = 'right' }: { label: string; value: string; accent?: 'white' | 'muted'; align?: 'right' | 'center' }) {
-  const valueClass = accent === 'white' ? 'text-white' : accent === 'muted' ? 'text-[#7a8aa0]' : 'text-[#a0b0c5]';
+  const valueClass = accent === 'white' ? 'text-white' : accent === 'muted' ? 'text-fg-muted' : 'text-fg-secondary';
   const alignClass = align === 'center' ? 'text-center' : 'text-right';
   return (
     <>
       <div className="md:hidden">
-        <div className="text-[#7a8aa0] text-[9px] uppercase tracking-widest leading-tight">{label}</div>
+        <div className="text-fg-muted text-[9px] uppercase tracking-widest leading-tight">{label}</div>
         <div className={`${valueClass} tabular-nums leading-tight`}>{value}</div>
       </div>
       <div className={`hidden md:block ${alignClass} ${valueClass} tabular-nums`}>{value}</div>
@@ -325,10 +325,10 @@ function DeltaCell({ velocity, label }: { velocity?: { deltaAvgPlacement?: numbe
     return (
       <>
         <div className="md:hidden">
-          <div className="text-[#7a8aa0] text-[9px] uppercase tracking-widest leading-tight">{label}</div>
-          <div className="text-[#5a6a80] tabular-nums leading-tight">—</div>
+          <div className="text-fg-muted text-[9px] uppercase tracking-widest leading-tight">{label}</div>
+          <div className="text-fg-faint tabular-nums leading-tight">—</div>
         </div>
-        <div className="hidden md:block text-right text-[#5a6a80] tabular-nums">—</div>
+        <div className="hidden md:block text-right text-fg-faint tabular-nums">—</div>
       </>
     );
   }
@@ -336,7 +336,7 @@ function DeltaCell({ velocity, label }: { velocity?: { deltaAvgPlacement?: numbe
     return (
       <>
         <div className="md:hidden">
-          <div className="text-[#7a8aa0] text-[9px] uppercase tracking-widest leading-tight">{label}</div>
+          <div className="text-fg-muted text-[9px] uppercase tracking-widest leading-tight">{label}</div>
           <div className="text-[#7B61FF] tabular-nums leading-tight">NEW</div>
         </div>
         <div className="hidden md:block text-right text-[#7B61FF] tabular-nums">NEW</div>
@@ -350,7 +350,7 @@ function DeltaCell({ velocity, label }: { velocity?: { deltaAvgPlacement?: numbe
   return (
     <>
       <div className="md:hidden">
-        <div className="text-[#7a8aa0] text-[9px] uppercase tracking-widest leading-tight">{label}</div>
+        <div className="text-fg-muted text-[9px] uppercase tracking-widest leading-tight">{label}</div>
         <div className="tabular-nums leading-tight font-medium" style={{ color }}>{display}</div>
       </div>
       <div className="hidden md:block text-right tabular-nums font-medium" style={{ color }}>{display}</div>

@@ -52,7 +52,7 @@ export default function CompDeathChart({
           </ComposedChart>
         </ResponsiveContainer>
       </div>
-      <div className="flex justify-between text-[9px] text-[#5a6a80] mt-1.5">
+      <div className="flex justify-between text-[9px] text-fg-faint mt-1.5">
         <span><span className="inline-block w-2 h-2 bg-[#e44040] rounded-sm mr-1"/>{t('tft.comp.dieHere')}</span>
         <span><span className="inline-block w-2 h-2 bg-[#3ecf8e] rounded-sm mr-1"/>{t('tft.comp.survivalChart')}</span>
       </div>

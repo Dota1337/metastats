@@ -37,7 +37,7 @@ const CompDeathChart = dynamic(() => import('../../../components/tft/CompDeathCh
 function ChartSkeleton({ height, className = '' }: { height: number; className?: string }) {
   return (
     <div
-      className={`bg-[#0d1526] border border-[#1e2a3a] ${className}`}
+      className={`bg-surface-base border border-border-subtle ${className}`}
       style={{ height }}
       aria-hidden="true"
     />
@@ -145,7 +145,7 @@ export default function TftCompDetailPage() {
   })();
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav active="comps" />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
         <a href="/tft/comps" className="text-[#7B61FF] text-xs hover:underline">← {t('nav.comps')}</a>
@@ -153,7 +153,7 @@ export default function TftCompDetailPage() {
         <div className="flex flex-wrap items-center justify-end gap-2 mt-2 mb-4">
           <a
             href={`/tft/comps?compareA=${encodeURIComponent(slug)}`}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-[#141c2e] border border-[#1e2a3a] text-[#a0b0c5] hover:text-white hover:border-[#7B61FF]/50 text-xs transition-colors"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-[#7B61FF]/50 text-xs transition-colors"
             title={t('tft.compare.fromDetail')}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -168,7 +168,7 @@ export default function TftCompDetailPage() {
           <select
             value={region}
             onChange={e => setRegion(e.target.value)}
-            className="bg-[#141c2e] border border-[#1e2a3a] rounded text-white text-xs px-2 py-1.5"
+            className="bg-surface-raised border border-border-subtle rounded text-white text-xs px-2 py-1.5"
             aria-label={t('tft.filter.region')}
           >
             {REGIONS.map(r => (
@@ -181,7 +181,7 @@ export default function TftCompDetailPage() {
 
         {hasData === false && <EmptyData />}
         {comp === null && hasData && (
-          <div className="text-[#a0b0c5] text-center py-8">{t('tft.comp.notFound')}</div>
+          <div className="text-fg-secondary text-center py-8">{t('tft.comp.notFound')}</div>
         )}
 
         {comp && (
@@ -231,8 +231,8 @@ export default function TftCompDetailPage() {
               const components = aggregateComponents(comp.carryItems, assets, 6);
               if (components.length === 0) return null;
               return (
-                <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
-                  <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.componentPriority')}</h2>
+                <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
+                  <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.componentPriority')}</h2>
                   <div className="flex flex-wrap gap-2">
                     {components.map((c, i) => {
                       const meta = assets.items[c.component];
@@ -253,19 +253,19 @@ export default function TftCompDetailPage() {
                             {url ? (
                               <img src={url} alt={meta?.name || ''} className="w-12 h-12 rounded border-2" style={{ borderColor: i === 0 ? '#e0c75a' : '#1e2a3a' }} />
                             ) : (
-                              <div className="w-12 h-12 rounded bg-[#1e2a3a]" />
+                              <div className="w-12 h-12 rounded bg-surface-overlay" />
                             )}
                             {i === 0 && (
-                              <span className="absolute -top-1 -right-1 text-[9px] bg-[#e0c75a] text-[#0d1526] px-1 rounded font-bold">1</span>
+                              <span className="absolute -top-1 -right-1 text-[9px] bg-[#e0c75a] text-surface-base px-1 rounded font-bold">1</span>
                             )}
                           </div>
                           <div className="text-white text-[10px] mt-1 truncate max-w-full">
                             {meta?.name?.split(' ').pop() || c.component.split('_').pop()}
                           </div>
-                          <div className="w-full h-1 bg-[#1e2a3a] rounded mt-1 overflow-hidden">
+                          <div className="w-full h-1 bg-surface-overlay rounded mt-1 overflow-hidden">
                             <div className="h-full bg-[#7B61FF]" style={{ width: `${pct}%` }} />
                           </div>
-                          <div className="text-[#a0b0c5] text-[10px] tabular-nums">{pct}%</div>
+                          <div className="text-fg-secondary text-[10px] tabular-nums">{pct}%</div>
                         </a>
                       );
                     })}
@@ -276,16 +276,16 @@ export default function TftCompDetailPage() {
 
             {/* Top Item-Sets pro Carry — Item-Build für Carousels Stage 2-4+. */}
             {comp.carryItems && comp.carryItems.length > 0 && (
-              <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
-                <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.topItemSets')}</h2>
+              <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
+                <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.topItemSets')}</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {comp.carryItems.slice(0, 3).map((set: { items: string[]; count: number }, i: number) => {
                     const totalCount = comp.carryItems.reduce((s: number, c: any) => s + (Number(c.count) || 0), 0);
                     const pct = totalCount > 0 ? (Number(set.count) / totalCount) * 100 : 0;
                     return (
-                      <div key={i} className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3">
+                      <div key={i} className="bg-surface-raised border border-border-subtle rounded p-3">
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-[#a0b0c5] text-[10px] uppercase tracking-widest">
+                          <span className="text-fg-secondary text-[10px] uppercase tracking-widest">
                             {t('tft.comp.itemSet')} {i + 1}
                           </span>
                           <span className="text-[#7B61FF] text-xs font-medium tabular-nums">
@@ -304,9 +304,9 @@ export default function TftCompDetailPage() {
                                 className="hover:scale-110 transition"
                               >
                                 {url ? (
-                                  <img src={url} alt={meta!.name} className="w-8 h-8 rounded border border-[#0d1526]" />
+                                  <img src={url} alt={meta!.name} className="w-8 h-8 rounded border border-surface-base" />
                                 ) : (
-                                  <div className="w-8 h-8 rounded bg-[#1e2a3a]" />
+                                  <div className="w-8 h-8 rounded bg-surface-overlay" />
                                 )}
                               </a>
                             );
@@ -335,8 +335,8 @@ export default function TftCompDetailPage() {
               const bestAvg = Math.min(...rows.map(x => x.avgPlacement));
               const carryCid = parseClusterKey(comp.clusterKey)?.carry || null;
               return (
-                <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
-                  <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.levelOutcome')}</h2>
+                <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
+                  <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.levelOutcome')}</h2>
                   <div className="space-y-3">
                     {rows.map(row => {
                       const share = totalGames > 0 ? (row.games / totalGames) * 100 : 0;
@@ -355,14 +355,14 @@ export default function TftCompDetailPage() {
                       return (
                         <div
                           key={row.level}
-                          className="bg-[#141c2e] border rounded p-3"
+                          className="bg-surface-raised border rounded p-3"
                           style={{ borderColor: `${accentColor}60`, borderWidth: isBest ? 2 : 1, opacity: lowSample ? 0.55 : 1 }}
                         >
                           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-2">
                             <span className="text-base font-semibold" style={{ color: accentColor }}>
                               {(t('tft.comp.levelOutcome.activation') as string).replace('{n}', String(row.level))}
                             </span>
-                            <span className="text-[#a0b0c5] text-xs tabular-nums">
+                            <span className="text-fg-secondary text-xs tabular-nums">
                               {row.typicalUnits.length} {t('tft.comp.levelOutcome.units')}
                             </span>
                             {lowSample && (
@@ -375,10 +375,10 @@ export default function TftCompDetailPage() {
                               </span>
                             )}
                             <div className="ml-auto flex items-center gap-3 text-xs tabular-nums">
-                              <span className="text-[#7a8aa0]">{row.games} {t('tft.gamesShort')} · {share.toFixed(0)}%</span>
-                              <span><span className="text-[#7a8aa0]">{t('tft.avgPlacement')} </span><span className="text-white font-semibold">{row.avgPlacement.toFixed(2)}</span></span>
-                              <span className="hidden sm:inline"><span className="text-[#7a8aa0]">{t('tft.top4')} </span><span className="text-white font-medium">{(row.top4Rate * 100).toFixed(0)}%</span></span>
-                              <span className="hidden md:inline"><span className="text-[#7a8aa0]">{t('tft.top1')} </span><span className="text-white font-medium">{(row.top1Rate * 100).toFixed(0)}%</span></span>
+                              <span className="text-fg-muted">{row.games} {t('tft.gamesShort')} · {share.toFixed(0)}%</span>
+                              <span><span className="text-fg-muted">{t('tft.avgPlacement')} </span><span className="text-white font-semibold">{row.avgPlacement.toFixed(2)}</span></span>
+                              <span className="hidden sm:inline"><span className="text-fg-muted">{t('tft.top4')} </span><span className="text-white font-medium">{(row.top4Rate * 100).toFixed(0)}%</span></span>
+                              <span className="hidden md:inline"><span className="text-fg-muted">{t('tft.top1')} </span><span className="text-white font-medium">{(row.top1Rate * 100).toFixed(0)}%</span></span>
                             </div>
                           </div>
                           {sortedUnits.length > 0 && (
@@ -408,7 +408,7 @@ export default function TftCompDetailPage() {
                                             <a
                                               key={it.apiName}
                                               href={`/tft/items/${encodeURIComponent(it.apiName)}`}
-                                              className="w-[14px] h-[14px] rounded-sm bg-[#0a0e1a] border border-[#1e2a3a] overflow-hidden block hover:border-[#c39bff]/60"
+                                              className="w-[14px] h-[14px] rounded-sm bg-surface-sunken border border-border-subtle overflow-hidden block hover:border-[#c39bff]/60"
                                               title={meta?.name || it.apiName}
                                             >
                                               {iconUrl && <img src={iconUrl} alt={meta?.name || it.apiName} className="w-full h-full object-cover" />}
@@ -464,7 +464,7 @@ export default function TftCompDetailPage() {
                 carryStar: parts?.carryStar,
               });
               return (
-                <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+                <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
                   <Stat label={t('tft.comp.avgLevel')} value={comp.avgLevel != null ? comp.avgLevel.toFixed(1) : '—'} />
                   <Stat label={t('tft.comp.avgLastRound')} value={comp.avgLastRound != null ? formatStage(comp.avgLastRound) : '—'} />
                   <Stat label={t('tft.comp.tempo')} value={tag?.label ?? '—'} />
@@ -494,8 +494,8 @@ export default function TftCompDetailPage() {
               const totalGames = (comp.carryStarOutcome as { games: number }[]).reduce((s: number, x: { games: number }) => s + x.games, 0);
               if (totalGames === 0) return null;
               return (
-                <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
-                  <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.carryStarOutcome')}</h2>
+                <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
+                  <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.carryStarOutcome')}</h2>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     {(comp.carryStarOutcome as { star: number; games: number; avgPlacement: number; top4Rate: number; top1Rate: number }[]).map((row) => {
                       const share = totalGames > 0 ? (row.games / totalGames) * 100 : 0;
@@ -509,7 +509,7 @@ export default function TftCompDetailPage() {
                       return (
                         <div
                           key={row.star}
-                          className="bg-[#141c2e] border rounded p-3"
+                          className="bg-surface-raised border rounded p-3"
                           style={{ borderColor: `${starColor}40`, opacity: lowSample ? 0.55 : 1 }}
                         >
                           <div className="flex items-center justify-between mb-2">
@@ -526,22 +526,22 @@ export default function TftCompDetailPage() {
                                   {t('tft.comp.lowSample')}
                                 </span>
                               )}
-                              <span className="text-[#7a8aa0] text-[10px] tabular-nums">
+                              <span className="text-fg-muted text-[10px] tabular-nums">
                                 {share.toFixed(0)}% · {row.games}
                               </span>
                             </div>
                           </div>
                           <div className="grid grid-cols-3 gap-1 text-[11px] tabular-nums">
                             <div>
-                              <div className="text-[#7a8aa0] text-[9px] uppercase tracking-widest">{t('tft.avgPlacement')}</div>
+                              <div className="text-fg-muted text-[9px] uppercase tracking-widest">{t('tft.avgPlacement')}</div>
                               <div className="text-white text-base font-medium">{row.avgPlacement.toFixed(2)}</div>
                             </div>
                             <div>
-                              <div className="text-[#7a8aa0] text-[9px] uppercase tracking-widest">{t('tft.top4')}</div>
+                              <div className="text-fg-muted text-[9px] uppercase tracking-widest">{t('tft.top4')}</div>
                               <div className="text-white">{(row.top4Rate * 100).toFixed(0)}%</div>
                             </div>
                             <div>
-                              <div className="text-[#7a8aa0] text-[9px] uppercase tracking-widest">{t('tft.top1')}</div>
+                              <div className="text-fg-muted text-[9px] uppercase tracking-widest">{t('tft.top1')}</div>
                               <div className="text-white">{(row.top1Rate * 100).toFixed(0)}%</div>
                             </div>
                           </div>
@@ -559,8 +559,8 @@ export default function TftCompDetailPage() {
               const totalGames = (comp.contestedOutcome as { games: number }[]).reduce((s: number, x: { games: number }) => s + x.games, 0);
               if (totalGames === 0) return null;
               return (
-                <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
-                  <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.contestedPenalty')}</h2>
+                <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
+                  <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.contestedPenalty')}</h2>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     {(comp.contestedOutcome as { contested: number; games: number; avgPlacement: number; top4Rate: number; top1Rate: number }[]).map((row) => {
                       const share = totalGames > 0 ? (row.games / totalGames) * 100 : 0;
@@ -573,7 +573,7 @@ export default function TftCompDetailPage() {
                       return (
                         <div
                           key={row.contested}
-                          className="bg-[#141c2e] border rounded p-3"
+                          className="bg-surface-raised border rounded p-3"
                           style={{ borderColor: `${accentColor}40`, opacity: lowSample ? 0.55 : 1 }}
                         >
                           <div className="flex items-center justify-between mb-2">
@@ -588,14 +588,14 @@ export default function TftCompDetailPage() {
                                   {t('tft.comp.lowSample')}
                                 </span>
                               )}
-                              <span className="text-[#7a8aa0] text-[10px] tabular-nums">
+                              <span className="text-fg-muted text-[10px] tabular-nums">
                                 {share.toFixed(0)}% · {row.games}
                               </span>
                             </div>
                           </div>
                           <div className="grid grid-cols-3 gap-1 text-[11px] tabular-nums">
                             <div>
-                              <div className="text-[#7a8aa0] text-[9px] uppercase tracking-widest">{t('tft.avgPlacement')}</div>
+                              <div className="text-fg-muted text-[9px] uppercase tracking-widest">{t('tft.avgPlacement')}</div>
                               <div className="text-white text-base font-medium">{row.avgPlacement.toFixed(2)}</div>
                               {delta != null && (
                                 <div className="text-[10px] tabular-nums mt-0.5" style={{ color: delta > 0 ? '#e44040' : '#3ecf8e' }}>
@@ -604,11 +604,11 @@ export default function TftCompDetailPage() {
                               )}
                             </div>
                             <div>
-                              <div className="text-[#7a8aa0] text-[9px] uppercase tracking-widest">{t('tft.top4')}</div>
+                              <div className="text-fg-muted text-[9px] uppercase tracking-widest">{t('tft.top4')}</div>
                               <div className="text-white">{(row.top4Rate * 100).toFixed(0)}%</div>
                             </div>
                             <div>
-                              <div className="text-[#7a8aa0] text-[9px] uppercase tracking-widest">{t('tft.top1')}</div>
+                              <div className="text-fg-muted text-[9px] uppercase tracking-widest">{t('tft.top1')}</div>
                               <div className="text-white">{(row.top1Rate * 100).toFixed(0)}%</div>
                             </div>
                           </div>
@@ -640,8 +640,8 @@ export default function TftCompDetailPage() {
             {/* Comp-DNA: BoardComposition + AggroIndex + SkillCap (Tempo-Mini-
                 AreaChart entfernt — redundant zum Econ-ROI-Chart unten). */}
             {(comp.aggroIndex != null || comp.skillCapIndex != null || comp.boardComposition != null) && (
-              <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
-                <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.compDna')}</h2>
+              <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
+                <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.compDna')}</h2>
                 {comp.boardComposition && (
                   <BoardCompositionPanel
                     composition={comp.boardComposition}
@@ -651,14 +651,14 @@ export default function TftCompDetailPage() {
                 )}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {comp.aggroIndex != null && (
-                    <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3">
-                      <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">{t('tft.comp.aggroIndex')}</div>
+                    <div className="bg-surface-raised border border-border-subtle rounded p-3">
+                      <div className="text-fg-muted text-[10px] uppercase tracking-widest">{t('tft.comp.aggroIndex')}</div>
                       <div className="flex items-baseline gap-1.5 mt-1">
                         <span className="text-white text-2xl font-medium tabular-nums">{comp.aggroIndex.toFixed(2)}</span>
-                        <span className="text-[#7a8aa0] text-[11px]">{t('tft.comp.aggro.perGame')}</span>
+                        <span className="text-fg-muted text-[11px]">{t('tft.comp.aggro.perGame')}</span>
                       </div>
                       {comp.aggroLobbyAverage != null && (
-                        <div className="text-[#5a6a80] text-[10px] tabular-nums mt-0.5">
+                        <div className="text-fg-faint text-[10px] tabular-nums mt-0.5">
                           {t('tft.comp.aggro.lobbyAvg')}: {comp.aggroLobbyAverage.toFixed(2)}
                         </div>
                       )}
@@ -670,8 +670,8 @@ export default function TftCompDetailPage() {
                     </div>
                   )}
                   {comp.skillCapCategory && (
-                    <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3">
-                      <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">{t('tft.comp.skillCap')}</div>
+                    <div className="bg-surface-raised border border-border-subtle rounded p-3">
+                      <div className="text-fg-muted text-[10px] uppercase tracking-widest">{t('tft.comp.skillCap')}</div>
                       <div className="text-white text-lg font-medium mt-1">
                         {comp.skillCapCategory === 'high' ? t('tft.comp.skillCap.execution')
                           : comp.skillCapCategory === 'moderate' ? t('tft.comp.skillCap.medium')
@@ -688,8 +688,8 @@ export default function TftCompDetailPage() {
                               const hue = Math.round(120 * norm);
                               return (
                                 <div key={bk.bucket} className="flex items-center gap-2 text-[10px] tabular-nums">
-                                  <span className="text-[#a0b0c5] w-16 truncate">{t(`tft.bucket.${bk.bucket}` as TranslationKey) || bk.bucket}</span>
-                                  <div className="flex-1 h-1 bg-[#1e2a3a] rounded overflow-hidden">
+                                  <span className="text-fg-secondary w-16 truncate">{t(`tft.bucket.${bk.bucket}` as TranslationKey) || bk.bucket}</span>
+                                  <div className="flex-1 h-1 bg-surface-overlay rounded overflow-hidden">
                                     <div className="h-full" style={{ width: `${(norm * 100).toFixed(0)}%`, backgroundColor: `hsl(${hue}, 60%, 50%)` }} />
                                   </div>
                                   <span className="text-white w-10 text-right">{bk.avgPlacement.toFixed(2)}</span>
@@ -751,8 +751,8 @@ export default function TftCompDetailPage() {
                 );
               }
               return (
-                <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
-                  <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">
+                <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
+                  <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">
                     {t('tft.comp.death.title')}
                   </h2>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
@@ -784,15 +784,15 @@ export default function TftCompDetailPage() {
                     />
                   </div>
                   {storyParts.length > 0 && (
-                    <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3 mb-3 text-[#c5d0e0] text-[13px] leading-relaxed">
+                    <div className="bg-surface-raised border border-border-subtle rounded p-3 mb-3 text-[#c5d0e0] text-[13px] leading-relaxed">
                       {storyParts.join(' ')}
                     </div>
                   )}
                   <details className="mt-3 group">
-                    <summary className="cursor-pointer text-[11px] text-[#7a8aa0] hover:text-white select-none">
+                    <summary className="cursor-pointer text-[11px] text-fg-muted hover:text-white select-none">
                       {t('tft.comp.death.detailsToggle')}
                     </summary>
-                    <div className="mt-2 bg-[#141c2e] border border-[#1e2a3a] rounded p-3">
+                    <div className="mt-2 bg-surface-raised border border-border-subtle rounded p-3">
                       <CompDeathChart
                         roundHistogram={comp.roundHistogram as { round: number; games: number; top4: number }[]}
                         survivalToTop4={(comp.survivalToTop4 || []) as { round: number; atLeast: number; top4Rate: number | null }[]}
@@ -805,8 +805,8 @@ export default function TftCompDetailPage() {
 
             {/* Matchups */}
             {comp.counters && ((comp.counters.beats?.length ?? 0) + (comp.counters.losesTo?.length ?? 0)) > 0 && (
-              <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
-                <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.matchups')}</h2>
+              <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
+                <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.matchups')}</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <MatchupColumn title={t('tft.comp.beats')}   color="#3ecf8e" edges={comp.counters.beats}   assets={assets} bucket={bucket} t={t} />
                   <MatchupColumn title={t('tft.comp.losesTo')} color="#e44040" edges={comp.counters.losesTo} assets={assets} bucket={bucket} t={t} />
@@ -816,7 +816,7 @@ export default function TftCompDetailPage() {
 
             {/* Pro vs Solo */}
             {proComp && proComp.games >= 5 && (
-              <section className="mt-5 bg-gradient-to-br from-[#0d1526] to-[#0a1c14] border border-[#3ecf8e]/30 rounded p-4">
+              <section className="mt-5 bg-gradient-to-br from-surface-base to-[#0a1c14] border border-[#3ecf8e]/30 rounded p-4">
                 <h2 className="text-[#3ecf8e] text-xs uppercase tracking-widest mb-3">
                   {t('tft.comp.proVsSolo')}
                 </h2>
@@ -910,10 +910,10 @@ function MatchupColumn({ title, color, edges, assets, bucket, t }: {
 }) {
   const merged = dedupeMatchupEdges(edges);
   return (
-    <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3">
+    <div className="bg-surface-raised border border-border-subtle rounded p-3">
       <div className="text-[10px] uppercase tracking-widest mb-2" style={{ color }}>{title}</div>
       {merged.length === 0 ? (
-        <div className="text-[#7a8aa0] text-[10px] py-1">{t('tft.comp.noMatchupData')}</div>
+        <div className="text-fg-muted text-[10px] py-1">{t('tft.comp.noMatchupData')}</div>
       ) : (
         <div className="space-y-1.5">
           {merged.map(e => {
@@ -940,10 +940,10 @@ function MatchupColumn({ title, color, edges, assets, bucket, t }: {
                 {url ? (
                   <img src={url} alt="" className="w-7 h-7 rounded border border-[#c39bff]/50 flex-shrink-0 mt-0.5" />
                 ) : (
-                  <div className="w-7 h-7 rounded bg-[#1e2a3a] flex-shrink-0 mt-0.5" />
+                  <div className="w-7 h-7 rounded bg-surface-overlay flex-shrink-0 mt-0.5" />
                 )}
                 <div className="flex-1 min-w-0">
-                  <div className="text-[#a0b0c5] text-[9px] truncate">{traitName}</div>
+                  <div className="text-fg-secondary text-[9px] truncate">{traitName}</div>
                   <div className="text-white text-[11px] truncate flex items-center gap-1">
                     <span className="truncate">{carryName}</span>
                     {parts?.carryStar === 3 && (
@@ -960,12 +960,12 @@ function MatchupColumn({ title, color, edges, assets, bucket, t }: {
                     )}
                   </div>
                   {secondaryName && (
-                    <div className="text-[#7a8aa0] text-[9px] truncate">+ {secondaryName}</div>
+                    <div className="text-fg-muted text-[9px] truncate">+ {secondaryName}</div>
                   )}
                 </div>
                 <div className="flex flex-col items-end flex-shrink-0">
                   <span className="text-[11px] tabular-nums font-medium" style={{ color }}>{(e.winRate * 100).toFixed(0)}%</span>
-                  <span className="text-[#5a6a80] text-[9px] tabular-nums">{e.games}</span>
+                  <span className="text-fg-faint text-[9px] tabular-nums">{e.games}</span>
                 </div>
               </a>
             );
@@ -986,8 +986,8 @@ function costColor(cost: number) {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-[#0a0e1a] border border-[#1e2a3a] rounded px-3 py-2">
-      <div className="text-[#a0b0c5] text-[10px] uppercase tracking-widest">{label}</div>
+    <div className="bg-surface-sunken border border-border-subtle rounded px-3 py-2">
+      <div className="text-fg-secondary text-[10px] uppercase tracking-widest">{label}</div>
       <div className="text-white text-base font-semibold mt-0.5">{value}</div>
     </div>
   );
@@ -1005,9 +1005,9 @@ function DeltaStat({
 }) {
   if (pro == null) {
     return (
-      <div className="bg-[#0a0e1a] border border-[#1e2a3a] rounded px-3 py-2">
-        <div className="text-[#a0b0c5] text-[10px] uppercase tracking-widest">{label}</div>
-        <div className="text-[#7a8aa0] text-base font-semibold mt-0.5">—</div>
+      <div className="bg-surface-sunken border border-border-subtle rounded px-3 py-2">
+        <div className="text-fg-secondary text-[10px] uppercase tracking-widest">{label}</div>
+        <div className="text-fg-muted text-base font-semibold mt-0.5">—</div>
       </div>
     );
   }
@@ -1023,8 +1023,8 @@ function DeltaStat({
     : (lowerIsBetter ? (delta < 0 ? '▲' : '▼')
                      : (delta > 0 ? '▲' : '▼'));
   return (
-    <div className="bg-[#0a0e1a] border border-[#1e2a3a] rounded px-3 py-2">
-      <div className="text-[#a0b0c5] text-[10px] uppercase tracking-widest">{label}</div>
+    <div className="bg-surface-sunken border border-border-subtle rounded px-3 py-2">
+      <div className="text-fg-secondary text-[10px] uppercase tracking-widest">{label}</div>
       <div className="text-white text-base font-semibold mt-0.5 tabular-nums">{fmt(pro)}</div>
       {!rawOnly && delta != null && (
         <div className="text-[10px] tabular-nums mt-0.5" style={{ color }}>
@@ -1037,10 +1037,10 @@ function DeltaStat({
 
 function DeathKpi({ label, value, sub, accent }: { label: string; value: string; sub: string; accent: string }) {
   return (
-    <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3" style={{ borderLeft: `3px solid ${accent}` }}>
-      <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">{label}</div>
+    <div className="bg-surface-raised border border-border-subtle rounded p-3" style={{ borderLeft: `3px solid ${accent}` }}>
+      <div className="text-fg-muted text-[10px] uppercase tracking-widest">{label}</div>
       <div className="text-white text-lg font-medium mt-1 tabular-nums">{value}</div>
-      {sub && <div className="text-[#7a8aa0] text-[11px] mt-1">{sub}</div>}
+      {sub && <div className="text-fg-muted text-[11px] mt-1">{sub}</div>}
     </div>
   );
 }
@@ -1060,9 +1060,9 @@ function BoardCompositionPanel({
     tech: { ring: '#5a6a80', label: '#7a8aa0', bg: 'rgba(90,106,128,0.12)' },
   } as const;
   return (
-    <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3 mb-3">
+    <div className="bg-surface-raised border border-border-subtle rounded p-3 mb-3">
       <div className="flex items-baseline justify-between mb-2">
-        <span className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">{t('tft.comp.board.title')}</span>
+        <span className="text-fg-muted text-[10px] uppercase tracking-widest">{t('tft.comp.board.title')}</span>
         <div className="flex gap-3 text-[11px] tabular-nums">
           <span style={{ color: COLORS.core.label }}>{composition.core} {t('tft.comp.board.core')}</span>
           <span style={{ color: COLORS.flex.label }}>{composition.flex} {t('tft.comp.board.flex')}</span>
@@ -1103,9 +1103,9 @@ function BoardCompositionPanel({
 function BlockHeadline({ label }: { label: string }) {
   return (
     <div className="mt-7 mb-1 flex items-center gap-3">
-      <div className="h-px flex-1 bg-[#1e2a3a]" />
-      <span className="text-[#7a8aa0] text-[10px] uppercase tracking-widest font-medium">{label}</span>
-      <div className="h-px flex-1 bg-[#1e2a3a]" />
+      <div className="h-px flex-1 bg-surface-overlay" />
+      <span className="text-fg-muted text-[10px] uppercase tracking-widest font-medium">{label}</span>
+      <div className="h-px flex-1 bg-surface-overlay" />
     </div>
   );
 }

@@ -38,7 +38,7 @@ export default function Nav({ active }: NavProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const linkClass = (key: NavProps['active']) =>
-    key === active ? 'text-white text-sm' : 'text-[#a0b0c5] text-sm hover:text-white';
+    key === active ? 'text-white text-sm' : 'text-fg-secondary text-sm hover:text-white';
 
   // "Meta" groups the meta-data pages (Comps/Units/Items/Synergien) plus the
   // derived meta-analysis pages (One-Tricks/Patch-Diff) into one dropdown so
@@ -46,7 +46,7 @@ export default function Nav({ active }: NavProps) {
   const metaActive = active === 'comps' || active === 'units' || active === 'items' || active === 'traits'
     || active === 'onetricks' || active === 'patch';
   const metaItemClass = (key: NavProps['active']) =>
-    `block px-3 py-2 text-xs transition-colors ${key === active ? 'bg-[#7B61FF]/10 text-[#7B61FF]' : 'text-[#a0b0c5] hover:text-white hover:bg-[#141c2e]'}`;
+    `block px-3 py-2 text-xs transition-colors ${key === active ? 'bg-[#7B61FF]/10 text-[#7B61FF]' : 'text-fg-secondary hover:text-white hover:bg-surface-raised'}`;
 
   const currentLang = LANGUAGES.find(l => l.code === lang) || LANGUAGES[0];
 
@@ -130,7 +130,7 @@ export default function Nav({ active }: NavProps) {
     // Kein data-game mehr: der Accent-Anker ist app/tft/layout.tsx, der den
     // kompletten /tft-Baum inkl. dieser Nav umschliesst. Das Attribut hier hat
     // denselben Wert nur ein zweites Mal gesetzt.
-    <nav className="bg-[#0a0e1a] border-b border-[#1e2a3a] px-4 sm:px-6 py-3">
+    <nav className="bg-surface-sunken border-b border-border-subtle px-4 sm:px-6 py-3">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center flex-shrink-0">
           {/* text-accent statt zweier hartkodierter Hexe — das war die dritte
@@ -151,7 +151,7 @@ export default function Nav({ active }: NavProps) {
               <div className="relative">
                 <button
                   onClick={() => setMetaOpen(o => !o)}
-                  className={`flex items-center gap-1 ${metaActive ? 'text-white text-sm' : 'text-[#a0b0c5] text-sm hover:text-white'}`}
+                  className={`flex items-center gap-1 ${metaActive ? 'text-white text-sm' : 'text-fg-secondary text-sm hover:text-white'}`}
                 >
                   {t('nav.meta')}
                   <svg className={`w-3 h-3 transition-transform ${metaOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -161,8 +161,8 @@ export default function Nav({ active }: NavProps) {
                 {metaOpen && (
                   <>
                     <div className="fixed inset-0 z-30" onClick={() => setMetaOpen(false)} />
-                    <div className="absolute left-0 top-full mt-1 z-40 bg-[#0d1526] border border-[#1e2a3a] rounded shadow-lg overflow-hidden min-w-[150px]">
-                      <a href="/tft/meta-pulse" className="block px-4 py-2 text-sm text-[#3ecf8e] hover:bg-[#141c2e] border-b border-[#1e2a3a]">⚡ {t('nav.metaPulse')}</a>
+                    <div className="absolute left-0 top-full mt-1 z-40 bg-surface-base border border-border-subtle rounded shadow-lg overflow-hidden min-w-[150px]">
+                      <a href="/tft/meta-pulse" className="block px-4 py-2 text-sm text-[#3ecf8e] hover:bg-surface-raised border-b border-border-subtle">⚡ {t('nav.metaPulse')}</a>
                       <a href="/tft/comps" className={metaItemClass('comps')}>{t('nav.comps')}</a>
                       <a href="/tft/units" className={metaItemClass('units')}>{t('nav.units')}</a>
                       <a href="/tft/items" className={metaItemClass('items')}>{t('nav.items')}</a>
@@ -183,7 +183,7 @@ export default function Nav({ active }: NavProps) {
               <a href="/tft/pros" className={linkClass('pros')}>{t('nav.tftPros')}</a>
               <a href="/tft/compare" className={linkClass('analyse')}>{t('nav.analyse')}</a>
               <a href="/tft/builder" className={linkClass('builder')}>{t('tft.builderTitle')}</a>
-              <a href="/tft/lobby-scout" className="text-sm text-[#a0b0c5] hover:text-white">{t('nav.lobbyScout')}</a>
+              <a href="/tft/lobby-scout" className="text-sm text-fg-secondary hover:text-white">{t('nav.lobbyScout')}</a>
               <a href="/tft/comps/community" className={linkClass('community')}>{t('nav.community')}</a>
               {TFT_COACH_ENABLED && (
                 <a href="/tft/coach" className={linkClass('coach')}>{t('nav.coach')}</a>
@@ -204,8 +204,8 @@ export default function Nav({ active }: NavProps) {
 
           {/* Global Search */}
           <div ref={searchRef} className="relative">
-            <div className="flex items-center bg-[#141c2e] border border-[#2a3a50] rounded px-2.5 py-1 gap-2 hover:border-[#c89b3c]/50 transition-colors focus-within:border-[#c89b3c]">
-              <svg className="w-3.5 h-3.5 text-[#7a8aa0] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <div className="flex items-center bg-surface-raised border border-border-default rounded px-2.5 py-1 gap-2 hover:border-[#c89b3c]/50 transition-colors focus-within:border-[#c89b3c]">
+              <svg className="w-3.5 h-3.5 text-fg-muted flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
               <input
@@ -216,18 +216,18 @@ export default function Nav({ active }: NavProps) {
                 onChange={e => { setSearchQuery(e.target.value); setSearchOpen(true); }}
                 onFocus={() => searchQuery && setSearchOpen(true)}
                 onKeyDown={handleSearchKeyDown}
-                className="bg-transparent text-white text-xs outline-none placeholder-[#7a8aa0] w-36"
+                className="bg-transparent text-white text-xs outline-none placeholder-fg-muted w-36"
               />
             </div>
 
             {/* Dropdown */}
             {searchOpen && results.length > 0 && (
-              <div className="absolute right-0 top-full mt-1 z-50 bg-[#0d1526] border border-[#1e2a3a] rounded shadow-xl overflow-hidden min-w-[260px]">
+              <div className="absolute right-0 top-full mt-1 z-50 bg-surface-base border border-border-subtle rounded shadow-xl overflow-hidden min-w-[260px]">
                 {results.map((r, i) => (
                   <button
                     key={`${r.type}-${r.name}-${i}`}
                     onClick={() => navigateToResult(r)}
-                    className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-[#141c2e] transition-colors"
+                    className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-surface-raised transition-colors"
                   >
                     {r.type === 'champion' ? (
                       <img
@@ -236,19 +236,19 @@ export default function Nav({ active }: NavProps) {
                         className="w-6 h-6 rounded"
                       />
                     ) : (
-                      <div className="w-6 h-6 rounded bg-[#1e2a3a] flex items-center justify-center">
-                        <svg className="w-3.5 h-3.5 text-[#a0b0c5]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <div className="w-6 h-6 rounded bg-surface-overlay flex items-center justify-center">
+                        <svg className="w-3.5 h-3.5 text-fg-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                         </svg>
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="text-white text-xs font-medium truncate">{r.name}</div>
-                      <div className="text-[#7a8aa0] text-[10px]">
+                      <div className="text-fg-muted text-[10px]">
                         {r.type === 'champion' ? t('nav.champion') : t('nav.searchPlayer')}
                       </div>
                     </div>
-                    <svg className="w-3 h-3 text-[#7a8aa0] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <svg className="w-3 h-3 text-fg-muted flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                     </svg>
                   </button>
@@ -263,7 +263,7 @@ export default function Nav({ active }: NavProps) {
               <>
                 <button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="flex items-center gap-1.5 bg-[#141c2e] border border-[#2a3a50] rounded px-2 py-1 text-xs hover:border-[#7B61FF] transition-colors"
+                  className="flex items-center gap-1.5 bg-surface-raised border border-border-default rounded px-2 py-1 text-xs hover:border-[#7B61FF] transition-colors"
                   title={user.email || ''}
                 >
                   {user.avatarUrl ? (
@@ -278,10 +278,10 @@ export default function Nav({ active }: NavProps) {
                 {userMenuOpen && (
                   <>
                     <div className="fixed inset-0 z-30" onClick={() => setUserMenuOpen(false)} />
-                    <div className="absolute right-0 top-full mt-1 z-40 bg-[#0d1526] border border-[#1e2a3a] rounded shadow-lg min-w-[160px]">
+                    <div className="absolute right-0 top-full mt-1 z-40 bg-surface-base border border-border-subtle rounded shadow-lg min-w-[160px]">
                       <button
                         onClick={async () => { await signOut(); setUserMenuOpen(false); }}
-                        className="w-full text-left px-3 py-2 text-xs text-[#a0b0c5] hover:text-white hover:bg-[#141c2e]"
+                        className="w-full text-left px-3 py-2 text-xs text-fg-secondary hover:text-white hover:bg-surface-raised"
                       >{t('nav.logout')}</button>
                     </div>
                   </>
@@ -290,7 +290,7 @@ export default function Nav({ active }: NavProps) {
             ) : (
               <a
                 href={`/auth/login?next=${encodeURIComponent(pathname)}`}
-                className="bg-[#141c2e] border border-[#2a3a50] rounded px-2.5 py-1 text-xs text-[#a0b0c5] hover:text-white hover:border-[#7B61FF] transition-colors"
+                className="bg-surface-raised border border-border-default rounded px-2.5 py-1 text-xs text-fg-secondary hover:text-white hover:border-[#7B61FF] transition-colors"
               >{t('nav.login')}</a>
             )}
           </div>
@@ -299,7 +299,7 @@ export default function Nav({ active }: NavProps) {
           <div className="relative">
             <button
               onClick={() => setLangOpen(!langOpen)}
-              className="flex items-center gap-1.5 bg-[#141c2e] border border-[#2a3a50] rounded px-2.5 py-1 text-xs font-medium text-[#a0b0c5] hover:text-white hover:border-[#c89b3c] transition-colors"
+              className="flex items-center gap-1.5 bg-surface-raised border border-border-default rounded px-2.5 py-1 text-xs font-medium text-fg-secondary hover:text-white hover:border-[#c89b3c] transition-colors"
             >
               <img src={currentLang.flagUrl} alt="" className="w-4 h-3 object-cover rounded-sm" />
               <span className="text-white">{currentLang.code.toUpperCase()}</span>
@@ -311,7 +311,7 @@ export default function Nav({ active }: NavProps) {
             {langOpen && (
               <>
                 <div className="fixed inset-0 z-30" onClick={() => setLangOpen(false)} />
-                <div className="absolute right-0 top-full mt-1 z-40 bg-[#0d1526] border border-[#1e2a3a] rounded shadow-lg overflow-hidden min-w-[150px]">
+                <div className="absolute right-0 top-full mt-1 z-40 bg-surface-base border border-border-subtle rounded shadow-lg overflow-hidden min-w-[150px]">
                   {LANGUAGES.map(l => (
                     <button
                       key={l.code}
@@ -324,7 +324,7 @@ export default function Nav({ active }: NavProps) {
                       className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs transition-colors ${
                         lang === l.code
                           ? 'bg-[#c89b3c]/10 text-[#c89b3c]'
-                          : 'text-[#a0b0c5] hover:text-white hover:bg-[#141c2e]'
+                          : 'text-fg-secondary hover:text-white hover:bg-surface-raised'
                       }`}
                     >
                       <img src={l.flagUrl} alt="" className="w-5 h-3.5 object-cover rounded-sm" />
@@ -343,7 +343,7 @@ export default function Nav({ active }: NavProps) {
         <div className="flex items-center gap-2 lg:hidden">
           <button
             onClick={() => { setSearchOpen(!searchOpen); setMenuOpen(false); }}
-            className="text-[#a0b0c5] hover:text-white p-1"
+            className="text-fg-secondary hover:text-white p-1"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -351,7 +351,7 @@ export default function Nav({ active }: NavProps) {
           </button>
           <button
             onClick={() => { setMenuOpen(!menuOpen); setSearchOpen(false); }}
-            className="text-[#a0b0c5] hover:text-white p-1"
+            className="text-fg-secondary hover:text-white p-1"
           >
             {menuOpen ? (
               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -368,9 +368,9 @@ export default function Nav({ active }: NavProps) {
 
       {/* Mobile search bar */}
       {searchOpen && (
-        <div className="lg:hidden mt-3 pt-3 border-t border-[#1e2a3a]" ref={searchRef}>
-          <div className="flex items-center bg-[#141c2e] border border-[#2a3a50] rounded px-3 py-2 gap-2">
-            <svg className="w-4 h-4 text-[#7a8aa0] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <div className="lg:hidden mt-3 pt-3 border-t border-border-subtle" ref={searchRef}>
+          <div className="flex items-center bg-surface-raised border border-border-default rounded px-3 py-2 gap-2">
+            <svg className="w-4 h-4 text-fg-muted flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input
@@ -380,16 +380,16 @@ export default function Nav({ active }: NavProps) {
               onChange={e => setSearchQuery(e.target.value)}
               onKeyDown={handleSearchKeyDown}
               autoFocus
-              className="bg-transparent text-white text-sm outline-none placeholder-[#7a8aa0] flex-1"
+              className="bg-transparent text-white text-sm outline-none placeholder-fg-muted flex-1"
             />
           </div>
           {results.length > 0 && (
-            <div className="mt-1 bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
+            <div className="mt-1 bg-surface-base border border-border-subtle rounded overflow-hidden">
               {results.map((r, i) => (
                 <button
                   key={`m-${r.type}-${r.name}-${i}`}
                   onClick={() => navigateToResult(r)}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[#141c2e] transition-colors"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-surface-raised transition-colors"
                 >
                   {r.type === 'champion' ? (
                     <img
@@ -398,15 +398,15 @@ export default function Nav({ active }: NavProps) {
                       className="w-7 h-7 rounded"
                     />
                   ) : (
-                    <div className="w-7 h-7 rounded bg-[#1e2a3a] flex items-center justify-center">
-                      <svg className="w-4 h-4 text-[#a0b0c5]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <div className="w-7 h-7 rounded bg-surface-overlay flex items-center justify-center">
+                      <svg className="w-4 h-4 text-fg-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="text-white text-sm font-medium truncate">{r.name}</div>
-                    <div className="text-[#7a8aa0] text-xs">
+                    <div className="text-fg-muted text-xs">
                       {r.type === 'champion' ? t('nav.champion') : t('nav.searchPlayer')}
                     </div>
                   </div>
@@ -419,10 +419,10 @@ export default function Nav({ active }: NavProps) {
 
       {/* Mobile menu */}
       {menuOpen && (
-        <div className="lg:hidden mt-3 pt-3 border-t border-[#1e2a3a] flex flex-col gap-3">
+        <div className="lg:hidden mt-3 pt-3 border-t border-border-subtle flex flex-col gap-3">
           {game === 'tft' ? (
             <>
-              <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">{t('nav.meta')}</div>
+              <div className="text-fg-muted text-[10px] uppercase tracking-widest">{t('nav.meta')}</div>
               <a href="/tft/meta-pulse" className="pl-3 text-sm text-[#3ecf8e]" onClick={() => setMenuOpen(false)}>⚡ {t('nav.metaPulse')}</a>
               <a href="/tft/comps" className={`pl-3 ${linkClass('comps')}`} onClick={() => setMenuOpen(false)}>{t('nav.comps')}</a>
               <a href="/tft/units" className={`pl-3 ${linkClass('units')}`} onClick={() => setMenuOpen(false)}>{t('nav.units')}</a>
@@ -440,7 +440,7 @@ export default function Nav({ active }: NavProps) {
               <a href="/tft/pros" className={linkClass('pros')} onClick={() => setMenuOpen(false)}>{t('nav.tftPros')}</a>
               <a href="/tft/compare" className={linkClass('analyse')} onClick={() => setMenuOpen(false)}>{t('nav.analyse')}</a>
               <a href="/tft/builder" className={linkClass('builder')} onClick={() => setMenuOpen(false)}>{t('tft.builderTitle')}</a>
-              <a href="/tft/lobby-scout" className="text-sm text-[#a0b0c5]" onClick={() => setMenuOpen(false)}>{t('nav.lobbyScout')}</a>
+              <a href="/tft/lobby-scout" className="text-sm text-fg-secondary" onClick={() => setMenuOpen(false)}>{t('nav.lobbyScout')}</a>
               <a href="/tft/saved" className={linkClass('saved')} onClick={() => setMenuOpen(false)}>★ {t('tft.savedTitle')}</a>
             </>
           ) : (
@@ -456,7 +456,7 @@ export default function Nav({ active }: NavProps) {
           )}
 
           {/* Language selector mobile */}
-          <div className="flex flex-wrap gap-1.5 pt-2 border-t border-[#1e2a3a]">
+          <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border-subtle">
             {LANGUAGES.map(l => (
               <button
                 key={l.code}
@@ -466,7 +466,7 @@ export default function Nav({ active }: NavProps) {
                   if (l.code !== lang) window.location.reload();
                 }}
                 className={`flex items-center gap-1.5 px-2 py-1.5 rounded text-xs ${
-                  lang === l.code ? 'bg-[#c89b3c]/10 text-[#c89b3c]' : 'text-[#a0b0c5]'
+                  lang === l.code ? 'bg-[#c89b3c]/10 text-[#c89b3c]' : 'text-fg-secondary'
                 }`}
               >
                 <img src={l.flagUrl} alt="" className="w-5 h-3.5 object-cover rounded-sm" />

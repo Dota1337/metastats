@@ -32,10 +32,10 @@ export default function CompTrendChart({
 }) {
   const { t } = useI18n();
   return (
-    <div className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-4">
+    <div className="mt-5 bg-surface-base border border-border-subtle rounded-lg p-4">
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-white text-sm font-medium">{t('tft.trend.title')}</h3>
-        <div className="flex gap-1 bg-[#141c2e] border border-[#1e2a3a] rounded p-0.5">
+        <div className="flex gap-1 bg-surface-raised border border-border-subtle rounded p-0.5">
           {([14, 30] as const).map(d => (
             <button
               key={d}
@@ -44,7 +44,7 @@ export default function CompTrendChart({
               className={`px-2.5 py-0.5 text-[11px] rounded ${
                 trendDays === d
                   ? 'bg-[#7B61FF] text-white'
-                  : 'text-[#a0b0c5] hover:text-white'
+                  : 'text-fg-secondary hover:text-white'
               }`}
             >
               {t(d === 14 ? 'tft.trend.last14' : 'tft.trend.last30')}
@@ -116,7 +116,7 @@ export default function CompTrendChart({
           </ResponsiveContainer>
         </div>
       ) : (
-        <div className="text-[#5a6a80] text-xs text-center py-6">{t('tft.trend.empty')}</div>
+        <div className="text-fg-faint text-xs text-center py-6">{t('tft.trend.empty')}</div>
       )}
     </div>
   );

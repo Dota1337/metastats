@@ -57,14 +57,14 @@ export default function TftCommunityGalleryPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav active="comps" />
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
         <div className="flex items-baseline justify-between mb-1">
           <h1 className="text-white text-2xl font-medium">{t('tft.community.title')}</h1>
           <a href="/tft/builder" className="text-[#a892ff] text-xs hover:underline">{t('tft.community.buildOwn')} →</a>
         </div>
-        <p className="text-[#a0b0c5] text-sm mb-5">{t('tft.community.subtitle')}</p>
+        <p className="text-fg-secondary text-sm mb-5">{t('tft.community.subtitle')}</p>
 
         <div className="flex gap-1 mb-4">
           {(['top', 'recent'] as Sort[]).map(s => (
@@ -74,15 +74,15 @@ export default function TftCommunityGalleryPage() {
               className={`px-3 py-1.5 text-xs uppercase tracking-widest rounded border transition-colors ${
                 sort === s
                   ? 'bg-[#7B61FF] border-[#7B61FF] text-white'
-                  : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5] hover:border-[#7B61FF]/40'
+                  : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-[#7B61FF]/40'
               }`}
             >{t(`tft.community.sort.${s}` as TranslationKey)}</button>
           ))}
         </div>
 
-        {loading && <div className="text-[#a0b0c5] text-center py-8">…</div>}
+        {loading && <div className="text-fg-secondary text-center py-8">…</div>}
         {!loading && comps.length === 0 && (
-          <div className="text-[#a0b0c5] text-center py-8">
+          <div className="text-fg-secondary text-center py-8">
             {t('tft.community.empty')}{' '}
             <a href="/tft/builder" className="text-[#a892ff] hover:underline">{t('tft.community.buildFirst')}</a>
           </div>
@@ -94,7 +94,7 @@ export default function TftCommunityGalleryPage() {
             const carryUrl = tftChampionTileUrl(assets, carry);
             const placements = c.boardConfig?.placements || [];
             return (
-              <div key={c.id} className="bg-[#0d1526] border border-[#1e2a3a] rounded p-3 hover:border-[#7B61FF]/30 transition-colors">
+              <div key={c.id} className="bg-surface-base border border-border-subtle rounded p-3 hover:border-[#7B61FF]/30 transition-colors">
                 <div className="flex items-start gap-3 mb-2">
                   {carryUrl && c.carryUnit && (
                     <a
@@ -110,7 +110,7 @@ export default function TftCommunityGalleryPage() {
                     {c.traitLabel && (
                       <div className="text-[#a892ff] text-xs truncate">{c.traitLabel}</div>
                     )}
-                    <div className="text-[#7a8aa0] text-[11px]">
+                    <div className="text-fg-muted text-[11px]">
                       {c.authorHandle || 'anonymous'} · {timeAgo(c.createdAt)}
                       {c.views > 0 && ` · ${c.views} views`}
                     </div>
@@ -118,7 +118,7 @@ export default function TftCommunityGalleryPage() {
                   <button
                     onClick={() => upvote(c.id)}
                     disabled={voting.has(c.id)}
-                    className="flex flex-col items-center gap-0.5 px-2.5 py-1.5 bg-[#141c2e] border border-[#1e2a3a] rounded hover:border-[#3ecf8e]/60 transition-colors disabled:opacity-50"
+                    className="flex flex-col items-center gap-0.5 px-2.5 py-1.5 bg-surface-raised border border-border-subtle rounded hover:border-[#3ecf8e]/60 transition-colors disabled:opacity-50"
                   >
                     <span className="text-[#3ecf8e] text-sm leading-none">▲</span>
                     <span className="text-white text-[11px] tabular-nums font-medium">{c.upvotes}</span>
@@ -181,7 +181,7 @@ export default function TftCommunityGalleryPage() {
                                   <img src={iurl} alt={itemName} className="w-[11px] h-[11px]" />
                                 </a>
                               ) : (
-                                <div key={j} className="w-[11px] h-[11px] bg-[#1e2a3a]" />
+                                <div key={j} className="w-[11px] h-[11px] bg-surface-overlay" />
                               );
                             })}
                           </div>

@@ -51,7 +51,7 @@ export default function BookmarkButton({
       className={`flex items-center justify-center rounded-full ${dim} transition-colors ${
         active
           ? 'text-[#f0c040] hover:text-[#f5d875]'
-          : 'text-[#5a6a80] hover:text-[#a0b0c5]'
+          : 'text-fg-faint hover:text-fg-secondary'
       }`}
     >
       {active ? '★' : '☆'}

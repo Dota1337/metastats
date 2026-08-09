@@ -51,11 +51,11 @@ export default function TftOneTricksPage() {
   }, [region]);
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav active="onetricks" />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
         <h1 className="text-white text-2xl font-medium mb-1">{t('tft.onetricks.title')}</h1>
-        <p className="text-[#a0b0c5] text-sm mb-5">{t('tft.onetricks.subtitle')}</p>
+        <p className="text-fg-secondary text-sm mb-5">{t('tft.onetricks.subtitle')}</p>
 
         <div className="mb-3">
           <input
@@ -63,7 +63,7 @@ export default function TftOneTricksPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder={t('tft.search.player')}
-            className="w-full sm:w-80 bg-[#141c2e] border border-[#1e2a3a] rounded px-3 py-1.5 text-sm text-white placeholder:text-[#5a6a80] outline-none focus:border-[#7B61FF]/60"
+            className="w-full sm:w-80 bg-surface-raised border border-border-subtle rounded px-3 py-1.5 text-sm text-white placeholder:text-fg-faint outline-none focus:border-[#7B61FF]/60"
           />
         </div>
 
@@ -75,15 +75,15 @@ export default function TftOneTricksPage() {
               className={`px-3 py-1.5 text-xs uppercase tracking-widest rounded border transition-colors ${
                 region === r
                   ? 'bg-[#7B61FF] border-[#7B61FF] text-white'
-                  : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5] hover:border-[#7B61FF]/40'
+                  : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-[#7B61FF]/40'
               }`}
             >{r}</button>
           ))}
         </div>
 
-        {loading && <div className="text-[#a0b0c5] text-center py-8">…</div>}
+        {loading && <div className="text-fg-secondary text-center py-8">…</div>}
         {!loading && data.length === 0 && (
-          <div className="text-[#a0b0c5] text-center py-8">{t('tft.onetricks.empty')}</div>
+          <div className="text-fg-secondary text-center py-8">{t('tft.onetricks.empty')}</div>
         )}
 
         <div className="space-y-2">
@@ -105,9 +105,9 @@ export default function TftOneTricksPage() {
               : '#3a8ddc';
             const top1Width = p.top2Share > 0 ? (p.signatureComps[0]?.share ?? 0) / p.top2Share * 100 : 0;
             return (
-              <div key={p.puuid} className="bg-[#0d1526] border border-[#1e2a3a] rounded p-3 hover:border-[#7B61FF]/30 transition-colors">
+              <div key={p.puuid} className="bg-surface-base border border-border-subtle rounded p-3 hover:border-[#7B61FF]/30 transition-colors">
                 <div className="flex items-center gap-3 mb-2">
-                  <span className="text-[#7a8aa0] text-xs tabular-nums w-6 font-medium">#{idx + 1}</span>
+                  <span className="text-fg-muted text-xs tabular-nums w-6 font-medium">#{idx + 1}</span>
                   <span className="text-[9px] tabular-nums uppercase tracking-widest px-1.5 py-0.5 rounded font-medium" style={{ backgroundColor: `${tierBg}20`, color: tierBg }}>
                     {p.tier.slice(0, 3)}
                   </span>
@@ -115,17 +115,17 @@ export default function TftOneTricksPage() {
                     href={`/tft/player/${encodeURIComponent(display)}?region=${region}`}
                     className="text-white font-medium hover:text-[#a892ff] flex-1 truncate"
                   >
-                    {display}{p.tagLine ? <span className="text-[#7a8aa0]">#{p.tagLine}</span> : null}
+                    {display}{p.tagLine ? <span className="text-fg-muted">#{p.tagLine}</span> : null}
                   </a>
-                  <span className="text-[10px] text-[#7a8aa0] tabular-nums">{p.totalGames} {t('tft.gamesShort')}</span>
+                  <span className="text-[10px] text-fg-muted tabular-nums">{p.totalGames} {t('tft.gamesShort')}</span>
                 </div>
                 {/* Specialty-bar: visualizes top1 vs top2 share split */}
                 <div className="mb-2.5">
                   <div className="flex justify-between text-[10px] mb-1">
-                    <span className="text-[#7a8aa0]">{t('tft.onetricks.specialty')}</span>
+                    <span className="text-fg-muted">{t('tft.onetricks.specialty')}</span>
                     <span className="tabular-nums font-medium" style={{ color: specColor }}>{specPct.toFixed(0)}%</span>
                   </div>
-                  <div className="h-1.5 bg-[#1e2a3a] rounded overflow-hidden flex">
+                  <div className="h-1.5 bg-surface-overlay rounded overflow-hidden flex">
                     <div className="h-full" style={{ width: `${(p.top2Share * top1Width / 100 * 100).toFixed(0)}%`, backgroundColor: specColor }} />
                     <div className="h-full" style={{ width: `${(p.top2Share * (1 - top1Width / 100) * 100).toFixed(0)}%`, backgroundColor: `${specColor}80` }} />
                   </div>
@@ -140,7 +140,7 @@ export default function TftOneTricksPage() {
                       <a
                         key={c.clusterKey}
                         href={`/tft/comps/${encodeURIComponent(c.clusterKey)}`}
-                        className="flex items-center gap-2 bg-[#141c2e] border border-[#1e2a3a] rounded p-2 hover:border-[#7B61FF]/40"
+                        className="flex items-center gap-2 bg-surface-raised border border-border-subtle rounded p-2 hover:border-[#7B61FF]/40"
                       >
                         {tftChampionTileUrl(assets, carry) && (
                           <img src={tftChampionTileUrl(assets, carry)!} alt="" className="w-8 h-8 rounded border border-[#c39bff]/60 flex-shrink-0" />
@@ -149,7 +149,7 @@ export default function TftOneTricksPage() {
                           <div className="text-white text-[11px] truncate">
                             {traitName} · {carry?.name || (parts ? parts.carry.replace(/^TFT\d+_/, '') : '')}
                           </div>
-                          <div className="text-[10px] text-[#7a8aa0] tabular-nums">
+                          <div className="text-[10px] text-fg-muted tabular-nums">
                             {(c.share * 100).toFixed(0)}% · Ø {c.avgPlacement?.toFixed(2) ?? '—'}
                           </div>
                         </div>

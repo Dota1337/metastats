@@ -175,20 +175,20 @@ export default function TftProsPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav active="pros" />
       <TftHero pageTitle={t('tft.pros.title')} />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-2 pb-6">
-        <p className="text-[#a0b0c5] text-sm mb-4">{t('tft.pros.subtitle')}</p>
+        <p className="text-fg-secondary text-sm mb-4">{t('tft.pros.subtitle')}</p>
 
         {/* Tab strip — primary classification filter */}
-        <div className="flex flex-wrap gap-1 mb-3 border-b border-[#1e2a3a]">
+        <div className="flex flex-wrap gap-1 mb-3 border-b border-border-subtle">
           <button
             onClick={() => setTab('verified')}
             className={`px-3 py-2 text-xs font-medium uppercase tracking-widest border-b-2 -mb-px ${
               tab === 'verified'
                 ? 'text-white border-[#7B61FF]'
-                : 'text-[#a0b0c5] border-transparent hover:text-white'
+                : 'text-fg-secondary border-transparent hover:text-white'
             }`}
           >
             {t('tft.pros.tab.verified')}{' '}
@@ -201,7 +201,7 @@ export default function TftProsPage() {
               className={`px-3 py-2 text-xs font-medium uppercase tracking-widest border-b-2 -mb-px ${
                 tab === o.value
                   ? 'text-white border-[#7B61FF]'
-                  : 'text-[#a0b0c5] border-transparent hover:text-white'
+                  : 'text-fg-secondary border-transparent hover:text-white'
               }`}
             >
               <span style={{ color: tab === o.value ? o.color : undefined }}>{o.icon}</span>{' '}
@@ -216,7 +216,7 @@ export default function TftProsPage() {
           <div className="flex flex-wrap gap-1.5 mb-3">
             <button
               onClick={() => setRegion('')}
-              className={`px-2.5 py-1 rounded text-xs font-medium ${region === '' ? 'bg-[#7B61FF] text-white' : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'}`}
+              className={`px-2.5 py-1 rounded text-xs font-medium ${region === '' ? 'bg-[#7B61FF] text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
             >
               {t('tft.filter.allRegions')}
             </button>
@@ -224,7 +224,7 @@ export default function TftProsPage() {
               <button
                 key={r.code}
                 onClick={() => setRegion(r.code)}
-                className={`px-2.5 py-1 rounded text-xs font-medium ${region === r.code ? 'bg-[#7B61FF] text-white' : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'}`}
+                className={`px-2.5 py-1 rounded text-xs font-medium ${region === r.code ? 'bg-[#7B61FF] text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
               >
                 {r.label} <span className="text-[10px] opacity-70">{r.count}</span>
               </button>
@@ -237,7 +237,7 @@ export default function TftProsPage() {
           <select
             value={team}
             onChange={e => setTeam(e.target.value)}
-            className="bg-[#141c2e] border border-[#1e2a3a] rounded px-2 py-1 text-xs text-white outline-none"
+            className="bg-surface-raised border border-border-subtle rounded px-2 py-1 text-xs text-white outline-none"
           >
             <option value="">{t('tft.pros.allTeams')}</option>
             {teamOptions.map(t => (
@@ -249,23 +249,23 @@ export default function TftProsPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder={t('tft.pros.searchPlaceholder')}
-            className="flex-1 min-w-[180px] bg-[#141c2e] border border-[#1e2a3a] rounded px-3 py-1 text-xs text-white outline-none focus:border-[#7B61FF]/60"
+            className="flex-1 min-w-[180px] bg-surface-raised border border-border-subtle rounded px-3 py-1 text-xs text-white outline-none focus:border-[#7B61FF]/60"
           />
         </div>
 
         {loading && (
-          <div className="text-[#7a8aa0] text-center py-8">{t('tft.loading')}</div>
+          <div className="text-fg-muted text-center py-8">{t('tft.loading')}</div>
         )}
 
         {!loading && filteredPros.length === 0 && (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#a0b0c5] text-sm">
+          <div className="bg-surface-base border border-border-subtle rounded p-6 text-center text-fg-secondary text-sm">
             {t('tft.pros.empty')}
           </div>
         )}
 
         {!loading && filteredPros.length > 0 && (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
-            <div className="grid grid-cols-[2.5rem_1fr_5.5rem_6rem_4rem_5rem_3rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#7a8aa0] bg-[#0a0e1a]">
+          <div className="bg-surface-base border border-border-subtle rounded overflow-hidden">
+            <div className="grid grid-cols-[2.5rem_1fr_5.5rem_6rem_4rem_5rem_3rem] gap-2 px-4 py-2 text-[10px] uppercase text-fg-muted bg-surface-sunken">
               <div></div>
               <div>{t('tft.pros.col.player')}</div>
               <div>{t('tft.pros.col.classification')}</div>
@@ -292,7 +292,7 @@ export default function TftProsPage() {
                 <a
                   key={p.puuid ?? p.pro_name}
                   href={slug ? `/tft/player/${slug}?region=${p.region}` : undefined}
-                  className="grid grid-cols-[2.5rem_1fr_5.5rem_6rem_4rem_5rem_3rem] gap-2 px-4 py-2 items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]"
+                  className="grid grid-cols-[2.5rem_1fr_5.5rem_6rem_4rem_5rem_3rem] gap-2 px-4 py-2 items-center text-xs hover:bg-white/5 border-t border-border-subtle"
                 >
                   <div className="flex-shrink-0">
                     {p.image_url ? (
@@ -300,11 +300,11 @@ export default function TftProsPage() {
                         src={p.image_url}
                         alt=""
                         loading="lazy"
-                        className="w-8 h-8 rounded-full object-cover bg-[#141c2e] border border-[#1e2a3a]"
+                        className="w-8 h-8 rounded-full object-cover bg-surface-raised border border-border-subtle"
                         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                       />
                     ) : (
-                      <div className="w-8 h-8 rounded-full bg-[#141c2e] border border-[#1e2a3a] flex items-center justify-center text-[#7a8aa0] text-[10px]">
+                      <div className="w-8 h-8 rounded-full bg-surface-raised border border-border-subtle flex items-center justify-center text-fg-muted text-[10px]">
                         {p.pro_name.slice(0, 2).toUpperCase()}
                       </div>
                     )}
@@ -323,7 +323,7 @@ export default function TftProsPage() {
                       )}
                     </div>
                     {(p.real_name || p.country) && (
-                      <div className="text-[#7a8aa0] text-[10px] truncate">
+                      <div className="text-fg-muted text-[10px] truncate">
                         {p.real_name}{p.real_name && p.country ? ' · ' : ''}{p.country}
                       </div>
                     )}
@@ -337,15 +337,15 @@ export default function TftProsPage() {
                       {badge.label}
                     </span>
                   </div>
-                  <div className="hidden sm:block text-[#a0b0c5] truncate">{p.team || '—'}</div>
-                  <div className="hidden sm:block text-[#a0b0c5]">{REGION_LABELS[p.region] || p.region.toUpperCase()}</div>
+                  <div className="hidden sm:block text-fg-secondary truncate">{p.team || '—'}</div>
+                  <div className="hidden sm:block text-fg-secondary">{REGION_LABELS[p.region] || p.region.toUpperCase()}</div>
                   <div className="text-[#c89b3c] text-right tabular-nums" title={earningsTooltip}>
                     {formatEarnings(p.total_earnings_usd)}
                     {earningSourcesNonZero.length >= 2 && (
-                      <span className="text-[8px] text-[#7a8aa0] ml-0.5" title={earningsTooltip}>•{earningSourcesNonZero.length}</span>
+                      <span className="text-[8px] text-fg-muted ml-0.5" title={earningsTooltip}>•{earningSourcesNonZero.length}</span>
                     )}
                   </div>
-                  <div className="flex items-center justify-end gap-1.5 text-[#7a8aa0]">
+                  <div className="flex items-center justify-end gap-1.5 text-fg-muted">
                     {p.twitch_handle && (
                       <a
                         href={`https://twitch.tv/${p.twitch_handle}`}

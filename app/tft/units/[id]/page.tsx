@@ -109,20 +109,20 @@ export default function TftUnitDetailPage() {
   const champ = assets?.champions[id];
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav active="units" />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
-        <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-5 mb-5">
+        <div className="bg-surface-base border border-border-subtle rounded-lg p-5 mb-5">
           <a href="/tft/units" className="text-[#7B61FF] text-xs hover:underline">← {t('nav.units')}</a>
           <div className="flex items-center gap-4 mt-2">
             {tftChampionTileUrl(assets, champ) ? (
               <img src={tftChampionTileUrl(assets, champ)!} alt={champ!.name} className="w-16 h-16 rounded-lg border-2 border-[#7B61FF] object-cover" />
             ) : (
-              <div className="w-16 h-16 rounded-lg bg-[#1e2a3a]" />
+              <div className="w-16 h-16 rounded-lg bg-surface-overlay" />
             )}
             <div className="flex-1">
               <h1 className="text-white text-2xl font-medium">{champ?.name || prettyChar(id)}</h1>
-              <div className="text-[#a0b0c5] text-xs mt-0.5">
+              <div className="text-fg-secondary text-xs mt-0.5">
                 {champ?.cost ? `${champ.cost}-Cost` : ''}
                 {champ?.traits?.length ? (
                   <>
@@ -148,7 +148,7 @@ export default function TftUnitDetailPage() {
         <div className="flex justify-end items-center gap-2 mb-4">
           <a
             href={buildExplorerUrl({ units: [id], bucket })}
-            className="px-2.5 py-1.5 rounded text-xs bg-[#141c2e] border border-[#1e2a3a] text-[#a0b0c5] hover:text-white hover:border-[#7B61FF]/60 transition-colors flex items-center gap-1.5"
+            className="px-2.5 py-1.5 rounded text-xs bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-[#7B61FF]/60 transition-colors flex items-center gap-1.5"
             title={t('tft.drill.openInExplorer')}
           >
             <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -162,7 +162,7 @@ export default function TftUnitDetailPage() {
 
         {hasData === false && <EmptyData />}
         {data === null && hasData && (
-          <div className="text-[#a0b0c5] text-center py-8">{t('tft.unit.notFound')}</div>
+          <div className="text-fg-secondary text-center py-8">{t('tft.unit.notFound')}</div>
         )}
         {data && (
           <>
@@ -177,7 +177,7 @@ export default function TftUnitDetailPage() {
                 doesn't carry per-tier data yet (pre-rollout JSONs). */}
             {data.topItemsByTier && Object.keys(data.topItemsByTier).length > 0 && (
               <div className="flex items-center gap-2 mb-3">
-                <span className="text-[#7a8aa0] text-[11px] uppercase tracking-widest">{t('tft.byStarLevel')}</span>
+                <span className="text-fg-muted text-[11px] uppercase tracking-widest">{t('tft.byStarLevel')}</span>
                 <div className="flex gap-1">
                   {(['all','1','2','3'] as StarTier[]).map(k => {
                     const active = star === k;
@@ -193,8 +193,8 @@ export default function TftUnitDetailPage() {
                           active
                             ? 'bg-[#7B61FF] border-[#7B61FF] text-white'
                             : disabled
-                            ? 'bg-[#141c2e] border-[#1e2a3a] text-[#3a4555] cursor-not-allowed'
-                            : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5] hover:border-[#7B61FF]/40'
+                            ? 'bg-surface-raised border-border-subtle text-[#3a4555] cursor-not-allowed'
+                            : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-[#7B61FF]/40'
                         }`}
                       >
                         {label}
@@ -215,16 +215,16 @@ export default function TftUnitDetailPage() {
                   <Section title={t('tft.topBuilds')}>
                     <div className="space-y-2">
                       {itemSets.slice(0, 5).map((s, i) => (
-                        <div key={i} className="flex items-center gap-3 bg-[#141c2e] border border-[#1e2a3a] rounded p-2.5">
+                        <div key={i} className="flex items-center gap-3 bg-surface-raised border border-border-subtle rounded p-2.5">
                           <div className="flex gap-1">
                             {s.items.map((it, j) => <ItemIcon key={j} apiName={it} assets={assets} size={9} />)}
                           </div>
                           <div className="flex-1" />
                           <div className="text-right text-[11px] leading-tight">
                             <div className="text-white tabular-nums">Ø {s.avgPlacement?.toFixed(2) ?? '—'}</div>
-                            <div className="text-[#7a8aa0] tabular-nums">
+                            <div className="text-fg-muted tabular-nums">
                               {s.top4Rate != null ? `${(s.top4Rate * 100).toFixed(0)}% T4` : ''}
-                              <span className="text-[#5a6a80]"> · {s.games}</span>
+                              <span className="text-fg-faint"> · {s.games}</span>
                             </div>
                           </div>
                         </div>
@@ -242,10 +242,10 @@ export default function TftUnitDetailPage() {
                   <Section title={t('tft.mostUsedItems')}>
                     <div className="grid grid-cols-4 gap-1.5">
                       {items.slice(0, 12).map((it, i) => (
-                        <div key={i} className="flex flex-col items-center gap-0.5 bg-[#141c2e] border border-[#1e2a3a] rounded p-1.5">
+                        <div key={i} className="flex flex-col items-center gap-0.5 bg-surface-raised border border-border-subtle rounded p-1.5">
                           <ItemIcon apiName={it.item} assets={assets} size={9} />
                           <div className="text-[10px] text-white tabular-nums">Ø{it.avgPlacement?.toFixed(1) ?? '—'}</div>
-                          <div className="text-[9px] text-[#7a8aa0] tabular-nums">{it.games}</div>
+                          <div className="text-[9px] text-fg-muted tabular-nums">{it.games}</div>
                         </div>
                       ))}
                     </div>
@@ -278,16 +278,16 @@ export default function TftUnitDetailPage() {
                           : si === '1' ? t('tft.slotSecond')
                           : t('tft.slotThird');
                         return (
-                          <div key={si} className="bg-[#141c2e] border border-[#1e2a3a] rounded p-2.5">
-                            <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest mb-1.5">{label}</div>
+                          <div key={si} className="bg-surface-raised border border-border-subtle rounded p-2.5">
+                            <div className="text-fg-muted text-[10px] uppercase tracking-widest mb-1.5">{label}</div>
                             <div className="space-y-1">
                               {entries.slice(0, 3).map((e, i) => (
                                 <div key={i} className="flex items-center gap-2">
                                   <ItemIcon apiName={e.item} assets={assets} size={9} />
-                                  <div className="flex-1 h-1.5 bg-[#1e2a3a] rounded overflow-hidden">
+                                  <div className="flex-1 h-1.5 bg-surface-overlay rounded overflow-hidden">
                                     <div className="h-full bg-[#7B61FF]" style={{ width: `${(e.count / total) * 100}%` }} />
                                   </div>
-                                  <span className="text-[11px] text-[#a0b0c5] tabular-nums w-10 text-right">{((e.count / total) * 100).toFixed(0)}%</span>
+                                  <span className="text-[11px] text-fg-secondary tabular-nums w-10 text-right">{((e.count / total) * 100).toFixed(0)}%</span>
                                 </div>
                               ))}
                             </div>
@@ -328,7 +328,7 @@ export default function TftUnitDetailPage() {
                   : null;
                 return (
                   <Section title={t('tft.carryStrength')}>
-                    <div className="text-[#7a8aa0] text-[11px] mb-2">{t('tft.carryStrengthCaption')}</div>
+                    <div className="text-fg-muted text-[11px] mb-2">{t('tft.carryStrengthCaption')}</div>
                     {focusedBin && (
                       <div className="bg-[#7B61FF]/10 border border-[#7B61FF]/40 rounded p-2.5 mb-2 flex flex-wrap items-center gap-3 text-[11px] tabular-nums">
                         <span className="text-[#c39bff] font-medium">
@@ -337,22 +337,22 @@ export default function TftUnitDetailPage() {
                         <span className="text-white">Ø {focusedBin.avgPlacement?.toFixed(2) ?? '—'}</span>
                         <span className="text-[#3ecf8e]">{focusedBin.top4Rate != null ? `${(focusedBin.top4Rate * 100).toFixed(1)}% T4` : '—'}</span>
                         <span className="text-[#e0c75a]">{focusedBin.top1Rate != null ? `${(focusedBin.top1Rate * 100).toFixed(1)}% T1` : '—'}</span>
-                        <span className="text-[#7a8aa0]">{focusedBin.games.toLocaleString('de-DE')} {t('tft.gamesShort')}</span>
+                        <span className="text-fg-muted">{focusedBin.games.toLocaleString('de-DE')} {t('tft.gamesShort')}</span>
                         <button
                           type="button"
                           onClick={() => { setStar('all'); setItemCount(null); }}
-                          className="ml-auto text-[#7a8aa0] hover:text-white text-[11px]"
+                          className="ml-auto text-fg-muted hover:text-white text-[11px]"
                         >× {t('tft.adv.reset')}</button>
                       </div>
                     )}
-                    <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3 overflow-x-auto">
+                    <div className="bg-surface-raised border border-border-subtle rounded p-3 overflow-x-auto">
                       <div
                         className="inline-grid gap-1 text-[11px] tabular-nums min-w-full"
                         style={{ gridTemplateColumns: `auto repeat(${itemCounts.length}, minmax(2.6rem, 1fr))` }}
                       >
-                        <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest pr-2 flex items-end">{t('tft.itemsShort')} →</div>
+                        <div className="text-fg-muted text-[10px] uppercase tracking-widest pr-2 flex items-end">{t('tft.itemsShort')} →</div>
                         {itemCounts.map(ic => (
-                          <div key={`h-${ic}`} className="text-[#a0b0c5] text-center pb-0.5">{ic}</div>
+                          <div key={`h-${ic}`} className="text-fg-secondary text-center pb-0.5">{ic}</div>
                         ))}
                         {tiers.map(tier => (
                           <Fragment key={tier}>
@@ -379,7 +379,7 @@ export default function TftUnitDetailPage() {
                                   }}
                                   className={`rounded text-center py-2 text-white transition-all ${
                                     isClickable ? 'cursor-pointer hover:brightness-125' : 'cursor-default'
-                                  } ${isFocused ? 'ring-2 ring-[#c39bff] ring-offset-1 ring-offset-[#141c2e]' : ''}`}
+                                  } ${isFocused ? 'ring-2 ring-[#c39bff] ring-offset-1 ring-offset-surface-raised' : ''}`}
                                   style={{ backgroundColor: colorFor(place) }}
                                   title={e ? `${tier}★ · ${ic} ${t('tft.itemsShort')} · Ø ${place?.toFixed(2)} · ${e.top4Rate != null ? `${(e.top4Rate * 100).toFixed(0)}% T4` : '—'} · ${e.games} ${t('tft.gamesShort')}` : undefined}
                                 >
@@ -414,11 +414,11 @@ export default function TftUnitDetailPage() {
                 }
                 return (
                   <Section title={t('tft.damageAtlas')}>
-                    <div className="text-[#7a8aa0] text-[11px] mb-2">{t('tft.damageAtlasCaption')}</div>
-                    <div className="bg-[#141c2e] border border-[#1e2a3a] rounded overflow-hidden">
+                    <div className="text-fg-muted text-[11px] mb-2">{t('tft.damageAtlasCaption')}</div>
+                    <div className="bg-surface-raised border border-border-subtle rounded overflow-hidden">
                       <table className="w-full text-[11px] tabular-nums">
                         <thead>
-                          <tr className="text-[#7a8aa0] border-b border-[#1e2a3a]">
+                          <tr className="text-fg-muted border-b border-border-subtle">
                             <th className="text-left px-2 py-1.5 font-normal">{t('tft.stars')}</th>
                             <th className="text-left px-2 py-1.5 font-normal">{t('tft.itemsShort')}</th>
                             <th className="text-left px-2 py-1.5 font-normal" colSpan={2}>{t('tft.dmgTypical')}</th>
@@ -439,12 +439,12 @@ export default function TftUnitDetailPage() {
                               const p95Pct = globalMax > 0 && bin.p95 ? (bin.p95 / globalMax) * 100 : 0;
                               const rangeWidth = Math.max(2, p95Pct - p50Pct);
                               return (
-                                <tr key={`${tier}-${ic}`} className="border-b border-[#1e2a3a]/50 last:border-0">
+                                <tr key={`${tier}-${ic}`} className="border-b border-border-subtle/50 last:border-0">
                                   <td className="px-2 py-1.5 text-white"><span className="text-[#e0c75a]">★</span>{tier}</td>
-                                  <td className="px-2 py-1.5 text-[#a0b0c5]">{ic}</td>
+                                  <td className="px-2 py-1.5 text-fg-secondary">{ic}</td>
                                   <td className="px-2 py-1.5 text-right text-white w-12">{fmt(bin.p50)}</td>
                                   <td className="px-2 py-1.5 w-32">
-                                    <div className="relative h-2 bg-[#0d1526] rounded overflow-hidden">
+                                    <div className="relative h-2 bg-surface-base rounded overflow-hidden">
                                       <div
                                         className="absolute h-full"
                                         style={{
@@ -456,7 +456,7 @@ export default function TftUnitDetailPage() {
                                     </div>
                                   </td>
                                   <td className="px-2 py-1.5 text-right text-[#3ecf8e]">{fmt(bin.p95)}</td>
-                                  <td className="px-2 py-1.5 text-right text-[#7a8aa0]">{bin.games}</td>
+                                  <td className="px-2 py-1.5 text-right text-fg-muted">{bin.games}</td>
                                 </tr>
                               );
                             });
@@ -470,7 +470,7 @@ export default function TftUnitDetailPage() {
 
               {timeline.length >= 2 && (
                 <Section title={t('tft.unitTimeline')}>
-                  <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3" style={{ height: 180 }}>
+                  <div className="bg-surface-raised border border-border-subtle rounded p-3" style={{ height: 180 }}>
                     <ResponsiveContainer>
                       <LineChart data={timeline} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
                         <XAxis
@@ -525,7 +525,7 @@ export default function TftUnitDetailPage() {
                         <a
                           key={c.slug}
                           href={`/tft/comps/${encodeURIComponent(c.slug)}?bucket=${bucket}&region=euw1`}
-                          className="flex items-center gap-2 bg-[#141c2e] border border-[#1e2a3a] rounded p-2 hover:border-[#7B61FF]/40 transition-colors"
+                          className="flex items-center gap-2 bg-surface-raised border border-border-subtle rounded p-2 hover:border-[#7B61FF]/40 transition-colors"
                         >
                           {carryUrl && (
                             <img src={carryUrl} alt="" className="w-8 h-8 rounded border border-[#c39bff]/60 object-cover flex-shrink-0" />
@@ -535,13 +535,13 @@ export default function TftUnitDetailPage() {
                               {traitName}
                               {variant && <span className="text-[#a892ff]"> · {variant}</span>}
                             </div>
-                            <div className="text-[10px] text-[#7a8aa0] truncate">
+                            <div className="text-[10px] text-fg-muted truncate">
                               {carry?.name || (parts ? prettyChar(parts.carry) : '')}
                             </div>
                           </div>
                           <div className="text-right text-[11px] tabular-nums leading-tight">
                             <div className="text-white">Ø {c.avgPlacement?.toFixed(2) ?? '—'}</div>
-                            <div className="text-[#7a8aa0]">{c.games}</div>
+                            <div className="text-fg-muted">{c.games}</div>
                           </div>
                         </a>
                       );
@@ -560,8 +560,8 @@ export default function TftUnitDetailPage() {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-3">
-      <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">{label}</div>
+    <div className="bg-surface-base border border-border-subtle rounded p-3">
+      <div className="text-fg-muted text-[10px] uppercase tracking-widest">{label}</div>
       <div className="text-white text-lg font-medium mt-1">{value}</div>
     </div>
   );
@@ -569,7 +569,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="mb-5">
-      <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-2">{title}</h2>
+      <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-2">{title}</h2>
       {children}
     </div>
   );
@@ -581,7 +581,7 @@ function ItemIcon({ apiName, assets, size = 10 }: { apiName: string; assets: Tft
   const href = `/tft/items/${encodeURIComponent(apiName)}`;
   if (!url) {
     return (
-      <a href={href} className={`${sizeClass} rounded bg-[#1e2a3a] flex items-center justify-center text-[8px] text-[#7a8aa0] text-center px-0.5 hover:bg-[#2a3a52] transition-colors`} title={item?.name || apiName}>
+      <a href={href} className={`${sizeClass} rounded bg-surface-overlay flex items-center justify-center text-[8px] text-fg-muted text-center px-0.5 hover:bg-[#2a3a52] transition-colors`} title={item?.name || apiName}>
         {prettyItem(apiName)}
       </a>
     );

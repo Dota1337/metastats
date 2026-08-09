@@ -61,7 +61,7 @@ export default function TftAugmentReferenceDetailPage() {
   );
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav active="augments" />
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6">
         <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -69,7 +69,7 @@ export default function TftAugmentReferenceDetailPage() {
           {meta && (
             <a
               href={`/tft/augments/compare?a=${encodeURIComponent(apiName)}`}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-[#141c2e] border border-[#1e2a3a] text-[#a0b0c5] hover:text-white hover:border-[#7B61FF]/50 text-xs transition-colors"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-[#7B61FF]/50 text-xs transition-colors"
               title={t('tft.augmentsCompare.fromDetail')}
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -84,18 +84,18 @@ export default function TftAugmentReferenceDetailPage() {
         </div>
 
         {assets && !meta && (
-          <div className="mt-4 bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#a0b0c5] text-sm">
+          <div className="mt-4 bg-surface-base border border-border-subtle rounded p-6 text-center text-fg-secondary text-sm">
             —
           </div>
         )}
 
         {meta && (
-          <div className="mt-2 bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-5">
+          <div className="mt-2 bg-surface-base border border-border-subtle rounded-lg p-5">
             <div className="flex items-start gap-4 flex-wrap">
               {iconUrl ? (
                 <img src={iconUrl} alt={meta.name} className="w-20 h-20 rounded-lg border-2" style={{ borderColor: tierColor }} />
               ) : (
-                <div className="w-20 h-20 rounded-lg bg-[#1e2a3a]" />
+                <div className="w-20 h-20 rounded-lg bg-surface-overlay" />
               )}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 flex-wrap">
@@ -110,7 +110,7 @@ export default function TftAugmentReferenceDetailPage() {
                   )}
                 </div>
                 {meta.desc && (
-                  <p className="text-[#a0b0c5] text-sm mt-3 leading-relaxed whitespace-pre-line">{meta.desc}</p>
+                  <p className="text-fg-secondary text-sm mt-3 leading-relaxed whitespace-pre-line">{meta.desc}</p>
                 )}
               </div>
             </div>
@@ -119,9 +119,9 @@ export default function TftAugmentReferenceDetailPage() {
                 (2-1/3-2/4-2), inactive sind dezent grayed-out. KEIN
                 Verteilungs-Chart mit Counts/Stats (feedback_no_augment_stats
                 Zeile 13: „Augment-by-Stage-Charts mit Stats" verboten). */}
-            <div className="mt-4 pt-4 border-t border-[#1e2a3a]">
+            <div className="mt-4 pt-4 border-t border-border-subtle">
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-[#a0b0c5] text-[10px] uppercase tracking-widest">
+                <span className="text-fg-secondary text-[10px] uppercase tracking-widest">
                   {t('tft.augment.stage.appearsIn')}
                 </span>
               </div>
@@ -147,11 +147,11 @@ export default function TftAugmentReferenceDetailPage() {
                   })}
                 </div>
               ) : (
-                <div className="text-[#7a8aa0] text-[11px] italic">
+                <div className="text-fg-muted text-[11px] italic">
                   {t('tft.augment.stage.unknown')}
                 </div>
               )}
-              <div className="text-[#5a6a80] text-[10px] italic mt-2">
+              <div className="text-fg-faint text-[10px] italic mt-2">
                 {t('tft.augment.stage.sourceFooter')}
               </div>
             </div>
@@ -162,8 +162,8 @@ export default function TftAugmentReferenceDetailPage() {
             Sektion ohne Stats (feedback_no_augment_stats: Augment-Stats
             verboten, kuratierte Comp-Liste pro Augment ist erlaubt). */}
         {meta && matchingComps.length > 0 && (
-          <div className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-5">
-            <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">
+          <div className="mt-5 bg-surface-base border border-border-subtle rounded-lg p-5">
+            <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">
               {t('tft.augment.compsPlayingThis')}
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -180,7 +180,7 @@ export default function TftAugmentReferenceDetailPage() {
                   <a
                     key={m.slug}
                     href={`/tft/comps/${encodeURIComponent(compSlug)}`}
-                    className="flex items-center gap-3 p-3 rounded-md bg-[#141c2e] border border-[#1e2a3a] hover:border-[#7B61FF]/50 transition-colors"
+                    className="flex items-center gap-3 p-3 rounded-md bg-surface-raised border border-border-subtle hover:border-[#7B61FF]/50 transition-colors"
                   >
                     {carryUrl ? (
                       <img
@@ -189,13 +189,13 @@ export default function TftAugmentReferenceDetailPage() {
                         className="w-10 h-10 rounded-md border-2 border-[#c39bff]/50 object-cover flex-shrink-0"
                       />
                     ) : (
-                      <div className="w-10 h-10 rounded-md bg-[#1e2a3a] flex-shrink-0" />
+                      <div className="w-10 h-10 rounded-md bg-surface-overlay flex-shrink-0" />
                     )}
                     <div className="min-w-0 flex-1">
                       <div className="text-white text-sm font-medium truncate">{carryName}</div>
-                      <div className="text-[#a0b0c5] text-[11px] truncate">{traitName}</div>
+                      <div className="text-fg-secondary text-[11px] truncate">{traitName}</div>
                       {m.guide.difficulty && (
-                        <div className="text-[10px] text-[#7a8aa0] uppercase tracking-wider mt-0.5">
+                        <div className="text-[10px] text-fg-muted uppercase tracking-wider mt-0.5">
                           {m.guide.difficulty}
                         </div>
                       )}
@@ -204,7 +204,7 @@ export default function TftAugmentReferenceDetailPage() {
                 );
               })}
             </div>
-            <div className="text-[#5a6a80] text-[10px] mt-3 italic">
+            <div className="text-fg-faint text-[10px] mt-3 italic">
               {t('tft.augment.compsPlayingThis.note')}
             </div>
           </div>

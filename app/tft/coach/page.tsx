@@ -96,23 +96,23 @@ function CoachChat() {
   ];
 
   return (
-    <main className="min-h-screen bg-[#0e1525] flex flex-col">
+    <main className="min-h-screen bg-surface-page flex flex-col">
       <Nav active={'coach' as any} />
       <div className="flex-1 max-w-3xl w-full mx-auto px-4 sm:px-6 py-6 flex flex-col">
         <div className="mb-4">
           <h1 className="text-white text-2xl font-medium">{t('tft.coach.title')}</h1>
-          <p className="text-[#a0b0c5] text-sm">
+          <p className="text-fg-secondary text-sm">
             {puuid ? t('tft.coach.subtitleWithProfile') : t('tft.coach.subtitle')}
           </p>
         </div>
 
         <div
           ref={scrollRef}
-          className="flex-1 bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-4 overflow-y-auto mb-3"
+          className="flex-1 bg-surface-base border border-border-subtle rounded-lg p-4 overflow-y-auto mb-3"
           style={{ minHeight: 360, maxHeight: 'calc(100vh - 320px)' }}
         >
           {messages.length === 0 && (
-            <div className="text-center text-[#7a8aa0] py-12">
+            <div className="text-center text-fg-muted py-12">
               <div className="text-[#a892ff] text-3xl mb-2">⚡</div>
               <div className="text-sm mb-4">{t('tft.coach.greet')}</div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-md mx-auto">
@@ -120,7 +120,7 @@ function CoachChat() {
                   <button
                     key={i}
                     onClick={() => setInput(s)}
-                    className="text-left px-3 py-2 bg-[#141c2e] border border-[#1e2a3a] rounded text-[12px] text-[#a0b0c5] hover:border-[#7B61FF]/40 hover:text-white"
+                    className="text-left px-3 py-2 bg-surface-raised border border-border-subtle rounded text-[12px] text-fg-secondary hover:border-[#7B61FF]/40 hover:text-white"
                   >{s}</button>
                 ))}
               </div>
@@ -132,7 +132,7 @@ function CoachChat() {
                 className={`inline-block max-w-[85%] px-3 py-2 rounded-lg text-sm whitespace-pre-wrap ${
                   m.role === 'user'
                     ? 'bg-[#7B61FF] text-white'
-                    : 'bg-[#141c2e] border border-[#1e2a3a] text-[#e0e6f0]'
+                    : 'bg-surface-raised border border-border-subtle text-[#e0e6f0]'
                 }`}
               >
                 {m.content || (m.role === 'assistant' && streaming ? '…' : '')}
@@ -149,7 +149,7 @@ function CoachChat() {
             onChange={e => setInput(e.target.value)}
             placeholder={t('tft.coach.placeholder')}
             disabled={streaming}
-            className="flex-1 bg-[#141c2e] border border-[#1e2a3a] rounded px-3 py-2 text-sm text-white outline-none focus:border-[#7B61FF]/60 disabled:opacity-50"
+            className="flex-1 bg-surface-raised border border-border-subtle rounded px-3 py-2 text-sm text-white outline-none focus:border-[#7B61FF]/60 disabled:opacity-50"
           />
           <button
             type="submit"

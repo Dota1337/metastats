@@ -45,26 +45,26 @@ export default function TftPatchListPage() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav active="comps" />
       <TftHero pageTitle={t('tft.patchNotes.title')} />
       <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-2 pb-6">
-        <p className="text-[#a0b0c5] text-sm mb-4">{t('tft.patchNotes.subtitle')}</p>
+        <p className="text-fg-secondary text-sm mb-4">{t('tft.patchNotes.subtitle')}</p>
 
-        {loading && <div className="text-[#7a8aa0] text-center py-8">{t('tft.loading')}</div>}
+        {loading && <div className="text-fg-muted text-center py-8">{t('tft.loading')}</div>}
 
         {!loading && patches.length === 0 && (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#a0b0c5] text-sm">
+          <div className="bg-surface-base border border-border-subtle rounded p-6 text-center text-fg-secondary text-sm">
             {t('tft.patchNotes.empty')}
           </div>
         )}
 
         {!loading && patches.length > 0 && (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
+          <div className="bg-surface-base border border-border-subtle rounded overflow-hidden">
             {patches.map((p, i) => (
               <div
                 key={`${p.patch}-${p.set_number}`}
-                className={`px-4 py-3 hover:bg-white/5 ${i === 0 ? '' : 'border-t border-[#1e2a3a]'}`}
+                className={`px-4 py-3 hover:bg-white/5 ${i === 0 ? '' : 'border-t border-border-subtle'}`}
               >
                 <div className="flex items-center justify-between gap-3 flex-wrap">
                   <a
@@ -79,7 +79,7 @@ export default function TftPatchListPage() {
                         </span>
                       )}
                     </div>
-                    <div className="text-[#a0b0c5] text-xs mt-0.5">
+                    <div className="text-fg-secondary text-xs mt-0.5">
                       Set {p.set_number} · {new Date(p.first_day).toLocaleDateString()} – {new Date(p.last_day).toLocaleDateString()}
                     </div>
                   </a>
@@ -89,7 +89,7 @@ export default function TftPatchListPage() {
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={e => e.stopPropagation()}
-                      className="text-[10px] uppercase tracking-widest text-[#a0b0c5] hover:text-[#7B61FF] flex items-center gap-1 transition-colors"
+                      className="text-[10px] uppercase tracking-widest text-fg-secondary hover:text-[#7B61FF] flex items-center gap-1 transition-colors"
                       title={t('tft.patchNotes.officialLinkHint')}
                     >
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -103,7 +103,7 @@ export default function TftPatchListPage() {
                       <div className="text-[#7B61FF] text-sm font-medium tabular-nums">
                         {p.total_matches.toLocaleString()}
                       </div>
-                      <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">
+                      <div className="text-fg-muted text-[10px] uppercase tracking-widest">
                         {t('tft.patchNotes.matches')}
                       </div>
                     </div>

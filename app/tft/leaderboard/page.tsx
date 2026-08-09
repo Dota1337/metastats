@@ -87,17 +87,17 @@ export default function TftLeaderboardPage() {
     }).format(n);
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav active="leaderboard" />
       <TftHero pageTitle={t('nav.leaderboard')} />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-2 pb-6">
 
 
         {tierDist && tierDist.tiers.length > 0 && (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-4">
+          <div className="bg-surface-base border border-border-subtle rounded p-4 mb-4">
             <div className="flex items-baseline justify-between mb-3">
-              <div className="text-[#a0b0c5] text-xs uppercase tracking-widest">{t('champ.rankDistribution')}</div>
-              {tierDist.month && <div className="text-[#7a8aa0] text-[10px]">{tierDist.month}</div>}
+              <div className="text-fg-secondary text-xs uppercase tracking-widest">{t('champ.rankDistribution')}</div>
+              {tierDist.month && <div className="text-fg-muted text-[10px]">{tierDist.month}</div>}
             </div>
             <div className="flex items-end gap-2 h-32 mb-2">
               {(() => {
@@ -125,7 +125,7 @@ export default function TftLeaderboardPage() {
             <button
               key={r.value}
               onClick={() => setRegion(r.value)}
-              className={`px-3 py-1.5 rounded text-xs font-medium ${region === r.value ? 'bg-[#7B61FF] text-white' : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'}`}
+              className={`px-3 py-1.5 rounded text-xs font-medium ${region === r.value ? 'bg-[#7B61FF] text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
             >
               {r.label}
             </button>
@@ -138,7 +138,7 @@ export default function TftLeaderboardPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder={t('tft.search.player')}
-            className="w-full sm:w-80 bg-[#141c2e] border border-[#1e2a3a] rounded px-3 py-1.5 text-sm text-white placeholder:text-[#5a6a80] outline-none focus:border-[#7B61FF]/60"
+            className="w-full sm:w-80 bg-surface-raised border border-border-subtle rounded px-3 py-1.5 text-sm text-white placeholder:text-fg-faint outline-none focus:border-[#7B61FF]/60"
           />
         </div>
 
@@ -147,7 +147,7 @@ export default function TftLeaderboardPage() {
             <button
               key={tr.value}
               onClick={() => setTier(tr.value)}
-              className={`px-3 py-1.5 rounded text-xs font-medium ${tier === tr.value ? 'text-[#0a0e1a]' : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'}`}
+              className={`px-3 py-1.5 rounded text-xs font-medium ${tier === tr.value ? 'text-surface-sunken' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
               style={tier === tr.value ? { backgroundColor: tr.color } : {}}
             >
               {tr.value}
@@ -155,12 +155,12 @@ export default function TftLeaderboardPage() {
           ))}
         </div>
 
-        {loading && <div className="text-[#7a8aa0] text-center py-8">{t('tft.loading')}</div>}
+        {loading && <div className="text-fg-muted text-center py-8">{t('tft.loading')}</div>}
         {error && <div className="bg-red-500/10 border border-red-500/30 rounded p-4 text-red-400 text-sm">{error}</div>}
 
         {!loading && !error && (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
-            <div className="hidden sm:grid grid-cols-[3rem_1fr_5rem_5rem_5rem_7rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#7a8aa0] bg-[#0a0e1a]">
+          <div className="bg-surface-base border border-border-subtle rounded overflow-hidden">
+            <div className="hidden sm:grid grid-cols-[3rem_1fr_5rem_5rem_5rem_7rem] gap-2 px-4 py-2 text-[10px] uppercase text-fg-muted bg-surface-sunken">
               <div className="text-right">#</div>
               <div>{t('tft.pros.col.player')}</div>
               <div className="text-right">LP</div>
@@ -186,28 +186,28 @@ export default function TftLeaderboardPage() {
                 <a
                   key={p.puuid}
                   href={slug ? `/tft/player/${slug}?region=${region}` : '#'}
-                  className="block sm:grid sm:grid-cols-[3rem_1fr_5rem_5rem_5rem_7rem] gap-2 px-4 py-2 sm:items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]"
+                  className="block sm:grid sm:grid-cols-[3rem_1fr_5rem_5rem_5rem_7rem] gap-2 px-4 py-2 sm:items-center text-xs hover:bg-white/5 border-t border-border-subtle"
                 >
                   {/* Mobile: rank + name on first row, stats stacked below.
                       Desktop: original 6-col grid. */}
-                  <div className="hidden sm:block text-right text-[#a0b0c5]">{p.rank}</div>
+                  <div className="hidden sm:block text-right text-fg-secondary">{p.rank}</div>
                   <div className="flex items-baseline gap-2 sm:block">
-                    <span className="text-[#a0b0c5] text-[10px] sm:hidden">#{p.rank}</span>
+                    <span className="text-fg-secondary text-[10px] sm:hidden">#{p.rank}</span>
                     <span className="text-white truncate flex-1 sm:flex-initial">
-                      {p.gameName ? `${p.gameName}` : <span className="text-[#7a8aa0]">unbekannt</span>}
-                      {p.tagLine && <span className="text-[#7a8aa0] text-[10px]"> #{p.tagLine}</span>}
+                      {p.gameName ? `${p.gameName}` : <span className="text-fg-muted">unbekannt</span>}
+                      {p.tagLine && <span className="text-fg-muted text-[10px]"> #{p.tagLine}</span>}
                     </span>
                   </div>
                   <div className="hidden sm:block text-right text-white">{p.leaguePoints}</div>
-                  <div className="hidden sm:block text-right text-[#7a8aa0]">{total}</div>
-                  <div className="hidden sm:block text-right text-[#a0b0c5]">{wr}%</div>
+                  <div className="hidden sm:block text-right text-fg-muted">{total}</div>
+                  <div className="hidden sm:block text-right text-fg-secondary">{wr}%</div>
                   <div className="flex sm:block items-center justify-between mt-1 sm:mt-0 sm:text-right tabular-nums">
-                    <span className="text-[#7a8aa0] text-[10px] sm:hidden">
+                    <span className="text-fg-muted text-[10px] sm:hidden">
                       {p.leaguePoints} LP · {total} {t('tft.gamesShort')} · {wr}% WR
                     </span>
                     {mv != null
                       ? <span className="text-[#7B61FF] font-medium">{fmtEur(mv)}</span>
-                      : <span className="text-[#7a8aa0]">—</span>
+                      : <span className="text-fg-muted">—</span>
                     }
                   </div>
                 </a>

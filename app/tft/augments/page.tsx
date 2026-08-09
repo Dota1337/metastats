@@ -111,7 +111,7 @@ export default function TftAugmentsReferencePage() {
   }, [augments]);
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav active="augments" />
       <TftHero pageTitle={t('nav.augments')} subtitle={assets?.setName} />
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-2 pb-6">
@@ -132,12 +132,12 @@ export default function TftAugmentsReferencePage() {
                 className={`px-3 py-1 rounded text-xs border transition-colors ${
                   active
                     ? 'text-white'
-                    : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5] hover:border-[#7B61FF]/40'
+                    : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-[#7B61FF]/40'
                 }`}
                 style={active ? { backgroundColor: `${color}25`, borderColor: `${color}80`, color } : undefined}
               >
                 {tk === 'all' ? t('tft.augment.allTiers') : label}
-                <span className="ml-1 text-[#7a8aa0] tabular-nums">{counts[tk]}</span>
+                <span className="ml-1 text-fg-muted tabular-nums">{counts[tk]}</span>
               </button>
             );
           })}
@@ -146,7 +146,7 @@ export default function TftAugmentsReferencePage() {
             placeholder={t('tft.augment.searchPlaceholder')}
             value={query}
             onChange={e => setQuery(e.target.value)}
-            className="flex-1 min-w-[140px] bg-[#141c2e] border border-[#1e2a3a] rounded px-3 py-1 text-xs text-white focus:outline-none focus:border-[#7B61FF]/60"
+            className="flex-1 min-w-[140px] bg-surface-raised border border-border-subtle rounded px-3 py-1 text-xs text-white focus:outline-none focus:border-[#7B61FF]/60"
           />
         </div>
 
@@ -154,7 +154,7 @@ export default function TftAugmentsReferencePage() {
             Override (refresh-augment-stages.mjs). Multi-Stage-Augments
             erscheinen bei jedem ihrer Stages im Filter. */}
         <div className="flex flex-wrap items-center gap-2 mb-4">
-          <span className="text-[#7a8aa0] text-[10px] uppercase tracking-widest mr-1">{t('tft.augment.stage.label')}:</span>
+          <span className="text-fg-muted text-[10px] uppercase tracking-widest mr-1">{t('tft.augment.stage.label')}:</span>
           {(['all', '2-1', '3-2', '4-2'] as const).map(s => {
             const active = stageFilter === s;
             const color = s === 'all' ? '#7B61FF' : stageColor(s as AugmentStage);
@@ -166,7 +166,7 @@ export default function TftAugmentsReferencePage() {
                 className={`px-2.5 py-1 rounded text-xs border transition-colors ${
                   active
                     ? 'text-white'
-                    : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5] hover:border-[#7B61FF]/40'
+                    : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-[#7B61FF]/40'
                 }`}
                 style={active ? { backgroundColor: `${color}25`, borderColor: `${color}80`, color } : undefined}
               >
@@ -174,15 +174,15 @@ export default function TftAugmentsReferencePage() {
               </button>
             );
           })}
-          <div className="w-px h-5 bg-[#1e2a3a] mx-1" />
-          <span className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">{t('tft.sortBy')}:</span>
+          <div className="w-px h-5 bg-surface-overlay mx-1" />
+          <span className="text-fg-muted text-[10px] uppercase tracking-widest">{t('tft.sortBy')}:</span>
           <button
             type="button"
             onClick={() => setSortMode('tier')}
             className={`px-2.5 py-1 rounded text-xs border transition-colors ${
               sortMode === 'tier'
                 ? 'bg-[#7B61FF]/25 border-[#7B61FF]/80 text-[#a892ff]'
-                : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5] hover:border-[#7B61FF]/40'
+                : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-[#7B61FF]/40'
             }`}
           >
             {t('tft.augment.sort.tier')}
@@ -193,13 +193,13 @@ export default function TftAugmentsReferencePage() {
             className={`px-2.5 py-1 rounded text-xs border transition-colors ${
               sortMode === 'stage'
                 ? 'bg-[#7B61FF]/25 border-[#7B61FF]/80 text-[#a892ff]'
-                : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5] hover:border-[#7B61FF]/40'
+                : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-[#7B61FF]/40'
             }`}
           >
             {t('tft.augment.sort.stage')}
           </button>
           {stagesOverride && (
-            <span className="text-[#5a6a80] text-[10px] italic ml-2">
+            <span className="text-fg-faint text-[10px] italic ml-2">
               {(t('tft.augment.stage.sourceNote') as string)
                 .replace('{n}', String(stagesOverride.counts?.pinned ?? Object.keys(stagesOverride.stages).length))}
             </span>
@@ -226,13 +226,13 @@ export default function TftAugmentsReferencePage() {
                 <a
                   key={a.apiName}
                   href={`/tft/augments/${encodeURIComponent(a.apiName)}`}
-                  className="flex items-start gap-3 p-3 bg-[#0d1526] border border-[#1e2a3a] rounded hover:border-[#7B61FF]/40 transition-colors"
+                  className="flex items-start gap-3 p-3 bg-surface-base border border-border-subtle rounded hover:border-[#7B61FF]/40 transition-colors"
                 >
                   <div className="relative w-12 h-12 rounded border-2 overflow-hidden flex-shrink-0" style={{ borderColor: tierColor }}>
                     {url ? (
                       <img src={url} alt={loc.name} className="block w-full h-full" />
                     ) : (
-                      <div className="w-full h-full bg-[#1e2a3a]" />
+                      <div className="w-full h-full bg-surface-overlay" />
                     )}
                     {needsTint && (
                       <div
@@ -265,7 +265,7 @@ export default function TftAugmentsReferencePage() {
                       </div>
                     )}
                     {loc.desc && (
-                      <p className="text-[#a0b0c5] text-xs mt-1.5 leading-snug line-clamp-3">{loc.desc}</p>
+                      <p className="text-fg-secondary text-xs mt-1.5 leading-snug line-clamp-3">{loc.desc}</p>
                     )}
                   </div>
                 </a>
@@ -275,7 +275,7 @@ export default function TftAugmentsReferencePage() {
         )}
 
         {assets && filtered.length === 0 && augments.length > 0 && (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#7a8aa0] text-xs">
+          <div className="bg-surface-base border border-border-subtle rounded p-6 text-center text-fg-muted text-xs">
             {/* No matches for the active filter+search — empty-state, no info copy. */}
             —
           </div>

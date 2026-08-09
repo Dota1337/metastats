@@ -76,7 +76,7 @@ export default function TeamSynergy({ roster, teamName, results, region }: TeamS
       </button>
 
       {expanded && synergy && (
-        <div className="mt-3 bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-3 space-y-3">
+        <div className="mt-3 bg-surface-base border border-border-subtle rounded-lg p-3 space-y-3">
           {/* Grade header */}
           <div className="flex items-center justify-between">
             <div className="text-white text-sm font-medium">{t('synergy.title')}</div>
@@ -84,7 +84,7 @@ export default function TeamSynergy({ roster, teamName, results, region }: TeamS
               <span className="text-2xl font-bold" style={{ color: GRADE_COLORS[synergy.grade] || '#a0b0c5' }}>
                 {synergy.grade}
               </span>
-              <span className="text-[#7a8aa0] text-xs">{synergy.overallScore}/100</span>
+              <span className="text-fg-muted text-xs">{synergy.overallScore}/100</span>
             </div>
           </div>
 
@@ -95,10 +95,10 @@ export default function TeamSynergy({ roster, teamName, results, region }: TeamS
               return (
                 <div key={key}>
                   <div className="flex items-center justify-between mb-0.5">
-                    <span className="text-[#a0b0c5] text-[10px]">{cat?.icon} {cat ? t(cat.key as TranslationKey) : key}</span>
+                    <span className="text-fg-secondary text-[10px]">{cat?.icon} {cat ? t(cat.key as TranslationKey) : key}</span>
                     <span className="text-white text-[10px] font-medium">{val.score}</span>
                   </div>
-                  <div className="w-full h-1 bg-[#1e2a3a] rounded-full">
+                  <div className="w-full h-1 bg-surface-overlay rounded-full">
                     <div
                       className="h-full rounded-full transition-all duration-500"
                       style={{
@@ -107,7 +107,7 @@ export default function TeamSynergy({ roster, teamName, results, region }: TeamS
                       }}
                     />
                   </div>
-                  <div className="text-[#7a8aa0] text-[9px] mt-0.5">{val.detail}</div>
+                  <div className="text-fg-muted text-[9px] mt-0.5">{val.detail}</div>
                 </div>
               );
             })}
@@ -115,9 +115,9 @@ export default function TeamSynergy({ roster, teamName, results, region }: TeamS
 
           {/* Insights */}
           {synergy.insights.length > 0 && (
-            <div className="border-t border-[#1e2a3a] pt-2 space-y-1">
+            <div className="border-t border-border-subtle pt-2 space-y-1">
               {synergy.insights.map((insight, i) => (
-                <div key={i} className="text-[#a0b0c5] text-[11px] flex items-start gap-1.5">
+                <div key={i} className="text-fg-secondary text-[11px] flex items-start gap-1.5">
                   <span className="text-[#c89b3c] mt-0.5">·</span>
                   {insight}
                 </div>

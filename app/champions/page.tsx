@@ -164,7 +164,7 @@ export default function ChampionsPage() {
   const SortHeader = ({ label, sKey, className }: { label: string; sKey: SortKey; className?: string }) => (
     <button
       onClick={() => handleSort(sKey)}
-      className={`text-xs uppercase tracking-wider hover:text-white transition-colors flex items-center gap-1 ${className || ''} ${sortKey === sKey ? 'text-[#c89b3c]' : 'text-[#a0b0c5]'}`}
+      className={`text-xs uppercase tracking-wider hover:text-white transition-colors flex items-center gap-1 ${className || ''} ${sortKey === sKey ? 'text-[#c89b3c]' : 'text-fg-secondary'}`}
     >
       {label}
       {sortKey === sKey && (
@@ -177,18 +177,18 @@ export default function ChampionsPage() {
   const currentRoleLabel = ROLES.find((r) => r.value === role)?.label || t('role.all');
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav active="champions" />
 
       <PageHero title={t('champ.title')} subtitle={t('champ.subtitle')} leftChampion="Lux" rightChampion="Teemo" />
 
       <div className="max-w-6xl mx-auto px-3 sm:px-6 pb-8">
         {/* Filters */}
-        <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-3 sm:p-4 mb-4">
+        <div className="bg-surface-base border border-border-subtle rounded p-3 sm:p-4 mb-4">
           <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-3 sm:gap-4">
             {/* Tier Filter */}
             <div className="w-full sm:w-auto">
-              <div className="text-[#a0b0c5] text-xs mb-2">{t('champ.rank')}</div>
+              <div className="text-fg-secondary text-xs mb-2">{t('champ.rank')}</div>
               <div className="flex gap-1 overflow-x-auto pb-1 -mx-1 px-1">
                 {TIERS.map((tr) => (
                   <button
@@ -196,8 +196,8 @@ export default function ChampionsPage() {
                     onClick={() => setTier(tr.value)}
                     className={`px-3 py-1.5 rounded text-xs font-medium transition-colors flex-shrink-0 ${
                       tier === tr.value
-                        ? 'bg-[#c89b3c] text-[#0a0e1a]'
-                        : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white hover:bg-[#1a2438]'
+                        ? 'bg-[#c89b3c] text-surface-sunken'
+                        : 'bg-surface-raised text-fg-secondary hover:text-white hover:bg-[#1a2438]'
                     }`}
                     style={tier === tr.value && tr.value !== 'all' ? { backgroundColor: tierColors[tr.value] || '#c89b3c' } : {}}
                   >
@@ -209,7 +209,7 @@ export default function ChampionsPage() {
 
             {/* Role Filter */}
             <div className="w-full sm:w-auto">
-              <div className="text-[#a0b0c5] text-xs mb-2">{t('champ.role')}</div>
+              <div className="text-fg-secondary text-xs mb-2">{t('champ.role')}</div>
               <div className="flex gap-1 overflow-x-auto pb-1">
                 {ROLES.map((r) => (
                   <button
@@ -217,8 +217,8 @@ export default function ChampionsPage() {
                     onClick={() => setRole(r.value)}
                     className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
                       role === r.value
-                        ? 'bg-[#c89b3c] text-[#0a0e1a]'
-                        : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white hover:bg-[#1a2438]'
+                        ? 'bg-[#c89b3c] text-surface-sunken'
+                        : 'bg-surface-raised text-fg-secondary hover:text-white hover:bg-[#1a2438]'
                     }`}
                   >
                     {r.label}
@@ -229,7 +229,7 @@ export default function ChampionsPage() {
 
             {/* Region Filter */}
             <div className="w-full sm:w-auto">
-              <div className="text-[#a0b0c5] text-xs mb-2">{t('champ.regionLabel')}</div>
+              <div className="text-fg-secondary text-xs mb-2">{t('champ.regionLabel')}</div>
               <div className="flex gap-1 overflow-x-auto pb-1">
                 {REGIONS.map((r) => (
                   <button
@@ -237,8 +237,8 @@ export default function ChampionsPage() {
                     onClick={() => setRegion(r.value)}
                     className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
                       region === r.value
-                        ? 'bg-[#c89b3c] text-[#0a0e1a]'
-                        : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white hover:bg-[#1a2438]'
+                        ? 'bg-[#c89b3c] text-surface-sunken'
+                        : 'bg-surface-raised text-fg-secondary hover:text-white hover:bg-[#1a2438]'
                     }`}
                   >
                     {r.label}
@@ -249,13 +249,13 @@ export default function ChampionsPage() {
 
             {/* Search */}
             <div className="w-full sm:w-auto sm:ml-auto">
-              <div className="text-[#a0b0c5] text-xs mb-2">{t('champ.search')}</div>
+              <div className="text-fg-secondary text-xs mb-2">{t('champ.search')}</div>
               <input
                 type="text"
                 placeholder={t('champ.searchPlaceholder')}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="bg-[#141c2e] border border-[#2a3a50] rounded px-3 py-1.5 text-white text-xs outline-none placeholder-[#7a8aa0] w-full sm:w-48"
+                className="bg-surface-raised border border-border-default rounded px-3 py-1.5 text-white text-xs outline-none placeholder-fg-muted w-full sm:w-48"
               />
             </div>
           </div>
@@ -263,8 +263,8 @@ export default function ChampionsPage() {
 
         {/* Info: no data for selected tier */}
         {tier !== 'all' && !loading && !hasStats && (
-          <div className="bg-[#141c2e] border border-[#2a3a50] rounded p-3 mb-4 text-center">
-            <div className="text-[#a0b0c5] text-xs">
+          <div className="bg-surface-raised border border-border-default rounded p-3 mb-4 text-center">
+            <div className="text-fg-secondary text-xs">
               {t('champ.noDataFor')} <span className="text-white font-medium" style={{ color: tierColors[tier] }}>{currentTierLabel}</span> {t('champ.noDataAvailable')}
             </div>
           </div>
@@ -272,14 +272,14 @@ export default function ChampionsPage() {
 
         {/* Info Banner if no stats at all */}
         {tier === 'all' && !hasStats && !loading && (
-          <div className="bg-[#141c2e] border border-[#2a3a50] rounded p-3 mb-4 text-center">
+          <div className="bg-surface-raised border border-border-default rounded p-3 mb-4 text-center">
             {collecting ? (
               <div className="flex items-center justify-center gap-2">
                 <div className="w-3 h-3 border-2 border-[#c89b3c] border-t-transparent rounded-full animate-spin" />
                 <div className="text-[#c89b3c] text-xs">{t('champ.loadFromApi')} ({REGIONS.find(r => r.value === region)?.label})...</div>
               </div>
             ) : (
-              <div className="text-[#a0b0c5] text-xs">
+              <div className="text-fg-secondary text-xs">
                 {t('champ.statsCollecting')}
                 <button onClick={triggerCollection} className="ml-2 text-[#c89b3c] hover:underline">
                   {t('champ.loadNow')}
@@ -291,36 +291,36 @@ export default function ChampionsPage() {
 
         {/* Stats Summary */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-3 text-center">
-            <div className="text-[#a0b0c5] text-xs">{t('nav.champions')}</div>
+          <div className="bg-surface-base border border-border-subtle rounded p-3 text-center">
+            <div className="text-fg-secondary text-xs">{t('nav.champions')}</div>
             <div className="text-white text-xl font-medium">{sorted.length}</div>
           </div>
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-3 text-center">
-            <div className="text-[#a0b0c5] text-xs">{t('champ.rank')}</div>
+          <div className="bg-surface-base border border-border-subtle rounded p-3 text-center">
+            <div className="text-fg-secondary text-xs">{t('champ.rank')}</div>
             <div className="text-xl font-medium" style={{ color: tierColors[tier] || '#c89b3c' }}>
               {currentTierLabel}
             </div>
           </div>
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-3 text-center">
-            <div className="text-[#a0b0c5] text-xs">{t('champ.withData')}</div>
+          <div className="bg-surface-base border border-border-subtle rounded p-3 text-center">
+            <div className="text-fg-secondary text-xs">{t('champ.withData')}</div>
             <div className="text-white text-xl font-medium">
               {sorted.filter((c) => c.games > 0).length}
             </div>
           </div>
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-3 text-center">
-            <div className="text-[#a0b0c5] text-xs">{t('champ.role')}</div>
+          <div className="bg-surface-base border border-border-subtle rounded p-3 text-center">
+            <div className="text-fg-secondary text-xs">{t('champ.role')}</div>
             <div className="text-white text-xl font-medium">{currentRoleLabel}</div>
           </div>
         </div>
 
         {/* Champion Table */}
-        <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
+        <div className="bg-surface-base border border-border-subtle rounded overflow-hidden">
           {/* Table Header — Desktop */}
-          <div className="hidden md:grid grid-cols-[3rem_3rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem] gap-2 px-4 py-3 border-b border-[#1e2a3a] bg-[#0a0e1a]">
-            <div className="text-[#a0b0c5] text-xs uppercase tracking-wider">#</div>
+          <div className="hidden md:grid grid-cols-[3rem_3rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem] gap-2 px-4 py-3 border-b border-border-subtle bg-surface-sunken">
+            <div className="text-fg-secondary text-xs uppercase tracking-wider">#</div>
             <div />
             <SortHeader label={t('champ.champion')} sKey="name" />
-            <div className="text-[#a0b0c5] text-xs uppercase tracking-wider">{t('champ.role')}</div>
+            <div className="text-fg-secondary text-xs uppercase tracking-wider">{t('champ.role')}</div>
             <SortHeader label="Winrate" sKey="winRate" className="justify-end" />
             <SortHeader label="Pickrate" sKey="pickRate" className="justify-end" />
             <SortHeader label="Banrate" sKey="banRate" className="justify-end" />
@@ -328,7 +328,7 @@ export default function ChampionsPage() {
             <SortHeader label={t('champ.games')} sKey="games" className="justify-end" />
           </div>
           {/* Mobile sort buttons */}
-          <div className="md:hidden flex flex-wrap gap-1 px-3 py-2 border-b border-[#1e2a3a] bg-[#0a0e1a]">
+          <div className="md:hidden flex flex-wrap gap-1 px-3 py-2 border-b border-border-subtle bg-surface-sunken">
             <SortHeader label="Name" sKey="name" />
             <SortHeader label="WR" sKey="winRate" />
             <SortHeader label="Pick" sKey="pickRate" />
@@ -337,27 +337,27 @@ export default function ChampionsPage() {
           </div>
 
           {loading ? (
-            <div className="text-center text-[#a0b0c5] py-20">{t('champ.loading')}</div>
+            <div className="text-center text-fg-secondary py-20">{t('champ.loading')}</div>
           ) : sorted.length === 0 ? (
-            <div className="text-center text-[#7a8aa0] py-20">{t('champ.noChampions')}</div>
+            <div className="text-center text-fg-muted py-20">{t('champ.noChampions')}</div>
           ) : (
-            <div className="divide-y divide-[#1e2a3a]/50">
+            <div className="divide-y divide-border-subtle/50">
               {sorted.map((champ, i) => {
-                const winColor = champ.winRate === null ? 'text-[#7a8aa0]'
+                const winColor = champ.winRate === null ? 'text-fg-muted'
                   : champ.winRate >= 53 ? 'text-green-400'
                   : champ.winRate >= 50 ? 'text-blue-400'
-                  : champ.winRate >= 48 ? 'text-[#a0b0c5]'
+                  : champ.winRate >= 48 ? 'text-fg-secondary'
                   : 'text-red-400';
 
                 return (
                   <a
                     key={champ.key}
                     href={`/champions/${champ.id}`}
-                    className="block md:grid md:grid-cols-[3rem_3rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem] gap-2 px-4 py-2 items-center hover:bg-[#141c2e] transition-colors"
+                    className="block md:grid md:grid-cols-[3rem_3rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem] gap-2 px-4 py-2 items-center hover:bg-surface-raised transition-colors"
                   >
                     {/* Mobile layout */}
                     <div className="md:hidden flex items-center gap-3">
-                      <span className="text-[#7a8aa0] text-xs w-6">{i + 1}</span>
+                      <span className="text-fg-muted text-xs w-6">{i + 1}</span>
                       <img
                         src={`https://ddragon.leagueoflegends.com/cdn/${version}/img/champion/${champ.id}.png`}
                         alt={champ.name}
@@ -365,18 +365,18 @@ export default function ChampionsPage() {
                       />
                       <div className="flex-1 min-w-0">
                         <div className="text-white text-sm font-medium">{champ.name}</div>
-                        <div className="text-[#7a8aa0] text-xs">{roleLabels[champ.role] || champ.tags.join(', ')}</div>
+                        <div className="text-fg-muted text-xs">{roleLabels[champ.role] || champ.tags.join(', ')}</div>
                       </div>
                       <div className="text-right flex-shrink-0">
                         <div className={`text-sm font-medium ${winColor}`}>
                           {champ.winRate !== null ? `${champ.winRate}%` : '-'}
                         </div>
-                        <div className="text-[#7a8aa0] text-xs">{champ.games > 0 ? champ.games.toLocaleString() + ' G' : '-'}</div>
+                        <div className="text-fg-muted text-xs">{champ.games > 0 ? champ.games.toLocaleString() + ' G' : '-'}</div>
                       </div>
                     </div>
                     {/* Desktop layout */}
                     <div className="hidden md:contents">
-                      <div className="text-[#7a8aa0] text-sm">{i + 1}</div>
+                      <div className="text-fg-muted text-sm">{i + 1}</div>
                       <img
                         src={`https://ddragon.leagueoflegends.com/cdn/${version}/img/champion/${champ.id}.png`}
                         alt={champ.name}
@@ -384,22 +384,22 @@ export default function ChampionsPage() {
                       />
                       <div>
                         <div className="text-white text-sm font-medium">{champ.name}</div>
-                        <div className="text-[#7a8aa0] text-xs">{champ.tags.join(', ')}</div>
+                        <div className="text-fg-muted text-xs">{champ.tags.join(', ')}</div>
                       </div>
-                      <div className="text-[#a0b0c5] text-xs">{roleLabels[champ.role] || '-'}</div>
+                      <div className="text-fg-secondary text-xs">{roleLabels[champ.role] || '-'}</div>
                       <div className={`text-sm text-right font-medium ${winColor}`}>
                         {champ.winRate !== null ? `${champ.winRate}%` : '-'}
                       </div>
-                      <div className="text-[#a0b0c5] text-sm text-right">
+                      <div className="text-fg-secondary text-sm text-right">
                         {champ.pickRate !== null ? `${champ.pickRate}%` : '-'}
                       </div>
                       <div className="text-sm text-right" style={{ color: champ.banRate !== null && champ.banRate > 10 ? '#e44040' : '#a0b0c5' }}>
                         {champ.banRate !== null ? `${champ.banRate}%` : '-'}
                       </div>
-                      <div className="text-[#a0b0c5] text-sm text-right">
+                      <div className="text-fg-secondary text-sm text-right">
                         {champ.avgKDA !== null ? champ.avgKDA.toFixed(2) : '-'}
                       </div>
-                      <div className="text-[#7a8aa0] text-xs text-right">
+                      <div className="text-fg-muted text-xs text-right">
                         {champ.games > 0 ? champ.games.toLocaleString() : '-'}
                       </div>
                     </div>

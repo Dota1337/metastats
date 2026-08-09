@@ -254,7 +254,7 @@ export default function LigenPage() {
   const upcomingMatches = (leagueDetail?.matches || []).filter(m => m.state === 'unstarted' || m.state === 'inProgress');
 
   return (
-    <div className="min-h-screen bg-[#0a0e1a] text-white">
+    <div className="min-h-screen bg-surface-sunken text-white">
       <Nav active="ligen" />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
@@ -263,7 +263,7 @@ export default function LigenPage() {
           <h1 className="text-2xl font-bold">
             <span className="text-[#c89b3c]">{t('ligen.title1')}</span> {t('ligen.title2')}
           </h1>
-          <p className="text-[#a0b0c5] text-sm mt-1">{t('ligen.subtitle')}</p>
+          <p className="text-fg-secondary text-sm mt-1">{t('ligen.subtitle')}</p>
         </div>
 
         {loading ? (
@@ -275,7 +275,7 @@ export default function LigenPage() {
           <div id="league-detail">
             <button
               onClick={() => { setSelectedLeague(null); setLeagueDetail(null); }}
-              className="flex items-center gap-2 text-[#a0b0c5] hover:text-white transition-colors mb-4"
+              className="flex items-center gap-2 text-fg-secondary hover:text-white transition-colors mb-4"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
@@ -288,19 +288,19 @@ export default function LigenPage() {
                 <div className="w-8 h-8 border-2 border-[#c89b3c] border-t-transparent rounded-full animate-spin" />
               </div>
             ) : !leagueDetail ? (
-              <div className="bg-[#0d1526] rounded-xl border border-[#1e2a3a] py-12 text-center text-[#7a8aa0]">
+              <div className="bg-surface-base rounded-xl border border-border-subtle py-12 text-center text-fg-muted">
                 {t('ligen.loadError')}
               </div>
             ) : (
               <>
                 {/* League header */}
-                <div className="flex items-center gap-4 mb-6 bg-gradient-to-r from-[#0d1526] to-[#0a0e1a] rounded-xl border border-[#1e2a3a] p-5">
+                <div className="flex items-center gap-4 mb-6 bg-gradient-to-r from-surface-base to-surface-sunken rounded-xl border border-border-subtle p-5">
                   {leagueDetail.league.image && (
-                    <img src={leagueDetail.league.image} alt="" className="w-14 h-14 rounded-xl object-contain bg-[#141c2e] p-1.5 flex-shrink-0" />
+                    <img src={leagueDetail.league.image} alt="" className="w-14 h-14 rounded-xl object-contain bg-surface-raised p-1.5 flex-shrink-0" />
                   )}
                   <div className="flex-1 min-w-0">
                     <h2 className="text-xl font-bold truncate">{leagueDetail.league.name}</h2>
-                    <p className="text-[#a0b0c5] text-sm">
+                    <p className="text-fg-secondary text-sm">
                       {leagueDetail.league.region}
                       {leagueDetail.tournament && ` · ${formatTournamentName(leagueDetail.tournament.name)}`}
                     </p>
@@ -309,17 +309,17 @@ export default function LigenPage() {
                   <div className="hidden sm:flex gap-4">
                     <div className="text-center">
                       <div className="text-lg font-bold text-white">{(leagueDetail.standings || []).flatMap(s => s.teams || []).length}</div>
-                      <div className="text-[10px] text-[#7a8aa0] uppercase tracking-wider">Teams</div>
+                      <div className="text-[10px] text-fg-muted uppercase tracking-wider">Teams</div>
                     </div>
                     <div className="text-center">
                       <div className="text-lg font-bold text-white">{(leagueDetail.matches || []).length}</div>
-                      <div className="text-[10px] text-[#7a8aa0] uppercase tracking-wider">Spiele</div>
+                      <div className="text-[10px] text-fg-muted uppercase tracking-wider">Spiele</div>
                     </div>
                   </div>
                 </div>
 
                 {/* Sub-tabs */}
-                <div className="flex gap-1 bg-[#0d1526] rounded-xl border border-[#1e2a3a] p-1 mb-5">
+                <div className="flex gap-1 bg-surface-base rounded-xl border border-border-subtle p-1 mb-5">
                   {[
                     { key: 'standings' as const, label: t('ligen.standings'), icon: 'M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z' },
                     { key: 'upcoming' as const, label: `${t('ligen.upcoming')} (${upcomingMatches.length})`, icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
@@ -330,8 +330,8 @@ export default function LigenPage() {
                       onClick={() => setDetailTab(tab.key)}
                       className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-medium transition-all ${
                         detailTab === tab.key
-                          ? 'bg-[#1e2a3a] text-[#c89b3c] shadow-sm'
-                          : 'text-[#a0b0c5] hover:text-white'
+                          ? 'bg-surface-overlay text-[#c89b3c] shadow-sm'
+                          : 'text-fg-secondary hover:text-white'
                       }`}
                     >
                       <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -344,13 +344,13 @@ export default function LigenPage() {
 
                 {/* Standings */}
                 {detailTab === 'standings' && (
-                  <div className="bg-[#0d1526] rounded-xl border border-[#1e2a3a] overflow-hidden">
+                  <div className="bg-surface-base rounded-xl border border-border-subtle overflow-hidden">
                     {!leagueDetail.standings || leagueDetail.standings.length === 0 ? (
-                      <div className="py-12 text-center text-[#7a8aa0]">{t('ligen.noStandings')}</div>
+                      <div className="py-12 text-center text-fg-muted">{t('ligen.noStandings')}</div>
                     ) : (
                       <table className="w-full">
                         <thead>
-                          <tr className="border-b-2 border-[#1e2a3a] text-[#7a8aa0] text-[10px] uppercase tracking-widest">
+                          <tr className="border-b-2 border-border-subtle text-fg-muted text-[10px] uppercase tracking-widest">
                             <th className="px-3 sm:px-4 py-3 text-center w-10">#</th>
                             <th className="px-3 sm:px-4 py-3 text-left">Team</th>
                             <th className="px-2 py-3 text-center w-12">S</th>
@@ -376,16 +376,16 @@ export default function LigenPage() {
                                 return (
                                   <tr
                                     key={`${entry.ordinal}-${team.code}`}
-                                    className={`border-b border-[#141c2e] hover:bg-[#141c2e]/80 transition-colors ${
+                                    className={`border-b border-surface-raised hover:bg-surface-raised/80 transition-colors ${
                                       isTop3 ? 'bg-[#c89b3c]/[0.03]' : isBottom2 ? 'bg-red-500/[0.02]' : ''
                                     }`}
                                   >
                                     <td className="px-3 sm:px-4 py-3 text-center">
                                       <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
                                         rank === 1 ? 'bg-[#c89b3c]/20 text-[#c89b3c]' :
-                                        rank === 2 ? 'bg-[#a0b0c5]/20 text-[#a0b0c5]' :
+                                        rank === 2 ? 'bg-fg-secondary/20 text-fg-secondary' :
                                         rank === 3 ? 'bg-[#b87333]/20 text-[#b87333]' :
-                                        'text-[#7a8aa0]'
+                                        'text-fg-muted'
                                       }`}>
                                         {rank}
                                       </div>
@@ -393,9 +393,9 @@ export default function LigenPage() {
                                     <td className="px-3 sm:px-4 py-3">
                                       <div className="flex items-center gap-3">
                                         {team.image ? (
-                                          <img src={team.image} alt="" className="w-8 h-8 rounded-md object-contain bg-[#141c2e] p-0.5 flex-shrink-0" />
+                                          <img src={team.image} alt="" className="w-8 h-8 rounded-md object-contain bg-surface-raised p-0.5 flex-shrink-0" />
                                         ) : (
-                                          <div className="w-8 h-8 rounded-md bg-[#141c2e] flex-shrink-0" />
+                                          <div className="w-8 h-8 rounded-md bg-surface-raised flex-shrink-0" />
                                         )}
                                         <div className="min-w-0">
                                           {link ? (
@@ -405,7 +405,7 @@ export default function LigenPage() {
                                           ) : (
                                             <span className="text-sm font-semibold text-white block truncate">{team.name}</span>
                                           )}
-                                          <span className="text-[10px] text-[#7a8aa0] hidden sm:inline">{team.code}</span>
+                                          <span className="text-[10px] text-fg-muted hidden sm:inline">{team.code}</span>
                                         </div>
                                       </div>
                                     </td>
@@ -417,7 +417,7 @@ export default function LigenPage() {
                                     </td>
                                     <td className="px-2 py-3">
                                       <div className="flex flex-col items-center gap-1">
-                                        <span className={`text-xs font-bold ${wr >= 60 ? 'text-green-400' : wr >= 40 ? 'text-[#a0b0c5]' : 'text-red-400'}`}>
+                                        <span className={`text-xs font-bold ${wr >= 60 ? 'text-green-400' : wr >= 40 ? 'text-fg-secondary' : 'text-red-400'}`}>
                                           {total > 0 ? `${wr}%` : '—'}
                                         </span>
                                         {total > 0 && (
@@ -437,13 +437,13 @@ export default function LigenPage() {
                                           };
                                           return (
                                             <span key={player.proName} className="inline-flex items-center gap-0.5">
-                                              <span className={`text-[9px] ${roleColors[player.role] || 'text-[#7a8aa0]'}`}>●</span>
+                                              <span className={`text-[9px] ${roleColors[player.role] || 'text-fg-muted'}`}>●</span>
                                               {playerLink ? (
-                                                <Link href={playerLink} className="text-[11px] text-[#a0b0c5] hover:text-[#c89b3c] transition-colors">
+                                                <Link href={playerLink} className="text-[11px] text-fg-secondary hover:text-[#c89b3c] transition-colors">
                                                   {player.proName}
                                                 </Link>
                                               ) : (
-                                                <span className="text-[11px] text-[#7a8aa0]">{player.proName}</span>
+                                                <span className="text-[11px] text-fg-muted">{player.proName}</span>
                                               )}
                                             </span>
                                           );
@@ -465,7 +465,7 @@ export default function LigenPage() {
                 {detailTab === 'upcoming' && (
                   <div className="space-y-2">
                     {upcomingMatches.length === 0 ? (
-                      <div className="bg-[#0d1526] rounded-xl border border-[#1e2a3a] py-12 text-center text-[#7a8aa0]">
+                      <div className="bg-surface-base rounded-xl border border-border-subtle py-12 text-center text-fg-muted">
                         {t('ligen.noUpcoming')}
                       </div>
                     ) : upcomingMatches.map((match, i) => (
@@ -478,7 +478,7 @@ export default function LigenPage() {
                 {detailTab === 'results' && (
                   <div className="space-y-2">
                     {pastMatches.length === 0 ? (
-                      <div className="bg-[#0d1526] rounded-xl border border-[#1e2a3a] py-12 text-center text-[#7a8aa0]">
+                      <div className="bg-surface-base rounded-xl border border-border-subtle py-12 text-center text-fg-muted">
                         {t('ligen.noResults')}
                       </div>
                     ) : pastMatches.map((match, i) => (
@@ -493,14 +493,14 @@ export default function LigenPage() {
           /* ── Calendar + League List ── */
           <>
             {/* Calendar */}
-            <div className="bg-[#0d1526] rounded-xl border border-[#1e2a3a] p-4 mb-6">
+            <div className="bg-surface-base rounded-xl border border-border-subtle p-4 mb-6">
               {/* Calendar header */}
               <div className="flex items-center justify-between mb-4">
-                <div className="flex gap-1 bg-[#141c2e] rounded-lg p-0.5">
+                <div className="flex gap-1 bg-surface-raised rounded-lg p-0.5">
                   <button
                     onClick={() => setCalendarView('week')}
                     className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                      calendarView === 'week' ? 'bg-[#c89b3c]/20 text-[#c89b3c]' : 'text-[#a0b0c5] hover:text-white'
+                      calendarView === 'week' ? 'bg-[#c89b3c]/20 text-[#c89b3c]' : 'text-fg-secondary hover:text-white'
                     }`}
                   >
                     {t('cal.week')}
@@ -508,7 +508,7 @@ export default function LigenPage() {
                   <button
                     onClick={() => setCalendarView('month')}
                     className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                      calendarView === 'month' ? 'bg-[#c89b3c]/20 text-[#c89b3c]' : 'text-[#a0b0c5] hover:text-white'
+                      calendarView === 'month' ? 'bg-[#c89b3c]/20 text-[#c89b3c]' : 'text-fg-secondary hover:text-white'
                     }`}
                   >
                     {t('cal.month')}
@@ -518,16 +518,16 @@ export default function LigenPage() {
                 <div className="text-sm font-medium text-white">{headerLabel}</div>
 
                 <div className="flex items-center gap-2">
-                  <button onClick={() => navigateCalendar(-1)} className="p-1.5 text-[#a0b0c5] hover:text-white transition-colors rounded hover:bg-[#141c2e]">
+                  <button onClick={() => navigateCalendar(-1)} className="p-1.5 text-fg-secondary hover:text-white transition-colors rounded hover:bg-surface-raised">
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
                   </button>
                   <button
                     onClick={() => setCalendarDate(new Date())}
-                    className="px-3 py-1 text-xs text-[#c89b3c] hover:text-white transition-colors font-medium rounded hover:bg-[#141c2e]"
+                    className="px-3 py-1 text-xs text-[#c89b3c] hover:text-white transition-colors font-medium rounded hover:bg-surface-raised"
                   >
                     {t('cal.today')}
                   </button>
-                  <button onClick={() => navigateCalendar(1)} className="p-1.5 text-[#a0b0c5] hover:text-white transition-colors rounded hover:bg-[#141c2e]">
+                  <button onClick={() => navigateCalendar(1)} className="p-1.5 text-fg-secondary hover:text-white transition-colors rounded hover:bg-surface-raised">
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
                   </button>
                 </div>
@@ -536,7 +536,7 @@ export default function LigenPage() {
               {/* Day headers */}
               <div className="grid grid-cols-7 gap-1 mb-1">
                 {dayNames.map(d => (
-                  <div key={d} className="text-center text-[10px] text-[#7a8aa0] font-medium py-1">{d}</div>
+                  <div key={d} className="text-center text-[10px] text-fg-muted font-medium py-1">{d}</div>
                 ))}
               </div>
 
@@ -551,10 +551,10 @@ export default function LigenPage() {
                       <div
                         key={i}
                         className={`rounded-lg p-2 min-h-[80px] border transition-colors ${
-                          isToday ? 'border-[#c89b3c]/50 bg-[#c89b3c]/5' : 'border-[#1e2a3a] bg-[#0a0e1a]'
+                          isToday ? 'border-[#c89b3c]/50 bg-[#c89b3c]/5' : 'border-border-subtle bg-surface-sunken'
                         }`}
                       >
-                        <div className={`text-xs font-medium mb-1.5 ${isToday ? 'text-[#c89b3c]' : 'text-[#a0b0c5]'}`}>
+                        <div className={`text-xs font-medium mb-1.5 ${isToday ? 'text-[#c89b3c]' : 'text-fg-secondary'}`}>
                           {day.getDate()}. {day.toLocaleDateString(locale, { month: 'short' })}
                         </div>
                         {events && Array.from(events).map(slug => (
@@ -582,10 +582,10 @@ export default function LigenPage() {
                       <div
                         key={i}
                         className={`rounded p-1.5 min-h-[48px] border transition-colors ${
-                          isToday ? 'border-[#c89b3c]/50 bg-[#c89b3c]/5' : events ? 'border-[#1e2a3a] bg-[#0a0e1a]' : 'border-transparent'
+                          isToday ? 'border-[#c89b3c]/50 bg-[#c89b3c]/5' : events ? 'border-border-subtle bg-surface-sunken' : 'border-transparent'
                         }`}
                       >
-                        <div className={`text-[10px] font-medium ${isToday ? 'text-[#c89b3c]' : 'text-[#a0b0c5]'}`}>
+                        <div className={`text-[10px] font-medium ${isToday ? 'text-[#c89b3c]' : 'text-fg-secondary'}`}>
                           {day.getDate()}
                         </div>
                         {events && Array.from(events).map(slug => (
@@ -612,22 +612,22 @@ export default function LigenPage() {
                 <button
                   key={league.slug}
                   onClick={() => fetchLeagueDetail(league.slug)}
-                  className="flex items-center gap-3 p-4 bg-[#0d1526] rounded-xl border border-[#1e2a3a] hover:border-[#c89b3c]/50 transition-all text-left group"
+                  className="flex items-center gap-3 p-4 bg-surface-base rounded-xl border border-border-subtle hover:border-[#c89b3c]/50 transition-all text-left group"
                 >
                   {league.image ? (
-                    <img src={league.image} alt="" className="w-10 h-10 rounded-lg object-contain bg-[#141c2e] p-1 flex-shrink-0" />
+                    <img src={league.image} alt="" className="w-10 h-10 rounded-lg object-contain bg-surface-raised p-1 flex-shrink-0" />
                   ) : (
-                    <div className="w-10 h-10 rounded-lg bg-[#141c2e] flex items-center justify-center flex-shrink-0">
-                      <svg className="w-5 h-5 text-[#7a8aa0]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <div className="w-10 h-10 rounded-lg bg-surface-raised flex items-center justify-center flex-shrink-0">
+                      <svg className="w-5 h-5 text-fg-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                       </svg>
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-white group-hover:text-[#c89b3c] transition-colors truncate">{league.name}</div>
-                    {league.region && <div className="text-xs text-[#7a8aa0]">{league.region}</div>}
+                    {league.region && <div className="text-xs text-fg-muted">{league.region}</div>}
                   </div>
-                  <svg className="w-4 h-4 text-[#7a8aa0] group-hover:text-[#c89b3c] transition-colors flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <svg className="w-4 h-4 text-fg-muted group-hover:text-[#c89b3c] transition-colors flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                   </svg>
                 </button>
@@ -654,16 +654,16 @@ function MatchRow({ match, formatDate, formatTime, getTeamLink }: {
   const isLive = match.state === 'inProgress';
 
   return (
-    <div className={`flex items-center gap-4 p-4 bg-[#0d1526] rounded-xl border transition-colors ${
-      isLive ? 'border-red-500/30 bg-red-500/5' : 'border-[#1e2a3a]'
+    <div className={`flex items-center gap-4 p-4 bg-surface-base rounded-xl border transition-colors ${
+      isLive ? 'border-red-500/30 bg-red-500/5' : 'border-border-subtle'
     }`}>
       {/* Date/Time */}
       <div className="text-center flex-shrink-0 w-16">
-        <div className="text-[10px] text-[#7a8aa0]">{formatDate(match.startTime)}</div>
-        <div className={`text-xs font-medium ${isLive ? 'text-red-400' : 'text-[#a0b0c5]'}`}>
+        <div className="text-[10px] text-fg-muted">{formatDate(match.startTime)}</div>
+        <div className={`text-xs font-medium ${isLive ? 'text-red-400' : 'text-fg-secondary'}`}>
           {isLive ? 'LIVE' : formatTime(match.startTime)}
         </div>
-        {match.blockName && <div className="text-[9px] text-[#7a8aa0] mt-0.5">{match.blockName}</div>}
+        {match.blockName && <div className="text-[9px] text-fg-muted mt-0.5">{match.blockName}</div>}
       </div>
 
       {/* Teams */}
@@ -675,11 +675,11 @@ function MatchRow({ match, formatDate, formatTime, getTeamLink }: {
           </div>
 
           <div className="flex items-center gap-1.5 px-3 flex-shrink-0">
-            <span className={`text-sm font-bold ${team1.outcome === 'win' ? 'text-green-400' : 'text-[#a0b0c5]'}`}>
+            <span className={`text-sm font-bold ${team1.outcome === 'win' ? 'text-green-400' : 'text-fg-secondary'}`}>
               {match.state !== 'unstarted' ? team1.gameWins : '-'}
             </span>
-            <span className="text-[#7a8aa0] text-xs">:</span>
-            <span className={`text-sm font-bold ${team2.outcome === 'win' ? 'text-green-400' : 'text-[#a0b0c5]'}`}>
+            <span className="text-fg-muted text-xs">:</span>
+            <span className={`text-sm font-bold ${team2.outcome === 'win' ? 'text-green-400' : 'text-fg-secondary'}`}>
               {match.state !== 'unstarted' ? team2.gameWins : '-'}
             </span>
           </div>
@@ -698,7 +698,7 @@ function TeamLink({ team, getTeamLink }: { team: Team; getTeamLink: (name: strin
   const link = getTeamLink(team.name, team.code);
   const cls = `text-sm truncate ${
     team.outcome === 'win' ? 'text-green-400 font-medium' :
-    team.outcome === 'loss' ? 'text-[#7a8aa0]' : 'text-white'
+    team.outcome === 'loss' ? 'text-fg-muted' : 'text-white'
   }`;
 
   return link ? (

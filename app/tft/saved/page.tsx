@@ -27,14 +27,14 @@ export default function SavedPage() {
   const players = bookmarks.filter(b => b.type === 'player');
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav active="saved" />
       <TftHero pageTitle={t('tft.savedTitle')} />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-2 pb-8">
         {!mounted ? (
-          <div className="text-[#7a8aa0] text-center py-12 text-sm">…</div>
+          <div className="text-fg-muted text-center py-12 text-sm">…</div>
         ) : bookmarks.length === 0 ? (
-          <div className="text-[#a0b0c5] text-center py-12 text-sm">
+          <div className="text-fg-secondary text-center py-12 text-sm">
             {t('tft.savedEmpty')}
           </div>
         ) : (
@@ -73,15 +73,15 @@ function Section({
   const { t } = useI18n();
   return (
     <div>
-      <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-2">{title}</h2>
+      <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-2">{title}</h2>
       {items.length === 0 ? (
-        <div className="text-[#7a8aa0] text-xs italic">{empty}</div>
+        <div className="text-fg-muted text-xs italic">{empty}</div>
       ) : (
         <div className="space-y-1.5">
           {items.map(b => (
             <div
               key={`${b.type}-${b.region || ''}-${b.key}`}
-              className="flex items-center gap-2 bg-[#0d1526] border border-[#1e2a3a] rounded p-2"
+              className="flex items-center gap-2 bg-surface-base border border-border-subtle rounded p-2"
             >
               <a
                 href={hrefOf(b)}
@@ -90,12 +90,12 @@ function Section({
                 {b.label}
               </a>
               {b.region && (
-                <span className="text-[10px] uppercase text-[#7a8aa0] tabular-nums">{b.region}</span>
+                <span className="text-[10px] uppercase text-fg-muted tabular-nums">{b.region}</span>
               )}
               <button
                 onClick={() => onRemove(b)}
                 title={t('tft.saved.remove')}
-                className="text-[#5a6a80] hover:text-[#e44040] text-sm transition-colors"
+                className="text-fg-faint hover:text-[#e44040] text-sm transition-colors"
               >
                 ×
               </button>

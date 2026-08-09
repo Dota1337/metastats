@@ -148,7 +148,7 @@ export default function TftHero({
           </h1>
         )}
         {subtitle && !compact && (
-          <p className="text-[#a0b0c5] text-sm max-w-md mx-auto">{subtitle}</p>
+          <p className="text-fg-secondary text-sm max-w-md mx-auto">{subtitle}</p>
         )}
         {children && <div className="mt-5">{children}</div>}
       </div>

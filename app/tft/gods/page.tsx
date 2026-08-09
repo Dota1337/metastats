@@ -78,13 +78,13 @@ export default function TftGodsPage() {
   }, [assets, doc]);
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav active="gods" />
       <TftHero pageTitle={t('nav.gods')} subtitle={assets?.setName} />
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-2 pb-10">
         {/* Mechanic intro — user explicitly asked for info texts on this page. */}
-        <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-4">
-          <p className="text-[#a0b0c5] text-sm leading-relaxed">{t('gods.mechanic.intro')}</p>
+        <div className="bg-surface-base border border-border-subtle rounded p-4 mb-4">
+          <p className="text-fg-secondary text-sm leading-relaxed">{t('gods.mechanic.intro')}</p>
           <div className="flex flex-wrap gap-2 mt-3">
             <StageChip label="2-4" />
             <StageChip label="3-4" />
@@ -99,7 +99,7 @@ export default function TftGodsPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder={t('tft.search.gods')}
-            className="w-full sm:w-80 bg-[#141c2e] border border-[#1e2a3a] rounded px-3 py-1.5 text-sm text-white placeholder:text-[#5a6a80] outline-none focus:border-[#7B61FF]/60"
+            className="w-full sm:w-80 bg-surface-raised border border-border-subtle rounded px-3 py-1.5 text-sm text-white placeholder:text-fg-faint outline-none focus:border-[#7B61FF]/60"
           />
         </div>
 
@@ -124,8 +124,8 @@ export default function TftGodsPage() {
               return (
                 <div
                   key={g.meta.id}
-                  className={`bg-[#0d1526] border rounded transition-colors ${
-                    isOpen ? 'border-[#7B61FF]/60' : 'border-[#1e2a3a] hover:border-[#7B61FF]/40'
+                  className={`bg-surface-base border rounded transition-colors ${
+                    isOpen ? 'border-[#7B61FF]/60' : 'border-border-subtle hover:border-[#7B61FF]/40'
                   }`}
                 >
                   {/* Header: portrait + name + title + theme — always visible */}
@@ -137,12 +137,12 @@ export default function TftGodsPage() {
                         className="w-14 h-14 rounded border-2 border-[#7B61FF]/40 flex-shrink-0"
                       />
                     ) : (
-                      <div className="w-14 h-14 rounded border-2 border-[#1e2a3a] bg-[#141c2e] flex-shrink-0" />
+                      <div className="w-14 h-14 rounded border-2 border-border-subtle bg-surface-raised flex-shrink-0" />
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="text-white text-sm font-semibold">{displayName}</div>
                       <div className="text-[11px] uppercase tracking-widest text-[#c39bff] mt-0.5">{t(g.meta.titleKey as TranslationKey)}</div>
-                      <p className="text-[11px] text-[#a0b0c5] mt-1 leading-snug">{t(g.meta.themeKey as TranslationKey)}</p>
+                      <p className="text-[11px] text-fg-secondary mt-1 leading-snug">{t(g.meta.themeKey as TranslationKey)}</p>
                     </div>
                   </div>
 
@@ -153,12 +153,12 @@ export default function TftGodsPage() {
                       <div className="px-3 pb-3">
                         <div className="flex items-baseline justify-between mb-1.5">
                           <span className="text-[10px] uppercase tracking-widest text-[#c39bff] font-semibold">{t('gods.stage.final')}</span>
-                          <span className="text-[10px] text-[#7a8aa0] tabular-nums">4-7</span>
+                          <span className="text-[10px] text-fg-muted tabular-nums">4-7</span>
                         </div>
-                        <div className="bg-[#141c2e] border border-[#c39bff]/30 rounded p-2">
+                        <div className="bg-surface-raised border border-[#c39bff]/30 rounded p-2">
                           <div className="text-white text-xs font-medium">{loc.name}</div>
                           {loc.desc && (
-                            <p className="text-[#a0b0c5] text-[11px] mt-1 leading-snug">{loc.desc}</p>
+                            <p className="text-fg-secondary text-[11px] mt-1 leading-snug">{loc.desc}</p>
                           )}
                         </div>
                       </div>
@@ -171,20 +171,20 @@ export default function TftGodsPage() {
                       <button
                         type="button"
                         onClick={() => setExpanded(isOpen ? null : g.meta.id)}
-                        className="w-full flex items-center justify-between gap-2 px-3 py-2 border-t border-[#1e2a3a] text-left hover:bg-[#141c2e]/50"
+                        className="w-full flex items-center justify-between gap-2 px-3 py-2 border-t border-border-subtle text-left hover:bg-surface-raised/50"
                       >
                         <span className="text-[10px] uppercase tracking-widest text-[#9ab0bf]">
                           {t('gods.section.offerings')}
                         </span>
                         <svg
-                          className={`w-4 h-4 text-[#7a8aa0] transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                          className={`w-4 h-4 text-fg-muted transition-transform ${isOpen ? 'rotate-180' : ''}`}
                           fill="none" stroke="currentColor" viewBox="0 0 24 24"
                         >
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                         </svg>
                       </button>
                       {isOpen && (
-                        <div className="border-t border-[#1e2a3a] p-3 space-y-3">
+                        <div className="border-t border-border-subtle p-3 space-y-3">
                           {(['2-4', '3-4', '4-4'] as const).map(stage => {
                             const offerings = g.meta.stageOfferings?.[stage] || [];
                             if (offerings.length === 0) return null;
@@ -192,7 +192,7 @@ export default function TftGodsPage() {
                               <div key={stage}>
                                 <div className="flex items-baseline justify-between mb-1.5">
                                   <span className="text-[10px] uppercase tracking-widest text-[#9ab0bf]">{t('gods.section.stage')} {stage}</span>
-                                  <span className="text-[10px] text-[#7a8aa0] tabular-nums">{offerings.length}</span>
+                                  <span className="text-[10px] text-fg-muted tabular-nums">{offerings.length}</span>
                                 </div>
                                 <div className="space-y-1.5">
                                   {offerings.map((o, i) => {
@@ -203,15 +203,15 @@ export default function TftGodsPage() {
                                       : null;
                                     const iconUrl = bundleEntry?.icon ? tftIconUrl(assets, bundleEntry.icon) : null;
                                     return (
-                                      <div key={i} className="flex items-start gap-2 p-2 bg-[#141c2e] rounded">
+                                      <div key={i} className="flex items-start gap-2 p-2 bg-surface-raised rounded">
                                         {iconUrl ? (
-                                          <img src={iconUrl} alt={pickI18n(o.name, lang as Lang)} className="w-9 h-9 rounded border border-[#1e2a3a] flex-shrink-0" />
+                                          <img src={iconUrl} alt={pickI18n(o.name, lang as Lang)} className="w-9 h-9 rounded border border-border-subtle flex-shrink-0" />
                                         ) : (
-                                          <div className="w-9 h-9 rounded border border-[#1e2a3a] bg-[#0d1526] flex-shrink-0" />
+                                          <div className="w-9 h-9 rounded border border-border-subtle bg-surface-base flex-shrink-0" />
                                         )}
                                         <div className="flex-1 min-w-0">
                                           <div className="text-white text-xs font-medium">{pickI18n(o.name, lang as Lang)}</div>
-                                          <p className="text-[#a0b0c5] text-[11px] mt-0.5 leading-snug">{pickI18n(o.desc, lang as Lang)}</p>
+                                          <p className="text-fg-secondary text-[11px] mt-0.5 leading-snug">{pickI18n(o.desc, lang as Lang)}</p>
                                         </div>
                                       </div>
                                     );
@@ -236,16 +236,16 @@ export default function TftGodsPage() {
                                     : tftIconUrl(assets, b.data.icon);
                                   const loc = tftAugmentLocalised(b.data, lang);
                                   return (
-                                    <div key={b.apiName} className="flex items-start gap-2 p-2 bg-[#141c2e] rounded">
+                                    <div key={b.apiName} className="flex items-start gap-2 p-2 bg-surface-raised rounded">
                                       {url ? (
-                                        <img src={url} alt={loc.name} className="w-10 h-10 rounded border border-[#1e2a3a]" />
+                                        <img src={url} alt={loc.name} className="w-10 h-10 rounded border border-border-subtle" />
                                       ) : (
-                                        <div className="w-10 h-10 rounded border border-[#1e2a3a] bg-[#0d1526] flex-shrink-0" />
+                                        <div className="w-10 h-10 rounded border border-border-subtle bg-surface-base flex-shrink-0" />
                                       )}
                                       <div className="flex-1 min-w-0">
                                         <div className="text-white text-xs font-medium">{loc.name}</div>
                                         {loc.desc && (
-                                          <p className="text-[#a0b0c5] text-[11px] mt-0.5 leading-snug">{loc.desc}</p>
+                                          <p className="text-fg-secondary text-[11px] mt-0.5 leading-snug">{loc.desc}</p>
                                         )}
                                       </div>
                                     </div>
@@ -272,7 +272,7 @@ export default function TftGodsPage() {
 function StageChip({ label, accent, boldLabel }: { label: string; accent?: string; boldLabel?: string }) {
   const color = accent || '#9ab0bf';
   return (
-    <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-[#141c2e] border" style={{ borderColor: color + '40' }}>
+    <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-surface-raised border" style={{ borderColor: color + '40' }}>
       <span className="text-[10px] uppercase tracking-widest tabular-nums" style={{ color }}>{label}</span>
       {boldLabel && <span className="text-[10px] uppercase tracking-widest" style={{ color }}>· {boldLabel}</span>}
     </div>

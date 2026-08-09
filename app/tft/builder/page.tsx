@@ -651,15 +651,15 @@ export default function TftBuilderPage() {
     const isOwn = team === 'own';
     const byCellMap = byCell(team);
     return (
-      <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-3">
+      <div className="bg-surface-base border border-border-subtle rounded-lg p-3">
         <div className="flex items-center justify-between mb-2">
-          <div className="text-[#a0b0c5] text-[10px] uppercase tracking-widest">
+          <div className="text-fg-secondary text-[10px] uppercase tracking-widest">
             {isOwn ? t('tft.builderOwn') : t('tft.builderOpponent')} · {placementsFor(team).length}/{MAX_UNITS}
           </div>
           {placementsFor(team).length > 0 && (
             <button
               onClick={() => clearBoard(team)}
-              className="text-[#5a6a80] hover:text-[#e44040] text-[10px]"
+              className="text-fg-faint hover:text-[#e44040] text-[10px]"
             >
               {t('tft.builderClear')}
             </button>
@@ -755,7 +755,7 @@ export default function TftBuilderPage() {
                         const item = assets?.items[iid];
                         const iurl = tftIconUrl(assets, item?.icon);
                         return (
-                          <div key={iid} className="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-sm overflow-hidden border border-black/70 bg-[#0a0e1a]">
+                          <div key={iid} className="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-sm overflow-hidden border border-black/70 bg-surface-sunken">
                             {iurl && <img src={iurl} alt="" className="w-full h-full object-cover" />}
                           </div>
                         );
@@ -772,19 +772,19 @@ export default function TftBuilderPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav active="comps" />
       <TftHero pageTitle={t('tft.builderTitle')} subtitle={t('tft.builderSubtitle')} />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-2 pb-8">
         <div className="grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)_300px] gap-4">
           {/* LEFT — Active traits + saved comps */}
           <div className="flex flex-col gap-4 lg:sticky lg:top-4 lg:self-start order-2 lg:order-none">
-            <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-4">
-              <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">
+            <div className="bg-surface-base border border-border-subtle rounded-lg p-4">
+              <div className="text-fg-secondary text-xs uppercase tracking-widest mb-3">
                 {t('tft.builderTraits')}
               </div>
               {ownPlacements.length === 0 ? (
-                <div className="text-[#7a8aa0] text-xs">—</div>
+                <div className="text-fg-muted text-xs">—</div>
               ) : (
                 <div className="space-y-2">
                   {activeTraits.map(tr => {
@@ -805,7 +805,7 @@ export default function TftBuilderPage() {
                         {iconUrl ? (
                           <img src={iconUrl} alt="" className="w-6 h-6 rounded" style={{ filter: tier ? 'none' : 'grayscale(1)' }} />
                         ) : (
-                          <div className="w-6 h-6 rounded bg-[#1e2a3a]" />
+                          <div className="w-6 h-6 rounded bg-surface-overlay" />
                         )}
                         <div className="flex-1 min-w-0">
                           <div className="text-white text-xs truncate">{tr.name}</div>
@@ -835,24 +835,24 @@ export default function TftBuilderPage() {
             </div>
 
             {savedComps.length > 0 && (
-              <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-4">
-                <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">
+              <div className="bg-surface-base border border-border-subtle rounded-lg p-4">
+                <div className="text-fg-secondary text-xs uppercase tracking-widest mb-3">
                   {t('tft.builderMyComps')}
                 </div>
                 <div className="space-y-1.5 max-h-[280px] overflow-y-auto pr-1">
                   {savedComps.map(c => (
-                    <div key={c.id} className="flex items-center gap-2 p-1.5 rounded bg-[#0a0e1a]">
+                    <div key={c.id} className="flex items-center gap-2 p-1.5 rounded bg-surface-sunken">
                       <button
                         onClick={() => loadSaved(c.id)}
                         className="flex-1 text-left text-white text-xs hover:text-[#a892ff] truncate"
                         title={c.name}
                       >
                         {c.name}
-                        <span className="text-[#5a6a80] ml-1.5">({c.placements.length + (c.oppPlacements?.length || 0)})</span>
+                        <span className="text-fg-faint ml-1.5">({c.placements.length + (c.oppPlacements?.length || 0)})</span>
                       </button>
                       <button
                         onClick={() => deleteSaved(c.id)}
-                        className="text-[#5a6a80] hover:text-[#e44040] text-xs px-1"
+                        className="text-fg-faint hover:text-[#e44040] text-xs px-1"
                         title={t('tft.builderDelete')}
                       >
                         ×
@@ -868,13 +868,13 @@ export default function TftBuilderPage() {
           <div className="order-1 lg:order-none">
             {/* Toolbar */}
             <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-              <div className="text-[#a0b0c5] text-xs uppercase tracking-widest">
+              <div className="text-fg-secondary text-xs uppercase tracking-widest">
                 {t('tft.builderBoard')}
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setShowOpponent(s => !s)}
-                  className="px-3 py-1.5 rounded text-xs bg-[#141c2e] text-[#a0b0c5] hover:text-white border border-[#1e2a3a]"
+                  className="px-3 py-1.5 rounded text-xs bg-surface-raised text-fg-secondary hover:text-white border border-border-subtle"
                 >
                   {showOpponent ? t('tft.builderHideOpponent') : t('tft.builderShowOpponent')}
                 </button>
@@ -888,7 +888,7 @@ export default function TftBuilderPage() {
                 <button
                   onClick={copyShareLink}
                   disabled={ownPlacements.length === 0 && oppPlacements.length === 0}
-                  className="px-3 py-1.5 rounded text-xs bg-[#141c2e] text-[#a0b0c5] hover:text-white border border-[#1e2a3a] disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="px-3 py-1.5 rounded text-xs bg-surface-raised text-fg-secondary hover:text-white border border-border-subtle disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   {shareToast ? t('tft.builderShareCopied') : t('tft.builderShare')}
                 </button>
@@ -900,7 +900,7 @@ export default function TftBuilderPage() {
                       ? 'bg-[#3ecf8e]/15 border-[#3ecf8e]/60 text-[#3ecf8e]'
                       : planAheadState === 'err'
                       ? 'bg-[#e44040]/15 border-[#e44040]/60 text-[#e44040]'
-                      : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5] hover:text-white'
+                      : 'bg-surface-raised border-border-subtle text-fg-secondary hover:text-white'
                   }`}
                   title={t('tft.planAhead.copy')}
                 >
@@ -911,7 +911,7 @@ export default function TftBuilderPage() {
                 <button
                   onClick={publishToCommunity}
                   disabled={ownPlacements.length === 0 || publishState === 'sending'}
-                  className="px-3 py-1.5 rounded text-xs bg-[#3ecf8e] text-[#0d1526] hover:bg-[#5be0a3] disabled:opacity-30 disabled:cursor-not-allowed font-medium"
+                  className="px-3 py-1.5 rounded text-xs bg-[#3ecf8e] text-surface-base hover:bg-[#5be0a3] disabled:opacity-30 disabled:cursor-not-allowed font-medium"
                   title={t('tft.builderPublishHint')}
                 >
                   {publishState === 'sending' ? '…'
@@ -932,12 +932,12 @@ export default function TftBuilderPage() {
             {renderBoard('own')}
 
             {/* Champion palette */}
-            <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-4 mt-4 mb-4">
+            <div className="bg-surface-base border border-border-subtle rounded-lg p-4 mt-4 mb-4">
               <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => setCostFilter(null)}
-                    className={`px-2.5 py-1 rounded text-xs ${costFilter == null ? 'bg-[#7B61FF] text-white' : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'}`}
+                    className={`px-2.5 py-1 rounded text-xs ${costFilter == null ? 'bg-[#7B61FF] text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
                   >
                     {t('tft.bucket.all')}
                   </button>
@@ -945,7 +945,7 @@ export default function TftBuilderPage() {
                     <button
                       key={c}
                       onClick={() => setCostFilter(c)}
-                      className={`px-2.5 py-1 rounded text-xs ${costFilter === c ? 'text-white' : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'}`}
+                      className={`px-2.5 py-1 rounded text-xs ${costFilter === c ? 'text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
                       style={costFilter === c ? { backgroundColor: costColorOf(c) } : {}}
                     >
                       {c}
@@ -957,7 +957,7 @@ export default function TftBuilderPage() {
                   value={champQuery}
                   onChange={e => setChampQuery(e.target.value)}
                   placeholder={t('tft.builderSearch')}
-                  className="flex-1 min-w-[160px] bg-[#141c2e] border border-[#1e2a3a] rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-[#7B61FF]/60"
+                  className="flex-1 min-w-[160px] bg-surface-raised border border-border-subtle rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-[#7B61FF]/60"
                 />
               </div>
               <div className="grid grid-cols-[repeat(auto-fill,minmax(54px,1fr))] gap-1.5">
@@ -1003,10 +1003,10 @@ export default function TftBuilderPage() {
           {/* RIGHT — Selected unit (with MF stance picker) + items palette */}
           <div className="flex flex-col gap-4 lg:sticky lg:top-4 lg:self-start order-3 lg:order-none">
             {selectedPlacement && (
-              <div className="bg-[#0d1526] border border-[#a892ff]/40 rounded-lg p-4">
-                <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-2">
+              <div className="bg-surface-base border border-[#a892ff]/40 rounded-lg p-4">
+                <div className="text-fg-secondary text-xs uppercase tracking-widest mb-2">
                   {t('tft.builderUnitItems')}
-                  <span className="ml-1 text-[#5a6a80] normal-case tracking-normal">
+                  <span className="ml-1 text-fg-faint normal-case tracking-normal">
                     ({selectedTeam === 'own' ? t('tft.builderOwn') : t('tft.builderOpponent')})
                   </span>
                 </div>
@@ -1023,7 +1023,7 @@ export default function TftBuilderPage() {
                   })()}
                 </div>
                 <div className="mb-3">
-                  <div className="text-[#a0b0c5] text-[10px] uppercase tracking-widest mb-2">
+                  <div className="text-fg-secondary text-[10px] uppercase tracking-widest mb-2">
                     {t('tft.builderStarLevel')}
                   </div>
                   <div className="flex gap-1.5">
@@ -1057,7 +1057,7 @@ export default function TftBuilderPage() {
                       <button
                         key={slotIdx}
                         onClick={() => iid && removeItemFromSelected(iid)}
-                        className="flex-1 aspect-square rounded border border-[#1e2a3a] overflow-hidden bg-[#0a0e1a] hover:border-[#e44040]/60 transition"
+                        className="flex-1 aspect-square rounded border border-border-subtle overflow-hidden bg-surface-sunken hover:border-[#e44040]/60 transition"
                         title={tooltip}
                       >
                         {url && <img src={url} alt={item?.name || ''} className="w-full h-full object-cover" />}
@@ -1069,8 +1069,8 @@ export default function TftBuilderPage() {
                   const champ: any = assets?.champions[selectedPlacement.characterId];
                   if (!champ?.ability?.name) return null;
                   return (
-                    <div className="mt-3 pt-3 border-t border-[#1e2a3a]">
-                      <div className="text-[#a0b0c5] text-[10px] uppercase tracking-widest mb-1">
+                    <div className="mt-3 pt-3 border-t border-border-subtle">
+                      <div className="text-fg-secondary text-[10px] uppercase tracking-widest mb-1">
                         {t('tft.builderAbility')}
                       </div>
                       <div className="text-white text-xs font-medium mb-1">{champ.ability.name}</div>
@@ -1086,7 +1086,7 @@ export default function TftBuilderPage() {
                     .filter(x => x.item?.desc);
                   if (equipped.length === 0) return null;
                   return (
-                    <div className="mt-3 pt-3 border-t border-[#1e2a3a] space-y-2">
+                    <div className="mt-3 pt-3 border-t border-border-subtle space-y-2">
                       {equipped.map(({ id, item }) => (
                         <div key={id}>
                           <div className="text-white text-[11px] font-medium">{item!.name}</div>
@@ -1097,8 +1097,8 @@ export default function TftBuilderPage() {
                   );
                 })()}
                 {selectedPlacement.characterId === MF_CHAR_ID && (
-                  <div className="mt-3 pt-3 border-t border-[#1e2a3a]">
-                    <div className="text-[#a0b0c5] text-[10px] uppercase tracking-widest mb-2">
+                  <div className="mt-3 pt-3 border-t border-border-subtle">
+                    <div className="text-fg-secondary text-[10px] uppercase tracking-widest mb-2">
                       {t('tft.builderMfStance')}
                     </div>
                     <div className="flex gap-1.5">
@@ -1130,13 +1130,13 @@ export default function TftBuilderPage() {
               </div>
             )}
 
-            <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-4">
+            <div className="bg-surface-base border border-border-subtle rounded-lg p-4">
               <div className="flex flex-wrap items-center gap-1 mb-3">
                 {(['completed', 'radiant', 'psyonic', 'animasquad', 'artifacts', 'emblems'] as ItemTab[]).map(tab => (
                   <button
                     key={tab}
                     onClick={() => setItemTab(tab)}
-                    className={`px-2 py-1 rounded text-[11px] ${itemTab === tab ? 'bg-[#7B61FF] text-white' : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'}`}
+                    className={`px-2 py-1 rounded text-[11px] ${itemTab === tab ? 'bg-[#7B61FF] text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
                   >
                     {t('tft.builderItems' + tab.charAt(0).toUpperCase() + tab.slice(1) as any) || tab}
                   </button>
@@ -1147,7 +1147,7 @@ export default function TftBuilderPage() {
                 value={itemQuery}
                 onChange={e => setItemQuery(e.target.value)}
                 placeholder={t('tft.builderItemsSearch')}
-                className="w-full bg-[#141c2e] border border-[#1e2a3a] rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-[#7B61FF]/60 mb-3"
+                className="w-full bg-surface-raised border border-border-subtle rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-[#7B61FF]/60 mb-3"
               />
               <div className="grid grid-cols-[repeat(auto-fill,minmax(40px,1fr))] gap-1.5 max-h-[440px] overflow-y-auto pr-1">
                 {filteredItems.map(item => {
@@ -1163,7 +1163,7 @@ export default function TftBuilderPage() {
                       onDragStart={(e) => onDragStartItem(e, item.id)}
                       onClick={() => addItemToSelected(item.id)}
                       disabled={!!fullOnSelected}
-                      className="aspect-square rounded overflow-hidden border border-[#1e2a3a] hover:border-[#a892ff] transition disabled:opacity-30 cursor-grab active:cursor-grabbing"
+                      className="aspect-square rounded overflow-hidden border border-border-subtle hover:border-[#a892ff] transition disabled:opacity-30 cursor-grab active:cursor-grabbing"
                       style={{ boxShadow: onSelectedUnit ? '0 0 0 2px #a892ff inset' : 'none' }}
                       title={tooltip}
                     >

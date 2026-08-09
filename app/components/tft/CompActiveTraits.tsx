@@ -43,8 +43,8 @@ export default function CompActiveTraits({
   if (traits.length === 0) return null;
 
   return (
-    <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
-      <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">
+    <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
+      <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">
         {t('tft.comp.activeTraits')}
       </h2>
       <div className="flex flex-wrap gap-2">
@@ -95,7 +95,7 @@ function TraitPill({
     <button
       type="button"
       onClick={onToggle}
-      className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border bg-[#141c2e] hover:bg-[#1a2238] transition-colors cursor-pointer"
+      className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border bg-surface-raised hover:bg-[#1a2238] transition-colors cursor-pointer"
       style={{
         borderColor: isExpanded ? color : `${color}66`,
         borderWidth: isExpanded ? 2 : 1,
@@ -121,7 +121,7 @@ function TraitPill({
       </span>
       <span className="text-white text-xs font-medium">{trait.displayName}</span>
       {nextHint && (
-        <span className="text-[#7a8aa0] text-[10px] tabular-nums">{nextHint}</span>
+        <span className="text-fg-muted text-[10px] tabular-nums">{nextHint}</span>
       )}
     </button>
   );
@@ -141,7 +141,7 @@ function TraitDrillDown({
   const color = activeTraitStyleColor(trait.style);
   return (
     <div
-      className="mt-3 p-3 rounded-md border bg-[#0a0e1a]"
+      className="mt-3 p-3 rounded-md border bg-surface-sunken"
       style={{ borderColor: `${color}40` }}
     >
       <div className="flex items-center gap-2 mb-2">
@@ -173,7 +173,7 @@ function TraitDrillDown({
                     style={{ borderColor: costColorOf(cost) }}
                   />
                 ) : (
-                  <div className="w-10 h-10 rounded-md bg-[#1e2a3a]" />
+                  <div className="w-10 h-10 rounded-md bg-surface-overlay" />
                 )}
                 {u.stack >= 2 && (
                   <div

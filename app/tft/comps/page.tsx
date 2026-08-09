@@ -446,7 +446,7 @@ export default function TftCompsPage() {
   }, [families, search, assets]);
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav active="comps" />
       <TftHero pageTitle={t('nav.comps')} subtitle={t('tft.heroSubtitle')} patch={currentPatchLabel} />
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-2 pb-6">
@@ -458,7 +458,7 @@ export default function TftCompsPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder={t('tft.search.comps')}
-            className="w-full sm:w-96 bg-[#141c2e] border border-[#1e2a3a] rounded px-3 py-1.5 text-sm text-white placeholder:text-[#5a6a80] outline-none focus:border-[#7B61FF]/60"
+            className="w-full sm:w-96 bg-surface-raised border border-border-subtle rounded px-3 py-1.5 text-sm text-white placeholder:text-fg-faint outline-none focus:border-[#7B61FF]/60"
           />
         </div>
 
@@ -480,11 +480,11 @@ export default function TftCompsPage() {
         )}
 
         <div className="flex items-center justify-end gap-2 mb-3 -mt-1 text-xs">
-          <span className="text-[#7a8aa0]">{t('tft.sortBy')}:</span>
+          <span className="text-fg-muted">{t('tft.sortBy')}:</span>
           <select
             value={sortBy}
             onChange={e => { setSortTouched(true); setSortBy(e.target.value as any); }}
-            className="bg-[#141c2e] border border-[#1e2a3a] rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-[#7B61FF]/60"
+            className="bg-surface-raised border border-border-subtle rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-[#7B61FF]/60"
           >
             <option value="avg">{t('tft.avgPlacement')}</option>
             <option value="top4">{t('tft.top4')}</option>
@@ -497,13 +497,13 @@ export default function TftCompsPage() {
         </div>
 
         {loading && hasData === null && (
-          <div className="text-[#7a8aa0] text-center py-8">{t('tft.noDataYet').replace('Noch keine Daten', 'Lade')}</div>
+          <div className="text-fg-muted text-center py-8">{t('tft.noDataYet').replace('Noch keine Daten', 'Lade')}</div>
         )}
         {hasData === false && <EmptyData />}
 
         {hasData && visibleFamilies.length > 0 && (
           <>
-            <div className={`hidden sm:grid items-center gap-4 px-3.5 py-2 text-[11px] text-[#a0b0c5] font-semibold whitespace-nowrap ${
+            <div className={`hidden sm:grid items-center gap-4 px-3.5 py-2 text-[11px] text-fg-secondary font-semibold whitespace-nowrap ${
               filters.velocity > 0
                 ? 'grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_5rem_3.5rem_3.5rem_3.5rem_3.5rem_3.75rem_3rem]'
                 : 'grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_5rem_3.5rem_3.5rem_3.5rem_3.5rem_3rem]'
@@ -570,7 +570,7 @@ function CompareBanner({
     : '#';
   return (
     <div className="sticky top-2 z-30 mb-3">
-      <div className="bg-[#0d1526]/95 backdrop-blur-sm border border-[#7B61FF]/50 rounded-lg px-3 py-2 shadow-lg flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-surface-base/95 backdrop-blur-sm border border-[#7B61FF]/50 rounded-lg px-3 py-2 shadow-lg flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <span className="text-white text-xs font-medium whitespace-nowrap">
             {(t('tft.compare.selectedCount') as string).replace('{n}', String(selection.length))}
@@ -584,7 +584,7 @@ function CompareBanner({
                   {url ? (
                     <img src={url} alt="" className="w-6 h-6 rounded border border-[#7B61FF]/60 flex-shrink-0" />
                   ) : (
-                    <div className="w-6 h-6 rounded bg-[#1e2a3a] flex-shrink-0" />
+                    <div className="w-6 h-6 rounded bg-surface-overlay flex-shrink-0" />
                   )}
                   <span className="text-white text-[11px] truncate hidden sm:inline">
                     {carry?.name || f.carry.replace(/^TFT\d+_/, '')}
@@ -598,7 +598,7 @@ function CompareBanner({
           <button
             type="button"
             onClick={onReset}
-            className="text-[#a0b0c5] text-[11px] hover:text-white px-2 py-1 transition-colors"
+            className="text-fg-secondary text-[11px] hover:text-white px-2 py-1 transition-colors"
           >
             {t('tft.compare.reset')}
           </button>
@@ -610,7 +610,7 @@ function CompareBanner({
               {t('tft.compare.action')} →
             </a>
           ) : (
-            <span className="bg-[#1e2a3a] text-[#5a6a80] text-xs font-medium px-3 py-1.5 rounded cursor-not-allowed">
+            <span className="bg-surface-overlay text-fg-faint text-xs font-medium px-3 py-1.5 rounded cursor-not-allowed">
               {t('tft.compare.action')}
             </span>
           )}

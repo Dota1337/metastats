@@ -7,12 +7,12 @@ export const metadata: Metadata = {
 
 export default function CompanionPrivacyPage() {
   return (
-    <main className="min-h-screen bg-[#0e1525] text-[#cfd6dc]">
+    <main className="min-h-screen bg-surface-page text-[#cfd6dc]">
       <div className="max-w-3xl mx-auto px-6 py-12">
         <a href="/tft" className="text-[#7B61FF] text-xs hover:underline">← zurück</a>
         <h1 className="text-white text-3xl font-medium mt-3 mb-6">Datenschutz · Companion App</h1>
 
-        <p className="text-sm text-[#a0b0c5] mb-6">Stand: 17. Mai 2026</p>
+        <p className="text-sm text-fg-secondary mb-6">Stand: 17. Mai 2026</p>
 
         <section className="space-y-4 text-sm leading-relaxed">
           <h2 className="text-white text-lg font-medium mt-6">1. Verantwortlich</h2>

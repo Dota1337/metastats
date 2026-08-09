@@ -51,14 +51,14 @@ export default function TftMatchDetailPage() {
   }, [matchId, region, t]);
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav active="search" />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
         <h1 className="text-white text-xl font-medium mb-2">{t('tft.match.title')}</h1>
-        <div className="text-[#7a8aa0] text-xs font-mono mb-5 truncate">{matchId}</div>
+        <div className="text-fg-muted text-xs font-mono mb-5 truncate">{matchId}</div>
 
         {loading && (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#a0b0c5] text-sm">
+          <div className="bg-surface-base border border-border-subtle rounded p-6 text-center text-fg-secondary text-sm">
             {t('tft.match.loading')}
           </div>
         )}
@@ -101,7 +101,7 @@ function MatchHeader({ match }: { match: TftMatchSummary }) {
   const minutes = Math.floor(match.gameLength / 60);
   const seconds = Math.floor(match.gameLength % 60).toString().padStart(2, '0');
   return (
-    <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+    <div className="bg-surface-base border border-border-subtle rounded p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
       <Stat label={t('tft.match.date')} value={date} />
       <Stat label={t('tft.match.length')} value={`${minutes}:${seconds}`} />
       <Stat label={t('tft.set')} value={match.setNumber ? `Set ${match.setNumber}` : '—'} />
@@ -113,7 +113,7 @@ function MatchHeader({ match }: { match: TftMatchSummary }) {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest mb-0.5">{label}</div>
+      <div className="text-fg-muted text-[10px] uppercase tracking-widest mb-0.5">{label}</div>
       <div className="text-white">{value}</div>
     </div>
   );
@@ -154,14 +154,14 @@ function ParticipantCard({
                 className="text-white text-sm font-medium hover:text-[#7B61FF] truncate max-w-[160px] sm:max-w-none"
               >
                 {gameName}
-                {tagLine && <span className="text-[#7a8aa0] text-xs"> #{tagLine}</span>}
+                {tagLine && <span className="text-fg-muted text-xs"> #{tagLine}</span>}
               </a>
             ) : (
-              <span className="text-[#7a8aa0] text-sm font-mono">
+              <span className="text-fg-muted text-sm font-mono">
                 {participant.puuid.slice(0, 10)}…
               </span>
             )}
-            <span className="text-[#7a8aa0] text-[10px]">
+            <span className="text-fg-muted text-[10px]">
               Lvl {participant.level} · {formatStage(participant.lastRound)} · {participant.goldLeft}g
               {participant.playersEliminated > 0 && ` · ${participant.playersEliminated} ${t('tft.match.eliminated')}`}
             </span>
@@ -190,7 +190,7 @@ function PlacementBadge({ placement }: { placement: number }) {
       style={{ borderColor: color }}
     >
       <div className="text-lg font-bold leading-none" style={{ color }}>{placement}</div>
-      <div className="text-[9px] text-[#a0b0c5]">{ordinal}</div>
+      <div className="text-[9px] text-fg-secondary">{ordinal}</div>
     </div>
   );
 }
@@ -243,7 +243,7 @@ function UnitTile({ unit, assets }: { unit: any; assets: TftAssetsBundle | null 
       <div className="relative w-12 h-12 rounded border-2 overflow-hidden" style={{ borderColor: costColor }}>
         {url
           ? <img src={url} alt={name} className="w-full h-full object-cover" />
-          : <div className="w-full h-full bg-[#1e2a3a]" />}
+          : <div className="w-full h-full bg-surface-overlay" />}
         {unit.tier > 1 && (
           <div
             className="absolute bottom-0 left-1/2 -translate-x-1/2 text-[9px] leading-tight px-1 rounded-t bg-black/70 font-bold"
@@ -270,7 +270,7 @@ function UnitTile({ unit, assets }: { unit: any; assets: TftAssetsBundle | null 
                 <img src={iurl} alt={itemName} className="w-4 h-4 rounded-sm" />
               </a>
             ) : (
-              <div key={i} className="w-4 h-4 rounded-sm bg-[#1e2a3a]" title={it} />
+              <div key={i} className="w-4 h-4 rounded-sm bg-surface-overlay" title={it} />
             );
           })}
         </div>
@@ -297,11 +297,11 @@ function AugmentColumn({ augments, assets }: { augments: string[]; assets: TftAs
           />
         ) : (
           <div
-            className="w-8 h-8 rounded border-2 bg-[#141c2e] flex items-center justify-center hover:brightness-125 transition"
+            className="w-8 h-8 rounded border-2 bg-surface-raised flex items-center justify-center hover:brightness-125 transition"
             style={{ borderColor: tierColor }}
             title={info?.name || a}
           >
-            <span className="text-[8px] text-[#a0b0c5] truncate px-0.5">{(info?.name || a).slice(0, 4)}</span>
+            <span className="text-[8px] text-fg-secondary truncate px-0.5">{(info?.name || a).slice(0, 4)}</span>
           </div>
         );
         return (

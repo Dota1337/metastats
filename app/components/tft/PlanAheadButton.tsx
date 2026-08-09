@@ -67,7 +67,7 @@ export default function PlanAheadButton({
           ? 'bg-[#3ecf8e]/15 border-[#3ecf8e]/50 text-[#3ecf8e]'
           : status === 'failed'
           ? 'bg-[#e44040]/15 border-[#e44040]/50 text-[#e44040]'
-          : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5] hover:border-[#7B61FF]/60 hover:text-[#c39bff]'
+          : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-[#7B61FF]/60 hover:text-[#c39bff]'
       } ${className}`}
     >
       {status === 'copied' ? '✓' : status === 'failed' ? '✕' : (

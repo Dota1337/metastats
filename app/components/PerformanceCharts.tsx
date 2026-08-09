@@ -13,8 +13,8 @@ interface Props {
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-[#0d1526] border border-[#1e2a3a] rounded px-3 py-2 text-xs shadow-lg">
-      <div className="text-[#a0b0c5] mb-1">{label}</div>
+    <div className="bg-surface-base border border-border-subtle rounded px-3 py-2 text-xs shadow-lg">
+      <div className="text-fg-secondary mb-1">{label}</div>
       {payload.map((p: any, i: number) => (
         <div key={i} className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }} />
@@ -64,8 +64,8 @@ export default function PerformanceCharts({ matches, ddVersion }: Props) {
   if (matches.length < 3) return null;
 
   return (
-    <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 mb-4">
-      <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-4">
+    <div className="bg-surface-base border border-border-subtle rounded p-6 mb-4">
+      <div className="text-fg-secondary text-xs uppercase tracking-widest mb-4">
         Performance-Verlauf
       </div>
 
@@ -73,7 +73,7 @@ export default function PerformanceCharts({ matches, ddVersion }: Props) {
         {/* Winrate Trend */}
         <div>
           <div className="text-white text-sm font-medium mb-2">Winrate-Verlauf</div>
-          <div className="text-[#7a8aa0] text-xs mb-3">Kumulativ + 5-Spiele-Schnitt</div>
+          <div className="text-fg-muted text-xs mb-3">Kumulativ + 5-Spiele-Schnitt</div>
           <ResponsiveContainer width="100%" height={180}>
             <AreaChart data={rollingData}>
               <defs>
@@ -95,7 +95,7 @@ export default function PerformanceCharts({ matches, ddVersion }: Props) {
         {/* KDA Trend */}
         <div>
           <div className="text-white text-sm font-medium mb-2">KDA-Verlauf</div>
-          <div className="text-[#7a8aa0] text-xs mb-3">5-Spiele-Durchschnitt</div>
+          <div className="text-fg-muted text-xs mb-3">5-Spiele-Durchschnitt</div>
           <ResponsiveContainer width="100%" height={180}>
             <AreaChart data={rollingData}>
               <defs>
@@ -117,7 +117,7 @@ export default function PerformanceCharts({ matches, ddVersion }: Props) {
         {/* CS/Min Trend */}
         <div>
           <div className="text-white text-sm font-medium mb-2">CS/Min-Verlauf</div>
-          <div className="text-[#7a8aa0] text-xs mb-3">5-Spiele-Durchschnitt</div>
+          <div className="text-fg-muted text-xs mb-3">5-Spiele-Durchschnitt</div>
           <ResponsiveContainer width="100%" height={180}>
             <AreaChart data={rollingData}>
               <defs>
@@ -139,7 +139,7 @@ export default function PerformanceCharts({ matches, ddVersion }: Props) {
         {/* Win/Loss per Game Bar Chart */}
         <div>
           <div className="text-white text-sm font-medium mb-2">Siege & Niederlagen</div>
-          <div className="text-[#7a8aa0] text-xs mb-3">Pro Spiel</div>
+          <div className="text-fg-muted text-xs mb-3">Pro Spiel</div>
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={chartData.map(d => ({ ...d, winBar: d.win ? 1 : 0, lossBar: d.win ? 0 : 1 }))}>
               <CartesianGrid stroke="#1e2a3a" strokeDasharray="3 3" />
@@ -149,7 +149,7 @@ export default function PerformanceCharts({ matches, ddVersion }: Props) {
                 if (!active || !payload?.length) return null;
                 const d = payload[0]?.payload;
                 return (
-                  <div className="bg-[#0d1526] border border-[#1e2a3a] rounded px-3 py-2 text-xs shadow-lg">
+                  <div className="bg-surface-base border border-border-subtle rounded px-3 py-2 text-xs shadow-lg">
                     <div className="text-white">{d?.champion}</div>
                     <div className={d?.win ? 'text-green-400' : 'text-red-400'}>
                       {d?.win ? 'Sieg' : 'Niederlage'}

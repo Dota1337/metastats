@@ -12,10 +12,10 @@ export default function Footer() {
   const current = LANGUAGES.find(l => l.code === lang) || LANGUAGES[0];
 
   return (
-    <footer className="mt-12 pt-6 pb-8 border-t border-[#1e2a3a]">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs text-[#7a8aa0]">
+    <footer className="mt-12 pt-6 pb-8 border-t border-border-subtle">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs text-fg-muted">
         <div className="flex items-center gap-3">
-          <span className="text-[#a0b0c5] font-medium">metastats.gg</span>
+          <span className="text-fg-secondary font-medium">metastats.gg</span>
           <span className="hidden sm:inline">·</span>
           <span className="hidden sm:inline">{t('footer.disclaimer')}</span>
         </div>
@@ -37,12 +37,12 @@ export default function Footer() {
             <span className="text-[10px]">{open ? '▲' : '▼'}</span>
           </button>
           {open && (
-            <div className="absolute right-0 bottom-full mb-1 z-30 bg-[#0d1526] border border-[#1e2a3a] rounded-lg shadow-lg min-w-[160px] py-1">
+            <div className="absolute right-0 bottom-full mb-1 z-30 bg-surface-base border border-border-subtle rounded-lg shadow-lg min-w-[160px] py-1">
               {LANGUAGES.map(l => (
                 <button
                   key={l.code}
                   onClick={() => { setLang(l.code); setOpen(false); }}
-                  className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-white/5 ${l.code === lang ? 'text-white' : 'text-[#a0b0c5]'}`}
+                  className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-white/5 ${l.code === lang ? 'text-white' : 'text-fg-secondary'}`}
                 >
                   <img src={l.flagUrl} alt="" className="w-5 h-auto rounded-sm" />
                   <span>{l.label}</span>
@@ -54,7 +54,7 @@ export default function Footer() {
         </div>
       </div>
 
-      <div className="sm:hidden mt-3 px-4 text-center text-[10px] text-[#7a8aa0]">
+      <div className="sm:hidden mt-3 px-4 text-center text-[10px] text-fg-muted">
         {t('footer.disclaimer')}
       </div>
     </footer>

@@ -66,7 +66,7 @@ export default function ProsByCompSection({ familyKey, setNumber }: Props) {
         <h2 className="text-lg font-semibold text-[#cfd8dc] mb-3">{t('tft.comp.detail.prosPlayingThis')}</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-20 bg-[#0d1526] border border-[#1e2a3a] rounded animate-pulse" />
+            <div key={i} className="h-20 bg-surface-base border border-border-subtle rounded animate-pulse" />
           ))}
         </div>
       </div>
@@ -87,7 +87,7 @@ export default function ProsByCompSection({ familyKey, setNumber }: Props) {
             ? `/tft/player/${encodeURIComponent(p.gameName + '-' + p.tagLine)}?region=${region}`
             : null;
           const card = (
-            <div className="bg-[#0d1526] border border-[#1e2a3a] hover:border-[#2a3a4f] transition rounded p-2.5">
+            <div className="bg-surface-base border border-border-subtle hover:border-[#2a3a4f] transition rounded p-2.5">
               <div className="flex items-baseline justify-between gap-1">
                 <div className="text-sm font-medium text-white truncate" title={display + tag}>
                   {display}

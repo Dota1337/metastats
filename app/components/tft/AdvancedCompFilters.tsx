@@ -148,7 +148,7 @@ export default function AdvancedCompFilters({ filters, onChange, resultCount, to
           expansion nötig. Reroll/Mid/Fast 8 sind die Standard-Pro-Buckets
           die jeden Tag genutzt werden. */}
       <div className="flex flex-wrap items-center gap-1.5 text-xs">
-        <span className="text-[#7a8aa0] text-[10px] uppercase tracking-widest mr-1">{t('tft.cost.label')}:</span>
+        <span className="text-fg-muted text-[10px] uppercase tracking-widest mr-1">{t('tft.cost.label')}:</span>
         {COST_GROUPS.map(g => {
           const isOn = filters.costGroup === g.value;
           return (
@@ -159,7 +159,7 @@ export default function AdvancedCompFilters({ filters, onChange, resultCount, to
               className={`px-2.5 py-1 rounded border transition-colors ${
                 isOn
                   ? 'bg-[#c39bff]/20 border-[#c39bff]/60 text-[#c39bff]'
-                  : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5] hover:border-[#c39bff]/40'
+                  : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-[#c39bff]/40'
               }`}
             >
               {t(g.labelKey as TranslationKey)}
@@ -175,7 +175,7 @@ export default function AdvancedCompFilters({ filters, onChange, resultCount, to
           className={`px-3 py-1 rounded border transition-colors ${
             active
               ? 'bg-[#7B61FF]/15 border-[#7B61FF]/60 text-[#a892ff]'
-              : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5] hover:border-[#7B61FF]/40'
+              : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-[#7B61FF]/40'
           }`}
         >
           {expanded ? '−' : '+'} {t('tft.adv.title')}
@@ -191,7 +191,7 @@ export default function AdvancedCompFilters({ filters, onChange, resultCount, to
               className={`px-2.5 py-1 rounded border transition-colors ${
                 isOn
                   ? 'bg-[#3ecf8e]/15 border-[#3ecf8e]/60 text-[#3ecf8e]'
-                  : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5] hover:border-[#3ecf8e]/40'
+                  : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-[#3ecf8e]/40'
               }`}
             >
               {t(p.labelKey as TranslationKey)}
@@ -202,7 +202,7 @@ export default function AdvancedCompFilters({ filters, onChange, resultCount, to
           <button
             type="button"
             onClick={() => onChange(ADV_DEFAULT)}
-            className="px-2 py-1 rounded text-[#7a8aa0] hover:text-white text-[11px]"
+            className="px-2 py-1 rounded text-fg-muted hover:text-white text-[11px]"
           >
             × {t('tft.adv.reset')}
           </button>
@@ -210,7 +210,7 @@ export default function AdvancedCompFilters({ filters, onChange, resultCount, to
       </div>
 
       {expanded && (
-        <div className="mt-2 bg-[#0d1526] border border-[#1e2a3a] rounded p-3 grid grid-cols-2 sm:grid-cols-5 gap-2">
+        <div className="mt-2 bg-surface-base border border-border-subtle rounded p-3 grid grid-cols-2 sm:grid-cols-5 gap-2">
           <NumField label={t('tft.adv.avgMax')} value={filters.avgPlaceMax} step={0.1}
             onChange={v => onChange({ ...filters, avgPlaceMax: v })} placeholder="4.4" />
           <NumField label={t('tft.adv.top4Min')} value={filters.top4MinPct} step={1} suffix="%"
@@ -239,7 +239,7 @@ function NumField({
 }) {
   return (
     <label className="block">
-      <span className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">{label}</span>
+      <span className="text-fg-muted text-[10px] uppercase tracking-widest">{label}</span>
       <div className="flex items-center mt-0.5">
         <input
           type="number"
@@ -252,9 +252,9 @@ function NumField({
             const n = Number(raw);
             onChange(Number.isFinite(n) ? n : null);
           }}
-          className="w-full bg-[#141c2e] border border-[#1e2a3a] rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-[#7B61FF]/60"
+          className="w-full bg-surface-raised border border-border-subtle rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-[#7B61FF]/60"
         />
-        {suffix && <span className="text-[#7a8aa0] text-[10px] ml-1">{suffix}</span>}
+        {suffix && <span className="text-fg-muted text-[10px] ml-1">{suffix}</span>}
       </div>
     </label>
   );

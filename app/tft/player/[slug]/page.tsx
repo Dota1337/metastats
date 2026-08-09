@@ -280,21 +280,21 @@ export default function TftPlayerPage() {
   const totalPages = Math.ceil((data?.matchIds.length || 0) / PAGE_SIZE);
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav active="search" />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
-        {loading && <div className="text-[#a0b0c5] text-center py-12">{t('tft.player.loading')}</div>}
+        {loading && <div className="text-fg-secondary text-center py-12">{t('tft.player.loading')}</div>}
 
         {error && (
-          <div className="bg-[#0d1526] border border-red-500/40 rounded p-6 text-center">
+          <div className="bg-surface-base border border-red-500/40 rounded p-6 text-center">
             <div className="text-red-400 font-medium mb-1">{t('tft.player.error')}</div>
-            <div className="text-[#a0b0c5] text-sm">{error}</div>
+            <div className="text-fg-secondary text-sm">{error}</div>
           </div>
         )}
 
         {data && (
           <>
-            <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-5 mb-5">
+            <div className="bg-surface-base border border-border-subtle rounded-lg p-5 mb-5">
               <div className="flex items-center gap-4 flex-wrap">
                 {ddVersion && data.summoner.profileIconId != null && (
                   <img
@@ -320,7 +320,7 @@ export default function TftPlayerPage() {
                       />
                     )}
                   </div>
-                  <div className="text-[#a0b0c5] text-sm">#{tagLine} · Level {data.summoner.summonerLevel ?? '—'}</div>
+                  <div className="text-fg-secondary text-sm">#{tagLine} · Level {data.summoner.summonerLevel ?? '—'}</div>
                   {tftProInfo && (
                     <div className="text-[#a892ff] text-xs mt-0.5">
                       {tftProInfo.pro_name}
@@ -357,20 +357,20 @@ export default function TftPlayerPage() {
             />
 
             <div className="mb-3">
-              <div className="text-[#a0b0c5] text-xs uppercase tracking-widest">{t('tft.player.matchHistory')}</div>
+              <div className="text-fg-secondary text-xs uppercase tracking-widest">{t('tft.player.matchHistory')}</div>
             </div>
 
             <div className="space-y-3">
               {pageLoading && pageMatches.length === 0 && (
-                <div className="text-[#7a8aa0] text-center py-8">{t('tft.player.loadingMatchHistory')}</div>
+                <div className="text-fg-muted text-center py-8">{t('tft.player.loadingMatchHistory')}</div>
               )}
               {!pageLoading && data.matchIds.length === 0 && (
-                <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#a0b0c5] text-sm">
+                <div className="bg-surface-base border border-border-subtle rounded p-6 text-center text-fg-secondary text-sm">
                   {t('tft.player.noStandardMatches')}
                 </div>
               )}
               {!pageLoading && data.matchIds.length > 0 && pageMatches.length === 0 && (
-                <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#a0b0c5] text-sm">
+                <div className="bg-surface-base border border-border-subtle rounded p-6 text-center text-fg-secondary text-sm">
                   {t('tft.noMatchesForSet')}
                 </div>
               )}
@@ -397,7 +397,7 @@ function Pagination({ page, totalPages, onChange, loading }: { page: number; tot
       <button
         onClick={() => onChange(Math.max(0, page - 1))}
         disabled={page === 0 || loading}
-        className="px-3 py-1.5 rounded bg-[#141c2e] border border-[#1e2a3a] text-[#a0b0c5] hover:text-white hover:border-[#7B61FF]/40 disabled:opacity-40 disabled:cursor-not-allowed"
+        className="px-3 py-1.5 rounded bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-[#7B61FF]/40 disabled:opacity-40 disabled:cursor-not-allowed"
       >
         {t('tft.player.prev')}
       </button>
@@ -408,7 +408,7 @@ function Pagination({ page, totalPages, onChange, loading }: { page: number; tot
             onClick={() => onChange(i)}
             disabled={loading}
             className={`w-8 h-8 rounded text-xs font-medium ${
-              i === page ? 'bg-[#7B61FF] text-white' : 'bg-[#141c2e] border border-[#1e2a3a] text-[#a0b0c5] hover:text-white'
+              i === page ? 'bg-[#7B61FF] text-white' : 'bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white'
             }`}
           >
             {i + 1}
@@ -418,7 +418,7 @@ function Pagination({ page, totalPages, onChange, loading }: { page: number; tot
       <button
         onClick={() => onChange(Math.min(totalPages - 1, page + 1))}
         disabled={page >= totalPages - 1 || loading}
-        className="px-3 py-1.5 rounded bg-[#141c2e] border border-[#1e2a3a] text-[#a0b0c5] hover:text-white hover:border-[#7B61FF]/40 disabled:opacity-40 disabled:cursor-not-allowed"
+        className="px-3 py-1.5 rounded bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-[#7B61FF]/40 disabled:opacity-40 disabled:cursor-not-allowed"
       >
         {t('tft.player.next')}
       </button>
@@ -442,25 +442,25 @@ function SeasonStats({
 
   if (loading && !stats) {
     return (
-      <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-5 mb-5">
-        <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">
+      <div className="bg-surface-base border border-border-subtle rounded-lg p-5 mb-5">
+        <div className="text-fg-secondary text-xs uppercase tracking-widest mb-3">
           {t('tft.player.seasonStats')}{activeSet != null ? ` · Set ${activeSet}` : ''}
         </div>
-        <div className="text-[#a0b0c5] text-sm">{t('tft.player.computingFromAllMatches')}</div>
+        <div className="text-fg-secondary text-sm">{t('tft.player.computingFromAllMatches')}</div>
       </div>
     );
   }
 
   return (
-    <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-5 mb-5">
+    <div className="bg-surface-base border border-border-subtle rounded-lg p-5 mb-5">
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-        <div className="text-[#a0b0c5] text-xs uppercase tracking-widest">
+        <div className="text-fg-secondary text-xs uppercase tracking-widest">
           {t('tft.player.seasonStats')}{activeSet != null ? ` · Set ${activeSet}` : ''}
         </div>
       </div>
 
       {!stats?.hasStats ? (
-        <div className="text-[#a0b0c5] text-sm py-4 text-center">
+        <div className="text-fg-secondary text-sm py-4 text-center">
           {t('tft.player.noSoloMatchesForSet').replace('{n}', String(activeSet))}
         </div>
       ) : (
@@ -478,7 +478,7 @@ function SeasonStats({
               block holding 5 chips top-to-bottom (1-5 / 6-10 / 11-15). */}
           {stats.topUnits && stats.topUnits.length > 0 && (
             <div className="mb-5">
-              <div className="text-[#a0b0c5] text-[10px] uppercase tracking-widest mb-2">{t('tft.topUnitsPlayed')}</div>
+              <div className="text-fg-secondary text-[10px] uppercase tracking-widest mb-2">{t('tft.topUnitsPlayed')}</div>
               {/* lg:grid-rows-5 + lg:grid-flow-col fills column 1 first
                   (ranks 1-5), then column 2 (6-10), then column 3 (11-15).
                   Smaller breakpoints fall back to row-wise flow. */}
@@ -522,7 +522,7 @@ function SeasonProfile({ agg }: { agg: NonNullable<PlayerStats['seasonAggregate'
   const pct = (v: number) => `${(v * 100).toFixed(0)}%`;
   return (
     <div className="mb-5">
-      <div className="text-[#a0b0c5] text-[10px] uppercase tracking-widest mb-2">{t('tft.player.seasonProfile')}</div>
+      <div className="text-fg-secondary text-[10px] uppercase tracking-widest mb-2">{t('tft.player.seasonProfile')}</div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
         <MiniStat label={t('tft.player.consistency')}   value={`±${agg.placementStddev.toFixed(2)}`} title={t('tft.player.consistency.tip')} />
         <MiniStat label={t('tft.player.bestStreak')}     value={String(agg.bestTop4Streak)} title={t('tft.player.bestStreak.tip')} />
@@ -569,11 +569,11 @@ function UnitChip({ rank, characterId, games, avg, assets, lobbyAvg }: { rank: n
     <a
       href={`/tft/units/${encodeURIComponent(characterId)}`}
       title={`#${rank} ${name} — ${games} ${t('tft.gamesShort')}, Ø ${avg.toFixed(2)}${lobbyAvg != null ? ` (Lobby Ø ${lobbyAvg.toFixed(2)})` : ''}`}
-      className="flex items-center gap-2.5 bg-[#0a0e1a] border border-[#1e2a3a] rounded-md px-2.5 py-2 hover:border-[#7B61FF]/50 hover:bg-[#101729] transition"
+      className="flex items-center gap-2.5 bg-surface-sunken border border-border-subtle rounded-md px-2.5 py-2 hover:border-[#7B61FF]/50 hover:bg-[#101729] transition"
     >
       <RankBadge rank={rank} />
       <div className="w-10 h-10 rounded border-2 overflow-hidden flex-shrink-0" style={{ borderColor: costColor }}>
-        {url ? <img src={url} alt={name} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-[#1e2a3a]" />}
+        {url ? <img src={url} alt={name} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-surface-overlay" />}
       </div>
       <div className="flex-1 min-w-0">
         <div className="text-white text-sm font-medium truncate">{name}</div>
@@ -635,9 +635,9 @@ function PlayStyle({
 
   return (
     <>
-      <div className="text-[#a0b0c5] text-[10px] uppercase tracking-widest mb-2">{t('tft.gameStyle')}</div>
+      <div className="text-fg-secondary text-[10px] uppercase tracking-widest mb-2">{t('tft.gameStyle')}</div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-3">
-        <div className="bg-[#0a0e1a] border border-[#1e2a3a] rounded p-3" style={{ height: 240 }}>
+        <div className="bg-surface-sunken border border-border-subtle rounded p-3" style={{ height: 240 }}>
           <ResponsiveContainer width="100%" height="100%">
             <RadarChart data={radarData}>
               <PolarGrid stroke="#1e2a3a" />
@@ -650,13 +650,13 @@ function PlayStyle({
                   const d = props?.payload?.[0]?.payload;
                   if (!d) return null;
                   return (
-                    <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-2.5 max-w-[280px] shadow-lg">
+                    <div className="bg-surface-base border border-border-subtle rounded p-2.5 max-w-[280px] shadow-lg">
                       <div className="flex items-baseline gap-2 mb-1">
                         <span className="text-white text-xs font-medium">{d.axis}</span>
                         <span className="text-[#7B61FF] text-sm font-semibold tabular-nums">{d.value}/100</span>
                       </div>
-                      {d.current && <div className="text-[#a0b0c5] text-[11px] tabular-nums">{d.current}</div>}
-                      {d.formula && <div className="text-[#7a8aa0] text-[10px] leading-snug mt-1">{d.formula}</div>}
+                      {d.current && <div className="text-fg-secondary text-[11px] tabular-nums">{d.current}</div>}
+                      {d.formula && <div className="text-fg-muted text-[10px] leading-snug mt-1">{d.formula}</div>}
                     </div>
                   );
                 }}
@@ -664,8 +664,8 @@ function PlayStyle({
             </RadarChart>
           </ResponsiveContainer>
         </div>
-        <div className="bg-[#0a0e1a] border border-[#1e2a3a] rounded p-3" style={{ height: 240 }}>
-          <div className="text-[#a0b0c5] text-[10px] mb-1">{t('tft.placementDistribution')}</div>
+        <div className="bg-surface-sunken border border-border-subtle rounded p-3" style={{ height: 240 }}>
+          <div className="text-fg-secondary text-[10px] mb-1">{t('tft.placementDistribution')}</div>
           <ResponsiveContainer width="100%" height="90%">
             <BarChart data={histData} margin={{ top: 5, right: 0, bottom: 0, left: -25 }}>
               <XAxis dataKey="place" stroke="#a0b0c5" tick={{ fontSize: 10 }} />
@@ -694,8 +694,8 @@ function PlayStyle({
 
 function MiniStat({ label, value, title }: { label: string; value: string; title?: string }) {
   return (
-    <div className="bg-[#0a0e1a] border border-[#1e2a3a] rounded px-2 py-1.5" title={title}>
-      <div className={`text-[#a0b0c5] text-[9px] uppercase tracking-widest${title ? ' cursor-help' : ''}`}>{label}</div>
+    <div className="bg-surface-sunken border border-border-subtle rounded px-2 py-1.5" title={title}>
+      <div className={`text-fg-secondary text-[9px] uppercase tracking-widest${title ? ' cursor-help' : ''}`}>{label}</div>
       <div className="text-white text-sm font-medium mt-0.5">{value}</div>
     </div>
   );
@@ -703,8 +703,8 @@ function MiniStat({ label, value, title }: { label: string; value: string; title
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-[#0a0e1a] border border-[#1e2a3a] rounded px-3 py-2">
-      <div className="text-[#a0b0c5] text-[10px] uppercase tracking-widest">{label}</div>
+    <div className="bg-surface-sunken border border-border-subtle rounded px-3 py-2">
+      <div className="text-fg-secondary text-[10px] uppercase tracking-widest">{label}</div>
       <div className="text-white text-xl font-semibold mt-0.5">{value}</div>
     </div>
   );
@@ -748,16 +748,16 @@ function TournamentHistory({ pro }: { pro: TftProRecord }) {
   const visible = open ? all : all.slice(0, 10);
   const wins = all.filter((r) => String(r.place || '').startsWith('1')).length;
   return (
-    <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-3">
+    <div className="bg-surface-base border border-border-subtle rounded p-4 mb-3">
       <div className="flex items-baseline justify-between mb-3">
         <h2 className="text-white text-sm font-medium uppercase tracking-widest">{t('tft.player.tournamentHistory')}</h2>
-        <div className="text-xs text-[#a0b0c5]">
+        <div className="text-xs text-fg-secondary">
           <span className="text-white">{all.length}</span> {t('tft.player.tournaments')} ·{' '}
           <span className="text-[#f0c040]">{wins}× 1.</span> ·{' '}
           <span className="text-[#c89b3c]">{formatProEarnings(pro.total_earnings_usd)}</span>
         </div>
       </div>
-      <div className="hidden sm:grid grid-cols-[6rem_3rem_1fr_5rem_6rem] gap-2 text-[10px] uppercase text-[#7a8aa0] pb-2 border-b border-[#1e2a3a]">
+      <div className="hidden sm:grid grid-cols-[6rem_3rem_1fr_5rem_6rem] gap-2 text-[10px] uppercase text-fg-muted pb-2 border-b border-border-subtle">
         <div>{t('tft.player.colDate')}</div>
         <div>{t('tft.player.colPlace')}</div>
         <div>{t('tft.player.colTournament')}</div>
@@ -767,9 +767,9 @@ function TournamentHistory({ pro }: { pro: TftProRecord }) {
       {visible.map((r, i) => (
         <div
           key={i}
-          className="grid grid-cols-[6rem_3rem_1fr_5rem_6rem] gap-2 py-1.5 text-xs items-center border-b border-[#1e2a3a]/40 last:border-b-0"
+          className="grid grid-cols-[6rem_3rem_1fr_5rem_6rem] gap-2 py-1.5 text-xs items-center border-b border-border-subtle/40 last:border-b-0"
         >
-          <div className="text-[#7a8aa0] tabular-nums">{r.date?.slice(0, 10) || '—'}</div>
+          <div className="text-fg-muted tabular-nums">{r.date?.slice(0, 10) || '—'}</div>
           <div className="font-medium tabular-nums" style={{ color: placeColor(r.place) }}>
             {r.place || '—'}
           </div>
@@ -782,7 +782,7 @@ function TournamentHistory({ pro }: { pro: TftProRecord }) {
               r.tournament
             )}
           </div>
-          <div className="text-[#7a8aa0] hidden sm:block">{r.tier || '—'}</div>
+          <div className="text-fg-muted hidden sm:block">{r.tier || '—'}</div>
           <div className="text-[#c89b3c] text-right tabular-nums">{formatProEarnings(r.prize_usd)}</div>
         </div>
       ))}
@@ -819,16 +819,16 @@ function RankBlock({ ranked, seasonRanks }: { ranked: SummonerData['ranked']; se
 
   const inner = !ranked || !ranked.tier ? (
     <>
-      <div className="text-[#a0b0c5] text-xs uppercase tracking-widest">{t('tft.player.standardRanked')}</div>
-      <div className="text-[#a0b0c5] text-sm mt-1">{t('tft.player.unranked')}</div>
+      <div className="text-fg-secondary text-xs uppercase tracking-widest">{t('tft.player.standardRanked')}</div>
+      <div className="text-fg-secondary text-sm mt-1">{t('tft.player.unranked')}</div>
     </>
   ) : (
     <>
-      <div className="text-[#a0b0c5] text-xs uppercase tracking-widest">{t('tft.player.standardRanked')}</div>
+      <div className="text-fg-secondary text-xs uppercase tracking-widest">{t('tft.player.standardRanked')}</div>
       <div className="text-lg font-medium mt-1" style={{ color: TIER_COLORS[ranked.tier] || '#a0b0c5' }}>
         {formatTier(ranked.tier, ranked.rank)} <span className="text-white">{ranked.leaguePoints ?? 0} LP</span>
       </div>
-      <div className="text-[#a0b0c5] text-xs">
+      <div className="text-fg-secondary text-xs">
         {ranked.wins ?? 0}W {ranked.losses ?? 0}L
         {(ranked.wins ?? 0) + (ranked.losses ?? 0) > 0 && (
           <> · {Math.round(((ranked.wins ?? 0) / ((ranked.wins ?? 0) + (ranked.losses ?? 0))) * 100)}% WR</>
@@ -849,8 +849,8 @@ function RankBlock({ ranked, seasonRanks }: { ranked: SummonerData['ranked']; se
             {t('tft.player.allSeasons').replace('{n}', String(pastSeasons.length))} {open ? '▲' : '▼'}
           </button>
           {open && (
-            <div className="absolute right-0 mt-1 z-20 bg-[#0d1526] border border-[#1e2a3a] rounded-lg shadow-lg p-3 min-w-[280px] text-left">
-              <div className="text-[#a0b0c5] text-[10px] uppercase tracking-widest mb-2">
+            <div className="absolute right-0 mt-1 z-20 bg-surface-base border border-border-subtle rounded-lg shadow-lg p-3 min-w-[280px] text-left">
+              <div className="text-fg-secondary text-[10px] uppercase tracking-widest mb-2">
                 {t('tft.player.peakRankPerSet')}
               </div>
               <div className="space-y-1.5">
@@ -885,11 +885,11 @@ function SeasonRankRow({ season }: { season: SeasonRank }) {
   ].filter(Boolean).join(' ');
   return (
     <div className="flex items-center justify-between gap-3 text-xs">
-      <div className="text-[#a0b0c5] flex-shrink-0">{setLabel}</div>
+      <div className="text-fg-secondary flex-shrink-0">{setLabel}</div>
       <div className="flex items-center gap-2 min-w-0">
         <span style={{ color }} className="font-medium truncate">{rankText}</span>
         {season.total_games != null && (
-          <span className="text-[#7a8aa0] text-[10px] flex-shrink-0">{season.total_games} {t('tft.gamesShort')}</span>
+          <span className="text-fg-muted text-[10px] flex-shrink-0">{season.total_games} {t('tft.gamesShort')}</span>
         )}
       </div>
     </div>
@@ -956,11 +956,11 @@ function ProSpecialty({ puuid, setNumber, assets, t }: {
   }, []);
   if (!data) return null;
   return (
-    <section className="mt-4 bg-gradient-to-br from-[#0d1526] to-[#1a0e26] border border-[#a892ff]/30 rounded p-4">
+    <section className="mt-4 bg-gradient-to-br from-surface-base to-[#1a0e26] border border-[#a892ff]/30 rounded p-4">
       <h2 className="text-[#a892ff] text-xs uppercase tracking-widest mb-3">{t('tft.player.proSpecialty')}</h2>
       {data.comps.length > 0 && (
         <div className="mb-4">
-          <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest mb-2">
+          <div className="text-fg-muted text-[10px] uppercase tracking-widest mb-2">
             {t('tft.player.signatureComps')} · {data.classifiedGames} {t('tft.gamesShort')}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -978,7 +978,7 @@ function ProSpecialty({ puuid, setNumber, assets, t }: {
                 <a
                   key={c.clusterKey}
                   href={href}
-                  className="flex items-center gap-2 bg-[#141c2e] border border-[#1e2a3a] rounded p-2 hover:border-[#a892ff]/40 transition-colors"
+                  className="flex items-center gap-2 bg-surface-raised border border-border-subtle rounded p-2 hover:border-[#a892ff]/40 transition-colors"
                 >
                   {tftChampionTileUrl(assets, carryAsset) && (
                     <img src={tftChampionTileUrl(assets, carryAsset)!} alt="" className="w-8 h-8 rounded border border-[#c39bff]/60 flex-shrink-0" />
@@ -987,7 +987,7 @@ function ProSpecialty({ puuid, setNumber, assets, t }: {
                     <div className="text-white text-[11px] font-medium truncate">
                       {traitName} · {carryAsset?.name || carry.replace(/^TFT\d+_/, '')}
                     </div>
-                    <div className="text-[#7a8aa0] text-[10px] tabular-nums">
+                    <div className="text-fg-muted text-[10px] tabular-nums">
                       {(c.share * 100).toFixed(0)}% · Ø {c.avgPlacement?.toFixed(2) ?? '—'} · {c.games} {t('tft.gamesShort')}
                     </div>
                   </div>
@@ -1002,13 +1002,13 @@ function ProSpecialty({ puuid, setNumber, assets, t }: {
       )}
       {data.unitBuilds.length > 0 && (
         <div>
-          <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest mb-2">{t('tft.player.signatureBuilds')}</div>
+          <div className="text-fg-muted text-[10px] uppercase tracking-widest mb-2">{t('tft.player.signatureBuilds')}</div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
             {data.unitBuilds.slice(0, 4).map(u => {
               const unitAsset = assets?.champions[u.unitId];
               const tierKeys = Object.keys(u.tiers).sort();
               return (
-                <div key={u.unitId} className="bg-[#141c2e] border border-[#1e2a3a] rounded p-2.5">
+                <div key={u.unitId} className="bg-surface-raised border border-border-subtle rounded p-2.5">
                   <a
                     href={`/tft/units/${encodeURIComponent(u.unitId)}`}
                     className="flex items-center gap-2 mb-2 hover:opacity-90 transition-opacity group"
@@ -1017,7 +1017,7 @@ function ProSpecialty({ puuid, setNumber, assets, t }: {
                       <img src={tftChampionTileUrl(assets, unitAsset)!} alt={unitAsset?.name || u.unitId} className="w-8 h-8 rounded border border-[#c39bff]/60 group-hover:border-[#c39bff]" />
                     )}
                     <span className="text-white text-[11px] group-hover:text-[#7B61FF] transition-colors">{unitAsset?.name || u.unitId.replace(/^TFT\d+_/, '')}</span>
-                    <span className="text-[#7a8aa0] text-[10px] tabular-nums ml-auto">{u.games} {t('tft.gamesShort')}</span>
+                    <span className="text-fg-muted text-[10px] tabular-nums ml-auto">{u.games} {t('tft.gamesShort')}</span>
                   </a>
                   <div className="space-y-1">
                     {tierKeys.flatMap(tier => (u.tiers[tier] || []).map((build, i) => (
@@ -1037,11 +1037,11 @@ function ProSpecialty({ puuid, setNumber, assets, t }: {
                                 <img src={iconUrl} alt={itemName} className="w-5 h-5 rounded" />
                               </a>
                             ) : (
-                              <div key={j} className="w-5 h-5 rounded bg-[#1e2a3a]" />
+                              <div key={j} className="w-5 h-5 rounded bg-surface-overlay" />
                             );
                           })}
                         </div>
-                        <span className="text-[10px] text-[#7a8aa0] tabular-nums ml-auto">{build.count}× · Ø{build.avgPlacement?.toFixed(1) ?? '—'}</span>
+                        <span className="text-[10px] text-fg-muted tabular-nums ml-auto">{build.count}× · Ø{build.avgPlacement?.toFixed(1) ?? '—'}</span>
                       </div>
                     )))}
                   </div>

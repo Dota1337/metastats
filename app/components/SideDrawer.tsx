@@ -264,7 +264,7 @@ export default function SideDrawer() {
         onClick={() => setOpen(!open)}
         className={`fixed left-0 z-50 flex items-center gap-1.5 px-2 py-3 rounded-r-lg transition-all duration-300 ${
           open ? 'translate-x-[340px] sm:translate-x-[380px]' : 'translate-x-0'
-        } bg-[#0d1526] border border-l-0 border-[#1e2a3a] hover:border-[#c89b3c]/50 group`}
+        } bg-surface-base border border-l-0 border-border-subtle hover:border-[#c89b3c]/50 group`}
         style={{ top: '50%', transform: `translateY(-50%) ${open ? 'translateX(340px)' : 'translateX(0)'}` }}
         title={open ? t('drawer.close') : t('drawer.open')}
       >
@@ -276,7 +276,7 @@ export default function SideDrawer() {
             <path strokeLinecap="round" strokeLinejoin="round" d={open ? 'M15 19l-7-7 7-7' : 'M9 5l7 7-7 7'} />
           </svg>
           {!open && (
-            <span className="text-[#a0b0c5] text-[9px] font-medium [writing-mode:vertical-lr] group-hover:text-white transition-colors">
+            <span className="text-fg-secondary text-[9px] font-medium [writing-mode:vertical-lr] group-hover:text-white transition-colors">
               LIVE
             </span>
           )}
@@ -291,17 +291,17 @@ export default function SideDrawer() {
       {/* Drawer */}
       <div
         ref={drawerRef}
-        className={`fixed left-0 top-0 bottom-0 z-40 w-[340px] sm:w-[380px] bg-[#0a0e1a] border-r border-[#1e2a3a] transform transition-transform duration-300 ease-in-out ${
+        className={`fixed left-0 top-0 bottom-0 z-40 w-[340px] sm:w-[380px] bg-surface-sunken border-r border-border-subtle transform transition-transform duration-300 ease-in-out ${
           open ? 'translate-x-0' : '-translate-x-full'
         } flex flex-col overflow-hidden`}
       >
         {/* Header */}
-        <div className="px-4 pt-4 pb-3 border-b border-[#1e2a3a]">
+        <div className="px-4 pt-4 pb-3 border-b border-border-subtle">
           <div className="flex items-center justify-between mb-3">
             <span className="text-[#c89b3c] text-sm font-medium">
               meta<span className="text-white">stats</span>
             </span>
-            <button onClick={() => setOpen(false)} className="text-[#7a8aa0] hover:text-white transition-colors">
+            <button onClick={() => setOpen(false)} className="text-fg-muted hover:text-white transition-colors">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -309,13 +309,13 @@ export default function SideDrawer() {
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-1 bg-[#141c2e] rounded-lg p-0.5">
+          <div className="flex gap-1 bg-surface-raised rounded-lg p-0.5">
             <button
               onClick={() => setTab('tournaments')}
               className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                 tab === 'tournaments'
-                  ? 'bg-[#1e2a3a] text-white shadow-sm'
-                  : 'text-[#a0b0c5] hover:text-white'
+                  ? 'bg-surface-overlay text-white shadow-sm'
+                  : 'text-fg-secondary hover:text-white'
               }`}
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -332,8 +332,8 @@ export default function SideDrawer() {
               onClick={() => setTab('patches')}
               className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                 tab === 'patches'
-                  ? 'bg-[#1e2a3a] text-white shadow-sm'
-                  : 'text-[#a0b0c5] hover:text-white'
+                  ? 'bg-surface-overlay text-white shadow-sm'
+                  : 'text-fg-secondary hover:text-white'
               }`}
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -416,7 +416,7 @@ function TournamentsContent({
               className={`px-2.5 py-1 rounded text-[10px] font-medium transition-colors ${
                 tournamentFilter === f.key
                   ? 'bg-[#c89b3c]/20 text-[#c89b3c]'
-                  : 'text-[#a0b0c5] hover:text-white hover:bg-[#141c2e]'
+                  : 'text-fg-secondary hover:text-white hover:bg-surface-raised'
               }`}
             >
               {f.label}
@@ -426,7 +426,7 @@ function TournamentsContent({
         <select
           value={leagueFilter}
           onChange={e => setLeagueFilter(e.target.value)}
-          className="w-full bg-[#141c2e] border border-[#1e2a3a] rounded px-2 py-1.5 text-xs text-white outline-none focus:border-[#c89b3c]/50"
+          className="w-full bg-surface-raised border border-border-subtle rounded px-2 py-1.5 text-xs text-white outline-none focus:border-[#c89b3c]/50"
         >
           <option value="">{t('drawer.allLeagues')}</option>
           {sortedLeagues.map(slug => (
@@ -439,14 +439,14 @@ function TournamentsContent({
 
       {/* Match list */}
       {tournaments.length === 0 ? (
-        <div className="px-4 py-8 text-center text-[#7a8aa0] text-xs">
+        <div className="px-4 py-8 text-center text-fg-muted text-xs">
           {t('drawer.noMatches')}
         </div>
       ) : (
         Object.entries(groupedByDate).map(([date, matches]) => (
           <div key={date}>
-            <div className="px-4 py-1.5 bg-[#0d1526] border-y border-[#1e2a3a] sticky top-0 z-10">
-              <span className="text-[#a0b0c5] text-[10px] font-medium uppercase tracking-wider">{date}</span>
+            <div className="px-4 py-1.5 bg-surface-base border-y border-border-subtle sticky top-0 z-10">
+              <span className="text-fg-secondary text-[10px] font-medium uppercase tracking-wider">{date}</span>
             </div>
             {matches.map((match, i) => (
               <MatchCard key={`${match.startTime}-${i}`} match={match} formatTime={formatTime} relativeTime={relativeTime} t={t} />
@@ -475,7 +475,7 @@ function MatchCard({ match, formatTime, relativeTime, t }: { match: Tournament; 
         window.location.href = href;
         e.preventDefault();
       }}
-      className={`block px-4 py-2.5 border-b border-[#141c2e] hover:bg-[#0d1526] transition-colors cursor-pointer ${isLive ? 'bg-red-500/5 hover:bg-red-500/10' : ''}`}
+      className={`block px-4 py-2.5 border-b border-surface-raised hover:bg-surface-base transition-colors cursor-pointer ${isLive ? 'bg-red-500/5 hover:bg-red-500/10' : ''}`}
     >
       {/* League + Time */}
       <div className="flex items-center justify-between mb-1.5">
@@ -485,10 +485,10 @@ function MatchCard({ match, formatTime, relativeTime, t }: { match: Tournament; 
             {match.league}
           </span>
           {match.blockName && (
-            <span className="text-[#7a8aa0] text-[10px]">· {match.blockName}</span>
+            <span className="text-fg-muted text-[10px]">· {match.blockName}</span>
           )}
         </div>
-        <span className={`text-[10px] ${isLive ? 'text-red-400 font-bold' : isUpcoming ? 'text-[#a0b0c5]' : 'text-[#7a8aa0]'}`}>
+        <span className={`text-[10px] ${isLive ? 'text-red-400 font-bold' : isUpcoming ? 'text-fg-secondary' : 'text-fg-muted'}`}>
           {isLive ? 'LIVE' : isUpcoming ? relativeTime(match.startTime) : formatTime(match.startTime)}
         </span>
       </div>
@@ -500,7 +500,7 @@ function MatchCard({ match, formatTime, relativeTime, t }: { match: Tournament; 
             {team1.image && <img src={team1.image} alt="" className="w-5 h-5 rounded" />}
             <span className={`text-xs truncate ${
               team1.outcome === 'win' ? 'text-green-400 font-medium' :
-              team1.outcome === 'loss' ? 'text-[#7a8aa0]' : 'text-white'
+              team1.outcome === 'loss' ? 'text-fg-muted' : 'text-white'
             }`}>
               {team1.name}
             </span>
@@ -508,11 +508,11 @@ function MatchCard({ match, formatTime, relativeTime, t }: { match: Tournament; 
 
           {/* Score */}
           <div className="flex items-center gap-1 px-2">
-            <span className={`text-xs font-bold ${team1.outcome === 'win' ? 'text-green-400' : 'text-[#a0b0c5]'}`}>
+            <span className={`text-xs font-bold ${team1.outcome === 'win' ? 'text-green-400' : 'text-fg-secondary'}`}>
               {match.state !== 'unstarted' ? team1.gameWins : '-'}
             </span>
-            <span className="text-[#7a8aa0] text-[10px]">:</span>
-            <span className={`text-xs font-bold ${team2.outcome === 'win' ? 'text-green-400' : 'text-[#a0b0c5]'}`}>
+            <span className="text-fg-muted text-[10px]">:</span>
+            <span className={`text-xs font-bold ${team2.outcome === 'win' ? 'text-green-400' : 'text-fg-secondary'}`}>
               {match.state !== 'unstarted' ? team2.gameWins : '-'}
             </span>
           </div>
@@ -520,7 +520,7 @@ function MatchCard({ match, formatTime, relativeTime, t }: { match: Tournament; 
           <div className="flex-1 flex items-center justify-end gap-2 min-w-0">
             <span className={`text-xs truncate ${
               team2.outcome === 'win' ? 'text-green-400 font-medium' :
-              team2.outcome === 'loss' ? 'text-[#7a8aa0]' : 'text-white'
+              team2.outcome === 'loss' ? 'text-fg-muted' : 'text-white'
             }`}>
               {team2.name}
             </span>
@@ -548,7 +548,7 @@ function TftTournamentsContent({
   const dateFmt = (s: string | null) => s ? new Date(s).toLocaleDateString(locale, { day: '2-digit', month: 'short' }) : '—';
 
   if (tournaments.length === 0) {
-    return <div className="px-4 py-8 text-center text-[#7a8aa0] text-xs">{t('drawer.noMatches')}</div>;
+    return <div className="px-4 py-8 text-center text-fg-muted text-xs">{t('drawer.noMatches')}</div>;
   }
 
   // Group by status — live first (pulsing red header), then upcoming. Past
@@ -577,7 +577,7 @@ function TftTournamentsContent({
 
 function SectionHeader({ label, count, accent, pulse }: { label: string; count: number; accent: string; pulse?: boolean }) {
   return (
-    <div className="px-4 py-1.5 bg-[#0d1526] border-y border-[#1e2a3a] sticky top-0 z-10 flex items-center gap-2">
+    <div className="px-4 py-1.5 bg-surface-base border-y border-border-subtle sticky top-0 z-10 flex items-center gap-2">
       <span className="relative flex h-2 w-2">
         {pulse && <span className="absolute inset-0 rounded-full opacity-75 animate-ping" style={{ backgroundColor: accent }} />}
         <span className="relative inline-flex rounded-full h-2 w-2" style={{ backgroundColor: accent }} />
@@ -596,7 +596,7 @@ function TftTournamentRow({
   return (
     <a
       href={`/tft/tournaments/${encodeURIComponent(tournament.id)}`}
-      className="block px-4 py-2.5 border-b border-[#141c2e] hover:bg-[#0d1526] transition-colors"
+      className="block px-4 py-2.5 border-b border-surface-raised hover:bg-surface-base transition-colors"
     >
       <div className="flex items-start gap-2.5">
         {tournament.tier && (
@@ -609,7 +609,7 @@ function TftTournamentRow({
         )}
         <div className="flex-1 min-w-0">
           <div className="text-white text-xs font-medium truncate">{cleanTournamentName(tournament.name)}</div>
-          <div className="text-[#7a8aa0] text-[10px] mt-0.5">
+          <div className="text-fg-muted text-[10px] mt-0.5">
             {dateFmt(tournament.start_date)} – {dateFmt(tournament.end_date)}
             {tournament.region && ` · ${tournament.region}`}
           </div>
@@ -646,10 +646,10 @@ function PatchesContent({ patches, t }: { patches: PatchNote[]; t: (key: any) =>
           href={patch.url}
           target="_blank"
           rel="noopener noreferrer"
-          className={`block rounded-lg border transition-all hover:border-[#c89b3c]/50 hover:bg-[#141c2e] ${
+          className={`block rounded-lg border transition-all hover:border-[#c89b3c]/50 hover:bg-surface-raised ${
             i === 0
               ? 'border-[#c89b3c]/30 bg-[#c89b3c]/5'
-              : 'border-[#1e2a3a] bg-[#0d1526]'
+              : 'border-border-subtle bg-surface-base'
           }`}
         >
           <div className="px-3 py-2.5">
@@ -664,19 +664,19 @@ function PatchesContent({ patches, t }: { patches: PatchNote[]; t: (key: any) =>
                   </span>
                 )}
               </div>
-              <span className="text-[#7a8aa0] text-[10px]">{patch.date}</span>
+              <span className="text-fg-muted text-[10px]">{patch.date}</span>
             </div>
             {patch.highlights.length > 0 && (
               <div className="mt-1.5 space-y-0.5">
                 {patch.highlights.map((h, j) => (
-                  <div key={j} className="text-[#a0b0c5] text-[11px] flex items-start gap-1.5">
+                  <div key={j} className="text-fg-secondary text-[11px] flex items-start gap-1.5">
                     <span className="text-[#c89b3c] mt-0.5">·</span>
                     {h}
                   </div>
                 ))}
               </div>
             )}
-            <div className="flex items-center gap-1 mt-1.5 text-[#7a8aa0] text-[10px]">
+            <div className="flex items-center gap-1 mt-1.5 text-fg-muted text-[10px]">
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
               </svg>

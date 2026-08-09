@@ -107,7 +107,7 @@ export default function StatsFilterBar({ filters, patches, onChange }: Props) {
   })() : null;
 
   return (
-    <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-3 mb-4">
+    <div className="bg-surface-base border border-border-subtle rounded-lg p-3 mb-4">
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <FilterSelect
           label={t('tft.filter.patch')}
@@ -202,14 +202,14 @@ function FilterSelect({
 }) {
   return (
     <div>
-      <div className={`text-[10px] uppercase tracking-widest mb-1 ${highlight ? 'text-[#c39bff]' : 'text-[#7a8aa0]'}`}>{label}</div>
+      <div className={`text-[10px] uppercase tracking-widest mb-1 ${highlight ? 'text-[#c39bff]' : 'text-fg-muted'}`}>{label}</div>
       <select
         value={value}
         onChange={e => onChange(e.target.value)}
-        className={`w-full bg-[#141c2e] rounded px-3 py-1.5 text-xs text-white focus:outline-none border ${
+        className={`w-full bg-surface-raised rounded px-3 py-1.5 text-xs text-white focus:outline-none border ${
           highlight
             ? 'border-[#7B61FF]/70 ring-1 ring-[#7B61FF]/30'
-            : 'border-[#1e2a3a] focus:border-[#7B61FF]/60'
+            : 'border-border-subtle focus:border-[#7B61FF]/60'
         }`}
       >
         {children}

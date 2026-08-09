@@ -132,20 +132,20 @@ export default function TftItemDetailPage() {
     : [];
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav active="items" />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
-        <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-5 mb-5">
+        <div className="bg-surface-base border border-border-subtle rounded-lg p-5 mb-5">
           <a href="/tft/items" className="text-[#7B61FF] text-xs hover:underline">← {t('nav.items')}</a>
           <div className="flex items-center gap-4 mt-2">
             {url ? (
               <img src={url} alt={itemMeta!.name} className="w-16 h-16 rounded-lg border-2 border-[#7B61FF]" />
             ) : (
-              <div className="w-16 h-16 rounded-lg bg-[#1e2a3a]" />
+              <div className="w-16 h-16 rounded-lg bg-surface-overlay" />
             )}
             <div className="flex-1">
               <h1 className="text-white text-2xl font-medium">{itemMeta?.name || prettyApi(id)}</h1>
-              {itemMeta?.desc && <p className="text-[#a0b0c5] text-xs mt-1 max-w-prose">{itemMeta.desc}</p>}
+              {itemMeta?.desc && <p className="text-fg-secondary text-xs mt-1 max-w-prose">{itemMeta.desc}</p>}
             </div>
           </div>
 
@@ -153,8 +153,8 @@ export default function TftItemDetailPage() {
               own clickable tile so the player can dig into the component
               economy from any direction. */}
           {composition.length === 2 && (
-            <div className="mt-4 pt-4 border-t border-[#1e2a3a]">
-              <div className="text-[#a0b0c5] text-[10px] uppercase tracking-widest mb-2">{t('tft.item.recipe')}</div>
+            <div className="mt-4 pt-4 border-t border-border-subtle">
+              <div className="text-fg-secondary text-[10px] uppercase tracking-widest mb-2">{t('tft.item.recipe')}</div>
               <div className="flex items-center gap-3 flex-wrap">
                 {composition.map((compId, i) => {
                   const compMeta = assets?.items[compId];
@@ -164,12 +164,12 @@ export default function TftItemDetailPage() {
                       <a
                         href={`/tft/items/${encodeURIComponent(compId)}?bucket=${bucket}`}
                         title={compMeta?.name || compId}
-                        className="flex items-center gap-2 bg-[#141c2e] border border-[#1e2a3a] rounded px-2 py-1 hover:border-[#7B61FF]/50"
+                        className="flex items-center gap-2 bg-surface-raised border border-border-subtle rounded px-2 py-1 hover:border-[#7B61FF]/50"
                       >
                         {compUrl ? (
                           <img src={compUrl} alt={compMeta!.name} className="w-8 h-8 rounded" />
                         ) : (
-                          <div className="w-8 h-8 rounded bg-[#1e2a3a]" />
+                          <div className="w-8 h-8 rounded bg-surface-overlay" />
                         )}
                         <span className="text-white text-xs">{compMeta?.name || prettyApi(compId)}</span>
                       </a>
@@ -190,7 +190,7 @@ export default function TftItemDetailPage() {
         <div className="flex justify-end items-center gap-2 mb-4">
           <a
             href={buildExplorerUrl({ items: [id], bucket })}
-            className="px-2.5 py-1.5 rounded text-xs bg-[#141c2e] border border-[#1e2a3a] text-[#a0b0c5] hover:text-white hover:border-[#7B61FF]/60 transition-colors flex items-center gap-1.5"
+            className="px-2.5 py-1.5 rounded text-xs bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-[#7B61FF]/60 transition-colors flex items-center gap-1.5"
             title={t('tft.drill.openInExplorer')}
           >
             <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -214,7 +214,7 @@ export default function TftItemDetailPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">
               {data.topUsers.length > 0 && (
                 <div>
-                  <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-2">{t('tft.item.topCarrier.title')}</h2>
+                  <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-2">{t('tft.item.topCarrier.title')}</h2>
                   {/* 1D-Carrier-Tabelle: Carrier × (Avg-Place, Top4%, Games).
                       avgPlacement war schon im Aggregator (sumPlacement/games),
                       vorher nur nicht angezeigt. top4Rate seit 2026-06-19
@@ -222,8 +222,8 @@ export default function TftItemDetailPage() {
                       Top4-Bucket rendern "—" statt eines erfundenen Werts
                       (feedback_no_fake_values), füllt sich beim nächsten
                       Daily-Crawl auf. */}
-                  <div className="bg-[#141c2e] border border-[#1e2a3a] rounded overflow-hidden">
-                    <div className="grid grid-cols-[1fr_4rem_4rem_4rem] gap-2 px-3 py-1.5 text-[10px] uppercase tracking-widest text-[#7a8aa0] bg-[#0a0e1a]">
+                  <div className="bg-surface-raised border border-border-subtle rounded overflow-hidden">
+                    <div className="grid grid-cols-[1fr_4rem_4rem_4rem] gap-2 px-3 py-1.5 text-[10px] uppercase tracking-widest text-fg-muted bg-surface-sunken">
                       <div>{t('tft.item.topCarrier.carrier')}</div>
                       <div className="text-right">{t('tft.avgPlacement')}</div>
                       <div className="text-right">{t('tft.top4')}</div>
@@ -237,19 +237,19 @@ export default function TftItemDetailPage() {
                         <a
                           key={u.characterId}
                           href={`/tft/units/${encodeURIComponent(u.characterId)}?bucket=${bucket}`}
-                          className="grid grid-cols-[1fr_4rem_4rem_4rem] gap-2 items-center px-3 py-1.5 text-xs hover:bg-white/5 border-t border-[#1e2a3a]"
+                          className="grid grid-cols-[1fr_4rem_4rem_4rem] gap-2 items-center px-3 py-1.5 text-xs hover:bg-white/5 border-t border-border-subtle"
                         >
                           <div className="flex items-center gap-2 min-w-0">
                             {churl ? (
                               <img src={churl} alt={ch!.name} className="w-7 h-7 rounded border-2 object-cover flex-shrink-0" style={{ borderColor: costColorOf(cost) }} />
                             ) : (
-                              <div className="w-7 h-7 rounded bg-[#1e2a3a] flex-shrink-0" />
+                              <div className="w-7 h-7 rounded bg-surface-overlay flex-shrink-0" />
                             )}
                             <span className="text-white truncate">{ch?.name || prettyChar(u.characterId)}</span>
                           </div>
                           <div className="text-right text-white tabular-nums">{u.avgPlacement?.toFixed(2) ?? '—'}</div>
                           <div className="text-right text-[#3ecf8e] tabular-nums">{u.top4Rate != null ? `${(u.top4Rate * 100).toFixed(0)}%` : '—'}</div>
-                          <div className="text-right text-[#7a8aa0] tabular-nums">{u.games}</div>
+                          <div className="text-right text-fg-muted tabular-nums">{u.games}</div>
                         </a>
                       );
                     })}
@@ -259,7 +259,7 @@ export default function TftItemDetailPage() {
 
               {compsTop6.length > 0 && (
                 <div>
-                  <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-2">{t('tft.compsWithItem')}</h2>
+                  <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-2">{t('tft.compsWithItem')}</h2>
                   <div className="space-y-1.5">
                     {compsTop6.map(c => {
                       const parts = parseClusterKey(c.clusterKey);
@@ -270,7 +270,7 @@ export default function TftItemDetailPage() {
                         <a
                           key={c.slug}
                           href={`/tft/comps/${encodeURIComponent(c.slug)}?bucket=${bucket}&region=euw1`}
-                          className="flex items-center gap-2 bg-[#141c2e] border border-[#1e2a3a] rounded p-2 hover:border-[#7B61FF]/40 transition-colors"
+                          className="flex items-center gap-2 bg-surface-raised border border-border-subtle rounded p-2 hover:border-[#7B61FF]/40 transition-colors"
                         >
                           {carryUrl && (
                             <img src={carryUrl} alt="" className="w-8 h-8 rounded border border-[#c39bff]/60 object-cover flex-shrink-0" />
@@ -282,7 +282,7 @@ export default function TftItemDetailPage() {
                           </div>
                           <div className="text-right text-[11px] tabular-nums leading-tight">
                             <div className="text-white">Ø {c.avgPlacement?.toFixed(2) ?? '—'}</div>
-                            <div className="text-[#7a8aa0]">{c.games}</div>
+                            <div className="text-fg-muted">{c.games}</div>
                           </div>
                         </a>
                       );
@@ -301,12 +301,12 @@ export default function TftItemDetailPage() {
             touch; this client-side cross gets us the ranking without backend
             work. ≥5 games gate so noise doesn't dominate. */}
         {itemCombos.length > 0 && (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-5">
-            <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-1">{t('tft.item.combos.title')}</h2>
-            <p className="text-[#7a8aa0] text-[11px] mb-3">{t('tft.item.combos.caption')}</p>
+          <div className="bg-surface-base border border-border-subtle rounded p-4 mb-5">
+            <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-1">{t('tft.item.combos.title')}</h2>
+            <p className="text-fg-muted text-[11px] mb-3">{t('tft.item.combos.caption')}</p>
             <div className="space-y-1.5">
               {itemCombos.map((s, i) => (
-                <div key={i} className="grid grid-cols-[1fr_4rem_4rem_4rem] gap-3 items-center bg-[#141c2e] border border-[#1e2a3a] rounded px-3 py-2">
+                <div key={i} className="grid grid-cols-[1fr_4rem_4rem_4rem] gap-3 items-center bg-surface-raised border border-border-subtle rounded px-3 py-2">
                   <div className="flex items-center gap-1.5">
                     {s.items.map((it, j) => {
                       const im = assets?.items[it];
@@ -322,13 +322,13 @@ export default function TftItemDetailPage() {
                           <img src={iurl} alt={im?.name || it} className={`w-7 h-7 rounded ${it === id ? 'ring-2 ring-[#7B61FF]' : ''}`} />
                         </a>
                       ) : (
-                        <div key={j} className="w-7 h-7 rounded bg-[#1e2a3a]" />
+                        <div key={j} className="w-7 h-7 rounded bg-surface-overlay" />
                       );
                     })}
                   </div>
                   <div className="text-right text-white tabular-nums text-xs">{s.avgPlacement.toFixed(2)}</div>
                   <div className="text-right text-[#3ecf8e] tabular-nums text-xs">{(s.top4Rate * 100).toFixed(0)}% T4</div>
-                  <div className="text-right text-[#7a8aa0] tabular-nums text-xs">{s.games}</div>
+                  <div className="text-right text-fg-muted tabular-nums text-xs">{s.games}</div>
                 </div>
               ))}
             </div>
@@ -339,8 +339,8 @@ export default function TftItemDetailPage() {
             one. Lets players see all options for a given starter (e.g. "I
             got a Sword early — what completed items use it?"). */}
         {siblings.length > 0 && (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
-            <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.item.sharedComponents')}</h2>
+          <div className="bg-surface-base border border-border-subtle rounded p-4">
+            <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.item.sharedComponents')}</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
               {siblings.map(([k, v]) => {
                 const sUrl = tftIconUrl(assets, v.icon);
@@ -348,12 +348,12 @@ export default function TftItemDetailPage() {
                   <a
                     key={k}
                     href={`/tft/items/${encodeURIComponent(k)}?bucket=${bucket}`}
-                    className="flex items-center gap-2 bg-[#141c2e] border border-[#1e2a3a] rounded p-2 hover:border-[#7B61FF]/50"
+                    className="flex items-center gap-2 bg-surface-raised border border-border-subtle rounded p-2 hover:border-[#7B61FF]/50"
                   >
                     {sUrl ? (
                       <img src={sUrl} alt={v.name} className="w-8 h-8 rounded" />
                     ) : (
-                      <div className="w-8 h-8 rounded bg-[#1e2a3a]" />
+                      <div className="w-8 h-8 rounded bg-surface-overlay" />
                     )}
                     <span className="text-white text-[11px] truncate">{v.name}</span>
                   </a>
@@ -370,8 +370,8 @@ export default function TftItemDetailPage() {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-3">
-      <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">{label}</div>
+    <div className="bg-surface-base border border-border-subtle rounded p-3">
+      <div className="text-fg-muted text-[10px] uppercase tracking-widest">{label}</div>
       <div className="text-white text-lg font-medium mt-1">{value}</div>
     </div>
   );

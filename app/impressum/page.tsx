@@ -11,12 +11,12 @@ export default function ImpressumPage() {
   const { t } = useI18n();
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav />
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
         <h1 className="text-white text-2xl font-medium mb-6">{t('legal.imprint')}</h1>
 
-        <section className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-6 space-y-5 text-sm text-[#a0b0c5] leading-relaxed">
+        <section className="bg-surface-base border border-border-subtle rounded-lg p-6 space-y-5 text-sm text-fg-secondary leading-relaxed">
           <div>
             <h2 className="text-white text-base font-medium mb-2">{t('legal.imprint.providerHeading')}</h2>
             <p>metastats.gg</p>

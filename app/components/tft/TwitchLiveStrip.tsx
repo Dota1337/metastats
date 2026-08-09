@@ -25,10 +25,10 @@ export default function TwitchLiveStrip({ first = 8 }: { first?: number }) {
 
   if (streams.length === 0) return null;
   return (
-    <section className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-4">
+    <section className="bg-surface-base border border-border-subtle rounded p-4 mb-4">
       <div className="flex items-center gap-2 mb-3">
         <span className="w-2 h-2 rounded-full bg-[#e44040] animate-pulse" />
-        <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest">{t('tft.twitchLive.title')}</h2>
+        <h2 className="text-fg-secondary text-xs uppercase tracking-widest">{t('tft.twitchLive.title')}</h2>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {streams.map(s => (
@@ -37,9 +37,9 @@ export default function TwitchLiveStrip({ first = 8 }: { first?: number }) {
             href={`https://twitch.tv/${s.userLogin}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="bg-[#141c2e] border border-[#1e2a3a] rounded overflow-hidden hover:border-[#a892ff]/40 transition-colors"
+            className="bg-surface-raised border border-border-subtle rounded overflow-hidden hover:border-[#a892ff]/40 transition-colors"
           >
-            <div className="relative aspect-video bg-[#0d1526]">
+            <div className="relative aspect-video bg-surface-base">
               {s.thumbnailUrl ? (
                 <img src={s.thumbnailUrl} alt="" className="w-full h-full object-cover" />
               ) : null}
@@ -50,7 +50,7 @@ export default function TwitchLiveStrip({ first = 8 }: { first?: number }) {
             </div>
             <div className="p-1.5">
               <div className="text-white text-[11px] font-medium truncate">{s.userName}</div>
-              <div className="text-[#7a8aa0] text-[10px] truncate">{s.title}</div>
+              <div className="text-fg-muted text-[10px] truncate">{s.title}</div>
             </div>
           </a>
         ))}

@@ -24,14 +24,14 @@ export default function CompLevelActiveTraits({
   );
   if (traits.length === 0) return null;
   return (
-    <div className="flex flex-wrap items-center gap-1.5 mt-2 pt-2 border-t border-[#1e2a3a]">
+    <div className="flex flex-wrap items-center gap-1.5 mt-2 pt-2 border-t border-border-subtle">
       {traits.map(tr => {
         const color = activeTraitStyleColor(tr.style);
         const iconUrl = tr.icon ? tftIconUrl(assets, tr.icon) : null;
         return (
           <div
             key={tr.apiName}
-            className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#0a0e1a] border"
+            className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-sunken border"
             style={{ borderColor: `${color}55` }}
             title={`${tr.count} ${tr.displayName}`}
           >

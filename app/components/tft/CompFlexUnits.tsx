@@ -46,8 +46,8 @@ export default function CompFlexUnits({
 }) {
   if (!units || units.length === 0) return null;
   return (
-    <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
-      <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">
+    <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
+      <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">
         {t('tft.comp.flexUnits.title')}
       </h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
@@ -60,7 +60,7 @@ export default function CompFlexUnits({
             <a
               key={u.characterId}
               href={`/tft/units/${encodeURIComponent(u.characterId)}?bucket=${bucket}`}
-              className="flex items-center gap-3 bg-[#0a0e1a] border border-[#1e2a3a] rounded p-2 hover:border-[#2a3d57] transition"
+              className="flex items-center gap-3 bg-surface-sunken border border-border-subtle rounded p-2 hover:border-[#2a3d57] transition"
               title={`n = ${u.n} picks${u.nOutcome > 0 ? ` · outcome n = ${u.nOutcome}` : ''}`}
             >
               {url ? (
@@ -72,21 +72,21 @@ export default function CompFlexUnits({
                   style={{ borderColor: costColor(cost) }}
                 />
               ) : (
-                <div className="w-10 h-10 rounded bg-[#1e2a3a] flex-shrink-0" />
+                <div className="w-10 h-10 rounded bg-surface-overlay flex-shrink-0" />
               )}
               <div className="flex-1 min-w-0">
                 <div className="text-white text-xs font-semibold truncate">{name}</div>
                 <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-[10px] text-[#a0b0c5]">
-                    <span className="text-[#7a8aa0]">{t('tft.comp.flexUnits.pickrate')} </span>
+                  <span className="text-[10px] text-fg-secondary">
+                    <span className="text-fg-muted">{t('tft.comp.flexUnits.pickrate')} </span>
                     <span className="text-white font-semibold">{fmtPct(u.pickrate)}</span>
                   </span>
-                  <span className={`text-[10px] ${u.top1Rate != null ? 'text-[#a0b0c5]' : 'text-[#4a5468]'}`}>
-                    <span className="text-[#7a8aa0]">{t('tft.comp.flexUnits.top1')} </span>
+                  <span className={`text-[10px] ${u.top1Rate != null ? 'text-fg-secondary' : 'text-[#4a5468]'}`}>
+                    <span className="text-fg-muted">{t('tft.comp.flexUnits.top1')} </span>
                     <span className={u.top1Rate != null ? 'text-white font-semibold' : ''}>{fmtPct(u.top1Rate)}</span>
                   </span>
-                  <span className={`text-[10px] ${u.avgPlacement != null ? 'text-[#a0b0c5]' : 'text-[#4a5468]'}`}>
-                    <span className="text-[#7a8aa0]">{t('tft.comp.flexUnits.avgPlc')} </span>
+                  <span className={`text-[10px] ${u.avgPlacement != null ? 'text-fg-secondary' : 'text-[#4a5468]'}`}>
+                    <span className="text-fg-muted">{t('tft.comp.flexUnits.avgPlc')} </span>
                     <span className={u.avgPlacement != null ? 'text-white font-semibold' : ''}>{fmtPlace(u.avgPlacement)}</span>
                   </span>
                 </div>

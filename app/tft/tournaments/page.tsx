@@ -95,11 +95,11 @@ export default function TftTournamentsPage() {
   const setOptions = [...new Set(tournaments.map(x => x.set_number).filter(Boolean) as number[])].sort((a, b) => b - a);
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav active="tournaments" />
       <TftHero pageTitle={t('tft.tournaments.title')} />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-2 pb-6">
-        <p className="text-[#a0b0c5] text-sm mb-4">{t('tft.tournaments.subtitle')}</p>
+        <p className="text-fg-secondary text-sm mb-4">{t('tft.tournaments.subtitle')}</p>
 
         <div className="mb-3">
           <input
@@ -107,7 +107,7 @@ export default function TftTournamentsPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder={t('tft.search.tournaments')}
-            className="w-full sm:w-80 bg-[#141c2e] border border-[#1e2a3a] rounded px-3 py-1.5 text-sm text-white placeholder:text-[#5a6a80] outline-none focus:border-[#7B61FF]/60"
+            className="w-full sm:w-80 bg-surface-raised border border-border-subtle rounded px-3 py-1.5 text-sm text-white placeholder:text-fg-faint outline-none focus:border-[#7B61FF]/60"
           />
         </div>
 
@@ -115,29 +115,29 @@ export default function TftTournamentsPage() {
             crowd the layout with single-choice "filters". */}
         <div className="flex flex-wrap gap-2 mb-4">
           {regionOptions.length > 1 && (
-            <select value={region} onChange={e => setRegion(e.target.value)} className="bg-[#141c2e] border border-[#1e2a3a] rounded px-2 py-1 text-xs text-white outline-none">
+            <select value={region} onChange={e => setRegion(e.target.value)} className="bg-surface-raised border border-border-subtle rounded px-2 py-1 text-xs text-white outline-none">
               <option value="">{t('tft.tournaments.allRegions')}</option>
               {regionOptions.map(r => <option key={r} value={r}>{REGION_LABELS[r] || r}</option>)}
             </select>
           )}
           {tierOptions.length > 1 && (
-            <select value={tier} onChange={e => setTier(e.target.value)} className="bg-[#141c2e] border border-[#1e2a3a] rounded px-2 py-1 text-xs text-white outline-none">
+            <select value={tier} onChange={e => setTier(e.target.value)} className="bg-surface-raised border border-border-subtle rounded px-2 py-1 text-xs text-white outline-none">
               <option value="">{t('tft.tournaments.allTiers')}</option>
               {tierOptions.map(t2 => <option key={t2} value={t2}>{t2}-Tier</option>)}
             </select>
           )}
           {setOptions.length > 1 && (
-            <select value={set_} onChange={e => setSet(e.target.value)} className="bg-[#141c2e] border border-[#1e2a3a] rounded px-2 py-1 text-xs text-white outline-none">
+            <select value={set_} onChange={e => setSet(e.target.value)} className="bg-surface-raised border border-border-subtle rounded px-2 py-1 text-xs text-white outline-none">
               <option value="">{t('tft.tournaments.allSets')}</option>
               {setOptions.map(s => <option key={s} value={String(s)}>Set {s}</option>)}
             </select>
           )}
         </div>
 
-        {loading && <div className="text-[#7a8aa0] text-center py-8">{t('tft.loading')}</div>}
+        {loading && <div className="text-fg-muted text-center py-8">{t('tft.loading')}</div>}
 
         {!loading && tournaments.length === 0 && (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#a0b0c5] text-sm">
+          <div className="bg-surface-base border border-border-subtle rounded p-6 text-center text-fg-secondary text-sm">
             {t('tft.tournaments.empty')}
           </div>
         )}
@@ -186,7 +186,7 @@ function TournamentRow({ t, locale }: { t: Tournament; locale: string }) {
   return (
     <a
       href={`/tft/tournaments/${encodeURIComponent(t.id)}`}
-      className="block bg-[#0d1526] border border-[#1e2a3a] rounded p-3 sm:p-4 hover:border-[#7B61FF]/40 transition-colors"
+      className="block bg-surface-base border border-border-subtle rounded p-3 sm:p-4 hover:border-[#7B61FF]/40 transition-colors"
     >
       <div className="flex items-start gap-3 flex-wrap">
         {/* Tier badge */}
@@ -202,12 +202,12 @@ function TournamentRow({ t, locale }: { t: Tournament; locale: string }) {
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-white text-base font-medium truncate">{cleanTournamentName(t.name)}</span>
             {t.region && (
-              <span className="text-[10px] uppercase tracking-widest text-[#a0b0c5]">
+              <span className="text-[10px] uppercase tracking-widest text-fg-secondary">
                 {REGION_LABELS[t.region] || t.region}
               </span>
             )}
           </div>
-          <div className="text-[#a0b0c5] text-xs mt-1">
+          <div className="text-fg-secondary text-xs mt-1">
             {dateFmt(t.start_date)} – {dateFmt(t.end_date)}
             {t.format && ` · ${t.format}`}
             {t.num_participants && ` · ${t.num_participants} Teilnehmer`}
@@ -218,7 +218,7 @@ function TournamentRow({ t, locale }: { t: Tournament; locale: string }) {
             <div className="text-[#7B61FF] text-base font-semibold tabular-nums">
               ${t.prize_pool_usd.toLocaleString('en-US')}
             </div>
-            <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">Prize Pool</div>
+            <div className="text-fg-muted text-[10px] uppercase tracking-widest">Prize Pool</div>
           </div>
         )}
       </div>

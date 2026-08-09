@@ -30,13 +30,13 @@ export default function SetTimeline({ lang: _lang, info }: { lang: Lang; info: S
   const remainingDays = Math.max(0, daysBetween(info.today, info.endDate));
 
   return (
-    <div className="mt-4 pt-3 border-t border-[#1e2a3a] flex items-center gap-2 text-xs text-[#a0b0c5]">
+    <div className="mt-4 pt-3 border-t border-border-subtle flex items-center gap-2 text-xs text-fg-secondary">
       <span className="text-white font-medium">
         {t('tft.setTimeline.setLabel').replace('{n}', String(info.setNumber))}
       </span>
-      <span className="text-[#7a8aa0]">·</span>
+      <span className="text-fg-muted">·</span>
       <span>{info.setName}</span>
-      <span className="text-[#7a8aa0]">·</span>
+      <span className="text-fg-muted">·</span>
       <span className="tabular-nums">
         {t('tft.setTimeline.remaining').replace('{r}', String(remainingDays))}
       </span>

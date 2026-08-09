@@ -321,7 +321,7 @@ function RiotStatusBanner({ payload }: { payload: RiotStatusPayload | null }) {
 
   return (
     <div
-      className="bg-[#0d1526]/95 backdrop-blur border rounded px-2.5 py-1.5 cursor-pointer hover:bg-[#11192a] transition-colors"
+      className="bg-surface-base/95 backdrop-blur border rounded px-2.5 py-1.5 cursor-pointer hover:bg-[#11192a] transition-colors"
       style={{ borderColor: accentColor }}
       onClick={() => setExpanded(e => !e)}
     >
@@ -331,7 +331,7 @@ function RiotStatusBanner({ payload }: { payload: RiotStatusPayload | null }) {
         <span className="text-gray-500 text-[10px] ml-auto">{expanded ? '▴' : '▾'}</span>
       </div>
       {expanded && (
-        <div className="mt-2 pt-2 border-t border-[#1e2a3a] space-y-1 text-[11px] max-h-64 overflow-y-auto">
+        <div className="mt-2 pt-2 border-t border-border-subtle space-y-1 text-[11px] max-h-64 overflow-y-auto">
           {affectedRegions.map(r => (
             <div key={r.region} className="flex items-start gap-2">
               <span
@@ -352,7 +352,7 @@ function RiotStatusBanner({ payload }: { payload: RiotStatusPayload | null }) {
             </div>
           ))}
           {unknownRegions.length > 0 && (
-            <div className="text-gray-500 pt-1 border-t border-[#1e2a3a]/50">
+            <div className="text-gray-500 pt-1 border-t border-border-subtle/50">
               {unknownRegions.length} nicht erreichbar: {unknownRegions.map(r => r.region).join(', ')}
             </div>
           )}
@@ -834,7 +834,7 @@ function DependenciesList({ deps, onSelectNode }: {
               <button
                 key={n.id}
                 onClick={() => onSelectNode(n.id)}
-                className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-[#1e2a3a] hover:bg-[#2a3a52] text-gray-300 hover:text-white transition-colors"
+                className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-surface-overlay hover:bg-[#2a3a52] text-gray-300 hover:text-white transition-colors"
                 title={n.layerName}
               >
                 {n.label}
@@ -858,7 +858,7 @@ function NodeDetailPanel({ node, edges, nodes, onClose, onSelectNode }: {
   const description = describeNode(node);
   const raw = node.raw as any;
   return (
-    <div className="absolute top-3 right-3 z-20 w-[min(380px,calc(100vw-24px))] bg-[#0d1526]/95 backdrop-blur border border-[#1e2a3a] rounded-lg p-4 shadow-2xl text-sm space-y-3">
+    <div className="absolute top-3 right-3 z-20 w-[min(380px,calc(100vw-24px))] bg-surface-base/95 backdrop-blur border border-border-subtle rounded-lg p-4 shadow-2xl text-sm space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-[10px] uppercase tracking-wider text-gray-500">{node.layerName}</div>
@@ -893,7 +893,7 @@ function NodeDetailPanel({ node, edges, nodes, onClose, onSelectNode }: {
 
       {/* Live-Daten je nach Node-Typ */}
       {node.id.startsWith('svc:') && raw && (
-        <div className="pt-2 border-t border-[#1e2a3a] grid grid-cols-2 gap-2 text-[11px]">
+        <div className="pt-2 border-t border-border-subtle grid grid-cols-2 gap-2 text-[11px]">
           <div className="text-gray-500">ActiveState</div>
           <div className="text-gray-300 font-mono">{raw.activeState}</div>
           <div className="text-gray-500">SubState</div>
@@ -924,7 +924,7 @@ function NodeDetailPanel({ node, edges, nodes, onClose, onSelectNode }: {
       )}
 
       {node.id.startsWith('db:') && raw && (
-        <div className="pt-2 border-t border-[#1e2a3a] grid grid-cols-2 gap-2 text-[11px]">
+        <div className="pt-2 border-t border-border-subtle grid grid-cols-2 gap-2 text-[11px]">
           <div className="text-gray-500">Rows (estimated)</div>
           <div className="text-gray-300 font-mono">{raw.estimated != null ? fmt(raw.estimated) : '—'}</div>
           <div className="text-gray-500">Heute geschrieben</div>
@@ -935,7 +935,7 @@ function NodeDetailPanel({ node, edges, nodes, onClose, onSelectNode }: {
       )}
 
       {node.id === 'blob:manifest' && raw && (
-        <div className="pt-2 border-t border-[#1e2a3a] grid grid-cols-2 gap-2 text-[11px]">
+        <div className="pt-2 border-t border-border-subtle grid grid-cols-2 gap-2 text-[11px]">
           <div className="text-gray-500">Built</div>
           <div className="text-gray-300 font-mono">{new Date(raw.builtAt).toLocaleString('de-DE')}</div>
           <div className="text-gray-500">Entries</div>
@@ -947,7 +947,7 @@ function NodeDetailPanel({ node, edges, nodes, onClose, onSelectNode }: {
         </div>
       )}
 
-      <div className="pt-2 border-t border-[#1e2a3a]">
+      <div className="pt-2 border-t border-border-subtle">
         <DependenciesList deps={deps} onSelectNode={onSelectNode} />
       </div>
     </div>

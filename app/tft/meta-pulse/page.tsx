@@ -99,14 +99,14 @@ export default function TftMetaPulsePage() {
         })
     : [];
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav active="comps" />
       <TftHero pageTitle={t('tft.metaPulse.title')} subtitle={t('tft.metaPulse.subtitle')} patch={data?.currentPatch || undefined} />
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-2 pb-6">
         <StatsFilterBar filters={filters} patches={data?.patches || []} onChange={setFilters} />
 
         {loading && (
-          <div className="text-[#7a8aa0] text-center py-12">…</div>
+          <div className="text-fg-muted text-center py-12">…</div>
         )}
         {!loading && !data?.hasData && <EmptyData />}
 
@@ -177,19 +177,19 @@ export default function TftMetaPulsePage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-6">
           <a
             href="/tft/lobby-scout"
-            className="block bg-[#0d1526] border border-[#1e2a3a] rounded p-4 hover:border-[#7B61FF]/40 transition-colors"
+            className="block bg-surface-base border border-border-subtle rounded p-4 hover:border-[#7B61FF]/40 transition-colors"
           >
-            <div className="text-[#a0b0c5] text-[10px] uppercase tracking-widest">{t('tft.metaPulse.shortcut')}</div>
+            <div className="text-fg-secondary text-[10px] uppercase tracking-widest">{t('tft.metaPulse.shortcut')}</div>
             <div className="text-white text-base font-medium mt-1">{t('tft.lobby.title')} →</div>
-            <div className="text-[#7a8aa0] text-xs mt-0.5">{t('tft.lobby.subtitle')}</div>
+            <div className="text-fg-muted text-xs mt-0.5">{t('tft.lobby.subtitle')}</div>
           </a>
           <a
             href="/tft/regions"
-            className="block bg-[#0d1526] border border-[#1e2a3a] rounded p-4 hover:border-[#c39bff]/40 transition-colors"
+            className="block bg-surface-base border border-border-subtle rounded p-4 hover:border-[#c39bff]/40 transition-colors"
           >
-            <div className="text-[#a0b0c5] text-[10px] uppercase tracking-widest">{t('tft.metaPulse.shortcut')}</div>
+            <div className="text-fg-secondary text-[10px] uppercase tracking-widest">{t('tft.metaPulse.shortcut')}</div>
             <div className="text-white text-base font-medium mt-1">{t('tft.regions.title')} →</div>
-            <div className="text-[#7a8aa0] text-xs mt-0.5">{t('tft.regions.subtitle')}</div>
+            <div className="text-fg-muted text-xs mt-0.5">{t('tft.regions.subtitle')}</div>
           </a>
         </div>
       </div>
@@ -208,13 +208,13 @@ function PulseSection({
   footer?: string;
 }) {
   return (
-    <section className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
+    <section className="bg-surface-base border border-border-subtle rounded p-4">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-xs uppercase tracking-widest" style={{ color: accent }}>{title}</h2>
-        {footer && <span className="text-[#7a8aa0] text-[10px] tabular-nums">{footer}</span>}
+        {footer && <span className="text-fg-muted text-[10px] tabular-nums">{footer}</span>}
       </div>
       {empty ? (
-        <div className="text-[#5a6a80] text-xs text-center py-6">—</div>
+        <div className="text-fg-faint text-xs text-center py-6">—</div>
       ) : (
         <div className="space-y-1.5">{children}</div>
       )}
@@ -248,13 +248,13 @@ function PulseRow({
   return (
     <a
       href={`/tft/comps/${encodeURIComponent(clusterKey)}?bucket=${bucket}`}
-      className="block bg-[#141c2e] border border-[#1e2a3a] rounded p-2 hover:border-[#7B61FF]/40 transition-colors"
+      className="block bg-surface-raised border border-border-subtle rounded p-2 hover:border-[#7B61FF]/40 transition-colors"
     >
       <div className="flex items-center gap-2">
         {carryUrl ? (
           <img src={carryUrl} alt="" className="w-8 h-8 rounded border-2 border-[#c39bff]/60 object-cover flex-shrink-0" />
         ) : (
-          <div className="w-8 h-8 rounded bg-[#1e2a3a] flex-shrink-0" />
+          <div className="w-8 h-8 rounded bg-surface-overlay flex-shrink-0" />
         )}
         <div className="flex-1 min-w-0">
           <div className="text-white text-[11px] truncate flex items-center gap-1">
@@ -272,7 +272,7 @@ function PulseRow({
               >{augName}</span>
             )}
           </div>
-          <div className="text-[#7a8aa0] text-[10px] tabular-nums">{meta}</div>
+          <div className="text-fg-muted text-[10px] tabular-nums">{meta}</div>
         </div>
         <div className="text-right">
           <div className="text-white text-xs tabular-nums">{primary}</div>

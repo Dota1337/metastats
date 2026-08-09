@@ -150,24 +150,24 @@ export default function ChampionBuildsSection({ championKey }: Props) {
   const matches = data.matchesAnalyzed || 0;
 
   return (
-    <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-4 sm:p-6 mb-6">
+    <div className="bg-surface-base border border-border-subtle rounded-lg p-4 sm:p-6 mb-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
         <div>
           <h2 className="text-xl font-semibold text-white">{t('champBuild.heading')}</h2>
           {matches > 0 && (
-            <div className="text-[#7a8aa0] text-xs mt-0.5">
+            <div className="text-fg-muted text-xs mt-0.5">
               {t('champBuild.fromMatches').replace('{n}', matches.toLocaleString('de-DE'))}
             </div>
           )}
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[#a0b0c5] text-xs uppercase tracking-wider">{t('champBuild.region')}</span>
-          <div className="flex bg-[#141c2e] border border-[#1e2a3a] rounded">
+          <span className="text-fg-secondary text-xs uppercase tracking-wider">{t('champBuild.region')}</span>
+          <div className="flex bg-surface-raised border border-border-subtle rounded">
             {REGIONS.map(r => (
               <button
                 key={r.value}
                 onClick={() => setRegion(r.value)}
-                className={`px-3 py-1.5 text-xs uppercase ${region === r.value ? 'bg-[#1e2a3a] text-[#c89b3c]' : 'text-[#a0b0c5] hover:text-white'}`}
+                className={`px-3 py-1.5 text-xs uppercase ${region === r.value ? 'bg-surface-overlay text-[#c89b3c]' : 'text-fg-secondary hover:text-white'}`}
               >
                 {r.label}
               </button>
@@ -177,7 +177,7 @@ export default function ChampionBuildsSection({ championKey }: Props) {
       </div>
 
       {/* Role tabs */}
-      <div className="flex flex-wrap gap-1 mb-5 border-b border-[#1e2a3a]">
+      <div className="flex flex-wrap gap-1 mb-5 border-b border-border-subtle">
         {ROLE_TABS.filter(rt => data.roles[rt.value]).map(rt => {
           const r = data.roles[rt.value];
           const isActive = activeRole === rt.value;
@@ -189,11 +189,11 @@ export default function ChampionBuildsSection({ championKey }: Props) {
               className={`px-4 py-2 text-sm border-b-2 transition-colors ${
                 isActive
                   ? 'border-[#c89b3c] text-[#c89b3c]'
-                  : 'border-transparent text-[#a0b0c5] hover:text-white'
+                  : 'border-transparent text-fg-secondary hover:text-white'
               }`}
             >
               <div className="font-medium">{t(rt.key as TranslationKey)}</div>
-              <div className="text-[10px] text-[#7a8aa0]">{r.games} {t('champBuild.games')} · {wr}</div>
+              <div className="text-[10px] text-fg-muted">{r.games} {t('champBuild.games')} · {wr}</div>
             </button>
           );
         })}
@@ -218,7 +218,7 @@ export default function ChampionBuildsSection({ championKey }: Props) {
         <Section title={t('champBuild.summoners')}>
           <div className="flex flex-wrap gap-3">
             {role.topSummoners.map((s, idx) => (
-              <div key={idx} className="flex items-center gap-2 bg-[#141c2e] border border-[#1e2a3a] rounded px-3 py-2">
+              <div key={idx} className="flex items-center gap-2 bg-surface-raised border border-border-subtle rounded px-3 py-2">
                 <div className="flex gap-1">
                   {s.spells.map(spId => (
                     summoners[spId] ? (
@@ -230,13 +230,13 @@ export default function ChampionBuildsSection({ championKey }: Props) {
                         className="w-8 h-8 rounded"
                       />
                     ) : (
-                      <div key={spId} className="w-8 h-8 rounded bg-[#1e2a3a] text-[10px] text-[#7a8aa0] flex items-center justify-center">{spId}</div>
+                      <div key={spId} className="w-8 h-8 rounded bg-surface-overlay text-[10px] text-fg-muted flex items-center justify-center">{spId}</div>
                     )
                   ))}
                 </div>
                 <div className="text-xs">
                   <div className="text-white">{pct(s.wins, s.games)} WR</div>
-                  <div className="text-[#7a8aa0]">{s.games} {t('champBuild.games')}</div>
+                  <div className="text-fg-muted">{s.games} {t('champBuild.games')}</div>
                 </div>
               </div>
             ))}
@@ -256,7 +256,7 @@ export default function ChampionBuildsSection({ championKey }: Props) {
         <Section title={t('champBuild.builds')}>
           <div className="space-y-2">
             {role.topBuilds.map((b, idx) => (
-              <div key={idx} className="flex items-center gap-3 bg-[#141c2e] border border-[#1e2a3a] rounded p-2">
+              <div key={idx} className="flex items-center gap-3 bg-surface-raised border border-border-subtle rounded p-2">
                 <div className="flex gap-1.5 flex-wrap">
                   {b.items.map((it, i) => (
                     it > 0 ? (
@@ -264,14 +264,14 @@ export default function ChampionBuildsSection({ championKey }: Props) {
                         key={`${i}-${it}`}
                         src={ddImg(`item/${it}.png`)}
                         alt={`Item ${it}`}
-                        className="w-10 h-10 rounded border border-[#1e2a3a]"
+                        className="w-10 h-10 rounded border border-border-subtle"
                       />
                     ) : null
                   ))}
                 </div>
                 <div className="ml-auto text-right text-xs whitespace-nowrap">
                   <div className="text-white">{pct(b.wins, b.games)} WR</div>
-                  <div className="text-[#7a8aa0]">{b.games} {t('champBuild.games')}</div>
+                  <div className="text-fg-muted">{b.games} {t('champBuild.games')}</div>
                 </div>
               </div>
             ))}
@@ -301,8 +301,8 @@ export default function ChampionBuildsSection({ championKey }: Props) {
 
 function Stat({ label, value }: { label: string; value: string | null }) {
   return (
-    <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3">
-      <div className="text-[#a0b0c5] text-xs uppercase tracking-wider">{label}</div>
+    <div className="bg-surface-raised border border-border-subtle rounded p-3">
+      <div className="text-fg-secondary text-xs uppercase tracking-wider">{label}</div>
       <div className="text-white text-lg font-medium mt-1">{value ?? '—'}</div>
     </div>
   );
@@ -311,7 +311,7 @@ function Stat({ label, value }: { label: string; value: string | null }) {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="mb-5">
-      <h3 className="text-[#a0b0c5] text-xs uppercase tracking-wider mb-2">{title}</h3>
+      <h3 className="text-fg-secondary text-xs uppercase tracking-wider mb-2">{title}</h3>
       {children}
     </div>
   );
@@ -321,10 +321,10 @@ function ItemRow({ items, ddImg, gamesLabel }: { items: ItemEntry[]; ddImg: (p: 
   return (
     <div className="flex flex-wrap gap-2">
       {items.map((it, idx) => (
-        <div key={idx} className="flex flex-col items-center gap-1 bg-[#141c2e] border border-[#1e2a3a] rounded p-1.5">
+        <div key={idx} className="flex flex-col items-center gap-1 bg-surface-raised border border-border-subtle rounded p-1.5">
           <img src={ddImg(`item/${it.item}.png`)} alt={`Item ${it.item}`} className="w-9 h-9 rounded" />
           <div className="text-[10px] text-white">{pct(it.wins, it.games)}</div>
-          <div className="text-[10px] text-[#7a8aa0] whitespace-nowrap">{it.games} {gamesLabel}</div>
+          <div className="text-[10px] text-fg-muted whitespace-nowrap">{it.games} {gamesLabel}</div>
         </div>
       ))}
     </div>
@@ -343,7 +343,7 @@ function RunesPage({
 }) {
   const renderRune = (id: number, big = false) => {
     const info = runeIndex[id];
-    if (!info) return <div className={`${big ? 'w-12 h-12' : 'w-8 h-8'} rounded-full bg-[#1e2a3a]`} />;
+    if (!info) return <div className={`${big ? 'w-12 h-12' : 'w-8 h-8'} rounded-full bg-surface-overlay`} />;
     return (
       <img
         src={runeImg(info.icon)}
@@ -354,10 +354,10 @@ function RunesPage({
     );
   };
   return (
-    <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3 flex flex-col md:flex-row md:items-center gap-4">
+    <div className="bg-surface-raised border border-border-subtle rounded p-3 flex flex-col md:flex-row md:items-center gap-4">
       <div className="flex items-center gap-3">
         <div className="flex flex-col items-center">
-          <div className="text-[10px] text-[#7a8aa0] uppercase mb-1">Primary</div>
+          <div className="text-[10px] text-fg-muted uppercase mb-1">Primary</div>
           {renderRune(rune.keystone, true)}
         </div>
         <div className="flex gap-2">
@@ -368,7 +368,7 @@ function RunesPage({
       </div>
       <div className="flex items-center gap-3">
         <div className="flex flex-col items-center">
-          <div className="text-[10px] text-[#7a8aa0] uppercase mb-1">Secondary</div>
+          <div className="text-[10px] text-fg-muted uppercase mb-1">Secondary</div>
           {renderRune(rune.secondary, true)}
         </div>
         <div className="flex gap-2">
@@ -376,15 +376,15 @@ function RunesPage({
           {renderRune(rune.s2)}
         </div>
       </div>
-      <div className="flex flex-col gap-1 text-[11px] text-[#a0b0c5]">
-        <div className="text-[10px] text-[#7a8aa0] uppercase">{t('champBuild.statShards')}</div>
+      <div className="flex flex-col gap-1 text-[11px] text-fg-secondary">
+        <div className="text-[10px] text-fg-muted uppercase">{t('champBuild.statShards')}</div>
         <div>{STAT_SHARD_LABELS[rune.off] || rune.off}</div>
         <div>{STAT_SHARD_LABELS[rune.flex] || rune.flex}</div>
         <div>{STAT_SHARD_LABELS[rune.def] || rune.def}</div>
       </div>
       <div className="md:ml-auto text-right">
         <div className="text-white text-sm">{pct(wins, games)} WR</div>
-        <div className="text-[11px] text-[#7a8aa0]">{games} {t('champBuild.games')}</div>
+        <div className="text-[11px] text-fg-muted">{games} {t('champBuild.games')}</div>
       </div>
     </div>
   );
@@ -402,24 +402,24 @@ function CounterList({
 }) {
   return (
     <div>
-      <div className="text-xs uppercase tracking-wider text-[#a0b0c5] mb-2">{title}</div>
+      <div className="text-xs uppercase tracking-wider text-fg-secondary mb-2">{title}</div>
       <div className="space-y-1.5">
         {entries.map((c, idx) => {
           const champ = championMap[c.enemy];
           const winsAgainst = c.gamesAgainst - c.lossesAgainst;
           const wr = pct(winsAgainst, c.gamesAgainst);
           return (
-            <div key={idx} className="flex items-center gap-3 bg-[#141c2e] border border-[#1e2a3a] rounded p-2">
+            <div key={idx} className="flex items-center gap-3 bg-surface-raised border border-border-subtle rounded p-2">
               {champ ? (
                 <img src={ddImg(`champion/${champ.image}`)} alt={champ.name} className="w-8 h-8 rounded" />
               ) : (
-                <div className="w-8 h-8 rounded bg-[#1e2a3a]" />
+                <div className="w-8 h-8 rounded bg-surface-overlay" />
               )}
               <div className="flex-1 text-sm text-white">{champ?.name || c.enemy}</div>
               <div className={`text-sm font-medium ${kind === 'strong' ? 'text-green-400' : 'text-red-400'}`}>
                 {wr}
               </div>
-              <div className="text-[11px] text-[#7a8aa0] text-right whitespace-nowrap">{c.gamesAgainst} {gamesLabel}</div>
+              <div className="text-[11px] text-fg-muted text-right whitespace-nowrap">{c.gamesAgainst} {gamesLabel}</div>
             </div>
           );
         })}

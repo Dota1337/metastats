@@ -10,7 +10,7 @@ interface PageHeroProps {
 
 export default function PageHero({ title, subtitle, leftChampion, rightChampion, children }: PageHeroProps) {
   return (
-    <div className="relative overflow-hidden bg-[#0e1525]" style={{ minHeight: '160px' }}>
+    <div className="relative overflow-hidden bg-surface-page" style={{ minHeight: '160px' }}>
       {/* Mobile: single background with both champions side by side */}
       <div className="sm:hidden absolute inset-0 flex">
         <div className="w-1/2 relative overflow-hidden">
@@ -77,7 +77,7 @@ export default function PageHero({ title, subtitle, leftChampion, rightChampion,
       <div className="relative max-w-6xl mx-auto px-6 pt-14 pb-10 text-center">
         <div className="w-10 h-0.5 bg-gradient-to-r from-transparent via-[#c89b3c] to-transparent mx-auto mb-4" />
         <h1 className="text-white text-3xl font-bold">{title}</h1>
-        {subtitle && <p className="text-[#a0b0c5] text-sm mt-2 max-w-lg mx-auto">{subtitle}</p>}
+        {subtitle && <p className="text-fg-secondary text-sm mt-2 max-w-lg mx-auto">{subtitle}</p>}
         {children}
       </div>
     </div>

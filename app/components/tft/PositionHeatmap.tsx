@@ -68,11 +68,11 @@ export default function PositionHeatmap({ units, carryCharacterId, clusterKey, a
   });
 
   return (
-    <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
-      <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">
+    <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
+      <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">
         Positionierung
         {source === 'global' && (
-          <span className="text-[#5a6a80] text-[10px] normal-case tracking-normal ml-2">(global)</span>
+          <span className="text-fg-faint text-[10px] normal-case tracking-normal ml-2">(global)</span>
         )}
       </h2>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -88,7 +88,7 @@ export default function PositionHeatmap({ units, carryCharacterId, clusterKey, a
           const maxShare = Math.max(...cells.map(c => c.share));
 
           return (
-            <div key={u.characterId} className="bg-[#0a0e1a] border border-[#1e2a3a] rounded p-2.5">
+            <div key={u.characterId} className="bg-surface-sunken border border-border-subtle rounded p-2.5">
               <a
                 href={`/tft/units/${encodeURIComponent(u.characterId)}`}
                 className="flex items-center gap-2 mb-2 hover:opacity-90 transition-opacity group"

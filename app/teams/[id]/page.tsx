@@ -42,16 +42,16 @@ export default function TeamDetailPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#0e1525]">
+      <main className="min-h-screen bg-surface-page">
         <Nav />
-        <div className="text-center text-[#a0b0c5] py-20">{t('teams.loading')}</div>
+        <div className="text-center text-fg-secondary py-20">{t('teams.loading')}</div>
       </main>
     );
   }
 
   if (!team) {
     return (
-      <main className="min-h-screen bg-[#0e1525]">
+      <main className="min-h-screen bg-surface-page">
         <Nav />
         <div className="max-w-4xl mx-auto px-6 py-20 text-center">
           <div className="text-red-400 text-xl mb-4">{t('team.notFound')}</div>
@@ -99,28 +99,28 @@ export default function TeamDetailPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav />
 
       {/* Hero */}
-      <div className="bg-[#0d1526] border-b border-[#1e2a3a]">
+      <div className="bg-surface-base border-b border-border-subtle">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-          <a href="/teams" className="text-[#a0b0c5] text-xs hover:text-white mb-4 inline-block">&larr; {t('team.allTeams')}</a>
+          <a href="/teams" className="text-fg-secondary text-xs hover:text-white mb-4 inline-block">&larr; {t('team.allTeams')}</a>
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
             {team.logo ? (
-              <img src={team.logo} alt={team.short} className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-contain bg-[#141c2e] p-2" />
+              <img src={team.logo} alt={team.short} className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-contain bg-surface-raised p-2" />
             ) : (
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg bg-[#141c2e] flex items-center justify-center text-[#c89b3c] text-xl sm:text-2xl font-bold">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg bg-surface-raised flex items-center justify-center text-[#c89b3c] text-xl sm:text-2xl font-bold">
                 {team.short}
               </div>
             )}
             <div className="flex-1">
               <h1 className="text-white text-2xl sm:text-3xl font-bold">{team.name}</h1>
-              <div className="text-[#a0b0c5] text-sm mt-1">{team.region} · {team.short}</div>
+              <div className="text-fg-secondary text-sm mt-1">{team.region} · {team.short}</div>
             </div>
             {team.totalPrizeMoney > 0 && (
               <div className="sm:text-right">
-                <div className="text-[#a0b0c5] text-xs mb-1">{t('team.prizeMoney')}</div>
+                <div className="text-fg-secondary text-xs mb-1">{t('team.prizeMoney')}</div>
                 <div className="text-[#c89b3c] text-xl sm:text-2xl font-medium">{formatPrize(team.totalPrizeMoney)}</div>
               </div>
             )}
@@ -141,10 +141,10 @@ export default function TeamDetailPage() {
                   >
                     {t.trophy === 'gold' ? '\u2605' : t.trophy === 'silver' ? '\u2606' : '\u25CF'}
                   </div>
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-[#0a0e1a] border border-[#1e2a3a] rounded text-xs text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-lg">
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-surface-sunken border border-border-subtle rounded text-xs text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-lg">
                     <div className="font-medium">{t.event}</div>
                     <div className="text-[#c89b3c]">{t.place}. Platz</div>
-                    {t.date && <div className="text-[#7a8aa0]">{t.date}</div>}
+                    {t.date && <div className="text-fg-muted">{t.date}</div>}
                   </div>
                 </div>
               ))}
@@ -168,19 +168,19 @@ export default function TeamDetailPage() {
                 const link = makePlayerLink(m);
                 const Card = link ? 'a' : 'div';
                 return (
-                  <Card key={i} href={link || undefined} className={`bg-[#0d1526] border border-[#1e2a3a] rounded p-4 text-center ${link ? 'hover:border-[#c89b3c]/40 transition-colors cursor-pointer' : ''}`}>
+                  <Card key={i} href={link || undefined} className={`bg-surface-base border border-border-subtle rounded p-4 text-center ${link ? 'hover:border-[#c89b3c]/40 transition-colors cursor-pointer' : ''}`}>
                     {m.image ? (
                       <img src={m.image} alt={m.name}
-                        className="w-16 h-16 rounded-full mx-auto mb-2 object-cover border-2 border-[#1e2a3a] bg-[#141c2e]"
+                        className="w-16 h-16 rounded-full mx-auto mb-2 object-cover border-2 border-border-subtle bg-surface-raised"
                         onError={(e: any) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
                       />
                     ) : null}
-                    <div className={`w-16 h-16 rounded-full mx-auto mb-2 bg-[#141c2e] border-2 border-[#1e2a3a] items-center justify-center text-[#7a8aa0] text-xl ${m.image ? 'hidden' : 'flex'}`}>?</div>
+                    <div className={`w-16 h-16 rounded-full mx-auto mb-2 bg-surface-raised border-2 border-border-subtle items-center justify-center text-fg-muted text-xl ${m.image ? 'hidden' : 'flex'}`}>?</div>
                     <div className="text-white text-sm font-medium">{m.name}</div>
-                    {m.firstName && <div className="text-[#7a8aa0] text-[10px]">{m.firstName} {m.lastName}</div>}
+                    {m.firstName && <div className="text-fg-muted text-[10px]">{m.firstName} {m.lastName}</div>}
                     <div className="text-[#c89b3c] text-xs mt-1">{m.role}</div>
-                    {m.country && <div className="text-[#7a8aa0] text-xs mt-0.5">{m.country}</div>}
-                    {link && <div className="text-[#7a8aa0] text-[10px] mt-1 hover:text-[#c89b3c]">{t('team.viewProfile')}</div>}
+                    {m.country && <div className="text-fg-muted text-xs mt-0.5">{m.country}</div>}
+                    {link && <div className="text-fg-muted text-[10px] mt-1 hover:text-[#c89b3c]">{t('team.viewProfile')}</div>}
                   </Card>
                 );
               })}
@@ -197,14 +197,14 @@ export default function TeamDetailPage() {
                 const link = makePlayerLink(m);
                 const Card = link ? 'a' : 'div';
                 return (
-                  <Card key={i} href={link || undefined} className={`bg-[#0d1526] border border-[#1e2a3a] rounded p-3 flex items-center gap-3 ${link ? 'hover:border-[#c89b3c]/40 transition-colors cursor-pointer' : ''}`}>
-                    <div className="w-10 h-10 rounded-full bg-[#141c2e] border border-[#1e2a3a] flex items-center justify-center text-[#7a8aa0] text-sm flex-shrink-0">
+                  <Card key={i} href={link || undefined} className={`bg-surface-base border border-border-subtle rounded p-3 flex items-center gap-3 ${link ? 'hover:border-[#c89b3c]/40 transition-colors cursor-pointer' : ''}`}>
+                    <div className="w-10 h-10 rounded-full bg-surface-raised border border-border-subtle flex items-center justify-center text-fg-muted text-sm flex-shrink-0">
                       ?
                     </div>
                     <div>
                       <div className="text-white text-sm font-medium">{m.name}</div>
-                      <div className="text-[#a0b0c5] text-xs">{m.role} · Ersatz</div>
-                      {m.country && <div className="text-[#7a8aa0] text-xs">{m.country}</div>}
+                      <div className="text-fg-secondary text-xs">{m.role} · Ersatz</div>
+                      {m.country && <div className="text-fg-muted text-xs">{m.country}</div>}
                     </div>
                   </Card>
                 );
@@ -219,14 +219,14 @@ export default function TeamDetailPage() {
             <h2 className="text-white text-lg font-semibold mb-4">{t('team.staff')}</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {staff.map((m: any, i: number) => (
-                <div key={i} className="bg-[#0d1526] border border-[#1e2a3a] rounded p-3 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-[#141c2e] border border-[#1e2a3a] flex items-center justify-center text-[#7a8aa0] text-sm flex-shrink-0">
+                <div key={i} className="bg-surface-base border border-border-subtle rounded p-3 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-surface-raised border border-border-subtle flex items-center justify-center text-fg-muted text-sm flex-shrink-0">
                     ?
                   </div>
                   <div>
                     <div className="text-white text-sm font-medium">{m.name}</div>
-                    <div className="text-[#a0b0c5] text-xs">{m.role}</div>
-                    {m.country && <div className="text-[#7a8aa0] text-xs">{m.country}</div>}
+                    <div className="text-fg-secondary text-xs">{m.role}</div>
+                    {m.country && <div className="text-fg-muted text-xs">{m.country}</div>}
                   </div>
                 </div>
               ))}
@@ -279,7 +279,7 @@ function TournamentHistory({ results, formatPrize }: { results: any[]; formatPri
     if (p === '1' || p === '1st') return 'text-[#f0c040]';
     if (p === '2' || p === '2nd') return 'text-[#c0c0c0]';
     if (p.startsWith('3')) return 'text-[#cd7f32]';
-    return 'text-[#a0b0c5]';
+    return 'text-fg-secondary';
   };
 
   return (
@@ -287,8 +287,8 @@ function TournamentHistory({ results, formatPrize }: { results: any[]; formatPri
       <h2 className="text-white text-lg font-semibold mb-4">{t('team.history')}</h2>
 
       {/* Year filter + stats */}
-      <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-3 mb-2 flex flex-wrap items-center gap-3">
-        <div className="text-[#a0b0c5] text-xs">{t('teams.season')}:</div>
+      <div className="bg-surface-base border border-border-subtle rounded p-3 mb-2 flex flex-wrap items-center gap-3">
+        <div className="text-fg-secondary text-xs">{t('teams.season')}:</div>
         <div className="flex flex-wrap gap-1">
           {years.map(y => (
             <button
@@ -297,7 +297,7 @@ function TournamentHistory({ results, formatPrize }: { results: any[]; formatPri
               className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
                 yearFilter === y
                   ? 'bg-[#c89b3c]/15 text-[#c89b3c] border border-[#c89b3c]/30'
-                  : 'text-[#7a8aa0] hover:text-[#a0b0c5]'
+                  : 'text-fg-muted hover:text-fg-secondary'
               }`}
             >
               {y === 'all' ? t('teams.allSeasons') : y}
@@ -305,16 +305,16 @@ function TournamentHistory({ results, formatPrize }: { results: any[]; formatPri
           ))}
         </div>
         <div className="sm:ml-auto flex gap-4 text-xs">
-          <span className="text-[#a0b0c5]">{filtered.length} {t('team.tournaments')}</span>
+          <span className="text-fg-secondary">{filtered.length} {t('team.tournaments')}</span>
           <span className="text-[#f0c040]">{wins}x {t('team.firstPlace')}</span>
           {totalPrize > 0 && <span className="text-[#c89b3c]">{formatPrize(totalPrize)}</span>}
         </div>
       </div>
 
       {/* Table */}
-      <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
+      <div className="bg-surface-base border border-border-subtle rounded overflow-hidden">
         {/* Desktop header */}
-        <div className="hidden sm:grid grid-cols-[2rem_1fr_5rem_6rem_5rem] gap-3 px-4 py-2 border-b border-[#1e2a3a] bg-[#0a0e1a] text-[#a0b0c5] text-xs">
+        <div className="hidden sm:grid grid-cols-[2rem_1fr_5rem_6rem_5rem] gap-3 px-4 py-2 border-b border-border-subtle bg-surface-sunken text-fg-secondary text-xs">
           <div></div>
           <div>{t('team.tournament')}</div>
           <div className="text-center">{t('team.place')}</div>
@@ -323,12 +323,12 @@ function TournamentHistory({ results, formatPrize }: { results: any[]; formatPri
         </div>
 
         {paged.length === 0 ? (
-          <div className="text-center text-[#7a8aa0] text-sm py-8">{t('team.noResults')}</div>
+          <div className="text-center text-fg-muted text-sm py-8">{t('team.noResults')}</div>
         ) : (
           paged.map((r: any, i: number) => (
             <div key={i}>
               {/* Desktop row */}
-              <div className="hidden sm:grid grid-cols-[2rem_1fr_5rem_6rem_5rem] gap-3 px-4 py-2 border-b border-[#1e2a3a]/30 items-center">
+              <div className="hidden sm:grid grid-cols-[2rem_1fr_5rem_6rem_5rem] gap-3 px-4 py-2 border-b border-border-subtle/30 items-center">
                 <div>
                   {r.trophy ? (
                     <div
@@ -346,10 +346,10 @@ function TournamentHistory({ results, formatPrize }: { results: any[]; formatPri
                 <div className="text-[#c89b3c] text-sm text-right" title={r.originalPrize || ''}>
                   {(r.prizeUSD || r.prize || 0) > 0 ? formatPrize(r.prizeUSD || r.prize) : '-'}
                 </div>
-                <div className="text-[#7a8aa0] text-xs text-right">{r.date ? r.date.slice(0, 7) : '-'}</div>
+                <div className="text-fg-muted text-xs text-right">{r.date ? r.date.slice(0, 7) : '-'}</div>
               </div>
               {/* Mobile row */}
-              <div className="sm:hidden flex items-center gap-2 px-3 py-2 border-b border-[#1e2a3a]/30">
+              <div className="sm:hidden flex items-center gap-2 px-3 py-2 border-b border-border-subtle/30">
                 {r.trophy ? (
                   <div
                     className="w-5 h-5 rounded-full flex items-center justify-center text-xs flex-shrink-0"
@@ -360,7 +360,7 @@ function TournamentHistory({ results, formatPrize }: { results: any[]; formatPri
                 ) : <div className="w-5 flex-shrink-0" />}
                 <div className="flex-1 min-w-0">
                   <div className="text-white text-sm truncate">{r.event}</div>
-                  <div className="text-[#7a8aa0] text-xs">{r.date ? r.date.slice(0, 7) : '-'}</div>
+                  <div className="text-fg-muted text-xs">{r.date ? r.date.slice(0, 7) : '-'}</div>
                 </div>
                 <div className="text-right flex-shrink-0">
                   <div className={`text-sm font-medium ${placeColor(r.place)}`}>{r.place}.</div>
@@ -376,25 +376,25 @@ function TournamentHistory({ results, formatPrize }: { results: any[]; formatPri
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-2 bg-[#0d1526] border border-[#1e2a3a] rounded px-4 py-2">
+        <div className="flex items-center justify-between mt-2 bg-surface-base border border-border-subtle rounded px-4 py-2">
           <button
             onClick={() => setPage(p => Math.max(1, p - 1))}
             disabled={page <= 1}
             className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-              page <= 1 ? 'text-[#7a8aa0] cursor-not-allowed' : 'text-[#a0b0c5] hover:text-white bg-[#141c2e]'
+              page <= 1 ? 'text-fg-muted cursor-not-allowed' : 'text-fg-secondary hover:text-white bg-surface-raised'
             }`}
           >
             {t('team.prev')}
           </button>
-          <div className="text-[#a0b0c5] text-xs">
+          <div className="text-fg-secondary text-xs">
             {t('team.page')} <span className="text-white font-medium">{page}</span> / {totalPages}
-            <span className="text-[#7a8aa0] ml-2">({filtered.length} {t('team.results')})</span>
+            <span className="text-fg-muted ml-2">({filtered.length} {t('team.results')})</span>
           </div>
           <button
             onClick={() => setPage(p => Math.min(totalPages, p + 1))}
             disabled={page >= totalPages}
             className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-              page >= totalPages ? 'text-[#7a8aa0] cursor-not-allowed' : 'text-[#a0b0c5] hover:text-white bg-[#141c2e]'
+              page >= totalPages ? 'text-fg-muted cursor-not-allowed' : 'text-fg-secondary hover:text-white bg-surface-raised'
             }`}
           >
             {t('team.next')}

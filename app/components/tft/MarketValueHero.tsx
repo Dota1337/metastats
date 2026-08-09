@@ -168,14 +168,14 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
   // once the value lands.
   if (loading) {
     return (
-      <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-5 mb-5">
+      <div className="bg-surface-base border border-border-subtle rounded-lg p-5 mb-5">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
-            <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-2">{t('tft.marketValue')}</div>
-            <div className="h-9 w-32 bg-[#1e2a3a] rounded animate-pulse" />
-            <div className="h-3 w-20 bg-[#1e2a3a] rounded animate-pulse mt-2" />
+            <div className="text-fg-secondary text-xs uppercase tracking-widest mb-2">{t('tft.marketValue')}</div>
+            <div className="h-9 w-32 bg-surface-overlay rounded animate-pulse" />
+            <div className="h-3 w-20 bg-surface-overlay rounded animate-pulse mt-2" />
           </div>
-          <div className="h-12 w-40 bg-[#1e2a3a] rounded animate-pulse" />
+          <div className="h-12 w-40 bg-surface-overlay rounded animate-pulse" />
         </div>
       </div>
     );
@@ -186,9 +186,9 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
   if (!data || !rated) {
     const reason = data?.marketValue.notRatedReason || 'unrated';
     return (
-      <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-5 mb-5">
-        <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-2">{t('tft.marketValue')}</div>
-        <div className="text-[#a0b0c5] text-base">
+      <div className="bg-surface-base border border-border-subtle rounded-lg p-5 mb-5">
+        <div className="text-fg-secondary text-xs uppercase tracking-widest mb-2">{t('tft.marketValue')}</div>
+        <div className="text-fg-secondary text-base">
           {reason === 'below_master' ? t('tft.marketValue.belowMaster') : t('tft.marketValue.notRated')}
         </div>
       </div>
@@ -211,7 +211,7 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
   const todayMs = new Date((setInfo?.today || new Date().toISOString().slice(0, 10)) + 'T00:00:00Z').getTime();
 
   return (
-    <div className="bg-gradient-to-br from-[#0d1526] to-[#0e1830] border border-[#1e2a3a] rounded-lg p-5 mb-5 relative overflow-hidden">
+    <div className="bg-gradient-to-br from-surface-base to-[#0e1830] border border-border-subtle rounded-lg p-5 mb-5 relative overflow-hidden">
       {/* Accent stripe to make the hero visually distinct from the other cards */}
       <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#7B61FF] via-[#9d48e0] to-[#f0c040]" />
 
@@ -219,12 +219,12 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
         {/* Left: Big EUR value + 7d delta */}
         <div className="flex flex-col justify-between min-w-[180px]">
           <div>
-            <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-1.5">{t('tft.marketValue')}</div>
+            <div className="text-fg-secondary text-xs uppercase tracking-widest mb-1.5">{t('tft.marketValue')}</div>
             <div className="text-white text-4xl sm:text-5xl font-semibold tabular-nums leading-tight">
               {formatEuro(mv.finalValue, lang)}
             </div>
             {data.summoner.ladderRank != null && data.summoner.ladderRank > 0 && (
-              <div className="text-[#a0b0c5] text-xs mt-1.5 tabular-nums">
+              <div className="text-fg-secondary text-xs mt-1.5 tabular-nums">
                 {t('tft.marketValue.ladderRank').replace('{n}', String(data.summoner.ladderRank))}
               </div>
             )}
@@ -238,7 +238,7 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
                 {isUp ? '▲' : isFlat ? '–' : '▼'}{' '}
                 {formatEuro(Math.abs(delta.abs), lang)} ({delta.pct >= 0 ? '+' : ''}{delta.pct.toFixed(1)}%)
               </span>
-              <span className="text-[#7a8aa0] text-xs">· {t('tft.marketValue.last7d')}</span>
+              <span className="text-fg-muted text-xs">· {t('tft.marketValue.last7d')}</span>
             </div>
           )}
         </div>
@@ -246,11 +246,11 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
         {/* Middle: Multiplier + sample size */}
         <div className="flex flex-col justify-between min-w-[140px]">
           <div>
-            <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-1.5">{t('tft.marketValue.multiplier')}</div>
+            <div className="text-fg-secondary text-xs uppercase tracking-widest mb-1.5">{t('tft.marketValue.multiplier')}</div>
             <div className="text-white text-2xl font-medium tabular-nums">
               ×{mv.multiplier.toFixed(2)}
             </div>
-            <div className="text-[#a0b0c5] text-xs mt-1">
+            <div className="text-fg-secondary text-xs mt-1">
               {t('tft.marketValue.basedOn').replace('{n}', String(mv.sampleSize))}
             </div>
           </div>
@@ -268,7 +268,7 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
             <button
               onClick={triggerRefresh}
               disabled={refreshState === 'busy' || refreshState === 'cooldown'}
-              className="inline-flex items-center gap-1 text-[10px] uppercase tracking-widest text-[#a0b0c5] hover:text-white disabled:text-[#7a8aa0] disabled:cursor-not-allowed transition-colors"
+              className="inline-flex items-center gap-1 text-[10px] uppercase tracking-widest text-fg-secondary hover:text-white disabled:text-fg-muted disabled:cursor-not-allowed transition-colors"
               title={data.snapshotDate ? `${t('tft.marketValue.dataFrom')} ${new Date(data.snapshotDate).toLocaleDateString(LOCALE_MAP[lang])}` : ''}
             >
               <span className={refreshState === 'busy' ? 'inline-block animate-spin' : 'inline-block'}>↻</span>
@@ -277,7 +277,7 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
           </div>
           <div className="h-28">
             {historyLoading ? (
-              <div className="h-full w-full bg-[#1e2a3a] rounded animate-pulse" />
+              <div className="h-full w-full bg-surface-overlay rounded animate-pulse" />
             ) : chartData.length >= 2 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData} margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
@@ -318,7 +318,7 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
 
       {/* Refresh feedback (cooldown / error) — only shown transiently */}
       {refreshMessage && (
-        <div className="mt-2 text-[11px] text-[#a0b0c5]" role="status">
+        <div className="mt-2 text-[11px] text-fg-secondary" role="status">
           {refreshMessage}
         </div>
       )}
@@ -328,8 +328,8 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
 
       {/* Expandable skill-score breakdown */}
       {showDetails && (
-        <div className="mt-4 pt-4 border-t border-[#1e2a3a]">
-          <div className="text-[#a0b0c5] text-xs mb-3">
+        <div className="mt-4 pt-4 border-t border-border-subtle">
+          <div className="text-fg-secondary text-xs mb-3">
             {t('tft.marketValue.methodologyIntro').replace('{base}', formatEuro(mv.baseValue, lang))}
           </div>
 
@@ -366,11 +366,11 @@ function PatchTimeline({ info, lang }: { info: SetInfo; lang: Lang }) {
     new Date(d + 'T00:00:00Z').toLocaleDateString(LOCALE_MAP[lang], { day: '2-digit', month: 'short' });
   return (
     <div className="mt-2">
-      <div className="relative h-1 rounded-full bg-[#1e2a3a]">
+      <div className="relative h-1 rounded-full bg-surface-overlay">
         <span className="absolute left-0 -top-[3px] h-[7px] w-[7px] rounded-full bg-[#7B61FF]" />
         <span className="absolute right-0 -top-[3px] h-[7px] w-[7px] rounded-full bg-[#9d48e0]" />
       </div>
-      <div className="flex items-center justify-between mt-1 text-[10px] text-[#7a8aa0] tabular-nums">
+      <div className="flex items-center justify-between mt-1 text-[10px] text-fg-muted tabular-nums">
         <span>
           {t('tft.marketValue.timeline.start')}
           {info.currentPatch ? ` · ${info.currentPatch}` : ''} · {fmt(info.startDate)}
@@ -411,7 +411,7 @@ function ContributionChart({ agents }: { agents: SkillSignal[] }) {
   const max = Math.max(0.05, ...rows.map(r => Math.abs(r.value)));
   return (
     <div className="mb-4">
-      <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest mb-1.5">{t('tft.marketValue.contributions')}</div>
+      <div className="text-fg-muted text-[10px] uppercase tracking-widest mb-1.5">{t('tft.marketValue.contributions')}</div>
       <div style={{ height: rows.length * 26 + 6 }}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={rows} layout="vertical" margin={{ top: 0, right: 10, bottom: 0, left: 10 }}>
@@ -460,11 +460,11 @@ function SignalRow({ sig }: { sig: SkillSignal }) {
       <div className="flex items-start justify-between gap-3 opacity-50">
         <div className="flex-1 min-w-0">
           <div className="text-white font-medium">
-            {labelEl} <span className="text-[#7a8aa0] font-normal">· {weightPct}</span>
+            {labelEl} <span className="text-fg-muted font-normal">· {weightPct}</span>
           </div>
-          <div className="text-[#a0b0c5] text-xs mt-0.5">{t('tft.marketValue.agent.notRated')}</div>
+          <div className="text-fg-secondary text-xs mt-0.5">{t('tft.marketValue.agent.notRated')}</div>
         </div>
-        <div className="text-[#7a8aa0] text-xs whitespace-nowrap flex-shrink-0">—</div>
+        <div className="text-fg-muted text-xs whitespace-nowrap flex-shrink-0">—</div>
       </div>
     );
   }
@@ -476,9 +476,9 @@ function SignalRow({ sig }: { sig: SkillSignal }) {
     <div className="flex items-start justify-between gap-3">
       <div className="flex-1 min-w-0">
         <div className="text-white font-medium">
-          {label} <span className="text-[#7a8aa0] font-normal">· {weightPct}</span>
+          {label} <span className="text-fg-muted font-normal">· {weightPct}</span>
         </div>
-        <div className="text-[#a0b0c5] text-xs mt-0.5 cursor-help" title={t('tft.mv.tip.z')}>
+        <div className="text-fg-secondary text-xs mt-0.5 cursor-help" title={t('tft.mv.tip.z')}>
           z {sig.z != null ? (sig.z >= 0 ? '+' : '') + sig.z.toFixed(2) : '—'}
           {sig.detail ? ` · ${sig.detail}` : ''}
         </div>

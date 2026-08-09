@@ -158,7 +158,7 @@ export default function TftTraitsPage() {
   const currentPatchLabel = patches[0]?.patch;
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav active="traits" />
       <TftHero pageTitle={t('nav.traits')} patch={currentPatchLabel} />
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-2 pb-6">
@@ -170,18 +170,18 @@ export default function TftTraitsPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder={t('tft.search.traits')}
-            className="w-full sm:w-80 bg-[#141c2e] border border-[#1e2a3a] rounded px-3 py-1.5 text-sm text-white placeholder:text-[#5a6a80] outline-none focus:border-[#7B61FF]/60"
+            className="w-full sm:w-80 bg-surface-raised border border-border-subtle rounded px-3 py-1.5 text-sm text-white placeholder:text-fg-faint outline-none focus:border-[#7B61FF]/60"
           />
         </div>
 
         {loading && hasData === null && (
-          <div className="text-[#7a8aa0] text-center py-8">{t('tft.loading')}</div>
+          <div className="text-fg-muted text-center py-8">{t('tft.loading')}</div>
         )}
         {hasData === false && <EmptyData />}
 
         {hasData && visibleGrouped.length > 0 && (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
-            <div className={`hidden md:grid ${filters.velocity > 0 ? 'grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem_4rem]' : 'grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 text-[11px] text-[#a0b0c5] font-semibold whitespace-nowrap bg-[#0a0e1a]`}>
+          <div className="bg-surface-base border border-border-subtle rounded overflow-hidden">
+            <div className={`hidden md:grid ${filters.velocity > 0 ? 'grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem_4rem]' : 'grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 text-[11px] text-fg-secondary font-semibold whitespace-nowrap bg-surface-sunken`}>
               <div></div>
               <div>{t('nav.traits')}</div>
               <div>{t('tft.trait.tiers')}</div>
@@ -196,7 +196,7 @@ export default function TftTraitsPage() {
                 </div>
               )}
             </div>
-            <div className="md:hidden px-4 py-2 text-[10px] uppercase tracking-widest text-[#7a8aa0] bg-[#0a0e1a]">{t('nav.traits')}</div>
+            <div className="md:hidden px-4 py-2 text-[10px] uppercase tracking-widest text-fg-muted bg-surface-sunken">{t('nav.traits')}</div>
             {visibleGrouped.map(g => {
               // g.name is now the display name. Look up the trait by
               // matching display name across all variants and prefer the
@@ -214,13 +214,13 @@ export default function TftTraitsPage() {
                 <a
                   key={g.name}
                   href={`/tft/traits/${encodeURIComponent(g.name)}`}
-                  className={`block md:grid ${filters.velocity > 0 ? 'md:grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem_4rem]' : 'md:grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 md:items-center text-[13px] sm:text-sm border-t border-[#1e2a3a] hover:bg-white/5`}
+                  className={`block md:grid ${filters.velocity > 0 ? 'md:grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem_4rem]' : 'md:grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 md:items-center text-[13px] sm:text-sm border-t border-border-subtle hover:bg-white/5`}
                 >
                   <div className="flex items-center gap-3 md:contents">
                     {url ? (
                       <img src={url} alt={meta!.name} className="w-10 h-10 rounded-md flex-shrink-0 shadow-sm" />
                     ) : (
-                      <div className="w-10 h-10 rounded-md bg-[#1e2a3a] flex-shrink-0" />
+                      <div className="w-10 h-10 rounded-md bg-surface-overlay flex-shrink-0" />
                     )}
                     <div className="flex-1 min-w-0 md:flex-initial">
                       <div className="text-white font-medium truncate">{meta?.name || prettyTrait(g.name)}</div>
@@ -260,7 +260,7 @@ export default function TftTraitsPage() {
 // by the style index from CommunityDragon. Mirrors the in-game trait
 // activation row in the hex grid.
 function TierStrip({ tiers }: { tiers: TftTraitTier[] }) {
-  if (!tiers || tiers.length === 0) return <div className="text-[#7a8aa0] text-[10px]">—</div>;
+  if (!tiers || tiers.length === 0) return <div className="text-fg-muted text-[10px]">—</div>;
   return (
     <div className="flex gap-1 flex-wrap">
       {tiers.map((tier, i) => {
@@ -282,12 +282,12 @@ function TierStrip({ tiers }: { tiers: TftTraitTier[] }) {
 function prettyTrait(s: string) { return s.replace(/^TFT\d+_/, '').replace(/Trait$/, ''); }
 
 function Cell({ label, value, accent, align = 'right' }: { label: string; value: string; accent?: 'white' | 'muted'; align?: 'right' | 'center' }) {
-  const valueClass = accent === 'white' ? 'text-white' : accent === 'muted' ? 'text-[#7a8aa0]' : 'text-[#a0b0c5]';
+  const valueClass = accent === 'white' ? 'text-white' : accent === 'muted' ? 'text-fg-muted' : 'text-fg-secondary';
   const alignClass = align === 'center' ? 'text-center' : 'text-right';
   return (
     <>
       <div className="md:hidden">
-        <div className="text-[#7a8aa0] text-[9px] uppercase tracking-widest leading-tight">{label}</div>
+        <div className="text-fg-muted text-[9px] uppercase tracking-widest leading-tight">{label}</div>
         <div className={`${valueClass} tabular-nums leading-tight`}>{value}</div>
       </div>
       <div className={`hidden md:block ${alignClass} ${valueClass} tabular-nums`}>{value}</div>
@@ -314,8 +314,8 @@ function VelocityCell({ velocity, label, t }: {
   if (!velocity) {
     const tip = t('tft.velocity.notEnough') as string;
     return (<>
-      {renderMobile(<span className="text-[#5a6a80]">—</span>, tip)}
-      {renderDesktop(<span className="text-[#5a6a80]">—</span>, tip)}
+      {renderMobile(<span className="text-fg-faint">—</span>, tip)}
+      {renderDesktop(<span className="text-fg-faint">—</span>, tip)}
     </>);
   }
   if (velocity.isNew) {
@@ -328,8 +328,8 @@ function VelocityCell({ velocity, label, t }: {
   if (velocity.deltaAvgPlace == null) {
     const tip = t('tft.velocity.notEnough') as string;
     return (<>
-      {renderMobile(<span className="text-[#5a6a80]">—</span>, tip)}
-      {renderDesktop(<span className="text-[#5a6a80]">—</span>, tip)}
+      {renderMobile(<span className="text-fg-faint">—</span>, tip)}
+      {renderDesktop(<span className="text-fg-faint">—</span>, tip)}
     </>);
   }
   const better = velocity.deltaAvgPlace < 0;

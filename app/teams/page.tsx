@@ -136,7 +136,7 @@ export default function TeamsPage() {
       className={`px-3 py-1.5 rounded text-xs font-medium transition-colors flex items-center gap-1 ${
         sortKey === sKey
           ? 'bg-[#c89b3c]/15 text-[#c89b3c] border border-[#c89b3c]/30'
-          : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white hover:bg-[#1a2438]'
+          : 'bg-surface-raised text-fg-secondary hover:text-white hover:bg-[#1a2438]'
       }`}
     >
       {label}
@@ -147,17 +147,17 @@ export default function TeamsPage() {
   );
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav />
 
       <PageHero title={t('teams.title')} subtitle={t('teams.subtitle')} leftChampion="Jayce" rightChampion="Viktor" />
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
         {/* Filters */}
-        <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-4">
+        <div className="bg-surface-base border border-border-subtle rounded p-4 mb-4">
           <div className="flex flex-wrap items-start gap-4">
             <div>
-              <div className="text-[#a0b0c5] text-xs mb-2">Region</div>
+              <div className="text-fg-secondary text-xs mb-2">Region</div>
               <div className="flex flex-wrap gap-1">
                 {REGION_FILTERS.map(r => (
                   <button
@@ -165,8 +165,8 @@ export default function TeamsPage() {
                     onClick={() => setRegionFilter(r.value)}
                     className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
                       regionFilter === r.value
-                        ? 'bg-[#c89b3c] text-[#0a0e1a]'
-                        : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white hover:bg-[#1a2438]'
+                        ? 'bg-[#c89b3c] text-surface-sunken'
+                        : 'bg-surface-raised text-fg-secondary hover:text-white hover:bg-[#1a2438]'
                     }`}
                   >
                     {r.label}
@@ -175,22 +175,22 @@ export default function TeamsPage() {
               </div>
             </div>
             <div className="sm:ml-auto">
-              <div className="text-[#a0b0c5] text-xs mb-2">{t('teams.search')}</div>
+              <div className="text-fg-secondary text-xs mb-2">{t('teams.search')}</div>
               <input
                 type="text"
                 placeholder={t('teams.searchPlaceholder')}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="bg-[#141c2e] border border-[#2a3a50] rounded px-3 py-1.5 text-white text-xs outline-none placeholder-[#7a8aa0] w-48"
+                className="bg-surface-raised border border-border-default rounded px-3 py-1.5 text-white text-xs outline-none placeholder-fg-muted w-48"
               />
             </div>
           </div>
         </div>
 
         {/* Sort controls */}
-        <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-4">
+        <div className="bg-surface-base border border-border-subtle rounded p-4 mb-4">
           <div className="flex flex-wrap items-center gap-3">
-            <div className="text-[#a0b0c5] text-xs mr-1">{t('teams.sort')}:</div>
+            <div className="text-fg-secondary text-xs mr-1">{t('teams.sort')}:</div>
             <SortBtn label={t('teams.prizeTotal')} sKey="prize" />
             <SortBtn label={t('teams.prizeSeason')} sKey="seasonPrize" />
             <SortBtn label={t('teams.trophies')} sKey="trophies" />
@@ -200,11 +200,11 @@ export default function TeamsPage() {
             {/* Season picker — shown when sorting by season */}
             {sortKey === 'seasonPrize' && (
               <div className="flex items-center gap-2 ml-2">
-                <span className="text-[#7a8aa0] text-xs">{t('teams.season')}:</span>
+                <span className="text-fg-muted text-xs">{t('teams.season')}:</span>
                 <select
                   value={season}
                   onChange={e => setSeason(e.target.value)}
-                  className="bg-[#141c2e] border border-[#2a3a50] rounded px-2 py-1 text-white text-xs outline-none"
+                  className="bg-surface-raised border border-border-default rounded px-2 py-1 text-white text-xs outline-none"
                 >
                   {seasonYears.map(y => (
                     <option key={y} value={y}>{y === 'all' ? t('teams.allSeasons') : y}</option>
@@ -217,29 +217,29 @@ export default function TeamsPage() {
 
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-3 text-center">
-            <div className="text-[#a0b0c5] text-xs">{t('teams.count')}</div>
+          <div className="bg-surface-base border border-border-subtle rounded p-3 text-center">
+            <div className="text-fg-secondary text-xs">{t('teams.count')}</div>
             <div className="text-white text-xl font-medium">{filtered.length}</div>
           </div>
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-3 text-center">
-            <div className="text-[#a0b0c5] text-xs">{t('teams.withRoster')}</div>
+          <div className="bg-surface-base border border-border-subtle rounded p-3 text-center">
+            <div className="text-fg-secondary text-xs">{t('teams.withRoster')}</div>
             <div className="text-white text-xl font-medium">{filtered.filter(t => t.roster.length > 0).length}</div>
           </div>
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-3 text-center">
-            <div className="text-[#a0b0c5] text-xs">{t('teams.withTitles')}</div>
+          <div className="bg-surface-base border border-border-subtle rounded p-3 text-center">
+            <div className="text-fg-secondary text-xs">{t('teams.withTitles')}</div>
             <div className="text-white text-xl font-medium">{filtered.filter(t => t.trophies.length > 0).length}</div>
           </div>
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-3 text-center">
-            <div className="text-[#a0b0c5] text-xs">{t('teams.totalPrize')}</div>
+          <div className="bg-surface-base border border-border-subtle rounded p-3 text-center">
+            <div className="text-fg-secondary text-xs">{t('teams.totalPrize')}</div>
             <div className="text-[#c89b3c] text-xl font-medium">{formatPrize(filtered.reduce((s, t) => s + t.totalPrizeMoney, 0))}</div>
           </div>
         </div>
 
         {/* Teams List */}
         {loading ? (
-          <div className="text-center text-[#a0b0c5] py-20">{t('teams.loading')}</div>
+          <div className="text-center text-fg-secondary py-20">{t('teams.loading')}</div>
         ) : filtered.length === 0 ? (
-          <div className="text-center text-[#7a8aa0] py-20">{t('teams.noTeams')}</div>
+          <div className="text-center text-fg-muted py-20">{t('teams.noTeams')}</div>
         ) : (
           <div className="flex flex-col gap-2">
             {filtered.map((team, idx) => {
@@ -254,21 +254,21 @@ export default function TeamsPage() {
                 <a
                   key={team.id}
                   href={`/teams/${team.id}`}
-                  className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 hover:border-[#c89b3c]/40 transition-colors group"
+                  className="bg-surface-base border border-border-subtle rounded p-4 hover:border-[#c89b3c]/40 transition-colors group"
                 >
                   <div className="flex items-center gap-3 sm:gap-4">
                     {/* Rank */}
                     <div className={`text-sm font-medium w-8 text-center flex-shrink-0 ${
-                      idx === 0 ? 'text-yellow-400' : idx === 1 ? 'text-gray-300' : idx === 2 ? 'text-amber-600' : 'text-[#7a8aa0]'
+                      idx === 0 ? 'text-yellow-400' : idx === 1 ? 'text-gray-300' : idx === 2 ? 'text-amber-600' : 'text-fg-muted'
                     }`}>
                       {idx + 1}
                     </div>
 
                     {/* Logo */}
                     {team.logo ? (
-                      <img src={team.logo} alt={team.short} className="w-10 h-10 rounded object-contain bg-[#141c2e] p-1 flex-shrink-0" />
+                      <img src={team.logo} alt={team.short} className="w-10 h-10 rounded object-contain bg-surface-raised p-1 flex-shrink-0" />
                     ) : (
-                      <div className="w-10 h-10 rounded bg-[#141c2e] flex items-center justify-center text-[#c89b3c] text-sm font-bold flex-shrink-0">
+                      <div className="w-10 h-10 rounded bg-surface-raised flex items-center justify-center text-[#c89b3c] text-sm font-bold flex-shrink-0">
                         {team.short}
                       </div>
                     )}
@@ -276,7 +276,7 @@ export default function TeamsPage() {
                     {/* Name + Region */}
                     <div className="flex-1 min-w-0">
                       <div className="text-white text-sm font-medium group-hover:text-[#c89b3c] transition-colors truncate">{team.name}</div>
-                      <div className="text-[#7a8aa0] text-xs">{team.region} · {players.length} {t('teams.players')}{staff.length > 0 ? ` · ${staff.length} ${t('team.staff')}` : ''}</div>
+                      <div className="text-fg-muted text-xs">{team.region} · {players.length} {t('teams.players')}{staff.length > 0 ? ` · ${staff.length} ${t('team.staff')}` : ''}</div>
                     </div>
 
                     {/* Trophies compact */}
@@ -304,7 +304,7 @@ export default function TeamsPage() {
                         {formatPrize(team.totalPrizeMoney)}
                       </div>
                       {seasonPrize !== null && seasonPrize > 0 && (
-                        <div className="text-[#a0b0c5] text-xs">
+                        <div className="text-fg-secondary text-xs">
                           {season}: {formatPrize(seasonPrize)}
                         </div>
                       )}

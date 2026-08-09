@@ -23,7 +23,7 @@ export default function TierFilter({ value, onChange }: { value: TierBucket; onC
           className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
             value === o.value
               ? 'bg-[#7B61FF] text-white'
-              : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'
+              : 'bg-surface-raised text-fg-secondary hover:text-white'
           }`}
         >
           {t(o.key as TranslationKey)}

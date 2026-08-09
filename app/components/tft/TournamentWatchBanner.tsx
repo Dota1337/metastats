@@ -27,7 +27,7 @@ export default function TournamentWatchBanner() {
 
   if (tournaments.length === 0) return null;
   return (
-    <section className="bg-gradient-to-r from-[#1a0e26] via-[#0d1526] to-[#0a1c14] border border-[#a892ff]/30 rounded p-4 mb-4">
+    <section className="bg-gradient-to-r from-[#1a0e26] via-surface-base to-[#0a1c14] border border-[#a892ff]/30 rounded p-4 mb-4">
       <div className="flex items-center gap-2 mb-3">
         <span className="w-2 h-2 rounded-full bg-[#3ecf8e] animate-pulse" />
         <h2 className="text-[#a892ff] text-xs uppercase tracking-widest">{t('tft.tournamentWatch.title')}</h2>
@@ -37,16 +37,16 @@ export default function TournamentWatchBanner() {
           <a
             key={tr.id}
             href={`/tft/tournaments/${encodeURIComponent(tr.id)}`}
-            className="flex items-center gap-3 bg-[#141c2e] border border-[#1e2a3a] rounded p-3 hover:border-[#a892ff]/40 transition-colors"
+            className="flex items-center gap-3 bg-surface-raised border border-border-subtle rounded p-3 hover:border-[#a892ff]/40 transition-colors"
           >
             {tr.logo_url ? (
               <img src={tr.logo_url} alt="" className="w-10 h-10 rounded object-cover flex-shrink-0" />
             ) : (
-              <div className="w-10 h-10 rounded bg-[#1e2a3a] flex-shrink-0" />
+              <div className="w-10 h-10 rounded bg-surface-overlay flex-shrink-0" />
             )}
             <div className="flex-1 min-w-0">
               <div className="text-white text-sm font-medium truncate">{tr.name}</div>
-              <div className="text-[#7a8aa0] text-[11px] truncate">
+              <div className="text-fg-muted text-[11px] truncate">
                 {tr.region || '—'}
                 {tr.tier ? ` · ${tr.tier}-Tier` : ''}
                 {tr.prize_pool_usd ? ` · $${tr.prize_pool_usd.toLocaleString('en-US')}` : ''}

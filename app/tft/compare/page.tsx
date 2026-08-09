@@ -233,7 +233,7 @@ export default function TftComparePage() {
   const score = s1 && s2 ? countCategoryWins(s1, s2) : null;
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav active="analyse" />
       <TftHero pageTitle={t('nav.analyse')} />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-2 pb-6">
@@ -246,7 +246,7 @@ export default function TftComparePage() {
               className={`px-2.5 py-1 rounded text-xs font-medium ${
                 region === r.value
                   ? 'bg-[#7B61FF] text-white'
-                  : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'
+                  : 'bg-surface-raised text-fg-secondary hover:text-white'
               }`}
             >
               {r.label}
@@ -262,7 +262,7 @@ export default function TftComparePage() {
               value={v}
               onChange={e => setInputs(prev => prev.map((p, idx) => idx === i ? e.target.value : p))}
               placeholder={`${t('tft.compare.player')} ${i + 1} (Name#Tag)`}
-              className="bg-[#141c2e] border border-[#1e2a3a] rounded px-3 py-2 text-white text-sm outline-none focus:border-[#7B61FF]/60"
+              className="bg-surface-raised border border-border-subtle rounded px-3 py-2 text-white text-sm outline-none focus:border-[#7B61FF]/60"
             />
           ))}
         </div>
@@ -278,7 +278,7 @@ export default function TftComparePage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
           {results.map((r, i) => {
             if (!r) return (
-              <div key={i} className="bg-[#0d1526] border border-[#1e2a3a] rounded p-5 text-[#7a8aa0] text-sm text-center">
+              <div key={i} className="bg-surface-base border border-border-subtle rounded p-5 text-fg-muted text-sm text-center">
                 {t('tft.compare.player')} {i + 1}
               </div>
             );
@@ -291,7 +291,7 @@ export default function TftComparePage() {
             return (
               <div
                 key={i}
-                className="bg-[#0d1526] border-l-4 rounded p-5 flex items-start gap-3"
+                className="bg-surface-base border-l-4 rounded p-5 flex items-start gap-3"
                 style={{ borderLeftColor: SERIES_COLORS[i] }}
               >
                 {emblem && <img src={emblem} alt={r.tier || ''} className="w-14 h-14 object-contain shrink-0" />}
@@ -305,7 +305,7 @@ export default function TftComparePage() {
                       </a>
                     );
                   })()}
-                  <div className="text-[#a0b0c5] text-xs mb-2">
+                  <div className="text-fg-secondary text-xs mb-2">
                     {r.tier ? formatTier(r.tier, r.rank) : 'Unranked'}{r.lp != null ? ` · ${r.lp} LP` : ''}
                   </div>
                   <div className="text-[#7B61FF] text-xl font-semibold tabular-nums">
@@ -313,7 +313,7 @@ export default function TftComparePage() {
                       ? new Intl.NumberFormat(LOCALE_MAP[lang], { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(r.marketValue)
                       : '—'}
                   </div>
-                  <div className="text-[#a0b0c5] text-[10px]">
+                  <div className="text-fg-secondary text-[10px]">
                     ×{r.multiplier?.toFixed(2) ?? '—'} · {r.totalMatches} Matches
                   </div>
                 </div>
@@ -328,8 +328,8 @@ export default function TftComparePage() {
             <HeadToHeadBanner p1={score.p1} p2={score.p2} name1={s1.name.split('#')[0]} name2={s2.name.split('#')[0]} />
 
             {/* Agent-Multiplier-Radar — 6 axes from marketvalue pipeline */}
-            <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-4">
-              <div className="text-center text-[#a0b0c5] text-xs uppercase tracking-widest mb-2">{t('tft.compare.performanceRadar')}</div>
+            <div className="bg-surface-base border border-border-subtle rounded p-4 mb-4">
+              <div className="text-center text-fg-secondary text-xs uppercase tracking-widest mb-2">{t('tft.compare.performanceRadar')}</div>
               {(() => {
                 const signalOrder = ['performance', 'metaRelative', 'consistency', 'flexMastery', 'gameSense', 'boardStrength'];
                 const signalLabels: Record<string, string> = {
@@ -360,7 +360,7 @@ export default function TftComparePage() {
             {/* Color-coded stat bars — only render the bars where at least
                one player has a non-zero value so fallback paths (season
                aggregate without per-match detail) don't spam "0 vs 0" rows */}
-            <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-4">
+            <div className="bg-surface-base border border-border-subtle rounded p-4 mb-4">
               <CompareStatBar label="Ø Platz (niedriger = besser)" v1={s1.avgPlacement} v2={s2.avgPlacement} fmt1={s1.avgPlacement.toFixed(2)} fmt2={s2.avgPlacement.toFixed(2)} lowerIsBetter />
               <CompareStatBar label="Top-4-Quote" v1={s1.top4Rate} v2={s2.top4Rate} fmt1={`${(s1.top4Rate * 100).toFixed(0)}%`} fmt2={`${(s2.top4Rate * 100).toFixed(0)}%`} />
               <CompareStatBar label="Sieg-Quote" v1={s1.top1Rate} v2={s2.top1Rate} fmt1={`${(s1.top1Rate * 100).toFixed(0)}%`} fmt2={`${(s2.top1Rate * 100).toFixed(0)}%`} />
@@ -381,8 +381,8 @@ export default function TftComparePage() {
                details. Once at least one player has data, the histogram
                shows up. */}
             {(s1.placementDistribution.some(c => c > 0) || s2.placementDistribution.some(c => c > 0) || s1.refreshing || s2.refreshing) && (
-              <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-4">
-                <div className="text-center text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">
+              <div className="bg-surface-base border border-border-subtle rounded p-4 mb-4">
+                <div className="text-center text-fg-secondary text-xs uppercase tracking-widest mb-3">
                   Platzierungs-Verteilung
                   {(s1.refreshing || s2.refreshing) && <span className="ml-2 text-[#7B61FF]">· wird geladen…</span>}
                 </div>
@@ -391,25 +391,25 @@ export default function TftComparePage() {
                     ? <PlacementHistogram dist={s1.placementDistribution} color={SERIES_COLORS[0]} />
                     : s1.refreshing
                       ? <PlacementSkeleton />
-                      : <div className="text-[#7a8aa0] text-xs text-center self-center">noch keine Match-Details</div>}
+                      : <div className="text-fg-muted text-xs text-center self-center">noch keine Match-Details</div>}
                   {s2.placementDistribution.some(c => c > 0)
                     ? <PlacementHistogram dist={s2.placementDistribution} color={SERIES_COLORS[1]} />
                     : s2.refreshing
                       ? <PlacementSkeleton />
-                      : <div className="text-[#7a8aa0] text-xs text-center self-center">noch keine Match-Details</div>}
+                      : <div className="text-fg-muted text-xs text-center self-center">noch keine Match-Details</div>}
                 </div>
               </div>
             )}
 
             {/* Top units — hidden if neither player has unit-level data */}
             {(s1.topUnits.length > 0 || s2.topUnits.length > 0) && (
-              <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-4">
-                <div className="text-center text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">Meist-gespielte Units</div>
+              <div className="bg-surface-base border border-border-subtle rounded p-4 mb-4">
+                <div className="text-center text-fg-secondary text-xs uppercase tracking-widest mb-3">Meist-gespielte Units</div>
                 <div className="grid grid-cols-2 gap-4">
                   {[s1, s2].map((s, i) => (
                     <div key={i}>
                       {s.topUnits.length === 0 ? (
-                        <div className="text-[#7a8aa0] text-xs text-center py-3">noch keine Match-Details</div>
+                        <div className="text-fg-muted text-xs text-center py-3">noch keine Match-Details</div>
                       ) : (
                         <div className="flex gap-1.5 flex-wrap">
                           {s.topUnits.slice(0, 8).map(u => {
@@ -425,7 +425,7 @@ export default function TftComparePage() {
                                 <img
                                   src={urls.square}
                                   alt={champName}
-                                  className="w-9 h-9 rounded border border-[#1e2a3a] object-cover"
+                                  className="w-9 h-9 rounded border border-border-subtle object-cover"
                                   onError={(e) => {
                                     const t = e.target as HTMLImageElement;
                                     // 1st failure: try the splash variant. 2nd failure: dim out.
@@ -437,7 +437,7 @@ export default function TftComparePage() {
                                     }
                                   }}
                                 />
-                                <span className="text-[9px] text-[#a0b0c5] tabular-nums">{u.games}</span>
+                                <span className="text-[9px] text-fg-secondary tabular-nums">{u.games}</span>
                               </a>
                             );
                           })}
@@ -452,8 +452,8 @@ export default function TftComparePage() {
         )}
 
         {chartData.length >= 2 && (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
-            <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">
+          <div className="bg-surface-base border border-border-subtle rounded p-4">
+            <div className="text-fg-secondary text-xs uppercase tracking-widest mb-3">
               {t('tft.compare.chartTitle')}
             </div>
             <div className="h-64">
@@ -512,13 +512,13 @@ function HeadToHeadBanner({ p1, p2, name1, name2 }: { p1: number; p2: number; na
   const total = p1 + p2 || 1;
   const w1 = (p1 / total) * 100;
   return (
-    <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-4">
+    <div className="bg-surface-base border border-border-subtle rounded p-4 mb-4">
       <div className="flex items-center justify-between text-xs mb-2">
-        <span className={`font-semibold truncate ${p1 > p2 ? 'text-[#7B61FF]' : 'text-[#a0b0c5]'}`}>{name1}</span>
-        <span className="text-[#7a8aa0] uppercase tracking-widest">{t('tft.compare.headToHead')}</span>
-        <span className={`font-semibold truncate ${p2 > p1 ? 'text-[#3ecf8e]' : 'text-[#a0b0c5]'}`}>{name2}</span>
+        <span className={`font-semibold truncate ${p1 > p2 ? 'text-[#7B61FF]' : 'text-fg-secondary'}`}>{name1}</span>
+        <span className="text-fg-muted uppercase tracking-widest">{t('tft.compare.headToHead')}</span>
+        <span className={`font-semibold truncate ${p2 > p1 ? 'text-[#3ecf8e]' : 'text-fg-secondary'}`}>{name2}</span>
       </div>
-      <div className="relative h-2.5 rounded-full bg-[#1e2a3a] overflow-hidden">
+      <div className="relative h-2.5 rounded-full bg-surface-overlay overflow-hidden">
         <div
           className="absolute left-0 top-0 h-full bg-gradient-to-r from-[#7B61FF] to-[#9d48e0] transition-all duration-700"
           style={{ width: `${w1}%`, boxShadow: '0 0 8px rgba(123,97,255,0.45)' }}
@@ -529,8 +529,8 @@ function HeadToHeadBanner({ p1, p2, name1, name2 }: { p1: number; p2: number; na
         />
       </div>
       <div className="flex items-center justify-between text-[10px] mt-1.5 tabular-nums">
-        <span className={p1 > p2 ? 'text-[#7B61FF] font-bold' : 'text-[#7a8aa0]'}>{p1} {p1 === 1 ? 'Kategorie' : 'Kategorien'}</span>
-        <span className={p2 > p1 ? 'text-[#3ecf8e] font-bold' : 'text-[#7a8aa0]'}>{p2} {p2 === 1 ? 'Kategorie' : 'Kategorien'}</span>
+        <span className={p1 > p2 ? 'text-[#7B61FF] font-bold' : 'text-fg-muted'}>{p1} {p1 === 1 ? 'Kategorie' : 'Kategorien'}</span>
+        <span className={p2 > p1 ? 'text-[#3ecf8e] font-bold' : 'text-fg-muted'}>{p2} {p2 === 1 ? 'Kategorie' : 'Kategorien'}</span>
       </div>
     </div>
   );
@@ -546,7 +546,7 @@ function CompareStatBar({ label, v1, v2, fmt1, fmt2, lowerIsBetter = false }: { 
   const pct2 = (Math.abs(v2) / maxAbs) * 100;
   return (
     <div className="mb-3">
-      <div className="text-center text-[#a0b0c5] text-[10px] uppercase tracking-widest mb-1">{label}</div>
+      <div className="text-center text-fg-secondary text-[10px] uppercase tracking-widest mb-1">{label}</div>
       <div className="flex items-center gap-2">
         <span className={`text-xs sm:text-sm w-20 sm:w-28 text-right shrink-0 tabular-nums font-medium ${p1Wins ? 'text-[#7B61FF]' : 'text-white'}`}>{fmt1}</span>
         <div className="flex-1 flex gap-1">
@@ -568,9 +568,9 @@ function PlacementSkeleton() {
     <div className="flex items-end gap-1 h-24 animate-pulse">
       {[1,2,3,4,5,6,7,8].map(i => (
         <div key={i} className="flex-1 flex flex-col items-center gap-1">
-          <div className="text-[9px] text-[#1e2a3a]">·</div>
-          <div className="w-full rounded-sm bg-[#1e2a3a]" style={{ height: `${30 + i * 5}%` }} />
-          <div className="text-[9px] text-[#7a8aa0]">{i}</div>
+          <div className="text-[9px] text-surface-overlay">·</div>
+          <div className="w-full rounded-sm bg-surface-overlay" style={{ height: `${30 + i * 5}%` }} />
+          <div className="text-[9px] text-fg-muted">{i}</div>
         </div>
       ))}
     </div>
@@ -589,7 +589,7 @@ function PlacementHistogram({ dist, color }: { dist: number[]; color: string }) 
         const heightPct = (count / max) * 100;
         return (
           <div key={place} className="flex-1 flex flex-col items-center gap-1">
-            <div className="text-[9px] text-[#a0b0c5] tabular-nums">{count}</div>
+            <div className="text-[9px] text-fg-secondary tabular-nums">{count}</div>
             <div
               className="w-full rounded-sm transition-all duration-500"
               style={{
@@ -600,7 +600,7 @@ function PlacementHistogram({ dist, color }: { dist: number[]; color: string }) 
               }}
               title={`Platz ${place}: ${count}`}
             />
-            <div className="text-[9px] text-[#7a8aa0] tabular-nums">{place}</div>
+            <div className="text-[9px] text-fg-muted tabular-nums">{place}</div>
           </div>
         );
       })}

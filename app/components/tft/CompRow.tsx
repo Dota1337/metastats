@@ -213,7 +213,7 @@ export default function CompRow({
           router.push(href);
         }
       }}
-      className="block px-2.5 sm:px-3.5 py-2.5 sm:py-3 rounded-md border border-[#1e2a3a] bg-[#0d1526] hover:bg-[#101a30] hover:border-[#7B61FF]/40 transition-colors text-xs sm:text-sm cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B61FF]/60"
+      className="block px-2.5 sm:px-3.5 py-2.5 sm:py-3 rounded-md border border-border-subtle bg-surface-base hover:bg-[#101a30] hover:border-[#7B61FF]/40 transition-colors text-xs sm:text-sm cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B61FF]/60"
     >
       {/* Mobile: stacked. Desktop: tight horizontal row.
           Großes Carry-Portrait raus — der Carry erscheint sowieso in der
@@ -374,7 +374,7 @@ export default function CompRow({
                           key={it.apiName}
                           href={`/tft/items/${encodeURIComponent(it.apiName)}`}
                           onClick={e => e.stopPropagation()}
-                          className="w-[14px] h-[14px] rounded-sm bg-[#0a0e1a] border border-[#1e2a3a] overflow-hidden block hover:border-[#c39bff]/60"
+                          className="w-[14px] h-[14px] rounded-sm bg-surface-sunken border border-border-subtle overflow-hidden block hover:border-[#c39bff]/60"
                           title={meta?.name || it.apiName}
                         >
                           {iconUrl && <img src={iconUrl} alt={meta?.name || it.apiName} className="w-full h-full object-cover" />}

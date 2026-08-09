@@ -183,11 +183,11 @@ export default function TftMarktwertPage() {
   }, [leaderboard]);
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav active="marktwert" />
       <TftHero pageTitle={t('nav.marketvalue')} />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-2 pb-6">
-        <p className="text-[#a0b0c5] text-sm mb-4">{t('tft.marketValue.pageHint')}</p>
+        <p className="text-fg-secondary text-sm mb-4">{t('tft.marketValue.pageHint')}</p>
 
         {/* Region selector — wraps on desktop, horizontally scrollable on
             mobile so 17 regions don't fight for vertical space. */}
@@ -199,7 +199,7 @@ export default function TftMarktwertPage() {
               className={`px-2.5 py-1 rounded text-xs font-medium flex-shrink-0 ${
                 region === r.value
                   ? 'bg-[#7B61FF] text-white'
-                  : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'
+                  : 'bg-surface-raised text-fg-secondary hover:text-white'
               }`}
             >
               {r.label}
@@ -214,13 +214,13 @@ export default function TftMarktwertPage() {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder={t('tft.search.player')}
-              className="w-full sm:w-80 bg-[#141c2e] border border-[#1e2a3a] rounded px-3 py-1.5 text-sm text-white placeholder:text-[#5a6a80] outline-none focus:border-[#7B61FF]/60"
+              className="w-full sm:w-80 bg-surface-raised border border-border-subtle rounded px-3 py-1.5 text-sm text-white placeholder:text-fg-faint outline-none focus:border-[#7B61FF]/60"
             />
           </div>
         )}
 
         {/* Tab strip */}
-        <div className="flex gap-1 border-b border-[#1e2a3a] mb-4">
+        <div className="flex gap-1 border-b border-border-subtle mb-4">
           {TABS.map(tt => (
             <button
               key={tt}
@@ -228,7 +228,7 @@ export default function TftMarktwertPage() {
               className={`px-4 py-2 text-xs font-medium uppercase tracking-widest ${
                 tab === tt
                   ? 'text-white border-b-2 border-[#7B61FF]'
-                  : 'text-[#a0b0c5] hover:text-white'
+                  : 'text-fg-secondary hover:text-white'
               }`}
             >
               {t(`tft.marketValue.tab.${tt}` as const)}
@@ -311,7 +311,7 @@ function TopTab({
             className={`px-3 py-1.5 rounded text-xs font-medium ${
               tierFilter === tr
                 ? 'bg-[#7B61FF] text-white'
-                : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'
+                : 'bg-surface-raised text-fg-secondary hover:text-white'
             }`}
           >
             {tr || t('tft.filter.allRanks')}
@@ -322,15 +322,15 @@ function TopTab({
       {loading && <SkeletonRows count={10} />}
 
       {!loading && players.length === 0 && (
-        <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#a0b0c5] text-sm">
+        <div className="bg-surface-base border border-border-subtle rounded p-6 text-center text-fg-secondary text-sm">
           {t('tft.marketValue.empty')}
         </div>
       )}
 
       {!loading && players.length > 0 && (
-        <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
+        <div className="bg-surface-base border border-border-subtle rounded overflow-hidden">
           {/* Desktop table header — hidden on mobile where each row is a card */}
-          <div className="hidden sm:grid grid-cols-[3rem_1fr_5rem_4rem_5rem_8rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#7a8aa0] bg-[#0a0e1a]">
+          <div className="hidden sm:grid grid-cols-[3rem_1fr_5rem_4rem_5rem_8rem] gap-2 px-4 py-2 text-[10px] uppercase text-fg-muted bg-surface-sunken">
             <div className="text-right">#</div>
             <div>{t('tft.marketValue.col.player')}</div>
             <div className="text-right">LP</div>
@@ -344,16 +344,16 @@ function TopTab({
               <a
                 key={p.puuid}
                 href={slug ? `/tft/player/${slug}?region=${region}` : '#'}
-                className="block sm:grid sm:grid-cols-[3rem_1fr_5rem_4rem_5rem_8rem] gap-2 px-4 py-2 sm:items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]"
+                className="block sm:grid sm:grid-cols-[3rem_1fr_5rem_4rem_5rem_8rem] gap-2 px-4 py-2 sm:items-center text-xs hover:bg-white/5 border-t border-border-subtle"
               >
                 {/* Mobile: rank + name + tier inline, value + multiplier as
                     a row below. Desktop: original 5-column grid. */}
-                <div className="hidden sm:block text-right text-[#a0b0c5] tabular-nums">{i + 1}</div>
+                <div className="hidden sm:block text-right text-fg-secondary tabular-nums">{i + 1}</div>
                 <div className="flex items-baseline gap-2 sm:block">
-                  <span className="text-[#a0b0c5] tabular-nums text-[10px] sm:hidden">#{i + 1}</span>
+                  <span className="text-fg-secondary tabular-nums text-[10px] sm:hidden">#{i + 1}</span>
                   <span className="text-white truncate flex-1 sm:flex-initial">
-                    {p.gameName || <span className="text-[#7a8aa0]">unbekannt</span>}
-                    {p.tagLine && <span className="text-[#7a8aa0] text-[10px]"> #{p.tagLine}</span>}
+                    {p.gameName || <span className="text-fg-muted">unbekannt</span>}
+                    {p.tagLine && <span className="text-fg-muted text-[10px]"> #{p.tagLine}</span>}
                     <span
                       className="ml-2 text-[10px] uppercase tracking-widest"
                       style={{ color: TIER_COLORS[p.tier] || '#a0b0c5' }}
@@ -363,10 +363,10 @@ function TopTab({
                   </span>
                 </div>
                 <div className="hidden sm:block text-right text-white tabular-nums">{p.lp}</div>
-                <div className="hidden sm:block text-right text-[#a0b0c5] tabular-nums">{p.multiplier.toFixed(2)}</div>
+                <div className="hidden sm:block text-right text-fg-secondary tabular-nums">{p.multiplier.toFixed(2)}</div>
                 <div className="hidden sm:block px-1"><Sparkline data={sparks[p.puuid]} /></div>
                 <div className="flex sm:block items-center justify-between mt-1 sm:mt-0 sm:text-right">
-                  <span className="text-[#7a8aa0] text-[10px] sm:hidden">
+                  <span className="text-fg-muted text-[10px] sm:hidden">
                     {p.lp} LP · ×{p.multiplier.toFixed(2)}
                   </span>
                   <span className="text-[#7B61FF] font-medium tabular-nums">
@@ -407,7 +407,7 @@ function MoversTab({
             onClick={() => setDirection('up')}
             className={`px-3 py-1.5 rounded text-xs font-medium ${
               direction === 'up' ? 'bg-[#3ecf8e]/20 text-[#3ecf8e] border border-[#3ecf8e]/40'
-                                 : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'
+                                 : 'bg-surface-raised text-fg-secondary hover:text-white'
             }`}
           >
             ▲ {t('tft.marketValue.movers.gainers')}
@@ -416,7 +416,7 @@ function MoversTab({
             onClick={() => setDirection('down')}
             className={`px-3 py-1.5 rounded text-xs font-medium ${
               direction === 'down' ? 'bg-[#e44040]/20 text-[#e44040] border border-[#e44040]/40'
-                                   : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'
+                                   : 'bg-surface-raised text-fg-secondary hover:text-white'
             }`}
           >
             ▼ {t('tft.marketValue.movers.losers')}
@@ -428,7 +428,7 @@ function MoversTab({
               key={w}
               onClick={() => setWindow(w)}
               className={`px-3 py-1.5 rounded text-xs font-medium ${
-                window_ === w ? 'bg-[#7B61FF] text-white' : 'bg-[#141c2e] text-[#a0b0c5] hover:text-white'
+                window_ === w ? 'bg-[#7B61FF] text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'
               }`}
             >
               {w}d
@@ -440,14 +440,14 @@ function MoversTab({
       {loading && <SkeletonRows count={6} />}
 
       {!loading && movers.length === 0 && (
-        <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#a0b0c5] text-sm">
+        <div className="bg-surface-base border border-border-subtle rounded p-6 text-center text-fg-secondary text-sm">
           {t('tft.marketValue.movers.notEnoughHistory')}
         </div>
       )}
 
       {!loading && movers.length > 0 && (
-        <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
-          <div className="hidden sm:grid grid-cols-[3rem_1fr_7rem_5rem_6rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#7a8aa0] bg-[#0a0e1a]">
+        <div className="bg-surface-base border border-border-subtle rounded overflow-hidden">
+          <div className="hidden sm:grid grid-cols-[3rem_1fr_7rem_5rem_6rem] gap-2 px-4 py-2 text-[10px] uppercase text-fg-muted bg-surface-sunken">
             <div className="text-right">#</div>
             <div>{t('tft.marketValue.col.player')}</div>
             <div className="text-right">{t('tft.marketValue.col.now')}</div>
@@ -462,14 +462,14 @@ function MoversTab({
               <a
                 key={m.puuid}
                 href={slug ? `/tft/player/${slug}?region=${region}` : '#'}
-                className="block sm:grid sm:grid-cols-[3rem_1fr_7rem_5rem_6rem] gap-2 px-4 py-2 sm:items-center text-xs hover:bg-white/5 border-t border-[#1e2a3a]"
+                className="block sm:grid sm:grid-cols-[3rem_1fr_7rem_5rem_6rem] gap-2 px-4 py-2 sm:items-center text-xs hover:bg-white/5 border-t border-border-subtle"
               >
-                <div className="hidden sm:block text-right text-[#a0b0c5] tabular-nums">{i + 1}</div>
+                <div className="hidden sm:block text-right text-fg-secondary tabular-nums">{i + 1}</div>
                 <div className="flex items-baseline gap-2 sm:block">
-                  <span className="text-[#a0b0c5] tabular-nums text-[10px] sm:hidden">#{i + 1}</span>
+                  <span className="text-fg-secondary tabular-nums text-[10px] sm:hidden">#{i + 1}</span>
                   <span className="text-white truncate flex-1 sm:flex-initial">
-                    {m.gameName || <span className="text-[#7a8aa0]">unbekannt</span>}
-                    {m.tagLine && <span className="text-[#7a8aa0] text-[10px]"> #{m.tagLine}</span>}
+                    {m.gameName || <span className="text-fg-muted">unbekannt</span>}
+                    {m.tagLine && <span className="text-fg-muted text-[10px]"> #{m.tagLine}</span>}
                     <span
                       className="ml-2 text-[10px] uppercase tracking-widest"
                       style={{ color: TIER_COLORS[m.tier] || '#a0b0c5' }}
@@ -479,7 +479,7 @@ function MoversTab({
                   </span>
                 </div>
                 <div className="hidden sm:block text-right text-white tabular-nums">{fmtEur(m.currentValue, lang)}</div>
-                <div className="hidden sm:block text-right text-[#a0b0c5] tabular-nums text-[10px]">{fmtEur(m.previousValue, lang)}</div>
+                <div className="hidden sm:block text-right text-fg-secondary tabular-nums text-[10px]">{fmtEur(m.previousValue, lang)}</div>
                 {/* Mobile: now-value + delta in one row below the name; desktop keeps the 3-col split */}
                 <div className="flex sm:block items-center justify-between mt-1 sm:mt-0 sm:text-right">
                   <span className="text-white tabular-nums sm:hidden">{fmtEur(m.currentValue, lang)}</span>
@@ -511,22 +511,22 @@ function DistributionTab({
   t: (k: any) => string;
 }) {
   if (loading) {
-    return <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-8 h-72 animate-pulse" />;
+    return <div className="bg-surface-base border border-border-subtle rounded p-8 h-72 animate-pulse" />;
   }
   if (data.length === 0) {
     return (
-      <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#a0b0c5] text-sm">
+      <div className="bg-surface-base border border-border-subtle rounded p-6 text-center text-fg-secondary text-sm">
         {t('tft.marketValue.empty')}
       </div>
     );
   }
   return (
-    <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-5">
+    <div className="bg-surface-base border border-border-subtle rounded p-5">
       <div className="flex items-center justify-between mb-3">
-        <div className="text-[#a0b0c5] text-xs uppercase tracking-widest">
+        <div className="text-fg-secondary text-xs uppercase tracking-widest">
           {t('tft.marketValue.distribution.title')}
         </div>
-        <div className="text-[#7a8aa0] text-[10px]">
+        <div className="text-fg-muted text-[10px]">
           {t('tft.marketValue.distribution.basedOn').replace('{n}', String(count))}
         </div>
       </div>
@@ -561,7 +561,7 @@ function DistributionTab({
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <div className="text-[#7a8aa0] text-[10px] mt-2 text-center">
+      <div className="text-fg-muted text-[10px] mt-2 text-center">
         {t('tft.marketValue.distribution.xAxisHint')}
       </div>
     </div>
@@ -593,10 +593,10 @@ function Sparkline({ data }: { data: { date: string; value: number }[] | undefin
 
 function SkeletonRows({ count }: { count: number }) {
   return (
-    <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
+    <div className="bg-surface-base border border-border-subtle rounded overflow-hidden">
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="px-4 py-2 border-t border-[#1e2a3a] first:border-t-0">
-          <div className="h-4 bg-[#1e2a3a] rounded animate-pulse" />
+        <div key={i} className="px-4 py-2 border-t border-border-subtle first:border-t-0">
+          <div className="h-4 bg-surface-overlay rounded animate-pulse" />
         </div>
       ))}
     </div>

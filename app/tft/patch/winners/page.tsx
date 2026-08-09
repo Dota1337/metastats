@@ -144,16 +144,16 @@ export default function TftPatchWinnersPage() {
       <Wrapper
         key={e.key}
         {...(display.href ? { href: display.href } : {})}
-        className={`block bg-[#141c2e] border border-[#1e2a3a] rounded p-2.5 ${display.href ? 'hover:border-[#7B61FF]/40 transition-colors' : ''}`}
+        className={`block bg-surface-raised border border-border-subtle rounded p-2.5 ${display.href ? 'hover:border-[#7B61FF]/40 transition-colors' : ''}`}
       >
         <div className="flex items-center gap-2">
-          <span className="text-[#7a8aa0] text-[10px] w-4 tabular-nums">#{idx + 1}</span>
+          <span className="text-fg-muted text-[10px] w-4 tabular-nums">#{idx + 1}</span>
           {display.icon}
           <div className="flex-1 min-w-0">
             <div className="text-white text-[12px] truncate">{display.name}</div>
-            <div className="text-[#7a8aa0] text-[10px] tabular-nums">
+            <div className="text-fg-muted text-[10px] tabular-nums">
               Ø {e.previousAvgPlacement.toFixed(2)} → {e.currentAvgPlacement.toFixed(2)}
-              <span className="text-[#5a6a80]"> · {pickRatePct}% pick</span>
+              <span className="text-fg-faint"> · {pickRatePct}% pick</span>
             </div>
           </div>
           <div className="text-sm tabular-nums font-medium" style={{ color: barColor }}>
@@ -161,7 +161,7 @@ export default function TftPatchWinnersPage() {
           </div>
         </div>
         {/* Delta-bar: visualizes magnitude of avg-place swing */}
-        <div className="mt-1.5 h-1 bg-[#0d1526] rounded overflow-hidden">
+        <div className="mt-1.5 h-1 bg-surface-base rounded overflow-hidden">
           <div className="h-full transition-all" style={{ width: `${barWidth.toFixed(0)}%`, backgroundColor: barColor }} />
         </div>
       </Wrapper>
@@ -169,11 +169,11 @@ export default function TftPatchWinnersPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav active="patch" />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
         <h1 className="text-white text-2xl font-medium mb-1">{t('tft.patchWinners.title')}</h1>
-        <p className="text-[#a0b0c5] text-sm mb-4">
+        <p className="text-fg-secondary text-sm mb-4">
           {info.previousPatch && info.currentPatch
             ? `${info.previousPatch} → ${info.currentPatch}`
             : t('tft.patchWinners.subtitle')}
@@ -188,7 +188,7 @@ export default function TftPatchWinnersPage() {
                 className={`px-3 py-1.5 text-xs uppercase tracking-widest rounded border ${
                   entity === e
                     ? 'bg-[#7B61FF] border-[#7B61FF] text-white'
-                    : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5] hover:border-[#7B61FF]/40'
+                    : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-[#7B61FF]/40'
                 }`}
               >
                 {t(`nav.${e === 'unit' ? 'units' : e === 'item' ? 'items' : e === 'comp' ? 'comps' : 'traits'}` as const)}
@@ -203,7 +203,7 @@ export default function TftPatchWinnersPage() {
                 className={`px-3 py-1.5 text-xs rounded border ${
                   tier === tk.value
                     ? 'bg-[#7B61FF] border-[#7B61FF] text-white'
-                    : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5] hover:border-[#7B61FF]/40'
+                    : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-[#7B61FF]/40'
                 }`}
               >
                 {t(tk.key as TranslationKey)}
@@ -213,7 +213,7 @@ export default function TftPatchWinnersPage() {
           <select
             value={region}
             onChange={e => setRegion(e.target.value)}
-            className="bg-[#141c2e] border border-[#1e2a3a] rounded text-white text-xs px-2 py-1.5"
+            className="bg-surface-raised border border-border-subtle rounded text-white text-xs px-2 py-1.5"
             aria-label={t('tft.filter.region')}
           >
             {REGIONS.map(r => (
@@ -224,7 +224,7 @@ export default function TftPatchWinnersPage() {
           </select>
         </div>
 
-        {loading && <div className="text-[#a0b0c5] text-center py-8">…</div>}
+        {loading && <div className="text-fg-secondary text-center py-8">…</div>}
 
         {!loading && (winners.length > 0 || losers.length > 0) && (() => {
           // Diverging swing chart: top movers on a shared zero-axis. swing =
@@ -237,8 +237,8 @@ export default function TftPatchWinnersPage() {
           if (rows.length === 0) return null;
           const max = Math.max(0.05, ...rows.map(r => Math.abs(r.swing)));
           return (
-            <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-4">
-              <div className="text-[#a0b0c5] text-[10px] uppercase tracking-widest mb-2">{t('tft.patchWinners.swingChart')}</div>
+            <div className="bg-surface-base border border-border-subtle rounded p-4 mb-4">
+              <div className="text-fg-secondary text-[10px] uppercase tracking-widest mb-2">{t('tft.patchWinners.swingChart')}</div>
               <div style={{ width: '100%', height: rows.length * 22 + 12 }}>
                 <ResponsiveContainer>
                   <BarChart data={rows} layout="vertical" margin={{ top: 0, right: 12, bottom: 0, left: 12 }}>
@@ -257,7 +257,7 @@ export default function TftPatchWinnersPage() {
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-              <div className="text-[#5a6a80] text-[9px] mt-1">{t('tft.patchWinners.swingHint')}</div>
+              <div className="text-fg-faint text-[9px] mt-1">{t('tft.patchWinners.swingHint')}</div>
             </div>
           );
         })()}
@@ -280,7 +280,7 @@ export default function TftPatchWinnersPage() {
         )}
 
         {!loading && winners.length === 0 && losers.length === 0 && (
-          <div className="text-[#a0b0c5] text-center py-8">{t('tft.patchWinners.empty')}</div>
+          <div className="text-fg-secondary text-center py-8">{t('tft.patchWinners.empty')}</div>
         )}
       </div>
       <Footer />
@@ -304,7 +304,7 @@ function renderEntity(key: string, entity: Entity, assets: TftAssetsBundle | nul
     const url = tftChampionTileUrl(assets, champ);
     return {
       name: champ?.name || key.replace(/^TFT\d+_/, ''),
-      icon: url ? <img src={url} alt="" className="w-8 h-8 rounded border border-[#c39bff]/60" /> : <div className="w-8 h-8 rounded bg-[#1e2a3a]" />,
+      icon: url ? <img src={url} alt="" className="w-8 h-8 rounded border border-[#c39bff]/60" /> : <div className="w-8 h-8 rounded bg-surface-overlay" />,
       href: `/tft/units/${encodeURIComponent(canonicalId)}`,
     };
   }
@@ -313,7 +313,7 @@ function renderEntity(key: string, entity: Entity, assets: TftAssetsBundle | nul
     const url = tftIconUrl(assets, item?.icon);
     return {
       name: item?.name || key.replace(/^TFT\d*_Item_/, ''),
-      icon: url ? <img src={url} alt="" className="w-7 h-7 rounded" /> : <div className="w-7 h-7 rounded bg-[#1e2a3a]" />,
+      icon: url ? <img src={url} alt="" className="w-7 h-7 rounded" /> : <div className="w-7 h-7 rounded bg-surface-overlay" />,
       href: `/tft/items/${encodeURIComponent(key)}`,
     };
   }
@@ -324,7 +324,7 @@ function renderEntity(key: string, entity: Entity, assets: TftAssetsBundle | nul
     // Listing ist eine Aggregat-Sicht und wird vorher per dedupeByPrimaryCluster
     // zusammengeführt.
     const parts = parseClusterKey(key);
-    if (!parts) return { name: key, icon: <div className="w-7 h-7 rounded bg-[#1e2a3a]" />, href: null as string | null };
+    if (!parts) return { name: key, icon: <div className="w-7 h-7 rounded bg-surface-overlay" />, href: null as string | null };
     const trait = assets?.traits[parts.trait];
     // Case-insensitive champ lookup (same as the unit branch).
     let carry = assets?.champions[parts.carry];
@@ -362,8 +362,8 @@ function renderEntity(key: string, entity: Entity, assets: TftAssetsBundle | nul
       icon: url
         ? <img src={url} alt="" className="w-7 h-7 rounded border border-[#c39bff]/60 object-cover" />
         : traitIcon
-          ? <img src={traitIcon} alt="" className="w-7 h-7 rounded bg-[#1e2a3a]" />
-          : <div className="w-7 h-7 rounded bg-[#1e2a3a]" />,
+          ? <img src={traitIcon} alt="" className="w-7 h-7 rounded bg-surface-overlay" />
+          : <div className="w-7 h-7 rounded bg-surface-overlay" />,
       href: `/tft/comps/${encodeURIComponent(key)}`,
     };
   }
@@ -375,8 +375,8 @@ function renderEntity(key: string, entity: Entity, assets: TftAssetsBundle | nul
   return {
     name: trait?.name || key.replace(/^TFT\d+_/, ''),
     icon: traitIcon
-      ? <img src={traitIcon} alt="" className="w-7 h-7 rounded bg-[#1e2a3a]" />
-      : <div className="w-7 h-7 rounded bg-[#1e2a3a]" />,
+      ? <img src={traitIcon} alt="" className="w-7 h-7 rounded bg-surface-overlay" />
+      : <div className="w-7 h-7 rounded bg-surface-overlay" />,
     href: `/tft/traits/${encodeURIComponent(key)}`,
   };
 }

@@ -34,7 +34,7 @@ export default function TftAugmentsComparePage() {
   useEffect(() => { loadCompGuidesBundle().then(setCompGuidesBundle); }, []);
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav active="augments" />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
         <a href="/tft/augments" className="text-[#7B61FF] text-xs hover:underline">← {t('nav.augments')}</a>
@@ -42,9 +42,9 @@ export default function TftAugmentsComparePage() {
         <h1 className="text-white text-xl font-medium mt-2 mb-5">{t('tft.augmentsCompare.title')}</h1>
 
         {(!apiNameA || !apiNameB) && (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center">
+          <div className="bg-surface-base border border-border-subtle rounded p-6 text-center">
             <div className="text-white text-sm font-medium">{t('tft.augmentsCompare.pickTwo')}</div>
-            <div className="text-[#7a8aa0] text-xs mt-2 leading-relaxed">
+            <div className="text-fg-muted text-xs mt-2 leading-relaxed">
               {t('tft.augmentsCompare.pickTwo.hint')}
             </div>
             <a
@@ -102,22 +102,22 @@ function AugmentPanel({
 
   if (assets && !meta) {
     return (
-      <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 text-center">
-        <div className="text-[#7a8aa0] text-xs">{t('tft.augmentsCompare.notFound')}</div>
+      <div className="bg-surface-base border border-border-subtle rounded p-4 text-center">
+        <div className="text-fg-muted text-xs">{t('tft.augmentsCompare.notFound')}</div>
       </div>
     );
   }
   if (!meta) {
     return (
-      <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 text-center">
-        <div className="text-[#7a8aa0] text-xs">…</div>
+      <div className="bg-surface-base border border-border-subtle rounded p-4 text-center">
+        <div className="text-fg-muted text-xs">…</div>
       </div>
     );
   }
 
   return (
     <div
-      className="bg-[#0d1526] border rounded p-4"
+      className="bg-surface-base border rounded p-4"
       style={{ borderColor: `${accentColor}40` }}
     >
       <div className="flex items-start gap-3 mb-3">
@@ -129,7 +129,7 @@ function AugmentPanel({
             style={{ borderColor: tierColor }}
           />
         ) : (
-          <div className="w-14 h-14 rounded-lg bg-[#1e2a3a] flex-shrink-0" />
+          <div className="w-14 h-14 rounded-lg bg-surface-overlay flex-shrink-0" />
         )}
         <div className="min-w-0 flex-1">
           <h2 className="text-white text-base font-medium">{meta.name}</h2>
@@ -145,15 +145,15 @@ function AugmentPanel({
       </div>
 
       {meta.desc && (
-        <p className="text-[#a0b0c5] text-xs leading-relaxed whitespace-pre-line mb-3">{meta.desc}</p>
+        <p className="text-fg-secondary text-xs leading-relaxed whitespace-pre-line mb-3">{meta.desc}</p>
       )}
 
-      <div className="border-t border-[#1e2a3a] pt-3">
-        <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest mb-2">
+      <div className="border-t border-border-subtle pt-3">
+        <div className="text-fg-muted text-[10px] uppercase tracking-widest mb-2">
           {(t('tft.augmentsCompare.compsCount') as string).replace('{n}', String(matchingComps.length))}
         </div>
         {matchingComps.length === 0 ? (
-          <div className="text-[#5a6a80] text-xs">—</div>
+          <div className="text-fg-faint text-xs">—</div>
         ) : (
           <div className="space-y-1.5">
             {matchingComps.slice(0, 6).map(m => {
@@ -167,7 +167,7 @@ function AugmentPanel({
                 <a
                   key={m.slug}
                   href={`/tft/comps/${encodeURIComponent(compSlug)}`}
-                  className="flex items-center gap-2 p-2 rounded bg-[#141c2e] border border-[#1e2a3a] hover:border-[#7B61FF]/50 transition-colors"
+                  className="flex items-center gap-2 p-2 rounded bg-surface-raised border border-border-subtle hover:border-[#7B61FF]/50 transition-colors"
                 >
                   {carryUrl ? (
                     <img
@@ -176,14 +176,14 @@ function AugmentPanel({
                       className="w-7 h-7 rounded border border-[#c39bff]/50 object-cover flex-shrink-0"
                     />
                   ) : (
-                    <div className="w-7 h-7 rounded bg-[#1e2a3a] flex-shrink-0" />
+                    <div className="w-7 h-7 rounded bg-surface-overlay flex-shrink-0" />
                   )}
                   <div className="min-w-0 flex-1">
                     <div className="text-white text-xs font-medium truncate">{carryName}</div>
-                    <div className="text-[#7a8aa0] text-[10px] truncate">{traitName}</div>
+                    <div className="text-fg-muted text-[10px] truncate">{traitName}</div>
                   </div>
                   {m.guide.difficulty && (
-                    <span className="text-[9px] text-[#7a8aa0] uppercase tracking-wider flex-shrink-0">
+                    <span className="text-[9px] text-fg-muted uppercase tracking-wider flex-shrink-0">
                       {m.guide.difficulty}
                     </span>
                   )}
@@ -191,7 +191,7 @@ function AugmentPanel({
               );
             })}
             {matchingComps.length > 6 && (
-              <div className="text-[#5a6a80] text-[10px] italic">
+              <div className="text-fg-faint text-[10px] italic">
                 + {matchingComps.length - 6} {t('tft.augmentsCompare.more')}
               </div>
             )}

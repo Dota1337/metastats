@@ -125,18 +125,18 @@ export default function TftRollOddsPage() {
   const fmtNum = (n: number | null) => n == null ? '—' : !Number.isFinite(n) ? '∞' : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : n >= 100 ? Math.round(n).toLocaleString('de-DE') : n.toFixed(1);
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav active="tools" />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
-        <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-5 mb-5">
+        <div className="bg-surface-base border border-border-subtle rounded-lg p-5 mb-5">
           <h1 className="text-white text-xl font-medium">{t('tft.tools.odds.title')}</h1>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.5fr] gap-4">
           {/* Inputs */}
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-4 space-y-4">
+          <div className="bg-surface-base border border-border-subtle rounded-lg p-4 space-y-4">
             <div>
-              <div className="text-[#7a8aa0] text-[11px] uppercase tracking-widest mb-1.5">{t('tft.tools.odds.cost')}</div>
+              <div className="text-fg-muted text-[11px] uppercase tracking-widest mb-1.5">{t('tft.tools.odds.cost')}</div>
               <div className="flex gap-1">
                 {([1, 2, 3, 4, 5] as const).map(c => (
                   <button
@@ -146,7 +146,7 @@ export default function TftRollOddsPage() {
                     className={`flex-1 py-2 text-sm rounded border transition-colors tabular-nums ${
                       cost === c
                         ? 'border-current text-white'
-                        : 'border-[#1e2a3a] bg-[#141c2e] text-[#a0b0c5] hover:border-[#1e2a3a]'
+                        : 'border-border-subtle bg-surface-raised text-fg-secondary hover:border-border-subtle'
                     }`}
                     style={{ color: cost === c ? COST_COLORS[c] : undefined, backgroundColor: cost === c ? `${COST_COLORS[c]}22` : undefined }}
                   >
@@ -158,7 +158,7 @@ export default function TftRollOddsPage() {
 
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[#7a8aa0] text-[11px] uppercase tracking-widest">{t('tft.tools.odds.level')}</span>
+                <span className="text-fg-muted text-[11px] uppercase tracking-widest">{t('tft.tools.odds.level')}</span>
                 <span className="text-white text-sm tabular-nums">{level}</span>
               </div>
               <input
@@ -166,14 +166,14 @@ export default function TftRollOddsPage() {
                 onChange={e => setLevel(Number(e.target.value))}
                 className="w-full accent-[#7B61FF]"
               />
-              <div className="flex justify-between text-[#5a6a80] text-[10px] mt-1 tabular-nums">
+              <div className="flex justify-between text-fg-faint text-[10px] mt-1 tabular-nums">
                 <span>2</span><span>4</span><span>6</span><span>8</span><span>10</span>
               </div>
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[#7a8aa0] text-[11px] uppercase tracking-widest">{t('tft.tools.odds.copiesOwned')}</span>
+                <span className="text-fg-muted text-[11px] uppercase tracking-widest">{t('tft.tools.odds.copiesOwned')}</span>
                 <span className="text-white text-sm tabular-nums">{copiesOwned}</span>
               </div>
               <input
@@ -185,7 +185,7 @@ export default function TftRollOddsPage() {
 
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[#7a8aa0] text-[11px] uppercase tracking-widest">{t('tft.tools.odds.copiesContested')}</span>
+                <span className="text-fg-muted text-[11px] uppercase tracking-widest">{t('tft.tools.odds.copiesContested')}</span>
                 <span className="text-white text-sm tabular-nums">{copiesContested}</span>
               </div>
               <input
@@ -195,7 +195,7 @@ export default function TftRollOddsPage() {
               />
             </div>
 
-            <div className="pt-2 border-t border-[#1e2a3a] grid grid-cols-2 gap-2 text-[11px]">
+            <div className="pt-2 border-t border-border-subtle grid grid-cols-2 gap-2 text-[11px]">
               <Stat label={t('tft.tools.odds.totalPool')} value={out.totalPoolForCost.toLocaleString('de-DE')} />
               <Stat label={t('tft.tools.odds.copiesLeft')} value={out.copiesLeft.toString()} accent={COST_COLORS[cost]} />
             </div>
@@ -233,7 +233,7 @@ export default function TftRollOddsPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-[11px] tabular-nums">
                   <thead>
-                    <tr className="text-[#7a8aa0] border-b border-[#1e2a3a]">
+                    <tr className="text-fg-muted border-b border-border-subtle">
                       <th className="text-left px-2 py-1.5 font-normal">{t('tft.tools.odds.level')}</th>
                       {([1, 2, 3, 4, 5] as const).map(c => (
                         <th key={c} className="text-right px-2 py-1.5 font-normal" style={{ color: COST_COLORS[c] }}>{c}-{t('tft.tools.odds.costShort')}</th>
@@ -246,14 +246,14 @@ export default function TftRollOddsPage() {
                       return (
                         <tr
                           key={lvl}
-                          className={`border-b border-[#1e2a3a]/50 last:border-0 cursor-pointer transition-colors ${isActive ? 'bg-[#7B61FF]/10' : 'hover:bg-[#141c2e]'}`}
+                          className={`border-b border-border-subtle/50 last:border-0 cursor-pointer transition-colors ${isActive ? 'bg-[#7B61FF]/10' : 'hover:bg-surface-raised'}`}
                           onClick={() => setLevel(Number(lvl))}
                         >
                           <td className={`px-2 py-1.5 ${isActive ? 'text-[#c39bff] font-medium' : 'text-white'}`}>{lvl}</td>
                           {odds.map((p, i) => (
                             <td
                               key={i}
-                              className={`text-right px-2 py-1.5 ${cost === i + 1 && isActive ? 'font-medium' : 'text-[#a0b0c5]'}`}
+                              className={`text-right px-2 py-1.5 ${cost === i + 1 && isActive ? 'font-medium' : 'text-fg-secondary'}`}
                               style={cost === i + 1 && isActive ? { color: COST_COLORS[i + 1] } : undefined}
                             >
                               {p}%
@@ -276,8 +276,8 @@ export default function TftRollOddsPage() {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-4">
-      <h2 className="text-[#7a8aa0] text-[11px] uppercase tracking-widest mb-3">{title}</h2>
+    <section className="bg-surface-base border border-border-subtle rounded-lg p-4">
+      <h2 className="text-fg-muted text-[11px] uppercase tracking-widest mb-3">{title}</h2>
       {children}
     </section>
   );
@@ -286,7 +286,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function Stat({ label, value, accent }: { label: string; value: string; accent?: string }) {
   return (
     <div>
-      <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">{label}</div>
+      <div className="text-fg-muted text-[10px] uppercase tracking-widest">{label}</div>
       <div className="text-sm font-medium tabular-nums" style={{ color: accent || '#ffffff' }}>{value}</div>
     </div>
   );
@@ -294,8 +294,8 @@ function Stat({ label, value, accent }: { label: string; value: string; accent?:
 
 function BigStat({ label, value, accent }: { label: string; value: string; accent?: string }) {
   return (
-    <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-2.5">
-      <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">{label}</div>
+    <div className="bg-surface-raised border border-border-subtle rounded p-2.5">
+      <div className="text-fg-muted text-[10px] uppercase tracking-widest">{label}</div>
       <div className="text-lg font-medium tabular-nums" style={{ color: accent || '#ffffff' }}>{value}</div>
     </div>
   );
@@ -303,15 +303,15 @@ function BigStat({ label, value, accent }: { label: string; value: string; accen
 
 function Row({ label, rolls, gold, highlight }: { label: string; rolls: string; gold: string; highlight?: boolean }) {
   return (
-    <div className={`flex items-center gap-3 bg-[#141c2e] border border-[#1e2a3a] rounded p-2.5 ${highlight ? 'opacity-60' : ''}`}>
-      <div className="flex-1 text-[#a0b0c5] text-sm">{label}</div>
+    <div className={`flex items-center gap-3 bg-surface-raised border border-border-subtle rounded p-2.5 ${highlight ? 'opacity-60' : ''}`}>
+      <div className="flex-1 text-fg-secondary text-sm">{label}</div>
       <div className="text-right">
         <div className="text-white text-sm font-medium tabular-nums">{rolls}</div>
-        <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">Rolls</div>
+        <div className="text-fg-muted text-[10px] uppercase tracking-widest">Rolls</div>
       </div>
-      <div className="text-right border-l border-[#1e2a3a] pl-3">
+      <div className="text-right border-l border-border-subtle pl-3">
         <div className="text-[#e0c75a] text-sm font-medium tabular-nums">{gold}</div>
-        <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">Gold</div>
+        <div className="text-fg-muted text-[10px] uppercase tracking-widest">Gold</div>
       </div>
     </div>
   );

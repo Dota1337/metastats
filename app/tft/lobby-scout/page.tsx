@@ -102,7 +102,7 @@ export default function TftLobbyScoutPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav active="comps" />
       <TftHero pageTitle={t('tft.lobby.title')} subtitle={t('tft.lobby.subtitle')} />
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-2 pb-6 grid grid-cols-1 lg:grid-cols-[1fr_22rem] gap-4">
@@ -117,7 +117,7 @@ export default function TftLobbyScoutPage() {
                 className={`px-2.5 py-1 rounded text-xs border transition-colors ${
                   costFilter === c
                     ? 'bg-[#7B61FF]/20 border-[#7B61FF]/60 text-white'
-                    : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5] hover:border-[#7B61FF]/40'
+                    : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-[#7B61FF]/40'
                 }`}
               >
                 {c === 'all' ? t('tft.lobby.allCosts') : `${c} ${t('tft.cost') || ''}`}
@@ -128,7 +128,7 @@ export default function TftLobbyScoutPage() {
               placeholder={t('tft.lobby.searchPlaceholder')}
               value={query}
               onChange={e => setQuery(e.target.value)}
-              className="flex-1 min-w-[140px] bg-[#141c2e] border border-[#1e2a3a] rounded px-3 py-1 text-xs text-white focus:outline-none focus:border-[#7B61FF]/60"
+              className="flex-1 min-w-[140px] bg-surface-raised border border-border-subtle rounded px-3 py-1 text-xs text-white focus:outline-none focus:border-[#7B61FF]/60"
             />
           </div>
 
@@ -141,7 +141,7 @@ export default function TftLobbyScoutPage() {
                   <button
                     key={id}
                     onClick={() => togglePick(id)}
-                    className={`group relative bg-[#141c2e] rounded border-2 transition-all hover:bg-[#1a2742] ${
+                    className={`group relative bg-surface-raised rounded border-2 transition-all hover:bg-[#1a2742] ${
                       isSelected ? 'ring-2 ring-[#7B61FF]' : ''
                     }`}
                     style={{ borderColor: isSelected ? '#7B61FF' : costColorOf(c.cost) }}
@@ -149,7 +149,7 @@ export default function TftLobbyScoutPage() {
                     {url ? (
                       <img src={url} alt={c.name} className="w-full aspect-square object-cover rounded" />
                     ) : (
-                      <div className="w-full aspect-square bg-[#1e2a3a]" />
+                      <div className="w-full aspect-square bg-surface-overlay" />
                     )}
                     <div className="text-white text-[9px] truncate px-0.5 py-0.5">{c.name}</div>
                     {isSelected && (
@@ -167,13 +167,13 @@ export default function TftLobbyScoutPage() {
         {/* Right — selected summary + ranked matches */}
         <aside>
           <div className="sticky top-4 space-y-3">
-            <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-3">
+            <div className="bg-surface-base border border-border-subtle rounded p-3">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[#a0b0c5] text-xs uppercase tracking-widest">{t('tft.lobby.selected')}</span>
-                <span className="text-[#7a8aa0] text-[10px] tabular-nums">{selected.length}/{MAX_SELECT}</span>
+                <span className="text-fg-secondary text-xs uppercase tracking-widest">{t('tft.lobby.selected')}</span>
+                <span className="text-fg-muted text-[10px] tabular-nums">{selected.length}/{MAX_SELECT}</span>
               </div>
               {selected.length === 0 ? (
-                <div className="text-[#5a6a80] text-xs text-center py-3">—</div>
+                <div className="text-fg-faint text-xs text-center py-3">—</div>
               ) : (
                 <div className="flex flex-wrap gap-1.5">
                   {selected.map(id => {
@@ -189,7 +189,7 @@ export default function TftLobbyScoutPage() {
                         {url ? (
                           <img src={url} alt={c?.name || id} className="w-9 h-9 rounded border-2" style={{ borderColor: c ? costColorOf(c.cost) : '#1e2a3a' }} />
                         ) : (
-                          <div className="w-9 h-9 rounded bg-[#1e2a3a]" />
+                          <div className="w-9 h-9 rounded bg-surface-overlay" />
                         )}
                         <span className="absolute -top-1 -right-1 bg-[#e44040] text-white text-[8px] w-3.5 h-3.5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100">×</span>
                       </button>
@@ -199,10 +199,10 @@ export default function TftLobbyScoutPage() {
               )}
             </div>
 
-            <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-3">
-              <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-2">{t('tft.lobby.matches')}</h2>
+            <div className="bg-surface-base border border-border-subtle rounded p-3">
+              <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-2">{t('tft.lobby.matches')}</h2>
               {matches.length === 0 ? (
-                <div className="text-[#5a6a80] text-xs text-center py-4">
+                <div className="text-fg-faint text-xs text-center py-4">
                   {selected.length === 0 ? '—' : <EmptyData />}
                 </div>
               ) : (
@@ -217,19 +217,19 @@ export default function TftLobbyScoutPage() {
                       <a
                         key={m.comp.slug}
                         href={`/tft/comps/${encodeURIComponent(m.comp.slug)}?bucket=master_plus`}
-                        className="block bg-[#141c2e] border border-[#1e2a3a] rounded p-2 hover:border-[#7B61FF]/40 transition-colors"
+                        className="block bg-surface-raised border border-border-subtle rounded p-2 hover:border-[#7B61FF]/40 transition-colors"
                       >
                         <div className="flex items-center gap-2">
                           {carryUrl ? (
                             <img src={carryUrl} alt="" className="w-8 h-8 rounded border-2 border-[#c39bff]/60" />
                           ) : (
-                            <div className="w-8 h-8 rounded bg-[#1e2a3a]" />
+                            <div className="w-8 h-8 rounded bg-surface-overlay" />
                           )}
                           <div className="flex-1 min-w-0">
                             <div className="text-white text-[11px] truncate">
                               {traitName} · {carry?.name || ''}
                             </div>
-                            <div className="text-[#7a8aa0] text-[10px] tabular-nums">
+                            <div className="text-fg-muted text-[10px] tabular-nums">
                               {m.matchedCount}/{m.totalSelected} {t('tft.lobby.matched')} · Ø {m.comp.avgPlacement?.toFixed(2) ?? '—'}
                             </div>
                           </div>
@@ -237,7 +237,7 @@ export default function TftLobbyScoutPage() {
                             <div className="text-[#7B61FF] text-sm font-medium tabular-nums">{confidence}%</div>
                           </div>
                         </div>
-                        <div className="mt-1 h-1 bg-[#0d1526] rounded overflow-hidden">
+                        <div className="mt-1 h-1 bg-surface-base rounded overflow-hidden">
                           <div className="h-full bg-[#7B61FF]" style={{ width: `${confidence}%` }} />
                         </div>
                       </a>

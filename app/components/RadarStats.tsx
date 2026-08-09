@@ -37,11 +37,11 @@ export default function RadarStats({ categories }: Props) {
   if (categories.length < 4) return null;
 
   return (
-    <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 sm:p-6 mb-4">
-      <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-2">
+    <div className="bg-surface-base border border-border-subtle rounded p-4 sm:p-6 mb-4">
+      <div className="text-fg-secondary text-xs uppercase tracking-widest mb-2">
         {t('radar.title')}
       </div>
-      <div className="text-[#7a8aa0] text-xs mb-4">{t('radar.subtitle')}</div>
+      <div className="text-fg-muted text-xs mb-4">{t('radar.subtitle')}</div>
       <ResponsiveContainer width="100%" height={280}>
         <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="75%">
           <PolarGrid stroke="#1e2a3a" />
@@ -68,7 +68,7 @@ export default function RadarStats({ categories }: Props) {
               if (!active || !payload?.length) return null;
               const d = payload[0]?.payload;
               return (
-                <div className="bg-[#0d1526] border border-[#1e2a3a] rounded px-3 py-2 text-xs shadow-lg">
+                <div className="bg-surface-base border border-border-subtle rounded px-3 py-2 text-xs shadow-lg">
                   <div className="text-white font-medium">{d?.axis}</div>
                   <div className="text-[#c89b3c]">Score: {d?.score}/100</div>
                 </div>

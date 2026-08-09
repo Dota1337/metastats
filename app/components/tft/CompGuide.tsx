@@ -52,7 +52,7 @@ function AugmentTile({ apiName, assets }: { apiName: string; assets: TftAssetsBu
         {iconUrl ? (
           <img src={iconUrl} alt={meta?.name || apiName} className="w-full h-full object-cover" />
         ) : (
-          <div className="w-full h-full bg-[#1e2a3a]" />
+          <div className="w-full h-full bg-surface-overlay" />
         )}
       </div>
       <div className="text-white text-[10px] mt-0.5 text-center truncate w-full">
@@ -95,7 +95,7 @@ function EarlyOptionRow({
           <EarlyChampionTile key={`${u}-${i}`} apiName={u} assets={assets} />
         ))}
       </div>
-      <div className="flex items-center gap-3 text-[10px] text-[#7a8aa0]">
+      <div className="flex items-center gap-3 text-[10px] text-fg-muted">
         {typeof option.avg === 'number' && (
           <span>
             {t('tft.comp.avgPlacement')}{' '}
@@ -143,8 +143,8 @@ export default function CompGuide({
           Levelling-Kürzel und zu dünne Schritte fallen je einzeln weg, statt
           die ganze Sektion zu kippen oder einen Wert zu erfinden. */}
       {(planLabel || planSteps.length > 0) && (
-        <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
-          <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.levelling')}</h2>
+        <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
+          <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.levelling')}</h2>
           {planLabel && (
             <div className="text-white text-sm font-semibold mb-3">{planLabel}</div>
           )}
@@ -153,12 +153,12 @@ export default function CompGuide({
               {planSteps.map(step => (
                 <div
                   key={step.level}
-                  className="flex flex-col items-center bg-[#111c2e] border border-[#1e2a3a] rounded px-2.5 py-1.5 min-w-[3.5rem]"
+                  className="flex flex-col items-center bg-[#111c2e] border border-border-subtle rounded px-2.5 py-1.5 min-w-[3.5rem]"
                 >
                   <div className="text-white text-xs font-semibold">
                     {(t('tft.comp.levelling.step') as string).replace('{level}', String(step.level))}
                   </div>
-                  <div className="text-[#7a8aa0] text-[11px] tabular-nums">
+                  <div className="text-fg-muted text-[11px] tabular-nums">
                     {step.stage}-{step.round}
                   </div>
                 </div>
@@ -171,8 +171,8 @@ export default function CompGuide({
       {/* 1) Augments — gruppiert nach Grade. Fallback auf flache Liste, wenn
           kein Augment einen Grade trägt. */}
       {guide.augments.length > 0 && (
-        <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
-          <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.augments')}</h2>
+        <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
+          <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.augments')}</h2>
           {gradeGroups.length > 0 ? (
             <div className="flex flex-col gap-3">
               {gradeGroups.map((group) => (
@@ -201,8 +201,8 @@ export default function CompGuide({
           ihrem Durchschnittsplatz, damit der Spieler zwischen ihnen wählen
           kann statt einen vorgesetzt zu bekommen. */}
       {guide.early.length > 0 && (
-        <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
-          <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.earlyGame')}</h2>
+        <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
+          <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.earlyGame')}</h2>
           <div className="flex flex-col gap-3">
             {guide.early.map((opt, i) => (
               <EarlyOptionRow key={`early-${i}`} option={opt} assets={assets} t={t} />
@@ -214,8 +214,8 @@ export default function CompGuide({
       {/* 3) Carousel — welche Komponenten aus dem ersten Carousel zu dieser
           Comp führen. Erste echte Entscheidung der Runde. */}
       {guide.carousel.length > 0 && (
-        <section className="mt-5 bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
-          <h2 className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.comp.carousel')}</h2>
+        <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
+          <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.carousel')}</h2>
           <div className="flex flex-wrap gap-3">
             {guide.carousel.map((pick, i) => {
               const meta = findItem(assets, pick.item);
@@ -227,11 +227,11 @@ export default function CompGuide({
                   className="flex flex-col items-center w-12 hover:scale-105 transition"
                   title={meta?.name || pick.item}
                 >
-                  <div className="w-10 h-10 rounded bg-[#0a0e1a] border border-[#1e2a3a] overflow-hidden">
+                  <div className="w-10 h-10 rounded bg-surface-sunken border border-border-subtle overflow-hidden">
                     {iconUrl && <img src={iconUrl} alt={meta?.name || pick.item} className="w-full h-full object-cover" />}
                   </div>
                   {typeof pick.avg === 'number' && (
-                    <div className="text-[#7a8aa0] text-[10px] mt-0.5">{pick.avg.toFixed(2)}</div>
+                    <div className="text-fg-muted text-[10px] mt-0.5">{pick.avg.toFixed(2)}</div>
                   )}
                 </a>
               );

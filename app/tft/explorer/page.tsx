@@ -304,18 +304,18 @@ export default function TftExplorerPage() {
   }, [filtered]);
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav active="explorer" />
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
-        <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-5 mb-5 flex items-center justify-between flex-wrap gap-3">
+        <div className="bg-surface-base border border-border-subtle rounded-lg p-5 mb-5 flex items-center justify-between flex-wrap gap-3">
           <h1 className="text-white text-xl font-medium">{t('tft.explorer.title')}</h1>
-          <div className="flex gap-1 bg-[#141c2e] border border-[#1e2a3a] rounded p-1">
+          <div className="flex gap-1 bg-surface-raised border border-border-subtle rounded p-1">
             {(['comps', 'matches'] as Mode[]).map(m => (
               <button
                 key={m}
                 type="button"
                 onClick={() => setMode(m)}
-                className={`px-3 py-1 text-xs rounded ${mode === m ? 'bg-[#7B61FF] text-white' : 'text-[#a0b0c5] hover:text-white'}`}
+                className={`px-3 py-1 text-xs rounded ${mode === m ? 'bg-[#7B61FF] text-white' : 'text-fg-secondary hover:text-white'}`}
               >
                 {t(`tft.explorer.mode.${m}`)}
               </button>
@@ -330,17 +330,17 @@ export default function TftExplorerPage() {
         <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4">
           {/* Filter rail */}
           <div className="space-y-3 lg:sticky lg:top-4 self-start lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto lg:pr-1 lg:[scrollbar-gutter:stable]">
-            <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-3 space-y-3">
+            <div className="bg-surface-base border border-border-subtle rounded-lg p-3 space-y-3">
               <div>
-                <div className="text-[#7a8aa0] text-[11px] uppercase tracking-widest mb-1.5 font-medium">{t('tft.filter.bucket')}</div>
+                <div className="text-fg-muted text-[11px] uppercase tracking-widest mb-1.5 font-medium">{t('tft.filter.bucket')}</div>
                 <TierFilter value={bucket} onChange={setBucket} />
               </div>
               <div>
-                <div className="text-[#7a8aa0] text-[11px] uppercase tracking-widest mb-1.5 font-medium">{t('tft.filter.region')}</div>
+                <div className="text-fg-muted text-[11px] uppercase tracking-widest mb-1.5 font-medium">{t('tft.filter.region')}</div>
                 <select
                   value={region}
                   onChange={e => setRegion(e.target.value)}
-                  className="w-full bg-[#141c2e] border border-[#1e2a3a] rounded text-white text-sm px-2 py-1.5"
+                  className="w-full bg-surface-raised border border-border-subtle rounded text-white text-sm px-2 py-1.5"
                 >
                   <option value="all">{t('tft.filter.allRegions')}</option>
                   <option value="euw1">EUW</option>
@@ -352,14 +352,14 @@ export default function TftExplorerPage() {
                 </select>
               </div>
               <div>
-                <div className="text-[#7a8aa0] text-[11px] uppercase tracking-widest mb-1.5 font-medium">{t('tft.filter.days')}</div>
+                <div className="text-fg-muted text-[11px] uppercase tracking-widest mb-1.5 font-medium">{t('tft.filter.days')}</div>
                 <div className="flex gap-1">
                   {[1, 3, 7].map(d => (
                     <button
                       key={d}
                       type="button"
                       onClick={() => setDays(d)}
-                      className={`flex-1 py-1.5 text-xs rounded border ${days === d ? 'bg-[#7B61FF]/20 border-[#7B61FF] text-white' : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5]'}`}
+                      className={`flex-1 py-1.5 text-xs rounded border ${days === d ? 'bg-[#7B61FF]/20 border-[#7B61FF] text-white' : 'bg-surface-raised border-border-subtle text-fg-secondary'}`}
                     >
                       {d}d
                     </button>
@@ -367,11 +367,11 @@ export default function TftExplorerPage() {
                 </div>
               </div>
               <div>
-                <div className="text-[#7a8aa0] text-[11px] uppercase tracking-widest mb-1.5 font-medium">{t('tft.explorer.minGames')}</div>
+                <div className="text-fg-muted text-[11px] uppercase tracking-widest mb-1.5 font-medium">{t('tft.explorer.minGames')}</div>
                 <input
                   type="number" min={0} value={minGames}
                   onChange={e => setMinGames(Math.max(0, Number(e.target.value) || 0))}
-                  className="w-full bg-[#141c2e] border border-[#1e2a3a] rounded text-white text-sm px-2 py-1.5 tabular-nums"
+                  className="w-full bg-surface-raised border border-border-subtle rounded text-white text-sm px-2 py-1.5 tabular-nums"
                 />
               </div>
             </div>
@@ -420,14 +420,14 @@ export default function TftExplorerPage() {
           <div className="space-y-3">
             {mode === 'comps' && (
               <>
-                <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-3 flex items-center justify-between flex-wrap gap-2">
+                <div className="bg-surface-base border border-border-subtle rounded-lg p-3 flex items-center justify-between flex-wrap gap-2">
                   <div className="flex items-center gap-2">
                     {(['avg', 'top4', 'top1', 'games'] as SortKey[]).map(k => (
                       <button
                         key={k}
                         type="button"
                         onClick={() => setSortBy(k)}
-                        className={`px-2.5 py-1 text-[11px] rounded border ${sortBy === k ? 'bg-[#7B61FF] border-[#7B61FF] text-white' : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5]'}`}
+                        className={`px-2.5 py-1 text-[11px] rounded border ${sortBy === k ? 'bg-[#7B61FF] border-[#7B61FF] text-white' : 'bg-surface-raised border-border-subtle text-fg-secondary'}`}
                       >
                         {t(`tft.explorer.sort.${k}`)}
                       </button>
@@ -435,7 +435,7 @@ export default function TftExplorerPage() {
                   </div>
                   {aggregate && (
                     <div className="flex items-center gap-3 text-[11px]">
-                      <span className="text-[#7a8aa0]">{aggregate.compCount} comps</span>
+                      <span className="text-fg-muted">{aggregate.compCount} comps</span>
                       <span className="text-white tabular-nums">Ø {aggregate.wAvg.toFixed(2)}</span>
                       <span className="text-[#3ecf8e] tabular-nums">{(aggregate.wTop4 * 100).toFixed(1)}% T4</span>
                       <span className="text-[#e0c75a] tabular-nums">{(aggregate.wTop1 * 100).toFixed(1)}% Win</span>
@@ -448,15 +448,15 @@ export default function TftExplorerPage() {
                     auf den ×-Chip entfernt den einzelnen Filter; der Header-
                     Button rechts setzt alles auf einmal zurück. */}
                 {(units.length + items.length + traits.length) > 0 && (
-                  <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-3">
+                  <div className="bg-surface-base border border-border-subtle rounded-lg p-3">
                     <div className="flex items-center justify-between mb-2">
-                      <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">
+                      <div className="text-fg-muted text-[10px] uppercase tracking-widest">
                         {t('tft.explorer.activeFilters')}
                       </div>
                       <button
                         type="button"
                         onClick={() => { setUnits([]); setItems([]); setTraits([]); }}
-                        className="text-[10px] px-2 py-0.5 rounded bg-[#141c2e] border border-[#1e2a3a] text-[#a0b0c5] hover:text-white hover:border-[#7B61FF]/60"
+                        className="text-[10px] px-2 py-0.5 rounded bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-[#7B61FF]/60"
                       >
                         × {t('tft.explorer.resetAll')}
                       </button>
@@ -493,11 +493,11 @@ export default function TftExplorerPage() {
                   </div>
                 )}
 
-                {loading && <div className="text-[#7a8aa0] text-center py-8 text-sm">…</div>}
+                {loading && <div className="text-fg-muted text-center py-8 text-sm">…</div>}
                 {!loading && filtered.length === 0 && comps.length > 0 && (
-                  <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-6 text-center">
-                    <div className="text-[#a0b0c5] text-sm mb-2">{t('tft.explorer.noResults')}</div>
-                    <div className="text-[#5a6a80] text-[11px] tabular-nums mb-3">
+                  <div className="bg-surface-base border border-border-subtle rounded-lg p-6 text-center">
+                    <div className="text-fg-secondary text-sm mb-2">{t('tft.explorer.noResults')}</div>
+                    <div className="text-fg-faint text-[11px] tabular-nums mb-3">
                       {comps.length} {t('tft.explorer.loaded')} · 0 {t('tft.explorer.afterFilter')}
                     </div>
                     {(units.length + items.length + traits.length) > 0 && (
@@ -526,10 +526,10 @@ export default function TftExplorerPage() {
             {mode === 'matches' && (
               <>
                 {units.length > 0 && (
-                  <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-3 space-y-2">
+                  <div className="bg-surface-base border border-border-subtle rounded-lg p-3 space-y-2">
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
-                        <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">{t('tft.explorer.starLevel')}</div>
+                        <div className="text-fg-muted text-[10px] uppercase tracking-widest">{t('tft.explorer.starLevel')}</div>
                         {starLevels.length > 0 && (
                           <button
                             type="button"
@@ -547,7 +547,7 @@ export default function TftExplorerPage() {
                               key={s}
                               type="button"
                               onClick={() => setStarLevels(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])}
-                              className={`flex-1 py-1.5 text-xs rounded border tabular-nums ${active ? 'text-white' : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5]'}`}
+                              className={`flex-1 py-1.5 text-xs rounded border tabular-nums ${active ? 'text-white' : 'bg-surface-raised border-border-subtle text-fg-secondary'}`}
                               style={active ? { backgroundColor: `${color}30`, borderColor: color } : undefined}
                               title={s === 4 ? '4★ — selten (Sona Command Mods, Aurelion Sol Quest)' : undefined}
                             >
@@ -559,7 +559,7 @@ export default function TftExplorerPage() {
                     </div>
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
-                        <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">{t('tft.explorer.itemsCount')}</div>
+                        <div className="text-fg-muted text-[10px] uppercase tracking-widest">{t('tft.explorer.itemsCount')}</div>
                         {itemCounts.length > 0 && (
                           <button
                             type="button"
@@ -576,7 +576,7 @@ export default function TftExplorerPage() {
                               key={c}
                               type="button"
                               onClick={() => setItemCounts(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c])}
-                              className={`flex-1 py-1.5 text-xs rounded border tabular-nums ${active ? 'bg-[#7B61FF]/30 border-[#7B61FF] text-white' : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5]'}`}
+                              className={`flex-1 py-1.5 text-xs rounded border tabular-nums ${active ? 'bg-[#7B61FF]/30 border-[#7B61FF] text-white' : 'bg-surface-raised border-border-subtle text-fg-secondary'}`}
                             >
                               {c}
                             </button>
@@ -585,25 +585,25 @@ export default function TftExplorerPage() {
                       </div>
                     </div>
                     {(starLevels.length > 0 || itemCounts.length > 0) && (
-                      <div className="text-[10px] text-[#7a8aa0] leading-snug">{t('tft.explorer.starItems.help')}</div>
+                      <div className="text-[10px] text-fg-muted leading-snug">{t('tft.explorer.starItems.help')}</div>
                     )}
                   </div>
                 )}
 
                 {units.length === 0 && (
-                  <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-6 text-center text-[#7a8aa0] text-sm">
+                  <div className="bg-surface-base border border-border-subtle rounded-lg p-6 text-center text-fg-muted text-sm">
                     {t('tft.explorer.matches.pickUnits')}
                   </div>
                 )}
 
                 {units.length > 0 && matchLoading && (
-                  <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-6 text-center text-[#7a8aa0] text-sm">
+                  <div className="bg-surface-base border border-border-subtle rounded-lg p-6 text-center text-fg-muted text-sm">
                     {t('tft.explorer.matches.loading')}
                   </div>
                 )}
 
                 {matchError && (
-                  <div className="bg-[#0d1526] border border-[#7B61FF]/40 rounded-lg p-3 text-[#a0b0c5] text-sm">
+                  <div className="bg-surface-base border border-[#7B61FF]/40 rounded-lg p-3 text-fg-secondary text-sm">
                     {matchError}
                   </div>
                 )}
@@ -620,28 +620,28 @@ export default function TftExplorerPage() {
                         )}
                       </div>
                     )}
-                    <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-4">
+                    <div className="bg-surface-base border border-border-subtle rounded-lg p-4">
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         <BigStat label={t('tft.avgPlacement')} value={matchAggregate.avgPlacement.toFixed(2)} />
                         <BigStat label={t('tft.top4')} value={`${(matchAggregate.top4Rate * 100).toFixed(1)}%`} accent="#3ecf8e" />
                         <BigStat label={t('tft.top1')} value={`${(matchAggregate.top1Rate * 100).toFixed(1)}%`} accent="#e0c75a" />
                         <BigStat label={t('tft.explorer.matches.count')} value={matchCount.toLocaleString('de-DE')} />
                       </div>
-                      <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-[#1e2a3a]">
+                      <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-border-subtle">
                         <Stat label={t('tft.explorer.matches.avgLevel')} value={matchAggregate.avgLevel.toFixed(1)} />
                         <Stat label={t('tft.explorer.matches.avgLastRound')} value={matchAggregate.avgLastRound.toFixed(1)} />
                         <Stat label={t('tft.explorer.matches.avgDamage')} value={matchAggregate.avgDamage.toFixed(0)} />
                       </div>
                     </div>
 
-                    <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg overflow-hidden">
-                      <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest px-3 py-2 border-b border-[#1e2a3a]">
+                    <div className="bg-surface-base border border-border-subtle rounded-lg overflow-hidden">
+                      <div className="text-fg-muted text-[10px] uppercase tracking-widest px-3 py-2 border-b border-border-subtle">
                         {t('tft.explorer.matches.recent')}
                       </div>
                       <div className="overflow-x-auto">
                         <table className="w-full text-[11px] tabular-nums">
-                          <thead className="text-[#7a8aa0]">
-                            <tr className="border-b border-[#1e2a3a]">
+                          <thead className="text-fg-muted">
+                            <tr className="border-b border-border-subtle">
                               <th className="text-left px-2 py-1.5 font-normal">#</th>
                               <th className="text-left px-2 py-1.5 font-normal">{t('tft.filter.region')}</th>
                               <th className="text-left px-2 py-1.5 font-normal">{t('tft.explorer.matches.lvl')}</th>
@@ -650,10 +650,10 @@ export default function TftExplorerPage() {
                           </thead>
                           <tbody>
                             {matchSample.map(m => (
-                              <tr key={m.matchId} className="border-b border-[#1e2a3a]/50 last:border-0">
+                              <tr key={m.matchId} className="border-b border-border-subtle/50 last:border-0">
                                 <td className="px-2 py-1.5 text-white">{m.placement}</td>
-                                <td className="px-2 py-1.5 text-[#a0b0c5] uppercase">{m.region}</td>
-                                <td className="px-2 py-1.5 text-[#a0b0c5]">{m.level}</td>
+                                <td className="px-2 py-1.5 text-fg-secondary uppercase">{m.region}</td>
+                                <td className="px-2 py-1.5 text-fg-secondary">{m.level}</td>
                                 <td className="px-2 py-1.5">
                                   <div className="flex gap-0.5 flex-wrap">
                                     {m.units.slice(0, 9).map(u => {
@@ -702,8 +702,8 @@ export default function TftExplorerPage() {
 
 function BigStat({ label, value, accent }: { label: string; value: string; accent?: string }) {
   return (
-    <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-2.5">
-      <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">{label}</div>
+    <div className="bg-surface-raised border border-border-subtle rounded p-2.5">
+      <div className="text-fg-muted text-[10px] uppercase tracking-widest">{label}</div>
       <div className="text-lg font-medium tabular-nums" style={{ color: accent || '#ffffff' }}>{value}</div>
     </div>
   );
@@ -712,7 +712,7 @@ function BigStat({ label, value, accent }: { label: string; value: string; accen
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">{label}</div>
+      <div className="text-fg-muted text-[10px] uppercase tracking-widest">{label}</div>
       <div className="text-sm text-white font-medium tabular-nums">{value}</div>
     </div>
   );
@@ -732,9 +732,9 @@ function FilterPicker({
   clear: () => void;
 }) {
   return (
-    <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-3">
+    <div className="bg-surface-base border border-border-subtle rounded-lg p-3">
       <div className="flex items-center justify-between mb-2">
-        <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">{title}</div>
+        <div className="text-fg-muted text-[10px] uppercase tracking-widest">{title}</div>
         {selected.length > 0 && (
           <button type="button" onClick={clear} className="text-[10px] text-[#7B61FF] hover:underline">
             × {selected.length}
@@ -744,7 +744,7 @@ function FilterPicker({
       <input
         type="text" value={query} onChange={e => setQuery(e.target.value)}
         placeholder=""
-        className="w-full bg-[#141c2e] border border-[#1e2a3a] rounded text-white text-xs px-2 py-1.5 mb-2"
+        className="w-full bg-surface-raised border border-border-subtle rounded text-white text-xs px-2 py-1.5 mb-2"
       />
       <div className="max-h-40 overflow-y-auto space-y-0.5">
         {options.map(o => {
@@ -759,14 +759,14 @@ function FilterPicker({
               type="button"
               onClick={() => toggle(o.id)}
               title={o.tooltip || undefined}
-              className={`w-full flex items-center gap-2 px-1.5 py-1 rounded text-left ${active ? 'bg-[#7B61FF]/20' : 'hover:bg-[#141c2e]'}`}
+              className={`w-full flex items-center gap-2 px-1.5 py-1 rounded text-left ${active ? 'bg-[#7B61FF]/20' : 'hover:bg-surface-raised'}`}
             >
               {iconUrl ? (
                 <img src={iconUrl} alt="" className="w-5 h-5 rounded object-cover flex-none" style={{ border: icon === 'champion' && o.cost ? `1px solid ${costColorOf(o.cost)}` : undefined }} />
               ) : (
-                <div className="w-5 h-5 rounded bg-[#1e2a3a] flex-none" />
+                <div className="w-5 h-5 rounded bg-surface-overlay flex-none" />
               )}
-              <span className={`text-xs truncate ${active ? 'text-white' : 'text-[#a0b0c5]'}`}>{o.name}</span>
+              <span className={`text-xs truncate ${active ? 'text-white' : 'text-fg-secondary'}`}>{o.name}</span>
             </button>
           );
         })}
@@ -801,7 +801,7 @@ function ItemFilterPicker({
   const otherCount = tab === 'standard' ? artifactOptions.length : standardOptions.length;
   const otherLabel = tab === 'standard' ? tArtifact : tStandard;
   return (
-    <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-3">
+    <div className="bg-surface-base border border-border-subtle rounded-lg p-3">
       <div className="flex items-center justify-between mb-2">
         <div className="flex gap-1">
           {(['standard', 'artifact'] as const).map(b => {
@@ -816,7 +816,7 @@ function ItemFilterPicker({
                 className={`px-2 py-0.5 rounded text-[10px] uppercase tracking-widest ${
                   active
                     ? 'bg-[#7B61FF] text-white'
-                    : 'bg-[#141c2e] text-[#7a8aa0] hover:text-white'
+                    : 'bg-surface-raised text-fg-muted hover:text-white'
                 }`}
               >
                 {label} <span className="tabular-nums opacity-70">{count}</span>
@@ -833,7 +833,7 @@ function ItemFilterPicker({
       <input
         type="text" value={query} onChange={e => setQuery(e.target.value)}
         placeholder=""
-        className="w-full bg-[#141c2e] border border-[#1e2a3a] rounded text-white text-xs px-2 py-1.5 mb-2"
+        className="w-full bg-surface-raised border border-border-subtle rounded text-white text-xs px-2 py-1.5 mb-2"
       />
       <div className="max-h-40 overflow-y-auto space-y-0.5">
         {options.map(o => {
@@ -844,14 +844,14 @@ function ItemFilterPicker({
               key={o.id}
               type="button"
               onClick={() => toggle(o.id)}
-              className={`w-full flex items-center gap-2 px-1.5 py-1 rounded text-left ${active ? 'bg-[#7B61FF]/20' : 'hover:bg-[#141c2e]'}`}
+              className={`w-full flex items-center gap-2 px-1.5 py-1 rounded text-left ${active ? 'bg-[#7B61FF]/20' : 'hover:bg-surface-raised'}`}
             >
               {iconUrl ? (
                 <img src={iconUrl} alt="" className="w-5 h-5 rounded object-cover flex-none" />
               ) : (
-                <div className="w-5 h-5 rounded bg-[#1e2a3a] flex-none" />
+                <div className="w-5 h-5 rounded bg-surface-overlay flex-none" />
               )}
-              <span className={`text-xs truncate ${active ? 'text-white' : 'text-[#a0b0c5]'}`}>{o.name}</span>
+              <span className={`text-xs truncate ${active ? 'text-white' : 'text-fg-secondary'}`}>{o.name}</span>
             </button>
           );
         })}

@@ -114,7 +114,7 @@ export default function TftRegionsPage() {
   }, [comps, mode]);
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav active="comps" />
       <TftHero pageTitle={t('tft.regions.title')} subtitle={t('tft.regions.subtitle')} />
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-2 pb-6">
@@ -133,7 +133,7 @@ export default function TftRegionsPage() {
               className={`px-3 py-1.5 rounded text-xs border transition-colors ${
                 mode === o.v
                   ? 'bg-[#7B61FF]/20 border-[#7B61FF]/60 text-white'
-                  : 'bg-[#141c2e] border-[#1e2a3a] text-[#a0b0c5] hover:border-[#7B61FF]/40'
+                  : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-[#7B61FF]/40'
               }`}
             >
               {o.label}
@@ -143,7 +143,7 @@ export default function TftRegionsPage() {
           <select
             value={String(days)}
             onChange={e => setDays(Number(e.target.value))}
-            className="bg-[#141c2e] border border-[#1e2a3a] rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-[#7B61FF]/60"
+            className="bg-surface-raised border border-border-subtle rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-[#7B61FF]/60"
           >
             <option value="3">{t('tft.filter.dayN').replace('{n}', '3')}</option>
             <option value="7">{t('tft.filter.dayN').replace('{n}', '7')}</option>
@@ -152,7 +152,7 @@ export default function TftRegionsPage() {
           <select
             value={bucket}
             onChange={e => setBucket(e.target.value)}
-            className="bg-[#141c2e] border border-[#1e2a3a] rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-[#7B61FF]/60"
+            className="bg-surface-raised border border-border-subtle rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-[#7B61FF]/60"
           >
             <option value="master_plus">{t('tft.filter.masterPlus')}</option>
             <option value="challenger">{t('tft.bucket.challenger')}</option>
@@ -161,7 +161,7 @@ export default function TftRegionsPage() {
         </div>
 
         {loading && hasData === null && (
-          <div className="text-[#7a8aa0] text-center py-8">…</div>
+          <div className="text-fg-muted text-center py-8">…</div>
         )}
         {hasData === false && !loading && <EmptyData />}
 
@@ -209,13 +209,13 @@ function RegionRowCard({
   return (
     <a
       href={`/tft/comps/${encodeURIComponent(row.cluster_key)}?bucket=master_plus`}
-      className="block bg-[#0d1526] border border-[#1e2a3a] rounded p-3 hover:border-[#7B61FF]/40 transition-colors"
+      className="block bg-surface-base border border-border-subtle rounded p-3 hover:border-[#7B61FF]/40 transition-colors"
     >
       <div className="flex items-center gap-3">
         {carryUrl ? (
           <img src={carryUrl} alt="" className="w-10 h-10 rounded border-2 border-[#c39bff]/60 object-cover flex-shrink-0" />
         ) : (
-          <div className="w-10 h-10 rounded bg-[#1e2a3a] flex-shrink-0" />
+          <div className="w-10 h-10 rounded bg-surface-overlay flex-shrink-0" />
         )}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
@@ -240,7 +240,7 @@ function RegionRowCard({
             </span>
           </div>
           {narrative && (
-            <div className="text-[#a0b0c5] text-[11px] mt-0.5 leading-snug">{narrative}</div>
+            <div className="text-fg-secondary text-[11px] mt-0.5 leading-snug">{narrative}</div>
           )}
         </div>
       </div>
@@ -261,16 +261,16 @@ function RegionCell({ label, avgPlace, pickRate, games }: {
 }) {
   const empty = games === 0;
   return (
-    <div className={`bg-[#141c2e] border border-[#1e2a3a] rounded px-2 py-1.5 ${empty ? 'opacity-40' : ''}`}>
+    <div className={`bg-surface-raised border border-border-subtle rounded px-2 py-1.5 ${empty ? 'opacity-40' : ''}`}>
       <div className="flex items-baseline justify-between">
-        <span className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">{label}</span>
+        <span className="text-fg-muted text-[10px] uppercase tracking-widest">{label}</span>
         <span className="text-white text-sm font-medium tabular-nums">
           {avgPlace != null ? avgPlace.toFixed(2) : '—'}
         </span>
       </div>
-      <div className="text-[10px] text-[#a0b0c5] tabular-nums mt-0.5">
+      <div className="text-[10px] text-fg-secondary tabular-nums mt-0.5">
         {pickRate != null ? `${(pickRate * 100).toFixed(2)}%` : '—'}
-        <span className="text-[#5a6a80]"> · {games}</span>
+        <span className="text-fg-faint"> · {games}</span>
       </div>
     </div>
   );

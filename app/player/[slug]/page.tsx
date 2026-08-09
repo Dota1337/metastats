@@ -273,12 +273,12 @@ export default function PlayerPage() {
   }, [matches]);
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav />
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
         {loading && (
-          <div className="text-center text-[#a0b0c5] mt-20">{t('player.loading')}</div>
+          <div className="text-center text-fg-secondary mt-20">{t('player.loading')}</div>
         )}
 
         {error && (
@@ -288,7 +288,7 @@ export default function PlayerPage() {
         {player && !loading && (
           <>
             {/* Header */}
-            <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 sm:p-6 mb-4">
+            <div className="bg-surface-base border border-border-subtle rounded p-4 sm:p-6 mb-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 mb-6">
                 <img
                   src={'https://ddragon.leagueoflegends.com/cdn/' + ddVersion + '/img/profileicon/' + player.summoner.profileIconId + '.png'}
@@ -310,7 +310,7 @@ export default function PlayerPage() {
                       </span>
                     )}
                   </h1>
-                  <div className="text-[#a0b0c5] text-sm mt-1">
+                  <div className="text-fg-secondary text-sm mt-1">
                     {proInfo ? (
                       <span><span className="text-[#c89b3c]">{proInfo.proName}</span> · {proInfo.team}{proInfo.league ? ` · ${proInfo.league}` : ''} · </span>
                     ) : null}
@@ -318,68 +318,68 @@ export default function PlayerPage() {
                   </div>
                 </div>
                 <div className="sm:text-right">
-                  <div className="text-[#a0b0c5] text-xs mb-1">{t('player.aiMarketValue')}</div>
+                  <div className="text-fg-secondary text-xs mb-1">{t('player.aiMarketValue')}</div>
                   {marketValue.rated ? (
                     <div className="text-[#c89b3c] text-2xl sm:text-3xl font-medium">{marketValue.formatted}</div>
                   ) : (
-                    <div className="text-[#7a8aa0] text-lg">Not Rated</div>
+                    <div className="text-fg-muted text-lg">Not Rated</div>
                   )}
                 </div>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 {proInfo && (
-                  <div className="bg-[#141c2e] rounded p-4 text-center">
-                    <div className="text-[#a0b0c5] text-xs mb-1">Team</div>
+                  <div className="bg-surface-raised rounded p-4 text-center">
+                    <div className="text-fg-secondary text-xs mb-1">Team</div>
                     <div className="text-[#c89b3c] font-medium text-sm">{proInfo.team}</div>
-                    <div className="text-[#7a8aa0] text-xs mt-1">{proInfo.role || ''}{proInfo.league ? ` · ${proInfo.league}` : ''}</div>
+                    <div className="text-fg-muted text-xs mt-1">{proInfo.role || ''}{proInfo.league ? ` · ${proInfo.league}` : ''}</div>
                   </div>
                 )}
-                <div className="bg-[#141c2e] rounded p-4 text-center">
-                  <div className="text-[#a0b0c5] text-xs mb-1">Solo/Duo</div>
+                <div className="bg-surface-raised rounded p-4 text-center">
+                  <div className="text-fg-secondary text-xs mb-1">Solo/Duo</div>
                   <div className="text-white font-medium text-sm">
                     {ranked ? formatRankedQueue(ranked) : t('player.unranked')}
                   </div>
                   {ranked && <div className="text-[#c89b3c] text-xs mt-1">{ranked.leaguePoints} LP</div>}
                   {ranked && (
-                    <div className="text-[#7a8aa0] text-xs mt-1">
+                    <div className="text-fg-muted text-xs mt-1">
                       {ranked.wins + ranked.losses} Spiele
                       <span className="text-green-400/70 ml-1">{ranked.wins}W</span>
                       <span className="text-red-400/70 ml-1">{ranked.losses}L</span>
                     </div>
                   )}
                 </div>
-                <div className="bg-[#141c2e] rounded p-4 text-center">
-                  <div className="text-[#a0b0c5] text-xs mb-1">Flex</div>
+                <div className="bg-surface-raised rounded p-4 text-center">
+                  <div className="text-fg-secondary text-xs mb-1">Flex</div>
                   <div className="text-white font-medium text-sm">
                     {flex ? formatRankedQueue(flex) : t('player.unranked')}
                   </div>
                   {flex && <div className="text-[#c89b3c] text-xs mt-1">{flex.leaguePoints} LP</div>}
                   {flex && (
-                    <div className="text-[#7a8aa0] text-xs mt-1">
+                    <div className="text-fg-muted text-xs mt-1">
                       {flex.wins + flex.losses} Spiele
                       <span className="text-green-400/70 ml-1">{flex.wins}W</span>
                       <span className="text-red-400/70 ml-1">{flex.losses}L</span>
                     </div>
                   )}
                 </div>
-                <div className="bg-[#141c2e] rounded p-4 text-center">
-                  <div className="text-[#a0b0c5] text-xs mb-1">{t('player.winrate30')}</div>
+                <div className="bg-surface-raised rounded p-4 text-center">
+                  <div className="text-fg-secondary text-xs mb-1">{t('player.winrate30')}</div>
                   <div className={`font-medium text-sm ${winrate && winrate >= 50 ? 'text-green-400' : 'text-red-400'}`}>
                     {winrate !== null ? winrate + '%' : '-'}
                   </div>
                 </div>
-                <div className="bg-[#141c2e] rounded p-4 text-center">
-                  <div className="text-[#a0b0c5] text-xs mb-1">{t('player.avgKDA')}</div>
+                <div className="bg-surface-raised rounded p-4 text-center">
+                  <div className="text-fg-secondary text-xs mb-1">{t('player.avgKDA')}</div>
                   <div className="text-white font-medium text-sm">{kda || '-'}</div>
                 </div>
-                <div className="bg-[#141c2e] rounded p-4 text-center">
-                  <div className="text-[#a0b0c5] text-xs mb-1">{t('player.mainRole')}</div>
+                <div className="bg-surface-raised rounded p-4 text-center">
+                  <div className="text-fg-secondary text-xs mb-1">{t('player.mainRole')}</div>
                   <div className="text-white font-medium text-sm">{roleLabels[marketValue.role] || '-'}</div>
                 </div>
                 {matches.length > 0 && (
-                  <div className="bg-[#141c2e] rounded p-4 text-center">
-                    <div className="text-[#a0b0c5] text-xs mb-1">DMG/Min</div>
+                  <div className="bg-surface-raised rounded p-4 text-center">
+                    <div className="text-fg-secondary text-xs mb-1">DMG/Min</div>
                     <div className="text-white font-medium text-sm">
                       {Math.round(matches.reduce((s: number, m: any) => s + (m.gameDuration > 0 ? m.damageDealt / (m.gameDuration / 60) : 0), 0) / matches.length).toLocaleString(numLocale)}
                     </div>
@@ -390,47 +390,47 @@ export default function PlayerPage() {
 
             {/* Pro Accounts Box */}
             {proInfo && (proInfo.smurfs?.length || 0) > 0 && (
-              <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 sm:p-6 mb-4">
-                <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">
+              <div className="bg-surface-base border border-border-subtle rounded p-4 sm:p-6 mb-4">
+                <div className="text-fg-secondary text-xs uppercase tracking-widest mb-3">
                   Pro Accounts
                 </div>
                 <div className="space-y-2">
                   {/* Main Account */}
                   {proInfo.mainAccount && (
-                    <div className="flex items-center gap-3 bg-[#141c2e] border border-[#c89b3c]/30 rounded p-3">
+                    <div className="flex items-center gap-3 bg-surface-raised border border-[#c89b3c]/30 rounded p-3">
                       <div className="text-[10px] text-[#c89b3c] font-bold uppercase tracking-wider w-10 shrink-0">Main</div>
                       <a
                         href={`/player/${encodeURIComponent(proInfo.mainAccount.name)}--${encodeURIComponent(proInfo.mainAccount.tag)}?region=${proInfo.mainAccount.region === 'kr' ? 'kr' : proInfo.mainAccount.region === 'na' ? 'na1' : 'euw1'}`}
                         className="text-white hover:text-[#c89b3c] font-medium text-sm transition-colors"
                       >
-                        {proInfo.mainAccount.name}<span className="text-[#7a8aa0]">#{proInfo.mainAccount.tag}</span>
+                        {proInfo.mainAccount.name}<span className="text-fg-muted">#{proInfo.mainAccount.tag}</span>
                       </a>
                       {proInfo.mainAccount.rank && proInfo.mainAccount.rank !== 'Unknown' && proInfo.mainAccount.rank !== 'Unranked' && (
-                        <span className="text-[#a0b0c5] text-xs ml-auto">{proInfo.mainAccount.rank}</span>
+                        <span className="text-fg-secondary text-xs ml-auto">{proInfo.mainAccount.rank}</span>
                       )}
-                      <span className="text-[#7a8aa0] text-[10px] uppercase">{proInfo.mainAccount.region?.toUpperCase()}</span>
+                      <span className="text-fg-muted text-[10px] uppercase">{proInfo.mainAccount.region?.toUpperCase()}</span>
                     </div>
                   )}
                   {/* Smurf Accounts */}
                   {proInfo.smurfs?.slice(0, expandedSmurfs ? undefined : 5).map((smurf, i) => (
-                    <div key={i} className="flex items-center gap-3 bg-[#141c2e] rounded p-3">
-                      <div className="text-[10px] text-[#7a8aa0] font-bold uppercase tracking-wider w-10 shrink-0">Smurf</div>
+                    <div key={i} className="flex items-center gap-3 bg-surface-raised rounded p-3">
+                      <div className="text-[10px] text-fg-muted font-bold uppercase tracking-wider w-10 shrink-0">Smurf</div>
                       <a
                         href={`/player/${encodeURIComponent(smurf.name)}--${encodeURIComponent(smurf.tag)}?region=${smurf.region === 'kr' ? 'kr' : smurf.region === 'na' ? 'na1' : 'euw1'}`}
-                        className="text-[#a0b0c5] hover:text-white text-sm transition-colors"
+                        className="text-fg-secondary hover:text-white text-sm transition-colors"
                       >
-                        {smurf.name}<span className="text-[#7a8aa0]">#{smurf.tag}</span>
+                        {smurf.name}<span className="text-fg-muted">#{smurf.tag}</span>
                       </a>
                       {smurf.rank && smurf.rank !== 'Unknown' && smurf.rank !== 'Unranked' && (
-                        <span className="text-[#7a8aa0] text-xs ml-auto">{smurf.rank}</span>
+                        <span className="text-fg-muted text-xs ml-auto">{smurf.rank}</span>
                       )}
-                      <span className="text-[#7a8aa0] text-[10px] uppercase">{smurf.region?.toUpperCase()}</span>
+                      <span className="text-fg-muted text-[10px] uppercase">{smurf.region?.toUpperCase()}</span>
                     </div>
                   ))}
                   {(proInfo.smurfs?.length || 0) > 5 && !expandedSmurfs && (
                     <button
                       onClick={() => setExpandedSmurfs(true)}
-                      className="w-full text-center text-[#7a8aa0] hover:text-[#a0b0c5] text-xs py-2 transition-colors"
+                      className="w-full text-center text-fg-muted hover:text-fg-secondary text-xs py-2 transition-colors"
                     >
                       + {(proInfo.smurfs?.length || 0) - 5} weitere Accounts anzeigen
                     </button>
@@ -441,25 +441,25 @@ export default function PlayerPage() {
 
             {/* Market Value Breakdown */}
             {marketValue.rated && marketValue.breakdown.length > 0 && (
-              <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 sm:p-6 mb-4">
-                <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-4">
+              <div className="bg-surface-base border border-border-subtle rounded p-4 sm:p-6 mb-4">
+                <div className="text-fg-secondary text-xs uppercase tracking-widest mb-4">
                   {t('player.marketBreakdown')}
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-                  <div className="bg-[#141c2e] rounded p-3 text-center">
-                    <div className="text-[#a0b0c5] text-xs mb-1">{t('player.baseValue')} ({ranked ? formatRankedQueue(ranked) : '-'})</div>
+                  <div className="bg-surface-raised rounded p-3 text-center">
+                    <div className="text-fg-secondary text-xs mb-1">{t('player.baseValue')} ({ranked ? formatRankedQueue(ranked) : '-'})</div>
                     <div className="text-white text-lg font-medium">
                       ${marketValue.baseValue.toLocaleString('de-DE')}
                     </div>
                   </div>
-                  <div className="bg-[#141c2e] rounded p-3 text-center">
-                    <div className="text-[#a0b0c5] text-xs mb-1">{t('player.multiplier')}</div>
+                  <div className="bg-surface-raised rounded p-3 text-center">
+                    <div className="text-fg-secondary text-xs mb-1">{t('player.multiplier')}</div>
                     <div className={`text-lg font-medium ${marketValue.multiplier >= 1 ? 'text-green-400' : 'text-red-400'}`}>
                       x{marketValue.multiplier.toFixed(3)}
                     </div>
                   </div>
-                  <div className="bg-[#141c2e] rounded p-3 text-center">
-                    <div className="text-[#a0b0c5] text-xs mb-1">{t('player.finalValue')}</div>
+                  <div className="bg-surface-raised rounded p-3 text-center">
+                    <div className="text-fg-secondary text-xs mb-1">{t('player.finalValue')}</div>
                     <div className="text-[#c89b3c] text-lg font-medium">{marketValue.formatted}</div>
                   </div>
                 </div>
@@ -467,10 +467,10 @@ export default function PlayerPage() {
                   {[...marketValue.breakdown]
                     .sort((a, b) => Math.abs(b.impact) - Math.abs(a.impact))
                     .map((item: BreakdownItem, i: number) => (
-                    <div key={i} className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3 py-1.5 px-2 rounded hover:bg-[#141c2e]">
-                      <div className="w-16 text-xs text-[#7a8aa0]">{item.category}</div>
+                    <div key={i} className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3 py-1.5 px-2 rounded hover:bg-surface-raised">
+                      <div className="w-16 text-xs text-fg-muted">{item.category}</div>
                       <div className="w-full sm:w-36 text-xs text-white">{item.label}</div>
-                      <div className="flex-1 h-2 bg-[#141c2e] rounded overflow-hidden min-w-[60px]">
+                      <div className="flex-1 h-2 bg-surface-raised rounded overflow-hidden min-w-[60px]">
                         {item.positive ? (
                           <div className="h-full bg-green-500/60 rounded" style={{ width: `${Math.min(Math.abs(item.impact) / 0.175 * 100, 100)}%` }} />
                         ) : (
@@ -480,34 +480,34 @@ export default function PlayerPage() {
                       <div className={`w-14 text-xs font-medium text-right ${item.positive ? 'text-green-400' : 'text-red-400'}`}>
                         {item.positive ? '+' : ''}{(item.impact * 100).toFixed(1)}%
                       </div>
-                      <div className="hidden sm:block w-36 text-xs text-[#a0b0c5] text-right">{item.stat}</div>
+                      <div className="hidden sm:block w-36 text-xs text-fg-secondary text-right">{item.stat}</div>
                     </div>
                   ))}
                 </div>
                 {marketValue.stats.gamesAnalyzed > 0 && (
-                  <div className="mt-4 pt-3 border-t border-[#1e2a3a] grid grid-cols-3 sm:grid-cols-6 gap-2">
+                  <div className="mt-4 pt-3 border-t border-border-subtle grid grid-cols-3 sm:grid-cols-6 gap-2">
                     <div className="text-center">
-                      <div className="text-[#a0b0c5] text-xs">{t('player.games')}</div>
+                      <div className="text-fg-secondary text-xs">{t('player.games')}</div>
                       <div className="text-white text-sm">{marketValue.stats.gamesAnalyzed}</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-[#a0b0c5] text-xs">Winrate</div>
+                      <div className="text-fg-secondary text-xs">Winrate</div>
                       <div className="text-white text-sm">{marketValue.stats.winrate.toFixed(1)}%</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-[#a0b0c5] text-xs">KDA</div>
+                      <div className="text-fg-secondary text-xs">KDA</div>
                       <div className="text-white text-sm">{marketValue.stats.kda.toFixed(2)}</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-[#a0b0c5] text-xs">CS/Min</div>
+                      <div className="text-fg-secondary text-xs">CS/Min</div>
                       <div className="text-white text-sm">{marketValue.stats.csPerMin.toFixed(1)}</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-[#a0b0c5] text-xs">DMG/Min</div>
+                      <div className="text-fg-secondary text-xs">DMG/Min</div>
                       <div className="text-white text-sm">{marketValue.stats.damagePerMin.toFixed(0)}</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-[#a0b0c5] text-xs">Vision</div>
+                      <div className="text-fg-secondary text-xs">Vision</div>
                       <div className="text-white text-sm">{marketValue.stats.visionScore.toFixed(1)}</div>
                     </div>
                   </div>
@@ -533,18 +533,18 @@ export default function PlayerPage() {
 
             {/* 20 Stat Categories */}
             {statsOverview && statsOverview.categories && statsOverview.categories.length > 0 && (
-              <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-3 sm:p-6 mb-4">
+              <div className="bg-surface-base border border-border-subtle rounded p-3 sm:p-6 mb-4">
                 <div className="flex items-center justify-between mb-4">
                   <div className="min-w-0 flex-1">
-                    <div className="text-[#a0b0c5] text-xs uppercase tracking-widest">
+                    <div className="text-fg-secondary text-xs uppercase tracking-widest">
                       {t('stats.title')}
                     </div>
-                    <div className="text-[#7a8aa0] text-xs mt-1 truncate">
+                    <div className="text-fg-muted text-xs mt-1 truncate">
                       {t('stats.subtitle')} {statsOverview.gamesAnalyzed} {t('stats.games')}
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-[#a0b0c5] text-xs">{t('stats.overallScore')}</div>
+                    <div className="text-fg-secondary text-xs">{t('stats.overallScore')}</div>
                     <div className="text-2xl font-medium" style={{
                       color: statsOverview.overallScore >= 70 ? '#4ade80' :
                              statsOverview.overallScore >= 50 ? '#c89b3c' :
@@ -559,7 +559,7 @@ export default function PlayerPage() {
                   {statsOverview.categories.map((cat: any) => (
                     <div
                       key={cat.id}
-                      className="bg-[#141c2e] rounded p-3 cursor-pointer hover:bg-[#1a2540] transition-colors"
+                      className="bg-surface-raised rounded p-3 cursor-pointer hover:bg-[#1a2540] transition-colors"
                       onClick={() => setExpandedCategory(expandedCategory === cat.id ? null : cat.id)}
                     >
                       <div className="flex items-center gap-3">
@@ -573,7 +573,7 @@ export default function PlayerPage() {
                           <div className="text-[#6a7a90] text-xs truncate">{cat.summary}</div>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
-                          <div className="w-16 h-2 bg-[#0d1526] rounded overflow-hidden">
+                          <div className="w-16 h-2 bg-surface-base rounded overflow-hidden">
                             <div
                               className="h-full rounded transition-all"
                               style={{
@@ -590,7 +590,7 @@ export default function PlayerPage() {
 
                       {/* Expanded: Premium detail stats */}
                       {expandedCategory === cat.id && (
-                        <div className="mt-3 pt-3 border-t border-[#1e2a3a]">
+                        <div className="mt-3 pt-3 border-t border-border-subtle">
                           {isPremium ? (
                             <div className="grid grid-cols-2 gap-2">
                               {cat.details.map((d: any, j: number) => (
@@ -637,7 +637,7 @@ export default function PlayerPage() {
                 </div>
 
                 {!isPremium && (
-                  <div className="mt-4 pt-3 border-t border-[#1e2a3a] text-center">
+                  <div className="mt-4 pt-3 border-t border-border-subtle text-center">
                     <div className="text-[#6a7a90] text-xs mb-2">{t('stats.premiumHint')}</div>
                     <button className="bg-gradient-to-r from-[#c89b3c] to-[#a07830] text-black text-xs font-bold px-6 py-2 rounded hover:brightness-110 transition">
                       {t('stats.unlockDetails')}
@@ -654,8 +654,8 @@ export default function PlayerPage() {
 
             {/* Champion Mastery */}
             {masteries.length > 0 && (
-              <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-3 sm:p-6 mb-4">
-                <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-4">
+              <div className="bg-surface-base border border-border-subtle rounded p-3 sm:p-6 mb-4">
+                <div className="text-fg-secondary text-xs uppercase tracking-widest mb-4">
                   Champion Mastery
                 </div>
                 <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
@@ -664,7 +664,7 @@ export default function PlayerPage() {
                     const champId = champ?.id || 'Unknown';
                     const champDisplayName = champ?.name || champId;
                     return (
-                      <div key={i} className="bg-[#141c2e] rounded p-4 flex flex-col items-center gap-2">
+                      <div key={i} className="bg-surface-raised rounded p-4 flex flex-col items-center gap-2">
                         <img
                           src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/champion/${champId}.png`}
                           alt={champDisplayName}
@@ -672,7 +672,7 @@ export default function PlayerPage() {
                         />
                         <div className="text-white text-sm font-medium">{champDisplayName}</div>
                         <div className="text-[#c89b3c] text-xs font-bold">Level {m.championLevel}</div>
-                        <div className="text-[#a0b0c5] text-xs">{m.championPoints?.toLocaleString()} Punkte</div>
+                        <div className="text-fg-secondary text-xs">{m.championPoints?.toLocaleString()} Punkte</div>
                       </div>
                     );
                   })}
@@ -707,9 +707,9 @@ export default function PlayerPage() {
 
             {/* Match History with Role Filter */}
             {matches.length > 0 && (
-              <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-3 sm:p-6">
+              <div className="bg-surface-base border border-border-subtle rounded p-3 sm:p-6">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
-                  <div className="text-[#a0b0c5] text-xs uppercase tracking-widest">
+                  <div className="text-fg-secondary text-xs uppercase tracking-widest">
                     Match History ({t('player.lastGames')} {filteredMatches.length} {t('player.gamesLabel')})
                   </div>
                   {/* Role Filter */}
@@ -721,7 +721,7 @@ export default function PlayerPage() {
                         className={`px-2.5 py-1 rounded text-xs transition-colors ${
                           roleFilter === r
                             ? 'bg-[#c89b3c]/20 text-[#c89b3c] border border-[#c89b3c]/30'
-                            : 'text-[#7a8aa0] hover:text-[#a0b0c5]'
+                            : 'text-fg-muted hover:text-fg-secondary'
                         }`}
                       >
                         {r === 'all' ? 'Alle' : roleLabels[r] || r}
@@ -748,7 +748,7 @@ export default function PlayerPage() {
                   <button
                     onClick={loadMoreMatches}
                     disabled={loadingMore}
-                    className="mt-4 w-full py-2.5 rounded bg-[#141c2e] border border-[#1e2a3a] text-[#a0b0c5] hover:text-white hover:border-[#c89b3c]/50 text-xs transition-colors disabled:opacity-50"
+                    className="mt-4 w-full py-2.5 rounded bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-[#c89b3c]/50 text-xs transition-colors disabled:opacity-50"
                   >
                     {loadingMore ? 'Lade...' : 'Mehr Matches laden'}
                   </button>
@@ -759,7 +759,7 @@ export default function PlayerPage() {
         )}
 
         {!player && !loading && (
-          <div className="text-center text-[#7a8aa0] text-sm mt-12">
+          <div className="text-center text-fg-muted text-sm mt-12">
             {t('player.enterName')}
           </div>
         )}

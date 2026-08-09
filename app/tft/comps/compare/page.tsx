@@ -58,7 +58,7 @@ export default function TftCompsComparePage() {
   const traitsB = useMemo(() => compB ? computeActiveTraits(compB.typicalUnits, compB.clusterKey, assets) : [], [compB, assets]);
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav active="comps" />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
         <a href="/tft/comps" className="text-[#7B61FF] text-xs hover:underline">← {t('nav.comps')}</a>
@@ -71,9 +71,9 @@ export default function TftCompsComparePage() {
         </div>
 
         {(!slugA || !slugB) && (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center">
+          <div className="bg-surface-base border border-border-subtle rounded p-6 text-center">
             <div className="text-white text-sm font-medium">{t('tft.compare.pickTwo')}</div>
-            <div className="text-[#7a8aa0] text-xs mt-2 leading-relaxed">
+            <div className="text-fg-muted text-xs mt-2 leading-relaxed">
               {t('tft.compare.pickTwo.hint')}
             </div>
             <a
@@ -142,8 +142,8 @@ function CompPanel({
 }) {
   if (!comp) {
     return (
-      <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 text-center">
-        <div className="text-[#7a8aa0] text-xs">{t('tft.compare.notFound')}</div>
+      <div className="bg-surface-base border border-border-subtle rounded p-4 text-center">
+        <div className="text-fg-muted text-xs">{t('tft.compare.notFound')}</div>
       </div>
     );
   }
@@ -154,17 +154,17 @@ function CompPanel({
   const accentColor = side === 'a' ? '#7B61FF' : '#3ecf8e';
   return (
     <div
-      className="bg-[#0d1526] border rounded p-4"
+      className="bg-surface-base border rounded p-4"
       style={{ borderColor: `${accentColor}40` }}
     >
       <div className="flex items-center gap-3 mb-3">
         {carryUrl ? (
           <img src={carryUrl} alt="" className="w-12 h-12 rounded-md border-2" style={{ borderColor: '#c39bff' }} />
         ) : (
-          <div className="w-12 h-12 rounded-md bg-[#1e2a3a]" />
+          <div className="w-12 h-12 rounded-md bg-surface-overlay" />
         )}
         <div className="min-w-0 flex-1">
-          <div className="text-[#cdd6e0] text-xs truncate">{traitName}</div>
+          <div className="text-fg-bright text-xs truncate">{traitName}</div>
           <div className="text-white text-base font-medium truncate">{carry?.name || ''}</div>
         </div>
       </div>
@@ -203,9 +203,9 @@ function DiffPanel({
 }) {
   if (a == null || b == null) {
     return (
-      <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 col-span-1 lg:col-span-2">
-        <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-2">{title}</div>
-        <div className="text-[#7a8aa0] text-sm">—</div>
+      <div className="bg-surface-base border border-border-subtle rounded p-4 col-span-1 lg:col-span-2">
+        <div className="text-fg-secondary text-xs uppercase tracking-widest mb-2">{title}</div>
+        <div className="text-fg-muted text-sm">—</div>
       </div>
     );
   }
@@ -213,8 +213,8 @@ function DiffPanel({
   const aIsBetter = lowerIsBetter ? a < b : a > b;
   const tieClass = Math.abs(diff) < 0.001;
   return (
-    <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 col-span-1 lg:col-span-2">
-      <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-2">{title}</div>
+    <div className="bg-surface-base border border-border-subtle rounded p-4 col-span-1 lg:col-span-2">
+      <div className="text-fg-secondary text-xs uppercase tracking-widest mb-2">{title}</div>
       <div className="grid grid-cols-3 items-center gap-2">
         <div
           className="text-right text-lg font-medium tabular-nums"
@@ -222,7 +222,7 @@ function DiffPanel({
         >
           {fmt(a)}
         </div>
-        <div className="text-center text-[#7a8aa0] text-xs tabular-nums">
+        <div className="text-center text-fg-muted text-xs tabular-nums">
           {tieClass ? '=' : (
             <span style={{ color: lowerIsBetter ? (diff < 0 ? '#3ecf8e' : '#e44040') : (diff > 0 ? '#3ecf8e' : '#e44040') }}>
               Δ {fmt(Math.abs(diff))}
@@ -254,8 +254,8 @@ function TraitsCompare({
   const onlyA = traitsA.filter(tr => !setB.has(tr.apiName));
   const onlyB = traitsB.filter(tr => !setA.has(tr.apiName));
   return (
-    <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 col-span-1 lg:col-span-2">
-      <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.compare.traits')}</div>
+    <div className="bg-surface-base border border-border-subtle rounded p-4 col-span-1 lg:col-span-2">
+      <div className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.compare.traits')}</div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <TraitColumn title={t('tft.compare.traits.shared')} traits={shared} assets={assets} accent="#cdd6e0" />
         <TraitColumn title={t('tft.compare.traits.onlyA')} traits={onlyA} assets={assets} accent="#7B61FF" />
@@ -274,10 +274,10 @@ function TraitColumn({
   accent: string;
 }) {
   return (
-    <div className="bg-[#141c2e] border border-[#1e2a3a] rounded p-3">
+    <div className="bg-surface-raised border border-border-subtle rounded p-3">
       <div className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: accent }}>{title}</div>
       {traits.length === 0 ? (
-        <div className="text-[#5a6a80] text-[11px]">—</div>
+        <div className="text-fg-faint text-[11px]">—</div>
       ) : (
         <div className="flex flex-wrap gap-1.5">
           {traits.map(tr => {
@@ -286,7 +286,7 @@ function TraitColumn({
             return (
               <div
                 key={tr.apiName}
-                className="flex items-center gap-1 px-1.5 py-1 rounded border bg-[#0a0e1a]"
+                className="flex items-center gap-1 px-1.5 py-1 rounded border bg-surface-sunken"
                 style={{ borderColor: `${color}55` }}
                 title={tr.displayName}
               >

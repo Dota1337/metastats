@@ -35,14 +35,14 @@ export default function InternalLoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#0a0f1c] text-gray-200">
-      <form onSubmit={onSubmit} className="w-full max-w-sm bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-6 space-y-4">
+      <form onSubmit={onSubmit} className="w-full max-w-sm bg-surface-base border border-border-subtle rounded-lg p-6 space-y-4">
         <h1 className="text-lg font-semibold">Internal Ops</h1>
         <input
           type="password"
           value={secret}
           onChange={e => setSecret(e.target.value)}
           placeholder="Secret"
-          className="w-full px-3 py-2 bg-[#0a0f1c] border border-[#1e2a3a] rounded text-sm focus:outline-none focus:border-[#7B61FF]"
+          className="w-full px-3 py-2 bg-[#0a0f1c] border border-border-subtle rounded text-sm focus:outline-none focus:border-[#7B61FF]"
           autoFocus
         />
         {err && <div className="text-xs text-red-400">{err}</div>}

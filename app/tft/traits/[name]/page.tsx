@@ -160,18 +160,18 @@ export default function TftTraitDetailPage() {
     : [];
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav active="traits" />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
         <a href="/tft/traits" className="text-[#7B61FF] text-xs hover:underline">← {t('nav.traits')}</a>
 
         {/* Header: icon + name + tier-pill row */}
-        <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-5 mb-5 mt-2">
+        <div className="bg-surface-base border border-border-subtle rounded-lg p-5 mb-5 mt-2">
           <div className="flex items-start gap-4 flex-wrap">
             {iconUrl ? (
               <img src={iconUrl} alt={tftTraitDisplayName(assets, apiName) || apiName} className="w-16 h-16 rounded-lg border-2 border-[#7B61FF]" />
             ) : (
-              <div className="w-16 h-16 rounded-lg bg-[#1e2a3a]" />
+              <div className="w-16 h-16 rounded-lg bg-surface-overlay" />
             )}
             <div className="flex-1 min-w-0">
               <h1 className="text-white text-2xl font-medium">{tftTraitDisplayName(assets, apiName) || prettyTrait(apiName)}</h1>
@@ -189,7 +189,7 @@ export default function TftTraitDetailPage() {
             </div>
             <a
               href={buildExplorerUrl({ traits: [apiName] })}
-              className="px-2.5 py-1.5 rounded text-xs bg-[#141c2e] border border-[#1e2a3a] text-[#a0b0c5] hover:text-white hover:border-[#7B61FF]/60 transition-colors flex items-center gap-1.5 self-start"
+              className="px-2.5 py-1.5 rounded text-xs bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-[#7B61FF]/60 transition-colors flex items-center gap-1.5 self-start"
               title={t('tft.drill.openInExplorer')}
             >
               <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -211,7 +211,7 @@ export default function TftTraitDetailPage() {
             const referencesRandomItem = rendered.tiers.some(t => /random .* item/i.test(t.text));
             if (!rendered.generalDesc && rendered.tiers.length === 0) return null;
             return (
-              <div className="mt-4 text-sm text-[#a0b0c5] leading-relaxed space-y-2">
+              <div className="mt-4 text-sm text-fg-secondary leading-relaxed space-y-2">
                 {rendered.generalDesc && <p>{rendered.generalDesc}</p>}
                 {rendered.tiers.length > 0 && (
                   <ul className="space-y-1.5">
@@ -224,15 +224,15 @@ export default function TftTraitDetailPage() {
                   </ul>
                 )}
                 {referencesRandomItem && itemPool.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-[#1e2a3a]">
-                    <div className="text-[#a0b0c5] text-[10px] uppercase tracking-widest mb-2">
+                  <div className="mt-3 pt-3 border-t border-border-subtle">
+                    <div className="text-fg-secondary text-[10px] uppercase tracking-widest mb-2">
                       {t('tft.trait.possibleItems')}
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {itemPool.map(item => (
                         <span
                           key={item.apiName}
-                          className="inline-block px-2 py-0.5 rounded bg-[#1e2a3a] text-[#a0b0c5] text-xs"
+                          className="inline-block px-2 py-0.5 rounded bg-surface-overlay text-fg-secondary text-xs"
                         >
                           {item.name}
                         </span>
@@ -249,8 +249,8 @@ export default function TftTraitDetailPage() {
            card per variant with the shared preamble stripped. Hidden when
            there's only a single variant. */}
         {isGroup && (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-5 mb-5">
-            <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">
+          <div className="bg-surface-base border border-border-subtle rounded-lg p-5 mb-5">
+            <div className="text-fg-secondary text-xs uppercase tracking-widest mb-3">
               {t('tft.trait.variants').replace('{n}', String(allVariants.filter(v => v.apiName !== rootVariant?.apiName).length))}
             </div>
             <div className="grid sm:grid-cols-2 gap-3">
@@ -261,17 +261,17 @@ export default function TftTraitDetailPage() {
                   const cleanedMeta = { ...v.meta, desc: stripStargazerPreamble(v.meta.desc) };
                   const r = renderTraitDesc(cleanedMeta as any);
                   return (
-                    <div key={v.apiName} className="bg-[#0a0e1a] border border-[#1e2a3a] rounded p-3">
+                    <div key={v.apiName} className="bg-surface-sunken border border-border-subtle rounded p-3">
                       <div className="text-[#7B61FF] text-sm font-semibold mb-2">{constellation}</div>
                       {r.generalDesc && (
-                        <p className="text-[#a0b0c5] text-xs leading-relaxed mb-2">{r.generalDesc}</p>
+                        <p className="text-fg-secondary text-xs leading-relaxed mb-2">{r.generalDesc}</p>
                       )}
                       {r.tiers.length > 0 && (
                         <ul className="space-y-1 text-xs">
                           {r.tiers.map(tier => (
                             <li key={tier.minUnits} className="flex gap-2 items-start">
                               <span className="text-[#7B61FF] font-semibold tabular-nums shrink-0 w-6 text-right">({tier.minUnits})</span>
-                              <span className="text-[#a0b0c5]">{tier.text}</span>
+                              <span className="text-fg-secondary">{tier.text}</span>
                             </li>
                           ))}
                         </ul>
@@ -294,8 +294,8 @@ export default function TftTraitDetailPage() {
           );
           if (causes.length === 0 && effects.length === 0) return null;
           return (
-            <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-5 mb-5">
-              <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">
+            <div className="bg-surface-base border border-border-subtle rounded-lg p-5 mb-5">
+              <div className="text-fg-secondary text-xs uppercase tracking-widest mb-3">
                 {t('tft.trait.arbiterPicker')}
               </div>
               <div className="grid sm:grid-cols-2 gap-4">
@@ -305,9 +305,9 @@ export default function TftTraitDetailPage() {
                   </div>
                   <ul className="space-y-1.5">
                     {causes.map(c => (
-                      <li key={c.apiName} className="bg-[#0a0e1a] border border-[#1e2a3a] rounded px-3 py-2 text-xs">
+                      <li key={c.apiName} className="bg-surface-sunken border border-border-subtle rounded px-3 py-2 text-xs">
                         <div className="text-[#7B61FF] font-medium mb-0.5">{c.label}</div>
-                        <div className="text-[#a0b0c5] leading-snug">{c.desc}</div>
+                        <div className="text-fg-secondary leading-snug">{c.desc}</div>
                       </li>
                     ))}
                   </ul>
@@ -318,9 +318,9 @@ export default function TftTraitDetailPage() {
                   </div>
                   <ul className="space-y-1.5">
                     {effects.map(e => (
-                      <li key={e.apiName} className="bg-[#0a0e1a] border border-[#1e2a3a] rounded px-3 py-2 text-xs">
+                      <li key={e.apiName} className="bg-surface-sunken border border-border-subtle rounded px-3 py-2 text-xs">
                         <div className="text-[#7B61FF] font-medium mb-0.5">{e.label}</div>
-                        <div className="text-[#a0b0c5] leading-snug">{e.desc}</div>
+                        <div className="text-fg-secondary leading-snug">{e.desc}</div>
                       </li>
                     ))}
                   </ul>
@@ -343,8 +343,8 @@ export default function TftTraitDetailPage() {
             .filter(d => d.avgPlacement != null);
           if (chartData.length < 2) return null;
           return (
-            <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-5">
-              <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.trait.activationCurve')}</div>
+            <div className="bg-surface-base border border-border-subtle rounded p-4 mb-5">
+              <div className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.trait.activationCurve')}</div>
               <div style={{ width: '100%', height: 200 }}>
                 <ResponsiveContainer>
                   <LineChart data={chartData} margin={{ top: 8, right: 12, left: -8, bottom: 4 }}>
@@ -372,9 +372,9 @@ export default function TftTraitDetailPage() {
             count = "does overcapping this trait help?". Green line, reversed Y
             (up = better). Hidden until the crawl fills trait_unitcount_stats. */}
         {!loading && unitCount.length >= 2 && (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 mb-5">
-            <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-1">{t('tft.trait.unitCountCurve')}</div>
-            <div className="text-[#7a8aa0] text-[11px] mb-3">{t('tft.trait.unitCountHint')}</div>
+          <div className="bg-surface-base border border-border-subtle rounded p-4 mb-5">
+            <div className="text-fg-secondary text-xs uppercase tracking-widest mb-1">{t('tft.trait.unitCountCurve')}</div>
+            <div className="text-fg-muted text-[11px] mb-3">{t('tft.trait.unitCountHint')}</div>
             <div style={{ width: '100%', height: 200 }}>
               <ResponsiveContainer>
                 <LineChart
@@ -401,11 +401,11 @@ export default function TftTraitDetailPage() {
 
         {/* Per-tier stats table */}
         {!loading && traitStats.length > 0 && (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded mb-5 overflow-hidden">
-            <div className="px-4 py-2 bg-[#0a0e1a] text-[#a0b0c5] text-xs uppercase tracking-widest">
+          <div className="bg-surface-base border border-border-subtle rounded mb-5 overflow-hidden">
+            <div className="px-4 py-2 bg-surface-sunken text-fg-secondary text-xs uppercase tracking-widest">
               {t('tft.trait.statsPerTier')}
             </div>
-            <div className="grid grid-cols-[4rem_1fr_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#7a8aa0] bg-[#0a0e1a] border-t border-[#1e2a3a]">
+            <div className="grid grid-cols-[4rem_1fr_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 text-[10px] uppercase text-fg-muted bg-surface-sunken border-t border-border-subtle">
               <div className="text-right">{t('tft.activation')}</div>
               <div></div>
               <div className="text-right">{t('tft.avgPlacement')}</div>
@@ -419,7 +419,7 @@ export default function TftTraitDetailPage() {
               );
               const styleColor = tier ? STYLE_COLORS[tier.style] : null;
               return (
-                <div key={s.activation} className="grid grid-cols-[4rem_1fr_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 items-center text-xs border-t border-[#1e2a3a]">
+                <div key={s.activation} className="grid grid-cols-[4rem_1fr_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 items-center text-xs border-t border-border-subtle">
                   <div className="text-right text-[#7B61FF] font-medium">{s.activation}</div>
                   <div>
                     {styleColor && (
@@ -432,9 +432,9 @@ export default function TftTraitDetailPage() {
                     )}
                   </div>
                   <div className="text-right text-white">{s.avgPlacement?.toFixed(2) ?? '—'}</div>
-                  <div className="text-right text-[#a0b0c5]">{s.pickRate != null ? `${(s.pickRate * 100).toFixed(1)}%` : '—'}</div>
-                  <div className="text-right text-[#a0b0c5]">{s.top4Rate != null ? `${(s.top4Rate * 100).toFixed(1)}%` : '—'}</div>
-                  <div className="text-right text-[#7a8aa0]">{s.games}</div>
+                  <div className="text-right text-fg-secondary">{s.pickRate != null ? `${(s.pickRate * 100).toFixed(1)}%` : '—'}</div>
+                  <div className="text-right text-fg-secondary">{s.top4Rate != null ? `${(s.top4Rate * 100).toFixed(1)}%` : '—'}</div>
+                  <div className="text-right text-fg-muted">{s.games}</div>
                 </div>
               );
             })}
@@ -443,8 +443,8 @@ export default function TftTraitDetailPage() {
 
         {/* Best units with this trait */}
         {!loading && matchingUnits.length > 0 && (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-5 mb-5">
-            <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.trait.bestUnits')}</div>
+          <div className="bg-surface-base border border-border-subtle rounded p-5 mb-5">
+            <div className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.trait.bestUnits')}</div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
               {matchingUnits.slice(0, 15).map(u => {
                 const champion = assets?.champions[u.characterId];
@@ -454,15 +454,15 @@ export default function TftTraitDetailPage() {
                   <a
                     key={u.characterId}
                     href={`/tft/units/${encodeURIComponent(u.characterId)}?bucket=${bucket}`}
-                    className="flex flex-col items-center bg-[#141c2e] border border-[#1e2a3a] rounded p-2 hover:border-[#7B61FF]/50 transition"
+                    className="flex flex-col items-center bg-surface-raised border border-border-subtle rounded p-2 hover:border-[#7B61FF]/50 transition"
                   >
                     {champUrl ? (
                       <img src={champUrl} alt={champion!.name} className="w-12 h-12 rounded object-cover border-2" style={{ borderColor: costColor(cost) }} />
                     ) : (
-                      <div className="w-12 h-12 rounded bg-[#1e2a3a]" />
+                      <div className="w-12 h-12 rounded bg-surface-overlay" />
                     )}
                     <div className="text-white text-[11px] mt-1 text-center truncate w-full">{champion?.name || prettyChar(u.characterId)}</div>
-                    <div className="text-[#a0b0c5] text-[10px]">
+                    <div className="text-fg-secondary text-[10px]">
                       {u.avgPlacement?.toFixed(2) ?? '—'} {t('tft.avgPlacementShort')}
                     </div>
                   </a>
@@ -474,8 +474,8 @@ export default function TftTraitDetailPage() {
 
         {/* Top comps using this trait family */}
         {!loading && comps.length > 0 && (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-5 mb-5">
-            <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-3">{t('tft.compsWithTrait')}</div>
+          <div className="bg-surface-base border border-border-subtle rounded p-5 mb-5">
+            <div className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.compsWithTrait')}</div>
             <div className="space-y-1.5">
               {comps.map(c => {
                 const m = /^(.+)@(\d+)_(.+)$/.exec(c.clusterKey || '');
@@ -493,7 +493,7 @@ export default function TftTraitDetailPage() {
                   <a
                     key={c.slug}
                     href={`/tft/comps/${encodeURIComponent(c.slug)}?bucket=${bucket}&region=${region}`}
-                    className="flex items-center gap-3 bg-[#141c2e] border border-[#1e2a3a] rounded p-2.5 hover:border-[#7B61FF]/40 transition-colors"
+                    className="flex items-center gap-3 bg-surface-raised border border-border-subtle rounded p-2.5 hover:border-[#7B61FF]/40 transition-colors"
                   >
                     {carryUrl && (
                       <img src={carryUrl} alt="" className="w-9 h-9 rounded border border-[#c39bff]/60 object-cover flex-shrink-0" />
@@ -507,7 +507,7 @@ export default function TftTraitDetailPage() {
                     </div>
                     <div className="text-right text-xs tabular-nums">
                       <div className="text-white">Ø {c.avgPlacement?.toFixed(2) ?? '—'}</div>
-                      <div className="text-[#7a8aa0]">{c.games} {t('tft.gamesShort')}</div>
+                      <div className="text-fg-muted">{c.games} {t('tft.gamesShort')}</div>
                     </div>
                   </a>
                 );
@@ -517,13 +517,13 @@ export default function TftTraitDetailPage() {
         )}
 
         {loading && (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#a0b0c5] text-sm">
+          <div className="bg-surface-base border border-border-subtle rounded p-6 text-center text-fg-secondary text-sm">
             {t('tft.loading')}
           </div>
         )}
 
         {!loading && traitStats.length === 0 && matchingUnits.length === 0 && comps.length === 0 && (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-6 text-center text-[#a0b0c5] text-sm">
+          <div className="bg-surface-base border border-border-subtle rounded p-6 text-center text-fg-secondary text-sm">
             {t('tft.trait.noData')}
           </div>
         )}

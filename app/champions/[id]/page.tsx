@@ -85,7 +85,7 @@ function SkinImage({ championId, skinNum, alt, className }: {
   useEffect(() => { setStage(0); }, [championId, skinNum]);
   if (stage === 3) {
     return (
-      <div className={`flex items-center justify-center bg-[#141c2e] text-[#7a8aa0] text-[10px] text-center px-1 ${className || ''}`}>
+      <div className={`flex items-center justify-center bg-surface-raised text-fg-muted text-[10px] text-center px-1 ${className || ''}`}>
         {alt || '—'}
       </div>
     );
@@ -174,14 +174,14 @@ export default function ChampionDetailPage() {
     : [];
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       {/* Navigation */}
       <Nav active="champions" />
 
       {/* Loading State */}
       {loading && (
         <div className="flex items-center justify-center py-40">
-          <div className="text-[#a0b0c5] text-lg">{t('champDetail.loading')}</div>
+          <div className="text-fg-secondary text-lg">{t('champDetail.loading')}</div>
         </div>
       )}
 
@@ -191,7 +191,7 @@ export default function ChampionDetailPage() {
           <div className="text-red-400 text-xl mb-4">{error}</div>
           <a
             href="/champions"
-            className="inline-block px-6 py-2 bg-[#1e2a3a] text-[#a0b0c5] rounded hover:text-white transition-colors"
+            className="inline-block px-6 py-2 bg-surface-overlay text-fg-secondary rounded hover:text-white transition-colors"
           >
             Zurueck zur Champion-Uebersicht
           </a>
@@ -210,7 +210,7 @@ export default function ChampionDetailPage() {
                 filter: 'brightness(0.25) blur(2px)',
               }}
             />
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0e1525]" />
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-surface-page" />
             <div className="relative max-w-4xl mx-auto px-6 py-16 flex items-center gap-6">
               <img
                 src={`https://ddragon.leagueoflegends.com/cdn/${version}/img/champion/${champion.id}.png`}
@@ -220,7 +220,7 @@ export default function ChampionDetailPage() {
               <div>
                 <a
                   href="/champions"
-                  className="text-[#a0b0c5] text-xs hover:text-white transition-colors mb-2 inline-block"
+                  className="text-fg-secondary text-xs hover:text-white transition-colors mb-2 inline-block"
                 >
                   &larr; {t('champDetail.back')}
                 </a>
@@ -256,9 +256,9 @@ export default function ChampionDetailPage() {
                 {statItems.map((stat) => (
                   <div
                     key={stat.label}
-                    className="bg-[#0d1526] border border-[#1e2a3a] rounded p-3"
+                    className="bg-surface-base border border-border-subtle rounded p-3"
                   >
-                    <div className="text-[#a0b0c5] text-xs mb-1">{stat.label}</div>
+                    <div className="text-fg-secondary text-xs mb-1">{stat.label}</div>
                     <div className="text-white text-lg font-medium">
                       {stat.isPercent
                         ? stat.value.toFixed(3)
@@ -279,7 +279,7 @@ export default function ChampionDetailPage() {
               <h2 className="text-white text-lg font-semibold mb-4">{t('champDetail.abilities')}</h2>
               <div className="space-y-3">
                 {/* Passive */}
-                <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 flex gap-4">
+                <div className="bg-surface-base border border-border-subtle rounded p-4 flex gap-4">
                   <div className="flex-shrink-0 flex flex-col items-center gap-1">
                     <span className="text-xs font-bold text-[#c89b3c] bg-[#c89b3c20] px-2 py-0.5 rounded">
                       P
@@ -287,14 +287,14 @@ export default function ChampionDetailPage() {
                     <img
                       src={`https://ddragon.leagueoflegends.com/cdn/${version}/img/passive/${champion.passive.image.full}`}
                       alt={champion.passive.name}
-                      className="w-10 h-10 rounded border border-[#1e2a3a]"
+                      className="w-10 h-10 rounded border border-border-subtle"
                     />
                   </div>
                   <div>
                     <div className="text-white text-sm font-medium mb-1">
                       {champion.passive.name}
                     </div>
-                    <div className="text-[#a0b0c5] text-sm leading-relaxed">
+                    <div className="text-fg-secondary text-sm leading-relaxed">
                       {stripHtml(champion.passive.description)}
                     </div>
                   </div>
@@ -304,7 +304,7 @@ export default function ChampionDetailPage() {
                 {champion.spells.map((spell, i) => (
                   <div
                     key={spell.id}
-                    className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 flex gap-4"
+                    className="bg-surface-base border border-border-subtle rounded p-4 flex gap-4"
                   >
                     <div className="flex-shrink-0 flex flex-col items-center gap-1">
                       <span className="text-xs font-bold text-[#c89b3c] bg-[#c89b3c20] px-2 py-0.5 rounded">
@@ -313,14 +313,14 @@ export default function ChampionDetailPage() {
                       <img
                         src={`https://ddragon.leagueoflegends.com/cdn/${version}/img/spell/${spell.image.full}`}
                         alt={spell.name}
-                        className="w-10 h-10 rounded border border-[#1e2a3a]"
+                        className="w-10 h-10 rounded border border-border-subtle"
                       />
                     </div>
                     <div>
                       <div className="text-white text-sm font-medium mb-1">
                         {spell.name}
                       </div>
-                      <div className="text-[#a0b0c5] text-sm leading-relaxed">
+                      <div className="text-fg-secondary text-sm leading-relaxed">
                         {stripHtml(spell.description)}
                       </div>
                     </div>
@@ -335,13 +335,13 @@ export default function ChampionDetailPage() {
                 <h2 className="text-white text-lg font-semibold mb-4">{t('champDetail.tips')}</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {champion.allytips.length > 0 && (
-                    <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
+                    <div className="bg-surface-base border border-border-subtle rounded p-4">
                       <h3 className="text-green-400 text-sm font-medium mb-3">
                         {t('champDetail.allyTips')}
                       </h3>
                       <ul className="space-y-2">
                         {champion.allytips.map((tip, i) => (
-                          <li key={i} className="text-[#a0b0c5] text-sm flex gap-2">
+                          <li key={i} className="text-fg-secondary text-sm flex gap-2">
                             <span className="text-green-400/60 flex-shrink-0">&#x2022;</span>
                             {tip}
                           </li>
@@ -350,13 +350,13 @@ export default function ChampionDetailPage() {
                     </div>
                   )}
                   {champion.enemytips.length > 0 && (
-                    <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4">
+                    <div className="bg-surface-base border border-border-subtle rounded p-4">
                       <h3 className="text-red-400 text-sm font-medium mb-3">
                         {t('champDetail.enemyTips')}
                       </h3>
                       <ul className="space-y-2">
                         {champion.enemytips.map((tip, i) => (
-                          <li key={i} className="text-[#a0b0c5] text-sm flex gap-2">
+                          <li key={i} className="text-fg-secondary text-sm flex gap-2">
                             <span className="text-red-400/60 flex-shrink-0">&#x2022;</span>
                             {tip}
                           </li>
@@ -372,7 +372,7 @@ export default function ChampionDetailPage() {
             {champion.skins && champion.skins.length > 1 && (
               <section className="mb-8">
                 <h2 className="text-white text-lg font-semibold mb-4">Skins ({champion.skins.length - 1})</h2>
-                <div className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
+                <div className="bg-surface-base border border-border-subtle rounded overflow-hidden">
                   {/* Selected skin splash */}
                   <div className="relative aspect-[16/7] overflow-hidden">
                     <SkinImage
@@ -381,7 +381,7 @@ export default function ChampionDetailPage() {
                       alt={champion.skins[selectedSkin]?.name || champion.name}
                       className="w-full h-full object-cover object-top transition-opacity duration-300"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#0d1526] via-transparent to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-surface-base via-transparent to-transparent" />
                     <div className="absolute bottom-4 left-4">
                       <div className="text-white text-lg font-medium">
                         {champion.skins[selectedSkin]?.name === 'default'
@@ -418,8 +418,8 @@ export default function ChampionDetailPage() {
             {/* Lore Section */}
             <section className="mb-8">
               <h2 className="text-white text-lg font-semibold mb-4">{t('champDetail.lore')}</h2>
-              <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-5">
-                <p className="text-[#a0b0c5] text-sm leading-relaxed">
+              <div className="bg-surface-base border border-border-subtle rounded p-5">
+                <p className="text-fg-secondary text-sm leading-relaxed">
                   {champion.lore}
                 </p>
               </div>

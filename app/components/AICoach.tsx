@@ -69,11 +69,11 @@ export default function AICoach({ matches, tier, role }: AICoachProps) {
   if (!report && !loading) return null;
 
   return (
-    <div className="bg-gradient-to-br from-[#0d1526] to-[#141c2e] border border-[#1e2a3a] rounded-lg overflow-hidden">
+    <div className="bg-gradient-to-br from-surface-base to-surface-raised border border-border-subtle rounded-lg overflow-hidden">
       {/* Header */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full px-4 py-3 flex items-center justify-between hover:bg-[#1e2a3a]/30 transition-colors"
+        className="w-full px-4 py-3 flex items-center justify-between hover:bg-surface-overlay/30 transition-colors"
       >
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#c89b3c] to-[#785a28] flex items-center justify-center text-white text-sm font-bold">
@@ -81,7 +81,7 @@ export default function AICoach({ matches, tier, role }: AICoachProps) {
           </div>
           <div className="text-left">
             <div className="text-white text-sm font-medium">AI Coach</div>
-            <div className="text-[#7a8aa0] text-[10px]">
+            <div className="text-fg-muted text-[10px]">
               {loading ? t('coach.analyzing') : report ? `${report.gamesAnalyzed} ${t('coach.gamesAnalyzed')}` : ''}
             </div>
           </div>
@@ -96,7 +96,7 @@ export default function AICoach({ matches, tier, role }: AICoachProps) {
                 </div>
               </div>
               {/* Score bar */}
-              <div className="w-16 h-1.5 bg-[#1e2a3a] rounded-full overflow-hidden">
+              <div className="w-16 h-1.5 bg-surface-overlay rounded-full overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all duration-500"
                   style={{
@@ -110,7 +110,7 @@ export default function AICoach({ matches, tier, role }: AICoachProps) {
           {loading && (
             <div className="w-4 h-4 border-2 border-[#c89b3c] border-t-transparent rounded-full animate-spin" />
           )}
-          <svg className={`w-4 h-4 text-[#7a8aa0] transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <svg className={`w-4 h-4 text-fg-muted transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
           </svg>
         </div>
@@ -126,7 +126,7 @@ export default function AICoach({ matches, tier, role }: AICoachProps) {
           </div>
 
           {/* Compared to tier */}
-          <div className="text-[#7a8aa0] text-[10px] text-center">
+          <div className="text-fg-muted text-[10px] text-center">
             {t('coach.comparedWith')} {report.comparedTo}{t('coach.playersRole')} {report.role}
           </div>
 
@@ -185,15 +185,15 @@ function InsightCard({ insight, color }: { insight: CoachingInsight; color: 'gre
         <span className="text-white text-xs font-medium">{insight.title}</span>
         <div className="flex items-center gap-2">
           <span className={`${c.text} text-xs font-bold`}>{insight.stat}</span>
-          <span className="text-[#7a8aa0] text-[10px]">/ {formatBenchmark(insight.category, insight.benchmarkValue)}</span>
+          <span className="text-fg-muted text-[10px]">/ {formatBenchmark(insight.category, insight.benchmarkValue)}</span>
         </div>
       </div>
       {/* Percentile bar */}
-      <div className="w-full h-1 bg-[#1e2a3a] rounded-full mb-1.5">
+      <div className="w-full h-1 bg-surface-overlay rounded-full mb-1.5">
         <div className={`h-full ${c.bar} rounded-full transition-all duration-500`} style={{ width: `${insight.percentile}%` }} />
       </div>
       {insight.description && (
-        <div className="text-[#a0b0c5] text-[11px] leading-relaxed">{insight.description}</div>
+        <div className="text-fg-secondary text-[11px] leading-relaxed">{insight.description}</div>
       )}
     </div>
   );

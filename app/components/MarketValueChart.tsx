@@ -84,10 +84,10 @@ export default function MarketValueChart({ puuid, currentValue }: Props) {
     : '0';
 
   return (
-    <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-4 sm:p-6 mb-4">
+    <div className="bg-surface-base border border-border-subtle rounded p-4 sm:p-6 mb-4">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <div className="text-[#a0b0c5] text-xs uppercase tracking-widest">
+          <div className="text-fg-secondary text-xs uppercase tracking-widest">
             Marktwert-Verlauf
           </div>
           {chartData.length >= 2 && (
@@ -95,7 +95,7 @@ export default function MarketValueChart({ puuid, currentValue }: Props) {
               <span className={`text-sm font-medium ${change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {change >= 0 ? '+' : ''}{changePercent}%
               </span>
-              <span className="text-[#7a8aa0] text-xs">
+              <span className="text-fg-muted text-xs">
                 ({change >= 0 ? '+' : ''}${Math.abs(change).toLocaleString('de-DE')})
               </span>
             </div>
@@ -104,7 +104,7 @@ export default function MarketValueChart({ puuid, currentValue }: Props) {
         <select
           value={season}
           onChange={e => setSeason(e.target.value)}
-          className="bg-[#141c2e] border border-[#1e2a3a] rounded px-3 py-1.5 text-xs text-[#a0b0c5] focus:outline-none focus:border-[#c89b3c]/50"
+          className="bg-surface-raised border border-border-subtle rounded px-3 py-1.5 text-xs text-fg-secondary focus:outline-none focus:border-[#c89b3c]/50"
         >
           {seasons.map(s => (
             <option key={s.value} value={s.value}>{s.label}</option>
@@ -113,7 +113,7 @@ export default function MarketValueChart({ puuid, currentValue }: Props) {
       </div>
 
       {loading ? (
-        <div className="h-[200px] flex items-center justify-center text-[#7a8aa0] text-xs">
+        <div className="h-[200px] flex items-center justify-center text-fg-muted text-xs">
           Lade Marktwert-Daten...
         </div>
       ) : (
@@ -145,8 +145,8 @@ export default function MarketValueChart({ puuid, currentValue }: Props) {
                 if (!active || !payload?.length) return null;
                 const d = payload[0]?.payload;
                 return (
-                  <div className="bg-[#0d1526] border border-[#1e2a3a] rounded px-3 py-2 text-xs shadow-lg">
-                    <div className="text-[#a0b0c5] mb-1">{d?.label}</div>
+                  <div className="bg-surface-base border border-border-subtle rounded px-3 py-2 text-xs shadow-lg">
+                    <div className="text-fg-secondary mb-1">{d?.label}</div>
                     <div className="text-[#c89b3c] font-medium">
                       ${d?.value?.toLocaleString('de-DE')}
                     </div>

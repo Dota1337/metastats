@@ -34,12 +34,12 @@ export default function CookieBanner() {
     <div
       role="dialog"
       aria-labelledby="cookie-banner-title"
-      className="fixed bottom-3 left-3 right-3 sm:left-auto sm:right-3 sm:max-w-md z-50 bg-[#0d1526] border border-[#7B61FF]/40 rounded-lg shadow-xl p-4 text-sm"
+      className="fixed bottom-3 left-3 right-3 sm:left-auto sm:right-3 sm:max-w-md z-50 bg-surface-base border border-[#7B61FF]/40 rounded-lg shadow-xl p-4 text-sm"
     >
       <div id="cookie-banner-title" className="text-white font-medium mb-1.5">
         {t('cookie.title')}
       </div>
-      <p className="text-[#a0b0c5] text-xs leading-relaxed mb-3">
+      <p className="text-fg-secondary text-xs leading-relaxed mb-3">
         {t('cookie.body')}{' '}
         <a href="/datenschutz" className="text-[#7B61FF] hover:underline">
           {t('legal.privacy')}
@@ -55,7 +55,7 @@ export default function CookieBanner() {
         </button>
         <button
           onClick={() => persist('declined')}
-          className="flex-1 bg-[#141c2e] hover:bg-[#1e2a3a] text-[#a0b0c5] hover:text-white text-xs px-3 py-2 rounded"
+          className="flex-1 bg-surface-raised hover:bg-surface-overlay text-fg-secondary hover:text-white text-xs px-3 py-2 rounded"
         >
           {t('cookie.decline')}
         </button>

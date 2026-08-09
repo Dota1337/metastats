@@ -65,18 +65,18 @@ export default function TftTournamentDetailPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#0e1525]">
+      <main className="min-h-screen bg-surface-page">
         <Nav active="tournaments" />
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 text-[#a0b0c5] text-center">{t('tft.loading')}</div>
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 text-fg-secondary text-center">{t('tft.loading')}</div>
         <Footer />
       </main>
     );
   }
   if (!tournament) {
     return (
-      <main className="min-h-screen bg-[#0e1525]">
+      <main className="min-h-screen bg-surface-page">
         <Nav active="tournaments" />
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 text-[#a0b0c5] text-center">{t('tft.tournaments.notFound')}</div>
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 text-fg-secondary text-center">{t('tft.tournaments.notFound')}</div>
         <Footer />
       </main>
     );
@@ -88,13 +88,13 @@ export default function TftTournamentDetailPage() {
   const statusColor = tournament.status === 'live' ? '#e44040' : tournament.status === 'upcoming' ? '#3ecf8e' : '#a0b0c5';
 
   return (
-    <main className="min-h-screen bg-[#0e1525]">
+    <main className="min-h-screen bg-surface-page">
       <Nav active="tournaments" />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
         <a href="/tft/tournaments" className="text-[#7B61FF] text-xs hover:underline">← {t('tft.tournaments.title')}</a>
 
         {/* Header */}
-        <div className="bg-[#0d1526] border border-[#1e2a3a] rounded-lg p-5 mb-5 mt-2">
+        <div className="bg-surface-base border border-border-subtle rounded-lg p-5 mb-5 mt-2">
           <div className="flex items-start gap-4 flex-wrap">
             {tournament.tier && (
               <div
@@ -111,14 +111,14 @@ export default function TftTournamentDetailPage() {
                   {t(`tft.tournaments.${tournament.status}` as const)}
                 </span>
                 {tournament.region && (
-                  <span className="text-xs text-[#a0b0c5]">{REGION_LABELS[tournament.region] || tournament.region}</span>
+                  <span className="text-xs text-fg-secondary">{REGION_LABELS[tournament.region] || tournament.region}</span>
                 )}
               </div>
-              <div className="text-[#a0b0c5] text-sm mt-2">
+              <div className="text-fg-secondary text-sm mt-2">
                 {dateFmt(tournament.start_date)} – {dateFmt(tournament.end_date)}
               </div>
               {tournament.format && (
-                <div className="text-[#7a8aa0] text-xs mt-1">{tournament.format}</div>
+                <div className="text-fg-muted text-xs mt-1">{tournament.format}</div>
               )}
             </div>
             {tournament.prize_pool_usd != null && (
@@ -126,7 +126,7 @@ export default function TftTournamentDetailPage() {
                 <div className="text-[#7B61FF] text-2xl font-semibold tabular-nums">
                   ${tournament.prize_pool_usd.toLocaleString('en-US')}
                 </div>
-                <div className="text-[#7a8aa0] text-[10px] uppercase tracking-widest">Prize Pool</div>
+                <div className="text-fg-muted text-[10px] uppercase tracking-widest">Prize Pool</div>
               </div>
             )}
           </div>
@@ -135,8 +135,8 @@ export default function TftTournamentDetailPage() {
 
         {/* Twitch embed if available + tournament is live */}
         {tournament.status === 'live' && tournament.twitch_channel && (
-          <div className="bg-[#0d1526] border border-[#1e2a3a] rounded p-3 mb-5">
-            <div className="text-[#a0b0c5] text-xs uppercase tracking-widest mb-2">{t('tft.tournaments.liveStream')}</div>
+          <div className="bg-surface-base border border-border-subtle rounded p-3 mb-5">
+            <div className="text-fg-secondary text-xs uppercase tracking-widest mb-2">{t('tft.tournaments.liveStream')}</div>
             <div className="aspect-video">
               <iframe
                 src={`https://player.twitch.tv/?channel=${tournament.twitch_channel}&parent=metastats.gg&parent=www.metastats.gg&parent=localhost`}
@@ -150,11 +150,11 @@ export default function TftTournamentDetailPage() {
         {/* Standings — only rendered when we have data. No info text when
             empty (per user preference to skip explanatory copy). */}
         {tournament.results && tournament.results.length > 0 && (
-          <section className="bg-[#0d1526] border border-[#1e2a3a] rounded overflow-hidden">
-            <div className="px-4 py-2 bg-[#0a0e1a] text-[10px] uppercase tracking-widest text-[#7a8aa0]">
+          <section className="bg-surface-base border border-border-subtle rounded overflow-hidden">
+            <div className="px-4 py-2 bg-surface-sunken text-[10px] uppercase tracking-widest text-fg-muted">
               {t('tft.tournaments.standings')}
             </div>
-            <div className="hidden sm:grid grid-cols-[3rem_1fr_8rem_5rem_6rem] gap-2 px-4 py-2 text-[10px] uppercase text-[#7a8aa0] border-t border-[#1e2a3a]">
+            <div className="hidden sm:grid grid-cols-[3rem_1fr_8rem_5rem_6rem] gap-2 px-4 py-2 text-[10px] uppercase text-fg-muted border-t border-border-subtle">
               <div className="text-right">#</div>
               <div>{t('tft.pros.col.player')}</div>
               <div>{t('tft.pros.col.team')}</div>
@@ -167,7 +167,7 @@ export default function TftTournamentDetailPage() {
               return (
                 <div
                   key={`${r.placement}-${r.proName}`}
-                  className="block sm:grid sm:grid-cols-[3rem_1fr_8rem_5rem_6rem] gap-2 px-4 py-2 sm:items-center text-xs border-t border-[#1e2a3a]"
+                  className="block sm:grid sm:grid-cols-[3rem_1fr_8rem_5rem_6rem] gap-2 px-4 py-2 sm:items-center text-xs border-t border-border-subtle"
                 >
                   <div className="hidden sm:block text-right text-base font-bold tabular-nums" style={{ color: placeColor }}>
                     {r.placement}
@@ -180,10 +180,10 @@ export default function TftTournamentDetailPage() {
                       <span className="text-white font-medium">{r.proName}</span>
                     )}
                   </div>
-                  <div className="hidden sm:block text-[#a0b0c5] truncate">{r.team || '—'}</div>
-                  <div className="hidden sm:block text-[#a0b0c5]">{r.country || '—'}</div>
+                  <div className="hidden sm:block text-fg-secondary truncate">{r.team || '—'}</div>
+                  <div className="hidden sm:block text-fg-secondary">{r.country || '—'}</div>
                   <div className="flex sm:block items-center justify-between mt-1 sm:mt-0 sm:text-right tabular-nums">
-                    <span className="text-[#7a8aa0] text-[10px] sm:hidden">{r.team}{r.team && r.country ? ' · ' : ''}{r.country}</span>
+                    <span className="text-fg-muted text-[10px] sm:hidden">{r.team}{r.team && r.country ? ' · ' : ''}{r.country}</span>
                     <span className="text-[#7B61FF] font-medium">
                       {r.prizeUsd != null ? `$${r.prizeUsd.toLocaleString('en-US')}` : '—'}
                     </span>

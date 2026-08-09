@@ -94,40 +94,40 @@ export default function MatchDetail({ match, ddVersion, isExpanded, onToggle, fo
         />
         <div className="flex-1 min-w-0 sm:flex-none sm:w-auto sm:max-w-[14rem]">
           <div className="text-white text-sm font-medium truncate">{match.champion}</div>
-          <div className="text-[#a0b0c5] text-xs whitespace-nowrap">{getQueueName(match)} · {formatDuration(match.gameDuration)}{match.gameCreation ? ` · ${timeAgo(match.gameCreation)}` : ''}</div>
+          <div className="text-fg-secondary text-xs whitespace-nowrap">{getQueueName(match)} · {formatDuration(match.gameDuration)}{match.gameCreation ? ` · ${timeAgo(match.gameCreation)}` : ''}</div>
         </div>
         <div className="text-center flex-shrink-0">
           <div className="text-white text-sm font-medium">{match.kills}/{match.deaths}/{match.assists}</div>
-          <div className="text-[#a0b0c5] text-xs">{kdaVal} KDA</div>
+          <div className="text-fg-secondary text-xs">{kdaVal} KDA</div>
         </div>
         <div className="hidden sm:block text-center w-14">
           <div className="text-white text-sm font-medium">{match.cs}</div>
-          <div className="text-[#a0b0c5] text-xs">{csPerMin}/m</div>
+          <div className="text-fg-secondary text-xs">{csPerMin}/m</div>
         </div>
         <div className="hidden md:block text-center w-16">
           <div className="text-white text-sm font-medium">{(match.damageDealt / 1000).toFixed(1)}k</div>
-          <div className="text-[#a0b0c5] text-xs">{dmgPerMin}/m</div>
+          <div className="text-fg-secondary text-xs">{dmgPerMin}/m</div>
         </div>
         <div className="hidden md:block text-center w-12">
           <div className="text-white text-sm font-medium">{match.visionScore}</div>
-          <div className="text-[#a0b0c5] text-xs">Vis</div>
+          <div className="text-fg-secondary text-xs">Vis</div>
         </div>
         <div className="hidden lg:block text-center w-12">
           <div className="text-white text-sm font-medium">{killParticipation}%</div>
-          <div className="text-[#a0b0c5] text-xs">KP</div>
+          <div className="text-fg-secondary text-xs">KP</div>
         </div>
         <div className="hidden lg:block text-center w-14">
           <div className="text-white text-sm font-medium">{(match.goldEarned / 1000).toFixed(1)}k</div>
-          <div className="text-[#a0b0c5] text-xs">Gold</div>
+          <div className="text-fg-secondary text-xs">Gold</div>
         </div>
         <div className="flex items-center gap-1 sm:gap-2 ml-auto flex-shrink-0">
           {match.pentaKills > 0 && <span className="bg-[#f0c040]/20 text-[#f0c040] text-[10px] font-bold px-1.5 py-0.5 rounded">PENTA</span>}
           {!match.pentaKills && match.quadraKills > 0 && <span className="bg-[#c89b3c]/20 text-[#c89b3c] text-[10px] font-bold px-1.5 py-0.5 rounded">QUADRA</span>}
-          {!match.pentaKills && !match.quadraKills && match.tripleKills > 0 && <span className="bg-[#a0b0c5]/20 text-[#a0b0c5] text-[10px] font-bold px-1.5 py-0.5 rounded">TRIPLE</span>}
+          {!match.pentaKills && !match.quadraKills && match.tripleKills > 0 && <span className="bg-fg-secondary/20 text-fg-secondary text-[10px] font-bold px-1.5 py-0.5 rounded">TRIPLE</span>}
           <div className={'text-xs sm:text-sm font-medium ' + (match.win ? 'text-green-400' : 'text-red-400')}>
             {match.win ? t('match.win') : t('match.loss')}
           </div>
-          <svg className={`w-4 h-4 text-[#7a8aa0] transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className={`w-4 h-4 text-fg-muted transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
         </div>
@@ -151,7 +151,7 @@ export default function MatchDetail({ match, ddVersion, isExpanded, onToggle, fo
 
       {/* Expanded: Full Game Details */}
       {isExpanded && participants.length > 0 && (
-        <div className="border-t border-[#1e2a3a] px-3 py-3">
+        <div className="border-t border-border-subtle px-3 py-3">
           {/* Tab Switcher */}
           <div className="flex gap-2 mb-3">
             {(['overview', 'damage'] as const).map(tab => (
@@ -161,7 +161,7 @@ export default function MatchDetail({ match, ddVersion, isExpanded, onToggle, fo
                 className={`px-3 py-1 rounded text-xs transition-colors ${
                   activeTab === tab
                     ? 'bg-[#c89b3c]/20 text-[#c89b3c] border border-[#c89b3c]/30'
-                    : 'text-[#7a8aa0] hover:text-[#a0b0c5]'
+                    : 'text-fg-muted hover:text-fg-secondary'
                 }`}
               >
                 {tab === 'overview' ? t('match.player') : t('match.damage')}
@@ -181,7 +181,7 @@ export default function MatchDetail({ match, ddVersion, isExpanded, onToggle, fo
                 {activeTab === 'overview' && (
                   <>
                     {/* Desktop header */}
-                    <div className="hidden md:grid grid-cols-[2rem_3.4rem_1.8rem_1fr_4.5rem_3.5rem_4rem_3rem_3rem_10rem] gap-1 px-2 py-1 text-[#7a8aa0] text-[10px] uppercase bg-[#0a0e1a]">
+                    <div className="hidden md:grid grid-cols-[2rem_3.4rem_1.8rem_1fr_4.5rem_3.5rem_4rem_3rem_3rem_10rem] gap-1 px-2 py-1 text-fg-muted text-[10px] uppercase bg-surface-sunken">
                       <div />
                       <div />
                       <div />
@@ -194,7 +194,7 @@ export default function MatchDetail({ match, ddVersion, isExpanded, onToggle, fo
                       <div className="text-center">Items</div>
                     </div>
                     {/* Mobile header */}
-                    <div className="md:hidden grid grid-cols-[1.5rem_1fr_4rem_3rem] gap-1 px-2 py-1 text-[#7a8aa0] text-[10px] uppercase bg-[#0a0e1a]">
+                    <div className="md:hidden grid grid-cols-[1.5rem_1fr_4rem_3rem] gap-1 px-2 py-1 text-fg-muted text-[10px] uppercase bg-surface-sunken">
                       <div />
                       <div>{t('match.player')}</div>
                       <div className="text-center">KDA</div>
@@ -219,30 +219,30 @@ export default function MatchDetail({ match, ddVersion, isExpanded, onToggle, fo
                               <div className="flex flex-col gap-0.5">
                                 {sum1 ? (
                                   <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/spell/${sum1.iconFile}`} alt={sum1.key} title={sum1.key} className="w-[14px] h-[14px] rounded-sm" />
-                                ) : <div className="w-[14px] h-[14px] rounded-sm bg-[#1e2a3a]" />}
+                                ) : <div className="w-[14px] h-[14px] rounded-sm bg-surface-overlay" />}
                                 {sum2 ? (
                                   <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/spell/${sum2.iconFile}`} alt={sum2.key} title={sum2.key} className="w-[14px] h-[14px] rounded-sm" />
-                                ) : <div className="w-[14px] h-[14px] rounded-sm bg-[#1e2a3a]" />}
+                                ) : <div className="w-[14px] h-[14px] rounded-sm bg-surface-overlay" />}
                               </div>
                               <div className="flex flex-col items-center gap-0.5">
                                 {keystone ? (
                                   <img src={`${RUNE_IMG_BASE}${keystone.icon}`} alt={keystone.name} title={keystone.name} className="w-[18px] h-[18px] rounded-full bg-black/40" />
-                                ) : <div className="w-[18px] h-[18px] rounded-full bg-[#1e2a3a]" />}
+                                ) : <div className="w-[18px] h-[18px] rounded-full bg-surface-overlay" />}
                                 {secondaryTree ? (
                                   <img src={`${RUNE_IMG_BASE}${secondaryTree.icon}`} alt={secondaryTree.name} title={secondaryTree.name} className="w-[12px] h-[12px] rounded-full bg-black/40" />
-                                ) : <div className="w-[12px] h-[12px] rounded-full bg-[#1e2a3a]" />}
+                                ) : <div className="w-[12px] h-[12px] rounded-full bg-surface-overlay" />}
                               </div>
                             </div>
-                            <div className="text-[#7a8aa0] text-[10px]">{p.champLevel}</div>
+                            <div className="text-fg-muted text-[10px]">{p.champLevel}</div>
                             <div className="text-white truncate text-xs">{p.summonerName.split('#')[0]}</div>
                             <div className="text-center">
                               <span className="text-white">{p.kills}/{p.deaths}/{p.assists}</span>
-                              <span className="text-[#7a8aa0] ml-1">({pKda})</span>
+                              <span className="text-fg-muted ml-1">({pKda})</span>
                             </div>
-                            <div className="text-[#a0b0c5] text-center">{p.cs}</div>
-                            <div className="text-[#a0b0c5] text-center">{(p.damageDealtToChampions / 1000).toFixed(1)}k</div>
+                            <div className="text-fg-secondary text-center">{p.cs}</div>
+                            <div className="text-fg-secondary text-center">{(p.damageDealtToChampions / 1000).toFixed(1)}k</div>
                             <div className="text-[#c89b3c] text-center">{(p.goldEarned / 1000).toFixed(1)}k</div>
-                            <div className="text-[#a0b0c5] text-center">{p.visionScore}</div>
+                            <div className="text-fg-secondary text-center">{p.visionScore}</div>
                             <div className="flex gap-0.5 justify-center">
                               {p.items.filter(id => id > 0).map((itemId, ii) => (
                                 <img
@@ -263,7 +263,7 @@ export default function MatchDetail({ match, ddVersion, isExpanded, onToggle, fo
                             />
                             <div className="text-white truncate text-xs">{p.summonerName.split('#')[0]}</div>
                             <div className="text-center text-white text-xs">{p.kills}/{p.deaths}/{p.assists}</div>
-                            <div className="text-[#a0b0c5] text-center text-xs">{p.cs}</div>
+                            <div className="text-fg-secondary text-center text-xs">{p.cs}</div>
                           </div>
                         </div>
                       );
@@ -273,7 +273,7 @@ export default function MatchDetail({ match, ddVersion, isExpanded, onToggle, fo
 
                 {activeTab === 'damage' && (
                   <>
-                    <div className="grid grid-cols-[2rem_1fr_1fr_1fr] gap-2 px-2 py-1 text-[#7a8aa0] text-[10px] uppercase bg-[#0a0e1a]">
+                    <div className="grid grid-cols-[2rem_1fr_1fr_1fr] gap-2 px-2 py-1 text-fg-muted text-[10px] uppercase bg-surface-sunken">
                       <div />
                       <div>{t('match.player')}</div>
                       <div>{t('match.damageDealt')}</div>
@@ -288,7 +288,7 @@ export default function MatchDetail({ match, ddVersion, isExpanded, onToggle, fo
                         />
                         <div className="text-white truncate">{p.summonerName.split('#')[0]}</div>
                         <div className="flex items-center gap-2">
-                          <div className="flex-1 h-3 bg-[#141c2e] rounded overflow-hidden">
+                          <div className="flex-1 h-3 bg-surface-raised rounded overflow-hidden">
                             <div
                               className="h-full bg-red-500/60 rounded"
                               style={{ width: `${(p.damageDealtToChampions / maxDamage) * 100}%` }}
@@ -297,7 +297,7 @@ export default function MatchDetail({ match, ddVersion, isExpanded, onToggle, fo
                           <span className="text-white w-10 text-right">{(p.damageDealtToChampions / 1000).toFixed(1)}k</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <div className="flex-1 h-3 bg-[#141c2e] rounded overflow-hidden">
+                          <div className="flex-1 h-3 bg-surface-raised rounded overflow-hidden">
                             <div
                               className="h-full bg-blue-500/60 rounded"
                               style={{ width: `${(p.damageTaken / maxDamageTaken) * 100}%` }}

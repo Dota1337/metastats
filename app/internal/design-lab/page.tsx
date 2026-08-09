@@ -19,17 +19,22 @@ import { useEffect, useMemo, useState } from 'react';
 import { loadTftAssets, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import {
   tftHeroUnitPool,
-  ddragonBaseSplashUrl,
   pickForSeed,
+  pickPairForSeed,
   type TftHeroUnit,
 } from '../../lib/ddragon-splash';
 
 const DD = 'https://ddragon.leagueoflegends.com/cdn/img/champion/splash';
 
-type Tab = 'home' | 'farbe' | 'tft';
+// Flaechenton mit Alpha. Der Fallback ist der heutige Wert — die aelteren
+// Entwuerfe weiter unten setzen `--page-rgb` nicht, sie sollen unveraendert
+// bleiben; nur der Auswahl-Reiter schaltet die Variable um.
+const PAGE = (alpha: number) => `rgb(var(--page-rgb, 14 21 37) / ${alpha * 100}%)`;
+
+type Tab = 'auswahl' | 'home' | 'farbe' | 'tft';
 
 export default function DesignLabPage() {
-  const [tab, setTab] = useState<Tab>('home');
+  const [tab, setTab] = useState<Tab>('auswahl');
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
 
   useEffect(() => {
@@ -50,6 +55,7 @@ export default function DesignLabPage() {
         <nav className="mt-4 flex gap-2">
           {(
             [
+              ['auswahl', 'Auswahl (F2 · T1 · S1+S3)'],
               ['home', 'Startseite'],
               ['farbe', 'Farbklima'],
               ['tft', 'TFT-Kopfzone'],
@@ -71,6 +77,7 @@ export default function DesignLabPage() {
       </header>
 
       <main className="mx-auto max-w-[1240px] px-6 py-8">
+        {tab === 'auswahl' && <FinalDraft pool={pool} />}
         {tab === 'home' && <HomeDrafts pool={pool} />}
         {tab === 'farbe' && <ColorDrafts />}
         {tab === 'tft' && <TftDrafts pool={pool} />}
@@ -104,6 +111,240 @@ function Stage({
       <div className="overflow-hidden rounded-lg border border-border-subtle">{children}</div>
       {verdict && <p className="mt-2 text-xs text-fg-muted">{verdict}</p>}
     </section>
+  );
+}
+
+/* ------------------------------------------------------------------ Auswahl */
+
+// F2 auf die Toene der App gestreckt. F2 benennt sechs Werte, das System fuehrt
+// elf. Die Zwischenstufen sind abgeleitet, nicht dazuerfunden: `base` liegt
+// eine Stufe ueber der Flaeche, `overlay` eine ueber der Karte, und
+// `border-default` muss heller bleiben als `border-subtle` — sonst kehrt sich
+// die Rangfolge "leiser/lauter Rahmen" um.
+//
+// `--page-rgb` gibt es in globals.css noch nicht. Es steht hier fuer den
+// ersten Umbau-Commit: die Verlaeufe der Kopfzonen haengen heute an dezimalen
+// `rgba(14,21,37,…)`-Literalen, die keinem Token folgen. In der Vorschau
+// haengen sie an dieser Variable — deshalb wandert beim Umschalten auch der
+// Bildverlauf mit, statt als blaue Kante stehenzubleiben.
+const IST_TOKENS = {
+  '--surface-sunken': '#0a0e1a',
+  '--surface-page': '#0e1525',
+  '--surface-base': '#0d1526',
+  '--surface-raised': '#141c2e',
+  '--surface-overlay': '#1e2a3a',
+  '--border-subtle': '#1e2a3a',
+  '--border-default': '#2a3a50',
+  '--fg-primary': '#ffffff',
+  '--fg-secondary': '#a0b0c5',
+  '--fg-muted': '#7a8aa0',
+  '--page-rgb': '14 21 37',
+} as React.CSSProperties;
+
+const F2_TOKENS = {
+  '--surface-sunken': '#05090f',
+  '--surface-page': '#080d18',
+  '--surface-base': '#0f172b',
+  '--surface-raised': '#16203a',
+  '--surface-overlay': '#1e2a45',
+  '--border-subtle': '#27334d',
+  '--border-default': '#38476a',
+  '--fg-primary': '#f2f4f8',
+  '--fg-secondary': '#b9c4d6',
+  '--fg-muted': '#93a0b8',
+  '--page-rgb': '8 13 24',
+} as React.CSSProperties;
+
+interface SiteStats {
+  totalTeams: number;
+  totalProPlayers: number;
+  matchesAnalyzed: number;
+}
+
+interface TopChampion {
+  id: string;
+  name: string;
+  games: number;
+  winRate: number;
+}
+
+function FinalDraft({ pool }: { pool: TftHeroUnit[] }) {
+  const [f2, setF2] = useState(true);
+  const [stats, setStats] = useState<SiteStats | null>(null);
+  const [champs, setChamps] = useState<TopChampion[] | null>(null);
+  const [setInfo, setSetInfo] = useState<{ setNumber: number; setName: string; latestPatch: string } | null>(null);
+
+  useEffect(() => {
+    // Echte Zahlen, echter Set-Name — kein Platzhalter. Was noch nicht da ist,
+    // bleibt Skelett, statt eine Zahl zu behaupten.
+    fetch('/api/homepage-stats')
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => {
+        if (!d) return;
+        // Die Route liefert die Kennzahlen unter `stats`, nicht flach.
+        if (d.stats) setStats(d.stats);
+        if (Array.isArray(d.topChampions)) setChamps(d.topChampions);
+      })
+      .catch(() => {});
+    fetch('/tft-set.json')
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => d && setSetInfo(d))
+      .catch(() => {});
+  }, []);
+
+  const pair = pickPairForSeed(pool, '/tft/comps');
+
+  return (
+    <div style={f2 ? F2_TOKENS : IST_TOKENS}>
+      <div className="mb-6 flex flex-wrap items-center gap-3">
+        <button
+          onClick={() => setF2(v => !v)}
+          className="rounded bg-surface-overlay px-3 py-1.5 text-sm text-fg-secondary hover:text-white"
+        >
+          Farbklima: <strong>{f2 ? 'F2' : 'heute'}</strong> — umschalten
+        </button>
+        <span className="text-xs text-fg-muted">
+          Umschalten wirkt auf beide Entwuerfe darunter, ueber dieselben Tokens, die spaeter in
+          globals.css stehen.
+        </span>
+      </div>
+
+      <p className="mb-8 max-w-3xl text-sm text-fg-secondary">
+        Zwei Hinweise, damit die Vorschau nicht mehr verspricht als sie hält: Die 591 Stellen
+        mit <code>text-white</code> in der App folgen dem Token <em>nicht</em> — dort bleibt
+        Text reinweiß statt <code>#f2f4f8</code>. Und die Diagramme tragen ihre Farben als
+        JS-Strings, sie ziehen erst mit dem Chart-Theme mit.
+      </p>
+
+      <Stage
+        nr="T1 · voll"
+        title="TFT-Kopfzone — zwei Set-Splashes, 180 px"
+        note={
+          setInfo
+            ? `Set ${setInfo.setNumber} · ${setInfo.setName} · Patch ${setInfo.latestPatch}`
+            : 'Set-Daten werden geladen…'
+        }
+        verdict={
+          pair
+            ? `Gezeigt: ${pair[0].name} und ${pair[1].name}. Beide Bilder tragen die Set-Bemalung; Grundskins und der von ddragon nicht ausgelieferte Blitzcrank-Skin sind aus dem Pool. Links und rechts können nicht mehr dasselbe Bild sein — gezogen wird ein Paar, nicht zweimal einzeln.`
+            : 'Bildpool wird geladen…'
+        }
+      >
+        <div
+          data-game="tft"
+          className="relative overflow-hidden"
+          style={{
+            height: 180,
+            background:
+              'radial-gradient(ellipse at top, rgb(var(--accent-rgb) / 22%) 0%, rgb(var(--page-rgb) / 0%) 60%), linear-gradient(180deg, var(--surface-raised) 0%, var(--surface-page) 100%)',
+          }}
+        >
+          {pair && (
+            <>
+              <SideArt unit={pair[0]} side="left" />
+              <SideArt unit={pair[1]} side="right" />
+            </>
+          )}
+          <div className="relative z-10 flex h-full flex-col items-center justify-center">
+            <div className="text-[10px] uppercase tracking-[0.3em] text-accent">
+              {setInfo
+                ? `Set ${setInfo.setNumber} · ${setInfo.setName} · Patch ${setInfo.latestPatch}`
+                : ' '}
+            </div>
+            <div className="text-3xl font-bold text-fg-primary">Comps</div>
+          </div>
+        </div>
+      </Stage>
+
+      <Stage
+        nr="S1 + S3"
+        title="Startseite — Kai'Sa bleibt, die Zahlen rücken hoch"
+        note="Abstand Suche → Meistgespielte Champions von 80 px auf 32 px"
+        verdict="Die drei Zahlen stehen heute erst unterhalb der Reiter. Hier tragen sie die Kopfzone mit, ohne dass ein weiterer Block Höhe kostet. Es sind die echten Werte aus /api/homepage-stats — solange sie fehlen, steht dort ein Skelett und keine erfundene Zahl."
+      >
+        <div className="bg-surface-page">
+          <div className="relative overflow-hidden">
+            <img
+              src={`${DD}/Kaisa_0.jpg`}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
+              style={{ objectPosition: '50% 18%' }}
+            />
+            <div
+              className="absolute inset-0"
+              style={{
+                background:
+                  'linear-gradient(180deg, rgb(var(--page-rgb) / 35%) 0%, rgb(var(--page-rgb) / 55%) 45%, rgb(var(--page-rgb) / 100%) 100%)',
+              }}
+            />
+            <div className="relative flex flex-col items-center gap-6 px-6 pt-16 pb-8">
+              <div className="text-center">
+                <div className="text-4xl font-bold text-fg-primary">
+                  meta<span className="text-accent">stats</span>.gg
+                </div>
+                <p className="mt-2 text-sm text-fg-secondary">
+                  Marktwerte, Meta und Pro-Daten für League of Legends und Teamfight Tactics
+                </p>
+              </div>
+              <SearchBar />
+              <div className="flex flex-wrap justify-center gap-x-12 gap-y-4">
+                {[
+                  ['Analysierte Partien', stats?.matchesAnalyzed],
+                  ['Pro-Spieler', stats?.totalProPlayers],
+                  ['Verifizierte Teams', stats?.totalTeams],
+                ].map(([label, value]) => (
+                  <div key={String(label)} className="text-center">
+                    {typeof value === 'number' ? (
+                      <div className="text-xl font-bold text-fg-primary">
+                        {value.toLocaleString('de-DE')}
+                      </div>
+                    ) : (
+                      <div className="mx-auto my-1 h-5 w-20 animate-pulse rounded bg-surface-overlay" />
+                    )}
+                    <div className="text-[11px] uppercase tracking-wider text-fg-muted">
+                      {label}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="px-8 pt-8 pb-8">
+            <div className="mb-4 flex items-baseline gap-3">
+              <span className="text-lg font-bold text-fg-primary">Meistgespielte Champions</span>
+              <span className="text-xs text-fg-muted">letzte 7 Tage · EUW</span>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              {(champs ?? [null, null, null]).slice(0, 3).map((c, i) => (
+                <div
+                  key={c?.id ?? i}
+                  className="rounded-lg border border-border-subtle bg-surface-raised p-4"
+                >
+                  {c ? (
+                    <>
+                      <div className="text-sm font-semibold text-fg-primary">{c.name}</div>
+                      <div className="mt-1 text-xs text-fg-muted">
+                        {c.games.toLocaleString('de-DE')} Spiele
+                      </div>
+                      <div className="mt-3 text-xl font-bold text-accent">
+                        {c.winRate.toLocaleString('de-DE', { minimumFractionDigits: 1 })} %
+                      </div>
+                    </>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="h-4 w-24 animate-pulse rounded bg-surface-overlay" />
+                      <div className="h-3 w-16 animate-pulse rounded bg-surface-overlay" />
+                      <div className="h-6 w-20 animate-pulse rounded bg-surface-overlay" />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </Stage>
+    </div>
   );
 }
 
@@ -701,12 +942,10 @@ function SideArt({
           objectPosition: side === 'left' ? '70% 15%' : '30% 15%',
         }}
         onError={e => {
-          // Set-Skin nicht vorhanden (ddragon antwortet 403) — auf den
-          // Grundskin zurueckfallen statt ein Loch zu lassen.
-          const img = e.currentTarget as HTMLImageElement;
-          const base = ddragonBaseSplashUrl(unit.splash.championId);
-          if (img.src !== base) img.src = base;
-          else img.style.opacity = '0';
+          // KEIN Rueckfall auf den Grundskin: das Bild ist dann Artwork aus
+          // einer anderen Zeit und faellt neben dem zweiten Set-Bild sofort
+          // auf. Lieber eine leere Seite als ein fremdes Bild.
+          (e.currentTarget as HTMLImageElement).style.opacity = '0';
         }}
       />
       <div
@@ -714,14 +953,13 @@ function SideArt({
         style={{
           // Bild aussen, Verlauf nach innen: links liegendes Bild blendet nach
           // rechts ins Blau aus, rechts liegendes nach links.
-          background: `linear-gradient(to ${side === 'left' ? 'right' : 'left'}, rgba(14,21,37,0) 0%, rgba(14,21,37,0.15) 60%, rgba(14,21,37,1) 100%)`,
+          background: `linear-gradient(to ${side === 'left' ? 'right' : 'left'}, ${PAGE(0)} 0%, ${PAGE(0.15)} 60%, ${PAGE(1)} 100%)`,
         }}
       />
       <div
         className="absolute inset-0"
         style={{
-          background:
-            'linear-gradient(to bottom, rgba(14,21,37,0) 0%, rgba(14,21,37,0) 60%, rgba(14,21,37,1) 100%)',
+          background: `linear-gradient(to bottom, ${PAGE(0)} 0%, ${PAGE(0)} 60%, ${PAGE(1)} 100%)`,
         }}
       />
     </div>

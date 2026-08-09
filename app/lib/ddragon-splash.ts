@@ -26,22 +26,26 @@
 
 import type { TftAssetsBundle, TftChampion } from './tft-cdragon';
 
-// Faelle, in denen `slug` != `kleinschreibung(ddragon-id)` ist. Alles andere
-// loest ueber simple Grossschreibung des ersten Buchstabens auf.
-// Ermittelt gegen ddragon 16.15.1 ueber alle 63 spielbaren Set-17-Einheiten.
-const DDRAGON_ID_EXCEPTIONS: Record<string, string> = {
-  missfortune: 'MissFortune',
-  aurelionsol: 'AurelionSol',
-  masteryi: 'MasterYi',
-  twistedfate: 'TwistedFate',
-  tahmkench: 'TahmKench',
-  reksai: 'RekSai',
-};
-
+// Die ddragon-ID kommt aus dem **apiName**, nicht aus dem Icon-Pfad. Der
+// apiName traegt die Original-Schreibweise (`TFT17_MissFortune`), die exakt der
+// ddragon-ID entspricht; der Icon-Dateiname ist kleingeschrieben und braeuchte
+// eine handgepflegte Ausnahmeliste, die beim naechsten Set still bricht.
+// Gegen ddragon 16.15.1 ueber alle 63 spielbaren Set-17-Einheiten geprueft:
+// aufloesbar sind alle ausser `TFT17_IvernMinion` und `TFT17_Rhaast` — beide
+// haben gar keinen ddragon-Champion und fallen ueber `null` aus dem Pool.
+//
 // Set-Praefix bewusst als \d+ statt hart 17 — sonst ist der naechste
 // Set-Bump ein stiller Totalausfall (vgl. Gate 6 gegen `|| 17`-Literale).
-const SLUG_RE =
-  /^tft\d+b?_([a-z0-9]+?)(?:splash)?(?:_splash)?_?(?:centered|uncentered)?_?(\d+)?\.png$/;
+const API_PREFIX_RE = /^tft\d+b?_/i;
+
+// Aus dem Icon-Pfad wird nur noch **eins** gelesen: die Skin-Nummer.
+const SKIN_NUM_RE = /_(\d+)\.png$/;
+
+// Set-Skins, die ddragon nicht ausliefert (403, nicht 404 — wer auf 404 prueft,
+// haelt die URL fuer gueltig). Gemessen gegen ddragon 16.15.1.
+// Diese Liste ist ein Zwischenstand: sobald der Pool zur Buildzeit erzeugt und
+// per HEAD validiert wird, faellt sie ersatzlos weg.
+const KNOWN_MISSING = new Set(['Blitzcrank_65']);
 
 // PvE-Gegner und Beschwoerungen tragen teils Kosten und sehen im Bundle aus
 // wie regulaere Einheiten. `TFT17_Enemy_Aatrox` ("Apex Primordian") ist eine
@@ -61,14 +65,12 @@ export interface TftSplash {
  * `null`, wenn kein ddragon-Champion dahintersteht (z.B. Meepsie).
  */
 export function tftSplashUrl(apiName: string, champ: TftChampion): TftSplash | null {
-  const file = String(champ.icon || '').split('/').pop()?.toLowerCase() ?? '';
-  const m = file.match(SLUG_RE);
-  const slug = m?.[1] ?? apiName.replace(/^TFT\d+b?_/i, '').toLowerCase();
-  if (!slug) return null;
+  const championId = apiName.replace(API_PREFIX_RE, '');
+  if (!championId) return null;
 
-  const championId =
-    DDRAGON_ID_EXCEPTIONS[slug] ?? slug.charAt(0).toUpperCase() + slug.slice(1);
-  const skinNum = m?.[2] ?? '0';
+  const file = String(champ.icon || '').split('/').pop() ?? '';
+  const skinNum = file.match(SKIN_NUM_RE)?.[1] ?? '0';
+  if (KNOWN_MISSING.has(`${championId}_${skinNum}`)) return null;
 
   return {
     url: `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${championId}_${skinNum}.jpg`,
@@ -76,11 +78,6 @@ export function tftSplashUrl(apiName: string, champ: TftChampion): TftSplash | n
     skinNum,
     isBaseSkin: skinNum === '0',
   };
-}
-
-/** Grundbild-URL als Rueckfallebene, wenn die Set-Skin-Nummer 403 liefert. */
-export function ddragonBaseSplashUrl(championId: string): string {
-  return `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${championId}_0.jpg`;
 }
 
 export interface TftHeroUnit {
@@ -96,6 +93,10 @@ export interface TftHeroUnit {
  * Die Auswahl ist bewusst **rein sachlich** — Kosten und Spielbarkeit, nie
  * Win- oder Pick-Rate. Ein nach Leistung sortierter Bildpool waere eine
  * implizite Tier-Aussage ohne Datengrundlage.
+ *
+ * Grundskins fliegen raus: ein Bild ohne Set-Bemalung ist je nach Champion
+ * Artwork aus den 2010ern und faellt zwischen acht aktuellen Set-Bildern
+ * sofort auf. Lieber ein Bild weniger im Pool als ein sichtbar fremdes.
  */
 export function tftHeroUnitPool(bundle: TftAssetsBundle | null, cost = 5): TftHeroUnit[] {
   if (!bundle?.champions) return [];
@@ -105,7 +106,7 @@ export function tftHeroUnitPool(bundle: TftAssetsBundle | null, cost = 5): TftHe
     if (!Array.isArray(champ.traits) || champ.traits.length === 0) continue;
     if (NON_PLAYABLE_RE.test(apiName)) continue;
     const splash = tftSplashUrl(apiName, champ);
-    if (!splash) continue;
+    if (!splash || splash.isBaseSkin) continue;
     out.push({ apiName, name: champ.name, cost: champ.cost, splash });
   }
   return out.sort((a, b) => a.apiName.localeCompare(b.apiName));
@@ -120,10 +121,33 @@ export function tftHeroUnitPool(bundle: TftAssetsBundle | null, cost = 5): TftHe
  */
 export function pickForSeed<T>(pool: T[], seed: string): T | null {
   if (pool.length === 0) return null;
+  return pool[hashSeed(seed) % pool.length];
+}
+
+/**
+ * Zwei **verschiedene** Einheiten fuer eine zweiseitige Kopfzone.
+ *
+ * Bewusst nicht zweimal `pickForSeed` mit unterschiedlichem Seed: das trifft
+ * bei acht Bildern in rund jedem achten Fall zweimal denselben Champion, und
+ * genau der Fall faellt auf. Gezogen wird stattdessen aus der Menge der
+ * geordneten Paare (n*(n-1) Stueck), in der Dopplungen gar nicht vorkommen.
+ */
+export function pickPairForSeed<T>(pool: T[], seed: string): [T, T] | null {
+  if (pool.length < 2) return null;
+  const n = pool.length;
+  const idx = hashSeed(seed) % (n * (n - 1));
+  const left = Math.floor(idx / (n - 1));
+  const off = idx % (n - 1);
+  // `off` ueberspringt `left`, damit rechts nie dasselbe Bild steht.
+  const right = off >= left ? off + 1 : off;
+  return [pool[left], pool[right]];
+}
+
+function hashSeed(seed: string): number {
   let h = 2166136261;
   for (let i = 0; i < seed.length; i++) {
     h ^= seed.charCodeAt(i);
     h = Math.imul(h, 16777619);
   }
-  return pool[Math.abs(h) % pool.length];
+  return Math.abs(h);
 }

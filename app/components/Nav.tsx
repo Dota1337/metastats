@@ -5,7 +5,6 @@ import { useI18n, LANGUAGES } from '../lib/i18n';
 import { detectGameFromPath } from '../lib/games';
 import { TFT_COACH_ENABLED } from '../lib/feature-flags';
 import { useAuth } from '../lib/auth-context';
-import GameSwitcher from './GameSwitcher';
 
 interface NavProps {
   active?:
@@ -125,17 +124,20 @@ export default function Nav({ active }: NavProps) {
     }
   };
 
-  const homeHref = game === 'tft' ? '/tft' : '/';
-  const accentClass = game === 'tft' ? 'text-[#7B61FF]' : 'text-[#c89b3c]';
+  const homeHref = game === 'tft' ? '/tft/comps' : '/';
 
   return (
-    <nav className="bg-[#0a0e1a] border-b border-[#1e2a3a] px-4 sm:px-6 py-3" data-game={game}>
+    // Kein data-game mehr: der Accent-Anker ist app/tft/layout.tsx, der den
+    // kompletten /tft-Baum inkl. dieser Nav umschliesst. Das Attribut hier hat
+    // denselben Wert nur ein zweites Mal gesetzt.
+    <nav className="bg-[#0a0e1a] border-b border-[#1e2a3a] px-4 sm:px-6 py-3">
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-16 flex-shrink-0">
-          <a href={homeHref} className={`${accentClass} text-lg font-medium flex-shrink-0`}>
+        <div className="flex items-center flex-shrink-0">
+          {/* text-accent statt zweier hartkodierter Hexe — das war die dritte
+              unabhängige Stelle, an der beide Spielfarben standen. */}
+          <a href={homeHref} className="text-accent text-lg font-medium flex-shrink-0">
             meta<span className="text-white">stats</span>.gg
           </a>
-          <GameSwitcher />
         </div>
 
         {/* Desktop nav */}

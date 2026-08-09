@@ -6,6 +6,7 @@ import { AuthProvider } from "./lib/auth-context";
 import { getServerLang, getSeoCopy } from "./lib/server-lang";
 import SideDrawer from "./components/SideDrawer";
 import PrototypeBanner from "./components/PrototypeBanner";
+import GameStrip from "./components/GameStrip";
 import CookieBanner from "./components/CookieBanner";
 import { Analytics } from "@vercel/analytics/next";
 
@@ -109,6 +110,7 @@ export default async function RootLayout({
         <I18nProvider initialLang={initialLang}>
           <AuthProvider>
             <PrototypeBanner />
+            <GameStrip />
             <SideDrawer />
             {children}
             <CookieBanner />

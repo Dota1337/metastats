@@ -5,15 +5,14 @@
 
 export type Game = 'lol' | 'tft';
 
-// `accent` ist bewusst ein CSS-var()-Zeiger, kein Hex. Source-of-Truth für
-// beide Game-Farben ist app/globals.css (--accent-lol / --accent-tft) — sonst
-// existiert dieselbe Farbe an zwei Stellen und driftet auseinander.
-// Der GameSwitcher rendert beide Icons gleichzeitig und braucht deshalb die
-// benannten Varianten; `var(--accent)` allein würde dort für beide Buttons
-// dieselbe Farbe liefern.
-export const GAMES: { id: Game; label: string; accent: string; cookieValue: string }[] = [
-  { id: 'lol', label: 'League of Legends', accent: 'var(--accent-lol)', cookieValue: 'lol' },
-  { id: 'tft', label: 'Teamfight Tactics',  accent: 'var(--accent-tft)', cookieValue: 'tft' },
+// Farben stehen hier bewusst NICHT. Source-of-Truth für beide Game-Farben ist
+// app/globals.css (--accent-lol / --accent-tft); der Game-Streifen greift die
+// benannten Varianten direkt per CSS ab. Bis Welle 1.5 hielt dieser Array ein
+// `accent`-Feld mit var()-Zeigern für den gelöschten GameSwitcher — reiner
+// Umweg über JS für etwas, das CSS selbst kann.
+export const GAMES: { id: Game; label: string }[] = [
+  { id: 'lol', label: 'League of Legends' },
+  { id: 'tft', label: 'Teamfight Tactics' },
 ];
 
 export const GAME_COOKIE = 'metastats-game';

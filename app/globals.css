@@ -111,9 +111,9 @@
    dort aber nicht beerbt.
 
    Der metastats-game-Cookie ist AUSDRÜCKLICH KEINE Quelle für den Accent.
-   Er stellt nur bei einem frischen Besuch auf / den letzten Kontext wieder
-   her. Das Styling-Game ist eine reine Funktion des Pfads — sonst bekommst
-   du eine lila LoL-Seite, wenn der Cookie auf tft steht. */
+   Er wird geschrieben, aber nirgends gelesen — er stellt insbesondere keine
+   Präferenz wieder her. Das Styling-Game ist eine reine Funktion des Pfads —
+   sonst bekommst du eine lila LoL-Seite, wenn der Cookie auf tft steht. */
 [data-game="tft"] {
   --accent: var(--accent-tft);
   /* Muss mit --accent zusammen umgeschaltet werden — sonst bleiben alle
@@ -297,6 +297,32 @@ body {
   .game-strip-target {
     transition: none;
   }
+}
+
+/* Prototyp-Banner. Liegt oberhalb des Accent-Ankers aus app/tft/layout.tsx und
+   setzt sein data-game deshalb selbst — es ist der einzige Konsument von
+   var(--accent) über dem Anker. Vorher standen hier acht #c89b3c, fünf davon
+   mit Alpha, was das Banner auf jeder TFT-Seite golden liess. */
+.proto-banner {
+  background: linear-gradient(
+    to right,
+    rgb(var(--accent-rgb) / 20%),
+    rgb(var(--accent-rgb) / 10%),
+    rgb(var(--accent-rgb) / 20%)
+  );
+  border-bottom: 1px solid rgb(var(--accent-rgb) / 30%);
+}
+
+.proto-banner-dot {
+  background: var(--accent);
+}
+
+.proto-banner-accent {
+  color: var(--accent);
+}
+
+.proto-banner-sub {
+  color: rgb(var(--accent-rgb) / 70%);
 }
 
 /* ============================================================================

@@ -1,6 +1,7 @@
 'use client';
 import { useI18n } from '../lib/i18n';
 import { usePathname } from 'next/navigation';
+import { detectGameFromPath } from '../lib/games';
 
 export default function PrototypeBanner() {
   const { t } = useI18n();
@@ -8,17 +9,19 @@ export default function PrototypeBanner() {
   // Internal-Ops-Dashboard läuft full-screen, der Prototyp-Banner würde die
   // 3D-Scene anschneiden.
   if (pathname?.startsWith('/internal')) return null;
+  // Eigenes data-game, weil das Banner im Root-Layout oberhalb des Ankers aus
+  // app/tft/layout.tsx liegt und Custom-Properties nur abwärts vererben.
   return (
-    <div className="bg-gradient-to-r from-[#c89b3c]/20 via-[#c89b3c]/10 to-[#c89b3c]/20 border-b border-[#c89b3c]/30 py-2.5 px-4">
+    <div className="proto-banner py-2.5 px-4" data-game={detectGameFromPath(pathname || '/')}>
       <div className="max-w-5xl mx-auto flex items-start sm:items-center gap-2.5 justify-center">
-        <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#c89b3c] animate-pulse flex-shrink-0 mt-1.5 sm:mt-0" aria-hidden="true" />
+        <span className="proto-banner-dot inline-block w-1.5 h-1.5 rounded-full animate-pulse flex-shrink-0 mt-1.5 sm:mt-0" aria-hidden="true" />
         <div className="text-xs sm:text-sm text-[#f0e6d2] text-left sm:text-center">
           <div>
-            <strong className="text-[#c89b3c]">{t('banner.label')}</strong>
-            <span className="text-[#c89b3c] mx-1.5">·</span>
+            <strong className="proto-banner-accent">{t('banner.label')}</strong>
+            <span className="proto-banner-accent mx-1.5">·</span>
             {t('banner.text')}
           </div>
-          <div className="text-[11px] sm:text-xs text-[#c89b3c]/70 mt-0.5">
+          <div className="proto-banner-sub text-[11px] sm:text-xs mt-0.5">
             {t('banner.subtext')}
           </div>
         </div>

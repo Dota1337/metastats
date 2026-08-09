@@ -163,6 +163,108 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* ============================================================================
+   PREMIUM-KLASSEN  ·  Welle 1, Commit B1
+   ----------------------------------------------------------------------------
+   Lagen bis 2026-08-09 als Inline-<style>-Block in app/page.tsx und waren
+   damit auf 51 von 52 Routen technisch nicht verfügbar — u.a. hat
+   ApiUnavailable.tsx `className="glass"` gesetzt, ohne dass die Klasse dort
+   je definiert war.
+
+   Farben sind hier noch hart kodiert (Ist-Zustand). Die Umstellung auf
+   var(--accent) folgt in Commit B2 — erst danach glühen sie auf TFT-Seiten
+   lila statt gold.
+
+   EINSATZREGEL für backdrop-filter (.glass/.glass-strong):
+   nur auf Overlays und Containern, die sich NICHT relativ zu ihrem Backdrop
+   bewegen. Niemals in Listen-Items, niemals in Scroll-Containern — die Kosten
+   sind pro Frame und skalieren mit Fläche × DPR². Richtwert: max. 2-3
+   gleichzeitig sichtbar. Für Karten stattdessen opake Fläche + Border +
+   Shadow: optisch fast identisch, praktisch kostenlos.
+   ============================================================================ */
+
+@keyframes float {
+  0%, 100% { transform: translateY(0) translateX(0); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(-100vh) translateX(20px); opacity: 0; }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.particle {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: #c89b3c;
+  border-radius: 50%;
+  box-shadow: 0 0 6px #c89b3c, 0 0 12px #c89b3c40;
+  pointer-events: none;
+}
+
+.glass {
+  background: rgba(13, 21, 38, 0.6);
+  /* -webkit- ist für iOS < 18 Pflicht. Fehlte im ursprünglichen Inline-Block,
+     wodurch .glass auf älteren iPhones schlicht wirkungslos war. */
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(200, 155, 60, 0.15);
+}
+
+.glass-strong {
+  background: rgba(13, 21, 38, 0.8);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(200, 155, 60, 0.2);
+}
+
+/* `transform-style: preserve-3d` stand hier ursprünglich in der Basis-Regel
+   und erzeugte auf JEDER Karte dauerhaft einen 3D-Rendering- und Stacking-
+   Kontext, unabhängig vom Hover. Für diesen Effekt ist es wirkungslos:
+   `perspective()` ist eine Transform-Funktion auf einem Blatt-Element,
+   preserve-3d braucht man nur, wenn Kinder den 3D-Raum teilen sollen.
+   Entfernt — pixelidentisch, spart pro Karte eine Compositing-Layer
+   (~960 KB bei 300×200 @DPR2). Nicht wieder hinzufügen. */
+.card-3d {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card-3d:hover {
+  transform: translateY(-4px) perspective(800px) rotateX(2deg);
+  box-shadow: 0 12px 40px rgba(200, 155, 60, 0.1), 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.hero-animate {
+  animation: slideIn 0.8s ease-out;
+}
+
+/* Neuer, game-neutraler Name. `.gold-border` bleibt als Alias bestehen, bis
+   die Verwendungsstelle in page.tsx in Welle 2 migriert ist. */
+.accent-border,
+.gold-border {
+  border: 1px solid rgba(200, 155, 60, 0.3);
+  box-shadow: 0 0 20px rgba(200, 155, 60, 0.05), inset 0 0 20px rgba(200, 155, 60, 0.02);
+}
+
+/* Die Partikel auf / setzen ihre `animation` als INLINE-Style und lassen sich
+   deshalb hier nicht abschalten — eine Media-Query verliert gegen ein
+   style-Attribut. Sie werden stattdessen in page.tsx bei `reduce` gar nicht
+   erst gerendert. Diese Regel deckt den Rest ab. */
+@media (prefers-reduced-motion: reduce) {
+  .hero-animate {
+    animation: none;
+  }
+  .card-3d {
+    transition: none;
+  }
+  .card-3d:hover {
+    transform: none;
+  }
+}
+
 /* Accessible focus ring for keyboard navigation (mouse users unaffected).
    Folgt seit Welle 1 dem Game-Accent — vorher hart #c89b3c, was auf jeder
    TFT-Seite einen goldenen Fokusring auf lila Chrome ergab. */

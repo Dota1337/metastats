@@ -32,6 +32,12 @@ export default function Home() {
   const [loadingMarket, setLoadingMarket] = useState(false);
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
+  // Die Partikel setzen ihre `animation` als Inline-Style; eine
+  // prefers-reduced-motion-Regel in globals.css würde dagegen verlieren.
+  // Deshalb werden die 20 Knoten bei `reduce` gar nicht erst gerendert —
+  // statisch wären sie ohnehin nur 20 Goldpunkte in der Luft, und ihr
+  // doppelter box-shadow-Glow kostet auch unbewegt Paint.
+  const [reduceMotion, setReduceMotion] = useState(false);
   const [featuredChamps, setFeaturedChamps] = useState<Champion[] | null>(null);
   const [siteStats, setSiteStats] = useState<SiteStats | null>(null);
   const { t, lang } = useI18n();
@@ -46,6 +52,12 @@ export default function Home() {
     fetchRecentPlayers();
     fetchHomepageStats();
     setMounted(true);
+
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setReduceMotion(mq.matches);
+    const onChange = (e: MediaQueryListEvent) => setReduceMotion(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
   }, []);
 
   useEffect(() => {
@@ -110,58 +122,6 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-[#0e1525]">
-      {/* Particle animation styles */}
-      <style>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0) translateX(0); opacity: 0; }
-          10% { opacity: 1; }
-          90% { opacity: 1; }
-          100% { transform: translateY(-100vh) translateX(20px); opacity: 0; }
-        }
-        @keyframes glow {
-          0%, 100% { opacity: 0.3; }
-          50% { opacity: 0.6; }
-        }
-        @keyframes slideIn {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .particle {
-          position: absolute;
-          width: 2px;
-          height: 2px;
-          background: #c89b3c;
-          border-radius: 50%;
-          box-shadow: 0 0 6px #c89b3c, 0 0 12px #c89b3c40;
-          pointer-events: none;
-        }
-        .glass {
-          background: rgba(13, 21, 38, 0.6);
-          backdrop-filter: blur(12px);
-          border: 1px solid rgba(200, 155, 60, 0.15);
-        }
-        .glass-strong {
-          background: rgba(13, 21, 38, 0.8);
-          backdrop-filter: blur(16px);
-          border: 1px solid rgba(200, 155, 60, 0.2);
-        }
-        .card-3d {
-          transition: transform 0.3s ease, box-shadow 0.3s ease;
-          transform-style: preserve-3d;
-        }
-        .card-3d:hover {
-          transform: translateY(-4px) perspective(800px) rotateX(2deg);
-          box-shadow: 0 12px 40px rgba(200, 155, 60, 0.1), 0 4px 12px rgba(0,0,0,0.3);
-        }
-        .hero-animate {
-          animation: slideIn 0.8s ease-out;
-        }
-        .gold-border {
-          border: 1px solid rgba(200, 155, 60, 0.3);
-          box-shadow: 0 0 20px rgba(200, 155, 60, 0.05), inset 0 0 20px rgba(200, 155, 60, 0.02);
-        }
-      `}</style>
-
       <Nav active="search" />
 
       {/* === HERO SECTION === */}
@@ -184,7 +144,7 @@ export default function Home() {
         </div>
 
         {/* Gold particles (client-only to avoid hydration mismatch) */}
-        {mounted && (
+        {mounted && !reduceMotion && (
           <div className="absolute inset-0 pointer-events-none overflow-hidden">
             {Array.from({ length: 20 }).map((_, i) => (
               <div

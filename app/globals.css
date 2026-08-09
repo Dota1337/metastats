@@ -1,6 +1,81 @@
 @import "tailwindcss";
 
+/* ============================================================================
+   DESIGN-TOKEN-LAYER  ·  eingeführt 2026-08-09 (Design-Update Welle 1)
+   ----------------------------------------------------------------------------
+   Diese Tokens bilden den IST-Zustand der App 1:1 ab — sie ändern optisch
+   nichts. Sie werden in Welle 1 nur BEREITGESTELLT, noch nicht konsumiert:
+   das Markup nutzt weiterhin Roh-Hexe (`bg-[#141c2e]` & Co.). Die Migration
+   auf `bg-surface-raised` etc. ist Welle 2.
+
+   Wenn du das hier liest und dich fragst, warum unbenutztes CSS im Repo liegt:
+   das ist Absicht, kein Überbleibsel. Wellenplan:
+     Welle 1   Token-Layer + Premium-Klassen global  (hier)
+     Welle 1.5 Game-Streifen ersetzt den Icon-Switcher
+     Welle 2   Primitives + Migration der Roh-Hexe auf Tokens
+     Welle 3   Tiefe/Motion/Skeletons
+     Welle 4   Signatur-Elemente
+     Welle 5   Rest-Migration + Chart-Theme
+   ============================================================================ */
+
 :root {
+  /* --- Flächen -------------------------------------------------------------
+     Gemessene Ist-Werte, absteigend von dunkel nach hell.
+     `sunken` ist der Nav-Hintergrund, `page` der <main>-Ton.            */
+  --surface-sunken: #0a0e1a;   /* 65× */
+  --surface-page:   #0e1525;   /* 65×  — identisch mit --background */
+  --surface-base:   #0d1526;   /* 254× */
+  --surface-raised: #141c2e;   /* 254× */
+  --surface-overlay: #1e2a3a;  /* 105× als Fläche */
+
+  /* --- Ränder --------------------------------------------------------------
+     ACHTUNG: --border-subtle hat denselben Hex wie --surface-overlay.
+     Das ist eine Koinzidenz des Ist-Zustands, KEINE Aussage. Bewusst zwei
+     Namen, damit Welle 2 Ränder verschieben kann, ohne 105 Flächen
+     mitzuziehen. Nicht zu einem Token zusammenfassen.                   */
+  --border-subtle:  #1e2a3a;   /* 508× */
+  --border-default: #2a3a50;   /* 21× */
+
+  /* --- Text ----------------------------------------------------------------
+     Vier Stufen decken 1.636 der gemessenen Fundstellen ab.             */
+  --fg-primary:   #ffffff;     /* 591× (text-white) */
+  --fg-secondary: #a0b0c5;     /* 545× */
+  --fg-muted:     #7a8aa0;     /* 443× */
+  --fg-faint:     #5a6a80;     /* 57× */
+  --fg-bright:    #cdd6e0;     /* 9× — konsolidiert #cfd8dc/#cfd6dc/#cbd5e1 */
+
+  /* --- Akzent --------------------------------------------------------------
+     CSS ist die Source-of-Truth für beide Game-Farben. app/lib/games.ts
+     hält nur noch Zeiger (`var(--accent-lol)`), keinen eigenen Hex — sonst
+     driften die beiden Dateien auseinander.
+
+     --accent folgt dem aktiven Game über [data-game="tft"] (siehe unten).
+     Der GameSwitcher rendert BEIDE Icons gleichzeitig und braucht deshalb
+     die benannten Varianten, nicht nur --accent.                        */
+  --accent-lol: #c89b3c;
+  --accent-tft: #7B61FF;
+  --accent: var(--accent-lol);
+  --accent-soft: color-mix(in srgb, var(--accent) 15%, transparent);
+  --accent-glow: color-mix(in srgb, var(--accent) 30%, transparent);
+
+  /* --- Semantik ------------------------------------------------------------
+     WELLE-2-SCHULD: Win/Loss läuft heute über ZWEI parallele Systeme —
+     diese Hexe (24×/13×) und Tailwind-Namen text-green-400 (45×) /
+     text-red-400 (59×). Zwei verschiedene Grüns und Rots für dieselbe
+     Bedeutung. Welle 2 räumt die 141 Fundstellen hierauf zusammen.      */
+  --pos-win:     #3ecf8e;
+  --pos-loss:    #e44040;
+  --pos-neutral: var(--fg-secondary);
+
+  /* --- Premium (Glassmorphism / Tiefe) ------------------------------------- */
+  --glass-bg:     rgba(13, 21, 38, 0.6);
+  --glass-bg-strong: rgba(13, 21, 38, 0.8);
+  --glass-blur:   12px;
+  --glass-blur-strong: 16px;
+  --elevation-1: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --elevation-2: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --elevation-3: 0 12px 40px rgba(0, 0, 0, 0.4);
+
   /* The site is dark-only by design — every page sets its own `bg-[#0e1525]`
      on `<main>`. The body fills the gap above/below the main element (e.g.
      under the PrototypeBanner, which uses a 20%-opacity gold gradient).
@@ -8,23 +83,69 @@
      of the visitor's OS color preference. Don't restore @prefers-color-scheme
      here — it was making the banner unreadable on light-mode laptops.
   */
-  --background: #0e1525;
+  --background: var(--surface-page);
+  /* Abweichung vom Ist-Zustand bewusst NICHT korrigiert: --foreground ist
+     #ededed, das Markup nutzt aber 591× text-white (#ffffff). Angleichung
+     wäre eine sichtbare Änderung an 591 Stellen → Welle 2. */
   --foreground: #ededed;
-  /* Game-specific accent. Default = LoL gold. Nav root sets data-game="tft"
-     on the <nav> element when the route starts with /tft, which swaps this
-     to TFT purple. Components reference var(--accent) for game-aware hover
-     borders, focus rings, etc. */
-  --accent: #c89b3c;
   color-scheme: dark;
 }
 
-nav[data-game="tft"] {
-  --accent: #7B61FF;
+/* Game-Accent-Override.
+   Anker ist der Wrapper in app/tft/layout.tsx; die Regel greift zusätzlich
+   auf <nav data-game="tft">, was denselben Wert setzt und damit harmlos ist.
+   Vorher stand hier `nav[data-game="tft"]` — das erreichte nur den Nav-
+   Subtree, weil <Nav> zwar INNERHALB von <main> liegt, seine Geschwister
+   dort aber nicht beerbt.
+
+   Der metastats-game-Cookie ist AUSDRÜCKLICH KEINE Quelle für den Accent.
+   Er stellt nur bei einem frischen Besuch auf / den letzten Kontext wieder
+   her. Das Styling-Game ist eine reine Funktion des Pfads — sonst bekommst
+   du eine lila LoL-Seite, wenn der Cookie auf tft steht. */
+[data-game="tft"] {
+  --accent: var(--accent-tft);
 }
 
+/* @theme inline registriert die Tokens als Tailwind-Utilities
+   (bg-surface-raised, text-fg-muted, border-border-subtle, …).
+
+   ZWEI REGELN, die hier stehen bleiben müssen:
+
+   1. Das Keyword `inline` ist LOAD-BEARING. Es reicht die var()-Referenz
+      durch, statt sie zur Build-Zeit aufzulösen. Nur deshalb folgt eine
+      Utility wie `bg-accent` zur Laufzeit dem [data-game]-Override. Ohne
+      `inline` würde --accent dort aufgelöst, wo es deklariert ist (:root
+      = Gold) und der Game-Accent stirbt lautlos — ohne Build-Fehler.
+
+   2. Dieser Block enthält AUSSCHLIESSLICH Aliase, niemals einen Wert.
+      Sobald hier ein Hex steht, der nicht oben in :root steht, hast du
+      zwei Token-Systeme statt einer Indirektion. */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+
+  --color-surface-sunken: var(--surface-sunken);
+  --color-surface-page: var(--surface-page);
+  --color-surface-base: var(--surface-base);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-overlay: var(--surface-overlay);
+
+  --color-border-subtle: var(--border-subtle);
+  --color-border-default: var(--border-default);
+
+  --color-fg-primary: var(--fg-primary);
+  --color-fg-secondary: var(--fg-secondary);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-faint: var(--fg-faint);
+  --color-fg-bright: var(--fg-bright);
+
+  --color-accent: var(--accent);
+  --color-accent-lol: var(--accent-lol);
+  --color-accent-tft: var(--accent-tft);
+
+  --color-pos-win: var(--pos-win);
+  --color-pos-loss: var(--pos-loss);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -42,9 +163,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Accessible focus ring for keyboard navigation (mouse users unaffected) */
+/* Accessible focus ring for keyboard navigation (mouse users unaffected).
+   Folgt seit Welle 1 dem Game-Accent — vorher hart #c89b3c, was auf jeder
+   TFT-Seite einen goldenen Fokusring auf lila Chrome ergab. */
 *:focus-visible {
-  outline: 2px solid #c89b3c;
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
   border-radius: 2px;
 }

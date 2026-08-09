@@ -3,7 +3,7 @@
 # Install: `npm run setup-hooks` (copies this file into .git/hooks/pre-push)
 # Skip:    `git push --no-verify`  (explicit opt-out only)
 #
-# Six gates:
+# Seven gates:
 #   1. TypeScript type-check        — catches obvious code regressions
 #   2. Unit tests                   — node --test, catches logic regressions in
 #                                     the pure lib functions
@@ -13,6 +13,7 @@
 #                                     See scripts/verify-classifications.mjs
 #   5. system-map freshness         — catches luegende Architektur-Doku
 #   6. Out-of-band drift            — catches Region-Listen + Set-Literale
+#   7. Roh-Hex-Utilities            — catches Rueckfall auf -[#hex] statt Token
 
 set -e
 
@@ -26,7 +27,7 @@ if [ -f infra/git-hooks/pre-push ] && ! cmp -s "$0" infra/git-hooks/pre-push; th
   exit 1
 fi
 
-echo "[pre-push 1/6] Running tsc --noEmit ..."
+echo "[pre-push 1/7] Running tsc --noEmit ..."
 if ! npx tsc --noEmit; then
   echo ""
   echo "TypeScript errors detected — push blocked."
@@ -34,7 +35,7 @@ if ! npx tsc --noEmit; then
 fi
 echo "  tsc passed."
 
-echo "[pre-push 2/6] Running unit tests ..."
+echo "[pre-push 2/7] Running unit tests ..."
 # Frueh in der Kette: die Tests laufen in <1s und haengen an nichts, was die
 # spaeteren Gates tun. Ein roter Test soll nicht hinter 60s tsc+Verifier warten.
 if ! npm test; then
@@ -44,7 +45,7 @@ if ! npm test; then
 fi
 echo "  unit tests passed."
 
-echo "[pre-push 3/6] Checking snapshot-matrix.generated.mjs freshness ..."
+echo "[pre-push 3/7] Checking snapshot-matrix.generated.mjs freshness ..."
 # Wenn snapshot-matrix.ts neuer ist als die generated.mjs, ist der commit stale.
 # Schützt gegen Drift im Auto-Generate-Pattern (reference_dual_module_patterns.md).
 if [ -f app/lib/snapshot-matrix.ts ] && [ -f app/lib/snapshot-matrix.generated.mjs ]; then
@@ -57,7 +58,7 @@ if [ -f app/lib/snapshot-matrix.ts ] && [ -f app/lib/snapshot-matrix.generated.m
 fi
 echo "  snapshot-matrix freshness OK."
 
-echo "[pre-push 4/6] Running classification verifier ..."
+echo "[pre-push 4/7] Running classification verifier ..."
 if ! node scripts/verify-classifications.mjs; then
   echo ""
   echo "Classification checks failed — push blocked."
@@ -67,7 +68,7 @@ if ! node scripts/verify-classifications.mjs; then
 fi
 echo "  classification checks passed."
 
-echo "[pre-push 5/6] Checking system-map freshness + broken chains ..."
+echo "[pre-push 5/7] Checking system-map freshness + broken chains ..."
 # Die Karte wird generiert. Wer eine Unit anfasst und sie nicht neu baut,
 # bekommt eine Architektur-Doku, die luegt — schlimmer als keine.
 if ! node scripts/build-system-map.mjs --check; then
@@ -87,7 +88,7 @@ if ! node scripts/check-system-map.mjs > /dev/null; then
 fi
 echo "  system-map OK."
 
-echo "[pre-push 6/6] Checking out-of-band region-list drift ..."
+echo "[pre-push 6/7] Checking out-of-band region-list drift ..."
 if ! node scripts/check-drift.mjs; then
   echo ""
   echo "Region-list drift detected — push blocked."
@@ -95,5 +96,15 @@ if ! node scripts/check-drift.mjs; then
   exit 1
 fi
 echo "  region-list drift check passed."
+
+echo "[pre-push 7/7] Checking raw-hex utilities in markup ..."
+# Ratsche, kein Verbot: die migrierten 10 Farben sind hart auf Null, der noch
+# offene Rest (Accent, Win/Loss) darf nur nicht wachsen. Siehe Kommentarkopf
+# in scripts/check-raw-hex-utilities.mjs.
+if ! node scripts/check-raw-hex-utilities.mjs; then
+  echo ""
+  echo "Roh-Hex-Utilities im Markup — push blocked."
+  exit 1
+fi
 
 echo "[pre-push] all checks green."

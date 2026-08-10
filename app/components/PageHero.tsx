@@ -21,10 +21,10 @@ export default function PageHero({ title, subtitle, leftChampion, rightChampion,
             style={{ filter: 'brightness(1.12)', objectPosition: '35% 15%' }}
           />
           <div className="absolute inset-0" style={{
-            background: 'linear-gradient(to right, rgba(14,21,37,0) 0%, rgba(14,21,37,0.8) 85%, rgba(14,21,37,1) 100%)',
+            background: 'linear-gradient(to right, rgb(var(--surface-page-rgb) / 0%) 0%, rgb(var(--surface-page-rgb) / 80%) 85%, rgb(var(--surface-page-rgb) / 100%) 100%)',
           }} />
           <div className="absolute inset-0" style={{
-            background: 'linear-gradient(to bottom, rgba(14,21,37,0) 0%, rgba(14,21,37,0) 50%, rgba(14,21,37,1) 100%)',
+            background: 'linear-gradient(to bottom, rgb(var(--surface-page-rgb) / 0%) 0%, rgb(var(--surface-page-rgb) / 0%) 50%, rgb(var(--surface-page-rgb) / 100%) 100%)',
           }} />
         </div>
         <div className="w-1/2 relative overflow-hidden">
@@ -35,10 +35,10 @@ export default function PageHero({ title, subtitle, leftChampion, rightChampion,
             style={{ filter: 'brightness(1.12)', objectPosition: '65% 15%' }}
           />
           <div className="absolute inset-0" style={{
-            background: 'linear-gradient(to left, rgba(14,21,37,0) 0%, rgba(14,21,37,0.8) 85%, rgba(14,21,37,1) 100%)',
+            background: 'linear-gradient(to left, rgb(var(--surface-page-rgb) / 0%) 0%, rgb(var(--surface-page-rgb) / 80%) 85%, rgb(var(--surface-page-rgb) / 100%) 100%)',
           }} />
           <div className="absolute inset-0" style={{
-            background: 'linear-gradient(to bottom, rgba(14,21,37,0) 0%, rgba(14,21,37,0) 50%, rgba(14,21,37,1) 100%)',
+            background: 'linear-gradient(to bottom, rgb(var(--surface-page-rgb) / 0%) 0%, rgb(var(--surface-page-rgb) / 0%) 50%, rgb(var(--surface-page-rgb) / 100%) 100%)',
           }} />
         </div>
       </div>
@@ -52,10 +52,10 @@ export default function PageHero({ title, subtitle, leftChampion, rightChampion,
           style={{ filter: 'brightness(1.12)', objectPosition: '70% 15%' }}
         />
         <div className="absolute inset-0" style={{
-          background: 'linear-gradient(to right, rgba(14,21,37,0) 0%, rgba(14,21,37,0.15) 60%, rgba(14,21,37,1) 100%)',
+          background: 'linear-gradient(to right, rgb(var(--surface-page-rgb) / 0%) 0%, rgb(var(--surface-page-rgb) / 15%) 60%, rgb(var(--surface-page-rgb) / 100%) 100%)',
         }} />
         <div className="absolute inset-0" style={{
-          background: 'linear-gradient(to bottom, rgba(14,21,37,0) 0%, rgba(14,21,37,0) 60%, rgba(14,21,37,1) 100%)',
+          background: 'linear-gradient(to bottom, rgb(var(--surface-page-rgb) / 0%) 0%, rgb(var(--surface-page-rgb) / 0%) 60%, rgb(var(--surface-page-rgb) / 100%) 100%)',
         }} />
       </div>
       <div className="hidden sm:block absolute right-0 top-0 bottom-0 w-[35%] overflow-hidden">
@@ -66,10 +66,10 @@ export default function PageHero({ title, subtitle, leftChampion, rightChampion,
           style={{ filter: 'brightness(1.12)', objectPosition: '30% 15%' }}
         />
         <div className="absolute inset-0" style={{
-          background: 'linear-gradient(to left, rgba(14,21,37,0) 0%, rgba(14,21,37,0.15) 60%, rgba(14,21,37,1) 100%)',
+          background: 'linear-gradient(to left, rgb(var(--surface-page-rgb) / 0%) 0%, rgb(var(--surface-page-rgb) / 15%) 60%, rgb(var(--surface-page-rgb) / 100%) 100%)',
         }} />
         <div className="absolute inset-0" style={{
-          background: 'linear-gradient(to bottom, rgba(14,21,37,0) 0%, rgba(14,21,37,0) 60%, rgba(14,21,37,1) 100%)',
+          background: 'linear-gradient(to bottom, rgb(var(--surface-page-rgb) / 0%) 0%, rgb(var(--surface-page-rgb) / 0%) 60%, rgb(var(--surface-page-rgb) / 100%) 100%)',
         }} />
       </div>
 

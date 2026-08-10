@@ -26,10 +26,18 @@ import {
 
 const DD = 'https://ddragon.leagueoflegends.com/cdn/img/champion/splash';
 
-// Flaechenton mit Alpha. Der Fallback ist der heutige Wert — die aelteren
-// Entwuerfe weiter unten setzen `--page-rgb` nicht, sie sollen unveraendert
-// bleiben; nur der Auswahl-Reiter schaltet die Variable um.
-const PAGE = (alpha: number) => `rgb(var(--page-rgb, 14 21 37) / ${alpha * 100}%)`;
+// Flaechenton mit Alpha. Seit dem ersten Umbau-Commit existiert
+// `--surface-page-rgb` global in globals.css — der Fallback hier greift also
+// nicht mehr. Die aelteren Entwuerfe weiter unten sollen den heutigen Ton
+// behalten und verankern ihn deshalb SELBST auf ihrem Wrapper; nur der
+// Auswahl-Reiter schaltet die Variable um.
+const PAGE = (alpha: number) => `rgb(var(--surface-page-rgb, 14 21 37) / ${alpha * 100}%)`;
+
+// Heutiger Flaechenton als Anker fuer die aelteren Entwuerfe. Ohne ihn wuerden
+// sie beim globalen Farbwechsel mitziehen, waehrend ihre roh gesetzten Rahmen
+// stehenbleiben — das Vergleichswerkzeug wuerde dann genau dort luegen, wofuer
+// es gebaut ist.
+const IST_PAGE_ANCHOR = { '--surface-page-rgb': '14 21 37' } as React.CSSProperties;
 
 type Tab = 'auswahl' | 'home' | 'farbe' | 'tft';
 
@@ -78,9 +86,12 @@ export default function DesignLabPage() {
 
       <main className="mx-auto max-w-[1240px] px-6 py-8">
         {tab === 'auswahl' && <FinalDraft pool={pool} />}
-        {tab === 'home' && <HomeDrafts pool={pool} />}
+        {/* Die aelteren Entwuerfe zeigen den IST-Zustand und bleiben deshalb auf
+            dem heutigen Flaechenton verankert, auch wenn globals.css spaeter
+            wechselt. Nur der Auswahl-Reiter schaltet die Variable selbst um. */}
+        {tab === 'home' && <div style={IST_PAGE_ANCHOR}><HomeDrafts pool={pool} /></div>}
         {tab === 'farbe' && <ColorDrafts />}
-        {tab === 'tft' && <TftDrafts pool={pool} />}
+        {tab === 'tft' && <div style={IST_PAGE_ANCHOR}><TftDrafts pool={pool} /></div>}
       </main>
     </div>
   );
@@ -122,10 +133,10 @@ function Stage({
 // `border-default` muss heller bleiben als `border-subtle` — sonst kehrt sich
 // die Rangfolge "leiser/lauter Rahmen" um.
 //
-// `--page-rgb` gibt es in globals.css noch nicht. Es steht hier fuer den
-// ersten Umbau-Commit: die Verlaeufe der Kopfzonen haengen heute an dezimalen
-// `rgba(14,21,37,…)`-Literalen, die keinem Token folgen. In der Vorschau
-// haengen sie an dieser Variable — deshalb wandert beim Umschalten auch der
+// `--surface-page-rgb` ist seit dem ersten Umbau-Commit das Tripel aus
+// globals.css und dort die Source-of-Truth der Flaeche: die Verlaeufe der
+// Kopfzonen haengen nicht mehr an dezimalen `rgba(14,21,37,…)`-Literalen,
+// sondern an dieser Variable — deshalb wandert beim Umschalten auch der
 // Bildverlauf mit, statt als blaue Kante stehenzubleiben.
 const IST_TOKENS = {
   '--surface-sunken': '#0a0e1a',
@@ -138,7 +149,7 @@ const IST_TOKENS = {
   '--fg-primary': '#ffffff',
   '--fg-secondary': '#a0b0c5',
   '--fg-muted': '#7a8aa0',
-  '--page-rgb': '14 21 37',
+  '--surface-page-rgb': '14 21 37',
 } as React.CSSProperties;
 
 const F2_TOKENS = {
@@ -152,7 +163,7 @@ const F2_TOKENS = {
   '--fg-primary': '#f2f4f8',
   '--fg-secondary': '#b9c4d6',
   '--fg-muted': '#93a0b8',
-  '--page-rgb': '8 13 24',
+  '--surface-page-rgb': '8 13 24',
 } as React.CSSProperties;
 
 interface SiteStats {
@@ -236,7 +247,7 @@ function FinalDraft({ pool }: { pool: TftHeroUnit[] }) {
           style={{
             height: 180,
             background:
-              'radial-gradient(ellipse at top, rgb(var(--accent-rgb) / 22%) 0%, rgb(var(--page-rgb) / 0%) 60%), linear-gradient(180deg, var(--surface-raised) 0%, var(--surface-page) 100%)',
+              'radial-gradient(ellipse at top, rgb(var(--accent-rgb) / 22%) 0%, rgb(var(--surface-page-rgb) / 0%) 60%), linear-gradient(180deg, var(--surface-raised) 0%, var(--surface-page) 100%)',
           }}
         >
           {pair && (
@@ -274,7 +285,7 @@ function FinalDraft({ pool }: { pool: TftHeroUnit[] }) {
               className="absolute inset-0"
               style={{
                 background:
-                  'linear-gradient(180deg, rgb(var(--page-rgb) / 35%) 0%, rgb(var(--page-rgb) / 55%) 45%, rgb(var(--page-rgb) / 100%) 100%)',
+                  'linear-gradient(180deg, rgb(var(--surface-page-rgb) / 35%) 0%, rgb(var(--surface-page-rgb) / 55%) 45%, rgb(var(--surface-page-rgb) / 100%) 100%)',
               }}
             />
             <div className="relative flex flex-col items-center gap-6 px-6 pt-16 pb-8">

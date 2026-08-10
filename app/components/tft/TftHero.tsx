@@ -111,7 +111,7 @@ export default function TftHero({
         className="absolute inset-0"
         style={{
           background:
-            'radial-gradient(ellipse at top, rgba(123,97,255,0.22) 0%, rgba(14,21,37,0) 60%), linear-gradient(180deg, #141a2e 0%, #0e1525 100%)',
+            'radial-gradient(ellipse at top, rgba(123,97,255,0.22) 0%, rgb(var(--surface-page-rgb) / 0%) 60%), linear-gradient(180deg, var(--surface-raised) 0%, var(--surface-page) 100%)',
         }}
       />
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent-a40 to-transparent" />

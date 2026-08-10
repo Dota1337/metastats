@@ -23,7 +23,18 @@
      Gemessene Ist-Werte, absteigend von dunkel nach hell.
      `sunken` ist der Nav-Hintergrund, `page` der <main>-Ton.            */
   --surface-sunken: #0a0e1a;   /* 65× */
-  --surface-page:   #0e1525;   /* 65×  — identisch mit --background */
+
+  /* --surface-page ist als EINZIGE Fläche aus einem RGB-Tripel abgeleitet.
+     Grund: die Kopfzonen (PageHero, TftHero, Startseite) blenden diese Fläche
+     mit ~28 Gradient-Stops transparent aus und brauchen dafür `rgb(... / X%)`.
+     Das Tripel ist die Source-of-Truth, der Hex fällt daraus ab — sonst wären
+     es zwei Werte, die beim Farbwechsel still auseinanderlaufen können.
+     Beim Ändern also NUR das Tripel anfassen.
+     Unbedenklich trotz der var()-Warnung weiter unten: --surface-page-rgb ist
+     ein Literal und wird in keinem Scope überschrieben, die Auflösung auf
+     :root ist damit die gewollte.                                        */
+  --surface-page-rgb: 14 21 37;               /* = #0e1525 */
+  --surface-page:   rgb(var(--surface-page-rgb));   /* 65× — identisch mit --background */
   --surface-base:   #0d1526;   /* 254× */
   --surface-raised: #141c2e;   /* 254× */
   --surface-overlay: #1e2a3a;  /* 105× als Fläche */

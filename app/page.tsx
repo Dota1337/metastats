@@ -139,7 +139,7 @@ export default function Home() {
           />
           {/* Gradient overlay — bottom fades to page bg, center stays visible */}
           <div className="absolute inset-0" style={{
-            background: 'linear-gradient(to bottom, rgba(14,21,37,0.3) 0%, rgba(14,21,37,0.4) 50%, rgba(14,21,37,0.9) 100%)',
+            background: 'linear-gradient(to bottom, rgb(var(--surface-page-rgb) / 30%) 0%, rgb(var(--surface-page-rgb) / 40%) 50%, rgb(var(--surface-page-rgb) / 90%) 100%)',
           }} />
         </div>
 

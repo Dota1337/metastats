@@ -1,18 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '../../../lib/supabase';
+import { cronAuthFailure } from '../../../lib/cron-auth';
 
 // This endpoint is called by Vercel Cron every 6 hours
 // It checks if a new LoL patch has been released and stores it
 
 export async function GET(request: NextRequest) {
   // Verify cron secret (Vercel sets this header for cron jobs)
-  const authHeader = request.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    // Also allow without auth in dev
-    if (process.env.NODE_ENV === 'production') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-  }
+  const denied = cronAuthFailure(request);
+  if (denied) return denied;
 
   try {
     // Fetch latest version from DDragon

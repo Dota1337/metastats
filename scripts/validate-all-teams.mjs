@@ -10,7 +10,11 @@
 import { readFileSync, writeFileSync } from 'fs';
 
 const ESPORTS_API = 'https://esports-api.lolesports.com/persisted/gw';
-const ESPORTS_KEY = process.env.LOLESPORTS_API_KEY || '0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z';
+const ESPORTS_KEY = process.env.LOLESPORTS_API_KEY || '';
+if (!ESPORTS_KEY) {
+  console.error('LOLESPORTS_API_KEY fehlt — setze die Env-Variable (siehe .env.local).');
+  process.exit(1);
+}
 const CARGO_API = 'https://lol.fandom.com/wiki/Special:CargoExport';
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }

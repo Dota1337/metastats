@@ -13,7 +13,11 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-const ESPORTS_KEY = process.env.LOLESPORTS_API_KEY || '0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z';
+const ESPORTS_KEY = process.env.LOLESPORTS_API_KEY || '';
+if (!ESPORTS_KEY) {
+  console.error('LOLESPORTS_API_KEY fehlt — setze die Env-Variable (siehe .env.local).');
+  process.exit(1);
+}
 const ESPORTS_API = 'https://esports-api.lolesports.com/persisted/gw';
 const CARGO_API = 'https://lol.fandom.com/wiki/Special:CargoExport';
 const FANDOM_API = 'https://lol.fandom.com/api.php';

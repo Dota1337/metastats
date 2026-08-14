@@ -1,23 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '../../../lib/supabase';
+import { cronAuthFailure } from '../../../lib/cron-auth';
+import { LOLESPORTS_API_KEY, lolesportsKeyMissingResponse } from '../../../lib/lolesports';
 
-// Lolesports public web-client key. Riot publishes it openly via their site
-// (anyone who opens devtools on lolesports.com can read it), but env-var
-// hygiene > hardcode. Falls die Vercel-Env unset ist, fallen wir auf den
-// alten Wert zurück damit der Cron nicht bricht.
-const API_KEY = process.env.LOLESPORTS_API_KEY || '0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z';
+const API_KEY = LOLESPORTS_API_KEY;
 
 // Cron job: Fetches latest LoL Esports schedules, standings, and league data
 // Stores in Supabase site_config for fast access
 // Runs every 2 hours via Vercel Cron
 
 export async function GET(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    if (process.env.NODE_ENV === 'production') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-  }
+  const denied = cronAuthFailure(request);
+  if (denied) return denied;
+
+  const keyMissing = lolesportsKeyMissingResponse();
+  if (keyMissing) return keyMissing;
 
   const results: string[] = [];
 

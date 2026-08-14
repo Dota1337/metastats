@@ -1,3 +1,7 @@
+// Dieses Modul haelt den Service-Role-Key. `server-only` laesst den Build
+// fehlschlagen, sobald es aus einer Client-Komponente importiert wird.
+// Browser-Code nutzt stattdessen `lib/supabase-client`.
+import 'server-only';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;

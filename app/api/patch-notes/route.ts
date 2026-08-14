@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { cachedJson, SLOW_CACHE_CONTROL } from '../../lib/api-cache';
 
 interface PatchNote {
   version: string;
@@ -16,7 +17,9 @@ const CACHE_TTL = 60 * 60 * 1000; // 1 hour
 export async function GET() {
   const now = Date.now();
   if (cachedPatches && now - cacheTime < CACHE_TTL) {
-    return NextResponse.json({ patches: cachedPatches });
+    // Edge-TTL gleich dem Prozess-TTL (1h). Kuerzer waere verschenkt: der Edge
+    // wuerde revalidieren und von dieser Zeile denselben alten Wert bekommen.
+    return cachedJson({ patches: cachedPatches }, { cache: SLOW_CACHE_CONTROL });
   }
 
   try {
@@ -84,11 +87,11 @@ export async function GET() {
     cachedPatches = patches;
     cacheTime = now;
 
-    return NextResponse.json({
+    return cachedJson({
       patches,
       latestVersion: latestVersion,
       lastChecked: new Date().toISOString(),
-    });
+    }, { cache: SLOW_CACHE_CONTROL, degraded: patches.length === 0 });
   } catch (error) {
     return NextResponse.json({ error: 'Fehler beim Laden der Patch Notes' }, { status: 500 });
   }

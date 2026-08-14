@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { LOLESPORTS_API_KEY, lolesportsKeyMissingResponse } from '../../../lib/lolesports';
+import { cachedJson, ASSET_CACHE_CONTROL } from '../../../lib/api-cache';
 
 const API_KEY = LOLESPORTS_API_KEY;
 
@@ -32,7 +33,7 @@ async function getLeaguesOverview() {
   const cacheKey = '__overview__';
   const now = Date.now();
   if (standingsCache[cacheKey] && now - standingsCache[cacheKey].time < CACHE_TTL) {
-    return NextResponse.json(standingsCache[cacheKey].data);
+    return cachedJson(standingsCache[cacheKey].data, { cache: ASSET_CACHE_CONTROL });
   }
 
   try {
@@ -51,7 +52,10 @@ async function getLeaguesOverview() {
 
     const result = { leagues: activeLeagues };
     standingsCache[cacheKey] = { data: result, time: now };
-    return NextResponse.json(result);
+    return cachedJson(result, {
+      cache: ASSET_CACHE_CONTROL,
+      degraded: activeLeagues.length === 0,
+    });
   } catch (error) {
     return NextResponse.json({ error: 'Fehler beim Laden der Ligen' }, { status: 500 });
   }
@@ -60,7 +64,7 @@ async function getLeaguesOverview() {
 async function getLeagueDetail(leagueSlug: string) {
   const now = Date.now();
   if (standingsCache[leagueSlug] && now - standingsCache[leagueSlug].time < CACHE_TTL) {
-    return NextResponse.json(standingsCache[leagueSlug].data);
+    return cachedJson(standingsCache[leagueSlug].data, { cache: ASSET_CACHE_CONTROL });
   }
 
   try {
@@ -199,7 +203,10 @@ async function getLeagueDetail(leagueSlug: string) {
     };
 
     standingsCache[leagueSlug] = { data: result, time: now };
-    return NextResponse.json(result);
+    return cachedJson(result, {
+      cache: ASSET_CACHE_CONTROL,
+      degraded: standings.length === 0 && allMatches.length === 0,
+    });
   } catch (error) {
     return NextResponse.json({ error: 'Fehler beim Laden der Liga-Details' }, { status: 500 });
   }

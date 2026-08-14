@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../lib/supabase';
+import { cachedJson, SLOW_CACHE_CONTROL } from '../../../lib/api-cache';
 
 // /api/tft/pros
 //
@@ -31,7 +32,11 @@ export async function GET(request: NextRequest) {
       .eq('puuid', puuid)
       .maybeSingle();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ pro: data || null });
+    // Kein Edge-Cache fuer den Einzelabruf: der Schluesselraum ist eine PUUID
+    // pro Spieler und damit praktisch unbegrenzt. Jeder Eintrag waere ein
+    // eigener Cache-Key mit Trefferquote nahe null — nur Ballast, gegen den
+    // sich ausserdem bequem der Cache mit Muell fuellen liesse.
+    return NextResponse.json({ pro: data || null }, { headers: { 'Cache-Control': 'no-store' } });
   }
 
   // Classification filter — comma-separated, "all" = no filter.
@@ -87,7 +92,14 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({
+  // Das Roster kommt aus dem Pro-Crawl und bewegt sich taeglich, nicht
+  // minuetlich — 1h frisch, 24h stale-while-revalidate.
+  //
+  // `degraded`, wenn der zweite Query (die Zaehl-Abfrage) nichts geliefert hat:
+  // dann stehen alle Badges auf 0, obwohl die Liste Eintraege hat. Das ist eine
+  // 200er-Antwort mit kaputtem Inhalt, und die darf nicht eine Stunde lang
+  // festgeschrieben werden.
+  return cachedJson({
     pros: data || [],
     count: data?.length || 0,
     classifications,
@@ -95,5 +107,8 @@ export async function GET(request: NextRequest) {
     regionCounts,
     teamCounts,
     tpcRegionCounts,
+  }, {
+    cache: SLOW_CACHE_CONTROL,
+    degraded: Object.keys(classCounts).length === 0,
   });
 }

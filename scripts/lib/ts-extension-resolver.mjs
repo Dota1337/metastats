@@ -21,7 +21,7 @@ import { fileURLToPath } from 'node:url';
 
 const EXTENSIONS = ['.ts', '.tsx'];
 
-export function resolve(specifier, context, nextResolve) {
+export async function resolve(specifier, context, nextResolve) {
   const relative = specifier.startsWith('./') || specifier.startsWith('../');
   const hasExtension = /\.[cm]?[jt]sx?$|\.json$/i.test(specifier);
   if (relative && !hasExtension && context.parentURL) {
@@ -36,5 +36,19 @@ export function resolve(specifier, context, nextResolve) {
       }
     }
   }
-  return nextResolve(specifier, context);
+  try {
+    return await nextResolve(specifier, context);
+  } catch (err) {
+    // Zweiter Fall derselben Klasse, nur für Paket-Specifier: `next` hat kein
+    // `exports`-Feld, also gibt es für `next/server` keine Map — Node sucht
+    // wörtlich die endungslose Datei `node_modules/next/server` und findet sie
+    // nicht, während der Bundler `server.js` auflöst. Ohne diesen Fallback ist
+    // jedes app/lib-Modul untestbar, das NextResponse anfasst (api-cache).
+    // Greift ausschließlich, nachdem die reguläre Auflösung bereits gescheitert
+    // ist, ändert also wieder nichts an einem Pfad, der ohne den Hook ginge.
+    if (err?.code === 'ERR_MODULE_NOT_FOUND' && !relative && !hasExtension && specifier.includes('/')) {
+      return await nextResolve(specifier + '.js', context);
+    }
+    throw err;
+  }
 }

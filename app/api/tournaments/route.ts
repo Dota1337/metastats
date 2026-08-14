@@ -22,6 +22,7 @@ const PRIORITY_LEAGUES = new Set([
 let cached: { data: any; time: number } | null = null;
 const CACHE_TTL = 30 * 60 * 1000;
 import { LOLESPORTS_API_KEY, lolesportsKeyMissingResponse } from '../../lib/lolesports';
+import { cachedJson, ASSET_CACHE_CONTROL } from '../../lib/api-cache';
 
 const API_KEY = LOLESPORTS_API_KEY;
 
@@ -58,7 +59,11 @@ export async function GET(request: NextRequest) {
   const fullWindow = request.nextUrl.searchParams.get('window') === 'full';
 
   if (cached && now - cached.time < CACHE_TTL) {
-    return NextResponse.json(applyFilters(cached.data, filter, leagueFilter, fullWindow));
+    // Edge-TTL = Prozess-TTL (30min). Laenger waere hier falsch, obwohl es
+    // billiger klingt: `filter=live` transportiert Live-Status.
+    return cachedJson(applyFilters(cached.data, filter, leagueFilter, fullWindow), {
+      cache: ASSET_CACHE_CONTROL,
+    });
   }
 
   try {
@@ -145,7 +150,10 @@ export async function GET(request: NextRequest) {
 
     cached = { data: result, time: now };
 
-    return NextResponse.json(applyFilters(result, filter, leagueFilter, fullWindow));
+    return cachedJson(applyFilters(result, filter, leagueFilter, fullWindow), {
+      cache: ASSET_CACHE_CONTROL,
+      degraded: tournaments.length === 0,
+    });
   } catch (error) {
     return NextResponse.json({ error: 'Fehler beim Laden der Turnierdaten' }, { status: 500 });
   }

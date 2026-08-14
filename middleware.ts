@@ -8,6 +8,12 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { INTERNAL_COOKIE, verifyCookieValue, internalDashboardEnabled } from './app/lib/internal-auth';
+import { securityHeaderRecord } from './app/lib/security-headers';
+
+// Die Security-Header aus next.config.ts setzt der Routing-Layer. Die beiden
+// Antworten unten entstehen davor und wuerden sonst als einzige ohne sie
+// rausgehen — ausgerechnet die, die eine Auth-Entscheidung transportieren.
+const SEC = securityHeaderRecord();
 
 export async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
@@ -15,7 +21,7 @@ export async function middleware(req: NextRequest) {
   // --- Internal-Dashboard Branch (no Supabase-SSR) -----------------------
   if (path.startsWith('/internal') || path.startsWith('/api/internal')) {
     if (!internalDashboardEnabled()) {
-      return new NextResponse('Not Found', { status: 404 });
+      return new NextResponse('Not Found', { status: 404, headers: SEC });
     }
     // Nicht gaten: Login (sonst Endlos-Redirect) und Routen mit eigener,
     // maschinentauglicher Auth. /api/internal/revalidate authentifiziert per
@@ -33,7 +39,7 @@ export async function middleware(req: NextRequest) {
     if (await verifyCookieValue(cookie)) return NextResponse.next();
 
     if (path.startsWith('/api/internal')) {
-      return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'unauthorized' }, { status: 401, headers: SEC });
     }
     const loginUrl = new URL('/internal/login', req.url);
     loginUrl.searchParams.set('next', path);

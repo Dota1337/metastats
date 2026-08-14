@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cachedJson, ASSET_CACHE_CONTROL } from '../../lib/api-cache';
 
 export async function GET(request: NextRequest) {
   try {
@@ -64,7 +65,10 @@ export async function GET(request: NextRequest) {
       }
     } catch {}
 
-    return NextResponse.json({
+    // Die drei Quellen oben schlucken ihre Fehler einzeln (catch {}) und
+    // liefern dann still leere Werte. Ohne die degraded-Bedingung wuerde so
+    // eine halbe Startseite eine halbe Stunde lang festgeschrieben.
+    return cachedJson({
       topChampions,
       stats: {
         totalTeams,
@@ -72,6 +76,9 @@ export async function GET(request: NextRequest) {
         regions: 17,
         matchesAnalyzed,
       },
+    }, {
+      cache: ASSET_CACHE_CONTROL,
+      degraded: topChampions.length === 0 || matchesAnalyzed === 0,
     });
   } catch {
     return NextResponse.json({ topChampions: [], stats: {} }, { status: 500 });

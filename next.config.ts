@@ -1,11 +1,19 @@
 import type { NextConfig } from "next";
 import path from "path";
 import { withSentryConfig } from "@sentry/nextjs";
+import { SECURITY_HEADERS } from "./app/lib/security-headers";
 
 const nextConfig: NextConfig = {
   devIndicators: false,
   turbopack: {
     root: path.resolve(__dirname),
+  },
+  // Security-Header fuer alles. Bewusst KEIN Cache-Control hier: der Matcher
+  // trifft auch /_next/static/*, und dort steht bereits das richtige
+  // Immutable-Header-Set von Next selbst. Cache-Frische bleibt in
+  // app/lib/api-cache.ts, eine Entscheidung pro Datenart statt pro Pfadmuster.
+  async headers() {
+    return [{ source: '/(.*)', headers: SECURITY_HEADERS }];
   },
   async redirects() {
     return [

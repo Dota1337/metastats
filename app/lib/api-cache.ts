@@ -20,10 +20,31 @@ export const STATS_CACHE_CONTROL = 'public, s-maxage=21600, stale-while-revalida
 // frische Spiele reinkommen.
 export const STATS_CACHE_CONTROL_FRESH = 'public, s-maxage=300, stale-while-revalidate=3600';
 
-export function cachedJson(data: unknown, opts: { cache?: string } = {}) {
-  return NextResponse.json(data, {
-    headers: { 'Cache-Control': opts.cache || STATS_CACHE_CONTROL },
-  });
+// Selten bewegte Bestaende: Pro-Roster, Turniere, Patch-Metadaten. Quelle ist
+// ein Crawler-Lauf oder eine Datei im Repo, nicht der Tages-Aggregat-Zyklus —
+// 1h frisch reicht, damit ein Patch-Drop binnen einer Stunde sichtbar ist, und
+// der 24h-SWR traegt den Rest ohne Cold-Miss.
+export const SLOW_CACHE_CONTROL = 'public, s-maxage=3600, stale-while-revalidate=86400';
+
+// Ableitungen aus DDragon/Riot-Assets. Kuerzer als oben, weil ein Patch dort
+// mitten am Tag durchschlagen kann.
+export const ASSET_CACHE_CONTROL = 'public, s-maxage=1800, stale-while-revalidate=21600';
+
+// Degradierte Antwort: technisch 200, inhaltlich leer, weil eine Quelle
+// gerade nicht liefert. Der Statuscode allein reicht als Erkennungsmerkmal
+// nicht — genau daran haengt der teuerste Fehlerfall: eine leere Liste mit
+// 6h-TTL schreibt einen kurzen Ausfall fuer den halben Tag fest. Deshalb
+// entscheidet der Aufrufer anhand seines Payloads, nicht anhand des Codes.
+export const DEGRADED_CACHE_CONTROL = 'public, s-maxage=10, stale-while-revalidate=60';
+
+export function cachedJson(
+  data: unknown,
+  opts: { cache?: string; degraded?: boolean } = {},
+) {
+  const cache = opts.degraded
+    ? DEGRADED_CACHE_CONTROL
+    : (opts.cache || STATS_CACHE_CONTROL);
+  return NextResponse.json(data, { headers: { 'Cache-Control': cache } });
 }
 
 // Plan B: Patch-Changed-Boost. Wenn der jüngste Patch-Eintrag in crawl_meta

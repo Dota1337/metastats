@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAvailablePatches } from '../../../lib/tft-supabase-reader';
 import { tftPatchLabel } from '../../../lib/tft-patch-label';
+import { cachedJson, SLOW_CACHE_CONTROL } from '../../../lib/api-cache';
 
 // TFT-specific patch notes. Sources the patch list from our daily-stats
 // crawl (`get_tft_available_patches` RPC) and maps each patch number to its
@@ -41,7 +42,9 @@ function tftPatchUrl(version: string): string {
 export async function GET() {
   const now = Date.now();
   if (cached && now - cached.ts < TTL) {
-    return NextResponse.json({ patches: cached.patches });
+    // Edge-TTL gleich dem Prozess-TTL (1h) — kuerzer hiesse revalidieren und
+    // denselben alten Wert zurueckbekommen.
+    return cachedJson({ patches: cached.patches }, { cache: SLOW_CACHE_CONTROL });
   }
 
   try {
@@ -69,11 +72,11 @@ export async function GET() {
     }));
 
     cached = { ts: now, patches };
-    return NextResponse.json({
+    return cachedJson({
       patches,
       lastChecked: new Date().toISOString(),
       source: 'tft-supabase + riot-news-url-pattern',
-    });
+    }, { cache: SLOW_CACHE_CONTROL, degraded: patches.length === 0 });
   } catch (e: any) {
     return NextResponse.json({ error: e.message || 'patch notes load failed' }, { status: 500 });
   }

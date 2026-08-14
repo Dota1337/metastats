@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '../../lib/supabase';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
+import { cachedJson, ASSET_CACHE_CONTROL } from '../../lib/api-cache';
 
 interface ChampionInfo {
   id: string;
@@ -245,14 +246,18 @@ export async function GET(request: NextRequest) {
       return a.name.localeCompare(b.name);
     });
 
-    return NextResponse.json({
+    // `hasStats === false` ist die stille Degradierung dieser Route: die
+    // Champion-Liste steht, aber jede Statistik fehlt, weil weder Datei noch
+    // Live-Sammlung geliefert haben. Antwortcode bleibt 200 — deshalb haengt
+    // die kurze TTL hier am Inhalt und nicht am Status.
+    return cachedJson({
       version,
       champions: filtered,
       tier,
       totalChampions: filtered.length,
       hasStats,
       region,
-    });
+    }, { cache: ASSET_CACHE_CONTROL, degraded: !hasStats || filtered.length === 0 });
   } catch (error) {
     return NextResponse.json({ error: 'Server Fehler' }, { status: 500 });
   }

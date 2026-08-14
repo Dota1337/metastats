@@ -1,11 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '../../lib/supabase';
 
+// no-store, und zwar ausdruecklich statt "kein Cache-Header":
+// die Antwort haengt am Cookie `visitor_id` und ist die persoenliche
+// Suchhistorie eines Besuchers. Ein geteilter Edge-Cache wuerde sie ohne
+// `Vary: Cookie` an den naechsten Besucher weiterreichen — ein selbst gebauter
+// Datenabfluss. Ein fehlender Header ueberlaesst diese Entscheidung dem
+// Zufall der Plattform-Defaults; der Header hier tut es nicht.
+const PRIVATE = { 'Cache-Control': 'no-store' } as const;
+
 export async function GET(request: NextRequest) {
   const visitorId = request.cookies.get('visitor_id')?.value;
 
   if (!visitorId) {
-    return NextResponse.json({ players: [] });
+    return NextResponse.json({ players: [] }, { headers: PRIVATE });
   }
 
   try {
@@ -17,8 +25,8 @@ export async function GET(request: NextRequest) {
       .order('updated_at', { ascending: false })
       .limit(8);
 
-    return NextResponse.json({ players: data || [] });
+    return NextResponse.json({ players: data || [] }, { headers: PRIVATE });
   } catch {
-    return NextResponse.json({ players: [] });
+    return NextResponse.json({ players: [] }, { headers: PRIVATE });
   }
 }

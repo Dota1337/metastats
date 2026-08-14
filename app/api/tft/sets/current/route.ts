@@ -3,6 +3,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { supabaseAdmin } from '../../../../lib/supabase';
 import { tftPatchLabel } from '../../../../lib/tft-patch-label';
+import { cachedJson, SLOW_CACHE_CONTROL } from '../../../../lib/api-cache';
 
 // Returns everything the SetTimeline UI needs:
 //   - current set metadata (number, name, start, end, current patch)
@@ -12,13 +13,17 @@ import { tftPatchLabel } from '../../../../lib/tft-patch-label';
 //     support page are still captured)
 //   - today's % progress through the set window
 //
-// Cached because the data changes at most daily.
 // `force-dynamic`: skip statisches Pre-Render beim Build — die Route ruft
 // einen Supabase-RPC der gelegentlich > 60s braucht und damit den ganzen
-// Vercel-Build kippt (Build-Timeout 2026-06-21). Mit dynamic wird die Route
-// erst beim ersten Request evaluiert und über `revalidate` für 1 h gecacht.
+// Vercel-Build kippt (Build-Timeout 2026-06-21).
+//
+// Das frühere `export const revalidate = 3600` stand daneben und war
+// wirkungslos: force-dynamic schaltet den Route-Cache ab, den revalidate
+// steuern würde. Die Route hat damit seit 2026-06-21 jeden Request voll
+// bezahlt — zwei Datei-Reads plus get_tft_distinct_patches_for_set. Die
+// Frische regelt jetzt der Cache-Control-Header unten, den der Edge auch
+// wirklich auswertet.
 export const dynamic = 'force-dynamic';
-export const revalidate = 3600;
 
 interface Patch {
   version: string;          // "17.3" / "17.3b"
@@ -112,7 +117,10 @@ export async function GET() {
     }
   }
 
-  return NextResponse.json({
+  // 1h frisch reicht: ein Patch-Drop ist damit binnen einer Stunde in der
+  // Timeline. `degraded`, wenn weder Roadmap noch DB Patches geliefert haben —
+  // dann waere die Timeline leer, und genau das darf sich nicht festsetzen.
+  return cachedJson({
     setNumber,
     setName: tftSet.setName,
     startDate,
@@ -121,5 +129,5 @@ export async function GET() {
     progressPct,
     currentPatch: tftSet.latestPatch,
     patches,
-  });
+  }, { cache: SLOW_CACHE_CONTROL, degraded: patches.length === 0 });
 }

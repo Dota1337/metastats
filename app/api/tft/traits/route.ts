@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { parseVelocity } from '../../../lib/query-params';
 import { resolveFilters, callRpc, getAvailablePatches } from '../../../lib/tft-supabase-reader';
 import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias } from '../../../lib/api-cache';
 import { lookupSnapshot } from '../../../lib/snapshot-lookup';
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
     // Δ-velocity (W1-A pattern, anchor-aware via 0039). Trait velocity is rolled
     // up across activation levels — the UI also groups per display name, so
     // per-activation Δs would only confuse the comparison.
-    const velocityShift = Math.max(0, parseInt(searchParams.get('velocity') || '0', 10));
+    const velocityShift = parseVelocity(searchParams.get('velocity'));
     const wantVelocity = velocityShift > 0;
 
     // Snapshot-Pfad — siehe /api/tft/comps.

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { parseVelocity } from '../../../lib/query-params';
 import { loadTftStats, normalizeBucket, bucketParticipants } from '../../../lib/tft-stats-loader';
 import { resolveFilters, callRpc, getAvailablePatches } from '../../../lib/tft-supabase-reader';
 import { isExcludedUnit, isExcludedItem, setContainsExcludedItem } from '../../../lib/tft-excluded';
@@ -186,7 +187,7 @@ export async function GET(request: NextRequest) {
     // present the route fires a second RPC and merges per-character Δs into
     // each row. Uses the raw user-requested window + anchor-offset, same
     // semantics as get_tft_comp_velocity (see 0038/0039).
-    const velocityShift = Math.max(0, parseInt(searchParams.get('velocity') || '0', 10));
+    const velocityShift = parseVelocity(searchParams.get('velocity'));
     const wantVelocity = velocityShift > 0;
 
     // Snapshot-Pfad: gleiches Pattern wie /api/tft/comps. Wenn die Permutation

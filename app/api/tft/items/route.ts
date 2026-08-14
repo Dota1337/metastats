@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { parseVelocity } from '../../../lib/query-params';
 import { loadTftStats, normalizeBucket } from '../../../lib/tft-stats-loader';
 import {
   resolveFilters,
@@ -79,7 +80,7 @@ export async function GET(request: NextRequest) {
     // StatsFilterBar (3 = "48h", 7 = "7d"). prev-Fenster ist immer von
     // current_date-(days+shift) bis current_date-shift — kein Overlap mit dem
     // now-Fenster, exakt wie bei der Comp-Velocity.
-    const velocityShift = Math.max(0, parseInt(searchParams.get('velocity') || '0', 10));
+    const velocityShift = parseVelocity(searchParams.get('velocity'));
     const wantVelocity = velocityShift > 0;
 
     // Snapshot-Pfad: gleiches Pattern wie /api/tft/comps. Velocity-Overlays

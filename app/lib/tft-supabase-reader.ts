@@ -71,17 +71,31 @@ export interface ResolvedFilters {
   anchorOffsetDays: number;
 }
 
+// Erlaubte Einzelwerte. Frueher reichten beide Expander unbekannte Strings
+// unveraendert an die RPCs durch. Das ist keine Injection (die Werte gehen
+// parametrisiert raus), aber jeder erfundene Wert erzeugt eine eigene
+// DB-Abfrage und einen eigenen Cache-Key — ein Angreifer kann damit beliebig
+// viele Abfragen am Cache vorbei ausloesen, die garantiert nichts finden.
+const ALLOWED_BUCKET_VALUES = new Set([...ALL_BUCKETS, 'pro_pool']);
+const ALLOWED_REGION_VALUES = new Set(ALL_REGIONS.map(r => r.toLowerCase()));
+
 // Expand a filter param like "all" or "euw1,kr" into a flat region list.
 export function expandRegions(param: string | null): string[] {
   if (!param || param === 'all') return REGION_GROUPS.all;
   if (REGION_GROUPS[param]) return REGION_GROUPS[param];
-  return param.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  const picked = param.split(',')
+    .map(s => s.trim().toLowerCase())
+    .filter(s => ALLOWED_REGION_VALUES.has(s));
+  return picked.length > 0 ? picked : REGION_GROUPS.all;
 }
 
 export function expandBuckets(param: string | null): string[] {
   if (!param || param === 'all') return BUCKET_GROUPS.all;
   if (BUCKET_GROUPS[param]) return BUCKET_GROUPS[param];
-  return param.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  const picked = param.split(',')
+    .map(s => s.trim().toLowerCase())
+    .filter(s => ALLOWED_BUCKET_VALUES.has(s));
+  return picked.length > 0 ? picked : BUCKET_GROUPS.master_plus;
 }
 
 export interface PatchInfo {

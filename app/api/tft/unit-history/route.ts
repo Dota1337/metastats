@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { callRpc, getAvailablePatches, REGION_GROUPS, BUCKET_GROUPS } from '../../../lib/tft-supabase-reader';
+import { callRpc, getAvailablePatches, expandRegions, expandBuckets } from '../../../lib/tft-supabase-reader';
 import { cachedJson } from '../../../lib/api-cache';
 
 // /api/tft/unit-history?characterId=X&patches=5&bucket=master_plus
@@ -24,11 +24,11 @@ export async function GET(request: NextRequest) {
   // A group name ('all','europe',…) expands to its platforms; a real platform
   // ('euw1') must stay a single-element filter. Falling back to REGION_GROUPS.all
   // for an unknown key silently turned a single-region request into a global one.
-  const regions = REGION_GROUPS[regionParam] || [regionParam];
+  const regions = expandRegions(regionParam);
   // Expand group names ('master_plus','all') to the real bucket values — the
   // RPC matches bucket = ANY(...) and no row is literally tagged 'master_plus',
   // so passing the group name returned 0 rows → empty timeline → missing chart.
-  const buckets = BUCKET_GROUPS[bucket] || [bucket];
+  const buckets = expandBuckets(bucket);
 
   const allPatches = await getAvailablePatches(180);
   const patches = allPatches.slice(0, patchCount);

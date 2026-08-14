@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { callRpc, getAvailablePatches, BUCKET_GROUPS } from '../../../lib/tft-supabase-reader';
+import { callRpc, getAvailablePatches, expandBuckets, expandRegions } from '../../../lib/tft-supabase-reader';
 import { cachedJson } from '../../../lib/api-cache';
 
 // /api/tft/patch-diff?patch=17.2&prev=17.1&entity=unit|item|trait
@@ -49,15 +49,22 @@ export async function GET(request: NextRequest) {
   // Expand group names ('master_plus','all','pro_pool') to the real bucket
   // values stored in the stats tables — the RPC matches bucket = ANY(...),
   // and there are no rows literally tagged 'master_plus'.
-  const buckets = BUCKET_GROUPS[bucketParam] || [bucketParam];
+  const buckets = expandBuckets(bucketParam);
 
   try {
     const patches = await getAvailablePatches(180);
     if (patches.length === 0) {
       return cachedJson({ hasData: false, winners: [], losers: [], patches: [], reason: 'no_patches' });
     }
-    const currentPatch = searchParams.get('patch') || patches[0].patch;
-    const previousPatch = searchParams.get('prev') || (patches[1]?.patch ?? null);
+    // Nur real vorhandene Patches akzeptieren. Ein frei erfundener Wert
+    // erzeugte sonst pro Aufruf eine eigene Abfrage samt eigenem Cache-Key.
+    const knownPatches = new Set(patches.map(p => p.patch));
+    const patchParam = searchParams.get('patch');
+    const prevParam = searchParams.get('prev');
+    const currentPatch = patchParam && knownPatches.has(patchParam) ? patchParam : patches[0].patch;
+    const previousPatch = prevParam && knownPatches.has(prevParam)
+      ? prevParam
+      : (patches[1]?.patch ?? null);
     if (!previousPatch || currentPatch === previousPatch) {
       // Single-patch state — the pipeline hasn't accumulated a previous
       // version yet. Return the current entity stats so the UI can show
@@ -70,7 +77,9 @@ export async function GET(request: NextRequest) {
 
     const setNumber = patches.find(p => p.patch === currentPatch)?.set_number
                     ?? patches[0].set_number;
-    const regions = region ? [region] : null;
+    // Unbekannte Region-Werte faengt expandRegions ab (sonst: eine eigene
+    // Abfrage je erfundenem Wert).
+    const regions = region ? expandRegions(region) : null;
 
     const [curr, prev] = await Promise.all([
       fetchEntityRows(entity, currentPatch, setNumber, regions, buckets),

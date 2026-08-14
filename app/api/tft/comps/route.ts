@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { parseVelocity } from '../../../lib/query-params';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import {
@@ -180,7 +181,7 @@ export async function GET(request: NextRequest) {
   const defaultMinGames = 70 * requestedDaysForMin;
   const minGamesParam = searchParams.get('minGames');
   const minGames = minGamesParam != null
-    ? Math.max(0, parseInt(minGamesParam, 10))
+    ? Math.min(100000, Math.max(0, parseInt(minGamesParam, 10)))
     : defaultMinGames;
 
   try {
@@ -213,7 +214,7 @@ export async function GET(request: NextRequest) {
       // velocity skipt Snapshot (kein Pre-Render). Architect+perf-critic-
       // Verdict siehe reference_tft_comp_detail_snapshot.md.
       const detailVariantMode = searchParams.get('variant') === 'exact' ? 'exact' : 'family';
-      const detailVelocity = Math.max(0, parseInt(searchParams.get('velocity') || '0', 10));
+      const detailVelocity = parseVelocity(searchParams.get('velocity'));
       const detailHit = await lookupSnapshot('comps-detail', {
         patch: filters.patch,
         region: filters.regionLabel,
@@ -408,7 +409,7 @@ export async function GET(request: NextRequest) {
     // in parallel and merge Δs (avg-place, pickrate, top4) into each row so
     // the listing can sort/visualise "what shifted in the last N days". N is
     // the shift between now-window (last `days` days) and prev-window.
-    const velocityShift = Math.max(0, parseInt(searchParams.get('velocity') || '0', 10));
+    const velocityShift = parseVelocity(searchParams.get('velocity'));
     const wantVelocity = velocityShift > 0;
 
     // Snapshot-Pfad: wenn das vorgerenderte Manifest einen passenden Eintrag

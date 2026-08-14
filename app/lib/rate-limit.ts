@@ -25,16 +25,33 @@ const BUCKETS = new Map<string, Bucket>();
 // Request nicht den Sweep über tausende Einträge zahlt.
 let lastPruneAt = 0;
 
-function ipFromRequest(req: NextRequest): string {
-  // Vercel setzt diese Header verlässlich. x-forwarded-for kann eine Liste
-  // sein; die erste IP ist die echte client-IP, der Rest sind Proxies.
-  const xff = req.headers.get('x-forwarded-for');
-  if (xff) return xff.split(',')[0]!.trim();
+/**
+ * Client-IP aus den Proxy-Headern.
+ *
+ * Reihenfolge ist hier Sicherheitslogik, keine Kosmetik: `x-vercel-forwarded-for`
+ * setzt ausschliesslich Vercels Edge und ueberschreibt dabei einen vom Client
+ * mitgeschickten Wert. `x-forwarded-for` ist die gewachsene Variante, an die
+ * Zwischenstationen anhaengen duerfen — wer sie zuerst liest, laesst sich vom
+ * Aufrufer sagen, in welchen Bucket er faellt, und haelt damit eine Bremse in
+ * der Hand, die jeder selbst loesen kann.
+ *
+ * Exportiert, damit alle Bremsen (Rate-Limit, Login-Fehlversuche) dieselbe
+ * Quelle benutzen.
+ */
+export function clientIpFromRequest(req: NextRequest): string {
+  const vercel = req.headers.get('x-vercel-forwarded-for');
+  if (vercel) return vercel.split(',')[0]!.trim();
   const xri = req.headers.get('x-real-ip');
   if (xri) return xri.trim();
+  const xff = req.headers.get('x-forwarded-for');
+  if (xff) return xff.split(',')[0]!.trim();
   // Fallback auf 'unknown' bündelt alle non-identifizierten Calls in einen
   // Bucket — sicherer als per-Request frei zu lassen.
   return 'unknown';
+}
+
+function ipFromRequest(req: NextRequest): string {
+  return clientIpFromRequest(req);
 }
 
 export interface RateLimitOpts {

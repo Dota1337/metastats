@@ -6,6 +6,7 @@ import {
   verifySecret,
   internalDashboardEnabled,
 } from '../../../lib/internal-auth';
+import { clientIpFromRequest } from '../../../lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,9 +39,7 @@ const MAX_FAILURES = 10;
 const failures = new Map<string, { count: number; first: number }>();
 
 function clientKey(req: NextRequest): string {
-  return req.headers.get('x-forwarded-for')?.split(',')[0].trim()
-    || req.headers.get('x-real-ip')
-    || 'unknown';
+  return clientIpFromRequest(req);
 }
 
 function isLockedOut(key: string): boolean {

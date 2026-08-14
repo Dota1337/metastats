@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { callRpc, BUCKET_GROUPS, getAvailablePatches } from '../../../../lib/tft-supabase-reader';
+import { callRpc, expandBuckets, BUCKET_GROUPS, getAvailablePatches } from '../../../../lib/tft-supabase-reader';
+import { parsePatch, parseBoundedInt } from '../../../../lib/query-params';
 import { cachedJson } from '../../../../lib/api-cache';
 
 // W2-A: Region-Divergence — pro Comp den KR vs EU vs NA Vergleich.
@@ -25,16 +26,23 @@ interface RegionRow {
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const days = Math.max(1, Math.min(14, parseInt(searchParams.get('days') || '7', 10)));
-  const minGames = Math.max(10, parseInt(searchParams.get('min') || '100', 10));
-  const bucketLabel = searchParams.get('bucket') || 'master_plus';
-  const buckets = BUCKET_GROUPS[bucketLabel] || ['master', 'grandmaster', 'challenger'];
+  const minGames = parseBoundedInt(searchParams.get('min'), { min: 10, max: 100000, fallback: 100 });
+  const bucketRaw = searchParams.get('bucket') || 'master_plus';
+  const buckets = expandBuckets(bucketRaw);
+  // Label nur zurueckspiegeln, wenn es auch wirklich gegriffen hat — sonst
+  // taucht ein erfundener Wert in der Antwort und im Cache-Key auf.
+  const bucketLabel = BUCKET_GROUPS[bucketRaw] ? bucketRaw : buckets.join(',');
   const patchParam = searchParams.get('patch') || 'any';
   let patch: string | null = null;
   if (patchParam === 'current' || patchParam === 'previous') {
     const patches = await getAvailablePatches();
     patch = patchParam === 'current' ? patches[0]?.patch ?? null : patches[1]?.patch ?? null;
-  } else if (patchParam !== 'any') {
-    patch = patchParam;
+  } else if (patchParam !== 'any' && parsePatch(patchParam)) {
+    // Nur Patches, die es in der Datenlage wirklich gibt. Die Formatpruefung
+    // allein liesse noch ein paar tausend erfundene Werte durch, und jeder
+    // davon waere eine eigene Abfrage.
+    const patches = await getAvailablePatches();
+    patch = patches.some(p => p.patch === patchParam) ? patchParam : null;
   }
 
   try {

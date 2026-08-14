@@ -23,6 +23,10 @@ set -euo pipefail
 #   2) `pg_dump > file` liess bei ENOSPC einen abgebrochenen Torso liegen,
 #      der 7 Tage lang wie ein gueltiges Backup aussah. -> tmp+rename, damit
 #      nur vollstaendige Dumps den finalen Namen bekommen.
+# Sicherheits-Haertung 2026-08-14: das Verzeichnis liegt auf 700, die Dumps
+# auf 600. Ohne umask legt die Redirection unten neue Dumps wieder mit 644 an
+# und der Riegel waere nach einem Lauf still wieder offen.
+umask 077
 DEST=/mnt/HC_Volume_105869432/backups
 DATE=$(date -u +%Y%m%d)
 RETENTION_DAYS=3

@@ -840,6 +840,9 @@
     ],
     "metastats-tft-pro-validator.service": [
       "pro-crawl/validation-freshness"
+    ],
+    "supabase/migrations/0055_revoke_anon_read.sql": [
+      "sicherheit/anon-lockout"
     ]
   }
 }

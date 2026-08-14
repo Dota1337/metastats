@@ -6,7 +6,7 @@
 --   * 22 Policies `anon read` (Original: for select to public using (true))
 --   * SELECT-Grant fuer anon + authenticated
 --   * EXECUTE-Grant fuer PUBLIC auf allen public-Funktionen
---   * RLS auf tft_position_unit_cell wieder AUS (war vorher aus)
+--   * tft_position_unit_cell ist eine View — dort gibt es nur den Grant
 --
 -- Anwenden:
 --   node scripts/db-exec.mjs supabase/rollback/0055_revoke_anon_read_rollback.sql

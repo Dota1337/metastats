@@ -139,6 +139,144 @@ async function supaRpc(fn, args) {
   return res.json();
 }
 
+// ------------------------------------------------------- Anon-Rolle (Sperre)
+
+/**
+ * Header fuer die oeffentliche Rolle. Bewusst KEIN Merge ueber supaHeaders():
+ * dort steht `Authorization: Bearer <service-role>`, und PostgREST wertet
+ * genau den aus. Ein Merge wuerde die Sperr-Probe still in eine
+ * Service-Role-Probe verwandeln — sie meldete dann Bruch, obwohl die Sperre
+ * haelt.
+ */
+function anonHeaders() {
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+  if (!key) {
+    throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY fehlt — ohne den oeffentlichen '
+      + 'Schluessel laesst sich nicht pruefen, was die Oeffentlichkeit sieht');
+  }
+  return { apikey: key, Authorization: `Bearer ${key}` };
+}
+
+/** Wirft nicht bei !ok — die Ablehnung IST hier das erwartete Ergebnis. */
+async function rawFetch(url, init = {}) {
+  const res = await fetch(url, { ...init, signal: AbortSignal.timeout(20_000) });
+  const text = await res.text();
+  let body = null;
+  try { body = JSON.parse(text); } catch { /* PostgREST antwortet nicht immer JSON */ }
+  return { status: res.status, body, text: text.slice(0, 200) };
+}
+
+/**
+ * Echte Rechte-Ablehnung — und NUR die.
+ *
+ * `!== 200` als Gutfall zu lesen waere die gefaehrlichste Abkuerzung an dieser
+ * Stelle: ein Timeout, ein 502 waehrend eines Supabase-Ausfalls oder ein
+ * ungueltig gewordener Anon-Schluessel ("Invalid API key", ebenfalls 401)
+ * saehen dann aus wie eine funktionierende Sperre. Postgres' 42501 ist der
+ * einzige Beleg dafuer, dass die Datenbank aktiv verweigert hat.
+ */
+function isPermissionDenied(res) {
+  return (res.status === 401 || res.status === 403) && res.body?.code === '42501';
+}
+
+/**
+ * Anon-Lockout: sieht die Oeffentlichkeit noch Daten?
+ *
+ * Zwei Aussagen in einem Vertrag, weil keine allein reicht:
+ *
+ * 1. KATALOG (`security_anon_leaks`, Migration 0056) — invertiert gefragt:
+ *    worauf haben `anon`/`authenticated` in `public` ueberhaupt noch
+ *    Leserechte? Eine Liste der geschuetzten Objekte abzutasten wuerde den
+ *    wahrscheinlichsten Rueckfall verpassen: eine neue Tabelle aus Supabase
+ *    Studio, angelegt mit der Default-Policy "enable read access for all
+ *    users" — ohne Commit, ohne Diff, ohne Probe.
+ *
+ * 2. LIVE-PROBE mit dem oeffentlichen Schluessel — der Katalog sieht nicht, ob
+ *    PostgREST seinen Schema-Cache neu geladen hat. Genau dafuer steht das
+ *    `notify pgrst, 'reload schema'` am Ende von 0055.
+ *
+ * Jede Probe laeuft zweirollig: erst mit der Service-Role (muss Zeilen
+ * liefern), dann mit dem Anon-Schluessel (muss abgelehnt werden). Ohne die
+ * Gegenprobe waere ein leerer Treffer nicht von einer Sperre zu unterscheiden
+ * — der Vertrag meldete gruen, weil nirgends Daten sind.
+ */
+async function checkAnonLockout(c, r) {
+  const anon = anonHeaders();
+  const base = supaBase();
+  const svc = supaHeaders();
+
+  // Lebt der oeffentliche Schluessel ueberhaupt? Ein abgelaufener oder
+  // vertippter Schluessel bekommt auf ALLES 401 — ohne diese Kontrolle wuerde
+  // der Vertrag mit jedem Wegdriften des Schluessels gruener statt roter.
+  const alive = await rawFetch(
+    `${base}/${c.liveness.table}?select=${c.liveness.column}&limit=1`,
+    { headers: anon },
+  );
+  if (alive.status !== 200) {
+    return r('error', `Anon-Schluessel antwortet auf ${c.liveness.table} mit HTTP `
+      + `${alive.status} (${alive.text}) — erwartet 200. Sperr-Probe waere wertlos.`);
+  }
+
+  // --- 1. Katalog
+  const leaks = await supaRpc(c.rpc, {});
+  if (!Array.isArray(leaks)) return r('error', `${c.rpc} lieferte kein Array`);
+  const allowed = new Set(c.allowedOpen || []);
+  const open = leaks
+    .filter(x => x.severity === 'offen')
+    .filter(x => !allowed.has(`${x.kind}:${x.object_name}:${x.role_name}`));
+  const onlyGrant = leaks.filter(x => x.severity === 'nur-grant').length;
+  if (open.length > 0) {
+    const list = open.slice(0, 6)
+      .map(x => `${x.object_name}→${x.role_name} (${x.detail})`)
+      .join('; ');
+    return r('broken', `${open.length} offene Leserechte fuer die oeffentliche Rolle: ${list}`
+      + (open.length > 6 ? ` … +${open.length - 6}` : ''));
+  }
+
+  // --- 2. Live-Proben
+  for (const p of c.probes || []) {
+    const path = `${p.table}?select=${p.column || '*'}&limit=1`;
+    const control = await rawFetch(`${base}/${path}`, { headers: svc });
+    if (control.status !== 200 || !Array.isArray(control.body) || control.body.length === 0) {
+      return r('error', `Gegenprobe auf ${p.table} liefert keine Zeilen `
+        + `(HTTP ${control.status}) — die Sperre laesst sich daran nicht belegen`);
+    }
+    const res = await rawFetch(`${base}/${path}`, { headers: anon });
+    if (res.status === 200) {
+      // Auch 200 mit leerem Array ist ein Bruch: dann ist der SELECT-Grant
+      // zurueck und nur noch RLS haelt. Ein Dashboard-Klick weiter ist die
+      // Tabelle offen.
+      const n = Array.isArray(res.body) ? res.body.length : '?';
+      return r('broken', `anon darf ${p.table} wieder abfragen (HTTP 200, ${n} Zeilen) `
+        + '— SELECT-Grant ist zurueck');
+    }
+    if (!isPermissionDenied(res)) {
+      return r('error', `${p.table}: unerwartete Antwort HTTP ${res.status} (${res.text}) `
+        + '— weder Ablehnung (42501) noch Zugriff');
+    }
+  }
+
+  for (const p of c.rpcProbes || []) {
+    const url = `${base}/rpc/${p.fn}`;
+    const init = { method: 'POST', body: JSON.stringify(p.args || {}) };
+    const control = await rawFetch(url, { ...init, headers: { ...svc, 'Content-Type': 'application/json' } });
+    if (control.status !== 200) {
+      return r('error', `Gegenprobe auf ${p.fn} scheitert (HTTP ${control.status}: ${control.text})`);
+    }
+    const res = await rawFetch(url, { ...init, headers: { ...anon, 'Content-Type': 'application/json' } });
+    if (res.status === 200) {
+      return r('broken', `anon darf ${p.fn} wieder aufrufen — EXECUTE-Grant ist zurueck`);
+    }
+    if (!isPermissionDenied(res)) {
+      return r('error', `${p.fn}: unerwartete Antwort HTTP ${res.status} (${res.text})`);
+    }
+  }
+
+  const probes = (c.probes || []).length + (c.rpcProbes || []).length;
+  return r('ok', `keine offenen Leserechte (${allowed.size} bewusste Ausnahme(n), `
+    + `${onlyGrant}× Grant ohne Wirkung durch RLS), ${probes} Live-Proben abgelehnt`);
+}
+
 // ---------------------------------------------------------------- Hetzner
 
 let pgPoolPromise = null;
@@ -224,6 +362,7 @@ export async function checkContract(c) {
     if (c.type === 'endpoint') return await checkEndpoint(c, r);
     if (c.type === 'coverage') return await checkCoverage(c, r);
     if (c.type === 'guide-coverage') return await checkGuideCoverage(c, r);
+    if (c.type === 'anon-lockout') return await checkAnonLockout(c, r);
 
     if (c.backend === 'hetzner' && !isOnBox()) {
       return r('skipped', 'nur auf der Hetzner-Box prüfbar');

@@ -8,8 +8,10 @@
 --
 -- Drei Riegel, jeder allein waere unvollstaendig:
 --   1. Policies loeschen  — RLS an + keine Policy = 0 Zeilen fuer die Rolle.
---   2. RLS anschalten auf `tft_position_unit_cell` — dort war RLS AUS, ein
---      Policy-Drop haette die Tabelle offen gelassen.
+--   2. `tft_position_unit_cell` ist eine VIEW, keine Tabelle — RLS laesst sich
+--      dort nicht anschalten, und sie laeuft mit den Rechten ihres Eigentuemers,
+--      umgeht die RLS der Basistabellen also ohnehin. Fuer sie ist der
+--      Grant-Entzug der einzige Riegel.
 --   3. SELECT-Grant entziehen — ohne Grant kommt PostgREST gar nicht erst zur
 --      Zeilenpruefung; das spart auch die Last der Abfrage.
 --
@@ -51,9 +53,6 @@ drop policy if exists "anon read" on public.tft_public_comp_upvotes;
 drop policy if exists "anon read" on public.tft_public_comps;
 drop policy if exists "anon read" on public.tft_tournament_results;
 drop policy if exists "anon read" on public.tft_tournaments;
-
--- ------------------------------------------------------------------- 2. RLS
-alter table public.tft_position_unit_cell enable row level security;
 
 -- ---------------------------------------------------------------- 3. Grants
 revoke select on public.site_config from anon, authenticated;

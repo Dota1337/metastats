@@ -20,7 +20,13 @@
     "/etc/metastats-crawler/env existiert.",
     "",
     "maxLagDays zählt ab heute. Die Aggregate sind run-weit auf D-2 gepinnt,",
-    "deshalb ist 3 für die Crawl-Tabellen normal und keine Verspätung."
+    "deshalb ist 3 für die Crawl-Tabellen normal und keine Verspätung.",
+    "",
+    "Nicht jeder Vertrag prüft eine Pipeline: 'sicherheit/anon-lockout' prüft",
+    "einen Zustand — sieht die öffentliche Rolle wieder Daten? Rot heisst dort",
+    "nicht 'Lauf hakt', sondern 'Riegel gefallen'. Er läuft nur im zentralen",
+    "Tageslauf, nicht in den Drivern, und braucht neben dem Service-Role-Key",
+    "auch NEXT_PUBLIC_SUPABASE_ANON_KEY — ohne den ist er 'error', nie 'ok'."
   ],
 
   "contracts": [
@@ -228,6 +234,20 @@
       "minRows": 300,
       "windowDays": 7,
       "note": "613 von 627 in 7 Tagen validiert. Genau hier lief der 23505-Fehler 5 Wochen unbemerkt: der Service lief, schrieb aber nichts."
+    },
+    {
+      "id": "sicherheit/anon-lockout",
+      "owner": "supabase/migrations/0055_revoke_anon_read.sql",
+      "type": "anon-lockout",
+      "rpc": "security_anon_leaks",
+      "allowedOpen": ["table:matches:authenticated"],
+      "liveness": { "table": "matches", "column": "match_id" },
+      "probes": [
+        { "table": "tft_player_match_cache", "column": "match_id" },
+        { "table": "tft_position_unit_cell", "column": "unit" }
+      ],
+      "rpcProbes": [{ "fn": "tft_position_unit_cell_data", "args": {} }],
+      "note": "Rot heisst hier nicht 'Pipeline hakt', sondern 'Sicherheitszustand verletzt': die oeffentliche Rolle liest wieder mit. Sofort 0055 erneut anwenden (node scripts/apply-migrations.mjs 0055) und pruefen, welche Migration oder welcher Studio-Klick den Grant zurueckgeholt hat. Ausnahme matches/authenticated ist gewollt — Owner-Policy player_id = auth.uid(). Zuruecknehmen liesse sich die Sperre mit supabase/rollback/0055_revoke_anon_read_rollback.sql."
     }
   ]
 }

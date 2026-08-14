@@ -14,5 +14,31 @@ Nice=10
 StandardOutput=journal
 StandardError=journal
 
+# --- BEGIN metastats-hardening-floor ---
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectProc=invisible
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+# --- END metastats-hardening-floor ---
+# Ausnahmen dieser Unit (stehen bewusst NACH dem Boden — systemd nimmt
+# bei Nicht-Listen-Direktiven die letzte Zuweisung):
+#   Der ExecStart macht selbst mkdir -p /var/log/metastats und haengt dort an.
+LogsDirectory=metastats
+
 [Install]
 WantedBy=multi-user.target

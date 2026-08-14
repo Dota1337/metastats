@@ -32,3 +32,29 @@ StandardOutput=journal
 StandardError=journal
 Nice=10
 IOSchedulingClass=best-effort
+
+# --- BEGIN metastats-hardening-floor ---
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectProc=invisible
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+# --- END metastats-hardening-floor ---
+# Ausnahmen dieser Unit (stehen bewusst NACH dem Boden — systemd nimmt
+# bei Nicht-Listen-Direktiven die letzte Zuweisung):
+#   mv-region-cursor.json. writeCursor schluckt Fehler -> Region-Rotation faellt sonst still auf euw1 zurueck.
+ReadWritePaths=/etc/metastats-crawler

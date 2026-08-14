@@ -509,7 +509,8 @@
         "scripts/verify-classifications.mjs",
         "scripts/check-drift.mjs",
         "scripts/build-system-map.mjs",
-        "scripts/check-system-map.mjs"
+        "scripts/check-system-map.mjs",
+        "scripts/apply-hardening-floor.mjs"
       ],
       "manualDispatch": true,
       "onPush": true

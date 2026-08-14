@@ -21,7 +21,7 @@ const REGIONS = [
   { id: 'kr', regional: 'asia', label: 'Korea' },
 ];
 
-const riot = createRiotClient();
+const riot = createRiotClient({ apiKey: API_KEY });
 const rateLimitedFetch = riot.fetch;
 
 async function collectRegion(region, regional, label) {
@@ -30,9 +30,9 @@ async function collectRegion(region, regional, label) {
   // Step 1: Fetch leagues
   console.log('[1/4] Lade Ligen...');
   const [challRes, gmRes, masterRes] = await Promise.all([
-    rateLimitedFetch(`https://${region}.api.riotgames.com/lol/league/v4/challengerleagues/by-queue/RANKED_SOLO_5x5?api_key=${API_KEY}`),
-    rateLimitedFetch(`https://${region}.api.riotgames.com/lol/league/v4/grandmasterleagues/by-queue/RANKED_SOLO_5x5?api_key=${API_KEY}`),
-    rateLimitedFetch(`https://${region}.api.riotgames.com/lol/league/v4/masterleagues/by-queue/RANKED_SOLO_5x5?api_key=${API_KEY}`),
+    rateLimitedFetch(`https://${region}.api.riotgames.com/lol/league/v4/challengerleagues/by-queue/RANKED_SOLO_5x5`),
+    rateLimitedFetch(`https://${region}.api.riotgames.com/lol/league/v4/grandmasterleagues/by-queue/RANKED_SOLO_5x5`),
+    rateLimitedFetch(`https://${region}.api.riotgames.com/lol/league/v4/masterleagues/by-queue/RANKED_SOLO_5x5`),
   ]);
 
   if (!challRes.ok || !gmRes.ok) {
@@ -80,7 +80,7 @@ async function collectRegion(region, regional, label) {
     for (let i = 0; i < tierPuuids.length; i++) {
       try {
         const res = await rateLimitedFetch(
-          `https://${regional}.api.riotgames.com/lol/match/v5/matches/by-puuid/${tierPuuids[i]}/ids?queue=420&start=0&count=8&api_key=${API_KEY}`
+          `https://${regional}.api.riotgames.com/lol/match/v5/matches/by-puuid/${tierPuuids[i]}/ids?queue=420&start=0&count=8`
         );
         if (res.ok) {
           const ids = await res.json();
@@ -118,7 +118,7 @@ async function collectRegion(region, regional, label) {
   for (let i = 0; i < matchIdArray.length; i++) {
     try {
       const res = await rateLimitedFetch(
-        `https://${regional}.api.riotgames.com/lol/match/v5/matches/${matchIdArray[i]}?api_key=${API_KEY}`
+        `https://${regional}.api.riotgames.com/lol/match/v5/matches/${matchIdArray[i]}`
       );
       if (res.ok) {
         const match = await res.json();

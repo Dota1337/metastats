@@ -53,10 +53,11 @@ const REGIONAL = getRegionalRouting(REGION);
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 // Shared Riot client handles rate-limiting (200 req/s on prod key) + 429 retries.
-// Local wrapper concatenates the API key, which the client's surface doesn't do.
-const riot = createRiotClient();
+// Den Key haengt der Client selbst als X-Riot-Token-Header an — der lokale
+// Wrapper bleibt nur noch als Kurzform fuer fetchJson stehen.
+const riot = createRiotClient({ apiKey: API_KEY });
 async function riotFetch(url) {
-  return riot.fetchJson(`${url}${url.includes('?') ? '&' : '?'}api_key=${API_KEY}`);
+  return riot.fetchJson(url);
 }
 
 async function main() {

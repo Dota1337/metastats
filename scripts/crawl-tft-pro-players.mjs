@@ -233,8 +233,8 @@ function parseLolchess(field) {
 async function resolvePuuid(region, gameName, tagLine) {
   const regional = REGIONAL[region];
   if (!regional) return null;
-  const url = `https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}?api_key=${RIOT_KEY}`;
-  const res = await fetch(url);
+  const url = `https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`;
+  const res = await fetch(url, { headers: { 'X-Riot-Token': RIOT_KEY } });
   if (!res.ok) return null;
   const j = await res.json();
   return j.puuid || null;

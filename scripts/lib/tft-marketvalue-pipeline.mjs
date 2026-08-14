@@ -62,7 +62,7 @@ export function loadGraph(region, repoRoot = process.cwd()) {
 // Returns null bei Fehler (snapshot bleibt mit name/tag = null geschrieben).
 export async function fetchAccount(riot, regional, puuid, apiKey) {
   const r = await riot.fetchJson(
-    `https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-puuid/${puuid}?api_key=${apiKey}`,
+    `https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-puuid/${puuid}`,
     { safe: true },
   );
   if (!r || r._status) return null;

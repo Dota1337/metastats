@@ -22,7 +22,7 @@ const REGIONAL = 'europe';
 const SAMPLE_PLAYERS = 3;
 const MATCHES_PER_PLAYER = 2;
 
-const riot = createRiotClient();
+const riot = createRiotClient({ apiKey: API_KEY });
 
 async function main() {
   const t0 = Date.now();
@@ -31,7 +31,7 @@ async function main() {
   // Step 1: League
   console.log('[1/5] Challenger league...');
   const challRes = await riot.fetch(
-    `https://${REGION}.api.riotgames.com/lol/league/v4/challengerleagues/by-queue/RANKED_SOLO_5x5?api_key=${API_KEY}`
+    `https://${REGION}.api.riotgames.com/lol/league/v4/challengerleagues/by-queue/RANKED_SOLO_5x5`
   );
   if (!challRes.ok) { console.error(`  FAIL: ${challRes.status}`); process.exit(1); }
   const chall = await challRes.json();
@@ -43,7 +43,7 @@ async function main() {
   const matchIds = new Set();
   for (const p of players) {
     const res = await riot.fetch(
-      `https://${REGIONAL}.api.riotgames.com/lol/match/v5/matches/by-puuid/${p.puuid}/ids?queue=420&start=0&count=${MATCHES_PER_PLAYER}&api_key=${API_KEY}`
+      `https://${REGIONAL}.api.riotgames.com/lol/match/v5/matches/by-puuid/${p.puuid}/ids?queue=420&start=0&count=${MATCHES_PER_PLAYER}`
     );
     if (!res.ok) { console.log(`  WARN: ${p.puuid.slice(0, 8)}... HTTP ${res.status}`); continue; }
     const ids = await res.json();
@@ -65,7 +65,7 @@ async function main() {
   const matchIdArray = [...matchIds];
   for (const id of matchIdArray) {
     const res = await riot.fetch(
-      `https://${REGIONAL}.api.riotgames.com/lol/match/v5/matches/${id}?api_key=${API_KEY}`
+      `https://${REGIONAL}.api.riotgames.com/lol/match/v5/matches/${id}`
     );
     if (!res.ok) { errors++; continue; }
     const match = await res.json();
@@ -88,7 +88,7 @@ async function main() {
   const burstStart = Date.now();
   const burstRes = await Promise.all(
     Array.from({ length: 20 }, () =>
-      riot.fetch(`https://${REGION}.api.riotgames.com/lol/status/v4/platform-data?api_key=${API_KEY}`)
+      riot.fetch(`https://${REGION}.api.riotgames.com/lol/status/v4/platform-data`)
     )
   );
   const burstOk = burstRes.filter(r => r.status === 200).length;

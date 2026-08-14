@@ -45,12 +45,19 @@ async function fetchWithNetRetry(url, init, log, attempt = 0) {
     const isTimeout = err?.name === 'TimeoutError' || err?.name === 'AbortError';
     if ((TRANSIENT_NET_CODES.has(code) || isTimeout) && attempt < 3) {
       const backoffMs = [2000, 5000, 10000][attempt];
-      log(`  [net-retry] ${isTimeout ? 'request-timeout' : code} on ${url} — retry ${attempt + 1}/3 in ${Math.round(backoffMs / 1000)}s`);
+      log(`  [net-retry] ${isTimeout ? 'request-timeout' : code} on ${redact(url)} — retry ${attempt + 1}/3 in ${Math.round(backoffMs / 1000)}s`);
       await sleep(backoffMs);
       return fetchWithNetRetry(url, init, log, attempt + 1);
     }
     throw err;
   }
+}
+
+// Ein Key, der jemals in einer URL stand, darf nicht ins Log. Der Client
+// loggt URLs an drei Stellen (net-retry, 429-Aufgabe, fetchJson-Fehler) —
+// journald auf der Box haelt die Zeilen wochenlang vor.
+function redact(url) {
+  return String(url).replace(/([?&]api_key=)[^&]*/g, '$1REDACTED');
 }
 
 export function createRiotClient(opts = {}) {
@@ -60,7 +67,19 @@ export function createRiotClient(opts = {}) {
     longWindowRequests = 95,
     longWindowMs = 122_000,         // 120s + 2s slack
     log = console.log,
+    // Riot-Key. Wird als X-Riot-Token-Header mitgeschickt statt als
+    // ?api_key= in der URL zu haengen — sonst steht er in jedem Log, das
+    // eine URL zitiert (siehe redact() oben, das nur noch Altlasten faengt).
+    //
+    // Bewusst KEIN Default auf RIOT_API_KEY_TFT || RIOT_API_KEY: die
+    // LoL-Skripte und die TFT-Skripte haben verschiedene Keys, und ein
+    // Fallback wuerde stillschweigend den falschen mitschicken. Lieber laut.
+    apiKey,
   } = opts;
+
+  if (!apiKey) {
+    throw new Error('createRiotClient: apiKey fehlt — der Key geht als X-Riot-Token-Header raus und muss explizit uebergeben werden.');
+  }
 
   const shortWindow = [];
   const longWindow = [];
@@ -111,13 +130,17 @@ export function createRiotClient(opts = {}) {
       await sleep(wait);
     }
 
-    const res = await fetchWithNetRetry(url, init, log);
+    const res = await fetchWithNetRetry(
+      url,
+      { ...init, headers: { ...(init?.headers || {}), 'X-Riot-Token': apiKey } },
+      log,
+    );
 
     if (res.status === 429) {
       const retryAfter = parseInt(res.headers.get('retry-after') || '10', 10);
 
       if (retry429 >= MAX_429_RETRIES) {
-        log(`  [429] AUFGEGEBEN nach ${MAX_429_RETRIES} Versuchen: ${url}`);
+        log(`  [429] AUFGEGEBEN nach ${MAX_429_RETRIES} Versuchen: ${redact(url)}`);
         return res;
       }
 
@@ -150,7 +173,7 @@ export function createRiotClient(opts = {}) {
     }
     if (!res.ok) {
       if (safe) return { _status: res.status };
-      throw new Error(`${res.status} ${res.statusText}: ${url}`);
+      throw new Error(`${res.status} ${res.statusText}: ${redact(url)}`);
     }
     return res.json();
   }

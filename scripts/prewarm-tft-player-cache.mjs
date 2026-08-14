@@ -43,10 +43,10 @@ if (!SUPA_URL || !SUPA_KEY) { console.error('Supabase env vars required'); proce
 // wird von keinem `Conflicts=` erfasst, fiel bei der Umstellung also durch das
 // Raster. Gemessen am Lauf 2026-08-04 (kr): ~42 Requests pro 10,5 s, die Decke
 // von 180 wurde nie auch nur annähernd erreicht.
-const riot = createRiotClient(riotWindowFor('prewarm'));
+const riot = createRiotClient({ ...riotWindowFor('prewarm'), apiKey: API_KEY });
 
 async function fetchApex(tier) {
-  const r = await riot.fetch(`https://${REGION}.api.riotgames.com/tft/league/v1/${tier}?api_key=${API_KEY}`);
+  const r = await riot.fetch(`https://${REGION}.api.riotgames.com/tft/league/v1/${tier}`);
   if (!r.ok) return [];
   const data = await r.json();
   return (data.entries || []).map(e => ({ puuid: e.puuid, lp: e.leaguePoints, tier: tier.toUpperCase() }));
@@ -58,7 +58,7 @@ async function fetchDiamondI(limit) {
   const out = [];
   for (let page = 1; page <= 25 && out.length < limit; page++) {
     const r = await riot.fetch(
-      `https://${REGION}.api.riotgames.com/tft/league/v1/entries/DIAMOND/I?page=${page}&api_key=${API_KEY}`,
+      `https://${REGION}.api.riotgames.com/tft/league/v1/entries/DIAMOND/I?page=${page}`,
     );
     if (!r.ok) break;
     const batch = await r.json();
@@ -101,7 +101,7 @@ const WAVE_MS = 1050;
 
 async function fetchIds(puuid, start, count) {
   const r = await riot.fetch(
-    `https://${REGIONAL}.api.riotgames.com/tft/match/v1/matches/by-puuid/${puuid}/ids?count=${count}&start=${start}&api_key=${API_KEY}`,
+    `https://${REGIONAL}.api.riotgames.com/tft/match/v1/matches/by-puuid/${puuid}/ids?count=${count}&start=${start}`,
   );
   if (!r.ok) return [];
   const ids = await r.json();
@@ -109,7 +109,7 @@ async function fetchIds(puuid, start, count) {
 }
 
 async function fetchDetail(matchId, attempt = 0) {
-  const r = await riot.fetch(`https://${REGIONAL}.api.riotgames.com/tft/match/v1/matches/${matchId}?api_key=${API_KEY}`);
+  const r = await riot.fetch(`https://${REGIONAL}.api.riotgames.com/tft/match/v1/matches/${matchId}`);
   if (r.ok) return r.json();
   if (r.status === 429 && attempt < 2) {
     const retryAfter = parseInt(r.headers.get('retry-after') || '2', 10);

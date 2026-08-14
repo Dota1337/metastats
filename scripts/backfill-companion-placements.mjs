@@ -62,7 +62,7 @@ const sb = (path, init = {}) => fetch(`${SUPA_URL}${path}`, {
 // Er steht ausserdem in keinem `Conflicts=`, kann also jederzeit mitten in
 // einen Batch-Lauf hineinfunken. Sein Budget ist in riot-limits.mjs reserviert
 // — bisher war die Reservierung eine Annahme, jetzt wird sie durchgesetzt.
-const riot = createRiotClient(riotWindowFor('companion-backfill'));
+const riot = createRiotClient({ ...riotWindowFor('companion-backfill'), apiKey: RIOT_KEY });
 
 async function riotFetch(url, label) {
   const res = await riot.fetch(url, { headers: { 'X-Riot-Token': RIOT_KEY } });

@@ -103,10 +103,10 @@ async function validateRiotId(gameName, tagLine, region) {
   if (!RIOT_API_KEY) return null;
 
   const routing = REGION_ROUTES[region] || REGION_ROUTES['EUW'];
-  const url = `https://${routing.account}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}?api_key=${RIOT_API_KEY}`;
+  const url = `https://${routing.account}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`;
 
   try {
-    const res = await fetch(url);
+    const res = await fetch(url, { headers: { 'X-Riot-Token': RIOT_API_KEY } });
     if (res.status === 200) {
       const data = await res.json();
       return { puuid: data.puuid, gameName: data.gameName, tagLine: data.tagLine };

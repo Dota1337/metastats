@@ -165,6 +165,7 @@ const CURRENT_PATCH = setMeta?.latestPatch ?? null;
 // match-detail method-limit 200:10). We cap below the match-detail method
 // (the bottleneck) so we never blow it across alternating endpoints.
 const riot = createRiotClient({
+  apiKey: API_KEY,
   // 130 statt 180 (2026-08-02): 180 waren 86% des Match-Detail-Limits
   // (200/10s) und produzierten schon solo abgefangene 429er — 16 binnen drei
   // Tagen. Alle Prozesse teilen EINEN Key-Bucket; Budget siehe Kommentar in
@@ -177,13 +178,13 @@ const riot = createRiotClient({
 const rl = url => riot.fetchJson(url, { safe: true });
 
 async function fetchApex(tier) {
-  const data = await rl(`https://${REGION}.api.riotgames.com/tft/league/v1/${tier}?api_key=${API_KEY}`);
+  const data = await rl(`https://${REGION}.api.riotgames.com/tft/league/v1/${tier}`);
   if (!data || data._status) return [];
   return (data.entries || []).map(e => ({ puuid: e.puuid, lp: e.leaguePoints, tier: tier.toUpperCase() }));
 }
 
 async function fetchEntries(tier, division, page) {
-  const data = await rl(`https://${REGION}.api.riotgames.com/tft/league/v1/entries/${tier}/${division}?page=${page}&api_key=${API_KEY}`);
+  const data = await rl(`https://${REGION}.api.riotgames.com/tft/league/v1/entries/${tier}/${division}?page=${page}`);
   if (!data || data._status) return [];
   return (data || []).map(e => ({ puuid: e.puuid, lp: e.leaguePoints, tier }));
 }
@@ -245,7 +246,7 @@ async function fetchMatchIdsForPlayer(puuid) {
   while (ids.length < MAX_MATCHES_PER_PLAYER) {
     const url = `https://${REGIONAL}.api.riotgames.com/tft/match/v1/matches/by-puuid/${puuid}/ids`
       + `?startTime=${WINDOW_START_SEC}&endTime=${WINDOW_END_SEC}`
-      + `&start=${start}&count=${COUNT}&api_key=${API_KEY}`;
+      + `&start=${start}&count=${COUNT}`;
     const batch = await rl(url);
     if (!Array.isArray(batch) || batch.length === 0) break;
     ids.push(...batch);
@@ -310,7 +311,7 @@ async function main() {
       break;
     }
     const id = ids[j];
-    const raw = await rl(`https://${REGIONAL}.api.riotgames.com/tft/match/v1/matches/${id}?api_key=${API_KEY}`);
+    const raw = await rl(`https://${REGIONAL}.api.riotgames.com/tft/match/v1/matches/${id}`);
     if (!raw || raw._status) { totalSkipped++; continue; }
     const patch = resolvePatch(raw?.info?.game_version, CURRENT_PATCH);
     let agg = aggsByPatch.get(patch);

@@ -249,8 +249,8 @@ async function fetchRiotAPI(nameTag) {
   if (!RIOT_API_KEY || !nameTag || !nameTag.includes('#')) return null;
   try {
     const [name, tag] = nameTag.split('#');
-    const accountUrl = `https://europe.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(name)}/${encodeURIComponent(tag)}?api_key=${RIOT_API_KEY}`;
-    const res = await fetch(accountUrl);
+    const accountUrl = `https://europe.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(name)}/${encodeURIComponent(tag)}`;
+    const res = await fetch(accountUrl, { headers: { 'X-Riot-Token': RIOT_API_KEY } });
     if (!res.ok) return null;
     const data = await res.json();
     return { puuid: data.puuid, gameName: data.gameName, tagLine: data.tagLine, verified: true, source: 'riotapi' };
@@ -267,13 +267,13 @@ async function getRiotRank(puuid, region) {
       'br': 'br1', 'jp': 'jp1', 'oce': 'oc1'
     };
     const platform = platformMap[region?.toLowerCase()] || 'euw1';
-    const url = `https://${platform}.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${puuid}?api_key=${RIOT_API_KEY}`;
-    const sumRes = await fetch(url);
+    const url = `https://${platform}.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${puuid}`;
+    const sumRes = await fetch(url, { headers: { 'X-Riot-Token': RIOT_API_KEY } });
     if (!sumRes.ok) return 'Unknown';
     const sumData = await sumRes.json();
 
-    const leagueUrl = `https://${platform}.api.riotgames.com/lol/league/v4/entries/by-summoner/${sumData.id}?api_key=${RIOT_API_KEY}`;
-    const leagueRes = await fetch(leagueUrl);
+    const leagueUrl = `https://${platform}.api.riotgames.com/lol/league/v4/entries/by-summoner/${sumData.id}`;
+    const leagueRes = await fetch(leagueUrl, { headers: { 'X-Riot-Token': RIOT_API_KEY } });
     if (!leagueRes.ok) return 'Unknown';
     const leagues = await leagueRes.json();
     const soloq = leagues.find(l => l.queueType === 'RANKED_SOLO_5x5');

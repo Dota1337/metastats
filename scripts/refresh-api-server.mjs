@@ -173,6 +173,7 @@ const pool = new pg.Pool({ connectionString: DB_URL, max: 5, statement_timeout: 
 // hat 90s Timeout, das traegt. Budget-Herleitung siehe
 // scripts/daily-marketvalue-snapshot.mjs.
 const riot = createRiotClient({
+  apiKey: RIOT_KEY,
   shortWindowRequests: 18,
   shortWindowMs: 1100,
   longWindowRequests: 60,
@@ -219,7 +220,7 @@ async function pushToSupabase(snapshotRow, seasonRow) {
 
 // ─ Fetch ranked + account for the puuid ────────────────────────────────────
 async function fetchPlayerRanked(puuid, region) {
-  const rankedUrl = `https://${region}.api.riotgames.com/tft/league/v1/by-puuid/${puuid}?api_key=${RIOT_KEY}`;
+  const rankedUrl = `https://${region}.api.riotgames.com/tft/league/v1/by-puuid/${puuid}`;
   const ranked = await riot.fetchJson(rankedUrl, { safe: true });
   const rankedSolo = Array.isArray(ranked)
     ? ranked.find(r => r.queueType === 'RANKED_TFT')
@@ -228,7 +229,7 @@ async function fetchPlayerRanked(puuid, region) {
 }
 async function fetchAccount(puuid, regional) {
   const r = await riot.fetchJson(
-    `https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-puuid/${puuid}?api_key=${RIOT_KEY}`,
+    `https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-puuid/${puuid}`,
     { safe: true },
   );
   if (!r || r._status) return null;

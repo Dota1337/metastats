@@ -353,7 +353,7 @@ function riotForCluster(cluster) {
   if (!client) {
     // Long-Window ist ebenfalls per Route, vier unabhaengige Fenster sind also
     // korrekt und nicht additiv gegen 30000.
-    client = createRiotClient(riotWindowFor('batch', cluster));
+    client = createRiotClient({ ...riotWindowFor('batch', cluster), apiKey: API_KEY });
     riotClients.set(cluster, client);
   }
   return client;

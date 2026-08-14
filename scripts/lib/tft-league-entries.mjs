@@ -74,7 +74,7 @@ export async function fetchD2PlusEntries(region, rl, apiKey, opts = {}) {
     let data;
     try {
       data = await rl(
-        `https://${region}.api.riotgames.com/tft/league/v1/${tier}?api_key=${apiKey}`,
+        `https://${region}.api.riotgames.com/tft/league/v1/${tier}`,
       );
     } catch (err) {
       // Pro Tier auffangen. Ohne das reisst ein einzelner 504 — bei den
@@ -109,7 +109,7 @@ export async function fetchD2PlusEntries(region, rl, apiKey, opts = {}) {
       try {
         data = await rl(
           `https://${region}.api.riotgames.com/tft/league/v1/entries/DIAMOND/${div}`
-          + `?page=${page}&api_key=${apiKey}`,
+          + `?page=${page}`,
         );
       } catch (err) {
         // Seite verloren -> Division hier abbrechen, aber das bisher Geholte

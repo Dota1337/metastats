@@ -148,8 +148,8 @@ async function main() {
 
     for (const tag of routeInfo.tags) {
       try {
-        const url = `https://${routeInfo.route}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(p.summonerName)}/${encodeURIComponent(tag)}?api_key=${RIOT_KEY}`;
-        const r = await fetch(url);
+        const url = `https://${routeInfo.route}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(p.summonerName)}/${encodeURIComponent(tag)}`;
+        const r = await fetch(url, { headers: { 'X-Riot-Token': RIOT_KEY } });
 
         if (r.status === 200) {
           const d = await r.json();

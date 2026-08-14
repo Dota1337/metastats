@@ -119,6 +119,7 @@ const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || null;
 // fetches the cold-fill crawled at ~3 req/s (~60s/cold player), so the apex
 // regions never finished before the next 00:02 aggregate crawl killed the run.
 const riot = createRiotClient({
+  apiKey: API_KEY,
   // 130 statt 180 (2026-08-02) — geteilter Key-Bucket, Budget siehe Kommentar
   // in scripts/daily-marketvalue-snapshot.mjs.
   shortWindowRequests: 130,
@@ -142,7 +143,7 @@ const pool = new pg.Pool({ connectionString: DATABASE_URL, max: 5, statement_tim
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function fetchApex(tier) {
-  const data = await rl(`https://${REGION}.api.riotgames.com/tft/league/v1/${tier}?api_key=${API_KEY}`);
+  const data = await rl(`https://${REGION}.api.riotgames.com/tft/league/v1/${tier}`);
   if (!data || data._status) {
     if (data?._status) console.log(`  [discovery] ${tier} HTTP ${data._status}`);
     return [];
@@ -160,7 +161,7 @@ async function fetchDiamond() {
   for (const division of ['I', 'II']) {
     let page = 1;
     while (true) {
-      const url = `https://${REGION}.api.riotgames.com/tft/league/v1/entries/DIAMOND/${division}?page=${page}&api_key=${API_KEY}`;
+      const url = `https://${REGION}.api.riotgames.com/tft/league/v1/entries/DIAMOND/${division}?page=${page}`;
       const data = await rl(url);
       if (!data || data._status || !Array.isArray(data) || data.length === 0) break;
       for (const e of data) {
@@ -206,7 +207,7 @@ async function loadPlayersByPuuids(puuids) {
   const out = [];
   for (const puuid of puuids) {
     const data = await rl(
-      `https://${REGION}.api.riotgames.com/tft/league/v1/by-puuid/${puuid}?api_key=${API_KEY}`,
+      `https://${REGION}.api.riotgames.com/tft/league/v1/by-puuid/${puuid}`,
     );
     if (!data || data._status) {
       if (VERBOSE) console.log(`  [skip] no league entry for ${puuid.slice(0, 8)}…`);

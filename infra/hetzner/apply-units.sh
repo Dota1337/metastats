@@ -49,6 +49,14 @@ for u in "${units[@]}"; do
     echo "!! $u: nicht im Repo" >&2
     exit 1
   fi
+  # Maskierte Units sind Symlinks auf /dev/null. Ein `cat >` darauf schreibt
+  # ins Nichts, die Datei sieht danach weiter leer aus — das Script wuerde also
+  # bei jedem Lauf Drift melden und nichts erreichen. metastats-crawler.timer
+  # ist genau dieser Fall (stillgelegt 2026-08-02).
+  if $SSH "test -L /etc/systemd/system/$u && [ \"\$(readlink -f /etc/systemd/system/$u)\" = /dev/null ]"; then
+    echo "== $u: maskiert, uebersprungen"
+    continue
+  fi
   remote="$($SSH "cat /etc/systemd/system/$u 2>/dev/null || true")"
   if [ "$(sed 's/\r$//' "$local_file")" = "$(printf '%s\n' "$remote" | sed 's/\r$//')" ]; then
     echo "== $u: identisch"

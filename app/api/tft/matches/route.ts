@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getRegionalRouting } from '../../../lib/regions';
+import { getRegionalRouting, parseRegion } from '../../../lib/regions';
 import { processTftMatch } from '../../../lib/tft-match-processor';
 
 // Resolves a list of TFT match IDs (or a puuid + range) into processed
@@ -11,10 +11,16 @@ const STANDARD_RANKED_QUEUE = 1100;
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const region = (searchParams.get('region') || 'euw1').toLowerCase();
+  const region = parseRegion(searchParams.get('region'), { fallback: 'euw1' });
   const apiKey = process.env.RIOT_API_KEY_TFT;
   if (!apiKey) {
     return NextResponse.json({ error: 'Riot API Key fehlt', code: 'no_key' }, { status: 503 });
+  }
+  if (!region) {
+    return NextResponse.json(
+      { error: 'Ungültige Region', code: 'bad_region' },
+      { status: 400, headers: { 'Cache-Control': 'no-store' } },
+    );
   }
   const regional = getRegionalRouting(region);
 

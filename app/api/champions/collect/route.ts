@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '../../../lib/supabase';
-import { getRegionalRouting } from '../../../lib/regions';
+import { getRegionalRouting, parseRegion } from '../../../lib/regions';
 
 // In-memory cache per region (survives across requests in serverless for a while)
 const cache: Record<string, { data: any; ts: number }> = {};
@@ -13,14 +13,20 @@ const CACHE_TTL = 2 * 60 * 60 * 1000; // 2 hours
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const region = searchParams.get('region') || 'euw1';
+  const region = parseRegion(searchParams.get('region'), { fallback: 'euw1' });
   const apiKey = process.env.RIOT_API_KEY!;
-  const regional = getRegionalRouting(region);
   const forceRefresh = searchParams.get('refresh') === '1';
 
   if (!apiKey) {
     return NextResponse.json({ error: 'API Key not configured' }, { status: 500 });
   }
+  if (!region) {
+    return NextResponse.json(
+      { error: 'Ungültige Region' },
+      { status: 400, headers: { 'Cache-Control': 'no-store' } },
+    );
+  }
+  const regional = getRegionalRouting(region);
 
   // Return cached data if fresh (unless force refresh)
   if (!forceRefresh && cache[region] && Date.now() - cache[region].ts < CACHE_TTL) {

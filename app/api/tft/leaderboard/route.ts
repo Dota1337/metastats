@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getRegionalRouting } from '../../../lib/regions';
+import { getRegionalRouting, parseRegion } from '../../../lib/regions';
 
 // /api/tft/leaderboard?region=euw1&tier=CHALLENGER
 // Pulls a TFT ranked ladder slice from Riot. The crawler doesn't pre-build
@@ -10,11 +10,17 @@ const VALID_TIERS = new Set(['CHALLENGER', 'GRANDMASTER', 'MASTER']);
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const region = (searchParams.get('region') || 'euw1').toLowerCase();
+  const region = parseRegion(searchParams.get('region'), { fallback: 'euw1' });
   const tier = (searchParams.get('tier') || 'CHALLENGER').toUpperCase();
   const apiKey = process.env.RIOT_API_KEY_TFT;
   if (!apiKey) {
     return NextResponse.json({ error: 'Riot API Key fehlt', code: 'no_key' }, { status: 503 });
+  }
+  if (!region) {
+    return NextResponse.json(
+      { error: 'Ungültige Region', code: 'bad_region' },
+      { status: 400, headers: { 'Cache-Control': 'no-store' } },
+    );
   }
   if (!VALID_TIERS.has(tier)) {
     return NextResponse.json({ error: `Tier ${tier} nicht unterstützt — nur Master, Grandmaster, Challenger.`, code: 'bad_tier' }, { status: 400 });

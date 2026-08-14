@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getRegionalRouting } from '../../../lib/regions';
+import { getRegionalRouting, parseRegion } from '../../../lib/regions';
 
 // Lightweight TFT summoner endpoint — resolves Riot ID to puuid, pulls TFT
 // solo (1100) ranked entry and the latest match IDs. The match details are
@@ -24,10 +24,16 @@ interface RankedEntry {
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const name = searchParams.get('name') || '';
-  const region = (searchParams.get('region') || 'euw1').toLowerCase();
+  const region = parseRegion(searchParams.get('region'), { fallback: 'euw1' });
   const apiKey = process.env.RIOT_API_KEY_TFT;
   if (!apiKey) {
     return NextResponse.json({ error: 'Riot API Key fehlt', code: 'no_key' }, { status: 503 });
+  }
+  if (!region) {
+    return NextResponse.json(
+      { error: 'Ungültige Region', code: 'bad_region' },
+      { status: 400, headers: { 'Cache-Control': 'no-store' } },
+    );
   }
   const regional = getRegionalRouting(region);
 

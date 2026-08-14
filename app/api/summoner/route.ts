@@ -4,13 +4,19 @@ import { calculateMarketValue } from '../../lib/marketvalue';
 import { processMatch, toLegacyMatchData, extractParticipants, extractBans, type ExtendedMatchData } from '../../lib/match-processor';
 import { calculateStatsOverview } from '../../lib/stats-categories';
 
-import { getRegionalRouting } from '../../lib/regions';
+import { getRegionalRouting, parseRegion } from '../../lib/regions';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const name = searchParams.get('name') || '';
-  const region = searchParams.get('region') || 'euw1';
+  const region = parseRegion(searchParams.get('region'), { fallback: 'euw1' });
   const apiKey = process.env.RIOT_API_KEY!;
+  if (!region) {
+    return NextResponse.json(
+      { error: 'Ungültige Region' },
+      { status: 400, headers: { 'Cache-Control': 'no-store' } },
+    );
+  }
   const regional = getRegionalRouting(region);
 
   const decoded = decodeURIComponent(name);

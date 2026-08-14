@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { computeBaseValue } from '../../../lib/tft-marketvalue/base-value';
 import { extractRawMetrics, scoreSkill, type CompMetaEntry } from '../../../lib/tft-marketvalue/skill-score';
-import { getRegionalRouting } from '../../../lib/regions';
+import { getRegionalRouting, parseRegion } from '../../../lib/regions';
 import { processTftMatch } from '../../../lib/tft-match-processor';
 import { supabase } from '../../../lib/supabase';
 import { classifyComp as classifyCompUnified } from '../../../lib/tft-classify-comp';
@@ -23,8 +23,14 @@ const TFT_RANKED_SOLO = 'RANKED_TFT';
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const name = searchParams.get('name') || '';
-  const region = (searchParams.get('region') || 'euw1').toLowerCase();
+  const region = parseRegion(searchParams.get('region'), { fallback: 'euw1' });
   const forceLive = searchParams.get('live') === '1';
+  if (!region) {
+    return NextResponse.json(
+      { error: 'Ungültige Region' },
+      { status: 400, headers: { 'Cache-Control': 'no-store' } },
+    );
+  }
 
   const decoded = decodeURIComponent(name);
   const [gameName, tagLineRaw] = decoded.split('#');

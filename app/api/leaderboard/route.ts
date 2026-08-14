@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '../../lib/supabase';
 
-import { getRegionalRouting } from '../../lib/regions';
+import { getRegionalRouting, parseRegion, REGION_ALL } from '../../lib/regions';
 
 // In-memory cache for PUUID -> Riot ID (gameName#tagLine)
 const nameCache: Record<string, string> = {};
@@ -9,8 +9,16 @@ const NAME_RESOLVE_BATCH = 80; // max names to resolve per request (rate limit s
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const region = searchParams.get('region') || 'euw1';
+  // 'all' ist hier ein legitimer Modus (Regionen-übergreifende Ansicht) und
+  // wird weiter unten auf euw1 als Riot-Platform gemappt.
+  const region = parseRegion(searchParams.get('region'), { fallback: 'euw1', allowAll: true });
   const tier = searchParams.get('tier') || 'CHALLENGER';
+  if (!region) {
+    return NextResponse.json(
+      { error: 'Ungültige Region' },
+      { status: 400, headers: { 'Cache-Control': 'no-store' } },
+    );
+  }
   const division = searchParams.get('division') || '';
   const page = parseInt(searchParams.get('page') || '1', 10);
   const search = searchParams.get('search') || '';
@@ -46,7 +54,7 @@ export async function GET(request: NextRequest) {
 
     // Primary: fetch from Riot API
     if (apiKey) {
-      const riotRegion = region === 'all' ? 'euw1' : region;
+      const riotRegion = region === REGION_ALL ? 'euw1' : region;
       const isApex = ['CHALLENGER', 'GRANDMASTER', 'MASTER'].includes(tier);
 
       let riotRes: Response;

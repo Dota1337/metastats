@@ -3,7 +3,7 @@ import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { refreshPlayerCache, loadCachedMatches, listCachedSets } from '../../../lib/tft-player-cache';
 import { ensureRankHistoryBackfilled, type SeasonRank } from '../../../lib/tft-rank-history';
-import { getRegionalRouting } from '../../../lib/regions';
+import { getRegionalRouting, parseRegion } from '../../../lib/regions';
 import { isExcludedUnit } from '../../../lib/tft-excluded';
 import { supabase } from '../../../lib/supabase';
 
@@ -38,10 +38,16 @@ function getCurrentSet(): number | null {
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const puuid = searchParams.get('puuid');
-  const region = (searchParams.get('region') || 'euw1').toLowerCase();
+  const region = parseRegion(searchParams.get('region'), { fallback: 'euw1' });
   const apiKey = process.env.RIOT_API_KEY_TFT;
   if (!apiKey) return NextResponse.json({ error: 'Riot API Key fehlt' }, { status: 503 });
   if (!puuid) return NextResponse.json({ error: 'puuid required' }, { status: 400 });
+  if (!region) {
+    return NextResponse.json(
+      { error: 'Ungültige Region', code: 'bad_region' },
+      { status: 400, headers: { 'Cache-Control': 'no-store' } },
+    );
+  }
 
   const currentSet = getCurrentSet();
   // ?set=16 lets the page switch to a previous set without re-fetching Riot —

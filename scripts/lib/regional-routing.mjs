@@ -15,6 +15,22 @@ export const REGIONAL_ROUTING = Object.freeze({
   oc1: 'sea', ph2: 'sea', sg2: 'sea', th2: 'sea', tw2: 'sea', vn2: 'sea',
 });
 
+// Sicherheits-Riegel 2026-08-14, Spiegel von app/lib/regions.ts.
+// Die Web-Seite validiert jede Region bevor sie in einen Riot-Host geht;
+// die Crawler bauen dieselben URLs und brauchen denselben Riegel, sonst ist
+// er ein Riegel mit Loch. Hier kommt die Region aus --region/CLI, ein Wurf
+// beim Start ist also gewollt (fail fast statt 14h Crawl gegen europe).
+
+export function normalizeRegion(raw) {
+  return String(raw ?? '').trim().toLowerCase();
+}
+
+export function isValidRegion(raw) {
+  return Object.prototype.hasOwnProperty.call(REGIONAL_ROUTING, normalizeRegion(raw));
+}
+
 export function getRegionalRouting(region) {
-  return REGIONAL_ROUTING[region] || 'europe';
+  const cluster = REGIONAL_ROUTING[normalizeRegion(region)];
+  if (!cluster) throw new Error(`Unbekannte Region: ${region}`);
+  return cluster;
 }

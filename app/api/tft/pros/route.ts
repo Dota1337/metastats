@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '../../../lib/supabase';
+import { supabaseAdmin } from '../../../lib/supabase';
 
 // /api/tft/pros
 //
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
   const puuid = searchParams.get('puuid');
 
   if (puuid) {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('tft_pro_players')
       .select('*')
       .eq('puuid', puuid)
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
   const minConfidence = Math.max(0, Math.min(100, parseInt(searchParams.get('min_confidence') || '0', 10)));
   const limit = Math.max(1, Math.min(1000, parseInt(searchParams.get('limit') || '500', 10)));
 
-  const { data, error } = await supabase.rpc('get_tft_pros_classified', {
+  const { data, error } = await supabaseAdmin.rpc('get_tft_pros_classified', {
     p_classifications: classifications,
     p_region: region || null,
     p_team: team || null,
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
   // classification set the active tab renders — the old hardcoded
   // tpc+tournament+streamer set showed "EUW 42" while the verified tab
   // rendered 6 rows (badge ≠ list, user-visible bug 2026-07-05).
-  const { data: allClassified } = await supabase
+  const { data: allClassified } = await supabaseAdmin
     .from('tft_pro_players')
     .select('classification,region,team,tpc_verified,tpc_region', { head: false });
 

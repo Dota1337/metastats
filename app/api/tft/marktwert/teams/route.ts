@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '../../../../lib/supabase';
+import { supabaseAdmin } from '../../../../lib/supabase';
 import { cachedJson } from '../../../../lib/api-cache';
 
 // /api/tft/marktwert/teams?region=euw1&limit=20
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   const region = regionParam === 'all' ? null : regionParam;
   const limit = Math.max(1, Math.min(200, parseInt(searchParams.get('limit') || '50', 10)));
 
-  const { data, error } = await supabase.rpc('get_tft_team_marketvalues', {
+  const { data, error } = await supabaseAdmin.rpc('get_tft_team_marketvalues', {
     p_region: region,
     p_limit: limit,
   });

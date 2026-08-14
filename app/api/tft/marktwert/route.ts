@@ -3,7 +3,7 @@ import { computeBaseValue } from '../../../lib/tft-marketvalue/base-value';
 import { extractRawMetrics, scoreSkill, type CompMetaEntry } from '../../../lib/tft-marketvalue/skill-score';
 import { getRegionalRouting, parseRegion } from '../../../lib/regions';
 import { processTftMatch } from '../../../lib/tft-match-processor';
-import { supabase } from '../../../lib/supabase';
+import { supabaseAdmin } from '../../../lib/supabase';
 import { classifyComp as classifyCompUnified } from '../../../lib/tft-classify-comp';
 import { riotFetch } from '../../../lib/riot-fetch';
 
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
 
   // 1) Snapshot path — fast, no rate-limit cost.
   if (!forceLive) {
-    const { data: snap } = await supabase
+    const { data: snap } = await supabaseAdmin
       .from('tft_player_marketvalue_snapshots')
       .select('tier, rank, lp, ladder_rank, base_value, multiplier, final_value, sample_size, damping, agents, snapshot_date')
       .eq('puuid', puuid)
@@ -122,7 +122,7 @@ export async function GET(request: NextRequest) {
   // recent snapshot's persisted ladder_rank for this player.
   let ladderRank: number | undefined;
   if (ranked?.tier === 'CHALLENGER') {
-    const { data: lr } = await supabase
+    const { data: lr } = await supabaseAdmin
       .from('tft_player_marketvalue_snapshots')
       .select('ladder_rank')
       .eq('puuid', puuid)
@@ -150,7 +150,7 @@ export async function GET(request: NextRequest) {
   } else {
     const setNumber = selfMatches.reduce((mx, m) => Math.max(mx, m.setNumber || 0), 0);
     const setMatches = selfMatches.filter(m => m.setNumber === setNumber);
-    const { data: ps } = await supabase
+    const { data: ps } = await supabaseAdmin
       .from('tft_mv_population_stats')
       .select('medians, expected_dmg, comp_meta')
       .eq('region', region).eq('set_number', setNumber).maybeSingle();

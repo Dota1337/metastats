@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchHetznerProsByComp } from '../../../../lib/tft-hetzner-matches';
-import { supabase } from '../../../../lib/supabase';
+import { supabaseAdmin } from '../../../../lib/supabase';
 import { cachedJson, STATS_CACHE_CONTROL } from '../../../../lib/api-cache';
 
 // /api/tft/pros/by-comp?family=<trait>__<carry>&set=17
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
   const topN = Math.max(1, Math.min(20, parseInt(searchParams.get('topN') || '8', 10)));
 
   // Pull Pro-Player-Liste aus Supabase (active = streamer + tpc).
-  const { data: pros, error } = await supabase
+  const { data: pros, error } = await supabaseAdmin
     .from('tft_pro_players')
     .select('puuid,pro_name,riot_id,region,classification')
     .in('classification', PRO_CLASSIFICATIONS)

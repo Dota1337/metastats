@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '../../../../lib/supabase';
+import { supabaseAdmin } from '../../../../lib/supabase';
 import { cachedJson } from '../../../../lib/api-cache';
 
 // /api/tft/marktwert/sparklines?region=euw1&limit=100&days=14
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   const limit = Math.max(1, Math.min(200, parseInt(searchParams.get('limit') || '100', 10)));
   const days = Math.max(2, Math.min(60, parseInt(searchParams.get('days') || '14', 10)));
 
-  const { data, error } = await supabase.rpc('get_tft_marketvalue_sparklines', {
+  const { data, error } = await supabaseAdmin.rpc('get_tft_marketvalue_sparklines', {
     p_region: region,
     p_limit: limit,
     p_days: days,

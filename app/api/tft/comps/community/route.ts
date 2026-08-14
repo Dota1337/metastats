@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '../../../../lib/supabase';
+import { supabaseAdmin } from '../../../../lib/supabase';
 
 // GET /api/tft/comps/community?sort=top|recent&carry=X&limit=30&offset=0
 //
@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   const limit = Math.max(1, Math.min(60, parseInt(searchParams.get('limit') || '30', 10)));
   const offset = Math.max(0, parseInt(searchParams.get('offset') || '0', 10));
 
-  const { data, error } = await supabase.rpc('get_tft_public_comps', {
+  const { data, error } = await supabaseAdmin.rpc('get_tft_public_comps', {
     p_sort: sort === 'recent' ? 'recent' : 'top',
     p_carry: carry,
     p_limit: limit,

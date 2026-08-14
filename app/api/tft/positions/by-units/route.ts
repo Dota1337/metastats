@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { supabase } from '../../../../lib/supabase';
+import { supabaseAdmin } from '../../../../lib/supabase';
 import { cachedJson } from '../../../../lib/api-cache';
 
 // Returns position frequency per (unit, cell) for a comma-separated set of
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
   let source: 'comp' | 'global' = 'global';
 
   if (cluster && /^[\w@]+_[A-Za-z0-9_]+$/.test(cluster)) {
-    const r = await supabase
+    const r = await supabaseAdmin
       .from('tft_position_comp_cell')
       .select('unit, cell, observations')
       .eq('cluster_key', cluster)
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
   }
 
   if (!data) {
-    const r = await supabase
+    const r = await supabaseAdmin
       .from('tft_position_unit_cell')
       .select('unit, cell, observations, distinct_observers')
       .in('unit', units);

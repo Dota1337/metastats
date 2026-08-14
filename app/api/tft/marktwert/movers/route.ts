@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '../../../../lib/supabase';
+import { supabaseAdmin } from '../../../../lib/supabase';
 import { cachedJson } from '../../../../lib/api-cache';
 
 // /api/tft/marktwert/movers?region=euw1&direction=up|down&window=7&limit=20
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'direction must be up|down' }, { status: 400 });
   }
 
-  const { data, error } = await supabase.rpc('get_tft_marketvalue_movers', {
+  const { data, error } = await supabaseAdmin.rpc('get_tft_marketvalue_movers', {
     p_region: region,
     p_window: window_,
     p_direction: direction,

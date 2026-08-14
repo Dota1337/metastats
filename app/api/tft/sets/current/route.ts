@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { supabase } from '../../../../lib/supabase';
+import { supabaseAdmin } from '../../../../lib/supabase';
 import { tftPatchLabel } from '../../../../lib/tft-patch-label';
 
 // Returns everything the SetTimeline UI needs:
@@ -64,7 +64,7 @@ export async function GET() {
   // every (patch, day) row across the daily stats table.
   let dbPatches: { patch: string; first_day: string }[] = [];
   try {
-    const { data } = await supabase
+    const { data } = await supabaseAdmin
       .rpc('get_tft_distinct_patches_for_set', { p_set: setNumber });
     if (Array.isArray(data)) {
       dbPatches = data

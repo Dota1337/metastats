@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '../../../../lib/supabase';
+import { supabaseAdmin } from '../../../../lib/supabase';
 import { cachedJson } from '../../../../lib/api-cache';
 
 // /api/tft/marktwert/leaderboard?region=euw1&limit=100&tier=CHALLENGER
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
   // the post-filter trims the non-matching tiers.
   const fetchLimit = tier && VALID_TIERS.has(tier) ? limit * 4 : limit;
 
-  const { data, error } = await supabase.rpc('get_tft_latest_marketvalues', {
+  const { data, error } = await supabaseAdmin.rpc('get_tft_latest_marketvalues', {
     p_region: region,
     p_limit: fetchLimit,
   });

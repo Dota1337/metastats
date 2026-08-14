@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '../../../../lib/supabase';
+import { supabaseAdmin } from '../../../../lib/supabase';
 import { cachedJson } from '../../../../lib/api-cache';
 
 // /api/tft/marktwert/history?puuid=...&region=euw1&days=30
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
 
   if (!puuid) return NextResponse.json({ error: 'puuid fehlt' }, { status: 400 });
 
-  const { data, error } = await supabase.rpc('get_tft_marketvalue_history', {
+  const { data, error } = await supabaseAdmin.rpc('get_tft_marketvalue_history', {
     p_puuid: puuid,
     p_region: region,
     p_days: days,

@@ -5,7 +5,7 @@ import { refreshPlayerCache, loadCachedMatches, listCachedSets } from '../../../
 import { ensureRankHistoryBackfilled, type SeasonRank } from '../../../lib/tft-rank-history';
 import { getRegionalRouting, parseRegion } from '../../../lib/regions';
 import { isExcludedUnit } from '../../../lib/tft-excluded';
-import { supabase } from '../../../lib/supabase';
+import { supabaseAdmin } from '../../../lib/supabase';
 import { riotFetch } from '../../../lib/riot-fetch';
 
 // Player season-stats endpoint.
@@ -109,7 +109,7 @@ export async function GET(request: NextRequest) {
   // graph + comp classification), so we read the precomputed row and surface
   // it as `seasonAggregate` alongside the live numbers. Used by both the
   // cached-match path (enrichment) and the no-cache fallback (headline source).
-  const { data: seasonRow } = await supabase
+  const { data: seasonRow } = await supabaseAdmin
     .from('tft_player_season_stats')
     .select('sample_size, avg_placement, top4_rate, top1_rate, bottom4_rate, placement_stddev, best_top4_streak, unique_comps, dominant_share, meta_pick_share, item_slam_score')
     .eq('puuid', puuid)

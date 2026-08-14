@@ -23,6 +23,10 @@ on:
       - '.github/workflows/deploy-hetzner.yml'
   workflow_dispatch: {}
 
+# Der Deploy schiebt per SSH auf die Box und schreibt nichts ins Repo.
+permissions:
+  contents: read
+
 concurrency:
   group: deploy-hetzner
   cancel-in-progress: false

@@ -20,6 +20,10 @@ on:
     - cron: '0 4 * * 1'
   workflow_dispatch: {}
 
+# Schreibt public/pro-teams.json nach main zurueck — mehr nicht.
+permissions:
+  contents: write
+
 concurrency:
   group: pro-teams-weekly
   cancel-in-progress: false

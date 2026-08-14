@@ -65,10 +65,10 @@ function generateSecret() {
 function updateVercelEnv(secret) {
   for (const target of ['production', 'development']) {
     try {
-      run('vercel', ['env', 'rm', SECRET_NAME, target, '--yes'], {
-        shell: true,
-        env: { ...process.env, NODE_TLS_REJECT_UNAUTHORIZED: '0' },
-      });
+      // Kein NODE_TLS_REJECT_UNAUTHORIZED=0: hier wandert ein frisches Secret
+      // ueber die Leitung. Bei TLS-Inspektion NODE_EXTRA_CA_CERTS setzen,
+      // nicht die Zertifikatspruefung abschalten.
+      run('vercel', ['env', 'rm', SECRET_NAME, target, '--yes'], { shell: true });
     } catch {
       // Existiert noch nicht — erste Initialisierung. Ignore.
     }
@@ -76,7 +76,6 @@ function updateVercelEnv(secret) {
       input: secret,
       stdio: ['pipe', 'inherit', 'inherit'],
       shell: true,
-      env: { ...process.env, NODE_TLS_REJECT_UNAUTHORIZED: '0' },
     });
     if (add.status !== 0) throw new Error(`vercel env add ${SECRET_NAME} ${target} failed`);
   }

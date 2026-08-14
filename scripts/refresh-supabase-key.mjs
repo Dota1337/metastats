@@ -103,12 +103,14 @@ async function validateSupabaseKey(key, supabaseUrl, label) {
 
 async function updateVercelEnv(targets, secretName, key) {
   for (const target of targets) {
-    spawnSync('vercel', ['env', 'rm', secretName, target, '--yes'], { stdio: 'inherit', shell: true, env: { ...process.env, NODE_TLS_REJECT_UNAUTHORIZED: '0' } });
+    // Kein NODE_TLS_REJECT_UNAUTHORIZED=0: hier geht der Service-Role-Key raus.
+    // Ohne Zertifikatspruefung liest ihn jede Zwischenstation mit. Bei
+    // TLS-Inspektion NODE_EXTRA_CA_CERTS setzen, nicht die Pruefung abschalten.
+    spawnSync('vercel', ['env', 'rm', secretName, target, '--yes'], { stdio: 'inherit', shell: true });
     const add = spawnSync('vercel', ['env', 'add', secretName, target], {
       input: key,
       stdio: ['pipe', 'inherit', 'inherit'],
       shell: true,
-      env: { ...process.env, NODE_TLS_REJECT_UNAUTHORIZED: '0' },
     });
     if (add.status !== 0) throw new Error(`vercel env add ${secretName} ${target} failed`);
   }

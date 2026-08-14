@@ -18,6 +18,11 @@ on:
     branches: [main]
   workflow_dispatch: {}
 
+# Ohne diesen Block bekommt GITHUB_TOKEN die Repo-Defaults — je nach
+# Einstellung Schreibrechte auf Code, Issues und Packages. Die CI liest nur.
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true

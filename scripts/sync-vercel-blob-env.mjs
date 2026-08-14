@@ -56,11 +56,14 @@ function run(cmd, args, opts = {}) {
 async function pushVercel(name, value, target) {
   console.log(`  vercel ${target}: ${name}`);
   // rm first (ignore failure when not exists), then add — vercel env doesn't support overwrite
-  run('vercel', ['env', 'rm', name, target, '--yes'], { env: { ...process.env, NODE_TLS_REJECT_UNAUTHORIZED: '0' } });
+  // Kein NODE_TLS_REJECT_UNAUTHORIZED=0 hier — ueber diese Verbindung geht ein
+  // Secret raus. Ohne Zertifikatspruefung kann jeder im Netzweg dazwischen es
+  // mitlesen. Bricht die Verbindung an einer TLS-Inspektion, gehoert das
+  // Firmen-Zertifikat in NODE_EXTRA_CA_CERTS, nicht die Pruefung abgeschaltet.
+  run('vercel', ['env', 'rm', name, target, '--yes']);
   const add = spawnSync('vercel', ['env', 'add', name, target], {
     input: value,
     encoding: 'utf8',
-    env: { ...process.env, NODE_TLS_REJECT_UNAUTHORIZED: '0' },
     shell: true,
   });
   if (add.status !== 0) {

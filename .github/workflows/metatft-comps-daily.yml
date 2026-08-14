@@ -19,6 +19,12 @@ on:
     - cron: '30 5 * * *'
   workflow_dispatch: {}
 
+# Schreibt das aktualisierte Bundle nach main zurueck — mehr braucht der Job
+# nicht. Ohne den Block gelten die Repo-Defaults (potenziell auch Issues,
+# Packages, Deployments).
+permissions:
+  contents: write
+
 concurrency:
   group: metatft-comps
   cancel-in-progress: false

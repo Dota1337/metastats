@@ -5,6 +5,7 @@ import { getRegionalRouting, parseRegion } from '../../../lib/regions';
 import { processTftMatch } from '../../../lib/tft-match-processor';
 import { supabase } from '../../../lib/supabase';
 import { classifyComp as classifyCompUnified } from '../../../lib/tft-classify-comp';
+import { riotFetch } from '../../../lib/riot-fetch';
 
 // /api/tft/marktwert?name=Caps#EUW&region=euw1
 //
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
   // Resolve account first — we need the puuid both for the snapshot lookup
   // and (as a fallback) for the live calc. Account lookup is the only Riot
   // call that's strictly required in the snapshot-hit path.
-  const accRes = await fetch(`https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}?api_key=${apiKey}`);
+  const accRes = await riotFetch(`https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`, apiKey);
   if (!accRes.ok) return NextResponse.json({ error: 'Spieler nicht gefunden' }, { status: 404 });
   const account = await accRes.json();
   const puuid = account.puuid;
@@ -81,15 +82,15 @@ export async function GET(request: NextRequest) {
 
   // 2) Live fallback — used when no snapshot exists or ?live=1.
   const [rankedRes, idsRes] = await Promise.all([
-    fetch(`https://${region}.api.riotgames.com/tft/league/v1/by-puuid/${puuid}?api_key=${apiKey}`),
-    fetch(`https://${regional}.api.riotgames.com/tft/match/v1/matches/by-puuid/${puuid}/ids?count=30&api_key=${apiKey}`),
+    riotFetch(`https://${region}.api.riotgames.com/tft/league/v1/by-puuid/${puuid}`, apiKey),
+    riotFetch(`https://${regional}.api.riotgames.com/tft/match/v1/matches/by-puuid/${puuid}/ids?count=30`, apiKey),
   ]);
   const rankedAll = rankedRes.ok ? await rankedRes.json() : [];
   const matchIds: string[] = idsRes.ok ? await idsRes.json() : [];
   const ranked = Array.isArray(rankedAll) ? rankedAll.find((r: any) => r.queueType === TFT_RANKED_SOLO) || null : null;
 
   const detailedRaw = await Promise.all(matchIds.slice(0, 30).map(async id => {
-    const r = await fetch(`https://${regional}.api.riotgames.com/tft/match/v1/matches/${id}?api_key=${apiKey}`);
+    const r = await riotFetch(`https://${regional}.api.riotgames.com/tft/match/v1/matches/${id}`, apiKey);
     return r.ok ? r.json() : null;
   }));
   const matches = detailedRaw

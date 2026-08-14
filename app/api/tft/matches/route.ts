@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRegionalRouting, parseRegion } from '../../../lib/regions';
 import { processTftMatch } from '../../../lib/tft-match-processor';
+import { riotFetch } from '../../../lib/riot-fetch';
 
 // Resolves a list of TFT match IDs (or a puuid + range) into processed
 // summaries. Defaults to the standard ranked queue (1100); other queues are
@@ -37,8 +38,8 @@ export async function GET(request: NextRequest) {
     // bogus query can't fan out into 120 Riot match-v1 calls in one request.
     ids = idsParam.split(',').map(s => s.trim()).filter(Boolean).slice(0, 30);
   } else if (puuid) {
-    const url = `https://${regional}.api.riotgames.com/tft/match/v1/matches/by-puuid/${puuid}/ids?start=${start}&count=${count}&api_key=${apiKey}`;
-    const res = await fetch(url);
+    const url = `https://${regional}.api.riotgames.com/tft/match/v1/matches/by-puuid/${puuid}/ids?start=${start}&count=${count}`;
+    const res = await riotFetch(url, apiKey);
     if (!res.ok) return NextResponse.json({ matches: [], error: `match list HTTP ${res.status}` }, { status: 502 });
     ids = await res.json();
   } else {
@@ -55,7 +56,7 @@ export async function GET(request: NextRequest) {
   for (let i = 0; i < ids.length; i += batchSize) {
     const batch = ids.slice(i, i + batchSize);
     const results = await Promise.all(batch.map(async id => {
-      const res = await fetch(`https://${regional}.api.riotgames.com/tft/match/v1/matches/${id}?api_key=${apiKey}`);
+      const res = await riotFetch(`https://${regional}.api.riotgames.com/tft/match/v1/matches/${id}`, apiKey);
       return res.ok ? res.json() : null;
     }));
     for (const raw of results) {
@@ -77,7 +78,7 @@ export async function GET(request: NextRequest) {
   const idMap: Record<string, string> = {};
   await Promise.all([...allPuuids].map(async pp => {
     try {
-      const res = await fetch(`https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-puuid/${pp}?api_key=${apiKey}`);
+      const res = await riotFetch(`https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-puuid/${pp}`, apiKey);
       if (!res.ok) return;
       const a = await res.json();
       idMap[pp] = `${a.gameName}#${a.tagLine}`;

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '../../../lib/supabase';
 import { getRegionalRouting, parseRegion } from '../../../lib/regions';
+import { riotFetch } from '../../../lib/riot-fetch';
 
 // In-memory cache per region (survives across requests in serverless for a while)
 const cache: Record<string, { data: any; ts: number }> = {};
@@ -36,9 +37,9 @@ export async function GET(request: NextRequest) {
   try {
     // Fetch Challenger + Grandmaster + Master league entries
     const [challRes, gmRes, masterRes] = await Promise.all([
-      fetch(`https://${region}.api.riotgames.com/lol/league/v4/challengerleagues/by-queue/RANKED_SOLO_5x5?api_key=${apiKey}`),
-      fetch(`https://${region}.api.riotgames.com/lol/league/v4/grandmasterleagues/by-queue/RANKED_SOLO_5x5?api_key=${apiKey}`),
-      fetch(`https://${region}.api.riotgames.com/lol/league/v4/masterleagues/by-queue/RANKED_SOLO_5x5?api_key=${apiKey}`),
+      riotFetch(`https://${region}.api.riotgames.com/lol/league/v4/challengerleagues/by-queue/RANKED_SOLO_5x5`, apiKey),
+      riotFetch(`https://${region}.api.riotgames.com/lol/league/v4/grandmasterleagues/by-queue/RANKED_SOLO_5x5`, apiKey),
+      riotFetch(`https://${region}.api.riotgames.com/lol/league/v4/masterleagues/by-queue/RANKED_SOLO_5x5`, apiKey),
     ]);
 
     const allEntries: any[] = [];
@@ -87,9 +88,7 @@ export async function GET(request: NextRequest) {
       const results = await Promise.all(
         needResolve.map(async (entry) => {
           try {
-            const res = await fetch(
-              `https://${region}.api.riotgames.com/lol/summoner/v4/summoners/${entry.summonerId}?api_key=${apiKey}`
-            );
+            const res = await riotFetch(`https://${region}.api.riotgames.com/lol/summoner/v4/summoners/${entry.summonerId}`, apiKey);
             if (!res.ok) return null;
             const data = await res.json();
             puuidTierMap[data.puuid] = entry.tier;
@@ -124,9 +123,7 @@ export async function GET(request: NextRequest) {
         const results = await Promise.all(
           batch.map(async (puuid) => {
             try {
-              const res = await fetch(
-                `https://${regional}.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=420&start=0&count=8&api_key=${apiKey}`
-              );
+              const res = await riotFetch(`https://${regional}.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=420&start=0&count=8`, apiKey);
               if (!res.ok) return [];
               return res.json();
             } catch {
@@ -164,9 +161,7 @@ export async function GET(request: NextRequest) {
       const results = await Promise.all(
         batch.map(async (matchId) => {
           try {
-            const res = await fetch(
-              `https://${regional}.api.riotgames.com/lol/match/v5/matches/${matchId}?api_key=${apiKey}`
-            );
+            const res = await riotFetch(`https://${regional}.api.riotgames.com/lol/match/v5/matches/${matchId}`, apiKey);
             if (!res.ok) return { matchId, data: null };
             return { matchId, data: await res.json() };
           } catch {

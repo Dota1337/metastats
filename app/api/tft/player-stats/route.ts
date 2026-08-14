@@ -6,6 +6,7 @@ import { ensureRankHistoryBackfilled, type SeasonRank } from '../../../lib/tft-r
 import { getRegionalRouting, parseRegion } from '../../../lib/regions';
 import { isExcludedUnit } from '../../../lib/tft-excluded';
 import { supabase } from '../../../lib/supabase';
+import { riotFetch } from '../../../lib/riot-fetch';
 
 // Player season-stats endpoint.
 // Reads from tft_player_match_cache. On every request we refresh the cache
@@ -86,8 +87,9 @@ export async function GET(request: NextRequest) {
   let seasonRanks: SeasonRank[] = [];
   try {
     const regional = getRegionalRouting(region);
-    const accRes = await fetch(
-      `https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-puuid/${puuid}?api_key=${apiKey}`,
+    const accRes = await riotFetch(
+      `https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-puuid/${puuid}`,
+      apiKey,
     );
     if (accRes.ok) {
       const acc = await accRes.json();

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRegionalRouting, parseRegion } from '../../../lib/regions';
+import { riotFetch } from '../../../lib/riot-fetch';
 
 // /api/tft/leaderboard?region=euw1&tier=CHALLENGER
 // Pulls a TFT ranked ladder slice from Riot. The crawler doesn't pre-build
@@ -26,9 +27,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: `Tier ${tier} nicht unterstützt — nur Master, Grandmaster, Challenger.`, code: 'bad_tier' }, { status: 400 });
   }
 
-  const path = `https://${region}.api.riotgames.com/tft/league/v1/${tier.toLowerCase()}?api_key=${apiKey}`;
+  const path = `https://${region}.api.riotgames.com/tft/league/v1/${tier.toLowerCase()}`;
   try {
-    const res = await fetch(path);
+    const res = await riotFetch(path, apiKey);
     if (!res.ok) {
       return NextResponse.json({ error: `Riot API Fehler (${res.status})` }, { status: 502 });
     }
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
       const batch = entries.slice(i, i + 20);
       await Promise.all(batch.map(async (e: any) => {
         try {
-          const r = await fetch(`https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-puuid/${e.puuid}?api_key=${apiKey}`);
+          const r = await riotFetch(`https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-puuid/${e.puuid}`, apiKey);
           if (r.ok) idMap[e.puuid] = await r.json();
         } catch {}
       }));

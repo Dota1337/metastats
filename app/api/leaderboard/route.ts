@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '../../lib/supabase';
 
 import { getRegionalRouting, parseRegion, REGION_ALL } from '../../lib/regions';
+import { riotFetch } from '../../lib/riot-fetch';
 
 // In-memory cache for PUUID -> Riot ID (gameName#tagLine)
 const nameCache: Record<string, string> = {};
@@ -62,23 +63,17 @@ export async function GET(request: NextRequest) {
         const tierEndpoint = tier === 'GRANDMASTER' ? 'grandmasterleagues'
           : tier === 'MASTER' ? 'masterleagues'
           : 'challengerleagues';
-        riotRes = await fetch(
-          `https://${riotRegion}.api.riotgames.com/lol/league/v4/${tierEndpoint}/by-queue/RANKED_SOLO_5x5?api_key=${apiKey}`
-        );
+        riotRes = await riotFetch(`https://${riotRegion}.api.riotgames.com/lol/league/v4/${tierEndpoint}/by-queue/RANKED_SOLO_5x5`, apiKey);
       } else {
         // For Diamond and below: fetch the specific division + page from Riot API
         const div = division || 'I';
-        const riotPageRes = await fetch(
-          `https://${riotRegion}.api.riotgames.com/lol/league/v4/entries/RANKED_SOLO_5x5/${tier}/${div}?page=${page}&api_key=${apiKey}`
-        );
+        const riotPageRes = await riotFetch(`https://${riotRegion}.api.riotgames.com/lol/league/v4/entries/RANKED_SOLO_5x5/${tier}/${div}?page=${page}`, apiKey);
         const pageEntries = riotPageRes.ok ? await riotPageRes.json() : [];
 
         // Check if there's a next page
         let hasNextPage = false;
         if (pageEntries.length >= 205) {
-          const peekRes = await fetch(
-            `https://${riotRegion}.api.riotgames.com/lol/league/v4/entries/RANKED_SOLO_5x5/${tier}/${div}?page=${page + 1}&api_key=${apiKey}`
-          );
+          const peekRes = await riotFetch(`https://${riotRegion}.api.riotgames.com/lol/league/v4/entries/RANKED_SOLO_5x5/${tier}/${div}?page=${page + 1}`, apiKey);
           if (peekRes.ok) {
             const peek = await peekRes.json();
             hasNextPage = peek.length > 0;
@@ -159,9 +154,7 @@ export async function GET(request: NextRequest) {
             await Promise.all(
               batch.map(async (puuid: string) => {
                 try {
-                  const accRes = await fetch(
-                    `https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-puuid/${puuid}?api_key=${apiKey}`
-                  );
+                  const accRes = await riotFetch(`https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-puuid/${puuid}`, apiKey);
                   if (accRes.ok) {
                     const acc = await accRes.json();
                     if (acc.gameName) {

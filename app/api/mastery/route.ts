@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseRegion } from '../../lib/regions';
+import { riotFetch } from '../../lib/riot-fetch';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -19,9 +20,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const res = await fetch(
-      `https://${region}.api.riotgames.com/lol/champion-mastery/v4/champion-masteries/by-puuid/${puuid}/top?count=5&api_key=${apiKey}`
-    );
+    const res = await riotFetch(`https://${region}.api.riotgames.com/lol/champion-mastery/v4/champion-masteries/by-puuid/${puuid}/top?count=5`, apiKey);
 
     if (!res.ok) {
       return NextResponse.json({ error: 'Champion Mastery nicht gefunden' }, { status: 404 });

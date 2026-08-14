@@ -5,6 +5,7 @@ import { processMatch, toLegacyMatchData, extractParticipants, extractBans, type
 import { calculateStatsOverview } from '../../lib/stats-categories';
 
 import { getRegionalRouting, parseRegion } from '../../lib/regions';
+import { riotFetch } from '../../lib/riot-fetch';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -27,9 +28,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // === Step 1: Resolve account ===
-    const accountRes = await fetch(
-      `https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}?api_key=${apiKey}`
-    );
+    const accountRes = await riotFetch(`https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`, apiKey);
     if (!accountRes.ok) {
       // Distinguish error classes so the UI can show meaningful messages
       // and so we don't silently mask a revoked Riot API key as "Spieler nicht gefunden".
@@ -67,9 +66,7 @@ export async function GET(request: NextRequest) {
 
     // === Step 3: Fetch match IDs ===
     // Recent 30 LoL matches (all queues) for display
-    const matchListRes = await fetch(
-      `https://${regional}.api.riotgames.com/lol/match/v5/matches/by-puuid/${account.puuid}/ids?start=0&count=30&api_key=${apiKey}`
-    );
+    const matchListRes = await riotFetch(`https://${regional}.api.riotgames.com/lol/match/v5/matches/by-puuid/${account.puuid}/ids?start=0&count=30`, apiKey);
     const matchIds: string[] = matchListRes.ok ? await matchListRes.json() : [];
     const latestMatchId = matchIds[0] || null;
 
@@ -95,9 +92,7 @@ export async function GET(request: NextRequest) {
       // Trigger fresh fetch if stats are missing OR the row is stale.
       if (!rankedData || rankedData.length === 0 || isStale) {
         try {
-          const rankedRes = await fetch(
-            `https://${region}.api.riotgames.com/lol/league/v4/entries/by-puuid/${account.puuid}?api_key=${apiKey}`
-          );
+          const rankedRes = await riotFetch(`https://${region}.api.riotgames.com/lol/league/v4/entries/by-puuid/${account.puuid}`, apiKey);
           if (rankedRes.ok) {
             const freshRanked = await rankedRes.json();
             if (Array.isArray(freshRanked) && freshRanked.length > 0) {
@@ -178,17 +173,13 @@ export async function GET(request: NextRequest) {
     }
 
     // === Step 4b: New matches detected → full recalculation ===
-    const summonerRes = await fetch(
-      `https://${region}.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${account.puuid}?api_key=${apiKey}`
-    );
+    const summonerRes = await riotFetch(`https://${region}.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${account.puuid}`, apiKey);
     if (!summonerRes.ok) {
       return NextResponse.json({ error: 'Summoner nicht gefunden' }, { status: 404 });
     }
     const summoner = await summonerRes.json();
 
-    const rankedRes = await fetch(
-      `https://${region}.api.riotgames.com/lol/league/v4/entries/by-puuid/${account.puuid}?api_key=${apiKey}`
-    );
+    const rankedRes = await riotFetch(`https://${region}.api.riotgames.com/lol/league/v4/entries/by-puuid/${account.puuid}`, apiKey);
     const ranked = rankedRes.ok ? await rankedRes.json() : [];
 
     const soloQueue = Array.isArray(ranked)
@@ -212,9 +203,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch ranked match IDs for market value (max 60 to stay within rate limits)
     const rankedMatchIds: string[] = [];
-    const rankedListRes = await fetch(
-      `https://${regional}.api.riotgames.com/lol/match/v5/matches/by-puuid/${account.puuid}/ids?queue=${primaryQueueId}&start=0&count=60&api_key=${apiKey}`
-    );
+    const rankedListRes = await riotFetch(`https://${regional}.api.riotgames.com/lol/match/v5/matches/by-puuid/${account.puuid}/ids?queue=${primaryQueueId}&start=0&count=60`, apiKey);
     if (rankedListRes.ok) {
       const ids: string[] = await rankedListRes.json();
       rankedMatchIds.push(...ids);
@@ -233,7 +222,7 @@ export async function GET(request: NextRequest) {
       const batchIds = allMatchIdArray.slice(batch, batch + 10);
       const batchResults = await Promise.all(
         batchIds.map(async (id) => {
-          const res = await fetch(`https://${regional}.api.riotgames.com/lol/match/v5/matches/${id}?api_key=${apiKey}`);
+          const res = await riotFetch(`https://${regional}.api.riotgames.com/lol/match/v5/matches/${id}`, apiKey);
           return res.ok ? res.json() : null;
         })
       );

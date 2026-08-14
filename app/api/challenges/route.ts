@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseRegion } from '../../lib/regions';
+import { riotFetch } from '../../lib/riot-fetch';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -20,8 +21,8 @@ export async function GET(request: NextRequest) {
 
   try {
     const [res, configRes] = await Promise.all([
-      fetch(`https://${region}.api.riotgames.com/lol/challenges/v1/player-data/${puuid}?api_key=${apiKey}`),
-      fetch(`https://${region}.api.riotgames.com/lol/challenges/v1/challenges/config?api_key=${apiKey}`),
+      riotFetch(`https://${region}.api.riotgames.com/lol/challenges/v1/player-data/${puuid}`, apiKey),
+      riotFetch(`https://${region}.api.riotgames.com/lol/challenges/v1/challenges/config`, apiKey),
     ]);
 
     if (!res.ok) {

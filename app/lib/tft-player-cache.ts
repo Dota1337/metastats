@@ -4,6 +4,7 @@
 // the same shape.
 
 import { getRegionalRouting } from './regions';
+import { riotFetch } from './riot-fetch';
 
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -287,8 +288,9 @@ function supaHeaders() {
 // ── Riot wrappers ──────────────────────────────────────────────────────────
 
 async function fetchIds(regional: string, puuid: string, apiKey: string, start: number, count: number): Promise<string[]> {
-  const r = await fetch(
-    `https://${regional}.api.riotgames.com/tft/match/v1/matches/by-puuid/${puuid}/ids?count=${count}&start=${start}&api_key=${apiKey}`,
+  const r = await riotFetch(
+    `https://${regional}.api.riotgames.com/tft/match/v1/matches/by-puuid/${puuid}/ids?count=${count}&start=${start}`,
+    apiKey,
   );
   if (!r.ok) return [];
   const ids = await r.json();
@@ -296,7 +298,7 @@ async function fetchIds(regional: string, puuid: string, apiKey: string, start: 
 }
 
 async function fetchDetail(regional: string, matchId: string, apiKey: string, attempt = 0): Promise<any | null> {
-  const r = await fetch(`https://${regional}.api.riotgames.com/tft/match/v1/matches/${matchId}?api_key=${apiKey}`);
+  const r = await riotFetch(`https://${regional}.api.riotgames.com/tft/match/v1/matches/${matchId}`, apiKey);
   if (r.ok) return r.json();
   if (r.status === 429 && attempt < 2) {
     const retryAfter = parseInt(r.headers.get('retry-after') || '2', 10);

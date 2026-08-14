@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '../../lib/supabase';
 import * as fs from 'fs';
 import * as path from 'path';
+import { riotFetch } from '../../lib/riot-fetch';
 
 /**
  * Transfer Predictions — Predicts which players might switch teams
@@ -145,11 +146,11 @@ export async function GET() {
                          teamRegion.includes('Europe') ? 'europe' : 'americas';
         const platform = regional === 'asia' ? 'kr' : regional === 'europe' ? 'euw1' : 'na1';
 
-        const accRes = await fetch(`https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(name)}/${encodeURIComponent(tag)}?api_key=${apiKey}`);
+        const accRes = await riotFetch(`https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(name)}/${encodeURIComponent(tag)}`, apiKey);
         if (!accRes.ok) { riotRankedCache[riotId] = null; return null; }
         const acc = await accRes.json();
 
-        const rankedRes = await fetch(`https://${platform}.api.riotgames.com/lol/league/v4/entries/by-puuid/${acc.puuid}?api_key=${apiKey}`);
+        const rankedRes = await riotFetch(`https://${platform}.api.riotgames.com/lol/league/v4/entries/by-puuid/${acc.puuid}`, apiKey);
         const ranked = rankedRes.ok ? await rankedRes.json() : [];
         const soloQ = ranked.find((r: any) => r.queueType === 'RANKED_SOLO_5x5');
         const result = soloQ ? { tier: soloQ.tier, lp: soloQ.leaguePoints, wins: soloQ.wins, losses: soloQ.losses } : null;

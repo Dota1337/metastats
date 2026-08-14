@@ -11,6 +11,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { ACTIVE_REGIONS } from '@/app/lib/active-regions';
+import { riotFetch } from '../../../lib/riot-fetch';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,9 +55,9 @@ interface RegionEntry {
 let cache: { at: number; data: RegionEntry[] } | null = null;
 
 async function fetchRegion(region: string, apiKey: string): Promise<RegionEntry> {
-  const url = `https://${region}.api.riotgames.com/tft/status/v1/platform-data?api_key=${apiKey}`;
+  const url = `https://${region}.api.riotgames.com/tft/status/v1/platform-data`;
   try {
-    const r = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+    const r = await riotFetch(url, apiKey, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
     if (!r.ok) {
       return {
         region, status: 'unknown', activeIncidents: 0, activeMaintenances: 0,

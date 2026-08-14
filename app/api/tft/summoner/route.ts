@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRegionalRouting, parseRegion } from '../../../lib/regions';
+import { riotFetch } from '../../../lib/riot-fetch';
 
 // Lightweight TFT summoner endpoint — resolves Riot ID to puuid, pulls TFT
 // solo (1100) ranked entry and the latest match IDs. The match details are
@@ -47,9 +48,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // Riot Account is game-agnostic — same endpoint as LoL
-    const accountRes = await fetch(
-      `https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}?api_key=${apiKey}`
-    );
+    const accountRes = await riotFetch(`https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`, apiKey);
     if (!accountRes.ok) {
       if (accountRes.status === 401 || accountRes.status === 403) {
         return NextResponse.json({ error: 'Riot API Key ungültig', code: 'riot_auth' }, { status: 503 });
@@ -70,9 +69,9 @@ export async function GET(request: NextRequest) {
     // count=120 covers the 4-page pagination (30 per page) on the player page;
     // Riot's match-v1 endpoint accepts up to 200 in a single call.
     const [summonerRes, rankedRes, matchIdsRes] = await Promise.all([
-      fetch(`https://${region}.api.riotgames.com/tft/summoner/v1/summoners/by-puuid/${puuid}?api_key=${apiKey}`),
-      fetch(`https://${region}.api.riotgames.com/tft/league/v1/by-puuid/${puuid}?api_key=${apiKey}`),
-      fetch(`https://${regional}.api.riotgames.com/tft/match/v1/matches/by-puuid/${puuid}/ids?count=120&api_key=${apiKey}`),
+      riotFetch(`https://${region}.api.riotgames.com/tft/summoner/v1/summoners/by-puuid/${puuid}`, apiKey),
+      riotFetch(`https://${region}.api.riotgames.com/tft/league/v1/by-puuid/${puuid}`, apiKey),
+      riotFetch(`https://${regional}.api.riotgames.com/tft/match/v1/matches/by-puuid/${puuid}/ids?count=120`, apiKey),
     ]);
 
     const summoner = summonerRes.ok ? await summonerRes.json() : null;

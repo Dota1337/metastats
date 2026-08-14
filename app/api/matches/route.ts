@@ -3,6 +3,7 @@ import { processMatch, toLegacyMatchData, extractParticipants, extractBans, type
 import { calculateStatsOverview } from '../../lib/stats-categories';
 
 import { getRegionalRouting, parseRegion } from '../../lib/regions';
+import { riotFetch } from '../../lib/riot-fetch';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -20,9 +21,7 @@ export async function GET(request: NextRequest) {
   const regional = getRegionalRouting(region);
 
   try {
-    const matchListRes = await fetch(
-      `https://${regional}.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?start=${start}&count=${Math.min(count, 30)}&api_key=${apiKey}`
-    );
+    const matchListRes = await riotFetch(`https://${regional}.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?start=${start}&count=${Math.min(count, 30)}`, apiKey);
 
     if (!matchListRes.ok) {
       return NextResponse.json({ error: 'Match History nicht gefunden' }, { status: 404 });
@@ -32,9 +31,7 @@ export async function GET(request: NextRequest) {
 
     const rawMatches = await Promise.all(
       matchIds.map(async (id) => {
-        const res = await fetch(
-          `https://${regional}.api.riotgames.com/lol/match/v5/matches/${id}?api_key=${apiKey}`
-        );
+        const res = await riotFetch(`https://${regional}.api.riotgames.com/lol/match/v5/matches/${id}`, apiKey);
         return res.ok ? res.json() : null;
       })
     );

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseRegion } from '../../lib/regions';
+import { riotFetch } from '../../lib/riot-fetch';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -20,9 +21,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const res = await fetch(
-      `https://${region}.api.riotgames.com/lol/spectator/v5/active-games/by-summoner/${puuid}?api_key=${apiKey}`
-    );
+    const res = await riotFetch(`https://${region}.api.riotgames.com/lol/spectator/v5/active-games/by-summoner/${puuid}`, apiKey);
 
     if (res.status === 404) {
       return NextResponse.json({ inGame: false });

@@ -66,7 +66,6 @@ const MANUAL_ONLY = new Set([
  */
 const TEAM_DATA_MAINTAINERS = new Set([
   'scripts/crawl-pro-teams.mjs',
-  'scripts/crawl-team-history.mjs',
   'scripts/crawl-rosters-validated.mjs',
   'scripts/link-team-rosters.mjs',
 ]);

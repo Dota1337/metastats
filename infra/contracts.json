@@ -204,6 +204,22 @@
     },
 
     {
+      "id": "pro-teams/historientiefe",
+      "owner": ".github/workflows/pro-teams-weekly.yml",
+      "type": "file",
+      "path": "public/pro-teams.json",
+      "dateField": "updatedAt",
+      "entriesField": "teams",
+      "maxAgeDays": 10,
+      "subListField": "results",
+      "minAvgSubEntries": 15,
+      "maxModeShare": 0.05,
+      "modeMinCount": 25,
+      "mustBeEmpty": ["dataQuality.unknownCurrencies"],
+      "note": "Die datei-frische daneben prüft, DASS die Datei ankommt — nicht, wie tief sie reicht. Genau diese Lücke hat zweimal die Turnierhistorie gekappt: ein slice(0, 50) im Crawler ließ totalTeams unverändert (392 -> 520, Floor grün) und schnitt trotzdem 1,5 Jahre weg — T1 reichte nur bis 2020-04-16, 43 Teams lagen exakt auf 50, 41 % der Ergebnisse fehlten. Deshalb kein absoluter Summen-Schwellwert: die Teamzahl schwankt historisch zwischen 392 und 951, jede Summe schlägt bei normaler Bewegung falsch an. Stattdessen die Modus-Spitze — ein Deckel häuft zwangsläufig auf genau einem Wert (Fehlerfall 8,7 %, gesund 2,1 %), und das fängt auch jeden künftigen Deckel bei einer anderen Zahl. minAvgSubEntries deckt den Fall ab, dass die Verteilung glatt bleibt (gekappt 17,1, nach Fix ~20, ungekappt 28,0). unknownCurrencies fängt den HUF-Vorfall: eine fehlende Kursangabe zählte als Faktor 1 und hob Lenovo Legion Honvéd mit 4,85 Mio $ auf Platz 3 der Weltrangliste."
+    },
+
+    {
       "id": "lol-marketvalue/history",
       "owner": "metastats-lol-marketvalue.service",
       "backend": "supabase",

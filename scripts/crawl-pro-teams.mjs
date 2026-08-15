@@ -266,24 +266,91 @@ async function main() {
     'OKSavingsBank BRION': 'Nongshim Esports', // if applicable
   };
 
+  // Alias-Quelle 2: Leaguepedia TeamRenames. Die Handliste oben deckt nur die
+  // ~20 Major-Orgs ab; die Rename-Tabelle kennt die Ketten aller Teams
+  // (Fnatic, SK Gaming, Team WE ...). Beide werden VEREINIGT, nicht getauscht:
+  // TeamRenames kennt die Schwesterteams nicht (SK Telecom T1 K/S, Samsung
+  // White/Blue/Ozone), die Handliste kennt die Langketten nicht.
+  console.log('  Lade TeamRenames fuer Alias-Ketten...');
+  const renamePairs = [];
+  let renameOffset = 0;
+  while (true) {
+    const batch = await cargoQuery(
+      'TeamRenames=TR', 'TR.OriginalName,TR.NewName', '', 'TR.Date ASC', 500, renameOffset,
+    );
+    if (batch.length === 0) break;
+    renamePairs.push(...batch);
+    renameOffset += 500;
+    if (batch.length < 500) break;
+    await sleep(800);
+  }
+  // OriginalName -> NewName, dann transitiv bis zum aktuellen Namen aufloesen.
+  const renameNext = {};
+  for (const row of renamePairs) {
+    const from = (row.OriginalName || '').trim();
+    const to = (row.NewName || '').trim();
+    if (from && to && from !== to) renameNext[from] = to;
+  }
+  const renameFinal = {};
+  for (const from of Object.keys(renameNext)) {
+    let cur = from;
+    const seen = new Set([cur]);
+    // Zyklen sind moeglich (Team benennt sich zurueck) — abbrechen statt endlos laufen.
+    while (renameNext[cur] && !seen.has(renameNext[cur])) {
+      cur = renameNext[cur];
+      seen.add(cur);
+    }
+    if (cur !== from) renameFinal[from] = cur;
+  }
+  console.log(`  ${renamePairs.length} Rename-Eintraege -> ${Object.keys(renameFinal).length} Alias-Ketten`);
+
   function resolveTeamName(name) {
-    return TEAM_ALIASES[name] || name;
+    // Handliste hat Vorrang: sie enthaelt kuratierte Merges (Schwesterteams,
+    // Org-Uebernahmen), die die reine Umbenennungs-Tabelle nicht kennt.
+    if (TEAM_ALIASES[name]) return TEAM_ALIASES[name];
+    // Ein Name aus majorTeams wird NIE wegbenannt. Sonst wuerde eine
+    // Leaguepedia-Umbenennung (z. B. Rogue -> KOI) die Ergebnisse eines
+    // Teams, das wir weiterhin als eigene Zeile fuehren, leerraeumen.
+    if (majorTeamMap[name]) return name;
+    return renameFinal[name] || name;
   }
 
-  // Convert prize to USD
+  // Eine gemeinsame Kurs-Tabelle. Vorher gab es zwei (hier und in
+  // crawl-team-history.mjs), keine war Obermenge der anderen — und eine
+  // unbekannte Waehrung fiel still auf Faktor 1 zurueck. Das hat 2026-05
+  // "Lenovo Legion Honved" mit 500.000 HUF (~1.350 $) als 4,85 Mio $ auf
+  // Platz 3 der Weltrangliste gehoben.
+  const FX_RATES = {
+    'USD': 1, '$': 1, 'KRW': 0.00073, 'CNY': 0.14, 'EUR': 1.08, 'GBP': 1.26,
+    'PLN': 0.25, 'BRL': 0.19, 'TRY': 0.029, 'VND': 0.000039, 'JPY': 0.0065,
+    'TWD': 0.031, 'AUD': 0.64, 'CAD': 0.73, 'SEK': 0.093, 'DKK': 0.15,
+    'HUF': 0.0027, 'CZK': 0.043, 'RON': 0.22, 'RUB': 0.011, 'PHP': 0.017,
+    'THB': 0.028, 'MYR': 0.21, 'SGD': 0.74, 'IDR': 0.000063, 'INR': 0.012,
+    'SAR': 0.27, 'ARS': 0.0011, 'CLP': 0.0010, 'PEN': 0.26, 'COP': 0.00023,
+    'HKD': 0.13, 'MXN': 0.057, 'CHF': 1.13, 'NOK': 0.092, 'ISK': 0.0073,
+    'RSD': 0.0092, 'KZT': 0.0021, 'BGN': 0.55, 'UAH': 0.024, 'ILS': 0.27,
+    'NZD': 0.59, 'ZAR': 0.055, 'AED': 0.27, 'QAR': 0.27, 'EGP': 0.021,
+    // Nachgetragen nach dem ersten ungekappten Lauf: diese sieben tauchten erst
+    // auf, als die alte Historie wieder mitkam (Kleinturniere 2012-2016).
+    // BAM und LTL sind Euro-gebunden (1.9558 bzw. 3.4528 pro EUR), LTL existiert
+    // seit 2015 nicht mehr und kommt nur noch in alten Ergebnissen vor.
+    'TND': 0.32, 'MAD': 0.10, 'BAM': 0.55, 'JOD': 1.41, 'IRR': 0.0000238,
+    'GEL': 0.37, 'LTL': 0.313,
+  };
+  // Unbekannte Waehrung -> 0 statt Faktor 1: lieber ein fehlendes Preisgeld als
+  // ein erfundenes, das die Sortierung von /teams kippt. Der Vertrag
+  // pro-teams/historientiefe schlaegt an, wenn hier etwas landet.
+  const unknownCurrencies = new Set();
+
   function prizeToUSD(amount, currency) {
     if (!amount || isNaN(amount)) return 0;
-    const cur = (currency || 'USD').toUpperCase();
-    // Approximate exchange rates for historical prize conversions
-    const rates = {
-      'USD': 1, 'KRW': 0.00073, 'CNY': 0.14, 'EUR': 1.1, 'GBP': 1.27,
-      'PLN': 0.25, 'BRL': 0.19, 'TRY': 0.03, 'VND': 0.000041, 'JPY': 0.0067,
-      'TWD': 0.031, 'AUD': 0.65, 'CAD': 0.74, 'SEK': 0.095, 'DKK': 0.15,
-      'HUF': 0.0027, 'CZK': 0.043, 'RON': 0.22, 'RUB': 0.011, 'PHP': 0.018,
-      'THB': 0.029, 'MYR': 0.22, 'SGD': 0.75, 'IDR': 0.000063, 'INR': 0.012,
-      'SAR': 0.27, 'ARS': 0.001, 'CLP': 0.0011, 'PEN': 0.27, 'COP': 0.00025,
-    };
-    return Math.round(amount * (rates[cur] || 1));
+    const cur = (currency || 'USD').trim().toUpperCase();
+    const rate = FX_RATES[cur];
+    if (rate === undefined) {
+      unknownCurrencies.add(cur);
+      return 0;
+    }
+    return Math.round(amount * rate);
   }
 
   // Results map — aggregate under current team name
@@ -379,7 +446,9 @@ async function main() {
 
     const results = resultsMap[name] || [];
     const totalPrize = results.reduce((s, r) => s + (r.prizeUSD || 0), 0);
-    const trophies = results.filter(r => r.trophy).slice(0, 30);
+    // Ungekappt. Ein .slice() hier hat die Historie der Top-Teams still auf die
+    // juengsten Jahre zusammengeschnitten (T1 bis 2020) — siehe results unten.
+    const trophies = results.filter(r => r.trophy);
 
     // Use Liquipedia verified totals for major teams (more accurate than sum of crawled results)
     const VERIFIED_TOTALS = {
@@ -429,7 +498,11 @@ async function main() {
       region: meta?.region || '',
       logo: finalLogo,
       roster: finalRoster,
-      results: results.slice(0, 50), // Keep up to 50 results for detail view
+      // KEIN Deckel. `results` ist nach Datum absteigend sortiert, ein
+      // slice(0, 50) schnitt deshalb genau die aeltere Historie ab: T1 reichte
+      // nur bis 2020-04-16, 43 Teams lagen exakt auf 50, 41 % der Ergebnisse
+      // fehlten. Die Detailseite filtert selbst nach Jahr.
+      results,
       trophies,
       totalPrizeMoney: finalPrize,
       rosterSource,
@@ -526,9 +599,19 @@ async function main() {
     console.error('  --force gesetzt, schreibe trotzdem.');
   }
 
+  if (unknownCurrencies.size > 0) {
+    console.warn(
+      `\n  WARNUNG: unbekannte Waehrung(en) ${[...unknownCurrencies].join(', ')} — die betroffenen `
+      + `Preisgelder wurden als 0 gezaehlt. Kurse in FX_RATES ergaenzen.`,
+    );
+  }
+
   fs.writeFileSync('public/pro-teams.json', JSON.stringify({
     updatedAt: new Date().toISOString(),
     totalTeams: teamsDB.length,
+    // Der Vertrag pro-teams/historientiefe liest das mit: eine nicht-leere
+    // Liste heisst, dass Preisgelder stillschweigend auf 0 gefallen sind.
+    dataQuality: { unknownCurrencies: [...unknownCurrencies].sort() },
     teams: teamsDB,
   }));
   console.log(`\n  -> public/pro-teams.json gespeichert (${teamsDB.length} Teams, zuvor ${previousCount})`);

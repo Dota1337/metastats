@@ -513,6 +513,54 @@ function checkFile(c, r) {
     if (n < c.minEntries) return r('broken', `${relPath}: nur ${n} Einträge (min ${c.minEntries})`);
   }
 
+  // Verschachtelte Liste (z.B. teams[].results): fängt Deckelungen, die die
+  // Top-Level-Zahl nicht sieht. Ein `slice(0, N)` im Crawler lässt die
+  // Teamzahl unverändert und schneidet trotzdem Jahre an Historie ab.
+  if (c.subListField) {
+    const rows = Array.isArray(parsed[c.entriesField]) ? parsed[c.entriesField] : null;
+    if (!rows) return r('broken', `${relPath}: Feld ${c.entriesField} ist keine Liste`);
+    const counts = rows
+      .map(row => (Array.isArray(row?.[c.subListField]) ? row[c.subListField].length : 0))
+      .filter(n => n > 0);
+    if (counts.length === 0) return r('broken', `${relPath}: kein Eintrag hat ${c.subListField}`);
+
+    if (c.minAvgSubEntries) {
+      const avg = counts.reduce((s, n) => s + n, 0) / counts.length;
+      if (avg < c.minAvgSubEntries) {
+        return r('broken', `${relPath}: nur ${avg.toFixed(1)} ${c.subListField}/Eintrag (min ${c.minAvgSubEntries})`);
+      }
+    }
+
+    // Modus-Spitze: ein Deckel erzeugt zwangsläufig eine unnatürliche Häufung
+    // auf genau einem Wert (gemessen: 50 -> 43 Teams = 8,7 % im Fehlerfall,
+    // 26 -> 8 Teams = 2,1 % im gesunden Zustand). Teamzahl-normiert und damit
+    // unabhängig davon, wie viele Teams Leaguepedia gerade führt — im
+    // Gegensatz zu einer absoluten Summenschwelle.
+    if (c.maxModeShare) {
+      const floor = c.modeMinCount || 25;
+      const hist = new Map();
+      for (const n of counts) {
+        if (n >= floor) hist.set(n, (hist.get(n) || 0) + 1);
+      }
+      let peakVal = null, peakN = 0;
+      for (const [val, n] of hist) if (n > peakN) { peakN = n; peakVal = val; }
+      const share = peakN / counts.length;
+      if (peakVal != null && share > c.maxModeShare) {
+        return r('broken',
+          `${relPath}: ${peakN} von ${counts.length} Einträgen haben exakt ${peakVal} ${c.subListField} `
+          + `(${(share * 100).toFixed(1)} %, max ${(c.maxModeShare * 100).toFixed(0)} %) — sieht nach einem Deckel aus`);
+      }
+    }
+  }
+
+  // Felder, die leer sein MÜSSEN. Der Crawler schreibt dort hinein, was er
+  // still verschluckt hat (z.B. unbekannte Währungen, die als 0 zählen).
+  for (const path of c.mustBeEmpty || []) {
+    const val = path.split('.').reduce((o, k) => (o == null ? o : o[k]), parsed);
+    const n = Array.isArray(val) ? val.length : (val ? 1 : 0);
+    if (n > 0) return r('broken', `${relPath}: ${path} ist nicht leer (${JSON.stringify(val)})`);
+  }
+
   return ageDays <= c.maxAgeDays
     ? r('ok', `${relPath} ist ${ageDays}d alt (max ${c.maxAgeDays}d)`)
     : r('broken', `${relPath} ist ${ageDays}d alt, erlaubt sind ${c.maxAgeDays}d — Aktualisierung ausgefallen`);

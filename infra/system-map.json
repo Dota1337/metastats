@@ -843,7 +843,8 @@
       "metatft-comps/familien-abdeckung"
     ],
     ".github/workflows/pro-teams-weekly.yml": [
-      "pro-teams/datei-frische"
+      "pro-teams/datei-frische",
+      "pro-teams/historientiefe"
     ],
     "metastats-lol-marketvalue.service": [
       "lol-marketvalue/history"

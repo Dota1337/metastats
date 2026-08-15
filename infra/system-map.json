@@ -799,6 +799,18 @@
       ]
     },
     {
+      "name": "check:hooks",
+      "scripts": [
+        "scripts/check-discipline-hooks.mjs"
+      ]
+    },
+    {
+      "name": "drift-audit",
+      "scripts": [
+        "scripts/drift-audit.mjs"
+      ]
+    },
+    {
       "name": "test",
       "scripts": [
         "scripts/lib/ts-test-hook.mjs"

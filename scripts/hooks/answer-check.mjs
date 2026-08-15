@@ -14,11 +14,26 @@
 //
 // Beide feuern selten und begruenden sich selbst. Ein Hook, der nervt, wird
 // deaktiviert; ein Hook, der zweimal im Monat trifft, bleibt stehen.
+//
+// Runde 2 (2026-08-15), nach zwei Review-Verdicts an der ersten Fassung:
+//   • Die Tabellen-Ausnahme war ein Freibrief — Verbositaet wandert einfach in
+//     Tabellenzeilen. Sie gilt jetzt nur noch fuer GENAU EINE Tabelle mit
+//     hoechstens TABLE_ROW_BUDGET Datenzeilen (der vorgeschriebene
+//     Alternativen-Vergleich). Alles darueber zaehlt als Fliesstext.
+//   • `lastHadTools` liess jede Antwort durch, die im selben Block mit einem
+//     Tool-Call endet. Als Zwischenmeldung gilt jetzt nur noch kurzer Text.
+//   • Der Schleifenschutz haengt nicht mehr am Text (eine neu geschriebene,
+//     erneut zu lange Antwort hatte eine neue Signatur und kam durch), sondern
+//     am Turn: pro User-Nachricht wird hoechstens EINMAL gebremst.
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { readInput, readState, writeState } from './lib/state.mjs';
 
-const MAX_LINES = 25;
+const MAX_LINES = 20;
+/** Datenzeilen, die eine einzelne Tabelle "gratis" haben darf. */
+const TABLE_ROW_BUDGET = 8;
+/** Zeilen Vortext, bis zu denen eine Antwort mit Tool-Call eine Zwischenmeldung ist. */
+const INTERIM_MAX_LINES = 4;
 
 const input = readInput();
 if (input.stop_hook_active) process.exit(0); // Schleifenschutz
@@ -38,6 +53,7 @@ try {
 let toolCalls = 0;
 let lastText = null;
 let lastHadTools = false;
+let userText = '';
 
 for (let i = lines.length - 1; i >= 0; i--) {
   let o;
@@ -46,7 +62,12 @@ for (let i = lines.length - 1; i >= 0; i--) {
 
   if (o.type === 'user') {
     const isReal = typeof c === 'string' || (Array.isArray(c) && c.some(b => b.type === 'text'));
-    if (isReal) break;
+    if (isReal) {
+      userText = typeof c === 'string'
+        ? c
+        : c.filter(b => b.type === 'text').map(b => b.text || '').join('\n');
+      break;
+    }
     continue;
   }
   if (o.type !== 'assistant' || !Array.isArray(c)) continue;
@@ -62,37 +83,70 @@ for (let i = lines.length - 1; i >= 0; i--) {
 }
 
 if (!lastText) process.exit(0);
-// Antwort mit Tool-Call im selben Block ist eine Zwischenmeldung, kein Ergebnis.
-if (lastHadTools) process.exit(0);
-
-// Schon einmal fuer genau diesen Text gebremst? Dann durchlassen — sonst
-// haengt die Session in der Bremse fest.
-const sig = createHash('sha1').update(lastText).digest('hex').slice(0, 12);
-const state = readState(input.session_id);
-if (state.lastBrakeSig === sig) process.exit(0);
 
 const body = lastText.split('\n');
-const hasTable = body.some(l => (l.match(/\|/g) || []).length >= 2);
-const hasCode = lastText.includes('```');
+
+// Ein Tool-Call im selben Block macht eine Antwort nur dann zur
+// Zwischenmeldung, wenn sie auch wie eine aussieht. Ein 30-Zeilen-Bericht mit
+// angehaengtem Tool-Call ist ein Bericht.
+if (lastHadTools && body.length <= INTERIM_MAX_LINES) process.exit(0);
+
+// Pro Turn hoechstens einmal bremsen. Turn-Key ist die letzte echte
+// User-Nachricht — eine neu geschriebene Antwort hat einen anderen Text, aber
+// denselben Turn, und kommt damit garantiert durch.
+const turnKey = createHash('sha1').update(userText || String(input.session_id || '')).digest('hex').slice(0, 12);
+const state = readState(input.session_id);
+const brakeCount = state.brakeTurnKey === turnKey ? (state.brakeCount || 0) : 0;
+if (brakeCount >= 1) process.exit(0);
+
+// Zeilen, die nicht als Fliesstext zaehlen: Code-Bloecke immer, Tabellenzeilen
+// nur solange sich die Antwort auf EINE Tabelle im Budget beschraenkt.
+const isTableLine = l => (l.match(/\|/g) || []).length >= 2;
+let inCode = false;
+const codeLines = new Set();
+body.forEach((l, i) => {
+  if (l.trim().startsWith('```')) { codeLines.add(i); inCode = !inCode; return; }
+  if (inCode) codeLines.add(i);
+});
+
+// Zusammenhaengende Tabellenbloecke zaehlen (ohne Kopf- und Trennzeile).
+const tables = [];
+let run = 0;
+body.forEach((l, i) => {
+  if (!codeLines.has(i) && isTableLine(l)) { run++; return; }
+  if (run) { tables.push(Math.max(0, run - 2)); run = 0; }
+});
+if (run) tables.push(Math.max(0, run - 2));
+
+const tableBudgetOk = tables.length <= 1 && (tables[0] || 0) <= TABLE_ROW_BUDGET;
+const countable = body.filter((l, i) => {
+  if (codeLines.has(i)) return false;
+  if (tableBudgetOk && isTableLine(l)) return false;
+  return true;
+}).length;
 
 function block(reason) {
-  writeState(input.session_id, { lastBrakeSig: sig });
+  writeState(input.session_id, { brakeTurnKey: turnKey, brakeCount: brakeCount + 1 });
   process.stdout.write(JSON.stringify({ decision: 'block', reason }));
   process.exit(0);
 }
 
-// --- Bremse A: langer Fliesstext-Bericht nach echter Arbeit ---------------
-if (body.length > MAX_LINES && !hasTable && !hasCode && toolCalls >= 3) {
+// --- Bremse A: langer Ergebnis-Bericht nach echter Arbeit -----------------
+if (countable > MAX_LINES && toolCalls >= 3) {
+  const warum = tableBudgetOk
+    ? `${countable} Zeilen ausserhalb von Tabelle und Code (Grenze ${MAX_LINES})`
+    : `${countable} Zeilen — die Tabellen-Ausnahme greift nicht (${tables.length} Tabellen, groesste ${Math.max(0, ...tables)} Datenzeilen, erlaubt ist EINE mit hoechstens ${TABLE_ROW_BUDGET})`;
   block(
-`Diese Ergebnis-Antwort hat ${body.length} Zeilen Fliesstext (Grenze ${MAX_LINES}). Schreib sie neu:
+`Diese Ergebnis-Antwort hat ${warum}. Schreib sie neu:
 
 - Zeile 1-3: der Befund. Was ist das Ergebnis, was heisst das fuer den User.
 - Danach nur, was er zum Weiterentscheiden braucht.
 - Raus: Rekapitulation der eigenen Schritte, Status-Inventare, Praeambeln,
   Abschluss-Zusammenfassung, ungefragte Naechste-Schritte-Menues.
 
-Tabellen und Code-Bloecke sind ausgenommen — wenn der Inhalt eine Tabelle
-verlangt (z.B. der Alternativen-Vergleich), nimm eine.`);
+Eine Tabelle mit bis zu ${TABLE_ROW_BUDGET} Datenzeilen (z.B. der Alternativen-
+Vergleich) und Code-Bloecke zaehlen nicht mit. Zwei Tabellen oder eine laengere
+zaehlen komplett als Fliesstext — Verbositaet in Tabellenform bleibt Verbositaet.`);
 }
 
 // --- Bremse B: Zahlen ohne Messung im selben Turn -------------------------

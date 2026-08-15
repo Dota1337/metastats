@@ -22,12 +22,15 @@ Verboten in Ergebnis-Antworten:
 - Praeambeln („Gute Frage", „Lass mich das analysieren", „Hier ist die Antwort")
 - Abschluss-Zusammenfassungen, die den Text davor wiederholen
 - Ungefragte Naechste-Schritte-Menues
+- Verbositaet in Tabellenform: EINE Tabelle mit hoechstens 8 Datenzeilen zaehlt
+  nicht mit, jede weitere zaehlt komplett als Fliesstext
 
 **Beleg-Pflicht:** Keine Zahl, kein Zustand, keine „das ist so"-Aussage ohne
 Messung im selben Turn. Wenn nicht gemessen: „ungeprueft" dazuschreiben.
 
 **Plan vor Code:** Nicht-triviale Aenderungen brauchen einen Plan in
-`.claude/plan-current.md` und eine Freigabe des Users. Der PreToolUse-Gate
-blockt Edit/Write ohne Freigabe — das ist kein Hinweis, sondern eine Sperre.
+`.claude/plan-current.md`, darin einen `## Verdicts`-Block mit den Verdicts der
+Review-Agents und >=3 Alternativen, und eine Freigabe des Users. Der
+PreToolUse-Gate blockt Edit/Write sonst — auch MIT Freigabe.
 
 **Tool-Calls buendeln:** Unabhaengige Calls in EINE Message.

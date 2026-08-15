@@ -16,6 +16,8 @@
     "verify:full": "node scripts/verify-classifications.mjs && node scripts/verify-metatft-family-coverage.mjs && node scripts/check-drift.mjs && node scripts/check-system-map.mjs",
     "build:system-map": "node scripts/build-system-map.mjs",
     "check:system-map": "node scripts/check-system-map.mjs",
+    "check:hooks": "node scripts/check-discipline-hooks.mjs",
+    "drift-audit": "node scripts/drift-audit.mjs",
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/lib/ts-test-hook.mjs --test \"scripts/**/*.test.mjs\" \"app/**/*.test.mjs\""
   },
   "dependencies": {

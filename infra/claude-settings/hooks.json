@@ -1,6 +1,6 @@
 {
   "_comment": [
-    "Git-getrackte Quelle der AgentDB-Trajectory-Hooks.",
+    "Git-getrackte Quelle der Claude-Code-Hooks.",
     "Installation: `npm run setup-hooks` merged das hier nach .claude/settings.json.",
     "Warum nicht direkt in settings.json gepflegt: die Datei ist ein Symlink in einen",
     "Dropbox-Ordner. Am 28.06. ist die dort gepflegte Hook-Konfiguration spurlos",
@@ -8,16 +8,79 @@
     "echten Trajectory von diesem Tag) — vermutlich ein Conflicted Copy. Hier liegt",
     "sie unter Versionskontrolle und ist reproduzierbar.",
     "",
+    "Zwei Gruppen:",
+    "  agentdb/*      — Trajectory-Tracking (Recall), seit 06/2026",
+    "  hooks/*        — Disziplin-Gates (Plan vor Code, Antwortlaenge, Beleg-Pflicht),",
+    "                   seit 08/2026. Vollstaendigkeit wird im pre-push geprueft",
+    "                   (scripts/check-discipline-hooks.mjs) — Abschalten ist erlaubt,",
+    "                   aber nur sichtbar im Diff.",
+    "",
     "timeout ist in SEKUNDEN. Die Hooks selbst beenden sich immer mit 0; das",
     "Timeout ist nur die Reissleine gegen einen haengenden Daemon."
   ],
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/hooks/session-start.mjs\"",
+            "timeout": 90,
+            "statusMessage": "Lade Tier-1-Memory ..."
+          }
+        ]
+      }
+    ],
     "UserPromptSubmit": [
       {
         "hooks": [
           {
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR/scripts/agentdb/track-prompt-start.mjs\"",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/hooks/prompt-submit.mjs\"",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/hooks/code-prompt-reviewer.mjs\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/hooks/plan-gate.mjs\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/hooks/compact-reset.mjs\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/hooks/post-compact.mjs\"",
             "timeout": 5
           }
         ]
@@ -29,6 +92,11 @@
           {
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR/scripts/agentdb/track-prompt-end.mjs\"",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/hooks/answer-check.mjs\"",
             "timeout": 10
           }
         ]

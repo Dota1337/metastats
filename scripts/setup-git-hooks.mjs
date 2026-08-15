@@ -61,8 +61,13 @@ console.log(`setup-hooks: ${hookCount} git hook(s) + ${agentCount} subagent(s) +
  *
  * Merge instead of overwrite: settings.json may carry unrelated user config
  * (and on this machine it is a symlink into a synced folder). We only touch
- * entries whose command mentions agentdb — ours — and leave everything else
- * untouched. Re-running is therefore idempotent rather than duplicating.
+ * entries whose command points into $CLAUDE_PROJECT_DIR/scripts/ — ours — and
+ * leave everything else untouched. Re-running is therefore idempotent rather
+ * than duplicating.
+ *
+ * Der Marker war frueher 'agentdb'. Seit die Disziplin-Hooks (scripts/hooks/*)
+ * dazugekommen sind, reicht das nicht mehr: nicht-erkannte Alt-Eintraege
+ * bleiben stehen und die neuen kommen bei jedem Lauf noch einmal dazu.
  */
 function installClaudeHooks() {
   const src = 'infra/claude-settings/hooks.json';
@@ -79,7 +84,7 @@ function installClaudeHooks() {
   }
   settings.hooks ||= {};
 
-  const isOurs = (entry) => JSON.stringify(entry).includes('agentdb');
+  const isOurs = (entry) => JSON.stringify(entry).includes('$CLAUDE_PROJECT_DIR/scripts/');
 
   let count = 0;
   for (const [event, entries] of Object.entries(managed)) {

@@ -3,7 +3,7 @@
 # Install: `npm run setup-hooks` (copies this file into .git/hooks/pre-push)
 # Skip:    `git push --no-verify`  (explicit opt-out only)
 #
-# Eight gates:
+# Nine gates:
 #   1. TypeScript type-check        — catches obvious code regressions
 #   2. Unit tests                   — node --test, catches logic regressions in
 #                                     the pure lib functions
@@ -15,6 +15,9 @@
 #   6. Out-of-band drift            — catches Region-Listen + Set-Literale
 #   7. Roh-Hex-Utilities            — catches Rueckfall auf -[#hex] statt Token
 #   8. systemd-Haertungsboden       — catches eine neue Unit ohne Sandboxing
+#   9. Disziplin-Hooks              — catches das stille Abschalten der
+#                                     Plan-/Antwort-Gates. Abschalten ist
+#                                     erlaubt, aber nur sichtbar im Diff.
 
 set -e
 
@@ -28,7 +31,7 @@ if [ -f infra/git-hooks/pre-push ] && ! cmp -s "$0" infra/git-hooks/pre-push; th
   exit 1
 fi
 
-echo "[pre-push 1/8] Running tsc --noEmit ..."
+echo "[pre-push 1/9] Running tsc --noEmit ..."
 if ! npx tsc --noEmit; then
   echo ""
   echo "TypeScript errors detected — push blocked."
@@ -36,7 +39,7 @@ if ! npx tsc --noEmit; then
 fi
 echo "  tsc passed."
 
-echo "[pre-push 2/8] Running unit tests ..."
+echo "[pre-push 2/9] Running unit tests ..."
 # Frueh in der Kette: die Tests laufen in <1s und haengen an nichts, was die
 # spaeteren Gates tun. Ein roter Test soll nicht hinter 60s tsc+Verifier warten.
 if ! npm test; then
@@ -46,7 +49,7 @@ if ! npm test; then
 fi
 echo "  unit tests passed."
 
-echo "[pre-push 3/8] Checking snapshot-matrix.generated.mjs freshness ..."
+echo "[pre-push 3/9] Checking snapshot-matrix.generated.mjs freshness ..."
 # Wenn snapshot-matrix.ts neuer ist als die generated.mjs, ist der commit stale.
 # Schützt gegen Drift im Auto-Generate-Pattern (reference_dual_module_patterns.md).
 if [ -f app/lib/snapshot-matrix.ts ] && [ -f app/lib/snapshot-matrix.generated.mjs ]; then
@@ -59,7 +62,7 @@ if [ -f app/lib/snapshot-matrix.ts ] && [ -f app/lib/snapshot-matrix.generated.m
 fi
 echo "  snapshot-matrix freshness OK."
 
-echo "[pre-push 4/8] Running classification verifier ..."
+echo "[pre-push 4/9] Running classification verifier ..."
 if ! node scripts/verify-classifications.mjs; then
   echo ""
   echo "Classification checks failed — push blocked."
@@ -69,7 +72,7 @@ if ! node scripts/verify-classifications.mjs; then
 fi
 echo "  classification checks passed."
 
-echo "[pre-push 5/8] Checking system-map freshness + broken chains ..."
+echo "[pre-push 5/9] Checking system-map freshness + broken chains ..."
 # Die Karte wird generiert. Wer eine Unit anfasst und sie nicht neu baut,
 # bekommt eine Architektur-Doku, die luegt — schlimmer als keine.
 if ! node scripts/build-system-map.mjs --check; then
@@ -89,7 +92,7 @@ if ! node scripts/check-system-map.mjs > /dev/null; then
 fi
 echo "  system-map OK."
 
-echo "[pre-push 6/8] Checking out-of-band region-list drift ..."
+echo "[pre-push 6/9] Checking out-of-band region-list drift ..."
 if ! node scripts/check-drift.mjs; then
   echo ""
   echo "Region-list drift detected — push blocked."
@@ -98,7 +101,7 @@ if ! node scripts/check-drift.mjs; then
 fi
 echo "  region-list drift check passed."
 
-echo "[pre-push 7/8] Checking raw-hex utilities in markup ..."
+echo "[pre-push 7/9] Checking raw-hex utilities in markup ..."
 # Ratsche, kein Verbot: die migrierten 10 Farben sind hart auf Null, der noch
 # offene Rest (Accent, Win/Loss) darf nur nicht wachsen. Siehe Kommentarkopf
 # in scripts/check-raw-hex-utilities.mjs.
@@ -108,7 +111,7 @@ if ! node scripts/check-raw-hex-utilities.mjs; then
   exit 1
 fi
 
-echo "[pre-push 8/8] Checking systemd-Haertungsboden in den Unit-Files ..."
+echo "[pre-push 8/9] Checking systemd-Haertungsboden in den Unit-Files ..."
 # Der Boden steht woertlich in jeder Unit statt in einem Drop-In auf der Box,
 # weil build-system-map.mjs nur die Unit-Files liest — ein Drop-In unter
 # /etc waere Zustand, den die Systemkarte strukturell nicht sieht. Preis des
@@ -117,6 +120,18 @@ if ! node scripts/apply-hardening-floor.mjs --check; then
   echo ""
   echo "Haertungsboden fehlt in mindestens einer Unit — push blocked."
   echo "Run: node scripts/apply-hardening-floor.mjs && git add infra/hetzner"
+  exit 1
+fi
+
+echo "[pre-push 9/9] Checking Disziplin-Hooks ..."
+# Die Gates gegen "erst coden, dann planen" und gegen ellenlange Berichte
+# leben in .claude/settings.json — einem gitignorierten Symlink. Genau deshalb
+# koennen sie stumm verschwinden (siehe 28.06., Conflicted Copy) oder in einem
+# genervten Moment geloescht werden. Dieser Gate erzwingt, dass das durch
+# einen Commit geht.
+if ! node scripts/check-discipline-hooks.mjs; then
+  echo ""
+  echo "Disziplin-Hooks fehlen oder sind nicht installiert — push blocked."
   exit 1
 fi
 

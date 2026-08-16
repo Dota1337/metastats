@@ -29,16 +29,29 @@ if (sessionId) {
     // sichtbar: der Assistant sieht den Grund im Gate-Text wieder.
     clearApproval(sessionId, 'neuer Code:-Task — alte Freigabe verfallen');
   } else if ((SHORT && APPROVAL.test(prompt)) || TRIVIAL.test(prompt)) {
+    // Ein zweites „ok" zum selben Plan erneuert das 8er-Fenster, aber NICHT
+    // den absoluten Deckel: sonst waere jede beilaeufige Zustimmung eine
+    // Verlaengerung ohne Ende. Zurueckgesetzt wird der Deckel nur, wenn sich
+    // die Plan-Datei seit der letzten Freigabe geaendert hat — dann ist es ein
+    // anderer Plan, den der User frisch freigibt.
+    const s = readState(sessionId);
+    const hash = planHash();
+    const samePlan = Boolean(s.approvedAt) && s.planHash === hash;
     writeState(sessionId, {
       approvedAt: new Date().toISOString(),
-      planHash: planHash(),
+      planHash: hash,
       promptsSinceApproval: 0,
+      promptsSinceFirstApproval: samePlan ? (s.promptsSinceFirstApproval || 0) : 0,
       approvedBy: prompt.slice(0, 60),
       clearedBy: null,
+      survivedCompact: samePlan ? Boolean(s.survivedCompact) : false,
     });
   } else {
     const s = readState(sessionId);
-    writeState(sessionId, { promptsSinceApproval: (s.promptsSinceApproval || 0) + 1 });
+    writeState(sessionId, {
+      promptsSinceApproval: (s.promptsSinceApproval || 0) + 1,
+      promptsSinceFirstApproval: s.approvedAt ? (s.promptsSinceFirstApproval || 0) + 1 : 0,
+    });
   }
 }
 

@@ -27,6 +27,33 @@ export const PLAN_FILE = join(PROJECT_DIR, '.claude', 'plan-current.md');
  */
 export const MAX_PROMPTS_PER_APPROVAL = 8;
 
+/**
+ * Absoluter Deckel: so viele User-Prompts nach der ERSTEN Freigabe eines
+ * Themas, unabhaengig davon wie oft zwischendurch „ok" faellt.
+ *
+ * Warum es den zusaetzlich zu MAX_PROMPTS_PER_APPROVAL braucht: jedes „ok"
+ * setzt in prompt-submit.mjs `promptsSinceApproval` auf 0 zurueck. Solange der
+ * Compact eine Freigabe toetete, war er der faktische Endpunkt (gemessen: 20
+ * Compacts in 6 Sessions). Faellt der weg, ist das 8er-Fenster kein Deckel
+ * mehr, sondern eines das sich selbst nachfuellt. 30 ist grosszuegig genug fuer
+ * einen mehrstuendigen Umsetzungsblock und eng genug, dass eine Freigabe nicht
+ * eine ganze Session ueberdauert.
+ */
+export const MAX_PROMPTS_PER_TOPIC = 30;
+
+/**
+ * Ueberlebt eine Freigabe den Compact? Der eine Schalter fuer den gesamten
+ * Umbau vom 2026-08-16 — auf `false` ist das alte Verhalten zurueck (Freigabe
+ * verfaellt bei jedem Compact), ohne dass irgendwo sonst etwas zu aendern ist.
+ *
+ * Der urspruengliche Loeschgrund war nicht „Compact ist gefaehrlich", sondern
+ * „der Plan ist danach nicht mehr im Kontext". Seit post-compact.mjs den Plan
+ * wieder einspielt, faellt der Grund weg. `resume`, `startup` und `clear`
+ * loeschen weiterhin: das sind menschlich gesetzte Sessiongrenzen mit beliebig
+ * langer Luecke, der Compact ist eine reine Kontextfenster-Mechanik.
+ */
+export const APPROVAL_SURVIVES_COMPACT = true;
+
 function statePath(sessionId) {
   const safe = String(sessionId || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '');
   return join(STATE_DIR, `${safe || 'unknown'}.json`);
@@ -81,11 +108,15 @@ export function planHash() {
 }
 
 /**
- * Gilt die Freigabe noch? Vier Verfallsgruende, alle mechanisch:
+ * Gilt die Freigabe noch? Fuenf Verfallsgruende, alle mechanisch:
  *   1. es gab nie eine
- *   2. Compact hat sie geloescht (PreCompact-Hook)
- *   3. mehr als MAX_PROMPTS_PER_APPROVAL User-Prompts seither
- *   4. die Plan-Datei wurde nach der Freigabe geaendert (Hash-Drift)
+ *   2. Sessiongrenze hat sie geloescht (startup / clear / resume; Compact nur
+ *      noch wenn APPROVAL_SURVIVES_COMPACT auf false steht)
+ *   3. mehr als MAX_PROMPTS_PER_APPROVAL User-Prompts seit der letzten Freigabe
+ *   4. mehr als MAX_PROMPTS_PER_TOPIC User-Prompts seit der ERSTEN Freigabe
+ *      dieses Themas — den setzt kein „ok" zurueck
+ *   5. Plan-Bindung kaputt: Datei nach der Freigabe geaendert (Hash-Drift) ODER
+ *      es gab bei der Freigabe gar keinen Plan
  */
 export function approvalStatus(sessionId) {
   const s = readState(sessionId);
@@ -93,7 +124,20 @@ export function approvalStatus(sessionId) {
   if ((s.promptsSinceApproval || 0) > MAX_PROMPTS_PER_APPROVAL) {
     return { ok: false, reason: `Freigabe abgelaufen (${s.promptsSinceApproval} Prompts seit der Freigabe, Limit ${MAX_PROMPTS_PER_APPROVAL})` };
   }
+  if ((s.promptsSinceFirstApproval || 0) > MAX_PROMPTS_PER_TOPIC) {
+    return { ok: false, reason: `Freigabe abgelaufen (${s.promptsSinceFirstApproval} Prompts seit der ersten Freigabe zu diesem Plan, Limit ${MAX_PROMPTS_PER_TOPIC}) — leg den Plan neu vor` };
+  }
+  // Eine Freigabe ohne Plan-Bindung (Trivial-Ausweg, kein Plan vorhanden) hat
+  // keine Themengrenze ausser der Session selbst. Innerhalb einer Sitzung ist
+  // das gewollt; ueber einen Compact hinweg darf sie NICHT weiterleben — sonst
+  // ueberdauert der Ausweg genau die Grenze, die ihn bisher beendet hat.
+  // Belegt in .git/metastats-discipline/280fe6e6-….json: approvedAt gesetzt,
+  // planHash null. session-start.mjs raeumt solche Freigaben beim Compact ab;
+  // die Wache hier ist der zweite Boden.
   const now = planHash();
+  if (s.survivedCompact && !s.planHash) {
+    return { ok: false, reason: 'Freigabe ohne Plan-Bindung ueberlebt keinen Compact' };
+  }
   if (s.planHash && now && s.planHash !== now) {
     return { ok: false, reason: 'Plan-Datei wurde nach der Freigabe geaendert — der User hat diesen Plan nicht freigegeben' };
   }

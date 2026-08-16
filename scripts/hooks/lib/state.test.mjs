@@ -1,0 +1,171 @@
+// Verhaltens-Tests der Disziplin-Hooks.
+//
+// check-discipline-hooks.mjs prueft nur Anwesenheit (Events registriert,
+// Scripts vorhanden, kein Drift gegen .claude/settings.json). Ob die Freigabe
+// zum richtigen Zeitpunkt verfaellt, sagt es nicht — und genau daran haengt
+// der Umbau vom 2026-08-16 (Freigabe ueberlebt den Compact).
+//
+// Alles laeuft gegen ein Temp-Verzeichnis via CLAUDE_PROJECT_DIR. Frueher
+// wurde von Hand gegen den echten Hook getestet; die Leichen davon liegen als
+// .git/metastats-discipline/test-*.json im Live-Zustand.
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { execFileSync } from 'node:child_process';
+
+const HOOKS = join(import.meta.dirname, '..');
+const REAL_PROJECT = join(HOOKS, '..', '..');
+
+/** Frisches Fake-Projekt: .claude/plan-current.md + leeres .git/. */
+function makeProject({ plan = 'Plan-Inhalt' } = {}) {
+  const dir = mkdtempSync(join(tmpdir(), 'metastats-hooks-'));
+  mkdirSync(join(dir, '.claude'), { recursive: true });
+  mkdirSync(join(dir, '.git'), { recursive: true });
+  mkdirSync(join(dir, 'infra', 'claude-settings'), { recursive: true });
+  writeFileSync(join(dir, 'infra', 'claude-settings', 'discipline.md'), '# Kernregeln\n');
+  if (plan !== null) writeFileSync(join(dir, '.claude', 'plan-current.md'), plan);
+  return dir;
+}
+
+/**
+ * Hook mit JSON auf stdin laufen lassen. Die Hook-Scripts liegen bewusst im
+ * echten Repo — nur PROJECT_DIR wird umgebogen, damit wir den echten Code
+ * testen und nicht eine Kopie.
+ */
+function runHook(name, project, input) {
+  const out = execFileSync(process.execPath, [join(HOOKS, name)], {
+    input: JSON.stringify(input),
+    env: { ...process.env, CLAUDE_PROJECT_DIR: project },
+    encoding: 'utf8',
+  });
+  try { return JSON.parse(out || '{}'); } catch { return {}; }
+}
+
+function readSessionState(project, sessionId) {
+  try {
+    return JSON.parse(readFileSync(join(project, '.git', 'metastats-discipline', `${sessionId}.json`), 'utf8'));
+  } catch {
+    return {};
+  }
+}
+
+async function loadState(project) {
+  process.env.CLAUDE_PROJECT_DIR = project;
+  // Cache-Buster: state.mjs liest PROJECT_DIR beim Import.
+  return import(`./state.mjs?t=${Date.now()}${Math.random()}`);
+}
+
+function approve(project, sessionId, prompt = 'ja') {
+  runHook('prompt-submit.mjs', project, { session_id: sessionId, prompt });
+}
+
+test('startup, clear und resume loeschen die Freigabe', () => {
+  for (const source of ['startup', 'clear', 'resume']) {
+    const project = makeProject();
+    approve(project, 's1');
+    assert.ok(readSessionState(project, 's1').approvedAt, `${source}: Freigabe wurde nicht gesetzt`);
+
+    runHook('session-start.mjs', project, { session_id: 's1', source });
+    assert.equal(readSessionState(project, 's1').approvedAt, null, `${source} haette loeschen muessen`);
+    rmSync(project, { recursive: true, force: true });
+  }
+});
+
+test('compact laesst eine plangebundene Freigabe stehen', () => {
+  const project = makeProject();
+  approve(project, 's2');
+  runHook('session-start.mjs', project, { session_id: 's2', source: 'compact' });
+
+  const s = readSessionState(project, 's2');
+  assert.ok(s.approvedAt, 'Freigabe haette den Compact ueberleben muessen');
+  assert.equal(s.survivedCompact, true);
+  rmSync(project, { recursive: true, force: true });
+});
+
+test('compact loescht eine Freigabe ohne Plan-Bindung', () => {
+  const project = makeProject({ plan: null });
+  approve(project, 's3', 'trivial: nur ein Typo');
+  assert.equal(readSessionState(project, 's3').planHash, null);
+
+  runHook('session-start.mjs', project, { session_id: 's3', source: 'compact' });
+  assert.equal(readSessionState(project, 's3').approvedAt, null);
+  rmSync(project, { recursive: true, force: true });
+});
+
+test('PostCompact spielt den freigegebenen Plan wieder ein', () => {
+  const project = makeProject({ plan: '# Plan\nEinzigartiger Marker 4711' });
+  approve(project, 's4');
+  runHook('session-start.mjs', project, { session_id: 's4', source: 'compact' });
+
+  const out = runHook('post-compact.mjs', project, { session_id: 's4' });
+  const ctx = out.hookSpecificOutput?.additionalContext || '';
+  assert.match(ctx, /Einzigartiger Marker 4711/);
+  assert.doesNotMatch(ctx, /Freigabe ist verfallen/);
+  rmSync(project, { recursive: true, force: true });
+});
+
+test('PostCompact sagt ohne Freigabe klar, dass keine vorliegt', () => {
+  const project = makeProject();
+  const out = runHook('post-compact.mjs', project, { session_id: 'ohne-freigabe' });
+  assert.match(out.hookSpecificOutput?.additionalContext || '', /KEINE gueltige Freigabe/);
+  rmSync(project, { recursive: true, force: true });
+});
+
+test('wiederholtes "ok" fuellt den absoluten Deckel nicht nach', async () => {
+  const project = makeProject();
+  const { approvalStatus, MAX_PROMPTS_PER_TOPIC } = await loadState(project);
+
+  approve(project, 's5');
+  for (let i = 0; i < MAX_PROMPTS_PER_TOPIC + 1; i++) {
+    // Kein Wort aus dem Freigabe-Regex am Anfang — sonst zaehlt der Prompt
+    // selbst als Freigabe (`mach` steht dort drin).
+    runHook('prompt-submit.mjs', project, { session_id: 's5', prompt: `und jetzt Schritt ${i}` });
+    if (i % 5 === 0) approve(project, 's5'); // Zwischen-"ok", wie es real passiert
+  }
+
+  const status = approvalStatus('s5');
+  assert.equal(status.ok, false);
+  assert.match(status.reason, /erste[n]? Freigabe/);
+  rmSync(project, { recursive: true, force: true });
+});
+
+test('geaenderte Plan-Datei blockt weiterhin', async () => {
+  const project = makeProject();
+  const { approvalStatus } = await loadState(project);
+
+  approve(project, 's6');
+  assert.equal(approvalStatus('s6').ok, true);
+
+  writeFileSync(join(project, '.claude', 'plan-current.md'), 'ein ganz anderer Plan');
+  const status = approvalStatus('s6');
+  assert.equal(status.ok, false);
+  assert.match(status.reason, /geaendert/);
+  rmSync(project, { recursive: true, force: true });
+});
+
+test('neuer Code:-Task loescht die Freigabe', () => {
+  const project = makeProject();
+  approve(project, 's7');
+  runHook('prompt-submit.mjs', project, { session_id: 's7', prompt: 'Code: etwas voellig anderes' });
+  assert.equal(readSessionState(project, 's7').approvedAt, null);
+  rmSync(project, { recursive: true, force: true });
+});
+
+test('PreCompact fasst den Freigabe-Zustand nicht mehr an', () => {
+  const project = makeProject();
+  approve(project, 's8');
+  const before = readSessionState(project, 's8');
+  runHook('compact-reset.mjs', project, { session_id: 's8', trigger: 'auto' });
+  assert.deepEqual(readSessionState(project, 's8'), before);
+  rmSync(project, { recursive: true, force: true });
+});
+
+test('der Schalter existiert und steht auf true', async () => {
+  const project = makeProject();
+  const { APPROVAL_SURVIVES_COMPACT } = await loadState(project);
+  assert.equal(APPROVAL_SURVIVES_COMPACT, true, 'Rollback-Schalter fehlt oder ist aus');
+  rmSync(project, { recursive: true, force: true });
+  process.env.CLAUDE_PROJECT_DIR = REAL_PROJECT;
+});

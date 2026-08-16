@@ -1,14 +1,23 @@
 #!/usr/bin/env node
-// PreCompact-Hook: Freigabe loeschen.
+// PreCompact-Hook. Seit 2026-08-16 bewusst ein No-Op.
 //
-// Gemessen: 20 Compacts in 6 Sessions, 14 davon in einer einzigen. Nach einem
-// Compact ist der Plan, auf den sich die Freigabe bezog, nicht mehr im
-// Kontext — der Assistant weiss dann nicht mehr, wofuer er freigegeben wurde,
-// arbeitet aber mit offenem Gate weiter. Genau da entstehen die Aenderungen,
-// die der User hinterher korrigieren muss.
-import { readInput, clearApproval } from './lib/state.mjs';
+// Bis dahin loeschte dieser Hook die Plan-Freigabe, Begruendung: nach dem
+// Compact ist der Plan nicht mehr im Kontext, der Assistant weiss also nicht
+// mehr, wofuer er freigegeben wurde. Der Grund ist weggefallen —
+// post-compact.mjs spielt den Plan wieder ein, und session-start.mjs
+// (source="compact", feuert VOR PostCompact) entscheidet dort ueber den
+// Freigabe-Zustand. Zwei Stellen, die dasselbe loeschen, waren ohnehin eine
+// zu viel.
+//
+// Warum die Datei trotzdem bleibt und nicht aus hooks.json fliegt:
+// scripts/check-discipline-hooks.mjs verlangt das PreCompact-Event als
+// Pflicht-Event. Und hier ist die Stelle, an der ein kuenftiger Eingriff VOR
+// dem Compact haengen wuerde.
+//
+// Nicht wieder zum Loescher machen: den Schalter dafuer gibt es in
+// lib/state.mjs (APPROVAL_SURVIVES_COMPACT).
+import { readInput } from './lib/state.mjs';
 
-const input = readInput();
-if (input.session_id) clearApproval(input.session_id, 'Compact — Plan ist nicht mehr im Kontext');
+readInput();
 process.stdout.write(JSON.stringify({ suppressOutput: true }));
 process.exit(0);

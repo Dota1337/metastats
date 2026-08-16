@@ -15,7 +15,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { PROJECT_DIR, readInput, pruneOldState, clearApproval, readGlobal, writeGlobal } from './lib/state.mjs';
+import { PROJECT_DIR, readInput, readState, writeState, pruneOldState, clearApproval, readGlobal, writeGlobal, APPROVAL_SURVIVES_COMPACT } from './lib/state.mjs';
 
 const input = readInput();
 const source = String(input.source || '');
@@ -57,8 +57,31 @@ if (existsSync(rules)) {
 }
 
 // --- Freigabe-Zustand ------------------------------------------------------
-// Eine neue Session startet ohne Freigabe. Immer.
-if (sessionId) clearApproval(sessionId, 'Session-Start');
+// Eine neue Session startet ohne Freigabe: startup, clear und resume sind
+// menschlich gesetzte Grenzen mit beliebig langer Luecke davor.
+//
+// Der Compact ist keine solche Grenze, sondern eine Kontextfenster-Mechanik —
+// er feuert hier mit source="compact" VOR dem PostCompact-Hook. Ihn wie einen
+// Sessionstart zu behandeln hat die Freigabe mitten in laufender Arbeit
+// getoetet (gemessen: 14 Compacts in einer Session). Der Plan kommt in
+// post-compact.mjs zurueck in den Kontext, die Wachen in approvalStatus()
+// (Plan-Hash, beide Prompt-Deckel) bleiben scharf.
+//
+// Ausnahme von der Ausnahme: eine Freigabe OHNE Plan-Bindung (Trivial-Ausweg)
+// hat keine Themengrenze und stirbt weiterhin am Compact.
+if (sessionId) {
+  if (source === 'compact' && APPROVAL_SURVIVES_COMPACT) {
+    const s = readState(sessionId);
+    if (s.approvedAt && s.planHash) {
+      writeState(sessionId, { survivedCompact: true });
+      notes.push('Plan-Freigabe ueber den Compact hinweg erhalten');
+    } else if (s.approvedAt) {
+      clearApproval(sessionId, 'Compact — Freigabe ohne Plan-Bindung verfaellt');
+    }
+  } else {
+    clearApproval(sessionId, `Session-Start (${source || 'unbekannt'})`);
+  }
+}
 pruneOldState();
 
 // --- Woechentlicher Drift-Audit -------------------------------------------

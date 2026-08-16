@@ -16,18 +16,38 @@
 // Im Worst-Case läuft der Cache halt seine reguläre 6h-TTL ab.
 
 import { createHmac } from 'node:crypto';
+import { existsSync, writeFileSync, renameSync } from 'node:fs';
 
 const SECRET = process.env.REVALIDATE_SECRET || '';
 const BASE = (process.env.REVALIDATE_BASE_URL || 'https://www.metastats.gg').replace(/\/$/, '');
 const TIMEOUT_MS = 10_000;
 
+// Der Marker liegt in /etc/metastats-crawler/, NICHT in /var/lib/: die Units
+// laufen mit ProtectSystem=strict und listen nur /etc/metastats-crawler und
+// /run/lock in ReadWritePaths. Ein Write nach /var/lib waere EROFS — ausgerechnet
+// in dem Pfad, der aufhoeren soll, still zu scheitern. Die Tages-Cursor liegen
+// aus demselben Grund dort.
+const STATUS_DIR = process.env.REVALIDATE_STATUS_DIR || '/etc/metastats-crawler';
+
+// Bilanz ueber den ganzen Prozess. Die Crawler rufen revalidateEdge() pro
+// Region auf; erst die Summe am Ende sagt, ob der Edge-Cache wirklich frisch ist.
+const tally = { ok: 0, failed: 0, skipped: 0, failedLabels: [] };
+
+export function revalidateTally() {
+  return { ...tally, failedLabels: [...tally.failedLabels] };
+}
+
 export async function revalidateEdge(paths = [], tags = [], opts = {}) {
   const label = opts.label || 'revalidate';
+  // no-secret / no-targets sind Konfigurations- bzw. Aufrufzustaende, keine
+  // Fehlschlaege — sonst meldet jede Box ohne REVALIDATE_SECRET Dauerfehler.
   if (!SECRET) {
     console.log(`[${label}] skipped — REVALIDATE_SECRET not set`);
+    tally.skipped++;
     return { ok: false, reason: 'no-secret' };
   }
   if (!paths.length && !tags.length) {
+    tally.skipped++;
     return { ok: false, reason: 'no-targets' };
   }
 
@@ -52,20 +72,60 @@ export async function revalidateEdge(paths = [], tags = [], opts = {}) {
     const ms = Date.now() - t0;
     if (!res.ok) {
       const text = await res.text().catch(() => '');
-      console.log(`[${label}] revalidate FAILED HTTP ${res.status} ${text.slice(0, 200)} (${ms}ms)`);
+      // console.error, nicht console.log: journalctl -p err zeigt sonst nichts,
+      // und genau dort schaut man nach, wenn der Cache alt aussieht.
+      console.error(`[${label}] revalidate FAILED HTTP ${res.status} ${text.slice(0, 200)} (${ms}ms)`);
+      tally.failed++;
+      tally.failedLabels.push(`${label}:http-${res.status}`);
       return { ok: false, status: res.status, ms };
     }
     const respJson = await res.json().catch(() => ({}));
     const okPaths = respJson?.revalidated?.paths?.length ?? 0;
     const okTags = respJson?.revalidated?.tags?.length ?? 0;
     console.log(`[${label}] revalidated ${okPaths} path(s) + ${okTags} tag(s) in ${ms}ms`);
+    tally.ok++;
     return { ok: true, status: res.status, ms, revalidated: respJson?.revalidated };
   } catch (err) {
-    console.log(`[${label}] revalidate ERR ${err.name === 'AbortError' ? 'timeout' : err.message}`);
+    const reason = err.name === 'AbortError' ? 'timeout' : err.message;
+    console.error(`[${label}] revalidate ERR ${reason}`);
+    tally.failed++;
+    tally.failedLabels.push(`${label}:${reason}`);
     return { ok: false, error: err.message };
   } finally {
     clearTimeout(timer);
   }
+}
+
+// Bilanz-Zeile ins Journal + Marker-Datei fuer den Laufzeit-Vertrag
+// `revalidate/edge-frische`. Ohne persistiertes Artefakt haette der Vertrag
+// nichts zu pruefen — ein Revalidate hinterlaesst sonst keine Spur.
+// `key` trennt die Marker der beiden Treiber (stats / marketvalue) — sonst
+// ueberschreibt der spaeter laufende die Fehlerliste des frueheren.
+export function finishRevalidateRun(label = 'revalidate', key = 'stats') {
+  const t = revalidateTally();
+  const line = `[${label}] Bilanz: ${t.ok} ok, ${t.failed} fehlgeschlagen, ${t.skipped} uebersprungen`;
+  if (t.failed > 0) console.error(`${line} — ${t.failedLabels.join(', ')}`);
+  else console.log(line);
+
+  const payload = {
+    updatedAt: new Date().toISOString(),
+    ok: t.ok,
+    failed: t.failed,
+    skipped: t.skipped,
+    failedPaths: t.failedLabels,
+  };
+  try {
+    // Verzeichnis nicht anlegen: existiert es nicht, laeuft das hier auf einer
+    // Workstation und der Marker ist dort bedeutungslos.
+    if (!existsSync(STATUS_DIR)) return payload;
+    const target = `${STATUS_DIR}/revalidate-status-${key}.json`;
+    const tmp = `${target}.tmp`;
+    writeFileSync(tmp, JSON.stringify(payload, null, 2));
+    renameSync(tmp, target);
+  } catch (e) {
+    console.error(`[${label}] Marker-Write fehlgeschlagen: ${e.message}`);
+  }
+  return payload;
 }
 
 // Die Cache-Pfade, die ein Stats-Crawl invalidieren sollte. Hält die

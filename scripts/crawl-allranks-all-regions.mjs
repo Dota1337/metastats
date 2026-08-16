@@ -28,7 +28,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, unlinkSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
-import { revalidateEdge, STATS_EDGE_PATHS } from './lib/revalidate-edge.mjs';
+import { revalidateEdge, finishRevalidateRun, STATS_EDGE_PATHS } from './lib/revalidate-edge.mjs';
 import { ACTIVE_REGIONS } from './lib/active-regions.mjs';
 import { resolveDailyTargetDay } from './lib/tft-crawl-window.mjs';
 import { tryAcquire, blockAcquire, releaseLock } from './lib/advisory-lock.mjs';
@@ -201,6 +201,7 @@ async function runTodayMode() {
     } catch (err) { console.error(`[${region}] FAILED: ${err.message}`); failed++; }
   }
   console.log(`\n=== complete — ${done} done, ${failed} failed ===`);
+  finishRevalidateRun('revalidate/today', 'stats');
   if (failed > 0 && failed >= Math.ceil(regions.length / 2)) process.exit(1);
 }
 
@@ -265,6 +266,7 @@ async function main() {
   }
 
   console.log(`\n=== complete in ${((Date.now() - t0) / 60_000).toFixed(1)} min — ${done} done, ${failed} failed ===`);
+  finishRevalidateRun(`revalidate/${targetDay}`, 'stats');
 
   // Publish only when this run actually crawled something. Audit HIGH-1.
   // C1: VACUUM (ANALYZE) the just-upserted aggregates BEFORE the publisher —

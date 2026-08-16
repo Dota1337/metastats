@@ -46,7 +46,7 @@
 import { spawn } from 'node:child_process';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { revalidateEdge, MARKETVALUE_EDGE_PATHS } from './lib/revalidate-edge.mjs';
+import { revalidateEdge, finishRevalidateRun, MARKETVALUE_EDGE_PATHS } from './lib/revalidate-edge.mjs';
 
 // ph2/th2 raus seit 2026-06-19 — 0 D2+ Spieler, 0 Crawl-Meta letzte 14 Tage.
 // Bleiben aber gültige Riot-Routings (siehe app/lib/regions.ts). me1 bleibt
@@ -236,6 +236,7 @@ async function main() {
   }
 
   const elapsedMin = ((Date.now() - t0) / 60_000).toFixed(1);
+  finishRevalidateRun('revalidate/marketvalue', 'marketvalue');
   console.log(`\n=== run done in ${elapsedMin} min ===`);
 }
 

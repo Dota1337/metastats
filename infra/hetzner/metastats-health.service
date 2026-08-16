@@ -10,8 +10,10 @@ WorkingDirectory=/opt/metastats-crawler
 EnvironmentFile=/etc/metastats-crawler/env
 ExecStart=/usr/bin/node /opt/metastats-crawler/scripts/health-monitor.mjs
 TimeoutStartSec=180
-# Skript darf "fail" (exit 1) ohne dass systemd die Service als degraded markiert
-SuccessExitStatus=0 1
+# Kein SuccessExitStatus mehr (seit 2026-08-16): Exit 1 heisst hier "der Monitor
+# selbst ist kaputt" (State nicht schreibbar, Restart-API unerreichbar, Crash) —
+# ein Zielsystem-Ausfall meldet sich per Webhook und laesst die Unit gruen. Der
+# Timer feuert unabhaengig vom Ergebnis weiter, die Unit hat kein Restart=.
 
 # --- BEGIN metastats-hardening-floor ---
 NoNewPrivileges=yes

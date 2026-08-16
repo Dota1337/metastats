@@ -53,6 +53,10 @@ function loadState() {
   catch { return { consecutiveFails: 0, lastRestartAt: 0, restartsLast24h: [], lastNotifiedState: 'healthy' }; }
 }
 
+// Gibt false zurueck, wenn der State nicht geschrieben werden konnte. Das ist
+// ein Monitor-INTERNER Fehler (siehe Exit-Code-Regel unten): ohne State zaehlt
+// der naechste Lauf wieder bei 0 und der MAX_RESTARTS_PER_DAY-Guard verliert
+// sein Gedaechtnis.
 function saveState(s) {
   try {
     mkdirSync(dirname(STATE_FILE), { recursive: true });
@@ -62,8 +66,10 @@ function saveState(s) {
     const tmp = `${STATE_FILE}.tmp`;
     writeFileSync(tmp, JSON.stringify(s, null, 2));
     renameSync(tmp, STATE_FILE);
+    return true;
   } catch (e) {
     console.error(`[state] write failed: ${e.message}`);
+    return false;
   }
 }
 
@@ -74,10 +80,18 @@ async function probe(url, timeoutMs = PROBE_TIMEOUT_MS) {
   try {
     const res = await fetch(url, { signal: ctrl.signal, cache: 'no-store' });
     const ms = Date.now() - start;
-    const ok = res.status >= 200 && res.status < 500;   // 502/504 sind unhealthy
-    return { ok: ok && res.status !== 502 && res.status !== 504, status: res.status, ms };
+    // Bis 2026-08-16 galt alles unter 500 als gesund — ein 404 (Route umbenannt),
+    // ein 401 oder ein 429 liefen also als "healthy" durch. Jetzt ist nur 2xx/3xx
+    // gesund. Die Schwere entscheidet mit, ob der DB-Restart-Pfad ueberhaupt in
+    // Frage kommt: ein 404 der Vercel-API ist durch keinen DB-Restart heilbar,
+    // wuerde aber einen der 4 Restart-Slots pro 24 h verbrennen und den Cooldown
+    // setzen — genau dann blockend, wenn kurz darauf ein echter Outage kommt.
+    const severity = res.status < 400 ? 'ok' : res.status < 500 ? 'client' : 'server';
+    return { ok: severity === 'ok', severity, status: res.status, ms };
   } catch (e) {
-    return { ok: false, status: 0, ms: Date.now() - start, error: e.name === 'AbortError' ? 'timeout' : e.message };
+    // Timeout / Netzwerkfehler: der Server antwortet gar nicht — das ist der
+    // Fall, fuer den der Auto-Restart gebaut wurde.
+    return { ok: false, severity: 'server', status: 0, ms: Date.now() - start, error: e.name === 'AbortError' ? 'timeout' : e.message };
   } finally {
     clearTimeout(timer);
   }
@@ -167,7 +181,7 @@ async function main() {
       state.lastNotifiedState = 'healthy';
     }
     state.consecutiveFails = 0;
-    saveState(state);
+    if (!saveState(state)) process.exitCode = 1;
     return;
   }
 
@@ -181,11 +195,27 @@ async function main() {
   const inCoolDown = now - (state.lastRestartAt || 0) < COOL_DOWN_MS;
   const rateLimited = state.restartsLast24h.length >= MAX_RESTARTS_PER_DAY;
 
+  // Ein DB-Restart hilft nur gegen 5xx/Timeout oder eine als unhealthy
+  // gemeldete Supabase-DB. Ein 4xx der Vercel-API meldet sich per Webhook,
+  // fasst den Restart-Pfad aber nicht an.
+  const restartWouldHelp = apiResult.severity === 'server' || supaResult?.ok === false;
+
+  if (!restartWouldHelp) {
+    await notify(webhook,
+      `:warning: metastats unhealthy, aber kein DB-Fall: api=${apiResult.status} (${apiResult.ms}ms), db=${supaResult?.dbStatus || 'n/a'}. Kein Auto-Restart — das muss ein Mensch anschauen.`);
+    state.lastNotifiedState = 'unhealthy';
+    if (!saveState(state)) process.exitCode = 1;
+    return;
+  }
+
   if (state.consecutiveFails >= FAILS_BEFORE_RESTART && !inCoolDown && !rateLimited) {
     if (!supaToken || !supaRef) {
       await notify(webhook,
         `:warning: metastats unhealthy (api=${apiResult.status} supa=${supaResult?.dbStatus}). Auto-Restart skipped: SUPABASE_MANAGEMENT_TOKEN/ref missing.`);
+      // Fehlender Token ist eine kaputte Monitor-Konfiguration, nicht ein
+      // kaputtes Zielsystem — das darf laut sein.
       saveState(state);
+      process.exitCode = 1;
       return;
     }
     console.log('[action] triggering Supabase restart');
@@ -198,6 +228,9 @@ async function main() {
     } else {
       await notify(webhook,
         `:rotating_light: metastats unhealthy — Restart-API antwortete HTTP ${rr.status}`);
+      // Der Remediationsweg selbst ist kaputt: der Monitor sieht den Ausfall,
+      // kann ihn aber nicht mehr heilen. Monitor-interner Fehler → Exit 1.
+      process.exitCode = 1;
     }
     state.lastNotifiedState = 'unhealthy';
   } else if (state.consecutiveFails === FAILS_BEFORE_RESTART && rateLimited) {
@@ -206,7 +239,13 @@ async function main() {
     state.lastNotifiedState = 'unhealthy';
   }
 
-  saveState(state);
+  if (!saveState(state)) process.exitCode = 1;
 }
 
-main().catch(e => { console.error('FAILED:', e.message); process.exit(1); });
+// Exit-Code-Regel (2026-08-16): Exit 1 heisst "der Monitor selbst ist kaputt"
+// (State nicht schreibbar, Restart-API unerreichbar, fehlende Konfiguration,
+// Crash) — NICHT "das Zielsystem ist unhealthy". Dafuer gibt es den Webhook.
+// Sonst waere im Ops-Dashboard nicht unterscheidbar, ob der Waechter oder das
+// Bewachte ausgefallen ist. `process.exitCode` statt `process.exit()`, damit
+// saveState() in jedem Pfad vorher durchlaeuft.
+main().catch(e => { console.error('FAILED:', e.message); process.exitCode = 1; });

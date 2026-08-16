@@ -57,9 +57,13 @@ jobs:
             echo "Keine Aenderungen an den Comp-Daten"
           else
             git commit -m "chore: daily metatft comps update"
+            pushed=""
             for attempt in 1 2 3; do
-              git pull --rebase origin main && git push origin main && break
+              if git pull --rebase origin main && git push origin main; then pushed=1; break; fi
               echo "Push-Versuch $attempt fehlgeschlagen, neuer Versuch ..."
               sleep 10
             done
+            # Ohne dieses Flag ist der letzte ausgefuehrte Befehl `sleep` (Exit 0)
+            # und ein dreimal gescheiterter Push meldet einen gruenen Lauf.
+            [ -n "$pushed" ] || { echo "Push nach 3 Versuchen fehlgeschlagen"; exit 1; }
           fi

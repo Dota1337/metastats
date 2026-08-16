@@ -119,11 +119,15 @@ jobs:
             echo "No set/asset changes."
           else
             git commit -m "chore: daily TFT set/asset refresh"
+            pushed=""
             for attempt in 1 2 3; do
-              git pull --rebase origin main && git push && break
+              if git pull --rebase origin main && git push; then pushed=1; break; fi
               echo "Push attempt $attempt failed, retrying..."
               sleep 5
             done
+            # Without this flag the last command executed is `sleep` (exit 0), so
+            # three failed push attempts still report a green run.
+            [ -n "$pushed" ] || { echo "Push failed after 3 attempts"; exit 1; }
           fi
 
   # Stage 2: crawl every region in parallel and write to Supabase.

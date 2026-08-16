@@ -28,6 +28,10 @@ const CONCURRENCY = Math.max(1, Number(process.env.WARM_CONCURRENCY) || 1);
 // 60s default: covers the onetricks cold path (Hetzner pool + 1000-puuid
 // match fetch + classify, ~10-30s). Stats RPCs are all well under this.
 const TIMEOUT_MS = Math.max(5_000, Number(process.env.WARM_TIMEOUT_MS) || 60_000);
+// Ueber dieser HTTP-Fehlerquote gilt der Lauf als fehlgeschlagen. 30 % laesst
+// einzelne kalte Keys durch (die heilen sich per stale-while-revalidate beim
+// naechsten Request), faengt aber den Fall "halbe Seite bleibt kalt".
+const MAX_FAIL_RATE = Math.min(1, Number(process.env.WARM_MAX_FAIL_RATE) || 0.3);
 
 // patch=current always: the stats pages never deep-link a specific patch, they
 // resolve "current" server-side to the newest established patch.
@@ -116,13 +120,17 @@ async function warmOne(path) {
     if (res.ok) {
       // Light sanity read so a 200-with-error-body doesn't count as warmed.
       const body = await res.json().catch(() => null);
-      const ok = body && (body.hasData !== false);
-      comps = ok ? '' : ' (hasData:false)';
-      return { path, ok: res.ok, status: res.status, ms, edge, note: comps };
+      // hasData:false ist KEIN HTTP-Fehler und wird getrennt bilanziert: nach
+      // einem Patch-Flip liefern patch-diff und meta-pulse voellig legitim leer,
+      // und duenne Regionen (br1, jp1) ohnehin. In denselben Fehlertopf wie
+      // Timeouts geworfen, wuerde jede Patch-Woche einen Fehlalarm ausloesen.
+      const hasData = Boolean(body) && body.hasData !== false;
+      comps = hasData ? '' : ' (hasData:false)';
+      return { path, ok: res.ok, hasData, status: res.status, ms, edge, note: comps };
     }
-    return { path, ok: false, status: res.status, ms, edge, note: '' };
+    return { path, ok: false, hasData: null, status: res.status, ms, edge, note: '' };
   } catch (e) {
-    return { path, ok: false, status: 0, ms: Date.now() - start, edge: '-', note: e.name === 'AbortError' ? 'timeout' : e.message };
+    return { path, ok: false, hasData: null, status: 0, ms: Date.now() - start, edge: '-', note: e.name === 'AbortError' ? 'timeout' : e.message };
   } finally {
     clearTimeout(timer);
   }
@@ -146,17 +154,29 @@ async function run() {
   await Promise.all(Array.from({ length: CONCURRENCY }, worker));
 
   const failed = results.filter(r => !r.ok);
+  const empty = results.filter(r => r.ok && r.hasData === false);
   const miss = results.filter(r => r.edge === 'MISS').length;
   const hit = results.filter(r => r.edge === 'HIT' || r.edge === 'STALE').length;
-  console.log(`\nDone: ${results.length - failed.length}/${results.length} warmed (${miss} populated, ${hit} already warm), ${failed.length} failed.`);
+  console.log(`\nDone: ${results.length - failed.length}/${results.length} warmed (${miss} populated, ${hit} already warm), ${failed.length} failed, ${empty.length} ohne Daten.`);
   if (failed.length) {
-    console.log('Failed keys:');
-    for (const f of failed) console.log(`  ${f.status} ${f.path} — ${f.note}`);
+    console.error('Failed keys:');
+    for (const f of failed) console.error(`  ${f.status} ${f.path} — ${f.note}`);
   }
-  // Only hard-fail if EVERYTHING failed (prod down / wrong base URL). Partial
-  // failures are logged but don't fail the job — a few cold keys self-heal on
-  // the next request via stale-while-revalidate.
-  if (failed.length === results.length) process.exit(1);
+  if (empty.length) {
+    console.log('Keys ohne Daten (kein Fehler, aber im Blick behalten):');
+    for (const f of empty) console.log(`  ${f.path}`);
+  }
+
+  // Bis 2026-08-16 schlug nur der Totalausfall fehl. Ein Lauf, bei dem die
+  // Haelfte der Keys timeoutet, meldete gruen — genau der Zustand, in dem die
+  // Seite kalt bleibt. Jetzt entscheidet die HTTP-Fehlerquote. hasData:false
+  // zaehlt bewusst NICHT mit hinein (siehe warmOne): das ist nach jedem
+  // Patch-Flip der Normalzustand von patch-diff und meta-pulse.
+  const failRate = results.length ? failed.length / results.length : 0;
+  if (failRate > MAX_FAIL_RATE) {
+    console.error(`Fehlerquote ${(failRate * 100).toFixed(0)} % ueber dem Deckel von ${(MAX_FAIL_RATE * 100).toFixed(0)} % — Lauf gilt als fehlgeschlagen.`);
+    process.exitCode = 1;
+  }
 }
 
 run().catch(e => { console.error(e); process.exit(1); });

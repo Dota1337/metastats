@@ -824,12 +824,14 @@
       "daily-crawl/unit-stats",
       "daily-crawl/item-stats",
       "daily-crawl/trait-stats",
-      "daily-crawl/keine-luecken"
+      "daily-crawl/keine-luecken",
+      "revalidate/edge-frische-stats"
     ],
     "metastats-marketvalue-snapshot.service": [
       "marketvalue/hetzner-snapshots",
       "marketvalue/regionen-abdeckung",
-      "marketvalue/regionen-abdeckung-hetzner"
+      "marketvalue/regionen-abdeckung-hetzner",
+      "revalidate/edge-frische-marketvalue"
     ],
     "scripts/sync-marketvalue-to-supabase.mjs": [
       "marketvalue/supabase-mirror",

@@ -491,7 +491,12 @@ function checkFile(c, r) {
     if (set == null) return r('error', 'public/tft-set.json fehlt oder hat keine Set-Nummer');
     relPath = relPath.replace('{set}', String(set));
   }
-  const path = resolve(REPO_ROOT, relPath);
+  // Absoluter Pfad = eine Datei ausserhalb des Repos, die nur auf der Box
+  // existiert (Marker der Crawler-Treiber). Von der Workstation aus ist sie
+  // nicht pruefbar — dort `skipped` statt `broken` melden.
+  const isAbsolute = relPath.startsWith('/');
+  if (isAbsolute && !isOnBox()) return r('skipped', 'nur auf der Hetzner-Box prüfbar');
+  const path = isAbsolute ? relPath : resolve(REPO_ROOT, relPath);
   if (!existsSync(path)) return r('broken', `${relPath} existiert nicht`);
 
   let parsed;

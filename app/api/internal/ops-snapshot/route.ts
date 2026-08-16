@@ -37,6 +37,12 @@ const SERVICE_EXPECTATIONS: Record<string, { kind: 'oneshot' | 'persistent'; max
   'metastats-tft-pro-fullsync.service':      { kind: 'oneshot', maxAgeMs: 8 * 24 * 60 * 60 * 1000 },
   'metastats-tft-pro-tpc-roster.service':    { kind: 'oneshot', maxAgeMs: 8 * 24 * 60 * 60 * 1000 },
   'metastats-tft-pro-classify.service':      { kind: 'oneshot', maxAgeMs: 26 * 60 * 60 * 1000 },
+  // Ohne Eintrag gibt es keine Stall-Erkennung: stirbt der Timer, steht der
+  // Service ewig auf seinem letzten gruenen Lauf und niemand merkt es. Beim
+  // Vertragswaechter waere das die teuerste Variante davon — der Waechter, der
+  // nicht mehr wacht.
+  'metastats-contracts.service':             { kind: 'oneshot', maxAgeMs: 26 * 60 * 60 * 1000 },
+  'metastats-marketvalue-snapshot.service':  { kind: 'oneshot', maxAgeMs: 26 * 60 * 60 * 1000 },
   'metastats-crawler.service':               { kind: 'oneshot' }, // manual-trigger, keine erwartete Cadence
   'metastats-lol-marketvalue.service':       { kind: 'oneshot' }, // manual-trigger
 };

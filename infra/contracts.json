@@ -204,6 +204,28 @@
     },
 
     {
+      "id": "revalidate/edge-frische-stats",
+      "owner": "metastats-daily-crawl.service",
+      "type": "file",
+      "path": "/etc/metastats-crawler/revalidate-status-stats.json",
+      "dateField": "updatedAt",
+      "maxAgeDays": 3,
+      "mustBeEmpty": ["failedPaths"],
+      "note": "Der Stats-Crawler invalidiert nach jeder Region den Vercel-Edge-Cache. Bis 2026-08-16 landete jeder Fehlschlag per console.log auf stdout und der Rückgabewert wurde an allen drei Aufrufstellen ignoriert — ein dauerhaft kaputtes Revalidate wäre erst aufgefallen, wenn jemand alte Zahlen auf der Seite bemerkt. Der Treiber darf dafür nicht mit Exit!=0 enden: das würde beide OnSuccess-Ketten (catchup + marketvalue-snapshot) reißen, was am 2026-06-16 schon einmal vier Tage Stillstand gekostet hat. Deshalb Marker + Vertrag statt Hart-Exit. 3 Tage lassen einen ausgefallenen Tageslauf und einen Bootstrap-Tag durch. Der Marker liegt in /etc/metastats-crawler, weil die Units mit ProtectSystem=strict laufen und nur dieses Verzeichnis (plus /run/lock) beschreiben dürfen."
+    },
+
+    {
+      "id": "revalidate/edge-frische-marketvalue",
+      "owner": "metastats-marketvalue-snapshot.service",
+      "type": "file",
+      "path": "/etc/metastats-crawler/revalidate-status-marketvalue.json",
+      "dateField": "updatedAt",
+      "maxAgeDays": 3,
+      "mustBeEmpty": ["failedPaths"],
+      "note": "Gegenstück für den Marktwert-Pfad, der die Cluster-Grenzen revalidiert. Eigener Marker, weil sonst der später laufende Treiber die Fehlerliste des früheren überschreibt."
+    },
+
+    {
       "id": "pro-teams/historientiefe",
       "owner": ".github/workflows/pro-teams-weekly.yml",
       "type": "file",

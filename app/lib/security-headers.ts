@@ -26,7 +26,8 @@
 
 export const SECURITY_HEADERS: { key: string; value: string }[] = [
   {
-    // Erste Rampenstufe: 5 Minuten, ohne includeSubDomains, ohne preload.
+    // Zweite Rampenstufe seit 2026-08-16: 1 Tag, ohne includeSubDomains, ohne
+    // preload. Stufe 1 (300 s) stand seit 2026-08-14 ohne Zwischenfall.
     //
     // HSTS ist die einzige Zeile hier, die sich nicht zurueckrollen laesst:
     // ein Browser, der den Header einmal gesehen hat, erzwingt HTTPS fuer die
@@ -39,7 +40,7 @@ export const SECURITY_HEADERS: { key: string; value: string }[] = [
     // Zwischenfall. preload ist eine eigene Entscheidung, nicht das Ende der
     // Rampe.
     key: 'Strict-Transport-Security',
-    value: 'max-age=300',
+    value: 'max-age=86400',
   },
   {
     // Verhindert MIME-Sniffing: eine als JSON ausgelieferte Antwort wird nicht

@@ -36,6 +36,14 @@ if (rel.startsWith('.claude/') || rel.startsWith('.git/')) allow();
 if (resolve(abs) === resolve(PLAN_FILE)) allow();
 // Notizen und Doku ausserhalb des Codes: kein Plan noetig.
 if (/\.(md|txt)$/i.test(rel) && !/^(app|scripts|infra)\//.test(rel)) allow();
+// Regel- und Spec-Prosa unter infra/: Text, kein Code. User-Entscheidung vom
+// 2026-08-17, nachdem das Gate einen 3-Zeilen-Prosa-Edit an discipline.md mit
+// voller 3-Alternativen-plus-Multi-Review-Pflicht belegt hat. Der logic-flow-
+// critic hat widersprochen (discipline.md liest sich der Assistant jeden Turn
+// selbst ein, also selbstgeschriebene Regeln ohne User-Signatur); der User hat
+// die Freistellung danach bestaetigt. infra/claude-agents/ bleibt bewusst
+// GESPERRT — die Dateien definieren das Verhalten der Reviewer selbst.
+if (/^infra\/(claude-settings|specs)\/.+\.md$/i.test(rel)) allow();
 
 const status = approvalStatus(input.session_id);
 

@@ -13,15 +13,17 @@ verletzt wurden, gehoeren hier rein — keine Prosa, keine Begruendungen.
 -->
 ## Kernregeln (pro Turn eingespielt, nicht verhandelbar)
 
-**Ergebnis-Antworten:** Befund zuerst, in maximal drei Zeilen. Danach nur, was
-der User zum Weiterentscheiden braucht.
+**Ergebnis- und Analyse-Antworten:** Befund zuerst, in maximal drei Zeilen.
+Danach nur, was der User zum Weiterentscheiden braucht.
 
-Verboten in Ergebnis-Antworten:
+Verboten in Ergebnis- und Analyse-Antworten:
 - Rekapitulation dessen, was gerade getan wurde („Ich habe X gelesen und dann Y")
 - Status-Inventare („Datei A: fertig. Datei B: fertig. Datei C: fertig")
 - Praeambeln („Gute Frage", „Lass mich das analysieren", „Hier ist die Antwort")
 - Abschluss-Zusammenfassungen, die den Text davor wiederholen
 - Ungefragte Naechste-Schritte-Menues
+- Nacherzaehlen der Quelle statt Befund plus Beleg — „ausfuehrlich" heisst mehr
+  Belege, nicht mehr Prosa
 - Verbositaet in Tabellenform: EINE Tabelle mit hoechstens 8 Datenzeilen zaehlt
   nicht mit, jede weitere zaehlt komplett als Fliesstext
 

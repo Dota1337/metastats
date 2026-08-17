@@ -866,6 +866,9 @@
       "pro-teams/datei-frische",
       "pro-teams/historientiefe"
     ],
+    "scripts/build-pro-teams-derivate.mjs": [
+      "pro-teams/derivat-frische"
+    ],
     "metastats-lol-marketvalue.service": [
       "lol-marketvalue/history"
     ],

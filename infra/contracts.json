@@ -242,6 +242,19 @@
     },
 
     {
+      "id": "pro-teams/derivat-frische",
+      "owner": "scripts/build-pro-teams-derivate.mjs",
+      "type": "endpoint",
+      "urlEnv": "PRO_TEAMS_LISTING_URL",
+      "url": "https://metastats.gg/pro-teams/listing.json",
+      "dateField": "updatedAt",
+      "entriesField": "teams",
+      "minEntries": 300,
+      "maxAgeDays": 10,
+      "note": "public/pro-teams/ ist build-generiert und bewusst nicht committet, deshalb greifen die pre-push-Frische-Gates hier strukturell nicht — dieser Vertrag ist das EINZIGE Gate gegen 'SoT frisch, Derivat alt oder nie gebaut'. Geprüft wird am ausgelieferten Endpoint, weil nur dort steht, was der Client wirklich bekommt: das Listing reicht das SoT-updatedAt unverändert durch, ein veraltetes Datum heißt also, dass der letzte Deploy vor dem letzten Crawl lag. maxAgeDays 10 spiegelt pro-teams/datei-frische — beide hängen am gleichen Wochenlauf, ein Ausfall darf durch, zwei nicht. minEntries 300 ist derselbe Floor wie dort (aktuell 521 Teams)."
+    },
+
+    {
       "id": "lol-marketvalue/history",
       "owner": "metastats-lol-marketvalue.service",
       "backend": "supabase",

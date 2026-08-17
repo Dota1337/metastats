@@ -742,6 +742,24 @@
   ],
   "npmScripts": [
     {
+      "name": "dev",
+      "scripts": [
+        "scripts/build-pro-teams-derivate.mjs"
+      ]
+    },
+    {
+      "name": "build",
+      "scripts": [
+        "scripts/build-pro-teams-derivate.mjs"
+      ]
+    },
+    {
+      "name": "build:pro-teams-derivate",
+      "scripts": [
+        "scripts/build-pro-teams-derivate.mjs"
+      ]
+    },
+    {
       "name": "setup-hooks",
       "scripts": [
         "scripts/setup-git-hooks.mjs"

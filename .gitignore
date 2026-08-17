@@ -58,3 +58,12 @@ next-env.d.ts
 
 # Artefakte des Playwright-MCP (Snapshots, Konsolen-Logs)
 .playwright-mcp/
+
+# Build-Derivate von public/pro-teams.json (scripts/build-pro-teams-derivate.mjs,
+# aufgerufen aus dem `build`- und `dev`-Script). NICHT committen: die SoT wird von
+# zehn Scripts mutiert, committete Derivate waeren zehn Drift-Vektoren, und der
+# Wochen-Workflow muesste 500+ Dateien pro Lauf mitcommitten. Sie entstehen im
+# gleichen Deployment wie die SoT — deshalb kein Split-Brain moeglich.
+# Exakter Pfad, KEIN public/pro-teams*-Glob: der wuerde die getrackte SoT
+# public/pro-teams.json mitfangen.
+/public/pro-teams/

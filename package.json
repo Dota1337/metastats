@@ -3,8 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "node scripts/build-pro-teams-derivate.mjs && next dev",
+    "build": "node scripts/build-pro-teams-derivate.mjs && next build",
+    "build:pro-teams-derivate": "node scripts/build-pro-teams-derivate.mjs",
     "start": "next start",
     "lint": "eslint",
     "setup-hooks": "node scripts/setup-git-hooks.mjs",

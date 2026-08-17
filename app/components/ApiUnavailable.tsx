@@ -1,12 +1,16 @@
 'use client';
-import { useI18n } from '../lib/i18n';
+import { useI18n, type TranslationKey } from '../lib/i18n';
 
 interface Props {
   onRetry?: () => void;
   compact?: boolean;
+  // Default ist die Riot-Key-Meldung. Fuer Faelle, in denen nicht das Feature
+  // fehlt sondern nur die Antwort ausgeblieben ist (RPC-Timeout, DB-Stoerung),
+  // gibt der Aufrufer 'error.temporarilyUnavailable' mit.
+  messageKey?: TranslationKey;
 }
 
-export default function ApiUnavailable({ onRetry, compact = false }: Props) {
+export default function ApiUnavailable({ onRetry, compact = false, messageKey = 'error.featureUnavailable' }: Props) {
   const { t } = useI18n();
   return (
     <div className={`glass rounded-xl ${compact ? 'p-4' : 'p-6'} text-center`}>
@@ -15,7 +19,7 @@ export default function ApiUnavailable({ onRetry, compact = false }: Props) {
         Beta
       </div>
       <p className="text-fg-secondary text-sm leading-relaxed max-w-md mx-auto">
-        {t('error.featureUnavailable')}
+        {t(messageKey)}
       </p>
       {onRetry && (
         <button

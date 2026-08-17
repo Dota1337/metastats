@@ -790,6 +790,14 @@ const translations = {
     'Esta funci\u00F3n no est\u00E1 disponible actualmente. Estamos trabajando en ello \u2014 Clave de producci\u00F3n de Riot pendiente.',
     'Cette fonctionnalit\u00E9 est actuellement indisponible. Nous y travaillons \u2014 Cl\u00E9 de production Riot en attente.'
   ),
+  'error.temporarilyUnavailable': t6(
+    'Die Daten sind gerade nicht erreichbar. Bitte in einem Moment erneut versuchen.',
+    'The data is temporarily unreachable. Please try again in a moment.',
+    '\uD604\uC7AC \uB370\uC774\uD130\uC5D0 \uC5F0\uACB0\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694.',
+    '\u6570\u636E\u6682\u65F6\u65E0\u6CD5\u83B7\u53D6\u3002\u8BF7\u7A0D\u540E\u91CD\u8BD5\u3002',
+    'Los datos no est\u00E1n disponibles en este momento. Int\u00E9ntalo de nuevo en un instante.',
+    'Les donn\u00E9es sont momentan\u00E9ment indisponibles. Merci de r\u00E9essayer dans un instant.'
+  ),
   'error.retry': t6('Erneut versuchen', 'Retry', '\uB2E4\uC2DC \uC2DC\uB3C4', '\u91CD\u8BD5', 'Reintentar', 'R\u00E9essayer'),
 
   // Homepage

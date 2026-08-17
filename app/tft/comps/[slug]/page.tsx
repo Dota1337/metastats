@@ -6,6 +6,7 @@ import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import TierFilter, { type TierBucket } from '../../../components/tft/TierFilter';
 import EmptyData from '../../../components/tft/EmptyData';
+import ApiUnavailable from '../../../components/ApiUnavailable';
 import CompCard from '../../../components/tft/CompCard';
 import { useI18n, type TranslationKey } from '../../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, findChampion, findItem, type TftAssetsBundle } from '../../../lib/tft-cdragon';
@@ -93,7 +94,12 @@ export default function TftCompDetailPage() {
 
   const [comp, setComp] = useState<any | null | undefined>(undefined);
   const [proComp, setProComp] = useState<any | null>(null);
-  const [hasData, setHasData] = useState<boolean | null>(null);
+  // Drei Zustaende statt boolean: 'empty' heisst "es gibt wirklich keine Daten",
+  // 'error' heisst "die Antwort ist ausgeblieben" (RPC-Timeout, 5xx). Vorher
+  // wurde beides zu hasData:false und die Seite behauptete "Keine Daten",
+  // obwohl der Datensatz existiert.
+  const [dataState, setDataState] = useState<'loading' | 'ok' | 'empty' | 'error'>('loading');
+  const [reloadKey, setReloadKey] = useState(0);
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
   const [compGuidesBundle, setCompGuidesBundle] = useState<Awaited<ReturnType<typeof loadCompGuidesBundle>> | null>(null);
   const [trendDays, setTrendDays] = useState<14 | 30>(14);
@@ -117,15 +123,30 @@ export default function TftCompDetailPage() {
   }, [slug, region, bucket, trendDays, variantMode, comp]);
 
   useEffect(() => {
+    // cancelled-Guard vor JEDEM Setter: der Detail-RPC laeuft je nach Bucket
+    // zwischen 0,1 s (Snapshot) und ~19 s (live). Ohne Guard ueberschreibt die
+    // spaete Antwort des alten Buckets den bereits geladenen neuen.
+    let cancelled = false;
+    setDataState('loading');
     Promise.all([
-      fetch(`/api/tft/comps?region=${region}&bucket=${bucket}&slug=${encodeURIComponent(slug)}&days=14&minGames=30&variant=${variantMode}`).then(r => r.json()),
-      fetch(`/api/tft/comps?region=all&bucket=pro_pool&slug=${encodeURIComponent(slug)}&days=14&minGames=5&variant=${variantMode}`).then(r => r.ok ? r.json() : { comp: null }),
+      fetch(`/api/tft/comps?region=${region}&bucket=${bucket}&slug=${encodeURIComponent(slug)}&days=14&minGames=30&variant=${variantMode}`)
+        .then(r => { if (!r.ok) throw new Error(`comps ${r.status}`); return r.json(); }),
+      fetch(`/api/tft/comps?region=all&bucket=pro_pool&slug=${encodeURIComponent(slug)}&days=14&minGames=5&variant=${variantMode}`)
+        .then(r => r.ok ? r.json() : { comp: null })
+        .catch(() => ({ comp: null })),
     ]).then(([normal, pro]) => {
-      setHasData(!!normal.hasData);
+      if (cancelled) return;
+      setDataState(normal.hasData ? 'ok' : 'empty');
       setComp(normal.comp || null);
       setProComp(pro.comp || null);
-    }).catch(() => { setHasData(false); setComp(null); });
-  }, [bucket, slug, region, variantMode]);
+    }).catch(() => {
+      if (cancelled) return;
+      setDataState('error');
+      setComp(null);
+      setProComp(null);
+    });
+    return () => { cancelled = true; };
+  }, [bucket, slug, region, variantMode, reloadKey]);
 
   // Patch-Drop-Erkennung im Trend: wenn die Reihe einen Patch-Wechsel enthält,
   // setze eine ReferenceLine an dem Tag wo der Wechsel passiert. Visualisiert
@@ -179,8 +200,14 @@ export default function TftCompDetailPage() {
           </select>
         </div>
 
-        {hasData === false && <EmptyData />}
-        {comp === null && hasData && (
+        {dataState === 'empty' && <EmptyData />}
+        {dataState === 'error' && (
+          <ApiUnavailable
+            messageKey="error.temporarilyUnavailable"
+            onRetry={() => setReloadKey(k => k + 1)}
+          />
+        )}
+        {comp === null && dataState === 'ok' && (
           <div className="text-fg-secondary text-center py-8">{t('tft.comp.notFound')}</div>
         )}
 

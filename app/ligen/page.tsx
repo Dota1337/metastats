@@ -108,7 +108,15 @@ export default function LigenPage() {
 
       // Load pro data separately (large files, non-blocking)
       fetch('/pro-players.json').then(r => r.json()).then(d => setProPlayers(d.players || [])).catch(() => {});
-      fetch('/pro-teams.json').then(r => r.json()).then(d => setProTeams(d.teams || [])).catch(() => {});
+      // Index-Derivat (~33 KB) statt der kompletten SoT (~2,9 MB) — hier werden
+      // nur id/name/short fuer getTeamLink gebraucht. Fallback auf die SoT nur
+      // bei 404: fehlt das Derivat (npm run dev ohne Build, verlorene
+      // Build-Verdrahtung), sind die Team-Links langsam statt kaputt.
+      fetch('/pro-teams/index.json')
+        .then(r => r.ok ? r : (r.status === 404 ? fetch('/pro-teams.json') : Promise.reject(new Error(String(r.status)))))
+        .then(r => r.json())
+        .then(d => setProTeams(d.teams || []))
+        .catch(() => {});
 
       setLoading(false);
     };

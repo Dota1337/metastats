@@ -51,7 +51,11 @@ export async function GET(request: NextRequest) {
     let totalTeams = 0;
     let totalProPlayers = 0;
     try {
-      const teamsRes = await fetch(`${origin}/pro-teams.json`);
+      // Hier wird genau EINE Zahl gebraucht. Das Index-Derivat (~33 KB) traegt
+      // dasselbe totalTeams wie die SoT (~2,9 MB) und spart den JSON-Parse samt
+      // Heap-Spike in der Function. Fallback auf die SoT nur bei 404.
+      let teamsRes = await fetch(`${origin}/pro-teams/index.json`);
+      if (teamsRes.status === 404) teamsRes = await fetch(`${origin}/pro-teams.json`);
       if (teamsRes.ok) {
         const teamsData = await teamsRes.json();
         totalTeams = teamsData.totalTeams || 0;

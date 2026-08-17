@@ -6,24 +6,26 @@ import PageHero from '../components/PageHero';
 import { useI18n } from '../lib/i18n';
 import { usePageTitle } from '../lib/use-page-title';
 
-interface TeamResult {
-  event: string;
-  place: string | number;
-  date: string;
-  prizeUSD: number;
-  trophy: string | null;
-}
-
+/**
+ * Ein Eintrag aus public/pro-teams/listing.json — vorberechnet von
+ * scripts/build-pro-teams-derivate.mjs. Kommt ein Feld dazu, muss es dort in die
+ * Projektion UND hier ins Interface; der Selbsttest des Builders pinnt das.
+ */
 interface TeamSummary {
   id: string;
   name: string;
   short: string;
   region: string;
   logo: string | null;
-  roster: any[];
-  results: TeamResult[];
-  trophies: { event: string; place: string; trophy: string; date: string }[];
+  rosterCount: number;
+  playerCount: number;
+  staffCount: number;
+  /** trophies.length — NICHT die Summe der drei Farben (eine vierte Art fehlte sonst stumm). */
+  trophyTotal: number;
+  trophyCounts: { gold: number; silver: number; bronze: number };
   totalPrizeMoney: number;
+  /** Preisgeld je Jahr; undatierte Preise stecken in keinem Jahr, nur in totalPrizeMoney. */
+  prizeByYear: Record<string, number>;
 }
 
 type SortKey = 'prize' | 'name' | 'trophies' | 'seasonPrize' | 'roster';
@@ -46,26 +48,66 @@ const REGION_FILTERS = [
   { value: 'Turkey', label: 'TR' },
 ];
 
-function getSeasonYears(teams: TeamSummary[]): string[] {
-  const years = new Set<string>();
-  for (const t of teams) {
-    for (const r of t.results || []) {
-      if (r.date) years.add(r.date.slice(0, 4));
-    }
-  }
-  return ['all', ...Array.from(years).sort((a, b) => b.localeCompare(a))];
-}
-
 function getSeasonPrize(team: TeamSummary, season: string): number {
   if (season === 'all') return team.totalPrizeMoney;
-  return (team.results || [])
-    .filter(r => r.date?.startsWith(season))
-    .reduce((s, r) => s + (r.prizeUSD || 0), 0);
+  return team.prizeByYear?.[season] || 0;
+}
+
+/** Nur die SoT-Felder, die die Notfall-Projektion unten anfasst. */
+interface SotTeam {
+  id: string;
+  name: string;
+  short: string;
+  region: string;
+  logo?: string | null;
+  roster?: { isPlayer?: boolean }[];
+  results?: { date?: string; prizeUSD?: number }[];
+  trophies?: { trophy?: string | null }[];
+  totalPrizeMoney?: number;
+}
+
+/**
+ * Notfall-Projektion aus der rohen SoT — nur wenn /pro-teams/listing.json mit 404
+ * antwortet (lokaler Dev ohne Build, verlorene Build-Verdrahtung). Rechnet exakt
+ * dasselbe wie scripts/build-pro-teams-derivate.mjs, damit keine Zahl kippt;
+ * dann eben mit 2,9 MB statt 200 KB. Spiegel-Pflicht: Aenderungen an der
+ * Projektion muessen hier UND im Builder passieren (Builder-Test prueft die SoT-Felder).
+ */
+function projectFromSot(rawTeams: SotTeam[]): { teams: TeamSummary[]; seasons: string[] } {
+  const years = new Set<string>();
+  const teams = rawTeams.map(team => {
+    const roster = team.roster || [];
+    const trophies = team.trophies || [];
+    const trophyCounts = { gold: 0, silver: 0, bronze: 0 };
+    const prizeByYear: Record<string, number> = {};
+    for (const tr of trophies) {
+      if (tr.trophy && tr.trophy in trophyCounts) trophyCounts[tr.trophy as keyof typeof trophyCounts] += 1;
+    }
+    for (const r of team.results || []) {
+      const y = typeof r.date === 'string' && r.date.length >= 4 ? r.date.slice(0, 4) : null;
+      if (!y) continue;
+      years.add(y);
+      prizeByYear[y] = (prizeByYear[y] || 0) + (r.prizeUSD || 0);
+    }
+    return {
+      id: team.id, name: team.name, short: team.short, region: team.region,
+      logo: team.logo ?? null,
+      rosterCount: roster.length,
+      playerCount: roster.filter(m => m.isPlayer).length,
+      staffCount: roster.filter(m => !m.isPlayer).length,
+      trophyTotal: trophies.length,
+      trophyCounts,
+      totalPrizeMoney: team.totalPrizeMoney || 0,
+      prizeByYear,
+    };
+  });
+  return { teams, seasons: Array.from(years).sort((a, b) => b.localeCompare(a)) };
 }
 
 export default function TeamsPage() {
   usePageTitle('pageTitle.teams');
   const [teams, setTeams] = useState<TeamSummary[]>([]);
+  const [seasons, setSeasons] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [regionFilter, setRegionFilter] = useState('all');
   const [search, setSearch] = useState('');
@@ -75,13 +117,24 @@ export default function TeamsPage() {
   const { t } = useI18n();
 
   useEffect(() => {
-    fetch('/pro-teams.json')
-      .then(r => r.ok ? r.json() : { teams: [] })
-      .then(data => { setTeams(data.teams || []); setLoading(false); })
+    // Listing-Derivat (~204 KB) statt der kompletten SoT (~2,9 MB). Alle hier
+    // sichtbaren Zahlen sind darin vorberechnet — kein Nachladen, kein Skelett.
+    fetch('/pro-teams/listing.json')
+      .then(async r => {
+        if (r.ok) {
+          const data = await r.json();
+          return { teams: (data.teams || []) as TeamSummary[], seasons: (data.seasons || []) as string[] };
+        }
+        if (r.status !== 404) throw new Error(String(r.status));
+        const sot = await fetch('/pro-teams.json');
+        if (!sot.ok) throw new Error(String(sot.status));
+        return projectFromSot(((await sot.json()).teams || []) as SotTeam[]);
+      })
+      .then(({ teams: list, seasons: years }) => { setTeams(list); setSeasons(years); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);
 
-  const seasonYears = useMemo(() => getSeasonYears(teams), [teams]);
+  const seasonYears = useMemo(() => ['all', ...seasons], [seasons]);
 
   const filtered = useMemo(() => {
     let result = teams.filter(t => {
@@ -98,11 +151,11 @@ export default function TeamsPage() {
         case 'name':
           return a.name.localeCompare(b.name) * dir;
         case 'trophies':
-          return (a.trophies.length - b.trophies.length) * dir;
+          return (a.trophyTotal - b.trophyTotal) * dir;
         case 'seasonPrize':
           return (getSeasonPrize(a, season) - getSeasonPrize(b, season)) * dir;
         case 'roster':
-          return (a.roster.filter(m => m.isPlayer).length - b.roster.filter(m => m.isPlayer).length) * dir;
+          return (a.playerCount - b.playerCount) * dir;
         default:
           return 0;
       }
@@ -223,11 +276,11 @@ export default function TeamsPage() {
           </div>
           <div className="bg-surface-base border border-border-subtle rounded p-3 text-center">
             <div className="text-fg-secondary text-xs">{t('teams.withRoster')}</div>
-            <div className="text-white text-xl font-medium">{filtered.filter(t => t.roster.length > 0).length}</div>
+            <div className="text-white text-xl font-medium">{filtered.filter(t => t.rosterCount > 0).length}</div>
           </div>
           <div className="bg-surface-base border border-border-subtle rounded p-3 text-center">
             <div className="text-fg-secondary text-xs">{t('teams.withTitles')}</div>
-            <div className="text-white text-xl font-medium">{filtered.filter(t => t.trophies.length > 0).length}</div>
+            <div className="text-white text-xl font-medium">{filtered.filter(t => t.trophyTotal > 0).length}</div>
           </div>
           <div className="bg-surface-base border border-border-subtle rounded p-3 text-center">
             <div className="text-fg-secondary text-xs">{t('teams.totalPrize')}</div>
@@ -243,12 +296,8 @@ export default function TeamsPage() {
         ) : (
           <div className="flex flex-col gap-2">
             {filtered.map((team, idx) => {
-              const players = team.roster.filter(m => m.isPlayer);
-              const staff = team.roster.filter(m => !m.isPlayer);
               const seasonPrize = sortKey === 'seasonPrize' && season !== 'all' ? getSeasonPrize(team, season) : null;
-              const goldCount = team.trophies.filter(t => t.trophy === 'gold').length;
-              const silverCount = team.trophies.filter(t => t.trophy === 'silver').length;
-              const bronzeCount = team.trophies.filter(t => t.trophy === 'bronze').length;
+              const { gold: goldCount, silver: silverCount, bronze: bronzeCount } = team.trophyCounts;
 
               return (
                 <a
@@ -276,7 +325,7 @@ export default function TeamsPage() {
                     {/* Name + Region */}
                     <div className="flex-1 min-w-0">
                       <div className="text-white text-sm font-medium group-hover:text-accent transition-colors truncate">{team.name}</div>
-                      <div className="text-fg-muted text-xs">{team.region} · {players.length} {t('teams.players')}{staff.length > 0 ? ` · ${staff.length} ${t('team.staff')}` : ''}</div>
+                      <div className="text-fg-muted text-xs">{team.region} · {team.playerCount} {t('teams.players')}{team.staffCount > 0 ? ` · ${team.staffCount} ${t('team.staff')}` : ''}</div>
                     </div>
 
                     {/* Trophies compact */}

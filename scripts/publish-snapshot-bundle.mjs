@@ -257,10 +257,34 @@ async function resolvePatches() {
   return _patchInfo;
 }
 
-async function publishPermutation(endpoint, apiPath, perm, patches) {
-  const resolvedPatch = perm.patch === 'current'
+/** Alias -> konkreter Patch. Muss identisch sein zu dem, was der Key kodiert. */
+function resolvePermPatch(perm, patches) {
+  return perm.patch === 'current'
     ? patches.current
     : perm.patch === 'previous' ? patches.previous : perm.patch;
+}
+
+/**
+ * Patch-Drift zwischen Key und Body. Der Key kodiert `resolvedPatch`, der Body
+ * traegt ihn nochmal in `filters.patch`. Am 2026-08-17 gemessen: mehrere Blobs
+ * unter `…/17.9/…` enthielten `patch: "17.8"` — Folge des Selbst-Recyclings,
+ * bei dem der Publisher seinen eigenen eingefrorenen Blob zurueckgelesen und
+ * unter dem neuen Patch-Key wieder hochgeladen hat. Ein solcher Upload macht
+ * aus einem Frische-Problem eine Falschaussage.
+ *
+ * Nur echter Mismatch blockt; `null` passiert (Cold-Supabase-Fall, siehe
+ * app/lib/snapshot-lookup.ts).
+ */
+function patchDrift(payload, resolvedPatch) {
+  const p = payload?.filters?.patch;
+  if (p == null) return null;
+  return String(p) === String(resolvedPatch)
+    ? null
+    : `patch drift: key=${resolvedPatch} body=${p}`;
+}
+
+async function publishPermutation(endpoint, apiPath, perm, patches) {
+  const resolvedPatch = resolvePermPatch(perm, patches);
   if (!resolvedPatch) {
     return { skipped: true, reason: `no resolved patch for alias ${perm.patch}` };
   }
@@ -271,6 +295,8 @@ async function publishPermutation(endpoint, apiPath, perm, patches) {
   if (!payload || payload.hasData === false) {
     return { skipped: true, reason: 'empty payload', fetchMs };
   }
+  const drift = patchDrift(payload, resolvedPatch);
+  if (drift) return { skipped: true, reason: drift, fetchMs };
   const key = snapshotKey(endpoint, { ...perm, patch: resolvedPatch });
   const body = JSON.stringify(payload);
   const bytes = Buffer.byteLength(body, 'utf8');
@@ -325,6 +351,8 @@ async function publishDetailPermutation(perm, patches) {
   if (!payload || payload.hasData === false || !payload.comp) {
     return { skipped: true, reason: 'empty payload', fetchMs };
   }
+  const drift = patchDrift(payload, resolvedPatch);
+  if (drift) return { skipped: true, reason: drift, fetchMs };
   const key = snapshotKey('comps-detail', { ...perm, patch: resolvedPatch });
   const body = JSON.stringify(payload);
   const bytes = Buffer.byteLength(body, 'utf8');
@@ -410,7 +438,22 @@ async function main() {
     if (base?.patches?.current) patches = base.patches;
     console.log(`[${ts()}] manifest-mode=MERGE — base ${Object.keys(baseEntries).length} entries preserved, patches pinned to base (current=${patches.current})`);
   } else {
-    console.log(`[${ts()}] manifest-mode=REPLACE (full run) — manifest rebuilt from scratch, stale keys pruned`);
+    // Carry-Over-Basis (2026-08-17): REPLACE prunt Keys, die dieser Lauf nicht
+    // regenerieren konnte. Gemessen nach dem 17:21-Lauf: Manifest 1.132 -> 685,
+    // und `/tft/comps` im UI-Default (all/diamond_plus/3d) antwortete danach mit
+    // 502 — die Perm scheitert am 20-s-statement_timeout, ihr Snapshot war aber
+    // das Einzige, was die Seite ueberhaupt bediente.
+    //
+    // Unterschied zum MERGE-Modus: hier wird NUR fuer Perms uebernommen, die in
+    // diesem Lauf mit einem FEHLER endeten (konnte nicht gemessen werden). Ein
+    // `skipped: empty payload` (gemessen, keine Daten) wird weiterhin geprunt —
+    // sonst lieferten wir alte Zahlen fuer eine Comp aus, die es nicht mehr gibt.
+    // Stale Keys ausserhalb dieses Laufs bleiben ebenfalls geprunt.
+    const base = await loadOldManifest();
+    baseEntries = (!_oldManifestFetchFailed && base?.entries && typeof base.entries === 'object')
+      ? base.entries
+      : {};
+    console.log(`[${ts()}] manifest-mode=REPLACE (full run) — stale keys pruned, ${Object.keys(baseEntries).length} entries als Carry-Over-Basis fuer Fehlschlaege`);
   }
 
   if (!patches.current) {
@@ -425,6 +468,7 @@ async function main() {
   // harmlos aus). Deshalb zusaetzlich pro Endpoint pruefen.
   const endpointStats = {};
   let totalUploaded = 0;
+  let totalCarried = 0;
   let totalSkipped = 0;
   let totalErrors = 0;
   let totalBytes = 0;
@@ -450,6 +494,16 @@ async function main() {
       if (r?.error) {
         totalErrors++;
         console.log(`  ✗ ${endpoint} ${p.patch}/${p.region}/${p.days}d/${p.bucket}: ${r.error}`);
+        // Carry-Over: der alte Eintrag bleibt bestehen, statt aus dem Lookup zu
+        // fallen. Der Patch-Guard in snapshot-lookup.ts sortiert einen Body aus,
+        // der nicht zum Key-Patch passt — ein getragener Eintrag kann also
+        // veraltet sein, aber nicht patch-falsch.
+        const carryPatch = resolvePermPatch(p, patches);
+        const carryKey = carryPatch ? snapshotKey(endpoint, { ...p, patch: carryPatch }) : null;
+        if (carryKey && baseEntries[carryKey] && !manifestEntries[carryKey]) {
+          manifestEntries[carryKey] = baseEntries[carryKey];
+          totalCarried++;
+        }
         continue;
       }
       if (r?.skipped) {
@@ -541,6 +595,12 @@ async function main() {
         if (r?.error) {
           totalErrors++;
           console.log(`  ✗ comps-detail ${p.slug}/${p.patch}/${p.region}/${p.days}d: ${r.error}`);
+          const carryPatch = resolvePermPatch(p, patches);
+          const carryKey = carryPatch ? snapshotKey('comps-detail', { ...p, patch: carryPatch }) : null;
+          if (carryKey && baseEntries[carryKey] && !manifestEntries[carryKey]) {
+            manifestEntries[carryKey] = baseEntries[carryKey];
+            totalCarried++;
+          }
           continue;
         }
         if (r?.skipped) {
@@ -604,7 +664,7 @@ async function main() {
   const manifestBody = JSON.stringify(manifest);
   const entryCountMsg = MERGE_MODE
     ? `${Object.keys(finalEntries).length} entries (merged: ${Object.keys(baseEntries).length} base + ${Object.keys(manifestEntries).length} new)`
-    : `${Object.keys(finalEntries).length} entries (full replace)`;
+    : `${Object.keys(finalEntries).length} entries (full replace, davon ${totalCarried} carry-over aus dem Vorlauf)`;
   if (!DRY_RUN) {
     const manifestBlob = await put('tft/manifest.json', manifestBody, {
       access: 'public',

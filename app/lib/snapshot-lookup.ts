@@ -144,6 +144,20 @@ export async function lookupSnapshot(
     // it and fall through to live RPC. Republished snapshots will pass the
     // check on next 09:30 UTC cycle (or manual `publish-snapshot-bundle.mjs`).
     if (!hasRequiredFields(endpoint, payload)) return null;
+    // Patch-Konsistenz (2026-08-17, gemessen): der Key kodiert den Patch, der
+    // Payload trägt ihn ein zweites Mal in `filters.patch`. Beide koennen
+    // auseinanderlaufen — `comps/17.9/all__3d__all__mg210.json` lieferte einen
+    // Body mit `patch: "17.8"`, weil der Publisher seinen eigenen eingefrorenen
+    // Blob zurueckgelesen und unter dem neuen Patch-Key wieder hochgeladen hat.
+    // Das ist eine Falschaussage an den Nutzer, nicht nur ein Frische-Problem.
+    //
+    // Bewusst NUR bei echtem Mismatch verwerfen, nicht bei `null`: ein
+    // patch-loser Payload entsteht im Cold-Supabase-Fall (getAvailablePatches
+    // laeuft in den Timeout) — genau dann ist ein unbestimmter Patch besser als
+    // gar keine Antwort. Gegenprobe ueber alle 685 Manifest-Eintraege: 0
+    // Mismatches, 0 null — der Guard verwirft heute nichts Legitimes.
+    const payloadPatch = (payload as { filters?: { patch?: string | null } } | null)?.filters?.patch;
+    if (payloadPatch != null && String(payloadPatch) !== resolvedPatch) return null;
     return { payload, tag: `${endpoint}-v2`, blobUrl: entry.url, blobBytes: entry.bytes };
   } catch {
     return null;

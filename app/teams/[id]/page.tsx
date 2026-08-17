@@ -28,16 +28,38 @@ export default function TeamDetailPage() {
   const { t } = useI18n();
   const [team, setTeam] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    fetch('/pro-teams.json')
-      .then(r => r.ok ? r.json() : { teams: [] })
-      .then(data => {
-        const found = (data.teams || []).find((t: any) => t.id === id);
-        setTeam(found || null);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    // Die Detail-Datei wird direkt aus dem URL-Param adressiert — kein
+    // Wasserfall über ein Listing, also genau ein Fetch (~3,6 KB statt 2,9 MB).
+    // Fallback auf die SoT nur bei 404 (Derivat nicht gebaut/deployed).
+    let alive = true;
+    setLoading(true);
+    setFailed(false);
+    (async () => {
+      try {
+        const direct = await fetch(`/pro-teams/teams/${encodeURIComponent(String(id))}.json`);
+        if (direct.ok) return await direct.json();
+        if (direct.status !== 404) throw new Error(String(direct.status));
+        const sot = await fetch('/pro-teams.json');
+        if (!sot.ok) throw new Error(String(sot.status));
+        const data = await sot.json();
+        // Unbekannte ID: das Derivat antwortet ebenfalls mit 404, hier ist der
+        // Unterschied „Team existiert nicht" vs „Laden kaputt" entscheidbar.
+        return (data.teams || []).find((x: any) => x.id === id) || null;
+      } catch {
+        return undefined;
+      }
+    })().then(result => {
+      if (!alive) return;
+      // undefined = Laden gescheitert (Netz/5xx) → Fehlerzustand.
+      // null = geladen, aber kein Team mit dieser ID → team.notFound.
+      if (result === undefined) setFailed(true);
+      else setTeam(result);
+      setLoading(false);
+    });
+    return () => { alive = false; };
   }, [id]);
 
   if (loading) {
@@ -45,6 +67,24 @@ export default function TeamDetailPage() {
       <main className="min-h-screen bg-surface-page">
         <Nav />
         <div className="text-center text-fg-secondary py-20">{t('teams.loading')}</div>
+      </main>
+    );
+  }
+
+  if (failed) {
+    return (
+      <main className="min-h-screen bg-surface-page">
+        <Nav />
+        <div className="max-w-4xl mx-auto px-6 py-20 text-center">
+          <div className="text-red-400 text-xl mb-4">{t('team.loadError')}</div>
+          <button
+            onClick={() => window.location.reload()}
+            className="text-accent text-sm hover:underline mr-4"
+          >
+            {t('error.retry')}
+          </button>
+          <a href="/teams" className="text-accent text-sm hover:underline">&larr; {t('team.allTeams')}</a>
+        </div>
       </main>
     );
   }

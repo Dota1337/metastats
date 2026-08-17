@@ -246,7 +246,7 @@
       "owner": "scripts/build-pro-teams-derivate.mjs",
       "type": "endpoint",
       "urlEnv": "PRO_TEAMS_LISTING_URL",
-      "url": "https://metastats.gg/pro-teams/listing.json",
+      "url": "https://www.metastats.gg/pro-teams/listing.json",
       "dateField": "updatedAt",
       "entriesField": "teams",
       "minEntries": 300,

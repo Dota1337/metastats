@@ -92,6 +92,20 @@ export interface LookupHit {
   blobBytes: number;
 }
 
+// Der Publisher fetcht die eigenen API-Routes, um die Snapshots zu bauen. Ohne
+// diesen Bypass liest er das Blob der Vorrunde und schreibt es unveraendert
+// zurueck: gemessen 2026-08-17 lieferte die publisher-identische URL
+// `X-Snapshot: comps-detail-v2` in 0,114 s mit games=108, waehrend derselbe
+// Request mit uebersprungenem Snapshot live games=97 in 6,03 s lieferte — die
+// Payloads waren seit ~11.08. eingefroren. Der Header wird bereits gesendet
+// (`publish-snapshot-bundle.mjs:186`), nur niemand hat ihn gelesen.
+//
+// Bewusst KEIN oeffentlicher Query-Parameter: der wuerde jedem erlauben, den
+// Cushion zu umgehen und die 20-s-RPCs direkt zu treffen.
+export function isSnapshotPublisher(request: Request): boolean {
+  return request.headers.get('x-snapshot-publisher') === '1';
+}
+
 export async function lookupSnapshot(
   endpoint: SnapshotEndpoint,
   opts: LookupOptions,

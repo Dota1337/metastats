@@ -11,7 +11,7 @@ import {
 } from '../../../lib/tft-supabase-reader';
 import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias } from '../../../lib/api-cache';
 import { isExcludedUnit, isExcludedItem, setContainsExcludedItem } from '../../../lib/tft-excluded';
-import { lookupSnapshot } from '../../../lib/snapshot-lookup';
+import { lookupSnapshot, isSnapshotPublisher } from '../../../lib/snapshot-lookup';
 import { parseClusterKey } from '../../../lib/tft-cluster';
 import { isFragmentTraitName } from '../../../lib/tft-classify-comp';
 import { computeShares } from '../../../lib/tft-shares';
@@ -222,7 +222,8 @@ export async function GET(request: NextRequest) {
         bucket: filters.bucketLabel,
         minGames,
         slug,
-        skip: detailVariantMode === 'exact' || detailVelocity !== 0 || source === 'editorial',
+        skip: detailVariantMode === 'exact' || detailVelocity !== 0 || source === 'editorial'
+          || isSnapshotPublisher(request),
       });
       if (detailHit) {
         const resp = cachedJson(detailHit.payload, { cache: cacheControl });
@@ -424,6 +425,7 @@ export async function GET(request: NextRequest) {
         days: filters.requestedDays,
         bucket: filters.bucketLabel,
         minGames,
+        skip: isSnapshotPublisher(request),
       });
       // Guard (Code-Analyzer-Verdict 2026-06-21): nie einen Snapshot mit
       // hasData:false oder leerem comps-Array ausliefern. Sonst zeigt die

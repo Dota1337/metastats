@@ -4,7 +4,7 @@ import { loadTftStats, normalizeBucket, bucketParticipants } from '../../../lib/
 import { resolveFilters, callRpc, getAvailablePatches } from '../../../lib/tft-supabase-reader';
 import { isExcludedUnit, isExcludedItem, setContainsExcludedItem } from '../../../lib/tft-excluded';
 import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias } from '../../../lib/api-cache';
-import { lookupSnapshot } from '../../../lib/snapshot-lookup';
+import { lookupSnapshot, isSnapshotPublisher } from '../../../lib/snapshot-lookup';
 import { computeShares } from '../../../lib/tft-shares';
 
 // C3 (2026-07-04): raised so the snapshot publisher's per-permutation fetch of a
@@ -200,6 +200,7 @@ export async function GET(request: NextRequest) {
         days: filters.requestedDays,
         bucket: filters.bucketLabel,
         minGames: 0,
+        skip: isSnapshotPublisher(request),
       });
       // Guard 2026-06-21: kein leeres Snapshot-Bundle ausliefern → sonst
       // EmptyData trotz frischer DB-Daten. Siehe Pattern in /api/tft/comps.

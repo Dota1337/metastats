@@ -56,7 +56,8 @@ import {
   DETAIL_REGIONS,
   DETAIL_DAYS,
   DETAIL_PATCHES,
-  DETAIL_BUCKET,
+  DETAIL_BUCKETS,
+  DETAIL_MIN_GAMES,
   DETAIL_TOP_N,
 } from '../app/lib/snapshot-matrix.generated.mjs';
 
@@ -163,6 +164,14 @@ async function loadOldManifest() {
   return _oldManifest;
 }
 
+// Edge-Cache-Buster. `Cache-Control: no-cache` im REQUEST ignoriert Vercels
+// Edge komplett — gemessen 2026-08-17: `X-Vercel-Cache: HIT` trotz des Headers.
+// Ohne einen Parameter, der in den Cache-Key eingeht, liest der Publisher also
+// die Edge-Kopie der letzten 6 h und der Route-seitige Publisher-Bypass
+// (isSnapshotPublisher) kaeme nie zum Zug. Ein Wert pro Lauf reicht: innerhalb
+// eines Laufs ist jede Permutation ohnehin nur einmal dran.
+const RUN_ID = `${Date.now().toString(36)}`;
+
 function buildUrl(apiPath, p) {
   const qs = new URLSearchParams({
     patch: p.patch,
@@ -172,6 +181,7 @@ function buildUrl(apiPath, p) {
     source: 'data',
   });
   if (p.minGames > 0) qs.set('minGames', String(p.minGames));
+  qs.set('_pub', RUN_ID);
   return `${BASE}${apiPath}?${qs.toString()}`;
 }
 
@@ -307,6 +317,7 @@ async function publishDetailPermutation(perm, patches) {
     source: 'data',
   });
   if (perm.minGames > 0) qs.set('minGames', String(perm.minGames));
+  qs.set('_pub', RUN_ID);
   const url = `${BASE}/api/tft/comps?${qs.toString()}`;
   const t0 = Date.now();
   const payload = await fetchPayload(url);
@@ -470,12 +481,25 @@ async function main() {
     console.log(`[${ts()}] === comps-detail: extracting top-${DETAIL_TOP_N} slugs from listing ===`);
     let topSlugs = [];
     try {
+      // Slug-Quelle: Default-Bucket der UI (diamond_plus), 3d — das 7d-Listing
+      // ist ohne Snapshot nicht abrufbar (3× 502 gemessen, 8-s-RPC-Deckel).
       const listingUrl = buildUrl('/api/tft/comps', {
-        patch: 'current', region: 'all', days: 3, bucket: 'master_plus', minGames: compsMinGames(3),
+        patch: 'current', region: 'all', days: 3, bucket: 'diamond_plus', minGames: compsMinGames(3),
       });
       const listing = await fetchPayload(listingUrl);
       const comps = Array.isArray(listing?.comps) ? listing.comps : [];
-      topSlugs = comps.slice(0, DETAIL_TOP_N).map(c => c.clusterKey).filter(Boolean);
+      // Sortierung nach SPIELEN, nicht nach der Listing-Reihenfolge: das
+      // Listing sortiert nach avgPlacement, die "Top-30" waren damit die 30
+      // besten Platzierungen knapp ueber der minGames-Schwelle (gemessen 1d:
+      // ab 85 Spielen), waehrend die meistgespielten Comps (34.886 / 31.805 /
+      // 23.437 Spiele) gar keinen Detail-Snapshot bekamen. Der Cushion soll
+      // die haeufigsten Detail-Aufrufe decken, nicht die besten Winrates.
+      topSlugs = comps
+        .filter(c => c.clusterKey)
+        .slice()
+        .sort((a, b) => (Number(b.games) || 0) - (Number(a.games) || 0))
+        .slice(0, DETAIL_TOP_N)
+        .map(c => c.clusterKey);
     } catch (err) {
       console.log(`  ✗ comps-detail: failed to extract top slugs: ${err?.message || err}`);
     }
@@ -487,12 +511,17 @@ async function main() {
         for (const patch of DETAIL_PATCHES) {
           for (const region of DETAIL_REGIONS) {
             for (const days of DETAIL_DAYS) {
-              detailPerms.push({
-                patch, region, days,
-                bucket: DETAIL_BUCKET,
-                minGames: compsMinGames(days),
-                slug,
-              });
+              for (const bucket of DETAIL_BUCKETS) {
+                detailPerms.push({
+                  patch, region, days, bucket,
+                  // Fix: NICHT compsMinGames(days). Der Detail-Key kodiert
+                  // minGames nicht, die Page fragt aber mit 30 — mit 490
+                  // publiziert lieferte der Snapshot eine andere
+                  // Family-Aggregation als der Live-Pfad.
+                  minGames: DETAIL_MIN_GAMES,
+                  slug,
+                });
+              }
             }
           }
         }

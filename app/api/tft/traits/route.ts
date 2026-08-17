@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { parseVelocity } from '../../../lib/query-params';
 import { resolveFilters, callRpc, getAvailablePatches } from '../../../lib/tft-supabase-reader';
 import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias } from '../../../lib/api-cache';
-import { lookupSnapshot } from '../../../lib/snapshot-lookup';
+import { lookupSnapshot, isSnapshotPublisher } from '../../../lib/snapshot-lookup';
 
 // C3 (2026-07-04): raised so the snapshot publisher's per-permutation fetch of a
 // heavy detoast perm doesn't 504 on the Vercel default (~15s) and leave a gap.
@@ -56,6 +56,7 @@ export async function GET(request: NextRequest) {
         days: filters.requestedDays,
         bucket: filters.bucketLabel,
         minGames: 0,
+        skip: isSnapshotPublisher(request),
       });
       // Guard 2026-06-21: kein leeres Snapshot-Bundle ausliefern.
       const payload = hit?.payload as { hasData?: boolean; traits?: unknown[] } | undefined;

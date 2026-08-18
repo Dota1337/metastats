@@ -326,9 +326,20 @@ export function mergeJsonbCountArrays<K extends string>(
   // schon Pickrate-Nenner). gamesWithOutcome ist semantisch neutral und in
   // Lock-Step mit top1/top4 — alte JSONB-Rows ohne diese Felder addieren 0
   // zu Zähler UND Nenner → keine Verzerrung beim Merge.
+  //
+  // `multiplicity` ist als EINZIGES Feld hier ein Verhaeltnis, keine Summe:
+  // der Aggregator schreibt 1 + dupGames/gamesWithUnit (tft-build-aggregator.mjs
+  // :884). Aufsummieren waere sinnlos, ein ungewichtetes Mittel ueber die Tage
+  // ebenso — ein Tag mit 6 Spielen wuerde so schwer wiegen wie einer mit 600.
+  // Deshalb wird pro Eintrag dupGames = (multiplicity - 1) * gamesWithUnit
+  // zurueckgerechnet, summiert und am Ende erneut geteilt. Das ist exakt die
+  // Aggregator-Definition, nur ueber mehrere Tage statt ueber die Matches eines
+  // Tages, und es ist idempotent: laeuft der Merge ueber eine bereits gemergte
+  // Liste, kommt derselbe Wert wieder heraus.
   type Bucket = {
     count: number; sumPlacement: number; games: number; carryItemGames: number;
     gamesWithUnit: number; gamesWithOutcome: number; top1: number; top4: number;
+    dupGames: number;
     nested: Map<string, Map<string, number>>;
   };
   const merged = new Map<string, Bucket>();
@@ -340,6 +351,7 @@ export function mergeJsonbCountArrays<K extends string>(
       const cur: Bucket = merged.get(key) || {
         count: 0, sumPlacement: 0, games: 0, carryItemGames: 0,
         gamesWithUnit: 0, gamesWithOutcome: 0, top1: 0, top4: 0,
+        dupGames: 0,
         nested: new Map(),
       };
       cur.count += Number(e.count ?? e.games ?? 0);
@@ -354,6 +366,10 @@ export function mergeJsonbCountArrays<K extends string>(
       );
       cur.top1 += Number(e.top1 ?? 0);
       cur.top4 += Number(e.top4 ?? 0);
+      const mult = Number(e.multiplicity ?? 1);
+      if (mult > 1) {
+        cur.dupGames += (mult - 1) * Number(e.gamesWithUnit ?? e.games_with_unit ?? 0);
+      }
       if (nestedArrays) {
         for (const cfg of nestedArrays) {
           const inner = e[cfg.field];
@@ -378,6 +394,14 @@ export function mergeJsonbCountArrays<K extends string>(
         [keyName]: key, count: v.count, sumPlacement: v.sumPlacement, games: v.games, carryItemGames: v.carryItemGames,
         gamesWithUnit: v.gamesWithUnit, gamesWithOutcome: v.gamesWithOutcome, top1: v.top1, top4: v.top4,
       };
+      // Nur setzen, wenn die Quelle ueberhaupt Doppel-Units gemeldet hat: bei
+      // Augments/Items gibt es das Feld nicht, dort bliebe es ein konstantes
+      // 1 in jedem Eintrag. Die Konsumenten lesen `multiplicity ?? 1`.
+      // Mindestprobe 5 wie im Aggregator, hier aber auf der SUMME ueber alle
+      // Tage — sonst faellt ein seltenes Doppel-Cluster dauerhaft auf 1,0.
+      if (v.dupGames > 0 && v.gamesWithUnit >= 5) {
+        out.multiplicity = 1 + v.dupGames / v.gamesWithUnit;
+      }
       if (nestedArrays) {
         for (const cfg of nestedArrays) {
           const counter = v.nested.get(cfg.field);

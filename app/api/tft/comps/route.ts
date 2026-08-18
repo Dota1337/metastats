@@ -440,6 +440,16 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Der Publisher hat maxDuration = 60 und darf laenger warten als ein
+    // Besucher: die schwerste Permutation (all/all/9d) liegt nach 0058 warm
+    // bei 7,3-7,5 s, also direkt am 8-s-Default von callRpc. Kalt reisst sie
+    // ihn. Nutzer bleiben bewusst bei 8 s — C1/C3 (521-Schutz auf 1-Core-
+    // Compute) haengt daran, dass Besucher-Requests die DB nicht lange halten.
+    // 25 s liegt ueber dem DB-Deckel (statement_timeout 20 s auf service_role,
+    // Migration 0020), damit im Zweifel der sprechende PG-Fehler ankommt und
+    // nicht ein nackter Abort.
+    const publisherRpcTimeoutMs = isSnapshotPublisher(request) ? 25_000 : undefined;
+
     const [rows, velocityRows] = await Promise.all([
       // _v2 (Migration 0058) merged die drei jsonb-Spalten SQL-seitig statt
       // pro Tages-Row einzeln zu liefern. Payload all/9d/all: 144,67 → 4,48 MB,
@@ -453,7 +463,7 @@ export async function GET(request: NextRequest) {
         p_patch: filters.patchFilter,
         p_set: filters.setNumber,
         p_min_games: minGames,
-      }),
+      }, publisherRpcTimeoutMs),
       wantVelocity
         ? callRpc<VelocityRow[]>('get_tft_comp_velocity', {
             p_regions: filters.regions,

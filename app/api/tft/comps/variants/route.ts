@@ -33,9 +33,11 @@ interface VariantRow {
   sum_placement: number;
   top4: number;
   top1: number;
-  // Build-Identity: typical_units_merged ist ein jsonb-array of arrays von
-  // { characterId, count, ... }. Reicht für character-id-Set-Vergleich.
-  typical_units_merged: any[][] | null;
+  // Build-Identity: auf der TABELLE heisst die Spalte `typical_units` und ist
+  // ein FLACHES jsonb-Array von { characterId, count, ... }. `typical_units_
+  // merged` ist der Ausgabe-Alias der RPC (0027) — hier lesen wir per
+  // PostgREST direkt, also den Tabellennamen nehmen.
+  typical_units: any[] | null;
 }
 
 interface Variant {
@@ -88,7 +90,7 @@ export async function GET(request: NextRequest) {
     // weil `<trait>__<carry>`-Format kein DB-Prefix ist. Pro trait sind das
     // typisch 10-50 cluster_keys, performant.
     const params = new URLSearchParams();
-    params.set('select', 'cluster_key,games,sum_placement,top4,top1,typical_units_merged');
+    params.set('select', 'cluster_key,games,sum_placement,top4,top1,typical_units');
     params.set('cluster_key', `like.${familyTrait}@*`);
     params.set('region', `in.(${filters.regions.join(',')})`);
     params.set('bucket', `in.(${filters.buckets.join(',')})`);
@@ -140,18 +142,15 @@ export async function GET(request: NextRequest) {
       prev.sumPlacement += Number(r.sum_placement || 0);
       prev.top4 += Number(r.top4 || 0);
       prev.top1 += Number(r.top1 || 0);
-      // typical_units_merged ist Array<Array<{characterId,count,...}>> (1 Sub-
-      // Array pro Daily-Row). Wir summieren count pro characterId.
-      const tu = r.typical_units_merged;
+      // typical_units ist pro Daily-Row ein FLACHES Array<{characterId,count,…}>.
+      // Die Summierung ueber die Tage passiert durch die Schleife ueber `rows`.
+      const tu = r.typical_units;
       if (Array.isArray(tu)) {
-        for (const dayArr of tu) {
-          if (!Array.isArray(dayArr)) continue;
-          for (const u of dayArr) {
-            const cid = u?.characterId;
-            if (typeof cid !== 'string' || !cid) continue;
-            const c = Number(u?.count || 0);
-            prev.unitCounts.set(cid, (prev.unitCounts.get(cid) || 0) + c);
-          }
+        for (const u of tu) {
+          const cid = u?.characterId;
+          if (typeof cid !== 'string' || !cid) continue;
+          const c = Number(u?.count || 0);
+          prev.unitCounts.set(cid, (prev.unitCounts.get(cid) || 0) + c);
         }
       }
       byKey.set(r.cluster_key, prev);

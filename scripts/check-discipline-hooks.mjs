@@ -18,7 +18,15 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const SRC = 'infra/claude-settings/hooks.json';
-const REQUIRED = ['SessionStart', 'UserPromptSubmit', 'PreToolUse', 'PreCompact', 'PostCompact', 'Stop'];
+// PreToolUse (plan-gate.mjs) am 2026-08-18 auf ausdrueckliche User-Anweisung
+// entfernt: die Freigabe-Erkennung in prompt-submit.mjs:22 ist auf den
+// Zeilenanfang verankert, „… und go" am Satzende zaehlte nicht, und das Gate
+// blockte daraufhin die eigene Reparatur. Der User hat das Entfernen dreimal
+// bestaetigt, zuletzt „Code: Ja, entferne es". scripts/hooks/plan-gate.mjs
+// bleibt liegen — Wiedereinschalten ist ein Eintrag in hooks.json plus diese
+// Zeile. Die Multi-Review-Pflicht aus AGENTS.md gilt unveraendert weiter, sie
+// ist ab jetzt Konvention statt Mechanik.
+const REQUIRED = ['SessionStart', 'UserPromptSubmit', 'PreCompact', 'PostCompact', 'Stop'];
 
 const problems = [];
 

@@ -31,12 +31,16 @@
 //   --listing-only          publishes comps/units/items/traits (skips comps-detail);
 //                           implies merge. The fast outage-recovery path (~2.4×).
 //   --manifest-mode         override the auto-derived replace/merge decision.
+//   --allow-empty-base      erlaubt einen MERGE-Lauf OHNE bestehende Basis.
+//                           Nur fuer einen echten Erstlauf — sonst loescht der Lauf
+//                           alle Keys, die er nicht selbst publiziert.
 //
 // Env:
 //   BLOB_READ_WRITE_TOKEN   Vercel-Blob token (Required, kommt aus Vercel-Env
 //                           bei Connect-to-Project automatisch).
 //   PUBLIC_BASE_URL         Defaults to https://www.metastats.gg
 //   SNAPSHOT_MANIFEST_URL   Existing manifest (read for merge-base + patch pin).
+//                           Im MERGE-Modus PFLICHT (siehe --allow-empty-base).
 //   PUBLISH_LOCK_PATH       Override the cross-invocation lockfile path.
 
 import { put } from '@vercel/blob';
@@ -77,6 +81,7 @@ const ENDPOINT_FILTER = (() => {
   return i >= 0 ? args[i + 1] : null;
 })();
 const LISTING_ONLY = args.includes('--listing-only');
+const ALLOW_EMPTY_BASE = args.includes('--allow-empty-base');
 const MANIFEST_MODE_OVERRIDE = (() => {
   const i = args.indexOf('--manifest-mode');
   const v = i >= 0 ? args[i + 1] : null;
@@ -162,6 +167,30 @@ async function loadOldManifest() {
     console.log(`[${ts()}] old-manifest fetch failed: ${err?.message || err}`);
   }
   return _oldManifest;
+}
+
+// Merge-Basis-Wache (Vorfall 2026-08-19). `loadOldManifest` kennt nur zwei
+// Faelle: "GET geschlagen" (Flag gesetzt, FATAL weiter unten) und "keine URL"
+// = legitimer Erstlauf. Im MERGE-Modus ist der zweite Fall NICHT legitim: ein
+// Teil-Lauf hat per Definition Keys, die er nicht publiziert, und schreibt sie
+// ohne Basis ersatzlos weg. Gemessen: `--endpoint comps-detail` ohne
+// SNAPSHOT_MANIFEST_URL liess von 700 Eintraegen nur die eigenen 240 uebrig.
+// Dritter Fall, ebenfalls gedeckt: URL da, GET ok, Basis leer.
+// REPLACE bleibt bewusst frei — sonst blockiert die Wache genau den vollen
+// Wiederaufbau, mit dem man den Vorfall repariert.
+export function mergeBaseError({ mergeMode, manifestUrlSet, baseEntryCount, allowEmptyBase }) {
+  if (!mergeMode || allowEmptyBase) return null;
+  if (!manifestUrlSet) {
+    return 'merge braucht die bestehende Manifest-Basis, aber SNAPSHOT_MANIFEST_URL ist nicht gesetzt'
+      + ' — ein Teil-Lauf wuerde alle nicht publizierten Keys loeschen.'
+      + ' Env setzen, oder --allow-empty-base wenn wirklich ein Erstlauf gemeint ist.';
+  }
+  if (!baseEntryCount) {
+    return 'merge braucht die bestehende Manifest-Basis, aber sie hat 0 Eintraege'
+      + ' — ein Teil-Lauf wuerde nur seine eigenen Keys hinterlassen.'
+      + ' Erst einen vollen Lauf fahren, oder --allow-empty-base setzen.';
+  }
+  return null;
 }
 
 // Edge-Cache-Buster. `Cache-Control: no-cache` im REQUEST ignoriert Vercels
@@ -431,6 +460,16 @@ async function main() {
       process.exit(4);
     }
     baseEntries = (base && base.entries && typeof base.entries === 'object') ? base.entries : {};
+    const baseErr = mergeBaseError({
+      mergeMode: true,
+      manifestUrlSet: Boolean(process.env.SNAPSHOT_MANIFEST_URL),
+      baseEntryCount: Object.keys(baseEntries).length,
+      allowEmptyBase: ALLOW_EMPTY_BASE,
+    });
+    if (baseErr) {
+      console.error(`[${ts()}] FATAL: ${baseErr}`);
+      process.exit(4);
+    }
     // Blocker C: pin patches to the merge-base so this run's new keys are built
     // under the SAME patch as the preserved keys. Otherwise a patch bump mid-run
     // would key new listing data under X while preserved detail sits under W,

@@ -90,6 +90,16 @@ async function supaMaxDate(table, col) {
   return v ? String(v).slice(0, 10) : null;
 }
 
+/** Neuester Tag STRIKT vor `before` (YYYY-MM-DD), als YYYY-MM-DD. */
+async function supaMaxDateBefore(table, col, before) {
+  const res = await supaGet(
+    `${table}?select=${col}&${col}=lt.${before}&order=${col}.desc.nullslast&limit=1`,
+  );
+  const rows = await res.json();
+  const v = rows[0]?.[col];
+  return v ? String(v).slice(0, 10) : null;
+}
+
 async function supaCount(table, filter = '') {
   // Range 0-0 + count=exact: wir wollen nur den Header, keine Rows.
   const res = await supaGet(`${table}?select=*${filter}`, {
@@ -308,6 +318,17 @@ async function pgMaxDate(table, col) {
   return v instanceof Date ? v.toISOString().slice(0, 10) : String(v).slice(0, 10);
 }
 
+async function pgMaxDateBefore(table, col, before) {
+  const pool = await hetznerPool();
+  const r = await pool.query(
+    `select max(${col}) as m from ${table} where ${col} < $1::date`,
+    [before],
+  );
+  const v = r.rows[0]?.m;
+  if (!v) return null;
+  return v instanceof Date ? v.toISOString().slice(0, 10) : String(v).slice(0, 10);
+}
+
 async function pgDistinctDays(table, col, from) {
   const pool = await hetznerPool();
   const r = await pool.query(
@@ -423,30 +444,52 @@ export async function checkContract(c) {
         : r('broken', `fehlende Tage: ${missing.join(', ')}${suffix}`);
     }
 
-    // Standard: Frische + Volumen am neuesten vorhandenen Tag.
+    // Standard: Frische am neuesten Tag, Volumen am letzten ABGESCHLOSSENEN.
+    //
+    // Befund B (2026-08-18): beides am selben Tag zu messen war falsch. Der
+    // neueste Tag ist im Normalbetrieb der, der gerade geschrieben wird —
+    // marketvalue/hetzner-snapshots läuft über >24h, der Daily-Crawl über
+    // Stunden. Die Zeile zählt dann einen Bruchteil und meldet Bruch, obwohl
+    // nichts kaputt ist; oder minRows wurde auf den Teilstand heruntergesetzt
+    // und der Vertrag prüft faktisch nichts mehr. Frische gehört an den
+    // neuesten Tag, Volumen an den letzten fertigen.
+    const cutoff = today();   // JS-UTC, dieselbe Definition wie beim Lag
     const latest = isSupa
       ? await supaMaxDate(c.table, c.dateColumn)
       : await pgMaxDate(c.table, c.dateColumn);
     if (!latest) return r('broken', `${c.table} ist leer`);
 
-    const lag = daysBetween(today(), latest);
+    const lag = daysBetween(cutoff, latest);
     if (lag > c.maxLagDays) {
       return r('broken', `letzter Tag ${latest} ist ${lag}d alt, erlaubt sind ${c.maxLagDays}d`);
+    }
+
+    // Ist `latest` schon der laufende Tag, brauchen wir den Tag davor. Damit
+    // sind mindestens zwei Tage Historie nötig; liegt nur der laufende Tag
+    // vor, sagen wir das laut, statt einen Teilstand als Vollstand zu werten.
+    const countDay = latest < cutoff
+      ? latest
+      : isSupa
+        ? await supaMaxDateBefore(c.table, c.dateColumn, cutoff)
+        : await pgMaxDateBefore(c.table, c.dateColumn, cutoff);
+    if (!countDay) {
+      return r('broken', `${c.table} hat nur den laufenden Tag ${latest}, kein abgeschlossener Tag zum Zählen`);
     }
 
     // Bei Timestamp-Spalten trifft `eq.<Datum>` nur exakt Mitternacht und
     // zählt deshalb fast immer 0. Der ganze Tag ist ein Halb-offenes Intervall.
     const dayFilter = c.dateType === 'timestamp'
-      ? `&${c.dateColumn}=gte.${latest}T00:00:00&${c.dateColumn}=lt.`
-        + `${new Date(Date.parse(latest) + 86_400_000).toISOString().slice(0, 10)}T00:00:00`
-      : `&${c.dateColumn}=eq.${latest}`;
+      ? `&${c.dateColumn}=gte.${countDay}T00:00:00&${c.dateColumn}=lt.`
+        + `${new Date(Date.parse(countDay) + 86_400_000).toISOString().slice(0, 10)}T00:00:00`
+      : `&${c.dateColumn}=eq.${countDay}`;
 
     const n = isSupa
       ? await supaCount(c.table, dayFilter)
-      : await pgCountOnDay(c.table, c.dateColumn, latest);
+      : await pgCountOnDay(c.table, c.dateColumn, countDay);
+    const where = countDay === latest ? countDay : `${countDay} (neuester Tag: ${latest})`;
     return n >= c.minRows
-      ? r('ok', `${latest}: ${n} Rows (min ${c.minRows}, Lag ${lag}d)`)
-      : r('broken', `${latest}: nur ${n} Rows, erwartet mindestens ${c.minRows}`);
+      ? r('ok', `${where}: ${n} Rows (min ${c.minRows}, Lag ${lag}d)`)
+      : r('broken', `${where}: nur ${n} Rows, erwartet mindestens ${c.minRows}`);
   } catch (err) {
     // Ein gescheiterter Check ist NICHT grün — sonst hätten wir Silent Success
     // an genau der Stelle, die Silent Success verhindern soll.
@@ -775,11 +818,15 @@ async function checkCoverageLag(c, r) {
   // Normalbetrieb als Bruch — dieselbe Fehlalarm-Klasse, die er beheben soll,
   // nur durch die Hintertür (beim ersten Testlauf am 05.08. prompt passiert:
   // sg2 wurde 13:5x fertig und stand sofort mit "54d hinter Hetzner" drin).
+  // `current_date` wäre die Uhr des DB-Servers; überall sonst im Modul ist
+  // "heute" JS-UTC (`today()`). Zwei Definitionen im selben Lauf können sich
+  // um einen Tag unterscheiden, also wird die eine Definition reingereicht.
   const pool = await hetznerPool();
   const q = await pool.query(
     `select ${c.groupColumn} as grp, max(${c.dateColumn}) as newest
-       from ${c.table} where ${c.dateColumn}::date < current_date
+       from ${c.table} where ${c.dateColumn}::date < $1::date
        group by ${c.groupColumn}`,
+    [today()],
   );
   const srcDay = new Map(q.rows.map(x => [
     String(x.grp),

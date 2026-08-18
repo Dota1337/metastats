@@ -101,7 +101,7 @@
       "dateColumn": "snapshot_date",
       "maxLagDays": 2,
       "minRows": 2000,
-      "note": "Der Lauf schreibt über den Tag verteilt und dauert >24h; geprüft wird der neueste vorhandene Tag, nicht zwingend heute."
+      "note": "Der Lauf schreibt über den Tag verteilt und dauert >24h. Die Frische misst der neueste vorhandene Tag (nicht zwingend heute), die Row-Zahl der letzte ABGESCHLOSSENE Tag — am laufenden Tag wäre sie per Konstruktion ein Teilstand (Befund B, 2026-08-18)."
     },
     {
       "id": "marketvalue/supabase-mirror",
@@ -111,7 +111,7 @@
       "dateColumn": "snapshot_date",
       "maxLagDays": 2,
       "minRows": 2000,
-      "note": "BRICHT AKTUELL ABSICHTLICH. Der Read-Path von Vercel liest hier; ohne diesen Vertrag bleibt ein toter Sync unsichtbar (HOCH-1)."
+      "note": "BRICHT AKTUELL ABSICHTLICH. Der Read-Path von Vercel liest hier; ohne diesen Vertrag bleibt ein toter Sync unsichtbar (HOCH-1). Gezählt wird der letzte abgeschlossene Tag: der Sync läuft alle 6h und hat den laufenden Tag zwangsläufig nur teilweise gespiegelt (Befund B, 2026-08-18)."
     },
     {
       "id": "marketvalue/regionen-abdeckung",

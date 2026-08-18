@@ -177,3 +177,41 @@ export function mergeFamilyRows(members: CompRowLike[]): CompRowLike {
     bucket_breakdown: mergeBucketBreakdown(),
   };
 }
+
+/** Setzt `multiplicity` der gemergten Units auf den Wert des Anker-Sub-Clusters.
+ *
+ *  Warum eine Ausnahme vom Family-Merge (2026-08-18): `multiplicity` ist keine
+ *  Erfolgsrate, sondern eine STRUKTURELLE Eigenschaft der Variante — „gehoeren
+ *  zwei Ornn aufs Board?". Der Family-Merge konsolidiert Level UND Augment
+ *  (Entscheid C), also faellt `~TwoTanky` mit den Geschwistern ohne Doppel-Unit
+ *  in einen Topf: gemessen sank Ornn von 1,94 auf 1,44 und damit unter die
+ *  1,5-Schwelle, die das ×2-Abzeichen (CompRow/CompCard) und den Trait-Stack in
+ *  `tft-active-traits.ts` steuert. Die Listen-Card zeigt an derselben Stelle die
+ *  Units des Ankers (`app/tft/comps/page.tsx` ueberschreibt nur die Skalare mit
+ *  Family-Werten) — die beiden Flaechen widersprachen sich also sichtbar.
+ *
+ *  Dieselbe Ausnahme gilt hier schon fuer alle Cluster-Key-Derives (carry,
+ *  secondary, carryStar): sie bleiben auf der dominanten Variante. `multiplicity`
+ *  gehoert in genau diese Klasse.
+ *
+ *  Units, die der Anker gar nicht kennt, verlieren das Feld — ein Family-Wert
+ *  waere dort eine andere Bezugsmenge als bei allen uebrigen Units.
+ *  Mutiert `units` in-place und gibt dieselbe Referenz zurueck.
+ */
+export function applyAnchorMultiplicity<T extends Record<string, any>>(
+  units: T[],
+  anchorUnits: Array<Record<string, any>>,
+): T[] {
+  const byId = new Map<string, number | undefined>();
+  for (const a of anchorUnits) {
+    if (a && typeof a.characterId === 'string') byId.set(a.characterId, a.multiplicity);
+  }
+  for (const u of units) {
+    if (!u || typeof u.characterId !== 'string') continue;
+    const m = byId.get(u.characterId);
+    const rec = u as Record<string, any>;
+    if (typeof m === 'number') rec.multiplicity = m;
+    else delete rec.multiplicity;
+  }
+  return units;
+}

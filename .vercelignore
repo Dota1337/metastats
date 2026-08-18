@@ -1,0 +1,4 @@
+# Dropbox-Symlinks: .env.local/.env.vercel zeigen ausserhalb des Repos und
+# brechen den CLI-Deploy mit ENOENT im Build. Die Git-Integration sieht sie
+# ohnehin nie (.gitignore), also gehoeren sie auch nicht in den CLI-Upload.
+.env*

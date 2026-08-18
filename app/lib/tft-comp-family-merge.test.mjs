@@ -19,7 +19,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fc from 'fast-check';
-import { familyKeyForMerge, selectFamilyMembers, mergeFamilyRows } from './tft-comp-family-merge.ts';
+import {
+  familyKeyForMerge,
+  selectFamilyMembers,
+  mergeFamilyRows,
+  applyAnchorMultiplicity,
+} from './tft-comp-family-merge.ts';
 
 const row = (cluster_key, games, over = {}) => ({
   cluster_key,
@@ -196,4 +201,45 @@ test('Property: Spielsumme bleibt erhalten, Schnitt bleibt im Korridor der Membe
     assert.ok(mergedAvg >= Math.min(...avgs) - 1e-9 && mergedAvg <= Math.max(...avgs) + 1e-9,
       `gewichteter Schnitt ${mergedAvg} außerhalb [${Math.min(...avgs)}, ${Math.max(...avgs)}]`);
   }), { numRuns: 1500 });
+});
+
+/* ---- applyAnchorMultiplicity (2026-08-18) --------------------------------
+ * `multiplicity` ist das einzige Unit-Feld, das eine Struktur-Eigenschaft der
+ * Variante beschreibt („zwei Ornn?") und keine Rate. Der Family-Merge verduennt
+ * es messbar unter die 1,5-Schwelle des ×2-Abzeichens (Live gemessen: Ornn
+ * 1,94 im Anker, 1,44 nach Family-Merge), waehrend die Listen-Card denselben
+ * Anker-Wert zeigt. Diese Tests fixieren, dass beide Flaechen dieselbe Zahl
+ * nennen — und dass die Uebernahme nicht mehr anfasst als dieses eine Feld.
+ */
+
+test('Anker-Multiplizitaet ersetzt den verduennten Family-Wert', () => {
+  const units = [{ characterId: 'TFT17_Ornn', count: 100, multiplicity: 1.44 }];
+  applyAnchorMultiplicity(units, [{ characterId: 'TFT17_Ornn', multiplicity: 1.94 }]);
+  assert.equal(units[0].multiplicity, 1.94);
+});
+
+test('Units, die der Anker nicht kennt, verlieren das Feld statt eine fremde Bezugsmenge zu behalten', () => {
+  const units = [{ characterId: 'TFT17_Teemo', count: 10, multiplicity: 1.6 }];
+  applyAnchorMultiplicity(units, [{ characterId: 'TFT17_Ornn', multiplicity: 1.94 }]);
+  assert.equal('multiplicity' in units[0], false);
+});
+
+test('Anker ohne Doppel-Units loescht das Feld — kein stilles Weiterreichen', () => {
+  const units = [{ characterId: 'TFT17_Ornn', count: 100, multiplicity: 1.44 }];
+  applyAnchorMultiplicity(units, [{ characterId: 'TFT17_Ornn', count: 50 }]);
+  assert.equal('multiplicity' in units[0], false);
+});
+
+test('alle uebrigen Unit-Felder bleiben unangetastet', () => {
+  const units = [{ characterId: 'TFT17_Ornn', count: 100, gamesWithUnit: 90, topItems: [{ apiName: 'X' }] }];
+  applyAnchorMultiplicity(units, [{ characterId: 'TFT17_Ornn', multiplicity: 2 }]);
+  assert.deepEqual(units[0], {
+    characterId: 'TFT17_Ornn', count: 100, gamesWithUnit: 90, topItems: [{ apiName: 'X' }], multiplicity: 2,
+  });
+});
+
+test('leere Anker-Liste ist kein Absturz und laesst nichts Falsches stehen', () => {
+  const units = [{ characterId: 'TFT17_Ornn', multiplicity: 1.44 }, null];
+  applyAnchorMultiplicity(units, []);
+  assert.equal('multiplicity' in units[0], false);
 });

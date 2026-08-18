@@ -15,7 +15,12 @@ import { lookupSnapshot, isSnapshotPublisher } from '../../../lib/snapshot-looku
 import { parseClusterKey } from '../../../lib/tft-cluster';
 import { isFragmentTraitName } from '../../../lib/tft-classify-comp';
 import { computeShares } from '../../../lib/tft-shares';
-import { selectFamilyMembers, mergeFamilyRows, familyKeyForMerge } from '../../../lib/tft-comp-family-merge';
+import {
+  selectFamilyMembers,
+  mergeFamilyRows,
+  familyKeyForMerge,
+  applyAnchorMultiplicity,
+} from '../../../lib/tft-comp-family-merge';
 import { buildLevelOutcome } from '../../../lib/tft-comp-level-outcome';
 
 // C3 (2026-07-04): the snapshot publisher fetches this route per permutation;
@@ -242,6 +247,15 @@ export async function GET(request: NextRequest) {
       // ~2-5s indem die langsamere der beiden RPCs den Wallclock dominiert
       // statt der Summe. JS-Filter nach Family-Members laeuft wie bisher
       // post-await.
+      // Trait-Prefix (Migration 0060): die RPC lieferte bis 2026-08-18 fuer
+      // EINEN Slug alle Cluster mit allen sieben jsonb-Spalten — gemessen
+      // 100,70 MB / 11,9 s fuer all/7d, live 16,7 s gegen einen 20-s-DB-Deckel,
+      // und damit 92 von 240 Detail-Snapshots auf 502. Gebraucht werden nur die
+      // Family-Geschwister (`<trait>__<carry>`) und der sameCore-Fallback
+      // (gleicher Trait, gleicher Carry) — beide liegen unter demselben Trait.
+      // Carry-genau ginge nicht als Prefix, weil das Level im Key davor steht.
+      // Die exakte Family-Auswahl bleibt unten in JS; SQL filtert nur grob vor.
+      const detailTrait = parseClusterKey(slug)?.trait ?? null;
       const [rows, pairs] = await Promise.all([
         callRpc<CompRow[]>('get_tft_comp_stats', {
           p_regions: filters.regions,
@@ -250,6 +264,7 @@ export async function GET(request: NextRequest) {
           p_patch: filters.patchFilter,
           p_set: filters.setNumber,
           p_min_games: minGames,
+          p_cluster_prefix: detailTrait ? `${detailTrait}@` : null,
         }, 20000),
         callRpc<CompPairRow[]>('get_tft_comp_pairs', {
           p_regions: filters.regions,
@@ -300,10 +315,14 @@ export async function GET(request: NextRequest) {
       let aliasedFromFamily: { anchorSlug: string; mergedFrom: string[] } | null = null;
       let familySlugs: string[] = [row.cluster_key];
       let levelOutcome: ReturnType<typeof buildLevelOutcome> | null = null;
+      // Anker-Row des Family-Merges (games-staerkster Sub-Cluster) — wird unten
+      // fuer die Unit-Multiplizitaet gebraucht, siehe applyAnchorMultiplicity.
+      let familyAnchor: CompRow | null = null;
       if (variantMode === 'family') {
         const members = selectFamilyMembers(rows, row.cluster_key);
         familySlugs = members.map(m => m.cluster_key);
         if (members.length > 1) {
+          familyAnchor = members[0];
           mergedRow = mergeFamilyRows(members);
           aliasedFromFamily = {
             anchorSlug: row.cluster_key,
@@ -326,6 +345,19 @@ export async function GET(request: NextRequest) {
         levelOutcome,
         variantMode,
       };
+
+      // `multiplicity` kommt vom Anker statt vom Family-Mittel — Begruendung in
+      // applyAnchorMultiplicity. Der Anker-Merge laeuft ueber dieselbe Funktion
+      // wie in baseComp/enrichComp (kein zweiter Merge-Pfad), aber ohne
+      // Cooccurrence-Filter: sonst verlieren Units das Feld nur deshalb, weil
+      // sie es im Anker-Row nicht in die Top-Liste geschafft haben.
+      if (familyAnchor) {
+        const anchorUnits = mergeJsonbCountArrays(familyAnchor.typical_units_merged || [], 'characterId', 18);
+        applyAnchorMultiplicity(comp.typicalUnits as Array<Record<string, any>>, anchorUnits);
+        if (Array.isArray((comp as any).flexUnits)) {
+          applyAnchorMultiplicity((comp as any).flexUnits as Array<Record<string, any>>, anchorUnits);
+        }
+      }
 
       // Counter edges — pairs wurde bereits in der parallelen Promise.all
       // oben await't. Hier nur noch JS-Filter auf den Family-Members.

@@ -796,6 +796,12 @@
       ]
     },
     {
+      "name": "check:deploy",
+      "scripts": [
+        "scripts/check-vercel-deploy.mjs"
+      ]
+    },
+    {
       "name": "verify:full",
       "scripts": [
         "scripts/verify-classifications.mjs",

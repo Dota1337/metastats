@@ -441,7 +441,12 @@ export async function GET(request: NextRequest) {
     }
 
     const [rows, velocityRows] = await Promise.all([
-      callRpc<CompRow[]>('get_tft_comp_stats_list', {
+      // _v2 (Migration 0058) merged die drei jsonb-Spalten SQL-seitig statt
+      // pro Tages-Row einzeln zu liefern. Payload all/9d/all: 144,67 → 4,48 MB,
+      // Laufzeit 19,6 → ~7,4 s warm. Aequivalenz gegen die alte RPC ueber 18
+      // Permutationen belegt (Skalare, Unit-Felder, topItems, carryItems).
+      // Rollback ist genau dieser eine Bezeichner — 0027 bleibt deployed.
+      callRpc<CompRow[]>('get_tft_comp_stats_list_v2', {
         p_regions: filters.regions,
         p_buckets: filters.buckets,
         p_days: filters.days,

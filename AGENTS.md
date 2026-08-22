@@ -26,6 +26,17 @@ Wenn der User mit `Code:` einen nicht-trivialen Task anfragt (mehr als ein einze
 
    **Auch ohne `Code:`-Prefix Pflicht:** wenn der User-Befehl semantisch eine Implementierungs-Aufgabe ist ("deploy X", "setze um", "mach weiter"), gilt die Multi-Review-Pflicht weiterhin. Der UserPromptSubmit-Hook fängt nur explizite `Code:`-Tasks ab — bei impliziten Implementierungs-Aufträgen muss ich SELBST die Multi-Review fahren.
 
+2b. **Jeder Agent-Brief verlangt Belege statt Behauptungen.** Standardsatz in
+   jedem Brief: „Nenne zu jeder Zahl und jeder Existenz-Aussage den Befehl, mit
+   dem du sie gemessen hast (Datei:Zeile oder Shell-Kommando)." Ohne das ist ein
+   Verdict nicht nachpruefbar und darf nicht in eine User-Antwort wandern.
+
+2c. **Verdicts werden nachgefahren, nicht uebernommen.** Bevor eine
+   Agent-Aussage in einer Antwort an den User steht oder zu einer
+   Entscheidungsfrage wird, fahre ich sie selbst nach. Widersprechen sich zwei
+   Agenten, gilt keiner von beiden — dann messe ich. Siehe
+   `feedback_verify_before_claiming.md` (Rang 1).
+
 3. **Verdicts dem User transparent zeigen** (eine Zeile pro Agent + zusammengefasste Empfehlung).
 
 4. **Plan anpassen wenn Findings auftauchen**, dann erst implementieren.

@@ -13,6 +13,14 @@ verletzt wurden, gehoeren hier rein — keine Prosa, keine Begruendungen.
 -->
 ## Kernregeln (pro Turn eingespielt, nicht verhandelbar)
 
+**RANG 1 — Verifizieren vor Behaupten.** Ein Subagent-Verdict ist eine
+Behauptung, keine Messung. Vor jeder Zahl, jeder Vollstaendigkeits-Aussage
+("das ist alles", "keine weiteren") und JEDER Entscheidungsfrage an den User:
+selbst messen (Grep/Glob/Bash/Read im selben Turn). Vor einer Entscheidungsfrage
+zusaetzlich pruefen, ob es die Sache ueberhaupt gibt — existiert der Code-Pfad,
+wie viele Aufrufer, welche Datei:Zeile. Bremsen B/C/D in
+`scripts/hooks/answer-check.mjs` erzwingen das.
+
 **Ergebnis- und Analyse-Antworten:** Befund zuerst, in maximal drei Zeilen.
 Danach nur, was der User zum Weiterentscheiden braucht.
 

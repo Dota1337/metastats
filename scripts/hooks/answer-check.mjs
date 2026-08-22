@@ -34,6 +34,14 @@ const MAX_LINES = 20;
 const TABLE_ROW_BUDGET = 8;
 /** Zeilen Vortext, bis zu denen eine Antwort mit Tool-Call eine Zwischenmeldung ist. */
 const INTERIM_MAX_LINES = 4;
+/** Tools, die tatsaechlich messen. Agent und AskUserQuestion zaehlen bewusst
+ *  NICHT: ein Subagent-Verdict ist eine Behauptung, keine Messung. Genau diese
+ *  Luecke hat am 2026-08-22 unbelegte Zahlen durchgelassen, weil der Turn
+ *  Agent-Calls enthielt und `toolCalls` damit > 0 war. */
+const MEASURING_TOOLS = new Set(['Bash', 'PowerShell', 'Grep', 'Glob', 'Read']);
+const CLAIMS_RE = /\b\d[\d.,]*\s*(%|Prozent|Zeilen|Dateien|Eintraege|Treffer|Sekunden|Minuten|Stunden|ms|MB|KB|GB|Turns?|Calls?|Sessions?|Writes?)(?!\w)/gi;
+/** Behauptungen der Form "das war alles" ohne Suche im selben Turn. */
+const COMPLETENESS_RE = /(das (ist|war) (jetzt )?alles|alle (probleme|fehler|f(ae|ä)lle|stellen)|keine weiteren|nichts (weiter|mehr) offen|vollst(ae|ä)ndig gepr(ue|ü)ft|mehr gibt es nicht|damit ist alles)/i;
 
 const input = readInput();
 if (input.stop_hook_active) process.exit(0); // Schleifenschutz
@@ -51,6 +59,8 @@ try {
 // Rueckwaerts bis zur letzten ECHTEN User-Nachricht. Tool-Results kommen
 // ebenfalls als type:'user' an, zaehlen hier aber nicht als Turn-Grenze.
 let toolCalls = 0;
+let measuringCalls = 0;
+let askedUser = false;
 let lastText = null;
 let lastHadTools = false;
 let userText = '';
@@ -75,6 +85,11 @@ for (let i = lines.length - 1; i >= 0; i--) {
   const texts = c.filter(b => b.type === 'text' && b.text?.trim());
   const tools = c.filter(b => b.type === 'tool_use');
   toolCalls += tools.length;
+  for (const t of tools) {
+    const n = t.name || '';
+    if (MEASURING_TOOLS.has(n)) measuringCalls++;
+    if (n === 'AskUserQuestion') askedUser = true;
+  }
 
   if (lastText === null && texts.length) {
     lastText = texts.at(-1).text.trim();
@@ -89,7 +104,14 @@ const body = lastText.split('\n');
 // Ein Tool-Call im selben Block macht eine Antwort nur dann zur
 // Zwischenmeldung, wenn sie auch wie eine aussieht. Ein 30-Zeilen-Bericht mit
 // angehaengtem Tool-Call ist ein Bericht.
-if (lastHadTools && body.length <= INTERIM_MAX_LINES) process.exit(0);
+// Eine kurze Antwort mit Tool-Call ist nur dann eine Zwischenmeldung, wenn sie
+// nichts behauptet. Zahlen, Vollstaendigkeits-Aussagen und Entscheidungsfragen
+// sind nie Zwischenmeldungen — genau darueber sind am 2026-08-22 drei Faelle
+// durchgerutscht.
+const suspicious = askedUser
+  || COMPLETENESS_RE.test(lastText)
+  || (lastText.match(CLAIMS_RE) || []).length >= 2;
+if (lastHadTools && body.length <= INTERIM_MAX_LINES && !suspicious) process.exit(0);
 
 // Pro Turn hoechstens einmal bremsen. Turn-Key ist die letzte echte
 // User-Nachricht — eine neu geschriebene Antwort hat einen anderen Text, aber
@@ -150,11 +172,11 @@ zaehlen komplett als Fliesstext — Verbositaet in Tabellenform bleibt Verbosita
 }
 
 // --- Bremse B: Zahlen ohne Messung im selben Turn -------------------------
-if (toolCalls === 0) {
+if (measuringCalls === 0) {
   // Abschluss mit (?!\w) statt \b: nach einem '%' gibt es keine Wortgrenze,
   // mit \b waere ausgerechnet die haeufigste Behauptung ("40 %") nie erkannt
   // worden.
-  const claims = lastText.match(/\b\d[\d.,]*\s*(%|Prozent|Zeilen|Dateien|Eintraege|Treffer|Sekunden|Minuten|Stunden|ms|MB|KB|GB|Turns?|Calls?|Sessions?|Writes?)(?!\w)/gi) || [];
+  const claims = lastText.match(CLAIMS_RE) || [];
   if (claims.length >= 2) {
     block(
 `Diese Antwort behauptet Zahlen (${claims.slice(0, 3).join(', ')}), aber in diesem Turn wurde nichts gemessen.
@@ -163,6 +185,32 @@ Entweder messen (Read/Grep/Bash im selben Turn) und die echten Werte nennen,
 oder die Zahlen als ungeprueft kennzeichnen bzw. streichen. Genau diese
 unbelegten Zahlen sind der Grund fuer die Korrektur-Schleifen.`);
   }
+}
+
+// --- Bremse C: Vollstaendigkeits-Behauptung ohne Suche im selben Turn -----
+// Am 2026-08-22 zweimal "das ist alles" gesagt, beide Male war es das nicht.
+// Eine Vollstaendigkeits-Aussage ist nur so gut wie der Sweep dahinter.
+if (measuringCalls === 0 && COMPLETENESS_RE.test(lastText)) {
+  block(
+`Diese Antwort behauptet Vollstaendigkeit ("alles", "keine weiteren"), aber in
+diesem Turn wurde nicht gesucht.
+
+Entweder den Sweep fahren (Grep/Glob ueber den betroffenen Bereich) und das
+Ergebnis nennen, oder die Aussage streichen und sagen, was NICHT geprueft wurde.
+Ein Subagent-Verdict ist kein Sweep.`);
+}
+
+// --- Bremse D: Entscheidungsfrage ohne Existenz-Pruefung ------------------
+// Am 2026-08-22 den User ueber eine Code-Variante entscheiden lassen, die in
+// 0 von 18 Aufrufen existiert. Die Frage war gegenstandslos, die Antwort wertlos.
+if (askedUser && measuringCalls === 0) {
+  block(
+`Diese Antwort stellt dem User eine Entscheidungsfrage, ohne in diesem Turn
+geprueft zu haben, ob es die Sache ueberhaupt gibt.
+
+Erst messen (existiert der Code-Pfad? wie viele Aufrufer? welche Datei:Zeile?),
+dann fragen. Eine Frage nach einer Sache, die es nicht gibt, kostet den User
+eine Entscheidung und liefert ein falsches Ergebnis.`);
 }
 
 process.exit(0);

@@ -476,33 +476,33 @@ export default function TftUnitDetailPage() {
                         <XAxis
                           dataKey="patch"
                           tickFormatter={(v: string) => tftPatchLabel(v)}
-                          tick={{ fill: '#5a6a80', fontSize: 10 }}
-                          axisLine={{ stroke: '#1e2a3a' }}
+                          tick={{ fill: 'var(--fg-faint)', fontSize: 10 }}
+                          axisLine={{ stroke: 'var(--border-subtle)' }}
                           tickLine={false}
                         />
                         <YAxis
                           domain={['dataMin - 0.2', 'dataMax + 0.2']}
                           reversed
-                          tick={{ fill: '#5a6a80', fontSize: 10 }}
+                          tick={{ fill: 'var(--fg-faint)', fontSize: 10 }}
                           axisLine={false}
                           tickLine={false}
                           width={28}
                           tickFormatter={(v: number) => v.toFixed(2)}
                         />
                         <RechartsTooltip
-                          contentStyle={{ backgroundColor: '#0d1526', border: '1px solid #1e2a3a', borderRadius: 4, fontSize: 11 }}
-                          labelStyle={{ color: '#a0b0c5' }}
+                          contentStyle={{ backgroundColor: 'var(--surface-base)', border: '1px solid var(--border-subtle)', borderRadius: 4, fontSize: 11 }}
+                          labelStyle={{ color: 'var(--fg-secondary)' }}
                           labelFormatter={(label: any) => tftPatchLabel(String(label))}
                           formatter={(v: any): any => [Number(v).toFixed(2), t('tft.avgPlacement')]}
                         />
-                        <ReferenceLine y={4.5} stroke="#5a6a80" strokeDasharray="3 3" strokeOpacity={0.4} />
+                        <ReferenceLine y={4.5} stroke="var(--fg-faint)" strokeDasharray="3 3" strokeOpacity={0.4} />
                         <Line
                           type="monotone"
                           dataKey="avgPlacement"
-                          stroke="#7B61FF"
+                          stroke="var(--accent-tft)"
                           strokeWidth={2}
-                          dot={{ r: 3, fill: '#7B61FF' }}
-                          activeDot={{ r: 5, fill: '#a892ff' }}
+                          dot={{ r: 3, fill: 'var(--accent-tft)' }}
+                          activeDot={{ r: 5, fill: 'var(--series-purple-soft)' }}
                         />
                       </LineChart>
                     </ResponsiveContainer>

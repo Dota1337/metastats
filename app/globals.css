@@ -106,6 +106,13 @@
   --pos-loss:    #e44040;
   --pos-neutral: var(--fg-secondary);
 
+  /* --- Diagramm-Serien ------------------------------------------------------
+     Zweit- und Drittfarbe in Diagrammen (Lila-Leiter). Bis Commit 2 standen
+     diese beiden Werte nur als rohe Hexe in den Recharts-Dateien; damit waeren
+     sie beim Farbklima-Wechsel als einzige stehengeblieben.               */
+  --series-purple:      #c39bff;
+  --series-purple-soft: #a892ff;
+
   /* --- Premium (Glassmorphism / Tiefe) ------------------------------------- */
   --glass-bg:     rgba(13, 21, 38, 0.6);
   --glass-bg-strong: rgba(13, 21, 38, 0.8);
@@ -232,6 +239,8 @@
 
   --color-pos-win: var(--pos-win);
   --color-pos-loss: var(--pos-loss);
+  --color-series-purple: var(--series-purple);
+  --color-series-purple-soft: var(--series-purple-soft);
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
@@ -534,3 +543,25 @@ body {
 *:focus:not(:focus-visible) {
   outline: none;
 }
+
+/* ============================================================================
+   DIAGRAMM-CHROME  ·  Commit 2 der Design-Welle
+   ----------------------------------------------------------------------------
+   Recharts setzt Farben als SVG-Praesentationsattribute. Ein Attribut hat die
+   niedrigste Spezifitaet — jede CSS-Regel schlaegt es. Deshalb steht das
+   Gitter hier EINMAL statt als roher Hex-Wert in jeder Chart-Datei. Bewusst
+   NUR das Gitter: Achsenlinien und Beschriftungen benutzen je nach Chart
+   verschiedene Grautoene, eine globale Regel wuerde sie stillschweigend
+   vereinheitlichen.
+
+   Alles andere (Serien, Achsen, Tooltip) steht weiter am Chart, dort aber als
+   var(--token) statt als Hex. var() loest in fill/stroke/stopColor in allen
+   aktuellen Browsern auf — nur bei Laengen-Attributen fehlt es in Chromium.
+   ========================================================================== */
+.recharts-cartesian-grid line,
+.recharts-polar-grid-angle line,
+.recharts-polar-grid-concentric-circle,
+.recharts-polar-grid-concentric-polygon {
+  stroke: var(--border-subtle);
+}
+

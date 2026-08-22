@@ -535,22 +535,22 @@ function DistributionTab({
           <BarChart data={data} margin={{ top: 8, right: 8, bottom: 24, left: 8 }}>
             <XAxis
               dataKey="label"
-              stroke="#7a8aa0"
+              stroke="var(--fg-muted)"
               fontSize={10}
-              tick={{ fill: '#a0b0c5' }}
+              tick={{ fill: 'var(--fg-secondary)' }}
               angle={-25}
               textAnchor="end"
               height={50}
             />
-            <YAxis stroke="#7a8aa0" fontSize={10} tick={{ fill: '#a0b0c5' }} />
+            <YAxis stroke="var(--fg-muted)" fontSize={10} tick={{ fill: 'var(--fg-secondary)' }} />
             <RechartsTooltip
               contentStyle={{
-                backgroundColor: '#0d1526',
-                border: '1px solid #1e2a3a',
+                backgroundColor: 'var(--surface-base)',
+                border: '1px solid var(--border-subtle)',
                 borderRadius: 6,
                 fontSize: 12,
               }}
-              labelStyle={{ color: '#a0b0c5' }}
+              labelStyle={{ color: 'var(--fg-secondary)' }}
               formatter={(value: any) => [value, t('tft.marketValue.distribution.players')]}
             />
             <Bar dataKey="count" radius={[4, 4, 0, 0]}>
@@ -578,7 +578,7 @@ function Sparkline({ data }: { data: { date: string; value: number }[] | undefin
   if (!data || data.length < 2) return <div className="h-6" />;
   const first = data[0].value;
   const last = data[data.length - 1].value;
-  const color = last > first ? '#3ecf8e' : last < first ? '#e44040' : '#7a8aa0';
+  const color = last > first ? 'var(--pos-win)' : last < first ? 'var(--pos-loss)' : 'var(--fg-muted)';
   return (
     <div className="h-6 w-full">
       <ResponsiveContainer width="100%" height="100%">

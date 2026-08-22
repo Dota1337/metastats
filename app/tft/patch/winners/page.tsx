@@ -243,16 +243,16 @@ export default function TftPatchWinnersPage() {
                 <ResponsiveContainer>
                   <BarChart data={rows} layout="vertical" margin={{ top: 0, right: 12, bottom: 0, left: 12 }}>
                     <XAxis type="number" domain={[-max, max]} hide />
-                    <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 10, fill: '#a0b0c5' }} axisLine={false} tickLine={false} />
+                    <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 10, fill: 'var(--fg-secondary)' }} axisLine={false} tickLine={false} />
                     <ReferenceLine x={0} stroke="#33445c" />
                     <RechartsTooltip
                       cursor={{ fill: 'rgba(123,97,255,0.08)' }}
-                      contentStyle={{ backgroundColor: '#0d1526', border: '1px solid #1e2a3a', borderRadius: 6, fontSize: 12 }}
-                      labelStyle={{ color: '#a0b0c5' }}
+                      contentStyle={{ backgroundColor: 'var(--surface-base)', border: '1px solid var(--border-subtle)', borderRadius: 6, fontSize: 12 }}
+                      labelStyle={{ color: 'var(--fg-secondary)' }}
                       formatter={(v: any) => [`${Number(v) >= 0 ? '+' : '−'}${Math.abs(Number(v)).toFixed(2)} Ø`, t('tft.patchWinners.swing')]}
                     />
                     <Bar dataKey="swing" radius={[2, 2, 2, 2]} barSize={11}>
-                      {rows.map(r => <Cell key={r.key} fill={r.swing >= 0 ? '#3ecf8e' : '#e44040'} />)}
+                      {rows.map(r => <Cell key={r.key} fill={r.swing >= 0 ? 'var(--pos-win)' : 'var(--pos-loss)'} />)}
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>

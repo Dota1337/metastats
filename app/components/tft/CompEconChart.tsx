@@ -30,13 +30,13 @@ export default function CompEconChart({
             <ComposedChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
               <XAxis
                 dataKey="label"
-                tick={{ fill: '#5a6a80', fontSize: 10 }}
-                axisLine={{ stroke: '#1e2a3a' }}
+                tick={{ fill: 'var(--fg-faint)', fontSize: 10 }}
+                axisLine={{ stroke: 'var(--border-subtle)' }}
                 tickLine={false}
               />
               <YAxis
                 yAxisId="left"
-                tick={{ fill: '#5a6a80', fontSize: 10 }}
+                tick={{ fill: 'var(--fg-faint)', fontSize: 10 }}
                 axisLine={false}
                 tickLine={false}
                 width={28}
@@ -45,7 +45,7 @@ export default function CompEconChart({
               <YAxis
                 yAxisId="right"
                 orientation="right"
-                tick={{ fill: '#3ecf8e', fontSize: 10 }}
+                tick={{ fill: 'var(--pos-win)', fontSize: 10 }}
                 axisLine={false}
                 tickLine={false}
                 width={36}
@@ -53,8 +53,8 @@ export default function CompEconChart({
                 domain={[(dataMin: number) => Math.max(8, dataMin - 2), (dataMax: number) => dataMax + 2]}
               />
               <RechartsTooltip
-                contentStyle={{ backgroundColor: '#0d1526', border: '1px solid #1e2a3a', borderRadius: 4, fontSize: 11 }}
-                labelStyle={{ color: '#a0b0c5' }}
+                contentStyle={{ backgroundColor: 'var(--surface-base)', border: '1px solid var(--border-subtle)', borderRadius: 4, fontSize: 11 }}
+                labelStyle={{ color: 'var(--fg-secondary)' }}
                 formatter={(value: any, name: any, item: any): any => {
                   if (name === 'share') return [`${value}%`, t('tft.comp.levelShare')];
                   if (name === 'avgRound') {
@@ -64,15 +64,15 @@ export default function CompEconChart({
                   return [value, name];
                 }}
               />
-              <Bar yAxisId="left" dataKey="share" fill="#7B61FF" radius={[2, 2, 0, 0]} />
+              <Bar yAxisId="left" dataKey="share" fill="var(--accent-tft)" radius={[2, 2, 0, 0]} />
               <Line
                 yAxisId="right"
                 type="monotone"
                 dataKey="avgRound"
-                stroke="#3ecf8e"
+                stroke="var(--pos-win)"
                 strokeWidth={2}
-                dot={{ r: 3, fill: '#3ecf8e' }}
-                activeDot={{ r: 5, fill: '#3ecf8e' }}
+                dot={{ r: 3, fill: 'var(--pos-win)' }}
+                activeDot={{ r: 5, fill: 'var(--pos-win)' }}
               />
             </ComposedChart>
           </ResponsiveContainer>

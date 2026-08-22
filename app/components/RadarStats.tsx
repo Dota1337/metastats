@@ -44,22 +44,22 @@ export default function RadarStats({ categories }: Props) {
       <div className="text-fg-muted text-xs mb-4">{t('radar.subtitle')}</div>
       <ResponsiveContainer width="100%" height={280}>
         <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="75%">
-          <PolarGrid stroke="#1e2a3a" />
+          <PolarGrid />
           <PolarAngleAxis
             dataKey="axis"
-            tick={{ fill: '#a0b0c5', fontSize: 11 }}
+            tick={{ fill: 'var(--fg-secondary)', fontSize: 11 }}
           />
           <PolarRadiusAxis
             angle={30}
             domain={[0, 100]}
-            tick={{ fill: '#7a8aa0', fontSize: 9 }}
+            tick={{ fill: 'var(--fg-muted)', fontSize: 9 }}
             axisLine={false}
           />
           <Radar
             name="Score"
             dataKey="score"
-            stroke="#c89b3c"
-            fill="#c89b3c"
+            stroke="var(--accent-lol)"
+            fill="var(--accent-lol)"
             fillOpacity={0.2}
             strokeWidth={2}
           />

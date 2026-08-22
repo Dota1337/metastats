@@ -348,19 +348,19 @@ export default function TftTraitDetailPage() {
               <div style={{ width: '100%', height: 200 }}>
                 <ResponsiveContainer>
                   <LineChart data={chartData} margin={{ top: 8, right: 12, left: -8, bottom: 4 }}>
-                    <XAxis dataKey="label" tick={{ fill: '#5a6a80', fontSize: 11 }} axisLine={{ stroke: '#1e2a3a' }} tickLine={false} />
-                    <YAxis domain={['dataMin - 0.2', 'dataMax + 0.2']} reversed tick={{ fill: '#5a6a80', fontSize: 10 }} axisLine={false} tickLine={false} width={36} tickFormatter={(v: any) => Number(v).toFixed(1)} />
-                    <ReferenceLine y={4.5} stroke="#5a6a80" strokeDasharray="3 3" strokeOpacity={0.4} />
+                    <XAxis dataKey="label" tick={{ fill: 'var(--fg-faint)', fontSize: 11 }} axisLine={{ stroke: 'var(--border-subtle)' }} tickLine={false} />
+                    <YAxis domain={['dataMin - 0.2', 'dataMax + 0.2']} reversed tick={{ fill: 'var(--fg-faint)', fontSize: 10 }} axisLine={false} tickLine={false} width={36} tickFormatter={(v: any) => Number(v).toFixed(1)} />
+                    <ReferenceLine y={4.5} stroke="var(--fg-faint)" strokeDasharray="3 3" strokeOpacity={0.4} />
                     <RechartsTooltip
-                      contentStyle={{ backgroundColor: '#0d1526', border: '1px solid #1e2a3a', borderRadius: 4, fontSize: 11 }}
-                      labelStyle={{ color: '#a0b0c5' }}
+                      contentStyle={{ backgroundColor: 'var(--surface-base)', border: '1px solid var(--border-subtle)', borderRadius: 4, fontSize: 11 }}
+                      labelStyle={{ color: 'var(--fg-secondary)' }}
                       labelFormatter={(l: any) => `${t('tft.activation')}: ${l}`}
                       formatter={(v: any, _n: any, item: any) => {
                         const p = item?.payload;
                         return [`Ø ${Number(v).toFixed(2)}${p?.top4 != null ? ` · ${p.top4.toFixed(0)}% T4` : ''}${p?.games != null ? ` · ${p.games} ${t('tft.gamesShort')}` : ''}`, t('tft.avgPlacement')];
                       }}
                     />
-                    <Line type="monotone" dataKey="avgPlacement" stroke="#7B61FF" strokeWidth={2} dot={{ r: 4, fill: '#7B61FF' }} activeDot={{ r: 6, fill: '#a892ff' }} />
+                    <Line type="monotone" dataKey="avgPlacement" stroke="var(--accent-tft)" strokeWidth={2} dot={{ r: 4, fill: 'var(--accent-tft)' }} activeDot={{ r: 6, fill: 'var(--series-purple-soft)' }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -381,18 +381,18 @@ export default function TftTraitDetailPage() {
                   data={unitCount.map(p => ({ label: String(p.numUnits), avgPlacement: p.avgPlacement, top4: p.top4Rate != null ? p.top4Rate * 100 : null, games: p.games }))}
                   margin={{ top: 8, right: 12, left: -8, bottom: 4 }}
                 >
-                  <XAxis dataKey="label" tick={{ fill: '#5a6a80', fontSize: 11 }} axisLine={{ stroke: '#1e2a3a' }} tickLine={false} />
-                  <YAxis domain={['dataMin - 0.2', 'dataMax + 0.2']} reversed tick={{ fill: '#5a6a80', fontSize: 10 }} axisLine={false} tickLine={false} width={36} tickFormatter={(v: any) => Number(v).toFixed(1)} />
-                  <ReferenceLine y={4.5} stroke="#5a6a80" strokeDasharray="3 3" strokeOpacity={0.4} />
+                  <XAxis dataKey="label" tick={{ fill: 'var(--fg-faint)', fontSize: 11 }} axisLine={{ stroke: 'var(--border-subtle)' }} tickLine={false} />
+                  <YAxis domain={['dataMin - 0.2', 'dataMax + 0.2']} reversed tick={{ fill: 'var(--fg-faint)', fontSize: 10 }} axisLine={false} tickLine={false} width={36} tickFormatter={(v: any) => Number(v).toFixed(1)} />
+                  <ReferenceLine y={4.5} stroke="var(--fg-faint)" strokeDasharray="3 3" strokeOpacity={0.4} />
                   <RechartsTooltip
-                    contentStyle={{ backgroundColor: '#0d1526', border: '1px solid #1e2a3a', borderRadius: 4, fontSize: 11 }}
-                    labelStyle={{ color: '#a0b0c5' }}
+                    contentStyle={{ backgroundColor: 'var(--surface-base)', border: '1px solid var(--border-subtle)', borderRadius: 4, fontSize: 11 }}
+                    labelStyle={{ color: 'var(--fg-secondary)' }}
                     formatter={(v: any, _n: any, item: any) => {
                       const p = item?.payload;
                       return [`Ø ${Number(v).toFixed(2)}${p?.top4 != null ? ` · ${p.top4.toFixed(0)}% T4` : ''}${p?.games != null ? ` · ${p.games} ${t('tft.gamesShort')}` : ''}`, t('tft.avgPlacement')];
                     }}
                   />
-                  <Line type="monotone" dataKey="avgPlacement" stroke="#3ecf8e" strokeWidth={2} dot={{ r: 4, fill: '#3ecf8e' }} activeDot={{ r: 6, fill: '#6ee7b7' }} connectNulls />
+                  <Line type="monotone" dataKey="avgPlacement" stroke="var(--pos-win)" strokeWidth={2} dot={{ r: 4, fill: 'var(--pos-win)' }} activeDot={{ r: 6, fill: '#6ee7b7' }} connectNulls />
                 </LineChart>
               </ResponsiveContainer>
             </div>

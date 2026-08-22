@@ -121,21 +121,21 @@ export default function MarketValueChart({ puuid, currentValue }: Props) {
           <AreaChart data={chartData}>
             <defs>
               <linearGradient id="mvGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#c89b3c" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#c89b3c" stopOpacity={0} />
+                <stop offset="5%" stopColor="var(--accent-lol)" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="var(--accent-lol)" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid stroke="#1e2a3a" strokeDasharray="3 3" />
+            <CartesianGrid strokeDasharray="3 3" />
             <XAxis
               dataKey="date"
-              tick={{ fill: '#7a8aa0', fontSize: 10 }}
+              tick={{ fill: 'var(--fg-muted)', fontSize: 10 }}
               tickLine={false}
               axisLine={false}
               interval="preserveStartEnd"
             />
             <YAxis
               domain={[minVal, maxVal]}
-              tick={{ fill: '#7a8aa0', fontSize: 10 }}
+              tick={{ fill: 'var(--fg-muted)', fontSize: 10 }}
               tickLine={false}
               axisLine={false}
               tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`}
@@ -157,11 +157,11 @@ export default function MarketValueChart({ puuid, currentValue }: Props) {
             <Area
               type="monotone"
               dataKey="value"
-              stroke="#c89b3c"
+              stroke="var(--accent-lol)"
               strokeWidth={2}
               fill="url(#mvGrad)"
-              dot={{ fill: '#c89b3c', r: 3, strokeWidth: 0 }}
-              activeDot={{ fill: '#c89b3c', r: 5, strokeWidth: 2, stroke: '#0d1526' }}
+              dot={{ fill: 'var(--accent-lol)', r: 3, strokeWidth: 0 }}
+              activeDot={{ fill: 'var(--accent-lol)', r: 5, strokeWidth: 2, stroke: 'var(--surface-base)' }}
             />
           </AreaChart>
         </ResponsiveContainer>

@@ -199,7 +199,7 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
   const delta = pickHistoryDelta(history);
   const isUp = (delta?.abs ?? 0) > 0;
   const isFlat = (delta?.abs ?? 0) === 0;
-  const lineColor = !delta || isFlat ? '#7B61FF' : isUp ? '#3ecf8e' : '#e44040';
+  const lineColor = !delta || isFlat ? 'var(--accent-tft)' : isUp ? 'var(--pos-win)' : 'var(--pos-loss)';
 
   // Numeric x-axis pinned to [set-start, today] so the sparkline always
   // anchors to the set window — points land at their real position rather
@@ -290,12 +290,12 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
                   <YAxis hide domain={['dataMin', 'dataMax']} />
                   <RechartsTooltip
                     contentStyle={{
-                      backgroundColor: '#0d1526',
-                      border: '1px solid #1e2a3a',
+                      backgroundColor: 'var(--surface-base)',
+                      border: '1px solid var(--border-subtle)',
                       borderRadius: 6,
                       fontSize: 12,
                     }}
-                    labelStyle={{ color: '#a0b0c5' }}
+                    labelStyle={{ color: 'var(--fg-secondary)' }}
                     formatter={(value: any) => [formatEuro(Number(value), lang), t('tft.marketValue')]}
                     labelFormatter={(ms) => typeof ms === 'number' ? new Date(ms).toLocaleDateString(LOCALE_MAP[lang]) : ''}
                   />
@@ -420,20 +420,20 @@ function ContributionChart({ agents }: { agents: SkillSignal[] }) {
               type="category"
               dataKey="name"
               width={104}
-              tick={{ fontSize: 11, fill: '#a0b0c5' }}
+              tick={{ fontSize: 11, fill: 'var(--fg-secondary)' }}
               axisLine={false}
               tickLine={false}
             />
             <ReferenceLine x={0} stroke="#33445c" />
             <RechartsTooltip
               cursor={{ fill: 'rgba(123,97,255,0.08)' }}
-              contentStyle={{ backgroundColor: '#0d1526', border: '1px solid #1e2a3a', borderRadius: 6, fontSize: 12 }}
-              labelStyle={{ color: '#a0b0c5' }}
+              contentStyle={{ backgroundColor: 'var(--surface-base)', border: '1px solid var(--border-subtle)', borderRadius: 6, fontSize: 12 }}
+              labelStyle={{ color: 'var(--fg-secondary)' }}
               formatter={(v: any) => [`${Number(v) >= 0 ? '+' : ''}${Number(v).toFixed(2)}`, t('tft.marketValue.contribution')]}
             />
             <Bar dataKey="value" radius={[2, 2, 2, 2]} barSize={12}>
               {rows.map(r => (
-                <Cell key={r.signal} fill={r.value >= 0 ? '#3ecf8e' : '#e44040'} />
+                <Cell key={r.signal} fill={r.value >= 0 ? 'var(--pos-win)' : 'var(--pos-loss)'} />
               ))}
             </Bar>
           </BarChart>

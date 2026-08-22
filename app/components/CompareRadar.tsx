@@ -31,9 +31,9 @@ export default function CompareRadar({ data, name1, name2 }: CompareRadarProps) 
       </div>
       <ResponsiveContainer width="100%" height={280}>
         <RadarChart data={data} cx="50%" cy="50%" outerRadius="70%">
-          <PolarGrid stroke="#1e2a3a" />
-          <PolarAngleAxis dataKey="stat" tick={{ fill: '#a0b0c5', fontSize: 11 }} />
-          <Radar name={name1} dataKey="p1" stroke="#c89b3c" fill="#c89b3c" fillOpacity={0.2} strokeWidth={2} />
+          <PolarGrid />
+          <PolarAngleAxis dataKey="stat" tick={{ fill: 'var(--fg-secondary)', fontSize: 11 }} />
+          <Radar name={name1} dataKey="p1" stroke="var(--accent-lol)" fill="var(--accent-lol)" fillOpacity={0.2} strokeWidth={2} />
           <Radar name={name2} dataKey="p2" stroke="#4488ee" fill="#4488ee" fillOpacity={0.2} strokeWidth={2} />
         </RadarChart>
       </ResponsiveContainer>

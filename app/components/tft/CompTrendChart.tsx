@@ -58,16 +58,16 @@ export default function CompTrendChart({
             <ComposedChart data={trendPoints} margin={{ top: 8, right: 8, bottom: 0, left: -12 }}>
               <XAxis
                 dataKey="day"
-                tick={{ fill: '#7a8aa0', fontSize: 10 }}
+                tick={{ fill: 'var(--fg-muted)', fontSize: 10 }}
                 tickFormatter={(d: string) => d.slice(5)}
-                axisLine={{ stroke: '#1e2a3a' }}
+                axisLine={{ stroke: 'var(--border-subtle)' }}
                 tickLine={false}
               />
               <YAxis
                 yAxisId="place"
                 domain={[3, 6]}
                 reversed
-                tick={{ fill: '#7a8aa0', fontSize: 10 }}
+                tick={{ fill: 'var(--fg-muted)', fontSize: 10 }}
                 axisLine={false}
                 tickLine={false}
                 width={30}
@@ -75,27 +75,27 @@ export default function CompTrendChart({
               <YAxis
                 yAxisId="games"
                 orientation="right"
-                tick={{ fill: '#5a6a80', fontSize: 10 }}
+                tick={{ fill: 'var(--fg-faint)', fontSize: 10 }}
                 axisLine={false}
                 tickLine={false}
                 width={40}
               />
               <RechartsTooltip
-                contentStyle={{ backgroundColor: '#0a0e1a', border: '1px solid #1e2a3a', borderRadius: 4, fontSize: 11 }}
-                labelStyle={{ color: '#a0b0c5' }}
+                contentStyle={{ backgroundColor: 'var(--surface-sunken)', border: '1px solid var(--border-subtle)', borderRadius: 4, fontSize: 11 }}
+                labelStyle={{ color: 'var(--fg-secondary)' }}
                 formatter={(value: any, name: any) => {
                   if (name === 'avgPlacement') return [Number(value).toFixed(2), t('tft.avgPlacement')];
                   if (name === 'games') return [value, t('tft.gamesShort')];
                   return [value, String(name ?? '')];
                 }}
               />
-              <Bar yAxisId="games" dataKey="games" fill="#1e2a3a" radius={[2, 2, 0, 0]} />
+              <Bar yAxisId="games" dataKey="games" fill="var(--border-subtle)" radius={[2, 2, 0, 0]} />
               <Line
                 yAxisId="place"
                 dataKey="avgPlacement"
-                stroke="#c39bff"
+                stroke="var(--series-purple)"
                 strokeWidth={2}
-                dot={{ fill: '#c39bff', r: 3 }}
+                dot={{ fill: 'var(--series-purple)', r: 3 }}
                 connectNulls
               />
               {patchBoundary && (

@@ -27,7 +27,7 @@ const REGIONS: { value: string; label: string }[] = [
   { value: 'vn2',  label: 'VN'  },
 ];
 
-const SERIES_COLORS = ['#7B61FF', '#3ecf8e'] as const;
+const SERIES_COLORS = ['var(--accent-tft)', 'var(--pos-win)'] as const;
 const TIER_NUM: Record<string, number> = {
   IRON: 1, BRONZE: 2, SILVER: 3, GOLD: 4, PLATINUM: 5, EMERALD: 6,
   DIAMOND: 7, MASTER: 8, GRANDMASTER: 9, CHALLENGER: 10,
@@ -462,27 +462,27 @@ export default function TftComparePage() {
                 <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 24, left: 8 }}>
                   <XAxis
                     dataKey="date"
-                    stroke="#7a8aa0"
+                    stroke="var(--fg-muted)"
                     fontSize={10}
-                    tick={{ fill: '#a0b0c5' }}
+                    tick={{ fill: 'var(--fg-secondary)' }}
                     tickFormatter={(d) => new Date(d).toLocaleDateString(LOCALE_MAP[lang], { month: 'short', day: 'numeric' })}
                   />
                   <YAxis
-                    stroke="#7a8aa0"
+                    stroke="var(--fg-muted)"
                     fontSize={10}
-                    tick={{ fill: '#a0b0c5' }}
+                    tick={{ fill: 'var(--fg-secondary)' }}
                     tickFormatter={(v) => `${Math.round(v / 1000)}k`}
                   />
                   <RechartsTooltip
-                    contentStyle={{ backgroundColor: '#0d1526', border: '1px solid #1e2a3a', borderRadius: 6, fontSize: 12 }}
-                    labelStyle={{ color: '#a0b0c5' }}
+                    contentStyle={{ backgroundColor: 'var(--surface-base)', border: '1px solid var(--border-subtle)', borderRadius: 6, fontSize: 12 }}
+                    labelStyle={{ color: 'var(--fg-secondary)' }}
                     formatter={(value: any) => [
                       new Intl.NumberFormat(LOCALE_MAP[lang], { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(Number(value)),
                       '',
                     ]}
                     labelFormatter={(d) => typeof d === 'string' ? new Date(d).toLocaleDateString(LOCALE_MAP[lang]) : ''}
                   />
-                  <Legend wrapperStyle={{ fontSize: 10, color: '#a0b0c5' }} />
+                  <Legend wrapperStyle={{ fontSize: 10, color: 'var(--fg-secondary)' }} />
                   {results.map((r, i) =>
                     !r || 'error' in r ? null : (
                       <Line

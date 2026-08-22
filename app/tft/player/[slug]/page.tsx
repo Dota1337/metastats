@@ -640,9 +640,9 @@ function PlayStyle({
         <div className="bg-surface-sunken border border-border-subtle rounded p-3" style={{ height: 240 }}>
           <ResponsiveContainer width="100%" height="100%">
             <RadarChart data={radarData}>
-              <PolarGrid stroke="#1e2a3a" />
-              <PolarAngleAxis dataKey="axis" stroke="#a0b0c5" tick={{ fontSize: 11 }} />
-              <Radar name="Score" dataKey="value" stroke="#7B61FF" fill="#7B61FF" fillOpacity={0.35} />
+              <PolarGrid stroke="var(--border-subtle)" />
+              <PolarAngleAxis dataKey="axis" stroke="var(--fg-secondary)" tick={{ fontSize: 11 }} />
+              <Radar name="Score" dataKey="value" stroke="var(--accent-tft)" fill="var(--accent-tft)" fillOpacity={0.35} />
               <Tooltip
                 cursor={{ fill: 'transparent' }}
                 wrapperStyle={{ outline: 'none' }}
@@ -668,14 +668,14 @@ function PlayStyle({
           <div className="text-fg-secondary text-[10px] mb-1">{t('tft.placementDistribution')}</div>
           <ResponsiveContainer width="100%" height="90%">
             <BarChart data={histData} margin={{ top: 5, right: 0, bottom: 0, left: -25 }}>
-              <XAxis dataKey="place" stroke="#a0b0c5" tick={{ fontSize: 10 }} />
-              <YAxis stroke="#a0b0c5" tick={{ fontSize: 10 }} />
+              <XAxis dataKey="place" stroke="var(--fg-secondary)" tick={{ fontSize: 10 }} />
+              <YAxis stroke="var(--fg-secondary)" tick={{ fontSize: 10 }} />
               <Tooltip
                 cursor={{ fill: 'rgba(123,97,255,0.1)' }}
-                contentStyle={{ backgroundColor: '#0d1526', border: '1px solid #1e2a3a', fontSize: 11 }}
+                contentStyle={{ backgroundColor: 'var(--surface-base)', border: '1px solid var(--border-subtle)', fontSize: 11 }}
                 formatter={(v: any) => [`${v} (${((Number(v) / total) * 100).toFixed(1)}%)`, t('tft.matches')]}
               />
-              <Bar dataKey="count" fill="#7B61FF" radius={[2, 2, 0, 0]} />
+              <Bar dataKey="count" fill="var(--accent-tft)" radius={[2, 2, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

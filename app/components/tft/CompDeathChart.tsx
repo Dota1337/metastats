@@ -30,12 +30,12 @@ export default function CompDeathChart({
       <div style={{ width: '100%', height: 200 }}>
         <ResponsiveContainer>
           <ComposedChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
-            <XAxis dataKey="stage" tick={{ fill: '#5a6a80', fontSize: 10 }} axisLine={{ stroke: '#1e2a3a' }} tickLine={false} interval="preserveStartEnd" />
-            <YAxis yAxisId="left" tick={{ fill: '#5a6a80', fontSize: 10 }} axisLine={false} tickLine={false} width={28} />
-            <YAxis yAxisId="right" orientation="right" domain={[0, 100]} tick={{ fill: '#3ecf8e', fontSize: 10 }} axisLine={false} tickLine={false} width={32} tickFormatter={v => `${v}%`} />
+            <XAxis dataKey="stage" tick={{ fill: 'var(--fg-faint)', fontSize: 10 }} axisLine={{ stroke: 'var(--border-subtle)' }} tickLine={false} interval="preserveStartEnd" />
+            <YAxis yAxisId="left" tick={{ fill: 'var(--fg-faint)', fontSize: 10 }} axisLine={false} tickLine={false} width={28} />
+            <YAxis yAxisId="right" orientation="right" domain={[0, 100]} tick={{ fill: 'var(--pos-win)', fontSize: 10 }} axisLine={false} tickLine={false} width={32} tickFormatter={v => `${v}%`} />
             <RechartsTooltip
-              contentStyle={{ backgroundColor: '#0d1526', border: '1px solid #1e2a3a', borderRadius: 4, fontSize: 11 }}
-              labelStyle={{ color: '#a0b0c5' }}
+              contentStyle={{ backgroundColor: 'var(--surface-base)', border: '1px solid var(--border-subtle)', borderRadius: 4, fontSize: 11 }}
+              labelStyle={{ color: 'var(--fg-secondary)' }}
               formatter={(value: any, name: any): any => {
                 if (name === 'games') return [value, t('tft.comp.dieHere')];
                 if (name === 'survivalRate') return [`${Number(value).toFixed(0)}%`, t('tft.comp.survivalChart')];
@@ -48,7 +48,7 @@ export default function CompDeathChart({
                 return <Cell key={idx} fill={`hsl(${hue}, 60%, 45%)`} />;
               })}
             </Bar>
-            <Line yAxisId="right" type="monotone" dataKey="survivalRate" stroke="#3ecf8e" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: '#3ecf8e' }} />
+            <Line yAxisId="right" type="monotone" dataKey="survivalRate" stroke="var(--pos-win)" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: 'var(--pos-win)' }} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>

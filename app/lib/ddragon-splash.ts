@@ -17,8 +17,13 @@
 // Zwei Fallen, beide gemessen (Stand ddragon 16.15.1, Set 17):
 //   - ddragon antwortet auf eine nicht existierende Skin-Nummer mit **403**,
 //     nicht 404. Wer auf 404 prueft, haelt tote URLs fuer gueltig.
-//   - `TFT17_IvernMinion` (Meepsie) hat gar keinen ddragon-Champion. Jeder
-//     Aufrufer muss `null` und `onError` verkraften, statt ein Loch zu lassen.
+//   - `TFT17_IvernMinion` (Meepsie) sieht aufloesbar aus, ist es aber nicht:
+//     die Ableitung liefert `IvernMinion_27.jpg`, und die URL antwortet mit
+//     403. Sie steht deshalb in `KNOWN_MISSING`. (Ein frueherer Kommentar hier
+//     behauptete, Meepsie falle „ueber null aus dem Pool" — das stimmte nur so
+//     lange, wie der Pool auf 5 Kosten beschraenkt war und Meepsie mit seinen
+//     2 Kosten gar nicht erst betrachtet wurde.) Jeder Aufrufer muss `null`
+//     und `onError` trotzdem verkraften, statt ein Loch zu lassen.
 //
 // Set-18-Schutz: der Pool kommt zur Laufzeit aus dem Asset-Bundle, nicht aus
 // einer Liste hier. Bricht die Ableitung fuer eine neue Einheit, faellt sie
@@ -45,7 +50,7 @@ const SKIN_NUM_RE = /_(\d+)\.png$/;
 // haelt die URL fuer gueltig). Gemessen gegen ddragon 16.15.1.
 // Diese Liste ist ein Zwischenstand: sobald der Pool zur Buildzeit erzeugt und
 // per HEAD validiert wird, faellt sie ersatzlos weg.
-const KNOWN_MISSING = new Set(['Blitzcrank_65']);
+const KNOWN_MISSING = new Set(['Blitzcrank_65', 'IvernMinion_27']);
 
 // PvE-Gegner und Beschwoerungen tragen teils Kosten und sehen im Bundle aus
 // wie regulaere Einheiten. `TFT17_Enemy_Aatrox` ("Apex Primordian") ist eine
@@ -88,21 +93,35 @@ export interface TftHeroUnit {
 }
 
 /**
- * Bildpool fuer die Kopfzone: die 5-Kosten-Einheiten des laufenden Sets.
+ * Bildpool fuer die Kopfzone: alle spielbaren Einheiten des laufenden Sets.
  *
- * Die Auswahl ist bewusst **rein sachlich** — Kosten und Spielbarkeit, nie
- * Win- oder Pick-Rate. Ein nach Leistung sortierter Bildpool waere eine
- * implizite Tier-Aussage ohne Datengrundlage.
+ * Die Auswahl ist bewusst **rein sachlich** — Spielbarkeit und ein
+ * aufloesbares Set-Bild, nie Win- oder Pick-Rate. Ein nach Leistung sortierter
+ * Bildpool waere eine implizite Tier-Aussage ohne Datengrundlage.
+ *
+ * **Warum kein Kostenfilter mehr:** bis 2026-08-22 stand hier `cost = 5`. Das
+ * ergab einen Pool von 8 Einheiten fuer 18 Routen — Fiora und Graves landeten
+ * auf je 6 von 18 Reitern, der Wiedererkennungswert kippte in „immer dasselbe
+ * Bild". Ohne den Filter sind es 56, und kein Champion steht mehr als zweimal
+ * auf den 36 Bildplaetzen. Kosten ist in TFT eine Shop-Odds-Mechanik und keine
+ * Guete-Aussage; ein Pool aus nur 4/5-Kosten waere die staerkere implizite
+ * Tier-Aussage gewesen, weil Reroll-Comps auf 1- und 2-Kosten genauso
+ * set-tragend sind.
+ *
+ * Bewusst KEINE Kuratierung nach Bild-Thema: Set 17 vergibt gar keine eigene
+ * Bemalung, sondern recycelt bestehende LoL-Skins — auch der alte 5-Kosten-Pool
+ * enthielt mit `Fiora_51` (Prestige Lunar Beast) und `Graves_18` (Praetorian)
+ * schon Off-Theme-Bilder. Eine Themenliste waere eine neue, subjektive Achse,
+ * die bei jedem Set von Hand nachgezogen werden muesste.
  *
  * Grundskins fliegen raus: ein Bild ohne Set-Bemalung ist je nach Champion
- * Artwork aus den 2010ern und faellt zwischen acht aktuellen Set-Bildern
- * sofort auf. Lieber ein Bild weniger im Pool als ein sichtbar fremdes.
+ * Artwork aus den 2010ern und faellt zwischen aktuellen Set-Bildern sofort auf.
+ * Lieber ein Bild weniger im Pool als ein sichtbar fremdes.
  */
-export function tftHeroUnitPool(bundle: TftAssetsBundle | null, cost = 5): TftHeroUnit[] {
+export function tftHeroUnitPool(bundle: TftAssetsBundle | null): TftHeroUnit[] {
   if (!bundle?.champions) return [];
   const out: TftHeroUnit[] = [];
   for (const [apiName, champ] of Object.entries(bundle.champions)) {
-    if (champ.cost !== cost) continue;
     if (!Array.isArray(champ.traits) || champ.traits.length === 0) continue;
     if (NON_PLAYABLE_RE.test(apiName)) continue;
     const splash = tftSplashUrl(apiName, champ);

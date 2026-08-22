@@ -11,19 +11,25 @@
 // Das ist ein bewusster Spiegel der Filterlogik aus app/lib/ddragon-splash.ts
 // (siehe reference_dual_module_patterns): driftet der Spiegel, faellt dieser
 // Check laut aus, statt dass die Kopfzone leise leer bleibt.
+//
+// Seit 2026-08-22 ohne Kostenfilter — der Pool sind alle spielbaren Einheiten
+// des Sets (56 statt 8). Damit werden hier 56 HEAD-Requests parallel gefahren
+// statt 8; gemessen 0,7 s gegen ddragon, kein Rate-Limit. Der Check wird damit
+// aber deutlich empfindlicher: nach einem Set-Bump muessen 56 URLs aufloesen,
+// nicht 8. Faellt er aus, gehoert die tote Skin-Nummer in KNOWN_MISSING —
+// hier UND in app/lib/ddragon-splash.ts.
 import { readFileSync } from 'node:fs';
 
 const API_PREFIX_RE = /^tft\d+b?_/i;
 const SKIN_NUM_RE = /_(\d+)\.png$/;
 const NON_PLAYABLE_RE = /_(enemy|pve|minion|npc)_|^tft\d+b?_(enemy|pve)/i;
-const KNOWN_MISSING = new Set(['Blitzcrank_65']);
+const KNOWN_MISSING = new Set(['Blitzcrank_65', 'IvernMinion_27']);
 const MIN_POOL = 2;
 
 const bundle = JSON.parse(readFileSync(new URL('../public/tft-assets.json', import.meta.url), 'utf8'));
 
 const pool = [];
 for (const [apiName, champ] of Object.entries(bundle.champions || {})) {
-  if (champ.cost !== 5) continue;
   if (!Array.isArray(champ.traits) || champ.traits.length === 0) continue;
   if (NON_PLAYABLE_RE.test(apiName)) continue;
   const championId = apiName.replace(API_PREFIX_RE, '');

@@ -29,7 +29,7 @@ interface TeamSynergyProps {
 }
 
 const GRADE_COLORS: Record<string, string> = {
-  S: '#f0c040', A: '#4ade80', B: '#60a5fa', C: '#a0b0c5', D: '#f87171',
+  S: '#f0c040', A: '#4ade80', B: '#60a5fa', C: 'var(--fg-secondary)', D: '#f87171',
 };
 
 const CATEGORY_KEYS: Record<string, { key: string; icon: string }> = {
@@ -81,7 +81,7 @@ export default function TeamSynergy({ roster, teamName, results, region }: TeamS
           <div className="flex items-center justify-between">
             <div className="text-white text-sm font-medium">{t('synergy.title')}</div>
             <div className="flex items-center gap-2">
-              <span className="text-2xl font-bold" style={{ color: GRADE_COLORS[synergy.grade] || '#a0b0c5' }}>
+              <span className="text-2xl font-bold" style={{ color: GRADE_COLORS[synergy.grade] || 'var(--fg-secondary)' }}>
                 {synergy.grade}
               </span>
               <span className="text-fg-muted text-xs">{synergy.overallScore}/100</span>

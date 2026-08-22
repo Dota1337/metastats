@@ -242,7 +242,7 @@ export default function MarktwertPage() {
                       <span className="text-fg-muted text-xs">{(p.region || '').toUpperCase().replace('1', '')}</span>
                     </div>
                     <div className="text-right">
-                      <span className="text-xs font-medium" style={{ color: TIER_COLORS[p.tier] || '#a0b0c5' }}>
+                      <span className="text-xs font-medium" style={{ color: TIER_COLORS[p.tier] || 'var(--fg-secondary)' }}>
                         {formatTier(p.tier, p.rank)}
                       </span>
                     </div>

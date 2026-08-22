@@ -49,7 +49,7 @@ export default function TftAugmentReferenceDetailPage() {
 
   const meta = assets?.augments[apiName];
   const tier = meta?.tier ?? 0;
-  const tierColor = TIER_COLORS[tier] || '#7a8aa0';
+  const tierColor = TIER_COLORS[tier] || 'var(--fg-muted)';
   const iconUrl = tftIconUrl(assets, meta?.icon);
   const augStages = augmentStagesFor(stagesOverride, apiName);
 
@@ -136,9 +136,9 @@ export default function TftAugmentReferenceDetailPage() {
                         key={s}
                         className="text-xs tabular-nums px-3 py-1 rounded border font-medium transition-opacity"
                         style={{
-                          color: isActive ? c : '#5a6a80',
+                          color: isActive ? c : 'var(--fg-faint)',
                           backgroundColor: isActive ? `${withAlpha(c, 0x1a)}` : 'transparent',
-                          borderColor: isActive ? `${withAlpha(c, 0x55)}` : '#1e2a3a',
+                          borderColor: isActive ? `${withAlpha(c, 0x55)}` : 'var(--border-subtle)',
                           opacity: isActive ? 1 : 0.45,
                         }}
                       >

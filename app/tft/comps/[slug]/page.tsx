@@ -279,7 +279,7 @@ export default function TftCompDetailPage() {
                         >
                           <div className="relative">
                             {url ? (
-                              <img src={url} alt={meta?.name || ''} className="w-12 h-12 rounded border-2" style={{ borderColor: i === 0 ? '#e0c75a' : '#1e2a3a' }} />
+                              <img src={url} alt={meta?.name || ''} className="w-12 h-12 rounded border-2" style={{ borderColor: i === 0 ? '#e0c75a' : 'var(--border-subtle)' }} />
                             ) : (
                               <div className="w-12 h-12 rounded bg-surface-overlay" />
                             )}
@@ -1043,7 +1043,7 @@ function DeltaStat({
   const betterColor = '#3ecf8e';
   const worseColor = '#e44040';
   const color = delta == null || delta === 0
-    ? '#a0b0c5'
+    ? 'var(--fg-secondary)'
     : (lowerIsBetter ? (delta < 0 ? betterColor : worseColor)
                      : (delta > 0 ? betterColor : worseColor));
   const arrow = delta == null || delta === 0
@@ -1085,7 +1085,7 @@ function BoardCompositionPanel({
   const COLORS = {
     core: { ring: '#7B61FF', label: '#c39bff', bg: 'rgba(123,97,255,0.15)' },
     flex: { ring: '#3a8ddc', label: '#7ab9ec', bg: 'rgba(58,141,220,0.12)' },
-    tech: { ring: '#5a6a80', label: '#7a8aa0', bg: 'rgba(90,106,128,0.12)' },
+    tech: { ring: 'var(--fg-faint)', label: 'var(--fg-muted)', bg: 'rgba(90,106,128,0.12)' },
   } as const;
   return (
     <div className="bg-surface-raised border border-border-subtle rounded p-3 mb-3">

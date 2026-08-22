@@ -34,7 +34,7 @@ interface Tournament {
   results: Result[];
 }
 
-const TIER_COLORS: Record<string, string> = { S: '#e0c75a', A: '#7B61FF', B: '#3a8ddc', C: '#5a6a80' };
+const TIER_COLORS: Record<string, string> = { S: '#e0c75a', A: '#7B61FF', B: '#3a8ddc', C: 'var(--fg-faint)' };
 const REGION_LABELS: Record<string, string> = {
   INT: 'International', AMER: 'Americas', EMEA: 'EMEA', APAC: 'Pacific', CN: 'China',
 };
@@ -83,10 +83,10 @@ export default function TftTournamentDetailPage() {
     );
   }
 
-  const tierColor = tournament.tier ? (TIER_COLORS[tournament.tier] || '#a0b0c5') : '#a0b0c5';
+  const tierColor = tournament.tier ? (TIER_COLORS[tournament.tier] || 'var(--fg-secondary)') : 'var(--fg-secondary)';
   const locale = LOCALE_MAP[lang];
   const dateFmt = (s: string | null) => s ? new Date(s).toLocaleDateString(locale, { day: '2-digit', month: 'long', year: 'numeric' }) : '—';
-  const statusColor = tournament.status === 'live' ? '#e44040' : tournament.status === 'upcoming' ? '#3ecf8e' : '#a0b0c5';
+  const statusColor = tournament.status === 'live' ? '#e44040' : tournament.status === 'upcoming' ? '#3ecf8e' : 'var(--fg-secondary)';
 
   return (
     <main className="min-h-screen bg-surface-page">
@@ -163,7 +163,7 @@ export default function TftTournamentDetailPage() {
               <div className="text-right">{t('tft.player.colPrize')}</div>
             </div>
             {tournament.results.map(r => {
-              const placeColor = r.placement === 1 ? '#f0c040' : r.placement === 2 ? '#cfd6dc' : r.placement === 3 ? '#cd7f32' : '#a0b0c5';
+              const placeColor = r.placement === 1 ? '#f0c040' : r.placement === 2 ? '#cfd6dc' : r.placement === 3 ? '#cd7f32' : 'var(--fg-secondary)';
               const playerLink = r.proPuuid ? `/api/tft/pros?puuid=${r.proPuuid}` : null;
               return (
                 <div

@@ -56,7 +56,7 @@ const PATTERN_COLORS: Record<RegionPattern, string> = {
   'kr-secret':  '#3ecf8e',   // green — Geheimtipp
   'west-trend': '#7B61FF',   // purple — West-Trend
   'mastery':    '#e0c75a',   // gold — Mastery
-  'etabliert':  '#5a6a80',   // muted — etabliert
+  'etabliert':  'var(--fg-faint)',   // muted — etabliert
   'niche':      '#3a8ddc',   // blue — Niche
 };
 

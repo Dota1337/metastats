@@ -672,7 +672,7 @@ export default function TftExplorerPage() {
                                             src={url}
                                             alt={ch?.name || u.characterId}
                                             className="w-6 h-6 rounded object-cover"
-                                            style={{ border: `1.5px solid ${isCarry ? '#c39bff' : ((ch as any)?.cost ? costColorOf((ch as any).cost) : '#1e2a3a')}` }}
+                                            style={{ border: `1.5px solid ${isCarry ? '#c39bff' : ((ch as any)?.cost ? costColorOf((ch as any).cost) : 'var(--border-subtle)')}` }}
                                           />
                                         </a>
                                       ) : null;
@@ -705,7 +705,7 @@ function BigStat({ label, value, accent }: { label: string; value: string; accen
   return (
     <div className="bg-surface-raised border border-border-subtle rounded p-2.5">
       <div className="text-fg-muted text-[10px] uppercase tracking-widest">{label}</div>
-      <div className="text-lg font-medium tabular-nums" style={{ color: accent || '#ffffff' }}>{value}</div>
+      <div className="text-lg font-medium tabular-nums" style={{ color: accent || 'var(--fg-primary)' }}>{value}</div>
     </div>
   );
 }

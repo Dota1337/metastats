@@ -146,7 +146,7 @@ export default function TftMetaPulsePage() {
                   bucket={filters.bucket}
                   primary={`KR Ø ${r.avgPlaceKr.toFixed(2)}`}
                   secondary={`EU Ø ${r.avgPlaceEu.toFixed(2)}`}
-                  secondaryColor="#a0b0c5"
+                  secondaryColor="var(--fg-secondary)"
                   meta={`+${((r.pickrateKr - r.pickrateEu) * 100).toFixed(2)}% pick`}
                 />
               ))}

@@ -265,7 +265,7 @@ function TierStrip({ tiers }: { tiers: TftTraitTier[] }) {
   return (
     <div className="flex gap-1 flex-wrap">
       {tiers.map((tier, i) => {
-        const color = STYLE_COLORS[tier.style] || '#7a8aa0';
+        const color = STYLE_COLORS[tier.style] || 'var(--fg-muted)';
         return (
           <div
             key={i}

@@ -30,7 +30,7 @@ interface Tournament {
 }
 
 const TIER_COLORS: Record<string, string> = {
-  S: '#e0c75a', A: '#7B61FF', B: '#3a8ddc', C: '#5a6a80',
+  S: '#e0c75a', A: '#7B61FF', B: '#3a8ddc', C: 'var(--fg-faint)',
 };
 
 const REGION_LABELS: Record<string, string> = {
@@ -156,7 +156,7 @@ export default function TftTournamentsPage() {
         )}
 
         {!loading && past.length > 0 && (
-          <Section title={t('tft.tournaments.past')} accent="#a0b0c5">
+          <Section title={t('tft.tournaments.past')} accent="var(--fg-secondary)">
             {past.map(x => <TournamentRow key={x.id} t={x} locale={locale} />)}
           </Section>
         )}
@@ -182,7 +182,7 @@ function Section({ title, accent, pulse, children }: { title: string; accent: st
 }
 
 function TournamentRow({ t, locale }: { t: Tournament; locale: string }) {
-  const tierColor = t.tier ? (TIER_COLORS[t.tier] || '#a0b0c5') : '#a0b0c5';
+  const tierColor = t.tier ? (TIER_COLORS[t.tier] || 'var(--fg-secondary)') : 'var(--fg-secondary)';
   const dateFmt = (s: string | null) => s ? new Date(s).toLocaleDateString(locale, { day: '2-digit', month: 'short' }) : '—';
   return (
     <a

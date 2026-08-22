@@ -110,7 +110,7 @@ function compute({ cost, level, copiesOwned, copiesContested }: Inputs): Outputs
 }
 
 const COST_COLORS: Record<number, string> = {
-  1: '#a0b0c5', 2: '#3ecf8e', 3: '#3a8ddc', 4: '#c39bff', 5: '#e0c75a',
+  1: 'var(--fg-secondary)', 2: '#3ecf8e', 3: '#3a8ddc', 4: '#c39bff', 5: '#e0c75a',
 };
 
 export default function TftRollOddsPage() {
@@ -288,7 +288,7 @@ function Stat({ label, value, accent }: { label: string; value: string; accent?:
   return (
     <div>
       <div className="text-fg-muted text-[10px] uppercase tracking-widest">{label}</div>
-      <div className="text-sm font-medium tabular-nums" style={{ color: accent || '#ffffff' }}>{value}</div>
+      <div className="text-sm font-medium tabular-nums" style={{ color: accent || 'var(--fg-primary)' }}>{value}</div>
     </div>
   );
 }
@@ -297,7 +297,7 @@ function BigStat({ label, value, accent }: { label: string; value: string; accen
   return (
     <div className="bg-surface-raised border border-border-subtle rounded p-2.5">
       <div className="text-fg-muted text-[10px] uppercase tracking-widest">{label}</div>
-      <div className="text-lg font-medium tabular-nums" style={{ color: accent || '#ffffff' }}>{value}</div>
+      <div className="text-lg font-medium tabular-nums" style={{ color: accent || 'var(--fg-primary)' }}>{value}</div>
     </div>
   );
 }

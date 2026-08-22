@@ -136,6 +136,6 @@ export function activeTraitStyleColor(style: number): string {
     case 4: return '#e0c75a';   // Gold
     case 5: return '#c39bff';   // Prismatic (lila)
     case 6: return '#e75480';   // Chromatic (pink/magenta)
-    default: return '#5a6a80';  // Fallback grau
+    default: return 'var(--fg-faint)';  // Fallback grau
   }
 }

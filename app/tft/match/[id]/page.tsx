@@ -233,7 +233,7 @@ function UnitTile({ unit, assets }: { unit: any; assets: TftAssetsBundle | null 
     .map((it: string) => assets?.items[it]?.name || it.replace(/^TFT\d*_Item_/, ''))
     .join(', ');
   const tooltip = `${name}${stars}${itemNames ? ` — ${itemNames}` : ''}`;
-  const starColor = unit.tier === 3 ? '#f0c040' : '#ffffff';
+  const starColor = unit.tier === 3 ? '#f0c040' : 'var(--fg-primary)';
 
   return (
     <a
@@ -338,7 +338,7 @@ function traitStyleColor(style: number) {
     : style === 4 ? '#e0c75a'
     : style === 3 ? '#cfd6dc'
     : style === 1 ? '#a07a4d'
-    : '#7a8aa0';
+    : 'var(--fg-muted)';
 }
 
 function prettyTraitName(raw: string) {

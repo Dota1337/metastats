@@ -98,7 +98,7 @@ export default function PositionHeatmap({ units, carryCharacterId, clusterKey, a
                     src={url}
                     alt={ch?.name || ''}
                     className="w-8 h-8 rounded border-2 object-cover group-hover:border-[#c39bff]"
-                    style={{ borderColor: isCarry ? '#c39bff' : '#1e2a3a' }}
+                    style={{ borderColor: isCarry ? '#c39bff' : 'var(--border-subtle)' }}
                   />
                 )}
                 <div className="flex-1 min-w-0">

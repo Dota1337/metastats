@@ -45,11 +45,11 @@ interface Comp {
 const safeCount = (v: unknown): number => (typeof v === 'number' ? v : 1);
 
 function tierBadge(avgPlacement: number | null): { label: string; color: string; bg: string } {
-  if (avgPlacement == null) return { label: '?', color: '#5a6a80', bg: '#1e2a3a' };
+  if (avgPlacement == null) return { label: '?', color: 'var(--fg-faint)', bg: 'var(--surface-overlay)' };
   if (avgPlacement < 3.8) return { label: 'S',  color: '#e0c75a', bg: 'rgba(224,199,90,0.15)' };
   if (avgPlacement < 4.2) return { label: 'A',  color: '#7B61FF', bg: 'rgba(123,97,255,0.15)' };
   if (avgPlacement < 4.5) return { label: 'B',  color: '#3a8ddc', bg: 'rgba(58,141,220,0.15)' };
-  return                         { label: 'C',  color: '#5a6a80', bg: 'rgba(90,106,128,0.15)' };
+  return                         { label: 'C',  color: 'var(--fg-faint)', bg: 'rgba(90,106,128,0.15)' };
 }
 
 export default function CompCard({
@@ -264,7 +264,7 @@ export default function CompCard({
                   >
                     <div
                       className="w-11 h-11 rounded border-2 overflow-hidden relative"
-                      style={{ borderColor: isCarry ? '#c39bff' : (ch ? costColorOf(ch.cost) : '#1e2a3a') }}
+                      style={{ borderColor: isCarry ? '#c39bff' : (ch ? costColorOf(ch.cost) : 'var(--border-subtle)') }}
                     >
                       {url && <img src={url} alt={ch?.name || u.characterId} className="w-full h-full object-cover rounded-sm" />}
                       {showDouble && (
@@ -336,7 +336,7 @@ function Stat({ label, value, accent }: { label: string; value: string; accent?:
   return (
     <div className="flex flex-col items-end justify-center min-w-[3.5rem]">
       <div className="text-fg-muted text-[9px] uppercase tracking-widest">{label}</div>
-      <div className="text-base font-medium" style={{ color: accent || '#ffffff' }}>{value}</div>
+      <div className="text-base font-medium" style={{ color: accent || 'var(--fg-primary)' }}>{value}</div>
     </div>
   );
 }

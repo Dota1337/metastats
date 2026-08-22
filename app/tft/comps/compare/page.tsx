@@ -219,7 +219,7 @@ function DiffPanel({
       <div className="grid grid-cols-3 items-center gap-2">
         <div
           className="text-right text-lg font-medium tabular-nums"
-          style={{ color: tieClass ? '#cdd6e0' : aIsBetter ? '#3ecf8e' : '#e44040' }}
+          style={{ color: tieClass ? 'var(--fg-bright)' : aIsBetter ? '#3ecf8e' : '#e44040' }}
         >
           {fmt(a)}
         </div>
@@ -232,7 +232,7 @@ function DiffPanel({
         </div>
         <div
           className="text-left text-lg font-medium tabular-nums"
-          style={{ color: tieClass ? '#cdd6e0' : !aIsBetter ? '#3ecf8e' : '#e44040' }}
+          style={{ color: tieClass ? 'var(--fg-bright)' : !aIsBetter ? '#3ecf8e' : '#e44040' }}
         >
           {fmt(b)}
         </div>
@@ -258,7 +258,7 @@ function TraitsCompare({
     <div className="bg-surface-base border border-border-subtle rounded p-4 col-span-1 lg:col-span-2">
       <div className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.compare.traits')}</div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <TraitColumn title={t('tft.compare.traits.shared')} traits={shared} assets={assets} accent="#cdd6e0" />
+        <TraitColumn title={t('tft.compare.traits.shared')} traits={shared} assets={assets} accent="var(--fg-bright)" />
         <TraitColumn title={t('tft.compare.traits.onlyA')} traits={onlyA} assets={assets} accent="#7B61FF" />
         <TraitColumn title={t('tft.compare.traits.onlyB')} traits={onlyB} assets={assets} accent="#3ecf8e" />
       </div>

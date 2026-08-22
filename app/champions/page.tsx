@@ -393,7 +393,7 @@ export default function ChampionsPage() {
                       <div className="text-fg-secondary text-sm text-right">
                         {champ.pickRate !== null ? `${champ.pickRate}%` : '-'}
                       </div>
-                      <div className="text-sm text-right" style={{ color: champ.banRate !== null && champ.banRate > 10 ? '#e44040' : '#a0b0c5' }}>
+                      <div className="text-sm text-right" style={{ color: champ.banRate !== null && champ.banRate > 10 ? '#e44040' : 'var(--fg-secondary)' }}>
                         {champ.banRate !== null ? `${champ.banRate}%` : '-'}
                       </div>
                       <div className="text-fg-secondary text-sm text-right">

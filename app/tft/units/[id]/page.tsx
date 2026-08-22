@@ -318,7 +318,7 @@ export default function TftUnitDetailPage() {
                 if (itemCounts.length === 0) return null;
                 // Map avg placement → hue: 3.0 (great) green, 5.5 (poor) red.
                 const colorFor = (place: number | null) => {
-                  if (place == null) return '#0d1526';
+                  if (place == null) return 'var(--surface-base)';
                   const c = Math.max(3.0, Math.min(5.5, place));
                   const hue = Math.round(140 * (1 - (c - 3.0) / 2.5));
                   return `hsl(${hue}, 50%, 30%)`;

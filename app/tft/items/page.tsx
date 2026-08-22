@@ -346,7 +346,7 @@ function DeltaCell({ velocity, label }: { velocity?: { deltaAvgPlacement?: numbe
   }
   const d = velocity.deltaAvgPlacement ?? 0;
   const sign = d < 0 ? '−' : d > 0 ? '+' : '';
-  const color = d < -0.02 ? '#3ecf8e' : d > 0.02 ? '#e44040' : '#a0b0c5';
+  const color = d < -0.02 ? '#3ecf8e' : d > 0.02 ? '#e44040' : 'var(--fg-secondary)';
   const display = `${sign}${Math.abs(d).toFixed(2)}`;
   return (
     <>

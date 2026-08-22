@@ -187,7 +187,7 @@ export default function TftLobbyScoutPage() {
                         title={c?.name}
                       >
                         {url ? (
-                          <img src={url} alt={c?.name || id} className="w-9 h-9 rounded border-2" style={{ borderColor: c ? costColorOf(c.cost) : '#1e2a3a' }} />
+                          <img src={url} alt={c?.name || id} className="w-9 h-9 rounded border-2" style={{ borderColor: c ? costColorOf(c.cost) : 'var(--border-subtle)' }} />
                         ) : (
                           <div className="w-9 h-9 rounded bg-surface-overlay" />
                         )}

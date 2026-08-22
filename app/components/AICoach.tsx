@@ -35,7 +35,7 @@ interface AICoachProps {
 
 const GRADE_COLORS: Record<string, string> = {
   'S+': '#f0c040', 'S': '#f0c040', 'A': '#4ade80', 'B': '#60a5fa',
-  'C': '#a0b0c5', 'D': '#f87171', 'D-': '#ef4444',
+  'C': 'var(--fg-secondary)', 'D': '#f87171', 'D-': '#ef4444',
 };
 
 export default function AICoach({ matches, tier, role }: AICoachProps) {
@@ -91,7 +91,7 @@ export default function AICoach({ matches, tier, role }: AICoachProps) {
           {report && !loading && (
             <>
               <div className="text-right">
-                <div className={`text-lg font-bold`} style={{ color: GRADE_COLORS[report.overallGrade] || '#a0b0c5' }}>
+                <div className={`text-lg font-bold`} style={{ color: GRADE_COLORS[report.overallGrade] || 'var(--fg-secondary)' }}>
                   {report.overallGrade}
                 </div>
               </div>
@@ -101,7 +101,7 @@ export default function AICoach({ matches, tier, role }: AICoachProps) {
                   className="h-full rounded-full transition-all duration-500"
                   style={{
                     width: `${report.overallScore}%`,
-                    backgroundColor: GRADE_COLORS[report.overallGrade] || '#a0b0c5',
+                    backgroundColor: GRADE_COLORS[report.overallGrade] || 'var(--fg-secondary)',
                   }}
                 />
               </div>

@@ -92,7 +92,7 @@ function AugmentPanel({
 }) {
   const meta = assets?.augments[apiName];
   const tier = meta?.tier ?? 0;
-  const tierColor = TIER_COLORS[tier] || '#7a8aa0';
+  const tierColor = TIER_COLORS[tier] || 'var(--fg-muted)';
   const iconUrl = tftIconUrl(assets, meta?.icon);
   const accentColor = side === 'a' ? '#7B61FF' : '#3ecf8e';
 

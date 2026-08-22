@@ -356,7 +356,7 @@ function TopTab({
                     {p.tagLine && <span className="text-fg-muted text-[10px]"> #{p.tagLine}</span>}
                     <span
                       className="ml-2 text-[10px] uppercase tracking-widest"
-                      style={{ color: TIER_COLORS[p.tier] || '#a0b0c5' }}
+                      style={{ color: TIER_COLORS[p.tier] || 'var(--fg-secondary)' }}
                     >
                       {p.tier.slice(0, 4)}
                     </span>
@@ -472,7 +472,7 @@ function MoversTab({
                     {m.tagLine && <span className="text-fg-muted text-[10px]"> #{m.tagLine}</span>}
                     <span
                       className="ml-2 text-[10px] uppercase tracking-widest"
-                      style={{ color: TIER_COLORS[m.tier] || '#a0b0c5' }}
+                      style={{ color: TIER_COLORS[m.tier] || 'var(--fg-secondary)' }}
                     >
                       {m.tier.slice(0, 4)}
                     </span>

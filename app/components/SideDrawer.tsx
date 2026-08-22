@@ -544,7 +544,7 @@ function TftTournamentsContent({
     if (tier === 'S') return '#e0c75a';
     if (tier === 'A') return '#7B61FF';
     if (tier === 'B') return '#3a8ddc';
-    return '#5a6a80';
+    return 'var(--fg-faint)';
   };
   const dateFmt = (s: string | null) => s ? new Date(s).toLocaleDateString(locale, { day: '2-digit', month: 'short' }) : '—';
 

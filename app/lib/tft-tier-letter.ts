@@ -139,6 +139,9 @@ export async function loadTierCutoffs(setNumber?: number | null): Promise<TierCu
   return resolveCutoffs(bundle, setNumber);
 }
 
+// Roh-Hexe, bewusst: eine Rang-Leiter. Die Stufen muessen untereinander
+// unterscheidbar bleiben und duerfen sich nicht mitbewegen, wenn die
+// Text-Token fuer Lesbarkeit nachgezogen werden.
 export const TIER_COLORS: Record<TierLetter, string> = {
   S: '#e0c75a',
   A: '#7B61FF',

@@ -540,7 +540,7 @@ function rankColor(rank: number): string {
   if (rank === 1) return '#f0c040';   // gold
   if (rank === 2) return '#cfd6dc';   // silver
   if (rank === 3) return '#cd7f32';   // bronze
-  return '#a0b0c5';                   // neutral
+  return 'var(--fg-secondary)';                   // neutral
 }
 
 function RankBadge({ rank }: { rank: number }) {
@@ -564,7 +564,7 @@ function UnitChip({ rank, characterId, games, avg, assets, lobbyAvg }: { rank: n
   // Diff vs. lobby Master+ average. Negative = player places *better* than
   // the average lobby (lower placement number is better in TFT).
   const diff = typeof lobbyAvg === 'number' ? avg - lobbyAvg : null;
-  const diffColor = diff == null ? '#7a8aa0' : diff <= -0.15 ? '#3ecf8e' : diff >= 0.15 ? '#e44040' : '#a0b0c5';
+  const diffColor = diff == null ? 'var(--fg-muted)' : diff <= -0.15 ? '#3ecf8e' : diff >= 0.15 ? '#e44040' : 'var(--fg-secondary)';
   return (
     <a
       href={`/tft/units/${encodeURIComponent(characterId)}`}
@@ -732,12 +732,12 @@ function formatProEarnings(v: number | null | undefined): string {
 }
 
 function placeColor(place: string | null): string {
-  if (!place) return '#a0b0c5';
+  if (!place) return 'var(--fg-secondary)';
   const p = place.toLowerCase();
   if (p.startsWith('1')) return '#f0c040';
   if (p.startsWith('2')) return '#c0c0c0';
   if (p.startsWith('3')) return '#cd7f32';
-  return '#a0b0c5';
+  return 'var(--fg-secondary)';
 }
 
 function TournamentHistory({ pro }: { pro: TftProRecord }) {
@@ -825,7 +825,7 @@ function RankBlock({ ranked, seasonRanks }: { ranked: SummonerData['ranked']; se
   ) : (
     <>
       <div className="text-fg-secondary text-xs uppercase tracking-widest">{t('tft.player.standardRanked')}</div>
-      <div className="text-lg font-medium mt-1" style={{ color: TIER_COLORS[ranked.tier] || '#a0b0c5' }}>
+      <div className="text-lg font-medium mt-1" style={{ color: TIER_COLORS[ranked.tier] || 'var(--fg-secondary)' }}>
         {formatTier(ranked.tier, ranked.rank)} <span className="text-white">{ranked.leaguePoints ?? 0} LP</span>
       </div>
       <div className="text-fg-secondary text-xs">
@@ -869,7 +869,7 @@ function RankBlock({ ranked, seasonRanks }: { ranked: SummonerData['ranked']; se
 function SeasonRankRow({ season }: { season: SeasonRank }) {
   const { t } = useI18n();
   const tier = (season.peak_tier || '').toUpperCase();
-  const color = TIER_COLORS[tier] || '#a0b0c5';
+  const color = TIER_COLORS[tier] || 'var(--fg-secondary)';
   const setLabel = formatSetLabel(season.set_label, season.set_number);
   // Build from structured fields via formatTier so Challenger/GM/Master
   // never render the bogus "I" division. peak_rating_label is from the

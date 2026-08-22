@@ -80,8 +80,8 @@ const TABS: { value: Classification | 'all'; labelKey: any; color: string; icon:
   { value: 'tpc',        labelKey: 'tft.pros.tab.tpc',        color: '#e0c75a', icon: '🏆' },
   { value: 'tournament', labelKey: 'tft.pros.tab.tournament', color: '#c39bff', icon: '🎯' },
   { value: 'streamer',   labelKey: 'tft.pros.tab.streamer',   color: '#3ecf8e', icon: '📺' },
-  { value: 'historic',   labelKey: 'tft.pros.tab.historic',   color: '#7a8aa0', icon: '📚' },
-  { value: 'all',        labelKey: 'tft.pros.tab.all',        color: '#a0b0c5', icon: '∗' },
+  { value: 'historic',   labelKey: 'tft.pros.tab.historic',   color: 'var(--fg-muted)', icon: '📚' },
+  { value: 'all',        labelKey: 'tft.pros.tab.all',        color: 'var(--fg-secondary)', icon: '∗' },
 ];
 
 function classificationBadge(c: Classification) {
@@ -89,8 +89,8 @@ function classificationBadge(c: Classification) {
     case 'tpc':        return { label: 'TPC',        color: '#e0c75a', bg: '#e0c75a1f' };
     case 'tournament': return { label: 'Tournament', color: '#c39bff', bg: '#c39bff1f' };
     case 'streamer':   return { label: 'Streamer',   color: '#3ecf8e', bg: '#3ecf8e1f' };
-    case 'historic':   return { label: 'Historic',   color: '#7a8aa0', bg: '#7a8aa01f' };
-    default:           return { label: '—',          color: '#5a6a80', bg: '#5a6a801f' };
+    case 'historic':   return { label: 'Historic',   color: 'var(--fg-muted)', bg: '#7a8aa01f' };
+    default:           return { label: '—',          color: 'var(--fg-faint)', bg: '#5a6a801f' };
   }
 }
 

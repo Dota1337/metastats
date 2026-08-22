@@ -59,7 +59,7 @@ const safeCount = (v: unknown): number => (typeof v === 'number' ? v : 1);
 // now comes from the central tierLetterOfSync helper with sample-gate +
 // pickrate-penalty. See app/lib/tft-tier-letter.ts.
 function tierColorByAvg(avg: number | null) {
-  if (avg == null) return '#5a6a80';
+  if (avg == null) return 'var(--fg-faint)';
   if (avg < 3.8) return TIER_COLORS.S;
   if (avg < 4.2) return TIER_COLORS.A;
   if (avg < 4.5) return TIER_COLORS.B;
@@ -355,7 +355,7 @@ export default function CompRow({
                   href={`/tft/units/${encodeURIComponent(u.characterId)}`}
                   onClick={e => e.stopPropagation()}
                   className="w-10 h-10 rounded-md border-2 overflow-hidden block hover:scale-110 transition-transform relative shadow-sm"
-                  style={{ borderColor: isCarry ? '#c39bff' : (ch ? costColorOf(ch.cost) : '#1e2a3a') }}
+                  style={{ borderColor: isCarry ? '#c39bff' : (ch ? costColorOf(ch.cost) : 'var(--border-subtle)') }}
                   title={ch?.name || u.characterId}
                 >
                   {url && <img src={url} alt={ch?.name || ''} className="w-full h-full object-cover" />}
@@ -467,7 +467,7 @@ export default function CompRow({
               onClick={e => { e.stopPropagation(); onCompareToggle(); }}
               className="w-7 h-7 flex items-center justify-center rounded transition-colors flex-shrink-0"
               style={{
-                color: compareSelected ? '#7B61FF' : '#5a6a80',
+                color: compareSelected ? '#7B61FF' : 'var(--fg-faint)',
                 backgroundColor: compareSelected ? 'rgba(123,97,255,0.14)' : 'transparent',
                 border: `1px solid ${compareSelected ? 'rgba(123,97,255,0.6)' : 'rgba(90,106,128,0.25)'}`,
               }}

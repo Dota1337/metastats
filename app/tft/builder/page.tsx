@@ -701,7 +701,7 @@ export default function TftBuilderPage() {
                 ? costColorOf(cost)
                 : pickerChar
                   ? '#7B61FF55'
-                  : '#1e2a3a';
+                  : 'var(--border-subtle)';
             return (
               <div
                 key={cell}
@@ -735,7 +735,7 @@ export default function TftBuilderPage() {
                   style={{
                     top: '3px', left: '3px', right: '3px', bottom: '3px',
                     clipPath: HEX_CLIP,
-                    backgroundColor: '#0a0e1a',
+                    backgroundColor: 'var(--surface-sunken)',
                   }}
                   title={p ? `${champ?.name || p.characterId}` : ''}
                 >
@@ -796,7 +796,7 @@ export default function TftBuilderPage() {
                       : tier?.style === 4 ? '#e0c75a'
                       : tier?.style === 3 ? '#cfd6dc'
                       : tier?.style === 1 ? '#a07a4d'
-                      : '#5a6a80';
+                      : 'var(--fg-faint)';
                     return (
                       <div
                         key={tr.apiName}
@@ -816,7 +816,7 @@ export default function TftBuilderPage() {
                                 key={i}
                                 className="text-[10px] tabular-nums px-1 rounded"
                                 style={{
-                                  color: i === tierIdx ? '#fff' : '#5a6a80',
+                                  color: i === tierIdx ? 'var(--fg-primary)' : 'var(--fg-faint)',
                                   backgroundColor: i === tierIdx ? styleColor : 'transparent',
                                 }}
                               >
@@ -825,7 +825,7 @@ export default function TftBuilderPage() {
                             ))}
                           </div>
                         </div>
-                        <div className="tabular-nums text-sm" style={{ color: tier ? styleColor : '#7a8aa0' }}>
+                        <div className="tabular-nums text-sm" style={{ color: tier ? styleColor : 'var(--fg-muted)' }}>
                           {tr.count}
                         </div>
                       </div>
@@ -1037,9 +1037,9 @@ export default function TftBuilderPage() {
                           onClick={() => setStarFor(selectedTeam, selectedPlacement.cell, n === 1 ? null : (n as StarLevel))}
                           className="flex-1 py-1.5 rounded text-xs font-bold transition border-2"
                           style={{
-                            borderColor: isActive ? color : '#1e2a3a',
-                            backgroundColor: isActive ? `${withAlpha(color, 0x22)}` : '#0a0e1a',
-                            color: isActive ? color : '#5a6a80',
+                            borderColor: isActive ? color : 'var(--border-subtle)',
+                            backgroundColor: isActive ? `${withAlpha(color, 0x22)}` : 'var(--surface-sunken)',
+                            color: isActive ? color : 'var(--fg-faint)',
                           }}
                         >
                           {n}★
@@ -1113,7 +1113,7 @@ export default function TftBuilderPage() {
                             key={s}
                             onClick={() => setStanceFor(selectedTeam, selectedPlacement.cell, isActive ? null : s)}
                             className="flex-1 aspect-square rounded overflow-hidden transition"
-                            style={{ border: `2px solid ${isActive ? '#a892ff' : '#1e2a3a'}` }}
+                            style={{ border: `2px solid ${isActive ? '#a892ff' : 'var(--border-subtle)'}` }}
                             title={stanceItem?.name || s}
                           >
                             {iurl && <img src={iurl} alt={stanceItem?.name || ''} className="w-full h-full object-cover" />}

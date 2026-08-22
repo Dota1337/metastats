@@ -242,7 +242,7 @@ export default function MarketInsights() {
                           className="h-full rounded-full transition-all duration-500"
                           style={{
                             width: `${tp.probability}%`,
-                            backgroundColor: tp.probability >= 60 ? '#f87171' : tp.probability >= 40 ? '#f0c040' : '#7a8aa0',
+                            backgroundColor: tp.probability >= 60 ? '#f87171' : tp.probability >= 40 ? '#f0c040' : 'var(--fg-muted)',
                           }}
                         />
                       </div>
@@ -318,7 +318,7 @@ export default function MarketInsights() {
                       <div className="flex items-center gap-4 flex-wrap">
                         {a.tier && (
                           <div className="text-center">
-                            <div className="text-xs font-medium" style={{ color: TIER_COLORS[a.tier] || '#a0b0c5' }}>
+                            <div className="text-xs font-medium" style={{ color: TIER_COLORS[a.tier] || 'var(--fg-secondary)' }}>
                               {a.tier} {a.rank && a.rank !== 'I' ? a.rank : ''}
                             </div>
                             <div className="text-fg-muted text-[10px]">{t('mv.rank')}</div>

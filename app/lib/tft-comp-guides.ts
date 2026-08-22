@@ -314,6 +314,10 @@ export function significantLevelSteps(levels: LevelStep[], minShare = 0.1): Leve
 
 // Rand-Farbe eines Augment-Tiles nach Rarity (Silver/Gold/Prismatic). Die
 // Rarity steht im Asset-Bundle unter assets.augments[apiName].tier.
+// Roh-Hex, bewusst: die vier Rueckgaben sind eine Rang-Leiter. Der
+// Standardfall traegt zwar denselben Wert wie --border-subtle, haengt aber
+// an der Leiter und nicht an der Text-Hierarchie -- eine Lesbarkeits-Revision
+// an den Text-Token wuerde ihn sonst mitziehen.
 export function augmentTierBorderColor(tier: number | null | undefined): string {
   switch (tier) {
     case 1: return '#9aa5b4';   // Silver
@@ -324,6 +328,9 @@ export function augmentTierBorderColor(tier: number | null | undefined): string 
 }
 
 // Farbe eines Performance-Grades.
+// Roh-Hex bei C und D, bewusst: Rang-Leiter, nicht Text-Hierarchie. C traegt
+// heute denselben Wert wie --fg-muted, doch --fg-muted wird in der
+// F2-Lesbarkeitswelle aufgehellt; die Note C darf davon nicht wandern.
 export function augmentGradeColor(grade: AugmentGrade | null | undefined): string {
   switch (grade) {
     case 'S': return '#e0c75a';
@@ -364,6 +371,7 @@ export function groupAugmentsByGrade(
 }
 
 // Difficulty-Farbe für das Badge.
+// Roh-Hex im Standardfall, bewusst: Rang-Leiter (siehe augmentGradeColor).
 export function difficultyColor(d: Difficulty | null): string {
   switch (d) {
     case 'EASY': return '#3ecf8e';

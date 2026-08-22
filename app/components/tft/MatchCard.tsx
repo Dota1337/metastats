@@ -223,7 +223,7 @@ function UnitTile({ unit, assets, small, interactive }: { unit: any; assets: Tft
   // Star color: 3★ gets a punchy gold so it pops, 2★ stays white. Both sit
   // inside the icon at the top with a dark backdrop so they stay readable
   // against bright splash art.
-  const starColor = unit.tier === 3 ? '#f0c040' : '#ffffff';
+  const starColor = unit.tier === 3 ? '#f0c040' : 'var(--fg-primary)';
 
   const inner = (
     <>
@@ -293,7 +293,7 @@ function costToColor(cost: number) {
   return cost === 1 ? '#9aa6b2' : cost === 2 ? '#3a8' : cost === 3 ? '#3a8ddc' : cost === 4 ? '#c39bff' : '#e0c75a';
 }
 function traitStyleColor(style: number) {
-  return style === 5 ? '#c39bff' : style === 4 ? '#e0c75a' : style === 3 ? '#cfd6dc' : style === 1 ? '#a07a4d' : '#7a8aa0';
+  return style === 5 ? '#c39bff' : style === 4 ? '#e0c75a' : style === 3 ? '#cfd6dc' : style === 1 ? '#a07a4d' : 'var(--fg-muted)';
 }
 function prettyTraitName(raw: string) {
   return raw.replace(/^TFT\d+_/, '').replace(/([A-Z])/g, ' $1').trim();

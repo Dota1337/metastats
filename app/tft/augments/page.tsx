@@ -211,7 +211,7 @@ export default function TftAugmentsReferencePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {filtered.map(a => {
               const url = tftIconUrl(assets, a.icon);
-              const tierColor = TIER_COLORS[a.tier] || '#7a8aa0';
+              const tierColor = TIER_COLORS[a.tier] || 'var(--fg-muted)';
               const loc = tftAugmentLocalised(a, lang);
               // Riot recycles the same icon file across +/++ variants — e.g.
               // Deadlier Blades (Prismatic, tier 3) ships with the Gold-tier

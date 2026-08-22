@@ -32,13 +32,13 @@ const TIER_ORDER: Record<string, number> = {
 const RANK_ORDER: Record<string, number> = { IV: 1, III: 2, II: 3, I: 4 };
 
 function getTierColor(tier: string | undefined): string {
-  if (!tier) return '#a0b0c5';
+  if (!tier) return 'var(--fg-secondary)';
   const colors: Record<string, string> = {
     IRON: '#6b6b6b', BRONZE: '#a0522d', SILVER: '#b0b0b0', GOLD: '#c89b3c',
     PLATINUM: '#2d9e8f', EMERALD: '#2dbe6e', DIAMOND: '#4488ee',
     MASTER: '#9b59b6', GRANDMASTER: '#e74c3c', CHALLENGER: '#f1c40f',
   };
-  return colors[tier.toUpperCase()] || '#a0b0c5';
+  return colors[tier.toUpperCase()] || 'var(--fg-secondary)';
 }
 
 function formatMarketValue(value: number): string {
@@ -347,7 +347,7 @@ function MiniStatCard({ label, value, accent }: { label: string; value: string |
 
 const ROLE_COLORS: Record<string, string> = {
   TOP: '#c89b3c', JUNGLE: '#3ecf8e', MIDDLE: '#4488ee',
-  BOTTOM: '#e0a85a', UTILITY: '#a892ff', OTHER: '#7a8aa0',
+  BOTTOM: '#e0a85a', UTILITY: '#a892ff', OTHER: 'var(--fg-muted)',
 };
 const ROLE_LABELS: Record<string, string> = {
   TOP: 'Top', JUNGLE: 'Jng', MIDDLE: 'Mid', BOTTOM: 'ADC', UTILITY: 'Sup', OTHER: 'Other',

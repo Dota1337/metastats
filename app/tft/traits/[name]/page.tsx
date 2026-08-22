@@ -536,7 +536,7 @@ export default function TftTraitDetailPage() {
 
 function TierPill({ tier }: { tier: TftTraitTier }) {
   const sc = STYLE_COLORS[tier.style];
-  const color = sc?.hex || '#7a8aa0';
+  const color = sc?.hex || 'var(--fg-muted)';
   return (
     <div
       className="flex items-center gap-2 rounded px-2.5 py-1 text-xs font-medium tabular-nums"

@@ -161,7 +161,7 @@ export default function TftCommunityGalleryPage() {
                           }
                         }}
                         className="relative w-9 h-9 rounded overflow-hidden border block hover:scale-110 transition-transform cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-a60"
-                        style={{ borderColor: ch ? costColorOf(ch.cost) : '#1e2a3a' }}
+                        style={{ borderColor: ch ? costColorOf(ch.cost) : 'var(--border-subtle)' }}
                         title={ch?.name || p.characterId}
                       >
                         {url && <img src={url} alt={ch?.name || ''} className="w-full h-full object-cover" />}

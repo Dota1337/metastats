@@ -790,6 +790,12 @@
       ]
     },
     {
+      "name": "check:tft-hero-pool",
+      "scripts": [
+        "scripts/check-tft-hero-pool.mjs"
+      ]
+    },
+    {
       "name": "check:contracts",
       "scripts": [
         "scripts/check-contracts.mjs"
@@ -807,6 +813,7 @@
         "scripts/verify-classifications.mjs",
         "scripts/verify-metatft-family-coverage.mjs",
         "scripts/check-drift.mjs",
+        "scripts/check-tft-hero-pool.mjs",
         "scripts/check-system-map.mjs"
       ]
     },

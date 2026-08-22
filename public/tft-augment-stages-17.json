@@ -1,17 +1,17 @@
 {
   "set": 17,
   "source": "tactics.tools/info/augments",
-  "fetchedAt": "2026-08-15T06:10:07.997Z",
+  "fetchedAt": "2026-08-22T06:10:11.819Z",
   "counts": {
     "cards": 265,
-    "pinned": 255,
-    "unmatched": 10,
+    "pinned": 254,
+    "unmatched": 11,
     "patterns": {
       "2-1": 95,
       "2-1|3-2": 21,
       "2-1|3-2|4-2": 10,
       "3-2|4-2": 65,
-      "3-2": 38,
+      "3-2": 37,
       "(none)": 4,
       "4-2": 22
     }
@@ -462,9 +462,6 @@
     ],
     "TFT_Augment_InfinityProtection": [
       "2-1"
-    ],
-    "TFT17_Augment_InvaderZed": [
-      "3-2"
     ],
     "TFT9_Augment_JeweledLotus": [
       "3-2",

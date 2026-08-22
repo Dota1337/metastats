@@ -1,12 +1,12 @@
 {
   "set": 17,
   "source": "tactics.tools/info/augments",
-  "fetchedAt": "2026-08-15T06:10:07.858Z",
+  "fetchedAt": "2026-08-22T06:10:11.638Z",
   "counts": {
     "silver": 70,
     "gold": 124,
     "prismatic": 71,
-    "pinned": 255
+    "pinned": 254
   },
   "tiers": {
     "TFT7_Augment_AFK": 1,
@@ -138,7 +138,6 @@
     "TFT6_Augment_HyperRoll": 2,
     "TFT_Augment_JustSlayer": 2,
     "TFT_Augment_InfinityProtection": 2,
-    "TFT17_Augment_InvaderZed": 2,
     "TFT9_Augment_JeweledLotus": 2,
     "TFT_Augment_FuriousBlows": 2,
     "TFT_Augment_LateGameScaling": 2,

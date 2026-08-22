@@ -1,10 +1,10 @@
 {
   "set": 17,
   "source": "tactics.tools/info/patch-notes",
-  "fetchedAt": "2026-08-15T06:10:08.064Z",
+  "fetchedAt": "2026-08-22T06:10:11.869Z",
   "patches": {
     "17.1": {
-      "scrapedAt": "2026-08-15T06:10:08.156Z",
+      "scrapedAt": "2026-08-22T06:10:12.200Z",
       "sections": [
         {
           "category": "LARGE CHANGES",
@@ -458,7 +458,7 @@
       }
     },
     "17.2": {
-      "scrapedAt": "2026-08-15T06:10:10.464Z",
+      "scrapedAt": "2026-08-22T06:10:14.424Z",
       "sections": [
         {
           "category": "17.2 APRIL 29TH MID-PATCH UPDATE",
@@ -1067,7 +1067,7 @@
       }
     },
     "17.3": {
-      "scrapedAt": "2026-08-15T06:10:12.489Z",
+      "scrapedAt": "2026-08-22T06:10:16.651Z",
       "sections": [
         {
           "category": "17.3 MAY 13TH MID-PATCH UPDATE",
@@ -1561,7 +1561,7 @@
       }
     },
     "17.4": {
-      "scrapedAt": "2026-08-15T06:10:14.506Z",
+      "scrapedAt": "2026-08-22T06:10:18.902Z",
       "sections": [
         {
           "category": "Mid-Patch Updates",
@@ -2000,7 +2000,7 @@
       }
     },
     "17.5": {
-      "scrapedAt": "2026-08-15T06:10:16.555Z",
+      "scrapedAt": "2026-08-22T06:10:21.129Z",
       "sections": [
         {
           "category": "Mid-Patch Updates",
@@ -2304,7 +2304,7 @@
       }
     },
     "17.6": {
-      "scrapedAt": "2026-08-15T06:10:18.841Z",
+      "scrapedAt": "2026-08-22T06:10:23.334Z",
       "sections": [
         {
           "category": "LARGE CHANGES",
@@ -2578,7 +2578,7 @@
       }
     },
     "17.7": {
-      "scrapedAt": "2026-08-15T06:10:20.856Z",
+      "scrapedAt": "2026-08-22T06:10:25.540Z",
       "sections": [
         {
           "category": "LARGE CHANGES",
@@ -2692,7 +2692,7 @@
       }
     },
     "17.8": {
-      "scrapedAt": "2026-08-15T06:10:22.872Z",
+      "scrapedAt": "2026-08-22T06:10:27.731Z",
       "sections": [
         {
           "category": "LARGE CHANGES",
@@ -2811,7 +2811,7 @@
       }
     },
     "17.9": {
-      "scrapedAt": "2026-08-15T06:10:24.894Z",
+      "scrapedAt": "2026-08-22T06:10:29.936Z",
       "sections": [
         {
           "category": "LARGE CHANGES",

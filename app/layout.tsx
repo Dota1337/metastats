@@ -77,12 +77,13 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
-        {/* Preload hero splash so it paints quickly on the homepage */}
-        <link
-          rel="preload"
-          as="image"
-          href="https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Kaisa_0.jpg"
-        />
+        {/* Verbindung zu ddragon vorwaermen: Kopfzonen-Splashes stehen auf der
+            Startseite UND auf allen TFT-Routen, und ddragon spricht HTTP/1.1 --
+            Verbindungsaufbau plus TLS kosten dort messbar Zeit.
+            Der frueher hier stehende Preload auf Kaisa_0.jpg galt auf JEDER
+            Route, obwohl nur die Startseite das Bild zeigt; er liegt jetzt in
+            app/page.tsx. */}
+        <link rel="preconnect" href="https://ddragon.leagueoflegends.com" />
       </head>
       <body className="min-h-full flex flex-col">
         {/* JSON-LD: WebSite + SearchAction for sitelinks-style results */}

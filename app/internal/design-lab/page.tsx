@@ -23,6 +23,9 @@ import {
   pickPairForSeed,
   type TftHeroUnit,
 } from '../../lib/ddragon-splash';
+// Die Vorschau rendert dieselbe Komponente wie die Produktions-Kopfzone.
+// Eine Kopie hier wuerde wegdriften und das Vergleichswerkzeug entwerten.
+import SideArt from '../../components/tft/TftHeroSideArt';
 
 const DD = 'https://ddragon.leagueoflegends.com/cdn/img/champion/splash';
 
@@ -948,52 +951,3 @@ function CenterText({ compact }: { compact: boolean }) {
   );
 }
 
-function SideArt({
-  unit,
-  side,
-  wide = false,
-}: {
-  unit: TftHeroUnit | null;
-  side: 'left' | 'right';
-  wide?: boolean;
-}) {
-  if (!unit) return null;
-  const w = wide ? '48%' : '35%';
-  return (
-    <div
-      className="absolute top-0 bottom-0 overflow-hidden"
-      style={{ [side]: 0, width: w } as React.CSSProperties}
-      title={`${unit.name} · ${unit.splash.championId}_${unit.splash.skinNum}`}
-    >
-      <img
-        src={unit.splash.url}
-        alt=""
-        className="absolute inset-0 h-full w-full object-cover"
-        style={{
-          filter: 'brightness(1.12)',
-          objectPosition: side === 'left' ? '70% 15%' : '30% 15%',
-        }}
-        onError={e => {
-          // KEIN Rueckfall auf den Grundskin: das Bild ist dann Artwork aus
-          // einer anderen Zeit und faellt neben dem zweiten Set-Bild sofort
-          // auf. Lieber eine leere Seite als ein fremdes Bild.
-          (e.currentTarget as HTMLImageElement).style.opacity = '0';
-        }}
-      />
-      <div
-        className="absolute inset-0"
-        style={{
-          // Bild aussen, Verlauf nach innen: links liegendes Bild blendet nach
-          // rechts ins Blau aus, rechts liegendes nach links.
-          background: `linear-gradient(to ${side === 'left' ? 'right' : 'left'}, ${PAGE(0)} 0%, ${PAGE(0.15)} 60%, ${PAGE(1)} 100%)`,
-        }}
-      />
-      <div
-        className="absolute inset-0"
-        style={{
-          background: `linear-gradient(to bottom, ${PAGE(0)} 0%, ${PAGE(0)} 60%, ${PAGE(1)} 100%)`,
-        }}
-      />
-    </div>
-  );
-}

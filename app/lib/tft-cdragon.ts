@@ -338,10 +338,9 @@ export function tftChampionTileUrl(
   return `${bundle.iconBase}assets/characters/${m[1]}/hud/${m[1]}_square.${m[2]}.png`;
 }
 
-// Companion icons (Chibis + Tacticians) live under a different CD namespace.
-// Bundle stores normalized paths like "assets/loadouts/companions/tooltip_x.png".
-export function tftCompanionIconUrl(bundle: TftAssetsBundle | null, iconPath: string | null | undefined): string | null {
-  if (!bundle || !iconPath) return null;
-  const base = bundle.companionsIconBase || 'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/';
-  return base + iconPath;
-}
+// Companion-Icons (Chibis + Tacticians) lagen in einem eigenen CD-Namespace.
+// Der einzige Konsument war die alte TFT-Kopfzone; seit sie Set-Splashes zeigt,
+// liest niemand mehr companionsIconBase. Die Felder chibis/tacticians bleiben im
+// Bundle stehen (fetch-tft-assets.mjs liefert sie weiter aus) -- wer sie wieder
+// braucht, baut die URL-Ableitung mit ihrem Konsumenten zusammen neu auf, statt
+// eine Funktion ohne Leser zu pflegen.

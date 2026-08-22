@@ -32,3 +32,23 @@ if (typeof resolved !== 'number') {
 }
 
 export const CURRENT_SET: number = resolved;
+
+// Marketing-Name des Sets ("Space Gods"), sofern Riot ihn schon veroeffentlicht
+// hat. detect-tft-set.mjs traegt bewusst KEINEN geratenen Namen ein und faellt
+// auf `Set N` zurueck (scripts/detect-tft-set.mjs:20-33,200). Genau dieser
+// Fallback darf nicht als Name durchgereicht werden — sonst steht in der
+// TFT-Kopfzone ab dem Set-18-Bump am 26.08. "Set 18 · Set 18".
+//
+// `null` heisst also: es gibt noch keinen Namen, nicht "Name fehlt kaputt".
+const rawName: unknown = (tftSet as { setName?: unknown }).setName;
+const trimmedName = typeof rawName === 'string' ? rawName.trim() : '';
+const isFallbackName =
+  trimmedName === `Set ${CURRENT_SET}` || trimmedName === `Set${CURRENT_SET}`;
+
+export const CURRENT_SET_NAME: string | null =
+  trimmedName && !isFallbackName ? trimmedName : null;
+
+/** "Set 17 · Space Gods" — oder nur "Set 17", solange kein Name veroeffentlicht ist. */
+export const CURRENT_SET_LABEL: string = CURRENT_SET_NAME
+  ? `Set ${CURRENT_SET} · ${CURRENT_SET_NAME}`
+  : `Set ${CURRENT_SET}`;

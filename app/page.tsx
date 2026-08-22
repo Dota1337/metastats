@@ -131,11 +131,17 @@ export default function Home() {
            swallow mousedown when the user starts a text selection on the
            hero copy below. */}
         <div className="absolute inset-0 pointer-events-none">
+          <link
+            rel="preload"
+            as="image"
+            href="https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Kaisa_0.jpg"
+          />
           <img
             src="https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Kaisa_0.jpg"
             alt=""
             className="absolute inset-0 w-full h-full object-cover"
             style={{ objectPosition: 'center 10%' }}
+            fetchPriority="high"
           />
           {/* Gradient overlay — bottom fades to page bg, center stays visible */}
           <div className="absolute inset-0" style={{
@@ -169,7 +175,7 @@ export default function Home() {
         <div className="absolute inset-0 pointer-events-none bg-gradient-to-r from-surface-page via-transparent to-surface-page" />
 
         {/* Hero content */}
-        <div className="relative px-6 pt-20 pb-16 text-center hero-animate">
+        <div className="relative px-6 pt-20 pb-4 text-center hero-animate">
           {/* Gold accent line */}
           <div className="w-12 h-0.5 bg-gradient-to-r from-transparent via-[#c89b3c] to-transparent mx-auto mb-6" />
 
@@ -203,6 +209,27 @@ export default function Home() {
                 {t('home.searchBtn')}
               </button>
             </div>
+          </div>
+
+          {/* Kennzahlen. Standen frueher als drei Karten unterhalb der Reiter
+              und damit nur im Suche-Reiter; hier tragen sie die Kopfzone mit,
+              ohne einen weiteren Block Hoehe zu kosten. Solange die Werte nicht
+              da sind, steht ein Skelett und keine erfundene Zahl. */}
+          <div className="flex flex-wrap justify-center gap-x-12 gap-y-4 mb-8">
+            {[
+              { label: t('home.analyzedMatches'), value: siteStats?.matchesAnalyzed },
+              { label: t('home.proPlayers'), value: siteStats?.totalProPlayers },
+              { label: t('teams.title'), value: siteStats?.totalTeams },
+            ].map(s => (
+              <div key={s.label} className="text-center">
+                {typeof s.value === 'number' ? (
+                  <div className="text-white text-xl font-bold">{s.value.toLocaleString(locale)}</div>
+                ) : (
+                  <div className="h-5 w-20 bg-surface-overlay rounded animate-pulse mx-auto my-1" />
+                )}
+                <div className="text-fg-muted text-[11px] uppercase tracking-wider">{s.label}</div>
+              </div>
+            ))}
           </div>
 
           {/* Tab switcher */}
@@ -285,32 +312,6 @@ export default function Home() {
       <div className="max-w-6xl mx-auto px-6 pb-8">
         {activeTab === 'search' && (
           <>
-            {/* Stats Cards with 3D effect */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-              {(siteStats === null
-                ? [
-                    { label: t('teams.title'), sub: t('home.verifiedRosters') },
-                    { label: t('home.proPlayers'), sub: t('home.allLeagues') },
-                    { label: t('home.analyzedMatches'), sub: '' },
-                  ].map(s => ({ ...s, value: null as string | null }))
-                : [
-                    { label: t('teams.title'), value: siteStats.totalTeams.toLocaleString(locale), sub: t('home.verifiedRosters') },
-                    { label: t('home.proPlayers'), value: siteStats.totalProPlayers.toLocaleString(locale), sub: t('home.allLeagues') },
-                    { label: t('home.analyzedMatches'), value: siteStats.matchesAnalyzed.toLocaleString(locale), sub: '' },
-                  ]
-              ).map(s => (
-                <div key={s.label} className="card-3d glass rounded-lg p-4">
-                  <div className="text-fg-secondary text-xs mb-1">{s.label}</div>
-                  {s.value === null ? (
-                    <div className="h-8 w-20 bg-surface-overlay rounded animate-pulse my-0.5" />
-                  ) : (
-                    <div className="text-white text-2xl font-bold">{s.value}</div>
-                  )}
-                  {s.sub && <div className="text-[#c89b3c] text-xs mt-1">{s.sub}</div>}
-                </div>
-              ))}
-            </div>
-
             {/* Recent searches + Features */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 glass-strong rounded-xl p-5">
@@ -372,7 +373,7 @@ export default function Home() {
         )}
 
         {activeTab === 'marktwert' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4">
             {loadingMarket ? (
               <div className="col-span-1 lg:col-span-3 text-center text-fg-secondary py-20">{t('common.loading')}</div>
             ) : (

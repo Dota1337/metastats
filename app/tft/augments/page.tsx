@@ -113,7 +113,7 @@ export default function TftAugmentsReferencePage() {
   return (
     <main className="min-h-screen bg-surface-page">
       <Nav active="augments" />
-      <TftHero pageTitle={t('nav.augments')} subtitle={assets?.setName} />
+      <TftHero pageTitle={t('nav.augments')} />
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-2 pb-6">
         {/* Filter + search row. Keep it tight — no info-texts, just controls. */}
         <div className="flex flex-wrap items-center gap-2 mb-4">

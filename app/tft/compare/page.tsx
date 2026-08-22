@@ -11,6 +11,7 @@ import TftHero from '../../components/tft/TftHero';
 import { formatTier } from '../../lib/rank-format';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import { formatStage } from '../../lib/tft-stage';
+import { CURRENT_SET } from '../../lib/current-set';
 
 const CompareRadar = dynamic(() => import('../../components/CompareRadar'), { ssr: false });
 
@@ -77,7 +78,7 @@ function tftUnitIconUrls(characterId: string, assets: TftAssetsBundle | null): {
   const splash = tftIconUrl(assets, champ?.icon);
   // Fallback when assets aren't loaded yet: best-guess square URL from the
   // characterId itself. Same shape as before so existing units keep working.
-  const fallbackSquare = `https://raw.communitydragon.org/latest/game/assets/characters/${characterId.toLowerCase()}/hud/${characterId.toLowerCase()}_square.tft_set17.png`;
+  const fallbackSquare = `https://raw.communitydragon.org/latest/game/assets/characters/${characterId.toLowerCase()}/hud/${characterId.toLowerCase()}_square.tft_set${CURRENT_SET}.png`;
   return { square: tile || fallbackSquare, splash };
 }
 

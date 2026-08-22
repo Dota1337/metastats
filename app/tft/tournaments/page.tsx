@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import { withAlpha } from '../../lib/color';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
 import TftHero from '../../components/tft/TftHero';
@@ -193,7 +194,7 @@ function TournamentRow({ t, locale }: { t: Tournament; locale: string }) {
         {t.tier && (
           <div
             className="flex items-center justify-center w-10 h-10 rounded font-bold text-base flex-shrink-0"
-            style={{ color: tierColor, backgroundColor: `${tierColor}20`, border: `1px solid ${tierColor}55` }}
+            style={{ color: tierColor, backgroundColor: `${withAlpha(tierColor, 0x20)}`, border: `1px solid ${withAlpha(tierColor, 0x55)}` }}
           >
             {t.tier}
           </div>

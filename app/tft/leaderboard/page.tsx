@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { withAlpha } from '../../lib/color';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
 import { useI18n, LOCALE_MAP } from '../../lib/i18n';
@@ -109,7 +110,7 @@ export default function TftLeaderboardPage() {
                     <div key={item.key} className="flex-1 flex flex-col items-center gap-1">
                       <div className="text-[10px] font-medium" style={{ color: item.color }}>{display}</div>
                       <div className="w-full relative" style={{ height: '90px' }}>
-                        <div className="absolute bottom-0 w-full rounded-t transition-all duration-500" style={{ height: `${barH}%`, backgroundColor: item.color, opacity: 0.7, boxShadow: `0 0 8px ${item.color}40` }} />
+                        <div className="absolute bottom-0 w-full rounded-t transition-all duration-500" style={{ height: `${barH}%`, backgroundColor: item.color, opacity: 0.7, boxShadow: `0 0 8px ${withAlpha(item.color, 0x40)}` }} />
                       </div>
                       <div className="text-[10px] text-center" style={{ color: item.color }}>{item.label}</div>
                     </div>

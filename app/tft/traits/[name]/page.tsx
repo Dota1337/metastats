@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { withAlpha } from '../../../lib/color';
 import { useParams, useSearchParams } from 'next/navigation';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
@@ -425,7 +426,7 @@ export default function TftTraitDetailPage() {
                     {styleColor && (
                       <span
                         className="px-2 py-0.5 rounded text-[10px] uppercase tracking-widest"
-                        style={{ backgroundColor: `${styleColor.hex}20`, color: styleColor.hex }}
+                        style={{ backgroundColor: `${withAlpha(styleColor.hex, 0x20)}`, color: styleColor.hex }}
                       >
                         {styleColor.label}
                       </span>
@@ -539,7 +540,7 @@ function TierPill({ tier }: { tier: TftTraitTier }) {
   return (
     <div
       className="flex items-center gap-2 rounded px-2.5 py-1 text-xs font-medium tabular-nums"
-      style={{ backgroundColor: `${color}18`, color, border: `1px solid ${color}40` }}
+      style={{ backgroundColor: `${withAlpha(color, 0x18)}`, color, border: `1px solid ${withAlpha(color, 0x40)}` }}
     >
       <span className="text-base font-bold">{tier.minUnits}</span>
       {sc && <span className="text-[10px] uppercase tracking-widest opacity-80">{sc.label}</span>}

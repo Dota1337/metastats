@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { withAlpha } from '../../../lib/color';
 import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Nav from '../../../components/Nav';
@@ -383,7 +384,7 @@ export default function TftCompDetailPage() {
                         <div
                           key={row.level}
                           className="bg-surface-raised border rounded p-3"
-                          style={{ borderColor: `${accentColor}60`, borderWidth: isBest ? 2 : 1, opacity: lowSample ? 0.55 : 1 }}
+                          style={{ borderColor: `${withAlpha(accentColor, 0x60)}`, borderWidth: isBest ? 2 : 1, opacity: lowSample ? 0.55 : 1 }}
                         >
                           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-2">
                             <span className="text-base font-semibold" style={{ color: accentColor }}>
@@ -537,7 +538,7 @@ export default function TftCompDetailPage() {
                         <div
                           key={row.star}
                           className="bg-surface-raised border rounded p-3"
-                          style={{ borderColor: `${starColor}40`, opacity: lowSample ? 0.55 : 1 }}
+                          style={{ borderColor: `${withAlpha(starColor, 0x40)}`, opacity: lowSample ? 0.55 : 1 }}
                         >
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-base font-medium" style={{ color: starColor }}>
@@ -601,7 +602,7 @@ export default function TftCompDetailPage() {
                         <div
                           key={row.contested}
                           className="bg-surface-raised border rounded p-3"
-                          style={{ borderColor: `${accentColor}40`, opacity: lowSample ? 0.55 : 1 }}
+                          style={{ borderColor: `${withAlpha(accentColor, 0x40)}`, opacity: lowSample ? 0.55 : 1 }}
                         >
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-xs font-medium uppercase tracking-widest" style={{ color: accentColor }}>{label}</span>

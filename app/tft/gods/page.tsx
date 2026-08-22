@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import { withAlpha } from '../../lib/color';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
 import TftHero from '../../components/tft/TftHero';
@@ -272,7 +273,7 @@ export default function TftGodsPage() {
 function StageChip({ label, accent, boldLabel }: { label: string; accent?: string; boldLabel?: string }) {
   const color = accent || '#9ab0bf';
   return (
-    <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-surface-raised border" style={{ borderColor: color + '40' }}>
+    <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-surface-raised border" style={{ borderColor: withAlpha(color, 0x40) }}>
       <span className="text-[10px] uppercase tracking-widest tabular-nums" style={{ color }}>{label}</span>
       {boldLabel && <span className="text-[10px] uppercase tracking-widest" style={{ color }}>· {boldLabel}</span>}
     </div>

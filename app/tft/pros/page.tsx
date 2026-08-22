@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import { withAlpha } from '../../lib/color';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
@@ -331,7 +332,7 @@ export default function TftProsPage() {
                   <div>
                     <span
                       className="text-[10px] px-1.5 py-0.5 rounded font-medium"
-                      style={{ color: badge.color, backgroundColor: badge.bg, border: `1px solid ${badge.color}40` }}
+                      style={{ color: badge.color, backgroundColor: badge.bg, border: `1px solid ${withAlpha(badge.color, 0x40)}` }}
                       title={`Confidence: ${p.confidence_score ?? 0}/100`}
                     >
                       {badge.label}

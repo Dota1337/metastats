@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState, useMemo } from 'react';
+import { withAlpha } from '../../../lib/color';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
@@ -155,7 +156,7 @@ function CompPanel({
   return (
     <div
       className="bg-surface-base border rounded p-4"
-      style={{ borderColor: `${accentColor}40` }}
+      style={{ borderColor: `${withAlpha(accentColor, 0x40)}` }}
     >
       <div className="flex items-center gap-3 mb-3">
         {carryUrl ? (
@@ -287,7 +288,7 @@ function TraitColumn({
               <div
                 key={tr.apiName}
                 className="flex items-center gap-1 px-1.5 py-1 rounded border bg-surface-sunken"
-                style={{ borderColor: `${color}55` }}
+                style={{ borderColor: `${withAlpha(color, 0x55)}` }}
                 title={tr.displayName}
               >
                 {iconUrl && <img src={iconUrl} alt="" className="w-4 h-4" style={{ filter: `drop-shadow(0 0 2px ${color})` }} />}

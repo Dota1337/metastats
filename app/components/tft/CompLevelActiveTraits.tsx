@@ -1,5 +1,6 @@
 'use client';
 import { useMemo } from 'react';
+import { withAlpha } from '../../lib/color';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
 import { tftIconUrl } from '../../lib/tft-cdragon';
 import { computeActiveTraits, activeTraitStyleColor } from '../../lib/tft-active-traits';
@@ -32,7 +33,7 @@ export default function CompLevelActiveTraits({
           <div
             key={tr.apiName}
             className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-sunken border"
-            style={{ borderColor: `${color}55` }}
+            style={{ borderColor: `${withAlpha(color, 0x55)}` }}
             title={`${tr.count} ${tr.displayName}`}
           >
             {iconUrl ? (
@@ -43,7 +44,7 @@ export default function CompLevelActiveTraits({
                 style={{ filter: `drop-shadow(0 0 1px ${color})` }}
               />
             ) : (
-              <div className="w-3.5 h-3.5 rounded-sm" style={{ backgroundColor: `${color}33` }} />
+              <div className="w-3.5 h-3.5 rounded-sm" style={{ backgroundColor: `${withAlpha(color, 0x33)}` }} />
             )}
             <span
               className="text-[10px] font-bold tabular-nums"

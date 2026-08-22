@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { withAlpha } from '../lib/color';
 import Nav from '../components/Nav';
 import Footer from '../components/Footer';
 import PageHero from '../components/PageHero';
@@ -286,7 +287,7 @@ export default function Leaderboard() {
                             height: `${barHeight}%`,
                             backgroundColor: item.color,
                             opacity: 0.7,
-                            boxShadow: `0 0 8px ${item.color}40`,
+                            boxShadow: `0 0 8px ${withAlpha(item.color, 0x40)}`,
                           }}
                         />
                       </div>

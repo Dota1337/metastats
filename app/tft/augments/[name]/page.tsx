@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState, useMemo } from 'react';
+import { withAlpha } from '../../../lib/color';
 import { useParams } from 'next/navigation';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
@@ -103,7 +104,7 @@ export default function TftAugmentReferenceDetailPage() {
                   {tier > 0 && (
                     <span
                       className="px-2 py-0.5 rounded text-[10px] uppercase tracking-widest"
-                      style={{ backgroundColor: `${tierColor}20`, color: tierColor, border: `1px solid ${tierColor}55` }}
+                      style={{ backgroundColor: `${withAlpha(tierColor, 0x20)}`, color: tierColor, border: `1px solid ${withAlpha(tierColor, 0x55)}` }}
                     >
                       {TIER_LABELS[tier]}
                     </span>
@@ -136,8 +137,8 @@ export default function TftAugmentReferenceDetailPage() {
                         className="text-xs tabular-nums px-3 py-1 rounded border font-medium transition-opacity"
                         style={{
                           color: isActive ? c : '#5a6a80',
-                          backgroundColor: isActive ? `${c}1a` : 'transparent',
-                          borderColor: isActive ? `${c}55` : '#1e2a3a',
+                          backgroundColor: isActive ? `${withAlpha(c, 0x1a)}` : 'transparent',
+                          borderColor: isActive ? `${withAlpha(c, 0x55)}` : '#1e2a3a',
                           opacity: isActive ? 1 : 0.45,
                         }}
                       >

@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { withAlpha } from '../../../lib/color';
 import { useParams, useSearchParams } from 'next/navigation';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
@@ -210,7 +211,7 @@ function ActivatedTraits({
             key={tr.name}
             href={`/tft/traits/${encodeURIComponent(tr.name)}`}
             className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] hover:brightness-125 transition"
-            style={{ backgroundColor: `${styleColor}25`, color: styleColor }}
+            style={{ backgroundColor: `${withAlpha(styleColor, 0x25)}`, color: styleColor }}
           >
             {url && <img src={url} alt={info!.name} className="w-3 h-3" />}
             <span>{tr.numUnits} {info?.name || prettyTraitName(tr.name)}</span>

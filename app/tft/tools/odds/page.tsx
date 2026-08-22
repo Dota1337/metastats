@@ -1,5 +1,6 @@
 'use client';
 import { useMemo, useState } from 'react';
+import { withAlpha } from '../../../lib/color';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
@@ -148,7 +149,7 @@ export default function TftRollOddsPage() {
                         ? 'border-current text-white'
                         : 'border-border-subtle bg-surface-raised text-fg-secondary hover:border-border-subtle'
                     }`}
-                    style={{ color: cost === c ? COST_COLORS[c] : undefined, backgroundColor: cost === c ? `${COST_COLORS[c]}22` : undefined }}
+                    style={{ color: cost === c ? COST_COLORS[c] : undefined, backgroundColor: cost === c ? `${withAlpha(COST_COLORS[c], 0x22)}` : undefined }}
                   >
                     {c}
                   </button>

@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import { withAlpha } from '../../lib/color';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
@@ -269,7 +270,7 @@ function TierStrip({ tiers }: { tiers: TftTraitTier[] }) {
           <div
             key={i}
             className="rounded px-1.5 py-0.5 text-[10px] font-bold tabular-nums"
-            style={{ backgroundColor: `${color}22`, color, border: `1px solid ${color}55` }}
+            style={{ backgroundColor: `${withAlpha(color, 0x22)}`, color, border: `1px solid ${withAlpha(color, 0x55)}` }}
           >
             {tier.minUnits}
           </div>

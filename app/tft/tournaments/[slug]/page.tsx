@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { withAlpha } from '../../../lib/color';
 import { useParams } from 'next/navigation';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
@@ -99,7 +100,7 @@ export default function TftTournamentDetailPage() {
             {tournament.tier && (
               <div
                 className="flex items-center justify-center w-14 h-14 rounded-lg font-bold text-xl flex-shrink-0"
-                style={{ color: tierColor, backgroundColor: `${tierColor}20`, border: `1px solid ${tierColor}55` }}
+                style={{ color: tierColor, backgroundColor: `${withAlpha(tierColor, 0x20)}`, border: `1px solid ${withAlpha(tierColor, 0x55)}` }}
               >
                 {tournament.tier}
               </div>
@@ -107,7 +108,7 @@ export default function TftTournamentDetailPage() {
             <div className="flex-1 min-w-0">
               <h1 className="text-white text-2xl font-medium">{cleanTournamentName(tournament.name)}</h1>
               <div className="flex items-center gap-2 flex-wrap mt-1.5">
-                <span className="text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded" style={{ backgroundColor: `${statusColor}25`, color: statusColor }}>
+                <span className="text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded" style={{ backgroundColor: `${withAlpha(statusColor, 0x25)}`, color: statusColor }}>
                   {t(`tft.tournaments.${tournament.status}` as const)}
                 </span>
                 {tournament.region && (

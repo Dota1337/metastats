@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import { withAlpha } from '../../lib/color';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
@@ -287,7 +288,7 @@ function TierBadge({ letter, t }: { letter: TierLetter | null; t: (k: any) => st
   return (
     <span
       className="inline-flex items-center justify-center w-7 h-6 rounded text-[11px] font-bold tabular-nums"
-      style={{ color, backgroundColor: `${color}1f`, border: `1px solid ${color}50` }}
+      style={{ color, backgroundColor: `${withAlpha(color, 0x1f)}`, border: `1px solid ${withAlpha(color, 0x50)}` }}
       title={t(`tft.tier.tooltip.${letter}` as any)}
     >{letter}</span>
   );

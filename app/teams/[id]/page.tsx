@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useMemo } from 'react';
+import { withAlpha } from '../../lib/color';
 import { useParams } from 'next/navigation';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
@@ -174,9 +175,9 @@ export default function TeamDetailPage() {
                   <div
                     className="w-8 h-8 rounded-full flex items-center justify-center text-sm cursor-default"
                     style={{
-                      backgroundColor: `${TROPHY_COLORS[t.trophy]}20`,
+                      backgroundColor: `${withAlpha(TROPHY_COLORS[t.trophy], 0x20)}`,
                       color: TROPHY_COLORS[t.trophy],
-                      border: `1px solid ${TROPHY_COLORS[t.trophy]}40`,
+                      border: `1px solid ${withAlpha(TROPHY_COLORS[t.trophy], 0x40)}`,
                     }}
                   >
                     {t.trophy === 'gold' ? '\u2605' : t.trophy === 'silver' ? '\u2606' : '\u25CF'}
@@ -373,7 +374,7 @@ function TournamentHistory({ results, formatPrize }: { results: any[]; formatPri
                   {r.trophy ? (
                     <div
                       className="w-5 h-5 rounded-full flex items-center justify-center text-xs"
-                      style={{ backgroundColor: `${TROPHY_COLORS[r.trophy]}20`, color: TROPHY_COLORS[r.trophy] }}
+                      style={{ backgroundColor: `${withAlpha(TROPHY_COLORS[r.trophy], 0x20)}`, color: TROPHY_COLORS[r.trophy] }}
                     >
                       {r.trophy === 'gold' ? '\u2605' : r.trophy === 'silver' ? '\u2606' : '\u25CF'}
                     </div>
@@ -393,7 +394,7 @@ function TournamentHistory({ results, formatPrize }: { results: any[]; formatPri
                 {r.trophy ? (
                   <div
                     className="w-5 h-5 rounded-full flex items-center justify-center text-xs flex-shrink-0"
-                    style={{ backgroundColor: `${TROPHY_COLORS[r.trophy]}20`, color: TROPHY_COLORS[r.trophy] }}
+                    style={{ backgroundColor: `${withAlpha(TROPHY_COLORS[r.trophy], 0x20)}`, color: TROPHY_COLORS[r.trophy] }}
                   >
                     {r.trophy === 'gold' ? '\u2605' : r.trophy === 'silver' ? '\u2606' : '\u25CF'}
                   </div>

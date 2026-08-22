@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { withAlpha } from '../../lib/color';
 import { useRouter } from 'next/navigation';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
 import { tftIconUrl, tftChampionTileUrl, findChampion, findItem, tftTraitDisplayName, tftTraitDescription, tftChampionTooltip } from '../../lib/tft-cdragon';
@@ -163,7 +164,7 @@ export default function CompCard({
         <div className="flex items-center gap-3">
           {rank != null && <div className="text-fg-muted text-sm font-medium w-6 text-center">{rank}</div>}
           <div className="flex items-center justify-center w-10 h-10 rounded-lg font-bold text-base"
-               style={{ color: tier.color, backgroundColor: tier.bg, border: `1px solid ${tier.color}40` }}>
+               style={{ color: tier.color, backgroundColor: tier.bg, border: `1px solid ${withAlpha(tier.color, 0x40)}` }}>
             {tier.label}
           </div>
         </div>
@@ -227,8 +228,8 @@ export default function CompCard({
                   className="ml-1.5 inline-flex items-center px-1.5 py-[1px] rounded text-[10px] font-medium align-middle"
                   style={{
                     color: difficultyColor(guideMatch.guide.difficulty),
-                    backgroundColor: `${difficultyColor(guideMatch.guide.difficulty)}1f`,
-                    border: `1px solid ${difficultyColor(guideMatch.guide.difficulty)}40`,
+                    backgroundColor: `${withAlpha(difficultyColor(guideMatch.guide.difficulty), 0x1f)}`,
+                    border: `1px solid ${withAlpha(difficultyColor(guideMatch.guide.difficulty), 0x40)}`,
                   }}
                 >
                   {t(`tft.comp.difficulty.${guideMatch.guide.difficulty}` as any) || guideMatch.guide.difficulty}

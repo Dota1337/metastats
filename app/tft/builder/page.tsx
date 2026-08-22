@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
+import { withAlpha } from '../../lib/color';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
@@ -800,7 +801,7 @@ export default function TftBuilderPage() {
                       <div
                         key={tr.apiName}
                         className="flex items-center gap-2 p-1.5 rounded"
-                        style={{ backgroundColor: tier ? `${styleColor}15` : 'transparent' }}
+                        style={{ backgroundColor: tier ? `${withAlpha(styleColor, 0x15)}` : 'transparent' }}
                       >
                         {iconUrl ? (
                           <img src={iconUrl} alt="" className="w-6 h-6 rounded" style={{ filter: tier ? 'none' : 'grayscale(1)' }} />
@@ -1037,7 +1038,7 @@ export default function TftBuilderPage() {
                           className="flex-1 py-1.5 rounded text-xs font-bold transition border-2"
                           style={{
                             borderColor: isActive ? color : '#1e2a3a',
-                            backgroundColor: isActive ? `${color}22` : '#0a0e1a',
+                            backgroundColor: isActive ? `${withAlpha(color, 0x22)}` : '#0a0e1a',
                             color: isActive ? color : '#5a6a80',
                           }}
                         >

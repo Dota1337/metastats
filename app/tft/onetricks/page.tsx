@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { withAlpha } from '../../lib/color';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
 import { useI18n } from '../../lib/i18n';
@@ -108,7 +109,7 @@ export default function TftOneTricksPage() {
               <div key={p.puuid} className="bg-surface-base border border-border-subtle rounded p-3 hover:border-accent-a30 transition-colors">
                 <div className="flex items-center gap-3 mb-2">
                   <span className="text-fg-muted text-xs tabular-nums w-6 font-medium">#{idx + 1}</span>
-                  <span className="text-[9px] tabular-nums uppercase tracking-widest px-1.5 py-0.5 rounded font-medium" style={{ backgroundColor: `${tierBg}20`, color: tierBg }}>
+                  <span className="text-[9px] tabular-nums uppercase tracking-widest px-1.5 py-0.5 rounded font-medium" style={{ backgroundColor: `${withAlpha(tierBg, 0x20)}`, color: tierBg }}>
                     {p.tier.slice(0, 3)}
                   </span>
                   <a
@@ -127,7 +128,7 @@ export default function TftOneTricksPage() {
                   </div>
                   <div className="h-1.5 bg-surface-overlay rounded overflow-hidden flex">
                     <div className="h-full" style={{ width: `${(p.top2Share * top1Width / 100 * 100).toFixed(0)}%`, backgroundColor: specColor }} />
-                    <div className="h-full" style={{ width: `${(p.top2Share * (1 - top1Width / 100) * 100).toFixed(0)}%`, backgroundColor: `${specColor}80` }} />
+                    <div className="h-full" style={{ width: `${(p.top2Share * (1 - top1Width / 100) * 100).toFixed(0)}%`, backgroundColor: `${withAlpha(specColor, 0x80)}` }} />
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import { withAlpha } from '../../lib/color';
 import { useSearchParams } from 'next/navigation';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
@@ -548,7 +549,7 @@ export default function TftExplorerPage() {
                               type="button"
                               onClick={() => setStarLevels(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])}
                               className={`flex-1 py-1.5 text-xs rounded border tabular-nums ${active ? 'text-white' : 'bg-surface-raised border-border-subtle text-fg-secondary'}`}
-                              style={active ? { backgroundColor: `${color}30`, borderColor: color } : undefined}
+                              style={active ? { backgroundColor: `${withAlpha(color, 0x30)}`, borderColor: color } : undefined}
                               title={s === 4 ? '4★ — selten (Sona Command Mods, Aurelion Sol Quest)' : undefined}
                             >
                               {s}★
@@ -884,7 +885,7 @@ function FilterChip({
       type="button"
       onClick={onRemove}
       className="flex items-center gap-1.5 px-2 py-1 rounded border text-[11px] hover:brightness-125 transition"
-      style={{ borderColor: `${color}60`, backgroundColor: `${color}1f`, color }}
+      style={{ borderColor: `${withAlpha(color, 0x60)}`, backgroundColor: `${withAlpha(color, 0x1f)}`, color }}
       aria-label={`Remove filter: ${label}`}
     >
       {icon && <img src={icon} alt="" className="w-3.5 h-3.5 rounded-sm object-cover" />}

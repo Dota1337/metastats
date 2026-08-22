@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { withAlpha } from '../../lib/color';
 import { useParams } from 'next/navigation';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
@@ -232,9 +233,9 @@ export default function ChampionDetailPage() {
                       key={tag}
                       className="px-3 py-1 rounded-full text-xs font-medium"
                       style={{
-                        backgroundColor: `${TAG_COLORS[tag] || '#c89b3c'}20`,
+                        backgroundColor: `${withAlpha(TAG_COLORS[tag] || '#c89b3c', 0x20)}`,
                         color: TAG_COLORS[tag] || '#c89b3c',
-                        border: `1px solid ${TAG_COLORS[tag] || '#c89b3c'}40`,
+                        border: `1px solid ${withAlpha(TAG_COLORS[tag] || '#c89b3c', 0x40)}`,
                       }}
                     >
                       {tag}

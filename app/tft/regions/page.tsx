@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import { withAlpha } from '../../lib/color';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
@@ -226,8 +227,8 @@ function RegionRowCard({
               className="inline-flex items-center gap-1 px-1.5 py-[1px] rounded text-[9px] font-semibold tabular-nums flex-shrink-0 cursor-help"
               style={{
                 color: badgeColor,
-                backgroundColor: `${badgeColor}1f`,
-                border: `1px solid ${badgeColor}40`,
+                backgroundColor: `${withAlpha(badgeColor, 0x1f)}`,
+                border: `1px solid ${withAlpha(badgeColor, 0x40)}`,
               }}
               title={badgeTooltip}
               onClick={(e) => e.preventDefault()}

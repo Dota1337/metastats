@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState, useMemo } from 'react';
+import { withAlpha } from '../../../lib/color';
 import { useSearchParams } from 'next/navigation';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
@@ -118,7 +119,7 @@ function AugmentPanel({
   return (
     <div
       className="bg-surface-base border rounded p-4"
-      style={{ borderColor: `${accentColor}40` }}
+      style={{ borderColor: `${withAlpha(accentColor, 0x40)}` }}
     >
       <div className="flex items-start gap-3 mb-3">
         {iconUrl ? (
@@ -136,7 +137,7 @@ function AugmentPanel({
           {tier > 0 && (
             <span
               className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] uppercase tracking-widest"
-              style={{ backgroundColor: `${tierColor}20`, color: tierColor, border: `1px solid ${tierColor}55` }}
+              style={{ backgroundColor: `${withAlpha(tierColor, 0x20)}`, color: tierColor, border: `1px solid ${withAlpha(tierColor, 0x55)}` }}
             >
               {TIER_LABELS[tier]}
             </span>

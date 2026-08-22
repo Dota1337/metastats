@@ -1,5 +1,6 @@
 'use client';
 import { useMemo, useState } from 'react';
+import { withAlpha } from '../../lib/color';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
 import { tftIconUrl, tftChampionTileUrl, findChampion, tftTraitDescription } from '../../lib/tft-cdragon';
 import { costColor as costColorOf } from '../../lib/tft-ui';
@@ -97,7 +98,7 @@ function TraitPill({
       onClick={onToggle}
       className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border bg-surface-raised hover:bg-[#1a2238] transition-colors cursor-pointer"
       style={{
-        borderColor: isExpanded ? color : `${color}66`,
+        borderColor: isExpanded ? color : `${withAlpha(color, 0x66)}`,
         borderWidth: isExpanded ? 2 : 1,
       }}
       title={tooltip}
@@ -111,7 +112,7 @@ function TraitPill({
           style={{ filter: `drop-shadow(0 0 2px ${color})` }}
         />
       ) : (
-        <div className="w-5 h-5 rounded-sm" style={{ backgroundColor: `${color}33` }} />
+        <div className="w-5 h-5 rounded-sm" style={{ backgroundColor: `${withAlpha(color, 0x33)}` }} />
       )}
       <span
         className="text-[11px] font-bold tabular-nums w-5 text-center"
@@ -142,7 +143,7 @@ function TraitDrillDown({
   return (
     <div
       className="mt-3 p-3 rounded-md border bg-surface-sunken"
-      style={{ borderColor: `${color}40` }}
+      style={{ borderColor: `${withAlpha(color, 0x40)}` }}
     >
       <div className="flex items-center gap-2 mb-2">
         <span className="text-[10px] uppercase tracking-widest font-semibold" style={{ color }}>

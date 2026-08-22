@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
+import { withAlpha } from '../lib/color';
 import { usePathname } from 'next/navigation';
 import { useI18n, LOCALE_MAP } from '../lib/i18n';
 import { detectGameFromPath, type Game } from '../lib/games';
@@ -602,7 +603,7 @@ function TftTournamentRow({
         {tournament.tier && (
           <div
             className="flex items-center justify-center w-7 h-7 rounded text-[10px] font-bold flex-shrink-0"
-            style={{ color, backgroundColor: `${color}20`, border: `1px solid ${color}55` }}
+            style={{ color, backgroundColor: `${withAlpha(color, 0x20)}`, border: `1px solid ${withAlpha(color, 0x55)}` }}
           >
             {tournament.tier}
           </div>

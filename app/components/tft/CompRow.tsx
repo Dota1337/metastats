@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { withAlpha } from '../../lib/color';
 import { useRouter } from 'next/navigation';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
 import { tftIconUrl, tftChampionTileUrl, findChampion, findItem, tftTraitDisplayName, tftTraitDescription, tftChampionTooltip } from '../../lib/tft-cdragon';
@@ -232,7 +233,7 @@ export default function CompRow({
         <div className="text-fg-muted tabular-nums text-right text-[13px]">{rank > 0 ? rank : ''}</div>
         <div
           className="w-[30px] h-[30px] rounded-md flex items-center justify-center font-bold text-sm shadow-sm"
-          style={{ color: tier.color, backgroundColor: `${tier.color}28`, border: `1.5px solid ${tier.color}55` }}
+          style={{ color: tier.color, backgroundColor: `${withAlpha(tier.color, 0x28)}`, border: `1.5px solid ${withAlpha(tier.color, 0x55)}` }}
           title={tierLetter ? t(`tft.tier.tooltip.${tierLetter}` as any) : t('tft.tier.tooltip.empty')}
         >
           {tier.label}
@@ -282,8 +283,8 @@ export default function CompRow({
                 className="ml-1 inline-flex items-center px-1.5 py-[1px] rounded text-[9px] font-medium align-middle"
                 style={{
                   color: difficultyColor(guideMatch.guide.difficulty),
-                  backgroundColor: `${difficultyColor(guideMatch.guide.difficulty)}1f`,
-                  border: `1px solid ${difficultyColor(guideMatch.guide.difficulty)}40`,
+                  backgroundColor: `${withAlpha(difficultyColor(guideMatch.guide.difficulty), 0x1f)}`,
+                  border: `1px solid ${withAlpha(difficultyColor(guideMatch.guide.difficulty), 0x40)}`,
                 }}
               >
                 {t(`tft.comp.difficulty.${guideMatch.guide.difficulty}` as any) || guideMatch.guide.difficulty}
@@ -295,7 +296,7 @@ export default function CompRow({
               {descriptor && (
                 <span
                   className="px-1.5 py-[1px] rounded text-[10px] font-medium"
-                  style={{ color: descriptor.color, backgroundColor: `${descriptor.color}1f`, border: `1px solid ${descriptor.color}40` }}
+                  style={{ color: descriptor.color, backgroundColor: `${withAlpha(descriptor.color, 0x1f)}`, border: `1px solid ${withAlpha(descriptor.color, 0x40)}` }}
                 >
                   {descriptor.label}
                 </span>

@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import { withAlpha } from '../../lib/color';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
 import TftHero from '../../components/tft/TftHero';
@@ -134,7 +135,7 @@ export default function TftAugmentsReferencePage() {
                     ? 'text-white'
                     : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-accent-a40'
                 }`}
-                style={active ? { backgroundColor: `${color}25`, borderColor: `${color}80`, color } : undefined}
+                style={active ? { backgroundColor: `${withAlpha(color, 0x25)}`, borderColor: `${withAlpha(color, 0x80)}`, color } : undefined}
               >
                 {tk === 'all' ? t('tft.augment.allTiers') : label}
                 <span className="ml-1 text-fg-muted tabular-nums">{counts[tk]}</span>
@@ -168,7 +169,7 @@ export default function TftAugmentsReferencePage() {
                     ? 'text-white'
                     : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-accent-a40'
                 }`}
-                style={active ? { backgroundColor: `${color}25`, borderColor: `${color}80`, color } : undefined}
+                style={active ? { backgroundColor: `${withAlpha(color, 0x25)}`, borderColor: `${withAlpha(color, 0x80)}`, color } : undefined}
               >
                 {s === 'all' ? t('tft.augment.stage.all') : `Stage ${s}`}
               </button>
@@ -256,7 +257,7 @@ export default function TftAugmentsReferencePage() {
                             <span
                               key={s}
                               className="text-[10px] tabular-nums px-1.5 py-0.5 rounded border font-medium"
-                              style={{ color: c, backgroundColor: `${c}1a`, borderColor: `${c}55` }}
+                              style={{ color: c, backgroundColor: `${withAlpha(c, 0x1a)}`, borderColor: `${withAlpha(c, 0x55)}` }}
                             >
                               {s}
                             </span>

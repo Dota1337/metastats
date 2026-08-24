@@ -58,3 +58,19 @@ export function safeCdragonUrl(segments: string[]): string | null {
   if (url.search || url.hash) return null;
   return url.href;
 }
+
+// Zweite CDragon-Base: die LoL-Rank-Embleme liegen unter `latest/plugins/`,
+// nicht unter `latest/game/`. Sie sind damit bewusst NICHT proxybar — die
+// Allowlist oben deckt nur den Game-Baum ab — und laufen weiter direkt zum
+// Browser. Der Wert steht hier statt in den Seiten, weil `rankEmblemUrl()
+// bis 2026-08-24 wortgleich in `app/compare/page.tsx` und
+// `app/tft/compare/page.tsx` stand: ein Duplikat ohne Waechter, genau die
+// Bauform aus `reference_dual_module_patterns.md`.
+export const CDRAGON_PLUGINS_BASE = 'https://raw.communitydragon.org/latest/plugins/';
+
+// Tier-Strings kommen aus der Ranked-API in Grossschreibung; die Dateinamen
+// sind klein.
+export function rankEmblemUrl(tier: string | null | undefined): string | null {
+  if (!tier) return null;
+  return `${CDRAGON_PLUGINS_BASE}rcp-fe-lol-static-assets/global/default/images/ranked-emblem/emblem-${tier.toLowerCase()}.png`;
+}

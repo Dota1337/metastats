@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import ReactDOM from 'react-dom';
 import dynamic from 'next/dynamic';
 import Nav from '../components/Nav';
 import Footer from '../components/Footer';
@@ -8,6 +9,7 @@ import PageHero from '../components/PageHero';
 import { useI18n, LOCALE_MAP } from '../lib/i18n';
 import { usePageTitle } from '../lib/use-page-title';
 import { formatTier, NO_DIVISION_TIERS } from '../lib/rank-format';
+import { CDRAGON_PLUGINS_BASE, rankEmblemUrl } from '../lib/cdragon-base';
 
 const CompareRadar = dynamic(() => import('../components/CompareRadar'), { ssr: false });
 
@@ -161,13 +163,6 @@ function getRoleDistribution(matches: any[]): { role: string; count: number; pct
     .filter(([, c]) => c > 0)
     .map(([role, count]) => ({ role, count, pct: (count / total) * 100 }))
     .sort((a, b) => b.count - a.count);
-}
-
-// Riot CommunityDragon ships rank emblem PNGs at this stable path. Tier
-// strings come uppercase from the ranked API; we lowercase for the URL.
-function rankEmblemUrl(tier: string | undefined): string | null {
-  if (!tier) return null;
-  return `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-emblem/emblem-${tier.toLowerCase()}.png`;
 }
 
 // Head-to-head winner counter — used by the score banner. Stats where
@@ -418,6 +413,14 @@ function ChampionPoolBlock({ pool, count }: { pool: { champion: string; games: n
 // === Main Page ===
 
 export default function AnalysePage() {
+  // Seitenlokal, NICHT in app/layout.tsx: die Rank-Embleme sind nach dem
+  // Bild-Proxy die einzigen verbliebenen Direktzugriffe auf CommunityDragon,
+  // und sie kommen nur auf dieser Seite und /tft/compare vor. Ein preconnect
+  // im Layout wuerde auf jeder Route eine ungenutzte TLS-Verbindung oeffnen --
+  // derselbe Grund, aus dem der Preload in app/layout.tsx:86 seinerzeit nach
+  // app/page.tsx gewandert ist. ReactDOM.preconnect ist idempotent und der
+  // fuer Client Components dokumentierte Weg.
+  ReactDOM.preconnect(CDRAGON_PLUGINS_BASE);
   usePageTitle('pageTitle.compare');
   const { t } = useI18n();
   const [mode, setMode] = useState<'multi' | 'compare'>('compare');

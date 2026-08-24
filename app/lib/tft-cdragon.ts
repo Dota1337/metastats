@@ -345,6 +345,16 @@ function proxied(base: string, path: string): string {
   return '/api/img/' + path;
 }
 
+// Fuer handgebaute Game-Pfade, die nicht aus dem Bundle stammen. Es gibt genau
+// einen Leser: den Fallback-Square auf /tft/compare, der greift solange das
+// Bundle noch laedt. Ohne diesen Helper baut die Seite die absolute URL selbst
+// und laeuft am Proxy vorbei -- und zwar ausgerechnet beim ersten Render, weil
+// `assets` dort noch null ist. Wer einen Game-Pfad von Hand baut, nimmt das
+// hier statt CDRAGON_GAME_BASE direkt.
+export function tftGameAssetUrl(path: string): string {
+  return proxied(CDRAGON_GAME_BASE, path);
+}
+
 // The bundle's `champion.icon` is the wide splash-centered art used on
 // big surfaces (match-card units, player profile). For tight UI like the
 // items-page carrier strip we want the square hud tile that metatft and

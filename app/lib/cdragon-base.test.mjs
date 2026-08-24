@@ -4,7 +4,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { safeCdragonUrl, imageContentType, CDRAGON_GAME_BASE } from './cdragon-base.ts';
+import { safeCdragonUrl, imageContentType, CDRAGON_GAME_BASE, CDRAGON_PLUGINS_BASE, rankEmblemUrl } from './cdragon-base.ts';
 
 const seg = (s) => s.split('/');
 
@@ -47,4 +47,18 @@ test('Content-Type kommt aus der Endung, nicht von upstream', () => {
   assert.equal(imageContentType('a/b.JPG'), 'image/jpeg');
   assert.equal(imageContentType('a/b.webp'), 'image/webp');
   assert.equal(imageContentType('a/b.json'), null);
+});
+
+// Die Rank-Embleme sind der einzige Direktzugriff, der nach dem Bild-Proxy
+// uebrig ist. Der Test haelt beide Enden fest: die URL muss unter der
+// Plugins-Base liegen UND von der Allowlist abgewiesen werden. Wandert sie
+// jemals unter latest/game/, faellt hier auf, dass sie dann durch den Proxy
+// gehoert statt daran vorbei.
+test('rankEmblemUrl liegt ausserhalb der Proxy-Allowlist', () => {
+  const url = rankEmblemUrl('DIAMOND');
+  assert.ok(url.startsWith(CDRAGON_PLUGINS_BASE));
+  assert.match(url, /emblem-diamond.png$/);
+  assert.equal(safeCdragonUrl(url.slice(CDRAGON_PLUGINS_BASE.length).split('/')), null);
+  assert.equal(rankEmblemUrl(null), null);
+  assert.equal(rankEmblemUrl(undefined), null);
 });

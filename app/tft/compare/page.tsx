@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import ReactDOM from 'react-dom';
 import dynamic from 'next/dynamic';
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip as RechartsTooltip, Legend,
@@ -9,7 +10,8 @@ import Footer from '../../components/Footer';
 import { useI18n, LOCALE_MAP, type Lang } from '../../lib/i18n';
 import TftHero from '../../components/tft/TftHero';
 import { formatTier } from '../../lib/rank-format';
-import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
+import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftGameAssetUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
+import { CDRAGON_PLUGINS_BASE, rankEmblemUrl } from '../../lib/cdragon-base';
 import { formatStage } from '../../lib/tft-stage';
 import { CURRENT_SET } from '../../lib/current-set';
 
@@ -61,11 +63,6 @@ interface PlayerSummary {
 
 interface HistoryPoint { date: string; finalValue: number }
 
-function rankEmblemUrl(tier: string | null): string | null {
-  if (!tier) return null;
-  return `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-emblem/emblem-${tier.toLowerCase()}.png`;
-}
-
 // Build square + splash URLs for a unit. Square is the in-shop HUD tile;
 // splash is the wider portrait used when the square doesn't exist for that
 // unit (Rhaast / other Kayn-variants have their square stored under a
@@ -78,7 +75,11 @@ function tftUnitIconUrls(characterId: string, assets: TftAssetsBundle | null): {
   const splash = tftIconUrl(assets, champ?.icon);
   // Fallback when assets aren't loaded yet: best-guess square URL from the
   // characterId itself. Same shape as before so existing units keep working.
-  const fallbackSquare = `https://raw.communitydragon.org/latest/game/assets/characters/${characterId.toLowerCase()}/hud/${characterId.toLowerCase()}_square.tft_set${CURRENT_SET}.png`;
+  // Ueber tftGameAssetUrl und NICHT als absolute URL: diese Zeile ist beim
+  // ersten Render die tatsaechlich gerenderte src (assets ist dann noch null,
+  // also liefert tftChampionTileUrl null) und lief bis 2026-08-24 am
+  // Bild-Proxy vorbei.
+  const fallbackSquare = tftGameAssetUrl(`assets/characters/${characterId.toLowerCase()}/hud/${characterId.toLowerCase()}_square.tft_set${CURRENT_SET}.png`);
   return { square: tile || fallbackSquare, splash };
 }
 
@@ -107,6 +108,10 @@ function countCategoryWins(s1: PlayerSummary, s2: PlayerSummary): { p1: number; 
 }
 
 export default function TftComparePage() {
+  // Seitenlokal statt im Layout -- siehe die gleichlautende Begruendung in
+  // app/compare/page.tsx. Nach dem Bild-Proxy ist das Rank-Emblem hier das
+  // einzige verbliebene Direktziel bei CommunityDragon.
+  ReactDOM.preconnect(CDRAGON_PLUGINS_BASE);
   const { t, lang } = useI18n();
   const [inputs, setInputs] = useState<string[]>(['', '']);
   const [region, setRegion] = useState('euw1');

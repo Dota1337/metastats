@@ -672,12 +672,12 @@ function buildPerPuuidQuery({ puuids, setNumber, queueId, limitPerPuuid, totalLi
   let p = 3;
   const innerFilters = [`c.puuid = req.puuid`, 'c.set_number = $2'];
   if (queueId != null) {
-    innerFilters.push(`c.queue_id = ${p}`);
+    innerFilters.push(`c.queue_id = $${p}`);
     params.push(queueId);
     p++;
   }
   params.push(limitPerPuuid);
-  const lpuuidPlaceholder = `${p}`;
+  const lpuuidPlaceholder = `$${p}`;
   const sql = `
     SELECT ${columns}
     FROM unnest($1::text[]) WITH ORDINALITY AS req(puuid, ord)

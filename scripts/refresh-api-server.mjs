@@ -35,6 +35,7 @@ import { resolve } from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import pg from 'pg';
+import { classifyComp } from './lib/tft-classify-comp.mjs';
 
 const execFileAsync = promisify(execFile);
 
@@ -653,6 +654,125 @@ async function handlePeerBaseline(body) {
 // from Supabase directly, but the per-match jsonb cache only lives on
 // Hetzner — Supabase only has the Set-15-era rows mirrored from way back.
 // So everything routes through here now.
+// Spaltenlisten fuer buildPerPuuidQuery. Getrennt, weil das Histogramm die
+// grossen jsonb-Spalten nur im Live-Modus ueberhaupt braucht.
+const PLAYER_MATCH_COLUMNS = `m.puuid, m.match_id, m.region, m.set_number, m.queue_id, m.game_datetime,
+           m.placement, m.level, m.last_round, m.total_damage, m.gold_left,
+           m.players_eliminated, m.comp_cluster_key, m.carry_unit,
+           m.units, m.traits, m.augments, m.carry_items`;
+const HISTOGRAM_LIVE_COLUMNS = `m.puuid, m.placement, m.level, m.units, m.traits, m.augments`;
+const HISTOGRAM_COLUMN_COLUMNS = `m.puuid, m.placement, m.comp_cluster_key`;
+
+// Gemeinsamer Query-Bau fuer alle Per-Puuid-Reads. Bewusst EINE Stelle:
+// /player-matches und /player-comp-histogram muessen zeilengleich lesen,
+// sonst driften Fenster und Reihenfolge auseinander -- und genau die
+// Reihenfolge traegt den Tie-Break der Onetricks-Liste (siehe unten).
+function buildPerPuuidQuery({ puuids, setNumber, queueId, limitPerPuuid, totalLimit, columns }) {
+  const params = [puuids, setNumber];
+  let p = 3;
+  const innerFilters = [`c.puuid = req.puuid`, 'c.set_number = $2'];
+  if (queueId != null) {
+    innerFilters.push(`c.queue_id = ${p}`);
+    params.push(queueId);
+    p++;
+  }
+  params.push(limitPerPuuid);
+  const lpuuidPlaceholder = `${p}`;
+  const sql = `
+    SELECT ${columns}
+    FROM unnest($1::text[]) WITH ORDINALITY AS req(puuid, ord)
+    JOIN LATERAL (
+      SELECT *
+      FROM tft_player_match_cache c
+      WHERE ${innerFilters.join(' AND ')}
+      ORDER BY c.game_datetime DESC
+      LIMIT ${lpuuidPlaceholder}
+    ) m ON true
+    ORDER BY req.ord, m.game_datetime DESC
+    LIMIT ${totalLimit}
+  `;
+  return { sql, params };
+}
+
+// -- Comp-Histogramm pro Spieler ------------------------------------------
+// Fuer /api/tft/onetricks. Die Route zog bisher die kompletten Match-Rows
+// (gemessen 2026-08-24: 96,3 MB fuer 1000 Spieler x 50 Matches) nur um daraus
+// je Spieler eine Comp-Zaehlung zu bauen. Das Zaehlen passiert jetzt hier;
+// ueber die Leitung geht nur noch das Histogramm.
+//
+// Zwei Dinge muessen exakt so bleiben wie in der Route:
+//   1. Nenner: nur klassifizierte Spiele. Unklassifizierbare Matches fallen
+//      aus Zaehler UND Nenner -- sonst verschiebt sich jede Quote.
+//   2. Reihenfolge: `clusters` steht in der Reihenfolge des ERSTEN Auftretens
+//      je Spieler, die Zeilen kommen als `req.ord, game_datetime DESC`. Die
+//      Route sortiert stabil nach games -- bei Gleichstand gewinnt damit die
+//      zuletzt gespielte Comp. Ein GROUP BY wuerde genau das verlieren.
+//
+// `source` steuert die Herkunft des Cluster-Keys:
+//   'live'   (Default) -- klassifiziert die Cache-Rows zur Laufzeit, identisch
+//                         zu dem, was die Route vorher selbst tat.
+//   'column' -- nimmt die gespeicherte Spalte comp_cluster_key. Billiger, aber
+//               sie weicht in 7,37 % der Zeilen ab (gemessen 2026-08-24 ueber
+//               5 Regionen / 50.000 Matches), weil beim Schreiben `rarity`
+//               vorlag und in der Cache-Zeile fehlt. Erst nach dem Wurzelfix
+//               umschalten.
+async function handlePlayerCompHistogram(body) {
+  const puuids = Array.isArray(body?.puuids)
+    ? body.puuids.filter(p => typeof p === 'string' && p.length > 0).slice(0, 3000)
+    : [];
+  if (puuids.length === 0) return { players: [], rows: 0, unclassified: 0 };
+
+  const setNumber = Number.isFinite(Number(body?.set_number)) ? Number(body.set_number) : SET_NUMBER;
+  const queueId = body?.queue_id == null ? null : Number(body.queue_id);
+  const limitPerPuuid = Math.max(1, Math.min(500, Number(body?.limit_per_puuid) || 50));
+  const totalLimit = Math.max(1, Math.min(200000, Number(body?.limit) || puuids.length * limitPerPuuid));
+  const source = body?.source === 'column' ? 'column' : 'live';
+
+  const { sql, params } = buildPerPuuidQuery({
+    puuids, setNumber, queueId, limitPerPuuid, totalLimit,
+    columns: source === 'column' ? HISTOGRAM_COLUMN_COLUMNS : HISTOGRAM_LIVE_COLUMNS,
+  });
+
+  const t0 = Date.now();
+  const rows = (await pool.query(sql, params)).rows;
+  const queryMs = Date.now() - t0;
+
+  const t1 = Date.now();
+  const perPuuid = new Map();
+  let unclassified = 0;
+  for (const r of rows) {
+    let key = null;
+    if (source === 'column') {
+      key = r.comp_cluster_key || null;
+    } else {
+      const cls = classifyComp(
+        { traits: r.traits, units: r.units, augments: r.augments, level: r.level },
+        { withAugmentSuffix: false, currentSet: setNumber },
+      );
+      key = cls ? cls.clusterKey : null;
+    }
+    if (!key) { unclassified++; continue; }
+    let m = perPuuid.get(r.puuid);
+    if (!m) { m = new Map(); perPuuid.set(r.puuid, m); }
+    const e = m.get(key) || { games: 0, sumPlacement: 0 };
+    e.games++;
+    // `|| 9` wie in der Route: eine fehlende Platzierung wird als schlechtest-
+    // moegliche gewertet, nicht als 0.
+    e.sumPlacement += (r.placement || 9);
+    m.set(key, e);
+  }
+  const classifyMs = Date.now() - t1;
+
+  const players = [];
+  for (const [puuid, m] of perPuuid) {
+    const clusters = [];
+    for (const [key, e] of m) clusters.push({ key, games: e.games, sumPlacement: e.sumPlacement });
+    players.push({ puuid, clusters });
+  }
+
+  return { players, rows: rows.length, unclassified, source, queryMs, classifyMs };
+}
+
 async function handlePlayerMatches(body) {
   const puuids = Array.isArray(body?.puuids)
     ? body.puuids.filter(p => typeof p === 'string' && p.length > 0).slice(0, 3000)
@@ -670,32 +790,10 @@ async function handlePlayerMatches(body) {
   // large puuid lists where the outer LIMIT clipped at ~20% of expected.
   // LATERAL is the canonical per-group-LIMIT pattern and uses the
   // (puuid, set_number, queue_id, game_datetime) btree directly.
-  const params = [puuids, setNumber];
-  let p = 3;
-  const innerFilters = [`c.puuid = req.puuid`, 'c.set_number = $2'];
-  if (queueId != null) {
-    innerFilters.push(`c.queue_id = $${p}`);
-    params.push(queueId);
-    p++;
-  }
-  params.push(limitPerPuuid);
-  const lpuuidPlaceholder = `$${p}`;
-  const sql = `
-    SELECT m.puuid, m.match_id, m.region, m.set_number, m.queue_id, m.game_datetime,
-           m.placement, m.level, m.last_round, m.total_damage, m.gold_left,
-           m.players_eliminated, m.comp_cluster_key, m.carry_unit,
-           m.units, m.traits, m.augments, m.carry_items
-    FROM unnest($1::text[]) WITH ORDINALITY AS req(puuid, ord)
-    JOIN LATERAL (
-      SELECT *
-      FROM tft_player_match_cache c
-      WHERE ${innerFilters.join(' AND ')}
-      ORDER BY c.game_datetime DESC
-      LIMIT ${lpuuidPlaceholder}
-    ) m ON true
-    ORDER BY req.ord, m.game_datetime DESC
-    LIMIT ${totalLimit}
-  `;
+  const { sql, params } = buildPerPuuidQuery({
+    puuids, setNumber, queueId, limitPerPuuid, totalLimit,
+    columns: PLAYER_MATCH_COLUMNS,
+  });
 
   const t0 = Date.now();
   const rows = (await pool.query(sql, params)).rows;
@@ -861,7 +959,8 @@ const server = http.createServer(async (req, res) => {
   const isPeerBaseline = req.method === 'POST' && req.url === '/peer-baseline';
   const isMvPool = req.method === 'POST' && req.url === '/marketvalue-pool';
   const isProsByComp = req.method === 'POST' && req.url === '/pros-by-comp';
-  if (!isRefresh && !isExplore && !isPlayerMatches && !isPeerBaseline && !isMvPool && !isProsByComp) {
+  const isCompHistogram = req.method === 'POST' && req.url === '/player-comp-histogram';
+  if (!isRefresh && !isExplore && !isPlayerMatches && !isPeerBaseline && !isMvPool && !isProsByComp && !isCompHistogram) {
     res.writeHead(404, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({ error: 'not_found' }));
   }
@@ -886,6 +985,7 @@ const server = http.createServer(async (req, res) => {
                   : isPeerBaseline ? await handlePeerBaseline(body)
                   : isMvPool ? await handleMarketvaluePool(body)
                   : isProsByComp ? await handleProsByComp(body)
+                  : isCompHistogram ? await handlePlayerCompHistogram(body)
                   : await handleRefresh(body);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(result));
@@ -900,6 +1000,25 @@ const server = http.createServer(async (req, res) => {
     res.end(JSON.stringify(payload));
   }
 });
+
+// Die Klassifikation liest public/tft-assets-<set>.json relativ zum cwd und
+// schluckt einen Lesefehler still (leere costMap, danach greift der Regex-
+// Fail-Safe). Auf der Box faellt das sonst erst als stille Fehlklassifikation
+// auf -- deshalb hier einmal beim Start laut pruefen.
+function checkClassificationBundle() {
+  const bundlePath = resolve(process.cwd(), `public/tft-assets-${SET_NUMBER}.json`);
+  if (!existsSync(bundlePath)) {
+    console.error(`[classify] WARNUNG: ${bundlePath} fehlt -- /player-comp-histogram klassifiziert ohne Kosten-Map (Fail-Safe-Modus).`);
+    return;
+  }
+  const probe = classifyComp({
+    traits: [{ name: 'TFT17_Doomer', tier_current: 2, style: 2, num_units: 4 }],
+    units: [{ characterId: 'TFT17_Aatrox', tier: 2, items: ['TFT_Item_InfinityEdge', 'TFT_Item_LastWhisper', 'TFT_Item_GiantSlayer'] }],
+    level: 8,
+  }, { withAugmentSuffix: false, currentSet: SET_NUMBER });
+  console.log(`[classify] Bundle Set ${SET_NUMBER} geladen, Probe-Key: ${probe ? probe.clusterKey : 'null'}`);
+}
+checkClassificationBundle();
 
 server.listen(PORT, () => console.log(`refresh-api listening on :${PORT}`));
 

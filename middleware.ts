@@ -72,6 +72,13 @@ export async function middleware(req: NextRequest) {
 export const config = {
   matcher: [
     // Skip static assets + API images. Everything else flows through.
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    //
+    // `api/img` steht explizit hier, obwohl seine Pfade auf `.png` enden und
+    // damit ohnehin von der Endungs-Regel erfasst waeren: das waere Zufall,
+    // nicht Absicht. Ein Bild-Request, der durch diese Middleware laeuft,
+    // zahlt einen Supabase-getUser()-Roundtrip und bekommt ein Set-Cookie —
+    // und eine Antwort mit Set-Cookie ist bei Vercel dauerhaft uncachebar.
+    // Der Proxy waere damit genau um das kaputt, wofuer es ihn gibt.
+    '/((?!_next/static|_next/image|api/img|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

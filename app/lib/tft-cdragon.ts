@@ -11,6 +11,7 @@
 //   augment apiName e.g. "TFT17_Augment_Stuff"
 
 import { renderTraitDesc } from './tft-trait-desc';
+import { CDRAGON_GAME_BASE } from './cdragon-base';
 
 export interface TftItem {
   name: string;
@@ -309,8 +310,39 @@ export function tftChampionTooltip(
 // pipeline writes them directly).
 export function tftIconUrl(bundle: TftAssetsBundle | null, iconPath: string | null | undefined): string | null {
   if (!bundle || !iconPath) return null;
+  if (isNonPath(iconPath)) return null;
   if (iconPath.startsWith('http://') || iconPath.startsWith('https://')) return iconPath;
-  return bundle.iconBase + iconPath;
+  return proxied(bundle.iconBase, iconPath);
+}
+
+// 10 Bundle-Eintraege tragen woertlich den String "none" statt eines Pfades
+// (TFT_ArmoryKeyCompleted, TFT17_PVE_Krug, …). Bisher endete das in einem
+// 404 bei CommunityDragon — harmlos. Ueber den Proxy waere `/api/img/none`
+// dagegen ein Request auf den eigenen Origin, der nicht auf `.png` endet und
+// damit durch den Middleware-Matcher laeuft: ein Supabase-Auth-Roundtrip pro
+// kaputtem Icon. Hier abfangen, nicht dort.
+function isNonPath(iconPath: string): boolean {
+  return iconPath.toLowerCase() === 'none';
+}
+
+// Einzige Stelle, an der aus Base + Pfad eine Bild-URL wird — bewusst EIN
+// Helper fuer beide oeffentlichen Funktionen, damit die Umschreibung nicht
+// an zwei Orten driften kann.
+//
+// Die Umschreibung passiert hier zur Laufzeit und NICHT in `iconBase` selbst
+// (scripts/fetch-tft-assets.mjs): dasselbe payload-Objekt landet auch im
+// Set-Archiv `public/tft-assets-{set}.json`, das beim Set-Bump einfriert. Eine
+// dort eingebackene `/api/img/`-Base waere origin-abhaengig und nicht mehr
+// zurueckzunehmen; so bleibt das Bundle eine reine Datenquelle mit absoluten
+// URLs, die auch ein Nicht-Browser-Leser aufloesen kann.
+//
+// Rollback: NEXT_PUBLIC_TFT_IMG_PROXY=off + Redeploy. Das Flag wird in die
+// Client-Bundles eingebacken, ist also kein Laufzeit-Schalter — der Rollback
+// kostet einen Deploy, keinen Daten-Rerun.
+function proxied(base: string, path: string): string {
+  if (process.env.NEXT_PUBLIC_TFT_IMG_PROXY === 'off') return base + path;
+  if (base !== CDRAGON_GAME_BASE) return base + path;
+  return '/api/img/' + path;
 }
 
 // The bundle's `champion.icon` is the wide splash-centered art used on
@@ -331,11 +363,11 @@ export function tftChampionTileUrl(
   champion: TftChampion | null | undefined,
 ): string | null {
   if (!bundle || !champion) return null;
-  if (champion.tile) return bundle.iconBase + champion.tile;
+  if (champion.tile && !isNonPath(champion.tile)) return proxied(bundle.iconBase, champion.tile);
   if (!champion.icon) return null;
   const m = /^assets\/characters\/([^/]+)\/skins\/base\/images\/[^/]+_splash_centered_\d+\.([^/.]+)\.png$/i.exec(champion.icon);
   if (!m) return tftIconUrl(bundle, champion.icon);
-  return `${bundle.iconBase}assets/characters/${m[1]}/hud/${m[1]}_square.${m[2]}.png`;
+  return proxied(bundle.iconBase, `assets/characters/${m[1]}/hud/${m[1]}_square.${m[2]}.png`);
 }
 
 // Companion-Icons (Chibis + Tacticians) lagen in einem eigenen CD-Namespace.

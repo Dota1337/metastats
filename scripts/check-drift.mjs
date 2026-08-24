@@ -289,6 +289,36 @@ function read(path) {
   }
 }
 
+// 7) CDragon-Base des Bild-Proxys. `scripts/fetch-tft-assets.mjs` schreibt
+// `iconBase` ins Bundle, `app/lib/cdragon-base.ts` prueft die Allowlist der
+// Proxy-Route dagegen. Zwei Literale, die niemand zusammen anfasst — genau
+// die Mirror-Pair-Klasse, die im Repo schon einmal still auseinanderlief.
+//
+// Driften sie, faellt NICHT der Proxy aus: `proxied()` vergleicht die Base und
+// reicht bei Ungleichheit stillschweigend die direkte URL durch. Der Proxy
+// waere also wirkungslos, ohne dass irgendetwas kaputt aussieht. Deshalb hier.
+{
+  const ts = read('app/lib/cdragon-base.ts');
+  const lit = ts.match(/CDRAGON_GAME_BASE\s*=\s*'([^']+)'/)?.[1] ?? null;
+  let bundleBase = null;
+  try { bundleBase = JSON.parse(read('public/tft-assets.json')).iconBase; } catch { /* unten */ }
+
+  if (!lit) {
+    console.error('✗ DRIFT: CDRAGON_GAME_BASE in app/lib/cdragon-base.ts nicht gefunden');
+    console.error('    → umbenannt? Dann diesen Check nachziehen, sonst prueft er nichts mehr.');
+    failures++;
+  } else if (typeof bundleBase !== 'string') {
+    console.error('✗ DRIFT: public/tft-assets.json hat kein iconBase');
+    failures++;
+  } else if (lit !== bundleBase) {
+    console.error(`✗ DRIFT: cdragon-base.ts sagt ${lit}, tft-assets.json sagt ${bundleBase}`);
+    console.error('    → der Bild-Proxy greift dann nicht mehr und reicht still direkt durch.');
+    failures++;
+  } else {
+    console.log(`✓ Bild-Proxy-Base in sync (${lit})`);
+  }
+}
+
 if (failures) {
   console.error(`\n${failures} Drift(s) — vor dem Push mit der jeweiligen SoT synchronisieren.`);
   process.exit(1);

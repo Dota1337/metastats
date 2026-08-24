@@ -30,6 +30,22 @@ export const SLOW_CACHE_CONTROL = 'public, s-maxage=3600, stale-while-revalidate
 // mitten am Tag durchschlagen kann.
 export const ASSET_CACHE_CONTROL = 'public, s-maxage=1800, stale-while-revalidate=21600';
 
+// Bild-Proxy (`app/api/img/[...p]`). Weicht bewusst von ASSET_CACHE_CONTROL ab:
+// dort geht es um *Ableitungen* aus Asset-Daten (JSON, kann sich mit einem Patch
+// inhaltlich aendern), hier um die Bilddatei selbst. Deren Pfad traegt bei
+// set-spezifischen Assets die Set-Nummer im Namen (`..._square.tft_set17.png`) —
+// ein neues Set liefert Geschwister, keine Ueberschreibungen.
+//
+// Kein `immutable`: der `latest/`-Kanal von CommunityDragon ist beweglich, die
+// Quelle selbst verspricht nur `max-age=3600`. Ein set-neutrales Icon
+// (assets/ux/traiticons/*) kann unter demselben Pfad neue Bytes bekommen.
+//
+// Zwei Header, weil Vercels CDN `s-maxage`/`stale-while-revalidate` aus dem
+// Cache-Control streicht, bevor die Antwort den Browser erreicht. Ohne eigenes
+// `max-age` holt jeder Reload alle Icons erneut von der Edge.
+export const IMG_CACHE_CONTROL = 'public, max-age=86400';
+export const IMG_CDN_CACHE_CONTROL = 'public, s-maxage=604800, stale-while-revalidate=86400';
+
 // Degradierte Antwort: technisch 200, inhaltlich leer, weil eine Quelle
 // gerade nicht liefert. Der Statuscode allein reicht als Erkennungsmerkmal
 // nicht — genau daran haengt der teuerste Fehlerfall: eine leere Liste mit

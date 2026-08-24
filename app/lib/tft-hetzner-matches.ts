@@ -41,9 +41,21 @@ interface PlayerMatchesOpts {
   signalTimeoutMs?: number;      // default 30s — the Hetzner side is fast (~70ms typical)
 }
 
+// Bewusst auf wenige Spieler begrenzt. Dieser Endpunkt liefert die vollen
+// Match-Rows inklusive der units/traits-jsonb — bei 1000 Spielern waren das
+// gemessen 96,3 MB pro Aufruf, und genau daran ist /api/tft/onetricks
+// haengengeblieben. Wer ein Aggregat ueber viele Spieler braucht, nimmt
+// fetchHetznerPlayerCompHistogram: dort rechnet die Box und schickt nur das
+// Ergebnis. Die verbleibenden Aufrufer (coach, econ-score, pros/specialty)
+// fragen jeweils genau einen Spieler ab.
+const PLAYER_MATCHES_MAX_PUUIDS = 25;
+
 export async function fetchHetznerPlayerMatches(opts: PlayerMatchesOpts): Promise<HetznerMatchRow[]> {
   if (!HETZNER_URL || !TOKEN) throw new Error('hetzner_disabled');
   if (opts.puuids.length === 0) return [];
+  if (opts.puuids.length > PLAYER_MATCHES_MAX_PUUIDS) {
+    throw new Error(`hetzner_player_matches: ${opts.puuids.length} puuids uebersteigt das Limit von ${PLAYER_MATCHES_MAX_PUUIDS} — fuer Aggregate fetchHetznerPlayerCompHistogram nutzen`);
+  }
   const body = {
     puuids: opts.puuids,
     set_number: opts.setNumber,
@@ -63,6 +75,73 @@ export async function fetchHetznerPlayerMatches(opts: PlayerMatchesOpts): Promis
   }
   const data = await res.json();
   return Array.isArray(data?.matches) ? data.matches as HetznerMatchRow[] : [];
+}
+
+// Comp-Histogramm pro Spieler: die Box liest die Match-Rows, klassifiziert sie
+// und schickt nur die Zaehlung zurueck. Ersetzt das Muster "alle Rows ziehen und
+// auf Vercel zaehlen" fuer /api/tft/onetricks.
+//
+// `clusters` steht in der Reihenfolge des ERSTEN Auftretens je Spieler, und die
+// Box liest `ORDER BY req.ord, game_datetime DESC`. Wer danach stabil nach
+// `games` sortiert, bekommt bei Gleichstand die zuletzt gespielte Comp zuerst —
+// genau das Verhalten, das die Route vorher hatte. Diese Reihenfolge ist Teil
+// des Vertrags, nicht Zufall.
+export interface CompHistogramCluster {
+  key: string;
+  games: number;
+  sumPlacement: number;
+}
+
+export interface CompHistogramPlayer {
+  puuid: string;
+  clusters: CompHistogramCluster[];
+}
+
+interface CompHistogramOpts {
+  puuids: string[];
+  setNumber?: number;
+  queueId?: number | null;
+  limitPerPuuid?: number;
+  // 'live' (Default) klassifiziert die Cache-Rows auf der Box. 'column' nimmt
+  // die gespeicherte Spalte comp_cluster_key — billiger, weicht aber in 7,37 %
+  // der Zeilen ab (gemessen 2026-08-24, 5 Regionen / 50.000 Matches). Erst nach
+  // dem Wurzelfix umschalten.
+  source?: 'live' | 'column';
+  signalTimeoutMs?: number;
+}
+
+export async function fetchHetznerPlayerCompHistogram(opts: CompHistogramOpts): Promise<{
+  players: CompHistogramPlayer[];
+  rows: number;
+  unclassified: number;
+}> {
+  if (!HETZNER_URL || !TOKEN) throw new Error('hetzner_disabled');
+  if (opts.puuids.length === 0) return { players: [], rows: 0, unclassified: 0 };
+  const res = await fetch(`${HETZNER_URL}/player-comp-histogram`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${TOKEN}` },
+    body: JSON.stringify({
+      puuids: opts.puuids,
+      set_number: opts.setNumber,
+      queue_id: opts.queueId ?? null,
+      limit_per_puuid: opts.limitPerPuuid ?? 50,
+      source: opts.source ?? 'live',
+    }),
+    // Die Antwort ist klein, aber der DB-Read bleibt der lange Pol: gemessen
+    // 7-16 s warm/kalt fuer 1000 Spieler x 50 Matches auf einem Working Set,
+    // das um ein Vielfaches groesser ist als der RAM der Box.
+    signal: AbortSignal.timeout(opts.signalTimeoutMs ?? 45_000),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`hetzner_comp_histogram ${res.status}: ${text.slice(0, 200)}`);
+  }
+  const data = await res.json();
+  return {
+    players: Array.isArray(data?.players) ? data.players as CompHistogramPlayer[] : [],
+    rows: Number(data?.rows) || 0,
+    unclassified: Number(data?.unclassified) || 0,
+  };
 }
 
 export interface MarketvaluePoolPlayer {

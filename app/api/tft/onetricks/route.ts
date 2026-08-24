@@ -1,22 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAvailablePatches } from '../../../lib/tft-supabase-reader';
-import { fetchHetznerPlayerMatches, fetchHetznerMarketvaluePool } from '../../../lib/tft-hetzner-matches';
+import { fetchHetznerPlayerCompHistogram, fetchHetznerMarketvaluePool } from '../../../lib/tft-hetzner-matches';
+import type { CompHistogramCluster } from '../../../lib/tft-hetzner-matches';
 import { cachedJson, STATS_CACHE_CONTROL } from '../../../lib/api-cache';
-import { classifyComp } from '../../../lib/tft-classify-comp';
 
 // /api/tft/onetricks?region=euw1&minShare=0.6
 //
 // High-Elo players whose top-2 comps make up ≥ minShare of their last N
-// classifiable games. Klassifikation via unifizierte Library
-// (app/lib/tft-classify-comp.ts == scripts/lib/tft-classify-comp.mjs).
-
-interface CachedMatch {
-  units: { character_id?: string; characterId?: string; tier?: number; rarity?: number; items?: string[]; itemNames?: string[] }[];
-  traits: { name?: string; tier_current?: number; style?: number; num_units?: number }[];
-  augments?: string[];
-  level?: number;
-  placement: number;
-}
+// classifiable games.
+//
+// Klassifiziert wird auf der Hetzner-Box (/player-comp-histogram) mit derselben
+// unifizierten Library (scripts/lib/tft-classify-comp.mjs ==
+// app/lib/tft-classify-comp.ts). Vorher zog diese Route die vollen Match-Rows
+// hierher und zaehlte selbst — gemessen 96,3 MB fuer 1000 Spieler x 50 Matches,
+// woran der Transfer regelmaessig zerbrach. Gezaehlt wird jetzt dort, ueber die
+// Leitung geht nur das Histogramm.
 
 // Pool: pull the Master+ pool via the Hetzner refresh-api. The Supabase
 // RPC has a hard 1000-row PostgREST cap which only covers Challenger + GM
@@ -77,48 +75,38 @@ export async function GET(request: NextRequest) {
   const puuids = candidates.map(c => c.puuid);
   // Route through the Hetzner refresh-api — the Set-17 match cache lives
   // on the Hetzner box, Supabase only has Set-15-era leftovers.
-  let matches: any[] = [];
+  const perPuuid = new Map<string, CompHistogramCluster[]>();
   try {
-    matches = await fetchHetznerPlayerMatches({
+    const histogram = await fetchHetznerPlayerCompHistogram({
       puuids,
       setNumber: setNumber ?? undefined,
       queueId: STANDARD_RANKED_QUEUE,
       limitPerPuuid: 50,
     });
+    for (const p of histogram.players) perPuuid.set(p.puuid, p.clusters);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'hetzner_unreachable';
     return NextResponse.json({ error: message }, { status: 502 });
   }
 
-  const perPuuid = new Map<string, Map<string, { games: number; sumPlacement: number }>>();
-  for (const row of (matches || []) as Array<CachedMatch & { puuid: string }>) {
-    const cls = classifyComp({
-      traits: row.traits,
-      units: row.units,
-      augments: row.augments,
-      level: row.level,
-    }, { withAugmentSuffix: false, currentSet: setNumber ?? undefined });
-    if (!cls) continue;
-    let m = perPuuid.get(row.puuid);
-    if (!m) { m = new Map(); perPuuid.set(row.puuid, m); }
-    const e = m.get(cls.clusterKey) || { games: 0, sumPlacement: 0 };
-    e.games++;
-    e.sumPlacement += (row.placement || 9);
-    m.set(cls.clusterKey, e);
-  }
-
   const onetricks: any[] = [];
   for (const cand of candidates) {
-    const m = perPuuid.get(cand.puuid);
-    if (!m) continue;
+    const clusters = perPuuid.get(cand.puuid);
+    if (!clusters || clusters.length === 0) continue;
+    // Nenner ist die Summe der KLASSIFIZIERTEN Spiele, nicht die Zahl der
+    // gelesenen Matches — unklassifizierbare Boards zaehlt die Box gar nicht
+    // erst mit. Anders verschoebe sich jede Quote nach unten.
     let total = 0;
-    for (const e of m.values()) total += e.games;
+    for (const c of clusters) total += c.games;
     if (total < MIN_GAMES_FLEX) continue;
-    const sorted = [...m.entries()].sort((a, b) => b[1].games - a[1].games);
+    // Stabile Sortierung ueber eine Liste, die in der Reihenfolge des ersten
+    // Auftretens (game_datetime DESC) steht: bei Gleichstand gewinnt damit die
+    // zuletzt gespielte Comp. Das war schon vorher so und bleibt bewusst so.
+    const sorted = [...clusters].sort((a, b) => b.games - a.games);
     const top1 = sorted[0];
     const top2 = sorted[1];
-    const top1Share = top1 ? top1[1].games / total : 0;
-    const top2Share = top1Share + (top2 ? top2[1].games / total : 0);
+    const top1Share = top1 ? top1.games / total : 0;
+    const top2Share = top1Share + (top2 ? top2.games / total : 0);
 
     // Two qualification paths:
     //   pathA (flex) — top-2 comps add up to ≥ minShareTop2 of all classified games
@@ -140,11 +128,11 @@ export async function GET(request: NextRequest) {
       top1Share,
       top2Share,
       kind: qualifiesTight ? 'tight' : 'flex',
-      signatureComps: [top1, top2].filter(Boolean).map(([cluster, e]) => ({
-        clusterKey: cluster,
-        games: e.games,
-        share: e.games / total,
-        avgPlacement: e.games > 0 ? e.sumPlacement / e.games : null,
+      signatureComps: [top1, top2].filter(Boolean).map(c => ({
+        clusterKey: c.key,
+        games: c.games,
+        share: c.games / total,
+        avgPlacement: c.games > 0 ? c.sumPlacement / c.games : null,
       })),
     });
   }

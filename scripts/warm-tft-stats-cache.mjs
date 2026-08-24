@@ -18,6 +18,8 @@
 //   node scripts/warm-tft-stats-cache.mjs
 //   WARM_BASE_URL=https://staging... WARM_CONCURRENCY=6 node scripts/warm-tft-stats-cache.mjs
 
+import { ONETRICK_REGIONS } from '../app/lib/tft-onetrick-regions.mjs';
+
 const BASE = (process.env.WARM_BASE_URL || 'https://www.metastats.gg').replace(/\/$/, '');
 // Serial by default. These are heavy aggregation RPCs sharing one Postgres;
 // firing several region=all slices at once makes them contend and tip over the
@@ -81,9 +83,9 @@ function buildUrls() {
   // through the Hetzner /marketvalue-pool + /player-matches chain and takes
   // 10-30s (1000 puuids × 50 matches ≈ 40MB JSON transfer). Edge cache is
   // 6h, so warming once a day right after the daily crawl finishes keeps
-  // every real user hit instant. Only the regions with enough Master+ pool
-  // to be worth warming.
-  for (const region of ['euw1', 'kr', 'na1', 'eun1', 'br1', 'jp1']) {
+  // every real user hit instant. Die Liste kommt aus derselben Datei wie die
+  // Seite: eine Region, die man anklicken kann, muss auch gewaermt werden.
+  for (const region of ONETRICK_REGIONS) {
     urls.add(`/api/tft/onetricks?region=${region}`);
   }
 
@@ -176,6 +178,26 @@ async function run() {
   if (failRate > MAX_FAIL_RATE) {
     console.error(`Fehlerquote ${(failRate * 100).toFixed(0)} % ueber dem Deckel von ${(MAX_FAIL_RATE * 100).toFixed(0)} % — Lauf gilt als fehlgeschlagen.`);
     process.exitCode = 1;
+  }
+
+  // Die globale Quote allein reicht nicht: onetricks stellt 11 der ~45 Keys.
+  // Faellt diese Familie KOMPLETT aus, liegt die globale Quote bei ~24 % und
+  // der Lauf meldet gruen, waehrend eine ganze Seite kalt bleibt. Deshalb
+  // zusaetzlich pro Endpunkt-Familie messen.
+  const perFamily = new Map();
+  for (const r of results) {
+    const family = r.path.startsWith('/api/tft/') ? r.path.slice(9).split('?')[0] : r.path;
+    const e = perFamily.get(family) || { total: 0, failed: 0 };
+    e.total++;
+    if (!r.ok) e.failed++;
+    perFamily.set(family, e);
+  }
+  for (const [family, e] of perFamily) {
+    const rate = e.failed / e.total;
+    if (rate > MAX_FAIL_RATE) {
+      console.error(`Endpunkt-Familie ${family}: ${e.failed}/${e.total} fehlgeschlagen (${(rate * 100).toFixed(0)} %) — ueber dem Deckel, Lauf gilt als fehlgeschlagen.`);
+      process.exitCode = 1;
+    }
   }
 }
 

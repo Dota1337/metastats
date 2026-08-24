@@ -117,12 +117,18 @@ export function buildSnapshotForPlayer(rawMatch, puuid) {
   if (queueId !== 1100) return null;
   const me = rawMatch.info.participants.find(p => p.puuid === puuid);
   if (!me) return null;
+  const setNumber = detectSetNumber(rawMatch.info.participants);
   return {
     matchId: rawMatch.metadata?.match_id,
     placement: me.placement ?? 9,
-    setNumber: detectSetNumber(rawMatch.info.participants),
+    setNumber,
     augments: Array.isArray(me.augments) ? me.augments : [],
-    comp: classifyComp(me),
+    // Set der Zeile mitgeben. Ohne `currentSet` klassifiziert der Writer gegen
+    // CURRENT_SET — eine Modul-Level-Konstante, die der Prozess beim Start
+    // einfriert. Am Set-Flip schreibt der laufende Crawler dann Set-N+1-Boards
+    // gegen das Set-N-Bundle, und genau das ist die Wurzel des gemessenen
+    // Drifts zwischen comp_cluster_key und Live-Klassifikation.
+    comp: classifyComp(me, { currentSet: setNumber }),
     units: (me.units || []).map(u => ({
       characterId: u.character_id || '',
       tier: u.tier ?? 1,

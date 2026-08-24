@@ -23,6 +23,13 @@ import { cachedJson, STATS_CACHE_CONTROL } from '../../../lib/api-cache';
 // match call at 1000 puuids to keep latency around 5–10s (1000 × 50 ≈
 // 50k matches, ~17 s DB + transfer with full 2000-cap; halving the input
 // roughly halves both).
+// Der kalte Pfad misst 12-20 s (Pool + 1000 Puuids x 50 Matches, Heap-I/O auf
+// der Box). Ohne maxDuration gilt Vercels Default, der unter dem 45-s-Abort
+// von fetchHetznerPlayerCompHistogram liegen kann — die Funktion stirbt dann,
+// bevor das eigene Timeout ueberhaupt greift, und der Warmer sieht 504 statt
+// einer verwertbaren Fehlermeldung. 60 s laesst den Abort zuerst feuern.
+export const maxDuration = 60;
+
 const TOP_PLAYERS = 1000;
 const MIN_GAMES_FLEX = 8;       // Pfad A — Top-2 ≥ minShareTop2
 const MIN_GAMES_TIGHT = 50;     // Pfad B — Top-1 ≥ minShareTop1 (über die letzten 50)

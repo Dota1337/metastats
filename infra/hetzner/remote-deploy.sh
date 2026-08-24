@@ -69,7 +69,14 @@ if active=$(crawl_running); then
   if [ "$before" != "$after" ]; then
     echo "WARN: package-lock.json changed — npm ci deferred (unsafe mid-crawl). Re-run via workflow_dispatch once idle."
   fi
-  echo "Code-synced $(git rev-parse --short HEAD) on $(hostname) at $(date -u +%FT%TZ) (crawl active; deps/timers not touched)"
+  # Der Long-Running-API-Service ist KEIN Crawl: er haelt keinen Cursor und
+  # keine Inflight-Arbeit, ein Neustart kostet Millisekunden. Er muss aber
+  # neu starten, weil CURRENT_SET und der Bundle-Cache Modul-Level sind —
+  # ohne Restart laeuft der alte Prozess mit dem alten Set weiter, waehrend
+  # auf der Platte schon die neuen Dateien liegen. try-restart tut nichts,
+  # wenn der Service nicht laeuft.
+  systemctl try-restart metastats-refresh-api.service || true
+  echo "Code-synced $(git rev-parse --short HEAD) on $(hostname) at $(date -u +%FT%TZ) (crawl active; deps/timers not touched, refresh-api restarted)"
   exit 0
 fi
 
@@ -96,5 +103,9 @@ fi
 # then run concurrently with the chained one and double the Riot load. The timer
 # is masked on the box; keep it out of this list.
 systemctl restart metastats-daily-crawl.timer metastats-companion-backfill.timer metastats-position-aggregator.timer
+
+# Siehe Begruendung im Code-only-Zweig: der API-Service friert Set und
+# Klassifikations-Bundle beim Start ein und muss den Deploy mitbekommen.
+systemctl try-restart metastats-refresh-api.service || true
 
 echo "Deployed $(git rev-parse --short HEAD) on $(hostname) at $(date -u +%FT%TZ) (full sync)"

@@ -53,10 +53,20 @@ import { CURRENT_SET } from './current-set.mjs';
 // Fragment-Traits wieder Primary, also exakt der Bug von 2026-06-21. Ein
 // leerer Set darf hier nie "alles erlaubt" bedeuten.
 const _bundleCache = new Map();
+// Fehlversuche werden NICHT dauerhaft gecacht, sondern nur kurz gedrosselt.
+// Grund: `_bundleCache.set` stand frueher ausserhalb des `try` — ein einziger
+// Request auf ein Set, dessen public/tft-assets-<set>.json noch nicht deployed
+// war (Set-Flip!), schrieb den Fail-Safe-Zustand prozesslebenslang fest. Der
+// spaetere Deploy heilte das nicht, nur ein Neustart. Jetzt wird nach dem
+// Cooldown erneut gelesen, und der erste Fehlschlag pro Set meldet sich laut.
+const _bundleFail = new Map();
+const BUNDLE_RETRY_MS = 60_000;
 function loadBundleDerived(setNumber) {
   const set = setNumber || CURRENT_SET;
   if (_bundleCache.has(set)) return _bundleCache.get(set);
   const derived = { costMap: new Map(), fragmentTraits: new Set() };
+  const lastFail = _bundleFail.get(set);
+  if (lastFail != null && Date.now() - lastFail < BUNDLE_RETRY_MS) return derived;
   try {
     const bundle = JSON.parse(readFileSync(resolve(process.cwd(), `public/tft-assets-${set}.json`), 'utf8'));
     for (const [cid, ch] of Object.entries(bundle.champions || {})) {
@@ -68,7 +78,14 @@ function loadBundleDerived(setNumber) {
         derived.fragmentTraits.add(name);
       }
     }
-  } catch { /* leere Defaults, Regex-Fail-Safe greift */ }
+  } catch (err) {
+    if (!_bundleFail.has(set)) {
+      console.error(`[classify] public/tft-assets-${set}.json nicht lesbar (${err && err.message ? err.message : err}) — Fail-Safe ohne Kosten-Map/Fragment-Traits, neuer Versuch in ${BUNDLE_RETRY_MS / 1000}s.`);
+    }
+    _bundleFail.set(set, Date.now());
+    return derived;
+  }
+  _bundleFail.delete(set);
   _bundleCache.set(set, derived);
   return derived;
 }

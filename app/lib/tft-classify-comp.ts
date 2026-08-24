@@ -118,11 +118,21 @@ interface BundleDerived {
   fragmentTraits: Set<string>;
 }
 const _bundleCache = new Map<number, BundleDerived>();
+// Fehlversuche werden NICHT dauerhaft gecacht, sondern nur kurz gedrosselt.
+// Grund: `_bundleCache.set` stand frueher ausserhalb des `try` — ein einziger
+// Request auf ein Set, dessen public/tft-assets-<set>.json noch nicht deployed
+// war (Set-Flip!), schrieb den Fail-Safe-Zustand prozesslebenslang fest. Der
+// spaetere Deploy heilte das nicht, nur ein Neustart. Jetzt wird nach dem
+// Cooldown erneut gelesen, und der erste Fehlschlag pro Set meldet sich laut.
+const _bundleFail = new Map<number, number>();
+const BUNDLE_RETRY_MS = 60_000;
 function loadBundleDerived(setNumber: number): BundleDerived {
   const set = setNumber || CURRENT_SET;
   const cached = _bundleCache.get(set);
   if (cached) return cached;
   const derived: BundleDerived = { costMap: new Map(), fragmentTraits: new Set() };
+  const lastFail = _bundleFail.get(set);
+  if (lastFail != null && Date.now() - lastFail < BUNDLE_RETRY_MS) return derived;
   try {
     const bundle = JSON.parse(
       readFileSync(resolve(process.cwd(), `public/tft-assets-${set}.json`), 'utf8'),
@@ -139,7 +149,14 @@ function loadBundleDerived(setNumber: number): BundleDerived {
         derived.fragmentTraits.add(name);
       }
     }
-  } catch { /* leere Defaults, Regex-Fail-Safe greift */ }
+  } catch (err) {
+    if (!_bundleFail.has(set)) {
+      console.error(`[classify] public/tft-assets-${set}.json nicht lesbar (${err instanceof Error ? err.message : String(err)}) — Fail-Safe ohne Kosten-Map/Fragment-Traits, neuer Versuch in ${BUNDLE_RETRY_MS / 1000}s.`);
+    }
+    _bundleFail.set(set, Date.now());
+    return derived;
+  }
+  _bundleFail.delete(set);
   _bundleCache.set(set, derived);
   return derived;
 }

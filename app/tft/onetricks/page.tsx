@@ -6,7 +6,11 @@ import Footer from '../../components/Footer';
 import { useI18n } from '../../lib/i18n';
 import { loadTftAssets, tftChampionTileUrl, findChampion, findTrait, type TftAssetsBundle } from '../../lib/tft-cdragon';
 
-const REGIONS = ['euw1', 'kr', 'na1', 'eun1', 'br1', 'jp1', 'oc1', 'la1', 'la2', 'tr1', 'ru'] as const;
+import { ONETRICK_REGIONS } from '../../lib/tft-onetrick-regions.mjs';
+
+// Gemeinsame Quelle mit scripts/warm-tft-stats-cache.mjs — sonst bietet die
+// Seite Regionen an, die nie gewaermt werden.
+const REGIONS = ONETRICK_REGIONS;
 type Region = typeof REGIONS[number];
 
 interface SignatureComp {

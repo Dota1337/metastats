@@ -401,11 +401,28 @@ function readBody(req) {
   return new Promise((resolve, reject) => {
     // Bound slow-body clients so they can't pin a connection (and, with the
     // capped pool, contribute to exhaustion). Audit M2, 2026-06-28.
-    req.setTimeout(10_000, () => req.destroy(new Error('request body timeout')));
+    //
+    // req.setTimeout setzt den SOCKET-Idle-Timer, nicht nur ein Body-Read-Limit.
+    // Blieb er stehen, lief er waehrend der DB-Query weiter (der Socket ist dann
+    // idle) und zerstoerte die Verbindung mitten in der Antwort - undici meldet
+    // das als 'fetch failed', die Route gibt daraufhin 502 aus. Gemessen am
+    // 2026-08-24 auf der Box: http=000 bei exakt 10,0019 s / 0 Bytes, sobald
+    // eine Query die 10 s ueberschritt. Betraf jeden POST-Endpunkt, weil
+    // readBody genau eine Aufrufstelle hat. Deshalb den Timer wieder loesen,
+    // sobald der Body vollstaendig gelesen ist.
+    const onTimeout = () => req.destroy(new Error('request body timeout'));
+    req.setTimeout(10_000, onTimeout);
+    const clearBodyTimeout = () => {
+      req.setTimeout(0);
+      req.removeListener('timeout', onTimeout);
+    };
     let buf = '';
-    req.on('data', c => { buf += c; if (buf.length > 1_048_576) reject(new Error('body too large')); });
-    req.on('end', () => resolve(buf));
-    req.on('error', reject);
+    req.on('data', c => {
+      buf += c;
+      if (buf.length > 1_048_576) { clearBodyTimeout(); reject(new Error('body too large')); }
+    });
+    req.on('end', () => { clearBodyTimeout(); resolve(buf); });
+    req.on('error', err => { clearBodyTimeout(); reject(err); });
   });
 }
 

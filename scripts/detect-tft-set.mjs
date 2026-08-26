@@ -26,11 +26,10 @@ const SET_NAMES = {
   15: 'K.O. Coliseum',
   16: 'Lore & Legends',
   17: 'Space Gods',
-  // 18: '<Marketing-Name>' — BEWUSST leer bis Riot ihn announced. Der Fallback
-  // `Set 18` ist ehrlich; ein geratener Name waere ein erfundener Wert
-  // (Memory feedback_no_fake_values). Beim Bump hier UND in
-  // scripts/crawl-tft-tournaments.mjs TFT_SET_NAMES eintragen
-  // (Memory reference_tft_set_names.md: zwei Stellen synchron halten).
+  // Nicht geraten: Riots eigene Stringtable fuehrt DisplayName_TFT_Set18 =
+  // "Enchanted Wilds" (game/en_us/data/menu/en_us/tft.stringtable.json,
+  // gelesen 2026-08-26). Gegenstelle: crawl-tft-tournaments.mjs TFT_SET_NAMES.
+  18: 'Enchanted Wilds',
 };
 
 // Fruehestes Datum (UTC, YYYY-MM-DD), ab dem ein Bump auf das jeweilige Set

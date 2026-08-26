@@ -27,9 +27,9 @@ const APEX_BUCKETS = ['master','grandmaster','challenger'];
 //
 // Hybrid items (Guinsoo's, Hextech Gunblade) and AS items (Red Buff = RFC,
 // Kraken's Fury = Runaan's) count because they only go on damage carries.
-// DAMAGE_CARRY_ITEMS lebt in scripts/lib/tft-item-classes.mjs (Single-Source-
+// Die Damage-Item-Liste lebt in scripts/lib/tft-item-classes.mjs (Single-Source-
 // of-Truth, parallel zu app/lib/tft-item-classes.ts).
-import { DAMAGE_CARRY_ITEMS } from './tft-item-classes.mjs';
+import { damageCarryItemsForSet } from './tft-item-classes.mjs';
 import { classifyComp as classifyCompUnified } from './tft-classify-comp.mjs';
 
 export function emptyAggregate() {
@@ -149,6 +149,8 @@ function classifyComp(participant, opts = {}) {
  */
 export function aggregateMatch(rawMatch, agg, opts) {
   const { tierBucket, currentSet, focusPuuid, proPuuids } = opts;
+  // Set-genau, nicht global: Set 17 fuehrt TFT_Item_*, Set 18 DA_*.
+  const damageItems = damageCarryItemsForSet(currentSet);
   if (!rawMatch?.info?.participants) { agg.matchesSkipped++; return false; }
   const info = rawMatch.info;
   // Filter out non-ranked queues just in case the crawler missed it.
@@ -448,7 +450,7 @@ export function aggregateMatch(rawMatch, agg, opts) {
           }));
           ue.count++;
           const items = Array.isArray(u.itemNames) ? u.itemNames : [];
-          if (items.some(it => DAMAGE_CARRY_ITEMS.has(it))) ue.carryItemGames++;
+          if (items.some(it => damageItems.has(it))) ue.carryItemGames++;
           const seen = new Set();
           for (const it of items) {
             if (!it || seen.has(it)) continue;

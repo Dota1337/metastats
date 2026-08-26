@@ -15,7 +15,7 @@
 
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { DAMAGE_CARRY_ITEMS } from './tft-item-classes';
+import { damageCarryItemsForSet } from './tft-item-classes';
 import { compDefiningAugmentSlug } from './tft-comp-defining-augments';
 import { CURRENT_SET } from './current-set';
 
@@ -175,6 +175,8 @@ export function classifyComp(participant: ClassifyParticipant, opts: ClassifyOpt
   // Self-load the cost map (D1): the swap was dead because no caller passed it.
   const derived = loadBundleDerived(currentSet);
   const costMap = costMapOverride ?? derived.costMap;
+  // Set-genau, nicht global: Set 17 fuehrt TFT_Item_*, Set 18 DA_*.
+  const damageItems = damageCarryItemsForSet(currentSet);
 
   // Fragment-Trait-Filter: Bundle-Ground-Truth vereinigt mit dem alten
   // Namensmuster. Begruendung an loadBundleDerived. Bewusst NICHT an
@@ -202,7 +204,7 @@ export function classifyComp(participant: ClassifyParticipant, opts: ClassifyOpt
     const byOffensiveItems = [...units]
       .map(u => {
         const items = unitItems(u);
-        const offensive = items.filter(i => DAMAGE_CARRY_ITEMS.has(i)).length;
+        const offensive = items.filter(i => damageItems.has(i)).length;
         return { u, offensive, total: items.length };
       })
       .filter(x => x.offensive > 0)
@@ -264,7 +266,7 @@ export function classifyComp(participant: ClassifyParticipant, opts: ClassifyOpt
       const cid = unitCid(u);
       if (!cid || cid === carryId) return null;
       const items = unitItems(u);
-      const dmgItems = items.filter(i => DAMAGE_CARRY_ITEMS.has(i)).length;
+      const dmgItems = items.filter(i => damageItems.has(i)).length;
       return dmgItems >= SECONDARY_MIN_DMG_ITEMS ? { cid, dmgItems, tier: u.tier ?? 1 } : null;
     })
     .filter((x): x is { cid: string; dmgItems: number; tier: number } => x !== null)

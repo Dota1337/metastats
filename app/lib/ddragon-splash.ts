@@ -41,7 +41,31 @@ import type { TftAssetsBundle, TftChampion } from './tft-cdragon';
 //
 // Set-Praefix bewusst als \d+ statt hart 17 — sonst ist der naechste
 // Set-Bump ein stiller Totalausfall (vgl. Gate 6 gegen `|| 17`-Literale).
-const API_PREFIX_RE = /^tft\d+b?_/i;
+// Set 18 bricht die Namenskonvention: die apiNames heissen `DA_18_LeBlanc`,
+// `DA_Amumu18` oder `DA_KogMaw18_AD` statt `TFT17_Kaisa`. Das alte Muster
+// traf davon keinen einzigen — gemessen am 2026-08-26 gegen ddragon: 0 von
+// 91 Set-18-Einheiten aufloesbar, die Kopfzone waere leer geblieben.
+//
+// Drei Regeln, alle gegen Set 17 UND Set 18 nachgemessen:
+//   1. Praefix `TFT<n>[b]_` ODER `DA_`, jeweils optional gefolgt von `<n>_`.
+//   2. Nur das erste Segment zaehlt — ddragon-IDs enthalten nie einen
+//      Unterstrich, `_AD`/`_AP`/`_Base`/`_Fae` sind Set-Varianten derselben
+//      Einheit (`DA_18_MasterYi_AD` -> MasterYi).
+//   3. Angehaengte Set-Nummer abschneiden (`Amumu18` -> Amumu); kein
+//      ddragon-Champion endet auf einer Ziffer.
+// Ergebnis: Set 17 unveraendert 56 Set-Skins, Set 18 41 statt 0.
+const API_PREFIX_RE = /^(?:tft\d+b?|da)_(?:\d+_)?/i;
+
+// ddragon schreibt ein paar IDs anders als das TFT-Bundle. Nur gemessene
+// Faelle stehen hier: `DA_18_LeBlanc` -> Leblanc_5 loest auf, LeBlanc_5 nicht.
+const DDRAGON_ID_ALIAS: Record<string, string> = { LeBlanc: 'Leblanc', KhaZix: 'Khazix', KaiSa: 'Kaisa', VelKoz: 'Velkoz', ChoGath: 'Chogath', BelVeth: 'Belveth' };
+
+// Aus dem apiName die ddragon-Champion-ID ableiten. Leerstring, wenn nichts
+// uebrig bleibt — der Aufrufer macht daraus `null`.
+function ddragonChampionId(apiName: string): string {
+  const base = apiName.replace(API_PREFIX_RE, '').split('_')[0].replace(/\d+$/, '');
+  return DDRAGON_ID_ALIAS[base] || base;
+}
 
 // Aus dem Icon-Pfad wird nur noch **eins** gelesen: die Skin-Nummer.
 const SKIN_NUM_RE = /_(\d+)\.png$/;
@@ -50,7 +74,13 @@ const SKIN_NUM_RE = /_(\d+)\.png$/;
 // haelt die URL fuer gueltig). Gemessen gegen ddragon 16.15.1.
 // Diese Liste ist ein Zwischenstand: sobald der Pool zur Buildzeit erzeugt und
 // per HEAD validiert wird, faellt sie ersatzlos weg.
-const KNOWN_MISSING = new Set(['Blitzcrank_65', 'IvernMinion_27']);
+const KNOWN_MISSING = new Set([
+  'Blitzcrank_65', 'IvernMinion_27',
+  // Set 18, am 2026-08-26 per HEAD gemessen: die Ableitung liefert eine
+  // plausible URL, ddragon antwortet 403. Kobuko und Alune haben gar keinen
+  // LoL-Champion, Fiddlesticks hat keinen Skin 46.
+  'Fiddlesticks_46', 'Kobuko_2', 'Alune_15',
+]);
 
 // PvE-Gegner und Beschwoerungen tragen teils Kosten und sehen im Bundle aus
 // wie regulaere Einheiten. `TFT17_Enemy_Aatrox` ("Apex Primordian") ist eine
@@ -70,7 +100,7 @@ export interface TftSplash {
  * `null`, wenn kein ddragon-Champion dahintersteht (z.B. Meepsie).
  */
 export function tftSplashUrl(apiName: string, champ: TftChampion): TftSplash | null {
-  const championId = apiName.replace(API_PREFIX_RE, '');
+  const championId = ddragonChampionId(apiName);
   if (!championId) return null;
 
   const file = String(champ.icon || '').split('/').pop() ?? '';

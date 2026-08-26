@@ -1,13 +1,20 @@
 {
-  "setNumber": 17,
-  "setName": "Space Gods",
-  "mutator": "TFTSet17",
-  "latestPatch": "17.9",
-  "lolPatch": "16.16.1",
+  "setNumber": 18,
+  "setName": "Enchanted Wilds",
+  "mutator": "TFTSet18",
+  "latestPatch": "18.1",
+  "lolPatch": "16.17.1",
   "patchOverride": null,
-  "detectedAt": "2026-05-03T14:04:48.564Z",
-  "lastCheckedAt": "2026-08-22T06:10:11.209Z",
-  "history": [],
-  "setStartDate": "2026-04-15",
-  "setEndDate": "2026-07-28"
+  "detectedAt": "2026-08-26T14:08:32.809Z",
+  "lastCheckedAt": "2026-08-26T14:22:17.958Z",
+  "history": [
+    {
+      "setNumber": 17,
+      "setName": "Space Gods",
+      "mutator": "TFTSet17",
+      "endedAt": "2026-08-26T14:08:32.809Z"
+    }
+  ],
+  "setStartDate": "2026-08-26",
+  "setEndDate": null
 }

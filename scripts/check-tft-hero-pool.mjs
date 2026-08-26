@@ -20,10 +20,34 @@
 // hier UND in app/lib/ddragon-splash.ts.
 import { readFileSync } from 'node:fs';
 
-const API_PREFIX_RE = /^tft\d+b?_/i;
+// Set 18 bricht die Namenskonvention: die apiNames heissen `DA_18_LeBlanc`,
+// `DA_Amumu18` oder `DA_KogMaw18_AD` statt `TFT17_Kaisa`. Das alte Muster
+// traf davon keinen einzigen — gemessen am 2026-08-26 gegen ddragon: 0 von
+// 91 Set-18-Einheiten aufloesbar, die Kopfzone waere leer geblieben.
+//
+// Drei Regeln, alle gegen Set 17 UND Set 18 nachgemessen:
+//   1. Praefix `TFT<n>[b]_` ODER `DA_`, jeweils optional gefolgt von `<n>_`.
+//   2. Nur das erste Segment zaehlt — ddragon-IDs enthalten nie einen
+//      Unterstrich, `_AD`/`_AP`/`_Base`/`_Fae` sind Set-Varianten derselben
+//      Einheit (`DA_18_MasterYi_AD` -> MasterYi).
+//   3. Angehaengte Set-Nummer abschneiden (`Amumu18` -> Amumu); kein
+//      ddragon-Champion endet auf einer Ziffer.
+// Ergebnis: Set 17 unveraendert 56 Set-Skins, Set 18 41 statt 0.
+const API_PREFIX_RE = /^(?:tft\d+b?|da)_(?:\d+_)?/i;
+
+// ddragon schreibt ein paar IDs anders als das TFT-Bundle. Nur gemessene
+// Faelle stehen hier: `DA_18_LeBlanc` -> Leblanc_5 loest auf, LeBlanc_5 nicht.
+const DDRAGON_ID_ALIAS = { LeBlanc: 'Leblanc', KhaZix: 'Khazix', KaiSa: 'Kaisa', VelKoz: 'Velkoz', ChoGath: 'Chogath', BelVeth: 'Belveth' };
+
+// Aus dem apiName die ddragon-Champion-ID ableiten. Leerstring, wenn nichts
+// uebrig bleibt — der Aufrufer macht daraus `null`.
+function ddragonChampionId(apiName) {
+  const base = apiName.replace(API_PREFIX_RE, '').split('_')[0].replace(/\d+$/, '');
+  return DDRAGON_ID_ALIAS[base] || base;
+}
 const SKIN_NUM_RE = /_(\d+)\.png$/;
 const NON_PLAYABLE_RE = /_(enemy|pve|minion|npc)_|^tft\d+b?_(enemy|pve)/i;
-const KNOWN_MISSING = new Set(['Blitzcrank_65', 'IvernMinion_27']);
+const KNOWN_MISSING = new Set(['Blitzcrank_65', 'IvernMinion_27', 'Fiddlesticks_46', 'Kobuko_2', 'Alune_15']);
 const MIN_POOL = 2;
 
 const bundle = JSON.parse(readFileSync(new URL('../public/tft-assets.json', import.meta.url), 'utf8'));
@@ -32,7 +56,7 @@ const pool = [];
 for (const [apiName, champ] of Object.entries(bundle.champions || {})) {
   if (!Array.isArray(champ.traits) || champ.traits.length === 0) continue;
   if (NON_PLAYABLE_RE.test(apiName)) continue;
-  const championId = apiName.replace(API_PREFIX_RE, '');
+  const championId = ddragonChampionId(apiName);
   if (!championId) continue;
   const file = String(champ.icon || '').split('/').pop() ?? '';
   const skinNum = file.match(SKIN_NUM_RE)?.[1] ?? '0';

@@ -34,7 +34,7 @@
 // Reclassify hinterher, sonst zeigt das Mapping auf Keys, die es nicht gibt.
 
 import { classifyComp } from './tft-classify-comp.mjs';
-import { DAMAGE_CARRY_ITEMS } from './tft-item-classes.mjs';
+import { damageCarryItemsForSet } from './tft-item-classes.mjs';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { CURRENT_SET } from './current-set.mjs';
@@ -81,7 +81,7 @@ function styleFor(styles, name, tier) {
 
 // Ein Build zählt als Carry-Build ab dieser Zahl Damage-Items.
 //
-// Historie: die Schwelle stand auf 1, weil DAMAGE_CARRY_ITEMS
+// Historie: die Schwelle stand auf 1, weil die Damage-Item-Liste
 // MadredsBloodrazor (Giant Slayer, 12.002 Builds) nicht kannte und MasterYi
 // deshalb mit Schwelle 2 aus seiner eigenen Comp fiel. Das Item ist seit
 // 2026-08-05 in der Liste — der sauberere Fix, der damals nur deshalb
@@ -194,7 +194,7 @@ export function clusterToParticipant(cluster, carry, setNumber) {
  * @returns {Array<{ familyKey: string, trait: string, carry: string }>}
  */
 export function clusterFamilies(cluster, opts = {}) {
-  const damageItems = opts.damageItems || DAMAGE_CARRY_ITEMS;
+  const damageItems = opts.damageItems || damageCarryItemsForSet(opts.currentSet ?? CURRENT_SET);
   const units = cluster.units || [];
   const out = [];
 

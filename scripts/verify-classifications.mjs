@@ -262,7 +262,10 @@ if (activeItems.length > 0) {
   const bucketOf = (id) => {
     const meta = bundle.items?.[id];
     const name = meta?.name || '';
-    if (/^TFT\d*_Item_Artifact_/i.test(id)) return 'artifact';
+    // Mirror von app/lib/tft-item-bucket.ts: das Praefix wechselt pro Set
+    // (Set 17 TFT17_/TFT_, Set 18 DA_). Ein hart auf TFT verdrahtetes Muster
+    // liess die DA_-Artefakte still nach "other" fallen.
+    if (/^[A-Za-z]+\d*_Item_Artifact_/i.test(id)) return 'artifact';
     const isEmblem =
       /EmblemItem$/.test(id) ||
       / Emblem$/.test(name) ||

@@ -18,6 +18,7 @@
 
 import { writeFileSync, readFileSync, existsSync, readdirSync } from 'node:fs';
 import { request as httpsRequest } from 'node:https';
+import { resolve } from 'node:path';
 import { lookup as dnsLookup } from 'node:dns';
 import { loadCurrentSet } from './lib/current-set.mjs';
 
@@ -93,6 +94,21 @@ function normalizeIconPath(raw) {
 //
 // Reihenfolge im Workflow (detect vor fetch) ist damit auch inhaltlich
 // begruendet und nicht mehr nur zufaellig richtig.
+// Der Anzeigename aus dem gegateten public/tft-set.json — nur wenn er zur
+// gewaehlten Set-Nummer passt. CDragon liefert fuer ein frisches Set einen
+// Platzhalter: TFTSet18 meldete am 2026-08-26 den Namen "Set10".
+function gatedSetName(active) {
+  const path = resolve(process.cwd(), 'public', 'tft-set.json');
+  if (!existsSync(path)) return null;
+  try {
+    const j = JSON.parse(readFileSync(path, 'utf8'));
+    const num = j.currentSet?.number ?? j.setNumber ?? null;
+    if (num !== active?.number) return null;
+    const name = j.currentSet?.name ?? j.setName ?? null;
+    return typeof name === 'string' && name.trim() ? name : null;
+  } catch { return null; }
+}
+
 function pickActiveSet(setData) {
   const live = setData.filter(s => /^TFTSet\d+$/.test(s.mutator || ''));
   if (live.length === 0) return null;
@@ -192,6 +208,42 @@ async function main() {
         desc: stripHtml(c.ability.desc || ''),
       } : undefined,
     };
+  }
+
+  // Vollstaendigkeits-Gate auf dem Champion-Block.
+  //
+  // CDTBs Champion-Parser (cdtb/tftdata.py, parse_champs) ueberspringt still
+  // jede Unit ohne `spells`-Feld. Fuer Set 18 blieben davon 19 Eintraege
+  // uebrig, davon 2 mit Traits — der Rest sind PVE-Minions. Gesunde Sets
+  // liegen bei 60-101 Units mit Traits (14/15/16/17 am 2026-08-26 gemessen),
+  // die Schwelle 40 trennt beide Faelle deutlich.
+  //
+  // Traits und Items derselben Quelle sind nicht betroffen und bleiben stehen.
+  const CHAMPS_MIN = 40;
+  const withTraits = Object.values(champions).filter(c => (c.traits || []).length > 0).length;
+  if (withTraits < CHAMPS_MIN) {
+    console.log(`[3.5/4] Champion-Block unvollstaendig (${withTraits} Units mit Traits) — baue aus Rohquellen`);
+    const { buildChampionsFromRaw } = await import('./lib/tft-champions-raw.mjs');
+    const { champions: rebuilt, stats } = await buildChampionsFromRaw(active.number, {
+      fetchJSON, normalizeIconPath, stripHtml,
+      traits: active.traits || [],
+      log: m => console.log(m),
+    });
+    const n = Object.keys(rebuilt).length;
+    console.log(`       rebuilt: ${n} Champions (ohne Shop-Eintrag: ${stats.noShop.length})`);
+    if (stats.noName.length) console.warn('       WARN ohne Namen:', stats.noName.join(' '));
+    if (stats.noIcon.length) console.warn('       WARN ohne Icon:', stats.noIcon.join(' '));
+    if (stats.unknownTraits.length) console.warn('       WARN unbekannte Traits:', stats.unknownTraits.join(' '));
+    // Hart abbrechen statt ein halbes Bundle zu schreiben: die bestehende
+    // public/tft-assets-*.json bleibt dann unveraendert liegen.
+    if (n < CHAMPS_MIN) {
+      console.error(`FATAL: Rohquellen liefern nur ${n} Champions (< ${CHAMPS_MIN}) — Bundle bleibt unveraendert.`);
+      process.exit(1);
+    }
+    // Merge statt Ersatz: die PVE-Minions aus der abgeleiteten Datei
+    // (TFT_BlueGolem, TFT_Krug, ...) tauchen in Boards auf und fehlen den
+    // Rohquellen, weil sie keine Set-Traits tragen.
+    Object.assign(champions, rebuilt);
   }
 
   // Traits: only active set
@@ -380,13 +432,51 @@ async function main() {
   const rawAugments = (active.augments || [])
     .map(a => typeof a === 'string' ? a : a?.apiName)
     .filter(Boolean);
-  const activeAugments = Array.from(new Set(rawAugments.filter(id => !/GodAugment/i.test(id)))).sort();
+  let activeAugments = Array.from(new Set(rawAugments.filter(id => !/GodAugment/i.test(id)))).sort();
+
+  // Gegenprobe gegen tactics.tools, weil `setData[N].augments` bei einem
+  // frischen Set nicht verlaesslich ist. Gemessen am 2026-08-26 gegen
+  // cdragon/tft/en_us.json: TFTSet18 fuehrt 596 Augments bei 19 Champions,
+  // waehrend Set 17 bei 273, Set 16 bei 275 und Set 14 bei 358 liegt. Der
+  // Champion-Wert ist nachweislich kaputt (siehe der Rohquellen-Fallback in
+  // [3.5/4]) — die Augment-Liste desselben Blobs ist es ebenso.
+  //
+  // Folge ohne Filter: 161 der 596 Augments haben keinen tactics.tools-Tier
+  // und fallen auf die Icon-Heuristik zurueck, also erfundene Tiers auf der
+  // Wiki-Seite. Coverage 73.0 % statt der 98.8 %, die Set 17 hatte.
+  //
+  // Regel: behalten wird, was tactics.tools kennt ODER was das Praefix des
+  // aktiven Sets traegt (Set 17 -> `TFT17_`, Set 18 -> `DA_`). Das Praefix
+  // kommt aus den Traits des Sets, nicht aus einem Literal — gemessen:
+  // Set 17 = 43x `TFT17`, Set 18 = 36x `DA`, jeweils eindeutig.
+  //
+  // Der Filter greift nur, wenn die Override-Datei plausibel gross ist.
+  // Faellt tactics.tools aus, bleibt Riots voller Pool stehen (schlechtere
+  // Tiers, aber keine still verschwundenen Augments).
+  const OVERRIDE_MIN = 150;
+  const overrideCount = Object.keys(tierOverride).length;
+  if (overrideCount >= OVERRIDE_MIN) {
+    const prefixCount = new Map();
+    for (const t of Object.keys(traits)) {
+      const p = t.split('_')[0];
+      prefixCount.set(p, (prefixCount.get(p) || 0) + 1);
+    }
+    const setPrefix = [...prefixCount.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+    const keep = activeAugments.filter(id => tierOverride[id] != null || (setPrefix && id.startsWith(`${setPrefix}_`)));
+    const dropped = activeAugments.length - keep.length;
+    console.log(`       augment-pool: ${activeAugments.length} -> ${keep.length} (Praefix "${setPrefix}_", ${dropped} ohne tactics.tools-Beleg verworfen)`);
+    activeAugments = keep;
+  } else {
+    console.warn(`       WARN: nur ${overrideCount} Augments von tactics.tools gepinnt (<${OVERRIDE_MIN}) — Pool-Gegenprobe uebersprungen, Riots volle Liste bleibt stehen`);
+  }
   console.log(`       items: ${Object.keys(items).length}  active.items: ${activeItems.length}  champions: ${Object.keys(champions).length}  traits: ${Object.keys(traits).length}  augments: ${Object.keys(augments).length}  active.augments: ${activeAugments.length}  chibis: ${Object.keys(chibis).length}  tacticians: ${Object.keys(tacticians).length}`);
 
   console.log('[4/4] Write public/tft-assets.json + per-set archive');
   const payload = {
     set: active.number,
-    setName: active.name,
+    // public/tft-set.json ist der gegatete Source-of-Truth fuer Nummer UND
+    // Namen; CDragons active.name ist bei einem frischen Set ein Platzhalter.
+    setName: gatedSetName(active) || active.name,
     mutator: active.mutator,
     fetchedAt: new Date().toISOString(),
     source: 'CommunityDragon (cdragon/tft/en_us.json + companions.json)',

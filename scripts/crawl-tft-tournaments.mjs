@@ -261,6 +261,7 @@ const TFT_SET_NAMES = {
   15: 'K.O. Coliseum',
   16: 'Lore & Legends',
   17: 'Space Gods',
+  18: 'Enchanted Wilds',
 };
 
 // Local-only template resolver (no Liquipedia call) — applied first inside

@@ -53,6 +53,15 @@ export function tftPatchLabel(rawPatch: string | undefined | null): string {
     return `${inMajor}.${inMinor}${suffix}`;
   }
 
+  // Ein Major, der weder die aktuelle Set-Nummer noch der LoL-Major des Ankers
+  // ist, ist bereits ein TFT-Label aus einem frueheren Set ("17.5"). Ohne diesen
+  // Riegel rechnete die Offset-Arithmetik solche Labels in Fantasie-Patches der
+  // laufenden Set um: 17.9 wurde zu 18.18. Nur LoL-foermige Majors duerfen rechnen.
+  const anchorLolForGuard = parseBase(META.lolPatch);
+  if (anchorLolForGuard && inMajor !== anchorLolForGuard[0] && inMajor !== anchorLolForGuard[0] - 1) {
+    return rawPatch;
+  }
+
   // Need the anchor for the LoL→TFT offset
   const anchorLol = parseBase(META.lolPatch);
   const anchorTft = parseBase(META.latestPatch);

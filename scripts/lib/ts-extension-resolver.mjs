@@ -36,6 +36,21 @@ export async function resolve(specifier, context, nextResolve) {
       }
     }
   }
+  // JSON-Import-Attribut nachruesten. Next und tsc erlauben einen JSON-Import
+  // ohne Attribut; Node verlangt seit 22 ein `with { type: 'json' }` und wirft
+  // sonst ERR_IMPORT_ATTRIBUTE_MISSING. Ohne das hier ist jedes app/lib-Modul
+  // untestbar, das eine JSON-Datei einliest (tft-patch-label liest
+  // public/tft-set.json).
+  // Das Attribut muss am Resolve-ERGEBNIS haengen, nicht am Context — der
+  // Load-Hook prueft die aufgeloeste Zusage, nicht die Anfrage.
+  if (/\.json$/i.test(specifier)) {
+    const resolved = await nextResolve(specifier, context);
+    return {
+      ...resolved,
+      importAttributes: { ...resolved.importAttributes, type: 'json' },
+    };
+  }
+
   try {
     return await nextResolve(specifier, context);
   } catch (err) {

@@ -92,7 +92,8 @@ export interface TftAssetsBundle {
   active?: {
     items?: string[];
     // setData[N].augments minus God-Augments — the source of truth for the
-    // /tft/augments wiki catalog. God-Augments live on /tft/gods.
+    // /tft/augments wiki catalog. God-Augments waren eine Set-17-Mechanik und
+    // sind dort bewusst ausgeschlossen; ab Set 18 laeuft der Filter ins Leere.
     augments?: string[];
   };
 }

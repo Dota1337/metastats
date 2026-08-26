@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Pre-push classification verifier. Catches the kind of mistakes that ate
- * three iterations on /tft/augments + /tft/gods in 2026-06-10 — Pattern-
+ * three iterations on /tft/augments in 2026-06-10 — Pattern-
  * Heuristics that "look right" but disagree with ground-truth.
  *
  * Hard rules (exit 1 on any failure):
@@ -9,9 +9,6 @@
  *   • For every apiName in tft-augment-tiers-{N}.json, the bundle's tier
  *     MUST equal the override (= tactics.tools ground-truth)
  *   • Override coverage of active.augments ≥ 90 %
- *   • No GodAugment leaks into active.augments
- *   • Each god in tft-gods-{N}.json has a baseApiName that exists in
- *     bundle.augments and uses the TFT{N}_Augment_<id>GodAugment pattern
  *   • Tier distribution sanity: each of Silver/Gold/Prismatic > 0,
  *     no tier exceeds 70 % of the total (catches "everything fell into
  *     Silver-default" regressions)
@@ -37,8 +34,6 @@ if (!bundle) { console.error('FAIL: public/tft-assets.json missing or invalid');
 const set = bundle.set;
 const overridePath = `public/tft-augment-tiers-${set}.json`;
 const override = loadJson(overridePath);
-const godsPath = `public/tft-gods-${set}.json`;
-const gods = loadJson(godsPath);
 const compsPath = `public/tft-metatft-comps-${set}.json`;
 const metatftComps = loadJson(compsPath);
 
@@ -46,7 +41,6 @@ console.log(`Verifying classifications for set ${set} (${bundle.setName})`);
 console.log(`  bundle augments: ${Object.keys(bundle.augments || {}).length}`);
 console.log(`  active.augments: ${bundle.active?.augments?.length || 0}`);
 console.log(`  tier-override:   ${override ? Object.keys(override.tiers || {}).length : 'MISSING'}`);
-console.log(`  gods doc:        ${gods ? gods.gods?.length : 'MISSING'}`);
 console.log(`  metatft-comps:   ${metatftComps ? (metatftComps.comps || []).length : 'MISSING'}`);
 console.log(`  family-map:      ${metatftComps ? Object.keys(metatftComps.familyMap || {}).length : 'MISSING'}`);
 console.log();
@@ -85,10 +79,6 @@ if (override?.tiers && activeList.length > 0) {
   if (pct < 0.9) fail(`Override coverage ${(pct * 100).toFixed(1)} % is below 90 % threshold`);
 }
 
-// 4. No GodAugment leak
-const godLeaks = activeList.filter(id => /GodAugment/i.test(id));
-if (godLeaks.length > 0) fail(`active.augments contains ${godLeaks.length} GodAugment(s): ${godLeaks.slice(0, 3).join(', ')}…`);
-
 // 4b. Icon presence: every active augment must have a non-empty icon path.
 //     Augment icons come from CDragon (Riot's artwork) — there's no public
 //     source that ships truly tier-specific icons for every augment, see
@@ -102,22 +92,6 @@ for (const id of activeList) {
   }
 }
 if (iconMissing >= 5) fail(`… ${iconMissing - 5} additional icon-missing entries not shown`);
-
-// 5. God doc → bundle linkage
-if (gods?.gods) {
-  for (const g of gods.gods) {
-    if (!g.id || !g.baseApiName) { fail(`Gods doc entry missing id/baseApiName: ${JSON.stringify(g)}`); continue; }
-    if (!bundle.augments[g.baseApiName]) {
-      fail(`God "${g.id}": baseApiName "${g.baseApiName}" not in bundle.augments`);
-    }
-    const expectedPrefix = `TFT${set}_Augment_${g.id}GodAugment`;
-    if (!g.baseApiName.startsWith(expectedPrefix)) {
-      fail(`God "${g.id}": baseApiName "${g.baseApiName}" doesn't match expected prefix "${expectedPrefix}…"`);
-    }
-  }
-} else {
-  warn(`No gods doc at ${godsPath} — /tft/gods won't render. Add the file if Set ${set} has gods.`);
-}
 
 // 6. Tier distribution sanity
 if (activeList.length > 0) {

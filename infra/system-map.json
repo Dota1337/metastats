@@ -558,7 +558,6 @@
         "scripts/refresh-augment-stages.mjs",
         "scripts/refresh-patch-notes.mjs",
         "scripts/fetch-tft-assets.mjs",
-        "scripts/annotate-god-offerings.mjs",
         "scripts/fetch-tft-tier-distribution.mjs",
         "scripts/collect-tft-allranks.mjs"
       ],
@@ -625,7 +624,6 @@
         "scripts/refresh-augment-stages.mjs",
         "scripts/refresh-patch-notes.mjs",
         "scripts/fetch-tft-assets.mjs",
-        "scripts/annotate-god-offerings.mjs",
         "scripts/collect-tft-allranks.mjs",
         "scripts/build-tft-knowledge-graph.mjs",
         "scripts/fetch-tft-tier-distribution.mjs"

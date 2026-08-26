@@ -424,7 +424,8 @@ async function main() {
   // augments that can drop in this set — incl. carry-overs from older sets
   // (TFT10_Augment_*, TFT11_Augment_*…) that they re-enabled. We surface that
   // full list to the /tft/augments wiki page, with two exclusions:
-  //   - God-Augments (`*GodAugment*`)  → live on /tft/gods, not the augment list
+  //   - God-Augments (`*GodAugment*`)  → Set-17-Mechanik, gehoert nicht in die
+  //                                       Augment-Liste. Ab Set 18 ein No-Op.
   //   - Sub-variant boons              → ditto
   // Stats-aggregator (DB) intentionally doesn't ship augment counts (Riot
   // restriction), so we can't cross-check played-IDs like we do for items.

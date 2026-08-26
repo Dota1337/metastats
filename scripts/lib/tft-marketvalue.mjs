@@ -82,8 +82,19 @@ export function computeBaseValue(ranked, playerRank) {
 
 const SET_RX = /^TFT(\d+)_/;
 
-function detectSetNumber(participants) {
-  for (const p of participants || []) {
+// Riots `info.tft_set_number` ist die autoritative Quelle und existiert seit
+// jeher in Match-V1. Das Praefix-Parsing darunter ist nur noch Fallback.
+//
+// Warum der Wechsel: ab Set 18 heissen die character_ids `DA_18_Sentry`,
+// `DA_Cinderling18` oder `DA_Lux18_Base` — keine davon matcht `^TFT(\d+)_`.
+// detectSetNumber lieferte dadurch `undefined`, und der Cache-Writer schrieb
+// `set_number: snap.setNumber ?? 0` (tft-match-cache-pg.mjs) auf JEDE
+// Set-18-Zeile eine 0. Gemessen am 2026-08-26 gegen einen Live-Match:
+// info.tft_set_number = 18, erste Unit = "DA_18_Alistar".
+function detectSetNumber(info) {
+  const declared = info?.tft_set_number ?? info?.tftSetNumber;
+  if (typeof declared === 'number' && declared > 0) return declared;
+  for (const p of info?.participants || []) {
     for (const u of p.units || []) {
       const m = SET_RX.exec(u.character_id || '');
       if (m) return Number(m[1]);
@@ -96,8 +107,13 @@ function detectSetNumber(participants) {
 // withAugmentSuffix=false — Cache haelt cluster_key flat (suffix-frei), die
 // Listing-Page matcht ueber compTraitFamilyKey() ohnehin nicht ueber den
 // Augment-Suffix.
-function classifyComp(p) {
-  const result = classifyCompUnified(p, { withAugmentSuffix: false });
+// `opts` wird durchgereicht (v.a. `currentSet`). Vorher nahm diese Funktion nur
+// einen Parameter, waehrend der Aufrufer unten bereits `{ currentSet }` uebergab
+// — das Argument fiel still auf den Boden, die Set-Flip-Absicherung aus 63f9d2f
+// war also nie verdrahtet. Belegt: classifyCompUnified liest `opts.currentSet`
+// in scripts/lib/tft-classify-comp.mjs:136.
+function classifyComp(p, opts = {}) {
+  const result = classifyCompUnified(p, { ...opts, withAugmentSuffix: false });
   if (!result) return undefined;
   return {
     clusterKey: result.clusterKey,
@@ -117,7 +133,7 @@ export function buildSnapshotForPlayer(rawMatch, puuid) {
   if (queueId !== 1100) return null;
   const me = rawMatch.info.participants.find(p => p.puuid === puuid);
   if (!me) return null;
-  const setNumber = detectSetNumber(rawMatch.info.participants);
+  const setNumber = detectSetNumber(rawMatch.info);
   return {
     matchId: rawMatch.metadata?.match_id,
     placement: me.placement ?? 9,

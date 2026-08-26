@@ -154,12 +154,23 @@ export function aggregateMatch(rawMatch, agg, opts) {
   // Filter out non-ranked queues just in case the crawler missed it.
   if ((info.queue_id ?? info.queueId) !== 1100) { agg.matchesSkipped++; return false; }
   const participants = info.participants;
-  // Set filter: every unit on this match should belong to the current set
-  // (any participant with a non-current TFT prefix means a stale match).
+  // Set filter: der Match muss zum aktuellen Set gehoeren.
+  //
+  // Primaer `info.tft_set_number` (Riots eigene Angabe), erst danach das alte
+  // Praefix-Muster. Grund: ab Set 18 heissen die IDs `DA_18_Sentry` /
+  // `DA_Cinderling18` und matchen `^TFT(\d+)_` nicht — der Filter war fuer
+  // Set-18-Matches eine No-Op und haette sie waehrend der Uebergangsphase in
+  // die Set-17-Aggregate gemischt (inkl. Patch-Label 17.9, weil Riots
+  // game_version bei Set 18 keine Ziffern mehr enthaelt).
   if (currentSet != null) {
-    const sample = participants?.[0]?.units?.[0]?.character_id || '';
-    const m = /^TFT(\d+)_/.exec(sample);
-    if (m && Number(m[1]) !== currentSet) { agg.matchesSkipped++; return false; }
+    const declared = info.tft_set_number ?? info.tftSetNumber;
+    if (typeof declared === 'number' && declared > 0) {
+      if (declared !== currentSet) { agg.matchesSkipped++; return false; }
+    } else {
+      const sample = participants?.[0]?.units?.[0]?.character_id || '';
+      const m = /^TFT(\d+)_/.exec(sample);
+      if (m && Number(m[1]) !== currentSet) { agg.matchesSkipped++; return false; }
+    }
   }
 
   agg.matchesAnalyzed++;

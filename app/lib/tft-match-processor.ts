@@ -49,14 +49,19 @@ export interface TftMatchSummary {
   gameLength: number;
   gameVersion: string;
   queueId: number;
-  setNumber?: number;       // pulled from any unit's character_id prefix (TFT<N>_…)
+  setNumber?: number;       // info.tft_set_number, Fallback character_id-Praefix
   participants: TftParticipantSummary[];
 }
 
 const SET_RX = /^TFT(\d+)_/;
 
-function detectSetNumber(participants: any[]): number | undefined {
-  for (const p of participants || []) {
+// Spiegel von detectSetNumber in scripts/lib/tft-marketvalue.mjs — siehe dort
+// die Begruendung. Kurz: ab Set 18 (`DA_18_Sentry`, `DA_Cinderling18`) matcht
+// das Praefix-Muster nicht mehr, `info.tft_set_number` schon.
+function detectSetNumber(info: any): number | undefined {
+  const declared = info?.tft_set_number ?? info?.tftSetNumber;
+  if (typeof declared === 'number' && declared > 0) return declared;
+  for (const p of info?.participants || []) {
     for (const u of p.units || []) {
       const m = SET_RX.exec(u.character_id || '');
       if (m) return Number(m[1]);
@@ -108,7 +113,7 @@ export function processTftMatch(raw: any): TftMatchSummary | null {
     gameLength: info.game_length ?? 0,
     gameVersion: info.game_version || '',
     queueId: info.queue_id ?? info.queueId ?? 0,
-    setNumber: detectSetNumber(info.participants),
+    setNumber: detectSetNumber(info),
     participants,
   };
 }

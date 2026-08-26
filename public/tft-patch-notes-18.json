@@ -1,0 +1,316 @@
+{
+  "set": 18,
+  "source": "tactics.tools/info/patch-notes",
+  "fetchedAt": "2026-08-26T20:53:25.424Z",
+  "patches": {
+    "18.1": {
+      "scrapedAt": "2026-08-26T20:53:25.538Z",
+      "sections": [
+        {
+          "category": "LARGE CHANGES",
+          "entries": [
+            {
+              "apiName": null,
+              "displayName": "Called Shot",
+              "change": "Called Shot"
+            },
+            {
+              "apiName": null,
+              "displayName": "Caretaker's Favor",
+              "change": "Caretaker's Favor"
+            },
+            {
+              "apiName": null,
+              "displayName": "Cooking Pot",
+              "change": "Cooking Pot"
+            },
+            {
+              "apiName": null,
+              "displayName": "Coronation",
+              "change": "Coronation"
+            },
+            {
+              "apiName": null,
+              "displayName": "Silver Destiny",
+              "change": "Silver Destiny"
+            },
+            {
+              "apiName": null,
+              "displayName": "Gold Destiny",
+              "change": "Gold Destiny"
+            },
+            {
+              "apiName": null,
+              "displayName": "Prismatic Destiny",
+              "change": "Prismatic Destiny"
+            },
+            {
+              "apiName": null,
+              "displayName": "Hard Bargain",
+              "change": "Hard Bargain"
+            },
+            {
+              "apiName": null,
+              "displayName": "Kingslayer",
+              "change": "Kingslayer"
+            },
+            {
+              "apiName": null,
+              "displayName": "Max Build",
+              "change": "Max Build"
+            },
+            {
+              "apiName": null,
+              "displayName": "Pandora's Bench",
+              "change": "Pandora's Bench"
+            },
+            {
+              "apiName": null,
+              "displayName": "Promised Protection",
+              "change": "Promised Protection"
+            },
+            {
+              "apiName": null,
+              "displayName": "Time Skip",
+              "change": "Time Skip"
+            },
+            {
+              "apiName": null,
+              "displayName": "Young and Wild and Free",
+              "change": "Young and Wild and Free"
+            },
+            {
+              "apiName": null,
+              "displayName": "Band of Thieves",
+              "change": "Band of Thieves II Delay: 6 Player Combats ⇒ 5 Player Combats"
+            },
+            {
+              "apiName": null,
+              "displayName": "Backline Blueprint",
+              "change": "Backline Blueprint / Frontline Foundation: Tooltip updated to say 'class' instead of 'last-listed trait'."
+            },
+            {
+              "apiName": null,
+              "displayName": "Birthday Reunion",
+              "change": "Birthday Reunion Rework: Gain a random 2-star 2-cost champion. When you reach Level 6, random component. When you reach Level 9, gain a random 2-star 5-cost champion."
+            },
+            {
+              "apiName": null,
+              "displayName": "Bronze For Life I",
+              "change": "Bronze for Life I/II Damage Amp %: 2 ⇒ 2.5%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Challenger's Grace",
+              "change": "Challenger's Grace Renamed from Precision and Grace"
+            },
+            {
+              "apiName": null,
+              "displayName": "Comeback Story",
+              "change": "Comeback Story Attack Speed Per Missing Player Health: 0.4% ⇒ 0.3%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Forged In Strength",
+              "change": "Forged in Strength Health Threshold: 30 ⇒ 35. Reward: 3 random Artifacts ⇒ 1 Artifact, 1 random completed item, 2 random components"
+            },
+            {
+              "apiName": null,
+              "displayName": "Going Long",
+              "change": "Going Long Immediate Gold: 16g ⇒ 10g"
+            },
+            {
+              "apiName": null,
+              "displayName": "Living Forge",
+              "change": "Living Forge Rounds: 9 ⇒ 10"
+            },
+            {
+              "apiName": null,
+              "displayName": "Luxury Subscription",
+              "change": "Luxury Subscription Gold: 7 ⇒ 3"
+            },
+            {
+              "apiName": null,
+              "displayName": "Max Build",
+              "change": "Max Build Rework: Gain 10 free shop rerolls. When you reach level 9, gain 3 free shop rerolls and a Champion Duplicator."
+            },
+            {
+              "apiName": null,
+              "displayName": "Money Hungry",
+              "change": "Money Hungry+ Initial Gold: 10 ⇒ 13"
+            },
+            {
+              "apiName": null,
+              "displayName": "Pandora's Bench",
+              "change": "Pandora's Bench Now is less likely to reroll 2-star copies of champions with few copies left in the pool."
+            },
+            {
+              "apiName": null,
+              "displayName": "Radiant Gargoyle Stoneplate",
+              "change": "Radiant Gargoyle Stoneplate Health: 300 ⇒ 400"
+            },
+            {
+              "apiName": null,
+              "displayName": "Radiant Hand of Justice",
+              "change": "Radiant Hand of Justice AD/AP: 30 ⇒ 35"
+            },
+            {
+              "apiName": null,
+              "displayName": "Radiant Steadfast Heart",
+              "change": "Radiant Steadfast Heart Health: 600 ⇒ 500"
+            },
+            {
+              "apiName": null,
+              "displayName": "Forbidden Idol",
+              "change": "Forbidden Idol:Health: 400Mana Regen: 2Shields have 40% of their value converted to max Health instead."
+            },
+            {
+              "apiName": null,
+              "displayName": "Manazane",
+              "change": "Manazane:Attack Damage: 15%Ability Power: 15%Mana Regen: 1"
+            },
+            {
+              "apiName": null,
+              "displayName": "Aegis of Dusk",
+              "change": "Aegis of Dusk: MR Damage Percent: 15% ⇒ 18%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Blighting Jewel",
+              "change": "Blighting Jewel:Base AP: 60% ⇒ 30%Mana gained at 0 MR: 2 ⇒ 4"
+            },
+            {
+              "apiName": null,
+              "displayName": "Dawncore",
+              "change": "Dawncore:AD/AP: 15 ⇒ 20Mana Reduction Per Cast: 4% ⇒ 5%Minimum Mana: 10 ⇒ 15Mana Regen: 2 ⇒ 1Mana Reduction Per Cast: 10% ⇒ 5%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Fishbones",
+              "change": "Fishbones:Now grants +2 RangeAD/AP: 50% ⇒ 25%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Eternal Pact",
+              "change": "Eternal Pact: Base AP: 40 ⇒ 35"
+            },
+            {
+              "apiName": null,
+              "displayName": "Rapid Firecannon",
+              "change": "Rapid Firecannon: Attack Speed: 65% ⇒ 55%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Silvermere Dawn",
+              "change": "Silvermere Dawn:Now Grants 30% OmnivampAD: 140% ⇒ 125%Resists: 80 ⇒ 30"
+            },
+            {
+              "apiName": null,
+              "displayName": "Statikk Shiv",
+              "change": "Statikk Shiv:Lightning bounces: 4 ⇒ 6Base Damage: 30 ⇒ 15AP Lighting Damage: 50% ⇒ 35%Attack Speed: 50% ⇒ 40%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Talisman of Ascension",
+              "change": "Talisman of Ascension: NEW When Ascended gain 12 Mana Regen"
+            },
+            {
+              "apiName": null,
+              "displayName": "Titanic Hydra",
+              "change": "Titanic Hydra: % basic Attack Damage as Bonus Damage: 6% ⇒ 2%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Death's Defiance",
+              "change": "Death's Defiance"
+            }
+          ]
+        },
+        {
+          "category": "ENCHANTED WILDS COSMETIC LOADOUTS",
+          "entries": [
+            {
+              "apiName": null,
+              "displayName": "Lunar 0",
+              "change": "Lunar Revel Balcony"
+            },
+            {
+              "apiName": null,
+              "displayName": "Summoner 0",
+              "change": "Summoners' Arena"
+            },
+            {
+              "apiName": null,
+              "displayName": "Vi",
+              "change": "Vine Whip"
+            },
+            {
+              "apiName": null,
+              "displayName": "Lunar 0",
+              "change": "Lunar Beast Shisa"
+            },
+            {
+              "apiName": null,
+              "displayName": "Vi",
+              "change": "Victorious Flutterbug"
+            },
+            {
+              "apiName": null,
+              "displayName": "Eclipse 0",
+              "change": "Eclipse Fuwa"
+            },
+            {
+              "apiName": null,
+              "displayName": "Fae 0",
+              "change": "Fae Hushtail"
+            },
+            {
+              "apiName": null,
+              "displayName": "Gnar",
+              "change": "Gnarly Burno"
+            },
+            {
+              "apiName": null,
+              "displayName": "Lunar 0",
+              "change": "Lunar Revel Shisa"
+            },
+            {
+              "apiName": null,
+              "displayName": "Sentinel",
+              "change": "Sentinel Flutterbug"
+            },
+            {
+              "apiName": null,
+              "displayName": "Vi",
+              "change": "Victorious Nixie"
+            },
+            {
+              "apiName": null,
+              "displayName": "Ahri",
+              "change": "Ahri Unbound"
+            },
+            {
+              "apiName": null,
+              "displayName": "Warwick",
+              "change": "Warwick Unbound"
+            },
+            {
+              "apiName": null,
+              "displayName": "Blue Buff",
+              "change": "Blue Buff Emote (Blue Hearts You)"
+            },
+            {
+              "apiName": null,
+              "displayName": "Coven 0",
+              "change": "Coven Leblanc Emote (Scheming Sorceress)"
+            }
+          ]
+        }
+      ],
+      "counts": {
+        "totalEntries": 58,
+        "withApiName": 0
+      }
+    }
+  }
+}

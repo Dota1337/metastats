@@ -22,6 +22,13 @@ const nextConfig: NextConfig = {
         destination: '/tft/comps',
         permanent: true,
       },
+      // /tft/gods war die Set-17-Goetter-Seite. Set 18 hat keine Gods, die
+      // Route ist entfernt — alte Links landen auf dem Augment-Katalog.
+      {
+        source: '/tft/gods',
+        destination: '/tft/augments',
+        permanent: true,
+      },
     ];
   },
 };

@@ -224,8 +224,8 @@ export default function CompRow({
           entsprechend entfernt. */}
       <div className={`grid grid-cols-[1.5rem_1.75rem_minmax(7rem,1fr)_minmax(0,auto)_auto] ${
         showVelocity
-          ? 'sm:grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_5rem_3.5rem_3.5rem_3.5rem_3.5rem_3.75rem_3rem]'
-          : 'sm:grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_5rem_3.5rem_3.5rem_3.5rem_3.5rem_3rem]'
+          ? 'sm:grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_5rem_3.5rem_3.5rem_3.5rem_3.5rem_3.75rem_7rem]'
+          : 'sm:grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_5rem_3.5rem_3.5rem_3.5rem_3.5rem_7rem]'
       } items-center gap-2.5 sm:gap-4`}>
         {/* Rang ist eine Ordnungszahl, kein Messwert — vorher trug er als
             einzige Zahl der Zeile font-medium, während top4/top1 in Regular
@@ -416,7 +416,7 @@ export default function CompRow({
         <div className="hidden sm:block text-right tabular-nums text-fg-secondary font-medium text-[13px]">
           {comp.pickRate != null ? `${(comp.pickRate * 100).toFixed(2)}%` : '—'}
         </div>
-        <div className="hidden sm:block text-right tabular-nums text-fg-muted text-[12px]">
+        <div className="hidden sm:block text-right tabular-nums text-fg-secondary text-[13px]">
           {comp.games}
         </div>
         {showVelocity && (
@@ -469,16 +469,22 @@ export default function CompRow({
             })()}
           </div>
         )}
-        <div className="hidden sm:flex items-center justify-end gap-1">
+        {/* Aktions-Leiste: alle drei Buttons gleich gross (32px) und mit
+            derselben Flaeche/Border, damit sie als EINE Leiste lesbar sind —
+            vorher waren es 28/24/20px in drei verschiedenen Behandlungen.
+            Die gefuellte Accent-Flaeche bleibt allein dem Compare-Zustand
+            "ausgewaehlt" vorbehalten; Copy traegt Accent nur als Kontur, sonst
+            saehe es aus wie ein aktivierter Toggle. */}
+        <div className="hidden sm:flex items-center justify-end gap-1.5">
           {onCompareToggle && (
             <button
               type="button"
               onClick={e => { e.stopPropagation(); onCompareToggle(); }}
-              className="w-7 h-7 flex items-center justify-center rounded transition-colors flex-shrink-0"
+              className="w-8 h-8 flex items-center justify-center rounded-md transition-colors flex-shrink-0"
               style={{
-                color: compareSelected ? '#7B61FF' : 'var(--fg-faint)',
-                backgroundColor: compareSelected ? 'rgba(123,97,255,0.14)' : 'transparent',
-                border: `1px solid ${compareSelected ? 'rgba(123,97,255,0.6)' : 'rgba(90,106,128,0.25)'}`,
+                color: compareSelected ? 'var(--accent)' : 'var(--fg-secondary)',
+                backgroundColor: compareSelected ? 'rgb(var(--accent-rgb) / 14%)' : 'var(--surface-raised)',
+                border: `1px solid ${compareSelected ? 'rgb(var(--accent-rgb) / 60%)' : 'var(--border-subtle)'}`,
               }}
               title={
                 compareSelected
@@ -487,7 +493,7 @@ export default function CompRow({
               }
               aria-pressed={compareSelected}
             >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="17 1 21 5 17 9" />
                 <path d="M3 11V9a4 4 0 0 1 4-4h14" />
                 <polyline points="7 23 3 19 7 15" />
@@ -499,13 +505,13 @@ export default function CompRow({
             characterIds={typicalUnits.slice(0, 10).map(u => u.characterId)}
             setNumber={assets?.set ?? CURRENT_SET}
             assets={assets}
-            size="sm"
+            size="lg"
           />
           <BookmarkButton
             type="comp"
             bookmarkKey={comp.slug}
             label={`${traitDisplay}${carry?.name ? ` · ${carry.name}` : ''}`}
-            size="sm"
+            size="lg"
           />
         </div>
 

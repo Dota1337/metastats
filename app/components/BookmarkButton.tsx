@@ -11,7 +11,7 @@ interface Props {
   bookmarkKey: string;
   label: string;
   region?: string;
-  size?: 'sm' | 'md';
+  size?: 'sm' | 'md' | 'lg';
   /** Use when nested inside an <a> — prevents navigation on click */
   stopPropagation?: boolean;
 }
@@ -32,7 +32,13 @@ export default function BookmarkButton({
 
   if (!mounted) return null;
 
-  const dim = size === 'sm' ? 'w-5 h-5 text-[12px]' : 'w-6 h-6 text-sm';
+  // 'lg' = Leisten-Groesse auf /tft/comps: 32px mit Flaeche und Rahmen, damit
+  // Compare, Copy und Favorit dort als EINE Leiste lesbar sind. 'sm'/'md'
+  // bleiben die randlosen Sterne wie bisher.
+  const dim = size === 'lg' ? 'w-8 h-8 text-base' : size === 'sm' ? 'w-5 h-5 text-[12px]' : 'w-6 h-6 text-sm';
+  const shape = size === 'lg'
+    ? 'rounded-md border border-border-subtle bg-surface-raised'
+    : 'rounded-full';
 
   return (
     <button
@@ -48,10 +54,10 @@ export default function BookmarkButton({
       title={active ? 'Bookmark entfernen' : 'Bookmarken'}
       aria-label={active ? 'Bookmark entfernen' : 'Bookmarken'}
       aria-pressed={active}
-      className={`flex items-center justify-center rounded-full ${dim} transition-colors ${
+      className={`flex items-center justify-center ${shape} ${dim} transition-colors ${
         active
           ? 'text-[#f0c040] hover:text-[#f5d875]'
-          : 'text-fg-faint hover:text-fg-secondary'
+          : size === 'lg' ? 'text-fg-secondary hover:text-[#f0c040]' : 'text-fg-faint hover:text-fg-secondary'
       }`}
     >
       {active ? '★' : '☆'}

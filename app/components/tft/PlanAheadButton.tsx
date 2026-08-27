@@ -19,7 +19,7 @@ export default function PlanAheadButton({
   characterIds: string[];
   setNumber: number;
   assets: TftAssetsBundle | null;
-  size?: 'sm' | 'md';
+  size?: 'sm' | 'md' | 'lg';
   className?: string;
 }) {
   const { t } = useI18n();
@@ -46,7 +46,15 @@ export default function PlanAheadButton({
     }
   }, [characterIds, setNumber, assets]);
 
-  const dims = size === 'md' ? 'w-7 h-7 text-xs' : 'w-6 h-6 text-[10px]';
+  // 'lg' ist die Leisten-Groesse auf /tft/comps (32px, gleich hoch wie
+  // Compare und Favorit). Nur dort traegt der Button im Ruhezustand die
+  // Accent-Kontur — die Copy-Funktion ist dort die wichtigste Aktion der Zeile.
+  // 'md' (CompCard) und 'sm' bleiben unveraendert.
+  const dims = size === 'lg' ? 'w-8 h-8 text-sm' : size === 'md' ? 'w-7 h-7 text-xs' : 'w-6 h-6 text-[10px]';
+  const iconPx = size === 'lg' ? 15 : 12;
+  const idleClass = size === 'lg'
+    ? 'bg-surface-raised border-accent-a60 text-[#c39bff] hover:border-accent hover:bg-accent-a15'
+    : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-accent-a60 hover:text-[#c39bff]';
   const tooltip = status === 'copied'
     ? t('tft.planAhead.copied')
     : status === 'failed'
@@ -62,17 +70,17 @@ export default function PlanAheadButton({
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); } }}
       title={tooltip}
       aria-label={tooltip}
-      className={`${dims} flex items-center justify-center rounded border transition-colors ${
+      className={`${dims} flex items-center justify-center rounded-md border transition-colors ${
         status === 'copied'
           ? 'bg-[#3ecf8e]/15 border-[#3ecf8e]/50 text-[#3ecf8e]'
           : status === 'failed'
           ? 'bg-[#e44040]/15 border-[#e44040]/50 text-[#e44040]'
-          : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-accent-a60 hover:text-[#c39bff]'
+          : idleClass
       } ${className}`}
     >
       {status === 'copied' ? '✓' : status === 'failed' ? '✕' : (
         // Cheatsheet-Icon: drei horizontale Linien wie der TFT-Sidebar-Plan
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+        <svg width={iconPx} height={iconPx} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
           <line x1="2" y1="3" x2="10" y2="3" />
           <line x1="2" y1="6" x2="10" y2="6" />
           <line x1="2" y1="9" x2="7" y2="9" />

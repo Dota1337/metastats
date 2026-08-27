@@ -24,6 +24,12 @@ import { loadCurrentSet } from './lib/current-set.mjs';
 
 const SOURCE_URL = 'https://raw.communitydragon.org/latest/cdragon/tft/en_us.json';
 const COMPANIONS_URL = 'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/companions.json';
+// Team-Planner-Codes ("Plan Ahead"). Riot vergibt pro Unit und Set eine Zahl,
+// die im in-game Import-Code als 3-stellige Hex-Ziffer steht. Es gibt keine
+// andere Quelle dafuer — die IDs sind NICHT aus dem apiName ableitbar.
+// Gegenprobe 2026-08-27: tactics.tools liefert im eigenen JS-Bundle exakt
+// diese Werte aus (DA_18_Ahri -> "3e9" == team_planner_code 1001).
+const TEAMPLANNER_URL = 'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/tftchampions-teamplanner.json';
 // CDragon ships the full tft JSON per locale. We pull all 6 UI languages so
 // the augment + boon text can be rendered natively in DE/EN/KO/ZH/ES/FR
 // instead of falling back to English. ~24MB per locale, kept off the wire by
@@ -150,6 +156,9 @@ async function main() {
   console.log('[2/4] Fetch companion catalog (Chibis + Tacticians)');
   const companions = await fetchJSON(COMPANIONS_URL);
   console.log('       companions total:', companions.length);
+
+  console.log('[2.2/4] Fetch team-planner codes');
+  const teamplanner = await fetchJSON(TEAMPLANNER_URL);
 
   console.log('[2.5/4] Fetch non-English locales for augment text');
   // Parallel fetch all locales except en_us (already loaded as `cd`).
@@ -472,6 +481,17 @@ async function main() {
   }
   console.log(`       items: ${Object.keys(items).length}  active.items: ${activeItems.length}  champions: ${Object.keys(champions).length}  traits: ${Object.keys(traits).length}  augments: ${Object.keys(augments).length}  active.augments: ${activeAugments.length}  chibis: ${Object.keys(chibis).length}  tacticians: ${Object.keys(tacticians).length}`);
 
+  const plannerCodes = buildPlannerCodes(teamplanner, active.number, champions);
+  if (Object.keys(plannerCodes).length < PLANNER_MIN) {
+    // Harter Abbruch statt Payload ohne den Key: der Daily-Crawl faehrt diesen
+    // Schritt mit continue-on-error, ein stilles Bundle ohne plannerCodes wuerde
+    // das committete gute Bundle ueberschreiben und den Plan-Ahead-Button
+    // wortlos abschalten (.github/workflows/tft-daily-crawl.yml).
+    console.error(`FATAL: nur ${Object.keys(plannerCodes).length} Team-Planner-Codes fuer Set ${active.number} (<${PLANNER_MIN}) — Bundle NICHT geschrieben.`);
+    process.exit(1);
+  }
+  console.log(`       plannerCodes: ${Object.keys(plannerCodes).length}`);
+
   console.log('[4/4] Write public/tft-assets.json + per-set archive');
   const payload = {
     set: active.number,
@@ -493,12 +513,60 @@ async function main() {
       items: activeItems,
       augments: activeAugments,
     },
+    plannerCodes,
   };
   // Single 'live' file the frontend always reads + a per-set archive so we
   // can roll back if CD breaks. Old archives stay for diff/history.
   writeFileSync('public/tft-assets.json', JSON.stringify(payload));
   writeFileSync(`public/tft-assets-${active.number}.json`, JSON.stringify(payload));
   console.log(`       -> public/tft-assets.json (set ${active.number})`);
+}
+
+// Untergrenze fuer die Plausibilitaet des Teamplanner-Blocks. Set 18 liefert 65
+// Eintraege; alles unter 40 heisst, CDragon hat den Block umgebaut oder das Set
+// noch nicht gefuellt — dann ist ein Abbruch besser als ein halbes Bundle.
+const PLANNER_MIN = 40;
+
+// Aus einem CDragon-Asset-Pfad den Character-Ordner ziehen:
+// ".../Characters/TFT18_Lux/Skins/..." -> "tft18_lux". Der Ordner ist der
+// einzige Anker, der die Lux-Elementarformen (DA_18_Lux_Fae, DA_Lux18_Blossom,
+// ...) mit ihrer Basis-Unit verbindet — ueber den apiName haben sie keinen
+// gemeinsamen Praefix, und ueber den Anzeigenamen auch nicht ("Lux (Fae)").
+function characterFolder(path) {
+  const m = /characters\/([^/]+)\//i.exec(String(path || ''));
+  return m ? m[1].toLowerCase() : null;
+}
+
+// apiName -> 3-stellige Hex-Ziffer fuer den in-game Team-Planner-Code.
+// Direkter Treffer per character_id; Formen/Varianten ohne eigenen
+// Teamplanner-Eintrag erben den Code ihrer Basis-Unit ueber den
+// Character-Ordner. Units ohne Zuordnung (Neutral-Monster, Armory-Keys,
+// Legacy-Reste aus alten Sets) bleiben bewusst draussen — sie sind ingame
+// nicht planbar.
+function buildPlannerCodes(teamplanner, setNumber, champions) {
+  const entries = teamplanner?.[`TFTSet${setNumber}`];
+  if (!Array.isArray(entries) || entries.length === 0) return {};
+  const byId = new Map();
+  const byFolder = new Map();
+  for (const e of entries) {
+    const code = e?.team_planner_code;
+    if (typeof code !== 'number' || !Number.isFinite(code)) continue;
+    if (e.character_id) byId.set(e.character_id, code);
+    const folder = characterFolder(e.squareIconPath) || characterFolder(e.path);
+    if (folder && !byFolder.has(folder)) byFolder.set(folder, code);
+  }
+  const out = {};
+  let aliased = 0;
+  for (const [apiName, champ] of Object.entries(champions)) {
+    let code = byId.get(apiName);
+    if (code == null) {
+      const folder = characterFolder(champ?.icon) || characterFolder(champ?.tile);
+      if (folder) { code = byFolder.get(folder); if (code != null) aliased++; }
+    }
+    if (code != null) out[apiName] = code.toString(16);
+  }
+  if (aliased) console.log(`       plannerCodes: ${aliased} Varianten ueber den Character-Ordner auf ihre Basis-Unit gemappt`);
+  return out;
 }
 
 function stripHtml(s) {

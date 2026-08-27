@@ -96,6 +96,11 @@ export interface TftAssetsBundle {
     // sind dort bewusst ausgeschlossen; ab Set 18 laeuft der Filter ins Leere.
     augments?: string[];
   };
+  // apiName -> 3-stellige Hex-Ziffer fuer den in-game Team-Planner-Code.
+  // Kommt aus CDragons tftchampions-teamplanner.json, siehe
+  // scripts/fetch-tft-assets.mjs. Optional, weil aeltere committete Bundles
+  // (Set 17 und davor) den Key noch nicht fuehren.
+  plannerCodes?: Record<string, string>;
 }
 
 let cached: Promise<TftAssetsBundle | null> | null = null;

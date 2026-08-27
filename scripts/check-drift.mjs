@@ -319,6 +319,32 @@ function read(path) {
   }
 }
 
+// 8) Team-Planner-Codes im Asset-Bundle. Gleiche Klasse wie iconBase: faellt
+// `plannerCodes` bei einem Set-Bump weg (CDragon liefert den Block erst
+// verzoegert, oder der Key wird umbenannt), sieht nichts kaputt aus — der
+// Plan-Ahead-Button meldet nur noch "fehlgeschlagen", und das faellt niemandem
+// auf. Untergrenze bewusst niedrig: Set 18 fuehrt 74 Eintraege, ein frisches
+// Set darf darunter liegen, aber nicht beliebig.
+{
+  const MIN_PLANNER_CODES = 40;
+  let bundle = null;
+  try { bundle = JSON.parse(read('public/tft-assets.json')); } catch { /* unten */ }
+  const codes = bundle?.plannerCodes;
+  const n = codes && typeof codes === 'object' ? Object.keys(codes).length : -1;
+
+  if (n < 0) {
+    console.error('✗ DRIFT: public/tft-assets.json hat kein plannerCodes');
+    console.error('    → der in-game Team-Planner-Code laesst sich dann nicht mehr bauen (app/lib/tft-plan-ahead-code.ts).');
+    failures++;
+  } else if (n < MIN_PLANNER_CODES) {
+    console.error(`✗ DRIFT: nur ${n} plannerCodes im Bundle (<${MIN_PLANNER_CODES})`);
+    console.error('    → scripts/fetch-tft-assets.mjs gegen CDragons tftchampions-teamplanner.json pruefen.');
+    failures++;
+  } else {
+    console.log(`✓ Team-Planner-Codes im Bundle (${n})`);
+  }
+}
+
 if (failures) {
   console.error(`\n${failures} Drift(s) — vor dem Push mit der jeweiligen SoT synchronisieren.`);
   process.exit(1);

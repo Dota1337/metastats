@@ -1,80 +1,75 @@
-// TFT Plan-Ahead-Code generation. Riot's in-game Team Planner accepts a code
-// of the shape "01" + 10 × 2-char hex slot + "TFTSet<N>" — the user can paste
-// it into Settings → Game → Team Planner ("Plan Ahead") and the comp shows up
-// as an in-game cheatsheet sidebar during a TFT match.
+// TFT Plan-Ahead-Code generation. Riots in-game Team Planner nimmt einen Code
+// entgegen, den der User unter Einstellungen -> Spiel -> Team Planner einfuegt;
+// die Comp erscheint dann waehrend der Runde als Cheatsheet-Sidebar.
 //
-// Format (community-documented):
-//   "01" + slot1..slot10 + "TFTSet" + setNumber
-//   Each slot = 2-char uppercase hex of the champion's 1-based index in the
-//   alphabetically sorted character_id list of that set. Empty slots = "00".
+// Format v2 (gemessen 2026-08-27 gegen den ausgelieferten Encoder/Decoder von
+// tactics.tools, chunks/5894-ca6660759a9af8fe.js):
 //
-// Source: https://gist.github.com/xrr2016/22fa6e92278a2481f9026f6456b0afa4
-// (Set 13 reference — format conserved through later sets; verify when
-// Riot ships a new sorting convention).
+//   "02" + 10 Slots a 3 Hex-Ziffern + "TFTSet<N>"      (Set 18: 40 Zeichen)
+//
+// Der Decoder dort prueft exakt: startsWith("02"), endsWith("tftset18"),
+// length === 32 + "TFTSet18".length. Leerer Slot ist "000" und wandert ans
+// Ende. Der 3-Hex-Wert pro Unit ist Riots `team_planner_code` aus CDragons
+// tftchampions-teamplanner.json in Hex — er steht als `plannerCodes` im
+// Asset-Bundle (scripts/fetch-tft-assets.mjs).
+//
+// ACHTUNG bei Set-Bumps: Praefix und Slot-Breite sind KEINE Konstanten der
+// Ewigkeit. Set 13 lief noch mit "01" + 2 Hex und einem Alphabet-Index; genau
+// dieser alte Pfad hat in Set 18 wortlos einen Leercode geliefert, weil kein
+// Champion mehr den Praefix TFT18_ traegt. Bei jedem neuen Set gegen den
+// Client-Encoder gegenpruefen, nicht gegen die Erinnerung.
+const PLAN_AHEAD_FORMAT = '02';
+const SLOT_HEX_WIDTH = 3;
+const SLOT_COUNT = 10;
+const EMPTY_SLOT = '0'.repeat(SLOT_HEX_WIDTH);
 
 import type { TftAssetsBundle } from './tft-cdragon';
 
-// Cached alphabetical character_id list per (assets-bundle, set) so repeated
-// generation on a stats page doesn't re-sort the whole champion roster.
-const _sortedCache = new WeakMap<TftAssetsBundle, Map<number, string[]>>();
-
-function getSortedChampionsForSet(assets: TftAssetsBundle, setNumber: number): string[] {
-  let perBundle = _sortedCache.get(assets);
-  if (!perBundle) {
-    perBundle = new Map();
-    _sortedCache.set(assets, perBundle);
-  }
-  const cached = perBundle.get(setNumber);
-  if (cached) return cached;
-  const prefix = `TFT${setNumber}_`;
-  const sorted = Object.keys(assets.champions)
-    .filter(id => id.startsWith(prefix))
-    .sort();
-  perBundle.set(setNumber, sorted);
-  return sorted;
-}
-
 export interface PlanAheadResult {
   code: string;
-  recognised: number;   // anzahl chars die in der sorted-list gefunden wurden
-  total: number;        // angefragte slot-anzahl (vor padding)
+  recognised: number;   // Units, fuer die ein Planner-Code vorlag
+  total: number;        // angefragte Units (vor Padding)
 }
 
-// Generates a Plan-Ahead-Code from a list of character_ids (in the order the
-// user wants them to appear in the in-game cheatsheet). Returns null when no
-// assets bundle is provided yet. Champion IDs the bundle doesn't know about
-// land as "00" slots so the user still gets a partial code instead of an
-// outright failure.
+// Baut einen Plan-Ahead-Code aus einer Liste von character_ids.
+//
+// Gibt `null` zurueck, wenn kein Bundle da ist, das Bundle keine
+// `plannerCodes` fuehrt, oder keine einzige Unit aufgeloest werden konnte.
+// Bewusst kein Teil-Erfolg mit lauter Leerslots: der Button meldet dann
+// ehrlich "fehlgeschlagen", statt einen Code zu kopieren, der ingame nichts
+// tut. Einzelne unbekannte Units (Neutral-Monster o.ae.) fallen dagegen still
+// als Leerslot heraus — der Rest der Comp bleibt nutzbar.
 export function buildPlanAheadCode(
   characterIds: string[],
   setNumber: number,
   assets: TftAssetsBundle | null,
 ): PlanAheadResult | null {
-  if (!assets) return null;
-  const sorted = getSortedChampionsForSet(assets, setNumber);
-  const idToHex = new Map<string, string>();
-  // Riot's indexing starts at 1 (slot "00" reserved as empty).
-  for (let i = 0; i < sorted.length; i++) {
-    idToHex.set(sorted[i], (i + 1).toString(16).padStart(2, '0').toUpperCase());
-  }
+  const codes = assets?.plannerCodes;
+  if (!codes) return null;
 
-  const requested = characterIds.slice(0, 10);
+  const requested = characterIds.slice(0, SLOT_COUNT);
   const slots: string[] = [];
-  let recognised = 0;
+  const seen = new Set<string>();
   for (const cid of requested) {
-    const hex = idToHex.get(cid);
-    if (hex) {
-      slots.push(hex);
-      recognised++;
-    } else {
-      slots.push('00');
-    }
+    const hex = codes[cid];
+    // Der Planner kennt kein Kopien-Konzept: eine Unit belegt genau einen Slot.
+    if (!hex || seen.has(hex)) continue;
+    seen.add(hex);
+    slots.push(hex.toLowerCase().padStart(SLOT_HEX_WIDTH, '0').slice(-SLOT_HEX_WIDTH));
   }
-  while (slots.length < 10) slots.push('00');
+  if (slots.length === 0) return null;
+
+  // Aufsteigend nach Code sortieren und die Leerslots hinten anhaengen — genau
+  // das macht der gemessene tactics.tools-Encoder (er sortiert nach seinem
+  // eigenen Listen-Index und haengt die "000" ans Ende). Ob der Riot-Client
+  // ueberhaupt eine Reihenfolge erwartet, ist UNGEPRUEFT; die Sortierung sorgt
+  // vor allem dafuer, dass dieselbe Comp immer denselben Code ergibt.
+  slots.sort();
+  while (slots.length < SLOT_COUNT) slots.push(EMPTY_SLOT);
 
   return {
-    code: '01' + slots.join('') + `TFTSet${setNumber}`,
-    recognised,
+    code: PLAN_AHEAD_FORMAT + slots.join('') + `TFTSet${setNumber}`,
+    recognised: seen.size,
     total: requested.length,
   };
 }

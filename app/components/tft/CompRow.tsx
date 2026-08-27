@@ -10,7 +10,7 @@ import { useI18n } from '../../lib/i18n';
 import BookmarkButton from '../BookmarkButton';
 import PlanAheadButton from './PlanAheadButton';
 import { compDefiningAugmentApiNameFromSlug } from '../../lib/tft-comp-defining-augments';
-import { parseClusterKey } from '../../lib/tft-cluster';
+import { parseClusterKey, isThreeStarUnit } from '../../lib/tft-cluster';
 import { loadCompGuidesBundle, findCompGuide, difficultyColor } from '../../lib/tft-comp-guides';
 import { tierLetterOfSync, TIER_COLORS, type TierLetter, type TierCutoffs } from '../../lib/tft-tier-letter';
 import { descriptorTag } from '../../lib/tft-comp-descriptor';
@@ -346,6 +346,10 @@ export default function CompRow({
             const url = tftChampionTileUrl(assets, ch);
             const items = Array.isArray(u.topItems) ? u.topItems.slice(0, 3) : [];
             const showDouble = (((u as unknown) as { multiplicity?: number }).multiplicity ?? 1) >= 1.5;
+            // 3★-Marker aus unseren eigenen Spieldaten (star3Games/gamesWithUnit).
+            // Kein Platzhalter fuer Units ohne Marker: die Kachel hat feste
+            // Groesse, das Badge sitzt absolut — es verschiebt nichts.
+            const showThreeStar = isThreeStarUnit(u as unknown as { gamesWithUnit?: unknown; star3Games?: unknown });
             return (
               <div
                 key={u.characterId}
@@ -359,6 +363,11 @@ export default function CompRow({
                   title={ch?.name || u.characterId}
                 >
                   {url && <img src={url} alt={ch?.name || ''} className="w-full h-full object-cover" />}
+                  {showThreeStar && (
+                    <div className="absolute -top-1 -left-1 bg-[#e7c310] text-black text-[8px] font-bold rounded-full px-[3px] h-4 flex items-center justify-center shadow leading-none">
+                      3★
+                    </div>
+                  )}
                   {showDouble && (
                     <div className="absolute -top-1 -right-1 bg-accent text-white text-[8px] font-bold rounded-full w-4 h-4 flex items-center justify-center shadow leading-none">
                       ×2

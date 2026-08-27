@@ -95,7 +95,7 @@ export function buildLevelOutcome(
       ]);
       const minCo = Math.max(3, Math.floor(v.games * 0.15));
       const typicalUnits = merged
-        .filter(u => /^TFT\d+_[A-Z]/.test((u as any).characterId))
+        .filter(u => /^(?:TFT\d+|Set\d+|DA)_(?:\d+_)?[A-Z]/.test((u as any).characterId))
         .filter(u => Number((u as any).count || 0) >= minCo)
         .sort((a, b) => Number((b as any).count || 0) - Number((a as any).count || 0))
         .slice(0, 9)

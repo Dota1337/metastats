@@ -29,6 +29,10 @@ import AdvancedCompFilters, {
 
 // Filter shape and URL-sync mirror /tft/units and /tft/items so the
 // three stats pages behave identically (patch / bucket / days / region).
+// Wie viele Comp-Familien die Liste hoechstens zeigt. Gemessen 2026-08-27:
+// die 40 meistgespielten decken 62 % aller Spiele ab.
+const TOP_FAMILY_LIMIT = 40;
+
 export default function TftCompsPage() {
   const { t } = useI18n();
   const searchParams = useSearchParams();
@@ -430,10 +434,38 @@ export default function TftCompsPage() {
 
   // Search-Filter über die finale Family-Liste — matched gegen Trait-Display-
   // Name + Carry-Display-Name + raw apiNames. Lookup nutzt assets-cache.
+  // Nur Comps des laufenden Sets. Das rollierende Zeitfenster reicht ueber den
+  // Set-Wechsel hinweg (gemessen 2026-08-27: 32 der 40 meistgespielten Familien
+  // stammten aus Set 17), und die RPC filtert nicht nach Set — `p_set` ist ohne
+  // `?set=`-Parameter null. Kriterium ist die Trait-Existenz im aktuellen
+  // Asset-Bundle statt einer Set-Nummer-Regex: das Bundle IST die Set-Grenze
+  // und kennt keine Praefix-Sonderfaelle (TFT17_ vs DA_18_ vs DA_Juggernaut18).
+  const currentSetFamilies = useMemo(() => {
+    if (!assets) return families;
+    return families.filter(f => !!assets.traits[f.trait]);
+  }, [families, assets]);
+
+  // Harter Schnitt auf die 40 meistgespielten Familien — unabhaengig von der
+  // gewaehlten Sortierung. Erst nach Spielvolumen auswaehlen, dann in der
+  // Sortier-Reihenfolge rendern; sonst waeren es „die 40 besten" statt „die 40
+  // meistgespielten". Die Suche hebt den Schnitt auf, damit eine existierende
+  // Comp jenseits von Rang 40 auffindbar bleibt.
+  const topFamilyKeys = useMemo(() => {
+    if (currentSetFamilies.length <= TOP_FAMILY_LIMIT) return null;
+    return new Set(
+      [...currentSetFamilies]
+        .sort((a, b) => (b.totalGames ?? 0) - (a.totalGames ?? 0))
+        .slice(0, TOP_FAMILY_LIMIT)
+        .map(f => f.familyKey),
+    );
+  }, [currentSetFamilies]);
+
   const visibleFamilies = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q || !assets) return families;
-    return families.filter(f => {
+    if (!q || !assets) {
+      return topFamilyKeys ? currentSetFamilies.filter(f => topFamilyKeys.has(f.familyKey)) : currentSetFamilies;
+    }
+    return currentSetFamilies.filter(f => {
       const traitMeta = assets.traits[f.trait];
       const carryChamp = assets.champions[f.carry];
       const traitName = (traitMeta?.name || f.trait.replace(/^TFT\d+_/, '')).toLowerCase();
@@ -443,7 +475,7 @@ export default function TftCompsPage() {
         || f.trait.toLowerCase().includes(q)
         || f.carry.toLowerCase().includes(q);
     });
-  }, [families, search, assets]);
+  }, [currentSetFamilies, topFamilyKeys, search, assets]);
 
   return (
     <main className="min-h-screen bg-surface-page">

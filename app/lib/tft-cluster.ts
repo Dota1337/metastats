@@ -108,3 +108,21 @@ export function dedupeByPrimaryCluster<T>(
   out.sort((a, b) => getWeight(b) - getWeight(a));
   return out;
 }
+
+// Ab wann gilt eine Einheit in einer Comp als „wird auf 3 Sternen gespielt"?
+// Schwelle 0.55 statt 0.50, weil die gemessene Verteilung bimodal ist: das
+// Band 0.50-0.60 ist leer, der naechste Kandidat darunter liegt bei 0.496
+// (data-skeptic-Messung 2026-08-27 ueber alle 53 Comps). Bei 0.50 wuerde
+// dieser Grenzfall bei jedem Crawl an- und ausgehen.
+export const STAR3_SHARE_THRESHOLD = 0.55;
+// Min-Sample wie bei `multiplicity` im Aggregator — darunter ist der Anteil Rauschen.
+export const STAR3_MIN_GAMES = 5;
+
+/** true, wenn diese Einheit in dieser Comp ueberwiegend auf 3 Sternen gespielt wird. */
+export function isThreeStarUnit(unit: { gamesWithUnit?: unknown; star3Games?: unknown } | null | undefined): boolean {
+  const games = Number(unit?.gamesWithUnit ?? 0);
+  const star3 = Number(unit?.star3Games ?? 0);
+  if (!Number.isFinite(games) || games < STAR3_MIN_GAMES) return false;
+  if (!Number.isFinite(star3) || star3 <= 0) return false;
+  return star3 / games >= STAR3_SHARE_THRESHOLD;
+}

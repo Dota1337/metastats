@@ -175,6 +175,26 @@ function variantFromDesc(desc: string | undefined | null): string | null {
   return m[1].trim();
 }
 
+// Set-Praefix vor dem eigentlichen Trait-Token. Riot hat die Konvention pro
+// Set mehrfach gewechselt: TFT17_Stargazer_Wolf, Set17_CarouselMarket_...,
+// und ab Set 18 DA_18_Blossom bzw. DA_Juggernaut18. Ohne den DA_-Zweig lief
+// der Fallback unten in den eigenen Namen: DA_18_Blossom → "Blossom · 18 Blossom".
+const TRAIT_API_PREFIX_RE = /^(?:TFT\d+|Set\d+|DA)_(?:\d+_)?/;
+
+// Zieht den Varianten-Teil aus dem apiName — oder null, wenn es gar keine
+// Variante ist. `null` heisst: nur den Basisnamen anzeigen.
+function variantFromApiName(apiName: string, base: string): string | null {
+  const stripped = apiName.replace(TRAIT_API_PREFIX_RE, '');
+  if (!stripped.includes('_')) return null;
+  // Nachgestellte Set-Nummer (DA_Juggernaut18) gehoert nicht in die Anzeige.
+  const variant = stripped.split('_').slice(1).join(' ').replace(/\d+$/, '').trim();
+  if (!variant) return null;
+  if (variant.toLowerCase() === base.toLowerCase()) return null;
+  // "UniqueTrait" ist ein Riot-Marker fuer Champion-eigene Traits, kein Name.
+  if (/^UniqueTrait$/i.test(variant)) return null;
+  return variant;
+}
+
 // Returnt den Display-Name eines Traits inkl. Variante. Beispiele:
 //   TFT17_Stargazer_Wolf      →  "Stargazer · Boar"     (aus desc)
 //   TFT17_Stargazer_Shield    →  "Stargazer · Altar"    (aus desc)
@@ -190,18 +210,15 @@ export function tftTraitDisplayName(
 ): string {
   if (!apiName) return '';
   const trait = findTrait(bundle, apiName);
-  const base = trait?.name || apiName.replace(/^TFT\d+_/, '');
+  const base = trait?.name || apiName.replace(TRAIT_API_PREFIX_RE, '');
   // 1) Variante aus desc (authoritativ — matched In-Game-Anzeige)
   const descVariant = variantFromDesc(trait?.desc);
   if (descVariant && descVariant.toLowerCase() !== base.toLowerCase()) {
     return `${base} · ${descVariant}`;
   }
   // 2) Fallback: apiName-Suffix
-  const stripped = apiName.replace(/^TFT\d+_/, '');
-  if (!stripped.includes('_')) return base;
-  const variant = stripped.split('_').slice(1).join(' ');
-  if (!variant || variant.toLowerCase() === base.toLowerCase()) return base;
-  return `${base} · ${variant}`;
+  const variant = variantFromApiName(apiName, base);
+  return variant ? `${base} · ${variant}` : base;
 }
 
 // Returnt den Tooltip-Text für einen Trait — nimmt die variant-spezifische

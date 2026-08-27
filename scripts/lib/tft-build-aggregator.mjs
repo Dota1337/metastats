@@ -49,6 +49,17 @@ export function emptyAggregate() {
   };
 }
 
+// Pre-Filter gegen Bard-Followers / Summons. Echte Champion-IDs beginnen mit
+// einem Set-Praefix plus GROSSbuchstabe (TFT17_Aatrox, DA_18_Ahri, DA_Krug18),
+// Summons mit lowercase (`tft17_bardfollower`, `tft17_kayn_slay`).
+// Ohne den DA_-Zweig fielen ALLE Set-18-Units durch: gamesWithUnit, top1/top4
+// und multiplicity blieben live auf 0 (gemessen 2026-08-27 gegen /api/tft/comps).
+export const PLAYABLE_UNIT_ID_RE = /^(?:TFT\d+|Set\d+|DA)_(?:\d+_)?[A-Z]/;
+
+export function isPlayableUnitId(cid) {
+  return PLAYABLE_UNIT_ID_RE.test(String(cid || ''));
+}
+
 function getOrCreate(map, key, factory) {
   let v = map.get(key);
   if (!v) { v = factory(); map.set(key, v); }
@@ -434,14 +445,23 @@ export function aggregateMatch(rawMatch, agg, opts) {
         // dup-counten — die sind 4× pro Comp Standard (Bard-Summons), nicht
         // augment-getrieben. Sample-Probe data-skeptic 2026-06-20.
         const unitCountThisParticipant = new Map();
+        // Hoechste Sternstufe dieser Unit bei diesem Participant. Steht bei
+        // Doppel-Units 2x im Payload; fuer „auf 3 Sternen gespielt" zaehlt die
+        // hoehere. Speisen tut das ue.star3Games unten.
+        const unitStarThisParticipant = new Map();
         for (const u of p.units || []) {
           if (!u.character_id) continue;
           unitCountThisParticipant.set(u.character_id, (unitCountThisParticipant.get(u.character_id) || 0) + 1);
+          unitStarThisParticipant.set(
+            u.character_id,
+            Math.max(unitStarThisParticipant.get(u.character_id) || 0, Number(u.tier ?? 0)),
+          );
           const ue = getOrCreate(cb.typicalUnits, u.character_id, () => ({
             count: 0,
             gamesWithUnit: 0,
             gamesWithOutcome: 0, // Σ gamesWithUnit der Rows die Outcome-Felder schreiben (= Win-Rate-Nenner)
             dupGames: 0,
+            star3Games: 0,           // # Participants die diese Unit auf 3★ (oder hoeher) hatten
             carryItemGames: 0,
             sumPlacement: 0,         // Σ placement der Participants die diese Unit hatten
             top4: 0,                 // # Participants mit Unit die Top-4 erreichten
@@ -462,14 +482,12 @@ export function aggregateMatch(rawMatch, agg, opts) {
         // Hier 2× iteration weil wir erst alle Vorkommen sehen müssen bevor
         // wir den Duplikat-Marker setzen können.
         for (const [cid, n] of unitCountThisParticipant) {
-          // Pre-Filter gegen Bard-Followers / Summons. Echte Champion-IDs
-          // beginnen mit `TFT<N>_<UpperCase>` (Aatrox, Samira, …), Summons
-          // mit lowercase (`tft17_bardfollower`, `tft17_kayn_slay`).
-          if (!/^TFT\d+_[A-Z]/.test(cid)) continue;
+          if (!isPlayableUnitId(cid)) continue;
           const ue = cb.typicalUnits.get(cid);
           if (!ue) continue;
           ue.gamesWithUnit++;
           if (n >= 2) ue.dupGames++;
+          if ((unitStarThisParticipant.get(cid) || 0) >= 3) ue.star3Games++;
           // Per-Unit Outcome (Flex-Units, Detail-Page): Σ placement / top1 / top4
           // der Participants die diese Unit hatten. gamesWithOutcome ist
           // der Nenner — er bleibt im Lock-Step mit den Outcome-Sums damit
@@ -912,6 +930,9 @@ export function finalize(agg, opts = {}) {
             sumPlacement: e.sumPlacement || 0,
             top1: e.top1 || 0,
             top4: e.top4 || 0,
+            // Summe, kein Verhaeltnis: der Tages-Merge im Reader addiert
+            // star3Games und gamesWithUnit getrennt und teilt erst am Ende.
+            star3Games: e.star3Games || 0,
           };
         });
       // Flex-Reserve: zusätzliche Slots 10-18 (max 9 weitere) für die Detail-
@@ -919,7 +940,7 @@ export function finalize(agg, opts = {}) {
       // Frontend trennt via Pickrate-Threshold. Keine Schema-Migration nötig.
       const coreIds = new Set(typicalUnits.map(u => u.characterId));
       const flexExtras = [...b.typicalUnits.entries()]
-        .filter(([cid, e]) => !coreIds.has(cid) && /^TFT\d+_[A-Z]/.test(cid) && (e.count || 0) >= 3)
+        .filter(([cid, e]) => !coreIds.has(cid) && isPlayableUnitId(cid) && (e.count || 0) >= 3)
         .sort((a, b) => (b[1].count || 0) - (a[1].count || 0))
         .slice(0, 9)
         .map(([cid, e]) => {
@@ -941,6 +962,9 @@ export function finalize(agg, opts = {}) {
             sumPlacement: e.sumPlacement || 0,
             top1: e.top1 || 0,
             top4: e.top4 || 0,
+            // Summe, kein Verhaeltnis: der Tages-Merge im Reader addiert
+            // star3Games und gamesWithUnit getrennt und teilt erst am Ende.
+            star3Games: e.star3Games || 0,
           };
         });
       typicalUnits.push(...flexExtras);

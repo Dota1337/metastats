@@ -339,7 +339,7 @@ export function mergeJsonbCountArrays<K extends string>(
   type Bucket = {
     count: number; sumPlacement: number; games: number; carryItemGames: number;
     gamesWithUnit: number; gamesWithOutcome: number; top1: number; top4: number;
-    dupGames: number;
+    dupGames: number; star3Games: number;
     nested: Map<string, Map<string, number>>;
   };
   const merged = new Map<string, Bucket>();
@@ -351,7 +351,7 @@ export function mergeJsonbCountArrays<K extends string>(
       const cur: Bucket = merged.get(key) || {
         count: 0, sumPlacement: 0, games: 0, carryItemGames: 0,
         gamesWithUnit: 0, gamesWithOutcome: 0, top1: 0, top4: 0,
-        dupGames: 0,
+        dupGames: 0, star3Games: 0,
         nested: new Map(),
       };
       cur.count += Number(e.count ?? e.games ?? 0);
@@ -366,6 +366,10 @@ export function mergeJsonbCountArrays<K extends string>(
       );
       cur.top1 += Number(e.top1 ?? 0);
       cur.top4 += Number(e.top4 ?? 0);
+      // Alte JSONB-Rows kennen star3Games nicht → 0. Damit bleibt der Anteil
+      // konservativ klein statt falsch gross, solange das Fenster noch alte
+      // Tage enthaelt: lieber kein Stern als ein erfundener.
+      cur.star3Games += Number(e.star3Games ?? e.star3_games ?? 0);
       const mult = Number(e.multiplicity ?? 1);
       if (mult > 1) {
         cur.dupGames += (mult - 1) * Number(e.gamesWithUnit ?? e.games_with_unit ?? 0);
@@ -393,6 +397,7 @@ export function mergeJsonbCountArrays<K extends string>(
       const out: any = {
         [keyName]: key, count: v.count, sumPlacement: v.sumPlacement, games: v.games, carryItemGames: v.carryItemGames,
         gamesWithUnit: v.gamesWithUnit, gamesWithOutcome: v.gamesWithOutcome, top1: v.top1, top4: v.top4,
+        star3Games: v.star3Games,
       };
       // Nur setzen, wenn die Quelle ueberhaupt Doppel-Units gemeldet hat: bei
       // Augments/Items gibt es das Feld nicht, dort bliebe es ein konstantes

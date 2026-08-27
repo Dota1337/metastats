@@ -256,7 +256,9 @@ export function classifyComp(participant, opts = {}) {
     for (const u of units) {
       const cid = unitCid(u);
       if (!cid) continue;
-      if (!/^TFT\d+_[A-Z]/.test(cid)) continue;
+      // Set-Praefix + GROSSbuchstabe = echte Unit; Summons sind lowercase.
+      // `DA` deckt Set 18 ab (DA_18_Ahri, DA_Krug18).
+      if (!/^(?:TFT\d+|Set\d+|DA)_(?:\d+_)?[A-Z]/.test(cid)) continue;
       counts.set(cid, (counts.get(cid) || 0) + 1);
     }
     for (const n of counts.values()) if (n >= 2) return true;

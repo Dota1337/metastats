@@ -19,6 +19,11 @@ interface MarketSnapshot {
 }
 
 const APEX_TIERS = ['CHALLENGER', 'GRANDMASTER', 'MASTER'];
+
+// Standardansicht: alle Raenge hintereinander, vom hoechsten besetzten Rang
+// abwaerts. Nach einem Set-Start sind Challenger, Grossmeister und Meister
+// tagelang leer — eine Seite, die auf Challenger startet, zeigt dann nichts.
+const ALL_TIERS = 'ALL';
 const DIVISIONS = ['I', 'II', 'III', 'IV'];
 
 // Die Marktwertspalte gibt es nur in den Apex-Ligen. Snapshots existieren
@@ -29,9 +34,10 @@ const DIVISIONS = ['I', 'II', 'III', 'IV'];
 // zeigt, blenden wir aus.
 const MARKET_VALUE_TIERS = ['CHALLENGER', 'GRANDMASTER', 'MASTER'];
 
-// Deckungsgleich mit dem Spielervergleich (app/tft/compare/page.tsx) — bewusst
-// dieselbe Auswahl, damit ein Spieler zwischen beiden Seiten dieselben Regionen
-// findet.
+// PH und TH fehlen hier bewusst: beide sind seit dem Crawl-Umbau leer (siehe
+// app/lib/active-regions.ts), eine Rangliste haette dort nichts zu zeigen. Der
+// Spielervergleich (app/tft/compare/page.tsx) fuehrt sie weiter, weil dort ein
+// direkt eingegebenes Profil auch ohne Crawl-Daten aufloest.
 const REGIONS = [
   { value: 'euw1', label: 'EUW' }, { value: 'eun1', label: 'EUNE' },
   { value: 'kr',   label: 'KR'  }, { value: 'na1',  label: 'NA' },
@@ -39,8 +45,7 @@ const REGIONS = [
   { value: 'la1',  label: 'LAN' }, { value: 'la2',  label: 'LAS' },
   { value: 'oc1',  label: 'OCE' }, { value: 'tr1',  label: 'TR' },
   { value: 'ru',   label: 'RU'  }, { value: 'me1',  label: 'ME' },
-  { value: 'ph2',  label: 'PH'  }, { value: 'sg2',  label: 'SG' },
-  { value: 'th2',  label: 'TH'  }, { value: 'tw2',  label: 'TW' },
+  { value: 'sg2',  label: 'SG'  }, { value: 'tw2',  label: 'TW' },
   { value: 'vn2',  label: 'VN'  },
 ];
 
@@ -55,7 +60,7 @@ const GRID_SUB_NO_MV = 'grid-cols-[1fr_5rem_5rem_5rem]';
 export default function TftLeaderboardPage() {
   const { t, lang } = useI18n();
   const [region, setRegion] = useState('euw1');
-  const [tier, setTier] = useState('CHALLENGER');
+  const [tier, setTier] = useState(ALL_TIERS);
   const [division, setDivision] = useState('I');
   const [page, setPage] = useState(1);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
@@ -69,6 +74,7 @@ export default function TftLeaderboardPage() {
   const [search, setSearch] = useState('');
 
   const TIERS = [
+    { value: ALL_TIERS,     label: t('lb.allTiers'),      color: '#8ea2b8' },
     { value: 'CHALLENGER',  label: t('tier.challenger'),  color: '#f0c040' },
     { value: 'GRANDMASTER', label: t('tier.grandmaster'), color: '#e44040' },
     { value: 'MASTER',      label: t('tier.master'),      color: '#9d48e0' },
@@ -81,14 +87,23 @@ export default function TftLeaderboardPage() {
     { value: 'IRON',        label: t('tier.iron'),        color: '#6b6b6b' },
   ];
 
+  const isAll = tier === ALL_TIERS;
   const isApex = APEX_TIERS.includes(tier);
+  // Rangnummer nur dort, wo sie echt ist: in den Apex-Ligen und in der
+  // Alle-Raenge-Ansicht, die von oben abwaerts vollstaendige Stufen sammelt.
+  const showRank = isApex || isAll;
   const showMarketValue = MARKET_VALUE_TIERS.includes(tier);
   const pageSize = 50;
-  const totalPages = isApex && totalPlayers ? Math.max(1, Math.ceil(totalPlayers / pageSize)) : null;
+  const MAX_PAGES_ALL = 10;
+  const totalPages = isAll
+    ? (totalPlayers ? Math.min(MAX_PAGES_ALL, Math.max(1, Math.ceil(totalPlayers / pageSize))) : null)
+    : (isApex && totalPlayers ? Math.max(1, Math.ceil(totalPlayers / pageSize)) : null);
+  const tierColor = (key: string) => TIERS.find(x => x.value === key)?.color || '#8ea2b8';
+  const tierLabel = (key: string) => TIERS.find(x => x.value === key)?.label || key;
 
-  // Die Rangnummer gibt es nur in den Apex-Ligen — darunter liefert Riot keine
-  // ligaweite Reihenfolge, eine durchlaufende Nummer waere erfunden.
-  const gridCls = isApex
+  // Unterhalb von Master liefert Riot in der Einzelrang-Ansicht keine ligaweite
+  // Reihenfolge — eine durchlaufende Nummer waere dort erfunden.
+  const gridCls = showRank
     ? (showMarketValue ? GRID_APEX : GRID_APEX_NO_MV)
     : (showMarketValue ? GRID_SUB : GRID_SUB_NO_MV);
 
@@ -104,7 +119,7 @@ export default function TftLeaderboardPage() {
     setError(null);
     setMarketValues(new Map());
     const params = new URLSearchParams({ region, tier, page: String(page) });
-    if (!isApex) params.set('division', division);
+    if (!isApex && !isAll) params.set('division', division);
     fetch(`/api/tft/leaderboard?${params.toString()}`)
       .then(async r => {
         if (!r.ok) {
@@ -120,7 +135,7 @@ export default function TftLeaderboardPage() {
         setLoading(false);
       })
       .catch(e => { setError(e.message); setLoading(false); });
-  }, [region, tier, division, page, isApex]);
+  }, [region, tier, division, page, isApex, isAll]);
 
   // Side-load marketvalues from the snapshot leaderboard. Single batch
   // request — limited to the snapshot table, no Riot calls. Result is keyed
@@ -205,7 +220,7 @@ export default function TftLeaderboardPage() {
 
         <div className="flex flex-wrap gap-1 mb-4">
           {TIERS.map(tr => {
-            const trApex = APEX_TIERS.includes(tr.value);
+            const trApex = tr.value === ALL_TIERS || APEX_TIERS.includes(tr.value);
             const isActive = tier === tr.value;
             const isDropdownOpen = openDropdown === tr.value;
             return (
@@ -269,7 +284,7 @@ export default function TftLeaderboardPage() {
         {!loading && !error && players.length > 0 && (
           <div className="bg-surface-base border border-border-subtle rounded overflow-hidden">
             <div className={`hidden sm:grid ${gridCls} gap-2 px-4 py-2 text-[10px] uppercase text-fg-muted bg-surface-sunken`}>
-              {isApex && <div className="text-right">#</div>}
+              {showRank && <div className="text-right">#</div>}
               <div>{t('lb.player')}</div>
               <div className="text-right">LP</div>
               <div className="text-right">{t('tft.gamesShort')}</div>
@@ -298,12 +313,17 @@ export default function TftLeaderboardPage() {
                 >
                   {/* Mobile: Rang (nur Apex) + Name in Zeile 1, Stats darunter.
                       Desktop: 4- bis 6-Spalten-Raster, je nach Liga. */}
-                  {isApex && <div className="hidden sm:block text-right text-fg-secondary">{p.rank}</div>}
+                  {showRank && <div className="hidden sm:block text-right text-fg-secondary">{p.rank}</div>}
                   <div className="flex items-baseline gap-2 sm:block">
-                    {isApex && <span className="text-fg-secondary text-[10px] sm:hidden">#{p.rank}</span>}
+                    {showRank && <span className="text-fg-secondary text-[10px] sm:hidden">#{p.rank}</span>}
                     <span className="text-white truncate flex-1 sm:flex-initial">
                       {p.gameName ? `${p.gameName}` : <span className="text-fg-muted">{t('lb.unknownPlayer')}</span>}
                       {p.tagLine && <span className="text-fg-muted text-[10px]"> #{p.tagLine}</span>}
+                      {isAll && (
+                        <span className="text-[10px] ml-2" style={{ color: tierColor(p.tier) }}>
+                          {tierLabel(p.tier)}{p.division ? ` ${p.division}` : ''}
+                        </span>
+                      )}
                     </span>
                   </div>
                   <div className="hidden sm:block text-right text-white">{p.leaguePoints}</div>

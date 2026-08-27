@@ -37,7 +37,39 @@ export async function GET(request: NextRequest) {
     const region = (searchParams.get('region') || 'euw1').toLowerCase();
     const bucket = normalizeBucket(searchParams.get('bucket'));
     const stats = loadTftStats(region);
-    if (!stats) return NextResponse.json({ region, bucket, hasData: false, item: null });
+    if (!stats) {
+      // Gleicher Set-Rueckfall wie in /api/tft/units — Begruendung dort.
+      try {
+        const filters = await resolveFilters(searchParams);
+        const rows = await callRpc<ItemListRow[]>('get_tft_item_stats_list', {
+          p_regions: filters.regions,
+          p_buckets: filters.buckets,
+          p_days: filters.days,
+          p_patch: filters.patchFilter,
+          p_set: filters.setNumber,
+        });
+        const row = rows.find(r => r.api_name === id);
+        if (!row || Number(row.games) === 0) {
+          return NextResponse.json({ region, bucket, hasData: false, item: null });
+        }
+        const games = Number(row.games);
+        return cachedJson({
+          region, bucket,
+          set: filters.setNumber, patch: filters.patch,
+          hasData: true,
+          item: {
+            apiName: id,
+            games,
+            avgPlacement: games > 0 ? Number(row.sum_placement) / games : null,
+            top4Rate: games > 0 ? Number(row.top4) / games : null,
+            top1Rate: games > 0 ? Number(row.top1) / games : null,
+            topUsers: [],
+          },
+        });
+      } catch {
+        return NextResponse.json({ region, bucket, hasData: false, item: null });
+      }
+    }
     const buckets = stats.byItem?.[id];
     if (!buckets) return NextResponse.json({ region, bucket, hasData: true, item: null });
     const data = buckets[bucket] || buckets.all || null;

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { STATS_CACHE_CONTROL } from '../../../../lib/api-cache';
 import { checkRateLimit } from '../../../../lib/rate-limit';
+import { isKnownUnitId } from '../../../../lib/tft-classify-comp';
 
 // Match-level Data Explorer endpoint. Proxies to the Hetzner refresh-api
 // `/explore-matches` route, which has the GIN index + 60 GB volume to serve
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest) {
   }
 
   const units = Array.isArray(body.units)
-    ? body.units.filter((u): u is string => typeof u === 'string' && /^TFT\d+_[A-Za-z0-9]+$/.test(u)).slice(0, 6)
+    ? body.units.filter((u): u is string => typeof u === 'string' && isKnownUnitId(u)).slice(0, 6)
     : [];
   if (units.length === 0) {
     return NextResponse.json({ error: 'units_required' }, { status: 400 });

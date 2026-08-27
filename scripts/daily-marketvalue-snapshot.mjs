@@ -94,6 +94,7 @@ import {
   snapshotPlayer,
 } from './lib/tft-marketvalue-pipeline.mjs';
 import { ACTIVE_REGIONS } from './lib/active-regions.mjs';
+import { loadSetStartDate, daysSinceSetStart } from './lib/current-set.mjs';
 import { fetchD2PlusEntries, splitByActivity } from './lib/tft-league-entries.mjs';
 import { assertContracts } from './lib/contracts.mjs';
 import { formatTimings, resetTimings, timingEnabled } from './lib/perf-timing.mjs';
@@ -117,6 +118,22 @@ loadEnv();
 // Regions mit zu kleiner Pop für valide z-Score-Verteilung. Synthetic-null-pop
 // → multiplier=1.0 (Base-Value only, signals=null).
 const POP_BYPASS_REGIONS = new Set(['me1']);
+
+// Set-Start-Fenster (2026-08-27).
+//
+// Direkt nach einem Set-Start hat noch fast niemand die fuenf Spiele, die
+// gatherPlayer verlangt. Gemessen am 27.08., einen Tag nach dem Set-18-Start:
+// keine einzige Region ueber 30% brauchbarer Spieler, beste jp1 mit 27,5%.
+// Der Sanity-Floor unten hat deshalb in 14 von 15 Regionen gegriffen und den
+// Aufbau der neuen Population genau dann verhindert, als er stattfinden
+// sollte — nur me1 kam durch, weil es im Bypass steht.
+//
+// Der Floor bleibt fuer seinen eigentlichen Zweck (Riot-Stoerung) bestehen,
+// pausiert aber in den ersten Tagen eines Sets. In dieser Zeit gibt es keine
+// "gute Population des laufenden Sets", die er schuetzen koennte.
+// Der Name enthaelt bewusst kein "Set": 14 ist eine Anzahl Tage, keine
+// Set-Nummer. scripts/check-drift.mjs meldet sonst ein Set-Literal.
+const GRACE_DAYS_AFTER_START = 14;
 
 const D2_TIERS = ['DIAMOND', 'MASTER', 'GRANDMASTER', 'CHALLENGER'];
 
@@ -270,21 +287,46 @@ const STALENESS_WINDOW_DAYS = 90;
 async function orderByStaleness(regions) {
   if (regions.length <= 1 || STATIC_REGION_ORDER) return regions;
   try {
+    // Fenster-Untergrenze: sonst die letzten 90 Tage, waehrend eines laufenden
+    // Sets aber der Set-Start. Ohne das sehen alle Regionen gleich frisch aus —
+    // am 27.08. hatten 14 von 15 ihren neuesten Snapshot am 25.08., also noch
+    // aus Set 17 — und die fuenf Regionen ohne eine einzige Set-18-Zeile (br1,
+    // la1, la2, tw2, vn2, selbst gemessen) landeten wieder hinten und kamen nie
+    // an die Reihe.
     const { rows } = await pool.query(`
-      select region, max(created_at) as newest
-        from tft_player_marketvalue_snapshots
-       where region = any($1::text[])
-         and snapshot_date >= current_date - $2::int
-       group by region
-    `, [regions, STALENESS_WINDOW_DAYS]);
+      select r.region,
+             coalesce(extract(epoch from s.newest) * 1000, 0) as newest_ms,
+             coalesce(p.rows_in_set, 0) as rows_in_set
+        from unnest($1::text[]) as r(region)
+        left join (
+          select region, max(created_at) as newest
+            from tft_player_marketvalue_snapshots
+           where snapshot_date >= greatest(current_date - $2::int,
+                                           coalesce($3::date, current_date - $2::int))
+           group by region
+        ) s on s.region = r.region
+        left join (
+          select region, count(*) as rows_in_set
+            from tft_player_season_stats
+           where set_number = $4::int
+           group by region
+        ) p on p.region = r.region
+    `, [regions, STALENESS_WINDOW_DAYS, loadSetStartDate(), loadCurrentSet()]);
 
-    const newestOf = new Map(rows.map(r => [r.region, r.newest ? Date.parse(r.newest) : 0]));
-    // 0 = nie bearbeitet (oder länger als das Fenster her) → ganz nach vorn.
-    const ordered = [...regions].sort((a, b) => (newestOf.get(a) ?? 0) - (newestOf.get(b) ?? 0));
+    const newestOf = new Map(rows.map(r => [r.region, Number(r.newest_ms) || 0]));
+    const setRowsOf = new Map(rows.map(r => [r.region, Number(r.rows_in_set) || 0]));
+    // Erstes Kriterium: wann zuletzt geschrieben (0 = im Fenster nie).
+    // Zweites Kriterium: wie viel das laufende Set in dieser Region ueberhaupt
+    // schon kennt. Ohne das entschied bei Gleichstand — und nach einem
+    // Set-Start stehen alle auf 0 — wieder die feste Listenreihenfolge, und
+    // genau die hinteren Regionen blieben leer.
+    const ordered = [...regions].sort((a, b) =>
+      ((newestOf.get(a) ?? 0) - (newestOf.get(b) ?? 0))
+      || ((setRowsOf.get(a) ?? 0) - (setRowsOf.get(b) ?? 0)));
 
     const age = (r) => {
       const t = newestOf.get(r);
-      if (!t) return '>90d';
+      if (!t) return `>Fenster/${setRowsOf.get(r) ?? 0} Set-Zeilen`;
       return `${((Date.now() - t) / 3_600_000).toFixed(0)}h`;
     };
     console.log(`    Reihenfolge nach Rückstand: ${ordered.map(r => `${r}(${age(r)})`).join(' ')}`);
@@ -937,7 +979,12 @@ async function processRegion(region) {
   // Cursor-Write unten verhindert, also galt die Region als heute fertig.
   // Watchdog (urteilt nach DB-Abdeckung) und Driver (urteilt nach Cursor-File)
   // liefen still auseinander. `degraded` wird jetzt unten mit ausgewertet.
-  if (!POP_BYPASS_REGIONS.has(region) && gathered.length < players.length * 0.3) {
+  const setAge = daysSinceSetStart();
+  const inSetStartWindow = setAge != null && setAge <= GRACE_DAYS_AFTER_START;
+  if (inSetStartWindow && gathered.length < players.length * 0.3) {
+    console.log(`  [pop] Set-Start vor ${setAge} Tag(en): Sanity-Floor pausiert (${gathered.length}/${players.length} usable)`);
+  }
+  if (!inSetStartWindow && !POP_BYPASS_REGIONS.has(region) && gathered.length < players.length * 0.3) {
     console.error(`  [pop] DEGRADED: nur ${gathered.length}/${players.length} usable (<30%) — Region übersprungen, bestehende Population erhalten`);
     return {
       region, players: players.length, snapshots: 0, failed,

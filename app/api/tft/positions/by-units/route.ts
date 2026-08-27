@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { supabaseAdmin } from '../../../../lib/supabase';
 import { cachedJson } from '../../../../lib/api-cache';
+import { isKnownUnitId } from '../../../../lib/tft-classify-comp';
 
 // Returns position frequency per (unit, cell) for a comma-separated set of
 // units. The comp-detail page hits this with its typicalUnits list to render
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
   const units = unitsParam
     .split(',')
     .map(u => u.trim())
-    .filter(u => /^TFT\d+_[A-Za-z0-9]+$/.test(u))
+    .filter(u => isKnownUnitId(u))
     .slice(0, 12);
 
   if (units.length === 0) {

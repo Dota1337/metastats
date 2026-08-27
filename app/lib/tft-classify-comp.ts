@@ -116,6 +116,7 @@ function carryFromAugments(participant: ClassifyParticipant, units: ClassifyUnit
 interface BundleDerived {
   costMap: Map<string, number>;
   fragmentTraits: Set<string>;
+  championIds: Set<string>;
 }
 const _bundleCache = new Map<number, BundleDerived>();
 // Fehlversuche werden NICHT dauerhaft gecacht, sondern nur kurz gedrosselt.
@@ -130,7 +131,7 @@ function loadBundleDerived(setNumber: number): BundleDerived {
   const set = setNumber || CURRENT_SET;
   const cached = _bundleCache.get(set);
   if (cached) return cached;
-  const derived: BundleDerived = { costMap: new Map(), fragmentTraits: new Set() };
+  const derived: BundleDerived = { costMap: new Map(), fragmentTraits: new Set(), championIds: new Set() };
   const lastFail = _bundleFail.get(set);
   if (lastFail != null && Date.now() - lastFail < BUNDLE_RETRY_MS) return derived;
   try {
@@ -142,6 +143,7 @@ function loadBundleDerived(setNumber: number): BundleDerived {
     };
     for (const [cid, ch] of Object.entries(bundle.champions || {})) {
       if (typeof ch?.cost === 'number') derived.costMap.set(cid, ch.cost);
+      derived.championIds.add(cid);
     }
     for (const [name, tr] of Object.entries(bundle.traits || {})) {
       const tiers = tr?.tiers;
@@ -159,6 +161,26 @@ function loadBundleDerived(setNumber: number): BundleDerived {
   _bundleFail.delete(set);
   _bundleCache.set(set, derived);
   return derived;
+}
+
+// Set-agnostischer Einheiten-Test fuer API-Eingaben.
+//
+// Bis Set 17 hiessen alle Champion-IDs TFT<set>_<Name>; mehrere Routen haben
+// deshalb gegen /^TFTd+_/ validiert. Set 18 bricht das: 74 der 91 IDs heissen
+// DA_* (gemessen am Bundle 2026-08-26), die Routen haben die Eingabe damit
+// komplett verworfen. Statt eines Namensmusters fragen wir jetzt das Bundle
+// des Sets — das ist ohnehin die Wahrheit ueber existierende Einheiten.
+//
+// Der Formtest bleibt davor stehen: er haelt Unsinn und Sonderzeichen raus,
+// auch wenn das Bundle gerade nicht lesbar ist. Faellt der Read aus, ist
+// championIds leer — dann gilt bewusst nur die Form, denn ein leerer Set
+// wuerde sonst JEDE Anfrage abweisen (Set-Flip vor dem Deploy des Bundles).
+// Mehrteilig: Set-18-IDs haben zwei Unterstriche (DA_18_Ahri), aeltere einen
+const UNIT_ID_SHAPE = /^[A-Za-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+)+$/;
+export function isKnownUnitId(id: string, setNumber: number = CURRENT_SET): boolean {
+  if (typeof id !== 'string' || !UNIT_ID_SHAPE.test(id)) return false;
+  const ids = loadBundleDerived(setNumber).championIds;
+  return ids.size === 0 || ids.has(id);
 }
 
 // Exportiert, weil derselbe Test an zwei Stellen gebraucht wird: hier beim

@@ -272,17 +272,26 @@ export function tftTraitDescription(
   return parts.join('\n') || stripped;
 }
 
-// Set-aware Emblem-Detection. Set-17-Emblems folgen dem Pattern
-// `^TFT<set>_Item_.+EmblemItem$` (verifiziert 2026-06-20: 19 Treffer in
-// Set 17, kein False-Positive). Bei Set 18 zieht der Bundle-`set`-Field
-// das Pattern transparent nach.
+// Set-aware Emblem-Detection.
+//
+// Frueher galt das Muster ^TFT<set>_Item_...EmblemItem. Die Annahme, der
+// Bundle-set-Wert ziehe es beim Set-Wechsel transparent nach, ist mit Set 18
+// gefallen: gemessen am Bundle 2026-08-27 traf das alte Muster 0 Eintraege,
+// der neue Test 157.
 export function tftIsEmblem(
   bundle: TftAssetsBundle | null,
   apiName: string | null | undefined,
 ): boolean {
   if (!bundle || !apiName) return false;
-  const set = bundle.set;
-  return new RegExp(`^TFT${set}_Item_.+EmblemItem$`).test(apiName);
+  // Set-agnostisch, gleiche Logik wie app/lib/tft-item-bucket.ts:18-26 —
+  // damit Filterleiste und Comp-Ansicht nicht auseinanderlaufen.
+  const meta = bundle.items?.[apiName];
+  const name = meta?.name || '';
+  return (
+    /EmblemItem$/.test(apiName) ||
+    / Emblem$/.test(name) ||
+    (Array.isArray(meta?.tags) && meta!.tags!.some(t => String(t).toLowerCase() === 'emblem'))
+  );
 }
 
 // Returnt einen Mouse-Over-Tooltip-Text für einen Champion. Format:

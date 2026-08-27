@@ -64,7 +64,49 @@ export async function GET(request: NextRequest) {
     const region = (searchParams.get('region') || 'euw1').toLowerCase();
     const bucket = normalizeBucket(searchParams.get('bucket'));
     const stats = loadTftStats(region);
-    if (!stats) return NextResponse.json({ region, bucket, hasData: false, unit: null });
+    if (!stats) {
+      // Set-Rueckfall (2026-08-27): der Loader haelt JSONs aus einem alten Set
+      // zurueck (siehe app/lib/tft-stats-loader.ts). Statt einer leeren Seite
+      // holen wir die Kernwerte aus demselben set-korrekten RPC, den die Liste
+      // benutzt. Die Item-Bloecke bleiben leer — die stecken nur im JSON, und
+      // eine erfundene Fuellung waere schlimmer als ein fehlender Block.
+      try {
+        const filters = await resolveFilters(searchParams);
+        const rows = await callRpc<UnitListRow[]>('get_tft_unit_stats', {
+          p_regions: filters.regions,
+          p_buckets: filters.buckets,
+          p_days: filters.days,
+          p_patch: filters.patchFilter,
+          p_set: filters.setNumber,
+        });
+        const row = rows.find(r => r.character_id === id);
+        if (!row || Number(row.games) === 0) {
+          return NextResponse.json({ region, bucket, hasData: false, unit: null });
+        }
+        const games = Number(row.games);
+        return cachedJson({
+          region, bucket,
+          set: filters.setNumber, patch: filters.patch,
+          hasData: true,
+          unit: {
+            characterId: id,
+            games,
+            avgPlacement: games > 0 ? Number(row.sum_placement) / games : null,
+            top4Rate: games > 0 ? Number(row.top4) / games : null,
+            top1Rate: games > 0 ? Number(row.top1) / games : null,
+            topItems: [],
+            topItemSets: [],
+            topItemsByTier: null,
+            topItemSetsByTier: null,
+            damageByTier: null,
+            carryPlacementByTier: null,
+            itemSlotOrderByTier: null,
+          },
+        });
+      } catch {
+        return NextResponse.json({ region, bucket, hasData: false, unit: null });
+      }
+    }
     const buckets = stats.byUnit?.[id];
     if (!buckets) return NextResponse.json({ region, bucket, hasData: true, unit: null });
     const data = buckets[bucket] || buckets.all || null;

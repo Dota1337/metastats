@@ -5,6 +5,7 @@
 
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
+import { CURRENT_SET } from './current-set';
 
 interface CacheEntry<T> { data: T; mtime: number }
 const cache = new Map<string, CacheEntry<any>>();
@@ -26,8 +27,20 @@ function readCached<T>(path: string): T | null {
   }
 }
 
+// Set-Waechter (2026-08-27). Die tft-stats-*.json entstehen nur im
+// Wochenlauf (.github/workflows/tft-weekly-crawl.yml:78, nur euw1); der
+// Tageslauf laeuft mit --no-json. Nach einem Set-Start tragen die Dateien
+// deshalb tagelang das ALTE Set — gemessen am 2026-08-27: 10 von 10
+// geprueften Dateien "set": 17, obwohl Set 18 am 26.08. startete.
+//
+// Ausgeliefert wurde das als aktuelle Statistik. Ab jetzt liefert der Loader
+// in dem Fall null; die Aufrufer haben dafuer bereits einen Pfad (Rueckfall
+// auf den set-korrekten RPC bzw. leerer Zustand). Lieber keine Zahl als die
+// Zahl des Vorsets.
 export function loadTftStats(region: string) {
-  return readCached<any>(join(process.cwd(), 'public', `tft-stats-${region.toLowerCase()}.json`));
+  const data = readCached<any>(join(process.cwd(), 'public', `tft-stats-${region.toLowerCase()}.json`));
+  if (data && typeof data.set === 'number' && data.set !== CURRENT_SET) return null;
+  return data;
 }
 
 export function loadTftGraph(region: string) {

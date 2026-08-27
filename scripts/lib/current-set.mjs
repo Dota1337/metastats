@@ -31,6 +31,29 @@ export function loadCurrentSet(repoRoot = process.cwd()) {
   } catch { return null; }
 }
 
+// Startdatum des laufenden Sets als ISO-Tag (YYYY-MM-DD), null wenn unbekannt.
+//
+// Gebraucht ueberall dort, wo "seit dem Set-Start" die richtige Grenze ist und
+// ein fester Tagesabstand die falsche waere: Backfills, Rueckstands-Sortierung,
+// und Schwellwerte, die kurz nach einem Set-Start bewusst anders greifen.
+export function loadSetStartDate(repoRoot = process.cwd()) {
+  const path = resolve(repoRoot, 'public', 'tft-set.json');
+  if (!existsSync(path)) return null;
+  try {
+    const d = JSON.parse(readFileSync(path, 'utf8')).setStartDate;
+    return typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : null;
+  } catch { return null; }
+}
+
+// Volle Tage seit dem Set-Start. null, wenn kein Startdatum bekannt ist —
+// Aufrufer muessen diesen Fall behandeln und duerfen ihn nicht als 0 lesen.
+export function daysSinceSetStart(repoRoot = process.cwd()) {
+  const d = loadSetStartDate(repoRoot);
+  if (!d) return null;
+  const started = Date.parse(d + 'T00:00:00Z');
+  if (Number.isNaN(started)) return null;
+  return Math.floor((Date.now() - started) / 86_400_000);
+}
 // Notnagel: das Set aus dem Asset-Bundle. Ungegatet, siehe Kopfkommentar —
 // nur benutzen, wenn tft-set.json ausfaellt.
 function loadSetFromAssets(repoRoot) {

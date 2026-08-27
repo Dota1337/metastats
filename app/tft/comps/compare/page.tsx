@@ -149,7 +149,7 @@ function CompPanel({
     );
   }
   const parts = parseClusterKey(comp.clusterKey);
-  const traitName = parts ? (tftTraitDisplayName(assets, parts.trait) || parts.trait.replace(/^TFT\d+_/, '')) : '';
+  const traitName = parts ? (tftTraitDisplayName(assets, parts.trait) || parts.trait.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')) : '';
   const carry = parts && assets ? assets.champions[parts.carry] : null;
   const carryUrl = tftChampionTileUrl(assets, carry);
   const accentColor = side === 'a' ? '#7B61FF' : '#3ecf8e';

@@ -209,7 +209,7 @@ export default function TftLobbyScoutPage() {
                 <div className="space-y-1.5">
                   {matches.map(m => {
                     const parts = /^(.+)@(\d+)_(.+)$/.exec(m.comp.clusterKey);
-                    const traitName = parts && assets ? (assets.traits[parts[1]]?.name || parts[1].replace(/^TFT\d+_/, '')) : '';
+                    const traitName = parts && assets ? (assets.traits[parts[1]]?.name || parts[1].replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')) : '';
                     const carry = parts && assets ? assets.champions[parts[3]] : null;
                     const carryUrl = tftChampionTileUrl(assets, carry);
                     const confidence = (m.score / totalScore * 100).toFixed(0);

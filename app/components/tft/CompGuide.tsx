@@ -56,7 +56,7 @@ function AugmentTile({ apiName, assets }: { apiName: string; assets: TftAssetsBu
         )}
       </div>
       <div className="text-white text-[10px] mt-0.5 text-center truncate w-full">
-        {meta?.name || apiName.replace(/^TFT\d*_Augment_/, '')}
+        {meta?.name || apiName.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Augment_)?/, '')}
       </div>
     </a>
   );

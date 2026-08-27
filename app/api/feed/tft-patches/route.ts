@@ -56,8 +56,8 @@ export async function GET(_request: NextRequest) {
         const winners = diffs.slice(0, 3);
         const losers = diffs.slice(-3).reverse();
         bullets =
-          '<p><b>Winners:</b> ' + winners.map(w => `${w.id.replace(/^TFT\d+_/, '')} (Δ ${w.delta.toFixed(2)})`).join(', ') + '</p>' +
-          '<p><b>Losers:</b> ' + losers.map(l => `${l.id.replace(/^TFT\d+_/, '')} (Δ +${l.delta.toFixed(2)})`).join(', ') + '</p>';
+          '<p><b>Winners:</b> ' + winners.map(w => `${w.id.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')} (Δ ${w.delta.toFixed(2)})`).join(', ') + '</p>' +
+          '<p><b>Losers:</b> ' + losers.map(l => `${l.id.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')} (Δ +${l.delta.toFixed(2)})`).join(', ') + '</p>';
       }
     } catch {}
 

@@ -467,7 +467,7 @@ export default function TftExplorerPage() {
                         <FilterChip
                           key={`u-${id}`}
                           icon={tftChampionTileUrl(assets, assets?.champions[id]) || null}
-                          label={(assets?.champions[id] as any)?.name || id.replace(/^TFT\d+_/, '')}
+                          label={(assets?.champions[id] as any)?.name || id.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')}
                           color="#7B61FF"
                           onRemove={() => setUnits(prev => prev.filter(x => x !== id))}
                         />
@@ -476,7 +476,7 @@ export default function TftExplorerPage() {
                         <FilterChip
                           key={`i-${id}`}
                           icon={tftIconUrl(assets, (assets?.items[id] as any)?.icon) || null}
-                          label={(assets?.items[id] as any)?.name || id.replace(/^TFT\d*_Item_/, '')}
+                          label={(assets?.items[id] as any)?.name || id.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Item_)?/, '')}
                           color="#e0c75a"
                           onRemove={() => setItems(prev => prev.filter(x => x !== id))}
                         />
@@ -485,7 +485,7 @@ export default function TftExplorerPage() {
                         <FilterChip
                           key={`t-${id}`}
                           icon={tftIconUrl(assets, (assets?.traits[id] as any)?.icon) || null}
-                          label={(assets?.traits[id] as any)?.name || id.replace(/^TFT\d+_/, '')}
+                          label={(assets?.traits[id] as any)?.name || id.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')}
                           color="#3ecf8e"
                           onRemove={() => setTraits(prev => prev.filter(x => x !== id))}
                         />

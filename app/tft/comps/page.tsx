@@ -472,8 +472,8 @@ export default function TftCompsPage() {
     return currentSetFamilies.filter(f => {
       const traitMeta = assets.traits[f.trait];
       const carryChamp = assets.champions[f.carry];
-      const traitName = (traitMeta?.name || f.trait.replace(/^TFT\d+_/, '')).toLowerCase();
-      const carryName = (carryChamp?.name || f.carry.replace(/^TFT\d+_/, '')).toLowerCase();
+      const traitName = (traitMeta?.name || f.trait.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')).toLowerCase();
+      const carryName = (carryChamp?.name || f.carry.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')).toLowerCase();
       return traitName.includes(q)
         || carryName.includes(q)
         || f.trait.toLowerCase().includes(q)
@@ -623,7 +623,7 @@ function CompareBanner({
                     <div className="w-6 h-6 rounded bg-surface-overlay flex-shrink-0" />
                   )}
                   <span className="text-white text-[11px] truncate hidden sm:inline">
-                    {carry?.name || f.carry.replace(/^TFT\d+_/, '')}
+                    {carry?.name || f.carry.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')}
                   </span>
                 </div>
               );

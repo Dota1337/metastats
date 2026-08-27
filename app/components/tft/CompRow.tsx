@@ -67,11 +67,11 @@ function tierColorByAvg(avg: number | null) {
 }
 
 
-function prettyTrait(s: string) { return s.replace(/^TFT\d+_/, ''); }
-function prettyChar(s: string) { return s.replace(/^TFT\d+_/, ''); }
+function prettyTrait(s: string) { return s.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, ''); }
+function prettyChar(s: string) { return s.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, ''); }
 
 function extractTraitVariant(traitApiName: string, traitDisplayName: string): string | null {
-  const stripped = traitApiName.replace(/^TFT\d+_/, '');
+  const stripped = traitApiName.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
   if (!stripped.includes('_')) return null;
   const variant = stripped.split('_').slice(1).join(' ');
   if (!variant) return null;
@@ -141,7 +141,7 @@ export default function CompRow({
     // Carry-Differenzierung bleibt visuell über den lila Tile-Border erhalten.
     const costOf = (cid: string) => assets?.champions[cid]?.cost ?? 1;
     const nameOf = (cid: string) =>
-      (assets?.champions[cid]?.name || cid.replace(/^TFT\d+_/, '')).toLowerCase();
+      (assets?.champions[cid]?.name || cid.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')).toLowerCase();
     return all
       .sort((a, b) => {
         const costDelta = costOf(a.characterId) - costOf(b.characterId);

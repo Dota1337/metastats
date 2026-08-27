@@ -57,7 +57,7 @@ async function buildPlayerContext(puuid: string, setNumber: number | null): Prom
     }
     const topTraits = [...traitCounts.entries()]
       .sort((a, b) => b[1] - a[1]).slice(0, 5)
-      .map(([n, c]) => `${n.replace(/^TFT\d+_/, '')} (${c})`).join(', ');
+      .map(([n, c]) => `${n.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')} (${c})`).join(', ');
 
     return `## Player context (last ${games} ranked games)
 - Avg placement: ${avgPlace.toFixed(2)}

@@ -170,9 +170,9 @@ export default function TftAugmentReferenceDetailPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {matchingComps.map(m => {
                 const traitMeta = assets?.traits[m.trait];
-                const traitName = traitMeta?.name || m.trait.replace(/^TFT\d+_/, '');
+                const traitName = traitMeta?.name || m.trait.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
                 const carryChamp = findChampion(assets, m.carry);
-                const carryName = carryChamp?.name || m.carry.replace(/^TFT\d+_/, '');
+                const carryName = carryChamp?.name || m.carry.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
                 const carryUrl = tftChampionTileUrl(assets, carryChamp);
                 // Cluster-Key heuristisch konstruieren — Comp-Detail nimmt
                 // jeden Slug an und auflöst zum besten Match.

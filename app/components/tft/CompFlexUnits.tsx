@@ -55,7 +55,7 @@ export default function CompFlexUnits({
           const ch = findChampion(assets, u.characterId);
           const url = tftChampionTileUrl(assets, ch);
           const cost = ch?.cost ?? 1;
-          const name = ch?.name || u.characterId.replace(/^TFT\d+_/, '');
+          const name = ch?.name || u.characterId.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
           return (
             <a
               key={u.characterId}

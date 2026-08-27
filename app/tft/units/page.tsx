@@ -122,7 +122,7 @@ export default function TftUnitsPage() {
       }
     }
     return [...set]
-      .map(id => ({ id, name: tftTraitDisplayName(assets, id) || id.replace(/^TFT\d+_/, '') }))
+      .map(id => ({ id, name: tftTraitDisplayName(assets, id) || id.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '') }))
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [units, assets]);
 
@@ -133,7 +133,7 @@ export default function TftUnitsPage() {
       if (costFilter != null && (ch?.cost ?? -1) !== costFilter) return false;
       if (traitFilter && !ch?.traits?.includes(traitFilter)) return false;
       if (q) {
-        const name = (ch?.name || u.characterId.replace(/^TFT\d+_/, '')).toLowerCase();
+        const name = (ch?.name || u.characterId.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')).toLowerCase();
         if (!name.includes(q) && !u.characterId.toLowerCase().includes(q)) return false;
       }
       return true;
@@ -284,7 +284,7 @@ function costColorOf(cost: number) {
   return cost === 1 ? '#9aa6b2' : cost === 2 ? '#3a8' : cost === 3 ? '#3a8ddc' : cost === 4 ? '#c39bff' : '#e0c75a';
 }
 function prettyCharId(id: string) {
-  return id.replace(/^TFT\d+_/, '');
+  return id.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
 }
 
 // Stat cell that reflows between mobile (label-above-value pair, left-

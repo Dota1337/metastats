@@ -195,7 +195,7 @@ function RegionRowCard({
 }) {
   const parts = parseClusterKey(row.cluster_key);
   const trait = parts && assets ? assets.traits[parts.trait] : null;
-  const traitName = trait?.name || (parts ? parts.trait.replace(/^TFT\d+_/, '') : '');
+  const traitName = trait?.name || (parts ? parts.trait.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '') : '');
   const carry = parts && assets ? assets.champions[parts.carry] : null;
   const carryUrl = tftChampionTileUrl(assets, carry);
   const narrative = buildRegionNarrative(row, pattern, t);
@@ -221,7 +221,7 @@ function RegionRowCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-white text-sm font-medium truncate">
-              {traitName} · {carry?.name || (parts ? parts.carry.replace(/^TFT\d+_/, '') : '')}
+              {traitName} · {carry?.name || (parts ? parts.carry.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '') : '')}
             </span>
             <span
               className="inline-flex items-center gap-1 px-1.5 py-[1px] rounded text-[9px] font-semibold tabular-nums flex-shrink-0 cursor-help"

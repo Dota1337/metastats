@@ -1012,12 +1012,37 @@ function checkClassificationBundle() {
     console.error(`[classify] WARNUNG: ${bundlePath} fehlt -- /player-comp-histogram klassifiziert ohne Kosten-Map (Fail-Safe-Modus).`);
     return;
   }
+  // Probe-Einheit aus dem Bundle ziehen statt hartkodieren: mit festen
+  // TFT17_-IDs lief dieser Selbsttest auch im Set 18 gruen (der Regex-Fail-
+  // Safe liefert dann trotzdem einen Key) und bewies damit nichts mehr.
+  let bundle;
+  try { bundle = JSON.parse(readFileSync(bundlePath, 'utf8')); }
+  catch (e) { console.error(`[classify] WARNUNG: ${bundlePath} nicht lesbar (${e.message}).`); return; }
+  const champs = Object.entries(bundle.champions || {});
+  // UniqueTrait-Traits ausklammern: eine Ein-Helden-Comp darauf klassifiziert
+  // zu null und der Selbsttest wuerde faelschlich Alarm schlagen.
+  const traitKeys = Object.keys(bundle.traits || {}).filter((k) => !/UniqueTrait/i.test(k));
+  const traitKeyFor = (label) => traitKeys.find((k) => ((bundle.traits[k] || {}).name || k) === label);
+  let unitId = null, traitName = null;
+  for (const [id, c] of champs) {
+    if ((c.cost || 0) < 4) continue;
+    const hit = (c.traits || []).map(traitKeyFor).find(Boolean);
+    if (hit) { unitId = id; traitName = hit; break; }
+  }
+  if (!unitId) {
+    console.error('[classify] WARNUNG: kein 4/5-Kosten-Champion mit Normal-Trait im Bundle -- Klassifikation laeuft blind.');
+    return;
+  }
   const probe = classifyComp({
-    traits: [{ name: 'TFT17_Doomer', tier_current: 2, style: 2, num_units: 4 }],
-    units: [{ characterId: 'TFT17_Aatrox', tier: 2, items: ['TFT_Item_InfinityEdge', 'TFT_Item_LastWhisper', 'TFT_Item_GiantSlayer'] }],
+    traits: [{ name: traitName, tier_current: 2, style: 2, num_units: 4 }],
+    units: [{ characterId: unitId, tier: 2, items: ['TFT_Item_InfinityEdge', 'TFT_Item_LastWhisper', 'TFT_Item_GiantSlayer'] }],
     level: 8,
   }, { withAugmentSuffix: false, currentSet: SET_NUMBER });
-  console.log(`[classify] Bundle Set ${SET_NUMBER} geladen, Probe-Key: ${probe ? probe.clusterKey : 'null'}`);
+  if (!probe || !String(probe.clusterKey).includes(unitId)) {
+    console.error(`[classify] WARNUNG: Probe ${unitId} nicht im Cluster-Key (${probe ? probe.clusterKey : 'null'}) -- Bundle passt nicht zu Set ${SET_NUMBER}.`);
+    return;
+  }
+  console.log(`[classify] Bundle Set ${SET_NUMBER} geladen, Probe-Key: ${probe.clusterKey}`);
 }
 checkClassificationBundle();
 

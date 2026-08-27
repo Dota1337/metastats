@@ -159,9 +159,9 @@ function AugmentPanel({
           <div className="space-y-1.5">
             {matchingComps.slice(0, 6).map(m => {
               const traitMeta = assets?.traits[m.trait];
-              const traitName = traitMeta?.name || m.trait.replace(/^TFT\d+_/, '');
+              const traitName = traitMeta?.name || m.trait.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
               const carryChamp = findChampion(assets, m.carry);
-              const carryName = carryChamp?.name || m.carry.replace(/^TFT\d+_/, '');
+              const carryName = carryChamp?.name || m.carry.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
               const carryUrl = tftChampionTileUrl(assets, carryChamp);
               const compSlug = `${m.trait}@6_${m.carry}`;
               return (

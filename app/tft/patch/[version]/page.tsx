@@ -210,14 +210,14 @@ export default function TftPatchDetailPage() {
               // display name + carry champion so the label reads like the
               // comp listing (e.g. "Cyber City 3 · Yi").
               const m = /^(.+)@(\d+)_(.+)$/.exec(key);
-              if (!m) return key.replace(/^TFT\d+_/, '');
-              const traitName = assets?.traits[m[1]]?.name || m[1].replace(/^TFT\d+_/, '');
-              const carryName = assets?.champions[m[3]]?.name || m[3].replace(/^TFT\d+_/, '');
+              if (!m) return key.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
+              const traitName = assets?.traits[m[1]]?.name || m[1].replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
+              const carryName = assets?.champions[m[3]]?.name || m[3].replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
               return `${traitName} · ${carryName}`;
             }
             const base = key.split('@')[0];
             const meta = entity === 'unit' ? assets?.champions[base] : entity === 'item' ? assets?.items[base] : assets?.traits[base];
-            return meta?.name || base.replace(/^TFT\d+_/, '');
+            return meta?.name || base.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
           };
           const top = [...(diff.winners || []).slice(0, 8), ...(diff.losers || []).slice(0, 8)];
           const rows = top
@@ -313,7 +313,7 @@ function DiffRow({ entry, entity, assets }: { entry: DiffEntry; entity: Entity; 
     imageEl = churl
       ? <img src={churl} alt={champ?.name || ''} className="w-9 h-9 rounded object-cover" />
       : <div className="w-9 h-9 rounded bg-surface-overlay" />;
-    displayName = champ?.name || entry.key.replace(/^TFT\d+_/, '');
+    displayName = champ?.name || entry.key.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
     href = `/tft/units/${encodeURIComponent(entry.key)}`;
   } else if (entity === 'item') {
     const item = assets?.items[entry.key];
@@ -321,7 +321,7 @@ function DiffRow({ entry, entity, assets }: { entry: DiffEntry; entity: Entity; 
     imageEl = iurl
       ? <img src={iurl} alt={item?.name || ''} className="w-9 h-9 rounded" />
       : <div className="w-9 h-9 rounded bg-surface-overlay" />;
-    displayName = item?.name || entry.key.replace(/^TFT\d*_Item_/, '');
+    displayName = item?.name || entry.key.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Item_)?/, '');
     href = `/tft/items/${encodeURIComponent(entry.key)}`;
   } else if (entity === 'comp') {
     const m = /^(.+)@(\d+)_(.+)$/.exec(entry.key);
@@ -332,7 +332,7 @@ function DiffRow({ entry, entity, assets }: { entry: DiffEntry; entity: Entity; 
       ? <img src={churl} alt={carry?.name || ''} className="w-9 h-9 rounded border border-[#c39bff]/60 object-cover" />
       : <div className="w-9 h-9 rounded bg-surface-overlay" />;
     displayName = m
-      ? `${trait?.name || m[1].replace(/^TFT\d+_/, '')} · ${carry?.name || m[3].replace(/^TFT\d+_/, '')}`
+      ? `${trait?.name || m[1].replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')} · ${carry?.name || m[3].replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')}`
       : entry.key;
     href = `/tft/comps/${encodeURIComponent(entry.key)}`;
   } else {
@@ -342,7 +342,7 @@ function DiffRow({ entry, entity, assets }: { entry: DiffEntry; entity: Entity; 
     imageEl = turl
       ? <img src={turl} alt={trait?.name || ''} className="w-9 h-9 rounded" />
       : <div className="w-9 h-9 rounded bg-surface-overlay" />;
-    displayName = `${trait?.name || traitId.replace(/^TFT\d+_/, '')}${activation ? ` (${activation})` : ''}`;
+    displayName = `${trait?.name || traitId.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')}${activation ? ` (${activation})` : ''}`;
     href = `/tft/traits/${encodeURIComponent(traitId)}`;
   }
 

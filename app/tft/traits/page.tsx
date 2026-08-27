@@ -210,7 +210,7 @@ export default function TftTraitsPage() {
                 ? Object.entries(assets.traits).filter(([, m]) => m.name === g.name)
                 : [];
               const rootEntry = variantEntries.find(([apiName]) =>
-                !/^TFT\d+_\w+_\w+$/.test(apiName)
+                !/_/.test(apiName.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, ''))
               ) || variantEntries[0];
               const meta = rootEntry?.[1] || assets?.traits[g.name];
               const url = tftIconUrl(assets, meta?.icon);
@@ -284,7 +284,7 @@ function TierStrip({ tiers }: { tiers: TftTraitTier[] }) {
   );
 }
 
-function prettyTrait(s: string) { return s.replace(/^TFT\d+_/, '').replace(/Trait$/, ''); }
+function prettyTrait(s: string) { return s.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '').replace(/Trait$/, ''); }
 
 function Cell({ label, value, accent, align = 'right' }: { label: string; value: string; accent?: 'white' | 'muted'; align?: 'right' | 'center' }) {
   const valueClass = accent === 'white' ? 'text-white' : accent === 'muted' ? 'text-fg-muted' : 'text-fg-secondary';

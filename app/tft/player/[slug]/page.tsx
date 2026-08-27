@@ -560,7 +560,7 @@ function UnitChip({ rank, characterId, games, avg, assets, lobbyAvg }: { rank: n
   const url = tftChampionTileUrl(assets, info);
   const cost = info?.cost ?? 1;
   const costColor = costToColor(cost);
-  const name = info?.name || characterId.replace(/^TFT\d+_/, '');
+  const name = info?.name || characterId.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
   // Diff vs. lobby Master+ average. Negative = player places *better* than
   // the average lobby (lower placement number is better in TFT).
   const diff = typeof lobbyAvg === 'number' ? avg - lobbyAvg : null;
@@ -968,7 +968,7 @@ function ProSpecialty({ puuid, setNumber, assets, t }: {
               const m = /^(.+)@(\d+)_(.+)$/.exec(c.clusterKey);
               const trait = m ? m[1] : '';
               const carry = m ? m[3] : c.carryUnit;
-              const traitName = assets?.traits[trait]?.name || trait.replace(/^TFT\d+_/, '');
+              const traitName = assets?.traits[trait]?.name || trait.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
               const carryAsset = assets?.champions[carry];
               // Comp page if this cluster resolves there, else the carry's unit page.
               const href = compKeys?.has(c.clusterKey)
@@ -985,7 +985,7 @@ function ProSpecialty({ puuid, setNumber, assets, t }: {
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="text-white text-[11px] font-medium truncate">
-                      {traitName} · {carryAsset?.name || carry.replace(/^TFT\d+_/, '')}
+                      {traitName} · {carryAsset?.name || carry.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')}
                     </div>
                     <div className="text-fg-muted text-[10px] tabular-nums">
                       {(c.share * 100).toFixed(0)}% · Ø {c.avgPlacement?.toFixed(2) ?? '—'} · {c.games} {t('tft.gamesShort')}
@@ -1016,7 +1016,7 @@ function ProSpecialty({ puuid, setNumber, assets, t }: {
                     {tftChampionTileUrl(assets, unitAsset) && (
                       <img src={tftChampionTileUrl(assets, unitAsset)!} alt={unitAsset?.name || u.unitId} className="w-8 h-8 rounded border border-[#c39bff]/60 group-hover:border-[#c39bff]" />
                     )}
-                    <span className="text-white text-[11px] group-hover:text-accent transition-colors">{unitAsset?.name || u.unitId.replace(/^TFT\d+_/, '')}</span>
+                    <span className="text-white text-[11px] group-hover:text-accent transition-colors">{unitAsset?.name || u.unitId.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')}</span>
                     <span className="text-fg-muted text-[10px] tabular-nums ml-auto">{u.games} {t('tft.gamesShort')}</span>
                   </a>
                   <div className="space-y-1">

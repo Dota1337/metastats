@@ -139,7 +139,7 @@ export default function TftOneTricksPage() {
                   {p.signatureComps.map(c => {
                     const parts = parseCluster(c.clusterKey);
                     const trait = parts ? findTrait(assets, parts.trait) : null;
-                    const traitName = trait?.name || (parts ? parts.trait.replace(/^TFT\d+_/, '') : '');
+                    const traitName = trait?.name || (parts ? parts.trait.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '') : '');
                     const carry = parts ? findChampion(assets, parts.carry) : null;
                     return (
                       <a
@@ -152,7 +152,7 @@ export default function TftOneTricksPage() {
                         )}
                         <div className="flex-1 min-w-0">
                           <div className="text-white text-[11px] truncate">
-                            {traitName} · {carry?.name || (parts ? parts.carry.replace(/^TFT\d+_/, '') : '')}
+                            {traitName} · {carry?.name || (parts ? parts.carry.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '') : '')}
                           </div>
                           <div className="text-[10px] text-fg-muted tabular-nums">
                             {(c.share * 100).toFixed(0)}% · Ø {c.avgPlacement?.toFixed(2) ?? '—'}

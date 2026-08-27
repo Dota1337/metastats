@@ -269,7 +269,7 @@ export default function TftCompDetailPage() {
                       const pct = (c.weight * 100).toFixed(0);
                       const fromItemsTitle = c.fromItems
                         .slice(0, 4)
-                        .map(it => assets.items[it]?.name || it.replace(/^TFT\d*_Item_/, ''))
+                        .map(it => assets.items[it]?.name || it.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Item_)?/, ''))
                         .join(' · ');
                       return (
                         <a
@@ -948,13 +948,13 @@ function MatchupColumn({ title, color, edges, assets, bucket, t }: {
           {merged.map(e => {
             const parts = parseClusterKey(e.opponent);
             const traitName = parts && assets
-              ? (assets.traits[parts.trait]?.name || parts.trait.replace(/^TFT\d+_/, ''))
+              ? (assets.traits[parts.trait]?.name || parts.trait.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, ''))
               : '';
             const carry = parts && assets ? assets.champions[parts.carry] : null;
-            const carryName = carry?.name || (parts ? parts.carry.replace(/^TFT\d+_/, '') : e.opponent);
+            const carryName = carry?.name || (parts ? parts.carry.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '') : e.opponent);
             const url = tftChampionTileUrl(assets, carry);
             const secondaryCh = parts?.secondary && assets ? assets.champions[parts.secondary] : null;
-            const secondaryName = secondaryCh?.name || (parts?.secondary ? parts.secondary.replace(/^TFT\d+_/, '') : null);
+            const secondaryName = secondaryCh?.name || (parts?.secondary ? parts.secondary.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '') : null);
             const augApiName = parts?.augmentSlug
               ? compDefiningAugmentApiNameFromSlug(parts.augmentSlug)
               : null;

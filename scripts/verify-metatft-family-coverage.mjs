@@ -102,7 +102,7 @@ async function main() {
   if (missing.length) {
     console.log(`\n  ohne Guide (Top 15):`);
     for (const x of missing.slice(0, 15)) {
-      console.log(`    ${String(x.total_games).padStart(7)}  ${x.family_key.replace(/TFT\d+_/g, '')}`);
+      console.log(`    ${String(x.total_games).padStart(7)}  ${x.family_key.replace(/(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/g, '')}`);
     }
   }
 }

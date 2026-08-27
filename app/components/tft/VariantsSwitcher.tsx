@@ -36,7 +36,7 @@ interface VariantsResponse {
   variants: Variant[];
 }
 
-function prettyChar(s: string) { return s.replace(/^TFT\d+_/, ''); }
+function prettyChar(s: string) { return s.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, ''); }
 
 function variantLabel(
   v: { clusterKey: string; carryStar: number; augmentSlug: string | null; secondary: string | null },

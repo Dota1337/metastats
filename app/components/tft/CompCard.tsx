@@ -407,7 +407,7 @@ function VelocityStat({
 // traitName so the UI can disambiguate them. Returns null when the apiName
 // doesn't follow the variant pattern.
 function extractTraitVariant(traitApiName: string, traitDisplayName: string): string | null {
-  const stripped = traitApiName.replace(/^TFT\d+_/, '');
+  const stripped = traitApiName.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
   if (!stripped.includes('_')) return null;
   const variant = stripped.split('_').slice(1).join(' ');
   if (!variant) return null;
@@ -416,5 +416,5 @@ function extractTraitVariant(traitApiName: string, traitDisplayName: string): st
   if (variant.toLowerCase() === traitDisplayName.toLowerCase()) return null;
   return variant;
 }
-function prettyTrait(s: string) { return s.replace(/^TFT\d+_/, ''); }
-function prettyChar(s: string) { return s.replace(/^TFT\d+_/, ''); }
+function prettyTrait(s: string) { return s.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, ''); }
+function prettyChar(s: string) { return s.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, ''); }

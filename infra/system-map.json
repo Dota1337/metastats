@@ -860,11 +860,15 @@
       "marketvalue/hetzner-snapshots",
       "marketvalue/regionen-abdeckung",
       "marketvalue/regionen-abdeckung-hetzner",
+      "set-achse/marktwert-snapshots",
       "revalidate/edge-frische-marketvalue"
     ],
     "scripts/sync-marketvalue-to-supabase.mjs": [
       "marketvalue/supabase-mirror",
       "marketvalue/sync-parity"
+    ],
+    "app/api/tft/comps/share": [
+      "set-achse/comp-galerie"
     ],
     "metastats-snapshot-publisher.service": [
       "snapshot/manifest-frische"

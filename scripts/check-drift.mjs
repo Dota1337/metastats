@@ -206,6 +206,63 @@ function read(path) {
       .filter((f) => /\.(ts|tsx|mjs|js)$/.test(f))
       .filter((f) => !f.includes('/node_modules/') && !f.includes('/.next/'));
 
+    // e) set-nummerierte Dateien in public/. Zwei Klassen, bewusst getrennt:
+    //    eine Datei fuer ein NEUERES Set als die SoT ist ein Fehler (etwas hat
+    //    am Gate vorbei gebumpt); eine Familie ohne Datei fuers laufende Set
+    //    ist eine Warnung — manche Familien sind abgeloest (comp-guides) und
+    //    werden bewusst nicht mehr nachgezogen.
+    const setFiles = readdirSync('public')
+      .map((f) => ({ f, m: String(f).match(/^(.*)-(\d{2})\.json$/) }))
+      .filter((x) => x.m);
+    const families = {};
+    for (const { f, m } of setFiles) {
+      const [, family, num] = m;
+      (families[family] ??= []).push({ f, n: Number(num) });
+    }
+    const familiesOhneAktuelles = [];
+    for (const [family, files] of Object.entries(families)) {
+      for (const { f, n } of files) {
+        if (n > currentSet) {
+          console.error(`✗ DRIFT: public/${f} gehoert zu Set ${n}, die SoT sagt ${currentSet}`);
+          console.error('    → etwas hat am Bump-Gate (detect-tft-set.mjs) vorbei geschrieben.');
+          setDrift++;
+        }
+      }
+      if (!files.some((x) => x.n === currentSet)) familiesOhneAktuelles.push(family);
+    }
+    if (familiesOhneAktuelles.length) {
+      console.warn(`⚠ Set ${currentSet} ohne eigene Datei: ${familiesOhneAktuelles.join(', ')}`);
+      console.warn('    → wenn die Familie noch gelesen wird, zeigt sie Daten des Vorsets.');
+    }
+
+    // g) hartkodierte /^TFT\d+_/-Muster. Genau daran ist Set 18 gebrochen:
+    //    Riot hat die Champion-IDs auf DA_18_* umbenannt, und jede Stelle mit
+    //    diesem Muster hat still ausgefiltert statt zu melden. Warnung, kein
+    //    Fehler — ein Fallback fuer alte Cache-Zeilen darf das Muster tragen.
+    const PREFIX_RE = new RegExp('TFT\\d{2}_|TFT\\\\d');
+    // Testdateien tragen Set-IDs als Fixture — das ist ihr Zweck, kein Drift.
+    // Und nur Zeilen, die mit dem Prefix FILTERN, sind gefaehrlich: eine ID in
+    // einer Datenzeile ist harmlos, ein startsWith('TFT17_') wirft im Set 18
+    // still alles weg.
+    const FILTER_RE = /startsWith\(|\.test\(|\.match\(|new RegExp|replace\(|\/\^TFT/;
+    const prefixHits = [];
+    for (const f of [...sources('app'), ...sources('scripts')].filter((f) => !/\.test\.mjs$/.test(f))) {
+      read(f).split(/\r?\n/).forEach((raw, i) => {
+        if (/^\s*[*/]/.test(raw)) return;
+        // Zwei Formen: das Literal (TFT17_) und das Muster im Quelltext
+        // (TFT\\d). TFT5_Item_*Radiant ist bewusst NICHT gemeint — das ist ein
+        // set-uebergreifendes Item, kein Set-Prefix des laufenden Sets.
+        if (!FILTER_RE.test(raw)) return;
+        // Bereits set-agnostisch gewidend (…|DA)_ — kein Treffer.
+        if (/\|DA\)/.test(raw)) return;
+        if (PREFIX_RE.test(raw)) prefixHits.push(`${f}:${i + 1}`);
+      });
+    }
+    if (prefixHits.length) {
+      console.warn(`⚠ ${prefixHits.length} hartkodierte TFT<Nr>_-Muster: ${prefixHits.slice(0, 5).join(', ')}`);
+      console.warn('    → Set 18 heisst DA_18_*; solche Muster filtern still statt zu melden.');
+    }
+
     const found = {};
     for (const f of [...sources('app'), ...sources('scripts')]) {
       read(f).split(/\r?\n/).forEach((raw, i) => {

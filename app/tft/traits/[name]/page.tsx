@@ -138,7 +138,7 @@ export default function TftTraitDetailPage() {
   const isGroup = allVariants.length > 1;
   // For the header (icon + name + tiers) we prefer the "root" variant when
   // the family has one (TFT17_Stargazer w/o suffix), otherwise the first.
-  const rootVariant = allVariants.find(v => !/_\w+$/.test(v.apiName.replace(/^TFT\d+_/, ''))) || allVariants[0];
+  const rootVariant = allVariants.find(v => !/_\w+$/.test(v.apiName.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, ''))) || allVariants[0];
   const traitMeta: TftTrait | undefined = directMeta
     ?? (matchByDisplayName[0]?.[1] as TftTrait | undefined)
     ?? rootVariant?.meta as TftTrait | undefined;
@@ -483,7 +483,7 @@ export default function TftTraitDetailPage() {
                 if (!m) return null;
                 const [, traitApi, levelStr, carryId] = m;
                 const variant = (() => {
-                  const stripped = traitApi.replace(/^TFT\d+_/, '');
+                  const stripped = traitApi.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
                   if (!stripped.includes('_')) return null;
                   const v = stripped.split('_').slice(1).join(' ');
                   return v || null;
@@ -548,8 +548,8 @@ function TierPill({ tier }: { tier: TftTraitTier }) {
   );
 }
 
-function prettyTrait(s: string) { return s.replace(/^TFT\d+_/, '').replace(/Trait$/, ''); }
-function prettyChar(s: string) { return s.replace(/^TFT\d+_/, ''); }
+function prettyTrait(s: string) { return s.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '').replace(/Trait$/, ''); }
+function prettyChar(s: string) { return s.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, ''); }
 function costColor(cost: number) {
   return cost === 1 ? '#9aa6b2'
     : cost === 2 ? '#3a8'

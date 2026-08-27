@@ -592,12 +592,12 @@ function ItemIcon({ apiName, assets, size = 10 }: { apiName: string; assets: Tft
     </a>
   );
 }
-function prettyItem(s: string) { return s.replace(/^TFT\d*_Item_/, '').slice(0, 8); }
-function prettyChar(s: string) { return s.replace(/^TFT\d+_/, ''); }
+function prettyItem(s: string) { return s.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Item_)?/, '').slice(0, 8); }
+function prettyChar(s: string) { return s.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, ''); }
 
 
 function extractTraitVariant(traitApiName: string, traitDisplayName: string): string | null {
-  const stripped = traitApiName.replace(/^TFT\d+_/, '');
+  const stripped = traitApiName.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
   if (!stripped.includes('_')) return null;
   const variant = stripped.split('_').slice(1).join(' ');
   if (!variant) return null;

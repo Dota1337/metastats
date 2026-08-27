@@ -255,7 +255,7 @@ export default function TftBuilderPage() {
     // modules, consumables, Sona command mods, Favored cause/effect markers,
     // armory/cypher items. These leak into Riot's setData[N].items pool but
     // the player never carries them on a unit.
-    const noiseRe = /^TFT\d*_(MarketOffering_|GravesTrait_|ChampionItem|Consumable_|Favored|SonaUnique_|.*Selector|EkkoOffering_|CypherArmoryItem_)/i;
+    const noiseRe = /^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(MarketOffering_|GravesTrait_|ChampionItem|Consumable_|Favored|SonaUnique_|.*Selector|EkkoOffering_|CypherArmoryItem_)/i;
     const out: ItemEntry[] = [];
     const visit = (id: string, item: any) => {
       if (/Augment/i.test(id)) return;

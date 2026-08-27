@@ -376,6 +376,6 @@ function Stat({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
-function prettyApi(s: string) { return s.replace(/^TFT\d*_Item_/, ''); }
-function prettyChar(id: string) { return id.replace(/^TFT\d+_/, ''); }
-function prettyTrait(s: string) { return s.replace(/^TFT\d+_/, ''); }
+function prettyApi(s: string) { return s.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Item_)?/, ''); }
+function prettyChar(id: string) { return id.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, ''); }
+function prettyTrait(s: string) { return s.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, ''); }

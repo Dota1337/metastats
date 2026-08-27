@@ -216,7 +216,7 @@ export function findTraitItemPool(
 ): TraitItemPoolEntry[] {
   if (!traitApiName || !itemsBundle) return [];
   // Strip the "TFT{N}_" prefix to get e.g. "PsyOps" from "TFT17_PsyOps".
-  const prefixMatch = traitApiName.match(/^(TFT\d+)_(.+)$/);
+  const prefixMatch = traitApiName.match(/^((?:TFT\d*|Set\d+|DA)(?:_\d+)?)_(.+)$/);
   if (!prefixMatch) return [];
   const [, setPrefix, traitTail] = prefixMatch;
   const itemPrefix = `${setPrefix}_Item_${traitTail}_`;

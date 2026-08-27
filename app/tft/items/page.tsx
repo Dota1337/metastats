@@ -106,7 +106,7 @@ export default function TftItemsPage() {
     const inBucket = items.filter(it => {
       if (bucket && itemBucketOf(it.apiName, assets) !== bucket) return false;
       if (q) {
-        const name = (assets?.items[it.apiName]?.name || it.apiName.replace(/^TFT\d+_Item_/, '')).toLowerCase();
+        const name = (assets?.items[it.apiName]?.name || it.apiName.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Item_)?/, '')).toLowerCase();
         if (!name.includes(q) && !it.apiName.toLowerCase().includes(q)) return false;
       }
       return true;
@@ -277,7 +277,7 @@ export default function TftItemsPage() {
   );
 }
 
-function prettyApi(s: string) { return s.replace(/^TFT\d*_Item_/, '').slice(0, 10); }
+function prettyApi(s: string) { return s.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Item_)?/, '').slice(0, 10); }
 
 function TierBadge({ letter, t }: { letter: TierLetter | null; t: (k: any) => string }) {
   if (!letter) {

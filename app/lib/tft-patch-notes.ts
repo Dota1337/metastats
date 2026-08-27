@@ -61,8 +61,8 @@ export function patchNotesFor(
 // Page zu wählen.
 export function patchEntityHref(apiName: string | null): string | null {
   if (!apiName) return null;
-  if (/^TFT\d+_Augment_/.test(apiName)) return `/tft/augments/${encodeURIComponent(apiName)}`;
-  if (/^TFT\d+_Item_/i.test(apiName)) return `/tft/items/${encodeURIComponent(apiName)}`;
+  if (/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?Augment_/i.test(apiName)) return `/tft/augments/${encodeURIComponent(apiName)}`;
+  if (/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?Item_/i.test(apiName)) return `/tft/items/${encodeURIComponent(apiName)}`;
   // Champion + Trait teilen sich das gleiche TFT<N>_<Name>-Pattern.
   // Pragmatic-Default: wir linken auf /tft/units — die Detail-Page wird ein
   // 404 zeigen wenn es ein Trait war. UI-Polish-Iteration: später disambi-

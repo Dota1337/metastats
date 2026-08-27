@@ -101,7 +101,7 @@ function carryFromAugments(participant, units) {
   if (augs.length === 0) return null;
   for (const a of augs) {
     if (!a) continue;
-    const m = /^TFT\d+_Augment_(.+?)(?:Carry|GodAugment|HeroAugment)$/i.exec(a);
+    const m = /^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Augment_)?(.+?)(?:Carry|GodAugment|HeroAugment)$/i.exec(a);
     if (!m) continue;
     const unitNameLower = m[1].toLowerCase();
     const hit = units.find(u => {

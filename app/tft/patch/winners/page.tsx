@@ -303,7 +303,7 @@ function renderEntity(key: string, entity: Entity, assets: TftAssetsBundle | nul
     }
     const url = tftChampionTileUrl(assets, champ);
     return {
-      name: champ?.name || key.replace(/^TFT\d+_/, ''),
+      name: champ?.name || key.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, ''),
       icon: url ? <img src={url} alt="" className="w-8 h-8 rounded border border-[#c39bff]/60" /> : <div className="w-8 h-8 rounded bg-surface-overlay" />,
       href: `/tft/units/${encodeURIComponent(canonicalId)}`,
     };
@@ -312,7 +312,7 @@ function renderEntity(key: string, entity: Entity, assets: TftAssetsBundle | nul
     const item = assets?.items[key];
     const url = tftIconUrl(assets, item?.icon);
     return {
-      name: item?.name || key.replace(/^TFT\d*_Item_/, ''),
+      name: item?.name || key.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Item_)?/, ''),
       icon: url ? <img src={url} alt="" className="w-7 h-7 rounded" /> : <div className="w-7 h-7 rounded bg-surface-overlay" />,
       href: `/tft/items/${encodeURIComponent(key)}`,
     };
@@ -348,8 +348,8 @@ function renderEntity(key: string, entity: Entity, assets: TftAssetsBundle | nul
     })();
     const url = !carryIsTanky ? tftChampionTileUrl(assets, carry) : null;
     const traitIcon = tftIconUrl(assets, trait?.icon);
-    const traitDisplay = trait?.name || parts.trait.replace(/^TFT\d+_/, '');
-    const carryDisplay = carry?.name || parts.carry.replace(/^TFT\d+_/, '');
+    const traitDisplay = trait?.name || parts.trait.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
+    const carryDisplay = carry?.name || parts.carry.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
     // Star/Augment-Suffix dem Display-Namen anhängen, damit Sub-Cluster
     // visuell unterscheidbar bleiben (Reroll-Variante etc.).
     const suffix = parts.carryStar === 3
@@ -373,7 +373,7 @@ function renderEntity(key: string, entity: Entity, assets: TftAssetsBundle | nul
   const trait = assets?.traits[key];
   const traitIcon = tftIconUrl(assets, trait?.icon);
   return {
-    name: trait?.name || key.replace(/^TFT\d+_/, ''),
+    name: trait?.name || key.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, ''),
     icon: traitIcon
       ? <img src={traitIcon} alt="" className="w-7 h-7 rounded bg-surface-overlay" />
       : <div className="w-7 h-7 rounded bg-surface-overlay" />,

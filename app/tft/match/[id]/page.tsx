@@ -230,7 +230,7 @@ function UnitTile({ unit, assets }: { unit: any; assets: TftAssetsBundle | null 
   const name = info?.name || prettyCharId(unit.characterId);
   const stars = unit.tier > 1 ? ` ${'★'.repeat(unit.tier)}` : '';
   const itemNames = (unit.items || [])
-    .map((it: string) => assets?.items[it]?.name || it.replace(/^TFT\d*_Item_/, ''))
+    .map((it: string) => assets?.items[it]?.name || it.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Item_)?/, ''))
     .join(', ');
   const tooltip = `${name}${stars}${itemNames ? ` — ${itemNames}` : ''}`;
   const starColor = unit.tier === 3 ? '#f0c040' : 'var(--fg-primary)';
@@ -259,7 +259,7 @@ function UnitTile({ unit, assets }: { unit: any; assets: TftAssetsBundle | null 
           {unit.items.slice(0, 3).map((it: string, i: number) => {
             const itemInfo = assets?.items[it];
             const iurl = tftIconUrl(assets, itemInfo?.icon);
-            const itemName = itemInfo?.name || it.replace(/^TFT\d*_Item_/, '');
+            const itemName = itemInfo?.name || it.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Item_)?/, '');
             return iurl ? (
               <a
                 key={i}
@@ -322,7 +322,7 @@ function AugmentColumn({ augments, assets }: { augments: string[]; assets: TftAs
 
 
 function prettyCharId(id: string) {
-  return id.replace(/^TFT\d+_/, '');
+  return id.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
 }
 
 function costToColor(cost: number) {
@@ -342,5 +342,5 @@ function traitStyleColor(style: number) {
 }
 
 function prettyTraitName(raw: string) {
-  return raw.replace(/^TFT\d+_/, '').replace(/([A-Z])/g, ' $1').trim();
+  return raw.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '').replace(/([A-Z])/g, ' $1').trim();
 }

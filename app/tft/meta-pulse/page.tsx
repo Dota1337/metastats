@@ -235,10 +235,10 @@ function PulseRow({
 }) {
   const parts = parseClusterKey(clusterKey);
   const traitName = parts && assets
-    ? (assets.traits[parts.trait]?.name || parts.trait.replace(/^TFT\d+_/, ''))
+    ? (assets.traits[parts.trait]?.name || parts.trait.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, ''))
     : '';
   const carry = parts && assets ? assets.champions[parts.carry] : null;
-  const carryName = carry?.name || (parts ? parts.carry.replace(/^TFT\d+_/, '') : '');
+  const carryName = carry?.name || (parts ? parts.carry.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '') : '');
   const carryUrl = tftChampionTileUrl(assets, carry);
   const augApiName = parts?.augmentSlug
     ? compDefiningAugmentApiNameFromSlug(parts.augmentSlug)

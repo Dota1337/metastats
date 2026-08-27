@@ -153,6 +153,26 @@
     },
 
     {
+      "id": "set-achse/marktwert-snapshots",
+      "owner": "metastats-marketvalue-snapshot.service",
+      "type": "set-axis",
+      "backend": "supabase",
+      "table": "tft_player_marketvalue_snapshots",
+      "setColumn": "set_number",
+      "minRows": 1,
+      "note": "Wache gegen den Vorfall vom 27.08.2026: die Tabelle hatte keine Set-Spalte, jeder Leser nahm die neueste Zeile egal aus welchem Set, und die Spielerseite zeigte nach dem Set-18-Start weiter 510 Spiele aus Set 17. Alle bestehenden Verträge standen dabei grün, weil sie nur Frische und Zeilenzahl prüfen. minRows 1 prüft bewusst nur Existenz — direkt nach einem Set-Start ist die Population noch im Aufbau, über die Menge wachen marketvalue/regionen-abdeckung*."
+    },
+    {
+      "id": "set-achse/comp-galerie",
+      "owner": "app/api/tft/comps/share",
+      "type": "set-axis",
+      "backend": "supabase",
+      "table": "tft_public_comps",
+      "setColumn": "set_number",
+      "minRows": 0,
+      "note": "Community-Comps aus dem Vorset sind im neuen Set unbrauchbar. minRows 0, weil die Galerie legitim leer sein darf; geprüft wird hier vor allem, dass keine Zeile ohne set_number entsteht — das wäre ein Schreiber, der den Stempel vergisst."
+    },
+    {
       "id": "snapshot/manifest-frische",
       "owner": "metastats-snapshot-publisher.service",
       "type": "endpoint",

@@ -384,6 +384,7 @@ export async function checkContract(c) {
     if (c.type === 'coverage') return await checkCoverage(c, r);
     if (c.type === 'guide-coverage') return await checkGuideCoverage(c, r);
     if (c.type === 'anon-lockout') return await checkAnonLockout(c, r);
+    if (c.type === 'set-axis') return await checkSetAxis(c, r);
 
     if (c.backend === 'hetzner' && !isOnBox()) {
       return r('skipped', 'nur auf der Hetzner-Box prüfbar');
@@ -495,6 +496,52 @@ export async function checkContract(c) {
     // an genau der Stelle, die Silent Success verhindern soll.
     return r('error', err.message);
   }
+}
+
+/**
+ * Set-Achsen-Vertrag: traegt die Tabelle ueberhaupt eine Set-Spalte, ist sie
+ * vollstaendig gefuellt, und stehen dort Zeilen des laufenden Sets?
+ *
+ * Warum das existiert: bis 2026-08-27 hatten tft_player_marketvalue_snapshots
+ * und tft_public_comps keine Set-Spalte. Jeder Leser nahm die neueste Zeile,
+ * egal aus welchem Set — auf der Spielerseite standen deshalb nach dem
+ * Set-18-Start weiter die 510 Spiele aus Set 17. Kein Waechter sah das, weil
+ * alle bestehenden Vertraege nur Frische und Zeilenzahl pruefen, und beides
+ * war gruen.
+ *
+ * `minRows` bewusst klein (Existenz, nicht Menge): unmittelbar nach einem
+ * Set-Start ist die neue Population noch im Aufbau. Ueber die Menge wachen die
+ * Frische-Vertraege derselben Tabelle.
+ */
+async function checkSetAxis(c, r) {
+  const set = readCurrentSet();
+  if (set == null) return r('error', 'public/tft-set.json fehlt oder hat keine Set-Nummer');
+  if (c.backend === 'hetzner' && !isOnBox()) return r('skipped', 'nur auf der Hetzner-Box pruefbar');
+
+  const col = c.setColumn || 'set_number';
+  const minRows = c.minRows ?? 1;
+  let current, nulls;
+  if (c.backend === 'supabase') {
+    current = await supaCount(c.table, `&${col}=eq.${set}`);
+    nulls = await supaCount(c.table, `&${col}=is.null`);
+  } else {
+    const pool = await hetznerPool();
+    const q = await pool.query(
+      `select count(*) filter (where ${col} = $1)::int as cur,
+              count(*) filter (where ${col} is null)::int as nul
+         from ${c.table}`,
+      [set],
+    );
+    current = q.rows[0].cur; nulls = q.rows[0].nul;
+  }
+
+  if (nulls > 0) {
+    return r('broken', `${nulls} Zeilen ohne ${col} — ein Leser mit Set-Filter uebersieht sie, einer ohne mischt sie ein`);
+  }
+  if (current < minRows) {
+    return r('broken', `keine Zeilen fuer Set ${set} (min ${minRows}) — die Seite zeigt Daten des Vorsets oder nichts`);
+  }
+  return r('ok', `${current} Zeilen im Set ${set}, 0 ohne ${col}`);
 }
 
 /**
@@ -790,7 +837,7 @@ async function checkGuideCoverage(c, r) {
 
   const worst = missing
     .slice(0, 3)
-    .map(x => `${x.family_key.replace(/TFT\d+_/g, '')}(${x.total_games})`);
+    .map(x => `${x.family_key.replace(/(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/g, '')}(${x.total_games})`);
   return r('broken', `nur ${stand} — grösste Lücken: ${worst.join(' ')}`);
 }
 

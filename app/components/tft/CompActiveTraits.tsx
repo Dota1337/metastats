@@ -186,7 +186,7 @@ function TraitDrillDown({
                 )}
               </div>
               <div className="text-white text-[10px] text-center max-w-[55px] truncate">
-                {ch?.name || u.characterId.replace(/^TFT\d+_/, '')}
+                {ch?.name || u.characterId.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')}
               </div>
             </a>
           );

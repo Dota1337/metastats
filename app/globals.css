@@ -55,6 +55,17 @@
   --fg-faint:     #5a6a80;     /* 57× */
   --fg-bright:    #cdd6e0;     /* 9× — konsolidiert #cfd8dc/#cfd6dc/#cbd5e1 */
 
+  /* Warme Textleiter -- ausschliesslich fuer Flaechen, die selbst schon in
+     einer Farbe getoent sind (heute nur der Prototyp-Banner). Auf dem
+     accent-getoenten Banner las sich die kalte Leiter entweder als lila-auf-
+     lila (Accent, 3.45:1) oder als hartes Weiss. Warm auf kuehl liegt
+     dazwischen: 10.69:1 auf TFT, 9.68:1 auf LoL; die weiche Stufe trifft mit
+     6.64 / 6.01 genau das Niveau von --fg-secondary, die Hierarchie bleibt
+     also unveraendert. Kein Game-Bezug -- der Ton ist in beiden Accent-Welten
+     derselbe. */
+  --fg-warm:      #e6dccb;
+  --fg-warm-soft: #b9ae9c;
+
   /* --- Akzent --------------------------------------------------------------
      CSS ist die Source-of-Truth für beide Game-Farben. app/lib/games.ts
      hält nur noch Zeiger (`var(--accent-lol)`), keinen eigenen Hex — sonst
@@ -392,20 +403,21 @@ body {
     rgb(var(--accent-rgb) / 20%)
   );
   border-bottom: 1px solid rgb(var(--accent-rgb) / 30%);
+  color: var(--fg-warm);
 }
 
 .proto-banner-dot {
   background: var(--accent);
 }
 
-/* Fliesstext im Banner laeuft ueber die normale Textleiter, NICHT ueber den
-   Accent: der Accent sitzt hier auf einer accent-getoenten Flaeche und kam
-   damit auf TFT nur auf 3.45:1 (Unterzeile 2.41:1) -- lila auf lila. Weiss
-   liegt bei 14.5:1 (TFT) bzw. 13.2:1 (LoL), fg-secondary bei 6.6 / 6.0.
-   Der Accent bleibt am Punkt und am Trenner sichtbar, dort greift kein
-   Text-Kontrastkriterium. */
+/* Fliesstext im Banner laeuft NICHT ueber den Accent: der Accent sitzt hier auf
+   einer accent-getoenten Flaeche und kam damit auf TFT nur auf 3.45:1
+   (Unterzeile 2.41:1) -- lila auf lila. Die kalte Leiter loest den Kontrast,
+   liest sich auf der getoenten Flaeche aber als hartes Weiss; deshalb die warme
+   Leiter (--fg-warm / --fg-warm-soft, siehe oben). Der Accent bleibt am Punkt
+   und am Trenner sichtbar, dort greift kein Text-Kontrastkriterium. */
 .proto-banner-accent {
-  color: var(--fg-primary);
+  color: var(--fg-warm);
 }
 
 .proto-banner-sep {
@@ -413,7 +425,7 @@ body {
 }
 
 .proto-banner-sub {
-  color: var(--fg-secondary);
+  color: var(--fg-warm-soft);
 }
 
 /* ============================================================================

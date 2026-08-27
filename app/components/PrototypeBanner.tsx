@@ -15,7 +15,7 @@ export default function PrototypeBanner() {
     <div className="proto-banner py-2.5 px-4" data-game={detectGameFromPath(pathname || '/')}>
       <div className="max-w-5xl mx-auto flex items-start sm:items-center gap-2.5 justify-center">
         <span className="proto-banner-dot inline-block w-1.5 h-1.5 rounded-full animate-pulse flex-shrink-0 mt-1.5 sm:mt-0" aria-hidden="true" />
-        <div className="text-xs sm:text-sm text-fg-primary text-left sm:text-center">
+        <div className="text-xs sm:text-sm text-left sm:text-center">
           <div>
             <strong className="proto-banner-accent">{t('banner.label')}</strong>
             <span className="proto-banner-sep mx-1.5">·</span>

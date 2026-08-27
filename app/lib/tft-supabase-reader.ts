@@ -6,6 +6,7 @@
 // All RPC calls use the service role key — this code runs on the server only.
 
 import { ACTIVE_REGIONS, ACTIVE_REGIONS_WEST, ACTIVE_REGIONS_ASIA } from './active-regions';
+import { CURRENT_SET } from './current-set';
 
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -63,6 +64,11 @@ export interface ResolvedFilters {
   patchFilter: string | null;
   patchStartDay: string | null;  // ISO-day des display-patch first_day, für UI-Hint
   setNumber: number | null;
+  // true wenn der Bucket NICHT vom User gewaehlt wurde, sondern serverseitig
+  // aus der Datenlage des laufenden Sets abgeleitet ist (resolveDefaultBucket).
+  // Die UI spiegelt den gelieferten Bucket in den Dropdown, damit angezeigter
+  // und tatsaechlich benutzter Rang uebereinstimmen.
+  bucketAuto: boolean;
   regionLabel: string;   // raw filter value for display ('all','west','euw1',…)
   bucketLabel: string;   // raw filter value for display
   // Days between current_date and the latest available stats day. Velocity /
@@ -186,6 +192,64 @@ async function resolvePatch(param: string | null): Promise<string | null> {
   return param;
 }
 
+// ---------------------------------------------------------------------------
+// Default-Bucket aus der Datenlage des laufenden Sets
+//
+// Zum Set-Start wird die Ladder zurueckgesetzt. Gemessen 2026-08-27, einen Tag
+// nach dem Set-18-Start: Set 18 hat 0 Games in diamond/master/grandmaster/
+// challenger, aber ~400k in gold/silver/platinum/bronze. Der UI-Default
+// `diamond_plus` wuerde damit LEERE Seiten liefern, sobald wir (richtigerweise)
+// auf das laufende Set pinnen. Statt einer geratenen Karenzfrist fragen wir die
+// tatsaechliche Verteilung ab und schalten den Default so lange auf `all` —
+// und automatisch zurueck, sobald Diamond+ traegt.
+//
+// Nur der DEFAULT wird umgeschaltet. Wer im Dropdown bewusst Diamond+ waehlt,
+// bekommt Diamond+ (und ggf. eine ehrlich leere Liste).
+export const DEFAULT_BUCKET = 'diamond_plus';
+export const DEFAULT_BUCKET_FALLBACK = 'all';
+
+// Schwelle: darunter ist Diamond+ fuer das laufende Set nicht tragfaehig.
+// 20k Games ueber 7 Tage liegt klar ueber dem Rauschen der ersten
+// Diamond-Aufsteiger und weit unter einem normalen Set-Mittelfeld (Set 17
+// hatte im selben Fenster 719k).
+const DEFAULT_BUCKET_MIN_GAMES = 20_000;
+
+// 6 h, analog zum Patch-Cache: die Antwort aendert sich hoechstens einmal
+// taeglich (der Aggregator schreibt einmal pro Tag) und ist fuer alle Aufrufer
+// identisch. Negativ-Cache 60 s, damit ein Supabase-Haenger nicht 6 h lang den
+// Default festnagelt.
+const BUCKET_COVERAGE_TTL_MS = 6 * 60 * 60 * 1000;
+const BUCKET_COVERAGE_NEGATIVE_TTL_MS = 60 * 1000;
+let _bucketCoverageCache: { ts: number; bucket: string } | null = null;
+let _bucketCoverageNegativeTs = 0;
+
+export async function resolveDefaultBucket(): Promise<string> {
+  if (_bucketCoverageCache && Date.now() - _bucketCoverageCache.ts < BUCKET_COVERAGE_TTL_MS) {
+    return _bucketCoverageCache.bucket;
+  }
+  if (_bucketCoverageNegativeTs
+      && Date.now() - _bucketCoverageNegativeTs < BUCKET_COVERAGE_NEGATIVE_TTL_MS) {
+    return _bucketCoverageCache?.bucket ?? DEFAULT_BUCKET;
+  }
+  try {
+    const rows = (await callRpc<Array<{ bucket: string; games: number | string }>>(
+      'get_tft_set_bucket_coverage', { p_set: CURRENT_SET, p_days: 7 },
+    )) || [];
+    const tiers = new Set(BUCKET_GROUPS[DEFAULT_BUCKET]);
+    let games = 0;
+    for (const r of rows) if (tiers.has(r.bucket)) games += Number(r.games) || 0;
+    const bucket = games >= DEFAULT_BUCKET_MIN_GAMES ? DEFAULT_BUCKET : DEFAULT_BUCKET_FALLBACK;
+    _bucketCoverageCache = { ts: Date.now(), bucket };
+    _bucketCoverageNegativeTs = 0;
+    return bucket;
+  } catch (e) {
+    if (_bucketCoverageCache) return _bucketCoverageCache.bucket;
+    console.error('[tft] get_tft_set_bucket_coverage failed:', (e as Error).message);
+    _bucketCoverageNegativeTs = Date.now();
+    return DEFAULT_BUCKET;
+  }
+}
+
 export async function resolveFilters(searchParams: URLSearchParams): Promise<ResolvedFilters> {
   const regionLabel = searchParams.get('region') || 'all';
   // C3 (2026-07-04): single-tier `diamond` has no snapshot coverage and was the
@@ -195,8 +259,15 @@ export async function resolveFilters(searchParams: URLSearchParams): Promise<Res
   // dropdown option — resolves onto the snapshot. Only the resolveFilters-fed
   // stats routes are affected; regions/patch parse bucket independently and keep
   // single-tier diamond.
-  const rawBucket = searchParams.get('bucket') || 'diamond_plus';
-  const bucketLabel = rawBucket === 'diamond' ? 'diamond_plus' : rawBucket;
+  // bucketAuto: die UI sendet `bucketAuto=1` solange der Rang-Filter nicht vom
+  // User gesetzt wurde. Dann (und nur dann) entscheidet der Server anhand der
+  // Datenlage des laufenden Sets. Ein direkter API-Hit ohne ?bucket zaehlt
+  // ebenfalls als "nicht gewaehlt".
+  const bucketAuto = !searchParams.has('bucket') || searchParams.get('bucketAuto') === '1';
+  const rawBucket = bucketAuto
+    ? await resolveDefaultBucket()
+    : (searchParams.get('bucket') || DEFAULT_BUCKET);
+  const bucketLabel = rawBucket === 'diamond' ? DEFAULT_BUCKET : rawBucket;
   const requestedDays = Math.max(1, Math.min(7, parseInt(searchParams.get('days') || '3', 10)));
   const patchParam = searchParams.get('patch') || 'current';
   const setParam = searchParams.get('set');
@@ -210,7 +281,14 @@ export async function resolveFilters(searchParams: URLSearchParams): Promise<Res
   const patch = await resolvePatchFromList(patches, patchParam);
   const patchFilter = (patchParam === 'current' || patchParam === 'any') ? null : patch;
   const patchStartDay = patches.find(p => p.patch === patch)?.first_day ?? null;
-  const setNumber = setParam ? parseInt(setParam, 10) : null;
+  // Set-Pin (2026-08-27): ohne diesen Default lief `p_set` als null in JEDE
+  // Stats-RPC — die Antworten mischten das laufende Set mit dem vorherigen
+  // (gemessen: Units/Items/Traits/Comps lieferten reine Set-17-Listen, weil
+  // Set 17 im Fenster noch das groessere Volumen hatte). `?set=any` bleibt als
+  // bewusstes Opt-out fuer setuebergreifende Auswertung.
+  const setNumber = setParam === 'any'
+    ? null
+    : (setParam ? parseInt(setParam, 10) : CURRENT_SET);
 
   // Stale-Data-Bump: während des Erstfills läuft der daily-Aggregator nicht,
   // also kann der letzte Stats-Tag mehrere Tage hinter `current_date` liegen.
@@ -236,7 +314,7 @@ export async function resolveFilters(searchParams: URLSearchParams): Promise<Res
   return {
     regions, buckets, days, requestedDays,
     patch, patchFilter, patchStartDay,
-    setNumber, regionLabel, bucketLabel, anchorOffsetDays,
+    setNumber, bucketAuto, regionLabel, bucketLabel, anchorOffsetDays,
   };
 }
 

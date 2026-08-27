@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { callRpc, expandBuckets, BUCKET_GROUPS, getAvailablePatches } from '../../../../lib/tft-supabase-reader';
+import {
+  callRpc, expandBuckets, BUCKET_GROUPS, getAvailablePatches, resolveDefaultBucket,
+} from '../../../../lib/tft-supabase-reader';
 import { parsePatch, parseBoundedInt } from '../../../../lib/query-params';
+import { CURRENT_SET } from '../../../../lib/current-set';
 import { cachedJson } from '../../../../lib/api-cache';
 
 // W2-A: Region-Divergence — pro Comp den KR vs EU vs NA Vergleich.
@@ -27,7 +30,10 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const days = Math.max(1, Math.min(14, parseInt(searchParams.get('days') || '7', 10)));
   const minGames = parseBoundedInt(searchParams.get('min'), { min: 10, max: 100000, fallback: 100 });
-  const bucketRaw = searchParams.get('bucket') || 'master_plus';
+  // Diese Route parst ihre Buckets bewusst selbst (kein resolveFilters), teilt
+  // sich aber denselben Set-Start-Effekt: mit dem Set-Pin hat master_plus zum
+  // Set-Start null Rows. Ohne Bucket-Angabe entscheidet deshalb die Datenlage.
+  const bucketRaw = searchParams.get('bucket') || await resolveDefaultBucket();
   const buckets = expandBuckets(bucketRaw);
   // Label nur zurueckspiegeln, wenn es auch wirklich gegriffen hat — sonst
   // taucht ein erfundener Wert in der Antwort und im Cache-Key auf.
@@ -48,7 +54,7 @@ export async function GET(request: NextRequest) {
   try {
     const rows = await callRpc<RegionRow[]>('get_tft_region_divergence', {
       p_buckets: buckets,
-      p_set: 17,
+      p_set: CURRENT_SET,
       p_patch: patch,
       p_days: days,
       p_min_games: minGames,

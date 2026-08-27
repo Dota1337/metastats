@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { withAlpha } from '../../../lib/color';
+import { CURRENT_SET } from '../../../lib/current-set';
 import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Nav from '../../../components/Nav';
@@ -662,7 +663,7 @@ export default function TftCompDetailPage() {
               const parts = parseClusterKey(comp.clusterKey);
               if (!parts) return null;
               const familyKey = `${parts.trait}__${parts.carry}`;
-              return <ProsByCompSection familyKey={familyKey} setNumber={17} />;
+              return <ProsByCompSection familyKey={familyKey} setNumber={CURRENT_SET} />;
             })()}
 
             {/* Comp-DNA: BoardComposition + AggroIndex + SkillCap (Tempo-Mini-

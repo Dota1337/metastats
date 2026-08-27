@@ -7,6 +7,7 @@ import Footer from '../../components/Footer';
 import EmptyData from '../../components/tft/EmptyData';
 import StatsFilterBar, {
   loadInitialFilters,
+  adoptServerBucket,
   persistFilters,
   filtersToQueryString,
   type Filters,
@@ -81,6 +82,9 @@ export default function TftItemsPage() {
       .then(r => r.json())
       .then(d => {
         if (cancelled) return;
+        // Rang, den der Server tatsaechlich benutzt hat, in den Filter spiegeln
+        // (nur solange der User keinen eigenen gewaehlt hat).
+        adoptServerBucket(d.filters?.bucket, filters, setFilters);
         setHasData(!!d.hasData);
         setItems(d.items || []);
         setPatches(d.patches || []);

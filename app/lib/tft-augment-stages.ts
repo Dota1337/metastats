@@ -24,6 +24,8 @@
 // - Stage-Verteilungs-Charts mit Counts/Prozenten VERBOTEN
 //   (feedback_no_augment_stats Zeile 13: „Augment-by-Stage-Charts mit Stats")
 
+import { CURRENT_SET } from './current-set';
+
 export type AugmentStage = '2-1' | '3-2' | '4-2';
 
 export interface AugmentStagesOverride {
@@ -38,7 +40,7 @@ let cached: Promise<AugmentStagesOverride | null> | null = null;
 
 export function loadAugmentStages(): Promise<AugmentStagesOverride | null> {
   if (!cached) {
-    cached = fetch('/tft-augment-stages-17.json')
+    cached = fetch(`/tft-augment-stages-${CURRENT_SET}.json`)
       .then(r => r.ok ? r.json() : null)
       .catch(() => null);
   }

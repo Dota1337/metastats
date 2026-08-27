@@ -77,6 +77,13 @@ export interface LookupOptions {
   days: number;
   bucket: string;
   minGames: number;
+  // Set-Nummer, auf die der Request gepinnt ist (null = setuebergreifend).
+  // Der Snapshot-Key kennt keine Set-Achse — die Semantik eines Blobs kann sich
+  // also aendern, ohne dass sich sein Key aendert. Genau das ist am 2026-08-27
+  // passiert: unter dem frischen Patch-Key 18.1 lagen reine Set-17-Payloads.
+  // Deshalb pruefen wir das Set gegen den Payload statt uns auf den Key zu
+  // verlassen.
+  setNumber: number | null;
   // Nur fuer endpoint='comps-detail': cluster_key der angefragten Comp.
   slug?: string;
   // Erweiterte Felder, die das Snapshot NICHT bedient — Velocity,
@@ -158,6 +165,17 @@ export async function lookupSnapshot(
     // Mismatches, 0 null — der Guard verwirft heute nichts Legitimes.
     const payloadPatch = (payload as { filters?: { patch?: string | null } } | null)?.filters?.patch;
     if (payloadPatch != null && String(payloadPatch) !== resolvedPatch) return null;
+    // Set-Konsistenz (2026-08-27, gemessen): ein Blob, der vor dem Set-Pin
+    // publiziert wurde, traegt gar kein `filters.set` — und lieferte unter dem
+    // Patch-Key 18.1 Set-17-Inhalte aus. Fehlendes Feld gilt daher als
+    // Mismatch: lieber einmal auf den Live-RPC durchfallen, bis der Publisher
+    // durchgelaufen ist, als dem Nutzer das falsche Set zu zeigen.
+    // Listing-Payloads tragen das Set als `filters.set`, der Detail-Payload
+    // reicht die kompletten ResolvedFilters durch und nennt es `setNumber`.
+    const payloadFilters = (payload as
+      { filters?: { set?: number | null; setNumber?: number | null } } | null)?.filters;
+    const payloadSet = payloadFilters?.set ?? payloadFilters?.setNumber ?? null;
+    if (payloadSet !== (opts.setNumber ?? null)) return null;
     return { payload, tag: `${endpoint}-v2`, blobUrl: entry.url, blobBytes: entry.bytes };
   } catch {
     return null;

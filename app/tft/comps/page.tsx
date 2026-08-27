@@ -10,6 +10,7 @@ import { compTraitFamilyKey, parseClusterKey } from '../../lib/tft-cluster';
 import { tftIsEmblem } from '../../lib/tft-cdragon';
 import StatsFilterBar, {
   loadInitialFilters,
+  adoptServerBucket,
   persistFilters,
   filtersToQueryString,
   type Filters,
@@ -124,6 +125,9 @@ export default function TftCompsPage() {
       .then(r => r.json())
       .then(d => {
         if (signal.aborted) return;
+        // Rang, den der Server tatsaechlich benutzt hat, in den Filter spiegeln
+        // (nur solange der User keinen eigenen gewaehlt hat).
+        adoptServerBucket(d.filters?.bucket, filters, setFilters);
         setHasData(!!d.hasData);
         setComps(d.comps || []);
         setPatches(d.patches || []);

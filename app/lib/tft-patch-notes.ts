@@ -9,6 +9,8 @@
 //
 // Datenquellen-Doku: reference_tft_patch_notes_source.md
 
+import { CURRENT_SET } from './current-set';
+
 export interface PatchNoteEntry {
   apiName: string | null;   // null bei nicht-aufgelöstem Entity
   displayName: string;
@@ -35,7 +37,7 @@ let cached: Promise<PatchNoteOverride | null> | null = null;
 
 export function loadPatchNotes(): Promise<PatchNoteOverride | null> {
   if (!cached) {
-    cached = fetch('/tft-patch-notes-17.json')
+    cached = fetch(`/tft-patch-notes-${CURRENT_SET}.json`)
       .then(r => r.ok ? r.json() : null)
       .catch(() => null);
   }

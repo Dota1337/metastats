@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchHetznerProsByComp } from '../../../../lib/tft-hetzner-matches';
 import { supabaseAdmin } from '../../../../lib/supabase';
+import { CURRENT_SET } from '../../../../lib/current-set';
 import { cachedJson, STATS_CACHE_CONTROL } from '../../../../lib/api-cache';
 
 // /api/tft/pros/by-comp?family=<trait>__<carry>&set=17
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'family or cluster required' }, { status: 400 });
   }
   const setParam = searchParams.get('set');
-  const setNumber = setParam && Number.isFinite(Number(setParam)) ? Number(setParam) : 17;
+  const setNumber = setParam && Number.isFinite(Number(setParam)) ? Number(setParam) : CURRENT_SET;
   const minGames = Math.max(1, Math.min(20, parseInt(searchParams.get('minGames') || '2', 10)));
   const topN = Math.max(1, Math.min(20, parseInt(searchParams.get('topN') || '8', 10)));
 

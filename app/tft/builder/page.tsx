@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { withAlpha } from '../../lib/color';
+import { CURRENT_SET } from '../../lib/current-set';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
@@ -40,7 +41,10 @@ const HEX_CLIP = 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)'
 // Challenger / Replicator / Conduit depending on the chosen Stance. The three
 // "Stance" items live in the asset bundle but are never picked from the items
 // palette — they're selected via the inline picker in the unit detail panel.
-const MF_CHAR_ID = 'TFT17_MissFortune';
+// Set-gebunden: den "Choose Trait"-Platzhalter gab es nur in Set 17. Ab Set 18
+// existiert die Unit nicht mehr im Bundle — ohne dieses Gate blieben die
+// Set-17-IDs als toter Vergleichswert im Set-18-Builder stehen.
+const MF_CHAR_ID: string | null = CURRENT_SET === 17 ? 'TFT17_MissFortune' : null;
 const MF_CHOOSE_TRAIT = 'Choose Trait';
 const MF_STANCE_ITEMS: Record<MfStance, string> = {
   AS: 'TFT17_Item_MissFortuneUniqueASTraitStance',

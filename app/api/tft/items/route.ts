@@ -92,6 +92,7 @@ export async function GET(request: NextRequest) {
         days: filters.requestedDays,
         bucket: filters.bucketLabel,
         minGames: 0,
+        setNumber: filters.setNumber,
         skip: isSnapshotPublisher(request),
       });
       // Guard 2026-06-21: kein leeres Snapshot-Bundle ausliefern.

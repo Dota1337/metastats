@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseVelocity } from '../../../lib/query-params';
+import { CURRENT_SET } from '../../../lib/current-set';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import {
@@ -52,9 +53,16 @@ function loadChampionCostLookup(setNumber: number): Map<string, number> {
   costLookupCache.set(setNumber, fresh);
   return fresh;
 }
+// Set-Nummer aus dem Cluster-Key. Riot hat die Praefix-Konvention pro Set
+// gewechselt: TFT14_ / Set17_ / DA_18_ — der alte reine TFT<N>_-Match lieferte
+// fuer JEDE Set-18-Comp null, womit carryCost (und damit die Reroll-/Tempo-
+// Klassifikation) still ausfiel. Faellt auf CURRENT_SET zurueck, wenn der Key
+// gar keine Set-Nummer traegt (DA_Juggernaut18-Form ohne _<N>_-Segment).
 function setNumberFromClusterKey(key: string): number | null {
-  const m = /^TFT(\d+)_/.exec(key);
-  return m ? Number(m[1]) : null;
+  const m = /^(?:TFT(\d+)|Set(\d+)|DA)_(?:(\d+)_)?/.exec(key);
+  if (!m) return null;
+  const n = m[1] || m[2] || m[3];
+  return n ? Number(n) : CURRENT_SET;
 }
 
 // /api/tft/comps
@@ -226,6 +234,7 @@ export async function GET(request: NextRequest) {
         days: filters.requestedDays,
         bucket: filters.bucketLabel,
         minGames,
+        setNumber: filters.setNumber,
         slug,
         skip: detailVariantMode === 'exact' || detailVelocity !== 0 || source === 'editorial'
           || isSnapshotPublisher(request),
@@ -457,6 +466,7 @@ export async function GET(request: NextRequest) {
         days: filters.requestedDays,
         bucket: filters.bucketLabel,
         minGames,
+        setNumber: filters.setNumber,
         skip: isSnapshotPublisher(request),
       });
       // Guard (Code-Analyzer-Verdict 2026-06-21): nie einen Snapshot mit

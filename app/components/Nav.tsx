@@ -132,7 +132,7 @@ export default function Nav({ active }: NavProps) {
     // denselben Wert nur ein zweites Mal gesetzt.
     <nav className="bg-surface-sunken border-b border-border-subtle px-4 sm:px-6 py-3">
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center flex-shrink-0">
+        <div className="flex items-center flex-1">
           {/* text-accent statt zweier hartkodierter Hexe — das war die dritte
               unabhängige Stelle, an der beide Spielfarben standen. */}
           <a href={homeHref} className="text-accent text-lg font-medium flex-shrink-0">
@@ -141,7 +141,9 @@ export default function Nav({ active }: NavProps) {
         </div>
 
         {/* Desktop nav */}
-        <div className="hidden lg:flex items-center gap-4 flex-1 justify-end">
+        {/* Drei Zonen: Logo und Utilities je flex-1, die Reiter dazwischen ohne
+            Wachstum — dadurch stehen sie exakt in der Seitenmitte statt rechts. */}
+        <div className="hidden lg:flex items-center gap-4 flex-shrink-0">
           {game === 'tft' ? (
             <>
               {/* Meta dropdown: Comps / Units / Items / Augments / Synergien /
@@ -203,9 +205,13 @@ export default function Nav({ active }: NavProps) {
             </>
           )}
 
+        </div>
+
+        {/* Utilities rechts */}
+        <div className="hidden lg:flex items-center gap-4 flex-1 justify-end min-w-0">
           {/* Global Search */}
-          <div ref={searchRef} className="relative">
-            <div className="flex items-center bg-surface-raised border border-border-default rounded px-2.5 py-1 gap-2 hover:border-[#c89b3c]/50 transition-colors focus-within:border-[#c89b3c]">
+          <div ref={searchRef} className="relative min-w-0">
+            <div className="flex items-center bg-surface-raised border border-border-default rounded px-2.5 py-1 gap-2 min-w-0 hover:border-[#c89b3c]/50 transition-colors focus-within:border-[#c89b3c]">
               <svg className="w-3.5 h-3.5 text-fg-muted flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
@@ -217,7 +223,7 @@ export default function Nav({ active }: NavProps) {
                 onChange={e => { setSearchQuery(e.target.value); setSearchOpen(true); }}
                 onFocus={() => searchQuery && setSearchOpen(true)}
                 onKeyDown={handleSearchKeyDown}
-                className="bg-transparent text-white text-xs outline-none placeholder-fg-muted w-36"
+                className="bg-transparent text-white text-xs outline-none placeholder-fg-muted w-36 min-w-0"
               />
             </div>
 

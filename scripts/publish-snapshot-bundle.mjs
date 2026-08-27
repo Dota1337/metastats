@@ -509,6 +509,11 @@ async function main() {
   let totalUploaded = 0;
   let totalCarried = 0;
   let totalSkipped = 0;
+  // Gemessene Leer-Payloads (hasData:false) sind KEIN Fehlversuch: bei einem
+  // frischen Set sind Diamond+/Master+ real leer. Sie zaehlen deshalb nicht in
+  // den Nenner des 50%-Abbruch-Guards, sonst blockiert die Set-Bump-Woche jeden
+  // REPLACE-Lauf. Echte Ausfaelle landen in totalErrors und greifen weiterhin.
+  let totalEmpty = 0;
   let totalErrors = 0;
   let totalBytes = 0;
 
@@ -547,6 +552,7 @@ async function main() {
       }
       if (r?.skipped) {
         totalSkipped++;
+        if (r.reason === 'empty payload') totalEmpty++;
         continue;
       }
       if (r?.uploaded || DRY_RUN) {
@@ -644,6 +650,7 @@ async function main() {
         }
         if (r?.skipped) {
           totalSkipped++;
+          if (r.reason === 'empty payload') totalEmpty++;
           continue;
         }
         if (r?.uploaded || DRY_RUN) {
@@ -671,6 +678,9 @@ async function main() {
   // besonders gefaehrlich in der Set-Bump-Woche, wenn die neuen Aggregate noch
   // duenn sind. Lieber gar nicht schreiben als leer schreiben.
   const attempted = totalUploaded + totalSkipped + totalErrors;
+  // Nenner fuer beide Quoten: nur Permutationen, die ueberhaupt Daten liefern
+  // konnten (ohne die gemessenen Leer-Payloads).
+  const gauged = attempted - totalEmpty;
   const deadEndpoints = Object.entries(endpointStats)
     .filter(([, s]) => s.total > 0 && s.ok === 0)
     .map(([name]) => name);
@@ -683,8 +693,8 @@ async function main() {
     }
     // Bei einem Voll-Lauf ist ein Einbruch unter 50% der versuchten
     // Permutationen kein "Teil-Erfolg" mehr, sondern ein Systemproblem.
-    if (attempted > 0 && totalUploaded / attempted < 0.5) {
-      console.error(`[${ts()}] ABORT: nur ${totalUploaded}/${attempted} Permutationen erfolgreich (<50%) — Manifest NICHT geschrieben.`);
+    if (gauged > 0 && totalUploaded / gauged < 0.5) {
+      console.error(`[${ts()}] ABORT: nur ${totalUploaded}/${gauged} datenfuehrende Permutationen erfolgreich (<50%, ${totalEmpty} gemessen leer) — Manifest NICHT geschrieben.`);
       console.error(`[${ts()}]        Tote Endpoints: ${deadEndpoints.join(', ') || '(keine, breiter Ausfall)'}`);
       process.exit(5);
     }
@@ -731,14 +741,14 @@ async function main() {
   //   2. kein Endpoint komplett tot UND
   //   3. Manifest geschrieben (oben per Guard sichergestellt).
   const ERROR_TOLERANCE = 0.02;   // 2% — bei 1089 Permutationen sind das ~21
-  const errorRatio = attempted > 0 ? totalErrors / attempted : 0;
+  const errorRatio = gauged > 0 ? totalErrors / gauged : 0;
 
   if (deadEndpoints.length > 0) {
     console.error(`[${ts()}] FAIL: Endpoint(s) ohne einen einzigen Erfolg: ${deadEndpoints.join(', ')}`);
     process.exit(1);
   }
   if (errorRatio > ERROR_TOLERANCE) {
-    console.error(`[${ts()}] FAIL: Fehlerquote ${(errorRatio * 100).toFixed(1)}% ueber Toleranz ${(ERROR_TOLERANCE * 100)}% (${totalErrors}/${attempted}).`);
+    console.error(`[${ts()}] FAIL: Fehlerquote ${(errorRatio * 100).toFixed(1)}% ueber Toleranz ${(ERROR_TOLERANCE * 100)}% (${totalErrors}/${gauged}).`);
     process.exit(1);
   }
   if (totalErrors > 0) {

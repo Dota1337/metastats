@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { useI18n, LANGUAGES } from '../lib/i18n';
 import { detectGameFromPath } from '../lib/games';
-import { TFT_COACH_ENABLED } from '../lib/feature-flags';
+import { TFT_COACH_ENABLED, TFT_PROS_ENABLED } from '../lib/feature-flags';
 import { useAuth } from '../lib/auth-context';
 
 interface NavProps {
@@ -179,7 +179,9 @@ export default function Nav({ active }: NavProps) {
               </div>
               <a href="/tft/leaderboard" className={linkClass('leaderboard')}>{t('nav.leaderboard')}</a>
               <a href="/tft/tournaments" className={linkClass('tournaments')}>{t('nav.leagues')}</a>
-              <a href="/tft/pros" className={linkClass('pros')}>{t('nav.tftPros')}</a>
+              {TFT_PROS_ENABLED && (
+                <a href="/tft/pros" className={linkClass('pros')}>{t('nav.tftPros')}</a>
+              )}
               <a href="/tft/compare" className={linkClass('analyse')}>{t('nav.analyse')}</a>
               <a href="/tft/builder" className={linkClass('builder')}>{t('tft.builderTitle')}</a>
               <a href="/tft/lobby-scout" className="text-sm text-fg-secondary hover:text-white">{t('nav.lobbyScout')}</a>
@@ -435,7 +437,9 @@ export default function Nav({ active }: NavProps) {
               <a href="/tft/tools/odds" className={`pl-3 ${linkClass('tools')}`} onClick={() => setMenuOpen(false)}>{t('nav.rollOdds')}</a>
               <a href="/tft/leaderboard" className={linkClass('leaderboard')} onClick={() => setMenuOpen(false)}>{t('nav.leaderboard')}</a>
               <a href="/tft/tournaments" className={linkClass('tournaments')} onClick={() => setMenuOpen(false)}>{t('nav.leagues')}</a>
-              <a href="/tft/pros" className={linkClass('pros')} onClick={() => setMenuOpen(false)}>{t('nav.tftPros')}</a>
+              {TFT_PROS_ENABLED && (
+                <a href="/tft/pros" className={linkClass('pros')} onClick={() => setMenuOpen(false)}>{t('nav.tftPros')}</a>
+              )}
               <a href="/tft/compare" className={linkClass('analyse')} onClick={() => setMenuOpen(false)}>{t('nav.analyse')}</a>
               <a href="/tft/builder" className={linkClass('builder')} onClick={() => setMenuOpen(false)}>{t('tft.builderTitle')}</a>
               <a href="/tft/lobby-scout" className="text-sm text-fg-secondary" onClick={() => setMenuOpen(false)}>{t('nav.lobbyScout')}</a>

@@ -9,8 +9,14 @@ import { cachedJson } from '../../../../lib/api-cache';
 //
 // Optional tier filter does a single-table-scan post-filter on the RPC
 // output. Cheap because the result set is at most 100 rows.
-
-const VALID_TIERS = new Set(['CHALLENGER', 'GRANDMASTER', 'MASTER']);
+//
+// Der Filter greift fuer JEDES uebergebene Tier, nicht nur fuer eine
+// Whitelist. Vorher stand hier ein VALID_TIERS-Set aus Master/GM/Challenger;
+// ein Aufruf mit z.B. tier=BRONZE fiel dadurch ungefiltert durch und lieferte
+// die Master-Top-500 zurueck — die Rangliste haette unter Diamant fremde
+// Marktwerte angezeigt. Snapshots existieren ohnehin nur ab Diamant
+// aufwaerts (gemessen 2026-08-27), darunter ist die leere Liste die richtige
+// Antwort.
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -20,7 +26,7 @@ export async function GET(request: NextRequest) {
 
   // Over-fetch when filtering by tier so we still return ~`limit` rows after
   // the post-filter trims the non-matching tiers.
-  const fetchLimit = tier && VALID_TIERS.has(tier) ? limit * 4 : limit;
+  const fetchLimit = tier ? limit * 4 : limit;
 
   const { data, error } = await supabaseAdmin.rpc('get_tft_latest_marketvalues', {
     p_region: region,
@@ -46,7 +52,7 @@ export async function GET(request: NextRequest) {
     snapshotDate: row.snapshot_date,
   }));
 
-  if (tier && VALID_TIERS.has(tier)) {
+  if (tier) {
     players = players.filter((p: any) => p.tier === tier);
   }
   players = players.slice(0, limit);

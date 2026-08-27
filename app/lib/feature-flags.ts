@@ -24,3 +24,22 @@
  * sonst antwortet die Route mit 503.
  */
 export const TFT_COACH_ENABLED = false;
+
+/**
+ * TFT-Pro-Spieler-Verzeichnis (`/tft/pros`).
+ *
+ * Deaktiviert am 2026-08-27: die Quellen hinter dem Verzeichnis (Liquipedia,
+ * EsportsEarnings, TPC-Roster) liefern nicht zuverlaessig genug, um eine
+ * oeffentliche Seite damit zu fuellen — angezeigt wurden teils leere oder
+ * veraltete Roster.
+ *
+ * Zum Reaktivieren: auf `true` setzen und deployen. Es haengen drei Stellen
+ * daran — Nav-Link (Desktop + Mobil), Page (notFound), Sitemap-Eintrag. Die
+ * i18n-Keys `nav.tftPros` / `tft.pros.*` bleiben absichtlich stehen: die
+ * Spalten-Keys `tft.pros.col.*` werden auch von der TFT-Rangliste und den
+ * Turnierseiten benutzt.
+ *
+ * Die `/api/tft/pros*`-Endpoints bleiben bewusst aktiv — sie versorgen die
+ * Comp-Detailseite, die Spielerseite und die Turnierseiten.
+ */
+export const TFT_PROS_ENABLED = false;

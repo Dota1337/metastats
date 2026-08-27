@@ -6,6 +6,8 @@ import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
 import TftHero from '../../components/tft/TftHero';
 import { useI18n } from '../../lib/i18n';
+import { notFound } from 'next/navigation';
+import { TFT_PROS_ENABLED } from '../../lib/feature-flags';
 
 // TFT pro player directory with multi-source classification.
 // Default-View: TPC + Tournament Pros (the "verified" set). Streamer + Historic
@@ -94,7 +96,15 @@ function classificationBadge(c: Classification) {
   }
 }
 
+// Guard im Wrapper, damit die Hooks in ProsDirectory unbedingt bleiben
+// (Rules of Hooks). Bei deaktiviertem Feature ist die Route per Deep-Link
+// nicht mehr erreichbar; der Nav-Link ist ohnehin ausgeblendet.
 export default function TftProsPage() {
+  if (!TFT_PROS_ENABLED) notFound();
+  return <ProsDirectory />;
+}
+
+function ProsDirectory() {
   const { t } = useI18n();
   const searchParams = useSearchParams();
   const router = useRouter();

@@ -1,11 +1,43 @@
 {
-  "version": "2026-06-19",
-  "_doc": "Tier-Letter score cutoffs for /tft/units, /tft/items, /tft/comps. The Helper in app/lib/tft-tier-letter.ts reads `default` if no set-specific block is present. Cutoffs calibrated against public/tft-stats-euw1.json so the live snapshot lands ~10/15/25/30/20% across S/A/B/C/D. Re-calibrate after each set drop. minGames keeps low-sample noise out of the badge — `null` is shown instead.",
+  "version": "2026-08-27",
+  "_doc": "Tier-Letter score cutoffs for /tft/units, /tft/items, /tft/comps. The helper in app/lib/tft-tier-letter.ts reads the default block if no set-specific block is present; perSet[<set>].scoreCutoffsByKind overrides per entity kind. Re-calibrate after each set drop: the target split is ~10/15/25/30/20 % across S/A/B/C/D. Set 18 calibrated 2026-08-27 on euw1+na1+kr over 7 days (195 units / 330 items / 57 comps above the sample gate) - one global block cannot hit the target for all three kinds, items cluster far tighter than units. minGames keeps low-sample noise out of the badge; null is shown instead.",
   "default": {
-    "scoreCutoffs": { "S": 0.40, "A": 0.20, "B": 0.00, "C": -0.25 },
-    "pickratePenalty": 0.10,
+    "scoreCutoffs": {
+      "S": 0.4,
+      "A": 0.2,
+      "B": 0,
+      "C": -0.25
+    },
+    "pickratePenalty": 0.1,
     "pickrateAnchor": 0.005,
-    "minGames": { "units": 200, "items": 150, "comps": 50 }
+    "minGames": {
+      "units": 200,
+      "items": 150,
+      "comps": 50
+    }
   },
-  "perSet": {}
+  "perSet": {
+    "18": {
+      "scoreCutoffsByKind": {
+        "units": {
+          "S": 0.64,
+          "A": 0.06,
+          "B": -0.24,
+          "C": -0.58
+        },
+        "items": {
+          "S": 0.65,
+          "A": 0.51,
+          "B": 0.36,
+          "C": 0.15
+        },
+        "comps": {
+          "S": 1.08,
+          "A": 0.72,
+          "B": 0.25,
+          "C": -0.25
+        }
+      }
+    }
+  }
 }

@@ -12,7 +12,8 @@
 //
 // Cutoffs live in public/tft-tier-cutoffs.json so re-calibration after a set
 // drop or major patch doesn't need a code redeploy. Set-specific overrides
-// in perSet[<setNumber>] take precedence over the default block.
+// in perSet[<setNumber>] take precedence over the default block, und darin
+// schlaegt scoreCutoffsByKind[<kind>] das globale scoreCutoffs.
 //
 // 5 tiers, not 6 — F was deliberately dropped after the classification-
 // reviewer flagged a Community-Backlash risk; tactics.tools also runs
@@ -21,13 +22,21 @@
 export type TierLetter = 'S' | 'A' | 'B' | 'C' | 'D';
 export type EntityKind = 'units' | 'items' | 'comps';
 
-interface TierCutoffsBundle {
+export interface TierCutoffsBundle {
   default: TierCutoffs;
   perSet?: Record<string, Partial<TierCutoffs>>;
 }
 
+export interface ScoreCutoffs { S: number; A: number; B: number; C: number }
+
 export interface TierCutoffs {
-  scoreCutoffs: { S: number; A: number; B: number; C: number };
+  scoreCutoffs: ScoreCutoffs;
+  // Optionale Cutoffs je Entitaetsklasse. Gemessen am 27.08.2026 ueber
+  // euw1+na1+kr/7d: die Score-Streuung ist je Klasse strukturell verschieden
+  // (Items liegen eng beisammen, Units breit), ein globales Set trifft die
+  // Zielverteilung deshalb hoechstens fuer eine Klasse. Fehlt der Block, gilt
+  // scoreCutoffs wie bisher.
+  scoreCutoffsByKind?: Partial<Record<EntityKind, ScoreCutoffs>>;
   pickratePenalty: number;
   pickrateAnchor: number;
   minGames: { units: number; items: number; comps: number };
@@ -57,13 +66,19 @@ async function loadCutoffs(): Promise<TierCutoffsBundle> {
   return cached ?? { default: FALLBACK };
 }
 
-function resolveCutoffs(bundle: TierCutoffsBundle, setNumber?: number | null): TierCutoffs {
+export function resolveCutoffs(bundle: TierCutoffsBundle, setNumber?: number | null): TierCutoffs {
   const base = bundle.default ?? FALLBACK;
   if (setNumber != null) {
     const override = bundle.perSet?.[String(setNumber)];
     if (override) {
+      const byKind: Partial<Record<EntityKind, ScoreCutoffs>> = { ...(base.scoreCutoffsByKind || {}) };
+      for (const [kind, block] of Object.entries(override.scoreCutoffsByKind || {})) {
+        const k = kind as EntityKind;
+        byKind[k] = { ...(byKind[k] || base.scoreCutoffs), ...(block || {}) };
+      }
       return {
         scoreCutoffs: { ...base.scoreCutoffs, ...(override.scoreCutoffs || {}) },
+        scoreCutoffsByKind: Object.keys(byKind).length ? byKind : undefined,
         pickratePenalty: override.pickratePenalty ?? base.pickratePenalty,
         pickrateAnchor: override.pickrateAnchor ?? base.pickrateAnchor,
         minGames: { ...base.minGames, ...(override.minGames || {}) },
@@ -116,8 +131,7 @@ export async function tierLetterOf(
 ): Promise<TierLetter | null> {
   const bundle = await loadCutoffs();
   const cutoffs = resolveCutoffs(bundle, setNumber);
-  if (input.games < cutoffs.minGames[kind]) return null;
-  return scoreToLetter(tierScore(input.avgPlacement, input.pickRate, cutoffs), cutoffs);
+  return tierLetterOfSync(input, kind, cutoffs);
 }
 
 /**
@@ -131,7 +145,9 @@ export function tierLetterOfSync(
   cutoffs: TierCutoffs,
 ): TierLetter | null {
   if (input.games < cutoffs.minGames[kind]) return null;
-  return scoreToLetter(tierScore(input.avgPlacement, input.pickRate, cutoffs), cutoffs);
+  const perKind = cutoffs.scoreCutoffsByKind?.[kind];
+  const effective = perKind ? { ...cutoffs, scoreCutoffs: perKind } : cutoffs;
+  return scoreToLetter(tierScore(input.avgPlacement, input.pickRate, effective), effective);
 }
 
 export async function loadTierCutoffs(setNumber?: number | null): Promise<TierCutoffs> {

@@ -37,7 +37,7 @@ export default function BookmarkButton({
   // bleiben die randlosen Sterne wie bisher.
   const dim = size === 'lg' ? 'w-8 h-8 text-base' : size === 'sm' ? 'w-5 h-5 text-[12px]' : 'w-6 h-6 text-sm';
   const shape = size === 'lg'
-    ? 'rounded-md border border-border-subtle bg-surface-raised'
+    ? 'rounded-md border border-fg-faint bg-surface-overlay'
     : 'rounded-full';
 
   return (

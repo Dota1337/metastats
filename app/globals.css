@@ -398,12 +398,22 @@ body {
   background: var(--accent);
 }
 
+/* Fliesstext im Banner laeuft ueber die normale Textleiter, NICHT ueber den
+   Accent: der Accent sitzt hier auf einer accent-getoenten Flaeche und kam
+   damit auf TFT nur auf 3.45:1 (Unterzeile 2.41:1) -- lila auf lila. Weiss
+   liegt bei 14.5:1 (TFT) bzw. 13.2:1 (LoL), fg-secondary bei 6.6 / 6.0.
+   Der Accent bleibt am Punkt und am Trenner sichtbar, dort greift kein
+   Text-Kontrastkriterium. */
 .proto-banner-accent {
+  color: var(--fg-primary);
+}
+
+.proto-banner-sep {
   color: var(--accent);
 }
 
 .proto-banner-sub {
-  color: rgb(var(--accent-rgb) / 70%);
+  color: var(--fg-secondary);
 }
 
 /* ============================================================================

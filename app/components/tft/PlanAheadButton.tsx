@@ -53,7 +53,7 @@ export default function PlanAheadButton({
   const dims = size === 'lg' ? 'w-8 h-8 text-sm' : size === 'md' ? 'w-7 h-7 text-xs' : 'w-6 h-6 text-[10px]';
   const iconPx = size === 'lg' ? 15 : 12;
   const idleClass = size === 'lg'
-    ? 'bg-surface-raised border-accent-a60 text-[#c39bff] hover:border-accent hover:bg-accent-a15'
+    ? 'bg-surface-overlay border-accent-a80 text-series-purple hover:border-accent hover:bg-accent-a15'
     : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-accent-a60 hover:text-[#c39bff]';
   const tooltip = status === 'copied'
     ? t('tft.planAhead.copied')

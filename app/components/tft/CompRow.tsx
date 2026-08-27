@@ -416,7 +416,7 @@ export default function CompRow({
         <div className="hidden sm:block text-right tabular-nums text-fg-secondary font-medium text-[13px]">
           {comp.pickRate != null ? `${(comp.pickRate * 100).toFixed(2)}%` : '—'}
         </div>
-        <div className="hidden sm:block text-right tabular-nums text-fg-secondary text-[13px]">
+        <div className="hidden sm:block text-right tabular-nums text-fg-bright text-[13px]">
           {comp.games}
         </div>
         {showVelocity && (
@@ -483,8 +483,8 @@ export default function CompRow({
               className="w-8 h-8 flex items-center justify-center rounded-md transition-colors flex-shrink-0"
               style={{
                 color: compareSelected ? 'var(--accent)' : 'var(--fg-secondary)',
-                backgroundColor: compareSelected ? 'rgb(var(--accent-rgb) / 14%)' : 'var(--surface-raised)',
-                border: `1px solid ${compareSelected ? 'rgb(var(--accent-rgb) / 60%)' : 'var(--border-subtle)'}`,
+                backgroundColor: compareSelected ? 'rgb(var(--accent-rgb) / 14%)' : 'var(--surface-overlay)',
+                border: `1px solid ${compareSelected ? 'rgb(var(--accent-rgb) / 60%)' : 'var(--fg-faint)'}`,
               }}
               title={
                 compareSelected

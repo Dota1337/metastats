@@ -15,10 +15,10 @@ export default function PrototypeBanner() {
     <div className="proto-banner py-2.5 px-4" data-game={detectGameFromPath(pathname || '/')}>
       <div className="max-w-5xl mx-auto flex items-start sm:items-center gap-2.5 justify-center">
         <span className="proto-banner-dot inline-block w-1.5 h-1.5 rounded-full animate-pulse flex-shrink-0 mt-1.5 sm:mt-0" aria-hidden="true" />
-        <div className="text-xs sm:text-sm text-[#f0e6d2] text-left sm:text-center">
+        <div className="text-xs sm:text-sm text-fg-primary text-left sm:text-center">
           <div>
             <strong className="proto-banner-accent">{t('banner.label')}</strong>
-            <span className="proto-banner-accent mx-1.5">·</span>
+            <span className="proto-banner-sep mx-1.5">·</span>
             {t('banner.text')}
           </div>
           <div className="proto-banner-sub text-[11px] sm:text-xs mt-0.5">

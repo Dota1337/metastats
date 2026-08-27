@@ -1,3 +1,4 @@
+import { CURRENT_SET } from '../../../lib/current-set';
 import { NextRequest, NextResponse } from 'next/server';
 import { computeBaseValue } from '../../../lib/tft-marketvalue/base-value';
 import { extractRawMetrics, scoreSkill, type CompMetaEntry } from '../../../lib/tft-marketvalue/skill-score';
@@ -55,6 +56,12 @@ export async function GET(request: NextRequest) {
     const { data: snap } = await supabaseAdmin
       .from('tft_player_marketvalue_snapshots')
       .select('tier, rank, lp, ladder_rank, base_value, multiplier, final_value, sample_size, damping, agents, snapshot_date')
+      // Nur Snapshots des laufenden Sets. Ohne diesen Filter zeigt die Seite
+      // nach einem Set-Wechsel monatelang den eingefrorenen Wert aus dem alten
+      // Set weiter (gemessen 27.08.2026: Multiplikator aus 510 Spielen, einen
+      // Tag nach dem Set-18-Start). Ohne Treffer faellt die Route auf die
+      // Live-Rechnung zurueck, die ihr Set aus den Matches des Spielers zieht.
+      .eq('set_number', CURRENT_SET)
       .eq('puuid', puuid)
       .eq('region', region)
       .order('snapshot_date', { ascending: false })
@@ -123,6 +130,9 @@ export async function GET(request: NextRequest) {
   let ladderRank: number | undefined;
   if (ranked?.tier === 'CHALLENGER') {
     const { data: lr } = await supabaseAdmin
+    // Bewusst OHNE Set-Filter: ladder_rank ist eine Leiterposition, keine
+    // Set-Statistik. Am Set-Start gaebe es sonst keinen Wert und ein
+    // Challenger fiele auf die LP-Kurve (~12k statt ~130k).
       .from('tft_player_marketvalue_snapshots')
       .select('ladder_rank')
       .eq('puuid', puuid)

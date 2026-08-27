@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../lib/supabase';
+import { CURRENT_SET } from '../../../../lib/current-set';
 import { randomUUID } from 'node:crypto';
 
 // POST /api/tft/comps/share
@@ -107,6 +108,7 @@ export async function POST(req: NextRequest) {
       carry_unit: carryUnit,
       author_token: authorToken,
       author_handle: authorHandle,
+      set_number: CURRENT_SET,
     })
     .select('id, slug')
     .single();

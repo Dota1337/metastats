@@ -308,7 +308,7 @@ async function refreshOnePlayer(puuid, region) {
   // 6) Persist locally + remotely
   const today = new Date().toISOString().slice(0, 10);
   const snapshotRow = {
-    puuid, region, snapshot_date: today,
+    puuid, region, snapshot_date: today, set_number: setNumber,
     game_name: account?.gameName ?? null, tag_line: account?.tagLine ?? null,
     tier: ranked.tier, rank: ranked.rank, lp: ranked.leaguePoints,
     ladder_rank: ladderRank,
@@ -318,17 +318,18 @@ async function refreshOnePlayer(puuid, region) {
   };
   await pool.query(
     `insert into tft_player_marketvalue_snapshots (
-       puuid, region, snapshot_date, game_name, tag_line, tier, rank, lp, ladder_rank,
+       puuid, region, snapshot_date, set_number, game_name, tag_line, tier, rank, lp, ladder_rank,
        base_value, multiplier, final_value, sample_size, damping, agents
-     ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15::jsonb)
+     ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb)
      on conflict (puuid, region, snapshot_date) do update set
+       set_number = excluded.set_number,
        game_name = excluded.game_name, tag_line = excluded.tag_line,
        tier = excluded.tier, rank = excluded.rank, lp = excluded.lp,
        base_value = excluded.base_value, multiplier = excluded.multiplier,
        final_value = excluded.final_value, sample_size = excluded.sample_size,
        damping = excluded.damping, agents = excluded.agents`,
     [
-      snapshotRow.puuid, snapshotRow.region, snapshotRow.snapshot_date,
+      snapshotRow.puuid, snapshotRow.region, snapshotRow.snapshot_date, snapshotRow.set_number,
       snapshotRow.game_name, snapshotRow.tag_line, snapshotRow.tier,
       snapshotRow.rank, snapshotRow.lp, snapshotRow.ladder_rank,
       snapshotRow.base_value, snapshotRow.multiplier, snapshotRow.final_value,

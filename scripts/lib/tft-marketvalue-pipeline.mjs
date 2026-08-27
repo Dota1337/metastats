@@ -34,6 +34,7 @@ export {
 // wird (sie stand hier und identisch in refresh-api-server.mjs). Re-Export,
 // damit die bestehenden Importeure unveraendert bleiben.
 export { loadCurrentSet } from './current-set.mjs';
+import { loadCurrentSet } from './current-set.mjs';
 
 // Optional Knowledge-Graph für eine Region — region-spezifisch, daher kein
 // Default-Pfad. Driver lädt das selbst und gibt's via ctx an gatherPlayer weiter.
@@ -195,6 +196,11 @@ export async function persistPopulation(pool, region, setNumber, pop, compMeta, 
  * @returns {Promise<{ snapshotted: boolean, finalValue?: number, reason?: string }>}
  */
 export async function snapshotPlayer(pool, riot, player, raw, pop, ctx) {
+  // Set-Stempel der Zeile. Ohne ihn kann kein Leser die Snapshots des alten
+  // Sets von denen des neuen trennen — genau daran hing der eingefrorene
+  // Marktwert nach dem Set-18-Start am 26.08.2026.
+  const setNumber = Number(ctx.setNumber ?? loadCurrentSet());
+  if (!Number.isInteger(setNumber)) throw new Error('[snapshotPlayer] kein gueltiges Set');
   const { region, regional, apiKey, snapshotDate = null } = ctx;
 
   const base = computeBaseValue(
@@ -213,10 +219,11 @@ export async function snapshotPlayer(pool, riot, player, raw, pop, ctx) {
 
   await pool.query(
     `insert into tft_player_marketvalue_snapshots (
-       puuid, region, snapshot_date, game_name, tag_line, tier, rank, lp, ladder_rank,
+       puuid, region, snapshot_date, set_number, game_name, tag_line, tier, rank, lp, ladder_rank,
        base_value, multiplier, final_value, sample_size, damping, agents, games_played
-     ) values ($1, $2, ${snapshotDateExpr}, $${3 + baseParams.length}, $${4 + baseParams.length}, $${5 + baseParams.length}, $${6 + baseParams.length}, $${7 + baseParams.length}, $${8 + baseParams.length}, $${9 + baseParams.length}, $${10 + baseParams.length}, $${11 + baseParams.length}, $${12 + baseParams.length}, $${13 + baseParams.length}, $${14 + baseParams.length}::jsonb, $${15 + baseParams.length})
+     ) values ($1, $2, ${snapshotDateExpr}, ${setNumber}, $${3 + baseParams.length}, $${4 + baseParams.length}, $${5 + baseParams.length}, $${6 + baseParams.length}, $${7 + baseParams.length}, $${8 + baseParams.length}, $${9 + baseParams.length}, $${10 + baseParams.length}, $${11 + baseParams.length}, $${12 + baseParams.length}, $${13 + baseParams.length}, $${14 + baseParams.length}::jsonb, $${15 + baseParams.length})
      on conflict (puuid, region, snapshot_date) do update set
+       set_number  = excluded.set_number,
        game_name   = excluded.game_name,
        tag_line    = excluded.tag_line,
        tier        = excluded.tier,

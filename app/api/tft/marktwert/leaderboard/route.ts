@@ -1,3 +1,4 @@
+import { CURRENT_SET } from '../../../../lib/current-set';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../lib/supabase';
 import { cachedJson } from '../../../../lib/api-cache';
@@ -31,6 +32,9 @@ export async function GET(request: NextRequest) {
   const { data, error } = await supabaseAdmin.rpc('get_tft_latest_marketvalues', {
     p_region: region,
     p_limit: fetchLimit,
+    // Nur das laufende Set: die Snapshots reichen ueber Set-Grenzen hinweg,
+    // die neueste Zeile eines Spielers kann sonst aus dem alten Set stammen.
+    p_set: CURRENT_SET,
   });
 
   if (error) {

@@ -1,3 +1,4 @@
+import { CURRENT_SET } from '../../../../lib/current-set';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../lib/supabase';
 import { cachedJson } from '../../../../lib/api-cache';
@@ -19,6 +20,9 @@ export async function GET(request: NextRequest) {
     p_region: region,
     p_limit: limit,
     p_days: days,
+    // Nur das laufende Set: die Snapshots reichen ueber Set-Grenzen hinweg,
+    // die neueste Zeile eines Spielers kann sonst aus dem alten Set stammen.
+    p_set: CURRENT_SET,
   });
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

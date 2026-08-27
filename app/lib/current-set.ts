@@ -52,3 +52,14 @@ export const CURRENT_SET_NAME: string | null =
 export const CURRENT_SET_LABEL: string = CURRENT_SET_NAME
   ? `Set ${CURRENT_SET} · ${CURRENT_SET_NAME}`
   : `Set ${CURRENT_SET}`;
+
+// Startdatum des laufenden Sets, ISO YYYY-MM-DD, oder null wenn tft-set.json
+// keins fuehrt. Wird gebraucht, um Zeitreihen am Set-Wechsel zu schneiden:
+// ein Marktwert aus Set 17 und einer aus Set 18 stehen auf verschiedenen
+// Populationen und gehoeren nicht in dieselbe Linie.
+//
+// null heisst "unbekannt" und darf NICHT als "kein Schnitt noetig" gelesen
+// werden — der Aufrufer entscheidet, was er dann tut.
+const rawStart: unknown = (tftSet as { setStartDate?: unknown }).setStartDate;
+export const CURRENT_SET_START_DATE: string | null =
+  typeof rawStart === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(rawStart) ? rawStart : null;

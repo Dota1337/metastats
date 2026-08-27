@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../lib/supabase';
+import { CURRENT_SET } from '../../../../lib/current-set';
 
 // GET /api/tft/comps/community?sort=top|recent&carry=X&limit=30&offset=0
 //
@@ -19,6 +20,8 @@ export async function GET(req: NextRequest) {
     p_carry: carry,
     p_limit: limit,
     p_offset: offset,
+    // Comps aus alten Sets sind im neuen Set unbrauchbar - nur das laufende Set zeigen.
+    p_set: CURRENT_SET,
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

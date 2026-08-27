@@ -29,10 +29,19 @@ const DIVISIONS = ['I', 'II', 'III', 'IV'];
 // zeigt, blenden wir aus.
 const MARKET_VALUE_TIERS = ['CHALLENGER', 'GRANDMASTER', 'MASTER'];
 
+// Deckungsgleich mit dem Spielervergleich (app/tft/compare/page.tsx) — bewusst
+// dieselbe Auswahl, damit ein Spieler zwischen beiden Seiten dieselben Regionen
+// findet.
 const REGIONS = [
-  { value: 'euw1', label: 'EUW' },
-  { value: 'kr',   label: 'KR' },
-  { value: 'na1',  label: 'NA' },
+  { value: 'euw1', label: 'EUW' }, { value: 'eun1', label: 'EUNE' },
+  { value: 'kr',   label: 'KR'  }, { value: 'na1',  label: 'NA' },
+  { value: 'br1',  label: 'BR'  }, { value: 'jp1',  label: 'JP' },
+  { value: 'la1',  label: 'LAN' }, { value: 'la2',  label: 'LAS' },
+  { value: 'oc1',  label: 'OCE' }, { value: 'tr1',  label: 'TR' },
+  { value: 'ru',   label: 'RU'  }, { value: 'me1',  label: 'ME' },
+  { value: 'ph2',  label: 'PH'  }, { value: 'sg2',  label: 'SG' },
+  { value: 'th2',  label: 'TH'  }, { value: 'tw2',  label: 'TW' },
+  { value: 'vn2',  label: 'VN'  },
 ];
 
 // Beide Raster stehen als komplette Klassennamen im Quelltext, damit Tailwind

@@ -97,9 +97,15 @@ async function syncSnapshots() {
     : 'where snapshot_date >= $1::date and snapshot_date <= $2::date';
   const params = REGION_FILTER ? [LOWER_BOUND, DATE, REGION_FILTER] : [LOWER_BOUND, DATE];
   const r = await pool.query(
-    `select puuid, region, snapshot_date, game_name, tag_line, tier, rank, lp,
+    // set_number und games_played MUESSEN mit: PostgREST baut die
+    // Spaltenliste des Upserts aus den Payload-Keys, eine hier ausgelassene
+    // Spalte landet beim INSERT auf ihrem Default (NULL). Genau so sind ab
+    // dem Set-18-Start 31.521 Supabase-Zeilen ohne set_number entstanden —
+    // die Leser filtern auf CURRENT_SET und fielen deshalb auf die
+    // Live-Rechnung mit 30 Spielen zurueck (gemessen 30.08.2026).
+    `select puuid, region, snapshot_date, set_number, game_name, tag_line, tier, rank, lp,
             ladder_rank, base_value, multiplier::float8, final_value, sample_size,
-            damping::float8, agents
+            damping::float8, agents, games_played
        from tft_player_marketvalue_snapshots
        ${where}`,
     params,
@@ -155,7 +161,7 @@ async function main() {
   // Laufzeit-Vertrag: ist der Spiegel wirklich angekommen? Genau dieser Check
   // hätte den toten Sync ab Ende Juli am ersten Tag sichtbar gemacht, statt
   // ihn zwei Wochen später zufällig aufzudecken.
-  await assertContracts(['marketvalue/supabase-mirror', 'marketvalue/sync-parity'])
+  await assertContracts(['marketvalue/supabase-mirror', 'marketvalue/sync-parity', 'set-achse/marktwert-snapshots'])
     .catch(err => console.error('[contract] Prüfung fehlgeschlagen:', err.message));
 }
 

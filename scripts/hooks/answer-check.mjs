@@ -29,9 +29,9 @@ import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { readInput, readState, writeState } from './lib/state.mjs';
 
-const MAX_LINES = 20;
+const MAX_LINES = 10;
 /** Datenzeilen, die eine einzelne Tabelle "gratis" haben darf. */
-const TABLE_ROW_BUDGET = 8;
+const TABLE_ROW_BUDGET = 5;
 /** Zeilen Vortext, bis zu denen eine Antwort mit Tool-Call eine Zwischenmeldung ist. */
 const INTERIM_MAX_LINES = 4;
 /** Tools, die tatsaechlich messen. Agent und AskUserQuestion zaehlen bewusst
@@ -153,8 +153,15 @@ function block(reason) {
   process.exit(0);
 }
 
-// --- Bremse A: langer Ergebnis-Bericht nach echter Arbeit -----------------
-if (countable > MAX_LINES && toolCalls >= 3) {
+// --- Bremse A: zu lange Antwort ------------------------------------------
+// 2026-08-30 verschaerft, auf Ansage des Users ("Output IMMER kompakt und
+// einfach erklaert"): Grenze 20 -> 10 Zeilen, Tabellen-Budget 8 -> 5, und die
+// Bedingung `toolCalls >= 3` faellt weg. Sie war das eigentliche Leck — jede
+// Antwort ohne vorherige Arbeit lief unbegrenzt lang durch. Die Memory
+// feedback_ultra_short_output.md hat den Fall ueber Monate nicht verhindert;
+// eine Regel, die nur im Kontext steht, ist keine Durchsetzung. Kurze
+// Zwischenmeldungen fangen weiterhin ueber INTERIM_MAX_LINES ab.
+if (countable > MAX_LINES) {
   const warum = tableBudgetOk
     ? `${countable} Zeilen ausserhalb von Tabelle und Code (Grenze ${MAX_LINES})`
     : `${countable} Zeilen — die Tabellen-Ausnahme greift nicht (${tables.length} Tabellen, groesste ${Math.max(0, ...tables)} Datenzeilen, erlaubt ist EINE mit hoechstens ${TABLE_ROW_BUDGET})`;

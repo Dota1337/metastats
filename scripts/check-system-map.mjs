@@ -55,6 +55,7 @@ const MANUAL_ONLY = new Set([
   'scripts/check-companion-data.mjs',
   'scripts/refresh-pros-marketvalue.mjs',
   'scripts/reclassify-match-cache.mjs', // Backlog: 16M Full-Table-Re-Classify
+  'scripts/freeze-marketvalue-peaks.mjs', // Peak-Pflege, laeuft bewusst von Hand (kein Leser)
 ]);
 
 /**

@@ -364,7 +364,7 @@ export default function CompRow({
                 >
                   {url && <img src={url} alt={ch?.name || ''} className="w-full h-full object-cover" />}
                   {showThreeStar && (
-                    <div className="absolute -top-1 -left-1 bg-[#e7c310] text-black text-[8px] font-bold rounded-full px-[3px] h-4 flex items-center justify-center shadow leading-none">
+                    <div className="absolute -top-1 -left-1 bg-[#e7c310] text-black text-[11px] font-bold rounded-full px-[4px] h-[18px] min-w-[18px] flex items-center justify-center shadow leading-none">
                       3★
                     </div>
                   )}

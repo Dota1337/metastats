@@ -39,6 +39,13 @@
   --surface-raised: #141c2e;   /* 254× */
   --surface-overlay: #1e2a3a;  /* 105× als Fläche */
 
+  /* Zeigezustand fuer Flaechen auf --surface-raised. Eigener Token, weil der
+     Vorgaenger ein einmaliger Inline-Hex war (`hover:bg-[#101a30]`, genau 1×
+     im Repo) und damit dunkler lag als --surface-raised selbst — die Zeile
+     haette beim Zeigen abgedunkelt. Gemessen (WCAG-Relativluminanz):
+     #141c2e → #19233a hebt um 1,087 an, der alte Sprung lag bei 1,052.     */
+  --surface-raised-hover: #19233a;
+
   /* --- Ränder --------------------------------------------------------------
      ACHTUNG: --border-subtle hat denselben Hex wie --surface-overlay.
      Das ist eine Koinzidenz des Ist-Zustands, KEINE Aussage. Bewusst zwei
@@ -188,6 +195,7 @@
   --color-surface-page: var(--surface-page);
   --color-surface-base: var(--surface-base);
   --color-surface-raised: var(--surface-raised);
+  --color-surface-raised-hover: var(--surface-raised-hover);
   --color-surface-overlay: var(--surface-overlay);
 
   --color-border-subtle: var(--border-subtle);

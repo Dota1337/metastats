@@ -214,7 +214,7 @@ export default function CompRow({
           router.push(href);
         }
       }}
-      className="block px-2.5 sm:px-3.5 py-2.5 sm:py-3 rounded-md border border-border-subtle bg-surface-base hover:bg-[#101a30] hover:border-accent-a40 transition-colors text-xs sm:text-sm cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-a60"
+      className="block px-2.5 sm:px-3.5 py-2.5 sm:py-3 rounded-md border border-border-subtle bg-surface-raised hover:bg-surface-raised-hover hover:border-accent-a40 transition-colors text-xs sm:text-sm cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-a60"
     >
       {/* Mobile: stacked. Desktop: tight horizontal row.
           Großes Carry-Portrait raus — der Carry erscheint sowieso in der

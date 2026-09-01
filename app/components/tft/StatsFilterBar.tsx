@@ -28,10 +28,16 @@ const REGION_OPTIONS: Option[] = [
 ];
 
 const BUCKET_OPTIONS: Option[] = [
-  // Pro-only filter at the very top — unique selling point and most
-  // attention-grabbing slice. Comes from the aggregator's pro_pool bucket
-  // tagged on matches with at least one TFT pro participant.
-  { value: 'pro_pool',    labelKey: 'tft.filter.proOnly' },
+  // 'pro_pool' ("nur Pro") entfernt 2026-09-01. Der Eimer wird zwar taeglich
+  // neu berechnet (scripts/collect-tft-allranks.mjs:141/303), aber aus einer
+  // Pro-Spielerliste, die seit demselben Tag nicht mehr gepflegt wird — die
+  // Sammlung ist stillgelegt (app/lib/feature-flags.ts). Die Zahlen waeren
+  // also frisch, der Kader dahinter aber eingefroren, und nichts in der
+  // Oberflaeche haette das gezeigt. User-Entscheid: "der Filter kann auch raus."
+  //
+  // Serverseitig bleibt bucket=pro_pool gueltig (app/lib/tft-supabase-reader.ts:48/85)
+  // und der i18n-Schluessel tft.filter.proOnly bleibt stehen — Zurueckholen ist
+  // damit diese eine Zeile.
   { value: 'all',         labelKey: 'tft.filter.allRanks' },
   { value: 'master_plus', labelKey: 'tft.filter.masterPlus' },
   { value: 'diamond_plus', labelKey: 'tft.filter.diamondPlus' },

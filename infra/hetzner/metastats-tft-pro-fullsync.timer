@@ -1,3 +1,29 @@
+# STILLGELEGT 2026-09-01 — NICHT wieder aktivieren.
+#
+# Die Pro-Spieler-Seite /tft/pros ist seit 2026-08-27 aus
+# (app/lib/feature-flags.ts, TFT_PROS_ENABLED = false). Der User hat am
+# 2026-09-01 entschieden, dass dann auch die Datensammlung dahinter aufhoert:
+# "Wir benoetigen logischerweise keine Daten dafuer, wenn wir es nicht aktiv
+# als Reiter haben." Der woechentliche GitHub-Lauf
+# (.github/workflows/tft-pro-crawl-weekly.yml) hat seinen Zeitplan verloren,
+# nur workflow_dispatch bleibt.
+#
+# Vorhandene Zeilen in tft_pro_players bleiben stehen — sie sind Eingang des
+# Tages-Crawls (scripts/collect-tft-allranks.mjs:141) und versorgen das
+# Pro-Abzeichen auf der Spielerseite sowie die Namenslinks auf den
+# Turnierseiten. Sie altern ab jetzt, sie verschwinden nicht.
+#
+# ZWEI WARNUNGEN beim Reaktivieren:
+# 1. Persistent=true — ein blosses `systemctl enable --now` loest sofort einen
+#    Nachhol-Lauf aus, nicht erst zur naechsten regulaeren Zeit.
+# 2. metastats-marketvalue-snapshot.service:11 traegt
+#    Conflicts=metastats-tft-pro-fullsync.service. Ein `systemctl start` auf
+#    die Fullsync-Unit schiesst einen laufenden Marktwert-Lauf per SIGTERM ab.
+#    Vor jedem Start pruefen: systemctl is-active metastats-marketvalue-snapshot
+#
+# Die Unit-Dateien bleiben absichtlich im Repo: scripts/check-system-map.mjs
+# (Zeile 91-99) macht aus einer unaufloesbaren Conflicts=-Referenz einen Fehler
+# mit Abbruch, und der pre-push-Hook blockt darauf.
 [Unit]
 Description=Weekly TFT Pro full re-sync (Fridays)
 

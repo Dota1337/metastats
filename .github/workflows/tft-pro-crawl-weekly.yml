@@ -1,10 +1,24 @@
 name: TFT Pro Player Weekly Crawl
 
+# STILLGELEGT 2026-09-01 — der Zeitplan ist bewusst entfernt.
+#
+# Die Pro-Spieler-Seite /tft/pros ist seit 2026-08-27 aus
+# (app/lib/feature-flags.ts, TFT_PROS_ENABLED = false). Der User hat am
+# 2026-09-01 entschieden, dass dann auch die Sammlung dahinter aufhoert:
+# "Wir benoetigen logischerweise keine Daten dafuer, wenn wir es nicht aktiv
+# als Reiter haben."
+#
+# Der alte Zeitplan war: - cron: '0 8 * * 0' (Sonntag 08:00 UTC).
+# workflow_dispatch bleibt absichtlich, damit ein einmaliger Nachzug ohne
+# Code-Aenderung moeglich ist.
+#
+# Auf der Box sind gleichzeitig metastats-tft-pro-{fullsync,validator}.timer
+# disabled worden — Reihenfolge Timer zuerst, weil der Freitags-Lauf sonst ab
+# Tag 11 selbst Alarm schlaegt (scripts/validate-tft-pros-loop.mjs:333-353).
+#
+# Der Turnier-Lauf (.github/workflows/tft-tournaments-weekly.yml) ist davon
+# NICHT betroffen und laeuft weiter.
 on:
-  schedule:
-    # Sunday 08:00 UTC — pro scene moves slowly so weekly cadence is enough.
-    # Phased after the marketvalue daily so we never collide with it.
-    - cron: '0 8 * * 0'
   workflow_dispatch:
 
 permissions:

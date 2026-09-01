@@ -176,12 +176,20 @@ const NO_CONTRACT_NEEDED = new Set([
   // nach drei Tagen Rauschen. Vor der App-Store-Submission nachziehen.
   'metastats-companion-backfill.service',
   'metastats-position-aggregator.service',
-  // Schreiben beide in tft_pro_players, dessen Bestand und Validierungs-
-  // frische bereits pro-crawl/roster und pro-crawl/validation-freshness
-  // zusichern. Ein eigener Vertrag bräuchte ein Feld mit stabiler Rate —
-  // `team` ist mit 19 von 627 Rows dafür zu dünn besetzt.
+  // Pro-Spieler-Pipeline, STILLGELEGT 2026-09-01. Die Seite /tft/pros ist seit
+  // 2026-08-27 aus, der User hat daraufhin auch die Sammlung abgeschaltet:
+  // alle vier Units sind auf der Box disabled, der Sonntags-Workflow hat seinen
+  // Zeitplan verloren. Die beiden Verträge pro-crawl/roster und
+  // pro-crawl/validation-freshness sind im selben Zug entfernt worden — ein
+  // Vertrag auf einer Pipeline, die nie wieder läuft, ist entweder ewig grün
+  // (Zeilenbestand ändert sich nicht mehr) oder ewig rot (Frische), beides
+  // wertloses Rauschen. Die Unit-Dateien bleiben im Repo, weil
+  // metastats-marketvalue-snapshot.service Conflicts= auf die Fullsync-Unit
+  // trägt und Regel 2 oben sonst mit Abbruch anschlägt.
   'metastats-tft-pro-classify.service',
   'metastats-tft-pro-tpc-roster.service',
+  'metastats-tft-pro-fullsync.service',
+  'metastats-tft-pro-validator.service',
 ]);
 
 const owners = new Set(Object.keys(map.contractsByOwner));

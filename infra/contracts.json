@@ -281,27 +281,6 @@
       "minRows": 1,
       "note": "Wöchentlicher LoL-Marktwert-Lauf, 2038 Rows gesamt, zuletzt 01.08.2026. 10 Tage lassen einen ausgefallenen Wochenlauf durch, zwei nicht. minRows 1, weil pro Lauf nur die veränderten Spieler geschrieben werden."
     },
-
-    {
-      "id": "pro-crawl/roster",
-      "owner": "metastats-tft-pro-fullsync.service",
-      "backend": "supabase",
-      "table": "tft_pro_players",
-      "totalRowsMin": 500,
-      "note": "627 Pros am 03.08.2026. Ein Einbruch heisst, der Crawl hat Rows verloren statt ergaenzt."
-    },
-    {
-      "id": "pro-crawl/validation-freshness",
-      "owner": ".github/workflows/tft-pro-crawl-weekly.yml",
-      "backend": "supabase",
-      "table": "tft_pro_players",
-      "dateColumn": "last_validated_at",
-      "dateType": "timestamp",
-      "maxLagDays": 10,
-      "minRows": 300,
-      "windowDays": 14,
-      "note": "613 von 627 in 7 Tagen validiert. Genau hier lief der 23505-Fehler 5 Wochen unbemerkt: der Service lief, schrieb aber nichts. Am 2026-09-01 zweimal korrigiert. (1) Eigentümer: last_validated_at wird ausschließlich von crawl-tft-pro-players.mjs (407/549/583) und crawl-tft-tournaments.mjs:669 geschrieben, und beide laufen auf GitHub Actions, weil Liquipedia die Box per IP sperrt. Der bisher genannte metastats-tft-pro-validator.service klassifiziert nur und schreibt last_full_validation_at — der Vertrag zeigte also auf den falschen Schreiber. (2) Frist: der Schreiber ist ein WOCHEN-Lauf, maxLagDays 3 konnte er systematisch nie halten. 10 Tage = eine Woche plus Puffer für einen ausgefallenen Lauf, analog lol-marketvalue/history; windowDays entsprechend von 7 auf 14. Auslöser war ein echter Ausfall: Lauf vom 30.08. brach nach 7m3s mit failure ab (Liquipedia-Drossel), davor 09./16./23.08. je rund eine Stunde erfolgreich, neuester Zeitstempel in der DB 2026-08-23T08:15:53Z bei 631 Zeilen. Hinweis: TFT_PROS_ENABLED=false schaltet nur die Pro-Seite ab — Comp-Detail, Spielerseite und Turnierseiten lesen die Daten weiter (app/lib/feature-flags.ts:42-45), der Vertrag bleibt also relevant."
-    },
     {
       "id": "sicherheit/anon-lockout",
       "owner": "supabase/migrations/0055_revoke_anon_read.sql",

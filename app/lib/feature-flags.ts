@@ -41,5 +41,19 @@ export const TFT_COACH_ENABLED = false;
  *
  * Die `/api/tft/pros*`-Endpoints bleiben bewusst aktiv — sie versorgen die
  * Comp-Detailseite, die Spielerseite und die Turnierseiten.
+ *
+ * Nachtrag 2026-09-01: die Datensammlung dahinter ist stillgelegt. User-Wort:
+ * "Wir benoetigen logischerweise keine Daten dafuer, wenn wir es nicht aktiv
+ * als Reiter haben." Konkret sind der Sonntags-Workflow
+ * (.github/workflows/tft-pro-crawl-weekly.yml, nur noch workflow_dispatch) und
+ * die vier Box-Units metastats-tft-pro-* abgeschaltet. Die Endpoints und die
+ * vorhandenen Zeilen bleiben, sie werden aber nicht mehr nachgefuehrt: neue
+ * Pros tauchen nicht mehr auf, zurueckgetretene bleiben stehen.
+ *
+ * Deshalb ist im selben Zug der Filter "nur Pro" aus der Filterleiste
+ * entfernt worden (app/components/tft/StatsFilterBar.tsx) — er haette sonst
+ * weiter Zahlen zu einem einfrierenden Kader angezeigt, ohne dass man das
+ * sieht. Serverseitig bleibt `bucket=pro_pool` gueltig, alte Lesezeichen
+ * brechen also nicht.
  */
 export const TFT_PROS_ENABLED = false;

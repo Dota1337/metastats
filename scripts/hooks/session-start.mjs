@@ -12,7 +12,7 @@
 // Der Hook beendet sich IMMER mit 0. Ein kaputter SessionStart-Hook, der die
 // Session blockiert, wird binnen einer Woche deaktiviert — und dann ist gar
 // nichts mehr da.
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { PROJECT_DIR, readInput, readState, writeState, pruneOldState, clearApproval, readGlobal, writeGlobal, APPROVAL_SURVIVES_COMPACT } from './lib/state.mjs';
@@ -34,20 +34,45 @@ const slug = PROJECT_DIR.replace(/[:\\/]/g, '-');
 const memDir = join(home, '.claude', 'projects', slug, 'memory');
 const bundle = join(memDir, '_TIER1_BUNDLE.md');
 
-if (wantsMemory && existsSync(memDir)) {
-  // Das Bundle ist generiert; ohne Rebuild spielt der Hook eventuell einen
-  // veralteten Stand ein. Fehler hier sind egal — dann kommt der alte Stand.
-  try {
-    execFileSync(process.execPath, ['_build-bundle.mjs'], { cwd: memDir, timeout: 20_000, stdio: 'ignore' });
-  } catch { /* Bundle bleibt wie es ist */ }
+// Zustellung laeuft NICHT mehr ueber diesen Hook. Am 2026-09-01 im CLI-Binary
+// gemessen: `additionalContext` ueber 10.000 Zeichen (LlK=1e4) wird in eine
+// Datei ausgelagert, nur 2.000 Zeichen (KQH=2000) erreichen den Kontext. Das
+// Bundle ist ~64 KB — es kam also nie an, ohne dass irgendwas gemeldet haette.
+// Der Hook baut jetzt nur noch `.claude/rules/tier1-*.md`; die laedt Claude
+// Code selbst als Projekt-Instruktion in den stabilen Prefix.
+const rulesDir = join(PROJECT_DIR, '.claude', 'rules');
 
-  if (existsSync(bundle)) {
-    const text = readFileSync(bundle, 'utf8');
-    parts.push(`<memory-tier1 source="${bundle}">\n${text}\n</memory-tier1>`);
-    notes.push(`Tier-1-Memory geladen (${Math.round(text.length / 1024)} KB)`);
-  } else {
-    notes.push('Tier-1-Bundle nicht gefunden — Memory NICHT geladen');
+if (wantsMemory && existsSync(memDir)) {
+  try {
+    execFileSync(process.execPath, ['_build-bundle.mjs', '--rules-dir', rulesDir], {
+      cwd: memDir, timeout: 20_000, stdio: 'ignore',
+    });
+  } catch {
+    notes.push('FEHLER: Regel-Build fehlgeschlagen — .claude/rules koennte veraltet sein');
   }
+
+  // Verifizieren statt annehmen: die Teile muessen existieren und juenger sein
+  // als die neueste Quelldatei, sonst laedt Claude Code einen alten Stand.
+  let parts1 = [];
+  try {
+    parts1 = readdirSync(rulesDir).filter((f) => f.startsWith('tier1-') && f.endsWith('.md'));
+  } catch { /* Ordner fehlt */ }
+
+  if (!parts1.length) {
+    notes.push('FEHLER: keine .claude/rules/tier1-*.md — Tier-1-Regeln sind NICHT geladen');
+  } else {
+    const bytes = parts1.reduce((a, f) => a + statSync(join(rulesDir, f)).size, 0);
+    const oldest = Math.min(...parts1.map((f) => statSync(join(rulesDir, f)).mtimeMs));
+    const srcNewest = Math.max(...readdirSync(memDir)
+      .filter((f) => f.endsWith('.md') && !f.startsWith('_'))
+      .map((f) => statSync(join(memDir, f)).mtimeMs));
+    if (srcNewest > oldest + 5_000) {
+      notes.push('FEHLER: .claude/rules ist aelter als die Memory-Quellen — Build haengt');
+    } else {
+      notes.push(`Tier-1-Regeln: ${parts1.length} Teile, ${Math.round(bytes / 1024)} KB (via .claude/rules)`);
+    }
+  }
+  if (existsSync(bundle)) notes.push('Bundle-Fallback vorhanden');
 }
 
 // --- Kernregeln ans Ende des Kontexts -------------------------------------
@@ -100,12 +125,33 @@ if (source === 'startup' && Date.now() - lastAudit > 7 * 864e5) {
   }
 }
 
+// --- Groessenbremse --------------------------------------------------------
+// Harte Grenze der Zustellung, im CLI-Binary gemessen (2026-09-01):
+// `additionalContext` laenger als 10.000 Zeichen wird in eine Datei ausgelagert
+// und nur die ersten 2.000 Zeichen erreichen den Kontext — lautlos. Genau so
+// ist das 64-KB-Bundle monatelang verschwunden. Ab jetzt schlaegt es an:
+// lieber ein sichtbarer Fehler als still zugestellte Regeln, die nie ankamen.
+const HOOK_LIMIT = 10_000;
+let context = parts.join('\n\n');
+if (context.length > HOOK_LIMIT) {
+  const over = context.length;
+  context = [
+    'FEHLER — SessionStart-Hook ueber der Zustellgrenze.',
+    `Der Hook wollte ${over} Zeichen einspielen, die Grenze liegt bei ${HOOK_LIMIT}.`,
+    'Darueber landet alles in einer Datei und nur 2.000 Zeichen erreichen den Kontext.',
+    'Der Inhalt wurde deshalb NICHT eingespielt. Sag dem User zuerst diesen Satz,',
+    'bevor du irgendetwas anderes tust: der SessionStart-Hook liefert zu viel und',
+    'muss in scripts/hooks/session-start.mjs gekuerzt werden.',
+  ].join('\n');
+  notes.push(`FEHLER: Hook-Kontext ${over} > ${HOOK_LIMIT} Zeichen — nichts eingespielt`);
+}
+
 process.stdout.write(JSON.stringify({
   systemMessage: notes.length ? `[metastats] ${notes.join(' · ')}` : undefined,
   suppressOutput: true,
   hookSpecificOutput: {
     hookEventName: 'SessionStart',
-    additionalContext: parts.join('\n\n'),
+    additionalContext: context,
   },
 }));
 process.exit(0);

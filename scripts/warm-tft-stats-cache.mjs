@@ -10,9 +10,14 @@
 // request then gets an instant X-Vercel-Cache: HIT.
 //
 // It hits the SAME query strings the stats pages build (filtersToQueryString
-// order: patch, bucket, days, region — see app/components/tft/StatsFilterBar)
-// so the warmed cache keys match the ones users hit exactly. No secrets needed
-// — these are public GET endpoints.
+// order: patch, bucket, days, region, dann optional bucketAuto und velocity —
+// see app/components/tft/StatsFilterBar) so the warmed cache keys match the
+// ones users hit exactly. No secrets needed — these are public GET endpoints.
+//
+// Diese Deckungsgleichheit ist die ganze Wirkung des Scripts: der Cache-
+// Schluessel ist die Adresse Zeichen fuer Zeichen. Ein fehlender Parameter
+// waermt ein Fach, das niemand oeffnet, und der erste Besucher zahlt trotzdem
+// den kalten Aufruf — genau das war bis 2026-09-01 der Fall.
 //
 // Usage:
 //   node scripts/warm-tft-stats-cache.mjs
@@ -41,8 +46,23 @@ const PATCH = 'current';
 
 // MUST mirror filtersToQueryString's insertion order — the edge cache key is
 // the literal query string, so a different order is a different (cold) key.
-function qs(bucket, days, region) {
-  return `patch=${PATCH}&bucket=${bucket}&days=${days}&region=${region}`;
+//
+// `bucketAuto` und `velocity` gehoeren zwingend dazu, auch wenn sie hier lange
+// gefehlt haben: filtersToQueryString (app/components/tft/StatsFilterBar.tsx:254)
+// haengt `bucketAuto=1` an, solange der Besucher den Rang NICHT selbst gewaehlt
+// hat — also bei jedem ersten Seitenaufruf. Ohne den Parameter waermt dieses
+// Script eine Adresse, die kein Browser je aufruft (gemessen 2026-09-01:
+// Waermer-Form 4,78 s Fehltreffer, Browser-Form 1,17 s; auf /api/tft/units
+// stand `Age: 11` gegen `Age: 473`).
+//
+// `bucketAuto` ist nicht nur Kosmetik fuer den Schluessel: der Server sucht sich
+// den Rang damit selbst aus (app/lib/tft-supabase-reader.ts:266-268), die
+// Antwort ist also eine andere.
+function qs(bucket, days, region, { bucketAuto = false, velocity = 0 } = {}) {
+  let s = `patch=${PATCH}&bucket=${bucket}&days=${days}&region=${region}`;
+  if (bucketAuto) s += '&bucketAuto=1';
+  if (velocity > 0) s += `&velocity=${velocity}`;
+  return s;
 }
 
 // Combos are restricted to slices that stay safely under the 20s Supabase
@@ -55,6 +75,21 @@ function qs(bucket, days, region) {
 // where warming pays off: the morning visitor gets a HIT instead of the 9s.
 function buildUrls() {
   const urls = new Set();
+
+  // Der haeufigste Aufruf ueberhaupt: erster Seitenbesuch ohne gesetzten Rang.
+  // Die Seite schickt dann `bucketAuto=1` und als Rang den Wert aus
+  // autoBucketDefault() bzw. den zuletzt vom Server gelieferten (StatsFilterBar
+  // :283-290, AUTO_BUCKET_KEY). Beide sind heute `diamond_plus` — gemessen
+  // 2026-09-01 gegen /api/tft/units?…&bucketAuto=1: `filters.bucket` kam als
+  // "diamond_plus" zurueck, resolveDefaultBucket liefert also denselben Wert.
+  // Aendert sich das (Set-Wechsel, duenne Datenlage), waermt diese Zeile
+  // trotzdem exakt den Schluessel, den der Browser baut — der Rang im
+  // Schluessel ist der Wunsch, nicht die Antwort.
+  const AUTO = { bucketAuto: true };
+  urls.add(`/api/tft/comps?${qs('diamond_plus', 3, 'all', AUTO)}&source=data`);
+  for (const ep of ['units', 'items', 'traits']) {
+    urls.add(`/api/tft/${ep}?${qs('diamond_plus', 3, 'all', AUTO)}`);
+  }
 
   // Comps — full matrix (lean RPC, all slices fast).
   for (const bucket of ['diamond_plus', 'master_plus', 'all']) {
@@ -92,8 +127,15 @@ function buildUrls() {
   // Meta-Pulse + Patch-Diff — landing-tier pages, both cold ~10s. Patch-diff
   // matrix covers the 4 entity types × 2 default buckets users actually open.
   // Meta-pulse is single-bucket per call.
-  urls.add(`/api/tft/meta-pulse?bucket=master_plus&days=3&patch=current`);
-  urls.add(`/api/tft/meta-pulse?bucket=diamond&days=3&patch=current`);
+  // Meta-Puls baut seine Adresse ebenfalls mit filtersToQueryString, dazu zwei
+  // Eigenheiten der Seite (app/tft/meta-pulse/page.tsx:50-52): ohne Rang in der
+  // URL steht `master_plus` im Filter (nicht diamond_plus wie ueberall sonst),
+  // und der Vergleichs-Zeitraum ist nie 0, sondern 3 Tage. Die frueher hier
+  // gewaermten Adressen (`bucket=…&days=…&patch=…`, ohne region/velocity und in
+  // anderer Reihenfolge) hat kein Browser je aufgerufen.
+  urls.add(`/api/tft/meta-pulse?${qs('master_plus', 3, 'all', { bucketAuto: true, velocity: 3 })}`);
+  urls.add(`/api/tft/meta-pulse?${qs('master_plus', 3, 'all', { velocity: 3 })}`);
+  urls.add(`/api/tft/meta-pulse?${qs('diamond_plus', 3, 'all', { velocity: 3 })}`);
   for (const entity of ['unit', 'item', 'trait', 'comp']) {
     for (const bucket of ['master_plus', 'diamond']) {
       urls.add(`/api/tft/patch-diff?entity=${entity}&bucket=${bucket}`);

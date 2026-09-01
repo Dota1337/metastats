@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAvailablePatches } from '../../../lib/tft-supabase-reader';
 import { fetchHetznerPlayerCompHistogram, fetchHetznerMarketvaluePool } from '../../../lib/tft-hetzner-matches';
 import type { CompHistogramCluster } from '../../../lib/tft-hetzner-matches';
-import { cachedJson, STATS_CACHE_CONTROL } from '../../../lib/api-cache';
+import { cachedJson, STATS_CACHE_CONTROL, cacheHeaders } from '../../../lib/api-cache';
 
 // /api/tft/onetricks?region=euw1&minShare=0.6
 //
@@ -152,6 +152,6 @@ export async function GET(request: NextRequest) {
   // Match-Cache). 6h s-maxage + 24h SWR ist konservativ — selbst nach Cold-Miss
   // ist die Response unter ~3s (Hetzner-Pool + 1000 Puuids × Match-Cache).
   return new NextResponse(JSON.stringify({ region, count: onetricks.length, onetricks }), {
-    headers: { 'Content-Type': 'application/json', 'Cache-Control': STATS_CACHE_CONTROL },
+    headers: { 'Content-Type': 'application/json', ...cacheHeaders(STATS_CACHE_CONTROL) },
   });
 }

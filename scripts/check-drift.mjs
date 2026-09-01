@@ -444,6 +444,66 @@ function read(path) {
   }
 }
 
+// N) Cache-Kopfzeilen: `s-maxage` erreicht den Browser nie.
+//
+// Vercels CDN streicht `s-maxage` und `stale-while-revalidate` aus dem
+// Cache-Control, bevor die Antwort ausgeliefert wird. Eine Route, die NUR
+// Cache-Control mit s-maxage setzt, laesst den Browser also mit leeren Haenden
+// zurueck — er holt bei jedem Reiter-Wechsel alles neu, obwohl die Edge es
+// sofort haette. Genau das war bis 2026-09-01 auf allen Stats-Endpunkten so.
+//
+// Der Fix ist die zweite Kopfzeile (`Vercel-CDN-Cache-Control` fuer die Edge,
+// `Cache-Control` mit `max-age` fuer den Browser). Diese Pruefung haelt ihn
+// fest: wer s-maxage schreibt, muss im selben File auch die CDN-Zeile setzen.
+{
+  // Bewusste Ausnahmen — hier ist "Browser darf nichts behalten" richtig.
+  const CACHE_EXEMPT = new Set([
+    // Degradierte Antwort (leer, weil eine Quelle ausgefallen ist). Die darf
+    // der Browser nicht festhalten; steht direkt neben der Regel im Code.
+    'app/lib/api-cache.ts',
+    // 307-Umleitung des ?patch=previous-Alias. Eine im Browser gehaltene
+    // Umleitung zeigt nach einem Patch-Wechsel auf den falschen Patch.
+    'app/api/tft/comps/route.ts',
+    // RSS-Feed: Leser holen selbst im eigenen Takt, ein Browser-Cache bringt
+    // nichts und verzoegert nur neue Eintraege.
+    'app/api/feed/tft-patches/route.ts',
+  ]);
+  const routes = [];
+  const walk = (dir) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const p = `${dir}/${e.name}`;
+      if (e.isDirectory()) walk(p);
+      else if (e.name === 'route.ts') routes.push(p);
+    }
+  };
+  if (existsSync('app/api')) walk('app/api');
+  const naked = [];
+  for (const f of routes) {
+    if (CACHE_EXEMPT.has(f)) continue;
+    const src = read(f);
+    // Nur direkt gesetzte Kopfzeilen zaehlen. Routen, die ueber cachedJson
+    // oder cacheHeaders gehen, bekommen beide Zeilen automatisch.
+    //
+    // Zwei Schreibweisen, beide muessen greifen: das Literal
+    // ('public, s-maxage=…') und die Konstante (STATS_CACHE_CONTROL,
+    // cacheControl aus cacheControlForPatches). Nur die Konstante zu ignorieren
+    // waere die Luecke, wegen der es diese Pruefung ueberhaupt gibt.
+    const SETS_SMAXAGE = /'Cache-Control':\s*(?:'[^']*s-maxage|(?:[A-Z_]*_)?CACHE_CONTROL\b|cacheControl\b)/;
+    if (!SETS_SMAXAGE.test(src)) continue;
+    if (!src.includes('Vercel-CDN-Cache-Control')) naked.push(f);
+  }
+  if (naked.length) {
+    for (const f of naked) {
+      console.error(`✗ DRIFT: ${f} setzt s-maxage ohne Vercel-CDN-Cache-Control`);
+    }
+    console.error('    → Vercel streicht s-maxage vor der Auslieferung; der Browser cached dann gar nicht.');
+    console.error('    → cacheHeaders(...) aus app/lib/api-cache.ts nutzen (setzt beide Zeilen).');
+    failures += naked.length;
+  } else {
+    console.log(`✓ Cache-Kopfzeilen: ${routes.length} Routen, keine nackte s-maxage-Zeile`);
+  }
+}
+
 if (failures) {
   console.error(`\n${failures} Drift(s) — vor dem Push mit der jeweiligen SoT synchronisieren.`);
   process.exit(1);

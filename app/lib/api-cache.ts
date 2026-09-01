@@ -53,14 +53,64 @@ export const IMG_CDN_CACHE_CONTROL = 'public, s-maxage=604800, stale-while-reval
 // entscheidet der Aufrufer anhand seines Payloads, nicht anhand des Codes.
 export const DEGRADED_CACHE_CONTROL = 'public, s-maxage=10, stale-while-revalidate=60';
 
+// Wie lange der BROWSER eine Stats-Antwort behalten darf.
+//
+// Bis 2026-09-01 bekam er gar nichts: Vercels CDN streicht `s-maxage` und
+// `stale-while-revalidate` aus dem Cache-Control, bevor die Antwort den Browser
+// erreicht, `max-age` laesst es durch. Uebrig blieb ein nacktes `public` —
+// gemessen an /api/tft/comps, und das sind 483 KB, die bei jedem Reiter-Wechsel
+// und jedem Zurueck-Klick neu ueber die Leitung gingen, obwohl die Edge sie
+// sofort liefern konnte.
+//
+// 60 Sekunden, nicht mehr. Ein einmal ausgelieferter `max-age` laesst sich
+// nicht zurueckrufen — weder `revalidatePath` noch ein Deploy erreichen den
+// Browser des Besuchers. Genau daran ist am 2026-08-24 der Vorschlag
+// gescheitert, `/tft-assets.json` laenger zu halten: ein Set-Wechsel haette das
+// alte Set fuer die Cache-Dauer festgeschrieben. Eine Minute deckt den
+// Reiter-Wechsel ab und ist kurz genug, dass ein Fehler von selbst herausfaellt.
+export const BROWSER_CACHE_CONTROL = 'public, max-age=60';
+
+/**
+ * Die drei Kopfzeilen als Objekt — fuer die Handvoll Routen, die ihre Antwort
+ * selbst zusammenbauen und deshalb nicht durch `cachedJson` gehen (Varianten-
+ * Auswahl der Comp-Detailseite, Match-Explorer, One-Tricks). Ohne sie haetten
+ * ausgerechnet drei sichtbare Reiter weiter keinen Browser-Cache.
+ */
+export function cacheHeaders(cdnCacheControl: string): Record<string, string> {
+  return {
+    'Cache-Control': BROWSER_CACHE_CONTROL,
+    'Vercel-CDN-Cache-Control': cdnCacheControl,
+    'Vercel-Cache-Tag': 'tft-api',
+  };
+}
+
 export function cachedJson(
   data: unknown,
   opts: { cache?: string; degraded?: boolean } = {},
 ) {
-  const cache = opts.degraded
-    ? DEGRADED_CACHE_CONTROL
-    : (opts.cache || STATS_CACHE_CONTROL);
-  return NextResponse.json(data, { headers: { 'Cache-Control': cache } });
+  // Degradierte Antwort: inhaltlich leer, weil eine Quelle gerade nicht
+  // liefert. Die darf der Browser NICHT eine Minute lang behalten — sonst
+  // sieht der Besucher die leere Liste weiter, obwohl die Edge laengst wieder
+  // echte Daten hat. Bleibt deshalb auf einer einzigen Kopfzeile wie bisher.
+  if (opts.degraded) {
+    return NextResponse.json(data, {
+      headers: { 'Cache-Control': DEGRADED_CACHE_CONTROL },
+    });
+  }
+  // Zwei Kopfzeilen wie im Bild-Proxy (app/api/img/[...p]/route.ts:76-79):
+  // `Cache-Control` gilt fuer den Browser, `Vercel-CDN-Cache-Control` fuer die
+  // Edge und hat dort Vorrang. Die langen Zeiten (6h frisch, 24h stale) bleiben
+  // damit unveraendert dort, wo sie hingehoeren.
+  return NextResponse.json(data, {
+    headers: {
+      'Cache-Control': BROWSER_CACHE_CONTROL,
+      'Vercel-CDN-Cache-Control': opts.cache || STATS_CACHE_CONTROL,
+      // Purge-Knopf, analog zum Bild-Proxy. Kostet nichts, solange er nicht
+      // benutzt wird, und ist der einzige Weg, die Edge gezielt zu leeren,
+      // ohne neu zu deployen.
+      'Vercel-Cache-Tag': 'tft-api',
+    },
+  });
 }
 
 // Plan B: Patch-Changed-Boost. Wenn der jüngste Patch-Eintrag in crawl_meta

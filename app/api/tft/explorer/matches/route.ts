@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { STATS_CACHE_CONTROL } from '../../../../lib/api-cache';
+import { STATS_CACHE_CONTROL, cacheHeaders } from '../../../../lib/api-cache';
 import { checkRateLimit } from '../../../../lib/rate-limit';
 import { isKnownUnitId } from '../../../../lib/tft-classify-comp';
 
@@ -75,6 +75,6 @@ export async function POST(req: NextRequest) {
   }
   return NextResponse.json(data, {
     status: 200,
-    headers: { 'Cache-Control': STATS_CACHE_CONTROL },
+    headers: cacheHeaders(STATS_CACHE_CONTROL),
   });
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { resolveFilters } from '../../../../lib/tft-supabase-reader';
-import { STATS_CACHE_CONTROL, cacheControlForPatches, maybeRedirectByPatchAlias } from '../../../../lib/api-cache';
+import { STATS_CACHE_CONTROL, cacheControlForPatches, maybeRedirectByPatchAlias, cacheHeaders } from '../../../../lib/api-cache';
 import { getAvailablePatches } from '../../../../lib/tft-supabase-reader';
 import { parseClusterKey } from '../../../../lib/tft-cluster';
 import { CURRENT_SET } from '../../../../lib/current-set';
@@ -235,7 +235,7 @@ export async function GET(request: NextRequest) {
           patch: filters.patch,
         },
       },
-      { headers: { 'Cache-Control': cacheControl } },
+      { headers: cacheHeaders(cacheControl) },
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'unknown';

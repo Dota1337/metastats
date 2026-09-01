@@ -48,7 +48,7 @@ test('Redirect, sed -i, tee, cp: Ziel wird erkannt', () => {
 test('Nicht-Schreibwege bleiben offen', () => {
   assert.equal(blocks('grep -rn "foo" app/'), false);
   assert.equal(blocks('cat app/lib/i18n.tsx'), false);
-  assert.equal(blocks('npm run build 2>&1'), false);
+  assert.equal(blocks('npm ci'), false);
   assert.equal(blocks('node scripts/check-drift.mjs > /dev/null'), false);
   assert.equal(blocks('git status'), false);
   assert.equal(blocks('git log --oneline -5'), false);
@@ -91,6 +91,58 @@ test('git-Befehle, die den Baum ueberschreiben', () => {
   assert.equal(blocks('git reset --hard origin/main'), true);
   assert.equal(blocks('git clean -fd'), true);
   assert.equal(blocks('git diff --stat'), false);
+});
+
+// -------------------------------------------------------------- npm-Kanal (B9)
+
+// Der Kanal war bis 2026-09-01 blind: `npm run build:system-map` lieferte [],
+// waehrend `node scripts/build-system-map.mjs` geblockt wurde — ein Bypass ohne
+// Trickserei. Die Tests stellen package.json UND Skript-Inhalte selbst, sonst
+// laufen sie gegen ein Verzeichnis, das es nicht gibt, und werden sinnlos gruen.
+const PKG = JSON.stringify({
+  scripts: {
+    build: 'node scripts/gen.mjs && next build',
+    lint: 'eslint',
+    test: 'node --test scripts/x.test.mjs',
+    'check:drift': 'node scripts/check.mjs',
+    ci: 'npm run ci',
+  },
+});
+const fakeRead = (p) => {
+  const f = String(p).replace(/\\/g, '/');
+  if (f.endsWith('package.json')) return PKG;
+  if (f.endsWith('gen.mjs')) return 'import {writeFileSync} from "fs"; writeFileSync("public/x.json","{}");';
+  if (f.endsWith('check.mjs')) return 'import {readFileSync} from "fs"; console.log(1);';
+  const e = new Error('ENOENT'); e.code = 'ENOENT'; throw e;
+};
+
+test('npm run wird aufgeloest — der Script-Inhalt entscheidet', () => {
+  assert.equal(blocks('npm run build', fakeRead), true);
+  assert.equal(blocks('npm run check:drift', fakeRead), false);
+  assert.equal(blocks('npm test', fakeRead), false);        // Alias ohne `run`
+  assert.equal(blocks('npm ci', fakeRead), false);          // echter Unterbefehl
+  assert.equal(blocks('npm install lodash', fakeRead), false);
+});
+
+test('npm run <name> -- --fix: die Zusatzargumente zaehlen mit', () => {
+  // `lint` ist ein Pruefer, `lint -- --fix` schreibt den Baum um.
+  assert.equal(blocks('npm run lint', fakeRead), false);
+  assert.equal(blocks('npm run lint -- --fix', fakeRead), true);
+});
+
+test('npx/yarn/pnpm exec: der Rest ist das Kommando', () => {
+  assert.equal(blocks('npx eslint --fix app', fakeRead), true);
+  assert.equal(blocks('npx -y prettier --write app', fakeRead), true);
+  assert.equal(blocks('npx tsc --noEmit', fakeRead), false);
+  assert.equal(blocks('yarn build', fakeRead), true);
+  assert.equal(blocks('pnpm exec sed -i s/a/b/ app/page.tsx', fakeRead), true);
+});
+
+test('Zyklus in package.json haengt den Hook nicht auf', () => {
+  // `ci` ruft sich selbst. Ohne Tiefenbegrenzung waere das eine Endlosschleife
+  // vor JEDEM Bash-Aufruf. Heute existiert kein solcher Zyklus (gemessen), die
+  // Grenze schuetzt vor der einen Zeile, die ihn erzeugen wuerde.
+  assert.equal(blocks('npm run ci', fakeRead), false);
 });
 
 // ---------------------------------------------------------------- planQuality

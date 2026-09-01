@@ -85,7 +85,15 @@ export function planQuality(planFile, read = readFileSync) {
 // und wuerden sonst falsch gegen PROJECT_DIR aufgeloest.
 const REMOTE = /^(ssh|scp|rsync|docker|kubectl|vercel|gh)\b/;
 // Interpreter mit Inline-Code: hier zaehlt der Code-Inhalt, nicht das Argument.
-const INLINE = /^(node|bash|sh|zsh|python3?)\b/;
+const INLINE = /^(node|tsx|ts-node|bash|sh|zsh|python3?)\b/;
+// Formatierer, die mit dem richtigen Flag den Arbeitsbaum umschreiben. Ohne
+// Flag sind es reine Pruefer und bleiben offen.
+const FORMATTER = /^(eslint|prettier|biome|dprint)$/;
+// Wie tief `npm run` in sich selbst aufgeloest wird. Heute ruft kein einziges
+// der 19 Scripts in package.json ein anderes ueber `npm run` auf (gemessen
+// 2026-09-01). Die Grenze steht trotzdem: eine Zeile in package.json wuerde
+// reichen, und ein Hook, der sich aufhaengt, blockiert jeden Bash-Aufruf.
+const MAX_NPM_DEPTH = 2;
 const WRITE_CALLS = /\b(writeFileSync|appendFileSync|unlinkSync|renameSync|rmSync|mkdirSync|copyFileSync|createWriteStream|\.write\()/;
 
 const FILE_ARG = /^[^-|&;<>]\S*$/;
@@ -103,6 +111,31 @@ export function onlyTmpWrites(body) {
   return writeLines.every((l) => /tmpdir|TMPDIR|os\.tmpdir|TEMP_|tmpDir/.test(l));
 }
 
+/**
+ * Body eines package.json-Scripts. Sucht die package.json vom aktuellen
+ * Arbeitsverzeichnis aus nach oben, weil npm das auch tut: nach
+ * `cd scripts && npm run build` liegt sie eine Ebene hoeher. Findet sich
+ * nichts, ist der Rueckgabewert leer und das Kommando bleibt offen — npm
+ * selbst wuerde dann ebenfalls abbrechen.
+ */
+function npmScriptBody(name, base, projectDir, readScript) {
+  if (!name) return '';
+  let dir = base;
+  for (let i = 0; i < 6; i++) {
+    try {
+      const pkg = JSON.parse(readScript(resolve(dir, 'package.json'), 'utf8'));
+      const body = pkg && pkg.scripts && pkg.scripts[name];
+      return typeof body === 'string' ? body : '';
+    } catch {
+      // keine oder kaputte package.json hier — eine Ebene hoeher versuchen
+    }
+    const up = resolve(dir, '..');
+    if (up === dir) break;
+    dir = up;
+  }
+  return '';
+}
+
 function splitSegments(cmd) {
   // Grob an den ueblichen Trennern zerlegen. Bewusst kein Shell-Parser: bei
   // Konstrukten, die das ueberfordern ($VAR, xargs, Pipes in Skripte), soll das
@@ -116,7 +149,7 @@ function splitSegments(cmd) {
  * Dateien, bereits relativ zum jeweils gueltigen Arbeitsverzeichnis aufgeloest.
  * `readScript` erlaubt es dem Test, Skript-Inhalte zu stellen.
  */
-export function pathsWrittenByShell(cmd, projectDir, readScript = readFileSync) {
+export function pathsWrittenByShell(cmd, projectDir, readScript = readFileSync, depth = 0) {
   const out = [];
   if (!cmd) return out;
   let base = projectDir;
@@ -159,6 +192,35 @@ export function pathsWrittenByShell(cmd, projectDir, readScript = readFileSync) 
     } else if (/^(Set-Content|Out-File|Add-Content|Remove-Item|New-Item|Move-Item|Copy-Item|Rename-Item|Set-ItemProperty)$/i.test(head)) {
       // PowerShell-Kanal: gemessen 161 Aufrufe, war in der ersten Fassung offen.
       for (const w of words.slice(1)) if (FILE_ARG.test(w) && !w.startsWith('-')) push(w);
+    } else if (/^(npm|pnpm|yarn|npx|bunx)$/.test(head)) {
+      // Bis 2026-09-01 war dieser Kanal blind: `npm run build:system-map`
+      // lieferte [], waehrend das identische `node scripts/build-system-map.mjs`
+      // geblockt wurde. Wer das wusste, hatte einen Bypass ohne jede Trickserei.
+      if (depth >= MAX_NPM_DEPTH) continue;
+      const rest = words.slice(1).filter((w) => w !== '--');
+      let inner = '';
+      if (head === 'npx' || head === 'bunx' || rest[0] === 'exec' || rest[0] === 'dlx') {
+        // Der Rest ist ein Kommando. Fuehrende Flags von npx selbst (-y,
+        // --yes, --package=x) gehoeren nicht dazu.
+        const start = (rest[0] === 'exec' || rest[0] === 'dlx') ? 1 : 0;
+        inner = rest.slice(start).join(' ').replace(/^(?:-{1,2}\S+\s+)+/, '');
+      } else if (rest[0] === 'run' || rest[0] === 'run-script') {
+        // Zusatzargumente nach `--` haengt npm an den Script-Body an — genau so
+        // wird aus dem Pruefer `lint` der Schreiber `eslint --fix`.
+        inner = [npmScriptBody(rest[1], base, projectDir, readScript), ...rest.slice(2)].join(' ').trim();
+      } else if (rest[0] && !rest[0].startsWith('-')) {
+        // Aliase ohne `run`: `npm test`, `npm start`. Echte Unterbefehle
+        // (install, ci, publish) stehen nicht in package.json.scripts und
+        // finden hier nichts — sie bleiben offen.
+        inner = npmScriptBody(rest[0], base, projectDir, readScript);
+      }
+      if (inner) {
+        for (const c of pathsWrittenByShell(inner, base, readScript, depth + 1)) out.push(c);
+      }
+    } else if (FORMATTER.test(head)) {
+      // `eslint --fix` / `prettier --write` schreiben den Baum um; ohne Flag
+      // sind es Pruefer und damit kein Schreibweg.
+      if (/\s--(fix|write)\b/.test(seg)) push('.');
     } else if (INLINE.test(head)) {
       // `node -e "..."` / `node script.mjs`: nicht der Aufruf entscheidet,
       // sondern ob der ausgefuehrte Code ueberhaupt schreibt. 759 der

@@ -103,6 +103,7 @@ const PKG = JSON.stringify({
   scripts: {
     build: 'node scripts/gen.mjs && next build',
     lint: 'eslint',
+    gen: 'node scripts/gen.mjs',
     test: 'node --test scripts/x.test.mjs',
     'check:drift': 'node scripts/check.mjs',
     ci: 'npm run ci',
@@ -117,11 +118,26 @@ const fakeRead = (p) => {
 };
 
 test('npm run wird aufgeloest — der Script-Inhalt entscheidet', () => {
-  assert.equal(blocks('npm run build', fakeRead), true);
+  assert.equal(blocks('npm run gen', fakeRead), true);
   assert.equal(blocks('npm run check:drift', fakeRead), false);
   assert.equal(blocks('npm test', fakeRead), false);        // Alias ohne `run`
   assert.equal(blocks('npm ci', fakeRead), false);          // echter Unterbefehl
   assert.equal(blocks('npm install lodash', fakeRead), false);
+});
+
+test('Build-Einstiege sind namentlich frei — ein Gate, das den Build sperrt, wird abgeschaltet', () => {
+  // User-Entscheid 2026-09-01. Die Ausnahme haengt am NAMEN, nicht am Inhalt:
+  // `build` regeneriert Artefakte und ist der haeufigste Schritt vor einem
+  // Commit. Ein Script, das nicht so heisst, bleibt bewertet.
+  assert.equal(blocks('npm run build', fakeRead), false);
+  assert.equal(blocks('npm run build 2>&1', fakeRead), false);
+  assert.equal(blocks('npm run build:system-map', fakeRead), false);
+  assert.equal(blocks('npm run dev', fakeRead), false);
+  // Mit angehaengten Argumenten faellt die Ausnahme weg: was da steht, hat
+  // niemand in package.json geprueft.
+  assert.equal(blocks('npm run build -- --write app', fakeRead), true);
+  // Und der Rest bleibt bewertet.
+  assert.equal(blocks('npm run gen', fakeRead), true);
 });
 
 test('npm run <name> -- --fix: die Zusatzargumente zaehlen mit', () => {
@@ -134,7 +150,7 @@ test('npx/yarn/pnpm exec: der Rest ist das Kommando', () => {
   assert.equal(blocks('npx eslint --fix app', fakeRead), true);
   assert.equal(blocks('npx -y prettier --write app', fakeRead), true);
   assert.equal(blocks('npx tsc --noEmit', fakeRead), false);
-  assert.equal(blocks('yarn build', fakeRead), true);
+  assert.equal(blocks('yarn gen', fakeRead), true);
   assert.equal(blocks('pnpm exec sed -i s/a/b/ app/page.tsx', fakeRead), true);
 });
 

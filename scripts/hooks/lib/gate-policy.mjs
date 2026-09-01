@@ -94,6 +94,14 @@ const FORMATTER = /^(eslint|prettier|biome|dprint)$/;
 // 2026-09-01). Die Grenze steht trotzdem: eine Zeile in package.json wuerde
 // reichen, und ein Hook, der sich aufhaengt, blockiert jeden Bash-Aufruf.
 const MAX_NPM_DEPTH = 2;
+// Namentliche Ausnahme, wie `--test`: die Build-Einstiege regenerieren
+// Artefakte (`public/pro-teams`, `infra/system-map.json`, `.next`) aus Quellen,
+// die im selben Lauf nicht angefasst werden. Sie sind der haeufigste
+// Verifikationsschritt vor einem Commit — ein Gate, das den Build sperrt, wird
+// abgeschaltet (User-Entscheid 2026-09-01: „Nimm es raus"). Die Liste ist
+// bewusst eine Aufzaehlung und kein Praefix-Muster ausserhalb von `build:`:
+// ein neues Script gilt erst als Build, wenn es so heisst.
+const GENERATED_BUILDS = /^(dev|start|build|build:[\w:.-]+)$/;
 const WRITE_CALLS = /\b(writeFileSync|appendFileSync|unlinkSync|renameSync|rmSync|mkdirSync|copyFileSync|createWriteStream|\.write\()/;
 
 const FILE_ARG = /^[^-|&;<>]\S*$/;
@@ -197,13 +205,23 @@ export function pathsWrittenByShell(cmd, projectDir, readScript = readFileSync, 
       // lieferte [], waehrend das identische `node scripts/build-system-map.mjs`
       // geblockt wurde. Wer das wusste, hatte einen Bypass ohne jede Trickserei.
       if (depth >= MAX_NPM_DEPTH) continue;
-      const rest = words.slice(1).filter((w) => w !== '--');
+      // Redirects gehoeren nicht zum Kommando: `npm run build 2>&1` ist
+      // derselbe Aufruf wie `npm run build`, und die Ausnahmeliste unten
+      // vergleicht die Argumentzahl.
+      const rest = seg.replace(/(?:^|\s)\d?>>?\s*\S+/g, ' ').trim()
+        .split(/\s+/).slice(1).filter((w) => w && w !== '--');
       let inner = '';
       if (head === 'npx' || head === 'bunx' || rest[0] === 'exec' || rest[0] === 'dlx') {
         // Der Rest ist ein Kommando. Fuehrende Flags von npx selbst (-y,
         // --yes, --package=x) gehoeren nicht dazu.
         const start = (rest[0] === 'exec' || rest[0] === 'dlx') ? 1 : 0;
         inner = rest.slice(start).join(' ').replace(/^(?:-{1,2}\S+\s+)+/, '');
+      } else if ((rest[0] === 'run' || rest[0] === 'run-script') && GENERATED_BUILDS.test(rest[1] || '') && rest.length <= 2) {
+        // `npm run build` ohne Zusatzargumente. Mit `--` dahinter faellt die
+        // Ausnahme weg: was da angehaengt wird, steht in keinem Script.
+        continue;
+      } else if (GENERATED_BUILDS.test(rest[0] || '') && rest.length === 1) {
+        continue;                                 // `npm start` (Alias ohne `run`)
       } else if (rest[0] === 'run' || rest[0] === 'run-script') {
         // Zusatzargumente nach `--` haengt npm an den Script-Body an — genau so
         // wird aus dem Pruefer `lint` der Schreiber `eslint --fix`.

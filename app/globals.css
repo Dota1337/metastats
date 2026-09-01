@@ -39,12 +39,15 @@
   --surface-raised: #141c2e;   /* 254× */
   --surface-overlay: #1e2a3a;  /* 105× als Fläche */
 
-  /* Zeigezustand fuer Flaechen auf --surface-raised. Eigener Token, weil der
-     Vorgaenger ein einmaliger Inline-Hex war (`hover:bg-[#101a30]`, genau 1×
-     im Repo) und damit dunkler lag als --surface-raised selbst — die Zeile
-     haette beim Zeigen abgedunkelt. Gemessen (WCAG-Relativluminanz):
-     #141c2e → #19233a hebt um 1,087 an, der alte Sprung lag bei 1,052.     */
-  --surface-raised-hover: #19233a;
+  /* Fuellung der Comp-Zeilen auf /tft/comps plus ihr Zeigezustand. Eigene
+     Token, weil --surface-raised 253x genutzt wird und hier nicht global
+     mitwandern darf. Gemessen (WCAG-Relativluminanz gegen die Seite #0e1525):
+     Fuellung 1,165 — MetaTFT liegt bei 1,062-1,132. Zeigezustand hebt um
+     1,135 an. NICHT weiter aufhellen: ab #1b2540 faellt der Kontrast zum
+     Rahmen --border-subtle (#1e2a3a) auf 1,045, die Zeilenkante verschwindet
+     dann in der eigenen Flaeche.                                         */
+  --surface-comp-row: #19233a;
+  --surface-comp-row-hover: #212c4a;
 
   /* --- Ränder --------------------------------------------------------------
      ACHTUNG: --border-subtle hat denselben Hex wie --surface-overlay.
@@ -195,7 +198,8 @@
   --color-surface-page: var(--surface-page);
   --color-surface-base: var(--surface-base);
   --color-surface-raised: var(--surface-raised);
-  --color-surface-raised-hover: var(--surface-raised-hover);
+  --color-surface-comp-row: var(--surface-comp-row);
+  --color-surface-comp-row-hover: var(--surface-comp-row-hover);
   --color-surface-overlay: var(--surface-overlay);
 
   --color-border-subtle: var(--border-subtle);

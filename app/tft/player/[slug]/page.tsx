@@ -992,7 +992,7 @@ function ProSpecialty({ puuid, setNumber, assets, t }: {
                     </div>
                   </div>
                   <div className="text-[10px] tabular-nums text-[#3ecf8e]">
-                    {c.top4Rate != null ? `${(c.top4Rate * 100).toFixed(0)}% T4` : ''}
+                    {c.top4Rate != null ? `${(c.top4Rate * 100).toFixed(0)}% Top 4` : ''}
                   </div>
                 </a>
               );

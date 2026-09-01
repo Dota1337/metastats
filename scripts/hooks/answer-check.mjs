@@ -29,9 +29,18 @@ import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { readInput, readState, writeState } from './lib/state.mjs';
 
-const MAX_LINES = 10;
-/** Datenzeilen, die eine einzelne Tabelle "gratis" haben darf. */
-const TABLE_ROW_BUDGET = 5;
+// 2026-09-01, User-Ansage: „Wir benoetigen keine Grenze. […] Wenn es 8 oder 9
+// Zeilen sind, weil du viel gearbeitet hast = auch okay. Hauptsache du
+// verwendest keine technischen Buzzwords mehr." Die Zahl ist damit kein Ziel
+// mehr, sondern nur noch ein Notanker gegen die Textwand — 20 statt 10.
+// Der eigentliche Massstab (Alltagssprache statt Fachbegriffe) steht in
+// infra/claude-settings/discipline.md; er laesst sich nicht zuverlaessig
+// zaehlen, und ein Wortlisten-Waechter wuerde bei Hook-Arbeit dauernd falsch
+// ausloesen — ein Hook, der nervt, wird abgeschaltet.
+const MAX_LINES = 20;
+/** Datenzeilen, die eine einzelne Tabelle "gratis" haben darf. Gleicher Wert
+ *  wie im Regeltext (discipline.md) — vorher stand dort 8 und hier 5. */
+const TABLE_ROW_BUDGET = 8;
 /** Zeilen Vortext, bis zu denen eine Antwort mit Tool-Call eine Zwischenmeldung ist. */
 const INTERIM_MAX_LINES = 4;
 /** Tools, die tatsaechlich messen. Agent und AskUserQuestion zaehlen bewusst
@@ -168,8 +177,10 @@ if (countable > MAX_LINES) {
   block(
 `Diese Ergebnis-Antwort hat ${warum}. Schreib sie neu:
 
-- Zeile 1-3: der Befund. Was ist das Ergebnis, was heisst das fuer den User.
+- Zuerst der Befund: was ist das Ergebnis, was heisst das fuer den User.
 - Danach nur, was er zum Weiterentscheiden braucht.
+- In Alltagssprache. Jeden Fachbegriff entweder weglassen oder im selben
+  Halbsatz erklaeren. Das ist der eigentliche Massstab, nicht die Zeilenzahl.
 - Raus: Rekapitulation der eigenen Schritte, Status-Inventare, Praeambeln,
   Abschluss-Zusammenfassung, ungefragte Naechste-Schritte-Menues.
 

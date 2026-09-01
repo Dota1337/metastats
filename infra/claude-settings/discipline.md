@@ -21,8 +21,12 @@ zusaetzlich pruefen, ob es die Sache ueberhaupt gibt — existiert der Code-Pfad
 wie viele Aufrufer, welche Datei:Zeile. Bremsen B/C/D in
 `scripts/hooks/answer-check.mjs` erzwingen das.
 
-**Ergebnis- und Analyse-Antworten:** Befund zuerst, in maximal drei Zeilen.
-Danach nur, was der User zum Weiterentscheiden braucht.
+**Ergebnis- und Analyse-Antworten:** Befund zuerst. Danach nur, was der User
+zum Weiterentscheiden braucht. Es gibt keine Zeilen-Vorgabe (User 2026-09-01:
+zwei Zeilen sind okay, acht nach viel Arbeit auch) — der Massstab ist die
+Sprache: **keine Fachbegriffe, die niemand versteht.** Jeden technischen
+Ausdruck weglassen oder im selben Halbsatz erklaeren. Konsequenz zuerst, Technik
+danach.
 
 Verboten in Ergebnis- und Analyse-Antworten:
 - Rekapitulation dessen, was gerade getan wurde („Ich habe X gelesen und dann Y")

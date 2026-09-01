@@ -336,7 +336,7 @@ export default function TftUnitDetailPage() {
                         </span>
                         <span className="text-white">Ø {focusedBin.avgPlacement?.toFixed(2) ?? '—'}</span>
                         <span className="text-[#3ecf8e]">{focusedBin.top4Rate != null ? `${(focusedBin.top4Rate * 100).toFixed(1)}% Top 4` : '—'}</span>
-                        <span className="text-[#e0c75a]">{focusedBin.top1Rate != null ? `${(focusedBin.top1Rate * 100).toFixed(1)}% T1` : '—'}</span>
+                        <span className="text-[#e0c75a]">{focusedBin.top1Rate != null ? `${(focusedBin.top1Rate * 100).toFixed(1)}% Top 1` : '—'}</span>
                         <span className="text-fg-muted">{focusedBin.games.toLocaleString('de-DE')} {t('tft.gamesShort')}</span>
                         <button
                           type="button"

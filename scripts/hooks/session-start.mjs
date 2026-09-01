@@ -12,7 +12,7 @@
 // Der Hook beendet sich IMMER mit 0. Ein kaputter SessionStart-Hook, der die
 // Session blockiert, wird binnen einer Woche deaktiviert — und dann ist gar
 // nichts mehr da.
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFileSync, spawn } from 'node:child_process';
 import { PROJECT_DIR, readInput, readState, writeState, pruneOldState, clearApproval, readGlobal, writeGlobal, APPROVAL_SURVIVES_COMPACT } from './lib/state.mjs';
@@ -108,6 +108,33 @@ if (sessionId) {
   }
 }
 pruneOldState();
+
+// --- Kernregeln in den Prefix ---------------------------------------------
+// Bis 2026-09-01 wurden die Kernregeln bei JEDEM Prompt neu angehaengt (2.601
+// Zeichen, gemessen). Der Prefix wird zwischengespeichert und einmal bezahlt,
+// ein Per-Turn-Anhang wird mit jedem Turn erneut gelesen — perf-critic hat den
+// Unterschied mit Faktor 31 beziffert. Inhaltlich aendert sich nichts: derselbe
+// Text, nur einmal statt N-mal.
+//
+// Die Datei traegt bewusst KEIN `tier1-`-Praefix — `_build-bundle.mjs` loescht
+// in diesem Ordner alles, was so heisst und nicht aus MEMORY.md stammt.
+const KERNREGELN_SRC = join(PROJECT_DIR, 'infra', 'claude-settings', 'discipline.md');
+const KERNREGELN_DST = join(rulesDir, '00-kernregeln.md');
+if (wantsMemory && existsSync(KERNREGELN_SRC)) {
+  try {
+    mkdirSync(rulesDir, { recursive: true });
+    const src = readFileSync(KERNREGELN_SRC, 'utf8');
+    let dst = '';
+    try { dst = readFileSync(KERNREGELN_DST, 'utf8'); } catch { /* fehlt */ }
+    if (dst !== src) {
+      writeFileSync(KERNREGELN_DST, src);
+      notes.push('Kernregeln in .claude/rules aktualisiert');
+    }
+  } catch (err) {
+    notes.push(`FEHLER: Kernregeln nicht in den Prefix kopierbar — ${err.message}`);
+  }
+}
+
 
 // --- Memory-Index frisch halten -------------------------------------------
 // Bis 2026-09-01 hatte `index-memories.mjs` keinen einzigen Aufrufer

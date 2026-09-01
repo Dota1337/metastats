@@ -55,14 +55,28 @@ if (sessionId) {
   }
 }
 
-const rules = join(PROJECT_DIR, 'infra', 'claude-settings', 'discipline.md');
-if (existsSync(rules)) {
-  process.stdout.write(JSON.stringify({
-    suppressOutput: true,
-    hookSpecificOutput: {
-      hookEventName: 'UserPromptSubmit',
-      additionalContext: readFileSync(rules, 'utf8'),
-    },
-  }));
-}
+// Der Regeltext selbst steht seit 2026-09-01 im Prefix (.claude/rules/00-kernregeln.md,
+// von session-start.mjs dorthin gespiegelt). Hier bleibt nur ein Zeiger: kurz genug,
+// um pro Turn nicht ins Gewicht zu fallen, konkret genug, um nachschlagbar zu sein.
+// Faellt der Prefix weg — nach einem Compact —, spielt post-compact.mjs den vollen
+// Text nach.
+const POINTER = [
+  'Kernregeln gelten unveraendert: verifizieren vor behaupten (selbst messen, keine',
+  'Subagent-Zahlen ungeprueft), Befund zuerst in max. drei Zeilen, Beleg-Pflicht fuer',
+  'jede Zahl, Plan vor Code, unabhaengige Tool-Calls in EINE Message.',
+  'Volltext: .claude/rules/00-kernregeln.md (Quelle infra/claude-settings/discipline.md).',
+].join(' ');
+
+// Groessenbremse: waechst der Zeiger zum zweiten Regeltext heran, ist der Zweck
+// verfehlt. Dann lieber abschneiden als still teuer werden.
+const POINTER_LIMIT = 500;
+process.stdout.write(JSON.stringify({
+  suppressOutput: true,
+  hookSpecificOutput: {
+    hookEventName: 'UserPromptSubmit',
+    additionalContext: POINTER.length > POINTER_LIMIT
+      ? `FEHLER: Per-Turn-Zeiger ist ${POINTER.length} Zeichen lang, erlaubt sind ${POINTER_LIMIT}. Kuerze ihn in scripts/hooks/prompt-submit.mjs.`
+      : POINTER,
+  },
+}));
 process.exit(0);

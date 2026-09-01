@@ -214,7 +214,37 @@ async function main() {
     const got = await blockAcquire(LOCK_PATH, { onWait: (s) => console.log(`    waiting for daily-crawl lock (${s}s)…`) });
     if (!got) { console.error('[lock] timed out (30 min) waiting for the daily-crawl lock — aborting backfill'); process.exit(1); }
   } else if (!tryAcquire(LOCK_PATH)) {
-    console.log('[lock] another daily-crawl / resume / backfill holds the lock — skip (No-Op)');
+    // Spur hinterlassen, BEVOR wir aussteigen. Bis 2026-09-01 stand hier ein
+    // nacktes `return`: der Lauf verliess main(), ohne den Zieltag ueberhaupt
+    // aufgeloest zu haben — kein Cursor, kein Eintrag, Exit 0. Genau so ist der
+    // 2026-08-25 verlorengegangen (der 27.08.-Lauf traf um 00:03 die Sperre
+    // eines noch laufenden Crawls), und weil kein Cursor fehlte, sah auch die
+    // Luecken-Erkennung nichts: selectGapDay wertet die ABWESENHEIT einer Datei
+    // zwischen zwei vorhandenen als Loch, und hier fehlte die Datei nicht als
+    // Loch, sondern als Randfall am Fensterrand.
+    //
+    // Der leere Cursor ist die fehlende Spur: er heisst "fuer diesen Tag wurde
+    // ein Lauf begonnen, keine Region ist fertig". Damit findet
+    // `--resume-gaps` den Tag beim naechsten Durchgang und holt ihn nach.
+    // startSeed ist resume-sicher (existiert der Cursor, bleibt er unangetastet),
+    // deshalb ist der Aufruf ohne Sperre unbedenklich.
+    //
+    // NICHT fuer --resume-gaps: dort wird der Zieltag bewusst erst UNTER der
+    // Sperre gewaehlt (TOCTOU, Audit HIGH-2), sonst wuerde ein Tag geseedet,
+    // den der laufende Prozess gerade abschliesst.
+    if (!RESUME_GAPS) {
+      try {
+        const skippedDay = resolveDailyTargetDay(new Date(), MODE, DAY_OVERRIDE);
+        const seeded = startSeed(skippedDay);
+        console.log(`[lock] another daily-crawl / resume / backfill holds the lock — skip (No-Op); `
+          + `Cursor fuer ${skippedDay} hinterlegt (${seeded.completed.length}/${ACTIVE_REGIONS.length} Regionen fertig), `
+          + `--resume-gaps holt den Tag nach`);
+      } catch (err) {
+        console.error(`[lock] Zieltag liess sich nicht seeden: ${err.message}`);
+      }
+    } else {
+      console.log('[lock] another daily-crawl / resume / backfill holds the lock — skip (No-Op)');
+    }
     return;
   }
   lockHeld = true;

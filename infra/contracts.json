@@ -89,8 +89,8 @@
       "dateColumn": "day",
       "maxLagDays": 3,
       "noGapsInDays": 14,
-      "knownGaps": ["2026-07-21", "2026-07-27"],
-      "note": "Die Frischeprüfung sieht nur den neuesten Tag. Der 27.07.2026 fehlte komplett (Lauf per SIGTERM abgebrochen, Catchup hängt an OnSuccess= und lief deshalb nie) und blieb eine Woche unbemerkt; der 21.07. fiel erst durch diesen Check auf. Beide Tage sind bewusst nicht nachgezogen — der Match-Cache enthält den Zeitraum nicht mehr, es bräuchte einen ~13h-Vollcrawl, der den nächtlichen Lauf blockieren würde. Sie laufen von selbst aus dem 14-Tage-Fenster."
+      "knownGaps": ["2026-07-21", "2026-07-27", "2026-08-25"],
+      "note": "Die Frischeprüfung sieht nur den neuesten Tag. Der 27.07.2026 fehlte komplett (Lauf per SIGTERM abgebrochen, Catchup hängt an OnSuccess= und lief deshalb nie) und blieb eine Woche unbemerkt; der 21.07. fiel erst durch diesen Check auf. Beide Tage sind bewusst nicht nachgezogen — der Match-Cache enthält den Zeitraum nicht mehr, es bräuchte einen ~13h-Vollcrawl, der den nächtlichen Lauf blockieren würde. Sie laufen von selbst aus dem 14-Tage-Fenster. Der 25.08.2026 kam am 2026-09-01 dazu, gleiche Klasse, aber andere Kette: der 27.08.-Lauf traf um 00:03 die Sperre eines noch laufenden Crawls und stieg aus, BEVOR er den Zieltag überhaupt aufgelöst hatte (crawl-allranks-all-regions.mjs, Lock-Abbruch lag vor startSeed) — kein Cursor, keine Spur, Exit 0. Der Catchup prüfte daraufhin die Startzeit genau dieses Leerlaufs und meldete 'no catch-up needed'. Zusätzlich lag in /etc/metastats-crawler/ ein von Hand geschriebener Cursor daily-crawl-cursor-2026-08-25.json (235 B kompakt statt 337 B eingerückt, mtime 26.08. 22:27, startedAt in der eigenen Zukunft), der alle 15 Regionen als completed auswies — deshalb meldete resume-gaps seit dem 28.08. täglich 'no incomplete day in window'. Cursor am 2026-09-01 entfernt, Ursache im Crawler und im Catchup repariert. Nicht nachgezogen, weil es ein Set-17-Tag ist: tft_daily_comp_stats hat für den 25.08. null Zeilen, 20.-24.08. sind Set 17, ab 26.08. Set 18 — kein Lesepfad der Seite zeigt ihn noch."
     },
 
     {
@@ -180,9 +180,16 @@
       "url": "https://unyv1wum3kbegjer.public.blob.vercel-storage.com/tft/manifest.json",
       "dateField": "builtAt",
       "entriesField": "entries",
-      "minEntries": 650,
+      "minEntries": 500,
+      "minPerWave": {
+        "comps": 45,
+        "units": 90,
+        "items": 90,
+        "traits": 48,
+        "comps-detail": 200
+      },
       "maxAgeDays": 3,
-      "note": "Das Manifest ist Perf-Schicht UND Ausfallpuffer bei Supabase-Problemen — veraltet es unbemerkt, liefert die Seite im Ernstfall alte Daten. Täglich neu gebaut; der Publisher wird aus crawl-allranks-all-regions.mjs per systemctl getriggert, hängt also am Crawl. minEntries am 2026-08-19 von 800 auf 650 gesenkt: die Achsen-Revision vom 17.08. (snapshot-matrix.ts) hat comps-detail von 720 auf 240 Permutationen gekürzt, damit ist die Matrix-Obergrenze 852 statt 1329 und 800 rechnerisch kaum noch erreichbar. Gesunder Lauf am 19.08.: 700 Einträge (78 comps + 149 units + 150 items + 83 traits + 240 detail), 0 Fehler. 650 schlägt weiterhin an, wenn ein Lauf spürbar ausfällt — der kaputte 17:21-Lauf am 17.08. hatte 685 und läge damit knapp darüber, ein Ausfall einer ganzen Welle (>=83 Keys) fällt sicher auf."
+      "note": "Am 2026-09-01 von 650 auf 500 gesenkt und um minPerWave ergänzt. Grund: die Matrix fragt jede Listen-Kombination zweimal an (aktueller + vorheriger Patch, snapshot-matrix.ts), der Vorgänger-Patch ist seit dem Set-Wechsel aber 17.9 — und resolveFilters stempelt hart das aktuelle Set (tft-supabase-reader.ts:291), während resolvePatch('previous') ungefiltert patches[1] nimmt (ebd. 190/325). Set 18 UND Patch 17.9 trifft nie etwas, also bleiben alle 306 previous-Permutationen leer und werden als 'skipped: empty payload' verworfen. Gemessen am 2026-09-01: 524 Keys, alle unter 18.1, null unter 17.9 — Obergrenze damit rund 546, die alte 650 war rechnerisch unerreichbar. Die Summe allein ist deshalb ein schlechter Wächter über einen Set-Wechsel hinweg; minPerWave prüft stattdessen jede Welle einzeln (Ist-Stand 51/99/99/54/221) und schlägt genau dann an, wofür der Vertrag gebaut wurde: wenn eine ganze Welle ausfällt. Sobald der zweite Set-18-Patch da ist, verdoppeln sich die Listen-Wellen von selbst; minEntries darf dann wieder steigen. Alter Text: Das Manifest ist Perf-Schicht UND Ausfallpuffer bei Supabase-Problemen — veraltet es unbemerkt, liefert die Seite im Ernstfall alte Daten. Täglich neu gebaut; der Publisher wird aus crawl-allranks-all-regions.mjs per systemctl getriggert, hängt also am Crawl. minEntries am 2026-08-19 von 800 auf 650 gesenkt: die Achsen-Revision vom 17.08. (snapshot-matrix.ts) hat comps-detail von 720 auf 240 Permutationen gekürzt, damit ist die Matrix-Obergrenze 852 statt 1329 und 800 rechnerisch kaum noch erreichbar. Gesunder Lauf am 19.08.: 700 Einträge (78 comps + 149 units + 150 items + 83 traits + 240 detail), 0 Fehler. 650 schlägt weiterhin an, wenn ein Lauf spürbar ausfällt — der kaputte 17:21-Lauf am 17.08. hatte 685 und läge damit knapp darüber, ein Ausfall einer ganzen Welle (>=83 Keys) fällt sicher auf."
     },
 
     {
@@ -285,15 +292,15 @@
     },
     {
       "id": "pro-crawl/validation-freshness",
-      "owner": "metastats-tft-pro-validator.service",
+      "owner": ".github/workflows/tft-pro-crawl-weekly.yml",
       "backend": "supabase",
       "table": "tft_pro_players",
       "dateColumn": "last_validated_at",
       "dateType": "timestamp",
-      "maxLagDays": 3,
+      "maxLagDays": 10,
       "minRows": 300,
-      "windowDays": 7,
-      "note": "613 von 627 in 7 Tagen validiert. Genau hier lief der 23505-Fehler 5 Wochen unbemerkt: der Service lief, schrieb aber nichts."
+      "windowDays": 14,
+      "note": "613 von 627 in 7 Tagen validiert. Genau hier lief der 23505-Fehler 5 Wochen unbemerkt: der Service lief, schrieb aber nichts. Am 2026-09-01 zweimal korrigiert. (1) Eigentümer: last_validated_at wird ausschließlich von crawl-tft-pro-players.mjs (407/549/583) und crawl-tft-tournaments.mjs:669 geschrieben, und beide laufen auf GitHub Actions, weil Liquipedia die Box per IP sperrt. Der bisher genannte metastats-tft-pro-validator.service klassifiziert nur und schreibt last_full_validation_at — der Vertrag zeigte also auf den falschen Schreiber. (2) Frist: der Schreiber ist ein WOCHEN-Lauf, maxLagDays 3 konnte er systematisch nie halten. 10 Tage = eine Woche plus Puffer für einen ausgefallenen Lauf, analog lol-marketvalue/history; windowDays entsprechend von 7 auf 14. Auslöser war ein echter Ausfall: Lauf vom 30.08. brach nach 7m3s mit failure ab (Liquipedia-Drossel), davor 09./16./23.08. je rund eine Stunde erfolgreich, neuester Zeitstempel in der DB 2026-08-23T08:15:53Z bei 631 Zeilen. Hinweis: TFT_PROS_ENABLED=false schaltet nur die Pro-Seite ab — Comp-Detail, Spielerseite und Turnierseiten lesen die Daten weiter (app/lib/feature-flags.ts:42-45), der Vertrag bleibt also relevant."
     },
     {
       "id": "sicherheit/anon-lockout",

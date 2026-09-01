@@ -684,11 +684,29 @@ async function checkEndpoint(c, r) {
   const ageDays = (Date.now() - Date.parse(stamp)) / 86_400_000;
   if (Number.isNaN(ageDays)) return r('broken', `${c.dateField}=${stamp} ist kein Datum`);
 
-  if (c.minEntries) {
+  if (c.minEntries || c.minPerWave) {
     const raw = body[c.entriesField];
     const n = Array.isArray(raw) ? raw.length : (raw && typeof raw === 'object' ? Object.keys(raw).length : null);
     if (n == null) return r('broken', `Feld ${c.entriesField} fehlt oder ist kein Container`);
-    if (n < c.minEntries) return r('broken', `nur ${n} Einträge (min ${c.minEntries})`);
+    if (c.minEntries && n < c.minEntries) return r('broken', `nur ${n} Einträge (min ${c.minEntries})`);
+
+    // Wellen-Prüfung: die Gesamtsumme ist ein schlechter Wächter, sobald sich
+    // die Matrix-Obergrenze verschiebt (Set-Wechsel, Achsen-Revision) — dann
+    // wandert die Schwelle mit und niemand merkt, dass eine ganze Welle fehlt.
+    // Pro Welle geprüft bleibt die Aussage stabil: der Schlüssel-Präfix vor dem
+    // ersten "/" ist der Wellenname (comps, units, items, traits, comps-detail).
+    if (c.minPerWave) {
+      const keys = Array.isArray(raw) ? raw : Object.keys(raw);
+      const seen = {};
+      for (const k of keys) {
+        const wave = String(k).split('/')[0];
+        seen[wave] = (seen[wave] || 0) + 1;
+      }
+      const short = Object.entries(c.minPerWave)
+        .filter(([wave, min]) => (seen[wave] || 0) < min)
+        .map(([wave, min]) => `${wave} ${seen[wave] || 0}/${min}`);
+      if (short.length) return r('broken', `Welle(n) unter Soll: ${short.join(', ')} (gesamt ${n})`);
+    }
   }
 
   return ageDays <= c.maxAgeDays

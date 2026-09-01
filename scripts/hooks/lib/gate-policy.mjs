@@ -90,6 +90,19 @@ const WRITE_CALLS = /\b(writeFileSync|appendFileSync|unlinkSync|renameSync|rmSyn
 
 const FILE_ARG = /^[^-|&;<>]\S*$/;
 
+/**
+ * Schreibt ein Skript ausschliesslich in den Temp-Ordner? Dann ist sein Lauf
+ * kein Eingriff in den Arbeitsbaum. Bewusst konservativ: es reicht NICHT, dass
+ * `tmpdir` irgendwo vorkommt — es muss in jeder Zeile mit einem Schreibaufruf
+ * stehen. Eine einzige Schreibzeile ohne Temp-Bezug macht das Skript wieder
+ * gefaehrlich, und dann blockt das Gate.
+ */
+export function onlyTmpWrites(body) {
+  const writeLines = body.split(/\r?\n/).filter((l) => WRITE_CALLS.test(l));
+  if (!writeLines.length) return false;
+  return writeLines.every((l) => /tmpdir|TMPDIR|os\.tmpdir|TEMP_|tmpDir/.test(l));
+}
+
 function splitSegments(cmd) {
   // Grob an den ueblichen Trennern zerlegen. Bewusst kein Shell-Parser: bei
   // Konstrukten, die das ueberfordern ($VAR, xargs, Pipes in Skripte), soll das
@@ -155,6 +168,12 @@ export function pathsWrittenByShell(cmd, projectDir, readScript = readFileSync) 
         if (WRITE_CALLS.test(inline[2])) push('.');
         continue;
       }
+      // `node --test <datei>`: der Testlauf schreibt per Konvention nur nach
+      // os.tmpdir(), die Testdatei enthaelt aber writeFileSync und wurde
+      // dadurch als Projekt-Schreibzugriff gewertet. Gemessen 2026-09-01:
+      // `node --test scripts/hooks/lib/state.test.mjs` lieferte [{path:'.'}] —
+      // die eigenen Tests waren unter dem Gate nicht mehr ausfuehrbar.
+      if (/(^|\s)--test(\s|$)/.test(seg)) continue;
       const script = words.slice(1).find((w) => /\.(mjs|cjs|js|ts|sh|py)$/.test(w));
       if (script) {
         const abs = isAbsolute(script) ? script : resolve(base, script);
@@ -162,7 +181,15 @@ export function pathsWrittenByShell(cmd, projectDir, readScript = readFileSync) 
         try { body = readScript(abs, 'utf8'); } catch { body = ''; }
         // Nicht lesbar (Scratchpad, generiert): nicht blocken. Lesbar und
         // schreibend: als Schreibzugriff auf das Projekt werten.
-        if (body && WRITE_CALLS.test(body)) push('.');
+        //
+        // Bewusst NICHT gelockert (Review 2026-09-01, architect FAIL): „ein
+        // committetes Skript auszufuehren ist harmlos" haelt der Messung nicht
+        // stand. `isExempt('scripts/hooks/tmp-doit.mjs')` ist true, ich koennte
+        // mir also ohne Freigabe ein Skript in ein freigestelltes Verzeichnis
+        // schreiben und es dann ausfuehren; und `scripts/codemod-accent.mjs
+        // --write` (Zeile 48/88) schreibt als getracktes Werkzeug in App-Dateien.
+        // Ausnahmen bleiben eng und namentlich, wie --test oben.
+        if (body && WRITE_CALLS.test(body) && !onlyTmpWrites(body)) push('.');
       }
     }
   }

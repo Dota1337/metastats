@@ -37,12 +37,14 @@ const MACHINE = /^\s*</.test(prompt);
 
 if (sessionId) {
   if (MACHINE) {
-    // Zaehlt als normaler Turn, erteilt und loescht aber nichts.
-    const s = readState(sessionId);
-    writeState(sessionId, {
-      promptsSinceApproval: (s.promptsSinceApproval || 0) + 1,
-      promptsSinceFirstApproval: s.approvedAt ? (s.promptsSinceFirstApproval || 0) + 1 : 0,
-    });
+    // Erteilt nichts, loescht nichts — und zaehlt seit 2026-09-01 auch NICHT
+    // mehr mit. Die Zaehler heissen `promptsSince…` und sollen messen, wie weit
+    // die Arbeit vom letzten echten User-Wort entfernt ist. Eine Subagent-
+    // Fertigmeldung ist kein User-Wort: sie kommt als Folge der freigegebenen
+    // Arbeit selbst. Vorher verbrauchte eine Zweier-Multi-Review 2 der 8
+    // erlaubten Prompts — die Review, die AGENTS.md vorschreibt, hat also die
+    // Freigabe fuer die anschliessende Implementation aufgezehrt. Genau daran
+    // ist Runde 4 gescheitert (reference_discipline_hooks.md).
   } else if (NEW_TOPIC.test(prompt) && !(SHORT && APPROVAL.test(prompt.replace(NEW_TOPIC, '')))) {
     // Neuer `Code:`-Task = neues Thema. Alte Freigabe verfaellt, und zwar
     // sichtbar: der Assistant sieht den Grund im Gate-Text wieder.

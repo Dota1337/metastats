@@ -255,3 +255,37 @@ test('das Gate sperrt seine eigene Reparatur nicht ein', () => {
   assert.equal(gate(project, 's34', { file_path: join(project, 'infra', 'claude-settings', 'hooks.json') }), 'allow');
   rmSync(project, { recursive: true, force: true });
 });
+
+test('Maschinen-Prompts zaehlen das Freigabe-Fenster nicht leer', async () => {
+  const project = makeProject();
+  const { approvalStatus, MAX_PROMPTS_PER_APPROVAL } = await loadState(project);
+
+  approve(project, 's9');
+  // Eine Multi-Review nach AGENTS.md meldet pro Agent einmal zurueck. Frueher
+  // verbrauchte allein das 2 der 8 erlaubten Prompts — die vorgeschriebene
+  // Review hat also die Freigabe fuer die Implementation aufgefressen.
+  for (let i = 0; i < MAX_PROMPTS_PER_APPROVAL + 3; i++) {
+    runHook('prompt-submit.mjs', project, {
+      session_id: 's9',
+      prompt: '<task-notification>metastats-architect: PASS</task-notification>',
+    });
+  }
+
+  assert.equal(readSessionState(project, 's9').promptsSinceApproval, 0);
+  assert.equal(approvalStatus('s9').ok, true);
+  rmSync(project, { recursive: true, force: true });
+});
+
+test('echte User-Prompts zaehlen weiterhin mit', async () => {
+  const project = makeProject();
+  const { approvalStatus, MAX_PROMPTS_PER_APPROVAL } = await loadState(project);
+
+  approve(project, 's10');
+  for (let i = 0; i <= MAX_PROMPTS_PER_APPROVAL; i++) {
+    runHook('prompt-submit.mjs', project, { session_id: 's10', prompt: `und jetzt Schritt ${i}` });
+  }
+
+  const status = approvalStatus('s10');
+  assert.equal(status.ok, false);
+  rmSync(project, { recursive: true, force: true });
+});

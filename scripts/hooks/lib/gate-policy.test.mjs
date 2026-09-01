@@ -114,3 +114,29 @@ test('planQuality verlangt Verdicts UND drei Alternativen', () => {
   // Anderer Fehler darf sich NICHT als "kein Plan" tarnen.
   assert.equal(planQuality('x', () => { throw new Error('EACCES'); }).ok, true);
 });
+
+// ------------------------------------------------- Lockerung 2026-09-01 (B8)
+
+test('node --test laeuft, obwohl Test-Dateien schreiben duerfen muessen', () => {
+  // Der Test-Runner selbst schreibt nichts ins Repo; die Suiten legen ihre
+  // Wegwerf-Projekte im Temp-Ordner an. Vorher hat das Gate den eigenen
+  // Negativtest blockiert — die Bremse stand dem im Weg, was sie absichern soll.
+  const schreibend = () => 'import {writeFileSync} from "fs"; writeFileSync("app/x","");';
+  assert.equal(blocks('node --test scripts/hooks/lib/state.test.mjs', schreibend), false);
+  assert.equal(blocks('node --test', schreibend), false);
+});
+
+test('Skript, das nachweislich nur nach TMP schreibt, laeuft', () => {
+  const nurTmp = () =>
+    'import {writeFileSync,mkdtempSync} from "fs"; import {tmpdir} from "os";\n' +
+    'const d = mkdtempSync(tmpdir()); writeFileSync(d + "/x.json", "{}");';
+  assert.equal(blocks('node scripts/probe-tmp.mjs', nurTmp), false);
+});
+
+test('Massen-Umschreiber bleibt geblockt — die Lockerung ist keine Hintertuer', () => {
+  // scripts/codemod-accent.mjs ist ein echtes Werkzeug, das mit --write
+  // App-Dateien umschreibt. Waere „committetes Skript = frei" die Regel
+  // geworden, waere genau dieser Aufruf frei geworden.
+  const codemod = () => 'import {writeFileSync} from "fs"; writeFileSync(file, out);';
+  assert.equal(blocks('node scripts/codemod-accent.mjs --write', codemod), true);
+});

@@ -40,8 +40,10 @@ Messung im selben Turn. Wenn nicht gemessen: „ungeprueft" dazuschreiben.
 
 **Plan vor Code:** Nicht-triviale Aenderungen brauchen einen Plan in
 `.claude/plan-current.md`, darin einen `## Verdicts`-Block mit den Verdicts der
-Review-Agents und >=3 Alternativen, und eine Freigabe des Users. Das erzwingt
-derzeit NICHTS: in `settings.json` ist kein `PreToolUse` registriert (gemessen
-2026-09-01). Es ist eine Konvention — wer sie bricht, merkt es nicht von selbst.
+Review-Agents und >=3 Alternativen, und eine Freigabe des Users. Das wird seit
+2026-09-01 erzwungen: `scripts/hooks/write-gate.mjs` haengt als `PreToolUse` an
+Edit/Write/MultiEdit/NotebookEdit/Bash/PowerShell und blockt auch schreibende
+Shell-Kommandos (`sed -i`, Heredoc, `Set-Content`). Es hilft nicht, den Weg zu
+wechseln — nur ein freigegebener Plan oeffnet es.
 
 **Tool-Calls buendeln:** Unabhaengige Calls in EINE Message.

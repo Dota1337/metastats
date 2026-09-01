@@ -40,7 +40,8 @@ Messung im selben Turn. Wenn nicht gemessen: „ungeprueft" dazuschreiben.
 
 **Plan vor Code:** Nicht-triviale Aenderungen brauchen einen Plan in
 `.claude/plan-current.md`, darin einen `## Verdicts`-Block mit den Verdicts der
-Review-Agents und >=3 Alternativen, und eine Freigabe des Users. Der
-PreToolUse-Gate blockt Edit/Write sonst — auch MIT Freigabe.
+Review-Agents und >=3 Alternativen, und eine Freigabe des Users. Das erzwingt
+derzeit NICHTS: in `settings.json` ist kein `PreToolUse` registriert (gemessen
+2026-09-01). Es ist eine Konvention — wer sie bricht, merkt es nicht von selbst.
 
 **Tool-Calls buendeln:** Unabhaengige Calls in EINE Message.

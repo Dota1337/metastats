@@ -438,7 +438,7 @@ export default function TftExplorerPage() {
                     <div className="flex items-center gap-3 text-[11px]">
                       <span className="text-fg-muted">{aggregate.compCount} comps</span>
                       <span className="text-white tabular-nums">Ø {aggregate.wAvg.toFixed(2)}</span>
-                      <span className="text-[#3ecf8e] tabular-nums">{(aggregate.wTop4 * 100).toFixed(1)}% T4</span>
+                      <span className="text-[#3ecf8e] tabular-nums">{(aggregate.wTop4 * 100).toFixed(1)}% Top 4</span>
                       <span className="text-[#e0c75a] tabular-nums">{(aggregate.wTop1 * 100).toFixed(1)}% Win</span>
                     </div>
                   )}

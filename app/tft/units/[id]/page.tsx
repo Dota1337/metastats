@@ -223,7 +223,7 @@ export default function TftUnitDetailPage() {
                           <div className="text-right text-[11px] leading-tight">
                             <div className="text-white tabular-nums">Ø {s.avgPlacement?.toFixed(2) ?? '—'}</div>
                             <div className="text-fg-muted tabular-nums">
-                              {s.top4Rate != null ? `${(s.top4Rate * 100).toFixed(0)}% T4` : ''}
+                              {s.top4Rate != null ? `${(s.top4Rate * 100).toFixed(0)}% Top 4` : ''}
                               <span className="text-fg-faint"> · {s.games}</span>
                             </div>
                           </div>
@@ -335,7 +335,7 @@ export default function TftUnitDetailPage() {
                           {star}★ · {itemCount} {t('tft.itemsShort')}
                         </span>
                         <span className="text-white">Ø {focusedBin.avgPlacement?.toFixed(2) ?? '—'}</span>
-                        <span className="text-[#3ecf8e]">{focusedBin.top4Rate != null ? `${(focusedBin.top4Rate * 100).toFixed(1)}% T4` : '—'}</span>
+                        <span className="text-[#3ecf8e]">{focusedBin.top4Rate != null ? `${(focusedBin.top4Rate * 100).toFixed(1)}% Top 4` : '—'}</span>
                         <span className="text-[#e0c75a]">{focusedBin.top1Rate != null ? `${(focusedBin.top1Rate * 100).toFixed(1)}% T1` : '—'}</span>
                         <span className="text-fg-muted">{focusedBin.games.toLocaleString('de-DE')} {t('tft.gamesShort')}</span>
                         <button
@@ -381,7 +381,7 @@ export default function TftUnitDetailPage() {
                                     isClickable ? 'cursor-pointer hover:brightness-125' : 'cursor-default'
                                   } ${isFocused ? 'ring-2 ring-[#c39bff] ring-offset-1 ring-offset-surface-raised' : ''}`}
                                   style={{ backgroundColor: colorFor(place) }}
-                                  title={e ? `${tier}★ · ${ic} ${t('tft.itemsShort')} · Ø ${place?.toFixed(2)} · ${e.top4Rate != null ? `${(e.top4Rate * 100).toFixed(0)}% T4` : '—'} · ${e.games} ${t('tft.gamesShort')}` : undefined}
+                                  title={e ? `${tier}★ · ${ic} ${t('tft.itemsShort')} · Ø ${place?.toFixed(2)} · ${e.top4Rate != null ? `${(e.top4Rate * 100).toFixed(0)}% Top 4` : '—'} · ${e.games} ${t('tft.gamesShort')}` : undefined}
                                 >
                                   {place != null ? place.toFixed(2) : '·'}
                                 </button>

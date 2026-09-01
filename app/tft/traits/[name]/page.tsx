@@ -358,7 +358,7 @@ export default function TftTraitDetailPage() {
                       labelFormatter={(l: any) => `${t('tft.activation')}: ${l}`}
                       formatter={(v: any, _n: any, item: any) => {
                         const p = item?.payload;
-                        return [`Ø ${Number(v).toFixed(2)}${p?.top4 != null ? ` · ${p.top4.toFixed(0)}% T4` : ''}${p?.games != null ? ` · ${p.games} ${t('tft.gamesShort')}` : ''}`, t('tft.avgPlacement')];
+                        return [`Ø ${Number(v).toFixed(2)}${p?.top4 != null ? ` · ${p.top4.toFixed(0)}% Top 4` : ''}${p?.games != null ? ` · ${p.games} ${t('tft.gamesShort')}` : ''}`, t('tft.avgPlacement')];
                       }}
                     />
                     <Line type="monotone" dataKey="avgPlacement" stroke="var(--accent-tft)" strokeWidth={2} dot={{ r: 4, fill: 'var(--accent-tft)' }} activeDot={{ r: 6, fill: 'var(--series-purple-soft)' }} />
@@ -390,7 +390,7 @@ export default function TftTraitDetailPage() {
                     labelStyle={{ color: 'var(--fg-secondary)' }}
                     formatter={(v: any, _n: any, item: any) => {
                       const p = item?.payload;
-                      return [`Ø ${Number(v).toFixed(2)}${p?.top4 != null ? ` · ${p.top4.toFixed(0)}% T4` : ''}${p?.games != null ? ` · ${p.games} ${t('tft.gamesShort')}` : ''}`, t('tft.avgPlacement')];
+                      return [`Ø ${Number(v).toFixed(2)}${p?.top4 != null ? ` · ${p.top4.toFixed(0)}% Top 4` : ''}${p?.games != null ? ` · ${p.games} ${t('tft.gamesShort')}` : ''}`, t('tft.avgPlacement')];
                     }}
                   />
                   <Line type="monotone" dataKey="avgPlacement" stroke="var(--pos-win)" strokeWidth={2} dot={{ r: 4, fill: 'var(--pos-win)' }} activeDot={{ r: 6, fill: '#6ee7b7' }} connectNulls />

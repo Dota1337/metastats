@@ -327,7 +327,7 @@ export default function TftItemDetailPage() {
                     })}
                   </div>
                   <div className="text-right text-white tabular-nums text-xs">{s.avgPlacement.toFixed(2)}</div>
-                  <div className="text-right text-[#3ecf8e] tabular-nums text-xs">{(s.top4Rate * 100).toFixed(0)}% T4</div>
+                  <div className="text-right text-[#3ecf8e] tabular-nums text-xs">{(s.top4Rate * 100).toFixed(0)}% Top 4</div>
                   <div className="text-right text-fg-muted tabular-nums text-xs">{s.games}</div>
                 </div>
               ))}

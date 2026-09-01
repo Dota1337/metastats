@@ -235,17 +235,6 @@
     },
 
     {
-      "id": "revalidate/edge-frische-marketvalue",
-      "owner": "metastats-marketvalue-snapshot.service",
-      "type": "file",
-      "path": "/etc/metastats-crawler/revalidate-status-marketvalue.json",
-      "dateField": "updatedAt",
-      "maxAgeDays": 3,
-      "mustBeEmpty": ["failedPaths"],
-      "note": "Gegenstück für den Marktwert-Pfad, der die Cluster-Grenzen revalidiert. Eigener Marker, weil sonst der später laufende Treiber die Fehlerliste des früheren überschreibt."
-    },
-
-    {
       "id": "pro-teams/historientiefe",
       "owner": ".github/workflows/pro-teams-weekly.yml",
       "type": "file",

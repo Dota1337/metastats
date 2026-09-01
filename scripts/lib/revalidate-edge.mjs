@@ -141,10 +141,25 @@ export const STATS_EDGE_PATHS = [
   '/api/tft/available-patches',
 ];
 
-// Marktwert-spezifische Pfade. Der Marktwert-Crawler aktualisiert primär
-// Pro-Player-Snapshots; die Stats-Pages sind davon nicht betroffen.
-export const MARKETVALUE_EDGE_PATHS = [
-  '/api/tft/marktwert',
-  '/api/tft/onetricks',
-  '/api/tft/pros/specialty',
-];
+// MARKETVALUE_EDGE_PATHS entfernt am 2026-09-01. Die Liste war seit dem Umbau
+// auf daily-marketvalue-snapshot.mjs ohne Aufrufer — und ein Wiedereinbau haette
+// nichts bewirkt. Messung gegen Produktion an dem Tag:
+//
+//   - Purge auf /api/tft/onetricks und /api/tft/comps quittiert 200 ok, der
+//     Edge-Eintrag blieb stehen: Age 213 -> 244 -> 245 (onetricks) und
+//     292 -> 292 (comps). revalidatePath fasst den selbst gesetzten CDN-Header
+//     aus app/lib/api-cache.ts nicht an, und die Routen lesen request.url,
+//     liegen also nicht in Nexts Routen-Cache.
+//   - /api/tft/marktwert und /api/tft/pros/specialty lagen ohnehin in keinem
+//     Cache (X-Vercel-Cache: MISS, max-age=0, must-revalidate).
+//   - Die datentragenden Marktwert-Routen heissen leaderboard/movers/
+//     sparklines/teams/history und standen nie in der Liste.
+//
+// Wer echte Sofort-Frische will, braucht Cache-Etiketten (cacheTag +
+// revalidateTag) in diesen Routen plus einen Nachwaerm-Schritt — kalt liegt
+// /api/tft/marktwert/movers bei 20,4 s. Das ist ein eigenes Vorhaben, kein
+// Anhaengsel. Bis dahin traegt die 6-h-Frist aus app/lib/api-cache.ts.
+//
+// STATS_EDGE_PATHS bleibt bestehen, obwohl der Purge dort denselben Defekt hat:
+// dessen Vertrag ist heute gruen und meldet wenigstens, ob der Treiber ueberhaupt
+// bis zum Ende laeuft.

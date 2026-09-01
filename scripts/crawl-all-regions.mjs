@@ -46,7 +46,9 @@
 import { spawn } from 'node:child_process';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { revalidateEdge, finishRevalidateRun, MARKETVALUE_EDGE_PATHS } from './lib/revalidate-edge.mjs';
+// Kein Revalidate-Import mehr: MARKETVALUE_EDGE_PATHS ist am 2026-09-01
+// entfernt worden, weil der Purge fuer diese Routen messbar wirkungslos war
+// (Begruendung mit Zahlen in scripts/lib/revalidate-edge.mjs).
 
 // ph2/th2 raus seit 2026-06-19 — 0 D2+ Spieler, 0 Crawl-Meta letzte 14 Tage.
 // Bleiben aber gültige Riot-Routings (siehe app/lib/regions.ts). me1 bleibt
@@ -228,15 +230,10 @@ async function main() {
     const next = order[i + 1];
     if (!next || REGION_CLUSTER[next] !== cluster) {
       await sync(`sync/${cluster}`);
-      // Plan A — Push-Invalidation des Marktwert-Edge-Caches nach jedem
-      // Cluster. Die Marktwert-Page sortiert nach Region — sobald ein Cluster
-      // durch ist, sind die zugehörigen Region-Filter aktualisierbar.
-      await revalidateEdge(MARKETVALUE_EDGE_PATHS, [], { label: `revalidate/${cluster}` });
     }
   }
 
   const elapsedMin = ((Date.now() - t0) / 60_000).toFixed(1);
-  finishRevalidateRun('revalidate/marketvalue', 'marketvalue');
   console.log(`\n=== run done in ${elapsedMin} min ===`);
 }
 

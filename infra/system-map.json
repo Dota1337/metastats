@@ -860,8 +860,7 @@
       "marketvalue/hetzner-snapshots",
       "marketvalue/regionen-abdeckung",
       "marketvalue/regionen-abdeckung-hetzner",
-      "set-achse/marktwert-snapshots",
-      "revalidate/edge-frische-marketvalue"
+      "set-achse/marktwert-snapshots"
     ],
     "scripts/sync-marketvalue-to-supabase.mjs": [
       "marketvalue/supabase-mirror",

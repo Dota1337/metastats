@@ -402,6 +402,48 @@ function read(path) {
   }
 }
 
+// 9) Unit-Feldliste der Comps-Listen-Funktion. `get_tft_comp_stats_list_v2`
+// baut jede Einheit aus einer geschlossenen Allowlist neu zusammen: einmal in
+// der `jsonb_to_recordset`-Deklaration (Lesen) und einmal im
+// `jsonb_build_object` (Ausgeben). Faellt ein Feld in einer der beiden
+// Haelften weg, bleibt trotzdem alles gruen — die Antwort traegt den
+// Schluessel weiter, weil mergeJsonbCountArrays ihn immer ausschreibt, nur
+// eben mit 0. Genau so ist `star3Games` zwischen 2026-08-27 und 2026-09-01
+// verschwunden: Daten da, UI korrekt, Marker nie sichtbar (Migration 0065).
+{
+  const UNIT_FIELDS = [
+    'characterId', 'count', 'sumPlacement', 'carryItemGames', 'gamesWithUnit',
+    'gamesWithOutcome', 'top1', 'top4', 'star3Games', 'multiplicity', 'topItems',
+  ];
+  const files = existsSync('supabase/migrations')
+    ? readdirSync('supabase/migrations').filter((f) => /comp_stats_list_v2.*.sql$/.test(f)).sort()
+    : [];
+  const newest = files[files.length - 1];
+  if (!newest) {
+    console.error('✗ DRIFT: keine list_v2-Migration in supabase/migrations gefunden');
+    failures++;
+  } else {
+    const sql = read(`supabase/migrations/${newest}`);
+    const declStart = sql.indexOf('as u(');
+    const buildStart = sql.indexOf('units_json as (');
+    if (declStart < 0 || buildStart < 0 || buildStart < declStart) {
+      console.error(`✗ DRIFT: ${newest} hat nicht die erwartete Struktur (as u( … units_json as ()`);
+      failures++;
+    } else {
+      const decl = sql.slice(declStart, buildStart);
+      const build = sql.slice(buildStart);
+      const missing = UNIT_FIELDS.filter((f) => !decl.includes(`"${f}"`) || !build.includes(f));
+      if (missing.length) {
+        console.error(`✗ DRIFT: ${newest} — Unit-Felder fehlen im SQL-Merge: ${missing.join(', ')}`);
+        console.error('    → das Feld kommt in der Comps-Liste still als 0 an, obwohl die Detail-Seite es zeigt.');
+        failures++;
+      } else {
+        console.log(`✓ Unit-Feldliste in ${newest} vollstaendig (${UNIT_FIELDS.length})`);
+      }
+    }
+  }
+}
+
 if (failures) {
   console.error(`\n${failures} Drift(s) — vor dem Push mit der jeweiligen SoT synchronisieren.`);
   process.exit(1);

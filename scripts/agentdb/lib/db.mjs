@@ -20,6 +20,12 @@ export function openDb(path = DEFAULT_DB_PATH) {
   sqliteVec.load(db);
   db.pragma('journal_mode = WAL');
   db.pragma('synchronous = NORMAL');
+  // Zwei Schreiber greifen auf dieselbe Datei zu: der Daemon (server.mjs, schreibt
+  // Trajektorien waehrend einer Session) und der Indexer (index-memories.mjs, laeuft
+  // seit 2026-09-01 detached beim Session-Start). WAL macht Leser und Schreiber
+  // vertraeglich, aber nicht zwei Schreiber untereinander — ohne busy_timeout
+  // scheitert der zweite sofort mit SQLITE_BUSY statt kurz zu warten.
+  db.pragma('busy_timeout = 5000');
   ensureSchema(db);
   return db;
 }

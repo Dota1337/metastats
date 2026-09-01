@@ -2,7 +2,7 @@
 // Indexer: liest alle Markdown-Files unter Memory-Folder, splittet in Sections,
 // embedded mit fastembed, schreibt in AgentDB. Source-of-Truth bleibt Markdown.
 
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import os from 'node:os';
 import { openDb, EMBEDDING_MODEL } from './lib/db.mjs';
@@ -11,6 +11,28 @@ import { splitSections } from './lib/sections.mjs';
 
 const MEMORY_DIR = `${os.homedir()}/.claude/projects/C--Users-dtaub-metastats/memory`;
 const BATCH_SIZE = 16;
+
+// Dropbox und OneDrive legen bei Sync-Kollisionen eine zweite Datei daneben:
+// "feedback_x (Konflikt … 2026-08-30).md". Inhaltlich ist das eine fast
+// wortgleiche Kopie — indiziert wuerde sie mit dem Original um die Top-K-Plaetze
+// konkurrieren und im schlimmsten Fall den veralteten Stand nach oben spuelen.
+const CONFLICT_COPY = /\([^)]*(?:Konflikt|conflicted copy|in Konflikt stehende)[^)]*\)/i;
+
+// Frische-Marker: der Session-Start-Hook liest nur diese kleine Datei, statt
+// better-sqlite3 im Hot-Path zu laden.
+const MARKER_PATH = `${os.homedir()}/.claude/agentdb/last-index.json`;
+
+function writeMarker(sections) {
+  try {
+    writeFileSync(MARKER_PATH, JSON.stringify({
+      at: new Date().toISOString(),
+      files: files.length,
+      sections,
+    }, null, 2));
+  } catch (err) {
+    console.error(`[index] Marker nicht schreibbar: ${err.message}`);
+  }
+}
 
 console.log(`[index] Memory-Dir: ${MEMORY_DIR}`);
 console.log(`[index] Embedding-Model: ${EMBEDDING_MODEL}`);
@@ -23,7 +45,7 @@ const db = openDb();
 // die Top-K-Plaetze und halbierte damit die nutzbare Trefferliste.
 // MEMORY.md ist der Index, kein Inhalt.
 const files = readdirSync(MEMORY_DIR)
-  .filter(f => f.endsWith('.md') && f !== 'MEMORY.md' && !f.startsWith('_'))
+  .filter(f => f.endsWith('.md') && f !== 'MEMORY.md' && !f.startsWith('_') && !CONFLICT_COPY.test(f))
   .map(f => join(MEMORY_DIR, f));
 console.log(`[index] ${files.length} Markdown-Files gefunden`);
 
@@ -107,6 +129,7 @@ console.log(`[index] ${toIndex.length} Sections zu indexieren (${skipped} unver�
 
 if (toIndex.length === 0) {
   console.log(`[index] Done in ${((Date.now() - t0) / 1000).toFixed(1)}s — nichts zu tun`);
+  writeMarker(allSections.length);
   db.close();
   process.exit(0);
 }
@@ -175,4 +198,5 @@ const counts = {
 };
 console.log(`[index] Total in DB: ${counts.sections} sections, ${counts.vecs} vectors`);
 
+writeMarker(counts.sections);
 db.close();

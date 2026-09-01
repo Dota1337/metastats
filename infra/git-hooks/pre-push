@@ -147,4 +147,13 @@ if ! node scripts/check-discipline-hooks.mjs; then
   exit 1
 fi
 
+# --- Memory-Index nachziehen (kein Gate) ---------------------------------
+# Der Indexer ist inkrementell: unveraenderte Sections werden uebersprungen
+# (gemessen 2026-09-01: 0,1 s bei nichts zu tun, 3,7 s fuer 30 neue Sections).
+# Er BLOCKT bewusst nicht — ein Vektor-Index ist Komfort, kein Korrektheits-Gate,
+# und ein Push, der an der Memory-Pflege scheitert, wird per --no-verify umgangen.
+if ! node scripts/agentdb/index-memories.mjs > /dev/null 2>&1; then
+  echo "[pre-push] Hinweis: Memory-Reindex fehlgeschlagen (Push laeuft trotzdem)."
+fi
+
 echo "[pre-push] all checks green."

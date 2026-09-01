@@ -14,7 +14,7 @@
 // nichts mehr da.
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { PROJECT_DIR, readInput, readState, writeState, pruneOldState, clearApproval, readGlobal, writeGlobal, APPROVAL_SURVIVES_COMPACT } from './lib/state.mjs';
 
 const input = readInput();
@@ -108,6 +108,56 @@ if (sessionId) {
   }
 }
 pruneOldState();
+
+// --- Memory-Index frisch halten -------------------------------------------
+// Bis 2026-09-01 hatte `index-memories.mjs` keinen einzigen Aufrufer
+// (`grep -rn "index-memories"` → 0). Folge: der Vektor-Index war 23 Tage alt und
+// neun Memory-Dateien standen nie darin, darunter die Rang-1-Regel. Ein Recall,
+// der die wichtigste Regel nicht findet, ist schlimmer als keiner — er sieht aus,
+// als haette er gesucht.
+//
+// Der Indexer laeuft deshalb detached: er laedt ein Embedding-Modell und braucht
+// Sekunden bis Minuten. Wuerde der Hook darauf warten, verzoegerte er jeden
+// Session-Start; scheiterte er, blockierte er ihn.
+const MARKER = join(home, '.claude', 'agentdb', 'last-index.json');
+const REINDEX_OFF = process.env.MEMORY_REINDEX === '0';
+
+function newestMemoryMtime() {
+  try {
+    return readdirSync(memDir)
+      .filter((f) => f.endsWith('.md') && f !== 'MEMORY.md' && !f.startsWith('_'))
+      .reduce((mx, f) => Math.max(mx, statSync(join(memDir, f)).mtimeMs), 0);
+  } catch { return 0; }
+}
+
+if (wantsMemory && !REINDEX_OFF && existsSync(memDir)) {
+  let marker = null;
+  try { marker = JSON.parse(readFileSync(MARKER, 'utf8')); } catch { /* fehlt oder kaputt */ }
+  const markerAt = marker?.at ? Date.parse(marker.at) : 0;
+  const ageDays = markerAt ? (Date.now() - markerAt) / 864e5 : Infinity;
+
+  // Nur reindizieren, wenn es etwas zu tun gibt: Marker fehlt, Marker aelter als
+  // drei Tage, oder eine Memory-Datei ist juenger als der letzte Lauf.
+  const stale = !markerAt || ageDays > 3 || newestMemoryMtime() > markerAt;
+  if (stale) {
+    try {
+      const child = spawn(process.execPath, [join(PROJECT_DIR, 'scripts', 'agentdb', 'index-memories.mjs')], {
+        cwd: PROJECT_DIR, detached: true, stdio: 'ignore', windowsHide: true,
+      });
+      child.unref();
+      notes.push(markerAt ? `Memory-Reindex gestartet (Index ${ageDays.toFixed(1)} Tage alt)` : 'Memory-Reindex gestartet (kein Index-Marker)');
+    } catch (err) {
+      notes.push(`FEHLER: Memory-Reindex nicht startbar — ${err.message}`);
+    }
+  }
+
+  // Sichtbare Warnung statt stiller Verrottung: ein sehr alter Index bedeutet,
+  // dass der Reindex mehrfach hintereinander nicht durchgelaufen ist.
+  if (ageDays > 3) {
+    parts.push(`<memory-index-warnung>Der Vektor-Index ist ${Number.isFinite(ageDays) ? ageDays.toFixed(0) + ' Tage alt' : 'nie gebaut worden'}. Ein Reindex laeuft jetzt im Hintergrund, ist aber noch nicht fertig. Verlass dich in dieser Session nicht auf semantischen Memory-Recall — lies die Dateien direkt. Sag dem User diesen Befund.</memory-index-warnung>`);
+  }
+}
+
 
 // --- Woechentlicher Drift-Audit -------------------------------------------
 const g = readGlobal();

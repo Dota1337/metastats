@@ -38,7 +38,7 @@ Output enthält Top-K Treffer mit `distance`, `topic_tag`, `is_stale`-Marker, `e
 **Pflicht:**
 - Mindestens 5 Memory-Sections aus dem Search-Result lesen (via Read-Tool den vollen Section-Inhalt aus `file_path` ziehen)
 - Stale-markierte Treffer (`is_stale: true`) im Spec-Output mit Warnung kennzeichnen — Inhalt kann veraltet sein
-- Bei `distance > 0.85` Match-Qualität: Treffer ist semantisch weit → vielleicht keine relevante Memory vorhanden, das ist OK
+- Bei `distance > 0.80` Match-Qualität: Treffer ist semantisch weit → vielleicht keine relevante Memory vorhanden, das ist OK
 - Top-K=8 deckt die meisten Memory-Cluster ab; bei Multi-Domain-Prompts (z.B. TFT + Infra) zweite Search mit `topic`-Filter
 
 ### 1. User-Beispiele identifizieren

@@ -186,6 +186,23 @@ if (wantsMemory && !REINDEX_OFF && existsSync(memDir)) {
 }
 
 
+// --- Ist das Schreib-Gate ueberhaupt installiert? -------------------------
+// Ein PreToolUse-Gate faellt still OFFEN aus: wenn es nicht registriert ist,
+// fehlt kein Signal, es passiert einfach nichts. Genau so war der Vektor-Index
+// 23 Tage tot, ohne dass es jemandem auffiel. Der pre-push-Check fragt dasselbe,
+// aber erst beim Push — zwischen einem Dropbox-Konflikt an settings.json und
+// dem naechsten Push waere das Gate unbemerkt aus.
+try {
+  const installed = JSON.parse(readFileSync(join(PROJECT_DIR, '.claude', 'settings.json'), 'utf8'));
+  const pre = JSON.stringify(installed?.hooks?.PreToolUse || []);
+  if (!pre.includes('write-gate.mjs')) {
+    parts.push('<gate-warnung>Das Schreib-Gate (scripts/hooks/write-gate.mjs) ist in .claude/settings.json NICHT als PreToolUse registriert. Schreibzugriffe ohne freigegebenen Plan werden derzeit nicht geblockt. Sag dem User diesen Befund und schlag `npm run setup-hooks` vor.</gate-warnung>');
+  }
+} catch {
+  // Keine lesbare settings.json: der Drift-Check im pre-push meldet das ohnehin.
+}
+
+
 // --- Woechentlicher Drift-Audit -------------------------------------------
 const g = readGlobal();
 const lastAudit = g.lastAuditRun ? Date.parse(g.lastAuditRun) : 0;

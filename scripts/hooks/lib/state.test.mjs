@@ -169,3 +169,89 @@ test('der Schalter existiert und steht auf true', async () => {
   rmSync(project, { recursive: true, force: true });
   process.env.CLAUDE_PROJECT_DIR = REAL_PROJECT;
 });
+
+// --- Freigabe-Lecks, gefunden beim Bau des Schreib-Gates (2026-09-01) --------
+
+test('eine Subagent-Fertigmeldung erteilt keine Freigabe', () => {
+  const project = makeProject();
+  const meldung = `<task-notification>\n<task-id>abc</task-id>\n${'Der Fix ist trivial. '.repeat(200)}`;
+  runHook('prompt-submit.mjs', project, { session_id: 's20', prompt: meldung });
+  assert.equal(readSessionState(project, 's20').approvedAt ?? null, null);
+  rmSync(project, { recursive: true, force: true });
+});
+
+test('"trivial" in einem langen Prompt ist keine Freigabe', () => {
+  const project = makeProject();
+  const lang = `Erklaer mir bitte ausfuehrlich, warum du das fuer trivial haeltst. ${'x'.repeat(200)}`;
+  runHook('prompt-submit.mjs', project, { session_id: 's21', prompt: lang });
+  assert.equal(readSessionState(project, 's21').approvedAt ?? null, null);
+  rmSync(project, { recursive: true, force: true });
+});
+
+test('"Code: ja" ist eine Freigabe, kein neues Thema', () => {
+  const project = makeProject();
+  approve(project, 's22');
+  runHook('prompt-submit.mjs', project, { session_id: 's22', prompt: 'Code: ja' });
+  assert.ok(readSessionState(project, 's22').approvedAt, 'Freigabe darf nicht geloescht sein');
+  rmSync(project, { recursive: true, force: true });
+});
+
+// --- Negativtest des Schreib-Gates, beide Richtungen (Plan B4) ---------------
+
+const PLAN_MIT_REVIEW = `# Plan
+## Verdicts
+- metastats-architect: PASS
+- metastats-logic-flow-critic: NEEDS-ATTENTION
+
+| Option | Vorteil | Nachteil |
+|---|---|---|
+| A | schnell | fragil |
+| B | robust | teuer |
+| C | mittel | mittel |
+`;
+
+const decision = (r) => r?.hookSpecificOutput?.permissionDecision ?? 'allow';
+
+function gate(project, sessionId, tool_input, tool_name = 'Write') {
+  return decision(runHook('write-gate.mjs', project, { session_id: sessionId, tool_name, tool_input }));
+}
+
+test('ohne Freigabe blocken beide Schreibwege: Write und sed -i', () => {
+  const project = makeProject({ plan: PLAN_MIT_REVIEW });
+  assert.equal(gate(project, 's30', { file_path: join(project, 'app', 'x.ts') }), 'deny');
+  assert.equal(gate(project, 's30', { command: 'sed -i "s/a/b/" app/x.ts' }, 'Bash'), 'deny');
+  rmSync(project, { recursive: true, force: true });
+});
+
+test('mit Freigabe und reviewtem Plan gehen beide durch', () => {
+  const project = makeProject({ plan: PLAN_MIT_REVIEW });
+  approve(project, 's31');
+  assert.equal(gate(project, 's31', { file_path: join(project, 'app', 'x.ts') }), 'allow');
+  assert.equal(gate(project, 's31', { command: 'sed -i "s/a/b/" app/x.ts' }, 'Bash'), 'allow');
+  rmSync(project, { recursive: true, force: true });
+});
+
+test('Freigabe ohne Verdicts im Plan reicht nicht', () => {
+  const project = makeProject({ plan: '# Plan\nnur Prosa, keine Review.' });
+  approve(project, 's32');
+  assert.equal(gate(project, 's32', { file_path: join(project, 'app', 'x.ts') }), 'deny');
+  rmSync(project, { recursive: true, force: true });
+});
+
+test('WRITE_GATE=0 ist der Notausgang', () => {
+  const project = makeProject({ plan: PLAN_MIT_REVIEW });
+  const out = execFileSync(process.execPath, [join(HOOKS, 'write-gate.mjs')], {
+    input: JSON.stringify({ session_id: 's33', tool_name: 'Write', tool_input: { file_path: join(project, 'app', 'x.ts') } }),
+    env: { ...process.env, CLAUDE_PROJECT_DIR: project, WRITE_GATE: '0' },
+    encoding: 'utf8',
+  });
+  assert.equal(out.trim(), '');
+  rmSync(project, { recursive: true, force: true });
+});
+
+test('das Gate sperrt seine eigene Reparatur nicht ein', () => {
+  const project = makeProject({ plan: PLAN_MIT_REVIEW });
+  assert.equal(gate(project, 's34', { file_path: join(project, 'scripts', 'hooks', 'write-gate.mjs') }), 'allow');
+  assert.equal(gate(project, 's34', { file_path: join(project, 'infra', 'claude-settings', 'hooks.json') }), 'allow');
+  rmSync(project, { recursive: true, force: true });
+});

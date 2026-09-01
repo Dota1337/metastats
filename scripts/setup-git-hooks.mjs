@@ -94,6 +94,20 @@ function installClaudeHooks() {
     console.log(`  installed ${event} → ${dst}`);
   }
 
+  // Prune: Events, die frueher von uns installiert wurden und in hooks.json
+  // nicht mehr stehen, hier entfernen. Ohne diesen Pass ist "Austragen aus
+  // hooks.json" KEIN Rollback — die Schleife oben laeuft nur ueber Events, die
+  // es dort noch gibt, der alte Eintrag bliebe in settings.json stehen und der
+  // Hook liefe weiter (gemessen 2026-09-01 am Rollback-Pfad fuer write-gate).
+  for (const event of Object.keys(settings.hooks)) {
+    if (managed[event]) continue;
+    const rest = (settings.hooks[event] || []).filter(e => !isOurs(e));
+    if (rest.length === (settings.hooks[event] || []).length) continue;
+    if (rest.length) settings.hooks[event] = rest;
+    else delete settings.hooks[event];
+    console.log(`  pruned ${event} (nicht mehr in hooks.json)`);
+  }
+
   writeFileSync(dst, `${JSON.stringify(settings, null, 2)}\n`, 'utf8');
   return count;
 }

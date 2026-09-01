@@ -20,7 +20,7 @@ node scripts/agentdb/recall.mjs "<core of your review task>" --top-k 6
 **Required:**
 - Read at least 3 hits in full via the Read tool (path is in `file_path`).
 - `is_stale: true` → verify against current code, do NOT quote it as fact.
-- `distance > 0.85` → semantically far, ignore it (no relevant knowledge exists — that's fine).
+- `distance > 0.80` → semantically far, ignore it (no relevant knowledge exists — that's fine).
 - If a hit shaped your verdict, add a line `Known from: <file> — <finding>`.
 
 **Important:** the graph does NOT replace your own verification. It tells you

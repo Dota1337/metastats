@@ -19,16 +19,35 @@ const prompt = String(input.prompt || '').trim();
 // keine Freigabe des vorgelegten Plans, sondern ein neuer Auftrag — deshalb
 // die Laengenschranke statt eines blossen Praefix-Matches.
 const SHORT = prompt.length <= 120;
-const APPROVAL = /^\s*(go|ok|okay|k|passt|freigabe|freigegeben|los|jo|ja|yes|approved|genehmigt|mach)\b/i;
+// `k`, `jo` und `mach` sind hier bewusst NICHT dabei: sie kamen in keiner der
+// bisher erteilten Freigaben vor (`.git/metastats-discipline/*.json` am
+// 2026-09-01: go, Go, "Ja und go", "Go B", "Go Freigabe", "Passt, …"), sind aber
+// die haeufigsten Anfaenge normaler Auftraege („mach weiter mit X").
+const APPROVAL = /^\s*(go|ok|okay|passt|freigabe|freigegeben|los|ja|yes|approved|genehmigt)\b/i;
 const TRIVIAL = /\b(trivial|spot-?fix)\b/i;
 const NEW_TOPIC = /^\s*code\s*:/i;
+// Prompts, die nicht vom User stammen: Subagent-Fertigmeldungen, Hook-Reminder,
+// Bash-Echos. Sie kommen ueber denselben Kanal an und duerfen niemals eine
+// Freigabe erzeugen. Belegt eingetreten (2026-09-01): in
+// `.git/metastats-discipline/060ef0f3-….json` steht `approvedBy:
+// "<task-notification>…"` — eine 18k Zeichen lange Agent-Meldung enthielt das
+// Wort „trivial" und hat sich damit selbst freigegeben, weil TRIVIAL frueher
+// ausserhalb der Laengenschranke geprueft wurde.
+const MACHINE = /^\s*</.test(prompt);
 
 if (sessionId) {
-  if (NEW_TOPIC.test(prompt)) {
+  if (MACHINE) {
+    // Zaehlt als normaler Turn, erteilt und loescht aber nichts.
+    const s = readState(sessionId);
+    writeState(sessionId, {
+      promptsSinceApproval: (s.promptsSinceApproval || 0) + 1,
+      promptsSinceFirstApproval: s.approvedAt ? (s.promptsSinceFirstApproval || 0) + 1 : 0,
+    });
+  } else if (NEW_TOPIC.test(prompt) && !(SHORT && APPROVAL.test(prompt.replace(NEW_TOPIC, '')))) {
     // Neuer `Code:`-Task = neues Thema. Alte Freigabe verfaellt, und zwar
     // sichtbar: der Assistant sieht den Grund im Gate-Text wieder.
     clearApproval(sessionId, 'neuer Code:-Task — alte Freigabe verfallen');
-  } else if ((SHORT && APPROVAL.test(prompt)) || TRIVIAL.test(prompt)) {
+  } else if (SHORT && (APPROVAL.test(prompt.replace(NEW_TOPIC, '')) || TRIVIAL.test(prompt))) {
     // Ein zweites „ok" zum selben Plan erneuert das 8er-Fenster, aber NICHT
     // den absoluten Deckel: sonst waere jede beilaeufige Zustimmung eine
     // Verlaengerung ohne Ende. Zurueckgesetzt wird der Deckel nur, wenn sich

@@ -18,15 +18,17 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const SRC = 'infra/claude-settings/hooks.json';
-// PreToolUse (plan-gate.mjs) am 2026-08-18 auf ausdrueckliche User-Anweisung
-// entfernt: die Freigabe-Erkennung in prompt-submit.mjs:22 ist auf den
-// Zeilenanfang verankert, „… und go" am Satzende zaehlte nicht, und das Gate
-// blockte daraufhin die eigene Reparatur. Der User hat das Entfernen dreimal
-// bestaetigt, zuletzt „Code: Ja, entferne es". scripts/hooks/plan-gate.mjs
-// bleibt liegen — Wiedereinschalten ist ein Eintrag in hooks.json plus diese
-// Zeile. Die Multi-Review-Pflicht aus AGENTS.md gilt unveraendert weiter, sie
-// ist ab jetzt Konvention statt Mechanik.
-const REQUIRED = ['SessionStart', 'UserPromptSubmit', 'PreCompact', 'PostCompact', 'Stop'];
+// Runde 5 (2026-09-01): PreToolUse ist zurueck, jetzt als scripts/hooks/write-gate.mjs.
+// Runde 4 (2026-08-18) hatte das alte plan-gate.mjs auf dreifache User-Anweisung
+// entfernt, weil es mitten in freigegebener Arbeit blockte — die Freigabe-Erkennung
+// war auf den Zeilenanfang verankert und „Code: Ja, entferne es" loeschte die
+// Freigabe, statt sie zu erteilen. Beide Ursachen sind in prompt-submit.mjs
+// behoben und in state.test.mjs festgenagelt. plan-gate.mjs ist geloescht; die
+// Policy liegt in scripts/hooks/lib/gate-policy.mjs und ist testbar.
+const REQUIRED = ['SessionStart', 'UserPromptSubmit', 'PreCompact', 'PostCompact', 'Stop', 'PreToolUse'];
+// Events, die auf JEDEN Tool-Call feuern wuerden, brauchen einen Matcher —
+// sonst kostet ein 80-ms-Node-Start bei jedem Read und Grep.
+const MATCHER_REQUIRED = ['PreToolUse', 'PostToolUse'];
 
 const problems = [];
 
@@ -41,6 +43,12 @@ for (const ev of REQUIRED) {
   const entries = managed[ev];
   if (!Array.isArray(entries) || entries.length === 0) {
     problems.push(`${SRC}: Event ${ev} fehlt oder ist leer.`);
+  }
+}
+
+for (const ev of MATCHER_REQUIRED) {
+  for (const entry of managed[ev] || []) {
+    if (!entry.matcher) problems.push(`${SRC}: ${ev} ohne matcher — feuert auf jeden Tool-Call.`);
   }
 }
 
@@ -60,9 +68,17 @@ if (!existsSync(dst)) {
   let installed = {};
   try { installed = JSON.parse(readFileSync(dst, 'utf8')).hooks || {}; }
   catch { problems.push(`${dst} ist kein gueltiges JSON.`); }
-  const flat = JSON.stringify(installed);
-  for (const r of refs) {
-    if (!flat.includes(r)) problems.push(`${dst}: ${r} ist nicht installiert — Run: npm run setup-hooks`);
+  // Event-genau pruefen, nicht per String-Containment ueber die ganze Datei:
+  // ein Hook, der unter dem falschen Event installiert ist, waere sonst gruen.
+  // Bei einem Gate ist das die schlimmere Fehlerklasse — es faellt still offen
+  // aus, ohne dass irgendetwas meldet, dass es nie gefeuert hat.
+  for (const [ev, entries] of Object.entries(managed)) {
+    const flatEv = JSON.stringify(installed[ev] || []);
+    const evRefs = new Set();
+    JSON.stringify(entries).replace(/scripts\/[A-Za-z0-9_./-]+\.mjs/g, (m) => { evRefs.add(m); return m; });
+    for (const r of evRefs) {
+      if (!flatEv.includes(r)) problems.push(`${dst}: ${r} fehlt unter ${ev} — Run: npm run setup-hooks`);
+    }
   }
 }
 

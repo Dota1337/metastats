@@ -20,7 +20,7 @@ node scripts/agentdb/recall.mjs "<Kern deines Review-Auftrags>" --top-k 6
 **Pflicht:**
 - Mindestens 3 Treffer per Read-Tool im Volltext lesen (Pfad steht in `file_path`).
 - `is_stale: true` → Inhalt gegen den aktuellen Code verifizieren, NICHT zitieren.
-- `distance > 0.85` → semantisch weit weg, ignorieren (kein passendes Wissen vorhanden — das ist OK).
+- `distance > 0.80` → semantisch weit weg, ignorieren (kein passendes Wissen vorhanden — das ist OK).
 - Wenn ein Treffer dein Urteil beeinflusst hat: im Verdict eine Zeile
   `Bekannt aus: <file> — <Erkenntnis>` führen.
 

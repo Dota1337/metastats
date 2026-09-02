@@ -84,6 +84,10 @@ export async function GET(request: NextRequest) {
       ? rankedAll.find(r => r.queueType === TFT_RANKED_SOLO_QUEUE) || null
       : null;
 
+    // Spielerbezogene Antwort — nichts, was eine Zwischenspeicherung verträgt.
+    // Ohne diese Zeile setzt Next gar keine Angabe, und dann entscheidet jede
+    // Zwischenstation selbst; der 400er-Zweig oben (Z. 36) macht es seit jeher
+    // richtig, der Erfolgsfall war die Lücke.
     return NextResponse.json({
       summoner: {
         name: `${account.gameName}#${account.tagLine}`,
@@ -96,7 +100,7 @@ export async function GET(request: NextRequest) {
       ranked: soloRanked,
       matchIds,
       region,
-    });
+    }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (err) {
     console.error('TFT summoner error:', err);
     return NextResponse.json({ error: 'Server Fehler', code: 'server_error' }, { status: 500 });

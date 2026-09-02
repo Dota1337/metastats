@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
+import RiotStatusBanner from '../components/tft/RiotStatusBanner';
 
 // Ohne diesen Block erbt der komplette /tft-Baum den Titel des Wurzel-Layouts
 // — und der spricht von League of Legends. Gemessen am 2026-09-01:
@@ -44,6 +46,16 @@ export default function TftLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <div data-game="tft" className="contents">
+      {/* Stoerungs-Banner. Rendert nichts, solange Riot fuer die angesehene
+          Region nichts Ernstes meldet — deshalb steht hier auch kein
+          Platzhalter. Suspense, weil die Komponente die Adresszeile liest
+          (useSearchParams) und Next sonst den ganzen /tft-Baum dynamisch
+          machen wuerde. Breite wie die Seiten darunter (max-w-[1400px]). */}
+      <Suspense fallback={null}>
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-2 empty:hidden">
+          <RiotStatusBanner />
+        </div>
+      </Suspense>
       {children}
     </div>
   );

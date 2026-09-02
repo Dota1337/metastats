@@ -1696,6 +1696,24 @@ const translations = {
   'tft.twitchLive.title': t6('Jetzt live auf Twitch', 'Live now on Twitch', '\uD2B8\uC704\uCE58 \uC2E4\uC2DC\uAC04 \uBC29\uC1A1', 'Twitch \u76F4\u64AD\u4E2D', 'En vivo en Twitch', 'En direct sur Twitch'),
   'tft.tournamentWatch.title': t6('Aktuelle Turniere', 'Live tournaments', '\uC9C4\uD589 \uC911\uC778 \uB300\uD68C', '\u6B63\u5728\u8FDB\u884C\u7684\u8D5B\u4E8B', 'Torneos en vivo', 'Tournois en direct'),
   'tft.tournamentWatch.live': t6('LIVE', 'LIVE', 'LIVE', '\u76F4\u64AD\u4E2D', 'EN VIVO', 'EN DIRECT'),
+  // Stoerungs-Banner (app/components/tft/RiotStatusBanner.tsx). Hinter dem Text
+  // stehen die betroffenen Regionen als Kuerzel, deshalb endet er offen.
+  'tft.riotStatus.warning': t6(
+    'Riot meldet St\u00F6rungen:',
+    'Riot reports issues:',
+    'Riot \uC7A5\uC560 \uBCF4\uACE0:',
+    'Riot \u62A5\u544A\u6545\u969C\uFF1A',
+    'Riot informa incidencias:',
+    'Riot signale des incidents :',
+  ),
+  'tft.riotStatus.critical': t6(
+    'Riot meldet schwere St\u00F6rungen:',
+    'Riot reports major issues:',
+    'Riot \uC2EC\uAC01\uD55C \uC7A5\uC560 \uBCF4\uACE0:',
+    'Riot \u62A5\u544A\u4E25\u91CD\u6545\u969C\uFF1A',
+    'Riot informa incidencias graves:',
+    'Riot signale des incidents majeurs :',
+  ),
   'tft.comp.editorialTiers': t6('Editorial-Tier-Lists', 'Editorial tier lists', '\uC5D0\uB514\uD1A0\uB9AC\uC5BC \uD2F0\uC5B4\uB9AC\uC2A4\uD2B8', '\u7F16\u8F91\u7CBE\u9009\u699C\u5355', 'Listas editoriales', 'Tier lists \u00E9ditoriales'),
   'tft.comp.flexScore': t6('Flex-Score', 'Flex score', '유연성 점수', '灵活性评分', 'Puntuación Flex', 'Score flex'),
   'tft.comp.flex.flexible': t6('Sehr flexibel', 'Very flexible', '매우 유연함', '非常灵活', 'Muy flexible', 'Très flexible'),

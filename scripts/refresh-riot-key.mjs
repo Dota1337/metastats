@@ -158,14 +158,14 @@ function syncKeyToHetzner(env, key) {
     // --no-block: don't wait out the multi-hour pass; oneshot semantics de-dupe
     // a concurrent run, and the wrapper self-throttles to ~weekly.
     'systemctl start --no-block metastats-lol-marketvalue.service',
-    // metastats-refresh-api.service ist always-on und cacht den RIOT_API_KEY
-    // im RAM beim Start — ohne Restart hängt der alte Key bis zum nächsten
-    // unrelated Restart. 2026-06-06 + 2026-06-23 zwei Vorfälle mit 3 Tagen
-    // stiller Fehlfunktion des Refresh-Buttons. Backlog-Item 3 aus
-    // project_status_2026_06_23_supabase_outage_response.md jetzt automatisiert.
-    // Siehe reference_hetzner_box_services.md Key-Rotation-Checkliste.
-    'systemctl restart metastats-refresh-api.service',
-    'echo "      box keyed + lol-marketvalue kicked + refresh-api restarted"',
+    // KEIN Restart von metastats-refresh-api.service (entfernt 2026-09-02):
+    // der Dienst liest ausschliesslich RIOT_API_KEY_TFT
+    // (scripts/refresh-api-server.mjs:150), und keiner seiner Importe fasst den
+    // LoL-Key an (`grep -rn "RIOT_API_KEY\b" scripts/lib/ | grep -v _TFT` → 0).
+    // Der Restart war also wirkungslos und hat den Dauerdienst auf :4100 bei
+    // jeder taeglichen Rotation mitten in laufenden Anfragen gekappt.
+    // Wieder aufnehmen, falls hier je der TFT-Key mitrotiert wird.
+    'echo "      box keyed + lol-marketvalue kicked"',
   ].join('; ');
   const r = spawnSync('ssh',
     ['-o', 'ConnectTimeout=12', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=accept-new', `root@${host}`, remote],

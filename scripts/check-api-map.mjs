@@ -82,6 +82,13 @@ const withEdges = new Set(map.edges.map(e => e.from));
 const orphans = map.nodes.filter(n => n.kind === 'route' && !withEdges.has(n.id)).map(n => n.label);
 if (orphans.length) notes.push(`Routen ohne Datenquelle: ${orphans.join(', ')}`);
 
+// 6) Routen, die niemand mehr ruft. Ebenfalls nur ein Hinweis: eine Route kann
+//    bewusst schlafen (Zukunftsflaeche) oder von aussen gerufen werden. Als
+//    harter Fehler wuerde der Waechter bei jedem geplanten Bauteil meckern und
+//    waere binnen einer Woche abgeschaltet.
+const silent = map.nodes.filter(n => n.kind === 'route' && n.used === false).map(n => n.label);
+if (silent.length) notes.push(`Ohne Aufrufer: ${silent.join(', ')}`);
+
 if (map.unresolved.length) {
   notes.push(`Nicht aufloesbar (Name kommt zur Laufzeit): ${map.unresolved.map(u => u.node).join(', ')}`);
 }

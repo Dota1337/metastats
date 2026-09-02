@@ -222,6 +222,11 @@ function markersDeep(entry) {
       const target = resolveImport(im[1], file);
       // Nur eigener Code, und keine andere Route: eine Route importiert keine
       // zweite Route, aber Hilfsmodule liegen auch unter app/api/*/lib.ts.
+      // Und niemals die Karte selbst: /api/internal/ops-snapshot liest sie ein,
+      // um die Tabellennamen zu bekommen. Wer sie mitliest, findet darin JEDEN
+      // Dateinamen und JEDE fremde Quelle wieder — gemessen am 03.09.2026:
+      // 12 erfundene Linien von dieser einen Adresse aus.
+      if (target && target === MAP_PATH) continue;
       if (target && !seen.has(target) && !/[/\\]route\.ts$/.test(target)) stack.push(target);
     }
   }
@@ -257,6 +262,167 @@ function tablesInBody(body, declaredTables) {
     if (declaredTables.has(name)) out.add(name);
   }
   return out;
+}
+
+// ------------------------------------------------------------------ Verbraucher
+//
+// Bis 03.09.2026 kannte die Karte nur die Richtung „Adresse -> Datenquelle".
+// Damit liess sich nicht sagen, ob eine Adresse ueberhaupt noch jemand ruft.
+// Eine blosse Textsuche nach dem Pfad reicht dafuer nicht: gemessen am
+// 03.09.2026 waeren 7 von 12 Verdachtsfaellen Fehlalarm gewesen, weil der
+// Aufrufer in `scripts/`, in `vercel.json` oder in einem zusammengebauten Pfad
+// steht — und umgekehrt gelten Adressen faelschlich als benutzt, deren
+// einziger Aufrufer auskommentiert ist.
+//
+// Deshalb zwei Stufen:
+//   1. Erreichbarkeit: welche Datei unter app/ haengt ueberhaupt an einer
+//      Seite? Statische UND dynamische Importe (next/dynamic) zaehlen, beide
+//      Anfuehrungsarten — ohne die dynamischen galten 12 lebende Bausteine als
+//      verwaist, ohne die doppelten Anfuehrungszeichen fehlte app/layout.tsx.
+//   2. Aufruf-Suche nur in erreichbaren Dateien plus scripts/, .github/,
+//      vercel.json, middleware.ts und apps/. Kommentare werden vorher entfernt
+//      (JS und YAML), sonst zaehlt ein auskommentierter Einbau als Nutzung.
+
+const APP_DIR = resolve(ROOT, 'app');
+const FLAG_FILE = resolve(APP_DIR, 'lib', 'feature-flags.ts');
+
+// Einstiegspunkte von Next: alles, was das Framework selbst laedt.
+const ENTRY_RE = /^(page|layout|route|template|default|error|global-error|not-found|loading|sitemap|robots|manifest|opengraph-image|twitter-image|icon|apple-icon)\.(ts|tsx)$/;
+// Dateien ausserhalb von app/, die Next ebenfalls selbst laedt.
+const ROOT_ENTRIES = ['middleware.ts', 'instrumentation.ts', 'instrumentation-client.ts',
+  'next.config.ts', 'sentry.server.config.ts', 'sentry.edge.config.ts'];
+
+// Eigene Muster statt RE_IMPORT: dort reicht die einfache Anfuehrungsart, hier
+// nicht — app/layout.tsx importiert mit doppelten, und ohne den dynamischen
+// Fall faellt jede per next/dynamic geladene Ansicht aus der Erreichbarkeit.
+const RE_IMPORT_ANY = /(?:^|\n)\s*(?:import|export)\s[^;]*?from\s+['"]([^'"]+)['"]/g;
+const RE_DYNAMIC_ANY = /import\(\s*['"]([^'"]+)['"]/g;
+
+/**
+ * Kommentare raus, bevor nach Pfaden gesucht wird. Ein auskommentierter Einbau
+ * ist keine Nutzung — daran haengen `/api/tft/pros/by-comp` (auskommentiert in
+ * app/tft/comps/[slug]/page.tsx) und `/api/knowledge-graph`, das nur noch im
+ * Kopfkommentar eines Workflows steht. `//` mitten in einer URL bleibt stehen
+ * (Doppelpunkt davor).
+ */
+function stripComments(text, file) {
+  if (/\.ya?ml$/.test(file)) return text.replace(/(^|\n)\s*#[^\n]*/g, '$1');
+  return text
+    // Nur Blockkommentare am Zeilenanfang. Ein /* mitten in einer Zeichenkette
+    // ist kein Kommentar: in OpsGraph.tsx steht '/tft/*' in einem Text, und
+    // wer dort zu strippen beginnt, verschluckt den halben Rest der Datei
+    // samt der einzigen Stelle, die /api/internal/ops-snapshot ruft.
+    .replace(/^[ \t]*\/\*[\s\S]*?\*\//gm, ' ')
+    .replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+}
+
+/** Alle Dateien unter app/, die von einem Einstiegspunkt aus erreichbar sind. */
+function reachableAppFiles() {
+  const all = walk(APP_DIR, /\.(ts|tsx)$/);
+  const roots = all.filter(f => ENTRY_RE.test(posix(f).split('/').pop()));
+  for (const r of ROOT_ENTRIES) {
+    const p = resolve(ROOT, r);
+    if (existsSync(p)) roots.push(p);
+  }
+  const seen = new Set();
+  const stack = [...roots];
+  while (stack.length) {
+    const file = stack.pop();
+    if (seen.has(file)) continue;
+    seen.add(file);
+    const text = read(file);
+    for (const re of [RE_IMPORT_ANY, RE_DYNAMIC_ANY]) {
+      for (const m of text.matchAll(re)) {
+        const target = resolveImport(m[1], file);
+        // Nur Code weiterverfolgen. Sonst zieht der Import dieser Karte in
+        // OpsGraph.tsx die Karte selbst in die Suche — und weil dort jede
+        // Adresse steht, gaelte danach jede Adresse als benutzt.
+        if (target && /\.tsx?$/.test(target) && !seen.has(target)) stack.push(target);
+      }
+    }
+  }
+  return seen;
+}
+
+/**
+ * Adressen mit Verbrauchern ausserhalb dieses Repos. Nur hier hinein, was
+ * nachweislich von aussen gerufen wird — alles Messbare misst der Erkenner
+ * selbst. Waechst diese Liste, wird sie zum Muelleimer fuer alles, was der
+ * Erkenner nicht kann, und niemand kann ihr mehr glauben.
+ */
+const EXTERNAL_CONSUMERS = {
+  '/api/feed/tft-patches':
+    'oeffentlicher Nachrichten-Feed, wird von fremden Lesern abgerufen',
+};
+
+/**
+ * Merker aus app/lib/feature-flags.ts, die auf `false` stehen. Eine Adresse,
+ * die so einen Merker liest, ist abgeschaltet — unabhaengig davon, ob sie
+ * jemand ruft.
+ */
+function disabledFlags() {
+  if (!existsSync(FLAG_FILE)) return [];
+  const out = [];
+  for (const m of read(FLAG_FILE).matchAll(/export\s+const\s+([A-Z0-9_]+)\s*=\s*false\b/g)) {
+    out.push(m[1]);
+  }
+  return out;
+}
+
+/** Suchmuster fuer eine Adresse — dynamische Stuecke matchen `${...}`. */
+function routeMatcher(path) {
+  const body = path.split('/').filter(Boolean).map(seg =>
+    // Leer erlaubt, weil ein Pfad auch zusammengesetzt sein kann:
+    // app/lib/tft-cdragon.ts baut den Bild-Proxy als `'/api/img/' + path`.
+    /^\[.+\]$/.test(seg)
+      ? '(?:\\$\\{[^}]*\\}|[A-Za-z0-9_.%-]*)'
+      : seg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+  ).join('/');
+  // Danach darf kein weiteres Pfadstueck folgen, sonst gilt /api/champions als
+  // benutzt, sobald irgendwo /api/champions/collect steht.
+  return new RegExp(`/${body}(?![A-Za-z0-9_$/-])`);
+}
+
+function consumerFacts(routePathsIn) {
+  const reachable = reachableAppFiles();
+  const scanFiles = [
+    ...reachable,
+    ...walk(resolve(ROOT, 'scripts'), /\.(mjs|js|ts)$/),
+    ...walk(resolve(ROOT, '.github'), /\.ya?ml$/),
+    ...(existsSync(resolve(ROOT, 'vercel.json')) ? [resolve(ROOT, 'vercel.json')] : []),
+    ...walk(resolve(ROOT, 'apps'), /\.(ts|tsx|js|mjs|json)$/),
+    // Diese Datei selbst zaehlt nicht: sie fuehrt Adressen als Daten (die
+    // Ausnahmeliste oben). Wuerde sie mitgelesen, machte sich jede Ausnahme
+    // selbst wahr.
+  ].filter(f => f !== fileURLToPath(import.meta.url));
+  const texts = new Map();
+  for (const f of scanFiles) {
+    if (!texts.has(f)) texts.set(f, stripComments(read(f), f));
+  }
+  const flags = disabledFlags();
+  const facts = new Map();
+  for (const path of routePathsIn) {
+    const re = routeMatcher(path);
+    const ownFile = resolve(API_DIR, `${path.replace('/api/', '')}/route.ts`);
+    const usedBy = [];
+    for (const [file, text] of texts) {
+      if (file === ownFile) continue;
+      if (re.test(text)) usedBy.push(posix(relative(ROOT, file)));
+    }
+    const flagOff = existsSync(ownFile)
+      ? flags.find(f => new RegExp(`\\b${f}\\b`).test(read(ownFile))) || null
+      : null;
+    facts.set(path, {
+      usedBy: usedBy.sort(),
+      external: EXTERNAL_CONSUMERS[path] || null,
+      disabledBy: flagOff,
+    });
+  }
+  // Ausnahmen, die ins Leere zeigen, sind stille Luegen — sie halten eine
+  // laengst geloeschte Adresse als „lebt" in der Karte. Deshalb sichtbar
+  // machen statt schweigen.
+  const stale = Object.keys(EXTERNAL_CONSUMERS).filter(p => !routePathsIn.includes(p));
+  return { facts, stale };
 }
 
 // ------------------------------------------------------------------ Aufbau
@@ -302,6 +468,7 @@ function build() {
 
   const routePaths = routeFiles.map(routePathOf);
   const groupOf = groupsFor(routePaths);
+  const { facts: consumers, stale: staleExceptions } = consumerFacts(routePaths);
 
   const usedTables = new Set();
   const usedRpcs = new Set();
@@ -324,12 +491,20 @@ function build() {
   for (const { file, m } of perRoute) {
     const path = routePathOf(file);
     const id = `api:${path}`;
+    const use = consumers.get(path);
     addNode(id, {
       kind: 'route',
       label: path,
       group: groupOf.get(path),
       file: posix(relative(ROOT, file)),
       via: [...m.via].sort(),
+      // used:false heisst: kein lebender Aufrufer im Repo und kein Verbraucher
+      // von aussen. disabledBy schlaegt das — eine Adresse hinter einem
+      // ausgeschalteten Merker ist tot, auch wenn sie noch jemand ruft.
+      used: !use.disabledBy && (use.usedBy.length > 0 || Boolean(use.external)),
+      usedBy: use.usedBy,
+      ...(use.external ? { externalConsumer: use.external } : {}),
+      ...(use.disabledBy ? { disabledBy: use.disabledBy } : {}),
     });
 
     for (const t of [...m.tables].sort()) {
@@ -353,6 +528,16 @@ function build() {
         count: m.dynamic,
       });
     }
+  }
+
+  // Eine Ausnahme in EXTERNAL_CONSUMERS, deren Adresse es nicht mehr gibt,
+  // waere ein stiller Freifahrtschein. Sie faellt hier auf.
+  for (const path of staleExceptions) {
+    unresolved.push({
+      node: 'api:' + path,
+      reason: 'EXTERNAL_CONSUMERS nennt eine Adresse, die es nicht mehr gibt',
+      count: 1,
+    });
   }
 
   // Funktions- und Tabellenknoten samt Kette fn -> db.
@@ -421,6 +606,7 @@ function build() {
       rpcs: [...usedRpcs].length,
       files: [...usedFiles].length,
       edges: sortedEdges.length,
+      unused: sortedNodes.filter(n => n.kind === 'route' && n.used === false).length,
       unresolved: unresolved.length,
     },
     groups,
@@ -451,5 +637,5 @@ if (CHECK_ONLY) {
 writeFileSync(MAP_PATH, text, 'utf8');
 console.log(`✓ infra/api-map.json: ${map.counts.routes} Routen, ${map.counts.groups} Gruppen, ` +
   `${map.counts.tables} Tabellen, ${map.counts.rpcs} Funktionen, ${map.counts.files} Dateien, ` +
-  `${map.counts.edges} Kanten, ` +
+  `${map.counts.edges} Kanten, ${map.counts.unused} ungenutzt, ` +
   `${map.counts.unresolved} unaufgeloest`);

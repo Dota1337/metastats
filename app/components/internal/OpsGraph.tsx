@@ -37,6 +37,12 @@ const POLL_RIOT_STATUS_MS = 60_000;
 
 type ServiceStatus = 'healthy' | 'working' | 'stalled' | 'failed' | 'unknown';
 
+// Zustaende, die es nur fuer Kartenknoten gibt, nicht fuer Dienste:
+//   disabled — die Adresse ruft niemand mehr (oder ein Merker schaltet sie ab)
+//   missing  — die Tabelle gibt es in der Datenbank nicht
+//   empty    — die Tabelle gibt es, sie ist aber leer
+type NodeStatus = ServiceStatus | 'disabled' | 'missing' | 'empty';
+
 interface ServiceView {
   name: string;
   status: ServiceStatus;
@@ -62,32 +68,44 @@ interface ManifestInfo {
   fetchedAt: string;
 }
 
+interface TableState {
+  state: Record<string, { exists: boolean | null; estimated: number | null }>;
+  fetchedAt: string;
+}
+
 interface Snapshot {
   fetchedAt: string;
   services: { services: ServiceView[]; fetchedAt: string } | null;
   db: DbCounts | null;
   manifest: ManifestInfo | null;
-  errors: { services: string | null; db: string | null; manifest: string | null };
+  tables: TableState | null;
+  errors: { services: string | null; db: string | null; manifest: string | null; tables: string | null };
 }
 
 // =========================================================================
 // Status → Farbe
 // =========================================================================
 
-const STATUS_COLOR: Record<ServiceStatus, string> = {
+const STATUS_COLOR: Record<NodeStatus, string> = {
   healthy: '#22c55e',
   working: '#facc15',
   stalled: '#f97316',
   failed:  '#ef4444',
   unknown: '#6b7280',
+  disabled: '#dc2626',
+  missing:  '#dc2626',
+  empty:    '#6b7280',
 };
 
-const STATUS_LABEL: Record<ServiceStatus, string> = {
+const STATUS_LABEL: Record<NodeStatus, string> = {
   healthy: 'Gesund',
   working: 'Arbeitet',
   stalled: 'Verzögert',
   failed:  'Fehler',
   unknown: 'Unbekannt',
+  disabled: 'Deaktiviert',
+  missing:  'Fehlt in der Datenbank',
+  empty:    'Leer',
 };
 
 // =========================================================================
@@ -209,6 +227,7 @@ function useOpsSnapshot(): { snap: Snapshot | null; lastUpdate: Date | null } {
           services: data.services ?? prev.services,
           db: data.db ?? prev.db,
           manifest: data.manifest ?? prev.manifest,
+          tables: data.tables ?? prev.tables,
           errors: { ...prev.errors, ...data.errors },
         } : data);
         setLastUpdate(new Date(data.fetchedAt));
@@ -431,7 +450,7 @@ interface NodeData {
   label: string;
   layer: number;
   layerName: string;
-  status: ServiceStatus;
+  status: NodeStatus;
   detail: string;
   rate: number | null;
   kind: NodeKind;
@@ -495,6 +514,12 @@ interface ApiMapNode {
   file?: string;
   via?: string[];
   declared?: boolean;
+  /** Ruft diese Adresse ueberhaupt noch jemand? Gemessen von build-api-map.mjs. */
+  used?: boolean;
+  usedBy?: string[];
+  externalConsumer?: string | null;
+  /** Name des Merkers in app/lib/feature-flags.ts, der die Adresse abschaltet. */
+  disabledBy?: string | null;
 }
 interface ApiMapEdge { from: string; to: string; kind: string; }
 const MAP = apiMap as unknown as {
@@ -531,6 +556,7 @@ function buildGraph(snap: Snapshot | null, expanded: Set<string>): { nodes: Node
   // Antwort der Ops-Route eine leere schwarze Flaeche.
   const services = snap?.services?.services || [];
   const counts = snap?.db?.counts || {};
+  const tableState = snap?.tables?.state || {};
   const manifest = snap?.manifest ?? null;
 
   const nodes: NodeData[] = [];
@@ -567,17 +593,31 @@ function buildGraph(snap: Snapshot | null, expanded: Set<string>): { nodes: Node
   for (const t of MAP.nodes.filter(n => n.kind === 'table')) {
     const tbl = t.label;
     const c = counts[tbl];
+    const live = tableState[tbl];
     const rate = ratePerSec(tbl, c?.estimated ?? null);
+    // Reihenfolge der Wahrheit: die Direktabfrage der Datenbank schlaegt die
+    // vorgezaehlten Werte. Was wir nicht wissen, bleibt 'unbekannt' — eine
+    // gruene Kugel auf Verdacht waere eine Behauptung.
+    const rows = live?.estimated ?? c?.estimated ?? null;
+    let tblStatus: NodeStatus;
+    let tblDetail: string;
+    if (live?.exists === false) { tblStatus = 'missing'; tblDetail = 'in der Datenbank nicht vorhanden'; }
+    else if (rows === 0) { tblStatus = 'empty'; tblDetail = 'vorhanden, aber ohne Zeilen'; }
+    else if (rows != null) {
+      tblStatus = 'healthy';
+      tblDetail = `${fmt(rows)} Zeilen${c?.today != null ? ` · ${fmt(c.today)} heute` : ''}`;
+    } else {
+      tblStatus = 'unknown';
+      tblDetail = t.declared ? 'keine Live-Zahl' : 'ohne Migration angelegt';
+    }
     nodes.push({
       id: t.id,
       kind: 'table',
       label: tbl.replace('tft_', ''),
       layer: L_DB,
       layerName: LAYER_NAMES[L_DB],
-      status: c?.estimated != null ? 'healthy' : 'unknown',
-      detail: c?.estimated != null
-        ? `${fmt(c.estimated)} Zeilen${c.today != null ? ` · ${fmt(c.today)} heute` : ''}`
-        : (t.declared ? 'keine Live-Zahl' : 'ohne Migration angelegt'),
+      status: tblStatus,
+      detail: tblDetail,
       rate,
       raw: c ?? null,
     });
@@ -630,6 +670,12 @@ function buildGraph(snap: Snapshot | null, expanded: Set<string>): { nodes: Node
   // Bereiche zeigen ihre Adressen einzeln statt des Sammelknotens.
   for (const g of MAP.groups) {
     if (expanded.has(g.name)) continue;
+    // Rot erst, wenn der ganze Bereich still ist. Ein Bereich mit sieben
+    // lebenden und einer toten Adresse ist nicht deaktiviert — sonst faerbt
+    // eine einzelne Karteileiche acht Adressen mit ein.
+    const inGroup = MAP.nodes.filter(n => n.kind === 'route' && n.group === g.name);
+    const deadInGroup = inGroup.filter(n => n.used === false);
+    const groupDead = inGroup.length > 0 && deadInGroup.length === inGroup.length;
     nodes.push({
       id: groupId(g.name),
       kind: 'group',
@@ -637,8 +683,9 @@ function buildGraph(snap: Snapshot | null, expanded: Set<string>): { nodes: Node
       label: `/${g.name}`,
       layer: L_API,
       layerName: LAYER_NAMES[L_API],
-      status: 'healthy',
-      detail: g.count === 1 ? '1 Adresse · klick zum Aufklappen' : `${g.count} Adressen · klick zum Aufklappen`,
+      status: groupDead ? 'disabled' : 'healthy',
+      detail: (groupDead ? 'deaktiviert · ' : deadInGroup.length ? `${deadInGroup.length} davon deaktiviert · ` : '')
+        + (g.count === 1 ? '1 Adresse · klick zum Aufklappen' : `${g.count} Adressen · klick zum Aufklappen`),
       rate: null,
     });
   }
@@ -651,8 +698,12 @@ function buildGraph(snap: Snapshot | null, expanded: Set<string>): { nodes: Node
       label: r.label,
       layer: L_API,
       layerName: LAYER_NAMES[L_API],
-      status: 'healthy',
-      detail: r.file || '',
+      status: r.used === false ? 'disabled' : 'healthy',
+      detail: r.used === false
+        ? (r.disabledBy
+          ? `deaktiviert · Merker ${r.disabledBy} steht auf aus`
+          : 'deaktiviert · ruft im Code niemand mehr auf')
+        : (r.file || ''),
       rate: null,
     });
   }
@@ -1367,6 +1418,8 @@ export default function OpsGraph() {
         <div className="flex items-center gap-1.5"><span className="w-3 h-0.5" style={{ backgroundColor: EDGE_KIND_COLOR.call }} />ruft Funktion</div>
         <div className="flex items-center gap-1.5"><span className="w-3 h-0.5" style={{ backgroundColor: EDGE_KIND_COLOR.fetch }} />holt extern</div>
         <div className="flex items-center gap-1.5"><span className="w-3 h-0.5" style={{ backgroundColor: EDGE_KIND_COLOR.request }} />wird angefragt</div>
+        <div className="flex items-center gap-1.5 pt-1"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: STATUS_COLOR.disabled }} />deaktiviert / fehlt</div>
+        <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: STATUS_COLOR.empty }} />leer</div>
       </div>
 
       <div className="absolute bottom-3 left-3 right-3 z-10 flex justify-between gap-3 text-[10px] text-gray-500 pointer-events-none">

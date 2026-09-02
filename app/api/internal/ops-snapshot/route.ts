@@ -11,6 +11,7 @@
 // Service hardcoded weil sie aus systemd-Timer-Config kommen, nicht aus der DB.
 
 import { NextRequest, NextResponse } from 'next/server';
+import apiMap from '../../../../infra/api-map.json';
 
 export const dynamic = 'force-dynamic';
 
@@ -194,6 +195,44 @@ async function fetchDbCounts() {
   return { counts, fetchedAt: new Date().toISOString() };
 }
 
+// Lebendzustand der Tabellen, die der Graph zeigt. Die Namensliste kommt aus
+// infra/api-map.json, damit sie nicht neben der Karte herdriftet: was der
+// Graph zeichnet, wird auch geprueft.
+//
+// Ein Treffer heisst: Tabelle da. HTTP 404 heisst: Tabelle gibt es in der
+// Datenbank nicht (so faellt `champion_stats` auf, auf das drei Routen lesen).
+// Alles andere (Zeitueberschreitung, 5xx) bleibt `null` — unbekannt ist nicht
+// dasselbe wie leer, und ein grauer Knoten waere hier eine Luege.
+async function fetchTableState() {
+  if (!SUPA_URL || !SUPA_KEY) throw new Error('supabase env missing');
+  const names = (apiMap.nodes as { kind: string; label: string }[])
+    .filter(n => n.kind === 'table').map(n => n.label).sort();
+  const state: Record<string, { exists: boolean | null; estimated: number | null }> = {};
+  await Promise.all(names.map(async tbl => {
+    let exists: boolean | null = null;
+    let estimated: number | null = null;
+    try {
+      const res = await fetchWithTimeout(`${SUPA_URL}/rest/v1/${tbl}?select=*&limit=0`, {
+        headers: {
+          apikey: SUPA_KEY,
+          Authorization: `Bearer ${SUPA_KEY}`,
+          Prefer: 'count=estimated',
+        },
+      });
+      if (res.status === 404) {
+        exists = false;
+      } else if (res.ok) {
+        exists = true;
+        const range = res.headers.get('content-range');
+        const m = range ? new RegExp('\\/(\\d+|\\*)$').exec(range) : null;
+        if (m && m[1] !== '*') estimated = parseInt(m[1], 10);
+      }
+    } catch { /* unbekannt lassen */ }
+    state[tbl] = { exists, estimated };
+  }));
+  return { state, fetchedAt: new Date().toISOString() };
+}
+
 async function fetchManifest() {
   if (!MANIFEST_URL) throw new Error('SNAPSHOT_MANIFEST_URL missing');
   const res = await fetchWithTimeout(MANIFEST_URL);
@@ -208,16 +247,17 @@ async function fetchManifest() {
 }
 
 export async function GET(req: NextRequest) {
-  // Slice-Param: 'all' | 'services' | 'db' | 'manifest'. Erlaubt dem Client
+  // Slice-Param: 'all' | 'services' | 'db' | 'manifest' | 'tables'. Erlaubt dem Client
   // multi-tier Polling (Services 10s, DB 60s, Manifest 120s) ohne separate
   // Endpoints zu pflegen.
   const slice = req.nextUrl.searchParams.get('slice') || 'all';
   const want = (k: string) => slice === 'all' || slice === k;
 
-  const [servicesRes, dbRes, manifestRes] = await Promise.allSettled([
+  const [servicesRes, dbRes, manifestRes, tablesRes] = await Promise.allSettled([
     want('services') ? fetchServices() : Promise.resolve(null),
     want('db') ? fetchDbCounts() : Promise.resolve(null),
     want('manifest') ? fetchManifest() : Promise.resolve(null),
+    want('tables') ? fetchTableState() : Promise.resolve(null),
   ]);
 
   const payload = {
@@ -225,10 +265,12 @@ export async function GET(req: NextRequest) {
     services: servicesRes.status === 'fulfilled' ? servicesRes.value : null,
     db: dbRes.status === 'fulfilled' ? dbRes.value : null,
     manifest: manifestRes.status === 'fulfilled' ? manifestRes.value : null,
+    tables: tablesRes.status === 'fulfilled' ? tablesRes.value : null,
     errors: {
       services: servicesRes.status === 'rejected' ? String(servicesRes.reason?.message || servicesRes.reason) : null,
       db: dbRes.status === 'rejected' ? String(dbRes.reason?.message || dbRes.reason) : null,
       manifest: manifestRes.status === 'rejected' ? String(manifestRes.reason?.message || manifestRes.reason) : null,
+      tables: tablesRes.status === 'rejected' ? String(tablesRes.reason?.message || tablesRes.reason) : null,
     },
   };
   return NextResponse.json(payload, { headers: { 'Cache-Control': 'no-store' } });

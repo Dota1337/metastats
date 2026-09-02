@@ -48,6 +48,13 @@ jobs:
       - name: Unit-Tests
         run: npm test
 
+      # ESLint lief bis 02.09.2026 nirgends — nicht hier, nicht im pre-push,
+      # und Next 16 lintet beim Build nicht mehr. Der Deckel friert den Bestand
+      # ein (Details im Skript-Kopf). Bewusst nur hier und nicht im Hook: der
+      # volle Lauf kostet ~44 s, der Hook braucht heute ~14 s.
+      - name: Lint-Deckel
+        run: node scripts/check-eslint-budget.mjs
+
       - name: Klassifikations-Verifier
         run: node scripts/verify-classifications.mjs
 

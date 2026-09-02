@@ -533,6 +533,7 @@
       "name": "CI",
       "schedule": [],
       "scripts": [
+        "scripts/check-eslint-budget.mjs",
         "scripts/verify-classifications.mjs",
         "scripts/check-drift.mjs",
         "scripts/build-system-map.mjs",

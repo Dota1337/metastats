@@ -36,6 +36,10 @@ yarn-error.log*
 # vercel
 .vercel
 
+# ESLint-Cache (entsteht nur bei lokalen Laeufen mit --cache; der Waechter
+# scripts/check-eslint-budget.mjs laeuft bewusst ohne Cache)
+.eslintcache
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

@@ -55,7 +55,6 @@ const MANUAL_ONLY = new Set([
   'scripts/check-companion-data.mjs',
   'scripts/refresh-pros-marketvalue.mjs',
   'scripts/reclassify-match-cache.mjs', // Backlog: 16M Full-Table-Re-Classify
-  'scripts/freeze-marketvalue-peaks.mjs', // Peak-Pflege, laeuft bewusst von Hand (kein Leser)
 ]);
 
 /**
@@ -190,6 +189,13 @@ const NO_CONTRACT_NEEDED = new Set([
   'metastats-tft-pro-tpc-roster.service',
   'metastats-tft-pro-fullsync.service',
   'metastats-tft-pro-validator.service',
+  // Peak-Festschreibung: die Tabelle waechst nur, wenn ein Spieler einen neuen
+  // Hoechstwert erreicht. Gegen Set-Ende sind null neue Zeilen pro Tag der
+  // Normalfall, nicht der Ausfall — ein minRows-Vertrag stuende dann dauerhaft
+  // auf Rot. Der Ausfall dieses Laufs ist ausserdem nicht dringend: der Peak
+  // wird beim naechsten Lauf nachgezogen, weil das Fenster sieben Tage
+  // zurueckreicht und ein beendetes Set 14 Tage lang voll nachgefahren wird.
+  'metastats-marketvalue-peaks.service',
 ]);
 
 const owners = new Set(Object.keys(map.contractsByOwner));

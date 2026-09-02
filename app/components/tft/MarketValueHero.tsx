@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ResponsiveContainer, LineChart, Line, BarChart, Bar, Cell, ReferenceLine, XAxis, YAxis, Tooltip as RechartsTooltip } from 'recharts';
 import { useI18n, LOCALE_MAP, type Lang, type TranslationKey } from '../../lib/i18n';
 import SetTimeline, { type SetInfo } from './SetTimeline';
+import { CURRENT_SET } from '../../lib/current-set';
 import Link from 'next/link';
 
 interface MarketValueResponse {
@@ -40,6 +41,16 @@ interface HistoryPoint {
   lp: number;
 }
 
+// Hoechster je erreichter Marktwert, eine Zeile je Set — aus
+// /api/tft/marktwert/peaks. Bewusst ohne Rang/LP, siehe Kommentar dort.
+interface PeakEntry {
+  setNumber: number;
+  setName: string | null;
+  region: string | null;
+  value: number;
+  date: string;          // YYYY-MM-DD, roh aus der DB, nicht durch new Date() gedreht
+}
+
 interface MarketValueHeroProps {
   fullName: string;            // 'gameName#tagLine'
   region: string;
@@ -70,6 +81,68 @@ function pickHistoryDelta(series: HistoryPoint[]): { abs: number; pct: number } 
   return { abs, pct };
 }
 
+function formatPeakDate(iso: string, lang: Lang): string {
+  // Reiner Datumsstring, als UTC gelesen UND als UTC formatiert. Ohne die
+  // timeZone-Angabe rutscht der Tag westlich von Greenwich um eins zurueck.
+  const ms = new Date(`${iso}T00:00:00Z`).getTime();
+  if (!Number.isFinite(ms)) return iso;
+  return new Date(ms).toLocaleDateString(LOCALE_MAP[lang], { timeZone: 'UTC' });
+}
+
+// Hoechster je erreichter Marktwert. Zugeklappt eine Zeile mit dem letzten
+// ABGESCHLOSSENEN Set — beim Set-Wechsel rutscht die Anzeige damit von allein
+// weiter, ohne Code-Aenderung. Aufgeklappt eine Zeile je Set.
+//
+// Sichtbar, sobald es ueberhaupt eine Zeile gibt (User-Vorgabe 2026-09-02:
+// "wenn die Spieler einmal einen Marktwert erreicht haben, wird das Drop-Down
+// freigeschaltet"). Ohne Zeile rendert der Block gar nichts — kein Platzhalter,
+// kein Hinweistext.
+//
+// Werte verschiedener Sets stehen bewusst untereinander, nicht als "Rekord"
+// zusammengefasst: der Multiplikator rechnet gegen die Spielerschaft des
+// jeweiligen Sets, ein Maximum ueber Sets hinweg waere kein Vergleich.
+function PeakDropdown({ peaks, lang }: { peaks: PeakEntry[]; lang: Lang }) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  if (peaks.length === 0) return null;
+
+  const sorted = [...peaks].sort((a, b) => b.setNumber - a.setNumber);
+  const headline = sorted.find(p => p.setNumber !== CURRENT_SET) || sorted[0];
+
+  return (
+    <div className="mt-2 relative">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="text-xs text-fg-secondary hover:text-white transition-colors"
+      >
+        {t('tft.marketValue.peak').replace('{n}', String(headline.setNumber))}:{' '}
+        <span className="text-white font-medium tabular-nums">{formatEuro(headline.value, lang)}</span>
+        <span className="ml-1 text-[10px]">{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <div className="absolute left-0 mt-1 z-20 bg-surface-base border border-border-subtle rounded-lg shadow-lg p-3 min-w-[240px] text-left">
+          <div className="text-fg-secondary text-[10px] uppercase tracking-widest mb-2">
+            {t('tft.marketValue.peakAll')}
+          </div>
+          <div className="space-y-2">
+            {sorted.map(p => (
+              <div key={p.setNumber}>
+                <div className="flex items-baseline justify-between gap-4 text-xs">
+                  <span className="text-fg-secondary">
+                    {p.setName ? `Set ${p.setNumber} · ${p.setName}` : `Set ${p.setNumber}`}
+                  </span>
+                  <span className="text-white font-medium tabular-nums">{formatEuro(p.value, lang)}</span>
+                </div>
+                <div className="text-fg-muted text-[10px] tabular-nums">{formatPeakDate(p.date, lang)}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function MarketValueHero({ fullName, region, lang }: MarketValueHeroProps) {
   const { t } = useI18n();
   const [data, setData] = useState<MarketValueResponse | null>(null);
@@ -77,6 +150,7 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
   const [setInfo, setSetInfo] = useState<SetInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [historyLoading, setHistoryLoading] = useState(true);
+  const [peaks, setPeaks] = useState<PeakEntry[]>([]);
   const [showDetails, setShowDetails] = useState(false);
   const [refreshState, setRefreshState] = useState<'idle' | 'busy' | 'cooldown' | 'error'>('idle');
   const [refreshMessage, setRefreshMessage] = useState<string | null>(null);
@@ -85,6 +159,7 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
     setLoading(true);
     setData(null);
     setHistory([]);
+    setPeaks([]);
     // Fetch marketvalue + current-set in parallel — the set's startDate
     // scopes the sparkline window so the chart shows only this set's data.
     return Promise.all([
@@ -102,6 +177,16 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
         const validSet = s && s.startDate && s.endDate && !s.error ? (s as SetInfo) : null;
         setSetInfo(validSet);
         setLoading(false);
+
+        // Peaks bewusst OHNE die rated-Bedingung: wer heute unter Master steht,
+        // hat keinen laufenden Marktwert, aber vielleicht einen aus einem
+        // frueheren Set — genau dann ist der alte Hoechstwert das Interessante.
+        if (j.summoner?.puuid) {
+          fetch(`/api/tft/marktwert/peaks?puuid=${j.summoner.puuid}`, { signal })
+            .then(r => (r.ok ? r.json() : { peaks: [] }))
+            .then(p => setPeaks(Array.isArray(p.peaks) ? p.peaks : []))
+            .catch(() => { /* kein Peak ist kein Fehler — der Block rendert dann nicht */ });
+        }
 
         if (j.marketValue?.rated && j.summoner?.puuid) {
           setHistoryLoading(true);
@@ -191,6 +276,7 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
         <div className="text-fg-secondary text-base">
           {reason === 'below_master' ? t('tft.marketValue.belowMaster') : t('tft.marketValue.notRated')}
         </div>
+        <PeakDropdown peaks={peaks} lang={lang} />
       </div>
     );
   }
@@ -241,6 +327,7 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
               <span className="text-fg-muted text-xs">· {t('tft.marketValue.last7d')}</span>
             </div>
           )}
+          <PeakDropdown peaks={peaks} lang={lang} />
         </div>
 
         {/* Middle: Multiplier + sample size */}

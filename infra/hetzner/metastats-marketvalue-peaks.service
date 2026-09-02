@@ -1,0 +1,48 @@
+[Unit]
+Description=metastats Marktwert-Hoechstwerte je Set festschreiben
+Wants=network-online.target
+After=network-online.target
+# Kein OnSuccess= und keine Kette, gleiche Begruendung wie bei
+# metastats-marketvalue-sync.service: der Lauf muss auch dann stattfinden,
+# wenn der Sync davor abgebrochen ist.
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/metastats-crawler
+EnvironmentFile=/etc/metastats-crawler/env
+# Ein Durchgang ist ein einziges INSERT ... ON CONFLICT ueber die Snapshots
+# eines Sets; der volle Set-17-Lauf brauchte gemessen wenige Sekunden. 30 min
+# ist Puffer fuer den Fall, dass Supabase gerade langsam ist.
+TimeoutStartSec=1800
+# --auto: laufendes Set im 7-Tage-Fenster, danach jedes Set, dessen Ende
+# hoechstens 14 Tage zurueckliegt, einmal ueber das ganze Set. Damit wandert
+# der angezeigte Hoechstwert beim Set-Wechsel von selbst weiter, ohne dass ein
+# einzelner Stichtags-Lauf gelingen muss.
+ExecStart=/usr/bin/node scripts/freeze-marketvalue-peaks.mjs --auto
+StandardOutput=journal
+StandardError=journal
+
+# --- BEGIN metastats-hardening-floor ---
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectProc=invisible
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+# --- END metastats-hardening-floor ---
+
+[Install]
+WantedBy=multi-user.target

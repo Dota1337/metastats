@@ -1247,6 +1247,16 @@ const translations = {
     '\uC9C0\uC5ED \uC21C\uC704 #{n}', '\u533A\u57DF\u6392\u540D #{n}',
     'Rango de regi\u00F3n #{n}', 'Rang r\u00E9gional #{n}'
   ),
+  'tft.marketValue.peak': t6(
+    'H\u00F6chster MW Set {n}', 'Peak MV Set {n}',
+    '\uC138\uD2B8 {n} \uCD5C\uACE0 MV', '\u7B2C{n}\u8D5B\u5B63\u6700\u9AD8\u5E02\u503C',
+    'VM m\u00E1ximo Set {n}', 'VM max. Set {n}'
+  ),
+  'tft.marketValue.peakAll': t6(
+    'Alle Sets', 'All sets',
+    '\uBAA8\uB4E0 \uC138\uD2B8', '\u6240\u6709\u8D5B\u5B63',
+    'Todos los Sets', 'Tous les Sets'
+  ),
   'tft.marketValue.methodologyIntro': t6(
     'Basiswert {base} aus Tier + LP, multipliziert durch:',
     'Base value {base} from tier + LP, multiplied by:',

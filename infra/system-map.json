@@ -205,6 +205,26 @@
       ]
     },
     {
+      "name": "metastats-marketvalue-peaks.service",
+      "kind": "service",
+      "description": "metastats Marktwert-Hoechstwerte je Set festschreiben",
+      "scripts": [
+        "scripts/freeze-marketvalue-peaks.mjs"
+      ]
+    },
+    {
+      "name": "metastats-marketvalue-peaks.timer",
+      "kind": "timer",
+      "description": "metastats Marktwert-Hoechstwerte alle 6h",
+      "scripts": [],
+      "onCalendar": [
+        "*-*-* 03,09,15,21:15:00 UTC"
+      ],
+      "interval": [],
+      "activates": "metastats-marketvalue-peaks.service",
+      "persistent": true
+    },
+    {
       "name": "metastats-marketvalue-snapshot.service",
       "kind": "service",
       "description": "metastats TFT marketvalue daily snapshot (D2+, all active regions)",
@@ -450,6 +470,13 @@
       "timer": "metastats-health.timer",
       "activates": "metastats-health.service",
       "onCalendar": []
+    },
+    {
+      "timer": "metastats-marketvalue-peaks.timer",
+      "activates": "metastats-marketvalue-peaks.service",
+      "onCalendar": [
+        "*-*-* 03,09,15,21:15:00 UTC"
+      ]
     },
     {
       "timer": "metastats-marketvalue-sync.timer",

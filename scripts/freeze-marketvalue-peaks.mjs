@@ -38,6 +38,17 @@
  *   node scripts/freeze-marketvalue-peaks.mjs                # laufendes Set, letzte 7 Tage
  *   node scripts/freeze-marketvalue-peaks.mjs --set 17 --full
  *   node scripts/freeze-marketvalue-peaks.mjs --since 2026-08-26 --dry-run
+ *   node scripts/freeze-marketvalue-peaks.mjs --auto         # Timer-Modus, siehe unten
+ *
+ * --auto ist der Modus fuer metastats-marketvalue-peaks.timer und macht zwei
+ * Durchgaenge: erst das laufende Set im normalen 7-Tage-Fenster, danach jedes
+ * Set aus public/tft-set.json#history, dessen `endedAt` juenger als 14 Tage
+ * ist, einmal mit --full. Grund fuer den zweiten Durchgang: das 7-Tage-Fenster
+ * haengt am laufenden Set. In der Sekunde, in der detect-tft-set.mjs die
+ * Set-Nummer hochzieht, sieht kein Lauf mehr die letzten Snapshot-Tage des
+ * alten Sets — der Peak des alten Sets bliebe auf dem Stand des letzten
+ * regulaeren Laufs stehen. 14 Tage sind die Nachlaufzeit, in der der volle
+ * Lauf das jede Nacht nachholt, auch wenn der Set-Bump-Tag selbst ausfaellt.
  */
 
 import { readFileSync, existsSync } from 'node:fs';
@@ -71,16 +82,32 @@ if (!DB_URL) {
   process.exit(1);
 }
 
-function currentSet() {
+function readSetFile() {
   const p = resolve(process.cwd(), 'public/tft-set.json');
   if (!existsSync(p)) return null;
-  const n = JSON.parse(readFileSync(p, 'utf8')).setNumber;
+  try { return JSON.parse(readFileSync(p, 'utf8')); } catch { return null; }
+}
+
+function currentSet() {
+  const n = readSetFile()?.setNumber;
   return Number.isInteger(n) ? n : null;
+}
+
+// Sets, deren Ende hoechstens `days` zurueckliegt. detect-tft-set.mjs schreibt
+// den Eintrag mit `endedAt` beim Bump nach public/tft-set.json#history.
+function recentlyEndedSets(days = 14) {
+  const hist = readSetFile()?.history;
+  if (!Array.isArray(hist)) return [];
+  const cutoff = Date.now() - days * 86_400_000;
+  return hist
+    .filter(e => Number.isInteger(e?.setNumber) && Date.parse(e?.endedAt) >= cutoff)
+    .map(e => Number(e.setNumber));
 }
 
 const SET = parseInt(arg('--set', String(currentSet() ?? NaN)), 10);
 const MIN_SAMPLE = parseInt(arg('--min-sample', '40'), 10);
 const FULL = args.includes('--full');
+const AUTO = args.includes('--auto');
 const DRY_RUN = args.includes('--dry-run');
 const SINCE = FULL
   ? null
@@ -179,9 +206,10 @@ const pool = new pg.Pool({
   statement_timeout: 600_000,
 });
 
-async function main() {
-  console.log(`=== Marktwert-Peaks Set ${SET} (${FULL ? 'ganzes Set' : `ab ${SINCE}`}, min sample ${MIN_SAMPLE}) ===`);
-  const before = await pool.query(`select count(*)::int as n from ${T} where set_number = $1`, [SET]);
+// Ein Durchgang. since = null bedeutet "ganzes Set".
+async function runPass(set, since) {
+  console.log(`=== Marktwert-Peaks Set ${set} (${since ? `ab ${since}` : 'ganzes Set'}, min sample ${MIN_SAMPLE}) ===`);
+  const before = await pool.query(`select count(*)::int as n from ${T} where set_number = $1`, [set]);
 
   if (DRY_RUN) {
     const c = await pool.query(
@@ -189,19 +217,30 @@ async function main() {
          from tft_player_marketvalue_snapshots
         where set_number = $1 and sample_size >= $2
           and ($3::date is null or snapshot_date >= $3::date)`,
-      [SET, MIN_SAMPLE, SINCE],
+      [set, MIN_SAMPLE, since],
     );
     console.log(`[dry-run] ${c.rows[0].n} Kandidaten, ${before.rows[0].n} Zeilen bereits vorhanden`);
-    await pool.end();
     return;
   }
 
   const t0 = process.hrtime.bigint();
-  const res = await pool.query(SQL, [SET, MIN_SAMPLE, SINCE]);
+  const res = await pool.query(SQL, [set, MIN_SAMPLE, since]);
   const ms = Number(process.hrtime.bigint() - t0) / 1e6;
-  const after = await pool.query(`select count(*)::int as n from ${T} where set_number = $1`, [SET]);
+  const after = await pool.query(`select count(*)::int as n from ${T} where set_number = $1`, [set]);
   console.log(`[peaks] ${res.rowCount} Zeilen beruehrt in ${Math.round(ms)} ms`);
-  console.log(`[peaks] Set ${SET}: ${before.rows[0].n} -> ${after.rows[0].n} Zeilen`);
+  console.log(`[peaks] Set ${set}: ${before.rows[0].n} -> ${after.rows[0].n} Zeilen`);
+}
+
+async function main() {
+  // Reihenfolge im Auto-Modus: laufendes Set zuerst. Ein Fehler im
+  // Nachlauf-Durchgang darf den taeglichen Normalbetrieb nicht verhindern.
+  const passes = [{ set: SET, since: SINCE }];
+  if (AUTO) {
+    for (const ended of recentlyEndedSets()) {
+      if (ended !== SET) passes.push({ set: ended, since: null });
+    }
+  }
+  for (const p of passes) await runPass(p.set, p.since);
   await pool.end();
 }
 

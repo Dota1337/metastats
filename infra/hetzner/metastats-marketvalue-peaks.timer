@@ -1,0 +1,15 @@
+[Unit]
+Description=metastats Marktwert-Hoechstwerte alle 6h
+
+[Timer]
+# Zwei Stunden nach metastats-marketvalue-sync.timer (01,07,13,19:15 UTC): der
+# Peak kann nur festhalten, was vorher nach Supabase gespiegelt wurde.
+OnCalendar=*-*-* 03,09,15,21:15:00 UTC
+# Persistent=true, weil ein verpasster Lauf am Set-Wechsel-Tag sonst genau die
+# Tage verschluckt, um die es hier geht. Das Script ist idempotent — ein
+# bestehender Peak wird nur von einem echt hoeheren Wert ueberschrieben.
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

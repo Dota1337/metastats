@@ -49,6 +49,11 @@
   --surface-comp-row: #19233a;
   --surface-comp-row-hover: #212c4a;
 
+  /* Zeigezustand fuer Flaechen auf --surface-overlay. Stand bisher 4x roh im
+     Markup; hier als Token, damit der Roh-Hex-Waechter nicht bei jedem neuen
+     Knopf anschlaegt. Gleicher Hex wie zuvor — keine optische Aenderung.  */
+  --surface-overlay-hover: #2a3a52;
+
   /* --- Ränder --------------------------------------------------------------
      ACHTUNG: --border-subtle hat denselben Hex wie --surface-overlay.
      Das ist eine Koinzidenz des Ist-Zustands, KEINE Aussage. Bewusst zwei
@@ -201,6 +206,7 @@
   --color-surface-comp-row: var(--surface-comp-row);
   --color-surface-comp-row-hover: var(--surface-comp-row-hover);
   --color-surface-overlay: var(--surface-overlay);
+  --color-surface-overlay-hover: var(--surface-overlay-hover);
 
   --color-border-subtle: var(--border-subtle);
   --color-border-default: var(--border-default);

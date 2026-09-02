@@ -1148,7 +1148,7 @@ function DependenciesList({ deps, onSelectNode }: {
               <button
                 key={n.id}
                 onClick={() => onSelectNode(n.id)}
-                className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-surface-overlay hover:bg-[#2a3a52] text-gray-300 hover:text-white transition-colors"
+                className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-surface-overlay hover:bg-surface-overlay-hover text-gray-300 hover:text-white transition-colors"
                 title={n.layerName}
               >
                 {n.label}
@@ -1315,7 +1315,7 @@ export default function OpsGraph() {
         <div className="flex flex-wrap items-center gap-2 pt-1 pointer-events-auto">
           <button
             onClick={() => setExpanded(allOpen ? new Set() : new Set(allGroupNames))}
-            className="px-2 py-0.5 rounded border border-border-subtle bg-surface-overlay hover:bg-[#2a3a52] text-gray-300 hover:text-white transition-colors text-[11px]"
+            className="px-2 py-0.5 rounded border border-border-subtle bg-surface-overlay hover:bg-surface-overlay-hover text-gray-300 hover:text-white transition-colors text-[11px]"
           >
             {allOpen ? 'alles zuklappen' : 'alles aufklappen'}
           </button>
@@ -1330,7 +1330,7 @@ export default function OpsGraph() {
               <button
                 key={name}
                 onClick={() => toggleGroup(name)}
-                className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-overlay hover:bg-[#2a3a52] text-gray-300 hover:text-white transition-colors"
+                className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-overlay hover:bg-surface-overlay-hover text-gray-300 hover:text-white transition-colors"
                 title="Bereich wieder zuklappen"
               >
                 /{name} ×

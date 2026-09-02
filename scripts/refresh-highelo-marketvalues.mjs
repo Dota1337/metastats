@@ -198,6 +198,30 @@ async function main() {
   console.log(`Failed: ${failed}`);
   console.log(`Skipped: ${skipped}`);
   console.log(`Total: ${total}`);
+
+  // Bis 02.09.2026 endete der Lauf hier IMMER mit Exit 0 — auch bei 100 %
+  // Fehlschlaegen. Das war kein Schoenheitsfehler: der Treiber
+  // scripts/lol-marketvalue-weekly.mjs:75 wertet allein den Exit-Code, sieht
+  // dann `failures=0`, schreibt den Drossel-Stempel und blockt mit
+  // `--min-days 6` jeden Neuversuch fuer sechs Tage. Ein blockierender Fehler
+  // (Firewall-Regel, abgelaufener Key, Seite down) waere damit unsichtbar
+  // gewesen UND haette sich selbst verlaengert.
+  //
+  // 30 % wie beim Cache-Waermer (scripts/warm-tft-stats-cache.mjs): einzelne
+  // Spieler scheitern immer mal (geloeschter Account, Riot-Timeout), eine
+  // halb gescheiterte Region ist dagegen ein echter Ausfall. `skipped` zaehlt
+  // NICHT mit — kein Name in der Riot-Antwort ist kein Fehler unsererseits.
+  const attempted = success + failed;
+  const rate = attempted > 0 ? failed / attempted : 0;
+  const MAX_FAILURE_RATE = 0.3;
+  if (attempted === 0 && total > 0) {
+    console.error(`Kein einziger Spieler verarbeitet (${total} Eintraege, ${skipped} uebersprungen) — Lauf gilt als fehlgeschlagen.`);
+    process.exit(1);
+  }
+  if (rate > MAX_FAILURE_RATE) {
+    console.error(`Fehlerquote ${(rate * 100).toFixed(1)} % > ${MAX_FAILURE_RATE * 100} % (${failed}/${attempted}) — Lauf gilt als fehlgeschlagen.`);
+    process.exit(1);
+  }
 }
 
 main().catch(e => { console.error('Fatal:', e); process.exit(1); });

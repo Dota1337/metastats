@@ -17,6 +17,7 @@
 
 import { NextResponse } from 'next/server';
 import { getRiotStatus } from '@/app/lib/riot-status';
+import { cacheHeaders } from '@/app/lib/api-cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,10 +26,15 @@ export const dynamic = 'force-dynamic';
 // und laenger als null, weil sonst jeder Seitenaufruf einen Funktionsaufruf
 // kostet. Der In-Process-Cache der Lib (5 min) liegt dahinter; die Edge
 // federt den Rest ab.
-const STATUS_CACHE_CONTROL = 'public, s-maxage=120, stale-while-revalidate=600';
+//
+// Die Zeiten gehen ueber `cacheHeaders()` raus, also in der Zeile
+// `Vercel-CDN-Cache-Control`. Ein blankes `Cache-Control: s-maxage=…` wuerde
+// Vercel vor der Auslieferung streichen — der Browser bekaeme dann gar keine
+// Angabe (siehe app/lib/api-cache.ts und scripts/check-drift.mjs, Block N).
+const STATUS_CDN_CACHE_CONTROL = 'public, s-maxage=120, stale-while-revalidate=600';
 // Degradiert: kein Schluessel oder Riot nicht erreichbar. Kurz halten, damit
 // ein Aussetzer nicht zehn Minuten festgeschrieben wird.
-const STATUS_DEGRADED_CACHE_CONTROL = 'public, s-maxage=30, stale-while-revalidate=60';
+const STATUS_DEGRADED_CDN_CACHE_CONTROL = 'public, s-maxage=30, stale-while-revalidate=60';
 
 export interface PublicRiotRegion {
   region: string;
@@ -45,7 +51,7 @@ export async function GET() {
     // Schluessel schweigen, nicht dem Besucher einen Fehler zeigen.
     return NextResponse.json(
       { cachedAt: null, regions: [] as PublicRiotRegion[] },
-      { headers: { 'Cache-Control': STATUS_DEGRADED_CACHE_CONTROL } },
+      { headers: cacheHeaders(STATUS_DEGRADED_CDN_CACHE_CONTROL) },
     );
   }
 
@@ -65,6 +71,6 @@ export async function GET() {
 
   return NextResponse.json(
     { cachedAt: new Date(at).toISOString(), regions: publicRegions },
-    { headers: { 'Cache-Control': allUnknown ? STATUS_DEGRADED_CACHE_CONTROL : STATUS_CACHE_CONTROL } },
+    { headers: cacheHeaders(allUnknown ? STATUS_DEGRADED_CDN_CACHE_CONTROL : STATUS_CDN_CACHE_CONTROL) },
   );
 }

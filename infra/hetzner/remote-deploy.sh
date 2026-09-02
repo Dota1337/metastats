@@ -23,7 +23,24 @@
 set -euo pipefail
 
 cd /opt/metastats-crawler
-git fetch origin --quiet
+
+# http.version=HTTP/1.1 ist kein Aberglaube, sondern gemessen (02.09.2026):
+# ueber HTTP/2 schlug `git fetch` auf der Box in 4 von 5 Versuchen mit
+#   fatal: could not read Username for 'https://github.com'
+#   fatal: expected flush after ref listing
+# fehl — die Ref-Liste kam abgeschnitten an, git deutete das als
+# Auth-Aufforderung und wollte nach einem Passwort fragen, das es im
+# nicht-interaktiven Deploy nicht gibt. Das Repo ist oeffentlich, ein
+# Zugangsproblem lag also nie vor. Mit HTTP/1.1: 3 von 3 erfolgreich.
+# Vier Deploys hintereinander sind daran gescheitert, ohne dass die Box gemeldet
+# haette, dass sie auf altem Code sitzt.
+# Der Retry bleibt trotzdem: ein einzelner Netzwerkhaenger soll den Deploy nicht
+# kosten.
+for attempt in 1 2 3; do
+  git -c http.version=HTTP/1.1 fetch origin --quiet && break
+  [ "$attempt" = 3 ] && { echo "git fetch nach 3 Versuchen fehlgeschlagen"; exit 1; }
+  sleep 5
+done
 
 # Crawls are Type=oneshot, so while running they sit in state "activating"
 # (NOT "active"). `is-active --quiet` returns false for "activating", so match

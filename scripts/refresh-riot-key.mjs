@@ -131,9 +131,47 @@ async function updateGithubSecret(ghToken, secretName, key) {
   if (r.status >= 300) throw new Error(`GitHub secret PUT failed: HTTP ${r.status} ${await r.text()}`);
 }
 
+// Deploy-Ausloeser. Bis 2026-09-02 war das ein leerer Commit plus `git push` —
+// und damit die einzige Stelle, an der die Rotation regelmaessig gescheitert ist:
+// 40 Bot-Commits in 60 Tagen (`git log --since=60.days --format='%an'`) machen
+// den abgelehnten Push zum Normalfall. Danach standen Vercel-Env, GitHub-Secret
+// und Box auf dem neuen Key, die Live-Seite auf dem alten — Meldung: `git failed: 1`.
+//
+// Ein blinder Rebase-Retry loest das nicht: `run()` sieht nur den Exit-Code und
+// kann einen fremden Commit nicht von einem der 11 pre-push-Gates unterscheiden,
+// und ein beim Rebase gedroppter Leer-Commit macht den zweiten Push zum stillen
+// No-Op mit Exit 0. Deshalb wird der Deploy jetzt direkt bei Vercel angestossen:
+// kein Commit, kein Push, keine Gates, keine 38. Leiche in der Historie.
+// `vercel redeploy` wartet ohne --no-wait, bis der Build steht.
 function triggerRedeploy() {
+  const prod = runCapture('vercel', ['ls', '--prod', '--no-color']);
+  const url = String(prod.stdout || '').match(/https:\/\/[^\s]+\.vercel\.app/)?.[0];
+  if (url) {
+    const r = spawnSync('vercel', ['redeploy', url, '--target', 'production', '--no-color'],
+      { stdio: 'inherit', shell: true });
+    if (r.status === 0) return;
+    console.log('      WARN: vercel redeploy fehlgeschlagen — fallback auf den Git-Weg.');
+  } else {
+    console.log('      WARN: keine Prod-URL aus `vercel ls --prod` — fallback auf den Git-Weg.');
+  }
+  redeployViaGit();
+}
+
+// Rueckfall. Nur noch Notnagel, deshalb mit den Guards, die dem alten Weg fehlten:
+// bei schmutzigem Arbeitsbaum gar nicht erst committen, und nach dem Rebase
+// pruefen, ob der leere Commit ueberhaupt ueberlebt hat.
+function redeployViaGit() {
+  if (runCapture('git', ['status', '--porcelain']).stdout?.trim()) {
+    throw new Error('Arbeitsbaum nicht sauber — kein Deploy-Commit angelegt.');
+  }
   run('git', ['commit', '--allow-empty', '-m', '"chore: refresh Riot API keys"']);
-  run('git', ['push']);
+  if (spawnSync('git', ['push', 'origin', 'main'], { stdio: 'inherit', shell: true }).status === 0) return;
+
+  console.log('      Push abgelehnt — einmal rebasen und erneut versuchen...');
+  run('git', ['pull', '--rebase', '--autostash', 'origin', 'main']);
+  const ahead = Number(runCapture('git', ['rev-list', '--count', '@{u}..HEAD']).stdout?.trim() || '0');
+  if (ahead < 1) throw new Error('Deploy-Commit ist beim Rebase verlorengegangen — kein Deploy ausgeloest.');
+  run('git', ['push', 'origin', 'main']);
 }
 
 // Best-effort: push the freshly-validated LoL key to the Hetzner crawler box
@@ -219,11 +257,28 @@ async function main() {
   }
 
   if (!SKIP_DEPLOY) {
-    step(++n, totalSteps, 'Triggering Vercel redeploy via empty commit...');
-    triggerRedeploy();
+    step(++n, totalSteps, 'Triggering Vercel redeploy...');
+    try {
+      triggerRedeploy();
+    } catch (err) {
+      // Zustandsbilanz statt nur `git failed: 1`. Wer hier abbricht, muss wissen,
+      // dass ueberall der neue Key steht — nur auf der Live-Seite nicht.
+      err.deployState = [
+        '  Vercel-Env:      NEU',
+        '  GitHub-Secret:   NEU',
+        `  Hetzner-Box:     ${SKIP_BOX ? 'uebersprungen (--skip-box)' : 'NEU'}`,
+        '  Live-Seite:      ALT — der Deploy fehlt.',
+        '  Nachholen:       vercel redeploy $(vercel ls --prod) --target production',
+      ].join('\n');
+      throw err;
+    }
   }
 
   console.log(`\nDone. Synced ${present.length} key(s): ${present.map(k => k.label).join(', ')}`);
 }
 
-main().catch(err => { console.error('ERROR:', err.message); process.exit(1); });
+main().catch(err => {
+  console.error('ERROR:', err.message);
+  if (err.deployState) console.error(`\nStand nach dem Abbruch:\n${err.deployState}`);
+  process.exit(1);
+});

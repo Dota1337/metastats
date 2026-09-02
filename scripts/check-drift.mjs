@@ -110,6 +110,49 @@ function read(path) {
   }
 }
 
+// 4b) Riot-Key-Vermischung. LoL (`RIOT_API_KEY`, Dev-Key, taeglich erneuert) und
+// TFT (`RIOT_API_KEY_TFT`, Production, permanent) laufen strikt getrennt
+// (User-Vorgabe 2026-09-02). Ein `A || B` zwischen den beiden bricht deshalb
+// NICHT laut, sondern still: der LoL-Key ist auf TFT-Endpunkten gueltig —
+// gemessen 2026-09-02, GET euw1/tft/league/v1/challenger => HTTP 200, aber mit
+// X-App-Rate-Limit 100:120,20:1 statt 500:10,30000:600. So lief
+// backfill-companion-placements.mjs alle 10 Minuten mit dem falschen Kontingent,
+// ohne dass es je ein Signal gab.
+//
+// Geprueft wird auf EINER Zeile, weil genau so die Fallbacks geschrieben werden.
+// Kommentarzeilen sind ausgenommen — riot-client.mjs:72-76 erklaert die Regel im
+// Fliesstext und waere sonst der erste Fehlalarm. Ein Waechter, der am ersten Tag
+// rot ist, wird abgeschaltet.
+{
+  const files = readdirSync('scripts', { recursive: true })
+    .map((f) => `scripts/${String(f).replace(/\\/g, '/')}`)
+    .filter((f) => f.endsWith('.mjs'))
+    .concat(
+      readdirSync('app', { recursive: true })
+        .map((f) => `app/${String(f).replace(/\\/g, '/')}`)
+        .filter((f) => f.endsWith('.ts') || f.endsWith('.tsx')),
+    );
+
+  let mixed = 0;
+  for (const f of files) {
+    const lines = read(f).split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (/^\s*(\/\/|\*|\/\*)/.test(line)) continue;   // Kommentar
+      if (!/RIOT_API_KEY_TFT/.test(line)) continue;
+      if (!/RIOT_API_KEY(?!_TFT)/.test(line)) continue;
+      if (!/\|\||\?\?/.test(line)) continue;
+      console.error(`✗ DRIFT: ${f}:${i + 1} laesst LoL- und TFT-Key sich gegenseitig vertreten`);
+      console.error('    → LoL und TFT laufen strikt getrennt. Genau den Key nehmen, den der');
+      console.error('      Endpunkt braucht, und ohne ihn laut abbrechen — der falsche Key');
+      console.error('      liefert HTTP 200 und faellt sonst nie auf.');
+      mixed++;
+    }
+  }
+  failures += mixed;
+  if (!mixed) console.log('✓ Riot-Keys getrennt (kein LoL/TFT-Fallback)');
+}
+
 // 5) Set-Kopplung. Bis zum Set-18-Umbau stand hier eine Liste hartkodierter
 // Set-Literale (PINNED, 14 Stellen in 10 Dateien) — der Wecker beim Bump.
 // Diese Literale sind weg: CURRENT_SET aus public/tft-set.json ist die einzige

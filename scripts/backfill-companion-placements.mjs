@@ -35,7 +35,15 @@ loadEnv();
 
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const RIOT_KEY = process.env.RIOT_API_KEY_TFT || process.env.RIOT_API_KEY;
+// Strikt der TFT-Key, KEIN Fallback auf RIOT_API_KEY (geaendert 2026-09-02).
+// Der LoL-Dev-Key ist auf TFT-Endpunkten naemlich gueltig — gemessen:
+// GET euw1/tft/league/v1/challenger mit dem LoL-Key => HTTP 200. Der Fallback
+// hat also nicht gebrochen, sondern still degradiert: X-App-Rate-Limit
+// 100:120,20:1 statt 500:10,30000:600, und das aus dem Kontingent, das die
+// LoL-Crawler brauchen — alle 10 Minuten, ohne jedes Signal. Dieselbe
+// Begruendung wie in scripts/lib/riot-client.mjs:72-76. Waechter dagegen:
+// scripts/check-drift.mjs, Block "Riot-Key-Vermischung".
+const RIOT_KEY = process.env.RIOT_API_KEY_TFT;
 if (!SUPA_URL || !SUPA_KEY || !RIOT_KEY) {
   console.error('Missing env: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, RIOT_API_KEY_TFT');
   process.exit(1);

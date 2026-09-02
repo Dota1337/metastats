@@ -16,9 +16,11 @@
     "check:tft-hero-pool": "node scripts/check-tft-hero-pool.mjs",
     "check:contracts": "node scripts/check-contracts.mjs",
     "check:deploy": "node scripts/check-vercel-deploy.mjs",
-    "verify:full": "node scripts/verify-classifications.mjs && node scripts/verify-metatft-family-coverage.mjs && node scripts/check-drift.mjs && node scripts/check-tft-hero-pool.mjs && node scripts/check-system-map.mjs",
+    "verify:full": "node scripts/verify-classifications.mjs && node scripts/verify-metatft-family-coverage.mjs && node scripts/check-drift.mjs && node scripts/check-tft-hero-pool.mjs && node scripts/check-system-map.mjs && node scripts/build-api-map.mjs --check && node scripts/check-api-map.mjs",
     "build:system-map": "node scripts/build-system-map.mjs",
     "check:system-map": "node scripts/check-system-map.mjs",
+    "build:api-map": "node scripts/build-api-map.mjs",
+    "check:api-map": "node scripts/build-api-map.mjs --check && node scripts/check-api-map.mjs",
     "check:hooks": "node scripts/check-discipline-hooks.mjs",
     "drift-audit": "node scripts/drift-audit.mjs",
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/lib/ts-test-hook.mjs --test \"scripts/**/*.test.mjs\" \"app/**/*.test.mjs\""

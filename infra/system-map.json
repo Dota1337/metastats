@@ -840,7 +840,9 @@
         "scripts/verify-metatft-family-coverage.mjs",
         "scripts/check-drift.mjs",
         "scripts/check-tft-hero-pool.mjs",
-        "scripts/check-system-map.mjs"
+        "scripts/check-system-map.mjs",
+        "scripts/build-api-map.mjs",
+        "scripts/check-api-map.mjs"
       ]
     },
     {
@@ -853,6 +855,19 @@
       "name": "check:system-map",
       "scripts": [
         "scripts/check-system-map.mjs"
+      ]
+    },
+    {
+      "name": "build:api-map",
+      "scripts": [
+        "scripts/build-api-map.mjs"
+      ]
+    },
+    {
+      "name": "check:api-map",
+      "scripts": [
+        "scripts/build-api-map.mjs",
+        "scripts/check-api-map.mjs"
       ]
     },
     {

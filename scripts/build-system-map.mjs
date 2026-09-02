@@ -113,7 +113,13 @@ function parseScriptEdges() {
   // check-drift.mjs gehört seit 2026-08-04 dazu: seine ALLOWED-Liste der
   // Limiter-Literale nennt drei Scripts, die es nie startet. Es ruft selbst
   // nichts auf — der Verlust an Erkennung ist damit null.
-  const SELF = new Set(['build-system-map.mjs', 'check-system-map.mjs', 'check-drift.mjs']);
+  const SELF = new Set([
+    'build-system-map.mjs', 'check-system-map.mjs', 'check-drift.mjs',
+    // Die api-map-Werkzeuge laufen aus dem pre-push und aus package.json, nicht
+    // aus einer Unit — ohne sie hier stuenden sie dauerhaft als „Skript ohne
+    // Aufrufer" im Bericht.
+    'build-api-map.mjs', 'check-api-map.mjs',
+  ]);
   const files = listDir(dir, /\.mjs$/).filter(f => !SELF.has(f));
   for (const f of files) {
     const text = read(resolve(dir, f));

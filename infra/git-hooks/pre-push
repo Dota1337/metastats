@@ -3,7 +3,9 @@
 # Install: `npm run setup-hooks` (copies this file into .git/hooks/pre-push)
 # Skip:    `git push --no-verify`  (explicit opt-out only)
 #
-# Nine gates:
+# Gates (die Nummern standen frueher auch in den Meldungen — sie sind dort raus,
+# weil sie bei jedem neuen Gate an zwoelf Stellen nachgezogen werden mussten und
+# genau das zweimal vergessen wurde):
 #   1. TypeScript type-check        — catches obvious code regressions
 #   2. Unit tests                   — node --test, catches logic regressions in
 #                                     the pure lib functions
@@ -14,10 +16,16 @@
 #   5. system-map freshness         — catches luegende Architektur-Doku
 #   6. Out-of-band drift            — catches Region-Listen + Set-Literale
 #   7. Roh-Hex-Utilities            — catches Rueckfall auf -[#hex] statt Token
-#   8. systemd-Haertungsboden       — catches eine neue Unit ohne Sandboxing
-#   9. Disziplin-Hooks              — catches das stille Abschalten der
+#   8. Alpha-Suffixe                — catches angeschweisste /NN an Token-Farben
+#   9. systemd-Haertungsboden       — catches eine neue Unit ohne Sandboxing
+#  10. Disziplin-Hooks              — catches das stille Abschalten der
 #                                     Plan-/Antwort-Gates. Abschalten ist
 #                                     erlaubt, aber nur sichtbar im Diff.
+#  11. Memory-Gesundheit            — catches Wikilinks ins Leere, alten Index
+#  12. api-map                      — catches eine Schnittstellen-Karte, die
+#                                     nicht mehr zum Code passt, und Aufrufe
+#                                     auf Datenbank-Funktionen, die es nicht
+#                                     mehr gibt
 
 set -e
 
@@ -31,7 +39,7 @@ if [ -f infra/git-hooks/pre-push ] && ! cmp -s "$0" infra/git-hooks/pre-push; th
   exit 1
 fi
 
-echo "[pre-push 1/11] Running tsc --noEmit ..."
+echo "[pre-push] Running tsc --noEmit ..."
 if ! npx tsc --noEmit; then
   echo ""
   echo "TypeScript errors detected — push blocked."
@@ -39,7 +47,7 @@ if ! npx tsc --noEmit; then
 fi
 echo "  tsc passed."
 
-echo "[pre-push 2/11] Running unit tests ..."
+echo "[pre-push] Running unit tests ..."
 # Frueh in der Kette: die Tests laufen in <1s und haengen an nichts, was die
 # spaeteren Gates tun. Ein roter Test soll nicht hinter 60s tsc+Verifier warten.
 if ! npm test; then
@@ -49,7 +57,7 @@ if ! npm test; then
 fi
 echo "  unit tests passed."
 
-echo "[pre-push 3/11] Checking snapshot-matrix.generated.mjs freshness ..."
+echo "[pre-push] Checking snapshot-matrix.generated.mjs freshness ..."
 # Wenn snapshot-matrix.ts neuer ist als die generated.mjs, ist der commit stale.
 # Schützt gegen Drift im Auto-Generate-Pattern (reference_dual_module_patterns.md).
 if [ -f app/lib/snapshot-matrix.ts ] && [ -f app/lib/snapshot-matrix.generated.mjs ]; then
@@ -62,7 +70,7 @@ if [ -f app/lib/snapshot-matrix.ts ] && [ -f app/lib/snapshot-matrix.generated.m
 fi
 echo "  snapshot-matrix freshness OK."
 
-echo "[pre-push 4/11] Running classification verifier ..."
+echo "[pre-push] Running classification verifier ..."
 if ! node scripts/verify-classifications.mjs; then
   echo ""
   echo "Classification checks failed — push blocked."
@@ -72,7 +80,7 @@ if ! node scripts/verify-classifications.mjs; then
 fi
 echo "  classification checks passed."
 
-echo "[pre-push 5/11] Checking system-map freshness + broken chains ..."
+echo "[pre-push] Checking system-map freshness + broken chains ..."
 # Die Karte wird generiert. Wer eine Unit anfasst und sie nicht neu baut,
 # bekommt eine Architektur-Doku, die luegt — schlimmer als keine.
 if ! node scripts/build-system-map.mjs --check; then
@@ -92,7 +100,7 @@ if ! node scripts/check-system-map.mjs > /dev/null; then
 fi
 echo "  system-map OK."
 
-echo "[pre-push 6/11] Checking out-of-band region-list drift ..."
+echo "[pre-push] Checking out-of-band region-list drift ..."
 if ! node scripts/check-drift.mjs; then
   echo ""
   echo "Region-list drift detected — push blocked."
@@ -101,7 +109,7 @@ if ! node scripts/check-drift.mjs; then
 fi
 echo "  region-list drift check passed."
 
-echo "[pre-push 7/11] Checking raw-hex utilities in markup ..."
+echo "[pre-push] Checking raw-hex utilities in markup ..."
 # Ratsche, kein Verbot: die migrierten 10 Farben sind hart auf Null, der noch
 # offene Rest (Accent, Win/Loss) darf nur nicht wachsen. Siehe Kommentarkopf
 # in scripts/check-raw-hex-utilities.mjs.
@@ -111,7 +119,7 @@ if ! node scripts/check-raw-hex-utilities.mjs; then
   exit 1
 fi
 
-echo "[pre-push 8/11] Checking angeschweisste Alpha-Suffixe ..."
+echo "[pre-push] Checking angeschweisste Alpha-Suffixe ..."
 # Harte Null, keine Ratsche: `${farbe}20` ist erst dann ein Fehler, wenn die
 # Farbe ein Token wird — und dann verwirft der Browser die Deklaration still,
 # ohne Build-Fehler. Der Bestand wurde in Commit 2b-a auf null gebracht,
@@ -123,7 +131,7 @@ if ! node scripts/check-color-concat.mjs; then
   exit 1
 fi
 
-echo "[pre-push 9/11] Checking systemd-Haertungsboden in den Unit-Files ..."
+echo "[pre-push] Checking systemd-Haertungsboden in den Unit-Files ..."
 # Der Boden steht woertlich in jeder Unit statt in einem Drop-In auf der Box,
 # weil build-system-map.mjs nur die Unit-Files liest — ein Drop-In unter
 # /etc waere Zustand, den die Systemkarte strukturell nicht sieht. Preis des
@@ -135,7 +143,7 @@ if ! node scripts/apply-hardening-floor.mjs --check; then
   exit 1
 fi
 
-echo "[pre-push 10/11] Checking Disziplin-Hooks ..."
+echo "[pre-push] Checking Disziplin-Hooks ..."
 # Die Gates gegen "erst coden, dann planen" und gegen ellenlange Berichte
 # leben in .claude/settings.json — einem gitignorierten Symlink. Genau deshalb
 # koennen sie stumm verschwinden (siehe 28.06., Conflicted Copy) oder in einem
@@ -147,7 +155,7 @@ if ! node scripts/check-discipline-hooks.mjs; then
   exit 1
 fi
 
-echo "[pre-push 11/11] Checking Memory-Gesundheit ..."
+echo "[pre-push] Checking Memory-Gesundheit ..."
 # Vier Verfallsarten in einem Lauf: Wikilinks ins Leere, fehlendes modified:,
 # ein Vektor-Index aelter als drei Tage, und Tier-1-Regeln, die in MEMORY.md
 # stehen, aber nicht in .claude/rules ausgeliefert werden. Der letzte Punkt ist
@@ -158,6 +166,27 @@ if ! node scripts/memory-health.mjs --quiet; then
   echo "Memory-Gesundheit: Befunde offen — push blocked."
   exit 1
 fi
+
+echo "[pre-push] Checking api-map ..."
+# Dieselbe Begruendung wie beim system-map-Gate: der interne Graph zeigt, was
+# in infra/api-map.json steht. Wird eine Route umbenannt und die Karte nicht
+# neu gebaut, behauptet der Graph eine Schnittstelle, die es nicht gibt.
+if ! node scripts/build-api-map.mjs --check; then
+  echo ""
+  echo "api-map veraltet — push blocked."
+  echo "Run: npm run build:api-map && git add infra/api-map.json"
+  exit 1
+fi
+# Kaputte Bezuege (Aufruf einer Datenbank-Funktion ohne Migration, Route-Datei
+# weg) blocken. Hinweise (Routen ohne Datenquelle, nicht aufloesbare Namen)
+# stehen nur da — ein Gate, das an Normalzustaenden meckert, wird abgeschaltet.
+if ! node scripts/check-api-map.mjs > /dev/null; then
+  node scripts/check-api-map.mjs
+  echo ""
+  echo "Kaputte Bezuege in der api-map — push blocked."
+  exit 1
+fi
+echo "  api-map OK."
 
 # --- Memory-Index nachziehen (kein Gate) ---------------------------------
 # Der Indexer ist inkrementell: unveraenderte Sections werden uebersprungen

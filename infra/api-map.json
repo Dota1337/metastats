@@ -1,0 +1,2793 @@
+{
+  "$comment": [
+    "GENERIERT von scripts/build-api-map.mjs — nicht von Hand editieren.",
+    "Neu bauen: npm run build:api-map — pruefen: npm run check:api-map",
+    "Kanten stammen aus statischer Analyse des Quelltexts. Was sich nicht",
+    "belegen laesst, steht in `unresolved` statt als geratene Kante im Graphen."
+  ],
+  "counts": {
+    "routes": 73,
+    "groups": 30,
+    "tables": 28,
+    "rpcs": 25,
+    "files": 10,
+    "edges": 282,
+    "unresolved": 1
+  },
+  "groups": [
+    {
+      "name": "tft",
+      "count": 21
+    },
+    {
+      "name": "tft/marktwert",
+      "count": 8
+    },
+    {
+      "name": "tft/comps",
+      "count": 6
+    },
+    {
+      "name": "internal",
+      "count": 4
+    },
+    {
+      "name": "champions",
+      "count": 3
+    },
+    {
+      "name": "tft/pros",
+      "count": 3
+    },
+    {
+      "name": "cron",
+      "count": 2
+    },
+    {
+      "name": "marktwert",
+      "count": 2
+    },
+    {
+      "name": "tft/positions",
+      "count": 2
+    },
+    {
+      "name": "tournaments",
+      "count": 2
+    },
+    {
+      "name": "ai-coach",
+      "count": 1
+    },
+    {
+      "name": "anomalies",
+      "count": 1
+    },
+    {
+      "name": "challenges",
+      "count": 1
+    },
+    {
+      "name": "coach",
+      "count": 1
+    },
+    {
+      "name": "feed",
+      "count": 1
+    },
+    {
+      "name": "homepage-stats",
+      "count": 1
+    },
+    {
+      "name": "img",
+      "count": 1
+    },
+    {
+      "name": "knowledge-graph",
+      "count": 1
+    },
+    {
+      "name": "leaderboard",
+      "count": 1
+    },
+    {
+      "name": "live-game",
+      "count": 1
+    },
+    {
+      "name": "market-rankings",
+      "count": 1
+    },
+    {
+      "name": "mastery",
+      "count": 1
+    },
+    {
+      "name": "matches",
+      "count": 1
+    },
+    {
+      "name": "patch-notes",
+      "count": 1
+    },
+    {
+      "name": "recent-players",
+      "count": 1
+    },
+    {
+      "name": "summoner",
+      "count": 1
+    },
+    {
+      "name": "team-synergy",
+      "count": 1
+    },
+    {
+      "name": "transfer-predictions",
+      "count": 1
+    },
+    {
+      "name": "twitch",
+      "count": 1
+    },
+    {
+      "name": "version",
+      "count": 1
+    }
+  ],
+  "nodes": [
+    {
+      "id": "api:/api/ai-coach",
+      "kind": "route",
+      "label": "/api/ai-coach",
+      "group": "ai-coach",
+      "file": "app/api/ai-coach/route.ts",
+      "via": []
+    },
+    {
+      "id": "api:/api/anomalies",
+      "kind": "route",
+      "label": "/api/anomalies",
+      "group": "anomalies",
+      "file": "app/api/anomalies/route.ts",
+      "via": []
+    },
+    {
+      "id": "api:/api/challenges",
+      "kind": "route",
+      "label": "/api/challenges",
+      "group": "challenges",
+      "file": "app/api/challenges/route.ts",
+      "via": [
+        "app/lib/regions.ts",
+        "app/lib/riot-fetch.ts"
+      ]
+    },
+    {
+      "id": "api:/api/champions",
+      "kind": "route",
+      "label": "/api/champions",
+      "group": "champions",
+      "file": "app/api/champions/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/tft-supabase-reader.ts"
+      ]
+    },
+    {
+      "id": "api:/api/champions/[id]/builds",
+      "kind": "route",
+      "label": "/api/champions/[id]/builds",
+      "group": "champions",
+      "file": "app/api/champions/[id]/builds/route.ts",
+      "via": []
+    },
+    {
+      "id": "api:/api/champions/collect",
+      "kind": "route",
+      "label": "/api/champions/collect",
+      "group": "champions",
+      "file": "app/api/champions/collect/route.ts",
+      "via": [
+        "app/lib/regions.ts",
+        "app/lib/riot-fetch.ts"
+      ]
+    },
+    {
+      "id": "api:/api/coach/chat",
+      "kind": "route",
+      "label": "/api/coach/chat",
+      "group": "coach",
+      "file": "app/api/coach/chat/route.ts",
+      "via": [
+        "app/lib/tft-hetzner-matches.ts"
+      ]
+    },
+    {
+      "id": "api:/api/cron/check-patches",
+      "kind": "route",
+      "label": "/api/cron/check-patches",
+      "group": "cron",
+      "file": "app/api/cron/check-patches/route.ts",
+      "via": []
+    },
+    {
+      "id": "api:/api/cron/update-esports",
+      "kind": "route",
+      "label": "/api/cron/update-esports",
+      "group": "cron",
+      "file": "app/api/cron/update-esports/route.ts",
+      "via": []
+    },
+    {
+      "id": "api:/api/feed/tft-patches",
+      "kind": "route",
+      "label": "/api/feed/tft-patches",
+      "group": "feed",
+      "file": "app/api/feed/tft-patches/route.ts",
+      "via": [
+        "app/lib/current-set.ts",
+        "app/lib/tft-supabase-reader.ts"
+      ]
+    },
+    {
+      "id": "api:/api/homepage-stats",
+      "kind": "route",
+      "label": "/api/homepage-stats",
+      "group": "homepage-stats",
+      "file": "app/api/homepage-stats/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/tft-supabase-reader.ts"
+      ]
+    },
+    {
+      "id": "api:/api/img/[...p]",
+      "kind": "route",
+      "label": "/api/img/[...p]",
+      "group": "img",
+      "file": "app/api/img/[...p]/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/cdragon-base.ts",
+        "app/lib/current-set.ts",
+        "app/lib/tft-supabase-reader.ts"
+      ]
+    },
+    {
+      "id": "api:/api/internal/login",
+      "kind": "route",
+      "label": "/api/internal/login",
+      "group": "internal",
+      "file": "app/api/internal/login/route.ts",
+      "via": []
+    },
+    {
+      "id": "api:/api/internal/ops-snapshot",
+      "kind": "route",
+      "label": "/api/internal/ops-snapshot",
+      "group": "internal",
+      "file": "app/api/internal/ops-snapshot/route.ts",
+      "via": []
+    },
+    {
+      "id": "api:/api/internal/revalidate",
+      "kind": "route",
+      "label": "/api/internal/revalidate",
+      "group": "internal",
+      "file": "app/api/internal/revalidate/route.ts",
+      "via": []
+    },
+    {
+      "id": "api:/api/internal/riot-status",
+      "kind": "route",
+      "label": "/api/internal/riot-status",
+      "group": "internal",
+      "file": "app/api/internal/riot-status/route.ts",
+      "via": [
+        "app/lib/riot-fetch.ts",
+        "app/lib/riot-status.ts"
+      ]
+    },
+    {
+      "id": "api:/api/knowledge-graph",
+      "kind": "route",
+      "label": "/api/knowledge-graph",
+      "group": "knowledge-graph",
+      "file": "app/api/knowledge-graph/route.ts",
+      "via": []
+    },
+    {
+      "id": "api:/api/leaderboard",
+      "kind": "route",
+      "label": "/api/leaderboard",
+      "group": "leaderboard",
+      "file": "app/api/leaderboard/route.ts",
+      "via": [
+        "app/lib/regions.ts",
+        "app/lib/riot-fetch.ts"
+      ]
+    },
+    {
+      "id": "api:/api/live-game",
+      "kind": "route",
+      "label": "/api/live-game",
+      "group": "live-game",
+      "file": "app/api/live-game/route.ts",
+      "via": [
+        "app/lib/regions.ts",
+        "app/lib/riot-fetch.ts"
+      ]
+    },
+    {
+      "id": "api:/api/market-rankings",
+      "kind": "route",
+      "label": "/api/market-rankings",
+      "group": "market-rankings",
+      "file": "app/api/market-rankings/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/tft-supabase-reader.ts"
+      ]
+    },
+    {
+      "id": "api:/api/marktwert",
+      "kind": "route",
+      "label": "/api/marktwert",
+      "group": "marktwert",
+      "file": "app/api/marktwert/route.ts",
+      "via": []
+    },
+    {
+      "id": "api:/api/marktwert/history",
+      "kind": "route",
+      "label": "/api/marktwert/history",
+      "group": "marktwert",
+      "file": "app/api/marktwert/history/route.ts",
+      "via": []
+    },
+    {
+      "id": "api:/api/mastery",
+      "kind": "route",
+      "label": "/api/mastery",
+      "group": "mastery",
+      "file": "app/api/mastery/route.ts",
+      "via": [
+        "app/lib/regions.ts",
+        "app/lib/riot-fetch.ts"
+      ]
+    },
+    {
+      "id": "api:/api/matches",
+      "kind": "route",
+      "label": "/api/matches",
+      "group": "matches",
+      "file": "app/api/matches/route.ts",
+      "via": [
+        "app/lib/regions.ts",
+        "app/lib/riot-fetch.ts"
+      ]
+    },
+    {
+      "id": "api:/api/patch-notes",
+      "kind": "route",
+      "label": "/api/patch-notes",
+      "group": "patch-notes",
+      "file": "app/api/patch-notes/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/tft-supabase-reader.ts"
+      ]
+    },
+    {
+      "id": "api:/api/recent-players",
+      "kind": "route",
+      "label": "/api/recent-players",
+      "group": "recent-players",
+      "file": "app/api/recent-players/route.ts",
+      "via": []
+    },
+    {
+      "id": "api:/api/summoner",
+      "kind": "route",
+      "label": "/api/summoner",
+      "group": "summoner",
+      "file": "app/api/summoner/route.ts",
+      "via": [
+        "app/lib/regions.ts",
+        "app/lib/riot-fetch.ts"
+      ]
+    },
+    {
+      "id": "api:/api/team-synergy",
+      "kind": "route",
+      "label": "/api/team-synergy",
+      "group": "team-synergy",
+      "file": "app/api/team-synergy/route.ts",
+      "via": []
+    },
+    {
+      "id": "api:/api/tft/augments",
+      "kind": "route",
+      "label": "/api/tft/augments",
+      "group": "tft",
+      "file": "app/api/tft/augments/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/tft-supabase-reader.ts"
+      ]
+    },
+    {
+      "id": "api:/api/tft/available-patches",
+      "kind": "route",
+      "label": "/api/tft/available-patches",
+      "group": "tft",
+      "file": "app/api/tft/available-patches/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/tft-supabase-reader.ts"
+      ]
+    },
+    {
+      "id": "api:/api/tft/comps",
+      "kind": "route",
+      "label": "/api/tft/comps",
+      "group": "tft/comps",
+      "file": "app/api/tft/comps/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/snapshot-lookup.ts",
+        "app/lib/tft-classify-comp.ts",
+        "app/lib/tft-supabase-reader.ts"
+      ]
+    },
+    {
+      "id": "api:/api/tft/comps/community",
+      "kind": "route",
+      "label": "/api/tft/comps/community",
+      "group": "tft/comps",
+      "file": "app/api/tft/comps/community/route.ts",
+      "via": [
+        "app/lib/current-set.ts"
+      ]
+    },
+    {
+      "id": "api:/api/tft/comps/community/[id]/upvote",
+      "kind": "route",
+      "label": "/api/tft/comps/community/[id]/upvote",
+      "group": "tft/comps",
+      "file": "app/api/tft/comps/community/[id]/upvote/route.ts",
+      "via": []
+    },
+    {
+      "id": "api:/api/tft/comps/share",
+      "kind": "route",
+      "label": "/api/tft/comps/share",
+      "group": "tft/comps",
+      "file": "app/api/tft/comps/share/route.ts",
+      "via": [
+        "app/lib/current-set.ts"
+      ]
+    },
+    {
+      "id": "api:/api/tft/comps/trend",
+      "kind": "route",
+      "label": "/api/tft/comps/trend",
+      "group": "tft/comps",
+      "file": "app/api/tft/comps/trend/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/tft-supabase-reader.ts"
+      ]
+    },
+    {
+      "id": "api:/api/tft/comps/variants",
+      "kind": "route",
+      "label": "/api/tft/comps/variants",
+      "group": "tft/comps",
+      "file": "app/api/tft/comps/variants/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/tft-supabase-reader.ts"
+      ]
+    },
+    {
+      "id": "api:/api/tft/econ-score",
+      "kind": "route",
+      "label": "/api/tft/econ-score",
+      "group": "tft",
+      "file": "app/api/tft/econ-score/route.ts",
+      "via": [
+        "app/lib/current-set.ts",
+        "app/lib/tft-hetzner-matches.ts",
+        "app/lib/tft-supabase-reader.ts"
+      ]
+    },
+    {
+      "id": "api:/api/tft/explorer/matches",
+      "kind": "route",
+      "label": "/api/tft/explorer/matches",
+      "group": "tft",
+      "file": "app/api/tft/explorer/matches/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/tft-classify-comp.ts",
+        "app/lib/tft-supabase-reader.ts"
+      ]
+    },
+    {
+      "id": "api:/api/tft/items",
+      "kind": "route",
+      "label": "/api/tft/items",
+      "group": "tft",
+      "file": "app/api/tft/items/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/snapshot-lookup.ts",
+        "app/lib/tft-stats-loader.ts",
+        "app/lib/tft-supabase-reader.ts"
+      ]
+    },
+    {
+      "id": "api:/api/tft/leaderboard",
+      "kind": "route",
+      "label": "/api/tft/leaderboard",
+      "group": "tft",
+      "file": "app/api/tft/leaderboard/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/regions.ts",
+        "app/lib/riot-fetch.ts",
+        "app/lib/tft-supabase-reader.ts"
+      ]
+    },
+    {
+      "id": "api:/api/tft/marktwert",
+      "kind": "route",
+      "label": "/api/tft/marktwert",
+      "group": "tft/marktwert",
+      "file": "app/api/tft/marktwert/route.ts",
+      "via": [
+        "app/lib/current-set.ts",
+        "app/lib/regions.ts",
+        "app/lib/riot-fetch.ts",
+        "app/lib/tft-classify-comp.ts"
+      ]
+    },
+    {
+      "id": "api:/api/tft/marktwert/history",
+      "kind": "route",
+      "label": "/api/tft/marktwert/history",
+      "group": "tft/marktwert",
+      "file": "app/api/tft/marktwert/history/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/tft-supabase-reader.ts"
+      ]
+    },
+    {
+      "id": "api:/api/tft/marktwert/leaderboard",
+      "kind": "route",
+      "label": "/api/tft/marktwert/leaderboard",
+      "group": "tft/marktwert",
+      "file": "app/api/tft/marktwert/leaderboard/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/tft-supabase-reader.ts"
+      ]
+    },
+    {
+      "id": "api:/api/tft/marktwert/movers",
+      "kind": "route",
+      "label": "/api/tft/marktwert/movers",
+      "group": "tft/marktwert",
+      "file": "app/api/tft/marktwert/movers/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/tft-supabase-reader.ts"
+      ]
+    },
+    {
+      "id": "api:/api/tft/marktwert/peaks",
+      "kind": "route",
+      "label": "/api/tft/marktwert/peaks",
+      "group": "tft/marktwert",
+      "file": "app/api/tft/marktwert/peaks/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/tft-supabase-reader.ts"
+      ]
+    },
+    {
+      "id": "api:/api/tft/marktwert/refresh",
+      "kind": "route",
+      "label": "/api/tft/marktwert/refresh",
+      "group": "tft/marktwert",
+      "file": "app/api/tft/marktwert/refresh/route.ts",
+      "via": []
+    },
+    {
+      "id": "api:/api/tft/marktwert/sparklines",
+      "kind": "route",
+      "label": "/api/tft/marktwert/sparklines",
+      "group": "tft/marktwert",
+      "file": "app/api/tft/marktwert/sparklines/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/tft-supabase-reader.ts"
+      ]
+    },
+    {
+      "id": "api:/api/tft/marktwert/teams",
+      "kind": "route",
+      "label": "/api/tft/marktwert/teams",
+      "group": "tft/marktwert",
+      "file": "app/api/tft/marktwert/teams/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/tft-supabase-reader.ts"
+      ]
+    },
+    {
+      "id": "api:/api/tft/matches",
+      "kind": "route",
+      "label": "/api/tft/matches",
+      "group": "tft",
+      "file": "app/api/tft/matches/route.ts",
+      "via": [
+        "app/lib/regions.ts",
+        "app/lib/riot-fetch.ts"
+      ]
+    },
+    {
+      "id": "api:/api/tft/meta-pulse",
+      "kind": "route",
+      "label": "/api/tft/meta-pulse",
+      "group": "tft",
+      "file": "app/api/tft/meta-pulse/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/tft-supabase-reader.ts"
+      ]
+    },
+    {
+      "id": "api:/api/tft/onetricks",
+      "kind": "route",
+      "label": "/api/tft/onetricks",
+      "group": "tft",
+      "file": "app/api/tft/onetricks/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/tft-hetzner-matches.ts",
+        "app/lib/tft-supabase-reader.ts"
+      ]
+    },
+    {
+      "id": "api:/api/tft/patch-diff",
+      "kind": "route",
+      "label": "/api/tft/patch-diff",
+      "group": "tft",
+      "file": "app/api/tft/patch-diff/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/tft-supabase-reader.ts"
+      ]
+    },
+    {
+      "id": "api:/api/tft/patch-notes",
+      "kind": "route",
+      "label": "/api/tft/patch-notes",
+      "group": "tft",
+      "file": "app/api/tft/patch-notes/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/tft-patch-label.ts",
+        "app/lib/tft-supabase-reader.ts"
+      ]
+    },
+    {
+      "id": "api:/api/tft/player-stats",
+      "kind": "route",
+      "label": "/api/tft/player-stats",
+      "group": "tft",
+      "file": "app/api/tft/player-stats/route.ts",
+      "via": [
+        "app/lib/regions.ts",
+        "app/lib/riot-fetch.ts",
+        "app/lib/tft-player-cache.ts",
+        "app/lib/tft-rank-history.ts"
+      ]
+    },
+    {
+      "id": "api:/api/tft/positions/by-units",
+      "kind": "route",
+      "label": "/api/tft/positions/by-units",
+      "group": "tft/positions",
+      "file": "app/api/tft/positions/by-units/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/tft-classify-comp.ts",
+        "app/lib/tft-supabase-reader.ts"
+      ]
+    },
+    {
+      "id": "api:/api/tft/positions/submit",
+      "kind": "route",
+      "label": "/api/tft/positions/submit",
+      "group": "tft/positions",
+      "file": "app/api/tft/positions/submit/route.ts",
+      "via": []
+    },
+    {
+      "id": "api:/api/tft/pros",
+      "kind": "route",
+      "label": "/api/tft/pros",
+      "group": "tft/pros",
+      "file": "app/api/tft/pros/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/tft-supabase-reader.ts"
+      ]
+    },
+    {
+      "id": "api:/api/tft/pros/by-comp",
+      "kind": "route",
+      "label": "/api/tft/pros/by-comp",
+      "group": "tft/pros",
+      "file": "app/api/tft/pros/by-comp/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/tft-hetzner-matches.ts",
+        "app/lib/tft-supabase-reader.ts"
+      ]
+    },
+    {
+      "id": "api:/api/tft/pros/specialty",
+      "kind": "route",
+      "label": "/api/tft/pros/specialty",
+      "group": "tft/pros",
+      "file": "app/api/tft/pros/specialty/route.ts",
+      "via": [
+        "app/lib/current-set.ts",
+        "app/lib/tft-classify-comp.ts",
+        "app/lib/tft-hetzner-matches.ts"
+      ]
+    },
+    {
+      "id": "api:/api/tft/regions/divergence",
+      "kind": "route",
+      "label": "/api/tft/regions/divergence",
+      "group": "tft",
+      "file": "app/api/tft/regions/divergence/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/tft-supabase-reader.ts"
+      ]
+    },
+    {
+      "id": "api:/api/tft/sets/current",
+      "kind": "route",
+      "label": "/api/tft/sets/current",
+      "group": "tft",
+      "file": "app/api/tft/sets/current/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/tft-patch-label.ts",
+        "app/lib/tft-supabase-reader.ts"
+      ]
+    },
+    {
+      "id": "api:/api/tft/status",
+      "kind": "route",
+      "label": "/api/tft/status",
+      "group": "tft",
+      "file": "app/api/tft/status/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/riot-fetch.ts",
+        "app/lib/riot-status.ts",
+        "app/lib/tft-supabase-reader.ts"
+      ]
+    },
+    {
+      "id": "api:/api/tft/summoner",
+      "kind": "route",
+      "label": "/api/tft/summoner",
+      "group": "tft",
+      "file": "app/api/tft/summoner/route.ts",
+      "via": [
+        "app/lib/regions.ts",
+        "app/lib/riot-fetch.ts"
+      ]
+    },
+    {
+      "id": "api:/api/tft/tournaments",
+      "kind": "route",
+      "label": "/api/tft/tournaments",
+      "group": "tft",
+      "file": "app/api/tft/tournaments/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/tft-supabase-reader.ts"
+      ]
+    },
+    {
+      "id": "api:/api/tft/trait-unitcount",
+      "kind": "route",
+      "label": "/api/tft/trait-unitcount",
+      "group": "tft",
+      "file": "app/api/tft/trait-unitcount/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/tft-supabase-reader.ts"
+      ]
+    },
+    {
+      "id": "api:/api/tft/traits",
+      "kind": "route",
+      "label": "/api/tft/traits",
+      "group": "tft",
+      "file": "app/api/tft/traits/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/snapshot-lookup.ts",
+        "app/lib/tft-supabase-reader.ts"
+      ]
+    },
+    {
+      "id": "api:/api/tft/unit-history",
+      "kind": "route",
+      "label": "/api/tft/unit-history",
+      "group": "tft",
+      "file": "app/api/tft/unit-history/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/tft-supabase-reader.ts"
+      ]
+    },
+    {
+      "id": "api:/api/tft/units",
+      "kind": "route",
+      "label": "/api/tft/units",
+      "group": "tft",
+      "file": "app/api/tft/units/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/snapshot-lookup.ts",
+        "app/lib/tft-stats-loader.ts",
+        "app/lib/tft-supabase-reader.ts"
+      ]
+    },
+    {
+      "id": "api:/api/tournaments",
+      "kind": "route",
+      "label": "/api/tournaments",
+      "group": "tournaments",
+      "file": "app/api/tournaments/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/tft-supabase-reader.ts"
+      ]
+    },
+    {
+      "id": "api:/api/tournaments/standings",
+      "kind": "route",
+      "label": "/api/tournaments/standings",
+      "group": "tournaments",
+      "file": "app/api/tournaments/standings/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/tft-supabase-reader.ts"
+      ]
+    },
+    {
+      "id": "api:/api/transfer-predictions",
+      "kind": "route",
+      "label": "/api/transfer-predictions",
+      "group": "transfer-predictions",
+      "file": "app/api/transfer-predictions/route.ts",
+      "via": [
+        "app/lib/riot-fetch.ts"
+      ]
+    },
+    {
+      "id": "api:/api/twitch/tft-live",
+      "kind": "route",
+      "label": "/api/twitch/tft-live",
+      "group": "twitch",
+      "file": "app/api/twitch/tft-live/route.ts",
+      "via": []
+    },
+    {
+      "id": "api:/api/version",
+      "kind": "route",
+      "label": "/api/version",
+      "group": "version",
+      "file": "app/api/version/route.ts",
+      "via": []
+    },
+    {
+      "id": "blob:manifest",
+      "kind": "blob",
+      "label": "snapshot-bundle"
+    },
+    {
+      "id": "box:hetzner",
+      "kind": "box",
+      "label": "Hetzner-Box"
+    },
+    {
+      "id": "db:champion_stats",
+      "kind": "table",
+      "label": "champion_stats",
+      "declared": false
+    },
+    {
+      "id": "db:market_value_history",
+      "kind": "table",
+      "label": "market_value_history",
+      "declared": false
+    },
+    {
+      "id": "db:players",
+      "kind": "table",
+      "label": "players",
+      "declared": false
+    },
+    {
+      "id": "db:ranked_stats",
+      "kind": "table",
+      "label": "ranked_stats",
+      "declared": false
+    },
+    {
+      "id": "db:site_config",
+      "kind": "table",
+      "label": "site_config",
+      "declared": true
+    },
+    {
+      "id": "db:tft_daily_comp_pairs",
+      "kind": "table",
+      "label": "tft_daily_comp_pairs",
+      "declared": true
+    },
+    {
+      "id": "db:tft_daily_comp_stats",
+      "kind": "table",
+      "label": "tft_daily_comp_stats",
+      "declared": true
+    },
+    {
+      "id": "db:tft_daily_crawl_meta",
+      "kind": "table",
+      "label": "tft_daily_crawl_meta",
+      "declared": true
+    },
+    {
+      "id": "db:tft_daily_item_stats",
+      "kind": "table",
+      "label": "tft_daily_item_stats",
+      "declared": true
+    },
+    {
+      "id": "db:tft_daily_trait_stats",
+      "kind": "table",
+      "label": "tft_daily_trait_stats",
+      "declared": true
+    },
+    {
+      "id": "db:tft_daily_trait_unitcount_stats",
+      "kind": "table",
+      "label": "tft_daily_trait_unitcount_stats",
+      "declared": true
+    },
+    {
+      "id": "db:tft_daily_unit_stats",
+      "kind": "table",
+      "label": "tft_daily_unit_stats",
+      "declared": true
+    },
+    {
+      "id": "db:tft_mv_population_stats",
+      "kind": "table",
+      "label": "tft_mv_population_stats",
+      "declared": true
+    },
+    {
+      "id": "db:tft_player_fetch_state",
+      "kind": "table",
+      "label": "tft_player_fetch_state",
+      "declared": true
+    },
+    {
+      "id": "db:tft_player_marketvalue_peaks",
+      "kind": "table",
+      "label": "tft_player_marketvalue_peaks",
+      "declared": true
+    },
+    {
+      "id": "db:tft_player_marketvalue_snapshots",
+      "kind": "table",
+      "label": "tft_player_marketvalue_snapshots",
+      "declared": true
+    },
+    {
+      "id": "db:tft_player_match_cache",
+      "kind": "table",
+      "label": "tft_player_match_cache",
+      "declared": true
+    },
+    {
+      "id": "db:tft_player_rank_backfill_state",
+      "kind": "table",
+      "label": "tft_player_rank_backfill_state",
+      "declared": true
+    },
+    {
+      "id": "db:tft_player_rank_history",
+      "kind": "table",
+      "label": "tft_player_rank_history",
+      "declared": true
+    },
+    {
+      "id": "db:tft_player_season_stats",
+      "kind": "table",
+      "label": "tft_player_season_stats",
+      "declared": true
+    },
+    {
+      "id": "db:tft_position_comp_cell",
+      "kind": "table",
+      "label": "tft_position_comp_cell",
+      "declared": true
+    },
+    {
+      "id": "db:tft_position_observations",
+      "kind": "table",
+      "label": "tft_position_observations",
+      "declared": true
+    },
+    {
+      "id": "db:tft_position_unit_cell",
+      "kind": "table",
+      "label": "tft_position_unit_cell",
+      "declared": false
+    },
+    {
+      "id": "db:tft_pro_players",
+      "kind": "table",
+      "label": "tft_pro_players",
+      "declared": true
+    },
+    {
+      "id": "db:tft_public_comp_upvotes",
+      "kind": "table",
+      "label": "tft_public_comp_upvotes",
+      "declared": true
+    },
+    {
+      "id": "db:tft_public_comps",
+      "kind": "table",
+      "label": "tft_public_comps",
+      "declared": true
+    },
+    {
+      "id": "db:tft_tournament_results",
+      "kind": "table",
+      "label": "tft_tournament_results",
+      "declared": true
+    },
+    {
+      "id": "db:tft_tournaments",
+      "kind": "table",
+      "label": "tft_tournaments",
+      "declared": true
+    },
+    {
+      "id": "ext:cdragon",
+      "kind": "external",
+      "label": "CommunityDragon"
+    },
+    {
+      "id": "ext:dakgg",
+      "kind": "external",
+      "label": "dak.gg"
+    },
+    {
+      "id": "ext:ddragon",
+      "kind": "external",
+      "label": "DDragon"
+    },
+    {
+      "id": "ext:fandom",
+      "kind": "external",
+      "label": "Leaguepedia"
+    },
+    {
+      "id": "ext:lolchess",
+      "kind": "external",
+      "label": "lolchess.gg"
+    },
+    {
+      "id": "ext:lolesports",
+      "kind": "external",
+      "label": "LoL Esports"
+    },
+    {
+      "id": "ext:metatft",
+      "kind": "external",
+      "label": "MetaTFT"
+    },
+    {
+      "id": "ext:riot-api",
+      "kind": "external",
+      "label": "Riot API"
+    },
+    {
+      "id": "ext:riot-web",
+      "kind": "external",
+      "label": "Riot Web"
+    },
+    {
+      "id": "ext:twitch",
+      "kind": "external",
+      "label": "Twitch"
+    },
+    {
+      "id": "file:champion-builds-*.json",
+      "kind": "file",
+      "label": "champion-builds-*.json"
+    },
+    {
+      "id": "file:champion-stats-*.json",
+      "kind": "file",
+      "label": "champion-stats-*.json"
+    },
+    {
+      "id": "file:pro-players.json",
+      "kind": "file",
+      "label": "pro-players.json"
+    },
+    {
+      "id": "file:pro-teams.json",
+      "kind": "file",
+      "label": "pro-teams.json"
+    },
+    {
+      "id": "file:tft-assets-*.json",
+      "kind": "file",
+      "label": "tft-assets-*.json"
+    },
+    {
+      "id": "file:tft-assets.json",
+      "kind": "file",
+      "label": "tft-assets.json"
+    },
+    {
+      "id": "file:tft-graph-*.json",
+      "kind": "file",
+      "label": "tft-graph-*.json"
+    },
+    {
+      "id": "file:tft-roadmap.json",
+      "kind": "file",
+      "label": "tft-roadmap.json"
+    },
+    {
+      "id": "file:tft-set.json",
+      "kind": "file",
+      "label": "tft-set.json"
+    },
+    {
+      "id": "file:tft-stats-*.json",
+      "kind": "file",
+      "label": "tft-stats-*.json"
+    },
+    {
+      "id": "fn:get_tft_available_patches",
+      "kind": "rpc",
+      "label": "get_tft_available_patches",
+      "declared": true
+    },
+    {
+      "id": "fn:get_tft_comp_daily_trend",
+      "kind": "rpc",
+      "label": "get_tft_comp_daily_trend",
+      "declared": true
+    },
+    {
+      "id": "fn:get_tft_comp_pairs",
+      "kind": "rpc",
+      "label": "get_tft_comp_pairs",
+      "declared": true
+    },
+    {
+      "id": "fn:get_tft_comp_stats",
+      "kind": "rpc",
+      "label": "get_tft_comp_stats",
+      "declared": true
+    },
+    {
+      "id": "fn:get_tft_comp_stats_for_diff",
+      "kind": "rpc",
+      "label": "get_tft_comp_stats_for_diff",
+      "declared": true
+    },
+    {
+      "id": "fn:get_tft_comp_stats_list_v2",
+      "kind": "rpc",
+      "label": "get_tft_comp_stats_list_v2",
+      "declared": true
+    },
+    {
+      "id": "fn:get_tft_comp_velocity",
+      "kind": "rpc",
+      "label": "get_tft_comp_velocity",
+      "declared": true
+    },
+    {
+      "id": "fn:get_tft_distinct_patches_for_set",
+      "kind": "rpc",
+      "label": "get_tft_distinct_patches_for_set",
+      "declared": true
+    },
+    {
+      "id": "fn:get_tft_item_stats_list",
+      "kind": "rpc",
+      "label": "get_tft_item_stats_list",
+      "declared": true
+    },
+    {
+      "id": "fn:get_tft_item_velocity",
+      "kind": "rpc",
+      "label": "get_tft_item_velocity",
+      "declared": true
+    },
+    {
+      "id": "fn:get_tft_latest_marketvalues",
+      "kind": "rpc",
+      "label": "get_tft_latest_marketvalues",
+      "declared": true
+    },
+    {
+      "id": "fn:get_tft_marketvalue_history",
+      "kind": "rpc",
+      "label": "get_tft_marketvalue_history",
+      "declared": true
+    },
+    {
+      "id": "fn:get_tft_marketvalue_movers",
+      "kind": "rpc",
+      "label": "get_tft_marketvalue_movers",
+      "declared": true
+    },
+    {
+      "id": "fn:get_tft_marketvalue_sparklines",
+      "kind": "rpc",
+      "label": "get_tft_marketvalue_sparklines",
+      "declared": true
+    },
+    {
+      "id": "fn:get_tft_pros_classified",
+      "kind": "rpc",
+      "label": "get_tft_pros_classified",
+      "declared": true
+    },
+    {
+      "id": "fn:get_tft_public_comps",
+      "kind": "rpc",
+      "label": "get_tft_public_comps",
+      "declared": true
+    },
+    {
+      "id": "fn:get_tft_region_divergence",
+      "kind": "rpc",
+      "label": "get_tft_region_divergence",
+      "declared": true
+    },
+    {
+      "id": "fn:get_tft_team_marketvalues",
+      "kind": "rpc",
+      "label": "get_tft_team_marketvalues",
+      "declared": true
+    },
+    {
+      "id": "fn:get_tft_tournament_detail",
+      "kind": "rpc",
+      "label": "get_tft_tournament_detail",
+      "declared": true
+    },
+    {
+      "id": "fn:get_tft_tournaments",
+      "kind": "rpc",
+      "label": "get_tft_tournaments",
+      "declared": true
+    },
+    {
+      "id": "fn:get_tft_trait_stats",
+      "kind": "rpc",
+      "label": "get_tft_trait_stats",
+      "declared": true
+    },
+    {
+      "id": "fn:get_tft_trait_unitcount_stats",
+      "kind": "rpc",
+      "label": "get_tft_trait_unitcount_stats",
+      "declared": true
+    },
+    {
+      "id": "fn:get_tft_trait_velocity",
+      "kind": "rpc",
+      "label": "get_tft_trait_velocity",
+      "declared": true
+    },
+    {
+      "id": "fn:get_tft_unit_stats",
+      "kind": "rpc",
+      "label": "get_tft_unit_stats",
+      "declared": true
+    },
+    {
+      "id": "fn:get_tft_unit_velocity",
+      "kind": "rpc",
+      "label": "get_tft_unit_velocity",
+      "declared": true
+    }
+  ],
+  "edges": [
+    {
+      "from": "api:/api/ai-coach",
+      "to": "db:players",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/anomalies",
+      "to": "db:market_value_history",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/anomalies",
+      "to": "db:players",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/challenges",
+      "to": "ext:riot-api",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/champions",
+      "to": "db:champion_stats",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/champions",
+      "to": "ext:ddragon",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/champions",
+      "to": "file:champion-builds-*.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/champions",
+      "to": "file:champion-stats-*.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/champions",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/champions",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/champions",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/champions/[id]/builds",
+      "to": "ext:ddragon",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/champions/[id]/builds",
+      "to": "file:champion-builds-*.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/champions/collect",
+      "to": "db:champion_stats",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/champions/collect",
+      "to": "ext:riot-api",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/coach/chat",
+      "to": "box:hetzner",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/cron/check-patches",
+      "to": "db:site_config",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/cron/check-patches",
+      "to": "ext:ddragon",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/cron/update-esports",
+      "to": "db:site_config",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/cron/update-esports",
+      "to": "ext:lolesports",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/feed/tft-patches",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/feed/tft-patches",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/feed/tft-patches",
+      "to": "fn:get_tft_unit_stats",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/homepage-stats",
+      "to": "ext:ddragon",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/homepage-stats",
+      "to": "file:champion-stats-*.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/homepage-stats",
+      "to": "file:pro-players.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/homepage-stats",
+      "to": "file:pro-teams.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/homepage-stats",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/homepage-stats",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/homepage-stats",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/img/[...p]",
+      "to": "ext:cdragon",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/img/[...p]",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/img/[...p]",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/img/[...p]",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/internal/ops-snapshot",
+      "to": "blob:manifest",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/internal/ops-snapshot",
+      "to": "box:hetzner",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/internal/riot-status",
+      "to": "ext:riot-api",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/knowledge-graph",
+      "to": "file:pro-players.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/knowledge-graph",
+      "to": "file:pro-teams.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/leaderboard",
+      "to": "db:players",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/leaderboard",
+      "to": "ext:riot-api",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/live-game",
+      "to": "ext:riot-api",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/market-rankings",
+      "to": "db:market_value_history",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/market-rankings",
+      "to": "db:players",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/market-rankings",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/market-rankings",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/market-rankings",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/marktwert",
+      "to": "db:market_value_history",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/marktwert",
+      "to": "db:players",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/marktwert",
+      "to": "db:ranked_stats",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/marktwert/history",
+      "to": "db:market_value_history",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/marktwert/history",
+      "to": "db:players",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/mastery",
+      "to": "ext:riot-api",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/matches",
+      "to": "ext:riot-api",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/patch-notes",
+      "to": "ext:ddragon",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/patch-notes",
+      "to": "ext:riot-web",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/patch-notes",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/patch-notes",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/patch-notes",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/recent-players",
+      "to": "db:players",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/summoner",
+      "to": "db:champion_stats",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/summoner",
+      "to": "db:market_value_history",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/summoner",
+      "to": "db:players",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/summoner",
+      "to": "db:ranked_stats",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/summoner",
+      "to": "ext:riot-api",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/augments",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/augments",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/augments",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/available-patches",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/available-patches",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/available-patches",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/comps",
+      "to": "blob:manifest",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/comps",
+      "to": "file:tft-assets-*.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/comps",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/comps",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/comps",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/comps",
+      "to": "fn:get_tft_comp_pairs",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/comps",
+      "to": "fn:get_tft_comp_stats",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/comps",
+      "to": "fn:get_tft_comp_stats_list_v2",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/comps",
+      "to": "fn:get_tft_comp_velocity",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/comps/community",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/comps/community",
+      "to": "fn:get_tft_public_comps",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/comps/community/[id]/upvote",
+      "to": "db:tft_public_comp_upvotes",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/comps/community/[id]/upvote",
+      "to": "db:tft_public_comps",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/comps/share",
+      "to": "db:tft_public_comps",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/comps/share",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/comps/trend",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/comps/trend",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/comps/trend",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/comps/trend",
+      "to": "fn:get_tft_comp_daily_trend",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/comps/variants",
+      "to": "db:tft_daily_comp_stats",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/comps/variants",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/comps/variants",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/comps/variants",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/econ-score",
+      "to": "box:hetzner",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/econ-score",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/econ-score",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/explorer/matches",
+      "to": "box:hetzner",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/explorer/matches",
+      "to": "file:tft-assets-*.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/explorer/matches",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/explorer/matches",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/explorer/matches",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/items",
+      "to": "blob:manifest",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/items",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/items",
+      "to": "file:tft-graph-*.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/items",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/items",
+      "to": "file:tft-stats-*.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/items",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/items",
+      "to": "fn:get_tft_item_stats_list",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/items",
+      "to": "fn:get_tft_item_velocity",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/leaderboard",
+      "to": "ext:riot-api",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/leaderboard",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/leaderboard",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/leaderboard",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/marktwert",
+      "to": "db:tft_mv_population_stats",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/marktwert",
+      "to": "db:tft_player_marketvalue_snapshots",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/marktwert",
+      "to": "ext:riot-api",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/marktwert",
+      "to": "file:tft-assets-*.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/marktwert",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/marktwert/history",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/marktwert/history",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/marktwert/history",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/marktwert/history",
+      "to": "fn:get_tft_marketvalue_history",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/marktwert/leaderboard",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/marktwert/leaderboard",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/marktwert/leaderboard",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/marktwert/leaderboard",
+      "to": "fn:get_tft_latest_marketvalues",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/marktwert/movers",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/marktwert/movers",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/marktwert/movers",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/marktwert/movers",
+      "to": "fn:get_tft_marketvalue_movers",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/marktwert/peaks",
+      "to": "db:tft_player_marketvalue_peaks",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/marktwert/peaks",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/marktwert/peaks",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/marktwert/peaks",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/marktwert/refresh",
+      "to": "box:hetzner",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/marktwert/sparklines",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/marktwert/sparklines",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/marktwert/sparklines",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/marktwert/sparklines",
+      "to": "fn:get_tft_marketvalue_sparklines",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/marktwert/teams",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/marktwert/teams",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/marktwert/teams",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/marktwert/teams",
+      "to": "fn:get_tft_team_marketvalues",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/matches",
+      "to": "ext:riot-api",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/meta-pulse",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/meta-pulse",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/meta-pulse",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/meta-pulse",
+      "to": "fn:get_tft_comp_stats_for_diff",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/meta-pulse",
+      "to": "fn:get_tft_comp_velocity",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/meta-pulse",
+      "to": "fn:get_tft_region_divergence",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/onetricks",
+      "to": "box:hetzner",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/onetricks",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/onetricks",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/onetricks",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/patch-diff",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/patch-diff",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/patch-diff",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/patch-diff",
+      "to": "fn:get_tft_comp_stats_for_diff",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/patch-diff",
+      "to": "fn:get_tft_item_stats_list",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/patch-diff",
+      "to": "fn:get_tft_trait_stats",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/patch-diff",
+      "to": "fn:get_tft_unit_stats",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/patch-notes",
+      "to": "ext:riot-web",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/patch-notes",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/patch-notes",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/patch-notes",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/player-stats",
+      "to": "db:tft_player_fetch_state",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/player-stats",
+      "to": "db:tft_player_match_cache",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/player-stats",
+      "to": "db:tft_player_rank_backfill_state",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/player-stats",
+      "to": "db:tft_player_rank_history",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/player-stats",
+      "to": "db:tft_player_season_stats",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/player-stats",
+      "to": "ext:dakgg",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/player-stats",
+      "to": "ext:lolchess",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/player-stats",
+      "to": "ext:metatft",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/player-stats",
+      "to": "ext:riot-api",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/player-stats",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/positions/by-units",
+      "to": "db:tft_position_comp_cell",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/positions/by-units",
+      "to": "db:tft_position_unit_cell",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/positions/by-units",
+      "to": "file:tft-assets-*.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/positions/by-units",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/positions/by-units",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/positions/by-units",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/positions/submit",
+      "to": "db:tft_position_observations",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/pros",
+      "to": "db:tft_pro_players",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/pros",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/pros",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/pros",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/pros",
+      "to": "fn:get_tft_pros_classified",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/pros/by-comp",
+      "to": "box:hetzner",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/pros/by-comp",
+      "to": "db:tft_pro_players",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/pros/by-comp",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/pros/by-comp",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/pros/by-comp",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/pros/specialty",
+      "to": "box:hetzner",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/pros/specialty",
+      "to": "file:tft-assets-*.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/pros/specialty",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/regions/divergence",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/regions/divergence",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/regions/divergence",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/regions/divergence",
+      "to": "fn:get_tft_region_divergence",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/sets/current",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/sets/current",
+      "to": "file:tft-roadmap.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/sets/current",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/sets/current",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/sets/current",
+      "to": "fn:get_tft_distinct_patches_for_set",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/status",
+      "to": "ext:riot-api",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/status",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/status",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/status",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/summoner",
+      "to": "ext:riot-api",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/tournaments",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/tournaments",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/tournaments",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/tournaments",
+      "to": "fn:get_tft_tournament_detail",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/tournaments",
+      "to": "fn:get_tft_tournaments",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/trait-unitcount",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/trait-unitcount",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/trait-unitcount",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/trait-unitcount",
+      "to": "fn:get_tft_trait_unitcount_stats",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/traits",
+      "to": "blob:manifest",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/traits",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/traits",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/traits",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/traits",
+      "to": "fn:get_tft_trait_stats",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/traits",
+      "to": "fn:get_tft_trait_velocity",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/unit-history",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/unit-history",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/unit-history",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/unit-history",
+      "to": "fn:get_tft_unit_stats",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/units",
+      "to": "blob:manifest",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/units",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/units",
+      "to": "file:tft-graph-*.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/units",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/units",
+      "to": "file:tft-stats-*.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/units",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/units",
+      "to": "fn:get_tft_unit_stats",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/units",
+      "to": "fn:get_tft_unit_velocity",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tournaments",
+      "to": "ext:lolesports",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tournaments",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tournaments",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tournaments",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tournaments/standings",
+      "to": "ext:lolesports",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tournaments/standings",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tournaments/standings",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tournaments/standings",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/transfer-predictions",
+      "to": "db:market_value_history",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/transfer-predictions",
+      "to": "db:players",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/transfer-predictions",
+      "to": "ext:fandom",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/transfer-predictions",
+      "to": "ext:riot-api",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/transfer-predictions",
+      "to": "file:pro-players.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/transfer-predictions",
+      "to": "file:pro-teams.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/twitch/tft-live",
+      "to": "ext:twitch",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/version",
+      "to": "ext:ddragon",
+      "kind": "fetches"
+    },
+    {
+      "from": "fn:get_tft_available_patches",
+      "to": "db:tft_daily_crawl_meta",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_comp_daily_trend",
+      "to": "db:tft_daily_comp_stats",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_comp_pairs",
+      "to": "db:tft_daily_comp_pairs",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_comp_stats",
+      "to": "db:tft_daily_comp_stats",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_comp_stats_for_diff",
+      "to": "db:tft_daily_comp_stats",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_comp_stats_list_v2",
+      "to": "db:tft_daily_comp_stats",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_comp_velocity",
+      "to": "db:tft_daily_comp_stats",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_distinct_patches_for_set",
+      "to": "db:tft_daily_unit_stats",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_item_stats_list",
+      "to": "db:tft_daily_item_stats",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_item_velocity",
+      "to": "db:tft_daily_item_stats",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_latest_marketvalues",
+      "to": "db:tft_player_marketvalue_snapshots",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_marketvalue_history",
+      "to": "db:tft_player_marketvalue_snapshots",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_marketvalue_movers",
+      "to": "db:tft_player_marketvalue_snapshots",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_marketvalue_sparklines",
+      "to": "db:tft_player_marketvalue_snapshots",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_pros_classified",
+      "to": "db:tft_pro_players",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_public_comps",
+      "to": "db:tft_public_comps",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_region_divergence",
+      "to": "db:tft_daily_comp_stats",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_team_marketvalues",
+      "to": "db:tft_player_marketvalue_snapshots",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_team_marketvalues",
+      "to": "db:tft_pro_players",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_tournament_detail",
+      "to": "db:tft_tournament_results",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_tournament_detail",
+      "to": "db:tft_tournaments",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_tournaments",
+      "to": "db:tft_tournaments",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_trait_stats",
+      "to": "db:tft_daily_comp_stats",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_trait_stats",
+      "to": "db:tft_daily_trait_stats",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_trait_unitcount_stats",
+      "to": "db:tft_daily_trait_unitcount_stats",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_trait_velocity",
+      "to": "db:tft_daily_trait_stats",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_unit_stats",
+      "to": "db:tft_daily_comp_stats",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_unit_stats",
+      "to": "db:tft_daily_unit_stats",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_unit_velocity",
+      "to": "db:tft_daily_unit_stats",
+      "kind": "reads"
+    }
+  ],
+  "unresolved": [
+    {
+      "node": "api:/api/internal/ops-snapshot",
+      "reason": "Tabellen-/Funktionsname kommt zur Laufzeit aus einer Variablen",
+      "count": 2
+    }
+  ]
+}

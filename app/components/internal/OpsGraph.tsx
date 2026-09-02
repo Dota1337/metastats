@@ -2,8 +2,18 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Line, Html } from '@react-three/drei';
+import { OrbitControls, Line } from '@react-three/drei';
 import * as THREE from 'three';
+// Die Schnittstellen-Karte wird aus dem Quelltext erzeugt (scripts/build-api-map.mjs)
+// und beim Push gegen den Code geprueft. Sie wird hier eingebunden statt ueber
+// die Ops-Route geholt: sie aendert sich nur mit einem Deploy, und die
+// Ops-Route antwortet bewusst ohne Zwischenspeicher — sie muesste die 64 KB
+// sonst bei jeder Abfrage im Minutentakt neu mitschicken.
+//
+// Die Seite laedt diese Komponente ohne Server-Rendering nach
+// (app/internal/3d-ops/page.tsx:8), die Karte landet also nur im internen
+// Bruchstueck des Bundles, nicht in dem der oeffentlichen Seiten.
+import apiMap from '../../../infra/api-map.json';
 
 // Multi-Tier-Polling-Intervalle wie vom Perf-Critic empfohlen. Schreibrate
 // wird Client-side via localStorage gemerkt — kein Server-State nötig.
@@ -146,8 +156,27 @@ function describeNode(node: NodeData): string {
   if (node.id === 'blob:manifest') {
     return 'Snapshot-Bundle auf Vercel-Blob. Manifest listet alle vorgerenderten JSON-Permutationen mit Build-Zeit. Der Snapshot-Publisher schreibt es nach jedem Daily-Crawl neu — die API-Routes lesen es zuerst, fallen erst bei Miss auf Live-RPC.';
   }
+  if (node.id.startsWith('grp:')) {
+    return `Sammelknoten fuer alle Adressen unter /api/${node.group}. Klick klappt den Bereich auf und zeigt jede Adresse einzeln mit ihren eigenen Verbindungen.`;
+  }
   if (node.id.startsWith('api:')) {
-    return API_DESCRIPTIONS[node.id.replace('api:', '')] || 'API-Route, keine Beschreibung hinterlegt.';
+    const short = node.label.replace('/api/tft/', '').replace('/api/', '');
+    return API_DESCRIPTIONS[short]
+      || `Schnittstelle ${node.label}. Quelle: ${node.detail || 'unbekannt'}. Was sie liest, ruft und holt, steht unten in den Abhaengigkeiten — die Liste stammt aus infra/api-map.json und wird bei jedem Push gegen den Quelltext geprueft.`;
+  }
+  if (node.id.startsWith('fn:')) {
+    return node.status === 'failed'
+      ? 'Diese Datenbank-Funktion wird aufgerufen, steht aber in keiner Migration. Der Aufruf laeuft ins Leere.'
+      : 'Funktion in der Datenbank. Sie rechnet die Auswertung direkt dort, statt Rohzeilen an die Seite zu schicken.';
+  }
+  if (node.id.startsWith('file:')) {
+    return 'Datei, die mit dem Auslieferungspaket mitgeht (public/). Sie wird beim Bauen erzeugt oder von einem Crawler aktualisiert und braucht zur Laufzeit keine Datenbank.';
+  }
+  if (node.id.startsWith('ext:')) {
+    return 'Quelle ausserhalb unserer Systeme. Faellt sie aus, fehlen genau die Daten, die von hier kommen — deshalb steht sie im Bild.';
+  }
+  if (node.id === 'box:hetzner') {
+    return 'Der eigene Server. Er beherbergt die Crawler-Dienste, den Match-Zwischenspeicher und den Aktualisierungs-Server auf Port 4100, den einige Schnittstellen direkt anfragen.';
   }
   if (node.id === 'user') {
     return 'Endpoint der Pipeline. Browser-Requests auf metastats.gg landen über Vercel-Edge bei den API-Routes — die meisten Hits bekommen einen Snapshot-Treffer und antworten unter 300 ms.';
@@ -405,11 +434,14 @@ interface NodeData {
   status: ServiceStatus;
   detail: string;
   rate: number | null;
+  kind: NodeKind;
+  /** Nur bei Sammelknoten und den Adressen darin: der Bereichsname. */
+  group?: string;
   serviceName?: string;
   raw?: ServiceView | { estimated: number | null; today: number | null } | ManifestInfo | null;
 }
 
-type EdgeKind = 'write' | 'read' | 'serve' | 'request' | 'trigger';
+type EdgeKind = 'write' | 'read' | 'serve' | 'request' | 'trigger' | 'call' | 'fetch';
 
 interface EdgeData {
   from: string;
@@ -426,6 +458,8 @@ const EDGE_KIND_COLOR: Record<EdgeKind, string> = {
   serve:   '#a855f7', // API liefert Snapshot
   request: '#ec4899', // User hittet API
   trigger: '#06b6d4', // Service triggert anderen Service
+  call:    '#22d3ee', // Schnittstelle ruft eine Datenbank-Funktion auf
+  fetch:   '#f97316', // Schnittstelle holt bei einer fremden Quelle
 };
 
 const EDGE_KIND_LABEL: Record<EdgeKind, string> = {
@@ -434,102 +468,270 @@ const EDGE_KIND_LABEL: Record<EdgeKind, string> = {
   serve:   'liefert an',
   request: 'fragt an',
   trigger: 'triggert',
+  call:    'ruft auf',
+  fetch:   'holt von',
 };
 
-const LAYER_NAMES = ['User', 'API', 'Snapshot', 'Datenbank', 'Crawler'];
+// Von unten nach oben: was der Besucher sieht, ganz unten — die Quellen, aus
+// denen es stammt, ganz oben.
+const LAYER_NAMES = [
+  'User',
+  'Schnittstellen',
+  'Snapshot + Dateien',
+  'Datenbank-Funktionen',
+  'Datenbank',
+  'Crawler',
+  'Fremde Quellen',
+];
+const L_USER = 0, L_API = 1, L_STORE = 2, L_FN = 3, L_DB = 4, L_SVC = 5, L_EXT = 6;
 
-function buildGraph(snap: Snapshot | null): { nodes: NodeData[]; edges: EdgeData[] } {
-  if (!snap) return { nodes: [], edges: [] };
-  const services = snap.services?.services || [];
-  const counts = snap.db?.counts || {};
-  const manifest = snap.manifest;
+type NodeKind = 'user' | 'group' | 'route' | 'blob' | 'file' | 'rpc' | 'table' | 'service' | 'external' | 'box';
+
+interface ApiMapNode {
+  id: string;
+  kind: string;
+  label: string;
+  group?: string;
+  file?: string;
+  via?: string[];
+  declared?: boolean;
+}
+interface ApiMapEdge { from: string; to: string; kind: string; }
+const MAP = apiMap as unknown as {
+  counts: Record<string, number>;
+  groups: Array<{ name: string; count: number }>;
+  nodes: ApiMapNode[];
+  edges: ApiMapEdge[];
+  unresolved: Array<{ node: string; reason: string; count: number }>;
+};
+
+// Kanten-Art aus der Karte auf die Farben des Graphen uebersetzen.
+const MAP_EDGE_KIND: Record<string, EdgeKind> = { reads: 'read', calls: 'call', fetches: 'fetch' };
+
+// Ein Sammelknoten pro Bereich („tft/marktwert" statt acht einzelner Adressen).
+// Ohne das stehen 73 Adressen auf einem Ring, der Platz fuer rund 26 hat —
+// gemessen: Umfang 32 Einheiten bei 1,2 Einheiten Knotenbreite.
+const groupId = (name: string) => `grp:${name}`;
+
+/**
+ * Auf welchen Knoten eine Karten-Adresse im Graphen zeigt: auf sich selbst,
+ * wenn ihr Bereich aufgeklappt ist — sonst auf den Sammelknoten.
+ */
+function resolveApiId(id: string, expanded: Set<string>, byId: Map<string, ApiMapNode>): string {
+  if (!id.startsWith('api:')) return id;
+  const g = byId.get(id)?.group;
+  if (!g) return id;
+  return expanded.has(g) ? id : groupId(g);
+}
+
+function buildGraph(snap: Snapshot | null, expanded: Set<string>): { nodes: NodeData[]; edges: EdgeData[] } {
+  // Kein `if (!snap) return []` mehr: der statische Teil (Schnittstellen,
+  // Tabellen, Funktionen, Dateien, fremde Quellen) steht in der Karte und
+  // braucht keine Live-Abfrage. Ohne diese Zeile war die Seite bis zur ersten
+  // Antwort der Ops-Route eine leere schwarze Flaeche.
+  const services = snap?.services?.services || [];
+  const counts = snap?.db?.counts || {};
+  const manifest = snap?.manifest ?? null;
 
   const nodes: NodeData[] = [];
   const edges: EdgeData[] = [];
+  const mapById = new Map(MAP.nodes.map(n => [n.id, n]));
 
-  // Layer 4 — Crawler-Services
+  // Layer 5 — die Box und die Dienste, die darauf laufen
   for (const s of services) {
     nodes.push({
       id: 'svc:' + s.name,
+      kind: 'service',
       serviceName: s.name,
       label: s.name.replace('metastats-', '').replace('.service', ''),
-      layer: 4,
-      layerName: LAYER_NAMES[4],
+      layer: L_SVC,
+      layerName: LAYER_NAMES[L_SVC],
       status: s.status,
       detail: `${s.activeState}/${s.subState} · result=${s.result}` + (s.ageSinceLastRunMs ? ` · last ${humanAge(s.ageSinceLastRunMs)} ago` : ''),
       rate: null,
       raw: s,
     });
   }
+  nodes.push({
+    id: 'box:hetzner',
+    kind: 'box',
+    label: 'Hetzner-Box',
+    layer: L_SVC,
+    layerName: LAYER_NAMES[L_SVC],
+    status: services.length ? 'healthy' : 'unknown',
+    detail: services.length ? `${services.length} Dienste` : 'keine Live-Daten',
+    rate: null,
+  });
 
-  // Layer 3 — DB-Tabellen
-  const tables = ['tft_daily_comp_stats', 'tft_player_marketvalue_snapshots', 'tft_player_match_cache'];
-  for (const tbl of tables) {
+  // Layer 4 — alle Tabellen aus der Karte; drei davon haben Live-Zahlen
+  for (const t of MAP.nodes.filter(n => n.kind === 'table')) {
+    const tbl = t.label;
     const c = counts[tbl];
     const rate = ratePerSec(tbl, c?.estimated ?? null);
     nodes.push({
-      id: 'db:' + tbl,
+      id: t.id,
+      kind: 'table',
       label: tbl.replace('tft_', ''),
-      layer: 3,
-      layerName: LAYER_NAMES[3],
+      layer: L_DB,
+      layerName: LAYER_NAMES[L_DB],
       status: c?.estimated != null ? 'healthy' : 'unknown',
       detail: c?.estimated != null
-        ? `${fmt(c.estimated)} rows total${c.today != null ? ` · ${fmt(c.today)} heute` : ''}`
-        : 'no data',
+        ? `${fmt(c.estimated)} Zeilen${c.today != null ? ` · ${fmt(c.today)} heute` : ''}`
+        : (t.declared ? 'keine Live-Zahl' : 'ohne Migration angelegt'),
       rate,
-      raw: c,
+      raw: c ?? null,
     });
   }
 
-  // Layer 2 — Snapshot-Bundle
+  // Layer 3 — Datenbank-Funktionen
+  for (const f of MAP.nodes.filter(n => n.kind === 'rpc')) {
+    nodes.push({
+      id: f.id,
+      kind: 'rpc',
+      label: f.label.replace(/^get_/, ''),
+      layer: L_FN,
+      layerName: LAYER_NAMES[L_FN],
+      status: f.declared ? 'healthy' : 'failed',
+      detail: f.declared ? 'in einer Migration angelegt' : 'in keiner Migration — Aufruf laeuft ins Leere',
+      rate: null,
+    });
+  }
+
+  // Layer 2 — Snapshot-Bundle + die mitgelieferten Dateien
   const manifestAge = manifest ? Date.now() - new Date(manifest.builtAt).getTime() : null;
   const manifestStatus: ServiceStatus = manifest
     ? manifestAge! < 26 * 3600_000 ? 'healthy' : manifestAge! < 50 * 3600_000 ? 'stalled' : 'failed'
     : 'unknown';
   nodes.push({
     id: 'blob:manifest',
+    kind: 'blob',
     label: 'snapshot-bundle',
-    layer: 2,
-    layerName: LAYER_NAMES[2],
+    layer: L_STORE,
+    layerName: LAYER_NAMES[L_STORE],
     status: manifestStatus,
-    detail: manifest ? `${manifest.entries} entries · built ${humanAge(manifestAge!)} ago` : 'no manifest',
+    detail: manifest ? `${manifest.entries} Eintraege · gebaut vor ${humanAge(manifestAge!)}` : 'kein Manifest',
     rate: null,
     raw: manifest,
   });
-
-  // Layer 1 — API-Endpoints
-  const apis = ['comps', 'units', 'items', 'traits'];
-  for (const a of apis) {
+  for (const f of MAP.nodes.filter(n => n.kind === 'file')) {
     nodes.push({
-      id: 'api:' + a,
-      label: `/api/tft/${a}`,
-      layer: 1,
-      layerName: LAYER_NAMES[1],
+      id: f.id,
+      kind: 'file',
+      label: f.label.replace(/\.json$/, ''),
+      layer: L_STORE,
+      layerName: LAYER_NAMES[L_STORE],
       status: 'healthy',
-      detail: 'serves from snapshot bundle',
+      detail: 'liegt im Auslieferungspaket unter public/',
+      rate: null,
+    });
+  }
+
+  // Layer 1 — Schnittstellen: pro Bereich ein Sammelknoten, aufgeklappte
+  // Bereiche zeigen ihre Adressen einzeln statt des Sammelknotens.
+  for (const g of MAP.groups) {
+    if (expanded.has(g.name)) continue;
+    nodes.push({
+      id: groupId(g.name),
+      kind: 'group',
+      group: g.name,
+      label: `/${g.name}`,
+      layer: L_API,
+      layerName: LAYER_NAMES[L_API],
+      status: 'healthy',
+      detail: g.count === 1 ? '1 Adresse · klick zum Aufklappen' : `${g.count} Adressen · klick zum Aufklappen`,
+      rate: null,
+    });
+  }
+  for (const r of MAP.nodes.filter(n => n.kind === 'route')) {
+    if (!r.group || !expanded.has(r.group)) continue;
+    nodes.push({
+      id: r.id,
+      kind: 'route',
+      group: r.group,
+      label: r.label,
+      layer: L_API,
+      layerName: LAYER_NAMES[L_API],
+      status: 'healthy',
+      detail: r.file || '',
+      rate: null,
+    });
+  }
+
+  // Layer 6 — fremde Quellen
+  for (const x of MAP.nodes.filter(n => n.kind === 'external')) {
+    nodes.push({
+      id: x.id,
+      kind: 'external',
+      label: x.label,
+      layer: L_EXT,
+      layerName: LAYER_NAMES[L_EXT],
+      status: 'healthy',
+      detail: 'Quelle ausserhalb unserer Systeme',
       rate: null,
     });
   }
 
   // Layer 0 — User
-  nodes.push({ id: 'user', label: 'User', layer: 0, layerName: LAYER_NAMES[0], status: 'healthy', detail: 'you', rate: null });
+  nodes.push({
+    id: 'user', kind: 'user', label: 'User', layer: L_USER, layerName: LAYER_NAMES[L_USER],
+    status: 'healthy', detail: 'du', rate: null,
+  });
 
-  // ----- Edges: echte Pipeline-Abhängigkeiten -----
-  // Helper, ergänzt eine Edge nur wenn beide Endpoints existieren.
+  // ----- Kanten -----
+  // Richtung ist immer Erzeuger → Verbraucher, also von oben nach unten zum
+  // User. Die Beschriftungen im Detail-Fenster sind entsprechend gedreht
+  // ("wird gelesen von" nach aussen, "liest aus" nach innen).
   const nodeIds = new Set(nodes.map(n => n.id));
+  const seenEdges = new Set<string>();
   const addEdge = (from: string, to: string, kind: EdgeKind, active: boolean) => {
-    if (!nodeIds.has(from) || !nodeIds.has(to)) return;
+    if (from === to || !nodeIds.has(from) || !nodeIds.has(to)) return;
+    const key = `${from}|${to}|${kind}`;
+    if (seenEdges.has(key)) return;
+    seenEdges.add(key);
     edges.push({ from, to, color: EDGE_KIND_COLOR[kind], active, kind, label: EDGE_KIND_LABEL[kind] });
   };
   const svcStatus = (name: string) =>
     services.find(s => s.name === name)?.status || 'unknown';
   const svcWorking = (name: string) => svcStatus(name) === 'working';
 
-  // Crawler-Services WRITE in DB-Tabellen
-  // daily-crawl schreibt alle 3 Daily-Aggregat-Tabellen (wir haben nur die comp-Tabelle im Graph,
-  // die anderen kommen mit V2 dazu).
-  addEdge('svc:metastats-daily-crawl.service', 'db:tft_daily_comp_stats', 'write',
-    svcWorking('metastats-daily-crawl.service'));
+  // Kanten aus der Karte. Mehrere Adressen desselben Bereichs, die dieselbe
+  // Tabelle lesen, werden im zugeklappten Zustand zu einer Linie — sonst
+  // laegen bis zu acht Linien exakt uebereinander.
+  for (const e of MAP.edges) {
+    const consumer = resolveApiId(e.from, expanded, mapById);
+    const target = mapById.get(e.to);
+    if (!target) continue;
+    const kind: EdgeKind = target.kind === 'file' || target.kind === 'blob'
+      ? 'serve'
+      : (MAP_EDGE_KIND[e.kind] || 'read');
+    addEdge(e.to, consumer, kind, false);
+  }
+  // Jede Schnittstelle bedient am Ende den Besucher. Der Laufpunkt auf dieser
+  // Linie bleibt den Sammelknoten vorbehalten — bei 73 einzeln aufgeklappten
+  // Adressen waeren 73 gleichzeitig laufende Punkte nur noch Flimmern.
+  for (const n of nodes) {
+    if (n.layer === L_API) addEdge(n.id, 'user', 'request', n.kind === 'group');
+  }
+
+  // Crawler-Services WRITE in DB-Tabellen.
+  // Jede dieser Linien ist eine Behauptung ueber echtes Schreiben und steht
+  // deshalb nur da, wenn sie im Skript hinter dem ExecStart nachweisbar ist.
+  // daily-crawl: die upsertRows()-Aufrufe in scripts/lib/tft-supabase-writer.mjs.
+  // tft_daily_augment_stats wird dort ebenfalls geschrieben, ist aber kein
+  // Knoten (keine Route liest sie) — addEdge verwirft die Kante still, das ist
+  // richtig so. tft_player_marketvalue_snapshots steht NICHT hier: der
+  // Daily-Crawl fasst die Tabelle nur zum Aufraeumen an (MAINTENANCE_TABLES),
+  // geschrieben wird sie vom Marktwert-Lauf.
+  for (const t of ['tft_daily_comp_stats', 'tft_daily_unit_stats', 'tft_daily_item_stats',
+    'tft_daily_trait_stats', 'tft_daily_trait_unitcount_stats', 'tft_daily_comp_pairs',
+    'tft_daily_crawl_meta']) {
+    addEdge('svc:metastats-daily-crawl.service', `db:${t}`, 'write',
+      svcWorking('metastats-daily-crawl.service'));
+  }
+  // marketvalue-snapshot: der taegliche Marktwert-Lauf, INSERT ... ON CONFLICT
+  // in scripts/lib/tft-marketvalue-pipeline.mjs.
+  addEdge('svc:metastats-marketvalue-snapshot.service', 'db:tft_player_marketvalue_snapshots', 'write',
+    svcWorking('metastats-marketvalue-snapshot.service'));
   // refresh-api schreibt on-demand in Match-Cache + Marketvalue-Snapshots
   addEdge('svc:metastats-refresh-api.service', 'db:tft_player_match_cache', 'write', false);
   addEdge('svc:metastats-refresh-api.service', 'db:tft_player_marketvalue_snapshots', 'write', false);
@@ -538,9 +740,20 @@ function buildGraph(snap: Snapshot | null): { nodes: NodeData[]; edges: EdgeData
     svcWorking('metastats-crawler.service'));
   addEdge('svc:metastats-crawler.service', 'db:tft_player_marketvalue_snapshots', 'write',
     svcWorking('metastats-crawler.service'));
-  // companion-backfill verknüpft Companion-IDs mit echten Match-IDs im Cache
-  addEdge('svc:metastats-companion-backfill.service', 'db:tft_player_match_cache', 'write',
+  // companion-backfill traegt Platzierung + echte Riot-Match-ID in die
+  // Positions-Beobachtungen nach (PATCH auf tft_position_observations). Die
+  // fruehere Kante auf tft_player_match_cache war falsch — das Skript nennt
+  // die Tabelle an keiner Stelle.
+  addEdge('svc:metastats-companion-backfill.service', 'db:tft_position_observations', 'write',
     svcWorking('metastats-companion-backfill.service'));
+  // position-aggregator: liest Beobachtungen + Match-Cache, schreibt die
+  // comp-gebundene Zellzahl.
+  addEdge('db:tft_position_observations', 'svc:metastats-position-aggregator.service', 'read',
+    svcWorking('metastats-position-aggregator.service'));
+  addEdge('db:tft_player_match_cache', 'svc:metastats-position-aggregator.service', 'read',
+    svcWorking('metastats-position-aggregator.service'));
+  addEdge('svc:metastats-position-aggregator.service', 'db:tft_position_comp_cell', 'write',
+    svcWorking('metastats-position-aggregator.service'));
 
   // Publisher READS aus DB (über die Live-API), schreibt nach Blob
   addEdge('db:tft_daily_comp_stats', 'svc:metastats-snapshot-publisher.service', 'read',
@@ -552,14 +765,6 @@ function buildGraph(snap: Snapshot | null): { nodes: NodeData[]; edges: EdgeData
   addEdge('svc:metastats-daily-crawl.service', 'svc:metastats-snapshot-publisher.service', 'trigger', false);
   addEdge('svc:metastats-daily-crawl.service', 'svc:metastats-daily-crawl-catchup.service', 'trigger', false);
 
-  // Snapshot-Bundle SERVES API-Routes
-  for (const a of apis) {
-    addEdge('blob:manifest', 'api:' + a, 'serve', !!manifest);
-  }
-  // API-Routes serve User (Read-Pfad für /tft/*)
-  for (const a of apis) {
-    addEdge('api:' + a, 'user', 'request', true);
-  }
   // refresh-api serves User direkt (Refresh-Button-Pfad)
   addEdge('svc:metastats-refresh-api.service', 'user', 'request', true);
 
@@ -570,44 +775,108 @@ function buildGraph(snap: Snapshot | null): { nodes: NodeData[]; edges: EdgeData
 // 3D Components
 // =========================================================================
 
-function positionFor(node: NodeData, idx: number, total: number): [number, number, number] {
-  const layerSpacing = 4.5;
-  const y = node.layer * layerSpacing - 9;
-  const radius = node.layer === 0 ? 0 : 4.5 + node.layer * 0.6;
-  const angle = (idx / Math.max(1, total)) * Math.PI * 2;
-  const x = Math.cos(angle) * radius;
-  const z = Math.sin(angle) * radius;
-  return [x, y, z];
+// Ein Knoten ist rund 1,2 Einheiten breit. Ein Ring mit Radius 4,5 hat einen
+// Umfang von 28 Einheiten und damit Platz fuer gut 20 Knoten — bei 73
+// Schnittstellen oder 28 Tabellen ueberlappt alles. Deshalb waechst der Radius
+// mit der Anzahl, und ab einer Obergrenze wird auf mehrere Ringe verteilt,
+// statt den Ring ins Unendliche zu ziehen (sonst passt keine Kameraposition
+// mehr fuer beide Enden).
+const NODE_SPACING = 1.45;
+const MAX_RADIUS = 10.5;
+
+function ringsFor(total: number): { rings: number; perRing: number } {
+  let rings = 1;
+  while ((Math.ceil(total / rings) * NODE_SPACING) / (2 * Math.PI) > MAX_RADIUS) rings++;
+  return { rings, perRing: Math.ceil(total / rings) };
 }
 
-// Animierter Status-Ring um den Kern — gibt Tiefe + Status-Coloring auch aus
-// Entfernung gut sichtbar. Selektierte Nodes bekommen einen zweiten outer Ring.
-function NodeMesh({ position, color, pulsing, label, selected, onClick }: {
+function positionFor(node: NodeData, idx: number, total: number): [number, number, number] {
+  const layerSpacing = 4.5;
+  const y = node.layer * layerSpacing - 11;
+  if (node.layer === L_USER) return [0, y, 0];
+  const { perRing } = ringsFor(total);
+  const ring = Math.floor(idx / perRing);
+  const inRing = idx % perRing;
+  const countInRing = Math.min(perRing, total - ring * perRing);
+  const base = Math.max(4.5 + node.layer * 0.4, (countInRing * NODE_SPACING) / (2 * Math.PI));
+  const radius = base + ring * 1.9;
+  // Halber Schritt Versatz je Ring, damit die Knoten des zweiten Rings nicht
+  // exakt hinter denen des ersten stehen.
+  const angle = ((inRing + (ring % 2) * 0.5) / Math.max(1, countInRing)) * Math.PI * 2;
+  return [Math.cos(angle) * radius, y, Math.sin(angle) * radius];
+}
+
+// Beschriftungen als gezeichnete Bilder statt als HTML-Schnipsel.
+//
+// Vorher hing an jedem Knoten ein <Html>-Element. Das legt pro Knoten eine
+// eigene React-Wurzel an und schreibt in JEDEM Bild eine neue CSS-Transform
+// (node_modules/@react-three/drei/web/Html.js:143) — bei zwoelf Knoten
+// unauffaellig, bei den jetzt bis zu 170 nicht mehr. Die naheliegende
+// Alternative (Text-Geometrie von drei) faellt aus: troika-three-text hat
+// `defaultFontURL: null` und unter public/ liegt keine Schriftdatei, die
+// Beschriftung wuerde also zur Laufzeit eine fremde Schrift nachladen.
+// Ein gezeichnetes Bild pro Beschriftungstext braucht beides nicht.
+const labelTextures = new Map<string, THREE.CanvasTexture>();
+
+function labelTexture(text: string, bright: boolean): THREE.CanvasTexture {
+  const key = `${bright ? 'w' : 'g'}|${text}`;
+  const cached = labelTextures.get(key);
+  if (cached) return cached;
+  const font = '600 44px ui-sans-serif, system-ui, -apple-system, sans-serif';
+  const probe = document.createElement('canvas').getContext('2d')!;
+  probe.font = font;
+  const width = Math.max(16, Math.ceil(probe.measureText(text).width) + 16);
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = 64;
+  const ctx = canvas.getContext('2d')!;
+  ctx.font = font;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = bright ? '#ffffff' : '#c2cddb';
+  ctx.fillText(text, width / 2, 34);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.minFilter = THREE.LinearFilter;
+  tex.needsUpdate = true;
+  labelTextures.set(key, tex);
+  return tex;
+}
+
+function LabelSprite({ text, bright, y }: { text: string; bright: boolean; y: number }) {
+  const tex = useMemo(() => labelTexture(text, bright), [text, bright]);
+  const img = tex.image as HTMLCanvasElement;
+  const height = 0.4;
+  return (
+    <sprite position={[0, y, 0]} scale={[(height * img.width) / img.height, height, 1]}>
+      <spriteMaterial map={tex} transparent depthWrite={false} opacity={bright ? 1 : 0.78} />
+    </sprite>
+  );
+}
+
+// Kern + Beschriftung fuer jeden Knoten. Halo und rotierender Ring gibt es nur
+// dort, wo sie etwas aussagen (laufender Dienst, ausgewaehlter Knoten) — bei
+// 170 Knoten waeren vier Koerper pro Knoten sonst 680 Zeichenvorgaenge.
+function NodeMesh({ position, color, pulsing, label, selected, big, onClick }: {
   position: [number, number, number];
   color: string;
   pulsing: boolean;
   label: string;
   selected: boolean;
+  big: boolean;
   onClick: () => void;
 }) {
-  const meshRef = useRef<THREE.Mesh>(null);
   const haloRef = useRef<THREE.Mesh>(null);
-  const ringRef = useRef<THREE.Mesh>(null);
   const outerRingRef = useRef<THREE.Mesh>(null);
+  const radius = big ? 0.38 : 0.26;
 
   useFrame(({ clock }) => {
     const t = clock.getElapsedTime();
     if (haloRef.current) {
-      const intensity = pulsing ? 1 + Math.sin(t * 3) * 0.25 : 1;
-      haloRef.current.scale.setScalar(1.6 * intensity);
+      haloRef.current.scale.setScalar(1.6 * (1 + Math.sin(t * 3) * 0.25));
       const mat = haloRef.current.material as THREE.MeshBasicMaterial;
-      mat.opacity = pulsing ? 0.18 + Math.sin(t * 3) * 0.08 : 0.10;
+      mat.opacity = 0.18 + Math.sin(t * 3) * 0.08;
     }
-    if (ringRef.current) {
-      ringRef.current.rotation.z = t * 0.4;
-      ringRef.current.lookAt(0, ringRef.current.parent!.position.y + 100, 100);
-    }
-    if (outerRingRef.current && selected) {
+    if (outerRingRef.current) {
       outerRingRef.current.rotation.z = -t * 0.6;
     }
   });
@@ -616,43 +885,68 @@ function NodeMesh({ position, color, pulsing, label, selected, onClick }: {
     <group
       position={position}
       onClick={e => { e.stopPropagation(); onClick(); }}
-      onPointerOver={e => { document.body.style.cursor = 'pointer'; }}
-      onPointerOut={e => { document.body.style.cursor = ''; }}
+      onPointerOver={() => { document.body.style.cursor = 'pointer'; }}
+      onPointerOut={() => { document.body.style.cursor = ''; }}
     >
-      {/* Glowing core */}
-      <mesh ref={meshRef}>
-        <sphereGeometry args={[0.32, 32, 32]} />
+      <mesh>
+        <sphereGeometry args={[radius, 16, 16]} />
         <meshStandardMaterial
           color={color}
           emissive={color}
-          emissiveIntensity={1.2}
+          emissiveIntensity={selected ? 1.8 : 1.2}
           roughness={0.3}
           metalness={0.6}
         />
       </mesh>
-      {/* Soft halo */}
-      <mesh ref={haloRef}>
-        <sphereGeometry args={[0.48, 24, 24]} />
-        <meshBasicMaterial color={color} transparent opacity={0.12} depthWrite={false} />
-      </mesh>
-      {/* Status-Ring (Torus, billboard-facing) */}
-      <mesh ref={ringRef}>
-        <torusGeometry args={[0.6, 0.04, 12, 48]} />
-        <meshBasicMaterial color={color} transparent opacity={0.7} />
-      </mesh>
-      {/* Selection-Ring outer (nur wenn selected) */}
+      {pulsing && (
+        <mesh ref={haloRef}>
+          <sphereGeometry args={[radius * 1.5, 16, 16]} />
+          <meshBasicMaterial color={color} transparent opacity={0.12} depthWrite={false} />
+        </mesh>
+      )}
       {selected && (
         <mesh ref={outerRingRef}>
-          <torusGeometry args={[0.95, 0.025, 12, 64]} />
+          <torusGeometry args={[0.95, 0.025, 8, 48]} />
           <meshBasicMaterial color={'#ffffff'} transparent opacity={0.85} />
         </mesh>
       )}
-      <Html distanceFactor={11} position={[0, 0.85, 0]} center>
-        <div className={`text-[10px] whitespace-nowrap select-none pointer-events-none font-medium ${selected ? 'text-white' : 'text-gray-300'}`}>
-          {label}
-        </div>
-      </Html>
+      <LabelSprite text={label} bright={selected} y={radius + 0.42} />
     </group>
+  );
+}
+
+// Alle ruhenden Linien in EINEM Zeichenvorgang. Vorher war jede Kante eine
+// eigene Linie mit eigener Geometrie — bei 282 Kanten aus der Karte plus den
+// Dienst-Kanten waren das ueber 300.
+function BaseEdges({ edges, positions, dimmed }: {
+  edges: EdgeData[];
+  positions: Map<string, [number, number, number]>;
+  dimmed: boolean;
+}) {
+  const geometry = useMemo(() => {
+    const pos: number[] = [];
+    const col: number[] = [];
+    const c = new THREE.Color();
+    for (const e of edges) {
+      const a = positions.get(e.from);
+      const b = positions.get(e.to);
+      if (!a || !b) continue;
+      pos.push(a[0], a[1], a[2], b[0], b[1], b[2]);
+      c.set(e.color).multiplyScalar(dimmed ? 0.16 : 0.6);
+      col.push(c.r, c.g, c.b, c.r, c.g, c.b);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    return g;
+  }, [edges, positions, dimmed]);
+
+  useEffect(() => () => geometry.dispose(), [geometry]);
+
+  return (
+    <lineSegments geometry={geometry}>
+      <lineBasicMaterial vertexColors transparent opacity={0.55} depthWrite={false} />
+    </lineSegments>
   );
 }
 
@@ -691,12 +985,11 @@ function FlowEdge({ from, to, color, active, highlighted, dimmed }: {
   );
 }
 
-function Scene({ snap, selectedId, onSelect }: {
-  snap: Snapshot | null;
+function Scene({ graph, selectedId, onSelect }: {
+  graph: { nodes: NodeData[]; edges: EdgeData[] };
   selectedId: string | null;
   onSelect: (n: NodeData | null) => void;
 }) {
-  const graph = useMemo(() => buildGraph(snap), [snap]);
   const positions = useMemo(() => {
     const map = new Map<string, [number, number, number]>();
     const byLayer: Record<number, NodeData[]> = {};
@@ -712,7 +1005,9 @@ function Scene({ snap, selectedId, onSelect }: {
   return (
     <>
       <color attach="background" args={['#050810']} />
-      <fog attach="fog" args={['#050810', 16, 50]} />
+      {/* Reicht jetzt weiter: die Ebenen stehen ueber 27 Einheiten verteilt,
+          mit der alten Nebelgrenze bei 50 waere die oberste schwarz. */}
+      <fog attach="fog" args={['#050810', 34, 110]} />
       <ambientLight intensity={0.3} />
       <pointLight position={[10, 10, 10]} intensity={0.8} color="#ffffff" />
       <pointLight position={[-10, -5, -10]} intensity={0.6} color="#7B61FF" />
@@ -735,18 +1030,26 @@ function Scene({ snap, selectedId, onSelect }: {
             pulsing={n.status === 'working' || (n.rate ?? 0) > 0.5}
             label={n.label}
             selected={selectedId === n.id}
+            big={n.kind === 'group' || n.kind === 'service' || n.kind === 'user' || n.kind === 'blob' || n.kind === 'box'}
             onClick={() => onSelect(n)}
           />
         );
       })}
 
+      {/* Ruhende Kanten gebuendelt, bewegte einzeln: nur Kanten mit Fluss oder
+          am ausgewaehlten Knoten brauchen eine eigene Linie samt Laufpunkt. */}
+      <BaseEdges
+        edges={graph.edges.filter(e => !(e.active || e.from === selectedId || e.to === selectedId))}
+        positions={positions}
+        dimmed={selectedId !== null}
+      />
+
       {graph.edges.map((e, i) => {
+        const touchesSelected = selectedId !== null && (e.from === selectedId || e.to === selectedId);
+        if (!e.active && !touchesSelected) return null;
         const from = positions.get(e.from);
         const to = positions.get(e.to);
         if (!from || !to) return null;
-        const touchesSelected = selectedId !== null && (e.from === selectedId || e.to === selectedId);
-        const highlighted = touchesSelected;
-        const dimmed = selectedId !== null && !touchesSelected;
         return (
           <FlowEdge
             key={i}
@@ -754,13 +1057,13 @@ function Scene({ snap, selectedId, onSelect }: {
             to={to}
             color={e.color}
             active={e.active}
-            highlighted={highlighted}
-            dimmed={dimmed}
+            highlighted={touchesSelected}
+            dimmed={selectedId !== null && !touchesSelected}
           />
         );
       })}
 
-      <OrbitControls enablePan zoomSpeed={0.8} />
+      <OrbitControls enablePan zoomSpeed={0.8} target={[0, 1.5, 0]} />
     </>
   );
 }
@@ -783,10 +1086,14 @@ function fmt(n: number): string {
 }
 
 // Sammelt die direkten Abhängigkeiten eines Nodes — ein/ausgehend, nach Edge-Typ.
+function emptyBuckets(): Record<EdgeKind, NodeData[]> {
+  return { write: [], read: [], serve: [], trigger: [], request: [], call: [], fetch: [] };
+}
+
 function dependenciesFor(nodeId: string, edges: EdgeData[], nodes: NodeData[]) {
   const byId = new Map(nodes.map(n => [n.id, n]));
-  const out = { write: [] as NodeData[], read: [] as NodeData[], serve: [] as NodeData[], trigger: [] as NodeData[], request: [] as NodeData[] };
-  const in_ = { write: [] as NodeData[], read: [] as NodeData[], serve: [] as NodeData[], trigger: [] as NodeData[], request: [] as NodeData[] };
+  const out = emptyBuckets();
+  const in_ = emptyBuckets();
   for (const e of edges) {
     if (e.from === nodeId) {
       const other = byId.get(e.to);
@@ -803,16 +1110,23 @@ function DependenciesList({ deps, onSelectNode }: {
   deps: ReturnType<typeof dependenciesFor>;
   onSelectNode: (id: string) => void;
 }) {
+  // Die Kanten laufen immer vom Erzeuger zum Verbraucher. Deshalb heisst die
+  // ausgehende Seite einer Lese-Kante „wird gelesen von" und die eingehende
+  // „liest aus" — nicht umgekehrt.
   const sections: Array<{ heading: string; items: NodeData[]; color: string }> = [
-    // Outgoing
+    // Ausgehend (dieser Knoten beliefert etwas)
     { heading: 'Schreibt nach', items: deps.out.write, color: EDGE_KIND_COLOR.write },
-    { heading: 'Liest aus', items: deps.out.read, color: EDGE_KIND_COLOR.read },
+    { heading: 'Wird gelesen von', items: deps.out.read, color: EDGE_KIND_COLOR.read },
+    { heading: 'Wird aufgerufen von', items: deps.out.call, color: EDGE_KIND_COLOR.call },
+    { heading: 'Wird abgeholt von', items: deps.out.fetch, color: EDGE_KIND_COLOR.fetch },
     { heading: 'Liefert an', items: deps.out.serve, color: EDGE_KIND_COLOR.serve },
     { heading: 'Triggert', items: deps.out.trigger, color: EDGE_KIND_COLOR.trigger },
     { heading: 'Bedient', items: deps.out.request, color: EDGE_KIND_COLOR.request },
-    // Incoming
+    // Eingehend (dieser Knoten holt sich etwas)
     { heading: 'Wird beschrieben von', items: deps.in.write, color: EDGE_KIND_COLOR.write },
-    { heading: 'Wird gelesen von', items: deps.in.read, color: EDGE_KIND_COLOR.read },
+    { heading: 'Liest aus', items: deps.in.read, color: EDGE_KIND_COLOR.read },
+    { heading: 'Ruft auf', items: deps.in.call, color: EDGE_KIND_COLOR.call },
+    { heading: 'Holt von', items: deps.in.fetch, color: EDGE_KIND_COLOR.fetch },
     { heading: 'Wird beliefert von', items: deps.in.serve, color: EDGE_KIND_COLOR.serve },
     { heading: 'Wird getriggert von', items: deps.in.trigger, color: EDGE_KIND_COLOR.trigger },
     { heading: 'Wird angefragt von', items: deps.in.request, color: EDGE_KIND_COLOR.request },
@@ -958,11 +1272,33 @@ export default function OpsGraph() {
   const { snap, lastUpdate } = useOpsSnapshot();
   const riotStatus = useRiotStatus();
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const graph = useMemo(() => buildGraph(snap), [snap]);
+  // Aufgeklappte Bereiche. Leer = alles gesammelt, `allGroupNames` = alles offen.
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const allGroupNames = useMemo(() => MAP.groups.map(g => g.name), []);
+  const allOpen = expanded.size === allGroupNames.length;
+
+  const toggleGroup = (name: string) => setExpanded(prev => {
+    const next = new Set(prev);
+    if (next.has(name)) next.delete(name); else next.add(name);
+    return next;
+  });
+
+  const graph = useMemo(() => buildGraph(snap, expanded), [snap, expanded]);
   const selectedNode = useMemo(
     () => (selectedId ? graph.nodes.find(n => n.id === selectedId) || null : null),
     [graph, selectedId],
   );
+
+  const handleSelect = (n: NodeData | null) => {
+    // Klick auf einen Sammelknoten klappt den Bereich auf. Der Knoten
+    // verschwindet dabei, deshalb wandert die Auswahl auf nichts.
+    if (n && n.kind === 'group' && n.group) {
+      toggleGroup(n.group);
+      setSelectedId(null);
+      return;
+    }
+    setSelectedId(n?.id || null);
+  };
 
   const errs = snap?.errors;
   const hasErrors = !!(errs?.services || errs?.db || errs?.manifest);
@@ -975,6 +1311,34 @@ export default function OpsGraph() {
           {lastUpdate ? `aktualisiert vor ${humanAge(Date.now() - lastUpdate.getTime())}` : 'lade…'}
         </div>
         <RiotStatusBanner payload={riotStatus} />
+
+        <div className="flex flex-wrap items-center gap-2 pt-1 pointer-events-auto">
+          <button
+            onClick={() => setExpanded(allOpen ? new Set() : new Set(allGroupNames))}
+            className="px-2 py-0.5 rounded border border-border-subtle bg-surface-overlay hover:bg-[#2a3a52] text-gray-300 hover:text-white transition-colors text-[11px]"
+          >
+            {allOpen ? 'alles zuklappen' : 'alles aufklappen'}
+          </button>
+          <span className="text-gray-500">
+            {graph.nodes.length} Knoten · {graph.edges.length} Verbindungen
+          </span>
+        </div>
+
+        {expanded.size > 0 && !allOpen && (
+          <div className="flex flex-wrap gap-1 pointer-events-auto">
+            {[...expanded].sort().map(name => (
+              <button
+                key={name}
+                onClick={() => toggleGroup(name)}
+                className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-overlay hover:bg-[#2a3a52] text-gray-300 hover:text-white transition-colors"
+                title="Bereich wieder zuklappen"
+              >
+                /{name} ×
+              </button>
+            ))}
+          </div>
+        )}
+
         {hasErrors && (
           <div className="text-red-400 mt-2 space-y-0.5">
             {errs?.services && <div>hetzner: {errs.services}</div>}
@@ -1000,17 +1364,22 @@ export default function OpsGraph() {
         <div className="flex items-center gap-1.5"><span className="w-3 h-0.5" style={{ backgroundColor: EDGE_KIND_COLOR.read }} />liest</div>
         <div className="flex items-center gap-1.5"><span className="w-3 h-0.5" style={{ backgroundColor: EDGE_KIND_COLOR.serve }} />liefert</div>
         <div className="flex items-center gap-1.5"><span className="w-3 h-0.5" style={{ backgroundColor: EDGE_KIND_COLOR.trigger }} />triggert</div>
+        <div className="flex items-center gap-1.5"><span className="w-3 h-0.5" style={{ backgroundColor: EDGE_KIND_COLOR.call }} />ruft Funktion</div>
+        <div className="flex items-center gap-1.5"><span className="w-3 h-0.5" style={{ backgroundColor: EDGE_KIND_COLOR.fetch }} />holt extern</div>
         <div className="flex items-center gap-1.5"><span className="w-3 h-0.5" style={{ backgroundColor: EDGE_KIND_COLOR.request }} />wird angefragt</div>
       </div>
 
-      <div className="absolute bottom-3 left-3 right-3 z-10 flex justify-between text-[10px] text-gray-500 pointer-events-none">
-        <div>L4 Crawler · L3 DB · L2 Snapshot · L1 API · L0 User</div>
-        <div>poll services/10s · db/60s · blob/120s · klick für details</div>
+      <div className="absolute bottom-3 left-3 right-3 z-10 flex justify-between gap-3 text-[10px] text-gray-500 pointer-events-none">
+        <div>von oben nach unten: {[...LAYER_NAMES].reverse().join(' · ')}</div>
+        <div>poll services/30s · db/60s · blob/120s · klick für details</div>
       </div>
 
       <div className="absolute inset-0">
-        <Canvas camera={{ position: [0, 0, 22], fov: 50 }} dpr={[1, 2]} frameloop="always">
-          <Scene snap={snap} selectedId={selectedId} onSelect={n => setSelectedId(n?.id || null)} />
+        {/* Die Ebenen stehen jetzt ueber rund 27 Einheiten Hoehe verteilt statt
+            ueber 18 — mit der alten Kamera bei z=22 waeren oben und unten
+            abgeschnitten. */}
+        <Canvas camera={{ position: [0, 4, 44], fov: 50 }} dpr={[1, 2]} frameloop="always">
+          <Scene graph={graph} selectedId={selectedId} onSelect={handleSelect} />
         </Canvas>
       </div>
     </div>

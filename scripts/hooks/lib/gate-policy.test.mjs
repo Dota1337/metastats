@@ -208,3 +208,16 @@ test('Massen-Umschreiber bleibt geblockt — die Lockerung ist keine Hintertuer'
   const codemod = () => 'import {writeFileSync} from "fs"; writeFileSync(file, out);';
   assert.equal(blocks('node scripts/codemod-accent.mjs --write', codemod), true);
 });
+
+test('Routine-Ops: Key-Rotation laeuft, das Skript selbst bleibt gesperrt', () => {
+  // User-Entscheidung 2026-09-02: der taegliche LoL-Key darf nicht jedes Mal
+  // durch Spec + Multi-Review. Freigestellt ist nur der Aufruf.
+  const schreibend = () => 'import {writeFileSync} from "fs"; writeFileSync(f, k);';
+  assert.equal(blocks('node scripts/refresh-riot-key.mjs', schreibend), false);
+  assert.equal(blocks('node scripts/refresh-riot-key.mjs --skip-box', schreibend), false);
+  // Die Datei zu aendern bleibt planpflichtig — sonst waere der Eintrag ein
+  // Schlupfloch (umschreiben, dann durch die Ausnahme ausfuehren).
+  assert.equal(isExempt('scripts/refresh-riot-key.mjs'), false);
+  // Nachbarskripte erben nichts.
+  assert.equal(blocks('node scripts/refresh-highelo-marketvalues.mjs', schreibend), true);
+});

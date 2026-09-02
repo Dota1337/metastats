@@ -13,6 +13,17 @@ import { relative, isAbsolute, resolve } from 'node:path';
 // --------------------------------------------------------------- Freistellungen
 
 /**
+ * Routine-Ops: getrackte Skripte, deren Ausfuehrung wiederkehrender Betrieb ist
+ * und keine Architektur-Entscheidung. Nur der AUFRUF ist freigestellt, nicht
+ * die Datei — wer den Inhalt aendern will, braucht weiterhin einen Plan.
+ * Aufnahmekriterium: `isExempt(pfad)` muss false sein, sonst waere der Eintrag
+ * ein Schlupfloch (Skript unbemerkt umschreiben, dann ausfuehren).
+ */
+export const ROUTINE_OPS = new Set([
+  'scripts/refresh-riot-key.mjs',
+]);
+
+/**
  * Pfade, die das Gate nichts angehen. Uebernommen aus plan-gate.mjs, erweitert
  * um die zwei Freistellungen, ohne die sich das Gate selbst einsperrt
  * (logic-flow-critic F1, 2026-09-01): seinen eigenen Quellcode und die
@@ -257,6 +268,14 @@ export function pathsWrittenByShell(cmd, projectDir, readScript = readFileSync, 
       const script = words.slice(1).find((w) => /\.(mjs|cjs|js|ts|sh|py)$/.test(w));
       if (script) {
         const abs = isAbsolute(script) ? script : resolve(base, script);
+        // Namentliche Ausnahme fuer Routine-Ops (User-Entscheidung 2026-09-02):
+        // der taegliche LoL-Key ist in Sekunden erneuert, und ein Spec- plus
+        // Multi-Review-Durchlauf pro Rotation kostet mehr als er schuetzt.
+        // Sicher, weil das Skript SELBST weiter gesperrt bleibt —
+        // `isExempt('scripts/refresh-riot-key.mjs')` ist false, es kann also
+        // nicht ohne Freigabe umgeschrieben und dann durch dieses Loch
+        // ausgefuehrt werden. Neue Eintraege nur nach demselben Test.
+        if (ROUTINE_OPS.has(toRel(abs, projectDir))) continue;
         let body = '';
         try { body = readScript(abs, 'utf8'); } catch { body = ''; }
         // Nicht lesbar (Scratchpad, generiert): nicht blocken. Lesbar und

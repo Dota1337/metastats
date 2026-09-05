@@ -1,10 +1,10 @@
 {
   "set": 18,
   "source": "tactics.tools/info/patch-notes",
-  "fetchedAt": "2026-08-29T06:18:02.023Z",
+  "fetchedAt": "2026-09-05T06:18:31.797Z",
   "patches": {
     "18.1": {
-      "scrapedAt": "2026-08-29T06:18:02.087Z",
+      "scrapedAt": "2026-09-05T06:18:32.138Z",
       "sections": [
         {
           "category": "LARGE CHANGES",

@@ -24,8 +24,50 @@ export const RIOT_SEVERITY_RANK: Record<RiotSeverity, number> = { info: 1, warni
 interface RiotMaintenance {
   id?: number;
   incident_severity?: RiotSeverity;
-  maintenance_status?: 'scheduled' | 'in_progress' | 'complete';
+  // Riot liefert das Feld auf VORFAELLEN nicht (gemessen 2026-09-08: fehlt bei
+  // 13500 komplett, ist bei 8829/10557 explizit null). Es taugt dort nicht als
+  // Lebenszeichen — dafuer ist `archive_at` da. Bei Wartungen ist es laut Riots
+  // Schema gesetzt; belegen konnten wir das nicht, weil es an dem Tag in keiner
+  // der 15 Regionen eine Wartung gab.
+  maintenance_status?: 'scheduled' | 'in_progress' | 'complete' | null;
+  // Enum laut Riots OpenAPI (tft-status-v1.StatusDto.platforms):
+  // windows, macos, android, ios, ps4, xbone, switch. Als `required` deklariert.
+  platforms?: string[];
+  // Ende des Vorfalls. null = laeuft noch. Riot setzt das sehr zurueckhaltend:
+  // der aelteste noch offene Eintrag war am 2026-09-08 810 Tage alt und hatte
+  // archive_at = null.
+  archive_at?: string | null;
+  titles?: Array<{ locale: string; content: string }>;
   updates?: Array<{ created_at?: string; updated_at?: string; translations?: Array<{ locale: string; content: string }> }>;
+}
+
+// Alles, was ausdruecklich KEIN Desktop ist. Bewusst als Ausschluss- und nicht
+// als Einschlussliste ("windows"/"macos"): taucht bei Riot je ein neuer oder
+// umbenannter Desktop-Wert auf, bekommen wir dann ein Banner zu viel statt gar
+// keins mehr. Bei einer Stoerungsmeldung ist das die richtige Fehlerrichtung.
+// Die Konsolen stehen ausdruecklich mit drin — sonst wuerde eine reine
+// PS4-Meldung als PC-Stoerung durchgehen.
+const NON_DESKTOP_PLATFORMS = new Set(['android', 'ios', 'ps4', 'xbone', 'switch']);
+
+/**
+ * Betrifft die Meldung Spieler am Rechner? Fehlt `platforms` oder ist die Liste
+ * leer, lautet die Antwort ja — eine fehlende Angabe ist keine Entwarnung.
+ */
+function affectsDesktop(item: RiotMaintenance): boolean {
+  const platforms = item.platforms;
+  if (!Array.isArray(platforms) || platforms.length === 0) return true;
+  return !platforms.every(p => NON_DESKTOP_PLATFORMS.has(p));
+}
+
+/**
+ * Laeuft die Meldung noch? Nur ein Archivierungsdatum in der VERGANGENHEIT
+ * beendet sie. Ein Datum in der Zukunft ist ein geplantes Ende, kein Ende — und
+ * ein unlesbares Datum darf das Banner nicht stumm schalten.
+ */
+function isNotArchived(item: RiotMaintenance): boolean {
+  if (item.archive_at == null) return true;
+  const at = Date.parse(item.archive_at);
+  return Number.isNaN(at) || at > Date.now();
 }
 
 interface RiotPlatformData {
@@ -62,13 +104,24 @@ async function fetchRegion(region: string, apiKey: string): Promise<RiotRegionEn
       };
     }
     const data = await r.json() as RiotPlatformData;
-    // "Aktiv" = alles ohne `complete`-Status. Riot liefert hier auch geplante
-    // Wartungen — bei denen zaehlt nur, was gerade laeuft.
+    // "Aktiv" heisst hier zweierlei: noch nicht beendet UND fuer Spieler am
+    // Rechner ueberhaupt relevant.
+    //
+    // Bis 2026-09-08 stand hier `maintenance_status !== 'complete'` fuer die
+    // Vorfaelle. Das Feld gibt es auf Vorfaellen nicht, der Filter hat also nie
+    // etwas entfernt. Aufgefallen ist es, als Riots reine Handy-Meldung 13500
+    // ("Login Issues", platforms android+ios) vier Tage lang in allen 15
+    // Regionen ein Warnbanner erzeugt hat, waehrend im PC-Client nichts anlag.
+    // Nicht zurueckbauen ohne neue Messung.
     const activeIncidents = (data.incidents || []).filter(
-      i => i.maintenance_status !== 'complete',
+      i => isNotArchived(i) && affectsDesktop(i),
     );
+    // Bei Wartungen bleibt `maintenance_status` das Lebenszeichen — aber als
+    // Ausschluss von 'complete', nicht als Einschluss von 'in_progress':
+    // liefert Riot das Feld hier genauso wenig wie bei den Vorfaellen, waere
+    // die Zahl sonst dauerhaft null und eine echte Wartung nie sichtbar.
     const activeMaintenances = (data.maintenances || []).filter(
-      m => m.maintenance_status === 'in_progress',
+      m => m.maintenance_status !== 'complete' && isNotArchived(m) && affectsDesktop(m),
     );
 
     const allActive = [...activeIncidents, ...activeMaintenances];

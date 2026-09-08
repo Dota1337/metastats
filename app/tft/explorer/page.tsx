@@ -7,7 +7,7 @@ import Footer from '../../components/Footer';
 import EmptyData from '../../components/tft/EmptyData';
 import CompCard from '../../components/tft/CompCard';
 import { useI18n } from '../../lib/i18n';
-import { loadTftAssets, tftChampionTileUrl, tftIconUrl, tftTraitDisplayName, tftTraitDescription, type TftAssetsBundle } from '../../lib/tft-cdragon';
+import { loadTftAssets, tftChampionTileUrl, tftIconUrl, tftTraitDisplayName, tftTraitDescription, tftPlayableChampions, tftTraitIdPrefix, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import { costColor as costColorOf } from '../../lib/tft-ui';
 import { itemBucketOf } from '../../lib/tft-item-bucket';
 import TierFilter, { type TierBucket } from '../../components/tft/TierFilter';
@@ -209,26 +209,22 @@ export default function TftExplorerPage() {
   // champions[i].characterId); the value-side `characterId` doesn't exist.
   // Wenn assets noch nicht geladen sind, returnen die useMemo-Listen []
   // (Frühreturn unten), also brauchen wir keinen Set-Fallback hier.
-  const SET_PREFIX = assets ? `TFT${assets.set}_` : '';
+  //
+  // Merkmale haben kein Formmerkmal, an dem man sie ohne Namen erkennen
+  // koennte — hier bleibt der Namensanfang. Er wird aber aus dem Bundle
+  // ausgezaehlt statt aus der Set-Nummer gebaut (Set 17 -> `TFT17_`,
+  // Set 18 -> `DA_`). `null` heisst „nicht filtern" statt leere Liste.
+  const TRAIT_PREFIX = useMemo(() => tftTraitIdPrefix(assets), [assets]);
 
+  // Einheiten kommen ueber die Form (Kosten 1-5 + mindestens ein Merkmal),
+  // nicht ueber den Namensanfang — Set 18 heisst `DA_Amumu18` und lief mit
+  // `TFT18_` auf eine leere Liste. Kampf-Attrappen und FakeUnits fallen an
+  // einer der beiden Bedingungen durch.
   const unitOptions = useMemo(() => {
     if (!assets) return [] as { id: string; name: string; cost: number }[];
-    return Object.entries(assets.champions)
-      .filter(([id, c]) => {
-        if (!id.startsWith(SET_PREFIX)) return false;
-        const ch = c as any;
-        if (!ch || ch.cost <= 0 || ch.cost > 5) return false;
-        // Playable champions always have at least one trait. PvE summons
-        // (Mini Black Hole, Apex Primordian, Enemy_*) and "FakeUnit" entries
-        // have 0 traits — they sneak past the cost filter but shouldn't
-        // appear in the playable-champion picker.
-        if (!Array.isArray(ch.traits) || ch.traits.length === 0) return false;
-        if (/Enemy_|FakeUnit|Minion|Summon/i.test(id)) return false;
-        return true;
-      })
-      .map(([id, c]) => ({ id, name: (c as any).name as string, cost: (c as any).cost as number }))
-      .sort((a, b) => a.cost - b.cost || a.name.localeCompare(b.name));
-  }, [assets, SET_PREFIX]);
+    return tftPlayableChampions(assets)
+      .map(({ id, champion }) => ({ id, name: champion.name, cost: champion.cost }));
+  }, [assets]);
 
   // Item-Picker mit zwei Buckets: "Standard" (Combat-Items, composition=2)
   // und "Artefakte". Beide Buckets kommen aus dem zentralen itemBucketOf
@@ -271,14 +267,14 @@ export default function TftExplorerPage() {
   const traitOptions = useMemo(() => {
     if (!assets) return [] as { id: string; name: string; tooltip: string }[];
     return Object.entries(assets.traits)
-      .filter(([id, meta]) => id.startsWith(SET_PREFIX) && (meta as any)?.name)
+      .filter(([id, meta]) => (!TRAIT_PREFIX || id.startsWith(TRAIT_PREFIX)) && (meta as any)?.name)
       .map(([id]) => ({
         id,
         name: tftTraitDisplayName(assets, id),
         tooltip: tftTraitDescription(assets, id),
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [assets, SET_PREFIX]);
+  }, [assets, TRAIT_PREFIX]);
 
   const filtered = useMemo(() => {
     const result = comps.filter(c => c.games >= minGames && compMatches(c, units, items, traits, assets));

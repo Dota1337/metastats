@@ -7,7 +7,7 @@ import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
 import TftHero from '../../components/tft/TftHero';
 import { useI18n } from '../../lib/i18n';
-import { loadTftAssets, tftChampionTileUrl, tftIconUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
+import { loadTftAssets, tftChampionTileUrl, tftIconUrl, tftPlayableChampions, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import { buildPlanAheadCode } from '../../lib/tft-plan-ahead-code';
 
 // Visual comp-builder with TFT-standard 4×7 pointy-top hex board.
@@ -224,19 +224,11 @@ export default function TftBuilderPage() {
 
   const champions = useMemo(() => {
     if (!assets) return [] as { characterId: string; name: string; cost: number }[];
-    // Aktuelles Set pinnen — der Picker soll nur spielbare Set-N-Champs
-    // zeigen, nicht alle Sets aus der Asset-History. Plus min 1 Trait
-    // (PvE/FakeUnits raus, gleiche Logik wie der Explorer + Patch-Winners).
-    const setPrefix = `TFT${assets.set}_`;
-    return Object.entries(assets.champions)
-      .filter(([id, c]: any) =>
-        id.startsWith(setPrefix)
-        && c.name
-        && (c.cost ?? 0) >= 1 && (c.cost ?? 0) <= 5
-        && Array.isArray(c.traits) && c.traits.length > 0,
-      )
-      .map(([id, c]: any) => ({ characterId: id, name: c.name, cost: c.cost ?? 1 }))
-      .sort((a, b) => a.cost - b.cost || a.name.localeCompare(b.name));
+    // Nur spielbare Einheiten des aktuellen Sets. Erkannt an der Form (Kosten
+    // 1-5 + mindestens ein Merkmal), nicht am Namensanfang: Set 18 heisst
+    // `DA_Amumu18`, ein Filter auf `TFT18_` liess den Picker leer.
+    return tftPlayableChampions(assets)
+      .map(({ id, champion }) => ({ characterId: id, name: champion.name, cost: champion.cost ?? 1 }));
   }, [assets]);
 
   const filteredChampions = useMemo(() => {

@@ -282,7 +282,12 @@ function read(path) {
     //    Riot hat die Champion-IDs auf DA_18_* umbenannt, und jede Stelle mit
     //    diesem Muster hat still ausgefiltert statt zu melden. Warnung, kein
     //    Fehler — ein Fallback fuer alte Cache-Zeilen darf das Muster tragen.
-    const PREFIX_RE = new RegExp('TFT\\d{2}_|TFT\\\\d');
+    // Dritte Form, aufgefallen am 2026-09-08: die zusammengebaute Variante
+    // `TFT${assets.set}_`. Sie sieht set-agnostisch aus, ist es aber nicht —
+    // Set 18 heisst DA_, also traf sie dort keine einzige Kennung. Genau so
+    // standen Builder, Explorer und Lobby-Scout mit leeren Listen da, ohne
+    // dass irgendwer gewarnt haette.
+    const PREFIX_RE = /TFT\d{2}_|TFT\\d|TFT\$\{/;
     // Testdateien tragen Set-IDs als Fixture — das ist ihr Zweck, kein Drift.
     // Und nur Zeilen, die mit dem Prefix FILTERN, sind gefaehrlich: eine ID in
     // einer Datenzeile ist harmlos, ein startsWith('TFT17_') wirft im Set 18

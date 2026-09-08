@@ -5,7 +5,7 @@ import Footer from '../../components/Footer';
 import TftHero from '../../components/tft/TftHero';
 import EmptyData from '../../components/tft/EmptyData';
 import { useI18n } from '../../lib/i18n';
-import { loadTftAssets, tftChampionTileUrl, findChampion, type TftAssetsBundle, type TftChampion } from '../../lib/tft-cdragon';
+import { loadTftAssets, tftChampionTileUrl, findChampion, tftPlayableChampions, type TftAssetsBundle, type TftChampion } from '../../lib/tft-cdragon';
 import { costColor as costColorOf } from '../../lib/tft-ui';
 
 // W4-A: Lobby-Comp-Predictor — Pro tippt 3-5 sichtbare Units einer
@@ -59,15 +59,12 @@ export default function TftLobbyScoutPage() {
   const champions = useMemo(() => {
     if (!assets) return [] as [string, TftChampion][];
     const q = query.trim().toLowerCase();
-    return Object.entries(assets.champions)
-      .filter(([id, c]) =>
-        id.startsWith(`TFT${assets.set}_`) &&
-        c.cost >= 1 && c.cost <= 5 &&
-        Array.isArray(c.traits) && c.traits.length > 0,
-      )
+    // Kein Filter auf den Namensanfang: Set 18 heisst `DA_Amumu18`, `TFT18_`
+    // traf keine einzige Einheit. Die Form (Kosten + Merkmal) traegt allein.
+    return tftPlayableChampions(assets)
+      .map(({ id, champion }) => [id, champion] as [string, TftChampion])
       .filter(([_, c]) => costFilter === 'all' || c.cost === costFilter)
-      .filter(([_, c]) => !q || c.name.toLowerCase().includes(q))
-      .sort((a, b) => a[1].cost - b[1].cost || a[1].name.localeCompare(b[1].name));
+      .filter(([_, c]) => !q || c.name.toLowerCase().includes(q));
   }, [assets, query, costFilter]);
 
   const matches = useMemo<Match[]>(() => {

@@ -419,10 +419,18 @@ async function main() {
   // First-run safety: if no snapshots exist on disk we fall back to Riot's
   // raw list — better permissive than wiping the builder.
   const playedIds = collectPlayedIds(active.number);
-  const setNPrefix = `TFT${active.number}_`;
+  // Das Namens-Praefix des Sets wird ausgezaehlt, nicht aus der Set-Nummer
+  // gebaut: Set 18 heisst nicht `TFT18_`, sondern `DA_` (gemessen am
+  // 2026-09-08 ueber die Merkmale beider Bundles: Set 17 = 43x TFT17_, Set 18
+  // = 36x DA_, jeweils eindeutig). Mit dem Literal traf der Filter unten
+  // keinen einzigen Set-18-Gegenstand; uebrig blieben nur die, die schon in
+  // einer Statistikdatei standen — bei einem frischen Set also fast nichts.
+  const setNPrefix = derivedSetPrefix(traits);
   const rawActive = (active.items || []).filter(x => typeof x === 'string');
   const activeItems = Array.from(new Set(rawActive.filter(id => {
-    if (id.startsWith(setNPrefix)) return true;
+    // Leeres Praefix heisst "nicht ableitbar" — dann traegt hier nichts,
+    // sonst wuerde startsWith("") die ganze Rohliste durchwinken.
+    if (setNPrefix && id.startsWith(setNPrefix)) return true;
     if (/^TFT5_Item_.+Radiant$/i.test(id)) return true;
     if (id === 'TFT_Item_RadiantVirtue') return true;
     if (playedIds.size === 0) return true;
@@ -466,15 +474,10 @@ async function main() {
   const OVERRIDE_MIN = 150;
   const overrideCount = Object.keys(tierOverride).length;
   if (overrideCount >= OVERRIDE_MIN) {
-    const prefixCount = new Map();
-    for (const t of Object.keys(traits)) {
-      const p = t.split('_')[0];
-      prefixCount.set(p, (prefixCount.get(p) || 0) + 1);
-    }
-    const setPrefix = [...prefixCount.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || '';
-    const keep = activeAugments.filter(id => tierOverride[id] != null || (setPrefix && id.startsWith(`${setPrefix}_`)));
+    const setPrefix = derivedSetPrefix(traits);
+    const keep = activeAugments.filter(id => tierOverride[id] != null || (setPrefix && id.startsWith(setPrefix)));
     const dropped = activeAugments.length - keep.length;
-    console.log(`       augment-pool: ${activeAugments.length} -> ${keep.length} (Praefix "${setPrefix}_", ${dropped} ohne tactics.tools-Beleg verworfen)`);
+    console.log(`       augment-pool: ${activeAugments.length} -> ${keep.length} (Praefix "${setPrefix}", ${dropped} ohne tactics.tools-Beleg verworfen)`);
     activeAugments = keep;
   } else {
     console.warn(`       WARN: nur ${overrideCount} Augments von tactics.tools gepinnt (<${OVERRIDE_MIN}) — Pool-Gegenprobe uebersprungen, Riots volle Liste bleibt stehen`);
@@ -665,6 +668,30 @@ function collectPlayedIds(setNumber) {
     } catch { /* skip unreadable snapshot */ }
   }
   return played;
+}
+
+// Namens-Praefix des aktiven Sets, aus den Merkmalen ausgezaehlt statt aus
+// der Set-Nummer gebaut. Bis Set 17 war beides dasselbe (`TFT17_`); Set 18
+// bricht die Namensform und heisst `DA_`. Gezaehlt wird der Anfang bis zum
+// ersten Unterstrich; gewonnen hat er nur, wenn er mindestens die Haelfte aller
+// Merkmale traegt — sonst kommt der leere String zurueck, und die Aufrufer
+// filtern dann bewusst gar nicht statt auf ein geratenes Praefix.
+function derivedSetPrefix(traits) {
+  const ids = Object.keys(traits || {});
+  if (ids.length === 0) return '';
+  const counts = new Map();
+  for (const id of ids) {
+    const cut = id.indexOf('_');
+    if (cut <= 0) continue;
+    const prefix = id.slice(0, cut + 1);
+    counts.set(prefix, (counts.get(prefix) || 0) + 1);
+  }
+  let best = '';
+  let bestCount = 0;
+  for (const [prefix, n] of counts) {
+    if (n > bestCount) { best = prefix; bestCount = n; }
+  }
+  return bestCount * 2 >= ids.length ? best : '';
 }
 
 main().catch(err => { console.error('FAIL:', err.message); process.exit(1); });

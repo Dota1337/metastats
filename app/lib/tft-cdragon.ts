@@ -418,3 +418,76 @@ export function tftChampionTileUrl(
 // Bundle stehen (fetch-tft-assets.mjs liefert sie weiter aus) -- wer sie wieder
 // braucht, baut die URL-Ableitung mit ihrem Konsumenten zusammen neu auf, statt
 // eine Funktion ohne Leser zu pflegen.
+
+// --- Set-Zugehoerigkeit ohne Praefix-Raten ---------------------------------
+//
+// Bis Set 17 hiessen alle Kennungen eines Sets `TFT<Nummer>_...`. Set 18 bricht
+// das: die Einheiten heissen `DA_Amumu18`, die Merkmale `DA_18_Flora`, und das
+// Segment `_Item_` faellt bei Gegenstaenden ganz weg. Jede Seite, die auf
+// `TFT${set}_` gefiltert hat, zeigte damit eine leere Liste (gemessen am
+// 2026-09-08 in public/tft-assets-18.json: 0 von 91 Einheiten, 0 von 36
+// Merkmalen tragen `TFT18_`).
+//
+// Zwei Auswege, je nachdem ob die Sache ein Formmerkmal hat:
+
+/**
+ * Spielbare Einheiten des aktuellen Sets — ohne jede Praefix-Annahme.
+ *
+ * Erkennungsmerkmal ist die Form statt des Namens: Kosten 1-5 und mindestens
+ * ein Merkmal hat nur eine echte Einheit. Kampf-Attrappen ("Mini Black Hole"),
+ * FakeUnits und beschworene Gegner fallen an einer der beiden Bedingungen
+ * durch. Gegenprobe am 2026-09-08 ueber beide Bundles: Set 17 liefert 63
+ * Treffer, alle mit `TFT17_`; Set 18 liefert 74, alle mit `DA_` — in keinem
+ * der beiden ist eine Einheit aus einem fremden Set dabei.
+ *
+ * Ergebnis ist nach Kosten, dann Name sortiert.
+ */
+export function tftPlayableChampions(
+  bundle: TftAssetsBundle | null,
+): Array<{ id: string; champion: TftChampion }> {
+  if (!bundle) return [];
+  return Object.entries(bundle.champions)
+    .filter(([id, c]) => {
+      if (!c?.name) return false;
+      const cost = c.cost ?? 0;
+      if (cost < 1 || cost > 5) return false;
+      if (!Array.isArray(c.traits) || c.traits.length === 0) return false;
+      // Guertel und Hosentraeger: benannte Nicht-Einheiten, die in aelteren
+      // Sets trotz Kosten und Merkmal im Verzeichnis standen.
+      if (/Enemy_|FakeUnit|Minion|Summon/i.test(id)) return false;
+      return true;
+    })
+    .map(([id, champion]) => ({ id, champion }))
+    .sort((a, b) => a.champion.cost - b.champion.cost || a.champion.name.localeCompare(b.champion.name));
+}
+
+/**
+ * Namensanfang der Merkmale des aktuellen Sets, aus dem Bundle abgeleitet.
+ *
+ * Merkmale haben kein Formmerkmal, an dem man sie ohne Namen erkennen koennte —
+ * hier bleibt nur der Namensanfang. Statt ihn aus der Set-Nummer zu bauen,
+ * zaehlen wir ihn aus: der Anfang bis zum ersten Unterstrich, der bei mindestens
+ * der Haelfte aller Merkmale vorkommt. Set 17 ergibt `TFT17_`, Set 18 `DA_`.
+ *
+ * Rueckgabe `null` heisst ausdruecklich „nicht filtern". Das ist die richtige
+ * Fehlerrichtung: eine zu lange Liste ist ein Schoenheitsfehler, eine leere
+ * Liste macht die Seite unbrauchbar — genau das ist mit Set 18 passiert.
+ */
+export function tftTraitIdPrefix(bundle: TftAssetsBundle | null): string | null {
+  if (!bundle) return null;
+  const ids = Object.keys(bundle.traits || {});
+  if (ids.length === 0) return null;
+  const counts = new Map<string, number>();
+  for (const id of ids) {
+    const cut = id.indexOf('_');
+    if (cut <= 0) continue;
+    const prefix = id.slice(0, cut + 1);
+    counts.set(prefix, (counts.get(prefix) || 0) + 1);
+  }
+  let best: string | null = null;
+  let bestCount = 0;
+  for (const [prefix, n] of counts) {
+    if (n > bestCount) { best = prefix; bestCount = n; }
+  }
+  return bestCount * 2 >= ids.length ? best : null;
+}

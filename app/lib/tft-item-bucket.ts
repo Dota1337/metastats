@@ -12,12 +12,15 @@ export const ITEM_BUCKETS: readonly ItemBucket[] = ['standard', 'artifact', 'emb
 // acceptable for a top-level filter; users can still reach them via "all".
 export function itemBucketOf(apiName: string, assets: TftAssetsBundle | null): ItemBucket {
   const meta = assets?.items[apiName];
-  // Set-agnostisch: das Praefix wechselt pro Set. Set 17 fuehrt
-  // TFT17_Item_Artifact_* und TFT_Item_Artifact_*, Set 18 zusaetzlich
-  // DA_Item_Artifact_*. Im Bundle am 2026-08-26 gemessen: Praefixe
-  // TFT17, TFT, DA ueber 47 Artefakte. Das alte /^TFT\d*_/ liess die
-  // DA_-Artefakte still in den Bucket "other" fallen.
-  if (/^[A-Za-z]+\d*_Item_Artifact_/i.test(apiName)) return 'artifact';
+  // Set-agnostisch, und zwar ohne das Segment `_Item_`: Set 18 hat nicht nur
+  // das Praefix getauscht, sondern die ganze ID-Form. Gemessen am 2026-09-08
+  // in public/tft-assets-18.json: `_Item_Artifact_` trifft 1 von 29 aktiven
+  // Artefakten, `_Artifact_` trifft alle 29 (DA_Artifact_WitsEnd,
+  // DA_Artifact_ZhonyasParadox, ...). Set 17 bleibt bitgleich bei 31.
+  //
+  // Der Unterstrich am ENDE ist Pflicht: ohne ihn faengt das Muster auch
+  // DA_Artifactinate18 — die Set-18-Spielmechanik, kein Gegenstand.
+  if (/_Artifact_/i.test(apiName)) return 'artifact';
   const name = meta?.name || '';
   const isEmblem =
     /EmblemItem$/.test(apiName) ||

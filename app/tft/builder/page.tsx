@@ -7,7 +7,7 @@ import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
 import TftHero from '../../components/tft/TftHero';
 import { useI18n } from '../../lib/i18n';
-import { loadTftAssets, tftChampionTileUrl, tftIconUrl, tftPlayableChampions, type TftAssetsBundle } from '../../lib/tft-cdragon';
+import { loadTftAssets, tftChampionTileUrl, tftIconUrl, tftPlayableChampions, tftTraitIdPrefix, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import { buildPlanAheadCode } from '../../lib/tft-plan-ahead-code';
 
 // Visual comp-builder with TFT-standard 4×7 pointy-top hex board.
@@ -154,15 +154,23 @@ function categorizeItem(id: string, name: string, hasComp: boolean, setN: number
   if (new RegExp(`^TFT${setN}_Item_PsyOps_(?!.*_Radiant$)`, 'i').test(id)) return 'psyonic';
   if (new RegExp(`^TFT${setN}_Item_PsyOps_.*_Radiant$`, 'i').test(id)) return null;
   if (/Artifact/i.test(id)) return 'artifacts';
-  if (/^TFT5_Item_.+Radiant$/i.test(id)) return 'radiant';
+  // Set-agnostisch am Suffix statt am Namensanfang: Set 18 legt seine
+  // Radiant-Gegenstaende als `DA_BloodthirsterRadiant` bzw.
+  // `DA_AdaptiveHelm_Radiant` ab, der alte Filter auf `TFT5_Item_` liess sie
+  // komplett aus der Palette fallen (gemessen 2026-09-08: 39 von 77 aktiven
+  // Radiants). Set 17 bleibt bitgleich bei 38 — die PsyOps- und
+  // AnimaSquad-Radiants werden weiter oben schon abgefangen.
+  if (/Radiant$/i.test(id)) return 'radiant';
   if (id === 'TFT_Item_RadiantVirtue') return 'radiant';
   // Cross-set artifact-style items (Ornn artifact augments, Shimmerscale loot,
   // Crown of Demacia) — already filtered to "currently rotated" by active.items.
   if (/^TFT[479]_Item_(Ornn|Shimmerscale|CrownOfDemacia)/i.test(id)) return 'artifacts';
-  // Universal completed items: composition of 2 components, no Corrupted
-  // legacy dupes (Set-13 Inkborn Fables left those behind with identical names).
-  if (hasComp && /^TFT_Item_/i.test(id) && !/Corrupted/i.test(id)) {
-    if (/^TFT_Item_(BFSword|Bow|RodOfAges|RodOfTheJax|Tear|ChainVest|Cloak|GiantsBelt|SparringGloves|Spatula)$/i.test(id)) return null;
+  // Fertige Gegenstaende ueber die Form (zwei Bauteile), nicht ueber den
+  // Namensanfang: Set 18 heisst `DA_Deathblade` statt `TFT_Item_Deathblade`,
+  // damit rutschten 36 fertige Gegenstaende komplett aus der Palette.
+  if (hasComp && !/Corrupted/i.test(id)) {
+    if (/_Item_(BFSword|Bow|RodOfAges|RodOfTheJax|Tear|ChainVest|Cloak|GiantsBelt|SparringGloves|Spatula)$/i.test(id)) return null;
+    if (/_Component_/i.test(id)) return null;
     return 'completed';
   }
   return null;
@@ -283,7 +291,20 @@ export default function TftBuilderPage() {
         if (setPrefixRe.test(id)) visit(id, item);
       }
     }
-    return out.sort((a, b) => a.name.localeCompare(b.name));
+    // Doppelte Anzeigenamen zusammenfuehren: Set 18 fuehrt jeden Radiant
+    // zweimal, einmal in neuer Schreibweise (`DA_BloodthirsterRadiant`) und
+    // einmal als Altlast aus Set 5 (`TFT5_Item_BloodthirsterRadiant`) — beide
+    // mit demselben Namen und demselben Bild. Sichtbar bleibt der Eintrag des
+    // aktuellen Sets. Set 17 hat keine solchen Paare, dort greift das nie.
+    const prefix = tftTraitIdPrefix(assets);
+    const byName = new Map<string, ItemEntry>();
+    for (const entry of out) {
+      const key = entry.category + '|' + entry.name;
+      const kept = byName.get(key);
+      if (!kept) { byName.set(key, entry); continue; }
+      if (prefix && !kept.id.startsWith(prefix) && entry.id.startsWith(prefix)) byName.set(key, entry);
+    }
+    return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
   }, [assets]);
 
   const filteredItems = useMemo(() => {

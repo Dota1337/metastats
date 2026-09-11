@@ -3,14 +3,54 @@
     "id": "s2026",
     "label": "Season 2026",
     "major": 16,
-    "startPatch": "16.1.1"
+    "startPatch": "16.1.1",
+    "splits": [
+      {
+        "id": "s2026-split1",
+        "label": "Season 2026 · Split 1",
+        "startPatch": "16.1.1",
+        "source": "patchnotes"
+      },
+      {
+        "id": "s2026-split2",
+        "label": "Season 2026 · Split 2",
+        "startPatch": "16.9.1",
+        "source": "patchnotes"
+      },
+      {
+        "id": "s2026-split3",
+        "label": "Season 2026 · Split 3",
+        "startPatch": "16.15.1",
+        "source": "measured"
+      }
+    ]
   },
   "history": [
     {
       "id": "s2025",
       "label": "Season 2025",
       "major": 15,
-      "startPatch": "15.1.1"
+      "startPatch": "15.1.1",
+      "splits": [
+        {
+          "id": "s2025-split1",
+          "label": "Season 2025 · Split 1",
+          "startPatch": "15.1.1",
+          "source": "patchnotes"
+        },
+        {
+          "id": "s2025-split2",
+          "label": "Season 2025 · Split 2",
+          "startPatch": "15.9.1",
+          "source": "patchnotes"
+        },
+        {
+          "id": "s2025-split3",
+          "label": "Season 2025 · Split 3",
+          "startPatch": "15.17.1",
+          "source": "patchnotes"
+        }
+      ]
     },
     {
       "id": "s2024",
@@ -91,6 +131,6 @@
       "startPatch": "0.151.2"
     }
   ],
-  "lastCheckedAt": "2026-09-11T08:46:34.302Z",
+  "lastCheckedAt": "2026-09-11T10:36:12.824Z",
   "latestPatch": "16.18.1"
 }

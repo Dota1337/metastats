@@ -147,5 +147,37 @@ jobs:
           3. Close this issue once handled." \
             --label "season-detected" || echo "Issue creation failed (non-fatal)"
 
+      # Splits (Abschnitte innerhalb einer Saison) stehen nur in Riots
+      # Patch-Notes, nicht in der Versionsliste. Der Detektor kann sie also
+      # nicht selbst setzen — er meldet nur, dass die Liste in
+      # public/seasons.json wahrscheinlich veraltet ist. Eingetragen wird von
+      # Hand, damit keine erfundene Grenze in die Saison-Zuordnung der
+      # gesammelten Matches (patch_minor) laeuft.
+      - name: Open split-review issue
+        if: steps.season.outputs.split-review == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Ohne diese Pruefung entstuende jede Woche ein neues Ticket, solange
+          # die Split-Liste nicht gepflegt ist.
+          open=$(gh issue list --label "season-split-review" --state open --json number --jq "length")
+          if [ "$open" != "0" ]; then
+            echo "Split-Review-Issue ist bereits offen — kein zweites"
+            exit 0
+          fi
+          gh issue create \
+            --title "Split-Liste pruefen (public/seasons.json)" \
+            --body "${{ steps.season.outputs.split-reason }}
+
+          Riot veroeffentlicht Split-Grenzen nur in den Patch-Notes. Bitte den
+          Start-Patch des neuen Abschnitts nachtragen:
+
+          1. Patch-Notes des laufenden Jahres pruefen.
+          2. In public/seasons.json unter currentSeason.splits einen Eintrag
+             mit id, label, startPatch und source ergaenzen.
+          3. splitsIncomplete entfernen, falls gesetzt.
+          4. Issue schliessen." \
+            --label "season-split-review" || echo "Issue creation failed (non-fatal)"
+
       # Deployment is handled by Vercel's GitHub integration — the push above
       # automatically triggers a production deploy, no CLI step needed here.

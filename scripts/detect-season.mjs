@@ -63,6 +63,39 @@ function majorOf(patch) {
 
 // Riot Patch convention: Patch X.1 of major X marks season start.
 // Returns the first version observed for each major across the full version list.
+// '16.15.1' -> 15
+function minorOf(patch) {
+  const m = String(patch).match(/^\d+\.(\d+)/);
+  return m ? Number(m[1]) : null;
+}
+
+// Splits (Abschnitte innerhalb einer Saison) sind aus der Versionsliste NICHT
+// ableitbar — Riot legt sie redaktionell fest, es gibt keinen Marker im Patch.
+// Beobachtete Abstaende: 2026 16.1 -> 16.9 -> 16.15, 2025 15.1 -> 15.9 -> 15.17.
+// Deshalb meldet diese Pruefung nur "schau nach", genau wie der Saison-Bump eine
+// manuelle Bestaetigung per GitHub-Issue ausloest. Sie erfindet keine Grenze.
+const SPLIT_REVIEW_AFTER_MINORS = 6;
+
+// Gibt einen Grund zurueck, warum die Split-Liste geprueft werden sollte — sonst null.
+function splitReviewReason(season, latestPatch) {
+  if (!season) return null;
+  const splits = Array.isArray(season.splits) ? season.splits : null;
+  if (!splits || splits.length === 0) {
+    return `Saison ${season.id} hat keine splits-Liste in public/seasons.json`;
+  }
+  const latestMinor = minorOf(latestPatch);
+  const newestSplit = splits.reduce(
+    (acc, sp) => ((minorOf(sp.startPatch) ?? -1) > (minorOf(acc.startPatch) ?? -1) ? sp : acc),
+    splits[0],
+  );
+  const newestMinor = minorOf(newestSplit.startPatch);
+  if (latestMinor == null || newestMinor == null) return null;
+  if (latestMinor - newestMinor >= SPLIT_REVIEW_AFTER_MINORS) {
+    return `aktueller Patch ${latestPatch} liegt ${latestMinor - newestMinor} Minor-Patches hinter ${newestSplit.id} (ab ${newestSplit.startPatch}) — neuer Split?`;
+  }
+  return null;
+}
+
 function buildSeasonHistory(versionsNewestFirst) {
   const reversed = [...versionsNewestFirst].reverse(); // oldest first
   const seen = new Map(); // major -> earliest patch string
@@ -127,7 +160,24 @@ async function main() {
       detectedEndAt: new Date().toISOString(),
     };
     const payload = {
-      currentSeason: { ...newestSeason, detectedAt: new Date().toISOString() },
+      // buildSeasonHistory() kennt nur Major und StartPatch. Ohne splits kaeme die
+      // neue Saison ohne Abschnitts-Liste auf die Welt, und die Zuordnung im
+      // Match-Sammler (patch_minor -> Split) haette still nichts zum Nachschlagen.
+      // Split 1 beginnt immer mit X.1 — der einzige Abschnitt, den wir ohne
+      // Patch-Notes belegen koennen. Fuer den Rest setzt splitsIncomplete das Signal.
+      currentSeason: {
+        ...newestSeason,
+        detectedAt: new Date().toISOString(),
+        splits: [
+          {
+            id: `${newestSeason.id}-split1`,
+            label: `${newestSeason.label} · Split 1`,
+            startPatch: newestSeason.startPatch,
+            source: 'auto-detected',
+          },
+        ],
+        splitsIncomplete: true,
+      },
       history: [promoted, ...(stored.history || [])],
       lastCheckedAt: new Date().toISOString(),
       latestPatch: latest,
@@ -145,6 +195,17 @@ async function main() {
     writeFileSync(SEASONS_PATH, JSON.stringify(stored, null, 2) + '\n');
     console.log(`      no bump — still on ${stored.currentSeason.id}`);
     setOutput('season-changed', 'false');
+  }
+
+  // Split-Pruefung laeuft unabhaengig vom Saison-Bump: eine Saison bekommt
+  // mitten im Jahr neue Abschnitte, ohne dass sich der Major aendert.
+  const splitReason = splitReviewReason(loadCurrent()?.currentSeason, latest);
+  if (splitReason) {
+    console.log(`      SPLIT-PRUEFUNG: ${splitReason}`);
+    setOutput('split-review', 'true');
+    setOutput('split-reason', splitReason);
+  } else {
+    setOutput('split-review', 'false');
   }
 
   console.log('[3/3] Done.');

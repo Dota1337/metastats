@@ -45,5 +45,5 @@ SystemCallErrorNumber=EPERM
 # --- END metastats-hardening-floor ---
 # Ausnahmen dieser Unit (stehen bewusst NACH dem Boden — systemd nimmt
 # bei Nicht-Listen-Direktiven die letzte Zuweisung):
-#   lol-mv-last-run-Marker.
-ReadWritePaths=/etc/metastats-crawler
+#   lol-mv-last-run-Marker + die gemeinsame LoL-Riot-Sperre. Ohne /run/lock wirft openSync(...,"wx") EROFS und blockAcquire reicht das weiter -> der Marktwert-Lauf stirbt beim Start.
+ReadWritePaths=/etc/metastats-crawler /run/lock

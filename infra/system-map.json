@@ -205,6 +205,17 @@
       ]
     },
     {
+      "name": "metastats-lol-matchfill.service",
+      "kind": "service",
+      "description": "metastats LoL match fill (dauerhafte Match-Ablage je Spieler; kicked by refresh-riot-key.mjs after a key rotation)",
+      "scripts": [
+        "scripts/collect-lol-matches.mjs"
+      ],
+      "After": [
+        "metastats-lol-marketvalue.service"
+      ]
+    },
+    {
       "name": "metastats-marketvalue-peaks.service",
       "kind": "service",
       "description": "metastats Marktwert-Hoechstwerte je Set festschreiben",
@@ -722,6 +733,11 @@
     },
     {
       "from": "scripts/refresh-riot-key.mjs",
+      "to": "metastats-lol-matchfill.service",
+      "via": "systemctl-start"
+    },
+    {
+      "from": "scripts/refresh-riot-key.mjs",
       "to": "metastats-refresh-api.service",
       "via": "systemctl-start"
     },
@@ -928,6 +944,9 @@
     ],
     "metastats-lol-marketvalue.service": [
       "lol-marketvalue/history"
+    ],
+    "metastats-lol-matchfill.service": [
+      "lol-matchfill/match-cache"
     ],
     "supabase/migrations/0055_revoke_anon_read.sql": [
       "sicherheit/anon-lockout"

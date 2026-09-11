@@ -29,6 +29,8 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 
+import { blockAcquire, releaseLock } from './lib/advisory-lock.mjs';
+
 const args = process.argv.slice(2);
 const getArg = (k, def) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : def; };
 const hasFlag = (k) => args.includes(k);
@@ -61,6 +63,31 @@ if (!FORCE && last > 0) {
 if (!process.env.RIOT_API_KEY) {
   log('RIOT_API_KEY not set in env — aborting.');
   process.exit(1);
+}
+
+// Shared LoL-Riot lock. scripts/collect-lol-matches.mjs uses the same dev key
+// and the same 100-per-2-minutes budget at Riot. If both run at once, each gets
+// half the throughput and both start collecting 429s. The collector takes this
+// lock per player and releases it between players, so the wait here is bounded
+// by one player (~20 min), not by a whole fill run.
+//
+// Deliberately NOT a systemd `Conflicts=`: that acts in both directions and
+// would kill the collector on every key rotation kick.
+const LOCK_PATH = process.env.LOL_RIOT_LOCK
+  || (existsSync('/run/lock') ? '/run/lock/metastats-lol-riot.lock' : '.lol-riot.lock');
+let lockHeld = false;
+process.on('exit', () => { if (lockHeld) releaseLock(LOCK_PATH); });
+
+lockHeld = await blockAcquire(LOCK_PATH, {
+  timeoutMs: 25 * 60_000,
+  onWait: (waitedSec) => log(`waiting for ${LOCK_PATH} (${waitedSec}s)`),
+});
+if (!lockHeld) {
+  // Exit 0 and, crucially, WITHOUT writing the throttle stamp: the next daily
+  // key-rotation kick retries. Exit 1 would only fill the journal with a
+  // failure that is really just "someone else was busy".
+  log(`could not acquire ${LOCK_PATH} within 25min — skipping, next key rotation retries.`);
+  process.exit(0);
 }
 
 log(`starting pass: regions=${REGIONS.join(',')} url=${BASE_URL}${LIMIT ? ` limit=${LIMIT}` : ''}`);

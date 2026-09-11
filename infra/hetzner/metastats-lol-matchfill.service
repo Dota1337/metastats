@@ -1,0 +1,55 @@
+[Unit]
+Description=metastats LoL match fill (dauerhafte Match-Ablage je Spieler; kicked by refresh-riot-key.mjs after a key rotation)
+Wants=network-online.target
+After=network-online.target metastats-lol-marketvalue.service
+
+[Service]
+# Kein Timer, gleiche Begruendung wie bei metastats-lol-marketvalue.service:
+# der LoL-Dev-Key laeuft alle 24h ab, ein fester Zeitplan feuert fast immer mit
+# einem toten Key. refresh-riot-key.mjs startet diese Unit direkt nachdem der
+# frische Key gegen Riot validiert wurde.
+#
+# Bewusst KEIN Conflicts=metastats-lol-marketvalue.service: Conflicts wirkt in
+# beide Richtungen und wuerde diesen Lauf bei jeder Key-Rotation abschiessen.
+# Die Koordination laeuft ueber die gemeinsame Sperre /run/lock/metastats-lol-riot.lock,
+# die der Sammler PRO SPIELER nimmt und zwischen den Spielern wieder freigibt.
+Type=oneshot
+# Riot erlaubt 100 Anfragen pro 2 Minuten; ein Spieler mit ~950 Spielen dauert
+# damit rund 20 Minuten. Der Lauf arbeitet die Warteschlange ab, bis der Key
+# abgelaufen ist (HTTP 401 -> Exit 1, Zeile zurueck auf pending) oder das
+# Spieler-Budget erschoepft ist.
+TimeoutStartSec=infinity
+TimeoutStopSec=120
+WorkingDirectory=/opt/metastats-crawler
+EnvironmentFile=/etc/metastats-crawler/env
+ExecStart=/usr/bin/node scripts/collect-lol-matches.mjs --seed --players 200
+StandardOutput=journal
+StandardError=journal
+Nice=10
+IOSchedulingClass=best-effort
+
+# --- BEGIN metastats-hardening-floor ---
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectProc=invisible
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+# --- END metastats-hardening-floor ---
+# Ausnahmen dieser Unit (stehen bewusst NACH dem Boden — systemd nimmt
+# bei Nicht-Listen-Direktiven die letzte Zuweisung):
+#   Gemeinsame LoL-Riot-Sperre mit metastats-lol-marketvalue.service. Gleiche EROFS-Falle wie dort.
+ReadWritePaths=/run/lock

@@ -282,6 +282,17 @@
       "note": "Wöchentlicher LoL-Marktwert-Lauf, 2038 Rows gesamt, zuletzt 01.08.2026. 10 Tage lassen einen ausgefallenen Wochenlauf durch, zwei nicht. minRows 1, weil pro Lauf nur die veränderten Spieler geschrieben werden."
     },
     {
+      "id": "lol-matchfill/match-cache",
+      "owner": "metastats-lol-matchfill.service",
+      "backend": "supabase",
+      "table": "lol_player_match_cache",
+      "dateColumn": "fetched_at",
+      "dateType": "timestamp",
+      "maxLagDays": 3,
+      "minRows": 1,
+      "note": "Dauerhafte LoL-Match-Ablage, gefuellt vom Sammler, der bei jeder taeglichen Key-Rotation angestossen wird. 3 Tage, weil der Kick taeglich kommt und zwei ausgefallene Rotationen noch kein Ausfall sind. minRows 1, weil ein Lauf auch nur einen Spieler schaffen kann, wenn der Marktwert-Lauf die gemeinsame Sperre haelt. Faellt das rot, laeuft entweder der Sammler nicht oder der LoL-Key ist tot — beides sichtbar in journalctl -u metastats-lol-matchfill."
+    },
+    {
       "id": "sicherheit/anon-lockout",
       "owner": "supabase/migrations/0055_revoke_anon_read.sql",
       "type": "anon-lockout",

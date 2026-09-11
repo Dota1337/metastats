@@ -196,6 +196,11 @@ function syncKeyToHetzner(env, key) {
     // --no-block: don't wait out the multi-hour pass; oneshot semantics de-dupe
     // a concurrent run, and the wrapper self-throttles to ~weekly.
     'systemctl start --no-block metastats-lol-marketvalue.service',
+    // Gleicher Grund, gleicher Moment: der Match-Sammler braucht einen gueltigen
+    // LoL-Key, und der ist genau jetzt frisch. Beide teilen sich die Sperre
+    // /run/lock/metastats-lol-riot.lock, laufen also nacheinander statt
+    // gegeneinander — wer zuerst da ist, bekommt sie.
+    'systemctl start --no-block metastats-lol-matchfill.service',
     // KEIN Restart von metastats-refresh-api.service (entfernt 2026-09-02):
     // der Dienst liest ausschliesslich RIOT_API_KEY_TFT
     // (scripts/refresh-api-server.mjs:150), und keiner seiner Importe fasst den
@@ -203,7 +208,7 @@ function syncKeyToHetzner(env, key) {
     // Der Restart war also wirkungslos und hat den Dauerdienst auf :4100 bei
     // jeder taeglichen Rotation mitten in laufenden Anfragen gekappt.
     // Wieder aufnehmen, falls hier je der TFT-Key mitrotiert wird.
-    'echo "      box keyed + lol-marketvalue kicked"',
+    'echo "      box keyed + lol-marketvalue + lol-matchfill kicked"',
   ].join('; ');
   const r = spawnSync('ssh',
     ['-o', 'ConnectTimeout=12', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=accept-new', `root@${host}`, remote],

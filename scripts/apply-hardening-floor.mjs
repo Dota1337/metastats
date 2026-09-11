@@ -52,8 +52,12 @@ const EXCEPTIONS = {
       'mv-region-cursor.json. writeCursor schluckt Fehler -> Region-Rotation faellt sonst still auf euw1 zurueck.'],
   ],
   'metastats-lol-marketvalue.service': [
-    ['ReadWritePaths=/etc/metastats-crawler',
-      'lol-mv-last-run-Marker.'],
+    ['ReadWritePaths=/etc/metastats-crawler /run/lock',
+      'lol-mv-last-run-Marker + die gemeinsame LoL-Riot-Sperre. Ohne /run/lock wirft openSync(...,"wx") EROFS und blockAcquire reicht das weiter -> der Marktwert-Lauf stirbt beim Start.'],
+  ],
+  'metastats-lol-matchfill.service': [
+    ['ReadWritePaths=/run/lock',
+      'Gemeinsame LoL-Riot-Sperre mit metastats-lol-marketvalue.service. Gleiche EROFS-Falle wie dort.'],
   ],
   'metastats-snapshot-publisher.service': [
     ['ReadWritePaths=/run/lock',

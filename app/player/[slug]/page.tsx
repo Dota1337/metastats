@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useParams, useSearchParams } from 'next/navigation';
 import { calculateMarketValue, type BreakdownItem } from '../../lib/marketvalue';
@@ -41,6 +41,10 @@ export default function PlayerPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [expandedSmurfs, setExpandedSmurfs] = useState(false);
   const [hasMoreMatches, setHasMoreMatches] = useState(true);
+  const [seasonStats, setSeasonStats] = useState<any>(null);
+  const [seasonPeriod, setSeasonPeriod] = useState('');
+  const [seasonLoading, setSeasonLoading] = useState(false);
+  const seasonReq = useRef(0);
   const region = searchParams.get('region') || 'euw1';
   const { t, lang } = useI18n();
   const numLocale = LOCALE_MAP[lang];
@@ -105,6 +109,8 @@ export default function PlayerPage() {
         setChampionMap(map);
       }
 
+      loadSeasonStats(data.summoner.puuid);
+
       // Parallel fetch: mastery + live game
       const puuid = encodeURIComponent(data.summoner.puuid);
       const [masteryRes, liveRes] = await Promise.all([
@@ -130,6 +136,38 @@ export default function PlayerPage() {
       setLoading(false);
     }
   };
+
+  // Saison-/Split-Analyse aus der eigenen Match-Ablage. Solange der Spieler
+  // dort noch keine Saison mit genug Spielen hat, bleibt die Analyse ueber die
+  // letzten Spiele (statsOverview) stehen.
+  const loadSeasonStats = async (puuid: string, period?: string) => {
+    const req = ++seasonReq.current;
+    setSeasonLoading(true);
+    try {
+      const qs = `puuid=${encodeURIComponent(puuid)}${period ? `&period=${encodeURIComponent(period)}` : ''}`;
+      const res = await fetch(`/api/player-season-stats?${qs}`);
+      const data = await res.json();
+      if (req !== seasonReq.current) return;
+      if (res.ok && data.enabled) {
+        setSeasonStats(data);
+        setSeasonPeriod(data.period || '');
+      }
+    } catch {
+      // Ohne Saison-Daten bleibt die bisherige Analyse stehen.
+    } finally {
+      if (req === seasonReq.current) setSeasonLoading(false);
+    }
+  };
+
+  const seasonMode = (seasonStats?.periods?.length || 0) > 0;
+  const shownOverview = seasonMode ? seasonStats.overview : statsOverview;
+  const fmtDay = (iso: string) => new Date(iso).toLocaleDateString(numLocale, { day: '2-digit', month: '2-digit' });
+  const coverageText = seasonStats?.coverage
+    ? t('stats.coverage')
+        .replace('{n}', String(seasonStats.coverage.games))
+        .replace('{from}', fmtDay(seasonStats.coverage.from))
+        .replace('{to}', fmtDay(seasonStats.coverage.to))
+    : '';
 
   const loadMoreMatches = async () => {
     if (!player?.summoner?.puuid || loadingMore) return;
@@ -532,31 +570,54 @@ export default function PlayerPage() {
             )}
 
             {/* 20 Stat Categories */}
-            {statsOverview && statsOverview.categories && statsOverview.categories.length > 0 && (
+            {(seasonMode || (statsOverview && statsOverview.categories && statsOverview.categories.length > 0)) && (
               <div className="bg-surface-base border border-border-subtle rounded p-3 sm:p-6 mb-4">
                 <div className="flex items-center justify-between mb-4">
                   <div className="min-w-0 flex-1">
                     <div className="text-fg-secondary text-xs uppercase tracking-widest">
                       {t('stats.title')}
                     </div>
-                    <div className="text-fg-muted text-xs mt-1 truncate">
-                      {t('stats.subtitle')} {statsOverview.gamesAnalyzed} {t('stats.games')}
-                    </div>
+                    {seasonMode ? (
+                      <div className="flex flex-wrap items-center gap-2 mt-1">
+                        <select
+                          value={seasonPeriod}
+                          disabled={seasonLoading}
+                          onChange={e => loadSeasonStats(player.summoner.puuid, e.target.value)}
+                          aria-label={t('stats.period')}
+                          className="bg-surface-raised border border-border-subtle rounded px-3 py-1.5 text-xs text-fg-secondary focus:outline-none focus:border-accent-a50"
+                        >
+                          {seasonStats.periods.map((p: any) => (
+                            <option key={p.id} value={p.id}>{p.label}</option>
+                          ))}
+                        </select>
+                        {coverageText && (
+                          <span className="text-fg-muted text-xs">{coverageText}</span>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-fg-muted text-xs mt-1 truncate">
+                        {t('stats.subtitle')} {statsOverview.gamesAnalyzed} {t('stats.games')}
+                      </div>
+                    )}
                   </div>
                   <div className="text-right">
                     <div className="text-fg-secondary text-xs">{t('stats.overallScore')}</div>
-                    <div className="text-2xl font-medium" style={{
-                      color: statsOverview.overallScore >= 70 ? '#4ade80' :
-                             statsOverview.overallScore >= 50 ? '#c89b3c' :
-                             statsOverview.overallScore >= 30 ? '#f59e0b' : '#ef4444'
-                    }}>
-                      {statsOverview.overallScore}
-                    </div>
+                    {shownOverview ? (
+                      <div className="text-2xl font-medium" style={{
+                        color: shownOverview.overallScore >= 70 ? '#4ade80' :
+                               shownOverview.overallScore >= 50 ? '#c89b3c' :
+                               shownOverview.overallScore >= 30 ? '#f59e0b' : '#ef4444'
+                      }}>
+                        {shownOverview.overallScore}
+                      </div>
+                    ) : (
+                      <div className="text-2xl font-medium text-fg-muted">—</div>
+                    )}
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {statsOverview.categories.map((cat: any) => (
+                  {(shownOverview?.categories || []).map((cat: any) => (
                     <div
                       key={cat.id}
                       className="bg-surface-raised rounded p-3 cursor-pointer hover:bg-[#1a2540] transition-colors"
@@ -648,8 +709,8 @@ export default function PlayerPage() {
             )}
 
             {/* Radar Stats */}
-            {statsOverview?.categories?.length >= 4 && (
-              <RadarStats categories={statsOverview.categories} />
+            {shownOverview?.categories?.length >= 4 && (
+              <RadarStats categories={shownOverview.categories} />
             )}
 
             {/* Champion Mastery */}

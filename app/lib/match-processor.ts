@@ -227,6 +227,23 @@ function chBool(participant: any, field: string): boolean {
 }
 
 /**
+ * Match-level values a single participant record needs. From a live Riot match
+ * they come from `info` and the teammates; from a stored row in
+ * lol_player_match_cache they come from its columns (the collector stores the
+ * participant record plus the three team sums, not the whole match).
+ */
+export interface ParticipantContext {
+  matchId: string;
+  gameMode: string;
+  queueId: number;
+  gameCreation: number;
+  gameDuration: number;
+  teamKills: number;
+  teamDamage: number;
+  teamGold: number;
+}
+
+/**
  * Process a single raw match from the Riot API into our ExtendedMatchData format.
  */
 export function processMatch(rawMatch: any, puuid: string): ExtendedMatchData | null {
@@ -241,21 +258,41 @@ export function processMatch(rawMatch: any, puuid: string): ExtendedMatchData | 
   const teamDamage = teammates.reduce((s: number, x: any) => s + (x.totalDamageDealtToChampions || 0), 0);
   const teamGold = teammates.reduce((s: number, x: any) => s + (x.goldEarned || 0), 0);
 
-  return {
-    // Identity
+  return processParticipant(p, {
     matchId: rawMatch.metadata.matchId,
-    champion: p.championName || '',
-    championId: p.championId || 0,
-    champLevel: p.champLevel || 0,
-    role: p.individualPosition || p.teamPosition || 'UNKNOWN',
     gameMode: rawMatch.info.gameMode || '',
     queueId: rawMatch.info.queueId || 0,
     gameCreation: rawMatch.info.gameCreation || rawMatch.info.gameStartTimestamp || 0,
     gameDuration: rawMatch.info.gameDuration || 0,
+    teamKills,
+    teamDamage,
+    teamGold,
+  });
+}
+
+/**
+ * Turn one participant record into ExtendedMatchData. Shared by live matches
+ * (processMatch) and stored rows (app/api/player-season-stats) so both run the
+ * exact same calculation.
+ */
+export function processParticipant(p: any, ctx: ParticipantContext): ExtendedMatchData {
+  const { teamKills, teamDamage, teamGold } = ctx;
+
+  return {
+    // Identity
+    matchId: ctx.matchId,
+    champion: p.championName || '',
+    championId: p.championId || 0,
+    champLevel: p.champLevel || 0,
+    role: p.individualPosition || p.teamPosition || 'UNKNOWN',
+    gameMode: ctx.gameMode,
+    queueId: ctx.queueId,
+    gameCreation: ctx.gameCreation,
+    gameDuration: ctx.gameDuration,
     win: p.win || false,
     surrendered: p.gameEndedInSurrender || false,
     gameEndedInEarlySurrender: p.gameEndedInEarlySurrender || false,
-    timePlayed: p.timePlayed || rawMatch.info.gameDuration || 0,
+    timePlayed: p.timePlayed || ctx.gameDuration,
 
     // KDA
     kills: p.kills || 0,

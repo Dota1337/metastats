@@ -6,12 +6,12 @@
     "belegen laesst, steht in `unresolved` statt als geratene Kante im Graphen."
   ],
   "counts": {
-    "routes": 73,
-    "groups": 30,
-    "tables": 28,
+    "routes": 74,
+    "groups": 31,
+    "tables": 30,
     "rpcs": 25,
-    "files": 10,
-    "edges": 282,
+    "files": 11,
+    "edges": 288,
     "unused": 8,
     "unresolved": 1
   },
@@ -110,6 +110,10 @@
     },
     {
       "name": "patch-notes",
+      "count": 1
+    },
+    {
+      "name": "player-season-stats",
       "count": 1
     },
     {
@@ -484,6 +488,23 @@
       "used": true,
       "usedBy": [
         "app/components/SideDrawer.tsx"
+      ]
+    },
+    {
+      "id": "api:/api/player-season-stats",
+      "kind": "route",
+      "label": "/api/player-season-stats",
+      "group": "player-season-stats",
+      "file": "app/api/player-season-stats/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/seasons.ts",
+        "app/lib/tft-supabase-reader.ts"
+      ],
+      "used": true,
+      "usedBy": [
+        "app/player/[slug]/page.tsx"
       ]
     },
     {
@@ -1300,6 +1321,18 @@
       "declared": false
     },
     {
+      "id": "db:lol_player_match_cache",
+      "kind": "table",
+      "label": "lol_player_match_cache",
+      "declared": true
+    },
+    {
+      "id": "db:lol_player_season_stats",
+      "kind": "table",
+      "label": "lol_player_season_stats",
+      "declared": true
+    },
+    {
       "id": "db:market_value_history",
       "kind": "table",
       "label": "market_value_history",
@@ -1530,6 +1563,11 @@
       "id": "file:pro-teams.json",
       "kind": "file",
       "label": "pro-teams.json"
+    },
+    {
+      "id": "file:seasons.json",
+      "kind": "file",
+      "label": "seasons.json"
     },
     {
       "id": "file:tft-assets-*.json",
@@ -2005,6 +2043,36 @@
     },
     {
       "from": "api:/api/patch-notes",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/player-season-stats",
+      "to": "db:lol_player_match_cache",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/player-season-stats",
+      "to": "db:lol_player_season_stats",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/player-season-stats",
+      "to": "file:seasons.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/player-season-stats",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/player-season-stats",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/player-season-stats",
       "to": "fn:get_tft_available_patches",
       "kind": "calls"
     },

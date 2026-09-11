@@ -211,6 +211,23 @@ async function reclaimStaleClaims() {
   if (res.rowCount) log(`${res.rowCount} haengengebliebene Zeile(n) zurueckgelegt.`);
 }
 
+// Nachhol-Weg (Phase 2): Wer einmal fertig war, spielt weiter — ohne neuen Lauf
+// fehlten seine neuen Spiele in der Saison-Analyse, und nach ~950 weiteren
+// Spielen gibt Riot die dazwischen gar nicht mehr her. 24 Stunden nach dem
+// letzten Lauf kommt er deshalb zurueck in die Warteschlange. fillPlayer holt
+// dann nur, was noch fehlt (bekannte IDs werden uebersprungen). updated_at =
+// now() stellt ihn hinter alle gleich oft gesuchten, noch nie gefuellten Spieler;
+// wer oefter gesucht wurde, hat ueber `priority` weiter Vorrang.
+async function requeueFinished() {
+  const res = await pool.query(`
+    update lol_match_fill_queue
+       set status = 'pending', claimed_at = null, updated_at = now()
+     where status = 'done'
+       and finished_at < now() - interval '24 hours'
+  `);
+  if (res.rowCount) log(`${res.rowCount} fertige Spieler zum Nachholen neuer Spiele eingereiht.`);
+}
+
 // Holt EINEN Spieler aus der Warteschlange. `for update skip locked` sorgt
 // dafuer, dass zwei parallele Laeufe nie denselben Spieler ziehen.
 async function claimPlayer() {
@@ -360,7 +377,9 @@ async function fillPlayer(puuid, region) {
       from lol_player_match_cache where puuid = $1
   `, [puuid]);
   const a = agg.rows[0];
-  log(`  fertig: ${a.n} Spiele in der Ablage (${a.oldest?.toISOString?.().slice(0, 10)} bis ${a.newest?.toISOString?.().slice(0, 10)})`);
+  log(a.n
+    ? `  fertig: ${a.n} Spiele in der Ablage (${a.oldest.toISOString().slice(0, 10)} bis ${a.newest.toISOString().slice(0, 10)})`
+    : '  fertig: keine Spiele in der Ablage');
   return { idsSeen: ids.length, cached: a.n, oldest: a.oldest, newest: a.newest };
 }
 
@@ -378,6 +397,7 @@ async function main() {
   }
 
   await reclaimStaleClaims();
+  await requeueFinished();
 
   let done = 0;
   for (let i = 0; i < PLAYER_BUDGET; i++) {

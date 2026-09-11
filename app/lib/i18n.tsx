@@ -892,6 +892,8 @@ const translations = {
   'stats.title': t6('Leistungsanalyse', 'Performance Analysis', '\uC131\uACFC \uBD84\uC11D', '\u8868\u73B0\u5206\u6790', 'An\u00E1lisis de rendimiento', 'Analyse de performance'),
   'stats.subtitle': t6('17 Statistik-Kategorien basierend auf', '17 stat categories based on', '17\uAC1C \uD1B5\uACC4 \uCE74\uD14C\uACE0\uB9AC \uAE30\uBC18', '17\u4E2A\u7EDF\u8BA1\u7C7B\u522B\u57FA\u4E8E', '17 categor\u00EDas basadas en', '17 cat\u00E9gories bas\u00E9es sur'),
   'stats.games': t6('Spielen', 'games', '\uACBD\uAE30', '\u573A\u6BD4\u8D5B', 'partidas', 'matchs'),
+  'stats.coverage': t6('{n} Ranked-Spiele \u00B7 {from} \u2013 {to}', '{n} ranked games \u00B7 {from} \u2013 {to}', '\uB7AD\uD06C \uAC8C\uC784 {n}\uD310 \u00B7 {from} \u2013 {to}', '{n} \u573A\u6392\u4F4D\u8D5B \u00B7 {from} \u2013 {to}', '{n} partidas clasificatorias \u00B7 {from} \u2013 {to}', '{n} parties class\u00E9es \u00B7 {from} \u2013 {to}'),
+  'stats.period': t6('Zeitraum', 'Period', '\uAE30\uAC04', '\u65F6\u95F4\u6BB5', 'Periodo', 'P\u00E9riode'),
   'stats.overallScore': t6('Gesamtscore', 'Overall Score', '\uC885\uD569 \uC810\uC218', '\u7EFC\u5408\u5206\u6570', 'Puntuaci\u00F3n total', 'Score global'),
   'stats.improving': t6('Verbesserung', 'Improving', '\uC0C1\uC2B9', '\u8FDB\u6B65', 'Mejorando', 'En progr\u00E8s'),
   'stats.declining': t6('R\u00FCckgang', 'Declining', '\uD558\uB77D', '\u4E0B\u964D', 'Bajando', 'En baisse'),

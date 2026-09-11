@@ -53,12 +53,30 @@ function clamp(v: number): number {
   return Math.max(0, Math.min(100, Math.round(v)));
 }
 
-/** Calculate trend: compare recent half vs older half */
+/**
+ * Split games at the midpoint of the time span they cover. Splitting by count
+ * assumed newest-first input and, over a whole season, would compare "last
+ * week" with "last week plus three months" whenever play is uneven.
+ */
+function splitByTime(matches: ExtendedMatchData[]): { recent: ExtendedMatchData[]; older: ExtendedMatchData[] } {
+  let min = Infinity;
+  let max = -Infinity;
+  for (const m of matches) {
+    if (m.gameCreation < min) min = m.gameCreation;
+    if (m.gameCreation > max) max = m.gameCreation;
+  }
+  const mid = (min + max) / 2;
+  return {
+    recent: matches.filter(m => m.gameCreation > mid),
+    older: matches.filter(m => m.gameCreation <= mid),
+  };
+}
+
+/** Calculate trend: compare the recent half of the time span vs the older half */
 function trend(matches: ExtendedMatchData[], getter: (m: ExtendedMatchData) => number): number {
   if (matches.length < 6) return 0;
-  const mid = Math.floor(matches.length / 2);
-  const recent = matches.slice(0, mid);
-  const older = matches.slice(mid);
+  const { recent, older } = splitByTime(matches);
+  if (recent.length < 3 || older.length < 3) return 0;
   const recentAvg = avg(recent, getter);
   const olderAvg = avg(older, getter);
   if (olderAvg === 0) return recentAvg > 0 ? 10 : 0;
@@ -270,7 +288,8 @@ function calcVisionControl(matches: ExtendedMatchData[]): CategoryScore {
   const avgWardsBefore20 = avg(matches, m => m.challenges.wardTakedownsBefore20M);
 
   const role = detectRole(matches);
-  const isSup = role === 'SUPPORT';
+  // Riot names the support position UTILITY, never SUPPORT.
+  const isSup = role === 'UTILITY';
   const thresholds = isSup ? [0.8, 1.2, 1.6, 2.2] : [0.3, 0.6, 0.9, 1.3];
 
   const score = clamp(scoreFromThresholds(avgVspm, thresholds[0], thresholds[1], thresholds[2], thresholds[3]));
@@ -503,16 +522,15 @@ function calcMechanics(matches: ExtendedMatchData[]): CategoryScore {
   };
 }
 
-function calcConsistency(matches: ExtendedMatchData[]): CategoryScore {
-  if (matches.length < 5) {
-    return {
-      id: 'consistency', name: 'Konstanz', nameEn: 'Consistency', icon: '📈',
-      score: 50, trend: 0, impact: 0,
-      summary: 'Zu wenige Spiele für Konstanz-Bewertung',
-      summaryEn: 'Not enough games for consistency rating',
-      details: [],
-    };
-  }
+/**
+ * Only games in the main role count: CS/min of a support and a mid laner differ
+ * by design, so mixing roles would read as inconsistency. Too few games → no
+ * category at all instead of a made-up middle score.
+ */
+function calcConsistency(allMatches: ExtendedMatchData[]): CategoryScore | null {
+  const mainRole = detectRole(allMatches);
+  const matches = allMatches.filter(m => m.role === mainRole);
+  if (matches.length < 5) return null;
 
   const kdas = matches.map(m => (m.kills + m.assists) / Math.max(m.deaths, 1));
   const mean = kdas.reduce((s, v) => s + v, 0) / kdas.length;
@@ -544,20 +562,12 @@ function calcConsistency(matches: ExtendedMatchData[]): CategoryScore {
   };
 }
 
-function calcTrend(matches: ExtendedMatchData[]): CategoryScore {
-  if (matches.length < 10) {
-    return {
-      id: 'trend', name: 'Trend', nameEn: 'Trend', icon: '📉',
-      score: 50, trend: 0, impact: 0,
-      summary: 'Zu wenige Spiele für Trend-Analyse',
-      summaryEn: 'Not enough games for trend analysis',
-      details: [],
-    };
-  }
+/** Too few games on either side of the time split → no category instead of a made-up 50. */
+function calcTrend(matches: ExtendedMatchData[]): CategoryScore | null {
+  if (matches.length < 10) return null;
 
-  const mid = Math.floor(matches.length / 2);
-  const recent = matches.slice(0, mid);
-  const older = matches.slice(mid);
+  const { recent, older } = splitByTime(matches);
+  if (recent.length < 5 || older.length < 5) return null;
 
   const recentWR = rate(recent, m => m.win) * 100;
   const olderWR = rate(older, m => m.win) * 100;
@@ -602,7 +612,7 @@ export function calculateStatsOverview(
 
   const role = detectRole(matches);
 
-  const categories: CategoryScore[] = [
+  const categories: CategoryScore[] = ([
     calcWinRate(matches),
     calcKDA(matches),
     calcLaneDominance(matches),
@@ -620,7 +630,7 @@ export function calculateStatsOverview(
     calcMechanics(matches),
     calcConsistency(matches),
     calcTrend(matches),
-  ];
+  ] as (CategoryScore | null)[]).filter((c): c is CategoryScore => c !== null);
 
   const overallScore = Math.round(
     categories.reduce((s, c) => s + c.score, 0) / categories.length

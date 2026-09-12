@@ -6,6 +6,7 @@
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { CURRENT_SET } from './current-set';
+import { legacyTftBucket } from './rank-groups';
 
 interface CacheEntry<T> { data: T; mtime: number }
 const cache = new Map<string, CacheEntry<any>>();
@@ -48,15 +49,67 @@ export function loadTftGraph(region: string) {
 }
 
 export const VALID_BUCKETS = new Set([
-  'all', 'master_plus',
+  'all', 'master_plus', 'grandmaster_plus',
   'iron','bronze','silver','gold','platinum','emerald','diamond',
   'master','grandmaster','challenger',
 ]);
 
+// Alte Links mit ?bucket=master / grandmaster zeigen seit 2026-09-13 die
+// Gruppe (Master+ / Grandmaster+), weil es die Einzelwahl nicht mehr gibt.
 export function normalizeBucket(b: string | null): string {
   if (!b) return 'master_plus';
-  const v = b.toLowerCase();
+  const v = legacyTftBucket(b.toLowerCase());
   return VALID_BUCKETS.has(v) ? v : 'master_plus';
+}
+
+// grandmaster_plus steht nicht als eigener Eintrag in der Statistik-Datei.
+// Zwei Rang-Eintraege (byUnit[id].grandmaster + .challenger) werden hier zu
+// einem zusammengezaehlt: Zahlen addieren, Listen je Schluessel (item,
+// Item-Satz, characterId) zusammenfuehren und neu nach games sortieren.
+// Verteilungen (damageByTier: p50 etc.) lassen sich nicht addieren → null.
+// Die Listen sind je Rang auf Top-N gekappt, das Ende der Summe ist daher
+// leicht unscharf (Plan F1, vom User freigegeben).
+const NOT_SUMMABLE = new Set(['damageByTier']);
+const listKey = (e: any): string | null =>
+  e?.item != null ? `i:${e.item}`
+  : Array.isArray(e?.items) ? `s:${e.items.join('|')}`
+  : e?.characterId != null ? `c:${e.characterId}`
+  : null;
+
+export function mergeStatsEntries(a: any, b: any): any {
+  if (a == null) return b ?? null;
+  if (b == null) return a;
+  if (typeof a === 'number' && typeof b === 'number') return a + b;
+  if (Array.isArray(a) && Array.isArray(b)) {
+    const byKey = new Map<string, any>();
+    for (const e of [...a, ...b]) {
+      const k = listKey(e);
+      if (k == null) continue;
+      byKey.set(k, byKey.has(k) ? mergeStatsEntries(byKey.get(k), e) : { ...e });
+    }
+    return [...byKey.values()].sort((x, y) => (y.games ?? y.count ?? 0) - (x.games ?? x.count ?? 0));
+  }
+  if (typeof a === 'object' && typeof b === 'object') {
+    const out: any = {};
+    for (const k of new Set([...Object.keys(a), ...Object.keys(b)])) {
+      if (NOT_SUMMABLE.has(k)) { out[k] = null; continue; }
+      // Schluessel wie item/characterId/items identifizieren den Eintrag.
+      if (k === 'item' || k === 'characterId' || k === 'items') { out[k] = a[k] ?? b[k]; continue; }
+      out[k] = mergeStatsEntries(a[k], b[k]);
+    }
+    return out;
+  }
+  return a;
+}
+
+/** Rang-Eintrag aus byUnit/byItem lesen; grandmaster_plus = gm + challenger. */
+export function pickBucketEntry(buckets: any, bucket: string): any {
+  if (!buckets) return null;
+  if (bucket === 'grandmaster_plus') {
+    const merged = mergeStatsEntries(buckets.grandmaster ?? null, buckets.challenger ?? null);
+    return merged || null;
+  }
+  return buckets[bucket] || buckets.all || null;
 }
 
 // Number of *participants* in a tier-bucket — used as the denominator when

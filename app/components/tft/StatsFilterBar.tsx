@@ -1,6 +1,7 @@
 'use client';
 import { useI18n, type TranslationKey } from '../../lib/i18n';
 import { tftPatchLabel } from '../../lib/tft-patch-label';
+import { legacyTftBucket } from '../../lib/rank-groups';
 
 // Region / bucket option lists kept in sync with tft-supabase-reader.ts.
 // If you add a region or bucket group there, mirror it here.
@@ -39,11 +40,12 @@ const BUCKET_OPTIONS: Option[] = [
   // und der i18n-Schluessel tft.filter.proOnly bleibt stehen — Zurueckholen ist
   // damit diese eine Zeile.
   { value: 'all',         labelKey: 'tft.filter.allRanks' },
+  // Einzel-Master und Einzel-Grandmaster raus, Grandmaster+ (GM + Challenger)
+  // rein — gleiche Rang-Gruppen wie in LoL (app/lib/rank-groups.ts, 2026-09-13).
   { value: 'master_plus', labelKey: 'tft.filter.masterPlus' },
+  { value: 'grandmaster_plus', labelKey: 'tft.filter.grandmasterPlus' },
   { value: 'diamond_plus', labelKey: 'tft.filter.diamondPlus' },
   { value: 'challenger',  labelKey: 'tft.bucket.challenger' },
-  { value: 'grandmaster', labelKey: 'tft.bucket.grandmaster' },
-  { value: 'master',      labelKey: 'tft.bucket.master' },
   // 'diamond' (single-tier) removed 2026-07-04 (C3): no snapshot coverage and the
   // highest-traffic 521-causer on the heavy detoast RPCs. diamond_plus (above) is
   // its strict superset and IS snapshot-covered. A direct ?bucket=diamond URL is
@@ -243,7 +245,7 @@ export function filtersFromSearchParams(searchParams: URLSearchParams): Filters 
   const velocity = VELOCITY_SHIFTS.has(velocityRaw) ? velocityRaw : 0;
   return {
     patch: searchParams.get('patch') || 'current',
-    bucket: searchParams.get('bucket') || autoBucketDefault(),
+    bucket: legacyTftBucket(searchParams.get('bucket') || autoBucketDefault()),
     bucketAuto: !searchParams.has('bucket'),
     days: Math.max(1, Math.min(7, parseInt(searchParams.get('days') || '3', 10))),
     region: searchParams.get('region') || 'all',
@@ -283,7 +285,7 @@ const AUTO_BUCKET_KEY = 'metastats:tft-auto-bucket';
 export function autoBucketDefault(): string {
   if (typeof window === 'undefined') return 'diamond_plus';
   try {
-    return window.localStorage.getItem(AUTO_BUCKET_KEY) || 'diamond_plus';
+    return legacyTftBucket(window.localStorage.getItem(AUTO_BUCKET_KEY) || 'diamond_plus');
   } catch {
     return 'diamond_plus';
   }
@@ -320,7 +322,8 @@ export function loadInitialFilters(searchParams: URLSearchParams): Filters {
     const velocityRaw = Number(stored.velocity);
     return {
       patch: typeof stored.patch === 'string' ? stored.patch : fromUrl.patch,
-      bucket: typeof stored.bucket === 'string' ? stored.bucket : fromUrl.bucket,
+      // Gespeichertes master/grandmaster aus der Zeit vor 2026-09-13 → Gruppe.
+      bucket: typeof stored.bucket === 'string' ? legacyTftBucket(stored.bucket) : fromUrl.bucket,
       // Nur ein ausdrueckliches false zaehlt als bewusste Wahl. Aeltere
       // Storage-Eintraege kennen das Feld nicht — die duerfen nicht als
       // "User hat Diamond+ gewaehlt" gelesen werden, sonst sieht ein

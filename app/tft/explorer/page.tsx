@@ -10,7 +10,7 @@ import { useI18n } from '../../lib/i18n';
 import { loadTftAssets, tftChampionTileUrl, tftIconUrl, tftTraitDisplayName, tftTraitDescription, tftPlayableChampions, tftTraitIdPrefix, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import { costColor as costColorOf } from '../../lib/tft-ui';
 import { itemBucketOf } from '../../lib/tft-item-bucket';
-import TierFilter, { type TierBucket } from '../../components/tft/TierFilter';
+import TierFilter, { type TierBucket, tierBucketFromParam } from '../../components/tft/TierFilter';
 
 // Data Explorer: cross-cut the comp dataset by champion(s), item(s), trait(s)
 // + tier/region/days/patch. Client-side filtering against the existing
@@ -118,7 +118,7 @@ export default function TftExplorerPage() {
   const [comps, setComps] = useState<Comp[]>([]);
   const [loading, setLoading] = useState(false);
   const [bucket, setBucket] = useState<TierBucket>(() =>
-    (searchParams.get('bucket') as TierBucket) || 'master_plus'
+    tierBucketFromParam(searchParams.get('bucket'))
   );
   const [region, setRegion] = useState(() => searchParams.get('region') || 'all');
   const [days, setDays] = useState(3);

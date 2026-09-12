@@ -7,6 +7,7 @@ import MarketInsights from '../components/MarketInsights';
 import { useI18n } from '../lib/i18n';
 import { usePageTitle } from '../lib/use-page-title';
 import { formatTier } from '../lib/rank-format';
+import { APEX_ORDER, expandLolTier, isLolRankGroup } from '../lib/rank-groups';
 
 const TIER_COLORS: Record<string, string> = {
   CHALLENGER: '#f0c040',
@@ -49,9 +50,9 @@ export default function MarktwertPage() {
 
   const TIERS = [
     { value: 'all', label: t('mv.allElos'), color: undefined as string | undefined },
+    { value: 'MASTER_PLUS', label: t('tier.masterPlus'), color: '#9d48e0' },
+    { value: 'GRANDMASTER_PLUS', label: t('tier.grandmasterPlus'), color: '#e44040' },
     { value: 'CHALLENGER', label: t('tier.challenger'), color: '#f0c040' },
-    { value: 'GRANDMASTER', label: t('tier.grandmaster'), color: '#e44040' },
-    { value: 'MASTER', label: t('tier.master'), color: '#9d48e0' },
     { value: 'DIAMOND', label: t('tier.diamond'), color: '#576cce' },
   ];
 
@@ -101,7 +102,9 @@ export default function MarktwertPage() {
 
   const activeTiers = tier === 'all'
     ? ['CHALLENGER', 'GRANDMASTER', 'MASTER', 'DIAMOND']
-    : [tier];
+    : isLolRankGroup(tier)
+      ? APEX_ORDER.filter(x => expandLolTier(tier).includes(x))
+      : [tier];
 
   return (
     <main className="min-h-screen bg-surface-page">

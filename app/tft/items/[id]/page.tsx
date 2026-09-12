@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
-import TierFilter, { type TierBucket } from '../../../components/tft/TierFilter';
+import TierFilter, { type TierBucket, tierBucketFromParam } from '../../../components/tft/TierFilter';
 import EmptyData from '../../../components/tft/EmptyData';
 import { useI18n } from '../../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftTraitDisplayName, type TftAssetsBundle } from '../../../lib/tft-cdragon';
@@ -31,7 +31,7 @@ export default function TftItemDetailPage() {
   const params = useParams();
   const search = useSearchParams();
   const id = decodeURIComponent(String(params?.id || ''));
-  const [bucket, setBucket] = useState<TierBucket>((search.get('bucket') as TierBucket) || 'master_plus');
+  const [bucket, setBucket] = useState<TierBucket>(tierBucketFromParam(search.get('bucket')));
   const [data, setData] = useState<ItemDetail | null | undefined>(undefined);
   const [hasData, setHasData] = useState<boolean | null>(null);
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);

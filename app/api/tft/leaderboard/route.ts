@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getRegionalRouting, parseRegion } from '../../../lib/regions';
 import { riotFetch } from '../../../lib/riot-fetch';
 import { cachedJson, STATS_CACHE_CONTROL_FRESH } from '../../../lib/api-cache';
+import { APEX_ORDER, expandLolTier, isLolRankGroup } from '../../../lib/rank-groups';
 
 // /api/tft/leaderboard?region=euw1&tier=CHALLENGER
 // /api/tft/leaderboard?region=euw1&tier=GOLD&division=II&page=3
@@ -110,8 +111,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Riot API Key fehlt', code: 'no_key' }, { status: 503 });
   }
   if (!region) return bad('Ungueltige Region', 'bad_region');
-  if (!isAll && !TIERS.has(tier)) return bad(`Tier ${tier} nicht unterstuetzt.`, 'bad_tier');
-  const isApex = !isAll && APEX_TIERS.has(tier);
+  // Master+ / Grandmaster+ (app/lib/rank-groups.ts): mehrere Apex-Ligen am Stueck.
+  const isGroup = !isAll && isLolRankGroup(tier);
+  if (!isAll && !isGroup && !TIERS.has(tier)) return bad(`Tier ${tier} nicht unterstuetzt.`, 'bad_tier');
+  const isApex = !isAll && (isGroup || APEX_TIERS.has(tier));
   if (!isAll && !isApex && !DIVISIONS.has(division)) return bad(`Division ${division} nicht unterstuetzt.`, 'bad_division');
 
   const startIdx = (page - 1) * PAGE_SIZE;
@@ -141,6 +144,18 @@ export async function GET(request: NextRequest) {
       // Nur wenn die komplette Leiter abgelaufen wurde, ist die Zahl echt.
       totalPlayers = groupsLeft ? null : collected.length;
       hasNextPage = page < MAX_PAGE_ALL && collected.length > startIdx + PAGE_SIZE;
+    } else if (isGroup) {
+      // Alle Ligen der Gruppe parallel, alles oder nichts. Reihenfolge
+      // Challenger → Grandmaster → Master, innerhalb jeder Liga nach LP.
+      const groupTiers = APEX_ORDER.filter(x => expandLolTier(tier).includes(x));
+      const buckets = await Promise.all(groupTiers.map(tr => fetchBucket(region, apiKey, tr, null)));
+      if (buckets.some(b => b === null)) {
+        return NextResponse.json({ error: 'Riot API Fehler' }, { status: 502 });
+      }
+      const all = (buckets as any[][]).flat();
+      totalPlayers = all.length;
+      slice = all.slice(startIdx, startIdx + PAGE_SIZE);
+      hasNextPage = startIdx + PAGE_SIZE < all.length;
     } else if (isApex) {
       const res = await riotFetch(`https://${region}.api.riotgames.com/tft/league/v1/${tier.toLowerCase()}`, apiKey);
       if (!res.ok) {

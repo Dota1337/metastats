@@ -35,8 +35,8 @@ export default function Leaderboard() {
 
   const TIERS = [
     { value: 'CHALLENGER', label: t('tier.challenger'), color: '#f0c040' },
-    { value: 'GRANDMASTER', label: t('tier.grandmaster'), color: '#e44040' },
-    { value: 'MASTER', label: t('tier.master'), color: '#9d48e0' },
+    { value: 'GRANDMASTER_PLUS', label: t('tier.grandmasterPlus'), color: '#e44040' },
+    { value: 'MASTER_PLUS', label: t('tier.masterPlus'), color: '#9d48e0' },
     { value: 'DIAMOND', label: t('tier.diamond'), color: '#576cce' },
     { value: 'EMERALD', label: t('tier.emerald'), color: '#00a86b' },
     { value: 'PLATINUM', label: t('tier.platinum'), color: '#209e85' },
@@ -46,7 +46,7 @@ export default function Leaderboard() {
     { value: 'IRON', label: t('tier.iron'), color: '#6b6b6b' },
   ];
 
-  const APEX_TIERS = ['CHALLENGER', 'GRANDMASTER', 'MASTER'];
+  const APEX_TIERS = ['CHALLENGER', 'GRANDMASTER_PLUS', 'MASTER_PLUS'];
   const DIVISIONS = ['I', 'II', 'III', 'IV'];
 
   const [entries, setEntries] = useState<any[]>([]);

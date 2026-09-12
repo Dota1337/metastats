@@ -18,7 +18,7 @@ interface MarketSnapshot {
   finalValue: number;
 }
 
-const APEX_TIERS = ['CHALLENGER', 'GRANDMASTER', 'MASTER'];
+const APEX_TIERS = ['CHALLENGER', 'GRANDMASTER_PLUS', 'MASTER_PLUS'];
 
 // Standardansicht: alle Raenge hintereinander, vom hoechsten besetzten Rang
 // abwaerts. Nach einem Set-Start sind Challenger, Grossmeister und Meister
@@ -32,7 +32,7 @@ const DIVISIONS = ['I', 'II', 'III', 'IV'];
 // hinein. Gemessen 2026-08-27 auf EUW: Challenger 256, Grandmaster 331,
 // Master 413, Diamant 0 Treffer. Eine Spalte, die garantiert nur Striche
 // zeigt, blenden wir aus.
-const MARKET_VALUE_TIERS = ['CHALLENGER', 'GRANDMASTER', 'MASTER'];
+const MARKET_VALUE_TIERS = ['CHALLENGER', 'GRANDMASTER_PLUS', 'MASTER_PLUS'];
 
 // PH und TH fehlen hier bewusst: beide sind seit dem Crawl-Umbau leer (siehe
 // app/lib/active-regions.ts), eine Rangliste haette dort nichts zu zeigen. Der
@@ -76,8 +76,8 @@ export default function TftLeaderboardPage() {
   const TIERS = [
     { value: ALL_TIERS,     label: t('lb.allTiers'),      color: '#8ea2b8' },
     { value: 'CHALLENGER',  label: t('tier.challenger'),  color: '#f0c040' },
-    { value: 'GRANDMASTER', label: t('tier.grandmaster'), color: '#e44040' },
-    { value: 'MASTER',      label: t('tier.master'),      color: '#9d48e0' },
+    { value: 'GRANDMASTER_PLUS', label: t('tier.grandmasterPlus'), color: '#e44040' },
+    { value: 'MASTER_PLUS', label: t('tier.masterPlus'),  color: '#9d48e0' },
     { value: 'DIAMOND',     label: t('tier.diamond'),     color: '#576cce' },
     { value: 'EMERALD',     label: t('tier.emerald'),     color: '#00a86b' },
     { value: 'PLATINUM',    label: t('tier.platinum'),    color: '#209e85' },
@@ -98,8 +98,15 @@ export default function TftLeaderboardPage() {
   const totalPages = isAll
     ? (totalPlayers ? Math.min(MAX_PAGES_ALL, Math.max(1, Math.ceil(totalPlayers / pageSize))) : null)
     : (isApex && totalPlayers ? Math.max(1, Math.ceil(totalPlayers / pageSize)) : null);
-  const tierColor = (key: string) => TIERS.find(x => x.value === key)?.color || '#8ea2b8';
-  const tierLabel = (key: string) => TIERS.find(x => x.value === key)?.label || key;
+  // Zeilen tragen weiter den Einzelrang (MASTER / GRANDMASTER), auch wenn die
+  // Auswahl nur noch die Gruppen kennt.
+  const ROW_TIERS = [
+    ...TIERS,
+    { value: 'GRANDMASTER', label: t('tier.grandmaster'), color: '#e44040' },
+    { value: 'MASTER',      label: t('tier.master'),      color: '#9d48e0' },
+  ];
+  const tierColor = (key: string) => ROW_TIERS.find(x => x.value === key)?.color || '#8ea2b8';
+  const tierLabel = (key: string) => ROW_TIERS.find(x => x.value === key)?.label || key;
 
   // Unterhalb von Master liefert Riot in der Einzelrang-Ansicht keine ligaweite
   // Reihenfolge — eine durchlaufende Nummer waere dort erfunden.

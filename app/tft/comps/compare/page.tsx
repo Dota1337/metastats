@@ -4,7 +4,7 @@ import { withAlpha } from '../../../lib/color';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
-import TierFilter, { type TierBucket } from '../../../components/tft/TierFilter';
+import TierFilter, { type TierBucket, tierBucketFromParam } from '../../../components/tft/TierFilter';
 import { useI18n } from '../../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, findChampion, tftTraitDisplayName, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { parseClusterKey } from '../../../lib/tft-cluster';
@@ -25,7 +25,7 @@ export default function TftCompsComparePage() {
   const pathname = usePathname();
   const slugA = search.get('a') || '';
   const slugB = search.get('b') || '';
-  const [bucket, setBucket] = useState<TierBucket>((search.get('bucket') as TierBucket) || 'master_plus');
+  const [bucket, setBucket] = useState<TierBucket>(tierBucketFromParam(search.get('bucket')));
   const [region, setRegion] = useState<string>(search.get('region') || 'all');
   const [compA, setCompA] = useState<any | null | undefined>(undefined);
   const [compB, setCompB] = useState<any | null | undefined>(undefined);

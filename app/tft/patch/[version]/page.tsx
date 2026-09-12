@@ -6,6 +6,7 @@ import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { riotPatchNotesUrl } from '../page';
+import { legacyTftBucket } from '../../../lib/rank-groups';
 import { loadPatchNotes, patchNotesFor, patchEntityHref, type PatchNoteOverride } from '../../../lib/tft-patch-notes';
 import {
   ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis,
@@ -52,7 +53,7 @@ export default function TftPatchDetailPage() {
   const search = useSearchParams();
   const version = decodeURIComponent(String(params?.version || ''));
   const [entity, setEntity] = useState<Entity>('unit');
-  const [bucket, setBucket] = useState<string>(search.get('bucket') || 'master_plus');
+  const [bucket, setBucket] = useState<string>(legacyTftBucket(search.get('bucket') || 'master_plus'));
   const [diff, setDiff] = useState<DiffResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
@@ -176,13 +177,13 @@ export default function TftPatchDetailPage() {
 
         {/* Tier-Bucket filter */}
         <div className="flex flex-wrap gap-1 mb-4">
-          {['master_plus', 'challenger', 'grandmaster', 'master', 'diamond'].map(b => (
+          {(['master_plus', 'grandmaster_plus', 'challenger', 'diamond'] as const).map(b => (
             <button
               key={b}
               onClick={() => setBucket(b)}
               className={`px-3 py-1 rounded text-xs ${bucket === b ? 'bg-accent text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
             >
-              {b.replace('_plus', '+').replace(/^./, c => c.toUpperCase())}
+              {t(`tft.bucket.${b}` as const)}
             </button>
           ))}
         </div>

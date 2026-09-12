@@ -7,6 +7,7 @@
 
 import { ACTIVE_REGIONS, ACTIVE_REGIONS_WEST, ACTIVE_REGIONS_ASIA } from './active-regions';
 import { CURRENT_SET } from './current-set';
+import { TFT_RANK_GROUPS, legacyTftBucket } from './rank-groups';
 
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -30,7 +31,9 @@ export const ALL_BUCKETS = [
 ];
 export const BUCKET_GROUPS: Record<string, string[]> = {
   all: ALL_BUCKETS,
-  master_plus: ['master', 'grandmaster', 'challenger'],
+  // Master+ und Grandmaster+ kommen aus der gemeinsamen Rang-Datei (LoL + TFT gleich).
+  master_plus: TFT_RANK_GROUPS.master_plus,
+  grandmaster_plus: TFT_RANK_GROUPS.grandmaster_plus,
   // diamond_plus expands to diamond + master_plus tiers. War vor 2026-06-25
   // ein BUG: snapshot-matrix.ts hatte `diamond_plus` in PRIMARY_BUCKETS, aber
   // BUCKET_GROUPS hatte keinen Eintrag → expandBuckets() fiel zu ['diamond_plus']
@@ -266,7 +269,8 @@ export async function resolveFilters(searchParams: URLSearchParams): Promise<Res
   const bucketAuto = !searchParams.has('bucket') || searchParams.get('bucketAuto') === '1';
   const rawBucket = bucketAuto
     ? await resolveDefaultBucket()
-    : (searchParams.get('bucket') || DEFAULT_BUCKET);
+    : legacyTftBucket(searchParams.get('bucket') || DEFAULT_BUCKET);
+  // Alte Links ?bucket=master / grandmaster → Master+ / Grandmaster+ (2026-09-13).
   const bucketLabel = rawBucket === 'diamond' ? DEFAULT_BUCKET : rawBucket;
   const requestedDays = Math.max(1, Math.min(7, parseInt(searchParams.get('days') || '3', 10)));
   const patchParam = searchParams.get('patch') || 'current';

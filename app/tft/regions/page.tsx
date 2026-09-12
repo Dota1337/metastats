@@ -156,6 +156,7 @@ export default function TftRegionsPage() {
             className="bg-surface-raised border border-border-subtle rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-accent-a60"
           >
             <option value="master_plus">{t('tft.filter.masterPlus')}</option>
+            <option value="grandmaster_plus">{t('tft.filter.grandmasterPlus')}</option>
             <option value="challenger">{t('tft.bucket.challenger')}</option>
             <option value="diamond">{t('tft.bucket.diamond')}</option>
           </select>

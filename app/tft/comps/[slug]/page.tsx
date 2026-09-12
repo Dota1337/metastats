@@ -6,7 +6,7 @@ import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigat
 import dynamic from 'next/dynamic';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
-import TierFilter, { type TierBucket } from '../../../components/tft/TierFilter';
+import TierFilter, { type TierBucket, tierBucketFromParam } from '../../../components/tft/TierFilter';
 import EmptyData from '../../../components/tft/EmptyData';
 import ApiUnavailable from '../../../components/ApiUnavailable';
 import CompCard from '../../../components/tft/CompCard';
@@ -78,7 +78,7 @@ export default function TftCompDetailPage() {
   const pathname = usePathname();
   const slug = decodeURIComponent(String(params?.slug || ''));
   const [region, setRegion] = useState<string>(search.get('region') || 'all');
-  const [bucket, setBucket] = useState<TierBucket>((search.get('bucket') as TierBucket) || 'master_plus');
+  const [bucket, setBucket] = useState<TierBucket>(tierBucketFromParam(search.get('bucket')));
   // Variant-Mode: family (default — alle Sub-Cluster der Family aggregiert) oder
   // exact (Single-Sub-Cluster). Wird live aus searchParams gelesen, damit der
   // Toggle im VariantsSwitcher ohne Page-Reload reagiert.

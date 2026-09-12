@@ -2,6 +2,7 @@ import { CURRENT_SET } from '../../../../lib/current-set';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../lib/supabase';
 import { cachedJson } from '../../../../lib/api-cache';
+import { expandLolTier } from '../../../../lib/rank-groups';
 
 // /api/tft/marktwert/leaderboard?region=euw1&limit=100&tier=CHALLENGER
 //
@@ -57,7 +58,9 @@ export async function GET(request: NextRequest) {
   }));
 
   if (tier) {
-    players = players.filter((p: any) => p.tier === tier);
+    // Master+ / Grandmaster+ → alle Einzelraenge der Gruppe (app/lib/rank-groups.ts).
+    const tiers = expandLolTier(tier);
+    players = players.filter((p: any) => tiers.includes(p.tier));
   }
   players = players.slice(0, limit);
 

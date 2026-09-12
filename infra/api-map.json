@@ -11,7 +11,7 @@
     "tables": 31,
     "rpcs": 26,
     "files": 11,
-    "edges": 290,
+    "edges": 293,
     "unused": 8,
     "unresolved": 1
   },
@@ -380,8 +380,11 @@
       "group": "leaderboard",
       "file": "app/api/leaderboard/route.ts",
       "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
         "app/lib/regions.ts",
-        "app/lib/riot-fetch.ts"
+        "app/lib/riot-fetch.ts",
+        "app/lib/tft-supabase-reader.ts"
       ],
       "used": true,
       "usedBy": [
@@ -1966,6 +1969,21 @@
       "from": "api:/api/leaderboard",
       "to": "ext:riot-api",
       "kind": "fetches"
+    },
+    {
+      "from": "api:/api/leaderboard",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/leaderboard",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/leaderboard",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
     },
     {
       "from": "api:/api/live-game",

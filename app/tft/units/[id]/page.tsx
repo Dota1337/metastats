@@ -7,7 +7,7 @@ import {
 } from 'recharts';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
-import TierFilter, { type TierBucket } from '../../../components/tft/TierFilter';
+import TierFilter, { type TierBucket, tierBucketFromParam } from '../../../components/tft/TierFilter';
 import EmptyData from '../../../components/tft/EmptyData';
 import { useI18n } from '../../../lib/i18n';
 import { tftPatchLabel } from '../../../lib/tft-patch-label';
@@ -54,7 +54,7 @@ export default function TftUnitDetailPage() {
   const params = useParams();
   const search = useSearchParams();
   const id = decodeURIComponent(String(params?.id || ''));
-  const initialBucket = (search.get('bucket') as TierBucket) || 'master_plus';
+  const initialBucket = tierBucketFromParam(search.get('bucket'));
   const [bucket, setBucket] = useState<TierBucket>(initialBucket);
   const [star, setStar] = useState<StarTier>('all');
   const [itemCount, setItemCount] = useState<ItemCount>(null);

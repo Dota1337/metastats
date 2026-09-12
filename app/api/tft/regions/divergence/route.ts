@@ -8,7 +8,8 @@ import { cachedJson } from '../../../../lib/api-cache';
 
 // W2-A: Region-Divergence — pro Comp den KR vs EU vs NA Vergleich.
 // Default-Window 7 Tage: KR-Crawls ziehen oft mit Verzögerung nach, ein
-// 3-Tage-Fenster blendet sie regelmäßig komplett aus.
+// 3-Tage-Fenster blendet sie regelmäßig komplett aus. Seit Migration 0070
+// zaehlt das Fenster ab dem juengsten Datentag (kr/euw1/na1), nicht ab heute.
 //
 // Output sortiert nach krAheadScore: positive Werte = KR spielt die Comp
 // häufiger UND besser als EU. Ideal um „was spielt KR vor uns?" zu erkennen.

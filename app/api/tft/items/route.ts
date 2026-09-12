@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseVelocity } from '../../../lib/query-params';
-import { loadTftStats, normalizeBucket } from '../../../lib/tft-stats-loader';
+import { loadTftStats, normalizeBucket, pickBucketEntry } from '../../../lib/tft-stats-loader';
 import {
   resolveFilters,
   callRpc,
@@ -72,7 +72,8 @@ export async function GET(request: NextRequest) {
     }
     const buckets = stats.byItem?.[id];
     if (!buckets) return NextResponse.json({ region, bucket, hasData: true, item: null });
-    const data = buckets[bucket] || buckets.all || null;
+    // grandmaster_plus: Grandmaster- und Challenger-Eintrag zusammengezaehlt.
+    const data = pickBucketEntry(buckets, bucket);
     if (!data) return NextResponse.json({ region, bucket, hasData: true, item: null });
     return cachedJson({
       region, bucket,

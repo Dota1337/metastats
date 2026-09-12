@@ -300,7 +300,12 @@ function TopTab({
   lang: Lang;
   t: (k: any) => string;
 }) {
-  const tierOptions = ['', 'CHALLENGER', 'GRANDMASTER', 'MASTER'];
+  const tierOptions = ['', 'MASTER_PLUS', 'GRANDMASTER_PLUS', 'CHALLENGER'];
+  const tierOptionLabel: Record<string, string> = {
+    MASTER_PLUS: t('tier.masterPlus'),
+    GRANDMASTER_PLUS: t('tier.grandmasterPlus'),
+    CHALLENGER: t('tier.challenger'),
+  };
   return (
     <>
       <div className="flex flex-wrap gap-1 mb-3">
@@ -314,7 +319,7 @@ function TopTab({
                 : 'bg-surface-raised text-fg-secondary hover:text-white'
             }`}
           >
-            {tr || t('tft.filter.allRanks')}
+            {tr ? tierOptionLabel[tr] : t('tft.filter.allRanks')}
           </button>
         ))}
       </div>

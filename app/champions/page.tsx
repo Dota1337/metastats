@@ -67,8 +67,8 @@ export default function ChampionsPage() {
     { value: 'PLATINUM', label: t('tier.platinum') },
     { value: 'EMERALD', label: t('tier.emerald') },
     { value: 'DIAMOND', label: t('tier.diamond') },
-    { value: 'MASTER', label: t('tier.master') },
-    { value: 'GRANDMASTER', label: t('tier.grandmaster') },
+    { value: 'MASTER_PLUS', label: t('tier.masterPlus') },
+    { value: 'GRANDMASTER_PLUS', label: t('tier.grandmasterPlus') },
     { value: 'CHALLENGER', label: t('tier.challenger') },
   ];
 
@@ -155,6 +155,7 @@ export default function ChampionsPage() {
     IRON: '#6b6b6b', BRONZE: '#a0652a', SILVER: '#8fa0a8', GOLD: '#c89b3c',
     PLATINUM: '#209e85', EMERALD: '#00a86b', DIAMOND: '#576cce',
     MASTER: '#9d48e0', GRANDMASTER: '#e44040', CHALLENGER: '#f0c040',
+    MASTER_PLUS: '#9d48e0', GRANDMASTER_PLUS: '#e44040',
   };
 
   const roleLabels: Record<string, string> = {

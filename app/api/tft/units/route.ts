@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseVelocity } from '../../../lib/query-params';
-import { loadTftStats, normalizeBucket, bucketParticipants } from '../../../lib/tft-stats-loader';
+import { loadTftStats, normalizeBucket, bucketParticipants, pickBucketEntry } from '../../../lib/tft-stats-loader';
 import { resolveFilters, callRpc, getAvailablePatches } from '../../../lib/tft-supabase-reader';
 import { isExcludedUnit, isExcludedItem, setContainsExcludedItem } from '../../../lib/tft-excluded';
 import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias } from '../../../lib/api-cache';
@@ -119,7 +119,8 @@ export async function GET(request: NextRequest) {
     }
     const buckets = stats.byUnit?.[id];
     if (!buckets) return NextResponse.json({ region, bucket, hasData: true, unit: null });
-    const data = buckets[bucket] || buckets.all || null;
+    // grandmaster_plus: Grandmaster- und Challenger-Eintrag zusammengezaehlt.
+    const data = pickBucketEntry(buckets, bucket);
     if (!data) return NextResponse.json({ region, bucket, hasData: true, unit: null });
     const avgPlacement = data.games > 0 ? data.sumPlacement / data.games : null;
     return cachedJson({

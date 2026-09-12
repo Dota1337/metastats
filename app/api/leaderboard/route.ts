@@ -3,6 +3,11 @@ import { supabaseAdmin as supabase } from '../../lib/supabase';
 
 import { getRegionalRouting, parseRegion, REGION_ALL } from '../../lib/regions';
 import { riotFetch } from '../../lib/riot-fetch';
+import { cachedJson } from '../../lib/api-cache';
+import { APEX_ORDER, expandLolTier, isLolRankGroup } from '../../lib/rank-groups';
+
+// Master+ holt drei Ligen parallel plus bis zu 80 Namensaufloesungen.
+export const maxDuration = 60;
 
 // In-memory cache for PUUID -> Riot ID (gameName#tagLine)
 const nameCache: Record<string, string> = {};
@@ -56,14 +61,29 @@ export async function GET(request: NextRequest) {
     // Primary: fetch from Riot API
     if (apiKey) {
       const riotRegion = region === REGION_ALL ? 'euw1' : region;
-      const isApex = ['CHALLENGER', 'GRANDMASTER', 'MASTER'].includes(tier);
+      // Master+ / Grandmaster+ (app/lib/rank-groups.ts) mischen mehrere Apex-Ligen.
+      const groupTiers = isLolRankGroup(tier) ? APEX_ORDER.filter(x => expandLolTier(tier).includes(x)) : null;
+      const isApex = groupTiers !== null || APEX_ORDER.includes(tier);
 
       let riotRes: Response;
       if (isApex) {
-        const tierEndpoint = tier === 'GRANDMASTER' ? 'grandmasterleagues'
-          : tier === 'MASTER' ? 'masterleagues'
-          : 'challengerleagues';
-        riotRes = await riotFetch(`https://${riotRegion}.api.riotgames.com/lol/league/v4/${tierEndpoint}/by-queue/RANKED_SOLO_5x5`, apiKey);
+        // Alle Ligen parallel, alles oder nichts: fehlt eine, waere die
+        // Rangfolge still falsch — dann lieber der Datenbank-Rueckfall unten.
+        const leagues = await Promise.all((groupTiers ?? [tier]).map(async (tr) => {
+          const tierEndpoint = tr === 'GRANDMASTER' ? 'grandmasterleagues'
+            : tr === 'MASTER' ? 'masterleagues'
+            : 'challengerleagues';
+          const r = await riotFetch(`https://${riotRegion}.api.riotgames.com/lol/league/v4/${tierEndpoint}/by-queue/RANKED_SOLO_5x5`, apiKey);
+          if (!r.ok) return null;
+          const l = await r.json();
+          return (l.entries || []).map((e: any) => ({ ...e, tier: tr }));
+        }));
+        riotRes = leagues.some(l => l === null)
+          ? new Response(null, { status: 502 })
+          : new Response(JSON.stringify({ tier, entries: leagues.flat() }), {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' },
+            });
       } else {
         // For Diamond and below: fetch the specific division + page from Riot API
         const div = division || 'I';
@@ -100,8 +120,14 @@ export async function GET(request: NextRequest) {
 
       if (riotRes.ok) {
         const league = await riotRes.json();
+        // Erst nach Liga (Challenger vor Grandmaster vor Master), dann nach LP.
         const sortedAll = (league.entries || [])
-          .sort((a: any, b: any) => b.leaguePoints - a.leaguePoints);
+          .sort((a: any, b: any) => {
+            const ra = APEX_ORDER.indexOf(a.tier);
+            const rb = APEX_ORDER.indexOf(b.tier);
+            if (ra !== rb) return ra - rb;
+            return b.leaguePoints - a.leaguePoints;
+          });
 
         // For apex tiers: paginate server-side. For non-apex: already paginated by Riot API.
         let pageEntries: any[];
@@ -179,7 +205,7 @@ export async function GET(request: NextRequest) {
             summonerName: cachedName || known?.summoner_name || null,
             puuid: e.puuid || null,
             region: riotRegion,
-            tier: league.tier,
+            tier: e.tier || league.tier,
             playerRank: e.rank,
             leaguePoints: e.leaguePoints,
             wins: e.wins,
@@ -194,7 +220,7 @@ export async function GET(request: NextRequest) {
           };
         });
 
-        return NextResponse.json({
+        return cachedJson({
           entries,
           source: 'riot',
           tier: league.tier,
@@ -203,7 +229,7 @@ export async function GET(request: NextRequest) {
           hasNextPage,
           hasPrevPage: currentPage > 1,
           region: riotRegion,
-        });
+        }, { cache: 'public, s-maxage=300, stale-while-revalidate=600', degraded: entries.length === 0 });
       }
     }
 
@@ -212,9 +238,7 @@ export async function GET(request: NextRequest) {
       .from('players')
       .select('summoner_name, region, tier, rank, winrate, market_value, summoner_level, profile_icon_id');
 
-    if (tier === 'CHALLENGER') query = query.eq('tier', 'CHALLENGER');
-    else if (tier === 'GRANDMASTER') query = query.eq('tier', 'GRANDMASTER');
-    else if (tier === 'MASTER') query = query.eq('tier', 'MASTER');
+    if (isLolRankGroup(tier) || APEX_ORDER.includes(tier)) query = query.in('tier', expandLolTier(tier));
 
     if (region !== 'all') query = query.eq('region', region);
 

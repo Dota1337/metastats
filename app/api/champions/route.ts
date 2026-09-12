@@ -3,6 +3,7 @@ import { supabaseAdmin as supabase } from '../../lib/supabase';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { cachedJson, ASSET_CACHE_CONTROL } from '../../lib/api-cache';
+import { expandLolTier, isLolRankGroup } from '../../lib/rank-groups';
 
 interface ChampionInfo {
   id: string;
@@ -61,12 +62,21 @@ export async function GET(request: NextRequest) {
     try {
       let query = supabase.from('champion_stats').select('*').eq('region', region);
       if (tier !== 'all') {
-        query = query.eq('tier', tier.toUpperCase());
+        // Master+ / Grandmaster+ fassen mehrere Raenge zusammen (app/lib/rank-groups.ts).
+        query = query.in('tier', expandLolTier(tier));
       }
       const { data: statsRows } = await query;
 
       if (statsRows && statsRows.length > 0) {
         hasStats = true;
+        // Rang-Gruppe: Nenner je Rang einmal zaehlen und dann summieren. Sonst
+        // fehlt einem Champion ohne Zeile in einem der Raenge dessen Spielzahl,
+        // und seine Pick-Rate waere zu hoch.
+        const tierTotals: Record<string, number> = {};
+        for (const row of statsRows) {
+          tierTotals[row.tier] = Math.max(tierTotals[row.tier] || 0, row.total_games_in_tier || 0);
+        }
+        const groupTotal = Object.values(tierTotals).reduce((a, b) => a + b, 0);
         for (const row of statsRows) {
           const key = row.champion_key;
           if (!statsMap[key]) {
@@ -79,6 +89,9 @@ export async function GET(request: NextRequest) {
           statsMap[key].assists += row.assists || 0;
           statsMap[key].bans += row.bans || 0;
           statsMap[key].totalGames += row.total_games_in_tier || 0;
+        }
+        if (isLolRankGroup(tier)) {
+          for (const key of Object.keys(statsMap)) statsMap[key].totalGames = groupTotal;
         }
       }
     } catch {

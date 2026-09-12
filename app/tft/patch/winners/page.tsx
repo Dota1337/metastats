@@ -27,12 +27,14 @@ const REGIONS = [
 
 // Trimmed tier filter — kein nackter Master/GM/Challenger weil oben
 // herum die Patch-Delta-Samples zu dünn werden. master_plus rollt
-// Master+GM+Challenger zusammen auf.
-type Tier = 'all' | 'diamond' | 'master_plus';
+// Master+GM+Challenger zusammen auf, grandmaster_plus GM+Challenger
+// (einheitliche Rang-Gruppen in LoL und TFT, 2026-09-13).
+type Tier = 'all' | 'diamond' | 'master_plus' | 'grandmaster_plus';
 const TIERS: { value: Tier; key: string }[] = [
-  { value: 'all',         key: 'tft.bucket.all' },
-  { value: 'diamond',     key: 'tft.bucket.diamond' },
-  { value: 'master_plus', key: 'tft.bucket.master_plus' },
+  { value: 'all',              key: 'tft.bucket.all' },
+  { value: 'diamond',          key: 'tft.bucket.diamond' },
+  { value: 'master_plus',      key: 'tft.bucket.master_plus' },
+  { value: 'grandmaster_plus', key: 'tft.bucket.grandmaster_plus' },
 ];
 
 interface DiffEntry {

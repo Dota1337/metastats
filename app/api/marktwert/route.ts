@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '../../lib/supabase';
+import { expandLolTier } from '../../lib/rank-groups';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -20,11 +21,8 @@ export async function GET(request: NextRequest) {
     }
 
     if (tier !== 'all') {
-      if (tier === 'DIAMOND') {
-        query = query.eq('tier', 'DIAMOND');
-      } else {
-        query = query.eq('tier', tier);
-      }
+      // Master+ / Grandmaster+ fassen mehrere Raenge zusammen (app/lib/rank-groups.ts).
+      query = query.in('tier', expandLolTier(tier));
     }
 
     const { data: players, error: playersError } = await query.limit(100);

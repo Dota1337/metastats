@@ -89,6 +89,32 @@ export async function GET(request: NextRequest) {
     const previousPatch = patches[1]?.patch ?? null;
     const setNumber = patches[0]?.set_number ?? CURRENT_SET;
 
+    // Rising-Vergleichsfenster an das Patch-Alter anpassen. Die Velocity-RPC
+    // filtert beide Fenster auf denselben Patch — bei einem 1-Tage-Patch waere
+    // das Vergleichsfenster leer und die Liste immer leer.
+    //   • Patch ≥2 Tage: im Patch bleiben, Fenster schrumpfen, ohne Ueberlappung.
+    //   • Patch 1 Tag: letzter Patch-Tag gegen letzten Tag des Vorpatches.
+    const DAY_MS = 86_400_000;
+    const dayNum = (d?: string | null) => (d ? Math.floor(Date.parse(d) / DAY_MS) : NaN);
+    const curFirst = dayNum(patches[0]?.first_day);
+    const curLast = dayNum(patches[0]?.last_day);
+    const prevLast = dayNum(patches[1]?.last_day);
+    const patchDays = Number.isFinite(curFirst) && Number.isFinite(curLast) ? curLast - curFirst + 1 : 0;
+    let velocityMode: 'patch' | 'crossPatch' = 'patch';
+    let effShift = velocityShift;
+    let effDays = filters.requestedDays;
+    let velocityPatch: string | null = currentPatch;
+    if (patchDays >= 2) {
+      effShift = Math.min(velocityShift, patchDays - 1);
+      effDays = Math.max(1, Math.min(filters.requestedDays, effShift, patchDays - effShift));
+    } else if (previousPatch && patches[1]?.set_number === setNumber
+      && Number.isFinite(curLast) && Number.isFinite(prevLast) && curLast > prevLast) {
+      velocityMode = 'crossPatch';
+      effShift = curLast - prevLast;
+      effDays = 1;
+      velocityPatch = null;
+    }
+
     // Fan out: all four queries in parallel. Velocity + region-divergence
     // are single-scan FILTER aggregates (cheap on Nano). Patch-diff is two
     // sequential RPCs but kicked off in parallel with the rest.
@@ -97,11 +123,11 @@ export async function GET(request: NextRequest) {
         p_regions: filters.regions,
         p_buckets: buckets,
         p_set: setNumber,
-        p_patch: currentPatch,
-        // Use the user-requested window (pre-stale-bump) for the Δ semantics
-        // to match what the filter bar promises ("Letzter Tag vs vor 3T").
-        p_days: filters.requestedDays,
-        p_shift_days: velocityShift,
+        // null nur im crossPatch-Modus: dann liegen die beiden Tage in
+        // verschiedenen Patches (gemessen: Tage sind je Patch sauber getrennt).
+        p_patch: velocityPatch,
+        p_days: effDays,
+        p_shift_days: effShift,
         p_anchor_offset_days: filters.anchorOffsetDays,
         p_min_games: 100,
       }, 20000).catch(() => [] as VelocityRow[]),
@@ -140,13 +166,15 @@ export async function GET(request: NextRequest) {
     // Velocity → Top Rising (most-improved avg-place over the comparison
     // window, with both windows above sample-size threshold).
     const rising = velocityRows
-      .filter(v => v.games_now >= 30 && v.games_prev >= 30)
+      // 100 pro Fenster: bei 30 lag der Zufallsfehler eines Δ bei ~0,6 Plaetzen.
+      .filter(v => v.games_now >= 100 && v.games_prev >= 100)
       .map(v => ({
         clusterKey: v.cluster_key,
         deltaAvgPlace: v.sum_placement_now / v.games_now - v.sum_placement_prev / v.games_prev,
         avgPlaceNow: v.sum_placement_now / v.games_now,
         gamesNow: v.games_now,
       }))
+      .filter(v => v.deltaAvgPlace < 0)
       .sort((a, b) => a.deltaAvgPlace - b.deltaAvgPlace)
       .slice(0, 5);
 
@@ -154,7 +182,9 @@ export async function GET(request: NextRequest) {
     const krAhead = regionRows
       .filter(r => r.games_kr >= 30 && r.games_eu >= 30
         && r.pickrate_kr != null && r.pickrate_eu != null
-        && r.avg_place_kr != null && r.avg_place_eu != null)
+        && r.avg_place_kr != null && r.avg_place_eu != null
+        // KR muss spuerbar besser platzieren, nicht nur oefter spielen.
+        && r.avg_place_eu - r.avg_place_kr >= 0.1)
       .map(r => ({
         clusterKey: r.cluster_key,
         avgPlaceKr: r.avg_place_kr,
@@ -190,8 +220,10 @@ export async function GET(request: NextRequest) {
         deltaTop4Rate: Number(c.top4) / Number(c.games) - Number(p.top4) / Number(p.games),
       });
     }
-    const patchWinners = [...patchDiffs].sort((a, b) => a.deltaAvgPlacement - b.deltaAvgPlacement).slice(0, 5);
-    const patchLosers = [...patchDiffs].sort((a, b) => b.deltaAvgPlacement - a.deltaAvgPlacement).slice(0, 5);
+    const patchWinners = patchDiffs.filter(d => d.deltaAvgPlacement < 0)
+      .sort((a, b) => a.deltaAvgPlacement - b.deltaAvgPlacement).slice(0, 5);
+    const patchLosers = patchDiffs.filter(d => d.deltaAvgPlacement > 0)
+      .sort((a, b) => b.deltaAvgPlacement - a.deltaAvgPlacement).slice(0, 5);
 
     return cachedJson({
       hasData: true,
@@ -200,7 +232,10 @@ export async function GET(request: NextRequest) {
       bucket: filters.bucketLabel,
       region: filters.regionLabel,
       requestedDays: filters.requestedDays,
-      velocityShift,
+      // Tatsaechlich genutzter Abstand (kann kleiner sein als gewaehlt).
+      velocityShift: effShift,
+      velocityDays: effDays,
+      velocityMode,
       patches,
       rising,
       krAhead,

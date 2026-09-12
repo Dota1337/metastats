@@ -28,6 +28,7 @@ interface MetaPulse {
   bucket: string;
   requestedDays: number;
   velocityShift: number;
+  velocityMode?: 'patch' | 'crossPatch';
   patches: PatchInfo[];
   rising: { clusterKey: string; deltaAvgPlace: number; avgPlaceNow: number; gamesNow: number }[];
   krAhead: { clusterKey: string; avgPlaceKr: number; avgPlaceEu: number; pickrateKr: number; pickrateEu: number; krAheadScore: number }[];
@@ -98,6 +99,13 @@ export default function TftMetaPulsePage() {
           return { ...top, key: primaryClusterKey(top.key) };
         })
     : [];
+  const patchLosersDedup = data?.patchLosers
+    ? dedupeByPrimaryCluster(data.patchLosers, r => r.key, r => r.currentGames,
+        g => {
+          const top = [...g].sort((a, b) => b.currentGames - a.currentGames)[0];
+          return { ...top, key: primaryClusterKey(top.key) };
+        })
+    : [];
   return (
     <main className="min-h-screen bg-surface-page">
       <Nav active="comps" />
@@ -117,7 +125,9 @@ export default function TftMetaPulsePage() {
               title={t('tft.metaPulse.rising')}
               accent="#3ecf8e"
               empty={data.rising.length === 0}
-              footer={t('tft.velocity.deltaVs').replace('{n}', String(data.velocityShift))}
+              footer={data.velocityMode === 'crossPatch' && data.previousPatch
+                ? t('tft.metaPulse.vsPatch').replace('{p}', data.previousPatch)
+                : t('tft.velocity.deltaVs').replace('{n}', String(data.velocityShift))}
             >
               {risingDedup.map(r => (
                 <PulseRow
@@ -167,6 +177,26 @@ export default function TftMetaPulsePage() {
                   primary={`Ø ${r.currentAvgPlacement.toFixed(2)}`}
                   secondary={`Δ ${r.deltaAvgPlacement.toFixed(2)}`}
                   secondaryColor={r.deltaAvgPlacement < 0 ? '#3ecf8e' : '#e44040'}
+                  meta={`${r.currentGames} ${t('tft.gamesShort')}`}
+                />
+              ))}
+            </PulseSection>
+
+            <PulseSection
+              title={t('tft.metaPulse.patchLosers')}
+              accent="#e44040"
+              empty={data.patchLosers.length === 0}
+              footer={data.previousPatch ? `${data.previousPatch} → ${data.currentPatch}` : undefined}
+            >
+              {patchLosersDedup.map(r => (
+                <PulseRow
+                  key={r.key}
+                  clusterKey={r.key}
+                  assets={assets}
+                  bucket={filters.bucket}
+                  primary={`Ø ${r.currentAvgPlacement.toFixed(2)}`}
+                  secondary={`Δ +${r.deltaAvgPlacement.toFixed(2)}`}
+                  secondaryColor="#e44040"
                   meta={`${r.currentGames} ${t('tft.gamesShort')}`}
                 />
               ))}

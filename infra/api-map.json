@@ -603,7 +603,6 @@
         "app/tft/comps/page.tsx",
         "app/tft/explorer/page.tsx",
         "app/tft/items/[id]/page.tsx",
-        "app/tft/lobby-scout/page.tsx",
         "app/tft/player/[slug]/page.tsx",
         "app/tft/traits/[name]/page.tsx",
         "app/tft/units/[id]/page.tsx",

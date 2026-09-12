@@ -29,6 +29,12 @@ const nextConfig: NextConfig = {
         destination: '/tft/augments',
         permanent: true,
       },
+      // Lobby-Scout entfernt — der Explorer macht dasselbe (Champions waehlen → Comps).
+      {
+        source: '/tft/lobby-scout',
+        destination: '/tft/explorer',
+        permanent: true,
+      },
     ];
   },
 };

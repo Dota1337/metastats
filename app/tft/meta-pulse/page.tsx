@@ -176,14 +176,6 @@ export default function TftMetaPulsePage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-6">
           <a
-            href="/tft/lobby-scout"
-            className="block bg-surface-base border border-border-subtle rounded p-4 hover:border-accent-a40 transition-colors"
-          >
-            <div className="text-fg-secondary text-[10px] uppercase tracking-widest">{t('tft.metaPulse.shortcut')}</div>
-            <div className="text-white text-base font-medium mt-1">{t('tft.lobby.title')} →</div>
-            <div className="text-fg-muted text-xs mt-0.5">{t('tft.lobby.subtitle')}</div>
-          </a>
-          <a
             href="/tft/regions"
             className="block bg-surface-base border border-border-subtle rounded p-4 hover:border-[#c39bff]/40 transition-colors"
           >

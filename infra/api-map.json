@@ -8,10 +8,10 @@
   "counts": {
     "routes": 74,
     "groups": 31,
-    "tables": 30,
-    "rpcs": 25,
+    "tables": 31,
+    "rpcs": 26,
     "files": 11,
-    "edges": 288,
+    "edges": 290,
     "unused": 8,
     "unresolved": 1
   },
@@ -1399,6 +1399,12 @@
       "declared": true
     },
     {
+      "id": "db:tft_daily_unit_top_items",
+      "kind": "table",
+      "label": "tft_daily_unit_top_items",
+      "declared": true
+    },
+    {
       "id": "db:tft_mv_population_stats",
       "kind": "table",
       "label": "tft_mv_population_stats",
@@ -1741,6 +1747,12 @@
       "id": "fn:get_tft_unit_stats",
       "kind": "rpc",
       "label": "get_tft_unit_stats",
+      "declared": true
+    },
+    {
+      "id": "fn:get_tft_unit_top_items",
+      "kind": "rpc",
+      "label": "get_tft_unit_top_items",
       "declared": true
     },
     {
@@ -2963,6 +2975,11 @@
     },
     {
       "from": "api:/api/tft/units",
+      "to": "fn:get_tft_unit_top_items",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/units",
       "to": "fn:get_tft_unit_velocity",
       "kind": "calls"
     },
@@ -3184,6 +3201,11 @@
     {
       "from": "fn:get_tft_unit_stats",
       "to": "db:tft_daily_unit_stats",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_unit_top_items",
+      "to": "db:tft_daily_unit_top_items",
       "kind": "reads"
     },
     {

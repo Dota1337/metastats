@@ -32,6 +32,22 @@ const APEX_BUCKETS = ['master','grandmaster','challenger'];
 import { damageCarryItemsForSet } from './tft-item-classes.mjs';
 import { classifyComp as classifyCompUnified } from './tft-classify-comp.mjs';
 
+// Fertige Items fuer persistTopItems (DB-Tabelle tft_daily_unit_top_items,
+// Item-Reihe auf /tft/units). Raus: Bauteile, Embleme, Thief's Gloves und
+// Empty Bag. Die Bauteil-Liste entspricht den 24 Eintraegen mit Tag
+// `component` in public/tft-assets.json (Stand 2026-09-12: DA_Component_*,
+// die alten TFT_Item_*-Grundteile und TFTTutorial_Item_*). Muster statt
+// Bundle, weil der Aggregator auf der Box ohne Asset-Bundle laeuft.
+const PERSIST_TOP_ITEMS = 15;
+const COMPONENT_ITEM_RE = /^(?:DA_Component_|TFTTutorial_Item_|TFT_Item_(?:BFSword|RecurveBow|NeedlesslyLargeRod|TearOfTheGoddess|ChainVest|NegatronCloak|GiantsBelt|SparringGloves|Spatula|FryingPan)$)/;
+export function isPersistableFinishedItem(apiName) {
+  if (!apiName) return false;
+  if (COMPONENT_ITEM_RE.test(apiName)) return false;
+  if (/emblem/i.test(apiName)) return false;
+  if (/thiefsgloves|emptybag/i.test(apiName)) return false;
+  return true;
+}
+
 export function emptyAggregate() {
   return {
     byUnit: new Map(),     // characterId -> Map<bucket, UnitBucket>
@@ -724,6 +740,13 @@ export function finalize(agg, opts = {}) {
         .map(([item, e]) => ({ item, games: e.games, top4: e.top4, sumPlacement: e.sumPlacement }))
         .sort((a, b) => b.games - a.games)
         .slice(0, 10);
+      // Filtern VOR dem Kappen: 668 von 7.675 Listen haetten nach dem Filter
+      // der Top 10 weniger als 6 fertige Items gehabt (gemessen 2026-09-12).
+      const persistTopItems = [...b.items.entries()]
+        .filter(([item]) => isPersistableFinishedItem(item))
+        .map(([item, e]) => ({ item, games: e.games, top4: e.top4, sumPlacement: e.sumPlacement }))
+        .sort((a, b) => b.games - a.games || (a.item < b.item ? -1 : a.item > b.item ? 1 : 0))
+        .slice(0, PERSIST_TOP_ITEMS);
       const topItemSets = [...b.itemSets.values()]
         .sort((a, b) => b.games - a.games)
         .slice(0, 5)
@@ -805,6 +828,7 @@ export function finalize(agg, opts = {}) {
       out.byUnit[cid][bucket] = {
         games: b.games, sumPlacement: b.sumPlacement, top4: b.top4, top1: b.top1,
         topItems, topItemSets,
+        persistTopItems, // nur fuer den DB-Writer; collect-tft-allranks laesst es aus der JSON
         topItemsByTier, topItemSetsByTier,
         damageByTier,
         carryPlacementByTier,

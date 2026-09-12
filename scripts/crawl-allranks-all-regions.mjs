@@ -114,6 +114,7 @@ function encodePasswordInPgUrl(url) {
 const MAINTENANCE_TABLES = [
   'tft_daily_comp_stats',
   'tft_daily_unit_stats',
+  'tft_daily_unit_top_items',
   'tft_daily_item_stats',
   'tft_daily_trait_stats',
   'tft_daily_comp_pairs',
@@ -314,6 +315,7 @@ async function main() {
       'daily-crawl/comp-stats',
       'daily-crawl/crawl-meta',
       'daily-crawl/unit-stats',
+      'daily-crawl/unit-top-items',
       'daily-crawl/item-stats',
       'daily-crawl/trait-stats',
     ]).catch(err => console.error('[contract] Prüfung fehlgeschlagen:', err.message));

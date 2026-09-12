@@ -17,6 +17,7 @@ import { useI18n } from '../../lib/i18n';
 import { loadTftAssets, tftChampionTileUrl, tftTraitDisplayName, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import { loadTierCutoffs, tierLetterOfSync, TIER_COLORS, type TierLetter } from '../../lib/tft-tier-letter';
 import TftHero from '../../components/tft/TftHero';
+import TftItemIcon from '../../components/tft/TftItemIcon';
 
 interface UnitVelocity {
   deltaAvgPlace: number | null;
@@ -37,6 +38,7 @@ interface UnitRow {
   winShare?: number | null;
   top4Share?: number | null;
   velocity?: UnitVelocity | null;
+  topItems?: { item: string; games: number }[];
 }
 
 export default function TftUnitsPage() {
@@ -257,7 +259,16 @@ export default function TftUnitsPage() {
                     <div className="w-10 h-10 rounded-md border-2 overflow-hidden flex-shrink-0 shadow-sm" style={{ borderColor: costColor }}>
                       {url && <img src={url} alt={ch!.name} className="w-full h-full object-cover" />}
                     </div>
-                    <div className="text-white font-medium truncate flex-1 md:flex-initial">{ch?.name || prettyCharId(u.characterId)}</div>
+                    <div className="min-w-0 flex-1 md:flex-initial flex flex-col md:flex-row md:items-center gap-1 md:gap-3">
+                      <div className="text-white font-medium truncate">{ch?.name || prettyCharId(u.characterId)}</div>
+                      {u.topItems && u.topItems.length > 0 && (
+                        <div className="flex gap-0.5 flex-shrink-0">
+                          {u.topItems.map(it => (
+                            <TftItemIcon key={it.item} apiName={it.item} assets={assets} />
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className={`grid ${filters.velocity > 0 ? 'grid-cols-5' : 'grid-cols-4'} gap-2 mt-1.5 pl-12 md:pl-0 md:mt-0 md:contents`}>
                     <Cell label={t('tft.avgPlacement')} value={u.avgPlacement?.toFixed(2) ?? '—'} accent="white" align="center" />

@@ -189,7 +189,7 @@ function hasRequiredFields(endpoint: SnapshotEndpoint, payload: any): boolean {
   if (endpoint === 'units') {
     const sample = payload?.units?.[0];
     if (!sample) return true; // empty list = nothing to verify
-    return 'winShare' in sample && 'top4Share' in sample;
+    return 'winShare' in sample && 'top4Share' in sample && 'topItems' in sample;
   }
   if (endpoint === 'comps') {
     const sample = payload?.comps?.[0];

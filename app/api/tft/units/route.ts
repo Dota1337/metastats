@@ -21,9 +21,10 @@ export const maxDuration = 60;
 //
 //   id=… still routes through the legacy JSON loader for the unit-detail
 //   view, which depends on byUnit[*].topItems/topItemSets — fields the
-//   per-day Supabase rows don't carry. Once we add a tft_daily_unit_items
-//   reverse-index this will move over too; for now the detail page still
-//   shows the most-recent crawl.
+//   per-day Supabase rows don't carry. The list view gets its item row from
+//   tft_daily_unit_top_items (migration 0069: top-15 finished items per day,
+//   merged by get_tft_unit_top_items); the detail page still shows the
+//   most-recent crawl.
 
 interface UnitListRow {
   character_id: string;
@@ -33,6 +34,15 @@ interface UnitListRow {
   top1: number;
   participants: number;
 }
+
+interface UnitTopItemRow {
+  character_id: string;
+  item: string;
+  games: number;
+}
+
+// Item-Reihe neben dem Namen auf /tft/units.
+const LIST_TOP_ITEMS = 6;
 
 interface UnitVelocityRow {
   character_id: string;
@@ -255,7 +265,20 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const [rows, velocityRows] = await Promise.all([
+    // Item-Reihe: fuer Besucher optional (Fehler → Liste ohne Items). Der
+    // Snapshot-Publisher bekommt mehr Zeit und laesst Fehler durchschlagen,
+    // damit nie ein Bundle ohne Items gespeichert wird.
+    const publisher = isSnapshotPublisher(request);
+    const topItemsCall = callRpc<UnitTopItemRow[]>('get_tft_unit_top_items', {
+      p_regions: filters.regions,
+      p_buckets: filters.buckets,
+      p_days: filters.days,
+      p_patch: filters.patchFilter,
+      p_set: filters.setNumber,
+      p_top: LIST_TOP_ITEMS,
+    }, publisher ? 25_000 : undefined);
+
+    const [rows, velocityRows, topItemRows] = await Promise.all([
       callRpc<UnitListRow[]>('get_tft_unit_stats', {
         p_regions: filters.regions,
         p_buckets: filters.buckets,
@@ -275,7 +298,16 @@ export async function GET(request: NextRequest) {
             p_min_games: 30,
           }).catch(() => [] as UnitVelocityRow[])
         : Promise.resolve([] as UnitVelocityRow[]),
+      publisher ? topItemsCall : topItemsCall.catch(() => [] as UnitTopItemRow[]),
     ]);
+
+    // RPC liefert pro Champion schon sortiert (Spiele absteigend) und gekappt.
+    const topItemsByCid = new Map<string, { item: string; games: number }[]>();
+    for (const t of topItemRows) {
+      const list = topItemsByCid.get(t.character_id) ?? [];
+      if (list.length < LIST_TOP_ITEMS) list.push({ item: t.item, games: Number(t.games) });
+      topItemsByCid.set(t.character_id, list);
+    }
 
     const participants = rows[0]?.participants || 0;
     const velocityByCid = new Map<string, UnitVelocityRow>();
@@ -302,6 +334,7 @@ export async function GET(request: NextRequest) {
           pickRate: participants > 0 ? Number(r.games) / Number(participants) : null,
           winShare: shares.winShare,
           top4Share: shares.top4Share,
+          topItems: topItemsByCid.get(r.character_id) ?? [],
         };
         if (!wantVelocity) return base;
         const v = velocityByCid.get(r.character_id);

@@ -773,7 +773,7 @@ function buildGraph(snap: Snapshot | null, expanded: Set<string>): { nodes: Node
   // richtig so. tft_player_marketvalue_snapshots steht NICHT hier: der
   // Daily-Crawl fasst die Tabelle nur zum Aufraeumen an (MAINTENANCE_TABLES),
   // geschrieben wird sie vom Marktwert-Lauf.
-  for (const t of ['tft_daily_comp_stats', 'tft_daily_unit_stats', 'tft_daily_item_stats',
+  for (const t of ['tft_daily_comp_stats', 'tft_daily_unit_stats', 'tft_daily_unit_top_items', 'tft_daily_item_stats',
     'tft_daily_trait_stats', 'tft_daily_trait_unitcount_stats', 'tft_daily_comp_pairs',
     'tft_daily_crawl_meta']) {
     addEdge('svc:metastats-daily-crawl.service', `db:${t}`, 'write',

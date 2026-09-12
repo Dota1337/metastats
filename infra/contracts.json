@@ -61,6 +61,16 @@
       "note": "Normalrate 8100-13500/Tag."
     },
     {
+      "id": "daily-crawl/unit-top-items",
+      "owner": "metastats-daily-crawl.service",
+      "backend": "supabase",
+      "table": "tft_daily_unit_top_items",
+      "dateColumn": "day",
+      "maxLagDays": 3,
+      "minRows": 5000,
+      "note": "Gleiche Zeilenzahl wie unit_stats (eine Item-Liste je Unit x Bucket). Speist die Item-Reihe auf /tft/units. Der Writer-Block faengt Fehler ab — dieser Vertrag ist der einzige Alarm."
+    },
+    {
       "id": "daily-crawl/item-stats",
       "owner": "metastats-daily-crawl.service",
       "backend": "supabase",

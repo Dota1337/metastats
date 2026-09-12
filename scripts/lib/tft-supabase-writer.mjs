@@ -259,5 +259,26 @@ export async function writeTftStatsToSupabase(opts) {
   await upsertRows('tft_daily_comp_pairs', pairRows,
     'region,bucket,patch,set_number,day,a_key,b_key');
 
+  // 8) Unit-Top-Items (migration 0069) — die 15 meistgespielten fertigen Items
+  // je Unit x Bucket fuer die Item-Reihe auf /tft/units. Bewusst als letzter
+  // Block und abgefangen: ein Fehler hier darf keine der Kern-Tabellen oben
+  // kosten und die Region nicht als gescheitert markieren. Ein Ausfall wird
+  // vom Laufzeit-Vertrag daily-crawl/unit-top-items gemeldet.
+  try {
+    const topItemRows = [];
+    for (const [cid, buckets] of Object.entries(payload.byUnit || {})) {
+      for (const bucket of PERSIST_BUCKETS) {
+        const b = buckets[bucket];
+        if (!b || !b.games || !Array.isArray(b.persistTopItems) || b.persistTopItems.length === 0) continue;
+        topItemRows.push({ ...baseRow, bucket, character_id: cid, items: b.persistTopItems });
+      }
+    }
+    log(`  [supabase] unit_top_items: ${topItemRows.length} rows`);
+    await upsertRows('tft_daily_unit_top_items', topItemRows,
+      'region,bucket,patch,set_number,day,character_id', log);
+  } catch (e) {
+    log(`  [supabase] unit_top_items FAILED (non-fatal): ${e.message}`);
+  }
+
   log(`  [supabase] write complete for ${region} ${day}`);
 }

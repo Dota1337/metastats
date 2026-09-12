@@ -352,7 +352,8 @@ async function main() {
     if (!SKIP_JSON) {
       if (patch === primaryPatch) {
         const file = `public/tft-stats-${REGION}.json`;
-        writeFileSync(file, JSON.stringify(payload));
+        // persistTopItems ist nur fuer die DB (0069) — die JSON bleibt wie sie war.
+        writeFileSync(file, JSON.stringify(payload, (k, v) => (k === 'persistTopItems' ? undefined : v)));
         console.log(`\n  -> ${file} (patch=${patch}, ${payload.matchesAnalyzed} matches, ${Object.keys(payload.byUnit).length} units, ${Object.keys(payload.byItem).length} items)`);
       }
     }

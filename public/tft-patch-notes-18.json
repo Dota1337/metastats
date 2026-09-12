@@ -1,11 +1,86 @@
 {
   "set": 18,
   "source": "tactics.tools/info/patch-notes",
-  "fetchedAt": "2026-09-05T06:18:31.797Z",
+  "fetchedAt": "2026-09-12T06:18:01.505Z",
   "patches": {
     "18.1": {
-      "scrapedAt": "2026-09-05T06:18:32.138Z",
+      "scrapedAt": "2026-09-12T06:18:01.804Z",
       "sections": [
+        {
+          "category": "Mid-Patch Updates",
+          "entries": [
+            {
+              "apiName": null,
+              "displayName": "Riftbeast 0",
+              "change": "Riftbeast (7) Stats: 6% AD/AP/AS ⇒ 5% AD/AP/AS"
+            },
+            {
+              "apiName": null,
+              "displayName": "Cinderling",
+              "change": "Cinderling Base AD: 45 ⇒ 40"
+            },
+            {
+              "apiName": null,
+              "displayName": "Cassiopeia",
+              "change": "Cassiopeia Ability Damage: 440/660/1050 AP ⇒ 400/600/950 AP"
+            },
+            {
+              "apiName": null,
+              "displayName": "Master Yi",
+              "change": "Master Yi Resists: 60 ⇒ 55"
+            },
+            {
+              "apiName": null,
+              "displayName": "Ahri",
+              "change": "Ahri Ability Damage: 450/675 AP ⇒ 425/640 AP"
+            },
+            {
+              "apiName": null,
+              "displayName": "Amumu",
+              "change": "Amumu Mana buff: 30/140 ⇒ 30/125"
+            },
+            {
+              "apiName": null,
+              "displayName": "Morgana",
+              "change": "Morgana Mana nerf: 0/60 ⇒ 0/65"
+            },
+            {
+              "apiName": null,
+              "displayName": "Soraka",
+              "change": "Soraka Initial Star Damage: 190/285 AP ⇒ 225/335 AP"
+            },
+            {
+              "apiName": null,
+              "displayName": "Draven",
+              "change": "Draven Mana buff: 0/120 ⇒ 0/110"
+            },
+            {
+              "apiName": null,
+              "displayName": "Elder Dragon",
+              "change": "Elder Dragon Base AD: 115 ⇒ 125"
+            },
+            {
+              "apiName": null,
+              "displayName": "Lux",
+              "change": "Lux Ability Damage: 330/520 AP ⇒ 355/550 AP"
+            },
+            {
+              "apiName": null,
+              "displayName": "Lux Lunar",
+              "change": "Lux Lunar Damage Amp: 10% ⇒ 8%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Alune",
+              "change": "Alune’s ability can no longer target untargetable units"
+            },
+            {
+              "apiName": null,
+              "displayName": "Master of All Origins",
+              "change": "Master of All Origins now has proper Icons"
+            }
+          ]
+        },
         {
           "category": "LARGE CHANGES",
           "entries": [
@@ -308,7 +383,456 @@
         }
       ],
       "counts": {
-        "totalEntries": 58,
+        "totalEntries": 72,
+        "withApiName": 0
+      }
+    },
+    "18.2": {
+      "scrapedAt": "2026-09-12T06:18:04.019Z",
+      "sections": [
+        {
+          "category": "LARGE CHANGES",
+          "entries": [
+            {
+              "apiName": null,
+              "displayName": "Blackthorn 0",
+              "change": "Blackthorn:Health: 175/300/550 ⇒ 175/350/600Tank Sacrifice Resists: 15 ⇒ 12AD Sacrifice Base AS: 12% ⇒ 14%AP Sacrifice Base Mana Regen: 1.7 ⇒ 2"
+            },
+            {
+              "apiName": null,
+              "displayName": "Lucky Item Chest",
+              "change": "Lucky Item Chest + 2x Component Anvil + Coven Lux + 5g ⇒ Lucky Item Chest + 2x Component Anvil + Coven Lux + 18g"
+            },
+            {
+              "apiName": null,
+              "displayName": "Fae 0",
+              "change": "Fae Golden Pixie Breakpoints:1st: 200,000 ⇒ 170,0002nd: 250,000 ⇒ 200,0003rd: 330,000 ⇒ 300,0004th: 420,000 ⇒ 400,0005th: 510,000 ⇒ 500,0006th: 610,000 ⇒ 600,000"
+            },
+            {
+              "apiName": null,
+              "displayName": "Hunter 0",
+              "change": "Hunter Targeting Duration for Damage Amp: 4 seconds ⇒ 3 seconds"
+            },
+            {
+              "apiName": null,
+              "displayName": "Inferno 0",
+              "change": "Inferno Burn: 1/1/3/3.5% ⇒ 1/1/3.5/4.5%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Rapidfire 0",
+              "change": "Rapidfire AS Per Attack: 3/5/9/15% ⇒ 3/5/8/12%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Solar 0",
+              "change": "Solar:Initial Bonus Magic Damage: 7% ⇒ 8%Bonus Increase per 3-star: 1.5% ⇒ 1%Three 3-star Bonus Attack Speed: 18% ⇒ 15%Three 3-star Armor and Magic Resist: 15 ⇒ 12"
+            },
+            {
+              "apiName": null,
+              "displayName": "Akali",
+              "change": "Akali AD Form Mana: 0/30 ⇒ 0/25"
+            },
+            {
+              "apiName": null,
+              "displayName": "Leona",
+              "change": "Leona Mana: 40/100 ⇒ 30/90"
+            },
+            {
+              "apiName": null,
+              "displayName": "Varus",
+              "change": "Varus Ability Damage: 385/580/925/1530 AD ⇒ 415/625/1000/1700 AD"
+            },
+            {
+              "apiName": null,
+              "displayName": "Veigar",
+              "change": "Veigar Bugfix: Veigar’s AP per kill in his tooltip now matches the actual AP Gained. Visual AP Per Kill: 1.5% > 3% (functionally no change)"
+            },
+            {
+              "apiName": null,
+              "displayName": "LeBlanc",
+              "change": "LeBlanc Ability Damage: 250/375/565/955 AP ⇒ 260/390/615/1045 AP"
+            },
+            {
+              "apiName": null,
+              "displayName": "Kayle",
+              "change": "Kayle Magic Damage On-Hit: 56/84/95 AP ⇒ 62/92/105 AP"
+            },
+            {
+              "apiName": null,
+              "displayName": "Shen",
+              "change": "Shen Shield: 325/400/500/600 AP ⇒ 350/430/550/700 AP"
+            },
+            {
+              "apiName": null,
+              "displayName": "Warwick",
+              "change": "Warwick AD: 40 ⇒ 45"
+            },
+            {
+              "apiName": null,
+              "displayName": "Yunara",
+              "change": "Yunara Ability Damage: 150/225/335/570 AD ⇒ 160/240/370/630 AD"
+            },
+            {
+              "apiName": null,
+              "displayName": "Azir",
+              "change": "Azir Soldier Ability Damage: 40/60/96/165 AP ⇒ 43/65/103/175 AP"
+            },
+            {
+              "apiName": null,
+              "displayName": "Diana",
+              "change": "Diana Ability Damage Per Orb: 70/105/170 AP ⇒ 75/115/180 AP"
+            },
+            {
+              "apiName": null,
+              "displayName": "Kha'Zix",
+              "change": "Kha’Zix Base AD: 30 ⇒ 40"
+            },
+            {
+              "apiName": null,
+              "displayName": "Mama Beak",
+              "change": "Mama Beak Base AD: 50 ⇒ 55"
+            },
+            {
+              "apiName": null,
+              "displayName": "Master Yi",
+              "change": "Master Yi AD Form: Base AD: 65 ⇒ 60"
+            },
+            {
+              "apiName": null,
+              "displayName": "Rengar",
+              "change": "Rengar Base AS: 0.8 ⇒ 0.75"
+            },
+            {
+              "apiName": null,
+              "displayName": "Ahri",
+              "change": "Ahri Ability Damage: 425/640 AP ⇒ 455/685 AP"
+            },
+            {
+              "apiName": null,
+              "displayName": "Brambleback",
+              "change": "Brambleback Base AD: 115 ⇒ 120"
+            },
+            {
+              "apiName": null,
+              "displayName": "Ezreal",
+              "change": "Ezreal Primary Ability Damage: 235/355 AD ⇒ 250/375 AD"
+            },
+            {
+              "apiName": null,
+              "displayName": "Sentinel",
+              "change": "Sentinel Now targets the largest line of enemies. No longer required to include his current target"
+            },
+            {
+              "apiName": null,
+              "displayName": "Nidalee",
+              "change": "Nidalee AP Form: Nidalee Empowered Attack Damage: 285/425 AP ⇒ 300/450 AP"
+            },
+            {
+              "apiName": null,
+              "displayName": "Zyra",
+              "change": "Zyra Ability Damage: 37/55 AP ⇒ 35/53"
+            },
+            {
+              "apiName": null,
+              "displayName": "Ashe",
+              "change": "Ashe Bugfix: No longer can sometimes target the wrong line of enemies."
+            },
+            {
+              "apiName": null,
+              "displayName": "Ivern",
+              "change": "Ivern Starting Hexes: 2 ⇒ 3"
+            },
+            {
+              "apiName": null,
+              "displayName": "Kennen",
+              "change": "Kennen is now better at targeting groups of enemies for his Firestorm"
+            },
+            {
+              "apiName": null,
+              "displayName": "Lux",
+              "change": "Lux Ability Damage: 355/550 AP ⇒ 375/565 AP"
+            },
+            {
+              "apiName": null,
+              "displayName": "Maokai",
+              "change": "Maokai Mana: 40/100 ⇒ 30/90"
+            },
+            {
+              "apiName": null,
+              "displayName": "Taric",
+              "change": "Taric Passive Shield: 175/350 + 10% max HP ⇒ 100/225 + 15% max HP"
+            },
+            {
+              "apiName": null,
+              "displayName": "Bloodthirster",
+              "change": "Bloodthirster Trigger Health: 40% ⇒ 50%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Edge of Night",
+              "change": "Edge of Night Trigger Health: 60% ⇒ 40%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Hand Of Justice",
+              "change": "Hand of Justice Base AD/AP: 15% ⇒ 18%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Radiant Bloodthirster",
+              "change": "Radiant Bloodthirster Trigger Health: 40% ⇒ 50%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Radiant Edge of Night",
+              "change": "Radiant Edge of Night Trigger Health: 60% ⇒ 40%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Radiant Hand of Justice",
+              "change": "Radiant Hand of Justice Base Omnivamp: 24% ⇒ 30%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Blighting Jewel",
+              "change": "Blighting Jewel MR Reduction: 4 ⇒ 3"
+            },
+            {
+              "apiName": null,
+              "displayName": "Flickerblades",
+              "change": "Flickerblades AS Per Attack: 5% ⇒ 4%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Forbidden Idol",
+              "change": "Forbidden Idol Health: 400 ⇒ 500"
+            },
+            {
+              "apiName": null,
+              "displayName": "Luden's Tempest",
+              "change": "Luden’s Tempest On-Kill Flat Damage: 100 ⇒ 130"
+            },
+            {
+              "apiName": null,
+              "displayName": "Silvermere Dawn",
+              "change": "Silvermere Dawn AD: 125% ⇒ 150%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Wit's End",
+              "change": "Wit’s End On-Hit Damage: 30/55/75/95/115 (stage 2-5) ⇒ 25/45/65/85/100"
+            },
+            {
+              "apiName": null,
+              "displayName": "Brawler 0",
+              "change": "Brawler Emblem Health: 250 ⇒ 150"
+            },
+            {
+              "apiName": null,
+              "displayName": "Fae 0",
+              "change": "Fae Emblem Health: 250 ⇒ 200"
+            },
+            {
+              "apiName": null,
+              "displayName": "Hunter 0",
+              "change": "Hunter Emblem Base AD: 30% ⇒ 25%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Invoker 0",
+              "change": "Invoker Emblem AP Per Mana Spent: 10% ⇒ 8%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Juggernaut 0",
+              "change": "Juggernaut Emblem Health: 350 ⇒ 250"
+            },
+            {
+              "apiName": null,
+              "displayName": "Primal 0",
+              "change": "Primal Emblem Attack Speed: 25% ⇒ 35%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Sprykin 0",
+              "change": "Sprykin Emblem Rider Bonus Attack Speed: 30% ⇒ 20%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Vanguard 0",
+              "change": "Vanguard Emblem Armor/MR: 30 ⇒ 25"
+            },
+            {
+              "apiName": null,
+              "displayName": "Baron's Lair",
+              "change": "Baron’s Lair Stats given: 5% ⇒ 4%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Capital Gains I",
+              "change": "Capital Gains II Starting gold: 2 ⇒ 3"
+            },
+            {
+              "apiName": null,
+              "displayName": "Cursed Crown",
+              "change": "Cursed Crown no longer grants 4% Durability"
+            },
+            {
+              "apiName": null,
+              "displayName": "Consuming Flora",
+              "change": "Consuming Flora Emblem Trait Effectiveness: 200% ⇒ 150%, now exclusive to 1 player per lobby"
+            },
+            {
+              "apiName": null,
+              "displayName": "Coven Acolyte",
+              "change": "Coven Acolyte now exclusive to 1 player per lobby together with Dark Ritual"
+            },
+            {
+              "apiName": null,
+              "displayName": "Dark Ritual",
+              "change": "Dark Ritual now exclusive to 1 player per lobby together with Coven Acolyte"
+            },
+            {
+              "apiName": null,
+              "displayName": "Dummify",
+              "change": "Dummify HP per round: 1000 ⇒ 1150"
+            },
+            {
+              "apiName": null,
+              "displayName": "Going Long",
+              "change": "Going Long XP is only granted after Player Combat"
+            },
+            {
+              "apiName": null,
+              "displayName": "Gold Destiny",
+              "change": "Gold Destiny+ Gold: 6 ⇒ 5"
+            },
+            {
+              "apiName": null,
+              "displayName": "Hold the Line",
+              "change": "Hold The Line AP given: 9% ⇒ 10, AD given: 8% ⇒ 9"
+            },
+            {
+              "apiName": null,
+              "displayName": "Investment Strategy I",
+              "change": "Investment Strategy II HP given: 9 ⇒ 10"
+            },
+            {
+              "apiName": null,
+              "displayName": "Magic Roll",
+              "change": "Magic Roll: Fixed a bug where the champion reward gave less gold than intended"
+            },
+            {
+              "apiName": null,
+              "displayName": "Prismatic Destiny",
+              "change": "Prismatic Destiny+ Gold: 10 ⇒ 7"
+            },
+            {
+              "apiName": null,
+              "displayName": "Shimmerscale Essence",
+              "change": "Shimmerscale Essence Delayed rounds: 7 ⇒ 8"
+            },
+            {
+              "apiName": null,
+              "displayName": "Spreading Roots",
+              "change": "Spreading Roots now grants 1 emblem immediately and 1 after 3 rounds. Initial Gold removed."
+            },
+            {
+              "apiName": null,
+              "displayName": "Trait Ladder",
+              "change": "Trait Ladder now exclusive to 1 player, 10 trait cashout: 18 Gold, 11 trait cashout: Tactician item"
+            },
+            {
+              "apiName": null,
+              "displayName": "Unrivaled",
+              "change": "Unrivaled Mana gained from Kha’Zix to Rengar: 70% ⇒ 50%"
+            }
+          ]
+        },
+        {
+          "category": "SMALL CHANGES",
+          "entries": [
+            {
+              "apiName": null,
+              "displayName": "Brambleback",
+              "change": "Brambleback Armor Ignore: 10 + 50% AP ⇒ 10 + 70% AP"
+            },
+            {
+              "apiName": null,
+              "displayName": "Nidalee",
+              "change": "Nidalee AD Form Ability Damage: 2500% AD ⇒ 3000% AD"
+            },
+            {
+              "apiName": null,
+              "displayName": "Gnar",
+              "change": "Gnar Rage Per Attack: 5 ⇒ 20"
+            },
+            {
+              "apiName": null,
+              "displayName": "Lux",
+              "change": "Lux Laser Damage: 5000 AP ⇒ 6500 AP"
+            }
+          ]
+        },
+        {
+          "category": "BUG FIXES",
+          "entries": [
+            {
+              "apiName": null,
+              "displayName": "Cooking Pot",
+              "change": "Cooking Pot and Trait Tree are now properly excluded"
+            },
+            {
+              "apiName": null,
+              "displayName": "Elderwood 0",
+              "change": "Elderwood Deepwood Protector’s knockup now properly respects Unstoppable"
+            },
+            {
+              "apiName": null,
+              "displayName": "Coven 0",
+              "change": "Coven Emblem is no longer offered on carousel after stage 5"
+            },
+            {
+              "apiName": null,
+              "displayName": "Draven",
+              "change": "Draven’s Bounty Seeker trait will no longer offer quests to gain XP if you’re level 10."
+            },
+            {
+              "apiName": null,
+              "displayName": "Akali",
+              "change": "Akali can no longer sometimes get more damage from Lich Bane procs than intended"
+            },
+            {
+              "apiName": null,
+              "displayName": "Krug",
+              "change": "Krug’s Alpha Mark shield grants the proper Shield when Kruglettes die before the shield missile lands."
+            },
+            {
+              "apiName": null,
+              "displayName": "Thief's Gloves",
+              "change": "Thief's Gloves on Ghost boards now match the Thief's Gloves rolls from the source board"
+            },
+            {
+              "apiName": null,
+              "displayName": "Edge of Night",
+              "change": "Edge of Night effect no longer persists after breaking apart the item with the Salvager wisp"
+            },
+            {
+              "apiName": null,
+              "displayName": "Kha'Zix",
+              "change": "Kha’Zix’s Ability visuals are now correctly timed when he has the Unrivaled augment bonus active and hits an isolated unit"
+            },
+            {
+              "apiName": null,
+              "displayName": "Blossom 0",
+              "change": "Blossom empowered Essence Theft now properly displays its 1g gold cost"
+            }
+          ]
+        }
+      ],
+      "counts": {
+        "totalEntries": 85,
         "withApiName": 0
       }
     }

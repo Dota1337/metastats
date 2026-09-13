@@ -51,8 +51,8 @@ export const PRIMARY_BUCKETS = ['master_plus', 'all', 'diamond_plus', 'emerald_p
 //   - Regionen: `west`/`asia` sind aus dem Detail-Dropdown NICHT waehlbar
 //     (page.tsx REGIONS) und belegten trotzdem die Haelfte der Blobs. Ersetzt
 //     durch die erreichbaren Top-Regionen.
-//   - Days: die Detail-Page fetcht fix `days=14`, der Reader klemmt auf 7
-//     (tft-supabase-reader.ts) — 1d/3d waren unerreichbarer Ballast.
+//   - Days: seit 2026-09-13 uebernimmt die Detail-Page das Zeitfenster der
+//     Liste (1/3/7 Tage, Default 3) statt fix 14 → alle drei vorrendern.
 //   - Patches: `previous` × 1d lieferte `hasData:false` (kein Key), und der
 //     Vorgaenger-Patch faellt binnen Tagen komplett aus dem 7d-Fenster.
 //   - Buckets: `diamond_plus` ist der API/UI-Default und hatte 0 von 523
@@ -61,7 +61,7 @@ export const PRIMARY_BUCKETS = ['master_plus', 'all', 'diamond_plus', 'emerald_p
 //     verschiebt sich die Family-Aggregation messbar (12.812 → 12.402 Spiele,
 //     5 → 3 Member) und der Snapshot ankert teilweise auf einer ANDEREN Comp.
 export const DETAIL_REGIONS = ['all', 'euw1', 'na1', 'kr'] as const;
-export const DETAIL_DAYS = [7] as const;
+export const DETAIL_DAYS = [1, 3, 7] as const;
 export const DETAIL_PATCHES = ['current'] as const;
 export const DETAIL_BUCKETS = ['master_plus', 'diamond_plus', 'emerald_plus', 'platinum_plus'] as const;
 export const DETAIL_MIN_GAMES = 30 as const;

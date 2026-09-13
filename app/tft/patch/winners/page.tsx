@@ -5,6 +5,7 @@ import Footer from '../../../components/Footer';
 import { useI18n, type TranslationKey } from '../../../lib/i18n';
 import { loadTftAssets, tftChampionTileUrl, tftIconUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { dedupeByPrimaryCluster, primaryClusterKey, parseClusterKey } from '../../../lib/tft-cluster';
+import { shownAugmentSlug } from '../../../lib/tft-comp-defining-augments';
 import {
   ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis,
   ReferenceLine, Tooltip as RechartsTooltip,
@@ -356,8 +357,8 @@ function renderEntity(key: string, entity: Entity, assets: TftAssetsBundle | nul
     // visuell unterscheidbar bleiben (Reroll-Variante etc.).
     const suffix = parts.carryStar === 3
       ? ' · 3★'
-      : parts.augmentSlug
-        ? ` · ${parts.augmentSlug}`
+      : shownAugmentSlug(parts.augmentSlug)
+        ? ` · ${shownAugmentSlug(parts.augmentSlug)}`
         : '';
     return {
       name: carryIsTanky ? traitDisplay : `${traitDisplay} · ${carryDisplay}${suffix}`,

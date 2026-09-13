@@ -47,7 +47,7 @@ function ChartSkeleton({ height, className = '' }: { height: number; className?:
 }
 import { formatStage } from '../../../lib/tft-stage';
 import { aggregateComponents } from '../../../lib/tft-components';
-import { compDefiningAugmentApiNameFromSlug } from '../../../lib/tft-comp-defining-augments';
+import { compDefiningAugmentApiNameFromSlug, shownAugmentSlug } from '../../../lib/tft-comp-defining-augments';
 import { dedupeByPrimaryCluster, primaryClusterKey, parseClusterKey } from '../../../lib/tft-cluster';
 import { loadCompGuidesBundle, findCompGuide } from '../../../lib/tft-comp-guides';
 import { descriptorTag } from '../../../lib/tft-comp-descriptor';
@@ -83,6 +83,9 @@ export default function TftCompDetailPage() {
   // exact (Single-Sub-Cluster). Wird live aus searchParams gelesen, damit der
   // Toggle im VariantsSwitcher ohne Page-Reload reagiert.
   const variantMode = search.get('variant') === 'exact' ? 'exact' : 'family';
+  // Zeitraum aus der Liste uebernehmen (1/3/7 Tage, Default 3 wie dort),
+  // damit Liste und Detail dieselben Zahlen zeigen.
+  const days = Math.max(1, Math.min(7, parseInt(search.get('days') || '3', 10) || 3));
 
   useEffect(() => {
     if (!pathname) return;
@@ -130,9 +133,9 @@ export default function TftCompDetailPage() {
     let cancelled = false;
     setDataState('loading');
     Promise.all([
-      fetch(`/api/tft/comps?region=${region}&bucket=${bucket}&slug=${encodeURIComponent(slug)}&days=14&minGames=30&variant=${variantMode}`)
+      fetch(`/api/tft/comps?region=${region}&bucket=${bucket}&slug=${encodeURIComponent(slug)}&days=${days}&minGames=30&variant=${variantMode}`)
         .then(r => { if (!r.ok) throw new Error(`comps ${r.status}`); return r.json(); }),
-      fetch(`/api/tft/comps?region=all&bucket=pro_pool&slug=${encodeURIComponent(slug)}&days=14&minGames=5&variant=${variantMode}`)
+      fetch(`/api/tft/comps?region=all&bucket=pro_pool&slug=${encodeURIComponent(slug)}&days=${days}&minGames=5&variant=${variantMode}`)
         .then(r => r.ok ? r.json() : { comp: null })
         .catch(() => ({ comp: null })),
     ]).then(([normal, pro]) => {
@@ -147,7 +150,7 @@ export default function TftCompDetailPage() {
       setProComp(null);
     });
     return () => { cancelled = true; };
-  }, [bucket, slug, region, variantMode, reloadKey]);
+  }, [bucket, slug, region, days, variantMode, reloadKey]);
 
   // Patch-Drop-Erkennung im Trend: wenn die Reihe einen Patch-Wechsel enthält,
   // setze eine ReferenceLine an dem Tag wo der Wechsel passiert. Visualisiert
@@ -226,7 +229,7 @@ export default function TftCompDetailPage() {
               clusterKey={comp.clusterKey}
               region={region}
               bucket={bucket}
-              days={14}
+              days={days}
               patch={null}
               assets={assets}
               familyMergeActive={variantMode === 'family'}
@@ -951,10 +954,9 @@ function MatchupColumn({ title, color, edges, assets, bucket, t }: {
             const url = tftChampionTileUrl(assets, carry);
             const secondaryCh = parts?.secondary && assets ? assets.champions[parts.secondary] : null;
             const secondaryName = secondaryCh?.name || (parts?.secondary ? parts.secondary.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '') : null);
-            const augApiName = parts?.augmentSlug
-              ? compDefiningAugmentApiNameFromSlug(parts.augmentSlug)
-              : null;
-            const augName = (augApiName && assets ? assets.items[augApiName]?.name : null) || parts?.augmentSlug;
+            const augSlug = shownAugmentSlug(parts?.augmentSlug);
+            const augApiName = augSlug ? compDefiningAugmentApiNameFromSlug(augSlug) : null;
+            const augName = (augApiName && assets ? assets.items[augApiName]?.name : null) || augSlug;
             return (
               <a
                 key={e.opponent}

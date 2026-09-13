@@ -40,8 +40,8 @@ export interface CompFamily {
   augments: Array<{ apiName: string; count: number }>;
 }
 
-function familyHref(comp: FamilyComp, region: string, bucket: string): string {
-  return `/tft/comps/${encodeURIComponent(comp.slug)}?bucket=${bucket}&region=${region}`;
+function familyHref(comp: FamilyComp, region: string, bucket: string, days?: number): string {
+  return `/tft/comps/${encodeURIComponent(comp.slug)}?bucket=${bucket}&region=${region}${days ? `&days=${days}` : ''}`;
 }
 
 export default function CompFamilyRow({
@@ -50,6 +50,7 @@ export default function CompFamilyRow({
   assets,
   region,
   bucket,
+  days,
   showVelocity = false,
   velocityShift = 0,
   tierCutoffs,
@@ -61,6 +62,7 @@ export default function CompFamilyRow({
   assets: TftAssetsBundle | null;
   region: string;
   bucket: string;
+  days?: number;
   showVelocity?: boolean;
   velocityShift?: number;
   tierCutoffs?: TierCutoffs | null;
@@ -78,7 +80,7 @@ export default function CompFamilyRow({
         comp={family.mainComp as Parameters<typeof CompRow>[0]['comp']}
         rank={rank}
         assets={assets}
-        href={familyHref(family.mainComp, region, bucket)}
+        href={familyHref(family.mainComp, region, bucket, days)}
         showVelocity={showVelocity}
         velocityShift={velocityShift}
         tierCutoffs={tierCutoffs}
@@ -108,7 +110,7 @@ export default function CompFamilyRow({
         comp={family.mainComp as Parameters<typeof CompRow>[0]['comp']}
         rank={rank}
         assets={assets}
-        href={familyHref(family.mainComp, region, bucket)}
+        href={familyHref(family.mainComp, region, bucket, days)}
         showVelocity={showVelocity}
         velocityShift={velocityShift}
         tierCutoffs={tierCutoffs}
@@ -142,7 +144,7 @@ export default function CompFamilyRow({
                   comp={v as Parameters<typeof CompRow>[0]['comp']}
                   rank={0}
                   assets={assets}
-                  href={familyHref(v, region, bucket)}
+                  href={familyHref(v, region, bucket, days)}
                   showVelocity={showVelocity}
                   velocityShift={velocityShift}
                   tierCutoffs={tierCutoffs}

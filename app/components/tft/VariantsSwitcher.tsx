@@ -47,9 +47,13 @@ function variantLabel(
   // Level-Suffix damit Buttons in der C-Konsolidierungs-Sicht differenzierbar
   // sind (architect F7 2026-06-21: ohne Level wären alle 4 Buttons „Base").
   const cluster = parseClusterKey(v.clusterKey);
-  if (cluster && cluster.level > 0) parts.push(`Lvl ${cluster.level}`);
+  if (cluster && cluster.level > 0) {
+    parts.push((t('tft.comp.variant.level') as string).replace('{n}', String(cluster.level)));
+  }
   if (v.carryStar === 3) parts.push(t('tft.comp.variant.reroll3'));
-  if (v.augmentSlug) parts.push(`~${v.augmentSlug}`);
+  // ~TwoTanky wurde aus doppelten Einheiten geraten (bis 2026-09-13) — alte
+  // Cluster-Keys tragen es noch, das Etikett ist aber falsch.
+  if (v.augmentSlug && v.augmentSlug !== 'TwoTanky') parts.push(`~${v.augmentSlug}`);
   if (v.secondary) {
     const ch = findChampion(assets, v.secondary);
     const name = ch?.name || prettyChar(v.secondary);
@@ -177,7 +181,7 @@ export default function VariantsSwitcher({
         {variants.map(v => {
           const isActive = v.clusterKey === clusterKey;
           const label = variantLabel(v, t, assets);
-          const url = `/tft/comps/${encodeURIComponent(v.slug)}?region=${region}&bucket=${bucket}`;
+          const url = `/tft/comps/${encodeURIComponent(v.slug)}?region=${region}&bucket=${bucket}&days=${days}`;
           return (
             <button
               key={v.clusterKey}

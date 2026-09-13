@@ -255,6 +255,28 @@ async function main() {
     Object.assign(champions, rebuilt);
   }
 
+  // Aliase: Riot schreibt in Match-Daten fuer einige Set-18-Einheiten/Items
+  // eine andere ID als CDragon (TFT18_MasterYi statt DA_18_MasterYi_AD). Ohne
+  // Eintrag fehlen Bild und Name. Kopie der Quelle, nur wenn es sie gibt.
+  const CHAMPION_ALIASES = { TFT18_MasterYi: 'DA_18_MasterYi_AD', TFT18_Akali: 'DA_18_Akali_AD' };
+  for (const [alias, src] of Object.entries(CHAMPION_ALIASES)) {
+    if (!champions[alias] && champions[src]) champions[alias] = { ...champions[src] };
+  }
+  const ITEM_ALIASES = { DA_Artifact_Hullcrusher: 'TFT9_Item_OrnnHullbreaker' };
+  for (const [alias, src] of Object.entries(ITEM_ALIASES)) {
+    if (!items[alias] && items[src]) items[alias] = { ...items[src] };
+  }
+  // Elderwood-Pflanzen (Set 18): tauchen auf Boards auf, CDragon liefert
+  // weder Bild noch Namen. Bilder liegen lokal unter public/tft-extra/.
+  const EXTRA_UNITS = {
+    DA_Elderwood18_StonebarkTree: { name: 'Stonebark Tree', img: '/tft-extra/stonebark-tree.png' },
+    DA_Elderwood18_Lifeblossom: { name: 'Lifebloom', img: '/tft-extra/lifebloom.png' },
+    DA_Elderwood18_Protector: { name: 'Deepwood Protector', img: '/tft-extra/deepwood-protector.png' },
+  };
+  for (const [id, u] of Object.entries(EXTRA_UNITS)) {
+    champions[id] = { name: u.name, icon: u.img, tile: u.img, cost: 0, traits: [] };
+  }
+
   // Traits: only active set
   const traits = {};
   for (const t of active.traits || []) {
@@ -436,6 +458,11 @@ async function main() {
     if (playedIds.size === 0) return true;
     return playedIds.has(id);
   }))).sort();
+  // Item-Aliase (siehe oben) stehen nicht in Riots Rohliste, werden aber gespielt.
+  for (const alias of Object.keys(ITEM_ALIASES)) {
+    if (items[alias] && !activeItems.includes(alias)) activeItems.push(alias);
+  }
+  activeItems.sort();
 
   // Augments-Whitelist: `setData[N].augments` is Riot's authoritative pool of
   // augments that can drop in this set — incl. carry-overs from older sets

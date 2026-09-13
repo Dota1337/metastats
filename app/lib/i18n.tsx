@@ -2475,6 +2475,11 @@ const translations = {
     '\uAE30\uBCF8', '\u57FA\u7840',
     'Base', 'Base'
   ),
+  'tft.comp.variant.level': t6(
+    'Stufe {n}', 'Tier {n}',
+    '{n}단계', '{n}级',
+    'Nivel {n}', 'Palier {n}'
+  ),
   'tft.comp.variant.reroll3': t6(
     '3\u2605', '3\u2605',
     '3\uC131', '3\u661F',

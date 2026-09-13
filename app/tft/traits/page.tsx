@@ -48,6 +48,7 @@ interface GroupedTrait {
   avgTop4Rate: number | null;
   pickRate: number | null;
   velocity: TraitVelocity | null;
+  rare: boolean;
 }
 
 // Visual map for trait activation styles — mirrors the in-game frame colors.
@@ -129,8 +130,11 @@ export default function TftTraitsPage() {
     const out: GroupedTrait[] = [];
     for (const [displayName, { rows: list }] of byKey) {
       const totalGames = list.reduce((s, r) => s + r.games, 0);
+      // Meistgespielte Stufe statt der mit dem besten Schnitt — seltene
+      // Hochstufen mit einer Handvoll Spielen verzerren sonst die Liste.
       const best = list.reduce<TraitRow | null>(
-        (acc, r) => (acc == null || (r.avgPlacement ?? 9) < (acc.avgPlacement ?? 9)) ? r : acc, null);
+        (acc, r) => (acc == null || r.games > acc.games) ? r : acc, null);
+      const groupPick = list.reduce((s, r) => s + (r.pickRate ?? 0), 0);
       const totalTop4 = list.reduce((s, r) => s + (r.top4Rate != null ? r.top4Rate * r.games : 0), 0);
       const totalPick = list.reduce((s, r) => s + (r.pickRate != null ? r.pickRate * r.games : 0), 0);
       // Velocity: API ships one per apiName, but several apiNames can share a
@@ -149,9 +153,11 @@ export default function TftTraitsPage() {
         avgTop4Rate: totalGames > 0 ? totalTop4 / totalGames : null,
         pickRate: totalGames > 0 ? totalPick / totalGames : null,
         velocity,
+        rare: groupPick < 0.005,
       });
     }
-    return out.sort((a, b) => (a.bestAvg ?? 9) - (b.bestAvg ?? 9));
+    // Seltene Synergien (unter 0,5 % der Spielerpartien) ans Ende.
+    return out.sort((a, b) => Number(a.rare) - Number(b.rare) || (a.bestAvg ?? 9) - (b.bestAvg ?? 9));
   }, [rows, assets]);
 
   const visibleGrouped = useMemo(() => {

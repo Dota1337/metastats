@@ -56,6 +56,9 @@ export default function TftUnitDetailPage() {
   const id = decodeURIComponent(String(params?.id || ''));
   const initialBucket = tierBucketFromParam(search.get('bucket'));
   const [bucket, setBucket] = useState<TierBucket>(initialBucket);
+  // Region + Zeitraum aus der Liste uebernehmen (Defaults wie dort).
+  const region = search.get('region') || 'all';
+  const days = Math.max(1, Math.min(7, parseInt(search.get('days') || '3', 10) || 3));
   const [star, setStar] = useState<StarTier>('all');
   const [itemCount, setItemCount] = useState<ItemCount>(null);
   const [data, setData] = useState<UnitDetail | null | undefined>(undefined);
@@ -81,14 +84,14 @@ export default function TftUnitDetailPage() {
     else if (star !== 'all' && !data.topItemsByTier?.[star]?.length) setStar('all');
   }, [data, star]);
   useEffect(() => {
-    fetch(`/api/tft/units?region=euw1&bucket=${bucket}&id=${encodeURIComponent(id)}`)
+    fetch(`/api/tft/units?region=${region}&bucket=${bucket}&days=${days}&id=${encodeURIComponent(id)}`)
       .then(r => r.json())
       .then(d => { setHasData(!!d.hasData); setData(d.unit || null); })
       .catch(() => { setHasData(false); setData(null); });
     // Pull comps and filter client-side for ones containing this champion as
     // a typical unit. Pro-Frage „in welchen Comps spielt der Champion?" auf
     // der Detail-Seite ohne extra API surface.
-    fetch(`/api/tft/comps?region=euw1&bucket=${bucket}&days=3&patch=current&source=data`)
+    fetch(`/api/tft/comps?region=${region}&bucket=${bucket}&days=${days}&patch=current&source=data`)
       .then(r => r.json())
       .then(d => {
         const withUnit = (d.comps || [])
@@ -104,7 +107,7 @@ export default function TftUnitDetailPage() {
         setComps(withUnit);
       })
       .catch(() => setComps([]));
-  }, [bucket, id]);
+  }, [bucket, id, region, days]);
 
   const champ = assets?.champions[id];
 
@@ -524,7 +527,7 @@ export default function TftUnitDetailPage() {
                       return (
                         <a
                           key={c.slug}
-                          href={`/tft/comps/${encodeURIComponent(c.slug)}?bucket=${bucket}&region=euw1`}
+                          href={`/tft/comps/${encodeURIComponent(c.slug)}?bucket=${bucket}&region=${region}&days=${days}`}
                           className="flex items-center gap-2 bg-surface-raised border border-border-subtle rounded p-2 hover:border-accent-a40 transition-colors"
                         >
                           {carryUrl && (

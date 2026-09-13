@@ -196,6 +196,15 @@ export async function GET(request: NextRequest) {
   const minGames = minGamesParam != null
     ? Math.min(100000, Math.max(0, parseInt(minGamesParam, 10)))
     : defaultMinGames;
+  // Ohne ?minGames passt sich die Schwelle an die Datenmenge an: bei kleinen
+  // Stichproben (Challenger, eine Region) blieben mit 70/Tag sonst nur eine
+  // Handvoll Comps uebrig. Wirksam = max(30, min(Default, 0,2 % der Spieler-
+  // partien)). Der Snapshot-Key bleibt auf dem alten Default (compsMinGames).
+  const adaptiveMin = minGamesParam == null;
+  const ADAPTIVE_FLOOR = 30;
+  const effectiveMinFor = (participants: number) => adaptiveMin
+    ? Math.max(ADAPTIVE_FLOOR, Math.min(defaultMinGames, Math.round(0.002 * participants)))
+    : minGames;
 
   try {
     // Plan E — Per-Patch-Cache-Key. Lade die patches einmalig vorne und
@@ -474,8 +483,13 @@ export async function GET(request: NextRequest) {
       // Listing-Page „Noch keine Daten" obwohl die Live-RPC frische Comps
       // hätte. Snapshot mit `hasData:true && comps.length > 0` ist Pflicht
       // für den Fast-Path.
-      const payload = hit?.payload as { hasData?: boolean; comps?: unknown[] } | undefined;
-      if (hit && payload?.hasData && Array.isArray(payload.comps) && payload.comps.length > 0) {
+      const payload = hit?.payload as { hasData?: boolean; comps?: { games?: number; pickRate?: number | null }[] } | undefined;
+      // Das Bundle ist mit dem alten Default gefiltert. Wuerde die angepasste
+      // Schwelle niedriger liegen, fehlen darin Comps → live rechnen.
+      const sample = payload?.comps?.find(c => (c.pickRate ?? 0) > 0 && (c.games ?? 0) > 0);
+      const snapParticipants = sample ? Number(sample.games) / Number(sample.pickRate) : 0;
+      const snapshotComplete = !adaptiveMin || effectiveMinFor(snapParticipants) >= minGames;
+      if (hit && snapshotComplete && payload?.hasData && Array.isArray(payload.comps) && payload.comps.length > 0) {
         const resp = cachedJson(hit.payload, { cache: cacheControl });
         resp.headers.set('x-snapshot', hit.tag);
         return resp;
@@ -504,7 +518,7 @@ export async function GET(request: NextRequest) {
         p_days: filters.days,
         p_patch: filters.patchFilter,
         p_set: filters.setNumber,
-        p_min_games: minGames,
+        p_min_games: adaptiveMin ? ADAPTIVE_FLOOR : minGames,
       }, publisherRpcTimeoutMs),
       wantVelocity
         ? callRpc<VelocityRow[]>('get_tft_comp_velocity', {
@@ -530,10 +544,12 @@ export async function GET(request: NextRequest) {
     ]);
 
     const participants = rows[0]?.participants || 0;
+    const effectiveMinGames = effectiveMinFor(Number(participants));
     const velocityByKey = new Map<string, VelocityRow>();
     for (const v of velocityRows) velocityByKey.set(v.cluster_key, v);
 
     const dataComps = rows
+      .filter(r => Number(r.games) >= effectiveMinGames)
       .filter(r => !isFragmentTraitClusterKey(r.cluster_key))
       .map(r => {
         const base = baseComp(r, participants);
@@ -558,7 +574,7 @@ export async function GET(request: NextRequest) {
         anchorOffsetDays: filters.anchorOffsetDays,
       },
       patches,
-      minGames,
+      minGames: effectiveMinGames,
       source,
       comps: source === 'editorial' ? [] : dataComps,
     }, { cache: cacheControl });

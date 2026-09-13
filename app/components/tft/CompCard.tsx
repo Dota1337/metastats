@@ -7,7 +7,7 @@ import { tftIconUrl, tftChampionTileUrl, findChampion, findItem, tftTraitDisplay
 import { costColor as costColorOf } from '../../lib/tft-ui';
 import { CURRENT_SET } from '../../lib/current-set';
 import { useI18n } from '../../lib/i18n';
-import { compDefiningAugmentApiNameFromSlug } from '../../lib/tft-comp-defining-augments';
+import { compDefiningAugmentApiNameFromSlug, shownAugmentSlug } from '../../lib/tft-comp-defining-augments';
 import PlanAheadButton from './PlanAheadButton';
 import { parseClusterKey } from '../../lib/tft-cluster';
 import { loadCompGuidesBundle, findCompGuide, difficultyColor } from '../../lib/tft-comp-guides';
@@ -201,10 +201,11 @@ export default function CompCard({
                   3★
                 </span>
               )}
-              {parts?.augmentSlug && (() => {
-                const apiName = compDefiningAugmentApiNameFromSlug(parts.augmentSlug);
+              {shownAugmentSlug(parts?.augmentSlug) && (() => {
+                const augSlug = shownAugmentSlug(parts?.augmentSlug)!;
+                const apiName = compDefiningAugmentApiNameFromSlug(augSlug);
                 const augMeta = apiName && assets ? assets.items[apiName] : null;
-                const augName = augMeta?.name || parts.augmentSlug;
+                const augName = augMeta?.name || augSlug;
                 return (
                   <span
                     className="ml-1 inline-flex items-center px-1.5 py-[1px] rounded text-[10px] font-medium"

@@ -32,6 +32,9 @@ export default function TftItemDetailPage() {
   const search = useSearchParams();
   const id = decodeURIComponent(String(params?.id || ''));
   const [bucket, setBucket] = useState<TierBucket>(tierBucketFromParam(search.get('bucket')));
+  // Region + Zeitraum aus der Liste uebernehmen (Defaults wie dort).
+  const region = search.get('region') || 'all';
+  const days = Math.max(1, Math.min(7, parseInt(search.get('days') || '3', 10) || 3));
   const [data, setData] = useState<ItemDetail | null | undefined>(undefined);
   const [hasData, setHasData] = useState<boolean | null>(null);
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
@@ -41,14 +44,14 @@ export default function TftItemDetailPage() {
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
   useEffect(() => {
-    fetch(`/api/tft/items?region=euw1&bucket=${bucket}&id=${encodeURIComponent(id)}`)
+    fetch(`/api/tft/items?region=${region}&bucket=${bucket}&days=${days}&id=${encodeURIComponent(id)}`)
       .then(r => r.json())
       .then(d => { setHasData(!!d.hasData); setData(d.item || null); })
       .catch(() => { setHasData(false); setData(null); });
     // Cross-query: comps that frequently build this item on their lead carry.
     // Uses the existing carryItems jsonb (top-3-item triples per comp) so no
     // aggregator change is needed.
-    fetch(`/api/tft/comps?region=euw1&bucket=${bucket}&days=3&patch=current&source=data`)
+    fetch(`/api/tft/comps?region=${region}&bucket=${bucket}&days=${days}&patch=current&source=data`)
       .then(r => r.json())
       .then(d => {
         const filtered = (d.comps || [])
@@ -58,7 +61,7 @@ export default function TftItemDetailPage() {
         setCompsWithItem(filtered);
       })
       .catch(() => setCompsWithItem([]));
-  }, [bucket, id]);
+  }, [bucket, id, region, days]);
 
   // Item-Combo-Aggregation: cross all comps that contain this item, sum the
   // per-comp carryItems-counts weighted by comp avg-place + top4. Result = the
@@ -269,7 +272,7 @@ export default function TftItemDetailPage() {
                       return (
                         <a
                           key={c.slug}
-                          href={`/tft/comps/${encodeURIComponent(c.slug)}?bucket=${bucket}&region=euw1`}
+                          href={`/tft/comps/${encodeURIComponent(c.slug)}?bucket=${bucket}&region=${region}&days=${days}`}
                           className="flex items-center gap-2 bg-surface-raised border border-border-subtle rounded p-2 hover:border-accent-a40 transition-colors"
                         >
                           {carryUrl && (

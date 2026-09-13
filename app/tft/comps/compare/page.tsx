@@ -27,6 +27,7 @@ export default function TftCompsComparePage() {
   const slugB = search.get('b') || '';
   const [bucket, setBucket] = useState<TierBucket>(tierBucketFromParam(search.get('bucket')));
   const [region, setRegion] = useState<string>(search.get('region') || 'all');
+  const days = Math.max(1, Math.min(7, parseInt(search.get('days') || '3', 10) || 3));
   const [compA, setCompA] = useState<any | null | undefined>(undefined);
   const [compB, setCompB] = useState<any | null | undefined>(undefined);
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
@@ -45,7 +46,7 @@ export default function TftCompsComparePage() {
   useEffect(() => {
     if (!slugA || !slugB) return;
     const url = (slug: string) =>
-      `/api/tft/comps?region=${region}&bucket=${bucket}&slug=${encodeURIComponent(slug)}&days=14&minGames=30&variant=family`;
+      `/api/tft/comps?region=${region}&bucket=${bucket}&slug=${encodeURIComponent(slug)}&days=${days}&minGames=30&variant=family`;
     Promise.all([
       fetch(url(slugA)).then(r => r.json()).catch(() => ({ comp: null })),
       fetch(url(slugB)).then(r => r.json()).catch(() => ({ comp: null })),
@@ -53,7 +54,7 @@ export default function TftCompsComparePage() {
       setCompA(a.comp || null);
       setCompB(b.comp || null);
     });
-  }, [slugA, slugB, bucket, region]);
+  }, [slugA, slugB, bucket, region, days]);
 
   const traitsA = useMemo(() => compA ? computeActiveTraits(compA.typicalUnits, compA.clusterKey, assets) : [], [compA, assets]);
   const traitsB = useMemo(() => compB ? computeActiveTraits(compB.typicalUnits, compB.clusterKey, assets) : [], [compB, assets]);

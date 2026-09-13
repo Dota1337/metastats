@@ -14,7 +14,7 @@ import StatsFilterBar, {
 import { useI18n } from '../../lib/i18n';
 import { loadTftAssets, tftChampionTileUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import { dedupeByPrimaryCluster, primaryClusterKey, parseClusterKey } from '../../lib/tft-cluster';
-import { compDefiningAugmentApiNameFromSlug } from '../../lib/tft-comp-defining-augments';
+import { compDefiningAugmentApiNameFromSlug, shownAugmentSlug } from '../../lib/tft-comp-defining-augments';
 
 // W5: Meta-Pulse Landing — eine Seite, vier Pro-Sichtfenster:
 //   • Trending (was bewegt sich jetzt) — folgt jetzt dem Δ-Vergleich-Filter
@@ -262,10 +262,9 @@ function PulseRow({
   const carry = parts && assets ? assets.champions[parts.carry] : null;
   const carryName = carry?.name || (parts ? parts.carry.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '') : '');
   const carryUrl = tftChampionTileUrl(assets, carry);
-  const augApiName = parts?.augmentSlug
-    ? compDefiningAugmentApiNameFromSlug(parts.augmentSlug)
-    : null;
-  const augName = (augApiName && assets ? assets.items[augApiName]?.name : null) || parts?.augmentSlug;
+  const augSlug = shownAugmentSlug(parts?.augmentSlug);
+  const augApiName = augSlug ? compDefiningAugmentApiNameFromSlug(augSlug) : null;
+  const augName = (augApiName && assets ? assets.items[augApiName]?.name : null) || augSlug;
 
   return (
     <a

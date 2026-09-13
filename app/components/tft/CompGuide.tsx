@@ -66,11 +66,13 @@ function EarlyChampionTile({ apiName, assets }: { apiName: string; assets: TftAs
   const ch = findChampion(assets, apiName);
   const url = tftChampionTileUrl(assets, ch);
   const cost = ch?.cost ?? 1;
+  // Kosten 0 = keine Shop-Einheit (z. B. Elderwood-Pflanzen) → kein Kostenrahmen.
+  const neutral = cost === 0;
   return (
     <a
       href={`/tft/units/${encodeURIComponent(apiName)}`}
-      className="relative block w-10 h-10 rounded border-2 overflow-hidden hover:scale-105 transition"
-      style={{ borderColor: costColorOf(cost) }}
+      className={`relative block w-10 h-10 rounded border-2 overflow-hidden hover:scale-105 transition${neutral ? ' border-border-subtle' : ''}`}
+      style={neutral ? undefined : { borderColor: costColorOf(cost) }}
       title={ch?.name || apiName}
     >
       {url && <img src={url} alt={ch?.name || apiName} className="w-full h-full object-cover" />}

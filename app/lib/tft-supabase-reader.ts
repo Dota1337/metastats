@@ -312,6 +312,14 @@ export async function resolveFilters(searchParams: URLSearchParams): Promise<Res
     // RPC-Filter ist `day > current_date - p_days::interval`. Wir brauchen
     // p_days >= staleness + 1 damit der letzte Stats-Tag im Fenster ist.
     if (staleness >= 1) days = Math.max(days, staleness + requestedDays);
+    // Ohne Patch-Filter darf die Verschiebung nicht vor den Start des Patches
+    // reichen — sonst mischt „Letzter Tag“ nach einem Aggregator-Ausfall Tage
+    // des Vorpatches (oder Vorsets) in die Liste.
+    if (patchFilter == null && patchStartDay && days > requestedDays) {
+      const start = new Date(patchStartDay + 'T00:00:00Z');
+      const sinceStart = Math.floor((today.getTime() - start.getTime()) / 86_400_000) + 1;
+      if (sinceStart >= 1) days = Math.max(requestedDays, Math.min(days, sinceStart));
+    }
     anchorOffsetDays = staleness;
   }
 

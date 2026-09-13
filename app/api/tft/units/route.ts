@@ -62,6 +62,15 @@ interface UnitVelocityRow {
 // window the Δs are too noisy to render with intent; the UI shows "—" instead.
 const VELOCITY_MIN_GAMES = 30;
 
+// Seltene Einheiten (in weniger als 0,5 % der Spielerpartien) ans Ende: ihr
+// Schnitt beruht auf wenigen Spielen und sagt wenig — sonst stehen Exoten
+// mit einer Handvoll Siegen ganz oben. Innerhalb beider Gruppen: Schnitt.
+const RARE_PICK_RATE = 0.005;
+function sortUnitsRareLast<T extends { avgPlacement?: number | null; pickRate?: number | null }>(units: T[]): void {
+  const rare = (u: T) => (u.pickRate != null && u.pickRate < RARE_PICK_RATE ? 1 : 0);
+  units.sort((a, b) => rare(a) - rare(b) || (a.avgPlacement ?? 9) - (b.avgPlacement ?? 9));
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get('id');
@@ -71,17 +80,36 @@ export async function GET(request: NextRequest) {
     if (isExcludedUnit(id)) {
       return NextResponse.json({ region: 'euw1', bucket: 'all', hasData: true, unit: null });
     }
-    const region = (searchParams.get('region') || 'euw1').toLowerCase();
+    const region = (searchParams.get('region') || 'all').toLowerCase();
     const bucket = normalizeBucket(searchParams.get('bucket'));
-    const stats = loadTftStats(region);
-    if (!stats) {
-      // Set-Rueckfall (2026-08-27): der Loader haelt JSONs aus einem alten Set
-      // zurueck (siehe app/lib/tft-stats-loader.ts). Statt einer leeren Seite
-      // holen wir die Kernwerte aus demselben set-korrekten RPC, den die Liste
-      // benutzt. Die Item-Bloecke bleiben leer — die stecken nur im JSON, und
-      // eine erfundene Fuellung waere schlimmer als ein fehlender Block.
-      try {
-        const filters = await resolveFilters(searchParams);
+    // Kernwerte (Spiele, Schnitt, Top 4, Sieg) aus derselben Quelle wie die
+    // Liste — gleiche Region, gleicher Zeitraum, gleicher Rang. Vorher kamen
+    // sie aus der EUW-Wochendatei, und Liste und Detail zeigten andere Zahlen.
+    // Die Item-Bloecke gibt es nur in den Wochendateien; die bleiben die Quelle
+    // (bei „alle Regionen" EUW, die groesste Stichprobe).
+    let core: { games: number; avgPlacement: number | null; top4Rate: number | null; top1Rate: number | null } | null = null;
+    let coreKnown = false;
+    let filterSet: number | null = null;
+    let filterPatch: string | null = null;
+    try {
+      const filters = await resolveFilters(searchParams);
+      filterSet = filters.setNumber;
+      filterPatch = filters.patch;
+      const hit = await lookupSnapshot('units', {
+        patch: filters.patch,
+        region: filters.regionLabel,
+        days: filters.requestedDays,
+        bucket: filters.bucketLabel,
+        minGames: 0,
+        setNumber: filters.setNumber,
+      });
+      const snapUnits = (hit?.payload as { units?: any[] } | undefined)?.units;
+      if (Array.isArray(snapUnits) && snapUnits.length > 0) {
+        const u = snapUnits.find(x => x.characterId === id);
+        core = u && u.games > 0
+          ? { games: u.games, avgPlacement: u.avgPlacement ?? null, top4Rate: u.top4Rate ?? null, top1Rate: u.top1Rate ?? null }
+          : null;
+      } else {
         const rows = await callRpc<UnitListRow[]>('get_tft_unit_stats', {
           p_regions: filters.regions,
           p_buckets: filters.buckets,
@@ -90,49 +118,47 @@ export async function GET(request: NextRequest) {
           p_set: filters.setNumber,
         });
         const row = rows.find(r => r.character_id === id);
-        if (!row || Number(row.games) === 0) {
-          return NextResponse.json({ region, bucket, hasData: false, unit: null });
-        }
-        const games = Number(row.games);
-        return cachedJson({
-          region, bucket,
-          set: filters.setNumber, patch: filters.patch,
-          hasData: true,
-          unit: {
-            characterId: id,
-            games,
-            avgPlacement: games > 0 ? Number(row.sum_placement) / games : null,
-            top4Rate: games > 0 ? Number(row.top4) / games : null,
-            top1Rate: games > 0 ? Number(row.top1) / games : null,
-            topItems: [],
-            topItemSets: [],
-            topItemsByTier: null,
-            topItemSetsByTier: null,
-            damageByTier: null,
-            carryPlacementByTier: null,
-            itemSlotOrderByTier: null,
-          },
-        });
-      } catch {
-        return NextResponse.json({ region, bucket, hasData: false, unit: null });
+        const games = row ? Number(row.games) : 0;
+        core = row && games > 0
+          ? {
+              games,
+              avgPlacement: Number(row.sum_placement) / games,
+              top4Rate: Number(row.top4) / games,
+              top1Rate: Number(row.top1) / games,
+            }
+          : null;
       }
+      coreKnown = true;
+    } catch {
+      // Datenbank nicht erreichbar → unten auf die Wochendatei zurueckfallen.
     }
-    const buckets = stats.byUnit?.[id];
-    if (!buckets) return NextResponse.json({ region, bucket, hasData: true, unit: null });
+    // Set-Rueckfall (2026-08-27): der Loader haelt JSONs aus einem alten Set
+    // zurueck (siehe app/lib/tft-stats-loader.ts) — dann bleiben die
+    // Item-Bloecke leer statt erfunden.
+    const stats = loadTftStats(region === 'all' ? 'euw1' : region);
+    const buckets = stats?.byUnit?.[id];
     // grandmaster_plus: Grandmaster- und Challenger-Eintrag zusammengezaehlt.
-    const data = pickBucketEntry(buckets, bucket);
-    if (!data) return NextResponse.json({ region, bucket, hasData: true, unit: null });
-    const avgPlacement = data.games > 0 ? data.sumPlacement / data.games : null;
+    const jsonEntry = buckets ? pickBucketEntry(buckets, bucket) : null;
+    if (!coreKnown && jsonEntry && jsonEntry.games > 0) {
+      core = {
+        games: jsonEntry.games,
+        avgPlacement: jsonEntry.sumPlacement / jsonEntry.games,
+        top4Rate: jsonEntry.top4 / jsonEntry.games,
+        top1Rate: jsonEntry.top1 / jsonEntry.games,
+      };
+    }
+    if (!core) return NextResponse.json({ region, bucket, hasData: coreKnown ? false : !!stats, unit: null });
+    const data: any = jsonEntry ?? {};
     return cachedJson({
       region, bucket,
-      set: stats.set, patch: stats.patch,
+      set: filterSet ?? stats?.set ?? null, patch: filterPatch ?? stats?.patch ?? null,
       hasData: true,
       unit: {
         characterId: id,
-        games: data.games,
-        avgPlacement,
-        top4Rate: data.games > 0 ? data.top4 / data.games : null,
-        top1Rate: data.games > 0 ? data.top1 / data.games : null,
+        games: core.games,
+        avgPlacement: core.avgPlacement,
+        top4Rate: core.top4Rate,
+        top1Rate: core.top1Rate,
         // Thief's Gloves & Co. raus — singulär aus den Item-Listen, als
         // ganzes Set aus den Item-Set-Listen. "Top Item-Builds" sollen die
         // bewussten Carry-Builds zeigen, nicht Random-Pulls.
@@ -260,7 +286,11 @@ export async function GET(request: NextRequest) {
       // EmptyData trotz frischer DB-Daten. Siehe Pattern in /api/tft/comps.
       const payload = hit?.payload as { hasData?: boolean; units?: unknown[] } | undefined;
       if (hit && payload?.hasData && Array.isArray(payload.units) && payload.units.length > 0) {
-        const resp = cachedJson(hit.payload, { cache: cacheControl });
+        // Gespeicherte Bundles sind noch nach reinem Schnitt sortiert — hier
+        // gleich wie im Live-Pfad nachsortieren (Kopie, der Cache bleibt unberuehrt).
+        const units = [...payload.units] as { avgPlacement?: number | null; pickRate?: number | null }[];
+        sortUnitsRareLast(units);
+        const resp = cachedJson({ ...payload, units }, { cache: cacheControl });
         resp.headers.set('x-snapshot', hit.tag);
         return resp;
       }
@@ -369,7 +399,7 @@ export async function GET(request: NextRequest) {
           },
         };
       });
-    units.sort((a, b) => (a.avgPlacement ?? 9) - (b.avgPlacement ?? 9));
+    sortUnitsRareLast(units);
 
     return cachedJson({
       hasData: units.length > 0,

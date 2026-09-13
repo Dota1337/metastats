@@ -344,6 +344,8 @@ export function tftIconUrl(bundle: TftAssetsBundle | null, iconPath: string | nu
   if (!bundle || !iconPath) return null;
   if (isNonPath(iconPath)) return null;
   if (iconPath.startsWith('http://') || iconPath.startsWith('https://')) return iconPath;
+  // Eigene Bilder unter /public (z. B. /tft-extra/…) direkt ausliefern.
+  if (iconPath.startsWith('/')) return iconPath;
   return proxied(bundle.iconBase, iconPath);
 }
 
@@ -405,6 +407,7 @@ export function tftChampionTileUrl(
   champion: TftChampion | null | undefined,
 ): string | null {
   if (!bundle || !champion) return null;
+  if (champion.tile && champion.tile.startsWith('/')) return champion.tile;
   if (champion.tile && !isNonPath(champion.tile)) return proxied(bundle.iconBase, champion.tile);
   if (!champion.icon) return null;
   const m = /^assets\/characters\/([^/]+)\/skins\/base\/images\/[^/]+_splash_centered_\d+\.([^/.]+)\.png$/i.exec(champion.icon);

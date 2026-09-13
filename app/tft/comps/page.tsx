@@ -569,6 +569,7 @@ export default function TftCompsPage() {
                   assets={assets}
                   region={filters.region}
                   bucket={filters.bucket}
+                  days={filters.days}
                   showVelocity={filters.velocity > 0}
                   velocityShift={filters.velocity}
                   tierCutoffs={tierCutoffs}

@@ -200,7 +200,7 @@ export default function TftItemsPage() {
               return (
                 <a
                   key={it.apiName}
-                  href={`/tft/items/${encodeURIComponent(it.apiName)}?bucket=${filters.bucket}`}
+                  href={`/tft/items/${encodeURIComponent(it.apiName)}?bucket=${filters.bucket}&region=${filters.region}&days=${filters.days}`}
                   className={`block md:grid ${filters.velocity > 0 ? 'md:grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem]' : 'md:grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 md:items-center text-[13px] sm:text-sm hover:bg-white/5 border-t border-border-subtle`}
                 >
                   <div className="hidden md:flex justify-center">
@@ -231,7 +231,7 @@ export default function TftItemsPage() {
                       return (
                         <a
                           key={i}
-                          href={`/tft/units/${encodeURIComponent(cid)}?bucket=${filters.bucket}`}
+                          href={`/tft/units/${encodeURIComponent(cid)}?bucket=${filters.bucket}&region=${filters.region}&days=${filters.days}`}
                           onClick={e => e.stopPropagation()}
                           className="w-10 h-10 rounded-md border-2 overflow-hidden flex-shrink-0 hover:scale-110 transition shadow-sm"
                           style={{ borderColor }}

@@ -202,14 +202,14 @@ test('Augment-Suffix nur im Aggregator-Mode', () => {
   assert.equal(classify(p).compDefiningAugment, 'TwoTanky', 'Feld bleibt unabhängig vom Suffix gesetzt');
 });
 
-test('Unit-Duplikat rekonstruiert TwoTanky auch ohne augments-Feld', () => {
-  // Riot liefert seit 2026-06-15 keine augments mehr — die Duplikat-Heuristik
-  // ist der einzige verbliebene Weg zu diesem Sub-Cluster.
+test('Unit-Duplikat ohne augments-Feld erzeugt kein ~TwoTanky mehr', () => {
+  // Doppelte Einheiten sind in Set 18 kein Beleg fuer Two Tanky
+  // (Riftbeast-Augments schenken Kopien) — kein Raten mehr.
   const res = classify({
     traits: [trait('TFT17_Stargazer', 3, 6)],
     units: [unit('TFT17_Lulu', DMG), unit('TFT17_Lulu', [DEF]), unit('TFT17_Rammus', [])],
   }, { withAugmentSuffix: true });
-  assert.match(res.clusterKey, /~TwoTanky$/);
+  assert.equal(res.clusterKey, 'TFT17_Stargazer@6_TFT17_Lulu');
 });
 
 test('Secondary-Carry ab 3 Damage-Items, darunter null', () => {

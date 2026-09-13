@@ -8,6 +8,7 @@
 
 import { loadBootSet, aggregateMatch, finalizeBuilds, ALLOWED_QUEUES } from './lib/build-aggregator.mjs';
 import { createRiotClient } from './lib/riot-client.mjs';
+import { checkIdPhase, checkSample } from './lib/champion-sample-guard.mjs';
 
 const API_KEY = process.env.RIOT_API_KEY;
 if (!API_KEY) {
@@ -78,12 +79,15 @@ async function main() {
   console.log('[2/4] Lade Match-IDs (Solo, 8 pro Spieler)...');
   const allMatchIds = new Set();
   const matchTierMap = {};
+  let idAttempts = 0;
+  let idFailures = 0;
 
   // Process Master first, then GM, then Challenger (so each tier gets unique matches)
   const tierOrder = ['MASTER', 'GRANDMASTER', 'CHALLENGER'];
   for (const tier of tierOrder) {
     const tierPuuids = puuids.filter(p => puuidTierMap[p] === tier);
     for (let i = 0; i < tierPuuids.length; i++) {
+      idAttempts++;
       try {
         const res = await rateLimitedFetch(
           `https://${REGIONAL}.api.riotgames.com/lol/match/v5/matches/by-puuid/${tierPuuids[i]}/ids?queue=420&start=0&count=8`
@@ -96,8 +100,10 @@ async function main() {
               matchTierMap[id] = tier;
             }
           }
+        } else {
+          idFailures++;
         }
-      } catch {}
+      } catch { idFailures++; }
 
       if ((i + 1) % 25 === 0 || i === tierPuuids.length - 1) {
         console.log(`  ${tier}: ${i + 1}/${tierPuuids.length} Spieler (${allMatchIds.size} unique Matches)`);
@@ -105,7 +111,8 @@ async function main() {
     }
   }
 
-  console.log(`\n  ${allMatchIds.size} einzigartige Matches gefunden\n`);
+  console.log(`\n  ${allMatchIds.size} einzigartige Matches gefunden (${idFailures} ID-Fehler)\n`);
+  checkIdPhase('EUW', idAttempts, idFailures);
 
   // Step 3: Fetch match details + aggregate per tier (legacy stats) + per role (builds)
   console.log('[3/4] Lade Match-Details und berechne Stats...');
@@ -182,6 +189,12 @@ async function main() {
   }
 
   const totalParticipantGames = totalGames * 10;
+
+  // Vor Datei UND Supabase: keine leere/duenne Woche ueber die alte schreiben.
+  checkSample('EUW', {
+    prevFile: 'public/champion-stats-euw.json',
+    totalGames, matchAttempts: matchIdArray.length, matchErrors: errors,
+  });
 
   // Save to JSON
   const output = {

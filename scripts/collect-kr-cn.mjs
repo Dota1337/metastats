@@ -10,6 +10,7 @@
 
 import { loadBootSet, aggregateMatch, finalizeBuilds, ALLOWED_QUEUES } from './lib/build-aggregator.mjs';
 import { createRiotClient } from './lib/riot-client.mjs';
+import { checkIdPhase, checkSample } from './lib/champion-sample-guard.mjs';
 
 const API_KEY = process.env.RIOT_API_KEY;
 if (!API_KEY) {
@@ -73,11 +74,14 @@ async function collectRegion(region, regional, label) {
   console.log('[2/4] Lade Match-IDs (Solo, 8 pro Spieler)...');
   const allMatchIds = new Set();
   const matchTierMap = {};
+  let idAttempts = 0;
+  let idFailures = 0;
 
   const tierOrder = ['MASTER', 'GRANDMASTER', 'CHALLENGER'];
   for (const tier of tierOrder) {
     const tierPuuids = puuids.filter(p => puuidTierMap[p] === tier);
     for (let i = 0; i < tierPuuids.length; i++) {
+      idAttempts++;
       try {
         const res = await rateLimitedFetch(
           `https://${regional}.api.riotgames.com/lol/match/v5/matches/by-puuid/${tierPuuids[i]}/ids?queue=420&start=0&count=8`
@@ -90,14 +94,17 @@ async function collectRegion(region, regional, label) {
               matchTierMap[id] = tier;
             }
           }
+        } else {
+          idFailures++;
         }
-      } catch {}
+      } catch { idFailures++; }
       if ((i + 1) % 25 === 0 || i === tierPuuids.length - 1) {
         console.log(`  ${tier}: ${i + 1}/${tierPuuids.length} (${allMatchIds.size} unique)`);
       }
     }
   }
-  console.log(`\n  ${allMatchIds.size} einzigartige Matches\n`);
+  console.log(`\n  ${allMatchIds.size} einzigartige Matches (${idFailures} ID-Fehler)\n`);
+  checkIdPhase(label, idAttempts, idFailures);
 
   // Step 3: Fetch match details + builds
   console.log('[3/4] Lade Match-Details...');
@@ -167,6 +174,12 @@ async function collectRegion(region, regional, label) {
   }
 
   const totalParticipantGames = totalGames * 10;
+
+  // Vor Datei UND Supabase: keine leere/duenne Woche ueber die alte schreiben.
+  checkSample(label, {
+    prevFile: `public/champion-stats-${region}.json`,
+    totalGames, matchAttempts: matchIdArray.length, matchErrors: errors,
+  });
 
   // Save JSON
   const fs = await import('fs');

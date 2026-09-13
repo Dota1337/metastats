@@ -72,8 +72,14 @@ jobs:
       # Champion Stats Crawler — EUW (needs valid Riot API key).
       # Gated on the pre-flight step so a stale Dev-Key just skips this step
       # instead of failing the whole job.
+      # continue-on-error: bricht die Sperre in collect-highelo.mjs ab (Key
+      # stirbt mitten im Lauf), bleiben die Champion-Dateien unveraendert —
+      # Saison-/Rang-/Set-Schritte und ihr Commit sollen trotzdem laufen. Der
+      # letzte Schritt faerbt den Lauf dann rot.
       - name: Crawl Champion Stats (EUW)
+        id: champcrawl
         if: steps.riotcheck.outputs.lol_key_ok == 'true'
+        continue-on-error: true
         run: node scripts/collect-highelo.mjs
 
       # Season detection — runs no Riot API, only Data Dragon. Updates
@@ -178,6 +184,12 @@ jobs:
           3. splitsIncomplete entfernen, falls gesetzt.
           4. Issue schliessen." \
             --label "season-split-review" || echo "Issue creation failed (non-fatal)"
+
+      - name: Fail if champion crawl aborted
+        if: steps.champcrawl.outcome == 'failure'
+        run: |
+          echo "::error::Champion-Sammlung abgebrochen (siehe Schritt 'Crawl Champion Stats') — alte Daten bleiben live."
+          exit 1
 
       # Deployment is handled by Vercel's GitHub integration — the push above
       # automatically triggers a production deploy, no CLI step needed here.

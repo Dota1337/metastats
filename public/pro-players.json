@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-09-13T10:06:46.542Z",
+  "updatedAt": "2026-09-13T11:26:47.547Z",
   "totalPlayers": 1266,
   "withAccounts": 1160,
   "players": [
@@ -3510,21 +3510,21 @@
       ]
     },
     {
-      "proName": "Meteos",
-      "team": "Cloud9",
-      "role": "Streamer",
-      "country": "United States",
-      "accounts": [
-        "Meteos"
-      ]
-    },
-    {
       "proName": "Jukes",
       "team": "Cloud9",
       "role": "Streamer",
       "country": "Brazil",
       "accounts": [
         "Jukes"
+      ]
+    },
+    {
+      "proName": "Meteos",
+      "team": "Cloud9",
+      "role": "Streamer",
+      "country": "United States",
+      "accounts": [
+        "Meteos"
       ]
     },
     {
@@ -4594,6 +4594,15 @@
       ]
     },
     {
+      "proName": "Sainz",
+      "team": "Docta Esports Club",
+      "role": "Jungle",
+      "country": "Argentina",
+      "accounts": [
+        "Sainz"
+      ]
+    },
+    {
       "proName": "Relaxaz",
       "team": "Docta Esports Club",
       "role": "Jungle",
@@ -4609,15 +4618,6 @@
       "country": "Chile",
       "accounts": [
         "Yasek"
-      ]
-    },
-    {
-      "proName": "Sainz",
-      "team": "Docta Esports Club",
-      "role": "Jungle",
-      "country": "Argentina",
-      "accounts": [
-        "Sainz"
       ]
     },
     {
@@ -6432,6 +6432,15 @@
       ]
     },
     {
+      "proName": "Miharu",
+      "team": "Farenvehn Fem",
+      "role": "Mid",
+      "country": "Argentina",
+      "accounts": [
+        "Miharu"
+      ]
+    },
+    {
       "proName": "Camululis",
       "team": "Farenvehn Fem",
       "role": "Mid",
@@ -6441,15 +6450,6 @@
         "Camululis",
         "Epika",
         "Kytra"
-      ]
-    },
-    {
-      "proName": "Miharu",
-      "team": "Farenvehn Fem",
-      "role": "Mid",
-      "country": "Argentina",
-      "accounts": [
-        "Miharu"
       ]
     },
     {
@@ -6824,17 +6824,6 @@
       ]
     },
     {
-      "proName": "LS",
-      "team": "FlyQuest",
-      "role": "Coach",
-      "country": "United States",
-      "accounts": [
-        "Imls",
-        "LastShadow",
-        "LS"
-      ]
-    },
-    {
       "proName": "Apollo (Apollo Price)",
       "team": "FlyQuest",
       "role": "Coach",
@@ -6848,6 +6837,17 @@
       "country": "United States",
       "accounts": [
         "Thinkcard"
+      ]
+    },
+    {
+      "proName": "LS",
+      "team": "FlyQuest",
+      "role": "Coach",
+      "country": "United States",
+      "accounts": [
+        "Imls",
+        "LastShadow",
+        "LS"
       ]
     },
     {
@@ -7656,16 +7656,6 @@
       ]
     },
     {
-      "proName": "Sola",
-      "team": "G2 Esports",
-      "role": "ADC",
-      "country": "Germany",
-      "accounts": [
-        "Sola",
-        "Solaaaa"
-      ]
-    },
-    {
       "proName": "Hans Sama",
       "team": "G2 Esports",
       "role": "ADC",
@@ -7676,12 +7666,13 @@
       ]
     },
     {
-      "proName": "Memento",
+      "proName": "Sola",
       "team": "G2 Esports",
-      "role": "Coach",
-      "country": "Sweden",
+      "role": "ADC",
+      "country": "Germany",
       "accounts": [
-        "Memento"
+        "Sola",
+        "Solaaaa"
       ]
     },
     {
@@ -7700,6 +7691,15 @@
       "role": "Coach",
       "country": "Colombia",
       "accounts": []
+    },
+    {
+      "proName": "Memento",
+      "team": "G2 Esports",
+      "role": "Coach",
+      "country": "Sweden",
+      "accounts": [
+        "Memento"
+      ]
     },
     {
       "proName": "SkewMond",
@@ -8313,21 +8313,21 @@
       ]
     },
     {
-      "proName": "Nobozif",
-      "team": "Garden Gaming",
-      "role": "Support",
-      "country": "Denmark",
-      "accounts": [
-        "Nobozif"
-      ]
-    },
-    {
       "proName": "Grisen",
       "team": "Garden Gaming",
       "role": "Support",
       "country": "Denmark",
       "accounts": [
         "Grisen"
+      ]
+    },
+    {
+      "proName": "Nobozif",
+      "team": "Garden Gaming",
+      "role": "Support",
+      "country": "Denmark",
+      "accounts": [
+        "Nobozif"
       ]
     },
     {
@@ -9715,21 +9715,21 @@
       ]
     },
     {
-      "proName": "Cristo",
-      "team": "HMBLE",
-      "role": "Coach",
-      "country": "Italy",
-      "accounts": [
-        "Cristo"
-      ]
-    },
-    {
       "proName": "Spale",
       "team": "HMBLE",
       "role": "Coach",
       "country": "Serbia",
       "accounts": [
         "Spale"
+      ]
+    },
+    {
+      "proName": "Cristo",
+      "team": "HMBLE",
+      "role": "Coach",
+      "country": "Italy",
+      "accounts": [
+        "Cristo"
       ]
     },
     {
@@ -11595,6 +11595,16 @@
       ]
     },
     {
+      "proName": "Minji",
+      "team": "LIT Team",
+      "role": "Mid",
+      "country": "Taiwan",
+      "accounts": [
+        "Minji",
+        "楊敏智"
+      ]
+    },
+    {
       "proName": "Adiogs",
       "team": "LIT Team",
       "role": "Mid",
@@ -11752,18 +11762,6 @@
       "country": "Poland",
       "accounts": [
         "TTobias"
-      ]
-    },
-    {
-      "proName": "Czekolad",
-      "team": "LODIS (Polish Team)",
-      "role": "Mid",
-      "country": "Poland",
-      "accounts": [
-        "Czeko",
-        "CzekoIad",
-        "Czekol0id",
-        "Czekolad"
       ]
     }
   ]

@@ -37,7 +37,7 @@ const ESLINT_BIN = join(dirname(require_.resolve('eslint/package.json')), 'bin',
 // Stand 02.09.2026, gemessen mit `npx eslint . --format json`.
 // Beim Senken das Datum mitziehen.
 const BUDGET = {
-  '@typescript-eslint/no-explicit-any': 645,
+  '@typescript-eslint/no-explicit-any': 642,
   '@next/next/no-html-link-for-pages': 40,
   'react-hooks/set-state-in-effect': 33,
   'prefer-const': 9,

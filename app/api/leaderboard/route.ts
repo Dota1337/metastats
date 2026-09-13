@@ -19,6 +19,9 @@ export const maxDuration = 60;
 const nameCache: Record<string, string> = {};
 const NAME_RESOLVE_BATCH = 80; // max names to resolve per request (rate limit safe)
 
+// Eintrag aus Riots league-v4 (Apex-Liga oder Division), um Rang ergaenzt.
+type RiotEntry = { tier?: string; rank?: string; leaguePoints: number; [k: string]: unknown };
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   // 'all' ist hier ein legitimer Modus (Regionen-übergreifende Ansicht) und
@@ -81,14 +84,14 @@ export async function GET(request: NextRequest) {
       if (isApex) {
         // Alle Ligen parallel, alles oder nichts: fehlt eine, waere die
         // Rangfolge still falsch — dann lieber der Datenbank-Rueckfall unten.
-        const leagues: (any[] | null)[] = await Promise.all(apexTiers.map(async (tr) => {
+        const leagues: (RiotEntry[] | null)[] = await Promise.all(apexTiers.map(async (tr) => {
           const tierEndpoint = tr === 'GRANDMASTER' ? 'grandmasterleagues'
             : tr === 'MASTER' ? 'masterleagues'
             : 'challengerleagues';
           const r = await riotFetch(`https://${riotRegion}.api.riotgames.com/lol/league/v4/${tierEndpoint}/by-queue/RANKED_SOLO_5x5`, apiKey);
           if (!r.ok) return null;
           const l = await r.json();
-          return (l.entries || []).map((e: any) => ({ ...e, tier: tr }));
+          return (l.entries || []).map((e: RiotEntry) => ({ ...e, tier: tr }));
         }));
         if (isDescent && !leagues.some(l => l === null)) {
           // Abstieg bis die angeforderte Seite voll ist, gedeckelt auf
@@ -98,13 +101,13 @@ export async function GET(request: NextRequest) {
           for (const tr of lowerTiers) {
             if (collected >= need) { descentLeft = true; break; }
             const divs = await Promise.all(['I', 'II', 'III', 'IV'].map(async (div) => {
-              const out: any[] = [];
+              const out: RiotEntry[] = [];
               for (let p = 1; p <= DESCENT_DIVISION_PAGES; p++) {
                 const r = await riotFetch(`https://${riotRegion}.api.riotgames.com/lol/league/v4/entries/RANKED_SOLO_5x5/${tr}/${div}?page=${p}`, apiKey);
                 if (!r.ok) return null;
                 const list = await r.json();
                 const arr = Array.isArray(list) ? list : [];
-                out.push(...arr.map((e: any) => ({ ...e, tier: tr, rank: e.rank || div })));
+                out.push(...arr.map((e: RiotEntry) => ({ ...e, tier: tr, rank: e.rank || div })));
                 if (arr.length < 205) break;
               }
               return out;
@@ -158,12 +161,12 @@ export async function GET(request: NextRequest) {
         const league = await riotRes.json();
         // Erst nach Rang (Challenger vor Grandmaster …), dann Division, dann LP.
         const sortedAll = (league.entries || [])
-          .sort((a: any, b: any) => {
-            const ra = LOL_LADDER.indexOf(a.tier);
-            const rb = LOL_LADDER.indexOf(b.tier);
+          .sort((a: RiotEntry, b: RiotEntry) => {
+            const ra = (LOL_LADDER as readonly string[]).indexOf(a.tier ?? '');
+            const rb = (LOL_LADDER as readonly string[]).indexOf(b.tier ?? '');
             if (ra !== rb) return ra - rb;
-            const da = DIVISION_ORDER.indexOf(a.rank);
-            const db = DIVISION_ORDER.indexOf(b.rank);
+            const da = (DIVISION_ORDER as readonly string[]).indexOf(a.rank ?? '');
+            const db = (DIVISION_ORDER as readonly string[]).indexOf(b.rank ?? '');
             if (da !== db) return da - db;
             return b.leaguePoints - a.leaguePoints;
           });

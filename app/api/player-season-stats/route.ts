@@ -49,7 +49,7 @@ interface FullRow {
   participant: any;
 }
 
-async function readAll<T>(build: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: any }>): Promise<T[]> {
+async function readAll<T>(build: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message?: string } | null }>): Promise<T[]> {
   const out: T[] = [];
   for (let from = 0; ; from += PAGE) {
     const { data, error } = await build(from, from + PAGE - 1);
@@ -201,8 +201,8 @@ export async function GET(request: NextRequest) {
       overview,
       coverage: matches.length ? { games: matches.length, from: firstAt, to: lastAt } : null,
     }, { headers: CACHED });
-  } catch (err: any) {
-    console.error('[player-season-stats]', err?.message || err);
+  } catch (err: unknown) {
+    console.error('[player-season-stats]', err instanceof Error ? err.message : err);
     return NextResponse.json({ error: 'Server Fehler' }, { status: 500, headers: NO_STORE });
   }
 }

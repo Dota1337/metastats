@@ -197,6 +197,8 @@ async function main() {
       MASTER: { matches: tierGames.MASTER, champions: Object.keys(tierStats.MASTER).length },
     },
     stats: champStats,
+    // Je Rang getrennt, damit /api/champions den Rang-Filter bedienen kann.
+    statsByTier: tierStats,
   };
 
   const fs = await import('fs');

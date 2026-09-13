@@ -20,7 +20,7 @@ const PLUS_FLOORS = ['GRANDMASTER', 'MASTER', 'DIAMOND', 'EMERALD', 'PLATINUM'] 
 
 // Einzelraenge einer Gruppe, von unten nach oben (Diamond, Master, GM, Challenger).
 function plusMembers(floor: string): string[] {
-  return LOL_LADDER.slice(0, LOL_LADDER.indexOf(floor as any) + 1).reverse();
+  return LOL_LADDER.slice(0, (LOL_LADDER as readonly string[]).indexOf(floor) + 1).reverse();
 }
 
 // LoL und die TFT-Ladder/Marktwert-Routen arbeiten mit Riots Grossschreibung.

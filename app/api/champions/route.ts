@@ -4,6 +4,7 @@ import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { cachedJson, ASSET_CACHE_CONTROL } from '../../lib/api-cache';
 import { expandLolTier, isLolRankGroup } from '../../lib/rank-groups';
+import { statsForTiers, type ChampionStatsFile } from '../../lib/champion-tier-stats';
 
 interface ChampionInfo {
   id: string;
@@ -98,6 +99,19 @@ export async function GET(request: NextRequest) {
       // Supabase unavailable, continue without
     }
 
+    // Sammel-Datei bzw. Live-Sammlung: nur die Raenge des Filters zaehlen
+    // (app/lib/champion-tier-stats.ts). Gibt die Quelle fuer den Rang nichts
+    // her, bleibt die Liste ohne Zahlen statt Master+-Zahlen zu zeigen.
+    const fileTiers = tier === 'all' ? null : expandLolTier(tier);
+    const applyCollected = (collectData: ChampionStatsFile) => {
+      const picked = statsForTiers(collectData, fileTiers);
+      if (!picked) return;
+      hasStats = true;
+      for (const [key, s] of Object.entries(picked.stats)) {
+        statsMap[key] = { ...s, totalGames: picked.totalGames };
+      }
+    };
+
     // If no Supabase stats, try static JSON files collected by the script
     if (!hasStats) {
       try {
@@ -105,24 +119,7 @@ export async function GET(request: NextRequest) {
         // Try fetching from public folder (works on Vercel)
         const origin = new URL(request.url).origin;
         const staticRes = await fetch(`${origin}/${regionFile}`);
-        if (staticRes.ok) {
-          const collectData = await staticRes.json();
-          if (collectData.stats && collectData.totalParticipantGames > 0) {
-            hasStats = true;
-            const totalGames = collectData.totalParticipantGames;
-            for (const [key, s] of Object.entries(collectData.stats) as [string, any][]) {
-              statsMap[key] = {
-                wins: s.wins,
-                games: s.games,
-                kills: s.kills,
-                deaths: s.deaths,
-                assists: s.assists,
-                bans: s.bans,
-                totalGames: totalGames,
-              };
-            }
-          }
-        }
+        if (staticRes.ok) applyCollected(await staticRes.json());
       } catch {
         // Static file not available
       }
@@ -135,24 +132,7 @@ export async function GET(request: NextRequest) {
         const collectRes = await fetch(`${origin}/api/champions/collect?region=${region}`, {
           headers: { 'x-internal': '1' },
         });
-        if (collectRes.ok) {
-          const collectData = await collectRes.json();
-          if (collectData.stats && collectData.totalParticipantGames > 0) {
-            hasStats = true;
-            const totalGames = collectData.totalParticipantGames;
-            for (const [key, s] of Object.entries(collectData.stats) as [string, any][]) {
-              statsMap[key] = {
-                wins: s.wins,
-                games: s.games,
-                kills: s.kills,
-                deaths: s.deaths,
-                assists: s.assists,
-                bans: s.bans,
-                totalGames: totalGames,
-              };
-            }
-          }
-        }
+        if (collectRes.ok) applyCollected(await collectRes.json());
       } catch {
         // Collection failed, continue without stats
       }

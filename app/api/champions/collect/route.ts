@@ -243,6 +243,11 @@ export async function GET(request: NextRequest) {
       totalParticipantGames,
       championsFound: Object.keys(champStats).length,
       stats: champStats,
+      statsByTier: {
+        CHALLENGER: tierStats['CHALLENGER'],
+        GRANDMASTER: tierStats['GRANDMASTER'],
+        MASTER: tierStats['MASTER'],
+      },
       perTier: {
         CHALLENGER: { matches: tierGames['CHALLENGER'], champions: Object.keys(tierStats['CHALLENGER']).length },
         GRANDMASTER: { matches: tierGames['GRANDMASTER'], champions: Object.keys(tierStats['GRANDMASTER']).length },

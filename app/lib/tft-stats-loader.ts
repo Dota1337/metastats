@@ -71,27 +71,30 @@ export function normalizeBucket(b: string | null): string {
 // Die Listen sind je Rang auf Top-N gekappt, das Ende der Summe ist daher
 // leicht unscharf (Plan F1, vom User freigegeben).
 const NOT_SUMMABLE = new Set(['damageByTier']);
-const listKey = (e: any): string | null =>
-  e?.item != null ? `i:${e.item}`
-  : Array.isArray(e?.items) ? `s:${e.items.join('|')}`
-  : e?.characterId != null ? `c:${e.characterId}`
+const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
+const listKey = (e: unknown): string | null =>
+  !isObj(e) ? null
+  : e.item != null ? `i:${String(e.item)}`
+  : Array.isArray(e.items) ? `s:${e.items.join('|')}`
+  : e.characterId != null ? `c:${String(e.characterId)}`
   : null;
+const weight = (v: unknown): number => (isObj(v) ? Number(v.games ?? v.count ?? 0) : 0);
 
-export function mergeStatsEntries(a: any, b: any): any {
+export function mergeStatsEntries(a: unknown, b: unknown): unknown {
   if (a == null) return b ?? null;
   if (b == null) return a;
   if (typeof a === 'number' && typeof b === 'number') return a + b;
   if (Array.isArray(a) && Array.isArray(b)) {
-    const byKey = new Map<string, any>();
+    const byKey = new Map<string, unknown>();
     for (const e of [...a, ...b]) {
       const k = listKey(e);
       if (k == null) continue;
-      byKey.set(k, byKey.has(k) ? mergeStatsEntries(byKey.get(k), e) : { ...e });
+      byKey.set(k, byKey.has(k) ? mergeStatsEntries(byKey.get(k), e) : { ...(e as object) });
     }
-    return [...byKey.values()].sort((x, y) => (y.games ?? y.count ?? 0) - (x.games ?? x.count ?? 0));
+    return [...byKey.values()].sort((x, y) => weight(y) - weight(x));
   }
-  if (typeof a === 'object' && typeof b === 'object') {
-    const out: any = {};
+  if (isObj(a) && isObj(b)) {
+    const out: Record<string, unknown> = {};
     for (const k of new Set([...Object.keys(a), ...Object.keys(b)])) {
       if (NOT_SUMMABLE.has(k)) { out[k] = null; continue; }
       // Schluessel wie item/characterId/items identifizieren den Eintrag.
@@ -110,7 +113,7 @@ export function pickBucketEntry(buckets: any, bucket: string): any {
   if (buckets[bucket]) return buckets[bucket];
   const members = TFT_RANK_GROUPS[bucket];
   if (members) {
-    return members.reduce((acc: any, m) => mergeStatsEntries(acc, buckets[m] ?? null), null) || null;
+    return members.reduce<unknown>((acc, m) => mergeStatsEntries(acc, buckets[m] ?? null), null) || null;
   }
   return buckets.all || null;
 }

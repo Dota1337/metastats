@@ -181,6 +181,8 @@ async function collectRegion(region, regional, label) {
       MASTER: { matches: tierGames.MASTER, champions: Object.keys(tierStats.MASTER).length },
     },
     stats: champStats,
+    // Je Rang getrennt, damit /api/champions den Rang-Filter bedienen kann.
+    statsByTier: tierStats,
   };
   fs.writeFileSync(`public/champion-stats-${region}.json`, JSON.stringify(output));
   console.log(`\n  -> public/champion-stats-${region}.json`);

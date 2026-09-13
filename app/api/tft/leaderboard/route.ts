@@ -152,7 +152,7 @@ export async function GET(request: NextRequest) {
       if (buckets.some(b => b === null)) {
         return NextResponse.json({ error: 'Riot API Fehler' }, { status: 502 });
       }
-      const all = (buckets as any[][]).flat();
+      const all = buckets.flatMap(b => b ?? []);
       totalPlayers = all.length;
       slice = all.slice(startIdx, startIdx + PAGE_SIZE);
       hasNextPage = startIdx + PAGE_SIZE < all.length;

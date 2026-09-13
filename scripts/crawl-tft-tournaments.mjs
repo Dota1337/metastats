@@ -30,6 +30,7 @@
  *   node scripts/crawl-tft-tournaments.mjs --no-discover  # curated seed only (skip category scan)
  *   node scripts/crawl-tft-tournaments.mjs --include-b-tier  # also crawl B-tier events
  *   node scripts/crawl-tft-tournaments.mjs --pages "Foo,Bar"  # explicit list
+ *   node scripts/crawl-tft-tournaments.mjs --full  # also re-crawl finished tournaments (default skips them)
  */
 
 import { readFileSync, existsSync } from 'node:fs';
@@ -44,6 +45,14 @@ const LIMIT = parseInt(arg('--limit', '0'), 10);
 const SKIP_SUPABASE = hasFlag('--no-supabase');
 const PAGES_OVERRIDE = arg('--pages', '');
 const VERBOSE = hasFlag('--verbose');
+// --full: jede Seite laden wie bis 2026-09-13 (Notfall-Rueckweg).
+const FULL = hasFlag('--full');
+// Fertige Turniere mit Ergebnissen werden uebersprungen, sobald ihr Ende
+// laenger als diese Karenz her ist — Liquipedia traegt nach Turnierende oft
+// noch Tage nach. Die ROTATION aeltesten davon werden je Lauf trotzdem geladen,
+// damit spaete Korrekturen ankommen.
+const SKIP_GRACE_DAYS = 14;
+const ROTATION = 10;
 
 const LIQUIPEDIA_API = 'https://liquipedia.net/teamfighttactics/api.php';
 // Liquipedia ToU for public wikitext API: 30s between requests.
@@ -530,10 +539,47 @@ async function upsert(table, rows, onConflict) {
 
 async function deleteResultsFor(tournamentId) {
   if (SKIP_SUPABASE) return;
-  await fetch(`${SUPA_URL}/rest/v1/tft_tournament_results?tournament_id=eq.${tournamentId}`, {
+  const res = await fetch(`${SUPA_URL}/rest/v1/tft_tournament_results?tournament_id=eq.${tournamentId}`, {
     method: 'DELETE',
     headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, Prefer: 'return=minimal' },
   });
+  // Sonst blieben alte Platzierungen stehen und der Upsert mischte sie mit neuen.
+  if (!res.ok) throw new Error(`Supabase delete results ${tournamentId} failed: HTTP ${res.status}`);
+}
+
+// Gespeicherter Stand je Turnier-ID: welche fertig sind (ueberspringen) und
+// wann sie zuletzt geprueft wurden (Rotation). Kein stiller Rueckfall: ist die
+// Datenbank nicht lesbar, bricht der Lauf ab — "alles laden" lief nachweislich
+// in das 180-min-Limit.
+async function loadStoredState() {
+  const h = { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` };
+  const get = async (path, from) => {
+    const r = await fetch(`${SUPA_URL}/rest/v1/${path}`, { headers: { ...h, Range: `${from}-${from + 999}` } });
+    if (!r.ok) throw new Error(`Supabase read ${path.split('?')[0]} failed: HTTP ${r.status}`);
+    return r.json();
+  };
+  const withResults = new Set();
+  // PostgREST liefert hoechstens 1000 Zeilen je Abfrage.
+  for (let from = 0; ; from += 1000) {
+    const rows = await get('tft_tournament_results?select=tournament_id&order=tournament_id', from);
+    for (const r of rows) withResults.add(r.tournament_id);
+    if (rows.length < 1000) break;
+  }
+  const cutoff = Date.now() - SKIP_GRACE_DAYS * 86_400_000;
+  const done = new Map();   // id -> last_validated_at (ms)
+  for (let from = 0; ; from += 1000) {
+    const rows = await get('tft_tournaments?select=id,status,start_date,end_date,last_validated_at&order=id', from);
+    for (const t of rows) {
+      if (!withResults.has(t.id)) continue;
+      // Ohne Datum macht deriveStatus "upcoming" — mit Ergebnissen ist so ein
+      // Turnier aber laengst vorbei (29 von 38 am 2026-09-13).
+      const finished = (t.status === 'past' && t.end_date && Date.parse(t.end_date) < cutoff)
+        || (!t.start_date && !t.end_date);
+      if (finished) done.set(t.id, t.last_validated_at ? Date.parse(t.last_validated_at) : 0);
+    }
+    if (rows.length < 1000) break;
+  }
+  return done;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -558,8 +604,19 @@ async function main() {
     console.log(`  [discover] ${SEED_TOURNAMENTS.length} curated + ${merged.length - SEED_TOURNAMENTS.length} new = ${merged.length} pages\n`);
     seed = merged;
   }
+  // Nur Neues laden. Eine ausdrueckliche --pages-Liste und --full laden immer;
+  // --no-supabase hat keine Datenbank zum Abgleich.
+  if (!PAGES_OVERRIDE && !FULL && !SKIP_SUPABASE) {
+    const done = await loadStoredState();
+    const fresh = [], stale = [];
+    for (const s of seed) (done.has(pageToSlug(s.page)) ? stale : fresh).push(s);
+    stale.sort((a, b) => done.get(pageToSlug(a.page)) - done.get(pageToSlug(b.page)));
+    const rotation = stale.slice(0, ROTATION);
+    console.log(`  [skip-done] ${stale.length - rotation.length} finished tournaments skipped, ${fresh.length} new/open + ${rotation.length} re-checked\n`);
+    seed = [...fresh, ...rotation];
+  }
   if (LIMIT > 0) seed = seed.slice(0, LIMIT);
-  console.log(`[1/3] ${seed.length} tournament pages to crawl (${Math.ceil(seed.length * LIQUIPEDIA_DELAY_MS / 60000)} min @ 30s rate-limit)\n`);
+  console.log(`[1/3] ${seed.length} tournament pages to crawl (~${Math.ceil(seed.length * LIQUIPEDIA_DELAY_MS / 60000)} min @ 30s rate-limit)\n`);
 
   const proPuuidByName = await loadProPuuids();
   console.log(`  [pro-join] loaded ${proPuuidByName.size} pros for puuid back-fill\n`);
@@ -568,7 +625,9 @@ async function main() {
   let totalTournaments = 0, totalResults = 0;
   let parsed = 0, skipped = 0, fxSkipped = 0;
   for (const s of seed) {
-    if (parsed > 0) await sleep(LIQUIPEDIA_DELAY_MS);
+    // Keine eigene Pause: liquipediaJson haelt die 30 s zwischen zwei Abrufen
+    // selbst ein (lib/liquipedia-tft.mjs:38,171). Die zusaetzliche 30,5-s-Pause
+    // hier legte die Arbeitszeit obendrauf (~36,8 s je Seite, Lauf 34333740958).
     let wikitext, displayTitle;
     try { ({ wikitext, displayTitle } = await fetchTournamentWikitext(s.page)); }
     catch (e) { console.warn(`  [skip] ${s.page}: ${e.message}`); skipped++; continue; }
@@ -692,8 +751,12 @@ async function main() {
     // and never POST one huge results payload. Results are replaced per event.
     try {
       await upsert('tft_tournaments', [tour], 'id');
-      await deleteResultsFor(id);
-      await upsert('tft_tournament_results', results, 'tournament_id,placement,pro_name');
+      // Nur ersetzen, wenn es Neues gibt: eine leere Antwort (Seitenumbau,
+      // Cache nach 429-Sperre) darf gespeicherte Platzierungen nicht loeschen.
+      if (results.length > 0) {
+        await deleteResultsFor(id);
+        await upsert('tft_tournament_results', results, 'tournament_id,placement,pro_name');
+      }
       totalTournaments++;
       totalResults += results.length;
     } catch (e) {

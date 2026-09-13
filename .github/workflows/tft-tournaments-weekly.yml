@@ -17,15 +17,19 @@ env:
   NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
   SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
+# Zwei Laeufe gleichzeitig = doppeltes Tempo gegen Liquipedia → 429 → 12 h Sperre.
+concurrency:
+  group: tft-tournaments
+  cancel-in-progress: false
+
 jobs:
   crawl:
     runs-on: ubuntu-latest
-    # Auto-discovery from Liquipedia S/A-Tier categories yields ~300 pages, and
-    # the public wikitext ToU forces a 30s delay between requests → ~150 min
-    # floor. 180 min keeps headroom for retries / expandtemplates extra-calls.
-    # Once we have an LPDB API key the delay drops to the documented per-second
-    # limit (~5 min total).
-    timeout-minutes: 180
+    # Seit 2026-09-13 laedt der Crawler nur neue/offene Turniere plus eine
+    # kleine Rotation (~70-80 Seiten à 30 s). Der Voll-Lauf (--full, ~330
+    # Seiten) passt NICHT in dieses Limit und gehoert in einen Handstart mit
+    # angepasstem Timeout.
+    timeout-minutes: 90
 
     steps:
       - name: Checkout repository
@@ -46,7 +50,10 @@ jobs:
       # daily/weekly crawl workflows). Without this, every weekly run re-fetches
       # the same historical rates and a frankfurter outage would silently NULL
       # newly crawled prize conversions.
+      # always(): auch nach einem Crawl-Fehler sichern, was an Kursen schon
+      # geholt wurde (fx-rates.mjs schreibt nach jedem neuen Kurs).
       - name: Commit FX-rate cache
+        if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"

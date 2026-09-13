@@ -4,7 +4,13 @@ import { supabaseAdmin as supabase } from '../../lib/supabase';
 import { getRegionalRouting, parseRegion, REGION_ALL } from '../../lib/regions';
 import { riotFetch } from '../../lib/riot-fetch';
 import { cachedJson } from '../../lib/api-cache';
-import { APEX_ORDER, expandLolTier, isLolRankGroup } from '../../lib/rank-groups';
+import { APEX_ORDER, LOL_LADDER, expandLolTier, isLolRankGroup, lolTiersTopDown } from '../../lib/rank-groups';
+
+const DIVISION_ORDER = ['I', 'II', 'III', 'IV'];
+// Diamond+ / Emerald+ / Platinum+: hoechstens 5 Seiten a 100 = 500 Spieler,
+// je Division hoechstens 3 Riot-Seiten a 205 (Dev-Key-Limit).
+const DESCENT_MAX_PAGE = 5;
+const DESCENT_DIVISION_PAGES = 3;
 
 // Master+ holt drei Ligen parallel plus bis zu 80 Namensaufloesungen.
 export const maxDuration = 60;
@@ -61,15 +67,21 @@ export async function GET(request: NextRequest) {
     // Primary: fetch from Riot API
     if (apiKey) {
       const riotRegion = region === REGION_ALL ? 'euw1' : region;
-      // Master+ / Grandmaster+ (app/lib/rank-groups.ts) mischen mehrere Apex-Ligen.
-      const groupTiers = isLolRankGroup(tier) ? APEX_ORDER.filter(x => expandLolTier(tier).includes(x)) : null;
+      // X+-Gruppen (app/lib/rank-groups.ts) mischen mehrere Ligen. Reicht eine
+      // Gruppe unter Master (Diamond+ und tiefer), wird unterhalb der
+      // Apex-Ligen Division fuer Division von oben abgestiegen.
+      const groupTiers = isLolRankGroup(tier) ? lolTiersTopDown(tier) : null;
       const isApex = groupTiers !== null || APEX_ORDER.includes(tier);
+      const apexTiers = groupTiers ? groupTiers.filter(x => APEX_ORDER.includes(x)) : [tier];
+      const lowerTiers = groupTiers ? groupTiers.filter(x => !APEX_ORDER.includes(x)) : [];
+      const isDescent = lowerTiers.length > 0;
+      let descentLeft = false;
 
       let riotRes: Response;
       if (isApex) {
         // Alle Ligen parallel, alles oder nichts: fehlt eine, waere die
         // Rangfolge still falsch — dann lieber der Datenbank-Rueckfall unten.
-        const leagues = await Promise.all((groupTiers ?? [tier]).map(async (tr) => {
+        const leagues: (any[] | null)[] = await Promise.all(apexTiers.map(async (tr) => {
           const tierEndpoint = tr === 'GRANDMASTER' ? 'grandmasterleagues'
             : tr === 'MASTER' ? 'masterleagues'
             : 'challengerleagues';
@@ -78,6 +90,30 @@ export async function GET(request: NextRequest) {
           const l = await r.json();
           return (l.entries || []).map((e: any) => ({ ...e, tier: tr }));
         }));
+        if (isDescent && !leagues.some(l => l === null)) {
+          // Abstieg bis die angeforderte Seite voll ist, gedeckelt auf
+          // DESCENT_MAX_PAGE Seiten. Divisionen eines Rangs parallel.
+          const need = Math.min(page, DESCENT_MAX_PAGE) * PAGE_SIZE;
+          let collected = leagues.reduce((n, l) => n + (l?.length || 0), 0);
+          for (const tr of lowerTiers) {
+            if (collected >= need) { descentLeft = true; break; }
+            const divs = await Promise.all(['I', 'II', 'III', 'IV'].map(async (div) => {
+              const out: any[] = [];
+              for (let p = 1; p <= DESCENT_DIVISION_PAGES; p++) {
+                const r = await riotFetch(`https://${riotRegion}.api.riotgames.com/lol/league/v4/entries/RANKED_SOLO_5x5/${tr}/${div}?page=${p}`, apiKey);
+                if (!r.ok) return null;
+                const list = await r.json();
+                const arr = Array.isArray(list) ? list : [];
+                out.push(...arr.map((e: any) => ({ ...e, tier: tr, rank: e.rank || div })));
+                if (arr.length < 205) break;
+              }
+              return out;
+            }));
+            leagues.push(...divs);
+            collected += divs.reduce((n, l) => n + (l?.length || 0), 0);
+            if (divs.some(l => l === null)) break;
+          }
+        }
         riotRes = leagues.some(l => l === null)
           ? new Response(null, { status: 502 })
           : new Response(JSON.stringify({ tier, entries: leagues.flat() }), {
@@ -120,12 +156,15 @@ export async function GET(request: NextRequest) {
 
       if (riotRes.ok) {
         const league = await riotRes.json();
-        // Erst nach Liga (Challenger vor Grandmaster vor Master), dann nach LP.
+        // Erst nach Rang (Challenger vor Grandmaster …), dann Division, dann LP.
         const sortedAll = (league.entries || [])
           .sort((a: any, b: any) => {
-            const ra = APEX_ORDER.indexOf(a.tier);
-            const rb = APEX_ORDER.indexOf(b.tier);
+            const ra = LOL_LADDER.indexOf(a.tier);
+            const rb = LOL_LADDER.indexOf(b.tier);
             if (ra !== rb) return ra - rb;
+            const da = DIVISION_ORDER.indexOf(a.rank);
+            const db = DIVISION_ORDER.indexOf(b.rank);
+            if (da !== db) return da - db;
             return b.leaguePoints - a.leaguePoints;
           });
 
@@ -140,7 +179,7 @@ export async function GET(request: NextRequest) {
           totalPlayers = sortedAll.length;
           const start = (page - 1) * PAGE_SIZE;
           pageEntries = sortedAll.slice(start, start + PAGE_SIZE);
-          hasNextPage = start + PAGE_SIZE < totalPlayers;
+          hasNextPage = start + PAGE_SIZE < totalPlayers && (!isDescent || page < DESCENT_MAX_PAGE);
           currentPage = page;
           startRank = start;
         } else {
@@ -224,7 +263,8 @@ export async function GET(request: NextRequest) {
           entries,
           source: 'riot',
           tier: league.tier,
-          totalPlayers: isApex ? totalPlayers : undefined,
+          // Beim Abstieg ist die Zahl nur echt, wenn die ganze Gruppe gelesen wurde.
+          totalPlayers: isApex && !(isDescent && descentLeft) ? totalPlayers : undefined,
           page: currentPage,
           hasNextPage,
           hasPrevPage: currentPage > 1,

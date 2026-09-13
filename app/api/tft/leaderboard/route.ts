@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getRegionalRouting, parseRegion } from '../../../lib/regions';
 import { riotFetch } from '../../../lib/riot-fetch';
 import { cachedJson, STATS_CACHE_CONTROL_FRESH } from '../../../lib/api-cache';
-import { APEX_ORDER, expandLolTier, isLolRankGroup } from '../../../lib/rank-groups';
+import { LOL_LADDER, isLolRankGroup, lolTiersTopDown } from '../../../lib/rank-groups';
 
 // /api/tft/leaderboard?region=euw1&tier=CHALLENGER
 // /api/tft/leaderboard?region=euw1&tier=GOLD&division=II&page=3
@@ -58,14 +58,12 @@ const MAX_PAGE_ALL = 10;
 
 // Innerhalb einer Gruppe wird parallel geholt, die Gruppen nacheinander —
 // so kostet ein Abstieg pro Rang eine Rundreise statt vier.
-const LADDER_GROUPS: { tier: string; division: string | null }[][] = [
-  [{ tier: 'CHALLENGER', division: null }],
-  [{ tier: 'GRANDMASTER', division: null }],
-  [{ tier: 'MASTER', division: null }],
-  ...['DIAMOND', 'EMERALD', 'PLATINUM', 'GOLD', 'SILVER', 'BRONZE', 'IRON'].map(t =>
-    ['I', 'II', 'III', 'IV'].map(d => ({ tier: t, division: d })),
-  ),
-];
+function ladderGroups(tiers: readonly string[]): { tier: string; division: string | null }[][] {
+  return tiers.map(t => APEX_TIERS.has(t)
+    ? [{ tier: t, division: null }]
+    : ['I', 'II', 'III', 'IV'].map(d => ({ tier: t, division: d })));
+}
+const LADDER_GROUPS = ladderGroups(LOL_LADDER);
 
 // Seitenwaechter je Division. Eine volle Gold-IV-Division hat mehrere tausend
 // Eintraege; wir brauchen hoechstens 500 und brechen deshalb frueh ab.
@@ -104,15 +102,18 @@ export async function GET(request: NextRequest) {
   const tier = (searchParams.get('tier') || 'CHALLENGER').toUpperCase();
   const division = (searchParams.get('division') || 'I').toUpperCase();
   const isAll = tier === ALL_TIERS;
-  const page = Math.max(1, Math.min(isAll ? MAX_PAGE_ALL : MAX_PAGE, parseInt(searchParams.get('page') || '1', 10) || 1));
+  // X+-Gruppen (app/lib/rank-groups.ts). Reicht eine Gruppe unter Master
+  // (Diamond+ und tiefer), steigt sie wie "alle Raenge" von oben ab.
+  const isGroup = !isAll && isLolRankGroup(tier);
+  const groupTiers = isGroup ? lolTiersTopDown(tier) : [];
+  const isDescent = isAll || groupTiers.some(t => !APEX_TIERS.has(t));
+  const page = Math.max(1, Math.min(isDescent ? MAX_PAGE_ALL : MAX_PAGE, parseInt(searchParams.get('page') || '1', 10) || 1));
 
   const apiKey = process.env.RIOT_API_KEY_TFT;
   if (!apiKey) {
     return NextResponse.json({ error: 'Riot API Key fehlt', code: 'no_key' }, { status: 503 });
   }
   if (!region) return bad('Ungueltige Region', 'bad_region');
-  // Master+ / Grandmaster+ (app/lib/rank-groups.ts): mehrere Apex-Ligen am Stueck.
-  const isGroup = !isAll && isLolRankGroup(tier);
   if (!isAll && !isGroup && !TIERS.has(tier)) return bad(`Tier ${tier} nicht unterstuetzt.`, 'bad_tier');
   const isApex = !isAll && (isGroup || APEX_TIERS.has(tier));
   if (!isAll && !isApex && !DIVISIONS.has(division)) return bad(`Division ${division} nicht unterstuetzt.`, 'bad_division');
@@ -124,7 +125,7 @@ export async function GET(request: NextRequest) {
     let hasNextPage = false;
     let totalPlayers: number | null = null;
 
-    if (isAll) {
+    if (isDescent) {
       // Von oben nach unten sammeln, bis die angeforderte Seite voll ist.
       // Jede angefasste Stufe wird komplett geholt (bis zum Seitenwaechter),
       // deshalb ist die Reihenfolge Rang -> Division -> LP durchgaengig echt
@@ -132,7 +133,7 @@ export async function GET(request: NextRequest) {
       const need = startIdx + PAGE_SIZE;
       const collected: any[] = [];
       let groupsLeft = false;
-      for (const group of LADDER_GROUPS) {
+      for (const group of isAll ? LADDER_GROUPS : ladderGroups(groupTiers)) {
         if (collected.length >= need) { groupsLeft = true; break; }
         const buckets = await Promise.all(group.map(b => fetchBucket(region, apiKey, b.tier, b.division)));
         for (const b of buckets) {
@@ -145,9 +146,8 @@ export async function GET(request: NextRequest) {
       totalPlayers = groupsLeft ? null : collected.length;
       hasNextPage = page < MAX_PAGE_ALL && collected.length > startIdx + PAGE_SIZE;
     } else if (isGroup) {
-      // Alle Ligen der Gruppe parallel, alles oder nichts. Reihenfolge
-      // Challenger → Grandmaster → Master, innerhalb jeder Liga nach LP.
-      const groupTiers = APEX_ORDER.filter(x => expandLolTier(tier).includes(x));
+      // Master+ / Grandmaster+: alle Ligen parallel, alles oder nichts.
+      // Reihenfolge Challenger → Grandmaster → Master, je Liga nach LP.
       const buckets = await Promise.all(groupTiers.map(tr => fetchBucket(region, apiKey, tr, null)));
       if (buckets.some(b => b === null)) {
         return NextResponse.json({ error: 'Riot API Fehler' }, { status: 502 });
@@ -213,7 +213,7 @@ export async function GET(request: NextRequest) {
     }
 
     const players = slice.map((e: any, idx: number) => ({
-      rank: (isApex || isAll) ? startIdx + idx + 1 : null,
+      rank: (isApex || isDescent) ? startIdx + idx + 1 : null,
       puuid: e.puuid,
       gameName: idMap[e.puuid]?.gameName || null,
       tagLine: idMap[e.puuid]?.tagLine || null,

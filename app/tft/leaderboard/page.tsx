@@ -18,7 +18,11 @@ interface MarketSnapshot {
   finalValue: number;
 }
 
-const APEX_TIERS = ['CHALLENGER', 'GRANDMASTER_PLUS', 'MASTER_PLUS'];
+// Ohne Divisions-Auswahl: Apex-Ligen und alle X+-Gruppen.
+const APEX_TIERS = ['CHALLENGER', 'GRANDMASTER_PLUS', 'MASTER_PLUS', 'DIAMOND_PLUS', 'EMERALD_PLUS', 'PLATINUM_PLUS'];
+// Gruppen mit Raengen unterhalb von Master: die API steigt wie bei "alle
+// Raenge" von oben ab und deckelt auf 10 Seiten (2026-09-13).
+const DESCENT_TIERS = ['DIAMOND_PLUS', 'EMERALD_PLUS', 'PLATINUM_PLUS'];
 
 // Standardansicht: alle Raenge hintereinander, vom hoechsten besetzten Rang
 // abwaerts. Nach einem Set-Start sind Challenger, Grossmeister und Meister
@@ -78,9 +82,9 @@ export default function TftLeaderboardPage() {
     { value: 'CHALLENGER',  label: t('tier.challenger'),  color: '#f0c040' },
     { value: 'GRANDMASTER_PLUS', label: t('tier.grandmasterPlus'), color: '#e44040' },
     { value: 'MASTER_PLUS', label: t('tier.masterPlus'),  color: '#9d48e0' },
-    { value: 'DIAMOND',     label: t('tier.diamond'),     color: '#576cce' },
-    { value: 'EMERALD',     label: t('tier.emerald'),     color: '#00a86b' },
-    { value: 'PLATINUM',    label: t('tier.platinum'),    color: '#209e85' },
+    { value: 'DIAMOND_PLUS', label: t('tier.diamondPlus'), color: '#576cce' },
+    { value: 'EMERALD_PLUS', label: t('tier.emeraldPlus'), color: '#00a86b' },
+    { value: 'PLATINUM_PLUS', label: t('tier.platinumPlus'), color: '#209e85' },
     { value: 'GOLD',        label: t('tier.gold'),        color: '#c89b3c' },
     { value: 'SILVER',      label: t('tier.silver'),      color: '#8fa0a8' },
     { value: 'BRONZE',      label: t('tier.bronze'),      color: '#a0652a' },
@@ -89,21 +93,25 @@ export default function TftLeaderboardPage() {
 
   const isAll = tier === ALL_TIERS;
   const isApex = APEX_TIERS.includes(tier);
+  const isDescent = isAll || DESCENT_TIERS.includes(tier);
   // Rangnummer nur dort, wo sie echt ist: in den Apex-Ligen und in der
   // Alle-Raenge-Ansicht, die von oben abwaerts vollstaendige Stufen sammelt.
   const showRank = isApex || isAll;
   const showMarketValue = MARKET_VALUE_TIERS.includes(tier);
   const pageSize = 50;
   const MAX_PAGES_ALL = 10;
-  const totalPages = isAll
+  const totalPages = isDescent
     ? (totalPlayers ? Math.min(MAX_PAGES_ALL, Math.max(1, Math.ceil(totalPlayers / pageSize))) : null)
     : (isApex && totalPlayers ? Math.max(1, Math.ceil(totalPlayers / pageSize)) : null);
-  // Zeilen tragen weiter den Einzelrang (MASTER / GRANDMASTER), auch wenn die
+  // Zeilen tragen weiter den Einzelrang (MASTER / DIAMOND …), auch wenn die
   // Auswahl nur noch die Gruppen kennt.
   const ROW_TIERS = [
     ...TIERS,
     { value: 'GRANDMASTER', label: t('tier.grandmaster'), color: '#e44040' },
     { value: 'MASTER',      label: t('tier.master'),      color: '#9d48e0' },
+    { value: 'DIAMOND',     label: t('tier.diamond'),     color: '#576cce' },
+    { value: 'EMERALD',     label: t('tier.emerald'),     color: '#00a86b' },
+    { value: 'PLATINUM',    label: t('tier.platinum'),    color: '#209e85' },
   ];
   const tierColor = (key: string) => ROW_TIERS.find(x => x.value === key)?.color || '#8ea2b8';
   const tierLabel = (key: string) => ROW_TIERS.find(x => x.value === key)?.label || key;
@@ -326,7 +334,7 @@ export default function TftLeaderboardPage() {
                     <span className="text-white truncate flex-1 sm:flex-initial">
                       {p.gameName ? `${p.gameName}` : <span className="text-fg-muted">{t('lb.unknownPlayer')}</span>}
                       {p.tagLine && <span className="text-fg-muted text-[10px]"> #{p.tagLine}</span>}
-                      {isAll && (
+                      {isDescent && (
                         <span className="text-[10px] ml-2" style={{ color: tierColor(p.tier) }}>
                           {tierLabel(p.tier)}{p.division ? ` ${p.division}` : ''}
                         </span>

@@ -27,7 +27,9 @@
 export const PRIMARY_REGIONS = ['all', 'west', 'asia', 'euw1', 'na1', 'kr'];
 export const SECONDARY_REGIONS = ['eun1', 'br1', 'sg2', 'jp1', 'tw2'];
 export const PRIMARY_DAYS = [1, 3, 7];
-export const PRIMARY_BUCKETS = ['master_plus', 'all', 'diamond_plus'];
+// emerald_plus / platinum_plus seit 2026-09-13: live gerechnet liefen beide auf
+// "alle Regionen × 7 Tage" nach 8,2 s in den Abbruch (502).
+export const PRIMARY_BUCKETS = ['master_plus', 'all', 'diamond_plus', 'emerald_plus', 'platinum_plus'];
 // Detail-Permutationen-Achsen (publish-snapshot-bundle.mjs Detail-Welle).
 // Vor 2026-06-25 lebten diese NUR im Publisher (echte Drift) — wandern jetzt
 // in den SoT damit TS-Layer auch davon weiß und potentielle Detail-Lookup-
@@ -49,7 +51,7 @@ export const PRIMARY_BUCKETS = ['master_plus', 'all', 'diamond_plus'];
 export const DETAIL_REGIONS = ['all', 'euw1', 'na1', 'kr'];
 export const DETAIL_DAYS = [7];
 export const DETAIL_PATCHES = ['current'];
-export const DETAIL_BUCKETS = ['master_plus', 'diamond_plus'];
+export const DETAIL_BUCKETS = ['master_plus', 'diamond_plus', 'emerald_plus', 'platinum_plus'];
 export const DETAIL_MIN_GAMES = 30;
 export const DETAIL_TOP_N = 30;
 export function buildListMatrix(opts) {

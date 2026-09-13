@@ -300,7 +300,7 @@ function TopTab({
   lang: Lang;
   t: (k: any) => string;
 }) {
-  const tierOptions = ['', 'MASTER_PLUS', 'GRANDMASTER_PLUS', 'CHALLENGER'];
+  const tierOptions = ['', 'CHALLENGER', 'GRANDMASTER_PLUS', 'MASTER_PLUS'];
   const tierOptionLabel: Record<string, string> = {
     MASTER_PLUS: t('tier.masterPlus'),
     GRANDMASTER_PLUS: t('tier.grandmasterPlus'),

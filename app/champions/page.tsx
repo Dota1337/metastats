@@ -60,16 +60,9 @@ export default function ChampionsPage() {
 
   const TIERS = [
     { value: 'all', label: t('tier.all') },
-    { value: 'IRON', label: t('tier.iron') },
-    { value: 'BRONZE', label: t('tier.bronze') },
-    { value: 'SILVER', label: t('tier.silver') },
-    { value: 'GOLD', label: t('tier.gold') },
-    { value: 'PLATINUM', label: t('tier.platinum') },
-    { value: 'EMERALD', label: t('tier.emerald') },
-    { value: 'DIAMOND', label: t('tier.diamond') },
-    { value: 'MASTER_PLUS', label: t('tier.masterPlus') },
-    { value: 'GRANDMASTER_PLUS', label: t('tier.grandmasterPlus') },
     { value: 'CHALLENGER', label: t('tier.challenger') },
+    { value: 'GRANDMASTER_PLUS', label: t('tier.grandmasterPlus') },
+    { value: 'MASTER_PLUS', label: t('tier.masterPlus') },
   ];
 
   const ROLES = [

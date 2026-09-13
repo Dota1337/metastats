@@ -6,7 +6,7 @@
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { CURRENT_SET } from './current-set';
-import { legacyTftBucket } from './rank-groups';
+import { TFT_RANK_GROUPS, tftStatsBucket } from './rank-groups';
 
 interface CacheEntry<T> { data: T; mtime: number }
 const cache = new Map<string, CacheEntry<any>>();
@@ -49,21 +49,22 @@ export function loadTftGraph(region: string) {
 }
 
 export const VALID_BUCKETS = new Set([
-  'all', 'master_plus', 'grandmaster_plus',
+  'all', ...Object.keys(TFT_RANK_GROUPS),
   'iron','bronze','silver','gold','platinum','emerald','diamond',
   'master','grandmaster','challenger',
 ]);
 
-// Alte Links mit ?bucket=master / grandmaster zeigen seit 2026-09-13 die
-// Gruppe (Master+ / Grandmaster+), weil es die Einzelwahl nicht mehr gibt.
+// Alte Links mit ?bucket=master / diamond … zeigen seit 2026-09-13 die
+// Gruppe (Master+ / Diamond+ …), weil es die Einzelwahl nicht mehr gibt.
 export function normalizeBucket(b: string | null): string {
   if (!b) return 'master_plus';
-  const v = legacyTftBucket(b.toLowerCase());
+  const v = tftStatsBucket(b.toLowerCase());
   return VALID_BUCKETS.has(v) ? v : 'master_plus';
 }
 
-// grandmaster_plus steht nicht als eigener Eintrag in der Statistik-Datei.
-// Zwei Rang-Eintraege (byUnit[id].grandmaster + .challenger) werden hier zu
+// Rang-Gruppen ausser master_plus stehen nicht als eigener Eintrag in der
+// Statistik-Datei. Die Rang-Eintraege der Gruppe (z.B. byUnit[id].diamond,
+// .master, .grandmaster, .challenger) werden hier zu
 // einem zusammengezaehlt: Zahlen addieren, Listen je Schluessel (item,
 // Item-Satz, characterId) zusammenfuehren und neu nach games sortieren.
 // Verteilungen (damageByTier: p50 etc.) lassen sich nicht addieren → null.
@@ -102,14 +103,16 @@ export function mergeStatsEntries(a: any, b: any): any {
   return a;
 }
 
-/** Rang-Eintrag aus byUnit/byItem lesen; grandmaster_plus = gm + challenger. */
+/** Rang-Eintrag aus byUnit/byItem lesen; eine Gruppe = Summe ihrer Einzelraenge. */
 export function pickBucketEntry(buckets: any, bucket: string): any {
   if (!buckets) return null;
-  if (bucket === 'grandmaster_plus') {
-    const merged = mergeStatsEntries(buckets.grandmaster ?? null, buckets.challenger ?? null);
-    return merged || null;
+  // Vorhandener Eintrag (all, master_plus, Einzelrang) hat Vorrang.
+  if (buckets[bucket]) return buckets[bucket];
+  const members = TFT_RANK_GROUPS[bucket];
+  if (members) {
+    return members.reduce((acc: any, m) => mergeStatsEntries(acc, buckets[m] ?? null), null) || null;
   }
-  return buckets[bucket] || buckets.all || null;
+  return buckets.all || null;
 }
 
 // Number of *participants* in a tier-bucket — used as the denominator when
@@ -123,6 +126,11 @@ export function pickBucketEntry(buckets: any, bucket: string): any {
 export function bucketParticipants(stats: any, bucket: string): number {
   if (stats?.participantsByBucket?.[bucket] != null) {
     return stats.participantsByBucket[bucket];
+  }
+  // Rang-Gruppe ohne eigenen Eintrag: Teilnehmer der Einzelraenge addieren.
+  const members = TFT_RANK_GROUPS[bucket];
+  if (members && stats?.participantsByBucket) {
+    return members.reduce((s, m) => s + (Number(stats.participantsByBucket[m]) || 0), 0);
   }
   let total = 0;
   for (const buckets of Object.values<any>(stats?.byComp || {})) {

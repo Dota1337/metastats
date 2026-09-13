@@ -98,6 +98,9 @@ const translations = {
   'tft.bucket.master_plus': t6('Master+', 'Master+', '\uB9C8\uC2A4\uD130+', '\u5927\u5E08+', 'Maestro+', 'Ma\u00EEtre+'),
   'tft.bucket.grandmaster_plus': t6('Grandmaster+', 'Grandmaster+', '\uADF8\uB79C\uB4DC\uB9C8\uC2A4\uD130+', '\u5B97\u5E08+', 'Grand Maestro+', 'Grand Ma\u00EEtre+'),
   'tft.bucket.diamond': t6('Diamant', 'Diamond', '\uB2E4\uC774\uC544', '\u94BB\u77F3', 'Diamante', 'Diamant'),
+  'tft.bucket.diamond_plus': t6('Diamant+', 'Diamond+', '\uB2E4\uC774\uC544+', '\u94BB\u77F3+', 'Diamante+', 'Diamant+'),
+  'tft.bucket.emerald_plus': t6('Smaragd+', 'Emerald+', '\uC5D0\uBA54\uB784\uB4DC+', '\u7FE1\u7FE0+', 'Esmeralda+', '\u00C9meraude+'),
+  'tft.bucket.platinum_plus': t6('Platin+', 'Platinum+', '\uD50C\uB798\uD2F0\uB118+', '\u94C2\u91D1+', 'Platino+', 'Platine+'),
   'tft.bucket.master': t6('Master', 'Master', '\uB9C8\uC2A4\uD130', '\u5927\u5E08', 'Maestro', 'Ma\u00EEtre'),
   'tft.bucket.grandmaster': t6('Grandmaster', 'Grandmaster', '\uADF8\uB79C\uB4DC\uB9C8\uC2A4\uD130', '\u5B97\u5E08', 'Grand Maestro', 'Grand Ma\u00EEtre'),
   'tft.bucket.challenger': t6('Challenger', 'Challenger', '\uCC4C\uB9B0\uC800', '\u738B\u8005', 'Aspirante', 'Challenger'),
@@ -428,6 +431,8 @@ const translations = {
   'tft.filter.masterPlus': t6('Master+', 'Master+', '\uB9C8\uC2A4\uD130+', '\u5927\u5E08+', 'Maestro+', 'Ma\u00EEtre+'),
   'tft.filter.grandmasterPlus': t6('Grandmaster+', 'Grandmaster+', '\uADF8\uB79C\uB4DC\uB9C8\uC2A4\uD130+', '\u5B97\u5E08+', 'Grand Maestro+', 'Grand Ma\u00EEtre+'),
   'tft.filter.diamondPlus': t6('Diamant+', 'Diamond+', '\uB2E4\uC774\uC544+', '\u94BB\u77F3+', 'Diamante+', 'Diamant+'),
+  'tft.filter.emeraldPlus': t6('Smaragd+', 'Emerald+', '\uC5D0\uBA54\uB784\uB4DC+', '\u7FE1\u7FE0+', 'Esmeralda+', '\u00C9meraude+'),
+  'tft.filter.platinumPlus': t6('Platin+', 'Platinum+', '\uD50C\uB798\uD2F0\uB118+', '\u94C2\u91D1+', 'Platino+', 'Platine+'),
   'tft.filter.velocity':   t6('\u0394-Vergleich', '\u0394 comparison', '\u0394 \uBE44\uAD50', '\u0394 \u5BF9\u6BD4', 'Comparaci\u00F3n \u0394', 'Comparaison \u0394'),
   'tft.filter.velocityOff':t6('Aus', 'Off', '\uB044\uAE30', '\u5173', 'Desactivado', 'D\u00E9sactiv\u00E9'),
   'tft.filter.velocity1d': t6('vs Vortag', 'vs day before', '\uC804\uB0A0 \uB300\uBE44', '\u5BF9\u524D\u4E00\u5929', 'vs d\u00EDa anterior', 'vs la veille'),
@@ -811,6 +816,9 @@ const translations = {
   'tier.challenger': t6('Challenger', 'Challenger', '\uCC4C\uB9B0\uC800', '\u6700\u5F3A\u738B\u8005', 'Aspirante', 'Challenger'),
   'tier.masterPlus': t6('Master+', 'Master+', '\uB9C8\uC2A4\uD130+', '\u5927\u5E08+', 'Maestro+', 'Ma\u00EEtre+'),
   'tier.grandmasterPlus': t6('Grandmaster+', 'Grandmaster+', '\uADF8\uB79C\uB4DC\uB9C8\uC2A4\uD130+', '\u5B97\u5E08+', 'Gran Maestro+', 'Grand Ma\u00EEtre+'),
+  'tier.diamondPlus': t6('Diamond+', 'Diamond+', '\uB2E4\uC774\uC544\uBABD\uB4DC+', '\u94BB\u77F3+', 'Diamante+', 'Diamant+'),
+  'tier.emeraldPlus': t6('Emerald+', 'Emerald+', '\uC5D0\uBA54\uB784\uB4DC+', '\u7FE1\u7FE0+', 'Esmeralda+', '\u00C9meraude+'),
+  'tier.platinumPlus': t6('Platinum+', 'Platinum+', '\uD50C\uB798\uD2F0\uB118+', '\u767D\u91D1+', 'Platino+', 'Platine+'),
 
   // Role names (DE/EN keep LoL terms, KR/ZH/ES/FR translated per user rule 2026-04-17)
   'role.all': t6('Alle Rollen', 'All Roles', '\uBAA8\uB4E0 \uD3EC\uC9C0\uC158', '\u6240\u6709\u4F4D\u7F6E', 'Todos', 'Tous'),

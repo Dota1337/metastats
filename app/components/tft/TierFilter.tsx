@@ -1,23 +1,27 @@
 'use client';
 import { useI18n, type TranslationKey } from '../../lib/i18n';
 
-import { legacyTftBucket } from '../../lib/rank-groups';
+import { tftStatsBucket } from '../../lib/rank-groups';
 
-export type TierBucket = 'all' | 'master_plus' | 'grandmaster_plus' | 'diamond' | 'challenger';
+export type TierBucket = 'all' | 'challenger' | 'grandmaster_plus' | 'master_plus' | 'diamond_plus' | 'emerald_plus' | 'platinum_plus';
 
-// Einzel-Master und Einzel-Grandmaster gibt es nicht mehr (2026-09-13).
+// Rangfolge von oben, Einzel-Master/-GM/-Diamond/-Emerald/-Platinum gibt es
+// nicht mehr (2026-09-13). Alle X+-Gruppen stehen in DETAIL_BUCKETS
+// (app/lib/snapshot-matrix.ts), sonst liefe die Detailseite live in den Abbruch.
 const OPTIONS: { value: TierBucket; key: string }[] = [
   { value: 'all',              key: 'tft.bucket.all' },
-  { value: 'master_plus',      key: 'tft.bucket.master_plus' },
-  { value: 'grandmaster_plus', key: 'tft.bucket.grandmaster_plus' },
-  { value: 'diamond',          key: 'tft.bucket.diamond' },
   { value: 'challenger',       key: 'tft.bucket.challenger' },
+  { value: 'grandmaster_plus', key: 'tft.bucket.grandmaster_plus' },
+  { value: 'master_plus',      key: 'tft.bucket.master_plus' },
+  { value: 'diamond_plus',     key: 'tft.bucket.diamond_plus' },
+  { value: 'emerald_plus',     key: 'tft.bucket.emerald_plus' },
+  { value: 'platinum_plus',    key: 'tft.bucket.platinum_plus' },
 ];
 
-/** ?bucket= aus der URL lesen; alte Werte master/grandmaster auf die Gruppe biegen. */
+/** ?bucket= aus der URL lesen; alte Einzelraenge (master, diamond …) auf die Gruppe biegen. */
 export function tierBucketFromParam(raw: string | null | undefined, fallback: TierBucket = 'master_plus'): TierBucket {
   if (!raw) return fallback;
-  const v = legacyTftBucket(raw.toLowerCase());
+  const v = tftStatsBucket(raw.toLowerCase());
   return OPTIONS.some(o => o.value === v) ? (v as TierBucket) : fallback;
 }
 

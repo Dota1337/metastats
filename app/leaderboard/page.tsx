@@ -37,16 +37,18 @@ export default function Leaderboard() {
     { value: 'CHALLENGER', label: t('tier.challenger'), color: '#f0c040' },
     { value: 'GRANDMASTER_PLUS', label: t('tier.grandmasterPlus'), color: '#e44040' },
     { value: 'MASTER_PLUS', label: t('tier.masterPlus'), color: '#9d48e0' },
-    { value: 'DIAMOND', label: t('tier.diamond'), color: '#576cce' },
-    { value: 'EMERALD', label: t('tier.emerald'), color: '#00a86b' },
-    { value: 'PLATINUM', label: t('tier.platinum'), color: '#209e85' },
+    { value: 'DIAMOND_PLUS', label: t('tier.diamondPlus'), color: '#576cce' },
+    { value: 'EMERALD_PLUS', label: t('tier.emeraldPlus'), color: '#00a86b' },
+    { value: 'PLATINUM_PLUS', label: t('tier.platinumPlus'), color: '#209e85' },
     { value: 'GOLD', label: t('tier.gold'), color: '#c89b3c' },
     { value: 'SILVER', label: t('tier.silver'), color: '#8fa0a8' },
     { value: 'BRONZE', label: t('tier.bronze'), color: '#a0652a' },
     { value: 'IRON', label: t('tier.iron'), color: '#6b6b6b' },
   ];
 
-  const APEX_TIERS = ['CHALLENGER', 'GRANDMASTER_PLUS', 'MASTER_PLUS'];
+  // Ohne Divisions-Auswahl: die Apex-Ligen und alle X+-Gruppen (die API steigt
+  // bei den Gruppen selbst von oben durch die Divisionen ab).
+  const APEX_TIERS = ['CHALLENGER', 'GRANDMASTER_PLUS', 'MASTER_PLUS', 'DIAMOND_PLUS', 'EMERALD_PLUS', 'PLATINUM_PLUS'];
   const DIVISIONS = ['I', 'II', 'III', 'IV'];
 
   const [entries, setEntries] = useState<any[]>([]);

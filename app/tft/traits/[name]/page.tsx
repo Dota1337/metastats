@@ -7,7 +7,7 @@ import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftTraitDisplayName, type TftAssetsBundle, type TftTrait, type TftTraitTier } from '../../../lib/tft-cdragon';
 import { buildExplorerUrl } from '../../../lib/tft-explorer-url';
-import { legacyTftBucket } from '../../../lib/rank-groups';
+import { tftStatsBucket } from '../../../lib/rank-groups';
 import {
   renderTraitDesc,
   findTraitItemPool,
@@ -59,7 +59,7 @@ export default function TftTraitDetailPage() {
   const params = useParams();
   const search = useSearchParams();
   const apiName = decodeURIComponent(String(params?.name || ''));
-  const bucket = legacyTftBucket(search.get('bucket') || 'master_plus');
+  const bucket = tftStatsBucket(search.get('bucket') || 'master_plus');
   const region = search.get('region') || 'all';
 
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);

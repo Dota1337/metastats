@@ -829,7 +829,7 @@ function enrichComp(r: CompRow) {
       : skillCapIndex < 0.6 ? 'moderate'
       : 'high';
     skillCapBuckets = bucketAvgs.sort((a, b) => {
-      const order = ['challenger','grandmaster','master','grandmaster_plus','master_plus','diamond','emerald','platinum','gold','silver','bronze','iron','all','pro_pool'];
+      const order = ['challenger','grandmaster','master','grandmaster_plus','master_plus','diamond','diamond_plus','emerald','emerald_plus','platinum','platinum_plus','gold','silver','bronze','iron','all','pro_pool'];
       return order.indexOf(a.bucket) - order.indexOf(b.bucket);
     });
   }

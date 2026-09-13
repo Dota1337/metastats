@@ -16,5 +16,15 @@
     }
   ],
   "setStartDate": "2026-08-26",
-  "setEndDate": null
+  "setEndDate": null,
+  "patchCuts": [
+    {
+      "set": 18,
+      "patch": "18.1b",
+      "base": "18.1",
+      "from_day": "2026-09-01",
+      "source": "https://teamfighttactics.leagueoflegends.com/en-us/news/game-updates/teamfight-tactics-patch-18-1/",
+      "detected_at": "2026-09-13T17:26:34.587Z"
+    }
+  ]
 }

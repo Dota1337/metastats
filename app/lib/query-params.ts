@@ -18,9 +18,9 @@ export function parseVelocity(raw: string | null, fallback = 0): number {
   return VELOCITY_SHIFTS.has(n) ? n : fallback;
 }
 
-// Patch-Strings sehen aus wie "17.5" oder "14.23". Alles andere kann kein
-// Patch sein und braucht keine Abfrage.
-const PATCH_RE = /^\d{1,2}\.\d{1,2}$/;
+// Patch-Strings sehen aus wie "17.5", "14.23" oder mit B-Patch-Suffix "18.1b".
+// Alles andere kann kein Patch sein und braucht keine Abfrage.
+const PATCH_RE = /^\d{1,2}\.\d{1,2}[bc]?$/;
 
 export function isPatchString(raw: string | null | undefined): boolean {
   return typeof raw === 'string' && PATCH_RE.test(raw);

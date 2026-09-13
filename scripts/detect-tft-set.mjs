@@ -238,6 +238,8 @@ async function main() {
     history: stored?.history || [],
     setStartDate,
     setEndDate,
+    // B-Patch-Schnitte (scripts/detect-tft-bpatches.mjs) erhalten, bei Set-Wechsel leeren.
+    patchCuts: changed ? [] : (stored?.patchCuts || []),
   };
   if (changed && stored?.setNumber) {
     payload.history = [

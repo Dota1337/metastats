@@ -1,0 +1,56 @@
+name: TFT B-Patch daily
+
+# Traegt Mid-Patch-Balance-Updates (B-Patches) aus Riots Patchnotes als Schnitt
+# in public/tft-set.json ein (scripts/detect-tft-bpatches.mjs). Der Commit
+# loest den Box-Deploy aus (deploy-hetzner.yml beobachtet tft-set.json), damit
+# die Tagessammlung um 05:45 UTC den Schnitt schon kennt.
+#
+# Rot heisst: Riot hat eine unbekannte Kategorie oder den Seitenaufbau
+# geaendert — lieber sichtbar scheitern als falsch schneiden.
+#
+# Aeltere Tage nach einem neuen Schnitt einmalig nachziehen:
+#   node scripts/relabel-tft-bpatch.mjs
+
+on:
+  schedule:
+    - cron: '30 4 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tft-bpatch-detect
+  cancel-in-progress: false
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: B-Patches aus den Riot-Notes lesen
+        run: node scripts/detect-tft-bpatches.mjs
+
+      - name: Aenderungen committen
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/tft-set.json
+          if git diff --staged --quiet; then
+            echo "Keine neuen B-Patch-Schnitte"
+          else
+            git commit -m "chore: TFT B-Patch-Schnitt aus Riot-Notes"
+            pushed=""
+            for attempt in 1 2 3; do
+              if git pull --rebase origin main && git push origin main; then pushed=1; break; fi
+              echo "Push-Versuch $attempt fehlgeschlagen, neuer Versuch ..."
+              sleep 10
+            done
+            [ -n "$pushed" ] || { echo "Push nach 3 Versuchen fehlgeschlagen"; exit 1; }
+          fi

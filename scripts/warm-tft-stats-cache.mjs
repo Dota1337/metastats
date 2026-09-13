@@ -58,8 +58,8 @@ const PATCH = 'current';
 // `bucketAuto` ist nicht nur Kosmetik fuer den Schluessel: der Server sucht sich
 // den Rang damit selbst aus (app/lib/tft-supabase-reader.ts:266-268), die
 // Antwort ist also eine andere.
-function qs(bucket, days, region, { bucketAuto = false, velocity = 0 } = {}) {
-  let s = `patch=${PATCH}&bucket=${bucket}&days=${days}&region=${region}`;
+function qs(bucket, days, region, { bucketAuto = false, velocity = 0, patch = PATCH } = {}) {
+  let s = `patch=${patch}&bucket=${bucket}&days=${days}&region=${region}`;
   if (bucketAuto) s += '&bucketAuto=1';
   if (velocity > 0) s += `&velocity=${velocity}`;
   return s;
@@ -136,6 +136,9 @@ function buildUrls() {
   urls.add(`/api/tft/meta-pulse?${qs('master_plus', 3, 'all', { bucketAuto: true, velocity: 3 })}`);
   urls.add(`/api/tft/meta-pulse?${qs('master_plus', 3, 'all', { velocity: 3 })}`);
   urls.add(`/api/tft/meta-pulse?${qs('diamond_plus', 3, 'all', { velocity: 3 })}`);
+  // Dropdown „Vorheriger Patch" (2026-09-13): die Route leitet auf den
+  // konkreten Patch um, fetch folgt der Umleitung und waermt diese Adresse.
+  urls.add(`/api/tft/meta-pulse?${qs('master_plus', 3, 'all', { bucketAuto: true, velocity: 3, patch: 'previous' })}`);
   for (const entity of ['unit', 'item', 'trait', 'comp']) {
     for (const bucket of ['master_plus', 'diamond']) {
       urls.add(`/api/tft/patch-diff?entity=${entity}&bucket=${bucket}`);

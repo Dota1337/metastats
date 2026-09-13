@@ -88,9 +88,20 @@ export async function GET(request: NextRequest) {
     // schon explizit 1h-TTL gewählt hat (kürzer als alle anderen Stats-APIs).
     const redirect = maybeRedirectByPatchAlias(request, patches);
     if (redirect) return redirect;
-    const currentPatch = patches[0]?.patch ?? null;
-    const previousPatch = patches[1]?.patch ?? null;
-    const setNumber = patches[0]?.set_number ?? CURRENT_SET;
+    // Gewaehlter Patch (2026-09-13): ?patch=current → neuester, ein konkreter
+    // Patch aus der Liste → dieser (?patch=previous kommt oben schon als
+    // Redirect auf den konkreten Patch an). Unbekannte Werte → neuester.
+    // Verglichen wird immer mit dem Patch direkt davor in der Liste;
+    // currentPatch/previousPatch in der Antwort meinen genau dieses Paar.
+    const patchParam = searchParams.get('patch') || 'current';
+    const selIdx = Math.max(0, patchParam === 'current' || patchParam === 'any'
+      ? 0 : patches.findIndex(p => p.patch === patchParam));
+    const sel = patches[selIdx];
+    const cmp = patches[selIdx + 1];
+    const currentPatch = sel?.patch ?? null;
+    const setNumber = sel?.set_number ?? CURRENT_SET;
+    // Vorpatch aus einem anderen Set: kein sinnvoller Vergleich → Patch-Kaesten leer.
+    const previousPatch = cmp && cmp.set_number === setNumber ? cmp.patch : null;
 
     // Rising-Vergleichsfenster an das Patch-Alter anpassen. Die Velocity-RPC
     // filtert beide Fenster auf denselben Patch — bei einem 1-Tage-Patch waere
@@ -99,9 +110,19 @@ export async function GET(request: NextRequest) {
     //   • Patch 1 Tag: letzter Patch-Tag gegen letzten Tag des Vorpatches.
     const DAY_MS = 86_400_000;
     const dayNum = (d?: string | null) => (d ? Math.floor(Date.parse(d) / DAY_MS) : NaN);
-    const curFirst = dayNum(patches[0]?.first_day);
-    const curLast = dayNum(patches[0]?.last_day);
-    const prevLast = dayNum(patches[1]?.last_day);
+    const todayNum = Math.floor(Date.now() / DAY_MS);
+    const curFirst = dayNum(sel?.first_day);
+    const curLast = dayNum(sel?.last_day);
+    const prevLast = dayNum(cmp?.last_day);
+    // Die Velocity-RPC ankert an current_date - offset: fuer einen aelteren
+    // Patch an dessen letztem Tag.
+    const anchorOffsetDays = selIdx === 0 || !Number.isFinite(curLast)
+      ? filters.anchorOffsetDays
+      : Math.max(0, todayNum - curLast);
+    // Diff-Fenster (RPC zaehlt ab current_date) muss bis zum ersten Tag des
+    // Vergleichspatches reichen; der Patch-Filter schneidet den Rest ab.
+    const cmpFirst = dayNum(cmp?.first_day);
+    const diffDays = Number.isFinite(cmpFirst) ? Math.min(90, Math.max(1, todayNum - cmpFirst + 1)) : 30;
     const patchDays = Number.isFinite(curFirst) && Number.isFinite(curLast) ? curLast - curFirst + 1 : 0;
     let velocityMode: 'patch' | 'crossPatch' = 'patch';
     let effShift = velocityShift;
@@ -110,7 +131,7 @@ export async function GET(request: NextRequest) {
     if (patchDays >= 2) {
       effShift = Math.min(velocityShift, patchDays - 1);
       effDays = Math.max(1, Math.min(filters.requestedDays, effShift, patchDays - effShift));
-    } else if (previousPatch && patches[1]?.set_number === setNumber
+    } else if (previousPatch
       && Number.isFinite(curLast) && Number.isFinite(prevLast) && curLast > prevLast) {
       velocityMode = 'crossPatch';
       effShift = curLast - prevLast;
@@ -134,7 +155,7 @@ export async function GET(request: NextRequest) {
       p_days: Math.max(3, filters.requestedDays),
       p_min_games: 80,
     };
-    const prevSameSet = !!previousPatch && patches[1]?.set_number === setNumber;
+    const prevSameSet = !!previousPatch;
     const [velocityRows, regionRows, currentTopComps, prevTopComps, prevRegionRows] = await Promise.all([
       callRpc<VelocityRow[]>('get_tft_comp_velocity', {
         p_regions: filters.regions,
@@ -145,7 +166,7 @@ export async function GET(request: NextRequest) {
         p_patch: velocityPatch,
         p_days: effDays,
         p_shift_days: effShift,
-        p_anchor_offset_days: filters.anchorOffsetDays,
+        p_anchor_offset_days: anchorOffsetDays,
         p_min_games: 100,
       }, 20000).catch(() => [] as VelocityRow[]),
       callRpc<RegionRow[]>('get_tft_region_divergence', {
@@ -157,7 +178,7 @@ export async function GET(request: NextRequest) {
       previousPatch ? callRpc<CompStatsRow[]>('get_tft_comp_stats_for_diff', {
         p_regions: filters.regions,
         p_buckets: buckets,
-        p_days: 30,
+        p_days: diffDays,
         p_patch: currentPatch,
         p_set: setNumber,
         p_min_games: 80,
@@ -165,7 +186,7 @@ export async function GET(request: NextRequest) {
       previousPatch ? callRpc<CompStatsRow[]>('get_tft_comp_stats_for_diff', {
         p_regions: filters.regions,
         p_buckets: buckets,
-        p_days: 30,
+        p_days: diffDays,
         p_patch: previousPatch,
         p_set: setNumber,
         p_min_games: 80,
@@ -248,6 +269,9 @@ export async function GET(request: NextRequest) {
       hasData: true,
       currentPatch,
       previousPatch,
+      // Gewaehlter Patch und sein Vergleichspatch (gleich currentPatch/previousPatch).
+      selectedPatch: currentPatch,
+      comparePatch: previousPatch,
       bucket: filters.bucketLabel,
       region: filters.regionLabel,
       requestedDays: filters.requestedDays,

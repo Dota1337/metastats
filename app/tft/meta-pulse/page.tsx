@@ -25,6 +25,8 @@ interface MetaPulse {
   hasData: boolean;
   currentPatch: string | null;
   previousPatch: string | null;
+  selectedPatch?: string | null;
+  comparePatch?: string | null;
   bucket: string;
   requestedDays: number;
   velocityShift: number;
@@ -109,7 +111,7 @@ export default function TftMetaPulsePage() {
   return (
     <main className="min-h-screen bg-surface-page">
       <Nav active="comps" />
-      <TftHero pageTitle={t('tft.metaPulse.title')} subtitle={t('tft.metaPulse.subtitle')} patch={data?.currentPatch || undefined} />
+      <TftHero pageTitle={t('tft.metaPulse.title')} subtitle={t('tft.metaPulse.subtitle')} patch={data?.selectedPatch || data?.currentPatch || undefined} />
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-2 pb-6">
         <StatsFilterBar filters={filters} patches={data?.patches || []} onChange={setFilters} />
 
@@ -119,7 +121,7 @@ export default function TftMetaPulsePage() {
         {!loading && !data?.hasData && <EmptyData />}
 
         {data?.hasData && (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
             {/* Rising — biggest Δ-avg-place vs the user-selected Δ window. */}
             <PulseSection
               title={t('tft.metaPulse.rising')}
@@ -166,7 +168,7 @@ export default function TftMetaPulsePage() {
               title={t('tft.metaPulse.patchWinners')}
               accent="#e0c75a"
               empty={data.patchWinners.length === 0}
-              footer={data.previousPatch ? `${data.previousPatch} → ${data.currentPatch}` : undefined}
+              footer={data.comparePatch ? `${data.comparePatch} → ${data.selectedPatch}` : undefined}
             >
               {patchWinnersDedup.map(r => (
                 <PulseRow
@@ -186,7 +188,7 @@ export default function TftMetaPulsePage() {
               title={t('tft.metaPulse.patchLosers')}
               accent="#e44040"
               empty={data.patchLosers.length === 0}
-              footer={data.previousPatch ? `${data.previousPatch} → ${data.currentPatch}` : undefined}
+              footer={data.comparePatch ? `${data.comparePatch} → ${data.selectedPatch}` : undefined}
             >
               {patchLosersDedup.map(r => (
                 <PulseRow

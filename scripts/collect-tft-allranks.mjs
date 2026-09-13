@@ -127,11 +127,26 @@ function lolBaseToTftBase(lolBase) {
 // b-patch markers, but our reporting layer expects them.
 function resolvePatch(gameVersion, currentPatch) {
   const parsed = parseMatchPatchBase(gameVersion);
-  if (!parsed) return currentPatch || 'unknown';
+  if (!parsed) return applyPatchCut(currentPatch || 'unknown');
   const tft = lolBaseToTftBase(parsed);
   const currentBase = currentPatch?.match(/^(\d+\.\d+)/)?.[1];
-  if (tft === currentBase) return currentPatch;
-  return tft;
+  if (tft === currentBase) return applyPatchCut(currentPatch);
+  return applyPatchCut(tft);
+}
+
+// B-Patch-Schnitte (tft-set.json patchCuts, geschrieben von
+// scripts/detect-tft-bpatches.mjs): ab from_day gehoert der Sammeltag zum
+// B-Patch. Gewinnt vor latestPatch, damit ein Nachcrawl eines alten Tages
+// nicht wieder den Basis-Patch schreibt.
+function applyPatchCut(patch) {
+  const base = String(patch).match(/^(\d+\.\d+)/)?.[1];
+  if (!base) return patch;
+  let best = null;
+  for (const c of setMeta?.patchCuts || []) {
+    if (c.set !== CURRENT_SET || c.base !== base || DAY < c.from_day) continue;
+    if (!best || c.from_day > best.from_day) best = c;
+  }
+  return best ? best.patch : patch;
 }
 
 // Pre-fetch the set of TFT pro PUUIDs so the aggregator can flag matches

@@ -201,3 +201,175 @@ export function normalizeSnapshotRequest(p: {
     slug: p.slug,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Tagesfenster der Listen-Abfragen
+//
+// Steht hier (und nicht im Reader), weil zwei Seiten dasselbe Fenster rechnen
+// muessen: die Route (tft-supabase-reader.ts resolveFilters) und das Box-Skript
+// scripts/precompute-comp-windows.mjs, das ueber die generierte .mjs liest.
+// Rechnen beide verschieden, findet die Route ihre Vorab-Liste nie.
+//
+// Stale-Data-Bump: liegt der letzte Stats-Tag hinter `current_date`, wuerde
+// „Letzter Tag" ein leeres Fenster sehen. Das Fenster wird so weit gedehnt, dass
+// der letzte verfuegbare Tag drin liegt (RPC-Filter `day >= current_date - p_days`).
+// Ohne Patch-Filter darf die Dehnung nicht vor den Start des Patches reichen —
+// sonst mischt „Letzter Tag" nach einem Ausfall Tage des Vorpatches hinein.
+const DAY_MS = 86_400_000;
+
+function utcMidnight(d: Date): Date {
+  const t = new Date(d.getTime());
+  t.setUTCHours(0, 0, 0, 0);
+  return t;
+}
+
+export function listWindowDays(o: {
+  requestedDays: number;
+  patchFilter: string | null;
+  patchStartDay: string | null;
+  latestDay: string | null | undefined;
+  today: Date;
+}): { days: number; anchorOffsetDays: number } {
+  let days = o.requestedDays;
+  let anchorOffsetDays = 0;
+  if (o.latestDay) {
+    const today = utcMidnight(o.today);
+    const latest = new Date(o.latestDay + 'T00:00:00Z');
+    const staleness = Math.max(0, Math.floor((today.getTime() - latest.getTime()) / DAY_MS));
+    if (staleness >= 1) days = Math.max(days, staleness + o.requestedDays);
+    if (o.patchFilter == null && o.patchStartDay && days > o.requestedDays) {
+      const start = new Date(o.patchStartDay + 'T00:00:00Z');
+      const sinceStart = Math.floor((today.getTime() - start.getTime()) / DAY_MS) + 1;
+      if (sinceStart >= 1) days = Math.max(o.requestedDays, Math.min(days, sinceStart));
+    }
+    anchorOffsetDays = staleness;
+  }
+  return { days, anchorOffsetDays };
+}
+
+// Ein frisch erschienener Patch taucht am ersten (Teil-)Tag mit wenigen tausend
+// Spielen auf — viel zu duenn fuer die Comp-Liste. Darunter zaehlt er nicht als
+// „current". Sind alle darunter (Set-Start), bleibt die rohe Liste.
+export const PATCH_MIN_GAMES = 100_000;
+
+export function establishedPatches<T extends { total_matches: number | string }>(
+  rows: T[],
+  min = PATCH_MIN_GAMES,
+): T[] {
+  const established = rows.filter(r => Number(r.total_matches) >= min);
+  return established.length > 0 ? established : rows;
+}
+
+// ---------------------------------------------------------------------------
+// Vorab berechnete Comp-Listen (Plan D, 2026-09-13, Migration 0070)
+//
+// Gemessen von der Box (Region „alle", Mindestspiele 30): alle 16-21 s,
+// Platin+ bis 16 s, Smaragd+ bis 9,5 s, Diamant+ bis 7 s, Meister+ bis 4 s bei
+// 7 Tagen. Besucher haben 8 s, der Publisher 20 s. Diese fuenf Gruppen rechnet
+// scripts/precompute-comp-windows.mjs vor jedem Publisher-Lauf vor.
+//
+// Die Raenge stehen hier doppelt zu rank-groups.ts, weil diese Datei allein
+// von tsc uebersetzt wird und nichts importieren darf. Drift ist ungefaehrlich:
+// die Route vergleicht die sortierten Listen und rechnet bei Abweichung live.
+const LADDER_UP = [
+  'bronze', 'silver', 'gold', 'platinum', 'emerald',
+  'diamond', 'master', 'grandmaster', 'challenger',
+] as const;
+const plusFrom = (floor: typeof LADDER_UP[number]) => LADDER_UP.slice(LADDER_UP.indexOf(floor));
+
+export const COMP_PRECOMPUTE_BUCKETS: Record<string, readonly string[]> = {
+  all: LADDER_UP,
+  platinum_plus: plusFrom('platinum'),
+  emerald_plus: plusFrom('emerald'),
+  diamond_plus: plusFrom('diamond'),
+  master_plus: plusFrom('master'),
+};
+export const COMP_PRECOMPUTE_REGION = 'all';
+// = ADAPTIVE_FLOOR der Route: die Comps-Seite fragt ohne ?minGames und damit
+// mit 30. Jede hoehere Schwelle bedient die Route durch Nachfiltern.
+export const COMP_PRECOMPUTE_MIN_GAMES = 30;
+// Ein Eintrag, der aelter ist, gilt als verwaist (Publisher laeuft nicht mehr).
+export const COMP_PRECOMPUTE_MAX_AGE_MS = 72 * 60 * 60 * 1000;
+
+/** Sortiert + kommagetrennt — Schluessel fuer Regionen und Raenge. */
+export function listKey(values: ReadonlyArray<string>): string {
+  return [...values].sort().join(',');
+}
+
+function isoDay(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+export interface CompPrecomputeJob {
+  patchKey: string;             // '' = aktuell ungefiltert
+  patchFilter: string | null;
+  patchFirstDay: string | null; // nur bei festem Patch
+  bucketLabel: string;
+  tiers: readonly string[];
+  days: number;                 // p_days fuer v2
+  dataStart: string;            // Schluessel, siehe Migration 0070
+}
+
+// Alle Kombinationen, die das Box-Skript rechnet: aktuell ungefiltert plus die
+// zwei neuesten etablierten Patches des laufenden Sets, je Gruppe und je
+// Tagesstufe 1..7. Stufen mit gleichem data_start liefern dasselbe Ergebnis und
+// erscheinen nur einmal.
+export function compPrecomputeJobs(o: {
+  patches: Array<{ patch: string; set_number: number | string; first_day: string; last_day: string }>;
+  setNumber: number;
+  today: Date;
+}): CompPrecomputeJob[] {
+  const p = o.patches;
+  if (p.length === 0) return [];
+  const today = utcMidnight(o.today);
+  const latestDay = p[0].last_day;
+  const cases: Array<{ patchKey: string; patchFilter: string | null; startDay: string }> = [
+    { patchKey: '', patchFilter: null, startDay: p[0].first_day },
+  ];
+  for (const x of p.slice(0, 2)) {
+    if (Number(x.set_number) === o.setNumber) {
+      cases.push({ patchKey: x.patch, patchFilter: x.patch, startDay: x.first_day });
+    }
+  }
+  const out: CompPrecomputeJob[] = [];
+  const seen = new Set<string>();
+  for (const c of cases) {
+    for (const [bucketLabel, tiers] of Object.entries(COMP_PRECOMPUTE_BUCKETS)) {
+      for (let requestedDays = 1; requestedDays <= 7; requestedDays++) {
+        const { days } = listWindowDays({
+          requestedDays, patchFilter: c.patchFilter, patchStartDay: c.startDay, latestDay, today,
+        });
+        const windowStart = isoDay(new Date(today.getTime() - days * DAY_MS));
+        const dataStart = c.patchFilter && c.startDay > windowStart ? c.startDay : windowStart;
+        const key = `${c.patchKey}|${bucketLabel}|${dataStart}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push({
+          patchKey: c.patchKey,
+          patchFilter: c.patchFilter,
+          patchFirstDay: c.patchFilter ? c.startDay : null,
+          bucketLabel,
+          tiers,
+          days,
+          dataStart,
+        });
+      }
+    }
+  }
+  return out;
+}
+
+// Darf die Route einen gefundenen Eintrag benutzen? Nur wenn er denselben
+// letzten Datentag kennt wie die Route (sonst fehlt ein neuer Tag), nicht
+// verwaist ist und mit hoechstens der angefragten Mindestspiele-Zahl gerechnet
+// wurde (niedriger laesst sich nachfiltern, hoeher nicht).
+export function precomputedEntryUsable(
+  e: { last_day: string; min_games: number | string; computed_at: string } | null | undefined,
+  o: { latestDay: string | null | undefined; requestedMinGames: number; now: number },
+): boolean {
+  if (!e || !o.latestDay) return false;
+  if (String(e.last_day).slice(0, 10) !== o.latestDay.slice(0, 10)) return false;
+  const age = o.now - Date.parse(e.computed_at);
+  if (!Number.isFinite(age) || age > COMP_PRECOMPUTE_MAX_AGE_MS) return false;
+  return Number(e.min_games) <= o.requestedMinGames;
+}

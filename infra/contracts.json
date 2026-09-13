@@ -41,6 +41,16 @@
       "note": "Normalrate 5000-6500/Tag. Speist /tft/comps."
     },
     {
+      "id": "snapshot-publisher/comp-list-precomputed",
+      "owner": "metastats-snapshot-publisher.service",
+      "backend": "supabase",
+      "table": "tft_comp_list_precomputed",
+      "dateColumn": "computed_at",
+      "windowDays": 2,
+      "minRows": 30,
+      "note": "Vorab berechnete Comp-Listen (Region alle x 5 Rang-Gruppen x Tagesstufen x Patch-Faelle), jeder Lauf ersetzt sie. Normal 60-70 Eintraege. Fehlen sie, rechnet /api/tft/comps live und die schweren Kombinationen laufen in 502."
+    },
+    {
       "id": "daily-crawl/crawl-meta",
       "owner": "metastats-daily-crawl.service",
       "backend": "supabase",

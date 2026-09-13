@@ -23,6 +23,12 @@ import {
   applyAnchorMultiplicity,
 } from '../../../lib/tft-comp-family-merge';
 import { buildLevelOutcome } from '../../../lib/tft-comp-level-outcome';
+import {
+  COMP_PRECOMPUTE_BUCKETS,
+  COMP_PRECOMPUTE_REGION,
+  listKey,
+  precomputedEntryUsable,
+} from '../../../lib/snapshot-matrix';
 
 // C3 (2026-07-04): the snapshot publisher fetches this route per permutation;
 // a heavy detoast perm (diamond_plus kr/asia/7d, ~22s) exceeds the Vercel Node
@@ -73,6 +79,44 @@ function setNumberFromClusterKey(key: string): number | null {
 // today; "editorial" stays as an empty list until that table exists.
 
 const VALID_SOURCES = new Set(['data', 'editorial', 'all']);
+
+// Vorab gerechnete Comp-Liste (Migration 0070, scripts/precompute-comp-windows.mjs).
+// Region „alle" x breite Raenge dauert live 7-21 s und reisst die 8-s-Grenze
+// der Besucher und die 20-s-Grenze des Publishers. Liefert null, wenn es fuer
+// die Anfrage keinen passenden, frischen Eintrag gibt — dann rechnet die Route
+// live wie bisher. Abschalter: TFT_COMP_PRECOMPUTED_DISABLED=1.
+const PRECOMPUTED_TIMEOUT_MS = 5000;
+async function readPrecomputedList(
+  filters: Awaited<ReturnType<typeof resolveFilters>>,
+  latestDay: string | undefined,
+  requestedMinGames: number,
+): Promise<CompRow[] | null> {
+  if (process.env.TFT_COMP_PRECOMPUTED_DISABLED === '1') return null;
+  if (filters.regionLabel !== COMP_PRECOMPUTE_REGION || filters.setNumber == null) return null;
+  const tiers = COMP_PRECOMPUTE_BUCKETS[filters.bucketLabel];
+  // Nur wenn die Gruppe hier dieselben Raenge meint wie in der Rang-Datei —
+  // sonst gehoert der Eintrag zu einer anderen Abfrage.
+  if (!tiers || listKey(tiers) !== listKey(filters.buckets)) return null;
+  try {
+    const found = await callRpc<Array<{ last_day: string; min_games: number; computed_at: string; comp_rows: CompRow[] }>>(
+      'get_tft_comp_list_precomputed',
+      {
+        p_patch_key: filters.patchFilter ?? '',
+        p_set: filters.setNumber,
+        p_regions_key: listKey(filters.regions),
+        p_buckets_key: listKey(filters.buckets),
+        p_days: filters.days,
+      },
+      PRECOMPUTED_TIMEOUT_MS,
+    );
+    const e = found?.[0];
+    if (!precomputedEntryUsable(e, { latestDay, requestedMinGames, now: Date.now() })) return null;
+    return Array.isArray(e!.comp_rows) ? e!.comp_rows : null;
+  } catch (err) {
+    console.error('[tft/comps] precomputed read failed, live fallback:', (err as Error).message);
+    return null;
+  }
+}
 
 interface CompRow {
   cluster_key: string;
@@ -506,20 +550,27 @@ export async function GET(request: NextRequest) {
     // nicht ein nackter Abort.
     const publisherRpcTimeoutMs = isSnapshotPublisher(request) ? 25_000 : undefined;
 
+    const listMinGames = adaptiveMin ? ADAPTIVE_FLOOR : minGames;
+    const liveList = () => callRpc<CompRow[]>('get_tft_comp_stats_list_v2', {
+      p_regions: filters.regions,
+      p_buckets: filters.buckets,
+      p_days: filters.days,
+      p_patch: filters.patchFilter,
+      p_set: filters.setNumber,
+      p_min_games: listMinGames,
+    }, publisherRpcTimeoutMs);
+
     const [rows, velocityRows] = await Promise.all([
+      // Vorab gerechnete Liste (Migration 0070) zuerst, sonst live.
       // _v2 (Migration 0058) merged die drei jsonb-Spalten SQL-seitig statt
       // pro Tages-Row einzeln zu liefern. Payload all/9d/all: 144,67 → 4,48 MB,
       // Laufzeit 19,6 → ~7,4 s warm. Aequivalenz gegen die alte RPC ueber 18
       // Permutationen belegt (Skalare, Unit-Felder, topItems, carryItems).
       // Rollback ist genau dieser eine Bezeichner — 0027 bleibt deployed.
-      callRpc<CompRow[]>('get_tft_comp_stats_list_v2', {
-        p_regions: filters.regions,
-        p_buckets: filters.buckets,
-        p_days: filters.days,
-        p_patch: filters.patchFilter,
-        p_set: filters.setNumber,
-        p_min_games: adaptiveMin ? ADAPTIVE_FLOOR : minGames,
-      }, publisherRpcTimeoutMs),
+      source === 'data'
+        ? readPrecomputedList(filters, patches[0]?.last_day, listMinGames)
+            .then(r => r ?? liveList())
+        : liveList(),
       wantVelocity
         ? callRpc<VelocityRow[]>('get_tft_comp_velocity', {
             p_regions: filters.regions,

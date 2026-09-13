@@ -12,6 +12,10 @@ EnvironmentFile=/etc/metastats-crawler/env
 # parallel, ohne Cap (TimeoutStartSec=infinity).
 TimeoutStartSec=infinity
 TimeoutStopSec=120
+# Schwere Comp-Listen (Region alle x breite Raenge) vorab in die DB rechnen
+# (Migration 0070), damit die Route sie nicht live rechnen muss. "-": ein
+# Fehler hier darf den Publisher nicht blockieren — die Route rechnet dann live.
+ExecStartPre=-/usr/bin/node scripts/precompute-comp-windows.mjs
 ExecStart=/usr/bin/node scripts/publish-snapshot-bundle.mjs --concurrency 3
 StandardOutput=journal
 StandardError=journal

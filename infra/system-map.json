@@ -915,6 +915,10 @@
       "daily-crawl/keine-luecken",
       "revalidate/edge-frische-stats"
     ],
+    "metastats-snapshot-publisher.service": [
+      "snapshot-publisher/comp-list-precomputed",
+      "snapshot/manifest-frische"
+    ],
     "metastats-marketvalue-snapshot.service": [
       "marketvalue/hetzner-snapshots",
       "marketvalue/regionen-abdeckung",
@@ -927,9 +931,6 @@
     ],
     "app/api/tft/comps/share": [
       "set-achse/comp-galerie"
-    ],
-    "metastats-snapshot-publisher.service": [
-      "snapshot/manifest-frische"
     ],
     ".github/workflows/metatft-comps-daily.yml": [
       "metatft-comps/datei-frische",

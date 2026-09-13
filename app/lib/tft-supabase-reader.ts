@@ -8,6 +8,7 @@
 import { ACTIVE_REGIONS, ACTIVE_REGIONS_WEST, ACTIVE_REGIONS_ASIA } from './active-regions';
 import { CURRENT_SET } from './current-set';
 import { TFT_RANK_GROUPS, tftStatsBucket } from './rank-groups';
+import { PATCH_MIN_GAMES, establishedPatches, listWindowDays } from './snapshot-matrix';
 
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -124,7 +125,7 @@ let _patchCache: { ts: number; rows: PatchInfo[] } | null = null;
 // "current"/"previous" + the patch dropdown resolve to the newest ESTABLISHED
 // patch. total_matches = sum(comp games) from get_tft_available_patches; a full
 // crawl day is ~250k while a partial patch-drop day is ~10k.
-const PATCH_MIN_GAMES = 100_000;
+// Wert + Filter liegen in snapshot-matrix.ts (das Box-Skript braucht dieselbe Liste).
 
 // get_tft_available_patches scans the whole comp-stats day window (~148k rows)
 // to derive ~3 patch rows: ~70ms warm but ~2.4s cold (after a crawl the fresh
@@ -157,8 +158,7 @@ export async function getAvailablePatches(days = 30): Promise<PatchInfo[]> {
     const rows = (await callRpc<PatchInfo[]>('get_tft_available_patches', { p_days: days })) || [];
     // Never return empty: if every patch is below the floor (e.g. right after a
     // set launch) keep the raw list so the page still shows the best available.
-    const established = rows.filter(r => Number(r.total_matches) >= PATCH_MIN_GAMES);
-    _patchCache = { ts: Date.now(), rows: established.length > 0 ? established : rows };
+    _patchCache = { ts: Date.now(), rows: establishedPatches(rows, PATCH_MIN_GAMES) };
     _patchCacheNegativeTs = 0;
     return _patchCache.rows;
   } catch (e) {
@@ -301,27 +301,12 @@ export async function resolveFilters(searchParams: URLSearchParams): Promise<Res
   // bei latest=today-2d). Wir expandieren das Fenster minimal so weit, dass
   // der letzte verfügbare Stats-Tag drin liegt. Keine Stille — die Page zeigt
   // weiter die User-gewählte Granularität, aber mit verschobener Range.
-  const latestDay = patches[0]?.last_day;
-  let days = requestedDays;
-  let anchorOffsetDays = 0;
-  if (latestDay) {
-    const today = new Date();
-    today.setUTCHours(0, 0, 0, 0);
-    const latest = new Date(latestDay + 'T00:00:00Z');
-    const staleness = Math.max(0, Math.floor((today.getTime() - latest.getTime()) / 86_400_000));
-    // RPC-Filter ist `day > current_date - p_days::interval`. Wir brauchen
-    // p_days >= staleness + 1 damit der letzte Stats-Tag im Fenster ist.
-    if (staleness >= 1) days = Math.max(days, staleness + requestedDays);
-    // Ohne Patch-Filter darf die Verschiebung nicht vor den Start des Patches
-    // reichen — sonst mischt „Letzter Tag“ nach einem Aggregator-Ausfall Tage
-    // des Vorpatches (oder Vorsets) in die Liste.
-    if (patchFilter == null && patchStartDay && days > requestedDays) {
-      const start = new Date(patchStartDay + 'T00:00:00Z');
-      const sinceStart = Math.floor((today.getTime() - start.getTime()) / 86_400_000) + 1;
-      if (sinceStart >= 1) days = Math.max(requestedDays, Math.min(days, sinceStart));
-    }
-    anchorOffsetDays = staleness;
-  }
+  // Die Rechnung steht in snapshot-matrix.ts, weil das Box-Skript
+  // precompute-comp-windows.mjs dasselbe Fenster rechnen muss.
+  const { days, anchorOffsetDays } = listWindowDays({
+    requestedDays, patchFilter, patchStartDay,
+    latestDay: patches[0]?.last_day, today: new Date(),
+  });
 
   return {
     regions, buckets, days, requestedDays,

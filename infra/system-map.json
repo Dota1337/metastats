@@ -163,10 +163,10 @@
     {
       "name": "metastats-daily-crawl.timer",
       "kind": "timer",
-      "description": "Daily TFT all-ranks crawl — fires 00:00 UTC, runs as long as needed",
+      "description": "Daily TFT all-ranks crawl — fires 05:45 UTC, runs as long as needed",
       "scripts": [],
       "onCalendar": [
-        "*-*-* 00:00:00 UTC"
+        "*-*-* 05:45:00 UTC"
       ],
       "interval": [],
       "activates": "metastats-daily-crawl.service",
@@ -243,7 +243,6 @@
         "scripts/daily-marketvalue-snapshot.mjs"
       ],
       "Conflicts": [
-        "metastats-daily-crawl.service",
         "metastats-crawler.service",
         "metastats-tft-pro-fullsync.service"
       ],
@@ -474,7 +473,7 @@
       "timer": "metastats-daily-crawl.timer",
       "activates": "metastats-daily-crawl.service",
       "onCalendar": [
-        "*-*-* 00:00:00 UTC"
+        "*-*-* 05:45:00 UTC"
       ]
     },
     {

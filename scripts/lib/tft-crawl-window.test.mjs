@@ -8,7 +8,7 @@
  *
  * Die wichtigste Zusage ist die Zeitpunkt-Unabhängigkeit von
  * resolveDailyTargetDay: der 16:00-Watchdog-Resume muss exakt den Tag treffen,
- * den der 00:00-Lauf angepeilt hat. Driftet das, resumed der Watchdog auf einen
+ * den der 05:45-Lauf angepeilt hat. Driftet das, resumed der Watchdog auf einen
  * anderen Tag als den abgebrochenen — der abgebrochene bleibt für immer leer.
  * Genau ein solches Loch (27.07.2026) hat uns diese Woche beschäftigt.
  *
@@ -42,20 +42,25 @@ test('auto-Fenster ist exakt 24h und endet an einer 05:00-Grenze', () => {
   }
 });
 
-test('resolveDailyTargetDay ist über den ganzen Tag konstant', () => {
-  // Kernzusage: egal ob der Lauf um 00:01 startet oder der Watchdog um 16:00
-  // resumed — beide müssen denselben Tag anpeilen. Sonst schreibt der Resume
-  // in einen anderen Tag als der abgebrochene Lauf, und dessen Tag bleibt leer.
-  const stunden = ['00:01', '04:59', '05:00', '05:01', '12:00', '16:00', '23:59'];
-  const tage = stunden.map(h => resolveDailyTargetDay(at(`2026-03-10T${h}:00Z`), 'auto'));
-  assert.equal(new Set(tage).size, 1, `targetDay driftet über den Tag: ${tage.join(', ')}`);
-  assert.equal(tage[0], '2026-03-08');
+test('resolveDailyTargetDay ist von 05:00 bis 05:00 konstant', () => {
+  // Kernzusage: egal ob der Lauf um 05:45 startet oder der Watchdog um 16:00,
+  // 20:00 oder 23:00 resumed — alle müssen denselben Tag anpeilen. Sonst
+  // schreibt der Resume in einen anderen Tag als der abgebrochene Lauf, und
+  // dessen Tag bleibt leer.
+  const zeiten = ['2026-03-10T05:00', '2026-03-10T05:45', '2026-03-10T12:00',
+    '2026-03-10T16:00', '2026-03-10T23:00', '2026-03-10T23:59', '2026-03-11T04:59'];
+  const tage = zeiten.map(z => resolveDailyTargetDay(at(`${z}:00Z`), 'auto'));
+  assert.equal(new Set(tage).size, 1, `targetDay driftet: ${tage.join(', ')}`);
+  assert.equal(tage[0], '2026-03-09');
 });
 
-test('resolveDailyTargetDay pinnt auf D-2, nicht auf D-1', () => {
-  // Ein auf D-1 gepinnter Lauf würde ein noch unvollständiges Fenster
-  // aggregieren — die Aggregate wären systematisch zu dünn.
-  assert.equal(resolveDailyTargetDay(at('2026-03-10T12:00:00Z'), 'auto'), '2026-03-08');
+test('resolveDailyTargetDay nimmt nie ein unfertiges Fenster', () => {
+  // Vor 05:00 UTC ist das Vortagsfenster noch offen → D-2. Ein Lauf auf ein
+  // offenes Fenster würde systematisch zu dünne Aggregate schreiben.
+  assert.equal(resolveDailyTargetDay(at('2026-03-10T04:59:00Z'), 'auto'), '2026-03-08');
+  assert.equal(resolveDailyTargetDay(at('2026-03-10T05:45:00Z'), 'auto'), '2026-03-09');
+  const { endTime } = computeWindow(at('2026-03-10T05:45:00Z'), 'auto');
+  assert.ok(endTime <= at('2026-03-10T05:45:00Z'), 'Fenster muss vor dem Start enden');
 });
 
 test('dayOverride wird unverändert durchgereicht und erzeugt sein 24h-Fenster', () => {
@@ -83,10 +88,11 @@ test('mode=today ab 05:00 UTC läuft bis jetzt', () => {
 
 test('Monatsgrenze rückwärts korrekt (kein Off-by-one)', () => {
   assert.equal(resolveCrawlDay(at('2026-03-01T03:00:00Z'), 'auto'), '2026-02-27');
-  assert.equal(resolveDailyTargetDay(at('2026-03-01T20:00:00Z'), 'auto'), '2026-02-27');
+  assert.equal(resolveDailyTargetDay(at('2026-03-01T20:00:00Z'), 'auto'), '2026-02-28');
 });
 
 test('Schaltjahr- und Jahreswechsel-Grenze', () => {
   assert.equal(resolveCrawlDay(at('2028-03-01T06:00:00Z'), 'auto'), '2028-02-29');
-  assert.equal(resolveDailyTargetDay(at('2026-01-01T12:00:00Z'), 'auto'), '2025-12-30');
+  assert.equal(resolveDailyTargetDay(at('2026-01-01T12:00:00Z'), 'auto'), '2025-12-31');
+  assert.equal(resolveDailyTargetDay(at('2026-01-01T03:00:00Z'), 'auto'), '2025-12-30');
 });

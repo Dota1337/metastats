@@ -38,16 +38,15 @@ export function resolveCrawlDay(now = new Date(), mode = 'auto', dayOverride = n
 }
 
 // The ONE targetDay pinned for a whole daily run (Backlog-Item 2 L2). For
-// mode=auto it anchors `now` to 00:00 UTC of its calendar day BEFORE applying
-// the auto-window logic, so the result is the same D-2 no matter when within
-// the day the run starts. That lets the 16:00 watchdog resume reproduce the
-// exact day the 00:00 run targeted, instead of drifting to D-1 once wall-clock
-// crosses 05:00. An explicit --day backfill or mode=today passes through.
+// mode=auto it is the last COMPLETED 05:00-UTC window: D-1 from 05:00 UTC on,
+// D-2 before. The value is constant from 05:00 to the next 05:00, so the
+// 05:45 run and the 16/20/23:00 watchdog resumes all hit the same day.
+// Bis 2026-09-13 wurde `now` auf 00:00 UTC verankert (immer D-2) — der Lauf
+// startete um Mitternacht, vor dem Ende des Vortagsfensters. Seit der Timer
+// auf 05:45 steht, ist D-1 fertig und die Seite damit einen Tag frischer.
+// An explicit --day backfill or mode=today passes through.
 export function resolveDailyTargetDay(now = new Date(), mode = 'auto', dayOverride = null) {
   if (dayOverride) return dayOverride;
   if (mode === 'today') return resolveCrawlDay(now, 'today', null);
-  const anchorMidnight = new Date(Date.UTC(
-    now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0,
-  ));
-  return resolveCrawlDay(anchorMidnight, 'auto', null);
+  return resolveCrawlDay(now, 'auto', null);
 }

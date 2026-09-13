@@ -15,7 +15,7 @@
  * the bucket in parallel.
  *
  * Usage:
- *   node scripts/crawl-allranks-all-regions.mjs                  # all regions, mode=auto (today's D-2)
+ *   node scripts/crawl-allranks-all-regions.mjs                  # all regions, mode=auto (last finished day: D-1 after 05:00 UTC)
  *   node scripts/crawl-allranks-all-regions.mjs --resume-gaps    # oldest incomplete day in last K (watchdog)
  *   node scripts/crawl-allranks-all-regions.mjs --mode today     # rolling current-day (not cursor-tracked)
  *   node scripts/crawl-allranks-all-regions.mjs --day 2026-05-15 # backfill a specific day (waits for lock)

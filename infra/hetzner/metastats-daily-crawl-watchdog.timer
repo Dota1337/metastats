@@ -1,7 +1,9 @@
 [Unit]
 Description=metastats daily-crawl watchdog (16:00 / 20:00 / 23:00 UTC)
-# Daily-crawl starts 00:00 UTC, ~14h -> ~14:00 done + OnSuccess chain. 16:00
-# catches a partial outage (some regions missing) once the chain has settled.
+# Daily-crawl starts 05:45 UTC (seit 2026-09-13), ~10h -> ~16:00 done. Laeuft
+# er dann noch, ueberspringt der 16:00-Tick (is-active-Check im Skript) und
+# 20:00/23:00 greifen. Alle drei Ticks peilen denselben Tag an wie der Lauf
+# (resolveDailyTargetDay ist von 05:00 bis 05:00 konstant).
 # 20:00 + 23:00 are safety ticks: if an earlier tick still found the crawl
 # running and skipped, a later one retries before the day ends. (Residual gap:
 # a crawl that runs past 23:00 won't be resumed that day — very rare; the

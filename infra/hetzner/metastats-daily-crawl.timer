@@ -1,12 +1,15 @@
 [Unit]
-Description=Daily TFT all-ranks crawl — fires 00:00 UTC, runs as long as needed
+Description=Daily TFT all-ranks crawl — fires 05:45 UTC, runs as long as needed
 
 [Timer]
-# 00:00 UTC start. There is no time cap on the run — the crawler keeps going
-# until every region is finished, however long that takes. If a run ever crosses
-# UTC midnight, the OnSuccess= chain in the .service triggers a catch-up run
-# so the skipped day's 00:00 trigger is not lost.
-OnCalendar=*-*-* 00:00:00 UTC
+# 05:45 UTC start (bis 2026-09-13: 00:00). Das Tagesfenster endet um 05:00 UTC;
+# ab dann ist der Vortag (D-1) vollstaendig und wird gesammelt — um Mitternacht
+# war nur D-2 fertig, die Seite hing damit einen Tag hinterher. Die 45 Minuten
+# Abstand zur Grenze geben Riot Zeit, spaet endende Spiele nachzutragen.
+# There is no time cap on the run. If a run ever crosses the next 05:45 start,
+# the OnSuccess= chain in the .service triggers a catch-up run so the swallowed
+# trigger is not lost.
+OnCalendar=*-*-* 05:45:00 UTC
 Persistent=true
 RandomizedDelaySec=300
 

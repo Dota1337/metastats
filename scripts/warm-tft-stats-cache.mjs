@@ -3,7 +3,7 @@
 //
 // The stats APIs cache at the Vercel edge for 6h (+24h stale-while-revalidate)
 // because the underlying data only changes once a day, after the Hetzner
-// aggregate crawl (00:00 UTC start, done by ~09:00 UTC). With caching alone the
+// aggregate crawl (05:45 UTC start, done by ~16:00 UTC). With caching alone the
 // FIRST visitor of each popular filter combo every morning still pays the cold
 // Supabase RPC (~1.5s). This script pre-fires those exact combos right after
 // the crawl so the edge holds a fresh copy before any user arrives — every real

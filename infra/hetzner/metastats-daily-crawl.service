@@ -2,11 +2,11 @@
 Description=metastats TFT daily stats crawl (all regions, all ranks)
 Wants=network-online.target
 After=network-online.target
-# Conflicts= bidirektional: wenn daily-crawl um 00:00 UTC startet, wird ein
+# Conflicts= bidirektional: wenn daily-crawl um 05:45 UTC startet, wird ein
 # eventuell noch laufender Bootstrap-Crawler sauber via SIGTERM gestoppt
 # (Cursor in /etc/metastats-crawler/mv-region-cursor.json bleibt erhalten).
 Conflicts=metastats-crawler.service
-# Catch-up hook: if this run crossed UTC midnight, the next 00:00 OnCalendar
+# Catch-up hook: if this run crossed the next 05:45 UTC start, that OnCalendar
 # trigger was swallowed (systemd ignores triggers while a Type=oneshot service
 # is still active). The catch-up service detects that and starts another run
 # immediately so we never lose a day's aggregation.
@@ -42,6 +42,15 @@ TimeoutStartSec=infinity
 # Graceful-stop headroom: the child catches SIGTERM to write partial aggregates;
 # give it 10 min before SIGKILL (default 90s could cut the write short).
 TimeoutStopSec=600
+# Warten auf den Marktwert-Snapshot statt ihn abzuwuergen (2026-09-13). Er
+# haengt per OnSuccess an diesem Lauf und teilt den Riot-Schluessel; seit dem
+# 05:45-Start laeuft er bis in die Nacht und kann um 05:45 noch aktiv sein.
+# Bis dahin beendete ihn sein Conflicts=metastats-daily-crawl sofort. Jetzt:
+# bis zu 4 h warten (240 x 60 s), danach wie frueher stoppen — sein
+# Inflight-Resume (MV_USE_INFLIGHT_RESUME) behaelt die Arbeit.
+# "+" = ohne Sandbox, weil systemctl stop root-Rechte ueber D-Bus braucht.
+# Ein laufender oneshot meldet "activating", nicht "active" — deshalb beide.
+ExecStartPre=+/bin/bash -c 'for n in $$(seq 240); do s=$$(systemctl is-active metastats-marketvalue-snapshot.service || true); case "$$s" in active|activating) sleep 60;; *) exit 0;; esac; done; echo "marketvalue-snapshot nach 4 h noch aktiv - stoppe ihn"; systemctl stop metastats-marketvalue-snapshot.service || true'
 # --region-timeout=0 disables the per-region kill on legacy box code; current
 # code has no per-region timeout (the arg is a harmless no-op there).
 ExecStart=/usr/bin/node scripts/crawl-allranks-all-regions.mjs --mode auto --region-timeout=0

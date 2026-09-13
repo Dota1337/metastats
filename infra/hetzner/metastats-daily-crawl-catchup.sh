@@ -14,10 +14,10 @@
 # 1. ARBEITSSTAND (neu, und der wichtigere). Gibt es im Cursor-Fenster einen
 #    Tag, der begonnen aber nicht fertig ist, wird der Resume-Lauf gestartet —
 #    unabhaengig von jeder Uhrzeit.
-# 2. MITTERNACHTS-UEBERTRITT (das alte Verhalten, als Rueckfallebene). Liegt
-#    kein unfertiger Tag vor, aber der letzte Lauf hat die UTC-Mitternacht
-#    ueberschritten, wurde ein 00:00-Trigger verschluckt -> ein voller
-#    daily-crawl-Durchgang hinterher.
+# 2. STARTTERMIN-UEBERTRITT (Rueckfallebene). Liegt kein unfertiger Tag vor,
+#    aber der letzte Lauf hat den naechsten 05:45-UTC-Termin ueberschritten
+#    (bis 2026-09-13: die Mitternacht), wurde ein Trigger verschluckt -> ein
+#    voller daily-crawl-Durchgang hinterher.
 #
 # Warum der Umbau: bis dahin verglich dieses Skript AUSSCHLIESSLICH den
 # Startzeitpunkt des gerade beendeten Laufs mit dem heutigen Tag. Am 27.08.2026
@@ -70,18 +70,28 @@ if [ -z "${last_start:-}" ] || [ "$last_start" = "n/a" ]; then
   exit 0
 fi
 
-last_start_day_utc=$(date -u -d "$last_start" +%Y-%m-%d 2>/dev/null || true)
-now_day_utc=$(date -u +%Y-%m-%d)
+# Seit 2026-09-13 startet der Timer um 05:45 UTC statt 00:00. Ein Trigger ist
+# genau dann verschluckt, wenn der letzte Lauf VOR dem juengsten 05:45-Termin
+# begann (der Termin fiel also in den Lauf). Die Mitternacht spielt keine Rolle
+# mehr: ein 05:45-Lauf, der bis 02:00 laeuft, hat keinen Termin verpasst.
+last_start_epoch=$(date -u -d "$last_start" +%s 2>/dev/null || true)
 
-if [ -z "$last_start_day_utc" ]; then
+if [ -z "$last_start_epoch" ]; then
   logger -t "$LOG_TAG" "Could not parse start timestamp ($last_start) — skipping"
   exit 0
 fi
 
-if [ "$last_start_day_utc" = "$now_day_utc" ]; then
-  logger -t "$LOG_TAG" "No incomplete day, and previous run finished within its UTC day ($now_day_utc) — no catch-up needed"
+now_epoch=$(date -u +%s)
+boundary_epoch=$(date -u -d "$(date -u +%Y-%m-%d) 05:45:00" +%s)
+if [ "$now_epoch" -lt "$boundary_epoch" ]; then
+  boundary_epoch=$((boundary_epoch - 86400))
+fi
+boundary_iso=$(date -u -d "@$boundary_epoch" +%FT%TZ)
+
+if [ "$last_start_epoch" -ge "$boundary_epoch" ]; then
+  logger -t "$LOG_TAG" "No incomplete day, and previous run started after the last 05:45 trigger ($boundary_iso) — no catch-up needed"
   exit 0
 fi
 
-logger -t "$LOG_TAG" "Previous run crossed UTC midnight (started $last_start_day_utc, finished $now_day_utc) — triggering catch-up run"
+logger -t "$LOG_TAG" "Previous run started before the 05:45 trigger at $boundary_iso and was still running — triggering catch-up run"
 systemctl start --no-block metastats-daily-crawl.service

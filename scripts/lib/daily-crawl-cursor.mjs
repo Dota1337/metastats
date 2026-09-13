@@ -98,9 +98,9 @@ export function selectTodo(cursor, maxAttempts = DEFAULT_MAX_ATTEMPTS) {
   return ACTIVE_REGIONS.filter((r) => !isSettled(cursor, r, maxAttempts));
 }
 
-// Expected target days for the last K runs, newest-first: D-2, D-3, ... D-(K+1).
-// ms-based subtraction (NOT getUTCDate()-d) so it's correct across month
-// boundaries; resolveDailyTargetDay re-anchors each to its own 00:00-UTC D-2.
+// Expected target days for the last K runs, newest-first (from 05:00 UTC on:
+// D-1, D-2, ... D-K). ms-based subtraction (NOT getUTCDate()-d) so it's correct
+// across month boundaries; resolveDailyTargetDay maps each to its window's day.
 // Audit MED-5.
 export function expectedTargetDays(now = new Date(), K = DEFAULT_K) {
   const out = [];

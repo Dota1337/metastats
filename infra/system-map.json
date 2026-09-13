@@ -586,6 +586,19 @@
       "onPush": false
     },
     {
+      "file": "tft-bpatch-detect.yml",
+      "name": "TFT B-Patch daily",
+      "schedule": [
+        "30 4 * * *"
+      ],
+      "scripts": [
+        "scripts/detect-tft-bpatches.mjs",
+        "scripts/relabel-tft-bpatch.mjs"
+      ],
+      "manualDispatch": true,
+      "onPush": false
+    },
+    {
       "file": "tft-daily-crawl.yml",
       "name": "TFT Daily Crawl",
       "schedule": [],

@@ -74,10 +74,27 @@ const header = `// AUTO-GENERATED from app/lib/snapshot-matrix.ts — DO NOT EDI
 
 `;
 const code = readFileSync(TMP_OUT, 'utf8');
-writeFileSync(DST, header + code);
 
 // Aufräumen
 rmSync(TMP_DIR, { recursive: true, force: true });
+
+// --check: nichts schreiben, nur vergleichen. Der pre-push-Hook nutzt das statt
+// eines Datei-Alter-Vergleichs — der hat am 2026-09-13 eine veraltete Datei
+// (DETAIL_DAYS [7] statt [1, 3, 7]) durchgelassen, weil ein git checkout das
+// Alter beider Dateien gleichzieht. Zeilenenden werden normalisiert (autocrlf).
+if (process.argv.includes('--check')) {
+  const norm = s => s.replace(/\r\n/g, '\n');
+  const current = existsSync(DST) ? readFileSync(DST, 'utf8') : '';
+  if (norm(current) !== norm(header + code)) {
+    console.error('[build:snapshot-matrix] snapshot-matrix.generated.mjs passt nicht zu snapshot-matrix.ts');
+    console.error('Run: npm run build:snapshot-matrix && git add app/lib/snapshot-matrix.generated.mjs');
+    process.exit(1);
+  }
+  console.log('[build:snapshot-matrix] --check OK');
+  process.exit(0);
+}
+
+writeFileSync(DST, header + code);
 
 console.log(`[build:snapshot-matrix] OK → ${DST}`);
 console.log(`[build:snapshot-matrix]    ${code.split('\n').length} lines`);

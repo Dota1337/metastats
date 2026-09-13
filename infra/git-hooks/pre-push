@@ -58,15 +58,19 @@ fi
 echo "  unit tests passed."
 
 echo "[pre-push] Checking snapshot-matrix.generated.mjs freshness ..."
-# Wenn snapshot-matrix.ts neuer ist als die generated.mjs, ist der commit stale.
-# Schützt gegen Drift im Auto-Generate-Pattern (reference_dual_module_patterns.md).
-if [ -f app/lib/snapshot-matrix.ts ] && [ -f app/lib/snapshot-matrix.generated.mjs ]; then
-  if [ app/lib/snapshot-matrix.ts -nt app/lib/snapshot-matrix.generated.mjs ]; then
-    echo ""
-    echo "snapshot-matrix.ts ist neuer als snapshot-matrix.generated.mjs — push blocked."
-    echo "Run: npm run build:snapshot-matrix && git add app/lib/snapshot-matrix.generated.mjs"
-    exit 1
-  fi
+# Inhaltsvergleich statt Datei-Alter: neu erzeugen und mit der vorhandenen
+# generated.mjs vergleichen. Das Datei-Alter hat am 2026-09-13 eine veraltete
+# Datei durchgelassen (reference_dual_module_patterns.md).
+if ! node scripts/build-snapshot-matrix.mjs --check; then
+  echo ""
+  echo "snapshot-matrix.generated.mjs ist veraltet — push blocked."
+  exit 1
+fi
+if ! git diff --quiet -- app/lib/snapshot-matrix.generated.mjs; then
+  echo ""
+  echo "snapshot-matrix.generated.mjs hat nicht committete Aenderungen — push blocked."
+  echo "Run: git add app/lib/snapshot-matrix.generated.mjs && git commit"
+  exit 1
 fi
 echo "  snapshot-matrix freshness OK."
 

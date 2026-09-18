@@ -740,17 +740,17 @@
     },
     {
       "from": "scripts/refresh-riot-key.mjs",
-      "to": "metastats-lol-marketvalue.service",
-      "via": "systemctl-start"
-    },
-    {
-      "from": "scripts/refresh-riot-key.mjs",
       "to": "metastats-lol-matchfill.service",
       "via": "systemctl-start"
     },
     {
       "from": "scripts/refresh-riot-key.mjs",
       "to": "metastats-refresh-api.service",
+      "via": "systemctl-start"
+    },
+    {
+      "from": "scripts/refresh-riot-key.mjs",
+      "to": "metastats-lol-marketvalue.service",
       "via": "systemctl-start"
     },
     {

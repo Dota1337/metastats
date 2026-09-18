@@ -545,7 +545,8 @@
         "app/compare/page.tsx",
         "app/components/LiveGameDetail.tsx",
         "app/player/[slug]/page.tsx",
-        "scripts/refresh-highelo-marketvalues.mjs"
+        "scripts/refresh-highelo-marketvalues.mjs",
+        "scripts/refresh-riot-key.mjs"
       ]
     },
     {

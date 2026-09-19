@@ -1,0 +1,30 @@
+# Konfiguration fuer die Geheimnis-Suche (gitleaks) im CI.
+#
+# Gesucht wird nur in neu gepushten Commits, nicht im ganzen Verlauf: der
+# Vollscan ueber 962 Commits dauerte gemessen 5 min 18 s, und der Verlauf ist
+# ohnehin unveraenderlich. Was einmal drin war, holt kein CI-Lauf mehr zurueck.
+#
+# Der Verlauf wurde am 19.09.2026 einmal vollstaendig durchsucht. Ergebnis:
+# 9 Funde, alle derselbe Lolesports-Web-Client-Schluessel, den Riot selbst
+# oeffentlich ausliefert. Er stand bis 14.08.2026 als Literal in drei Routen
+# und fuenf Skripten und liegt seitdem nur noch in der Env (app/lib/lolesports.ts).
+# Kein weiterer Fund. Eine Verlaufs-Bereinigung waere also viel Laerm um einen
+# Wert, der auf lolesports.com in den Devtools steht.
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "generic-api-key"
+  [rules.allowlist]
+  # Die Companion-App wird offen verteilt, jeder kann das Bundle entpacken.
+  # Der Wert ist kein Geheimnis im kryptografischen Sinn, sondern eine
+  # Missbrauchsbremse (HMAC + Zeitfenster). Die Begruendung steht ausfuehrlich
+  # im Kopf der Datei selbst. Ein echtes Geheimnis waere ein kurzlebiges Token,
+  # das der Server nach einer Anmeldung ausstellt.
+  regexes = [
+    '''b1fb7ccb494629968f7f23cf4619de60bcca00abd9edaf01ec2104058966308e''',
+  ]
+  paths = [
+    '''apps/overwolf-app/js/config\.js''',
+  ]

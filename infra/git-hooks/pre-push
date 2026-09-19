@@ -192,6 +192,18 @@ if ! node scripts/check-api-map.mjs > /dev/null; then
 fi
 echo "  api-map OK."
 
+# --- Schreib-Routen mit dem Allmachts-Schluessel ---------------------------
+# Lesen mit dem Service-Role-Schluessel ist Absicht, Schreiben aus einer
+# oeffentlichen Route ist die gefaehrliche Haelfte. Jede schreibende Route
+# braucht einen Nachweis: unter internal/, eine Zugangspruefung, oder ein
+# Eintrag mit Begruendung im Skript. Laufzeit gemessen: 0,07 s.
+echo "[pre-push] Checking Schreib-Routen ..."
+if ! node scripts/check-write-routes.mjs; then
+  echo ""
+  echo "Offene Schreib-Route — push blocked."
+  exit 1
+fi
+
 # --- Memory-Index nachziehen (kein Gate) ---------------------------------
 # Der Indexer ist inkrementell: unveraenderte Sections werden uebersprungen
 # (gemessen 2026-09-01: 0,1 s bei nichts zu tun, 3,7 s fuer 30 neue Sections).

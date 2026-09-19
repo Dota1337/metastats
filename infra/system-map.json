@@ -587,6 +587,14 @@
       "onPush": false
     },
     {
+      "file": "secret-scan.yml",
+      "name": "Geheimnis-Suche",
+      "schedule": [],
+      "scripts": [],
+      "manualDispatch": true,
+      "onPush": true
+    },
+    {
       "file": "tft-bpatch-detect.yml",
       "name": "TFT B-Patch daily",
       "schedule": [

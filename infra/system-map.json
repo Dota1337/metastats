@@ -544,6 +544,7 @@
       "schedule": [],
       "scripts": [
         "scripts/check-eslint-budget.mjs",
+        "scripts/check-npm-audit.mjs",
         "scripts/verify-classifications.mjs",
         "scripts/check-drift.mjs",
         "scripts/build-system-map.mjs",

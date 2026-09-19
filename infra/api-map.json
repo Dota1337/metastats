@@ -545,6 +545,7 @@
         "app/compare/page.tsx",
         "app/components/LiveGameDetail.tsx",
         "app/player/[slug]/page.tsx",
+        "scripts/check-write-routes.mjs",
         "scripts/refresh-highelo-marketvalues.mjs",
         "scripts/refresh-riot-key.mjs"
       ]

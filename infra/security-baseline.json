@@ -1,0 +1,387 @@
+{
+  "_hinweis": "Von scripts/audit-security.mjs --apply geschrieben. Status von Hand auf \"behoben\" setzen ist erlaubt, dann aber belegt_mit ausfuellen.",
+  "letzterLauf": "2026-09-19T11:17:37.888Z",
+  "geprueft": 266,
+  "befunde": [
+    {
+      "id": "anon-execute:get_tft_comp_stats",
+      "titel": "Fremde duerfen die Comp-Auswertung wieder anstossen, weil das Neuanlegen der Funktion den Entzug von 0055 geloescht hat",
+      "ort": "supabase/migrations/0060_tft_comp_stats_cluster_prefix.sql",
+      "schwere": "mittel",
+      "status": "offen",
+      "belegt_mit": "0055_revoke_anon_read.sql:92 entzieht get_tft_comp_stats das Aufrufrecht fuer public/anon/authenticated. 0060 Zeile 49-50 loescht die Funktion (drop function if exists, beide Signaturen) und legt sie Zeile 52 neu an; grep -n -iE 'revoke|grant' 0060_tft_comp_stats_cluster_prefix.sql liefert KEINEN Treffer. Dass eine neu angelegte Funktion hier automatisch wieder auf anon/authenticated steht, ist im Projekt selbst gemessen: 0071_tft_marketvalue_set_index.sql:240-241 — '0063 hatte nur PUBLIC entzogen; anon und authenticated standen dadurch weiter auf EXECUTE (gemessen 13.09.)'.",
+      "seit": "2026-09-19",
+      "zuletzt_gesehen": "2026-09-19"
+    },
+    {
+      "id": "anon-execute:get_tft_set_bucket_coverage",
+      "titel": "Eine nach der Abriegelung gebaute Funktion wird Fremden ausdruecklich wieder freigegeben",
+      "ort": "supabase/migrations/0062_tft_set_bucket_coverage.sql",
+      "schwere": "niedrig",
+      "status": "offen",
+      "belegt_mit": "0062_tft_set_bucket_coverage.sql:29-30 'grant execute on function get_tft_set_bucket_coverage(int, int) to anon, authenticated, service_role;'. Das ist der einzige Grant an anon nach 0055 im ganzen Ordner (grep -n -i 'grant' supabase/migrations/*.sql, Treffer ab 0056 sortiert). Alle anderen nach 0055 angelegten Funktionen gehen nur an service_role: 0064:56-59, 0069:77-80, 0070_tft_comp_list_precomputed:75-76, 0071:242-247.",
+      "seit": "2026-09-19",
+      "zuletzt_gesehen": "2026-09-19"
+    },
+    {
+      "id": "anon-grant-rest:tft_position_observations",
+      "titel": "Zwei Tabellen der Positions-Auswertung hat die grosse Abriegelung ausgelassen",
+      "ort": "supabase/migrations/0055_revoke_anon_read.sql",
+      "schwere": "hinweis",
+      "status": "offen",
+      "belegt_mit": "In der Entzugsliste 0055:58-80 fehlen tft_position_observations und tft_position_aggregator_state (enthalten sind nur tft_position_comp_cell:74 und die Sicht tft_position_unit_cell:75). grep -rn -i 'tft_position_observations|tft_position_aggregator_state' supabase/migrations/*.sql | grep -iE 'revoke|grant|policy' findet ausser einem Kommentar in 0030:13 nichts. Der Zeilenschutz ist an (0022:18-20), eine Leseregel dafuer gibt es nicht (0022:22-23 legt nur eine fuer tft_position_comp_cell an).",
+      "seit": "2026-09-19",
+      "zuletzt_gesehen": "2026-09-19"
+    },
+    {
+      "id": "antwortbremse-schweigt-ohne-verlauf:answer-check",
+      "titel": "Ohne lesbaren Gespraechsverlauf prueft die Antwort-Bremse gar nichts",
+      "ort": "scripts/hooks/answer-check.mjs (fehlender transcript_path -> exit 0; nicht lesbare Datei -> exit 0)",
+      "schwere": "hinweis",
+      "status": "offen",
+      "belegt_mit": "Fundstelle answer-check.mjs: 'if (!path) process.exit(0)' direkt nach dem Auslesen von input.transcript_path, und der try/catch um readFileSync(path) mit process.exit(0) im catch-Zweig.",
+      "seit": "2026-09-19",
+      "zuletzt_gesehen": "2026-09-19"
+    },
+    {
+      "id": "ausnahme-traegt-nicht:app/api/summoner",
+      "titel": "Die Begruendung der Ausnahme stimmt nicht mehr: die Route loescht und schreibt Gemeinschaftsdaten",
+      "ort": "app/api/summoner/route.ts",
+      "schwere": "mittel",
+      "status": "offen",
+      "belegt_mit": "scripts/check-write-routes.mjs Zeile 44-46: 'Schreibt nur in Zeilen des angefragten Spielers, keine Fremddaten, kein Loeschen.' Dagegen app/api/summoner/route.ts Zeile 370 supabase.from('ranked_stats').delete().eq('player_id', player.id) und Zeile 449 supabase.from('champion_stats').upsert({...}, {onConflict:'champion_key,tier,region'}) aus collectChampionStats, angestossen in Zeile 387.",
+      "seit": "2026-09-19",
+      "zuletzt_gesehen": "2026-09-19"
+    },
+    {
+      "id": "db-fehlertext-in-antwort:app/lib/tft-supabase-reader",
+      "titel": "Im Fehlerfall geht der Originaltext der Datenbank an den Browser",
+      "ort": "app/lib/tft-supabase-reader.ts (callRpc)",
+      "schwere": "niedrig",
+      "status": "offen",
+      "belegt_mit": "app/lib/tft-supabase-reader.ts: throw new Error(`RPC ${fn} failed: HTTP ${res.status} ${body.slice(0, 300)}`). Der Text wandert unveraendert nach aussen, gemessen mit grep -rn 'error: e.message' app/api/tft/ -> u.a. comps/route.ts:633, items/route.ts:290, meta-pulse/route.ts:300, available-patches/route.ts:16, comps/trend/route.ts:92, patch-diff/route.ts:133, traits/route.ts:158, trait-unitcount/route.ts:55, regions/divergence/route.ts:96.",
+      "seit": "2026-09-19",
+      "zuletzt_gesehen": "2026-09-19"
+    },
+    {
+      "id": "doppelte-migrationsnummer-wird-still-uebersprungen",
+      "titel": "Zwei Migrationsnummern gibt es doppelt, und der Einspieler nimmt stillschweigend die erste",
+      "ort": "supabase/migrations/0070_tft_region_divergence_anchor.sql",
+      "schwere": "mittel",
+      "status": "offen",
+      "belegt_mit": "ls supabase/migrations | sed \"s/_.*//\" | uniq -d -> 0043, 0070 (je zwei Dateien: 0043_tft_comp_daily_trend_family.sql / 0043_tft_item_stats_list_top1.sql, 0070_tft_comp_list_precomputed.sql / 0070_tft_region_divergence_anchor.sql). scripts/apply-migrations.mjs: const file = join(dir, files[0]); — gewarnt wird nur bei files.length === 0. NACHGEMESSEN und gegen den Agenten korrigiert: der als Beleg genannte Reparaturpfad in infra/contracts.json steht in Zeile 327 und nennt 0055, eine Nummer die nicht doppelt vorkommt — die Gefahr ist real, dieser konkrete Ausloeser nicht.",
+      "seit": "2026-09-19",
+      "zuletzt_gesehen": "2026-09-19"
+    },
+    {
+      "id": "env-doppelt-geladen:metastats-marketvalue-watchdog",
+      "titel": "Der Watchdog zieht die Geheimnis-Datei ein zweites Mal in seine Shell, obwohl der Dienst sie schon gesetzt hat",
+      "ort": "infra/hetzner/metastats-marketvalue-watchdog.sh",
+      "schwere": "niedrig",
+      "status": "offen",
+      "belegt_mit": "infra/hetzner/metastats-marketvalue-watchdog.service:9 'EnvironmentFile=/etc/metastats-crawler/env' und zusaetzlich infra/hetzner/metastats-marketvalue-watchdog.sh:41-46 'ENV_FILE=/etc/metastats-crawler/env' + 'set -a; source \"$ENV_FILE\"; set +a'. Der Kommentar daneben nennt als Grund nur DATABASE_URL.",
+      "seit": "2026-09-19",
+      "zuletzt_gesehen": "2026-09-19"
+    },
+    {
+      "id": "fail-open:app/api/tft/positions/submit",
+      "titel": "Fehlt ein Umgebungswert, schreibt jeder Fremde ungefragt in die Datenbank",
+      "ort": "app/api/tft/positions/submit/route.ts",
+      "schwere": "hoch",
+      "status": "offen",
+      "belegt_mit": "grep -c NODE_ENV app/api/tft/positions/submit/route.ts -> 0; Zeile 24 const APP_SECRET = process.env.OVERWOLF_APP_SECRET || ''; Zeile 126 Kommentar 'In production, missing APP_SECRET fails closed'; Zeile 127 if (APP_SECRET) { ...Signaturpruefung... }. Vergleich: app/lib/cron-auth.ts prueft NODE_ENV und liefert ohne Geheimnis 500.",
+      "seit": "2026-09-19",
+      "zuletzt_gesehen": "2026-09-19"
+    },
+    {
+      "id": "fehlermeldung-nach-aussen:app/api",
+      "titel": "Rohe Fehlertexte der Datenbank gehen an den Browser",
+      "ort": "app/api (26 Routen, u.a. app/api/tft/marktwert/leaderboard/route.ts, app/api/tft/comps/route.ts)",
+      "schwere": "niedrig",
+      "status": "offen",
+      "belegt_mit": "grep -rln \"error: e\\.message|error: error\\.message|error: err\\.message|detail: e\\.message\" app/api --include=route.ts | wc -l -> 26. Quelle der Texte: app/lib/tft-supabase-reader.ts Zeile 353 throw new Error(`RPC ${fn} failed: HTTP ${res.status} ${body.slice(0,300)}`).",
+      "seit": "2026-09-19",
+      "zuletzt_gesehen": "2026-09-19"
+    },
+    {
+      "id": "freigabe-selbst-ausstellen:git-metastats-discipline",
+      "titel": "Der Assistent kann sich die Freigabe selbst ausstellen, indem er die Zustandsdatei schreibt",
+      "ort": "scripts/hooks/lib/gate-policy.mjs (isExempt: .git/ ist freigestellt) + scripts/hooks/lib/state.mjs (STATE_DIR = .git/metastats-discipline)",
+      "schwere": "kritisch",
+      "status": "offen",
+      "belegt_mit": "Probelauf in einem Sandbox-Projekt: (1) Anfrage {tool_name:Write, file_path:app/lib/x.ts} an write-gate.mjs mit CLAUDE_PROJECT_DIR=<sandbox> -> permissionDecision deny. (2) Dieselbe Anfrage auf .git/metastats-discipline/s1.json -> keine Ausgabe, Exit 0 (erlaubt). (3) Dort {approvedAt:..., planHash:null, approvedBy:\"trivial\"} hineingeschrieben, Anfrage (1) wiederholt -> keine Ausgabe, Exit 0 (erlaubt). Zusaetzlich isExempt('.git/metastats-discipline/abc.json') === true.",
+      "seit": "2026-09-19",
+      "zuletzt_gesehen": "2026-09-19"
+    },
+    {
+      "id": "gate-abschaltbar-ohne-plan:claude-settings",
+      "titel": "Die Registrierung des Gates liegt in einem Ordner, den das Gate nicht schuetzt",
+      "ort": "scripts/hooks/lib/gate-policy.mjs (isExempt: .claude/ freigestellt) + .claude/settings.json",
+      "schwere": "hoch",
+      "status": "offen",
+      "belegt_mit": "isExempt('.claude/settings.json') === true und isExempt('.claude/settings.local.json') === true (Probelauf gegen gate-policy.mjs). Die PreToolUse-Registrierung steht genau dort: Auslesen von .claude/settings.json zeigt matcher 'Edit|Write|MultiEdit|NotebookEdit|Bash|PowerShell' -> scripts/hooks/write-gate.mjs. ls -l .claude/settings.json zeigt einen Symlink nach /c/Users/dtaub/Dropbox/Metastats/repo-config/.claude/settings.json.",
+      "seit": "2026-09-19",
+      "zuletzt_gesehen": "2026-09-19"
+    },
+    {
+      "id": "gate-warnung-schweigt:session-start",
+      "titel": "Faellt die Einstellungsdatei aus, meldet der Waechter fuer das Gate gar nichts mehr",
+      "ort": "scripts/hooks/session-start.mjs, Abschnitt 'Ist das Schreib-Gate ueberhaupt installiert?' (try/catch um das Lesen von .claude/settings.json)",
+      "schwere": "mittel",
+      "status": "offen",
+      "belegt_mit": "Probelauf mit CLAUDE_PROJECT_DIR auf ein Sandbox-Projekt: ohne .claude/settings.json ist additionalContext leer; mit dem Inhalt '{kaputt' ebenfalls leer; nur mit gueltigem JSON ohne write-gate-Eintrag erscheint die <gate-warnung>.",
+      "seit": "2026-09-19",
+      "zuletzt_gesehen": "2026-09-19"
+    },
+    {
+      "id": "geteilte-env-datei:metastats-crawler-env",
+      "titel": "Jeder Dienst bekommt alle Geheimnisse, auch die, die er gar nicht braucht",
+      "ort": "infra/hetzner/metastats-build-check.service",
+      "schwere": "mittel",
+      "status": "offen",
+      "belegt_mit": "grep -l 'EnvironmentFile=/etc/metastats-crawler/env' infra/hetzner/*.service | wc -l -> 22 von 23 Diensten (ls infra/hetzner/*.service | wc -l -> 23). Inhalt der Datei laut Repo-Referenzen: GH_TOKEN (scripts/vercel-build-check.mjs:14 'Fine-grained PAT mit repo write'), SUPABASE_SERVICE_ROLE_KEY, RIOT_API_KEY_TFT, DATABASE_URL, REFRESH_API_TOKEN (scripts/refresh-api-server.mjs:149-155). Gegenprobe, was der Build-Check wirklich braucht: grep -nE 'env|TOKEN|KEY' scripts/vercel-build-check.mjs -> nur GH_TOKEN, VERCEL_CHECK_*, HEALTH_NOTIFY_WEBHOOK, BUILD_CHECK_STATE_PATH. Umgekehrt: grep 'process.env' scripts/crawl-tft-tpc-roster.mjs -> nur NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY, kein GH_TOKEN.",
+      "seit": "2026-09-19",
+      "zuletzt_gesehen": "2026-09-19"
+    },
+    {
+      "id": "home-lesbar:metastats-tft-pro-issue-units",
+      "titel": "Zwei Dienste duerfen ganz /root lesen, gebraucht wird ein einziges Unterverzeichnis",
+      "ort": "infra/hetzner/metastats-tft-pro-fullsync.service",
+      "schwere": "hinweis",
+      "status": "offen",
+      "belegt_mit": "infra/hetzner/metastats-tft-pro-fullsync.service, Ausnahme nach dem Boden: 'ProtectHome=read-only' mit Begruendung '#   gh issue create liest /root/.config/gh.'; gleiche Ausnahme in infra/hetzner/metastats-tft-pro-validator.service ('#   Wie fullsync: gh issue create.'). Beide Dienste haben Netzzugang (After=network-online.target) und starten scripts/validate-tft-pros-loop.mjs mit --open-issues.",
+      "seit": "2026-09-19",
+      "zuletzt_gesehen": "2026-09-19"
+    },
+    {
+      "id": "keine-bremse:app/api/tft/econ-score",
+      "titel": "Ein Weiterleiter zur eigenen Box ohne Bremse",
+      "ort": "app/api/tft/econ-score/route.ts",
+      "schwere": "hinweis",
+      "status": "offen",
+      "belegt_mit": "grep -rn checkRateLimit app/api --include=route.ts -> app/api/coach/chat, app/api/tft/explorer/matches, app/api/tft/marktwert/refresh. econ-score fehlt, obwohl es wie die beiden anderen eine Anfrage mit ?puuid an die Hetzner-Box durchreicht.",
+      "seit": "2026-09-19",
+      "zuletzt_gesehen": "2026-09-19"
+    },
+    {
+      "id": "netzbindung:metastats-refresh-api",
+      "titel": "Der einzige Dauerdienst horcht auf allen Netzwerkschnittstellen und laeuft dabei als root mit dem vollen Schluesselsatz",
+      "ort": "infra/hetzner/metastats-refresh-api.service",
+      "schwere": "mittel",
+      "status": "offen",
+      "belegt_mit": "infra/hetzner/metastats-refresh-api.service: Type=simple, User=root, EnvironmentFile=/etc/metastats-crawler/env, keine IPAddressAllow/IPAddressDeny/RestrictAddressFamilies-Verschaerfung ausser dem Boden. scripts/refresh-api-server.mjs:1049 'server.listen(PORT, ...)' ohne Host-Argument -> Node bindet an alle Schnittstellen. grep -rn 'ufw|iptables' infra/ scripts/ -> 0 Treffer, im Repo ist also keine Paketfilter-Regel hinterlegt. Zugangspruefung existiert und faellt geschlossen aus (Zeile 154 bricht beim Start ab, wenn REFRESH_API_TOKEN fehlt; Zeile 970 prueft Bearer).",
+      "seit": "2026-09-19",
+      "zuletzt_gesehen": "2026-09-19"
+    },
+    {
+      "id": "nur-grant-blind-im-taeglichen-waechter",
+      "titel": "Der taegliche Sicherheitscheck zaehlt wiederaufgelebte Aufrufrechte nur, statt Alarm zu schlagen",
+      "ort": "supabase/migrations/0056_security_anon_leaks_rpc.sql",
+      "schwere": "hinweis",
+      "status": "offen",
+      "belegt_mit": "0056_security_anon_leaks_rpc.sql:92 stuft jede Funktion ohne prosecdef als 'nur-grant' ein, auch wenn anon das Aufrufrecht hat. Der Verbraucher scripts/lib/contracts.mjs:239-246 filtert auf severity === 'offen' und nutzt onlyGrant nur im Erfolgstext (Zeile 286-287). Die Live-Proben in infra/contracts.json:336-338 decken nur tft_player_match_cache, tft_position_unit_cell und tft_position_unit_cell_data ab.",
+      "seit": "2026-09-19",
+      "zuletzt_gesehen": "2026-09-19"
+    },
+    {
+      "id": "origin-aus-aufrufer:app/lib/pro-players",
+      "titel": "Eine Hilfsfunktion holt eine Datei von einer Adresse, die der Aufrufer bestimmt - sie wird derzeit nirgends benutzt",
+      "ort": "app/lib/pro-players.ts (loadProData/findProPlayer)",
+      "schwere": "hinweis",
+      "status": "offen",
+      "belegt_mit": "app/lib/pro-players.ts: fetch(`${origin}/pro-players.json`), origin kommt als Parameter herein. Aufrufer-Suche: grep -rn 'findProPlayer|loadProData' app/ --include=*.ts --include=*.tsx -> nur die Datei selbst, kein einziger Aufrufer.",
+      "seit": "2026-09-19",
+      "zuletzt_gesehen": "2026-09-19"
+    },
+    {
+      "id": "pfad-aus-region:app/lib/tft-stats-loader",
+      "titel": "Zwei Routen geben die Region ungeprueft weiter, und daraus wird ein Dateiname auf dem Server gebaut",
+      "ort": "app/lib/tft-stats-loader.ts (loadTftStats/loadTftGraph), Aufrufer app/api/tft/items/route.ts und app/api/tft/units/route.ts",
+      "schwere": "mittel",
+      "status": "offen",
+      "belegt_mit": "app/lib/tft-stats-loader.ts:42 join(process.cwd(), 'public', `tft-stats-${region.toLowerCase()}.json`), ohne jede Pruefung von region; gleiches Muster in Zeile 48. Die Aufrufer nehmen den Wert roh aus der Adresse: app/api/tft/items/route.ts:37 und :89, app/api/tft/units/route.ts:83 und :138 (searchParams.get('region') || 'all'); grep -n parseRegion in beiden Routen -> 0 Treffer. Gegenprobe des Pfades: node -e \"const {join}=require('path');const p=join(process.cwd(),'public','tft-stats-'+'../../../package'+'.json');console.log(p, require('fs').existsSync(p))\" -> D:\\\\Metastats\\\\metastats\\\\package.json true. Das widerspricht der in app/lib/regions.ts schriftlich festgehaltenen Regel, dass jede Region nach dem Vorfall vom 14.08.2026 durch parseRegion muss.",
+      "seit": "2026-09-19",
+      "zuletzt_gesehen": "2026-09-19"
+    },
+    {
+      "id": "pfad-ausbruch:app/api/champions/builds",
+      "titel": "Ein Regionsname im Aufruf liest Dateien ausserhalb des oeffentlichen Ordners",
+      "ort": "app/api/champions/[id]/builds/route.ts",
+      "schwere": "mittel",
+      "status": "offen",
+      "belegt_mit": "Zeile 62 const region = (searchParams.get('region') || 'euw1').toLowerCase(); Zeile 70 join(process.cwd(),'public',`champion-builds-${regionSuffix}.json`) ohne Allowlist. Gegenprobe: node -e \"const {join}=require('path');console.log(join(process.cwd(),'public',`champion-builds-${'../../../foo'.replace(/\\d+$/,'')}.json`))\" -> D:\\Metastats\\metastats\\foo.json. Widerspruch: app/api/champions/route.ts Zeile 22-29 hat fuer denselben Wert eine Allowlist MIT schriftlicher Warnung 'Whitelist gegen Open-Redirect / SSRF'.",
+      "seit": "2026-09-19",
+      "zuletzt_gesehen": "2026-09-19"
+    },
+    {
+      "id": "planpruefung-faellt-offen-aus:plan-current",
+      "titel": "Wenn die Plan-Datei nicht lesbar ist, gilt der Plan als geprueft",
+      "ort": "scripts/hooks/lib/gate-policy.mjs, Funktion planQuality (Fehlerzweig: alles ausser ENOENT ergibt ok:true)",
+      "schwere": "hoch",
+      "status": "offen",
+      "belegt_mit": "Probelauf: im Sandbox-Projekt .claude/plan-current.md als ORDNER angelegt, Zustandsdatei mit approvedAt gesetzt und planHash null; Anfrage {tool_name:Write, file_path:app/lib/x.ts} an write-gate.mjs -> keine Ausgabe, Exit 0 (erlaubt), obwohl es keinen Plantext und damit weder Verdicts-Block noch drei Alternativen gibt.",
+      "seit": "2026-09-19",
+      "zuletzt_gesehen": "2026-09-19"
+    },
+    {
+      "id": "prototyp-treffer:expandRegions",
+      "titel": "Ein Regionsname wie 'constructor' trifft eine eingebaute Eigenschaft statt der Liste",
+      "ort": "app/lib/tft-supabase-reader.ts (Nutzer u.a. app/api/tft/comps/variants/route.ts)",
+      "schwere": "hinweis",
+      "status": "offen",
+      "belegt_mit": "Zeile 23-27 und 33-37: einfache Objektliterale REGION_GROUPS/BUCKET_GROUPS; Zeile 93-100 expandRegions beginnt mit if (REGION_GROUPS[param]) return REGION_GROUPS[param]. Gegenprobe node -e ... gab aus: 'truthy: true type: function' und 'join wirft: G[p].join is not a function'.",
+      "seit": "2026-09-19",
+      "zuletzt_gesehen": "2026-09-19"
+    },
+    {
+      "id": "puuid-ungekapselt-in-riot-url",
+      "titel": "Spielerkennungen gehen ungeprueft in die Riot-Adresse",
+      "ort": "app/api/mastery/route.ts, app/api/live-game/route.ts, app/api/matches/route.ts, app/api/challenges/route.ts u.a.",
+      "schwere": "hinweis",
+      "status": "offen",
+      "belegt_mit": "grep -rn 'riotFetch(`[^`]*\\${puuid}' app/api --include=route.ts -> 10 Treffer; grep -rn 'encodeURIComponent(puuid)' app/api --include=route.ts -> 0 Treffer. app/api/matches/route.ts hat zusaetzlich keine Pruefung auf leeres puuid.",
+      "seit": "2026-09-19",
+      "zuletzt_gesehen": "2026-09-19"
+    },
+    {
+      "id": "rls-fehlt:lol_player_match_cache",
+      "titel": "Die drei neuen LoL-Tabellen haben nur eine Sperre statt zwei",
+      "ort": "supabase/migrations/0067_lol_player_match_cache.sql",
+      "schwere": "hinweis",
+      "status": "offen",
+      "belegt_mit": "grep -n -iE 'row level security|revoke|grant|policy' 0067_lol_player_match_cache.sql 0068_lol_player_season_stats.sql zeigt nur die Entzuege (0067:126-127, 0068:43) und kein 'enable row level security'. Die direkt folgenden Migrationen machen es anders: 0069:30-31 und 0070_tft_comp_list_precomputed:40-41 schalten den Zeilenschutz zusaetzlich ein.",
+      "seit": "2026-09-19",
+      "zuletzt_gesehen": "2026-09-19"
+    },
+    {
+      "id": "roher-puuid-in-riot-url:app/lib/tft-player-cache",
+      "titel": "Die Spielerkennung aus der Adresse wird unveraendert in die Riot-Adresse eingesetzt",
+      "ort": "app/lib/tft-player-cache.ts",
+      "schwere": "hinweis",
+      "status": "offen",
+      "belegt_mit": "app/lib/tft-player-cache.ts Zeilen 292 und 301 setzen puuid und matchId ohne encodeURIComponent in den Pfad ein; Zeile 154 baut region=eq.${region} ebenfalls unkodiert. Der Aufrufer app/api/tft/player-stats/route.ts:41 nimmt puuid roh entgegen, geprueft wird nur auf leer (Zeile 45). Zum Vergleich kodiert app/lib/tft-rank-history.ts in den Zeilen 93 und 104 dieselbe Kennung mit encodeURIComponent.",
+      "seit": "2026-09-19",
+      "zuletzt_gesehen": "2026-09-19"
+    },
+    {
+      "id": "sandbox-aus:metastats-daily-crawl-execstartpre",
+      "titel": "Ein Vorlauf-Befehl schaltet die gesamte Haertung ab, zwei Nachbardienste kommen fuer dasselbe ohne aus",
+      "ort": "infra/hetzner/metastats-daily-crawl.service",
+      "schwere": "niedrig",
+      "status": "offen",
+      "belegt_mit": "infra/hetzner/metastats-daily-crawl.service, ExecStartPre mit fuehrendem '+' (Zeile 53, Begruendung in der Kommentarzeile darueber: '\"+\" = ohne Sandbox, weil systemctl stop root-Rechte ueber D-Bus braucht'). Gegenbeispiel im selben Verzeichnis: infra/hetzner/metastats-daily-crawl-catchup.service und metastats-daily-crawl-watchdog.service tragen den vollen Boden OHNE '+' und rufen trotzdem systemctl auf -- infra/hetzner/metastats-daily-crawl-catchup.sh:97 'systemctl start --no-block metastats-daily-crawl.service', infra/hetzner/metastats-daily-crawl-watchdog.sh:45 dasselbe, infra/hetzner/metastats-marketvalue-watchdog.sh:139 ebenfalls.",
+      "seit": "2026-09-19",
+      "zuletzt_gesehen": "2026-09-19"
+    },
+    {
+      "id": "schreiben-am-waechter-vorbei:app/lib/tft-rank-history",
+      "titel": "Der Waechter meldet alle Schreib-Routen als gedeckt, obwohl eine offene Route ueber zwei Bibliotheken in vier Tabellen schreibt",
+      "ort": "app/lib/tft-rank-history.ts, app/lib/tft-player-cache.ts, aufgerufen aus app/api/tft/player-stats/route.ts",
+      "schwere": "mittel",
+      "status": "offen",
+      "belegt_mit": "node scripts/check-write-routes.mjs -> 'Schreib-Routen geprueft (10 von 74 schreiben, alle gedeckt)', Exit 0. Der Waechter liest laut seinen Konstanten WURZEL und SCHREIBT nur app/api/**/route.ts und sucht dort .insert/.upsert/.update/.delete. grep -nE '\\.(insert|upsert|update|delete)\\s*\\(' app/api/tft/player-stats/route.ts -> 0 Treffer, die Route kommt in der Pruefung also gar nicht vor. Geschrieben wird per rohem fetch mit POST: app/lib/tft-rank-history.ts Zeilen 119 und 144 (tft_player_rank_backfill_state, tft_player_rank_history), app/lib/tft-player-cache.ts Zeilen 199 und 218 (tft_player_match_cache, tft_player_fetch_state), jeweils mit den Kopfzeilen aus supaHeaders(), die den Allmachts-Schluessel tragen (tft-rank-history.ts:11 und :159). Zugangspruefung in der Route: grep -nE 'cronAuthFailure|timingSafeEqual|internal' app/api/tft/player-stats/route.ts -> 0 Treffer.",
+      "seit": "2026-09-19",
+      "zuletzt_gesehen": "2026-09-19"
+    },
+    {
+      "id": "selbst-abruf-ueber-host-kopf:app/api/champions",
+      "titel": "Die Route ruft sich selbst ueber die vom Aufrufer gelieferte Adresse auf",
+      "ort": "app/api/champions/route.ts, app/api/homepage-stats/route.ts",
+      "schwere": "hinweis",
+      "status": "offen",
+      "belegt_mit": "app/api/champions/route.ts Zeile 120 und 131 const origin = new URL(request.url).origin; app/api/homepage-stats/route.ts Zeile 6 dasselbe Muster.",
+      "seit": "2026-09-19",
+      "zuletzt_gesehen": "2026-09-19"
+    },
+    {
+      "id": "shell-schreibwege-unerkannt:gate-policy",
+      "titel": "Mehrere gewoehnliche Schreibbefehle erkennt das Gate nicht als Schreiben",
+      "ort": "scripts/hooks/lib/gate-policy.mjs, Funktionen splitSegments und pathsWrittenByShell",
+      "schwere": "hoch",
+      "status": "offen",
+      "belegt_mit": "Probelauf pathsWrittenByShell(cmd, 'D:/Metastats/metastats') liefert [] fuer: 'echo boese | tee app/lib/i18n.tsx', 'node --eval \"require(fs).writeFileSync(app/lib/x.ts,1)\"', 'node -p \"...writeFileSync...\"', 'python3 -c \"open(app/lib/x.ts,w).write(1)\"', 'dd of=app/lib/x.ts', 'awk -i inplace \"{print}\" app/lib/x.ts', 'cat app/a | sed -i s/a/b/ app/lib/x.ts'. Zum Vergleich blocken 'printf x > app/lib/x.ts' und 'node -e ...writeFileSync...' korrekt.",
+      "seit": "2026-09-19",
+      "zuletzt_gesehen": "2026-09-19"
+    },
+    {
+      "id": "symlink-durch-freigestellten-ordner:gate-policy",
+      "titel": "Das Gate schaut nur auf den geschriebenen Pfad, nicht darauf, wohin er zeigt",
+      "ort": "scripts/hooks/lib/gate-policy.mjs, Funktion toRel (resolve ohne realpath)",
+      "schwere": "hinweis",
+      "status": "offen",
+      "belegt_mit": "Probelauf: Anfrage auf '.claude/durch/i18n.tsx' wird mit Exit 0 erlaubt, ohne dass das Ziel existieren muss. Der Versuch, den passenden Symlink anzulegen, scheiterte auf dieser Workstation an fehlenden Rechten (ln -s -> 'Operation not permitted'); dass Symlinks unter .claude/ dennoch vorkommen, zeigt ls -l .claude/settings.json.",
+      "seit": "2026-09-19",
+      "zuletzt_gesehen": "2026-09-19"
+    },
+    {
+      "id": "testname-ohne-testfall:gate-policy-test-tee",
+      "titel": "Ein Test traegt einen Fall im Namen, den er nicht prueft",
+      "ort": "scripts/hooks/lib/gate-policy.test.mjs, Test 'Redirect, sed -i, tee, cp: Ziel wird erkannt'",
+      "schwere": "hinweis",
+      "status": "offen",
+      "belegt_mit": "sed -n '40,46p' scripts/hooks/lib/gate-policy.test.mjs: der Block enthaelt Zusicherungen fuer >, >>, sed -i, cp und rm — keine einzige fuer tee. Der tatsaechliche tee-Fall ist offen (siehe Befund shell-schreibwege-unerkannt).",
+      "seit": "2026-09-19",
+      "zuletzt_gesehen": "2026-09-19"
+    },
+    {
+      "id": "tmp-ausnahme-per-kommentar:gate-policy",
+      "titel": "Ein Kommentar im Skript reicht, damit es als harmlos durchgeht",
+      "ort": "scripts/hooks/lib/gate-policy.mjs, Funktion onlyTmpWrites",
+      "schwere": "mittel",
+      "status": "offen",
+      "belegt_mit": "Probelauf: onlyTmpWrites('writeFileSync(\"D:/Metastats/metastats/app/lib/x.ts\", evil) // tmpdir') === true.",
+      "seit": "2026-09-19",
+      "zuletzt_gesehen": "2026-09-19"
+    },
+    {
+      "id": "trivial-marker-ohne-laengengrenze:code-prompt-reviewer",
+      "titel": "Ein einziges Wort irgendwo im Auftrag schaltet die Review-Erinnerung ab",
+      "ort": "scripts/hooks/code-prompt-reviewer.mjs, TRIVIAL_MARKERS",
+      "schwere": "mittel",
+      "status": "offen",
+      "belegt_mit": "Probelauf: derselbe 421 Zeichen lange 'Code:'-Auftrag (Pipeline-Umbau, neue Tabelle, neue RPC) liefert mit dem Wort 'typo' am Ende eine leere Ausgabe, ohne dieses Wort 1027 Zeichen Reminder.",
+      "seit": "2026-09-19",
+      "zuletzt_gesehen": "2026-09-19"
+    },
+    {
+      "id": "unausgerollte-hilfsskripte:usr-local-bin",
+      "titel": "Drei Dienste fuehren Skripte aus, die das Ausroll-Werkzeug gar nicht mitschreibt",
+      "ort": "infra/hetzner/apply-units.sh",
+      "schwere": "hinweis",
+      "status": "offen",
+      "belegt_mit": "ExecStart=/usr/local/bin/metastats-daily-crawl-catchup.sh (metastats-daily-crawl-catchup.service:7), /usr/local/bin/metastats-daily-crawl-watchdog.sh (metastats-daily-crawl-watchdog.service:14), /usr/local/bin/metastats-marketvalue-watchdog.sh (metastats-marketvalue-watchdog.service:12). Die drei Dateien liegen versioniert unter infra/hetzner/ (ls infra/hetzner/). grep -n '\\.sh|usr/local/bin|scp|rsync' infra/hetzner/apply-units.sh findet nur Kommentarzeilen und keine Uebertragung -- das Werkzeug rollt ausschliesslich Unit-Dateien aus.",
+      "seit": "2026-09-19",
+      "zuletzt_gesehen": "2026-09-19"
+    },
+    {
+      "id": "ungebremste-riot-sammlung:app/api/champions/collect",
+      "titel": "Ein oeffentlicher Aufruf kann die Riot-Abfragen der ganzen Seite lahmlegen",
+      "ort": "app/api/champions/collect/route.ts",
+      "schwere": "mittel",
+      "status": "offen",
+      "belegt_mit": "Kopf der Datei: oeffentlicher GET ohne Zugangspruefung; ?refresh=1 uebergeht den 2-Stunden-Zwischenspeicher; Zeile 126 riotFetch(... matches/by-puuid ...) im Fan-out; grep -rn checkRateLimit app/api --include=route.ts nennt die Route nicht; der vom eigenen Aufrufer gesetzte Kopf x-internal (app/api/champions/route.ts Zeile 133) wird in collect nirgends geprueft (grep -n \"x-internal\" app/api/champions/collect/route.ts -> kein Treffer).",
+      "seit": "2026-09-19",
+      "zuletzt_gesehen": "2026-09-19"
+    },
+    {
+      "id": "wirkungslose-drossel:app/api/tft/comps/share",
+      "titel": "Die Begrenzung auf 5 Eintraege je Tag laesst sich durch Weglassen eines Kekses umgehen",
+      "ort": "app/api/tft/comps/share/route.ts",
+      "schwere": "mittel",
+      "status": "offen",
+      "belegt_mit": "Zeile 81 let authorToken = req.cookies.get('tft_author_token')?.value || ''; Zeile 83 authorToken = randomUUID().replace(/-/g,''); Zeile 91 .eq('author_token', authorToken). grep -rn checkRateLimit app/api --include=route.ts -> nur coach/chat, tft/explorer/matches, tft/marktwert/refresh. Begruendung in scripts/check-write-routes.mjs Zeile 53-55 beruft sich genau auf diese Zaehlung.",
+      "seit": "2026-09-19",
+      "zuletzt_gesehen": "2026-09-19"
+    },
+    {
+      "id": "wirkungslose-drossel:app/api/tft/comps/upvote",
+      "titel": "Eine Stimme je Nutzer ist keine Grenze, wenn der Nutzer beliebig neu entsteht",
+      "ort": "app/api/tft/comps/community/[id]/upvote/route.ts",
+      "schwere": "mittel",
+      "status": "offen",
+      "belegt_mit": "Zeile 16 req.cookies.get('tft_author_token')?.value || ''; Zeile 18 randomUUID(); Zeile 24 .insert({comp_id: id, author_token: authorToken}). Begruendung in scripts/check-write-routes.mjs Zeile 56-58: 'Ein Primaerschluessel auf (comp_id, author_token) laesst genau eine Stimme zu.'",
+      "seit": "2026-09-19",
+      "zuletzt_gesehen": "2026-09-19"
+    }
+  ]
+}

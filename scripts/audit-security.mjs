@@ -3,16 +3,24 @@
 //
 // Die laufenden Waechter (pre-push, CI) pruefen jeweils EINE bekannte
 // Fehlerklasse und sind absichtlich stumpf. Was sie strukturell nicht finden,
-// ist der Widerspruch zwischen zwei Dateien, die einzeln in Ordnung sind —
-// etwa Migration 0055, die 22 Tabellen das Lesen fuer Fremde entzieht, und
-// Migration 0061 Zeile 67, die einer davon das Lesen wieder erlaubt. Beide sind
-// fuer sich gueltiges SQL. Genau dafuer ist die Durchsicht da.
+// ist der Widerspruch zwischen zwei Dateien, die einzeln in Ordnung sind.
 //
-// Drei Aufrufe:
+// Belegter Fall, gefunden im ersten Lauf am 19.09.2026: Migration 0055 Zeile 92
+// entzieht anon das Aufrufrecht auf get_tft_comp_stats. Migration 0060 Zeile 49-52
+// loescht die Funktion und legt sie neu an — und enthaelt keine einzige grant-
+// oder revoke-Zeile (gemessen: grep -ciE "grant|revoke" 0060*.sql = 0). Damit ist
+// das Recht wieder da. Der taegliche Vertrags-Check sieht das NICHT: Migration 0056
+// stuft Funktionen mit Aufruferrechten als "nur-grant" ein, und
+// scripts/lib/contracts.mjs Zeile 235 schlaegt nur bei "offen" an — "nur-grant"
+// wandert als Zahl in den Erfolgstext (Zeile 286). Genau dafuer ist die Durchsicht da.
+//
+// Fuenf Aufrufe:
 //   --surface        die Pruefflaeche als JSON (der Nenner der Vollstaendigkeit)
 //   --apply <datei>  Ergebnis einer Durchsicht einlesen, mit dem Stand
 //                    vergleichen, Aenderungsbericht ausgeben, Stand schreiben
-//   --status         Tage seit der letzten Durchsicht (fuer den Wecker im pre-push)
+//   --status         Tage seit der letzten Durchsicht
+//   --plan           Pruefflaeche + Ablauf fuer den Menschen (npm run audit:security)
+//   --alarm          Wecker fuer den pre-push, meldet ab 100 Tagen, blockt nie
 //
 // Warum die Pruefflaeche ein Skript aufzaehlt und nicht der Agent: ein Agent,
 // dem der Platz ausgeht, hoert einfach auf und meldet, was er bis dahin hatte.

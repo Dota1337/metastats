@@ -26,6 +26,12 @@
 #                                     nicht mehr zum Code passt, und Aufrufe
 #                                     auf Datenbank-Funktionen, die es nicht
 #                                     mehr gibt
+#  13. Schreib-Routen               — catches eine oeffentliche Route, die mit
+#                                     dem Allmachts-Schluessel schreibt, ohne
+#                                     den Aufrufer zu pruefen
+#
+# Ohne Riegel laufen ausserdem mit: der Memory-Reindex und der Wecker fuer die
+# vierteljaehrliche Sicherheitsdurchsicht. Beide melden nur.
 
 set -e
 
@@ -203,6 +209,14 @@ if ! node scripts/check-write-routes.mjs; then
   echo "Offene Schreib-Route — push blocked."
   exit 1
 fi
+
+# --- Wecker fuer die Sicherheitsdurchsicht (kein Gate) --------------------
+# Die Durchsicht laeuft von Hand (npm run audit:security), vierteljaehrlich.
+# Sie BLOCKT bewusst nicht: ein Push, der an einer faelligen Durchsicht
+# scheitert, wird per --no-verify umgangen, und dann meldet der Wecker nie
+# wieder etwas. Ein Hinweis, der stehen bleibt, wirkt laenger als ein Riegel,
+# den man einmal aufbricht.
+node scripts/audit-security.mjs --alarm 2>/dev/null || true
 
 # --- Memory-Index nachziehen (kein Gate) ---------------------------------
 # Der Indexer ist inkrementell: unveraenderte Sections werden uebersprungen

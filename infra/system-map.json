@@ -924,6 +924,18 @@
       "scripts": [
         "scripts/lib/ts-test-hook.mjs"
       ]
+    },
+    {
+      "name": "audit:security",
+      "scripts": [
+        "scripts/audit-security.mjs"
+      ]
+    },
+    {
+      "name": "audit:security:apply",
+      "scripts": [
+        "scripts/audit-security.mjs"
+      ]
     }
   ],
   "contractsByOwner": {

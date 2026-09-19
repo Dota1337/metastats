@@ -1,10 +1,10 @@
 {
   "set": 18,
   "source": "tactics.tools/info/patch-notes",
-  "fetchedAt": "2026-09-12T06:18:01.505Z",
+  "fetchedAt": "2026-09-19T06:19:08.399Z",
   "patches": {
     "18.1": {
-      "scrapedAt": "2026-09-12T06:18:01.804Z",
+      "scrapedAt": "2026-09-19T06:19:08.690Z",
       "sections": [
         {
           "category": "Mid-Patch Updates",
@@ -86,6 +86,11 @@
           "entries": [
             {
               "apiName": null,
+              "displayName": "Know Your Enemy",
+              "change": "Know Your Enemy"
+            },
+            {
+              "apiName": null,
               "displayName": "Called Shot",
               "change": "Called Shot"
             },
@@ -128,6 +133,11 @@
               "apiName": null,
               "displayName": "Kingslayer",
               "change": "Kingslayer"
+            },
+            {
+              "apiName": null,
+              "displayName": "Know Your Enemy",
+              "change": "Know Your Enemy"
             },
             {
               "apiName": null,
@@ -298,6 +308,11 @@
               "apiName": null,
               "displayName": "Death's Defiance",
               "change": "Death's Defiance"
+            },
+            {
+              "apiName": null,
+              "displayName": "Hullcrusher",
+              "change": "Hullcrusher"
             }
           ]
         },
@@ -383,12 +398,12 @@
         }
       ],
       "counts": {
-        "totalEntries": 72,
+        "totalEntries": 75,
         "withApiName": 0
       }
     },
     "18.2": {
-      "scrapedAt": "2026-09-12T06:18:04.019Z",
+      "scrapedAt": "2026-09-19T06:19:10.719Z",
       "sections": [
         {
           "category": "LARGE CHANGES",
@@ -675,11 +690,6 @@
             },
             {
               "apiName": null,
-              "displayName": "Cursed Crown",
-              "change": "Cursed Crown no longer grants 4% Durability"
-            },
-            {
-              "apiName": null,
               "displayName": "Consuming Flora",
               "change": "Consuming Flora Emblem Trait Effectiveness: 200% ⇒ 150%, now exclusive to 1 player per lobby"
             },
@@ -817,6 +827,11 @@
               "apiName": null,
               "displayName": "Edge of Night",
               "change": "Edge of Night effect no longer persists after breaking apart the item with the Salvager wisp"
+            },
+            {
+              "apiName": null,
+              "displayName": "Hullcrusher",
+              "change": "Hullcrusher health persists when units are summoned during combat. Re-enabled"
             },
             {
               "apiName": null,

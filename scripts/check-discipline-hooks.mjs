@@ -14,7 +14,7 @@
  *   3. die installierte .claude/settings.json ist nicht dahinter zurueck
  *      (sonst laeuft lokal etwas anderes als im Repo steht)
  */
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 const SRC = 'infra/claude-settings/hooks.json';
@@ -82,6 +82,37 @@ if (!existsSync(dst)) {
   }
 }
 
+// Die Review-Agenten liegen im Repo unter infra/claude-agents/ und werden von
+// scripts/setup-git-hooks.mjs nach .claude/agents/ gespiegelt (.claude/ ist
+// ignoriert, die installierte Kopie also rein lokal). Zwei Fehlerklassen, die
+// bisher niemand gemeldet hat:
+//   * Quelle geaendert, nicht neu installiert -> lokal laeuft ein alter Agent
+//   * Quelle geloescht -> install() in setup-git-hooks.mjs kopiert nur und
+//     loescht NIE, die Datei bleibt auf jeder Workstation liegen und wird
+//     weiter gespawnt
+// Zeilenenden werden vor dem Vergleich normalisiert: core.autocrlf=true legt
+// die Quelle mit CRLF ab, copyFileSync kopiert byte-genau — ohne das waere
+// der Vergleich zufaellig rot.
+const AG_SRC = join('infra', 'claude-agents');
+const AG_DST = join('.claude', 'agents');
+const normAg = (f) => readFileSync(f, 'utf8').replace(/\r\n/g, '\n');
+if (!existsSync(AG_SRC)) {
+  problems.push(`${AG_SRC} fehlt — die Agenten-Quelle ist weg.`);
+} else if (!existsSync(AG_DST)) {
+  problems.push(`${AG_DST} fehlt — Run: npm run setup-hooks`);
+} else {
+  const quelle = readdirSync(AG_SRC).filter((f) => f.endsWith('.md'));
+  const lokal = readdirSync(AG_DST).filter((f) => f.endsWith('.md'));
+  for (const f of quelle) {
+    const dstFile = join(AG_DST, f);
+    if (!existsSync(dstFile)) problems.push(`${dstFile} fehlt — Run: npm run setup-hooks`);
+    else if (normAg(join(AG_SRC, f)) !== normAg(dstFile)) problems.push(`${dstFile} weicht von ${join(AG_SRC, f)} ab — Run: npm run setup-hooks`);
+  }
+  for (const f of lokal) {
+    if (!quelle.includes(f)) problems.push(`${join(AG_DST, f)} hat keine Quelle mehr in ${AG_SRC} — von Hand loeschen, setup-hooks raeumt nicht auf.`);
+  }
+}
+
 if (problems.length) {
   console.error('Disziplin-Hooks unvollstaendig:');
   for (const p of problems) console.error(`  - ${p}`);
@@ -91,4 +122,4 @@ if (problems.length) {
   process.exit(1);
 }
 
-console.log(`  Disziplin-Hooks vollstaendig (${REQUIRED.length} Events, ${refs.size} Scripts).`);
+console.log(`  Disziplin-Hooks vollstaendig (${REQUIRED.length} Events, ${refs.size} Scripts, ${readdirSync(AG_SRC).filter((f) => f.endsWith('.md')).length} Agenten).`);

@@ -7,7 +7,7 @@
 // diese Funktionen schon — dieselbe Aufteilung wie bei `state.mjs` +
 // `state.test.mjs`.
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, statSync, realpathSync } from 'node:fs';
 import { relative, isAbsolute, resolve } from 'node:path';
 
 // --------------------------------------------------------------- Freistellungen
@@ -24,11 +24,29 @@ export const ROUTINE_OPS = new Set([
 ]);
 
 /**
+ * Die vier Stellen, an denen das Gate selbst haengt. Sie liegen in Ordnern,
+ * die sonst komplett freigestellt sind, und werden deshalb namentlich
+ * zurueckgeholt (Sicherheitsdurchsicht 19.09.2026, Befunde 1 und 2).
+ */
+const GATE_SELBST =
+  /^(\.git\/(metastats-discipline\/|hooks\/|config$)|\.claude\/settings\.json$)/;
+
+/** Dieselben Stellen als Projektpfade — Quelle fuer die Verweis-Aufloesung in toRel. */
+const GATE_PFADE = ['.claude/settings.json', '.git/config', '.git/hooks', '.git/metastats-discipline'];
+
+/**
  * Pfade, die das Gate nichts angehen. Uebernommen aus plan-gate.mjs, erweitert
- * um die zwei Freistellungen, ohne die sich das Gate selbst einsperrt
- * (logic-flow-critic F1, 2026-09-01): seinen eigenen Quellcode und die
- * Hook-Registrierung. Ohne die beiden ist der im Plan genannte Rollback
- * ("Austragen aus hooks.json") von innen nicht ausfuehrbar.
+ * um die Freistellung, ohne die sich das Gate selbst einsperrt
+ * (logic-flow-critic F1, 2026-09-01): seinen eigenen Quellcode unter
+ * scripts/hooks/. Ohne die ist eine Reparatur von innen nicht moeglich —
+ * WRITE_GATE=0 laesst sich aus einem geblockten Kommando heraus nicht setzen,
+ * das braucht einen Neustart von Claude Code.
+ *
+ * Die Hook-Registrierung (.claude/settings.json) war bis zur
+ * Sicherheitsdurchsicht am 19.09.2026 aus demselben Grund frei. Sie ist es
+ * NICHT mehr: wer sie schreiben darf, traegt das Gate aus und braucht nie
+ * wieder einen Plan. Der Rollback laeuft stattdessen ueber scripts/hooks/
+ * (dort steht der Code, der die Ablehnung ausspricht) oder von aussen.
  */
 export function isExempt(rel) {
   if (rel == null) return true;
@@ -37,6 +55,13 @@ export function isExempt(rel) {
   // und der darf gerade NICHT als freigestellt durchgehen.
   if (rel === '') return false;
   if (rel.startsWith('..') || isAbsolute(rel)) return true;      // ausserhalb des Projekts
+  // Wer diese vier Stellen schreiben darf, haengt das Gate aus, ohne je einen
+  // Plan vorzulegen: der Freigabe-Zustand (.git/metastats-discipline/), die 13
+  // Pruefungen vor dem Hochladen (.git/hooks/), core.hooksPath (.git/config)
+  // und die Registrierung dieses Hooks (.claude/settings.json). Der Rest beider
+  // Ordner bleibt frei — .claude/plan-current.md MUSS schreibbar bleiben, sonst
+  // verlangt das Gate einen Plan und sperrt zugleich dessen Erstellung.
+  if (GATE_SELBST.test(rel)) return false;
   if (rel.startsWith('.claude/') || rel.startsWith('.git/')) return true;
   if (rel === 'AGENTS.md' || rel === 'CLAUDE.md') return true;
   // Der eigene Reparaturpfad. Ein Logikfehler im Gate schreibt sauberes
@@ -52,18 +77,46 @@ export function isExempt(rel) {
   return false;
 }
 
+/**
+ * Echter Pfad einer Stelle, Verweise aufgeloest. Gibt den Eingabepfad zurueck,
+ * wenn es die Stelle (noch) nicht gibt — realpathSync wirft dann.
+ */
+function echterPfad(p) {
+  const s = (x) => x.split('\\').join('/');
+  try { return s(realpathSync(p)); } catch { return s(p); }
+}
+
 /** Absoluter oder relativer Pfad -> projekt-relativ mit Vorwaerts-Slashes. */
 export function toRel(file, projectDir, base = projectDir) {
   if (!file) return '';
   const abs = isAbsolute(file) ? resolve(file) : resolve(base, file);
+  // .claude/settings.json ist auf dieser Workstation ein Verweis nach Dropbox
+  // (reference_workstation_sync). Ueber den Zielpfad geschrieben sieht die Datei
+  // aus wie 'ausserhalb des Projekts' und waere damit freigestellt — das Gate
+  // liesse sich ueber diesen Umweg abschalten. Deshalb werden Treffer auf die
+  // Gate-Stellen auf ihren Projektnamen zurueckgerechnet.
+  const real = echterPfad(abs);
+  for (const p of GATE_PFADE) {
+    const ziel = echterPfad(resolve(projectDir, p));
+    if (real === ziel) return p;
+    if (real.startsWith(ziel + '/')) return p + real.slice(ziel.length);
+  }
   return relative(projectDir, abs).replace(/\\/g, '/');
 }
 
 // ------------------------------------------------------------------ Plan-Pruefung
 
-export function planQuality(planFile, read = readFileSync) {
+// `stat` haengt bewusst am `read`: stellt ein Test den Inhalt selbst, gibt es
+// keine Datei auf der Platte, die man befragen koennte.
+export function planQuality(planFile, read = readFileSync, stat = read === readFileSync ? statSync : null) {
   let text;
   try {
+    // INNERHALB des try, nicht davor: in write-gate.mjs steht der Aufruf hinter
+    // dem catch, eine Ausnahme hier wuerde die Ablehnung komplett verschlucken
+    // und das Gate stillschweigend oeffnen (logic-flow-critic, 19.09.2026).
+    // Ein Ordner an der Planstelle warf frueher EISDIR und galt damit als
+    // 'Pruefung uebersprungen' = bestandener Plan.
+    if (stat && !stat(planFile).isFile()) return { ok: false, why: 'keine Plan-Datei' };
     text = read(planFile, 'utf8');
   } catch (err) {
     // Nur "Datei fehlt" ist ein Plan-Problem. Alles andere (Bug hier, Rechte,
@@ -113,7 +166,10 @@ const MAX_NPM_DEPTH = 2;
 // bewusst eine Aufzaehlung und kein Praefix-Muster ausserhalb von `build:`:
 // ein neues Script gilt erst als Build, wenn es so heisst.
 const GENERATED_BUILDS = /^(dev|start|build|build:[\w:.-]+)$/;
-const WRITE_CALLS = /\b(writeFileSync|appendFileSync|unlinkSync|renameSync|rmSync|mkdirSync|copyFileSync|createWriteStream|\.write\()/;
+// `.write(` steht bewusst AUSSERHALB der Wortgrenzen-Gruppe: ein \b vor einem
+// Punkt verlangt ein Wortzeichen davor, deshalb traf das Muster zwar
+// `strom.write(`, aber nicht `open(pfad).write(` — gemessen 19.09.2026.
+const WRITE_CALLS = /\b(writeFileSync|appendFileSync|unlinkSync|renameSync|rmSync|mkdirSync|copyFileSync|createWriteStream)\b|\.write\(/;
 
 const FILE_ARG = /^[^-|&;<>]\S*$/;
 
@@ -161,6 +217,81 @@ function splitSegments(cmd) {
   // Gate lieber durchlassen als falsch blocken — ein Hook, der bei Kleinigkeiten
   // nervt, wird abgeschaltet (reference_quality_gates.md).
   return cmd.split(/\n|&&|\|\||;/).map((s) => s.trim()).filter(Boolean);
+}
+
+/**
+ * Zerlegt eine Kommandozeile anfuehrungszeichen-bewusst an den Trennern, an
+ * denen ein NEUES Kommando beginnt — einschliesslich der einfachen Pipe, an der
+ * splitSegments bewusst nicht trennt. Das Ergebnis wird NUR fuer die
+ * Zusatzpruefungen unten benutzt; die grobe Zerlegung bleibt unveraendert,
+ * damit im meistgenutzten Kanal nichts neu blockiert, was heute laeuft.
+ */
+function splitTopLevel(cmd) {
+  const out = [];
+  let cur = '';
+  let quote = null;
+  for (const ch of cmd) {
+    if (quote) { cur += ch; if (ch === quote) quote = null; continue; }
+    if (ch === '"' || ch === "'") { quote = ch; cur += ch; continue; }
+    if (ch === '|' || ch === ';' || ch === '&' || ch === '\n') { out.push(cur); cur = ''; continue; }
+    cur += ch;
+  }
+  out.push(cur);
+  return out.map((x) => x.trim()).filter(Boolean);
+}
+
+// Flags, hinter denen Code statt eines Dateinamens steht. Mit Leerzeichen
+// gerahmt, damit '-p' nicht in '--parents' trifft.
+const INLINE_FLAGS = [' --eval ', ' --print ', ' -p ', ' -c ', ' -e '];
+
+/** Inhalt hinter einem Inline-Code-Flag, Anfuehrungszeichen abgestreift. */
+function inlineCode(seg) {
+  const mit = ` ${seg}`;
+  for (const f of INLINE_FLAGS) {
+    const i = mit.indexOf(f);
+    if (i < 0) continue;
+    let rest = mit.slice(i + f.length).trim();
+    const q = rest[0];
+    if (q === '"' || q === "'") {
+      const e = rest.indexOf(q, 1);
+      rest = e > 0 ? rest.slice(1, e) : rest.slice(1);
+    }
+    return rest;
+  }
+  return '';
+}
+
+/**
+ * Schreibwege, die die grobe Zerlegung strukturell nicht sehen kann
+ * (Sicherheitsdurchsicht 19.09.2026, Befund 4): `| tee`, `dd of=`,
+ * `awk -i inplace` und Inline-Code hinter --eval/-p/--print/-c.
+ *
+ * Bewusst an den KOPF des Segments gebunden statt als Netz ueber die ganze
+ * Zeile: ein Netz wuerde `git commit -m "fix: sed -i geregelt"` und lesende
+ * Aufrufe wie `node -p "require('./package.json').version"` blockieren —
+ * beide liefern heute nichts und sollen das behalten (gemessen 19.09.2026).
+ */
+function zusatzSchreibwege(cmd) {
+  const out = [];
+  for (const seg of splitTopLevel(cmd)) {
+    if (REMOTE.test(seg)) continue;
+    const words = seg.split(/\s+/);
+    const head = words[0];
+    if (head === 'tee') {
+      for (const w of words.slice(1)) if (!w.startsWith('-') && FILE_ARG.test(w)) out.push(w);
+    } else if (head === 'dd') {
+      for (const w of words.slice(1)) if (w.startsWith('of=') && w.length > 3) out.push(w.slice(3));
+    } else if (head === 'awk' && words.includes('-i') && words.includes('inplace')) {
+      // Wie bei sed: das erste Nicht-Options-Argument ist das Programm.
+      const args = words.slice(1)
+        .filter((w) => !w.startsWith('-') && w !== 'inplace' && FILE_ARG.test(w));
+      for (const w of args.slice(1)) out.push(w);
+    } else if (INLINE.test(head)) {
+      const code = inlineCode(seg);
+      if (code && WRITE_CALLS.test(code)) out.push('.');
+    }
+  }
+  return out;
 }
 
 /**
@@ -265,6 +396,12 @@ export function pathsWrittenByShell(cmd, projectDir, readScript = readFileSync, 
       // `node --test scripts/hooks/lib/state.test.mjs` lieferte [{path:'.'}] —
       // die eigenen Tests waren unter dem Gate nicht mehr ausfuehrbar.
       if (/(^|\s)--test(\s|$)/.test(seg)) continue;
+      // Dasselbe fuer `node --check <datei>`: das ist eine reine Syntaxpruefung,
+      // die Datei wird geparst und nicht ausgefuehrt. Ohne diese Zeile galt
+      // jede Syntaxpruefung an einer Datei, die irgendwo writeFileSync
+      // enthaelt, als Schreibzugriff (gemessen 19.09.2026 an
+      // `node --check scripts/hooks/session-start.mjs`).
+      if (/(^|\s)--check(\s|$)/.test(seg)) continue;
       const script = words.slice(1).find((w) => /\.(mjs|cjs|js|ts|sh|py)$/.test(w));
       if (script) {
         const abs = isAbsolute(script) ? script : resolve(base, script);
@@ -292,6 +429,7 @@ export function pathsWrittenByShell(cmd, projectDir, readScript = readFileSync, 
       }
     }
   }
+  for (const p of zusatzSchreibwege(cmd)) out.push({ path: p, base });
   return out;
 }
 

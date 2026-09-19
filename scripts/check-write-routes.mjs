@@ -37,7 +37,12 @@ const SCHREIBT = /\.(insert|upsert|update|delete)\s*\(/;
 // den Aufrufer wirklich prueft, nicht um ein selbst ausgestelltes Cookie.
 const PRUEFUNGEN = [
   { muster: /cronAuthFailure\s*\(/, name: 'cronAuthFailure() — Vercel-Cron-Geheimnis' },
-  { muster: /timingSafeEqual\s*\(/, name: 'HMAC-Signatur ueber den Rumpf' },
+  // Bewusst die benannte Funktion und NICHT mehr das blosse Vorkommen von
+  // `timingSafeEqual(`: am 19.09.2026 stand in der Companion-Route zwar ein
+  // Signatur-Vergleich, die ganze Pruefung hing aber an `if (APP_SECRET)` und
+  // entfiel ohne gesetztes Geheimnis vollstaendig. Der Waechter sah trotzdem
+  // Gruen. Eine Funktion mit Namen kann man pruefen, ein Wortvorkommen nicht.
+  { muster: /companionAuthFailure\s*\(/, name: 'companionAuthFailure() — HMAC-Signatur + Zeitfenster' },
 ];
 
 const AUSNAHMEN = {

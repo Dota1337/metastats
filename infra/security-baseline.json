@@ -88,10 +88,11 @@
       "titel": "Fehlt ein Umgebungswert, schreibt jeder Fremde ungefragt in die Datenbank",
       "ort": "app/api/tft/positions/submit/route.ts",
       "schwere": "hoch",
-      "status": "offen",
-      "belegt_mit": "grep -c NODE_ENV app/api/tft/positions/submit/route.ts -> 0; Zeile 24 const APP_SECRET = process.env.OVERWOLF_APP_SECRET || ''; Zeile 126 Kommentar 'In production, missing APP_SECRET fails closed'; Zeile 127 if (APP_SECRET) { ...Signaturpruefung... }. Vergleich: app/lib/cron-auth.ts prueft NODE_ENV und liefert ohne Geheimnis 500.",
+      "status": "behoben",
+      "belegt_mit": "Die Pruefung haengt nicht mehr an `if (APP_SECRET)`: app/lib/companion-auth.ts verweigert in Produktion ohne OVERWOLF_APP_SECRET mit 500 (app/lib/secret-policy.ts, gemeinsam mit cron-auth). Beleg: npx tsx --conditions=react-server Probelauf -> Produktion ohne Geheimnis 500, ohne Kopfzeilen 401, alter Zeitstempel 401, falsche Signatur 401, korrekt signiert durchgelassen; node scripts/check-write-routes.mjs -> 10 von 74 schreiben, alle gedeckt.",
       "seit": "2026-09-19",
-      "zuletzt_gesehen": "2026-09-19"
+      "zuletzt_gesehen": "2026-09-19",
+      "behoben_am": "2026-09-19"
     },
     {
       "id": "fehlermeldung-nach-aussen:app/api",
@@ -108,30 +109,33 @@
       "titel": "Der Assistent kann sich die Freigabe selbst ausstellen, indem er die Zustandsdatei schreibt",
       "ort": "scripts/hooks/lib/gate-policy.mjs (isExempt: .git/ ist freigestellt) + scripts/hooks/lib/state.mjs (STATE_DIR = .git/metastats-discipline)",
       "schwere": "kritisch",
-      "status": "offen",
-      "belegt_mit": "Probelauf in einem Sandbox-Projekt: (1) Anfrage {tool_name:Write, file_path:app/lib/x.ts} an write-gate.mjs mit CLAUDE_PROJECT_DIR=<sandbox> -> permissionDecision deny. (2) Dieselbe Anfrage auf .git/metastats-discipline/s1.json -> keine Ausgabe, Exit 0 (erlaubt). (3) Dort {approvedAt:..., planHash:null, approvedBy:\"trivial\"} hineingeschrieben, Anfrage (1) wiederholt -> keine Ausgabe, Exit 0 (erlaubt). Zusaetzlich isExempt('.git/metastats-discipline/abc.json') === true.",
+      "status": "behoben",
+      "belegt_mit": ".git/ ist nicht mehr pauschal freigestellt: GATE_SELBST/GATE_PFADE in scripts/hooks/lib/gate-policy.mjs schuetzen .git/metastats-discipline/, .git/hooks/ und .git/config; echterPfad() loest Symlinks auf, damit der Schutz nicht ueber einen Link umgangen wird. Beleg: node --test scripts/hooks/lib/gate-policy.test.mjs scripts/hooks/lib/state.test.mjs -> 44 pass, 0 fail.",
       "seit": "2026-09-19",
-      "zuletzt_gesehen": "2026-09-19"
+      "zuletzt_gesehen": "2026-09-19",
+      "behoben_am": "2026-09-19"
     },
     {
       "id": "gate-abschaltbar-ohne-plan:claude-settings",
       "titel": "Die Registrierung des Gates liegt in einem Ordner, den das Gate nicht schuetzt",
       "ort": "scripts/hooks/lib/gate-policy.mjs (isExempt: .claude/ freigestellt) + .claude/settings.json",
       "schwere": "hoch",
-      "status": "offen",
-      "belegt_mit": "isExempt('.claude/settings.json') === true und isExempt('.claude/settings.local.json') === true (Probelauf gegen gate-policy.mjs). Die PreToolUse-Registrierung steht genau dort: Auslesen von .claude/settings.json zeigt matcher 'Edit|Write|MultiEdit|NotebookEdit|Bash|PowerShell' -> scripts/hooks/write-gate.mjs. ls -l .claude/settings.json zeigt einen Symlink nach /c/Users/dtaub/Dropbox/Metastats/repo-config/.claude/settings.json.",
+      "status": "behoben",
+      "belegt_mit": ".claude/settings.json ist nicht mehr freigestellt (isExempt in scripts/hooks/lib/gate-policy.mjs, Kommentar dort begruendet den Rueckbau-Pfad ueber scripts/hooks/). Zusaetzlich meldet scripts/hooks/session-start.mjs fehlende Hook-Registrierungen und einen geaenderten Fingerabdruck der Datei. Beleg: Probelauf in einem Wegwerf-Projekt (Hook entfernt -> beide Warnungen, unveraendert -> keine); node --test der Gate-Tests 44 pass.",
       "seit": "2026-09-19",
-      "zuletzt_gesehen": "2026-09-19"
+      "zuletzt_gesehen": "2026-09-19",
+      "behoben_am": "2026-09-19"
     },
     {
       "id": "gate-warnung-schweigt:session-start",
       "titel": "Faellt die Einstellungsdatei aus, meldet der Waechter fuer das Gate gar nichts mehr",
       "ort": "scripts/hooks/session-start.mjs, Abschnitt 'Ist das Schreib-Gate ueberhaupt installiert?' (try/catch um das Lesen von .claude/settings.json)",
       "schwere": "mittel",
-      "status": "offen",
-      "belegt_mit": "Probelauf mit CLAUDE_PROJECT_DIR auf ein Sandbox-Projekt: ohne .claude/settings.json ist additionalContext leer; mit dem Inhalt '{kaputt' ebenfalls leer; nur mit gueltigem JSON ohne write-gate-Eintrag erscheint die <gate-warnung>.",
+      "status": "behoben",
+      "belegt_mit": "scripts/hooks/session-start.mjs prueft alle sechs erwarteten Hook-Registrierungen einzeln und meldet zusaetzlich jede Aenderung an .claude/settings.json ueber einen gespeicherten Fingerabdruck. Beleg: echter Hook-Lauf -> keine Warnung, Fingerabdruck f4045c6f815d gespeichert; Wegwerf-Projekt ohne write-gate -> beide Warnungen.",
       "seit": "2026-09-19",
-      "zuletzt_gesehen": "2026-09-19"
+      "zuletzt_gesehen": "2026-09-19",
+      "behoben_am": "2026-09-19"
     },
     {
       "id": "geteilte-env-datei:metastats-crawler-env",
@@ -218,10 +222,11 @@
       "titel": "Wenn die Plan-Datei nicht lesbar ist, gilt der Plan als geprueft",
       "ort": "scripts/hooks/lib/gate-policy.mjs, Funktion planQuality (Fehlerzweig: alles ausser ENOENT ergibt ok:true)",
       "schwere": "hoch",
-      "status": "offen",
-      "belegt_mit": "Probelauf: im Sandbox-Projekt .claude/plan-current.md als ORDNER angelegt, Zustandsdatei mit approvedAt gesetzt und planHash null; Anfrage {tool_name:Write, file_path:app/lib/x.ts} an write-gate.mjs -> keine Ausgabe, Exit 0 (erlaubt), obwohl es keinen Plantext und damit weder Verdicts-Block noch drei Alternativen gibt.",
+      "status": "behoben",
+      "belegt_mit": "planQuality in scripts/hooks/lib/gate-policy.mjs haelt den stat-Aufruf jetzt im try; jeder Lesefehler ausser ENOENT gilt als ungeprueft und blockt. Beleg: node --test scripts/hooks/lib/gate-policy.test.mjs -> 44 pass, 0 fail.",
       "seit": "2026-09-19",
-      "zuletzt_gesehen": "2026-09-19"
+      "zuletzt_gesehen": "2026-09-19",
+      "behoben_am": "2026-09-19"
     },
     {
       "id": "prototyp-treffer:expandRegions",
@@ -298,30 +303,33 @@
       "titel": "Mehrere gewoehnliche Schreibbefehle erkennt das Gate nicht als Schreiben",
       "ort": "scripts/hooks/lib/gate-policy.mjs, Funktionen splitSegments und pathsWrittenByShell",
       "schwere": "hoch",
-      "status": "offen",
-      "belegt_mit": "Probelauf pathsWrittenByShell(cmd, 'D:/Metastats/metastats') liefert [] fuer: 'echo boese | tee app/lib/i18n.tsx', 'node --eval \"require(fs).writeFileSync(app/lib/x.ts,1)\"', 'node -p \"...writeFileSync...\"', 'python3 -c \"open(app/lib/x.ts,w).write(1)\"', 'dd of=app/lib/x.ts', 'awk -i inplace \"{print}\" app/lib/x.ts', 'cat app/a | sed -i s/a/b/ app/lib/x.ts'. Zum Vergleich blocken 'printf x > app/lib/x.ts' und 'node -e ...writeFileSync...' korrekt.",
+      "status": "behoben",
+      "belegt_mit": "Zweites, grobes Netz in gate-policy.mjs: splitTopLevel/INLINE_FLAGS/inlineCode/zusatzSchreibwege erkennen tee, dd, awk -i inplace, python/node -e und weitere Schreibwege und speisen pathsWrittenByShell. Beleg: neue Testfaelle ab Zeile 80 in gate-policy.test.mjs, node --test -> 44 pass, 0 fail.",
       "seit": "2026-09-19",
-      "zuletzt_gesehen": "2026-09-19"
+      "zuletzt_gesehen": "2026-09-19",
+      "behoben_am": "2026-09-19"
     },
     {
       "id": "symlink-durch-freigestellten-ordner:gate-policy",
       "titel": "Das Gate schaut nur auf den geschriebenen Pfad, nicht darauf, wohin er zeigt",
       "ort": "scripts/hooks/lib/gate-policy.mjs, Funktion toRel (resolve ohne realpath)",
       "schwere": "hinweis",
-      "status": "offen",
-      "belegt_mit": "Probelauf: Anfrage auf '.claude/durch/i18n.tsx' wird mit Exit 0 erlaubt, ohne dass das Ziel existieren muss. Der Versuch, den passenden Symlink anzulegen, scheiterte auf dieser Workstation an fehlenden Rechten (ln -s -> 'Operation not permitted'); dass Symlinks unter .claude/ dennoch vorkommen, zeigt ls -l .claude/settings.json.",
+      "status": "behoben",
+      "belegt_mit": "toRel/echterPfad in gate-policy.mjs loesen den echten Pfad per realpathSync auf, bevor Freistellung und Schutz geprueft werden. Beleg: grep -n \"realpathSync\" scripts/hooks/lib/gate-policy.mjs -> Zeilen 10, 86; node --test -> 44 pass.",
       "seit": "2026-09-19",
-      "zuletzt_gesehen": "2026-09-19"
+      "zuletzt_gesehen": "2026-09-19",
+      "behoben_am": "2026-09-19"
     },
     {
       "id": "testname-ohne-testfall:gate-policy-test-tee",
       "titel": "Ein Test traegt einen Fall im Namen, den er nicht prueft",
       "ort": "scripts/hooks/lib/gate-policy.test.mjs, Test 'Redirect, sed -i, tee, cp: Ziel wird erkannt'",
       "schwere": "hinweis",
-      "status": "offen",
-      "belegt_mit": "sed -n '40,46p' scripts/hooks/lib/gate-policy.test.mjs: der Block enthaelt Zusicherungen fuer >, >>, sed -i, cp und rm — keine einzige fuer tee. Der tatsaechliche tee-Fall ist offen (siehe Befund shell-schreibwege-unerkannt).",
+      "status": "behoben",
+      "belegt_mit": "Der Test traegt seine Faelle jetzt wirklich: gate-policy.test.mjs Zeile 80-82 prueft tee und tee -a. Beleg: node --test scripts/hooks/lib/gate-policy.test.mjs -> 44 pass, 0 fail.",
       "seit": "2026-09-19",
-      "zuletzt_gesehen": "2026-09-19"
+      "zuletzt_gesehen": "2026-09-19",
+      "behoben_am": "2026-09-19"
     },
     {
       "id": "tmp-ausnahme-per-kommentar:gate-policy",

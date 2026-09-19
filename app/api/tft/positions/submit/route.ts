@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { companionAuthFailure } from '@/app/lib/companion-auth';
 
 // Companion-app endpoint. Accepts batched board observations from the
 // Overwolf TFT GEP listener and writes them into tft_position_observations.
 //
-// Auth model: HMAC-SHA256 over the raw request body using a shared secret
-// bundled with the OPK. The shared secret isn't cryptographically secret
-// (anyone with the OPK can extract it), but combined with a ±5-minute
-// timestamp window it makes casual replay/spam expensive enough that the
-// existing unique-index on the observation table absorbs the rest.
+// Auth model: HMAC-SHA256 over the raw request body using a shared secret,
+// see app/lib/companion-auth.ts — that module also decides what happens when
+// the secret is missing (production: 500 and no write, dev: open).
 // Additional safeguards:
 //   - cap payload size (5000 observations per body)
 //   - validate every field strictly — anything unexpected gets rejected
@@ -21,8 +19,6 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://bwawxwgxxfafbruebixa.supabase.co';
 const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const APP_SECRET = process.env.OVERWOLF_APP_SECRET || '';
-const TIMESTAMP_WINDOW_MS = 5 * 60 * 1000;
 
 // The companion app runs inside Overwolf's CEF as
 // overwolf-extension://<extension-id>. Each install gets a different
@@ -44,20 +40,6 @@ export function OPTIONS(request: NextRequest) {
     status: 204,
     headers: corsHeaders(request.headers.get('origin')),
   });
-}
-
-function verifySignature(body: string, providedHex: string): boolean {
-  if (!APP_SECRET || !providedHex) return false;
-  let expectedBuf: Buffer;
-  let providedBuf: Buffer;
-  try {
-    expectedBuf = createHmac('sha256', APP_SECRET).update(body).digest();
-    providedBuf = Buffer.from(providedHex, 'hex');
-  } catch {
-    return false;
-  }
-  if (expectedBuf.length !== providedBuf.length) return false;
-  return timingSafeEqual(expectedBuf, providedBuf);
 }
 
 const MAX_OBSERVATIONS_PER_PAYLOAD = 5000;
@@ -119,20 +101,8 @@ export async function POST(request: NextRequest) {
   // signed. Re-parse to JSON afterwards.
   const rawBody = await request.text();
 
-  const sigHeader = request.headers.get('x-companion-signature') || '';
-  const tsHeader = request.headers.get('x-companion-timestamp') || '';
-
-  // Skip signature checks only when the secret isn't configured server-side —
-  // useful in dev. In production, missing APP_SECRET fails closed.
-  if (APP_SECRET) {
-    const ts = Number(tsHeader);
-    if (!Number.isFinite(ts) || Math.abs(Date.now() - ts) > TIMESTAMP_WINDOW_MS) {
-      return reply({ error: 'timestamp outside window' }, 401);
-    }
-    if (!verifySignature(rawBody, sigHeader)) {
-      return reply({ error: 'bad signature' }, 401);
-    }
-  }
+  const abgelehnt = companionAuthFailure(request, rawBody, cors);
+  if (abgelehnt) return abgelehnt;
 
   let body: any;
   try {

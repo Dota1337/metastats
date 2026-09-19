@@ -7,6 +7,9 @@
 // Seitentuer bleibt, die dieses Gate schliessen soll.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import * as fs from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { isExempt, toRel, planQuality, pathsWrittenByShell } from './gate-policy.mjs';
 
 const P = 'C:/projekt';
@@ -18,7 +21,7 @@ const blocks = (cmd, read) => rels(cmd, read).some((r) => !isExempt(r));
 
 test('Freistellungen: Werkzeug ja, Produktcode nein', () => {
   for (const r of [
-    '../ausserhalb/x.mjs', '.claude/plan-current.md', '.git/hooks/pre-push',
+    '../ausserhalb/x.mjs', '.claude/plan-current.md', '.git/HEAD', '.git/COMMIT_EDITMSG',
     'scripts/hooks/write-gate.mjs', 'infra/claude-settings/hooks.json',
     'infra/claude-settings/discipline.md', 'notizen.md', 'AGENTS.md',
   ]) assert.equal(isExempt(r), true, r);
@@ -30,12 +33,74 @@ test('Freistellungen: Werkzeug ja, Produktcode nein', () => {
   ]) assert.equal(isExempt(r), false, r);
 });
 
+// Die vier Stellen, an denen das Gate selbst haengt. Sie liegen in Ordnern, die
+// sonst freigestellt sind — bis zur Durchsicht am 19.09.2026 waren sie es auch,
+// und damit konnte sich der Assistent die Freigabe selbst schreiben.
+test('die Stellen, an denen das Gate selbst haengt, sind nicht freigestellt', () => {
+  for (const r of [
+    '.git/metastats-discipline/freigabe.json', '.git/hooks/pre-push', '.git/config',
+    '.claude/settings.json',
+  ]) assert.equal(isExempt(r), false, r);
+  // Drumherum bleibt frei: sonst waere der Plan selbst nicht schreibbar.
+  assert.equal(isExempt('.claude/plan-current.md'), true);
+  assert.equal(isExempt('.git/HEAD'), true);
+});
+
+// Auf dieser Workstation ist .claude/settings.json ein Verweis nach Dropbox.
+// Ueber den Zielpfad geschrieben sah die Datei aus wie 'ausserhalb des Projekts'
+// und war damit frei — das Gate liess sich ueber diesen Umweg abschalten.
+test('ein Verweis auf eine Gate-Stelle wird auf ihren Projektnamen zurueckgerechnet', () => {
+  const { mkdtempSync, mkdirSync, writeFileSync: schreib, symlinkSync } = fs;
+  const wurzel = mkdtempSync(join(tmpdir(), 'gate-verweis-'));
+  const projekt = join(wurzel, 'projekt');
+  const aussen = join(wurzel, 'aussen');
+  mkdirSync(join(projekt, '.claude'), { recursive: true });
+  mkdirSync(aussen, { recursive: true });
+  const ziel = join(aussen, 'settings.json');
+  schreib(ziel, '{}');
+  try {
+    symlinkSync(ziel, join(projekt, '.claude', 'settings.json'), 'file');
+  } catch {
+    return;                       // ohne Recht auf Verweise nicht pruefbar
+  }
+  assert.equal(toRel(ziel, projekt), '.claude/settings.json');
+  assert.equal(isExempt(toRel(ziel, projekt)), false);
+});
+
 test('scripts/hooks ist frei, damit das Gate seine eigene Reparatur nicht sperrt', () => {
   assert.equal(blocks('sed -i s/a/b/ scripts/hooks/write-gate.mjs'), false);
   assert.equal(blocks('sed -i s/a/b/ scripts/tft-build-aggregator.mjs'), true);
 });
 
 // ---------------------------------------------------------------- Shell-Kanal
+
+// Schreibwege, die die grobe Zerlegung strukturell nicht sieht, weil sie nicht
+// an der einfachen Pipe trennt und bei Interpretern nur -e kannte. Alle vier
+// liefen bis zur Durchsicht am 19.09.2026 ungesehen durch.
+test('tee hinter der Pipe, dd, awk -i inplace und Inline-Code werden erkannt', () => {
+  assert.equal(blocks('echo x | tee app/lib/neu.ts'), true);
+  assert.equal(blocks('cat vorlage | tee -a scripts/tft-build-aggregator.mjs'), true);
+  assert.equal(blocks(`node --eval "require('fs').writeFileSync('app/x.ts',1)"`), true);
+  assert.equal(blocks(`node -p "require('fs').writeFileSync('app/x.ts',1)"`), true);
+  assert.equal(blocks(`python3 -c "open('app/x.ts','w').write(1)"`), true);
+  assert.equal(blocks('dd if=/dev/zero of=app/lib/i18n.tsx'), true);
+  assert.equal(blocks(`awk -i inplace "{print}" app/page.tsx`), true);
+});
+
+// Die Gegenprobe ist der eigentliche Punkt: ein Netz ueber die ganze Zeile haette
+// alle diese Aufrufe mitgeblockt, und ein Gate, das bei Alltagsbefehlen nervt,
+// wird abgeschaltet (feedback_disable_gateguard).
+test('lesende Aufrufe und Commit-Botschaften bleiben offen', () => {
+  assert.equal(blocks(`node -p "require('./package.json').version"`), false);
+  assert.equal(blocks(`git commit -m "fix: sed -i geregelt"`), false);
+  assert.equal(blocks('grep -c NODE_ENV app/api/tft/positions/submit/route.ts'), false);
+  assert.equal(blocks('git log --oneline | head -20'), false);
+  assert.equal(blocks(`grep -E "app|scripts" infra/system-map.json`), false);
+  assert.equal(blocks('cat app/page.tsx | wc -l'), false);
+  // Syntaxpruefung, kein Lauf: die Datei enthaelt writeFileSync, wird aber nur geparst.
+  assert.equal(blocks('node --check scripts/hooks/session-start.mjs'), false);
+  assert.equal(blocks(`ssh box "tee /opt/metastats/x.mjs"`), false);
+});
 
 test('Redirect, sed -i, tee, cp: Ziel wird erkannt', () => {
   assert.equal(blocks('echo x > app/lib/neu.ts'), true);

@@ -15,6 +15,7 @@
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFileSync, spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { PROJECT_DIR, readInput, readState, writeState, pruneOldState, clearApproval, readGlobal, writeGlobal, APPROVAL_SURVIVES_COMPACT } from './lib/state.mjs';
 
 const input = readInput();
@@ -192,12 +193,40 @@ if (wantsMemory && !REINDEX_OFF && existsSync(memDir)) {
 // 23 Tage tot, ohne dass es jemandem auffiel. Der pre-push-Check fragt dasselbe,
 // aber erst beim Push — zwischen einem Dropbox-Konflikt an settings.json und
 // dem naechsten Push waere das Gate unbemerkt aus.
+const ERWARTETE_HOOKS = [
+  ['PreToolUse', 'write-gate.mjs', 'das Schreib-Gate — ohne das laufen Aenderungen ohne freigegebenen Plan durch'],
+  ['Stop', 'answer-check.mjs', 'die Antwort-Bremsen — ohne die gehen unbelegte Zahlen an den User raus'],
+  ['UserPromptSubmit', 'prompt-submit.mjs', 'die Kernregeln pro Turn'],
+  ['UserPromptSubmit', 'code-prompt-reviewer.mjs', 'die Spec-Pflicht bei Code:-Auftraegen'],
+  ['PostCompact', 'post-compact.mjs', 'das Nachspielen der Kernregeln nach einem Compact'],
+  ['PreCompact', 'compact-reset.mjs', 'das Zuruecksetzen des Freigabe-Zustands vor einem Compact'],
+];
+
 try {
-  const installed = JSON.parse(readFileSync(join(PROJECT_DIR, '.claude', 'settings.json'), 'utf8'));
-  const pre = JSON.stringify(installed?.hooks?.PreToolUse || []);
-  if (!pre.includes('write-gate.mjs')) {
-    parts.push('<gate-warnung>Das Schreib-Gate (scripts/hooks/write-gate.mjs) ist in .claude/settings.json NICHT als PreToolUse registriert. Schreibzugriffe ohne freigegebenen Plan werden derzeit nicht geblockt. Sag dem User diesen Befund und schlag `npm run setup-hooks` vor.</gate-warnung>');
+  const roh = readFileSync(join(PROJECT_DIR, '.claude', 'settings.json'), 'utf8');
+  const installed = JSON.parse(roh);
+
+  // Frage 1: laeuft noch alles, was laufen soll? Bisher wurde nur nach dem
+  // Schreib-Gate gefragt — die uebrigen fuenf konnten still verschwinden.
+  const fehlt = ERWARTETE_HOOKS
+    .filter(([ereignis, datei]) => !JSON.stringify(installed?.hooks?.[ereignis] || []).includes(datei))
+    .map(([, datei, zweck]) => `${datei} (${zweck})`);
+  if (fehlt.length) {
+    parts.push(`<gate-warnung>In .claude/settings.json ist NICHT registriert: ${fehlt.join('; ')}. Was dort fehlt, greift in dieser Session gar nicht — ein nicht registrierter Hook faellt still aus, es gibt kein Fehlersignal. Sag dem User diesen Befund und schlag \`npm run setup-hooks\` vor.</gate-warnung>`);
   }
+
+  // Frage 2, seit der Sicherheitsdurchsicht am 19.09.2026: ist die Datei noch
+  // die, die wir kennen? Sie ist auf dieser Workstation ein Verweis nach
+  // Dropbox (reference_workstation_sync); ein Konflikt-Merge dort schreibt sie
+  // um, ohne dass hier etwas auffaellt. Schreibzugriffe ueber den Zielpfad
+  // sperrt das Gate seit derselben Durchsicht selbst (toRel loest den Verweis
+  // auf) — gegen eine Aenderung VON AUSSEN hilft nur, sie zu melden.
+  const jetzt = createHash('sha256').update(roh.replace(/\r\n/g, '\n')).digest('hex').slice(0, 12);
+  const vorher = readGlobal().settingsFingerprint || '';
+  if (vorher && vorher !== jetzt) {
+    parts.push(`<gate-warnung>.claude/settings.json hat sich seit der letzten Session geaendert (Fingerabdruck ${vorher} -> ${jetzt}). Diese Datei entscheidet, welche Gates ueberhaupt laufen. Sag dem User diesen Befund.</gate-warnung>`);
+  }
+  if (vorher !== jetzt) writeGlobal({ settingsFingerprint: jetzt });
 } catch {
   // Keine lesbare settings.json: der Drift-Check im pre-push meldet das ohnehin.
 }

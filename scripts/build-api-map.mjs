@@ -626,7 +626,10 @@ if (CHECK_ONLY) {
     console.error('✗ infra/api-map.json fehlt — `npm run build:api-map` laufen lassen und mitcommitten.');
     process.exit(1);
   }
-  if (read(MAP_PATH) !== text) {
+  // Zeilenenden normalisieren wie in build-system-map.mjs: core.autocrlf=true
+  // schreibt die Datei mit \r\n auf die Platte, `text` wird mit \n gebaut.
+  // Ohne das ist das Gate auf einer sauberen Arbeitskopie unter Windows rot.
+  if (read(MAP_PATH).replace(/\r\n/g, '\n') !== text) {
     console.error('✗ infra/api-map.json ist veraltet — `npm run build:api-map` laufen lassen und mitcommitten.');
     process.exit(1);
   }

@@ -55,6 +55,11 @@ jobs:
       - name: Lint-Deckel
         run: node scripts/check-eslint-budget.mjs
 
+      # npm audit endet immer mit Code 1, sobald irgendetwas offen ist — das
+      # Skript parst deshalb die Ausgabe statt den Exit-Code zu lesen.
+      - name: Abhaengigkeits-Warnungen
+        run: node scripts/check-npm-audit.mjs
+
       - name: Klassifikations-Verifier
         run: node scripts/verify-classifications.mjs
 

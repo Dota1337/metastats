@@ -282,6 +282,60 @@ if (activeItems.length > 0) {
   }
 }
 
+// 6. Shop-Pool: verschiedene Einheiten je Kostenstufe.
+//
+// Warum das hier steht: die Zahl war bis 2026-09-25 als Konstante in
+// app/tft/tools/odds/page.tsx getippt und schon fuer Set 17 falsch
+// (18/13/13/14/10 statt 14/13/13/14/9) — PvE-Monster, Trainingspuppe und
+// Ausruestungs-Amboss zaehlten als Shop-Einheiten mit. Gemerkt hat es niemand,
+// weil kein Waechter darauf schaute. Genau das ist dieser Waechter.
+{
+  // POOL_RULE_V1 — Zaehlregel, spiegelbildlich zu app/lib/tft-shop-pool.ts.
+  // Aendert sich eine Seite, muss die andere mit. Der Marker unten prueft,
+  // dass die TS-Seite noch existiert und denselben Regelstand traegt.
+  const counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  const seen = new Set();
+  for (const [apiName, champ] of Object.entries(bundle.champions || {})) {
+    const cost = champ?.cost;
+    if (typeof cost !== 'number' || cost < 1 || cost > 5) continue;
+    if (!Array.isArray(champ?.traits) || champ.traits.length === 0) continue;
+    const icon = typeof champ?.icon === 'string' ? champ.icon.trim().toLowerCase() : '';
+    const key = icon && icon !== 'none' ? `i:${icon}` : `n:${apiName}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    counts[cost] += 1;
+  }
+
+  const shown = [1, 2, 3, 4, 5].map(c => counts[c]).join(' / ');
+  console.log(`  shop-pool units: ${shown} (Kosten 1-5)`);
+
+  // Plausibilitaetsband statt fester Zahlen: feste Zahlen waeren dieselbe
+  // Falle nochmal. Kein Set seit Set 1 lag ausserhalb von 8-22 je Stufe.
+  for (const c of [1, 2, 3, 4, 5]) {
+    if (counts[c] === 0) {
+      fail(`Shop-Pool: Kostenstufe ${c} hat 0 Einheiten — Bundle unvollstaendig oder Riot hat das Schema geaendert.`);
+    } else if (counts[c] < 8 || counts[c] > 22) {
+      fail(`Shop-Pool: Kostenstufe ${c} hat ${counts[c]} Einheiten — ausserhalb 8-22, Zaehlregel greift vermutlich daneben.`);
+    }
+  }
+
+  // Die Ableitung muss die einzige Quelle bleiben. Faellt die Datei weg oder
+  // taucht wieder eine getippte Tabelle auf, ist der Waechter wirkungslos.
+  const poolLib = existsSync('app/lib/tft-shop-pool.ts')
+    ? readFileSync('app/lib/tft-shop-pool.ts', 'utf8')
+    : null;
+  if (!poolLib) {
+    fail('app/lib/tft-shop-pool.ts fehlt — die Einheiten-Zahl waere wieder handgetippt.');
+  } else if (!poolLib.includes('POOL_RULE_V1')) {
+    fail('app/lib/tft-shop-pool.ts traegt den Marker POOL_RULE_V1 nicht mehr — Zaehlregel auseinandergelaufen.');
+  }
+
+  const calcPath = 'app/tft/tools/odds/OddsCalculator.tsx';
+  if (existsSync(calcPath) && /UNIQUE_CHAMPS\s*[:=]/.test(readFileSync(calcPath, 'utf8'))) {
+    fail(`${calcPath} enthaelt wieder eine getippte UNIQUE_CHAMPS-Tabelle — sie gehoert abgeleitet.`);
+  }
+}
+
 console.log();
 if (WARN.length > 0) {
   console.log('Warnings:');

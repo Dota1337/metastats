@@ -57,6 +57,7 @@ const translations = {
   'tft.tools.odds.level': t6('Level', 'Level', '\uB808\uBCA8', '\u7B49\u7EA7', 'Nivel', 'Niveau'),
   'tft.tools.odds.copiesOwned': t6('Eigene Kopien', 'Copies owned', '\uBCF4\uC720 \uBCF5\uC0AC\uBCF8', '\u62E5\u6709\u526F\u672C', 'Copias propias', 'Copies poss\u00E9d\u00E9es'),
   'tft.tools.odds.copiesContested': t6('Von anderen weg', 'Bought by others', '\uB2E4\uB978 \uC0AC\uB78C\uC774 \uAD6C\uB9E4', '\u4ED6\u4EBA\u8D2D\u4E70', 'Comprados por otros', 'Achet\u00E9s par autres'),
+  'tft.tools.odds.othersOut': t6('Andere dieser Kosten weg', 'Others of this cost gone', '같은 비용 다른 유닛 소진', '同费其他单位已购', 'Otros de este coste fuera', 'Autres de ce coût partis'),
   'tft.tools.odds.totalPool': t6('Gesamt-Pool', 'Total pool', '\uC804\uCCB4 \uD480', '\u603B\u6C60', 'Pool total', 'Pool total'),
   'tft.tools.odds.copiesLeft': t6('Verbleibend', 'Copies left', '\uB0A8\uC740 \uBCF5\uC0AC\uBCF8', '\u5269\u4F59\u526F\u672C', 'Restantes', 'Restantes'),
   'tft.tools.odds.hitChance': t6('Treffer-Chance', 'Hit chance', '\uBA85\uC911 \uD655\uB960', '\u547D\u4E2D\u6982\u7387', 'Probabilidad de acierto', 'Probabilit\u00E9 de touche'),

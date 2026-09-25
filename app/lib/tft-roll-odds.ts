@@ -18,6 +18,9 @@ export type { UniqueChampsPerCost, CostTier };
 // 24 % statt 30 % fuer 4-Kosten, also rund ein Viertel zu viele Rolls.
 // Riot legt diese Tabelle nirgends maschinenlesbar ab; sie bleibt handgepflegt
 // und muss bei jedem Set-Wechsel gegen die Quelle geprueft werden.
+// Level 10 ist das Ende: hoehere Stufen sind nicht kaufbar (User 2026-09-25).
+// Mehr als 10 Einheiten aufs Feld kommen ueber Spielmechaniken, nicht ueber
+// gekaufte Erfahrung — eine Zeile 11 gehoert hier deshalb nicht hin.
 export const SHOP_ODDS: Record<number, [number, number, number, number, number]> = {
   2:  [100,  0,  0,  0,  0],
   3:  [ 75, 25,  0,  0,  0],
@@ -28,7 +31,6 @@ export const SHOP_ODDS: Record<number, [number, number, number, number, number]>
   8:  [ 15, 20, 32, 30,  3],
   9:  [ 10, 17, 25, 33, 15],
   10: [  5, 10, 20, 40, 25],
-  11: [  1,  2, 12, 50, 35],
 };
 
 // Kopien je Einheit in der gemeinsamen Tuete. Set 18 unveraendert gegenueber

@@ -99,7 +99,7 @@ export default function OddsCalculator({ uniqueChamps }: { uniqueChamps: UniqueC
                 <span className="text-white text-sm tabular-nums">{level}</span>
               </div>
               <input
-                type="range" min={2} max={11} value={level}
+                type="range" min={2} max={10} value={level}
                 onChange={e => setLevel(Number(e.target.value))}
                 className="w-full accent-accent"
               />

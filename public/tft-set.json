@@ -2,11 +2,11 @@
   "setNumber": 18,
   "setName": "Enchanted Wilds",
   "mutator": "TFTSet18",
-  "latestPatch": "18.2",
-  "lolPatch": "16.18.1",
+  "latestPatch": "18.3",
+  "lolPatch": "16.19.1",
   "patchOverride": null,
   "detectedAt": "2026-08-26T14:08:32.809Z",
-  "lastCheckedAt": "2026-09-19T06:19:07.919Z",
+  "lastCheckedAt": "2026-09-25T06:31:25.681Z",
   "history": [
     {
       "setNumber": 17,

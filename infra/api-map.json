@@ -6,19 +6,19 @@
     "belegen laesst, steht in `unresolved` statt als geratene Kante im Graphen."
   ],
   "counts": {
-    "routes": 75,
+    "routes": 76,
     "groups": 31,
     "tables": 32,
-    "rpcs": 27,
+    "rpcs": 28,
     "files": 11,
-    "edges": 341,
+    "edges": 344,
     "unused": 8,
     "unresolved": 1
   },
   "groups": [
     {
       "name": "tft",
-      "count": 22
+      "count": 23
     },
     {
       "name": "tft/marktwert",
@@ -1138,7 +1138,23 @@
       ],
       "used": true,
       "usedBy": [
-        "app/components/Nav.tsx"
+        "app/components/Nav.tsx",
+        "app/tft/search/TftSearchResults.tsx"
+      ]
+    },
+    {
+      "id": "api:/api/tft/search-riot",
+      "kind": "route",
+      "label": "/api/tft/search-riot",
+      "group": "tft",
+      "file": "app/api/tft/search-riot/route.ts",
+      "via": [
+        "app/lib/regions.ts",
+        "app/lib/tft-player-search-server.ts"
+      ],
+      "used": true,
+      "usedBy": [
+        "app/tft/search/TftSearchResults.tsx"
       ]
     },
     {
@@ -1836,6 +1852,12 @@
       "id": "fn:search_tft_player_names",
       "kind": "rpc",
       "label": "search_tft_player_names",
+      "declared": true
+    },
+    {
+      "id": "fn:search_tft_player_names_exact",
+      "kind": "rpc",
+      "label": "search_tft_player_names_exact",
       "declared": true
     }
   ],
@@ -3076,6 +3098,16 @@
       "kind": "calls"
     },
     {
+      "from": "api:/api/tft/search-riot",
+      "to": "ext:riot-api",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/search-riot",
+      "to": "fn:search_tft_player_names_exact",
+      "kind": "calls"
+    },
+    {
       "from": "api:/api/tft/sets/current",
       "to": "ext:riot-web",
       "kind": "fetches"
@@ -3542,6 +3574,11 @@
     },
     {
       "from": "fn:search_tft_player_names",
+      "to": "db:tft_player_names",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:search_tft_player_names_exact",
       "to": "db:tft_player_names",
       "kind": "reads"
     }

@@ -5,7 +5,7 @@ import { useI18n, LANGUAGES } from '../lib/i18n';
 import { detectGameFromPath } from '../lib/games';
 import { TFT_COACH_ENABLED, TFT_PROS_ENABLED } from '../lib/feature-flags';
 import { useAuth } from '../lib/auth-context';
-import { REGIONS } from '../lib/regions';
+import { tftProfileHref, tftRankLabel, tftRegionLabel, type TftAccountHit } from '../lib/tft-player-search';
 
 interface NavProps {
   active?:
@@ -25,17 +25,7 @@ interface SearchResult {
   sub?: string;
 }
 
-interface TftAccountHit {
-  puuid: string;
-  gameName: string;
-  tagLine: string;
-  region: string;
-  tier: string | null;
-  division: string | null;
-  lp: number | null;
-}
 
-const APEX_TIERS = new Set(['MASTER', 'GRANDMASTER', 'CHALLENGER']);
 
 export default function Nav({ active }: NavProps) {
   const { lang, setLang, t } = useI18n();
@@ -147,13 +137,6 @@ export default function Nav({ active }: NavProps) {
     return `/player/${slug}?region=euw1`;
   };
 
-  const rankLabel = (h: TftAccountHit) => {
-    if (!h.tier) return '';
-    const name = t(`tier.${h.tier.toLowerCase()}` as Parameters<typeof t>[0]);
-    if (APEX_TIERS.has(h.tier)) return h.lp != null ? `${name} ${h.lp} LP` : name;
-    return h.division ? `${name} ${h.division}` : name;
-  };
-
   // Spielerzeilen fuer TFT: echte Treffer mit Region · Rang. Ohne Treffer:
   // mit Tag die freie Eingabe (Profil sucht den Server selbst), ohne Tag
   // "Keine Spieler gefunden". Solange die Antwort fehlt, keine Spielerzeile.
@@ -162,12 +145,12 @@ export default function Nav({ active }: NavProps) {
     if (!tftHits || tftHits.q !== q) return hasTag ? [{ type: 'player', name: q }] : [];
     if (tftHits.hits.length > 0) {
       return tftHits.hits.map(h => {
-        const regionLabel = REGIONS.find(r => r.value === h.region)?.label || h.region.toUpperCase();
-        const rank = rankLabel(h);
+        const regionLabel = tftRegionLabel(h.region);
+        const rank = tftRankLabel(h, l => t(`tier.${l}` as Parameters<typeof t>[0]));
         return {
           type: 'account' as const,
           name: `${h.gameName}#${h.tagLine}`,
-          href: `/tft/player/${encodeURIComponent(h.gameName)}--${encodeURIComponent(h.tagLine)}?region=${h.region}&puuid=${encodeURIComponent(h.puuid)}`,
+          href: tftProfileHref(h),
           sub: rank ? `${regionLabel} · ${rank}` : regionLabel,
         };
       });
@@ -191,6 +174,16 @@ export default function Nav({ active }: NavProps) {
 
   const handleSearchKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && searchQuery.trim()) {
+      const q = searchQuery.trim();
+      const hasTag = q.includes('#') && q.split('#')[1].trim().length > 0;
+      if (game === 'tft' && !hasTag) {
+        // Ohne Tag ist der Name mehrdeutig: Liste aller Konten mit diesem
+        // Namen samt Region, bei genau einem direkt weiter (/tft/search).
+        window.location.href = `/tft/search?q=${encodeURIComponent(q.split('#')[0].trim())}`;
+        setSearchOpen(false);
+        setSearchQuery('');
+        return;
+      }
       const first = results[0];
       if (first?.type === 'none') return;
       window.location.href = first?.type === 'account' && first.href ? first.href : playerHref(searchQuery);

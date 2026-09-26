@@ -2416,9 +2416,9 @@ const translations = {
     'Source : tactics.tools (mécanique de jeu publique)'
   ),
   'tft.search.noResults': t6(
-    'Kein Treffer für „{q}"', 'No match for „{q}"',
-    '„{q}" 검색 결과 없음', '没有找到 „{q}"',
-    'Sin resultados para „{q}"', 'Aucun résultat pour „{q}"'
+    'Kein Treffer für „{q}“', 'No match for „{q}“',
+    '„{q}“ 검색 결과 없음', '没有找到 „{q}“',
+    'Sin resultados para „{q}“', 'Aucun résultat pour „{q}“'
   ),
   'tft.patchNotes.officialLinkHint': t6(
     'Externe Riot-Seite \u2014 Detail-\u00C4nderungen pro Champion / Trait / Augment / Item',

@@ -303,7 +303,7 @@ export default function TftLeaderboardPage() {
               <div>{t('lb.player')}</div>
               <div className="text-right">LP</div>
               <div className="text-right">{t('tft.gamesShort')}</div>
-              <div className="text-right">WR</div>
+              <div className="text-right">{t('tft.top4')}</div>
               {showMarketValue && <div className="text-right">{t('tft.marketValue')}</div>}
             </div>
             {(() => {
@@ -346,7 +346,7 @@ export default function TftLeaderboardPage() {
                   <div className="hidden sm:block text-right text-fg-secondary">{wr}%</div>
                   <div className="flex sm:block items-center justify-between mt-1 sm:mt-0 sm:text-right tabular-nums">
                     <span className="text-fg-muted text-[10px] sm:hidden">
-                      {p.leaguePoints} LP · {total} {t('tft.gamesShort')} · {wr}% WR
+                      {p.leaguePoints} LP · {total} {t('tft.gamesShort')} · {wr}% {t('tft.top4')}
                     </span>
                     {showMarketValue && (mv != null
                       ? <span className="text-accent font-medium">{fmtEur(mv)}</span>

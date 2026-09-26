@@ -225,21 +225,36 @@ function UnitTile({ unit, assets, small, interactive }: { unit: any; assets: Tft
   // against bright splash art.
   const starColor = unit.tier === 3 ? '#f0c040' : 'var(--fg-primary)';
 
+  const linked = interactive && !!unit.characterId;
+  const portrait = (
+    <div className={`relative ${sz} rounded border-2 overflow-hidden`} style={{ borderColor: costColor }}>
+      {url
+        ? <img src={url} alt={name} className="w-full h-full object-cover" />
+        : <div className="w-full h-full bg-surface-overlay" />}
+      {unit.tier > 1 && (
+        <div
+          className="absolute bottom-0 left-1/2 -translate-x-1/2 text-[9px] leading-tight px-1 rounded-t bg-black/70 font-bold"
+          style={{ color: starColor, textShadow: '0 0 2px rgba(0,0,0,0.9)' }}
+        >
+          {'★'.repeat(unit.tier)}
+        </div>
+      )}
+    </div>
+  );
+  // Figur und Gegenstaende sind getrennte Links: ein <a> in einem <a> ist
+  // ungueltiges HTML, der Browser reisst die Kachel beim Laden auseinander.
   const inner = (
     <>
-      <div className={`relative ${sz} rounded border-2 overflow-hidden`} style={{ borderColor: costColor }}>
-        {url
-          ? <img src={url} alt={name} className="w-full h-full object-cover" />
-          : <div className="w-full h-full bg-surface-overlay" />}
-        {unit.tier > 1 && (
-          <div
-            className="absolute bottom-0 left-1/2 -translate-x-1/2 text-[9px] leading-tight px-1 rounded-t bg-black/70 font-bold"
-            style={{ color: starColor, textShadow: '0 0 2px rgba(0,0,0,0.9)' }}
-          >
-            {'★'.repeat(unit.tier)}
-          </div>
-        )}
-      </div>
+      {linked ? (
+        <a
+          href={`/tft/units/${encodeURIComponent(unit.characterId)}`}
+          // Stop the click from toggling the match-card's expanded view.
+          onClick={e => e.stopPropagation()}
+          className="block"
+        >
+          {portrait}
+        </a>
+      ) : portrait}
       {unit.items?.length > 0 && (
         <div className="flex gap-px">
           {unit.items.slice(0, 3).map((it: string, i: number) => {
@@ -265,17 +280,16 @@ function UnitTile({ unit, assets, small, interactive }: { unit: any; assets: Tft
     </>
   );
 
-  if (interactive && unit.characterId) {
+  if (linked) {
     return (
-      <a
-        href={`/tft/units/${encodeURIComponent(unit.characterId)}`}
+      <div
         title={tooltip}
-        // Stop the click from toggling the match-card's expanded view.
+        // Clicks between the links must not toggle the match-card either.
         onClick={e => e.stopPropagation()}
         className="flex flex-col items-center gap-0.5 hover:scale-110 transition"
       >
         {inner}
-      </a>
+      </div>
     );
   }
   return (

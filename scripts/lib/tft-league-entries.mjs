@@ -25,7 +25,10 @@ const APEX_TIERS = ['challenger', 'grandmaster', 'master'];
 // reference_marketvalue_skill_score_spec.md) — Division III/IV brauchen wir
 // deshalb gar nicht erst zu holen.
 const DIAMOND_DIVISIONS = ['I', 'II'];
-const PAGE_GUARD = 60;   // Schutz gegen Endlos-Paging bei API-Anomalien
+const PAGE_GUARD = 60;
+// Riots Apex-Endpunkte liefern hoechstens so viele Eintraege (gemessen
+// 2026-08-02, siehe unten). Eine volle Master-Liste ist also abgeschnitten.
+const APEX_CAP = 10_000;   // Schutz gegen Endlos-Paging bei API-Anomalien
 
 /**
  * Ein Eintrag, normalisiert ueber beide Endpoint-Formen.
@@ -58,8 +61,26 @@ function normalize(e, tier) {
  * @returns {Promise<Map<string, LeagueEntry>>} puuid -> Eintrag
  */
 export async function fetchD2PlusEntries(region, rl, apiKey, opts = {}) {
+  return (await fetchD2PlusEntriesDetailed(region, rl, apiKey, opts)).entries;
+}
+
+/**
+ * Wie fetchD2PlusEntries, meldet aber zusaetzlich, WELCHE Listen vollstaendig
+ * geladen wurden. Ohne dieses Signal ist "Spieler fehlt in der Liste" nicht
+ * von "Liste wurde nicht geladen" zu unterscheiden — genau daran hingen die
+ * Tabellenplaetze und die Phantom-Challenger (2026-09-27).
+ *
+ * @returns {Promise<{
+ *   entries: Map<string, LeagueEntry>,
+ *   loaded: {CHALLENGER: boolean, GRANDMASTER: boolean, MASTER: boolean, DIAMOND_I: boolean, DIAMOND_II: boolean},
+ *   masterCapped: boolean,
+ * }>}
+ */
+export async function fetchD2PlusEntriesDetailed(region, rl, apiKey, opts = {}) {
   const log = opts.log || (() => {});
   const out = new Map();
+  const loaded = { CHALLENGER: false, GRANDMASTER: false, MASTER: false, DIAMOND_I: false, DIAMOND_II: false };
+  let masterCapped = false;
   let calls = 0;
 
   // 1) Apex — je ein Call, liefert die komplette Liga am Stueck.
@@ -97,13 +118,16 @@ export async function fetchD2PlusEntries(region, rl, apiKey, opts = {}) {
       if (!e?.puuid) continue;
       out.set(e.puuid, normalize(e, tier.toUpperCase()));
     }
-    log(`  [entries] ${tier}: ${entries.length}`);
+    loaded[tier.toUpperCase()] = true;
+    if (tier === 'master' && entries.length >= APEX_CAP) masterCapped = true;
+    log(`  [entries] ${tier}: ${entries.length}${tier === 'master' && masterCapped ? ' (Obergrenze erreicht — Liste unvollstaendig)' : ''}`);
   }
 
   // 2) Diamond I + II — paginiert bis die API leer liefert.
   for (const div of DIAMOND_DIVISIONS) {
     let page = 1;
     let got = 0;
+    let complete = false;
     while (page <= PAGE_GUARD) {
       let data;
       try {
@@ -119,7 +143,8 @@ export async function fetchD2PlusEntries(region, rl, apiKey, opts = {}) {
         break;
       }
       calls++;
-      if (!Array.isArray(data) || data.length === 0) break;
+      if (!Array.isArray(data)) break;
+      if (data.length === 0) { complete = true; break; }
       let added = 0;
       for (const e of data) {
         if (!e?.puuid) continue;
@@ -132,14 +157,51 @@ export async function fetchD2PlusEntries(region, rl, apiKey, opts = {}) {
       // ins Leere (API liefert dieselbe Seite erneut, oder wir sind am Ende
       // und bekommen Ueberlappung). Sofort abbrechen statt bis PAGE_GUARD
       // weiterzufragen — das waeren sonst bis zu 60 nutzlose Calls je Division.
-      if (added === 0) break;
+      if (added === 0) { complete = true; break; }
       page++;
     }
-    log(`  [entries] DIAMOND ${div}: ${got}`);
+    loaded[`DIAMOND_${div}`] = complete;
+    log(`  [entries] DIAMOND ${div}: ${got}${complete ? '' : ' (UNVOLLSTAENDIG)'}`);
   }
 
   log(`  [entries] gesamt ${out.size} Spieler in ${calls} Calls`);
+  return { entries: out, loaded, masterCapped };
+}
+
+/**
+ * Tabellenplatz innerhalb der Challenger-Liga: LP absteigend, bei Gleichstand
+ * mehr Top-4 zuerst, danach puuid — damit derselbe Stand immer dieselben
+ * Plaetze ergibt, egal in welcher Reihenfolge Riot die Liste liefert.
+ *
+ * @param {Iterable<{puuid: string, tier: string, lp: number, wins: number}>} entries
+ * @returns {Map<string, number>} puuid -> Platz (1-basiert)
+ */
+export function rankChallengers(entries) {
+  const chall = [];
+  for (const e of entries) if (e && e.tier === 'CHALLENGER' && e.puuid) chall.push(e);
+  chall.sort((a, b) => (b.lp - a.lp) || ((b.wins ?? 0) - (a.wins ?? 0))
+    || (a.puuid < b.puuid ? -1 : a.puuid > b.puuid ? 1 : 0));
+  const out = new Map();
+  chall.forEach((e, i) => out.set(e.puuid, i + 1));
   return out;
+}
+
+/**
+ * Nur die Challenger-Liste holen und daraus die Plaetze bilden — fuer Pfade,
+ * die einzelne Spieler rechnen (Refresh-Knopf, --puuids-Nachlauf).
+ *
+ * @returns {Promise<Map<string, number> | null>} null, wenn die Liste nicht
+ *   geladen werden konnte. Der Aufrufer entscheidet dann, nicht der Helfer.
+ */
+export async function fetchChallengerLadder(region, rl) {
+  let data;
+  try {
+    data = await rl(`https://${region}.api.riotgames.com/tft/league/v1/challenger`);
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(data?.entries)) return null;
+  return rankChallengers(data.entries.filter(e => e?.puuid).map(e => normalize(e, 'CHALLENGER')));
 }
 
 /**
@@ -171,4 +233,4 @@ export function splitByActivity(candidates, entries) {
   return { active, inactive };
 }
 
-export const __testables = { normalize, APEX_TIERS, DIAMOND_DIVISIONS };
+export const __testables = { normalize, APEX_TIERS, DIAMOND_DIVISIONS, APEX_CAP };

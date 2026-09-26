@@ -95,7 +95,7 @@ import {
 } from './lib/tft-marketvalue-pipeline.mjs';
 import { ACTIVE_REGIONS } from './lib/active-regions.mjs';
 import { loadSetStartDate, daysSinceSetStart } from './lib/current-set.mjs';
-import { fetchD2PlusEntries, splitByActivity } from './lib/tft-league-entries.mjs';
+import { fetchD2PlusEntriesDetailed, splitByActivity, rankChallengers } from './lib/tft-league-entries.mjs';
 import { assertContracts } from './lib/contracts.mjs';
 import { formatTimings, resetTimings, timingEnabled } from './lib/perf-timing.mjs';
 
@@ -222,6 +222,15 @@ const REFRESH_HOURS = parseFloat(arg('--min-refresh-hours', String(MIN_REFRESH_H
 // einen Snapshot bekommen). Ohne Deckel liefe der Rundlauf gegen dieselbe Region
 // bis zum SIGTERM.
 const MAX_CYCLES = parseInt(arg('--max-cycles', '20'), 10);
+// Neueinsteiger pro Region und Durchgang: Spieler aus den Liga-Listen, die noch
+// nie einen Marktwert hatten. Bis 2026-09-27 hat sie nur der Discovery-Crawler
+// aufgenommen — und der laeuft seit 2026-08-01 nicht mehr (Timer maskiert).
+// Gedeckelt, weil jeder Neueinsteiger eine volle Match-Historie braucht; der
+// Rueckstand fuellt sich ueber mehrere Laeufe.
+const NEWCOMER_CAP = parseInt(arg('--newcomer-cap', '300'), 10);
+// Einzelabfragen fuer Spieler, die aus allen vollstaendig geladenen Listen
+// verschwunden sind (abgestiegen). Gedeckelt, Challenger zuerst.
+const PHANTOM_CAP = parseInt(arg('--phantom-cap', '1500'), 10);
 
 if (!Number.isFinite(MAX_IDS) || MAX_IDS < 1 || MAX_IDS > 1000) {
   console.error(`Invalid --max-ids ${MAX_IDS}, expected 1..1000`);
@@ -609,9 +618,10 @@ function makeNullPop() {
 
 async function loadIterationTargets(region) {
   // Pro Spieler: das ZULETZT bekannte Snapshot-Tier + LP + last_snapshot_date.
-  // Wir gehen davon aus, dass das Tier nicht im letzten Tag um mehr als 1
-  // Division gerutscht ist — wenn doch, korrigiert sich das im nächsten
-  // wöchentlichen Discovery-Lauf (= alter Crawler mit --include-diamond).
+  // Tier/LP/Platz aus dieser Zeile sind nur der Vortagsstand — processRegion
+  // ueberschreibt sie mit den frischen Liga-Listen und fragt Spieler, die dort
+  // fehlen, einzeln nach. Neueinsteiger nimmt processRegion ebenfalls selbst
+  // auf; der alte Discovery-Crawler laeuft seit 2026-08-01 nicht mehr.
   //
   // Fälligkeit hängt an created_at (Zeitpunkt des letzten Schreibvorgangs),
   // nicht mehr an `snapshot_date < current_date`. Der Tagesvergleich hatte zwei
@@ -654,6 +664,67 @@ async function loadIterationTargets(region) {
     wins: 0,
     losses: 0,
   }));
+}
+
+// Neueinsteiger pro Prozess nur einmal versuchen: wer unter 5 Spielen liegt,
+// bekommt keinen Snapshot und stuende sonst in jedem Durchgang des Rundlaufs
+// wieder vorn.
+const newcomerTried = new Set();
+
+// Reihenfolge fuer Deckel: Challenger > GM > Master > Diamond I > Diamond II.
+function tierScore(p) {
+  const base = { DIAMOND: 6, MASTER: 7, GRANDMASTER: 8, CHALLENGER: 9 }[p.tier] ?? 0;
+  return p.tier === 'DIAMOND' && p.rank === 'I' ? base + 0.5 : base;
+}
+
+// Rang-Daten eines Liga-Eintrags auf einen Spieler legen. Der Platz gilt nur
+// fuer Challenger; ohne geladene Liste bleibt ein bisheriger Challenger-Platz
+// stehen (ein Ausfall darf den Wert nicht auf die LP-Kurve stuerzen).
+function applyEntry(p, e, ladder) {
+  const wasChallenger = p.tier === 'CHALLENGER';
+  p.tier = e.tier;
+  p.rank = e.rank;
+  p.lp = e.lp;
+  p.wins = e.wins;
+  p.losses = e.losses;
+  if (e.tier !== 'CHALLENGER') p.ladderRank = undefined;
+  else if (ladder) p.ladderRank = ladder.get(e.puuid);
+  else if (!wasChallenger) p.ladderRank = undefined;
+}
+
+// Deckt die geladene Liste die bisherige Stufe des Spielers VOLLSTAENDIG ab?
+// Nur dann heisst "fehlt" wirklich "nicht mehr dort". Auch alle Listen darueber
+// muessen vollstaendig sein (er kann aufgestiegen sein), und die Master-Liste
+// ist in grossen Regionen bei 10.000 abgeschnitten.
+function listCoversTier(tier, loaded, masterCapped) {
+  if (!loaded) return false;
+  const apex = loaded.CHALLENGER && loaded.GRANDMASTER && loaded.MASTER;
+  if (tier === 'CHALLENGER' || tier === 'GRANDMASTER') return apex;
+  if (tier === 'MASTER') return apex && !masterCapped;
+  if (tier === 'DIAMOND') return apex && !masterCapped && loaded.DIAMOND_I && loaded.DIAMOND_II;
+  return false;
+}
+
+// Einzelabfrage: undefined = Abfrage gescheitert, null = nicht (mehr) gewertet.
+async function lookupLeagueEntry(riot, region, puuid) {
+  let data;
+  try {
+    data = await riot.fetchJson(
+      `https://${region}.api.riotgames.com/tft/league/v1/by-puuid/${puuid}`,
+      { safe: true },
+    );
+  } catch {
+    return undefined;
+  }
+  if (data == null || data._status) return undefined;
+  const e = Array.isArray(data) ? data.find(x => x.queueType === 'RANKED_TFT') : null;
+  if (!e) return null;
+  const wins = Number(e.wins ?? 0);
+  const losses = Number(e.losses ?? 0);
+  return {
+    puuid, tier: String(e.tier || '').toUpperCase(), rank: e.rank || 'I',
+    lp: Number(e.leaguePoints ?? 0), wins, losses, games: wins + losses,
+  };
 }
 
 function startTimeForPlayer(player) {
@@ -766,13 +837,15 @@ async function processRegion(region) {
   // gerechnet wird weiterhin fuer alle (gemessen: 36 ms/Spieler, ~31 min fuer
   // die gesamte Grundgesamtheit — siehe infra/specs/2026-08-02-*.md).
   let entries = new Map();
+  let loaded = null;
+  let masterCapped = false;
   {
     // Bewusst AUCH im Dry-Run: der Abruf ist rein lesend (~30-60 Calls) und ist
     // die einzige Moeglichkeit, die Aktivitaets-Aufteilung zu pruefen, ohne
     // einen Snapshot zu schreiben. Ein Dry-Run, der den neuen Pfad ueberspringt,
     // testet nichts.
     try {
-      entries = await fetchD2PlusEntries(region, url => riot.fetchJson(url), API_KEY, { log: m => console.log(m) });
+      ({ entries, loaded, masterCapped } = await fetchD2PlusEntriesDetailed(region, url => riot.fetchJson(url), API_KEY, { log: m => console.log(m) }));
     } catch (err) {
       // Kein Abbruch: ohne Eintraege gelten alle als aktiv, der Lauf verhaelt
       // sich exakt wie vor dem Umbau. Teurer, aber korrekt.
@@ -782,28 +855,101 @@ async function processRegion(region) {
   }
   const { active, inactive } = splitByActivity(players, entries);
   const inactiveSet = new Set(inactive.map(p => p.puuid));
+
+  // Tabellenplatz frisch aus der Challenger-Liste, die oben ohnehin geholt
+  // wurde. Bis 2026-09-27 kam er aus dem Snapshot des Vortags, und der stammte
+  // urspruenglich vom Discovery-Crawler — der seit 2026-08-01 steht. Der Platz
+  // war damit fuer ganz Set 18 eingefroren: der echte Platz 1 lag auf der
+  // LP-Kurve, laengst abgerutschte Spieler behielten ihren Top-30-Grundwert.
+  const ladder = loaded?.CHALLENGER ? rankChallengers(entries.values()) : null;
+  if (!ladder) {
+    console.warn(`  [ladder] WARNUNG: Challenger-Liste nicht geladen — bisherige Challenger behalten ihren alten Platz`);
+  }
+
   // Frische Rang-Daten aus den Liga-Eintraegen uebernehmen. Bisher kamen tier/
-  // rank/lp aus dem Snapshot des VORTAGS — der Code nahm bewusst in Kauf, dass
-  // sie einen Tag alt sind. Das erklaert vermutlich beobachtete Basiswert-
-  // Spruenge. ladder_rank bleibt aus dem Snapshot: den liefern die Eintraege
-  // nicht, und er stammt aus dem Daily-Crawler.
+  // rank/lp aus dem Snapshot des VORTAGS.
   let refreshedRank = 0;
+  const missing = [];
   for (const p of players) {
     const e = entries.get(p.puuid);
-    if (!e) continue;
+    if (!e) { missing.push(p); continue; }
     if (p.tier !== e.tier || p.rank !== e.rank || p.lp !== e.lp) refreshedRank++;
-    p.tier = e.tier;
-    p.rank = e.rank;
-    p.lp = e.lp;
-    p.wins = e.wins;
-    p.losses = e.losses;
+    applyEntry(p, e, ladder);
     // Ab hier traegt gamesPlayed den AKTUELLEN Stand — die Aufteilung oben hat
     // den Vortageswert bereits verbraucht. Dieser Wert wird in den Snapshot
     // geschrieben und ist morgen die Vergleichsbasis.
     p.gamesPlayed = e.games;
   }
+
+  // Abgestiegene: fehlt ein Spieler in einer VOLLSTAENDIG geladenen Liste
+  // seiner bisherigen Stufe, ist er dort nicht mehr. Ohne Einzelabfrage bliebe
+  // er mit altem Rang und altem Wert stehen ("Phantom-Challenger").
+  const phantoms = missing.filter(p => listCoversTier(p.tier, loaded, masterCapped));
+  const phantomSkipped = Math.max(0, phantoms.length - PHANTOM_CAP);
+  let phantomFixed = 0;
+  if (!DRY_RUN) {
+    phantoms.sort((a, b) => tierScore(b) - tierScore(a) || (b.lp ?? 0) - (a.lp ?? 0));
+    for (const p of phantoms.slice(0, PHANTOM_CAP)) {
+      if (aborting) break;
+      const e = await lookupLeagueEntry(riot, region, p.puuid);
+      if (e === undefined) continue;   // Abfrage gescheitert → Stand bleibt, morgen neu
+      if (e === null) {
+        // Nicht mehr gewertet: computeBaseValue liefert dann rated=false, es
+        // entsteht kein neuer Wert mit altem Rang.
+        p.tier = 'UNRANKED';
+        p.ladderRank = undefined;
+      } else {
+        applyEntry(p, e, ladder);
+        p.gamesPlayed = e.games;
+      }
+      phantomFixed++;
+    }
+  }
+
+  // Wer ohne Liga-Eintrag bleibt: nur ein bisheriger Challenger behaelt einen
+  // Platz, und nur, wenn die Liste ausgefallen ist. Mit geladener Liste und
+  // ohne Eintrag ist er dort nicht (mehr) → kein Platz, LP-Kurve.
+  for (const p of missing) {
+    if (p.tier !== 'CHALLENGER') p.ladderRank = undefined;
+    else if (ladder) p.ladderRank = ladder.get(p.puuid);
+  }
+
+  // Neueinsteiger: in den Liga-Listen, aber noch nie mit Marktwert.
+  let newcomerCount = 0;
+  if (entries.size > 0 && NEWCOMER_CAP > 0) {
+    const known = await pool.query(
+      `select distinct puuid from tft_player_marketvalue_snapshots where region = $1`,
+      [region],
+    );
+    const knownSet = new Set(known.rows.map(r => r.puuid));
+    const setStart = loadSetStartDate();
+    const since = setStart ? new Date(setStart + 'T00:00:00Z') : new Date(Date.now() - 30 * 86_400_000);
+    const candidates = [];
+    for (const e of entries.values()) {
+      if (knownSet.has(e.puuid) || newcomerTried.has(e.puuid)) continue;
+      if (e.tier === 'DIAMOND' && e.rank !== 'I' && e.rank !== 'II') continue;
+      candidates.push(e);
+    }
+    candidates.sort((a, b) => tierScore(b) - tierScore(a) || b.lp - a.lp);
+    // --limit ist ein Testschalter und deckelt auch die Neueinsteiger.
+    const picked = candidates.slice(0, LIMIT > 0 ? Math.min(NEWCOMER_CAP, LIMIT) : NEWCOMER_CAP);
+    newcomerCount = picked.length;
+    console.log(`  [neu] ${candidates.length} Spieler ohne Marktwert in den Listen, ${picked.length} in diesem Durchgang aufgenommen (Deckel ${NEWCOMER_CAP})`);
+    if (!DRY_RUN) {
+      for (const e of picked) {
+        newcomerTried.add(e.puuid);
+        const p = { puuid: e.puuid, lastSnapshotDate: since, gamesPlayed: e.games };
+        applyEntry(p, e, ladder);
+        players.push(p);
+      }
+    }
+  }
+
   console.log(`  [aktiv] ${active.length} gespielt / ${inactive.length} inaktiv`
     + ` | ${refreshedRank} mit frischem Rang`
+    + ` | ${phantoms.length} aus ihrer Liste verschwunden (${phantomFixed} nachgefragt${phantomSkipped ? `, ${phantomSkipped} ueber Deckel` : ''})`
+    + ` | ${newcomerCount} neu`
+    + (ladder ? ` | ${ladder.size} Challenger-Plaetze` : '')
     + (entries.size === 0 ? ' | KEINE Liga-Eintraege → alle aktiv' : ''));
 
   // Dry-Run: nur Estimate ausgeben, keine Riot-Calls, kein Schreib

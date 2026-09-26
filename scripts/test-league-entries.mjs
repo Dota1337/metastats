@@ -3,7 +3,7 @@
 // Aktivitaetserkennung isoliert — inklusive der Faelle, die wehtun.
 // Kein Riot, keine DB: reine Logik, laeuft in Millisekunden.
 
-import { splitByActivity, __testables } from './lib/tft-league-entries.mjs';
+import { splitByActivity, rankChallengers, fetchD2PlusEntriesDetailed, __testables } from './lib/tft-league-entries.mjs';
 
 let failed = 0;
 function check(name, actual, expected) {
@@ -91,6 +91,56 @@ console.log('=== normalize ===');
   const n = __testables.normalize({ puuid: 'z' }, 'MASTER');
   check('fehlende wins/losses -> 0, nicht NaN', [n.wins, n.losses, n.games], [0, 0, 0]);
   check('fehlende lp -> 0', n.lp, 0);
+}
+
+console.log('=== rankChallengers ===');
+{
+  const ch = (puuid, lp, wins) => ({ puuid, tier: 'CHALLENGER', lp, wins });
+  const m = rankChallengers([
+    ch('c', 900, 50),
+    ch('a', 1200, 80),
+    { puuid: 'gm', tier: 'GRANDMASTER', lp: 5000, wins: 999 },  // zaehlt nicht
+    ch('b2', 900, 60),   // gleiche LP, mehr Siege -> vor c
+    ch('b1', 900, 60),   // gleiche LP + Siege -> puuid entscheidet
+  ]);
+  check('Reihenfolge LP, dann Siege, dann puuid',
+    ['a', 'b1', 'b2', 'c'].map(p => m.get(p)), [1, 2, 3, 4]);
+  check('Nicht-Challenger bekommt keinen Platz', m.has('gm'), false);
+  check('Eingabereihenfolge egal', [...rankChallengers([ch('x', 1, 0), ch('y', 2, 0)])], [['y', 1], ['x', 2]]);
+  check('leere Liste', rankChallengers([]).size, 0);
+}
+
+console.log('=== fetchD2PlusEntriesDetailed: Lade-Status ===');
+{
+  // Nachgebauter Riot-Abruf: Apex-Listen + Diamond-Seiten, Fehler steuerbar.
+  const mk = (n, pre) => Array.from({ length: n }, (_, i) => ({ puuid: `${pre}${i}`, leaguePoints: 100, wins: 1, losses: 1 }));
+  const fake = (opts) => async (url) => {
+    for (const t of ['challenger', 'grandmaster', 'master']) {
+      if (url.includes(`/league/v1/${t}`)) {
+        if (opts.fail === t) return { _status: 503 };
+        return { entries: mk(t === 'master' ? (opts.masterN ?? 3) : 2, t) };
+      }
+    }
+    const d = url.match(/DIAMOND\/(I{1,2})\?page=(\d+)/);
+    if (d) {
+      if (opts.failDiv === d[1]) return { _status: 500 };
+      return Number(d[2]) === 1 ? mk(2, `d${d[1]}`) : [];
+    }
+    return null;
+  };
+  const ok = await fetchD2PlusEntriesDetailed('euw1', fake({}), 'k');
+  check('alles geladen', ok.loaded, { CHALLENGER: true, GRANDMASTER: true, MASTER: true, DIAMOND_I: true, DIAMOND_II: true });
+  check('alles geladen: 2+2+3+2+2 Eintraege', ok.entries.size, 11);
+  check('alles geladen: Master nicht gedeckelt', ok.masterCapped, false);
+
+  const gm = await fetchD2PlusEntriesDetailed('euw1', fake({ fail: 'grandmaster' }), 'k');
+  check('GM-Fehler -> GM nicht geladen, Rest schon', [gm.loaded.CHALLENGER, gm.loaded.GRANDMASTER, gm.loaded.MASTER], [true, false, true]);
+
+  const d2 = await fetchD2PlusEntriesDetailed('euw1', fake({ failDiv: 'II' }), 'k');
+  check('D-II-Fehler -> D II unvollstaendig', [d2.loaded.DIAMOND_I, d2.loaded.DIAMOND_II], [true, false]);
+
+  const cap = await fetchD2PlusEntriesDetailed('euw1', fake({ masterN: __testables.APEX_CAP }), 'k');
+  check('Master am Deckel -> masterCapped', cap.masterCapped, true);
 }
 
 console.log('');

@@ -42,6 +42,7 @@ import {
   persistPopulation,
   snapshotPlayer,
 } from './lib/tft-marketvalue-pipeline.mjs';
+import { rankChallengers, fetchChallengerLadder } from './lib/tft-league-entries.mjs';
 
 const args = process.argv.slice(2);
 const arg = (k, def) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : def; };
@@ -190,20 +191,22 @@ async function discoverPlayers() {
     console.log(`  diamond: ${diamond.length}`);
     all.push(...diamond);
   }
-  // Ladder rank (within the regional apex ladder) — drives the top-50 chal
-  // base-value curve. Diamond entries keep ladderRank=undefined.
-  const apexOnly = all.filter(p => p.tier !== 'DIAMOND').sort((a, b) => b.lp - a.lp);
-  for (let i = 0; i < apexOnly.length; i++) apexOnly[i].ladderRank = i + 1;
+  // Tabellenplatz innerhalb der Challenger-Liga — derselbe Helfer wie im
+  // Tageslauf, mit festem Gleichstand-Bruch. Nur Challenger bekommen einen.
+  const ladder = rankChallengers(all);
+  for (const p of all) p.ladderRank = p.tier === 'CHALLENGER' ? ladder.get(p.puuid) : undefined;
   return all;
 }
 
 // --puuids mode: skip apex discovery, fetch each player's RANKED_TFT entry
-// directly. Used by the backfill workflow. ladderRank is reused from the
-// most recent existing snapshot in the same region — without it CHALLENGER
-// players fall onto the LP-only base-value curve (~12k vs real ~130k),
-// which would produce 10× too-low backfilled values.
+// directly. Used by the backfill workflow. Der Tabellenplatz kommt frisch aus
+// der Challenger-Liste (ein Abruf fuer alle) — ohne ihn fielen Challenger auf
+// die LP-Kurve (~12k statt ~130k). Nur wenn die Liste ausfaellt, bleibt der
+// letzte gespeicherte Platz des laufenden Sets stehen.
 async function loadPlayersByPuuids(puuids) {
   console.log(`[discovery] ${REGION} — explicit ${puuids.length} puuid(s)`);
+  const ladder = await fetchChallengerLadder(REGION, rl);
+  if (!ladder) console.warn(`  [ladder] WARNUNG: Challenger-Liste nicht geladen — letzter gespeicherter Platz wird genutzt`);
   const out = [];
   for (const puuid of puuids) {
     const data = await rl(
@@ -219,12 +222,20 @@ async function loadPlayersByPuuids(puuids) {
       if (VERBOSE) console.log(`  [skip] no RANKED_TFT entry for ${puuid.slice(0, 8)}…`);
       continue;
     }
-    const lr = await pool.query(
-      `select ladder_rank from tft_player_marketvalue_snapshots
-         where puuid=$1 and region=$2 and ladder_rank is not null
-         order by snapshot_date desc limit 1`,
-      [puuid, REGION],
-    );
+    let ladderRank;
+    if (entry.tier === 'CHALLENGER') {
+      if (ladder) {
+        ladderRank = ladder.get(puuid);
+      } else {
+        const lr = await pool.query(
+          `select ladder_rank from tft_player_marketvalue_snapshots
+             where puuid=$1 and region=$2 and set_number=$3 and ladder_rank is not null
+             order by snapshot_date desc limit 1`,
+          [puuid, REGION, loadCurrentSet()],
+        );
+        ladderRank = lr.rows[0]?.ladder_rank ?? undefined;
+      }
+    }
     out.push({
       puuid,
       tier: entry.tier,
@@ -232,7 +243,7 @@ async function loadPlayersByPuuids(puuids) {
       lp: entry.leaguePoints ?? 0,
       wins: entry.wins ?? 0,
       losses: entry.losses ?? 0,
-      ladderRank: lr.rows[0]?.ladder_rank ?? undefined,
+      ladderRank,
     });
   }
   return out;

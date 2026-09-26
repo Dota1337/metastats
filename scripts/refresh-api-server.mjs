@@ -106,6 +106,7 @@ import {
   buildRecommendedItems,
 } from './lib/tft-season-aggregator.mjs';
 import { computeBaseValue } from './lib/tft-marketvalue.mjs';
+import { fetchChallengerLadder } from './lib/tft-league-entries.mjs';
 import { extractRawMetrics, scoreSkill } from './lib/tft-skill-score.mjs';
 
 // Load the persisted region/set population so the single-player refresh can
@@ -237,6 +238,22 @@ async function fetchAccount(puuid, regional) {
   return { gameName: r.gameName, tagLine: r.tagLine };
 }
 
+// ─ Challenger-Plaetze je Region, 10 Min zwischengespeichert ────────────────
+// Ein Abruf liefert die ganze Liga; bei mehreren Refreshes kurz hintereinander
+// soll nicht jeder einzeln fragen. Laufende Abrufe werden geteilt.
+const LADDER_TTL_MS = 10 * 60_000;
+const ladderCache = new Map();   // region → { at, promise }
+async function getChallengerLadder(region) {
+  const hit = ladderCache.get(region);
+  if (hit && Date.now() - hit.at < LADDER_TTL_MS) return hit.promise;
+  const promise = fetchChallengerLadder(region, url => riot.fetchJson(url, { safe: true }));
+  ladderCache.set(region, { at: Date.now(), promise });
+  const ladder = await promise;
+  // Fehlschlag nicht 10 Min lang festhalten.
+  if (!ladder) ladderCache.delete(region);
+  return ladder;
+}
+
 // ─ Main work: refresh one player end-to-end ────────────────────────────────
 async function refreshOnePlayer(puuid, region) {
   const setNumber = loadCurrentSet();
@@ -274,15 +291,25 @@ async function refreshOnePlayer(puuid, region) {
   }
   const account = await fetchAccount(puuid, getAccountRouting(region));
 
-  // Preserve the player's last known ladder_rank from the daily crawler —
-  // the single-player refresh has no cheap way to recompute it, and
-  // dropping it would collapse Top-50 Challenger base values onto the LP
-  // fallback curve (€200k → €50k for rank 1).
-  const ladderRankRow = await pool.query(
-    'select ladder_rank from tft_player_marketvalue_snapshots where puuid = $1 and region = $2 and ladder_rank is not null order by snapshot_date desc limit 1',
-    [puuid, region],
-  );
-  const ladderRank = ladderRankRow.rows[0]?.ladder_rank ?? null;
+  // Tabellenplatz frisch aus der Challenger-Liste (10 Min je Region
+  // zwischengespeichert). Bis 2026-09-27 wurde hier der letzte gespeicherte
+  // Platz weitergereicht — der war seit August eingefroren. Faellt die Liste
+  // aus, bleibt der letzte Platz des laufenden Sets stehen, damit ein
+  // Challenger nicht auf die LP-Kurve stuerzt.
+  let ladderRank = null;
+  if (ranked.tier === 'CHALLENGER') {
+    const ladder = await getChallengerLadder(region);
+    if (ladder) {
+      ladderRank = ladder.get(puuid) ?? null;
+    } else {
+      console.warn(`[refresh] WARNUNG ${region}: Challenger-Liste nicht geladen — letzter Platz bleibt`);
+      const ladderRankRow = await pool.query(
+        'select ladder_rank from tft_player_marketvalue_snapshots where puuid = $1 and region = $2 and set_number = $3 and ladder_rank is not null order by snapshot_date desc limit 1',
+        [puuid, region, setNumber],
+      );
+      ladderRank = ladderRankRow.rows[0]?.ladder_rank ?? null;
+    }
+  }
 
   // 5) Marketvalue compute — base × population-relative skill-score multiplier
   const base = computeBaseValue(
@@ -325,6 +352,7 @@ async function refreshOnePlayer(puuid, region) {
        set_number = excluded.set_number,
        game_name = excluded.game_name, tag_line = excluded.tag_line,
        tier = excluded.tier, rank = excluded.rank, lp = excluded.lp,
+       ladder_rank = excluded.ladder_rank,
        base_value = excluded.base_value, multiplier = excluded.multiplier,
        final_value = excluded.final_value, sample_size = excluded.sample_size,
        damping = excluded.damping, agents = excluded.agents`,

@@ -130,13 +130,16 @@ export async function GET(request: NextRequest) {
   let ladderRank: number | undefined;
   if (ranked?.tier === 'CHALLENGER') {
     const { data: lr } = await supabaseAdmin
-    // Bewusst OHNE Set-Filter: ladder_rank ist eine Leiterposition, keine
-    // Set-Statistik. Am Set-Start gaebe es sonst keinen Wert und ein
-    // Challenger fiele auf die LP-Kurve (~12k statt ~130k).
+    // Nur aus dem laufenden Set: ein Platz aus dem Vorset gehoert zu einer
+    // anderen Leiter (bis 2026-09-27 zeigten eingefrorene Set-17-Plaetze
+    // Spieler als Top 30, die es nicht mehr waren). Seit der Tageslauf den
+    // Platz taeglich frisch schreibt, gibt es am Set-Start nach einem Tag
+    // wieder einen Wert.
       .from('tft_player_marketvalue_snapshots')
       .select('ladder_rank')
       .eq('puuid', puuid)
       .eq('region', region)
+      .eq('set_number', CURRENT_SET)
       .not('ladder_rank', 'is', null)
       .order('snapshot_date', { ascending: false })
       .limit(1)

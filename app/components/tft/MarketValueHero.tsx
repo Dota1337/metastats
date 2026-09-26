@@ -253,7 +253,7 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
   // once the value lands.
   if (loading) {
     return (
-      <div className="bg-surface-base border border-border-subtle rounded-lg p-5 mb-5">
+      <div className="bg-surface-base border border-border-subtle rounded-lg p-3 sm:p-5 mb-3 sm:mb-5">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
             <div className="text-fg-secondary text-xs uppercase tracking-widest mb-2">{t('tft.marketValue')}</div>
@@ -271,7 +271,7 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
   if (!data || !rated) {
     const reason = data?.marketValue.notRatedReason || 'unrated';
     return (
-      <div className="bg-surface-base border border-border-subtle rounded-lg p-5 mb-5">
+      <div className="bg-surface-base border border-border-subtle rounded-lg p-3 sm:p-5 mb-3 sm:mb-5">
         <div className="text-fg-secondary text-xs uppercase tracking-widest mb-2">{t('tft.marketValue')}</div>
         <div className="text-fg-secondary text-base">
           {reason === 'below_master' ? t('tft.marketValue.belowMaster') : t('tft.marketValue.notRated')}
@@ -297,16 +297,16 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
   const todayMs = new Date((setInfo?.today || new Date().toISOString().slice(0, 10)) + 'T00:00:00Z').getTime();
 
   return (
-    <div className="bg-gradient-to-br from-surface-base to-[#0e1830] border border-border-subtle rounded-lg p-5 mb-5 relative overflow-hidden">
+    <div className="bg-gradient-to-br from-surface-base to-[#0e1830] border border-border-subtle rounded-lg p-3 sm:p-5 mb-3 sm:mb-5 relative overflow-hidden">
       {/* Accent stripe to make the hero visually distinct from the other cards */}
       <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-accent via-[#9d48e0] to-[#f0c040]" />
 
-      <div className="flex items-stretch justify-between gap-6 flex-wrap">
+      <div className="flex items-stretch justify-between gap-4 sm:gap-6 flex-wrap">
         {/* Left: Big EUR value + 7d delta */}
         <div className="flex flex-col justify-between min-w-[180px]">
           <div>
             <div className="text-fg-secondary text-xs uppercase tracking-widest mb-1.5">{t('tft.marketValue')}</div>
-            <div className="text-white text-4xl sm:text-5xl font-semibold tabular-nums leading-tight">
+            <div className="text-white text-3xl sm:text-5xl font-semibold tabular-nums leading-tight">
               {formatEuro(mv.finalValue, lang)}
             </div>
             {data.summoner.ladderRank != null && data.summoner.ladderRank > 0 && (
@@ -350,7 +350,9 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
         </div>
 
         {/* Right: value chart over the set window (grows into the free space) */}
-        <div className="flex-1 min-w-[300px]">
+        {/* Phone: own row at full card width (min-w-[300px] overflowed the
+            card padding at 360px). */}
+        <div className="basis-full min-w-0 sm:basis-auto sm:flex-1 sm:min-w-[300px]">
           <div className="flex items-center justify-end gap-2 mb-1.5">
             <button
               onClick={triggerRefresh}

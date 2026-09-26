@@ -320,8 +320,8 @@ export default function TftPlayerPage() {
 
         {data && (
           <>
-            <div className="bg-surface-base border border-border-subtle rounded-lg p-5 mb-5">
-              <div className="flex items-center gap-4 flex-wrap">
+            <div className="bg-surface-base border border-border-subtle rounded-lg p-3 sm:p-5 mb-3 sm:mb-5">
+              <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
                 {ddVersion && data.summoner.profileIconId != null && (
                   <img
                     src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/profileicon/${data.summoner.profileIconId}.png`}
@@ -386,7 +386,7 @@ export default function TftPlayerPage() {
               <div className="text-fg-secondary text-xs uppercase tracking-widest">{t('tft.player.matchHistory')}</div>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3">
               {pageLoading && pageMatches.length === 0 && (
                 <div className="text-fg-muted text-center py-8">{t('tft.player.loadingMatchHistory')}</div>
               )}
@@ -464,11 +464,12 @@ function SeasonStats({
   lobbyAvgByUnit?: Record<string, number>;
 }) {
   const { t } = useI18n();
+  const [showAllUnits, setShowAllUnits] = useState(false);
   const activeSet = stats?.set ?? selectedSet ?? currentSet;
 
   if (loading && !stats) {
     return (
-      <div className="bg-surface-base border border-border-subtle rounded-lg p-5 mb-5">
+      <div className="bg-surface-base border border-border-subtle rounded-lg p-3 sm:p-5 mb-3 sm:mb-5">
         <div className="text-fg-secondary text-xs uppercase tracking-widest mb-3">
           {t('tft.player.seasonStats')}{activeSet != null ? ` · Set ${activeSet}` : ''}
         </div>
@@ -478,8 +479,8 @@ function SeasonStats({
   }
 
   return (
-    <div className="bg-surface-base border border-border-subtle rounded-lg p-5 mb-5">
-      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+    <div className="bg-surface-base border border-border-subtle rounded-lg p-3 sm:p-5 mb-3 sm:mb-5">
+      <div className="flex items-center justify-between mb-3 sm:mb-4 flex-wrap gap-3">
         <div className="text-fg-secondary text-xs uppercase tracking-widest">
           {t('tft.player.seasonStats')}{activeSet != null ? ` · Set ${activeSet}` : ''}
         </div>
@@ -491,7 +492,7 @@ function SeasonStats({
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-3 sm:mb-4">
             <Stat label={t('tft.avgPlacement')} value={stats.avgPlacement?.toFixed(2) ?? '—'} />
             <Stat label={t('tft.top4')} value={stats.top4Rate != null ? `${(stats.top4Rate * 100).toFixed(1)}%` : '—'} />
             <Stat label={t('tft.top1')} value={stats.top1Rate != null ? `${(stats.top1Rate * 100).toFixed(1)}%` : '—'} />
@@ -508,10 +509,13 @@ function SeasonStats({
               {/* lg:grid-rows-5 + lg:grid-flow-col fills column 1 first
                   (ranks 1-5), then column 2 (6-10), then column 3 (11-15).
                   Smaller breakpoints fall back to row-wise flow. */}
+              {/* Phone shows ranks 1-5 first; 6-15 behind the toggle. Pure
+                  CSS (hidden sm:flex) so desktop never depends on the state. */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 lg:grid-rows-5 lg:grid-flow-col gap-2">
                 {stats.topUnits.slice(0, 15).map((u, i) => (
                   <UnitChip
                     key={u.characterId}
+                    className={i < 5 || showAllUnits ? 'flex' : 'hidden sm:flex'}
                     rank={i + 1}
                     characterId={u.characterId}
                     games={u.games}
@@ -521,6 +525,16 @@ function SeasonStats({
                   />
                 ))}
               </div>
+              {Math.min(stats.topUnits.length, 15) > 5 && (
+                <button
+                  onClick={() => setShowAllUnits(o => !o)}
+                  className="sm:hidden mt-2 w-full text-center text-xs text-[#a892ff] hover:text-white"
+                >
+                  {showAllUnits
+                    ? t('tft.player.showLess')
+                    : t('tft.player.showMore').replace('{n}', String(Math.min(stats.topUnits.length, 15) - 5))}
+                </button>
+              )}
             </div>
           )}
 
@@ -580,7 +594,7 @@ function RankBadge({ rank }: { rank: number }) {
   );
 }
 
-function UnitChip({ rank, characterId, games, avg, assets, lobbyAvg }: { rank: number; characterId: string; games: number; avg: number; assets: TftAssetsBundle | null; lobbyAvg?: number }) {
+function UnitChip({ rank, characterId, games, avg, assets, lobbyAvg, className = 'flex' }: { rank: number; characterId: string; games: number; avg: number; assets: TftAssetsBundle | null; lobbyAvg?: number; className?: string }) {
   const { t } = useI18n();
   const info = assets?.champions[characterId];
   const url = tftChampionTileUrl(assets, info);
@@ -595,7 +609,7 @@ function UnitChip({ rank, characterId, games, avg, assets, lobbyAvg }: { rank: n
     <a
       href={`/tft/units/${encodeURIComponent(characterId)}`}
       title={`#${rank} ${name} — ${games} ${t('tft.gamesShort')}, Ø ${avg.toFixed(2)}${lobbyAvg != null ? ` (Lobby Ø ${lobbyAvg.toFixed(2)})` : ''}`}
-      className="flex items-center gap-2.5 bg-surface-sunken border border-border-subtle rounded-md px-2.5 py-2 hover:border-accent-a50 hover:bg-[#101729] transition"
+      className={`${className} items-center gap-2.5 bg-surface-sunken border border-border-subtle rounded-md px-2.5 py-2 hover:border-accent-a50 hover:bg-[#101729] transition`}
     >
       <RankBadge rank={rank} />
       <div className="w-10 h-10 rounded border-2 overflow-hidden flex-shrink-0" style={{ borderColor: costColor }}>
@@ -665,7 +679,10 @@ function PlayStyle({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-3">
         <div className="bg-surface-sunken border border-border-subtle rounded p-3" style={{ height: 240 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <RadarChart data={radarData}>
+            {/* Side margin keeps the longest axis label ("Konsistenz") inside
+                the box on phones; on desktop the height is the limit, so the
+                radius stays the same. */}
+            <RadarChart data={radarData} margin={{ top: 5, right: 50, bottom: 5, left: 50 }}>
               <PolarGrid stroke="var(--border-subtle)" />
               <PolarAngleAxis dataKey="axis" stroke="var(--fg-secondary)" tick={{ fontSize: 11 }} />
               <Radar name="Score" dataKey="value" stroke="var(--accent-tft)" fill="var(--accent-tft)" fillOpacity={0.35} />
@@ -731,7 +748,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-surface-sunken border border-border-subtle rounded px-3 py-2">
       <div className="text-fg-secondary text-[10px] uppercase tracking-widest">{label}</div>
-      <div className="text-white text-xl font-semibold mt-0.5">{value}</div>
+      <div className="text-white text-lg sm:text-xl font-semibold mt-0.5">{value}</div>
     </div>
   );
 }
@@ -774,8 +791,8 @@ function TournamentHistory({ pro }: { pro: TftProRecord }) {
   const visible = open ? all : all.slice(0, 10);
   const wins = all.filter((r) => String(r.place || '').startsWith('1')).length;
   return (
-    <div className="bg-surface-base border border-border-subtle rounded p-4 mb-3">
-      <div className="flex items-baseline justify-between mb-3">
+    <div className="bg-surface-base border border-border-subtle rounded p-3 sm:p-4 mb-3">
+      <div className="flex items-baseline justify-between flex-wrap gap-x-3 gap-y-1 mb-3">
         <h2 className="text-white text-sm font-medium uppercase tracking-widest">{t('tft.player.tournamentHistory')}</h2>
         <div className="text-xs text-fg-secondary">
           <span className="text-white">{all.length}</span> {t('tft.player.tournaments')} ·{' '}
@@ -793,7 +810,7 @@ function TournamentHistory({ pro }: { pro: TftProRecord }) {
       {visible.map((r, i) => (
         <div
           key={i}
-          className="grid grid-cols-[6rem_3rem_1fr_5rem_6rem] gap-2 py-1.5 text-xs items-center border-b border-border-subtle/40 last:border-b-0"
+          className="grid grid-cols-[5rem_2rem_1fr_3.5rem] sm:grid-cols-[6rem_3rem_1fr_5rem_6rem] gap-2 py-1.5 text-xs items-center border-b border-border-subtle/40 last:border-b-0"
         >
           <div className="text-fg-muted tabular-nums">{r.date?.slice(0, 10) || '—'}</div>
           <div className="font-medium tabular-nums" style={{ color: placeColor(r.place) }}>
@@ -864,7 +881,7 @@ function RankBlock({ ranked, seasonRanks }: { ranked: SummonerData['ranked']; se
   );
 
   return (
-    <div className="text-right relative">
+    <div className="basis-full sm:basis-auto text-left sm:text-right relative">
       {inner}
       {pastSeasons.length > 0 && (
         <>
@@ -875,7 +892,7 @@ function RankBlock({ ranked, seasonRanks }: { ranked: SummonerData['ranked']; se
             {t('tft.player.allSeasons').replace('{n}', String(pastSeasons.length))} {open ? '▲' : '▼'}
           </button>
           {open && (
-            <div className="absolute right-0 mt-1 z-20 bg-surface-base border border-border-subtle rounded-lg shadow-lg p-3 min-w-[280px] text-left">
+            <div className="absolute left-0 sm:left-auto sm:right-0 mt-1 z-20 bg-surface-base border border-border-subtle rounded-lg shadow-lg p-3 min-w-[280px] max-w-[calc(100vw-2rem)] text-left">
               <div className="text-fg-secondary text-[10px] uppercase tracking-widest mb-2">
                 {t('tft.player.peakRankPerSet')}
               </div>

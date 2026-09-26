@@ -42,7 +42,7 @@ export default function MatchCard({ match, selfPuuid, region }: Props) {
       >
         {/* Top row: placement + meta + augments. Wraps on phone so the
             augments don't get squashed off-screen — they're core context. */}
-        <div className="flex items-start sm:items-center gap-3 flex-wrap">
+        <div className="flex items-start sm:items-center gap-2 sm:gap-3 flex-wrap">
           <PlacementBadge placement={placement} />
           <div className="flex-1 min-w-0">
             <ActivatedTraits participant={me} assets={assets} />
@@ -55,7 +55,7 @@ export default function MatchCard({ match, selfPuuid, region }: Props) {
         {/* Units row — every unit a click-through to /tft/units/[id]. On
             mobile, indent only slightly (ml-2) so all 9 tiles get the
             horizontal space they need; desktop indents under meta. */}
-        <div className="mt-4 sm:mt-5 ml-2 sm:ml-15 flex gap-1.5 sm:gap-2 flex-wrap">
+        <div className="mt-2 sm:mt-5 ml-0 sm:ml-15 flex gap-1.5 sm:gap-2 flex-wrap">
           {me.units.map((u, i) => (
             <UnitTile key={i} unit={u} assets={assets} interactive />
           ))}
@@ -67,7 +67,7 @@ export default function MatchCard({ match, selfPuuid, region }: Props) {
           the user keeps the win/loss signal while the panel itself sits
           offset to the right. */}
       {open && (
-        <div className={`ml-12 mr-3 mt-2 rounded border-l-4 ${barColor} bg-surface-sunken p-3 space-y-2`}>
+        <div className={`ml-2 mr-0 sm:ml-12 sm:mr-3 mt-2 rounded border-l-4 ${barColor} bg-surface-sunken p-3 space-y-2`}>
           {match.participants.slice().sort((a, b) => a.placement - b.placement).map(p => (
             <ParticipantRow key={p.puuid} participant={p} isSelf={p.puuid === selfPuuid} assets={assets} region={region || regionFromMatchId(match.matchId)} />
           ))}
@@ -103,7 +103,7 @@ function PlacementBadge({ placement }: { placement: number }) {
 function ActivatedTraits({ participant, assets }: { participant: TftParticipantSummary; assets: TftAssetsBundle | null }) {
   const active = participant.traits.filter(t => t.tierCurrent > 0).slice(0, 6);
   return (
-    <div className="flex gap-1 flex-wrap">
+    <div className="flex gap-0.5 sm:gap-1 flex-wrap">
       {active.map(t => {
         const info = assets?.traits[t.name];
         const styleColor = traitStyleColor(t.style);
@@ -114,7 +114,7 @@ function ActivatedTraits({ participant, assets }: { participant: TftParticipantS
             href={`/tft/traits/${encodeURIComponent(t.name)}`}
             onClick={e => e.stopPropagation()}
             title={tftTraitDescription(assets, t.name) || undefined}
-            className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] hover:brightness-125 transition"
+            className="flex items-center gap-0.5 sm:gap-1 px-1 sm:px-1.5 py-0.5 rounded text-[10px] hover:brightness-125 transition"
             style={{ backgroundColor: `${withAlpha(styleColor, 0x25)}`, color: styleColor }}
           >
             {url && <img src={url} alt={info!.name} className="w-3 h-3" />}
@@ -182,10 +182,10 @@ function ParticipantRow({ participant, isSelf, assets, region }: { participant: 
           <div className="text-fg-muted text-[10px]">Lvl {participant.level} · R{participant.lastRound}</div>
         </div>
       </div>
-      <div className="flex-1 flex flex-wrap items-center gap-1.5">
+      <div className="flex-1 flex flex-wrap items-center gap-1 sm:gap-1.5">
         <ActivatedTraits participant={participant} assets={assets} />
       </div>
-      <div className="flex flex-wrap gap-1">
+      <div className="flex flex-wrap gap-0.5 sm:gap-1">
         {participant.units.map((u, i) => <UnitTile key={i} unit={u} assets={assets} interactive />)}
       </div>
       <AugmentRow augments={participant.augments} assets={assets} />

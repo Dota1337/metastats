@@ -121,6 +121,7 @@ const MAINTENANCE_TABLES = [
   'tft_daily_augment_stats',
   'tft_daily_trait_unitcount_stats',
   'tft_daily_crawl_meta',
+  'tft_player_names',
   'tft_player_marketvalue_snapshots',
 ];
 const VACUUM_TOTAL_BUDGET_MS = 6 * 60_000; // wall-clock cap across all tables

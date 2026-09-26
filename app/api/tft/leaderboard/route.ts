@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getRegionalRouting, parseRegion } from '../../../lib/regions';
+import { getAccountRouting, parseRegion } from '../../../lib/regions';
 import { riotFetch } from '../../../lib/riot-fetch';
 import { cachedJson, STATS_CACHE_CONTROL_FRESH } from '../../../lib/api-cache';
 import { LOL_LADDER, isLolRankGroup, lolTiersTopDown } from '../../../lib/rank-groups';
@@ -201,7 +201,7 @@ export async function GET(request: NextRequest) {
 
     // Namen in Schueben aufloesen, hoechstens PAGE_SIZE Stueck.
     const idMap: Record<string, { gameName: string; tagLine: string }> = {};
-    const regional = getRegionalRouting(region);
+    const regional = getAccountRouting(region);
     for (let i = 0; i < slice.length; i += NAME_BATCH) {
       const batch = slice.slice(i, i + NAME_BATCH);
       await Promise.all(batch.map(async (e: any) => {

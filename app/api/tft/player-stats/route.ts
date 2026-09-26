@@ -3,7 +3,7 @@ import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { refreshPlayerCache, loadCachedMatches, listCachedSets } from '../../../lib/tft-player-cache';
 import { ensureRankHistoryBackfilled, type SeasonRank } from '../../../lib/tft-rank-history';
-import { getRegionalRouting, parseRegion } from '../../../lib/regions';
+import { getAccountRouting, parseRegion } from '../../../lib/regions';
 import { isExcludedUnit } from '../../../lib/tft-excluded';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { riotFetch } from '../../../lib/riot-fetch';
@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
   // require the frontend to pass it on every call.
   let seasonRanks: SeasonRank[] = [];
   try {
-    const regional = getRegionalRouting(region);
+    const regional = getAccountRouting(region);
     const accRes = await riotFetch(
       `https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-puuid/${puuid}`,
       apiKey,

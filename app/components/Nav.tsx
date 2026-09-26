@@ -5,6 +5,7 @@ import { useI18n, LANGUAGES } from '../lib/i18n';
 import { detectGameFromPath } from '../lib/games';
 import { TFT_COACH_ENABLED, TFT_PROS_ENABLED } from '../lib/feature-flags';
 import { useAuth } from '../lib/auth-context';
+import { REGIONS } from '../lib/regions';
 
 interface NavProps {
   active?:
@@ -14,11 +15,27 @@ interface NavProps {
 }
 
 interface SearchResult {
-  type: 'player' | 'champion';
+  // 'account' = echter Treffer aus dem TFT-Namensverzeichnis (mit Region),
+  // 'none' = Name ohne Tag und kein Treffer. 'player' = freie Eingabe.
+  type: 'player' | 'champion' | 'account' | 'none';
   name: string;
   id?: string;
   image?: string;
+  href?: string;
+  sub?: string;
 }
+
+interface TftAccountHit {
+  puuid: string;
+  gameName: string;
+  tagLine: string;
+  region: string;
+  tier: string | null;
+  division: string | null;
+  lp: number | null;
+}
+
+const APEX_TIERS = new Set(['MASTER', 'GRANDMASTER', 'CHALLENGER']);
 
 export default function Nav({ active }: NavProps) {
   const { lang, setLang, t } = useI18n();
@@ -34,7 +51,15 @@ export default function Nav({ active }: NavProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [champions, setChampions] = useState<{ id: string; name: string }[]>([]);
   const [results, setResults] = useState<SearchResult[]>([]);
+  // TFT: Treffer ueber alle Server. null = noch keine Antwort fuer die
+  // aktuelle Eingabe (dann keine Spielerzeile, statt kurz "keine Treffer").
+  const [tftHits, setTftHits] = useState<{ q: string; hits: TftAccountHit[] } | null>(null);
   const searchRef = useRef<HTMLDivElement>(null);
+  // Eigene Markierung fuer die Handy-Suchleiste. Frueher hing searchRef an
+  // beiden Bloecken; die (unsichtbare) Handy-Leiste ueberschrieb ihn, und ein
+  // Klick auf einen Desktop-Treffer galt als "Klick daneben" — die Liste
+  // schloss sich, bevor der Klick ankam.
+  const mobileSearchRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const linkClass = (key: NavProps['active']) =>
@@ -66,13 +91,31 @@ export default function Nav({ active }: NavProps) {
   // Close search on click outside
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      const inside = searchRef.current?.contains(target) || mobileSearchRef.current?.contains(target);
+      if (searchRef.current && !inside) {
         setSearchOpen(false);
       }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
+  // TFT: Namenssuche ueber alle Server, kurz entprellt. Ab 3 Zeichen im Namen
+  // (ohne Leerzeichen) — darunter antwortet die Route ohnehin leer.
+  useEffect(() => {
+    if (game !== 'tft') return;
+    const q = searchQuery.trim();
+    if (q.split('#')[0].replace(/s/g, '').length < 3) { setTftHits(null); return; }
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => {
+      fetch(`/api/tft/search-players?q=${encodeURIComponent(q)}`, { signal: ctrl.signal })
+        .then(r => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+        .then((d: { players?: TftAccountHit[] }) => setTftHits({ q, hits: d.players || [] }))
+        .catch(() => { if (!ctrl.signal.aborted) setTftHits(null); });
+    }, 150);
+    return () => { clearTimeout(timer); ctrl.abort(); };
+  }, [searchQuery, game]);
 
   // Filter results as user types
   useEffect(() => {
@@ -85,24 +128,58 @@ export default function Nav({ active }: NavProps) {
 
     // If input looks like a player name (or has #), show player suggestion
     const playerResults: SearchResult[] = [];
-    if (searchQuery.trim().length >= 2) {
+    if (game === 'tft') {
+      playerResults.push(...tftPlayerResults(searchQuery.trim()));
+    } else if (searchQuery.trim().length >= 2) {
       playerResults.push({ type: 'player', name: searchQuery.trim() });
     }
 
     setResults([...playerResults, ...champMatches]);
-  }, [searchQuery, champions]);
+  }, [searchQuery, champions, game, tftHits]);
 
   const playerHref = (raw: string) => {
     const parts = raw.split('#');
     const gameName = parts[0].trim();
     const tag = parts[1]?.trim() || 'EUW';
     const slug = encodeURIComponent(gameName) + '--' + encodeURIComponent(tag);
-    const prefix = game === 'tft' ? '/tft' : '';
-    return `${prefix}/player/${slug}?region=euw1`;
+    // TFT: ohne Region — die Profilseite findet den Server selbst.
+    if (game === 'tft') return `/tft/player/${slug}`;
+    return `/player/${slug}?region=euw1`;
+  };
+
+  const rankLabel = (h: TftAccountHit) => {
+    if (!h.tier) return '';
+    const name = t(`tier.${h.tier.toLowerCase()}` as Parameters<typeof t>[0]);
+    if (APEX_TIERS.has(h.tier)) return h.lp != null ? `${name} ${h.lp} LP` : name;
+    return h.division ? `${name} ${h.division}` : name;
+  };
+
+  // Spielerzeilen fuer TFT: echte Treffer mit Region · Rang. Ohne Treffer:
+  // mit Tag die freie Eingabe (Profil sucht den Server selbst), ohne Tag
+  // "Keine Spieler gefunden". Solange die Antwort fehlt, keine Spielerzeile.
+  const tftPlayerResults = (q: string): SearchResult[] => {
+    const hasTag = q.includes('#') && q.split('#')[1].trim().length > 0;
+    if (!tftHits || tftHits.q !== q) return hasTag ? [{ type: 'player', name: q }] : [];
+    if (tftHits.hits.length > 0) {
+      return tftHits.hits.map(h => {
+        const regionLabel = REGIONS.find(r => r.value === h.region)?.label || h.region.toUpperCase();
+        const rank = rankLabel(h);
+        return {
+          type: 'account' as const,
+          name: `${h.gameName}#${h.tagLine}`,
+          href: `/tft/player/${encodeURIComponent(h.gameName)}--${encodeURIComponent(h.tagLine)}?region=${h.region}&puuid=${encodeURIComponent(h.puuid)}`,
+          sub: rank ? `${regionLabel} · ${rank}` : regionLabel,
+        };
+      });
+    }
+    return hasTag ? [{ type: 'player', name: q }] : [{ type: 'none', name: t('lb.noPlayers') }];
   };
 
   const navigateToResult = (result: SearchResult) => {
-    if (result.type === 'champion') {
+    if (result.type === 'none') return;
+    if (result.type === 'account' && result.href) {
+      window.location.href = result.href;
+    } else if (result.type === 'champion') {
       // No champion-detail route in TFT — send the user to the units list
       window.location.href = game === 'tft' ? '/tft/units' : `/champions/${result.id}`;
     } else {
@@ -114,7 +191,9 @@ export default function Nav({ active }: NavProps) {
 
   const handleSearchKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && searchQuery.trim()) {
-      window.location.href = playerHref(searchQuery);
+      const first = results[0];
+      if (first?.type === 'none') return;
+      window.location.href = first?.type === 'account' && first.href ? first.href : playerHref(searchQuery);
       setSearchOpen(false);
       setSearchQuery('');
     }
@@ -229,7 +308,9 @@ export default function Nav({ active }: NavProps) {
             {/* Dropdown */}
             {searchOpen && results.length > 0 && (
               <div className="absolute right-0 top-full mt-1 z-50 bg-surface-base border border-border-subtle rounded shadow-xl overflow-hidden min-w-[260px]">
-                {results.map((r, i) => (
+                {results.map((r, i) => r.type === 'none' ? (
+                  <div key={`none-${i}`} className="px-3 py-2 text-fg-muted text-xs">{r.name}</div>
+                ) : (
                   <button
                     key={`${r.type}-${r.name}-${i}`}
                     onClick={() => navigateToResult(r)}
@@ -251,7 +332,7 @@ export default function Nav({ active }: NavProps) {
                     <div className="flex-1 min-w-0">
                       <div className="text-white text-xs font-medium truncate">{r.name}</div>
                       <div className="text-fg-muted text-[10px]">
-                        {r.type === 'champion' ? t('nav.champion') : t('nav.searchPlayer')}
+                        {r.type === 'champion' ? t('nav.champion') : r.type === 'account' ? r.sub : t('nav.searchPlayer')}
                       </div>
                     </div>
                     <svg className="w-3 h-3 text-fg-muted flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -374,7 +455,7 @@ export default function Nav({ active }: NavProps) {
 
       {/* Mobile search bar */}
       {searchOpen && (
-        <div className="lg:hidden mt-3 pt-3 border-t border-border-subtle" ref={searchRef}>
+        <div className="lg:hidden mt-3 pt-3 border-t border-border-subtle" ref={mobileSearchRef}>
           <div className="flex items-center bg-surface-raised border border-border-default rounded px-3 py-2 gap-2">
             <svg className="w-4 h-4 text-fg-muted flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -391,7 +472,9 @@ export default function Nav({ active }: NavProps) {
           </div>
           {results.length > 0 && (
             <div className="mt-1 bg-surface-base border border-border-subtle rounded overflow-hidden">
-              {results.map((r, i) => (
+              {results.map((r, i) => r.type === 'none' ? (
+                <div key={`m-none-${i}`} className="px-3 py-2.5 text-fg-muted text-sm">{r.name}</div>
+              ) : (
                 <button
                   key={`m-${r.type}-${r.name}-${i}`}
                   onClick={() => navigateToResult(r)}
@@ -413,7 +496,7 @@ export default function Nav({ active }: NavProps) {
                   <div className="flex-1 min-w-0">
                     <div className="text-white text-sm font-medium truncate">{r.name}</div>
                     <div className="text-fg-muted text-xs">
-                      {r.type === 'champion' ? t('nav.champion') : t('nav.searchPlayer')}
+                      {r.type === 'champion' ? t('nav.champion') : r.type === 'account' ? r.sub : t('nav.searchPlayer')}
                     </div>
                   </div>
                 </button>

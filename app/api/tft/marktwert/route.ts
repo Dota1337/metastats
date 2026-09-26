@@ -2,7 +2,7 @@ import { CURRENT_SET } from '../../../lib/current-set';
 import { NextRequest, NextResponse } from 'next/server';
 import { computeBaseValue } from '../../../lib/tft-marketvalue/base-value';
 import { extractRawMetrics, scoreSkill, type CompMetaEntry } from '../../../lib/tft-marketvalue/skill-score';
-import { getRegionalRouting, parseRegion } from '../../../lib/regions';
+import { getAccountRouting, getRegionalRouting, parseRegion } from '../../../lib/regions';
 import { processTftMatch } from '../../../lib/tft-match-processor';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { classifyComp as classifyCompUnified } from '../../../lib/tft-classify-comp';
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
   // Resolve account first — we need the puuid both for the snapshot lookup
   // and (as a fallback) for the live calc. Account lookup is the only Riot
   // call that's strictly required in the snapshot-hit path.
-  const accRes = await riotFetch(`https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`, apiKey);
+  const accRes = await riotFetch(`https://${getAccountRouting(region)}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`, apiKey);
   if (!accRes.ok) return NextResponse.json({ error: 'Spieler nicht gefunden' }, { status: 404 });
   const account = await accRes.json();
   const puuid = account.puuid;

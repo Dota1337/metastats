@@ -1,6 +1,6 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, Radar,
   BarChart, Bar, XAxis, YAxis, Tooltip,
@@ -119,7 +119,12 @@ export default function TftPlayerPage() {
   const { t, lang } = useI18n();
   const params = useParams();
   const searchParams = useSearchParams();
-  const region = (searchParams.get('region') || 'euw1').toLowerCase();
+  const router = useRouter();
+  const pathname = usePathname();
+  // Region aus der Adresse ist optional. Fehlt sie, findet /api/tft/summoner
+  // den Server selbst; alles Weitere nutzt dann die gefundene Region.
+  const urlRegion = (searchParams.get('region') || '').toLowerCase() || null;
+  const urlPuuid = searchParams.get('puuid') || '';
   const slug = decodeURIComponent(String(params?.slug || ''));
   const [gameName, tagLine] = slug.includes('--')
     ? slug.split('--').map(decodeURIComponent)
@@ -149,6 +154,10 @@ export default function TftPlayerPage() {
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
   const [proInfo, setProInfo] = useState<ProPlayer | null>(null);
   const [tftProInfo, setTftProInfo] = useState<TftProRecord | null>(null);
+  const region = data?.region || urlRegion || '';
+  // Verhindert den zweiten Abruf, wenn die gefundene Region per
+  // router.replace in die Adresse geschrieben wird.
+  const fetchedKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     fetch('https://ddragon.leagueoflegends.com/api/versions.json')
@@ -178,18 +187,35 @@ export default function TftPlayerPage() {
 
   useEffect(() => {
     if (!gameName) return;
+    const key = `${fullName}|${urlRegion ?? ''}`;
+    if (fetchedKeyRef.current === key) return;
+    fetchedKeyRef.current = key;
     setLoading(true);
     setError(null);
     setPage(0);
     setMatchCache({});
-    fetch(`/api/tft/summoner?name=${encodeURIComponent(fullName)}&region=${region}`)
+    const regionQuery = urlRegion ? `&region=${encodeURIComponent(urlRegion)}` : '';
+    const puuidQuery = urlPuuid ? `&puuid=${encodeURIComponent(urlPuuid)}` : '';
+    fetch(`/api/tft/summoner?name=${encodeURIComponent(fullName)}${regionQuery}${puuidQuery}`)
       .then(async r => {
         if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.error || `HTTP ${r.status}`); }
         return r.json();
       })
-      .then((d: SummonerData) => { setData(d); setLoading(false); })
+      .then((d: SummonerData) => {
+        setData(d);
+        setLoading(false);
+        if (d.region && d.region !== urlRegion) {
+          fetchedKeyRef.current = `${fullName}|${d.region}`;
+          const sp = new URLSearchParams(searchParams.toString());
+          sp.set('region', d.region);
+          router.replace(`${pathname}?${sp.toString()}`, { scroll: false });
+        }
+      })
       .catch(e => { setError(e.message); setLoading(false); });
-  }, [fullName, gameName, region]);
+    // searchParams/pathname/router bewusst nicht als Abhaengigkeit: nur Name
+    // und Region aus der Adresse loesen einen neuen Abruf aus.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fullName, gameName, urlRegion, urlPuuid]);
 
   useEffect(() => {
     if (!data?.summoner.puuid) return;

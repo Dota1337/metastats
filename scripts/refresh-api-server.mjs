@@ -124,7 +124,7 @@ async function loadPopulation(pool, region, setNumber) {
   };
 }
 
-import { REGIONAL_ROUTING as REGIONAL } from './lib/regional-routing.mjs';
+import { REGIONAL_ROUTING as REGIONAL, getAccountRouting } from './lib/regional-routing.mjs';
 import { CURRENT_SET, loadCurrentSet } from './lib/current-set.mjs';
 
 // ─ env loader (matches crawler) ────────────────────────────────────────────
@@ -272,7 +272,7 @@ async function refreshOnePlayer(puuid, region) {
   if (!ranked) {
     return { ok: true, rated: false, reason: 'unranked', sampleSize: matches.length };
   }
-  const account = await fetchAccount(puuid, regional);
+  const account = await fetchAccount(puuid, getAccountRouting(region));
 
   // Preserve the player's last known ladder_rank from the daily crawler —
   // the single-player refresh has no cheap way to recompute it, and

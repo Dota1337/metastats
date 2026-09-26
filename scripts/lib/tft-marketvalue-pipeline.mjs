@@ -28,6 +28,7 @@ export {
   REGIONAL_ROUTING as REGIONAL_CLUSTER,
   getRegionalRouting as getRegionalCluster,
 } from './regional-routing.mjs';
+import { getAccountRouting } from './regional-routing.mjs';
 
 // Aktuelles Set aus public/tft-set.json — die Implementierung liegt seit dem
 // Set-18-Umbau in ./current-set.mjs, damit sie nicht zum dritten Mal kopiert
@@ -213,7 +214,7 @@ export async function snapshotPlayer(pool, riot, player, raw, pop, ctx) {
   const baseValue = Math.round(base.baseValue);
   const finalValue = Math.round(base.baseValue * sk.multiplier);
 
-  const acc = await fetchAccount(riot, regional, player.puuid, apiKey);
+  const acc = await fetchAccount(riot, getAccountRouting(region), player.puuid, apiKey);
   const snapshotDateExpr = snapshotDate ? '$3::date' : 'current_date';
   const baseParams = snapshotDate ? [snapshotDate] : [];
 

@@ -6,19 +6,19 @@
     "belegen laesst, steht in `unresolved` statt als geratene Kante im Graphen."
   ],
   "counts": {
-    "routes": 74,
+    "routes": 75,
     "groups": 31,
-    "tables": 31,
-    "rpcs": 26,
+    "tables": 32,
+    "rpcs": 27,
     "files": 11,
-    "edges": 335,
+    "edges": 341,
     "unused": 8,
     "unresolved": 1
   },
   "groups": [
     {
       "name": "tft",
-      "count": 21
+      "count": 22
     },
     {
       "name": "tft/marktwert",
@@ -1125,6 +1125,23 @@
       ]
     },
     {
+      "id": "api:/api/tft/search-players",
+      "kind": "route",
+      "label": "/api/tft/search-players",
+      "group": "tft",
+      "file": "app/api/tft/search-players/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/tft-supabase-reader.ts",
+        "public/tft-set.json"
+      ],
+      "used": true,
+      "usedBy": [
+        "app/components/Nav.tsx"
+      ]
+    },
+    {
       "id": "api:/api/tft/sets/current",
       "kind": "route",
       "label": "/api/tft/sets/current",
@@ -1483,6 +1500,12 @@
       "declared": true
     },
     {
+      "id": "db:tft_player_names",
+      "kind": "table",
+      "label": "tft_player_names",
+      "declared": true
+    },
+    {
       "id": "db:tft_player_rank_backfill_state",
       "kind": "table",
       "label": "tft_player_rank_backfill_state",
@@ -1807,6 +1830,12 @@
       "id": "fn:get_tft_unit_velocity",
       "kind": "rpc",
       "label": "get_tft_unit_velocity",
+      "declared": true
+    },
+    {
+      "id": "fn:search_tft_player_names",
+      "kind": "rpc",
+      "label": "search_tft_player_names",
       "declared": true
     }
   ],
@@ -3022,6 +3051,31 @@
       "kind": "calls"
     },
     {
+      "from": "api:/api/tft/search-players",
+      "to": "ext:riot-web",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/search-players",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/search-players",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/search-players",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/search-players",
+      "to": "fn:search_tft_player_names",
+      "kind": "calls"
+    },
+    {
       "from": "api:/api/tft/sets/current",
       "to": "ext:riot-web",
       "kind": "fetches"
@@ -3484,6 +3538,11 @@
     {
       "from": "fn:get_tft_unit_velocity",
       "to": "db:tft_daily_unit_stats",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:search_tft_player_names",
+      "to": "db:tft_player_names",
       "kind": "reads"
     }
   ],

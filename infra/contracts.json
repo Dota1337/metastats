@@ -100,6 +100,16 @@
       "minRows": 6000,
       "note": "Normalrate 9100-13700/Tag."
     },
+    {
+      "id": "daily-crawl/player-names",
+      "owner": "metastats-daily-crawl.service",
+      "backend": "supabase",
+      "table": "tft_player_names",
+      "dateColumn": "last_seen",
+      "windowDays": 3,
+      "minRows": 5000,
+      "note": "Namensverzeichnis fuer die Spielersuche in der Nav (Migration 0072). collect-tft-allranks.mjs schreibt nur neue oder geaenderte Namen und hebt last_seen hoechstens alle 7 Tage an — deshalb ein Fenster statt einer Tagesmenge. Bleibt es leer, findet die Suche neue Spieler nicht mehr; die Statistik ist davon unberuehrt."
+    },
 
     {
       "id": "daily-crawl/keine-luecken",

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getRegionalRouting, parseRegion } from '../../../lib/regions';
+import { getAccountRouting, getRegionalRouting, parseRegion } from '../../../lib/regions';
 import { processTftMatch } from '../../../lib/tft-match-processor';
 import { riotFetch } from '../../../lib/riot-fetch';
 
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
   const idMap: Record<string, string> = {};
   await Promise.all([...allPuuids].map(async pp => {
     try {
-      const res = await riotFetch(`https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-puuid/${pp}`, apiKey);
+      const res = await riotFetch(`https://${getAccountRouting(region)}.api.riotgames.com/riot/account/v1/accounts/by-puuid/${pp}`, apiKey);
       if (!res.ok) return;
       const a = await res.json();
       idMap[pp] = `${a.gameName}#${a.tagLine}`;

@@ -1,0 +1,71 @@
+name: TFT Spectator probe daily
+
+# Prueft taeglich, ob Riots Live-Partie-Schnittstelle fuer TFT wieder Daten
+# liefert (scripts/probe-tft-spectator.mjs). Stand 26.09.2026 antwortet sie
+# fuer jeden Spieler 404 (Riot-Issue #1195).
+#
+# Gruen + still: weiter alles 404.
+# Gruen + Issue: erste echte Antwort — Issue mit Label spectator-tft-live und
+#   anonymisierter Beispielantwort, sofern keins offen ist.
+# Rot: 401/403 oder 0 Spieler geprueft — Schluessel oder Riot-Ausfall, nicht
+#   "Riot filtert noch".
+
+on:
+  schedule:
+    - cron: '0 19 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: tft-spectator-probe
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      RIOT_API_KEY_TFT: ${{ secrets.RIOT_API_KEY_TFT }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Live-Partie-Schnittstelle abfragen
+        run: node scripts/probe-tft-spectator.mjs --out probe-tft-spectator.json
+
+      # Laeuft auch nach einem roten Probe-Schritt: der Bericht entsteht nur bei
+      # einer echten Antwort, und die soll nie an einem spaeteren Fehler haengen.
+      - name: Issue bei erster echter Antwort
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ ! -f probe-tft-spectator.json ]; then
+            echo "Keine echte Antwort — kein Issue"
+            exit 0
+          fi
+          gh label create spectator-tft-live --color 0E8A16 \
+            --description "TFT-Live-Partie-Schnittstelle liefert wieder Daten" --force
+          open=$(gh issue list --label spectator-tft-live --state open --json number --jq 'length')
+          if [ "$open" != "0" ]; then
+            echo "Issue ist bereits offen — nichts zu tun"
+            exit 0
+          fi
+          {
+            echo "Die TFT-Live-Partie-Schnittstelle (spectator-tft-v5) liefert wieder Daten."
+            echo
+            echo "Zusammenfassung (Datum, Treffer, Statuscodes, Feldtypen) und Beispielantwort;"
+            echo "alle Spieler-Kennungen sind durch Platzhalter ersetzt."
+            echo
+            echo '```json'
+            cat probe-tft-spectator.json
+            echo '```'
+          } > issue-body.md
+          gh issue create --title "TFT Spectator liefert wieder Daten" \
+            --label spectator-tft-live --body-file issue-body.md

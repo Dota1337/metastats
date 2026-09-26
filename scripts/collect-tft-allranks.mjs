@@ -195,13 +195,13 @@ const rl = url => riot.fetchJson(url, { safe: true });
 async function fetchApex(tier) {
   const data = await rl(`https://${REGION}.api.riotgames.com/tft/league/v1/${tier}`);
   if (!data || data._status) return [];
-  return (data.entries || []).map(e => ({ puuid: e.puuid, lp: e.leaguePoints, tier: tier.toUpperCase() }));
+  return (data.entries || []).map(e => ({ puuid: e.puuid, lp: e.leaguePoints, tier: tier.toUpperCase(), division: e.rank || 'I' }));
 }
 
 async function fetchEntries(tier, division, page) {
   const data = await rl(`https://${REGION}.api.riotgames.com/tft/league/v1/entries/${tier}/${division}?page=${page}`);
   if (!data || data._status) return [];
-  return (data || []).map(e => ({ puuid: e.puuid, lp: e.leaguePoints, tier }));
+  return (data || []).map(e => ({ puuid: e.puuid, lp: e.leaguePoints, tier, division: e.rank || division }));
 }
 
 // Sample the top N players of a tier by walking divisions I -> IV across page=1.
@@ -271,6 +271,66 @@ async function fetchMatchIdsForPlayer(puuid) {
   return ids.slice(0, MAX_MATCHES_PER_PLAYER);
 }
 
+// Name je Teilnehmer aus Match-V1 (riotIdGameName/riotIdTagline). Bei
+// mehreren Partien gewinnt die neueste nach game_datetime.
+function collectNames(raw, names) {
+  const t = Number(raw?.info?.game_datetime) || 0;
+  for (const p of raw?.info?.participants || []) {
+    const gameName = typeof p.riotIdGameName === 'string' ? p.riotIdGameName.trim() : '';
+    const tagLine = typeof p.riotIdTagline === 'string' ? p.riotIdTagline.trim() : '';
+    if (!p.puuid || !gameName || !tagLine || !t) continue;
+    const prev = names.get(p.puuid);
+    if (!prev || prev.t < t) names.set(p.puuid, { game_name: gameName, tag_line: tagLine, t });
+  }
+}
+
+// Schreibt die Namen ueber upsert_tft_player_names (Migration 0072). Die
+// Funktion schreibt nur echte Aenderungen. Rang NUR fuer Saat-Spieler aus der
+// Liga-Liste — der Rang der Mitspieler ist unbekannt und wird nie geraten.
+// Gesamtbudget 5 min, jeder Stapel mit eigenem Zeitlimit; wirft nie.
+const NAMES_BATCH = 5000;
+const NAMES_BUDGET_MS = 5 * 60_000;
+async function writePlayerNames(names, seeds) {
+  const started = Date.now();
+  try {
+    if (!SUPA_KEY) { console.log('[names] kein SUPABASE_SERVICE_ROLE_KEY — uebersprungen'); return; }
+    const rows = [];
+    for (const [puuid, n] of names) {
+      const seed = seeds[puuid];
+      rows.push({
+        puuid, game_name: n.game_name, tag_line: n.tag_line, region: REGION,
+        tier: seed?.tier ?? null,
+        division: seed ? (seed.division ?? null) : null,
+        lp: seed ? (seed.lp ?? null) : null,
+        last_seen: new Date(n.t).toISOString(),
+      });
+    }
+    let written = 0;
+    let batches = 0;
+    for (let k = 0; k < rows.length; k += NAMES_BATCH) {
+      if (Date.now() - started > NAMES_BUDGET_MS) {
+        console.log(`[names] Zeitbudget erschoepft nach ${k}/${rows.length} — Rest folgt beim naechsten Lauf`);
+        break;
+      }
+      const res = await fetch(`${SUPA_URL}/rest/v1/rpc/upsert_tft_player_names`, {
+        method: 'POST',
+        headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p_rows: rows.slice(k, k + NAMES_BATCH) }),
+        signal: AbortSignal.timeout(60_000),
+      });
+      if (!res.ok) {
+        console.log(`[names] HTTP ${res.status} bei Stapel ${batches + 1}: ${(await res.text()).slice(0, 200)} — Abbruch, Statistik unberuehrt`);
+        break;
+      }
+      written += Number(await res.json()) || 0;
+      batches++;
+    }
+    console.log(`[names] ${rows.length} Namen gesehen, ${written} geschrieben (${batches} Stapel, ${Math.round((Date.now() - started) / 1000)} s)`);
+  } catch (err) {
+    console.log(`[names] Fehler: ${err?.message || err} — Statistik unberuehrt`);
+  }
+}
+
 async function main() {
   console.log(`=== TFT Crawler ${REGION} (regional ${REGIONAL}) — set ${CURRENT_SET ?? '?'} ===`);
   console.log(`[window] ${WINDOW.startTime.toISOString()} → ${WINDOW.endTime.toISOString()}  (day=${DAY})`);
@@ -318,6 +378,7 @@ async function main() {
   const proPuuids = await loadProPuuids();
   console.log(`  [pro] loaded ${proPuuids.size} pro PUUIDs for pro_pool tagging`);
   const aggsByPatch = new Map(); // patch -> aggregate
+  const namesByPuuid = new Map(); // puuid -> { game_name, tag_line, t } — neuester Name je Spieler
   let totalSkipped = 0;
   const ids = [...allMatchIds];
   for (let j = 0; j < ids.length; j++) {
@@ -332,6 +393,7 @@ async function main() {
     let agg = aggsByPatch.get(patch);
     if (!agg) { agg = emptyAggregate(); aggsByPatch.set(patch, agg); }
     aggregateMatch(raw, agg, { tierBucket: matchTier[id], currentSet: CURRENT_SET, proPuuids });
+    collectNames(raw, namesByPuuid);
     if ((j + 1) % 100 === 0 || j === ids.length - 1) {
       const totals = [...aggsByPatch.values()].reduce((s, a) => s + a.matchesAnalyzed, 0);
       console.log(`  ${j+1}/${ids.length} (${totals} aggregated across ${aggsByPatch.size} patch(es), ${totalSkipped} skipped)`);
@@ -384,6 +446,13 @@ async function main() {
       });
     }
     writtenPatches.push({ patch, matches: payload.matchesAnalyzed });
+  }
+
+  // Namensverzeichnis fuer die Spielersuche — bewusst NACH den Aggregaten und
+  // gekapselt: ein Fehler hier darf weder die Statistik noch den Exit-Code
+  // beruehren. Beim Abbruch (SIGTERM) nicht schreiben, der Stand ist halb.
+  if (!SKIP_SUPABASE && !aborting && process.env.TFT_NAMES_WRITE !== '0') {
+    await writePlayerNames(namesByPuuid, playersByPuuid);
   }
 
   console.log(`\n[done] window=${WINDOW.startTime.toISOString()}..${WINDOW.endTime.toISOString()} day=${DAY}`);

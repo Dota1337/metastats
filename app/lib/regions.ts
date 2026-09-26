@@ -94,3 +94,14 @@ export function getRegionalRouting(region: string): string {
   if (!cluster) throw new Error(`Unbekannte Region: ${region}`);
   return cluster;
 }
+
+/**
+ * Cluster fuer account-v1. Riot beantwortet account-v1 ueber `sea` mit 403
+ * (gemessen 26.09.2026 fuer oc1/sg2/tw2/vn2), ueber europe/americas/asia mit
+ * 200 — die Konten sind global. Match-V1 bleibt auf getRegionalRouting().
+ * Spiegel: scripts/lib/regional-routing.mjs::getAccountRouting.
+ */
+export function getAccountRouting(region: string): string {
+  const cluster = getRegionalRouting(region);
+  return cluster === 'sea' ? 'europe' : cluster;
+}

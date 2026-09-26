@@ -649,6 +649,18 @@
       "onPush": false
     },
     {
+      "file": "tft-spectator-probe.yml",
+      "name": "TFT Spectator probe daily",
+      "schedule": [
+        "0 19 * * *"
+      ],
+      "scripts": [
+        "scripts/probe-tft-spectator.mjs"
+      ],
+      "manualDispatch": true,
+      "onPush": false
+    },
+    {
       "file": "tft-stats-cache-warm.yml",
       "name": "TFT Stats Cache Warm",
       "schedule": [
@@ -946,6 +958,7 @@
       "daily-crawl/unit-top-items",
       "daily-crawl/item-stats",
       "daily-crawl/trait-stats",
+      "daily-crawl/player-names",
       "daily-crawl/keine-luecken",
       "revalidate/edge-frische-stats"
     ],

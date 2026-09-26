@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getRegionalRouting, parseRegion } from '../../../lib/regions';
+import { getAccountRouting, getRegionalRouting, isValidRegion, normalizeRegion, parseRegion } from '../../../lib/regions';
 import { riotFetch } from '../../../lib/riot-fetch';
 
 // Lightweight TFT summoner endpoint — resolves Riot ID to puuid, pulls TFT
@@ -22,21 +22,38 @@ interface RankedEntry {
   losses?: number;
 }
 
+// Region ist optional. Fehlt sie, wird der Account ueber einen beliebigen
+// Cluster aufgeloest (account-v1 ist global) und der TFT-Server des Spielers
+// ueber region/by-game/tft/by-puuid ermittelt — kein euw1-Standard mehr, der
+// bei KR-/SEA-Spielern ein leeres Profil gezeigt hat.
+//
+// ?puuid= ist der Rueckfall fuer umbenannte Konten: findet der Name nichts,
+// wird ueber die puuid aus dem Namensverzeichnis nachgeschlagen.
+const AUTO_ACCOUNT_CLUSTER = 'europe';
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const name = searchParams.get('name') || '';
-  const region = parseRegion(searchParams.get('region'), { fallback: 'euw1' });
+  const rawRegion = normalizeRegion(searchParams.get('region'));
+  const explicitRegion = rawRegion ? parseRegion(rawRegion) : null;
+  const puuidHint = (searchParams.get('puuid') || '').trim();
   const apiKey = process.env.RIOT_API_KEY_TFT;
   if (!apiKey) {
     return NextResponse.json({ error: 'Riot API Key fehlt', code: 'no_key' }, { status: 503 });
   }
-  if (!region) {
+  if (rawRegion && !explicitRegion) {
     return NextResponse.json(
       { error: 'Ungültige Region', code: 'bad_region' },
       { status: 400, headers: { 'Cache-Control': 'no-store' } },
     );
   }
-  const regional = getRegionalRouting(region);
+  if (puuidHint && !/^[A-Za-z0-9_-]{20,100}$/.test(puuidHint)) {
+    return NextResponse.json(
+      { error: 'Ungültige puuid', code: 'bad_puuid' },
+      { status: 400, headers: { 'Cache-Control': 'no-store' } },
+    );
+  }
+  const accountCluster = explicitRegion ? getAccountRouting(explicitRegion) : AUTO_ACCOUNT_CLUSTER;
 
   const decoded = decodeURIComponent(name);
   const parts = decoded.split('#');
@@ -48,7 +65,10 @@ export async function GET(request: NextRequest) {
 
   try {
     // Riot Account is game-agnostic — same endpoint as LoL
-    const accountRes = await riotFetch(`https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`, apiKey);
+    let accountRes = await riotFetch(`https://${accountCluster}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`, apiKey);
+    if (accountRes.status === 404 && puuidHint) {
+      accountRes = await riotFetch(`https://${accountCluster}.api.riotgames.com/riot/account/v1/accounts/by-puuid/${encodeURIComponent(puuidHint)}`, apiKey);
+    }
     if (!accountRes.ok) {
       if (accountRes.status === 401 || accountRes.status === 403) {
         return NextResponse.json({ error: 'Riot API Key ungültig', code: 'riot_auth' }, { status: 503 });
@@ -63,6 +83,27 @@ export async function GET(request: NextRequest) {
     }
     const account = await accountRes.json();
     const puuid: string = account.puuid;
+
+    let region = explicitRegion;
+    if (!region) {
+      const regionRes = await riotFetch(`https://${AUTO_ACCOUNT_CLUSTER}.api.riotgames.com/riot/account/v1/region/by-game/tft/by-puuid/${puuid}`, apiKey);
+      if (regionRes.status === 429) {
+        return NextResponse.json({ error: 'Daten in Kürze wieder verfügbar', code: 'riot_rate_limit' }, { status: 429 });
+      }
+      if (regionRes.status === 404) {
+        // Konto existiert, hat aber nie TFT gespielt.
+        return NextResponse.json({ error: 'Spieler nicht gefunden', code: 'not_found' }, { status: 404 });
+      }
+      if (!regionRes.ok) {
+        return NextResponse.json({ error: `Riot API Fehler (${regionRes.status})`, code: 'riot_upstream' }, { status: 502 });
+      }
+      const found = normalizeRegion((await regionRes.json())?.region);
+      if (!isValidRegion(found)) {
+        return NextResponse.json({ error: 'Unbekannter Server', code: 'riot_upstream' }, { status: 502 });
+      }
+      region = found;
+    }
+    const regional = getRegionalRouting(region);
 
     // Three calls in parallel: TFT summoner-by-puuid (icon, level), TFT ranked
     // entries (solo + double-up + hyperroll), recent match IDs (queue 1100).

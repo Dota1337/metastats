@@ -492,6 +492,38 @@ function read(path) {
   }
 }
 
+// 10) Routing-Paar. `app/lib/regions.ts` und `scripts/lib/regional-routing.mjs`
+// fuehren dieselbe Plattform→Cluster-Tabelle und dieselbe Account-Ausnahme
+// (sea → europe, weil Riot account-v1 ueber sea mit 403 beantwortet). Driftet
+// eine Haelfte, finden Website und Crawler fuer dieselbe Region verschiedene
+// Konten — oder gar keine, ohne dass etwas rot wird.
+{
+  const parseMap = (src) => {
+    const block = src.match(/REGIONAL_ROUTING[^=]*=\s*(?:Object\.freeze\()?\{([\s\S]*?)\}/);
+    return block ? [...block[1].matchAll(/([a-z0-9]+):\s*'([a-z]+)'/g)].map((m) => `${m[1]}=${m[2]}`).sort().join(',') : '';
+  };
+  const hasAccountRule = (src) => /function getAccountRouting[\s\S]{0,200}?=== 'sea' \? 'europe'/.test(src);
+  const ts = read('app/lib/regions.ts');
+  const mjs = read('scripts/lib/regional-routing.mjs');
+  const a = parseMap(ts);
+  const b = parseMap(mjs);
+  let routingDrift = 0;
+  if (!a || a !== b) {
+    console.error('✗ DRIFT: REGIONAL_ROUTING in app/lib/regions.ts != scripts/lib/regional-routing.mjs');
+    console.error(`    ts:  ${a}`);
+    console.error(`    mjs: ${b}`);
+    routingDrift++;
+  }
+  for (const [f, src] of [['app/lib/regions.ts', ts], ['scripts/lib/regional-routing.mjs', mjs]]) {
+    if (!hasAccountRule(src)) {
+      console.error(`✗ DRIFT: ${f} hat kein getAccountRouting mit sea → europe`);
+      routingDrift++;
+    }
+  }
+  failures += routingDrift;
+  if (!routingDrift) console.log(`✓ Routing-Paar in sync (${a.split(',').length} Regionen, Account-Ausnahme sea → europe)`);
+}
+
 // N) Cache-Kopfzeilen: `s-maxage` erreicht den Browser nie.
 //
 // Vercels CDN streicht `s-maxage` und `stale-while-revalidate` aus dem

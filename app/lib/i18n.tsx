@@ -112,6 +112,7 @@ const translations = {
   'tft.bucket.bronze': t6('Bronze', 'Bronze', '\uBE0C\uB860\uC988', '\u9752\u94DC', 'Bronce', 'Bronze'),
   'tft.avgPlacement': t6('\u00D8 Platzierung', 'Avg Placement', '\uD3C9\uADE0 \uB4F1\uC218', '\u5E73\u5747\u540D\u6B21', 'Posici\u00F3n media', 'Place moy.'),
   'tft.top4': t6('Top 4', 'Top 4', '\uD0D1 4', 'Top 4', 'Top 4', 'Top 4'),
+  'tft.bottom4': t6('Bottom 4', 'Bottom 4', '바텀 4', 'Bottom 4', 'Bottom 4', 'Bottom 4'),
   'tft.top1': t6('Sieg', 'Win', '1\uC704', '\u51A0\u519B', 'Victoria', 'Victoire'),
   'tft.pickRate': t6('Pickrate', 'Pick rate', '\uD53D\uB960', '\u4F7F\u7528\u7387', 'Pickrate', 'Pickrate'),
   'tft.gamesShort': t6('Spiele', 'Games', '\uACBD\uAE30', '\u6BD4\u8D5B', 'Partidas', 'Matchs'),

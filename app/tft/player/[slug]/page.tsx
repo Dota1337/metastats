@@ -872,9 +872,10 @@ function RankBlock({ ranked, seasonRanks }: { ranked: SummonerData['ranked']; se
         {formatTier(ranked.tier, ranked.rank)} <span className="text-white">{ranked.leaguePoints ?? 0} LP</span>
       </div>
       <div className="text-fg-secondary text-xs">
-        {ranked.wins ?? 0}W {ranked.losses ?? 0}L
+        {/* Riot zaehlt in TFT jede Top-4-Platzierung als "win" — daher Top 4 / Bottom 4. */}
+        {ranked.wins ?? 0} {t('tft.top4')} · {ranked.losses ?? 0} {t('tft.bottom4')}
         {(ranked.wins ?? 0) + (ranked.losses ?? 0) > 0 && (
-          <> · {Math.round(((ranked.wins ?? 0) / ((ranked.wins ?? 0) + (ranked.losses ?? 0))) * 100)}% WR</>
+          <> · {Math.round(((ranked.wins ?? 0) / ((ranked.wins ?? 0) + (ranked.losses ?? 0))) * 100)}% {t('tft.top4')}</>
         )}
       </div>
     </>

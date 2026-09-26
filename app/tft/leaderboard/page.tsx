@@ -190,14 +190,14 @@ export default function TftLeaderboardPage() {
               <div className="text-fg-secondary text-xs uppercase tracking-widest">{t('champ.rankDistribution')}</div>
               {tierDist.month && <div className="text-fg-muted text-[10px]">{tierDist.month}</div>}
             </div>
-            <div className="flex items-end gap-2 h-32 mb-2">
+            <div className="flex items-end gap-2 sm:h-32 mb-2 overflow-x-auto sm:overflow-visible">
               {(() => {
                 const maxPct = Math.max(...tierDist.tiers.map(t => t.pct), 1);
                 return tierDist.tiers.map(item => {
                   const barH = Math.max((item.pct / maxPct) * 100, 2);
                   const display = item.pct >= 1 ? item.pct.toFixed(1) + '%' : item.pct + '%';
                   return (
-                    <div key={item.key} className="flex-1 flex flex-col items-center gap-1">
+                    <div key={item.key} className="flex-1 shrink-0 sm:shrink min-w-[2.5rem] sm:min-w-0 flex flex-col items-center gap-1">
                       <div className="text-[10px] font-medium" style={{ color: item.color }}>{display}</div>
                       <div className="w-full relative" style={{ height: '90px' }}>
                         <div className="absolute bottom-0 w-full rounded-t transition-all duration-500" style={{ height: `${barH}%`, backgroundColor: item.color, opacity: 0.7, boxShadow: `0 0 8px ${withAlpha(item.color, 0x40)}` }} />

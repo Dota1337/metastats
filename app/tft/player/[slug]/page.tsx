@@ -305,6 +305,13 @@ export default function TftPlayerPage() {
 
   const totalPages = Math.ceil((data?.matchIds.length || 0) / PAGE_SIZE);
 
+  // Angezeigt wird der Name, den Riot fuer das geladene Konto liefert — bei
+  // umbenannten Konten weicht er vom Namen in der Adresse ab.
+  const shownName = data?.summoner.name || fullName;
+  const hashAt = shownName.indexOf('#');
+  const shownGameName = hashAt >= 0 ? shownName.slice(0, hashAt) : shownName;
+  const shownTagLine = hashAt >= 0 ? shownName.slice(hashAt + 1) : tagLine;
+
   return (
     <main className="min-h-screen bg-surface-page">
       <Nav active="search" />
@@ -331,22 +338,22 @@ export default function TftPlayerPage() {
                 )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-white text-xl font-medium">{gameName}</span>
+                    <span className="text-white text-xl font-medium">{shownGameName}</span>
                     {/* TFT-native pro record wins if both sources match —
                         it's puuid-verified, not just name-matched. */}
                     {tftProInfo ? <TftProBadge pro={tftProInfo} /> : proInfo && <ProBadge pro={proInfo} />}
-                    {gameName && tagLine && (
+                    {shownGameName && shownTagLine && (
                       <BookmarkButton
                         type="player"
-                        bookmarkKey={`${gameName}-${tagLine}`}
-                        label={`${gameName}#${tagLine}`}
+                        bookmarkKey={`${shownGameName}-${shownTagLine}`}
+                        label={`${shownGameName}#${shownTagLine}`}
                         region={region}
                         size="md"
                         stopPropagation={false}
                       />
                     )}
                   </div>
-                  <div className="text-fg-secondary text-sm">#{tagLine} · Level {data.summoner.summonerLevel ?? '—'}</div>
+                  <div className="text-fg-secondary text-sm">#{shownTagLine} · Level {data.summoner.summonerLevel ?? '—'}</div>
                   {tftProInfo && (
                     <div className="text-[#a892ff] text-xs mt-0.5">
                       {tftProInfo.pro_name}
@@ -370,7 +377,7 @@ export default function TftPlayerPage() {
               <ProSpecialty puuid={data.summoner.puuid} setNumber={currentSet} assets={assets} t={t} />
             )}
 
-            <MarketValueHero fullName={fullName} region={region} lang={lang} />
+            <MarketValueHero fullName={shownName}region={region} lang={lang} />
 
             <SeasonStats
               stats={playerStats}

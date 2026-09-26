@@ -65,9 +65,17 @@ export async function GET(request: NextRequest) {
 
   try {
     // Riot Account is game-agnostic — same endpoint as LoL
-    let accountRes = await riotFetch(`https://${accountCluster}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`, apiKey);
-    if (accountRes.status === 404 && puuidHint) {
+    // Kommt eine puuid mit, entscheidet sie, welches Konto gezeigt wird — der
+    // Name in der Adresse kann veraltet sein oder inzwischen einem anderen
+    // Konto gehoeren. Nur wenn Riot die puuid nicht kennt (404, oder 400 bei
+    // einer mit fremdem Key verschluesselten puuid), zaehlt der Name.
+    let accountRes: Response | null = null;
+    if (puuidHint) {
       accountRes = await riotFetch(`https://${accountCluster}.api.riotgames.com/riot/account/v1/accounts/by-puuid/${encodeURIComponent(puuidHint)}`, apiKey);
+      if (accountRes.status === 400 || accountRes.status === 404) accountRes = null;
+    }
+    if (!accountRes) {
+      accountRes = await riotFetch(`https://${accountCluster}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`, apiKey);
     }
     if (!accountRes.ok) {
       if (accountRes.status === 401 || accountRes.status === 403) {

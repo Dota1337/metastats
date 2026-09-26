@@ -106,7 +106,7 @@ export default function Nav({ active }: NavProps) {
   useEffect(() => {
     if (game !== 'tft') return;
     const q = searchQuery.trim();
-    if (q.split('#')[0].replace(/s/g, '').length < 3) { setTftHits(null); return; }
+    if (q.split('#')[0].replace(/\s/g, '').length < 3) { setTftHits(null); return; }
     const ctrl = new AbortController();
     const timer = setTimeout(() => {
       fetch(`/api/tft/search-players?q=${encodeURIComponent(q)}`, { signal: ctrl.signal })

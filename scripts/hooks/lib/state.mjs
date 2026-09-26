@@ -54,6 +54,18 @@ export const MAX_PROMPTS_PER_TOPIC = 30;
  */
 export const APPROVAL_SURVIVES_COMPACT = true;
 
+/**
+ * Blockt eine Aenderung der Plan-Datei nach der Freigabe? Seit 2026-09-27
+ * nein — Begruendung bei approvalStatus(). `true` stellt das alte Verhalten
+ * in einer Zeile wieder her.
+ */
+export const PLAN_CHANGE_BLOCKS = false;
+
+/** Freigabe ueber den Trivial-Ausweg („trivial" / „spot-fix" im Prompt)? */
+export function isTrivialApproval(s) {
+  return /\b(trivial|spot-?fix)\b/i.test(String(s?.approvedBy || ''));
+}
+
 function statePath(sessionId) {
   const safe = String(sessionId || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '');
   return join(STATE_DIR, `${safe || 'unknown'}.json`);
@@ -115,8 +127,16 @@ export function planHash() {
  *   3. mehr als MAX_PROMPTS_PER_APPROVAL User-Prompts seit der letzten Freigabe
  *   4. mehr als MAX_PROMPTS_PER_TOPIC User-Prompts seit der ERSTEN Freigabe
  *      dieses Themas — den setzt kein „ok" zurueck
- *   5. Plan-Bindung kaputt: Datei nach der Freigabe geaendert (Hash-Drift) ODER
- *      es gab bei der Freigabe gar keinen Plan
+ *   5. Trivial-Freigabe (Wort „trivial"/„spot-fix") nach einem Compact
+ *
+ * Eine Plan-Aenderung NACH der Freigabe blockt seit 2026-09-27 nicht mehr
+ * (User: „Ich habe bereits meine Freigabe gegeben und soll dann erneut eine
+ * geben"). Das „go" faellt meist auf die Empfehlung, bevor der Plan
+ * geschrieben ist — die Hash-Bindung verlangte dafuer ein zweites „go".
+ * Bewusst in Kauf genommen: der Plan kann nach der Freigabe ergaenzt werden,
+ * begrenzt durch die beiden Prompt-Deckel und den Themenwechsel per `Code:`.
+ * planHash wird weiter gespeichert (post-compact zeigt ihn). Rueckweg:
+ * PLAN_CHANGE_BLOCKS auf true.
  */
 export function approvalStatus(sessionId) {
   const s = readState(sessionId);
@@ -125,20 +145,19 @@ export function approvalStatus(sessionId) {
     return { ok: false, reason: `Freigabe abgelaufen (${s.promptsSinceApproval} Prompts seit der Freigabe, Limit ${MAX_PROMPTS_PER_APPROVAL})` };
   }
   if ((s.promptsSinceFirstApproval || 0) > MAX_PROMPTS_PER_TOPIC) {
-    return { ok: false, reason: `Freigabe abgelaufen (${s.promptsSinceFirstApproval} Prompts seit der ersten Freigabe zu diesem Plan, Limit ${MAX_PROMPTS_PER_TOPIC}) — leg den Plan neu vor` };
+    return { ok: false, reason: `Freigabe abgelaufen (${s.promptsSinceFirstApproval} Prompts seit der ersten Freigabe zu diesem Plan, Limit ${MAX_PROMPTS_PER_TOPIC}) — Thema per neuem Code:-Auftrag neu aufmachen` };
   }
-  // Eine Freigabe ohne Plan-Bindung (Trivial-Ausweg, kein Plan vorhanden) hat
-  // keine Themengrenze ausser der Session selbst. Innerhalb einer Sitzung ist
-  // das gewollt; ueber einen Compact hinweg darf sie NICHT weiterleben — sonst
-  // ueberdauert der Ausweg genau die Grenze, die ihn bisher beendet hat.
-  // Belegt in .git/metastats-discipline/280fe6e6-….json: approvedAt gesetzt,
-  // planHash null. session-start.mjs raeumt solche Freigaben beim Compact ab;
-  // die Wache hier ist der zweite Boden.
+  // Der Trivial-Ausweg hat keine Themengrenze ausser der Session selbst.
+  // Innerhalb einer Sitzung ist das gewollt; ueber einen Compact hinweg darf er
+  // NICHT weiterleben. Erkannt am Wort, nicht mehr an „kein Plan-Hash": ein
+  // frueh gegebenes „go" hat oft noch keinen Plan und ist trotzdem kein
+  // Trivial-Fall (logic-flow-critic, 27.09.2026). session-start.mjs raeumt
+  // beim Compact ab; die Wache hier ist der zweite Boden.
+  if (s.survivedCompact && isTrivialApproval(s)) {
+    return { ok: false, reason: 'Trivial-Freigabe ueberlebt keinen Compact' };
+  }
   const now = planHash();
-  if (s.survivedCompact && !s.planHash) {
-    return { ok: false, reason: 'Freigabe ohne Plan-Bindung ueberlebt keinen Compact' };
-  }
-  if (s.planHash && now && s.planHash !== now) {
+  if (PLAN_CHANGE_BLOCKS && s.planHash && now && s.planHash !== now) {
     return { ok: false, reason: 'Plan-Datei wurde nach der Freigabe geaendert — der User hat diesen Plan nicht freigegeben' };
   }
   return { ok: true, state: s };

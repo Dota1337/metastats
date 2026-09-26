@@ -52,20 +52,23 @@ if (sessionId) {
   } else if (SHORT && (APPROVAL.test(prompt.replace(NEW_TOPIC, '')) || TRIVIAL.test(prompt))) {
     // Ein zweites „ok" zum selben Plan erneuert das 8er-Fenster, aber NICHT
     // den absoluten Deckel: sonst waere jede beilaeufige Zustimmung eine
-    // Verlaengerung ohne Ende. Zurueckgesetzt wird der Deckel nur, wenn sich
-    // die Plan-Datei seit der letzten Freigabe geaendert hat — dann ist es ein
-    // anderer Plan, den der User frisch freigibt.
+    // Verlaengerung ohne Ende. Zurueckgesetzt wird der Deckel nur, wenn es
+    // gar keine Freigabe mehr gab — geloescht durch neues `Code:`-Thema oder
+    // Sessiongrenze. Frueher reichte ein geaenderter Plan-Hash; seit
+    // Plan-Aenderungen nicht mehr blocken, haette stilles Umschreiben plus
+    // beilaeufiges „ja" den Deckel sonst wieder aufgefuellt (logic-flow-critic,
+    // 27.09.2026). Ein abgelaufener Deckel bleibt abgelaufen, bis das Thema neu
+    // per `Code:` aufgemacht wird.
     const s = readState(sessionId);
-    const hash = planHash();
-    const samePlan = Boolean(s.approvedAt) && s.planHash === hash;
+    const fresh = !s.approvedAt;
     writeState(sessionId, {
       approvedAt: new Date().toISOString(),
-      planHash: hash,
+      planHash: planHash(),
       promptsSinceApproval: 0,
-      promptsSinceFirstApproval: samePlan ? (s.promptsSinceFirstApproval || 0) : 0,
+      promptsSinceFirstApproval: fresh ? 0 : (s.promptsSinceFirstApproval || 0),
       approvedBy: prompt.slice(0, 60),
       clearedBy: null,
-      survivedCompact: samePlan ? Boolean(s.survivedCompact) : false,
+      survivedCompact: fresh ? false : Boolean(s.survivedCompact),
     });
   } else {
     const s = readState(sessionId);

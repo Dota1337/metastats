@@ -23,16 +23,16 @@ const status = approvalStatus(input.session_id);
 let systemMessage;
 
 if (status.ok) {
-  // Beide Hashes mitgeben: weicht der Plan vom freigegebenen Stand ab, soll
-  // das hier sichtbar sein und nicht erst beim ersten geblockten Write.
+  // Beide Hashes mitgeben: wurde der Plan nach der Freigabe ergaenzt, soll das
+  // sichtbar sein. Blocken tut es seit 2026-09-27 nicht mehr (state.mjs).
   const plan = (() => { try { return readFileSync(PLAN_FILE, 'utf8'); } catch { return ''; } })();
   const drift = status.state?.planHash !== planHash();
   parts.push(
-    `<freigegebener-plan hinweis="Der User hat DIESEN Plan freigegeben; die Freigabe gilt ueber den Compact hinweg weiter. Arbeite ihn ab. Fuer alles ausserhalb dieses Plans brauchst du eine neue Freigabe."` +
+    `<freigegebener-plan hinweis="Der User hat dieses Thema freigegeben; die Freigabe gilt ueber den Compact hinweg weiter und deckt auch Plan-Ergaenzungen nach dem go. Arbeite den Plan ab. Fuer ein neues Thema brauchst du eine neue Freigabe."` +
     ` freigegeben-am="${status.state?.approvedAt || '?'}"` +
     ` freigegeben-mit="${String(status.state?.approvedBy || '').replace(/"/g, "'")}"` +
     ` hash-bei-freigabe="${status.state?.planHash || '-'}" hash-jetzt="${planHash() || '-'}"` +
-    `${drift ? ' WARNUNG="Plan wurde nach der Freigabe geaendert — das Gate blockt"' : ''}>\n${plan}\n</freigegebener-plan>`
+    `${drift ? ' HINWEIS="Plan wurde nach der Freigabe ergaenzt — nur im freigegebenen Thema weiterarbeiten"' : ''}>\n${plan}\n</freigegebener-plan>`
   );
   systemMessage = '[metastats] Kernregeln + freigegebener Plan nach Compact neu eingespielt · Freigabe gilt weiter';
 } else {

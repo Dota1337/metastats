@@ -16,7 +16,7 @@ import { existsSync, readFileSync, readdirSync, statSync, writeFileSync, mkdirSy
 import { join } from 'node:path';
 import { execFileSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { PROJECT_DIR, readInput, readState, writeState, pruneOldState, clearApproval, readGlobal, writeGlobal, APPROVAL_SURVIVES_COMPACT } from './lib/state.mjs';
+import { PROJECT_DIR, readInput, readState, writeState, pruneOldState, clearApproval, readGlobal, writeGlobal, APPROVAL_SURVIVES_COMPACT, isTrivialApproval } from './lib/state.mjs';
 
 const input = readInput();
 const source = String(input.source || '');
@@ -91,18 +91,19 @@ if (existsSync(rules)) {
 // Sessionstart zu behandeln hat die Freigabe mitten in laufender Arbeit
 // getoetet (gemessen: 14 Compacts in einer Session). Der Plan kommt in
 // post-compact.mjs zurueck in den Kontext, die Wachen in approvalStatus()
-// (Plan-Hash, beide Prompt-Deckel) bleiben scharf.
+// (beide Prompt-Deckel) bleiben scharf.
 //
-// Ausnahme von der Ausnahme: eine Freigabe OHNE Plan-Bindung (Trivial-Ausweg)
-// hat keine Themengrenze und stirbt weiterhin am Compact.
+// Ausnahme von der Ausnahme: der Trivial-Ausweg hat keine Themengrenze und
+// stirbt weiterhin am Compact. Erkannt am Wort, nicht am fehlenden Plan-Hash —
+// ein frueh gegebenes „go" hat oft noch keinen Plan (27.09.2026).
 if (sessionId) {
   if (source === 'compact' && APPROVAL_SURVIVES_COMPACT) {
     const s = readState(sessionId);
-    if (s.approvedAt && s.planHash) {
+    if (s.approvedAt && !isTrivialApproval(s)) {
       writeState(sessionId, { survivedCompact: true });
       notes.push('Plan-Freigabe ueber den Compact hinweg erhalten');
     } else if (s.approvedAt) {
-      clearApproval(sessionId, 'Compact — Freigabe ohne Plan-Bindung verfaellt');
+      clearApproval(sessionId, 'Compact — Trivial-Freigabe verfaellt');
     }
   } else {
     clearApproval(sessionId, `Session-Start (${source || 'unbekannt'})`);

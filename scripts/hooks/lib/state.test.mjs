@@ -131,17 +131,36 @@ test('wiederholtes "ok" fuellt den absoluten Deckel nicht nach', async () => {
   rmSync(project, { recursive: true, force: true });
 });
 
-test('geaenderte Plan-Datei blockt weiterhin', async () => {
+test('Plan nach dem "go" geschrieben braucht kein zweites "go"', async () => {
   const project = makeProject();
   const { approvalStatus } = await loadState(project);
 
-  approve(project, 's6');
+  approve(project, 's6', 'go');
   assert.equal(approvalStatus('s6').ok, true);
 
-  writeFileSync(join(project, '.claude', 'plan-current.md'), 'ein ganz anderer Plan');
-  const status = approvalStatus('s6');
-  assert.equal(status.ok, false);
-  assert.match(status.reason, /geaendert/);
+  writeFileSync(join(project, '.claude', 'plan-current.md'), 'der danach geschriebene Plan');
+  assert.equal(approvalStatus('s6').ok, true);
+  rmSync(project, { recursive: true, force: true });
+});
+
+test('fruehes "go" ohne Plan ueberlebt den Compact, wenn der Plan danach kommt', async () => {
+  const project = makeProject({ plan: null });
+  approve(project, 's6b', 'go');
+
+  writeFileSync(join(project, '.claude', 'plan-current.md'), 'Plan nach dem go');
+  runHook('session-start.mjs', project, { session_id: 's6b', source: 'compact' });
+  const { approvalStatus } = await loadState(project);
+  assert.equal(approvalStatus('s6b').ok, true);
+  rmSync(project, { recursive: true, force: true });
+});
+
+test('stilles Plan-Umschreiben plus "ja" fuellt den Themen-Deckel nicht nach', async () => {
+  const project = makeProject();
+  approve(project, 's6c');
+  for (let i = 0; i < 5; i++) runHook('prompt-submit.mjs', project, { session_id: 's6c', prompt: `normaler Auftrag ${i}` });
+  writeFileSync(join(project, '.claude', 'plan-current.md'), 'still umgeschrieben');
+  approve(project, 's6c', 'ja');
+  assert.equal(readSessionState(project, 's6c').promptsSinceFirstApproval, 5);
   rmSync(project, { recursive: true, force: true });
 });
 

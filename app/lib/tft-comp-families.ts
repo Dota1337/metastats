@@ -267,7 +267,7 @@ export function buildCompFamilies(
         (mainComp as any).velocity = bestSrc;
       }
     }
-    const familyRoles = computeRoles(familyUnits(membersOf.get(familyKey) || [familyKey]), totalGames, roleOpts);
+    const familyRoles = computeRoles(familyUnits(membersOf.get(familyKey) || [familyKey]), totalGames, { ...roleOpts, keyCarry: carry });
     // Item-Traeger am gezeigten Board messen, nicht an der ganzen Familie:
     // Units, die nur in einer Level-Variante stehen, fielen sonst unter die
     // Praesenz-Schwelle, obwohl sie auf diesem Board die Items tragen.

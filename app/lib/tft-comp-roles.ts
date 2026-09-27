@@ -16,6 +16,10 @@ export const CARRY_MIN_RATE = 0.6;       // Carry-Item je Spiel
 export const CARRY_MIN_SHARE = 0.6;      // Anteil Carry-Items am Item-Volumen der Unit
 export const TANK_MIN_RATE = 0.5;        // Tank-Items je Spiel
 export const MAX_NAMED_CARRIES = 2;
+// Haupt-Carry (User 2026-09-28, Spellweaver: Veigar vor LeBlanc): wer je
+// Comp-Spiel die meisten Carry-Items traegt. Liegt der Key-Carry weniger als
+// 10 % dahinter, bleibt er vorne, damit knappe Paare nicht je Region kippen.
+export const KEY_CARRY_MARGIN = 1.1;
 // Item-Traeger (User 2026-09-27: „Erweitere es auf 3 oder 4 … Fülle das immer
 // auf 3 auf"): Units, die in dieser Comp regelmaessig fertige Items tragen.
 export const ITEM_CARRIER_MIN_PRESENCE = 0.4;
@@ -37,7 +41,7 @@ export interface RoleUnit {
 }
 
 export type IsComponent = (apiName: string) => boolean;
-export interface RoleOptions { set?: number; isComponent?: IsComponent }
+export interface RoleOptions { set?: number; isComponent?: IsComponent; keyCarry?: string | null }
 
 const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 const unitGames = (u: RoleUnit): number => num(u.gamesWithUnit) || num(u.count);
@@ -71,6 +75,7 @@ export interface UnitRoleStats {
   carryShare: number;
   tankRate: number;
   itemLoad: number;    // fertige Items je Spiel dieser Unit
+  carryVolume: number; // Carry-Items je Comp-Spiel
 }
 
 export function unitRoleStats(u: RoleUnit, familyGames: number, opts: RoleOptions = {}): UnitRoleStats {
@@ -104,6 +109,7 @@ export function unitRoleStats(u: RoleUnit, familyGames: number, opts: RoleOption
     carryShare: allVol > 0 ? carryVol / allVol : 0,
     tankRate,
     itemLoad: games > 0 ? allVol / games : 0,
+    carryVolume: familyGames > 0 ? carryVol / familyGames : 0,
   };
 }
 
@@ -132,11 +138,16 @@ export function computeRoles(
   opts: RoleOptions = {},
 ): CompRoles {
   const stats = (units || []).filter(u => u?.characterId).map(u => unitRoleStats(u, familyGames, opts));
-  const carries = stats
+  const carryStats = stats
     .filter(s => s.games >= CARRY_MIN_GAMES && s.presence >= CARRY_MIN_PRESENCE
       && s.carryRate >= CARRY_MIN_RATE && s.carryShare >= CARRY_MIN_SHARE)
-    .sort((a, b) => b.carryRate - a.carryRate || b.games - a.games)
-    .map(s => s.characterId);
+    .sort((a, b) => b.carryVolume - a.carryVolume || b.games - a.games);
+  const key = carryStats.find(s => s.characterId === opts.keyCarry);
+  if (key && key !== carryStats[0] && carryStats[0].carryVolume < key.carryVolume * KEY_CARRY_MARGIN) {
+    carryStats.splice(carryStats.indexOf(key), 1);
+    carryStats.unshift(key);
+  }
+  const carries = carryStats.map(s => s.characterId);
   const carrySet = new Set(carries);
   const tanks = stats
     .filter(s => !carrySet.has(s.characterId) && s.tankRate >= TANK_MIN_RATE)

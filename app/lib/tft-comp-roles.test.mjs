@@ -10,6 +10,22 @@ const u = (characterId, games, items, extra = {}) => ({
   topItems: Object.entries(items).map(([apiName, count]) => ({ apiName, count })), ...extra,
 });
 
+test('Haupt-Carry: meiste Carry-Items je Spiel vorne, Key-Carry nur bei < 10 % Abstand', () => {
+  // Spellweaver: LeBlanc (Key) haelt in jedem Spiel ein Carry-Item, Veigar traegt mehr
+  const units = [
+    u('LeBlanc', 100, { DA_JeweledGauntlet: 80, DA_SpearOfShojin: 63 }, { carryItemGamesAll: 100 }),
+    u('Veigar', 99, { DA_JeweledGauntlet: 90, DA_RabadonsDeathcap: 87 }, { carryItemGamesAll: 97 }),
+  ];
+  assert.deepEqual(computeRoles(units, 100, { ...opts, keyCarry: 'LeBlanc' }).carries, ['Veigar', 'LeBlanc']);
+  // knapp (Veigar 1,49 vs Key 1,40): Key bleibt vorne
+  const close = [
+    u('Cassiopeia', 100, { DA_JeweledGauntlet: 80, DA_SpearOfShojin: 60 }, { carryItemGamesAll: 100 }),
+    u('Veigar', 100, { DA_JeweledGauntlet: 80, DA_RabadonsDeathcap: 69 }, { carryItemGamesAll: 99 }),
+  ];
+  assert.deepEqual(computeRoles(close, 100, { ...opts, keyCarry: 'Cassiopeia' }).carries, ['Cassiopeia', 'Veigar']);
+  assert.deepEqual(computeRoles(close, 100, opts).carries, ['Veigar', 'Cassiopeia']);
+});
+
 test('Hand of Justice und Edge of Night zaehlen als Carry-Items, nicht als Tank-Items', () => {
   const { carry, tank } = roleItemSets(18);
   assert.ok(carry.has('DA_HandOfJustice') && carry.has('DA_EdgeOfNight'));

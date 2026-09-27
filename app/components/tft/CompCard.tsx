@@ -72,7 +72,7 @@ export default function CompCard({
   // Carries an den Items erkannt (tft-comp-roles), wie in der Liste — der
   // Key traegt nur eine Unit und lag bei Zwei-Carry-Comps oft daneben.
   const isComponent = componentCheckFromItems(assets?.items);
-  const roles = computeRoles(comp.typicalUnits, comp.games, { set: assets?.set, isComponent });
+  const roles = computeRoles(comp.typicalUnits, comp.games, { set: assets?.set, isComponent, keyCarry: parts?.carry });
   const named = namedCarries(roles, parts?.carry);
   const carrySet = new Set(roles.carries.length > 0 ? roles.carries : named);
   const carryNameOf = (cid: string) => assets?.champions[cid]?.name || prettyChar(cid);

@@ -174,7 +174,7 @@ export default function TftCompDetailPage() {
   // der Key-Carry lag bei Zwei-Carry-Comps oft auf der falschen Unit.
   const namedCompCarries: string[] = comp
     ? namedCarries(
-        computeRoles(comp.typicalUnits, comp.games, { set: assets?.set, isComponent: componentCheckFromItems(assets?.items) }),
+        computeRoles(comp.typicalUnits, comp.games, { set: assets?.set, isComponent: componentCheckFromItems(assets?.items), keyCarry: parseClusterKey(comp.clusterKey)?.carry }),
         parseClusterKey(comp.clusterKey)?.carry,
       )
     : [];

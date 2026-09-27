@@ -164,7 +164,7 @@ export default function CompRow({
   // daneben. Der Name nennt hoechstens zwei, staerkster zuerst.
   const isComponent = componentCheckFromItems(assets?.items);
   const roles: CompRoles = rolesProp
-    ?? computeRoles(comp.typicalUnits, comp.games, { set: assets?.set, isComponent });
+    ?? computeRoles(comp.typicalUnits, comp.games, { set: assets?.set, isComponent, keyCarry: parts?.carry });
   const named = namedCarries(roles, parts?.carry);
   // „(mit X)" nur, wenn X nicht schon im Namen steht.
   const secondaryCid = parts?.secondary && !named.includes(parts.secondary) ? parts.secondary : null;

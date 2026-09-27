@@ -169,7 +169,7 @@ function Row({ row, hasLeft, t }: { row: LootRow; hasLeft: boolean; t: T }) {
 
 function Stars({ n }: { n?: number }) {
   if (!n || n < 2) return null;
-  return <span className="text-[#e0c75a] text-[10px] leading-none">{'★'.repeat(n)}</span>;
+  return <span className="text-[10px] leading-none" style={{ color: GOLD }}>{'★'.repeat(n)}</span>;
 }
 
 function Chip({ children, color, title }: { children: React.ReactNode; color?: string; title?: string }) {

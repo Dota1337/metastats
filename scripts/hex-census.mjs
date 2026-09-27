@@ -22,10 +22,12 @@
 import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
-/** Die 10 Farben aus app/globals.css mit Token, identisch zu Gate 7, plus Weiss. */
+/** Die Farben aus app/globals.css mit Token, identisch zu Gate 7, plus Weiss. */
 const MIGRATED = new Set([
   '0a0e1a', '0e1525', '0d1526', '141c2e', '1e2a3a',
   '2a3a50', 'a0b0c5', '7a8aa0', '5a6a80', 'cdd6e0',
+  // Textgrau seit 2026-09-27; die alten Werte bleiben verboten.
+  'b9c4d6', '93a0b8', '76859b',
   'ffffff', 'fff',
 ]);
 

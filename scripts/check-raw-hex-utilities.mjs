@@ -31,10 +31,12 @@ import { readFileSync } from 'node:fs';
 // genau die melden. Sie kommt, wenn diese Reste geklaert sind.
 const BASELINE = 313;
 
-// Die 10 Farben aus app/globals.css, die seit Commit A ein Token haben.
+// Die Farben aus app/globals.css, die ein Token haben (10 seit Commit A, 3 Textgraus seit 2026-09-27).
 const MIGRATED = new Set([
   '0a0e1a', '0e1525', '0d1526', '141c2e', '1e2a3a',
   '2a3a50', 'a0b0c5', '7a8aa0', '5a6a80', 'cdd6e0',
+  // Textgrau seit 2026-09-27; die alten Werte bleiben verboten.
+  'b9c4d6', '93a0b8', '76859b',
 ]);
 
 // Anker ist "-[#" -- der Klammer-Ausdruck trennt Tailwind-Utilities von
@@ -68,7 +70,7 @@ if (violations.length > 0) {
   for (const v of violations.slice(0, 20)) console.error('  ' + v);
   if (violations.length > 20) console.error(`  ... und ${violations.length - 20} weitere`);
   console.error('');
-  console.error('Diese 10 Farben haben Tokens. Statt -[#hex] die Token-Utility nutzen,');
+  console.error('Diese Farben haben Tokens. Statt -[#hex] die Token-Utility nutzen,');
   console.error('Namen stehen im @theme-inline-Block in app/globals.css.');
   failed = true;
 }

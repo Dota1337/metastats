@@ -150,8 +150,8 @@ const IST_TOKENS = {
   '--border-subtle': '#1e2a3a',
   '--border-default': '#2a3a50',
   '--fg-primary': '#ffffff',
-  '--fg-secondary': '#a0b0c5',
-  '--fg-muted': '#7a8aa0',
+  '--fg-secondary': '#b9c4d6',
+  '--fg-muted': '#93a0b8',
   '--surface-page-rgb': '14 21 37',
 } as React.CSSProperties;
 

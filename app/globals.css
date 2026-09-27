@@ -65,9 +65,9 @@
   /* --- Text ----------------------------------------------------------------
      Vier Stufen decken 1.636 der gemessenen Fundstellen ab.             */
   --fg-primary:   #ffffff;     /* 591× (text-white) */
-  --fg-secondary: #a0b0c5;     /* 545× */
-  --fg-muted:     #7a8aa0;     /* 443× */
-  --fg-faint:     #5a6a80;     /* 57× */
+  --fg-secondary: #b9c4d6;     /* 545× — seit 2026-09-27 F2-Textwert (vorher #a0b0c5) */
+  --fg-muted:     #93a0b8;     /* 443× — seit 2026-09-27 F2-Textwert (vorher #7a8aa0) */
+  --fg-faint:     #76859b;     /* 57× — seit 2026-09-27, 4.86:1 auf base (vorher #5a6a80, 3.30:1) */
   --fg-bright:    #cdd6e0;     /* 9× — konsolidiert #cfd8dc/#cfd6dc/#cbd5e1 */
 
   /* Warme Textleiter -- ausschliesslich fuer Flaechen, die selbst schon in
@@ -75,8 +75,8 @@
      accent-getoenten Banner las sich die kalte Leiter entweder als lila-auf-
      lila (Accent, 3.45:1) oder als hartes Weiss. Warm auf kuehl liegt
      dazwischen: 10.69:1 auf TFT, 9.68:1 auf LoL; die weiche Stufe trifft mit
-     6.64 / 6.01 genau das Niveau von --fg-secondary, die Hierarchie bleibt
-     also unveraendert. Kein Game-Bezug -- der Ton ist in beiden Accent-Welten
+     6.64 / 6.01 das Niveau des damaligen --fg-secondary (#a0b0c5); seit dem
+     helleren Textgrau (2026-09-27) liegt sie etwas darunter. Kein Game-Bezug -- der Ton ist in beiden Accent-Welten
      derselbe. */
   --fg-warm:      #e6dccb;
   --fg-warm-soft: #b9ae9c;

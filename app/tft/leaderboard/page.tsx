@@ -348,17 +348,21 @@ export default function TftLeaderboardPage() {
                   {/* Mobile: Rang (nur Apex) + Name in Zeile 1, Stats darunter.
                       Desktop: 4- bis 6-Spalten-Raster, je nach Liga. */}
                   {showRank && <div className="hidden sm:block text-right text-fg-secondary">{p.rank}</div>}
-                  <div className="flex items-baseline gap-2 sm:block">
+                  <div className="flex items-baseline gap-2 sm:block min-w-0">
                     {showRank && <span className="text-fg-secondary text-xs sm:hidden">#{p.rank}</span>}
-                    <span className="text-white truncate flex-1 sm:flex-initial">
+                    <span className="text-white truncate flex-1 sm:flex-initial sm:block">
                       {p.gameName ? `${p.gameName}` : <span className="text-fg-muted">{t('lb.unknownPlayer')}</span>}
                       {p.tagLine && <span className="text-fg-muted text-xs"> #{p.tagLine}</span>}
-                      {isWorld && (
-                        <span className="text-xs ml-2 text-fg-muted">{regionLabel(rowRegion(p))}</span>
-                      )}
+                      {/* Tablet-Breite (640-1023 px): Region + Rang in eine eigene
+                          Zeile, sonst schiebt der Name die Marktwert-Spalte raus. */}
                       {(isDescent || isWorld) && (
-                        <span className="text-xs ml-2" style={{ color: tierColor(p.tier) }}>
-                          {tierLabel(p.tier)}{p.division ? ` ${p.division}` : ''}
+                        <span className="sm:block lg:inline sm:[&>*:first-child]:ml-0 lg:[&>*:first-child]:ml-2">
+                          {isWorld && (
+                            <span className="text-xs ml-2 text-fg-muted">{regionLabel(rowRegion(p))}</span>
+                          )}
+                          <span className="text-xs ml-2" style={{ color: tierColor(p.tier) }}>
+                            {tierLabel(p.tier)}{p.division ? ` ${p.division}` : ''}
+                          </span>
                         </span>
                       )}
                     </span>

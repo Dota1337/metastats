@@ -44,7 +44,7 @@ export default function TablesView({ loot, wisps }: { loot: LootTablesFile | nul
         </div>
 
         {view === 'loot' && loot && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+          <div className="space-y-2">
             {loot.tables.map(tb => <LootCard key={tb.key} table={tb} t={t} />)}
           </div>
         )}
@@ -107,13 +107,33 @@ function CardHead({ name, icon, patch, stage, t }: { name: string; icon?: string
   );
 }
 
+// Jede Loot-Tabelle klappt einzeln auf; anfangs sind alle zu.
 function LootCard({ table, t }: { table: LootTable; t: T }) {
+  const [open, setOpen] = useState(false);
   return (
-    <section className="bg-surface-base border border-border-subtle rounded-lg p-4">
-      <CardHead name={table.name} icon={table.icon} patch={table.patch} stage={table.stage} t={t} />
-      <div className="space-y-4">
-        {table.subs.map((s, i) => <SubTable key={i} sub={s} t={t} />)}
-      </div>
+    <section className="bg-surface-base border border-border-subtle rounded-lg">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        className="w-full flex items-center gap-2.5 p-4 text-left hover:bg-surface-raised/40 rounded-lg transition-colors"
+      >
+        {table.icon ? <Icon path={table.icon} size={32} /> : <span className="w-8 h-8 shrink-0" />}
+        <h2 className="text-white text-base font-medium flex-1 min-w-0">{table.name}</h2>
+        {table.stage && <Badge>{t('tft.tables.stage')} {table.stage}</Badge>}
+        <Badge>{t('tft.tables.patch')} {table.patch}</Badge>
+        <svg
+          viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"
+          className={`shrink-0 text-fg-muted transition-transform ${open ? 'rotate-180' : ''}`}
+        >
+          <path d="M5 7.5 10 12.5 15 7.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {open && (
+        <div className="space-y-4 px-4 pb-4">
+          {table.subs.map((s, i) => <SubTable key={i} sub={s} t={t} />)}
+        </div>
+      )}
     </section>
   );
 }

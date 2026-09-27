@@ -29,7 +29,7 @@ import { readFileSync } from 'node:fs';
 // bekommen duerfen -- Gold im Root-Chrome (Nav/Footer, 43x) und zwei
 // Fundstellen in Dateien, die keine Route erreicht. Eine harte Null wuerde
 // genau die melden. Sie kommt, wenn diese Reste geklaert sind.
-const BASELINE = 313;
+const BASELINE = 312;
 
 // Die Farben aus app/globals.css, die ein Token haben (10 seit Commit A, 3 Textgraus seit 2026-09-27).
 const MIGRATED = new Set([
@@ -37,6 +37,8 @@ const MIGRATED = new Set([
   '2a3a50', 'a0b0c5', '7a8aa0', '5a6a80', 'cdd6e0',
   // Textgrau seit 2026-09-27; die alten Werte bleiben verboten.
   'b9c4d6', '93a0b8', '76859b',
+  // Flaechen/Raender/Grau seit 2026-09-27 (seitenweit heller).
+  '19233a', '212c4a', '2a3a52', '384a68', '38476a', '9eabc1', '8a99ae',
 ]);
 
 // Anker ist "-[#" -- der Klammer-Ausdruck trennt Tailwind-Utilities von

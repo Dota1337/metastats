@@ -28,6 +28,8 @@ const MIGRATED = new Set([
   '2a3a50', 'a0b0c5', '7a8aa0', '5a6a80', 'cdd6e0',
   // Textgrau seit 2026-09-27; die alten Werte bleiben verboten.
   'b9c4d6', '93a0b8', '76859b',
+  // Flaechen/Raender/Grau seit 2026-09-27 (seitenweit heller).
+  '19233a', '212c4a', '2a3a52', '384a68', '38476a', '9eabc1', '8a99ae',
   'ffffff', 'fff',
 ]);
 

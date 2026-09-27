@@ -160,8 +160,8 @@ export async function loadTierCutoffs(setNumber?: number | null): Promise<TierCu
 // Text-Token fuer Lesbarkeit nachgezogen werden.
 export const TIER_COLORS: Record<TierLetter, string> = {
   S: '#e0c75a',
-  A: '#7B61FF',
-  B: '#3a8ddc',
+  A: '#8a73ff',
+  B: '#4a9be6',
   C: '#9aa6b2',
-  D: '#5a6a80',
+  D: '#6e7e94',
 };

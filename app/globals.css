@@ -35,40 +35,40 @@
      :root ist damit die gewollte.                                        */
   --surface-page-rgb: 14 21 37;               /* = #0e1525 */
   --surface-page:   rgb(var(--surface-page-rgb));   /* 65× — identisch mit --background */
-  --surface-base:   #0d1526;   /* 254× */
-  --surface-raised: #141c2e;   /* 254× */
-  --surface-overlay: #1e2a3a;  /* 105× als Fläche */
+  /* Seit 2026-09-27 je eine Stufe heller (User: Boxen sollen sich abheben).
+     Gegen die Seite: base 1,165 · raised/base 1,135 · overlay/raised 1,198.
+     Vorher #0d1526 / #141c2e / #1e2a3a — base lag bei 1,00 zur Seite.
+     base als Tripel, weil --glass-bg dieselbe Flaeche halbtransparent braucht. */
+  --surface-base-rgb: 25 35 58;                /* = #19233a */
+  --surface-base:   rgb(var(--surface-base-rgb));
+  --surface-raised: #212c4a;
+  --surface-overlay: #2a3a52;
 
-  /* Fuellung der Comp-Zeilen auf /tft/comps plus ihr Zeigezustand; seit
-     2026-09-27 auch die Karten auf /tft/tools/tables (Aenderung wirkt dort mit). Eigene
-     Token, weil --surface-raised 253x genutzt wird und hier nicht global
-     mitwandern darf. Gemessen (WCAG-Relativluminanz gegen die Seite #0e1525):
-     Fuellung 1,165 — MetaTFT liegt bei 1,062-1,132. Zeigezustand hebt um
-     1,135 an. NICHT weiter aufhellen: ab #1b2540 faellt der Kontrast zum
-     Rahmen --border-subtle (#1e2a3a) auf 1,045, die Zeilenkante verschwindet
-     dann in der eigenen Flaeche.                                         */
-  --surface-comp-row: #19233a;
-  --surface-comp-row-hover: #212c4a;
+  /* Fuellung der Comp-Zeilen (/tft/comps) und der Karten auf /tft/tools/tables.
+     Seit 2026-09-27 identisch mit base/raised — als Alias, damit keine zwei
+     gleichen Hexe still auseinanderlaufen. Namen bleiben fuer CompRow.tsx. */
+  --surface-comp-row: var(--surface-base);
+  --surface-comp-row-hover: var(--surface-raised);
 
   /* Zeigezustand fuer Flaechen auf --surface-overlay. Stand bisher 4x roh im
      Markup; hier als Token, damit der Roh-Hex-Waechter nicht bei jedem neuen
-     Knopf anschlaegt. Gleicher Hex wie zuvor — keine optische Aenderung.  */
-  --surface-overlay-hover: #2a3a52;
+     Knopf anschlaegt. Seit 2026-09-27 #384a68 (1,29 gegen overlay; vorher #2a3a52 = jetzt overlay). */
+  --surface-overlay-hover: #384a68;
 
   /* --- Ränder --------------------------------------------------------------
      ACHTUNG: --border-subtle hat denselben Hex wie --surface-overlay.
      Das ist eine Koinzidenz des Ist-Zustands, KEINE Aussage. Bewusst zwei
      Namen, damit Welle 2 Ränder verschieben kann, ohne 105 Flächen
      mitzuziehen. Nicht zu einem Token zusammenfassen.                   */
-  --border-subtle:  #1e2a3a;   /* 508× */
-  --border-default: #2a3a50;   /* 21× */
+  --border-subtle:  #2a3a50;   /* seit 2026-09-27, 1,355 auf base (vorher #1e2a3a) */
+  --border-default: #38476a;   /* seit 2026-09-27, 1,70 auf base (vorher #2a3a50) */
 
   /* --- Text ----------------------------------------------------------------
      Vier Stufen decken 1.636 der gemessenen Fundstellen ab.             */
   --fg-primary:   #ffffff;     /* 591× (text-white) */
   --fg-secondary: #b9c4d6;     /* 545× — seit 2026-09-27 F2-Textwert (vorher #a0b0c5) */
-  --fg-muted:     #93a0b8;     /* 443× — seit 2026-09-27 F2-Textwert (vorher #7a8aa0) */
-  --fg-faint:     #76859b;     /* 57× — seit 2026-09-27, 4.86:1 auf base (vorher #5a6a80, 3.30:1) */
+  --fg-muted:     #9eabc1;     /* seit 2026-09-27: 4.96:1 auf overlay (vorher #93a0b8, davor #7a8aa0) */
+  --fg-faint:     #8a99ae;     /* seit 2026-09-27: 4.76:1 auf raised (vorher #76859b, davor #5a6a80) */
   --fg-bright:    #cdd6e0;     /* 9× — konsolidiert #cfd8dc/#cfd6dc/#cbd5e1 */
 
   /* Warme Textleiter -- ausschliesslich fuer Flaechen, die selbst schon in
@@ -91,7 +91,7 @@
      Der GameSwitcher rendert BEIDE Icons gleichzeitig und braucht deshalb
      die benannten Varianten, nicht nur --accent.                        */
   --accent-lol: #c89b3c;
-  --accent-tft: #7B61FF;
+  --accent-tft: #8a73ff;   /* seit 2026-09-27 (vorher #7B61FF): 4.45:1 auf base */
   --accent: var(--accent-lol);
 
   /* Derselbe Accent als RGB-Tripel, für transparente Ableitungen:
@@ -105,7 +105,7 @@
      Token erbt sich als fertiges Gold nach unten und ignoriert
      [data-game="tft"] still. Die Ableitung gehört in die konsumierende Regel. */
   --accent-lol-rgb: 200 155 60;
-  --accent-tft-rgb: 123 97 255;
+  --accent-tft-rgb: 138 115 255;
   --accent-rgb: var(--accent-lol-rgb);
 
   /* --- Feste Farben, die NICHT dem Game folgen ------------------------------
@@ -141,8 +141,8 @@
   --series-purple-soft: #a892ff;
 
   /* --- Premium (Glassmorphism / Tiefe) ------------------------------------- */
-  --glass-bg:     rgba(13, 21, 38, 0.6);
-  --glass-bg-strong: rgba(13, 21, 38, 0.8);
+  --glass-bg:     rgb(var(--surface-base-rgb) / 60%);
+  --glass-bg-strong: rgb(var(--surface-base-rgb) / 80%);
   --glass-blur:   12px;
   --glass-blur-strong: 16px;
   --elevation-1: 0 1px 2px rgba(0, 0, 0, 0.3);

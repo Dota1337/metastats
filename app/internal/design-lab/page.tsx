@@ -144,14 +144,14 @@ function Stage({
 const IST_TOKENS = {
   '--surface-sunken': '#0a0e1a',
   '--surface-page': '#0e1525',
-  '--surface-base': '#0d1526',
-  '--surface-raised': '#141c2e',
-  '--surface-overlay': '#1e2a3a',
-  '--border-subtle': '#1e2a3a',
-  '--border-default': '#2a3a50',
+  '--surface-base': '#19233a',
+  '--surface-raised': '#212c4a',
+  '--surface-overlay': '#2a3a52',
+  '--border-subtle': '#2a3a50',
+  '--border-default': '#38476a',
   '--fg-primary': '#ffffff',
   '--fg-secondary': '#b9c4d6',
-  '--fg-muted': '#93a0b8',
+  '--fg-muted': '#9eabc1',
   '--surface-page-rgb': '14 21 37',
 } as React.CSSProperties;
 

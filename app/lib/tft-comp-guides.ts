@@ -323,7 +323,7 @@ export function augmentTierBorderColor(tier: number | null | undefined): string 
     case 1: return '#9aa5b4';   // Silver
     case 2: return '#e0c75a';   // Gold
     case 3: return '#c39bff';   // Prismatic
-    default: return '#1e2a3a';
+    default: return 'var(--border-subtle)';
   }
 }
 

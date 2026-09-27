@@ -47,8 +47,8 @@ const safeCount = (v: unknown): number => (typeof v === 'number' ? v : 1);
 function tierBadge(avgPlacement: number | null): { label: string; color: string; bg: string } {
   if (avgPlacement == null) return { label: '?', color: 'var(--fg-faint)', bg: 'var(--surface-overlay)' };
   if (avgPlacement < 3.8) return { label: 'S',  color: '#e0c75a', bg: 'rgba(224,199,90,0.15)' };
-  if (avgPlacement < 4.2) return { label: 'A',  color: '#7B61FF', bg: 'rgba(123,97,255,0.15)' };
-  if (avgPlacement < 4.5) return { label: 'B',  color: '#3a8ddc', bg: 'rgba(58,141,220,0.15)' };
+  if (avgPlacement < 4.2) return { label: 'A',  color: '#8a73ff', bg: 'rgba(138,115,255,0.15)' };
+  if (avgPlacement < 4.5) return { label: 'B',  color: '#4a9be6', bg: 'rgba(58,141,220,0.15)' };
   return                         { label: 'C',  color: 'var(--fg-faint)', bg: 'rgba(90,106,128,0.15)' };
 }
 

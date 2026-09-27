@@ -34,7 +34,7 @@ export default function TablesView({ loot, wisps }: { loot: LootTablesFile | nul
     <main className="min-h-screen bg-surface-page">
       <Nav active="tools" />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
-        <div className="bg-surface-comp-row border border-border-subtle rounded-lg p-5 mb-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
+        <div className="bg-surface-base border border-border-subtle rounded-lg p-5 mb-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
           <h1 className="text-white text-xl font-medium">{t('tft.tables.title')}</h1>
           <Toggle
             value={view}
@@ -93,7 +93,7 @@ function Icon({ path, size = 20, className = '' }: { path?: string | null; size?
 }
 
 function Badge({ children }: { children: React.ReactNode }) {
-  return <span className="text-[10px] px-1.5 py-0.5 rounded border border-border-default text-fg-muted tabular-nums whitespace-nowrap">{children}</span>;
+  return <span className="text-[10px] px-1.5 py-0.5 rounded border border-border-subtle text-fg-muted tabular-nums whitespace-nowrap">{children}</span>;
 }
 
 function CardHead({ name, icon, patch, stage, t }: { name: string; icon?: string | null; patch: string; stage?: string; t: T }) {
@@ -111,12 +111,12 @@ function CardHead({ name, icon, patch, stage, t }: { name: string; icon?: string
 function LootCard({ table, t }: { table: LootTable; t: T }) {
   const [open, setOpen] = useState(false);
   return (
-    <section className="bg-surface-comp-row border border-border-subtle rounded-lg">
+    <section className="bg-surface-base border border-border-subtle rounded-lg">
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
         aria-expanded={open}
-        className="w-full flex items-center gap-2.5 p-4 text-left hover:bg-surface-comp-row-hover rounded-lg transition-colors"
+        className="w-full flex items-center gap-2.5 p-4 text-left hover:bg-surface-raised/40 rounded-lg transition-colors"
       >
         {table.icon ? <Icon path={table.icon} size={32} /> : <span className="w-8 h-8 shrink-0" />}
         <h2 className="text-white text-base font-medium flex-1 min-w-0">{table.name}</h2>
@@ -203,7 +203,7 @@ function SubTable({ sub, t, extra, labels = true, left: leftOverride, compact = 
         </div>
       )}
       <div
-        className={`divide-y divide-border-default/50 border border-border-default rounded ${aligned ? 'grid grid-rows-subgrid' : ''}`}
+        className={`divide-y divide-border-subtle/50 border border-border-subtle rounded ${aligned ? 'grid grid-rows-subgrid' : ''}`}
         style={aligned ? { gridRow: `span ${n}` } : undefined}
       >
         {sub.rows.map((r, i) => <Row key={i} row={r} left={left} labels={labels} compact={compact} t={t} />)}
@@ -317,7 +317,7 @@ function RewardTile({ r, t }: { r: LootReward; t: T }) {
           style={{ width: 36, height: 36, filter: TINT[r.k], border: border ? `2px solid ${border}` : undefined }}
         />
       ) : (
-        <span role="img" aria-label={text} className="flex items-center justify-center w-9 h-9 rounded-sm bg-surface-raised border border-border-default text-fg-secondary text-base font-medium">?</span>
+        <span role="img" aria-label={text} className="flex items-center justify-center w-9 h-9 rounded-sm bg-surface-raised border border-border-subtle text-fg-secondary text-base font-medium">?</span>
       )}
       {r.stars && r.stars > 1 && (
         <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[10px] leading-none whitespace-nowrap" style={{ color: GOLD, textShadow: OVERLAY_SHADOW }}>
@@ -335,12 +335,12 @@ function RewardTile({ r, t }: { r: LootReward; t: T }) {
 
 function CovenCard({ coven, t }: { coven: CovenTable; t: T }) {
   return (
-    <section className="bg-surface-comp-row border border-border-subtle rounded-lg p-4">
+    <section className="bg-surface-base border border-border-subtle rounded-lg p-4">
       <CardHead name={coven.name} icon={coven.icon} patch={coven.patch} t={t} />
       <div className="overflow-x-auto mb-5">
         <table className="w-full max-w-md text-[12px] tabular-nums">
           <thead>
-            <tr className="text-fg-muted border-b border-border-default">
+            <tr className="text-fg-muted border-b border-border-subtle">
               <th className="text-left px-2 py-1.5 font-normal">{t('tft.tables.units')}</th>
               <th className="text-right px-2 py-1.5 font-normal">{t('tft.tables.perKill')}</th>
               <th className="text-right px-2 py-1.5 font-normal">{t('tft.tables.perLoss')}</th>
@@ -348,7 +348,7 @@ function CovenCard({ coven, t }: { coven: CovenTable; t: T }) {
           </thead>
           <tbody>
             {coven.essence.map(e => (
-              <tr key={e.units} className="border-b border-border-default/50 last:border-0">
+              <tr key={e.units} className="border-b border-border-subtle/50 last:border-0">
                 <td className="px-2 py-1.5 text-white">{e.units}</td>
                 <td className="px-2 py-1.5 text-right text-fg-secondary">{e.kill}</td>
                 <td className="px-2 py-1.5 text-right text-fg-secondary">{e.loss}</td>
@@ -420,7 +420,7 @@ function WispList({ entries, t }: { entries: WispEntry[]; t: T }) {
           />
         </div>
       </div>
-      <div className="bg-surface-comp-row border border-border-subtle rounded-lg divide-y divide-border-default/60">
+      <div className="bg-surface-base border border-border-subtle rounded-lg divide-y divide-border-subtle/60">
         {shown.map(w => (
           <WispRow key={`${w.api}-${tier}-${cat}`} w={w} variants={w.variants.filter(inMode)} openInit={!hit(w)} t={t} />
         ))}
@@ -441,7 +441,7 @@ function WispRow({ w, variants, openInit, t }: { w: WispEntry; variants: WispVar
           onClick={() => setOpen(o => !o)}
           aria-expanded={open}
           aria-label={`${w.name} · ${t('tft.tables.details')}`}
-          className="w-full flex items-start gap-3 px-3 py-2.5 text-left hover:bg-surface-comp-row-hover transition-colors"
+          className="w-full flex items-start gap-3 px-3 py-2.5 text-left hover:bg-surface-raised/40 transition-colors"
         >
           {line}
           <span className="shrink-0 w-9 mt-1 flex items-center justify-end gap-0.5 text-fg-muted text-[11px] tabular-nums">

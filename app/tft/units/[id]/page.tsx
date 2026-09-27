@@ -584,7 +584,7 @@ function ItemIcon({ apiName, assets, size = 10 }: { apiName: string; assets: Tft
   const href = `/tft/items/${encodeURIComponent(apiName)}`;
   if (!url) {
     return (
-      <a href={href} className={`${sizeClass} rounded bg-surface-overlay flex items-center justify-center text-[8px] text-fg-muted text-center px-0.5 hover:bg-[#2a3a52] transition-colors`} title={item?.name || apiName}>
+      <a href={href} className={`${sizeClass} rounded bg-surface-overlay flex items-center justify-center text-[8px] text-fg-muted text-center px-0.5 hover:bg-surface-overlay-hover transition-colors`} title={item?.name || apiName}>
         {prettyItem(apiName)}
       </a>
     );

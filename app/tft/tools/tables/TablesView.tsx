@@ -129,12 +129,50 @@ function LootCard({ table, t }: { table: LootTable; t: T }) {
           <path d="M5 7.5 10 12.5 15 7.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
-      {open && (
-        <div className="space-y-4 px-4 pb-4">
-          {table.subs.map((s, i) => <SubTable key={i} sub={s} t={t} />)}
-        </div>
-      )}
+      {open && <LootBody table={table} t={t} />}
     </section>
+  );
+}
+
+// Ein einzelner Block mit mehr Zeilen als das wird ab lg in zwei Spalten geteilt
+// (heute nur die Trait Ladder); mehrere Bloecke stehen ab lg nebeneinander. Nur bei drei
+// Spalten ist es zu eng fuer die Beschriftung neben den Symbolen.
+const SPLIT_AT = 10;
+const COL_CLASS: Record<number, string> = { 1: '', 2: 'lg:grid-cols-2', 3: 'lg:grid-cols-3' };
+
+// Teilt nur zwischen zwei verschiedenen Bedingungen, nie mitten in einer Gruppe
+// (z. B. „8 Traits" mit 57 % und 43 % bleibt zusammen).
+function splitAtGroup(sub: LootSub): LootSub[] {
+  const rows = sub.rows;
+  const key = (r: LootRow) => JSON.stringify(r.cond ?? null);
+  let cut = -1;
+  for (let i = 1; i < rows.length; i++) {
+    if (key(rows[i]) === key(rows[i - 1])) continue;
+    if (cut < 0 || Math.abs(i - rows.length / 2) < Math.abs(cut - rows.length / 2)) cut = i;
+  }
+  if (cut < 0) return [sub];
+  return [{ ...sub, rows: rows.slice(0, cut) }, { ...sub, label: undefined, rows: rows.slice(cut) }];
+}
+
+function leftWidth(rows: LootRow[]): string | null {
+  return rows.some(r => r.cond) ? 'w-24' : rows.some(r => r.chance != null) ? 'w-11' : null;
+}
+
+function LootBody({ table, t }: { table: LootTable; t: T }) {
+  const whole = table.subs.length === 1 ? table.subs[0] : null;
+  const blocks = whole && whole.rows.length > SPLIT_AT ? splitAtGroup(whole) : table.subs;
+  if (blocks.length === 1) {
+    return <div className="px-4 pb-4"><SubTable sub={blocks[0]} t={t} /></div>;
+  }
+  const cols = blocks.length <= 3 ? blocks.length : 2;
+  // Gleiche Zeilenzahl in allen Bloecken (Expected Unexpectedness: gleiche Chancen je Zeile)
+  // → Zeilen ueber die Spalten auf gleicher Hoehe.
+  const aligned = cols === blocks.length && blocks.every(b => b.rows.length === blocks[0].rows.length);
+  const left = leftWidth(blocks.flatMap(b => b.rows));
+  return (
+    <div className={`grid grid-cols-1 ${COL_CLASS[cols]} gap-x-4 ${aligned ? 'gap-y-0' : 'gap-y-4 items-start'} px-4 pb-4`}>
+      {blocks.map((s, i) => <SubTable key={i} sub={s} t={t} left={left} compact={cols === 3} aligned={aligned} />)}
+    </div>
   );
 }
 
@@ -146,19 +184,29 @@ function subLabel(sub: LootSub, t: T): string | null {
   return `${l.essence} ${t('tft.tables.essence')}`;
 }
 
-function SubTable({ sub, t, extra, labels = true }: { sub: LootSub; t: T; extra?: React.ReactNode; labels?: boolean }) {
+function SubTable({ sub, t, extra, labels = true, left: leftOverride, compact = false, aligned = false }: {
+  sub: LootSub; t: T; extra?: React.ReactNode; labels?: boolean; left?: string | null; compact?: boolean; aligned?: boolean;
+}) {
   const label = subLabel(sub, t);
-  const left = sub.rows.some(r => r.cond) ? 'w-24' : sub.rows.some(r => r.chance != null) ? 'w-11' : null;
+  const left = leftOverride !== undefined ? leftOverride : leftWidth(sub.rows);
+  const n = sub.rows.length;
+  // aligned: Zeilen haengen per Subgrid am Raster der Karte, damit sie spaltenuebergreifend gleich hoch sind.
   return (
-    <div>
+    <div
+      className={aligned ? 'grid grid-rows-subgrid mb-4 last:mb-0 lg:mb-0' : ''}
+      style={aligned ? { gridRow: `span ${n + (label ? 1 : 0)}` } : undefined}
+    >
       {label && (
         <div className="flex items-center gap-2 mb-1.5">
           <span className="text-fg-muted text-[11px] uppercase tracking-widest">{label}</span>
           {extra}
         </div>
       )}
-      <div className="divide-y divide-border-subtle/50 border border-border-subtle rounded">
-        {sub.rows.map((r, i) => <Row key={i} row={r} left={left} labels={labels} t={t} />)}
+      <div
+        className={`divide-y divide-border-subtle/50 border border-border-subtle rounded ${aligned ? 'grid grid-rows-subgrid' : ''}`}
+        style={aligned ? { gridRow: `span ${n}` } : undefined}
+      >
+        {sub.rows.map((r, i) => <Row key={i} row={r} left={left} labels={labels} compact={compact} t={t} />)}
       </div>
     </div>
   );
@@ -173,7 +221,8 @@ function condText(c: LootCond, t: T): string {
 
 // Wie bei Little Buddy Bot: links Bedingung/Chance, dann die Belohnungen als
 // Symbole, bei Loot-Tabellen rechts daneben eine kurze Beschriftung.
-function Row({ row, left, labels, t }: { row: LootRow; left: string | null; labels: boolean; t: T }) {
+// compact (drei schmale Spalten ab lg): Beschriftung klein unter den Symbolen statt daneben.
+function Row({ row, left, labels, compact, t }: { row: LootRow; left: string | null; labels: boolean; compact: boolean; t: T }) {
   return (
     <div className="flex items-center gap-3 px-2.5 py-2">
       {left && (
@@ -182,13 +231,15 @@ function Row({ row, left, labels, t }: { row: LootRow; left: string | null; labe
           {row.chance != null && <div className="text-white font-medium">{row.chance}%</div>}
         </div>
       )}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 flex-1 min-w-0">
+      <div className={`flex flex-wrap items-center gap-x-3 gap-y-1.5 flex-1 min-w-0 ${compact ? 'lg:flex-col lg:flex-nowrap lg:items-start lg:gap-1' : ''}`}>
         {row.rewards.some(hasTile) && (
           <div className="flex flex-wrap items-center gap-1 pt-1.5">
             {row.rewards.map((r, i) => <RewardTile key={i} r={r} t={t} />)}
           </div>
         )}
-        {labels && <div className="text-fg-secondary text-[12px] leading-snug min-w-0">{rowLabel(row.rewards, t)}</div>}
+        {labels && (
+          <div className={`text-fg-secondary leading-snug min-w-0 text-[12px] ${compact ? 'lg:text-[11px]' : ''}`}>{rowLabel(row.rewards, t)}</div>
+        )}
       </div>
     </div>
   );

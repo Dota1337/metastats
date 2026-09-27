@@ -4,7 +4,7 @@
 import type { CompFamily, FamilyComp } from '../components/tft/CompFamilyRow';
 import { compTraitFamilyKey, parseClusterKey } from './tft-cluster';
 import { tftIsEmblem, type TftAssetsBundle } from './tft-cdragon';
-import { computeRoles, componentCheckFromItems, resolveFamilies, sumUnits } from './tft-comp-roles';
+import { computeRoles, componentCheckFromItems, jaccard, namedCarries, resolveFamilies, sumUnits } from './tft-comp-roles';
 
 export type CompSortBy = 'avg' | 'win' | 'top4' | 'pick' | 'velocity' | 'games';
 
@@ -367,6 +367,43 @@ export function visibleFamilies(
         return name.includes(q) || cid.toLowerCase().includes(q);
       });
   });
+}
+
+// Uebersicht ohne Doppelungen (User 2026-09-28: „Nimm immer nur die Comp mit
+// dem höchsten AVP", Option C in .claude/plan-current.md): zwei Familien gelten
+// als dieselbe Comp, wenn sie einen benannten Carry teilen UND ihre Kern-Units
+// zu >= 60 % gleich sind (die 8 meistgespielten Units des gezeigten Boards —
+// nicht die Praesenz-Schwelle aus resolveFamilies: mainComp.games ist nach dem
+// Familien-Override die Summe der Familie, die Units stammen aber aus EINER
+// Variante, dann faellt fast jede Unit unter 50 %). Behalten wird die mit der
+// besten Ø-Platzierung. Verglichen wird nur gegen bereits behaltene Familien, nie verkettet — sonst
+// schluckt ein Knoten-Carry wie Sivir (9 von 40 Familien) fremde Boards.
+// Reihenfolge der Rueckgabe = Reihenfolge der Eingabe.
+export const DEDUPE_MIN_JACCARD = 0.6;
+const DEDUPE_BOARD_UNITS = 8;
+
+function boardUnitIds(f: CompFamily): Set<string> {
+  return new Set([...(f.mainComp.typicalUnits || [])]
+    .sort((a, b) => ((b as any).gamesWithUnit || b.count || 0) - ((a as any).gamesWithUnit || a.count || 0))
+    .slice(0, DEDUPE_BOARD_UNITS)
+    .map(u => u.characterId));
+}
+
+export function dedupeByCarry(families: CompFamily[]): CompFamily[] {
+  const info = families.map(f => ({
+    f,
+    named: namedCarries({ carries: f.carries, tanks: f.tanks }, f.carry),
+    core: boardUnitIds(f),
+  }));
+  const avp = (f: CompFamily) => f.weightedAvgPlacement ?? Number.POSITIVE_INFINITY;
+  const kept: typeof info = [];
+  for (const x of [...info].sort((a, b) => avp(a.f) - avp(b.f) || (b.f.totalGames ?? 0) - (a.f.totalGames ?? 0))) {
+    const dup = kept.some(k =>
+      k.named.some(c => x.named.includes(c)) && jaccard(k.core, x.core) >= DEDUPE_MIN_JACCARD);
+    if (!dup) kept.push(x);
+  }
+  const keep = new Set(kept.map(k => k.f));
+  return families.filter(f => keep.has(f));
 }
 
 // Trend einer Familie: nach Spielen gewichtetes Δ Ø-Platz ueber die Varianten,

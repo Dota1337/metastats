@@ -11,7 +11,7 @@ import type { CompFamily } from '../../../components/tft/CompFamilyRow';
 import { useI18n } from '../../../lib/i18n';
 import { tftChampionTileUrl, tftTraitDisplayName, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { namedCarries } from '../../../lib/tft-comp-roles';
-import { visibleFamilies, familyTrend, type CompSortBy } from '../../../lib/tft-comp-families';
+import { dedupeByCarry, visibleFamilies, familyTrend, type CompSortBy } from '../../../lib/tft-comp-families';
 import { costColor, HEX_CLIP } from '../../../lib/tft-ui';
 import { useTftCompsData } from '../../../lib/useTftCompsData';
 
@@ -36,10 +36,11 @@ export default function TftCompsAtlasPage() {
     currentSetFamilies, topFamilyKeys,
   } = useTftCompsData();
 
-  // Dieselben 40 Familien wie die Liste, in der gewaehlten Sortierung.
+  // Dieselben 40 Familien wie die Liste, in der gewaehlten Sortierung —
+  // ohne Doppelungen (gleicher Carry + gleiches Board, bestes Ø bleibt).
   const rows = useMemo(() => {
     if (!assets) return [];
-    const shown = visibleFamilies(currentSetFamilies, topFamilyKeys, '', assets);
+    const shown = dedupeByCarry(visibleFamilies(currentSetFamilies, topFamilyKeys, '', assets));
     const byCost = new Map<number, CompFamily[]>();
     for (const f of shown) {
       const c = familyCost(f, assets);

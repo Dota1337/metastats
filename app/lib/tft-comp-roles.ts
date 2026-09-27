@@ -240,7 +240,7 @@ export function resolveFamilies(families: readonly FamilyForMerge[], opts: RoleO
   return anchorOf;
 }
 
-function jaccard(a: Set<string>, b: Set<string>): number {
+export function jaccard(a: Set<string>, b: Set<string>): number {
   if (a.size === 0 && b.size === 0) return 0;
   let inter = 0;
   for (const x of a) if (b.has(x)) inter++;

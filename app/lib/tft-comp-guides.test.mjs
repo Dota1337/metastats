@@ -19,7 +19,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fc from 'fast-check';
-import { parseLevelling, significantLevelSteps } from './tft-comp-guides.ts';
+import {
+  parseLevelling, significantLevelSteps, augmentRowsByRarity, AUGMENTS_PER_RARITY,
+} from './tft-comp-guides.ts';
 
 const step = (level, count) => ({ level, stage: '3', round: '2', count });
 
@@ -112,4 +114,40 @@ test('Property: parseLevelling wirft nie und liefert nur gültige Level', () => 
       assert.ok(Number.isInteger(out.level) && out.level > 0, `Level ${out.level} aus ${JSON.stringify(s)}`);
     }
   }), { numRuns: 500 });
+});
+
+// ── Augment-Reihen nach Rarity ──────────────────────────────────────────────
+// Die Comp-Seite zeigt Prismatisch → Gold → Silber. Vorher lief die Kappung vor
+// der Rarity-Zuordnung, und weil MetaTFT Silber zuerst liefert, blieben von
+// 12 Plätzen fast nur Silber-Augments übrig.
+
+const bundle = (entries) => ({ augments: Object.fromEntries(entries.map(([id, tier]) => [id, { tier }])) });
+const guideOf = (augments) => ({ augments });
+
+test('Reihenfolge ist Prismatisch, Gold, Silber — unabhängig von der Quellreihenfolge', () => {
+  const rows = augmentRowsByRarity(guideOf(['s1', 'g1', 'p1']), bundle([['s1', 1], ['g1', 2], ['p1', 3]]));
+  assert.deepEqual(rows.map(r => r.rarity), [3, 2, 1]);
+});
+
+test('jede Reihe ist gekappt, die Reihenfolge darin bleibt erhalten', () => {
+  const ids = Array.from({ length: 12 }, (_, i) => `s${i}`);
+  const rows = augmentRowsByRarity(guideOf(ids), bundle(ids.map(id => [id, 1])));
+  assert.equal(rows.length, 1);
+  assert.deepEqual(rows[0].augments, ids.slice(0, AUGMENTS_PER_RARITY));
+});
+
+test('Augments ohne Bundle-Eintrag verdrängen keinen Platz', () => {
+  const ids = ['x0', 'x1', ...Array.from({ length: 8 }, (_, i) => `g${i}`)];
+  const rows = augmentRowsByRarity(guideOf(ids), bundle(ids.filter(id => id[0] === 'g').map(id => [id, 2])));
+  assert.deepEqual(rows[0].augments, ids.slice(2));
+});
+
+test('unbekannte Rarity fällt weg, leere Reihen erscheinen nicht', () => {
+  const rows = augmentRowsByRarity(guideOf(['a', 'b', 'c']), bundle([['a', 0], ['b', 4], ['c', 2]]));
+  assert.deepEqual(rows, [{ rarity: 2, augments: ['c'] }]);
+});
+
+test('ohne Asset-Bundle keine Reihen statt geratener Rarity', () => {
+  assert.deepEqual(augmentRowsByRarity(guideOf(['a']), null), []);
+  assert.deepEqual(augmentRowsByRarity(guideOf([]), bundle([['a', 1]])), []);
 });

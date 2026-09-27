@@ -6,7 +6,7 @@ import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, findChampion, type TftAssetsBundle } from '../../../lib/tft-cdragon';
-import { loadCompGuidesBundle, allGuides, type CompGuide } from '../../../lib/tft-comp-guides';
+import { loadCompGuidesBundle, allGuides, augmentRowsByRarity, type CompGuide } from '../../../lib/tft-comp-guides';
 import {
   loadAugmentStages,
   augmentStagesFor,
@@ -53,12 +53,14 @@ export default function TftAugmentReferenceDetailPage() {
   const iconUrl = tftIconUrl(assets, meta?.icon);
   const augStages = augmentStagesFor(stagesOverride, apiName);
 
-  // Reverse-Lookup: alle Comps die dieses Augment listen. allGuides liefert
+  // Reverse-Lookup: alle Comps, auf deren Seite dieses Augment steht (gleiche
+  // Reihen-Regel wie CompGuide, sonst nennt die Liste Comps ohne Kachel). allGuides liefert
   // trait+carry aus der Familien-Map mit — ein Cluster kann dabei unter
   // mehreren Familien erscheinen, was gewollt ist (Dual-Carry-Comps).
   const matchingComps: CompMatch[] = useMemo(
-    () => allGuides(compGuidesBundle).filter(g => g.guide.augments.includes(apiName)),
-    [compGuidesBundle, apiName],
+    () => allGuides(compGuidesBundle).filter(g =>
+      augmentRowsByRarity(g.guide, assets).some(r => r.augments.includes(apiName))),
+    [compGuidesBundle, apiName, assets],
   );
 
   return (
@@ -179,7 +181,7 @@ export default function TftAugmentReferenceDetailPage() {
                 const compSlug = `${m.trait}@6_${m.carry}`;
                 return (
                   <a
-                    key={m.slug}
+                    key={`${m.trait}__${m.carry}`}
                     href={`/tft/comps/${encodeURIComponent(compSlug)}`}
                     className="flex items-center gap-3 p-3 rounded-md bg-surface-raised border border-border-subtle hover:border-accent-a50 transition-colors"
                   >

@@ -2500,12 +2500,10 @@ const translations = {
     'P\u00E1gina externa de Riot \u2014 cambios detallados por campe\u00F3n / sinergia / aumento / objeto',
     'Page externe Riot \u2014 modifications d\u00E9taill\u00E9es par champion / synergie / augmentation / objet'
   ),
-  // Suffix hinter dem Grade-Buchstaben: \u201ES-Tier", \u201EA-Tier", \u2026
-  'tft.comp.augments.grade': t6(
-    'Tier', 'Tier',
-    '\uD2F0\uC5B4', '\u7EA7',
-    'Nivel', 'Palier'
-  ),
+  // Augment-Reihen der Comp-Seite nach Rarity (1 Silber, 2 Gold, 3 Prismatisch)
+  'tft.comp.augments.rarity.3': t6('Prismatisch', 'Prismatic', '\uD504\uB9AC\uC998', '\u68F1\u5F69', 'Prism\u00E1tico', 'Prismatique'),
+  'tft.comp.augments.rarity.2': t6('Gold', 'Gold', '\uACE8\uB4DC', '\u9EC4\u91D1', 'Oro', 'Or'),
+  'tft.comp.augments.rarity.1': t6('Silber', 'Silver', '\uC2E4\uBC84', '\u767D\u94F6', 'Plata', 'Argent'),
   'tft.comp.augments.group.ECON': t6('Econ', 'Econ', '\uACBD\uC81C', '\u7ECF\u6D4E', 'Eco', '\u00C9co'),
   'tft.comp.augments.group.ITEMS': t6('Items', 'Items', '\uC544\uC774\uD15C', '\u88C5\u5907', 'Objetos', 'Objets'),
   'tft.comp.augments.group.COMBAT': t6('Combat', 'Combat', '\uC804\uD22C', '\u6218\u6597', 'Combate', 'Combat'),

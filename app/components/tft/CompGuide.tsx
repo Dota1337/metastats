@@ -8,7 +8,8 @@ import {
   type EarlyOption,
   augmentTierBorderColor,
   augmentGradeColor,
-  groupAugmentsByGrade,
+  augmentRowsByRarity,
+  type AugmentGrade,
   parseLevelling,
   significantLevelSteps,
 } from '../../lib/tft-comp-guides';
@@ -29,10 +30,12 @@ interface AugmentMeta {
   tier?: number;
 }
 
-// Rand = Rarity aus dem Asset-Bundle, Gruppenzuordnung = Performance-Grade.
+// Rand = Rarity aus dem Asset-Bundle, Buchstabe oben rechts = Performance-Grade.
 // Rendert nichts, wenn das Augment nicht im Bundle steht: MetaTFT rankt über
 // Sets hinweg, gemessen 28 von 1791 Referenzen (1,6 %) sind nicht in Set 17.
-function AugmentTile({ apiName, assets }: { apiName: string; assets: TftAssetsBundle | null }) {
+function AugmentTile({
+  apiName, assets, grade,
+}: { apiName: string; assets: TftAssetsBundle | null; grade?: AugmentGrade }) {
   // assets.augments, nicht assets.items — Augments stehen im Bundle in einer
   // eigenen Map. Die Vorgängerfassung las hier items[] und traf nie.
   const meta = assets?.augments?.[apiName] as AugmentMeta | undefined;
@@ -45,14 +48,24 @@ function AugmentTile({ apiName, assets }: { apiName: string; assets: TftAssetsBu
       className="flex flex-col items-center w-16 hover:scale-105 transition"
       title={meta?.desc?.replace(/<[^>]+>/g, '') || meta?.name || apiName}
     >
-      <div
-        className="w-14 h-14 rounded overflow-hidden border-2"
-        style={{ borderColor: augmentTierBorderColor(tier) }}
-      >
-        {iconUrl ? (
-          <img src={iconUrl} alt={meta?.name || apiName} className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full bg-surface-overlay" />
+      <div className="relative">
+        <div
+          className="w-14 h-14 rounded overflow-hidden border-2"
+          style={{ borderColor: augmentTierBorderColor(tier) }}
+        >
+          {iconUrl ? (
+            <img src={iconUrl} alt={meta?.name || apiName} className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full bg-surface-overlay" />
+          )}
+        </div>
+        {grade && (
+          <span
+            className="absolute -top-1 -right-1 min-w-[16px] px-1 rounded bg-surface-base border border-border-subtle text-[10px] leading-[14px] font-bold text-center"
+            style={{ color: augmentGradeColor(grade) }}
+          >
+            {grade}
+          </span>
         )}
       </div>
       <div className="text-white text-[10px] mt-0.5 text-center truncate w-full">
@@ -122,10 +135,10 @@ export default function CompGuide({
   assets: TftAssetsBundle | null;
 }) {
   const { t } = useI18n();
-  // Gruppierung nach Performance-Grade in dieser Comp (S..D), nicht nach
-  // Rarity — die sieht der Spieler im Angebot ohnehin. Der Tile-Rand trägt
-  // die Rarity weiterhin, so bleiben beide Größen sichtbar.
-  const gradeGroups = groupAugmentsByGrade(guide);
+  // Reihen nach Rarity (Prismatic → Gold → Silver): ein Angebot im Spiel hat
+  // immer eine Rarity, der Spieler sucht in genau einer Reihe. Der Grade
+  // dieser Comp steht als Buchstabe auf der Kachel.
+  const rarityRows = augmentRowsByRarity(guide, assets);
   const plan = parseLevelling(guide.levelling);
   const steps = significantLevelSteps(guide.levels);
   // Ein einzelner Schritt ist kein Plan — dann bleibt nur die Strategie-Zeile.
@@ -170,32 +183,28 @@ export default function CompGuide({
         </section>
       )}
 
-      {/* 1) Augments — gruppiert nach Grade. Fallback auf flache Liste, wenn
-          kein Augment einen Grade trägt. */}
-      {guide.augments.length > 0 && (
+      {/* 1) Augments — drei Reihen nach Rarity. Ohne Asset-Bundle keine
+          Sektion: die Rarity wird nicht geraten. */}
+      {rarityRows.length > 0 && (
         <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
           <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.augments')}</h2>
-          {gradeGroups.length > 0 ? (
-            <div className="flex flex-col gap-3">
-              {gradeGroups.map((group) => (
-                <div key={group.grade} className="flex flex-col gap-1.5">
-                  <div
-                    className="text-[10px] uppercase tracking-wider font-semibold"
-                    style={{ color: augmentGradeColor(group.grade) }}
-                  >
-                    {group.grade}-{t('tft.comp.augments.grade')}
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {group.augments.map(a => <AugmentTile key={a} apiName={a} assets={assets} />)}
-                  </div>
+          <div className="flex flex-col gap-3">
+            {rarityRows.map(row => (
+              <div key={row.rarity} className="flex flex-col gap-1.5">
+                <div
+                  className="text-[10px] uppercase tracking-wider font-semibold"
+                  style={{ color: augmentTierBorderColor(row.rarity) }}
+                >
+                  {t(`tft.comp.augments.rarity.${row.rarity}`)}
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {guide.augments.map(a => <AugmentTile key={a} apiName={a} assets={assets} />)}
-            </div>
-          )}
+                <div className="flex flex-wrap gap-2">
+                  {row.augments.map(a => (
+                    <AugmentTile key={a} apiName={a} assets={assets} grade={guide.augmentGrades[a]} />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </section>
       )}
 

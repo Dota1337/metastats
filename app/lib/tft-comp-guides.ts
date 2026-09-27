@@ -21,6 +21,7 @@
 // im Browser-Bundle, und die Route ist force-dynamic mit Supabase-RPC — ein
 // 503 der Datenbank wuerde sonst den Guide-Lesepfad mitreissen.
 import { CURRENT_SET } from './current-set';
+import type { TftAssetsBundle } from './tft-cdragon';
 
 const GUIDE_SET = CURRENT_SET;
 
@@ -32,20 +33,24 @@ export type Difficulty = 'EASY' | 'MEDIUM' | 'HARD';
  * Nicht zu verwechseln mit der Rarity (Silver/Gold/Prismatic, 1-3), die im
  * Asset-Bundle steht. Der Grade ist die für den Pick nützlichere Größe: die
  * Rarity sieht der Spieler im Angebot ohnehin, die comp-spezifische Stärke
- * nicht. Beides wird gerendert — Grade als Gruppe, Rarity als Tile-Rand.
+ * nicht. Beides wird gerendert — Rarity als Reihe, Grade als Buchstabe.
  */
 export type AugmentGrade = 'S' | 'A' | 'B' | 'C' | 'D';
 
 const GRADE_ORDER: AugmentGrade[] = ['S', 'A', 'B', 'C', 'D'];
 
 /**
- * Wie viele Augments je Comp gerendert werden.
+ * Wie viele Augments je Rarity-Reihe gerendert werden.
  *
- * MetaTFT liefert bis zu 41 pro Comp — das ist keine Empfehlung mehr, sondern
- * eine Liste. 12 deckt die Stage-2-1/3-2/4-2-Picks ab, ohne dass der Spieler
- * scrollen muss.
+ * MetaTFT liefert bis zu 97 pro Comp — das ist keine Empfehlung mehr, sondern
+ * eine Liste. Ein Angebot im Spiel hat immer eine einzige Rarity, der Spieler
+ * sucht also in genau einer Reihe. Früher wurde gesamt auf 12 gekappt, bevor
+ * die Rarity bekannt war — das ergab fast nur Silber (385/27/3 über 38 Comps).
  */
-const MAX_AUGMENTS = 12;
+export const AUGMENTS_PER_RARITY = 8;
+
+export type AugmentRarity = 1 | 2 | 3;
+const RARITY_ORDER: AugmentRarity[] = [3, 2, 1];
 
 export interface CompBuild {
   unit: string;
@@ -130,7 +135,7 @@ export interface CompGuide {
   difficulty: Difficulty | null;
   levelling: string | null;
   games: number;
-  /** Augment-apiNames, nach Grade absteigend, auf MAX_AUGMENTS gekappt. */
+  /** Augment-apiNames, nach Grade absteigend, ungekappt (Anzeige: augmentRowsByRarity). */
   augments: string[];
   augmentGrades: Record<string, AugmentGrade>;
   early: EarlyOption[];
@@ -200,9 +205,9 @@ function toGuide(comp: MetaTftComp, details: CompDetails | null, cuts: LoadedGui
     const i = GRADE_ORDER.indexOf(g);
     return i < 0 ? GRADE_ORDER.length : i;
   };
+  // Volle Liste, stabil nach Grade — gekappt wird erst je Rarity-Reihe.
   const augs = [...(comp.augments || [])]
-    .sort((a, b) => rank(a.tier) - rank(b.tier))
-    .slice(0, MAX_AUGMENTS);
+    .sort((a, b) => rank(a.tier) - rank(b.tier));
   return {
     id: comp.id,
     title: comp.name || comp.id,
@@ -343,31 +348,33 @@ export function augmentGradeColor(grade: AugmentGrade | null | undefined): strin
 }
 
 /**
- * Augments nach Performance-Grade gruppieren (S zuerst).
+ * Augments in Rarity-Reihen: Prismatic, Gold, Silver (User 2026-09-27).
  *
- * Vorher war das eine Gruppierung nach Rarity, die die Rarity aus
- * `assets.items[...]` las — dort stand sie nie (fetch-tft-assets schreibt sie
- * nach `assets.augments`), also war jede Gruppe leer und der leere Fall durch
- * einen Guard maskiert. Mit MetaTFT als Quelle gruppieren wir stattdessen nach
- * dem comp-spezifischen Grade, der ohne Asset-Bundle auskommt.
+ * Die Rarity steht in `assets.augments[apiName].tier` (1-3). Nicht aufgelöste
+ * IDs (Stand Set 18: 4 IDs, 11 Verweise) und unbekannte Tiers fallen VOR der
+ * Kappung heraus, sonst hätte eine Reihe Lücken. Innerhalb der Reihe bleibt
+ * MetaTFTs Reihenfolge (nach Grade sortiert). Ohne Bundle gibt es keine
+ * Reihen — die Rarity wird nicht geraten.
+ *
+ * Einzige Quelle für „welche Augments zeigt eine Comp": die Augment-Seiten
+ * suchen ihre Comps hierüber, damit beide Seiten dasselbe sagen.
  */
-export function groupAugmentsByGrade(
+export function augmentRowsByRarity(
   guide: CompGuide,
-): Array<{ grade: AugmentGrade; augments: string[] }> {
-  if (guide.augments.length === 0) return [];
-  const byGrade = new Map<AugmentGrade, string[]>();
+  assets: Pick<TftAssetsBundle, 'augments'> | null,
+): Array<{ rarity: AugmentRarity; augments: string[] }> {
+  if (!assets?.augments || guide.augments.length === 0) return [];
+  const byRarity = new Map<AugmentRarity, string[]>();
   for (const apiName of guide.augments) {
-    const grade = guide.augmentGrades[apiName];
-    if (!grade) continue;
-    if (!byGrade.has(grade)) byGrade.set(grade, []);
-    byGrade.get(grade)!.push(apiName);
+    const tier = (assets.augments[apiName] as { tier?: unknown } | undefined)?.tier;
+    if (tier !== 1 && tier !== 2 && tier !== 3) continue;
+    const list = byRarity.get(tier) ?? [];
+    if (list.length < AUGMENTS_PER_RARITY) list.push(apiName);
+    byRarity.set(tier, list);
   }
-  const out: Array<{ grade: AugmentGrade; augments: string[] }> = [];
-  for (const g of GRADE_ORDER) {
-    const list = byGrade.get(g);
-    if (list?.length) out.push({ grade: g, augments: list });
-  }
-  return out;
+  return RARITY_ORDER
+    .filter(r => (byRarity.get(r)?.length ?? 0) > 0)
+    .map(r => ({ rarity: r, augments: byRarity.get(r)! }));
 }
 
 // Difficulty-Farbe für das Badge.

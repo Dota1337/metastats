@@ -6,7 +6,7 @@ import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, findChampion, type TftAssetsBundle } from '../../../lib/tft-cdragon';
-import { loadCompGuidesBundle, allGuides, type CompGuide as CompGuideData } from '../../../lib/tft-comp-guides';
+import { loadCompGuidesBundle, allGuides, augmentRowsByRarity, type CompGuide as CompGuideData } from '../../../lib/tft-comp-guides';
 
 // Augment-Compare-View — zwei Augments nebeneinander mit Tier-Badge,
 // Description und Reverse-Lookup auf Comps die sie spielen. User-Flow
@@ -97,8 +97,9 @@ function AugmentPanel({
   const accentColor = side === 'a' ? '#7B61FF' : '#3ecf8e';
 
   const matchingComps: CompMatch[] = useMemo(
-    () => allGuides(compGuidesBundle).filter(g => g.guide.augments.includes(apiName)),
-    [compGuidesBundle, apiName],
+    () => allGuides(compGuidesBundle).filter(g =>
+      augmentRowsByRarity(g.guide, assets).some(r => r.augments.includes(apiName))),
+    [compGuidesBundle, apiName, assets],
   );
 
   if (assets && !meta) {
@@ -166,7 +167,7 @@ function AugmentPanel({
               const compSlug = `${m.trait}@6_${m.carry}`;
               return (
                 <a
-                  key={m.slug}
+                  key={`${m.trait}__${m.carry}`}
                   href={`/tft/comps/${encodeURIComponent(compSlug)}`}
                   className="flex items-center gap-2 p-2 rounded bg-surface-raised border border-border-subtle hover:border-accent-a50 transition-colors"
                 >

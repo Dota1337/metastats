@@ -438,12 +438,11 @@ export default function Nav({ active }: NavProps) {
         </div>
       </div>
 
-      {/* TFT, Desktop: zweite Zeile mit den Meta-Seiten. Wird es zu schmal,
+      {/* TFT, Desktop: zweite Zeile mit den Meta-Seiten (ohne Beschriftung). Wird es zu schmal,
           wischt die Zeile seitlich statt umzubrechen. */}
       {game === 'tft' && (
         <div className="hidden lg:block mt-3 pt-3 border-t border-border-subtle overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div className="flex items-center gap-4 w-max mx-auto whitespace-nowrap">
-            <span className="text-fg-muted text-[10px] uppercase tracking-widest">{t('nav.meta')}</span>
             {TFT_META_LINKS.map(l => (
               <a key={l.href} href={l.href} className={metaLinkClass(l)}>
                 {'pulse' in l ? `⚡ ${t(l.label)}` : t(l.label)}

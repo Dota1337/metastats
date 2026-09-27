@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAccountRouting, parseRegion } from '../../../lib/regions';
+import { getAccountRouting, parseRegion, REGION_ALL } from '../../../lib/regions';
+import { ACTIVE_REGIONS } from '../../../lib/active-regions';
 import { riotFetch } from '../../../lib/riot-fetch';
 import { cachedJson, STATS_CACHE_CONTROL_FRESH } from '../../../lib/api-cache';
 import { LOL_LADDER, isLolRankGroup, lolTiersTopDown } from '../../../lib/rank-groups';
@@ -92,13 +93,93 @@ async function fetchBucket(region: string, apiKey: string, tier: string, divisio
   return out.filter((e: any) => e.puuid).sort((a: any, b: any) => b.leaguePoints - a.leaguePoints);
 }
 
+// Weltweite Rangliste (region=all, 2026-09-27). Riot hat keine
+// regionsuebergreifende Abfrage; die Apex-Ligen kommen aber je Region als eine
+// komplette Liste, also genuegen 15 Regionen x hoechstens 3 Ligen = 45 Abrufe.
+// Tiefer (Diamant, Smaragd) waeren es bis zu 300 — deshalb nur Challenger bis
+// Master. Sortiert wird Rang vor LP: LP sind nur innerhalb einer Liga
+// vergleichbar.
+const ALL_REGION_TIERS: Record<string, string[]> = {
+  [ALL_TIERS]: ['CHALLENGER', 'GRANDMASTER', 'MASTER'],
+  MASTER_PLUS: ['CHALLENGER', 'GRANDMASTER', 'MASTER'],
+  GRANDMASTER_PLUS: ['CHALLENGER', 'GRANDMASTER'],
+  CHALLENGER: ['CHALLENGER'],
+};
+
+// Jede Seite ist ein eigener Cache-Schluessel. Ohne diesen Speicher holte jede
+// Seite erneut alle 45 Ligen; so teilen sich die Seiten einer warmen Funktion
+// denselben Abzug, genauso lange, wie die Antwort selbst gecacht wird.
+const LEAGUE_MEMO_MS = 300_000;
+const leagueMemo = new Map<string, { at: number; entries: any[] }>();
+
+async function fetchApexLeague(region: string, apiKey: string, tier: string): Promise<any[] | null> {
+  const key = `${region}:${tier}`;
+  const hit = leagueMemo.get(key);
+  if (hit && Date.now() - hit.at < LEAGUE_MEMO_MS) return hit.entries;
+  const bucket = await fetchBucket(region, apiKey, tier, null).catch(() => null);
+  if (bucket === null) return null;
+  const entries = bucket.map((e: any) => ({ ...e, region }));
+  leagueMemo.set(key, { at: Date.now(), entries });
+  return entries;
+}
+
+async function allRegionsResponse(tier: string, rawPage: string | null, apiKey: string) {
+  const tiers = ALL_REGION_TIERS[tier];
+  if (!tiers) return bad(`Tier ${tier} nicht fuer alle Regionen unterstuetzt.`, 'bad_tier');
+  const page = Math.max(1, Math.min(MAX_PAGE, parseInt(rawPage || '1', 10) || 1));
+  const startIdx = (page - 1) * PAGE_SIZE;
+
+  const results = await Promise.all(
+    tiers.flatMap(tr => ACTIVE_REGIONS.map(r => fetchApexLeague(r, apiKey, tr))),
+  );
+  // Faellt eine Region aus, zeigen wir den Rest, cachen die Antwort aber nur
+  // kurz — sonst fehlte die Region fuenf Minuten lang.
+  const failed = results.some(b => b === null);
+  const all: any[] = [];
+  for (let i = 0; i < tiers.length; i++) {
+    const inTier = results
+      .slice(i * ACTIVE_REGIONS.length, (i + 1) * ACTIVE_REGIONS.length)
+      .flatMap(b => b ?? []);
+    inTier.sort((a, b) => b.leaguePoints - a.leaguePoints);
+    all.push(...inTier);
+  }
+  const slice = all.slice(startIdx, startIdx + PAGE_SIZE);
+
+  // Namen je Zeile ueber die Konto-Region des Spielers.
+  const idMap: Record<string, { gameName: string; tagLine: string }> = {};
+  await Promise.all(slice.map(async (e: any) => {
+    try {
+      const r = await riotFetch(`https://${getAccountRouting(e.region)}.api.riotgames.com/riot/account/v1/accounts/by-puuid/${e.puuid}`, apiKey);
+      if (r.ok) idMap[`${e.region}:${e.puuid}`] = await r.json();
+    } catch {}
+  }));
+
+  const players = slice.map((e: any, idx: number) => ({
+    rank: startIdx + idx + 1,
+    puuid: e.puuid,
+    region: e.region,
+    gameName: idMap[`${e.region}:${e.puuid}`]?.gameName || null,
+    tagLine: idMap[`${e.region}:${e.puuid}`]?.tagLine || null,
+    tier: e.tier,
+    division: null,
+    leaguePoints: e.leaguePoints,
+    wins: e.wins,
+    losses: e.losses,
+  }));
+
+  return cachedJson(
+    { region: REGION_ALL, tier, division: null, page, pageSize: PAGE_SIZE, hasNextPage: page < MAX_PAGE && startIdx + PAGE_SIZE < all.length, totalPlayers: all.length, players },
+    { cache: STATS_CACHE_CONTROL_FRESH, degraded: failed || players.length === 0 },
+  );
+}
+
 function bad(error: string, code: string) {
   return NextResponse.json({ error, code }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const region = parseRegion(searchParams.get('region'), { fallback: 'euw1' });
+  const region = parseRegion(searchParams.get('region'), { fallback: 'euw1', allowAll: true });
   const tier = (searchParams.get('tier') || 'CHALLENGER').toUpperCase();
   const division = (searchParams.get('division') || 'I').toUpperCase();
   const isAll = tier === ALL_TIERS;
@@ -114,6 +195,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Riot API Key fehlt', code: 'no_key' }, { status: 503 });
   }
   if (!region) return bad('Ungueltige Region', 'bad_region');
+  if (region === REGION_ALL) {
+    try {
+      return await allRegionsResponse(tier, searchParams.get('page'), apiKey);
+    } catch (err: any) {
+      return NextResponse.json({ error: err.message }, { status: 500 });
+    }
+  }
   if (!isAll && !isGroup && !TIERS.has(tier)) return bad(`Tier ${tier} nicht unterstuetzt.`, 'bad_tier');
   const isApex = !isAll && (isGroup || APEX_TIERS.has(tier));
   if (!isAll && !isApex && !DIVISIONS.has(division)) return bad(`Division ${division} nicht unterstuetzt.`, 'bad_division');

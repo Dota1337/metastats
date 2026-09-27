@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { CURRENT_SET } from '../../../../lib/current-set';
 import { supabaseAdmin } from '../../../../lib/supabase';
 import { cachedJson } from '../../../../lib/api-cache';
-import { parseRegion } from '../../../../lib/regions';
+import { parseRegion, REGION_ALL } from '../../../../lib/regions';
 
 // /api/tft/marktwert/lookup?region=euw1&puuids=a,b,c
 //
@@ -15,6 +15,10 @@ import { parseRegion } from '../../../../lib/regions';
 // content-range 0-999). Jeder Spieler bekommt taeglich einen Stand, also
 // hoechstens 14 x 50 = 700 Zeilen; ohne Fenster waeren es bis zu 28 je
 // Spieler seit Set-Start und der Deckel schnitte still ab.
+//
+// region=all (weltweite Rangliste): dieselbe puuid kann in mehreren Regionen
+// stehen (gemessen 6 unter den Master+-Spielern), deshalb heissen die
+// Schluessel dort "region:puuid" statt nur "puuid".
 
 const MAX_PUUIDS = 50;
 const WINDOW_DAYS = 14;
@@ -22,7 +26,8 @@ const PUUID_RE = /^[A-Za-z0-9_-]{78}$/;
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const region = parseRegion(searchParams.get('region'));
+  const region = parseRegion(searchParams.get('region'), { allowAll: true });
+  const isWorld = region === REGION_ALL;
   if (!region) return NextResponse.json({ error: 'invalid_region' }, { status: 400 });
 
   const puuids = [...new Set((searchParams.get('puuids') || '').split(',').filter(Boolean))];
@@ -31,14 +36,16 @@ export async function GET(request: NextRequest) {
   }
 
   const since = new Date(Date.now() - WINDOW_DAYS * 86_400_000).toISOString().slice(0, 10);
-  const { data, error } = await supabaseAdmin
+  let query = supabaseAdmin
     .from('tft_player_marketvalue_snapshots')
-    .select('puuid, final_value, snapshot_date')
-    .eq('region', region)
+    .select('region, puuid, final_value, snapshot_date')
     .eq('set_number', CURRENT_SET)
     .in('puuid', puuids)
-    .gte('snapshot_date', since)
-    .order('snapshot_date', { ascending: false });
+    .gte('snapshot_date', since);
+  if (!isWorld) query = query.eq('region', region);
+  const { data, error } = await query
+    .order('snapshot_date', { ascending: false })
+    .limit(1000);
 
   // Fehler kurz zwischenspeichern: ein ungecachter Fehler wuerde jeden
   // Seitenaufruf erneut gegen die Datenbank schicken.
@@ -49,7 +56,8 @@ export async function GET(request: NextRequest) {
   // Absteigend sortiert → der erste Treffer je Spieler ist der neueste.
   const values: Record<string, number> = {};
   for (const row of data || []) {
-    if (!(row.puuid in values) && typeof row.final_value === 'number') values[row.puuid] = row.final_value;
+    const key = isWorld ? `${row.region}:${row.puuid}` : row.puuid;
+    if (!(key in values) && typeof row.final_value === 'number') values[key] = row.final_value;
   }
   return cachedJson({ region, values });
 }

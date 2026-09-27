@@ -39,7 +39,8 @@ const TFT_META_LINKS = [
   { href: '/tft/regions', label: 'nav.regions' },
   { href: '/tft/patch/winners', label: 'nav.patchWinners', base: '/tft/patch' },
   { href: '/tft/explorer', label: 'nav.explorer' },
-  { href: '/tft/tools/odds', label: 'nav.rollOdds', base: '/tft/tools' },
+  { href: '/tft/tools/odds', label: 'nav.rollOdds', base: '/tft/tools/odds' },
+  { href: '/tft/tools/tables', label: 'nav.tables', base: '/tft/tools/tables' },
 ] as const;
 
 // Aktiv nach Adresse statt nach dem `active`-Wert: mehrere Seiten (Meta-Pulse,

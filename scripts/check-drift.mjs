@@ -212,7 +212,7 @@ function read(path) {
     }
 
     // c) Datenfiles fuers aktuelle Set.
-    for (const f of [`public/tft-assets-${currentSet}.json`, `public/tft-metatft-comps-${currentSet}.json`]) {
+    for (const f of [`public/tft-assets-${currentSet}.json`, `public/tft-metatft-comps-${currentSet}.json`, `public/tft-loot-tables-${currentSet}.json`, `public/tft-wisps-${currentSet}.json`]) {
       if (!existsSync(f)) {
         console.error(`✗ DRIFT: ${f} fehlt fuer Set ${currentSet}`);
         console.error('    → ohne diese Datei klassifiziert der Lesepfad still gegen eine leere Map.');

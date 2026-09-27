@@ -1,0 +1,3062 @@
+{
+ "set": 18,
+ "source": {
+  "name": "Little Buddy Bot",
+  "url": "https://www.littlebuddybot.com"
+ },
+ "fetchedAt": "2026-09-27T13:45:11.546Z",
+ "tables": [
+  {
+   "key": "traitladder",
+   "api": "DA_TraitLadder",
+   "name": "Trait Ladder",
+   "patch": "18.2",
+   "stage": "2",
+   "subs": [
+    {
+     "rows": [
+      {
+       "chance": null,
+       "cond": {
+        "t": "traits",
+        "n": 2
+       },
+       "rewards": [
+        {
+         "k": "gold"
+        },
+        {
+         "k": "item",
+         "api": "DA_Reforger",
+         "name": "Reforger",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_itemreroller.png"
+        }
+       ]
+      },
+      {
+       "chance": null,
+       "cond": {
+        "t": "traits",
+        "n": 3
+       },
+       "rewards": [
+        {
+         "k": "gold",
+         "n": 3
+        }
+       ]
+      },
+      {
+       "chance": null,
+       "cond": {
+        "t": "traits",
+        "n": 4
+       },
+       "rewards": [
+        {
+         "k": "gold",
+         "n": 6
+        }
+       ]
+      },
+      {
+       "chance": null,
+       "cond": {
+        "t": "traits",
+        "n": 5
+       },
+       "rewards": [
+        {
+         "k": "component"
+        }
+       ]
+      },
+      {
+       "chance": 50,
+       "cond": {
+        "t": "traits",
+        "n": 6
+       },
+       "rewards": [
+        {
+         "k": "gold",
+         "n": 10
+        }
+       ]
+      },
+      {
+       "chance": 50,
+       "cond": {
+        "t": "traits",
+        "n": 6
+       },
+       "rewards": [
+        {
+         "k": "randomUnit",
+         "n": 3,
+         "cost": 3
+        }
+       ]
+      },
+      {
+       "chance": null,
+       "cond": {
+        "t": "traits",
+        "n": 7
+       },
+       "rewards": [
+        {
+         "k": "gold",
+         "n": 8
+        },
+        {
+         "k": "item",
+         "api": "TFT_ArmoryKeyComponent",
+         "name": "Component Anvil",
+         "icon": "assets/characters/tft_armorykeycomponent/hud/icons2d/tft_armorykeycomponent_square.png"
+        }
+       ]
+      },
+      {
+       "chance": 57,
+       "cond": {
+        "t": "traits",
+        "n": 8
+       },
+       "rewards": [
+        {
+         "k": "component",
+         "n": 2
+        },
+        {
+         "k": "item",
+         "api": "DA_Reforger",
+         "name": "Reforger",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_itemreroller.png"
+        }
+       ]
+      },
+      {
+       "chance": 43,
+       "cond": {
+        "t": "traits",
+        "n": 8
+       },
+       "rewards": [
+        {
+         "k": "item",
+         "api": "TFT_Item_GrantCompletedAnvil",
+         "name": "Completed Item Anvil",
+         "icon": "assets/characters/tft_armorykeycompleted/hud/icons2d/tft_armorykeycompleted_square.png"
+        }
+       ]
+      },
+      {
+       "chance": null,
+       "cond": {
+        "t": "traits",
+        "n": 9
+       },
+       "rewards": [
+        {
+         "k": "gold",
+         "n": 2
+        },
+        {
+         "k": "randomUnit",
+         "n": 3,
+         "cost": 5
+        }
+       ]
+      },
+      {
+       "chance": null,
+       "cond": {
+        "t": "traits",
+        "n": 10
+       },
+       "rewards": [
+        {
+         "k": "gold",
+         "n": 20
+        }
+       ]
+      },
+      {
+       "chance": null,
+       "cond": {
+        "t": "traits",
+        "n": 11
+       },
+       "rewards": [
+        {
+         "k": "tacticianItem"
+        }
+       ]
+      },
+      {
+       "chance": null,
+       "cond": {
+        "t": "traits",
+        "n": 12
+       },
+       "rewards": [
+        {
+         "k": "randomUnit",
+         "n": 3,
+         "cost": 4
+        },
+        {
+         "k": "item",
+         "api": "DA_LuckyItemChest",
+         "name": "Lucky Item Chest",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_luckyitemchest.png"
+        }
+       ]
+      },
+      {
+       "chance": null,
+       "cond": {
+        "t": "traits",
+        "n": 13
+       },
+       "rewards": [
+        {
+         "k": "gold",
+         "n": 8
+        },
+        {
+         "k": "component",
+         "n": 4
+        },
+        {
+         "k": "item",
+         "api": "DA_Consumable_ItemRemover",
+         "name": "Item Remover",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_itemremover.png"
+        }
+       ]
+      },
+      {
+       "chance": null,
+       "cond": {
+        "t": "traits",
+        "n": 14
+       },
+       "rewards": [
+        {
+         "k": "gold",
+         "n": 10
+        },
+        {
+         "k": "item",
+         "api": "DA_MasterworkUpgrade",
+         "name": "Masterwork Upgrade",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_masterworkupgrade.png"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "key": "booster",
+   "api": "DA_BoosterPack",
+   "name": "Booster Pack",
+   "icon": "assets/maps/tft/icons/augments/hexcore/boosterpack1_ii.png",
+   "patch": "18.3",
+   "stage": "2 / 3 / 4",
+   "subs": [
+    {
+     "label": {
+      "t": "booster",
+      "api": "DA_BoosterPack",
+      "name": "Booster Pack",
+      "stage": 2
+     },
+     "rows": [
+      {
+       "chance": 13.5,
+       "rewards": [
+        {
+         "k": "randomUnit",
+         "cost": 1
+        },
+        {
+         "k": "randomUnit",
+         "cost": 2
+        },
+        {
+         "k": "randomUnit",
+         "n": 3,
+         "cost": 3
+        }
+       ]
+      },
+      {
+       "chance": 13.5,
+       "rewards": [
+        {
+         "k": "randomUnit",
+         "n": 2,
+         "cost": 1
+        },
+        {
+         "k": "randomUnit",
+         "n": 2,
+         "cost": 2
+        },
+        {
+         "k": "randomUnit",
+         "cost": 3
+        },
+        {
+         "k": "randomUnit",
+         "cost": 1,
+         "stars": 2
+        }
+       ]
+      },
+      {
+       "chance": 13.5,
+       "rewards": [
+        {
+         "k": "randomUnit",
+         "n": 2,
+         "cost": 1
+        },
+        {
+         "k": "randomUnit",
+         "n": 2,
+         "cost": 2
+        },
+        {
+         "k": "randomUnit",
+         "cost": 3
+        },
+        {
+         "k": "randomUnit",
+         "cost": 3
+        }
+       ]
+      },
+      {
+       "chance": 13.5,
+       "rewards": [
+        {
+         "k": "randomUnit",
+         "n": 3,
+         "cost": 1
+        },
+        {
+         "k": "randomUnit",
+         "n": 2,
+         "cost": 3
+        },
+        {
+         "k": "randomUnit",
+         "cost": 1,
+         "stars": 2
+        }
+       ]
+      },
+      {
+       "chance": 13.5,
+       "rewards": [
+        {
+         "k": "randomUnit",
+         "n": 2,
+         "cost": 1
+        },
+        {
+         "k": "randomUnit",
+         "n": 2,
+         "cost": 2
+        },
+        {
+         "k": "randomUnit",
+         "n": 2,
+         "cost": 3
+        }
+       ]
+      },
+      {
+       "chance": 13.5,
+       "rewards": [
+        {
+         "k": "randomUnit",
+         "cost": 1
+        },
+        {
+         "k": "randomUnit",
+         "cost": 2
+        },
+        {
+         "k": "randomUnit",
+         "cost": 3
+        },
+        {
+         "k": "randomUnit",
+         "n": 2,
+         "cost": 1,
+         "stars": 2
+        }
+       ]
+      },
+      {
+       "chance": 8,
+       "rewards": [
+        {
+         "k": "randomUnit",
+         "cost": 1
+        },
+        {
+         "k": "randomUnit",
+         "cost": 2
+        },
+        {
+         "k": "randomUnit",
+         "cost": 3
+        },
+        {
+         "k": "randomUnit",
+         "cost": 2,
+         "stars": 2
+        }
+       ]
+      },
+      {
+       "chance": 8,
+       "rewards": [
+        {
+         "k": "randomUnit",
+         "cost": 1
+        },
+        {
+         "k": "randomUnit",
+         "cost": 2
+        },
+        {
+         "k": "randomUnit",
+         "cost": 3
+        },
+        {
+         "k": "randomUnit",
+         "cost": 2,
+         "stars": 2
+        }
+       ]
+      },
+      {
+       "chance": 1.5,
+       "rewards": [
+        {
+         "k": "randomUnit",
+         "cost": 1
+        },
+        {
+         "k": "randomUnit",
+         "cost": 2
+        },
+        {
+         "k": "randomUnit",
+         "cost": 3,
+         "stars": 2
+        }
+       ]
+      },
+      {
+       "chance": 1.5,
+       "rewards": [
+        {
+         "k": "randomUnit",
+         "n": 3,
+         "cost": 1
+        },
+        {
+         "k": "randomUnit",
+         "cost": 2
+        },
+        {
+         "k": "randomUnit",
+         "cost": 3
+        },
+        {
+         "k": "randomUnit",
+         "cost": 4
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "t": "booster",
+      "api": "DA_BoosterPackPlus",
+      "name": "Booster Pack+",
+      "stage": 3
+     },
+     "rows": [
+      {
+       "chance": 11,
+       "rewards": [
+        {
+         "k": "randomUnit",
+         "n": 2,
+         "cost": 2
+        },
+        {
+         "k": "randomUnit",
+         "n": 2,
+         "cost": 4
+        },
+        {
+         "k": "randomUnit",
+         "cost": 2,
+         "stars": 2
+        }
+       ]
+      },
+      {
+       "chance": 11,
+       "rewards": [
+        {
+         "k": "randomUnit",
+         "cost": 2
+        },
+        {
+         "k": "randomUnit",
+         "n": 2,
+         "cost": 3
+        },
+        {
+         "k": "randomUnit",
+         "cost": 4
+        },
+        {
+         "k": "randomUnit",
+         "cost": 2,
+         "stars": 2
+        }
+       ]
+      },
+      {
+       "chance": 11,
+       "rewards": [
+        {
+         "k": "randomUnit",
+         "cost": 2
+        },
+        {
+         "k": "randomUnit",
+         "cost": 4
+        },
+        {
+         "k": "randomUnit",
+         "n": 4,
+         "cost": 1,
+         "stars": 2
+        }
+       ]
+      },
+      {
+       "chance": 11,
+       "rewards": [
+        {
+         "k": "randomUnit",
+         "cost": 1
+        },
+        {
+         "k": "randomUnit",
+         "n": 3,
+         "cost": 3
+        },
+        {
+         "k": "randomUnit",
+         "n": 2,
+         "cost": 4
+        }
+       ]
+      },
+      {
+       "chance": 11,
+       "rewards": [
+        {
+         "k": "randomUnit",
+         "n": 2,
+         "cost": 2
+        },
+        {
+         "k": "randomUnit",
+         "n": 2,
+         "cost": 4
+        },
+        {
+         "k": "randomUnit",
+         "n": 2,
+         "cost": 1,
+         "stars": 2
+        }
+       ]
+      },
+      {
+       "chance": 11,
+       "rewards": [
+        {
+         "k": "randomUnit",
+         "cost": 2
+        },
+        {
+         "k": "randomUnit",
+         "n": 2,
+         "cost": 3
+        },
+        {
+         "k": "randomUnit",
+         "cost": 4
+        },
+        {
+         "k": "randomUnit",
+         "cost": 2,
+         "stars": 2
+        }
+       ]
+      },
+      {
+       "chance": 10,
+       "rewards": [
+        {
+         "k": "randomUnit",
+         "cost": 2
+        },
+        {
+         "k": "randomUnit",
+         "cost": 3
+        },
+        {
+         "k": "randomUnit",
+         "cost": 4
+        },
+        {
+         "k": "randomUnit",
+         "cost": 1,
+         "stars": 3
+        }
+       ]
+      },
+      {
+       "chance": 8,
+       "rewards": [
+        {
+         "k": "randomUnit",
+         "cost": 2
+        },
+        {
+         "k": "randomUnit",
+         "cost": 3
+        },
+        {
+         "k": "randomUnit",
+         "cost": 4
+        },
+        {
+         "k": "randomUnit",
+         "cost": 3,
+         "stars": 2
+        }
+       ]
+      },
+      {
+       "chance": 8,
+       "rewards": [
+        {
+         "k": "randomUnit",
+         "cost": 1
+        },
+        {
+         "k": "randomUnit",
+         "n": 2,
+         "cost": 2
+        },
+        {
+         "k": "randomUnit",
+         "cost": 4
+        },
+        {
+         "k": "randomUnit",
+         "cost": 3,
+         "stars": 2
+        }
+       ]
+      },
+      {
+       "chance": 5,
+       "rewards": [
+        {
+         "k": "randomUnit",
+         "n": 3,
+         "cost": 2
+        },
+        {
+         "k": "randomUnit",
+         "n": 3,
+         "cost": 4
+        }
+       ]
+      },
+      {
+       "chance": 3,
+       "rewards": [
+        {
+         "k": "randomUnit",
+         "n": 3,
+         "cost": 3
+        },
+        {
+         "k": "randomUnit",
+         "cost": 4
+        },
+        {
+         "k": "randomUnit",
+         "cost": 5
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "t": "booster",
+      "api": "DA_BoosterPackPlusPlus",
+      "name": "Booster Pack++",
+      "stage": 4
+     },
+     "rows": [
+      {
+       "chance": 12,
+       "rewards": [
+        {
+         "k": "randomUnit",
+         "cost": 3
+        },
+        {
+         "k": "randomUnit",
+         "cost": 5
+        },
+        {
+         "k": "randomUnit",
+         "cost": 2,
+         "stars": 3
+        }
+       ]
+      },
+      {
+       "chance": 12,
+       "rewards": [
+        {
+         "k": "randomUnit",
+         "cost": 1
+        },
+        {
+         "k": "randomUnit",
+         "cost": 2
+        },
+        {
+         "k": "randomUnit",
+         "cost": 5
+        },
+        {
+         "k": "randomUnit",
+         "cost": 3,
+         "stars": 2
+        },
+        {
+         "k": "randomUnit",
+         "cost": 3,
+         "stars": 2
+        }
+       ]
+      },
+      {
+       "chance": 12,
+       "rewards": [
+        {
+         "k": "randomUnit",
+         "cost": 5
+        },
+        {
+         "k": "randomUnit",
+         "cost": 1,
+         "stars": 2
+        },
+        {
+         "k": "randomUnit",
+         "cost": 1,
+         "stars": 2
+        },
+        {
+         "k": "randomUnit",
+         "cost": 2,
+         "stars": 2
+        },
+        {
+         "k": "randomUnit",
+         "cost": 3,
+         "stars": 2
+        }
+       ]
+      },
+      {
+       "chance": 12,
+       "rewards": [
+        {
+         "k": "randomUnit",
+         "cost": 4
+        },
+        {
+         "k": "randomUnit",
+         "cost": 5
+        },
+        {
+         "k": "randomUnit",
+         "cost": 5
+        },
+        {
+         "k": "randomUnit",
+         "cost": 2,
+         "stars": 2
+        },
+        {
+         "k": "randomUnit",
+         "cost": 2,
+         "stars": 2
+        }
+       ]
+      },
+      {
+       "chance": 12,
+       "rewards": [
+        {
+         "k": "randomUnit",
+         "n": 4,
+         "cost": 4
+        },
+        {
+         "k": "randomUnit",
+         "n": 2,
+         "cost": 5
+        }
+       ]
+      },
+      {
+       "chance": 12,
+       "rewards": [
+        {
+         "k": "randomUnit",
+         "n": 3,
+         "cost": 4
+        },
+        {
+         "k": "randomUnit",
+         "cost": 5
+        },
+        {
+         "k": "randomUnit",
+         "cost": 1,
+         "stars": 2
+        },
+        {
+         "k": "randomUnit",
+         "cost": 2,
+         "stars": 2
+        }
+       ]
+      },
+      {
+       "chance": 12,
+       "rewards": [
+        {
+         "k": "randomUnit",
+         "cost": 1
+        },
+        {
+         "k": "randomUnit",
+         "n": 2,
+         "cost": 3
+        },
+        {
+         "k": "randomUnit",
+         "n": 2,
+         "cost": 5
+        },
+        {
+         "k": "randomUnit",
+         "cost": 1,
+         "stars": 3
+        }
+       ]
+      },
+      {
+       "chance": 4,
+       "rewards": [
+        {
+         "k": "randomUnit",
+         "n": 2,
+         "cost": 3
+        },
+        {
+         "k": "randomUnit",
+         "n": 4,
+         "cost": 5
+        }
+       ]
+      },
+      {
+       "chance": 4,
+       "rewards": [
+        {
+         "k": "randomUnit",
+         "cost": 3
+        },
+        {
+         "k": "randomUnit",
+         "cost": 5
+        },
+        {
+         "k": "randomUnit",
+         "cost": 1,
+         "stars": 3
+        },
+        {
+         "k": "randomUnit",
+         "cost": 1,
+         "stars": 3
+        }
+       ]
+      },
+      {
+       "chance": 4,
+       "rewards": [
+        {
+         "k": "randomUnit",
+         "cost": 5
+        },
+        {
+         "k": "randomUnit",
+         "cost": 3,
+         "stars": 2
+        },
+        {
+         "k": "randomUnit",
+         "cost": 4,
+         "stars": 2
+        }
+       ]
+      },
+      {
+       "chance": 3,
+       "rewards": [
+        {
+         "k": "randomUnit",
+         "cost": 3
+        },
+        {
+         "k": "randomUnit",
+         "cost": 5
+        },
+        {
+         "k": "randomUnit",
+         "cost": 2,
+         "stars": 2
+        },
+        {
+         "k": "randomUnit",
+         "cost": 4,
+         "stars": 2
+        }
+       ]
+      },
+      {
+       "chance": 1,
+       "rewards": [
+        {
+         "k": "randomUnit",
+         "cost": 1
+        },
+        {
+         "k": "randomUnit",
+         "cost": 3
+        },
+        {
+         "k": "randomUnit",
+         "cost": 3
+        },
+        {
+         "k": "randomUnit",
+         "cost": 4
+        },
+        {
+         "k": "randomUnit",
+         "cost": 5,
+         "stars": 2
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "key": "frontline",
+   "api": "DA_FrontlineFoundation",
+   "name": "Frontline Foundation",
+   "icon": "assets/maps/tft/icons/augments/hexcore/frontlinefoundation_ii.png",
+   "patch": "18.3",
+   "stage": "2",
+   "subs": [
+    {
+     "rows": [
+      {
+       "chance": null,
+       "rewards": [
+        {
+         "k": "champion",
+         "api": "DA_18_Kobuko",
+         "name": "Kobuko",
+         "icon": "assets/characters/tft18_kobuko/tft18_kobuko_square.png",
+         "cost": 1,
+         "stars": 2
+        },
+        {
+         "k": "item",
+         "api": "DA_18_EmblemBrawler",
+         "name": "Brawler Emblem",
+         "icon": "assets/maps/particles/tft/item_icons/traits/spatula/set18/tft18_emblem_brawler.png"
+        }
+       ]
+      },
+      {
+       "chance": null,
+       "rewards": [
+        {
+         "k": "champion",
+         "api": "DA_18_Leona",
+         "name": "Leona",
+         "icon": "assets/characters/tft18_leona/tft18_leona_square.png",
+         "cost": 1,
+         "stars": 2
+        },
+        {
+         "k": "item",
+         "api": "DA_18_EmblemDefender",
+         "name": "Defender Emblem",
+         "icon": "assets/maps/particles/tft/item_icons/traits/spatula/set18/tft18_emblem_defender.png"
+        }
+       ]
+      },
+      {
+       "chance": null,
+       "rewards": [
+        {
+         "k": "champion",
+         "api": "DA_18_Yorick",
+         "name": "Yorick",
+         "icon": "assets/characters/tft18_yorick/tft18_yorick_square.png",
+         "cost": 1,
+         "stars": 2
+        },
+        {
+         "k": "item",
+         "api": "DA_18_EmblemJuggernaut",
+         "name": "Juggernaut Emblem",
+         "icon": "assets/maps/particles/tft/item_icons/traits/spatula/set18/tft18_emblem_juggernaut.png"
+        }
+       ]
+      },
+      {
+       "chance": null,
+       "rewards": [
+        {
+         "k": "champion",
+         "api": "DA_18_RekSai",
+         "name": "Rek'Sai",
+         "icon": "assets/characters/tft18_reksai/tft18_reksai_square.png",
+         "cost": 1,
+         "stars": 2
+        },
+        {
+         "k": "item",
+         "api": "DA_18_EmblemBrawler",
+         "name": "Brawler Emblem",
+         "icon": "assets/maps/particles/tft/item_icons/traits/spatula/set18/tft18_emblem_brawler.png"
+        }
+       ]
+      },
+      {
+       "chance": null,
+       "rewards": [
+        {
+         "k": "champion",
+         "api": "DA_18_Ornn",
+         "name": "Ornn",
+         "icon": "assets/characters/tft18_ornn/tft18_ornn_square.png",
+         "cost": 1,
+         "stars": 2
+        },
+        {
+         "k": "item",
+         "api": "DA_18_EmblemDefender",
+         "name": "Defender Emblem",
+         "icon": "assets/maps/particles/tft/item_icons/traits/spatula/set18/tft18_emblem_defender.png"
+        }
+       ]
+      },
+      {
+       "chance": null,
+       "rewards": [
+        {
+         "k": "champion",
+         "api": "DA_18_Rakan",
+         "name": "Rakan",
+         "icon": "assets/characters/tft18_rakan/tft18_rakan_square.png",
+         "cost": 1,
+         "stars": 2
+        },
+        {
+         "k": "item",
+         "api": "DA_18_EmblemVanguard",
+         "name": "Vanguard Emblem",
+         "icon": "assets/maps/particles/tft/item_icons/traits/spatula/set18/tft18_emblem_vanguard.png"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "key": "backline",
+   "api": "DA_BacklineBlueprint",
+   "name": "Backline Blueprint",
+   "icon": "assets/maps/tft/icons/augments/hexcore/backlineblueprint_ii.png",
+   "patch": "18.1",
+   "stage": "2",
+   "subs": [
+    {
+     "rows": [
+      {
+       "chance": null,
+       "rewards": [
+        {
+         "k": "champion",
+         "api": "DA_18_Azir",
+         "name": "Azir",
+         "icon": "assets/characters/tft18_azir/tft18_azir_square.png",
+         "cost": 3
+        },
+        {
+         "k": "item",
+         "api": "DA_18_EmblemExecutioner",
+         "name": "Executioner Emblem",
+         "icon": "assets/maps/particles/tft/item_icons/traits/spatula/set18/tft18_emblem_executioner.png"
+        }
+       ]
+      },
+      {
+       "chance": null,
+       "rewards": [
+        {
+         "k": "champion",
+         "api": "DA_18_Cassiopeia",
+         "name": "Cassiopeia",
+         "icon": "assets/characters/tft18_cassiopeia/tft18_cassiopeia_square.png",
+         "cost": 3
+        },
+        {
+         "k": "item",
+         "api": "DA_18_EmblemSpellweaver",
+         "name": "Spellweaver Emblem",
+         "icon": "assets/maps/particles/tft/item_icons/traits/spatula/set18/tft18_emblem_spellweaver.png"
+        }
+       ]
+      },
+      {
+       "chance": null,
+       "rewards": [
+        {
+         "k": "champion",
+         "api": "DA_18_Diana",
+         "name": "Diana",
+         "icon": "assets/characters/tft18_diana/tft18_diana_square.png",
+         "cost": 3
+        },
+        {
+         "k": "item",
+         "api": "DA_18_EmblemSlayer",
+         "name": "Ravager Emblem",
+         "icon": "assets/maps/particles/tft/item_icons/traits/spatula/set18/tft18_emblem_ravager.png"
+        }
+       ]
+      },
+      {
+       "chance": null,
+       "rewards": [
+        {
+         "k": "champion",
+         "api": "DA_CrimsonRaptor18",
+         "name": "Mama Beak",
+         "icon": "assets/characters/tft18_raptor/tft18_crimsonraptor_teamplanner_splash.png",
+         "cost": 3
+        },
+        {
+         "k": "item",
+         "api": "DA_18_EmblemRapidfire",
+         "name": "Rapidfire Emblem",
+         "icon": "assets/maps/particles/tft/item_icons/traits/spatula/set18/tft18_emblem_rapidfire.png"
+        }
+       ]
+      },
+      {
+       "chance": null,
+       "rewards": [
+        {
+         "k": "champion",
+         "api": "DA_18_Tristana",
+         "name": "Tristana",
+         "icon": "assets/characters/tft18_tristana/tft18_tristana_square.png",
+         "cost": 3
+        },
+        {
+         "k": "item",
+         "api": "DA_18_EmblemHunter",
+         "name": "Hunter Emblem",
+         "icon": "assets/maps/particles/tft/item_icons/traits/spatula/set18/tft18_emblem_hunter.png"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "key": "slightly",
+   "api": "DA_SlightlyMagicRoll",
+   "name": "Slightly Magic Roll",
+   "icon": "assets/maps/tft/icons/augments/hexcore/slightlymagicroll_i.png",
+   "patch": "18.1",
+   "stage": "2",
+   "subs": [
+    {
+     "rows": [
+      {
+       "chance": null,
+       "cond": {
+        "t": "face",
+        "n": 1
+       },
+       "rewards": [
+        {
+         "k": "reroll",
+         "n": 6
+        }
+       ]
+      },
+      {
+       "chance": null,
+       "cond": {
+        "t": "face",
+        "n": 2
+       },
+       "rewards": [
+        {
+         "k": "gold",
+         "n": 10
+        }
+       ]
+      },
+      {
+       "chance": null,
+       "cond": {
+        "t": "face",
+        "n": 3
+       },
+       "rewards": [
+        {
+         "k": "gold",
+         "n": 3
+        },
+        {
+         "k": "randomUnit",
+         "cost": 2,
+         "stars": 2
+        }
+       ]
+      },
+      {
+       "chance": null,
+       "cond": {
+        "t": "face",
+        "n": 4
+       },
+       "rewards": [
+        {
+         "k": "fullItem"
+        },
+        {
+         "k": "item",
+         "api": "DA_Reforger",
+         "name": "Reforger",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_itemreroller.png"
+        }
+       ]
+      },
+      {
+       "chance": null,
+       "cond": {
+        "t": "face",
+        "n": 5
+       },
+       "rewards": [
+        {
+         "k": "hp",
+         "v": 160
+        }
+       ]
+      },
+      {
+       "chance": null,
+       "cond": {
+        "t": "face",
+        "n": 6
+       },
+       "rewards": [
+        {
+         "k": "emblem"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "key": "magicroll",
+   "api": "DA_MagicRoll",
+   "name": "Magic Roll",
+   "icon": "assets/maps/tft/icons/augments/hexcore/a-magical-roll-ii.png",
+   "patch": "18.2",
+   "stage": "3",
+   "subs": [
+    {
+     "rows": [
+      {
+       "chance": 25,
+       "cond": {
+        "t": "sum",
+        "v": "4-8"
+       },
+       "rewards": [
+        {
+         "k": "hp",
+         "v": 250
+        }
+       ]
+      },
+      {
+       "chance": 36,
+       "cond": {
+        "t": "sum",
+        "v": "9-11"
+       },
+       "rewards": [
+        {
+         "k": "randomUnit",
+         "cost": 1,
+         "stars": 2
+        },
+        {
+         "k": "randomUnit",
+         "n": 2,
+         "cost": 2,
+         "stars": 2
+        },
+        {
+         "k": "randomUnit",
+         "cost": 3,
+         "stars": 2
+        }
+       ]
+      },
+      {
+       "chance": 32,
+       "cond": {
+        "t": "sum",
+        "v": "12-15"
+       },
+       "rewards": [
+        {
+         "k": "sameComponent",
+         "n": 4
+        },
+        {
+         "k": "item",
+         "api": "DA_Reforger",
+         "name": "Reforger",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_itemreroller.png"
+        }
+       ]
+      },
+      {
+       "chance": 4,
+       "cond": {
+        "t": "sum",
+        "v": "16-17"
+       },
+       "rewards": [
+        {
+         "k": "item",
+         "api": "DA_Component_FryingPan",
+         "name": "Frying Pan",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_item_fryingpan.png"
+        },
+        {
+         "k": "component",
+         "n": 2
+        }
+       ]
+      },
+      {
+       "chance": 1.4,
+       "cond": {
+        "t": "combo",
+        "v": "111 / 222 / 333"
+       },
+       "rewards": [
+        {
+         "k": "goldRange",
+         "v": "4-6"
+        },
+        {
+         "k": "item",
+         "n": 3,
+         "api": "DA_Consumable_LesserChampionDuplicator",
+         "name": "Lesser Champion Duplicator",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_championduplicator_iii.png"
+        }
+       ]
+      },
+      {
+       "chance": 1.4,
+       "cond": {
+        "t": "combo",
+        "v": "444 / 555 / 666"
+       },
+       "rewards": [
+        {
+         "k": "item",
+         "api": "DA_TacticiansCape",
+         "name": "Tactician's Cape",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_item_tacticiansring.png"
+        }
+       ]
+      },
+      {
+       "chance": 0.5,
+       "cond": {
+        "t": "combo",
+        "v": "626"
+       },
+       "rewards": [
+        {
+         "k": "specialEgg",
+         "turns": 3,
+         "contents": [
+          {
+           "k": "gold",
+           "n": 5
+          },
+          {
+           "k": "randomUnit",
+           "n": 2,
+           "cost": 5
+          },
+          {
+           "k": "item",
+           "api": "DA_TacticiansCrown",
+           "name": "Tacticians Crown",
+           "icon": "assets/maps/tft/icons/items/hexcore/tft_item_forceofnature.png"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "key": "expected",
+   "api": "DA_ExpectedUnexpectedness",
+   "name": "Expected Unexpectedness",
+   "icon": "assets/maps/tft/icons/augments/hexcore/addicted-to-rolling-iii.png",
+   "patch": "18.2",
+   "stage": "2",
+   "subs": [
+    {
+     "label": {
+      "t": "stage",
+      "n": 2
+     },
+     "rows": [
+      {
+       "chance": 36,
+       "rewards": [
+        {
+         "k": "randomUnit",
+         "n": 2,
+         "cost": 4
+        }
+       ]
+      },
+      {
+       "chance": 32,
+       "rewards": [
+        {
+         "k": "item",
+         "n": 2,
+         "api": "TFT_ArmoryKeyComponent",
+         "name": "Component Anvil",
+         "icon": "assets/characters/tft_armorykeycomponent/hud/icons2d/tft_armorykeycomponent_square.png"
+        },
+        {
+         "k": "item",
+         "n": 3,
+         "api": "DA_Reforger",
+         "name": "Reforger",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_itemreroller.png"
+        }
+       ]
+      },
+      {
+       "chance": 25,
+       "rewards": [
+        {
+         "k": "gold",
+         "n": 9
+        }
+       ]
+      },
+      {
+       "chance": 4,
+       "rewards": [
+        {
+         "k": "item",
+         "api": "TFT_Item_GrantOrnnAnvil",
+         "name": "Artifact Anvil",
+         "icon": "assets/characters/tft_armorykeyornn/hud/icons2d/tft_armorykeyornn_square.png"
+        }
+       ]
+      },
+      {
+       "chance": 3,
+       "rewards": [
+        {
+         "k": "item",
+         "api": "DA_TacticiansCrown",
+         "name": "Tacticians Crown",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_item_forceofnature.png"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "t": "stage",
+      "n": 3
+     },
+     "rows": [
+      {
+       "chance": 36,
+       "rewards": [
+        {
+         "k": "gold",
+         "n": 5
+        },
+        {
+         "k": "item",
+         "n": 2,
+         "api": "DA_Consumable_LesserChampionDuplicator",
+         "name": "Lesser Champion Duplicator",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_championduplicator_iii.png"
+        }
+       ]
+      },
+      {
+       "chance": 32,
+       "rewards": [
+        {
+         "k": "gold",
+         "n": 3
+        },
+        {
+         "k": "item",
+         "api": "TFT_Item_GrantCompletedAnvil",
+         "name": "Completed Item Anvil",
+         "icon": "assets/characters/tft_armorykeycompleted/hud/icons2d/tft_armorykeycompleted_square.png"
+        }
+       ]
+      },
+      {
+       "chance": 25,
+       "rewards": [
+        {
+         "k": "gold",
+         "n": 18
+        }
+       ]
+      },
+      {
+       "chance": 4,
+       "rewards": [
+        {
+         "k": "component",
+         "n": 3
+        }
+       ]
+      },
+      {
+       "chance": 3,
+       "rewards": [
+        {
+         "k": "emblem",
+         "n": 2
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "t": "stage",
+      "n": 4
+     },
+     "rows": [
+      {
+       "chance": 36,
+       "rewards": [
+        {
+         "k": "randomUnit",
+         "n": 3,
+         "cost": 5
+        }
+       ]
+      },
+      {
+       "chance": 32,
+       "rewards": [
+        {
+         "k": "gold",
+         "n": 5
+        },
+        {
+         "k": "item",
+         "api": "DA_LuckyItemChest",
+         "name": "Lucky Item Chest",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_luckyitemchest.png"
+        }
+       ]
+      },
+      {
+       "chance": 25,
+       "rewards": [
+        {
+         "k": "gold",
+         "n": 20
+        }
+       ]
+      },
+      {
+       "chance": 4,
+       "rewards": [
+        {
+         "k": "fullItem"
+        },
+        {
+         "k": "component",
+         "n": 2
+        }
+       ]
+      },
+      {
+       "chance": 3,
+       "rewards": [
+        {
+         "k": "randomUnit",
+         "n": 3,
+         "cost": 5
+        },
+        {
+         "k": "item",
+         "api": "DA_Consumable_ChampionDuplicator",
+         "name": "Champion Duplicator",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_neekoshelp.png"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "key": "goldenegg",
+   "api": "DA_GoldenEgg",
+   "name": "The Golden Egg",
+   "icon": "assets/maps/tft/icons/augments/hexcore/the-golden-egg-iii.png",
+   "patch": "18.2",
+   "stage": "4",
+   "subs": [
+    {
+     "rows": [
+      {
+       "chance": 15,
+       "rewards": [
+        {
+         "k": "gold",
+         "n": 88
+        },
+        {
+         "k": "item",
+         "api": "DA_TacticiansCrown",
+         "name": "Tacticians Crown",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_item_forceofnature.png"
+        }
+       ]
+      },
+      {
+       "chance": 15,
+       "rewards": [
+        {
+         "k": "gold",
+         "n": 10
+        },
+        {
+         "k": "item",
+         "api": "DA_TacticiansCrown",
+         "name": "Tacticians Crown",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_item_forceofnature.png"
+        },
+        {
+         "k": "radiant",
+         "n": 2
+        }
+       ]
+      },
+      {
+       "chance": 15,
+       "rewards": [
+        {
+         "k": "gold",
+         "n": 30
+        },
+        {
+         "k": "item",
+         "n": 2,
+         "api": "DA_TacticiansCrown",
+         "name": "Tacticians Crown",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_item_forceofnature.png"
+        },
+        {
+         "k": "item",
+         "api": "DA_ThiefsGloves",
+         "name": "Thief's Gloves",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_item_thiefsgloves.png"
+        }
+       ]
+      },
+      {
+       "chance": 15,
+       "rewards": [
+        {
+         "k": "gold",
+         "n": 25
+        },
+        {
+         "k": "item",
+         "api": "DA_TacticiansCrown",
+         "name": "Tacticians Crown",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_item_forceofnature.png"
+        },
+        {
+         "k": "item",
+         "api": "DA_ThiefsGlovesRadiant",
+         "name": "Radiant Thief's Gloves",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft5_item_thiefsglovesradiant.png"
+        },
+        {
+         "k": "item",
+         "api": "DA_ThiefsGloves",
+         "name": "Thief's Gloves",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_item_thiefsgloves.png"
+        }
+       ]
+      },
+      {
+       "chance": 10,
+       "rewards": [
+        {
+         "k": "gold",
+         "n": 10
+        },
+        {
+         "k": "item",
+         "api": "DA_TacticiansCrown",
+         "name": "Tacticians Crown",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_item_forceofnature.png"
+        },
+        {
+         "k": "radiant"
+        },
+        {
+         "k": "artifact"
+        },
+        {
+         "k": "fullItem"
+        },
+        {
+         "k": "item",
+         "api": "DA_Consumable_ItemRemover",
+         "name": "Item Remover",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_itemremover.png"
+        }
+       ]
+      },
+      {
+       "chance": 10,
+       "rewards": [
+        {
+         "k": "gold",
+         "n": 30
+        },
+        {
+         "k": "item",
+         "api": "DA_TacticiansCrown",
+         "name": "Tacticians Crown",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_item_forceofnature.png"
+        },
+        {
+         "k": "randomUnit",
+         "n": 4,
+         "cost": 5
+        },
+        {
+         "k": "item",
+         "n": 2,
+         "api": "DA_Consumable_ChampionDuplicator",
+         "name": "Champion Duplicator",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_neekoshelp.png"
+        }
+       ]
+      },
+      {
+       "chance": 10,
+       "rewards": [
+        {
+         "k": "gold",
+         "n": 25
+        },
+        {
+         "k": "item",
+         "api": "DA_Artifact_InfinityForce",
+         "name": "Infinity Force",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft4_item_ornninfinityforce.png"
+        },
+        {
+         "k": "item",
+         "api": "DA_Artifact_ZhonyasParadox",
+         "name": "Zhonya's Paradox",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft4_item_ornnzhonyasparadox.png"
+        },
+        {
+         "k": "item",
+         "api": "DA_Artifact_TheIndomitable",
+         "name": "The Indomitable",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_item_artifact_theindomitable.png"
+        },
+        {
+         "k": "item",
+         "api": "DA_Consumable_ChampionDuplicator",
+         "name": "Champion Duplicator",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_neekoshelp.png"
+        },
+        {
+         "k": "item",
+         "n": 2,
+         "api": "DA_Consumable_ItemRemover",
+         "name": "Item Remover",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_itemremover.png"
+        }
+       ]
+      },
+      {
+       "chance": 10,
+       "rewards": [
+        {
+         "k": "gold",
+         "n": 10
+        },
+        {
+         "k": "item",
+         "api": "DA_TacticiansCrown",
+         "name": "Tacticians Crown",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_item_forceofnature.png"
+        },
+        {
+         "k": "item",
+         "api": "DA_InfinityEdge",
+         "name": "Infinity Edge",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_item_infinityedge.png"
+        },
+        {
+         "k": "item",
+         "api": "DA_JeweledGauntlet",
+         "name": "Jeweled Gauntlet",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_item_jeweledgauntlet.png"
+        },
+        {
+         "k": "item",
+         "api": "DA_StrikersFlail",
+         "name": "Striker's Flail",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_item_powergauntlet.png"
+        },
+        {
+         "k": "item",
+         "api": "DA_HandOfJustice",
+         "name": "Hand Of Justice",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_item_unstableconcoction.png"
+        },
+        {
+         "k": "item",
+         "api": "DA_Quicksilver",
+         "name": "Quicksilver",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_item_quicksilver.png"
+        },
+        {
+         "k": "item",
+         "api": "DA_Consumable_ItemRemover",
+         "name": "Item Remover",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_itemremover.png"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "key": "chaos",
+   "api": "DA_CallToChaos",
+   "name": "Call To Chaos",
+   "icon": "assets/maps/tft/icons/augments/hexcore/calltochaos_iii.png",
+   "patch": "18.1",
+   "stage": "4",
+   "subs": [
+    {
+     "rows": [
+      {
+       "chance": 11,
+       "rewards": [
+        {
+         "k": "gold",
+         "n": 58
+        }
+       ]
+      },
+      {
+       "chance": 11,
+       "rewards": [
+        {
+         "k": "xp",
+         "n": 64
+        }
+       ]
+      },
+      {
+       "chance": 11,
+       "rewards": [
+        {
+         "k": "reroll",
+         "n": 40
+        }
+       ]
+      },
+      {
+       "chance": 11,
+       "rewards": [
+        {
+         "k": "item",
+         "api": "TFT_Item_GrantCompletedAnvil",
+         "name": "Completed Item Anvil",
+         "icon": "assets/characters/tft_armorykeycompleted/hud/icons2d/tft_armorykeycompleted_square.png"
+        },
+        {
+         "k": "item",
+         "api": "DA_GoldenEgg",
+         "name": "The Golden Egg",
+         "icon": "assets/maps/tft/icons/augments/hexcore/the-golden-egg-iii.png"
+        }
+       ]
+      },
+      {
+       "chance": 11,
+       "rewards": [
+        {
+         "k": "gold",
+         "n": 8
+        },
+        {
+         "k": "item",
+         "api": "DA_RadiantLuckyItemChest",
+         "name": "Radiant Lucky Item Chest",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_luckyitemchest.png"
+        },
+        {
+         "k": "item",
+         "api": "DA_Consumable_ItemRemover",
+         "name": "Item Remover",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_itemremover.png"
+        }
+       ]
+      },
+      {
+       "chance": 11,
+       "rewards": [
+        {
+         "k": "item",
+         "n": 2,
+         "api": "TFT_ArmoryKeyComponent",
+         "name": "Component Anvil",
+         "icon": "assets/characters/tft_armorykeycomponent/hud/icons2d/tft_armorykeycomponent_square.png"
+        },
+        {
+         "k": "item",
+         "api": "DA_Component_FryingPan",
+         "name": "Frying Pan",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_item_fryingpan.png"
+        },
+        {
+         "k": "item",
+         "api": "DA_Component_Spatula",
+         "name": "Spatula",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_item_spatula.png"
+        }
+       ]
+      },
+      {
+       "chance": 11,
+       "rewards": [
+        {
+         "k": "item",
+         "n": 3,
+         "api": "DA_ThiefsGloves",
+         "name": "Thief's Gloves",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_item_thiefsgloves.png"
+        },
+        {
+         "k": "item",
+         "api": "DA_Consumable_ItemRemover",
+         "name": "Item Remover",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_itemremover.png"
+        }
+       ]
+      },
+      {
+       "chance": 11,
+       "rewards": [
+        {
+         "k": "item",
+         "n": 3,
+         "api": "DA_LuckyItemChest",
+         "name": "Lucky Item Chest",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_luckyitemchest.png"
+        },
+        {
+         "k": "item",
+         "api": "DA_Consumable_ItemRemover",
+         "name": "Item Remover",
+         "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_itemremover.png"
+        }
+       ]
+      },
+      {
+       "chance": 11,
+       "rewards": [
+        {
+         "k": "uniqueComponents",
+         "n": 6
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "coven": {
+  "key": "coven",
+  "api": "DA_18_CovenTraitAugment_LootToAP",
+  "augmentName": "Dark Ritual",
+  "name": "Coven",
+  "icon": "assets/ux/traiticons/trait_icon_18_coven.png",
+  "patch": "18.3",
+  "essence": [
+   {
+    "units": "3",
+    "kill": 2,
+    "loss": 22
+   },
+   {
+    "units": "4",
+    "kill": 2,
+    "loss": 28
+   },
+   {
+    "units": "5-6",
+    "kill": 3,
+    "loss": 35
+   },
+   {
+    "units": "7+",
+    "kill": 10,
+    "loss": 60
+   }
+  ],
+  "subs": [
+   {
+    "label": {
+     "t": "essence",
+     "essence": 40,
+     "ap": 7
+    },
+    "rows": [
+     {
+      "chance": 33,
+      "rewards": [
+       {
+        "k": "gold",
+        "n": 4
+       }
+      ]
+     },
+     {
+      "chance": 33,
+      "rewards": [
+       {
+        "k": "randomUnit",
+        "cost": 2
+       },
+       {
+        "k": "randomUnit",
+        "cost": 2
+       }
+      ]
+     },
+     {
+      "chance": 33,
+      "rewards": [
+       {
+        "k": "champion",
+        "api": "DA_18_Cassiopeia",
+        "name": "Cassiopeia",
+        "icon": "assets/characters/tft18_cassiopeia/tft18_cassiopeia_square.png",
+        "cost": 3
+       },
+       {
+        "k": "champion",
+        "api": "DA_18_Camille",
+        "name": "Camille",
+        "icon": "assets/characters/tft18_camille/tft18_camille_square.png",
+        "cost": 1
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "label": {
+     "t": "essence",
+     "essence": 85,
+     "ap": 15
+    },
+    "rows": [
+     {
+      "chance": 33,
+      "rewards": [
+       {
+        "k": "gold",
+        "n": 2
+       },
+       {
+        "k": "component"
+       }
+      ]
+     },
+     {
+      "chance": 33,
+      "rewards": [
+       {
+        "k": "gold",
+        "n": 10
+       }
+      ]
+     },
+     {
+      "chance": 33,
+      "rewards": [
+       {
+        "k": "champion",
+        "api": "DA_18_Elise",
+        "name": "Elise",
+        "icon": "assets/characters/tft18_elise/tft18_elise_square.png",
+        "cost": 2
+       },
+       {
+        "k": "component"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "label": {
+     "t": "essence",
+     "essence": 130,
+     "ap": 50
+    },
+    "rows": [
+     {
+      "chance": 25,
+      "rewards": [
+       {
+        "k": "component",
+        "n": 2
+       }
+      ]
+     },
+     {
+      "chance": 25,
+      "rewards": [
+       {
+        "k": "gold",
+        "n": 3
+       },
+       {
+        "k": "fullItem"
+       }
+      ]
+     },
+     {
+      "chance": 25,
+      "rewards": [
+       {
+        "k": "champion",
+        "api": "DA_18_Cassiopeia",
+        "name": "Cassiopeia",
+        "icon": "assets/characters/tft18_cassiopeia/tft18_cassiopeia_square.png",
+        "cost": 3
+       },
+       {
+        "k": "champion",
+        "n": 3,
+        "api": "DA_18_Elise",
+        "name": "Elise",
+        "icon": "assets/characters/tft18_elise/tft18_elise_square.png",
+        "cost": 2
+       },
+       {
+        "k": "component"
+       }
+      ]
+     },
+     {
+      "chance": 25,
+      "rewards": [
+       {
+        "k": "gold",
+        "n": 3
+       },
+       {
+        "k": "champion",
+        "n": 3,
+        "api": "DA_18_Caitlyn",
+        "name": "Caitlyn",
+        "icon": "assets/characters/tft18_caitlyn/tft18_caitlyn_square.png",
+        "cost": 2
+       },
+       {
+        "k": "component"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "label": {
+     "t": "essence",
+     "essence": 185,
+     "ap": 75
+    },
+    "rows": [
+     {
+      "chance": 25,
+      "rewards": [
+       {
+        "k": "item",
+        "api": "TFT_Item_GrantCompletedAnvil",
+        "name": "Completed Item Anvil",
+        "icon": "assets/characters/tft_armorykeycompleted/hud/icons2d/tft_armorykeycompleted_square.png"
+       },
+       {
+        "k": "component"
+       }
+      ]
+     },
+     {
+      "chance": 25,
+      "rewards": [
+       {
+        "k": "gold",
+        "n": 10
+       },
+       {
+        "k": "item",
+        "api": "TFT_Item_GrantCompletedAnvil",
+        "name": "Completed Item Anvil",
+        "icon": "assets/characters/tft_armorykeycompleted/hud/icons2d/tft_armorykeycompleted_square.png"
+       }
+      ]
+     },
+     {
+      "chance": 25,
+      "rewards": [
+       {
+        "k": "gold",
+        "n": 10
+       },
+       {
+        "k": "component",
+        "n": 2
+       },
+       {
+        "k": "item",
+        "api": "DA_Reforger",
+        "name": "Reforger",
+        "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_itemreroller.png"
+       }
+      ]
+     },
+     {
+      "chance": 25,
+      "rewards": [
+       {
+        "k": "champion",
+        "n": 3,
+        "api": "DA_18_Caitlyn",
+        "name": "Caitlyn",
+        "icon": "assets/characters/tft18_caitlyn/tft18_caitlyn_square.png",
+        "cost": 2
+       },
+       {
+        "k": "champion",
+        "n": 3,
+        "api": "DA_18_Camille",
+        "name": "Camille",
+        "icon": "assets/characters/tft18_camille/tft18_camille_square.png",
+        "cost": 1
+       },
+       {
+        "k": "item",
+        "api": "TFT_Item_GrantCompletedAnvil",
+        "name": "Completed Item Anvil",
+        "icon": "assets/characters/tft_armorykeycompleted/hud/icons2d/tft_armorykeycompleted_square.png"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "label": {
+     "t": "essence",
+     "essence": 250,
+     "ap": 125
+    },
+    "rows": [
+     {
+      "chance": 20,
+      "rewards": [
+       {
+        "k": "gold",
+        "n": 20
+       },
+       {
+        "k": "item",
+        "n": 2,
+        "api": "TFT_Item_GrantCompletedAnvil",
+        "name": "Completed Item Anvil",
+        "icon": "assets/characters/tft_armorykeycompleted/hud/icons2d/tft_armorykeycompleted_square.png"
+       }
+      ]
+     },
+     {
+      "chance": 20,
+      "rewards": [
+       {
+        "k": "gold",
+        "n": 5
+       },
+       {
+        "k": "champion",
+        "n": 3,
+        "api": "DA_18_Morgana",
+        "name": "Morgana",
+        "icon": "assets/characters/tft18_morgana/tft18_morgana_square.png",
+        "cost": 4
+       },
+       {
+        "k": "item",
+        "api": "DA_LuckyItemChest",
+        "name": "Lucky Item Chest",
+        "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_luckyitemchest.png"
+       },
+       {
+        "k": "fullItem"
+       }
+      ]
+     },
+     {
+      "chance": 20,
+      "rewards": [
+       {
+        "k": "gold",
+        "n": 18
+       },
+       {
+        "k": "item",
+        "n": 2,
+        "api": "DA_LuckyItemChest",
+        "name": "Lucky Item Chest",
+        "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_luckyitemchest.png"
+       },
+       {
+        "k": "item",
+        "api": "DA_Reforger",
+        "name": "Reforger",
+        "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_itemreroller.png"
+       }
+      ]
+     },
+     {
+      "chance": 20,
+      "rewards": [
+       {
+        "k": "gold",
+        "n": 18
+       },
+       {
+        "k": "champion",
+        "api": "DA_18_Lux_Coven",
+        "name": "Lux (Coven)",
+        "icon": "assets/characters/tft18_lux/tft18_lux_coven_square.png",
+        "cost": 5
+       },
+       {
+        "k": "item",
+        "api": "DA_LuckyItemChest",
+        "name": "Lucky Item Chest",
+        "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_luckyitemchest.png"
+       },
+       {
+        "k": "item",
+        "n": 2,
+        "api": "TFT_ArmoryKeyComponent",
+        "name": "Component Anvil",
+        "icon": "assets/characters/tft_armorykeycomponent/hud/icons2d/tft_armorykeycomponent_square.png"
+       }
+      ]
+     },
+     {
+      "chance": 20,
+      "rewards": [
+       {
+        "k": "gold",
+        "n": 18
+       },
+       {
+        "k": "item",
+        "api": "TFT_Item_GrantOrnnAnvil",
+        "name": "Artifact Anvil",
+        "icon": "assets/characters/tft_armorykeyornn/hud/icons2d/tft_armorykeyornn_square.png"
+       },
+       {
+        "k": "item",
+        "api": "TFT_Item_GrantCompletedAnvil",
+        "name": "Completed Item Anvil",
+        "icon": "assets/characters/tft_armorykeycompleted/hud/icons2d/tft_armorykeycompleted_square.png"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "label": {
+     "t": "essence",
+     "essence": 365,
+     "ap": 200
+    },
+    "rows": [
+     {
+      "chance": 17,
+      "rewards": [
+       {
+        "k": "gold",
+        "n": 27
+       },
+       {
+        "k": "radiant",
+        "n": 2
+       },
+       {
+        "k": "item",
+        "n": 2,
+        "api": "DA_Consumable_ItemRemover",
+        "name": "Item Remover",
+        "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_itemremover.png"
+       },
+       {
+        "k": "item",
+        "n": 2,
+        "api": "DA_Reforger",
+        "name": "Reforger",
+        "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_itemreroller.png"
+       }
+      ]
+     },
+     {
+      "chance": 17,
+      "rewards": [
+       {
+        "k": "gold",
+        "n": 22
+       },
+       {
+        "k": "champion",
+        "n": 3,
+        "api": "DA_18_Morgana",
+        "name": "Morgana",
+        "icon": "assets/characters/tft18_morgana/tft18_morgana_square.png",
+        "cost": 4
+       },
+       {
+        "k": "champion",
+        "n": 3,
+        "api": "DA_Sentinel18",
+        "name": "Sentinel",
+        "icon": "assets/characters/tft18_sentinel/tft18_sentinel_square.png",
+        "cost": 4
+       },
+       {
+        "k": "item",
+        "api": "DA_RadiantLuckyItemChest",
+        "name": "Radiant Lucky Item Chest",
+        "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_luckyitemchest.png"
+       },
+       {
+        "k": "item",
+        "api": "DA_ThiefsGloves",
+        "name": "Thief's Gloves",
+        "icon": "assets/maps/tft/icons/items/hexcore/tft_item_thiefsgloves.png"
+       }
+      ]
+     },
+     {
+      "chance": 17,
+      "rewards": [
+       {
+        "k": "gold",
+        "n": 22
+       },
+       {
+        "k": "item",
+        "api": "DA_RadiantLuckyItemChest",
+        "name": "Radiant Lucky Item Chest",
+        "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_luckyitemchest.png"
+       },
+       {
+        "k": "item",
+        "n": 2,
+        "api": "TFT_Item_GrantCompletedAnvil",
+        "name": "Completed Item Anvil",
+        "icon": "assets/characters/tft_armorykeycompleted/hud/icons2d/tft_armorykeycompleted_square.png"
+       },
+       {
+        "k": "emblem"
+       }
+      ]
+     },
+     {
+      "chance": 17,
+      "rewards": [
+       {
+        "k": "gold",
+        "n": 15
+       },
+       {
+        "k": "champion",
+        "n": 3,
+        "api": "DA_18_Kennen",
+        "name": "Kennen",
+        "icon": "assets/characters/tft18_kennen/tft18_kennen_square.png",
+        "cost": 5
+       },
+       {
+        "k": "item",
+        "n": 2,
+        "api": "DA_ThiefsGlovesRadiant",
+        "name": "Radiant Thief's Gloves",
+        "icon": "assets/maps/tft/icons/items/hexcore/tft5_item_thiefsglovesradiant.png"
+       },
+       {
+        "k": "item",
+        "n": 3,
+        "api": "DA_Consumable_ItemRemover",
+        "name": "Item Remover",
+        "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_itemremover.png"
+       }
+      ]
+     },
+     {
+      "chance": 17,
+      "rewards": [
+       {
+        "k": "gold",
+        "n": 22
+       },
+       {
+        "k": "champion",
+        "api": "DA_18_Morgana",
+        "name": "Morgana",
+        "icon": "assets/characters/tft18_morgana/tft18_morgana_square.png",
+        "cost": 4
+       },
+       {
+        "k": "item",
+        "api": "DA_RadiantLuckyItemChest",
+        "name": "Radiant Lucky Item Chest",
+        "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_luckyitemchest.png"
+       },
+       {
+        "k": "unknown",
+        "n": 2
+       }
+      ]
+     },
+     {
+      "chance": 17,
+      "rewards": [
+       {
+        "k": "gold",
+        "n": 12
+       },
+       {
+        "k": "champion",
+        "n": 3,
+        "api": "DA_Draven18",
+        "name": "Draven",
+        "icon": "assets/characters/tft18_draven/tft18_draven_square.png",
+        "cost": 5
+       },
+       {
+        "k": "item",
+        "api": "DA_TacticiansCrown",
+        "name": "Tacticians Crown",
+        "icon": "assets/maps/tft/icons/items/hexcore/tft_item_forceofnature.png"
+       },
+       {
+        "k": "item",
+        "api": "DA_RadiantLuckyItemChest",
+        "name": "Radiant Lucky Item Chest",
+        "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_luckyitemchest.png"
+       },
+       {
+        "k": "item",
+        "api": "DA_Consumable_GoldenItemRemover",
+        "name": "Golden Item Remover",
+        "icon": "assets/maps/tft/icons/items/hexcore/tft9_consumable_goldenitemremover.png"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "label": {
+     "t": "essence",
+     "essence": 500,
+     "ap": 300
+    },
+    "rows": [
+     {
+      "chance": 20,
+      "rewards": [
+       {
+        "k": "radiant",
+        "n": 3
+       },
+       {
+        "k": "item",
+        "n": 2,
+        "api": "TFT_Item_GrantCompletedAnvil",
+        "name": "Completed Item Anvil",
+        "icon": "assets/characters/tft_armorykeycompleted/hud/icons2d/tft_armorykeycompleted_square.png"
+       },
+       {
+        "k": "item",
+        "n": 3,
+        "api": "DA_Consumable_ItemRemover",
+        "name": "Item Remover",
+        "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_itemremover.png"
+       },
+       {
+        "k": "item",
+        "n": 3,
+        "api": "DA_Reforger",
+        "name": "Reforger",
+        "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_itemreroller.png"
+       }
+      ]
+     },
+     {
+      "chance": 20,
+      "rewards": [
+       {
+        "k": "randomUnit",
+        "n": 3,
+        "cost": 5
+       },
+       {
+        "k": "randomUnit",
+        "n": 3,
+        "cost": 5
+       },
+       {
+        "k": "item",
+        "n": 2,
+        "api": "DA_RadiantLuckyItemChest",
+        "name": "Radiant Lucky Item Chest",
+        "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_luckyitemchest.png"
+       },
+       {
+        "k": "fullItem",
+        "n": 2
+       },
+       {
+        "k": "item",
+        "n": 3,
+        "api": "DA_Consumable_ItemRemover",
+        "name": "Item Remover",
+        "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_itemremover.png"
+       }
+      ]
+     },
+     {
+      "chance": 20,
+      "rewards": [
+       {
+        "k": "gold",
+        "n": 20
+       },
+       {
+        "k": "item",
+        "n": 2,
+        "api": "DA_RadiantLuckyItemChest",
+        "name": "Radiant Lucky Item Chest",
+        "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_luckyitemchest.png"
+       },
+       {
+        "k": "item",
+        "n": 2,
+        "api": "TFT_Item_GrantOrnnAnvil",
+        "name": "Artifact Anvil",
+        "icon": "assets/characters/tft_armorykeyornn/hud/icons2d/tft_armorykeyornn_square.png"
+       },
+       {
+        "k": "item",
+        "n": 3,
+        "api": "DA_Consumable_ItemRemover",
+        "name": "Item Remover",
+        "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_itemremover.png"
+       }
+      ]
+     },
+     {
+      "chance": 20,
+      "rewards": [
+       {
+        "k": "gold",
+        "n": 10
+       },
+       {
+        "k": "item",
+        "n": 2,
+        "api": "DA_RadiantLuckyItemChest",
+        "name": "Radiant Lucky Item Chest",
+        "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_luckyitemchest.png"
+       },
+       {
+        "k": "emblem",
+        "n": 4
+       },
+       {
+        "k": "item",
+        "api": "DA_Consumable_GoldenItemRemover",
+        "name": "Golden Item Remover",
+        "icon": "assets/maps/tft/icons/items/hexcore/tft9_consumable_goldenitemremover.png"
+       }
+      ]
+     },
+     {
+      "chance": 20,
+      "rewards": [
+       {
+        "k": "gold",
+        "n": 15
+       },
+       {
+        "k": "champion",
+        "n": 3,
+        "api": "DA_18_Kennen",
+        "name": "Kennen",
+        "icon": "assets/characters/tft18_kennen/tft18_kennen_square.png",
+        "cost": 5
+       },
+       {
+        "k": "champion",
+        "api": "DA_18_Lux_Coven",
+        "name": "Lux (Coven)",
+        "icon": "assets/characters/tft18_lux/tft18_lux_coven_square.png",
+        "cost": 5,
+        "stars": 2
+       },
+       {
+        "k": "item",
+        "api": "DA_TacticiansShield",
+        "name": "Tacticians Shield",
+        "icon": "assets/maps/tft/icons/items/hexcore/tft_item_tacticiansscepter.png"
+       },
+       {
+        "k": "item",
+        "n": 2,
+        "api": "DA_RadiantLuckyItemChest",
+        "name": "Radiant Lucky Item Chest",
+        "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_luckyitemchest.png"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "label": {
+     "t": "essence",
+     "essence": 650,
+     "ap": 400
+    },
+    "rows": [
+     {
+      "chance": 33,
+      "rewards": [
+       {
+        "k": "gold",
+        "n": 30
+       },
+       {
+        "k": "randomUnit",
+        "n": 3,
+        "cost": 5
+       },
+       {
+        "k": "randomUnit",
+        "n": 3,
+        "cost": 5
+       },
+       {
+        "k": "randomUnit",
+        "n": 3,
+        "cost": 5
+       },
+       {
+        "k": "item",
+        "api": "DA_TacticiansShield",
+        "name": "Tacticians Shield",
+        "icon": "assets/maps/tft/icons/items/hexcore/tft_item_tacticiansscepter.png"
+       },
+       {
+        "k": "radiant",
+        "n": 3
+       },
+       {
+        "k": "item",
+        "api": "DA_Consumable_GoldenItemRemover",
+        "name": "Golden Item Remover",
+        "icon": "assets/maps/tft/icons/items/hexcore/tft9_consumable_goldenitemremover.png"
+       }
+      ]
+     },
+     {
+      "chance": 33,
+      "rewards": [
+       {
+        "k": "gold",
+        "n": 10
+       },
+       {
+        "k": "champion",
+        "api": "DA_18_Lux_Coven",
+        "name": "Lux (Coven)",
+        "icon": "assets/characters/tft18_lux/tft18_lux_coven_square.png",
+        "cost": 5,
+        "stars": 2
+       },
+       {
+        "k": "champion",
+        "n": 3,
+        "api": "DA_18_Morgana",
+        "name": "Morgana",
+        "icon": "assets/characters/tft18_morgana/tft18_morgana_square.png",
+        "cost": 4
+       },
+       {
+        "k": "item",
+        "api": "DA_TacticiansCape",
+        "name": "Tactician's Cape",
+        "icon": "assets/maps/tft/icons/items/hexcore/tft_item_tacticiansring.png"
+       },
+       {
+        "k": "item",
+        "n": 3,
+        "api": "DA_RadiantLuckyItemChest",
+        "name": "Radiant Lucky Item Chest",
+        "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_luckyitemchest.png"
+       },
+       {
+        "k": "item",
+        "api": "DA_Consumable_GoldenItemRemover",
+        "name": "Golden Item Remover",
+        "icon": "assets/maps/tft/icons/items/hexcore/tft9_consumable_goldenitemremover.png"
+       }
+      ]
+     },
+     {
+      "chance": 33,
+      "rewards": [
+       {
+        "k": "gold",
+        "n": 40
+       },
+       {
+        "k": "item",
+        "api": "DA_TacticiansCrown",
+        "name": "Tacticians Crown",
+        "icon": "assets/maps/tft/icons/items/hexcore/tft_item_forceofnature.png"
+       },
+       {
+        "k": "radiant",
+        "n": 3
+       },
+       {
+        "k": "item",
+        "n": 3,
+        "api": "DA_Consumable_ChampionDuplicator",
+        "name": "Champion Duplicator",
+        "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_neekoshelp.png"
+       },
+       {
+        "k": "item",
+        "api": "DA_Consumable_GoldenItemRemover",
+        "name": "Golden Item Remover",
+        "icon": "assets/maps/tft/icons/items/hexcore/tft9_consumable_goldenitemremover.png"
+       },
+       {
+        "k": "item",
+        "n": 2,
+        "api": "DA_Reforger",
+        "name": "Reforger",
+        "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_itemreroller.png"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "label": {
+     "t": "essence",
+     "essence": 800,
+     "ap": 1666
+    },
+    "rows": [
+     {
+      "chance": 50,
+      "rewards": [
+       {
+        "k": "gold",
+        "n": 100
+       },
+       {
+        "k": "item",
+        "n": 3,
+        "api": "DA_TacticiansCape",
+        "name": "Tactician's Cape",
+        "icon": "assets/maps/tft/icons/items/hexcore/tft_item_tacticiansring.png"
+       },
+       {
+        "k": "radiant",
+        "n": 6
+       },
+       {
+        "k": "item",
+        "api": "DA_Consumable_GoldenItemRemover",
+        "name": "Golden Item Remover",
+        "icon": "assets/maps/tft/icons/items/hexcore/tft9_consumable_goldenitemremover.png"
+       }
+      ]
+     },
+     {
+      "chance": 50,
+      "rewards": [
+       {
+        "k": "gold",
+        "n": 100
+       },
+       {
+        "k": "item",
+        "api": "DA_TacticiansShield",
+        "name": "Tacticians Shield",
+        "icon": "assets/maps/tft/icons/items/hexcore/tft_item_tacticiansscepter.png"
+       },
+       {
+        "k": "radiant",
+        "n": 6
+       },
+       {
+        "k": "item",
+        "n": 6,
+        "api": "DA_Consumable_ChampionDuplicator",
+        "name": "Champion Duplicator",
+        "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_neekoshelp.png"
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

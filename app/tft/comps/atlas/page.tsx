@@ -17,7 +17,8 @@ import { useTftCompsData } from '../../../lib/useTftCompsData';
 
 // Comp-Uebersicht nach Unit-Kosten (User 2026-09-27, Vorbild tftable.cc/comps):
 // eine Zeile je Kostenstufe, 5 oben. Dieselben Familien wie die Liste
-// (tft-comp-families), Zeile = teuerster benannter Carry laut Asset-Bundle.
+// (tft-comp-families), Zeile = Kosten des Haupt-Carrys laut Asset-Bundle
+// (User 2026-09-28: Spellweaver · Veigar & LeBlanc gehoert zu 1-Cost).
 
 const prettyId = (s: string) => s.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
 
@@ -25,7 +26,7 @@ function familyCost(f: CompFamily, assets: TftAssetsBundle): number | null {
   const costs = namedCarries({ carries: f.carries, tanks: f.tanks }, f.carry)
     .map(cid => assets.champions[cid]?.cost)
     .filter((c): c is number => typeof c === 'number' && c >= 1 && c <= 5);
-  return costs.length > 0 ? Math.max(...costs) : null;
+  return costs[0] ?? null;
 }
 
 export default function TftCompsAtlasPage() {

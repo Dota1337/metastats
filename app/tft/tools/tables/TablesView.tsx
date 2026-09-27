@@ -6,7 +6,7 @@ import { useI18n } from '../../../lib/i18n';
 import { withAlpha } from '../../../lib/color';
 import { tftGameAssetUrl } from '../../../lib/tft-cdragon';
 import type {
-  LootTablesFile, LootTable, CovenTable, LootSub, LootRow, LootReward, LootCond, WispsFile, WispEntry, WispRound, Wisp,
+  LootTablesFile, LootTable, CovenTable, LootSub, LootRow, LootReward, LootCond, WispsFile, WispEntry, WispRound, Wisp, WispCat,
 } from '../../../lib/tft-loot-tables';
 
 // Loot-Tabellen, Coven-Auszahlung und Wisps. Daten und Herkunft:
@@ -372,18 +372,37 @@ function CovenCard({ coven, t }: { coven: CovenTable; t: T }) {
   );
 }
 
+const WISP_CATS: WispCat[] = ['Combat', 'GoldXP', 'Shop', 'Champion', 'Item', 'Misc', 'Risky'];
+type WispVariant = WispEntry['variants'][number];
+
+// Runden als Bereiche („Früh – Mitte"); die wenigen Luecken werden als zweiter Bereich gezeigt.
+function roundText(rounds: WispRound[], t: T): string {
+  const runs: [number, number][] = [];
+  for (const i of rounds.map(r => ROUNDS.indexOf(r)).sort((a, b) => a - b)) {
+    const last = runs[runs.length - 1];
+    if (last && i === last[1] + 1) last[1] = i;
+    else runs.push([i, i]);
+  }
+  const name = (i: number) => t(`tft.tables.round.${ROUNDS[i]}` as Parameters<T>[0]);
+  return runs.map(([a, b]) => (a === b ? name(a) : `${name(a)} – ${name(b)}`)).join(', ');
+}
+
+// Eine Zeile je Wisp; Upgrade/Prismatisch und Bedingungen klappen darunter auf.
+// Stufen- und Art-Filter treffen auch ueber eine Variante (Prismatisch springt auf Stufe 3).
 function WispList({ entries, t }: { entries: WispEntry[]; t: T }) {
   const [tier, setTier] = useState<'all' | '1' | '2' | '3'>('all');
   const [mode, setMode] = useState<Mode>('all');
+  const [cat, setCat] = useState<'all' | WispCat>('all');
   const inMode = (w: Wisp) => mode === 'all' || (mode === 'doubles' ? w.doubles : w.tockers);
+  const hit = (x: Wisp) => (tier === 'all' || String(x.tier) === tier) && (cat === 'all' || x.cat === cat);
   const shown = useMemo(
-    () => entries.filter(w => (tier === 'all' || String(w.tier) === tier) && inMode(w)),
+    () => entries.filter(w => inMode(w) && [w, ...w.variants.filter(inMode)].some(hit)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [entries, tier, mode],
+    [entries, tier, mode, cat],
   );
   return (
     <div>
-      <div className="flex flex-col sm:flex-row gap-3 mb-4">
+      <div className="flex flex-wrap gap-x-5 gap-y-3 mb-4">
         <div>
           <div className="text-fg-muted text-[11px] uppercase tracking-widest mb-1.5">{t('tft.tables.tier')}</div>
           <Toggle value={tier} onChange={setTier} options={[['all', t('tft.tables.all')], ['1', '1'], ['2', '2'], ['3', '3']]} />
@@ -392,47 +411,104 @@ function WispList({ entries, t }: { entries: WispEntry[]; t: T }) {
           <div className="text-fg-muted text-[11px] uppercase tracking-widest mb-1.5">{t('tft.tables.mode')}</div>
           <Toggle value={mode} onChange={setMode} options={[['all', t('tft.tables.all')], ['doubles', 'Double Up'], ['tockers', "Tocker's Trials"]]} />
         </div>
+        <div>
+          <div className="text-fg-muted text-[11px] uppercase tracking-widest mb-1.5">{t('tft.tables.cat')}</div>
+          <Toggle
+            value={cat}
+            onChange={setCat}
+            options={[['all', t('tft.tables.all')], ...WISP_CATS.map(c => [c, t(`tft.tables.cat.${c}` as Parameters<T>[0])] as [WispCat, string])]}
+          />
+        </div>
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
+      <div className="bg-surface-base border border-border-subtle rounded-lg divide-y divide-border-subtle/60">
         {shown.map(w => (
-          <section key={w.api} className="bg-surface-base border border-border-subtle rounded-lg p-3.5">
-            <WispBody w={w} t={t} />
-            {w.variants.filter(inMode).map(v => (
-              <div key={v.api} className="mt-3 pt-3 border-t border-border-subtle/60 pl-3 border-l-2 border-l-accent/40">
-                <div className="text-accent text-[10px] uppercase tracking-widest mb-1">{t(v.kind === 'prismatic' ? 'tft.tables.prismatic' : 'tft.tables.upgrade')}</div>
-                <WispBody w={v} t={t} />
-              </div>
-            ))}
-          </section>
+          <WispRow key={`${w.api}-${tier}-${cat}`} w={w} variants={w.variants.filter(inMode)} openInit={!hit(w)} t={t} />
         ))}
       </div>
     </div>
   );
 }
 
-function WispBody({ w, t }: { w: Wisp; t: T }) {
+function WispRow({ w, variants, openInit, t }: { w: WispEntry; variants: WispVariant[]; openInit: boolean; t: T }) {
+  const [open, setOpen] = useState(openInit);
+  const more = variants.length > 0 || hasExtra(w);
+  const line = <WispLine w={w} t={t} />;
   return (
     <div>
-      <div className="flex items-center gap-2 mb-1">
-        <h3 className="text-white text-sm font-medium flex-1 min-w-0">{w.name}</h3>
-        <Badge>{t('tft.tables.tier')} {w.tier}</Badge>
-        <span className="text-[11px] tabular-nums" style={{ color: GOLD }}>{w.cost} {t('tft.tables.gold')}</span>
-      </div>
-      <p className="text-fg-secondary text-[12px] leading-relaxed">{w.desc}</p>
-      {w.req && <p className="text-fg-muted text-[11px] mt-1.5"><span className="text-fg-secondary">{t('tft.tables.requires')}</span> {w.req}</p>}
-      {w.excl && w.excl.length > 0 && (
-        <p className="text-fg-muted text-[11px] mt-1"><span className="text-fg-secondary">{t('tft.tables.excludes')}</span> {w.excl.join(', ')}</p>
-      )}
-      <div className="flex flex-wrap gap-1 mt-2">
-        {ROUNDS.map(r => (
-          <span
-            key={r}
-            className={`text-[10px] px-1.5 py-0.5 rounded border ${w.rounds.includes(r) ? 'border-accent/50 text-white bg-accent-a10' : 'border-border-subtle text-fg-faint'}`}
-          >
-            {t(`tft.tables.round.${r}` as Parameters<T>[0])}
+      {more ? (
+        <button
+          type="button"
+          onClick={() => setOpen(o => !o)}
+          aria-expanded={open}
+          aria-label={`${w.name} · ${t('tft.tables.details')}`}
+          className="w-full flex items-start gap-3 px-3 py-2.5 text-left hover:bg-surface-raised/40 transition-colors"
+        >
+          {line}
+          <span className="shrink-0 w-9 mt-1 flex items-center justify-end gap-0.5 text-fg-muted text-[11px] tabular-nums">
+            {variants.length > 0 && `+${variants.length}`}
+            <svg viewBox="0 0 20 20" width="14" height="14" aria-hidden="true" className={`transition-transform ${open ? 'rotate-180' : ''}`}>
+              <path d="M5 7.5 10 12.5 15 7.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
           </span>
-        ))}
+        </button>
+      ) : (
+        <div className="flex items-start gap-3 px-3 py-2.5">
+          {line}
+          <span className="shrink-0 w-9" />
+        </div>
+      )}
+      {open && (
+        <div className="px-3 pb-3 pl-3 sm:pl-[60px] space-y-2.5">
+          <WispExtra w={w} t={t} />
+          {variants.map(v => (
+            <div key={v.api} className="border-l-2 border-l-accent/40 pl-3">
+              <div className="text-accent text-[10px] uppercase tracking-widest mb-1">{t(v.kind === 'prismatic' ? 'tft.tables.prismatic' : 'tft.tables.upgrade')}</div>
+              <div className="flex items-start gap-3"><WispLine w={v} t={t} /></div>
+              <WispExtra w={v} t={t} />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function hasExtra(w: Wisp): boolean {
+  return !!w.req || !!w.excl?.length || (w.cooldown ?? 5) !== 5;
+}
+
+// Bild · Name mit Art · Kosten · Text · Runden; ab lg als eine Tabellenzeile, am Handy gestapelt.
+function WispLine({ w, t }: { w: Wisp; t: T }) {
+  const solo = !w.doubles && !w.tockers;
+  return (
+    <>
+      {w.icon
+        // eslint-disable-next-line @next/next/no-img-element
+        ? <img src={w.icon} alt="" width={36} height={36} loading="lazy" className="shrink-0" style={{ width: 36, height: 36 }} />
+        : <span className="w-9 h-9 shrink-0" />}
+      <div className="flex-1 min-w-0 grid grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-[11rem_3.5rem_minmax(0,1fr)_9.5rem] gap-x-4 gap-y-1 items-start">
+        <div className="min-w-0">
+          <div className="text-white text-[13px] font-medium leading-snug">{w.name}</div>
+          <div className="text-fg-muted text-[11px]">
+            {w.cat && `${t(`tft.tables.cat.${w.cat}` as Parameters<T>[0])} · `}{t('tft.tables.tier')} {w.tier}
+            {solo && ` · ${t('tft.tables.soloOnly')}`}
+          </div>
+        </div>
+        <span className="text-[12px] tabular-nums whitespace-nowrap text-right lg:text-left lg:pt-px" style={{ color: GOLD }}>{w.cost} {t('tft.tables.gold')}</span>
+        <p className="col-span-2 lg:col-span-1 text-fg-secondary text-[12px] leading-relaxed">{w.desc}</p>
+        <span className="col-span-2 lg:col-span-1 text-fg-muted text-[11px] lg:pt-px">{roundText(w.rounds, t)}</span>
       </div>
+    </>
+  );
+}
+
+function WispExtra({ w, t }: { w: Wisp; t: T }) {
+  if (!hasExtra(w)) return null;
+  return (
+    <div className="text-fg-muted text-[11px] space-y-0.5 mt-1">
+      {w.req && <p><span className="text-fg-secondary">{t('tft.tables.requires')}</span> {w.req}</p>}
+      {w.excl && w.excl.length > 0 && <p><span className="text-fg-secondary">{t('tft.tables.excludes')}</span> {w.excl.join(', ')}</p>}
+      {(w.cooldown ?? 5) !== 5 && <p><span className="text-fg-secondary">{t('tft.tables.cooldown')}</span> {w.cooldown}</p>}
     </div>
   );
 }

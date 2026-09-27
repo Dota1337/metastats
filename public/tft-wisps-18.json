@@ -4,13 +4,15 @@
   "name": "Little Buddy Bot",
   "url": "https://www.littlebuddybot.com/tft-wisps"
  },
- "fetchedAt": "2026-09-27T13:45:11.546Z",
+ "fetchedAt": "2026-09-27T16:27:58.474Z",
  "wisps": [
   {
    "api": "DA_18_AllFours",
    "name": "All Fours",
    "desc": "Reroll your shop with all 4-cost champions.",
    "tier": 1,
+   "cat": "Shop",
+   "icon": "/tft-extra/wisps/18/Shop_Tier1.webp",
    "cost": 3,
    "rounds": [
     "Late"
@@ -25,6 +27,8 @@
      "name": "All Fours",
      "desc": "Reroll your shop with all 4-cost champions. Gain 2 gold.",
      "tier": 1,
+     "cat": "Shop",
+     "icon": "/tft-extra/wisps/18/Shop_Tier1.webp",
      "cost": 3,
      "rounds": [
       "Late"
@@ -42,6 +46,8 @@
    "name": "All Ones",
    "desc": "Reroll your shop with all 1-cost champions.",
    "tier": 1,
+   "cat": "Shop",
+   "icon": "/tft-extra/wisps/18/Shop_Tier1.webp",
    "cost": 0,
    "rounds": [
     "Early"
@@ -56,6 +62,8 @@
      "name": "All Ones",
      "desc": "Reroll your shop with all 1-cost champions. Gain 1 Gold.",
      "tier": 1,
+     "cat": "Shop",
+     "icon": "/tft-extra/wisps/18/Shop_Tier1.webp",
      "cost": 0,
      "rounds": [
       "Early"
@@ -73,6 +81,8 @@
    "name": "All Threes",
    "desc": "Reroll your shop with all 3-cost champions.",
    "tier": 1,
+   "cat": "Shop",
+   "icon": "/tft-extra/wisps/18/Shop_Tier1.webp",
    "cost": 2,
    "rounds": [
     "Mid",
@@ -88,6 +98,8 @@
      "name": "All Threes",
      "desc": "Reroll your shop with all 3-cost champions. Gain 2 gold.",
      "tier": 1,
+     "cat": "Shop",
+     "icon": "/tft-extra/wisps/18/Shop_Tier1.webp",
      "cost": 2,
      "rounds": [
       "Mid",
@@ -106,6 +118,8 @@
    "name": "All Twos",
    "desc": "Reroll your shop with all 2-cost champions.",
    "tier": 1,
+   "cat": "Shop",
+   "icon": "/tft-extra/wisps/18/Shop_Tier1.webp",
    "cost": 1,
    "rounds": [
     "Early",
@@ -121,6 +135,8 @@
      "name": "All Twos",
      "desc": "Reroll your shop with all 2-cost champions. Gain 1 gold.",
      "tier": 1,
+     "cat": "Shop",
+     "icon": "/tft-extra/wisps/18/Shop_Tier1.webp",
      "cost": 1,
      "rounds": [
       "Early",
@@ -139,6 +155,8 @@
    "name": "Bark Armor",
    "desc": "Your champions gain 150 shield for 10 seconds.",
    "tier": 1,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
    "cost": 0,
    "rounds": [
     "Early"
@@ -153,6 +171,8 @@
      "name": "Bark Armor",
      "desc": "Your champions gain 225 shield for 10 seconds.",
      "tier": 1,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
      "cost": 0,
      "rounds": [
       "Early"
@@ -170,6 +190,8 @@
    "name": "Barter",
    "desc": "The next champion sold this round sells for 200% gold.",
    "tier": 1,
+   "cat": "GoldXP",
+   "icon": "/tft-extra/wisps/18/GoldXP_Tier1.webp",
    "cost": 2,
    "rounds": [
     "Mid",
@@ -185,6 +207,8 @@
      "name": "Barter",
      "desc": "The next champion sold this round sells for 250% gold.",
      "tier": 1,
+     "cat": "GoldXP",
+     "icon": "/tft-extra/wisps/18/GoldXP_Tier1.webp",
      "cost": 2,
      "rounds": [
       "Mid",
@@ -203,6 +227,8 @@
    "name": "Beggar's Wisp",
    "desc": "The wilds couldn't find a wisp for you this roll. Gain 3 gold.",
    "tier": 1,
+   "cat": "GoldXP",
+   "icon": "/tft-extra/wisps/18/GoldXP_Tier1.webp",
    "cost": 0,
    "rounds": [
     "Early",
@@ -221,6 +247,8 @@
      "name": "Beggar's Wisp",
      "desc": "The wilds couldn't find a wisp for you this roll. Gain 5 gold.",
      "tier": 1,
+     "cat": "GoldXP",
+     "icon": "/tft-extra/wisps/18/GoldXP_Tier1.webp",
      "cost": 0,
      "rounds": [
       "Early",
@@ -242,6 +270,8 @@
    "name": "Big Boom",
    "desc": "The first ally to die explodes, dealing 25% Max Health magic damage.",
    "tier": 1,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
    "cost": 1,
    "rounds": [
     "EarlyMid",
@@ -256,6 +286,8 @@
      "name": "Big Boom",
      "desc": "The first 2 allies to die explode, dealing 25% Max Health magic damage.",
      "tier": 1,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
      "cost": 1,
      "rounds": [
       "EarlyMid",
@@ -273,6 +305,8 @@
    "name": "Blast Potion",
    "desc": "Gain a temporary equippable Blast Potion.",
    "tier": 1,
+   "cat": "Misc",
+   "icon": "/tft-extra/wisps/18/Misc_Tier1.webp",
    "cost": 1,
    "rounds": [
     "EarlyMid",
@@ -282,29 +316,34 @@
    "doubles": true,
    "tockers": true,
    "cooldown": 5,
-   "variants": []
-  },
-  {
-   "api": "DA_BlastPotion18_Upgrade_Charm",
-   "name": "Blast Potion",
-   "desc": "Gain a temporary equippable Radiant Blast Potion.",
-   "tier": 1,
-   "cost": 1,
-   "rounds": [
-    "EarlyMid",
-    "Mid",
-    "MidLate"
-   ],
-   "doubles": true,
-   "tockers": true,
-   "cooldown": 5,
-   "variants": []
+   "variants": [
+    {
+     "api": "DA_BlastPotion18_Upgrade_Charm",
+     "name": "Blast Potion",
+     "desc": "Gain a temporary equippable Radiant Blast Potion.",
+     "tier": 1,
+     "cat": "Misc",
+     "icon": "/tft-extra/wisps/18/Misc_Tier1.webp",
+     "cost": 1,
+     "rounds": [
+      "EarlyMid",
+      "Mid",
+      "MidLate"
+     ],
+     "doubles": true,
+     "tockers": true,
+     "cooldown": 5,
+     "kind": "upgrade"
+    }
+   ]
   },
   {
    "api": "DA_18_BloodMoney",
    "name": "Blood Money",
    "desc": "Gain 1 gold for every champion you kill.",
    "tier": 1,
+   "cat": "GoldXP",
+   "icon": "/tft-extra/wisps/18/GoldXP_Tier1.webp",
    "cost": 2,
    "rounds": [
     "EarlyMid",
@@ -320,6 +359,8 @@
      "name": "Blood Money",
      "desc": "Gain 1 gold for every champion you kill. Gain 1 gold.",
      "tier": 1,
+     "cat": "GoldXP",
+     "icon": "/tft-extra/wisps/18/GoldXP_Tier1.webp",
      "cost": 2,
      "rounds": [
       "EarlyMid",
@@ -338,6 +379,8 @@
    "name": "Borrowed Gear",
    "desc": "At the start of combat, a champion gains a temporary recommended item.",
    "tier": 1,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
    "cost": 1,
    "rounds": [
     "EarlyMid",
@@ -353,6 +396,8 @@
      "name": "Borrowed Gear",
      "desc": "At the start of combat, a champion gains a temporary recommended item and 250 Health.",
      "tier": 1,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
      "cost": 1,
      "rounds": [
       "EarlyMid",
@@ -371,6 +416,8 @@
    "name": "Bunch-o'-Belts",
    "desc": "Your allies gain 7 temporary, non-removable Giant's Belts.",
    "tier": 1,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
    "cost": 1,
    "rounds": [
     "Mid",
@@ -385,6 +432,8 @@
      "name": "Bunch-o'-Belts",
      "desc": "Your allies gain 10 temporary, non-removable Giant's Belts.",
      "tier": 1,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
      "cost": 1,
      "rounds": [
       "Mid",
@@ -402,6 +451,8 @@
    "name": "Coin Flip",
    "desc": "Flip a coin, gain 1 gold if it's heads.",
    "tier": 1,
+   "cat": "GoldXP",
+   "icon": "/tft-extra/wisps/18/GoldXP_Tier1.webp",
    "cost": 0,
    "rounds": [
     "Early"
@@ -415,6 +466,8 @@
      "name": "Coin Flip",
      "desc": "Flip 2 coins, gain 1 gold if it's heads.",
      "tier": 1,
+     "cat": "GoldXP",
+     "icon": "/tft-extra/wisps/18/GoldXP_Tier1.webp",
      "cost": 0,
      "rounds": [
       "Early"
@@ -431,6 +484,8 @@
    "name": "Component Bounty",
    "desc": "If you win the next player combat, gain a random component.",
    "tier": 1,
+   "cat": "Risky",
+   "icon": "/tft-extra/wisps/18/Risky_Tier1.webp",
    "cost": 4,
    "rounds": [
     "EarlyMid",
@@ -447,6 +502,8 @@
      "name": "Component Bounty",
      "desc": "If you win the next player combat, gain a random component.",
      "tier": 1,
+     "cat": "Risky",
+     "icon": "/tft-extra/wisps/18/Risky_Tier1.webp",
      "cost": 2,
      "rounds": [
       "EarlyMid",
@@ -466,6 +523,8 @@
    "name": "Crystal Ball",
    "desc": "Reveal your next opponent. Your team gains 12% Attack Speed.",
    "tier": 1,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
    "cost": 1,
    "rounds": [
     "MidLate",
@@ -481,6 +540,8 @@
      "name": "Crystal Ball",
      "desc": "Reveal your next opponent. Your team gains 18% Attack Speed.",
      "tier": 1,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
      "cost": 1,
      "rounds": [
       "MidLate",
@@ -499,6 +560,8 @@
    "name": "Die Roll",
    "desc": "Roll a six-sided die. Gain gold equal to the result.",
    "tier": 1,
+   "cat": "GoldXP",
+   "icon": "/tft-extra/wisps/18/GoldXP_Tier1.webp",
    "cost": 2,
    "rounds": [
     "EarlyMid",
@@ -513,6 +576,8 @@
      "name": "Die Roll",
      "desc": "Roll two six-sided dice. Gain gold equal to the result.",
      "tier": 1,
+     "cat": "GoldXP",
+     "icon": "/tft-extra/wisps/18/GoldXP_Tier1.webp",
      "cost": 3,
      "rounds": [
       "EarlyMid",
@@ -530,6 +595,8 @@
    "name": "Doodad Bag",
    "desc": "Gain 2 consumables that give permanent Armor and Magic Resist or Health.",
    "tier": 1,
+   "cat": "Misc",
+   "icon": "/tft-extra/wisps/18/Misc_Tier1.webp",
    "cost": 1,
    "rounds": [
     "EarlyMid",
@@ -544,6 +611,8 @@
      "name": "Doodad Bag",
      "desc": "Gain 3 consumables that give permanent Armor and Magic Resist or Health.",
      "tier": 1,
+     "cat": "Misc",
+     "icon": "/tft-extra/wisps/18/Misc_Tier1.webp",
      "cost": 1,
      "rounds": [
       "EarlyMid",
@@ -561,6 +630,8 @@
    "name": "Doodad Jar",
    "desc": "Gain 1 consumable that gives permanent Armor and Magic Resist or Health.",
    "tier": 1,
+   "cat": "Misc",
+   "icon": "/tft-extra/wisps/18/Misc_Tier1.webp",
    "cost": 0,
    "rounds": [
     "Early"
@@ -574,6 +645,8 @@
      "name": "Doodad Jar",
      "desc": "Gain 2 consumables that give permanent Armor and Magic Resist or Health.",
      "tier": 1,
+     "cat": "Misc",
+     "icon": "/tft-extra/wisps/18/Misc_Tier1.webp",
      "cost": 1,
      "rounds": [
       "Early"
@@ -590,6 +663,8 @@
    "name": "Drought",
    "desc": "Add 2 to your loss streak.",
    "tier": 1,
+   "cat": "Risky",
+   "icon": "/tft-extra/wisps/18/Risky_Tier1.webp",
    "cost": 1,
    "rounds": [
     "Early"
@@ -604,6 +679,8 @@
      "name": "Drought",
      "desc": "Add 3 to your loss streak.",
      "tier": 1,
+     "cat": "Risky",
+     "icon": "/tft-extra/wisps/18/Risky_Tier1.webp",
      "cost": 1,
      "rounds": [
       "Early"
@@ -621,6 +698,8 @@
    "name": "Early Fix",
    "desc": "Gain 1 Item Reforger.",
    "tier": 1,
+   "cat": "Misc",
+   "icon": "/tft-extra/wisps/18/Misc_Tier1.webp",
    "cost": 0,
    "rounds": [
     "Early"
@@ -634,6 +713,8 @@
      "name": "Early Fix",
      "desc": "Gain 2 Item Reforgers.",
      "tier": 1,
+     "cat": "Misc",
+     "icon": "/tft-extra/wisps/18/Misc_Tier1.webp",
      "cost": 0,
      "rounds": [
       "Early"
@@ -650,6 +731,8 @@
    "name": "Essence Theft",
    "desc": "Gain 50% bonus Coven Essence this combat.",
    "tier": 1,
+   "cat": "Risky",
+   "icon": "/tft-extra/wisps/18/Risky_Tier1.webp",
    "cost": 1,
    "rounds": [
     "Early",
@@ -666,6 +749,8 @@
      "name": "Essence Theft",
      "desc": "Gain 90% bonus Coven Essence this combat.",
      "tier": 1,
+     "cat": "Risky",
+     "icon": "/tft-extra/wisps/18/Risky_Tier1.webp",
      "cost": 1,
      "rounds": [
       "Early",
@@ -685,6 +770,8 @@
    "name": "Experienced",
    "desc": "Gain 2 XP.",
    "tier": 1,
+   "cat": "GoldXP",
+   "icon": "/tft-extra/wisps/18/GoldXP_Tier1.webp",
    "cost": 1,
    "rounds": [
     "Early"
@@ -698,6 +785,8 @@
      "name": "Experienced",
      "desc": "Gain 2 XP.",
      "tier": 1,
+     "cat": "GoldXP",
+     "icon": "/tft-extra/wisps/18/GoldXP_Tier1.webp",
      "cost": 0,
      "rounds": [
       "Early"
@@ -714,6 +803,8 @@
    "name": "Fertilize",
    "desc": "Gain 1 XP for each enemy that dies.",
    "tier": 1,
+   "cat": "Risky",
+   "icon": "/tft-extra/wisps/18/Risky_Tier1.webp",
    "cost": 1,
    "rounds": [
     "Early",
@@ -728,6 +819,8 @@
      "name": "Fertilize",
      "desc": "Gain 1 XP for each enemy that dies. Gain 2 XP.",
      "tier": 1,
+     "cat": "Risky",
+     "icon": "/tft-extra/wisps/18/Risky_Tier1.webp",
      "cost": 1,
      "rounds": [
       "Early",
@@ -745,6 +838,8 @@
    "name": "Flash Fire",
    "desc": "Reroll your shop. Inferno lights 2 shop slots on fire, upgrading them.",
    "tier": 1,
+   "cat": "Shop",
+   "icon": "/tft-extra/wisps/18/Shop_Tier1.webp",
    "cost": 1,
    "rounds": [
     "Mid",
@@ -761,6 +856,8 @@
      "name": "Flash Fire",
      "desc": "Reroll your shop. Inferno lights 3 shop slots on fire, upgrading them.",
      "tier": 1,
+     "cat": "Shop",
+     "icon": "/tft-extra/wisps/18/Shop_Tier1.webp",
      "cost": 1,
      "rounds": [
       "Mid",
@@ -780,6 +877,8 @@
    "name": "Flood",
    "desc": "Add 1 to your win streak.",
    "tier": 1,
+   "cat": "Risky",
+   "icon": "/tft-extra/wisps/18/Risky_Tier1.webp",
    "cost": 1,
    "rounds": [
     "Early"
@@ -794,6 +893,8 @@
      "name": "Flood",
      "desc": "Add 2 to your win streak.",
      "tier": 1,
+     "cat": "Risky",
+     "icon": "/tft-extra/wisps/18/Risky_Tier1.webp",
      "cost": 1,
      "rounds": [
       "Early"
@@ -811,6 +912,8 @@
    "name": "Flow",
    "desc": "Your champions are Unstoppable and gain 15% Attack Speed for 10 seconds.",
    "tier": 1,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
    "cost": 3,
    "rounds": [
     "MidLate",
@@ -826,6 +929,8 @@
      "name": "Flow",
      "desc": "Your champions are Unstoppable and gain 15% Attack Speed for 15 seconds.",
      "tier": 1,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
      "cost": 3,
      "rounds": [
       "MidLate",
@@ -844,6 +949,8 @@
    "name": "Forest Mage",
    "desc": "Fill your shop with Wisps. You can only buy one.",
    "tier": 1,
+   "cat": "Misc",
+   "icon": "/tft-extra/wisps/18/Misc_Tier1.webp",
    "cost": 1,
    "rounds": [
     "Mid",
@@ -861,6 +968,8 @@
      "name": "Forest Mage",
      "desc": "Fill your shop with upgraded Wisps. You can only buy one.",
      "tier": 1,
+     "cat": "Misc",
+     "icon": "/tft-extra/wisps/18/Misc_Tier1.webp",
      "cost": 1,
      "rounds": [
       "Mid",
@@ -881,6 +990,8 @@
    "name": "Found Friend",
    "desc": "Gain a temporary Training Dummy with a Giant's Belt.",
    "tier": 1,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
    "cost": 0,
    "rounds": [
     "Early"
@@ -895,6 +1006,8 @@
      "name": "Found Friend",
      "desc": "Gain a Training Dummy with a Sunfire Cape.",
      "tier": 1,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
      "cost": 0,
      "rounds": [
       "Early"
@@ -912,6 +1025,8 @@
    "name": "Freeroller",
    "desc": "Gain 2 rerolls.",
    "tier": 1,
+   "cat": "Shop",
+   "icon": "/tft-extra/wisps/18/Shop_Tier1.webp",
    "cost": 2,
    "rounds": [
     "Early",
@@ -927,6 +1042,8 @@
      "name": "Freeroller",
      "desc": "Gain 3 rerolls.",
      "tier": 1,
+     "cat": "Shop",
+     "icon": "/tft-extra/wisps/18/Shop_Tier1.webp",
      "cost": 2,
      "rounds": [
       "Early",
@@ -945,6 +1062,8 @@
    "name": "Health Potion",
    "desc": "Gain a tempoary equippable Health Potion.",
    "tier": 1,
+   "cat": "Misc",
+   "icon": "/tft-extra/wisps/18/Misc_Tier1.webp",
    "cost": 1,
    "rounds": [
     "EarlyMid",
@@ -954,29 +1073,34 @@
    "doubles": true,
    "tockers": true,
    "cooldown": 5,
-   "variants": []
-  },
-  {
-   "api": "DA_HealthPotion18_Upgrade_Charm",
-   "name": "Health Potion",
-   "desc": "Gain a temporary equippable Radiant Health Potion.",
-   "tier": 1,
-   "cost": 1,
-   "rounds": [
-    "EarlyMid",
-    "Mid",
-    "MidLate"
-   ],
-   "doubles": true,
-   "tockers": true,
-   "cooldown": 5,
-   "variants": []
+   "variants": [
+    {
+     "api": "DA_HealthPotion18_Upgrade_Charm",
+     "name": "Health Potion",
+     "desc": "Gain a temporary equippable Radiant Health Potion.",
+     "tier": 1,
+     "cat": "Misc",
+     "icon": "/tft-extra/wisps/18/Misc_Tier1.webp",
+     "cost": 1,
+     "rounds": [
+      "EarlyMid",
+      "Mid",
+      "MidLate"
+     ],
+     "doubles": true,
+     "tockers": true,
+     "cooldown": 5,
+     "kind": "upgrade"
+    }
+   ]
   },
   {
    "api": "DA_18_HeatedRivalry",
    "name": "Heated Rivalry",
    "desc": "Gain a Rengar or a Kha'Zix. They gain 3 takedowns.",
    "tier": 1,
+   "cat": "Champion",
+   "icon": "/tft-extra/wisps/18/Champion_Tier1.webp",
    "cost": 3,
    "rounds": [
     "Early"
@@ -990,6 +1114,8 @@
      "name": "Heated Rivalry",
      "desc": "Gain a Rengar or a Kha'Zix. They gain 5 takedowns.",
      "tier": 1,
+     "cat": "Champion",
+     "icon": "/tft-extra/wisps/18/Champion_Tier1.webp",
      "cost": 3,
      "rounds": [
       "Early"
@@ -1006,6 +1132,8 @@
    "name": "Hugify",
    "desc": "Your highest Health unit grows, gaining 350 Health.",
    "tier": 1,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
    "cost": 1,
    "rounds": [
     "EarlyMid",
@@ -1020,6 +1148,8 @@
      "name": "Hugify",
      "desc": "Your 10 highest Health units grow, gaining 2500 Health.",
      "tier": 3,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
      "cost": 0,
      "rounds": [
       "Early",
@@ -1039,6 +1169,8 @@
      "name": "Hugify",
      "desc": "Your highest Health unit grows, gaining 500 Health.",
      "tier": 1,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
      "cost": 1,
      "rounds": [
       "EarlyMid",
@@ -1056,6 +1188,8 @@
    "name": "Hummingbird",
    "desc": "Your highest Attack Speed unit shrinks, gaining 20% Attack Speed.",
    "tier": 1,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
    "cost": 1,
    "rounds": [
     "EarlyMid",
@@ -1070,6 +1204,8 @@
      "name": "Hummingbird",
      "desc": "Your 10 highest Attack Speed units shrink, gaining 100% Attack Speed.",
      "tier": 3,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
      "cost": 0,
      "rounds": [
       "Early",
@@ -1089,6 +1225,8 @@
      "name": "Hummingbird",
      "desc": "Your highest Attack Speed unit shrinks, gaining 35% Attack Speed.",
      "tier": 1,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
      "cost": 1,
      "rounds": [
       "EarlyMid",
@@ -1106,6 +1244,8 @@
    "name": "Knick-Knack Bag",
    "desc": "Gain 2 consumables that give permanent Attack Damage or Attack Speed.",
    "tier": 1,
+   "cat": "Misc",
+   "icon": "/tft-extra/wisps/18/Misc_Tier1.webp",
    "cost": 1,
    "rounds": [
     "EarlyMid",
@@ -1121,6 +1261,8 @@
      "name": "Knick-Knack Bag",
      "desc": "Gain 3 consumables that give permanent Attack Damage or Attack Speed.",
      "tier": 1,
+     "cat": "Misc",
+     "icon": "/tft-extra/wisps/18/Misc_Tier1.webp",
      "cost": 2,
      "rounds": [
       "EarlyMid",
@@ -1139,6 +1281,8 @@
    "name": "Knick-Knack Jar",
    "desc": "Gain 1 consumable that gives permanent Attack Damage or Attack Speed.",
    "tier": 1,
+   "cat": "Misc",
+   "icon": "/tft-extra/wisps/18/Misc_Tier1.webp",
    "cost": 0,
    "rounds": [
     "Early"
@@ -1153,6 +1297,8 @@
      "name": "Knick-Knack Jar",
      "desc": "Gain 2 consumables that give permanent Attack Damage or Attack Speed.",
      "tier": 1,
+     "cat": "Misc",
+     "icon": "/tft-extra/wisps/18/Misc_Tier1.webp",
      "cost": 0,
      "rounds": [
       "Early"
@@ -1170,6 +1316,8 @@
    "name": "Lesser Chaos",
    "desc": "Cast a random Wisp.",
    "tier": 1,
+   "cat": "Misc",
+   "icon": "/tft-extra/wisps/18/Misc_Tier1.webp",
    "cost": 1,
    "rounds": [
     "Early",
@@ -1184,6 +1332,8 @@
      "name": "Lesser Chaos",
      "desc": "Cast a random Wisp worth 1 or more gold.",
      "tier": 1,
+     "cat": "Misc",
+     "icon": "/tft-extra/wisps/18/Misc_Tier1.webp",
      "cost": 1,
      "rounds": [
       "Early",
@@ -1201,6 +1351,8 @@
    "name": "Lightning Strike",
    "desc": "Deal 10% Max Health true damage to all enemies.",
    "tier": 1,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
    "cost": 1,
    "rounds": [
     "MidLate",
@@ -1215,6 +1367,8 @@
      "name": "Lightning Strike",
      "desc": "Deal 18% Max Health true damage to all enemies.",
      "tier": 1,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
      "cost": 1,
      "rounds": [
       "MidLate",
@@ -1232,6 +1386,8 @@
    "name": "Lost Travelers",
    "desc": "Gain 3 gold worth of random champions.",
    "tier": 1,
+   "cat": "Champion",
+   "icon": "/tft-extra/wisps/18/Champion_Tier1.webp",
    "cost": 3,
    "rounds": [
     "Early"
@@ -1245,6 +1401,8 @@
      "name": "Lost Travelers",
      "desc": "Gain 4 gold worth of random champions.",
      "tier": 1,
+     "cat": "Champion",
+     "icon": "/tft-extra/wisps/18/Champion_Tier1.webp",
      "cost": 4,
      "rounds": [
       "Early"
@@ -1261,6 +1419,8 @@
    "name": "Mana Potion",
    "desc": "Gain a temporary equippable Mana Potion.",
    "tier": 1,
+   "cat": "Misc",
+   "icon": "/tft-extra/wisps/18/Misc_Tier1.webp",
    "cost": 1,
    "rounds": [
     "EarlyMid",
@@ -1270,29 +1430,34 @@
    "doubles": true,
    "tockers": true,
    "cooldown": 5,
-   "variants": []
-  },
-  {
-   "api": "DA_ManaPotion18_Upgrade_Charm",
-   "name": "Mana Potion",
-   "desc": "Gain a temporary equippable Radiant Mana Potion.",
-   "tier": 1,
-   "cost": 1,
-   "rounds": [
-    "EarlyMid",
-    "Mid",
-    "MidLate"
-   ],
-   "doubles": true,
-   "tockers": true,
-   "cooldown": 5,
-   "variants": []
+   "variants": [
+    {
+     "api": "DA_ManaPotion18_Upgrade_Charm",
+     "name": "Mana Potion",
+     "desc": "Gain a temporary equippable Radiant Mana Potion.",
+     "tier": 1,
+     "cat": "Misc",
+     "icon": "/tft-extra/wisps/18/Misc_Tier1.webp",
+     "cost": 1,
+     "rounds": [
+      "EarlyMid",
+      "Mid",
+      "MidLate"
+     ],
+     "doubles": true,
+     "tockers": true,
+     "cooldown": 5,
+     "kind": "upgrade"
+    }
+   ]
   },
   {
    "api": "DA_18_MinorGambit",
    "name": "Minor Gambit",
    "desc": "If you win the next player combat, gain 2 Gold.",
    "tier": 1,
+   "cat": "Risky",
+   "icon": "/tft-extra/wisps/18/Risky_Tier1.webp",
    "cost": 1,
    "rounds": [
     "Early"
@@ -1307,6 +1472,8 @@
      "name": "Minor Gambit",
      "desc": "If you win the next player combat, gain 3 Gold.",
      "tier": 1,
+     "cat": "Risky",
+     "icon": "/tft-extra/wisps/18/Risky_Tier1.webp",
      "cost": 1,
      "rounds": [
       "Early"
@@ -1324,6 +1491,8 @@
    "name": "Minor Polymorph",
    "desc": "A random 1-cost you own permanently transforms into a 2-cost.",
    "tier": 1,
+   "cat": "Risky",
+   "icon": "/tft-extra/wisps/18/Risky_Tier1.webp",
    "cost": 0,
    "rounds": [
     "Early",
@@ -1342,6 +1511,8 @@
      "name": "Minor Polymorph",
      "desc": "The highest star level 1-cost you own permanently transforms into a 2-cost.",
      "tier": 1,
+     "cat": "Risky",
+     "icon": "/tft-extra/wisps/18/Risky_Tier1.webp",
      "cost": 0,
      "rounds": [
       "Early",
@@ -1363,6 +1534,8 @@
    "name": "Mitosis",
    "desc": "Gain a Tiny Champion Duplicator.",
    "tier": 1,
+   "cat": "Champion",
+   "icon": "/tft-extra/wisps/18/Champion_Tier1.webp",
    "cost": 1,
    "rounds": [
     "Early"
@@ -1376,6 +1549,8 @@
      "name": "Mitosis",
      "desc": "Gain a Tiny Champion Duplicator.",
      "tier": 1,
+     "cat": "Champion",
+     "icon": "/tft-extra/wisps/18/Champion_Tier1.webp",
      "cost": 0,
      "rounds": [
       "Early"
@@ -1392,6 +1567,8 @@
    "name": "Moonrise",
    "desc": "After 8 seconds, increase Lunar's effects by 100%.",
    "tier": 1,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
    "cost": 2,
    "rounds": [
     "MidLate",
@@ -1407,6 +1584,8 @@
      "name": "Moonrise",
      "desc": "After 8 seconds, increase Lunar's effects by 175%.",
      "tier": 1,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
      "cost": 2,
      "rounds": [
       "MidLate",
@@ -1425,6 +1604,8 @@
    "name": "Petrified Dummy",
    "desc": "Your first champion to die turns into a 900 Health dummy with their defenses.",
    "tier": 1,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
    "cost": 2,
    "rounds": [
     "EarlyMid",
@@ -1440,6 +1621,8 @@
      "name": "Petrified Dummy",
      "desc": "Your first champion to die turns into a 1350 Health dummy with their defenses.",
      "tier": 1,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
      "cost": 2,
      "rounds": [
       "EarlyMid",
@@ -1458,6 +1641,8 @@
    "name": "Petrify Shields",
    "desc": "10% Slow enemies and reduce their shields by 20% for 10 seconds.",
    "tier": 1,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
    "cost": 1,
    "rounds": [
     "MidLate",
@@ -1472,6 +1657,8 @@
      "name": "Petrify Shields",
      "desc": "10% Slow enemies and reduce their shields by 30% for 10 seconds.",
      "tier": 1,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
      "cost": 1,
      "rounds": [
       "MidLate",
@@ -1489,6 +1676,8 @@
    "name": "Pocket Change",
    "desc": "Your one-star champions drop 1 gold on death.",
    "tier": 1,
+   "cat": "GoldXP",
+   "icon": "/tft-extra/wisps/18/GoldXP_Tier1.webp",
    "cost": 1,
    "rounds": [
     "EarlyMid",
@@ -1504,6 +1693,8 @@
      "name": "Pocket Change",
      "desc": "Your one-star champions drop 1 gold on death. Gain 1 gold.",
      "tier": 1,
+     "cat": "GoldXP",
+     "icon": "/tft-extra/wisps/18/GoldXP_Tier1.webp",
      "cost": 1,
      "rounds": [
       "EarlyMid",
@@ -1522,6 +1713,8 @@
    "name": "Polymorph",
    "desc": "A random 2-cost you own permanently transforms into a 3-cost.",
    "tier": 1,
+   "cat": "Risky",
+   "icon": "/tft-extra/wisps/18/Risky_Tier1.webp",
    "cost": 0,
    "rounds": [
     "Early",
@@ -1541,6 +1734,8 @@
      "name": "Polymorph",
      "desc": "The highest star level 2-cost you own permanently transforms into a 3-cost.",
      "tier": 1,
+     "cat": "Risky",
+     "icon": "/tft-extra/wisps/18/Risky_Tier1.webp",
      "cost": 0,
      "rounds": [
       "Early",
@@ -1563,6 +1758,8 @@
    "name": "Prolific Power",
    "desc": "Your champions gain 4% Attack Damage and Ability Power.",
    "tier": 1,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
    "cost": 0,
    "rounds": [
     "MidLate",
@@ -1579,6 +1776,8 @@
      "name": "Prolific Power",
      "desc": "Your champions gain 6% Attack Damage and Ability Power.",
      "tier": 1,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
      "cost": 0,
      "rounds": [
       "MidLate",
@@ -1598,6 +1797,8 @@
    "name": "Quicken",
    "desc": "On cast, your champions gain 30% Attack Speed for 4 seconds.",
    "tier": 1,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
    "cost": 2,
    "rounds": [
     "Mid",
@@ -1613,6 +1814,8 @@
      "name": "Quicken",
      "desc": "On cast, your champions gain 40% Attack Speed for 5 seconds.",
      "tier": 1,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
      "cost": 2,
      "rounds": [
       "Mid",
@@ -1631,6 +1834,8 @@
    "name": "Rain",
    "desc": "Your team gains 1 Mana Regen.",
    "tier": 1,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
    "cost": 1,
    "rounds": [
     "EarlyMid",
@@ -1646,6 +1851,8 @@
      "name": "Rain",
      "desc": "Your team gains 2 Mana Regen.",
      "tier": 1,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
      "cost": 1,
      "rounds": [
       "EarlyMid",
@@ -1664,6 +1871,8 @@
    "name": "Resistant",
    "desc": "Tanks reduce instances of incoming damage by 10.",
    "tier": 1,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
    "cost": 2,
    "rounds": [
     "MidLate",
@@ -1679,6 +1888,8 @@
      "name": "Resistant",
      "desc": "Tanks reduce instances of incoming damage by 18.",
      "tier": 1,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
      "cost": 2,
      "rounds": [
       "MidLate",
@@ -1697,6 +1908,8 @@
    "name": "Salvager",
    "desc": "Any units you bench have items removed and broken apart.",
    "tier": 1,
+   "cat": "Misc",
+   "icon": "/tft-extra/wisps/18/Misc_Tier1.webp",
    "cost": 0,
    "rounds": [
     "MidLate",
@@ -1717,6 +1930,8 @@
      "name": "Salvager",
      "desc": "Any units you bench have items removed and broken apart. Gain 2 Gold.",
      "tier": 1,
+     "cat": "Misc",
+     "icon": "/tft-extra/wisps/18/Misc_Tier1.webp",
      "cost": 0,
      "rounds": [
       "MidLate",
@@ -1740,6 +1955,8 @@
    "name": "Search Party",
    "desc": "Each of your shops has a 4-cost in it this round until you buy one.",
    "tier": 1,
+   "cat": "Shop",
+   "icon": "/tft-extra/wisps/18/Shop_Tier1.webp",
    "cost": 1,
    "rounds": [
     "Mid",
@@ -1755,6 +1972,8 @@
      "name": "Search Party",
      "desc": "Each of your shops has a 4-cost in it this round until you buy one.",
      "tier": 1,
+     "cat": "Shop",
+     "icon": "/tft-extra/wisps/18/Shop_Tier1.webp",
      "cost": 0,
      "rounds": [
       "Mid",
@@ -1773,6 +1992,8 @@
    "name": "Starfall",
    "desc": "The first 6 times you reroll your shop this round, the lowest cost champion becomes 2-star.",
    "tier": 1,
+   "cat": "Shop",
+   "icon": "/tft-extra/wisps/18/Shop_Tier1.webp",
    "cost": 1,
    "rounds": [
     "EarlyMid",
@@ -1788,6 +2009,8 @@
      "name": "Starfall",
      "desc": "The first 8 times you reroll your shop this round, the lowest cost champion becomes 2-star.",
      "tier": 1,
+     "cat": "Shop",
+     "icon": "/tft-extra/wisps/18/Shop_Tier1.webp",
      "cost": 0,
      "rounds": [
       "EarlyMid",
@@ -1806,6 +2029,8 @@
    "name": "Stealthy",
    "desc": "Your 2 strongest Fighters or Assassins are untargetable for 6 seconds.",
    "tier": 1,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
    "cost": 0,
    "rounds": [
     "MidLate",
@@ -1821,6 +2046,8 @@
      "name": "Stealthy",
      "desc": "2 random champions on the back row are untargetable for 10 seconds.",
      "tier": 1,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
      "cost": 0,
      "rounds": [
       "MidLate",
@@ -1839,6 +2066,8 @@
    "name": "Sunfire Sorcery",
    "desc": "Burn and Wound enemies for 10 seconds.",
    "tier": 1,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
    "cost": 2,
    "rounds": [
     "Mid",
@@ -1854,6 +2083,8 @@
      "name": "Sunfire Sorcery",
      "desc": "Burn and Wound enemies for 15 seconds.",
      "tier": 1,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
      "cost": 2,
      "rounds": [
       "Mid",
@@ -1872,6 +2103,8 @@
    "name": "Take One With Ya",
    "desc": "If you lose and kill at least one enemy, gain 4 XP.",
    "tier": 1,
+   "cat": "Risky",
+   "icon": "/tft-extra/wisps/18/Risky_Tier1.webp",
    "cost": 1,
    "rounds": [
     "Early"
@@ -1886,6 +2119,8 @@
      "name": "Take One With Ya",
      "desc": "If you lose and kill at least one enemy, gain 6 XP.",
      "tier": 1,
+     "cat": "Risky",
+     "icon": "/tft-extra/wisps/18/Risky_Tier1.webp",
      "cost": 1,
      "rounds": [
       "Early"
@@ -1903,6 +2138,8 @@
    "name": "Tattered Armor",
    "desc": "30% Shred and Sunder enemies for 10 seconds.",
    "tier": 1,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
    "cost": 1,
    "rounds": [
     "Mid",
@@ -1918,6 +2155,8 @@
      "name": "Tattered Armor",
      "desc": "90% Shred and Sunder enemies for 45 seconds.",
      "tier": 3,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
      "cost": 0,
      "rounds": [
       "Early",
@@ -1937,6 +2176,8 @@
      "name": "Tattered Armor",
      "desc": "30% Shred and Sunder enemies for 15 seconds.",
      "tier": 1,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
      "cost": 1,
      "rounds": [
       "Mid",
@@ -1955,6 +2196,8 @@
    "name": "Terraforming",
    "desc": "Gain 7 seeds at start of combat.",
    "tier": 1,
+   "cat": "Misc",
+   "icon": "/tft-extra/wisps/18/Misc_Tier1.webp",
    "cost": 2,
    "rounds": [
     "MidLate",
@@ -1971,6 +2214,8 @@
      "name": "Terraforming",
      "desc": "Gain 10 seeds at start of combat.",
      "tier": 1,
+     "cat": "Misc",
+     "icon": "/tft-extra/wisps/18/Misc_Tier1.webp",
      "cost": 2,
      "rounds": [
       "MidLate",
@@ -1990,6 +2235,8 @@
    "name": "Thingamajig Bag",
    "desc": "Gain 2 consumables that give permanent Ability Power or Mana Regen.",
    "tier": 1,
+   "cat": "Misc",
+   "icon": "/tft-extra/wisps/18/Misc_Tier1.webp",
    "cost": 1,
    "rounds": [
     "EarlyMid",
@@ -2005,6 +2252,8 @@
      "name": "Thingamajig Bag",
      "desc": "Gain 3 consumables that give permanent Ability Power or Mana Regen.",
      "tier": 1,
+     "cat": "Misc",
+     "icon": "/tft-extra/wisps/18/Misc_Tier1.webp",
      "cost": 1,
      "rounds": [
       "EarlyMid",
@@ -2023,6 +2272,8 @@
    "name": "Thingamajig Jar",
    "desc": "Gain 1 consumable that gives permanent Ability Power or Mana Regen.",
    "tier": 1,
+   "cat": "Misc",
+   "icon": "/tft-extra/wisps/18/Misc_Tier1.webp",
    "cost": 0,
    "rounds": [
     "Early"
@@ -2037,6 +2288,8 @@
      "name": "Thingamajig Jar",
      "desc": "Gain 2 consumables that give permanent Ability Power or Mana Regen.",
      "tier": 1,
+     "cat": "Misc",
+     "icon": "/tft-extra/wisps/18/Misc_Tier1.webp",
      "cost": 1,
      "rounds": [
       "Early"
@@ -2054,6 +2307,8 @@
    "name": "Trophy Hunter",
    "desc": "Next player combat, your Rivals' takedowns count twice.",
    "tier": 1,
+   "cat": "Risky",
+   "icon": "/tft-extra/wisps/18/Risky_Tier1.webp",
    "cost": 2,
    "rounds": [
     "Early",
@@ -2071,6 +2326,8 @@
      "name": "Trophy Hunter",
      "desc": "Next player combat, your Rivals' takedowns count twice.",
      "tier": 1,
+     "cat": "Risky",
+     "icon": "/tft-extra/wisps/18/Risky_Tier1.webp",
      "cost": 0,
      "rounds": [
       "Early",
@@ -2091,6 +2348,8 @@
    "name": "Truce",
    "desc": "Gain 1 gold. Your opponent gains 1 gold.",
    "tier": 1,
+   "cat": "GoldXP",
+   "icon": "/tft-extra/wisps/18/GoldXP_Tier1.webp",
    "cost": 0,
    "rounds": [
     "Early"
@@ -2104,6 +2363,8 @@
      "name": "Truce",
      "desc": "Gain 100 gold. Your opponent gains 1 gold.",
      "tier": 3,
+     "cat": "GoldXP",
+     "icon": "/tft-extra/wisps/18/GoldXP_Tier3.webp",
      "cost": 0,
      "rounds": [
       "Early",
@@ -2123,6 +2384,8 @@
      "name": "Truce",
      "desc": "Gain 2 gold. Your opponent gains 1 gold.",
      "tier": 1,
+     "cat": "GoldXP",
+     "icon": "/tft-extra/wisps/18/GoldXP_Tier1.webp",
      "cost": 0,
      "rounds": [
       "Early"
@@ -2139,6 +2402,8 @@
    "name": "Ultra Ascension",
    "desc": "After 25 seconds, allies gain 300% Damage Amp.",
    "tier": 1,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
    "cost": 1,
    "rounds": [
     "EarlyMid",
@@ -2153,6 +2418,8 @@
      "name": "Ultra Ascension",
      "desc": "After 12 seconds, allies gain 300% Damage Amp.",
      "tier": 3,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
      "cost": 1,
      "rounds": [
       "Early",
@@ -2172,6 +2439,8 @@
      "name": "Ultra Ascension",
      "desc": "After 23 seconds, allies gain 300% Damage Amp.",
      "tier": 1,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
      "cost": 1,
      "rounds": [
       "EarlyMid",
@@ -2189,6 +2458,8 @@
    "name": "Verdant Vitality",
    "desc": "Your champions gain 50 Health.",
    "tier": 1,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
    "cost": 0,
    "rounds": [
     "MidLate",
@@ -2205,6 +2476,8 @@
      "name": "Verdant Vitality",
      "desc": "Your champions gain 75 Health.",
      "tier": 1,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
      "cost": 0,
      "rounds": [
       "MidLate",
@@ -2224,6 +2497,8 @@
    "name": "Wrapped In Thorns",
    "desc": "Your Tanks reflect 12% of damage taken to adjacent enemies every 4 seconds.",
    "tier": 1,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
    "cost": 2,
    "rounds": [
     "Mid",
@@ -2241,6 +2516,8 @@
      "name": "Wrapped In Thorns",
      "desc": "Your Tanks reflect 18% of damage taken to adjacent enemies every 4 seconds.",
      "tier": 1,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
      "cost": 2,
      "rounds": [
       "Mid",
@@ -2261,6 +2538,8 @@
    "name": "Aftershock",
    "desc": "After 8 seconds, stun all enemies for 1.5 seconds.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 2,
    "rounds": [
     "MidLate",
@@ -2279,6 +2558,8 @@
      "name": "Aftershock",
      "desc": "After 8 and 18 seconds, stun all enemies for 1.5 seconds.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 2,
      "rounds": [
       "MidLate",
@@ -2300,6 +2581,8 @@
    "name": "Animate Shop",
    "desc": "For 18 seconds, your shop rerolls for free every 2 seconds.",
    "tier": 2,
+   "cat": "Shop",
+   "icon": "/tft-extra/wisps/18/Shop_Tier2.webp",
    "cost": 8,
    "rounds": [
     "MidLate",
@@ -2315,6 +2598,8 @@
      "name": "Animate Shop",
      "desc": "For 24 seconds, your shop rerolls for free every 2 seconds.",
      "tier": 2,
+     "cat": "Shop",
+     "icon": "/tft-extra/wisps/18/Shop_Tier2.webp",
      "cost": 8,
      "rounds": [
       "MidLate",
@@ -2333,6 +2618,8 @@
    "name": "Apprentice",
    "desc": "Gain a random 2-star 1-cost champion.",
    "tier": 2,
+   "cat": "Champion",
+   "icon": "/tft-extra/wisps/18/Champion_Tier2.webp",
    "cost": 3,
    "rounds": [
     "Early"
@@ -2346,6 +2633,8 @@
      "name": "Apprentice",
      "desc": "Gain a random 2-star 1-cost champion.",
      "tier": 2,
+     "cat": "Champion",
+     "icon": "/tft-extra/wisps/18/Champion_Tier2.webp",
      "cost": 2,
      "rounds": [
       "Early"
@@ -2362,6 +2651,8 @@
    "name": "Artifactinate",
    "desc": "Lose 3 components, including ones built into items. Gain an Artifact anvil.",
    "tier": 2,
+   "cat": "Item",
+   "icon": "/tft-extra/wisps/18/Item_Tier2.webp",
    "cost": 2,
    "rounds": [
     "Early",
@@ -2391,6 +2682,8 @@
      "name": "Artifactinate",
      "desc": "Lose 3 components, including ones built into items. Gain an Artifact anvil and 1 Reforger.",
      "tier": 2,
+     "cat": "Item",
+     "icon": "/tft-extra/wisps/18/Item_Tier2.webp",
      "cost": 2,
      "rounds": [
       "Early",
@@ -2423,6 +2716,8 @@
    "name": "Backrow Star",
    "desc": "A random back row champion gains 85% Attack Speed for 7 seconds.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 1,
    "rounds": [
     "MidLate",
@@ -2438,6 +2733,8 @@
      "name": "Backrow Star",
      "desc": "A random back row champion gains 115% Attack Speed for 8 seconds.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 1,
      "rounds": [
       "MidLate",
@@ -2456,6 +2753,8 @@
    "name": "Barrier",
    "desc": "Allies gain 1250 Shield, decaying over 6 seconds.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 3,
    "rounds": [
     "Late",
@@ -2470,6 +2769,8 @@
      "name": "Barrier",
      "desc": "Allies gain 7500 Shield, decaying over 30 seconds.",
      "tier": 3,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
      "cost": 0,
      "rounds": [
       "Early",
@@ -2489,6 +2790,8 @@
      "name": "Barrier",
      "desc": "Allies gain 1250 Shield, decaying over 9 seconds.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 3,
      "rounds": [
       "Late",
@@ -2506,6 +2809,8 @@
    "name": "Bear's Visit",
    "desc": "Gain the Bear Primal buff for this combat.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 3,
    "rounds": [
     "Mid",
@@ -2522,6 +2827,8 @@
      "name": "Tiger's Visit",
      "desc": "Gain the Tiger Primal buff for this combat.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 2,
      "rounds": [
       "Mid",
@@ -2541,6 +2848,8 @@
    "name": "Big Guns",
    "desc": "Gain 2 random 1-star 4-cost champions.",
    "tier": 2,
+   "cat": "Champion",
+   "icon": "/tft-extra/wisps/18/Champion_Tier2.webp",
    "cost": 8,
    "rounds": [
     "MidLate"
@@ -2554,6 +2863,8 @@
      "name": "Big Guns",
      "desc": "Gain 2 random 1-star 4-cost champions.",
      "tier": 2,
+     "cat": "Champion",
+     "icon": "/tft-extra/wisps/18/Champion_Tier2.webp",
      "cost": 7,
      "rounds": [
       "MidLate"
@@ -2570,6 +2881,8 @@
    "name": "Blood and Iron",
    "desc": "After 20 champion deaths, gain a component anvil.",
    "tier": 2,
+   "cat": "Item",
+   "icon": "/tft-extra/wisps/18/Item_Tier2.webp",
    "cost": 4,
    "rounds": [
     "EarlyMid",
@@ -2587,6 +2900,8 @@
      "name": "Blood and Iron",
      "desc": "After 16 champion deaths, gain a component anvil.",
      "tier": 2,
+     "cat": "Item",
+     "icon": "/tft-extra/wisps/18/Item_Tier2.webp",
      "cost": 4,
      "rounds": [
       "Early"
@@ -2606,6 +2921,8 @@
    "name": "Booster Shot",
    "desc": "Up to 2 1-star champions temporarily star up during combat.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 6,
    "rounds": [
     "Late",
@@ -2621,6 +2938,8 @@
      "name": "Booster Shot",
      "desc": "Up to 3 1-star champions temporarily star up during combat.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 6,
      "rounds": [
       "Late",
@@ -2639,6 +2958,8 @@
    "name": "Bronze Spoon",
    "desc": "Gain 4 XP.",
    "tier": 2,
+   "cat": "GoldXP",
+   "icon": "/tft-extra/wisps/18/GoldXP_Tier2.webp",
    "cost": 3,
    "rounds": [
     "Early",
@@ -2654,6 +2975,8 @@
      "name": "Bronze Spoon",
      "desc": "Gain 4 XP.",
      "tier": 2,
+     "cat": "GoldXP",
+     "icon": "/tft-extra/wisps/18/GoldXP_Tier2.webp",
      "cost": 2,
      "rounds": [
       "Early",
@@ -2672,6 +2995,8 @@
    "name": "Bulwark",
    "desc": "Your Tanks gain a 20% Max Health shield upon falling below 50% Health.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 3,
    "rounds": [
     "MidLate",
@@ -2688,6 +3013,8 @@
      "name": "Bulwark",
      "desc": "Your Tanks gain a 30% Max Health shield upon falling below 50% Health.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 3,
      "rounds": [
       "MidLate",
@@ -2707,6 +3034,8 @@
    "name": "Counterspell",
    "desc": "Increase all enemies' Max Mana by 15 until their next cast.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 2,
    "rounds": [
     "Late",
@@ -2721,6 +3050,8 @@
      "name": "Counterspell",
      "desc": "Increase all enemies' Max Mana by 150 until their next cast.",
      "tier": 3,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
      "cost": 0,
      "rounds": [
       "Early",
@@ -2740,6 +3071,8 @@
      "name": "Counterspell",
      "desc": "Increase all enemies' Max Mana by 22 until their next cast.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 2,
      "rounds": [
       "Late",
@@ -2757,6 +3090,8 @@
    "name": "Curio Cart",
    "desc": "Open an item store. Items cost 0 to 15 gold.",
    "tier": 2,
+   "cat": "Item",
+   "icon": "/tft-extra/wisps/18/Item_Tier2.webp",
    "cost": 0,
    "rounds": [
     "EarlyMid",
@@ -2773,6 +3108,8 @@
      "name": "Curio Cart",
      "desc": "Open an item store. Items cost 0 to 15 gold. Gain 1 Gold.",
      "tier": 2,
+     "cat": "Item",
+     "icon": "/tft-extra/wisps/18/Item_Tier2.webp",
      "cost": 0,
      "rounds": [
       "Mid",
@@ -2792,6 +3129,8 @@
    "name": "Cutpurse",
    "desc": "Every 5 seconds, your champions have a 20% chance to drop 1 Gold.",
    "tier": 2,
+   "cat": "Risky",
+   "icon": "/tft-extra/wisps/18/Risky_Tier2.webp",
    "cost": 2,
    "rounds": [
     "Mid",
@@ -2806,6 +3145,8 @@
      "name": "Cutpurse",
      "desc": "Every 4 seconds, your champions have a 20% chance to drop 1 Gold.",
      "tier": 2,
+     "cat": "Risky",
+     "icon": "/tft-extra/wisps/18/Risky_Tier2.webp",
      "cost": 2,
      "rounds": [
       "Mid",
@@ -2823,6 +3164,8 @@
    "name": "Diversified",
    "desc": "Your team gains 30 Health for each active non-unique trait.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 3,
    "rounds": [
     "MidLate",
@@ -2838,6 +3181,8 @@
      "name": "Diversified",
      "desc": "Your team gains 45 Health for each active non-unique trait.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 3,
      "rounds": [
       "MidLate",
@@ -2856,6 +3201,8 @@
    "name": "Doodad Sack",
    "desc": "Gain 3 consumables that give permanent Armor and Magic Resist or Health.",
    "tier": 2,
+   "cat": "Misc",
+   "icon": "/tft-extra/wisps/18/Misc_Tier2.webp",
    "cost": 3,
    "rounds": [
     "Late",
@@ -2870,6 +3217,8 @@
      "name": "Doodad Sack",
      "desc": "Gain 4 consumables that give permanent Armor and Magic Resist or Health.",
      "tier": 2,
+     "cat": "Misc",
+     "icon": "/tft-extra/wisps/18/Misc_Tier2.webp",
      "cost": 3,
      "rounds": [
       "Late",
@@ -2887,6 +3236,8 @@
    "name": "Downpour",
    "desc": "Your team gains 2 Mana Regen.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 2,
    "rounds": [
     "Late",
@@ -2901,6 +3252,8 @@
      "name": "Downpour",
      "desc": "Your team gains 15 Mana Regen.",
      "tier": 3,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
      "cost": 0,
      "rounds": [
       "Early",
@@ -2920,6 +3273,8 @@
      "name": "Downpour",
      "desc": "Your team gains 3 Mana Regen.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 2,
      "rounds": [
       "Late",
@@ -2937,6 +3292,8 @@
    "name": "Fellowship",
    "desc": "Champions gain 4% Max Health Shield and 4% Damage Amp per adjacent ally.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 3,
    "rounds": [
     "Late",
@@ -2951,6 +3308,8 @@
      "name": "Fellowship",
      "desc": "Champions gain 6% Max Health Shield and 6% Damage Amp per adjacent ally.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 3,
      "rounds": [
       "Late",
@@ -2968,6 +3327,8 @@
    "name": "Flip Frenzy",
    "desc": "Flip a coin, gain 1 gold if it's heads. Continue until you flip tails.",
    "tier": 2,
+   "cat": "Risky",
+   "icon": "/tft-extra/wisps/18/Risky_Tier2.webp",
    "cost": 1,
    "rounds": [
     "EarlyMid",
@@ -2982,6 +3343,8 @@
      "name": "Flip Frenzy",
      "desc": "Flip a coin, gain 1 gold if it's heads. Continue until you flip tails.",
      "tier": 2,
+     "cat": "Risky",
+     "icon": "/tft-extra/wisps/18/Risky_Tier2.webp",
      "cost": 0,
      "rounds": [
       "EarlyMid",
@@ -2999,6 +3362,8 @@
    "name": "Forest Twins",
    "desc": "Gain 2 copies of a 2-cost champion you don't have.",
    "tier": 2,
+   "cat": "Champion",
+   "icon": "/tft-extra/wisps/18/Champion_Tier2.webp",
    "cost": 4,
    "rounds": [
     "Early"
@@ -3012,6 +3377,8 @@
      "name": "Forest Twins",
      "desc": "Gain 3 copies of a 2-cost champion you don't have.",
      "tier": 2,
+     "cat": "Champion",
+     "icon": "/tft-extra/wisps/18/Champion_Tier2.webp",
      "cost": 5,
      "rounds": [
       "Early"
@@ -3028,6 +3395,8 @@
    "name": "Golden Goose",
    "desc": "Gain 1 gold for every 1700 damage your highest damage champion deals.",
    "tier": 2,
+   "cat": "GoldXP",
+   "icon": "/tft-extra/wisps/18/GoldXP_Tier2.webp",
    "cost": 1,
    "rounds": [
     "MidLate",
@@ -3042,6 +3411,8 @@
      "name": "Golden Goose",
      "desc": "Gain 1 gold for every 1000 damage your highest damage champion deals.",
      "tier": 2,
+     "cat": "GoldXP",
+     "icon": "/tft-extra/wisps/18/GoldXP_Tier2.webp",
      "cost": 1,
      "rounds": [
       "MidLate",
@@ -3059,6 +3430,8 @@
    "name": "Golden Road",
    "desc": "After 3 player combats, gain 2 Gold per fight won.",
    "tier": 2,
+   "cat": "Risky",
+   "icon": "/tft-extra/wisps/18/Risky_Tier2.webp",
    "cost": 2,
    "rounds": [
     "Early",
@@ -3074,6 +3447,8 @@
      "name": "Golden Road",
      "desc": "After 3 player combats, gain 2 Gold per fight won plus 1 Gold.",
      "tier": 2,
+     "cat": "Risky",
+     "icon": "/tft-extra/wisps/18/Risky_Tier2.webp",
      "cost": 2,
      "rounds": [
       "Early",
@@ -3092,6 +3467,8 @@
    "name": "Good Loss",
    "desc": "For the next 3 player combats, gain 4 XP if you lose.",
    "tier": 2,
+   "cat": "Risky",
+   "icon": "/tft-extra/wisps/18/Risky_Tier2.webp",
    "cost": 4,
    "rounds": [
     "EarlyMid",
@@ -3107,6 +3484,8 @@
      "name": "Good Loss",
      "desc": "For the next 3 player combats, gain 6 XP if you lose.",
      "tier": 2,
+     "cat": "Risky",
+     "icon": "/tft-extra/wisps/18/Risky_Tier2.webp",
      "cost": 4,
      "rounds": [
       "EarlyMid",
@@ -3125,6 +3504,8 @@
    "name": "Grow Up",
    "desc": "Gain 10 XP.",
    "tier": 2,
+   "cat": "GoldXP",
+   "icon": "/tft-extra/wisps/18/GoldXP_Tier2.webp",
    "cost": 7,
    "rounds": [
     "EarlyMid",
@@ -3140,6 +3521,8 @@
      "name": "Grow Up",
      "desc": "Gain 12 XP.",
      "tier": 2,
+     "cat": "GoldXP",
+     "icon": "/tft-extra/wisps/18/GoldXP_Tier2.webp",
      "cost": 7,
      "rounds": [
       "EarlyMid",
@@ -3158,6 +3541,8 @@
    "name": "Healing Pool",
    "desc": "Heal 5 Player Health.",
    "tier": 2,
+   "cat": "Misc",
+   "icon": "/tft-extra/wisps/18/Misc_Tier2.webp",
    "cost": 2,
    "rounds": [
     "Early",
@@ -3173,6 +3558,8 @@
      "name": "Healing Pool",
      "desc": "Heal 7 Player Health.",
      "tier": 2,
+     "cat": "Misc",
+     "icon": "/tft-extra/wisps/18/Misc_Tier2.webp",
      "cost": 2,
      "rounds": [
       "Mid",
@@ -3192,6 +3579,8 @@
    "name": "Homing Fireflies",
    "desc": "Your Casters spawn a firefly per 20 Mana spent. Each deals 110 magic damage.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 2,
    "rounds": [
     "Mid",
@@ -3209,6 +3598,8 @@
      "name": "Homing Fireflies",
      "desc": "Your Casters spawn a firefly per 15 Mana spent. Each deals 110 magic damage.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 2,
      "rounds": [
       "Mid",
@@ -3229,6 +3620,8 @@
    "name": "Idle Craftsman",
    "desc": "A component on your bench turns into a completed item it builds.",
    "tier": 2,
+   "cat": "Item",
+   "icon": "/tft-extra/wisps/18/Item_Tier2.webp",
    "cost": 4,
    "rounds": [
     "EarlyMid",
@@ -3244,6 +3637,8 @@
      "name": "Idle Craftsman",
      "desc": "A component on your bench turns into a completed item it builds.",
      "tier": 2,
+     "cat": "Item",
+     "icon": "/tft-extra/wisps/18/Item_Tier2.webp",
      "cost": 2,
      "rounds": [
       "EarlyMid",
@@ -3262,6 +3657,8 @@
    "name": "Improved Reach",
    "desc": "Your Fighters gain 1 range.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 2,
    "rounds": [
     "Late",
@@ -3277,6 +3674,8 @@
      "name": "Improved Reach",
      "desc": "Your Fighters gain 2 range.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 2,
      "rounds": [
       "Late",
@@ -3295,6 +3694,8 @@
    "name": "Iron Core",
    "desc": "Your front center champion gains 6% Max Health per front-row unit.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 1,
    "rounds": [
     "MidLate",
@@ -3312,6 +3713,8 @@
      "name": "Iron Core",
      "desc": "Your front center champion gains 8% Max Health per front-row unit.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 1,
      "rounds": [
       "MidLate",
@@ -3332,6 +3735,8 @@
    "name": "Ironwood",
    "desc": "Enemies attacking your highest health champion deal 14% less damage.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 2,
    "rounds": [
     "MidLate",
@@ -3347,6 +3752,8 @@
      "name": "Ironwood",
      "desc": "Enemies attacking your highest health champion deal 20% less damage.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 2,
      "rounds": [
       "MidLate",
@@ -3365,6 +3772,8 @@
    "name": "Journeyman",
    "desc": "Gain a random 2-star 2-cost champion.",
    "tier": 2,
+   "cat": "Champion",
+   "icon": "/tft-extra/wisps/18/Champion_Tier2.webp",
    "cost": 6,
    "rounds": [
     "Early",
@@ -3379,6 +3788,8 @@
      "name": "Journeyman",
      "desc": "Gain a random 2-star 2-cost champion.",
      "tier": 2,
+     "cat": "Champion",
+     "icon": "/tft-extra/wisps/18/Champion_Tier2.webp",
      "cost": 5,
      "rounds": [
       "Early",
@@ -3396,6 +3807,8 @@
    "name": "Jungling",
    "desc": "Overrun the shop with Riftbeasts.",
    "tier": 2,
+   "cat": "Shop",
+   "icon": "/tft-extra/wisps/18/Shop_Tier2.webp",
    "cost": 4,
    "rounds": [
     "EarlyMid",
@@ -3412,6 +3825,8 @@
      "name": "Jungling",
      "desc": "Overrun the shop with Riftbeasts.",
      "tier": 2,
+     "cat": "Shop",
+     "icon": "/tft-extra/wisps/18/Shop_Tier2.webp",
      "cost": 3,
      "rounds": [
       "EarlyMid",
@@ -3431,6 +3846,8 @@
    "name": "Killing Frenzy",
    "desc": "Fighters execute targets under 12% Health. They gain 15% Attack Speed on kill.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 2,
    "rounds": [
     "Late",
@@ -3446,6 +3863,8 @@
      "name": "Killing Frenzy",
      "desc": "Fighters execute targets under 15% Health. They gain 40% Attack Speed on kill.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 2,
      "rounds": [
       "Late",
@@ -3464,6 +3883,8 @@
    "name": "Knick-Knack Sack",
    "desc": "Gain 3 consumables that give permanent Attack Damage or Attack Speed.",
    "tier": 2,
+   "cat": "Misc",
+   "icon": "/tft-extra/wisps/18/Misc_Tier2.webp",
    "cost": 3,
    "rounds": [
     "Late",
@@ -3479,6 +3900,8 @@
      "name": "Knick-Knack Sack",
      "desc": "Gain 4 consumables that give permanent Attack Damage or Attack Speed.",
      "tier": 2,
+     "cat": "Misc",
+     "icon": "/tft-extra/wisps/18/Misc_Tier2.webp",
      "cost": 3,
      "rounds": [
       "Late",
@@ -3497,6 +3920,8 @@
    "name": "Life Debt",
    "desc": "Gain 1 gold for every 12 missing Player Health.",
    "tier": 2,
+   "cat": "GoldXP",
+   "icon": "/tft-extra/wisps/18/GoldXP_Tier2.webp",
    "cost": 0,
    "rounds": [
     "Late",
@@ -3512,6 +3937,8 @@
      "name": "Life Debt",
      "desc": "Gain 1 gold for every 12 missing Player Health. Then heal 3 Health.",
      "tier": 2,
+     "cat": "GoldXP",
+     "icon": "/tft-extra/wisps/18/GoldXP_Tier2.webp",
      "cost": 0,
      "rounds": [
       "Late",
@@ -3530,6 +3957,8 @@
    "name": "Living Soil",
    "desc": "Every 4 seconds, roots stun an enemy for 1 second.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 2,
    "rounds": [
     "MidLate",
@@ -3544,6 +3973,8 @@
      "name": "Living Soil",
      "desc": "Every 4 seconds, roots stun 2 enemies for 1 second.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 2,
      "rounds": [
       "MidLate",
@@ -3561,6 +3992,8 @@
    "name": "Lucky 7",
    "desc": "Gain 7 shop rerolls.",
    "tier": 2,
+   "cat": "Shop",
+   "icon": "/tft-extra/wisps/18/Shop_Tier2.webp",
    "cost": 7,
    "rounds": [
     "VeryLate"
@@ -3574,6 +4007,8 @@
      "name": "Lucky 7",
      "desc": "Gain 777 shop rerolls.",
      "tier": 3,
+     "cat": "Shop",
+     "icon": "/tft-extra/wisps/18/Shop_Tier3.webp",
      "cost": 0,
      "rounds": [
       "Early",
@@ -3593,6 +4028,8 @@
      "name": "Lucky 7",
      "desc": "Gain 10 shop rerolls.",
      "tier": 2,
+     "cat": "Shop",
+     "icon": "/tft-extra/wisps/18/Shop_Tier2.webp",
      "cost": 7,
      "rounds": [
       "VeryLate"
@@ -3609,6 +4046,8 @@
    "name": "Major Gambit",
    "desc": "If you win the next player combat, gain 8 Gold.",
    "tier": 2,
+   "cat": "Risky",
+   "icon": "/tft-extra/wisps/18/Risky_Tier2.webp",
    "cost": 3,
    "rounds": [
     "MidLate",
@@ -3624,6 +4063,8 @@
      "name": "Major Gambit",
      "desc": "If you win next combat, gain 10 Gold.",
      "tier": 2,
+     "cat": "Risky",
+     "icon": "/tft-extra/wisps/18/Risky_Tier2.webp",
      "cost": 3,
      "rounds": [
       "MidLate",
@@ -3642,6 +4083,8 @@
    "name": "Major Polymorph",
    "desc": "A random 4-cost you own permanently transforms into a 5-cost.",
    "tier": 2,
+   "cat": "Risky",
+   "icon": "/tft-extra/wisps/18/Risky_Tier2.webp",
    "cost": 0,
    "rounds": [
     "MidLate",
@@ -3660,6 +4103,8 @@
      "name": "Major Polymorph",
      "desc": "The highest star level 4-cost you own permanently transforms into a 5-cost.",
      "tier": 2,
+     "cat": "Risky",
+     "icon": "/tft-extra/wisps/18/Risky_Tier2.webp",
      "cost": 0,
      "rounds": [
       "MidLate",
@@ -3681,6 +4126,8 @@
    "name": "Mana-Rich Soil",
    "desc": "Your Casters have 15% reduced Max Mana.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 2,
    "rounds": [
     "Late",
@@ -3696,6 +4143,8 @@
      "name": "Mana-Rich Soil",
      "desc": "Your Casters have 20% reduced Max Mana.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 2,
      "rounds": [
       "Late",
@@ -3714,6 +4163,8 @@
    "name": "Marksmen's Gale",
    "desc": "Your Marksmen's attacks grant 3% stacking Attack Speed.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 2,
    "rounds": [
     "MidLate",
@@ -3730,6 +4181,8 @@
      "name": "Marksmen's Gale",
      "desc": "Your Marksmen's attacks grant 5% stacking Attack Speed.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 2,
      "rounds": [
       "MidLate",
@@ -3749,6 +4202,8 @@
    "name": "Marksmen's Marks",
    "desc": "Your Marksmen have a 30% chance to double attack.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 3,
    "rounds": [
     "Late",
@@ -3764,6 +4219,8 @@
      "name": "Marksmen's Marks",
      "desc": "Your Marksmen have a 45% chance to double attack.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 3,
      "rounds": [
       "Late",
@@ -3782,6 +4239,8 @@
    "name": "Mercenary Force",
    "desc": "Gain 3% Damage Amp for every 10 gold you have.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 3,
    "rounds": [
     "MidLate",
@@ -3797,6 +4256,8 @@
      "name": "Mercenary Force",
      "desc": "Gain 4% Damage Amp for every 10 gold you have.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 3,
      "rounds": [
       "MidLate",
@@ -3815,6 +4276,8 @@
    "name": "Middle Path",
    "desc": "Reroll your shop with all 2-star 3-cost champions.",
    "tier": 2,
+   "cat": "Shop",
+   "icon": "/tft-extra/wisps/18/Shop_Tier2.webp",
    "cost": 4,
    "rounds": [
     "Mid",
@@ -3829,6 +4292,8 @@
      "name": "Middle Path",
      "desc": "Reroll your shop with all 2-star 3-cost champions.",
      "tier": 2,
+     "cat": "Shop",
+     "icon": "/tft-extra/wisps/18/Shop_Tier2.webp",
      "cost": 3,
      "rounds": [
       "Mid",
@@ -3846,6 +4311,8 @@
    "name": "Minor Blood Ritual",
    "desc": "Lose 3 Player Health. Gain a Lesser Champion Duplicator.",
    "tier": 2,
+   "cat": "Misc",
+   "icon": "/tft-extra/wisps/18/Misc_Tier2.webp",
    "cost": 3,
    "rounds": [
     "Early",
@@ -3861,6 +4328,8 @@
      "name": "Minor Blood Ritual",
      "desc": "Lose 1 Player Health. Gain a Lesser Champion Duplicator.",
      "tier": 2,
+     "cat": "Misc",
+     "icon": "/tft-extra/wisps/18/Misc_Tier2.webp",
      "cost": 3,
      "rounds": [
       "Early",
@@ -3879,6 +4348,8 @@
    "name": "Moonlight Ritual",
    "desc": "Your lowest star 1-cost or 2-cost champion stars up in combat.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 2,
    "rounds": [
     "EarlyMid",
@@ -3895,6 +4366,8 @@
      "name": "Moonlight Ritual",
      "desc": "Your two lowest star 1-cost or 2-cost champions star up in combat.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 3,
      "rounds": [
       "EarlyMid",
@@ -3914,6 +4387,8 @@
    "name": "Nature's Ally",
    "desc": "Every 3 ally deaths, summon a random Riftbeast.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 2,
    "rounds": [
     "MidLate",
@@ -3929,6 +4404,8 @@
      "name": "Nature's Ally",
      "desc": "Every 3 ally deaths, summon a random Riftbeast that's sometimes 2-star.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 2,
      "rounds": [
       "EarlyMid",
@@ -3946,6 +4423,8 @@
    "name": "Payday",
    "desc": "For each ally champion that survives combat, gain 2 Gold.",
    "tier": 2,
+   "cat": "Risky",
+   "icon": "/tft-extra/wisps/18/Risky_Tier2.webp",
    "cost": 3,
    "rounds": [
     "Mid",
@@ -3960,6 +4439,8 @@
      "name": "Payday",
      "desc": "For each ally champion that survives combat, gain 3 Gold.",
      "tier": 2,
+     "cat": "Risky",
+     "icon": "/tft-extra/wisps/18/Risky_Tier2.webp",
      "cost": 3,
      "rounds": [
       "Mid",
@@ -3977,6 +4458,8 @@
    "name": "Peddler",
    "desc": "Open a random item store. Random items cost 0 to 14 gold.",
    "tier": 2,
+   "cat": "Item",
+   "icon": "/tft-extra/wisps/18/Item_Tier2.webp",
    "cost": 0,
    "rounds": [
     "MidLate",
@@ -3992,6 +4475,8 @@
      "name": "Peddler",
      "desc": "Open a random item store. Random items cost 0 to 14 gold. Gain 2 Gold.",
      "tier": 2,
+     "cat": "Item",
+     "icon": "/tft-extra/wisps/18/Item_Tier2.webp",
      "cost": 0,
      "rounds": [
       "MidLate",
@@ -4010,6 +4495,8 @@
    "name": "Phantom Armor",
    "desc": "Gain a temporary Warmog's Armor.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 2,
    "rounds": [
     "EarlyMid",
@@ -4026,6 +4513,8 @@
      "name": "Phantom Armor",
      "desc": "Gain 6 temporary Radiant Warmog's Armors and 5 Removers.",
      "tier": 3,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
      "cost": 0,
      "rounds": [
       "Early",
@@ -4045,6 +4534,8 @@
      "name": "Phantom Armor",
      "desc": "Gain a temporary The Indomitable.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 2,
      "rounds": [
       "EarlyMid",
@@ -4064,6 +4555,8 @@
    "name": "Phantom Gloves",
    "desc": "Gain a temporary Thief's Gloves.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 3,
    "rounds": [
     "EarlyMid",
@@ -4080,6 +4573,8 @@
      "name": "Phantom Gloves",
      "desc": "Gain a temporary Mittens.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 3,
      "rounds": [
       "EarlyMid",
@@ -4099,6 +4594,8 @@
    "name": "Phantom Splash",
    "desc": "Combat start: Up to 2 inactive traits activate at the lowest level.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 2,
    "rounds": [
     "MidLate",
@@ -4118,6 +4615,8 @@
      "name": "Phantom Splash",
      "desc": "Combat Start: Up to 4 inactive traits activate at the lowest level.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 2,
      "rounds": [
       "MidLate",
@@ -4140,6 +4639,8 @@
    "name": "Phantom Vest",
    "desc": "Gain a temporary Bramble Vest.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 2,
    "rounds": [
     "EarlyMid",
@@ -4156,6 +4657,8 @@
      "name": "Phantom Vest",
      "desc": "Gain a temporary Aegis of Dawn.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 2,
      "rounds": [
       "EarlyMid",
@@ -4175,6 +4678,8 @@
    "name": "Plated Shields",
    "desc": "Shields are 15% stronger. Allies gain 150 shield for 10 seconds.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 2,
    "rounds": [
     "Late",
@@ -4189,6 +4694,8 @@
      "name": "Plated Shields",
      "desc": "Shields are 20% stronger. Allies gain 300 shield for 10 seconds.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 2,
      "rounds": [
       "Late",
@@ -4206,6 +4713,8 @@
    "name": "Potioncraft",
    "desc": "Gain three temporary equippable Potions.",
    "tier": 2,
+   "cat": "Misc",
+   "icon": "/tft-extra/wisps/18/Misc_Tier2.webp",
    "cost": 2,
    "rounds": [
     "Late",
@@ -4220,6 +4729,8 @@
      "name": "Potioncraft",
      "desc": "Gain three temporary equippable Radiant Potions.",
      "tier": 2,
+     "cat": "Misc",
+     "icon": "/tft-extra/wisps/18/Misc_Tier2.webp",
      "cost": 2,
      "rounds": [
       "Late",
@@ -4237,6 +4748,8 @@
    "name": "Potted Lifebloom",
    "desc": "Gain a temporary Lifeblossom.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 1,
    "rounds": [
     "EarlyMid",
@@ -4253,6 +4766,8 @@
      "name": "Potted Lifebloom",
      "desc": "Gain a temporary Lifeblossom.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 0,
      "rounds": [
       "EarlyMid",
@@ -4272,6 +4787,8 @@
    "name": "Potted Stonebark",
    "desc": "Gain a temporary Stonebark Tree.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 1,
    "rounds": [
     "EarlyMid",
@@ -4288,6 +4805,8 @@
      "name": "Potted Stonebark",
      "desc": "Gain a temporary Stonebark Tree.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 0,
      "rounds": [
       "EarlyMid",
@@ -4307,6 +4826,8 @@
    "name": "Preppers",
    "desc": "Your stacking items start next combat partially stacked.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 2,
    "rounds": [
     "EarlyMid",
@@ -4324,6 +4845,8 @@
      "name": "Preppers",
      "desc": "Your stacking items start next combat extra stacked.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 2,
      "rounds": [
       "EarlyMid",
@@ -4344,6 +4867,8 @@
    "name": "Propagate",
    "desc": "Gain a copy of the first allied champion to die.",
    "tier": 2,
+   "cat": "Champion",
+   "icon": "/tft-extra/wisps/18/Champion_Tier2.webp",
    "cost": 2,
    "rounds": [
     "Early",
@@ -4359,6 +4884,8 @@
      "name": "Propagate",
      "desc": "Gain a copy of the first allied champion to die.",
      "tier": 2,
+     "cat": "Champion",
+     "icon": "/tft-extra/wisps/18/Champion_Tier2.webp",
      "cost": 1,
      "rounds": [
       "Early",
@@ -4377,6 +4904,8 @@
    "name": "Refreshing Light",
    "desc": "Gain a free reroll per star level of each unique Solar champion.",
    "tier": 2,
+   "cat": "Shop",
+   "icon": "/tft-extra/wisps/18/Shop_Tier2.webp",
    "cost": 6,
    "rounds": [
     "Mid",
@@ -4392,6 +4921,8 @@
      "name": "Refreshing Light",
      "desc": "Gain a free reroll per star level of each unique Solar champion.",
      "tier": 2,
+     "cat": "Shop",
+     "icon": "/tft-extra/wisps/18/Shop_Tier2.webp",
      "cost": 5,
      "rounds": [
       "Mid",
@@ -4410,6 +4941,8 @@
    "name": "Regeneration",
    "desc": "Your team heals 1% max Health per second.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 3,
    "rounds": [
     "Mid",
@@ -4424,6 +4957,8 @@
      "name": "Regeneration",
      "desc": "Your team heals 2% max Health per second.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 3,
      "rounds": [
       "Mid",
@@ -4441,6 +4976,8 @@
    "name": "Revenge",
    "desc": "Whenever an ally dies, your champions gain 4% stacking Damage Amp.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 2,
    "rounds": [
     "Late",
@@ -4455,6 +4992,8 @@
      "name": "Revenge",
      "desc": "Whenever an ally dies, your champions gain 6% stacking Damage Amp.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 2,
      "rounds": [
       "Late",
@@ -4472,6 +5011,8 @@
    "name": "Rolling Bones",
    "desc": "You have a 50% chance to get a free reroll with each kill.",
    "tier": 2,
+   "cat": "Shop",
+   "icon": "/tft-extra/wisps/18/Shop_Tier2.webp",
    "cost": 3,
    "rounds": [
     "EarlyMid",
@@ -4487,6 +5028,8 @@
      "name": "Rolling Bones",
      "desc": "60% chance to get a reroll with each kill, and 1 more if you win.",
      "tier": 2,
+     "cat": "Shop",
+     "icon": "/tft-extra/wisps/18/Shop_Tier2.webp",
      "cost": 3,
      "rounds": [
       "EarlyMid",
@@ -4505,6 +5048,8 @@
    "name": "Roly-Polys",
    "desc": "For each ally champion alive after 18 seconds, gain a reroll.",
    "tier": 2,
+   "cat": "Shop",
+   "icon": "/tft-extra/wisps/18/Shop_Tier2.webp",
    "cost": 3,
    "rounds": [
     "EarlyMid",
@@ -4519,6 +5064,8 @@
      "name": "Roly-Polys",
      "desc": "For each ally champion alive after 16 seconds, gain a reroll.",
      "tier": 2,
+     "cat": "Shop",
+     "icon": "/tft-extra/wisps/18/Shop_Tier2.webp",
      "cost": 3,
      "rounds": [
       "EarlyMid",
@@ -4536,6 +5083,8 @@
    "name": "Scrappy",
    "desc": "Combat start: 2 champions without items gain a temporary recommended item.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 3,
    "rounds": [
     "MidLate",
@@ -4551,6 +5100,8 @@
      "name": "Scrappy",
      "desc": "Combat Start: 3 champions without items gain a temporary recommended item.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 3,
      "rounds": [
       "MidLate",
@@ -4569,6 +5120,8 @@
    "name": "Sinister Deal",
    "desc": "Lose 4 Player Health. Gain 2 Gold.",
    "tier": 2,
+   "cat": "Misc",
+   "icon": "/tft-extra/wisps/18/Misc_Tier2.webp",
    "cost": 0,
    "rounds": [
     "Early",
@@ -4584,6 +5137,8 @@
      "name": "Sinister Deal",
      "desc": "Lose 2 Player Health. Gain 2 Gold.",
      "tier": 2,
+     "cat": "Misc",
+     "icon": "/tft-extra/wisps/18/Misc_Tier2.webp",
      "cost": 0,
      "rounds": [
       "Early",
@@ -4602,6 +5157,8 @@
    "name": "Slow Study",
    "desc": "For each ally champion alive after 15 seconds, gain 2 XP.",
    "tier": 2,
+   "cat": "GoldXP",
+   "icon": "/tft-extra/wisps/18/GoldXP_Tier2.webp",
    "cost": 3,
    "rounds": [
     "Mid",
@@ -4616,6 +5173,8 @@
      "name": "Slow Study",
      "desc": "For each ally champion alive after 12 seconds, gain 2 XP.",
      "tier": 2,
+     "cat": "GoldXP",
+     "icon": "/tft-extra/wisps/18/GoldXP_Tier2.webp",
      "cost": 3,
      "rounds": [
       "Mid",
@@ -4633,6 +5192,8 @@
    "name": "Snacktime!",
    "desc": "The BFF eats enemies he damages under 16% Max Health.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 2,
    "rounds": [
     "MidLate",
@@ -4649,6 +5210,8 @@
      "name": "Snacktime!",
      "desc": "The BFF eats enemies he damages under 22% Max Health.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 2,
      "rounds": [
       "MidLate",
@@ -4668,6 +5231,8 @@
    "name": "Solar Gift",
    "desc": "Gain a Leona, Sejuani, and Kayle",
    "tier": 2,
+   "cat": "Champion",
+   "icon": "/tft-extra/wisps/18/Champion_Tier2.webp",
    "cost": 6,
    "rounds": [
     "Early",
@@ -4684,6 +5249,8 @@
    "name": "Solitude's Cloak",
    "desc": "Champions with no adjacent allies gain 10% Max Health and 10% Damage Amp.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 2,
    "rounds": [
     "Late",
@@ -4704,6 +5271,8 @@
      "name": "Solitude's Cloak",
      "desc": "Champions with no adjacent allies gain 15% Max Health and 15% Damage Amp.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 2,
      "rounds": [
       "Late",
@@ -4727,6 +5296,8 @@
    "name": "Stand Alone",
    "desc": "Champions alone in their row gain 15% Health and 15% Damage Amp.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 2,
    "rounds": [
     "Mid",
@@ -4744,6 +5315,8 @@
      "name": "Stand Alone",
      "desc": "Champions alone in their row gain 100% Health and 150% Damage Amp.",
      "tier": 3,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
      "cost": 0,
      "rounds": [
       "Early",
@@ -4763,6 +5336,8 @@
      "name": "Stand Alone",
      "desc": "Champions alone in their row gain 20% Health and 20% Damage Amp.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 2,
      "rounds": [
       "Mid",
@@ -4783,6 +5358,8 @@
    "name": "Supercritical",
    "desc": "Allies with Precision gain 25% Critical Strike Damage.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 2,
    "rounds": [
     "MidLate",
@@ -4799,6 +5376,8 @@
      "name": "Supercritical",
      "desc": "Allies with Precision gain 40% Critical Strike Damage.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 2,
      "rounds": [
       "MidLate",
@@ -4818,6 +5397,8 @@
    "name": "Thingamajig Sack",
    "desc": "Gain 3 consumables that give permanent Ability Power or Mana Regen.",
    "tier": 2,
+   "cat": "Misc",
+   "icon": "/tft-extra/wisps/18/Misc_Tier2.webp",
    "cost": 3,
    "rounds": [
     "Late",
@@ -4833,6 +5414,8 @@
      "name": "Thingamajig Sack",
      "desc": "Gain 4 consumables that give permanent Ability Power or Mana Regen.",
      "tier": 2,
+     "cat": "Misc",
+     "icon": "/tft-extra/wisps/18/Misc_Tier2.webp",
      "cost": 3,
      "rounds": [
       "Late",
@@ -4851,6 +5434,8 @@
    "name": "Three Me",
    "desc": "Gain a random 2-star 3-cost champion.",
    "tier": 2,
+   "cat": "Champion",
+   "icon": "/tft-extra/wisps/18/Champion_Tier2.webp",
    "cost": 10,
    "rounds": [
     "EarlyMid",
@@ -4865,6 +5450,8 @@
      "name": "Three Me",
      "desc": "Gain a random 2-star 3-cost champion.",
      "tier": 2,
+     "cat": "Champion",
+     "icon": "/tft-extra/wisps/18/Champion_Tier2.webp",
      "cost": 8,
      "rounds": [
       "EarlyMid",
@@ -4882,6 +5469,8 @@
    "name": "Tiger's Visit",
    "desc": "Gain the Tiger Primal buff for this combat.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 3,
    "rounds": [
     "Mid",
@@ -4898,6 +5487,8 @@
      "name": "Tiger's Visit",
      "desc": "Gain the Tiger Primal buff for this combat.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 2,
      "rounds": [
       "Mid",
@@ -4917,6 +5508,8 @@
    "name": "Training Yard",
    "desc": "Gain 2 Training Dummies each with a random tank item.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 3,
    "rounds": [
     "MidLate",
@@ -4931,6 +5524,8 @@
      "name": "Training Yard",
      "desc": "Gain 3 Training Dummies each with a random tank item.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 3,
      "rounds": [
       "MidLate",
@@ -4948,6 +5543,8 @@
    "name": "Turtle's Visit",
    "desc": "Gain the Turtle Primal buff for this combat.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 3,
    "rounds": [
     "Mid",
@@ -4964,6 +5561,8 @@
      "name": "Turtle's Visit",
      "desc": "Gain the Turtle Primal buff for this combat.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 2,
      "rounds": [
       "Mid",
@@ -4983,6 +5582,8 @@
    "name": "Yordle Spirit",
    "desc": "Allies have a 99% chance to dodge attacks for 4 seconds.",
    "tier": 2,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
    "cost": 2,
    "rounds": [
     "MidLate",
@@ -4997,6 +5598,8 @@
      "name": "Yordle Spirit",
      "desc": "Allies have a 99% chance to dodge attacks for 5 seconds.",
      "tier": 2,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 2,
      "rounds": [
       "MidLate",
@@ -5014,6 +5617,8 @@
    "name": "Abandon Ship",
    "desc": "Sell your board and bench, gain 6 gold and 8 rerolls.",
    "tier": 3,
+   "cat": "Risky",
+   "icon": "/tft-extra/wisps/18/Risky_Tier3.webp",
    "cost": 0,
    "rounds": [
     "EarlyMid"
@@ -5041,6 +5646,8 @@
      "name": "Abandon Ship",
      "desc": "Sell your board and bench, gain 10 gold and 10 rerolls.",
      "tier": 3,
+     "cat": "Risky",
+     "icon": "/tft-extra/wisps/18/Risky_Tier3.webp",
      "cost": 0,
      "rounds": [
       "EarlyMid"
@@ -5071,6 +5678,8 @@
    "name": "All Fives",
    "desc": "Reroll your shop with all 5-cost champions.",
    "tier": 3,
+   "cat": "Shop",
+   "icon": "/tft-extra/wisps/18/Shop_Tier3.webp",
    "cost": 8,
    "rounds": [
     "VeryLate"
@@ -5085,6 +5694,8 @@
      "name": "All Fives",
      "desc": "Reroll your shop with all 5-cost champions. Gain 5 gold.",
      "tier": 3,
+     "cat": "Shop",
+     "icon": "/tft-extra/wisps/18/Shop_Tier3.webp",
      "cost": 8,
      "rounds": [
       "VeryLate"
@@ -5102,6 +5713,8 @@
    "name": "Blaze",
    "desc": "Fire spreads across the board, dealing true damage to enemies.",
    "tier": 3,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
    "cost": 3,
    "rounds": [
     "Late",
@@ -5116,6 +5729,8 @@
      "name": "Blaze",
      "desc": "Spread a raging fire across the board!",
      "tier": 3,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
      "cost": 0,
      "rounds": [
       "Early",
@@ -5135,6 +5750,8 @@
      "name": "Blaze",
      "desc": "Fire spreads across the board, dealing more true damage to enemies.",
      "tier": 3,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
      "cost": 3,
      "rounds": [
       "Late",
@@ -5152,6 +5769,8 @@
    "name": "Blood Ritual",
    "desc": "Lose 10 Player Health. Gain a Champion Duplicator.",
    "tier": 3,
+   "cat": "Misc",
+   "icon": "/tft-extra/wisps/18/Misc_Tier3.webp",
    "cost": 6,
    "rounds": [
     "MidLate"
@@ -5166,6 +5785,8 @@
      "name": "Blood Ritual",
      "desc": "Lose 8 Player Health. Gain a Champion Duplicator.",
      "tier": 3,
+     "cat": "Misc",
+     "icon": "/tft-extra/wisps/18/Misc_Tier3.webp",
      "cost": 6,
      "rounds": [
       "MidLate"
@@ -5183,6 +5804,8 @@
    "name": "Border Village",
    "desc": "Reroll your shop with all 2-star 2-cost champions.",
    "tier": 3,
+   "cat": "Shop",
+   "icon": "/tft-extra/wisps/18/Shop_Tier3.webp",
    "cost": 3,
    "rounds": [
     "EarlyMid",
@@ -5197,6 +5820,8 @@
      "name": "Border Village",
      "desc": "Reroll your shop with all 2-star 2-cost champions.",
      "tier": 3,
+     "cat": "Shop",
+     "icon": "/tft-extra/wisps/18/Shop_Tier3.webp",
      "cost": 2,
      "rounds": [
       "EarlyMid",
@@ -5214,6 +5839,8 @@
    "name": "Circle of Elders",
    "desc": "Gain one of each 5-cost champion.",
    "tier": 3,
+   "cat": "Champion",
+   "icon": "/tft-extra/wisps/18/Champion_Tier3.webp",
    "cost": 45,
    "rounds": [
     "VeryLate"
@@ -5227,6 +5854,8 @@
      "name": "Circle of Elders",
      "desc": "Gain one of each 5-cost champion.",
      "tier": 3,
+     "cat": "Champion",
+     "icon": "/tft-extra/wisps/18/Champion_Tier3.webp",
      "cost": 40,
      "rounds": [
       "VeryLate"
@@ -5243,6 +5872,8 @@
    "name": "Combust",
    "desc": "Your champions explode on death, dealing 15% Max Health magic damage.",
    "tier": 3,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
    "cost": 3,
    "rounds": [
     "Late",
@@ -5257,6 +5888,8 @@
      "name": "Combust",
      "desc": "Your champions explode on death, dealing 100% Max Health magic damage.",
      "tier": 3,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
      "cost": 0,
      "rounds": [
       "Early",
@@ -5276,6 +5909,8 @@
      "name": "Combust",
      "desc": "Your champions explode on death, dealing 18% Max Health magic damage.",
      "tier": 3,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
      "cost": 3,
      "rounds": [
       "Late",
@@ -5293,6 +5928,8 @@
    "name": "Forest Guide",
    "desc": "Gain a random 4-cost champion.",
    "tier": 3,
+   "cat": "Champion",
+   "icon": "/tft-extra/wisps/18/Champion_Tier3.webp",
    "cost": 5,
    "rounds": [
     "Early"
@@ -5306,6 +5943,8 @@
      "name": "Forest Guide",
      "desc": "Gain a random 4-cost champion.",
      "tier": 3,
+     "cat": "Champion",
+     "icon": "/tft-extra/wisps/18/Champion_Tier3.webp",
      "cost": 4,
      "rounds": [
       "Early"
@@ -5322,6 +5961,8 @@
    "name": "Giant Growth",
    "desc": "Your highest Health unit grows, gaining 750 Health.",
    "tier": 3,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
    "cost": 4,
    "rounds": [
     "Late",
@@ -5336,6 +5977,8 @@
      "name": "Giant Growth",
      "desc": "Your 2 highest Health units grow, gaining 750 Health.",
      "tier": 3,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
      "cost": 4,
      "rounds": [
       "Late",
@@ -5353,6 +5996,8 @@
    "name": "Giant's Aura",
    "desc": "Your highest Health ally deals 2% max Health damage per second in an area.",
    "tier": 3,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
    "cost": 3,
    "rounds": [
     "Late",
@@ -5368,6 +6013,8 @@
      "name": "Giant's Aura",
      "desc": "Your highest Health ally becomes an absolute menace.",
      "tier": 3,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
      "cost": 0,
      "rounds": [
       "Early",
@@ -5387,6 +6034,8 @@
      "name": "Giant's Aura",
      "desc": "Your highest Health ally deals 3% max Health damage per second in an area.",
      "tier": 3,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
      "cost": 3,
      "rounds": [
       "Late",
@@ -5405,6 +6054,8 @@
    "name": "Grandmaster",
    "desc": "Gain a random 2-star 5-cost champion.",
    "tier": 3,
+   "cat": "Champion",
+   "icon": "/tft-extra/wisps/18/Champion_Tier3.webp",
    "cost": 18,
    "rounds": [
     "VeryLate"
@@ -5418,6 +6069,8 @@
      "name": "Grandmaster",
      "desc": "Gain a random 2-star 5-cost champion.",
      "tier": 3,
+     "cat": "Champion",
+     "icon": "/tft-extra/wisps/18/Champion_Tier3.webp",
      "cost": 14,
      "rounds": [
       "VeryLate"
@@ -5434,6 +6087,8 @@
    "name": "Greater Chaos",
    "desc": "Cast 2 random Wisps.",
    "tier": 3,
+   "cat": "Misc",
+   "icon": "/tft-extra/wisps/18/Misc_Tier3.webp",
    "cost": 4,
    "rounds": [
     "Late",
@@ -5448,6 +6103,8 @@
      "name": "Greater Chaos",
      "desc": "Cast 2 random Wisps worth 2 or more gold.",
      "tier": 3,
+     "cat": "Misc",
+     "icon": "/tft-extra/wisps/18/Misc_Tier3.webp",
      "cost": 4,
      "rounds": [
       "Late",
@@ -5465,6 +6122,8 @@
    "name": "Hand Of Baron",
    "desc": "Your team gains Baron Buff, increasing their stats.",
    "tier": 3,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
    "cost": 6,
    "rounds": [
     "Late",
@@ -5480,6 +6139,8 @@
      "name": "Hand Of Baron",
      "desc": "Your team gains Baron Buff, greatly increasing their stats.",
      "tier": 3,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
      "cost": 6,
      "rounds": [
       "Late",
@@ -5498,6 +6159,8 @@
    "name": "Hero Of Prophecy",
    "desc": "Gain a 5-cost champion. Gain them again each round FOREVER.",
    "tier": 3,
+   "cat": "Champion",
+   "icon": "/tft-extra/wisps/18/Champion_Tier3.webp",
    "cost": 35,
    "rounds": [
     "VeryLate"
@@ -5512,6 +6175,8 @@
      "name": "Hero Of Prophecy",
      "desc": "Gain a 5-cost champion. Gain them again each round FOREVER.",
      "tier": 3,
+     "cat": "Champion",
+     "icon": "/tft-extra/wisps/18/Champion_Tier3.webp",
      "cost": 33,
      "rounds": [
       "VeryLate"
@@ -5529,6 +6194,8 @@
    "name": "Hero's Entrance",
    "desc": "After 8 seconds, the leftmost benched champion joins combat and gains 2 recommended items.",
    "tier": 3,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
    "cost": 2,
    "rounds": [
     "VeryLate"
@@ -5543,6 +6210,8 @@
      "name": "Hero's Entrance",
      "desc": "After 5 seconds, the leftmost benched champion joins combat and gains 2 recommended items.",
      "tier": 3,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
      "cost": 2,
      "rounds": [
       "VeryLate"
@@ -5560,6 +6229,8 @@
    "name": "Heroic Sacrifice",
    "desc": "Your 3 strongest Champions gain HEROIC POWER, but other allies are sacrificed.",
    "tier": 3,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
    "cost": 5,
    "rounds": [
     "MidLate",
@@ -5579,6 +6250,8 @@
      "name": "Heroic Sacrifice",
      "desc": "Your 3 strongest Champions gain HEROIC POWER, but other allies are sacrificed.",
      "tier": 3,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
      "cost": 5,
      "rounds": [
       "MidLate",
@@ -5601,6 +6274,8 @@
    "name": "Hireling",
    "desc": "A temporary 1-star 5-cost with 1 recommended items joins your team.",
    "tier": 3,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
    "cost": 2,
    "rounds": [
     "VeryLate"
@@ -5614,6 +6289,8 @@
      "name": "Hireling",
      "desc": "3 temporary 2-star 5-costs with 2 recommended items each join your team.",
      "tier": 3,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
      "cost": 0,
      "rounds": [
       "Early",
@@ -5633,6 +6310,8 @@
      "name": "Hireling",
      "desc": "A temporary 1-star 5-cost with 2 recommended items joins your team.",
      "tier": 3,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
      "cost": 5,
      "rounds": [
       "VeryLate"
@@ -5649,6 +6328,8 @@
    "name": "Infliction",
    "desc": "Slow, Burn, Shred, and Sunder enemies for 8 seconds.",
    "tier": 3,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
    "cost": 4,
    "rounds": [
     "Late",
@@ -5664,6 +6345,8 @@
      "name": "Infliction",
      "desc": "Slow, Burn, Shred, and Sunder enemies for 12 seconds.",
      "tier": 3,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
      "cost": 4,
      "rounds": [
       "Late",
@@ -5682,6 +6365,8 @@
    "name": "Killer's Regret",
    "desc": "Your first 3 champions to die stun their killer for 1.5 seconds.",
    "tier": 3,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
    "cost": 1,
    "rounds": [
     "Late",
@@ -5696,6 +6381,8 @@
      "name": "Killer's Regret",
      "desc": "Your first 4 champions to die stun their killer for 1.75 second.",
      "tier": 3,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
      "cost": 1,
      "rounds": [
       "Late",
@@ -5713,6 +6400,8 @@
    "name": "Late Bloomer",
    "desc": "A temporary 3-star 1-cost joins your team.",
    "tier": 3,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
    "cost": 4,
    "rounds": [
     "MidLate",
@@ -5727,6 +6416,8 @@
      "name": "Late Bloomer",
      "desc": "A squad of 5 temporary 4-star 1-costs joins your team.",
      "tier": 3,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
      "cost": 0,
      "rounds": [
       "Early",
@@ -5746,6 +6437,8 @@
      "name": "Late Bloomer",
      "desc": "A temporary 3-star 1-cost with 1recommend item joins your team.",
      "tier": 3,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
      "cost": 4,
      "rounds": [
       "MidLate",
@@ -5763,6 +6456,8 @@
    "name": "Lightning Storm",
    "desc": "Every 1 second deal 5% Max Health true damage to an enemy.",
    "tier": 3,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
    "cost": 3,
    "rounds": [
     "Late",
@@ -5777,6 +6472,8 @@
      "name": "Lightning Storm",
      "desc": "Every 0.15 seconds deal 5% Max Health true damage to an enemy.",
      "tier": 3,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
      "cost": 0,
      "rounds": [
       "Early",
@@ -5796,6 +6493,8 @@
      "name": "Lightning Storm",
      "desc": "Every 1 seconds deal 7% Max Health true damage to an enemy.",
      "tier": 3,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
      "cost": 3,
      "rounds": [
       "Late",
@@ -5813,6 +6512,8 @@
    "name": "Nature's Wrath",
    "desc": "Kill EVERYONE without an item after 10 seconds.",
    "tier": 3,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
    "cost": 1,
    "rounds": [
     "VeryLate"
@@ -5827,6 +6528,8 @@
      "name": "Nature's Wrath",
      "desc": "Kill EVERYONE without an item after 8 seconds.",
      "tier": 3,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
      "cost": 1,
      "rounds": [
       "VeryLate"
@@ -5844,6 +6547,8 @@
    "name": "Phantom Emblem",
    "desc": "Gain a temporary emblem of your most active trait.",
    "tier": 3,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
    "cost": 2,
    "rounds": [
     "Late",
@@ -5858,6 +6563,8 @@
      "name": "Phantom Emblem",
      "desc": "Gain a temporary emblem of your most active trait.",
      "tier": 3,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
      "cost": 1,
      "rounds": [
       "Late",
@@ -5875,6 +6582,8 @@
    "name": "Radiantize",
    "desc": "After 8 seconds, 1 random equipped item temporarily becomes Radiant.",
    "tier": 3,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
    "cost": 3,
    "rounds": [
     "Late",
@@ -5889,6 +6598,8 @@
      "name": "Radiantize",
      "desc": "After 5 seconds, 1 random equipped item temporarily becomes Radiant.",
      "tier": 3,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
      "cost": 3,
      "rounds": [
       "MidLate",
@@ -5907,6 +6618,8 @@
    "name": "Ride the Wave",
    "desc": "The next 2 rerolls this round will have 2+ champions fielded last combat.",
    "tier": 3,
+   "cat": "Shop",
+   "icon": "/tft-extra/wisps/18/Shop_Tier3.webp",
    "cost": 3,
    "rounds": [
     "MidLate",
@@ -5922,6 +6635,8 @@
      "name": "Ride the Wave",
      "desc": "The next 3 rerolls this round will have 2+ champions fielded last combat.",
      "tier": 3,
+     "cat": "Shop",
+     "icon": "/tft-extra/wisps/18/Shop_Tier3.webp",
      "cost": 3,
      "rounds": [
       "MidLate",
@@ -5940,6 +6655,8 @@
    "name": "Smurfing",
    "desc": "Gain a random 5 cost champion.",
    "tier": 3,
+   "cat": "Champion",
+   "icon": "/tft-extra/wisps/18/Champion_Tier3.webp",
    "cost": 6,
    "rounds": [
     "Mid"
@@ -5953,6 +6670,8 @@
      "name": "Smurfing",
      "desc": "Gain a random 5-cost champion.",
      "tier": 3,
+     "cat": "Champion",
+     "icon": "/tft-extra/wisps/18/Champion_Tier3.webp",
      "cost": 5,
      "rounds": [
       "Mid"
@@ -5969,6 +6688,8 @@
    "name": "Starting Town",
    "desc": "Reroll your shop with all 2-star 1-cost champions.",
    "tier": 3,
+   "cat": "Shop",
+   "icon": "/tft-extra/wisps/18/Shop_Tier3.webp",
    "cost": 2,
    "rounds": [
     "Early",
@@ -5983,6 +6704,8 @@
      "name": "Starting Town",
      "desc": "Reroll your shop with all 2-star 1-cost champions.",
      "tier": 3,
+     "cat": "Shop",
+     "icon": "/tft-extra/wisps/18/Shop_Tier3.webp",
      "cost": 1,
      "rounds": [
       "Early",
@@ -6000,6 +6723,8 @@
    "name": "Treetop Archers",
    "desc": "Archers fire from the trees, dealing 500 physical damage every 3 seconds.",
    "tier": 3,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
    "cost": 3,
    "rounds": [
     "Late",
@@ -6014,6 +6739,8 @@
      "name": "Treetop Archers",
      "desc": "An implausible number of archers fire from the trees.",
      "tier": 3,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
      "cost": 0,
      "rounds": [
       "Early",
@@ -6033,6 +6760,8 @@
      "name": "Treetop Archers",
      "desc": "Archers fire from the trees, dealing 900 physical damage every 3 seconds.",
      "tier": 3,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
      "cost": 3,
      "rounds": [
       "Late",
@@ -6050,6 +6779,8 @@
    "name": "Tremors",
    "desc": "Every 8 seconds, Stun enemies for 1 second.",
    "tier": 3,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
    "cost": 3,
    "rounds": [
     "Late",
@@ -6064,6 +6795,8 @@
      "name": "Tremors",
      "desc": "Every 3 seconds, Stun enemies for 1.5 seconds.",
      "tier": 3,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
      "cost": 0,
      "rounds": [
       "Early",
@@ -6083,6 +6816,8 @@
      "name": "Tremors",
      "desc": "Every 8 seconds, Stun enemies for 1.5 seconds.",
      "tier": 3,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
      "cost": 3,
      "rounds": [
       "Late",

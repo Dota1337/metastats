@@ -84,11 +84,17 @@ export interface LootTablesFile {
 
 export type WispRound = 'Early' | 'EarlyMid' | 'Mid' | 'MidLate' | 'Late' | 'VeryLate';
 
+export type WispCat = 'Champion' | 'Combat' | 'GoldXP' | 'Item' | 'Misc' | 'Risky' | 'Shop';
+
 export interface Wisp {
   api: string;
   name: string;
   desc: string;
   tier: 1 | 2 | 3;
+  // Art und selbst ausgeliefertes Bild (public/tft-extra/wisps/<set>/). Optional,
+  // damit eine aeltere JSON ohne die Felder ohne Bild rendert statt zu brechen.
+  cat?: WispCat;
+  icon?: string;
   cost: number;
   rounds: WispRound[];
   doubles: boolean;

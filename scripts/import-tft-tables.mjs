@@ -17,7 +17,7 @@
  * sonst Exit 1, damit kein Eintrag still ohne Bild und Namen live geht.
  * Aendern sich die Tabellen im Patch: Abschrift unten anpassen, neu laufen lassen.
  */
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from 'node:fs';
 
 const WISPS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT7Tuku8zc7N5ZaEvVy5XAicB1hOOrlNdAZD_R_xIyoi8lhW82-kgUMrnJzjpm1dqH6pJyK2wYobO4r/pub?gid=0&single=true&output=csv';
 
@@ -286,16 +286,35 @@ else {
   csv = await res.text();
 }
 const [head, ...body] = parseCsv(csv);
-const need = ['Name', 'mName', 'Description', 'Tier', 'Cost', 'Doubles', 'Tockers', 'Special Conditions', 'Re-offer Cooldown', 'Round Bands'];
+const need = ['Name', 'mName', 'Icon URL', 'Description', 'Tier', 'Cost', 'Doubles', 'Tockers', 'Special Conditions', 'Re-offer Cooldown', 'Round Bands'];
 for (const h of need) if (!head.includes(h)) throw new Error(`Wisps-Tabelle: Spalte "${h}" fehlt — Aufbau geaendert?`);
 const W = body.filter(r => r.length === head.length).map(r => Object.fromEntries(head.map((h, i) => [h, r[i].trim()])));
 if (W.length < 100) throw new Error(`Wisps-Tabelle: nur ${W.length} Zeilen`);
 
 // Varianten tragen vier Upgrade-Schreibweisen plus _Prismatic (gezaehlt 2026-09-27:
 // 149 _Upgrade, 24 andere Upgrade-Muster, 19 _Prismatic).
-function baseOf(m) {
-  return m.replace(/_Upgrade_Charm$/, '').replace(/_Upgrade$/, '').replace(/_Prismatic$/, '')
-    .replace(/Upgrade18$/, '18').replace(/^(DA_18_\w+?)Upgrade$/, '$1');
+// Die drei Traenke heissen DA_*Potion18_Upgrade_Charm zu DA_*Potion18_Charm — deshalb
+// mehrere Kandidaten, der erste vorhandene gewinnt.
+function baseCandidates(m) {
+  return [
+    m.replace(/_Upgrade_Charm$/, '_Charm'),
+    m.replace(/_Upgrade_Charm$/, '').replace(/_Upgrade$/, '').replace(/_Prismatic$/, '')
+      .replace(/Upgrade18$/, '18').replace(/^(DA_18_\w+?)Upgrade$/, '$1'),
+  ].filter(b => b !== m);
+}
+
+// Bild je Wisp: die LBB-Tabelle nennt pro Zeile ein Art-Bild (Art × Stufe, 19 Dateien
+// in Set 18). User-Entscheid 2026-09-27: einmalig kopieren und selbst ausliefern.
+const WISP_ICON_RE = /^https:\/\/images\.littlebuddybot\.workers\.dev\/tft\/set\d+\/wisps\/T_ShopCardsIcon\d+_(Champion|Combat|GoldXP|Item|Misc|Risky|Shop)_Tier([123])\.webp$/;
+const WISP_ICON_DIR = `public/tft-extra/wisps/${SET}`;
+const wispIcons = new Map(); // lokale Datei → Quell-URL
+function wispIcon(d) {
+  const m = WISP_ICON_RE.exec(d['Icon URL']);
+  if (!m) throw new Error(`Wisp ${d.mName}: Bild-URL "${d['Icon URL']}" passt nicht aufs Muster`);
+  if (Number(m[2]) !== Number.parseInt(d.Tier, 10)) throw new Error(`Wisp ${d.mName}: Bild-Stufe ${m[2]} ≠ Stufe ${d.Tier}`);
+  const file = `${m[1]}_Tier${m[2]}.webp`;
+  wispIcons.set(file, d['Icon URL']);
+  return { cat: m[1], icon: `/tft-extra/wisps/${SET}/${file}` };
 }
 const ROUND_ORDER = ['Early', 'EarlyMid', 'Mid', 'MidLate', 'Late', 'VeryLate'];
 function rounds(v) {
@@ -314,6 +333,7 @@ function toWisp(d) {
     name: d.Name,
     desc: d.Description,
     tier,
+    ...wispIcon(d),
     cost: Number(d.Cost) || 0,
     rounds: rounds(d['Round Bands']),
     doubles: d.Doubles === 'Yes',
@@ -327,8 +347,8 @@ const byApi = new Map(W.map(d => [d.mName, d]));
 const bases = new Map();
 const variants = [];
 for (const d of W) {
-  const b = baseOf(d.mName);
-  if (b !== d.mName && byApi.has(b)) variants.push([b, d]);
+  const b = baseCandidates(d.mName).find(c => byApi.has(c));
+  if (b) variants.push([b, d]);
   else bases.set(d.mName, { ...toWisp(d), variants: [] });
 }
 for (const [b, d] of variants) {
@@ -379,6 +399,27 @@ for (const p of genericPaths) {
 }
 if (dead.length) {
   console.error(`✗ ${dead.length} Symbol(e) fehlen auf CDragon: ${dead.join(', ')}`);
+  process.exit(1);
+}
+
+// Fehlende Wisp-Bilder einmalig holen. Vorhandene bleiben unangetastet; schlaegt
+// eines fehl, bricht das Skript ab, bevor eine JSON auf ein fehlendes Bild zeigt.
+mkdirSync(WISP_ICON_DIR, { recursive: true });
+const badIcons = [];
+for (const [file, url] of wispIcons) {
+  const dest = `${WISP_ICON_DIR}/${file}`;
+  if (existsSync(dest)) continue;
+  const res = await fetch(url);
+  const buf = res.ok ? Buffer.from(await res.arrayBuffer()) : null;
+  if (!buf || res.headers.get('content-type') !== 'image/webp' || buf.length === 0) {
+    badIcons.push(`${file} (${res.status} ${res.headers.get('content-type')})`);
+    continue;
+  }
+  writeFileSync(dest + '.tmp', buf);
+  renameSync(dest + '.tmp', dest);
+}
+if (badIcons.length) {
+  console.error(`✗ ${badIcons.length} Wisp-Bild(er) nicht ladbar: ${badIcons.join(', ')}`);
   process.exit(1);
 }
 

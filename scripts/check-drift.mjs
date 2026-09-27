@@ -220,6 +220,20 @@ function read(path) {
       }
     }
 
+    // c2) Jedes Wisp-Bild muss unter public/ liegen (selbst ausgeliefert, kein CDragon).
+    if (existsSync(`public/tft-wisps-${currentSet}.json`)) {
+      const icons = new Set();
+      for (const w of JSON.parse(read(`public/tft-wisps-${currentSet}.json`)).wisps) {
+        for (const x of [w, ...w.variants]) if (x.icon) icons.add(x.icon);
+      }
+      const gone = [...icons].filter(p => !existsSync('public' + p));
+      if (gone.length) {
+        console.error(`✗ DRIFT: ${gone.length} Wisp-Bild(er) fehlen unter public/: ${gone.join(', ')}`);
+        console.error('    → node scripts/import-tft-tables.mjs laedt fehlende Bilder nach.');
+        setDrift++;
+      }
+    }
+
     // d) Patch-Anker.
     if (!new RegExp(`^\\s*${currentSet}:`, 'm').test(read('scripts/detect-tft-set.mjs'))) {
       console.error(`✗ DRIFT: SET_LAUNCH_LOL in detect-tft-set.mjs kennt Set ${currentSet} nicht`);

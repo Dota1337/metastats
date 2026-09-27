@@ -614,9 +614,9 @@
       "usedBy": [
         "app/components/internal/OpsGraph.tsx",
         "app/lib/snapshot-matrix.ts",
+        "app/lib/useTftCompsData.ts",
         "app/tft/comps/[slug]/page.tsx",
         "app/tft/comps/compare/page.tsx",
-        "app/tft/comps/page.tsx",
         "app/tft/explorer/page.tsx",
         "app/tft/items/[id]/page.tsx",
         "app/tft/player/[slug]/page.tsx",

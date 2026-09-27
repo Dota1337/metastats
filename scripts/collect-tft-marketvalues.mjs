@@ -230,6 +230,7 @@ async function loadPlayersByPuuids(puuids) {
         const lr = await pool.query(
           `select ladder_rank from tft_player_marketvalue_snapshots
              where puuid=$1 and region=$2 and set_number=$3 and ladder_rank is not null
+               and not agents @> '[{"signal":"estimated"}]'
              order by snapshot_date desc limit 1`,
           [puuid, REGION, loadCurrentSet()],
         );

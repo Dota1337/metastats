@@ -304,7 +304,7 @@ async function refreshOnePlayer(puuid, region) {
     } else {
       console.warn(`[refresh] WARNUNG ${region}: Challenger-Liste nicht geladen — letzter Platz bleibt`);
       const ladderRankRow = await pool.query(
-        'select ladder_rank from tft_player_marketvalue_snapshots where puuid = $1 and region = $2 and set_number = $3 and ladder_rank is not null order by snapshot_date desc limit 1',
+        `select ladder_rank from tft_player_marketvalue_snapshots where puuid = $1 and region = $2 and set_number = $3 and ladder_rank is not null and not agents @> '[{"signal":"estimated"}]' order by snapshot_date desc limit 1`,
         [puuid, region, setNumber],
       );
       ladderRank = ladderRankRow.rows[0]?.ladder_rank ?? null;

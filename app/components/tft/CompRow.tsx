@@ -14,6 +14,7 @@ import { parseClusterKey, isThreeStarUnit } from '../../lib/tft-cluster';
 import { loadCompGuidesBundle, findCompGuide, difficultyColor } from '../../lib/tft-comp-guides';
 import { tierLetterOfSync, TIER_COLORS, type TierLetter, type TierCutoffs } from '../../lib/tft-tier-letter';
 import { descriptorTag } from '../../lib/tft-comp-descriptor';
+import { computeRoles, namedCarries, shownItems, componentCheckFromItems, type CompRoles } from '../../lib/tft-comp-roles';
 
 // Dense, scannable row layout for /tft/comps. Replaces the narrative
 // CompCard so pros can survey 20+ comps at a glance — avg-placement is
@@ -47,6 +48,9 @@ interface Comp {
     characterId: string;
     count: number | unknown;
     carryItemGames?: number | unknown;
+    gamesWithUnit?: number | unknown;
+    carryItemGamesAll?: number | unknown;
+    tankItemGames?: number | unknown;
     topItems?: { apiName: string; count: number | unknown }[];
   }[];
   velocity?: CompVelocity | null;
@@ -86,6 +90,7 @@ export default function CompRow({
   expandToggle = null,
   compareSelected = false,
   onCompareToggle = null,
+  roles: rolesProp = null,
 }: {
   comp: Comp;
   rank: number;
@@ -108,6 +113,10 @@ export default function CompRow({
   // compareSelected steuert visuelles Highlight + Title-Text.
   compareSelected?: boolean;
   onCompareToggle?: (() => void) | null;
+  // Rollen der ganzen Familie (CompFamilyRow reicht sie fuer die Hauptzeile
+  // durch, weil deren Spielzahl die Familien-Summe ist). Fehlt es, rechnet die
+  // Zeile ihre Rollen aus den eigenen Units.
+  roles?: CompRoles | null;
 }) {
   const { t } = useI18n();
   const router = useRouter();
@@ -150,12 +159,21 @@ export default function CompRow({
       })
       .slice(0, 9);
   })();
-  const secondaryCid = parts?.secondary || null;
+  // Carries und Tank-Traeger an den Items erkannt (tft-comp-roles), nicht am
+  // Cluster-Key — der traegt nur eine Unit und lag bei Zwei-Carry-Comps oft
+  // daneben. Der Name nennt hoechstens zwei, staerkster zuerst.
+  const isComponent = componentCheckFromItems(assets?.items);
+  const roles: CompRoles = rolesProp
+    ?? computeRoles(comp.typicalUnits, comp.games, { set: assets?.set, isComponent });
+  const named = namedCarries(roles, parts?.carry);
+  // „(mit X)" nur, wenn X nicht schon im Namen steht.
+  const secondaryCid = parts?.secondary && !named.includes(parts.secondary) ? parts.secondary : null;
   const secondaryChamp = secondaryCid && assets ? assets.champions[secondaryCid] : null;
   const secondaryName = secondaryChamp?.name || (secondaryCid ? prettyChar(secondaryCid) : null);
-
-  const carryCid = parts?.carry || null;
+  const carrySet = new Set(roles.carries.length > 0 ? roles.carries : named);
+  const carryCid = named[0] || null;
   const carry = carryCid && assets ? assets.champions[carryCid] : null;
+  const carryNameOf = (cid: string) => assets?.champions[cid]?.name || prettyChar(cid);
   const carryUrl = tftChampionTileUrl(assets, carry);
 
   // Tier-letter from central helper with sample-gate + pickrate-penalty.
@@ -247,9 +265,14 @@ export default function CompRow({
           <div className="text-fg-primary font-semibold text-sm sm:text-[15px] truncate">
             <span title={traitTooltip || undefined} className="text-fg-bright font-medium">{traitDisplay}</span>
             <span className="text-fg-faint mx-1">·</span>
-            <span title={tftChampionTooltip(assets, carryCid) || undefined} className="text-fg-primary">
-              {carry?.name || (carryCid ? prettyChar(carryCid) : '')}
-            </span>
+            {named.map((cid, i) => (
+              <span key={cid}>
+                {i > 0 && <span className="text-fg-faint mx-1">&amp;</span>}
+                <span title={tftChampionTooltip(assets, cid) || undefined} className="text-fg-primary">
+                  {carryNameOf(cid)}
+                </span>
+              </span>
+            ))}
             {parts?.carryStar === 3 && (
               <span
                 className="ml-1 inline-flex items-center px-1 py-[1px] rounded text-[9px] font-semibold tabular-nums align-middle"
@@ -343,9 +366,9 @@ export default function CompRow({
         <div className="flex items-start gap-1.5 flex-wrap sm:flex-nowrap">
           {typicalUnits.slice(0, 9).map(u => {
             const ch = findChampion(assets, u.characterId);
-            const isCarry = u.characterId === carryCid;
+            const isCarry = carrySet.has(u.characterId);
             const url = tftChampionTileUrl(assets, ch);
-            const items = Array.isArray(u.topItems) ? u.topItems.slice(0, 3) : [];
+            const items = shownItems(u, roles, isComponent, 3);
             const showDouble = (((u as unknown) as { multiplicity?: number }).multiplicity ?? 1) >= 1.5;
             // 3★-Marker aus unseren eigenen Spieldaten (star3Games/gamesWithUnit).
             // Kein Platzhalter fuer Units ohne Marker: die Kachel hat feste
@@ -511,7 +534,7 @@ export default function CompRow({
           <BookmarkButton
             type="comp"
             bookmarkKey={comp.slug}
-            label={`${traitDisplay}${carry?.name ? ` · ${carry.name}` : ''}`}
+            label={`${traitDisplay}${named.length ? ` · ${named.map(carryNameOf).join(' & ')}` : ''}`}
             size="lg"
           />
         </div>

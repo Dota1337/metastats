@@ -17,12 +17,13 @@ import { parseClusterKey } from '../../../lib/tft-cluster';
 import { isFragmentTraitName } from '../../../lib/tft-classify-comp';
 import { computeShares } from '../../../lib/tft-shares';
 import {
-  selectFamilyMembers,
+  selectMergedFamilyMembers,
   mergeFamilyRows,
   familyKeyForMerge,
   applyAnchorMultiplicity,
 } from '../../../lib/tft-comp-family-merge';
 import { buildLevelOutcome } from '../../../lib/tft-comp-level-outcome';
+import { componentCheckFromItems, type IsComponent } from '../../../lib/tft-comp-roles';
 import {
   COMP_PRECOMPUTE_BUCKETS,
   COMP_PRECOMPUTE_REGION,
@@ -58,6 +59,23 @@ function loadChampionCostLookup(setNumber: number): Map<string, number> {
   }
   costLookupCache.set(setNumber, fresh);
   return fresh;
+}
+// Komponenten-Pruefung fuer die Carry-Erkennung beim Familien-Zusammenlegen —
+// dieselbe Quelle (Asset-Bundle, tags 'component') wie die Listen-Seite.
+const componentCheckCache = new Map<number, IsComponent>();
+function loadComponentCheck(setNumber: number): IsComponent {
+  const cached = componentCheckCache.get(setNumber);
+  if (cached) return cached;
+  let check: IsComponent = () => false;
+  try {
+    const file = path.join(process.cwd(), 'public', `tft-assets-${setNumber}.json`);
+    const bundle = JSON.parse(readFileSync(file, 'utf8')) as { items?: Record<string, { tags?: string[] }> };
+    check = componentCheckFromItems(bundle.items);
+  } catch {
+    // Bundle fehlt — Komponenten zaehlen dann mit ins Item-Volumen.
+  }
+  componentCheckCache.set(setNumber, check);
+  return check;
 }
 // Set-Nummer aus dem Cluster-Key. Riot hat die Praefix-Konvention pro Set
 // gewechselt: TFT14_ / Set17_ / DA_18_ — der alte reine TFT<N>_-Match lieferte
@@ -380,8 +398,21 @@ export async function GET(request: NextRequest) {
       // Anker-Row des Family-Merges (games-staerkster Sub-Cluster) — wird unten
       // fuer die Unit-Multiplizitaet gebraucht, siehe applyAnchorMultiplicity.
       let familyAnchor: CompRow | null = null;
+      let mergedFamilyKeys: string[] = [familyKeyForMerge(row.cluster_key)];
       if (variantMode === 'family') {
-        const members = selectFamilyMembers(rows, row.cluster_key);
+        // Zwei-Carry-Familien wie in der Liste zusammenlegen; entschieden wird
+        // nur ueber Zeilen, die auch die Liste zeigt (Mindest-Spiele, keine
+        // Fragment-Traits).
+        const minForList = effectiveMinFor(Number(participants));
+        const roleSet = filters.setNumber ?? setNumberFromClusterKey(row.cluster_key) ?? CURRENT_SET;
+        const { members, familyKeys } = selectMergedFamilyMembers(
+          rows,
+          row.cluster_key,
+          listUnits,
+          r => Number(r.games) >= minForList && !isFragmentTraitClusterKey(r.cluster_key),
+          { set: roleSet, isComponent: loadComponentCheck(roleSet) },
+        );
+        mergedFamilyKeys = familyKeys;
         familySlugs = members.map(m => m.cluster_key);
         if (members.length > 1) {
           familyAnchor = members[0];
@@ -406,6 +437,9 @@ export async function GET(request: NextRequest) {
         aliasedFromFamily,
         levelOutcome,
         variantMode,
+        // Alle Familien (<trait>__<carry>), die hier zusammengelegt sind —
+        // VariantsSwitcher und Seitentitel lesen daraus. Anker zuerst.
+        mergedFamilies: mergedFamilyKeys,
       };
 
       // `multiplicity` kommt vom Anker statt vom Family-Mittel — Begruendung in
@@ -693,6 +727,40 @@ function applyCooccurrenceFilter(
   return filtered;
 }
 
+// Units einer Zeile in der Form der Listen-API. Eigene Funktion, weil das
+// Familien-Zusammenlegen der Detail-Route (selectMergedFamilyMembers) auf
+// exakt denselben Zahlen entscheiden muss wie die Listen-Seite.
+function listUnits(r: CompRow) {
+  const games = Number(r.games) || 0;
+  return applyCooccurrenceFilter(
+    mergeJsonbCountArrays(r.typical_units_merged || [], 'characterId', 9, [
+      { field: 'topItems', innerKey: 'apiName', topN: UNIT_TOP_ITEMS },
+    ])
+      .filter(u => !isExcludedUnit((u as any).characterId))
+      .map(u => {
+        // Filter Thief's Gloves & Co. aus dem per-Unit Top-Items-Array.
+        const topItems = Array.isArray((u as any).topItems)
+          ? (u as any).topItems.filter((it: any) => !isExcludedItem(it?.apiName))
+          : (u as any).topItems;
+        // Cooccurrence-Rate für Liste-View. Frontend rendert daraus den
+        // Core/Flex/Tech-Marker (≥75% / ≥50% / <50%) — Detail-Page hatte
+        // das schon in enrichComp.boardComposition, jetzt auch in der Liste
+        // damit identische Comps sofort als solche erkennbar sind.
+        const cooccurrence = games > 0 ? ((u as any).count || 0) / games : 0;
+        return { ...u, topItems, cooccurrence };
+      }) as Array<{ characterId: string; count: number } & Record<string, unknown>>,
+    games,
+    carryFromClusterKey(r.cluster_key),
+    secondaryFromClusterKey(r.cluster_key),
+  );
+}
+
+// Items je Unit: 8 statt 3 (User 2026-09-27). Die Seite zeigt weiter hoechstens
+// drei, filtert aber vorher Komponenten und Items unter 15 % heraus
+// (tft-comp-roles.shownItems) — mit nur drei gespeicherten blieb danach oft
+// zu wenig uebrig, und die Carry-Erkennung sah nur einen Ausschnitt.
+const UNIT_TOP_ITEMS = 8;
+
 // Lean per-comp shape — base stats + the unit/augment/carry tiles that the
 // comp LIST (CompRow) and landing CompCard render. No derived metrics.
 function baseComp(r: CompRow, participants: number) {
@@ -720,30 +788,7 @@ function baseComp(r: CompRow, participants: number) {
     top4Share: shares.top4Share,
     avgLevel: r.games > 0 && r.sum_level ? Number(r.sum_level) / Number(r.games) : null,
     avgLastRound: r.games > 0 && r.sum_last_round ? Number(r.sum_last_round) / Number(r.games) : null,
-    typicalUnits: applyCooccurrenceFilter(
-      mergeJsonbCountArrays(r.typical_units_merged || [], 'characterId', 9, [
-        { field: 'topItems', innerKey: 'apiName', topN: 3 },
-      ])
-        .filter(u => !isExcludedUnit((u as any).characterId))
-        .map(u => {
-          // Filter Thief's Gloves & Co. aus dem per-Unit Top-Items-Array.
-          // mergeJsonbCountArrays cappte schon auf topN=3 — wenn ThG eins von
-          // den dreien war, bleiben evtl. nur 2; das ist akzeptabel weil die
-          // ehrlichste Antwort statt "Random Item draufknallen".
-          const topItems = Array.isArray((u as any).topItems)
-            ? (u as any).topItems.filter((it: any) => !isExcludedItem(it?.apiName))
-            : (u as any).topItems;
-          // Cooccurrence-Rate für Liste-View. Frontend rendert daraus den
-          // Core/Flex/Tech-Marker (≥75% / ≥50% / <50%) — Detail-Page hatte
-          // das schon in enrichComp.boardComposition, jetzt auch in der Liste
-          // damit identische Comps sofort als solche erkennbar sind.
-          const cooccurrence = games > 0 ? ((u as any).count || 0) / games : 0;
-          return { ...u, topItems, cooccurrence };
-        }) as Array<{ characterId: string; count: number } & Record<string, unknown>>,
-      games,
-      carry,
-      secondary,
-    ),
+    typicalUnits: listUnits(r),
     typicalAugments: mergeJsonbCountArrays(r.typical_augments_merged || [], 'apiName', 6),
     carryItems: mergeCarryItems(r.carry_items_merged || []),
   };
@@ -761,7 +806,7 @@ function enrichComp(r: CompRow) {
   // Filter wie bisher auf max 9 reduziert; die 10-18-Slots wandern in
   // flexUnits (separater Block weiter unten, ohne applyCooccurrenceFilter).
   const allUnitsMerged = mergeJsonbCountArrays(r.typical_units_merged || [], 'characterId', 18, [
-    { field: 'topItems', innerKey: 'apiName', topN: 3 },
+    { field: 'topItems', innerKey: 'apiName', topN: UNIT_TOP_ITEMS },
   ])
     .filter(u => !isExcludedUnit((u as any).characterId))
     .map(u => {

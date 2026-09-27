@@ -476,6 +476,7 @@ function read(path) {
   const UNIT_FIELDS = [
     'characterId', 'count', 'sumPlacement', 'carryItemGames', 'gamesWithUnit',
     'gamesWithOutcome', 'top1', 'top4', 'star3Games', 'multiplicity', 'topItems',
+    'carryItemGamesAll', 'tankItemGames',
   ];
   const files = existsSync('supabase/migrations')
     ? readdirSync('supabase/migrations').filter((f) => /comp_stats_list_v2.*.sql$/.test(f)).sort()

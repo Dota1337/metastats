@@ -24,6 +24,7 @@
 //   Splits, weil das die Sub-Cluster jeweils selbst trugen.
 
 import { parseClusterKey } from './tft-cluster';
+import { resolveFamilies, sumUnits, type RoleOptions, type RoleUnit } from './tft-comp-roles';
 
 export interface CompRowLike {
   cluster_key: string;
@@ -74,6 +75,55 @@ export function selectFamilyMembers<T extends { cluster_key: string; games: numb
   return allRows
     .filter(r => familyKeyForMerge(r.cluster_key) === target)
     .sort((a, b) => Number(b.games) - Number(a.games));
+}
+
+/** Wie selectFamilyMembers, legt aber Zwei-Carry-Familien zusammen (User
+ *  2026-09-27: „Soraka + Zyra"). Dieselbe Regel wie die Listen-Seite
+ *  (`resolveFamilies` in tft-comp-roles) — sonst zeigt die Liste eine
+ *  zusammengelegte Karte und die Detailseite nur eine Haelfte davon.
+ *
+ *  `eligible` bildet die Zeilenauswahl der Liste nach (Mindest-Spiele); nur
+ *  diese entscheiden, WER zusammengehoert. Die Mitglieder selbst kommen aus
+ *  allen Zeilen der beteiligten Familien, wie bisher bei selectFamilyMembers.
+ *  `unitsOf` liefert die Units einer Zeile in derselben Form wie die
+ *  Listen-API (mergeJsonbCountArrays), damit beide Seiten dieselben Zahlen
+ *  sehen. Rueckgabe: Mitglieder (games desc) + die beteiligten Family-Keys.
+ */
+export function selectMergedFamilyMembers<T extends { cluster_key: string; games: number }>(
+  allRows: T[],
+  anchorSlug: string,
+  unitsOf: (row: T) => RoleUnit[],
+  eligible: (row: T) => boolean,
+  opts: RoleOptions = {},
+): { members: T[]; familyKeys: string[] } {
+  const own = familyKeyForMerge(anchorSlug);
+  const trait = parseClusterKey(anchorSlug)?.trait;
+  const byFamily = new Map<string, T[]>();
+  for (const r of allRows) {
+    if (!trait || parseClusterKey(r.cluster_key)?.trait !== trait || !eligible(r)) continue;
+    const k = familyKeyForMerge(r.cluster_key);
+    if (!byFamily.has(k)) byFamily.set(k, []);
+    byFamily.get(k)!.push(r);
+  }
+  let familyKeys = [own];
+  if (byFamily.has(own)) {
+    const anchorOf = resolveFamilies([...byFamily.entries()].map(([key, list]) => ({
+      key,
+      trait: trait!,
+      keyCarry: parseClusterKey(list[0].cluster_key)?.carry ?? '',
+      games: list.reduce((s, r) => s + Number(r.games || 0), 0),
+      units: sumUnits(list.map(unitsOf)),
+    })), opts);
+    const anchor = anchorOf.get(own) ?? own;
+    familyKeys = [...anchorOf.entries()].filter(([, a]) => a === anchor).map(([k]) => k);
+    // Anker zuerst, damit Aufrufer ihn als Familien-Namen nehmen koennen.
+    familyKeys.sort((a, b) => (a === anchor ? -1 : b === anchor ? 1 : 0));
+  }
+  const wanted = new Set(familyKeys);
+  const members = allRows
+    .filter(r => wanted.has(familyKeyForMerge(r.cluster_key)))
+    .sort((a, b) => Number(b.games) - Number(a.games));
+  return { members, familyKeys };
 }
 
 /** Mergt eine Liste von Family-Member-Rows zu einem synthetischen Aggregat-

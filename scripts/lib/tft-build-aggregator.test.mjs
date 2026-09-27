@@ -11,7 +11,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { emptyAggregate, finalize, isPersistableFinishedItem } from './tft-build-aggregator.mjs';
+import { aggregateMatch, emptyAggregate, finalize, isPersistableFinishedItem } from './tft-build-aggregator.mjs';
 
 function unitWithItems(itemGames) {
   const agg = emptyAggregate();
@@ -57,4 +57,37 @@ test('isPersistableFinishedItem', () => {
   assert.equal(isPersistableFinishedItem('DA_Component_TearOfTheGoddess'), false);
   assert.equal(isPersistableFinishedItem('TFT_Item_ThiefsGloves_Radiant'), false);
   assert.equal(isPersistableFinishedItem(''), false);
+});
+
+// Rollen-Felder je Comp-Einheit (app/lib/tft-comp-roles.ts): Items einmal pro
+// Spiel, auch wenn die Unit doppelt steht; Hand of Justice zaehlt als Carry.
+test('Comp-Einheiten: Items einmal pro Spiel, carryItemGamesAll inkl. HoJ, tankItemGames', () => {
+  const unit = (id, items, tier = 2) => ({ character_id: id, tier, itemNames: items });
+  const participant = (i, units) => ({
+    puuid: `p${i}`, placement: i + 1, level: 8, last_round: 30, augments: [],
+    traits: [{ name: 'TFT17_Stargazer', num_units: 6, style: 3, tier_current: 3, tier_total: 4 }],
+    units,
+  });
+  const lineup = [
+    unit('TFT17_KhaZix', ['TFT_Item_HandOfJustice', 'TFT_Item_Guardbreaker']),
+    unit('TFT17_Samira', ['TFT_Item_WarmogsArmor', 'TFT_Item_BrambleVest']),
+    unit('TFT17_Samira', ['TFT_Item_WarmogsArmor']),
+    unit('TFT17_Lulu', []), unit('TFT17_Nami', []), unit('TFT17_Jax', []),
+  ];
+  const agg = emptyAggregate();
+  aggregateMatch({
+    metadata: { match_id: 'EUW1_1' },
+    info: { queue_id: 1100, tft_set_number: 17, game_version: 'Version 17.1', participants: [0, 1].map(i => participant(i, lineup)) },
+  }, agg, { tierBucket: 'diamond', currentSet: 17 });
+  const comps = finalize(agg, { minCompGames: 1, minUnitGames: 1 }).byComp;
+  const row = Object.values(comps).flatMap(b => Object.values(b))[0];
+  assert.ok(row, 'Comp-Zeile erwartet');
+  const byId = Object.fromEntries(row.typicalUnits.map(u => [u.characterId, u]));
+  assert.equal(byId.TFT17_KhaZix.carryItemGamesAll, 2);
+  assert.equal(byId.TFT17_KhaZix.tankItemGames, 0);
+  // Samira steht doppelt: Warmog einmal pro Spiel, nicht zweimal.
+  const warmog = byId.TFT17_Samira.topItems.find(i => i.apiName === 'TFT_Item_WarmogsArmor');
+  assert.equal(warmog.count, 2);
+  assert.equal(byId.TFT17_Samira.tankItemGames, 4);
+  assert.equal(byId.TFT17_Samira.carryItemGamesAll, 0);
 });

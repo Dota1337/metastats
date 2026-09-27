@@ -42,11 +42,17 @@ function variantLabel(
   v: { clusterKey: string; carryStar: number; augmentSlug: string | null; secondary: string | null },
   t: (key: any) => string,
   assets: TftAssetsBundle | null,
+  withCarry = false,
 ): string {
   const parts: string[] = [];
+  const cluster = parseClusterKey(v.clusterKey);
+  // Zusammengelegte Zwei-Carry-Familien (Soraka + Zyra): ohne den Carry
+  // staende zweimal „Lvl 7" nebeneinander.
+  if (withCarry && cluster?.carry) {
+    parts.push(findChampion(assets, cluster.carry)?.name || prettyChar(cluster.carry));
+  }
   // Level-Suffix damit Buttons in der C-Konsolidierungs-Sicht differenzierbar
   // sind (architect F7 2026-06-21: ohne Level wären alle 4 Buttons „Base").
-  const cluster = parseClusterKey(v.clusterKey);
   if (cluster && cluster.level > 0) {
     parts.push((t('tft.comp.variant.level') as string).replace('{n}', String(cluster.level)));
   }
@@ -67,6 +73,7 @@ export default function VariantsSwitcher({
   clusterKey, region, bucket, days, patch, assets,
   familyMergeActive = false,
   familySize = 1,
+  families = null,
 }: {
   clusterKey: string;
   region: string;
@@ -79,6 +86,9 @@ export default function VariantsSwitcher({
   // wie viele Sub-Cluster im Aggregat sitzen. familySize > 1 → Family-Banner.
   familyMergeActive?: boolean;
   familySize?: number;
+  // Alle zusammengelegten Familien (<trait>__<carry>) aus der Detail-API,
+  // Anker zuerst. Fehlt es (alter Snapshot), gilt nur die eigene Familie.
+  families?: string[] | null;
 }) {
   const { t } = useI18n();
   const router = useRouter();
@@ -88,21 +98,41 @@ export default function VariantsSwitcher({
   // C-Konsolidierung (User-Entscheid 2026-06-21): compTraitFamilyKey statt
   // compFamilyKey — Family umfasst alle Sub-Cluster derselben Trait+Carry-
   // Identität (über Levels und Augments hinweg).
-  const family = compTraitFamilyKey(clusterKey);
+  const ownFamily = compTraitFamilyKey(clusterKey);
+  const familyList = families && families.length > 0 ? families : [ownFamily];
+  const familiesKey = familyList.join(',');
+  const multiFamily = familyList.length > 1;
 
   useEffect(() => {
-    const params = new URLSearchParams({
-      family,
-      region,
-      bucket,
-      days: String(days),
+    let cancelled = false;
+    const load = (family: string) => {
+      const params = new URLSearchParams({
+        family,
+        region,
+        bucket,
+        days: String(days),
+      });
+      if (patch) params.set('patch', patch);
+      return fetch(`/api/tft/comps/variants?${params.toString()}`)
+        .then(r => r.ok ? r.json() as Promise<VariantsResponse> : null)
+        .catch(() => null);
+    };
+    Promise.all(familiesKey.split(',').map(load)).then(list => {
+      if (cancelled) return;
+      const ok = list.filter((x): x is VariantsResponse => !!x);
+      if (ok.length === 0) { setData(null); return; }
+      if (ok.length === 1) { setData(ok[0]); return; }
+      // Zusammengelegt: dieselben Regeln wie der Server je Familie (>= 5 %
+      // der Gesamtspiele, hoechstens 4), nur ueber die gemeinsame Summe.
+      const familyTotal = ok.reduce((s, x) => s + (x.familyTotal || 0), 0);
+      const variants = ok.flatMap(x => x.variants)
+        .filter(v => v.belowThreshold || v.games >= 0.05 * familyTotal)
+        .sort((a, b) => b.games - a.games)
+        .slice(0, 4);
+      setData({ family: ok[0].family, familyTotal, variants });
     });
-    if (patch) params.set('patch', patch);
-    fetch(`/api/tft/comps/variants?${params.toString()}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(setData)
-      .catch(() => setData(null));
-  }, [family, region, bucket, days, patch]);
+    return () => { cancelled = true; };
+  }, [familiesKey, region, bucket, days, patch]);
 
   if (!data) return null;
 
@@ -180,7 +210,7 @@ export default function VariantsSwitcher({
       <div className="flex flex-wrap gap-2">
         {variants.map(v => {
           const isActive = v.clusterKey === clusterKey;
-          const label = variantLabel(v, t, assets);
+          const label = variantLabel(v, t, assets, multiFamily);
           const url = `/tft/comps/${encodeURIComponent(v.slug)}?region=${region}&bucket=${bucket}&days=${days}`;
           return (
             <button

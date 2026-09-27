@@ -8,6 +8,7 @@ import CompRow from '../../components/tft/CompRow';
 import CompFamilyRow, { type CompFamily, type FamilyComp } from '../../components/tft/CompFamilyRow';
 import { compTraitFamilyKey, parseClusterKey } from '../../lib/tft-cluster';
 import { tftIsEmblem } from '../../lib/tft-cdragon';
+import { computeRoles, componentCheckFromItems, resolveFamilies, sumUnits } from '../../lib/tft-comp-roles';
 import StatsFilterBar, {
   loadInitialFilters,
   adoptServerBucket,
@@ -262,18 +263,56 @@ export default function TftCompsPage() {
     }
     const consolidatedList = [...consolidated.values()];
 
-    const groups = new Map<string, any[]>();
+    const rawGroups = new Map<string, any[]>();
     for (const c of consolidatedList) {
       const k = compTraitFamilyKey(c.slug || c.clusterKey);
-      if (!groups.has(k)) groups.set(k, []);
-      groups.get(k)!.push(c);
+      if (!rawGroups.has(k)) rawGroups.set(k, []);
+      rawGroups.get(k)!.push(c);
     }
+    // Zwei-Carry-Familien zusammenlegen (User 2026-09-27: „lege die Comps dann
+    // zusammen wie bspw. Soraka + Zyra"). Regeln in tft-comp-roles; die
+    // Detail-Route nutzt dieselbe Funktion, damit Liste und Detail gleich zaehlen.
+    // Units aus den ROHEN API-Zeilen summieren: die Konsolidierung oben behaelt
+    // je Gruppe nur die Units der groessten Zeile, die Spielzahl aber summiert —
+    // daraus gerechnet waere die Praesenz jeder Unit zu klein.
+    const rawByFamily = new Map<string, any[]>();
+    for (const c of filteredComps) {
+      const k = compTraitFamilyKey(c.slug || c.clusterKey);
+      if (!rawByFamily.has(k)) rawByFamily.set(k, []);
+      rawByFamily.get(k)!.push(c);
+    }
+    const familyUnits = (keys: string[]) =>
+      sumUnits(keys.flatMap(k => (rawByFamily.get(k) || []).map(v => v.typicalUnits)));
+    const roleOpts = { set: assets?.set, isComponent: componentCheckFromItems(assets?.items) };
+    const anchorOf = resolveFamilies([...rawGroups.entries()].map(([key, list]) => {
+      const p = parseClusterKey(list[0].slug || list[0].clusterKey);
+      return {
+        key,
+        trait: p?.trait ?? key,
+        keyCarry: p?.carry ?? '',
+        games: list.reduce((s, v) => s + (v.games || 0), 0),
+        units: familyUnits([key]),
+      };
+    }), roleOpts);
+    const membersOf = new Map<string, string[]>();
+    for (const [k] of rawGroups) {
+      const a = anchorOf.get(k) ?? k;
+      if (!membersOf.has(a)) membersOf.set(a, []);
+      membersOf.get(a)!.push(k);
+    }
+    const groups = new Map<string, any[]>();
+    for (const [k] of rawGroups) {
+      const a = anchorOf.get(k) ?? k;
+      if (!groups.has(a)) groups.set(a, []);
+    }
+    for (const [k, list] of rawGroups) groups.get(anchorOf.get(k) ?? k)!.push(...list);
     const out: CompFamily[] = [];
     for (const [familyKey, rawVariants] of groups) {
-      // Trait + Carry aus dem ersten Variant-ClusterKey holen (architect F1:
-      // alter `familyKey.split('@')[0]`-Pfad würde bei neuem Key-Format
+      // Trait + Carry aus dem Anker holen (architect F1: alter
+      // `familyKey.split('@')[0]`-Pfad würde bei neuem Key-Format
       // `<trait>__<carry>` den Carry mit in den Trait-String packen).
-      const parts = parseClusterKey(rawVariants[0].slug || rawVariants[0].clusterKey);
+      const anchorVariants = rawGroups.get(familyKey) ?? rawVariants;
+      const parts = parseClusterKey(anchorVariants[0].slug || anchorVariants[0].clusterKey);
       const trait = parts?.trait ?? familyKey;
       const carry = parts?.carry ?? '';
       const level = parts?.level ?? 0;
@@ -398,10 +437,13 @@ export default function TftCompsPage() {
           (mainComp as any).velocity = bestSrc;
         }
       }
+      const familyRoles = computeRoles(familyUnits(membersOf.get(familyKey) || [familyKey]), totalGames, roleOpts);
       out.push({
         familyKey,
         trait,
         carry,
+        carries: familyRoles.carries,
+        tanks: familyRoles.tanks,
         level,
         variants: variants as FamilyComp[],
         mainComp: mainComp as FamilyComp,
@@ -471,13 +513,16 @@ export default function TftCompsPage() {
     }
     return currentSetFamilies.filter(f => {
       const traitMeta = assets.traits[f.trait];
-      const carryChamp = assets.champions[f.carry];
       const traitName = (traitMeta?.name || f.trait.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')).toLowerCase();
-      const carryName = (carryChamp?.name || f.carry.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')).toLowerCase();
+      // Alle Carries der Familie durchsuchen — nach dem Zusammenlegen steht
+      // z. B. Soraka nicht mehr im Familien-Key, ist aber zweiter Carry.
+      const carryIds = [...new Set([f.carry, ...f.carries].filter(Boolean))];
       return traitName.includes(q)
-        || carryName.includes(q)
         || f.trait.toLowerCase().includes(q)
-        || f.carry.toLowerCase().includes(q);
+        || carryIds.some(cid => {
+          const name = (assets.champions[cid]?.name || cid.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')).toLowerCase();
+          return name.includes(q) || cid.toLowerCase().includes(q);
+        });
     });
   }, [currentSetFamilies, topFamilyKeys, search, assets]);
 
@@ -614,7 +659,9 @@ function CompareBanner({
           </span>
           <div className="flex items-center gap-2 min-w-0">
             {selectedFamilies.map(f => {
-              const carry = f.carry && assets ? assets.champions[f.carry] : null;
+              // Erster Carry wie im Comp-Namen (tft-comp-roles), sonst der aus dem Key.
+              const lead = f.carries[0] || f.carry;
+              const carry = lead && assets ? assets.champions[lead] : null;
               const url = tftChampionTileUrl(assets, carry);
               return (
                 <div key={f.familyKey} className="flex items-center gap-1.5 min-w-0">
@@ -624,7 +671,7 @@ function CompareBanner({
                     <div className="w-6 h-6 rounded bg-surface-overlay flex-shrink-0" />
                   )}
                   <span className="text-white text-[11px] truncate hidden sm:inline">
-                    {carry?.name || f.carry.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')}
+                    {carry?.name || lead.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')}
                   </span>
                 </div>
               );

@@ -11,6 +11,7 @@ import { compDefiningAugmentApiNameFromSlug, shownAugmentSlug } from '../../lib/
 import PlanAheadButton from './PlanAheadButton';
 import { parseClusterKey } from '../../lib/tft-cluster';
 import { loadCompGuidesBundle, findCompGuide, difficultyColor } from '../../lib/tft-comp-guides';
+import { computeRoles, namedCarries, shownItems, componentCheckFromItems } from '../../lib/tft-comp-roles';
 
 interface CompVelocity {
   deltaAvgPlace: number | null;
@@ -68,12 +69,23 @@ export default function CompCard({
   const { t } = useI18n();
   const router = useRouter();
   const parts = parseClusterKey(comp.clusterKey);
+  // Carries an den Items erkannt (tft-comp-roles), wie in der Liste — der
+  // Key traegt nur eine Unit und lag bei Zwei-Carry-Comps oft daneben.
+  const isComponent = componentCheckFromItems(assets?.items);
+  const roles = computeRoles(comp.typicalUnits, comp.games, { set: assets?.set, isComponent });
+  const named = namedCarries(roles, parts?.carry);
+  const carrySet = new Set(roles.carries.length > 0 ? roles.carries : named);
+  const carryNameOf = (cid: string) => assets?.champions[cid]?.name || prettyChar(cid);
   const traitMeta = parts && assets ? assets.traits[parts.trait] : null;
   // Curated guide indicator: tiny difficulty badge in the header when this
   // comp has an editorial slug-map entry pointing at a tftacademy guide.
   const [guideBundle, setGuideBundle] = useState<Awaited<ReturnType<typeof loadCompGuidesBundle>> | null>(null);
   useEffect(() => { loadCompGuidesBundle().then(setGuideBundle); }, []);
-  const guideMatch = parts ? findCompGuide(guideBundle, { trait: parts.trait, carry: parts.carry }) : null;
+  // Guide: zuerst ueber die erkannten Carries, dann ueber den Key-Carry.
+  const guideMatch = parts
+    ? [...new Set([...named, parts.carry])].reduce<ReturnType<typeof findCompGuide>>(
+        (hit, carry) => hit ?? findCompGuide(guideBundle, { trait: parts.trait, carry }), null)
+    : null;
   // Stargazer (and similar themed traits) ships seven constellation variants
   // — Mountain, Serpent, Huntress, Medallion, Fountain, Wolf, Shield — all of
   // which share the same `name`. The constellation suffix lives in the
@@ -97,26 +109,23 @@ export default function CompCard({
       // lowest count as the carry.
       _carry: typeof (u as any).carryItemGames === 'number' ? (u as any).carryItemGames : 0,
     }));
-    // Sort: primary carry first, secondary carry second, rest by count desc.
-    // Damit matched die Reihenfolge der Units das Comp-Naming
-    // ("Meeple Corki (mit Gnar)" → Corki zuerst, dann Gnar).
-    const primary = parts?.carry || null;
-    const secondary = parts?.secondary || null;
+    // Sort: die benannten Carries in Namens-Reihenfolge zuerst, Rest nach
+    // count desc — damit matched die Reihenfolge der Units das Comp-Naming.
+    const rank = (cid: string) => { const i = named.indexOf(cid); return i < 0 ? named.length : i; };
     return all
       .sort((a, b) => {
-        const pa = a.characterId === primary ? 0 : a.characterId === secondary ? 1 : 2;
-        const pb = b.characterId === primary ? 0 : b.characterId === secondary ? 1 : 2;
+        const pa = rank(a.characterId);
+        const pb = rank(b.characterId);
         if (pa !== pb) return pa - pb;
         return b._c - a._c;
       })
       .slice(0, 9);
   })();
 
-  const carryCid = parts?.carry || null;
-  const carry = carryCid && assets ? assets.champions[carryCid] : null;
   // Sub-Cluster: zweiter damage-carry aus dem clusterKey-Suffix (#<unitId>).
-  // Wird im Comp-Header als „(mit <Name>)" hinter dem primary-Carry angezeigt.
-  const secondaryCid = parts?.secondary || null;
+  // Wird im Comp-Header als „(mit <Name>)" hinter den Carries angezeigt,
+  // ausser er steht schon im Namen.
+  const secondaryCid = parts?.secondary && !named.includes(parts.secondary) ? parts.secondary : null;
   const secondaryChamp = secondaryCid && assets ? assets.champions[secondaryCid] : null;
   const secondaryName = secondaryChamp?.name || (secondaryCid ? prettyChar(secondaryCid) : null);
 
@@ -182,16 +191,19 @@ export default function CompCard({
                   {traitDisplay}
                 </a>
               ) : traitDisplay}
-              {' · '}{carryCid ? (
-                <a
-                  href={`/tft/units/${encodeURIComponent(carryCid)}`}
-                  onClick={e => e.stopPropagation()}
-                  className="hover:text-accent transition-colors"
-                  title={tftChampionTooltip(assets, carryCid) || undefined}
-                >
-                  {carry?.name || prettyChar(carryCid)}
-                </a>
-              ) : (carry?.name || '')}
+              {named.length > 0 && ' · '}{named.map((cid, i) => (
+                <span key={cid}>
+                  {i > 0 && ' & '}
+                  <a
+                    href={`/tft/units/${encodeURIComponent(cid)}`}
+                    onClick={e => e.stopPropagation()}
+                    className="hover:text-accent transition-colors"
+                    title={tftChampionTooltip(assets, cid) || undefined}
+                  >
+                    {carryNameOf(cid)}
+                  </a>
+                </span>
+              ))}
               {parts?.carryStar === 3 && (
                 <span
                   className="ml-1 inline-flex items-center px-1 py-[1px] rounded text-[10px] font-semibold tabular-nums"
@@ -242,9 +254,9 @@ export default function CompCard({
           <div className="flex flex-wrap items-start gap-1.5 mb-1.5">
             {typicalUnits.map(u => {
               const ch = findChampion(assets, u.characterId);
-              const isCarry = u.characterId === carryCid;
+              const isCarry = carrySet.has(u.characterId);
               const url = tftChampionTileUrl(assets, ch);
-              const items = Array.isArray(u.topItems) ? u.topItems.slice(0, 3) : [];
+              const items = shownItems(u, roles, isComponent, 3);
               // Multiplicity ≥ 1.5 → Two-Tanky-Variante (zweite 2★-Kopie via
               // Augment). Backward-Compat: alte Snapshots ohne multiplicity → 1.
               const showDouble = (((u as unknown) as { multiplicity?: number }).multiplicity ?? 1) >= 1.5;

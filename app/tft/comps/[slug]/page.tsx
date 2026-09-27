@@ -51,6 +51,7 @@ import { compDefiningAugmentApiNameFromSlug, shownAugmentSlug } from '../../../l
 import { dedupeByPrimaryCluster, primaryClusterKey, parseClusterKey } from '../../../lib/tft-cluster';
 import { loadCompGuidesBundle, findCompGuide } from '../../../lib/tft-comp-guides';
 import { descriptorTag } from '../../../lib/tft-comp-descriptor';
+import { computeRoles, namedCarries, componentCheckFromItems } from '../../../lib/tft-comp-roles';
 
 // Sample-Validity-Gate: Cards unter dieser Games-Schwelle werden dezent
 // grayed-out + Low-Sample-Badge bekommen (data-skeptic-Befund 2026-06-21:
@@ -169,6 +170,16 @@ export default function TftCompDetailPage() {
     return null;
   })();
 
+  // Carries an den Items erkannt (tft-comp-roles), wie Liste und Kopfzeile —
+  // der Key-Carry lag bei Zwei-Carry-Comps oft auf der falschen Unit.
+  const namedCompCarries: string[] = comp
+    ? namedCarries(
+        computeRoles(comp.typicalUnits, comp.games, { set: assets?.set, isComponent: componentCheckFromItems(assets?.items) }),
+        parseClusterKey(comp.clusterKey)?.carry,
+      )
+    : [];
+  const leadCarry: string | null = namedCompCarries[0] || null;
+
   return (
     <main className="min-h-screen bg-surface-page">
       <Nav active="comps" />
@@ -234,6 +245,7 @@ export default function TftCompDetailPage() {
               assets={assets}
               familyMergeActive={variantMode === 'family'}
               familySize={comp?.aliasedFromFamily?.mergedFrom?.length ?? 1}
+              families={variantMode === 'family' ? comp?.mergedFamilies ?? null : null}
             />
 
             <CompActiveTraits
@@ -251,7 +263,8 @@ export default function TftCompDetailPage() {
             {(() => {
               const parts = parseClusterKey(comp.clusterKey);
               if (!parts) return null;
-              const match = findCompGuide(compGuidesBundle, { trait: parts.trait, carry: parts.carry });
+              const match = [...new Set([...namedCompCarries, parts.carry])].reduce<ReturnType<typeof findCompGuide>>(
+                (hit, carry) => hit ?? findCompGuide(compGuidesBundle, { trait: parts.trait, carry }), null);
               if (!match) return null;
               return <CompGuide guide={match.guide} assets={assets} />;
             })()}
@@ -364,7 +377,7 @@ export default function TftCompDetailPage() {
               const totalGames = rows.reduce((s, x) => s + x.games, 0);
               if (totalGames === 0) return null;
               const bestAvg = Math.min(...rows.map(x => x.avgPlacement));
-              const carryCid = parseClusterKey(comp.clusterKey)?.carry || null;
+              const carryCid = leadCarry;
               return (
                 <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
                   <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.levelOutcome')}</h2>
@@ -486,7 +499,7 @@ export default function TftCompDetailPage() {
                 ? validLt.reduce((b, p) => (p.share ?? 0) > (b.share ?? 0) ? p : b)
                 : null;
               const parts = parseClusterKey(comp.clusterKey);
-              const carryChamp = parts?.carry && assets ? assets.champions[parts.carry] : null;
+              const carryChamp = leadCarry && assets ? assets.champions[leadCarry] : null;
               const tag = descriptorTag({
                 avgLevel: comp.avgLevel,
                 top1Rate: comp.top1Rate,
@@ -891,7 +904,7 @@ export default function TftCompDetailPage() {
             {comp.typicalUnits && comp.typicalUnits.length > 0 && (
               <PositionHeatmap
                 units={comp.typicalUnits}
-                carryCharacterId={parseClusterKey(comp.clusterKey)?.carry}
+                carryCharacterId={leadCarry ?? undefined}
                 clusterKey={comp.clusterKey}
                 assets={assets}
               />

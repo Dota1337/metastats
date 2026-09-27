@@ -25,9 +25,12 @@ export interface FamilyComp {
 }
 
 export interface CompFamily {
-  familyKey: string;           // <trait>__<carry>
+  familyKey: string;           // <trait>__<carry> (bei zusammengelegten Familien der Anker)
   trait: string;
   carry: string;
+  // Aus den Items der ganzen Familie erkannt (tft-comp-roles), staerkster Carry zuerst.
+  carries: string[];
+  tanks: string[];
   level: number;
   variants: FamilyComp[];
   mainComp: FamilyComp;
@@ -72,6 +75,7 @@ export default function CompFamilyRow({
   onCompareToggle?: (() => void) | null;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const familyRoles = { carries: family.carries, tanks: family.tanks };
 
   // Single-Variant-Family: regular CompRow ohne Toggle.
   if (family.variants.length === 1) {
@@ -86,6 +90,7 @@ export default function CompFamilyRow({
         tierCutoffs={tierCutoffs}
         compareSelected={compareSelected}
         onCompareToggle={onCompareToggle}
+        roles={familyRoles}
       />
     );
   }
@@ -117,6 +122,7 @@ export default function CompFamilyRow({
         expandToggle={{ expanded, onToggle: () => setExpanded(e => !e) }}
         compareSelected={compareSelected}
         onCompareToggle={onCompareToggle}
+        roles={familyRoles}
       />
 
       {/* Drop-Down — Sub-Variants als reguläre CompRows rendern (identisches

@@ -29,7 +29,7 @@ const APEX_BUCKETS = ['master','grandmaster','challenger'];
 // Kraken's Fury = Runaan's) count because they only go on damage carries.
 // Die Damage-Item-Liste lebt in scripts/lib/tft-item-classes.mjs (Single-Source-
 // of-Truth, parallel zu app/lib/tft-item-classes.ts).
-import { damageCarryItemsForSet } from './tft-item-classes.mjs';
+import { damageCarryItemsForSet, defensiveItemsForSet } from './tft-item-classes.mjs';
 import { classifyComp as classifyCompUnified } from './tft-classify-comp.mjs';
 
 // Fertige Items fuer persistTopItems (DB-Tabelle tft_daily_unit_top_items,
@@ -39,6 +39,9 @@ import { classifyComp as classifyCompUnified } from './tft-classify-comp.mjs';
 // die alten TFT_Item_*-Grundteile und TFTTutorial_Item_*). Muster statt
 // Bundle, weil der Aggregator auf der Box ohne Asset-Bundle laeuft.
 const PERSIST_TOP_ITEMS = 15;
+// Items je Unit in einer Comp: 8 statt 3, damit nach Wegfall von Komponenten
+// und unter der 15-%-Schwelle noch drei fertige Items uebrig bleiben koennen.
+const UNIT_TOP_ITEMS = 8;
 const COMPONENT_ITEM_RE = /^(?:DA_Component_|TFTTutorial_Item_|TFT_Item_(?:BFSword|RecurveBow|NeedlesslyLargeRod|TearOfTheGoddess|ChainVest|NegatronCloak|GiantsBelt|SparringGloves|Spatula|FryingPan)$)/;
 export function isPersistableFinishedItem(apiName) {
   if (!apiName) return false;
@@ -178,6 +181,14 @@ export function aggregateMatch(rawMatch, agg, opts) {
   const { tierBucket, currentSet, focusPuuid, proPuuids } = opts;
   // Set-genau, nicht global: Set 17 fuehrt TFT_Item_*, Set 18 DA_*.
   const damageItems = damageCarryItemsForSet(currentSet);
+  // Rollen-Toepfe wie app/lib/tft-comp-roles.ts: Hand of Justice und Edge of
+  // Night stehen im Tank-Topf, liegen real aber nur auf Carries.
+  const roleCarryItems = new Set(damageItems);
+  const roleTankItems = new Set();
+  for (const it of defensiveItemsForSet(currentSet)) {
+    if (/(HandOfJustice|EdgeOfNight)$/.test(it)) roleCarryItems.add(it);
+    else roleTankItems.add(it);
+  }
   if (!rawMatch?.info?.participants) { agg.matchesSkipped++; return false; }
   const info = rawMatch.info;
   // Filter out non-ranked queues just in case the crawler missed it.
@@ -465,6 +476,10 @@ export function aggregateMatch(rawMatch, agg, opts) {
         // Doppel-Units 2x im Payload; fuer „auf 3 Sternen gespielt" zaehlt die
         // hoehere. Speisen tut das ue.star3Games unten.
         const unitStarThisParticipant = new Map();
+        // Items je Unit bei diesem Participant, ueber Doppel-Units vereinigt:
+        // gezaehlt wird ein Item einmal pro Spiel, nicht pro Kopie (sonst
+        // zaehlt eine Two-Tanky-Unit ihre Items doppelt).
+        const unitItemsThisParticipant = new Map();
         for (const u of p.units || []) {
           if (!u.character_id) continue;
           unitCountThisParticipant.set(u.character_id, (unitCountThisParticipant.get(u.character_id) || 0) + 1);
@@ -478,7 +493,9 @@ export function aggregateMatch(rawMatch, agg, opts) {
             gamesWithOutcome: 0, // Σ gamesWithUnit der Rows die Outcome-Felder schreiben (= Win-Rate-Nenner)
             dupGames: 0,
             star3Games: 0,           // # Participants die diese Unit auf 3★ (oder hoeher) hatten
-            carryItemGames: 0,
+            carryItemGames: 0,       // alt: Kopien mit Schadens-Item (ohne HoJ/EoN), pro Kopie
+            carryItemGamesAll: 0,    // Spiele mit mind. einem Carry-Item inkl. HoJ/EoN, 1x pro Spiel
+            tankItemGames: 0,        // Σ verschiedene Tank-Items je Spiel
             sumPlacement: 0,         // Σ placement der Participants die diese Unit hatten
             top4: 0,                 // # Participants mit Unit die Top-4 erreichten
             top1: 0,                 // # Participants mit Unit die Top-1 erreichten
@@ -487,12 +504,19 @@ export function aggregateMatch(rawMatch, agg, opts) {
           ue.count++;
           const items = Array.isArray(u.itemNames) ? u.itemNames : [];
           if (items.some(it => damageItems.has(it))) ue.carryItemGames++;
-          const seen = new Set();
-          for (const it of items) {
-            if (!it || seen.has(it)) continue;
-            seen.add(it);
+          const seen = getOrCreate(unitItemsThisParticipant, u.character_id, () => new Set());
+          for (const it of items) if (it) seen.add(it);
+        }
+        for (const [cid, seen] of unitItemsThisParticipant) {
+          const ue = cb.typicalUnits.get(cid);
+          if (!ue) continue;
+          let hasCarry = false;
+          for (const it of seen) {
             ue.items.set(it, (ue.items.get(it) || 0) + 1);
+            if (roleCarryItems.has(it)) hasCarry = true;
+            else if (roleTankItems.has(it)) ue.tankItemGames++;
           }
+          if (hasCarry) ue.carryItemGamesAll++;
         }
         // Pro Participant Pro Unit: gamesWithUnit++ und dupGames++ wenn 2×.
         // Hier 2× iteration weil wir erst alle Vorkommen sehen müssen bevor
@@ -929,7 +953,7 @@ export function finalize(agg, opts = {}) {
         .slice(0, 9)
         .map(([cid, e]) => {
           const topItems = e.items
-            ? [...e.items.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3)
+            ? [...e.items.entries()].sort((a, b) => b[1] - a[1]).slice(0, UNIT_TOP_ITEMS)
                 .map(([apiName, count]) => ({ apiName, count }))
             : [];
           // Multiplicity: 1 + Anteil Participants mit ≥2 dieser Unit. Range
@@ -943,6 +967,8 @@ export function finalize(agg, opts = {}) {
             characterId: cid,
             count: e.count,
             carryItemGames: e.carryItemGames || 0,
+            carryItemGamesAll: e.carryItemGamesAll || 0,
+            tankItemGames: e.tankItemGames || 0,
             multiplicity,
             topItems,
             // Flex-Units Outcome-Felder (Detail-Page). gamesWithOutcome
@@ -969,7 +995,7 @@ export function finalize(agg, opts = {}) {
         .slice(0, 9)
         .map(([cid, e]) => {
           const topItems = e.items
-            ? [...e.items.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3)
+            ? [...e.items.entries()].sort((a, b) => b[1] - a[1]).slice(0, UNIT_TOP_ITEMS)
                 .map(([apiName, count]) => ({ apiName, count }))
             : [];
           const multiplicity = (e.gamesWithUnit || 0) >= 5
@@ -979,6 +1005,8 @@ export function finalize(agg, opts = {}) {
             characterId: cid,
             count: e.count,
             carryItemGames: e.carryItemGames || 0,
+            carryItemGamesAll: e.carryItemGamesAll || 0,
+            tankItemGames: e.tankItemGames || 0,
             multiplicity,
             topItems,
             gamesWithUnit: e.gamesWithUnit || 0,

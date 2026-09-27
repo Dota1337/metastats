@@ -415,6 +415,11 @@ export function mergeJsonbCountArrays<K extends string>(
     count: number; sumPlacement: number; games: number; carryItemGames: number;
     gamesWithUnit: number; gamesWithOutcome: number; top1: number; top4: number;
     dupGames: number; star3Games: number;
+    // Rollen-Felder (Sammler ab 2026-09-27). Nur ausgeben, wenn JEDE Tages-
+    // Zeile sie traegt — eine Teilsumme ueber ein gemischtes Fenster wuerde
+    // die Carry-Quote nach unten ziehen und echte Carries verlieren.
+    rows: number; carryItemGamesAll: number; carryAllRows: number;
+    tankItemGames: number; tankRows: number;
     nested: Map<string, Map<string, number>>;
   };
   const merged = new Map<string, Bucket>();
@@ -427,8 +432,12 @@ export function mergeJsonbCountArrays<K extends string>(
         count: 0, sumPlacement: 0, games: 0, carryItemGames: 0,
         gamesWithUnit: 0, gamesWithOutcome: 0, top1: 0, top4: 0,
         dupGames: 0, star3Games: 0,
+        rows: 0, carryItemGamesAll: 0, carryAllRows: 0, tankItemGames: 0, tankRows: 0,
         nested: new Map(),
       };
+      cur.rows++;
+      if (e.carryItemGamesAll != null) { cur.carryItemGamesAll += Number(e.carryItemGamesAll); cur.carryAllRows++; }
+      if (e.tankItemGames != null) { cur.tankItemGames += Number(e.tankItemGames); cur.tankRows++; }
       cur.count += Number(e.count ?? e.games ?? 0);
       cur.sumPlacement += Number(e.sumPlacement ?? e.sum_placement ?? 0);
       cur.games += Number(e.games ?? 0);
@@ -482,6 +491,8 @@ export function mergeJsonbCountArrays<K extends string>(
       if (v.dupGames > 0 && v.gamesWithUnit >= 5) {
         out.multiplicity = 1 + v.dupGames / v.gamesWithUnit;
       }
+      if (v.carryAllRows > 0 && v.carryAllRows === v.rows) out.carryItemGamesAll = v.carryItemGamesAll;
+      if (v.tankRows > 0 && v.tankRows === v.rows) out.tankItemGames = v.tankItemGames;
       if (nestedArrays) {
         for (const cfg of nestedArrays) {
           const counter = v.nested.get(cfg.field);

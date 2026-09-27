@@ -45,14 +45,41 @@ test('Zu selten, zu wenig Praesenz oder gemischte Items ergeben keinen Carry', (
     100, opts).carries, []);
 });
 
-test('Items: nur Carries und Tanks, keine Komponenten, ab 15 %, hoechstens drei', () => {
-  const roles = { carries: ['A'], tanks: ['T'] };
+test('Items: nur an Item-Traegern, keine Komponenten, hoechstens drei, unter 15 % aufgefuellt', () => {
+  const roles = { carries: ['A'], tanks: [], itemCarriers: ['A', 'T'] };
   const a = u('A', 100, { DA_BFSword: 90, DA_InfinityEdge: 60, DA_LastWhisper: 40, DA_Deathblade: 30,
     DA_GiantSlayer: 20, DA_Bloodthirster: 14 });
   assert.deepEqual(shownItems(a, roles, opts.isComponent).map(i => i.apiName),
     ['DA_InfinityEdge', 'DA_LastWhisper', 'DA_Deathblade']);
   assert.deepEqual(shownItems(u('F', 100, { DA_InfinityEdge: 80 }), roles, opts.isComponent), []);
-  assert.deepEqual(shownItems(u('T', 100, { DA_WarmogsArmor: 14 }), roles, opts.isComponent), []);
+  // Tank mit 60 % / 30 % / 8 %: das dritte Item wird aus derselben Comp aufgefuellt
+  assert.deepEqual(shownItems(u('T', 100, { DA_WarmogsArmor: 60, DA_BrambleVest: 30, DA_GargoyleStoneplate: 8 }),
+    roles, opts.isComponent).map(i => i.apiName), ['DA_WarmogsArmor', 'DA_BrambleVest', 'DA_GargoyleStoneplate']);
+  // Ohne itemCarriers (alte Aufrufer): Carries + Tanks
+  assert.equal(shownItems(u('T', 100, { DA_WarmogsArmor: 60 }), { carries: [], tanks: ['T'] }).length, 1);
+});
+
+test('Item-Traeger: bis zu vier Units nach Items je Spiel, Emblem zaehlt, Komponenten nicht', () => {
+  const units = [
+    u('A', 100, { DA_GuinsoosRageblade: 90, DA_KrakensFury: 80 }),                         // 1,7
+    u('Z', 60, { DA_18_EmblemExecutioner: 40, DA_VoidStaff: 30, DA_SpearOfShojin: 14 }),     // 1,4 (Emblem zaehlt)
+    u('V', 45, { DA_GargoyleStoneplate: 33, DA_WarmogsArmor: 24 }),                          // 1,27, Praesenz 0,45
+    u('M', 90, { DA_WarmogsArmor: 50, DA_BrambleVest: 40 }),                                 // 1,0
+    u('S', 100, { DA_SpiritVisage: 95 }),                                                    // 0,95 → fuenfter, faellt raus
+    u('C', 100, { DA_BFSword: 300 }),                                                        // nur Komponenten
+    u('R', 30, { DA_InfinityEdge: 30, DA_LastWhisper: 30 }),                                 // Praesenz 0,3
+  ];
+  assert.deepEqual(computeRoles(units, 100, opts).itemCarriers, ['A', 'Z', 'V', 'M']);
+});
+
+test('Item-Traeger: unter drei starken wird mit >= 0,6 Items je Spiel aufgefuellt, darunter nicht', () => {
+  const units = [
+    u('A', 100, { DA_GuinsoosRageblade: 90, DA_KrakensFury: 80 }),  // 1,7
+    u('H', 100, { DA_WarmogsArmor: 68 }),                            // 0,68
+    u('D', 100, { DA_WarmogsArmor: 46 }),                            // 0,46 → nicht
+  ];
+  assert.deepEqual(computeRoles(units, 100, opts).itemCarriers, ['A', 'H']);
+  assert.deepEqual(computeRoles([u('X', 20, { DA_InfinityEdge: 40 })], 20, opts).itemCarriers, []);
 });
 
 test('sumUnits addiert Spiele und Items ueber Varianten', () => {

@@ -51,7 +51,7 @@ import { compDefiningAugmentApiNameFromSlug, shownAugmentSlug } from '../../../l
 import { dedupeByPrimaryCluster, primaryClusterKey, parseClusterKey } from '../../../lib/tft-cluster';
 import { loadCompGuidesBundle, findCompGuide } from '../../../lib/tft-comp-guides';
 import { descriptorTag } from '../../../lib/tft-comp-descriptor';
-import { computeRoles, namedCarries, componentCheckFromItems } from '../../../lib/tft-comp-roles';
+import { computeRoles, namedCarries, shownItems, componentCheckFromItems } from '../../../lib/tft-comp-roles';
 
 // Sample-Validity-Gate: Cards unter dieser Games-Schwelle werden dezent
 // grayed-out + Low-Sample-Badge bekommen (data-skeptic-Befund 2026-06-21:
@@ -378,6 +378,7 @@ export default function TftCompDetailPage() {
               if (totalGames === 0) return null;
               const bestAvg = Math.min(...rows.map(x => x.avgPlacement));
               const carryCid = leadCarry;
+              const isComponent = componentCheckFromItems(assets?.items);
               return (
                 <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
                   <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.levelOutcome')}</h2>
@@ -388,6 +389,7 @@ export default function TftCompDetailPage() {
                       const isBest = row.avgPlacement === bestAvg;
                       const accentColor = isBest ? '#3ecf8e' : '#7B61FF';
                       const lowSample = row.games < MIN_GAMES_PER_OUTCOME_CARD;
+                      const rowRoles = computeRoles(row.typicalUnits, row.games, { set: assets?.set, isComponent });
                       const sortedUnits = [...row.typicalUnits].sort((a, b) => {
                         const ca = assets?.champions[a.characterId]?.cost ?? 1;
                         const cb = assets?.champions[b.characterId]?.cost ?? 1;
@@ -432,7 +434,7 @@ export default function TftCompDetailPage() {
                                 const url = tftChampionTileUrl(assets, ch);
                                 const cost = ch?.cost ?? 1;
                                 const isCarry = u.characterId === carryCid;
-                                const items = Array.isArray(u.topItems) ? u.topItems.slice(0, 3) : [];
+                                const items = shownItems(u, rowRoles, isComponent, 3);
                                 return (
                                   <div key={u.characterId} className="flex flex-col items-center gap-1 flex-shrink-0">
                                     <a

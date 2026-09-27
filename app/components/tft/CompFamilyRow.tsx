@@ -31,6 +31,7 @@ export interface CompFamily {
   // Aus den Items der ganzen Familie erkannt (tft-comp-roles), staerkster Carry zuerst.
   carries: string[];
   tanks: string[];
+  itemCarriers?: string[];
   level: number;
   variants: FamilyComp[];
   mainComp: FamilyComp;
@@ -75,7 +76,7 @@ export default function CompFamilyRow({
   onCompareToggle?: (() => void) | null;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const familyRoles = { carries: family.carries, tanks: family.tanks };
+  const familyRoles = { carries: family.carries, tanks: family.tanks, itemCarriers: family.itemCarriers };
 
   // Single-Variant-Family: regular CompRow ohne Toggle.
   if (family.variants.length === 1) {

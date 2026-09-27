@@ -15,8 +15,14 @@ export const CARRY_MIN_PRESENCE = 0.5;   // Anteil der Comp-Spiele mit dieser Un
 export const CARRY_MIN_RATE = 0.6;       // Carry-Item je Spiel
 export const CARRY_MIN_SHARE = 0.6;      // Anteil Carry-Items am Item-Volumen der Unit
 export const TANK_MIN_RATE = 0.5;        // Tank-Items je Spiel
-export const ITEM_MIN_SHARE = 0.15;      // Item erscheint auf >= 15 % der Spiele der Unit
 export const MAX_NAMED_CARRIES = 2;
+// Item-Traeger (User 2026-09-27: „Erweitere es auf 3 oder 4 … Fülle das immer
+// auf 3 auf"): Units, die in dieser Comp regelmaessig fertige Items tragen.
+export const ITEM_CARRIER_MIN_PRESENCE = 0.4;
+export const ITEM_CARRIER_MIN_LOAD = 0.9;      // fertige Items je Spiel (Emblems zaehlen, Komponenten nicht)
+export const ITEM_CARRIER_FILL_LOAD = 0.6;     // Auffuellen, solange eine Comp weniger als 3 hat
+export const ITEM_CARRIER_MIN = 3;
+export const ITEM_CARRIER_MAX = 4;
 export const MERGE_MIN_JACCARD = 0.7;    // Ueberlappung der Kern-Units zweier Familien
 
 export interface RoleItem { apiName: string; count: unknown }
@@ -64,6 +70,7 @@ export interface UnitRoleStats {
   carryRate: number;
   carryShare: number;
   tankRate: number;
+  itemLoad: number;    // fertige Items je Spiel dieser Unit
 }
 
 export function unitRoleStats(u: RoleUnit, familyGames: number, opts: RoleOptions = {}): UnitRoleStats {
@@ -96,12 +103,27 @@ export function unitRoleStats(u: RoleUnit, familyGames: number, opts: RoleOption
     carryRate,
     carryShare: allVol > 0 ? carryVol / allVol : 0,
     tankRate,
+    itemLoad: games > 0 ? allVol / games : 0,
   };
 }
 
 export interface CompRoles {
   carries: string[];   // alle Carries, staerkster zuerst
   tanks: string[];
+  // Units, an denen Items gezeigt werden; fehlt das Feld: Carries + Tanks.
+  itemCarriers?: string[];
+}
+
+// Bis zu vier Units mit >= 0,9 fertigen Items je Spiel, meiste Items zuerst.
+// Sind es weniger als drei, kommen Units mit >= 0,6 dazu, bis drei erreicht
+// sind. Wer darunter liegt, bekommt keine Items angedichtet.
+function pickItemCarriers(stats: readonly UnitRoleStats[]): string[] {
+  const pool = stats
+    .filter(s => s.games >= CARRY_MIN_GAMES && s.presence >= ITEM_CARRIER_MIN_PRESENCE)
+    .sort((a, b) => b.itemLoad - a.itemLoad || b.games - a.games || a.characterId.localeCompare(b.characterId));
+  const strong = pool.filter(s => s.itemLoad >= ITEM_CARRIER_MIN_LOAD).slice(0, ITEM_CARRIER_MAX);
+  if (strong.length >= ITEM_CARRIER_MIN) return strong.map(s => s.characterId);
+  return pool.filter(s => s.itemLoad >= ITEM_CARRIER_FILL_LOAD).slice(0, ITEM_CARRIER_MIN).map(s => s.characterId);
 }
 
 export function computeRoles(
@@ -119,7 +141,7 @@ export function computeRoles(
   const tanks = stats
     .filter(s => !carrySet.has(s.characterId) && s.tankRate >= TANK_MIN_RATE)
     .map(s => s.characterId);
-  return { carries, tanks };
+  return { carries, tanks, itemCarriers: pickItemCarriers(stats) };
 }
 
 // Name der Comp: hoechstens zwei Carries; keiner erkannt → der Carry aus dem Key.
@@ -129,19 +151,20 @@ export function namedCarries(roles: CompRoles | null | undefined, keyCarry: stri
   return keyCarry ? [keyCarry] : [];
 }
 
-// Items, die an einer Unit gezeigt werden: nur Carries und Tank-Traeger, nur
-// fertige Items, nur ab 15 % der Spiele dieser Unit.
+// Items, die an einer Unit gezeigt werden: nur an Item-Traegern, nur fertige
+// Items, die haeufigsten zuerst und immer bis `max` aufgefuellt, soweit die
+// Comp so viele verschiedene fertige Items fuer diese Unit kennt.
 export function shownItems<T extends RoleItem>(
   u: RoleUnit & { topItems?: T[] },
   roles: CompRoles,
   isComponent: IsComponent = () => false,
   max = 3,
 ): T[] {
-  if (!roles.carries.includes(u.characterId) && !roles.tanks.includes(u.characterId)) return [];
-  const games = unitGames(u);
-  if (games <= 0) return [];
+  const holders = roles.itemCarriers ?? [...roles.carries, ...roles.tanks];
+  if (!holders.includes(u.characterId)) return [];
+  if (unitGames(u) <= 0) return [];
   return ((u.topItems || []) as T[])
-    .filter(it => it?.apiName && !isComponent(it.apiName) && num(it.count) / games >= ITEM_MIN_SHARE)
+    .filter(it => it?.apiName && !isComponent(it.apiName) && num(it.count) > 0)
     .sort((a, b) => num(b.count) - num(a.count))
     .slice(0, max);
 }

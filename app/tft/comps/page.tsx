@@ -438,12 +438,20 @@ export default function TftCompsPage() {
         }
       }
       const familyRoles = computeRoles(familyUnits(membersOf.get(familyKey) || [familyKey]), totalGames, roleOpts);
+      // Item-Traeger am gezeigten Board messen, nicht an der ganzen Familie:
+      // Units, die nur in einer Level-Variante stehen, fielen sonst unter die
+      // Praesenz-Schwelle, obwohl sie auf diesem Board die Items tragen.
+      const shownSlugs = new Set<string>((mainComp as any)._mergedFromBuilds ?? [variantsBySort[0].slug || variantsBySort[0].clusterKey]);
+      const shownRows = rawVariants.filter(v => shownSlugs.has(v.slug || v.clusterKey));
+      const boardRoles = computeRoles(sumUnits(shownRows.map(v => v.typicalUnits)),
+        shownRows.reduce((s, v) => s + (v.games || 0), 0), roleOpts);
       out.push({
         familyKey,
         trait,
         carry,
         carries: familyRoles.carries,
         tanks: familyRoles.tanks,
+        itemCarriers: boardRoles.itemCarriers,
         level,
         variants: variants as FamilyComp[],
         mainComp: mainComp as FamilyComp,

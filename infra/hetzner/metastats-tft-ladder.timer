@@ -1,0 +1,11 @@
+[Unit]
+Description=metastats TFT-Rangliste taeglich
+
+[Timer]
+# Einmal am Tag zur selben Uhrzeit: /tft/rising vergleicht Tag mit Tag, ein
+# wandernder Zeitpunkt wuerde die Zeitraeume ungleich lang machen.
+OnCalendar=*-*-* 04:30:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target

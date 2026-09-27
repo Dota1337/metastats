@@ -23,7 +23,7 @@
 //   node scripts/warm-tft-stats-cache.mjs
 //   WARM_BASE_URL=https://staging... WARM_CONCURRENCY=6 node scripts/warm-tft-stats-cache.mjs
 
-import { ONETRICK_REGIONS } from '../app/lib/tft-onetrick-regions.mjs';
+import { ACTIVE_REGIONS } from './lib/active-regions.mjs';
 
 const BASE = (process.env.WARM_BASE_URL || 'https://www.metastats.gg').replace(/\/$/, '');
 // Serial by default. These are heavy aggregation RPCs sharing one Postgres;
@@ -32,8 +32,7 @@ const BASE = (process.env.WARM_BASE_URL || 'https://www.metastats.gg').replace(/
 // cleanly). Warming is a background job, so the ~2-3min serial cold run is
 // fine. Override with WARM_CONCURRENCY only against a warm cache.
 const CONCURRENCY = Math.max(1, Number(process.env.WARM_CONCURRENCY) || 1);
-// 60s default: covers the onetricks cold path (Hetzner pool + 1000-puuid
-// match fetch + classify, ~10-30s). Stats RPCs are all well under this.
+// 60s default: deckt die langsamsten kalten Pfade ab (Meta-Pulse, Patch-Diff).
 const TIMEOUT_MS = Math.max(5_000, Number(process.env.WARM_TIMEOUT_MS) || 60_000);
 // Ueber dieser HTTP-Fehlerquote gilt der Lauf als fehlgeschlagen. 30 % laesst
 // einzelne kalte Keys durch (die heilen sich per stale-while-revalidate beim
@@ -114,14 +113,13 @@ function buildUrls() {
     urls.add(`/api/tft/${ep}?${qs('master_plus', 7, 'all')}`);
   }
 
-  // Onetricks — region-scoped Master+ one-trick detection. Cold call goes
-  // through the Hetzner /marketvalue-pool + /player-matches chain and takes
-  // 10-30s (1000 puuids × 50 matches ≈ 40MB JSON transfer). Edge cache is
-  // 6h, so warming once a day right after the daily crawl finishes keeps
-  // every real user hit instant. Die Liste kommt aus derselben Datei wie die
-  // Seite: eine Region, die man anklicken kann, muss auch gewaermt werden.
-  for (const region of ONETRICK_REGIONS) {
-    urls.add(`/api/tft/onetricks?region=${region}`);
+  // Rising — Aufsteiger je Region und Zeitraum. Die Seite baut die Adresse als
+  // `days=…&region=…` in genau dieser Reihenfolge (app/tft/rising/page.tsx);
+  // die Regionsliste ist dieselbe Datei, die auch die Seite anbietet.
+  for (const days of [1, 3, 5]) {
+    for (const region of ['all', ...ACTIVE_REGIONS]) {
+      urls.add(`/api/tft/rising?days=${days}&region=${region}`);
+    }
   }
 
   // Meta-Pulse + Patch-Diff — landing-tier pages, both cold ~10s. Patch-diff
@@ -225,9 +223,9 @@ async function run() {
     process.exitCode = 1;
   }
 
-  // Die globale Quote allein reicht nicht: onetricks stellt 11 der ~45 Keys.
-  // Faellt diese Familie KOMPLETT aus, liegt die globale Quote bei ~24 % und
-  // der Lauf meldet gruen, waehrend eine ganze Seite kalt bleibt. Deshalb
+  // Die globale Quote allein reicht nicht: faellt eine kleine Familie KOMPLETT
+  // aus, bleibt die globale Quote unter dem Deckel und der Lauf meldet gruen,
+  // waehrend eine ganze Seite kalt bleibt. Deshalb
   // zusaetzlich pro Endpunkt-Familie messen.
   const perFamily = new Map();
   for (const r of results) {

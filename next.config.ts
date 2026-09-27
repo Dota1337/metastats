@@ -35,6 +35,13 @@ const nextConfig: NextConfig = {
         destination: '/tft/explorer',
         permanent: true,
       },
+      // One-Tricks vorerst abgeschaltet (2026-09-27), Rising steht an ihrer
+      // Stelle. Bewusst voruebergehend (307): die Seite kann zurueckkommen.
+      {
+        source: '/tft/onetricks',
+        destination: '/tft/rising',
+        permanent: false,
+      },
     ];
   },
 };

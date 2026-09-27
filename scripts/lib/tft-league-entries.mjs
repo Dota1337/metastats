@@ -234,3 +234,73 @@ export function splitByActivity(candidates, entries) {
 }
 
 export const __testables = { normalize, APEX_TIERS, DIAMOND_DIVISIONS, APEX_CAP };
+
+/**
+ * Die ganze Rangliste ab Smaragd IV — fuer die Aufsteiger-Seite.
+ *
+ * Anders als fetchD2PlusEntriesDetailed: alle vier Diamant- und alle vier
+ * Smaragd-Divisionen, eine hoehere Seitengrenze (Smaragd ist in grossen
+ * Regionen viel breiter als Diamant I/II), und jeder Eintrag traegt den
+ * Zeitpunkt SEINER Seite. Die Seite zaehlt spaeter die Partien zwischen zwei
+ * Staenden — ein Abruf ueber mehrere Minuten soll dabei nicht verschmieren.
+ *
+ * @returns {Promise<{ entries: Map<string, LeagueEntry & {at: Date}>,
+ *   apexLoaded: number, incomplete: string[], calls: number }>}
+ */
+const LADDER_PAGE_GUARD = 400;
+export async function fetchLadderEntries(region, rl, opts = {}) {
+  const log = opts.log || (() => {});
+  const out = new Map();
+  const incomplete = [];
+  let apexLoaded = 0;
+  let calls = 0;
+
+  for (const tier of APEX_TIERS) {
+    const at = new Date();
+    let data;
+    try {
+      data = await rl(`https://${region}.api.riotgames.com/tft/league/v1/${tier}`);
+    } catch (err) {
+      calls++;
+      incomplete.push(tier.toUpperCase());
+      log(`  [ladder] ${region} ${tier}: ${err.message}`);
+      continue;
+    }
+    calls++;
+    if (!Array.isArray(data?.entries)) { incomplete.push(tier.toUpperCase()); continue; }
+    for (const e of data.entries) {
+      if (e?.puuid) out.set(e.puuid, { ...normalize(e, tier.toUpperCase()), at });
+    }
+    apexLoaded++;
+  }
+
+  for (const tier of ['DIAMOND', 'EMERALD']) {
+    for (const div of ['I', 'II', 'III', 'IV']) {
+      let complete = false;
+      for (let page = 1; page <= LADDER_PAGE_GUARD; page++) {
+        const at = new Date();
+        let data;
+        try {
+          data = await rl(`https://${region}.api.riotgames.com/tft/league/v1/entries/${tier}/${div}?page=${page}`);
+        } catch (err) {
+          calls++;
+          log(`  [ladder] ${region} ${tier} ${div} Seite ${page}: ${err.message}`);
+          break;
+        }
+        calls++;
+        if (!Array.isArray(data)) break;
+        if (data.length === 0) { complete = true; break; }
+        let added = 0;
+        for (const e of data) {
+          if (!e?.puuid || out.has(e.puuid)) continue;
+          out.set(e.puuid, { ...normalize(e, tier), at });
+          added++;
+        }
+        if (added === 0) { complete = true; break; }
+      }
+      if (!complete) incomplete.push(`${tier}_${div}`);
+    }
+  }
+
+  return { entries: out, apexLoaded, incomplete, calls };
+}

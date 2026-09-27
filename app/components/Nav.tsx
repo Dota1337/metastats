@@ -11,7 +11,7 @@ interface NavProps {
   active?:
     | 'search' | 'leaderboard' | 'champions' | 'marktwert' | 'analyse' | 'teams' | 'ligen'
     | 'units' | 'items' | 'augments' | 'comps' | 'traits' | 'tournaments' | 'saved' | 'builder' | 'pros' | 'regions'
-    | 'onetricks' | 'patch' | 'community' | 'coach' | 'explorer' | 'tools';
+    | 'onetricks' | 'rising' | 'patch' | 'community' | 'coach' | 'explorer' | 'tools';
 }
 
 interface SearchResult {
@@ -35,7 +35,7 @@ const TFT_META_LINKS = [
   { href: '/tft/items', label: 'nav.items' },
   { href: '/tft/augments', label: 'nav.augments' },
   { href: '/tft/traits', label: 'nav.traits' },
-  { href: '/tft/onetricks', label: 'nav.onetricks' },
+  { href: '/tft/rising', label: 'nav.rising' },
   { href: '/tft/regions', label: 'nav.regions' },
   { href: '/tft/patch/winners', label: 'nav.patchWinners', base: '/tft/patch' },
   { href: '/tft/explorer', label: 'nav.explorer' },

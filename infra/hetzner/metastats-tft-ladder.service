@@ -1,0 +1,43 @@
+[Unit]
+Description=metastats TFT-Rangliste (Smaragd bis Challenger) fuer /tft/rising
+Wants=network-online.target
+After=network-online.target
+# Kein Conflicts=: die Ranglisten-Abrufe laufen ueber die Plattform-Hosts
+# (euw1, kr, ...) mit eigenem Limit, die Partien-Nachladung nur ueber den
+# kleinen reservierten Anteil 'ladder' aus scripts/lib/riot-limits.mjs.
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/metastats-crawler
+EnvironmentFile=/etc/metastats-crawler/env
+# Testlauf 2026-09-27: euw1 allein 96 s. Die groessten Regionen nacheinander
+# plus Partien fuer bis zu 60 Kandidaten je Region — eine Stunde ist Puffer.
+TimeoutStartSec=3600
+ExecStart=/usr/bin/node scripts/collect-tft-ladder.mjs
+StandardOutput=journal
+StandardError=journal
+
+# --- BEGIN metastats-hardening-floor ---
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectProc=invisible
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+# --- END metastats-hardening-floor ---
+
+[Install]
+WantedBy=multi-user.target

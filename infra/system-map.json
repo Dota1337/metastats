@@ -364,6 +364,26 @@
       ]
     },
     {
+      "name": "metastats-tft-ladder.service",
+      "kind": "service",
+      "description": "metastats TFT-Rangliste (Smaragd bis Challenger) fuer /tft/rising",
+      "scripts": [
+        "scripts/collect-tft-ladder.mjs"
+      ]
+    },
+    {
+      "name": "metastats-tft-ladder.timer",
+      "kind": "timer",
+      "description": "metastats TFT-Rangliste taeglich",
+      "scripts": [],
+      "onCalendar": [
+        "*-*-* 04:30:00 UTC"
+      ],
+      "interval": [],
+      "activates": "metastats-tft-ladder.service",
+      "persistent": true
+    },
+    {
       "name": "metastats-tft-pro-classify.service",
       "kind": "service",
       "description": "TFT Pro Classifier (recomputes classification + confidence_score)",
@@ -514,6 +534,13 @@
       "timer": "metastats-position-aggregator.timer",
       "activates": "metastats-position-aggregator.service",
       "onCalendar": []
+    },
+    {
+      "timer": "metastats-tft-ladder.timer",
+      "activates": "metastats-tft-ladder.service",
+      "onCalendar": [
+        "*-*-* 04:30:00 UTC"
+      ]
     },
     {
       "timer": "metastats-tft-pro-fullsync.timer",
@@ -971,6 +998,9 @@
       "marketvalue/regionen-abdeckung",
       "marketvalue/regionen-abdeckung-hetzner",
       "set-achse/marktwert-snapshots"
+    ],
+    "metastats-tft-ladder.service": [
+      "tft/ladder-daily"
     ],
     "scripts/sync-marketvalue-to-supabase.mjs": [
       "marketvalue/supabase-mirror",

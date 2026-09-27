@@ -6,19 +6,19 @@
     "belegen laesst, steht in `unresolved` statt als geratene Kante im Graphen."
   ],
   "counts": {
-    "routes": 76,
+    "routes": 77,
     "groups": 31,
     "tables": 32,
     "rpcs": 28,
     "files": 11,
-    "edges": 344,
+    "edges": 350,
     "unused": 8,
     "unresolved": 1
   },
   "groups": [
     {
       "name": "tft",
-      "count": 23
+      "count": 24
     },
     {
       "name": "tft/marktwert",
@@ -965,8 +965,7 @@
       ],
       "used": true,
       "usedBy": [
-        "app/tft/onetricks/page.tsx",
-        "scripts/warm-tft-stats-cache.mjs"
+        "app/tft/onetricks/page.tsx"
       ]
     },
     {
@@ -1122,6 +1121,25 @@
       "used": true,
       "usedBy": [
         "app/tft/regions/page.tsx"
+      ]
+    },
+    {
+      "id": "api:/api/tft/rising",
+      "kind": "route",
+      "label": "/api/tft/rising",
+      "group": "tft",
+      "file": "app/api/tft/rising/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/tft-hetzner-matches.ts",
+        "app/lib/tft-supabase-reader.ts",
+        "public/tft-set.json"
+      ],
+      "used": true,
+      "usedBy": [
+        "app/tft/rising/page.tsx",
+        "scripts/warm-tft-stats-cache.mjs"
       ]
     },
     {
@@ -3070,6 +3088,36 @@
     {
       "from": "api:/api/tft/regions/divergence",
       "to": "fn:get_tft_region_divergence",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/rising",
+      "to": "box:hetzner",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/rising",
+      "to": "db:tft_player_names",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/rising",
+      "to": "ext:riot-web",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/rising",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/rising",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/rising",
+      "to": "fn:get_tft_available_patches",
       "kind": "calls"
     },
     {

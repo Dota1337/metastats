@@ -127,6 +127,8 @@ async function loadPopulation(pool, region, setNumber) {
 
 import { REGIONAL_ROUTING as REGIONAL, getAccountRouting } from './lib/regional-routing.mjs';
 import { CURRENT_SET, loadCurrentSet } from './lib/current-set.mjs';
+import { queryRisingCandidates, playstyleOf, RISING_DAYS, RISING_LIMIT } from './lib/tft-rising.mjs';
+import { ACTIVE_REGIONS } from './lib/active-regions.mjs';
 
 // ─ env loader (matches crawler) ────────────────────────────────────────────
 function loadEnv() {
@@ -802,6 +804,114 @@ async function handlePlayerCompHistogram(body) {
   return { players, rows: rows.length, unclassified, source, queryMs, classifyMs };
 }
 
+// Aufsteiger (/tft/rising), 1:1 nach MetaTFTs /rising. Die Spielerliste kommt
+// aus tft_ladder_daily (scripts/lib/tft-rising.mjs), die Partien des
+// Zeitraums aus dem Match-Cache — der Sammler holt sie fuer genau diese
+// Kandidaten nach. Comp = Familie <trait>__<carry>, wie auf der Comps-Seite.
+const FAMILY_RE = /^(.+)@\d+_([^*~#]+)/;
+async function handleRising(body) {
+  const days = Number(body?.days);
+  if (!RISING_DAYS.includes(days)) {
+    const e = new Error('invalid_days'); e.status = 400; throw e;
+  }
+  const regionRaw = body?.region == null ? 'all' : String(body.region);
+  if (regionRaw !== 'all' && !ACTIVE_REGIONS.includes(regionRaw)) {
+    const e = new Error('invalid_region'); e.status = 400; throw e;
+  }
+  const region = regionRaw === 'all' ? null : regionRaw;
+
+  const cands = await queryRisingCandidates(pool, { setNumber: SET_NUMBER, days, region, limit: RISING_LIMIT });
+  if (cands.length === 0) return { hasData: false, days, region: regionRaw, endDay: null, players: [] };
+
+  const { rows } = await pool.query(
+    `select m.puuid, m.region, m.placement, m.level, m.units, m.traits, m.augments, m.game_datetime
+       from unnest($1::text[], $2::text[], $3::bigint[], $4::bigint[]) as c(puuid, region, s, e)
+       join tft_player_match_cache m
+         on m.puuid = c.puuid and m.set_number = $5 and m.queue_id = 1100
+        and m.game_datetime > c.s and m.game_datetime <= c.e`,
+    [
+      cands.map(c => c.puuid),
+      cands.map(c => c.region),
+      cands.map(c => String(c.startAt.getTime())),
+      cands.map(c => String(c.endAt.getTime())),
+      SET_NUMBER,
+    ],
+  );
+  const byKey = new Map();
+  for (const r of rows) {
+    const k = `${r.puuid}|${r.region}`;
+    if (!byKey.has(k)) byKey.set(k, []);
+    byKey.get(k).push(r);
+  }
+
+  const players = cands.map(c => {
+    const ms = (byKey.get(`${c.puuid}|${c.region}`) || []).sort((a, b) => Number(b.game_datetime) - Number(a.game_datetime));
+    const placements = [0, 0, 0, 0, 0, 0, 0, 0];
+    let sum = 0, n = 0;
+    const fam = new Map();
+    let classified = 0;
+    for (const m of ms) {
+      const pl = Number(m.placement);
+      if (pl >= 1 && pl <= 8) { placements[pl - 1]++; sum += pl; n++; }
+      const cls = classifyComp(
+        { traits: m.traits, units: m.units, augments: m.augments, level: m.level },
+        { withAugmentSuffix: false, currentSet: SET_NUMBER },
+      );
+      const mm = cls?.clusterKey ? FAMILY_RE.exec(cls.clusterKey) : null;
+      if (!mm) continue;
+      classified++;
+      const key = `${mm[1]}__${mm[2]}`;
+      const f = fam.get(key) || { count: 0, latest: null, stars: 0, starN: 0 };
+      f.count++;
+      if (!f.latest) f.latest = m;   // ms ist absteigend sortiert
+      // Sterne des Carrys ueber ALLE Partien der Familie, nicht nur die juengste.
+      if (Number.isFinite(Number(cls.carryStar))) { f.stars += Number(cls.carryStar); f.starN++; }
+      fam.set(key, f);
+    }
+    let top = null;
+    for (const [key, f] of fam) {
+      if (!top || f.count > top.f.count
+        || (f.count === top.f.count && Number(f.latest.game_datetime) > Number(top.f.latest.game_datetime))) {
+        top = { key, f };
+      }
+    }
+    let topComp = null;
+    if (top) {
+      const units = (Array.isArray(top.f.latest.units) ? top.f.latest.units : []).map(u => ({
+        characterId: u.characterId ?? u.character_id ?? '',
+        star: Number(u.tier ?? u.star ?? 1),
+        items: Array.isArray(u.itemNames) ? u.itemNames : Array.isArray(u.items) ? u.items : [],
+      })).filter(u => u.characterId);
+      const traits = (Array.isArray(top.f.latest.traits) ? top.f.latest.traits : [])
+        .map(t => ({ name: t.name, numUnits: Number(t.num_units ?? t.numUnits ?? 0), style: Number(t.style ?? 0) }))
+        .filter(t => t.name && t.style > 0)
+        .sort((a, b) => (b.style - a.style) || (b.numUnits - a.numUnits));
+      topComp = { key: top.key, count: top.f.count, avgStars: top.f.starN ? top.f.stars / top.f.starN : null, units, traits };
+    }
+    const share = classified ? top.f.count / classified : null;
+    return {
+      puuid: c.puuid,
+      region: c.region,
+      before: c.before,
+      after: c.after,
+      lpChange: c.lpChange,
+      games: c.games,
+      avgPlacement: n ? sum / n : null,
+      placements: n ? placements : [],
+      compsPlayed: fam.size,
+      topComp,
+      topCompRate: share,
+      playstyle: playstyleOf(share),
+    };
+  });
+
+  const endDay = cands.reduce((m, c) => {
+    const d = c.endDay instanceof Date ? c.endDay.toISOString().slice(0, 10) : String(c.endDay);
+    return !m || d > m ? d : m;
+  }, null);
+  return { hasData: true, days, region: regionRaw, endDay, players };
+}
+
 async function handlePlayerMatches(body) {
   const puuids = Array.isArray(body?.puuids)
     ? body.puuids.filter(p => typeof p === 'string' && p.length > 0).slice(0, 3000)
@@ -989,7 +1099,8 @@ const server = http.createServer(async (req, res) => {
   const isMvPool = req.method === 'POST' && req.url === '/marketvalue-pool';
   const isProsByComp = req.method === 'POST' && req.url === '/pros-by-comp';
   const isCompHistogram = req.method === 'POST' && req.url === '/player-comp-histogram';
-  if (!isRefresh && !isExplore && !isPlayerMatches && !isPeerBaseline && !isMvPool && !isProsByComp && !isCompHistogram) {
+  const isRising = req.method === 'POST' && req.url === '/rising';
+  if (!isRefresh && !isExplore && !isPlayerMatches && !isPeerBaseline && !isMvPool && !isProsByComp && !isCompHistogram && !isRising) {
     res.writeHead(404, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({ error: 'not_found' }));
   }
@@ -1015,6 +1126,7 @@ const server = http.createServer(async (req, res) => {
                   : isMvPool ? await handleMarketvaluePool(body)
                   : isProsByComp ? await handleProsByComp(body)
                   : isCompHistogram ? await handlePlayerCompHistogram(body)
+                  : isRising ? await handleRising(body)
                   : await handleRefresh(body);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(result));

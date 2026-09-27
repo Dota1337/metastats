@@ -134,6 +134,16 @@
       "note": "Der Lauf schreibt über den Tag verteilt und dauert >24h. Die Frische misst der neueste vorhandene Tag (nicht zwingend heute), die Row-Zahl der letzte ABGESCHLOSSENE Tag — am laufenden Tag wäre sie per Konstruktion ein Teilstand (Befund B, 2026-08-18)."
     },
     {
+      "id": "tft/ladder-daily",
+      "owner": "metastats-tft-ladder.service",
+      "backend": "hetzner",
+      "table": "tft_ladder_daily",
+      "dateColumn": "day",
+      "maxLagDays": 2,
+      "minRows": 20000,
+      "note": "Rangliste Smaragd bis Challenger für /tft/rising. Testlauf 2026-09-27: euw1 allein 35.862 Spieler; fällt ein Tag unter 20.000, fehlen große Regionen."
+    },
+    {
       "id": "marketvalue/supabase-mirror",
       "owner": "scripts/sync-marketvalue-to-supabase.mjs",
       "backend": "supabase",

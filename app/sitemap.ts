@@ -27,7 +27,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/tft/traits', priority: 0.8, changeFrequency: 'daily' as const },
     { path: '/tft/augments', priority: 0.7, changeFrequency: 'daily' as const },
     { path: '/tft/tournaments', priority: 0.7, changeFrequency: 'daily' as const },
-    { path: '/tft/onetricks', priority: 0.7, changeFrequency: 'daily' as const },
+    { path: '/tft/rising', priority: 0.7, changeFrequency: 'daily' as const },
     { path: '/tft/patch', priority: 0.7, changeFrequency: 'daily' as const },
     { path: '/tft/patch/winners', priority: 0.8, changeFrequency: 'daily' as const },
     { path: '/tft/builder', priority: 0.6, changeFrequency: 'weekly' as const },

@@ -258,3 +258,83 @@ export async function fetchHetznerPeerBaseline(opts: PeerBaselineOpts = {}): Pro
   const data = await res.json();
   return { avgGoldLeft: data?.avgGoldLeft ?? null, sample: data?.sample ?? 0 };
 }
+
+// Aufsteiger (/tft/rising): die Box rechnet aus der taeglichen Ranglisten-
+// Tabelle tft_ladder_daily, wer in den letzten `days` Tagen am meisten
+// gestiegen ist, und haengt aus dem Match-Cache die Platzierungen und die
+// meistgespielte Comp an. Ueber die Leitung gehen hoechstens 20 Spieler.
+export interface RisingRank {
+  tier: string;
+  rank: string | null;
+  lp: number;
+}
+
+export interface RisingUnit {
+  characterId: string;
+  star: number;
+  items: string[];
+}
+
+export interface RisingTrait {
+  name: string;
+  numUnits: number;
+  style: number;
+}
+
+export interface RisingPlayer {
+  puuid: string;
+  region: string;
+  gameName: string | null;
+  tagLine: string | null;
+  before: RisingRank;
+  after: RisingRank;
+  lpChange: number;
+  games: number;
+  avgPlacement: number | null;
+  placements: number[];            // Index 0 = Platz 1 … Index 7 = Platz 8
+  compsPlayed: number;
+  topComp: {
+    key: string;
+    count: number;
+    avgStars: number;
+    units: RisingUnit[];
+    traits: RisingTrait[];
+  } | null;
+  topCompRate: number | null;
+  playstyle: 'oneTrick' | 'default' | 'flexible' | null;
+}
+
+export interface RisingResponse {
+  hasData: boolean;
+  days: number;
+  region: string;
+  endDay: string | null;
+  players: RisingPlayer[];
+}
+
+export async function fetchHetznerRising(opts: { days: number; region: string; signalTimeoutMs?: number }): Promise<RisingResponse> {
+  if (!HETZNER_URL || !TOKEN) throw new Error('hetzner_disabled');
+  const res = await fetch(`${HETZNER_URL}/rising`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${TOKEN}` },
+    body: JSON.stringify({ days: opts.days, region: opts.region }),
+    signal: AbortSignal.timeout(opts.signalTimeoutMs ?? 15_000),
+  });
+  // 404 heisst: die Box kennt den Endpunkt noch nicht (Deploy-Fenster). Das
+  // ist ein leerer Zustand, kein Fehler.
+  if (res.status === 404) {
+    return { hasData: false, days: opts.days, region: opts.region, endDay: null, players: [] };
+  }
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`hetzner_rising ${res.status}: ${text.slice(0, 200)}`);
+  }
+  const data = await res.json();
+  return {
+    hasData: Boolean(data?.hasData) && Array.isArray(data?.players) && data.players.length > 0,
+    days: opts.days,
+    region: opts.region,
+    endDay: data?.endDay ?? null,
+    players: Array.isArray(data?.players) ? data.players as RisingPlayer[] : [],
+  };
+}

@@ -45,6 +45,11 @@ export const RESERVED = {
   // Cold-Fill, der vorher mit 180 losrennen durfte und am 2026-07-29 einen
   // Sturm von 789 abgefangenen 429ern verursacht hat.
   prewarm: 60,
+  // Aufsteiger-Sammler (collect-tft-ladder.mjs), taeglich. Holt Partien nur
+  // fuer die rund 20 Spitzenkandidaten je Region und laeuft bewusst OHNE
+  // `Conflicts=` neben dem Marktwert-Snapshot her — deshalb eine kleine feste
+  // Decke statt des Batch-Budgets. Wie prewarm nicht im Batch abgezogen.
+  ladder: 15,
 };
 
 const SAFETY = 0.9;
@@ -71,7 +76,7 @@ export function batchBudget(cluster) {
 /**
  * Fertiges Options-Objekt für `createRiotClient`.
  *
- * @param {'batch'|'refresh-api'|'companion-backfill'|'prewarm'} consumer
+ * @param {'batch'|'refresh-api'|'companion-backfill'|'prewarm'|'ladder'} consumer
  * @param {string} [cluster] Regional-Route — nur für 'batch' relevant.
  */
 export function riotWindowFor(consumer, cluster) {
@@ -83,6 +88,22 @@ export function riotWindowFor(consumer, cluster) {
   }
   return {
     shortWindowRequests,
+    shortWindowMs: SHORT_WINDOW_MS,
+    longWindowRequests: LONG_WINDOW.requests,
+    longWindowMs: LONG_WINDOW.ms,
+  };
+}
+
+// Liga-Listen (/tft/league/v1/*) laufen ueber die Plattform-Hosts (euw1, kr,
+// …), nicht ueber die Regional-Routen — eigene Zaehler, unabhaengig von
+// MATCH_DETAIL_LIMIT. Die genaue Riot-Grenze dafuer ist hier NICHT gemessen;
+// 20 je 10,5 s pro Plattform ist bewusst vorsichtig, der Marktwert-Snapshot
+// holt dieselben Listen parallel. Ein 429 haelt den Client ohnehin an.
+export const LEAGUE_PER_PLATFORM = 20;
+
+export function leagueWindow() {
+  return {
+    shortWindowRequests: LEAGUE_PER_PLATFORM,
     shortWindowMs: SHORT_WINDOW_MS,
     longWindowRequests: LONG_WINDOW.requests,
     longWindowMs: LONG_WINDOW.ms,

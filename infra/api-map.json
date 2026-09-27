@@ -6,12 +6,12 @@
     "belegen laesst, steht in `unresolved` statt als geratene Kante im Graphen."
   ],
   "counts": {
-    "routes": 77,
+    "routes": 78,
     "groups": 31,
     "tables": 32,
     "rpcs": 28,
     "files": 11,
-    "edges": 350,
+    "edges": 356,
     "unused": 8,
     "unresolved": 1
   },
@@ -22,7 +22,7 @@
     },
     {
       "name": "tft/marktwert",
-      "count": 8
+      "count": 9
     },
     {
       "name": "tft/comps",
@@ -832,8 +832,25 @@
       ],
       "used": true,
       "usedBy": [
-        "app/tft/leaderboard/page.tsx",
         "app/tft/marktwert/page.tsx"
+      ]
+    },
+    {
+      "id": "api:/api/tft/marktwert/lookup",
+      "kind": "route",
+      "label": "/api/tft/marktwert/lookup",
+      "group": "tft/marktwert",
+      "file": "app/api/tft/marktwert/lookup/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/regions.ts",
+        "app/lib/tft-supabase-reader.ts",
+        "public/tft-set.json"
+      ],
+      "used": true,
+      "usedBy": [
+        "app/tft/leaderboard/page.tsx"
       ]
     },
     {
@@ -2663,6 +2680,36 @@
     {
       "from": "api:/api/tft/marktwert/leaderboard",
       "to": "fn:get_tft_latest_marketvalues",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/marktwert/lookup",
+      "to": "db:tft_player_marketvalue_snapshots",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/marktwert/lookup",
+      "to": "ext:riot-api",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/marktwert/lookup",
+      "to": "ext:riot-web",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/marktwert/lookup",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/marktwert/lookup",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/marktwert/lookup",
+      "to": "fn:get_tft_available_patches",
       "kind": "calls"
     },
     {

@@ -13,11 +13,6 @@ interface Player {
   leaguePoints: number; wins: number; losses: number;
 }
 
-interface MarketSnapshot {
-  puuid: string;
-  finalValue: number;
-}
-
 // Ohne Divisions-Auswahl: Apex-Ligen und alle X+-Gruppen.
 const APEX_TIERS = ['CHALLENGER', 'GRANDMASTER_PLUS', 'MASTER_PLUS', 'DIAMOND_PLUS', 'EMERALD_PLUS', 'PLATINUM_PLUS'];
 // Gruppen mit Raengen unterhalb von Master: die API steigt wie bei "alle
@@ -30,13 +25,15 @@ const DESCENT_TIERS = ['DIAMOND_PLUS', 'EMERALD_PLUS', 'PLATINUM_PLUS'];
 const ALL_TIERS = 'ALL';
 const DIVISIONS = ['I', 'II', 'III', 'IV'];
 
-// Die Marktwertspalte gibt es nur in den Apex-Ligen. Snapshots existieren
-// zwar auch fuer Diamant, aber /api/tft/marktwert/leaderboard liefert die
-// nach Wert sortierte Regions-Spitze — Diamant reicht nie in die obersten 500
-// hinein. Gemessen 2026-08-27 auf EUW: Challenger 256, Grandmaster 331,
-// Master 413, Diamant 0 Treffer. Eine Spalte, die garantiert nur Striche
-// zeigt, blenden wir aus.
-const MARKET_VALUE_TIERS = ['CHALLENGER', 'GRANDMASTER_PLUS', 'MASTER_PLUS'];
+// Marktwerte gibt es nur ab Diamant II (gemessen 2026-09-27 auf EUW: CH 229,
+// GM 379, Master 1062, Diamant I 224, Diamant II 664, darunter 0). Die Spalte
+// steht deshalb in allen Gruppen-Ansichten, die von oben abwaerts sammeln,
+// und in den Einzelansichten Diamant I/II — sonst zeigte sie nur Striche.
+const MARKET_VALUE_ROW_TIERS = ['CHALLENGER', 'GRANDMASTER', 'MASTER'];
+const MARKET_VALUE_DIAMOND_DIVISIONS = ['I', 'II'];
+const hasMarketValueRank = (tier: string, division: string | null) =>
+  MARKET_VALUE_ROW_TIERS.includes(tier)
+  || (tier === 'DIAMOND' && division != null && MARKET_VALUE_DIAMOND_DIVISIONS.includes(division));
 
 // PH und TH fehlen hier bewusst: beide sind seit dem Crawl-Umbau leer (siehe
 // app/lib/active-regions.ts), eine Rangliste haette dort nichts zu zeigen. Der
@@ -97,7 +94,7 @@ export default function TftLeaderboardPage() {
   // Rangnummer nur dort, wo sie echt ist: in den Apex-Ligen und in der
   // Alle-Raenge-Ansicht, die von oben abwaerts vollstaendige Stufen sammelt.
   const showRank = isApex || isAll;
-  const showMarketValue = MARKET_VALUE_TIERS.includes(tier);
+  const showMarketValue = isAll || isApex || hasMarketValueRank(tier, division);
   const pageSize = 50;
   const MAX_PAGES_ALL = 10;
   const totalPages = isDescent
@@ -152,25 +149,27 @@ export default function TftLeaderboardPage() {
       .catch(e => { setError(e.message); setLoading(false); });
   }, [region, tier, division, page, isApex, isAll]);
 
-  // Side-load marketvalues from the snapshot leaderboard. Single batch
-  // request — limited to the snapshot table, no Riot calls. Result is keyed
-  // by puuid so we can join without name-fuzzy-matching.
+  // Marktwerte gezielt fuer die angezeigten Spieler ab Diamant II nachladen.
+  // Sortiert, damit dieselbe Seite denselben Cache-Schluessel trifft.
+  const mvPuuids = showMarketValue
+    ? [...new Set(players.filter(p => hasMarketValueRank(p.tier, p.division)).map(p => p.puuid))].sort().join(',')
+    : '';
   useEffect(() => {
-    if (!showMarketValue) { setMarketValues(new Map()); return; }
+    if (!mvPuuids) { setMarketValues(new Map()); return; }
     let cancelled = false;
-    fetch(`/api/tft/marktwert/leaderboard?region=${region}&tier=${tier}&limit=500`)
-      .then(r => r.ok ? r.json() : { players: [] })
+    fetch(`/api/tft/marktwert/lookup?region=${region}&puuids=${mvPuuids}`)
+      .then(r => r.ok ? r.json() : { values: {} })
       .then(d => {
         if (cancelled) return;
         const m = new Map<string, number>();
-        for (const p of (d.players || []) as MarketSnapshot[]) {
-          if (p.puuid && typeof p.finalValue === 'number') m.set(p.puuid, p.finalValue);
+        for (const [puuid, v] of Object.entries((d.values || {}) as Record<string, unknown>)) {
+          if (typeof v === 'number') m.set(puuid, v);
         }
         setMarketValues(m);
       })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [region, tier, showMarketValue]);
+  }, [region, mvPuuids]);
 
   const fmtEur = (n: number) =>
     new Intl.NumberFormat(LOCALE_MAP[lang], {

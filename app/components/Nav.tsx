@@ -26,6 +26,36 @@ interface SearchResult {
 }
 
 
+// Die Meta-Seiten stehen als zweite Zeile unter der TFT-Hauptleiste (vorher
+// ein Klappmenue). Eine Liste fuer Desktop-Zeile und Handy-Menue.
+const TFT_META_LINKS = [
+  { href: '/tft/meta-pulse', label: 'nav.metaPulse', pulse: true },
+  { href: '/tft/comps', label: 'nav.comps' },
+  { href: '/tft/units', label: 'nav.units' },
+  { href: '/tft/items', label: 'nav.items' },
+  { href: '/tft/augments', label: 'nav.augments' },
+  { href: '/tft/traits', label: 'nav.traits' },
+  { href: '/tft/onetricks', label: 'nav.onetricks' },
+  { href: '/tft/regions', label: 'nav.regions' },
+  { href: '/tft/patch/winners', label: 'nav.patchWinners', base: '/tft/patch' },
+  { href: '/tft/explorer', label: 'nav.explorer' },
+  { href: '/tft/tools/odds', label: 'nav.rollOdds', base: '/tft/tools' },
+] as const;
+
+// Aktiv nach Adresse statt nach dem `active`-Wert: mehrere Seiten (Meta-Pulse,
+// Regionen, Patch, Builder, Community) geben "comps" mit. Laengster passender
+// Pfad gewinnt; die Community-Comps gehoeren zur Hauptleiste, nicht zu Comps.
+function activeMetaHref(pathname: string): string | null {
+  if (pathname === '/tft/comps/community' || pathname.startsWith('/tft/comps/community/')) return null;
+  let best: { href: string; len: number } | null = null;
+  for (const l of TFT_META_LINKS) {
+    const base = 'base' in l ? l.base : l.href;
+    if ((pathname === base || pathname.startsWith(base + '/')) && (!best || base.length > best.len)) {
+      best = { href: l.href, len: base.length };
+    }
+  }
+  return best?.href ?? null;
+}
 
 export default function Nav({ active }: NavProps) {
   const { lang, setLang, t } = useI18n();
@@ -33,7 +63,6 @@ export default function Nav({ active }: NavProps) {
   const pathname = usePathname() || '/';
   const game = detectGameFromPath(pathname);
   const [langOpen, setLangOpen] = useState(false);
-  const [metaOpen, setMetaOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -55,13 +84,9 @@ export default function Nav({ active }: NavProps) {
   const linkClass = (key: NavProps['active']) =>
     key === active ? 'text-white text-sm' : 'text-fg-secondary text-sm hover:text-white';
 
-  // "Meta" groups the meta-data pages (Comps/Units/Items/Synergien) plus the
-  // derived meta-analysis pages (One-Tricks/Patch-Diff) into one dropdown so
-  // the TFT nav row isn't 14 tabs wide.
-  const metaActive = active === 'comps' || active === 'units' || active === 'items' || active === 'traits'
-    || active === 'onetricks' || active === 'patch';
-  const metaItemClass = (key: NavProps['active']) =>
-    `block px-3 py-2 text-xs transition-colors ${key === active ? 'bg-brand-a10 text-brand' : 'text-fg-secondary hover:text-white hover:bg-surface-raised'}`;
+  const metaHref = activeMetaHref(pathname);
+  const metaLinkClass = (l: (typeof TFT_META_LINKS)[number]) =>
+    'pulse' in l ? 'text-sm text-[#3ecf8e]' : l.href === metaHref ? 'text-white text-sm' : 'text-fg-secondary text-sm hover:text-white';
 
   const currentLang = LANGUAGES.find(l => l.code === lang) || LANGUAGES[0];
 
@@ -218,39 +243,6 @@ export default function Nav({ active }: NavProps) {
         <div className="hidden lg:flex items-center gap-4 flex-shrink-0">
           {game === 'tft' ? (
             <>
-              {/* Meta dropdown: Comps / Units / Items / Augments / Synergien /
-                  One-Tricks / Patch-Diff. Augments page is a pure REFERENCE
-                  catalog (name + description + tier), KEINE Statistiken (Riot
-                  has restricted augment-stats display). */}
-              <div className="relative">
-                <button
-                  onClick={() => setMetaOpen(o => !o)}
-                  className={`flex items-center gap-1 ${metaActive ? 'text-white text-sm' : 'text-fg-secondary text-sm hover:text-white'}`}
-                >
-                  {t('nav.meta')}
-                  <svg className={`w-3 h-3 transition-transform ${metaOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-                {metaOpen && (
-                  <>
-                    <div className="fixed inset-0 z-30" onClick={() => setMetaOpen(false)} />
-                    <div className="absolute left-0 top-full mt-1 z-40 bg-surface-base border border-border-subtle rounded shadow-lg overflow-hidden min-w-[150px]">
-                      <a href="/tft/meta-pulse" className="block px-4 py-2 text-sm text-[#3ecf8e] hover:bg-surface-raised border-b border-border-subtle">⚡ {t('nav.metaPulse')}</a>
-                      <a href="/tft/comps" className={metaItemClass('comps')}>{t('nav.comps')}</a>
-                      <a href="/tft/units" className={metaItemClass('units')}>{t('nav.units')}</a>
-                      <a href="/tft/items" className={metaItemClass('items')}>{t('nav.items')}</a>
-                      <a href="/tft/augments" className={metaItemClass('augments')}>{t('nav.augments')}</a>
-                      <a href="/tft/traits" className={metaItemClass('traits')}>{t('nav.traits')}</a>
-                      <a href="/tft/onetricks" className={metaItemClass('onetricks')}>{t('nav.onetricks')}</a>
-                      <a href="/tft/regions" className={metaItemClass('regions')}>{t('nav.regions')}</a>
-                      <a href="/tft/patch/winners" className={metaItemClass('patch')}>{t('nav.patchWinners')}</a>
-                      <a href="/tft/explorer" className={metaItemClass('explorer')}>{t('nav.explorer')}</a>
-                      <a href="/tft/tools/odds" className={metaItemClass('tools')}>{t('nav.rollOdds')}</a>
-                    </div>
-                  </>
-                )}
-              </div>
               <a href="/tft/leaderboard" className={linkClass('leaderboard')}>{t('nav.leaderboard')}</a>
               <a href="/tft/tournaments" className={linkClass('tournaments')}>{t('nav.leagues')}</a>
               {TFT_PROS_ENABLED && (
@@ -446,6 +438,21 @@ export default function Nav({ active }: NavProps) {
         </div>
       </div>
 
+      {/* TFT, Desktop: zweite Zeile mit den Meta-Seiten. Wird es zu schmal,
+          wischt die Zeile seitlich statt umzubrechen. */}
+      {game === 'tft' && (
+        <div className="hidden lg:block mt-3 pt-3 border-t border-border-subtle overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex items-center gap-4 w-max mx-auto whitespace-nowrap">
+            <span className="text-fg-muted text-[10px] uppercase tracking-widest">{t('nav.meta')}</span>
+            {TFT_META_LINKS.map(l => (
+              <a key={l.href} href={l.href} className={metaLinkClass(l)}>
+                {'pulse' in l ? `⚡ ${t(l.label)}` : t(l.label)}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Mobile search bar */}
       {searchOpen && (
         <div className="lg:hidden mt-3 pt-3 border-t border-border-subtle" ref={mobileSearchRef}>
@@ -505,17 +512,11 @@ export default function Nav({ active }: NavProps) {
           {game === 'tft' ? (
             <>
               <div className="text-fg-muted text-[10px] uppercase tracking-widest">{t('nav.meta')}</div>
-              <a href="/tft/meta-pulse" className="pl-3 text-sm text-[#3ecf8e]" onClick={() => setMenuOpen(false)}>⚡ {t('nav.metaPulse')}</a>
-              <a href="/tft/comps" className={`pl-3 ${linkClass('comps')}`} onClick={() => setMenuOpen(false)}>{t('nav.comps')}</a>
-              <a href="/tft/units" className={`pl-3 ${linkClass('units')}`} onClick={() => setMenuOpen(false)}>{t('nav.units')}</a>
-              <a href="/tft/items" className={`pl-3 ${linkClass('items')}`} onClick={() => setMenuOpen(false)}>{t('nav.items')}</a>
-              <a href="/tft/augments" className={`pl-3 ${linkClass('augments')}`} onClick={() => setMenuOpen(false)}>{t('nav.augments')}</a>
-              <a href="/tft/traits" className={`pl-3 ${linkClass('traits')}`} onClick={() => setMenuOpen(false)}>{t('nav.traits')}</a>
-              <a href="/tft/onetricks" className={`pl-3 ${linkClass('onetricks')}`} onClick={() => setMenuOpen(false)}>{t('nav.onetricks')}</a>
-              <a href="/tft/regions" className={`pl-3 ${linkClass('regions')}`} onClick={() => setMenuOpen(false)}>{t('nav.regions')}</a>
-              <a href="/tft/patch/winners" className={`pl-3 ${linkClass('patch')}`} onClick={() => setMenuOpen(false)}>{t('nav.patchWinners')}</a>
-              <a href="/tft/explorer" className={`pl-3 ${linkClass('explorer')}`} onClick={() => setMenuOpen(false)}>{t('nav.explorer')}</a>
-              <a href="/tft/tools/odds" className={`pl-3 ${linkClass('tools')}`} onClick={() => setMenuOpen(false)}>{t('nav.rollOdds')}</a>
+              {TFT_META_LINKS.map(l => (
+                <a key={l.href} href={l.href} className={`pl-3 ${metaLinkClass(l)}`} onClick={() => setMenuOpen(false)}>
+                  {'pulse' in l ? `⚡ ${t(l.label)}` : t(l.label)}
+                </a>
+              ))}
               <a href="/tft/leaderboard" className={linkClass('leaderboard')} onClick={() => setMenuOpen(false)}>{t('nav.leaderboard')}</a>
               <a href="/tft/tournaments" className={linkClass('tournaments')} onClick={() => setMenuOpen(false)}>{t('nav.leagues')}</a>
               {TFT_PROS_ENABLED && (

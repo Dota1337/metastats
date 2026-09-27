@@ -7,8 +7,9 @@ import { TFT_HERO_HEIGHT } from '../lib/tft-hero-metrics';
 export default function TftLoading() {
   return (
     <main className="min-h-screen bg-surface-page" aria-busy="true">
-      {/* Nav-height placeholder so the top bar doesn't flash out on navigation */}
-      <div className="h-14 border-b border-border-subtle bg-surface-base" />
+      {/* Nav-height placeholder so the top bar doesn't flash out on navigation.
+          lg: 98px = Hauptleiste + zweite TFT-Zeile (gemessen). */}
+      <div className="h-14 lg:h-[98px] border-b border-border-subtle bg-surface-base" />
       {/* Kopfzonen-Platzhalter. Die Hoehe kommt aus derselben Konstante wie
           TftHero -- stuenden hier zwei Zahlen, springt der Inhalt genau beim
           Wechsel vom Skeleton auf die Seite. */}

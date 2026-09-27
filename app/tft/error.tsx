@@ -14,7 +14,7 @@ export default function TftError({ error, reset }: { error: Error & { digest?: s
 
   return (
     <main className="min-h-screen bg-surface-page">
-      <div className="h-14 border-b border-border-subtle bg-surface-base" />
+      <div className="h-14 lg:h-[98px] border-b border-border-subtle bg-surface-base" />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-16 flex justify-center">
         <div className="bg-surface-base border border-red-500/40 rounded-lg p-8 text-center max-w-md">
           <div className="text-red-400 font-medium mb-3">Etwas ist schiefgelaufen.</div>

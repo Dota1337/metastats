@@ -387,7 +387,7 @@ function roundText(rounds: WispRound[], t: T): string {
   return runs.map(([a, b]) => (a === b ? name(a) : `${name(a)} – ${name(b)}`)).join(', ');
 }
 
-// Eine Zeile je Wisp; Upgrade/Prismatisch und Bedingungen klappen darunter auf.
+// Eine Zeile je Wisp mit ihren Bedingungen; Upgrade/Prismatisch klappen darunter auf.
 // Stufen- und Art-Filter treffen auch ueber eine Variante (Prismatisch springt auf Stufe 3).
 function WispList({ entries, t }: { entries: WispEntry[]; t: T }) {
   const [tier, setTier] = useState<'all' | '1' | '2' | '3'>('all');
@@ -431,7 +431,7 @@ function WispList({ entries, t }: { entries: WispEntry[]; t: T }) {
 
 function WispRow({ w, variants, openInit, t }: { w: WispEntry; variants: WispVariant[]; openInit: boolean; t: T }) {
   const [open, setOpen] = useState(openInit);
-  const more = variants.length > 0 || hasExtra(w);
+  const more = variants.length > 0;
   const line = <WispLine w={w} t={t} />;
   return (
     <div>
@@ -459,12 +459,10 @@ function WispRow({ w, variants, openInit, t }: { w: WispEntry; variants: WispVar
       )}
       {open && (
         <div className="px-3 pb-3 pl-3 sm:pl-[60px] space-y-2.5">
-          <WispExtra w={w} t={t} />
           {variants.map(v => (
             <div key={v.api} className="border-l-2 border-l-accent/40 pl-3">
               <div className="text-accent text-[10px] uppercase tracking-widest mb-1">{t(v.kind === 'prismatic' ? 'tft.tables.prismatic' : 'tft.tables.upgrade')}</div>
               <div className="flex items-start gap-3"><WispLine w={v} t={t} /></div>
-              <WispExtra w={v} t={t} />
             </div>
           ))}
         </div>
@@ -497,6 +495,7 @@ function WispLine({ w, t }: { w: Wisp; t: T }) {
         <span className="text-[12px] tabular-nums whitespace-nowrap text-right lg:text-left lg:pt-px" style={{ color: GOLD }}>{w.cost} {t('tft.tables.gold')}</span>
         <p className="col-span-2 lg:col-span-1 text-fg-secondary text-[12px] leading-relaxed">{w.desc}</p>
         <span className="col-span-2 lg:col-span-1 text-fg-muted text-[11px] lg:pt-px">{roundText(w.rounds, t)}</span>
+        <WispExtra w={w} t={t} />
       </div>
     </>
   );
@@ -505,7 +504,7 @@ function WispLine({ w, t }: { w: Wisp; t: T }) {
 function WispExtra({ w, t }: { w: Wisp; t: T }) {
   if (!hasExtra(w)) return null;
   return (
-    <div className="text-fg-muted text-[11px] space-y-0.5 mt-1">
+    <div className="col-span-2 lg:col-span-1 lg:col-start-3 text-fg-muted text-[11px] space-y-0.5">
       {w.req && <p><span className="text-fg-secondary">{t('tft.tables.requires')}</span> {w.req}</p>}
       {w.excl && w.excl.length > 0 && <p><span className="text-fg-secondary">{t('tft.tables.excludes')}</span> {w.excl.join(', ')}</p>}
       {(w.cooldown ?? 5) !== 5 && <p><span className="text-fg-secondary">{t('tft.tables.cooldown')}</span> {w.cooldown}</p>}

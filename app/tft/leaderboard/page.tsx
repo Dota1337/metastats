@@ -317,7 +317,7 @@ export default function TftLeaderboardPage() {
 
         {!loading && !error && players.length > 0 && (
           <div className="bg-surface-base border border-border-subtle rounded overflow-hidden">
-            <div className={`hidden sm:grid ${gridCls} gap-2 px-4 py-2 text-[10px] uppercase text-fg-muted bg-surface-sunken`}>
+            <div className={`hidden sm:grid ${gridCls} gap-2 px-4 py-2 text-[11px] uppercase whitespace-nowrap text-fg-muted bg-surface-sunken`}>
               {showRank && <div className="text-right">#</div>}
               <div>{t('lb.player')}</div>
               <div className="text-right">LP</div>
@@ -343,21 +343,21 @@ export default function TftLeaderboardPage() {
                 <a
                   key={`${rowRegion(p)}:${p.puuid}`}
                   href={slug ? `/tft/player/${slug}?region=${rowRegion(p)}` : '#'}
-                  className={`block sm:grid ${gridCls} gap-2 px-4 py-2 sm:items-center text-xs hover:bg-white/5 border-t border-border-subtle`}
+                  className={`block sm:grid ${gridCls} gap-2 px-4 py-2 sm:items-center text-sm hover:bg-white/5 border-t border-border-subtle`}
                 >
                   {/* Mobile: Rang (nur Apex) + Name in Zeile 1, Stats darunter.
                       Desktop: 4- bis 6-Spalten-Raster, je nach Liga. */}
                   {showRank && <div className="hidden sm:block text-right text-fg-secondary">{p.rank}</div>}
                   <div className="flex items-baseline gap-2 sm:block">
-                    {showRank && <span className="text-fg-secondary text-[10px] sm:hidden">#{p.rank}</span>}
+                    {showRank && <span className="text-fg-secondary text-xs sm:hidden">#{p.rank}</span>}
                     <span className="text-white truncate flex-1 sm:flex-initial">
                       {p.gameName ? `${p.gameName}` : <span className="text-fg-muted">{t('lb.unknownPlayer')}</span>}
-                      {p.tagLine && <span className="text-fg-muted text-[10px]"> #{p.tagLine}</span>}
+                      {p.tagLine && <span className="text-fg-muted text-xs"> #{p.tagLine}</span>}
                       {isWorld && (
-                        <span className="text-[10px] ml-2 text-fg-muted">{regionLabel(rowRegion(p))}</span>
+                        <span className="text-xs ml-2 text-fg-muted">{regionLabel(rowRegion(p))}</span>
                       )}
                       {(isDescent || isWorld) && (
-                        <span className="text-[10px] ml-2" style={{ color: tierColor(p.tier) }}>
+                        <span className="text-xs ml-2" style={{ color: tierColor(p.tier) }}>
                           {tierLabel(p.tier)}{p.division ? ` ${p.division}` : ''}
                         </span>
                       )}
@@ -367,7 +367,7 @@ export default function TftLeaderboardPage() {
                   <div className="hidden sm:block text-right text-fg-muted">{total}</div>
                   <div className="hidden sm:block text-right text-fg-secondary">{wr}%</div>
                   <div className="flex sm:block items-center justify-between mt-1 sm:mt-0 sm:text-right tabular-nums">
-                    <span className="text-fg-muted text-[10px] sm:hidden">
+                    <span className="text-fg-muted text-xs sm:hidden">
                       {p.leaguePoints} LP · {total} {t('tft.gamesShort')} · {wr}% {t('tft.top4')}
                     </span>
                     {showMarketValue && (mv != null

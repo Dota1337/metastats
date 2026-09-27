@@ -39,7 +39,8 @@
   --surface-raised: #141c2e;   /* 254× */
   --surface-overlay: #1e2a3a;  /* 105× als Fläche */
 
-  /* Fuellung der Comp-Zeilen auf /tft/comps plus ihr Zeigezustand. Eigene
+  /* Fuellung der Comp-Zeilen auf /tft/comps plus ihr Zeigezustand; seit
+     2026-09-27 auch die Karten auf /tft/tools/tables (Aenderung wirkt dort mit). Eigene
      Token, weil --surface-raised 253x genutzt wird und hier nicht global
      mitwandern darf. Gemessen (WCAG-Relativluminanz gegen die Seite #0e1525):
      Fuellung 1,165 — MetaTFT liegt bei 1,062-1,132. Zeigezustand hebt um

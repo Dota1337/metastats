@@ -370,8 +370,12 @@ export function visibleFamilies(
 }
 
 // Uebersicht ohne Doppelungen (User 2026-09-28: „Nimm immer nur die Comp mit
-// dem höchsten AVP", Option C in .claude/plan-current.md): zwei Familien gelten
-// als dieselbe Comp, wenn sie einen benannten Carry teilen UND ihre Kern-Units
+// dem höchsten AVP", Option C + Nachtrag in .claude/plan-current.md). Zwei
+// Familien gelten als dieselbe Comp, wenn
+//  a) jeder benannte Carry der einen in der anderen Carry oder Item-Traeger ist
+//     und umgekehrt — Hunter und Juggernaut Ashe & Sivir sind dieselbe Comp mit
+//     anderer Frontline (nur 33 % gleiche Units), oder
+//  b) sie einen benannten Carry teilen UND ihre Kern-Units
 // zu >= 60 % gleich sind (die 8 meistgespielten Units des gezeigten Boards —
 // nicht die Praesenz-Schwelle aus resolveFamilies: mainComp.games ist nach dem
 // Familien-Override die Summe der Familie, die Units stammen aber aus EINER
@@ -394,12 +398,14 @@ export function dedupeByCarry(families: CompFamily[]): CompFamily[] {
     f,
     named: namedCarries({ carries: f.carries, tanks: f.tanks }, f.carry),
     core: boardUnitIds(f),
+    carriers: new Set([...(f.carries || []), ...(f.itemCarriers || [])]),
   }));
   const avp = (f: CompFamily) => f.weightedAvgPlacement ?? Number.POSITIVE_INFINITY;
   const kept: typeof info = [];
   for (const x of [...info].sort((a, b) => avp(a.f) - avp(b.f) || (b.f.totalGames ?? 0) - (a.f.totalGames ?? 0))) {
     const dup = kept.some(k =>
-      k.named.some(c => x.named.includes(c)) && jaccard(k.core, x.core) >= DEDUPE_MIN_JACCARD);
+      (k.named.length > 0 && k.named.every(c => x.carriers.has(c)) && x.named.every(c => k.carriers.has(c)))
+      || (k.named.some(c => x.named.includes(c)) && jaccard(k.core, x.core) >= DEDUPE_MIN_JACCARD));
     if (!dup) kept.push(x);
   }
   const keep = new Set(kept.map(k => k.f));

@@ -636,7 +636,7 @@ async function loadIterationTargets(region) {
   const r = await pool.query(
     `with latest as (
        select distinct on (puuid)
-         puuid, region, tier, rank, lp, ladder_rank, snapshot_date, games_played, created_at
+         puuid, region, tier, rank, lp, ladder_rank, snapshot_date, games_played, created_at, set_number
        from tft_player_marketvalue_snapshots
        where region = $1
        order by puuid, snapshot_date desc, created_at desc
@@ -653,6 +653,7 @@ async function loadIterationTargets(region) {
     lp: row.lp,
     ladderRank: row.ladder_rank ?? undefined,
     lastSnapshotDate: row.snapshot_date,
+    lastSet: row.set_number,
     // Spielzaehler des letzten Snapshots. NULL heisst "unbekannt" und fuehrt in
     // splitByActivity bewusst zu AKTIV — beim ersten Lauf nach Migration 0051
     // rechnet also alles einmal durch, danach greift die Inkrementalitaet.
@@ -869,7 +870,7 @@ async function processRegion(region) {
   // Frische Rang-Daten aus den Liga-Eintraegen uebernehmen. Bisher kamen tier/
   // rank/lp aus dem Snapshot des VORTAGS.
   let refreshedRank = 0;
-  const missing = [];
+  let missing = [];
   for (const p of players) {
     const e = entries.get(p.puuid);
     if (!e) { missing.push(p); continue; }
@@ -884,6 +885,21 @@ async function processRegion(region) {
   // Abgestiegene: fehlt ein Spieler in einer VOLLSTAENDIG geladenen Liste
   // seiner bisherigen Stufe, ist er dort nicht mehr. Ohne Einzelabfrage bliebe
   // er mit altem Rang und altem Wert stehen ("Phantom-Challenger").
+  // Juengste Zeile aus einem frueheren Set und kein Liga-Eintrag im laufenden:
+  // der Spieler hat im neuen Set (noch) nicht gewertet gespielt. Bis 2026-09-27
+  // lief er mit dem alten Stand weiter — in Set 18 so rund 25.000 Kopien pro
+  // Tag. Keine Zeile, kein Einzelabruf; taucht er in den Listen auf, laeuft er
+  // ganz normal. Bewusst auch bei ausgefallenen Listen: ein alter Stand ist
+  // nie ein gueltiger Wert im neuen Set, schlimmstenfalls fehlt eine Nacht.
+  const currentSet = loadCurrentSet();
+  const staleSet = new Set(
+    missing.filter(p => currentSet != null && p.lastSet != null && p.lastSet < currentSet).map(p => p.puuid),
+  );
+  if (staleSet.size > 0) {
+    players = players.filter(p => !staleSet.has(p.puuid));
+    missing = missing.filter(p => !staleSet.has(p.puuid));
+  }
+
   const phantoms = missing.filter(p => listCoversTier(p.tier, loaded, masterCapped));
   const phantomSkipped = Math.max(0, phantoms.length - PHANTOM_CAP);
   let phantomFixed = 0;
@@ -947,6 +963,7 @@ async function processRegion(region) {
 
   console.log(`  [aktiv] ${active.length} gespielt / ${inactive.length} inaktiv`
     + ` | ${refreshedRank} mit frischem Rang`
+    + ` | ${staleSet.size} nur mit Stand aus altem Set, ohne Eintrag → uebersprungen`
     + ` | ${phantoms.length} aus ihrer Liste verschwunden (${phantomFixed} nachgefragt${phantomSkipped ? `, ${phantomSkipped} ueber Deckel` : ''})`
     + ` | ${newcomerCount} neu`
     + (ladder ? ` | ${ladder.size} Challenger-Plaetze` : '')

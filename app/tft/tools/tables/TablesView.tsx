@@ -198,7 +198,7 @@ function SubTable({ sub, t, extra, labels = true, left: leftOverride, compact = 
     >
       {label && (
         <div className="flex items-center gap-2 mb-1.5">
-          <span className="text-fg-muted text-[11px] uppercase tracking-widest">{label}</span>
+          <span className="text-white text-sm font-semibold">{label}</span>
           {extra}
         </div>
       )}
@@ -364,7 +364,7 @@ function CovenCard({ coven, t }: { coven: CovenTable; t: T }) {
             sub={s}
             t={t}
             labels={false}
-            extra={s.label?.t === 'essence' ? <Badge>{coven.augmentName}: +{s.label.ap} {t('tft.tables.ap')}</Badge> : null}
+            extra={s.label?.t === 'essence' ? <span className="text-[11px] font-medium px-1.5 py-0.5 rounded border border-accent/50 bg-accent/25 text-white tabular-nums whitespace-nowrap">{coven.augmentName}: +{s.label.ap} {t('tft.tables.ap')}</span> : null}
           />
         ))}
       </div>

@@ -341,6 +341,47 @@ if (missing.length) {
   process.exit(1);
 }
 
+// Allgemeine Belohnungen ohne eigenes Item bekommen feste CDragon-Symbole, wie
+// die LBB-Bilder sie zeigen. Fertiges Item (gruen) und Emblem (grau) nutzen den
+// blauen Komponenten-„?" und werden in der Oberflaeche eingefaerbt — ein
+// gruenes/graues „?" gibt es auf CDragon nicht. Jeder Pfad wird unten geprueft.
+const PAIRS = 'assets/maps/particles/tft/item_icons/pairs/';
+const HEXCORE = 'assets/maps/tft/icons/items/hexcore/';
+const GENERIC_ICONS = {
+  gold: PAIRS + 'assistgivegold.png',
+  goldRange: PAIRS + 'assistgivegold.png',
+  component: PAIRS + 'assistrandomcomponent.png',
+  sameComponent: PAIRS + 'assistrandomcomponent.png',
+  uniqueComponents: PAIRS + 'assistrandomcomponent.png',
+  fullItem: PAIRS + 'assistrandomcomponent.png',
+  emblem: PAIRS + 'assistrandomcomponent.png',
+  radiant: PAIRS + 'doubleup_assistarmory_randomitem_radiant.png',
+  artifact: PAIRS + 'doubleup_assistarmory_randomitem_ornn.png',
+  xp: HEXCORE + 'tft17_carouselmarket_xp.png',
+  reroll: HEXCORE + 'tft17_carouselmarket_rerolls.png',
+};
+const unitIcon = cost => `${PAIRS}doubleup_assistarmory_champ_${cost}c.png`;
+function addGenericIcons(rewards) {
+  for (const r of rewards) {
+    if (r.contents) addGenericIcons(r.contents);
+    if (r.icon) continue;
+    const icon = r.k === 'randomUnit' ? unitIcon(r.cost) : GENERIC_ICONS[r.k];
+    if (icon) r.icon = icon;
+  }
+}
+for (const t of [...tables, coven]) for (const s of t.subs) for (const row of s.rows) addGenericIcons(row.rewards);
+
+const genericPaths = [...new Set([...Object.values(GENERIC_ICONS), ...[1, 2, 3, 4, 5].map(unitIcon)])];
+const dead = [];
+for (const p of genericPaths) {
+  const res = await fetch('https://raw.communitydragon.org/latest/game/' + p, { method: 'HEAD' });
+  if (!res.ok) dead.push(`${p} (${res.status})`);
+}
+if (dead.length) {
+  console.error(`✗ ${dead.length} Symbol(e) fehlen auf CDragon: ${dead.join(', ')}`);
+  process.exit(1);
+}
+
 const now = new Date().toISOString();
 const source = { name: 'Little Buddy Bot', url: 'https://www.littlebuddybot.com' };
 writeFileSync(`public/tft-loot-tables-${SET}.json`, JSON.stringify({ set: SET, source, fetchedAt: now, tables, coven }, null, 1) + '\n');

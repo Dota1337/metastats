@@ -146,9 +146,9 @@ function subLabel(sub: LootSub, t: T): string | null {
   return `${l.essence} ${t('tft.tables.essence')}`;
 }
 
-function SubTable({ sub, t, extra }: { sub: LootSub; t: T; extra?: React.ReactNode }) {
+function SubTable({ sub, t, extra, labels = true }: { sub: LootSub; t: T; extra?: React.ReactNode; labels?: boolean }) {
   const label = subLabel(sub, t);
-  const hasLeft = sub.rows.some(r => r.chance != null || r.cond);
+  const left = sub.rows.some(r => r.cond) ? 'w-24' : sub.rows.some(r => r.chance != null) ? 'w-11' : null;
   return (
     <div>
       {label && (
@@ -158,7 +158,7 @@ function SubTable({ sub, t, extra }: { sub: LootSub; t: T; extra?: React.ReactNo
         </div>
       )}
       <div className="divide-y divide-border-subtle/50 border border-border-subtle rounded">
-        {sub.rows.map((r, i) => <Row key={i} row={r} hasLeft={hasLeft} t={t} />)}
+        {sub.rows.map((r, i) => <Row key={i} row={r} left={left} labels={labels} t={t} />)}
       </div>
     </div>
   );
@@ -171,86 +171,115 @@ function condText(c: LootCond, t: T): string {
   return c.v;
 }
 
-function Row({ row, hasLeft, t }: { row: LootRow; hasLeft: boolean; t: T }) {
+// Wie bei Little Buddy Bot: links Bedingung/Chance, dann die Belohnungen als
+// Symbole, bei Loot-Tabellen rechts daneben eine kurze Beschriftung.
+function Row({ row, left, labels, t }: { row: LootRow; left: string | null; labels: boolean; t: T }) {
   return (
-    <div className="flex items-start gap-3 px-2.5 py-2">
-      {hasLeft && (
-        <div className="w-24 shrink-0 text-[11px] leading-5 tabular-nums">
+    <div className="flex items-center gap-3 px-2.5 py-2">
+      {left && (
+        <div className={`${left} shrink-0 text-[11px] leading-5 tabular-nums`}>
           {row.cond && <div className="text-fg-secondary">{condText(row.cond, t)}</div>}
           {row.chance != null && <div className="text-white font-medium">{row.chance}%</div>}
         </div>
       )}
-      <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
-        {row.rewards.map((r, i) => <Reward key={i} r={r} t={t} />)}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 flex-1 min-w-0">
+        {row.rewards.some(hasTile) && (
+          <div className="flex flex-wrap items-center gap-1 pt-1.5">
+            {row.rewards.map((r, i) => <RewardTile key={i} r={r} t={t} />)}
+          </div>
+        )}
+        {labels && <div className="text-fg-secondary text-[12px] leading-snug min-w-0">{rowLabel(row.rewards, t)}</div>}
       </div>
     </div>
   );
 }
 
-function Stars({ n }: { n?: number }) {
-  if (!n || n < 2) return null;
-  return <span className="text-[10px] leading-none" style={{ color: GOLD }}>{'★'.repeat(n)}</span>;
+// Leben und Taktiker-Item haben kein passendes Symbol; sie stehen nur in der Beschriftung.
+const hasTile = (r: LootReward) => r.k === 'specialEgg' || r.k === 'unknown' || !!r.icon;
+
+// Kurze Beschriftung wie bei LBB: gleiche Belohnungen zusammengezaehlt,
+// zufaellige Einheiten nur mit Kosten („3× 1-Kosten").
+function rowLabel(rewards: LootReward[], t: T): string {
+  const groups = new Map<string, LootReward>();
+  rewards.forEach((r, i) => {
+    const key = r.k === 'specialEgg' ? `egg${i}` : [r.k, r.cost, r.stars, r.api, r.v].join('|');
+    const g = groups.get(key);
+    if (g) g.n = (g.n ?? 1) + (r.n ?? 1);
+    else groups.set(key, { ...r });
+  });
+  return [...groups.values()].map(r => r.k === 'randomUnit'
+    ? withN(r.n, (r.stars && r.stars > 1 ? '★'.repeat(r.stars) + ' ' : '') + fill(t('tft.tables.costShort'), { c: r.cost ?? 1 }))
+    : r.k === 'specialEgg' ? `${rewardText(r, t)}: ${rowLabel(r.contents ?? [], t)}`
+    : rewardText(r, t)).join(' + ');
 }
 
-function Chip({ children, color, title }: { children: React.ReactNode; color?: string; title?: string }) {
+const withN = (n: number | undefined, s: string) => (n && n > 1 ? `${n}× ${s}` : s);
+
+// Volltext einer Belohnung: Beschriftung neben den Symbolen und Tooltip am Symbol.
+function rewardText(r: LootReward, t: T): string {
+  switch (r.k) {
+    case 'gold': return `${r.n ?? 1} ${t('tft.tables.gold')}`;
+    case 'goldRange': return `${r.v} ${t('tft.tables.gold')}`;
+    case 'xp': return `${r.n ?? 1} XP`;
+    case 'reroll': return `${r.n ?? 1} ${t('tft.tables.rerolls')}`;
+    case 'hp': return fill(t('tft.tables.hp'), { v: r.v ?? '' });
+    case 'randomUnit': return withN(r.n, fill(t('tft.tables.randomUnit'), { c: r.cost ?? 1 }));
+    case 'champion':
+    case 'item': return withN(r.n, r.name ?? '');
+    case 'specialEgg': return fill(t('tft.tables.specialEgg'), { n: r.turns ?? 0 });
+    case 'unknown': return withN(r.n, '?');
+    default: return withN(r.n, t(`tft.tables.r.${r.k}` as Parameters<T>[0]));
+  }
+}
+
+// Fertiges Item und Emblem haben auf CDragon kein eigenes „?"-Symbol; der blaue
+// Komponenten-„?" wird wie bei LBB gruen bzw. grau eingefaerbt.
+const TINT: Partial<Record<LootReward['k'], string>> = {
+  fullItem: 'hue-rotate(-95deg) saturate(1.3)',
+  emblem: 'grayscale(1) brightness(1.35)',
+};
+const OVERLAY_SHADOW = '0 0 3px rgb(0 0 0), 0 0 2px rgb(0 0 0)';
+
+function RewardTile({ r, t }: { r: LootReward; t: T }) {
+  if (r.k === 'specialEgg') {
+    return (
+      <span className="inline-flex flex-wrap items-center gap-1 p-0.5 rounded border" style={{ borderColor: withAlpha(GOLD, 0x99) }} title={rewardText(r, t)}>
+        {(r.contents ?? []).map((x, i) => <RewardTile key={i} r={x} t={t} />)}
+      </span>
+    );
+  }
+  const text = rewardText(r, t);
+  if (!hasTile(r)) return null;
+  const border = r.k === 'champion' ? COST_COLORS[r.cost ?? 1] : r.k === 'item' && /Radiant/.test(r.api ?? '') ? GOLD : null;
+  const count = r.k === 'goldRange' ? '×?' : r.n && r.n > 1 ? `×${r.n}` : null;
   return (
-    <span
-      title={title}
-      className="inline-flex items-center gap-1.5 text-[12px] leading-5 px-1.5 py-0.5 rounded bg-surface-raised border border-border-subtle text-fg-secondary"
-      style={color ? { borderColor: withAlpha(color, 0x66), color } : undefined}
-    >
-      {children}
+    <span className="relative inline-block shrink-0" title={text}>
+      {r.icon ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={tftGameAssetUrl(r.icon)}
+          alt={text}
+          width={36}
+          height={36}
+          loading="lazy"
+          className="block rounded-sm"
+          style={{ width: 36, height: 36, filter: TINT[r.k], border: border ? `2px solid ${border}` : undefined }}
+        />
+      ) : (
+        <span role="img" aria-label={text} className="flex items-center justify-center w-9 h-9 rounded-sm bg-surface-raised border border-border-subtle text-fg-secondary text-base font-medium">?</span>
+      )}
+      {r.stars && r.stars > 1 && (
+        <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[10px] leading-none whitespace-nowrap" style={{ color: GOLD, textShadow: OVERLAY_SHADOW }}>
+          {'★'.repeat(r.stars)}
+        </span>
+      )}
+      {count && (
+        <span className="absolute bottom-0 right-0.5 text-[11px] font-bold leading-none text-white tabular-nums" style={{ textShadow: OVERLAY_SHADOW }}>
+          {count}
+        </span>
+      )}
     </span>
   );
-}
-
-const times = (n?: number) => (n && n > 1 ? <span className="text-white tabular-nums">{n}×</span> : null);
-
-function Reward({ r, t }: { r: LootReward; t: T }) {
-  switch (r.k) {
-    case 'gold':
-      return <Chip color={GOLD}><span className="tabular-nums">{r.n ?? 1}</span> {t('tft.tables.gold')}</Chip>;
-    case 'goldRange':
-      return <Chip color={GOLD}><span className="tabular-nums">{r.v}</span> {t('tft.tables.gold')}</Chip>;
-    case 'xp':
-      return <Chip><span className="text-white tabular-nums">{r.n}</span> XP</Chip>;
-    case 'reroll':
-      return <Chip><span className="text-white tabular-nums">{r.n}</span> {t('tft.tables.rerolls')}</Chip>;
-    case 'hp':
-      return <Chip>{fill(t('tft.tables.hp'), { v: r.v ?? '' })}</Chip>;
-    case 'randomUnit': {
-      const c = r.cost ?? 1;
-      return (
-        <Chip color={COST_COLORS[c]}>
-          {times(r.n)}<Stars n={r.stars} />{fill(t('tft.tables.randomUnit'), { c })}
-        </Chip>
-      );
-    }
-    case 'champion': {
-      const c = r.cost ?? 1;
-      return (
-        <Chip color={COST_COLORS[c]} title={r.name}>
-          {times(r.n)}
-          <Icon path={r.icon} size={20} className="border" />
-          <Stars n={r.stars} />
-          <span className="text-white">{r.name}</span>
-        </Chip>
-      );
-    }
-    case 'item':
-      return <Chip title={r.name}>{times(r.n)}<Icon path={r.icon} size={20} /><span className="text-white">{r.name}</span></Chip>;
-    case 'specialEgg':
-      return (
-        <Chip color={GOLD}>
-          {fill(t('tft.tables.specialEgg'), { n: r.turns ?? 0 })}:
-          <span className="inline-flex flex-wrap gap-1">{(r.contents ?? []).map((x, i) => <Reward key={i} r={x} t={t} />)}</span>
-        </Chip>
-      );
-    case 'unknown':
-      return <Chip>{times(r.n)}?</Chip>;
-    default:
-      return <Chip>{times(r.n)}{t(`tft.tables.r.${r.k}` as Parameters<T>[0])}</Chip>;
-  }
 }
 
 function CovenCard({ coven, t }: { coven: CovenTable; t: T }) {
@@ -283,6 +312,7 @@ function CovenCard({ coven, t }: { coven: CovenTable; t: T }) {
             key={i}
             sub={s}
             t={t}
+            labels={false}
             extra={s.label?.t === 'essence' ? <Badge>{coven.augmentName}: +{s.label.ap} {t('tft.tables.ap')}</Badge> : null}
           />
         ))}

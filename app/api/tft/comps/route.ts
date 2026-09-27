@@ -584,6 +584,16 @@ export async function GET(request: NextRequest) {
     // nicht ein nackter Abort.
     const publisherRpcTimeoutMs = isSnapshotPublisher(request) ? 25_000 : undefined;
 
+    // Trend im vorberechneten Stand (User 2026-09-27, Option C): holt der
+    // Publisher die Liste ohne ?velocity, rechnen wir den Vergleich mit dem
+    // gleich langen Vorzeitraum gleich mit. So traegt der Snapshot die
+    // Trendpfeile der Comp-Uebersicht, ohne dass Besucher die langsame
+    // Trend-Abfrage ausloesen. Die Liste zeigt die Spalte weiter nur bei
+    // aktivem Trend-Filter.
+    const publisherTrend = isSnapshotPublisher(request) && source === 'data' && velocityShift === 0;
+    const trendShift = wantVelocity ? velocityShift : publisherTrend ? filters.requestedDays : 0;
+    let trendFailed = false;
+
     const listMinGames = adaptiveMin ? ADAPTIVE_FLOOR : minGames;
     const liveList = () => callRpc<CompRow[]>('get_tft_comp_stats_list_v2', {
       p_regions: filters.regions,
@@ -605,7 +615,7 @@ export async function GET(request: NextRequest) {
         ? readPrecomputedList(filters, patches[0]?.last_day, listMinGames)
             .then(r => r ?? liveList())
         : liveList(),
-      wantVelocity
+      trendShift > 0
         ? callRpc<VelocityRow[]>('get_tft_comp_velocity', {
             p_regions: filters.regions,
             p_buckets: filters.buckets,
@@ -617,14 +627,20 @@ export async function GET(request: NextRequest) {
             // when the pipeline is days behind — for Δ-comparisons it would
             // collapse the semantics ("1d" suddenly meaning "5d").
             p_days: filters.requestedDays,
-            p_shift_days: velocityShift,
+            p_shift_days: trendShift,
             // Anchor both windows at the last available stats day; otherwise
             // a 1d window on a 4d-stale pipeline lands in an empty range.
             p_anchor_offset_days: filters.anchorOffsetDays,
             // Allow newer entries with only a current-window sample to surface
             // as "NEW" rather than being filtered out for lacking a baseline.
             p_min_games: Math.max(10, Math.floor(minGames / 3)),
-          }).catch(() => [] as VelocityRow[])
+          }, publisherTrend ? publisherRpcTimeoutMs : undefined).catch((e: any) => {
+            // Ohne Markierung waere ein Snapshot ohne Trend nicht von einem
+            // mit Trend zu unterscheiden — velocityShift bleibt dann null.
+            trendFailed = true;
+            if (publisherTrend) console.error('[api/tft/comps] Trend fuer Snapshot fehlgeschlagen:', e?.message ?? e);
+            return [] as VelocityRow[];
+          })
         : Promise.resolve([] as VelocityRow[]),
     ]);
 
@@ -655,7 +671,7 @@ export async function GET(request: NextRequest) {
         patchFilter: filters.patchFilter,
         patchStartDay: filters.patchStartDay,
         set: filters.setNumber,
-        velocityShift: wantVelocity ? velocityShift : null,
+        velocityShift: trendShift > 0 && !(publisherTrend && trendFailed) ? trendShift : null,
         anchorOffsetDays: filters.anchorOffsetDays,
       },
       patches,

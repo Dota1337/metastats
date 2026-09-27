@@ -2303,6 +2303,12 @@ const translations = {
     '\uBE44\uAD50\uD558\uAE30', '\u5BF9\u6BD4',
     'Comparar', 'Comparer'
   ),
+  'tft.comps.tab.list': t6('Liste', 'List', '\uBAA9\uB85D', '\u5217\u8868', 'Lista', 'Liste'),
+  'tft.comps.tab.overview': t6('\u00DCbersicht', 'Overview', '\uAC1C\uC694', '\u603B\u89C8', 'Resumen', 'Aper\u00E7u'),
+  'tft.comps.atlas.cost': t6('{n} Kosten', '{n} Cost', '{n}\uCF54\uC2A4\uD2B8', '{n}\u8D39', 'Coste {n}', 'Co\u00FBt {n}'),
+  'tft.comps.atlas.fast9': t6('Fast 9', 'Fast 9', '\uBE60\uB978 9\uB808\uBCA8', '\u901F9', 'Nivel 9 r\u00E1pido', 'Niveau 9 rapide'),
+  'tft.comps.atlas.fast8': t6('Fast 8', 'Fast 8', '\uBE60\uB978 8\uB808\uBCA8', '\u901F8', 'Nivel 8 r\u00E1pido', 'Niveau 8 rapide'),
+  'tft.comps.atlas.reroll': t6('Reroll', 'Reroll', '\uB9AC\uB864', '\u8D4C\u72D7', 'Reroll', 'Reroll'),
   'tft.compare.reset': t6(
     'Zur\u00FCcksetzen', 'Reset',
     '\uCD08\uAE30\uD654', '\u91CD\u7F6E',

@@ -9,6 +9,7 @@ import TftHero from '../../components/tft/TftHero';
 import { useI18n } from '../../lib/i18n';
 import { loadTftAssets, tftChampionTileUrl, tftIconUrl, tftPlayableChampions, tftTraitIdPrefix, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import { buildPlanAheadCode } from '../../lib/tft-plan-ahead-code';
+import { HEX_CLIP } from '../../lib/tft-ui';
 
 // Visual comp-builder with TFT-standard 4×7 pointy-top hex board.
 // Row layout (cell indices) — matches in-game player POV:
@@ -35,7 +36,6 @@ const COLS = 7;
 const MAX_UNITS = 10;
 const MAX_ITEMS_PER_UNIT = 3;
 const STORAGE_KEY = 'tft.savedComps';
-const HEX_CLIP = 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)';
 
 // Miss Fortune (Set 17) has a "Choose Trait" placeholder that resolves to
 // Challenger / Replicator / Conduit depending on the chosen Stance. The three

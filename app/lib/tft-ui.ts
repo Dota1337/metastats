@@ -11,3 +11,6 @@ export function costColor(cost: number): string {
     : cost === 4 ? '#c39bff'
     : '#e0c75a';
 }
+
+// Sechseck-Maske fuer Champion-Portraits (Builder-Brett, Comp-Uebersicht).
+export const HEX_CLIP = 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)';

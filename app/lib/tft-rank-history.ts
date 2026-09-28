@@ -20,6 +20,11 @@
 // 'dakgg-log' = Wert aus dem Verlauf, 'dakgg-log:none' = Verlauf ohne Master+-
 // Eintrag, nicht erneut fragen. Rueckbau: Aufruf entfernen und
 // `update ... set peak_*=null where peak_rating_label like 'dakgg-log%'`.
+//
+// Spielzahl je Set (2026-09-28): MetaTFT liefert sie erst ab Set 9.2. Fuer
+// vergangene Sets ohne Spielzahl nimmt fillFromLogs den letzten Eintrag des
+// Verlaufs (Spiele gesamt). Kein Verlauf → bleibt leer, nie 0. Rueckbau:
+// `update ... set total_games=null where source='dakgg'`.
 
 import { after } from 'next/server';
 import { CURRENT_SET, CURRENT_SET_STARTED_AT_MS } from './current-set';
@@ -111,7 +116,7 @@ export async function ensureRankHistoryBackfilled(
   const mode = refreshMode(state, Date.now(), CURRENT_SET_STARTED_AT_MS, opts.force);
 
   // LP-Verlauf nur, wenn ohnehin neu geholt wird — nie bei jedem Aufruf.
-  const fillLogs = () => fillPeakLpFromLogs(puuid, region, gameName, tagLine);
+  const fillLogs = () => fillFromLogs(puuid, region, gameName, tagLine);
   if (mode === 'block') {
     await refreshRankHistory(puuid, region, gameName, tagLine);
     await runLater(fillLogs);
@@ -474,15 +479,16 @@ function toDakSeason(setLabel: string): string | null {
 type LeagueLog = [number, string, string, number, number, number?];
 
 /**
- * Hoechster Master+-Stand eines Sets aus dem LP-Verlauf. Exportiert fuer Tests.
+ * Verlauf eines Sets bereinigt, zeitlich aufsteigend.
  * Eintrag: [Zeit ms, Stufe, Division, LP, Spiele gesamt, Siege].
  *  - Seiten ueberlappen → doppelte Eintraege raus.
  *  - Der Verlauf beginnt manchmal mit dem Schlussstand des Vorsets (Set 6.5:
- *    erst 765 Spiele, dann 145). Die Spielzahl steigt innerhalb eines Sets nur;
- *    faellt sie in den ersten Eintraegen, wird alles davor verworfen.
- *  - Der Endrang kommt nie von hier (letzter Eintrag ist oft "Master 0").
+ *    erst 765 Spiele, dann 145). Die Spielzahl steigt innerhalb eines Sets
+ *    fast nur; faellt sie in den ersten Eintraegen, wird alles davor verworfen.
+ *  - Ohne Abfall (Set kaum oder gar nicht gespielt) erkennt man den Uebertrag
+ *    nur am Vergleich: fuehrende Eintraege gleich dem Vorset-Ende fallen weg.
  */
-export function peakFromLeagueLogs(logs: LeagueLog[]): { tier: string; lp: number } | null {
+function cleanLeagueLogs(logs: LeagueLog[], prevLast?: LeagueLog | null): LeagueLog[] {
   const seen = new Set<string>();
   const rows = logs
     .filter(l => Array.isArray(l) && Number.isFinite(l[0]) && typeof l[1] === 'string')
@@ -492,8 +498,27 @@ export function peakFromLeagueLogs(logs: LeagueLog[]): { tier: string; lp: numbe
   for (let i = 1; i < Math.min(rows.length, 5); i++) {
     if (Number(rows[i][4]) < Number(rows[i - 1][4])) start = i;
   }
+  while (prevLast && start < rows.length && sameLogState(rows[start], prevLast)) start++;
+  return rows.slice(start);
+}
+
+function sameLogState(a: LeagueLog, b: LeagueLog): boolean {
+  return a[1].toUpperCase() === String(b[1]).toUpperCase() && Number(a[3]) === Number(b[3]) && Number(a[4]) === Number(b[4]);
+}
+
+function latestLog(logs: LeagueLog[]): LeagueLog | null {
+  let best: LeagueLog | null = null;
+  for (const l of logs) if (Array.isArray(l) && Number.isFinite(l[0]) && (!best || l[0] > best[0])) best = l;
+  return best;
+}
+
+/**
+ * Hoechster Master+-Stand eines Sets aus dem LP-Verlauf. Exportiert fuer Tests.
+ * Der Endrang kommt nie von hier (letzter Eintrag ist oft "Master 0").
+ */
+export function peakFromLeagueLogs(logs: LeagueLog[], prevLast?: LeagueLog | null): { tier: string; lp: number } | null {
   let best: { tier: string; lp: number } | null = null;
-  for (const l of rows.slice(start)) {
+  for (const l of cleanLeagueLogs(logs, prevLast)) {
     const tier = l[1].toUpperCase();
     const lp = Number(l[3]);
     if (!APEX_TIERS.has(tier) || !Number.isFinite(lp)) continue;
@@ -502,10 +527,23 @@ export function peakFromLeagueLogs(logs: LeagueLog[]): { tier: string; lp: numbe
   return best;
 }
 
-async function fetchDakggLeagueLogs(shard: string, gameName: string, tagLine: string, season: string): Promise<LeagueLog[]> {
+/**
+ * Spiele eines Sets = Spielzahl im letzten Verlaufs-Eintrag (nicht das Maximum:
+ * sie faellt im Set gelegentlich um 1). Nur Uebertrag oder leer → null, nie 0.
+ * Exportiert fuer Tests.
+ */
+export function gamesFromLeagueLogs(logs: LeagueLog[], prevLast?: LeagueLog | null): number | null {
+  const rows = cleanLeagueLogs(logs, prevLast);
+  const g = rows.length ? Number(rows[rows.length - 1][4]) : NaN;
+  return Number.isFinite(g) && g > 0 ? g : null;
+}
+
+// Seite 1 mit sort=desc enthaelt immer den neuesten Eintrag — fuer die
+// Spielzahl allein reicht eine Seite.
+async function fetchDakggLeagueLogs(shard: string, gameName: string, tagLine: string, season: string, maxPages = LOG_MAX_PAGES): Promise<LeagueLog[]> {
   const slug = encodeURIComponent(`${gameName}-${tagLine}`);
   const all: LeagueLog[] = [];
-  for (let page = 1; page <= LOG_MAX_PAGES; page++) {
+  for (let page = 1; page <= maxPages; page++) {
     const url = `${DAKGG_URL}/${shard}/${slug}/league-logs?queueId=${STANDARD_RANKED_QUEUE}&season=${season}&page=${page}&size=${LOG_PAGE_SIZE}&sort=desc`;
     const r = await fetch(url, {
       headers: { 'User-Agent': 'metastats.gg/1.0', Origin: 'https://lolchess.gg', Referer: 'https://lolchess.gg/', Accept: 'application/json' },
@@ -522,33 +560,59 @@ async function fetchDakggLeagueLogs(shard: string, gameName: string, tagLine: st
 }
 
 /**
- * Vergangene Sets mit Master+-Ende und ohne LP: Hoechstwert aus dem Verlauf
- * nachtragen. Nacheinander, jedes Set sofort gespeichert, 40 s Deckel.
- * Leerer Verlauf → Marker, Fehler → kein Marker (naechstes Mal erneut).
- * Exportiert fuer das Erstbefuellungs-Skript.
+ * Vergangene Sets aus dem Verlauf ergaenzen, nacheinander, jedes Set sofort
+ * gespeichert, 40 s Deckel:
+ *  - Master+-Ende ohne LP → Hoechstwert (leerer Verlauf → Marker).
+ *  - Spielzahl leer (MetaTFT hat sie erst ab 9.2) → letzter Eintrag; kein
+ *    Verlauf → bleibt leer und wird beim naechsten Neuabruf wieder gefragt.
+ * Der Uebertrag vom Vorset wird am letzten Eintrag des Vorsets erkannt.
+ * Fehler → nichts gespeichert (naechstes Mal erneut). Exportiert fuer das
+ * Erstbefuellungs-Skript.
  */
-export async function fillPeakLpFromLogs(
+export async function fillFromLogs(
   puuid: string, region: string, gameName: string, tagLine: string,
   deadlineMs = LOG_DEADLINE_MS,
-): Promise<{ filled: number; none: number; failed: number }> {
-  const res = { filled: 0, none: 0, failed: 0 };
+): Promise<{ peak: number; games: number; none: number; failed: number }> {
+  const res = { peak: 0, games: 0, none: 0, failed: 0 };
   if (!gameName || !tagLine) return res;
   const until = Date.now() + deadlineMs;
-  const rows = await loadRankHistoryRaw(puuid);
-  const todo = rows.filter(r =>
-    r.set_label && r.set_number < CURRENT_SET && r.source !== 'override'
-    && APEX_TIERS.has((r.end_tier || '').toUpperCase())
-    && r.peak_lp == null && !isLogLabel(r.peak_rating_label));
-  for (const r of todo) {
+  const rows = (await loadRankHistoryRaw(puuid))
+    .filter(r => r.set_label && r.set_number < CURRENT_SET)
+    .sort((a, b) => a.set_number - b.set_number || a.set_label!.localeCompare(b.set_label!));
+  const latest = new Map<string, LeagueLog | null>();
+  const latestOf = async (label: string) => {
+    if (!latest.has(label)) {
+      const season = toDakSeason(label);
+      latest.set(label, season ? latestLog(await fetchDakggLeagueLogs(region, gameName, tagLine, season, 1)) : null);
+    }
+    return latest.get(label) ?? null;
+  };
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    if (r.source === 'override' || !isRealTier(r.end_tier)) continue;
+    const needPeak = APEX_TIERS.has((r.end_tier || '').toUpperCase()) && r.peak_lp == null && !isLogLabel(r.peak_rating_label);
+    const needGames = r.total_games == null;
+    if (!needPeak && !needGames) continue;
     if (Date.now() > until) break;
     const season = toDakSeason(r.set_label!);
     if (!season) continue;
     try {
-      const peak = peakFromLeagueLogs(await fetchDakggLeagueLogs(region, gameName, tagLine, season));
-      await patchRankRow(puuid, r.set_label!, peak
-        ? { peak_tier: peak.tier, peak_division: null, peak_lp: peak.lp, peak_rating_label: LOG_LABEL }
-        : { peak_rating_label: LOG_NONE });
-      if (peak) res.filled++; else res.none++;
+      const logs = await fetchDakggLeagueLogs(region, gameName, tagLine, season, needPeak ? LOG_MAX_PAGES : 1);
+      latest.set(r.set_label!, latestLog(logs));
+      const prevLast = i > 0 ? await latestOf(rows[i - 1].set_label!) : null;
+      const patch: Partial<SeasonRank> = {};
+      if (needPeak) {
+        const peak = peakFromLeagueLogs(logs, prevLast);
+        Object.assign(patch, peak
+          ? { peak_tier: peak.tier, peak_division: null, peak_lp: peak.lp, peak_rating_label: LOG_LABEL }
+          : { peak_rating_label: LOG_NONE });
+        if (peak) res.peak++; else res.none++;
+      }
+      if (needGames) {
+        const games = gamesFromLeagueLogs(logs, prevLast);
+        if (games != null) { patch.total_games = games; res.games++; }
+      }
+      if (Object.keys(patch).length) await patchRankRow(puuid, r.set_label!, patch);
     } catch {
       res.failed++;
     }
@@ -604,7 +668,8 @@ export function mergeRankSources(metatft: SeasonRank[], dakgg: SeasonRank[], exi
       end_tier: endFrom?.end_tier ?? null,
       end_division: endFrom?.end_division ?? null,
       end_lp: endFrom?.end_lp ?? null,
-      total_games: m?.total_games ?? eMt?.total_games ?? null,
+      // Spielzahl aus dem Verlauf steht auf dakgg-Zeilen — beim Neuabruf behalten.
+      total_games: m?.total_games ?? e?.total_games ?? null,
       source: m || eMt ? 'metatft' : 'dakgg',
     });
   }

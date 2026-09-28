@@ -5,7 +5,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseMetatftProfile, mergeRankSources, refreshMode, applyRankOverrides, peakFromLeagueLogs, RANK_SCHEMA_AT_MS } from './tft-rank-history.ts';
+import { parseMetatftProfile, mergeRankSources, refreshMode, applyRankOverrides, peakFromLeagueLogs, gamesFromLeagueLogs, RANK_SCHEMA_AT_MS } from './tft-rank-history.ts';
 import { setRankDisplay, withLiveRank, lastRowPerSet } from './tft-rank-kind.ts';
 
 const START = Date.parse('2026-08-26T14:08:32.809Z');
@@ -147,4 +147,30 @@ test('Merge: MetaTFT-Hoechstwert schlaegt Verlaufs-Wert', () => {
   const [m] = mergeRankSources(mt, [], existing, 18);
   assert.equal(m.peak_lp, 88);
   assert.equal(m.source, 'metatft');
+});
+
+test('Spielzahl: letzter Eintrag, Uebertrag mit und ohne Abfall, leer → null', () => {
+  const prev = [5000, 'MASTER', 'I', 900, 765, 90];
+  // Uebertrag mit Abfall: 765 → 10
+  const carry = [[1000, 'MASTER', 'I', 900, 765, 90], [2000, 'MASTER', 'I', 25, 10, 2], [3000, 'GRANDMASTER', 'I', 359, 145, 20]];
+  assert.equal(gamesFromLeagueLogs(carry), 145);
+  // Spielzahl faellt im Set um 1 → letzter Eintrag, nicht Maximum
+  assert.equal(gamesFromLeagueLogs([[1000, 'DIAMOND', 'I', 10, 50, 5], [2000, 'DIAMOND', 'I', 20, 60, 6], [3000, 'DIAMOND', 'I', 30, 59, 6]]), 59);
+  // Set nicht gespielt: nur der Uebertrag steht im Verlauf
+  assert.equal(gamesFromLeagueLogs([[6000, 'MASTER', 'I', 900, 765, 90]], prev), null);
+  assert.equal(gamesFromLeagueLogs([[6000, 'MASTER', 'I', 900, 765, 90]]), 765, 'ohne Vorset-Vergleich nicht erkennbar');
+  // Uebertrag ohne Abfall, danach gespielt
+  assert.equal(gamesFromLeagueLogs([[6000, 'MASTER', 'I', 900, 765, 90], [7000, 'MASTER', 'I', 950, 770, 91]], prev), 770);
+  assert.deepEqual(peakFromLeagueLogs([[6000, 'MASTER', 'I', 900, 765, 90], [7000, 'MASTER', 'I', 850, 770, 91]], prev), { tier: 'MASTER', lp: 850 });
+  assert.equal(gamesFromLeagueLogs([]), null);
+  assert.equal(gamesFromLeagueLogs([[1000, 'IRON', 'IV', 0, 0, 0]]), null, 'nie 0');
+});
+
+test('Merge: Verlaufs-Spielzahl auf dakgg-Zeile bleibt beim Neuabruf', () => {
+  const existing = [{ set_number: 7, set_label: 'TFTSet7', end_tier: 'DIAMOND', total_games: 212, source: 'dakgg' }];
+  const dk = [{ set_number: 7, set_label: 'TFTSet7', end_tier: 'DIAMOND', end_division: 'II', total_games: null, source: 'dakgg' }];
+  const [m] = mergeRankSources([], dk, existing, 18);
+  assert.equal(m.total_games, 212);
+  const mt = [{ set_number: 7, set_label: 'TFTSet7', end_tier: 'DIAMOND', total_games: 215, source: 'metatft' }];
+  assert.equal(mergeRankSources(mt, dk, existing, 18)[0].total_games, 215, 'MetaTFT geht vor');
 });

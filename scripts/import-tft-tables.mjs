@@ -29,9 +29,13 @@ const SET = Number(arg('--set') ?? JSON.parse(readFileSync('public/tft-set.json'
 if (!Number.isInteger(SET)) throw new Error('Set-Nummer nicht lesbar');
 const bundle = JSON.parse(readFileSync(`public/tft-assets-${SET}.json`, 'utf8'));
 
-// Nicht im Bundle, aber als CDragon-Datei vorhanden (files.exported.txt, 2026-09-27).
+// Nicht im Bundle, aber als CDragon-Datei vorhanden (files.exported.txt, 2026-09-27),
+// oder als eigenes Bild unter public/tft-extra/ (check-drift c2 prueft, dass es existiert).
 const ICON_OVERRIDES = {
   TFT_ArmoryKeyComponent: { name: 'Component Anvil', icon: 'assets/characters/tft_armorykeycomponent/hud/icons2d/tft_armorykeycomponent_square.png' },
+  // CDragon (latest + PBE, 2026-09-28) liefert nur den Platzhalter missing-t3; Bild von
+  // tactics.tools (ap.tft.tools/img/augments/DA_TraitLadder3.png). Entfernen, sobald CDragon ein echtes hat.
+  DA_TraitLadder: { name: 'Trait Ladder', icon: `/tft-extra/augments/${SET}/DA_TraitLadder.webp` },
 };
 
 const missing = [];

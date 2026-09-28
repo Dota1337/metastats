@@ -4,12 +4,13 @@
   "name": "Little Buddy Bot",
   "url": "https://www.littlebuddybot.com"
  },
- "fetchedAt": "2026-09-27T15:53:06.312Z",
+ "fetchedAt": "2026-09-28T08:14:30.561Z",
  "tables": [
   {
    "key": "traitladder",
    "api": "DA_TraitLadder",
    "name": "Trait Ladder",
+   "icon": "/tft-extra/augments/18/DA_TraitLadder.webp",
    "patch": "18.2",
    "stage": "2",
    "subs": [

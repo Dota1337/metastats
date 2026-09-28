@@ -384,8 +384,10 @@ function proxied(base: string, path: string): string {
 // Bundle noch laedt. Ohne diesen Helper baut die Seite die absolute URL selbst
 // und laeuft am Proxy vorbei -- und zwar ausgerechnet beim ersten Render, weil
 // `assets` dort noch null ist. Wer einen Game-Pfad von Hand baut, nimmt das
-// hier statt CDRAGON_GAME_BASE direkt.
+// hier statt CDRAGON_GAME_BASE direkt. Eigene Bilder unter /public (z. B.
+// /tft-extra/…, aus den Loot-Tabellen) gehen unveraendert durch.
 export function tftGameAssetUrl(path: string): string {
+  if (path.startsWith('/')) return path;
   return proxied(CDRAGON_GAME_BASE, path);
 }
 

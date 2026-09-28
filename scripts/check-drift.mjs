@@ -220,16 +220,25 @@ function read(path) {
       }
     }
 
-    // c2) Jedes Wisp-Bild muss unter public/ liegen (selbst ausgeliefert, kein CDragon).
-    if (existsSync(`public/tft-wisps-${currentSet}.json`)) {
+    // c2) Jedes selbst ausgelieferte Bild (Wisps, eigene Icons der Loot-Tabellen)
+    //     muss unter public/ liegen — kein CDragon, also sonst still leer.
+    {
       const icons = new Set();
-      for (const w of JSON.parse(read(`public/tft-wisps-${currentSet}.json`)).wisps) {
-        for (const x of [w, ...w.variants]) if (x.icon) icons.add(x.icon);
+      if (existsSync(`public/tft-wisps-${currentSet}.json`)) {
+        for (const w of JSON.parse(read(`public/tft-wisps-${currentSet}.json`)).wisps) {
+          for (const x of [w, ...w.variants]) if (x.icon) icons.add(x.icon);
+        }
+      }
+      if (existsSync(`public/tft-loot-tables-${currentSet}.json`)) {
+        JSON.stringify(JSON.parse(read(`public/tft-loot-tables-${currentSet}.json`)), (k, v) => {
+          if (k === 'icon' && typeof v === 'string' && v.startsWith('/')) icons.add(v);
+          return v;
+        });
       }
       const gone = [...icons].filter(p => !existsSync('public' + p));
       if (gone.length) {
-        console.error(`✗ DRIFT: ${gone.length} Wisp-Bild(er) fehlen unter public/: ${gone.join(', ')}`);
-        console.error('    → node scripts/import-tft-tables.mjs laedt fehlende Bilder nach.');
+        console.error(`✗ DRIFT: ${gone.length} eigene(s) Bild(er) fehlen unter public/: ${gone.join(', ')}`);
+        console.error('    → Wisps laedt node scripts/import-tft-tables.mjs nach; Icon-Overrides (ICON_OVERRIDES dort) von Hand ablegen.');
         setDrift++;
       }
     }

@@ -23,7 +23,7 @@ export interface LootReward {
   n?: number;
   api?: string;
   name?: string;
-  icon?: string;          // CDragon-Spielpfad, Aufloesung ueber tftGameAssetUrl
+  icon?: string;          // CDragon-Spielpfad oder eigener /public-Pfad, Aufloesung ueber tftGameAssetUrl
   cost?: number | null;
   stars?: number;
   v?: number | string;

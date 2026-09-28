@@ -5,6 +5,7 @@ import Footer from '../../components/Footer';
 import { useI18n } from '../../lib/i18n';
 import { ACTIVE_REGIONS } from '../../lib/active-regions';
 import { rankEmblemUrl } from '../../lib/cdragon-base';
+import { NO_DIVISION_TIERS, RANK_TIER_COLOR } from '../../lib/rank-format';
 import {
   loadTftAssets, tftChampionTileUrl, tftIconUrl, findChampion, findTrait, findItem,
   type TftAssetsBundle,
@@ -18,22 +19,38 @@ const DAYS = [1, 3, 5] as const;
 type Days = typeof DAYS[number];
 const REGIONS = ['all', ...ACTIVE_REGIONS];
 
-const TIER_COLOR: Record<string, string> = {
-  CHALLENGER: '#f0c040', GRANDMASTER: '#e44040', MASTER: '#9d48e0',
-};
-
 function stripPrefix(id: string) {
   return id.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
 }
 
-function RankBadge({ r }: { r: RisingRank }) {
-  const emblem = rankEmblemUrl(r.tier);
+// Das Emblem-Bild ist 1280×720 mit viel leerem Rand; bei object-contain bleibt
+// in kleinen Groessen nur ein Pfeil sichtbar. Fester Ausschnitt (~340 px um
+// die Bildmitte 640/345) fuer alle Stufen, damit Riots Groessenstaffel der
+// Wappen als Rang-Signal erhalten bleibt.
+function RankEmblem({ tier, label, className }: { tier: string; label: string; className: string }) {
+  const src = rankEmblemUrl(tier);
+  if (!src) return null;
   return (
-    <span className="inline-flex items-center gap-1 tabular-nums">
-      {emblem && <img src={emblem} alt={r.tier} className="w-6 h-6 object-contain" />}
-      <span className="text-[11px] text-fg-secondary">
-        {r.rank ? `${r.rank} · ` : ''}{r.lp} LP
+    <span className={`relative inline-block overflow-hidden shrink-0 ${className}`}>
+      <img
+        src={src} alt={label} title={label}
+        className="absolute max-w-none"
+        style={{ width: '376.5%', left: '-138.2%', top: '-51.5%' }}
+      />
+    </span>
+  );
+}
+
+function RankBadge({ r, tierName }: { r: RisingRank; tierName: (tier: string) => string }) {
+  const name = tierName(r.tier);
+  const division = r.rank && !NO_DIVISION_TIERS.has(r.tier) ? ` ${r.rank}` : '';
+  return (
+    <span className="inline-flex items-center gap-1 tabular-nums whitespace-nowrap">
+      <RankEmblem tier={r.tier} label={name} className="w-6 h-6" />
+      <span className="text-xs font-medium" style={{ color: RANK_TIER_COLOR[r.tier] || 'var(--fg-secondary)' }}>
+        {name}{division}
       </span>
+      <span className="text-[11px] text-fg-secondary">· {r.lp} LP</span>
     </span>
   );
 }
@@ -62,6 +79,7 @@ function Placements({ counts }: { counts: number[] }) {
 
 export default function TftRisingPage() {
   const { t } = useI18n();
+  const tierName = (tier: string) => t(`tier.${tier.toLowerCase()}` as Parameters<typeof t>[0]);
   const [days, setDays] = useState<Days>(1);
   const [region, setRegion] = useState<string>('all');
   const [players, setPlayers] = useState<RisingPlayer[]>([]);
@@ -114,7 +132,6 @@ export default function TftRisingPage() {
         <div className="space-y-2">
           {players.map((p, idx) => {
             const display = p.gameName || '—';
-            const tierColor = TIER_COLOR[p.after.tier] || '#3a8ddc';
             const comp = p.topComp;
             const traitNames = (comp?.traits || []).map(tr => findTrait(assets, tr.name)?.name || stripPrefix(tr.name));
             const title = traitNames.slice(0, 2).join(' ');
@@ -126,6 +143,7 @@ export default function TftRisingPage() {
               <div key={`${p.puuid}-${p.region}`} className="bg-surface-base border border-border-subtle rounded p-3 hover:border-accent-a30 transition-colors">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-2">
                   <span className="text-fg-muted text-xs tabular-nums w-6 font-medium">#{idx + 1}</span>
+                  <RankEmblem tier={p.after.tier} label={tierName(p.after.tier)} className="w-8 h-8 -my-1" />
                   <a
                     href={p.gameName ? `/tft/player/${encodeURIComponent(`${p.gameName}${p.tagLine ? `-${p.tagLine}` : ''}`)}?region=${p.region}` : undefined}
                     className="text-white font-medium hover:text-[#a892ff] truncate min-w-0 flex-1"
@@ -141,10 +159,10 @@ export default function TftRisingPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-2">
-                  <span className="inline-flex items-center gap-1">
-                    <RankBadge r={p.before} />
+                  <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-1">
+                    <RankBadge r={p.before} tierName={tierName} />
                     <span className="text-fg-muted text-xs">→</span>
-                    <span style={{ color: tierColor }}><RankBadge r={p.after} /></span>
+                    <RankBadge r={p.after} tierName={tierName} />
                   </span>
                   <span className="text-[11px] text-fg-secondary tabular-nums">
                     {p.games} {t('tft.gamesShort')}

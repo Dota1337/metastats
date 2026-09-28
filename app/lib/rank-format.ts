@@ -9,6 +9,13 @@ export const NO_DIVISION_TIERS: ReadonlySet<string> = new Set([
   'MASTER',
 ]);
 
+// Rangfarben (Werte wie app/tft/player/[slug]/page.tsx TIER_COLORS).
+export const RANK_TIER_COLOR: Readonly<Record<string, string>> = {
+  IRON: '#6b6b6b', BRONZE: '#a0652a', SILVER: '#8fa0a8', GOLD: '#c89b3c',
+  PLATINUM: '#209e85', EMERALD: '#00a86b', DIAMOND: '#576cce',
+  MASTER: '#9d48e0', GRANDMASTER: '#e44040', CHALLENGER: '#f0c040',
+};
+
 /**
  * Render a rank as "DIAMOND II" / "CHALLENGER" / "GOLD IV" etc.
  * For Challenger / Grandmaster / Master the division is omitted because

@@ -36,7 +36,7 @@ export default function TablesView({ loot, wisps }: { loot: LootTablesFile | nul
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
         <div className="bg-surface-base border border-border-subtle rounded-lg p-5 mb-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
           <h1 className="text-white text-xl font-medium">{t('tft.tables.title')}</h1>
-          <Toggle
+          <ViewTabs
             value={view}
             onChange={setView}
             options={[['loot', t('tft.tables.loot')], ['coven', 'Coven'], ['wisps', t('tft.tables.wisps')]]}
@@ -62,6 +62,32 @@ export default function TablesView({ loot, wisps }: { loot: LootTablesFile | nul
       </div>
       <Footer />
     </main>
+  );
+}
+
+// Haupt-Umschalter der Seite, gleicher Stil wie Liste/Uebersicht bei den Comps
+// (app/components/tft/CompsTabs.tsx). Die Wisp-Filter bleiben bewusst beim dezenten Toggle.
+function ViewTabs<V extends string>({ value, onChange, options }: { value: V; onChange: (v: V) => void; options: [V, string][] }) {
+  return (
+    <div className="inline-flex self-start sm:self-auto items-center gap-1 p-1 rounded-lg border border-accent-a40 bg-surface-raised">
+      {options.map(([v, label]) => {
+        const on = value === v;
+        return (
+          <button
+            key={v}
+            type="button"
+            onClick={() => onChange(v)}
+            aria-pressed={on}
+            className={`px-4 sm:px-5 py-2 rounded-md text-sm font-semibold transition-colors ${
+              on ? 'bg-accent text-white' : 'text-fg-secondary hover:text-white hover:bg-accent-a20'
+            }`}
+            style={on ? { boxShadow: '0 0 12px rgb(var(--accent-rgb) / 35%)' } : undefined}
+          >
+            {label}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 

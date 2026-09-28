@@ -10,9 +10,7 @@
  * Routes:
  *   GET  /healthz         — liveness probe
  *   POST /refresh-player  — { puuid, region } → snapshot result
- *   POST /explore-matches — { units, region, buckets, days, limit } → aggregate stats + sample
- *                            match-level explorer over tft_player_match_cache (Set 17 only,
- *                            uses GIN index idx_match_cache_units_gin_s17 on units jsonb)
+ *   POST /explore         — Data-Explorer-Anfrage, durchgereicht an explorer-duckdb-server.mjs
  *   POST /player-matches  — { puuids, set_number, queue_id?, limit_per_puuid? } → match rows
  *                            Generic per-player cache read. The Hetzner box is the only
  *                            source-of-truth for the Set-17 match cache (Supabase only has
@@ -458,162 +456,37 @@ function readBody(req) {
   });
 }
 
-// ─ Match-level explorer ────────────────────────────────────────────────────
-// Returns aggregate stats + sample matches for a unit-filter combo over the
-// Set-17 match cache. The units filter goes through the GIN index
-// idx_match_cache_units_gin_s17; bucket/region/days post-filter via btree
-// scan over the matching match-cache rows. Capped at 5000 matches to keep
-// the query bounded on the Hetzner pool.
+// ─ Data Explorer ─────────────────────────────────────────────────────────
+// Der Explorer rechnet nicht mehr hier gegen Postgres, sondern im eigenen
+// Dienst scripts/explorer-duckdb-server.mjs (nur 127.0.0.1). Dieser Pfad
+// reicht die Anfrage nur durch: Token-Pruefung bleibt hier, Status und
+// Antwort (auch 503 "busy"/"explorer_unavailable") kommen unveraendert zurueck.
 const SET_NUMBER = CURRENT_SET;
 const QUEUE_RANKED = 1100;
-const MAX_LIMIT = 5000;
-const REGION_BUCKETS = {
-  master_plus: { tiers: ['MASTER', 'GRANDMASTER', 'CHALLENGER'] },
-  challenger:  { tiers: ['CHALLENGER'] },
-  grandmaster: { tiers: ['GRANDMASTER'] },
-  master:      { tiers: ['MASTER'] },
-  diamond:     { tiers: ['DIAMOND'] },
-};
+const EXPLORER_URL = process.env.EXPLORER_API_URL || 'http://127.0.0.1:4110/explore';
+const EXPLORER_TIMEOUT_MS = 20_000;
 
-async function handleExploreMatches(body) {
-  const units = Array.isArray(body?.units) ? body.units.filter(u => typeof u === 'string' && u.length > 0).slice(0, 6) : [];
-  const region = typeof body?.region === 'string' ? body.region : 'all';
-  const days = Math.max(1, Math.min(30, Number(body?.days) || 3));
-  const limit = Math.max(50, Math.min(MAX_LIMIT, Number(body?.limit) || 5000));
-  // Star / items-count filters (Phase A2). Default = all tiers + all item-
-  // counts to keep parity with aggregate stats. Empty array OR not provided
-  // means "no filter". `1..4` for stars (TFT supports 4★ from Set 17), `0..3`
-  // for items-count (each carrier slot holds 0-3 items).
-  const starLevels = Array.isArray(body?.starLevels)
-    ? body.starLevels.map(n => Number(n)).filter(n => n >= 1 && n <= 4)
-    : [];
-  const itemCounts = Array.isArray(body?.itemCounts)
-    ? body.itemCounts.map(n => Number(n)).filter(n => n >= 0 && n <= 3)
-    : [];
-
-  const sinceMs = Date.now() - days * 86_400_000;
-
-  // Build the units @> jsonb filter. Each requested character_id becomes its
-  // own contains clause so the GIN(jsonb_ops) index can serve them via bitmap
-  // AND. When star-levels are provided, we expand to one contains-clause per
-  // (char × tier) and OR them per character — the index still does the pre-
-  // filter via bitmap-OR/AND, then EXISTS post-filter validates items-count
-  // (array_length isn't indexable on jsonb_ops anyway, so it'd be heap-filter
-  // either way; doing it post-prefilter keeps the heap set small).
-  const filters = ['set_number = $1', 'queue_id = $2', 'game_datetime >= $3'];
-  const params = [SET_NUMBER, QUEUE_RANKED, sinceMs];
-  let p = 4;
-  for (const u of units) {
-    if (starLevels.length > 0) {
-      const orClauses = [];
-      for (const t of starLevels) {
-        orClauses.push(`units @> $${p}::jsonb`);
-        params.push(JSON.stringify([{ characterId: u, tier: t }]));
-        p++;
-      }
-      filters.push('(' + orClauses.join(' OR ') + ')');
-    } else {
-      filters.push(`units @> $${p}::jsonb`);
-      params.push(JSON.stringify([{ characterId: u }]));
-      p++;
-    }
+async function forwardExplore(rawBody, res) {
+  let upstream;
+  try {
+    upstream = await fetch(EXPLORER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: rawBody,
+      signal: AbortSignal.timeout(EXPLORER_TIMEOUT_MS),
+    });
+  } catch (err) {
+    const timeout = err?.name === 'TimeoutError';
+    res.writeHead(timeout ? 504 : 503, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ error: timeout ? 'timeout' : 'explorer_unavailable' }));
   }
-  if (region !== 'all') {
-    filters.push(`region = $${p}`);
-    params.push(region);
-    p++;
+  const headers = { 'Content-Type': 'application/json' };
+  for (const h of ['x-explorer-built-at', 'retry-after']) {
+    const v = upstream.headers.get(h);
+    if (v) headers[h] = v;
   }
-  // EXISTS post-filter for items-count + per-unit star validation. Runs on
-  // the already-shrunk heap set from the GIN prefilter above.
-  if (itemCounts.length > 0 || (starLevels.length > 0 && units.length > 1)) {
-    for (const u of units) {
-      const checks = [`u->>'characterId' = $${p}`];
-      params.push(u); p++;
-      if (starLevels.length > 0) {
-        checks.push(`(u->>'tier')::int = ANY($${p}::int[])`);
-        params.push(starLevels); p++;
-      }
-      if (itemCounts.length > 0) {
-        // itemNames is the modern jsonb key; fall back to items for older rows.
-        checks.push(`jsonb_array_length(COALESCE(u->'itemNames', u->'items', '[]'::jsonb)) = ANY($${p}::int[])`);
-        params.push(itemCounts); p++;
-      }
-      filters.push(`EXISTS (SELECT 1 FROM jsonb_array_elements(units) u WHERE ${checks.join(' AND ')})`);
-    }
-  }
-
-  const where = filters.join(' AND ');
-  // No ORDER BY: lets Postgres stop as soon as it hits LIMIT rows via the
-  // (set_number, queue_id, game_datetime) btree scan. Sample is sorted by
-  // recency in Node after the result-set is bounded.
-  const sql = `
-    SELECT puuid, match_id, region, placement, level, last_round,
-           total_damage, comp_cluster_key, carry_unit, game_datetime,
-           units
-    FROM tft_player_match_cache
-    WHERE ${where}
-    LIMIT ${limit}
-  `;
-
-  const t0 = Date.now();
-  const rows = (await pool.query(sql, params)).rows;
-  const queryMs = Date.now() - t0;
-
-  if (rows.length === 0) {
-    return { matchCount: 0, queryMs, units, region, days, starLevels, itemCounts, sample: [], aggregate: null };
-  }
-
-  let sumPlacement = 0, top4 = 0, top1 = 0, sumLevel = 0, sumLastRound = 0, sumDamage = 0;
-  const regionDist = new Map();
-  for (const r of rows) {
-    sumPlacement += r.placement;
-    if (r.placement <= 4) top4++;
-    if (r.placement === 1) top1++;
-    sumLevel += r.level;
-    sumLastRound += r.last_round;
-    sumDamage += r.total_damage;
-    regionDist.set(r.region, (regionDist.get(r.region) || 0) + 1);
-  }
-
-  // Sort sample by recency in JS — cheap for ≤5k rows, free if we already
-  // pulled them; avoids the DB-side ORDER BY that doubles query time.
-  const sortedForSample = [...rows].sort((a, b) => Number(b.game_datetime) - Number(a.game_datetime));
-  const sample = sortedForSample.slice(0, 50).map(r => ({
-    matchId: r.match_id,
-    region: r.region,
-    placement: r.placement,
-    level: r.level,
-    lastRound: r.last_round,
-    totalDamage: r.total_damage,
-    compClusterKey: r.comp_cluster_key,
-    carryUnit: r.carry_unit,
-    gameDatetime: Number(r.game_datetime),
-    units: Array.isArray(r.units) ? r.units.map(u => ({
-      characterId: u.characterId || u.character_id,
-      tier: u.tier,
-      items: Array.isArray(u.itemNames) ? u.itemNames : (Array.isArray(u.items) ? u.items : []),
-    })) : [],
-  }));
-
-  return {
-    matchCount: rows.length,
-    queryMs,
-    units,
-    region,
-    days,
-    starLevels,
-    itemCounts,
-    aggregate: {
-      avgPlacement: sumPlacement / rows.length,
-      top4Rate: top4 / rows.length,
-      top1Rate: top1 / rows.length,
-      avgLevel: sumLevel / rows.length,
-      avgLastRound: sumLastRound / rows.length,
-      avgDamage: sumDamage / rows.length,
-      regionDist: Object.fromEntries(regionDist),
-    },
-    sample,
-  };
+  res.writeHead(upstream.status, headers);
+  res.end(await upstream.text().catch(() => JSON.stringify({ error: 'explorer_unavailable' })));
 }
 
 // ─ Marketvalue pool (Master+ players) ──────────────────────────────────────
@@ -1093,7 +966,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   const isRefresh = req.method === 'POST' && req.url === '/refresh-player';
-  const isExplore = req.method === 'POST' && req.url === '/explore-matches';
+  const isExplore = req.method === 'POST' && req.url === '/explore';
   const isPlayerMatches = req.method === 'POST' && req.url === '/player-matches';
   const isPeerBaseline = req.method === 'POST' && req.url === '/peer-baseline';
   const isMvPool = req.method === 'POST' && req.url === '/marketvalue-pool';
@@ -1113,15 +986,16 @@ const server = http.createServer(async (req, res) => {
 
   let body;
   try {
-    body = JSON.parse(await readBody(req));
+    const raw = await readBody(req);
+    if (isExplore) return await forwardExplore(raw, res);
+    body = JSON.parse(raw);
   } catch {
     res.writeHead(400, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({ error: 'invalid_json' }));
   }
 
   try {
-    const result = isExplore ? await handleExploreMatches(body)
-                  : isPlayerMatches ? await handlePlayerMatches(body)
+    const result = isPlayerMatches ? await handlePlayerMatches(body)
                   : isPeerBaseline ? await handlePeerBaseline(body)
                   : isMvPool ? await handleMarketvaluePool(body)
                   : isProsByComp ? await handleProsByComp(body)

@@ -1,4 +1,5 @@
 'use client';
+import { useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { useI18n } from '../../lib/i18n';
 import { filtersToQueryString, type Filters } from './StatsFilterBar';
@@ -7,16 +8,23 @@ import { filtersToQueryString, type Filters } from './StatsFilterBar';
 // Unit-Kosten (/tft/comps/atlas). Sitzt links in der Filterleiste
 // (StatsFilterBar `lead`), damit der Ansichtswechsel sofort auffaellt. Die Filter wandern
 // im Link mit, damit beim Wechsel dieselben Comps stehen.
+//
+// Erst nach dem Einhaengen: der Server kennt nur die Standard-Filter, der
+// Browser liest beim ersten Rendern die gespeicherten. Ein Link mit Filtern
+// schon beim ersten Rendern weicht deshalb ab, und React korrigiert das href
+// nicht (gemessen 2026-09-28: Seite KR, Link region=all).
+const noopSubscribe = () => () => {};
 export default function CompsTabs({ active, filters }: { active: 'list' | 'overview'; filters: Filters }) {
   const { t } = useI18n();
-  const qs = filtersToQueryString(filters);
+  const mounted = useSyncExternalStore(noopSubscribe, () => true, () => false);
+  const qs = mounted ? `?${filtersToQueryString(filters)}` : '';
   const tabs = [
     {
-      key: 'list' as const, href: `/tft/comps?${qs}`, label: t('tft.comps.tab.list'),
+      key: 'list' as const, href: `/tft/comps${qs}`, label: t('tft.comps.tab.list'),
       icon: <path d="M3 5h14M3 10h14M3 15h14" />,
     },
     {
-      key: 'overview' as const, href: `/tft/comps/atlas?${qs}`, label: t('tft.comps.tab.overview'),
+      key: 'overview' as const, href: `/tft/comps/atlas${qs}`, label: t('tft.comps.tab.overview'),
       icon: <path d="M3 3h5.5v5.5H3zM11.5 3H17v5.5h-5.5zM3 11.5h5.5V17H3zM11.5 11.5H17V17h-5.5z" />,
     },
   ];

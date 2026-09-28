@@ -1,0 +1,11 @@
+[Unit]
+Description=metastats TFT Data Explorer: Analyse-Speicher taeglich neu bauen
+
+[Timer]
+# 02:15 UTC: nach dem Tageswechsel (der Vortag ist komplett) und vor dem
+# 04:30-Ranglistenlauf. Persistent: ein verpasster Lauf wird nachgeholt.
+OnCalendar=*-*-* 02:15:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target

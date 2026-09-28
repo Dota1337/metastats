@@ -259,6 +259,16 @@
     },
 
     {
+      "id": "explorer/datei-frische",
+      "owner": "metastats-explorer-build.service",
+      "type": "file",
+      "path": "/mnt/HC_Volume_105869432/explorer/status.json",
+      "dateField": "builtAt",
+      "maxAgeDays": 1,
+      "note": "Datenstand des Analyse-Speichers hinter /tft/explorer. Der Build laeuft taeglich 02:15 UTC und schreibt status.json erst nach dem erfolgreichen Datei-Tausch. Das Alter wird in ganzen Tagen abgerundet, 1 heisst also: rot ab 48 h, ein ausgefallener Lauf geht noch durch. Rot: journalctl -u metastats-explorer-build — die alte Datei bleibt bei jedem Fehler stehen, die Seite zeigt dann aeltere Zahlen mit ihrem Datenstand."
+    },
+
+    {
       "id": "pro-teams/datei-frische",
       "owner": ".github/workflows/pro-teams-weekly.yml",
       "type": "file",

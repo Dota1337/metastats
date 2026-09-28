@@ -1,0 +1,43 @@
+[Unit]
+Description=metastats TFT Data Explorer: Abfrage-Dienst (nur 127.0.0.1:4110)
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/metastats-crawler
+EnvironmentFile=/etc/metastats-crawler/env
+ExecStart=/usr/bin/node scripts/explorer-duckdb-server.mjs
+Restart=on-failure
+RestartSec=5
+# DuckDB bekommt memory_limit 1GB; der Rest ist Node + Ergebnis-Cache.
+MemoryMax=1536M
+CPUQuota=150%
+# Nur lesend auf der Datei, schreibend nur im eigenen Auslagerungsordner.
+ReadWritePaths=/mnt/HC_Volume_105869432/explorer/tmp-api
+StandardOutput=journal
+StandardError=journal
+
+# --- BEGIN metastats-hardening-floor ---
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectProc=invisible
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+# --- END metastats-hardening-floor ---
+
+[Install]
+WantedBy=multi-user.target

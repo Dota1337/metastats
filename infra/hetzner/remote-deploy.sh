@@ -93,6 +93,9 @@ if active=$(crawl_running); then
   # auf der Platte schon die neuen Dateien liegen. try-restart tut nichts,
   # wenn der Service nicht laeuft.
   systemctl try-restart metastats-refresh-api.service || true
+  # Explorer-Abfragedienst: haelt ebenfalls nur eine Lese-Verbindung, Neustart
+  # kostet eine Aufwaerm-Abfrage. Der Build (oneshot, Timer) wird nie angefasst.
+  systemctl try-restart metastats-explorer-api.service || true
   echo "Code-synced $(git rev-parse --short HEAD) on $(hostname) at $(date -u +%FT%TZ) (crawl active; deps/timers not touched, refresh-api restarted)"
   exit 0
 fi
@@ -124,5 +127,6 @@ systemctl restart metastats-daily-crawl.timer metastats-companion-backfill.timer
 # Siehe Begruendung im Code-only-Zweig: der API-Service friert Set und
 # Klassifikations-Bundle beim Start ein und muss den Deploy mitbekommen.
 systemctl try-restart metastats-refresh-api.service || true
+systemctl try-restart metastats-explorer-api.service || true
 
 echo "Deployed $(git rev-parse --short HEAD) on $(hostname) at $(date -u +%FT%TZ) (full sync)"

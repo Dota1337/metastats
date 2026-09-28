@@ -41,17 +41,6 @@ const translations = {
   'tft.explorer.sort.top4': t6('Top 4', 'Top 4', 'Top 4', 'Top 4', 'Top 4', 'Top 4'),
   'tft.explorer.sort.top1': t6('Sieg', 'Win', '\uC2B9\uB9AC', '\u80DC\u5229', 'Victoria', 'Victoire'),
   'tft.explorer.sort.games': t6('Spiele', 'Games', '\uACBD\uAE30', '\u573A\u6B21', 'Partidas', 'Parties'),
-  'tft.explorer.mode.comps': t6('Comp-Ebene', 'Comp level', '\uC870\uD569 \uC218\uC900', '\u9635\u5BB9\u7EA7\u522B', 'Nivel comp', 'Niveau comp'),
-  'tft.explorer.mode.matches': t6('Match-Ebene', 'Match level', '\uB9E4\uCE58 \uC218\uC900', '\u6BD4\u8D5B\u7EA7\u522B', 'Nivel partida', 'Niveau match'),
-  'tft.explorer.matches.pickUnits': t6('Mindestens einen Champion w\u00E4hlen', 'Pick at least one champion', '\uCD5C\uC18C \uD55C \uBA85\uC758 \uCC54\uD53C\uC5B8\uC744 \uC120\uD0DD\uD558\uC138\uC694', '\u8BF7\u81F3\u5C11\u9009\u62E9\u4E00\u4E2A\u82F1\u96C4', 'Selecciona al menos un campe\u00F3n', 'S\u00E9lectionne au moins un champion'),
-  'tft.explorer.matches.loading': t6('Suche l\u00E4uft (bis ~25 s) \u2026', 'Searching (up to ~25 s) \u2026', '\uAC80\uC0C9 \uC911 (\uCD5C\uB300 ~25\uCD08) \u2026', '\u641C\u7D22\u4E2D\uFF08\u6700\u957F~25\u79D2\uFF09\u2026', 'Buscando (hasta ~25 s) \u2026', 'Recherche (jusqu\'\u00E0 ~25 s) \u2026'),
-  'tft.explorer.matches.count': t6('Matches', 'Matches', '\uB9E4\uCE58', '\u6BD4\u8D5B', 'Partidas', 'Matchs'),
-  'tft.explorer.matches.avgLevel': t6('\u00D8 Level', 'Avg level', '\uD3C9\uADE0 \uB808\uBCA8', '\u5E73\u5747\u7B49\u7EA7', 'Nivel medio', 'Niveau moy.'),
-  'tft.explorer.matches.avgLastRound': t6('\u00D8 Letzte Runde', 'Avg last round', '\uD3C9\uADE0 \uB9C8\uC9C0\uB9C9 \uB77C\uC6B4\uB4DC', '\u5E73\u5747\u6700\u540E\u56DE\u5408', '\u00DAltima ronda media', 'Tour moy.'),
-  'tft.explorer.matches.avgDamage': t6('\u00D8 Schaden (Spieler-HP)', 'Avg damage (player HP)', '\uD3C9\uADE0 \uD53C\uD574 (\uD50C\uB808\uC774\uC5B4 HP)', '\u5E73\u5747\u4F24\u5BB3 (\u73A9\u5BB6HP)', 'Da\u00F1o medio (HP jugador)', 'D\u00E9g\u00E2ts moy. (HP joueur)'),
-  'tft.explorer.matches.recent': t6('Neueste Matches', 'Recent matches', '\uCD5C\uADFC \uB9E4\uCE58', '\u6700\u8FD1\u7684\u6BD4\u8D5B', 'Partidas recientes', 'Matchs r\u00E9cents'),
-  'tft.explorer.matches.lvl': t6('Lvl', 'Lvl', 'Lvl', 'Lvl', 'Niv', 'Niv'),
-  'tft.explorer.matches.board': t6('Board', 'Board', '\uBCF4\uB4DC', '\u9635\u5BB9', 'Tablero', 'Plateau'),
   'tft.tools.odds.title': t6('Roll-Wahrscheinlichkeiten', 'Roll Odds Calculator', '\uB864 \uD655\uB960 \uACC4\uC0B0\uAE30', '\u5237\u65B0\u6982\u7387\u8BA1\u7B97\u5668', 'Calculadora de Probabilidades', 'Calculatrice de Probabilit\u00E9s'),
   'tft.tools.odds.cost': t6('Kosten', 'Cost', '\uBE44\uC6A9', '\u8D39\u7528', 'Coste', 'Co\u00FBt'),
   'tft.tools.odds.costShort': t6('Cost', 'Cost', 'Cost', 'Cost', 'Cost', 'Cost'),
@@ -274,14 +263,9 @@ const translations = {
   // Cross-Drill ins Data-Explorer (Klick auf Detail-Page-Header)
   'tft.drill.openInExplorer': t6('Im Explorer \u00F6ffnen', 'Open in Explorer', '\uD0D0\uC0C9\uAE30\uC5D0\uC11C \uC5F4\uAE30', '\u5728\u6D4F\u89C8\u5668\u4E2D\u6253\u5F00', 'Abrir en Explorador', 'Ouvrir dans l\'Explorateur'),
   // Explorer Item-Picker-Tabs (Standard-Combat vs Artefakte)
-  'tft.explorer.items.standard': t6('Standard', 'Standard', '\uAE30\uBCF8', '\u6807\u51C6', 'Est\u00E1ndar', 'Standard'),
-  'tft.explorer.items.artifact': t6('Artefakte', 'Artifacts', '\uC544\uD2F0\uD329\uD2B8', '\u795E\u5668', 'Artefactos', 'Artefacts'),
   // Explorer Filter-Visibility (Chip-Leiste + Empty-State-Diagnose)
-  'tft.explorer.activeFilters': t6('Aktive Filter', 'Active filters', '\uD65C\uC131 \uD544\uD130', '\u5DF2\u9009\u7B5B\u9009', 'Filtros activos', 'Filtres actifs'),
   'tft.explorer.resetAll': t6('Alle zur\u00FCcksetzen', 'Reset all', '\uBAA8\uB450 \uCD08\uAE30\uD654', '\u5168\u90E8\u91CD\u7F6E', 'Restablecer todo', 'Tout r\u00E9initialiser'),
   'tft.explorer.noResults': t6('Keine Treffer f\u00FCr die aktiven Filter', 'No matches for the active filters', '\uD65C\uC131 \uD544\uD130\uC5D0 \uC77C\uCE58\uD558\uB294 \uACB0\uACFC \uC5C6\uC74C', '\u5F53\u524D\u7B5B\u9009\u65E0\u5339\u914D', 'Sin coincidencias para los filtros activos', 'Aucun r\u00E9sultat pour les filtres actifs'),
-  'tft.explorer.loaded': t6('geladen', 'loaded', '\uB85C\uB4DC\uB428', '\u5DF2\u52A0\u8F7D', 'cargado', 'charg\u00E9s'),
-  'tft.explorer.afterFilter': t6('nach Filter', 'after filter', '\uD544\uD130 \uD6C4', '\u7B5B\u9009\u540E', 'tras filtro', 'apr\u00E8s filtre'),
   // Trend-Time-Series-Chart auf Comp-Detail
   'tft.trend.title': t6('Verlauf', 'Trend', '\uCD94\uC774', '\u8D70\u52BF', 'Tendencia', 'Tendance'),
   'tft.trend.last14': t6('14 Tage', '14 days', '14\uC77C', '14\u5929', '14 d\u00EDas', '14 jours'),
@@ -2701,30 +2685,6 @@ const translations = {
   // Explorer Star / Items-Count filters (Phase A2)
   'tft.explorer.starLevel': t6('Sterne', 'Star level', '\uC131\uAE09', '\u661F\u7EA7', 'Nivel de estrella', 'Niveau d\'\u00E9toile'),
   'tft.explorer.itemsCount': t6('Items', 'Items', '\uC544\uC774\uD15C', '\u88C5\u5907\u6570', '\u00CDtems', 'Objets'),
-  'tft.explorer.starItems.help': t6(
-    'Wirkt pro Unit: jede gew\u00E4hlte Unit muss diesen Stern + diese Item-Anzahl haben.',
-    'Per-unit: each selected unit must match this star + item count.',
-    '\uC720\uB2DB\uBCC4: \uAC01 \uC120\uD0DD\uB41C \uC720\uB2DB\uC774 \uC774 \uC131\uAE09 + \uC544\uC774\uD15C \uC218\uC640 \uC77C\uCE58\uD574\uC57C \uD568.',
-    '\u9010\u82F1\u96C4\u751F\u6548\uFF1A\u6BCF\u4E2A\u9009\u4E2D\u82F1\u96C4\u9700\u5339\u914D\u6B64\u661F\u7EA7 + \u88C5\u5907\u6570\u3002',
-    'Por unidad: cada unidad seleccionada debe coincidir con esta estrella + cantidad de \u00EDtems.',
-    'Par unit\u00E9 : chaque unit\u00E9 s\u00E9lectionn\u00E9e doit correspondre \u00E0 cette \u00E9toile + nombre d\'objets.'
-  ),
-  'tft.explorer.lowSample': t6(
-    'Niedrige Sample-Size ({n} Spiele) \u2014 Stats nur orientierend',
-    'Low sample size ({n} matches) \u2014 stats are indicative only',
-    '\uB0AE\uC740 \uC0D8\uD50C \uC218 ({n}\uACBD\uAE30) \u2014 \uD1B5\uACC4\uB294 \uCC38\uACE0\uC6A9',
-    '\u6837\u672C\u91CF\u4F4E ({n}\u573A\u5BF9\u5C40) \u2014 \u6570\u636E\u4EC5\u4F9B\u53C2\u8003',
-    'Tama\u00F1o de muestra bajo ({n} partidas) \u2014 estad\u00EDsticas orientativas',
-    '\u00C9chantillon faible ({n} parties) \u2014 statistiques indicatives'
-  ),
-  'tft.explorer.patchMixWarning': t6(
-    'Zeitraum \u00FCberspannt mehrere Patches',
-    'Window spans multiple patches',
-    '\uAE30\uAC04\uC774 \uC5EC\uB7EC \uD328\uCE58 \uD3EC\uD568',
-    '\u65F6\u95F4\u8303\u56F4\u8DE8\u8D8A\u591A\u4E2A\u7248\u672C',
-    'El periodo abarca varios parches',
-    'La fen\u00EAtre couvre plusieurs patchs'
-  ),
 
   // Data Explorer (Neubau 2026-09-28)
   'tft.explorer.x.patch.latest': t6('Neuester Patch', 'Latest patch', '\uCD5C\uC2E0 \uD328\uCE58', '\u6700\u65B0\u7248\u672C', '\u00DAltimo parche', 'Dernier patch'),

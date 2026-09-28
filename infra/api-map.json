@@ -11,7 +11,7 @@
     "tables": 32,
     "rpcs": 28,
     "files": 11,
-    "edges": 356,
+    "edges": 355,
     "unused": 8,
     "unresolved": 1
   },
@@ -1339,6 +1339,7 @@
       "used": true,
       "usedBy": [
         "app/components/internal/OpsGraph.tsx",
+        "app/components/tft/RegionCompare.tsx",
         "app/lib/snapshot-matrix.ts",
         "app/tft/player/[slug]/page.tsx",
         "app/tft/traits/[name]/page.tsx",
@@ -2850,11 +2851,6 @@
     {
       "from": "api:/api/tft/meta-pulse",
       "to": "fn:get_tft_comp_velocity",
-      "kind": "calls"
-    },
-    {
-      "from": "api:/api/tft/meta-pulse",
-      "to": "fn:get_tft_region_divergence",
       "kind": "calls"
     },
     {

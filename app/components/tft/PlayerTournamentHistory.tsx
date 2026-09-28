@@ -19,16 +19,16 @@ function placeColor(min: number | null): string {
 export default function PlayerTournamentHistory({ puuid }: { puuid: string }) {
   const { t, lang } = useI18n();
   const locale = LOCALE_MAP[lang];
-  const [data, setData] = useState<History | null>(null);
-  const [open, setOpen] = useState(false);
+  const [loaded, setLoaded] = useState<{ puuid: string; data: History } | null>(null);
+  const [openFor, setOpenFor] = useState<string | null>(null);
+  const data = loaded?.puuid === puuid ? loaded.data : null;
+  const open = openFor === puuid;
 
   useEffect(() => {
     const ctrl = new AbortController();
-    setData(null);
-    setOpen(false);
     fetch(`/api/tft/player-tournaments?puuid=${encodeURIComponent(puuid)}`, { signal: ctrl.signal })
       .then(r => (r.ok ? r.json() : null))
-      .then(d => { if (d && Array.isArray(d.entries)) setData(d); })
+      .then(d => { if (d && Array.isArray(d.entries)) setLoaded({ puuid, data: d }); })
       .catch(() => {});
     return () => ctrl.abort();
   }, [puuid]);
@@ -39,7 +39,7 @@ export default function PlayerTournamentHistory({ puuid }: { puuid: string }) {
   return (
     <div className="bg-surface-base border border-border-subtle rounded-lg mb-3 sm:mb-5">
       <button
-        onClick={() => setOpen(o => !o)}
+        onClick={() => setOpenFor(open ? null : puuid)}
         aria-expanded={open}
         className="w-full flex items-center justify-between gap-3 flex-wrap px-3 sm:px-5 py-3 text-left"
       >

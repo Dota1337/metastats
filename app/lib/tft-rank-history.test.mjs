@@ -5,7 +5,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseMetatftProfile, mergeRankSources, refreshMode, applyRankOverrides, RANK_SCHEMA_AT_MS } from './tft-rank-history.ts';
+import { parseMetatftProfile, mergeRankSources, refreshMode, applyRankOverrides, peakFromLeagueLogs, RANK_SCHEMA_AT_MS } from './tft-rank-history.ts';
 import { setRankDisplay, withLiveRank, lastRowPerSet } from './tft-rank-kind.ts';
 
 const START = Date.parse('2026-08-26T14:08:32.809Z');
@@ -99,4 +99,52 @@ test('Abruf vor Einfuehrung des Endrangs wird einmal neu geholt', () => {
   const now = RANK_SCHEMA_AT_MS + 86400000;
   assert.equal(refreshMode({ metatft_fetched_at: new Date(RANK_SCHEMA_AT_MS - 1000).toISOString(), metatft_status: 'success' }, now, START), 'block');
   assert.equal(refreshMode({ metatft_fetched_at: new Date(RANK_SCHEMA_AT_MS + 1000).toISOString(), metatft_status: 'success' }, now, START), 'none');
+});
+
+// LP-Verlauf: [Zeit ms, Stufe, Division, LP, Spiele gesamt, Siege]
+test('LP-Verlauf: Uebertrag aus dem Vorset wird verworfen (Set 6.5, Loescher)', () => {
+  const logs = [
+    [1000, 'CHALLENGER', 'I', 1165, 681, 90],
+    [2000, 'CHALLENGER', 'I', 1203, 145, 20],
+    [3000, 'GRANDMASTER', 'I', 700, 160, 22],
+  ];
+  assert.deepEqual(peakFromLeagueLogs(logs), { tier: 'CHALLENGER', lp: 1203 });
+  const carry = [[1000, 'MASTER', 'I', 900, 765, 90], [2000, 'MASTER', 'I', 25, 10, 2], [3000, 'GRANDMASTER', 'I', 359, 145, 20]];
+  assert.deepEqual(peakFromLeagueLogs(carry), { tier: 'GRANDMASTER', lp: 359 }, '900 LP stammen aus dem Vorset');
+});
+
+test('LP-Verlauf: doppelte Eintraege, unsortiert, nur Master+ zaehlt', () => {
+  const logs = [
+    [3000, 'MASTER', 'I', 0, 506, 81],
+    [2000, 'MASTER', 'I', 180, 500, 80],
+    [2000, 'MASTER', 'I', 180, 500, 80],
+    [1000, 'DIAMOND', 'I', 99, 400, 60],
+  ];
+  assert.deepEqual(peakFromLeagueLogs(logs), { tier: 'MASTER', lp: 180 });
+  assert.equal(peakFromLeagueLogs([[1000, 'DIAMOND', 'I', 99, 4, 1]]), null);
+  assert.equal(peakFromLeagueLogs([]), null);
+});
+
+test('Merge: Verlaufs-Hoechstwert und Marker bleiben beim Neuabruf', () => {
+  const existing = [
+    { set_number: 8, set_label: 'TFTSet8', peak_tier: 'CHALLENGER', peak_lp: 1795, peak_rating_label: 'dakgg-log', end_tier: 'MASTER', source: 'dakgg' },
+    { set_number: 7, set_label: 'TFTSet7', peak_tier: null, peak_lp: null, peak_rating_label: 'dakgg-log:none', end_tier: 'MASTER', source: 'dakgg' },
+  ];
+  const dk = [
+    { set_number: 8, set_label: 'TFTSet8', end_tier: 'MASTER', end_division: 'I', peak_tier: null, source: 'dakgg' },
+    { set_number: 7, set_label: 'TFTSet7', end_tier: 'MASTER', end_division: 'I', peak_tier: null, source: 'dakgg' },
+  ];
+  const out = mergeRankSources([], dk, existing, 18);
+  const s8 = out.find(r => r.set_label === 'TFTSet8');
+  assert.equal(s8.peak_lp, 1795);
+  assert.deepEqual(setRankDisplay(s8), { tier: 'MASTER', div: null, lp: 1795 });
+  assert.equal(out.find(r => r.set_label === 'TFTSet7').peak_rating_label, 'dakgg-log:none');
+});
+
+test('Merge: MetaTFT-Hoechstwert schlaegt Verlaufs-Wert', () => {
+  const existing = [{ set_number: 10, set_label: 'TFTSet10', peak_tier: 'MASTER', peak_lp: 50, peak_rating_label: 'dakgg-log', end_tier: 'MASTER', source: 'dakgg' }];
+  const mt = [{ set_number: 10, set_label: 'TFTSet10', peak_tier: 'MASTER', peak_lp: 88, peak_rating_label: 'MASTER I 88 LP', end_tier: 'MASTER', source: 'metatft' }];
+  const [m] = mergeRankSources(mt, [], existing, 18);
+  assert.equal(m.peak_lp, 88);
+  assert.equal(m.source, 'metatft');
 });

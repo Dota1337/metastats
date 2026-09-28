@@ -13,6 +13,13 @@
 // Anzeige seit 2026-09-28 (User): Rang am Set-Ende (end_*) + hoechste LP des
 // Sets (peak_lp). peak_* bleibt der Hoechstrang aus MetaTFT; die Anzeige-Regel
 // steht in tft-rank-kind.ts (setRankDisplay).
+//
+// Hoechst-LP vor Set 9.2 (2026-09-28): MetaTFT hat dort keinen peak_rating.
+// Fuer vergangene Sets mit Master+-Ende und ohne LP holt fillPeakLpFromLogs
+// das Maximum aus dem dak.gg-LP-Verlauf. Herkunft steht in peak_rating_label:
+// 'dakgg-log' = Wert aus dem Verlauf, 'dakgg-log:none' = Verlauf ohne Master+-
+// Eintrag, nicht erneut fragen. Rueckbau: Aufruf entfernen und
+// `update ... set peak_*=null where peak_rating_label like 'dakgg-log%'`.
 
 import { after } from 'next/server';
 import { CURRENT_SET, CURRENT_SET_STARTED_AT_MS } from './current-set';
@@ -103,18 +110,28 @@ export async function ensureRankHistoryBackfilled(
   const state = await getBackfillState(puuid);
   const mode = refreshMode(state, Date.now(), CURRENT_SET_STARTED_AT_MS, opts.force);
 
+  // LP-Verlauf nur, wenn ohnehin neu geholt wird — nie bei jedem Aufruf.
+  const fillLogs = () => fillPeakLpFromLogs(puuid, region, gameName, tagLine);
   if (mode === 'block') {
     await refreshRankHistory(puuid, region, gameName, tagLine);
+    await runLater(fillLogs);
   } else if (mode === 'background') {
-    try {
-      after(() => refreshRankHistory(puuid, region, gameName, tagLine));
-    } catch {
-      // Ausserhalb eines Requests (Skript/Test) gibt es kein after().
+    await runLater(async () => {
       await refreshRankHistory(puuid, region, gameName, tagLine);
-    }
+      await fillLogs();
+    });
   }
 
   return loadRankHistory(puuid);
+}
+
+async function runLater(fn: () => Promise<unknown>) {
+  try {
+    after(fn);
+  } catch {
+    // Ausserhalb eines Requests (Skript/Test) gibt es kein after().
+    await fn();
+  }
 }
 
 async function refreshRankHistory(puuid: string, region: string, gameName: string, tagLine: string) {
@@ -435,10 +452,123 @@ async function fetchDakggSeasons(
   return out;
 }
 
+// ── dak.gg LP-Verlauf (Hoechst-LP fuer Sets vor 9.2) ─────────────────────────
+
+const APEX_TIERS = new Set(['MASTER', 'GRANDMASTER', 'CHALLENGER']);
+const LOG_LABEL = 'dakgg-log';
+const LOG_NONE = 'dakgg-log:none';
+const LOG_PAGE_SIZE = 200;
+const LOG_MAX_PAGES = 15;
+const LOG_DEADLINE_MS = 40_000;
+
+function isLogLabel(label: string | null | undefined): boolean {
+  return label === LOG_LABEL || label === LOG_NONE;
+}
+
+// 'TFTSet9_2' → 'set9.5', 'TFTSet8' → 'set8' (Umkehrung von normalizeDakSetLabel)
+function toDakSeason(setLabel: string): string | null {
+  const m = /^TFTSet(\d+)(_2)?$/i.exec(setLabel);
+  return m ? `set${m[1]}${m[2] ? '.5' : ''}` : null;
+}
+
+type LeagueLog = [number, string, string, number, number, number?];
+
+/**
+ * Hoechster Master+-Stand eines Sets aus dem LP-Verlauf. Exportiert fuer Tests.
+ * Eintrag: [Zeit ms, Stufe, Division, LP, Spiele gesamt, Siege].
+ *  - Seiten ueberlappen → doppelte Eintraege raus.
+ *  - Der Verlauf beginnt manchmal mit dem Schlussstand des Vorsets (Set 6.5:
+ *    erst 765 Spiele, dann 145). Die Spielzahl steigt innerhalb eines Sets nur;
+ *    faellt sie in den ersten Eintraegen, wird alles davor verworfen.
+ *  - Der Endrang kommt nie von hier (letzter Eintrag ist oft "Master 0").
+ */
+export function peakFromLeagueLogs(logs: LeagueLog[]): { tier: string; lp: number } | null {
+  const seen = new Set<string>();
+  const rows = logs
+    .filter(l => Array.isArray(l) && Number.isFinite(l[0]) && typeof l[1] === 'string')
+    .filter(l => { const k = `${l[0]}|${l[1]}|${l[3]}|${l[4]}`; if (seen.has(k)) return false; seen.add(k); return true; })
+    .sort((a, b) => a[0] - b[0]);
+  let start = 0;
+  for (let i = 1; i < Math.min(rows.length, 5); i++) {
+    if (Number(rows[i][4]) < Number(rows[i - 1][4])) start = i;
+  }
+  let best: { tier: string; lp: number } | null = null;
+  for (const l of rows.slice(start)) {
+    const tier = l[1].toUpperCase();
+    const lp = Number(l[3]);
+    if (!APEX_TIERS.has(tier) || !Number.isFinite(lp)) continue;
+    if (!best || lp > best.lp) best = { tier, lp };
+  }
+  return best;
+}
+
+async function fetchDakggLeagueLogs(shard: string, gameName: string, tagLine: string, season: string): Promise<LeagueLog[]> {
+  const slug = encodeURIComponent(`${gameName}-${tagLine}`);
+  const all: LeagueLog[] = [];
+  for (let page = 1; page <= LOG_MAX_PAGES; page++) {
+    const url = `${DAKGG_URL}/${shard}/${slug}/league-logs?queueId=${STANDARD_RANKED_QUEUE}&season=${season}&page=${page}&size=${LOG_PAGE_SIZE}&sort=desc`;
+    const r = await fetch(url, {
+      headers: { 'User-Agent': 'metastats.gg/1.0', Origin: 'https://lolchess.gg', Referer: 'https://lolchess.gg/', Accept: 'application/json' },
+      signal: AbortSignal.timeout(SOURCE_TIMEOUT_MS),
+    });
+    if (!r.ok) throw new Error(`dakgg league-logs HTTP ${r.status}`);
+    const data = await r.json();
+    const logs: LeagueLog[] = Array.isArray(data?.summonerLeagueLogs) ? data.summonerLeagueLogs : [];
+    all.push(...logs);
+    const total = Number(data?.meta?.totalCount);
+    if (logs.length === 0 || (Number.isFinite(total) ? page * LOG_PAGE_SIZE >= total : logs.length < LOG_PAGE_SIZE)) break;
+  }
+  return all;
+}
+
+/**
+ * Vergangene Sets mit Master+-Ende und ohne LP: Hoechstwert aus dem Verlauf
+ * nachtragen. Nacheinander, jedes Set sofort gespeichert, 40 s Deckel.
+ * Leerer Verlauf → Marker, Fehler → kein Marker (naechstes Mal erneut).
+ * Exportiert fuer das Erstbefuellungs-Skript.
+ */
+export async function fillPeakLpFromLogs(
+  puuid: string, region: string, gameName: string, tagLine: string,
+  deadlineMs = LOG_DEADLINE_MS,
+): Promise<{ filled: number; none: number; failed: number }> {
+  const res = { filled: 0, none: 0, failed: 0 };
+  if (!gameName || !tagLine) return res;
+  const until = Date.now() + deadlineMs;
+  const rows = await loadRankHistoryRaw(puuid);
+  const todo = rows.filter(r =>
+    r.set_label && r.set_number < CURRENT_SET && r.source !== 'override'
+    && APEX_TIERS.has((r.end_tier || '').toUpperCase())
+    && r.peak_lp == null && !isLogLabel(r.peak_rating_label));
+  for (const r of todo) {
+    if (Date.now() > until) break;
+    const season = toDakSeason(r.set_label!);
+    if (!season) continue;
+    try {
+      const peak = peakFromLeagueLogs(await fetchDakggLeagueLogs(region, gameName, tagLine, season));
+      await patchRankRow(puuid, r.set_label!, peak
+        ? { peak_tier: peak.tier, peak_division: null, peak_lp: peak.lp, peak_rating_label: LOG_LABEL }
+        : { peak_rating_label: LOG_NONE });
+      if (peak) res.filled++; else res.none++;
+    } catch {
+      res.failed++;
+    }
+  }
+  return res;
+}
+
+async function patchRankRow(puuid: string, setLabel: string, patch: Partial<SeasonRank>) {
+  const res = await fetch(
+    `${SUPA_URL}/rest/v1/tft_player_rank_history?puuid=eq.${encodeURIComponent(puuid)}&set_label=eq.${encodeURIComponent(setLabel)}&queue_id=eq.${STANDARD_RANKED_QUEUE}`,
+    { method: 'PATCH', headers: { ...supaHeaders(), 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify(patch) },
+  );
+  if (!res.ok) throw new Error(`rank_history patch failed HTTP ${res.status}`);
+}
+
 // Welche Zeilen werden geschrieben? Exportiert fuer Tests. Je Feld:
 //  - Hoechstrang (peak_*) nur aus MetaTFT; fehlt MetaTFT diesmal, bleibt der
 //    gespeicherte MetaTFT-Wert. Alte dakgg-Zeilen trugen ihren Endrang in
-//    peak_* — der wird dabei geleert.
+//    peak_* — der wird dabei geleert. Werte aus dem dak.gg-LP-Verlauf
+//    ('dakgg-log*') bleiben, bis MetaTFT selbst einen Hoechstwert hat.
 //  - Endrang (end_*): MetaTFT, sonst gespeicherter MetaTFT-Endrang, sonst dakgg.
 //  - dakgg nie fuers laufende Set (Tagesstand) und nie UNRANKED.
 export function mergeRankSources(metatft: SeasonRank[], dakgg: SeasonRank[], existing: SeasonRank[] = [], currentSet = CURRENT_SET): SeasonRank[] {
@@ -457,7 +587,10 @@ export function mergeRankSources(metatft: SeasonRank[], dakgg: SeasonRank[], exi
   for (const label of labels) {
     const m = mt.get(label), d = dk.get(label), e = ex.get(label);
     const eMt = e?.source === 'metatft' ? e : undefined;
-    const peakFrom = m && isRealTier(m.peak_tier) ? m : eMt && isRealTier(eMt.peak_tier) ? eMt : undefined;
+    // Verlaufs-Werte (und der "kein Verlauf"-Marker) bleiben stehen, bis
+    // MetaTFT selbst einen Hoechstwert liefert.
+    const eLog = e && isLogLabel(e.peak_rating_label) ? e : undefined;
+    const peakFrom = m && isRealTier(m.peak_tier) ? m : eMt && isRealTier(eMt.peak_tier) ? eMt : eLog;
     const endFrom = m && isRealTier(m.end_tier) ? m : eMt && isRealTier(eMt.end_tier) ? eMt : d;
     const base = (m || d || e)!;
     out.push({

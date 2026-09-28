@@ -261,8 +261,8 @@ function LiveStandings({ rows, live, locale }: { rows: LiveRow[] | null; live: b
         <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-fg-muted">
           {live && (
             <span className="relative flex h-2 w-2">
-              <span className="absolute inset-0 rounded-full opacity-75 animate-ping bg-[#e44040]" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-[#e44040]" />
+              <span className="absolute inset-0 rounded-full opacity-75 animate-ping bg-pos-loss" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-pos-loss" />
             </span>
           )}
           {live ? t('tft.tournaments.liveStandings') : t('tft.tournaments.pointsTable')}

@@ -54,7 +54,7 @@ export default function PlayerTournamentHistory({ puuid }: { puuid: string }) {
         </span>
         <span className="text-xs text-fg-secondary">
           <span className="text-white">{entries.length}</span> {t('tft.player.tournaments')}
-          {wins > 0 && <> · <span className="text-[#f0c040]">{wins}× 1.</span></>}
+          {wins > 0 && <> · <span style={{ color: '#f0c040' }}>{wins}× 1.</span></>}
           {earningsUsd != null && <> · <span className="text-gold-earnings tabular-nums">{formatUsd(earningsUsd)}</span></>}
         </span>
       </button>
@@ -80,7 +80,7 @@ export default function PlayerTournamentHistory({ puuid }: { puuid: string }) {
                   <a
                     href={e.href}
                     {...(e.internal ? {} : { target: '_blank', rel: 'noreferrer' })}
-                    className="hover:text-[#a892ff]"
+                    className="hover:text-series-purple-soft"
                   >
                     {e.tournament}
                   </a>

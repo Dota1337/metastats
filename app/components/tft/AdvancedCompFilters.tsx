@@ -143,7 +143,7 @@ export default function AdvancedCompFilters({ filters, onChange, resultCount, to
   ];
 
   return (
-    <div className="mb-3 space-y-2">
+    <div className="mb-2 space-y-2">
       {/* Cost-Bucket-Filter eigene Pill-Reihe — direkt sichtbar, kein
           expansion nötig. Reroll/Mid/Fast 8 sind die Standard-Pro-Buckets
           die jeden Tag genutzt werden. */}

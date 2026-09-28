@@ -1,4 +1,5 @@
 'use client';
+import type { ReactNode } from 'react';
 import { useI18n, type TranslationKey } from '../../lib/i18n';
 import { tftPatchLabel } from '../../lib/tft-patch-label';
 import { tftStatsBucket } from '../../lib/rank-groups';
@@ -86,9 +87,12 @@ interface Props {
   filters: Filters;
   patches: PatchInfo[];          // from API response
   onChange: (next: Filters) => void;
+  // Optionaler Platz links neben den Auswahlfeldern (Comps: Umschalter
+  // Liste/Uebersicht). Ab xl eine Zeile, darunter steht er ueber den Feldern.
+  lead?: ReactNode;
 }
 
-export default function StatsFilterBar({ filters, patches, onChange }: Props) {
+export default function StatsFilterBar({ filters, patches, onChange, lead }: Props) {
   const { t } = useI18n();
 
   const dayLabel = (n: number) =>
@@ -118,8 +122,8 @@ export default function StatsFilterBar({ filters, patches, onChange }: Props) {
     return isAggregated ? `${base} · ${t('tft.filter.patchAggregated')}` : base;
   })() : null;
 
-  return (
-    <div className="bg-surface-base border border-border-subtle rounded-lg p-3 mb-4">
+  const body = (
+    <>
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <FilterSelect
           label={t('tft.filter.patch')}
@@ -187,6 +191,17 @@ export default function StatsFilterBar({ filters, patches, onChange }: Props) {
       {patchHint && (
         <div className="mt-2 text-xs text-[#6b7a8f]">{patchHint}</div>
       )}
+    </>
+  );
+
+  return (
+    <div className="bg-surface-base border border-border-subtle rounded-lg p-3 mb-4">
+      {lead ? (
+        <div className="flex flex-col xl:flex-row xl:items-center gap-3 xl:gap-5">
+          <div className="flex justify-center shrink-0">{lead}</div>
+          <div className="flex-1 min-w-0">{body}</div>
+        </div>
+      ) : body}
     </div>
   );
 }

@@ -4,8 +4,8 @@ import { useI18n } from '../../lib/i18n';
 import { filtersToQueryString, type Filters } from './StatsFilterBar';
 
 // Umschalter der Comp-Seiten: Liste (/tft/comps) und Uebersicht nach
-// Unit-Kosten (/tft/comps/atlas). Sitzt als Kind von TftHero mittig unter dem
-// Untertitel, damit der Ansichtswechsel sofort auffaellt. Die Filter wandern
+// Unit-Kosten (/tft/comps/atlas). Sitzt links in der Filterleiste
+// (StatsFilterBar `lead`), damit der Ansichtswechsel sofort auffaellt. Die Filter wandern
 // im Link mit, damit beim Wechsel dieselben Comps stehen.
 export default function CompsTabs({ active, filters }: { active: 'list' | 'overview'; filters: Filters }) {
   const { t } = useI18n();

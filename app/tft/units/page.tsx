@@ -157,6 +157,22 @@ export default function TftUnitsPage() {
     return [...tiered, ...untiered];
   }, [units, assets, costFilter, traitFilter, search, tierCutoffs]);
 
+  // Over all loaded units, not `filtered`, so the item column doesn't shift
+  // while searching or filtering by cost/trait. Character count doesn't
+  // predict rendered width ("Brambleback" renders wider than "Lux (Inferno)"),
+  // so the widest name is picked by measuring with the page font; the
+  // longest-by-characters stays in the stack as a fallback.
+  const longestNames = useMemo(() => {
+    const names = [...new Set(units.map(u => assets?.champions[u.characterId]?.name || prettyCharId(u.characterId)))];
+    if (names.length === 0) return [];
+    const byChars = names.reduce((a, b) => (b.length > a.length ? b : a));
+    const ctx = typeof document !== 'undefined' ? document.createElement('canvas').getContext('2d') : null;
+    if (!ctx) return [byChars];
+    ctx.font = `500 14px ${getComputedStyle(document.body).fontFamily}`;
+    const byPixels = names.reduce((a, b) => (ctx.measureText(b).width > ctx.measureText(a).width ? b : a));
+    return byPixels === byChars ? [byChars] : [byPixels, byChars];
+  }, [units, assets]);
+
   const currentPatchLabel = patches[0]?.patch;
 
   return (
@@ -260,7 +276,14 @@ export default function TftUnitsPage() {
                       {url && <img src={url} alt={ch!.name} className="w-full h-full object-cover" />}
                     </div>
                     <div className="min-w-0 flex-1 md:flex-initial flex flex-col md:flex-row md:items-center gap-1 md:gap-3">
-                      <div className="text-white font-medium truncate">{ch?.name || prettyCharId(u.characterId)}</div>
+                      {/* From lg up an invisible copy of the longest name shares the
+                          grid cell, so every item row starts at the same x. */}
+                      <div className="grid min-w-0">
+                        <div className="[grid-area:1/1] text-white font-medium truncate">{ch?.name || prettyCharId(u.characterId)}</div>
+                        {longestNames.map(n => (
+                          <div key={n} aria-hidden className="[grid-area:1/1] hidden lg:block invisible font-medium whitespace-nowrap">{n}</div>
+                        ))}
+                      </div>
                       {u.topItems && u.topItems.length > 0 && (
                         <div className="flex gap-0.5 flex-shrink-0">
                           {u.topItems.map(it => (

@@ -150,7 +150,7 @@ export default function RegionCompare({
   return (
     <section className="bg-surface-base border border-border-subtle rounded p-4 mt-4">
       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-        <h2 className="text-xs uppercase tracking-widest text-[#c39bff]">{t('tft.metaPulse.regionCompare')}</h2>
+        <h2 className="text-xs uppercase tracking-widest" style={{ color: '#c39bff' }}>{t('tft.metaPulse.regionCompare')}</h2>
         <input
           type="search"
           value={query}

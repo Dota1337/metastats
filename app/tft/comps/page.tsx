@@ -59,9 +59,10 @@ export default function TftCompsPage() {
   return (
     <main className="min-h-screen bg-surface-page">
       <Nav active="comps" />
-      <TftHero pageTitle={t('nav.comps')} subtitle={t('tft.heroSubtitle')} patch={currentPatchLabel} />
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-2 pb-6">
+      <TftHero pageTitle={t('nav.comps')} subtitle={t('tft.heroSubtitle')} patch={currentPatchLabel}>
         <CompsTabs active="list" filters={filters} />
+      </TftHero>
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-2 pb-6">
         <StatsFilterBar filters={filters} patches={patches} onChange={handleFiltersChange} />
 
         <div className="mb-3">

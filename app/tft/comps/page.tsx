@@ -83,6 +83,24 @@ export default function TftCompsPage() {
           onChange={setAdv}
           resultCount={filteredComps.length}
           totalCount={comps.length}
+          trailing={
+            <>
+              <span className="text-fg-muted">{t('tft.sortBy')}:</span>
+              <select
+                value={sortBy}
+                onChange={e => chooseSort(e.target.value as CompSortBy)}
+                className="bg-surface-raised border border-border-subtle rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-accent-a60"
+              >
+                <option value="avg">{t('tft.avgPlacement')}</option>
+                <option value="top4">{t('tft.top4')}</option>
+                <option value="win">{t('tft.top1')}</option>
+                <option value="pick">{t('tft.pickRate')}</option>
+                {filters.velocity > 0 && (
+                  <option value="velocity">{t('tft.velocity.trending')}</option>
+                )}
+              </select>
+            </>
+          }
         />
 
         {compareSelection.length > 0 && (
@@ -94,23 +112,6 @@ export default function TftCompsPage() {
             onReset={() => setCompareSelection([])}
           />
         )}
-
-        <div className="flex items-center justify-end gap-2 mb-3 -mt-1 text-xs">
-          <span className="text-fg-muted">{t('tft.sortBy')}:</span>
-          <select
-            value={sortBy}
-            onChange={e => chooseSort(e.target.value as CompSortBy)}
-            className="bg-surface-raised border border-border-subtle rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-accent-a60"
-          >
-            <option value="avg">{t('tft.avgPlacement')}</option>
-            <option value="top4">{t('tft.top4')}</option>
-            <option value="win">{t('tft.top1')}</option>
-            <option value="pick">{t('tft.pickRate')}</option>
-            {filters.velocity > 0 && (
-              <option value="velocity">{t('tft.velocity.trending')}</option>
-            )}
-          </select>
-        </div>
 
         {loading && hasData === null && (
           <div className="text-fg-muted text-center py-8">{t('tft.noDataYet').replace('Noch keine Daten', 'Lade')}</div>

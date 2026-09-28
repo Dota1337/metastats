@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useI18n, type TranslationKey } from '../../lib/i18n';
 
 // W1-C: Multi-Criteria-Filter — Pro-Tool, um versteckte Power-Comps zu finden
@@ -128,9 +128,11 @@ interface Props {
   onChange: (next: AdvancedFilters) => void;
   resultCount: number;
   totalCount: number;
+  // Rechts in der Zeile der Advanced-Knoepfe (auf /tft/comps: Sortierung).
+  trailing?: ReactNode;
 }
 
-export default function AdvancedCompFilters({ filters, onChange, resultCount, totalCount }: Props) {
+export default function AdvancedCompFilters({ filters, onChange, resultCount, totalCount, trailing }: Props) {
   const { t } = useI18n();
   const [expanded, setExpanded] = useState(isAdvActive(filters));
   const active = isAdvActive(filters);
@@ -207,6 +209,7 @@ export default function AdvancedCompFilters({ filters, onChange, resultCount, to
             × {t('tft.adv.reset')}
           </button>
         )}
+        {trailing && <div className="ml-auto flex items-center gap-2">{trailing}</div>}
       </div>
 
       {expanded && (

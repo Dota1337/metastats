@@ -240,7 +240,9 @@ function parseAchievementsTable(sectionHtml) {
         if (pm) { place = pm[1]; continue; }
       }
       if (!tier) {
-        const tm = text.match(/^(S-Tier|A-Tier|B-Tier|C-Tier|Premier|Major|Minor|Qualifier|Monthly|Weekly|Showmatch)$/i);
+        // Buchstaben-Tiers generisch: D-Tier fehlte, der Tier-Link landete
+        // dann als Turniername ("D-Tier") in der Historie.
+        const tm = text.match(/^([A-Z]-Tier|Premier|Major|Minor|Qualifier|Monthly|Weekly|Showmatch)$/i);
         if (tm) { tier = tm[1]; continue; }
       }
       if (!tournament) {
@@ -265,7 +267,7 @@ function parseAchievementsTable(sectionHtml) {
   return rows;
 }
 
-function extractResults(html) {
+export function extractResults(html) {
   // On the /Results subpage, the table lives directly under the page body
   // and may not be inside a named section. Try sectioned extraction first,
   // then fall back to parsing the first table on the whole page.

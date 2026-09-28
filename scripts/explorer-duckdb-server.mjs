@@ -159,7 +159,8 @@ function releaseSlot() {
 const ID_RE = /^[A-Za-z0-9_]{1,64}$/;
 const REGION_RE = /^[a-z0-9]{2,5}$/;
 const PATCH_RE = /^\d{1,2}\.\d{1,2}[a-z]?$/;
-const RANKS = ['CHALLENGER', 'GRANDMASTER', 'MASTER', 'DIAMOND', 'unknown'];
+// 'unknown' nur noch fuer alte Links; die Oberflaeche bietet es nicht mehr an.
+const RANKS = ['CHALLENGER', 'GRANDMASTER', 'MASTER', 'DIAMOND', 'EMERALD', 'unknown'];
 const TABS = ['summary', 'units', 'items', 'traits', 'comps', 'level', 'round', 'gold', 'region', 'rank'];
 
 function bad(msg) { const e = new Error(msg); e.status = 400; return e; }
@@ -283,7 +284,10 @@ function keySql(q, params, components) {
   switch (q.tab) {
     case 'units':
       return q.split === 'star'
-        ? `SELECT DISTINCT r.bid, r.mid, r.placement, u.unit AS key, u.star::INTEGER AS sub, NULL::INTEGER AS sub2 FROM ref r JOIN units u USING (bid)`
+        // Hoechste Kopie je Board: zwei 2★-Kopien sind EIN Board mit 2★.
+        // Die Summenzeile je Unit entsteht unten aus diesen Zeilen (kg).
+        ? `SELECT r.bid, r.mid, r.placement, u.unit AS key, max(u.star)::INTEGER AS sub, NULL::INTEGER AS sub2
+             FROM ref r JOIN units u USING (bid) GROUP BY r.bid, r.mid, r.placement, u.unit`
         : `SELECT DISTINCT r.bid, r.mid, r.placement, u.unit AS key, NULL::INTEGER AS sub, NULL::INTEGER AS sub2 FROM ref r JOIN units u USING (bid)`;
     case 'items': {
       // Komponenten stammen aus dem Bundle und sind per ID_RE geprueft,
@@ -330,7 +334,7 @@ function keySql(q, params, components) {
     case 'region':
       return `SELECT bid, mid, placement, region AS key, NULL::INTEGER AS sub, NULL::INTEGER AS sub2 FROM ref`;
     case 'rank':
-      return `SELECT bid, mid, placement, coalesce(rank, 'unknown') AS key, NULL::INTEGER AS sub, NULL::INTEGER AS sub2 FROM ref`;
+      return `SELECT bid, mid, placement, rank AS key, NULL::INTEGER AS sub, NULL::INTEGER AS sub2 FROM ref WHERE rank IS NOT NULL`;
     default:
       throw bad('invalid_tab');
   }
@@ -450,14 +454,21 @@ async function runQuery(holder, q) {
         ref = await setStats(conn, `${cte}, ${refCte}`, pr, 'ref');
       }
       const ks = keySql(q, p, holder.components);
+      // Sterne-Vergleich: je Board genau ein Stern je Unit, also ergibt die
+      // Summe ueber die Sterne je Partie exakt die Unit-Gesamtzeile (sub NULL).
+      const starTotals = q.tab === 'units' && q.split === 'star';
       p.push(ROW_MIN_BOARDS, ROW_LIMIT);
       const rows = ref.n === 0 ? [] : (await conn.runAndReadAll(`
         WITH ${cte}, ${refCte},
         cl AS (SELECT mid, count(*) AS n, sum(placement) AS s FROM ref GROUP BY mid),
         k AS (${ks}),
-        kg AS (SELECT key, sub, sub2, mid, count(*) AS n1, sum(placement) AS s1,
+        kg0 AS (SELECT key, sub, sub2, mid, count(*) AS n1, sum(placement) AS s1,
                       count(*) FILTER (WHERE placement <= 4) AS t4, count(*) FILTER (WHERE placement = 1) AS t1
-               FROM k GROUP BY key, sub, sub2, mid)
+               FROM k GROUP BY key, sub, sub2, mid),
+        kg AS (${starTotals ? `SELECT * FROM kg0 UNION ALL BY NAME
+               SELECT key, NULL::INTEGER AS sub, sub2, mid, sum(n1)::BIGINT AS n1, sum(s1) AS s1,
+                      sum(t4)::BIGINT AS t4, sum(t1)::BIGINT AS t1
+               FROM kg0 GROUP BY key, sub2, mid` : 'SELECT * FROM kg0'})
         SELECT key, sub, sub2, count(*)::DOUBLE AS m1, sum(n1)::DOUBLE AS n1, sum(s1)::DOUBLE AS s1,
                sum(t4)::DOUBLE AS t4, sum(t1)::DOUBLE AS t1,
                sum(s1 * s1)::DOUBLE AS ss11, sum(s1 * n1)::DOUBLE AS sn11, sum(n1 * n1)::DOUBLE AS nn11,

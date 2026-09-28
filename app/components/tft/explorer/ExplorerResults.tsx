@@ -25,6 +25,8 @@ type SortKey = 'games' | 'share' | 'avg' | 'top4' | 'top1' | 'delta' | 'star3' |
 const MIN_GAMES = [5, 30, 100, 500, 2000];
 const GOLD_ORDER = ['0', '1-9', '10-19', '20-29', '30-49', '50+'];
 
+const STARS = [1, 2, 3, 4];
+
 const seg = (on: boolean) =>
   `px-2 py-0.5 rounded text-xs border ${on ? 'bg-accent-a20 border-accent-a50 text-fg-bright' : 'border-border-subtle text-fg-secondary hover:text-fg-primary'}`;
 
@@ -41,9 +43,11 @@ const NUMERIC_TABS: ExplorerTab[] = ['level', 'round', 'gold', 'rank'];
 const NO_DELTA_TABS: ExplorerTab[] = ['round', 'region'];
 
 export default function ExplorerResults({
-  query, setQuery, backToUnits, data, options, assets, deltaMode, setDeltaMode,
+  query, setQuery, backToUnits, data, dataQuery, options, assets, deltaMode, setDeltaMode,
 }: {
   query: ExplorerQuery;
+  /** Auswahl, zu der data gehoert (null = noch nichts geladen). */
+  dataQuery: ExplorerQuery | null;
   setQuery: (q: ExplorerQuery, opts?: { push?: boolean }) => void;
   backToUnits: () => void;
   data: ExplorerResponse | null;
@@ -63,13 +67,25 @@ export default function ExplorerResults({
   const refGames = data?.refGames ?? 0;
   const num = (v: number) => v.toLocaleString(lang === 'de' ? 'de-DE' : lang);
 
+  // Passen die geladenen Zeilen zum gezeigten Reiter? Beim Umschalten liegen
+  // sonst kurz Unit-Zeilen unter dem Items-Kopf — dann Platzhalter-Zeilen.
+  const starData = !!dataQuery && dataQuery.tab === 'units' && dataQuery.stars.length > 0;
+  const rowsFit = !!dataQuery && dataQuery.tab === tab && (
+    tab === 'units' ? starData === query.stars.length > 0
+    : tab === 'items' ? dataQuery.focus === query.focus && dataQuery.combo === query.combo
+    : tab === 'traits' ? (dataQuery.split === 'over') === (query.split === 'over')
+    : true);
+  const stars = rowsFit && starData ? query.stars : [];
+  // Ab zwei Sternstufen: je Unit eine Gesamt-Zeile, darunter die Stufen.
+  const grouped = stars.length > 1;
+
   const dOf = (r: ExplorerRow) => (deltaMode === 'base' ? r.dBase : r.dOut);
   const dhOf = (r: ExplorerRow) => (deltaMode === 'base' ? r.dBaseHalf : r.dOutHalf);
 
   // Anzeigename je Zeile.
   const labelOf = (r: ExplorerRow): string => {
     switch (tab) {
-      case 'units': return unitName(options, assets, r.key) + (r.sub ? ` ${r.sub}★` : '');
+      case 'units': return unitName(options, assets, r.key) + (r.sub && !grouped ? ` ${r.sub}★` : '');
       case 'items': return r.key.split('|').map(i => itemName(options, assets, i)).join(' + ');
       case 'traits': {
         const m = r.sub ? traitMin(options, assets, r.key, r.sub) : null;
@@ -88,10 +104,14 @@ export default function ExplorerResults({
   };
 
   const showDelta = !NO_DELTA_TABS.includes(tab);
-  const showStar3 = tab === 'units' && query.split !== 'star';
+  const showStar3 = tab === 'units' && query.stars.length === 0;
 
   const rows = useMemo(() => {
-    const list = (data?.rows ?? []).filter(r => r.games >= minGames);
+    if (!rowsFit) return [];
+    const all = data?.rows ?? [];
+    // Stern-Daten: sub = Stufe, sub=null = Unit gesamt.
+    const list = (stars.length ? all.filter(r => r.sub != null && stars.includes(r.sub)) : all)
+      .filter(r => r.games >= minGames);
     const s = sort ?? (NUMERIC_TABS.includes(tab) ? { key: 'key' as SortKey, dir: 1 as const } : { key: 'games' as SortKey, dir: -1 as const });
     // Namens-Reiter alphabetisch nach Anzeigename, bei gleichem Namen nach Stufe.
     if (s.key === 'key' && !NUMERIC_TABS.includes(tab)) {
@@ -110,10 +130,18 @@ export default function ExplorerResults({
         case 'key': return orderKey(tab, r) * 100 + (r.sub ?? 0) * 10 + (r.sub2 ?? 0);
       }
     };
-    return [...list].sort((a, b) => (val(a) - val(b)) * s.dir || b.games - a.games);
+    const cmp = (a: ExplorerRow, b: ExplorerRow) => (val(a) - val(b)) * s.dir || b.games - a.games;
+    if (!grouped) return [...list].sort(cmp);
+    // Gruppen als Ganzes nach der Gesamt-Zeile sortieren, Stufen darin aufsteigend.
+    const members = new Map<string, ExplorerRow[]>();
+    for (const r of list) members.set(r.key, [...(members.get(r.key) ?? []), r]);
+    const heads = all.filter(r => r.sub == null && members.has(r.key));
+    const coll = new Intl.Collator(lang);
+    heads.sort(s.key === 'key' ? (a, b) => coll.compare(labelOf(a), labelOf(b)) * s.dir : cmp);
+    return heads.flatMap(h => [h, ...members.get(h.key)!.sort((a, b) => a.sub! - b.sub!)]);
     // dOf haengt nur an deltaMode, labelOf an options/assets/lang
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, minGames, sort, tab, deltaMode, options, assets, lang]);
+  }, [data, rowsFit, stars.join(), minGames, sort, tab, deltaMode, options, assets, lang]);
 
   const setTab = (next: ExplorerTab) => setQuery({ ...query, tab: next });
 
@@ -180,6 +208,10 @@ export default function ExplorerResults({
 
   const nameCell = (r: ExplorerRow) => {
     const label = labelOf(r);
+    // Stufen-Zeile unter der Gesamt-Zeile: nur die Sterne, eingerueckt.
+    if (grouped && r.sub != null) {
+      return <span className="pl-9 text-fg-secondary">{`${r.sub}★`}</span>;
+    }
     let icons: React.ReactNode = null;
     if (tab === 'units') {
       const cost = options.unitById.get(r.key)?.cost ?? 1;
@@ -207,20 +239,41 @@ export default function ExplorerResults({
 
   return (
     <div ref={boxRef} className="rounded-xl border border-border-subtle bg-surface-base scroll-mt-4">
-      <div className="flex gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-b border-border-subtle px-2">
-        {EXPLORER_TABS.map(k => (
-          <button key={k} type="button" onClick={() => setTab(k)}
-            className={`px-3 py-2.5 text-sm whitespace-nowrap border-b-2 -mb-px ${tab === k ? 'border-accent text-fg-bright' : 'border-transparent text-fg-secondary hover:text-fg-primary'}`}>
-            {t(TAB_LABEL[k])}
-          </button>
-        ))}
+      <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-b border-border-subtle p-2">
+        {/* Gleiche Box wie die Reiter der Comps-Seite (CompsTabs). */}
+        <div className="inline-flex items-center gap-1 p-1 rounded-lg border border-accent-a40 bg-surface-raised">
+          {EXPLORER_TABS.map(k => {
+            const on = tab === k;
+            return (
+              <button key={k} type="button" onClick={() => setTab(k)} aria-pressed={on}
+                className={`px-3 sm:px-4 py-2 rounded-md text-base font-semibold whitespace-nowrap transition-colors ${
+                  on ? 'bg-accent text-white' : 'text-fg-secondary hover:text-white hover:bg-accent-a20'
+                }`}
+                style={on ? { boxShadow: '0 0 12px rgb(var(--accent-rgb) / 35%)' } : undefined}>
+                {t(TAB_LABEL[k])}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2.5 border-b border-border-subtle">
         {tab === 'units' && (
-          <button type="button" className={seg(query.split === 'star')} onClick={() => setQuery({ ...query, split: query.split === 'star' ? null : 'star' })}>
-            {t('tft.explorer.x.split.star')}
-          </button>
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-fg-muted mr-1">{t('tft.explorer.x.split.star')}</span>
+            {STARS.map(n => {
+              const on = query.stars.includes(n);
+              return (
+                <button key={n} type="button" className={seg(on)} aria-pressed={on}
+                  onClick={() => {
+                    const next = on ? query.stars.filter(x => x !== n) : [...query.stars, n].sort();
+                    setQuery({ ...query, stars: next, split: next.length ? 'star' : null });
+                  }}>
+                  {`${n}★`}
+                </button>
+              );
+            })}
+          </div>
         )}
         {tab === 'traits' && (
           <button type="button" className={seg(query.split === 'over')} onClick={() => setQuery({ ...query, split: query.split === 'over' ? null : 'over' })}>
@@ -282,7 +335,13 @@ export default function ExplorerResults({
             </tr>
           </thead>
           <tbody>
+            {!rowsFit && Array.from({ length: 8 }, (_, i) => (
+              <tr key={`sk${i}`} className="border-b border-border-subtle last:border-0">
+                <td colSpan={9} className="px-3 py-1.5"><div className="h-7 rounded bg-surface-raised animate-pulse" /></td>
+              </tr>
+            ))}
             {rows.map(r => {
+              const head = grouped && r.sub == null;
               const act = rowAction(r);
               const d = dOf(r);
               const dh = dhOf(r);
@@ -290,7 +349,7 @@ export default function ExplorerResults({
               return (
                 <tr key={`${r.key}|${r.sub ?? ''}|${r.sub2 ?? ''}`}
                   onClick={act ?? undefined}
-                  className={`border-b border-border-subtle last:border-0 ${act ? 'cursor-pointer hover:bg-surface-raised' : ''} ${weak ? 'opacity-50' : ''}`}>
+                  className={`border-b border-border-subtle last:border-0 ${act ? 'cursor-pointer hover:bg-surface-raised' : ''} ${weak ? 'opacity-50' : ''} ${head ? 'bg-surface-raised' : ''}`}>
                   <td className="px-3 py-1.5 max-w-[14rem] sm:max-w-none">{nameCell(r)}</td>
                   <td className="px-2 py-1.5 text-right text-fg-primary">{num(r.games)}</td>
                   <td className="px-2 py-1.5 text-right text-fg-secondary hidden sm:table-cell">{refGames ? fmtPct(r.games / refGames) : '—'}</td>
@@ -309,7 +368,7 @@ export default function ExplorerResults({
                   {showStar3 && (
                     <td className="px-2 py-1.5 text-right text-fg-secondary hidden md:table-cell">{r.star3 != null ? fmtPct(r.star3) : '—'}</td>
                   )}
-                  {tab === 'units' && (
+                  {tab === 'units' && (grouped && !head ? <td /> :
                     <td className="px-2 py-1.5 text-right">
                       <button type="button" title={t('tft.explorer.items')}
                         onClick={e => {
@@ -326,7 +385,7 @@ export default function ExplorerResults({
                 </tr>
               );
             })}
-            {data && rows.length === 0 && (
+            {data && rowsFit && rows.length === 0 && (
               <tr><td colSpan={9} className="px-3 py-6 text-center text-fg-muted">{t('tft.explorer.noResults')}</td></tr>
             )}
           </tbody>

@@ -13,7 +13,7 @@ export const RANK_LABEL: Record<ExplorerRank, TranslationKey> = {
   GRANDMASTER: 'tft.bucket.grandmaster',
   MASTER: 'tft.bucket.master',
   DIAMOND: 'tft.bucket.diamond',
-  unknown: 'tft.explorer.x.rank.unknown',
+  EMERALD: 'tft.bucket.emerald',
 };
 
 const chip = (on: boolean) =>

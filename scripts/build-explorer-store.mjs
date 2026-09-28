@@ -19,8 +19,11 @@
 //
 // Patch je Tag: Supabase-RPC get_tft_available_patches (Service-Key), Rueckfall
 // public/tft-set.json patchCuts. Ohne beides: Abbruch, alte Datei bleibt.
-// Rang: naechster Marktwert-Snapshot desselben Spielers innerhalb ±3 Tagen,
-// sonst NULL (= "unbekannt", in der UI als eigene Zeile).
+// Rang: naechster Eintrag desselben Spielers innerhalb ±3 Tagen aus
+// Marktwert-Snapshot (Diamant+) oder Rangliste tft_ladder_daily (Emerald+),
+// bei Gleichstand der fruehere. Die Rangliste haelt nur 10 Tage — deshalb
+// sichert jeder Build den Rang je Board in board_rank, der naechste Build
+// uebernimmt ihn, wenn die Quelle weg ist. Sonst NULL (in der UI ausgeblendet).
 //
 // Datei-Tausch: Build in <out>.tmp, CHECKPOINT, schliessen, rename. Bei Fehler
 // bleibt die alte Datei unangetastet. Doppellauf verhindert die Unit per flock.
@@ -174,7 +177,35 @@ async function main() {
   const snapSql = `select puuid, snapshot_date, tier from tft_player_marketvalue_snapshots
     where set_number = ${setNumber} and tier in ('DIAMOND','MASTER','GRANDMASTER','CHALLENGER')`;
   await run(`CREATE TABLE snaps AS SELECT * FROM postgres_query('pg', ${sqlStr(snapSql)})`);
+  // Rangliste (Emerald+, taeglich 04:30) als zweite Rang-Quelle. Sie wird nach
+  // 10 Tagen geloescht — deshalb wird der Rang je Board unten gesichert.
+  const ladderSql = `select puuid, day, tier from tft_ladder_daily
+    where set_number = ${setNumber} and tier in ('EMERALD','DIAMOND','MASTER','GRANDMASTER','CHALLENGER')`;
+  await run(`CREATE TABLE ladder AS SELECT * FROM postgres_query('pg', ${sqlStr(ladderSql)})`);
   await run(`DETACH pg`);
+  await run(`CREATE TABLE obs AS
+    SELECT puuid, snapshot_date::DATE AS day, tier FROM snaps
+    UNION ALL SELECT puuid, day::DATE, tier FROM ladder`);
+  await run(`DROP TABLE snaps`);
+  await run(`DROP TABLE ladder`);
+
+  // Rang aus dem vorigen Build: Boards, deren Rang-Quelle inzwischen geloescht
+  // ist, behalten ihn. Schluessel = md5 aus Partie + Spieler (stabil ueber Builds).
+  let prevRanks = false;
+  if (fs.existsSync(OUT)) {
+    try {
+      await run(`ATTACH ${sqlStr(OUT)} AS prev (READ_ONLY)`);
+      const has = await one(`SELECT count(*) n FROM duckdb_tables() WHERE database_name = 'prev' AND table_name = 'board_rank'`);
+      if (Number(has.n) > 0) {
+        await run(`CREATE TABLE prev_rank AS SELECT * FROM prev.board_rank`);
+        prevRanks = true;
+      }
+      await run(`DETACH prev`);
+    } catch (e) {
+      log(`vorige Raenge nicht lesbar (${e.message}) — ohne Uebernahme weiter`);
+    }
+  }
+  if (!prevRanks) await run(`CREATE TABLE prev_rank(k UBIGINT, rank VARCHAR)`);
 
   // 2) Hilfstabellen: Patch je Tag, Trait-Schwellen.
   await run(`CREATE TABLE patch_ranges(patch VARCHAR, d_from DATE, d_to DATE)`);
@@ -189,7 +220,8 @@ async function main() {
   //    Vertrauensbereich je Partie, weil ~2,5 unserer Spieler je Lobby sitzen).
   await run(`CREATE TABLE b0 AS
     SELECT row_number() OVER ()::UINTEGER AS bid, *,
-      CAST(to_timestamp(game_datetime / 1000) AT TIME ZONE 'UTC' AS DATE) AS day
+      CAST(to_timestamp(game_datetime / 1000) AT TIME ZONE 'UTC' AS DATE) AS day,
+      md5_number_upper(match_id || puuid) AS rk_key
     FROM raw`);
   await run(`DROP TABLE raw`);
 
@@ -200,11 +232,21 @@ async function main() {
       LEFT JOIN patch_ranges p ON d.day BETWEEN p.d_from AND p.d_to
       GROUP BY d.day
     ),
+    -- Naechster Eintrag aus Snapshot + Rangliste binnen ±3 Tagen, bei
+    -- Gleichstand der fruehere (Stand vor der Partie). Erst je Spieler+Tag,
+    -- dann an die Boards — spart den Join ueber alle Boards.
+    pd AS (
+      SELECT p.puuid, p.day,
+        arg_min(o.tier, abs(date_diff('day', o.day, p.day)) * 2 + CASE WHEN o.day > p.day THEN 1 ELSE 0 END) AS rank
+      FROM (SELECT DISTINCT puuid, day FROM b0) p
+      JOIN obs o ON o.puuid = p.puuid AND o.day BETWEEN p.day - INTERVAL 3 DAY AND p.day + INTERVAL 3 DAY
+      GROUP BY p.puuid, p.day
+    ),
     rk AS (
-      SELECT b.bid, arg_min(s.tier, abs(date_diff('day', s.snapshot_date, b.day))) AS rank
-      FROM b0 b JOIN snaps s ON s.puuid = b.puuid
-       AND s.snapshot_date BETWEEN b.day - INTERVAL 3 DAY AND b.day + INTERVAL 3 DAY
-      GROUP BY b.bid
+      SELECT b.bid, b.rk_key, coalesce(pd.rank, pr.rank) AS rank
+      FROM b0 b
+      LEFT JOIN pd ON pd.puuid = b.puuid AND pd.day = b.day
+      LEFT JOIN prev_rank pr ON pr.k = b.rk_key
     ),
     mids AS (SELECT match_id, (row_number() OVER ())::UINTEGER AS mid FROM (SELECT DISTINCT match_id FROM b0))
     SELECT b.bid, m.mid, b.day, dp.patch, coalesce(dp.patch_edge, false) AS patch_edge,
@@ -239,6 +281,8 @@ async function main() {
       CASE WHEN tm.tiers > 1 THEN (t.num_units::TINYINT - tm.min_units::TINYINT) END AS overcap
     FROM t LEFT JOIN trait_min tm ON tm.trait = t.trait AND tm.lvl = t.lvl
     WHERE t.lvl > 0 AND t.num_units > 0`);
+  await run(`CREATE TABLE board_rank AS
+    SELECT b.rk_key AS k, bo.rank FROM b0 b JOIN boards bo USING (bid) WHERE bo.rank IS NOT NULL`);
   await run(`DROP TABLE b0`);
 
   const stats = await one(`SELECT (SELECT count(*) FROM boards) boards, (SELECT count(DISTINCT mid) FROM boards) matches,
@@ -266,6 +310,7 @@ async function main() {
   await run(`CREATE TABLE outdb.units AS SELECT * FROM units ORDER BY unit, bid`);
   await run(`CREATE TABLE outdb.traits AS SELECT * FROM traits ORDER BY trait, bid`);
   await run(`CREATE TABLE outdb.meta AS SELECT * FROM meta`);
+  await run(`CREATE TABLE outdb.board_rank AS SELECT * FROM board_rank`);
   await run(`CHECKPOINT outdb`);
   await run(`DETACH outdb`);
   c.closeSync?.();

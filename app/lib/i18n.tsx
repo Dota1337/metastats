@@ -2689,7 +2689,6 @@ const translations = {
   // Data Explorer (Neubau 2026-09-28)
   'tft.explorer.x.patch.latest': t6('Neuester Patch', 'Latest patch', '\uCD5C\uC2E0 \uD328\uCE58', '\u6700\u65B0\u7248\u672C', '\u00DAltimo parche', 'Dernier patch'),
   'tft.explorer.x.patch.all': t6('Alle Patches', 'All patches', '\uBAA8\uB4E0 \uD328\uCE58', '\u6240\u6709\u7248\u672C', 'Todos los parches', 'Tous les patchs'),
-  'tft.explorer.x.rank.unknown': t6('Unbekannt', 'Unknown', '\uC54C \uC218 \uC5C6\uC74C', '\u672A\u77E5', 'Desconocido', 'Inconnu'),
   'tft.explorer.x.search': t6('Suchen', 'Search', '\uAC80\uC0C9', '\u641C\u7D22', 'Buscar', 'Rechercher'),
   'tft.explorer.x.with': t6('mit', 'with', '\uD3EC\uD568', '\u5305\u542B', 'con', 'avec'),
   'tft.explorer.x.without': t6('ohne', 'without', '\uC81C\uC678', '\u4E0D\u542B', 'sin', 'sans'),

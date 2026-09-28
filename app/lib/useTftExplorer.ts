@@ -77,8 +77,11 @@ export function useTftExplorer() {
   }, [apiQs, retry]);
 
   const reload = useCallback(() => setRetry(n => n + 1), []);
-  // Zeigen die Daten noch die vorige Auswahl? Dann blass statt leer.
+  // Zeigen die Daten noch die vorige Auswahl?
   const stale = loading && okQs !== apiQs;
+  // Zu welcher Auswahl gehoeren die geladenen Daten? Die Tabelle zeigt beim
+  // Reiterwechsel sonst kurz fremde Zeilen unter dem neuen Kopf.
+  const dataQuery = useMemo(() => (okQs == null ? null : parseExplorerParams(new URLSearchParams(okQs))), [okQs]);
 
-  return { query, setQuery, backToUnits, data, loading, stale, error, reload };
+  return { query, setQuery, backToUnits, data, dataQuery, loading, stale, error, reload };
 }

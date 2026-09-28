@@ -4,18 +4,19 @@
 // Die Seite und die API-Route benutzen dieselbe Form, damit die URL der Seite
 // 1:1 als Cache-Schluessel der API taugt:
 //   r=euw1                      Region (fehlt = alle)
-//   k=challenger,unknown        Raenge (fehlt = alle)
+//   k=challenger,emerald        Raenge (fehlt = alle, inkl. Boards ohne Rang)
 //   p=18.3,18.2                 Patches (fehlt = neuester Patch, p=all = alle im Speicher)
 //   u=!ID:s2e:n2:iITEM:xITEM    Units; ! = ohne, s2 = mind. 2 Sterne (e = genau),
 //                               n2 = mind. 2 Items, iX = mit Item X, xX = ohne Item X
 //   i=ITEM,!ITEM                Items irgendwo auf dem Board
 //   t=ID:l2e,!ID                Traits; l2 = mind. Stufe 2 (e = genau)
-//   tab, f (Traeger im Item-Reiter), split (star|over), c (1-3 Items je Kombi)
+//   tab, f (Traeger im Item-Reiter), split=over (Traits), c (1-3 Items je Kombi)
+//   st=2,3                      Units-Reiter: Sternstufen vergleichen (API: split=star)
 //
 // Alte Links (?units=&items=&traits=&bucket=&region=) von den Unit-, Item-
 // und Trait-Seiten werden beim Lesen uebernommen (legacyToQuery).
 
-export const EXPLORER_RANKS = ['CHALLENGER', 'GRANDMASTER', 'MASTER', 'DIAMOND', 'unknown'] as const;
+export const EXPLORER_RANKS = ['CHALLENGER', 'GRANDMASTER', 'MASTER', 'DIAMOND', 'EMERALD'] as const;
 export type ExplorerRank = (typeof EXPLORER_RANKS)[number];
 
 export const EXPLORER_TABS = ['units', 'items', 'traits', 'comps', 'level', 'round', 'gold', 'region', 'rank'] as const;
@@ -35,6 +36,8 @@ export interface ExplorerQuery {
   tab: ExplorerTab;
   focus: string | null;
   split: 'star' | 'over' | null;
+  /** Units-Reiter: gewaehlte Sternstufen (1-4). Nicht leer → split=star an den Dienst. */
+  stars: number[];
   combo: 1 | 2 | 3;
 }
 
@@ -47,7 +50,7 @@ export const LATEST_PATCH = 'latest';
 
 export const EMPTY_QUERY: ExplorerQuery = {
   region: 'all', ranks: [], patches: [LATEST_PATCH], units: [], items: [], traits: [],
-  tab: 'units', focus: null, split: null, combo: 1,
+  tab: 'units', focus: null, split: null, stars: [], combo: 1,
 };
 
 type Params = { get(name: string): string | null };
@@ -99,14 +102,15 @@ const uniqBy = <T extends { id: string }>(arr: (T | null)[]) => {
 };
 
 // Alte Rang-Stufen (TierFilter) auf die Raenge im Speicher abbilden. Unter
-// Diamant gibt es im Speicher nichts, daher "diamond_plus oder tiefer" = alle vier.
+// Smaragd gibt es im Speicher nichts, daher "emerald_plus oder tiefer" = alle fuenf.
 function legacyBucketToRanks(bucket: string | null): ExplorerRank[] {
   switch (bucket) {
     case 'challenger': return ['CHALLENGER'];
     case 'grandmaster_plus': return ['CHALLENGER', 'GRANDMASTER'];
     case 'master_plus': return ['CHALLENGER', 'GRANDMASTER', 'MASTER'];
-    case 'diamond_plus': case 'emerald_plus': case 'platinum_plus':
-      return ['CHALLENGER', 'GRANDMASTER', 'MASTER', 'DIAMOND'];
+    case 'diamond_plus': return ['CHALLENGER', 'GRANDMASTER', 'MASTER', 'DIAMOND'];
+    case 'emerald_plus': case 'platinum_plus':
+      return ['CHALLENGER', 'GRANDMASTER', 'MASTER', 'DIAMOND', 'EMERALD'];
     default: return [];
   }
 }
@@ -116,7 +120,8 @@ export function parseExplorerParams(sp: Params): ExplorerQuery {
   const r = sp.get('r') ?? sp.get('region');
   if (r && REGION_RE.test(r.toLowerCase())) q.region = r.toLowerCase();
 
-  const k = list(sp.get('k')).map(x => (x === 'unknown' ? x : x.toUpperCase()));
+  // Alte Links mit k=unknown: der Rang faellt still weg.
+  const k = list(sp.get('k')).map(x => x.toUpperCase());
   q.ranks = k.length
     ? [...new Set(k.filter((x): x is ExplorerRank => (EXPLORER_RANKS as readonly string[]).includes(x)))].sort()
     : legacyBucketToRanks(sp.get('bucket'));
@@ -142,6 +147,12 @@ export function parseExplorerParams(sp: Params): ExplorerQuery {
   if (f && ID_RE.test(f)) q.focus = f;
   const split = sp.get('split');
   if (split === 'star' || split === 'over') q.split = split;
+  const st = [...new Set(list(sp.get('st')).map(Number).filter(n => Number.isInteger(n) && n >= 1 && n <= 4))].sort();
+  // split=star ohne st (alte Links, API-Form): alle Stufen nebeneinander.
+  if (q.tab === 'units' && (st.length || q.split === 'star')) {
+    q.stars = st.length ? st : [1, 2, 3, 4];
+    q.split = 'star';
+  } else if (q.split === 'star') q.split = null;
   const c = Number(sp.get('c'));
   if (c === 2 || c === 3) q.combo = c;
   return q;
@@ -178,7 +189,10 @@ export function serializeExplorerQuery(q: ExplorerQuery, { forApi = false } = {}
     sp.set('f', q.focus);
     if (q.combo !== 1) sp.set('c', String(q.combo));
   }
-  if (q.split === 'star' && q.tab === 'units') sp.set('split', 'star');
+  if (q.tab === 'units' && q.stars.length) {
+    if (forApi) sp.set('split', 'star');
+    else sp.set('st', [...q.stars].sort().join(','));
+  }
   if (q.split === 'over' && q.tab === 'traits') sp.set('split', 'over');
   return sp.toString();
 }
@@ -194,7 +208,7 @@ export function toServiceBody(q: ExplorerQuery) {
     traits: q.traits,
     tab: q.tab,
     focus: q.tab === 'items' ? q.focus : null,
-    split: (q.tab === 'units' && q.split === 'star') || (q.tab === 'traits' && q.split === 'over') ? q.split : null,
+    split: q.tab === 'units' && q.stars.length ? 'star' : q.tab === 'traits' && q.split === 'over' ? 'over' : null,
     combo: q.tab === 'items' && q.focus ? q.combo : 1,
   };
 }
@@ -211,7 +225,8 @@ export interface ExplorerRow {
   games: number; matches: number; avg: number; top4: number; top1: number; half: number;
   dOut: number | null; dOutHalf: number | null; top4Out?: number;
   dBase: number | null; dBaseHalf: number | null; top4Base?: number;
-  /** Nur Units-Reiter ohne Stern-Aufteilung: Anteil der Boards mit 3★. */
+  /** Nur Units-Reiter ohne Stern-Aufteilung: Anteil der Boards mit 3★.
+   *  Mit Aufteilung ist sub die Sternstufe, sub=null die Unit gesamt. */
   star3?: number | null;
 }
 

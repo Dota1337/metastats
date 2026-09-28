@@ -1939,6 +1939,54 @@ const translations = {
     'Tendencia de Valor de Mercado (30 d\u00EDas)',
     '\u00C9volution de la valeur de march\u00E9 (30 jours)'
   ),
+  'tft.compare.placements': t6(
+    'Platzierungen', 'Placements', '\uC21C\uC704 \uBD84\uD3EC', '\u540D\u6B21\u5206\u5E03', 'Posiciones', 'Classements'
+  ),
+  'tft.compare.place': t6(
+    'Platz', 'Place', '\uC21C\uC704', '\u540D\u6B21', 'Puesto', 'Place'
+  ),
+  'tft.compare.form': t6(
+    'Form (letzte 20 Spiele)', 'Form (last 20 games)', '\uCD5C\uADFC \uD3FC (\uCD5C\uADFC 20\uACBD\uAE30)', '\u8FD1\u671F\u72B6\u6001\uFF08\u6700\u8FD1 20 \u573A\uFF09', 'Forma (\u00FAltimas 20 partidas)', 'Forme (20 derniers matchs)'
+  ),
+  'tft.compare.history': t6(
+    'Verlauf (30 Tage)', 'Trend (30 days)', '\uCD94\uC774 (30\uC77C)', '\u8D70\u52BF\uFF0830 \u5929\uFF09', 'Evoluci\u00F3n (30 d\u00EDas)', '\u00C9volution (30 jours)'
+  ),
+  'tft.compare.factors': t6(
+    'Marktwert-Faktoren', 'Market value factors', '\uC2DC\uC7A5 \uAC00\uCE58 \uC694\uC778', '\u5E02\u573A\u4EF7\u503C\u56E0\u7D20', 'Factores del valor de mercado', 'Facteurs de la valeur marchande'
+  ),
+  'tft.compare.categoryWins': t6(
+    'Kategorie-Siege', 'Category wins', '\uBD80\uBB38\uBCC4 \uC6B0\uC704', '\u5206\u9879\u80DC\u51FA', 'Categor\u00EDas ganadas', 'Cat\u00E9gories remport\u00E9es'
+  ),
+  'tft.compare.keyStats': t6(
+    'Kennzahlen', 'Key stats', '\uD575\uC2EC \uC9C0\uD45C', '\u6838\u5FC3\u6570\u636E', 'Estad\u00EDsticas clave', 'Statistiques cl\u00E9s'
+  ),
+  'tft.compare.topTraits': t6(
+    'Meistgespielte Synergien', 'Most played traits', '\uAC00\uC7A5 \uB9CE\uC774 \uC0AC\uC6A9\uD55C \uC2DC\uB108\uC9C0', '\u6700\u5E38\u7528\u7F81\u7ECA', 'Sinergias m\u00E1s jugadas', 'Synergies les plus jou\u00E9es'
+  ),
+  'tft.compare.units': t6(
+    'Meistgespielte Champions', 'Most played champions', '\uAC00\uC7A5 \uB9CE\uC774 \uC0AC\uC6A9\uD55C \uCC54\uD53C\uC5B8', '\u6700\u5E38\u7528\u82F1\u96C4', 'Campeones m\u00E1s jugados', 'Champions les plus jou\u00E9s'
+  ),
+  'tft.compare.levelEnd': t6(
+    'Level bei Spielende', 'Level at game end', '\uAC8C\uC784 \uC885\uB8CC \uC2DC \uB808\uBCA8', '\u5BF9\u5C40\u7ED3\u675F\u65F6\u7B49\u7EA7', 'Nivel al final de la partida', 'Niveau en fin de partie'
+  ),
+  'tft.compare.playstyle': t6(
+    'Spielstil', 'Playstyle', '\uD50C\uB808\uC774 \uC2A4\uD0C0\uC77C', '\u6E38\u620F\u98CE\u683C', 'Estilo de juego', 'Style de jeu'
+  ),
+  'tft.compare.setRanks': t6(
+    'H\u00F6chster Rang je Set', 'Peak rank per set', '\uC138\uD2B8\uBCC4 \uCD5C\uACE0 \uB7AD\uD06C', '\u5404\u8D5B\u5B63\u6700\u9AD8\u6BB5\u4F4D', 'Rango m\u00E1ximo por set', 'Rang maximal par set'
+  ),
+  'tft.compare.sharedLobbies': t6(
+    'Gemeinsame Lobbys', 'Shared lobbies', '\uAC19\uC740 \uB85C\uBE44 \uACBD\uAE30', '\u540C\u573A\u5BF9\u5C40', 'Partidas compartidas', 'Parties communes'
+  ),
+  'tft.compare.avgLastRound': t6(
+    '\u00D8 letzte Runde', 'Avg. last round', '\uD3C9\uADE0 \uB9C8\uC9C0\uB9C9 \uB77C\uC6B4\uB4DC', '\u5E73\u5747\u6700\u540E\u56DE\u5408', '\u00D8 \u00FAltima ronda', '\u00D8 dernier round'
+  ),
+  'tft.compare.addPlayer': t6(
+    'Spieler hinzuf\u00FCgen', 'Add player', '\uD50C\uB808\uC774\uC5B4 \uCD94\uAC00', '\u6DFB\u52A0\u73A9\u5BB6', 'A\u00F1adir jugador', 'Ajouter un joueur'
+  ),
+  'tft.compare.remove': t6(
+    'Entfernen', 'Remove', '\uC0AD\uC81C', '\u79FB\u9664', 'Quitar', 'Retirer'
+  ),
 
   // \u2500 Trait Detail Page \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   'tft.trait.tiers': t6(

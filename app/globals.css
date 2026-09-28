@@ -139,6 +139,8 @@
      sie beim Farbklima-Wechsel als einzige stehengeblieben.               */
   --series-purple:      #c39bff;
   --series-purple-soft: #a892ff;
+  /* Vierte Spielerfarbe auf /tft/compare (neben TFT-Lila, Gruen, Gold). */
+  --series-blue:        #4ea8ff;
 
   /* --- Premium (Glassmorphism / Tiefe) ------------------------------------- */
   --glass-bg:     rgb(var(--surface-base-rgb) / 60%);

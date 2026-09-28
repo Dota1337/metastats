@@ -261,6 +261,10 @@ export async function GET(request: NextRequest) {
     consistency: (top4 / games) * 100,
   };
 
+  const extras = searchParams.get('extras') === '1'
+    ? await buildCompareExtras(cached, puuid, region, apiKey, targetSet === currentSet)
+    : undefined;
+
   return NextResponse.json({
     hasStats: true,
     region,
@@ -269,6 +273,7 @@ export async function GET(request: NextRequest) {
     currentSet,
     availableSets,
     seasonRanks,
+    ...(extras ? { extras } : {}),
     totalMatches: games,
     avgPlacement,
     top4Rate: top4 / games,
@@ -288,6 +293,87 @@ export async function GET(request: NextRequest) {
     })),
     topTraits: topN(traitGames, 5, 'key'),
   });
+}
+
+// Nur fuer /tft/compare (?extras=1). Alles aus denselben Zeilen wie die
+// Kopfzahlen, damit kein Block eine andere Spielzahl zeigt als der Rest —
+// seasonAggregate zaehlt z.B. 198 statt 210 Spiele. Inaktive Traits liegen im
+// Speicher des Hetzner-Sammlers mit (style 0) und werden hier ausgefiltert.
+const MIN_GAMES_FOR_AVG = 10;
+
+async function buildCompareExtras(
+  cached: Awaited<ReturnType<typeof loadCachedMatches>>,
+  puuid: string, region: string, apiKey: string, isCurrentSet: boolean,
+) {
+  const rows = [...cached].sort((a, b) => b.game_datetime - a.game_datetime);
+  const n = rows.length;
+  const recent = rows.map(m => ({ id: m.match_id, p: m.placement, t: m.game_datetime, lvl: m.level }));
+
+  const mean = rows.reduce((s, m) => s + m.placement, 0) / n;
+  const stddev = Math.sqrt(rows.reduce((s, m) => s + (m.placement - mean) ** 2, 0) / n);
+  let streak = 0, bestStreak = 0;
+  for (const m of [...rows].reverse()) {
+    streak = m.placement <= 4 ? streak + 1 : 0;
+    if (streak > bestStreak) bestStreak = streak;
+  }
+  const avgLastRound = rows.reduce((s, m) => s + (m.last_round || 0), 0) / n;
+
+  const levelDist = { le7: 0, l8: 0, l9: 0, l10: 0 };
+  for (const m of rows) {
+    if (m.level >= 10) levelDist.l10++;
+    else if (m.level === 9) levelDist.l9++;
+    else if (m.level === 8) levelDist.l8++;
+    else levelDist.le7++;
+  }
+
+  const traitMap = new Map<string, { games: number; sumPlace: number }>();
+  const unitMap = new Map<string, { games: number; sumPlace: number; star3: number }>();
+  for (const m of rows) {
+    const seenT = new Set<string>();
+    for (const t of m.traits || []) {
+      if (!t?.name || (t.style ?? 0) <= 0 || seenT.has(t.name)) continue;
+      seenT.add(t.name);
+      const e = traitMap.get(t.name) || { games: 0, sumPlace: 0 };
+      e.games++; e.sumPlace += m.placement;
+      traitMap.set(t.name, e);
+    }
+    const seenU = new Set<string>();
+    for (const u of m.units || []) {
+      const cid = u.characterId ?? u.character_id;
+      if (!cid || isExcludedUnit(cid) || seenU.has(cid)) continue;
+      seenU.add(cid);
+      const e = unitMap.get(cid) || { games: 0, sumPlace: 0, star3: 0 };
+      e.games++; e.sumPlace += m.placement;
+      if ((u.tier ?? 1) >= 3) e.star3++;
+      unitMap.set(cid, e);
+    }
+  }
+  const avgOrNull = (e: { games: number; sumPlace: number }) =>
+    e.games >= MIN_GAMES_FOR_AVG ? e.sumPlace / e.games : null;
+  const traits = [...traitMap.entries()]
+    .sort((a, b) => b[1].games - a[1].games).slice(0, 6)
+    .map(([name, e]) => ({ name, games: e.games, share: e.games / n, avgPlacement: avgOrNull(e) }));
+  const units = [...unitMap.entries()]
+    .sort((a, b) => b[1].games - a[1].games).slice(0, 8)
+    .map(([characterId, e]) => ({
+      characterId, games: e.games, share: e.games / n, avgPlacement: avgOrNull(e), star3Rate: e.star3 / e.games,
+    }));
+
+  // Live-Rang: ein Riot-Aufruf. Der Marktwert-Snapshot traegt den LP-Stand vom
+  // Vortag (gemessen 669 gegen live 1043).
+  let rank: { tier: string; rank: string; lp: number } | null = null;
+  if (isCurrentSet) {
+    try {
+      const r = await riotFetch(`https://${region}.api.riotgames.com/tft/league/v1/by-puuid/${puuid}`, apiKey);
+      if (r.ok) {
+        const all = await r.json();
+        const solo = Array.isArray(all) ? all.find((x: { queueType?: string }) => x.queueType === 'RANKED_TFT') : null;
+        if (solo) rank = { tier: solo.tier, rank: solo.rank, lp: solo.leaguePoints ?? 0 };
+      }
+    } catch { /* Rang ist Zusatz, kein Grund fuer einen Fehler */ }
+  }
+
+  return { recent, stddev, bestTop4Streak: bestStreak, avgLastRound, levelDist, traits, units, rank };
 }
 
 function clamp01(x: number): number {

@@ -1,22 +1,23 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
-import dynamic from 'next/dynamic';
-import {
-  ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip as RechartsTooltip, Legend,
-} from 'recharts';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
-import { useI18n, LOCALE_MAP, type Lang } from '../../lib/i18n';
+import { useI18n } from '../../lib/i18n';
 import TftHero from '../../components/tft/TftHero';
-import { formatTier } from '../../lib/rank-format';
-import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftGameAssetUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
+import { loadTftAssets, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import { CDRAGON_PLUGINS_BASE } from '../../lib/cdragon-base';
-import RankEmblem from '../../components/tft/RankEmblem';
-import { formatStage } from '../../lib/tft-stage';
 import { CURRENT_SET } from '../../lib/current-set';
-
-const CompareRadar = dynamic(() => import('../../components/CompareRadar'), { ssr: false });
+import {
+  MAX_PLAYERS, MIN_PLAYERS, PLAYER_COLORS, isPlayer,
+  type ComparePlayer, type HistoryPoint, type Slot,
+} from '../../components/tft/compare/model';
+import {
+  PlayerCards, CategoryWins, KeyStats, PlaystyleBlock, LevelBlock,
+  TraitsBlock, UnitsBlock, SetRanksBlock, SharedLobbies,
+} from '../../components/tft/compare/CompareBlocks';
+import { PlacementChart, FormChart, HistoryChart, FactorBlock } from '../../components/tft/compare/CompareCharts';
 
 const REGIONS: { value: string; label: string }[] = [
   { value: 'euw1', label: 'EUW' }, { value: 'eun1', label: 'EUNE' },
@@ -30,482 +31,277 @@ const REGIONS: { value: string; label: string }[] = [
   { value: 'vn2',  label: 'VN'  },
 ];
 
-const SERIES_COLORS = ['var(--accent-tft)', 'var(--pos-win)'] as const;
-const TIER_NUM: Record<string, number> = {
-  IRON: 1, BRONZE: 2, SILVER: 3, GOLD: 4, PLATINUM: 5, EMERALD: 6,
-  DIAMOND: 7, MASTER: 8, GRANDMASTER: 9, CHALLENGER: 10,
-};
+type Stats = NonNullable<ComparePlayer['stats']>;
 
-interface AgentBreakdown { agent: string; multiplier: number; delta: number }
-interface PlayerSummary {
-  name: string;
-  puuid: string;
-  tier: string | null;
-  rank: string | null;
-  lp: number | null;
-  marketValue: number | null;
-  rated: boolean;
-  multiplier: number | null;
-  agents: AgentBreakdown[];
-  // From /api/tft/player-stats
-  totalMatches: number;
-  avgPlacement: number;
-  top4Rate: number;
-  top1Rate: number;
-  placementDistribution: number[];   // [count@1, count@2, …, count@8]
-  averages: { level: number; goldLeft: number; eliminations: number; damage: number; lastRound: number };
-  topUnits: { characterId: string; games: number; avgPlacement: number; top4Rate: number }[];
-  // 'season_aggregate' = headline numbers from the synced aggregate table
-  //  only, no per-match detail yet. Triggers the background refresh.
-  // 'live' = full match-level data available.
-  statsSource?: 'live' | 'season_aggregate';
-  refreshing?: boolean;
+/* eslint-disable @typescript-eslint/no-explicit-any -- API-Antworten ungetypt */
+function toStats(s: any): Stats | null {
+  if (!s || typeof s !== 'object') return null;
+  return {
+    totalMatches: s.totalMatches ?? 0,
+    avgPlacement: s.avgPlacement ?? 0,
+    top4Rate: s.top4Rate ?? 0,
+    top1Rate: s.top1Rate ?? 0,
+    placementDistribution: Array.isArray(s.placementDistribution) ? s.placementDistribution : [0, 0, 0, 0, 0, 0, 0, 0],
+    statsSource: s.statsSource === 'season_aggregate' ? 'season_aggregate' : 'live',
+    seasonAggregate: s.seasonAggregate ?? null,
+    seasonRanks: Array.isArray(s.seasonRanks) ? s.seasonRanks : [],
+    extras: s.extras ?? null,
+  };
 }
 
-interface HistoryPoint { date: string; finalValue: number }
-
-// Build square + splash URLs for a unit. Square is the in-shop HUD tile;
-// splash is the wider portrait used when the square doesn't exist for that
-// unit (Rhaast / other Kayn-variants have their square stored under a
-// transformed filename like `tft17_kayn_slay_square` instead of
-// `tft17_rhaast_square`). The render-time onError swaps from square →
-// splash so both cases render correctly.
-function tftUnitIconUrls(characterId: string, assets: TftAssetsBundle | null): { square: string; splash: string | null } {
-  const champ = assets?.champions[characterId];
-  const tile = tftChampionTileUrl(assets, champ);
-  const splash = tftIconUrl(assets, champ?.icon);
-  // Fallback when assets aren't loaded yet: best-guess square URL from the
-  // characterId itself. Same shape as before so existing units keep working.
-  // Ueber tftGameAssetUrl und NICHT als absolute URL: diese Zeile ist beim
-  // ersten Render die tatsaechlich gerenderte src (assets ist dann noch null,
-  // also liefert tftChampionTileUrl null) und lief bis 2026-08-24 am
-  // Bild-Proxy vorbei.
-  const fallbackSquare = tftGameAssetUrl(`assets/characters/${characterId.toLowerCase()}/hud/${characterId.toLowerCase()}_square.tft_set${CURRENT_SET}.png`);
-  return { square: tile || fallbackSquare, splash };
+function toPlayer(d: any, fallbackName: string): ComparePlayer {
+  return {
+    name: d.summoner?.name || fallbackName,
+    puuid: d.summoner?.puuid || '',
+    tier: d.summoner?.tier || null,
+    rank: d.summoner?.rank || null,
+    lp: d.summoner?.lp ?? null,
+    marketValue: d.marketValue?.finalValue ?? null,
+    rated: !!d.marketValue?.rated,
+    multiplier: d.marketValue?.multiplier ?? null,
+    agents: (d.marketValue?.agents || []).map((a: any) => ({ signal: a.signal, z: a.z ?? null, available: !!a.available })),
+    stats: null,
+  };
 }
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
-function rankNum(tier: string | null, lp: number | null): number {
-  if (!tier) return 0;
-  return (TIER_NUM[tier] || 0) * 1000 + (lp || 0);
-}
-
-function countCategoryWins(s1: PlayerSummary, s2: PlayerSummary): { p1: number; p2: number } {
-  // Lower is better for avg-placement → invert. Others: higher = better.
-  const cats: Array<[number, number]> = [
-    [rankNum(s1.tier, s1.lp), rankNum(s2.tier, s2.lp)],
-    [s1.marketValue || 0, s2.marketValue || 0],
-    [s1.multiplier || 0, s2.multiplier || 0],
-    [-s1.avgPlacement, -s2.avgPlacement],
-    [s1.top4Rate, s2.top4Rate],
-    [s1.top1Rate, s2.top1Rate],
-    [s1.totalMatches, s2.totalMatches],
-  ];
-  let p1 = 0, p2 = 0;
-  for (const [a, b] of cats) {
-    if (a > b) p1++;
-    else if (b > a) p2++;
-  }
-  return { p1, p2 };
-}
-
-export default function TftComparePage() {
-  // Seitenlokal statt im Layout -- siehe die gleichlautende Begruendung in
-  // app/compare/page.tsx. Nach dem Bild-Proxy ist das Rank-Emblem hier das
-  // einzige verbliebene Direktziel bei CommunityDragon.
+function ComparePageInner() {
+  // Seitenlokal statt im Layout -- siehe app/compare/page.tsx. Das Rang-Wappen
+  // ist hier das einzige verbliebene Direktziel bei CommunityDragon.
   ReactDOM.preconnect(CDRAGON_PLUGINS_BASE);
-  const { t, lang } = useI18n();
-  const [inputs, setInputs] = useState<string[]>(['', '']);
-  const [region, setRegion] = useState('euw1');
-  const [results, setResults] = useState<(PlayerSummary | { error: string } | null)[]>([null, null]);
-  const [histories, setHistories] = useState<HistoryPoint[][]>([[], []]);
+  const { t } = useI18n();
+  const search = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // Vorbelegung aus der URL (?p=Name%23Tag&p=...&region=), damit ein geteilter
+  // Link denselben Vergleich oeffnet.
+  const [inputs, setInputs] = useState<string[]>(() => {
+    const fromUrl = search.getAll('p').map(s => s.trim()).filter(Boolean).slice(0, MAX_PLAYERS);
+    while (fromUrl.length < MIN_PLAYERS) fromUrl.push('');
+    return fromUrl;
+  });
+  const [region, setRegion] = useState(() => {
+    const r = search.get('region');
+    return r && REGIONS.some(x => x.value === r) ? r : 'euw1';
+  });
+  const [slots, setSlots] = useState<Slot[]>([]);
+  const [histories, setHistories] = useState<HistoryPoint[][]>([]);
   const [loading, setLoading] = useState(false);
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
+  // Jeder Vergleich bekommt eine Nummer; Antworten eines ueberholten Laufs
+  // werden verworfen.
+  const runId = useRef(0);
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
 
-  const compare = async () => {
-    setLoading(true);
-    const next: (PlayerSummary | { error: string } | null)[] = inputs.map(() => null);
-    setResults(next);
-    setHistories([[], []]);
-
-    await Promise.all(inputs.map(async (raw, i) => {
-      const name = raw.trim();
-      if (!name) { next[i] = null; setResults([...next]); return; }
-      try {
-        // 1) Marktwert snapshot
-        const r = await fetch(`/api/tft/marktwert?name=${encodeURIComponent(name)}&region=${region}`);
-        if (!r.ok) {
-          const j = await r.json().catch(() => ({}));
-          next[i] = { error: j.error || `HTTP ${r.status}` };
-          setResults([...next]);
-          return;
-        }
-        const d = await r.json();
-        const puuid = d.summoner?.puuid || '';
-        // 2) Season-aggregated stats — only if rated (no point otherwise)
-        let stats: any = null;
-        if (puuid && d.marketValue?.rated) {
-          const sr = await fetch(`/api/tft/player-stats?puuid=${puuid}&region=${region}`);
-          stats = sr.ok ? await sr.json() : null;
-        }
-        const statsSource = stats?.statsSource === 'season_aggregate' ? 'season_aggregate' : 'live';
-        next[i] = {
-          name: d.summoner?.name || name,
-          puuid,
-          tier: d.summoner?.tier || null,
-          rank: d.summoner?.rank || null,
-          lp: d.summoner?.lp ?? null,
-          marketValue: d.marketValue?.finalValue ?? null,
-          rated: !!d.marketValue?.rated,
-          multiplier: d.marketValue?.multiplier ?? null,
-          agents: (d.marketValue?.agents || []).map((a: any) => ({
-            agent: a.agent, multiplier: a.multiplier, delta: a.delta,
-          })),
-          totalMatches: stats?.totalMatches ?? d.marketValue?.sampleSize ?? 0,
-          avgPlacement: stats?.avgPlacement ?? 0,
-          top4Rate: stats?.top4Rate ?? 0,
-          top1Rate: stats?.top1Rate ?? 0,
-          placementDistribution: stats?.placementDistribution ?? [0,0,0,0,0,0,0,0],
-          averages: stats?.averages ?? { level: 0, goldLeft: 0, eliminations: 0, damage: 0, lastRound: 0 },
-          topUnits: stats?.topUnits ?? [],
-          statsSource,
-          refreshing: statsSource === 'season_aggregate' && !!puuid,
-        };
-        // 3) Background-fetch 30d history
-        if ((next[i] as PlayerSummary).rated && puuid) {
-          fetch(`/api/tft/marktwert/history?puuid=${puuid}&region=${region}&days=30`)
-            .then(r => r.ok ? r.json() : { series: [] })
-            .then(h => setHistories(prev => prev.map((p, idx) => idx === i ? (h.series || []) : p)))
-            .catch(() => {});
-        }
-        // 4) Auto-refresh — if the player's per-match cache wasn't ready
-        //    in Supabase, trigger the Hetzner refresh API and re-fetch
-        //    player-stats once it lands. The refresh API has its own
-        //    60s per-puuid rate limit; if we hit 429 we keep the
-        //    season-aggregate view (better than nothing).
-        const cur = next[i] as PlayerSummary;
-        if (cur.statsSource === 'season_aggregate' && cur.puuid) {
-          autoRefreshPlayer(i, cur.puuid).catch(() => {});
-        }
-      } catch (e: any) {
-        next[i] = { error: e.message };
-      }
-      setResults([...next]);
-    }));
-    setLoading(false);
+  const setSlot = (run: number, i: number, fn: (s: Slot) => Slot) => {
+    if (runId.current !== run) return;
+    setSlots(prev => prev.map((s, idx) => (idx === i ? fn(s) : s)));
   };
 
-  const autoRefreshPlayer = async (index: number, puuid: string) => {
-    try {
-      const refreshRes = await fetch('/api/tft/marktwert/refresh', {
+  const loadStats = async (run: number, i: number, puuid: string, reg: string) => {
+    const sr = await fetch(`/api/tft/player-stats?puuid=${encodeURIComponent(puuid)}&region=${reg}&extras=1`).catch(() => null);
+    const stats = sr?.ok ? toStats(await sr.json().catch(() => null)) : null;
+    setSlot(run, i, s => (isPlayer(s) ? { ...s, stats: stats ?? { ...emptyStats } } : s));
+    // Noch keine Einzelpartien im Speicher: Nachladen anstossen und danach
+    // die Statistik erneut holen (200 = gelaufen, 429 = kuerzlich gelaufen).
+    if (stats?.statsSource === 'season_aggregate') {
+      const rr = await fetch('/api/tft/marktwert/refresh', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ puuid, region }),
-      });
-      // 200 = refresh ran, 429 = recently refreshed (back-off applies).
-      // In both cases the Supabase cache should now be hot enough to
-      // re-fetch player-stats.
-      if (!refreshRes.ok && refreshRes.status !== 429) return;
-      const sr = await fetch(`/api/tft/player-stats?puuid=${puuid}&region=${region}`);
-      if (!sr.ok) return;
-      const stats = await sr.json();
-      setResults(prev => prev.map((p, idx) => {
-        if (idx !== index || !p || 'error' in p) return p;
-        return {
-          ...(p as PlayerSummary),
-          totalMatches: stats.totalMatches ?? (p as PlayerSummary).totalMatches,
-          avgPlacement: stats.avgPlacement ?? (p as PlayerSummary).avgPlacement,
-          top4Rate: stats.top4Rate ?? (p as PlayerSummary).top4Rate,
-          top1Rate: stats.top1Rate ?? (p as PlayerSummary).top1Rate,
-          placementDistribution: stats.placementDistribution ?? (p as PlayerSummary).placementDistribution,
-          averages: stats.averages ?? (p as PlayerSummary).averages,
-          topUnits: stats.topUnits ?? (p as PlayerSummary).topUnits,
-          statsSource: stats.statsSource === 'season_aggregate' ? 'season_aggregate' : 'live',
-          refreshing: false,
-        };
-      }));
-    } finally {
-      setResults(prev => prev.map((p, idx) => {
-        if (idx !== index || !p || 'error' in p) return p;
-        return { ...(p as PlayerSummary), refreshing: false };
-      }));
+        body: JSON.stringify({ puuid, region: reg }),
+      }).catch(() => null);
+      if (!rr || (!rr.ok && rr.status !== 429)) return;
+      const again = await fetch(`/api/tft/player-stats?puuid=${encodeURIComponent(puuid)}&region=${reg}&extras=1`).catch(() => null);
+      const fresh = again?.ok ? toStats(await again.json().catch(() => null)) : null;
+      if (fresh) setSlot(run, i, s => (isPlayer(s) ? { ...s, stats: fresh } : s));
     }
   };
 
-  const chartData = mergeHistories(histories);
-  const bothLoaded = results.every(r => r && !('error' in r));
-  const s1 = bothLoaded ? (results[0] as PlayerSummary) : null;
-  const s2 = bothLoaded ? (results[1] as PlayerSummary) : null;
-  const score = s1 && s2 ? countCategoryWins(s1, s2) : null;
+  const runCompare = async (names: string[], reg: string) => {
+    const run = ++runId.current;
+    const list = names.map(n => n.trim());
+    setLoading(true);
+    setSlots(list.map(() => null));
+    setHistories(list.map(() => []));
+
+    const params = new URLSearchParams();
+    list.filter(Boolean).forEach(n => params.append('p', n));
+    params.set('region', reg);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+
+    // 1) Rang + Marktwert fuer alle gleichzeitig
+    const players = await Promise.all(list.map(async (name, i): Promise<ComparePlayer | null> => {
+      if (!name) return null;
+      try {
+        const r = await fetch(`/api/tft/marktwert?name=${encodeURIComponent(name)}&region=${reg}`);
+        if (!r.ok) {
+          const j = await r.json().catch(() => ({}));
+          setSlot(run, i, () => ({ error: j.error || `HTTP ${r.status}` }));
+          return null;
+        }
+        const p = toPlayer(await r.json(), name);
+        setSlot(run, i, () => p);
+        return p;
+      } catch (e) {
+        setSlot(run, i, () => ({ error: e instanceof Error ? e.message : String(e) }));
+        return null;
+      }
+    }));
+    if (runId.current !== run) return;
+
+    // 2) Verlauf nur fuer bewertete Spieler, im Hintergrund
+    players.forEach((p, i) => {
+      if (!p?.rated || !p.puuid) return;
+      fetch(`/api/tft/marktwert/history?puuid=${encodeURIComponent(p.puuid)}&region=${reg}&days=30`)
+        .then(r => (r.ok ? r.json() : { series: [] }))
+        .then(h => {
+          if (runId.current !== run) return;
+          setHistories(prev => prev.map((x, idx) => (idx === i ? (h.series || []) : x)));
+        })
+        .catch(() => {});
+    });
+
+    // 3) Statistik: bewertete Spieler gleichzeitig (liegen im Speicher),
+    //    unbewertete nacheinander, weil sie Einzelabrufe bei Riot ausloesen.
+    const rated = players.map((p, i) => ({ p, i })).filter(x => x.p?.puuid && x.p.rated);
+    const unrated = players.map((p, i) => ({ p, i })).filter(x => x.p?.puuid && !x.p.rated);
+    await Promise.all(rated.map(({ p, i }) => loadStats(run, i, p!.puuid, reg)));
+    for (const { p, i } of unrated) {
+      if (runId.current !== run) return;
+      await loadStats(run, i, p!.puuid, reg);
+    }
+    if (runId.current === run) setLoading(false);
+  };
+
+  // Geteilter Link: Vergleich direkt starten. Ueber einen Microtask, damit
+  // der Effekt selbst keinen Zustand setzt.
+  useEffect(() => {
+    const names = inputs.filter(n => n.trim());
+    if (names.length < MIN_PLAYERS) return;
+    let cancelled = false;
+    Promise.resolve().then(() => { if (!cancelled) runCompare(inputs, region); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- nur beim ersten Laden
+  }, []);
+
+  const canCompare = inputs.filter(n => n.trim()).length >= MIN_PLAYERS && !loading;
+  const loaded = slots.map((s, i) => ({ s, i })).filter(x => isPlayer(x.s)).map(x => ({ p: x.s as ComparePlayer, i: x.i }));
+  const errors = slots.map((s, i) => ({ s, i })).filter(x => x.s && !isPlayer(x.s));
+  const showBlocks = loaded.length >= MIN_PLAYERS;
 
   return (
     <main className="min-h-screen bg-surface-page">
       <Nav active="analyse" />
       <TftHero pageTitle={t('nav.analyse')} />
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-2 pb-6">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-2 pb-6">
 
-        <div className="flex flex-wrap gap-1.5 mb-3">
-          {REGIONS.map(r => (
-            <button
-              key={r.value}
-              onClick={() => setRegion(r.value)}
-              className={`px-2.5 py-1 rounded text-xs font-medium ${
-                region === r.value
-                  ? 'bg-accent text-white'
-                  : 'bg-surface-raised text-fg-secondary hover:text-white'
-              }`}
-            >
-              {r.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-          {inputs.map((v, i) => (
-            <input
-              key={i}
-              type="text"
-              value={v}
-              onChange={e => setInputs(prev => prev.map((p, idx) => idx === i ? e.target.value : p))}
-              placeholder={`${t('tft.compare.player')} ${i + 1} (Name#Tag)`}
-              className="bg-surface-raised border border-border-subtle rounded px-3 py-2 text-white text-sm outline-none focus:border-accent-a60"
-            />
-          ))}
-        </div>
-        <button
-          onClick={compare}
-          disabled={loading}
-          className="bg-accent hover:bg-accent-a80 text-white text-sm px-4 py-2 rounded mb-5 disabled:opacity-50"
-        >
-          {loading ? t('tft.compare.comparing') : t('tft.compare.button')}
-        </button>
-
-        {/* Player cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-          {results.map((r, i) => {
-            if (!r) return (
-              <div key={i} className="bg-surface-base border border-border-subtle rounded p-5 text-fg-muted text-sm text-center">
-                {t('tft.compare.player')} {i + 1}
-              </div>
-            );
-            if ('error' in r) return (
-              <div key={i} className="bg-red-500/10 border border-red-500/30 rounded p-4 text-red-400 text-sm">
-                {r.error}
-              </div>
-            );
-            return (
-              <div
-                key={i}
-                className="bg-surface-base border-l-4 rounded p-5 flex items-start gap-3"
-                style={{ borderLeftColor: SERIES_COLORS[i] }}
+        <div className="bg-surface-base border border-border-subtle rounded-lg p-4 mb-4">
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {REGIONS.map(r => (
+              <button
+                key={r.value}
+                onClick={() => setRegion(r.value)}
+                className={`px-2.5 py-1 rounded text-xs font-medium ${
+                  region === r.value ? 'bg-accent text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'
+                }`}
               >
-                <RankEmblem tier={r.tier} label={r.tier || ''} className="w-14 h-14" />
-                <div className="flex-1 min-w-0">
-                  {(() => {
-                    const [gn, tl] = r.name.split('#');
-                    const slug = `${encodeURIComponent(gn)}--${encodeURIComponent(tl || region.replace(/\d+$/, '').toUpperCase())}`;
-                    return (
-                      <a href={`/tft/player/${slug}?region=${region}`} className="text-white text-base font-medium hover:text-accent transition-colors block truncate">
-                        {r.name}
-                      </a>
-                    );
-                  })()}
-                  <div className="text-fg-secondary text-xs mb-2">
-                    {r.tier ? formatTier(r.tier, r.rank) : 'Unranked'}{r.lp != null ? ` · ${r.lp} LP` : ''}
-                  </div>
-                  <div className="text-accent text-xl font-semibold tabular-nums">
-                    {r.rated && r.marketValue != null
-                      ? new Intl.NumberFormat(LOCALE_MAP[lang], { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(r.marketValue)
-                      : '—'}
-                  </div>
-                  <div className="text-fg-secondary text-[10px]">
-                    ×{r.multiplier?.toFixed(2) ?? '—'} · {r.totalMatches} Matches
-                  </div>
-                </div>
+                {r.label}
+              </button>
+            ))}
+          </div>
+
+          <form
+            onSubmit={e => { e.preventDefault(); if (canCompare) runCompare(inputs, region); }}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2"
+          >
+            {inputs.map((v, i) => (
+              <div key={i} className="relative">
+                <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r" style={{ backgroundColor: PLAYER_COLORS[i] }} />
+                <input
+                  type="text"
+                  value={v}
+                  onChange={e => setInputs(prev => prev.map((p, idx) => (idx === i ? e.target.value : p)))}
+                  placeholder={`${t('tft.compare.player')} ${i + 1} (Name#Tag)`}
+                  aria-label={`${t('tft.compare.player')} ${i + 1}`}
+                  className="w-full bg-surface-raised border border-border-subtle rounded pl-3 pr-8 py-2 text-white text-sm outline-none focus:border-accent-a60"
+                />
+                {inputs.length > MIN_PLAYERS && (
+                  <button
+                    type="button"
+                    onClick={() => setInputs(prev => prev.filter((_, idx) => idx !== i))}
+                    aria-label={t('tft.compare.remove')}
+                    title={t('tft.compare.remove')}
+                    className="absolute right-1 top-1/2 -translate-y-1/2 w-7 h-7 rounded text-fg-muted hover:text-white hover:bg-surface-overlay"
+                  >
+                    ×
+                  </button>
+                )}
               </div>
-            );
-          })}
+            ))}
+            <div className="flex flex-wrap gap-2 sm:col-span-2 lg:col-span-4">
+              {inputs.length < MAX_PLAYERS && (
+                <button
+                  type="button"
+                  onClick={() => setInputs(prev => [...prev, ''])}
+                  className="px-3 py-2 rounded text-sm bg-surface-raised text-fg-secondary hover:text-white border border-dashed border-border-subtle"
+                >
+                  + {t('tft.compare.addPlayer')}
+                </button>
+              )}
+              <button
+                type="submit"
+                disabled={!canCompare}
+                className="bg-accent hover:bg-accent-a80 text-white text-sm px-5 py-2 rounded disabled:opacity-50"
+              >
+                {loading ? t('tft.compare.comparing') : t('tft.compare.button')}
+              </button>
+            </div>
+          </form>
         </div>
 
-        {/* Head-to-Head + visuals only when both players resolved */}
-        {s1 && s2 && score && (
-          <>
-            <HeadToHeadBanner p1={score.p1} p2={score.p2} name1={s1.name.split('#')[0]} name2={s2.name.split('#')[0]} />
-
-            {/* Agent-Multiplier-Radar — 6 axes from marketvalue pipeline */}
-            <div className="bg-surface-base border border-border-subtle rounded p-4 mb-4">
-              <div className="text-center text-fg-secondary text-xs uppercase tracking-widest mb-2">{t('tft.compare.performanceRadar')}</div>
-              {(() => {
-                const signalOrder = ['performance', 'metaRelative', 'consistency', 'flexMastery', 'gameSense', 'boardStrength'];
-                const signalLabels: Record<string, string> = {
-                  performance: 'Performance',
-                  metaRelative: 'Meta',
-                  consistency: 'Konsistenz',
-                  flexMastery: 'Flex',
-                  gameSense: 'Game-Sense',
-                  boardStrength: 'Board',
-                };
-                // Each signal carries a population z-score (−3..+3). Map to a
-                // 0..100 radar axis where 50 = population median (z = 0).
-                const normZ = (z: number | null | undefined) =>
-                  z == null ? 50 : Math.max(0, Math.min(100, ((z + 3) / 6) * 100));
-                const data = signalOrder.map(sig => {
-                  const a1 = (s1.agents as any[]).find(x => x.signal === sig);
-                  const a2 = (s2.agents as any[]).find(x => x.signal === sig);
-                  return {
-                    stat: signalLabels[sig],
-                    p1: a1?.available ? normZ(a1.z) : 50,
-                    p2: a2?.available ? normZ(a2.z) : 50,
-                  };
-                });
-                return <CompareRadar data={data} name1={s1.name.split('#')[0]} name2={s2.name.split('#')[0]} />;
-              })()}
-            </div>
-
-            {/* Color-coded stat bars — only render the bars where at least
-               one player has a non-zero value so fallback paths (season
-               aggregate without per-match detail) don't spam "0 vs 0" rows */}
-            <div className="bg-surface-base border border-border-subtle rounded p-4 mb-4">
-              <CompareStatBar label="Ø Platz (niedriger = besser)" v1={s1.avgPlacement} v2={s2.avgPlacement} fmt1={s1.avgPlacement.toFixed(2)} fmt2={s2.avgPlacement.toFixed(2)} lowerIsBetter />
-              <CompareStatBar label="Top-4-Quote" v1={s1.top4Rate} v2={s2.top4Rate} fmt1={`${(s1.top4Rate * 100).toFixed(0)}%`} fmt2={`${(s2.top4Rate * 100).toFixed(0)}%`} />
-              <CompareStatBar label="Sieg-Quote" v1={s1.top1Rate} v2={s2.top1Rate} fmt1={`${(s1.top1Rate * 100).toFixed(0)}%`} fmt2={`${(s2.top1Rate * 100).toFixed(0)}%`} />
-              {(s1.averages.damage > 0 || s2.averages.damage > 0) && (
-                <CompareStatBar label="Ø Schaden" v1={s1.averages.damage} v2={s2.averages.damage} fmt1={Math.round(s1.averages.damage).toLocaleString(LOCALE_MAP[lang])} fmt2={Math.round(s2.averages.damage).toLocaleString(LOCALE_MAP[lang])} />
-              )}
-              {(s1.averages.lastRound > 0 || s2.averages.lastRound > 0) && (
-                <CompareStatBar label="Ø Endrunde" v1={s1.averages.lastRound} v2={s2.averages.lastRound} fmt1={formatStage(s1.averages.lastRound)} fmt2={formatStage(s2.averages.lastRound)} />
-              )}
-              {(s1.averages.level > 0 || s2.averages.level > 0) && (
-                <CompareStatBar label="Ø Level" v1={s1.averages.level} v2={s2.averages.level} fmt1={s1.averages.level.toFixed(1)} fmt2={s2.averages.level.toFixed(1)} />
-              )}
-              <CompareStatBar label="Multiplikator" v1={s1.multiplier || 0} v2={s2.multiplier || 0} fmt1={`×${(s1.multiplier || 0).toFixed(2)}`} fmt2={`×${(s2.multiplier || 0).toFixed(2)}`} />
-            </div>
-
-            {/* Placement Distribution — render either real data or a loading
-               skeleton while the background refresh is fetching match
-               details. Once at least one player has data, the histogram
-               shows up. */}
-            {(s1.placementDistribution.some(c => c > 0) || s2.placementDistribution.some(c => c > 0) || s1.refreshing || s2.refreshing) && (
-              <div className="bg-surface-base border border-border-subtle rounded p-4 mb-4">
-                <div className="text-center text-fg-secondary text-xs uppercase tracking-widest mb-3">
-                  Platzierungs-Verteilung
-                  {(s1.refreshing || s2.refreshing) && <span className="ml-2 text-accent">· wird geladen…</span>}
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  {s1.placementDistribution.some(c => c > 0)
-                    ? <PlacementHistogram dist={s1.placementDistribution} color={SERIES_COLORS[0]} />
-                    : s1.refreshing
-                      ? <PlacementSkeleton />
-                      : <div className="text-fg-muted text-xs text-center self-center">noch keine Match-Details</div>}
-                  {s2.placementDistribution.some(c => c > 0)
-                    ? <PlacementHistogram dist={s2.placementDistribution} color={SERIES_COLORS[1]} />
-                    : s2.refreshing
-                      ? <PlacementSkeleton />
-                      : <div className="text-fg-muted text-xs text-center self-center">noch keine Match-Details</div>}
-                </div>
+        {errors.length > 0 && (
+          <div className="space-y-2 mb-4">
+            {errors.map(({ s, i }) => (
+              <div key={i} className="bg-red-500/10 border border-red-500/30 rounded p-3 text-red-400 text-sm">
+                <span className="font-medium">{inputs[i] || `${t('tft.compare.player')} ${i + 1}`}:</span> {(s as { error: string }).error}
               </div>
-            )}
-
-            {/* Top units — hidden if neither player has unit-level data */}
-            {(s1.topUnits.length > 0 || s2.topUnits.length > 0) && (
-              <div className="bg-surface-base border border-border-subtle rounded p-4 mb-4">
-                <div className="text-center text-fg-secondary text-xs uppercase tracking-widest mb-3">Meist-gespielte Units</div>
-                <div className="grid grid-cols-2 gap-4">
-                  {[s1, s2].map((s, i) => (
-                    <div key={i}>
-                      {s.topUnits.length === 0 ? (
-                        <div className="text-fg-muted text-xs text-center py-3">noch keine Match-Details</div>
-                      ) : (
-                        <div className="flex gap-1.5 flex-wrap">
-                          {s.topUnits.slice(0, 8).map(u => {
-                            const urls = tftUnitIconUrls(u.characterId, assets);
-                            const champName = assets?.champions[u.characterId]?.name || u.characterId;
-                            return (
-                              <a
-                                key={u.characterId}
-                                href={`/tft/units/${encodeURIComponent(u.characterId)}`}
-                                title={`${champName} · ${u.games}× · Ø ${u.avgPlacement.toFixed(1)}`}
-                                className="flex flex-col items-center gap-0.5 hover:scale-110 transition-transform"
-                              >
-                                <img
-                                  src={urls.square}
-                                  alt={champName}
-                                  className="w-9 h-9 rounded border border-border-subtle object-cover"
-                                  onError={(e) => {
-                                    const t = e.target as HTMLImageElement;
-                                    // 1st failure: try the splash variant. 2nd failure: dim out.
-                                    if (t.dataset.fallback !== 'splash' && urls.splash) {
-                                      t.dataset.fallback = 'splash';
-                                      t.src = urls.splash;
-                                    } else {
-                                      t.style.opacity = '0.3';
-                                    }
-                                  }}
-                                />
-                                <span className="text-[9px] text-fg-secondary tabular-nums">{u.games}</span>
-                              </a>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </>
+            ))}
+          </div>
         )}
 
-        {chartData.length >= 2 && (
-          <div className="bg-surface-base border border-border-subtle rounded p-4">
-            <div className="text-fg-secondary text-xs uppercase tracking-widest mb-3">
-              {t('tft.compare.chartTitle')}
-            </div>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 24, left: 8 }}>
-                  <XAxis
-                    dataKey="date"
-                    stroke="var(--fg-muted)"
-                    fontSize={10}
-                    tick={{ fill: 'var(--fg-secondary)' }}
-                    tickFormatter={(d) => new Date(d).toLocaleDateString(LOCALE_MAP[lang], { month: 'short', day: 'numeric' })}
-                  />
-                  <YAxis
-                    stroke="var(--fg-muted)"
-                    fontSize={10}
-                    tick={{ fill: 'var(--fg-secondary)' }}
-                    tickFormatter={(v) => `${Math.round(v / 1000)}k`}
-                  />
-                  <RechartsTooltip
-                    contentStyle={{ backgroundColor: 'var(--surface-base)', border: '1px solid var(--border-subtle)', borderRadius: 6, fontSize: 12 }}
-                    labelStyle={{ color: 'var(--fg-secondary)' }}
-                    formatter={(value: any) => [
-                      new Intl.NumberFormat(LOCALE_MAP[lang], { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(Number(value)),
-                      '',
-                    ]}
-                    labelFormatter={(d) => typeof d === 'string' ? new Date(d).toLocaleDateString(LOCALE_MAP[lang]) : ''}
-                  />
-                  <Legend wrapperStyle={{ fontSize: 10, color: 'var(--fg-secondary)' }} />
-                  {results.map((r, i) =>
-                    !r || 'error' in r ? null : (
-                      <Line
-                        key={i}
-                        type="monotone"
-                        dataKey={`p${i}`}
-                        name={r.name}
-                        stroke={SERIES_COLORS[i]}
-                        strokeWidth={2}
-                        dot={false}
-                        connectNulls
-                      />
-                    )
-                  )}
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+        {loading && loaded.length === 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+            {inputs.filter(n => n.trim()).map((_, i) => (
+              <div key={i} className="h-36 rounded-lg bg-surface-base border border-border-subtle animate-pulse" />
+            ))}
           </div>
+        )}
+
+        {loaded.length > 0 && <PlayerCards players={loaded} region={region} />}
+
+        {showBlocks && (
+          <>
+            <CategoryWins players={loaded} />
+            <KeyStats players={loaded} />
+            <FactorBlock players={loaded} />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-4">
+              <PlacementChart players={loaded} />
+              <FormChart players={loaded} />
+            </div>
+            <HistoryChart players={loaded} histories={histories} />
+            <SharedLobbies players={loaded} />
+            <TraitsBlock players={loaded} assets={assets} />
+            <UnitsBlock players={loaded} assets={assets} setNumber={CURRENT_SET} />
+            {/* Spielstil gibt es nur, wenn alle Spieler Saisonwerte haben;
+                sonst nimmt das Level die volle Breite. */}
+            <div className={`grid grid-cols-1 gap-x-4 ${loaded.every(({ p }) => p.stats?.seasonAggregate) ? 'lg:grid-cols-2' : ''}`}>
+              <LevelBlock players={loaded} />
+              <PlaystyleBlock players={loaded} />
+            </div>
+            <SetRanksBlock players={loaded} currentSet={CURRENT_SET} />
+          </>
         )}
       </div>
       <Footer />
@@ -513,120 +309,16 @@ export default function TftComparePage() {
   );
 }
 
-function HeadToHeadBanner({ p1, p2, name1, name2 }: { p1: number; p2: number; name1: string; name2: string }) {
-  const { t } = useI18n();
-  const total = p1 + p2 || 1;
-  const w1 = (p1 / total) * 100;
-  return (
-    <div className="bg-surface-base border border-border-subtle rounded p-4 mb-4">
-      <div className="flex items-center justify-between text-xs mb-2">
-        <span className={`font-semibold truncate ${p1 > p2 ? 'text-accent' : 'text-fg-secondary'}`}>{name1}</span>
-        <span className="text-fg-muted uppercase tracking-widest">{t('tft.compare.headToHead')}</span>
-        <span className={`font-semibold truncate ${p2 > p1 ? 'text-[#3ecf8e]' : 'text-fg-secondary'}`}>{name2}</span>
-      </div>
-      <div className="relative h-2.5 rounded-full bg-surface-overlay overflow-hidden">
-        <div
-          className="absolute left-0 top-0 h-full bg-gradient-to-r from-accent to-[#9d48e0] transition-all duration-700"
-          style={{ width: `${w1}%`, boxShadow: '0 0 8px rgba(123,97,255,0.45)' }}
-        />
-        <div
-          className="absolute right-0 top-0 h-full bg-gradient-to-l from-[#3ecf8e] to-[#2bb47a] transition-all duration-700"
-          style={{ width: `${100 - w1}%`, boxShadow: '0 0 8px rgba(62,207,142,0.45)' }}
-        />
-      </div>
-      <div className="flex items-center justify-between text-[10px] mt-1.5 tabular-nums">
-        <span className={p1 > p2 ? 'text-accent font-bold' : 'text-fg-muted'}>{p1} {p1 === 1 ? 'Kategorie' : 'Kategorien'}</span>
-        <span className={p2 > p1 ? 'text-[#3ecf8e] font-bold' : 'text-fg-muted'}>{p2} {p2 === 1 ? 'Kategorie' : 'Kategorien'}</span>
-      </div>
-    </div>
-  );
-}
+const emptyStats: Stats = {
+  totalMatches: 0, avgPlacement: 0, top4Rate: 0, top1Rate: 0,
+  placementDistribution: [0, 0, 0, 0, 0, 0, 0, 0], statsSource: 'live',
+  seasonAggregate: null, seasonRanks: [], extras: null,
+};
 
-function CompareStatBar({ label, v1, v2, fmt1, fmt2, lowerIsBetter = false }: { label: string; v1: number; v2: number; fmt1: string; fmt2: string; lowerIsBetter?: boolean }) {
-  const c1 = lowerIsBetter ? (v1 < v2 ? '#7B61FF' : '#3a4a64') : (v1 > v2 ? '#7B61FF' : '#3a4a64');
-  const c2 = lowerIsBetter ? (v2 < v1 ? '#3ecf8e' : '#3a4a64') : (v2 > v1 ? '#3ecf8e' : '#3a4a64');
-  const p1Wins = lowerIsBetter ? v1 < v2 : v1 > v2;
-  const p2Wins = lowerIsBetter ? v2 < v1 : v2 > v1;
-  const maxAbs = Math.max(Math.abs(v1), Math.abs(v2)) || 1;
-  const pct1 = (Math.abs(v1) / maxAbs) * 100;
-  const pct2 = (Math.abs(v2) / maxAbs) * 100;
+export default function TftComparePage() {
   return (
-    <div className="mb-3">
-      <div className="text-center text-fg-secondary text-[10px] uppercase tracking-widest mb-1">{label}</div>
-      <div className="flex items-center gap-2">
-        <span className={`text-xs sm:text-sm w-20 sm:w-28 text-right shrink-0 tabular-nums font-medium ${p1Wins ? 'text-accent' : 'text-white'}`}>{fmt1}</span>
-        <div className="flex-1 flex gap-1">
-          <div className="flex-1 flex justify-end">
-            <div className="h-4 rounded-l transition-all duration-500" style={{ width: `${pct1}%`, backgroundColor: c1, boxShadow: p1Wins ? '0 0 10px rgba(123,97,255,0.45)' : 'none' }} />
-          </div>
-          <div className="flex-1 flex justify-start">
-            <div className="h-4 rounded-r transition-all duration-500" style={{ width: `${pct2}%`, backgroundColor: c2, boxShadow: p2Wins ? '0 0 10px rgba(62,207,142,0.45)' : 'none' }} />
-          </div>
-        </div>
-        <span className={`text-xs sm:text-sm w-20 sm:w-28 shrink-0 tabular-nums font-medium ${p2Wins ? 'text-[#3ecf8e]' : 'text-white'}`}>{fmt2}</span>
-      </div>
-    </div>
+    <Suspense fallback={<main className="min-h-screen bg-surface-page" />}>
+      <ComparePageInner />
+    </Suspense>
   );
-}
-
-function PlacementSkeleton() {
-  return (
-    <div className="flex items-end gap-1 h-24 animate-pulse">
-      {[1,2,3,4,5,6,7,8].map(i => (
-        <div key={i} className="flex-1 flex flex-col items-center gap-1">
-          <div className="text-[9px] text-surface-overlay">·</div>
-          <div className="w-full rounded-sm bg-surface-overlay" style={{ height: `${30 + i * 5}%` }} />
-          <div className="text-[9px] text-fg-muted">{i}</div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function PlacementHistogram({ dist, color }: { dist: number[]; color: string }) {
-  const max = Math.max(...dist) || 1;
-  // Placements 1..4 in success-green hues, 5..8 in red — same visual logic
-  // as the player-page placement distribution chart.
-  return (
-    <div className="flex items-end gap-1 h-24">
-      {dist.map((count, i) => {
-        const place = i + 1;
-        const isTop4 = place <= 4;
-        const heightPct = (count / max) * 100;
-        return (
-          <div key={place} className="flex-1 flex flex-col items-center gap-1">
-            <div className="text-[9px] text-fg-secondary tabular-nums">{count}</div>
-            <div
-              className="w-full rounded-sm transition-all duration-500"
-              style={{
-                height: `${heightPct}%`,
-                minHeight: count > 0 ? '4px' : '2px',
-                backgroundColor: isTop4 ? color : '#3a4a64',
-                opacity: count > 0 ? 1 : 0.3,
-              }}
-              title={`Platz ${place}: ${count}`}
-            />
-            <div className="text-[9px] text-fg-muted tabular-nums">{place}</div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// Merge two newest-last time-series into a Recharts row shape {date, p0, p1}.
-function mergeHistories(histories: HistoryPoint[][]): { date: string; p0?: number; p1?: number }[] {
-  const dates = new Set<string>();
-  for (const series of histories) for (const p of series) dates.add(p.date);
-  const sorted = [...dates].sort();
-  const lookups = histories.map(series => {
-    const m = new Map<string, number>();
-    for (const p of series) m.set(p.date, p.finalValue);
-    return m;
-  });
-  return sorted.map(date => ({
-    date,
-    p0: lookups[0].get(date),
-    p1: lookups[1].get(date),
-  }));
 }

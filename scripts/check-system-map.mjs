@@ -196,6 +196,10 @@ const NO_CONTRACT_NEEDED = new Set([
   // wird beim naechsten Lauf nachgezogen, weil das Fenster sieben Tage
   // zurueckreicht und ein beendetes Set 14 Tage lang voll nachgefahren wird.
   'metastats-marketvalue-peaks.service',
+  // Live-Zwischenstand: schreibt nur an Turnier-Wochenenden (Start−2 … Ende+1).
+  // Die uebrige Zeit sind null neue Zeilen der Normalfall — ein Frische- oder
+  // minRows-Vertrag stuende die meisten Tage auf Rot.
+  'metastats-tft-live-standings.service',
 ]);
 
 const owners = new Set(Object.keys(map.contractsByOwner));

@@ -384,6 +384,26 @@
       "persistent": true
     },
     {
+      "name": "metastats-tft-live-standings.service",
+      "kind": "service",
+      "description": "metastats TFT-Turnier-Zwischenstand (Google-Tabellen, apactft) fuer /tft/tournaments",
+      "scripts": [
+        "scripts/fetch-tft-live-standings.mjs"
+      ]
+    },
+    {
+      "name": "metastats-tft-live-standings.timer",
+      "kind": "timer",
+      "description": "metastats TFT-Turnier-Zwischenstand stuendlich",
+      "scripts": [],
+      "onCalendar": [
+        "hourly"
+      ],
+      "interval": [],
+      "activates": "metastats-tft-live-standings.service",
+      "persistent": true
+    },
+    {
       "name": "metastats-tft-pro-classify.service",
       "kind": "service",
       "description": "TFT Pro Classifier (recomputes classification + confidence_score)",
@@ -540,6 +560,13 @@
       "activates": "metastats-tft-ladder.service",
       "onCalendar": [
         "*-*-* 04:30:00 UTC"
+      ]
+    },
+    {
+      "timer": "metastats-tft-live-standings.timer",
+      "activates": "metastats-tft-live-standings.service",
+      "onCalendar": [
+        "hourly"
       ]
     },
     {

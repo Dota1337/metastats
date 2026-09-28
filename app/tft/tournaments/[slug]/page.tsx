@@ -1,10 +1,11 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { withAlpha } from '../../../lib/color';
 import { useParams } from 'next/navigation';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n, LOCALE_MAP } from '../../../lib/i18n';
+import { formatPrize } from '../../../lib/prize-format';
 
 interface Result {
   placement: number;
@@ -13,6 +14,21 @@ interface Result {
   team: string | null;
   country: string | null;
   prizeUsd: number | null;
+  prizeNative: number | null;
+  prizeCurrency: string | null;
+}
+
+interface LiveRow {
+  source: string;
+  stage: string;
+  stageOrder: number;
+  placement: number | null;
+  name: string;
+  team: string | null;
+  region: string | null;
+  points: number | null;
+  games: number | null;
+  fetchedAt: string;
 }
 
 interface Tournament {
@@ -26,12 +42,15 @@ interface Tournament {
   end_date: string | null;
   status: 'upcoming' | 'live' | 'past';
   prize_pool_usd: number | null;
+  prize_pool_native: number | null;
+  prize_pool_currency: string | null;
   twitch_channel: string | null;
   format: string | null;
   num_participants: number | null;
   logo_url: string | null;
   source: string;
   results: Result[];
+  live_standings: LiveRow[] | null;
 }
 
 const TIER_COLORS: Record<string, string> = { S: '#e0c75a', A: '#7B61FF', B: '#3a8ddc', C: 'var(--fg-faint)' };
@@ -86,6 +105,7 @@ export default function TftTournamentDetailPage() {
   const tierColor = tournament.tier ? (TIER_COLORS[tournament.tier] || 'var(--fg-secondary)') : 'var(--fg-secondary)';
   const locale = LOCALE_MAP[lang];
   const dateFmt = (s: string | null) => s ? new Date(s).toLocaleDateString(locale, { day: '2-digit', month: 'long', year: 'numeric' }) : '—';
+  const poolText = formatPrize(tournament.prize_pool_usd, tournament.prize_pool_native, tournament.prize_pool_currency, locale);
   const statusColor = tournament.status === 'live' ? '#e44040' : tournament.status === 'upcoming' ? '#3ecf8e' : 'var(--fg-secondary)';
 
   return (
@@ -122,10 +142,10 @@ export default function TftTournamentDetailPage() {
                 <div className="text-fg-muted text-xs mt-1">{tournament.format}</div>
               )}
             </div>
-            {tournament.prize_pool_usd != null && (
+            {poolText !== '—' && (
               <div className="text-right">
                 <div className="text-accent text-2xl font-semibold tabular-nums">
-                  ${tournament.prize_pool_usd.toLocaleString('en-US')}
+                  {poolText}
                 </div>
                 <div className="text-fg-muted text-[10px] uppercase tracking-widest">Prize Pool</div>
               </div>
@@ -146,6 +166,10 @@ export default function TftTournamentDetailPage() {
               />
             </div>
           </div>
+        )}
+
+        {tournament.status !== 'past' && (
+          <LiveStandings rows={tournament.live_standings} live={tournament.status === 'live'} locale={locale} />
         )}
 
         {/* Standings — only rendered when we have data. No info text when
@@ -186,7 +210,7 @@ export default function TftTournamentDetailPage() {
                   <div className="flex sm:block items-center justify-between mt-1 sm:mt-0 sm:text-right tabular-nums">
                     <span className="text-fg-muted text-[10px] sm:hidden">{r.team}{r.team && r.country ? ' · ' : ''}{r.country}</span>
                     <span className="text-accent font-medium">
-                      {r.prizeUsd != null ? `$${r.prizeUsd.toLocaleString('en-US')}` : '—'}
+                      {formatPrize(r.prizeUsd, r.prizeNative, r.prizeCurrency, locale)}
                     </span>
                   </div>
                 </div>
@@ -194,9 +218,93 @@ export default function TftTournamentDetailPage() {
             })}
           </section>
         )}
+
+        {tournament.status === 'past' && (
+          <LiveStandings rows={tournament.live_standings} live={false} locale={locale} />
+        )}
       </div>
       <Footer />
     </main>
+  );
+}
+
+// Punktetabelle aus den oeffentlichen Tabellen der Veranstalter (Google-Sheets,
+// apactft.com), stuendlich geholt von scripts/fetch-tft-live-standings.mjs.
+// Mehrere Runden (Tag 1, Finale …) als Umschalter, hoechste Runde zuerst.
+function LiveStandings({ rows, live, locale }: { rows: LiveRow[] | null; live: boolean; locale: string }) {
+  const { t } = useI18n();
+  const stages = useMemo(() => {
+    const by = new Map<string, { key: string; stage: string; order: number; rows: LiveRow[]; fetchedAt: string }>();
+    for (const r of rows || []) {
+      const key = `${r.source}|${r.stage}`;
+      let s = by.get(key);
+      if (!s) { s = { key, stage: r.stage, order: r.stageOrder, rows: [], fetchedAt: r.fetchedAt }; by.set(key, s); }
+      s.rows.push(r);
+      if (r.fetchedAt > s.fetchedAt) s.fetchedAt = r.fetchedAt;
+    }
+    const list = [...by.values()].sort((a, b) => b.order - a.order);
+    for (const s of list) {
+      s.rows.sort((a, b) => (a.placement ?? 9999) - (b.placement ?? 9999) || (b.points ?? 0) - (a.points ?? 0));
+    }
+    return list;
+  }, [rows]);
+  const [picked, setPicked] = useState<string | null>(null);
+  if (stages.length === 0) return null;
+  const cur = stages.find(s => s.key === picked) || stages[0];
+  const hasRegion = cur.rows.some(r => r.region);
+  const hasGames = cur.rows.some(r => r.games != null);
+  const cols = `2.5rem minmax(0,1fr)${hasRegion ? ' 4rem' : ''} 4rem${hasGames ? ' 3.5rem' : ''}`;
+  const updated = new Date(cur.fetchedAt).toLocaleString(locale, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return (
+    <section className="bg-surface-base border border-border-subtle rounded overflow-hidden mb-5">
+      <div className="px-4 py-2 bg-surface-sunken flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-fg-muted">
+          {live && (
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inset-0 rounded-full opacity-75 animate-ping bg-[#e44040]" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-[#e44040]" />
+            </span>
+          )}
+          {live ? t('tft.tournaments.liveStandings') : t('tft.tournaments.pointsTable')}
+        </div>
+        <div className="text-[10px] text-fg-muted tabular-nums">{t('tft.tournaments.updatedAt').replace('{time}', updated)}</div>
+      </div>
+      {stages.length > 1 && (
+        <div className="flex flex-wrap gap-1.5 px-4 py-2 border-t border-border-subtle">
+          {stages.map(s => (
+            <button
+              key={s.key}
+              onClick={() => setPicked(s.key)}
+              className={`text-xs px-2 py-0.5 rounded border transition-colors ${s.key === cur.key ? 'border-accent-a60 text-white bg-surface-raised' : 'border-border-subtle text-fg-secondary hover:text-white'}`}
+            >
+              {s.stage}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="grid gap-2 px-4 py-2 text-[10px] uppercase text-fg-muted border-t border-border-subtle" style={{ gridTemplateColumns: cols }}>
+        <div className="text-right">#</div>
+        <div>{t('tft.pros.col.player')}</div>
+        {hasRegion && <div>{t('tft.pros.col.region')}</div>}
+        <div className="text-right">{t('tft.tournaments.colPoints')}</div>
+        {hasGames && <div className="text-right">{t('tft.tournaments.colGames')}</div>}
+      </div>
+      {cur.rows.map(r => {
+        const placeColor = r.placement === 1 ? '#f0c040' : r.placement === 2 ? '#cfd6dc' : r.placement === 3 ? '#cd7f32' : 'var(--fg-secondary)';
+        return (
+          <div key={`${r.name}-${r.placement}`} className="grid gap-2 px-4 py-1.5 items-center text-xs border-t border-border-subtle" style={{ gridTemplateColumns: cols }}>
+            <div className="text-right font-bold tabular-nums" style={{ color: placeColor }}>{r.placement ?? '—'}</div>
+            <div className="min-w-0 truncate">
+              {r.team && <span className="text-fg-muted mr-1">{r.team}</span>}
+              <span className="text-white font-medium">{r.name}</span>
+            </div>
+            {hasRegion && <div className="text-fg-secondary truncate">{r.region || '—'}</div>}
+            <div className="text-right text-accent font-medium tabular-nums">{r.points ?? '—'}</div>
+            {hasGames && <div className="text-right text-fg-secondary tabular-nums">{r.games ?? '—'}</div>}
+          </div>
+        );
+      })}
+    </section>
   );
 }
 

@@ -5,6 +5,7 @@ import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
 import TftHero from '../../components/tft/TftHero';
 import { useI18n, LOCALE_MAP } from '../../lib/i18n';
+import { formatPrize } from '../../lib/prize-format';
 
 // Tournament list page. Three top-level sections — Live / Upcoming / Past —
 // each filterable by region + tier + set. The page mirrors /ligen for LoL
@@ -22,6 +23,8 @@ interface Tournament {
   end_date: string | null;
   status: 'upcoming' | 'live' | 'past';
   prize_pool_usd: number | null;
+  prize_pool_native: number | null;
+  prize_pool_currency: string | null;
   twitch_channel: string | null;
   format: string | null;
   num_participants: number | null;
@@ -214,10 +217,10 @@ function TournamentRow({ t, locale }: { t: Tournament; locale: string }) {
             {t.num_participants && ` · ${t.num_participants} Teilnehmer`}
           </div>
         </div>
-        {t.prize_pool_usd != null && (
+        {formatPrize(t.prize_pool_usd, t.prize_pool_native, t.prize_pool_currency, locale) !== '—' && (
           <div className="text-right">
             <div className="text-accent text-base font-semibold tabular-nums">
-              ${t.prize_pool_usd.toLocaleString('en-US')}
+              {formatPrize(t.prize_pool_usd, t.prize_pool_native, t.prize_pool_currency, locale)}
             </div>
             <div className="text-fg-muted text-[10px] uppercase tracking-widest">Prize Pool</div>
           </div>

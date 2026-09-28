@@ -6,19 +6,19 @@
     "belegen laesst, steht in `unresolved` statt als geratene Kante im Graphen."
   ],
   "counts": {
-    "routes": 78,
+    "routes": 79,
     "groups": 31,
-    "tables": 32,
+    "tables": 34,
     "rpcs": 28,
     "files": 11,
-    "edges": 356,
+    "edges": 362,
     "unused": 8,
     "unresolved": 1
   },
   "groups": [
     {
       "name": "tft",
-      "count": 24
+      "count": 25
     },
     {
       "name": "tft/marktwert",
@@ -1044,6 +1044,20 @@
       ]
     },
     {
+      "id": "api:/api/tft/player-tournaments",
+      "kind": "route",
+      "label": "/api/tft/player-tournaments",
+      "group": "tft",
+      "file": "app/api/tft/player-tournaments/route.ts",
+      "via": [
+        "app/lib/tft-tournament-history.ts"
+      ],
+      "used": true,
+      "usedBy": [
+        "app/components/tft/PlayerTournamentHistory.tsx"
+      ]
+    },
+    {
       "id": "api:/api/tft/positions/by-units",
       "kind": "route",
       "label": "/api/tft/positions/by-units",
@@ -1611,6 +1625,18 @@
       "id": "db:tft_public_comps",
       "kind": "table",
       "label": "tft_public_comps",
+      "declared": true
+    },
+    {
+      "id": "db:tft_tournament_live_standings",
+      "kind": "table",
+      "label": "tft_tournament_live_standings",
+      "declared": true
+    },
+    {
+      "id": "db:tft_tournament_player_links",
+      "kind": "table",
+      "label": "tft_tournament_player_links",
       "declared": true
     },
     {
@@ -2996,6 +3022,26 @@
       "kind": "reads"
     },
     {
+      "from": "api:/api/tft/player-tournaments",
+      "to": "db:tft_pro_players",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/player-tournaments",
+      "to": "db:tft_tournament_player_links",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/player-tournaments",
+      "to": "db:tft_tournament_results",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/player-tournaments",
+      "to": "db:tft_tournaments",
+      "kind": "reads"
+    },
+    {
       "from": "api:/api/tft/positions/by-units",
       "to": "db:tft_position_comp_cell",
       "kind": "reads"
@@ -3613,6 +3659,16 @@
     {
       "from": "fn:get_tft_team_marketvalues",
       "to": "db:tft_pro_players",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_tournament_detail",
+      "to": "db:tft_tournament_live_standings",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_tournament_detail",
+      "to": "db:tft_tournament_player_links",
       "kind": "reads"
     },
     {

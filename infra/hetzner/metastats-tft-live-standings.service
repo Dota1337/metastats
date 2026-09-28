@@ -1,0 +1,41 @@
+[Unit]
+Description=metastats TFT-Turnier-Zwischenstand (Google-Tabellen, apactft) fuer /tft/tournaments
+Wants=network-online.target
+After=network-online.target
+# Kein Conflicts=: keine Riot-Abfragen, nur Google/apactft und Supabase.
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/metastats-crawler
+EnvironmentFile=/etc/metastats-crawler/env
+# Testlauf 2026-09-28: vier Regionen in wenigen Sekunden. 10 min ist Puffer
+# gegen haengende Tabellen-Abrufe (jeder Abruf hat selbst 30 s Zeitlimit).
+TimeoutStartSec=600
+ExecStart=/usr/bin/node scripts/fetch-tft-live-standings.mjs
+StandardOutput=journal
+StandardError=journal
+
+# --- BEGIN metastats-hardening-floor ---
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectProc=invisible
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+# --- END metastats-hardening-floor ---
+
+[Install]
+WantedBy=multi-user.target

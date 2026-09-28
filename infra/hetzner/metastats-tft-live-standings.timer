@@ -1,0 +1,12 @@
+[Unit]
+Description=metastats TFT-Turnier-Zwischenstand stuendlich
+
+[Timer]
+# Stuendlich; das Skript schreibt nur fuer Turniere im Fenster Start−2 … Ende+1,
+# ausserhalb davon ist ein Lauf eine einzige Datenbank-Abfrage.
+OnCalendar=hourly
+RandomizedDelaySec=300
+Persistent=true
+
+[Install]
+WantedBy=timers.target

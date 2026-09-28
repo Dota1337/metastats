@@ -9,6 +9,7 @@ import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import MatchCard from '../../../components/tft/MatchCard';
 import MarketValueHero from '../../../components/tft/MarketValueHero';
+import PlayerTournamentHistory from '../../../components/tft/PlayerTournamentHistory';
 import BookmarkButton from '../../../components/BookmarkButton';
 import { useI18n } from '../../../lib/i18n';
 import { formatStage } from '../../../lib/tft-stage';
@@ -377,12 +378,13 @@ export default function TftPlayerPage() {
               </div>
             </div>
 
-            {tftProInfo && <TournamentHistory pro={tftProInfo} />}
             {tftProInfo && data.summoner.puuid && (
               <ProSpecialty puuid={data.summoner.puuid} setNumber={currentSet} assets={assets} t={t} />
             )}
 
             <MarketValueHero fullName={shownName}region={region} lang={lang} />
+
+            {data.summoner.puuid && <PlayerTournamentHistory puuid={data.summoner.puuid} />}
 
             <SeasonStats
               stats={playerStats}
@@ -776,80 +778,6 @@ function ProBadge({ pro }: { pro: ProPlayer }) {
     >
       {t('tft.player.verifiedProBadge')}
     </span>
-  );
-}
-
-function formatProEarnings(v: number | null | undefined): string {
-  if (!v || v <= 0) return '—';
-  if (v >= 1_000_000) return '$' + (v / 1_000_000).toFixed(1) + 'M';
-  if (v >= 1_000) return '$' + Math.round(v / 1_000) + 'k';
-  return '$' + v.toLocaleString('en-US');
-}
-
-function placeColor(place: string | null): string {
-  if (!place) return 'var(--fg-secondary)';
-  const p = place.toLowerCase();
-  if (p.startsWith('1')) return '#f0c040';
-  if (p.startsWith('2')) return '#c0c0c0';
-  if (p.startsWith('3')) return '#cd7f32';
-  return 'var(--fg-secondary)';
-}
-
-function TournamentHistory({ pro }: { pro: TftProRecord }) {
-  const { t } = useI18n();
-  const [open, setOpen] = useState(false);
-  const all = pro.tournament_results || [];
-  if (all.length === 0) return null;
-  const visible = open ? all : all.slice(0, 10);
-  const wins = all.filter((r) => String(r.place || '').startsWith('1')).length;
-  return (
-    <div className="bg-surface-base border border-border-subtle rounded p-3 sm:p-4 mb-3">
-      <div className="flex items-baseline justify-between flex-wrap gap-x-3 gap-y-1 mb-3">
-        <h2 className="text-white text-sm font-medium uppercase tracking-widest">{t('tft.player.tournamentHistory')}</h2>
-        <div className="text-xs text-fg-secondary">
-          <span className="text-white">{all.length}</span> {t('tft.player.tournaments')} ·{' '}
-          <span className="text-[#f0c040]">{wins}× 1.</span> ·{' '}
-          <span className="text-gold-earnings">{formatProEarnings(pro.total_earnings_usd)}</span>
-        </div>
-      </div>
-      <div className="hidden sm:grid grid-cols-[6rem_3rem_1fr_5rem_6rem] gap-2 text-[10px] uppercase text-fg-muted pb-2 border-b border-border-subtle">
-        <div>{t('tft.player.colDate')}</div>
-        <div>{t('tft.player.colPlace')}</div>
-        <div>{t('tft.player.colTournament')}</div>
-        <div>{t('tft.player.colTier')}</div>
-        <div className="text-right">{t('tft.player.colPrize')}</div>
-      </div>
-      {visible.map((r, i) => (
-        <div
-          key={i}
-          className="grid grid-cols-[5rem_2rem_1fr_3.5rem] sm:grid-cols-[6rem_3rem_1fr_5rem_6rem] gap-2 py-1.5 text-xs items-center border-b border-border-subtle/40 last:border-b-0"
-        >
-          <div className="text-fg-muted tabular-nums">{r.date?.slice(0, 10) || '—'}</div>
-          <div className="font-medium tabular-nums" style={{ color: placeColor(r.place) }}>
-            {r.place || '—'}
-          </div>
-          <div className="min-w-0 truncate text-white">
-            {r.page ? (
-              <a href={r.page} target="_blank" rel="noreferrer" className="hover:text-[#a892ff]">
-                {r.tournament}
-              </a>
-            ) : (
-              r.tournament
-            )}
-          </div>
-          <div className="text-fg-muted hidden sm:block">{r.tier || '—'}</div>
-          <div className="text-gold-earnings text-right tabular-nums">{formatProEarnings(r.prize_usd)}</div>
-        </div>
-      ))}
-      {all.length > 10 && (
-        <button
-          onClick={() => setOpen(!open)}
-          className="mt-2 w-full text-center text-xs text-[#a892ff] hover:text-white"
-        >
-          {open ? t('tft.player.showLess') : t('tft.player.showMore').replace('{n}', String(all.length - 10))}
-        </button>
-      )}
-    </div>
   );
 }
 

@@ -47,6 +47,8 @@ const PAGES_OVERRIDE = arg('--pages', '');
 const VERBOSE = hasFlag('--verbose');
 // --full: jede Seite laden wie bis 2026-09-13 (Notfall-Rueckweg).
 const FULL = hasFlag('--full');
+// Nur die Nachlaeufe (Neu-Umrechnung + Name→Konto), ohne Liquipedia-Abruf.
+const POST_ONLY = hasFlag('--post-only');
 // Fertige Turniere mit Ergebnissen werden uebersprungen, sobald ihr Ende
 // laenger als diese Karenz her ist — Liquipedia traegt nach Turnierende oft
 // noch Tage nach. Die ROTATION aeltesten davon werden je Lauf trotzdem geladen,
@@ -111,6 +113,7 @@ const SEED_TOURNAMENTS = [
 // Liquipedia fetch
 
 // Shared helpers — cross-process rate-limit lock + ETag-based HTTP cache.
+import { reconvertStored, rebuildPlayerLinks, setDryRun } from './lib/tft-tournament-postpass.mjs';
 import {
   liquipediaJson,
   liquipediaCategoryMembers,
@@ -119,11 +122,12 @@ import {
 
 async function fetchTournamentWikitext(page) {
   const j = await liquipediaJson({
-    action: 'parse', page, prop: 'wikitext|displaytitle',
+    action: 'parse', page, prop: 'wikitext|displaytitle|externallinks',
   });
   return {
     wikitext: j?.parse?.wikitext?.['*'] || '',
     displayTitle: j?.parse?.displaytitle || page.replace(/_/g, ' '),
+    externalLinks: Array.isArray(j?.parse?.externallinks) ? j.parse.externallinks : [],
   };
 }
 
@@ -499,6 +503,12 @@ function numericTierToLetter(t) {
   return null;
 }
 
+const STANDINGS_LINK = /^https?:\/\/(docs\.google\.com\/spreadsheets\/|(www\.)?riot\.com\/|([a-z0-9-]+\.)?apactft\.com\/)/i;
+function standingsSources(links) {
+  const out = [...new Set((links || []).filter(u => STANDINGS_LINK.test(u)))];
+  return out.length ? out : null;
+}
+
 function pageToSlug(page) {
   return page.toLowerCase().replace(/[\/_]/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-');
 }
@@ -585,9 +595,18 @@ async function loadStoredState() {
 // ─────────────────────────────────────────────────────────────────────────────
 // main
 
+async function postPasses() {
+  if (!SUPA_KEY) { console.log('  [post] no Supabase key — skipped'); return; }
+  setDryRun(SKIP_SUPABASE);
+  console.log('\n[3/3] Post passes …');
+  await reconvertStored({ url: SUPA_URL, key: SUPA_KEY });
+  await rebuildPlayerLinks({ url: SUPA_URL, key: SUPA_KEY, upsert });
+}
+
 async function main() {
   const t0 = Date.now();
   console.log('=== TFT Tournament Crawler ===\n');
+  if (POST_ONLY) { await postPasses(); return; }
 
   let seed = SEED_TOURNAMENTS;
   if (PAGES_OVERRIDE) {
@@ -628,8 +647,8 @@ async function main() {
     // Keine eigene Pause: liquipediaJson haelt die 30 s zwischen zwei Abrufen
     // selbst ein (lib/liquipedia-tft.mjs:38,171). Die zusaetzliche 30,5-s-Pause
     // hier legte die Arbeitszeit obendrauf (~36,8 s je Seite, Lauf 34333740958).
-    let wikitext, displayTitle;
-    try { ({ wikitext, displayTitle } = await fetchTournamentWikitext(s.page)); }
+    let wikitext, displayTitle, externalLinks;
+    try { ({ wikitext, displayTitle, externalLinks } = await fetchTournamentWikitext(s.page)); }
     catch (e) { console.warn(`  [skip] ${s.page}: ${e.message}`); skipped++; continue; }
     if (!wikitext) { skipped++; continue; }
 
@@ -653,8 +672,8 @@ async function main() {
       }
     }
     const name = unwiki(rawName) || displayTitle;
-    const startDate = parseDate(fields.sdate || fields.startdate);
-    const endDate = parseDate(fields.edate || fields.enddate);
+    const startDate = parseDate(fields.sdate || fields.startdate || fields.date);
+    const endDate = parseDate(fields.edate || fields.enddate || fields.date);
     const status = deriveStatus(startDate, endDate);
 
     // Placements (finished events). Participant count is a fallback so
@@ -680,27 +699,27 @@ async function main() {
       : pageCurrency === 'MIXED' ? 'mixed localcurrency codes on page'
       : pageCurrency === 'USD' ? null
       : !fxEventDate ? 'no start/end date for event-dated rate'
-      : !fx ? `no ECB rate for ${pageCurrency}`
+      : !fx ? `no rate for ${pageCurrency}`
       : null;
     if (fxSkipReason) { console.warn(`  [fx-skip] ${s.page}: ${fxSkipReason} — native amounts kept, prize_usd NULL`); fxSkipped++; }
 
     // localAmount → { prize_usd, native, currency, rate, date } under the rules above.
     const convertLocal = (localRaw) => {
       if (localRaw == null) return null;
-      if (!pageCurrency || pageCurrency === 'MIXED') return { usd: null, native: localRaw, currency: pageCurrency === 'MIXED' ? 'MIXED' : null, rate: null, date: null };
-      if (pageCurrency === 'USD') return { usd: localRaw, native: null, currency: 'USD', rate: null, date: null };
-      if (!fx) return { usd: null, native: localRaw, currency: pageCurrency, rate: null, date: null };
-      return { usd: Math.round(localRaw * fx.rate), native: localRaw, currency: pageCurrency, rate: fx.rate, date: fx.effectiveDate };
+      if (!pageCurrency || pageCurrency === 'MIXED') return { usd: null, native: localRaw, currency: pageCurrency === 'MIXED' ? 'MIXED' : null, rate: null, date: null, source: null };
+      if (pageCurrency === 'USD') return { usd: localRaw, native: null, currency: 'USD', rate: null, date: null, source: 'usd' };
+      if (!fx) return { usd: null, native: localRaw, currency: pageCurrency, rate: null, date: null, source: null };
+      return { usd: Math.round(localRaw * fx.rate), native: localRaw, currency: pageCurrency, rate: fx.rate, date: fx.effectiveDate, source: fx.source };
     };
 
     // Infobox prizepool: prizepoolusd= is explicit USD; a bare prizepool= is USD
     // by Liquipedia convention UNLESS the page sets a localcurrency.
     const poolUsdExplicit = parsePrize(fields.prizepoolusd);
     const poolRaw = parsePrize(fields.prizepool);
-    let pool = { usd: poolUsdExplicit ?? null, native: null, currency: poolUsdExplicit != null ? 'USD' : null, rate: null, date: null };
+    let pool = { usd: poolUsdExplicit ?? null, native: null, currency: poolUsdExplicit != null ? 'USD' : null, rate: null, date: null, source: poolUsdExplicit != null ? 'usd' : null };
     if (poolUsdExplicit == null && poolRaw != null) {
       pool = needsFx || pageCurrency === 'MIXED' ? convertLocal(poolRaw)
-        : { usd: poolRaw, native: null, currency: 'USD', rate: null, date: null };
+        : { usd: poolRaw, native: null, currency: 'USD', rate: null, date: null, source: 'usd' };
     }
 
     const tour = {
@@ -720,6 +739,7 @@ async function main() {
       prize_pool_currency: pool.currency,
       fx_rate: pool.rate,
       fx_date: pool.date,
+      fx_source: pool.source,
       twitch_channel: fields.twitch || null,
       format: unwiki(fields.format) || null,
       num_participants: numParticipants,
@@ -727,11 +747,15 @@ async function main() {
       source: 'liquipedia',
       last_validated_at: new Date().toISOString(),
     };
+    // Nur mitsenden, wenn gefunden — sonst wuerde ein Abruf ohne Links
+    // gespeicherte Quellen ueberschreiben.
+    const sources = standingsSources(externalLinks);
+    if (sources) tour.standings_sources = sources;
 
     const results = placements.map(p => {
       const conv = p.prizeUsdRaw != null
-        ? { usd: p.prizeUsdRaw, native: null, currency: 'USD', rate: null, date: null }
-        : (convertLocal(p.prizeLocalRaw) ?? { usd: null, native: null, currency: null, rate: null, date: null });
+        ? { usd: p.prizeUsdRaw, native: null, currency: 'USD', rate: null, date: null, source: 'usd' }
+        : (convertLocal(p.prizeLocalRaw) ?? { usd: null, native: null, currency: null, rate: null, date: null, source: null });
       return {
         tournament_id: id,
         placement: p.placement,
@@ -744,6 +768,7 @@ async function main() {
         prize_currency: conv.currency,
         fx_rate: conv.rate,
         fx_date: conv.date,
+        fx_source: conv.source,
       };
     });
 
@@ -765,6 +790,8 @@ async function main() {
     parsed++;
     console.log(`  ${parsed}/${seed.length}  ${s.page}  set=${tour.set_number ?? '—'}  placements=${placements.length}  participants=${numParticipants ?? '—'}`);
   }
+
+  await postPasses();
 
   const total = ((Date.now() - t0) / 1000).toFixed(0);
   console.log(`\nDone. ${totalTournaments} tournaments, ${totalResults} placements in ${total}s (skipped: ${skipped}, fx-skipped: ${fxSkipped})`);

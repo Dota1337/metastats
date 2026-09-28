@@ -3376,6 +3376,31 @@ const translations = {
     '\uC21C\uC704', '\u6392\u540D',
     'Clasificaciones', 'Classement'
   ),
+  'tft.tournaments.liveStandings': t6(
+    'Live-Tabelle', 'Live standings',
+    '\uC2E4\uC2DC\uAC04 \uC21C\uC704', '\u5B9E\u65F6\u6392\u540D',
+    'Clasificaci\u00F3n en vivo', 'Classement en direct'
+  ),
+  'tft.tournaments.pointsTable': t6(
+    'Punktetabelle', 'Points table',
+    '\uC810\uC218\uD45C', '\u79EF\u5206\u699C',
+    'Tabla de puntos', 'Tableau des points'
+  ),
+  'tft.tournaments.updatedAt': t6(
+    'Stand {time}', 'Updated {time}',
+    '{time} \uAE30\uC900', '\u66F4\u65B0\u4E8E {time}',
+    'Actualizado {time}', 'Mis \u00E0 jour {time}'
+  ),
+  'tft.tournaments.colPoints': t6(
+    'Punkte', 'Points',
+    '\uC810\uC218', '\u79EF\u5206',
+    'Puntos', 'Points'
+  ),
+  'tft.tournaments.colGames': t6(
+    'Spiele', 'Games',
+    '\uAC8C\uC784', '\u5C40\u6570',
+    'Partidas', 'Parties'
+  ),
   'tft.tournaments.standingsAfterEvent': t6(
     'Standings erscheinen nach Tournament-Ende.',
     'Standings appear after the tournament ends.',

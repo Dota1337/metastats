@@ -1,8 +1,9 @@
 #!/usr/bin/env node
-// Ratsche auf die ESLint-Fehler. Laeuft in der CI (.github/workflows/ci.yml),
-// bewusst NICHT im pre-push: der Hook braucht heute ~14 s, ein voller
-// ESLint-Lauf kostet gemessen 43,7 s (kalt) — ein Hook, der dreimal so lange
-// braucht, wird abgeschaltet, und dann greift gar nichts mehr.
+// Ratsche auf die ESLint-Fehler. Laeuft in der CI (.github/workflows/ci.yml)
+// UND seit 28.09.2026 im pre-push (Gate 14). Vorher nur in der CI, weil ein
+// voller Lauf 43,7 s kostete — mit ESLint-Zwischenspeicher (--cache, nach
+// Dateiinhalt) gemessen 15,9 s beim ersten und 1,8 s ab dem zweiten Lauf.
+// Anlass: zwei Wochen rote CI-Mails, weil neue Fehler erst nach dem Push auffielen.
 //
 // Warum ueberhaupt: ESLint lief bis 02.09.2026 an KEINER Stelle. Nicht in der
 // CI, nicht im Hook, und Next 16 lintet beim Build nicht mehr. Die 748 Fehler
@@ -34,14 +35,14 @@ import { dirname, join } from 'node:path';
 const require_ = createRequire(import.meta.url);
 const ESLINT_BIN = join(dirname(require_.resolve('eslint/package.json')), 'bin', 'eslint.js');
 
-// Stand 02.09.2026, gemessen mit `npx eslint . --format json`.
+// Stand 28.09.2026, gemessen mit diesem Script.
 // Beim Senken das Datum mitziehen.
 const BUDGET = {
-  '@typescript-eslint/no-explicit-any': 642,
-  '@next/next/no-html-link-for-pages': 40,
-  'react-hooks/set-state-in-effect': 33,
+  '@typescript-eslint/no-explicit-any': 631,
+  '@next/next/no-html-link-for-pages': 28,
+  'react-hooks/set-state-in-effect': 32,
   'prefer-const': 9,
-  'react-hooks/immutability': 9,
+  'react-hooks/immutability': 7,
   'react-hooks/static-components': 5,
   'react/no-unescaped-entities': 4,
   '@typescript-eslint/no-require-imports': 2,
@@ -57,7 +58,10 @@ let raw;
 try {
   raw = execFileSync(
     process.execPath,
-    [ESLINT_BIN, '.', '--format', 'json'],
+    // Zwischenspeicher nach Dateiinhalt: unveraenderte Dateien werden nicht neu
+    // gelintet. Die CI hat kein Cache-Verzeichnis und lintet deshalb alles.
+    [ESLINT_BIN, '.', '--format', 'json', '--cache', '--cache-strategy', 'content',
+      '--cache-location', 'node_modules/.cache/eslint-budget'],
     { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'inherit'] },
   );
 } catch (e) {

@@ -133,6 +133,28 @@ export default function Nav({ active }: NavProps) {
     return () => { clearTimeout(timer); ctrl.abort(); };
   }, [searchQuery, game]);
 
+  // Spielerzeilen fuer TFT: echte Treffer mit Region · Rang. Ohne Treffer:
+  // mit Tag die freie Eingabe (Profil sucht den Server selbst), ohne Tag
+  // "Keine Spieler gefunden". Solange die Antwort fehlt, keine Spielerzeile.
+  // Steht vor dem Effekt, der sie aufruft (react-hooks/immutability).
+  const tftPlayerResults = (q: string): SearchResult[] => {
+    const hasTag = q.includes('#') && q.split('#')[1].trim().length > 0;
+    if (!tftHits || tftHits.q !== q) return hasTag ? [{ type: 'player', name: q }] : [];
+    if (tftHits.hits.length > 0) {
+      return tftHits.hits.map(h => {
+        const regionLabel = tftRegionLabel(h.region);
+        const rank = tftRankLabel(h, l => t(`tier.${l}` as Parameters<typeof t>[0]));
+        return {
+          type: 'account' as const,
+          name: `${h.gameName}#${h.tagLine}`,
+          href: tftProfileHref(h),
+          sub: rank ? `${regionLabel} · ${rank}` : regionLabel,
+        };
+      });
+    }
+    return hasTag ? [{ type: 'player', name: q }] : [{ type: 'none', name: t('lb.noPlayers') }];
+  };
+
   // Filter results as user types
   useEffect(() => {
     if (!searchQuery.trim()) { setResults([]); return; }
@@ -163,36 +185,15 @@ export default function Nav({ active }: NavProps) {
     return `/player/${slug}?region=euw1`;
   };
 
-  // Spielerzeilen fuer TFT: echte Treffer mit Region · Rang. Ohne Treffer:
-  // mit Tag die freie Eingabe (Profil sucht den Server selbst), ohne Tag
-  // "Keine Spieler gefunden". Solange die Antwort fehlt, keine Spielerzeile.
-  const tftPlayerResults = (q: string): SearchResult[] => {
-    const hasTag = q.includes('#') && q.split('#')[1].trim().length > 0;
-    if (!tftHits || tftHits.q !== q) return hasTag ? [{ type: 'player', name: q }] : [];
-    if (tftHits.hits.length > 0) {
-      return tftHits.hits.map(h => {
-        const regionLabel = tftRegionLabel(h.region);
-        const rank = tftRankLabel(h, l => t(`tier.${l}` as Parameters<typeof t>[0]));
-        return {
-          type: 'account' as const,
-          name: `${h.gameName}#${h.tagLine}`,
-          href: tftProfileHref(h),
-          sub: rank ? `${regionLabel} · ${rank}` : regionLabel,
-        };
-      });
-    }
-    return hasTag ? [{ type: 'player', name: q }] : [{ type: 'none', name: t('lb.noPlayers') }];
-  };
-
   const navigateToResult = (result: SearchResult) => {
     if (result.type === 'none') return;
     if (result.type === 'account' && result.href) {
-      window.location.href = result.href;
+      window.location.assign(result.href);
     } else if (result.type === 'champion') {
       // No champion-detail route in TFT — send the user to the units list
-      window.location.href = game === 'tft' ? '/tft/units' : `/champions/${result.id}`;
+      window.location.assign(game === 'tft' ? '/tft/units' : `/champions/${result.id}`);
     } else {
-      window.location.href = playerHref(result.name);
+      window.location.assign(playerHref(result.name));
     }
     setSearchOpen(false);
     setSearchQuery('');
@@ -205,14 +206,14 @@ export default function Nav({ active }: NavProps) {
       if (game === 'tft' && !hasTag) {
         // Ohne Tag ist der Name mehrdeutig: Liste aller Konten mit diesem
         // Namen samt Region, bei genau einem direkt weiter (/tft/search).
-        window.location.href = `/tft/search?q=${encodeURIComponent(q.split('#')[0].trim())}`;
+        window.location.assign(`/tft/search?q=${encodeURIComponent(q.split('#')[0].trim())}`);
         setSearchOpen(false);
         setSearchQuery('');
         return;
       }
       const first = results[0];
       if (first?.type === 'none') return;
-      window.location.href = first?.type === 'account' && first.href ? first.href : playerHref(searchQuery);
+      window.location.assign(first?.type === 'account' && first.href ? first.href : playerHref(searchQuery));
       setSearchOpen(false);
       setSearchQuery('');
     }

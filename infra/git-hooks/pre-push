@@ -29,6 +29,8 @@
 #  13. Schreib-Routen               — catches eine oeffentliche Route, die mit
 #                                     dem Allmachts-Schluessel schreibt, ohne
 #                                     den Aufrufer zu pruefen
+#  14. ESLint-Deckel                — catches neue Lint-Fehler vor dem Upload
+#                                     statt erst als rote CI-Mail
 #
 # Ohne Riegel laufen ausserdem mit: der Memory-Reindex und der Wecker fuer die
 # vierteljaehrliche Sicherheitsdurchsicht. Beide melden nur.
@@ -207,6 +209,17 @@ echo "[pre-push] Checking Schreib-Routen ..."
 if ! node scripts/check-write-routes.mjs; then
   echo ""
   echo "Offene Schreib-Route — push blocked."
+  exit 1
+fi
+
+# --- ESLint-Deckel ---------------------------------------------------------
+# Dieselbe Pruefung wie in der CI (.github/workflows/ci.yml). Ohne sie fielen
+# neue Lint-Fehler erst nach dem Push auf — zwei Wochen rote CI-Mails ab
+# 13.09.2026. Mit Zwischenspeicher gemessen: 15,9 s beim ersten Lauf, 1,8 s danach.
+echo "[pre-push] Checking ESLint-Deckel ..."
+if ! node scripts/check-eslint-budget.mjs; then
+  echo ""
+  echo "Mehr ESLint-Fehler als erlaubt — push blocked."
   exit 1
 fi
 

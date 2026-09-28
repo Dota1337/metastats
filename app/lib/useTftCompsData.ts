@@ -20,7 +20,7 @@ import {
   applyAdvancedFilters,
   type AdvancedFilters,
 } from '../components/tft/AdvancedCompFilters';
-import { buildCompFamilies, currentSetFamilies, topFamilyKeys, type CompSortBy } from './tft-comp-families';
+import { buildCompFamilies, currentSetFamilies, topFamilyKeys, type CompApiRow, type CompSortBy } from './tft-comp-families';
 
 export function useTftCompsData() {
   const searchParams = useSearchParams();
@@ -40,7 +40,7 @@ export function useTftCompsData() {
     advFromUrlParam(searchParams.get('adv')),
   );
   const [sortBy, setSortBy] = useState<CompSortBy>(
-    (searchParams.get('sort') as any) || 'avg',
+    (searchParams.get('sort') as CompSortBy | null) || 'avg',
   );
   // Whether the user manually picked a sort. As long as they haven't, toggling
   // the Δ-filter automatically promotes "Trending" so the column they just
@@ -48,7 +48,7 @@ export function useTftCompsData() {
   // but the rows would stay sorted by avg-placement, which made the feature
   // look broken in earlier sessions.
   const [sortTouched, setSortTouched] = useState<boolean>(() => searchParams.has('sort'));
-  const [comps, setComps] = useState<any[]>([]);
+  const [comps, setComps] = useState<CompApiRow[]>([]);
   const [hasData, setHasData] = useState<boolean | null>(null);
   const [patches, setPatches] = useState<PatchInfo[]>([]);
   const [minGames, setMinGames] = useState<number | null>(null);

@@ -8,6 +8,17 @@ import { computeRoles, componentCheckFromItems, jaccard, namedCarries, resolveFa
 
 export type CompSortBy = 'avg' | 'win' | 'top4' | 'pick' | 'velocity' | 'games';
 
+// Zeile der Comp-API (/api/tft/comps) plus die Felder, die die Familienbildung
+// unterwegs anhaengt (_mergedFrom usw.).
+export interface CompVelocity { deltaAvgPlace?: number | null; gamesNow?: number | null; [key: string]: unknown }
+export interface CompApiRow extends FamilyComp {
+  velocity?: CompVelocity | null;
+  typicalAugments?: Array<{ apiName: string; count: number }>;
+  _mergedFrom?: string[];
+  _mainOrigSlug?: string;
+  _mergedFromBuilds?: string[];
+}
+
 // Wie viele Comp-Familien die Liste hoechstens zeigt. Gemessen 2026-08-27:
 // die 40 meistgespielten decken 62 % aller Spiele ab.
 export const TOP_FAMILY_LIMIT = 40;
@@ -20,13 +31,13 @@ export const TOP_FAMILY_LIMIT = 40;
 // Emblems: aggregiert aus topItems aller Family-Variants, gefiltert per
 // set-aware Pattern (^TFT<set>_Item_*EmblemItem$).
 export function buildCompFamilies(
-  filteredComps: any[],
+  filteredComps: CompApiRow[],
   sortBy: CompSortBy,
   assets: TftAssetsBundle | null,
 ): CompFamily[] {
   if (filteredComps.length === 0) return [];
   // Sort-key Helper für Main-Pick + Family-Sort.
-  const sortKey = (c: any): number => {
+  const sortKey = (c: CompApiRow): number => {
     switch (sortBy) {
       case 'win':  return -(c.top1Rate ?? 0);
       case 'top4': return -(c.top4Rate ?? 0);
@@ -50,7 +61,7 @@ export function buildCompFamilies(
     const aug = parts.augmentSlug ? `~${parts.augmentSlug}` : '';
     return `${parts.trait}@${parts.level}_${parts.carry}${aug}`;
   };
-  const consolidated = new Map<string, any>();
+  const consolidated = new Map<string, CompApiRow>();
   for (const c of filteredComps) {
     const normKey = normalizeKey(c.slug || c.clusterKey);
     const existing = consolidated.get(normKey);
@@ -68,7 +79,7 @@ export function buildCompFamilies(
     const ag = existing.games || 0;
     const bg = c.games || 0;
     const total = ag + bg;
-    const wAvg = (a: any, b: any) => total > 0
+    const wAvg = (a: number | null | undefined, b: number | null | undefined) => total > 0
       ? ((a ?? 0) * ag + (b ?? 0) * bg) / total
       : null;
     existing.games = total;
@@ -83,17 +94,17 @@ export function buildCompFamilies(
       existing.typicalAugments = c.typicalAugments;
       existing._mainOrigSlug = c.slug || c.clusterKey;
     }
-    existing._mergedFrom.push(c.slug || c.clusterKey);
+    existing._mergedFrom!.push(c.slug || c.clusterKey);
   }
   // Slug auf Detail-Page-Variante zeigen die am meisten Games hat (sonst 404
   // weil normalizedKey nicht in DB ist)
   for (const v of consolidated.values()) {
-    v.slug = v._mainOrigSlug;
-    v.clusterKey = v._mainOrigSlug;
+    v.slug = v._mainOrigSlug!;
+    v.clusterKey = v._mainOrigSlug!;
   }
   const consolidatedList = [...consolidated.values()];
 
-  const rawGroups = new Map<string, any[]>();
+  const rawGroups = new Map<string, CompApiRow[]>();
   for (const c of consolidatedList) {
     const k = compTraitFamilyKey(c.slug || c.clusterKey);
     if (!rawGroups.has(k)) rawGroups.set(k, []);
@@ -105,7 +116,7 @@ export function buildCompFamilies(
   // Units aus den ROHEN API-Zeilen summieren: die Konsolidierung oben behaelt
   // je Gruppe nur die Units der groessten Zeile, die Spielzahl aber summiert —
   // daraus gerechnet waere die Praesenz jeder Unit zu klein.
-  const rawByFamily = new Map<string, any[]>();
+  const rawByFamily = new Map<string, CompApiRow[]>();
   for (const c of filteredComps) {
     const k = compTraitFamilyKey(c.slug || c.clusterKey);
     if (!rawByFamily.has(k)) rawByFamily.set(k, []);
@@ -130,7 +141,7 @@ export function buildCompFamilies(
     if (!membersOf.has(a)) membersOf.set(a, []);
     membersOf.get(a)!.push(k);
   }
-  const groups = new Map<string, any[]>();
+  const groups = new Map<string, CompApiRow[]>();
   for (const [k] of rawGroups) {
     const a = anchorOf.get(k) ?? k;
     if (!groups.has(a)) groups.set(a, []);
@@ -152,14 +163,14 @@ export function buildCompFamilies(
     // Sub-Variant gemerged. Andere Builds bleiben separate Drop-Down-Einträge.
     // Hash über sortierte unique characterIds — Items werden NICHT in die
     // Identität einbezogen (User-Erwartung „gleiche Units" = gleiche Champions).
-    const buildHash = (v: any): string => {
+    const buildHash = (v: CompApiRow): string => {
       const ids = ((v.typicalUnits || []) as Array<{ characterId: string }>)
         .map(u => u.characterId)
         .filter(Boolean);
       if (ids.length === 0) return `~empty~${v.slug || v.clusterKey}`;
       return [...new Set(ids)].sort().join('|');
     };
-    const byBuild = new Map<string, any[]>();
+    const byBuild = new Map<string, CompApiRow[]>();
     for (const v of rawVariants) {
       const h = buildHash(v);
       if (!byBuild.has(h)) byBuild.set(h, []);
@@ -167,7 +178,7 @@ export function buildCompFamilies(
     }
     // Pro Build-Group: weighted Stats + Anker = games-stärkster Sub-Cluster.
     // Single-Build-Group bleibt unverändert (keine Re-Aggregation nötig).
-    const variants: any[] = [];
+    const variants: CompApiRow[] = [];
     for (const group of byBuild.values()) {
       if (group.length === 1) { variants.push(group[0]); continue; }
       const gTotal = group.reduce((s, v) => s + (v.games || 0), 0);
@@ -189,7 +200,7 @@ export function buildCompFamilies(
     }
     // Main-Variante = sort-besten der konsolidierten Build-Groups.
     // CLONE statt Reference — Code-Analyzer-F3 2026-06-21: das spätere
-    // (mainComp as any).avgPlacement = weightedAvgPlacement würde sonst
+    // mainComp.avgPlacement = weightedAvgPlacement würde sonst
     // das Original-Objekt in variants[] mutieren und beim Re-Render mit
     // anderem sortBy einen bereits-aggregierten Wert als Input für die
     // nächste Aggregation nutzen (Cascade-Drift).
@@ -220,7 +231,7 @@ export function buildCompFamilies(
           emblemMap.set(it.apiName, (emblemMap.get(it.apiName) || 0) + (it.count || 0));
         }
       }
-      for (const a of ((v as any).typicalAugments || []) as Array<{ apiName: string; count: number }>) {
+      for (const a of (v.typicalAugments || [])) {
         if (!a?.apiName) continue;
         augmentMap.set(a.apiName, (augmentMap.get(a.apiName) || 0) + (a.count || 0));
       }
@@ -242,11 +253,11 @@ export function buildCompFamilies(
     // Konsistenz). Single-Variant-Family: weighted = mainComp.avgPlacement
     // → keine sichtbare Änderung.
     if (variants.length > 1) {
-      (mainComp as any).avgPlacement = weightedAvgPlacement;
-      (mainComp as any).top4Rate = weightedTop4Rate;
-      (mainComp as any).top1Rate = weightedTop1Rate;
-      (mainComp as any).games = totalGames;
-      (mainComp as any).pickRate = familyPickRate;
+      mainComp.avgPlacement = weightedAvgPlacement;
+      mainComp.top4Rate = weightedTop4Rate;
+      mainComp.top1Rate = weightedTop1Rate;
+      mainComp.games = totalGames;
+      mainComp.pickRate = familyPickRate;
     }
     // Family-Velocity-Override: bei sortBy='velocity' sortiert die Family-Liste
     // nach Min-Δ aller Sub-Variants, die Hauptcomp-Anzeige zeigte aber den
@@ -255,23 +266,23 @@ export function buildCompFamilies(
     // Velocity-Zahl mit der Sortierung übereinstimmt.
     if (sortBy === 'velocity') {
       let bestΔ = Infinity;
-      let bestSrc: any = null;
+      let bestSrc: CompVelocity | null = null;
       for (const v of variants) {
-        const δ = (v as any).velocity?.deltaAvgPlace;
+        const δ = v.velocity?.deltaAvgPlace;
         if (typeof δ === 'number' && δ < bestΔ) {
           bestΔ = δ;
-          bestSrc = (v as any).velocity;
+          bestSrc = v.velocity ?? null;
         }
       }
       if (bestSrc) {
-        (mainComp as any).velocity = bestSrc;
+        mainComp.velocity = bestSrc;
       }
     }
     const familyRoles = computeRoles(familyUnits(membersOf.get(familyKey) || [familyKey]), totalGames, { ...roleOpts, keyCarry: carry });
     // Item-Traeger am gezeigten Board messen, nicht an der ganzen Familie:
     // Units, die nur in einer Level-Variante stehen, fielen sonst unter die
     // Praesenz-Schwelle, obwohl sie auf diesem Board die Items tragen.
-    const shownSlugs = new Set<string>((mainComp as any)._mergedFromBuilds ?? [variantsBySort[0].slug || variantsBySort[0].clusterKey]);
+    const shownSlugs = new Set<string>(mainComp._mergedFromBuilds ?? [variantsBySort[0].slug || variantsBySort[0].clusterKey]);
     const shownRows = rawVariants.filter(v => shownSlugs.has(v.slug || v.clusterKey));
     const boardRoles = computeRoles(sumUnits(shownRows.map(v => v.typicalUnits)),
       shownRows.reduce((s, v) => s + (v.games || 0), 0), roleOpts);
@@ -306,8 +317,8 @@ export function buildCompFamilies(
         // Family-Velocity = Min-Δ über Variants (most-improved sub-variant
         // drückt die Family nach oben).
         {
-          const aΔ = Math.min(...a.variants.map(v => (v as any).velocity?.deltaAvgPlace ?? Infinity));
-          const bΔ = Math.min(...b.variants.map(v => (v as any).velocity?.deltaAvgPlace ?? Infinity));
+          const aΔ = Math.min(...a.variants.map(v => (v as CompApiRow).velocity?.deltaAvgPlace ?? Infinity));
+          const bΔ = Math.min(...b.variants.map(v => (v as CompApiRow).velocity?.deltaAvgPlace ?? Infinity));
           return aΔ - bΔ;
         }
       case 'avg':
@@ -386,9 +397,11 @@ export function visibleFamilies(
 export const DEDUPE_MIN_JACCARD = 0.6;
 const DEDUPE_BOARD_UNITS = 8;
 
+const unitGames = (u: object): number => Number((u as { gamesWithUnit?: unknown }).gamesWithUnit) || 0;
+
 function boardUnitIds(f: CompFamily): Set<string> {
   return new Set([...(f.mainComp.typicalUnits || [])]
-    .sort((a, b) => ((b as any).gamesWithUnit || b.count || 0) - ((a as any).gamesWithUnit || a.count || 0))
+    .sort((a, b) => (unitGames(b) || b.count || 0) - (unitGames(a) || a.count || 0))
     .slice(0, DEDUPE_BOARD_UNITS)
     .map(u => u.characterId));
 }
@@ -420,10 +433,10 @@ export function familyTrend(f: CompFamily): number | null {
   let w = 0;
   let s = 0;
   for (const v of f.variants) {
-    const vel = (v as any).velocity;
+    const vel = (v as CompApiRow).velocity;
     const d = vel?.deltaAvgPlace;
     if (typeof d !== 'number' || !Number.isFinite(d)) continue;
-    const g = Number(vel.gamesNow) || 0;
+    const g = Number(vel?.gamesNow) || 0;
     s += d * g;
     w += g;
   }

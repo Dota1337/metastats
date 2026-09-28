@@ -8,7 +8,7 @@ import CompsTabs from '../../../components/tft/CompsTabs';
 import StatsFilterBar from '../../../components/tft/StatsFilterBar';
 import TftHero from '../../../components/tft/TftHero';
 import type { CompFamily } from '../../../components/tft/CompFamilyRow';
-import { useI18n } from '../../../lib/i18n';
+import { useI18n, type TranslationKey } from '../../../lib/i18n';
 import { tftChampionTileUrl, tftTraitDisplayName, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { namedCarries } from '../../../lib/tft-comp-roles';
 import { dedupeByCarry, visibleFamilies, familyTrend, type CompSortBy } from '../../../lib/tft-comp-families';
@@ -133,7 +133,7 @@ function AtlasTile({
   family: CompFamily;
   assets: TftAssetsBundle;
   href: string;
-  t: (k: any) => string;
+  t: (k: TranslationKey) => string;
 }) {
   const named = namedCarries({ carries: f.carries, tanks: f.tanks }, f.carry);
   const lead = named[0];

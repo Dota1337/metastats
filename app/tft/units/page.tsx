@@ -128,7 +128,25 @@ export default function TftUnitsPage() {
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [units, assets]);
 
+  // Riot lists shapeshift forms as separate units (Set 18: Lux has ten, one per
+  // trait) — in the shop they are one champion and all share the same icon.
+  // The list shows only the most-played row per icon; the forms keep their own
+  // ids elsewhere (trait pages need them, each form carries its own trait).
+  // Units whose icon is a hash placeholder instead of a character path
+  // (Teemo, Alune, Riftbeasts) are keyed by their own id so they never merge.
+  const shownIds = useMemo(() => {
+    const best = new Map<string, UnitRow>();
+    for (const u of units) {
+      const icon = assets?.champions[u.characterId]?.icon;
+      const key = icon && /characters\/[^/]+\//i.test(icon) ? `i:${icon}` : `n:${u.characterId}`;
+      const cur = best.get(key);
+      if (!cur || u.games > cur.games) best.set(key, u);
+    }
+    return new Set([...best.values()].map(u => u.characterId));
+  }, [units, assets]);
+
   const filtered = useMemo(() => {
+    const keep = shownIds;
     const q = search.trim().toLowerCase();
     const passFilter = units.filter(u => {
       const ch = assets?.champions[u.characterId];
@@ -139,7 +157,7 @@ export default function TftUnitsPage() {
         if (!name.includes(q) && !u.characterId.toLowerCase().includes(q)) return false;
       }
       return true;
-    });
+    }).filter(u => keep.has(u.characterId));
     // Same sub-gate sort as /tft/items: untiered (low-sample) units go to
     // the bottom, tiered units keep their api-sorted order. Without this a
     // niche unit with 200 games + 3.2 avg sits above the popular meta carry
@@ -155,7 +173,7 @@ export default function TftUnitsPage() {
       }
     }
     return [...tiered, ...untiered];
-  }, [units, assets, costFilter, traitFilter, search, tierCutoffs]);
+  }, [units, assets, costFilter, traitFilter, search, tierCutoffs, shownIds]);
 
   // Over all loaded units, not `filtered`, so the item column doesn't shift
   // while searching or filtering by cost/trait. Character count doesn't
@@ -163,7 +181,7 @@ export default function TftUnitsPage() {
   // so the widest name is picked by measuring with the page font; the
   // longest-by-characters stays in the stack as a fallback.
   const longestNames = useMemo(() => {
-    const names = [...new Set(units.map(u => assets?.champions[u.characterId]?.name || prettyCharId(u.characterId)))];
+    const names = [...new Set(units.filter(u => shownIds.has(u.characterId)).map(u => assets?.champions[u.characterId]?.name || prettyCharId(u.characterId)))];
     if (names.length === 0) return [];
     const byChars = names.reduce((a, b) => (b.length > a.length ? b : a));
     const ctx = typeof document !== 'undefined' ? document.createElement('canvas').getContext('2d') : null;
@@ -171,7 +189,7 @@ export default function TftUnitsPage() {
     ctx.font = `500 14px ${getComputedStyle(document.body).fontFamily}`;
     const byPixels = names.reduce((a, b) => (ctx.measureText(b).width > ctx.measureText(a).width ? b : a));
     return byPixels === byChars ? [byChars] : [byPixels, byChars];
-  }, [units, assets]);
+  }, [units, assets, shownIds]);
 
   const currentPatchLabel = patches[0]?.patch;
 

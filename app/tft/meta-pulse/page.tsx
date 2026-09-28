@@ -15,11 +15,12 @@ import { useI18n } from '../../lib/i18n';
 import { loadTftAssets, tftChampionTileUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import { dedupeByPrimaryCluster, primaryClusterKey, parseClusterKey } from '../../lib/tft-cluster';
 import { compDefiningAugmentApiNameFromSlug, shownAugmentSlug } from '../../lib/tft-comp-defining-augments';
+import RegionCompare, { REGION_COMPARE_DEFAULT, parseCompareRegions } from '../../components/tft/RegionCompare';
 
-// W5: Meta-Pulse Landing — eine Seite, vier Pro-Sichtfenster:
+// W5: Meta-Pulse Landing:
 //   • Trending (was bewegt sich jetzt) — folgt jetzt dem Δ-Vergleich-Filter
-//   • KR-Ahead (was spielt Korea vor dem Westen)
 //   • Patch-Movers (was hat der aktuelle Patch entschieden)
+//   • Regionsvergleich (Units in 2-3 Regionen nebeneinander, ?cmp=)
 
 interface MetaPulse {
   hasData: boolean;
@@ -33,10 +34,9 @@ interface MetaPulse {
   velocityMode?: 'patch' | 'crossPatch';
   patches: PatchInfo[];
   rising: { clusterKey: string; deltaAvgPlace: number; avgPlaceNow: number; gamesNow: number }[];
-  krAhead: { clusterKey: string; avgPlaceKr: number; avgPlaceEu: number; pickrateKr: number; pickrateEu: number; krAheadScore: number }[];
   patchWinners: { key: string; currentAvgPlacement: number; deltaAvgPlacement: number; currentGames: number }[];
   patchLosers: { key: string; currentAvgPlacement: number; deltaAvgPlacement: number; currentGames: number }[];
-  counts: { rising: number; krAhead: number; patchSampled: number };
+  counts: { rising: number; patchSampled: number };
 }
 
 export default function TftMetaPulsePage() {
@@ -54,6 +54,7 @@ export default function TftMetaPulsePage() {
     if (!searchParams.has('bucket')) f.bucket = 'master_plus';
     return f;
   });
+  const [compareRegions, setCompareRegions] = useState<string[]>(() => parseCompareRegions(searchParams.get('cmp')));
   const [data, setData] = useState<MetaPulse | null>(null);
   const [loading, setLoading] = useState(true);
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
@@ -68,12 +69,14 @@ export default function TftMetaPulsePage() {
       .then(r => r.json())
       .then(d => { if (!cancelled) { setData(d); setLoading(false); } })
       .catch(() => { if (!cancelled) { setData(null); setLoading(false); } });
-    const url = `${pathname}?${qs}`;
+    // cmp nur, wenn vom Standard abweichend — sonst bleibt die URL wie bisher.
+    const cmp = compareRegions.join(',') === REGION_COMPARE_DEFAULT.join(',') ? '' : `&cmp=${compareRegions.join(',')}`;
+    const url = `${pathname}?${qs}${cmp}`;
     if (typeof window !== 'undefined' && window.location.pathname + window.location.search !== url) {
       router.replace(url, { scroll: false });
     }
     return () => { cancelled = true; };
-  }, [filters, pathname, router]);
+  }, [filters, compareRegions, pathname, router]);
 
   // Aggregat-Sichten dedupliziert nach Primary-Cluster (trait+carry+star+aug):
   // sub-cluster mit unterschiedlichen Secondary-Carry-Suffixen werden zur
@@ -84,13 +87,6 @@ export default function TftMetaPulsePage() {
     ? dedupeByPrimaryCluster(data.rising, r => r.clusterKey, r => r.gamesNow,
         g => {
           const top = [...g].sort((a, b) => b.gamesNow - a.gamesNow)[0];
-          return { ...top, clusterKey: primaryClusterKey(top.clusterKey) };
-        })
-    : [];
-  const krAheadDedup = data?.krAhead
-    ? dedupeByPrimaryCluster(data.krAhead, r => r.clusterKey, r => r.krAheadScore,
-        g => {
-          const top = [...g].sort((a, b) => b.krAheadScore - a.krAheadScore)[0];
           return { ...top, clusterKey: primaryClusterKey(top.clusterKey) };
         })
     : [];
@@ -121,7 +117,7 @@ export default function TftMetaPulsePage() {
         {!loading && !data?.hasData && <EmptyData />}
 
         {data?.hasData && (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {/* Rising — biggest Δ-avg-place vs the user-selected Δ window. */}
             <PulseSection
               title={t('tft.metaPulse.rising')}
@@ -141,25 +137,6 @@ export default function TftMetaPulsePage() {
                   secondary={`Δ ${r.deltaAvgPlace >= 0 ? '+' : ''}${r.deltaAvgPlace.toFixed(2)}`}
                   secondaryColor={r.deltaAvgPlace < 0 ? '#3ecf8e' : '#e44040'}
                   meta={`${r.gamesNow} ${t('tft.gamesShort')}`}
-                />
-              ))}
-            </PulseSection>
-
-            <PulseSection
-              title={t('tft.metaPulse.krAhead')}
-              accent="#c39bff"
-              empty={data.krAhead.length === 0}
-            >
-              {krAheadDedup.map(r => (
-                <PulseRow
-                  key={r.clusterKey}
-                  clusterKey={r.clusterKey}
-                  assets={assets}
-                  bucket={filters.bucket}
-                  primary={`KR Ø ${r.avgPlaceKr.toFixed(2)}`}
-                  secondary={`EU Ø ${r.avgPlaceEu.toFixed(2)}`}
-                  secondaryColor="var(--fg-secondary)"
-                  meta={`+${((r.pickrateKr - r.pickrateEu) * 100).toFixed(2)}% pick`}
                 />
               ))}
             </PulseSection>
@@ -204,6 +181,17 @@ export default function TftMetaPulsePage() {
               ))}
             </PulseSection>
           </div>
+        )}
+
+        {data?.hasData && (
+          <RegionCompare
+            regions={compareRegions}
+            onRegionsChange={setCompareRegions}
+            bucket={data.bucket}
+            days={filters.days}
+            patch={data.selectedPatch || data.currentPatch}
+            assets={assets}
+          />
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-6">

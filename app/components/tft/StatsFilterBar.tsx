@@ -29,6 +29,11 @@ const REGION_OPTIONS: Option[] = [
   { value: 'vn2',   label: 'VN' },
 ];
 
+// Kurzname einer Region (euw1 → EUW), gleiche Quelle wie das Filter-Menue.
+export function regionShortLabel(region: string): string {
+  return REGION_OPTIONS.find(o => o.value === region)?.label || region.toUpperCase();
+}
+
 const BUCKET_OPTIONS: Option[] = [
   // 'pro_pool' ("nur Pro") entfernt 2026-09-01. Der Eimer wird zwar taeglich
   // neu berechnet (scripts/collect-tft-allranks.mjs:141/303), aber aus einer

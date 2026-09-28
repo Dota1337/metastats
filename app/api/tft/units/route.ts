@@ -271,8 +271,10 @@ export async function GET(request: NextRequest) {
 
     // Snapshot-Pfad: gleiches Pattern wie /api/tft/comps. Wenn die Permutation
     // im Bundle steckt, sparen wir den RPC-Roundtrip. Velocity-Overlays werden
-    // nicht vorgerendert → live RPC.
-    if (!wantVelocity) {
+    // nicht vorgerendert → live RPC. Ein ausdruecklich gewaehlter Patch geht
+    // ebenfalls live: die Bundles sind patchuebergreifend gerechnet, liegen
+    // aber unter dem aufgeloesten Patch — sonst zaehlt „18.3" auch Vorpatch-Spiele.
+    if (!wantVelocity && filters.patchFilter == null) {
       const hit = await lookupSnapshot('units', {
         patch: filters.patch,
         region: filters.regionLabel,

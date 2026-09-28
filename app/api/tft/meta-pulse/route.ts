@@ -7,13 +7,12 @@ import {
 import { cachedJson, maybeRedirectByPatchAlias } from '../../../lib/api-cache';
 import { CURRENT_SET } from '../../../lib/current-set';
 
-// Fuenf Datenbank-Abfragen parallel (seit dem Vorpatch-Rueckfall fuer KR voraus).
+// Drei Datenbank-Abfragen parallel.
 export const maxDuration = 60;
 
 // W5: Meta-Pulse — die „ich öffne metastats vor jeder Ranked-Session"-Page.
 // Aggregiert die wichtigsten Pro-Signale in einer Server-Action:
 //   • Velocity-Trending — was bewegt sich am stärksten in den letzten 3 Tagen
-//   • Region-Divergenz  — was spielt KR vor EU
 //   • Patch-Movers      — was hat der aktuelle Patch bewegt
 // Eine Roundtrip statt 4 — die UI rendert alles ohne weitere Cascade.
 //
@@ -25,16 +24,6 @@ interface VelocityRow {
   games_prev: number;
   sum_placement_now: number;
   sum_placement_prev: number;
-}
-
-interface RegionRow {
-  cluster_key: string;
-  games_kr: number;
-  games_eu: number;
-  avg_place_kr: number | null;
-  avg_place_eu: number | null;
-  pickrate_kr: number | null;
-  pickrate_eu: number | null;
 }
 
 interface CompStatsRow {
@@ -139,24 +128,9 @@ export async function GET(request: NextRequest) {
       velocityPatch = null;
     }
 
-    // Fan out: all four queries in parallel. Velocity + region-divergence
-    // are single-scan FILTER aggregates (cheap on Nano). Patch-diff is two
-    // sequential RPCs but kicked off in parallel with the rest.
-    // KR voraus: Am ersten Patch-Tag hat der neue Patch oft zu wenig KR-Spiele.
-    // Deshalb den Vorpatch gleich mit abfragen (parallel, nur im selben Set)
-    // und unten entscheiden, welcher genutzt wird.
-    const divergenceArgs = {
-      p_buckets: buckets,
-      p_set: setNumber,
-      // Follows the user-selected window. For very small windows (<3d) we bump
-      // to 3 to keep the per-region sample meaningful since each region needs
-      // ≥80 games per cluster. Das Fenster zaehlt seit 0070 ab dem juengsten
-      // Datentag, nicht ab heute.
-      p_days: Math.max(3, filters.requestedDays),
-      p_min_games: 80,
-    };
-    const prevSameSet = !!previousPatch;
-    const [velocityRows, regionRows, currentTopComps, prevTopComps, prevRegionRows] = await Promise.all([
+    // Fan out: alle drei Abfragen parallel. „KR voraus" ist seit 2026-09-28
+    // raus — der Regionsvergleich auf der Seite laeuft ueber /api/tft/units.
+    const [velocityRows, currentTopComps, prevTopComps] = await Promise.all([
       callRpc<VelocityRow[]>('get_tft_comp_velocity', {
         p_regions: filters.regions,
         p_buckets: buckets,
@@ -169,10 +143,6 @@ export async function GET(request: NextRequest) {
         p_anchor_offset_days: anchorOffsetDays,
         p_min_games: 100,
       }, 20000).catch(() => [] as VelocityRow[]),
-      callRpc<RegionRow[]>('get_tft_region_divergence', {
-        ...divergenceArgs,
-        p_patch: currentPatch,
-      }, 20000).catch(() => [] as RegionRow[]),
       // Super-lean diff RPC (migration 0035) — scalar-only, drops the 10 MB
       // jsonb_agg payload the previous list-RPC carried for nothing here.
       previousPatch ? callRpc<CompStatsRow[]>('get_tft_comp_stats_for_diff', {
@@ -191,17 +161,7 @@ export async function GET(request: NextRequest) {
         p_set: setNumber,
         p_min_games: 80,
       }, 20000).catch(() => [] as CompStatsRow[]) : Promise.resolve([] as CompStatsRow[]),
-      prevSameSet ? callRpc<RegionRow[]>('get_tft_region_divergence', {
-        ...divergenceArgs,
-        p_patch: previousPatch,
-      }, 20000).catch(() => [] as RegionRow[]) : Promise.resolve([] as RegionRow[]),
     ]);
-
-    // Aktueller Patch, sobald er mindestens 10 Comps mit je >=80 KR-Spielen
-    // hat; sonst der Vorpatch (User-Entscheid C2, 2026-09-13).
-    const useCurrent = regionRows.filter(r => r.games_kr >= 80).length >= 10 || prevRegionRows.length === 0;
-    const krRows = useCurrent ? regionRows : prevRegionRows;
-    const krAheadPatch = useCurrent ? currentPatch : previousPatch;
 
     // Velocity → Top Rising (most-improved avg-place over the comparison
     // window, with both windows above sample-size threshold).
@@ -216,25 +176,6 @@ export async function GET(request: NextRequest) {
       }))
       .filter(v => v.deltaAvgPlace < 0)
       .sort((a, b) => a.deltaAvgPlace - b.deltaAvgPlace)
-      .slice(0, 5);
-
-    // Region divergence → KR-ahead (KR plays more AND better than EU).
-    const krAhead = krRows
-      .filter(r => r.games_kr >= 30 && r.games_eu >= 30
-        && r.pickrate_kr != null && r.pickrate_eu != null
-        && r.avg_place_kr != null && r.avg_place_eu != null
-        // KR muss spuerbar besser platzieren, nicht nur oefter spielen.
-        && r.avg_place_eu - r.avg_place_kr >= 0.1)
-      .map(r => ({
-        clusterKey: r.cluster_key,
-        avgPlaceKr: r.avg_place_kr,
-        avgPlaceEu: r.avg_place_eu,
-        pickrateKr: r.pickrate_kr,
-        pickrateEu: r.pickrate_eu,
-        krAheadScore: (r.pickrate_kr! - r.pickrate_eu!) * 1000 + (r.avg_place_eu! - r.avg_place_kr!),
-      }))
-      .filter(r => r.krAheadScore > 0)
-      .sort((a, b) => b.krAheadScore - a.krAheadScore)
       .slice(0, 5);
 
     // Patch movers — compute simple comp diff inline from the two RPC outputs.
@@ -281,14 +222,13 @@ export async function GET(request: NextRequest) {
       velocityMode,
       patches,
       rising,
-      krAhead,
-      // Patch, aus dem die KR-voraus-Liste stammt (aktueller oder Vorpatch).
-      krAheadPatch,
+      // Uebergang: noch offene alte Tabs lesen krAhead.length.
+      krAhead: [],
       patchWinners,
       patchLosers,
       counts: {
         rising: rising.length,
-        krAhead: krAhead.length,
+        krAhead: 0,
         patchSampled: patchDiffs.length,
       },
     }, {

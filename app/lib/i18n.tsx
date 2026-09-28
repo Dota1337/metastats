@@ -386,7 +386,7 @@ const translations = {
   'tft.player.verifiedTftPro': t6('Verifizierter TFT-Pro', 'Verified TFT Pro', '\uAC80\uC99D\uB41C TFT \uD504\uB85C', '\u8BA4\u8BC1 TFT \u804C\u4E1A\u73A9\u5BB6', 'Pro de TFT verificado', 'Pro TFT v\u00E9rifi\u00E9'),
   'tft.player.verifiedProBadge': t6('\u2713 Verified Pro', '\u2713 Verified Pro', '\u2713 Verified Pro', '\u2713 Verified Pro', '\u2713 Verified Pro', '\u2713 Verified Pro'),
   'tft.player.verifiedTftProBadge': t6('\u2713 Verified TFT Pro', '\u2713 Verified TFT Pro', '\u2713 Verified TFT Pro', '\u2713 Verified TFT Pro', '\u2713 Verified TFT Pro', '\u2713 Verified TFT Pro'),
-  'tft.player.tournamentHistory': t6('Tournament History', 'Tournament History', '\uD1A0\uB108\uBA3C\uD2B8 \uAE30\uB85D', '\u8D5B\u4E8B\u8BB0\u5F55', 'Historial de torneos', 'Historique des tournois'),
+  'tft.player.tournamentHistory': t6('Turnierhistorie', 'Tournament History', '\uD1A0\uB108\uBA3C\uD2B8 \uAE30\uB85D', '\u8D5B\u4E8B\u8BB0\u5F55', 'Historial de torneos', 'Historique des tournois'),
   'tft.player.tournaments': t6('Turniere', 'Tournaments', '\uD1A0\uB108\uBA3C\uD2B8', '\u8D5B\u4E8B', 'Torneos', 'Tournois'),
   'tft.player.colDate': t6('Datum', 'Date', '\uB0A0\uC9DC', '\u65E5\u671F', 'Fecha', 'Date'),
   'tft.player.colPlace': t6('Platz', 'Place', '\uC21C\uC704', '\u540D\u6B21', 'Posici\u00F3n', 'Place'),

@@ -1,13 +1,14 @@
 'use client';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   parseExplorerParams, serializeExplorerQuery,
   type ExplorerQuery, type ExplorerResponse,
 } from './tft-explorer-query';
 
-// Zustand des Data Explorers liegt komplett in der URL (teilbar, Zurueck-Taste
-// funktioniert). Die Anfrage an /api/tft/explorer benutzt dieselbe Form, damit
+// Zustand des Data Explorers liegt komplett in der URL (teilbar). Filter ersetzen
+// den Verlaufseintrag (replace); nur Spruenge in einen anderen Reiter legen einen
+// neuen an (push), damit die Zurueck-Taste dorthin zurueckfuehrt. Die Anfrage an /api/tft/explorer benutzt dieselbe Form, damit
 // Vercel sie als Cache-Schluessel nimmt.
 
 export type ExplorerError = 'busy' | 'timeout' | 'unavailable' | 'failed';
@@ -19,11 +20,22 @@ export function useTftExplorer() {
   const spKey = searchParams.toString();
   const query = useMemo(() => parseExplorerParams(new URLSearchParams(spKey)), [spKey]);
 
-  const setQuery = useCallback((next: ExplorerQuery | ((q: ExplorerQuery) => ExplorerQuery)) => {
+  // Hat diese Sitzung selbst einen Verlaufseintrag angelegt? Dann darf der
+  // Zurueck-Button router.back() nehmen, sonst (geteilter Link) nicht.
+  const pushed = useRef(false);
+
+  const setQuery = useCallback((next: ExplorerQuery | ((q: ExplorerQuery) => ExplorerQuery), opts?: { push?: boolean }) => {
     const q = typeof next === 'function' ? next(query) : next;
     const qs = serializeExplorerQuery(q);
-    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    const url = qs ? `${pathname}?${qs}` : pathname;
+    if (opts?.push) { pushed.current = true; router.push(url, { scroll: false }); }
+    else router.replace(url, { scroll: false });
   }, [query, router, pathname]);
+
+  const backToUnits = useCallback(() => {
+    if (pushed.current) { pushed.current = false; router.back(); return; }
+    setQuery({ ...query, tab: 'units', focus: null, combo: 1 });
+  }, [query, router, setQuery]);
 
   const apiQs = serializeExplorerQuery(query, { forApi: true });
   const [data, setData] = useState<ExplorerResponse | null>(null);
@@ -68,5 +80,5 @@ export function useTftExplorer() {
   // Zeigen die Daten noch die vorige Auswahl? Dann blass statt leer.
   const stale = loading && okQs !== apiQs;
 
-  return { query, setQuery, data, loading, stale, error, reload };
+  return { query, setQuery, backToUnits, data, loading, stale, error, reload };
 }

@@ -2719,7 +2719,6 @@ const translations = {
   'tft.explorer.x.split.star': t6('nach Sternen', 'by stars', '\uC131\uAE09\uBCC4', '\u6309\u661F\u7EA7', 'por estrellas', 'par \u00E9toiles'),
   'tft.explorer.x.split.over': t6('nach \u00DCberzahl', 'by overcap', '\uCD08\uACFC \uC778\uC6D0\uBCC4', '\u6309\u8D85\u51FA\u4EBA\u6570', 'por exceso', 'par surplus'),
   'tft.explorer.x.focus': t6('Tr\u00E4ger', 'Holder', '\uCC29\uC6A9 \uC720\uB2DB', '\u88C5\u5907\u8005', 'Portador', 'Porteur'),
-  'tft.explorer.x.focus.pick': t6('Unit w\u00E4hlen', 'Pick unit', '\uC720\uB2DB \uC120\uD0DD', '\u9009\u62E9\u5355\u4F4D', 'Elegir unidad', 'Choisir une unit\u00E9'),
   'tft.explorer.x.combo.1': t6('Einzeln', 'Single', '\uB2E8\uC77C', '\u5355\u4EF6', 'Individual', 'Seul'),
   'tft.explorer.x.combo.2': t6('Paare', 'Pairs', '2\uAC1C \uC870\uD569', '\u4E24\u4EF6\u7EC4\u5408', 'Pares', 'Paires'),
   'tft.explorer.x.combo.3': t6('Trios', 'Trios', '3\uAC1C \uC870\uD569', '\u4E09\u4EF6\u7EC4\u5408', 'Tr\u00EDos', 'Trios'),
@@ -2728,7 +2727,6 @@ const translations = {
   'tft.explorer.x.err.timeout': t6('Abfrage zu aufwendig', 'Query too heavy', '\uCFFC\uB9AC\uAC00 \uB108\uBB34 \uBB34\uAC70\uC6C0', '\u67E5\u8BE2\u8FC7\u4E8E\u590D\u6742', 'Consulta demasiado pesada', 'Requ\u00EAte trop lourde'),
   'tft.explorer.x.err.unavailable': t6('Explorer gerade nicht erreichbar', 'Explorer currently unavailable', '\uD0D0\uC0C9\uAE30\uB97C \uD604\uC7AC \uC0AC\uC6A9\uD560 \uC218 \uC5C6\uC74C', '\u63A2\u7D22\u5668\u6682\u65F6\u4E0D\u53EF\u7528', 'Explorador no disponible ahora', 'Explorateur indisponible pour le moment'),
   'tft.explorer.x.retry': t6('Erneut versuchen', 'Try again', '\uB2E4\uC2DC \uC2DC\uB3C4', '\u91CD\u8BD5', 'Reintentar', 'R\u00E9essayer'),
-  'tft.explorer.x.name': t6('Name', 'Name', '\uC774\uB984', '\u540D\u79F0', 'Nombre', 'Nom'),
 
   // Item bucket filter (analog to tactics.tools/metatft Standard/Artifact/Emblem/Radiant)
   'tft.item.bucket.all': t6('Alle', 'All', '\uC804\uCCB4', '\u5168\u90E8', 'Todos', 'Tous'),

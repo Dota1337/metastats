@@ -211,6 +211,8 @@ export interface ExplorerRow {
   games: number; matches: number; avg: number; top4: number; top1: number; half: number;
   dOut: number | null; dOutHalf: number | null; top4Out?: number;
   dBase: number | null; dBaseHalf: number | null; top4Base?: number;
+  /** Nur Units-Reiter ohne Stern-Aufteilung: Anteil der Boards mit 3★. */
+  star3?: number | null;
 }
 
 export interface ExplorerMeta {
@@ -236,8 +238,11 @@ export interface ExplorerResponse {
 // (Werte aus dem data-skeptic-Verdict im Plan).
 export const MIN_MATCHES_SOLID = 100;
 export const MAX_HALF_SOLID = 0.25;
-export const isWeakRow = (r: { matches: number; half: number | null }) =>
-  r.matches < MIN_MATCHES_SOLID || r.half == null || r.half > MAX_HALF_SOLID;
+// Der Delta-Bereich ist immer mindestens so breit wie der des Ø-Platzes und
+// zaehlt mit, wo die Delta-Spalte sichtbar ist.
+export const isWeakRow = (r: { matches: number; half: number | null }, deltaHalf?: number | null) =>
+  r.matches < MIN_MATCHES_SOLID || r.half == null || r.half > MAX_HALF_SOLID
+  || (deltaHalf != null && deltaHalf > MAX_HALF_SOLID);
 
 // Letzte Runde (1..N) → "Stufe-Runde" wie im Spiel: Stufe 1 hat 4 Runden,
 // danach 7 je Stufe.

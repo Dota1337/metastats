@@ -18,7 +18,7 @@ export default function ExplorerView() {
     return () => { alive = false; };
   }, []);
   const options = useMemo(() => buildExplorerOptions(assets), [assets]);
-  const { query, setQuery, data, loading, stale, error, reload } = useTftExplorer();
+  const { query, setQuery, backToUnits, data, loading, stale, error, reload } = useTftExplorer();
   const [deltaMode, setDeltaMode] = useState<DeltaMode>('base');
 
   const hasFilters = query.units.length + query.items.length + query.traits.length > 0;
@@ -57,7 +57,7 @@ export default function ExplorerView() {
       ) : (
         <div className={`flex flex-col gap-4 transition-opacity ${stale || loading ? 'opacity-60' : ''}`} aria-busy={loading}>
           <ExplorerSummary data={data} deltaMode={deltaMode} setDeltaMode={setDeltaMode} hasFilters={hasFilters} />
-          <ExplorerResults query={query} setQuery={setQuery} data={data} options={options} assets={assets}
+          <ExplorerResults query={query} setQuery={setQuery} backToUnits={backToUnits} data={data} options={options} assets={assets}
             deltaMode={deltaMode} setDeltaMode={setDeltaMode} />
         </div>
       )}

@@ -59,27 +59,31 @@ export default function RegionCompare({
   const { t } = useI18n();
   const [byRegion, setByRegion] = useState<Record<string, UnitRow[] | null>>({});
   const [query, setQuery] = useState('');
-  const [sortRegion, setSortRegion] = useState<string | null>(null);
+  const [sortPick, setSortPick] = useState<string | null>(null);
 
   const regionsKey = regions.join(',');
+  // Ergebnisse je Abfrage-Schluessel ablegen: ein Filterwechsel macht alte
+  // Eintraege unsichtbar, ohne sie im Effekt zuruecksetzen zu muessen.
+  const reqKey = `${bucket}|${days}|${patch || ''}`;
+  const cellKey = (r: string) => `${reqKey}|${r}`;
   useEffect(() => {
     const ctrl = new AbortController();
-    setByRegion({});
     const base = `bucket=${encodeURIComponent(bucket)}&days=${days}${patch ? `&patch=${encodeURIComponent(patch)}` : ''}`;
     for (const r of regionsKey.split(',')) {
+      const k = `${reqKey}|${r}`;
       fetch(`/api/tft/units?${base}&region=${r}`, { signal: ctrl.signal })
         .then(res => res.ok ? res.json() : { units: [] })
-        .then(d => setByRegion(prev => ({ ...prev, [r]: Array.isArray(d.units) ? d.units : [] })))
-        .catch(err => { if (err?.name !== 'AbortError') setByRegion(prev => ({ ...prev, [r]: [] })); });
+        .then(d => setByRegion(prev => ({ ...prev, [k]: Array.isArray(d.units) ? d.units : [] })))
+        .catch(err => { if (err?.name !== 'AbortError') setByRegion(prev => ({ ...prev, [k]: [] })); });
     }
     return () => ctrl.abort();
-  }, [regionsKey, bucket, days, patch]);
+  }, [regionsKey, reqKey, bucket, days, patch]);
 
-  useEffect(() => {
-    if (sortRegion && !regions.includes(sortRegion)) setSortRegion(null);
-  }, [regions, sortRegion]);
+  // Abgewaehlte Sortier-Region faellt auf den Standard zurueck.
+  const sortRegion = sortPick && regions.includes(sortPick) ? sortPick : null;
+  const setSortRegion = setSortPick;
 
-  const loading = regions.some(r => byRegion[r] == null);
+  const loading = regions.some(r => byRegion[cellKey(r)] == null);
 
   const rows = useMemo(() => {
     if (loading) return [];
@@ -87,7 +91,7 @@ export default function RegionCompare({
     const cells: Record<string, Map<string, Cell>> = {};
     for (const r of regions) {
       const m = new Map<string, Cell>();
-      for (const u of byRegion[r] || []) {
+      for (const u of byRegion[`${reqKey}|${r}`] || []) {
         if (u.games >= MIN_GAMES && u.avgPlacement != null) {
           m.set(u.characterId, { games: u.games, avg: u.avgPlacement, pick: u.pickRate });
           ids.add(u.characterId);
@@ -126,7 +130,7 @@ export default function RegionCompare({
       out.sort((a, b) => b.secured - a.secured);
     }
     return out;
-  }, [loading, regions, byRegion, query, assets, sortRegion]);
+  }, [loading, regions, byRegion, reqKey, query, assets, sortRegion]);
 
   const chip = (active: boolean) => `px-2.5 py-1 text-[11px] uppercase tracking-widest rounded border transition-colors ${
     active

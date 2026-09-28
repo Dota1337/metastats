@@ -286,14 +286,15 @@ function keySql(q, params, components) {
         ? `SELECT DISTINCT r.bid, r.mid, r.placement, u.unit AS key, u.star::INTEGER AS sub, NULL::INTEGER AS sub2 FROM ref r JOIN units u USING (bid)`
         : `SELECT DISTINCT r.bid, r.mid, r.placement, u.unit AS key, NULL::INTEGER AS sub, NULL::INTEGER AS sub2 FROM ref r JOIN units u USING (bid)`;
     case 'items': {
+      // Komponenten stammen aus dem Bundle und sind per ID_RE geprueft,
+      // deshalb als Literal statt als Listen-Parameter. Sie fallen in beiden
+      // Ansichten raus — ein Guertel im Inventar ist kein Build.
+      const compList = `[${components.filter(c => ID_RE.test(c)).map(c => `'${c}'`).join(', ')}]::VARCHAR[]`;
       if (!q.focus) {
         return `SELECT DISTINCT bid, mid, placement, item AS key, NULL::INTEGER AS sub, NULL::INTEGER AS sub2 FROM (
                   SELECT r.bid, r.mid, r.placement, unnest([u.i1, u.i2, u.i3]) AS item FROM ref r JOIN units u USING (bid))
-                WHERE item IS NOT NULL`;
+                WHERE item IS NOT NULL AND NOT list_contains(${compList}, item)`;
       }
-      // Komponenten stammen aus dem Bundle und sind per ID_RE geprueft,
-      // deshalb als Literal statt als Listen-Parameter.
-      const compList = `[${components.filter(c => ID_RE.test(c)).map(c => `'${c}'`).join(', ')}]::VARCHAR[]`;
       const its = `list_sort(list_filter([u.i1, u.i2, u.i3], x -> x IS NOT NULL AND NOT list_contains(${compList}, x)))`;
       const base = `SELECT r.bid, r.mid, r.placement, ${its} AS its FROM ref r JOIN units u USING (bid) WHERE u.unit = ?`;
       params.push(q.focus);
@@ -470,6 +471,18 @@ async function runQuery(holder, q) {
       const refT = { ...ref, t4: ref.hist.slice(0, 4).reduce((a, b) => a + b, 0) };
       out.refGames = ref.n;
       out.rows = rows.map(r => ({ key: r.key, sub: r.sub, sub2: r.sub2, ...rowStats(r, refT) }));
+      // Units: wie oft landet die Unit auf 3★ (hoechste Kopie je Board)?
+      if (q.tab === 'units' && q.split !== 'star' && out.rows.length) {
+        const ps = [];
+        const cteS = fbCte(q, ps);
+        const st = (await conn.runAndReadAll(`
+          WITH ${cteS},
+          s AS (SELECT u.unit, max(u.star) AS st FROM fb r JOIN units u USING (bid) GROUP BY r.bid, u.unit)
+          SELECT unit, (count(*) FILTER (WHERE st >= 3))::DOUBLE / count(*) AS star3
+          FROM s GROUP BY unit`, ps)).getRowObjectsJS();
+        const m = new Map(st.map(x => [x.unit, x.star3]));
+        for (const r of out.rows) r.star3 = m.get(r.key) ?? null;
+      }
     } else if (q.tab !== 'summary') {
       out.rows = [];
       out.refGames = 0;

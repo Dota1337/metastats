@@ -87,7 +87,14 @@ async function readPatchRanges(setNumber) {
       });
       if (res.ok) {
         const rows = (await res.json()).filter((r) => Number(r.set_number) === setNumber && r.patch);
-        if (rows.length) return { source: 'supabase', ranges: rows.map((r) => ({ patch: r.patch, from: r.first_day, to: r.last_day })) };
+        if (rows.length) {
+          const ranges = rows.map((r) => ({ patch: r.patch, from: r.first_day, to: r.last_day }));
+          // Der juengste Patch endet bei Supabase am letzten Aggregat-Tag
+          // (meist gestern); nach vorn offen, sonst fehlt der heutige Tag.
+          const newest = ranges.reduce((a, b) => (b.from > a.from ? b : a));
+          newest.to = '2999-12-31';
+          return { source: 'supabase', ranges };
+        }
       } else {
         log('Patch-RPC HTTP', res.status);
       }
@@ -188,7 +195,7 @@ async function main() {
 
   await run(`CREATE TABLE boards AS
     WITH day_patch AS (
-      SELECT d.day, min(p.patch) AS patch, count(p.patch) > 1 AS patch_edge
+      SELECT d.day, arg_max(p.patch, p.d_from) AS patch, count(p.patch) > 1 AS patch_edge
       FROM (SELECT DISTINCT day FROM b0) d
       LEFT JOIN patch_ranges p ON d.day BETWEEN p.d_from AND p.d_to
       GROUP BY d.day

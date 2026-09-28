@@ -95,7 +95,9 @@ export async function GET(request: NextRequest) {
       const filters = await resolveFilters(searchParams);
       filterSet = filters.setNumber;
       filterPatch = filters.patch;
-      const hit = await lookupSnapshot('units', {
+      // Wie die Liste unten: der Snapshot enthaelt patchuebergreifende Zahlen,
+      // bei einem konkret gewaehlten Patch also direkt aus der DB lesen.
+      const hit = filters.patchFilter != null ? null : await lookupSnapshot('units', {
         patch: filters.patch,
         region: filters.regionLabel,
         days: filters.requestedDays,

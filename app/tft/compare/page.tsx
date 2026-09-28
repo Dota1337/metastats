@@ -11,7 +11,8 @@ import { useI18n, LOCALE_MAP, type Lang } from '../../lib/i18n';
 import TftHero from '../../components/tft/TftHero';
 import { formatTier } from '../../lib/rank-format';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftGameAssetUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
-import { CDRAGON_PLUGINS_BASE, rankEmblemUrl } from '../../lib/cdragon-base';
+import { CDRAGON_PLUGINS_BASE } from '../../lib/cdragon-base';
+import RankEmblem from '../../components/tft/RankEmblem';
 import { formatStage } from '../../lib/tft-stage';
 import { CURRENT_SET } from '../../lib/current-set';
 
@@ -293,14 +294,13 @@ export default function TftComparePage() {
                 {r.error}
               </div>
             );
-            const emblem = rankEmblemUrl(r.tier);
             return (
               <div
                 key={i}
                 className="bg-surface-base border-l-4 rounded p-5 flex items-start gap-3"
                 style={{ borderLeftColor: SERIES_COLORS[i] }}
               >
-                {emblem && <img src={emblem} alt={r.tier || ''} className="w-14 h-14 object-contain shrink-0" />}
+                <RankEmblem tier={r.tier} label={r.tier || ''} className="w-14 h-14" />
                 <div className="flex-1 min-w-0">
                   {(() => {
                     const [gn, tl] = r.name.split('#');

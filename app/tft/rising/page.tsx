@@ -4,7 +4,7 @@ import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
 import { useI18n } from '../../lib/i18n';
 import { ACTIVE_REGIONS } from '../../lib/active-regions';
-import { rankEmblemUrl } from '../../lib/cdragon-base';
+import RankEmblem from '../../components/tft/RankEmblem';
 import { NO_DIVISION_TIERS, RANK_TIER_COLOR } from '../../lib/rank-format';
 import {
   loadTftAssets, tftChampionTileUrl, tftIconUrl, findChampion, findTrait, findItem,
@@ -23,23 +23,6 @@ function stripPrefix(id: string) {
   return id.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
 }
 
-// Das Emblem-Bild ist 1280×720 mit viel leerem Rand; bei object-contain bleibt
-// in kleinen Groessen nur ein Pfeil sichtbar. Fester Ausschnitt (~340 px um
-// die Bildmitte 640/345) fuer alle Stufen, damit Riots Groessenstaffel der
-// Wappen als Rang-Signal erhalten bleibt.
-function RankEmblem({ tier, label, className }: { tier: string; label: string; className: string }) {
-  const src = rankEmblemUrl(tier);
-  if (!src) return null;
-  return (
-    <span className={`relative inline-block overflow-hidden shrink-0 ${className}`}>
-      <img
-        src={src} alt={label} title={label}
-        className="absolute max-w-none"
-        style={{ width: '376.5%', left: '-138.2%', top: '-51.5%' }}
-      />
-    </span>
-  );
-}
 
 function RankBadge({ r, tierName }: { r: RisingRank; tierName: (tier: string) => string }) {
   const name = tierName(r.tier);

@@ -34,7 +34,8 @@ export default function TablesView({ loot, wisps }: { loot: LootTablesFile | nul
     <main className="min-h-screen bg-surface-page">
       <Nav active="tools" />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
-        <div className="bg-surface-base border border-border-subtle rounded-lg p-5 mb-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
+        {/* Umschalter mittig in der Leiste: ab lg drei Spalten (Titel | Umschalter | leer), darunter mittig unter dem Titel. */}
+        <div className="bg-surface-base border border-border-subtle rounded-lg p-5 mb-5 flex flex-col gap-3 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:items-center">
           <h1 className="text-white text-xl font-medium">{t('tft.tables.title')}</h1>
           <ViewTabs
             value={view}
@@ -69,7 +70,7 @@ export default function TablesView({ loot, wisps }: { loot: LootTablesFile | nul
 // (app/components/tft/CompsTabs.tsx). Die Wisp-Filter bleiben bewusst beim dezenten Toggle.
 function ViewTabs<V extends string>({ value, onChange, options }: { value: V; onChange: (v: V) => void; options: [V, string][] }) {
   return (
-    <div className="inline-flex self-start sm:self-auto items-center gap-1 p-1 rounded-lg border border-accent-a40 bg-surface-raised">
+    <div className="inline-flex self-center items-center gap-1 p-1 rounded-lg border border-accent-a40 bg-surface-raised">
       {options.map(([v, label]) => {
         const on = value === v;
         return (

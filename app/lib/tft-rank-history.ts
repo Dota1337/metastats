@@ -9,6 +9,10 @@
 //   - letzter Abruf vor dem Set-Wechsel → sofort neu (blockierend, 4 s Deckel)
 //   - aelter als 7 Tage, oder Fehler aelter als 24 h → im Hintergrund (after())
 // Schutzregeln beim Speichern stehen an mergeRankSources.
+//
+// Anzeige seit 2026-09-28 (User): Rang am Set-Ende (end_*) + hoechste LP des
+// Sets (peak_lp). peak_* bleibt der Hoechstrang aus MetaTFT; die Anzeige-Regel
+// steht in tft-rank-kind.ts (setRankDisplay).
 
 import { after } from 'next/server';
 import { CURRENT_SET, CURRENT_SET_STARTED_AT_MS } from './current-set';
@@ -27,6 +31,19 @@ const STANDARD_RANKED_QUEUE = 1100;
 const SOURCE_TIMEOUT_MS = 4000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const REFRESH_AFTER_MS = 7 * DAY_MS;
+// Ab hier gibt es end_* (Migration 0076). Aeltere Abrufe haben fuer
+// MetaTFT-Zeilen keinen Endrang und muessen einmal neu geholt werden.
+export const RANK_SCHEMA_AT_MS = Date.parse('2026-09-28T15:30:00Z');
+
+// Vom User bestaetigte Korrekturen, die keine Quelle liefert. Chillout war in
+// Set 8.5 Challenger 760 LP (dak.gg-Ranglistenverlauf, geprueft 2026-09-28);
+// MetaTFT hat fuer 8_2 nur einen Platzhalter, dak.gg nur "Master I".
+const RANK_OVERRIDES: { puuid: string; set_label: string; set_number: number; tier: string; lp: number }[] = [
+  {
+    puuid: 'NQoWt3WdMPUlQxeianc3L4nBVz8_TXwvW8h34YNVTKs2s7DKVgydtHnLwOFrt5fT6aKxSyfPB0O2Aw',
+    set_label: 'TFTSet8_2', set_number: 8, tier: 'CHALLENGER', lp: 760,
+  },
+];
 
 export interface SeasonRank {
   set_number: number;
@@ -36,6 +53,9 @@ export interface SeasonRank {
   peak_division: string | null;
   peak_lp: number | null;
   peak_rating_label: string | null;
+  end_tier?: string | null;
+  end_division?: string | null;
+  end_lp?: number | null;
   total_games: number | null;
   source: string;
 }
@@ -51,12 +71,14 @@ export function refreshMode(
   now: number,
   setStartedAt: number | null,
   force = false,
+  schemaAt: number = RANK_SCHEMA_AT_MS,
 ): 'none' | 'block' | 'background' {
   const last = state?.metatft_fetched_at ? Date.parse(state.metatft_fetched_at) : NaN;
   if (force || !state || !Number.isFinite(last)) return 'block';
   // Vor dem Set-Wechsel geholt: der Stand fuer das abgelaufene Set kann ein
   // Zwischenstand sein — der darf nicht einmal kurz als Endrang erscheinen.
-  if (setStartedAt != null && last < setStartedAt) return 'block';
+  // Vor RANK_SCHEMA_AT geholt: Endrang fehlt noch.
+  if (last < Math.max(setStartedAt ?? 0, schemaAt)) return 'block';
   const age = now - last;
   if (state.metatft_status === 'error' ? age > DAY_MS : age > REFRESH_AFTER_MS) return 'background';
   return 'none';
@@ -134,8 +156,34 @@ function errMsg(e: unknown): string {
 }
 
 export async function loadRankHistory(puuid: string): Promise<SeasonRank[]> {
-  // UNRANKED ist kein Rang — dakgg liefert es fuer Sets ohne Ranglisten-Spiele.
-  return (await loadRankHistoryRaw(puuid)).filter(r => isRealTier(r.peak_tier));
+  return applyRankOverrides(puuid, await loadRankHistoryRaw(puuid));
+}
+
+/**
+ * Korrekturen einsetzen und Zeilen ohne echten Rang entfernen (UNRANKED ist
+ * kein Rang — dakgg liefert es fuer Sets ohne Ranglisten-Spiele). Laufendes
+ * Set bleibt auch ohne Endrang drin: dort setzt die Oberflaeche den Live-Rang
+ * ein. Exportiert fuer Tests.
+ */
+export function applyRankOverrides(puuid: string, rows: SeasonRank[], currentSet = CURRENT_SET): SeasonRank[] {
+  const out = [...rows];
+  for (const o of RANK_OVERRIDES) {
+    if (o.puuid !== puuid) continue;
+    const i = out.findIndex(r => r.set_label === o.set_label);
+    const base: SeasonRank = i >= 0 ? out[i] : {
+      set_number: o.set_number, set_label: o.set_label, queue_id: STANDARD_RANKED_QUEUE,
+      peak_tier: null, peak_division: null, peak_lp: null, peak_rating_label: null, total_games: null, source: 'override',
+    };
+    const row: SeasonRank = {
+      ...base,
+      peak_tier: o.tier, peak_division: null, peak_lp: o.lp, peak_rating_label: `${o.tier} ${o.lp} LP`,
+      end_tier: o.tier, end_division: null, end_lp: o.lp, source: 'override',
+    };
+    if (i >= 0) out[i] = row; else out.push(row);
+  }
+  return out
+    .filter(r => isRealTier(r.end_tier) || (r.set_number >= currentSet && isRealTier(r.peak_tier)))
+    .sort((a, b) => b.set_number - a.set_number || (b.set_label || '').localeCompare(a.set_label || ''));
 }
 
 async function loadRankHistoryRaw(puuid: string): Promise<SeasonRank[]> {
@@ -283,19 +331,28 @@ export function parseMetatftProfile(data: MetatftProfile | null | undefined, cur
   return out;
 }
 
-// Eine MetaTFT-Zeile ohne peak_rating (bei Set 8.5/9 so geliefert) ist leer
-// und darf keine dakgg-Zeile verdraengen — also gar nicht erst erzeugen.
+// peak_rating = Hoechstrang, rating_text = letzter gesehener Stand = Endrang.
+// Bei Set 8.5/9 liefert MetaTFT keinen peak_rating und den Zeitstempel
+// 1970-01-01 — der rating_text dort ist kein verlaesslicher Endrang (oft ein
+// Platzhalter "MASTER I 0 LP"), dafuer gilt dakgg. Ohne beides: keine Zeile.
 function metatftRow(setNumber: number, setLabel: string, entry: MetatftEntry): SeasonRank | null {
   const peak = parsePeakRating(entry?.peak_rating);
-  if (!peak || !isRealTier(peak.tier)) return null;
+  const ts = parseUtc(entry?.timestamp);
+  const end = ts != null && ts > 0 ? parsePeakRating(entry?.rating_text) : null;
+  const hasPeak = !!peak && isRealTier(peak.tier);
+  const hasEnd = !!end && isRealTier(end.tier);
+  if (!hasPeak && !hasEnd) return null;
   return {
     set_number: setNumber,
     set_label: setLabel,
     queue_id: STANDARD_RANKED_QUEUE,
-    peak_tier: peak.tier,
-    peak_division: peak.division,
-    peak_lp: peak.lp,
-    peak_rating_label: String(entry.peak_rating),
+    peak_tier: hasPeak ? peak!.tier : null,
+    peak_division: hasPeak ? peak!.division : null,
+    peak_lp: hasPeak ? peak!.lp : null,
+    peak_rating_label: hasPeak ? String(entry.peak_rating) : null,
+    end_tier: hasEnd ? end!.tier : null,
+    end_division: hasEnd ? end!.division : null,
+    end_lp: hasEnd ? end!.lp : null,
     total_games: entry?.num_games ?? entry?.total_games ?? null,
     source: 'metatft',
   };
@@ -359,14 +416,18 @@ async function fetchDakggSeasons(
     if (setNumber == null) continue;
     const tier = (s.tier || '').toUpperCase();
     const division = s.rank ? String(s.rank).toUpperCase() : null;
+    // dakgg kennt nur den Rang am Set-Ende, ohne LP — also nur end_*.
     out.push({
       set_number: setNumber,
       set_label: canonicalLabel,
       queue_id: STANDARD_RANKED_QUEUE,
-      peak_tier: tier,
-      peak_division: division,
-      peak_lp: null,                                     // dakgg doesn't expose LP for past seasons
-      peak_rating_label: division ? `${tier} ${division}` : tier,
+      peak_tier: null,
+      peak_division: null,
+      peak_lp: null,
+      peak_rating_label: null,
+      end_tier: tier,
+      end_division: division,
+      end_lp: null,
       total_games: null,
       source: 'dakgg',
     });
@@ -374,23 +435,47 @@ async function fetchDakggSeasons(
   return out;
 }
 
-// Welche Zeilen werden geschrieben? Exportiert fuer Tests. Regeln:
-//  - MetaTFT (Hoechstrang) schlaegt dakgg (Endrang) im selben Set.
+// Welche Zeilen werden geschrieben? Exportiert fuer Tests. Je Feld:
+//  - Hoechstrang (peak_*) nur aus MetaTFT; fehlt MetaTFT diesmal, bleibt der
+//    gespeicherte MetaTFT-Wert. Alte dakgg-Zeilen trugen ihren Endrang in
+//    peak_* — der wird dabei geleert.
+//  - Endrang (end_*): MetaTFT, sonst gespeicherter MetaTFT-Endrang, sonst dakgg.
 //  - dakgg nie fuers laufende Set (Tagesstand) und nie UNRANKED.
-//  - dakgg ueberschreibt keine gespeicherte MetaTFT-Zeile mit Rang — sonst
-//    ersetzt ein MetaTFT-Ausfall oder -404 echte Hoechstraenge.
 export function mergeRankSources(metatft: SeasonRank[], dakgg: SeasonRank[], existing: SeasonRank[] = [], currentSet = CURRENT_SET): SeasonRank[] {
-  const protectedLabels = new Set(
-    existing.filter(r => r.source === 'metatft' && isRealTier(r.peak_tier) && r.set_label).map(r => r.set_label!),
-  );
-  const byLabel = new Map<string, SeasonRank>();
+  const labels = new Set<string>();
+  const mt = new Map<string, SeasonRank>();
+  const dk = new Map<string, SeasonRank>();
+  const ex = new Map<string, SeasonRank>();
+  for (const r of metatft) if (r.set_label) { mt.set(r.set_label, r); labels.add(r.set_label); }
   for (const r of dakgg) {
-    if (!r.set_label || r.set_number >= currentSet || !isRealTier(r.peak_tier)) continue;
-    if (protectedLabels.has(r.set_label)) continue;
-    byLabel.set(r.set_label, r);
+    if (!r.set_label || r.set_number >= currentSet || !isRealTier(r.end_tier)) continue;
+    dk.set(r.set_label, r); labels.add(r.set_label);
   }
-  for (const r of metatft) if (r.set_label) byLabel.set(r.set_label, r);
-  return [...byLabel.values()];
+  for (const r of existing) if (r.set_label) ex.set(r.set_label, r);
+
+  const out: SeasonRank[] = [];
+  for (const label of labels) {
+    const m = mt.get(label), d = dk.get(label), e = ex.get(label);
+    const eMt = e?.source === 'metatft' ? e : undefined;
+    const peakFrom = m && isRealTier(m.peak_tier) ? m : eMt && isRealTier(eMt.peak_tier) ? eMt : undefined;
+    const endFrom = m && isRealTier(m.end_tier) ? m : eMt && isRealTier(eMt.end_tier) ? eMt : d;
+    const base = (m || d || e)!;
+    out.push({
+      set_number: base.set_number,
+      set_label: label,
+      queue_id: STANDARD_RANKED_QUEUE,
+      peak_tier: peakFrom?.peak_tier ?? null,
+      peak_division: peakFrom?.peak_division ?? null,
+      peak_lp: peakFrom?.peak_lp ?? null,
+      peak_rating_label: peakFrom?.peak_rating_label ?? null,
+      end_tier: endFrom?.end_tier ?? null,
+      end_division: endFrom?.end_division ?? null,
+      end_lp: endFrom?.end_lp ?? null,
+      total_games: m?.total_games ?? eMt?.total_games ?? null,
+      source: m || eMt ? 'metatft' : 'dakgg',
+    });
+  }
+  return out;
 }
 
 // "CHALLENGER I 1566 LP" → { tier: 'CHALLENGER', division: 'I', lp: 1566 }

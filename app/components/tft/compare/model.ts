@@ -41,6 +41,9 @@ export interface SeasonRankRow {
   peak_tier: string | null;
   peak_division: string | null;
   peak_lp: number | null;
+  end_tier?: string | null;
+  end_division?: string | null;
+  end_lp?: number | null;
   source?: string | null;
 }
 

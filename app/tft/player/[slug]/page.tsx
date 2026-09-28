@@ -39,7 +39,7 @@ interface TftProRecord {
 import { loadTftSetMeta } from '../../../lib/tft-dd-assets';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { formatTier } from '../../../lib/rank-format';
-import { isEndRank, rankKey } from '../../../lib/tft-rank-kind';
+import { setRankDisplay, withLiveRank, type SetRankDisplay } from '../../../lib/tft-rank-kind';
 import { CURRENT_SET } from '../../../lib/current-set';
 import type { TftMatchSummary } from '../../../lib/tft-match-processor';
 
@@ -58,6 +58,9 @@ interface SeasonRank {
   peak_division: string | null;
   peak_lp: number | null;
   peak_rating_label: string | null;
+  end_tier?: string | null;
+  end_division?: string | null;
+  end_lp?: number | null;
   total_games: number | null;
   source: string;
 }
@@ -867,17 +870,17 @@ function TftProBadge({ pro }: { pro: TftProRecord }) {
 function RankBlock({ ranked, seasonRanks }: { ranked: SummonerData['ranked']; seasonRanks?: SeasonRank[] }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
-  const pastSeasons = (seasonRanks || [])
-    .filter(s => rankKey(s.peak_tier, s.peak_division, s.peak_lp) >= 0)
-    .map(s => {
-      // Laufendes Set: gespeicherter Hoechstrang kann bis zu 7 Tage alt sein —
-      // liegt der Live-Rang hoeher, gilt der.
-      if (s.set_number !== CURRENT_SET || !ranked?.tier) return s;
-      const live = rankKey(ranked.tier, ranked.rank ?? null, ranked.leaguePoints ?? null);
-      if (live <= rankKey(s.peak_tier, s.peak_division, s.peak_lp)) return s;
-      return { ...s, peak_tier: ranked.tier, peak_division: ranked.rank ?? null, peak_lp: ranked.leaguePoints ?? null, source: 'riot' };
-    })
-    .sort((a, b) => b.set_number - a.set_number);
+  // Je Set: Rang am Set-Ende + hoechste LP (Regel in tft-rank-kind.ts).
+  // Laufendes Set: der Live-Rang ist der aktuelle Stand.
+  const live = { tier: ranked?.tier ?? null, rank: ranked?.rank ?? null, lp: ranked?.leaguePoints ?? null };
+  const rows = [...(seasonRanks || [])];
+  if (live.tier && !rows.some(s => s.set_number === CURRENT_SET)) {
+    rows.push({ set_number: CURRENT_SET, set_label: `TFTSet${CURRENT_SET}`, queue_id: 1100, peak_tier: null, peak_division: null, peak_lp: null, peak_rating_label: null, total_games: null, source: 'riot' });
+  }
+  const pastSeasons = rows
+    .map(s => ({ s, d: setRankDisplay(s.set_number === CURRENT_SET ? withLiveRank(s, CURRENT_SET, live)! : s) }))
+    .filter((x): x is { s: SeasonRank; d: SetRankDisplay } => x.d != null)
+    .sort((a, b) => b.s.set_number - a.s.set_number || (b.s.set_label || '').localeCompare(a.s.set_label || ''));
 
   const inner = !ranked || !ranked.tier ? (
     <>
@@ -917,8 +920,8 @@ function RankBlock({ ranked, seasonRanks }: { ranked: SummonerData['ranked']; se
                 {t('tft.player.peakRankPerSet')}
               </div>
               <div className="space-y-1.5">
-                {pastSeasons.map(s => (
-                  <SeasonRankRow key={s.set_number} season={s} />
+                {pastSeasons.map(({ s, d }) => (
+                  <SeasonRankRow key={s.set_label || s.set_number} season={s} rank={d} />
                 ))}
               </div>
             </div>
@@ -929,31 +932,20 @@ function RankBlock({ ranked, seasonRanks }: { ranked: SummonerData['ranked']; se
   );
 }
 
-function SeasonRankRow({ season }: { season: SeasonRank }) {
+function SeasonRankRow({ season, rank }: { season: SeasonRank; rank: SetRankDisplay }) {
   const { t } = useI18n();
-  const tier = (season.peak_tier || '').toUpperCase();
-  const color = TIER_COLORS[tier] || 'var(--fg-secondary)';
+  const color = TIER_COLORS[rank.tier] || 'var(--fg-secondary)';
   const setLabel = formatSetLabel(season.set_label, season.set_number);
-  // Build from structured fields via formatTier so Challenger/GM/Master
-  // never render the bogus "I" division. peak_rating_label is from the
-  // source (metatft/dakgg) and contains the raw tier+division string,
-  // so it would re-introduce the "I" — only use it as a last-resort
-  // fallback when peak_tier is missing.
-  const tierLabel = tier
-    ? formatTier(tier, season.peak_division)
-    : (season.peak_rating_label || '');
+  // formatTier laesst bei Master/GM/Challenger die falsche "I"-Division weg.
   const rankText = [
-    tierLabel,
-    season.peak_lp != null ? `${season.peak_lp} LP` : '',
+    formatTier(rank.tier, rank.div),
+    rank.lp != null ? `${rank.lp} LP` : '',
   ].filter(Boolean).join(' ');
   return (
     <div className="flex items-center justify-between gap-3 text-xs">
       <div className="text-fg-secondary flex-shrink-0">{setLabel}</div>
       <div className="flex items-center gap-2 min-w-0">
         <span style={{ color }} className="font-medium truncate">{rankText}</span>
-        {isEndRank(season) && (
-          <span className="text-fg-muted text-[10px] flex-shrink-0">{t('tft.player.endRank')}</span>
-        )}
         {season.total_games != null && (
           <span className="text-fg-muted text-[10px] flex-shrink-0">{season.total_games} {t('tft.gamesShort')}</span>
         )}

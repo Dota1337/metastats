@@ -8,7 +8,7 @@ import {
 import { formatStage } from '../../../lib/tft-stage';
 import { withAlpha } from '../../../lib/color';
 import RankEmblem from '../RankEmblem';
-import { isEndRank, rankKey } from '../../../lib/tft-rank-kind';
+import { lastRowPerSet, rankKey, setRankDisplay, withLiveRank, type SetRankDisplay } from '../../../lib/tft-rank-kind';
 import {
   PLAYER_COLORS, rankScore, shortName, currentRank,
   type ComparePlayer, type SeasonRankRow,
@@ -393,38 +393,18 @@ export function UnitsBlock({ players, assets, setNumber }: { players: Loaded[]; 
   );
 }
 
-// ── Hoechster Rang je Set ────────────────────────────────────────────────────
-const peakKey = rankKey;
-
-type Peak = { tier: string; div: string | null; lp: number | null; end: boolean };
-// Je Set gibt es teils zwei Eintraege (Halbsets, zwei Quellen, leere Zeilen) —
-// der hoechste gewinnt.
-function peaksBySet(rows: SeasonRankRow[]): Map<number, Peak> {
-  const out = new Map<number, Peak>();
-  for (const r of rows) {
-    if (peakKey(r.peak_tier, r.peak_division, r.peak_lp) < 0) continue;
-    const cur = out.get(r.set_number);
-    if (!cur || peakKey(r.peak_tier, r.peak_division, r.peak_lp) > peakKey(cur.tier, cur.div, cur.lp)) {
-      out.set(r.set_number, { tier: r.peak_tier!.toUpperCase(), div: r.peak_division, lp: r.peak_lp, end: isEndRank(r) });
-    }
-  }
-  return out;
-}
-
+// ── Rang je Set: Endrang + hoechste LP (Regel in tft-rank-kind.ts) ───────────
 const MAX_SETS = 6;
 export function SetRanksBlock({ players, currentSet }: { players: Loaded[]; currentSet: number }) {
   const { t } = useI18n();
   const peaks = players.map(({ p }) => {
-    const m = peaksBySet(p.stats?.seasonRanks || []);
-    // Aktuelles Set: gespeicherter Hoechstrang kann bis zu 7 Tage alt sein —
-    // liegt der Live-Rang hoeher, gilt der. Nie nach unten ersetzen.
-    const r = currentRank(p);
-    if (r.tier && peakKey(r.tier, r.rank, r.lp) >= 0) {
-      const old = m.get(currentSet);
-      if (!old || peakKey(r.tier, r.rank, r.lp) > peakKey(old.tier, old.div, old.lp)) {
-        m.set(currentSet, { tier: r.tier.toUpperCase(), div: r.rank, lp: r.lp, end: false });
-      }
-    }
+    const rows = lastRowPerSet<SeasonRankRow>(p.stats?.seasonRanks || []);
+    const m = new Map<number, SetRankDisplay>();
+    for (const [s, r] of rows) { const d = setRankDisplay(r); if (d) m.set(s, d); }
+    // Laufendes Set: der Live-Rang ist der aktuelle Stand.
+    const cur = withLiveRank(rows.get(currentSet), currentSet, currentRank(p));
+    const live = cur ? setRankDisplay(cur) : null;
+    if (live) m.set(currentSet, live);
     return m;
   });
   const sets = [...new Set(peaks.flatMap(m => [...m.keys()]))].sort((a, b) => b - a).slice(0, MAX_SETS);
@@ -443,7 +423,7 @@ export function SetRanksBlock({ players, currentSet }: { players: Loaded[]; curr
           </thead>
           <tbody>
             {sets.map(s => {
-              const keys = peaks.map(m => { const x = m.get(s); return x ? peakKey(x.tier, x.div, x.lp) : -1; });
+              const keys = peaks.map(m => { const x = m.get(s); return x ? rankKey(x.tier, x.div, x.lp) : -1; });
               const best = Math.max(...keys);
               const unique = keys.filter(k => k === best).length === 1 && best >= 0;
               return (
@@ -458,9 +438,7 @@ export function SetRanksBlock({ players, currentSet }: { players: Loaded[]; curr
                             <RankEmblem tier={x.tier} label={tierLabel(t, x.tier, x.div)} className={`w-8 h-8 ${unique && keys[k] === best ? '' : 'opacity-70'}`} />
                             <span className="text-[10px] tabular-nums text-fg-secondary">
                               {NO_DIVISION_TIERS.has(x.tier) ? (x.lp != null ? `${x.lp} LP` : '') : (x.div || '')}
-                            </span>
-                            {x.end && <span className="text-[9px] text-fg-muted leading-tight">{t('tft.player.endRank')}</span>}
-                          </div>
+                            </span>                          </div>
                         ) : <div className="text-center text-fg-muted">—</div>}
                       </td>
                     );

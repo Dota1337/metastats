@@ -12,7 +12,7 @@ import { regionShortLabel } from './StatsFilterBar';
 
 export const REGION_COMPARE_DEFAULT = ['euw1', 'kr', 'na1'];
 const MIN_REGIONS = 2;
-const MAX_REGIONS = 3;
+const MAX_REGIONS = 7;
 // Unter dieser Spielzahl zeigt die Zelle „—".
 const MIN_GAMES = 100;
 // Streuung einer Einzelplatzierung (1-8 gleichverteilt ≈ 2,29).

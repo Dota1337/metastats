@@ -173,6 +173,37 @@
       "persistent": true
     },
     {
+      "name": "metastats-explorer-api.service",
+      "kind": "service",
+      "description": "metastats TFT Data Explorer: Abfrage-Dienst (nur 127.0.0.1:4110)",
+      "scripts": [
+        "scripts/explorer-duckdb-server.mjs"
+      ]
+    },
+    {
+      "name": "metastats-explorer-build.service",
+      "kind": "service",
+      "description": "metastats TFT Data Explorer: Analyse-Speicher (DuckDB) naechtlich neu bauen",
+      "scripts": [
+        "scripts/build-explorer-store.mjs"
+      ],
+      "After": [
+        "postgresql.service"
+      ]
+    },
+    {
+      "name": "metastats-explorer-build.timer",
+      "kind": "timer",
+      "description": "metastats TFT Data Explorer: Analyse-Speicher taeglich neu bauen",
+      "scripts": [],
+      "onCalendar": [
+        "*-*-* 02:15:00 UTC"
+      ],
+      "interval": [],
+      "activates": "metastats-explorer-build.service",
+      "persistent": true
+    },
+    {
       "name": "metastats-health.service",
       "kind": "service",
       "description": "metastats Health-Probe (API + Supabase) + Auto-Restart",
@@ -514,6 +545,13 @@
       "activates": "metastats-daily-crawl.service",
       "onCalendar": [
         "*-*-* 05:45:00 UTC"
+      ]
+    },
+    {
+      "timer": "metastats-explorer-build.timer",
+      "activates": "metastats-explorer-build.service",
+      "onCalendar": [
+        "*-*-* 02:15:00 UTC"
       ]
     },
     {
@@ -1039,6 +1077,9 @@
     ".github/workflows/metatft-comps-daily.yml": [
       "metatft-comps/datei-frische",
       "metatft-comps/familien-abdeckung"
+    ],
+    "metastats-explorer-build.service": [
+      "explorer/datei-frische"
     ],
     ".github/workflows/pro-teams-weekly.yml": [
       "pro-teams/datei-frische",

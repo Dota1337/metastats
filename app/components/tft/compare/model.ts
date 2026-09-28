@@ -41,6 +41,7 @@ export interface SeasonRankRow {
   peak_tier: string | null;
   peak_division: string | null;
   peak_lp: number | null;
+  source?: string | null;
 }
 
 export interface AgentSignal { signal: string; z: number | null; available: boolean }

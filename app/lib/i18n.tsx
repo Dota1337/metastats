@@ -399,6 +399,7 @@ const translations = {
   'tft.player.unranked': t6('Unranked', 'Unranked', '\uC5B8\uB7AD\uD06C', '\u672A\u5B9A\u7EA7', 'Sin clasificar', 'Non class\u00E9'),
   'tft.player.allSeasons': t6('Alle Saisons ({n})', 'All seasons ({n})', '\uC804\uCCB4 \uC2DC\uC98C ({n})', '\u6240\u6709\u8D5B\u5B63 ({n})', 'Todas las temporadas ({n})', 'Toutes les saisons ({n})'),
   'tft.player.peakRankPerSet': t6('H\u00F6chster Rang pro Set', 'Peak rank per Set', '\uC138\uD2B8\uBCC4 \uCD5C\uACE0 \uB4F1\uAE09', '\u6BCF\u8D5B\u5B63\u6700\u9AD8\u6BB5\u4F4D', 'Rango m\u00E1ximo por Set', 'Rang max. par Set'),
+  'tft.player.endRank': t6('Endrang', 'End rank', '\uCD5C\uC885 \uB4F1\uAE09', '\u6700\u7EC8\u6BB5\u4F4D', 'Rango final', 'Rang final'),
   'tft.champion': t6('Champion', 'Champion', '\uCC54\uD53C\uC5B8', '\u82F1\u96C4', 'Campe\u00F3n', 'Champion'),
   'tft.compare.performanceRadar': t6('Performance-Radar', 'Performance Radar', '\uD37C\uD3EC\uBA3C\uC2A4 \uB808\uC774\uB354', '\u8868\u73B0\u96F7\u8FBE', 'Radar de rendimiento', 'Radar de performance'),
   'tft.compare.headToHead': t6('Head-to-Head', 'Head-to-Head', '\uB9DE\uB300\uACB0', '\u6B63\u9762\u5BF9\u51B3', 'Cara a cara', 'Face-\u00E0-face'),

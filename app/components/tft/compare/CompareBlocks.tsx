@@ -8,6 +8,7 @@ import {
 import { formatStage } from '../../../lib/tft-stage';
 import { withAlpha } from '../../../lib/color';
 import RankEmblem from '../RankEmblem';
+import { isEndRank, rankKey } from '../../../lib/tft-rank-kind';
 import {
   PLAYER_COLORS, rankScore, shortName, currentRank,
   type ComparePlayer, type SeasonRankRow,
@@ -393,15 +394,9 @@ export function UnitsBlock({ players, assets, setNumber }: { players: Loaded[]; 
 }
 
 // ── Hoechster Rang je Set ────────────────────────────────────────────────────
-const TIER_ORDER = ['IRON', 'BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'EMERALD', 'DIAMOND', 'MASTER', 'GRANDMASTER', 'CHALLENGER'];
-const DIV_ORDER: Record<string, number> = { IV: 0, III: 1, II: 2, I: 3 };
-function peakKey(tier: string | null, div: string | null, lp: number | null): number {
-  const i = TIER_ORDER.indexOf((tier || '').toUpperCase());
-  if (i < 0) return -1;
-  return i * 10000 + (DIV_ORDER[(div || '').toUpperCase()] ?? 0) * 1000 + (lp ?? 0);
-}
+const peakKey = rankKey;
 
-type Peak = { tier: string; div: string | null; lp: number | null };
+type Peak = { tier: string; div: string | null; lp: number | null; end: boolean };
 // Je Set gibt es teils zwei Eintraege (Halbsets, zwei Quellen, leere Zeilen) —
 // der hoechste gewinnt.
 function peaksBySet(rows: SeasonRankRow[]): Map<number, Peak> {
@@ -410,7 +405,7 @@ function peaksBySet(rows: SeasonRankRow[]): Map<number, Peak> {
     if (peakKey(r.peak_tier, r.peak_division, r.peak_lp) < 0) continue;
     const cur = out.get(r.set_number);
     if (!cur || peakKey(r.peak_tier, r.peak_division, r.peak_lp) > peakKey(cur.tier, cur.div, cur.lp)) {
-      out.set(r.set_number, { tier: r.peak_tier!.toUpperCase(), div: r.peak_division, lp: r.peak_lp });
+      out.set(r.set_number, { tier: r.peak_tier!.toUpperCase(), div: r.peak_division, lp: r.peak_lp, end: isEndRank(r) });
     }
   }
   return out;
@@ -421,12 +416,13 @@ export function SetRanksBlock({ players, currentSet }: { players: Loaded[]; curr
   const { t } = useI18n();
   const peaks = players.map(({ p }) => {
     const m = peaksBySet(p.stats?.seasonRanks || []);
-    // Aktuelles Set: dakgg liefert dort kein LP, der Live-Rang ist genauer.
+    // Aktuelles Set: gespeicherter Hoechstrang kann bis zu 7 Tage alt sein —
+    // liegt der Live-Rang hoeher, gilt der. Nie nach unten ersetzen.
     const r = currentRank(p);
     if (r.tier && peakKey(r.tier, r.rank, r.lp) >= 0) {
       const old = m.get(currentSet);
-      if (!old || peakKey(r.tier, r.rank, r.lp) >= peakKey(old.tier, old.div, old.lp) || old.lp == null) {
-        m.set(currentSet, { tier: r.tier.toUpperCase(), div: r.rank, lp: r.lp });
+      if (!old || peakKey(r.tier, r.rank, r.lp) > peakKey(old.tier, old.div, old.lp)) {
+        m.set(currentSet, { tier: r.tier.toUpperCase(), div: r.rank, lp: r.lp, end: false });
       }
     }
     return m;
@@ -463,6 +459,7 @@ export function SetRanksBlock({ players, currentSet }: { players: Loaded[]; curr
                             <span className="text-[10px] tabular-nums text-fg-secondary">
                               {NO_DIVISION_TIERS.has(x.tier) ? (x.lp != null ? `${x.lp} LP` : '') : (x.div || '')}
                             </span>
+                            {x.end && <span className="text-[9px] text-fg-muted leading-tight">{t('tft.player.endRank')}</span>}
                           </div>
                         ) : <div className="text-center text-fg-muted">—</div>}
                       </td>

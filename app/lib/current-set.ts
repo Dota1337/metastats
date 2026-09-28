@@ -63,3 +63,13 @@ export const CURRENT_SET_LABEL: string = CURRENT_SET_NAME
 const rawStart: unknown = (tftSet as { setStartDate?: unknown }).setStartDate;
 export const CURRENT_SET_START_DATE: string | null =
   typeof rawStart === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(rawStart) ? rawStart : null;
+
+// Genauer Zeitpunkt des Set-Wechsels (ms seit Epoch): detectedAt ist der Moment,
+// in dem der Crawl das neue Set live gesehen hat. Faellt zurueck auf
+// Mitternacht UTC des Startdatums. Gebraucht, wo ein Tag zu grob ist — z. B.
+// Set-17-Spiele vom Vormittag des 26.08. duerfen nicht als Set 18 zaehlen.
+const rawDetected: unknown = (tftSet as { detectedAt?: unknown }).detectedAt;
+const detectedMs = typeof rawDetected === 'string' ? Date.parse(rawDetected) : NaN;
+export const CURRENT_SET_STARTED_AT_MS: number | null = Number.isFinite(detectedMs)
+  ? detectedMs
+  : CURRENT_SET_START_DATE ? Date.parse(`${CURRENT_SET_START_DATE}T00:00:00Z`) : null;

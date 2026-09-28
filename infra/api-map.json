@@ -11,7 +11,7 @@
     "tables": 32,
     "rpcs": 28,
     "files": 11,
-    "edges": 355,
+    "edges": 356,
     "unused": 8,
     "unresolved": 1
   },
@@ -1030,10 +1030,12 @@
       "group": "tft",
       "file": "app/api/tft/player-stats/route.ts",
       "via": [
+        "app/lib/current-set.ts",
         "app/lib/regions.ts",
         "app/lib/riot-fetch.ts",
         "app/lib/tft-player-cache.ts",
-        "app/lib/tft-rank-history.ts"
+        "app/lib/tft-rank-history.ts",
+        "public/tft-set.json"
       ],
       "used": true,
       "usedBy": [
@@ -2981,6 +2983,11 @@
     {
       "from": "api:/api/tft/player-stats",
       "to": "ext:riot-api",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/player-stats",
+      "to": "ext:riot-web",
       "kind": "fetches"
     },
     {

@@ -39,6 +39,8 @@ interface TftProRecord {
 import { loadTftSetMeta } from '../../../lib/tft-dd-assets';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { formatTier } from '../../../lib/rank-format';
+import { isEndRank, rankKey } from '../../../lib/tft-rank-kind';
+import { CURRENT_SET } from '../../../lib/current-set';
 import type { TftMatchSummary } from '../../../lib/tft-match-processor';
 
 interface SummonerData {
@@ -865,7 +867,17 @@ function TftProBadge({ pro }: { pro: TftProRecord }) {
 function RankBlock({ ranked, seasonRanks }: { ranked: SummonerData['ranked']; seasonRanks?: SeasonRank[] }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
-  const pastSeasons = (seasonRanks || []).filter(s => s.peak_tier).sort((a, b) => b.set_number - a.set_number);
+  const pastSeasons = (seasonRanks || [])
+    .filter(s => rankKey(s.peak_tier, s.peak_division, s.peak_lp) >= 0)
+    .map(s => {
+      // Laufendes Set: gespeicherter Hoechstrang kann bis zu 7 Tage alt sein —
+      // liegt der Live-Rang hoeher, gilt der.
+      if (s.set_number !== CURRENT_SET || !ranked?.tier) return s;
+      const live = rankKey(ranked.tier, ranked.rank ?? null, ranked.leaguePoints ?? null);
+      if (live <= rankKey(s.peak_tier, s.peak_division, s.peak_lp)) return s;
+      return { ...s, peak_tier: ranked.tier, peak_division: ranked.rank ?? null, peak_lp: ranked.leaguePoints ?? null, source: 'riot' };
+    })
+    .sort((a, b) => b.set_number - a.set_number);
 
   const inner = !ranked || !ranked.tier ? (
     <>
@@ -939,6 +951,9 @@ function SeasonRankRow({ season }: { season: SeasonRank }) {
       <div className="text-fg-secondary flex-shrink-0">{setLabel}</div>
       <div className="flex items-center gap-2 min-w-0">
         <span style={{ color }} className="font-medium truncate">{rankText}</span>
+        {isEndRank(season) && (
+          <span className="text-fg-muted text-[10px] flex-shrink-0">{t('tft.player.endRank')}</span>
+        )}
         {season.total_games != null && (
           <span className="text-fg-muted text-[10px] flex-shrink-0">{season.total_games} {t('tft.gamesShort')}</span>
         )}

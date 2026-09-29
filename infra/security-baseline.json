@@ -253,8 +253,8 @@
       "titel": "Die drei neuen LoL-Tabellen haben nur eine Sperre statt zwei",
       "ort": "supabase/migrations/0067_lol_player_match_cache.sql",
       "schwere": "hinweis",
-      "status": "offen",
-      "belegt_mit": "grep -n -iE 'row level security|revoke|grant|policy' 0067_lol_player_match_cache.sql 0068_lol_player_season_stats.sql zeigt nur die Entzuege (0067:126-127, 0068:43) und kein 'enable row level security'. Die direkt folgenden Migrationen machen es anders: 0069:30-31 und 0070_tft_comp_list_precomputed:40-41 schalten den Zeilenschutz zusaetzlich ein.",
+      "status": "behoben",
+      "belegt_mit": "0079_rls_lockdown.sql schaltet den Zeilenschutz fuer alle drei LoL-Tabellen und die Sicherungstabelle tft_mv_peaks_backup_20260927 ein und entzieht anon/authenticated alle Rechte. Live 2026-09-29: 0 Tabellen in public mit RLS aus; Anon-Abfrage auf alle vier -> HTTP 401 permission denied, Anon-DELETE auf lol_match_fill_queue -> 401. Wiederholung blockt scripts/check-migration-rls.mjs im pre-push. Vorher: grep -n -iE 'row level security|revoke|grant|policy' 0067_lol_player_match_cache.sql 0068_lol_player_season_stats.sql zeigt nur die Entzuege (0067:126-127, 0068:43) und kein 'enable row level security'. Die direkt folgenden Migrationen machen es anders: 0069:30-31 und 0070_tft_comp_list_precomputed:40-41 schalten den Zeilenschutz zusaetzlich ein.",
       "seit": "2026-09-19",
       "zuletzt_gesehen": "2026-09-19"
     },

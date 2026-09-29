@@ -212,6 +212,16 @@ if ! node scripts/check-write-routes.mjs; then
   exit 1
 fi
 
+# --- Zeilenschutz in Migrationen -----------------------------------------
+# Jede Tabelle in public braucht RLS, sonst ist sie ueber den Anon-Schluessel
+# aus dem Browser les- und schreibbar (Supabase-Warnung 2026-09-29, 0079).
+echo "[pre-push] Checking Zeilenschutz in Migrationen ..."
+if ! node scripts/check-migration-rls.mjs; then
+  echo ""
+  echo "Tabelle ohne Zeilenschutz — push blocked."
+  exit 1
+fi
+
 # --- ESLint-Deckel ---------------------------------------------------------
 # Dieselbe Pruefung wie in der CI (.github/workflows/ci.yml). Ohne sie fielen
 # neue Lint-Fehler erst nach dem Push auf — zwei Wochen rote CI-Mails ab

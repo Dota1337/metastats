@@ -78,7 +78,8 @@ export function withMarker(text, state) {
 }
 const textOf = (body) => (body || '').replace(MARK, '').trimEnd();
 
-const BOX_HINT = 'Details auf der Box: `node scripts/check-contracts.mjs`';
+const boxHint = (id) => 'Details auf der Box: `node scripts/check-contracts.mjs' + (id ? ` --id ${id}` : '') + '`';
+const BOX_HINT = boxHint();
 
 function contractIssue(r, checkedAt) {
   if (r.sensitive) {
@@ -89,7 +90,7 @@ function contractIssue(r, checkedAt) {
   }
   return {
     title: `[Vertrag] ${r.id}`,
-    text: `Vertrag \`${r.id}\` ist rot (Stand ${checkedAt}).\n\nGrund: ${r.reason || 'Details auf der Box'}\n\n${BOX_HINT} --id ${r.id}`,
+    text: `Vertrag \`${r.id}\` ist rot (Stand ${checkedAt}).\n\nGrund: ${r.reason || 'Details auf der Box'}\n\n${boxHint(r.id)}`,
   };
 }
 

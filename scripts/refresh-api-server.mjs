@@ -127,6 +127,7 @@ import { REGIONAL_ROUTING as REGIONAL, getAccountRouting } from './lib/regional-
 import { CURRENT_SET, loadCurrentSet } from './lib/current-set.mjs';
 import { queryRisingCandidates, playstyleOf, RISING_DAYS, RISING_LIMIT } from './lib/tft-rising.mjs';
 import { ACTIVE_REGIONS } from './lib/active-regions.mjs';
+import { redactReport, verifySignature } from './lib/contracts-alert.mjs';
 
 // ─ env loader (matches crawler) ────────────────────────────────────────────
 function loadEnv() {
@@ -152,6 +153,9 @@ const RIOT_KEY = process.env.RIOT_API_KEY_TFT;
 const DB_URL = process.env.DATABASE_URL;
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+// Optional — bewusst nicht in der Pflichtliste unten.
+const CONTRACTS_READ_TOKEN = process.env.CONTRACTS_READ_TOKEN || '';
+const CONTRACTS_STATUS_PATH = process.env.CONTRACTS_STATUS_PATH || '/var/lib/metastats/contracts-status.json';
 if (!AUTH_TOKEN || !RIOT_KEY || !DB_URL || !SUPA_URL || !SUPA_KEY) {
   console.error('Missing env: REFRESH_API_TOKEN / RIOT_API_KEY_TFT / DATABASE_URL / SUPABASE_*');
   process.exit(1);
@@ -962,6 +966,32 @@ const server = http.createServer(async (req, res) => {
     } catch (err) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       return res.end(JSON.stringify({ ...base, ok: false, error: String(err?.message || err) }));
+    }
+  }
+
+  // Gekuerzter Vertragsstatus fuer die GitHub-Action contracts-alert. Eigenes
+  // Geheimnis (nicht REFRESH_API_TOKEN), per HMAC ueber einen Zeitstempel —
+  // zur Box gibt es kein HTTPS. Fehlt das Geheimnis, antwortet nur diese Route
+  // 503; der Dienst selbst laeuft weiter.
+  if (req.method === 'GET' && req.url === '/contracts-status') {
+    const noStore = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' };
+    if (!CONTRACTS_READ_TOKEN) {
+      res.writeHead(503, noStore);
+      return res.end(JSON.stringify({ error: 'not_configured' }));
+    }
+    if (!verifySignature(CONTRACTS_READ_TOKEN, req.headers['x-ms-ts'], req.headers['x-ms-sig'])) {
+      res.writeHead(401, noStore);
+      return res.end(JSON.stringify({ error: 'unauthorized' }));
+    }
+    try {
+      const report = JSON.parse(readFileSync(CONTRACTS_STATUS_PATH, 'utf8'));
+      const registry = JSON.parse(readFileSync(resolve('infra/contracts.json'), 'utf8'));
+      const typeById = new Map((registry.contracts || registry).map((c) => [c.id, c.type ?? '']));
+      res.writeHead(200, noStore);
+      return res.end(JSON.stringify(redactReport(report, typeById)));
+    } catch {
+      res.writeHead(503, noStore);
+      return res.end(JSON.stringify({ error: 'status_unavailable' }));
     }
   }
 

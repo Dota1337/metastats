@@ -1,0 +1,39 @@
+name: Contracts alert daily
+
+# Holt taeglich den Vertragsstatus der Box (Timer 23:00 UTC) und legt pro rotem
+# Laufzeit-Vertrag eine Aufgabe mit Label contract-broken an — die Aufgabe
+# schickt die Mail. Logik und Regeln: scripts/lib/contracts-alert.mjs.
+#
+# Das Repo ist oeffentlich: die Box liefert nur einen gekuerzten Status, und
+# das Skript schreibt ihn nicht ins Log.
+
+on:
+  schedule:
+    - cron: '30 23 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: contracts-alert
+  cancel-in-progress: false
+
+jobs:
+  alert:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Vertragsstatus abgleichen
+        env:
+          CONTRACTS_STATUS_URL: ${{ secrets.CONTRACTS_STATUS_URL }}
+          CONTRACTS_READ_TOKEN: ${{ secrets.CONTRACTS_READ_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/contracts-alert.mjs

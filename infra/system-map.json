@@ -647,6 +647,19 @@
       "onPush": true
     },
     {
+      "file": "contracts-alert.yml",
+      "name": "Contracts alert daily",
+      "schedule": [
+        "30 23 * * *"
+      ],
+      "scripts": [
+        "scripts/lib/contracts-alert.mjs",
+        "scripts/contracts-alert.mjs"
+      ],
+      "manualDispatch": true,
+      "onPush": false
+    },
+    {
       "file": "deploy-hetzner.yml",
       "name": "Deploy crawler to Hetzner",
       "schedule": [],

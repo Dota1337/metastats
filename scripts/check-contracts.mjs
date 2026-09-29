@@ -17,7 +17,7 @@
  *   1  mindestens ein Vertrag verletzt oder nicht prüfbar (Fehler)
  */
 
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync, renameSync } from 'node:fs';
 import { dirname } from 'node:path';
 import {
   loadEnv, loadContracts, checkContract, closePools,
@@ -60,7 +60,9 @@ if (OUT_PATH) {
   // Best-effort: ein nicht schreibbarer Statuspfad darf den Check nicht kippen.
   try {
     mkdirSync(dirname(OUT_PATH), { recursive: true });
-    writeFileSync(OUT_PATH, JSON.stringify(report, null, 2));
+    // tmp + rename: refresh-api liest die Datei (/contracts-status) nie halb.
+    writeFileSync(`${OUT_PATH}.tmp`, JSON.stringify(report, null, 2));
+    renameSync(`${OUT_PATH}.tmp`, OUT_PATH);
   } catch (err) {
     console.error(`[warn] Status-Datei ${OUT_PATH} nicht schreibbar: ${err.message}`);
   }

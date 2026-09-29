@@ -23,7 +23,7 @@ import {
   applyAnchorMultiplicity,
 } from '../../../lib/tft-comp-family-merge';
 import { buildLevelOutcome } from '../../../lib/tft-comp-level-outcome';
-import { buildCompOutcome, outcomeCoverageComplete, type CompOutcomeRaw } from '../../../lib/tft-comp-outcome';
+import { buildCompOutcome, outcomeHasData, type CompOutcomeRaw } from '../../../lib/tft-comp-outcome';
 import { componentCheckFromItems, type IsComponent } from '../../../lib/tft-comp-roles';
 import {
   COMP_PRECOMPUTE_BUCKETS,
@@ -430,10 +430,11 @@ export async function GET(request: NextRequest) {
       }
       // Neue Bloecke (Migration 0078): Platzverteilung, Endlevel, Unit- und
       // Item-Wirkung. Eigene Abfrage mit eigenem Zeitlimit; Fehler oder
-      // Zeitueberschreitung lassen die Seite unberuehrt (outcome = null). Nur
-      // anzeigen, wenn fuer JEDE Tageszeile im Fenster Ergebnisse da sind —
-      // sonst waere der Schnitt ueber eine andere Grundmenge gerechnet als der
-      // Rest der Seite. Kein Nachrechnen alter Tage, die Bloecke laufen an.
+      // Zeitueberschreitung lassen die Seite unberuehrt (outcome = null). Die
+      // Bloecke erscheinen ab 30 Spielen mit Ergebnis-Zeilen, auch wenn noch
+      // nicht jeder Tag im Fenster welche hat — sie nennen ihre eigene
+      // Spielzahl. Kein Nachrechnen alter Tage (Einzelspiel-Speicher hat eine
+      // andere Spielermenge und keinen Rang).
       let outcome: ReturnType<typeof buildCompOutcome> | null = null;
       try {
         const raw = await callRpc<CompOutcomeRaw>('get_tft_comp_outcome', {
@@ -444,7 +445,7 @@ export async function GET(request: NextRequest) {
           p_patch: filters.patchFilter,
           p_set: filters.setNumber,
         }, 8000);
-        if (outcomeCoverageComplete(raw)) outcome = buildCompOutcome(raw);
+        if (outcomeHasData(raw)) outcome = buildCompOutcome(raw);
       } catch (e) {
         console.warn('[tft/comps] comp_outcome skipped:', (e as Error).message);
       }

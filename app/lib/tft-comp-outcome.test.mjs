@@ -6,7 +6,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  buildCompOutcome, meanDiff, gradeItem, outcomeItemGroup, outcomeCoverageComplete,
+  buildCompOutcome, meanDiff, gradeItem, outcomeItemGroup, outcomeHasData,
 } from './tft-comp-outcome.ts';
 
 const close = (a, b, eps = 1e-3) => assert.ok(Math.abs(a - b) < eps, `${a} != ${b}`);
@@ -96,9 +96,10 @@ test('buildCompOutcome: leere Antwort bricht nicht', () => {
   assert.deepEqual(o.levels, []);
 });
 
-test('outcomeCoverageComplete: nur bei voller Abdeckung', () => {
-  assert.equal(outcomeCoverageComplete({ rows_outcome: 3, rows_stats: 3 }), true);
-  assert.equal(outcomeCoverageComplete({ rows_outcome: 2, rows_stats: 3 }), false);
-  assert.equal(outcomeCoverageComplete({ rows_outcome: 0, rows_stats: 0 }), false);
-  assert.equal(outcomeCoverageComplete(null), false);
+test('outcomeHasData: ab 30 Spielen, auch bei Teil-Abdeckung', () => {
+  assert.equal(outcomeHasData({ games: 30 }), true);
+  assert.equal(outcomeHasData({ games: 29 }), false);
+  assert.equal(outcomeHasData({ games: 0 }), false);
+  assert.equal(outcomeHasData({ games: '120' }), true);
+  assert.equal(outcomeHasData(null), false);
 });

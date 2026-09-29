@@ -247,9 +247,15 @@ export function buildCompOutcome(raw: CompOutcomeRaw): CompOutcome {
   };
 }
 
-/** Bloecke nur zeigen, wenn fuer jede Tageszeile im Fenster Ergebnisse da sind. */
-export function outcomeCoverageComplete(raw: Pick<CompOutcomeRaw, 'rows_outcome' | 'rows_stats'> | null | undefined): boolean {
-  if (!raw) return false;
-  const a = num(raw.rows_outcome), b = num(raw.rows_stats);
-  return b > 0 && a >= b;
+/** Untergrenze wie in der Comp-Liste (minGames=30). */
+export const OUTCOME_MIN_GAMES = 30;
+
+/**
+ * Bloecke zeigen, sobald im Fenster genug Spiele mit Ergebnis-Zeilen liegen —
+ * auch wenn noch nicht jeder Tag welche hat (User 2026-09-29, Weg 3). Die
+ * Bloecke nennen ihre eigene Spielzahl. Eine Region schreibt ihren Tag immer
+ * am Stueck, halbe Tage einer Region gibt es nicht.
+ */
+export function outcomeHasData(raw: Pick<CompOutcomeRaw, 'games'> | null | undefined): boolean {
+  return !!raw && num(raw.games) >= OUTCOME_MIN_GAMES;
 }

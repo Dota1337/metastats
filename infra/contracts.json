@@ -41,6 +41,16 @@
       "note": "Normalrate 5000-6500/Tag. Speist /tft/comps."
     },
     {
+      "id": "daily-crawl/comp-outcome",
+      "owner": "metastats-daily-crawl.service",
+      "backend": "supabase",
+      "table": "tft_daily_comp_outcome",
+      "dateColumn": "day",
+      "maxLagDays": 2,
+      "minRows": 3000,
+      "note": "Seit Migration 0078 (2026-09-28), eine Zeile je Zeile in tft_daily_comp_stats. Speist Platzverteilung, Items je Unit, Unit-Wirkung und Endlevel auf /tft/comps/[slug]. Fehlt ein Tag, blendet die Route die Bloecke fuer jedes Fenster mit diesem Tag aus (rows_outcome < rows_stats)."
+    },
+    {
       "id": "snapshot-publisher/comp-list-precomputed",
       "owner": "metastats-snapshot-publisher.service",
       "backend": "supabase",

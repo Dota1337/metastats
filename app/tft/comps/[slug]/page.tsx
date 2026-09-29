@@ -18,6 +18,7 @@ import CompActiveTraits from '../../../components/tft/CompActiveTraits';
 import CompLevelActiveTraits from '../../../components/tft/CompLevelActiveTraits';
 import CompGuide from '../../../components/tft/CompGuide';
 import CompFlexUnits from '../../../components/tft/CompFlexUnits';
+import { OutcomePlacement, OutcomeItems, OutcomeUnitEffect, OutcomeEndLevel } from '../../../components/tft/CompOutcome';
 
 // Recharts-Komponenten lazy via next/dynamic — sparen ~95 KB Bundle aus
 // initial-Load der Detail-Page (perf-critic-Verdict 2026-06-21). Skeleton
@@ -255,6 +256,8 @@ export default function TftCompDetailPage() {
               bucket={bucket}
             />
 
+            {comp.outcome && <OutcomePlacement outcome={comp.outcome} t={t} />}
+
             <BlockHeadline label={t('tft.comp.block.live')} />
 
             {/* Comp-Guide aus MetaTFT — Augments + Early Game + Carousel.
@@ -362,6 +365,8 @@ export default function TftCompDetailPage() {
                 </div>
               </section>
             )}
+
+            {comp.outcome && <OutcomeItems outcome={comp.outcome} assets={assets} bucket={bucket} t={t} />}
 
             {/* Boards by Activation-Level — End-Board pro Trait-Aktivierungs-
                 Stufe mit Stats. Kritisch für Cap-Decision Stage 4-5+. */}
@@ -528,12 +533,16 @@ export default function TftCompDetailPage() {
               );
             })()}
 
+            {comp.outcome && <OutcomeEndLevel outcome={comp.outcome} t={t} />}
+
             <CompFlexUnits
               units={comp.flexUnits || []}
               assets={assets}
               bucket={bucket}
               t={t}
             />
+
+            {comp.outcome && <OutcomeUnitEffect outcome={comp.outcome} assets={assets} bucket={bucket} t={t} />}
 
             {/* Carry-Star-Outcome — Reroll-Decision-Helper Stage 3-5/3-6. */}
             {(comp.carryStarOutcome && comp.carryStarOutcome.length >= 2) && (() => {

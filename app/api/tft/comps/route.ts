@@ -23,6 +23,7 @@ import {
   applyAnchorMultiplicity,
 } from '../../../lib/tft-comp-family-merge';
 import { buildLevelOutcome } from '../../../lib/tft-comp-level-outcome';
+import { buildCompOutcome, outcomeCoverageComplete, type CompOutcomeRaw } from '../../../lib/tft-comp-outcome';
 import { componentCheckFromItems, type IsComponent } from '../../../lib/tft-comp-roles';
 import {
   COMP_PRECOMPUTE_BUCKETS,
@@ -427,6 +428,26 @@ export async function GET(request: NextRequest) {
           levelOutcome = buildLevelOutcome(members);
         }
       }
+      // Neue Bloecke (Migration 0078): Platzverteilung, Endlevel, Unit- und
+      // Item-Wirkung. Eigene Abfrage mit eigenem Zeitlimit; Fehler oder
+      // Zeitueberschreitung lassen die Seite unberuehrt (outcome = null). Nur
+      // anzeigen, wenn fuer JEDE Tageszeile im Fenster Ergebnisse da sind —
+      // sonst waere der Schnitt ueber eine andere Grundmenge gerechnet als der
+      // Rest der Seite. Kein Nachrechnen alter Tage, die Bloecke laufen an.
+      let outcome: ReturnType<typeof buildCompOutcome> | null = null;
+      try {
+        const raw = await callRpc<CompOutcomeRaw>('get_tft_comp_outcome', {
+          p_cluster_keys: familySlugs,
+          p_regions: filters.regions,
+          p_buckets: filters.buckets,
+          p_days: filters.days,
+          p_patch: filters.patchFilter,
+          p_set: filters.setNumber,
+        }, 8000);
+        if (outcomeCoverageComplete(raw)) outcome = buildCompOutcome(raw);
+      } catch (e) {
+        console.warn('[tft/comps] comp_outcome skipped:', (e as Error).message);
+      }
       const comp = {
         ...baseComp(mergedRow, participants),
         ...enrichComp(mergedRow),
@@ -436,6 +457,7 @@ export async function GET(request: NextRequest) {
         aliasedFrom: variantMode === 'exact' ? aliasedFrom : null,
         aliasedFromFamily,
         levelOutcome,
+        outcome,
         variantMode,
         // Alle Familien (<trait>__<carry>), die hier zusammengelegt sind —
         // VariantsSwitcher und Seitentitel lesen daraus. Anker zuerst.

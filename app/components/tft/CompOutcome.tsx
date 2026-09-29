@@ -58,10 +58,11 @@ function EffectCell({ effect }: { effect: Effect | null }) {
 function GradeChip({ grade, t }: { grade: ItemGrade; t: T }) {
   if (!grade) return <span className="text-fg-muted">—</span>;
   const color = grade === 'core' ? GOLD : grade === 'strong' ? GOOD : grade === 'weak' ? BAD : '#9aa6b2';
+  const rgb = grade === 'core' ? '224,199,90' : grade === 'strong' ? '62,207,142' : grade === 'weak' ? '228,64,64' : '154,166,178';
   return (
     <span
       className="text-[10px] font-medium px-1.5 py-[1px] rounded whitespace-nowrap"
-      style={{ color, backgroundColor: `${color}1f`, border: `1px solid ${color}59` }}
+      style={{ color, backgroundColor: `rgba(${rgb},0.12)`, border: `1px solid rgba(${rgb},0.35)` }}
     >
       {t(`tft.comp.outcome.grade.${grade}` as TranslationKey)}
     </span>

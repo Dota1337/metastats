@@ -39,6 +39,30 @@ const FETCH_TIMEOUT_MS = 30_000;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+// tft_daily_comp_outcome: Zeilen von mehreren KB. 200 davon waeren bis zu
+// ~2 MB je Anfrage und reissen das 30-s-Zeitlimit bei einer langsamen DB.
+const OUTCOME_CHUNK_BYTES = 1_500_000;
+
+// Teilt Zeilen in Pakete von hoechstens maxBytes (JSON-Laenge) und hoechstens
+// BATCH Zeilen. Eine einzelne zu grosse Zeile bildet ihr eigenes Paket.
+export function chunkByBytes(rows, maxBytes) {
+  const chunks = [];
+  let cur = [];
+  let size = 0;
+  for (const r of rows) {
+    const len = JSON.stringify(r).length;
+    if (cur.length > 0 && (size + len > maxBytes || cur.length >= BATCH)) {
+      chunks.push(cur);
+      cur = [];
+      size = 0;
+    }
+    cur.push(r);
+    size += len;
+  }
+  if (cur.length > 0) chunks.push(cur);
+  return chunks;
+}
+
 async function upsertRows(table, rows, conflictCols, log = console.log) {
   if (rows.length === 0) return;
   const headers = {
@@ -278,6 +302,42 @@ export async function writeTftStatsToSupabase(opts) {
       'region,bucket,patch,set_number,day,character_id', log);
   } catch (e) {
     log(`  [supabase] unit_top_items FAILED (non-fatal): ${e.message}`);
+  }
+
+  // 9) Comp-Ergebnisse je Unit und Item (migration 0078) — eine Zeile je
+  // comp_stats-Zeile (ohne pro_pool). Zeilen sind mehrere KB gross, deshalb
+  // Pakete nach Bytes statt nach 200 Zeilen. Abgefangen wie Block 8: fehlt ein
+  // Tag, blendet die Route die neuen Bloecke fuer dieses Fenster aus
+  // (rows_outcome != rows_stats), die Kern-Tabellen bleiben unberuehrt.
+  try {
+    const outcomeRows = [];
+    for (const [clusterKey, buckets] of Object.entries(payload.byComp || {})) {
+      for (const bucket of PERSIST_BUCKETS) {
+        if (bucket === 'pro_pool') continue;
+        const o = buckets[bucket]?.outcome;
+        if (!o || !o.games) continue;
+        outcomeRows.push({
+          ...baseRow, bucket, cluster_key: clusterKey,
+          games: o.games,
+          placement_hist: o.placementHist,
+          level_stats: o.levelStats,
+          level_stats_s5: o.levelStatsS5,
+          units: o.units,
+          unit_levels: o.unitLevels,
+          unit_items: o.unitItems,
+          unit_sets: o.unitSets,
+        });
+      }
+    }
+    const chunks = chunkByBytes(outcomeRows, OUTCOME_CHUNK_BYTES);
+    const bytes = outcomeRows.reduce((a, r) => a + JSON.stringify(r).length, 0);
+    log(`  [supabase] comp_outcome: ${outcomeRows.length} rows, ${(bytes / 1e6).toFixed(1)} MB in ${chunks.length} requests`);
+    for (const chunk of chunks) {
+      await upsertRows('tft_daily_comp_outcome', chunk,
+        'region,bucket,patch,set_number,day,cluster_key', log);
+    }
+  } catch (e) {
+    log(`  [supabase] comp_outcome FAILED (non-fatal): ${e.message}`);
   }
 
   log(`  [supabase] write complete for ${region} ${day}`);

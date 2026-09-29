@@ -51,6 +51,136 @@ export function isPersistableFinishedItem(apiName) {
   return true;
 }
 
+// Comp-Ergebnisse je Unit und Item (Tabelle tft_daily_comp_outcome, 0078).
+// Fertig heisst hier: kein Bauteil, kein Trank/Verbrauchsgut. Embleme zaehlen
+// mit — sie belegen einen Slot. Thief's Gloves wird eine Ebene hoeher
+// behandelt: die ganze Kopie faellt raus, weil ihre Items zufaellig sind.
+const OUTCOME_NON_ITEM_RE = /Potion|Consumable|Booster\d*$|_Charm$|Reforger|LuckyItemChest|MasterworkUpgrade|EmptyBag/i;
+const THIEFS_GLOVES_RE = /thiefsgloves/i;
+// Runde 26 = 5-1: Stage 1 hat Runden 1-4, danach 7 je Stage (app/lib/tft-stage.ts).
+const STAGE5_FIRST_ROUND = 26;
+const OUTCOME_UNITS = 18;
+const OUTCOME_ITEMS_PER_UNIT = 20;
+const OUTCOME_SETS_PER_UNIT = 10;
+export function isOutcomeFinishedItem(apiName) {
+  if (!apiName) return false;
+  if (COMPONENT_ITEM_RE.test(apiName)) return false;
+  if (OUTCOME_NON_ITEM_RE.test(apiName)) return false;
+  return true;
+}
+
+// Liest einen Spieler einmal aus; addOutcome() verteilt das Ergebnis dann auf
+// jeden Bucket. units: cid -> Liste der Kopien mit genau 3 fertigen Items
+// (jede Kopie sortiert). Eine Unit ohne solche Kopie steht mit leerer Liste
+// drin, damit sie als „auf dem Board" zaehlt.
+function readOutcomeInput(p) {
+  const units = new Map();
+  for (const u of p.units || []) {
+    const cid = u.character_id;
+    if (!isPlayableUnitId(cid)) continue;
+    const copies = getOrCreate(units, cid, () => []);
+    const raw = Array.isArray(u.itemNames) ? u.itemNames : [];
+    if (raw.some(it => THIEFS_GLOVES_RE.test(String(it || '')))) continue;
+    const finished = raw.filter(isOutcomeFinishedItem);
+    if (finished.length === 3) copies.push([...finished].sort());
+  }
+  return {
+    level: Number(p.level ?? 0),
+    stage5: Number(p.last_round ?? 0) >= STAGE5_FIRST_ROUND,
+    units,
+  };
+}
+
+// Tupel-Reihenfolge siehe Kopf von supabase/migrations/0078_tft_comp_outcome.sql.
+// s = Summe Platzierung, q = Summe Platzierung^2 (fuer die Unsicherheit).
+function addOutcome(cb, oc, placement, top4, top1) {
+  const sq = placement * placement;
+  const t4 = top4 ? 1 : 0;
+  const t1 = top1 ? 1 : 0;
+  const pk = String(placement);
+  cb.ocPlace.set(pk, (cb.ocPlace.get(pk) || 0) + 1);
+  const lk = oc.level > 0 ? String(oc.level) : null;
+  if (lk) {
+    const addLvl = (map) => {
+      const e = getOrCreate(map, lk, () => ({ n: 0, s: 0, q: 0, t4: 0, t1: 0 }));
+      e.n++; e.s += placement; e.q += sq; e.t4 += t4; e.t1 += t1;
+    };
+    addLvl(cb.ocLevel);
+    if (oc.stage5) addLvl(cb.ocLevelS5);
+  }
+  for (const [cid, copies] of oc.units) {
+    const ue = getOrCreate(cb.ocUnits, cid, () => ({ n: 0, s: 0, q: 0, t4: 0, t1: 0, n3: 0, s3: 0, q3: 0, t43: 0 }));
+    ue.n++; ue.s += placement; ue.q += sq; ue.t4 += t4; ue.t1 += t1;
+    if (lk) {
+      const le = getOrCreate(getOrCreate(cb.ocUnitLevels, cid, () => new Map()), lk, () => ({ n: 0, s: 0, q: 0 }));
+      le.n++; le.s += placement; le.q += sq;
+    }
+    if (copies.length === 0) continue;
+    const itemMap = getOrCreate(cb.ocUnitItems, cid, () => new Map());
+    const setMap = getOrCreate(cb.ocUnitSets, cid, () => new Map());
+    // Je Kopie gezaehlt: zwei Kopien mit je 3 Items sind zwei Beobachtungen.
+    // c/s/q/t4 einmal je Kopie, die das Item traegt; k zaehlt jedes Exemplar
+    // (Doppel-Items wie 2x Infinity Edge zaehlen zweimal).
+    for (const items of copies) {
+      ue.n3++; ue.s3 += placement; ue.q3 += sq; ue.t43 += t4;
+      const counts = new Map();
+      for (const it of items) counts.set(it, (counts.get(it) || 0) + 1);
+      for (const [it, k] of counts) {
+        const ie = getOrCreate(itemMap, it, () => ({ c: 0, s: 0, q: 0, t4: 0, k: 0 }));
+        ie.c++; ie.s += placement; ie.q += sq; ie.t4 += t4; ie.k += k;
+      }
+      const se = getOrCreate(setMap, items.join('|'), () => ({ c: 0, s: 0, t4: 0 }));
+      se.c++; se.s += placement; se.t4 += t4;
+    }
+  }
+}
+
+// Serialisiert die oc*-Maps eines Comp-Buckets in das Zeilenformat der
+// Tabelle, mit Deckeln je Unit, damit eine Zeile klein bleibt.
+function serializeOutcome(b) {
+  const tup = (e, keys) => keys.map(k => e[k] || 0);
+  const placementHist = [];
+  for (let i = 1; i <= 8; i++) placementHist.push(b.ocPlace.get(String(i)) || 0);
+  const lvlObj = (map) => {
+    const o = {};
+    for (const [lk, e] of map) o[lk] = tup(e, ['n', 's', 'q', 't4', 't1']);
+    return o;
+  };
+  const topUnits = [...b.ocUnits.entries()]
+    .sort((a, c) => c[1].n - a[1].n || (a[0] < c[0] ? -1 : 1))
+    .slice(0, OUTCOME_UNITS);
+  const units = {}, unitLevels = {}, unitItems = {}, unitSets = {};
+  for (const [cid, e] of topUnits) {
+    units[cid] = tup(e, ['n', 's', 'q', 't4', 't1', 'n3', 's3', 'q3', 't43']);
+    const lv = b.ocUnitLevels.get(cid);
+    if (lv && lv.size) {
+      unitLevels[cid] = {};
+      for (const [lk, le] of lv) unitLevels[cid][lk] = tup(le, ['n', 's', 'q']);
+    }
+    const im = b.ocUnitItems.get(cid);
+    if (im && im.size) {
+      unitItems[cid] = {};
+      for (const [it, ie] of [...im.entries()].sort((a, c) => c[1].c - a[1].c || (a[0] < c[0] ? -1 : 1)).slice(0, OUTCOME_ITEMS_PER_UNIT)) {
+        unitItems[cid][it] = tup(ie, ['c', 's', 'q', 't4', 'k']);
+      }
+    }
+    const sm = b.ocUnitSets.get(cid);
+    if (sm && sm.size) {
+      unitSets[cid] = {};
+      for (const [combo, se] of [...sm.entries()].sort((a, c) => c[1].c - a[1].c || (a[0] < c[0] ? -1 : 1)).slice(0, OUTCOME_SETS_PER_UNIT)) {
+        unitSets[cid][combo] = tup(se, ['c', 's', 't4']);
+      }
+    }
+  }
+  return {
+    games: placementHist.reduce((a, c) => a + c, 0),
+    placementHist,
+    levelStats: lvlObj(b.ocLevel),
+    levelStatsS5: lvlObj(b.ocLevelS5),
+    units, unitLevels, unitItems, unitSets,
+  };
+}
+
 export function emptyAggregate() {
   return {
     byUnit: new Map(),     // characterId -> Map<bucket, UnitBucket>
@@ -158,6 +288,15 @@ function newCompBucket() {
     // bucket carries {games, sumPlacement, top4, top1}; the UI shows the
     // penalty when too many people force the same comp.
     contestedDist: new Map(),
+    // Comp-Ergebnisse je Unit und Item (0078), gefuellt von addOutcome().
+    // Nur Maps, weil mergeBuckets() Arrays beim Zusammenlegen ueberschreibt.
+    ocPlace: new Map(),       // '1'..'8' -> Spiele
+    ocLevel: new Map(),       // Spielerlevel -> {n,s,q,t4,t1}
+    ocLevelS5: new Map(),     // dito, nur Boards mit Stage 5 erreicht
+    ocUnits: new Map(),       // cid -> {n,s,q,t4,t1,n3,s3,q3,t43}
+    ocUnitLevels: new Map(),  // cid -> Map<level, {n,s,q}>
+    ocUnitItems: new Map(),   // cid -> Map<item, {c,s,q,t4,k}>
+    ocUnitSets: new Map(),    // cid -> Map<"a|b|c", {c,s,t4}>
   };
 }
 
@@ -450,8 +589,12 @@ export function aggregateMatch(rawMatch, agg, opts) {
     // carryItems Maps live on each bucket entry; they accumulate independently.
     if (compInfo) {
       const compBuckets = getOrCreate(agg.byComp, compInfo.clusterKey, () => new Map());
+      // Nur echte Platzierungen 1-8; pro_pool doppelt Tier-Spiele und bleibt
+      // aus der Outcome-Tabelle raus.
+      const outcomeInput = placement >= 1 && placement <= 8 ? readOutcomeInput(p) : null;
       for (const bucket of buckets) {
         const cb = getOrCreate(compBuckets, bucket, newCompBucket);
+        if (outcomeInput && bucket !== 'pro_pool') addOutcome(cb, outcomeInput, placement, top4, top1);
         cb.games++;
         cb.sumPlacement += placement;
         cb.sumLevel += Number(p.level ?? 0);
@@ -1081,6 +1224,11 @@ export function finalize(agg, opts = {}) {
         carryStarDist,
         contestedDist,
       };
+      // Nur fuer Buckets, die der Writer speichert: keine Roll-ups, kein pro_pool.
+      // collect-tft-allranks laesst `outcome` aus der JSON-Datei.
+      if (TIER_BUCKETS.includes(bucket) && b.ocPlace instanceof Map && b.ocPlace.size > 0) {
+        slim[bucket].outcome = serializeOutcome(b);
+      }
     }
     if (Object.keys(slim).length > 0) out.byComp[key] = slim;
   }

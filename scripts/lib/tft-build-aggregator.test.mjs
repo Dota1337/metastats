@@ -11,7 +11,8 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { aggregateMatch, emptyAggregate, finalize, isPersistableFinishedItem } from './tft-build-aggregator.mjs';
+import { aggregateMatch, emptyAggregate, finalize, isPersistableFinishedItem, isOutcomeFinishedItem } from './tft-build-aggregator.mjs';
+import { chunkByBytes } from './tft-supabase-writer.mjs';
 
 function unitWithItems(itemGames) {
   const agg = emptyAggregate();
@@ -90,4 +91,83 @@ test('Comp-Einheiten: Items einmal pro Spiel, carryItemGamesAll inkl. HoJ, tankI
   assert.equal(warmog.count, 2);
   assert.equal(byId.TFT17_Samira.tankItemGames, 4);
   assert.equal(byId.TFT17_Samira.carryItemGamesAll, 0);
+});
+
+// Comp-Ergebnisse je Unit und Item (Tabelle tft_daily_comp_outcome, 0078).
+// Faire Grundmenge: nur Kopien mit genau 3 fertigen Items; Thief's Gloves
+// nimmt die ganze Kopie raus; Traenke und Bauteile zaehlen nicht als Item;
+// pro_pool bekommt keine Outcome-Daten.
+test('Comp-Outcome: 3-Item-Kopien, Doppel-Items, Thief\'s Gloves/Trank/Bauteil raus, kein pro_pool', () => {
+  const IE = 'TFT_Item_InfinityEdge';
+  const GB = 'TFT_Item_Guardbreaker';
+  const unit = (id, items, tier = 2) => ({ character_id: id, tier, itemNames: items });
+  const participant = (i, placement, level, lastRound, units) => ({
+    puuid: `p${i}`, placement, level, last_round: lastRound, augments: [],
+    traits: [{ name: 'TFT17_Stargazer', num_units: 6, style: 3, tier_current: 3, tier_total: 4 }],
+    units,
+  });
+  const p0 = participant(0, 1, 9, 30, [
+    unit('TFT17_KhaZix', [IE, IE, GB], 3),
+    unit('TFT17_Samira', ['TFT_Item_WarmogsArmor', 'TFT_Item_BrambleVest', 'DA_HealthPotion18_Radiant']),
+    unit('TFT17_Lulu', ['TFT_Item_ThiefsGloves', IE, GB]),
+    unit('TFT17_Nami', []), unit('TFT17_Jax', []), unit('tft17_bardfollower', []),
+  ]);
+  const p1 = participant(1, 5, 8, 20, [
+    unit('TFT17_KhaZix', [IE, GB, 'DA_Component_BFSword'], 3),
+    unit('TFT17_Samira', ['TFT_Item_WarmogsArmor']),
+    unit('TFT17_Lulu', []), unit('TFT17_Nami', []), unit('TFT17_Jax', []),
+  ]);
+  const agg = emptyAggregate();
+  aggregateMatch({
+    metadata: { match_id: 'EUW1_2' },
+    info: { queue_id: 1100, tft_set_number: 17, game_version: 'Version 17.1', participants: [p0, p1] },
+  }, agg, { tierBucket: 'diamond', currentSet: 17, proPuuids: new Set(['p0']) });
+  const comps = finalize(agg, { minCompGames: 1, minUnitGames: 1 }).byComp;
+  const keys = Object.keys(comps);
+  assert.equal(keys.length, 1, `eine Comp erwartet, bekam ${keys.join(', ')}`);
+  const buckets = comps[keys[0]];
+  // pro_pool nimmt die ganze Lobby auf, sobald ein Pro drin ist.
+  assert.equal(buckets.pro_pool?.games, 2);
+  assert.equal(buckets.pro_pool.outcome, undefined, 'pro_pool darf keine Outcome-Daten haben');
+  assert.equal(buckets.all?.outcome, undefined, 'Roll-ups werden nicht gespeichert');
+
+  const o = buckets.diamond.outcome;
+  assert.equal(o.games, 2);
+  assert.deepEqual(o.placementHist, [1, 0, 0, 0, 1, 0, 0, 0]);
+  assert.deepEqual(o.levelStats, { 9: [1, 1, 1, 1, 1], 8: [1, 5, 25, 0, 0] });
+  // Runde 20 ist 4-2: p1 hat Stage 5 nicht erreicht.
+  assert.deepEqual(o.levelStatsS5, { 9: [1, 1, 1, 1, 1] });
+  // Kha'Zix: auf beiden Boards, aber nur p0 hat 3 fertige Items (p1: Bauteil).
+  assert.deepEqual(o.units.TFT17_KhaZix, [2, 6, 26, 1, 1, 1, 1, 1, 1]);
+  assert.deepEqual(o.unitItems.TFT17_KhaZix, { [IE]: [1, 1, 1, 1, 2], [GB]: [1, 1, 1, 1, 1] });
+  assert.deepEqual(o.unitSets.TFT17_KhaZix, { [[GB, IE, IE].sort().join('|')]: [1, 1, 1] });
+  // Samira: Trank zaehlt nicht → nur 2 fertige Items → keine Item-Zeile.
+  assert.deepEqual(o.units.TFT17_Samira.slice(5), [0, 0, 0, 0]);
+  assert.equal(o.unitItems.TFT17_Samira, undefined);
+  // Lulu: Thief's Gloves → Kopie komplett raus, zaehlt aber als „auf dem Board".
+  assert.equal(o.units.TFT17_Lulu[0], 2);
+  assert.equal(o.unitItems.TFT17_Lulu, undefined);
+  // Summons sind keine Units.
+  assert.equal(o.units.tft17_bardfollower, undefined);
+  assert.deepEqual(o.unitLevels.TFT17_KhaZix, { 9: [1, 1, 1], 8: [1, 5, 25] });
+});
+
+test('isOutcomeFinishedItem: Embleme ja, Traenke/Booster/Bauteile nein', () => {
+  assert.equal(isOutcomeFinishedItem('TFT_Item_InfinityEdge'), true);
+  assert.equal(isOutcomeFinishedItem('TFT18_Item_WarriorEmblemItem'), true);
+  assert.equal(isOutcomeFinishedItem('TFT_Item_InfinityEdge_Radiant'), true);
+  for (const it of ['DA_HealthPotion18', 'DA_ManaPotion18_Radiant', 'DA_BlastPotion18_Charm', 'DA_AttackBooster18',
+    'DA_Reforger', 'DA_LuckyItemChest', 'DA_MasterworkUpgrade', 'DA_Consumable_Foo', 'TFT_Item_EmptyBag',
+    'DA_Component_BFSword', 'TFT_Item_Spatula', '']) {
+    assert.equal(isOutcomeFinishedItem(it), false, it);
+  }
+});
+
+test('chunkByBytes: Byte-Grenze und Zeilen-Grenze', () => {
+  const rows = Array.from({ length: 5 }, (_, i) => ({ i, pad: 'x'.repeat(90) }));
+  const one = JSON.stringify(rows[0]).length;
+  const chunks = chunkByBytes(rows, one * 2);
+  assert.deepEqual(chunks.map(c => c.length), [2, 2, 1]);
+  assert.deepEqual(chunkByBytes([{ big: 'y'.repeat(50) }], 10).map(c => c.length), [1]);
+  assert.equal(chunkByBytes(Array.from({ length: 450 }, () => ({})), 1e9).length, 3);
 });

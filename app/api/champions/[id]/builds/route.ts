@@ -54,6 +54,8 @@ const RANK_REGIONS = new Set(['euw1']);
 const RANK_OPTIONS = ['EMERALD_PLUS', 'DIAMOND_PLUS', 'MASTER_PLUS'] as const;
 // Neuester Patch gilt erst ab so vielen Spielen des Champions; sonst der Patch mit den meisten.
 const MIN_PATCH_GAMES = 500;
+// Darunter gilt die Datei (siehe GET).
+const MIN_DB_GAMES = 200;
 const PAGE = 1000;
 const MIN_COUNTER_GAMES = 5;
 
@@ -233,7 +235,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (rank) {
     const db = await loadDbRows(region, Number(championKey), LOL_RANK_GROUPS[rank]);
     if (db === null) dbDown = true;
-    else if (db.rows.length) {
+    // Unter MIN_DB_GAMES (Anlaufphase, seltene Champions) waeren die Top-Builds
+    // Zufall — dann lieber die Datei ueber alle Raenge.
+    else if (db.rows.reduce((s, r) => s + (r.dim === 'total' ? r.games : 0), 0) >= MIN_DB_GAMES) {
       const byRole = new Map<string, StatRow[]>();
       for (const r of db.rows) {
         const list = byRole.get(r.role) || [];

@@ -229,7 +229,10 @@ export default function ChampionBuildsSection({ championKey }: Props) {
             </button>
           );
         })}
-        {region === RANK_REGION && (
+        {/* Ohne Rang-Daten liefert die Route alle Raenge — dann keine Auswahl
+            vortaeuschen. Bleibt sichtbar, wenn der gewaehlte Rang leer ist,
+            damit man zurueckwechseln kann. */}
+        {region === RANK_REGION && (data.source === 'db' || rank !== 'EMERALD_PLUS') && (
           <label className="ml-auto mb-2 flex items-center gap-2">
             <span className="text-fg-secondary text-xs uppercase tracking-wider">{t('champBuild.rank')}</span>
             <select

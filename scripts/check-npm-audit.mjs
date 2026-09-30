@@ -3,7 +3,7 @@
 //
 // Warum ueberhaupt: `npm audit` lief bis 19.09.2026 nirgends automatisch. Beim
 // ersten Durchgang standen 10 Warnungen offen, zwei davon kritisch. Nach dem
-// Aufraeumen (Commit 0077abf, next 16.3.1 -> 16.3.5) ist der Auslieferungsbaum
+// Aufraeumen (Commit 0077abf, next 16.3.1 -> 16.3.5; 2026-09-30 next 16.3.8 + undici/brace-expansion) ist der Auslieferungsbaum
 // nachweislich sauber; nur der Werkzeug-Baum traegt noch Altlast.
 //
 // Warum der Ausnahme-Block eine Konstante ist und keine Datei, die sich selbst
@@ -26,26 +26,10 @@ import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
-// Bekannte, bewusst offene Warnungen — alle gegen `tar`, alle ueber fastembed.
-// fastembed@2.1.0 ist eine reine Entwickler-Abhaengigkeit (lokale AgentDB,
-// Vector-Recall auf Port 7878) und landet nie im Vercel-Build. Der einzige Fix
-// waere ein Rueckschritt auf fastembed@1.0.0, also eine Hauptversion zurueck.
-// Bewusst nicht genommen; erneut pruefen, sobald fastembed eine Version mit
-// onnxruntime-node > 1.21 veroeffentlicht.
-const BEKANNT = {
-  'GHSA-23hp-3jrh-7fpw': 'tar via fastembed (dev) — kritisch',
-  'GHSA-34x7-hfp2-rc4v': 'tar via fastembed (dev)',
-  'GHSA-83g3-92jg-28cx': 'tar via fastembed (dev)',
-  'GHSA-8qq5-rm4j-mr97': 'tar via fastembed (dev)',
-  'GHSA-8x88-c5mf-7j5w': 'tar via fastembed (dev)',
-  'GHSA-9ppj-qmqm-q256': 'tar via fastembed (dev)',
-  'GHSA-qffp-2rhf-9h96': 'tar via fastembed (dev)',
-  'GHSA-r292-9mhp-454m': 'tar via fastembed (dev)',
-  'GHSA-r6q2-hw4h-h46w': 'tar via fastembed (dev)',
-  'GHSA-gvwx-54wh-qm9j': 'tar via fastembed (dev) — mittel',
-  'GHSA-vmf3-w455-68vh': 'tar via fastembed (dev) — mittel',
-  'GHSA-w8wr-v893-vjvp': 'tar via fastembed (dev) — mittel',
-};
+// Bekannte, bewusst offene Warnungen. Zurzeit leer: die tar-Warnungen ueber
+// fastembed sind mit fastembed 2.1.1 erledigt (tar nicht mehr im Baum, 2026-09-30).
+// Neue Ausnahmen nur mit Begruendung im Klartext eintragen.
+const BEKANNT = {};
 
 const ROT_AB = new Set(['high', 'critical']);
 

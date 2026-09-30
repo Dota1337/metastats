@@ -29,7 +29,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 
-import { blockAcquire, releaseLock } from './lib/advisory-lock.mjs';
+import { blockAcquire, releaseLock, announceWant, clearWant } from './lib/advisory-lock.mjs';
 
 const args = process.argv.slice(2);
 const getArg = (k, def) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : def; };
@@ -41,6 +41,11 @@ const BASE_URL = getArg('--url', 'https://metastats.gg');
 const LIMIT = getArg('--limit', null);   // smoke-test cap; when set, the stamp is NOT written
 const FORCE = hasFlag('--force');
 const STAMP = process.env.LOL_MV_STAMP || '/etc/metastats-crawler/lol-mv-last-run';
+// Marker for the runtime contract lol-marketvalue/last-pass. The old contract on
+// market_value_history stayed green from 19.09. to 30.09.2026 although no pass
+// finished — visitor searches write the same table. Only this marker says
+// whether the pass itself completed.
+const MARKER = process.env.LOL_MV_MARKER || '/etc/metastats-crawler/lol-marketvalue-last.json';
 
 const log = (msg) => console.log(`[lol-mv ${new Date().toISOString()}] ${msg}`);
 
@@ -68,27 +73,34 @@ if (!process.env.RIOT_API_KEY) {
 // Shared LoL-Riot lock. scripts/collect-lol-matches.mjs uses the same dev key
 // and the same 100-per-2-minutes budget at Riot. If both run at once, each gets
 // half the throughput and both start collecting 429s. The collector takes this
-// lock per player and releases it between players, so the wait here is bounded
-// by one player (~20 min), not by a whole fill run.
+// lock per player and releases it between players. It used to grab it again
+// within milliseconds, so this 5-s poll never won (the pass starved). Now we
+// announce ourselves via `<lock>.want`; the collector then stops re-taking the
+// lock and waits for us. The wait is bounded by the player it is on (~20 min).
 //
 // Deliberately NOT a systemd `Conflicts=`: that acts in both directions and
 // would kill the collector on every key rotation kick.
 const LOCK_PATH = process.env.LOL_RIOT_LOCK
   || (existsSync('/run/lock') ? '/run/lock/metastats-lol-riot.lock' : '.lol-riot.lock');
 let lockHeld = false;
-process.on('exit', () => { if (lockHeld) releaseLock(LOCK_PATH); });
+process.on('exit', () => { clearWant(LOCK_PATH); if (lockHeld) releaseLock(LOCK_PATH); });
+process.on('SIGTERM', () => process.exit(143));
+process.on('SIGINT', () => process.exit(130));
 
+announceWant(LOCK_PATH);
 lockHeld = await blockAcquire(LOCK_PATH, {
-  timeoutMs: 25 * 60_000,
+  timeoutMs: 60 * 60_000,
   onWait: (waitedSec) => log(`waiting for ${LOCK_PATH} (${waitedSec}s)`),
 });
 if (!lockHeld) {
-  // Exit 0 and, crucially, WITHOUT writing the throttle stamp: the next daily
-  // key-rotation kick retries. Exit 1 would only fill the journal with a
-  // failure that is really just "someone else was busy".
-  log(`could not acquire ${LOCK_PATH} within 25min — skipping, next key rotation retries.`);
-  process.exit(0);
+  // Exit 1 and WITHOUT writing the throttle stamp: the next key-rotation kick
+  // retries. This used to be exit 0 — from 20.09. to 30.09.2026 a hung collector
+  // held the lock and every pass "skipped" silently behind a green unit.
+  log(`could not acquire ${LOCK_PATH} within 60min — FAILED, next key rotation retries.`);
+  process.exit(1);
 }
+// We hold the lock now; the marker has done its job.
+clearWant(LOCK_PATH);
 
 log(`starting pass: regions=${REGIONS.join(',')} url=${BASE_URL}${LIMIT ? ` limit=${LIMIT}` : ''}`);
 
@@ -109,8 +121,11 @@ if (failures > 0) {
 // Persist the throttle stamp only on a clean full pass — never for a limited
 // smoke test, so a test run can't suppress the next real pass.
 if (!LIMIT) {
-  try { writeFileSync(STAMP, new Date().toISOString() + '\n'); log(`pass complete — stamp written to ${STAMP}.`); }
+  const now = new Date().toISOString();
+  try { writeFileSync(STAMP, now + '\n'); log(`pass complete — stamp written to ${STAMP}.`); }
   catch (e) { log(`pass complete but could not write stamp (${e.message}).`); }
+  try { writeFileSync(MARKER, JSON.stringify({ updatedAt: now, regions: REGIONS }) + '\n'); }
+  catch (e) { log(`could not write marker ${MARKER} (${e.message}).`); }
 } else {
   log('smoke test complete — stamp intentionally not written.');
 }

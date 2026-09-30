@@ -7,7 +7,7 @@
 // PID is still alive (process.kill(pid, 0)). Both bare `node` runs and systemd
 // ExecStart execute the same script, so the lock lives here, not in the unit.
 
-import { openSync, closeSync, writeSync, readFileSync, unlinkSync } from 'node:fs';
+import { openSync, closeSync, writeSync, writeFileSync, readFileSync, unlinkSync } from 'node:fs';
 
 export function pidAlive(pid) {
   if (!pid) return false;
@@ -54,4 +54,30 @@ export async function blockAcquire(lockPath, { timeoutMs = 1_800_000, pollMs = 5
     if (onWait) onWait(Math.round((Date.now() - start) / 1000));
     await sleep(pollMs);
   }
+}
+
+// --------------------------------------------------------------------------
+// Vorfahrt. Ein Halter, der die Sperre zwischen kurzen Arbeitsschritten sofort
+// wieder nimmt (der LoL-Sammler: frei nach jedem Spieler, nach einer einzigen
+// DB-Abfrage wieder genommen), laesst einen Wartenden mit 5-s-Takt praktisch nie
+// durch — 2026-09-30 verlor der Marktwert-Lauf so jeden Versuch nach 25 min.
+// Der Wartende legt deshalb `<lock>.want` mit seiner PID an; der Halter prueft
+// sie vor dem erneuten Nehmen und gibt nach. Eine Marke mit toter PID zaehlt
+// nicht, damit ein abgestuerzter Wartender niemanden dauerhaft blockiert.
+export function announceWant(lockPath) {
+  try { writeFileSync(`${lockPath}.want`, String(process.pid)); } catch { /* Vorfahrt ist best effort */ }
+}
+
+export function clearWant(lockPath) {
+  try {
+    const holder = Number(readFileSync(`${lockPath}.want`, 'utf8').trim());
+    if (holder === process.pid) unlinkSync(`${lockPath}.want`);
+  } catch { /* already gone */ }
+}
+
+/** Wartet ein anderer, lebender Prozess auf diese Sperre? */
+export function wantPending(lockPath) {
+  let holder = NaN;
+  try { holder = Number(readFileSync(`${lockPath}.want`, 'utf8').trim()); } catch { return false; }
+  return holder !== process.pid && pidAlive(holder);
 }

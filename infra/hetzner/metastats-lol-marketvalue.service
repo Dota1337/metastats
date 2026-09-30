@@ -12,7 +12,9 @@ Type=oneshot
 # hours; the only real limits are riot-client's per-request timeout + LoL rate
 # limits. Uses RIOT_API_KEY — a separate bucket from RIOT_API_KEY_TFT, so it
 # never contends with the TFT crawls.
-TimeoutStartSec=infinity
+# Cap instead of infinity: a full pass is ~6 h plus up to 1 h waiting for the
+# shared lock. RuntimeMaxSec= has no effect on Type=oneshot, hence TimeoutStartSec.
+TimeoutStartSec=10h
 TimeoutStopSec=120
 WorkingDirectory=/opt/metastats-crawler
 EnvironmentFile=/etc/metastats-crawler/env

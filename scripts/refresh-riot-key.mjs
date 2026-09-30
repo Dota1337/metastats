@@ -505,22 +505,28 @@ function syncKeyToHetzner(env, key) {
     // a concurrent run. Beide Box-Jobs teilen sich die Sperre
     // /run/lock/metastats-lol-riot.lock, laufen also nacheinander.
     'systemctl start --no-block metastats-lol-matchfill.service',
+    // Echten Zustand melden statt "kicked": ein Start-Job kann hinter dem
+    // Marktwert-Lauf warten (After=), und ein haengender Lauf ist "active" seit
+    // Tagen — genau das blieb vom 20.09. bis 30.09.2026 unbemerkt. Bewusst
+    // `show`/`list-jobs` statt `is-active`: das endet bei "inactive" mit
+    // Exit 3 und wuerde unter set -e den ganzen Schritt abbrechen.
+    'for u in metastats-lol-matchfill metastats-lol-marketvalue; do st=$(systemctl show -p ActiveState --value $u.service); since=$(systemctl show -p ActiveEnterTimestamp --value $u.service); job=$(systemctl list-jobs --no-legend $u.service | awk \'{print $4}\'); echo "      $u: $st seit ${since:-?}${job:+ (Start-Job: $job)}"; done',
     // KEIN Restart von metastats-refresh-api.service (entfernt 2026-09-02):
     // der Dienst liest ausschliesslich RIOT_API_KEY_TFT
     // (scripts/refresh-api-server.mjs:150), und keiner seiner Importe fasst den
     // LoL-Key an (`grep -rn "RIOT_API_KEY\b" scripts/lib/ | grep -v _TFT` → 0).
     // Der Restart war also wirkungslos und hat den Dauerdienst auf :4100 bei
     // jeder taeglichen Rotation mitten in laufenden Anfragen gekappt.
-    'echo "      box keyed + lol-matchfill kicked"',
+    'echo "      box keyed + lol-matchfill angestossen"',
   ], 'box sync');
 }
 
 // Der Marktwert-Pass ruft die LIVE-Seite (scripts/lol-marketvalue-weekly.mjs:40
 // setzt BASE_URL auf metastats.gg). Vor dem Deploy gestartet, arbeitet er gegen
-// den alten Key — und weil refresh-highelo-marketvalues.mjs auch bei 100 %
-// Fehlern mit Exit 0 endet, schreibt der Wrapper dann seinen Throttle-Stempel
-// und blockt jeden Neuversuch fuer 6 Tage. Deshalb steht dieser Start hinter dem
-// verifizierten Deploy und nirgendwo sonst.
+// den alten Key. Seit 02.09.2026 endet refresh-highelo-marketvalues.mjs bei mehr
+// als 30 % Fehlern mit Exit 1 (dort Z. 214-224), der Stempel bliebe also frei —
+// der Lauf waere aber umsonst und hielte die Riot-Sperre stundenlang. Deshalb
+// steht dieser Start hinter dem verifizierten Deploy und nirgendwo sonst.
 function kickBoxMarketvalue(env) {
   const host = boxHost(env);
   if (!host) return false;

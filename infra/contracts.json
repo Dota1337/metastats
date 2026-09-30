@@ -339,7 +339,16 @@
       "dateType": "timestamp",
       "maxLagDays": 10,
       "minRows": 1,
-      "note": "Wöchentlicher LoL-Marktwert-Lauf, 2038 Rows gesamt, zuletzt 01.08.2026. 10 Tage lassen einen ausgefallenen Wochenlauf durch, zwei nicht. minRows 1, weil pro Lauf nur die veränderten Spieler geschrieben werden."
+      "note": "Misst JEDE neue Verlaufszeile, auch die aus Besucher-Suchen auf /summoner — sagt also nur, dass die Tabelle beschrieben wird, nicht dass der Wochenlauf durchkam. Vom 19.09. bis 30.09.2026 blieb er gruen, waehrend kein einziger Lauf fertig wurde. Fuer den Lauf selbst: lol-marketvalue/last-pass. 10 Tage lassen einen ausgefallenen Wochenlauf durch, zwei nicht."
+    },
+    {
+      "id": "lol-marketvalue/last-pass",
+      "owner": "metastats-lol-marketvalue.service",
+      "type": "file",
+      "path": "/etc/metastats-crawler/lol-marketvalue-last.json",
+      "dateField": "updatedAt",
+      "maxAgeDays": 8,
+      "note": "Marker, den scripts/lol-marketvalue-weekly.mjs nur nach einem vollstaendigen Lauf ueber alle Regionen schreibt. Der Lauf drosselt sich auf 6 Tage und wird von der taeglichen Key-Rotation angestossen; 8 Tage lassen einen ausgefallenen Anstoss durch, einen haengenden Sammler (Sperre belegt) nicht. Rot: journalctl -u metastats-lol-marketvalue -u metastats-lol-matchfill. Der Marker liegt in /etc/metastats-crawler, weil die Unit nur dort und in /run/lock schreiben darf."
     },
     {
       "id": "lol-matchfill/match-cache",

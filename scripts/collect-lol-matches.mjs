@@ -33,7 +33,7 @@ import pg from 'pg';
 
 import { createRiotClient } from './lib/riot-client.mjs';
 import { getRegionalRouting, normalizeRegion, isValidRegion } from './lib/regional-routing.mjs';
-import { tryAcquire, releaseLock } from './lib/advisory-lock.mjs';
+import { tryAcquire, releaseLock, wantPending } from './lib/advisory-lock.mjs';
 
 const args = process.argv.slice(2);
 const getArg = (k, def = null) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : def; };
@@ -98,8 +98,23 @@ const pool = new pg.Pool({
   connectionString: encodePasswordInPgUrl(DB_URL),
   ssl: { rejectUnauthorized: false },
   max: 2,
-  statement_timeout: 600_000,
+  // Client-seitige Zeitlimits. Vom 20.09. bis 30.09.2026 hing der Lauf zehn
+  // Tage auf einer halb-offenen Verbindung zum Pooler: auf der Box ESTAB, auf
+  // der DB-Seite keine Sitzung mehr. statement_timeout allein wirkt dann nicht,
+  // weil der Server die Anfrage nie gesehen hat. query_timeout bricht auf der
+  // Client-Seite ab, statement_timeout liegt knapp darunter, damit eine echte
+  // langsame Abfrage sauber vom Server abgebrochen wird statt die Verbindung
+  // zu zerstoeren. keepAlive laesst den Kernel tote Sockets ueberhaupt melden.
+  statement_timeout: 110_000,
+  query_timeout: 120_000,
+  connectionTimeoutMillis: 15_000,
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 30_000,
 });
+// Pflicht: eine nach dem Timeout weggeworfene Verbindung meldet ihren Fehler
+// spaeter ueber den Pool. Ohne Listener stuerzt der Prozess mitten im naechsten
+// Spieler ab.
+pool.on('error', (err) => log(`DB-Verbindung verworfen: ${err.message}`));
 
 // --------------------------------------------------------------------------
 // Sperre. Der Marktwert-Dienst benutzt denselben LoL-Key und dasselbe
@@ -116,6 +131,27 @@ let lockHeld = false;
 function acquire() { lockHeld = tryAcquire(LOCK_PATH); return lockHeld; }
 function release() { if (lockHeld) { releaseLock(LOCK_PATH); lockHeld = false; } }
 process.on('exit', release);
+
+// Vorfahrt fuer den Marktwert-Lauf: er meldet sich mit `<lock>.want`, dann
+// nimmt der Sammler die Sperre nicht neu, sondern wartet, bis der Lauf durch
+// ist (~6 h). Ohne das gewinnt der Sammler jedes Rennen, weil er die Sperre
+// nach einer einzigen DB-Abfrage wieder nimmt (siehe advisory-lock.mjs).
+const TURN_POLL_MS = 10_000;
+const TURN_MAX_WAIT_MS = 8 * 3_600_000;
+async function waitForTurn() {
+  const start = Date.now();
+  let lastLog = 0;
+  for (;;) {
+    if (!wantPending(LOCK_PATH) && acquire()) return true;
+    const waited = Date.now() - start;
+    if (waited >= TURN_MAX_WAIT_MS) return false;
+    if (waited - lastLog >= 600_000 || lastLog === 0) {
+      lastLog = waited || 1;
+      log(`warte auf ${LOCK_PATH} (Marktwert-Lauf hat Vorrang, ${Math.round(waited / 60_000)} min).`);
+    }
+    await new Promise((r) => setTimeout(r, TURN_POLL_MS));
+  }
+}
 process.on('SIGTERM', () => process.exit(143));
 process.on('SIGINT', () => process.exit(130));
 
@@ -401,18 +437,13 @@ async function main() {
 
   let done = 0;
   for (let i = 0; i < PLAYER_BUDGET; i++) {
-    const row = await claimPlayer();
-    if (!row) { log('Warteschlange leer — nichts zu tun.'); break; }
-
-    if (!acquire()) {
-      // Der Marktwert-Lauf haelt den Key gerade. Zeile zuruecklegen, nicht
-      // als Fehlversuch zaehlen — sonst fiele sie nach genug Kicks auf `failed`.
-      await pool.query(
-        `update lol_match_fill_queue set status='pending', attempts = greatest(attempts - 1, 0),
-                claimed_at = null, updated_at = now() where puuid = $1`, [row.puuid]);
-      log(`Sperre ${LOCK_PATH} ist belegt — ${row.puuid.slice(0, 8)}… zurueckgelegt.`);
+    // Erst die Sperre, dann die Zeile: wer wartet, haelt keine Zeile fest.
+    if (!(await waitForTurn())) {
+      log(`Sperre ${LOCK_PATH} nach ${TURN_MAX_WAIT_MS / 3_600_000} h nicht frei — Lauf endet.`);
       break;
     }
+    const row = await claimPlayer();
+    if (!row) { release(); log('Warteschlange leer — nichts zu tun.'); break; }
 
     log(`Spieler ${row.puuid.slice(0, 8)}… (${row.region}, Versuch ${row.attempts})`);
     try {

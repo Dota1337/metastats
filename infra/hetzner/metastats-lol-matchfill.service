@@ -18,7 +18,10 @@ Type=oneshot
 # damit rund 20 Minuten. Der Lauf arbeitet die Warteschlange ab, bis der Key
 # abgelaufen ist (HTTP 401 -> Exit 1, Zeile zurueck auf pending) oder das
 # Spieler-Budget erschoepft ist.
-TimeoutStartSec=infinity
+# Obergrenze statt infinity: der Key lebt 24 h, danach endet der Lauf ohnehin mit
+# 401. 26 h faengt also nur echte Haenger — vom 20.09. bis 30.09.2026 hing ein Lauf
+# zehn Tage auf einer toten DB-Verbindung. RuntimeMaxSec= wirkt bei oneshot nicht.
+TimeoutStartSec=26h
 TimeoutStopSec=120
 WorkingDirectory=/opt/metastats-crawler
 EnvironmentFile=/etc/metastats-crawler/env

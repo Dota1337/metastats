@@ -11,7 +11,7 @@
     "tables": 35,
     "rpcs": 29,
     "files": 11,
-    "edges": 366,
+    "edges": 370,
     "unused": 8,
     "unresolved": 1
   },
@@ -424,7 +424,12 @@
       "label": "/api/marktwert",
       "group": "marktwert",
       "file": "app/api/marktwert/route.ts",
-      "via": [],
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/tft-supabase-reader.ts",
+        "public/tft-set.json"
+      ],
       "used": true,
       "usedBy": [
         "app/marktwert/page.tsx"
@@ -2231,6 +2236,26 @@
       "from": "api:/api/marktwert",
       "to": "db:ranked_stats",
       "kind": "reads"
+    },
+    {
+      "from": "api:/api/marktwert",
+      "to": "ext:riot-web",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/marktwert",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/marktwert",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/marktwert",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
     },
     {
       "from": "api:/api/marktwert/history",

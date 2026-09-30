@@ -42,3 +42,31 @@ export function latestSplitRowsByPlayer(rows: MvHistoryRow[]): Map<string, MvHis
   }
   return out;
 }
+
+export const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+// So weit reicht der Blick zurueck, um einen Vergleichswert vor der Woche zu
+// finden. Die Bewertungslaeufe kommen nicht taeglich (z. B. 19.09. -> 30.09.).
+export const WEEKLY_LOOKBACK_MS = 21 * 24 * 60 * 60 * 1000;
+
+/**
+ * Wochenveraenderung je Spieler: neuester Wert gegen den neuesten Wert
+ * derselben Split-Gruppe am oder vor Wochenbeginn, ersatzweise gegen den
+ * aeltesten Wert innerhalb der Woche.
+ *
+ * Ohne Vergleichswert fehlt der Spieler in der Map (nicht 0): ein einzelner
+ * Bewertungslauf in der Woche ist keine Veraenderung. Spieler, deren neueste
+ * Zeile nicht in der Woche liegt oder aus einer geschaetzten Gruppe stammt
+ * (Mischrechnung ueber Splits), zaehlen ebenfalls nicht.
+ */
+export function weeklyReferenceByPlayer(rows: MvHistoryRow[], now: number): Map<string, number> {
+  const weekStart = now - WEEK_MS;
+  const out = new Map<string, number>();
+  for (const [pid, group] of latestSplitRowsByPlayer(rows)) {
+    const latest = group[0];
+    if (latest.split_estimated || Date.parse(latest.recorded_at) < weekStart) continue;
+    const before = group.find(r => Date.parse(r.recorded_at) <= weekStart);
+    const ref = before ?? (group.length > 1 ? group[group.length - 1] : undefined);
+    if (ref) out.set(pid, ref.market_value);
+  }
+  return out;
+}

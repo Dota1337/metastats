@@ -424,7 +424,7 @@ export default function Home() {
                   ) : losers.map((p, i) => (
                     <a key={i} href={makePlayerLink(p)} className="flex items-center justify-between py-2 hover:bg-white/5 px-2 rounded-lg transition-colors">
                       <span className="text-white text-sm">{p.summoner_name}</span>
-                      <span className="text-red-400 text-sm font-medium">{formatValue(p.change)}</span>
+                      <span className="text-red-400 text-sm font-medium">-{formatValue(-p.change)}</span>
                     </a>
                   ))}
                 </div>

@@ -13,6 +13,7 @@ import { useI18n, LOCALE_MAP } from '../../lib/i18n';
 import { useCustomPageTitle } from '../../lib/use-page-title';
 import { loadProLookup, lookupPro, type ProPlayer } from '../../lib/pro-players';
 import { formatTier } from '../../lib/rank-format';
+import { isNonStandardMode } from '../../lib/lol-queue';
 
 const PerformanceCharts = dynamic(() => import('../../components/PerformanceCharts'), { ssr: false });
 const RadarStats = dynamic(() => import('../../components/RadarStats'), { ssr: false });
@@ -45,6 +46,7 @@ export default function PlayerPage() {
   const [seasonPeriod, setSeasonPeriod] = useState('');
   const [seasonLoading, setSeasonLoading] = useState(false);
   const seasonReq = useRef(0);
+  const loadReq = useRef(0);
   const region = searchParams.get('region') || 'euw1';
   const { t, lang } = useI18n();
   const numLocale = LOCALE_MAP[lang];
@@ -66,10 +68,22 @@ export default function PlayerPage() {
       name = parts.slice(0, -1).join(' ');
     }
     loadPlayer(name, tag);
-  }, [slug]);
+  }, [slug, region]);
 
   const loadPlayer = async (name: string, tag: string) => {
+    // Spieler- oder Regionwechsel: Werte des vorigen Profils verwerfen und
+    // verspaetete Antworten eines alten Aufrufs ignorieren.
+    const req = ++loadReq.current;
+    const stale = () => req !== loadReq.current;
     setLoading(true);
+    setError('');
+    setStoredMarketValue(null);
+    setProInfo(null);
+    setMatches([]);
+    setStatsOverview(null);
+    setSeasonStats(null);
+    setHasMoreMatches(true);
+    setLiveGame({ inGame: false });
     try {
       const versionRes = await fetch('/api/version');
       const versionData = await versionRes.json();
@@ -77,12 +91,14 @@ export default function PlayerPage() {
 
       const res = await fetch(`/api/summoner?name=${encodeURIComponent(name + '#' + tag)}&region=${region}`);
       const data = await res.json();
+      if (stale()) return;
       if (!res.ok) throw new Error(data.error);
       setPlayer(data);
       if (data.storedMarketValue) setStoredMarketValue(data.storedMarketValue);
 
       // Check if this player is a pro
       loadProLookup().then(lookup => {
+        if (stale()) return;
         const pro = lookupPro(lookup, data.summoner?.name || '');
         if (pro) setProInfo(pro);
       });
@@ -94,6 +110,7 @@ export default function PlayerPage() {
       } else {
         const matchRes = await fetch(`/api/matches?puuid=${encodeURIComponent(data.summoner.puuid)}&region=${region}`);
         const matchData = await matchRes.json();
+        if (stale()) return;
         if (matchRes.ok) {
           setMatches(matchData.matches || []);
           if (matchData.statsOverview) setStatsOverview(matchData.statsOverview);
@@ -109,6 +126,7 @@ export default function PlayerPage() {
         setChampionMap(map);
       }
 
+      if (stale()) return;
       loadSeasonStats(data.summoner.puuid);
 
       // Parallel fetch: mastery + live game
@@ -118,6 +136,7 @@ export default function PlayerPage() {
         fetch(`/api/live-game?puuid=${puuid}&region=${region}`),
       ]);
 
+      if (stale()) return;
       if (masteryRes.ok) {
         const masteryData = await masteryRes.json();
         setMasteries(masteryData.masteries || []);
@@ -131,9 +150,10 @@ export default function PlayerPage() {
         setLiveGameUnavailable(true);
       }
     } catch (e: any) {
+      if (stale()) return;
       setError(e.message || 'Spieler nicht gefunden');
     } finally {
-      setLoading(false);
+      if (!stale()) setLoading(false);
     }
   };
 
@@ -206,6 +226,9 @@ export default function PlayerPage() {
     return formatTier(q.tier, q.rank);
   };
 
+  // Arena und Swarm sind nicht mit 5-gegen-5 vergleichbar (lol-queue.ts).
+  const headerMatches = matches.filter(m => !isNonStandardMode(m));
+
   // Use stored market value from Supabase when available (cached responses),
   // only recalculate when we have fresh match data
   const calculatedMarketValue = calculateMarketValue(
@@ -216,7 +239,7 @@ export default function PlayerPage() {
       wins: ranked.wins,
       losses: ranked.losses,
     } : null,
-    matches
+    headerMatches
   );
 
   const marketValue = storedMarketValue
@@ -226,7 +249,9 @@ export default function PlayerPage() {
         formatted: '$' + storedMarketValue.toLocaleString('de-DE'),
         rated: true,
       }
-    : calculatedMarketValue;
+    // Ohne gespeicherten Wert hat der Server bewusst keinen vergeben (zu wenige
+    // Split-Spiele, kein Rang) — der Browser rechnet dann keinen eigenen aus.
+    : { ...calculatedMarketValue, rated: false };
 
   const formatDuration = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -234,13 +259,13 @@ export default function PlayerPage() {
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
-  const winrate = matches.length > 0
-    ? Math.round((matches.filter(m => m.win).length / matches.length) * 100)
+  const winrate = headerMatches.length > 0
+    ? Math.round((headerMatches.filter(m => m.win).length / headerMatches.length) * 100)
     : null;
 
-  const kda = matches.length > 0
-    ? ((matches.reduce((s, m) => s + m.kills + m.assists, 0)) /
-      Math.max(matches.reduce((s, m) => s + m.deaths, 0), 1)).toFixed(2)
+  const kda = headerMatches.length > 0
+    ? ((headerMatches.reduce((s, m) => s + m.kills + m.assists, 0)) /
+      Math.max(headerMatches.reduce((s, m) => s + m.deaths, 0), 1)).toFixed(2)
     : null;
 
   const timeAgo = (timestamp: number) => {
@@ -360,7 +385,7 @@ export default function PlayerPage() {
                   {marketValue.rated ? (
                     <div className="text-accent text-2xl sm:text-3xl font-medium">{marketValue.formatted}</div>
                   ) : (
-                    <div className="text-fg-muted text-lg">Not Rated</div>
+                    <div className="text-fg-muted text-lg">{t('player.notRated')}</div>
                   )}
                 </div>
               </div>
@@ -402,7 +427,7 @@ export default function PlayerPage() {
                   )}
                 </div>
                 <div className="bg-surface-raised rounded p-4 text-center">
-                  <div className="text-fg-secondary text-xs mb-1">{t('player.winrate30')}</div>
+                  <div className="text-fg-secondary text-xs mb-1">{t('player.winrate30').replace('{n}', String(headerMatches.length))}</div>
                   <div className={`font-medium text-sm ${winrate && winrate >= 50 ? 'text-green-400' : 'text-red-400'}`}>
                     {winrate !== null ? winrate + '%' : '-'}
                   </div>
@@ -415,11 +440,11 @@ export default function PlayerPage() {
                   <div className="text-fg-secondary text-xs mb-1">{t('player.mainRole')}</div>
                   <div className="text-white font-medium text-sm">{roleLabels[marketValue.role] || '-'}</div>
                 </div>
-                {matches.length > 0 && (
+                {headerMatches.length > 0 && (
                   <div className="bg-surface-raised rounded p-4 text-center">
                     <div className="text-fg-secondary text-xs mb-1">DMG/Min</div>
                     <div className="text-white font-medium text-sm">
-                      {Math.round(matches.reduce((s: number, m: any) => s + (m.gameDuration > 0 ? m.damageDealt / (m.gameDuration / 60) : 0), 0) / matches.length).toLocaleString(numLocale)}
+                      {Math.round(headerMatches.reduce((s: number, m: any) => s + m.damageDealt, 0) / Math.max(headerMatches.reduce((s: number, m: any) => s + m.gameDuration, 0) / 60, 1)).toLocaleString(numLocale)}
                     </div>
                   </div>
                 )}

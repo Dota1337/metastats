@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '../../lib/supabase';
 
-import { getRegionalRouting, parseRegion, REGION_ALL } from '../../lib/regions';
+import { getAccountRouting, parseRegion, REGION_ALL } from '../../lib/regions';
 import { riotFetch } from '../../lib/riot-fetch';
 import { cachedJson } from '../../lib/api-cache';
 import { APEX_ORDER, LOL_LADDER, expandLolTier, isLolRankGroup, lolTiersTopDown } from '../../lib/rank-groups';
@@ -210,7 +210,8 @@ export async function GET(request: NextRequest) {
         }
 
         // Resolve missing names via Account API (batched)
-        const regional = getRegionalRouting(riotRegion);
+        // account-v1 kennt kein sea — OCE/SEA-Namen liegen auf europe.
+        const regional = getAccountRouting(riotRegion);
         const unresolvedPuuids = pageEntries
           .map((e: any) => e.puuid)
           .filter((puuid: string) => puuid && !nameCache[puuid]);

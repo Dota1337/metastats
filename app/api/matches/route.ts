@@ -24,7 +24,16 @@ export async function GET(request: NextRequest) {
     const matchListRes = await riotFetch(`https://${regional}.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?start=${start}&count=${Math.min(count, 30)}`, apiKey);
 
     if (!matchListRes.ok) {
-      return NextResponse.json({ error: 'Match History nicht gefunden' }, { status: 404 });
+      const st = matchListRes.status;
+      if (st === 404 || st === 400) {
+        return NextResponse.json({ error: 'Match History nicht gefunden' }, { status: 404 });
+      }
+      // Limit, Schluessel- oder Riot-Ausfall ist kein „nicht gefunden".
+      const code = st === 429 ? 'rate_limited' : (st === 401 || st === 403) ? 'riot_auth' : 'riot_upstream';
+      return NextResponse.json(
+        { error: `Riot API Fehler (${st})`, code },
+        { status: 503, headers: { 'Cache-Control': 'no-store' } },
+      );
     }
 
     const matchIds: string[] = await matchListRes.json();

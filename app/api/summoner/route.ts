@@ -4,7 +4,7 @@ import { calculateMarketValue } from '../../lib/marketvalue';
 import { processMatch, toLegacyMatchData, extractParticipants, extractBans, type ExtendedMatchData } from '../../lib/match-processor';
 import { calculateStatsOverview } from '../../lib/stats-categories';
 
-import { getRegionalRouting, parseRegion } from '../../lib/regions';
+import { getAccountRouting, getRegionalRouting, parseRegion } from '../../lib/regions';
 import { riotFetch } from '../../lib/riot-fetch';
 import { currentSplit, isBeforeSplit, splitForPatch } from '../../lib/seasons';
 
@@ -25,6 +25,8 @@ export async function GET(request: NextRequest) {
     );
   }
   const regional = getRegionalRouting(region);
+  // account-v1 kennt kein sea — OCE/SEA-Konten liegen auf europe.
+  const accountCluster = getAccountRouting(region);
 
   const decoded = decodeURIComponent(name);
   const parts = decoded.split('#');
@@ -34,7 +36,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // === Step 1: Resolve account ===
-    const accountRes = await riotFetch(`https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`, apiKey);
+    const accountRes = await riotFetch(`https://${accountCluster}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`, apiKey);
     if (!accountRes.ok) {
       // Distinguish error classes so the UI can show meaningful messages
       // and so we don't silently mask a revoked Riot API key as "Spieler nicht gefunden".
@@ -101,7 +103,14 @@ export async function GET(request: NextRequest) {
           const rankedRes = await riotFetch(`https://${region}.api.riotgames.com/lol/league/v4/entries/by-puuid/${account.puuid}`, apiKey);
           if (rankedRes.ok) {
             const freshRanked = await rankedRes.json();
-            if (Array.isArray(freshRanked) && freshRanked.length > 0) {
+            if (Array.isArray(freshRanked)) {
+              // Weggefallene Queues (Season-Reset, Flex nicht mehr gespielt)
+              // loeschen — ein Upsert allein liesse sie stehen.
+              const liveQueues = freshRanked.map((q: any) => q.queueType);
+              const staleDelete = supabase.from('ranked_stats').delete().eq('player_id', cached.id);
+              await (liveQueues.length > 0
+                ? staleDelete.not('queue_type', 'in', `(${liveQueues.join(',')})`)
+                : staleDelete);
               // Store ranked stats and update player tier
               const soloQ = freshRanked.find((r: any) => r.queueType === 'RANKED_SOLO_5x5');
               const flexQ = freshRanked.find((r: any) => r.queueType === 'RANKED_FLEX_SR');
@@ -116,11 +125,16 @@ export async function GET(request: NextRequest) {
                 cached.tier = primary.tier;
                 cached.rank = primary.rank;
               } else {
-                // No ranked queue at all (unranked) — still bump updated_at so we
-                // don't refresh again on every following request.
+                // Kein Rang (mehr) — Rang leeren und updated_at setzen, damit
+                // nicht jeder folgende Aufruf erneut bei Riot fragt.
                 await supabase.from('players').update({
+                  tier: null,
+                  rank: null,
+                  winrate: null,
                   updated_at: new Date().toISOString(),
                 }).eq('id', cached.id);
+                cached.tier = null;
+                cached.rank = null;
               }
               for (const q of freshRanked) {
                 await supabase.from('ranked_stats').upsert({
@@ -147,7 +161,7 @@ export async function GET(request: NextRequest) {
         queueType: r.queue_type || r.queueType,
         tier: r.tier,
         rank: r.rank,
-        leaguePoints: r.league_points || r.leaguePoints,
+        leaguePoints: r.league_points ?? r.leaguePoints,
         wins: r.wins,
         losses: r.losses,
       }));
@@ -186,7 +200,10 @@ export async function GET(request: NextRequest) {
     const summoner = await summonerRes.json();
 
     const rankedRes = await riotFetch(`https://${region}.api.riotgames.com/lol/league/v4/entries/by-puuid/${account.puuid}`, apiKey);
-    const ranked = rankedRes.ok ? await rankedRes.json() : [];
+    // Bei Riot-Fehler sind die Raenge unbekannt, nicht leer: dann nichts
+    // ueberschreiben und die gespeicherten ausliefern.
+    const rankedOk = rankedRes.ok;
+    const ranked = rankedOk ? await rankedRes.json() : [];
 
     const soloQueue = Array.isArray(ranked)
       ? ranked.find((r: any) => r.queueType === 'RANKED_SOLO_5x5')
@@ -388,9 +405,11 @@ export async function GET(request: NextRequest) {
         profile_icon_id: summoner.profileIconId,
         // Ohne neuen Wert fehlt das Feld: der Upsert laesst den gespeicherten stehen.
         ...(writeValue ? { market_value: marketValue.value } : {}),
-        tier: primaryQueue?.tier || null,
-        rank: primaryQueue?.rank || null,
-        winrate: winrate,
+        ...(rankedOk ? {
+          tier: primaryQueue?.tier || null,
+          rank: primaryQueue?.rank || null,
+          winrate: winrate,
+        } : {}),
         searched_by: searchedBy,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'puuid' })
@@ -417,7 +436,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Store all ranked queues (solo + flex)
-    if (player && Array.isArray(ranked)) {
+    if (player && rankedOk && Array.isArray(ranked)) {
       await supabase.from('ranked_stats').delete().eq('player_id', player.id);
       for (const queue of ranked) {
         await supabase.from('ranked_stats').insert({
@@ -438,9 +457,18 @@ export async function GET(request: NextRequest) {
       collectChampionStats(rankedMatches, matchDetails, account.puuid, primaryQueue.tier, region).catch(() => {});
     }
 
+    let rankedOut: any[] = Array.isArray(ranked) ? ranked : [];
+    if (!rankedOk && player) {
+      const { data: storedRanked } = await supabase.from('ranked_stats').select('*').eq('player_id', player.id);
+      rankedOut = (storedRanked || []).map((r: any) => ({
+        queueType: r.queue_type, tier: r.tier, rank: r.rank,
+        leaguePoints: r.league_points, wins: r.wins, losses: r.losses,
+      }));
+    }
+
     return NextResponse.json({
       summoner: { ...summoner, name: fullName },
-      ranked: Array.isArray(ranked) ? ranked : [],
+      ranked: rankedOut,
       matches,
       statsOverview,
       storedMarketValue: writeValue ? marketValue.value : (existingPlayer?.market_value ?? null),

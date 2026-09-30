@@ -111,9 +111,10 @@ export function lookupPro(lookup: Map<string, ProPlayer>, name: string): ProPlay
   const direct = lookup.get(lower) || lookup.get(namePart);
   if (direct) return direct;
 
-  // Substring match: "g2 skewmond" contains "skewmond"
+  // Teamkuerzel vor dem Namen: "g2 skewmond" endet auf " skewmond". Nur diese
+  // Form — ein freier Teilstring machte "tom" zum Pro "tommyg".
   for (const entry of proAccountNames) {
-    if (namePart.includes(entry.name) || entry.name.includes(namePart)) {
+    if (entry.name.length >= 4 && namePart.endsWith(' ' + entry.name)) {
       return entry.player;
     }
   }

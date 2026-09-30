@@ -3,7 +3,7 @@ import type { MetadataRoute } from 'next';
 // Rebuild sitemap at most once per day
 export const revalidate = 86400;
 
-const SITE_URL = 'https://metastats.gg';
+import { SITE_URL } from './lib/site';
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
@@ -18,7 +18,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/compare', priority: 0.6, changeFrequency: 'weekly' as const },
     { path: '/multi-search', priority: 0.5, changeFrequency: 'weekly' as const },
     // TFT hub
-    { path: '/tft', priority: 1.0, changeFrequency: 'daily' as const },
     { path: '/tft/comps', priority: 0.9, changeFrequency: 'daily' as const },
     { path: '/tft/leaderboard', priority: 0.9, changeFrequency: 'hourly' as const },
     { path: '/tft/marktwert', priority: 0.8, changeFrequency: 'hourly' as const },

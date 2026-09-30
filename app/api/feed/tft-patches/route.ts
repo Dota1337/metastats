@@ -1,10 +1,11 @@
 import { NextRequest } from 'next/server';
 import { getAvailablePatches, callRpc } from '../../../lib/tft-supabase-reader';
+import { SITE_URL } from '../../../lib/site';
 
 // /api/feed/tft-patches → RSS 2.0 of TFT patch winners/losers. Sprint 5.3.
 // Lightweight newsletter surface: any RSS reader / newsletter tool can scrape.
 
-const SITE = 'https://www.metastats.gg';
+const SITE = SITE_URL;
 
 interface UnitRow {
   character_id: string;

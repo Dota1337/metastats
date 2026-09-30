@@ -4,6 +4,7 @@ import "./globals.css";
 import { I18nProvider } from "./lib/i18n";
 import { AuthProvider } from "./lib/auth-context";
 import { getServerLang, getSeoCopy } from "./lib/server-lang";
+import { SITE_URL } from "./lib/site";
 import SideDrawer from "./components/SideDrawer";
 import PrototypeBanner from "./components/PrototypeBanner";
 import GameStrip from "./components/GameStrip";
@@ -20,7 +21,6 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const SITE_URL = "https://metastats.gg";
 
 export async function generateMetadata(): Promise<Metadata> {
   const lang = await getServerLang();
@@ -32,7 +32,6 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraph: {
       title,
       description,
-      url: SITE_URL,
       siteName: "metastats.gg",
       locale: lang,
       type: "website",
@@ -50,17 +49,6 @@ export async function generateMetadata(): Promise<Metadata> {
       title,
       description,
       images: ["/opengraph-image"],
-    },
-    alternates: {
-      canonical: SITE_URL,
-      languages: {
-        de: SITE_URL,
-        en: SITE_URL,
-        ko: SITE_URL,
-        "zh-CN": SITE_URL,
-        es: SITE_URL,
-        fr: SITE_URL,
-      },
     },
   };
 }

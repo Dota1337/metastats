@@ -225,8 +225,9 @@ export default function Leaderboard() {
     );
   };
 
-  const makePlayerLink = (name: string | null, playerRegion?: string) => {
-    if (!name) return '#';
+  const makePlayerLink = (name: string | null, playerRegion?: string, puuid?: string | null) => {
+    // Ohne Namen: Riot-ID erst beim Klick aufloesen lassen.
+    if (!name) return puuid ? '/api/leaderboard/resolve?puuid=' + encodeURIComponent(puuid) + '&region=' + (playerRegion || region || 'euw1') : '#';
     const parts = name.split('#');
     return '/player/' + encodeURIComponent(parts[0]) + '--' + encodeURIComponent(parts[1] || 'EUW') + '?region=' + (playerRegion || region || 'euw1');
   };
@@ -424,7 +425,7 @@ export default function Leaderboard() {
             {entries.map((entry, i) => (
               <a
                 key={i}
-                href={makePlayerLink(entry.summonerName, entry.region)}
+                href={makePlayerLink(entry.summonerName, entry.region, entry.puuid)}
                 className="block md:grid md:grid-cols-[3rem_2.5rem_1fr_5rem_4rem_5rem_5rem_6rem] gap-3 px-4 py-3 border-b border-border-subtle/30 hover:bg-surface-raised transition-colors items-center"
               >
                 {/* Mobile layout */}

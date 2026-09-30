@@ -17,7 +17,17 @@ export const maxDuration = 60;
 
 // In-memory cache for PUUID -> Riot ID (gameName#tagLine)
 const nameCache: Record<string, string> = {};
-const NAME_RESOLVE_BATCH = 80; // max names to resolve per request (rate limit safe)
+// Hoechstens so viele Namen je Anfrage und nur bis zur Frist: der Dev-Key
+// (100 Abfragen je 2 min) wird mit dem Match-Sammler auf der Box geteilt.
+// Zeilen ohne Namen verlinken auf /api/leaderboard/resolve.
+const NAME_RESOLVE_BATCH = 40;
+const NAME_RESOLVE_BUDGET_MS = 12_000;
+// Spieler-Abgleich mit der Datenbank in Stuecken, damit die URL kurz bleibt.
+const KNOWN_CHUNK = 50;
+
+function badRequest(error: string) {
+  return NextResponse.json({ error, entries: [] }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
+}
 
 // Eintrag aus Riots league-v4 (Apex-Liga oder Division), um Rang ergaenzt.
 type RiotEntry = { tier?: string; rank?: string; leaguePoints: number; [k: string]: unknown };
@@ -35,18 +45,24 @@ export async function GET(request: NextRequest) {
     );
   }
   const division = searchParams.get('division') || '';
-  const page = parseInt(searchParams.get('page') || '1', 10);
-  const search = searchParams.get('search') || '';
+  const parsedPage = parseInt(searchParams.get('page') || '1', 10);
+  const page = Number.isFinite(parsedPage) && parsedPage >= 1 ? parsedPage : 1;
+  const search = (searchParams.get('search') || '').trim();
   const PAGE_SIZE = 100;
   const apiKey = process.env.RIOT_API_KEY;
 
   try {
     // Search mode: find players by name in Supabase
-    if (search.trim()) {
-      const { data: searchResults } = await supabase
+    if (search) {
+      if (search.length < 2) return badRequest('Suchbegriff zu kurz');
+      // % und _ sind in ilike Platzhalter — als normale Zeichen suchen.
+      const pattern = search.replace(/[\\%_]/g, (c) => '\\' + c);
+      let searchQuery = supabase
         .from('players')
         .select('summoner_name, region, tier, rank, winrate, market_value, summoner_level, profile_icon_id')
-        .ilike('summoner_name', `%${search}%`)
+        .ilike('summoner_name', `%${pattern}%`);
+      if (region !== REGION_ALL) searchQuery = searchQuery.eq('region', region);
+      const { data: searchResults } = await searchQuery
         .order('market_value', { ascending: false, nullsFirst: false })
         .limit(20);
 
@@ -66,6 +82,9 @@ export async function GET(request: NextRequest) {
         tier: null,
       });
     }
+
+    if (!(LOL_LADDER as readonly string[]).includes(tier) && !isLolRankGroup(tier)) return badRequest('Ungültiger Rang');
+    if (division && !DIVISION_ORDER.includes(division)) return badRequest('Ungültige Division');
 
     // Primary: fetch from Riot API
     if (apiKey) {
@@ -193,11 +212,19 @@ export async function GET(request: NextRequest) {
           startRank = (currentPage - 1) * 205; // Riot uses 205 per page
         }
 
-        // Load known players from Supabase for enrichment
-        const { data: knownPlayers } = await supabase
-          .from('players')
-          .select('puuid, summoner_name, market_value, profile_icon_id, summoner_level')
-          .eq('region', riotRegion);
+        // Bekannte Spieler nur fuer die gezeigte Seite nachschlagen (die ganze
+        // Region liefe in den 1000-Zeilen-Deckel von Supabase).
+        const pagePuuids = pageEntries.map((e: { puuid?: string | null }) => e.puuid).filter(Boolean) as string[];
+        const chunks: string[][] = [];
+        for (let i = 0; i < pagePuuids.length; i += KNOWN_CHUNK) chunks.push(pagePuuids.slice(i, i + KNOWN_CHUNK));
+        const knownPlayers = (await Promise.all(chunks.map(async (c) => {
+          const { data } = await supabase
+            .from('players')
+            .select('puuid, summoner_name, market_value, profile_icon_id, summoner_level')
+            .eq('region', riotRegion)
+            .in('puuid', c);
+          return data || [];
+        }))).flat();
 
         const knownMap: Record<string, any> = {};
         for (const p of knownPlayers || []) {
@@ -217,13 +244,16 @@ export async function GET(request: NextRequest) {
           .filter((puuid: string) => puuid && !nameCache[puuid]);
 
         const toResolve = unresolvedPuuids.slice(0, NAME_RESOLVE_BATCH);
+        const deadline = Date.now() + NAME_RESOLVE_BUDGET_MS;
         if (toResolve.length > 0) {
           for (let i = 0; i < toResolve.length; i += 10) {
+            const left = deadline - Date.now();
+            if (left <= 500) break;
             const batch = toResolve.slice(i, i + 10);
             await Promise.all(
               batch.map(async (puuid: string) => {
                 try {
-                  const accRes = await riotFetch(`https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-puuid/${puuid}`, apiKey);
+                  const accRes = await riotFetch(`https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-puuid/${puuid}`, apiKey, { signal: AbortSignal.timeout(left) });
                   if (accRes.ok) {
                     const acc = await accRes.json();
                     if (acc.gameName) {

@@ -6,12 +6,12 @@
     "belegen laesst, steht in `unresolved` statt als geratene Kante im Graphen."
   ],
   "counts": {
-    "routes": 78,
+    "routes": 79,
     "groups": 31,
     "tables": 35,
     "rpcs": 29,
     "files": 11,
-    "edges": 370,
+    "edges": 376,
     "unused": 8,
     "unresolved": 1
   },
@@ -42,6 +42,10 @@
     },
     {
       "name": "cron",
+      "count": 2
+    },
+    {
+      "name": "leaderboard",
       "count": 2
     },
     {
@@ -86,10 +90,6 @@
     },
     {
       "name": "knowledge-graph",
-      "count": 1
-    },
-    {
-      "name": "leaderboard",
       "count": 1
     },
     {
@@ -373,6 +373,25 @@
       "label": "/api/leaderboard",
       "group": "leaderboard",
       "file": "app/api/leaderboard/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/regions.ts",
+        "app/lib/riot-fetch.ts",
+        "app/lib/tft-supabase-reader.ts",
+        "public/tft-set.json"
+      ],
+      "used": true,
+      "usedBy": [
+        "app/leaderboard/page.tsx"
+      ]
+    },
+    {
+      "id": "api:/api/leaderboard/resolve",
+      "kind": "route",
+      "label": "/api/leaderboard/resolve",
+      "group": "leaderboard",
+      "file": "app/api/leaderboard/resolve/route.ts",
       "via": [
         "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
@@ -2184,6 +2203,36 @@
     },
     {
       "from": "api:/api/leaderboard",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/leaderboard/resolve",
+      "to": "db:players",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/leaderboard/resolve",
+      "to": "ext:riot-api",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/leaderboard/resolve",
+      "to": "ext:riot-web",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/leaderboard/resolve",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/leaderboard/resolve",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/leaderboard/resolve",
       "to": "fn:get_tft_available_patches",
       "kind": "calls"
     },

@@ -6,7 +6,7 @@ import { calculateStatsOverview } from '../../lib/stats-categories';
 
 import { getRegionalRouting, parseRegion } from '../../lib/regions';
 import { riotFetch } from '../../lib/riot-fetch';
-import { splitForPatch } from '../../lib/seasons';
+import { currentSplit, isBeforeSplit, splitForPatch } from '../../lib/seasons';
 
 // Unter so vielen Partien im Split wird kein neuer Marktwert geschrieben; der
 // gespeicherte bleibt stehen. Die Formel liefert auch mit 0 Partien einen
@@ -312,7 +312,13 @@ export async function GET(request: NextRequest) {
       const p = patchOf.get(m.matchId);
       if (p && (!newest || p.at > newest.at)) newest = p;
     }
-    const split = newest ? splitForPatch(newest.major, newest.minor) : null;
+    // Wie bei TFT zaehlt der laufende Split, nicht der letzte des Spielers:
+    // wer seit einem frueheren Split pausiert, hat im laufenden 0 Partien und
+    // bekommt keinen neuen Wert. Nur wenn die Datei hinter dem Spiel zurueck
+    // ist (Patch unbekannt), bleibt es beim Abbruch unten.
+    const ownSplit = newest ? splitForPatch(newest.major, newest.minor) : null;
+    const liveSplit = currentSplit();
+    const split = ownSplit && liveSplit && isBeforeSplit(ownSplit, liveSplit) ? liveSplit : ownSplit;
     if (newest && !split) {
       console.error(`[summoner] Patch ${newest.major}.${newest.minor} in keinem Split von public/seasons.json, Marktwert nicht geschrieben`);
     }

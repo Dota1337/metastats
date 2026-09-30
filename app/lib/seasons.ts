@@ -79,4 +79,16 @@ export function splitForPatch(major: number, minor: number): SeasonPeriod | null
   return allPeriods().find(p => p.kind === 'split' && inPeriod(p, major, minor)) || null;
 }
 
+/** Letzter bekannter Split der laufenden Saison — das Gegenstueck zum aktuellen TFT-Set. */
+export function currentSplit(): SeasonPeriod | null {
+  const own = allPeriods().filter(p => p.kind === 'split' && p.major === data.currentSeason.major);
+  return own.length ? own[own.length - 1] : null;
+}
+
+/** Liegt Zeitraum a vor Zeitraum b? Nur fuer Splits sinnvoll. */
+export function isBeforeSplit(a: SeasonPeriod, b: SeasonPeriod): boolean {
+  if (a.major !== b.major) return a.major < b.major;
+  return (a.minMinor ?? 0) < (b.minMinor ?? 0);
+}
+
 export const CURRENT_SEASON_ID = data.currentSeason.id;

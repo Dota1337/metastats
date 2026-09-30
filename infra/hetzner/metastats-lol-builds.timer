@@ -1,0 +1,14 @@
+[Unit]
+Description=LoL-Champion-Builds je Rang alle 6 Stunden verdichten
+
+[Timer]
+# Die Seite haelt die Antwort 6 h im Edge-Cache (STATS_CACHE_CONTROL); oefter
+# zu rechnen braechte dem Besucher nichts.
+OnCalendar=*-*-* 00/6:20:00 UTC
+# War die Box zur Trigger-Zeit down, beim Boot nachholen — sonst meldet der
+# Frische-Vertrag (maxLagDays 2) zu Recht.
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

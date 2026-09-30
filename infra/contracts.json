@@ -381,10 +381,31 @@
       "liveness": { "table": "matches", "column": "match_id" },
       "probes": [
         { "table": "tft_player_match_cache", "column": "match_id" },
-        { "table": "tft_position_unit_cell", "column": "unit" }
+        { "table": "tft_position_unit_cell", "column": "unit" },
+        { "table": "lol_champion_build_stats", "column": "champion" }
       ],
       "rpcProbes": [{ "fn": "tft_position_unit_cell_data", "args": {} }],
       "note": "Rot heisst hier nicht 'Pipeline hakt', sondern 'Sicherheitszustand verletzt': die oeffentliche Rolle liest wieder mit. Sofort 0055 erneut anwenden (node scripts/apply-migrations.mjs 0055) und pruefen, welche Migration oder welcher Studio-Klick den Grant zurueckgeholt hat. Ausnahme matches/authenticated ist gewollt — Owner-Policy player_id = auth.uid(). Zuruecknehmen liesse sich die Sperre mit supabase/rollback/0055_revoke_anon_read_rollback.sql."
+    },
+    {
+      "id": "lol-builds/rang-summen",
+      "owner": "metastats-lol-builds.service",
+      "backend": "supabase",
+      "table": "lol_champion_build_stats",
+      "dateColumn": "updated_at",
+      "windowDays": 2,
+      "minRows": 1000,
+      "note": "Summen je Champion + Rolle + Rang fuer /champions/[id] (Rangauswahl). Die Verdichtung ersetzt alle 6h die zwei neuesten Patches komplett, deshalb zaehlt ein Fenster ueber updated_at statt eines Tagesstands - gestern gibt es nach dem ersten Lauf von heute keine Zeilen mehr. Rot heisst: die Seite faellt still auf die alte Datei ohne Rang zurueck (source json). minRows 1000 ist die Untergrenze der Anlaufphase, nach zwei Wochen Sammeln an der echten Zahl nachschaerfen."
+    },
+    {
+      "id": "lol-builds/rohdaten-zulauf",
+      "owner": "metastats-lol-matchfill.service",
+      "backend": "hetzner",
+      "table": "lol_match_participant_raw",
+      "dateColumn": "fetched_at",
+      "windowDays": 2,
+      "minRows": 2000,
+      "note": "Zulauf der Rang-Stichprobe (EUW, 10 Zeilen je Match) in die Box-Datenbank. Ein Sammler-Lauf holt bis zu 900 Matches; unter 2000 Zeilen in zwei Tagen heisst, dass der Sammler steht (Riot-Key, Sperre, Dienst aus) - die Rang-Summen bleiben dann auf dem alten Stand stehen."
     }
   ]
 }

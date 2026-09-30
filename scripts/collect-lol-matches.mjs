@@ -20,6 +20,18 @@
  *   node scripts/collect-lol-matches.mjs --players 3       # drei Spieler abarbeiten
  *   node scripts/collect-lol-matches.mjs --puuid <p> --region euw1 --max-ids 20   # Rauchtest
  *   node scripts/collect-lol-matches.mjs --status          # Warteschlange anzeigen
+ *   node scripts/collect-lol-matches.mjs --rank-only --rank-calls 50   # nur Rang-Stichprobe
+ *
+ * Rang-Stichprobe (fuer die Champion-Builds je Rang, /champions/[id]):
+ * Mit --rank-calls N wechselt sich nach jedem Spieler ein Rang-Zyklus mit
+ * hoechstens N Riot-Anfragen ab. Er zieht Spieler aus der EUW-Rangliste
+ * (Emerald bis Challenger), holt ihre juengsten Ranked-Solo-Spiele und legt ALLE
+ * zehn Teilnehmer im Box-Postgres ab (lol_match_participant_raw, Migration 0082).
+ * Auch die Spieler-Historie oben legt ihre Ranked-Solo-Spiele des aktuellen und
+ * vorigen Patches dort ab. Verdichtet wird das von scripts/aggregate-lol-builds.mjs.
+ * Die Stichprobe ist pro Stufe gedeckelt (RANK_QUOTA), nicht nach Spielerzahl
+ * gewichtet — Master+ ist in "Emerald+" damit bewusst ueberrepraesentiert.
+ * --no-rank schaltet sie ab.
  *
  * Laufzeit: Riot erlaubt 100 Anfragen pro 2 Minuten, der Client drosselt auf 95.
  * Ein Spieler mit ~950 Spielen dauert damit rund 20 Minuten — mehr als etwa 70
@@ -34,6 +46,7 @@ import pg from 'pg';
 import { createRiotClient } from './lib/riot-client.mjs';
 import { getRegionalRouting, normalizeRegion, isValidRegion } from './lib/regional-routing.mjs';
 import { tryAcquire, releaseLock, wantPending } from './lib/advisory-lock.mjs';
+import { recentPatches } from './lib/lol-items.mjs';
 
 const args = process.argv.slice(2);
 const getArg = (k, def = null) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : def; };
@@ -50,6 +63,20 @@ const ONE_REGION = getArg('--region');
 const MAX_IDS = Number(getArg('--max-ids', '1000'));
 const ID_PAGE = 100;                     // Riots Maximum pro Anfrage
 const INSERT_BATCH = 200;
+
+// Rang-Stichprobe
+const RANK_ONLY = hasFlag('--rank-only');
+const NO_RANK = hasFlag('--no-rank');
+const RANK_CALLS = Number(getArg('--rank-calls', RANK_ONLY ? '900' : '0'));
+const RANK_REGION = 'euw1';              // User-Entscheid: vorerst nur EUW
+const RANK_PENDING_MAX = 2000;           // darueber keine neuen Stichproben-Spieler
+const RANK_IDS_PER_PLAYER = 20;
+const RANK_CLAIM_BATCH = 20;
+// Spieler je Stufe und Nachfuell-Runde.
+const RANK_QUOTA = [
+  ['EMERALD', 4], ['DIAMOND', 3], ['MASTER', 2], ['GRANDMASTER', 1], ['CHALLENGER', 1],
+];
+const APEX_PATH = { MASTER: 'masterleagues', GRANDMASTER: 'grandmasterleagues', CHALLENGER: 'challengerleagues' };
 
 const log = (msg) => console.log(`[lol-matches ${new Date().toISOString()}] ${msg}`);
 
@@ -116,6 +143,23 @@ const pool = new pg.Pool({
 // Spieler ab.
 pool.on('error', (err) => log(`DB-Verbindung verworfen: ${err.message}`));
 
+// Zweite Verbindung: das Box-Postgres fuer die Rohdaten der Champion-Builds
+// (alle zehn Teilnehmer je Match — zu viel fuer Supabase). Nur auf der Box
+// vorhanden: dort zeigt DATABASE_URL lokal und SUPABASE_DB_URL auf Supabase.
+// Lokal zeigt DATABASE_URL auf Supabase — dann gibt es keine Rohablage, und
+// LOL_RAW_DB_URL kann sie fuer Tests explizit setzen.
+const RAW_DB_URL = process.env.LOL_RAW_DB_URL
+  || (process.env.SUPABASE_DB_URL && process.env.DATABASE_URL !== process.env.SUPABASE_DB_URL ? process.env.DATABASE_URL : null);
+const rawPool = RAW_DB_URL ? new pg.Pool({
+  connectionString: encodePasswordInPgUrl(RAW_DB_URL),
+  ssl: /@(127\.0\.0\.1|localhost)[:/]/.test(RAW_DB_URL) ? false : { rejectUnauthorized: false },
+  max: 2,
+  statement_timeout: 110_000,
+  query_timeout: 120_000,
+  connectionTimeoutMillis: 15_000,
+}) : null;
+rawPool?.on('error', (err) => log(`Rohablage-Verbindung verworfen: ${err.message}`));
+
 // --------------------------------------------------------------------------
 // Sperre. Der Marktwert-Dienst benutzt denselben LoL-Key und dasselbe
 // Anfrage-Kontingent bei Riot. Laufen beide gleichzeitig, halbiert sich der
@@ -158,24 +202,59 @@ process.on('SIGINT', () => process.exit(130));
 // --------------------------------------------------------------------------
 // Riot
 // --------------------------------------------------------------------------
-const RIOT_KEY = process.env.RIOT_API_KEY;
-if (!RIOT_KEY && !SHOW_STATUS && !SEED_ONLY) {
+let riotKey = process.env.RIOT_API_KEY;
+if (!riotKey && !SHOW_STATUS && !SEED_ONLY) {
   console.error('RIOT_API_KEY nicht gesetzt — ohne Key gibt es nichts zu holen.');
   process.exit(1);
 }
-const riot = RIOT_KEY ? createRiotClient({ apiKey: RIOT_KEY, log: (m) => log(m) }) : null;
+let riot = riotKey ? createRiotClient({ apiKey: riotKey, log: (m) => log(m) }) : null;
+let riotCalls = 0;
 
 // Ein abgelaufener Key ist der haeufigste Fehlerfall (LoL-Dev-Key laeuft taeglich
 // ab). Er darf NICHT als "Spieler hat keine Spiele" durchgehen, sonst waere die
 // Warteschlangenzeile faelschlich auf `done`.
 class RiotAuthError extends Error {}
+// Riot ueberlastet, 5xx, Netz weg: die Zeile war nicht schuld und geht zurueck
+// auf `pending` statt auf `failed`.
+class RiotTransientError extends Error {}
 
-async function riotJson(url) {
-  const res = await riot.fetch(url, {});
+// Der Key wird taeglich rotiert (scripts/refresh-riot-key.mjs schreibt die
+// Env-Datei und startet den Dienst neu). Liegt schon ein neuer Key in der Datei,
+// wird er uebernommen statt den Lauf abzubrechen.
+function reloadRiotKey() {
+  for (const path of ['/etc/metastats-crawler/env', resolve(process.cwd(), '.env.local')]) {
+    if (!existsSync(path)) continue;
+    const line = readFileSync(path, 'utf8').split(/\r?\n/).find((l) => l.startsWith('RIOT_API_KEY='));
+    const key = line ? line.slice('RIOT_API_KEY='.length).trim() : null;
+    if (key && key !== riotKey) {
+      riotKey = key;
+      riot = createRiotClient({ apiKey: key, log: (m) => log(m) });
+      return true;
+    }
+    return false;
+  }
+  return false;
+}
+
+async function riotJson(url, keyRetried = false) {
+  let res;
+  riotCalls++;
+  try {
+    res = await riot.fetch(url, {});
+  } catch (err) {
+    throw new RiotTransientError(`Netzfehler bei ${url.split('?')[0]}: ${err.message}`);
+  }
   if (res.status === 401 || res.status === 403) {
+    if (!keyRetried && reloadRiotKey()) {
+      log('Riot lehnt den Schluessel ab — neuer Schluessel aus der Env-Datei geladen, zweiter Versuch.');
+      return riotJson(url, true);
+    }
     throw new RiotAuthError(`Riot lehnt den Schluessel ab (HTTP ${res.status})`);
   }
   if (res.status === 404) return null;
+  if (res.status === 429 || res.status >= 500) {
+    throw new RiotTransientError(`HTTP ${res.status} bei ${url.split('?')[0]}`);
+  }
   if (!res.ok) throw new Error(`HTTP ${res.status} bei ${url.split('?')[0]}`);
   return res.json();
 }
@@ -375,6 +454,96 @@ async function insertRows(rows) {
   return res.rowCount;
 }
 
+// --------------------------------------------------------------------------
+// Rohablage fuer die Champion-Builds (Box-Postgres)
+// --------------------------------------------------------------------------
+let rawPatchFloor = null;                   // {major, minor} des vorigen Patches
+async function loadRawPatchFloor() {
+  if (!rawPool || rawPatchFloor) return;
+  const [, prev] = await recentPatches(2);
+  rawPatchFloor = prev;
+  log(`Rohablage: nimmt Ranked Solo ab Patch ${prev.major}.${prev.minor}.`);
+}
+const patchAtLeast = (p, floor) => p.major > floor.major || (p.major === floor.major && p.minor >= floor.minor);
+
+// Reihenfolge der Runen: primary, keystone, p1, p2, p3, secondary, s1, s2, offense, flex, defense
+function runeTuple(perks) {
+  const [pri, sec] = perks?.styles || [];
+  const sel = (st, i) => st?.selections?.[i]?.perk ?? 0;
+  const sp = perks?.statPerks || {};
+  return [pri?.style ?? 0, sel(pri, 0), sel(pri, 1), sel(pri, 2), sel(pri, 3),
+    sec?.style ?? 0, sel(sec, 0), sel(sec, 1), sp.offense ?? 0, sp.flex ?? 0, sp.defense ?? 0];
+}
+
+const RAW_COLS = [
+  'match_id', 'participant_id', 'puuid', 'region', 'queue_id', 'game_creation', 'game_duration',
+  'early_surrender', 'patch_major', 'patch_minor', 'champion_id', 'team_id', 'team_position',
+  'win', 'items', 'runes', 'summoners',
+];
+
+// null = gehoert nicht in die Rohablage (anderer Modus, zu alter Patch, kaputt).
+function buildRawRows(raw, region) {
+  const info = raw?.info;
+  if (!info || info.queueId !== 420 || !Array.isArray(info.participants) || info.participants.length !== 10) return null;
+  const patch = parsePatch(info.gameVersion);
+  if (!patch || !rawPatchFloor || !patchAtLeast(patch, rawPatchFloor)) return null;
+  const created = new Date(info.gameCreation || info.gameStartTimestamp || 0);
+  return info.participants.map((p, i) => [
+    raw.metadata.matchId,
+    p.participantId || i + 1,
+    p.puuid,
+    region,
+    info.queueId,
+    created,
+    info.gameDuration || 0,
+    Boolean(p.gameEndedInEarlySurrender),
+    patch.major,
+    patch.minor,
+    p.championId || 0,
+    p.teamId || 0,
+    p.teamPosition || '',
+    Boolean(p.win),
+    [p.item0, p.item1, p.item2, p.item3, p.item4, p.item5].map((x) => Number(x) || 0),
+    runeTuple(p.perks),
+    [p.summoner1Id || 0, p.summoner2Id || 0],
+  ]);
+}
+
+// Rohzeilen schreiben und die Match-Zeile der Rang-Warteschlange auf `done`
+// setzen — in EINER Transaktion, damit ein Abbruch nie "done ohne Zeilen"
+// hinterlaesst. Ein Match, das die Rang-Stichprobe schon kennt, behaelt dabei
+// seinen Rang (seed_tier) — nur der Status wird gesetzt.
+async function writeRaw(matchId, region, rows) {
+  const client = await rawPool.connect();
+  try {
+    await client.query('begin');
+    if (rows) {
+      const values = [];
+      const params = [];
+      rows.forEach((row, r) => {
+        values.push('(' + row.map((_, c) => `$${r * RAW_COLS.length + c + 1}`).join(',') + ')');
+        params.push(...row);
+      });
+      await client.query(
+        `insert into lol_match_participant_raw (${RAW_COLS.join(',')}) values ${values.join(',')}
+         on conflict (match_id, participant_id) do nothing`, params);
+    }
+    await client.query(`
+      insert into lol_rank_match_queue (match_id, region, status, last_error)
+      values ($1, $2, $3, $4)
+      on conflict (match_id) do update
+         set status = excluded.status, last_error = excluded.last_error,
+             claimed_at = null, updated_at = now()`,
+      [matchId, region, rows ? 'done' : 'failed', rows ? null : 'kein Ranked Solo / Patch zu alt']);
+    await client.query('commit');
+  } catch (err) {
+    await client.query('rollback').catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 async function fillPlayer(puuid, region) {
   const norm = normalizeRegion(region);
   if (!isValidRegion(norm)) throw new Error(`Unbekannte Region "${region}"`);
@@ -390,23 +559,36 @@ async function fillPlayer(puuid, region) {
 
   if (DRY_RUN) return { idsSeen: ids.length, cached: have.size, oldest: null, newest: null };
 
+  // Rohablage nur fuer die Region der Rang-Stichprobe: nur dort bekommen Matches
+  // einen Rang, und nur dort spart die Ablage der Stichprobe spaeter Anfragen.
+  const keepRaw = rawPool && rawPatchFloor && norm === RANK_REGION;
   let batch = [];
   let written = 0;
   let skipped = 0;
-  for (const id of missing) {
-    const raw = await riotJson(`https://${routing}.api.riotgames.com/lol/match/v5/matches/${id}`);
-    if (!raw) { skipped++; continue; }
-    const row = buildRow(raw, puuid, norm);
-    if (!row) { skipped++; continue; }
-    batch.push(row);
-    if (batch.length >= INSERT_BATCH) {
-      written += await insertRows(batch);
-      batch = [];
-      log(`  ${written}/${missing.length} geschrieben`);
+  let rawWritten = 0;
+  try {
+    for (const id of missing) {
+      const raw = await riotJson(`https://${routing}.api.riotgames.com/lol/match/v5/matches/${id}`);
+      if (!raw) { skipped++; continue; }
+      const row = buildRow(raw, puuid, norm);
+      if (!row) { skipped++; continue; }
+      if (keepRaw) {
+        const rawRows = buildRawRows(raw, norm);
+        if (rawRows) { await writeRaw(id, norm, rawRows); rawWritten++; }
+      }
+      batch.push(row);
+      if (batch.length >= INSERT_BATCH) {
+        written += await insertRows(batch);
+        batch = [];
+        log(`  ${written}/${missing.length} geschrieben`);
+      }
     }
+  } finally {
+    // Auch bei Abbruch (Key weg, Riot ueberlastet) das schon Geholte behalten.
+    if (batch.length) written += await insertRows(batch);
   }
-  if (batch.length) written += await insertRows(batch);
   if (skipped) log(`  ${skipped} Spiele ausgelassen (kein Teilnehmer-Datensatz oder keine Patch-Angabe)`);
+  if (rawWritten) log(`  ${rawWritten} Ranked-Solo-Spiele zusaetzlich in die Rohablage`);
 
   const agg = await pool.query(`
     select count(*)::int as n, min(game_creation) as oldest, max(game_creation) as newest
@@ -417,6 +599,153 @@ async function fillPlayer(puuid, region) {
     ? `  fertig: ${a.n} Spiele in der Ablage (${a.oldest.toISOString().slice(0, 10)} bis ${a.newest.toISOString().slice(0, 10)})`
     : '  fertig: keine Spiele in der Ablage');
   return { idsSeen: ids.length, cached: a.n, oldest: a.oldest, newest: a.newest };
+}
+
+// --------------------------------------------------------------------------
+// Rang-Stichprobe
+// --------------------------------------------------------------------------
+const PLATFORM = `https://${RANK_REGION}.api.riotgames.com`;
+const RANK_ROUTING = getRegionalRouting(RANK_REGION);
+const leagueCache = new Map();              // Stufe -> Liste von puuids (je Lauf einmal)
+const pick = (arr, n) => {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a.slice(0, n);
+};
+
+async function leaguePuuids(tier) {
+  if (APEX_PATH[tier]) {
+    if (!leagueCache.has(tier)) {
+      const l = await riotJson(`${PLATFORM}/lol/league/v4/${APEX_PATH[tier]}/by-queue/RANKED_SOLO_5x5`);
+      leagueCache.set(tier, (l?.entries || []).map((e) => e.puuid).filter(Boolean));
+    }
+    return leagueCache.get(tier);
+  }
+  // Emerald/Diamond: vier Divisionen mit je vielen Seiten — jedes Mal eine
+  // zufaellige Division und eine der ersten drei Seiten (je ~200 Spieler).
+  const div = ['I', 'II', 'III', 'IV'][Math.floor(Math.random() * 4)];
+  const page = 1 + Math.floor(Math.random() * 3);
+  const l = await riotJson(`${PLATFORM}/lol/league/v4/entries/RANKED_SOLO_5x5/${tier}/${div}?page=${page}`);
+  return (Array.isArray(l) ? l : []).map((e) => e.puuid).filter(Boolean);
+}
+
+// Beginn des vorigen Patches, damit Riot keine Spiele aelterer Patches nennt.
+// Aus der eigenen Ablage; wenn die noch leer ist, 28 Tage (zwei Patches).
+let rankStartTime = null;
+async function loadRankStartTime() {
+  if (rankStartTime) return;
+  const r = await rawPool.query(
+    `select extract(epoch from min(game_creation))::bigint as t from lol_match_participant_raw
+      where patch_major = $1 and patch_minor = $2`, [rawPatchFloor.major, rawPatchFloor.minor]);
+  rankStartTime = Number(r.rows[0]?.t) || Math.floor(Date.now() / 1000) - 28 * 86400;
+}
+
+async function seedRankQueue() {
+  await loadRankStartTime();
+  let queued = 0;
+  for (const [tier, n] of RANK_QUOTA) {
+    const puuids = pick(await leaguePuuids(tier), n);
+    for (const puuid of puuids) {
+      const ids = await riotJson(
+        `https://${RANK_ROUTING}.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=420&startTime=${rankStartTime}&count=${RANK_IDS_PER_PLAYER}`);
+      if (!Array.isArray(ids) || ids.length === 0) continue;
+      // Neu: pending mit Rang. Schon bekannt ohne Rang (kam ueber die
+      // Spieler-Historie): nur den Rang nachtragen, nicht neu abrufen.
+      const res = await rawPool.query(`
+        insert into lol_rank_match_queue (match_id, region, seed_puuid, seed_tier)
+        select unnest($1::text[]), $2, $3, $4
+        on conflict (match_id) do update
+           set seed_puuid = excluded.seed_puuid, seed_tier = excluded.seed_tier, updated_at = now()
+         where lol_rank_match_queue.seed_tier is null`,
+        [ids, RANK_REGION, puuid, tier]);
+      queued += res.rowCount;
+    }
+  }
+  return queued;
+}
+
+// Haengengebliebene Rang-Zeilen: ein Match dauert Sekunden, 30 Minuten
+// bedeuten sicher einen abgebrochenen Lauf.
+async function reclaimRankClaims() {
+  const res = await rawPool.query(`
+    update lol_rank_match_queue set status = 'pending', claimed_at = null, updated_at = now()
+     where status = 'running' and claimed_at < now() - interval '30 minutes'`);
+  if (res.rowCount) log(`Rang: ${res.rowCount} haengengebliebene Match-Zeile(n) zurueckgelegt.`);
+}
+
+async function claimRankBatch(n) {
+  const res = await rawPool.query(`
+    update lol_rank_match_queue q
+       set status = 'running', claimed_at = now(), attempts = q.attempts + 1, updated_at = now()
+     where q.match_id in (
+       select match_id from lol_rank_match_queue
+        where status = 'pending' and seed_tier is not null
+        order by created_at limit $1
+        for update skip locked)
+    returning q.match_id, q.region`, [n]);
+  return res.rows;
+}
+
+async function unclaimRank(ids, msg) {
+  if (!ids.length) return;
+  await rawPool.query(`
+    update lol_rank_match_queue set status = 'pending', claimed_at = null, last_error = $2, updated_at = now()
+     where match_id = any($1::text[]) and status = 'running'`, [ids, msg]);
+}
+
+// Ein Zyklus: hoechstens `budget` Riot-Anfragen. Wirft RiotAuthError weiter.
+async function rankCycle(budget) {
+  const stop = riotCalls + budget;
+  await reclaimRankClaims();
+  let fetched = 0, stored = 0, failed = 0, seeded = 0;
+  while (riotCalls < stop) {
+    let batch = await claimRankBatch(Math.min(RANK_CLAIM_BATCH, stop - riotCalls));
+    if (!batch.length) {
+      const { rows } = await rawPool.query(
+        `select count(*)::int as n from lol_rank_match_queue where status = 'pending'`);
+      if (rows[0].n >= RANK_PENDING_MAX) break;
+      const q = await seedRankQueue();
+      seeded += q;
+      if (!q) break;                        // Rangliste liefert nichts Neues
+      continue;
+    }
+    const open = batch.map((b) => b.match_id);
+    try {
+      for (const { match_id: id, region } of batch) {
+        if (riotCalls >= stop) break;
+        const raw = await riotJson(`https://${RANK_ROUTING}.api.riotgames.com/lol/match/v5/matches/${id}`);
+        fetched++;
+        const rows = raw ? buildRawRows(raw, region) : null;
+        await writeRaw(id, region, rows);
+        open.splice(open.indexOf(id), 1);
+        if (rows) stored++; else failed++;
+      }
+    } finally {
+      // Budget erschoepft, Key weg oder Riot ueberlastet: Rest zurueck auf pending.
+      await unclaimRank(open, 'nicht abgearbeitet');
+    }
+  }
+  const { rows } = await rawPool.query(
+    `select status, count(*)::int as n from lol_rank_match_queue group by status order by status`);
+  log(`Rang: ${fetched} Matches geholt, ${stored} abgelegt, ${failed} verworfen, ${seeded} neu eingereiht — `
+    + rows.map((r) => `${r.status}=${r.n}`).join(' '));
+}
+
+async function runRankCycle() {
+  if (!(await waitForTurn())) {
+    log(`Sperre ${LOCK_PATH} nach ${TURN_MAX_WAIT_MS / 3_600_000} h nicht frei — Rang-Zyklus entfaellt.`);
+    return 'stop';
+  }
+  try {
+    await rankCycle(RANK_CALLS);
+    return 'ok';
+  } catch (err) {
+    if (err instanceof RiotAuthError) { log(`ABBRUCH: ${err.message}`); return 'auth'; }
+    if (err instanceof RiotTransientError) { log(`Rang: Riot antwortet nicht (${err.message}) — naechster Zyklus.`); return 'transient'; }
+    throw err;
+  } finally {
+    release();
+  }
 }
 
 // --------------------------------------------------------------------------
@@ -432,39 +761,73 @@ async function main() {
     return 0;
   }
 
+  // Rohablage vorbereiten. Faellt DDragon aus, laeuft die Spieler-Historie
+  // trotzdem weiter — nur ohne Rohablage und Rang-Stichprobe.
+  if (rawPool) {
+    try { await loadRawPatchFloor(); } catch (err) { log(`Rohablage aus: ${err.message}`); }
+  } else if (RANK_ONLY || RANK_CALLS > 0) {
+    log('Keine Rohablage konfiguriert (DATABASE_URL lokal / LOL_RAW_DB_URL) — Rang-Stichprobe aus.');
+  }
+  const rankOn = Boolean(rawPool && rawPatchFloor && RANK_CALLS > 0 && !NO_RANK);
+
+  if (RANK_ONLY) {
+    if (!rankOn) return 1;
+    const r = await runRankCycle();
+    return r === 'auth' ? 1 : 0;
+  }
+
   await reclaimStaleClaims();
   await requeueFinished();
 
   let done = 0;
+  let playersLeft = true;
+  let transientStreak = 0;
   for (let i = 0; i < PLAYER_BUDGET; i++) {
-    // Erst die Sperre, dann die Zeile: wer wartet, haelt keine Zeile fest.
-    if (!(await waitForTurn())) {
-      log(`Sperre ${LOCK_PATH} nach ${TURN_MAX_WAIT_MS / 3_600_000} h nicht frei — Lauf endet.`);
-      break;
-    }
-    const row = await claimPlayer();
-    if (!row) { release(); log('Warteschlange leer — nichts zu tun.'); break; }
-
-    log(`Spieler ${row.puuid.slice(0, 8)}… (${row.region}, Versuch ${row.attempts})`);
-    try {
-      const stats = await fillPlayer(row.puuid, row.region);
-      await finishPlayer(row.puuid, 'done', stats, null);
-      done++;
-    } catch (err) {
-      if (err instanceof RiotAuthError) {
-        // Der Key ist weg. Zeile zurueck auf `pending`, damit der naechste Lauf
-        // nach der Key-Rotation genau hier weitermacht, und laut abbrechen.
-        await pool.query(
-          `update lol_match_fill_queue set status='pending', claimed_at=null,
-                  last_error=$2, updated_at=now() where puuid=$1`, [row.puuid, err.message]);
-        log(`ABBRUCH: ${err.message}`);
-        release();
-        return 1;
+    if (playersLeft) {
+      // Erst die Sperre, dann die Zeile: wer wartet, haelt keine Zeile fest.
+      if (!(await waitForTurn())) {
+        log(`Sperre ${LOCK_PATH} nach ${TURN_MAX_WAIT_MS / 3_600_000} h nicht frei — Lauf endet.`);
+        break;
       }
-      await finishPlayer(row.puuid, 'failed', null, String(err.message).slice(0, 500));
-      log(`FEHLER bei ${row.puuid.slice(0, 8)}…: ${err.message}`);
-    } finally {
-      release();
+      const row = await claimPlayer();
+      if (!row) {
+        release();
+        log(rankOn ? 'Spieler-Warteschlange leer — weiter nur mit der Rang-Stichprobe.' : 'Warteschlange leer — nichts zu tun.');
+        playersLeft = false;
+        if (!rankOn) break;
+      } else {
+        log(`Spieler ${row.puuid.slice(0, 8)}… (${row.region}, Versuch ${row.attempts})`);
+        try {
+          const stats = await fillPlayer(row.puuid, row.region);
+          await finishPlayer(row.puuid, 'done', stats, null);
+          done++;
+          transientStreak = 0;
+        } catch (err) {
+          if (err instanceof RiotAuthError || err instanceof RiotTransientError) {
+            // Key weg oder Riot ueberlastet: der Spieler war nicht schuld. Zeile
+            // zurueck auf `pending`, der naechste Lauf macht genau hier weiter.
+            await pool.query(
+              `update lol_match_fill_queue set status='pending', claimed_at=null,
+                      last_error=$2, updated_at=now() where puuid=$1`, [row.puuid, err.message]);
+            release();
+            if (err instanceof RiotAuthError) { log(`ABBRUCH: ${err.message}`); return 1; }
+            log(`Riot antwortet nicht (${err.message}) — Spieler zurueckgelegt.`);
+            if (++transientStreak >= 3) { log('Dreimal in Folge keine Antwort von Riot — Lauf endet.'); break; }
+            continue;
+          }
+          await finishPlayer(row.puuid, 'failed', null, String(err.message).slice(0, 500));
+          log(`FEHLER bei ${row.puuid.slice(0, 8)}…: ${err.message}`);
+        } finally {
+          release();
+        }
+      }
+    }
+
+    if (rankOn) {
+      const r = await runRankCycle();
+      if (r === 'auth') return 1;
+      if (r === 'stop') break;
+      if (r === 'transient' && ++transientStreak >= 3) { log('Dreimal in Folge keine Antwort von Riot — Lauf endet.'); break; }
     }
   }
 
@@ -472,6 +835,7 @@ async function main() {
   return 0;
 }
 
+const endPools = () => Promise.all([pool.end(), rawPool?.end()]).catch(() => {});
 main()
-  .then(async (code) => { await pool.end(); process.exit(code); })
-  .catch(async (err) => { console.error('ERROR:', err.stack || err.message); await pool.end(); process.exit(1); });
+  .then(async (code) => { await endPools(); process.exit(code); })
+  .catch(async (err) => { console.error('ERROR:', err.stack || err.message); await endPools(); process.exit(1); });

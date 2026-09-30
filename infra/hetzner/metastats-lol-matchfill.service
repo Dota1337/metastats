@@ -25,7 +25,14 @@ TimeoutStartSec=26h
 TimeoutStopSec=120
 WorkingDirectory=/opt/metastats-crawler
 EnvironmentFile=/etc/metastats-crawler/env
-ExecStart=/usr/bin/node scripts/collect-lol-matches.mjs --seed --players 200
+# --rank-calls 900: nach jedem Spieler ein Rang-Zyklus mit hoechstens 900
+# Riot-Anfragen (~19 min) fuer die Champion-Builds je Rang. Die Sperre wird je
+# Zyklus genommen und freigegeben, der Marktwert-Lauf wartet also hoechstens
+# einen Zyklus (und meldet er sich per .want an, nimmt der Sammler die Sperre gar
+# nicht erst neu). Ist die Spieler-Warteschlange leer, laufen nur noch Rang-Zyklen.
+# Spieler und Rang-Stichprobe teilen sich die Zeit also etwa haelftig; die 200
+# Spieler sind eine Obergrenze, das Ende setzt praktisch der Key-Ablauf (401).
+ExecStart=/usr/bin/node scripts/collect-lol-matches.mjs --seed --players 200 --rank-calls 900
 StandardOutput=journal
 StandardError=journal
 Nice=10

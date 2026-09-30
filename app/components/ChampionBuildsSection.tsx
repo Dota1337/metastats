@@ -23,7 +23,9 @@ interface RoleData {
   topKeystones: KeystoneEntry[];
   topSummoners: SummonerEntry[];
   counters: { strongAgainst: CounterEntry[]; weakAgainst: CounterEntry[] };
+  itemVerdicts?: Record<string, { verdict: Verdict; delta: number | null }>;
 }
+type Verdict = 'core' | 'important' | 'optional' | 'weak';
 interface BuildsResponse {
   championKey: string;
   region: string;
@@ -32,6 +34,9 @@ interface BuildsResponse {
   ddragonVersion?: string;
   matchesAnalyzed?: number;
   roles: Record<string, RoleData>;
+  source?: 'db' | 'json';
+  rank?: string | null;
+  patch?: string;
 }
 
 interface RuneTree {
@@ -51,7 +56,28 @@ const REGIONS: { value: string; label: string }[] = [
   { value: 'kr', label: 'KR' },
 ];
 
-const ROLE_TABS: { value: string; key: string }[] = [
+// Rangauswahl nur fuer EUW (dort sammelt die Rang-Stichprobe).
+const RANK_REGION = 'euw1';
+const RANK_OPTIONS: { value: string; key: TranslationKey }[] = [
+  { value: 'EMERALD_PLUS', key: 'tier.emeraldPlus' },
+  { value: 'DIAMOND_PLUS', key: 'tier.diamondPlus' },
+  { value: 'MASTER_PLUS', key: 'tier.masterPlus' },
+];
+
+const VERDICT_KEY: Record<Verdict, TranslationKey> = {
+  core: 'champBuild.verdict.core',
+  important: 'champBuild.verdict.important',
+  optional: 'champBuild.verdict.optional',
+  weak: 'champBuild.verdict.weak',
+};
+const VERDICT_STYLE: Record<Verdict, string> = {
+  core: 'bg-accent-a15 text-accent border-accent-a50',
+  important: 'bg-green-500/10 text-green-400 border-green-500/40',
+  optional: 'bg-surface-overlay text-fg-secondary border-border-subtle',
+  weak: 'bg-red-500/10 text-red-400 border-red-500/40',
+};
+
+const ROLE_TABS:{ value: string; key: string }[] = [
   { value: 'TOP', key: 'role.top' },
   { value: 'JUNGLE', key: 'role.jungle' },
   { value: 'MIDDLE', key: 'role.mid' },
@@ -80,6 +106,7 @@ interface Props { championKey: string }
 export default function ChampionBuildsSection({ championKey }: Props) {
   const { t } = useI18n();
   const [region, setRegion] = useState('euw1');
+  const [rank, setRank] = useState('EMERALD_PLUS');
   const [data, setData] = useState<BuildsResponse | null>(null);
   const [activeRole, setActiveRole] = useState<string | null>(null);
   const [runeTrees, setRuneTrees] = useState<RuneTree[]>([]);
@@ -88,17 +115,21 @@ export default function ChampionBuildsSection({ championKey }: Props) {
 
   // Builds data
   useEffect(() => {
-    setData(null);
-    setActiveRole(null);
-    fetch(`/api/champions/${encodeURIComponent(championKey)}/builds?region=${region}`)
+    // Alte Werte bleiben stehen, bis die neuen da sind — sonst verschwindet der
+    // Block bei jedem Rangwechsel samt Aufklappliste. Die gewaehlte Rolle bleibt,
+    // solange es sie im neuen Stand gibt.
+    let cancelled = false;
+    const rankQuery = region === RANK_REGION ? `&rank=${rank}` : '';
+    fetch(`/api/champions/${encodeURIComponent(championKey)}/builds?region=${region}${rankQuery}`)
       .then(r => r.ok ? r.json() : null)
       .then((d: BuildsResponse | null) => {
+        if (cancelled) return;
         setData(d);
-        const firstRole = d?.roles && Object.keys(d.roles)[0];
-        if (firstRole) setActiveRole(firstRole);
+        setActiveRole(prev => (prev && d?.roles?.[prev] ? prev : (d?.roles && Object.keys(d.roles)[0]) || null));
       })
-      .catch(() => setData(null));
-  }, [championKey, region]);
+      .catch(() => { if (!cancelled) setData(null); });
+    return () => { cancelled = true; };
+  }, [championKey, region, rank]);
 
   // DataDragon assets — fetched once per ddragonVersion change
   const ddVersion = data?.ddragonVersion;
@@ -157,6 +188,7 @@ export default function ChampionBuildsSection({ championKey }: Props) {
           {matches > 0 && (
             <div className="text-fg-muted text-xs mt-0.5">
               {t('champBuild.fromMatches').replace('{n}', matches.toLocaleString('de-DE'))}
+              {data.source === 'db' && data.patch && <> · {t('champBuild.patch').replace('{p}', data.patch)}</>}
             </div>
           )}
         </div>
@@ -176,8 +208,8 @@ export default function ChampionBuildsSection({ championKey }: Props) {
         </div>
       </div>
 
-      {/* Role tabs */}
-      <div className="flex flex-wrap gap-1 mb-5 border-b border-border-subtle">
+      {/* Role tabs + Rang */}
+      <div className="flex flex-wrap items-end gap-1 mb-5 border-b border-border-subtle">
         {ROLE_TABS.filter(rt => data.roles[rt.value]).map(rt => {
           const r = data.roles[rt.value];
           const isActive = activeRole === rt.value;
@@ -197,6 +229,20 @@ export default function ChampionBuildsSection({ championKey }: Props) {
             </button>
           );
         })}
+        {region === RANK_REGION && (
+          <label className="ml-auto mb-2 flex items-center gap-2">
+            <span className="text-fg-secondary text-xs uppercase tracking-wider">{t('champBuild.rank')}</span>
+            <select
+              value={rank}
+              onChange={e => setRank(e.target.value)}
+              className="bg-surface-raised border border-border-subtle rounded px-3 py-1.5 text-xs text-fg-secondary focus:outline-none focus:border-accent-a50"
+            >
+              {RANK_OPTIONS.map(o => (
+                <option key={o.value} value={o.value}>{t(o.key)}</option>
+              ))}
+            </select>
+          </label>
+        )}
       </div>
 
       {/* Stats summary */}
@@ -282,7 +328,7 @@ export default function ChampionBuildsSection({ championKey }: Props) {
       {/* Most-used items */}
       {role.topItems.length > 0 && (
         <Section title={t('champBuild.items')}>
-          <ItemRow items={role.topItems.slice(0, 12)} ddImg={ddImg} gamesLabel={t('champBuild.games') as string} />
+          <ItemRow items={role.topItems.slice(0, 12)} ddImg={ddImg} gamesLabel={t('champBuild.games') as string} verdicts={role.itemVerdicts} verdictLabel={v => t(VERDICT_KEY[v])} />
         </Section>
       )}
 
@@ -317,16 +363,31 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function ItemRow({ items, ddImg, gamesLabel }: { items: ItemEntry[]; ddImg: (p: string) => string; gamesLabel: string }) {
+function ItemRow({ items, ddImg, gamesLabel, verdicts, verdictLabel }: {
+  items: ItemEntry[];
+  ddImg: (p: string) => string;
+  gamesLabel: string;
+  verdicts?: RoleData['itemVerdicts'];
+  verdictLabel?: (v: Verdict) => string;
+}) {
   return (
     <div className="flex flex-wrap gap-2">
-      {items.map((it, idx) => (
-        <div key={idx} className="flex flex-col items-center gap-1 bg-surface-raised border border-border-subtle rounded p-1.5">
-          <img src={ddImg(`item/${it.item}.png`)} alt={`Item ${it.item}`} className="w-9 h-9 rounded" />
-          <div className="text-[10px] text-white">{pct(it.wins, it.games)}</div>
-          <div className="text-[10px] text-fg-muted whitespace-nowrap">{it.games} {gamesLabel}</div>
-        </div>
-      ))}
+      {items.map((it, idx) => {
+        const v = verdicts?.[String(it.item)];
+        const delta = v?.delta != null ? `${v.delta > 0 ? '+' : ''}${(v.delta * 100).toFixed(1)} %` : undefined;
+        return (
+          <div key={idx} className="flex flex-col items-center gap-1 bg-surface-raised border border-border-subtle rounded p-1.5">
+            <img src={ddImg(`item/${it.item}.png`)} alt={`Item ${it.item}`} className="w-9 h-9 rounded" />
+            <div className="text-[10px] text-white">{pct(it.wins, it.games)}</div>
+            <div className="text-[10px] text-fg-muted whitespace-nowrap">{it.games} {gamesLabel}</div>
+            {v && verdictLabel && (
+              <div title={delta} className={`text-[10px] px-1.5 rounded border whitespace-nowrap ${VERDICT_STYLE[v.verdict]}`}>
+                {verdictLabel(v.verdict)}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

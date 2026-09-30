@@ -14,22 +14,14 @@
  *   }
  */
 
+import { bootIds, fetchItemData } from './lol-items.mjs';
+
 const ROLES = ['TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UTILITY'];
 
 export async function loadBootSet(version) {
-  // Fetch item.json from Data Dragon and return Set of item IDs tagged "Boots".
-  // We accept the URL as-is; caller provides IPv4-safe fetcher if needed.
-  const url = `https://ddragon.leagueoflegends.com/cdn/${version}/data/en_US/item.json`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`item.json fetch failed: HTTP ${res.status}`);
-  const data = await res.json();
-  const boots = new Set();
-  for (const [id, item] of Object.entries(data.data || {})) {
-    if (Array.isArray(item.tags) && item.tags.includes('Boots')) {
-      boots.add(Number(id));
-    }
-  }
-  return boots;
+  // Stiefel = 1001 oder alles, was daraus gebaut wird (scripts/lib/lol-items.mjs).
+  // Der Boots-Tag allein reicht nicht: Gunmetal Greaves (3172) traegt ihn nicht.
+  return bootIds(await fetchItemData(version));
 }
 
 function emptyEntry() {

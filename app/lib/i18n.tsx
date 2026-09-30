@@ -899,6 +899,12 @@ const translations = {
   'champBuild.statShards': t6('Stat-Shards', 'Stat Shards', '\uB2A5\uB825\uCE58 \uD30C\uD3B8', '\u5C5E\u6027\u788E\u7247', 'Fragmentos', 'Fragments'),
   'champBuild.region': t6('Region', 'Region', '\uC9C0\uC5ED', '\u5730\u533A', 'Regi\u00F3n', 'R\u00E9gion'),
   'champBuild.fromMatches': t6('basierend auf {n} Matches', 'based on {n} matches', '{n}\uAC1C \uACBD\uAE30 \uAE30\uBC18', '\u57FA\u4E8E{n}\u573A\u6BD4\u8D5B', 'basado en {n} partidas', 'd\'apr\u00E8s {n} matchs'),
+  'champBuild.rank': t6('Rang', 'Rank', '티어', '段位', 'Rango', 'Rang'),
+  'champBuild.patch': t6('Patch {p}', 'Patch {p}', '패치 {p}', '版本 {p}', 'Parche {p}', 'Patch {p}'),
+  'champBuild.verdict.core': t6('Kern', 'Core', '핵심', '核心', 'Esencial', 'Essentiel'),
+  'champBuild.verdict.important': t6('Wichtig', 'Strong', '중요', '重要', 'Importante', 'Important'),
+  'champBuild.verdict.optional': t6('Optional', 'Optional', '선택', '可选', 'Opcional', 'Optionnel'),
+  'champBuild.verdict.weak': t6('schwach', 'weak', '약함', '较弱', 'débil', 'faible'),
   'champBuild.role': t6('Rolle', 'Role', '\uD3EC\uC9C0\uC158', '\u4F4D\u7F6E', 'Rol', 'R\u00F4le'),
 
   // Marktwert

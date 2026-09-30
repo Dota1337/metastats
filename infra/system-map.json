@@ -228,6 +228,32 @@
       "persistent": true
     },
     {
+      "name": "metastats-lol-builds.service",
+      "kind": "service",
+      "description": "metastats — LoL-Champion-Builds je Rang verdichten (Box-Rohablage -> Supabase lol_champion_build_stats)",
+      "scripts": [
+        "scripts/aggregate-lol-builds.mjs"
+      ],
+      "Wants": [
+        "postgresql.service"
+      ],
+      "After": [
+        "postgresql.service"
+      ]
+    },
+    {
+      "name": "metastats-lol-builds.timer",
+      "kind": "timer",
+      "description": "LoL-Champion-Builds je Rang alle 6 Stunden verdichten",
+      "scripts": [],
+      "onCalendar": [
+        "*-*-* 00/6:20:00 UTC"
+      ],
+      "interval": [],
+      "activates": "metastats-lol-builds.service",
+      "persistent": true
+    },
+    {
       "name": "metastats-lol-marketvalue.service",
       "kind": "service",
       "description": "metastats LoL high-elo marketvalue refresh (event-driven: kicked by refresh-riot-key.mjs after a key rotation; self-throttled to ~weekly)",
@@ -558,6 +584,13 @@
       "timer": "metastats-health.timer",
       "activates": "metastats-health.service",
       "onCalendar": []
+    },
+    {
+      "timer": "metastats-lol-builds.timer",
+      "activates": "metastats-lol-builds.service",
+      "onCalendar": [
+        "*-*-* 00/6:20:00 UTC"
+      ]
     },
     {
       "timer": "metastats-marketvalue-peaks.timer",
@@ -1105,10 +1138,14 @@
       "lol-marketvalue/peaks"
     ],
     "metastats-lol-matchfill.service": [
-      "lol-matchfill/match-cache"
+      "lol-matchfill/match-cache",
+      "lol-builds/rohdaten-zulauf"
     ],
     "supabase/migrations/0055_revoke_anon_read.sql": [
       "sicherheit/anon-lockout"
+    ],
+    "metastats-lol-builds.service": [
+      "lol-builds/rang-summen"
     ]
   }
 }

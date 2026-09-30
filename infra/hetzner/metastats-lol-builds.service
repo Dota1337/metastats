@@ -1,0 +1,39 @@
+[Unit]
+Description=metastats — LoL-Champion-Builds je Rang verdichten (Box-Rohablage -> Supabase lol_champion_build_stats)
+Wants=network-online.target postgresql.service
+After=network-online.target postgresql.service
+
+[Service]
+# Keine Riot-Anfragen, deshalb keine Riot-Sperre. Rechnet die zwei neuesten
+# Patches jedes Mal komplett neu und ersetzt sie auf Supabase in einer
+# Transaktion — ein abgebrochener Lauf hinterlaesst nie einen halben Stand.
+Type=oneshot
+WorkingDirectory=/opt/metastats-crawler
+EnvironmentFile=/etc/metastats-crawler/env
+TimeoutStartSec=45m
+ExecStart=/usr/bin/node scripts/aggregate-lol-builds.mjs
+StandardOutput=journal
+StandardError=journal
+Nice=15
+
+# --- BEGIN metastats-hardening-floor ---
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectProc=invisible
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+# --- END metastats-hardening-floor ---

@@ -8,10 +8,10 @@
   "counts": {
     "routes": 79,
     "groups": 31,
-    "tables": 35,
+    "tables": 36,
     "rpcs": 29,
     "files": 11,
-    "edges": 365,
+    "edges": 369,
     "unused": 8,
     "unresolved": 1
   },
@@ -202,7 +202,12 @@
       "label": "/api/champions/[id]/builds",
       "group": "champions",
       "file": "app/api/champions/[id]/builds/route.ts",
-      "via": [],
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/tft-supabase-reader.ts",
+        "public/tft-set.json"
+      ],
       "used": true,
       "usedBy": [
         "app/components/ChampionBuildsSection.tsx"
@@ -1453,6 +1458,12 @@
       "declared": false
     },
     {
+      "id": "db:lol_champion_build_stats",
+      "kind": "table",
+      "label": "lol_champion_build_stats",
+      "declared": true
+    },
+    {
       "id": "db:lol_player_match_cache",
       "kind": "table",
       "label": "lol_player_match_cache",
@@ -1999,13 +2010,33 @@
     },
     {
       "from": "api:/api/champions/[id]/builds",
+      "to": "db:lol_champion_build_stats",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/champions/[id]/builds",
       "to": "ext:ddragon",
       "kind": "fetches"
     },
     {
       "from": "api:/api/champions/[id]/builds",
-      "to": "file:champion-builds-*.json",
+      "to": "ext:riot-web",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/champions/[id]/builds",
+      "to": "file:tft-assets.json",
       "kind": "reads"
+    },
+    {
+      "from": "api:/api/champions/[id]/builds",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/champions/[id]/builds",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
     },
     {
       "from": "api:/api/champions/collect",

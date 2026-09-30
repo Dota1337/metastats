@@ -510,7 +510,7 @@ function syncKeyToHetzner(env, key) {
     // Tagen — genau das blieb vom 20.09. bis 30.09.2026 unbemerkt. Bewusst
     // `show`/`list-jobs` statt `is-active`: das endet bei "inactive" mit
     // Exit 3 und wuerde unter set -e den ganzen Schritt abbrechen.
-    'for u in metastats-lol-matchfill metastats-lol-marketvalue; do st=$(systemctl show -p ActiveState --value $u.service); since=$(systemctl show -p ActiveEnterTimestamp --value $u.service); job=$(systemctl list-jobs --no-legend $u.service | awk \'{print $4}\'); echo "      $u: $st seit ${since:-?}${job:+ (Start-Job: $job)}"; done',
+    'for u in metastats-lol-matchfill metastats-lol-marketvalue; do st=$(systemctl show -p ActiveState --value $u.service); if [ "$st" = inactive ]; then p=InactiveEnterTimestamp; else p=InactiveExitTimestamp; fi; since=$(systemctl show -p $p --value $u.service); job=$(systemctl list-jobs --no-legend $u.service | awk \'{print $4}\'); echo "      $u: $st seit ${since:-?}${job:+ (Start-Job: $job)}"; done',
     // KEIN Restart von metastats-refresh-api.service (entfernt 2026-09-02):
     // der Dienst liest ausschliesslich RIOT_API_KEY_TFT
     // (scripts/refresh-api-server.mjs:150), und keiner seiner Importe fasst den

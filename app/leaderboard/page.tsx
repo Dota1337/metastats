@@ -82,6 +82,9 @@ export default function Leaderboard() {
   useEffect(() => {
     if (!search.trim()) {
       fetchLeaderboard();
+    } else if (search.trim().length >= 2) {
+      // Regionwechsel waehrend einer Suche: in der neuen Region suchen.
+      fetchSearch(search);
     }
   }, [region, tier, division, page]);
 
@@ -232,21 +235,7 @@ export default function Leaderboard() {
     <main className="min-h-screen bg-surface-page">
       <Nav active="leaderboard" />
 
-      <PageHero title={t('lb.title')} subtitle={t('lb.subtitle')} leftChampion="Ahri" rightChampion="DrMundo">
-        <div className="flex justify-center gap-1 mt-4 flex-wrap px-2">
-          {REGIONS.map(r => (
-            <button
-              key={r.value}
-              onClick={() => { setRegion(r.value); setPage(1); }}
-              className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-                region === r.value ? 'bg-accent text-surface-sunken' : 'bg-surface-raised text-fg-secondary hover:text-white'
-              }`}
-            >
-              {r.label}
-            </button>
-          ))}
-        </div>
-      </PageHero>
+      <PageHero title={t('lb.title')} subtitle={t('lb.subtitle')} leftChampion="Ahri" rightChampion="DrMundo" />
 
       <div className="max-w-6xl mx-auto px-6 pb-8">
         {/* Search */}
@@ -303,6 +292,21 @@ export default function Leaderboard() {
             </div>
           </div>
         )}
+
+        {/* Region — auch waehrend der Suche sichtbar, die Suche laeuft je Region */}
+        <div className="flex flex-wrap gap-1 mb-2">
+          {REGIONS.map(r => (
+            <button
+              key={r.value}
+              onClick={() => { setRegion(r.value); setPage(1); }}
+              className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                region === r.value ? 'bg-accent text-surface-sunken' : 'bg-surface-raised text-fg-secondary hover:text-white'
+              }`}
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
 
         {/* Tier Tabs */}
         {!search.trim() && (

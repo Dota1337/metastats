@@ -14,6 +14,7 @@ import { useCustomPageTitle } from '../../lib/use-page-title';
 import { loadProLookup, lookupPro, type ProPlayer } from '../../lib/pro-players';
 import { formatTier } from '../../lib/rank-format';
 import { isNonStandardMode } from '../../lib/lol-queue';
+import { getDdragonVersion } from '../../lib/ddragon-version';
 
 const PerformanceCharts = dynamic(() => import('../../components/PerformanceCharts'), { ssr: false });
 const RadarStats = dynamic(() => import('../../components/RadarStats'), { ssr: false });
@@ -85,9 +86,8 @@ export default function PlayerPage() {
     setHasMoreMatches(true);
     setLiveGame({ inGame: false });
     try {
-      const versionRes = await fetch('/api/version');
-      const versionData = await versionRes.json();
-      setDdVersion(versionData.version);
+      const version = await getDdragonVersion();
+      if (version) setDdVersion(version);
 
       const res = await fetch(`/api/summoner?name=${encodeURIComponent(name + '#' + tag)}&region=${region}`);
       const data = await res.json();
@@ -118,8 +118,8 @@ export default function PlayerPage() {
       }
 
       // Champion map from ddragon
-      const champRes = await fetch(`https://ddragon.leagueoflegends.com/cdn/${versionData.version}/data/en_US/champion.json`);
-      if (champRes.ok) {
+      const champRes = version ? await fetch(`https://ddragon.leagueoflegends.com/cdn/${version}/data/en_US/champion.json`) : null;
+      if (champRes?.ok) {
         const champData = await champRes.json();
         const map: Record<number, { id: string; name: string }> = {};
         Object.values(champData.data).forEach((c: any) => { map[Number(c.key)] = { id: c.id, name: c.name }; });

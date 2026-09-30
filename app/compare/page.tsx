@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import Nav from '../components/Nav';
 import Footer from '../components/Footer';
 import PageHero from '../components/PageHero';
+import DdragonImg from '../components/DdragonImg';
 import { useI18n, LOCALE_MAP } from '../lib/i18n';
 import { usePageTitle } from '../lib/use-page-title';
 import { formatTier, NO_DIVISION_TIERS } from '../lib/rank-format';
@@ -397,9 +398,9 @@ function ChampionPoolBlock({ pool, count }: { pool: { champion: string; games: n
       <div className="text-[9px] uppercase tracking-widest text-fg-muted">Champions</div>
       <div className="flex gap-1 mt-1 flex-wrap justify-center">
         {pool.slice(0, 6).map(c => (
-          <img
+          <DdragonImg
             key={c.champion}
-            src={`https://ddragon.leagueoflegends.com/cdn/14.10.1/img/champion/${c.champion}.png`}
+            path={`img/champion/${c.champion}.png`}
             alt={c.champion}
             title={`${c.champion} · ${c.games} games · ${c.winrate}% WR`}
             className="w-7 h-7 rounded-sm border border-border-subtle"
@@ -567,7 +568,7 @@ function MultiSearchTab({ region, setRegion }: { region: string; setRegion: (r: 
               <a key={i} href={getPlayerLink(player)}
                 className="bg-surface-base border border-border-subtle rounded-lg p-4 flex items-center gap-3 hover:border-accent-a40 transition-colors">
                 {summoner?.profileIconId ? (
-                  <img src={`https://ddragon.leagueoflegends.com/cdn/14.1.1/img/profileicon/${summoner.profileIconId}.png`}
+                  <DdragonImg path={`img/profileicon/${summoner.profileIconId}.png`}
                     alt="" className="w-10 h-10 rounded-full border border-border-subtle flex-shrink-0" />
                 ) : <div className="w-10 h-10 rounded-full bg-surface-overlay flex-shrink-0" />}
                 <div className="flex-1 min-w-0">
@@ -725,7 +726,7 @@ function CompareTab({ region, setRegion }: { region: string; setRegion: (r: stri
           {/* Profile headers */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2 sm:gap-3">
-              <img src={`https://ddragon.leagueoflegends.com/cdn/14.10.1/img/profileicon/${player1.summoner.summoner.profileIconId}.png`}
+              <DdragonImg path={`img/profileicon/${player1.summoner.summoner.profileIconId}.png`}
                 alt="" className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-accent" />
               <div>
                 <div className="text-white text-sm font-semibold truncate max-w-[100px] sm:max-w-none">{player1.summoner.summoner.name}</div>
@@ -738,7 +739,7 @@ function CompareTab({ region, setRegion }: { region: string; setRegion: (r: stri
                 <div className="text-white text-sm font-semibold truncate max-w-[100px] sm:max-w-none">{player2.summoner.summoner.name}</div>
                 <div className="text-fg-secondary text-xs">Lvl {player2.summoner.summoner.summonerLevel}</div>
               </div>
-              <img src={`https://ddragon.leagueoflegends.com/cdn/14.10.1/img/profileicon/${player2.summoner.summoner.profileIconId}.png`}
+              <DdragonImg path={`img/profileicon/${player2.summoner.summoner.profileIconId}.png`}
                 alt="" className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-accent" />
             </div>
           </div>

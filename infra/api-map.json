@@ -11,7 +11,7 @@
     "tables": 35,
     "rpcs": 29,
     "files": 11,
-    "edges": 376,
+    "edges": 380,
     "unused": 8,
     "unresolved": 1
   },
@@ -1443,11 +1443,15 @@
       "label": "/api/version",
       "group": "version",
       "file": "app/api/version/route.ts",
-      "via": [],
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/tft-supabase-reader.ts",
+        "public/tft-set.json"
+      ],
       "used": true,
       "usedBy": [
-        "app/champions/[id]/page.tsx",
-        "app/player/[slug]/page.tsx"
+        "app/lib/ddragon-version.ts"
       ]
     },
     {
@@ -3650,6 +3654,26 @@
       "from": "api:/api/version",
       "to": "ext:ddragon",
       "kind": "fetches"
+    },
+    {
+      "from": "api:/api/version",
+      "to": "ext:riot-web",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/version",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/version",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/version",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
     },
     {
       "from": "fn:get_tft_available_patches",

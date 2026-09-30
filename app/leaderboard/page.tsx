@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { withAlpha } from '../lib/color';
 import Nav from '../components/Nav';
+import DdragonImg from '../components/DdragonImg';
 import Footer from '../components/Footer';
 import PageHero from '../components/PageHero';
 import { useI18n, LOCALE_MAP } from '../lib/i18n';
@@ -439,9 +440,8 @@ export default function Leaderboard() {
                     {entry.rank}
                   </div>
                   {entry.profileIcon ? (
-                    <img
-                      src={`https://ddragon.leagueoflegends.com/cdn/14.1.1/img/profileicon/${entry.profileIcon}.png`}
-                      alt=""
+                    <DdragonImg
+                      path={`img/profileicon/${entry.profileIcon}.png`}
                       className="w-8 h-8 rounded-full border border-border-default flex-shrink-0"
                     />
                   ) : (
@@ -472,9 +472,8 @@ export default function Leaderboard() {
                   </div>
                   <div>
                     {entry.profileIcon ? (
-                      <img
-                        src={`https://ddragon.leagueoflegends.com/cdn/14.1.1/img/profileicon/${entry.profileIcon}.png`}
-                        alt=""
+                      <DdragonImg
+                        path={`img/profileicon/${entry.profileIcon}.png`}
                         className="w-8 h-8 rounded-full border border-border-default"
                       />
                     ) : (

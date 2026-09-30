@@ -76,11 +76,11 @@ export const BROWSER_CACHE_CONTROL = 'public, max-age=60';
  * Auswahl der Comp-Detailseite, Match-Explorer, One-Tricks). Ohne sie haetten
  * ausgerechnet drei sichtbare Reiter weiter keinen Browser-Cache.
  */
-export function cacheHeaders(cdnCacheControl: string): Record<string, string> {
+export function cacheHeaders(cdnCacheControl: string, tag = 'tft-api'): Record<string, string> {
   return {
     'Cache-Control': BROWSER_CACHE_CONTROL,
     'Vercel-CDN-Cache-Control': cdnCacheControl,
-    'Vercel-Cache-Tag': 'tft-api',
+    'Vercel-Cache-Tag': tag,
   };
 }
 

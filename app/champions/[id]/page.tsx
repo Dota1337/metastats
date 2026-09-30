@@ -6,6 +6,7 @@ import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
 import ChampionBuildsSection from '../../components/ChampionBuildsSection';
 import { useI18n } from '../../lib/i18n';
+import { getDdragonVersion } from '../../lib/ddragon-version';
 
 interface ChampionSpell {
   id: string;
@@ -131,9 +132,8 @@ export default function ChampionDetailPage() {
     setLoading(true);
     setError('');
     try {
-      const versionRes = await fetch('/api/version');
-      const versionData = await versionRes.json();
-      const ver = versionData.version;
+      const ver = await getDdragonVersion();
+      if (!ver) throw new Error('Champion nicht gefunden');
       setVersion(ver);
 
       const locale = ddLocale[lang] || 'en_US';

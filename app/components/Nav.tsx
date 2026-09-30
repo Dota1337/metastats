@@ -5,6 +5,8 @@ import { useI18n, LANGUAGES } from '../lib/i18n';
 import { detectGameFromPath } from '../lib/games';
 import { TFT_COACH_ENABLED, TFT_PROS_ENABLED } from '../lib/feature-flags';
 import { useAuth } from '../lib/auth-context';
+import { getDdragonVersion } from '../lib/ddragon-version';
+import DdragonImg from './DdragonImg';
 import { tftProfileHref, tftRankLabel, tftRegionLabel, type TftAccountHit } from '../lib/tft-player-search';
 
 interface NavProps {
@@ -93,9 +95,8 @@ export default function Nav({ active }: NavProps) {
 
   // Load champion list once for autocomplete
   useEffect(() => {
-    fetch('https://ddragon.leagueoflegends.com/api/versions.json')
-      .then(r => r.json())
-      .then(versions => fetch(`https://ddragon.leagueoflegends.com/cdn/${versions[0]}/data/en_US/champion.json`))
+    getDdragonVersion()
+      .then(version => { if (!version) throw new Error('no version'); return fetch(`https://ddragon.leagueoflegends.com/cdn/${version}/data/en_US/champion.json`); })
       .then(r => r.json())
       .then(data => {
         const list = Object.values(data.data).map((c: any) => ({ id: c.id, name: c.name }));
@@ -304,9 +305,8 @@ export default function Nav({ active }: NavProps) {
                     className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-surface-raised transition-colors"
                   >
                     {r.type === 'champion' ? (
-                      <img
-                        src={`https://ddragon.leagueoflegends.com/cdn/14.1.1/img/champion/${r.id}.png`}
-                        alt=""
+                      <DdragonImg
+                        path={`img/champion/${r.id}.png`}
                         className="w-6 h-6 rounded"
                       />
                     ) : (
@@ -482,9 +482,8 @@ export default function Nav({ active }: NavProps) {
                   className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-surface-raised transition-colors"
                 >
                   {r.type === 'champion' ? (
-                    <img
-                      src={`https://ddragon.leagueoflegends.com/cdn/14.1.1/img/champion/${r.id}.png`}
-                      alt=""
+                    <DdragonImg
+                      path={`img/champion/${r.id}.png`}
                       className="w-7 h-7 rounded"
                     />
                   ) : (

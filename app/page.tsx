@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import Nav from './components/Nav';
+import DdragonImg from './components/DdragonImg';
 import Footer from './components/Footer';
 import { useI18n, LOCALE_MAP } from './lib/i18n';
 import { REGIONS } from './lib/regions';
@@ -323,9 +324,8 @@ export default function Home() {
                     {recentPlayers.map((p, i) => (
                       <a key={i} href={makePlayerLink(p)} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-white/5 transition-colors">
                         {p.profile_icon_id ? (
-                          <img
-                            src={`https://ddragon.leagueoflegends.com/cdn/14.1.1/img/profileicon/${p.profile_icon_id}.png`}
-                            alt=""
+                          <DdragonImg
+                            path={`img/profileicon/${p.profile_icon_id}.png`}
                             className="w-9 h-9 rounded-full border border-border-default"
                           />
                         ) : (

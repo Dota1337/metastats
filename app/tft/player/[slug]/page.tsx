@@ -42,6 +42,7 @@ import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } f
 import { formatTier } from '../../../lib/rank-format';
 import { setRankDisplay, withLiveRank, type SetRankDisplay } from '../../../lib/tft-rank-kind';
 import { CURRENT_SET } from '../../../lib/current-set';
+import { getDdragonVersion } from '../../../lib/ddragon-version';
 import type { TftMatchSummary } from '../../../lib/tft-match-processor';
 
 interface SummonerData {
@@ -166,8 +167,7 @@ export default function TftPlayerPage() {
   const fetchedKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
-    fetch('https://ddragon.leagueoflegends.com/api/versions.json')
-      .then(r => r.json()).then(v => setDdVersion(v[0])).catch(() => {});
+    getDdragonVersion().then(v => { if (v) setDdVersion(v); });
     loadTftSetMeta().then(meta => { if (meta) setCurrentSet(meta.setNumber); });
     loadTftAssets().then(setAssets);
     // Pro-Lookup against the LoL-Liquipedia JSON. Quick name-based match;

@@ -4,6 +4,7 @@ import { join } from 'path';
 import { supabaseAdmin } from '../../../../lib/supabase';
 import { cachedJson, STATS_CACHE_CONTROL } from '../../../../lib/api-cache';
 import { LOL_RANK_GROUPS } from '../../../../lib/rank-groups';
+import { parseRegion } from '../../../../lib/regions';
 import { itemVerdict, type StratumCount, type VerdictResult } from '../../../../lib/lol-item-verdict';
 
 interface BuildEntry {
@@ -220,7 +221,11 @@ function orderRoles(roles: Record<string, RoleData | undefined>, requestedRole: 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { searchParams } = new URL(request.url);
-  const region = (searchParams.get('region') || 'euw1').toLowerCase();
+  // Die Region landet in einem Dateinamen (readJsonFile), deshalb nur bekannte Werte.
+  const region = parseRegion(searchParams.get('region'), { fallback: 'euw1' });
+  if (!region) {
+    return NextResponse.json({ error: 'Invalid region' }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
+  }
   const requestedRole = searchParams.get('role'); // null = return all roles
   const rankParam = (searchParams.get('rank') || '').toUpperCase();
   const rank = RANK_REGIONS.has(region) && (RANK_OPTIONS as readonly string[]).includes(rankParam) ? rankParam : null;

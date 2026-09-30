@@ -21,6 +21,12 @@ const REGIONAL = 'europe';
 const riot = createRiotClient({ apiKey: API_KEY });
 const rateLimitedFetch = riot.fetch;
 
+// Remakes (Abbruch in den ersten Minuten) sind keine echten Spiele und
+// verfaelschen Siegrate und Spielzahl.
+function isRemake(info) {
+  return info.participants?.some((p) => p.gameEndedInEarlySurrender) || (info.gameDuration || 0) < 300;
+}
+
 async function main() {
   console.log('=== Champion-Stats Collector: Challenger + Grandmaster + Master (EUW) ===\n');
 
@@ -137,7 +143,7 @@ async function main() {
       );
       if (res.ok) {
         const match = await res.json();
-        if (match?.info?.participants && ALLOWED_QUEUES.has(match.info.queueId)) {
+        if (match?.info?.participants && ALLOWED_QUEUES.has(match.info.queueId) && !isRemake(match.info)) {
           totalGames++;
           const mTier = matchTierMap[matchIdArray[i]] || 'MASTER';
           tierGames[mTier] = (tierGames[mTier] || 0) + 1;
@@ -161,9 +167,14 @@ async function main() {
             tierStats[mTier][key].assists += p.assists || 0;
           }
 
+          // Beide Teams koennen denselben Champion bannen (sie sehen die
+          // Bans des Gegners nicht). Bannrate = Anteil der Spiele mit Ban,
+          // also je Spiel nur einmal zaehlen.
+          const bannedInMatch = new Set();
           for (const team of match.info.teams || []) {
             for (const ban of team.bans || []) {
-              if (ban.championId > 0) {
+              if (ban.championId > 0 && !bannedInMatch.has(ban.championId)) {
+                bannedInMatch.add(ban.championId);
                 const key = String(ban.championId);
                 if (!champStats[key]) champStats[key] = { wins: 0, games: 0, kills: 0, deaths: 0, assists: 0, bans: 0 };
                 champStats[key].bans++;
@@ -190,7 +201,7 @@ async function main() {
 
   const totalParticipantGames = totalGames * 10;
 
-  // Vor Datei UND Supabase: keine leere/duenne Woche ueber die alte schreiben.
+  // Vor der Datei: keine leere/duenne Woche ueber die alte schreiben.
   checkSample('EUW', {
     prevFile: 'public/champion-stats-euw.json',
     totalGames, matchAttempts: matchIdArray.length, matchErrors: errors,
@@ -229,59 +240,6 @@ async function main() {
   fs.writeFileSync('public/champion-builds-euw.json', JSON.stringify(buildsOut));
   const champRoleCount = Object.values(buildsOut.byChampionRole).reduce((a, r) => a + Object.keys(r).length, 0);
   console.log(`  -> public/champion-builds-euw.json gespeichert (${Object.keys(buildsOut.byChampionRole).length} Champs, ${champRoleCount} Champ×Rollen)`);
-
-  // Step 4: Save per-tier stats to Supabase
-  console.log('\n[4/4] Speichere per-Tier Stats in Supabase...');
-  const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://bwawxwgxxfafbruebixa.supabase.co';
-  const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-
-  if (SUPABASE_KEY) {
-    const now = new Date().toISOString();
-    let savedCount = 0;
-
-    for (const tierKey of ['CHALLENGER', 'GRANDMASTER', 'MASTER']) {
-      const stats = tierStats[tierKey];
-      const totalInTier = tierGames[tierKey] * 10;
-      if (totalInTier === 0) continue;
-
-      const rows = Object.entries(stats).map(([champKey, s]) => ({
-        champion_key: champKey,
-        tier: tierKey,
-        region: REGION,
-        wins: s.wins,
-        games: s.games,
-        kills: s.kills,
-        deaths: s.deaths,
-        assists: s.assists,
-        bans: s.bans,
-        total_games_in_tier: totalInTier,
-        updated_at: now,
-      }));
-
-      // Upsert in batches of 50
-      for (let b = 0; b < rows.length; b += 50) {
-        const batch = rows.slice(b, b + 50);
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/champion_stats`, {
-          method: 'POST',
-          headers: {
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${SUPABASE_KEY}`,
-            'Content-Type': 'application/json',
-            'Prefer': 'resolution=merge-duplicates',
-          },
-          body: JSON.stringify(batch),
-        });
-        if (!res.ok) {
-          console.log(`  Supabase error for ${tierKey}: ${res.status}`);
-        }
-      }
-      savedCount += rows.length;
-      console.log(`  ${tierKey}: ${rows.length} Champions gespeichert (${tierGames[tierKey]} Matches)`);
-    }
-    console.log(`  Gesamt: ${savedCount} Eintraege in Supabase`);
-  } else {
-    console.log('  SUPABASE_SERVICE_ROLE_KEY nicht gesetzt, ueberspringe Supabase.');
-  }
 
   // Top 15
   console.log('\n=== Top 15 Champions (Pickrate, Challenger+GM+Master EUW) ===');

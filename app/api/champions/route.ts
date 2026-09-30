@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin as supabase } from '../../lib/supabase';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { cachedJson, ASSET_CACHE_CONTROL } from '../../lib/api-cache';
-import { expandLolTier, isLolRankGroup } from '../../lib/rank-groups';
+import { expandLolTier } from '../../lib/rank-groups';
 import { statsForTiers, type ChampionStatsFile } from '../../lib/champion-tier-stats';
 
 interface ChampionInfo {
@@ -20,9 +19,8 @@ export async function GET(request: NextRequest) {
   const tier = searchParams.get('tier') || 'all';
   const role = searchParams.get('role') || 'all';
   // Whitelist gegen Open-Redirect / SSRF: der region-Wert fließt in
-  // Filenames (`champion-stats-${region.replace('1','')}.json`) und URLs
-  // (self-fetch `${origin}/api/champions/collect?region=...`). Werte wie
-  // `//evil.com/x` oder `../../etc/passwd` würden sonst durchrutschen.
+  // Dateinamen (`champion-stats-${region.replace('1','')}.json`). Werte wie
+  // `../../etc/passwd` würden sonst durchrutschen.
   // Riot-Region-IDs sind ein kleines geschlossenes Set.
   const ALLOWED_REGIONS = new Set(['euw1', 'na1', 'kr', 'eun1', 'br1', 'jp1', 'la1', 'la2', 'oc1', 'tr1', 'ru', 'me1', 'ph2', 'sg2', 'th2', 'tw2', 'vn2']);
   const rawRegion = searchParams.get('region') || 'euw1';
@@ -52,7 +50,7 @@ export async function GET(request: NextRequest) {
       image: c.image.full,
     }));
 
-    // Try Supabase first for stats
+    // Zahlen kommen aus den Sammel-Dateien des Wochen-Crawls (public/champion-stats-*.json).
     let statsMap: Record<string, {
       wins: number; games: number;
       kills: number; deaths: number; assists: number;
@@ -60,46 +58,8 @@ export async function GET(request: NextRequest) {
     }> = {};
     let hasStats = false;
 
-    try {
-      let query = supabase.from('champion_stats').select('*').eq('region', region);
-      if (tier !== 'all') {
-        // Master+ / Grandmaster+ fassen mehrere Raenge zusammen (app/lib/rank-groups.ts).
-        query = query.in('tier', expandLolTier(tier));
-      }
-      const { data: statsRows } = await query;
 
-      if (statsRows && statsRows.length > 0) {
-        hasStats = true;
-        // Rang-Gruppe: Nenner je Rang einmal zaehlen und dann summieren. Sonst
-        // fehlt einem Champion ohne Zeile in einem der Raenge dessen Spielzahl,
-        // und seine Pick-Rate waere zu hoch.
-        const tierTotals: Record<string, number> = {};
-        for (const row of statsRows) {
-          tierTotals[row.tier] = Math.max(tierTotals[row.tier] || 0, row.total_games_in_tier || 0);
-        }
-        const groupTotal = Object.values(tierTotals).reduce((a, b) => a + b, 0);
-        for (const row of statsRows) {
-          const key = row.champion_key;
-          if (!statsMap[key]) {
-            statsMap[key] = { wins: 0, games: 0, kills: 0, deaths: 0, assists: 0, bans: 0, totalGames: 0 };
-          }
-          statsMap[key].wins += row.wins || 0;
-          statsMap[key].games += row.games || 0;
-          statsMap[key].kills += row.kills || 0;
-          statsMap[key].deaths += row.deaths || 0;
-          statsMap[key].assists += row.assists || 0;
-          statsMap[key].bans += row.bans || 0;
-          statsMap[key].totalGames += row.total_games_in_tier || 0;
-        }
-        if (isLolRankGroup(tier)) {
-          for (const key of Object.keys(statsMap)) statsMap[key].totalGames = groupTotal;
-        }
-      }
-    } catch {
-      // Supabase unavailable, continue without
-    }
-
-    // Sammel-Datei bzw. Live-Sammlung: nur die Raenge des Filters zaehlen
+    // Sammel-Datei: nur die Raenge des Filters zaehlen
     // (app/lib/champion-tier-stats.ts). Gibt die Quelle fuer den Rang nichts
     // her, bleibt die Liste ohne Zahlen statt Master+-Zahlen zu zeigen.
     const fileTiers = tier === 'all' ? null : expandLolTier(tier);
@@ -112,30 +72,14 @@ export async function GET(request: NextRequest) {
       }
     };
 
-    // If no Supabase stats, try static JSON files collected by the script
-    if (!hasStats) {
-      try {
-        const regionFile = `champion-stats-${region.replace('1', '')}.json`;
-        // Try fetching from public folder (works on Vercel)
-        const origin = new URL(request.url).origin;
-        const staticRes = await fetch(`${origin}/${regionFile}`);
-        if (staticRes.ok) applyCollected(await staticRes.json());
-      } catch {
-        // Static file not available
-      }
-    }
-
-    // Last resort: try the live collection endpoint
-    if (!hasStats) {
-      try {
-        const origin = new URL(request.url).origin;
-        const collectRes = await fetch(`${origin}/api/champions/collect?region=${region}`, {
-          headers: { 'x-internal': '1' },
-        });
-        if (collectRes.ok) applyCollected(await collectRes.json());
-      } catch {
-        // Collection failed, continue without stats
-      }
+    // Regionen ohne Datei bleiben ohne Zahlen. Eine Live-Sammlung bei Riot gibt
+    // es hier bewusst nicht mehr: sie kostete bis ~165 Abrufe je Aufruf auf dem
+    // geteilten Schluessel und lieferte hoechstens 100 Spiele.
+    try {
+      const statsFile = join(process.cwd(), 'public', `champion-stats-${region.replace('1', '')}.json`);
+      if (existsSync(statsFile)) applyCollected(JSON.parse(readFileSync(statsFile, 'utf8')));
+    } catch {
+      // Datei unlesbar: ohne Zahlen weiter
     }
 
     // Match-based role data from champion-builds-{region}.json (preferred over Data Dragon tags).
@@ -203,8 +147,10 @@ export async function GET(request: NextRequest) {
         role: primary,
         significantRoles: [...significant],
         winRate: stats && stats.games > 0 ? Math.round((stats.wins / stats.games) * 1000) / 10 : null,
-        pickRate: stats && stats.totalGames > 0 ? Math.round((stats.games / stats.totalGames) * 1000) / 10 : null,
-        banRate: stats && stats.totalGames > 0 ? Math.round((stats.bans / stats.totalGames) * 1000) / 10 : null,
+        // totalGames zaehlt Teilnehmer (Spiele x 10). Pick-/Bannrate sind Anteile
+        // an Spielen, deshalb x 10: ein Champion steht hoechstens einmal je Spiel.
+        pickRate: stats && stats.totalGames > 0 ? Math.round((stats.games * 10 / stats.totalGames) * 1000) / 10 : null,
+        banRate: stats && stats.totalGames > 0 ? Math.round((stats.bans * 10 / stats.totalGames) * 1000) / 10 : null,
         games: stats?.games || 0,
         avgKDA: stats && stats.games > 0 && stats.deaths > 0
           ? Math.round(((stats.kills + stats.assists) / stats.deaths) * 100) / 100

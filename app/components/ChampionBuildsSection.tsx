@@ -92,7 +92,9 @@ const STAT_SHARD_LABELS: Record<number, string> = {
   5002: 'Armor',
   5003: 'Magic Resist',
   5001: 'Health Scaling',
+  5010: 'Move Speed',
   5011: 'Health',
+  5012: 'Resist Scaling',
   5013: 'Tenacity & Slow Resist',
 };
 

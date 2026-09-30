@@ -52,9 +52,6 @@ const AUSNAHMEN = {
   'app/api/player-season-stats/route.ts':
     'Legt die berechnete Saison-Zeile des angefragten Spielers ab. Gleiches ' +
     'Muster wie /api/summoner: Ergebnis-Cache, keine Fremddaten.',
-  'app/api/champions/collect/route.ts':
-    'Sammelt Champion-Statistik aus High-Elo-Matches und legt das Ergebnis ab. ' +
-    'Oeffentlich lesbare Aggregate, keine Nutzerdaten.',
   'app/api/tft/comps/share/route.ts':
     'Oeffentliches Einreichen von Comps ist gewollt. Gedrosselt ueber 5 Eintraege ' +
     'je author_token in 24 h, Zaehlung gegen die Datenbank.',

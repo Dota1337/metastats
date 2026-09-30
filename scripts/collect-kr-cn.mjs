@@ -5,7 +5,7 @@
  *     We collect KR data which includes many Chinese pros playing on KR server.
  *
  * Rate-limiting handled by the shared Riot client (200 req/s on production key).
- * Saves results to public/champion-stats-kr.json + public/champion-builds-kr.json + Supabase.
+ * Saves results to public/champion-stats-kr.json + public/champion-builds-kr.json.
  */
 
 import { loadBootSet, aggregateMatch, finalizeBuilds, ALLOWED_QUEUES } from './lib/build-aggregator.mjs';
@@ -24,6 +24,12 @@ const REGIONS = [
 
 const riot = createRiotClient({ apiKey: API_KEY });
 const rateLimitedFetch = riot.fetch;
+
+// Remakes (Abbruch in den ersten Minuten) sind keine echten Spiele und
+// verfaelschen Siegrate und Spielzahl.
+function isRemake(info) {
+  return info.participants?.some((p) => p.gameEndedInEarlySurrender) || (info.gameDuration || 0) < 300;
+}
 
 async function collectRegion(region, regional, label) {
   console.log(`\n=== ${label} (${region}) — Challenger + Grandmaster + Master ===\n`);
@@ -129,7 +135,7 @@ async function collectRegion(region, regional, label) {
       );
       if (res.ok) {
         const match = await res.json();
-        if (match?.info?.participants && ALLOWED_QUEUES.has(match.info.queueId)) {
+        if (match?.info?.participants && ALLOWED_QUEUES.has(match.info.queueId) && !isRemake(match.info)) {
           totalGames++;
           const mTier = matchTierMap[matchIdArray[i]] || 'MASTER';
           tierGames[mTier]++;
@@ -151,9 +157,12 @@ async function collectRegion(region, regional, label) {
             tierStats[mTier][key].assists += p.assists || 0;
           }
 
+          // Bans je Spiel nur einmal zaehlen (siehe collect-highelo.mjs).
+          const bannedInMatch = new Set();
           for (const team of match.info.teams || []) {
             for (const ban of team.bans || []) {
-              if (ban.championId > 0) {
+              if (ban.championId > 0 && !bannedInMatch.has(ban.championId)) {
+                bannedInMatch.add(ban.championId);
                 const key = String(ban.championId);
                 if (!champStats[key]) champStats[key] = { wins: 0, games: 0, kills: 0, deaths: 0, assists: 0, bans: 0 };
                 champStats[key].bans++;
@@ -175,7 +184,7 @@ async function collectRegion(region, regional, label) {
 
   const totalParticipantGames = totalGames * 10;
 
-  // Vor Datei UND Supabase: keine leere/duenne Woche ueber die alte schreiben.
+  // Vor der Datei: keine leere/duenne Woche ueber die alte schreiben.
   checkSample(label, {
     prevFile: `public/champion-stats-${region}.json`,
     totalGames, matchAttempts: matchIdArray.length, matchErrors: errors,
@@ -211,43 +220,6 @@ async function collectRegion(region, regional, label) {
   fs.writeFileSync(`public/champion-builds-${region}.json`, JSON.stringify(buildsOut));
   const champRoleCount = Object.values(buildsOut.byChampionRole).reduce((a, r) => a + Object.keys(r).length, 0);
   console.log(`  -> public/champion-builds-${region}.json (${Object.keys(buildsOut.byChampionRole).length} Champs, ${champRoleCount} Champ×Rollen)`);
-
-  // Step 4: Save to Supabase
-  console.log('\n[4/4] Supabase speichern...');
-  const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://bwawxwgxxfafbruebixa.supabase.co';
-  const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-
-  if (SUPABASE_KEY) {
-    const now = new Date().toISOString();
-    let saved = 0;
-    for (const tierKey of ['CHALLENGER', 'GRANDMASTER', 'MASTER']) {
-      const stats = tierStats[tierKey];
-      const totalInTier = tierGames[tierKey] * 10;
-      if (totalInTier === 0) continue;
-      const rows = Object.entries(stats).map(([champKey, s]) => ({
-        champion_key: champKey, tier: tierKey, region,
-        wins: s.wins, games: s.games, kills: s.kills, deaths: s.deaths, assists: s.assists, bans: s.bans,
-        total_games_in_tier: totalInTier, updated_at: now,
-      }));
-      for (let b = 0; b < rows.length; b += 50) {
-        const batch = rows.slice(b, b + 50);
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/champion_stats`, {
-          method: 'POST',
-          headers: {
-            'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`,
-            'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates',
-          },
-          body: JSON.stringify(batch),
-        });
-        if (!res.ok) console.log(`  Supabase error ${tierKey}: ${res.status}`);
-      }
-      saved += rows.length;
-      console.log(`  ${tierKey}: ${rows.length} Champions (${tierGames[tierKey]} Matches)`);
-    }
-    console.log(`  Gesamt: ${saved} Eintraege`);
-  } else {
-    console.log('  SUPABASE_SERVICE_ROLE_KEY fehlt!');
-  }
 
   console.log(`\n  ${label}: ${totalGames} Matches (C:${tierGames.CHALLENGER} GM:${tierGames.GRANDMASTER} M:${tierGames.MASTER}), ${Object.keys(champStats).length} Champions`);
 }

@@ -366,7 +366,8 @@
       "titel": "Ein oeffentlicher Aufruf kann die Riot-Abfragen der ganzen Seite lahmlegen",
       "ort": "app/api/champions/collect/route.ts",
       "schwere": "mittel",
-      "status": "offen",
+      "status": "behoben",
+      "behoben_am": "2026-10-01",
       "belegt_mit": "Kopf der Datei: oeffentlicher GET ohne Zugangspruefung; ?refresh=1 uebergeht den 2-Stunden-Zwischenspeicher; Zeile 126 riotFetch(... matches/by-puuid ...) im Fan-out; grep -rn checkRateLimit app/api --include=route.ts nennt die Route nicht; der vom eigenen Aufrufer gesetzte Kopf x-internal (app/api/champions/route.ts Zeile 133) wird in collect nirgends geprueft (grep -n \"x-internal\" app/api/champions/collect/route.ts -> kein Treffer).",
       "seit": "2026-09-19",
       "zuletzt_gesehen": "2026-09-19"

@@ -310,9 +310,6 @@ export async function GET(request: NextRequest) {
     // Display matches (recent 30, all queues) — for match history UI
     const matches = extendedMatches.map(toLegacy);
 
-    // Ranked matches (up to 200, prioritized queue only) — for market value
-    const rankedMatches = rankedExtendedMatches.map(toLegacy);
-
     // Marktwert je Split (wie TFT je Set): nur Partien aus dem Split der
     // neuesten gewerteten Partie. Der Split kommt aus dem Patch des Spiels,
     // nicht aus der Uhr, denn Patches starten je Region zu verschiedenen Zeiten.
@@ -452,10 +449,6 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Collect champion stats from ranked matches (non-blocking)
-    if (primaryQueue && rankedMatches.length > 0) {
-      collectChampionStats(rankedMatches, matchDetails, account.puuid, primaryQueue.tier, region).catch(() => {});
-    }
 
     let rankedOut: any[] = Array.isArray(ranked) ? ranked : [];
     if (!rankedOk && player) {
@@ -481,62 +474,3 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function collectChampionStats(
-  matches: any[],
-  rawMatches: any[],
-  puuid: string,
-  tier: string,
-  region: string
-) {
-  // Aggregate champion stats from this player's matches
-  const champStats: Record<string, { wins: number; games: number; kills: number; deaths: number; assists: number }> = {};
-  const bannedChamps: Record<string, number> = {};
-  let totalGames = rawMatches.length;
-
-  for (const match of rawMatches) {
-    if (!match?.info?.participants) continue;
-
-    // Count bans
-    for (const team of match.info.teams || []) {
-      for (const ban of team.bans || []) {
-        if (ban.championId > 0) {
-          const key = String(ban.championId);
-          bannedChamps[key] = (bannedChamps[key] || 0) + 1;
-        }
-      }
-    }
-
-    // Count picks and wins for all participants (not just our player)
-    for (const p of match.info.participants) {
-      const key = String(p.championId);
-      if (!champStats[key]) {
-        champStats[key] = { wins: 0, games: 0, kills: 0, deaths: 0, assists: 0 };
-      }
-      champStats[key].games++;
-      if (p.win) champStats[key].wins++;
-      champStats[key].kills += p.kills || 0;
-      champStats[key].deaths += p.deaths || 0;
-      champStats[key].assists += p.assists || 0;
-    }
-  }
-
-  // Total games counted = rawMatches * 10 participants per match
-  const totalParticipantGames = totalGames * 10;
-
-  // Upsert champion stats per tier
-  for (const [champKey, stats] of Object.entries(champStats)) {
-    await supabase.from('champion_stats').upsert({
-      champion_key: champKey,
-      tier: tier,
-      region: region,
-      wins: stats.wins,
-      games: stats.games,
-      kills: stats.kills,
-      deaths: stats.deaths,
-      assists: stats.assists,
-      bans: bannedChamps[champKey] || 0,
-      total_games_in_tier: totalParticipantGames,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'champion_key,tier,region' });
-  }
-}

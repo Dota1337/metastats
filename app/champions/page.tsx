@@ -6,6 +6,9 @@ import PageHero from '../components/PageHero';
 import { useI18n } from '../lib/i18n';
 import { usePageTitle } from '../lib/use-page-title';
 
+// Unter dieser Spielzahl ist eine Siegrate Zufall; beim Sortieren nach Siegrate hinten.
+const MIN_WINRATE_GAMES = 30;
+
 type SortKey = 'name' | 'winRate' | 'pickRate' | 'banRate' | 'games' | 'avgKDA';
 
 interface Champion {
@@ -35,7 +38,6 @@ export default function ChampionsPage() {
   const [hasStats, setHasStats] = useState(false);
   const [search, setSearch] = useState('');
   const [region, setRegion] = useState('euw1');
-  const [collecting, setCollecting] = useState(false);
   const { t } = useI18n();
 
   const REGIONS = [
@@ -94,35 +96,11 @@ export default function ChampionsPage() {
         setVersion(data.version);
         setHasStats(data.hasStats);
       }
-      // If no stats, trigger collection in background
-      if (!data.hasStats) {
-        triggerCollection();
-      }
     } catch {
       if (signal.aborted) return;
       setChampions([]);
     }
     if (!signal.aborted) setLoading(false);
-  };
-
-  const triggerCollection = async () => {
-    setCollecting(true);
-    try {
-      const res = await fetch(`/api/champions/collect?region=${region}`);
-      if (res.ok) {
-        // Re-fetch champions with the new data
-        const champRes = await fetch(`/api/champions?tier=${tier}&role=${role}&region=${region}`);
-        const data = await champRes.json();
-        if (data.champions) {
-          setChampions(data.champions);
-          setVersion(data.version);
-          setHasStats(data.hasStats);
-        }
-      }
-    } catch {
-      // silent fail
-    }
-    setCollecting(false);
   };
 
   const handleSort = (key: SortKey) => {
@@ -139,6 +117,13 @@ export default function ChampionsPage() {
     .sort((a, b) => {
       const dir = sortDir === 'asc' ? 1 : -1;
       if (sortKey === 'name') return a.name.localeCompare(b.name) * dir;
+      // Siegrate aus wenigen Spielen ist Zufall (5 Spiele, 100 %). Unter
+      // MIN_WINRATE_GAMES stehen solche Champions beim Sortieren nach Siegrate hinten.
+      if (sortKey === 'winRate') {
+        const aLow = a.games < MIN_WINRATE_GAMES;
+        const bLow = b.games < MIN_WINRATE_GAMES;
+        if (aLow !== bLow) return aLow ? 1 : -1;
+      }
       const av = a[sortKey] ?? -1;
       const bv = b[sortKey] ?? -1;
       return ((av as number) - (bv as number)) * dir;
@@ -267,19 +252,9 @@ export default function ChampionsPage() {
         {/* Info Banner if no stats at all */}
         {tier === 'all' && !hasStats && !loading && (
           <div className="bg-surface-raised border border-border-default rounded p-3 mb-4 text-center">
-            {collecting ? (
-              <div className="flex items-center justify-center gap-2">
-                <div className="w-3 h-3 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-                <div className="text-accent text-xs">{t('champ.loadFromApi')} ({REGIONS.find(r => r.value === region)?.label})...</div>
-              </div>
-            ) : (
-              <div className="text-fg-secondary text-xs">
-                {t('champ.statsCollecting')}
-                <button onClick={triggerCollection} className="ml-2 text-accent hover:underline">
-                  {t('champ.loadNow')}
-                </button>
-              </div>
-            )}
+            <div className="text-fg-secondary text-xs">
+              {t('champ.noDataFor')} <span className="text-white font-medium">{REGIONS.find(r => r.value === region)?.label}</span> {t('champ.noDataAvailable')}
+            </div>
           </div>
         )}
 

@@ -1,5 +1,5 @@
-// Champion-Zahlen aus den Sammel-Dateien (public/champion-stats-*.json bzw.
-// /api/champions/collect) fuer einen Rang oder eine Rang-Gruppe auswaehlen.
+// Champion-Zahlen aus den Sammel-Dateien (public/champion-stats-*.json) fuer
+// einen Rang oder eine Rang-Gruppe auswaehlen.
 //
 // Die Tabelle champion_stats gibt es in der Datenbank nicht, deshalb liest
 // /api/champions immer aus diesen Dateien. `stats` darin ist die Summe ueber

@@ -6,12 +6,12 @@
     "belegen laesst, steht in `unresolved` statt als geratene Kante im Graphen."
   ],
   "counts": {
-    "routes": 79,
+    "routes": 78,
     "groups": 31,
-    "tables": 36,
+    "tables": 35,
     "rpcs": 29,
     "files": 11,
-    "edges": 369,
+    "edges": 366,
     "unused": 8,
     "unresolved": 1
   },
@@ -33,12 +33,12 @@
       "count": 4
     },
     {
-      "name": "champions",
+      "name": "tft/pros",
       "count": 3
     },
     {
-      "name": "tft/pros",
-      "count": 3
+      "name": "champions",
+      "count": 2
     },
     {
       "name": "cron",
@@ -205,28 +205,13 @@
       "via": [
         "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
+        "app/lib/regions.ts",
         "app/lib/tft-supabase-reader.ts",
         "public/tft-set.json"
       ],
       "used": true,
       "usedBy": [
         "app/components/ChampionBuildsSection.tsx"
-      ]
-    },
-    {
-      "id": "api:/api/champions/collect",
-      "kind": "route",
-      "label": "/api/champions/collect",
-      "group": "champions",
-      "file": "app/api/champions/collect/route.ts",
-      "via": [
-        "app/lib/regions.ts",
-        "app/lib/riot-fetch.ts"
-      ],
-      "used": true,
-      "usedBy": [
-        "app/api/champions/route.ts",
-        "app/champions/page.tsx"
       ]
     },
     {
@@ -1452,12 +1437,6 @@
       "label": "Hetzner-Box"
     },
     {
-      "id": "db:champion_stats",
-      "kind": "table",
-      "label": "champion_stats",
-      "declared": false
-    },
-    {
       "id": "db:lol_champion_build_stats",
       "kind": "table",
       "label": "lol_champion_build_stats",
@@ -1970,11 +1949,6 @@
     },
     {
       "from": "api:/api/champions",
-      "to": "db:champion_stats",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/champions",
       "to": "ext:ddragon",
       "kind": "fetches"
     },
@@ -2020,6 +1994,11 @@
     },
     {
       "from": "api:/api/champions/[id]/builds",
+      "to": "ext:riot-api",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/champions/[id]/builds",
       "to": "ext:riot-web",
       "kind": "fetches"
     },
@@ -2037,16 +2016,6 @@
       "from": "api:/api/champions/[id]/builds",
       "to": "fn:get_tft_available_patches",
       "kind": "calls"
-    },
-    {
-      "from": "api:/api/champions/collect",
-      "to": "db:champion_stats",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/champions/collect",
-      "to": "ext:riot-api",
-      "kind": "fetches"
     },
     {
       "from": "api:/api/coach/chat",
@@ -2346,11 +2315,6 @@
     {
       "from": "api:/api/recent-players",
       "to": "db:players",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/summoner",
-      "to": "db:champion_stats",
       "kind": "reads"
     },
     {

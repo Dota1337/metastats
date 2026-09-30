@@ -69,4 +69,14 @@ export function inPeriod(p: SeasonPeriod, major: number, minor: number): boolean
   return true;
 }
 
+/**
+ * Split, in den ein Spiel mit diesem Patch faellt. null, wenn die Saison
+ * (major) nicht in public/seasons.json steht — dann ist die Datei hinter dem
+ * Spiel zurueck. Ein neuer Split innerhalb einer bekannten Saison, den die
+ * Datei noch nicht kennt, landet im letzten bekannten Split.
+ */
+export function splitForPatch(major: number, minor: number): SeasonPeriod | null {
+  return allPeriods().find(p => p.kind === 'split' && inPeriod(p, major, minor)) || null;
+}
+
 export const CURRENT_SEASON_ID = data.currentSeason.id;

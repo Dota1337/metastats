@@ -249,7 +249,7 @@
     {
       "name": "metastats-marketvalue-peaks.service",
       "kind": "service",
-      "description": "metastats Marktwert-Hoechstwerte je Set festschreiben",
+      "description": "metastats Marktwert-Hoechstwerte je TFT-Set und LoL-Split festschreiben",
       "scripts": [
         "scripts/freeze-marketvalue-peaks.mjs"
       ]
@@ -1100,6 +1100,9 @@
     "metastats-lol-marketvalue.service": [
       "lol-marketvalue/history",
       "lol-marketvalue/last-pass"
+    ],
+    "metastats-marketvalue-peaks.service": [
+      "lol-marketvalue/peaks"
     ],
     "metastats-lol-matchfill.service": [
       "lol-matchfill/match-cache"

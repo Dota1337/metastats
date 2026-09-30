@@ -351,6 +351,17 @@
       "note": "Marker, den scripts/lol-marketvalue-weekly.mjs nur nach einem vollstaendigen Lauf ueber alle Regionen schreibt. Der Lauf drosselt sich auf 6 Tage und wird von der taeglichen Key-Rotation angestossen; 8 Tage lassen einen ausgefallenen Anstoss durch, einen haengenden Sammler (Sperre belegt) nicht. Rot: journalctl -u metastats-lol-marketvalue -u metastats-lol-matchfill. Der Marker liegt in /etc/metastats-crawler, weil die Unit nur dort und in /run/lock schreiben darf."
     },
     {
+      "id": "lol-marketvalue/peaks",
+      "owner": "metastats-marketvalue-peaks.service",
+      "backend": "supabase",
+      "table": "lol_player_marketvalue_peaks",
+      "dateColumn": "updated_at",
+      "dateType": "timestamp",
+      "maxLagDays": 10,
+      "minRows": 1,
+      "note": "Hoechstwert je Spieler und Split, geschrieben vom LoL-Durchgang in scripts/freeze-marketvalue-peaks.mjs (naechtlich, 7-Tage-Fenster). updated_at wird bei jeder Beruehrung gesetzt, auch ohne neuen Hoechstwert. Speist sich nur aus Verlaufszeilen mit >= 20 Partien im Split; rot heisst meist: der LoL-Wochenlauf kam nicht durch (lol-marketvalue/last-pass) oder der Peaks-Timer laeuft nicht."
+    },
+    {
       "id": "lol-matchfill/match-cache",
       "owner": "metastats-lol-matchfill.service",
       "backend": "supabase",

@@ -11,7 +11,7 @@
     "tables": 35,
     "rpcs": 29,
     "files": 11,
-    "edges": 364,
+    "edges": 365,
     "unused": 8,
     "unresolved": 1
   },
@@ -538,7 +538,8 @@
       "file": "app/api/summoner/route.ts",
       "via": [
         "app/lib/regions.ts",
-        "app/lib/riot-fetch.ts"
+        "app/lib/riot-fetch.ts",
+        "app/lib/seasons.ts"
       ],
       "used": true,
       "usedBy": [
@@ -2340,6 +2341,11 @@
       "from": "api:/api/summoner",
       "to": "ext:riot-api",
       "kind": "fetches"
+    },
+    {
+      "from": "api:/api/summoner",
+      "to": "file:seasons.json",
+      "kind": "reads"
     },
     {
       "from": "api:/api/tft/augments",

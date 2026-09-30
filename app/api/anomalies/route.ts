@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '../../lib/supabase';
+import { latestSplitRowsByPlayer, MV_HISTORY_COLUMNS, type MvHistoryRow } from '../../lib/marketvalue-history';
 
 /**
  * Anomaly Detection — Flags unusual player performances
@@ -41,7 +42,7 @@ export async function GET() {
       .order('updated_at', { ascending: false })
       .limit(300);
 
-    const playerMap: Record<number, any> = {};
+    const playerMap: Record<string, any> = {};
     if (allPlayers) {
       for (const p of allPlayers) playerMap[p.id] = p;
     }
@@ -49,25 +50,24 @@ export async function GET() {
     // 1. Market value changes
     const { data: mvHistory } = await supabase
       .from('market_value_history')
-      .select('player_id, market_value, recorded_at')
+      .select(MV_HISTORY_COLUMNS)
       .order('recorded_at', { ascending: false })
       .limit(500);
 
     if (mvHistory && mvHistory.length > 0) {
-      const byPlayer: Record<number, { value: number; date: string }[]> = {};
-      for (const entry of mvHistory) {
-        if (!byPlayer[entry.player_id]) byPlayer[entry.player_id] = [];
-        byPlayer[entry.player_id].push({ value: entry.market_value, date: entry.recorded_at });
-      }
+      // Nur innerhalb eines Splits vergleichen, sonst meldet jeder
+      // Split-Wechsel eine Explosion oder einen Einbruch.
+      const byPlayer = latestSplitRowsByPlayer(mvHistory as MvHistoryRow[]);
 
-      for (const [playerId, history] of Object.entries(byPlayer)) {
+      for (const [playerId, rows] of byPlayer) {
+        const history = rows.map(r => ({ value: r.market_value, date: r.recorded_at }));
         if (history.length < 2) continue;
         const latest = history[0].value;
         const previous = history[1].value;
         if (previous === 0) continue;
 
         const changePercent = ((latest - previous) / previous) * 100;
-        const player = playerMap[Number(playerId)];
+        const player = playerMap[playerId];
         if (!player) continue;
 
         if (changePercent > 50) {

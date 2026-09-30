@@ -39,6 +39,11 @@
  *   node scripts/freeze-marketvalue-peaks.mjs --set 17 --full
  *   node scripts/freeze-marketvalue-peaks.mjs --since 2026-08-26 --dry-run
  *   node scripts/freeze-marketvalue-peaks.mjs --auto         # Timer-Modus, siehe unten
+ *   node scripts/freeze-marketvalue-peaks.mjs --lol-only --full   # nur LoL, ganzer Verlauf
+ *
+ * Nach den TFT-Durchgaengen laeuft immer ein LoL-Durchgang (Hoechstwert je
+ * Spieler und Split aus market_value_history, siehe runLolPass); --no-lol
+ * schaltet ihn ab.
  *
  * --auto ist der Modus fuer metastats-marketvalue-peaks.timer und macht zwei
  * Durchgaenge: erst das laufende Set im normalen 7-Tage-Fenster, danach jedes
@@ -109,11 +114,17 @@ const MIN_SAMPLE = parseInt(arg('--min-sample', '40'), 10);
 const FULL = args.includes('--full');
 const AUTO = args.includes('--auto');
 const DRY_RUN = args.includes('--dry-run');
+const LOL_ONLY = args.includes('--lol-only');
+const NO_LOL = args.includes('--no-lol');
+// LoL: Partien im Split, nicht Snapshot-Tage wie bei TFT. 20 statt der 10, ab
+// denen /api/summoner ueberhaupt einen Wert schreibt — ein Hoechstwert haelt
+// den ganzen Split, er soll nicht aus dem ersten Dutzend Spiele stammen.
+const LOL_MIN_GAMES = parseInt(arg('--lol-min-games', '20'), 10);
 const SINCE = FULL
   ? null
   : (arg('--since', null) || new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10));
 
-if (!Number.isInteger(SET)) {
+if (!LOL_ONLY && !Number.isInteger(SET)) {
   console.error('Kein Set: --set N angeben oder public/tft-set.json bereitstellen');
   process.exit(1);
 }
@@ -206,6 +217,51 @@ const pool = new pg.Pool({
   statement_timeout: 600_000,
 });
 
+// LoL-Hoechstwert je Spieler und Split aus market_value_history. Nur Zeilen,
+// die die Suche seit 0080 mit Split und Partienzahl schreibt; Altzeilen sind
+// aus gemischten Splits gerechnet (split_estimated) und zaehlen nicht. Der
+// Split steht in jeder Zeile, deshalb braucht es keinen Nachlauf beim
+// Split-Wechsel wie bei TFT: das 7-Tage-Fenster erfasst die letzten Zeilen des
+// alten Splits genauso wie die ersten des neuen.
+const LT = 'lol_player_marketvalue_peaks';
+const lolKeepIfLower = (col) =>
+  `${col} = case when excluded.peak_value > ${LT}.peak_value then excluded.${col} else ${LT}.${col} end`;
+const LOL_SQL = `
+insert into ${LT} (player_id, split_id, peak_value, base_value, multiplier, games_analyzed, peak_at, updated_at)
+select distinct on (h.player_id, h.split_id)
+       h.player_id, h.split_id, h.market_value, h.base_value, h.multiplier, h.games_analyzed,
+       h.recorded_at at time zone 'UTC', now()
+  from market_value_history h
+ where h.player_id is not null and h.split_id is not null
+   and not h.split_estimated and h.games_analyzed >= $1
+   and ($2::date is null or h.recorded_at >= $2::date)
+ order by h.player_id, h.split_id, h.market_value desc, h.recorded_at asc
+on conflict (player_id, split_id) do update set
+  ${['base_value', 'multiplier', 'games_analyzed', 'peak_at'].map(lolKeepIfLower).join(',\n  ')},
+  peak_value = greatest(excluded.peak_value, ${LT}.peak_value),
+  updated_at = now()
+`;
+
+async function runLolPass(since) {
+  console.log(`=== LoL-Marktwert-Peaks (${since ? `ab ${since}` : 'gesamter Verlauf'}, min ${LOL_MIN_GAMES} Partien im Split) ===`);
+  const before = await pool.query(`select count(*)::int as n from ${LT}`);
+  if (DRY_RUN) {
+    const c = await pool.query(
+      `select count(distinct (player_id, split_id))::int as n
+         from market_value_history
+        where player_id is not null and split_id is not null
+          and not split_estimated and games_analyzed >= $1
+          and ($2::date is null or recorded_at >= $2::date)`,
+      [LOL_MIN_GAMES, since],
+    );
+    console.log(`[dry-run] ${c.rows[0].n} Spieler-Splits, ${before.rows[0].n} Zeilen bereits vorhanden`);
+    return;
+  }
+  const res = await pool.query(LOL_SQL, [LOL_MIN_GAMES, since]);
+  const after = await pool.query(`select count(*)::int as n from ${LT}`);
+  console.log(`[lol-peaks] ${res.rowCount} Zeilen beruehrt, ${before.rows[0].n} -> ${after.rows[0].n} Zeilen`);
+}
+
 // Ein Durchgang. since = null bedeutet "ganzes Set".
 async function runPass(set, since) {
   console.log(`=== Marktwert-Peaks Set ${set} (${since ? `ab ${since}` : 'ganzes Set'}, min sample ${MIN_SAMPLE}) ===`);
@@ -234,13 +290,14 @@ async function runPass(set, since) {
 async function main() {
   // Reihenfolge im Auto-Modus: laufendes Set zuerst. Ein Fehler im
   // Nachlauf-Durchgang darf den taeglichen Normalbetrieb nicht verhindern.
-  const passes = [{ set: SET, since: SINCE }];
-  if (AUTO) {
+  const passes = LOL_ONLY ? [] : [{ set: SET, since: SINCE }];
+  if (AUTO && !LOL_ONLY) {
     for (const ended of recentlyEndedSets()) {
       if (ended !== SET) passes.push({ set: ended, since: null });
     }
   }
   for (const p of passes) await runPass(p.set, p.since);
+  if (!NO_LOL) await runLolPass(SINCE);
   await pool.end();
 }
 

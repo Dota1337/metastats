@@ -3,6 +3,7 @@ import { supabaseAdmin as supabase } from '../../lib/supabase';
 import * as fs from 'fs';
 import * as path from 'path';
 import { riotFetch } from '../../lib/riot-fetch';
+import { latestSplitRowsByPlayer, MV_HISTORY_COLUMNS, type MvHistoryRow } from '../../lib/marketvalue-history';
 
 /**
  * Transfer Predictions — Predicts which players might switch teams
@@ -78,14 +79,14 @@ export async function GET() {
     // Get market value history for trend analysis
     const { data: mvHistory } = await supabase
       .from('market_value_history')
-      .select('player_id, market_value, recorded_at')
+      .select(MV_HISTORY_COLUMNS)
       .order('recorded_at', { ascending: false })
       .limit(1000);
 
-    const mvByPlayer: Record<number, number[]> = {};
-    for (const entry of (mvHistory || [])) {
-      if (!mvByPlayer[entry.player_id]) mvByPlayer[entry.player_id] = [];
-      mvByPlayer[entry.player_id].push(entry.market_value);
+    // Trend nur innerhalb eines Splits, neueste zuerst wie bisher.
+    const mvByPlayer: Record<string, number[]> = {};
+    for (const [pid, rows] of latestSplitRowsByPlayer((mvHistory || []) as MvHistoryRow[])) {
+      mvByPlayer[pid] = rows.map(r => r.market_value);
     }
 
     const predictions: TransferPrediction[] = [];

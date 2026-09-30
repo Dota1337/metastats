@@ -1,5 +1,5 @@
 [Unit]
-Description=metastats Marktwert-Hoechstwerte je Set festschreiben
+Description=metastats Marktwert-Hoechstwerte je TFT-Set und LoL-Split festschreiben
 Wants=network-online.target
 After=network-online.target
 # Kein OnSuccess= und keine Kette, gleiche Begruendung wie bei

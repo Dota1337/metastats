@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '../../lib/supabase';
 import { expandLolTier } from '../../lib/rank-groups';
+import { latestSplitRowsByPlayer, MV_HISTORY_COLUMNS, type MvHistoryRow } from '../../lib/marketvalue-history';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -41,18 +42,17 @@ export async function GET(request: NextRequest) {
       // Get the oldest record within the last week for each player (approximation of "value 7 days ago")
       const { data: historyData } = await supabase
         .from('market_value_history')
-        .select('player_id, market_value, recorded_at')
+        .select(MV_HISTORY_COLUMNS)
         .in('player_id', playerIds)
         .gte('recorded_at', oneWeekAgo)
         .order('recorded_at', { ascending: true });
 
       if (historyData) {
-        // For each player, find their earliest value in the week
-        const earliestPerPlayer: Record<number, number> = {};
-        for (const h of historyData) {
-          if (!(h.player_id in earliestPerPlayer)) {
-            earliestPerPlayer[h.player_id] = h.market_value;
-          }
+        // Earliest value in the week from the same split as the newest one —
+        // a split change is not a change of the player.
+        const earliestPerPlayer: Record<string, number> = {};
+        for (const [pid, rows] of latestSplitRowsByPlayer(historyData as MvHistoryRow[])) {
+          earliestPerPlayer[pid] = rows[rows.length - 1].market_value;
         }
 
         for (const player of (players || [])) {

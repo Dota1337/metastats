@@ -1,5 +1,6 @@
 import { supabaseAdmin as supabase } from '../../lib/supabase';
 import { cachedJson, SLOW_CACHE_CONTROL } from '../../lib/api-cache';
+import { latestSplitRowsByPlayer, MV_HISTORY_COLUMNS, type MvHistoryRow } from '../../lib/marketvalue-history';
 
 export async function GET() {
   try {
@@ -15,13 +16,15 @@ export async function GET() {
 
     const { data: history } = await supabase
       .from('market_value_history')
-      .select('player_id, market_value, recorded_at')
+      .select(MV_HISTORY_COLUMNS)
       .gte('recorded_at', oneWeekAgo.toISOString());
 
+    // Aeltester Wert der Woche aus demselben Split wie der neueste — ein
+    // Split-Wechsel ist keine Veraenderung des Spielers.
+    const bySplit = latestSplitRowsByPlayer((history || []) as MvHistoryRow[]);
     const changes = (players || []).map(p => {
-      const oldEntry = (history || [])
-        .filter(h => h.player_id === p.id)
-        .sort((a, b) => new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime())[0];
+      const rows = bySplit.get(p.id);
+      const oldEntry = rows ? rows[rows.length - 1] : undefined;
       return {
         ...p,
         change: oldEntry ? p.market_value - oldEntry.market_value : 0,

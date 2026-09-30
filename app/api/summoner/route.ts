@@ -6,6 +6,12 @@ import { calculateStatsOverview } from '../../lib/stats-categories';
 
 import { getRegionalRouting, parseRegion } from '../../lib/regions';
 import { riotFetch } from '../../lib/riot-fetch';
+import { splitForPatch } from '../../lib/seasons';
+
+// Unter so vielen Partien im Split wird kein neuer Marktwert geschrieben; der
+// gespeicherte bleibt stehen. Die Formel liefert auch mit 0 Partien einen
+// gewerteten Basiswert (marketvalue.ts), das Tor muss deshalb hier sitzen.
+const MIN_SPLIT_GAMES = 10;
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -290,6 +296,35 @@ export async function GET(request: NextRequest) {
     // Ranked matches (up to 200, prioritized queue only) — for market value
     const rankedMatches = rankedExtendedMatches.map(toLegacy);
 
+    // Marktwert je Split (wie TFT je Set): nur Partien aus dem Split der
+    // neuesten gewerteten Partie. Der Split kommt aus dem Patch des Spiels,
+    // nicht aus der Uhr, denn Patches starten je Region zu verschiedenen Zeiten.
+    const patchOf = new Map<string, { major: number; minor: number; at: number }>();
+    for (const raw of matchDetails) {
+      const id = raw?.metadata?.matchId;
+      const [major, minor] = String(raw?.info?.gameVersion || '').split('.').map(Number);
+      if (id && Number.isFinite(major) && Number.isFinite(minor)) {
+        patchOf.set(id, { major, minor, at: Number(raw.info.gameCreation) || 0 });
+      }
+    }
+    let newest: { major: number; minor: number; at: number } | null = null;
+    for (const m of rankedExtendedMatches) {
+      const p = patchOf.get(m.matchId);
+      if (p && (!newest || p.at > newest.at)) newest = p;
+    }
+    const split = newest ? splitForPatch(newest.major, newest.minor) : null;
+    if (newest && !split) {
+      console.error(`[summoner] Patch ${newest.major}.${newest.minor} in keinem Split von public/seasons.json, Marktwert nicht geschrieben`);
+    }
+    const splitRankedMatches = split
+      ? rankedExtendedMatches.filter(m => {
+          const p = patchOf.get(m.matchId);
+          return !!p && p.major === split.major
+            && (split.minMinor === null || p.minor >= split.minMinor)
+            && (split.endMinor === null || p.minor < split.endMinor);
+        }).map(toLegacy)
+      : [];
+
     // Calculate 20 stat categories (based on display matches for overview)
     const statsOverview = calculateStatsOverview(
       extendedMatches,
@@ -302,7 +337,7 @@ export async function GET(request: NextRequest) {
       } : null
     );
 
-    // Market value: based on ALL ranked matches from the prioritized queue
+    // Market value: ranked matches of the current split, prioritized queue
     const marketValue = calculateMarketValue(
       primaryQueue ? {
         tier: primaryQueue.tier,
@@ -311,8 +346,12 @@ export async function GET(request: NextRequest) {
         wins: primaryQueue.wins,
         losses: primaryQueue.losses,
       } : null,
-      rankedMatches
+      splitRankedMatches
     );
+
+    // Zu wenige Partien im Split (z. B. kurz nach Split-Start): alten Wert
+    // behalten statt eines Werts aus einer Handvoll Spiele.
+    const writeValue = marketValue.rated && !!split && splitRankedMatches.length >= MIN_SPLIT_GAMES;
 
     const winrate = primaryQueue
       ? Math.round((primaryQueue.wins / (primaryQueue.wins + primaryQueue.losses)) * 100)
@@ -323,7 +362,7 @@ export async function GET(request: NextRequest) {
 
     const { data: existingPlayer } = await supabase
       .from('players')
-      .select('id, searched_by')
+      .select('id, searched_by, market_value')
       .eq('puuid', account.puuid)
       .single();
 
@@ -341,7 +380,8 @@ export async function GET(request: NextRequest) {
         region: region,
         summoner_level: summoner.summonerLevel,
         profile_icon_id: summoner.profileIconId,
-        market_value: marketValue.rated ? marketValue.value : null,
+        // Ohne neuen Wert fehlt das Feld: der Upsert laesst den gespeicherten stehen.
+        ...(writeValue ? { market_value: marketValue.value } : {}),
         tier: primaryQueue?.tier || null,
         rank: primaryQueue?.rank || null,
         winrate: winrate,
@@ -355,14 +395,19 @@ export async function GET(request: NextRequest) {
       console.error('Supabase upsert error:', upsertError);
     }
 
-    if (player && marketValue.rated) {
-      await supabase
+    if (player && writeValue && split) {
+      const { error: historyError } = await supabase
         .from('market_value_history')
         .insert({
           player_id: player.id,
           market_value: marketValue.value,
           recorded_at: new Date().toISOString(),
+          split_id: split.id,
+          games_analyzed: splitRankedMatches.length,
+          base_value: marketValue.baseValue,
+          multiplier: Math.round(marketValue.multiplier * 1000) / 1000,
         });
+      if (historyError) console.error('market_value_history insert error:', historyError);
     }
 
     // Store all ranked queues (solo + flex)
@@ -392,8 +437,8 @@ export async function GET(request: NextRequest) {
       ranked: Array.isArray(ranked) ? ranked : [],
       matches,
       statsOverview,
-      storedMarketValue: marketValue.rated ? marketValue.value : null,
-      rankedGamesAnalyzed: rankedMatches.length,
+      storedMarketValue: writeValue ? marketValue.value : (existingPlayer?.market_value ?? null),
+      rankedGamesAnalyzed: splitRankedMatches.length,
       primaryQueue: primaryQueueId === 420 ? 'RANKED_SOLO_5x5' : 'RANKED_FLEX_SR',
     });
 

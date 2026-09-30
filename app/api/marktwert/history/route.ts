@@ -26,8 +26,13 @@ export async function GET(request: NextRequest) {
   // January of year X+2010). Filter `recorded_at >= Jan 1 of that year`.
   let fromDate: string | null = null;
   let toDate: string | null = null;
+  // Split-IDs (`s2026-split3`) filtern ueber die Spalte, die /api/summoner seit
+  // 0080 schreibt — Altzeilen sind per Datum zugeordnet und als geschaetzt markiert.
+  const splitId = /^s\d{4}-split\d+$/.test(season) ? season : null;
   const now = new Date();
-  if (season === 'all') {
+  if (splitId) {
+    fromDate = null;
+  } else if (season === 'all') {
     fromDate = null;
   } else if (season === 'current') {
     fromDate = `${now.getFullYear()}-01-01T00:00:00Z`;
@@ -48,6 +53,9 @@ export async function GET(request: NextRequest) {
     .eq('player_id', player.id)
     .order('recorded_at', { ascending: true });
 
+  if (splitId) {
+    query = query.eq('split_id', splitId);
+  }
   if (fromDate) {
     query = query.gte('recorded_at', fromDate);
   }

@@ -97,6 +97,7 @@ export default function PlayerPage() {
     setRoleFilter('all');
     setExpandedMatch(null);
     setLiveGame({ inGame: false });
+    setLiveGameUnavailable(false);
     try {
       const version = await getDdragonVersion();
       if (version) setDdVersion(version);
@@ -138,42 +139,54 @@ export default function PlayerPage() {
         }
       }
 
-      // Champion map from ddragon
-      const champRes = version ? await fetch(`https://ddragon.leagueoflegends.com/cdn/${version}/data/en_US/champion.json`) : null;
-      if (champRes?.ok) {
-        const champData = await champRes.json();
-        const map: Record<number, { id: string; name: string }> = {};
-        Object.values(champData.data).forEach((c: any) => { map[Number(c.key)] = { id: c.id, name: c.name }; });
-        setChampionMap(map);
-      }
-
       if (stale()) return;
       loadSeasonStats(data.summoner.puuid);
+
+      // Champion-Liste, Meisterschaft und Live-Spiel laufen im Hintergrund:
+      // das Profil wartet nicht auf sie (das Live-Spiel braucht bei Riot-
+      // Ueberlast ~10 s). Jede Kette fuer sich, ein Fehler stoert die anderen
+      // nicht und zeigt nie „Spieler nicht gefunden“.
+      // Champion map from ddragon (nur Meisterschaft und Live-Detail)
+      if (version) {
+        fetch(`https://ddragon.leagueoflegends.com/cdn/${version}/data/en_US/champion.json`)
+          .then(async champRes => {
+            if (!champRes.ok) return;
+            const champData = await champRes.json();
+            if (stale()) return;
+            const map: Record<number, { id: string; name: string }> = {};
+            Object.values(champData.data).forEach((c: any) => { map[Number(c.key)] = { id: c.id, name: c.name }; });
+            setChampionMap(map);
+          })
+          .catch(() => {});
+      }
 
       // Gespeicherter Stand wegen Riot-Ueberlast: Mastery und Live-Spiel laufen
       // ueber denselben ausgelasteten Schluessel und wuerden nur warten lassen.
       if (data.rateLimited) return;
 
-      // Parallel fetch: mastery + live game
       const puuid = encodeURIComponent(data.summoner.puuid);
-      const [masteryRes, liveRes] = await Promise.all([
-        fetch(`/api/mastery?puuid=${puuid}&region=${region}`),
-        fetch(`/api/live-game?puuid=${puuid}&region=${region}`),
-      ]);
-
-      if (stale()) return;
-      if (masteryRes.ok) {
-        const masteryData = await masteryRes.json();
-        setMasteries(masteryData.masteries || []);
-      }
-      if (liveRes.ok) {
-        const liveData = await liveRes.json();
-        setLiveGame(liveData);
-        setLiveGameUnavailable(false);
-      } else if (liveRes.status === 403 || liveRes.status === 401) {
-        // Spectator API requires Production-level Riot API key
-        setLiveGameUnavailable(true);
-      }
+      fetch(`/api/mastery?puuid=${puuid}&region=${region}`)
+        .then(async masteryRes => {
+          if (!masteryRes.ok) return;
+          const masteryData = await masteryRes.json();
+          if (stale()) return;
+          setMasteries(masteryData.masteries || []);
+        })
+        .catch(() => {});
+      fetch(`/api/live-game?puuid=${puuid}&region=${region}`)
+        .then(async liveRes => {
+          if (liveRes.ok) {
+            const liveData = await liveRes.json();
+            if (stale()) return;
+            setLiveGame(liveData);
+            setLiveGameUnavailable(false);
+          } else if (liveRes.status === 403 || liveRes.status === 401) {
+            // Spectator API requires Production-level Riot API key
+            if (stale()) return;
+            setLiveGameUnavailable(true);
+          }
+        })
+        .catch(() => {});
     } catch (e: any) {
       if (stale()) return;
       setError(e.message || t('player.notFound'));

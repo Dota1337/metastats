@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useMemo } from 'react';
-import { useI18n, type TranslationKey } from '../lib/i18n';
+import { useI18n, LOCALE_MAP, type TranslationKey } from '../lib/i18n';
 
 interface BuildEntry { items: number[]; games: number; wins: number }
 interface ItemEntry { item: number; games: number; wins: number }
@@ -106,7 +106,7 @@ function pct(n: number, d: number) {
 interface Props { championKey: string }
 
 export default function ChampionBuildsSection({ championKey }: Props) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [region, setRegion] = useState('euw1');
   const [rank, setRank] = useState('EMERALD_PLUS');
   const [data, setData] = useState<BuildsResponse | null>(null);
@@ -189,7 +189,7 @@ export default function ChampionBuildsSection({ championKey }: Props) {
           <h2 className="text-xl font-semibold text-white">{t('champBuild.heading')}</h2>
           {matches > 0 && (
             <div className="text-fg-muted text-xs mt-0.5">
-              {t('champBuild.fromMatches').replace('{n}', matches.toLocaleString('de-DE'))}
+              {t('champBuild.fromMatches').replace('{n}', matches.toLocaleString(LOCALE_MAP[lang]))}
               {data.source === 'db' && data.patch && <> · {t('champBuild.patch').replace('{p}', data.patch)}</>}
             </div>
           )}
@@ -253,7 +253,7 @@ export default function ChampionBuildsSection({ championKey }: Props) {
       {/* Stats summary */}
       <div className="grid grid-cols-3 gap-3 mb-5">
         <Stat label={t('champBuild.winRate')} value={pct(role.wins, role.games)} />
-        <Stat label={t('champBuild.games')} value={role.games.toLocaleString('de-DE')} />
+        <Stat label={t('champBuild.games')} value={role.games.toLocaleString(LOCALE_MAP[lang])} />
         <Stat label="KDA" value={null} />
       </div>
 
@@ -423,7 +423,7 @@ function RunesPage({
     <div className="bg-surface-raised border border-border-subtle rounded p-3 flex flex-col md:flex-row md:items-center gap-4">
       <div className="flex items-center gap-3">
         <div className="flex flex-col items-center">
-          <div className="text-[10px] text-fg-muted uppercase mb-1">Primary</div>
+          <div className="text-[10px] text-fg-muted uppercase mb-1">{t('champBuild.primary')}</div>
           {renderRune(rune.keystone, true)}
         </div>
         <div className="flex gap-2">
@@ -434,7 +434,7 @@ function RunesPage({
       </div>
       <div className="flex items-center gap-3">
         <div className="flex flex-col items-center">
-          <div className="text-[10px] text-fg-muted uppercase mb-1">Secondary</div>
+          <div className="text-[10px] text-fg-muted uppercase mb-1">{t('champBuild.secondary')}</div>
           {renderRune(rune.secondary, true)}
         </div>
         <div className="flex gap-2">

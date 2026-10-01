@@ -210,7 +210,7 @@ export default function TeamsPage() {
         <div className="bg-surface-base border border-border-subtle rounded p-4 mb-4">
           <div className="flex flex-wrap items-start gap-4">
             <div>
-              <div className="text-fg-secondary text-xs mb-2">Region</div>
+              <div className="text-fg-secondary text-xs mb-2">{t('lb.region')}</div>
               <div className="flex flex-wrap gap-1">
                 {REGION_FILTERS.map(r => (
                   <button
@@ -222,7 +222,7 @@ export default function TeamsPage() {
                         : 'bg-surface-raised text-fg-secondary hover:text-white hover:bg-[#1a2438]'
                     }`}
                   >
-                    {r.label}
+                    {r.value === 'all' ? t('common.all') : r.label}
                   </button>
                 ))}
               </div>

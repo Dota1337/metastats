@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import Nav from '../components/Nav';
 import Footer from '../components/Footer';
 import PageHero from '../components/PageHero';
-import { useI18n } from '../lib/i18n';
+import { useI18n, LOCALE_MAP } from '../lib/i18n';
 import { usePageTitle } from '../lib/use-page-title';
 
 // Unter dieser Spielzahl ist eine Siegrate Zufall; beim Sortieren nach Siegrate hinten.
@@ -38,7 +38,7 @@ export default function ChampionsPage() {
   const [hasStats, setHasStats] = useState(false);
   const [search, setSearch] = useState('');
   const [region, setRegion] = useState('euw1');
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
 
   const REGIONS = [
     { value: 'euw1', label: 'EUW' },
@@ -340,7 +340,7 @@ export default function ChampionsPage() {
                         <div className={`text-sm font-medium ${winColor}`}>
                           {champ.winRate !== null ? `${champ.winRate}%` : '-'}
                         </div>
-                        <div className="text-fg-muted text-xs">{champ.games > 0 ? champ.games.toLocaleString() + ' G' : '-'}</div>
+                        <div className="text-fg-muted text-xs">{champ.games > 0 ? champ.games.toLocaleString(LOCALE_MAP[lang]) + ' G' : '-'}</div>
                       </div>
                     </div>
                     {/* Desktop layout */}
@@ -369,7 +369,7 @@ export default function ChampionsPage() {
                         {champ.avgKDA !== null ? champ.avgKDA.toFixed(2) : '-'}
                       </div>
                       <div className="text-fg-muted text-xs text-right">
-                        {champ.games > 0 ? champ.games.toLocaleString() : '-'}
+                        {champ.games > 0 ? champ.games.toLocaleString(LOCALE_MAP[lang]) : '-'}
                       </div>
                     </div>
                   </a>

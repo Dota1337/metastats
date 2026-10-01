@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { formatTier } from '../lib/rank-format';
+import { useI18n } from '../lib/i18n';
 
 interface Props {
   gameData: any;
@@ -30,6 +31,7 @@ const SUMMONER_SPELL_MAP: Record<number, string> = {
 };
 
 export default function LiveGameDetail({ gameData, ddVersion, championMap, region }: Props) {
+  const { t } = useI18n();
   const [players, setPlayers] = useState<PlayerData[]>([]);
 
   useEffect(() => {
@@ -98,7 +100,7 @@ export default function LiveGameDetail({ gameData, ddVersion, championMap, regio
         <div className="text-white text-sm font-medium">{teamLabel}</div>
         {teamBans.length > 0 && (
           <div className="flex items-center gap-1">
-            <span className="text-fg-muted text-xs mr-1">Bans:</span>
+            <span className="text-fg-muted text-xs mr-1">{t('live.bans')}</span>
             {teamBans.map((b: any, i: number) => {
               const c = championMap[b.championId];
               return c ? (
@@ -161,7 +163,7 @@ export default function LiveGameDetail({ gameData, ddVersion, championMap, regio
                     <div className="text-fg-muted text-[10px]">{p.ranked.leaguePoints} LP</div>
                   </>
                 ) : (
-                  <div className="text-fg-muted text-xs">Unranked</div>
+                  <div className="text-fg-muted text-xs">{t('player.unranked')}</div>
                 )}
               </div>
               <div className="text-right">

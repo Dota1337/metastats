@@ -206,7 +206,7 @@ export default function MarketInsights() {
                           {tp.marketValue && (
                             <div className="text-center">
                               <div className="text-xs font-medium text-accent flex items-center gap-1">
-                                ${tp.marketValue.toLocaleString(locale)}
+                                ${tp.marketValue.toLocaleString('de-DE')}
                                 <span className={TREND_ICONS[tp.marketTrend]?.color || ''}>
                                   {TREND_ICONS[tp.marketTrend]?.icon || ''}
                                 </span>
@@ -334,7 +334,7 @@ export default function MarketInsights() {
                         )}
                         {a.marketValue != null && a.marketValue > 0 && (
                           <div className="text-center">
-                            <div className="text-xs font-medium text-accent">${a.marketValue.toLocaleString(locale)}</div>
+                            <div className="text-xs font-medium text-accent">${a.marketValue.toLocaleString('de-DE')}</div>
                             <div className="text-fg-muted text-[10px]">{t('mv.marketValue')}</div>
                           </div>
                         )}

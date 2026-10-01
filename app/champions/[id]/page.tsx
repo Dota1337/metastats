@@ -133,17 +133,17 @@ export default function ChampionDetailPage() {
     setError('');
     try {
       const ver = await getDdragonVersion();
-      if (!ver) throw new Error('Champion nicht gefunden');
+      if (!ver) throw new Error(t('champDetail.notFound'));
       setVersion(ver);
 
       const locale = ddLocale[lang] || 'en_US';
       const res = await fetch(
         `https://ddragon.leagueoflegends.com/cdn/${ver}/data/${locale}/champion/${championId}.json`
       );
-      if (!res.ok) throw new Error('Champion nicht gefunden');
+      if (!res.ok) throw new Error(t('champDetail.notFound'));
       const data = await res.json();
       const champData = data.data[championId];
-      if (!champData) throw new Error('Champion nicht gefunden');
+      if (!champData) throw new Error(t('champDetail.notFound'));
       // Filter chroma variants — Riot lists them as separate skin entries
       // whose name ends in `<original> (Color)`. The boolean `chromas` flag
       // on the parent skin already tells us "this skin has chromas", so the
@@ -155,7 +155,7 @@ export default function ChampionDetailPage() {
       // Reset selectedSkin if it no longer points to a valid index after filtering
       setSelectedSkin(0);
     } catch (e: any) {
-      setError(e.message || 'Fehler beim Laden');
+      setError(e.message || t('champDetail.loadError'));
     } finally {
       setLoading(false);
     }

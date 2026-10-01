@@ -1,5 +1,6 @@
 'use client';
 import { useMemo } from 'react';
+import { useI18n } from '../lib/i18n';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
   BarChart, Bar, CartesianGrid,
@@ -26,6 +27,8 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function PerformanceCharts({ matches, ddVersion }: Props) {
+  const { t } = useI18n();
+  const rolling = (stat: string) => t('perf.rolling').replace('{stat}', stat);
   // Build data points from oldest to newest (reversed)
   const chartData = useMemo(() => {
     const reversed = [...matches].reverse();
@@ -66,14 +69,14 @@ export default function PerformanceCharts({ matches, ddVersion }: Props) {
   return (
     <div className="bg-surface-base border border-border-subtle rounded p-6 mb-4">
       <div className="text-fg-secondary text-xs uppercase tracking-widest mb-4">
-        Performance-Verlauf
+        {t('perf.title')}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Winrate Trend */}
         <div>
-          <div className="text-white text-sm font-medium mb-2">Winrate-Verlauf</div>
-          <div className="text-fg-muted text-xs mb-3">Kumulativ + 5-Spiele-Schnitt</div>
+          <div className="text-white text-sm font-medium mb-2">{t('perf.wrTrend')}</div>
+          <div className="text-fg-muted text-xs mb-3">{t('perf.wrSub')}</div>
           <ResponsiveContainer width="100%" height={180}>
             <AreaChart data={rollingData}>
               <defs>
@@ -86,16 +89,16 @@ export default function PerformanceCharts({ matches, ddVersion }: Props) {
               <XAxis dataKey="game" tick={{ fill: 'var(--fg-muted)', fontSize: 10 }} tickLine={false} axisLine={false} />
               <YAxis domain={[0, 100]} tick={{ fill: 'var(--fg-muted)', fontSize: 10 }} tickLine={false} axisLine={false} unit="%" />
               <Tooltip content={<CustomTooltip />} />
-              <Area type="monotone" dataKey="wr" stroke="#4ade8080" strokeWidth={1} fill="none" name="Kumulativ" dot={false} />
-              <Area type="monotone" dataKey="rollingWR" stroke="#4ade80" strokeWidth={2} fill="url(#wrGrad)" name="5-Spiele WR" dot={false} />
+              <Area type="monotone" dataKey="wr" stroke="#4ade8080" strokeWidth={1} fill="none" name={t('perf.cumulative')} dot={false} />
+              <Area type="monotone" dataKey="rollingWR" stroke="#4ade80" strokeWidth={2} fill="url(#wrGrad)" name={rolling('WR')} dot={false} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
 
         {/* KDA Trend */}
         <div>
-          <div className="text-white text-sm font-medium mb-2">KDA-Verlauf</div>
-          <div className="text-fg-muted text-xs mb-3">5-Spiele-Durchschnitt</div>
+          <div className="text-white text-sm font-medium mb-2">{t('perf.kdaTrend')}</div>
+          <div className="text-fg-muted text-xs mb-3">{t('perf.avg5')}</div>
           <ResponsiveContainer width="100%" height={180}>
             <AreaChart data={rollingData}>
               <defs>
@@ -109,15 +112,15 @@ export default function PerformanceCharts({ matches, ddVersion }: Props) {
               <YAxis tick={{ fill: 'var(--fg-muted)', fontSize: 10 }} tickLine={false} axisLine={false} />
               <Tooltip content={<CustomTooltip />} />
               <Area type="monotone" dataKey="kda" stroke="rgb(var(--accent-lol-rgb) / 31.4%)" strokeWidth={1} fill="none" name="KDA" dot={false} />
-              <Area type="monotone" dataKey="rollingKDA" stroke="var(--accent-lol)" strokeWidth={2} fill="url(#kdaGrad)" name="5-Spiele KDA" dot={false} />
+              <Area type="monotone" dataKey="rollingKDA" stroke="var(--accent-lol)" strokeWidth={2} fill="url(#kdaGrad)" name={rolling('KDA')} dot={false} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
 
         {/* CS/Min Trend */}
         <div>
-          <div className="text-white text-sm font-medium mb-2">CS/Min-Verlauf</div>
-          <div className="text-fg-muted text-xs mb-3">5-Spiele-Durchschnitt</div>
+          <div className="text-white text-sm font-medium mb-2">{t('perf.csTrend')}</div>
+          <div className="text-fg-muted text-xs mb-3">{t('perf.avg5')}</div>
           <ResponsiveContainer width="100%" height={180}>
             <AreaChart data={rollingData}>
               <defs>
@@ -131,15 +134,15 @@ export default function PerformanceCharts({ matches, ddVersion }: Props) {
               <YAxis tick={{ fill: 'var(--fg-muted)', fontSize: 10 }} tickLine={false} axisLine={false} />
               <Tooltip content={<CustomTooltip />} />
               <Area type="monotone" dataKey="csMin" stroke="#60a5fa50" strokeWidth={1} fill="none" name="CS/Min" dot={false} />
-              <Area type="monotone" dataKey="rollingCS" stroke="#60a5fa" strokeWidth={2} fill="url(#csGrad)" name="5-Spiele CS/Min" dot={false} />
+              <Area type="monotone" dataKey="rollingCS" stroke="#60a5fa" strokeWidth={2} fill="url(#csGrad)" name={rolling('CS/Min')} dot={false} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
 
         {/* Win/Loss per Game Bar Chart */}
         <div>
-          <div className="text-white text-sm font-medium mb-2">Siege & Niederlagen</div>
-          <div className="text-fg-muted text-xs mb-3">Pro Spiel</div>
+          <div className="text-white text-sm font-medium mb-2">{t('perf.winsLosses')}</div>
+          <div className="text-fg-muted text-xs mb-3">{t('perf.perGame')}</div>
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={chartData.map(d => ({ ...d, winBar: d.win ? 1 : 0, lossBar: d.win ? 0 : 1 }))}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -152,13 +155,13 @@ export default function PerformanceCharts({ matches, ddVersion }: Props) {
                   <div className="bg-surface-base border border-border-subtle rounded px-3 py-2 text-xs shadow-lg">
                     <div className="text-white">{d?.champion}</div>
                     <div className={d?.win ? 'text-green-400' : 'text-red-400'}>
-                      {d?.win ? 'Sieg' : 'Niederlage'}
+                      {d?.win ? t('match.win') : t('match.loss')}
                     </div>
                   </div>
                 );
               }} />
-              <Bar dataKey="winBar" stackId="wl" fill="#4ade80" radius={[2, 2, 0, 0]} name="Sieg" opacity={0.7} />
-              <Bar dataKey="lossBar" stackId="wl" fill="#ef4444" radius={[2, 2, 0, 0]} name="Niederlage" opacity={0.7} />
+              <Bar dataKey="winBar" stackId="wl" fill="#4ade80" radius={[2, 2, 0, 0]} name={t('match.win')} opacity={0.7} />
+              <Bar dataKey="lossBar" stackId="wl" fill="#ef4444" radius={[2, 2, 0, 0]} name={t('match.loss')} opacity={0.7} />
             </BarChart>
           </ResponsiveContainer>
         </div>

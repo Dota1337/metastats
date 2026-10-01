@@ -1,5 +1,6 @@
 'use client';
 import { useMemo, useState } from 'react';
+import { useI18n } from '../lib/i18n';
 
 interface Props {
   matches: any[];
@@ -19,6 +20,7 @@ interface ChampStat {
 }
 
 export default function ChampionBreakdown({ matches, ddVersion }: Props) {
+  const { t } = useI18n();
   const [sortBy, setSortBy] = useState<'games' | 'wr' | 'kda'>('games');
 
   const champStats = useMemo(() => {
@@ -54,10 +56,10 @@ export default function ChampionBreakdown({ matches, ddVersion }: Props) {
     <div className="bg-surface-base border border-border-subtle rounded p-6 mb-4">
       <div className="flex items-center justify-between mb-4">
         <div className="text-fg-secondary text-xs uppercase tracking-widest">
-          Champion-Statistiken
+          {t('champBreakdown.title')}
         </div>
         <div className="flex gap-1">
-          {([['games', 'Spiele'], ['wr', 'Winrate'], ['kda', 'KDA']] as const).map(([key, label]) => (
+          {([['games', t('player.games')], ['wr', t('mv.winrate')], ['kda', 'KDA']] as const).map(([key, label]) => (
             <button
               key={key}
               onClick={() => setSortBy(key)}
@@ -76,9 +78,9 @@ export default function ChampionBreakdown({ matches, ddVersion }: Props) {
       <div className="grid grid-cols-[2.5rem_2.5rem_1fr_3.5rem_4.5rem_5rem_4rem_4rem] gap-2 px-2 py-1 text-fg-muted text-xs uppercase">
         <div>#</div>
         <div />
-        <div>Champion</div>
-        <div className="text-center">Spiele</div>
-        <div className="text-center">Winrate</div>
+        <div>{t('champ.champion')}</div>
+        <div className="text-center">{t('player.games')}</div>
+        <div className="text-center">{t('mv.winrate')}</div>
         <div className="text-center">KDA</div>
         <div className="text-center">CS/m</div>
         <div className="text-center">DMG/m</div>

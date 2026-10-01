@@ -110,7 +110,7 @@ export default function MatchDetail({ match, ddVersion, isExpanded, onToggle, fo
         </div>
         <div className="hidden md:block text-center w-12">
           <div className="text-white text-sm font-medium">{match.visionScore}</div>
-          <div className="text-fg-secondary text-xs">Vis</div>
+          <div className="text-fg-secondary text-xs">{t('match.visShort')}</div>
         </div>
         <div className="hidden lg:block text-center w-12">
           <div className="text-white text-sm font-medium">{killParticipation}%</div>
@@ -118,7 +118,7 @@ export default function MatchDetail({ match, ddVersion, isExpanded, onToggle, fo
         </div>
         <div className="hidden lg:block text-center w-14">
           <div className="text-white text-sm font-medium">{(match.goldEarned / 1000).toFixed(1)}k</div>
-          <div className="text-fg-secondary text-xs">Gold</div>
+          <div className="text-fg-secondary text-xs">{t('tft.tables.gold')}</div>
         </div>
         <div className="flex items-center gap-1 sm:gap-2 ml-auto flex-shrink-0">
           {match.pentaKills > 0 && <span className="bg-[#f0c040]/20 text-[#f0c040] text-[10px] font-bold px-1.5 py-0.5 rounded">PENTA</span>}
@@ -189,9 +189,9 @@ export default function MatchDetail({ match, ddVersion, isExpanded, onToggle, fo
                       <div className="text-center">KDA</div>
                       <div className="text-center">CS</div>
                       <div className="text-center">DMG</div>
-                      <div className="text-center">Gold</div>
-                      <div className="text-center">Vis</div>
-                      <div className="text-center">Items</div>
+                      <div className="text-center">{t('tft.tables.gold')}</div>
+                      <div className="text-center">{t('match.visShort')}</div>
+                      <div className="text-center">{t('nav.items')}</div>
                     </div>
                     {/* Mobile header */}
                     <div className="md:hidden grid grid-cols-[1.5rem_1fr_4rem_3rem] gap-1 px-2 py-1 text-fg-muted text-[10px] uppercase bg-surface-sunken">

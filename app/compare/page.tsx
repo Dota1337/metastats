@@ -231,11 +231,12 @@ function ComparisonBar({ label, value1, value2, format1, format2 }: {
 function HeadToHeadBanner({ p1, p2, name1, name2 }: { p1: number; p2: number; name1: string; name2: string }) {
   const total = p1 + p2 || 1;
   const w1 = (p1 / total) * 100;
+  const { t } = useI18n();
   return (
     <div className="mb-6">
       <div className="flex items-center justify-between text-xs mb-2">
         <span className={`font-semibold ${p1 > p2 ? 'text-accent' : 'text-fg-secondary'}`}>{name1}</span>
-        <span className="text-fg-muted">Head-to-Head</span>
+        <span className="text-fg-muted">{t('tft.compare.headToHead')}</span>
         <span className={`font-semibold ${p2 > p1 ? 'text-accent' : 'text-fg-secondary'}`}>{name2}</span>
       </div>
       <div className="relative h-2.5 rounded-full bg-surface-overlay overflow-hidden">
@@ -255,6 +256,7 @@ function HeadToHeadBanner({ p1, p2, name1, name2 }: { p1: number; p2: number; na
 function TierBadgeRow({ s1, s2 }: { s1: any; s2: any }) {
   const e1 = rankEmblemUrl(s1.tier);
   const e2 = rankEmblemUrl(s2.tier);
+  const { t } = useI18n();
   return (
     <div className="grid grid-cols-2 gap-3 mb-6">
       {[
@@ -268,7 +270,7 @@ function TierBadgeRow({ s1, s2 }: { s1: any; s2: any }) {
             <div className="w-14 h-14 rounded bg-surface-overlay" />
           )}
           <div className="min-w-0">
-            <div className="text-white text-sm font-medium">{p.stat.rankStr}</div>
+            <div className="text-white text-sm font-medium">{p.stat.rankStr || t('player.unranked')}</div>
             {p.stat.tier && (
               <div className="text-[10px] uppercase tracking-widest mt-0.5" style={{ color: getTierColor(p.stat.tier) }}>
                 {p.stat.tier}
@@ -392,10 +394,11 @@ function RoleDonut({ roles, size = 80 }: { roles: { role: string; count: number;
 }
 
 function ChampionPoolBlock({ pool, count }: { pool: { champion: string; games: number; winrate: number }[]; count: number }) {
+  const { t } = useI18n();
   return (
     <div className="flex flex-col items-center gap-1.5">
       <div className="text-white text-2xl font-semibold tabular-nums">{count}</div>
-      <div className="text-[9px] uppercase tracking-widest text-fg-muted">Champions</div>
+      <div className="text-[9px] uppercase tracking-widest text-fg-muted">{t('nav.champions')}</div>
       <div className="flex gap-1 mt-1 flex-wrap justify-center">
         {pool.slice(0, 6).map(c => (
           <DdragonImg
@@ -639,7 +642,7 @@ function CompareTab({ region, setRegion }: { region: string; setRegion: (r: stri
       setPlayer1(p1);
       const p2 = await fetchPlayer(player2Input.trim());
       setPlayer2(p2);
-    } catch (e: any) { setError(e.message || 'Fehler'); }
+    } catch (e: any) { setError(e.message || t('tft.player.error')); }
     finally { setLoading(false); }
   }
 
@@ -665,7 +668,7 @@ function CompareTab({ region, setRegion }: { region: string; setRegion: (r: stri
       rank: solo?.rank as string | undefined,
       lp: solo?.leaguePoints as number | undefined,
       rankNum: solo ? rankToNumber(solo.tier, solo.rank, solo.leaguePoints) : 0,
-      rankStr: solo ? formatRank(solo.tier, solo.rank, solo.leaguePoints) : 'Unranked',
+      rankStr: solo ? formatRank(solo.tier, solo.rank, solo.leaguePoints) : '',
       winrate, kda: Math.round(kda * 100) / 100,
       csPerMin: Math.round(csPerMin * 10) / 10,
       dmgPerMin: Math.round(dmgPerMin),
@@ -776,12 +779,12 @@ function CompareTab({ region, setRegion }: { region: string; setRegion: (r: stri
             return (
               <CompareRadar
                 data={[
-                  { stat: 'Winrate', p1: s1.winrate, p2: s2.winrate },
+                  { stat: t('mv.winrate'), p1: s1.winrate, p2: s2.winrate },
                   { stat: 'KDA', p1: normalize(s1.kda, maxKda), p2: normalize(s2.kda, maxKda) },
                   { stat: 'CS/Min', p1: normalize(s1.csPerMin, maxCs), p2: normalize(s2.csPerMin, maxCs) },
                   { stat: 'DMG/Min', p1: normalize(s1.dmgPerMin, maxDmg), p2: normalize(s2.dmgPerMin, maxDmg) },
-                  { stat: 'Vision', p1: normalize(s1.visionScore, maxVis), p2: normalize(s2.visionScore, maxVis) },
-                  { stat: 'Rang', p1: normalize(s1.rankNum, maxRank), p2: normalize(s2.rankNum, maxRank) },
+                  { stat: t('compare.vision'), p1: normalize(s1.visionScore, maxVis), p2: normalize(s2.visionScore, maxVis) },
+                  { stat: t('player.rank'), p1: normalize(s1.rankNum, maxRank), p2: normalize(s2.rankNum, maxRank) },
                 ]}
                 name1={player1.summoner.summoner.name}
                 name2={player2.summoner.summoner.name}
@@ -789,19 +792,19 @@ function CompareTab({ region, setRegion }: { region: string; setRegion: (r: stri
             );
           })()}
 
-          <ComparisonBar label="Rang" value1={s1.rankNum} value2={s2.rankNum} format1={s1.rankStr} format2={s2.rankStr} />
-          <ComparisonBar label="Winrate" value1={s1.winrate} value2={s2.winrate} format1={`${s1.winrate}%`} format2={`${s2.winrate}%`} />
+          <ComparisonBar label={t('player.rank')} value1={s1.rankNum} value2={s2.rankNum} format1={s1.rankStr || t('player.unranked')} format2={s2.rankStr || t('player.unranked')} />
+          <ComparisonBar label={t('mv.winrate')} value1={s1.winrate} value2={s2.winrate} format1={`${s1.winrate}%`} format2={`${s2.winrate}%`} />
           <ComparisonBar label="KDA" value1={s1.kda} value2={s2.kda} format1={s1.kda.toFixed(2)} format2={s2.kda.toFixed(2)} />
           <ComparisonBar label="CS/Min" value1={s1.csPerMin} value2={s2.csPerMin} format1={s1.csPerMin.toFixed(1)} format2={s2.csPerMin.toFixed(1)} />
           <ComparisonBar label="DMG/Min" value1={s1.dmgPerMin} value2={s2.dmgPerMin} format1={s1.dmgPerMin.toLocaleString(numLocale)} format2={s2.dmgPerMin.toLocaleString(numLocale)} />
-          <ComparisonBar label="Vision" value1={s1.visionScore} value2={s2.visionScore} format1={s1.visionScore.toFixed(1)} format2={s2.visionScore.toFixed(1)} />
-          <ComparisonBar label="Marktwert" value1={s1.marketValue} value2={s2.marketValue}
+          <ComparisonBar label={t('compare.vision')} value1={s1.visionScore} value2={s2.visionScore} format1={s1.visionScore.toFixed(1)} format2={s2.visionScore.toFixed(1)} />
+          <ComparisonBar label={t('mv.marketValue')} value1={s1.marketValue} value2={s2.marketValue}
             format1={s1.marketValue ? formatMarketValue(s1.marketValue) : 'N/A'}
             format2={s2.marketValue ? formatMarketValue(s2.marketValue) : 'N/A'} />
 
           {/* Schadens-Verteilung */}
           <div className="mt-6 pt-4 border-t border-border-subtle">
-            <div className="text-center text-fg-secondary text-xs mb-3">Schadens-Verteilung</div>
+            <div className="text-center text-fg-secondary text-xs mb-3">{t('compare.damageSplit')}</div>
             <div className="grid grid-cols-2 gap-4">
               <DamageBreakdownBar breakdown={s1.damage} />
               <DamageBreakdownBar breakdown={s2.damage} />
@@ -810,13 +813,13 @@ function CompareTab({ region, setRegion }: { region: string; setRegion: (r: stri
 
           {/* Vision (Ø pro Spiel) */}
           <div className="mt-6 pt-4 border-t border-border-subtle">
-            <div className="text-center text-fg-secondary text-xs mb-3">Vision (Ø pro Spiel)</div>
+            <div className="text-center text-fg-secondary text-xs mb-3">{t('compare.visionPerGame')}</div>
             <div className="grid grid-cols-2 gap-4">
               {[s1, s2].map((s, si) => (
                 <div key={si} className="grid grid-cols-3 gap-1.5">
-                  <MiniStatCard label="Wards" value={s.vision.wardsPlaced} />
-                  <MiniStatCard label="Killed" value={s.vision.wardsKilled} />
-                  <MiniStatCard label="Control" value={s.vision.controlWards} />
+                  <MiniStatCard label={t('match.wards')} value={s.vision.wardsPlaced} />
+                  <MiniStatCard label={t('compare.wardsKilled')} value={s.vision.wardsKilled} />
+                  <MiniStatCard label={t('compare.controlWards')} value={s.vision.controlWards} />
                 </div>
               ))}
             </div>
@@ -824,14 +827,14 @@ function CompareTab({ region, setRegion }: { region: string; setRegion: (r: stri
 
           {/* Objectives & First Blood */}
           <div className="mt-6 pt-4 border-t border-border-subtle">
-            <div className="text-center text-fg-secondary text-xs mb-3">Objectives (Ø pro Spiel)</div>
+            <div className="text-center text-fg-secondary text-xs mb-3">{t('compare.objectivesPerGame')}</div>
             <div className="grid grid-cols-2 gap-4">
               {[s1, s2].map((s, si) => (
                 <div key={si} className="grid grid-cols-4 gap-1.5">
-                  <MiniStatCard label="Drakes" value={s.objectives.drakes} />
-                  <MiniStatCard label="Baron" value={s.objectives.barons} />
-                  <MiniStatCard label="Turrets" value={s.objectives.turrets} />
-                  <MiniStatCard label="First Blood" value={`${s.objectives.firstBloods}%`} accent />
+                  <MiniStatCard label={t('compare.drakes')} value={s.objectives.drakes} />
+                  <MiniStatCard label={t('compare.baron')} value={s.objectives.barons} />
+                  <MiniStatCard label={t('match.turrets')} value={s.objectives.turrets} />
+                  <MiniStatCard label={t('match.firstBlood')} value={`${s.objectives.firstBloods}%`} accent />
                 </div>
               ))}
             </div>
@@ -840,14 +843,14 @@ function CompareTab({ region, setRegion }: { region: string; setRegion: (r: stri
           {/* Rollen-Verteilung + Champion Pool */}
           <div className="mt-6 pt-4 border-t border-border-subtle grid grid-cols-2 gap-6">
             <div>
-              <div className="text-center text-fg-secondary text-xs mb-3">Rollen-Verteilung</div>
+              <div className="text-center text-fg-secondary text-xs mb-3">{t('compare.roleSplit')}</div>
               <div className="grid grid-cols-2 gap-4 place-items-center">
                 <RoleDonut roles={s1.roles} />
                 <RoleDonut roles={s2.roles} />
               </div>
             </div>
             <div>
-              <div className="text-center text-fg-secondary text-xs mb-3">Champion-Pool</div>
+              <div className="text-center text-fg-secondary text-xs mb-3">{t('compare.championPool')}</div>
               <div className="grid grid-cols-2 gap-4 place-items-center">
                 <ChampionPoolBlock pool={s1.topChampions} count={s1.championPoolSize} />
                 <ChampionPoolBlock pool={s2.topChampions} count={s2.championPoolSize} />

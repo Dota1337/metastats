@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
+import { useI18n, LOCALE_MAP } from '../lib/i18n';
 
 interface Props {
   puuid: string;
@@ -20,6 +21,7 @@ interface SeasonEntry {
 }
 
 export default function MarketValueChart({ puuid, currentValue }: Props) {
+  const { t, lang } = useI18n();
   const [history, setHistory] = useState<HistoryPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [season, setSeason] = useState('current');
@@ -47,28 +49,28 @@ export default function MarketValueChart({ puuid, currentValue }: Props) {
   }, [puuid, season]);
 
   const chartData = useMemo(() => {
+    const fmt = (d: Date) => d.toLocaleDateString(LOCALE_MAP[lang]);
     if (history.length === 0 && currentValue) {
-      return [{ date: 'Heute', value: currentValue, label: new Date().toLocaleDateString('de-DE') }];
+      return [{ date: 'today', value: currentValue, label: fmt(new Date()) }];
     }
 
-    // Deduplicate by date (keep latest per day)
+    // Ein Punkt pro Kalendertag (lokal), der letzte des Tages gewinnt. Der
+    // Schluessel ist sprachunabhaengig; angezeigt wird label.
+    const dayKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     const byDate = new Map<string, HistoryPoint>();
-    for (const h of history) {
-      const date = new Date(h.recorded_at).toLocaleDateString('de-DE');
-      byDate.set(date, h);
-    }
+    for (const h of history) byDate.set(dayKey(new Date(h.recorded_at)), h);
 
     return [...byDate.entries()].map(([date, h]) => ({
       date,
       value: h.market_value,
-      label: date,
+      label: fmt(new Date(h.recorded_at)),
     }));
-  }, [history, currentValue]);
+  }, [history, currentValue, lang]);
 
   const seasons = [
-    { value: 'current', label: 'Aktuelle Season' },
+    { value: 'current', label: t('mvChart.currentSeason') },
     ...pastSeasons.map(s => ({ value: s.id, label: s.label })),
-    { value: 'all', label: 'Alle Daten' },
+    { value: 'all', label: t('mvChart.allData') },
   ];
 
   // Don't render if we have less than 2 data points
@@ -88,7 +90,7 @@ export default function MarketValueChart({ puuid, currentValue }: Props) {
       <div className="flex items-center justify-between mb-4">
         <div>
           <div className="text-fg-secondary text-xs uppercase tracking-widest">
-            Marktwert-Verlauf
+            {t('mvChart.title')}
           </div>
           {chartData.length >= 2 && (
             <div className="flex items-center gap-2 mt-1">
@@ -114,7 +116,7 @@ export default function MarketValueChart({ puuid, currentValue }: Props) {
 
       {loading ? (
         <div className="h-[200px] flex items-center justify-center text-fg-muted text-xs">
-          Lade Marktwert-Daten...
+          {t('common.loading')}
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={200}>
@@ -127,7 +129,7 @@ export default function MarketValueChart({ puuid, currentValue }: Props) {
             </defs>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis
-              dataKey="date"
+              dataKey="label"
               tick={{ fill: 'var(--fg-muted)', fontSize: 10 }}
               tickLine={false}
               axisLine={false}

@@ -9,7 +9,7 @@ import ChampionBreakdown from '../../components/ChampionBreakdown';
 import MatchDetail from '../../components/MatchDetail';
 import LiveGameDetail from '../../components/LiveGameDetail';
 import ApiUnavailable from '../../components/ApiUnavailable';
-import { useI18n, LOCALE_MAP } from '../../lib/i18n';
+import { useI18n, LOCALE_MAP, type TranslationKey } from '../../lib/i18n';
 import { useCustomPageTitle } from '../../lib/use-page-title';
 import { loadProLookup, lookupPro, type ProPlayer } from '../../lib/pro-players';
 import { formatTier } from '../../lib/rank-format';
@@ -151,7 +151,7 @@ export default function PlayerPage() {
       }
     } catch (e: any) {
       if (stale()) return;
-      setError(e.message || 'Spieler nicht gefunden');
+      setError(e.message || t('player.notFound'));
     } finally {
       if (!stale()) setLoading(false);
     }
@@ -277,15 +277,16 @@ export default function PlayerPage() {
     const days = Math.floor(diff / 86400000);
     const weeks = Math.floor(diff / 604800000);
     const months = Math.floor(days / 30);
-    if (minutes < 1) return 'Gerade eben';
-    if (minutes < 60) return `Vor ${minutes} Min.`;
-    if (hours < 24) return `Vor ${hours} Std.`;
-    if (days === 1) return 'Vor 1 Tag';
-    if (days < 7) return `Vor ${days} Tagen`;
-    if (weeks <= 4) return `Vor ${weeks} Woche${weeks > 1 ? 'n' : ''}`;
-    if (months === 1) return 'Vor 1 Monat';
-    if (months < 12) return `Vor ${months} Monaten`;
-    return `Vor über 1 Jahr`;
+    const n = (key: TranslationKey, v: number) => t(key).replace('{n}', String(v));
+    if (minutes < 1) return t('time.justNow');
+    if (minutes < 60) return n('time.minutesAgo', minutes);
+    if (hours < 24) return n('time.hoursAgo', hours);
+    if (days === 1) return t('time.dayAgo');
+    if (days < 7) return n('time.daysAgo', days);
+    if (weeks <= 4) return weeks > 1 ? n('time.weeksAgo', weeks) : t('time.weekAgo');
+    if (months === 1) return t('time.monthAgo');
+    if (months < 12) return n('time.monthsAgo', months);
+    return t('time.overYearAgo');
   };
 
   const roleLabels: Record<string, string> = {
@@ -683,7 +684,7 @@ export default function PlayerPage() {
                                 <div key={j} className="flex justify-between items-baseline">
                                   <span className="text-[#6a7a90] text-xs">{d.name}</span>
                                   <span className="text-white text-xs font-medium">
-                                    {typeof d.value === 'number' ? d.value.toLocaleString() : d.value}{d.unit ? ` ${d.unit}` : ''}
+                                    {typeof d.value === 'number' ? d.value.toLocaleString(numLocale) : d.value}{d.unit ? ` ${d.unit}` : ''}
                                   </span>
                                 </div>
                               ))}
@@ -693,7 +694,7 @@ export default function PlayerPage() {
                               <div className="flex items-center justify-center gap-2 mb-2">
                                 {cat.details.slice(0, 2).map((d: any, j: number) => (
                                   <span key={j} className="text-[#6a7a90] text-xs">
-                                    {d.name}: <span className="text-white">{typeof d.value === 'number' ? d.value.toLocaleString() : d.value}{d.unit ? ` ${d.unit}` : ''}</span>
+                                    {d.name}: <span className="text-white">{typeof d.value === 'number' ? d.value.toLocaleString(numLocale) : d.value}{d.unit ? ` ${d.unit}` : ''}</span>
                                   </span>
                                 ))}
                               </div>
@@ -758,7 +759,7 @@ export default function PlayerPage() {
                         />
                         <div className="text-white text-sm font-medium">{champDisplayName}</div>
                         <div className="text-accent text-xs font-bold">Level {m.championLevel}</div>
-                        <div className="text-fg-secondary text-xs">{m.championPoints?.toLocaleString()} Punkte</div>
+                        <div className="text-fg-secondary text-xs">{t('player.masteryPoints').replace('{n}', (m.championPoints ?? 0).toLocaleString(numLocale))}</div>
                       </div>
                     );
                   })}
@@ -810,7 +811,7 @@ export default function PlayerPage() {
                             : 'text-fg-muted hover:text-fg-secondary'
                         }`}
                       >
-                        {r === 'all' ? 'Alle' : roleLabels[r] || r}
+                        {r === 'all' ? t('common.all') : roleLabels[r] || r}
                       </button>
                     ))}
                   </div>
@@ -836,7 +837,7 @@ export default function PlayerPage() {
                     disabled={loadingMore}
                     className="mt-4 w-full py-2.5 rounded bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-accent-a50 text-xs transition-colors disabled:opacity-50"
                   >
-                    {loadingMore ? 'Lade...' : 'Mehr Matches laden'}
+                    {loadingMore ? t('common.loading') : t('player.loadMoreMatches')}
                   </button>
                 )}
               </div>

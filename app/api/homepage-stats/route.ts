@@ -56,15 +56,15 @@ export async function GET(request: NextRequest) {
       // Hier wird genau EINE Zahl gebraucht. Das Index-Derivat (~33 KB) traegt
       // dasselbe totalTeams wie die SoT (~2,9 MB) und spart den JSON-Parse samt
       // Heap-Spike in der Function. Fallback auf die SoT nur bei 404.
-      let teamsRes = await fetch(`${origin}/pro-teams/index.json`);
-      if (teamsRes.status === 404) teamsRes = await fetch(`${origin}/pro-teams.json`);
+      let teamsRes = await fetch(`${origin}/pro-teams/index.json`, { signal: AbortSignal.timeout(DDRAGON_TIMEOUT_MS) });
+      if (teamsRes.status === 404) teamsRes = await fetch(`${origin}/pro-teams.json`, { signal: AbortSignal.timeout(DDRAGON_TIMEOUT_MS) });
       if (teamsRes.ok) {
         const teamsData = await teamsRes.json();
         totalTeams = teamsData.totalTeams || 0;
       }
     } catch {}
     try {
-      const playersRes = await fetch(`${origin}/pro-players.json`);
+      const playersRes = await fetch(`${origin}/pro-players.json`, { signal: AbortSignal.timeout(DDRAGON_TIMEOUT_MS) });
       if (playersRes.ok) {
         const playersData = await playersRes.json();
         totalProPlayers = playersData.totalPlayers || 0;

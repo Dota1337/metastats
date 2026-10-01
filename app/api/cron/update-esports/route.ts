@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '../../../lib/supabase';
 import { cronAuthFailure } from '../../../lib/cron-auth';
-import { LOLESPORTS_API_KEY, lolesportsKeyMissingResponse } from '../../../lib/lolesports';
+import { lolesportsJson, lolesportsKeyMissingResponse } from '../../../lib/lolesports';
 
-const API_KEY = LOLESPORTS_API_KEY;
+const API = 'https://esports-api.lolesports.com/persisted/gw/';
 
 // Cron job: Fetches latest LoL Esports schedules, standings, and league data
 // Stores in Supabase site_config for fast access
@@ -20,12 +20,11 @@ export async function GET(request: NextRequest) {
 
   try {
     // 1. Fetch all leagues
-    const leaguesRes = await fetch(
-      'https://esports-api.lolesports.com/persisted/gw/getLeagues?hl=en-US',
-      { headers: { 'x-api-key': API_KEY } }
-    );
-    const leaguesData = await leaguesRes.json();
+    // lolesportsJson wirft bei Fehlerseite/Zeitlimit -> nichts wird mit leeren
+    // Listen ueberschrieben, der alte Stand in site_config bleibt.
+    const leaguesData = await lolesportsJson(`${API}getLeagues?hl=en-US`);
     const leagues = leaguesData?.data?.leagues || [];
+    if (leagues.length === 0) throw new Error('getLeagues leer');
 
     await supabase.from('site_config').upsert({
       key: 'esports_leagues',
@@ -35,22 +34,14 @@ export async function GET(request: NextRequest) {
     results.push(`Leagues: ${leagues.length} gespeichert`);
 
     // 2. Fetch schedule (current page + next page)
-    const scheduleRes = await fetch(
-      'https://esports-api.lolesports.com/persisted/gw/getSchedule?hl=en-US',
-      { headers: { 'x-api-key': API_KEY } }
-    );
-    const scheduleData = await scheduleRes.json();
+    const scheduleData = await lolesportsJson(`${API}getSchedule?hl=en-US`);
     let events = scheduleData?.data?.schedule?.events || [];
 
     // Fetch next page for more upcoming matches
     const newerToken = scheduleData?.data?.schedule?.pages?.newer;
     if (newerToken) {
       try {
-        const moreRes = await fetch(
-          `https://esports-api.lolesports.com/persisted/gw/getSchedule?hl=en-US&pageToken=${newerToken}`,
-          { headers: { 'x-api-key': API_KEY } }
-        );
-        const moreData = await moreRes.json();
+        const moreData = await lolesportsJson(`${API}getSchedule?hl=en-US&pageToken=${newerToken}`);
         const moreEvents = moreData?.data?.schedule?.events || [];
         events = [...events, ...moreEvents];
       } catch {}
@@ -73,11 +64,7 @@ export async function GET(request: NextRequest) {
     for (const league of majorLeagues) {
       try {
         // Get tournaments for league
-        const tournRes = await fetch(
-          `https://esports-api.lolesports.com/persisted/gw/getTournamentsForLeague?hl=en-US&leagueId=${league.id}`,
-          { headers: { 'x-api-key': API_KEY } }
-        );
-        const tournData = await tournRes.json();
+        const tournData = await lolesportsJson(`${API}getTournamentsForLeague?hl=en-US&leagueId=${league.id}`);
         const tournaments = tournData?.data?.leagues?.[0]?.tournaments || [];
 
         // Find current tournament
@@ -89,11 +76,7 @@ export async function GET(request: NextRequest) {
         }) || tournaments[tournaments.length - 1];
 
         if (current) {
-          const standingsRes = await fetch(
-            `https://esports-api.lolesports.com/persisted/gw/getStandingsV3?hl=en-US&tournamentId=${current.id}`,
-            { headers: { 'x-api-key': API_KEY } }
-          );
-          const standingsData = await standingsRes.json();
+          const standingsData = await lolesportsJson(`${API}getStandingsV3?hl=en-US&tournamentId=${current.id}`);
           const standings = standingsData?.data?.standings || [];
 
           await supabase.from('site_config').upsert({

@@ -18,32 +18,23 @@ const PRIORITY_LEAGUES = new Set([
   'lta_cross', 'emea_masters', 'lck_challengers_league',
 ]);
 
-// Cache for 30 minutes (11 API calls per refresh)
-let cached: { data: any; time: number } | null = null;
+// Cache for 30 minutes (11 API calls per refresh). Fehlte beim Abruf eine
+// Seite oder der Ligen-Katalog, nur 60 s und mit degraded halten.
+let cached: { data: any; time: number; degraded: boolean } | null = null;
 const CACHE_TTL = 30 * 60 * 1000;
-import { LOLESPORTS_API_KEY, lolesportsKeyMissingResponse } from '../../lib/lolesports';
+const DEGRADED_TTL = 60 * 1000;
+import { lolesportsJson } from '../../lib/lolesports';
 import { cachedJson, ASSET_CACHE_CONTROL } from '../../lib/api-cache';
-
-const API_KEY = LOLESPORTS_API_KEY;
 
 async function fetchLoLEsports(pageToken?: string): Promise<any> {
   const url = pageToken
     ? `https://esports-api.lolesports.com/persisted/gw/getSchedule?hl=en-US&pageToken=${pageToken}`
     : 'https://esports-api.lolesports.com/persisted/gw/getSchedule?hl=en-US';
-
-  const res = await fetch(url, {
-    headers: { 'x-api-key': API_KEY },
-  });
-  if (!res.ok) throw new Error(`LoL Esports API error: ${res.status}`);
-  return res.json();
+  return lolesportsJson(url);
 }
 
 async function fetchLeagues(): Promise<Record<string, { name: string; region: string; image?: string }>> {
-  const res = await fetch('https://esports-api.lolesports.com/persisted/gw/getLeagues?hl=en-US', {
-    headers: { 'x-api-key': API_KEY },
-  });
-  if (!res.ok) return {};
-  const data = await res.json();
+  const data = await lolesportsJson('https://esports-api.lolesports.com/persisted/gw/getLeagues?hl=en-US');
   const map: Record<string, { name: string; region: string; image?: string }> = {};
   for (const l of data?.data?.leagues || []) {
     map[l.slug] = { name: l.name, region: l.region, image: l.image };
@@ -58,18 +49,23 @@ export async function GET(request: NextRequest) {
   // window=full keeps past events (calendar view); default drops them (drawer)
   const fullWindow = request.nextUrl.searchParams.get('window') === 'full';
 
-  if (cached && now - cached.time < CACHE_TTL) {
+  if (cached && now - cached.time < (cached.degraded ? DEGRADED_TTL : CACHE_TTL)) {
     // Edge-TTL = Prozess-TTL (30min). Laenger waere hier falsch, obwohl es
     // billiger klingt: `filter=live` transportiert Live-Status.
     return cachedJson(applyFilters(cached.data, filter, leagueFilter, fullWindow), {
       cache: ASSET_CACHE_CONTROL,
+      degraded: cached.degraded,
     });
   }
 
   try {
+    let failed = false;
     const [scheduleData, leagueMap] = await Promise.all([
       fetchLoLEsports(),
-      fetchLeagues(),
+      fetchLeagues().catch(() => {
+        failed = true;
+        return {} as Record<string, { name: string; region: string; image?: string }>;
+      }),
     ]);
 
     const events = scheduleData?.data?.schedule?.events || [];
@@ -78,28 +74,27 @@ export async function GET(request: NextRequest) {
     // pages. The drawer/calendar consumer decides via the `window` query param
     // whether past events are kept (window=full) or dropped (default).
     const MAX_PAGES = 5;
-    const moreEvents: any[] = [];
     const initialPages = scheduleData?.data?.schedule?.pages || {};
 
-    let newerToken = initialPages.newer;
-    for (let i = 0; i < MAX_PAGES && newerToken; i++) {
-      try {
-        const page = await fetchLoLEsports(newerToken);
-        moreEvents.push(...(page?.data?.schedule?.events || []));
-        newerToken = page?.data?.schedule?.pages?.newer;
-      } catch { break; }
-    }
+    // Beide Richtungen laufen parallel; innerhalb einer Richtung haengt jede
+    // Seite am Token der vorigen.
+    const walk = async (token: string | undefined, dir: 'newer' | 'older') => {
+      const out: any[] = [];
+      for (let i = 0; i < MAX_PAGES && token; i++) {
+        try {
+          const page = await fetchLoLEsports(token);
+          out.push(...(page?.data?.schedule?.events || []));
+          token = page?.data?.schedule?.pages?.[dir];
+        } catch { failed = true; break; }
+      }
+      return out;
+    };
+    const [newerEvents, olderEvents] = await Promise.all([
+      walk(initialPages.newer, 'newer'),
+      walk(initialPages.older, 'older'),
+    ]);
 
-    let olderToken = initialPages.older;
-    for (let i = 0; i < MAX_PAGES && olderToken; i++) {
-      try {
-        const page = await fetchLoLEsports(olderToken);
-        moreEvents.push(...(page?.data?.schedule?.events || []));
-        olderToken = page?.data?.schedule?.pages?.older;
-      } catch { break; }
-    }
-
-    const allEvents = [...events, ...moreEvents];
+    const allEvents = [...events, ...newerEvents, ...olderEvents];
 
     const tournaments: Tournament[] = allEvents
       .filter((e: any) => e.type === 'match')
@@ -148,14 +143,18 @@ export async function GET(request: NextRequest) {
       lastUpdated: new Date().toISOString(),
     };
 
-    cached = { data: result, time: now };
+    const degraded = failed || tournaments.length === 0;
+    cached = { data: result, time: now, degraded };
 
     return cachedJson(applyFilters(result, filter, leagueFilter, fullWindow), {
       cache: ASSET_CACHE_CONTROL,
-      degraded: tournaments.length === 0,
+      degraded,
     });
-  } catch (error) {
-    return NextResponse.json({ error: 'Fehler beim Laden der Turnierdaten' }, { status: 500 });
+  } catch {
+    return NextResponse.json(
+      { error: 'Fehler beim Laden der Turnierdaten' },
+      { status: 503, headers: { 'Cache-Control': 'no-store' } },
+    );
   }
 }
 

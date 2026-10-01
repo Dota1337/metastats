@@ -19,3 +19,18 @@ export function lolesportsKeyMissingResponse(): NextResponse | null {
     { status: 503, headers: { 'Cache-Control': 'no-store' } },
   );
 }
+
+// Riots Esports-Server antwortet gemessen in ~50 ms (2026-10-01). Ohne
+// Zeitlimit haengt ein Aussetzer die Funktion bis zu ihrem eigenen Ende auf.
+export const LOLESPORTS_TIMEOUT_MS = 5000;
+
+// Gemeinsamer Abruf: Key-Header, Zeitlimit, und eine Fehlerseite wird zum
+// Fehler statt still als leere Liste weiterzulaufen.
+export async function lolesportsJson(url: string): Promise<any> {
+  const res = await fetch(url, {
+    headers: { 'x-api-key': LOLESPORTS_API_KEY },
+    signal: AbortSignal.timeout(LOLESPORTS_TIMEOUT_MS),
+  });
+  if (!res.ok) throw new Error(`lolesports ${res.status}`);
+  return res.json();
+}

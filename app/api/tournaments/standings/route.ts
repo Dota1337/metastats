@@ -1,22 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { LOLESPORTS_API_KEY, lolesportsKeyMissingResponse } from '../../../lib/lolesports';
+import { lolesportsJson } from '../../../lib/lolesports';
 import { cachedJson, ASSET_CACHE_CONTROL } from '../../../lib/api-cache';
 
-const API_KEY = LOLESPORTS_API_KEY;
+const API = 'https://esports-api.lolesports.com/persisted/gw/';
 
-// Cache standings for 15 minutes
-let standingsCache: Record<string, { data: any; time: number }> = {};
+// Vollstaendige Antworten 15 min halten. Fehlte ein Teil (Riot-Aussetzer),
+// nur 60 s und mit degraded, sonst bleibt die Liga nach einem kurzen Ausfall
+// eine Viertelstunde im Speicher und Stunden an der Edge leer.
+let standingsCache: Record<string, { data: any; time: number; degraded: boolean }> = {};
 const CACHE_TTL = 15 * 60 * 1000;
+const DEGRADED_TTL = 60 * 1000;
 
+function fromCache(key: string, now: number) {
+  const e = standingsCache[key];
+  if (!e || now - e.time >= (e.degraded ? DEGRADED_TTL : CACHE_TTL)) return null;
+  return cachedJson(e.data, { cache: ASSET_CACHE_CONTROL, degraded: e.degraded });
+}
+
+// Wirft bei Fehler: ein leerer Ligen-Katalog hiesse sonst „Liga nicht gefunden".
 async function fetchLeagues(): Promise<any[]> {
-  const res = await fetch(
-    'https://esports-api.lolesports.com/persisted/gw/getLeagues?hl=en-US',
-    { headers: { 'x-api-key': API_KEY } }
-  );
-  if (!res.ok) return [];
-  const data = await res.json();
+  const data = await lolesportsJson(`${API}getLeagues?hl=en-US`);
   return data?.data?.leagues || [];
+}
+
+function unavailable() {
+  return NextResponse.json(
+    { error: 'lolesports unavailable' },
+    { status: 503, headers: { 'Cache-Control': 'no-store' } },
+  );
 }
 
 export async function GET(request: NextRequest) {
@@ -32,9 +44,8 @@ export async function GET(request: NextRequest) {
 async function getLeaguesOverview() {
   const cacheKey = '__overview__';
   const now = Date.now();
-  if (standingsCache[cacheKey] && now - standingsCache[cacheKey].time < CACHE_TTL) {
-    return cachedJson(standingsCache[cacheKey].data, { cache: ASSET_CACHE_CONTROL });
-  }
+  const hit = fromCache(cacheKey, now);
+  if (hit) return hit;
 
   try {
     const leagues = await fetchLeagues();
@@ -51,36 +62,47 @@ async function getLeaguesOverview() {
       .sort((a: any, b: any) => a.priority - b.priority);
 
     const result = { leagues: activeLeagues };
-    standingsCache[cacheKey] = { data: result, time: now };
-    return cachedJson(result, {
-      cache: ASSET_CACHE_CONTROL,
-      degraded: activeLeagues.length === 0,
-    });
-  } catch (error) {
-    return NextResponse.json({ error: 'Fehler beim Laden der Ligen' }, { status: 500 });
+    const degraded = activeLeagues.length === 0;
+    standingsCache[cacheKey] = { data: result, time: now, degraded };
+    return cachedJson(result, { cache: ASSET_CACHE_CONTROL, degraded });
+  } catch {
+    return unavailable();
   }
 }
 
 async function getLeagueDetail(leagueSlug: string) {
   const now = Date.now();
-  if (standingsCache[leagueSlug] && now - standingsCache[leagueSlug].time < CACHE_TTL) {
-    return cachedJson(standingsCache[leagueSlug].data, { cache: ASSET_CACHE_CONTROL });
+  const hit = fromCache(leagueSlug, now);
+  if (hit) return hit;
+
+  let leagues: any[];
+  try {
+    leagues = await fetchLeagues();
+  } catch {
+    return unavailable();
   }
 
   try {
-    const leagues = await fetchLeagues();
     const league = leagues.find((l: any) => l.slug === leagueSlug);
     if (!league) {
       return NextResponse.json({ error: 'Liga nicht gefunden' }, { status: 404 });
     }
 
-    // Get tournaments for this league
-    const tournRes = await fetch(
-      `https://esports-api.lolesports.com/persisted/gw/getTournamentsForLeague?hl=en-US&leagueId=${league.id}`,
-      { headers: { 'x-api-key': API_KEY } }
-    );
-    const tournData = await tournRes.json();
-    const tournaments = tournData?.data?.leagues?.[0]?.tournaments || [];
+    // Ein Teil-Ausfall ist kein leeres Ergebnis: merken, nur kurz halten.
+    let failed = false;
+
+    // Turnierliste und Spielplan haengen nicht voneinander ab -> parallel.
+    const schedPromise = lolesportsJson(`${API}getSchedule?hl=en-US`).catch(() => null);
+
+    let tournaments: any[] = [];
+    try {
+      const tournData = await lolesportsJson(
+        `${API}getTournamentsForLeague?hl=en-US&leagueId=${league.id}`,
+      );
+      tournaments = tournData?.data?.leagues?.[0]?.tournaments || [];
+    } catch {
+      failed = true;
+    }
 
     // Sort by startDate descending and find current tournament
     const nowDate = new Date();
@@ -98,11 +120,9 @@ async function getLeagueDetail(leagueSlug: string) {
     let standings: any[] = [];
     if (currentTournament) {
       try {
-        const standingsRes = await fetch(
-          `https://esports-api.lolesports.com/persisted/gw/getStandingsV3?hl=en-US&tournamentId=${currentTournament.id}`,
-          { headers: { 'x-api-key': API_KEY } }
+        const standingsData = await lolesportsJson(
+          `${API}getStandingsV3?hl=en-US&tournamentId=${currentTournament.id}`,
         );
-        const standingsData = await standingsRes.json();
         const rawStandings = standingsData?.data?.standings || [];
 
         // Parse the nested structure correctly:
@@ -131,44 +151,26 @@ async function getLeagueDetail(leagueSlug: string) {
             if (standings.length > 0) break; // found standings, stop
           }
         }
-      } catch {}
+      } catch {
+        failed = true;
+      }
     }
 
     // Fetch schedule matches for this league (all pages)
     let allMatches: any[] = [];
     try {
-      const schedRes = await fetch(
-        'https://esports-api.lolesports.com/persisted/gw/getSchedule?hl=en-US',
-        { headers: { 'x-api-key': API_KEY } }
-      );
-      const schedData = await schedRes.json();
-      let events = schedData?.data?.schedule?.events || [];
+      const schedData = await schedPromise;
+      if (!schedData) throw new Error('schedule');
 
-      // Also fetch newer page
-      const newerToken = schedData?.data?.schedule?.pages?.newer;
-      if (newerToken) {
-        try {
-          const moreRes = await fetch(
-            `https://esports-api.lolesports.com/persisted/gw/getSchedule?hl=en-US&pageToken=${newerToken}`,
-            { headers: { 'x-api-key': API_KEY } }
-          );
-          const moreData = await moreRes.json();
-          events = [...events, ...(moreData?.data?.schedule?.events || [])];
-        } catch {}
-      }
-
-      // Also fetch older page for more results
-      const olderToken = schedData?.data?.schedule?.pages?.older;
-      if (olderToken) {
-        try {
-          const olderRes = await fetch(
-            `https://esports-api.lolesports.com/persisted/gw/getSchedule?hl=en-US&pageToken=${olderToken}`,
-            { headers: { 'x-api-key': API_KEY } }
-          );
-          const olderData = await olderRes.json();
-          events = [...(olderData?.data?.schedule?.events || []), ...events];
-        } catch {}
-      }
+      // Neuere und aeltere Seite parallel nachladen.
+      const page = (token: string | undefined): Promise<any[]> => token
+        ? lolesportsJson(`${API}getSchedule?hl=en-US&pageToken=${token}`)
+            .then((d: any) => d?.data?.schedule?.events || [])
+            .catch(() => { failed = true; return []; })
+        : Promise.resolve([]);
+      const pages = schedData?.data?.schedule?.pages || {};
+      const [newer, older] = await Promise.all([page(pages.newer), page(pages.older)]);
+      const events = [...older, ...(schedData?.data?.schedule?.events || []), ...newer];
 
       allMatches = events
         .filter((e: any) => e.type === 'match' && e.league?.slug === leagueSlug)
@@ -184,7 +186,9 @@ async function getLeagueDetail(leagueSlug: string) {
             gameWins: t.result?.gameWins ?? 0,
           })),
         }));
-    } catch {}
+    } catch {
+      failed = true;
+    }
 
     const result = {
       league: {
@@ -202,11 +206,11 @@ async function getLeagueDetail(leagueSlug: string) {
       matches: allMatches,
     };
 
-    standingsCache[leagueSlug] = { data: result, time: now };
-    return cachedJson(result, {
-      cache: ASSET_CACHE_CONTROL,
-      degraded: standings.length === 0 && allMatches.length === 0,
-    });
+    // Leere Tabelle ausserhalb der Saison ist legitim; degraded nur bei echtem
+    // Abruf-Fehler oder wenn gar nichts kam.
+    const degraded = failed || (standings.length === 0 && allMatches.length === 0);
+    standingsCache[leagueSlug] = { data: result, time: now, degraded };
+    return cachedJson(result, { cache: ASSET_CACHE_CONTROL, degraded });
   } catch (error) {
     return NextResponse.json({ error: 'Fehler beim Laden der Liga-Details' }, { status: 500 });
   }

@@ -517,6 +517,7 @@
       "via": [
         "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
+        "app/lib/lol-patch-dates.ts",
         "app/lib/tft-supabase-reader.ts",
         "public/tft-set.json"
       ],

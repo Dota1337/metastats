@@ -848,6 +848,7 @@
         "0 18 * * 5"
       ],
       "scripts": [
+        "scripts/weekly-crawl-gate.mjs",
         "scripts/refresh-riot-key.mjs",
         "scripts/collect-kr-cn.mjs"
       ],
@@ -861,6 +862,8 @@
         "0 6 * * 5"
       ],
       "scripts": [
+        "scripts/weekly-crawl-gate.mjs",
+        "scripts/refresh-riot-key.mjs",
         "scripts/crawl-pro-players.mjs",
         "scripts/collect-highelo.mjs",
         "scripts/detect-season.mjs",

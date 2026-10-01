@@ -16,8 +16,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/teams', priority: 0.7, changeFrequency: 'daily' as const },
     { path: '/ligen', priority: 0.7, changeFrequency: 'daily' as const },
     { path: '/compare', priority: 0.6, changeFrequency: 'weekly' as const },
-    { path: '/multi-search', priority: 0.5, changeFrequency: 'weekly' as const },
-    // TFT hub
+      // TFT hub
     { path: '/tft/comps', priority: 0.9, changeFrequency: 'daily' as const },
     { path: '/tft/leaderboard', priority: 0.9, changeFrequency: 'hourly' as const },
     { path: '/tft/marktwert', priority: 0.8, changeFrequency: 'hourly' as const },

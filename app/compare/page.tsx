@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState, useSyncExternalStore } from 'react';
 import ReactDOM from 'react-dom';
 import dynamic from 'next/dynamic';
 import Nav from '../components/Nav';
@@ -421,6 +421,8 @@ function ChampionPoolBlock({ pool, count }: { pool: { champion: string; games: n
 
 // === Main Page ===
 
+const noSubscribe = () => () => {};
+
 export default function AnalysePage() {
   // Seitenlokal, NICHT in app/layout.tsx: die Rank-Embleme sind nach dem
   // Bild-Proxy die einzigen verbliebenen Direktzugriffe auf CommunityDragon,
@@ -432,8 +434,14 @@ export default function AnalysePage() {
   ReactDOM.preconnect(CDRAGON_PLUGINS_BASE);
   usePageTitle('pageTitle.compare');
   const { t } = useI18n();
-  const [mode, setMode] = useState<'multi' | 'compare'>('compare');
+  // Adresse einmal lesen (/multi-search leitet mit ?mode=multi&q= hierher).
+  // Ohne useSearchParams, das hier einen Suspense-Rahmen braeuchte.
+  const urlSearch = useSyncExternalStore(noSubscribe, () => window.location.search, () => null);
+  const urlParams = urlSearch === null ? null : new URLSearchParams(urlSearch);
+  const [modeOverride, setMode] = useState<'multi' | 'compare' | null>(null);
+  const mode = modeOverride ?? (urlParams?.get('mode') === 'multi' ? 'multi' : 'compare');
   const [region, setRegion] = useState('euw1');
+  const initialQuery = (urlParams?.get('q') || '').split(/[\n,]/).map(s => s.trim()).filter(Boolean).slice(0, 5).join('\n');
 
   return (
     <div className="min-h-screen bg-surface-page flex flex-col">
@@ -459,7 +467,7 @@ export default function AnalysePage() {
         </div>
 
         {mode === 'multi' ? (
-          <MultiSearchTab region={region} setRegion={setRegion} />
+          urlSearch === null ? null : <MultiSearchTab region={region} setRegion={setRegion} initialQuery={initialQuery} />
         ) : (
           <CompareTab region={region} setRegion={setRegion} />
         )}
@@ -472,37 +480,79 @@ export default function AnalysePage() {
 
 // === Multi-Search Tab ===
 
-interface PlayerResult { name: string; tag: string; loading: boolean; error: boolean; data: any | null; }
+type MultiError = '' | 'notFound' | 'rateLimited' | 'unavailable' | 'tagMissing';
+// region je Ergebnis: die Auswahl laesst sich nach der Suche aendern, der Link
+// muss aber in die Region zeigen, in der gesucht wurde.
+interface PlayerResult { name: string; tag: string; region: string; loading: boolean; error: MultiError; data: any | null; }
 
-function MultiSearchTab({ region, setRegion }: { region: string; setRegion: (r: string) => void }) {
+// Ein voller Profil-Abruf kostet rund 65 Riot-Aufrufe — hoechstens zwei
+// gleichzeitig, damit fuenf Namen nicht den gemeinsamen Schluessel leeren.
+const MULTI_PARALLEL = 2;
+
+async function fetchMultiPlayer(p: PlayerResult): Promise<Pick<PlayerResult, 'error' | 'data'>> {
+  try {
+    const res = await fetch(`/api/summoner?name=${encodeURIComponent(`${p.name}#${p.tag}`)}&region=${p.region}`);
+    if (res.status === 404) return { error: 'notFound', data: null };
+    if (res.status === 429) return { error: 'rateLimited', data: null };
+    if (!res.ok) return { error: 'unavailable', data: null };
+    return { error: '', data: await res.json() };
+  } catch {
+    return { error: 'unavailable', data: null };
+  }
+}
+
+function parseMultiLine(line: string, region: string): PlayerResult {
+  const hash = line.indexOf('#');
+  const name = (hash === -1 ? line : line.slice(0, hash)).trim();
+  // Tag = erstes Wort nach #, damit ein Lobby-Zusatz („joined the lobby“) wegfaellt.
+  const tag = hash === -1 ? '' : (line.slice(hash + 1).trim().split(/\s+/)[0] || '');
+  const ok = name.length > 0 && tag.length > 0;
+  return { name: name || line, tag, region, loading: ok, error: ok ? '' : 'tagMissing', data: null };
+}
+
+function MultiSearchTab({ region, setRegion, initialQuery }: { region: string; setRegion: (r: string) => void; initialQuery: string }) {
   const { t } = useI18n();
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState(initialQuery);
   const [results, setResults] = useState<PlayerResult[]>([]);
   const [searching, setSearching] = useState(false);
+  const searchReq = useRef(0);
+
+  const setRow = (req: number, index: number, patch: Partial<PlayerResult>) => {
+    if (req !== searchReq.current) return;
+    setResults(prev => { const next = [...prev]; next[index] = { ...next[index], ...patch }; return next; });
+  };
 
   const handleSearch = async () => {
     const lines = input.split('\n').map(l => l.trim()).filter(l => l.length > 0).slice(0, 5);
     if (lines.length === 0) return;
 
-    const initial: PlayerResult[] = lines.map(line => {
-      const parts = line.split('#');
-      return { name: parts[0]?.trim() || line, tag: parts[1]?.trim() || '', loading: true, error: false, data: null };
-    });
+    const req = ++searchReq.current;
+    const initial = lines.map(line => parseMultiLine(line, region));
     setResults(initial);
     setSearching(true);
 
-    await Promise.all(initial.map(async (player, index) => {
-      const fullName = player.tag ? `${player.name}#${player.tag}` : player.name;
-      try {
-        const res = await fetch(`/api/summoner?name=${encodeURIComponent(fullName)}&region=${region}`);
-        if (!res.ok) throw new Error('Not found');
-        const data = await res.json();
-        setResults(prev => { const next = [...prev]; next[index] = { ...next[index], loading: false, data }; return next; });
-      } catch {
-        setResults(prev => { const next = [...prev]; next[index] = { ...next[index], loading: false, error: true }; return next; });
+    const queue = initial.map((p, i) => i).filter(i => initial[i].loading);
+    const worker = async () => {
+      for (let i = queue.shift(); i !== undefined; i = queue.shift()) {
+        const r = await fetchMultiPlayer(initial[i]);
+        setRow(req, i, { loading: false, ...r });
       }
-    }));
-    setSearching(false);
+    };
+    await Promise.all(Array.from({ length: MULTI_PARALLEL }, worker));
+    if (req === searchReq.current) setSearching(false);
+  };
+
+  // Einzelne Zeile neu holen. Nur moeglich, solange keine Suche laeuft — so
+  // bleibt es bei hoechstens zwei Abrufen gleichzeitig.
+  const retryRow = async (index: number) => {
+    const p = results[index];
+    if (!p || searching || p.loading) return;
+    const req = ++searchReq.current;
+    setSearching(true);
+    setRow(req, index, { loading: true, error: '' });
+    const r = await fetchMultiPlayer(p);
+    setRow(req, index, { loading: false, ...r });
+    if (req === searchReq.current) setSearching(false);
   };
 
   const getSoloQueue = (ranked: any[]) => Array.isArray(ranked) ? ranked.find((r: any) => r.queueType === 'RANKED_SOLO_5x5') || null : null;
@@ -520,13 +570,13 @@ function MultiSearchTab({ region, setRegion }: { region: string; setRegion: (r: 
     return total === 0 ? null : Math.round((solo.wins / total) * 100);
   };
   const getPlayerLink = (player: PlayerResult) =>
-    `/player/${encodeURIComponent(player.name)}--${encodeURIComponent(player.tag || 'EUW')}?region=${region}`;
+    `/player/${encodeURIComponent(player.name)}--${encodeURIComponent(player.tag)}?region=${player.region}`;
 
   return (
     <>
       <div className="bg-surface-base border border-border-subtle rounded-lg p-4 sm:p-6 mb-6">
         <label className="block text-fg-secondary text-sm mb-2">
-          {t('multi.subtitle')} (max. 5, Name#Tag)
+          {t('multi.subtitle')} ({t('multi.inputHint')})
         </label>
         <textarea
           value={input}
@@ -557,13 +607,26 @@ function MultiSearchTab({ region, setRegion }: { region: string; setRegion: (r: 
                 <span className="text-fg-secondary text-sm">{t('common.loading')}</span>
               </div>
             );
-            if (player.error) return (
-              <div key={i} className="bg-surface-base border border-border-subtle rounded-lg p-4 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-surface-overlay flex items-center justify-center text-fg-muted">?</div>
-                <span className="text-white text-sm flex-1">{player.name}{player.tag ? `#${player.tag}` : ''}</span>
-                <span className="text-red-400 text-sm">{t('compare.notFound')}</span>
-              </div>
-            );
+            if (player.error) {
+              const msg = player.error === 'notFound' ? t('compare.notFound')
+                : player.error === 'tagMissing' ? t('multi.tagMissing')
+                : player.error === 'rateLimited' ? t('player.rateLimited')
+                : t('error.temporarilyUnavailable');
+              const canRetry = player.error === 'rateLimited' || player.error === 'unavailable';
+              return (
+                <div key={i} className="bg-surface-base border border-border-subtle rounded-lg p-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+                  <div className="w-10 h-10 rounded-full bg-surface-overlay flex items-center justify-center text-fg-muted">?</div>
+                  <span className="text-white text-sm flex-1 min-w-0 truncate">{player.name}{player.tag ? `#${player.tag}` : ''}</span>
+                  <span className={`text-sm ${canRetry ? 'text-fg-secondary' : 'text-red-400'}`}>{msg}</span>
+                  {canRetry && (
+                    <button onClick={() => retryRow(i)} disabled={searching}
+                      className="text-accent hover:text-[#d4a94a] disabled:opacity-50 text-xs font-medium px-2 py-1 rounded transition-colors">
+                      {t('error.retry')}
+                    </button>
+                  )}
+                </div>
+              );
+            }
 
             const data = player.data;
             const summoner = data?.summoner;
@@ -581,7 +644,7 @@ function MultiSearchTab({ region, setRegion }: { region: string; setRegion: (r: 
                 ) : <div className="w-10 h-10 rounded-full bg-surface-overlay flex-shrink-0" />}
                 <div className="flex-1 min-w-0">
                   <div className="text-white text-sm font-medium truncate">{summoner?.name || `${player.name}#${player.tag}`}</div>
-                  <div className="text-fg-muted text-xs">Lvl {summoner?.summonerLevel || '?'}</div>
+                  <div className="text-fg-muted text-xs">{t('player.level')} {summoner?.summonerLevel || '?'}</div>
                 </div>
                 <div className="hidden sm:block text-center">
                   {solo ? (

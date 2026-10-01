@@ -990,6 +990,12 @@ const translations = {
   'compare.baron': t6('Baron', 'Baron', '\uBC14\uB860', '\u7537\u7235', 'Bar\u00F3n', 'Baron'),
   'compare.roleSplit': t6('Rollen-Verteilung', 'Role split', '\uD3EC\uC9C0\uC158 \uBD84\uD3EC', '\u4F4D\u7F6E\u5206\u5E03', 'Reparto de roles', 'R\u00E9partition des r\u00F4les'),
   'compare.championPool': t6('Champion-Pool', 'Champion pool', '\uCC54\uD53C\uC5B8 \uD3ED', '\u82F1\u96C4\u6C60', 'Grupo de campeones', 'Pool de champions'),
+  'live.badge': t6('LIVE', 'LIVE', '\uB77C\uC774\uBE0C', '\u76F4\u64AD', 'EN VIVO', 'EN DIRECT'),
+  'live.title': t6('Live Game', 'Live Game', '\uC2E4\uC2DC\uAC04 \uAC8C\uC784', '\u5B9E\u65F6\u5BF9\u5C40', 'Partida en vivo', 'Partie en direct'),
+  'live.minutes': t6('{n} Min.', '{n} min', '{n}\uBD84', '{n} \u5206\u949F', '{n} min', '{n} min'),
+  'live.blueSide': t6('Blaue Seite', 'Blue Side', '\uBE14\uB8E8 \uC9C4\uC601', '\u84DD\u8272\u65B9', 'Lado azul', 'C\u00F4t\u00E9 bleu'),
+  'live.redSide': t6('Rote Seite', 'Red Side', '\uB808\uB4DC \uC9C4\uC601', '\u7EA2\u8272\u65B9', 'Lado rojo', 'C\u00F4t\u00E9 rouge'),
+  'live.winrate': t6('{n}% WR', '{n}% WR', '\uC2B9\uB960 {n}%', '\u80DC\u7387 {n}%', '{n}% WR', '{n}% WR'),
   'live.bans': t6('Bans:', 'Bans:', '\uBC34:', '\u7981\u7528\uFF1A', 'Bloqueos:', 'Bannissements :'),
   'match.visShort': t6('Vis', 'Vis', '\uC2DC\uC57C', '\u89C6\u91CE', 'Vis', 'Vis'),
   'champBuild.primary': t6('Prim\u00E4r', 'Primary', '\uC8FC \uB8EC', '\u4E3B\u7CFB', 'Principal', 'Principale'),
@@ -1060,6 +1066,8 @@ const translations = {
 
   // Multi-Search
   'multi.title': t6('Multi-Search', 'Multi-Search', '\uBA40\uD2F0 \uAC80\uC0C9', '\u591A\u4EBA\u641C\u7D22', 'Multi-B\u00FAsqueda', 'Multi-Recherche'),
+  'multi.inputHint': t6('max. 5, Name#Tag', 'max. 5, Name#Tag', '\uCD5C\uB300 5\uBA85, \uC774\uB984#\uD0DC\uADF8', '\u6700\u591A 5 \u4EBA\uFF0C\u540D\u79F0#\u6807\u7B7E', 'm\u00E1x. 5, Nombre#Tag', 'max. 5, Nom#Tag'),
+  'multi.tagMissing': t6('Name#Tag n\u00F6tig', 'Name#Tag required', '\uC774\uB984#\uD0DC\uADF8 \uD544\uC694', '\u9700\u8981\u540D\u79F0#\u6807\u7B7E', 'Se necesita Nombre#Tag', 'Nom#Tag requis'),
   'multi.subtitle': t6('Analysiere mehrere Spieler gleichzeitig', 'Analyze multiple players at once', '\uC5EC\uB7EC \uC120\uC218\uB97C \uB3D9\uC2DC\uC5D0 \uBD84\uC11D\uD558\uC138\uC694', '\u540C\u65F6\u5206\u6790\u591A\u4E2A\u73A9\u5BB6', 'Analiza varios jugadores a la vez', 'Analysez plusieurs joueurs simultan\u00E9ment'),
 
   // Ligen & Wettbewerbe

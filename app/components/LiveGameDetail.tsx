@@ -13,7 +13,6 @@ interface Props {
 interface PlayerData {
   puuid: string;
   summonerName: string;
-  champion: string;
   championId: number;
   teamId: number;
   spell1Id: number;
@@ -28,7 +27,9 @@ const SUMMONER_SPELL_MAP: Record<number, string> = {
   1: 'SummonerBoost', 4: 'SummonerFlash', 6: 'SummonerHaste',
   7: 'SummonerHeal', 11: 'SummonerSmite', 12: 'SummonerTeleport',
   14: 'SummonerDot', 21: 'SummonerBarrier', 3: 'SummonerExhaust',
-  32: 'SummonerSnowball',
+  32: 'SummonerSnowball', 13: 'SummonerMana', 30: 'SummonerPoroRecall',
+  31: 'SummonerPoroThrow', 39: 'SummonerSnowURFSnowball_Mark',
+  2201: 'SummonerCherryHold', 2202: 'SummonerCherryFlash',
 };
 
 export default function LiveGameDetail({ gameData, ddVersion, championMap, region }: Props) {
@@ -38,12 +39,12 @@ export default function LiveGameDetail({ gameData, ddVersion, championMap, regio
   useEffect(() => {
     if (!gameData?.participants) return;
 
+    // Champion wird beim Zeichnen aus der Karte gelesen: kommt die Karte erst
+    // nach dem Live-Spiel, werden die Raenge nicht ein zweites Mal geholt.
     const initial: PlayerData[] = gameData.participants.map((p: any) => {
-      const champ = championMap[p.championId];
       return {
         puuid: p.puuid || '',
         summonerName: p.riotId || p.summonerName || 'Unknown',
-        champion: champ?.id || 'Unknown',
         championId: p.championId,
         teamId: p.teamId,
         spell1Id: p.spell1Id,
@@ -79,7 +80,7 @@ export default function LiveGameDetail({ gameData, ddVersion, championMap, regio
         setPlayers(prev => prev.map(pl => ({ ...pl, ranked: 'unknown', loading: false })));
       });
     return () => ctrl.abort();
-  }, [gameData, championMap, region]);
+  }, [gameData, region]);
 
   if (!gameData?.participants || players.length === 0) return null;
 
@@ -123,14 +124,17 @@ export default function LiveGameDetail({ gameData, ddVersion, championMap, regio
             : null;
           const spell1 = SUMMONER_SPELL_MAP[p.spell1Id];
           const spell2 = SUMMONER_SPELL_MAP[p.spell2Id];
+          const champ = championMap[p.championId];
 
           return (
             <div key={i} className="grid grid-cols-[2.5rem_1.2rem_1.2rem_1fr_6rem_3.5rem] gap-2 items-center bg-surface-raised rounded px-2 py-1.5">
-              <img
-                src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/champion/${p.champion}.png`}
-                alt={p.champion}
-                className="w-8 h-8 rounded"
-              />
+              {champ ? (
+                <img
+                  src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/champion/${champ.id}.png`}
+                  alt={champ.name}
+                  className="w-8 h-8 rounded"
+                />
+              ) : <div className="w-8 h-8 rounded bg-surface-overlay" />}
               <div className="flex flex-col gap-0.5">
                 {spell1 && (
                   <img
@@ -151,7 +155,7 @@ export default function LiveGameDetail({ gameData, ddVersion, championMap, regio
               </div>
               <div>
                 <div className="text-white text-xs font-medium truncate">{p.summonerName}</div>
-                <div className="text-fg-muted text-[10px]">{p.champion}</div>
+                <div className="text-fg-muted text-[10px]">{champ?.name || ''}</div>
               </div>
               <div className="text-right">
                 {p.loading ? (
@@ -170,7 +174,7 @@ export default function LiveGameDetail({ gameData, ddVersion, championMap, regio
               <div className="text-right">
                 {wr !== null ? (
                   <span className={`text-xs font-medium ${wr >= 50 ? 'text-green-400' : 'text-red-400'}`}>
-                    {wr}% WR
+                    {t('live.winrate').replace('{n}', String(wr))}
                   </span>
                 ) : (
                   <span className="text-fg-muted text-xs">-</span>
@@ -189,20 +193,20 @@ export default function LiveGameDetail({ gameData, ddVersion, championMap, regio
         <div className="flex items-center gap-3">
           <span className="inline-flex items-center gap-1 bg-green-500/20 text-green-400 text-xs font-bold px-2 py-0.5 rounded-full border border-green-500/40">
             <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-            LIVE
+            {t('live.badge')}
           </span>
           <span className="text-fg-secondary text-xs uppercase tracking-widest">
-            Live Game
+            {t('live.title')}
           </span>
         </div>
         {gameDuration > 0 && (
-          <div className="text-fg-muted text-xs">{gameDuration} Min.</div>
+          <div className="text-fg-muted text-xs">{t('live.minutes').replace('{n}', String(gameDuration))}</div>
         )}
       </div>
 
-      {renderTeam(team1, 'Blaue Seite', team1Bans)}
+      {renderTeam(team1, t('live.blueSide'), team1Bans)}
       <div className="border-t border-border-subtle my-3" />
-      {renderTeam(team2, 'Rote Seite', team2Bans)}
+      {renderTeam(team2, t('live.redSide'), team2Bans)}
     </div>
   );
 }

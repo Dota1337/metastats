@@ -41,7 +41,7 @@ export default function PlayerPage() {
   const [ddVersion, setDdVersion] = useState('14.1.1');
   const [masteries, setMasteries] = useState<any[]>([]);
   const [liveGame, setLiveGame] = useState<{ inGame: boolean; gameData?: any }>({ inGame: false });
-  const [liveGameUnavailable, setLiveGameUnavailable] = useState(false);
+  const [liveGameUnavailable, setLiveGameUnavailable] = useState<'' | 'feature' | 'down'>('');
   const [championMap, setChampionMap] = useState<Record<number, { id: string; name: string }>>({});
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [expandedMatch, setExpandedMatch] = useState<number | null>(null);
@@ -82,6 +82,32 @@ export default function PlayerPage() {
     loadPlayer(name, tag);
   }, [slug, region]);
 
+  // Live-Spiel getrennt, damit „Erneut versuchen“ nur diesen Teil neu holt.
+  // 403 = Schluessel ohne Spectator-Recht (Funktion fehlt), alles andere = kurz weg.
+  const loadLive = (puuid: string, stale: () => boolean) => {
+    fetch(`/api/live-game?puuid=${encodeURIComponent(puuid)}&region=${region}`)
+      .then(async liveRes => {
+        if (!liveRes.ok) {
+          if (stale()) return;
+          setLiveGameUnavailable(liveRes.status === 403 || liveRes.status === 401 ? 'feature' : 'down');
+          return;
+        }
+        const liveData = await liveRes.json();
+        if (stale()) return;
+        setLiveGame(liveData);
+        setLiveGameUnavailable('');
+      })
+      .catch(() => { if (!stale()) setLiveGameUnavailable('down'); });
+  };
+  const retryLive = () => {
+    const puuid = player?.summoner?.puuid;
+    if (!puuid) return;
+    const req = loadReq.current;
+    // Hinweis ausblenden, solange neu geladen wird — kein Doppelklick moeglich.
+    setLiveGameUnavailable('');
+    loadLive(puuid, () => req !== loadReq.current);
+  };
+
   const loadPlayer = async (name: string, tag: string) => {
     // Spieler- oder Regionwechsel: Werte des vorigen Profils verwerfen und
     // verspaetete Antworten eines alten Aufrufs ignorieren.
@@ -103,7 +129,7 @@ export default function PlayerPage() {
     setRoleFilter('all');
     setExpandedMatch(null);
     setLiveGame({ inGame: false });
-    setLiveGameUnavailable(false);
+    setLiveGameUnavailable('');
     try {
       const version = await getDdragonVersion();
       if (version) setDdVersion(version);
@@ -181,20 +207,7 @@ export default function PlayerPage() {
           setMasteries(masteryData.masteries || []);
         })
         .catch(() => {});
-      fetch(`/api/live-game?puuid=${puuid}&region=${region}`)
-        .then(async liveRes => {
-          if (liveRes.ok) {
-            const liveData = await liveRes.json();
-            if (stale()) return;
-            setLiveGame(liveData);
-            setLiveGameUnavailable(false);
-          } else if (liveRes.status === 403 || liveRes.status === 401) {
-            // Spectator API requires Production-level Riot API key
-            if (stale()) return;
-            setLiveGameUnavailable(true);
-          }
-        })
-        .catch(() => {});
+      loadLive(data.summoner.puuid, stale);
     } catch (e: any) {
       if (stale()) return;
       setError(e.message || t('player.notFound'));
@@ -892,9 +905,14 @@ export default function PlayerPage() {
               />
             )}
 
-            {/* Live Game unavailable notice (Spectator API requires Riot Production Key) */}
-            {liveGameUnavailable && !liveGame.inGame && (
+            {/* Live-Spiel: Schluessel ohne Spectator-Recht vs. Riot gerade nicht erreichbar */}
+            {liveGameUnavailable === 'feature' && !liveGame.inGame && (
               <ApiUnavailable />
+            )}
+            {liveGameUnavailable === 'down' && !liveGame.inGame && (
+              <div className="mb-4">
+                <ApiUnavailable compact badge={false} messageKey="error.temporarilyUnavailable" onRetry={retryLive} />
+              </div>
             )}
 
             {/* Performance Charts */}

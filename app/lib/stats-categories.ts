@@ -27,6 +27,7 @@ export interface CategoryScore {
   impact: number;       // -1 to +1 market value impact
   summary: string;      // Short explanation (free tier)
   summaryEn: string;
+  summaryVals?: string[]; // Zahlen fuer die i18n-Vorlage statSum.<id> ({0}, {1} …)
   details: StatDetail[]; // Individual stats (premium only)
 }
 
@@ -118,6 +119,7 @@ function calcWinRate(matches: ExtendedMatchData[]): CategoryScore {
     impact: (score - 50) / 200,
     summary: `${wr.toFixed(1)}% Siegrate über ${matches.length} Spiele`,
     summaryEn: `${wr.toFixed(1)}% win rate over ${matches.length} games`,
+    summaryVals: [wr.toFixed(1), String(matches.length)],
     details: [
       { name: 'Winrate', value: wr, unit: '%', description: 'Gewonnene Spiele in Prozent' },
       { name: 'Siege', value: matches.filter(m => m.win).length, unit: '', description: 'Anzahl gewonnener Spiele' },
@@ -142,6 +144,7 @@ function calcKDA(matches: ExtendedMatchData[]): CategoryScore {
     impact: (score - 50) / 180,
     summary: `${kda.toFixed(2)} KDA (${(totalK / matches.length).toFixed(1)}/${avgDeaths.toFixed(1)}/${(totalA / matches.length).toFixed(1)})`,
     summaryEn: `${kda.toFixed(2)} KDA (${(totalK / matches.length).toFixed(1)}/${avgDeaths.toFixed(1)}/${(totalA / matches.length).toFixed(1)})`,
+    summaryVals: [kda.toFixed(2), (totalK / matches.length).toFixed(1), avgDeaths.toFixed(1), (totalA / matches.length).toFixed(1)],
     details: [
       { name: 'KDA', value: +kda.toFixed(2), unit: '', description: '(Kills + Assists) / Deaths' },
       { name: 'Kills/Spiel', value: +(totalK / matches.length).toFixed(1), unit: '', description: 'Durchschnittliche Kills' },
@@ -168,6 +171,7 @@ function calcLaneDominance(matches: ExtendedMatchData[]): CategoryScore {
     impact: (score - 50) / 250,
     summary: `Ø ${avgCsAdv.toFixed(0)} CS-Vorteil, ${avgGoldAdv > 0 ? '+' : ''}${avgGoldAdv.toFixed(0)} Gold-Vorteil`,
     summaryEn: `Avg ${avgCsAdv.toFixed(0)} CS lead, ${avgGoldAdv > 0 ? '+' : ''}${avgGoldAdv.toFixed(0)} gold advantage`,
+    summaryVals: [avgCsAdv.toFixed(0), `${avgGoldAdv > 0 ? '+' : ''}${avgGoldAdv.toFixed(0)}`],
     details: [
       { name: 'Max CS-Vorteil', value: +avgCsAdv.toFixed(1), unit: 'CS', description: 'Größter CS-Vorsprung gegen Gegenspieler' },
       { name: 'Gold/XP-Vorteil (früh)', value: +avgGoldAdv.toFixed(0), unit: '', description: 'Gold+XP-Vorsprung in der frühen Lane-Phase' },
@@ -193,6 +197,7 @@ function calcFarming(matches: ExtendedMatchData[]): CategoryScore {
     impact: (score - 50) / 250,
     summary: `${csPerMin.toFixed(1)} CS/Min (Ø ${avgCs.toFixed(0)} CS/Spiel)`,
     summaryEn: `${csPerMin.toFixed(1)} CS/min (avg ${avgCs.toFixed(0)} CS/game)`,
+    summaryVals: [csPerMin.toFixed(1), avgCs.toFixed(0)],
     details: [
       { name: 'CS/Min', value: +csPerMin.toFixed(1), unit: '/min', description: 'Creep Score pro Minute' },
       { name: 'CS/Spiel', value: +avgCs.toFixed(0), unit: '', description: 'Durchschnittliche CS pro Spiel' },
@@ -218,6 +223,7 @@ function calcDamageOutput(matches: ExtendedMatchData[]): CategoryScore {
     impact: (score - 50) / 200,
     summary: `${avgDpm.toFixed(0)} Schaden/Min (Ø ${(avgDmg / 1000).toFixed(1)}k/Spiel)`,
     summaryEn: `${avgDpm.toFixed(0)} damage/min (avg ${(avgDmg / 1000).toFixed(1)}k/game)`,
+    summaryVals: [avgDpm.toFixed(0), (avgDmg / 1000).toFixed(1)],
     details: [
       { name: 'Schaden/Min', value: +avgDpm.toFixed(0), unit: '/min', description: 'Schaden an Champions pro Minute' },
       { name: 'Schaden/Spiel', value: +avgDmg.toFixed(0), unit: '', description: 'Gesamtschaden an Champions' },
@@ -245,6 +251,7 @@ function calcDamageShare(matches: ExtendedMatchData[]): CategoryScore {
     impact: (score - 50) / 250,
     summary: `${avgShare.toFixed(1)}% des Teamschadens`,
     summaryEn: `${avgShare.toFixed(1)}% of team damage`,
+    summaryVals: [avgShare.toFixed(1)],
     details: [
       { name: 'Schadensanteil', value: +avgShare.toFixed(1), unit: '%', description: 'Anteil am gesamten Teamschaden' },
       { name: 'Schadensaufnahme', value: +avgDmgTakenShare.toFixed(1), unit: '%', description: 'Anteil am erlittenen Teamschaden' },
@@ -271,6 +278,7 @@ function calcSurvivability(matches: ExtendedMatchData[]): CategoryScore {
     impact: (score - 50) / 300,
     summary: `Ø ${(avgLongestAlive / 60).toFixed(1)} Min am Leben, ${(deadTimeRatio * 100).toFixed(0)}% Totzeit`,
     summaryEn: `Avg ${(avgLongestAlive / 60).toFixed(1)} min alive, ${(deadTimeRatio * 100).toFixed(0)}% dead time`,
+    summaryVals: [(avgLongestAlive / 60).toFixed(1), (deadTimeRatio * 100).toFixed(0)],
     details: [
       { name: 'Längste Lebensspanne', value: +(avgLongestAlive / 60).toFixed(1), unit: 'min', description: 'Durchschnittlich längste Lebensspanne' },
       { name: 'Totzeit', value: +avgDeadTime.toFixed(0), unit: 's', description: 'Durchschnittliche Totzeit pro Spiel' },
@@ -302,6 +310,7 @@ function calcVisionControl(matches: ExtendedMatchData[]): CategoryScore {
     impact: (score - 50) / 250,
     summary: `${avgVspm.toFixed(2)} Vision/Min (Ø ${avgVision.toFixed(0)} Score)`,
     summaryEn: `${avgVspm.toFixed(2)} vision/min (avg ${avgVision.toFixed(0)} score)`,
+    summaryVals: [avgVspm.toFixed(2), avgVision.toFixed(0)],
     details: [
       { name: 'Vision Score/Min', value: +avgVspm.toFixed(2), unit: '/min', description: 'Vision Score pro Minute' },
       { name: 'Vision Score', value: +avgVision.toFixed(0), unit: '', description: 'Durchschnittlicher Vision Score' },
@@ -333,6 +342,7 @@ function calcObjectiveControl(matches: ExtendedMatchData[]): CategoryScore {
     impact: (score - 50) / 220,
     summary: `Ø ${avgDragons.toFixed(1)} Drakes, ${avgBarons.toFixed(1)} Barone, ${avgPlates.toFixed(1)} Plates`,
     summaryEn: `Avg ${avgDragons.toFixed(1)} drakes, ${avgBarons.toFixed(1)} barons, ${avgPlates.toFixed(1)} plates`,
+    summaryVals: [avgDragons.toFixed(1), avgBarons.toFixed(1), avgPlates.toFixed(1)],
     details: [
       { name: 'Drachen-Beteiligung', value: +avgDragons.toFixed(1), unit: '/Spiel', description: 'Drake Takedowns' },
       { name: 'Baron-Beteiligung', value: +avgBarons.toFixed(1), unit: '/Spiel', description: 'Baron Takedowns' },
@@ -363,6 +373,7 @@ function calcGoldEfficiency(matches: ExtendedMatchData[]): CategoryScore {
     impact: (score - 50) / 250,
     summary: `${avgGpm.toFixed(0)} Gold/Min, ${efficiency.toFixed(0)}% ausgegeben`,
     summaryEn: `${avgGpm.toFixed(0)} gold/min, ${efficiency.toFixed(0)}% spent`,
+    summaryVals: [avgGpm.toFixed(0), efficiency.toFixed(0)],
     details: [
       { name: 'Gold/Min', value: +avgGpm.toFixed(0), unit: '/min', description: 'Verdientes Gold pro Minute' },
       { name: 'Gold/Spiel', value: +(avgGold / 1000).toFixed(1), unit: 'k', description: 'Verdientes Gold pro Spiel' },
@@ -392,6 +403,7 @@ function calcTeamplay(matches: ExtendedMatchData[]): CategoryScore {
     impact: (score - 50) / 220,
     summary: `${avgKP.toFixed(0)}% Kill-Beteiligung, Ø ${avgSaves.toFixed(1)} Rettungen`,
     summaryEn: `${avgKP.toFixed(0)}% kill participation, avg ${avgSaves.toFixed(1)} saves`,
+    summaryVals: [avgKP.toFixed(0), avgSaves.toFixed(1)],
     details: [
       { name: 'Kill-Beteiligung', value: +avgKP.toFixed(0), unit: '%', description: 'Beteiligung an Team-Kills' },
       { name: 'Heal auf Teammates', value: +avgHeals.toFixed(0), unit: '/Spiel', description: 'Heilung auf Teammitglieder' },
@@ -423,6 +435,7 @@ function calcClutchFactor(matches: ExtendedMatchData[]): CategoryScore {
     impact: (score - 50) / 220,
     summary: `Ø ${avgSoloKills.toFixed(1)} Solo-Kills, ${avgOutnumbered.toFixed(1)} Outplays`,
     summaryEn: `Avg ${avgSoloKills.toFixed(1)} solo kills, ${avgOutnumbered.toFixed(1)} outplays`,
+    summaryVals: [avgSoloKills.toFixed(1), avgOutnumbered.toFixed(1)],
     details: [
       { name: 'Solo-Kills', value: +avgSoloKills.toFixed(1), unit: '/Spiel', description: '1v1-Kills' },
       { name: 'Outplay-Kills', value: +avgOutnumbered.toFixed(1), unit: '/Spiel', description: 'Kills in Unterzahl' },
@@ -451,6 +464,7 @@ function calcComebackStrength(matches: ExtendedMatchData[]): CategoryScore {
     impact: (score - 50) / 300,
     summary: `${comebackRate.toFixed(0)}% Comeback-Rate, ${surrenderRate.toFixed(0)}% Surrenders`,
     summaryEn: `${comebackRate.toFixed(0)}% comeback rate, ${surrenderRate.toFixed(0)}% surrenders`,
+    summaryVals: [comebackRate.toFixed(0), surrenderRate.toFixed(0)],
     details: [
       { name: 'Comeback-Rate', value: +comebackRate.toFixed(0), unit: '%', description: 'Siege nach 3+ Kill-Rückstand' },
       { name: 'Surrender-Rate', value: +surrenderRate.toFixed(0), unit: '%', description: 'Spiele durch Aufgabe beendet' },
@@ -480,6 +494,7 @@ function calcEarlyGameImpact(matches: ExtendedMatchData[]): CategoryScore {
     impact: (score - 50) / 250,
     summary: `${fbRate.toFixed(0)}% First Blood, Ø ${avgPlates.toFixed(1)} Plates, ${avgTakedowns25.toFixed(1)} Takedowns@25`,
     summaryEn: `${fbRate.toFixed(0)}% first blood, avg ${avgPlates.toFixed(1)} plates, ${avgTakedowns25.toFixed(1)} takedowns@25`,
+    summaryVals: [fbRate.toFixed(0), avgPlates.toFixed(1), avgTakedowns25.toFixed(1)],
     details: [
       { name: 'First Blood Rate', value: +fbRate.toFixed(0), unit: '%', description: 'Beteiligung am First Blood' },
       { name: 'First Blood Opfer', value: +fbVictimRate.toFixed(0), unit: '%', description: 'Rate als First-Blood-Opfer' },
@@ -511,6 +526,7 @@ function calcMechanics(matches: ExtendedMatchData[]): CategoryScore {
     impact: (score - 50) / 250,
     summary: `Ø ${avgDodged.toFixed(0)} Skillshots ausgewichen, ${avgMultikills.toFixed(1)} Multikills`,
     summaryEn: `Avg ${avgDodged.toFixed(0)} skillshots dodged, ${avgMultikills.toFixed(1)} multikills`,
+    summaryVals: [avgDodged.toFixed(0), avgMultikills.toFixed(1)],
     details: [
       { name: 'Skillshots ausgewichen', value: +avgDodged.toFixed(0), unit: '/Spiel', description: 'Gegnerische Skillshots ausgewichen' },
       { name: 'Knappe Dodges', value: +avgDodgedTight.toFixed(0), unit: '/Spiel', description: 'Skillshots im letzten Moment ausgewichen' },
@@ -554,6 +570,7 @@ function calcConsistency(allMatches: ExtendedMatchData[]): CategoryScore | null 
     impact: (score - 50) / 300,
     summary: `KDA-Varianz: ${cv.toFixed(2)}, CS-Varianz: ${csCv.toFixed(2)}`,
     summaryEn: `KDA variance: ${cv.toFixed(2)}, CS variance: ${csCv.toFixed(2)}`,
+    summaryVals: [cv.toFixed(2), csCv.toFixed(2)],
     details: [
       { name: 'KDA-Variationskoeffizient', value: +cv.toFixed(2), unit: '', description: 'Niedrig = konstant, hoch = schwankend' },
       { name: 'CS-Variationskoeffizient', value: +csCv.toFixed(2), unit: '', description: 'Niedrig = konstantes Farming' },
@@ -591,6 +608,7 @@ function calcTrend(matches: ExtendedMatchData[]): CategoryScore | null {
     impact: overallTrend / 200,
     summary: `WR ${wrTrend > 0 ? '+' : ''}${wrTrend.toFixed(0)}%, KDA ${kdaTrend > 0 ? '+' : ''}${kdaTrend.toFixed(0)}%`,
     summaryEn: `WR ${wrTrend > 0 ? '+' : ''}${wrTrend.toFixed(0)}%, KDA ${kdaTrend > 0 ? '+' : ''}${kdaTrend.toFixed(0)}%`,
+    summaryVals: [`${wrTrend > 0 ? '+' : ''}${wrTrend.toFixed(0)}`, `${kdaTrend > 0 ? '+' : ''}${kdaTrend.toFixed(0)}`],
     details: [
       { name: 'Winrate-Trend', value: +wrTrend.toFixed(1), unit: '%', description: 'Veränderung der Siegrate (neuere vs. ältere Spiele)' },
       { name: 'KDA-Trend', value: +kdaTrend.toFixed(1), unit: '%', description: 'Veränderung der KDA' },

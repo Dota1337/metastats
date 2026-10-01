@@ -23,7 +23,7 @@ import { cacheHeaders } from '../../lib/api-cache';
 // Hochzaehlen, sobald sich an der Bewertung etwas aendert
 // (stats-categories.ts, match-processor.ts) — dann rechnet jede Zeile beim
 // naechsten Aufruf neu.
-const CALC_VERSION = 1;
+const CALC_VERSION = 2; // 2: summaryVals fuer uebersetzte Kategorie-Texte
 // Darunter keine Bewertung: bei weniger Spielen schwanken die Kategorien so
 // stark, dass die Zahl mehr Zufall als Leistung zeigt.
 const MIN_GAMES = 20;

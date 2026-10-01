@@ -800,7 +800,12 @@ export default function PlayerPage() {
                             {cat.trend > 5 && <span className="text-green-400 text-xs">&#9650;</span>}
                             {cat.trend < -5 && <span className="text-red-400 text-xs">&#9660;</span>}
                           </div>
-                          <div className="text-[#6a7a90] text-xs truncate">{lang === 'de' ? cat.summary : (cat.summaryEn ?? cat.summary)}</div>
+                          <div className="text-[#6a7a90] text-xs truncate">{(() => {
+                            // Vorlage statSum.<id> + Zahlen aus summaryVals; aeltere Antworten ohne summaryVals behalten den fertigen Satz.
+                            const k = `statSum.${cat.id}` as TranslationKey; const s = t(k);
+                            if (!Array.isArray(cat.summaryVals) || s === k) return lang === 'de' ? cat.summary : (cat.summaryEn ?? cat.summary);
+                            return s.replace(/\{(\d+)\}/g, (m: string, i: string) => cat.summaryVals[Number(i)] ?? m);
+                          })()}</div>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
                           <div className="w-16 h-2 bg-surface-base rounded overflow-hidden">

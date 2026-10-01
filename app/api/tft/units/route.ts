@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseVelocity } from '../../../lib/query-params';
 import { loadTftStats, normalizeBucket, bucketParticipants, pickBucketEntry } from '../../../lib/tft-stats-loader';
-import { resolveFilters, callRpc, getAvailablePatches } from '../../../lib/tft-supabase-reader';
+import { resolveFilters, callRpc, getAvailablePatches, resolveTrendAnchorOffset } from '../../../lib/tft-supabase-reader';
 import { isExcludedUnit, isExcludedItem, setContainsExcludedItem } from '../../../lib/tft-excluded';
-import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias } from '../../../lib/api-cache';
+import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias, DEGRADED_CACHE_CONTROL } from '../../../lib/api-cache';
 import { lookupSnapshot, isSnapshotPublisher } from '../../../lib/snapshot-lookup';
 import { computeShares } from '../../../lib/tft-shares';
 
@@ -313,6 +313,8 @@ export async function GET(request: NextRequest) {
       p_top: LIST_TOP_ITEMS,
     }, publisher ? 25_000 : undefined);
 
+    // Trend-Anker nicht lesbar → kurze Cache-Zeit statt 6 h schiefer Pfeile.
+    let trendAnchorDegraded = false;
     const [rows, velocityRows, topItemRows] = await Promise.all([
       callRpc<UnitListRow[]>('get_tft_unit_stats', {
         p_regions: filters.regions,
@@ -322,16 +324,16 @@ export async function GET(request: NextRequest) {
         p_set: filters.setNumber,
       }),
       wantVelocity
-        ? callRpc<UnitVelocityRow[]>('get_tft_unit_velocity', {
+        ? resolveTrendAnchorOffset(filters, patches).then(anchor => { trendAnchorDegraded = anchor.degraded; return callRpc<UnitVelocityRow[]>('get_tft_unit_velocity', {
             p_regions: filters.regions,
             p_buckets: filters.buckets,
             p_set: filters.setNumber,
             p_patch: filters.patchFilter,
             p_days: filters.requestedDays,
             p_shift_days: velocityShift,
-            p_anchor_offset_days: filters.anchorOffsetDays,
+            p_anchor_offset_days: anchor.offset,
             p_min_games: 30,
-          }).catch(() => [] as UnitVelocityRow[])
+          }); }).catch(() => [] as UnitVelocityRow[])
         : Promise.resolve([] as UnitVelocityRow[]),
       publisher ? topItemsCall : topItemsCall.catch(() => [] as UnitTopItemRow[]),
     ]);
@@ -421,7 +423,7 @@ export async function GET(request: NextRequest) {
       },
       patches,
       units,
-    }, { cache: cacheControl });
+    }, { cache: trendAnchorDegraded ? DEGRADED_CACHE_CONTROL : cacheControl });
   } catch (e: any) {
     return NextResponse.json({ hasData: false, units: [], error: e.message }, { status: 502 });
   }

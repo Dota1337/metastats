@@ -6,9 +6,10 @@ import {
   callRpc,
   getAvailablePatches,
   mergeJsonbCountArrays,
+  resolveTrendAnchorOffset,
 } from '../../../lib/tft-supabase-reader';
 import { isExcludedItem, isExcludedUnit } from '../../../lib/tft-excluded';
-import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias } from '../../../lib/api-cache';
+import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias, DEGRADED_CACHE_CONTROL } from '../../../lib/api-cache';
 import { lookupSnapshot, isSnapshotPublisher } from '../../../lib/snapshot-lookup';
 
 // C3 (2026-07-04): raised so the snapshot publisher's per-permutation fetch of a
@@ -168,6 +169,8 @@ export async function GET(request: NextRequest) {
     // all-bucket/7d slice (76s→5.5s, no more 502) and ~126x on the diamond/3d
     // default (9s→72ms). Returns the same shape; the merged list is wrapped so
     // the mergeJsonbCountArrays call below still works unchanged.
+    // Trend-Anker nicht lesbar → kurze Cache-Zeit statt 6 h schiefer Pfeile.
+    let trendAnchorDegraded = false;
     const [rows, velocityRows] = await Promise.all([
       callRpc<ItemListRow[]>('get_tft_item_stats_list', {
         p_regions: filters.regions,
@@ -177,7 +180,7 @@ export async function GET(request: NextRequest) {
         p_set: filters.setNumber,
       }),
       wantVelocity
-        ? callRpc<{
+        ? resolveTrendAnchorOffset(filters, patches).then(anchor => { trendAnchorDegraded = anchor.degraded; return callRpc<{
             api_name: string;
             games_now: number; games_prev: number;
             sum_placement_now: number; sum_placement_prev: number;
@@ -193,9 +196,9 @@ export async function GET(request: NextRequest) {
             // into "5d vs 5d" during erstfill staleness.
             p_days: filters.requestedDays,
             p_shift_days: velocityShift,
-            p_anchor_offset_days: filters.anchorOffsetDays,
+            p_anchor_offset_days: anchor.offset,
             p_min_games: 30,
-          }).catch(() => [])
+          }); }).catch(() => [])
         : Promise.resolve([] as any[]),
     ]);
     const totalSlots = rows[0]?.total_item_slots || 0;
@@ -285,7 +288,7 @@ export async function GET(request: NextRequest) {
       },
       patches,
       items,
-    }, { cache: cacheControl });
+    }, { cache: trendAnchorDegraded ? DEGRADED_CACHE_CONTROL : cacheControl });
   } catch (e: any) {
     return NextResponse.json({ hasData: false, items: [], error: e.message }, { status: 502 });
   }

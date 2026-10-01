@@ -8,7 +8,10 @@
 import { ACTIVE_REGIONS, ACTIVE_REGIONS_WEST, ACTIVE_REGIONS_ASIA } from './active-regions';
 import { CURRENT_SET } from './current-set';
 import { TFT_RANK_GROUPS, tftStatsBucket } from './rank-groups';
-import { PATCH_MIN_GAMES, establishedPatches, listWindowDays, type CrawlMetaDayRow } from './snapshot-matrix';
+import {
+  PATCH_MIN_GAMES, establishedPatches, listWindowDays, metaPulseCompleteDay, trendAnchorOffsetDays,
+  META_PULSE_COMPLETE_LOOKBACK_DAYS, META_PULSE_COMPLETE_SETTLE_MS, type CrawlMetaDayRow,
+} from './snapshot-matrix';
 
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -385,6 +388,54 @@ export async function getCrawlMetaDays(
   });
   if (!res.ok) throw new Error(`crawl_meta HTTP ${res.status}`);
   return (await res.json()) as Array<CrawlMetaDayRow & { set_number: number }>;
+}
+
+// Trend-Anker fuer die Listen-Routen (Comps/Items/Units/Traits): das
+// Jetzt-Fenster endet am letzten Tag, fuer den alle Regionen da sind
+// (Regionen treffen ueber ~12 h verteilt ein). Zeilen aller Regionen 5 min im
+// Modul (gemessen 569 Zeilen / 57 KB), Fehler 60 s negativ gecacht.
+// degraded = Lesefehler → alter Anker; die Route cached dann nur kurz.
+const CRAWL_META_TTL_MS = 5 * 60 * 1000;
+const CRAWL_META_NEGATIVE_TTL_MS = 60 * 1000;
+let _crawlMetaCache: { ts: number; from: string; rows: Array<CrawlMetaDayRow & { set_number: number }> } | null = null;
+let _crawlMetaNegativeTs = 0;
+
+export async function resolveTrendAnchorOffset(
+  filters: ResolvedFilters,
+  patches: PatchInfo[],
+  opts: { publisher?: boolean } = {},
+): Promise<{ offset: number; degraded: boolean }> {
+  const base = filters.anchorOffsetDays;
+  const newest = patches[0];
+  if (!newest || (filters.patchFilter != null && filters.patchFilter !== newest.patch)) {
+    return { offset: base, degraded: false };
+  }
+  const now = Date.now();
+  const todayNum = Math.floor(now / 86_400_000);
+  const from = new Date((todayNum - (META_PULSE_COMPLETE_LOOKBACK_DAYS + 2)) * 86_400_000).toISOString().slice(0, 10);
+  let rows: Array<CrawlMetaDayRow & { set_number: number }> | null = null;
+  const fresh = _crawlMetaCache && _crawlMetaCache.from === from && now - _crawlMetaCache.ts < CRAWL_META_TTL_MS;
+  if (!opts.publisher && fresh) {
+    rows = _crawlMetaCache!.rows;
+  } else if (!opts.publisher && _crawlMetaNegativeTs && now - _crawlMetaNegativeTs < CRAWL_META_NEGATIVE_TTL_MS) {
+    return { offset: base, degraded: true };
+  } else {
+    try {
+      rows = await getCrawlMetaDays(REGION_GROUPS.all, from, opts.publisher ? 5000 : 2000);
+      _crawlMetaCache = { ts: now, from, rows };
+      _crawlMetaNegativeTs = 0;
+    } catch (e) {
+      console.error('[tft] crawl_meta fuer Trend-Anker fehlgeschlagen:', (e as Error).message);
+      if (!opts.publisher) _crawlMetaNegativeTs = now;
+      return { offset: base, degraded: true };
+    }
+  }
+  const setRows = filters.setNumber == null ? rows : rows.filter(r => Number(r.set_number) === Number(filters.setNumber));
+  const completeDay = metaPulseCompleteDay(setRows, filters.regions, now, opts.publisher ? 0 : META_PULSE_COMPLETE_SETTLE_MS);
+  return {
+    offset: trendAnchorOffsetDays({ baseOffset: base, completeDay, newest, patchFilter: filters.patchFilter, todayNum }),
+    degraded: false,
+  };
 }
 
 // Merge a list of jsonb dicts (key -> int) by summing values per key.

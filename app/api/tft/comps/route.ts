@@ -9,8 +9,9 @@ import {
   getAvailablePatches,
   mergeJsonbCountArrays,
   mergeJsonbCountDicts,
+  resolveTrendAnchorOffset,
 } from '../../../lib/tft-supabase-reader';
-import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias } from '../../../lib/api-cache';
+import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias, DEGRADED_CACHE_CONTROL } from '../../../lib/api-cache';
 import { isExcludedUnit, isExcludedItem, setContainsExcludedItem } from '../../../lib/tft-excluded';
 import { lookupSnapshot, isSnapshotPublisher } from '../../../lib/snapshot-lookup';
 import { parseClusterKey } from '../../../lib/tft-cluster';
@@ -616,6 +617,7 @@ export async function GET(request: NextRequest) {
     const publisherTrend = isSnapshotPublisher(request) && source === 'data' && velocityShift === 0;
     const trendShift = wantVelocity ? velocityShift : publisherTrend ? filters.requestedDays : 0;
     let trendFailed = false;
+    let trendAnchorDegraded = false;
 
     const listMinGames = adaptiveMin ? ADAPTIVE_FLOOR : minGames;
     const liveList = () => callRpc<CompRow[]>('get_tft_comp_stats_list_v2', {
@@ -639,7 +641,9 @@ export async function GET(request: NextRequest) {
             .then(r => r ?? liveList())
         : liveList(),
       trendShift > 0
-        ? callRpc<VelocityRow[]>('get_tft_comp_velocity', {
+        ? resolveTrendAnchorOffset(filters, patches, { publisher: isSnapshotPublisher(request) }).then(anchor => {
+          trendAnchorDegraded = anchor.degraded;
+          return callRpc<VelocityRow[]>('get_tft_comp_velocity', {
             p_regions: filters.regions,
             p_buckets: filters.buckets,
             p_set: filters.setNumber,
@@ -651,13 +655,15 @@ export async function GET(request: NextRequest) {
             // collapse the semantics ("1d" suddenly meaning "5d").
             p_days: filters.requestedDays,
             p_shift_days: trendShift,
-            // Anchor both windows at the last available stats day; otherwise
-            // a 1d window on a 4d-stale pipeline lands in an empty range.
-            p_anchor_offset_days: filters.anchorOffsetDays,
+            // Anchor both windows at the last day ALL regions have delivered
+            // (resolveTrendAnchorOffset); a partial newest day would compare a
+            // few regions against full days. Falls back to the newest day.
+            p_anchor_offset_days: anchor.offset,
             // Allow newer entries with only a current-window sample to surface
             // as "NEW" rather than being filtered out for lacking a baseline.
             p_min_games: Math.max(10, Math.floor(minGames / 3)),
-          }, publisherTrend ? publisherRpcTimeoutMs : undefined).catch((e: any) => {
+          }, publisherTrend ? publisherRpcTimeoutMs : undefined);
+          }).catch((e: any) => {
             // Ohne Markierung waere ein Snapshot ohne Trend nicht von einem
             // mit Trend zu unterscheiden — velocityShift bleibt dann null.
             trendFailed = true;
@@ -701,7 +707,7 @@ export async function GET(request: NextRequest) {
       minGames: effectiveMinGames,
       source,
       comps: source === 'editorial' ? [] : dataComps,
-    }, { cache: cacheControl });
+    }, { cache: trendAnchorDegraded ? DEGRADED_CACHE_CONTROL : cacheControl });
   } catch (e: any) {
     return NextResponse.json({ hasData: false, comps: [], error: e.message }, { status: 502 });
   }

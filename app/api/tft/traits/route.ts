@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseVelocity } from '../../../lib/query-params';
-import { resolveFilters, callRpc, getAvailablePatches } from '../../../lib/tft-supabase-reader';
-import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias } from '../../../lib/api-cache';
+import { resolveFilters, callRpc, getAvailablePatches, resolveTrendAnchorOffset } from '../../../lib/tft-supabase-reader';
+import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias, DEGRADED_CACHE_CONTROL } from '../../../lib/api-cache';
 import { lookupSnapshot, isSnapshotPublisher } from '../../../lib/snapshot-lookup';
 
 // C3 (2026-07-04): raised so the snapshot publisher's per-permutation fetch of a
@@ -68,6 +68,8 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Trend-Anker nicht lesbar → kurze Cache-Zeit statt 6 h schiefer Pfeile.
+    let trendAnchorDegraded = false;
     const [rows, velocityRows] = await Promise.all([
       callRpc<TraitRow[]>('get_tft_trait_stats', {
         p_regions: filters.regions,
@@ -77,16 +79,16 @@ export async function GET(request: NextRequest) {
         p_set: filters.setNumber,
       }),
       wantVelocity
-        ? callRpc<TraitVelocityRow[]>('get_tft_trait_velocity', {
+        ? resolveTrendAnchorOffset(filters, patches).then(anchor => { trendAnchorDegraded = anchor.degraded; return callRpc<TraitVelocityRow[]>('get_tft_trait_velocity', {
             p_regions: filters.regions,
             p_buckets: filters.buckets,
             p_set: filters.setNumber,
             p_patch: filters.patchFilter,
             p_days: filters.requestedDays,
             p_shift_days: velocityShift,
-            p_anchor_offset_days: filters.anchorOffsetDays,
+            p_anchor_offset_days: anchor.offset,
             p_min_games: 30,
-          }).catch(() => [] as TraitVelocityRow[])
+          }); }).catch(() => [] as TraitVelocityRow[])
         : Promise.resolve([] as TraitVelocityRow[]),
     ]);
 
@@ -153,7 +155,7 @@ export async function GET(request: NextRequest) {
       },
       patches,
       traits,
-    }, { cache: cacheControl });
+    }, { cache: trendAnchorDegraded ? DEGRADED_CACHE_CONTROL : cacheControl });
   } catch (e: any) {
     return NextResponse.json({ hasData: false, traits: [], error: e.message }, { status: 502 });
   }

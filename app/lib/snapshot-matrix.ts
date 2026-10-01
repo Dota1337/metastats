@@ -546,13 +546,16 @@ export function metaPulseCompleteDay(
   rows: ReadonlyArray<CrawlMetaDayRow>,
   regions: ReadonlyArray<string>,
   nowMs: number,
+  // 0 fuer den Snapshot-Publisher: er startet erst nach dem kompletten
+  // Crawl-Lauf, die Wartezeit wuerde die letzte Region (vn2) ausschliessen.
+  settleMs: number = META_PULSE_COMPLETE_SETTLE_MS,
 ): string | null {
   const wanted = new Set(regions);
   const latest = new Map<string, string>();
   for (const r of rows) {
     if (!wanted.has(r.region) || !r.finished_at) continue;
     const fin = Date.parse(r.finished_at);
-    if (!Number.isFinite(fin) || nowMs - fin < META_PULSE_COMPLETE_SETTLE_MS) continue;
+    if (!Number.isFinite(fin) || nowMs - fin < settleMs) continue;
     const day = String(r.day).slice(0, 10);
     const prev = latest.get(r.region);
     if (!prev || day > prev) latest.set(r.region, day);
@@ -563,6 +566,29 @@ export function metaPulseCompleteDay(
   const newest = Math.max(...days.map(toNum));
   const alive = days.map(toNum).filter(n => n >= newest - 1);
   return isoDay(new Date(Math.min(...alive) * DAY_MS));
+}
+
+// Trend-Anker der Listen (Comps/Items/Units/Traits): wie metaPulseVelocityWindow
+// endet das Jetzt-Fenster am letzten vollstaendigen Tag statt am neuesten
+// Teil-Tag. Nur fuer den neuesten Patch (patchFilter null oder gleich), und
+// nicht am ersten Teil-Tag eines neuen Patches (dann bleibt es beim neuesten
+// Tag, wie bei Meta-Pulse). Liefert nie einen kleineren Offset als baseOffset.
+export function trendAnchorOffsetDays(o: {
+  baseOffset: number;
+  completeDay: string | null | undefined;
+  newest: { patch: string; first_day: string; last_day: string } | undefined;
+  patchFilter: string | null;
+  todayNum: number;
+}): number {
+  if (!o.completeDay || !o.newest) return o.baseOffset;
+  if (o.patchFilter != null && o.patchFilter !== o.newest.patch) return o.baseOffset;
+  const dayNum = (d: string) => Math.floor(Date.parse(d) / DAY_MS);
+  const complete = dayNum(o.completeDay);
+  const first = dayNum(o.newest.first_day);
+  const last = dayNum(o.newest.last_day);
+  if (![complete, first, last].every(Number.isFinite)) return o.baseOffset;
+  if (complete < first || complete >= last) return o.baseOffset;
+  return Math.max(o.baseOffset, o.todayNum - complete);
 }
 
 export function metaPulseVelocityPath(patch: string, bucketLabel: string, w: MetaPulseVelocityWindow): string {

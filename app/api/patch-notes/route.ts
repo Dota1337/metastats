@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cachedJson, SLOW_CACHE_CONTROL } from '../../lib/api-cache';
+import { parsePatchArticles, type PatchArticle } from '../../lib/lol-patch-dates';
 
 interface PatchNote {
   version: string;
@@ -13,19 +14,46 @@ interface PatchNote {
 let cachedPatches: PatchNote[] | null = null;
 let cacheTime = 0;
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour
+// Ohne Riot-Daten frueher neu versuchen, sonst steht eine Stunde lang kein Datum.
+const RETRY_TTL = 10 * 60 * 1000;
+let cacheTtl = CACHE_TTL;
+
+// Echte Daten + Adressen von Riots Patch-Notes-Uebersicht. Die letzte gute
+// Tabelle bleibt im Speicher, falls ein spaeterer Abruf scheitert.
+const RIOT_OVERVIEW = 'https://www.leagueoflegends.com/en-us/news/tags/patch-notes/';
+let lastArticles: Map<string, PatchArticle> | null = null;
+
+async function fetchArticles(): Promise<Map<string, PatchArticle> | null> {
+  try {
+    const res = await fetch(RIOT_OVERVIEW, {
+      signal: AbortSignal.timeout(5000),
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; metastats.gg)' },
+    });
+    if (!res.ok) return null;
+    const map = parsePatchArticles(await res.text());
+    return map.size > 0 ? map : null;
+  } catch {
+    return null;
+  }
+}
 
 export async function GET() {
   const now = Date.now();
-  if (cachedPatches && now - cacheTime < CACHE_TTL) {
+  if (cachedPatches && now - cacheTime < cacheTtl) {
     // Edge-TTL gleich dem Prozess-TTL (1h). Kuerzer waere verschenkt: der Edge
     // wuerde revalidieren und von dieser Zeile denselben alten Wert bekommen.
-    return cachedJson({ patches: cachedPatches }, { cache: SLOW_CACHE_CONTROL });
+    return cachedJson({ patches: cachedPatches }, { cache: SLOW_CACHE_CONTROL, degraded: !lastArticles });
   }
 
   try {
     // Get all versions from DDragon
-    const versionsRes = await fetch('https://ddragon.leagueoflegends.com/api/versions.json');
+    const [versionsRes, fresh] = await Promise.all([
+      fetch('https://ddragon.leagueoflegends.com/api/versions.json'),
+      fetchArticles(),
+    ]);
     const allVersions: string[] = await versionsRes.json();
+    if (fresh) lastArticles = fresh;
+    const articles = lastArticles;
 
     // Filter to major patch versions only (e.g. 16.6.1 → 16.6)
     const seen = new Set<string>();
@@ -51,20 +79,15 @@ export async function GET() {
       // DDragon uses season numbers (e.g. 16), Riot URLs use year (e.g. 26)
       // Season 14 = 2024, Season 15 = 2025, Season 16 = 2026
       const year = season + 10;
-      const url = `https://www.leagueoflegends.com/en-us/news/game-updates/league-of-legends-patch-${year}-${patch}-notes`;
-
-      // Estimate date: patches release every 2 weeks on Wednesday
-      // Latest patch is current, each previous is ~14 days earlier
-      const baseDate = new Date();
-      baseDate.setDate(baseDate.getDate() - i * 14);
-      // Snap to nearest Wednesday
-      const dayOfWeek = baseDate.getDay();
-      const daysToWed = (dayOfWeek >= 3) ? dayOfWeek - 3 : dayOfWeek + 4;
-      baseDate.setDate(baseDate.getDate() - daysToWed);
-
+      const key = `${year}.${parseInt(patch, 10)}`;
+      // Kein Artikel (Notes noch nicht erschienen / Seite nicht lesbar): kein
+      // Datum statt eines geschaetzten, Link auf Riots Uebersicht statt einer
+      // geratenen Adresse (Riot hat mehrere Adress-Formen).
+      const article = articles?.get(key);
+      const url = article?.url ?? RIOT_OVERVIEW;
       return {
         version: `${year}.${patch}`,
-        date: baseDate.toISOString().split('T')[0],
+        date: article?.date ?? '',
         url,
         highlights: [],
         isNew: i === 0,
@@ -86,12 +109,13 @@ export async function GET() {
 
     cachedPatches = patches;
     cacheTime = now;
+    cacheTtl = fresh ? CACHE_TTL : RETRY_TTL;
 
     return cachedJson({
       patches,
       latestVersion: latestVersion,
       lastChecked: new Date().toISOString(),
-    }, { cache: SLOW_CACHE_CONTROL, degraded: patches.length === 0 });
+    }, { cache: SLOW_CACHE_CONTROL, degraded: patches.length === 0 || !articles });
   } catch (error) {
     return NextResponse.json({ error: 'Fehler beim Laden der Patch Notes' }, { status: 500 });
   }

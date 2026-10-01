@@ -50,7 +50,8 @@ export async function GET() {
     // Marktwerte kommen aus dem Tageslauf — 1h frisch, 24h SWR.
     return cachedJson({ top, gainers, losers }, {
       cache: SLOW_CACHE_CONTROL,
-      degraded: top.length === 0,
+      // Ohne Verlauf sind Gewinner/Verlierer leer — nur kurz halten.
+      degraded: top.length === 0 || history === null,
     });
   } catch {
     // Der catch liefert bewusst weiter 200 mit leeren Listen (die Startseite

@@ -1,9 +1,10 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Nav from '../components/Nav';
 import Footer from '../components/Footer';
 import PageHero from '../components/PageHero';
 import MarketInsights from '../components/MarketInsights';
+import ApiUnavailable from '../components/ApiUnavailable';
 import { useI18n } from '../lib/i18n';
 import { usePageTitle } from '../lib/use-page-title';
 import { formatTier } from '../lib/rank-format';
@@ -64,23 +65,36 @@ export default function MarktwertPage() {
   const [region, setRegion] = useState('all');
   const [tier, setTier] = useState('all');
   const [total, setTotal] = useState(0);
+  const [failed, setFailed] = useState(false);
+  // Nur die juengste Anfrage darf schreiben (schneller Filterwechsel).
+  const reqSeq = useRef(0);
 
   useEffect(() => {
     fetchData();
   }, [region, tier]);
 
   const fetchData = async () => {
+    const seq = ++reqSeq.current;
     setLoading(true);
+    setFailed(false);
     try {
       const res = await fetch(`/api/marktwert?region=${region}&tier=${tier}`);
+      if (!res.ok) throw new Error(String(res.status));
       const data = await res.json();
+      if (seq !== reqSeq.current) return;
       setPlayers(data.players || []);
       setGainers(data.gainersPerTier || {});
       setLosers(data.losersPerTier || {});
       setTierStats(data.tierStats || {});
       setTotal(data.total || 0);
     } catch {
+      if (seq !== reqSeq.current) return;
       setPlayers([]);
+      setGainers({});
+      setLosers({});
+      setTierStats({});
+      setTotal(0);
+      setFailed(true);
     }
     setLoading(false);
   };
@@ -160,6 +174,8 @@ export default function MarktwertPage() {
 
         {loading ? (
           <div className="text-center text-fg-secondary py-20">{t('common.loading')}</div>
+        ) : failed ? (
+          <ApiUnavailable badge={false} messageKey="error.temporarilyUnavailable" onRetry={fetchData} />
         ) : players.length === 0 ? (
           <div className="bg-surface-base border border-border-subtle rounded p-8 text-center">
             <div className="text-fg-secondary text-sm mb-2">{t('mv.noData')}</div>

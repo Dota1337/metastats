@@ -133,14 +133,16 @@ export default function ChampionDetailPage() {
     setError('');
     try {
       const ver = await getDdragonVersion();
-      if (!ver) throw new Error(t('champDetail.notFound'));
+      if (!ver) throw new Error(t('champDetail.loadError'));
       setVersion(ver);
 
       const locale = ddLocale[lang] || 'en_US';
       const res = await fetch(
         `https://ddragon.leagueoflegends.com/cdn/${ver}/data/${locale}/champion/${championId}.json`
       );
-      if (!res.ok) throw new Error(t('champDetail.notFound'));
+      // Unbekannte Champions beantwortet Data Dragon mit 403 (gemessen), nicht 404.
+      if (res.status === 403 || res.status === 404) throw new Error(t('champDetail.notFound'));
+      if (!res.ok) throw new Error(t('champDetail.loadError'));
       const data = await res.json();
       const champData = data.data[championId];
       if (!champData) throw new Error(t('champDetail.notFound'));
@@ -163,14 +165,14 @@ export default function ChampionDetailPage() {
 
   const statItems = champion
     ? [
-        { label: 'Leben', value: champion.stats.hp, growth: champion.stats.hpperlevel },
-        { label: 'Mana', value: champion.stats.mp, growth: champion.stats.mpperlevel },
-        { label: 'Angriffsschaden', value: champion.stats.attackdamage, growth: champion.stats.attackdamageperlevel },
-        { label: 'Ruestung', value: champion.stats.armor, growth: champion.stats.armorperlevel },
-        { label: 'Magieresistenz', value: champion.stats.spellblock, growth: champion.stats.spellblockperlevel },
-        { label: 'Angriffsgeschw.', value: champion.stats.attackspeed, growth: champion.stats.attackspeedperlevel, isPercent: true },
-        { label: 'Laufgeschw.', value: champion.stats.movespeed, growth: 0 },
-        { label: 'Reichweite', value: champion.stats.attackrange, growth: 0 },
+        { label: t('champDetail.stat.hp'), value: champion.stats.hp, growth: champion.stats.hpperlevel },
+        { label: t('champDetail.stat.mana'), value: champion.stats.mp, growth: champion.stats.mpperlevel },
+        { label: t('champDetail.stat.ad'), value: champion.stats.attackdamage, growth: champion.stats.attackdamageperlevel },
+        { label: t('champDetail.stat.armor'), value: champion.stats.armor, growth: champion.stats.armorperlevel },
+        { label: t('champDetail.stat.mr'), value: champion.stats.spellblock, growth: champion.stats.spellblockperlevel },
+        { label: t('champDetail.stat.as'), value: champion.stats.attackspeed, growth: champion.stats.attackspeedperlevel, isPercent: true },
+        { label: t('champDetail.stat.ms'), value: champion.stats.movespeed, growth: 0 },
+        { label: t('champDetail.stat.range'), value: champion.stats.attackrange, growth: 0 },
       ]
     : [];
 
@@ -194,7 +196,7 @@ export default function ChampionDetailPage() {
             href="/champions"
             className="inline-block px-6 py-2 bg-surface-overlay text-fg-secondary rounded hover:text-white transition-colors"
           >
-            Zurueck zur Champion-Uebersicht
+            &larr; {t('champDetail.back')}
           </a>
         </div>
       )}

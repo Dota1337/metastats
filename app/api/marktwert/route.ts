@@ -87,12 +87,14 @@ export async function GET(request: NextRequest) {
     const shown = [...players, ...Object.values(gainerRows).flat(), ...Object.values(loserRows).flat()];
     const playerIds = [...new Set(shown.map(p => p.id))];
     const lpMap: Record<string, number> = {};
+    let lpFailed = false;
     if (playerIds.length > 0) {
-      const { data: rankedData } = await supabase
+      const { data: rankedData, error: rankedError } = await supabase
         .from('ranked_stats')
         .select('player_id, league_points')
         .in('player_id', playerIds)
         .eq('queue_type', 'RANKED_SOLO_5x5');
+      lpFailed = !!rankedError;
       for (const r of rankedData || []) lpMap[r.player_id] = r.league_points;
     }
 
@@ -133,7 +135,8 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Marktwerte kommen aus dem Tageslauf — 1h frisch, 24h SWR.
+    // Marktwerte kommen aus dem Tageslauf — 1h frisch, 24h SWR. Fehlt der
+    // Verlauf oder die LP-Abfrage, stehen ueberall 0/leer: dann nur kurz halten.
     return cachedJson({
       players: enrichedPlayers,
       gainersPerTier,
@@ -142,7 +145,7 @@ export async function GET(request: NextRequest) {
       // Alle bewerteten Spieler des Filters, nicht nur die 100 gelisteten.
       total: filtered.length,
       filter: { region, tier },
-    }, { cache: SLOW_CACHE_CONTROL });
+    }, { cache: SLOW_CACHE_CONTROL, degraded: historyData === null || lpFailed });
 
   } catch (error) {
     return NextResponse.json({ error: 'Server Fehler' }, { status: 500 });

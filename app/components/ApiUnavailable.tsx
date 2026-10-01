@@ -8,16 +8,21 @@ interface Props {
   // fehlt sondern nur die Antwort ausgeblieben ist (RPC-Timeout, DB-Stoerung),
   // gibt der Aufrufer 'error.temporarilyUnavailable' mit.
   messageKey?: TranslationKey;
+  // Das „Beta“-Etikett passt nur zu Funktionen im Aufbau, nicht zu einer
+  // ausgefallenen Liste.
+  badge?: boolean;
 }
 
-export default function ApiUnavailable({ onRetry, compact = false, messageKey = 'error.featureUnavailable' }: Props) {
+export default function ApiUnavailable({ onRetry, compact = false, messageKey = 'error.featureUnavailable', badge = true }: Props) {
   const { t } = useI18n();
   return (
     <div className={`glass rounded-xl ${compact ? 'p-4' : 'p-6'} text-center`}>
-      <div className="inline-flex items-center gap-2 text-accent text-xs uppercase tracking-widest mb-2">
-        <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" aria-hidden="true" />
-        Beta
-      </div>
+      {badge && (
+        <div className="inline-flex items-center gap-2 text-accent text-xs uppercase tracking-widest mb-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" aria-hidden="true" />
+          Beta
+        </div>
+      )}
       <p className="text-fg-secondary text-sm leading-relaxed max-w-md mx-auto">
         {t(messageKey)}
       </p>

@@ -170,22 +170,22 @@ export default function TeamDetailPage() {
           {/* Trophies */}
           {team.trophies && team.trophies.length > 0 && (
             <div className="flex gap-2 mt-4 flex-wrap">
-              {team.trophies.map((t: any, i: number) => (
+              {team.trophies.map((tr: any, i: number) => (
                 <div key={i} className="relative group">
                   <div
                     className="w-8 h-8 rounded-full flex items-center justify-center text-sm cursor-default"
                     style={{
-                      backgroundColor: `${withAlpha(TROPHY_COLORS[t.trophy], 0x20)}`,
-                      color: TROPHY_COLORS[t.trophy],
-                      border: `1px solid ${withAlpha(TROPHY_COLORS[t.trophy], 0x40)}`,
+                      backgroundColor: `${withAlpha(TROPHY_COLORS[tr.trophy], 0x20)}`,
+                      color: TROPHY_COLORS[tr.trophy],
+                      border: `1px solid ${withAlpha(TROPHY_COLORS[tr.trophy], 0x40)}`,
                     }}
                   >
-                    {t.trophy === 'gold' ? '\u2605' : t.trophy === 'silver' ? '\u2606' : '\u25CF'}
+                    {tr.trophy === 'gold' ? '\u2605' : tr.trophy === 'silver' ? '\u2606' : '\u25CF'}
                   </div>
                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-surface-sunken border border-border-subtle rounded text-xs text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-lg">
-                    <div className="font-medium">{t.event}</div>
-                    <div className="text-accent">{t.place}. Platz</div>
-                    {t.date && <div className="text-fg-muted">{t.date}</div>}
+                    <div className="font-medium">{tr.event}</div>
+                    <div className="text-accent">{t('team.placeN').replace('{n}', String(tr.place))}</div>
+                    {tr.date && <div className="text-fg-muted">{tr.date}</div>}
                   </div>
                 </div>
               ))}
@@ -244,7 +244,7 @@ export default function TeamDetailPage() {
                     </div>
                     <div>
                       <div className="text-white text-sm font-medium">{m.name}</div>
-                      <div className="text-fg-secondary text-xs">{m.role} · Ersatz</div>
+                      <div className="text-fg-secondary text-xs">{m.role} · {t('team.sub')}</div>
                       {m.country && <div className="text-fg-muted text-xs">{m.country}</div>}
                     </div>
                   </Card>

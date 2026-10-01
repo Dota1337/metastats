@@ -874,6 +874,14 @@ const translations = {
 
   // Champion Detail
   'champDetail.back': t6('Alle Champions', 'All Champions', '\uBAA8\uB4E0 \uCC54\uD53C\uC5B8', '\u6240\u6709\u82F1\u96C4', 'Todos los campeones', 'Tous les champions'),
+  'champDetail.stat.hp': t6('Leben', 'Health', '\uCCB4\uB825', '\u751F\u547D\u503C', 'Vida', 'PV'),
+  'champDetail.stat.mana': t6('Mana', 'Mana', '\uB9C8\uB098', '\u6CD5\u529B\u503C', 'Man\u00E1', 'Mana'),
+  'champDetail.stat.ad': t6('Angriffsschaden', 'Attack Damage', '\uACF5\uACA9\uB825', '\u653B\u51FB\u529B', 'Da\u00F1o de ataque', 'D\u00E9g\u00E2ts d\'attaque'),
+  'champDetail.stat.armor': t6('R\u00FCstung', 'Armor', '\uBC29\uC5B4\uB825', '\u62A4\u7532', 'Armadura', 'Armure'),
+  'champDetail.stat.mr': t6('Magieresistenz', 'Magic Resist', '\uB9C8\uBC95 \uC800\uD56D\uB825', '\u9B54\u6CD5\u6297\u6027', 'Resistencia m\u00E1gica', 'R\u00E9sistance magique'),
+  'champDetail.stat.as': t6('Angriffsgeschw.', 'Attack Speed', '\uACF5\uACA9 \uC18D\uB3C4', '\u653B\u51FB\u901F\u5EA6', 'Velocidad de ataque', 'Vitesse d\'attaque'),
+  'champDetail.stat.ms': t6('Laufgeschw.', 'Move Speed', '\uC774\uB3D9 \uC18D\uB3C4', '\u79FB\u52A8\u901F\u5EA6', 'Velocidad de movimiento', 'Vitesse de d\u00E9placement'),
+  'champDetail.stat.range': t6('Reichweite', 'Range', '\uC0AC\uAC70\uB9AC', '\u653B\u51FB\u8DDD\u79BB', 'Alcance', 'Port\u00E9e'),
   'champDetail.baseStats': t6('Grundwerte', 'Base Stats', '\uAE30\uBCF8 \uC2A4\uD0EF', '\u57FA\u7840\u5C5E\u6027', 'Atributos base', 'Stats de base'),
   'champDetail.perLevel': t6('pro Level', 'per level', '\uB808\uBCA8\uB2F9', '\u6BCF\u7EA7', 'por nivel', 'par niveau'),
   'champDetail.abilities': t6('F\u00E4higkeiten', 'Abilities', '\uC2A4\uD0AC', '\u6280\u80FD', 'Habilidades', 'Comp\u00E9tences'),
@@ -1034,6 +1042,8 @@ const translations = {
   'team.history': t6('Turnierhistorie', 'Tournament History', '\uB300\uD68C \uAE30\uB85D', '\u8D5B\u4E8B\u5386\u53F2', 'Historial de Torneos', 'Historique des Tournois'),
   'team.tournament': t6('Turnier', 'Tournament', '\uB300\uD68C', '\u8D5B\u4E8B', 'Torneo', 'Tournoi'),
   'team.place': t6('Platz', 'Place', '\uC21C\uC704', '\u540D\u6B21', 'Puesto', 'Place'),
+  'team.placeN': t6('{n}. Platz', 'Place {n}', '{n}\uC704', '\u7B2C{n}\u540D', 'Puesto {n}', 'Place {n}'),
+  'team.sub': t6('Ersatz', 'Sub', '\uD6C4\uBCF4', '\u66FF\u8865', 'Suplente', 'Rempla\u00E7ant'),
   'team.date': t6('Datum', 'Date', '\uB0A0\uC9DC', '\u65E5\u671F', 'Fecha', 'Date'),
   'team.tournaments': t6('Turniere', 'Tournaments', '\uB300\uD68C', '\u8D5B\u4E8B', 'Torneos', 'Tournois'),
   'team.firstPlace': t6('Platz 1', '1st Place', '1\uC704', '\u7B2C1\u540D', '1\u00BA Puesto', '1\u00E8re Place'),

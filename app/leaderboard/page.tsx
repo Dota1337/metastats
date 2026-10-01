@@ -1,9 +1,10 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { withAlpha } from '../lib/color';
 import Nav from '../components/Nav';
 import DdragonImg from '../components/DdragonImg';
 import Footer from '../components/Footer';
+import ApiUnavailable from '../components/ApiUnavailable';
 import PageHero from '../components/PageHero';
 import { useI18n, LOCALE_MAP } from '../lib/i18n';
 import { usePageTitle } from '../lib/use-page-title';
@@ -64,6 +65,9 @@ export default function Leaderboard() {
   const [search, setSearch] = useState('');
   const [searchTimeout, setSearchTimeout] = useState<any>(null);
   const [source, setSource] = useState('');
+  const [failed, setFailed] = useState(false);
+  // Rangliste und Suche laufen ueber dieselbe Liste: nur die juengste Anfrage schreibt.
+  const reqSeq = useRef(0);
   const [message, setMessage] = useState('');
   const [proLookup, setProLookup] = useState<Map<string, ProPlayer>>(new Map());
   const [tierDist, setTierDist] = useState<{ month: string; tiers: { key: string; label: string; pct: number; color: string }[] } | null>(null);
@@ -100,32 +104,44 @@ export default function Leaderboard() {
   }, [search]);
 
   const fetchLeaderboard = async () => {
+    const seq = ++reqSeq.current;
     setLoading(true);
     setMessage('');
+    setFailed(false);
     try {
       const divParam = !APEX_TIERS.includes(tier) ? `&division=${division}` : '';
       const res = await fetch(`/api/leaderboard?tier=${tier}&region=${region}${divParam}&page=${page}`);
+      if (!res.ok) throw new Error(String(res.status));
       const data = await res.json();
+      if (seq !== reqSeq.current) return;
       setEntries(data.entries || []);
       setSource(data.source || '');
       setMessage(data.message || '');
       setHasNextPage(data.hasNextPage || false);
       setTotalPlayers(data.totalPlayers || null);
     } catch {
+      if (seq !== reqSeq.current) return;
       setEntries([]);
+      setFailed(true);
     }
     setLoading(false);
   };
 
   const fetchSearch = async (q: string) => {
+    const seq = ++reqSeq.current;
     setLoading(true);
+    setFailed(false);
     try {
       const res = await fetch(`/api/leaderboard?search=${encodeURIComponent(q)}&region=${region}`);
+      if (!res.ok) throw new Error(String(res.status));
       const data = await res.json();
+      if (seq !== reqSeq.current) return;
       setEntries(data.entries || []);
       setSource('search');
     } catch {
+      if (seq !== reqSeq.current) return;
       setEntries([]);
+      setFailed(true);
     }
     setLoading(false);
   };
@@ -397,6 +413,9 @@ export default function Leaderboard() {
         {/* Content */}
         {loading ? (
           <div className="text-center text-fg-secondary py-20">{t('lb.loading')}</div>
+        ) : failed ? (
+          <ApiUnavailable badge={false} messageKey="error.temporarilyUnavailable"
+            onRetry={() => (search.trim() ? fetchSearch(search) : fetchLeaderboard())} />
         ) : message && entries.length === 0 ? (
           <div className="bg-surface-base border border-border-subtle rounded p-8 text-center">
             <div className="text-fg-secondary text-sm mb-2">{message}</div>

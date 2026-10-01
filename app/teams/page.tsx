@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import Nav from '../components/Nav';
 import Footer from '../components/Footer';
+import ApiUnavailable from '../components/ApiUnavailable';
 import PageHero from '../components/PageHero';
 import { useI18n } from '../lib/i18n';
 import { usePageTitle } from '../lib/use-page-title';
@@ -109,6 +110,7 @@ export default function TeamsPage() {
   const [teams, setTeams] = useState<TeamSummary[]>([]);
   const [seasons, setSeasons] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
   const [regionFilter, setRegionFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('prize');
@@ -131,7 +133,7 @@ export default function TeamsPage() {
         return projectFromSot(((await sot.json()).teams || []) as SotTeam[]);
       })
       .then(({ teams: list, seasons: years }) => { setTeams(list); setSeasons(years); setLoading(false); })
-      .catch(() => setLoading(false));
+      .catch(() => { setFailed(true); setLoading(false); });
   }, []);
 
   const seasonYears = useMemo(() => ['all', ...seasons], [seasons]);
@@ -291,6 +293,8 @@ export default function TeamsPage() {
         {/* Teams List */}
         {loading ? (
           <div className="text-center text-fg-secondary py-20">{t('teams.loading')}</div>
+        ) : failed ? (
+          <ApiUnavailable badge={false} messageKey="error.temporarilyUnavailable" onRetry={() => window.location.reload()} />
         ) : filtered.length === 0 ? (
           <div className="text-center text-fg-muted py-20">{t('teams.noTeams')}</div>
         ) : (

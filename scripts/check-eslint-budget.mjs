@@ -42,7 +42,7 @@ const BUDGET = {
   '@next/next/no-html-link-for-pages': 28,
   'react-hooks/set-state-in-effect': 29,
   'prefer-const': 5,
-  'react-hooks/immutability': 7,
+  'react-hooks/immutability': 4,
   'react-hooks/static-components': 5,
   'react/no-unescaped-entities': 4,
   '@typescript-eslint/no-require-imports': 2,

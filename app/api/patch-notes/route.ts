@@ -92,19 +92,6 @@ export async function GET() {
       };
     });
 
-    // Try to fetch highlights for the latest patch from Riot's data
-    try {
-      const patchDataRes = await fetch(
-        `https://ddragon.leagueoflegends.com/cdn/${latestVersion}/data/en_US/champion.json`
-      );
-      if (patchDataRes.ok) {
-        patches[0].highlights = [
-          `Patch ${patches[0].version} ist live`,
-          `${Object.keys((await patchDataRes.json()).data).length} Champions verfügbar`,
-        ];
-      }
-    } catch {}
-
     cachedPatches = patches;
     cacheTime = now;
     cacheTtl = fresh ? CACHE_TTL : RETRY_TTL;

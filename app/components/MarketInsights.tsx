@@ -1,12 +1,13 @@
 'use client';
-import { useState, useEffect } from 'react';
-import { useI18n, LOCALE_MAP } from '../lib/i18n';
+import { useState, useEffect, useCallback } from 'react';
+import { useI18n, LOCALE_MAP, type TranslationKey } from '../lib/i18n';
+import { regionLabel } from '../lib/regions';
+import ApiUnavailable from './ApiUnavailable';
 
 interface Anomaly {
   type: string;
   severity: string;
-  title: string;
-  description: string;
+  vals: Record<string, string | number>;
   playerName: string;
   playerId: number;
   detectedAt: string;
@@ -24,7 +25,7 @@ interface TransferPrediction {
   currentTeam: string;
   role: string;
   probability: number;
-  reasons: string[];
+  reasons: { code: string; vals?: Record<string, string | number> }[];
   predictedDirection: string;
   marketValue: number | null;
   marketTrend: string;
@@ -33,12 +34,16 @@ interface TransferPrediction {
   winrate: number | null;
   region: string;
   teamRegion: string;
-  gamesPlayed: number | null;
   teamAvgPlace: number | null;
   contractEnd: string | null;
 }
 
 type Tab = 'anomalies' | 'transfers';
+// Je Reiter eigener Zustand: ein Ausfall zeigt einen Fehler mit
+// "Erneut versuchen" statt "keine Daten".
+type Load = 'idle' | 'loading' | 'ready' | 'error';
+
+const money = (n: number) => `$${Math.round(n).toLocaleString('de-DE')}`;
 
 const SEVERITY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   significant: { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/20' },
@@ -68,32 +73,38 @@ export default function MarketInsights() {
   const [tab, setTab] = useState<Tab>('transfers');
   const [anomalies, setAnomalies] = useState<Anomaly[]>([]);
   const [transfers, setTransfers] = useState<TransferPrediction[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<Record<Tab, Load>>({ anomalies: 'idle', transfers: 'idle' });
   const [expanded, setExpanded] = useState(false);
 
+  const load = useCallback(async (which: Tab) => {
+    setStatus(s => ({ ...s, [which]: 'loading' }));
+    try {
+      const res = await fetch(which === 'anomalies' ? '/api/anomalies' : '/api/transfer-predictions');
+      if (!res.ok) throw new Error(String(res.status));
+      const data = await res.json();
+      if (which === 'anomalies') setAnomalies(Array.isArray(data.anomalies) ? data.anomalies : []);
+      else setTransfers(Array.isArray(data.predictions) ? data.predictions : []);
+      setStatus(s => ({ ...s, [which]: 'ready' }));
+    } catch {
+      setStatus(s => ({ ...s, [which]: 'error' }));
+    }
+  }, []);
+
   useEffect(() => {
-    if (!expanded) return;
-    if (tab === 'anomalies' && anomalies.length === 0) fetchAnomalies();
-    if (tab === 'transfers' && transfers.length === 0) fetchTransfers();
-  }, [expanded, tab]);
+    if (expanded && status[tab] === 'idle') load(tab);
+  }, [expanded, tab, status, load]);
 
-  const fetchAnomalies = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/anomalies');
-      const data = await res.json();
-      if (data.anomalies) setAnomalies(data.anomalies);
-    } catch {} finally { setLoading(false); }
-  };
-
-  const fetchTransfers = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/transfer-predictions');
-      const data = await res.json();
-      if (data.predictions) setTransfers(data.predictions);
-    } catch {} finally { setLoading(false); }
-  };
+  // Platzhalter {x} fuellen; Datum, Geld, Prozent und Platz je Sprache formatiert.
+  const fill = (key: string, vals: Record<string, string | number> = {}) =>
+    Object.entries(vals).reduce((txt, [k, v]) => {
+      let s = String(v);
+      if (k === 'date') s = new Date(String(v)).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' });
+      else if (k === 'from' || k === 'to') s = money(Number(v));
+      else if (k === 'pct') s = `${Number(v) > 0 ? '+' : ''}${v}`;
+      else if (k === 'place') s = Number(v).toFixed(1);
+      return txt.split(`{${k}}`).join(s);
+    }, t(key as TranslationKey));
+  const loading = status[tab] === 'loading' || status[tab] === 'idle';
 
   return (
     <div className="bg-surface-base border border-border-subtle rounded-lg overflow-hidden mb-4">
@@ -138,7 +149,9 @@ export default function MarketInsights() {
             </button>
           </div>
 
-          {loading ? (
+          {status[tab] === 'error' ? (
+            <ApiUnavailable compact badge={false} messageKey="error.temporarilyUnavailable" onRetry={() => load(tab)} />
+          ) : loading ? (
             <div className="flex items-center justify-center py-8">
               <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
             </div>
@@ -148,7 +161,9 @@ export default function MarketInsights() {
                 <div className="text-fg-muted text-xs text-center py-6">{t('mi.noTransfers')}</div>
               ) : (
                 transfers.slice(0, 15).map((tp, i) => {
-                  const playerLink = tp.riotId ? `/player/${encodeURIComponent(tp.riotId.split('#')[0])}--${encodeURIComponent(tp.riotId.split('#')[1] || 'KR1')}?region=kr` : null;
+                  // Server aus der API; ohne Server springt die Spielerseite selbst.
+                  const [rn, rt] = (tp.riotId || '').split('#');
+                  const playerLink = rn && rt ? `/player/${encodeURIComponent(rn)}--${encodeURIComponent(rt)}${tp.region ? `?region=${encodeURIComponent(tp.region)}` : ''}` : null;
                   const Wrapper = playerLink ? 'a' : 'div';
                   const directionLabel = tp.predictedDirection === 'upgrade' ? t('mi.upgrade') : tp.predictedDirection === 'lateral' ? t('mi.lateral') : tp.predictedDirection === 'downgrade' ? t('mi.downgrade') : null;
                   const directionColor = tp.predictedDirection === 'upgrade' ? 'text-green-400' : tp.predictedDirection === 'downgrade' ? 'text-red-400' : 'text-fg-secondary';
@@ -189,7 +204,7 @@ export default function MarketInsights() {
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
-                          {tp.winrate && (
+                          {tp.winrate != null && (
                             <div className="text-center">
                               <div className={`text-xs font-medium ${tp.winrate >= 55 ? 'text-green-400' : tp.winrate < 45 ? 'text-red-400' : 'text-white'}`}>
                                 {tp.winrate}%
@@ -206,7 +221,7 @@ export default function MarketInsights() {
                           {tp.marketValue && (
                             <div className="text-center">
                               <div className="text-xs font-medium text-accent flex items-center gap-1">
-                                ${tp.marketValue.toLocaleString('de-DE')}
+                                {money(tp.marketValue)}
                                 <span className={TREND_ICONS[tp.marketTrend]?.color || ''}>
                                   {TREND_ICONS[tp.marketTrend]?.icon || ''}
                                 </span>
@@ -214,7 +229,7 @@ export default function MarketInsights() {
                               <div className="text-fg-muted text-[10px]">{t('mv.marketValue')}</div>
                             </div>
                           )}
-                          {tp.teamAvgPlace && (
+                          {tp.teamAvgPlace != null && (
                             <div className="text-center">
                               <div className={`text-xs font-medium ${tp.teamAvgPlace <= 3 ? 'text-green-400' : tp.teamAvgPlace > 6 ? 'text-red-400' : 'text-white'}`}>
                                 Ø {tp.teamAvgPlace.toFixed(1)}
@@ -252,7 +267,7 @@ export default function MarketInsights() {
                         <div className="space-y-0.5 flex-1">
                           {tp.reasons.map((r, j) => (
                             <div key={j} className="text-fg-secondary text-xs flex items-start gap-1.5">
-                              <span className="text-accent mt-0.5">·</span>{r}
+                              <span className="text-accent mt-0.5">·</span>{fill(`mi.r.${r.code}`, r.vals)}
                             </div>
                           ))}
                         </div>
@@ -275,7 +290,7 @@ export default function MarketInsights() {
                 anomalies.slice(0, 15).map((a, i) => {
                   const colors = SEVERITY_COLORS[a.severity] || SEVERITY_COLORS.info;
                   const playerLink = a.playerName && a.playerName.includes('#')
-                    ? `/player/${encodeURIComponent(a.playerName.split('#')[0])}--${encodeURIComponent(a.playerName.split('#')[1])}?region=${a.region || 'euw1'}`
+                    ? `/player/${encodeURIComponent(a.playerName.split('#')[0])}--${encodeURIComponent(a.playerName.split('#')[1])}${a.region ? `?region=${encodeURIComponent(a.region)}` : ''}`
                     : null;
                   const Wrapper = playerLink ? 'a' : 'div';
 
@@ -303,7 +318,7 @@ export default function MarketInsights() {
                                 </svg>
                               )}
                             </div>
-                            <span className={`${colors.text} text-xs font-medium`}>{a.title}</span>
+                            <span className={`${colors.text} text-xs font-medium`}>{t(`mi.a.${a.type}` as TranslationKey)}</span>
                           </div>
                         </div>
                         {a.severity === 'significant' && (
@@ -312,7 +327,7 @@ export default function MarketInsights() {
                       </div>
 
                       {/* Description */}
-                      <div className="text-fg-secondary text-xs mb-2">{a.description}</div>
+                      <div className="text-fg-secondary text-xs mb-2">{fill(a.type === 'market_surge' || a.type === 'market_crash' ? 'mi.d.market' : `mi.d.${a.type}`, a.vals)}</div>
 
                       {/* Player stats row */}
                       <div className="flex items-center gap-4 flex-wrap">
@@ -334,13 +349,13 @@ export default function MarketInsights() {
                         )}
                         {a.marketValue != null && a.marketValue > 0 && (
                           <div className="text-center">
-                            <div className="text-xs font-medium text-accent">${a.marketValue.toLocaleString('de-DE')}</div>
+                            <div className="text-xs font-medium text-accent">{money(a.marketValue)}</div>
                             <div className="text-fg-muted text-[10px]">{t('mv.marketValue')}</div>
                           </div>
                         )}
                         {a.region && (
                           <div className="text-center">
-                            <div className="text-xs font-medium text-white">{a.region.toUpperCase()}</div>
+                            <div className="text-xs font-medium text-white">{regionLabel(a.region)}</div>
                             <div className="text-fg-muted text-[10px]">{t('lb.region')}</div>
                           </div>
                         )}

@@ -25,9 +25,9 @@ function groupKey(r: MvHistoryRow): string {
  * Je Spieler die Zeilen aus derselben Gruppe wie seine neueste Zeile,
  * neueste zuerst. Die Reihenfolge der Eingabe ist egal.
  */
-export function latestSplitRowsByPlayer(rows: MvHistoryRow[]): Map<string, MvHistoryRow[]> {
+export function latestSplitRowsByPlayer<T extends MvHistoryRow>(rows: T[]): Map<string, T[]> {
   const sorted = [...rows].sort((a, b) => Date.parse(b.recorded_at) - Date.parse(a.recorded_at));
-  const out = new Map<string, MvHistoryRow[]>();
+  const out = new Map<string, T[]>();
   const keyOf = new Map<string, string>();
   for (const r of sorted) {
     if (!r.player_id) continue;

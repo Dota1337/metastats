@@ -3,13 +3,16 @@ import {
   resolveFilters,
   callRpc,
   getAvailablePatches,
+  getCrawlMetaDays,
 } from '../../../lib/tft-supabase-reader';
 import { cachedJson, maybeRedirectByPatchAlias } from '../../../lib/api-cache';
 import { CURRENT_SET } from '../../../lib/current-set';
 import { loadMetaPulseDiff, loadMetaPulseVelocity } from '../../../lib/meta-pulse-diff-snapshot';
 import {
+  META_PULSE_COMPLETE_LOOKBACK_DAYS,
   META_PULSE_DIFF_MIN_GAMES,
   META_PULSE_VELOCITY_DEFAULT_SHIFT,
+  metaPulseCompleteDay,
   META_PULSE_VELOCITY_MIN_GAMES,
   META_PULSE_VELOCITY_SHIFTS,
   metaPulseVelocityWindow,
@@ -72,7 +75,14 @@ export async function GET(request: NextRequest) {
   const velocityShift = VELOCITY_SHIFTS.has(velocityRaw) ? velocityRaw : DEFAULT_VELOCITY_SHIFT;
 
   try {
-    const patches = await getAvailablePatches();
+    // Tages-Eingang je Region parallel zur Patch-Liste (nur fuer den neuesten
+    // Patch gebraucht). Fehler → null → Fenster wie bisher, Antwort degraded.
+    const crawlMetaFrom = new Date(Date.now() - (META_PULSE_COMPLETE_LOOKBACK_DAYS + 2) * 86_400_000)
+      .toISOString().slice(0, 10);
+    const [patches, crawlMeta] = await Promise.all([
+      getAvailablePatches(),
+      getCrawlMetaDays(filters.regions, crawlMetaFrom).catch(() => null),
+    ]);
     // Plan E: redirect ?patch=current|previous auf konkreten Patch.
     // Bei meta-pulse ignoriert der Backend-Code den patch-Param eh (rendert
     // immer latestPatch), aber HTTP-Cache-Key wird patch-spezifisch — bei
@@ -99,7 +109,11 @@ export async function GET(request: NextRequest) {
     const DAY_MS = 86_400_000;
     const dayNum = (d?: string | null) => (d ? Math.floor(Date.parse(d) / DAY_MS) : NaN);
     const todayNum = Math.floor(Date.now() / DAY_MS);
+    const completeDay = selIdx === 0 && crawlMeta
+      ? metaPulseCompleteDay(crawlMeta.filter(r => Number(r.set_number) === Number(setNumber)), filters.regions, Date.now())
+      : null;
     const win = metaPulseVelocityWindow({
+      completeDay,
       sel,
       cmpLastDay: cmp?.last_day,
       previousPatch,
@@ -121,7 +135,7 @@ export async function GET(request: NextRequest) {
     // Patch-Vergleich: vorgerechnet von der Box (nur region=all), sonst live.
     // Ein fehlgeschlagener Aufruf setzt `degraded` — die leere Liste darf dann
     // nicht eine Stunde in der Edge stehen bleiben.
-    let degraded = false;
+    let degraded = selIdx === 0 && !crawlMeta;
     let snapshotHits = 0;
     let velocityHit = false;
     const diffRows = async (p: typeof sel | undefined, days: number): Promise<CompStatsRow[]> => {

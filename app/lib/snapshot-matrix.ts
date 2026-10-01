@@ -488,14 +488,24 @@ export function metaPulseVelocityWindow(o: {
   velocityShift: number;
   latestOffsetDays: number;
   todayNum: number;
+  /** Letzter Tag, fuer den alle Regionen da sind (metaPulseCompleteDay). */
+  completeDay?: string | null;
 }): MetaPulseVelocityWindow {
   const dayNum = (d?: string | null) => (d ? Math.floor(Date.parse(d) / DAY_MS) : NaN);
   const curFirst = dayNum(o.sel?.first_day);
-  const curLast = dayNum(o.sel?.last_day);
+  let curLast = dayNum(o.sel?.last_day);
   const prevLast = dayNum(o.cmpLastDay);
-  const anchorOffsetDays = o.selIdx === 0 || !Number.isFinite(curLast)
+  let anchorOffsetDays = o.selIdx === 0 || !Number.isFinite(curLast)
     ? o.latestOffsetDays
     : Math.max(0, o.todayNum - curLast);
+  // Neuester Tag erst teilweise da (Regionen treffen ueber den Tag verteilt
+  // ein): Fenster am letzten vollstaendigen Tag enden lassen. Liegt der vor
+  // dem Patch-Start, bleibt es beim neuesten Tag.
+  const complete = dayNum(o.completeDay);
+  if (o.selIdx === 0 && Number.isFinite(complete) && complete >= curFirst && complete < curLast) {
+    curLast = complete;
+    anchorOffsetDays = Math.max(0, o.todayNum - complete);
+  }
   const patchDays = Number.isFinite(curFirst) && Number.isFinite(curLast) ? curLast - curFirst + 1 : 0;
   let mode: 'patch' | 'crossPatch' = 'patch';
   let effShift = o.velocityShift;
@@ -513,6 +523,46 @@ export function metaPulseVelocityWindow(o: {
   }
   const anchorDay = isoDay(new Date((o.todayNum - anchorOffsetDays) * DAY_MS));
   return { mode, effShift, effDays, velocityPatch, anchorOffsetDays, anchorDay };
+}
+
+// Letzter Tag, fuer den alle Regionen ihre Tageszahlen haben. Quelle:
+// tft_daily_crawl_meta (region, day, finished_at) der letzten Tage, nur das
+// gewaehlte Set, alle Buckets (die Bucket-Zahl je Region schwankt 8-10).
+// Eine Zeile zaehlt erst nach META_PULSE_COMPLETE_SETTLE_MS — die Meta-Zeile
+// wird vor den Comp-Zahlen geschrieben. Regionen, deren neuester Tag mehr als
+// einen Tag hinter dem Gesamtstand liegt, gelten als ausgefallen und halten
+// den Anker nicht fest. null = keine Aussage moeglich → bisheriges Verhalten.
+export const META_PULSE_COMPLETE_SETTLE_MS = 10 * 60 * 1000;
+/** Zeilen ab neuester Tag − 2 reichen (ausgefallen = neuester Tag < Gesamtstand − 1). */
+export const META_PULSE_COMPLETE_LOOKBACK_DAYS = 2;
+
+export interface CrawlMetaDayRow {
+  region: string;
+  day: string;
+  finished_at: string | null;
+}
+
+export function metaPulseCompleteDay(
+  rows: ReadonlyArray<CrawlMetaDayRow>,
+  regions: ReadonlyArray<string>,
+  nowMs: number,
+): string | null {
+  const wanted = new Set(regions);
+  const latest = new Map<string, string>();
+  for (const r of rows) {
+    if (!wanted.has(r.region) || !r.finished_at) continue;
+    const fin = Date.parse(r.finished_at);
+    if (!Number.isFinite(fin) || nowMs - fin < META_PULSE_COMPLETE_SETTLE_MS) continue;
+    const day = String(r.day).slice(0, 10);
+    const prev = latest.get(r.region);
+    if (!prev || day > prev) latest.set(r.region, day);
+  }
+  if (latest.size === 0) return null;
+  const toNum = (d: string) => Math.floor(Date.parse(d) / DAY_MS);
+  const days = [...latest.values()];
+  const newest = Math.max(...days.map(toNum));
+  const alive = days.map(toNum).filter(n => n >= newest - 1);
+  return isoDay(new Date(Math.min(...alive) * DAY_MS));
 }
 
 export function metaPulseVelocityPath(patch: string, bucketLabel: string, w: MetaPulseVelocityWindow): string {

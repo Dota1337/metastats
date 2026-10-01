@@ -8,7 +8,7 @@
 import { ACTIVE_REGIONS, ACTIVE_REGIONS_WEST, ACTIVE_REGIONS_ASIA } from './active-regions';
 import { CURRENT_SET } from './current-set';
 import { TFT_RANK_GROUPS, tftStatsBucket } from './rank-groups';
-import { PATCH_MIN_GAMES, establishedPatches, listWindowDays } from './snapshot-matrix';
+import { PATCH_MIN_GAMES, establishedPatches, listWindowDays, type CrawlMetaDayRow } from './snapshot-matrix';
 
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -361,6 +361,30 @@ export async function callRpc<T = any>(
   } finally {
     clearTimeout(timer);
   }
+}
+
+// Tages-Eingang je Region (fuer metaPulseCompleteDay). Kurzes Zeitlimit:
+// ein Fehler heisst nur „bisheriges Verhalten", nie ein Seitenfehler.
+// Ohne Set-Filter: das Set steht erst nach der Patch-Liste fest, die
+// parallel laedt — der Aufrufer filtert nach set_number.
+export async function getCrawlMetaDays(
+  regions: ReadonlyArray<string>,
+  fromDay: string,
+  timeoutMs = 2000,
+): Promise<Array<CrawlMetaDayRow & { set_number: number }>> {
+  if (!SUPA_URL || !SUPA_KEY) throw new Error('Supabase env vars missing');
+  const qs = new URLSearchParams({
+    select: 'region,day,finished_at,set_number',
+    day: `gte.${fromDay}`,
+    region: `in.(${regions.join(',')})`,
+  });
+  const res = await fetch(`${SUPA_URL}/rest/v1/tft_daily_crawl_meta?${qs}`, {
+    headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` },
+    signal: AbortSignal.timeout(timeoutMs),
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error(`crawl_meta HTTP ${res.status}`);
+  return (await res.json()) as Array<CrawlMetaDayRow & { set_number: number }>;
 }
 
 // Merge a list of jsonb dicts (key -> int) by summing values per key.

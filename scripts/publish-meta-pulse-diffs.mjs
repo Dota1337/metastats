@@ -34,6 +34,8 @@ import {
   META_PULSE_DIFF_MIN_GAMES,
   META_PULSE_VELOCITY_MIN_GAMES,
   META_PULSE_VELOCITY_SHIFTS,
+  META_PULSE_COMPLETE_LOOKBACK_DAYS,
+  metaPulseCompleteDay,
 } from '../app/lib/snapshot-matrix.generated.mjs';
 
 if (existsSync('.env.local')) {
@@ -222,13 +224,30 @@ async function main() {
     const rawCmp = allPatches[selIdx + 1];
     const sel = { patch: raw.patch, first_day: isoDay(raw.first_day), last_day: isoDay(raw.last_day) };
     const setNumber = Number(raw.set_number);
+    // Letzter vollstaendiger Tag, dieselbe Regel wie die Route. Kleine Abfrage
+    // ausserhalb der Notbremse: ein Fehler heisst nur Fenster wie bisher.
+    let completeDay = null;
+    try {
+      const { rows: metaRows } = await pool.query(
+        `select region, day::text as day, finished_at from tft_daily_crawl_meta
+          where set_number = $1 and region = any($2::text[]) and day >= $3::date - $4::int`,
+        [setNumber, regions, sel.last_day, META_PULSE_COMPLETE_LOOKBACK_DAYS],
+      );
+      completeDay = metaPulseCompleteDay(
+        metaRows.map(r => ({ region: r.region, day: r.day, finished_at: r.finished_at ? new Date(r.finished_at).toISOString() : null })),
+        regions, Date.now(),
+      );
+      log(`vollstaendig bis ${completeDay ?? '–'} (neuester Tag ${sel.last_day})`);
+    } catch (e) {
+      log(`Tages-Eingang nicht lesbar, Fenster wie bisher: ${e.message}`);
+    }
     const previousPatch = rawCmp && Number(rawCmp.set_number) === setNumber ? rawCmp.patch : null;
     const windows = new Map();
     for (let requestedDays = 1; requestedDays <= 7; requestedDays++) {
       for (const velocityShift of META_PULSE_VELOCITY_SHIFTS) {
         const w = metaPulseVelocityWindow({
           sel, cmpLastDay: rawCmp ? isoDay(rawCmp.last_day) : null, previousPatch,
-          selIdx, requestedDays, velocityShift, latestOffsetDays, todayNum,
+          selIdx, requestedDays, velocityShift, latestOffsetDays, todayNum, completeDay,
         });
         windows.set(`${w.mode}|${w.anchorDay}|${w.effDays}|${w.effShift}`, w);
       }

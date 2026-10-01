@@ -30,6 +30,7 @@ import {
   isValidMetaPulseVelocity,
   META_PULSE_VELOCITY_SHIFTS,
   META_PULSE_VELOCITY_MAX_AGE_MS,
+  metaPulseCompleteDay,
 } from './snapshot-matrix.ts';
 
 const TODAY = new Date('2026-09-13T08:30:00Z');
@@ -231,6 +232,61 @@ test('Velocity-Fenster: Tage 1-7 x Abstand fallen beim 6-Tage-Patch auf 7 Fenste
   }
   assert.equal(keys.size, 7);
   assert.ok(keys.has('tft/meta-pulse/velocity/18.3/all__master_plus__patch_a2026-09-30_d3_s3.json'));
+});
+
+// Vollstaendiger Tag: echte Eingangszeiten vom 01.10. (Tag 30.09.: euw1 10:10,
+// kr 14:20, vn2 21:34 UTC) und die euw1-Luecke vom 22.09.
+const REG3 = ['euw1', 'kr', 'vn2'];
+const metaRow = (region, day, finished_at) => ({ region, day, finished_at });
+const FULL_29 = REG3.map(r => metaRow(r, '2026-09-29', '2026-09-30T22:00:00Z'));
+const at = (iso) => Date.parse(iso);
+
+test('Vollstaendiger Tag: Teil-Tag zaehlt erst, wenn alle Regionen da sind', () => {
+  const rows = [...FULL_29, metaRow('euw1', '2026-09-30', '2026-10-01T10:10:19Z'), metaRow('kr', '2026-09-30', '2026-10-01T14:20:00Z')];
+  assert.equal(metaPulseCompleteDay(rows, REG3, at('2026-10-01T15:00:00Z')), '2026-09-29');
+  rows.push(metaRow('vn2', '2026-09-30', '2026-10-01T21:34:52Z'));
+  // 10 Minuten nach der letzten Region noch nicht, danach schon.
+  assert.equal(metaPulseCompleteDay(rows, REG3, at('2026-10-01T21:40:00Z')), '2026-09-29');
+  assert.equal(metaPulseCompleteDay(rows, REG3, at('2026-10-01T21:45:00Z')), '2026-09-30');
+  // Einzelregion: nur ihr eigener Stand zaehlt.
+  assert.equal(metaPulseCompleteDay(rows.slice(0, 4), ['euw1'], at('2026-10-01T15:00:00Z')), '2026-09-30');
+});
+
+test('Vollstaendiger Tag: Luecke am Vortag und ausgefallene Region halten den Anker nicht fest', () => {
+  // euw1 fehlt am 22.09., am 24.09. mittags ist der 23.09. nur fuer euw1 da.
+  const gap = [
+    metaRow('kr', '2026-09-21', '2026-09-22T15:00:00Z'), metaRow('vn2', '2026-09-21', '2026-09-22T21:00:00Z'), metaRow('euw1', '2026-09-21', '2026-09-22T10:00:00Z'),
+    metaRow('kr', '2026-09-22', '2026-09-23T15:00:00Z'), metaRow('vn2', '2026-09-22', '2026-09-23T21:00:00Z'),
+    metaRow('euw1', '2026-09-23', '2026-09-24T10:00:00Z'),
+  ];
+  assert.equal(metaPulseCompleteDay(gap, REG3, at('2026-09-24T12:00:00Z')), '2026-09-22');
+  // vn2 haengt seit dem 28.09. → faellt raus.
+  const dead = [...FULL_29.filter(r => r.region !== 'vn2'), metaRow('vn2', '2026-09-28', '2026-09-29T21:00:00Z'),
+    metaRow('euw1', '2026-09-30', '2026-10-01T10:10:00Z'), metaRow('kr', '2026-09-30', '2026-10-01T14:20:00Z')];
+  assert.equal(metaPulseCompleteDay(dead, REG3, at('2026-10-01T15:00:00Z')), '2026-09-30');
+  // Keine (fertigen) Zeilen → keine Aussage.
+  assert.equal(metaPulseCompleteDay([], REG3, at('2026-10-01T15:00:00Z')), null);
+  assert.equal(metaPulseCompleteDay([metaRow('kr', '2026-09-30', null)], REG3, at('2026-10-01T15:00:00Z')), null);
+});
+
+test('Velocity-Fenster: endet am vollstaendigen Tag, nur fuer den neuesten Patch und nur innerhalb des Patches', () => {
+  assert.deepEqual(vWin({ completeDay: '2026-09-29' }), {
+    mode: 'patch', effShift: 3, effDays: 2, velocityPatch: '18.3', anchorOffsetDays: 3, anchorDay: '2026-09-29',
+  });
+  // Vollstaendig = neuester Tag → unveraendert.
+  assert.deepEqual(vWin({ completeDay: '2026-09-30' }), vWin());
+  // Aelterer Patch: keine Wirkung.
+  const old = { sel: { patch: '18.2', first_day: '2026-09-10', last_day: '2026-09-24' }, selIdx: 1, cmpLastDay: '2026-09-09' };
+  assert.deepEqual(vWin({ ...old, completeDay: '2026-09-23' }), vWin(old));
+  // Neuer Patch, erster Tag erst teilweise da: vollstaendiger Tag liegt im
+  // Vorpatch → bisheriges Verhalten (Vergleich mit dem Vorpatch).
+  const fresh = { sel: { patch: '18.4', first_day: '2026-09-30', last_day: '2026-09-30' }, cmpLastDay: '2026-09-29', previousPatch: '18.3' };
+  assert.deepEqual(vWin({ ...fresh, completeDay: '2026-09-29' }), vWin(fresh));
+  // 2-Tage-Patch, zweiter Tag unvollstaendig → 1 Tag uebrig → Vergleich mit dem Vorpatch.
+  const two = { sel: { patch: '18.4', first_day: '2026-09-29', last_day: '2026-09-30' }, cmpLastDay: '2026-09-28', previousPatch: '18.3' };
+  assert.deepEqual(vWin({ ...two, completeDay: '2026-09-29' }), {
+    mode: 'crossPatch', effShift: 1, effDays: 1, velocityPatch: null, anchorOffsetDays: 3, anchorDay: '2026-09-29',
+  });
 });
 
 const V_NOW = Date.parse('2026-10-02T12:00:00Z');

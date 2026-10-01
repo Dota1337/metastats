@@ -7,7 +7,9 @@
 // Updates Vercel Production + Development env + GitHub Actions repo secret,
 // pushes the key to the Hetzner crawler box, triggers a redeploy, verifies that
 // the live domain really serves it — and only then kicks the box job that talks
-// to the live site (see metastats-lol-marketvalue.service).
+// to the live site (see metastats-lol-marketvalue.service). Finally it starts
+// the weekly EUW/KR champion crawls when their data is older than 6 days —
+// the Friday cron alone almost always hit an expired key.
 //
 // RIOT_API_KEY_TFT (TFT production key) is permanent and intentionally not
 // synced here — it stays as set in Vercel/GitHub.
@@ -485,6 +487,56 @@ function runOnBox(host, lines, label) {
   return true;
 }
 
+// Wochen-Sammlung (weekly-crawl.yml / weekly-crawl-kr.yml) anstossen, solange
+// der Key frisch ist. Der Freitags-Cron traf fast immer einen abgelaufenen Key
+// (Laeufe 18.09. und 25.09.: HTTP 401, Sammlung uebersprungen, EUW-Datei blieb
+// ab 13.09. stehen). Laeuft ueber die gh-CLI (Scope repo), nicht ueber GH_TOKEN:
+// der hat nachweislich nur Lesezugriff auf Actions bestaetigt.
+// Sperren gegen Wiederholung: Datei juenger als 6 Tage, ein Lauf wartet oder
+// laeuft, oder ein Anstoss liegt weniger als 20 h zurueck (sonst stiesse nach
+// einem gescheiterten Lauf jede Rotation einen neuen an). Das Warten auf den
+// Marktwert-Pass der Box erledigt der Workflow selbst (scripts/weekly-crawl-gate.mjs).
+const WEEKLY_CRAWLS = [
+  { region: 'euw', workflow: 'weekly-crawl.yml' },
+  { region: 'kr', workflow: 'weekly-crawl-kr.yml' },
+];
+const CRAWL_STALE_MS = 6 * 86_400_000;
+const CRAWL_REKICK_MS = 20 * 3_600_000;
+
+function gh(args) {
+  // Ohne Shell, damit das Zeitlimit den richtigen Prozess trifft.
+  return spawnSync('gh', args, { encoding: 'utf8', timeout: 60_000, killSignal: 'SIGKILL' });
+}
+
+function kickStaleWeeklyCrawls({ dryRun = false } = {}) {
+  for (const { region, workflow } of WEEKLY_CRAWLS) {
+    const label = `Wochen-Sammlung ${region.toUpperCase()}`;
+    const file = gh(['api', `repos/${REPO}/contents/public/champion-stats-${region}.json?ref=main`, '--jq', '.content']);
+    if (file.status !== 0) { console.log(`      WARN: ${label}: Datei nicht lesbar (gh exit ${file.status ?? file.error?.code}).`); continue; }
+    let collectedAt;
+    try { collectedAt = JSON.parse(Buffer.from(file.stdout.replace(/\s+/g, ''), 'base64').toString('utf8')).collectedAt; } catch { /* unten */ }
+    const age = Date.now() - new Date(collectedAt).getTime();
+    if (!Number.isFinite(age)) { console.log(`      WARN: ${label}: collectedAt fehlt — nicht angestossen.`); continue; }
+    const days = (age / 86_400_000).toFixed(1);
+    if (age < CRAWL_STALE_MS) { console.log(`      ${label}: Daten ${days} Tage alt — kein Lauf noetig.`); continue; }
+
+    const runs = gh(['run', 'list', '--repo', REPO, '--workflow', workflow, '--limit', '10', '--json', 'status,event,createdAt']);
+    let list = null;
+    try { list = JSON.parse(runs.stdout); } catch { /* unten */ }
+    if (runs.status !== 0 || !Array.isArray(list)) { console.log(`      WARN: ${label}: Laufliste nicht lesbar — nicht angestossen.`); continue; }
+    if (list.some(r => ['queued', 'in_progress', 'waiting', 'pending', 'requested'].includes(r.status))) {
+      console.log(`      ${label}: laeuft bereits.`); continue;
+    }
+    if (list.some(r => r.event === 'workflow_dispatch' && Date.now() - new Date(r.createdAt).getTime() < CRAWL_REKICK_MS)) {
+      console.log(`      ${label}: Daten ${days} Tage alt, aber vor weniger als 20 h schon angestossen — kein neuer Lauf.`); continue;
+    }
+    if (dryRun) { console.log(`      ${label}: Daten ${days} Tage alt — wuerde anstossen (Probelauf).`); continue; }
+    const kick = gh(['workflow', 'run', workflow, '--repo', REPO, '--ref', 'main']);
+    if (kick.status === 0) console.log(`      ${label}: Daten ${days} Tage alt — Lauf angestossen.`);
+    else console.log(`      WARN: ${label}: Anstoss fehlgeschlagen (gh exit ${kick.status ?? kick.error?.code}): ${(kick.stderr || '').trim().slice(0, 200)}`);
+  }
+}
+
 // Schreibt den frischen Key auf die Box und startet den Match-Sammler. Der
 // Sammler geht direkt zu Riot (scripts/collect-lol-matches.mjs:276,361) und ist
 // damit unabhaengig vom Deploy — er darf sofort los.
@@ -549,7 +601,8 @@ async function main() {
   const boxSteps = SKIP_BOX ? 0 : lolKeys.length;
   const step = (n, total, msg) => console.log(`[${n}/${total}] ${msg}`);
   const marketvalueStep = !SKIP_BOX && !SKIP_DEPLOY && lolKeys.length ? 1 : 0;
-  const totalSteps = present.length * 3 + boxSteps + (SKIP_DEPLOY ? 0 : 1) + marketvalueStep;
+  const crawlStep = lolKeys.length ? 1 : 0;
+  const totalSteps = present.length * 3 + boxSteps + (SKIP_DEPLOY ? 0 : 1) + marketvalueStep + crawlStep;
   let n = 0;
 
   // Phase 1: validate each key against its respective game endpoint
@@ -619,6 +672,12 @@ async function main() {
       step(++n, totalSteps, 'Kicking high-elo marketvalue refresh on the box...');
       kickBoxMarketvalue(env);
     }
+  }
+
+  // Phase 7: Wochen-Sammlung nachholen, falls faellig. Nicht fatal.
+  if (crawlStep) {
+    step(++n, totalSteps, 'Checking weekly champion crawls (EUW/KR)...');
+    kickStaleWeeklyCrawls();
   }
 
   console.log(`\nDone. Synced ${present.length} key(s): ${present.map(k => k.label).join(', ')}`);

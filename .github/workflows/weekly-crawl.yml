@@ -10,9 +10,19 @@ on:
     # Every Friday at 06:00 UTC
     - cron: '0 6 * * 5'
   workflow_dispatch: # Allow manual trigger
+    inputs:
+      force:
+        description: 'Sammeln, auch wenn die Datei juenger als 5 Tage ist'
+        type: boolean
+        default: false
+      attempt:
+        description: 'Interner Zaehler fuer Neu-Anstoesse durch das Sammel-Tor'
+        type: number
+        default: 0
 
 permissions:
   contents: write
+  actions: write  # Sammel-Tor stoesst den Workflow neu an (scripts/weekly-crawl-gate.mjs)
   issues: write
 
 # Don't cancel an in-progress run if a manual dispatch fires while the
@@ -65,6 +75,32 @@ jobs:
             echo "::warning::Riot LoL key invalid (HTTP $STATUS) — skipping Champion-Stats crawl, continuing with key-less steps."
           fi
 
+      # Tor: nur bei alter Datei sammeln und den Marktwert-Pass auf der Box
+      # abwarten (teilt sich den Riot-Key). Angestossen wird der Lauf meist von
+      # scripts/refresh-riot-key.mjs direkt nach einer Key-Erneuerung.
+      - name: Set up SSH
+        if: steps.riotcheck.outputs.lol_key_ok == 'true'
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.HETZNER_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "${{ secrets.HETZNER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Crawl gate (age + box marketvalue pass)
+        id: gate
+        if: steps.riotcheck.outputs.lol_key_ok == 'true'
+        env:
+          DATA_FILE: public/champion-stats-euw.json
+          FORCE: ${{ inputs.force }}
+          BOX_HOST: ${{ secrets.HETZNER_HOST }}
+          BOX_KEY: ~/.ssh/deploy_key
+          BOX_REGION: euw1
+          WORKFLOW: weekly-crawl.yml
+          ATTEMPT: ${{ inputs.attempt }}
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/weekly-crawl-gate.mjs
+
       # Pro Player Crawler (no Riot API key needed)
       - name: Crawl Pro Players
         run: node scripts/crawl-pro-players.mjs
@@ -78,7 +114,7 @@ jobs:
       # letzte Schritt faerbt den Lauf dann rot.
       - name: Crawl Champion Stats (EUW)
         id: champcrawl
-        if: steps.riotcheck.outputs.lol_key_ok == 'true'
+        if: steps.riotcheck.outputs.lol_key_ok == 'true' && steps.gate.outputs.run == 'true'
         continue-on-error: true
         run: node scripts/collect-highelo.mjs
 

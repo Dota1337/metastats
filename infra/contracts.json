@@ -356,10 +356,9 @@
       "backend": "supabase",
       "table": "lol_player_marketvalue_peaks",
       "dateColumn": "updated_at",
-      "dateType": "timestamp",
-      "maxLagDays": 10,
+      "windowDays": 2,
       "minRows": 1,
-      "note": "Hoechstwert je Spieler und Split, geschrieben vom LoL-Durchgang in scripts/freeze-marketvalue-peaks.mjs (naechtlich, 7-Tage-Fenster). updated_at wird bei jeder Beruehrung gesetzt, auch ohne neuen Hoechstwert. Speist sich nur aus Verlaufszeilen mit >= 20 Partien im Split; rot heisst meist: der LoL-Wochenlauf kam nicht durch (lol-marketvalue/last-pass) oder der Peaks-Timer laeuft nicht."
+      "note": "Hoechstwert je Spieler und Split, geschrieben vom LoL-Durchgang in scripts/freeze-marketvalue-peaks.mjs (naechtlich, 7-Tage-Fenster). updated_at wird bei jeder Beruehrung gesetzt, auch ohne neuen Hoechstwert - deshalb ein Fenster statt Tagesstand: jede Nacht wandern alle beruehrten Zeilen auf heute, einen abgeschlossenen Vortag gibt es nie (Fehlalarm bis 2026-10-01). 0 Zeilen in 2 Tagen heisst: Peaks-Timer steht oder seit ueber 7 Tagen kein LoL-Wochenlauf. Speist sich nur aus Verlaufszeilen mit >= 20 Partien im Split; rot heisst meist: der LoL-Wochenlauf kam nicht durch (lol-marketvalue/last-pass) oder der Peaks-Timer laeuft nicht."
     },
     {
       "id": "lol-matchfill/match-cache",

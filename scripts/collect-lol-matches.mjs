@@ -33,10 +33,12 @@
  * gewichtet — Master+ ist in "Emerald+" damit bewusst ueberrepraesentiert.
  * --no-rank schaltet sie ab.
  *
- * Laufzeit: Riot erlaubt 100 Anfragen pro 2 Minuten, der Client drosselt auf 95.
- * Ein Spieler mit ~950 Spielen dauert damit rund 20 Minuten — mehr als etwa 70
+ * Laufzeit: Riot erlaubt 100 Anfragen pro 2 Minuten fuer den ganzen Key; der
+ * Sammler nimmt sich davon 35 (LOL_DEV_KEY_BATCH), der Rest bleibt der Live-Seite.
+ * Ein Spieler mit ~950 Spielen dauert damit rund 55 Minuten — mehr als etwa 25
  * Spieler am Tag sind nicht drin. Bei 1.431 Zeilen in `players` (gemessen
- * 2026-09-11) braucht der erste volle Durchlauf rund drei Wochen.
+ * 2026-09-11) brauchte der erste volle Durchlauf bei 95 rund drei Wochen, bei 35
+ * entsprechend knapp dreimal so lange.
  */
 
 import { existsSync, readFileSync } from 'node:fs';
@@ -44,6 +46,7 @@ import { resolve } from 'node:path';
 import pg from 'pg';
 
 import { createRiotClient } from './lib/riot-client.mjs';
+import { LOL_DEV_KEY_BATCH } from './lib/riot-limits.mjs';
 import { getRegionalRouting, normalizeRegion, isValidRegion } from './lib/regional-routing.mjs';
 import { tryAcquire, releaseLock, wantPending } from './lib/advisory-lock.mjs';
 import { recentPatches } from './lib/lol-items.mjs';
@@ -207,7 +210,7 @@ if (!riotKey && !SHOW_STATUS && !SEED_ONLY) {
   console.error('RIOT_API_KEY nicht gesetzt — ohne Key gibt es nichts zu holen.');
   process.exit(1);
 }
-let riot = riotKey ? createRiotClient({ apiKey: riotKey, log: (m) => log(m) }) : null;
+let riot = riotKey ? createRiotClient({ ...LOL_DEV_KEY_BATCH, apiKey: riotKey, log: (m) => log(m) }) : null;
 let riotCalls = 0;
 
 // Ein abgelaufener Key ist der haeufigste Fehlerfall (LoL-Dev-Key laeuft taeglich
@@ -228,7 +231,7 @@ function reloadRiotKey() {
     const key = line ? line.slice('RIOT_API_KEY='.length).trim() : null;
     if (key && key !== riotKey) {
       riotKey = key;
-      riot = createRiotClient({ apiKey: key, log: (m) => log(m) });
+      riot = createRiotClient({ ...LOL_DEV_KEY_BATCH, apiKey: key, log: (m) => log(m) });
       return true;
     }
     return false;

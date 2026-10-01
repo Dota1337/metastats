@@ -67,6 +67,15 @@ const SAFETY = 0.9;
  * darunter. Absicherung ist der 429-Backoff in riot-client.mjs, der seit
  * 2026-08-04 alle Worker gemeinsam anhält statt nur den betroffenen.
  */
+// LoL-Dev-Key (RIOT_API_KEY), NICHT die TFT-Routen oben: 20 Anfragen pro 1 s und
+// 100 pro 120 s fuer ALLES, was den Key nutzt — auch die Live-Seite
+// (/api/summoner, /api/matches auf Vercel). Bis 2026-10-01 liefen die Box-Skripte
+// mit dem Client-Standard 95/18, und die Live-Seite bekam stundenlang 429. Eine
+// ungecachte Spielerseite braucht bis zu 63 Abrufe (app/api/summoner/route.ts),
+// ihre Match-Details gehen in 10er-Paketen raus. 35 + 8 lassen ihr 65 pro 2 min
+// und 12 pro Sekunde. Gilt fuer jeden Box-Prozess mit dem LoL-Key.
+export const LOL_DEV_KEY_BATCH = { shortWindowRequests: 8, longWindowRequests: 35 };
+
 export function batchBudget(cluster) {
   const limit = MATCH_DETAIL_LIMIT[cluster] ?? FALLBACK_ROUTE_LIMIT;
   const reserved = RESERVED['refresh-api'] + RESERVED['companion-backfill'];

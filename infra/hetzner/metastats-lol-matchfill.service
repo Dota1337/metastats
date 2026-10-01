@@ -14,8 +14,9 @@ After=network-online.target metastats-lol-marketvalue.service
 # Die Koordination laeuft ueber die gemeinsame Sperre /run/lock/metastats-lol-riot.lock,
 # die der Sammler PRO SPIELER nimmt und zwischen den Spielern wieder freigibt.
 Type=oneshot
-# Riot erlaubt 100 Anfragen pro 2 Minuten; ein Spieler mit ~950 Spielen dauert
-# damit rund 20 Minuten. Der Lauf arbeitet die Warteschlange ab, bis der Key
+# Riot erlaubt 100 Anfragen pro 2 Minuten fuer den ganzen Key, der Sammler nimmt
+# davon 35 (LOL_DEV_KEY_BATCH); ein Spieler mit ~950 Spielen dauert damit rund
+# 55 Minuten. Der Lauf arbeitet die Warteschlange ab, bis der Key
 # abgelaufen ist (HTTP 401 -> Exit 1, Zeile zurueck auf pending) oder das
 # Spieler-Budget erschoepft ist.
 # Obergrenze statt infinity: der Key lebt 24 h, danach endet der Lauf ohnehin mit
@@ -26,7 +27,7 @@ TimeoutStopSec=120
 WorkingDirectory=/opt/metastats-crawler
 EnvironmentFile=/etc/metastats-crawler/env
 # --rank-calls 900: nach jedem Spieler ein Rang-Zyklus mit hoechstens 900
-# Riot-Anfragen (~19 min) fuer die Champion-Builds je Rang. Die Sperre wird je
+# Riot-Anfragen (~52 min) fuer die Champion-Builds je Rang. Die Sperre wird je
 # Zyklus genommen und freigegeben, der Marktwert-Lauf wartet also hoechstens
 # einen Zyklus (und meldet er sich per .want an, nimmt der Sammler die Sperre gar
 # nicht erst neu). Ist die Spieler-Warteschlange leer, laufen nur noch Rang-Zyklen.

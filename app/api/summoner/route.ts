@@ -253,6 +253,11 @@ export async function GET(request: NextRequest) {
     }
 
     const matchDetails = allMatchDetails.filter(Boolean);
+    // Fehlt ein Abruf (meist 429, weil der Key ausgelastet ist), ist die Rechnung
+    // unvollstaendig. Dann weder einen neuen Marktwert schreiben noch die neueste
+    // Match-ID merken — sonst gilt der Spieler als aktuell und wird erst nach
+    // seinem naechsten Spiel neu gerechnet.
+    const matchFetchComplete = matchDetails.length === allMatchDetails.length;
 
     // Process ALL matches with the shared processor (extracts all ~200 stats)
     const allExtendedMatches: ExtendedMatchData[] = matchDetails
@@ -371,7 +376,7 @@ export async function GET(request: NextRequest) {
 
     // Zu wenige Partien im Split (z. B. kurz nach Split-Start): alten Wert
     // behalten statt eines Werts aus einer Handvoll Spiele.
-    const writeValue = marketValue.rated && !!split && splitRankedMatches.length >= MIN_SPLIT_GAMES;
+    const writeValue = matchFetchComplete && marketValue.rated && !!split && splitRankedMatches.length >= MIN_SPLIT_GAMES;
 
     const winrate = primaryQueue
       ? Math.round((primaryQueue.wins / (primaryQueue.wins + primaryQueue.losses)) * 100)
@@ -395,7 +400,8 @@ export async function GET(request: NextRequest) {
       .from('players')
       .upsert({
         summoner_name: fullName,
-        summoner_id: latestMatchId || account.puuid, // stores latest match ID
+        // stores latest match ID — nur bei vollstaendigem Abruf, sonst den alten Stand
+        summoner_id: matchFetchComplete ? (latestMatchId || account.puuid) : (cached?.summoner_id ?? account.puuid),
         puuid: account.puuid,
         region: region,
         summoner_level: summoner.summonerLevel,

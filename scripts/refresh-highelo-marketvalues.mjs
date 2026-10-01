@@ -17,6 +17,7 @@
 import { readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
 import { createRiotClient } from './lib/riot-client.mjs';
+import { LOL_DEV_KEY_BATCH } from './lib/riot-limits.mjs';
 
 // Prefer process.env (CI / GitHub Actions), fall back to .env.local for local runs.
 let API_KEY = process.env.RIOT_API_KEY;
@@ -55,7 +56,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 // Shared Riot client handles rate-limiting (200 req/s on prod key) + 429 retries.
 // Den Key haengt der Client selbst als X-Riot-Token-Header an — der lokale
 // Wrapper bleibt nur noch als Kurzform fuer fetchJson stehen.
-const riot = createRiotClient({ apiKey: API_KEY });
+const riot = createRiotClient({ ...LOL_DEV_KEY_BATCH, apiKey: API_KEY });
 async function riotFetch(url) {
   return riot.fetchJson(url);
 }

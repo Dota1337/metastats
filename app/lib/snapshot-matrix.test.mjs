@@ -24,6 +24,11 @@ import {
   metaPulseDiffPath,
   META_PULSE_DIFF_BUCKETS,
   META_PULSE_DIFF_MAX_AGE_MS,
+  metaPulseVelocityWindow,
+  metaPulseVelocityPath,
+  isValidMetaPulseVelocity,
+  META_PULSE_VELOCITY_SHIFTS,
+  META_PULSE_VELOCITY_MAX_AGE_MS,
 } from './snapshot-matrix.ts';
 
 const TODAY = new Date('2026-09-13T08:30:00Z');
@@ -170,4 +175,91 @@ test('Meta-Pulse-Blob: Muell wird abgelehnt statt zu werfen', () => {
 
 test('Meta-Pulse-Blob: Pfad je Patch und Rang-Gruppe', () => {
   assert.equal(metaPulseDiffPath('18.3', 'master_plus'), 'tft/meta-pulse/diff/18.3/all__master_plus.json');
+});
+
+// Stand 2026-10-02: 18.3 seit 25.09., Daten bis 30.09. (2 Tage Rueckstand).
+const V_TODAY = Math.floor(Date.parse('2026-10-02T12:00:00Z') / 86_400_000);
+const V_SEL = { patch: '18.3', first_day: '2026-09-25', last_day: '2026-09-30' };
+const vWin = (over = {}) => metaPulseVelocityWindow({
+  sel: V_SEL, cmpLastDay: '2026-09-24', previousPatch: '18.2', selIdx: 0,
+  requestedDays: 3, velocityShift: 3, latestOffsetDays: 2, todayNum: V_TODAY, ...over,
+});
+
+test('Velocity-Fenster: 6-Tage-Patch bleibt im Patch, Anker am letzten Datentag', () => {
+  assert.deepEqual(vWin(), {
+    mode: 'patch', effShift: 3, effDays: 3, velocityPatch: '18.3', anchorOffsetDays: 2, anchorDay: '2026-09-30',
+  });
+  // Abstand 14 schrumpft auf 5, dann bleibt nur 1 Tag ohne Ueberlappung.
+  const w = vWin({ requestedDays: 7, velocityShift: 14 });
+  assert.equal(w.effShift, 5);
+  assert.equal(w.effDays, 1);
+});
+
+test('Velocity-Fenster: 1-Tage-Patch vergleicht mit dem Vorpatch, ohne Vorpatch bleibt die Wahl', () => {
+  const sel = { patch: '18.4', first_day: '2026-09-30', last_day: '2026-09-30' };
+  assert.deepEqual(vWin({ sel, cmpLastDay: '2026-09-29', previousPatch: '18.3' }), {
+    mode: 'crossPatch', effShift: 1, effDays: 1, velocityPatch: null, anchorOffsetDays: 2, anchorDay: '2026-09-30',
+  });
+  const alone = vWin({ sel, cmpLastDay: '2026-09-29', previousPatch: null });
+  assert.equal(alone.mode, 'patch');
+  assert.equal(alone.effShift, 3);
+  assert.equal(alone.effDays, 3);
+});
+
+test('Velocity-Fenster: aelterer Patch ankert an seinem letzten Tag', () => {
+  const w = vWin({ sel: { patch: '18.2', first_day: '2026-09-10', last_day: '2026-09-24' }, selIdx: 1, cmpLastDay: '2026-09-09' });
+  assert.equal(w.anchorOffsetDays, 8);
+  assert.equal(w.anchorDay, '2026-09-24');
+});
+
+test('Velocity-Fenster: Tage 1-7 x Abstand fallen beim 6-Tage-Patch auf 7 Fenster', () => {
+  const keys = new Set();
+  for (let d = 1; d <= 7; d++) for (const v of META_PULSE_VELOCITY_SHIFTS) {
+    keys.add(metaPulseVelocityPath('18.3', 'master_plus', vWin({ requestedDays: d, velocityShift: v })));
+  }
+  assert.equal(keys.size, 7);
+  assert.ok(keys.has('tft/meta-pulse/velocity/18.3/all__master_plus__patch_a2026-09-30_d3_s3.json'));
+});
+
+const V_NOW = Date.parse('2026-10-02T12:00:00Z');
+const V_WANT = {
+  set: 18, patch: '18.3', comparePatch: '18.2', lastDay: '2026-09-30', totalMatches: 3_254_536,
+  compareTotalMatches: 5_000_000, regions: ['euw1', 'kr'], buckets: [...META_PULSE_DIFF_BUCKETS.master_plus],
+  window: vWin(), now: V_NOW,
+};
+const V_SNAP = {
+  v: 1, generatedAt: new Date(V_NOW - 30 * 60 * 1000).toISOString(), set: 18, patch: '18.3', comparePatch: '18.2',
+  lastDay: '2026-09-30', totalMatches: 3_254_536, compareTotalMatches: 5_000_000, regions: ['kr', 'euw1'],
+  buckets: [...META_PULSE_DIFF_BUCKETS.master_plus], minGames: 100, mode: 'patch', anchorDay: '2026-09-30',
+  effDays: 3, effShift: 3,
+  rows: [{ cluster_key: 'x', games_now: 200, games_prev: 150, sum_placement_now: 800, sum_placement_prev: 700 }],
+};
+
+test('Velocity-Blob: passender Stand ist gueltig', () => {
+  assert.equal(isValidMetaPulseVelocity(V_SNAP, V_WANT), true);
+});
+
+test('Velocity-Blob: anderes Fenster, Anker, Vorpatch oder weniger Spiele fallen durch', () => {
+  assert.equal(isValidMetaPulseVelocity({ ...V_SNAP, effDays: 2 }, V_WANT), false);
+  assert.equal(isValidMetaPulseVelocity({ ...V_SNAP, effShift: 2 }, V_WANT), false);
+  assert.equal(isValidMetaPulseVelocity({ ...V_SNAP, anchorDay: '2026-09-29' }, V_WANT), false);
+  assert.equal(isValidMetaPulseVelocity({ ...V_SNAP, mode: 'crossPatch' }, V_WANT), false);
+  assert.equal(isValidMetaPulseVelocity({ ...V_SNAP, comparePatch: null }, V_WANT), false);
+  assert.equal(isValidMetaPulseVelocity({ ...V_SNAP, totalMatches: 3_254_535 }, V_WANT), false);
+  assert.equal(isValidMetaPulseVelocity({ ...V_SNAP, minGames: 30 }, V_WANT), false);
+  assert.equal(isValidMetaPulseVelocity({ ...V_SNAP, generatedAt: new Date(V_NOW - META_PULSE_VELOCITY_MAX_AGE_MS - 1).toISOString() }, V_WANT), false);
+});
+
+test('Velocity-Blob: im Vorpatch-Modus zaehlt auch die Spielzahl des Vorpatches', () => {
+  const w = { ...V_WANT.window, mode: 'crossPatch', effDays: 1, effShift: 1, velocityPatch: null };
+  const want = { ...V_WANT, window: w };
+  const snap = { ...V_SNAP, mode: 'crossPatch', effDays: 1, effShift: 1 };
+  assert.equal(isValidMetaPulseVelocity(snap, want), true);
+  assert.equal(isValidMetaPulseVelocity({ ...snap, compareTotalMatches: 4_999_999 }, want), false);
+});
+
+test('Velocity-Blob: Muell wird abgelehnt statt zu werfen', () => {
+  for (const bad of [null, undefined, 'x', 42, [], {}, { ...V_SNAP, v: 2 }, { ...V_SNAP, rows: null }, { ...V_SNAP, generatedAt: 'kaputt' }]) {
+    assert.equal(isValidMetaPulseVelocity(bad, V_WANT), false);
+  }
 });

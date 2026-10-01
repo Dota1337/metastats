@@ -8,6 +8,9 @@
 // Gueltigkeitsregeln: app/lib/snapshot-matrix.ts (META_PULSE_DIFF_*), Leser:
 // app/lib/meta-pulse-diff-snapshot.ts.
 //
+// Seit 2026-10-02 zusaetzlich die Velocity („Aufsteiger", kalt bis 12 s):
+// je Patch alle Fenster, die die Seite anfragen kann (META_PULSE_VELOCITY_*).
+//
 // Stuendlich per systemd-Timer (metastats-meta-pulse-diffs.timer). Rechnet nur
 // neu, wenn der Blob fehlt, seine Spielzahl/sein letzter Tag nicht mehr zur
 // Patch-Liste passt oder er aelter als 12 h ist — sonst kostet ein Lauf eine
@@ -21,10 +24,16 @@ import { put } from '@vercel/blob';
 import { ACTIVE_REGIONS } from './lib/active-regions.mjs';
 import {
   establishedPatches,
+  listWindowDays,
   metaPulseDiffPath,
   isValidMetaPulseDiff,
+  metaPulseVelocityWindow,
+  metaPulseVelocityPath,
+  isValidMetaPulseVelocity,
   META_PULSE_DIFF_BUCKETS,
   META_PULSE_DIFF_MIN_GAMES,
+  META_PULSE_VELOCITY_MIN_GAMES,
+  META_PULSE_VELOCITY_SHIFTS,
 } from '../app/lib/snapshot-matrix.generated.mjs';
 
 if (existsSync('.env.local')) {
@@ -37,6 +46,9 @@ if (existsSync('.env.local')) {
 const args = process.argv.slice(2);
 const DRY_RUN = args.includes('--dry-run');
 const FORCE = args.includes('--force');
+// --only=diff | --only=velocity: nur einen der beiden Teile rechnen.
+const ONLY = (args.find(a => a.startsWith('--only=')) || '').slice(7) || null;
+const DAY_MS = 86_400_000;
 const PATCH_COUNT = 3;
 const REFRESH_AFTER_MS = 12 * 60 * 60 * 1000;
 
@@ -88,12 +100,13 @@ async function main() {
   const { rows: raw } = await pool.query(
     'select patch, set_number, first_day::text as first_day, last_day::text as last_day, total_matches from get_tft_available_patches(30)',
   );
-  const patches = establishedPatches(raw).slice(0, PATCH_COUNT);
+  const allPatches = establishedPatches(raw);
+  const patches = allPatches.slice(0, PATCH_COUNT);
   if (patches.length === 0) throw new Error('keine Patches');
   const regions = [...ACTIVE_REGIONS];
   let computed = 0, skipped = 0, failed = 0;
 
-  for (const p of patches) {
+  for (const p of ONLY === 'velocity' ? [] : patches) {
     for (const [bucketLabel, buckets] of Object.entries(META_PULSE_DIFF_BUCKETS)) {
       const path = metaPulseDiffPath(p.patch, bucketLabel);
       const want = {
@@ -152,6 +165,105 @@ async function main() {
       } catch (e) {
         failed++;
         log(`FEHLER ${path}: ${e.message}`);
+      }
+    }
+  }
+
+  // Velocity („Aufsteiger"): alle Fenster, die die Seite fuer Tage 1-7 und
+  // Abstand 1/2/3/7/14 anfragen kann — ueber dieselbe Rechnung wie die Route.
+  const todayNum = Math.floor(Date.now() / DAY_MS);
+  const { anchorOffsetDays: latestOffsetDays } = listWindowDays({
+    requestedDays: 1, patchFilter: null, patchStartDay: null,
+    latestDay: isoDay(allPatches[0].last_day), today: new Date(),
+  });
+  for (let selIdx = 0; ONLY !== 'diff' && selIdx < patches.length; selIdx++) {
+    const raw = patches[selIdx];
+    const rawCmp = allPatches[selIdx + 1];
+    const sel = { patch: raw.patch, first_day: isoDay(raw.first_day), last_day: isoDay(raw.last_day) };
+    const setNumber = Number(raw.set_number);
+    const previousPatch = rawCmp && Number(rawCmp.set_number) === setNumber ? rawCmp.patch : null;
+    const windows = new Map();
+    for (let requestedDays = 1; requestedDays <= 7; requestedDays++) {
+      for (const velocityShift of META_PULSE_VELOCITY_SHIFTS) {
+        const w = metaPulseVelocityWindow({
+          sel, cmpLastDay: rawCmp ? isoDay(rawCmp.last_day) : null, previousPatch,
+          selIdx, requestedDays, velocityShift, latestOffsetDays, todayNum,
+        });
+        windows.set(`${w.mode}|${w.anchorDay}|${w.effDays}|${w.effShift}`, w);
+      }
+    }
+    for (const [bucketLabel, buckets] of Object.entries(META_PULSE_DIFF_BUCKETS)) {
+      for (const w of windows.values()) {
+        const path = metaPulseVelocityPath(sel.patch, bucketLabel, w);
+        const want = {
+          set: setNumber, patch: sel.patch, comparePatch: previousPatch,
+          lastDay: sel.last_day, totalMatches: Number(raw.total_matches),
+          compareTotalMatches: rawCmp ? Number(rawCmp.total_matches) : null,
+          regions, buckets, window: w, now: Date.now(),
+        };
+        if (!FORCE) {
+          const old = await existing(path);
+          if (isValidMetaPulseVelocity(old, want)
+            && Number(old.totalMatches) === want.totalMatches
+            && (w.mode !== 'crossPatch' || Number(old.compareTotalMatches) === want.compareTotalMatches)
+            && Date.now() - Date.parse(old.generatedAt) < REFRESH_AFTER_MS) {
+            skipped++;
+            continue;
+          }
+        }
+        const t0 = Date.now();
+        try {
+          // Anker als absoluter Tag → Offset gegen current_date der Datenbank.
+          const { rows } = await pool.query(
+            `select cluster_key, games_now, games_prev, sum_placement_now, sum_placement_prev
+               from get_tft_comp_velocity(
+                 p_regions => $1::text[], p_buckets => $2::text[], p_set => $3::int,
+                 p_patch => $4::text, p_days => $5::int, p_shift_days => $6::int,
+                 p_min_games => $7::int, p_anchor_offset_days => (current_date - $8::date)::int)`,
+            [regions, [...buckets], setNumber, w.velocityPatch, w.effDays, w.effShift,
+              META_PULSE_VELOCITY_MIN_GAMES, w.anchorDay],
+          );
+          const snap = {
+            v: 1,
+            generatedAt: new Date().toISOString(),
+            set: setNumber,
+            patch: sel.patch,
+            comparePatch: previousPatch,
+            lastDay: sel.last_day,
+            totalMatches: want.totalMatches,
+            compareTotalMatches: want.compareTotalMatches,
+            regions,
+            buckets: [...buckets],
+            minGames: META_PULSE_VELOCITY_MIN_GAMES,
+            mode: w.mode,
+            anchorDay: w.anchorDay,
+            effDays: w.effDays,
+            effShift: w.effShift,
+            rows: rows.map(r => ({
+              cluster_key: r.cluster_key,
+              games_now: Number(r.games_now),
+              games_prev: Number(r.games_prev),
+              sum_placement_now: Number(r.sum_placement_now),
+              sum_placement_prev: Number(r.sum_placement_prev),
+            })),
+          };
+          if (!isValidMetaPulseVelocity(snap, want)) throw new Error('eigener Blob faellt durch die Pruefung');
+          if (!DRY_RUN) {
+            await put(path, JSON.stringify(snap), {
+              access: 'public',
+              contentType: 'application/json',
+              token: TOKEN,
+              addRandomSuffix: false,
+              allowOverwrite: true,
+              cacheControlMaxAge: 60,
+            });
+          }
+          computed++;
+          log(`${path}: ${rows.length} Comps in ${((Date.now() - t0) / 1000).toFixed(1)} s${DRY_RUN ? ' (dry-run)' : ''}`);
+        } catch (e) {
+          failed++;
+          log(`FEHLER ${path}: ${e.message}`);
+        }
       }
     }
   }

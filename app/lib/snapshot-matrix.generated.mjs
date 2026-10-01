@@ -343,3 +343,82 @@ export function isValidMetaPulseDiff(snap, want) {
     const age = want.now - Date.parse(String(s.generatedAt));
     return Number.isFinite(age) && age >= -5 * 60 * 1000 && age <= META_PULSE_DIFF_MAX_AGE_MS;
 }
+// ---------------------------------------------------------------------------
+// Meta-Pulse: vorgerechnete Velocity („Aufsteiger", 2026-10-02)
+// ---------------------------------------------------------------------------
+// get_tft_comp_velocity ueber alle Regionen braucht kalt bis 12 s (Meister+,
+// Abstand 3, gemessen 2026-10-02). Die Box rechnet sie im selben Lauf wie die
+// Patch-Vergleiche vor. Route und Box nutzen dieselbe Fensterrechnung
+// (metaPulseVelocityWindow), damit beide genau dieselben Fenster meinen.
+// Schluessel ist das tatsaechlich genutzte Fenster mit absolutem Ankertag —
+// so verschiebt sich nichts ueber Mitternacht, und alle Kombinationen aus
+// Tagen 1-7 und Abstand 1/2/3/7/14 fallen auf wenige Blobs zusammen.
+export const META_PULSE_VELOCITY_MIN_GAMES = 100;
+export const META_PULSE_VELOCITY_SHIFTS = [1, 2, 3, 7, 14];
+export const META_PULSE_VELOCITY_DEFAULT_SHIFT = 3;
+export const META_PULSE_VELOCITY_MAX_AGE_MS = 36 * 60 * 60 * 1000;
+// Rising-Vergleichsfenster an das Patch-Alter anpassen. Die Velocity-RPC
+// filtert beide Fenster auf denselben Patch — bei einem 1-Tage-Patch waere
+// das Vergleichsfenster leer und die Liste immer leer.
+//   • Patch ≥2 Tage: im Patch bleiben, Fenster schrumpfen, ohne Ueberlappung.
+//   • Patch 1 Tag: letzter Patch-Tag gegen letzten Tag des Vorpatches.
+// Die RPC ankert an current_date − offset: fuer den neuesten Patch am
+// Datenstand (latestOffsetDays aus listWindowDays), fuer aeltere an deren
+// letztem Tag.
+export function metaPulseVelocityWindow(o) {
+    const dayNum = (d) => (d ? Math.floor(Date.parse(d) / DAY_MS) : NaN);
+    const curFirst = dayNum(o.sel?.first_day);
+    const curLast = dayNum(o.sel?.last_day);
+    const prevLast = dayNum(o.cmpLastDay);
+    const anchorOffsetDays = o.selIdx === 0 || !Number.isFinite(curLast)
+        ? o.latestOffsetDays
+        : Math.max(0, o.todayNum - curLast);
+    const patchDays = Number.isFinite(curFirst) && Number.isFinite(curLast) ? curLast - curFirst + 1 : 0;
+    let mode = 'patch';
+    let effShift = o.velocityShift;
+    let effDays = o.requestedDays;
+    let velocityPatch = o.sel?.patch ?? null;
+    if (patchDays >= 2) {
+        effShift = Math.min(o.velocityShift, patchDays - 1);
+        effDays = Math.max(1, Math.min(o.requestedDays, effShift, patchDays - effShift));
+    }
+    else if (o.previousPatch
+        && Number.isFinite(curLast) && Number.isFinite(prevLast) && curLast > prevLast) {
+        mode = 'crossPatch';
+        effShift = curLast - prevLast;
+        effDays = 1;
+        velocityPatch = null;
+    }
+    const anchorDay = isoDay(new Date((o.todayNum - anchorOffsetDays) * DAY_MS));
+    return { mode, effShift, effDays, velocityPatch, anchorOffsetDays, anchorDay };
+}
+export function metaPulseVelocityPath(patch, bucketLabel, w) {
+    return `tft/meta-pulse/velocity/${patch}/all__${bucketLabel}__${w.mode}_a${w.anchorDay}_d${w.effDays}_s${w.effShift}.json`;
+}
+export function isValidMetaPulseVelocity(snap, want) {
+    if (!snap || typeof snap !== 'object')
+        return false;
+    const s = snap;
+    if (s.v !== 1 || !Array.isArray(s.rows) || !Array.isArray(s.regions) || !Array.isArray(s.buckets))
+        return false;
+    if (Number(s.set) !== want.set || s.patch !== want.patch || (s.comparePatch ?? null) !== want.comparePatch)
+        return false;
+    if (listKey(s.regions) !== listKey(want.regions) || listKey(s.buckets) !== listKey(want.buckets))
+        return false;
+    if (Number(s.minGames) !== META_PULSE_VELOCITY_MIN_GAMES)
+        return false;
+    const w = want.window;
+    if (s.mode !== w.mode || s.anchorDay !== w.anchorDay
+        || Number(s.effDays) !== w.effDays || Number(s.effShift) !== w.effShift)
+        return false;
+    // Spaet eintreffende Regionen erhoehen die Spielzahl des Patches → live rechnen.
+    if (String(s.lastDay ?? '').slice(0, 10) < String(want.lastDay).slice(0, 10))
+        return false;
+    if (!(Number(s.totalMatches) >= Number(want.totalMatches)))
+        return false;
+    if (w.mode === 'crossPatch'
+        && !(Number(s.compareTotalMatches) >= Number(want.compareTotalMatches ?? Infinity)))
+        return false;
+    const age = want.now - Date.parse(String(s.generatedAt));
+    return Number.isFinite(age) && age >= -5 * 60 * 1000 && age <= META_PULSE_VELOCITY_MAX_AGE_MS;
+}

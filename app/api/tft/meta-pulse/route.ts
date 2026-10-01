@@ -6,8 +6,15 @@ import {
 } from '../../../lib/tft-supabase-reader';
 import { cachedJson, maybeRedirectByPatchAlias } from '../../../lib/api-cache';
 import { CURRENT_SET } from '../../../lib/current-set';
-import { loadMetaPulseDiff } from '../../../lib/meta-pulse-diff-snapshot';
-import { META_PULSE_DIFF_MIN_GAMES } from '../../../lib/snapshot-matrix';
+import { loadMetaPulseDiff, loadMetaPulseVelocity } from '../../../lib/meta-pulse-diff-snapshot';
+import {
+  META_PULSE_DIFF_MIN_GAMES,
+  META_PULSE_VELOCITY_DEFAULT_SHIFT,
+  META_PULSE_VELOCITY_MIN_GAMES,
+  META_PULSE_VELOCITY_SHIFTS,
+  metaPulseVelocityWindow,
+  type MetaPulseVelocityRow,
+} from '../../../lib/snapshot-matrix';
 
 // Drei Datenbank-Abfragen parallel.
 export const maxDuration = 60;
@@ -20,13 +27,7 @@ export const maxDuration = 60;
 //
 // 1h-TTL (statt 6h wie sonst), damit die Page tatsächlich „aktuell" wirkt.
 
-interface VelocityRow {
-  cluster_key: string;
-  games_now: number;
-  games_prev: number;
-  sum_placement_now: number;
-  sum_placement_prev: number;
-}
+type VelocityRow = MetaPulseVelocityRow;
 
 interface CompStatsRow {
   cluster_key: string;
@@ -54,8 +55,8 @@ interface PatchDiffRow {
 
 // Allowed velocity shifts mirror StatsFilterBar; anything else collapses to
 // the default so a stale URL can't produce a shape the SQL never tested.
-const VELOCITY_SHIFTS = new Set([1, 2, 3, 7, 14]);
-const DEFAULT_VELOCITY_SHIFT = 3;
+const VELOCITY_SHIFTS = new Set(META_PULSE_VELOCITY_SHIFTS);
+const DEFAULT_VELOCITY_SHIFT = META_PULSE_VELOCITY_DEFAULT_SHIFT;
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -94,50 +95,35 @@ export async function GET(request: NextRequest) {
     // Vorpatch aus einem anderen Set: kein sinnvoller Vergleich → Patch-Kaesten leer.
     const previousPatch = cmp && cmp.set_number === setNumber ? cmp.patch : null;
 
-    // Rising-Vergleichsfenster an das Patch-Alter anpassen. Die Velocity-RPC
-    // filtert beide Fenster auf denselben Patch — bei einem 1-Tage-Patch waere
-    // das Vergleichsfenster leer und die Liste immer leer.
-    //   • Patch ≥2 Tage: im Patch bleiben, Fenster schrumpfen, ohne Ueberlappung.
-    //   • Patch 1 Tag: letzter Patch-Tag gegen letzten Tag des Vorpatches.
+    // Rising-Vergleichsfenster: gemeinsame Rechnung mit der Box (snapshot-matrix.ts).
     const DAY_MS = 86_400_000;
     const dayNum = (d?: string | null) => (d ? Math.floor(Date.parse(d) / DAY_MS) : NaN);
     const todayNum = Math.floor(Date.now() / DAY_MS);
-    const curFirst = dayNum(sel?.first_day);
-    const curLast = dayNum(sel?.last_day);
-    const prevLast = dayNum(cmp?.last_day);
-    // Die Velocity-RPC ankert an current_date - offset: fuer einen aelteren
-    // Patch an dessen letztem Tag.
-    const anchorOffsetDays = selIdx === 0 || !Number.isFinite(curLast)
-      ? filters.anchorOffsetDays
-      : Math.max(0, todayNum - curLast);
+    const win = metaPulseVelocityWindow({
+      sel,
+      cmpLastDay: cmp?.last_day,
+      previousPatch,
+      selIdx,
+      requestedDays: filters.requestedDays,
+      velocityShift,
+      latestOffsetDays: filters.anchorOffsetDays,
+      todayNum,
+    });
+    const { mode: velocityMode, effShift, effDays } = win;
     // Diff-Fenster (RPC zaehlt ab current_date) je Patch ab dessen erstem Tag;
     // der Patch-Filter schneidet den Rest ab. Ein gemeinsames Fenster bis zum
     // Vorpatch-Start lieferte fuer den laufenden Patch dasselbe Ergebnis in
     // 17,5 statt 2,8 s (gemessen 2026-10-01, master_plus, alle Regionen).
     const windowFrom = (first: number) => (Number.isFinite(first) ? Math.min(90, Math.max(1, todayNum - first + 1)) : 30);
-    const curDiffDays = windowFrom(curFirst);
+    const curDiffDays = windowFrom(dayNum(sel?.first_day));
     const diffDays = windowFrom(dayNum(cmp?.first_day));
-    const patchDays = Number.isFinite(curFirst) && Number.isFinite(curLast) ? curLast - curFirst + 1 : 0;
-    let velocityMode: 'patch' | 'crossPatch' = 'patch';
-    let effShift = velocityShift;
-    let effDays = filters.requestedDays;
-    let velocityPatch: string | null = currentPatch;
-    if (patchDays >= 2) {
-      effShift = Math.min(velocityShift, patchDays - 1);
-      effDays = Math.max(1, Math.min(filters.requestedDays, effShift, patchDays - effShift));
-    } else if (previousPatch
-      && Number.isFinite(curLast) && Number.isFinite(prevLast) && curLast > prevLast) {
-      velocityMode = 'crossPatch';
-      effShift = curLast - prevLast;
-      effDays = 1;
-      velocityPatch = null;
-    }
 
     // Patch-Vergleich: vorgerechnet von der Box (nur region=all), sonst live.
     // Ein fehlgeschlagener Aufruf setzt `degraded` — die leere Liste darf dann
     // nicht eine Stunde in der Edge stehen bleiben.
     let degraded = false;
     let snapshotHits = 0;
+    let velocityHit = false;
     const diffRows = async (p: typeof sel | undefined, days: number): Promise<CompStatsRow[]> => {
       if (!p) return [];
       const pre = await loadMetaPulseDiff({
@@ -161,18 +147,27 @@ export async function GET(request: NextRequest) {
     // Fan out: alle drei Abfragen parallel. „KR voraus" ist seit 2026-09-28
     // raus — der Regionsvergleich auf der Seite laeuft ueber /api/tft/units.
     const [velocityRows, currentTopComps, prevTopComps] = await Promise.all([
-      callRpc<VelocityRow[]>('get_tft_comp_velocity', {
-        p_regions: filters.regions,
-        p_buckets: buckets,
-        p_set: setNumber,
-        // null nur im crossPatch-Modus: dann liegen die beiden Tage in
-        // verschiedenen Patches (gemessen: Tage sind je Patch sauber getrennt).
-        p_patch: velocityPatch,
-        p_days: effDays,
-        p_shift_days: effShift,
-        p_anchor_offset_days: anchorOffsetDays,
-        p_min_games: 100,
-      }, 20000).catch(() => { degraded = true; return [] as VelocityRow[]; }),
+      (async (): Promise<VelocityRow[]> => {
+        // Velocity: vorgerechnet von der Box (nur region=all), sonst live.
+        const pre = sel ? await loadMetaPulseVelocity({
+          sel, cmp, previousPatch, window: win,
+          regionLabel: filters.regionLabel, regions: filters.regions,
+          bucketLabel: filters.bucketLabel, buckets,
+        }) : null;
+        if (pre) { velocityHit = true; return pre; }
+        return callRpc<VelocityRow[]>('get_tft_comp_velocity', {
+          p_regions: filters.regions,
+          p_buckets: buckets,
+          p_set: setNumber,
+          // null nur im crossPatch-Modus: dann liegen die beiden Tage in
+          // verschiedenen Patches (gemessen: Tage sind je Patch sauber getrennt).
+          p_patch: win.velocityPatch,
+          p_days: effDays,
+          p_shift_days: effShift,
+          p_anchor_offset_days: win.anchorOffsetDays,
+          p_min_games: META_PULSE_VELOCITY_MIN_GAMES,
+        }, 20000).catch(() => { degraded = true; return [] as VelocityRow[]; });
+      })(),
       // Super-lean diff RPC (migration 0035) — scalar-only, drops the 10 MB
       // jsonb_agg payload the previous list-RPC carried for nothing here.
       previousPatch ? diffRows(sel, curDiffDays) : Promise.resolve([] as CompStatsRow[]),
@@ -253,7 +248,8 @@ export async function GET(request: NextRequest) {
       cache: 'public, s-maxage=3600, stale-while-revalidate=21600',
       degraded,
     });
-    if (snapshotHits > 0) res.headers.set('x-snapshot', `meta-pulse-diff:${snapshotHits}`);
+    // Welche Teile aus der Vorrechnung kamen (diff = Patch-Vergleiche, 0-2).
+    res.headers.set('x-snapshot', `meta-pulse:diff=${snapshotHits},velocity=${velocityHit ? 1 : 0}`);
     return res;
   } catch (e: any) {
     return NextResponse.json({ hasData: false, error: e.message }, { status: 502 });

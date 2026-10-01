@@ -15,6 +15,7 @@
  */
 
 import { bootIds, fetchItemData } from './lol-items.mjs';
+import { pickCounters } from '../../app/lib/lol-counters.mjs';
 
 const ROLES = ['TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UTILITY'];
 
@@ -190,14 +191,8 @@ export function finalizeBuilds(builds, opts = {}) {
     for (const [role, e] of Object.entries(roles)) {
       if (!e.games) continue;
 
-      // Counters: only enemies with enough games. Strong = high win rate vs them; Weak = low.
-      const counters = [...e.counterCounts.values()]
-        .filter(c => c.gamesAgainst >= minCounterGames)
-        .map(c => ({ ...c, winsAgainst: c.gamesAgainst - c.lossesAgainst, winRate: (c.gamesAgainst - c.lossesAgainst) / c.gamesAgainst }));
-      const strongAgainst = [...counters].sort((a, b) => b.winRate - a.winRate).slice(0, 5)
-        .map(({ enemy, gamesAgainst, lossesAgainst }) => ({ enemy, gamesAgainst, lossesAgainst }));
-      const weakAgainst = [...counters].sort((a, b) => a.winRate - b.winRate).slice(0, 5)
-        .map(({ enemy, gamesAgainst, lossesAgainst }) => ({ enemy, gamesAgainst, lossesAgainst }));
+      // Konter: geglaettete Siegquote gegen die Rollenquote (app/lib/lol-counters.mjs).
+      const { strongAgainst, weakAgainst } = pickCounters([...e.counterCounts.values()], e.wins / e.games, { minGames: minCounterGames });
 
       out[champId][role] = {
         games: e.games,

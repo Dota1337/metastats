@@ -6,6 +6,7 @@ import { cachedJson, STATS_CACHE_CONTROL } from '../../../../lib/api-cache';
 import { LOL_RANK_GROUPS } from '../../../../lib/rank-groups';
 import { parseRegion } from '../../../../lib/regions';
 import { itemVerdict, type StratumCount, type VerdictResult } from '../../../../lib/lol-item-verdict';
+import { pickCounters } from '../../../../lib/lol-counters.mjs';
 
 interface BuildEntry {
   items: number[];
@@ -58,7 +59,6 @@ const MIN_PATCH_GAMES = 500;
 // Darunter gilt die Datei (siehe GET).
 const MIN_DB_GAMES = 200;
 const PAGE = 1000;
-const MIN_COUNTER_GAMES = 5;
 
 // Resolve championKey: route param can be the Riot integer key (e.g. "157" for Yasuo)
 // OR the Data Dragon string id (e.g. "Yasuo"). The builds JSON keys by integer key,
@@ -170,9 +170,8 @@ function buildRole(rows: StatRow[]): RoleData {
 
   // Schluessel '0' = ohne Stiefel, gehoert nicht in die Stiefel-Liste.
   const bootsAcc = new Map([...get('boots')].filter(([k]) => k !== '0'));
-  const counters = [...get('vs').entries()]
-    .filter(([, v]) => v.games >= MIN_COUNTER_GAMES)
-    .map(([k, v]) => ({ enemy: k, gamesAgainst: v.games, lossesAgainst: v.games - v.wins, wr: v.wins / v.games }));
+  const counterEntries = [...get('vs').entries()]
+    .map(([k, v]) => ({ enemy: k, gamesAgainst: v.games, lossesAgainst: v.games - v.wins }));
 
   return {
     games,
@@ -186,14 +185,21 @@ function buildRole(rows: StatRow[]): RoleData {
     }),
     topKeystones: top(get('keystone'), 5).map(([k, v]) => ({ id: Number(k), ...v })),
     topSummoners: top(get('spells'), 3).map(([k, v]) => ({ spells: k.split(',').map(Number), ...v })),
-    counters: {
-      strongAgainst: [...counters].sort((a, b) => b.wr - a.wr).slice(0, 5)
-        .map(({ enemy, gamesAgainst, lossesAgainst }) => ({ enemy, gamesAgainst, lossesAgainst })),
-      weakAgainst: [...counters].sort((a, b) => a.wr - b.wr).slice(0, 5)
-        .map(({ enemy, gamesAgainst, lossesAgainst }) => ({ enemy, gamesAgainst, lossesAgainst })),
-    },
+    counters: pickCounters(counterEntries, games > 0 ? wins / games : NaN),
     itemVerdicts,
   };
+}
+
+// Dateien vom alten Sammellauf haben noch die rohe Sortierung (Doppelungen
+// zwischen den Listen) — bis zum naechsten Lauf hier dieselbe Regel anwenden.
+function rerankFileCounters(roles: Record<string, RoleData | undefined>) {
+  const out: Record<string, RoleData | undefined> = {};
+  for (const [role, d] of Object.entries(roles)) {
+    out[role] = d && d.counters
+      ? { ...d, counters: pickCounters([...d.counters.strongAgainst, ...d.counters.weakAgainst], d.games > 0 ? d.wins / d.games : NaN) }
+      : d;
+  }
+  return out;
 }
 
 function readJsonFile(region: string): BuildsFile | null {
@@ -276,7 +282,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (!payload) {
     return cachedJson({ ...base, hasBuilds: false, roles: {} }, { degraded: dbDown });
   }
-  const ordered = orderRoles(payload.byChampionRole?.[championKey] || {}, requestedRole);
+  const ordered = orderRoles(rerankFileCounters(payload.byChampionRole?.[championKey] || {}), requestedRole);
   return cachedJson({
     ...base,
     hasBuilds: Object.keys(ordered).length > 0,

@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { formatTier } from '../lib/rank-format';
+import { formatTier, type SoloRank } from '../lib/rank-format';
 import { useI18n } from '../lib/i18n';
 
 interface Props {
@@ -19,7 +19,8 @@ interface PlayerData {
   spell1Id: number;
   spell2Id: number;
   perks?: { perkStyle: number; perkSubStyle: number };
-  ranked?: { tier: string; rank: string; leaguePoints: number; wins: number; losses: number } | null;
+  // null = ungewertet, 'unknown' = Rang gerade nicht abrufbar (Riot-Ueberlast)
+  ranked?: SoloRank | null | 'unknown';
   loading: boolean;
 }
 
@@ -54,32 +55,30 @@ export default function LiveGameDetail({ gameData, ddVersion, championMap, regio
     });
     setPlayers(initial);
 
-    // Fetch ranked data for each player (fire-and-forget, update as they come in)
-    initial.forEach((p, i) => {
-      if (!p.puuid) {
-        setPlayers(prev => prev.map((pl, j) => j === i ? { ...pl, loading: false } : pl));
-        return;
-      }
-      fetch(`/api/summoner?name=${encodeURIComponent(p.summonerName)}&region=${region}`)
-        .then(r => r.ok ? r.json() : null)
-        .then(data => {
-          if (!data) {
-            setPlayers(prev => prev.map((pl, j) => j === i ? { ...pl, loading: false } : pl));
-            return;
-          }
-          const solo = Array.isArray(data.ranked)
-            ? data.ranked.find((r: any) => r.queueType === 'RANKED_SOLO_5x5')
-            : null;
-          setPlayers(prev => prev.map((pl, j) => j === i ? {
-            ...pl,
-            ranked: solo ? { tier: solo.tier, rank: solo.rank, leaguePoints: solo.leaguePoints, wins: solo.wins, losses: solo.losses } : null,
-            loading: false,
-          } : pl));
-        })
-        .catch(() => {
-          setPlayers(prev => prev.map((pl, j) => j === i ? { ...pl, loading: false } : pl));
-        });
-    });
+    // Raenge aller Mitspieler in EINEM schlanken Aufruf (nur league-v4) —
+    // nicht /api/summoner je Teilnehmer, der den ganzen Profil-Abruf macht.
+    const puuids = initial.map(p => p.puuid).filter(Boolean);
+    if (puuids.length === 0) {
+      setPlayers(prev => prev.map(pl => ({ ...pl, ranked: 'unknown', loading: false })));
+      return;
+    }
+    const ctrl = new AbortController();
+    fetch(`/api/live-game/ranks?puuids=${puuids.map(encodeURIComponent).join(',')}&region=${region}`, { signal: ctrl.signal })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        const ranks: Record<string, SoloRank | null | 'unknown'> = data?.ranks || {};
+        setPlayers(prev => prev.map(pl => ({
+          ...pl,
+          // ohne puuid (von Riot anonymisiert) ist der Rang unbekannt, nicht ungewertet
+          ranked: pl.puuid && pl.puuid in ranks ? ranks[pl.puuid] : 'unknown',
+          loading: false,
+        })));
+      })
+      .catch(() => {
+        if (ctrl.signal.aborted) return;
+        setPlayers(prev => prev.map(pl => ({ ...pl, ranked: 'unknown', loading: false })));
+      });
+    return () => ctrl.abort();
   }, [gameData, championMap, region]);
 
   if (!gameData?.participants || players.length === 0) return null;
@@ -119,7 +118,7 @@ export default function LiveGameDetail({ gameData, ddVersion, championMap, regio
 
       <div className="flex flex-col gap-1">
         {team.map((p, i) => {
-          const wr = p.ranked
+          const wr = p.ranked && p.ranked !== 'unknown' && p.ranked.wins + p.ranked.losses > 0
             ? Math.round((p.ranked.wins / (p.ranked.wins + p.ranked.losses)) * 100)
             : null;
           const spell1 = SUMMONER_SPELL_MAP[p.spell1Id];
@@ -157,6 +156,8 @@ export default function LiveGameDetail({ gameData, ddVersion, championMap, regio
               <div className="text-right">
                 {p.loading ? (
                   <div className="text-fg-muted text-xs">...</div>
+                ) : p.ranked === 'unknown' ? (
+                  <div className="text-fg-muted text-xs">-</div>
                 ) : p.ranked ? (
                   <>
                     <div className="text-fg-secondary text-xs font-medium">{formatTier(p.ranked.tier, p.ranked.rank)}</div>

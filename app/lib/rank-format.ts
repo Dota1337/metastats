@@ -30,3 +30,20 @@ export function formatTier(
   if (NO_DIVISION_TIERS.has(t)) return tier;
   return rank ? `${tier} ${rank}` : tier;
 }
+
+export interface SoloRank {
+  tier: string;
+  rank: string;
+  leaguePoints: number;
+  wins: number;
+  losses: number;
+}
+
+// Solo-Queue-Eintrag aus einer league-v4-Antwort (Liste je Queue).
+export function pickSoloRank(entries: unknown): SoloRank | null {
+  if (!Array.isArray(entries)) return null;
+  const solo = (entries as Array<SoloRank & { queueType?: string }>).find((r) => r?.queueType === 'RANKED_SOLO_5x5');
+  return solo
+    ? { tier: solo.tier, rank: solo.rank, leaguePoints: solo.leaguePoints, wins: solo.wins, losses: solo.losses }
+    : null;
+}

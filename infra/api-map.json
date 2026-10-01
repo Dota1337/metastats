@@ -6,12 +6,12 @@
     "belegen laesst, steht in `unresolved` statt als geratene Kante im Graphen."
   ],
   "counts": {
-    "routes": 78,
+    "routes": 79,
     "groups": 30,
     "tables": 35,
     "rpcs": 29,
     "files": 11,
-    "edges": 380,
+    "edges": 381,
     "unused": 8,
     "unresolved": 1
   },
@@ -46,6 +46,10 @@
     },
     {
       "name": "leaderboard",
+      "count": 2
+    },
+    {
+      "name": "live-game",
       "count": 2
     },
     {
@@ -90,10 +94,6 @@
     },
     {
       "name": "knowledge-graph",
-      "count": 1
-    },
-    {
-      "name": "live-game",
       "count": 1
     },
     {
@@ -417,6 +417,21 @@
       ]
     },
     {
+      "id": "api:/api/live-game/ranks",
+      "kind": "route",
+      "label": "/api/live-game/ranks",
+      "group": "live-game",
+      "file": "app/api/live-game/ranks/route.ts",
+      "via": [
+        "app/lib/regions.ts",
+        "app/lib/riot-fetch.ts"
+      ],
+      "used": true,
+      "usedBy": [
+        "app/components/LiveGameDetail.tsx"
+      ]
+    },
+    {
       "id": "api:/api/market-rankings",
       "kind": "route",
       "label": "/api/market-rankings",
@@ -554,7 +569,6 @@
       "used": true,
       "usedBy": [
         "app/compare/page.tsx",
-        "app/components/LiveGameDetail.tsx",
         "app/player/[slug]/page.tsx",
         "scripts/check-write-routes.mjs",
         "scripts/refresh-highelo-marketvalues.mjs",
@@ -2226,6 +2240,11 @@
     },
     {
       "from": "api:/api/live-game",
+      "to": "ext:riot-api",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/live-game/ranks",
       "to": "ext:riot-api",
       "kind": "fetches"
     },

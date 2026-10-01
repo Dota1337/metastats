@@ -386,6 +386,10 @@ export function precomputedEntryUsable(
 
 export const META_PULSE_DIFF_MIN_GAMES = 80;
 export const META_PULSE_DIFF_MAX_AGE_MS = 36 * 60 * 60 * 1000;
+// Abgeschlossene Patches (nicht der neueste der Liste) bekommen keine Spiele
+// mehr dazu. Ihr Vergleich liest von der Platte (18.2: 23-45 s, 2026-10-01 kippte
+// die DB nach wiederholten Laeufen) — deshalb rechnet die Box sie nur woechentlich.
+export const META_PULSE_DIFF_CLOSED_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
 export const META_PULSE_DIFF_BUCKETS = COMP_PRECOMPUTE_BUCKETS;
 
 export function metaPulseDiffPath(patch: string, bucketLabel: string): string {
@@ -422,6 +426,8 @@ export function isValidMetaPulseDiff(snap: unknown, want: {
   regions: ReadonlyArray<string>;
   buckets: ReadonlyArray<string>;
   now: number;
+  /** Patch ist nicht der neueste der Liste → laengere Gueltigkeit. */
+  closed?: boolean;
 }): snap is MetaPulseDiffSnapshot {
   if (!snap || typeof snap !== 'object') return false;
   const s = snap as Partial<MetaPulseDiffSnapshot>;
@@ -434,7 +440,8 @@ export function isValidMetaPulseDiff(snap: unknown, want: {
   if (String(s.lastDay ?? '').slice(0, 10) < String(want.lastDay).slice(0, 10)) return false;
   if (!(Number(s.totalMatches) >= Number(want.totalMatches))) return false;
   const age = want.now - Date.parse(String(s.generatedAt));
-  return Number.isFinite(age) && age >= -5 * 60 * 1000 && age <= META_PULSE_DIFF_MAX_AGE_MS;
+  const maxAge = want.closed ? META_PULSE_DIFF_CLOSED_MAX_AGE_MS : META_PULSE_DIFF_MAX_AGE_MS;
+  return Number.isFinite(age) && age >= -5 * 60 * 1000 && age <= maxAge;
 }
 
 // ---------------------------------------------------------------------------

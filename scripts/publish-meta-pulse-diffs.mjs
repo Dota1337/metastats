@@ -51,6 +51,19 @@ const ONLY = (args.find(a => a.startsWith('--only=')) || '').slice(7) || null;
 const DAY_MS = 86_400_000;
 const PATCH_COUNT = 3;
 const REFRESH_AFTER_MS = 12 * 60 * 60 * 1000;
+// Schonung der Datenbank (2026-10-01: Velocity fuer den alten Patch 18.2 lief
+// 110 s und mehr, danach war die DB bis zum Neustart weg). Alte Patches liegen
+// nicht im Speicher und kommen von der Platte, deshalb:
+// - Velocity nur fuer den laufenden Patch, alte Patches rechnet die Route live;
+// - Patchvergleiche alter Patches nur einmal am Tag (Route nimmt bis 36 h);
+// - Notbremse: erster DB-Fehler oder eine Abfrage ueber 60 s beendet den Lauf;
+// - kurze Pause zwischen den Abfragen.
+const CLOSED_REFRESH_AFTER_MS = 7 * 24 * 60 * 60 * 1000; // Web akzeptiert sie 14 Tage
+const SLOW_QUERY_MS = Number(process.env.META_PULSE_SLOW_MS) || 60_000; // Umgebung nur zum Testen der Bremse
+const PAUSE_MS = 250;
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+class Brake extends Error {}
 
 const DB_URL = process.env.SUPABASE_DB_URL;
 const TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
@@ -77,8 +90,8 @@ const pool = new pg.Pool({
   connectionString: encodePasswordInPgUrl(DB_URL),
   ssl: /@(127\.0\.0\.1|localhost)[:/]/.test(DB_URL) ? false : { rejectUnauthorized: false },
   max: 1,
-  statement_timeout: 120_000,
-  query_timeout: 130_000,
+  statement_timeout: 90_000,
+  query_timeout: 100_000,
   connectionTimeoutMillis: 15_000,
 });
 
@@ -106,26 +119,50 @@ async function main() {
   const regions = [...ACTIVE_REGIONS];
   let computed = 0, skipped = 0, failed = 0;
 
-  for (const p of ONLY === 'velocity' ? [] : patches) {
+  // Jede Abfrage mit Pause davor; DB-Fehler loest die Notbremse aus.
+  const guardedQuery = async (sql, params) => {
+    await sleep(PAUSE_MS);
+    const t0 = Date.now();
+    try {
+      const { rows } = await pool.query(sql, params);
+      return { rows, ms: Date.now() - t0 };
+    } catch (e) {
+      throw new Brake(`DB-Fehler nach ${((Date.now() - t0) / 1000).toFixed(1)} s: ${e.message}`);
+    }
+  };
+  const brakeIfSlow = (ms, path) => {
+    if (ms > SLOW_QUERY_MS) throw new Brake(`${path} brauchte ${(ms / 1000).toFixed(1)} s`);
+  };
+
+  // Laufender Patch zuerst (Diffs, dann Velocity), alte Patch-Diffs zuletzt.
+  if (ONLY !== 'velocity') await runDiffs(patches[0], REFRESH_AFTER_MS, false);
+  if (ONLY !== 'diff') await runVelocity();
+  for (const p of ONLY === 'velocity' ? [] : patches.slice(1)) await runDiffs(p, CLOSED_REFRESH_AFTER_MS, true);
+
+  log(`fertig: ${computed} neu, ${skipped} aktuell, ${failed} Fehler (Patches ${patches.map(p => p.patch).join(', ')})`);
+  return failed;
+
+  async function runDiffs(p, refreshAfterMs, closed) {
     for (const [bucketLabel, buckets] of Object.entries(META_PULSE_DIFF_BUCKETS)) {
       const path = metaPulseDiffPath(p.patch, bucketLabel);
       const want = {
         set: Number(p.set_number), patch: p.patch, lastDay: isoDay(p.last_day),
-        totalMatches: Number(p.total_matches), regions, buckets, now: Date.now(),
+        totalMatches: Number(p.total_matches), regions, buckets, now: Date.now(), closed,
       };
       if (!FORCE) {
         const old = await existing(path);
+        // Abgeschlossene Patches: die 30-Tage-Patchliste laesst ihre Summe
+        // schrumpfen, Gleichheit wuerde sie bei jedem Lauf neu rechnen lassen.
         if (isValidMetaPulseDiff(old, want)
-          && Number(old.totalMatches) === want.totalMatches
-          && Date.now() - Date.parse(old.generatedAt) < REFRESH_AFTER_MS) {
+          && (closed || Number(old.totalMatches) === want.totalMatches)
+          && Date.now() - Date.parse(old.generatedAt) < refreshAfterMs) {
           skipped++;
           continue;
         }
       }
-      const t0 = Date.now();
       try {
         // Fenster ab dem ersten Patch-Tag (current_date wie in der Route).
-        const { rows } = await pool.query(
+        const { rows, ms } = await guardedQuery(
           `select * from get_tft_comp_stats_for_diff($1::text[], $2::text[],
              (current_date - $3::date + 1)::int, $4::text, $5::int, $6::int)`,
           [regions, [...buckets], isoDay(p.first_day), p.patch, Number(p.set_number), META_PULSE_DIFF_MIN_GAMES],
@@ -161,8 +198,10 @@ async function main() {
           });
         }
         computed++;
-        log(`${path}: ${rows.length} Comps in ${((Date.now() - t0) / 1000).toFixed(1)} s${DRY_RUN ? ' (dry-run)' : ''}`);
+        log(`${path}: ${rows.length} Comps in ${(ms / 1000).toFixed(1)} s${DRY_RUN ? ' (dry-run)' : ''}`);
+        brakeIfSlow(ms, path);
       } catch (e) {
+        if (e instanceof Brake) throw e;
         failed++;
         log(`FEHLER ${path}: ${e.message}`);
       }
@@ -171,12 +210,14 @@ async function main() {
 
   // Velocity („Aufsteiger"): alle Fenster, die die Seite fuer Tage 1-7 und
   // Abstand 1/2/3/7/14 anfragen kann — ueber dieselbe Rechnung wie die Route.
+  // Nur der laufende Patch (selIdx 0), siehe Schonung oben.
+  async function runVelocity() {
   const todayNum = Math.floor(Date.now() / DAY_MS);
   const { anchorOffsetDays: latestOffsetDays } = listWindowDays({
     requestedDays: 1, patchFilter: null, patchStartDay: null,
     latestDay: isoDay(allPatches[0].last_day), today: new Date(),
   });
-  for (let selIdx = 0; ONLY !== 'diff' && selIdx < patches.length; selIdx++) {
+  for (let selIdx = 0; selIdx < 1; selIdx++) {
     const raw = patches[selIdx];
     const rawCmp = allPatches[selIdx + 1];
     const sel = { patch: raw.patch, first_day: isoDay(raw.first_day), last_day: isoDay(raw.last_day) };
@@ -211,10 +252,9 @@ async function main() {
             continue;
           }
         }
-        const t0 = Date.now();
         try {
           // Anker als absoluter Tag → Offset gegen current_date der Datenbank.
-          const { rows } = await pool.query(
+          const { rows, ms } = await guardedQuery(
             `select cluster_key, games_now, games_prev, sum_placement_now, sum_placement_prev
                from get_tft_comp_velocity(
                  p_regions => $1::text[], p_buckets => $2::text[], p_set => $3::int,
@@ -259,18 +299,19 @@ async function main() {
             });
           }
           computed++;
-          log(`${path}: ${rows.length} Comps in ${((Date.now() - t0) / 1000).toFixed(1)} s${DRY_RUN ? ' (dry-run)' : ''}`);
+          log(`${path}: ${rows.length} Comps in ${(ms / 1000).toFixed(1)} s${DRY_RUN ? ' (dry-run)' : ''}`);
+          brakeIfSlow(ms, path);
         } catch (e) {
+          if (e instanceof Brake) throw e;
           failed++;
           log(`FEHLER ${path}: ${e.message}`);
         }
       }
     }
   }
-  log(`fertig: ${computed} neu, ${skipped} aktuell, ${failed} Fehler (Patches ${patches.map(p => p.patch).join(', ')})`);
-  return failed;
+  }
 }
 
 main()
   .then(async (failed) => { await pool.end(); process.exit(failed > 0 ? 1 : 0); })
-  .catch(async (e) => { log(`abgebrochen: ${e.message}`); await pool.end().catch(() => {}); process.exit(1); });
+  .catch(async (e) => { log(`${e instanceof Brake ? 'Notbremse, Lauf beendet' : 'abgebrochen'}: ${e.message}`); await pool.end().catch(() => {}); process.exit(1); });

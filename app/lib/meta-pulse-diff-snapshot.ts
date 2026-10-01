@@ -62,7 +62,7 @@ async function fetchBlob(path: string): Promise<unknown | null> {
   }
 }
 
-export async function loadMetaPulseDiff(o: Scope & { patch: MetaPulsePatchInfo }): Promise<MetaPulseDiffRow[] | null> {
+export async function loadMetaPulseDiff(o: Scope & { patch: MetaPulsePatchInfo; closed: boolean }): Promise<MetaPulseDiffRow[] | null> {
   if (!inScope(o)) return null;
   const snap = await fetchBlob(metaPulseDiffPath(o.patch.patch, o.bucketLabel));
   const ok = isValidMetaPulseDiff(snap, {
@@ -73,6 +73,7 @@ export async function loadMetaPulseDiff(o: Scope & { patch: MetaPulsePatchInfo }
     regions: o.regions,
     buckets: o.buckets,
     now: Date.now(),
+    closed: o.closed,
   });
   return ok ? snap.rows : null;
 }

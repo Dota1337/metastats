@@ -128,6 +128,7 @@ export async function GET(request: NextRequest) {
       if (!p) return [];
       const pre = await loadMetaPulseDiff({
         patch: p,
+        closed: p.patch !== patches[0]?.patch,
         regionLabel: filters.regionLabel,
         regions: filters.regions,
         bucketLabel: filters.bucketLabel,

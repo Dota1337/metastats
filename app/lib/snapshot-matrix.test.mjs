@@ -24,6 +24,7 @@ import {
   metaPulseDiffPath,
   META_PULSE_DIFF_BUCKETS,
   META_PULSE_DIFF_MAX_AGE_MS,
+  META_PULSE_DIFF_CLOSED_MAX_AGE_MS,
   metaPulseVelocityWindow,
   metaPulseVelocityPath,
   isValidMetaPulseVelocity,
@@ -165,6 +166,17 @@ test('Meta-Pulse-Blob: aelterer Datenstand, zu alt oder aus der Zukunft faellt d
   assert.equal(isValidMetaPulseDiff({ ...MP_SNAP, totalMatches: 3_254_535 }, MP_WANT), false);
   assert.equal(isValidMetaPulseDiff({ ...MP_SNAP, generatedAt: new Date(MP_NOW - META_PULSE_DIFF_MAX_AGE_MS - 1).toISOString() }, MP_WANT), false);
   assert.equal(isValidMetaPulseDiff({ ...MP_SNAP, generatedAt: new Date(MP_NOW + 10 * 60 * 1000).toISOString() }, MP_WANT), false);
+});
+
+test('Meta-Pulse-Blob: abgeschlossener Patch bleibt 14 Tage gueltig, laufender nur 36 h', () => {
+  const tenDaysOld = { ...MP_SNAP, generatedAt: new Date(MP_NOW - 10 * 24 * 60 * 60 * 1000).toISOString() };
+  assert.equal(isValidMetaPulseDiff(tenDaysOld, { ...MP_WANT, closed: true }), true);
+  assert.equal(isValidMetaPulseDiff(tenDaysOld, MP_WANT), false);
+  assert.equal(isValidMetaPulseDiff(tenDaysOld, { ...MP_WANT, closed: false }), false);
+  const tooOld = { ...MP_SNAP, generatedAt: new Date(MP_NOW - META_PULSE_DIFF_CLOSED_MAX_AGE_MS - 1).toISOString() };
+  assert.equal(isValidMetaPulseDiff(tooOld, { ...MP_WANT, closed: true }), false);
+  // auch abgeschlossen: aelterer Datenstand faellt durch
+  assert.equal(isValidMetaPulseDiff({ ...tenDaysOld, lastDay: '2026-09-29' }, { ...MP_WANT, closed: true }), false);
 });
 
 test('Meta-Pulse-Blob: Muell wird abgelehnt statt zu werfen', () => {

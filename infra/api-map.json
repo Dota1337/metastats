@@ -6,8 +6,8 @@
     "belegen laesst, steht in `unresolved` statt als geratene Kante im Graphen."
   ],
   "counts": {
-    "routes": 79,
-    "groups": 31,
+    "routes": 78,
+    "groups": 30,
     "tables": 35,
     "rpcs": 29,
     "files": 11,
@@ -122,10 +122,6 @@
     },
     {
       "name": "summoner",
-      "count": 1
-    },
-    {
-      "name": "team-synergy",
       "count": 1
     },
     {
@@ -563,18 +559,6 @@
         "scripts/check-write-routes.mjs",
         "scripts/refresh-highelo-marketvalues.mjs",
         "scripts/refresh-riot-key.mjs"
-      ]
-    },
-    {
-      "id": "api:/api/team-synergy",
-      "kind": "route",
-      "label": "/api/team-synergy",
-      "group": "team-synergy",
-      "file": "app/api/team-synergy/route.ts",
-      "via": [],
-      "used": true,
-      "usedBy": [
-        "app/components/TeamSynergy.tsx"
       ]
     },
     {

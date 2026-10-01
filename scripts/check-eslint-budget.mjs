@@ -41,7 +41,7 @@ const BUDGET = {
   '@typescript-eslint/no-explicit-any': 602,
   '@next/next/no-html-link-for-pages': 28,
   'react-hooks/set-state-in-effect': 29,
-  'prefer-const': 6,
+  'prefer-const': 5,
   'react-hooks/immutability': 7,
   'react-hooks/static-components': 5,
   'react/no-unescaped-entities': 4,

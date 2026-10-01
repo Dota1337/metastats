@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
 
     if (!matchListRes.ok) {
       const st = matchListRes.status;
+      const retryAfter = matchListRes.headers.get('Retry-After');
       if (st === 404 || st === 400) {
         return NextResponse.json({ error: 'Match History nicht gefunden' }, { status: 404 });
       }
@@ -32,18 +33,25 @@ export async function GET(request: NextRequest) {
       const code = st === 429 ? 'rate_limited' : (st === 401 || st === 403) ? 'riot_auth' : 'riot_upstream';
       return NextResponse.json(
         { error: `Riot API Fehler (${st})`, code },
-        { status: 503, headers: { 'Cache-Control': 'no-store' } },
+        { status: 503, headers: { 'Cache-Control': 'no-store', ...(retryAfter ? { 'Retry-After': retryAfter } : {}) } },
       );
     }
 
     const matchIds: string[] = await matchListRes.json();
 
-    const rawMatches = await Promise.all(
-      matchIds.map(async (id) => {
-        const res = await riotFetch(`https://${regional}.api.riotgames.com/lol/match/v5/matches/${id}`, apiKey);
-        return res.ok ? res.json() : null;
-      })
-    );
+    // In Zehnerbloecken wie /api/summoner — 30 gleichzeitige Abrufe treiben den
+    // Schluessel selbst ins Limit.
+    const rawMatches: any[] = [];
+    for (let i = 0; i < matchIds.length; i += 10) {
+      const batch = await Promise.all(
+        matchIds.slice(i, i + 10).map(async (id) => {
+          const res = await riotFetch(`https://${regional}.api.riotgames.com/lol/match/v5/matches/${id}`, apiKey);
+          return res.ok ? res.json() : null;
+        })
+      );
+      rawMatches.push(...batch);
+    }
+    const missing = rawMatches.filter((r) => !r).length;
 
     const extended = rawMatches
       .filter(Boolean)
@@ -70,7 +78,18 @@ export async function GET(request: NextRequest) {
     }));
     const statsOverview = calculateStatsOverview(extended as ExtendedMatchData[], null);
 
-    return NextResponse.json({ matches: legacy, extended, statsOverview });
+    // Versatz fuer „mehr laden" nach Zahl der IDs, nicht der gelieferten Spiele:
+    // fehlende Details (429) oder verworfene Spiele verschieben sonst die naechste
+    // Seite und Spiele kommen doppelt. Gleiche Rechnung: matchesNextStart in /api/summoner.
+    return NextResponse.json(
+      {
+        matches: legacy, extended, statsOverview,
+        nextStart: start + matchIds.length,
+        hasMore: matchIds.length >= Math.min(count, 30),
+        missing,
+      },
+      missing > 0 ? { headers: { 'Cache-Control': 'no-store' } } : undefined,
+    );
 
   } catch (error) {
     return NextResponse.json({ error: 'Server Fehler' }, { status: 500 });

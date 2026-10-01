@@ -44,6 +44,9 @@ export default function PlayerPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [expandedSmurfs, setExpandedSmurfs] = useState(false);
   const [hasMoreMatches, setHasMoreMatches] = useState(true);
+  // Versatz der naechsten Seite laut Server; null = Erstliste noch nicht geladen
+  const [matchesNextStart, setMatchesNextStart] = useState<number | null>(null);
+  const [matchesError, setMatchesError] = useState<'' | 'rate' | 'down'>('');
   const [seasonStats, setSeasonStats] = useState<any>(null);
   const [seasonPeriod, setSeasonPeriod] = useState('');
   const [seasonLoading, setSeasonLoading] = useState(false);
@@ -85,6 +88,11 @@ export default function PlayerPage() {
     setStatsOverview(null);
     setSeasonStats(null);
     setHasMoreMatches(true);
+    setMatchesNextStart(null);
+    setMatchesError('');
+    setMasteries([]);
+    setRoleFilter('all');
+    setExpandedMatch(null);
     setLiveGame({ inGame: false });
     try {
       const version = await getDdragonVersion();
@@ -113,14 +121,16 @@ export default function PlayerPage() {
       // Use matches from summoner response (fresh), fallback to /api/matches (cached)
       if (data.matches && data.matches.length > 0) {
         setMatches(data.matches);
+        setMatchesNextStart(typeof data.matchesNextStart === 'number' ? data.matchesNextStart : data.matches.length);
         if (data.statsOverview) setStatsOverview(data.statsOverview);
       } else {
-        const matchRes = await fetch(`/api/matches?puuid=${encodeURIComponent(data.summoner.puuid)}&region=${region}`);
-        const matchData = await matchRes.json();
+        const page = await fetchMatchPage(data.summoner.puuid, 0, stale);
         if (stale()) return;
-        if (matchRes.ok) {
-          setMatches(matchData.matches || []);
-          if (matchData.statsOverview) setStatsOverview(matchData.statsOverview);
+        if (page) {
+          setMatches(page.matches);
+          setMatchesNextStart(page.nextStart);
+          setHasMoreMatches(page.hasMore);
+          if (page.statsOverview) setStatsOverview(page.statsOverview);
         }
       }
 
@@ -200,26 +210,60 @@ export default function PlayerPage() {
         .replace('{to}', fmtDay(seasonStats.coverage.to))
     : '';
 
+  // Eine Seite der Spielliste. Bei Riot-Ueberlast der Liste einmal nach
+  // Retry-After (hoechstens 5 s) neu versuchen; danach Fehler im State und null.
+  // Fehlende Einzel-Details holt nur der Knopf nach, kein Automatismus.
+  async function fetchMatchPage(puuid: string, start: number, stale: () => boolean) {
+    setMatchesError('');
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const res = await fetch(`/api/matches?puuid=${encodeURIComponent(puuid)}&region=${region}&start=${start}&count=30`);
+        const data = await res.json().catch(() => ({}));
+        if (stale()) return null;
+        if (res.ok) {
+          const list = data.matches || [];
+          return {
+            matches: list as any[],
+            nextStart: typeof data.nextStart === 'number' ? data.nextStart : start + list.length,
+            hasMore: typeof data.hasMore === 'boolean' ? data.hasMore : list.length >= 30,
+            statsOverview: data.statsOverview,
+          };
+        }
+        if (res.status === 404) return { matches: [], nextStart: start, hasMore: false, statsOverview: null };
+        if (res.status === 503 && attempt === 0) {
+          const wait = Math.min(Number(res.headers.get('Retry-After')) || 2, 5);
+          await new Promise(r => setTimeout(r, wait * 1000));
+          if (stale()) return null;
+          continue;
+        }
+        setMatchesError(data?.code === 'rate_limited' ? 'rate' : 'down');
+        return null;
+      } catch {
+        if (stale()) return null;
+        setMatchesError('down');
+        return null;
+      }
+    }
+    return null;
+  }
+
   const loadMoreMatches = async () => {
     if (!player?.summoner?.puuid || loadingMore) return;
+    const req = loadReq.current;
+    const stale = () => req !== loadReq.current;
     setLoadingMore(true);
     try {
-      const start = matches.length;
-      const res = await fetch(`/api/matches?puuid=${encodeURIComponent(player.summoner.puuid)}&region=${region}&start=${start}&count=30`);
-      if (res.ok) {
-        const data = await res.json();
-        const newMatches = data.matches || [];
-        if (newMatches.length === 0) {
-          setHasMoreMatches(false);
-        } else {
-          setMatches(prev => [...prev, ...newMatches]);
-          if (newMatches.length < 30) setHasMoreMatches(false);
-        }
-      }
-    } catch {
-      // silent fail
+      const page = await fetchMatchPage(player.summoner.puuid, matchesNextStart ?? matches.length, stale);
+      if (stale() || !page) return;
+      setMatches(prev => {
+        const seen = new Set(prev.map((m: any) => m.matchId));
+        return [...prev, ...page.matches.filter((m: any) => !m.matchId || !seen.has(m.matchId))];
+      });
+      setMatchesNextStart(page.nextStart);
+      if (!page.hasMore) setHasMoreMatches(false);
+      if (matches.length === 0 && page.statsOverview) setStatsOverview(page.statsOverview);
     } finally {
-      setLoadingMore(false);
+      if (!stale()) setLoadingMore(false);
     }
   };
 
@@ -846,15 +890,36 @@ export default function PlayerPage() {
                     />
                   ))}
                 </div>
-                {hasMoreMatches && roleFilter === 'all' && (
+                {matchesError && roleFilter === 'all' && (
+                  <div className="mt-4 text-center text-fg-muted text-xs">
+                    {matchesError === 'rate' ? t('player.rateLimited') : t('player.riotUnavailable')}
+                  </div>
+                )}
+                {(hasMoreMatches || matchesError) && roleFilter === 'all' && (
                   <button
                     onClick={loadMoreMatches}
                     disabled={loadingMore}
                     className="mt-4 w-full py-2.5 rounded bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-accent-a50 text-xs transition-colors disabled:opacity-50"
                   >
-                    {loadingMore ? t('common.loading') : t('player.loadMoreMatches')}
+                    {loadingMore ? t('common.loading') : matchesError ? t('error.retry') : t('player.loadMoreMatches')}
                   </button>
                 )}
+              </div>
+            )}
+
+            {/* Spielliste nicht ladbar (Riot-Ueberlast): Meldung + Erneut versuchen */}
+            {matches.length === 0 && matchesError && (
+              <div className="bg-surface-base border border-border-subtle rounded p-3 sm:p-6 text-center">
+                <div className="text-fg-muted text-xs">
+                  {matchesError === 'rate' ? t('player.rateLimited') : t('player.riotUnavailable')}
+                </div>
+                <button
+                  onClick={loadMoreMatches}
+                  disabled={loadingMore}
+                  className="mt-4 w-full py-2.5 rounded bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-accent-a50 text-xs transition-colors disabled:opacity-50"
+                >
+                  {loadingMore ? t('common.loading') : t('error.retry')}
+                </button>
               </div>
             )}
           </>

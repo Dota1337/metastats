@@ -23,7 +23,15 @@ export async function GET(request: NextRequest) {
     const res = await riotFetch(`https://${region}.api.riotgames.com/lol/champion-mastery/v4/champion-masteries/by-puuid/${puuid}/top?count=5`, apiKey);
 
     if (!res.ok) {
-      return NextResponse.json({ error: 'Champion Mastery nicht gefunden' }, { status: 404 });
+      if (res.status === 404) {
+        return NextResponse.json({ error: 'Champion Mastery nicht gefunden' }, { status: 404 });
+      }
+      // Limit, Schluessel- oder Riot-Ausfall ist kein „nicht gefunden".
+      const code = res.status === 429 ? 'rate_limited' : (res.status === 401 || res.status === 403) ? 'riot_auth' : 'riot_upstream';
+      return NextResponse.json(
+        { error: `Riot API Fehler (${res.status})`, code },
+        { status: 503, headers: { 'Cache-Control': 'no-store' } },
+      );
     }
 
     const masteries = await res.json();

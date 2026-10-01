@@ -503,6 +503,8 @@ export async function GET(request: NextRequest) {
       summoner: { ...summoner, name: fullName },
       ranked: rankedOut,
       matches,
+      // Versatz fuer „mehr laden" (siehe nextStart in /api/matches)
+      matchesNextStart: matchIds.length,
       statsOverview,
       storedMarketValue: writeValue ? marketValue.value : (existingPlayer?.market_value ?? null),
       rankedGamesAnalyzed: splitRankedMatches.length,

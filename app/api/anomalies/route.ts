@@ -104,10 +104,13 @@ export async function GET() {
 
       const changePercent = ((latest - previous) / previous) * 100;
       const vals = { pct: Math.round(changePercent), from: previous, to: latest };
+      // Grosse Wertzahl = letzter Wert aus dem Text, nicht der aktuelle Spielerwert
+      // (der kann aus einer anderen Bewertung stammen, z. B. 77.281 neben 68.796).
+      const mvPlayer = { ...player, market_value: latest };
       if (changePercent > 50) {
-        anomalies.push(buildAnomaly('market_surge', changePercent > 100 ? 'significant' : 'notable', vals, player, rows[0].recorded_at));
+        anomalies.push(buildAnomaly('market_surge', changePercent > 100 ? 'significant' : 'notable', vals, mvPlayer, rows[0].recorded_at));
       } else if (changePercent < -30) {
-        anomalies.push(buildAnomaly('market_crash', changePercent < -50 ? 'significant' : 'notable', vals, player, rows[0].recorded_at));
+        anomalies.push(buildAnomaly('market_crash', changePercent < -50 ? 'significant' : 'notable', vals, mvPlayer, rows[0].recorded_at));
       }
     }
 

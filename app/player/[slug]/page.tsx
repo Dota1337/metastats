@@ -31,6 +31,8 @@ export default function PlayerPage() {
   const [storedMarketValue, setStoredMarketValue] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  // Nur echtes „gibt es nicht" (Riot 404) — nicht Ueberlast oder Netzfehler.
+  const [notFound, setNotFound] = useState(false);
   const [ddVersion, setDdVersion] = useState('14.1.1');
   const [masteries, setMasteries] = useState<any[]>([]);
   const [liveGame, setLiveGame] = useState<{ inGame: boolean; gameData?: any }>({ inGame: false });
@@ -82,6 +84,7 @@ export default function PlayerPage() {
     const stale = () => req !== loadReq.current;
     setLoading(true);
     setError('');
+    setNotFound(false);
     setStoredMarketValue(null);
     setProInfo(null);
     setMatches([]);
@@ -104,6 +107,7 @@ export default function PlayerPage() {
       if (!res.ok) {
         // Servertext ist deutsch — ueber den Code uebersetzen.
         const code = data?.code;
+        if (code === 'not_found' || res.status === 404) setNotFound(true);
         throw new Error(code === 'riot_rate_limit' ? t('player.rateLimited')
           : code === 'not_found' || res.status === 404 ? t('player.notFound')
           : t('player.riotUnavailable'));
@@ -407,6 +411,8 @@ export default function PlayerPage() {
         {error && (
           <div className="text-center text-red-400 mt-20">{error}</div>
         )}
+        {/* URL fuehrt zu keinem Konto: nicht indexieren. React hebt das Tag in den head. */}
+        {notFound && <meta name="robots" content="noindex" />}
 
         {player && !loading && (
           <>

@@ -8,6 +8,11 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(__dirname),
   },
+  // Das Layout von /teams/[id] liest die Team-ID-Liste per fs (404 fuer
+  // unbekannte IDs) — die Datei muss deshalb in die Funktion.
+  outputFileTracingIncludes: {
+    '/teams/[id]': ['./public/pro-teams/index.json'],
+  },
   // Security-Header fuer alles. Bewusst KEIN Cache-Control hier: der Matcher
   // trifft auch /_next/static/*, und dort steht bereits das richtige
   // Immutable-Header-Set von Next selbst. Cache-Frische bleibt in

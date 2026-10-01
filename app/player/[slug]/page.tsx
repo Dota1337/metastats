@@ -10,6 +10,7 @@ import MatchDetail from '../../components/MatchDetail';
 import LiveGameDetail from '../../components/LiveGameDetail';
 import ApiUnavailable from '../../components/ApiUnavailable';
 import { useI18n, LOCALE_MAP, type TranslationKey } from '../../lib/i18n';
+import { translateMvCategory, translateStatLabel, translateStatText } from '../../lib/lol-stat-labels';
 import { useCustomPageTitle } from '../../lib/use-page-title';
 import { loadProLookup, lookupPro, type ProPlayer } from '../../lib/pro-players';
 import { formatTier } from '../../lib/rank-format';
@@ -291,7 +292,7 @@ export default function PlayerPage() {
 
   const roleLabels: Record<string, string> = {
     TOP: 'Top', JUNGLE: 'Jungle', MIDDLE: 'Mid',
-    BOTTOM: 'ADC', SUPPORT: 'Support', UNKNOWN: '-'
+    BOTTOM: 'ADC', SUPPORT: 'Support', UTILITY: 'Support', UNKNOWN: '-'
   };
 
   const queueLabels: Record<number, string> = {
@@ -407,7 +408,7 @@ export default function PlayerPage() {
                   {ranked && <div className="text-accent text-xs mt-1">{ranked.leaguePoints} LP</div>}
                   {ranked && (
                     <div className="text-fg-muted text-xs mt-1">
-                      {ranked.wins + ranked.losses} Spiele
+                      {t('player.gamesCount').replace('{n}', String(ranked.wins + ranked.losses))}
                       <span className="text-green-400/70 ml-1">{ranked.wins}W</span>
                       <span className="text-red-400/70 ml-1">{ranked.losses}L</span>
                     </div>
@@ -421,7 +422,7 @@ export default function PlayerPage() {
                   {flex && <div className="text-accent text-xs mt-1">{flex.leaguePoints} LP</div>}
                   {flex && (
                     <div className="text-fg-muted text-xs mt-1">
-                      {flex.wins + flex.losses} Spiele
+                      {t('player.gamesCount').replace('{n}', String(flex.wins + flex.losses))}
                       <span className="text-green-400/70 ml-1">{flex.wins}W</span>
                       <span className="text-red-400/70 ml-1">{flex.losses}L</span>
                     </div>
@@ -532,8 +533,8 @@ export default function PlayerPage() {
                     .sort((a, b) => Math.abs(b.impact) - Math.abs(a.impact))
                     .map((item: BreakdownItem, i: number) => (
                     <div key={i} className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3 py-1.5 px-2 rounded hover:bg-surface-raised">
-                      <div className="w-16 text-xs text-fg-muted">{item.category}</div>
-                      <div className="w-full sm:w-36 text-xs text-white">{item.label}</div>
+                      <div className="w-16 text-xs text-fg-muted">{translateMvCategory(t, item.category)}</div>
+                      <div className="w-full sm:w-36 text-xs text-white">{translateStatLabel(t, item.label)}</div>
                       <div className="flex-1 h-2 bg-surface-raised rounded overflow-hidden min-w-[60px]">
                         {item.positive ? (
                           <div className="h-full bg-green-500/60 rounded" style={{ width: `${Math.min(Math.abs(item.impact) / 0.175 * 100, 100)}%` }} />
@@ -544,7 +545,7 @@ export default function PlayerPage() {
                       <div className={`w-14 text-xs font-medium text-right ${item.positive ? 'text-green-400' : 'text-red-400'}`}>
                         {item.positive ? '+' : ''}{(item.impact * 100).toFixed(1)}%
                       </div>
-                      <div className="hidden sm:block w-36 text-xs text-fg-secondary text-right">{item.stat}</div>
+                      <div className="hidden sm:block w-36 text-xs text-fg-secondary text-right">{translateStatText(t, item.stat)}</div>
                     </div>
                   ))}
                 </div>
@@ -653,11 +654,11 @@ export default function PlayerPage() {
                         <span className="text-lg w-7 text-center">{cat.icon}</span>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="text-white text-sm font-medium truncate">{cat.name}</span>
+                            <span className="text-white text-sm font-medium truncate">{(() => { const k = `statCat.${cat.id}` as TranslationKey; const s = t(k); return s === k ? cat.name : s; })()}</span>
                             {cat.trend > 5 && <span className="text-green-400 text-xs">&#9650;</span>}
                             {cat.trend < -5 && <span className="text-red-400 text-xs">&#9660;</span>}
                           </div>
-                          <div className="text-[#6a7a90] text-xs truncate">{cat.summary}</div>
+                          <div className="text-[#6a7a90] text-xs truncate">{lang === 'de' ? cat.summary : (cat.summaryEn ?? cat.summary)}</div>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
                           <div className="w-16 h-2 bg-surface-base rounded overflow-hidden">
@@ -682,9 +683,9 @@ export default function PlayerPage() {
                             <div className="grid grid-cols-2 gap-2">
                               {cat.details.map((d: any, j: number) => (
                                 <div key={j} className="flex justify-between items-baseline">
-                                  <span className="text-[#6a7a90] text-xs">{d.name}</span>
+                                  <span className="text-[#6a7a90] text-xs">{translateStatLabel(t, d.name)}</span>
                                   <span className="text-white text-xs font-medium">
-                                    {typeof d.value === 'number' ? d.value.toLocaleString(numLocale) : d.value}{d.unit ? ` ${d.unit}` : ''}
+                                    {typeof d.value === 'number' ? d.value.toLocaleString(numLocale) : d.value}{d.unit ? ` ${translateStatText(t, d.unit)}` : ''}
                                   </span>
                                 </div>
                               ))}
@@ -694,7 +695,7 @@ export default function PlayerPage() {
                               <div className="flex items-center justify-center gap-2 mb-2">
                                 {cat.details.slice(0, 2).map((d: any, j: number) => (
                                   <span key={j} className="text-[#6a7a90] text-xs">
-                                    {d.name}: <span className="text-white">{typeof d.value === 'number' ? d.value.toLocaleString(numLocale) : d.value}{d.unit ? ` ${d.unit}` : ''}</span>
+                                    {translateStatLabel(t, d.name)}: <span className="text-white">{typeof d.value === 'number' ? d.value.toLocaleString(numLocale) : d.value}{d.unit ? ` ${translateStatText(t, d.unit)}` : ''}</span>
                                   </span>
                                 ))}
                               </div>
@@ -703,7 +704,7 @@ export default function PlayerPage() {
                                   <div className="grid grid-cols-2 gap-1 opacity-20 blur-[2px] select-none pointer-events-none">
                                     {cat.details.slice(2, 6).map((d: any, j: number) => (
                                       <div key={j} className="flex justify-between">
-                                        <span className="text-[#6a7a90] text-xs">{d.name}</span>
+                                        <span className="text-[#6a7a90] text-xs">{translateStatLabel(t, d.name)}</span>
                                         <span className="text-white text-xs">***</span>
                                       </div>
                                     ))}

@@ -62,6 +62,9 @@ export async function GET(request: NextRequest) {
     // Return both extended data and legacy format for backwards compatibility
     const legacy = (extended as ExtendedMatchData[]).map(m => ({
       ...toLegacyMatchData(m!),
+      // der Coach misst Objektiv-Kontrolle daran (wie /api/summoner)
+      damageDealtToObjectives: m!.damageDealtToObjectives,
+      damageDealtToBuildings: m!.damageDealtToBuildings,
       participants: participantsMap[m!.matchId] || [],
       bans: bansMap[m!.matchId] || [],
     }));

@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { useI18n } from '../lib/i18n';
+import { useI18n, type TranslationKey } from '../lib/i18n';
 
 interface CoachingInsight {
   type: 'strength' | 'weakness' | 'tip';
@@ -25,7 +25,16 @@ interface CoachingReport {
   gamesAnalyzed: number;
   comparedTo: string;
   improvementPotential: string;
+  // seit der Uebersetzung (2026-10-01); fehlen sie, bleibt der deutsche Servertext
+  roleKey?: string;
+  improvementKey?: string;
 }
+
+type Tr = (key: string, fallback: string) => string;
+
+const ROLE_I18N: Record<string, string> = {
+  TOP: 'role.top', JUNGLE: 'role.jungle', MID: 'role.mid', BOTTOM: 'role.adc', SUPPORT: 'role.support',
+};
 
 interface AICoachProps {
   matches: any[];
@@ -40,6 +49,8 @@ const GRADE_COLORS: Record<string, string> = {
 
 export default function AICoach({ matches, tier, role }: AICoachProps) {
   const { t } = useI18n();
+  // t() liefert den Schluessel selbst, wenn er fehlt — dann den Servertext zeigen.
+  const tr: Tr = (key, fallback) => { const v = t(key as TranslationKey); return v && v !== key ? v : fallback; };
   const [report, setReport] = useState<CoachingReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -122,12 +133,12 @@ export default function AICoach({ matches, tier, role }: AICoachProps) {
           {/* Improvement tip */}
           <div className="bg-accent-a10 border border-accent-a20 rounded-lg px-3 py-2">
             <div className="text-accent text-[10px] font-medium uppercase tracking-wider mb-1">{t('coach.improvement')}</div>
-            <div className="text-[#e8d5a3] text-xs">{report.improvementPotential}</div>
+            <div className="text-[#e8d5a3] text-xs">{improvementText(report, tr)}</div>
           </div>
 
           {/* Compared to tier */}
           <div className="text-fg-muted text-[10px] text-center">
-            {t('coach.comparedWith')} {report.comparedTo}{t('coach.playersRole')} {report.role}
+            {t('coach.comparedWith')} {tr(`tier.${report.comparedTo.toLowerCase()}`, report.comparedTo)}{t('coach.playersRole')} {report.roleKey && ROLE_I18N[report.roleKey] ? tr(ROLE_I18N[report.roleKey], report.role) : report.role}
           </div>
 
           {/* Strengths */}
@@ -136,7 +147,7 @@ export default function AICoach({ matches, tier, role }: AICoachProps) {
               <div className="text-green-400 text-[10px] font-medium uppercase tracking-wider mb-2">{t('coach.strengths')}</div>
               <div className="space-y-1.5">
                 {report.strengths.map((s, i) => (
-                  <InsightCard key={i} insight={s} color="green" />
+                  <InsightCard key={i} insight={s} color="green" roleKey={report.roleKey} tr={tr} />
                 ))}
               </div>
             </div>
@@ -148,7 +159,7 @@ export default function AICoach({ matches, tier, role }: AICoachProps) {
               <div className="text-red-400 text-[10px] font-medium uppercase tracking-wider mb-2">{t('coach.weaknesses')}</div>
               <div className="space-y-1.5">
                 {report.weaknesses.map((s, i) => (
-                  <InsightCard key={i} insight={s} color="red" />
+                  <InsightCard key={i} insight={s} color="red" roleKey={report.roleKey} tr={tr} />
                 ))}
               </div>
             </div>
@@ -160,7 +171,7 @@ export default function AICoach({ matches, tier, role }: AICoachProps) {
               <div className="text-blue-400 text-[10px] font-medium uppercase tracking-wider mb-2">{t('coach.tips')}</div>
               <div className="space-y-1.5">
                 {report.tips.map((s, i) => (
-                  <InsightCard key={i} insight={s} color="blue" />
+                  <InsightCard key={i} insight={s} color="blue" roleKey={report.roleKey} tr={tr} />
                 ))}
               </div>
             </div>
@@ -171,7 +182,25 @@ export default function AICoach({ matches, tier, role }: AICoachProps) {
   );
 }
 
-function InsightCard({ insight, color }: { insight: CoachingInsight; color: 'green' | 'red' | 'blue' }) {
+function improvementText(report: CoachingReport, tr: Tr): string {
+  const key = report.improvementKey;
+  if (!key) return report.improvementPotential;
+  if (key === 'none') return tr('coach.tip.none', report.improvementPotential);
+  if (key.startsWith('focus:')) {
+    const cat = key.slice(6);
+    const weakest = report.weaknesses[0];
+    const name = tr(`coach.${report.roleKey}.${cat}.title`, weakest?.title || cat);
+    const tpl = tr('coach.tip.focus', '');
+    return tpl ? tpl.replace('{name}', name) : report.improvementPotential;
+  }
+  return tr(`coach.tip.${key}`, report.improvementPotential);
+}
+
+function InsightCard({ insight, color, roleKey, tr }: { insight: CoachingInsight; color: 'green' | 'red' | 'blue'; roleKey?: string; tr: Tr }) {
+  const base = roleKey ? `coach.${roleKey}.${insight.category}` : '';
+  const title = base ? tr(`${base}.title`, insight.title) : insight.title;
+  const adviceKind = insight.type === 'strength' ? 'good' : insight.type === 'weakness' ? 'bad' : '';
+  const description = insight.description && base && adviceKind ? tr(`${base}.${adviceKind}`, insight.description) : insight.description;
   const colors = {
     green: { bg: 'bg-green-500/5', border: 'border-green-500/20', text: 'text-green-400', bar: 'bg-green-500' },
     red: { bg: 'bg-red-500/5', border: 'border-red-500/20', text: 'text-red-400', bar: 'bg-red-500' },
@@ -182,7 +211,7 @@ function InsightCard({ insight, color }: { insight: CoachingInsight; color: 'gre
   return (
     <div className={`${c.bg} border ${c.border} rounded-lg px-3 py-2`}>
       <div className="flex items-center justify-between mb-1">
-        <span className="text-white text-xs font-medium">{insight.title}</span>
+        <span className="text-white text-xs font-medium">{title}</span>
         <div className="flex items-center gap-2">
           <span className={`${c.text} text-xs font-bold`}>{insight.stat}</span>
           <span className="text-fg-muted text-[10px]">/ {formatBenchmark(insight.category, insight.benchmarkValue)}</span>
@@ -192,8 +221,8 @@ function InsightCard({ insight, color }: { insight: CoachingInsight; color: 'gre
       <div className="w-full h-1 bg-surface-overlay rounded-full mb-1.5">
         <div className={`h-full ${c.bar} rounded-full transition-all duration-500`} style={{ width: `${insight.percentile}%` }} />
       </div>
-      {insight.description && (
-        <div className="text-fg-secondary text-[11px] leading-relaxed">{insight.description}</div>
+      {description && (
+        <div className="text-fg-secondary text-[11px] leading-relaxed">{description}</div>
       )}
     </div>
   );

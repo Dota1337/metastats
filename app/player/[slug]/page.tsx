@@ -16,6 +16,8 @@ import { loadProLookup, lookupPro, type ProPlayer } from '../../lib/pro-players'
 import { formatTier } from '../../lib/rank-format';
 import { isNonStandardMode, isRiftGame, MIN_RIFT_GAMES } from '../../lib/lol-queue';
 import { getDdragonVersion } from '../../lib/ddragon-version';
+import { calculateStatsOverview } from '../../lib/stats-categories';
+import type { ExtendedMatchData } from '../../lib/match-processor';
 
 const PerformanceCharts = dynamic(() => import('../../components/PerformanceCharts'), { ssr: false });
 const RadarStats = dynamic(() => import('../../components/RadarStats'), { ssr: false });
@@ -28,6 +30,9 @@ export default function PlayerPage() {
   const [player, setPlayer] = useState<any>(null);
   const [matches, setMatches] = useState<any[]>([]);
   const [statsOverview, setStatsOverview] = useState<any>(null);
+  // Rohwerte je matchId (aus /api/summoner und /api/matches), damit die
+  // Analyse nach „mehr laden" ueber alle geladenen Spiele neu rechnet.
+  const [extendedById, setExtendedById] = useState<Record<string, ExtendedMatchData>>({});
   const [storedMarketValue, setStoredMarketValue] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -89,6 +94,7 @@ export default function PlayerPage() {
     setProInfo(null);
     setMatches([]);
     setStatsOverview(null);
+    setExtendedById({});
     setSeasonStats(null);
     setHasMoreMatches(true);
     setMatchesNextStart(null);
@@ -128,6 +134,7 @@ export default function PlayerPage() {
         setMatches(data.matches);
         setMatchesNextStart(typeof data.matchesNextStart === 'number' ? data.matchesNextStart : data.matches.length);
         if (data.statsOverview) setStatsOverview(data.statsOverview);
+        addExtended(data.extended);
       } else {
         const page = await fetchMatchPage(data.summoner.puuid, 0, stale);
         if (stale()) return;
@@ -136,6 +143,7 @@ export default function PlayerPage() {
           setMatchesNextStart(page.nextStart);
           setHasMoreMatches(page.hasMore);
           if (page.statsOverview) setStatsOverview(page.statsOverview);
+          addExtended(page.extended);
         }
       }
 
@@ -217,8 +225,35 @@ export default function PlayerPage() {
     }
   };
 
+  function addExtended(list: unknown) {
+    if (!Array.isArray(list) || list.length === 0) return;
+    setExtendedById(prev => {
+      const next = { ...prev };
+      for (const m of list) if (m?.matchId) next[m.matchId] = m;
+      return next;
+    });
+  }
+
+  // Neu rechnen nur, wenn zu JEDEM geladenen Spiel Rohwerte da sind — sonst
+  // (gespeicherter Stand ohne Rohwerte) bleibt der Serverwert. Folgt bewusst
+  // nicht dem Rollen-Filter: die Rollen-Erkennung braucht alle Rollen.
+  const recentOverview = useMemo(() => {
+    if (matches.length === 0) return statsOverview;
+    const list: ExtendedMatchData[] = [];
+    for (const m of matches) {
+      const ext = m?.matchId ? extendedById[m.matchId] : null;
+      if (!ext) return statsOverview;
+      list.push(ext);
+    }
+    try {
+      return calculateStatsOverview(list, null);
+    } catch {
+      return statsOverview;
+    }
+  }, [matches, extendedById, statsOverview]);
+
   const seasonMode = (seasonStats?.periods?.length || 0) > 0;
-  const shownOverview = seasonMode ? seasonStats.overview : statsOverview;
+  const shownOverview = seasonMode ? seasonStats.overview : recentOverview;
   const fmtDay = (iso: string) => new Date(iso).toLocaleDateString(numLocale, { day: '2-digit', month: '2-digit' });
   const coverageText = seasonStats?.coverage
     ? t('stats.coverage')
@@ -244,9 +279,10 @@ export default function PlayerPage() {
             nextStart: typeof data.nextStart === 'number' ? data.nextStart : start + list.length,
             hasMore: typeof data.hasMore === 'boolean' ? data.hasMore : list.length >= 30,
             statsOverview: data.statsOverview,
+            extended: Array.isArray(data.extended) ? data.extended : [],
           };
         }
-        if (res.status === 404) return { matches: [], nextStart: start, hasMore: false, statsOverview: null };
+        if (res.status === 404) return { matches: [], nextStart: start, hasMore: false, statsOverview: null, extended: [] };
         if (res.status === 503 && attempt === 0) {
           const wait = Math.min(Number(res.headers.get('Retry-After')) || 2, 5);
           await new Promise(r => setTimeout(r, wait * 1000));
@@ -279,6 +315,7 @@ export default function PlayerPage() {
       setMatchesNextStart(page.nextStart);
       if (!page.hasMore) setHasMoreMatches(false);
       if (matches.length === 0 && page.statsOverview) setStatsOverview(page.statsOverview);
+      addExtended(page.extended);
     } finally {
       if (!stale()) setLoadingMore(false);
     }
@@ -668,13 +705,13 @@ export default function PlayerPage() {
                 <AICoach
                   matches={riftMatches}
                   tier={player?.ranked?.find((r: any) => r.queueType === 'RANKED_SOLO_5x5')?.tier || player?.summoner?.tier || player?.tier}
-                  role={statsOverview?.role}
+                  role={recentOverview?.role}
                 />
               </div>
             )}
 
             {/* 20 Stat Categories */}
-            {(seasonMode || (statsOverview && statsOverview.categories && statsOverview.categories.length > 0)) && (
+            {(seasonMode || (recentOverview && recentOverview.categories && recentOverview.categories.length > 0)) && (
               <div className="bg-surface-base border border-border-subtle rounded p-3 sm:p-6 mb-4">
                 <div className="flex items-center justify-between mb-4">
                   <div className="min-w-0 flex-1">
@@ -700,7 +737,7 @@ export default function PlayerPage() {
                       </div>
                     ) : (
                       <div className="text-fg-muted text-xs mt-1 truncate">
-                        {t('stats.subtitle')} {statsOverview.gamesAnalyzed} {t('stats.games')}
+                        {t('stats.subtitle')} {recentOverview.gamesAnalyzed} {t('stats.games')}
                       </div>
                     )}
                   </div>

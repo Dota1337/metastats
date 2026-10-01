@@ -503,6 +503,9 @@ export async function GET(request: NextRequest) {
       summoner: { ...summoner, name: fullName },
       ranked: rankedOut,
       matches,
+      // Rohwerte der Anzeige-Spiele: die Seite rechnet die Analyse nach
+      // „mehr laden" mit derselben Funktion neu (calculateStatsOverview).
+      extended: extendedMatches,
       // Versatz fuer „mehr laden" (siehe nextStart in /api/matches)
       matchesNextStart: matchIds.length,
       statsOverview,

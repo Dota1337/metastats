@@ -6,6 +6,7 @@
  */
 
 import type { ExtendedMatchData } from './match-processor';
+import { isRiftGame, isLaneRole, MIN_RIFT_GAMES } from './lol-queue';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -91,7 +92,7 @@ function avgDuration(matches: ExtendedMatchData[]): number {
 
 function detectRole(matches: ExtendedMatchData[]): string {
   const counts: Record<string, number> = {};
-  matches.forEach(m => { counts[m.role] = (counts[m.role] || 0) + 1; });
+  matches.forEach(m => { if (isLaneRole(m.role)) counts[m.role] = (counts[m.role] || 0) + 1; });
   return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'UNKNOWN';
 }
 
@@ -606,8 +607,11 @@ export function calculateStatsOverview(
   matches: ExtendedMatchData[],
   ranked: { tier: string; rank: string; leaguePoints: number; wins: number; losses: number } | null
 ): StatsOverview {
-  if (matches.length === 0) {
-    return { categories: [], overallScore: 0, role: 'UNKNOWN', gamesAnalyzed: 0 };
+  // Nur Spiele, die sich mit Ranglisten-Schwellen vergleichen lassen (kein ARAM,
+  // keine Arena, keine Bots, keine Remakes) — sonst kippen Werte und Rolle.
+  matches = matches.filter(isRiftGame);
+  if (matches.length < MIN_RIFT_GAMES) {
+    return { categories: [], overallScore: 0, role: 'UNKNOWN', gamesAnalyzed: matches.length };
   }
 
   const role = detectRole(matches);

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '../../lib/supabase';
+import { isRiftGame, isLaneRole, MIN_RIFT_GAMES } from '../../lib/lol-queue';
 import {
   ROLE_CATEGORIES, MID_CATEGORIES, getGrade, computePercentile, getImprovementTip,
 } from '../../lib/ai-coach-categories';
@@ -28,13 +29,16 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { matches, tier, role: playerRole } = await request.json();
-    if (!matches || !Array.isArray(matches) || matches.length === 0) {
+    const body = await request.json();
+    const { tier, role: playerRole } = body;
+    // Nur mit Ranglisten-Schwellen vergleichbare Spiele (kein ARAM/Arena/Bot/Remake)
+    const matches = Array.isArray(body.matches) ? body.matches.filter(isRiftGame) : [];
+    if (matches.length < MIN_RIFT_GAMES) {
       return NextResponse.json({ error: 'Match-Daten erforderlich' }, { status: 400 });
     }
 
     const effectiveTier = tier || 'GOLD';
-    const role = playerRole || detectRole(matches);
+    const role = isLaneRole(playerRole) ? playerRole : detectRole(matches);
     const normalizedRole = normalizeRole(role);
     const categories = ROLE_CATEGORIES[normalizedRole] || MID_CATEGORIES;
     const gamesAnalyzed = matches.length;
@@ -100,7 +104,7 @@ export async function POST(request: NextRequest) {
 
 function detectRole(matches: any[]): string {
   const counts: Record<string, number> = {};
-  matches.forEach((m: any) => { counts[m.role || 'UNKNOWN'] = (counts[m.role || 'UNKNOWN'] || 0) + 1; });
+  matches.forEach((m: any) => { if (isLaneRole(m.role)) counts[m.role] = (counts[m.role] || 0) + 1; });
   return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'MID';
 }
 

@@ -602,6 +602,7 @@ export function toLegacyMatchData(m: ExtendedMatchData) {
     gameDuration: m.gameDuration,
     gameMode: m.gameMode,
     queueId: m.queueId,
+    gameEndedInEarlySurrender: m.gameEndedInEarlySurrender,
     gameCreation: m.gameCreation,
     cs: m.cs,
     role: m.role,

@@ -14,7 +14,7 @@ import { translateMvCategory, translateStatLabel, translateStatText } from '../.
 import { useCustomPageTitle } from '../../lib/use-page-title';
 import { loadProLookup, lookupPro, type ProPlayer } from '../../lib/pro-players';
 import { formatTier } from '../../lib/rank-format';
-import { isNonStandardMode } from '../../lib/lol-queue';
+import { isNonStandardMode, isRiftGame, MIN_RIFT_GAMES } from '../../lib/lol-queue';
 import { getDdragonVersion } from '../../lib/ddragon-version';
 
 const PerformanceCharts = dynamic(() => import('../../components/PerformanceCharts'), { ssr: false });
@@ -239,6 +239,8 @@ export default function PlayerPage() {
 
   // Arena und Swarm sind nicht mit 5-gegen-5 vergleichbar (lol-queue.ts).
   const headerMatches = matches.filter(m => !isNonStandardMode(m));
+  // Coach vergleicht mit Ranglisten-Schwellen: nur Spiele auf der Kluft
+  const riftMatches = matches.filter(isRiftGame);
 
   // Use stored market value from Supabase when available (cached responses),
   // only recalculate when we have fresh match data
@@ -311,6 +313,7 @@ export default function PlayerPage() {
     450: 'ARAM',
     400: 'Normal Draft',
     430: 'Normal Blind',
+    480: 'Swiftplay',
     490: 'Normal (Quickplay)',
     700: 'Clash',
     720: 'ARAM: Clash',
@@ -333,6 +336,7 @@ export default function PlayerPage() {
   const getQueueName = (match: any) => {
     if (match.queueId && queueLabels[match.queueId]) return queueLabels[match.queueId];
     if (match.gameMode === 'ARAM') return 'ARAM';
+    if (match.gameMode === 'CHERRY') return 'Arena';
     if (match.gameMode === 'CLASSIC') return 'Normal';
     return match.gameMode || '-';
   };
@@ -596,10 +600,10 @@ export default function PlayerPage() {
             )}
 
             {/* AI Coach */}
-            {matches.length > 0 && (
+            {riftMatches.length >= MIN_RIFT_GAMES && (
               <div className="mb-4">
                 <AICoach
-                  matches={matches}
+                  matches={riftMatches}
                   tier={player?.ranked?.find((r: any) => r.queueType === 'RANKED_SOLO_5x5')?.tier || player?.summoner?.tier || player?.tier}
                   role={statsOverview?.role}
                 />

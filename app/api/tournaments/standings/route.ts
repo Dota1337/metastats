@@ -8,7 +8,7 @@ const API = 'https://esports-api.lolesports.com/persisted/gw/';
 // Vollstaendige Antworten 15 min halten. Fehlte ein Teil (Riot-Aussetzer),
 // nur 60 s und mit degraded, sonst bleibt die Liga nach einem kurzen Ausfall
 // eine Viertelstunde im Speicher und Stunden an der Edge leer.
-let standingsCache: Record<string, { data: any; time: number; degraded: boolean }> = {};
+const standingsCache: Record<string, { data: unknown; time: number; degraded: boolean }> = {};
 const CACHE_TTL = 15 * 60 * 1000;
 const DEGRADED_TTL = 60 * 1000;
 
@@ -75,7 +75,7 @@ async function getLeagueDetail(leagueSlug: string) {
   const hit = fromCache(leagueSlug, now);
   if (hit) return hit;
 
-  let leagues: any[];
+  let leagues: Awaited<ReturnType<typeof fetchLeagues>>;
   try {
     leagues = await fetchLeagues();
   } catch {
@@ -94,7 +94,7 @@ async function getLeagueDetail(leagueSlug: string) {
     // Turnierliste und Spielplan haengen nicht voneinander ab -> parallel.
     const schedPromise = lolesportsJson(`${API}getSchedule?hl=en-US`).catch(() => null);
 
-    let tournaments: any[] = [];
+    let tournaments = [] as typeof leagues;
     try {
       const tournData = await lolesportsJson(
         `${API}getTournamentsForLeague?hl=en-US&leagueId=${league.id}`,
@@ -163,9 +163,9 @@ async function getLeagueDetail(leagueSlug: string) {
       if (!schedData) throw new Error('schedule');
 
       // Neuere und aeltere Seite parallel nachladen.
-      const page = (token: string | undefined): Promise<any[]> => token
+      const page = (token: string | undefined) => token
         ? lolesportsJson(`${API}getSchedule?hl=en-US&pageToken=${token}`)
-            .then((d: any) => d?.data?.schedule?.events || [])
+            .then(d => d?.data?.schedule?.events || [])
             .catch(() => { failed = true; return []; })
         : Promise.resolve([]);
       const pages = schedData?.data?.schedule?.pages || {};

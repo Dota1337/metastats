@@ -1,0 +1,11 @@
+[Unit]
+Description=metastats Meta-Pulse Patchvergleiche stuendlich
+
+[Timer]
+# Stuendlich: die Patch-Liste der Route aendert ihre Spielzahl mit jedem
+# Sammellauf, ein aelterer Blob gilt dann nicht mehr und die Route rechnet live.
+OnCalendar=*-*-* *:25:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target

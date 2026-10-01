@@ -20,6 +20,10 @@ import {
   listKey,
   COMP_PRECOMPUTE_BUCKETS,
   COMP_PRECOMPUTE_MAX_AGE_MS,
+  isValidMetaPulseDiff,
+  metaPulseDiffPath,
+  META_PULSE_DIFF_BUCKETS,
+  META_PULSE_DIFF_MAX_AGE_MS,
 } from './snapshot-matrix.ts';
 
 const TODAY = new Date('2026-09-13T08:30:00Z');
@@ -122,4 +126,48 @@ test('Eintrag: nur mit gleichem letzten Tag, frisch und niedriger Schwelle', () 
   assert.equal(precomputedEntryUsable({ ...e, computed_at: new Date(now - COMP_PRECOMPUTE_MAX_AGE_MS - 1).toISOString() }, o), false);
   assert.equal(precomputedEntryUsable(null, o), false);
   assert.equal(precomputedEntryUsable(e, { ...o, latestDay: undefined }), false);
+});
+
+// Meta-Pulse-Patchvergleich: Route und Box-Skript muessen denselben Blob als
+// gueltig ansehen. Faellt einer durch, rechnet die Route still live (16-20 s).
+const MP_NOW = Date.parse('2026-10-01T10:00:00Z');
+const MP_WANT = {
+  set: 18, patch: '18.3', lastDay: '2026-09-30', totalMatches: 3_254_536,
+  regions: ['euw1', 'kr', 'na1'], buckets: META_PULSE_DIFF_BUCKETS.master_plus, now: MP_NOW,
+};
+const MP_SNAP = {
+  v: 1, generatedAt: new Date(MP_NOW - 30 * 60 * 1000).toISOString(), set: 18, patch: '18.3',
+  lastDay: '2026-09-30', totalMatches: 3_254_536, regions: ['na1', 'euw1', 'kr'],
+  buckets: [...META_PULSE_DIFF_BUCKETS.master_plus], minGames: 80,
+  rows: [{ cluster_key: 'x', games: 100, sum_placement: 400, top4: 60, top1: 15, participants: 1000 }],
+};
+
+test('Meta-Pulse-Blob: passender Stand ist gueltig (Reihenfolge der Regionen egal)', () => {
+  assert.equal(isValidMetaPulseDiff(MP_SNAP, MP_WANT), true);
+  assert.equal(isValidMetaPulseDiff({ ...MP_SNAP, lastDay: '2026-10-01', totalMatches: 3_300_000 }, MP_WANT), true);
+});
+
+test('Meta-Pulse-Blob: falscher Patch, Set, Regionen, Raenge oder Mindestspiele fallen durch', () => {
+  assert.equal(isValidMetaPulseDiff({ ...MP_SNAP, patch: '18.2' }, MP_WANT), false);
+  assert.equal(isValidMetaPulseDiff({ ...MP_SNAP, set: 17 }, MP_WANT), false);
+  assert.equal(isValidMetaPulseDiff({ ...MP_SNAP, regions: ['euw1', 'kr'] }, MP_WANT), false);
+  assert.equal(isValidMetaPulseDiff({ ...MP_SNAP, buckets: [...META_PULSE_DIFF_BUCKETS.diamond_plus] }, MP_WANT), false);
+  assert.equal(isValidMetaPulseDiff({ ...MP_SNAP, minGames: 50 }, MP_WANT), false);
+});
+
+test('Meta-Pulse-Blob: aelterer Datenstand, zu alt oder aus der Zukunft faellt durch', () => {
+  assert.equal(isValidMetaPulseDiff({ ...MP_SNAP, lastDay: '2026-09-29' }, MP_WANT), false);
+  assert.equal(isValidMetaPulseDiff({ ...MP_SNAP, totalMatches: 3_254_535 }, MP_WANT), false);
+  assert.equal(isValidMetaPulseDiff({ ...MP_SNAP, generatedAt: new Date(MP_NOW - META_PULSE_DIFF_MAX_AGE_MS - 1).toISOString() }, MP_WANT), false);
+  assert.equal(isValidMetaPulseDiff({ ...MP_SNAP, generatedAt: new Date(MP_NOW + 10 * 60 * 1000).toISOString() }, MP_WANT), false);
+});
+
+test('Meta-Pulse-Blob: Muell wird abgelehnt statt zu werfen', () => {
+  for (const bad of [null, undefined, 'x', 42, [], {}, { ...MP_SNAP, v: 2 }, { ...MP_SNAP, rows: null }, { ...MP_SNAP, generatedAt: 'kaputt' }]) {
+    assert.equal(isValidMetaPulseDiff(bad, MP_WANT), false);
+  }
+});
+
+test('Meta-Pulse-Blob: Pfad je Patch und Rang-Gruppe', () => {
+  assert.equal(metaPulseDiffPath('18.3', 'master_plus'), 'tft/meta-pulse/diff/18.3/all__master_plus.json');
 });

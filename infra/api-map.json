@@ -11,7 +11,7 @@
     "tables": 35,
     "rpcs": 29,
     "files": 11,
-    "edges": 388,
+    "edges": 389,
     "unused": 7,
     "unresolved": 1
   },
@@ -963,6 +963,7 @@
       "via": [
         "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
+        "app/lib/meta-pulse-diff-snapshot.ts",
         "app/lib/tft-supabase-reader.ts",
         "public/tft-set.json"
       ],
@@ -2958,6 +2959,11 @@
     {
       "from": "api:/api/tft/matches",
       "to": "ext:riot-api",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/meta-pulse",
+      "to": "blob:manifest",
       "kind": "fetches"
     },
     {

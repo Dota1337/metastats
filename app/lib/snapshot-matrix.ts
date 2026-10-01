@@ -373,3 +373,66 @@ export function precomputedEntryUsable(
   if (!Number.isFinite(age) || age > COMP_PRECOMPUTE_MAX_AGE_MS) return false;
   return Number(e.min_games) <= o.requestedMinGames;
 }
+
+// ---------------------------------------------------------------------------
+// Meta-Pulse: vorgerechnete Patch-Vergleiche (2026-10-01)
+// ---------------------------------------------------------------------------
+// Der Patch-Vergleich ueber alle Regionen braucht live 7-20 s und laeuft dabei
+// an den 20-s-Deckel der Datenbank. Die Box rechnet ihn stuendlich ueber eine
+// direkte Verbindung (ohne diesen Deckel) vor: scripts/publish-meta-pulse-diffs.mjs.
+// Ein Blob je (Patch, Rang-Gruppe), nur fuer region=all — Einzelregionen sind
+// live billig. Die Route nimmt den Blob nur, wenn er zur Anfrage passt und
+// mindestens so viele Spiele kennt wie ihre eigene Patch-Liste.
+
+export const META_PULSE_DIFF_MIN_GAMES = 80;
+export const META_PULSE_DIFF_MAX_AGE_MS = 36 * 60 * 60 * 1000;
+export const META_PULSE_DIFF_BUCKETS = COMP_PRECOMPUTE_BUCKETS;
+
+export function metaPulseDiffPath(patch: string, bucketLabel: string): string {
+  return `tft/meta-pulse/diff/${patch}/all__${bucketLabel}.json`;
+}
+
+export interface MetaPulseDiffRow {
+  cluster_key: string;
+  games: number;
+  sum_placement: number;
+  top4: number;
+  top1: number;
+  participants: number;
+}
+
+export interface MetaPulseDiffSnapshot {
+  v: 1;
+  generatedAt: string;
+  set: number;
+  patch: string;
+  lastDay: string;
+  totalMatches: number;
+  regions: string[];
+  buckets: string[];
+  minGames: number;
+  rows: MetaPulseDiffRow[];
+}
+
+export function isValidMetaPulseDiff(snap: unknown, want: {
+  set: number;
+  patch: string;
+  lastDay: string;
+  totalMatches: number;
+  regions: ReadonlyArray<string>;
+  buckets: ReadonlyArray<string>;
+  now: number;
+}): snap is MetaPulseDiffSnapshot {
+  if (!snap || typeof snap !== 'object') return false;
+  const s = snap as Partial<MetaPulseDiffSnapshot>;
+  if (s.v !== 1 || !Array.isArray(s.rows) || !Array.isArray(s.regions) || !Array.isArray(s.buckets)) return false;
+  if (Number(s.set) !== want.set || s.patch !== want.patch) return false;
+  if (listKey(s.regions) !== listKey(want.regions) || listKey(s.buckets) !== listKey(want.buckets)) return false;
+  if (Number(s.minGames) !== META_PULSE_DIFF_MIN_GAMES) return false;
+  // Kennt der Blob weniger Tage oder Spiele als die Patch-Liste der Route,
+  // sind seither Daten dazugekommen → live rechnen.
+  if (String(s.lastDay ?? '').slice(0, 10) < String(want.lastDay).slice(0, 10)) return false;
+  if (!(Number(s.totalMatches) >= Number(want.totalMatches))) return false;
+  const age = want.now - Date.parse(String(s.generatedAt));
+  return Number.isFinite(age) && age >= -5 * 60 * 1000 && age <= META_PULSE_DIFF_MAX_AGE_MS;
+}

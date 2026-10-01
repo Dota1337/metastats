@@ -1,0 +1,43 @@
+[Unit]
+Description=metastats Meta-Pulse Patchvergleiche vorrechnen (region=all)
+Wants=network-online.target
+After=network-online.target
+# Kein Conflicts=: nutzt weder Lock noch Manifest des grossen Snapshot-Laufs,
+# nur eine eigene DB-Verbindung (max 1) und eigene Blob-Pfade
+# tft/meta-pulse/diff/*.
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/metastats-crawler
+EnvironmentFile=/etc/metastats-crawler/env
+# Testlauf 2026-10-01 mit --force: 15 Jobs, laengster 34 s. Ohne --force
+# rechnet ein Lauf nur, was sich geaendert hat.
+TimeoutStartSec=1800
+ExecStart=/usr/bin/node scripts/publish-meta-pulse-diffs.mjs
+StandardOutput=journal
+StandardError=journal
+
+# --- BEGIN metastats-hardening-floor ---
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectProc=invisible
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+# --- END metastats-hardening-floor ---
+
+[Install]
+WantedBy=multi-user.target

@@ -352,6 +352,26 @@
       "persistent": true
     },
     {
+      "name": "metastats-meta-pulse-diffs.service",
+      "kind": "service",
+      "description": "metastats Meta-Pulse Patchvergleiche vorrechnen (region=all)",
+      "scripts": [
+        "scripts/publish-meta-pulse-diffs.mjs"
+      ]
+    },
+    {
+      "name": "metastats-meta-pulse-diffs.timer",
+      "kind": "timer",
+      "description": "metastats Meta-Pulse Patchvergleiche stuendlich",
+      "scripts": [],
+      "onCalendar": [
+        "*-*-* *:25:00 UTC"
+      ],
+      "interval": [],
+      "activates": "metastats-meta-pulse-diffs.service",
+      "persistent": true
+    },
+    {
       "name": "metastats-phase1-probe.service",
       "kind": "service",
       "description": "metastats Phase-1 Aggregator-Readiness Probe (daily monitoring)",
@@ -612,6 +632,13 @@
       "onCalendar": [
         "*-*-* 18:00:00 UTC",
         "*-*-* 22:00:00 UTC"
+      ]
+    },
+    {
+      "timer": "metastats-meta-pulse-diffs.timer",
+      "activates": "metastats-meta-pulse-diffs.service",
+      "onCalendar": [
+        "*-*-* *:25:00 UTC"
       ]
     },
     {

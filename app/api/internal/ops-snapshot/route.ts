@@ -44,6 +44,7 @@ const SERVICE_EXPECTATIONS: Record<string, { kind: 'oneshot' | 'persistent'; max
   // nicht mehr wacht.
   'metastats-contracts.service':             { kind: 'oneshot', maxAgeMs: 26 * 60 * 60 * 1000 },
   'metastats-marketvalue-snapshot.service':  { kind: 'oneshot', maxAgeMs: 26 * 60 * 60 * 1000 },
+  'metastats-meta-pulse-diffs.service':      { kind: 'oneshot', maxAgeMs: 3 * 60 * 60 * 1000 },
   'metastats-crawler.service':               { kind: 'oneshot' }, // manual-trigger, keine erwartete Cadence
   'metastats-lol-marketvalue.service':       { kind: 'oneshot' }, // manual-trigger
 };

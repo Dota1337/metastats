@@ -5,6 +5,7 @@ import Footer from '../components/Footer';
 import PageHero from '../components/PageHero';
 import { useI18n, LOCALE_MAP } from '../lib/i18n';
 import { usePageTitle } from '../lib/use-page-title';
+import ApiUnavailable from '../components/ApiUnavailable';
 
 // Unter dieser Spielzahl ist eine Siegrate Zufall; beim Sortieren nach Siegrate hinten.
 const MIN_WINRATE_GAMES = 30;
@@ -30,6 +31,8 @@ export default function ChampionsPage() {
   usePageTitle('pageTitle.champions');
   const [champions, setChampions] = useState<Champion[]>([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [tier, setTier] = useState('all');
   const [role, setRole] = useState('all');
   const [sortKey, setSortKey] = useState<SortKey>('name');
@@ -83,22 +86,25 @@ export default function ChampionsPage() {
     const ctl = new AbortController();
     fetchChampions(ctl.signal);
     return () => ctl.abort();
-  }, [tier, role, region]);
+  }, [tier, role, region, reloadKey]);
 
   const fetchChampions = async (signal: AbortSignal) => {
     setLoading(true);
+    setFailed(false);
     try {
       const res = await fetch(`/api/champions?tier=${tier}&role=${role}&region=${region}`, { signal });
+      if (!res.ok) throw new Error(String(res.status));
       const data = await res.json();
       if (signal.aborted) return;
-      if (data.champions) {
-        setChampions(data.champions);
-        setVersion(data.version);
-        setHasStats(data.hasStats);
-      }
+      if (!Array.isArray(data.champions)) throw new Error('no champions');
+      setChampions(data.champions);
+      setVersion(data.version);
+      setHasStats(data.hasStats);
     } catch {
       if (signal.aborted) return;
+      // Sonst bliebe die Liste des vorigen Filters unter dem neuen Filter stehen.
       setChampions([]);
+      setFailed(true);
     }
     if (!signal.aborted) setLoading(false);
   };
@@ -241,7 +247,7 @@ export default function ChampionsPage() {
         </div>
 
         {/* Info: no data for selected tier */}
-        {tier !== 'all' && !loading && !hasStats && (
+        {tier !== 'all' && !loading && !failed && !hasStats && (
           <div className="bg-surface-raised border border-border-default rounded p-3 mb-4 text-center">
             <div className="text-fg-secondary text-xs">
               {t('champ.noDataFor')} <span className="text-white font-medium" style={{ color: tierColors[tier] }}>{currentTierLabel}</span> {t('champ.noDataAvailable')}
@@ -250,7 +256,7 @@ export default function ChampionsPage() {
         )}
 
         {/* Info Banner if no stats at all */}
-        {tier === 'all' && !hasStats && !loading && (
+        {tier === 'all' && !hasStats && !loading && !failed && (
           <div className="bg-surface-raised border border-border-default rounded p-3 mb-4 text-center">
             <div className="text-fg-secondary text-xs">
               {t('champ.noDataFor')} <span className="text-white font-medium">{REGIONS.find(r => r.value === region)?.label}</span> {t('champ.noDataAvailable')}
@@ -307,6 +313,10 @@ export default function ChampionsPage() {
 
           {loading ? (
             <div className="text-center text-fg-secondary py-20">{t('champ.loading')}</div>
+          ) : failed ? (
+            <div className="p-4">
+              <ApiUnavailable badge={false} messageKey="error.temporarilyUnavailable" onRetry={() => setReloadKey(k => k + 1)} />
+            </div>
           ) : sorted.length === 0 ? (
             <div className="text-center text-fg-muted py-20">{t('champ.noChampions')}</div>
           ) : (

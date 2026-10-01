@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '../../../lib/supabase';
 
+// DB-Stoerung ist kein „kein Verlauf“: 503, damit das Diagramm es anzeigen kann.
+const unavailable = () => NextResponse.json(
+  { error: 'Verlauf gerade nicht erreichbar', history: [] },
+  { status: 503, headers: { 'Cache-Control': 'no-store' } },
+);
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const puuid = searchParams.get('puuid') || '';
@@ -11,12 +17,13 @@ export async function GET(request: NextRequest) {
   }
 
   // Find player by puuid
-  const { data: player } = await supabase
+  const { data: player, error: playerError } = await supabase
     .from('players')
     .select('id')
     .eq('puuid', puuid)
-    .single();
+    .maybeSingle();
 
+  if (playerError) return unavailable();
   if (!player) {
     return NextResponse.json({ history: [] });
   }
@@ -63,7 +70,8 @@ export async function GET(request: NextRequest) {
     query = query.lt('recorded_at', toDate);
   }
 
-  const { data: history } = await query;
+  const { data: history, error: historyError } = await query;
+  if (historyError) return unavailable();
 
   return NextResponse.json({
     history: history || [],

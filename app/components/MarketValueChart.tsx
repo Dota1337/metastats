@@ -24,6 +24,8 @@ export default function MarketValueChart({ puuid, currentValue }: Props) {
   const { t, lang } = useI18n();
   const [history, setHistory] = useState<HistoryPoint[]>([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [season, setSeason] = useState('current');
   const [pastSeasons, setPastSeasons] = useState<SeasonEntry[]>([]);
 
@@ -39,14 +41,23 @@ export default function MarketValueChart({ puuid, currentValue }: Props) {
 
   useEffect(() => {
     if (!puuid) return;
-    fetch(`/api/marktwert/history?puuid=${encodeURIComponent(puuid)}&season=${season}`)
-      .then(r => r.ok ? r.json() : { history: [] })
+    // Beim Saison-Wechsel gewinnt die zuletzt angeforderte Antwort, nicht die zuletzt eintreffende.
+    const ctl = new AbortController();
+    fetch(`/api/marktwert/history?puuid=${encodeURIComponent(puuid)}&season=${season}`, { signal: ctl.signal })
+      .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
       .then(data => {
         setHistory(data.history || []);
+        setFailed(false);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
-  }, [puuid, season]);
+      .catch(() => {
+        if (ctl.signal.aborted) return;
+        setHistory([]);
+        setFailed(true);
+        setLoading(false);
+      });
+    return () => ctl.abort();
+  }, [puuid, season, reloadKey]);
 
   const chartData = useMemo(() => {
     const fmt = (d: Date) => d.toLocaleDateString(LOCALE_MAP[lang]);
@@ -73,8 +84,8 @@ export default function MarketValueChart({ puuid, currentValue }: Props) {
     { value: 'all', label: t('mvChart.allData') },
   ];
 
-  // Don't render if we have less than 2 data points
-  if (!loading && chartData.length < 2) return null;
+  // Don't render if we have less than 2 data points — ein Ausfall wird gezeigt, nicht versteckt.
+  if (!loading && !failed && chartData.length < 2) return null;
 
   const minVal = Math.min(...chartData.map(d => d.value)) * 0.9;
   const maxVal = Math.max(...chartData.map(d => d.value)) * 1.1;
@@ -105,7 +116,7 @@ export default function MarketValueChart({ puuid, currentValue }: Props) {
         </div>
         <select
           value={season}
-          onChange={e => setSeason(e.target.value)}
+          onChange={e => { setLoading(true); setSeason(e.target.value); }}
           className="bg-surface-raised border border-border-subtle rounded px-3 py-1.5 text-xs text-fg-secondary focus:outline-none focus:border-accent-a50"
         >
           {seasons.map(s => (
@@ -117,6 +128,16 @@ export default function MarketValueChart({ puuid, currentValue }: Props) {
       {loading ? (
         <div className="h-[200px] flex items-center justify-center text-fg-muted text-xs">
           {t('common.loading')}
+        </div>
+      ) : failed ? (
+        <div className="h-[200px] flex flex-col items-center justify-center gap-3 text-center">
+          <p className="text-fg-secondary text-sm">{t('error.temporarilyUnavailable')}</p>
+          <button
+            onClick={() => { setLoading(true); setReloadKey(k => k + 1); }}
+            className="text-accent hover:text-[#d4a94a] text-xs font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 rounded px-2 py-1 transition-colors"
+          >
+            {t('error.retry')}
+          </button>
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={200}>

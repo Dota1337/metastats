@@ -42,6 +42,14 @@ const nextConfig: NextConfig = {
       },
       // One-Tricks vorerst abgeschaltet (2026-09-27), Rising steht an ihrer
       // Stelle. Bewusst voruebergehend (307): die Seite kann zurueckkommen.
+      // Alte Multi-Suche: jetzt Reiter in /compare. Query (q) reicht Next selbst
+      // durch (docs redirects.md). Als Seite gab es wegen app/loading.tsx nur
+      // 200 + Meta-Refresh statt 307.
+      {
+        source: '/multi-search',
+        destination: '/compare?mode=multi',
+        permanent: false,
+      },
       {
         source: '/tft/onetricks',
         destination: '/tft/rising',

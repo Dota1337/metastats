@@ -279,8 +279,11 @@ export async function GET(request: NextRequest) {
       const batchIds = allMatchIdArray.slice(batch, batch + 10);
       const batchResults = await Promise.all(
         batchIds.map(async (id) => {
-          const res = await riotFetch(`https://${regional}.api.riotgames.com/lol/match/v5/matches/${id}`, apiKey);
-          return res.ok ? res.json() : null;
+          const res = await riotFetch(`https://${regional}.api.riotgames.com/lol/match/v5/matches/${encodeURIComponent(id)}`, apiKey);
+          if (res.ok) return res.json();
+          // 404 = gibt es bei Riot nicht (mehr): endgueltig weglassen (undefined),
+          // sonst voruebergehend fehlend (null).
+          return res.status === 404 ? undefined : null;
         })
       );
       allMatchDetails.push(...batchResults);
@@ -291,7 +294,12 @@ export async function GET(request: NextRequest) {
     // unvollstaendig. Dann weder einen neuen Marktwert schreiben noch die neueste
     // Match-ID merken — sonst gilt der Spieler als aktuell und wird erst nach
     // seinem naechsten Spiel neu gerechnet.
-    const matchFetchComplete = matchDetails.length === allMatchDetails.length;
+    // Ein Spiel, das Riot mit 404 beantwortet, blockiert die Rechnung nicht.
+    const matchFetchComplete = !allMatchDetails.includes(null);
+    // Anzeige-Spiele stehen vorne in allMatchIdArray (gleiche Reihenfolge wie matchIds).
+    const displayDetails = allMatchDetails.slice(0, matchIds.length);
+    const displayFirstMissing = displayDetails.findIndex((d) => d === null);
+    const displayMissing = displayDetails.filter((d) => d === null).length;
 
     // Process ALL matches with the shared processor (extracts all ~200 stats)
     const allExtendedMatches: ExtendedMatchData[] = matchDetails
@@ -506,13 +514,17 @@ export async function GET(request: NextRequest) {
       // Rohwerte der Anzeige-Spiele: die Seite rechnet die Analyse nach
       // „mehr laden" mit derselben Funktion neu (calculateStatsOverview).
       extended: extendedMatches,
-      // Versatz fuer „mehr laden" (siehe nextStart in /api/matches)
-      matchesNextStart: matchIds.length,
+      // Versatz fuer „mehr laden" (siehe nextStart in /api/matches): beim ersten
+      // fehlenden Anzeige-Spiel, damit die Luecke nachgeladen werden kann.
+      matchesNextStart: displayFirstMissing >= 0 ? displayFirstMissing : matchIds.length,
+      matchesMissing: displayMissing,
       statsOverview,
       storedMarketValue: writeValue ? marketValue.value : (existingPlayer?.market_value ?? null),
       rankedGamesAnalyzed: splitRankedMatches.length,
       primaryQueue: primaryQueueId === 420 ? 'RANKED_SOLO_5x5' : 'RANKED_FLEX_SR',
-    });
+      // Fuer den Marktwert-Lauf: Riot hat Spiele nicht geliefert, nichts geschrieben.
+      ...(matchFetchComplete ? {} : { matchFetchIncomplete: true }),
+    }, matchFetchComplete && displayMissing === 0 ? undefined : { headers: { 'Cache-Control': 'no-store' } });
 
   } catch (error) {
     return NextResponse.json({ error: 'Server Fehler' }, { status: 500 });

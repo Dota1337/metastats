@@ -169,15 +169,31 @@ async function main() {
 
       // Call /api/summoner to trigger market value calculation
       await sleep(2000); // small buffer before heavy call
-      const summonerRes = await fetch(
+      const callSummoner = () => fetch(
         `${BASE_URL}/api/summoner?name=${encodeURIComponent(fullName)}&region=${REGION}`
       );
+      // Riot ueberlastet: die Route liefert dann den gespeicherten Altwert
+      // (rateLimited, api/summoner serveCached) oder rechnet ohne alle Spiele
+      // und schreibt nichts (matchFetchIncomplete). Beides ist kein Erfolg —
+      // einmal nach 90 s nachfassen, sonst zaehlt es fuer die 30-%-Bremse.
+      const notFresh = (d) => d.rateLimited === true || d.matchFetchIncomplete === true;
+      let summonerRes = await callSummoner();
+      let data = summonerRes.ok ? await summonerRes.json() : null;
+      if (data && notFresh(data)) {
+        await sleep(90_000);
+        summonerRes = await callSummoner();
+        data = summonerRes.ok ? await summonerRes.json() : null;
+      }
 
       if (summonerRes.ok) {
-        const data = await summonerRes.json();
-        const mv = data.storedMarketValue;
-        console.log(mv ? `$${mv.toLocaleString('de-DE')}` : 'Not Rated');
-        success++;
+        if (notFresh(data)) {
+          console.log(data.rateLimited ? 'STALE (Riot rate limit)' : 'INCOMPLETE (Riot rate limit)');
+          failed++;
+        } else {
+          const mv = data.storedMarketValue;
+          console.log(mv ? `$${mv.toLocaleString('de-DE')}` : 'Not Rated');
+          success++;
+        }
       } else {
         const err = await summonerRes.text();
         console.log(`FAILED (${summonerRes.status})`);

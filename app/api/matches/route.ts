@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
   const regional = getRegionalRouting(region);
 
   try {
-    const matchListRes = await riotFetch(`https://${regional}.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?start=${start}&count=${Math.min(count, 30)}`, apiKey);
+    const matchListRes = await riotFetch(`https://${regional}.api.riotgames.com/lol/match/v5/matches/by-puuid/${encodeURIComponent(puuid)}/ids?start=${start}&count=${Math.min(count, 30)}`, apiKey);
 
     if (!matchListRes.ok) {
       const st = matchListRes.status;
@@ -41,17 +41,27 @@ export async function GET(request: NextRequest) {
 
     // In Zehnerbloecken wie /api/summoner — 30 gleichzeitige Abrufe treiben den
     // Schluessel selbst ins Limit.
+    // null = voruebergehend fehlend (429/5xx/Netz) -> spaeter nachholbar,
+    // undefined = gibt es bei Riot nicht (404) -> endgueltig ueberspringen.
     const rawMatches: any[] = [];
     for (let i = 0; i < matchIds.length; i += 10) {
       const batch = await Promise.all(
         matchIds.slice(i, i + 10).map(async (id) => {
-          const res = await riotFetch(`https://${regional}.api.riotgames.com/lol/match/v5/matches/${id}`, apiKey);
-          return res.ok ? res.json() : null;
+          try {
+            // Eine statt zwei Wiederholungen: bei Ueberlast sonst bis zu 90 Abrufe pro
+            // Klick — die Luecke holt der Knopf nach.
+            const res = await riotFetch(`https://${regional}.api.riotgames.com/lol/match/v5/matches/${encodeURIComponent(id)}`, apiKey, {}, 1);
+            if (res.ok) return await res.json();
+            return res.status === 404 ? undefined : null;
+          } catch {
+            return null;
+          }
         })
       );
       rawMatches.push(...batch);
     }
-    const missing = rawMatches.filter((r) => !r).length;
+    const firstMissing = rawMatches.findIndex((r) => r === null);
+    const missing = rawMatches.filter((r) => r === null).length;
 
     const extended = rawMatches
       .filter(Boolean)
@@ -78,14 +88,16 @@ export async function GET(request: NextRequest) {
     }));
     const statsOverview = calculateStatsOverview(extended as ExtendedMatchData[], null);
 
-    // Versatz fuer „mehr laden" nach Zahl der IDs, nicht der gelieferten Spiele:
-    // fehlende Details (429) oder verworfene Spiele verschieben sonst die naechste
-    // Seite und Spiele kommen doppelt. Gleiche Rechnung: matchesNextStart in /api/summoner.
+    // Versatz fuer „mehr laden" nach Zahl der IDs, nicht der gelieferten Spiele
+    // (verworfene Spiele verschoeben sonst die naechste Seite). Fehlen Details
+    // voruebergehend (429), beginnt die naechste Seite beim ersten fehlenden
+    // Spiel — die Seite holt die Luecke so nach und filtert Doppelte per matchId.
+    // Gleiche Rechnung: matchesNextStart in /api/summoner.
     return NextResponse.json(
       {
         matches: legacy, extended, statsOverview,
-        nextStart: start + matchIds.length,
-        hasMore: matchIds.length >= Math.min(count, 30),
+        nextStart: start + (firstMissing >= 0 ? firstMissing : matchIds.length),
+        hasMore: missing > 0 || matchIds.length >= Math.min(count, 30),
         missing,
       },
       missing > 0 ? { headers: { 'Cache-Control': 'no-store' } } : undefined,

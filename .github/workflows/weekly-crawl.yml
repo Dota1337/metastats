@@ -96,6 +96,9 @@ jobs:
           BOX_HOST: ${{ secrets.HETZNER_HOST }}
           BOX_KEY: ~/.ssh/deploy_key
           BOX_REGION: euw1
+          # 90 statt 150: der Sammler braucht mit LOL_DEV_KEY_CRAWL ~247 min,
+          # zusammen muss es in timeout-minutes 360 passen. Danach Neu-Anstoss.
+          MAX_WAIT_MIN: 90
           WORKFLOW: weekly-crawl.yml
           ATTEMPT: ${{ inputs.attempt }}
           GH_TOKEN: ${{ github.token }}

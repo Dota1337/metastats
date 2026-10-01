@@ -9,6 +9,7 @@
 import { loadBootSet, aggregateMatch, finalizeBuilds, ALLOWED_QUEUES } from './lib/build-aggregator.mjs';
 import { latestDdragonVersion } from './lib/lol-items.mjs';
 import { createRiotClient } from './lib/riot-client.mjs';
+import { LOL_DEV_KEY_CRAWL } from './lib/riot-limits.mjs';
 import { checkIdPhase, checkSample } from './lib/champion-sample-guard.mjs';
 
 const API_KEY = process.env.RIOT_API_KEY;
@@ -19,7 +20,8 @@ if (!API_KEY) {
 const REGION = 'euw1';
 const REGIONAL = 'europe';
 
-const riot = createRiotClient({ apiKey: API_KEY });
+// Teilt sich den LoL-Dev-Key mit der Live-Seite (riot-limits.mjs).
+const riot = createRiotClient({ ...LOL_DEV_KEY_CRAWL, apiKey: API_KEY });
 const rateLimitedFetch = riot.fetch;
 
 // Remakes (Abbruch in den ersten Minuten) sind keine echten Spiele und

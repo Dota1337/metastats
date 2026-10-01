@@ -76,6 +76,14 @@ const SAFETY = 0.9;
 // und 12 pro Sekunde. Gilt fuer jeden Box-Prozess mit dem LoL-Key.
 export const LOL_DEV_KEY_BATCH = { shortWindowRequests: 8, longWindowRequests: 35 };
 
+// Woechentlicher EUW-Champion-Sammler (collect-highelo.mjs, GitHub-Job mit
+// 360-min-Grenze). ~6085 Abrufe: mit 35 waeren es ~354 min, zu knapp. 50 sind
+// ~247 min (gemessen vorher 138 min mit 95) und lassen der Live-Seite 50 pro
+// 2 min. Das Sammel-Tor wartet deshalb hoechstens 90 min (weekly-crawl.yml).
+// collect-kr-cn.mjs bleibt beim Standard: es nutzt nur die asia-Route, und das
+// Limit gilt je Route.
+export const LOL_DEV_KEY_CRAWL = { shortWindowRequests: 10, longWindowRequests: 50 };
+
 export function batchBudget(cluster) {
   const limit = MATCH_DETAIL_LIMIT[cluster] ?? FALLBACK_ROUTE_LIMIT;
   const reserved = RESERVED['refresh-api'] + RESERVED['companion-backfill'];

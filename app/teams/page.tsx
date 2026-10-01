@@ -111,6 +111,7 @@ export default function TeamsPage() {
   const [seasons, setSeasons] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [regionFilter, setRegionFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('prize');
@@ -134,7 +135,7 @@ export default function TeamsPage() {
       })
       .then(({ teams: list, seasons: years }) => { setTeams(list); setSeasons(years); setLoading(false); })
       .catch(() => { setFailed(true); setLoading(false); });
-  }, []);
+  }, [reloadKey]);
 
   const seasonYears = useMemo(() => ['all', ...seasons], [seasons]);
 
@@ -294,7 +295,7 @@ export default function TeamsPage() {
         {loading ? (
           <div className="text-center text-fg-secondary py-20">{t('teams.loading')}</div>
         ) : failed ? (
-          <ApiUnavailable badge={false} messageKey="error.temporarilyUnavailable" onRetry={() => window.location.reload()} />
+          <ApiUnavailable badge={false} messageKey="error.temporarilyUnavailable" onRetry={() => { setFailed(false); setLoading(true); setReloadKey(k => k + 1); }} />
         ) : filtered.length === 0 ? (
           <div className="text-center text-fg-muted py-20">{t('teams.noTeams')}</div>
         ) : (

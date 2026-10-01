@@ -54,6 +54,13 @@ export default function PlayerPage() {
   // Versatz der naechsten Seite laut Server; null = Erstliste noch nicht geladen
   const [matchesNextStart, setMatchesNextStart] = useState<number | null>(null);
   const [matchesError, setMatchesError] = useState<'' | 'rate' | 'down'>('');
+  // Nach „Riot ueberlastet" 10 s keinen neuen Versuch: jeder Klick kostet bis zu 30 Abrufe.
+  const [retryCooldown, setRetryCooldown] = useState(false);
+  const flagRate = () => {
+    setMatchesError('rate');
+    setRetryCooldown(true);
+    window.setTimeout(() => setRetryCooldown(false), 10_000);
+  };
   const [seasonStats, setSeasonStats] = useState<any>(null);
   const [seasonPeriod, setSeasonPeriod] = useState('');
   const [seasonLoading, setSeasonLoading] = useState(false);
@@ -159,6 +166,8 @@ export default function PlayerPage() {
       if (data.matches && data.matches.length > 0) {
         setMatches(data.matches);
         setMatchesNextStart(typeof data.matchesNextStart === 'number' ? data.matchesNextStart : data.matches.length);
+        // Einzelne Spiele fehlen (Riot ueberlastet): Hinweis + „Erneut" holt sie nach.
+        if (data.matchesMissing > 0) flagRate();
         if (data.statsOverview) setStatsOverview(data.statsOverview);
         addExtended(data.extended);
       } else {
@@ -170,6 +179,7 @@ export default function PlayerPage() {
           setHasMoreMatches(page.hasMore);
           if (page.statsOverview) setStatsOverview(page.statsOverview);
           addExtended(page.extended);
+          if (page.missing > 0) flagRate();
         }
       }
 
@@ -293,16 +303,17 @@ export default function PlayerPage() {
             hasMore: typeof data.hasMore === 'boolean' ? data.hasMore : list.length >= 30,
             statsOverview: data.statsOverview,
             extended: Array.isArray(data.extended) ? data.extended : [],
+            missing: typeof data.missing === 'number' ? data.missing : 0,
           };
         }
-        if (res.status === 404) return { matches: [], nextStart: start, hasMore: false, statsOverview: null, extended: [] };
+        if (res.status === 404) return { matches: [], nextStart: start, hasMore: false, statsOverview: null, extended: [], missing: 0 };
         if (res.status === 503 && attempt === 0) {
           const wait = Math.min(Number(res.headers.get('Retry-After')) || 2, 5);
           await new Promise(r => setTimeout(r, wait * 1000));
           if (stale()) return null;
           continue;
         }
-        setMatchesError(data?.code === 'rate_limited' ? 'rate' : 'down');
+        if (data?.code === 'rate_limited') flagRate(); else setMatchesError('down');
         return null;
       } catch {
         if (stale()) return null;
@@ -323,12 +334,16 @@ export default function PlayerPage() {
       if (stale() || !page) return;
       setMatches(prev => {
         const seen = new Set(prev.map((m: any) => m.matchId));
-        return [...prev, ...page.matches.filter((m: any) => !m.matchId || !seen.has(m.matchId))];
+        const merged = [...prev, ...page.matches.filter((m: any) => !m.matchId || !seen.has(m.matchId))];
+        // Nachgeholte Luecken-Spiele sind aelter als die schon gezeigten danach:
+        // neueste zuerst halten (stabil, Spiele ohne Zeit bleiben am Platz).
+        return merged.sort((a: { gameCreation?: number }, b: { gameCreation?: number }) => (b.gameCreation || 0) - (a.gameCreation || 0));
       });
       setMatchesNextStart(page.nextStart);
       if (!page.hasMore) setHasMoreMatches(false);
       if (matches.length === 0 && page.statsOverview) setStatsOverview(page.statsOverview);
       addExtended(page.extended);
+      if (page.missing > 0) flagRate();
     } finally {
       if (!stale()) setLoadingMore(false);
     }
@@ -972,7 +987,7 @@ export default function PlayerPage() {
                 {(hasMoreMatches || matchesError) && roleFilter === 'all' && (
                   <button
                     onClick={loadMoreMatches}
-                    disabled={loadingMore}
+                    disabled={loadingMore || (matchesError === 'rate' && retryCooldown)}
                     className="mt-4 w-full py-2.5 rounded bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-accent-a50 text-xs transition-colors disabled:opacity-50"
                   >
                     {loadingMore ? t('common.loading') : matchesError ? t('error.retry') : t('player.loadMoreMatches')}
@@ -989,7 +1004,7 @@ export default function PlayerPage() {
                 </div>
                 <button
                   onClick={loadMoreMatches}
-                  disabled={loadingMore}
+                  disabled={loadingMore || (matchesError === 'rate' && retryCooldown)}
                   className="mt-4 w-full py-2.5 rounded bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-accent-a50 text-xs transition-colors disabled:opacity-50"
                 >
                   {loadingMore ? t('common.loading') : t('error.retry')}

@@ -30,6 +30,7 @@ export default function TeamDetailPage() {
   const [team, setTeam] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     // Die Detail-Datei wird direkt aus dem URL-Param adressiert — kein
@@ -61,7 +62,7 @@ export default function TeamDetailPage() {
       setLoading(false);
     });
     return () => { alive = false; };
-  }, [id]);
+  }, [id, reloadKey]);
 
   if (loading) {
     return (
@@ -79,7 +80,7 @@ export default function TeamDetailPage() {
         <div className="max-w-4xl mx-auto px-6 py-20 text-center">
           <div className="text-red-400 text-xl mb-4">{t('team.loadError')}</div>
           <button
-            onClick={() => window.location.reload()}
+            onClick={() => setReloadKey(k => k + 1)}
             className="text-accent text-sm hover:underline mr-4"
           >
             {t('error.retry')}

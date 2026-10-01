@@ -18,15 +18,19 @@ export async function GET(request: NextRequest) {
 
   try {
     // Filter players where this visitor's ID is in the searched_by array
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('players')
       .select('summoner_name, region, summoner_level, profile_icon_id, tier, rank, market_value')
       .contains('searched_by', [visitorId])
+      .not('summoner_name', 'is', null)
       .order('updated_at', { ascending: false })
       .limit(8);
+    if (error) throw new Error(error.message);
 
     return NextResponse.json({ players: data || [] }, { headers: PRIVATE });
   } catch {
-    return NextResponse.json({ players: [] }, { headers: PRIVATE });
+    // Fehler nicht als "noch nichts gesucht" tarnen: die Startseite zeigt
+    // dann einen Fehlerhinweis mit "Erneut versuchen".
+    return NextResponse.json({ error: 'unavailable' }, { status: 503, headers: PRIVATE });
   }
 }

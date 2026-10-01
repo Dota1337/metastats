@@ -23,11 +23,16 @@ import { cacheHeaders } from '../../lib/api-cache';
 // Hochzaehlen, sobald sich an der Bewertung etwas aendert
 // (stats-categories.ts, match-processor.ts) — dann rechnet jede Zeile beim
 // naechsten Aufruf neu.
-const CALC_VERSION = 2; // 2: summaryVals fuer uebersetzte Kategorie-Texte
+const CALC_VERSION = 3; // 2: summaryVals fuer uebersetzte Kategorie-Texte; 3: Remakes per Spieldauer
 // Darunter keine Bewertung: bei weniger Spielen schwanken die Kategorien so
 // stark, dass die Zahl mehr Zufall als Leistung zeigt.
 const MIN_GAMES = 20;
 const RANKED_SOLO = 420;
+// Remakes enden spaetestens nach ~3:16 (gemessen: 2261 Remakes, 65-196 s);
+// echte Spiele unter 200 s gibt es praktisch nicht (24 von 226013). Die Grenze
+// steht in BEIDEN Abfragen, damit Zaehlung und Rechnung dieselben Spiele sehen
+// — sonst wurde ein Zeitraum angeboten, dessen Auswertung dann leer blieb.
+const MIN_DURATION_S = 200;
 const PAGE = 1000;                       // PostgREST liefert hoechstens 1000 Zeilen je Anfrage
 const PUUID_RE = /^[A-Za-z0-9_-]{40,100}$/;
 
@@ -96,6 +101,7 @@ export async function GET(request: NextRequest) {
         .select('patch_major,patch_minor,game_creation')
         .eq('puuid', puuid)
         .eq('queue_id', RANKED_SOLO)
+        .gte('game_duration', MIN_DURATION_S)
         .order('game_creation', { ascending: false })
         .range(from, to),
     );
@@ -161,6 +167,7 @@ export async function GET(request: NextRequest) {
         .select('match_id,queue_id,game_creation,game_duration,team_kills,team_damage,team_gold,participant')
         .eq('puuid', puuid)
         .eq('queue_id', RANKED_SOLO)
+        .gte('game_duration', MIN_DURATION_S)
         .eq('patch_major', period.major);
       if (period.minMinor !== null) q = q.gte('patch_minor', period.minMinor);
       if (period.endMinor !== null) q = q.lt('patch_minor', period.endMinor);

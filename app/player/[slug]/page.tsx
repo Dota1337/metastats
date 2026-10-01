@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { calculateMarketValue, type BreakdownItem } from '../../lib/marketvalue';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
@@ -16,6 +16,7 @@ import { loadProLookup, lookupPro, type ProPlayer } from '../../lib/pro-players'
 import { formatTier } from '../../lib/rank-format';
 import { isNonStandardMode, isRiftGame, MIN_RIFT_GAMES } from '../../lib/lol-queue';
 import { getDdragonVersion } from '../../lib/ddragon-version';
+import { regionLabel } from '../../lib/regions';
 import { calculateStatsOverview } from '../../lib/stats-categories';
 import type { ExtendedMatchData } from '../../lib/match-processor';
 
@@ -26,6 +27,10 @@ import AICoach from '../../components/AICoach';
 
 export default function PlayerPage() {
   const { slug } = useParams();
+  const router = useRouter();
+  // Sprung auf den richtigen Server hoechstens einmal je Spieler — sonst
+  // koennten zwei widerspruechliche Antworten die Seite im Kreis schicken.
+  const regionJump = useRef('');
   const searchParams = useSearchParams();
   const [player, setPlayer] = useState<any>(null);
   const [matches, setMatches] = useState<any[]>([]);
@@ -129,6 +134,9 @@ export default function PlayerPage() {
     setStatsOverview(null);
     setExtendedById({});
     setSeasonStats(null);
+    // Spaete Saison-Antwort des vorigen Spielers verwerfen.
+    seasonReq.current++;
+    setSeasonLoading(false);
     setHasMoreMatches(true);
     setMatchesNextStart(null);
     setMatchesError('');
@@ -147,6 +155,14 @@ export default function PlayerPage() {
       if (!res.ok) {
         // Servertext ist deutsch — ueber den Code uebersetzen.
         const code = data?.code;
+        // Konto liegt auf einem anderen Server: dorthin wechseln (gleicher Link).
+        if (code === 'wrong_region' && typeof data.region === 'string' && regionJump.current !== String(slug)) {
+          regionJump.current = String(slug);
+          // Ladeanzeige stehen lassen bis zum neuen Aufruf (finally prueft stale).
+          loadReq.current++;
+          router.replace(`${window.location.pathname}?region=${encodeURIComponent(data.region)}`);
+          return;
+        }
         if (code === 'not_found' || res.status === 404) setNotFound(true);
         throw new Error(code === 'riot_rate_limit' ? t('player.rateLimited')
           : code === 'not_found' || res.status === 404 ? t('player.notFound')
@@ -521,7 +537,7 @@ export default function PlayerPage() {
                     {proInfo ? (
                       <span><span className="text-accent">{proInfo.proName}</span> · {proInfo.team}{proInfo.league ? ` · ${proInfo.league}` : ''} · </span>
                     ) : null}
-                    Level {player.summoner.summonerLevel} · {region.toUpperCase().replace('1', '')} · {roleLabels[marketValue.role] || '-'}
+                    Level {player.summoner.summonerLevel} · {regionLabel(region)} · {roleLabels[marketValue.role] || '-'}
                   </div>
                 </div>
                 <div className="sm:text-right">

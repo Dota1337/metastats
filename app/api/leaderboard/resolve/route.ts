@@ -22,8 +22,10 @@ function toPlayer(request: NextRequest, riotId: string, region: string) {
   const path = '/player/' + encodeURIComponent(name) + '--' + encodeURIComponent(tag || '') + '?region=' + region;
   return NextResponse.redirect(new URL(path, request.url), {
     status: 307,
-    // Riot-IDs aendern sich selten; wiederholte Klicks sollen Riot nicht erneut fragen.
-    headers: cacheHeaders('public, s-maxage=86400, stale-while-revalidate=86400'),
+    // Wiederholte Klicks sollen Riot nicht erneut fragen. Eine Stunde statt
+    // eines Tages: nach einer Umbenennung zeigte der Link sonst bis zu 24 h auf
+    // den alten Namen, und die Spielerseite meldete "nicht gefunden".
+    headers: cacheHeaders('public, s-maxage=3600, stale-while-revalidate=3600'),
   });
 }
 

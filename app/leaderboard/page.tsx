@@ -8,6 +8,7 @@ import ApiUnavailable from '../components/ApiUnavailable';
 import PageHero from '../components/PageHero';
 import { useI18n, LOCALE_MAP } from '../lib/i18n';
 import { usePageTitle } from '../lib/use-page-title';
+import { regionLabel } from '../lib/regions';
 import { loadProLookup, lookupPro, type ProPlayer } from '../lib/pro-players';
 
 export default function Leaderboard() {
@@ -246,7 +247,14 @@ export default function Leaderboard() {
     // Ohne Namen: Riot-ID erst beim Klick aufloesen lassen.
     if (!name) return puuid ? '/api/leaderboard/resolve?puuid=' + encodeURIComponent(puuid) + '&region=' + (playerRegion || region || 'euw1') : '#';
     const parts = name.split('#');
-    return '/player/' + encodeURIComponent(parts[0]) + '--' + encodeURIComponent(parts[1] || 'EUW') + '?region=' + (playerRegion || region || 'euw1');
+    // Name ohne Tag: nicht "EUW" raten, sondern ueber die puuid aufloesen
+    // (ohne puuid die Trefferliste ueber alle Server).
+    if (!parts[1]) {
+      return puuid
+        ? '/api/leaderboard/resolve?puuid=' + encodeURIComponent(puuid) + '&region=' + (playerRegion || region || 'euw1')
+        : '/search?q=' + encodeURIComponent(parts[0]);
+    }
+    return '/player/' + encodeURIComponent(parts[0]) + '--' + encodeURIComponent(parts[1]) + '?region=' + (playerRegion || region || 'euw1');
   };
 
   return (
@@ -538,7 +546,7 @@ export default function Leaderboard() {
                     </span>
                   </div>
                   <div className="text-fg-secondary text-xs text-right">
-                    {(entry.region || '').toUpperCase().replace('1', '')}
+                    {regionLabel(entry.region)}
                   </div>
                   <div className="text-right">
                     <span className="text-accent text-sm font-medium">

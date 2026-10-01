@@ -4,7 +4,9 @@ import { cacheHeaders, STATS_CACHE_CONTROL_FRESH } from '../../../lib/api-cache'
 
 // /api/tft/search-players?q=dishs  |  ?q=Dish Soap#uwu
 //
-// Namenssuche ueber alle Server fuer das Nav-Dropdown (wie lolchess): jedes
+// Namenssuche ueber alle Server fuer das Nav-Dropdown (wie lolchess) — fuer
+// TFT UND LoL (Riot-IDs und Server sind spieluebergreifend; die puuid nicht,
+// LoL-Links gehen deshalb ueber Name#Tag, siehe lolProfileHref). Jedes
 // Konto, dessen Name mit der Eingabe beginnt, mit seiner Region. Quelle ist
 // tft_player_names (Migration 0072), befuellt vom Daily-Crawl. Die Route liest
 // nur — geschrieben wird ausschliesslich vom Crawler.

@@ -7,7 +7,7 @@ import { TFT_COACH_ENABLED, TFT_PROS_ENABLED } from '../lib/feature-flags';
 import { useAuth } from '../lib/auth-context';
 import { getDdragonVersion } from '../lib/ddragon-version';
 import DdragonImg from './DdragonImg';
-import { tftProfileHref, tftRankLabel, tftRegionLabel, type TftAccountHit } from '../lib/tft-player-search';
+import { lolProfileHref, tftProfileHref, tftRankLabel, tftRegionLabel, type TftAccountHit } from '../lib/tft-player-search';
 
 interface NavProps {
   active?:
@@ -118,10 +118,10 @@ export default function Nav({ active }: NavProps) {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // TFT: Namenssuche ueber alle Server, kurz entprellt. Ab 3 Zeichen im Namen
-  // (ohne Leerzeichen) — darunter antwortet die Route ohnehin leer.
+  // Namenssuche ueber alle Server (LoL und TFT teilen das Verzeichnis), kurz
+  // entprellt. Ab 3 Zeichen im Namen (ohne Leerzeichen) — darunter antwortet
+  // die Route ohnehin leer.
   useEffect(() => {
-    if (game !== 'tft') return;
     const q = searchQuery.trim();
     if (q.split('#')[0].replace(/\s/g, '').length < 3) { setTftHits(null); return; }
     const ctrl = new AbortController();
@@ -134,7 +134,8 @@ export default function Nav({ active }: NavProps) {
     return () => { clearTimeout(timer); ctrl.abort(); };
   }, [searchQuery, game]);
 
-  // Spielerzeilen fuer TFT: echte Treffer mit Region · Rang. Ohne Treffer:
+  // Spielerzeilen: echte Treffer mit Region (TFT zusaetzlich mit TFT-Rang, der
+  // fuer LoL nichts aussagt). Ohne Treffer:
   // mit Tag die freie Eingabe (Profil sucht den Server selbst), ohne Tag
   // "Keine Spieler gefunden". Solange die Antwort fehlt, keine Spielerzeile.
   // Steht vor dem Effekt, der sie aufruft (react-hooks/immutability).
@@ -144,11 +145,11 @@ export default function Nav({ active }: NavProps) {
     if (tftHits.hits.length > 0) {
       return tftHits.hits.map(h => {
         const regionLabel = tftRegionLabel(h.region);
-        const rank = tftRankLabel(h, l => t(`tier.${l}` as Parameters<typeof t>[0]));
+        const rank = game === 'tft' ? tftRankLabel(h, l => t(`tier.${l}` as Parameters<typeof t>[0])) : '';
         return {
           type: 'account' as const,
           name: `${h.gameName}#${h.tagLine}`,
-          href: tftProfileHref(h),
+          href: game === 'tft' ? tftProfileHref(h) : lolProfileHref(h),
           sub: rank ? `${regionLabel} · ${rank}` : regionLabel,
         };
       });
@@ -167,11 +168,7 @@ export default function Nav({ active }: NavProps) {
 
     // If input looks like a player name (or has #), show player suggestion
     const playerResults: SearchResult[] = [];
-    if (game === 'tft') {
-      playerResults.push(...tftPlayerResults(searchQuery.trim()));
-    } else if (searchQuery.trim().length >= 2) {
-      playerResults.push({ type: 'player', name: searchQuery.trim() });
-    }
+    playerResults.push(...tftPlayerResults(searchQuery.trim()));
 
     setResults([...playerResults, ...champMatches]);
   }, [searchQuery, champions, game, tftHits]);
@@ -204,10 +201,10 @@ export default function Nav({ active }: NavProps) {
     if (e.key === 'Enter' && searchQuery.trim()) {
       const q = searchQuery.trim();
       const hasTag = q.includes('#') && q.split('#')[1].trim().length > 0;
-      if (game === 'tft' && !hasTag) {
+      if (!hasTag) {
         // Ohne Tag ist der Name mehrdeutig: Liste aller Konten mit diesem
-        // Namen samt Region, bei genau einem direkt weiter (/tft/search).
-        window.location.assign(`/tft/search?q=${encodeURIComponent(q.split('#')[0].trim())}`);
+        // Namen samt Region, bei genau einem direkt weiter (/tft/search, /search).
+        window.location.assign(`${game === 'tft' ? '/tft/search' : '/search'}?q=${encodeURIComponent(q.split('#')[0].trim())}`);
         setSearchOpen(false);
         setSearchQuery('');
         return;

@@ -1,4 +1,6 @@
-// Gemeinsame Bausteine der TFT-Spielersuche fuer Nav-Dropdown und /tft/search.
+// Gemeinsame Bausteine der Spielersuche fuer Nav-Dropdown, /tft/search und
+// /search (LoL). Das Namensverzeichnis tft_player_names gilt fuer beide Spiele:
+// Riot-ID und Server sind dieselben, nur die puuid ist je Schluessel verschieden.
 // Bewusst ohne Server-Importe: Nav.tsx ist eine Client-Komponente, die
 // Datenbank- und Riot-Abfragen liegen in tft-player-search-server.ts.
 
@@ -24,6 +26,13 @@ export function tftProfileHref(h: Pick<TftAccountHit, 'puuid' | 'gameName' | 'ta
   if (h.region) qs.set('region', h.region);
   qs.set('puuid', h.puuid);
   return `/tft/player/${slug}?${qs.toString()}`;
+}
+
+/** LoL-Profil zu einem Treffer aus dem Namensverzeichnis. Ohne puuid (die
+ *  passt nicht zum LoL-Schluessel); ohne Server springt die Spielerseite selbst. */
+export function lolProfileHref(h: Pick<TftAccountHit, 'gameName' | 'tagLine' | 'region'>): string {
+  const slug = `${encodeURIComponent(h.gameName)}--${encodeURIComponent(h.tagLine)}`;
+  return h.region ? `/player/${slug}?region=${encodeURIComponent(h.region)}` : `/player/${slug}`;
 }
 
 export function tftRegionLabel(region: string | null): string {

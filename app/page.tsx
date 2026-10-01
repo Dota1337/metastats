@@ -4,7 +4,8 @@ import Nav from './components/Nav';
 import DdragonImg from './components/DdragonImg';
 import Footer from './components/Footer';
 import { useI18n, LOCALE_MAP } from './lib/i18n';
-import { REGIONS } from './lib/regions';
+import { REGIONS, regionLabel } from './lib/regions';
+import ApiUnavailable from './components/ApiUnavailable';
 import { formatTier } from './lib/rank-format';
 
 interface Champion {
@@ -35,6 +36,7 @@ export default function Home() {
   const [gainers, setGainers] = useState<any[]>([]);
   const [losers, setLosers] = useState<any[]>([]);
   const [recentPlayers, setRecentPlayers] = useState<any[]>([]);
+  const [recentError, setRecentError] = useState(false);
   const [loadingMarket, setLoadingMarket] = useState(false);
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
@@ -75,9 +77,13 @@ export default function Home() {
   const fetchRecentPlayers = async () => {
     try {
       const res = await fetch('/api/recent-players');
+      if (!res.ok) throw new Error(String(res.status));
       const data = await res.json();
-      if (data.players) setRecentPlayers(data.players);
-    } catch {}
+      setRecentPlayers(Array.isArray(data.players) ? data.players : []);
+      setRecentError(false);
+    } catch {
+      setRecentError(true);
+    }
   };
 
   const fetchHomepageStats = async () => {
@@ -113,7 +119,9 @@ export default function Home() {
     if (!name.trim()) return;
     const parts = name.split('#');
     const gameName = parts[0].trim();
-    const tag = parts[1]?.trim() || 'EUW';
+    const tag = parts[1]?.trim();
+    // Ohne Tag ist der Name mehrdeutig: Trefferliste ueber alle Server.
+    if (!tag) { window.location.href = '/search?q=' + encodeURIComponent(gameName); return; }
     const slug = encodeURIComponent(gameName) + '--' + encodeURIComponent(tag);
     window.location.href = '/player/' + slug + '?region=' + region;
   };
@@ -122,8 +130,11 @@ export default function Home() {
     return '$' + v.toLocaleString('de-DE');
   };
 
-  const makePlayerLink = (p: any) =>
-    '/player/' + encodeURIComponent(p.summoner_name.split('#')[0]) + '--' + encodeURIComponent(p.summoner_name.split('#')[1] || 'EUW') + '?region=' + (p.region || 'euw1');
+  const makePlayerLink = (p: any) => {
+    const [n, tag] = String(p.summoner_name || '').split('#');
+    if (!tag) return '/search?q=' + encodeURIComponent(n);
+    return '/player/' + encodeURIComponent(n) + '--' + encodeURIComponent(tag) + (p.region ? '?region=' + encodeURIComponent(p.region) : '');
+  };
 
   return (
     <main className="min-h-screen bg-surface-page">
@@ -321,7 +332,9 @@ export default function Home() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 glass-strong rounded-xl p-5">
                 <div className="text-fg-secondary text-xs uppercase tracking-widest mb-4">{t('home.recentSearches')}</div>
-                {recentPlayers.length === 0 ? (
+                {recentError ? (
+                  <ApiUnavailable compact badge={false} messageKey="error.temporarilyUnavailable" onRetry={fetchRecentPlayers} />
+                ) : recentPlayers.length === 0 ? (
                   <div className="text-fg-muted text-sm text-center py-8">{t('home.noSearches')}</div>
                 ) : (
                   <div className="flex flex-col gap-1">
@@ -339,7 +352,7 @@ export default function Home() {
                         )}
                         <div className="flex-1">
                           <div className="text-white text-sm font-medium">{p.summoner_name}</div>
-                          <div className="text-fg-muted text-xs">{p.region?.toUpperCase().replace('1', '')} · {t('player.level')} {p.summoner_level}</div>
+                          <div className="text-fg-muted text-xs">{regionLabel(p.region)} · {t('player.level')} {p.summoner_level}</div>
                         </div>
                         {p.tier && (
                           <div className="text-fg-secondary text-xs">{formatTier(p.tier, p.rank)}</div>

@@ -7,6 +7,7 @@ import MarketInsights from '../components/MarketInsights';
 import ApiUnavailable from '../components/ApiUnavailable';
 import { useI18n } from '../lib/i18n';
 import { usePageTitle } from '../lib/use-page-title';
+import { regionLabel } from '../lib/regions';
 import { formatTier } from '../lib/rank-format';
 import { isLolRankGroup, lolTiersTopDown } from '../lib/rank-groups';
 
@@ -258,7 +259,7 @@ export default function MarktwertPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="text-white text-sm font-medium">{p.name}</div>
-                      <span className="text-fg-muted text-xs">{(p.region || '').toUpperCase().replace('1', '')}</span>
+                      <span className="text-fg-muted text-xs">{regionLabel(p.region)}</span>
                     </div>
                     <div className="text-right">
                       <span className="text-xs font-medium" style={{ color: TIER_COLORS[p.tier] || 'var(--fg-secondary)' }}>

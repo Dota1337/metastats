@@ -6,6 +6,7 @@ import { calculateStatsOverview } from '../../lib/stats-categories';
 
 import { getAccountRouting, getRegionalRouting, parseRegion } from '../../lib/regions';
 import { riotFetch } from '../../lib/riot-fetch';
+import { checkRateLimit } from '../../lib/rate-limit';
 import { currentSplit, isBeforeSplit, splitForPatch } from '../../lib/seasons';
 
 // Unter so vielen Partien im Split wird kein neuer Marktwert geschrieben; der
@@ -33,6 +34,41 @@ export async function GET(request: NextRequest) {
   const gameName = parts[0].trim();
   const tagLine = parts[1]?.trim() || 'EUW';
   const fullName = `${gameName}#${tagLine}`;
+
+  // Konto liegt auf einem anderen Server als angefragt? Riot weiss es
+  // (account-v1 region/by-game); nur wenn Riot nicht antwortet, gilt der
+  // gespeicherte Server. Ein Abruf, ohne Wiederholung, eigene Bremse je IP —
+  // nicht die ganze Route bremsen, die ruft der Marktwert-Lauf in Serie.
+  const otherRegion = async (puuid: string, stored: string | null, playerId?: number): Promise<string | null> => {
+    let riot: string | null = null;
+    let answered = false;
+    if (!checkRateLimit(request, { key: 'summoner-region', max: 20, windowMs: 60_000 })) {
+      try {
+        const res = await riotFetch(
+          `https://${accountCluster}.api.riotgames.com/riot/account/v1/region/by-game/lol/by-puuid/${encodeURIComponent(puuid)}`,
+          apiKey, { signal: AbortSignal.timeout(4000) }, 0,
+        );
+        if (res.ok) {
+          riot = parseRegion((await res.json())?.region);
+          answered = !!riot;
+        }
+      } catch {}
+    }
+    if (answered) {
+      // Riot bestaetigt den angefragten Server: gespeicherten Server nachziehen,
+      // sonst fragt jeder weitere Aufruf erneut.
+      if (riot === region && playerId && stored !== region) {
+        await supabase.from('players').update({ region }).eq('id', playerId);
+      }
+      return riot !== region ? riot : null;
+    }
+    const fallback = parseRegion(stored);
+    return fallback && fallback !== region ? fallback : null;
+  };
+  const wrongRegion = (other: string) => NextResponse.json(
+    { error: 'Spieler auf anderem Server', code: 'wrong_region', region: other },
+    { status: 404, headers: { 'Cache-Control': 'no-store' } },
+  );
 
   // Gespeicherten Stand ausliefern (frueher Pfad 4a). riotRefresh: Rang bei Riot
   // nachfragen; im Rueckfall bei Ueberlast aus, der Schluessel ist ja ausgelastet.
@@ -200,6 +236,16 @@ export async function GET(request: NextRequest) {
       .eq('puuid', account.puuid)
       .single();
 
+    // Gespeichert auf einem anderen Server: vor allem anderen klaeren. Sonst
+    // fragt serveCached den Rang auf dem falschen Server ab, bekommt eine leere
+    // Liste und loescht die gespeicherten Raenge.
+    if (cached?.region && cached.region !== region) {
+      const other = await otherRegion(account.puuid, cached.region, cached.id);
+      if (other) return wrongRegion(other);
+      // Riot bestaetigt den angefragten Server (Serverwechsel des Kontos).
+      cached.region = region;
+    }
+
     // === Step 3: Fetch match IDs ===
     // Recent 30 LoL matches (all queues) for display
     const matchListRes = await riotFetch(`https://${regional}.api.riotgames.com/lol/match/v5/matches/by-puuid/${account.puuid}/ids?start=0&count=30`, apiKey, {}, cached ? 0 : undefined);
@@ -224,6 +270,8 @@ export async function GET(request: NextRequest) {
     const summonerRes = await riotFetch(`https://${region}.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${account.puuid}`, apiKey, {}, cached ? 0 : undefined);
     if (!summonerRes.ok) {
       if (summonerRes.status === 404) {
+        const other = await otherRegion(account.puuid, cached?.region ?? null);
+        if (other) return wrongRegion(other);
         return NextResponse.json({ error: 'Summoner nicht gefunden', code: 'not_found' }, { status: 404 });
       }
       if (cached) return serveCached(cached, { riotRefresh: false, rateLimited: true, nameConfirmed: true });

@@ -6,13 +6,13 @@
     "belegen laesst, steht in `unresolved` statt als geratene Kante im Graphen."
   ],
   "counts": {
-    "routes": 79,
-    "groups": 30,
+    "routes": 78,
+    "groups": 29,
     "tables": 35,
     "rpcs": 29,
     "files": 11,
-    "edges": 381,
-    "unused": 8,
+    "edges": 380,
+    "unused": 7,
     "unresolved": 1
   },
   "groups": [
@@ -70,10 +70,6 @@
     },
     {
       "name": "anomalies",
-      "count": 1
-    },
-    {
-      "name": "challenges",
       "count": 1
     },
     {
@@ -161,19 +157,6 @@
       "usedBy": [
         "app/components/MarketInsights.tsx"
       ]
-    },
-    {
-      "id": "api:/api/challenges",
-      "kind": "route",
-      "label": "/api/challenges",
-      "group": "challenges",
-      "file": "app/api/challenges/route.ts",
-      "via": [
-        "app/lib/regions.ts",
-        "app/lib/riot-fetch.ts"
-      ],
-      "used": false,
-      "usedBy": []
     },
     {
       "id": "api:/api/champions",
@@ -1208,6 +1191,7 @@
       "used": true,
       "usedBy": [
         "app/components/Nav.tsx",
+        "app/search/LolSearchResults.tsx",
         "app/tft/search/TftSearchResults.tsx"
       ]
     },
@@ -1975,11 +1959,6 @@
       "from": "api:/api/anomalies",
       "to": "db:players",
       "kind": "reads"
-    },
-    {
-      "from": "api:/api/challenges",
-      "to": "ext:riot-api",
-      "kind": "fetches"
     },
     {
       "from": "api:/api/champions",

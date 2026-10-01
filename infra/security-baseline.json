@@ -241,7 +241,7 @@
     {
       "id": "puuid-ungekapselt-in-riot-url",
       "titel": "Spielerkennungen gehen ungeprueft in die Riot-Adresse",
-      "ort": "app/api/mastery/route.ts, app/api/live-game/route.ts, app/api/matches/route.ts, app/api/challenges/route.ts u.a.",
+      "ort": "app/api/mastery/route.ts, app/api/live-game/route.ts, app/api/matches/route.ts u.a.",
       "schwere": "hinweis",
       "status": "offen",
       "belegt_mit": "grep -rn 'riotFetch(`[^`]*\\${puuid}' app/api --include=route.ts -> 10 Treffer; grep -rn 'encodeURIComponent(puuid)' app/api --include=route.ts -> 0 Treffer. app/api/matches/route.ts hat zusaetzlich keine Pruefung auf leeres puuid.",

@@ -25,6 +25,13 @@ export const REGIONS: Region[] = [
   { value: 'me1', label: 'ME' },
 ];
 
+/** Anzeige-Kuerzel eines Servers (eun1 → EUNE, la1 → LAN). Unbekannte Werte
+ *  roh in Grossbuchstaben, damit nichts verschwindet. */
+export function regionLabel(region: string | null | undefined): string {
+  const v = normalizeRegion(region);
+  return REGIONS.find(r => r.value === v)?.label ?? v.toUpperCase();
+}
+
 /** Maps platform region to Riot regional routing value */
 export const REGIONAL_ROUTING: Record<string, string> = {
   euw1: 'europe', eun1: 'europe', tr1: 'europe', ru: 'europe', me1: 'europe',

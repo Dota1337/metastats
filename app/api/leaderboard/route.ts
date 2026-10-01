@@ -4,7 +4,16 @@ import { supabaseAdmin as supabase } from '../../lib/supabase';
 import { getAccountRouting, parseRegion, REGION_ALL } from '../../lib/regions';
 import { riotFetch } from '../../lib/riot-fetch';
 import { cachedJson } from '../../lib/api-cache';
-import { APEX_ORDER, LOL_LADDER, expandLolTier, isLolRankGroup, lolTiersTopDown } from '../../lib/rank-groups';
+import { APEX_ORDER, LOL_LADDER, isLolRankGroup, lolTiersTopDown } from '../../lib/rank-groups';
+
+// Riot oder Datenbank nicht erreichbar: ehrlich 503 statt leerer oder
+// ersatzweise sortierter Liste. Die Seite zeigt dann „nicht erreichbar“.
+function unavailable() {
+  return NextResponse.json(
+    { error: 'Rangliste gerade nicht erreichbar', entries: [] },
+    { status: 503, headers: { 'Cache-Control': 'no-store', 'Retry-After': '30' } },
+  );
+}
 
 const DIVISION_ORDER = ['I', 'II', 'III', 'IV'];
 // Diamond+ / Emerald+ / Platinum+: hoechstens 5 Seiten a 100 = 500 Spieler,
@@ -62,9 +71,10 @@ export async function GET(request: NextRequest) {
         .select('summoner_name, region, tier, rank, winrate, market_value, summoner_level, profile_icon_id')
         .ilike('summoner_name', `%${pattern}%`);
       if (region !== REGION_ALL) searchQuery = searchQuery.eq('region', region);
-      const { data: searchResults } = await searchQuery
+      const { data: searchResults, error: searchError } = await searchQuery
         .order('market_value', { ascending: false, nullsFirst: false })
         .limit(20);
+      if (searchError) return unavailable();
 
       return NextResponse.json({
         entries: (searchResults || []).map((p, i) => ({
@@ -98,11 +108,12 @@ export async function GET(request: NextRequest) {
       const lowerTiers = groupTiers ? groupTiers.filter(x => !APEX_ORDER.includes(x)) : [];
       const isDescent = lowerTiers.length > 0;
       let descentLeft = false;
+      let peekFailed = false;
 
       let riotRes: Response;
       if (isApex) {
         // Alle Ligen parallel, alles oder nichts: fehlt eine, waere die
-        // Rangfolge still falsch — dann lieber der Datenbank-Rueckfall unten.
+        // Rangfolge still falsch — dann 503 statt einer Teil-Rangliste.
         const leagues: (RiotEntry[] | null)[] = await Promise.all(apexTiers.map(async (tr) => {
           const tierEndpoint = tr === 'GRANDMASTER' ? 'grandmasterleagues'
             : tr === 'MASTER' ? 'masterleagues'
@@ -146,15 +157,21 @@ export async function GET(request: NextRequest) {
         // For Diamond and below: fetch the specific division + page from Riot API
         const div = division || 'I';
         const riotPageRes = await riotFetch(`https://${riotRegion}.api.riotgames.com/lol/league/v4/entries/RANKED_SOLO_5x5/${tier}/${div}?page=${page}`, apiKey);
-        const pageEntries = riotPageRes.ok ? await riotPageRes.json() : [];
+        if (!riotPageRes.ok) return unavailable();
+        const pageList = await riotPageRes.json();
+        const pageEntries = Array.isArray(pageList) ? pageList : [];
 
-        // Check if there's a next page
+        // Gibt es eine naechste Seite? Scheitert der Blick, gilt eine volle
+        // Seite als „vermutlich mehr“ — und die Antwort wird nur kurz gecacht.
         let hasNextPage = false;
         if (pageEntries.length >= 205) {
-          const peekRes = await riotFetch(`https://${riotRegion}.api.riotgames.com/lol/league/v4/entries/RANKED_SOLO_5x5/${tier}/${div}?page=${page + 1}`, apiKey);
+          const peekRes = await riotFetch(`https://${riotRegion}.api.riotgames.com/lol/league/v4/entries/RANKED_SOLO_5x5/${tier}/${div}?page=${page + 1}`, apiKey, {}, 0);
           if (peekRes.ok) {
             const peek = await peekRes.json();
-            hasNextPage = peek.length > 0;
+            hasNextPage = Array.isArray(peek) && peek.length > 0;
+          } else {
+            hasNextPage = true;
+            peekFailed = true;
           }
         }
 
@@ -303,38 +320,15 @@ export async function GET(request: NextRequest) {
           hasNextPage,
           hasPrevPage: currentPage > 1,
           region: riotRegion,
-        }, { cache: 'public, s-maxage=300, stale-while-revalidate=600', degraded: entries.length === 0 });
+        // stale-if-error: faellt Riot spaeter aus, darf der Rand die letzte
+        // gute Liste noch zehn Minuten weiterzeigen.
+        }, { cache: 'public, s-maxage=300, stale-while-revalidate=600, stale-if-error=600', degraded: entries.length === 0 || peekFailed });
       }
     }
 
-    // Fallback: Supabase only
-    let query = supabase
-      .from('players')
-      .select('summoner_name, region, tier, rank, winrate, market_value, summoner_level, profile_icon_id');
-
-    if (isLolRankGroup(tier) || APEX_ORDER.includes(tier)) query = query.in('tier', expandLolTier(tier));
-
-    if (region !== 'all') query = query.eq('region', region);
-
-    const { data: players } = await query
-      .order('market_value', { ascending: false, nullsFirst: false })
-      .limit(50);
-
-    return NextResponse.json({
-      entries: (players || []).map((p, i) => ({
-        rank: i + 1,
-        summonerName: p.summoner_name,
-        region: p.region,
-        tier: p.tier,
-        playerRank: p.rank,
-        winrate: p.winrate || 0,
-        marketValue: p.market_value,
-        level: p.summoner_level,
-        profileIcon: p.profile_icon_id,
-      })),
-      source: 'database',
-      tier,
-    });
+    // Kein Key oder eine Liga fehlt. Frueher stand hier eine Ersatzliste nach
+    // Marktwert mit Rang 1-50 — die sah aus wie die Rangliste, war es aber nicht.
+    return unavailable();
 
   } catch (error) {
     return NextResponse.json({ error: 'Server Fehler', entries: [] }, { status: 500 });

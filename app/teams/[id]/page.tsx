@@ -114,19 +114,14 @@ export default function TeamDetailPage() {
     'Southeast Asia': 'sg2', 'Taiwan': 'tw2', 'Vietnam': 'vn2',
     'Philippines': 'ph2', 'Thailand': 'th2', 'Russia': 'ru',
   };
-  const DEFAULT_TAGS: Record<string, string> = {
-    'kr': 'KR1', 'euw1': 'EUW', 'na1': 'NA1', 'br1': 'BR1',
-    'jp1': 'JP1', 'tr1': 'TR1', 'oc1': 'OC1', 'la1': 'LAN',
-    'la2': 'LAS', 'sg2': 'SG2', 'tw2': 'TW2', 'vn2': 'VN2',
-    'ph2': 'PH2', 'th2': 'TH2', 'ru': 'RU',
-  };
   const teamRiotRegion = TEAM_REGION_MAP[team.region] || 'euw1';
 
   const makePlayerLink = (m: any) => {
-    if (!m.riotId) return null;
-    const parts = m.riotId.split('#');
-    const name = parts[0];
-    const tag = parts[1] || DEFAULT_TAGS[teamRiotRegion] || 'EUW';
+    // Ohne Tag kein Link: ein geratener Tag fuehrt auf ein leeres Profil
+    // oder einen fremden Spieler gleichen Namens.
+    if (!m.riotId || !m.riotId.includes('#')) return null;
+    const [name, tag] = m.riotId.split('#');
+    if (!name || !tag) return null;
     // Per-player region from pro-players.json mainAccount wins over team default.
     // E.g. a KR pro on an EU team will have region='kr' from their validated account.
     const region = m.region || teamRiotRegion;

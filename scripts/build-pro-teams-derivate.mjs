@@ -119,6 +119,27 @@ export function collectSeasons(teams) {
 }
 
 /**
+ * Profil-Links der Ligen-Seite: Riot-ID mit # und Region aus dem Roster.
+ * Namen, die auf mehrere Konten zeigen, fallen raus — lieber kein Link als
+ * still der erste Treffer.
+ */
+export function proLinks(teams) {
+  const byName = new Map();
+  for (const team of teams) {
+    for (const p of team.roster || []) {
+      if (typeof p?.name !== 'string' || typeof p.riotId !== 'string' || !p.riotId.includes('#')) continue;
+      if (typeof p.region !== 'string' || !p.region) continue;
+      const key = p.name.toLowerCase();
+      const entry = { name: p.name, riotId: p.riotId, region: p.region };
+      const prev = byName.get(key);
+      if (prev === undefined) byName.set(key, entry);
+      else if (prev && (prev.riotId !== entry.riotId || prev.region !== entry.region)) byName.set(key, null);
+    }
+  }
+  return [...byName.values()].filter(Boolean).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
  * Reine Projektion — schreibt nichts. Wirft bei allem, was ein Bug hier oder
  * eine kaputte SoT ist.
  */
@@ -156,6 +177,7 @@ export function buildDerivate(sot) {
     updatedAt,
     totalTeams,
     teams: teams.map(t => ({ id: t.id, name: t.name, short: t.short })),
+    players: proLinks(teams),
   };
 
   const details = new Map(teams.map(t => [t.id, t]));

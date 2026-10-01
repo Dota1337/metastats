@@ -16,10 +16,15 @@ interface Champion {
 }
 
 interface SiteStats {
-  totalTeams: number;
-  totalProPlayers: number;
-  regions: number;
-  matchesAnalyzed: number;
+  totalTeams?: number;
+  totalProPlayers?: number;
+  regions?: number;
+  matchesAnalyzed?: number;
+}
+
+// Nur echte Zahlen > 0; sonst bleibt das Skelett statt einer erfundenen 0.
+function positiveOrUndefined(v: unknown): number | undefined {
+  return typeof v === 'number' && v > 0 ? v : undefined;
 }
 
 export default function Home() {
@@ -78,18 +83,17 @@ export default function Home() {
   const fetchHomepageStats = async () => {
     try {
       const res = await fetch('/api/homepage-stats');
-      const data = await res.json();
+      const data = res.ok ? await res.json() : {};
       if (data.topChampions?.length >= 3) setFeaturedChamps(data.topChampions);
       else setFeaturedChamps([]); // API returned but empty → show empty state, not skeleton
       if (data.stats) setSiteStats({
-        totalTeams: data.stats.totalTeams ?? 0,
-        totalProPlayers: data.stats.totalProPlayers ?? 0,
-        regions: data.stats.regions ?? 0,
-        matchesAnalyzed: data.stats.matchesAnalyzed ?? 0,
+        totalTeams: positiveOrUndefined(data.stats.totalTeams),
+        totalProPlayers: positiveOrUndefined(data.stats.totalProPlayers),
+        regions: positiveOrUndefined(data.stats.regions),
+        matchesAnalyzed: positiveOrUndefined(data.stats.matchesAnalyzed),
       });
     } catch {
       setFeaturedChamps([]);
-      setSiteStats({ totalTeams: 0, totalProPlayers: 0, regions: 0, matchesAnalyzed: 0 });
     }
   };
 
@@ -335,7 +339,7 @@ export default function Home() {
                         )}
                         <div className="flex-1">
                           <div className="text-white text-sm font-medium">{p.summoner_name}</div>
-                          <div className="text-fg-muted text-xs">{p.region?.toUpperCase().replace('1', '')} · Level {p.summoner_level}</div>
+                          <div className="text-fg-muted text-xs">{p.region?.toUpperCase().replace('1', '')} · {t('player.level')} {p.summoner_level}</div>
                         </div>
                         {p.tier && (
                           <div className="text-fg-secondary text-xs">{formatTier(p.tier, p.rank)}</div>

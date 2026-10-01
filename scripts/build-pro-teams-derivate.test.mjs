@@ -20,6 +20,7 @@ import {
   SOT_PATH,
   buildDerivate,
   collectSeasons,
+  proLinks,
   toListingEntry,
 } from './build-pro-teams-derivate.mjs';
 
@@ -52,6 +53,22 @@ function fixtureTeam(over = {}) {
     ...over,
   };
 }
+
+test('Profil-Links: nur # + Region, doppeldeutige Namen fallen raus', () => {
+  const teams = [
+    { id: 'a', roster: [
+      { name: 'Faker', riotId: 'Hide on bush#KR1', region: 'kr' },
+      { name: 'NoTag', riotId: 'Brizz', region: 'euw1' },
+      { name: 'NoRegion', riotId: 'X#EUW' },
+      { name: 'Twin', riotId: 'Twin#1', region: 'euw1' },
+    ] },
+    { id: 'b', roster: [
+      { name: 'faker', riotId: 'Hide on bush#KR1', region: 'kr' },
+      { name: 'Twin', riotId: 'Twin#2', region: 'na1' },
+    ] },
+  ];
+  assert.deepEqual(proLinks(teams), [{ name: 'Faker', riotId: 'Hide on bush#KR1', region: 'kr' }]);
+});
 
 test('Duplikat-IDs brechen den Build', () => {
   const sotFixture = {

@@ -1,11 +1,18 @@
 'use client';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import Nav from '../components/Nav';
 import Footer from '../components/Footer';
 import { useI18n, LOCALE_MAP } from '../lib/i18n';
 import { usePageTitle } from '../lib/use-page-title';
+import { parseRegion } from '../lib/regions';
+
+// Kalender-Schluessel aus LOKALEN Datumsteilen. toISOString() rechnet in UTC
+// zurueck — lokale Mitternacht wird in DE zum Vortag 22:00.
+function localDayKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 interface LeagueInfo {
   slug: string;
@@ -68,6 +75,13 @@ interface ProTeam {
   short: string;
 }
 
+// Aus dem Index-Derivat: nur eindeutige Namen mit Riot-ID inkl. # und Region.
+interface ProLink {
+  name: string;
+  riotId: string;
+  region: string;
+}
+
 type CalendarView = 'week' | 'month';
 
 export default function LigenPage() {
@@ -87,6 +101,8 @@ export default function LigenPage() {
   const [detailTab, setDetailTab] = useState<'standings' | 'results' | 'upcoming'>('standings');
   const [proPlayers, setProPlayers] = useState<ProPlayer[]>([]);
   const [proTeams, setProTeams] = useState<ProTeam[]>([]);
+  const [proLinks, setProLinks] = useState<ProLink[]>([]);
+  const detailReq = useRef(0);
 
   // Load leagues + schedule on mount
   useEffect(() => {
@@ -115,7 +131,7 @@ export default function LigenPage() {
       fetch('/pro-teams/index.json')
         .then(r => r.ok ? r : (r.status === 404 ? fetch('/pro-teams.json') : Promise.reject(new Error(String(r.status)))))
         .then(r => r.json())
-        .then(d => setProTeams(d.teams || []))
+        .then(d => { setProTeams(d.teams || []); setProLinks(Array.isArray(d.players) ? d.players : []); })
         .catch(() => {});
 
       setLoading(false);
@@ -139,20 +155,23 @@ export default function LigenPage() {
     setSelectedLeague(slug);
     setDetailLoading(true);
     setDetailTab('standings');
+    // Schneller Ligawechsel: nur die juengste Anfrage darf schreiben.
+    const req = ++detailReq.current;
     try {
-      const res = await fetch(`/api/tournaments/standings?league=${slug}`);
-      const data = await res.json();
-      if (data.league) setLeagueDetail(data);
+      const res = await fetch(`/api/tournaments/standings?league=${slug}`, { signal: AbortSignal.timeout(15000) });
+      const data = res.ok ? await res.json() : null;
+      if (req !== detailReq.current) return;
+      if (data?.league) setLeagueDetail(data);
       else setLeagueDetail(null);
-    } catch { setLeagueDetail(null); }
-    finally { setDetailLoading(false); }
+    } catch { if (req === detailReq.current) setLeagueDetail(null); }
+    finally { if (req === detailReq.current) setDetailLoading(false); }
   };
 
   // Calendar helpers
   const calendarEvents = useMemo(() => {
     const events: Record<string, Set<string>> = {};
     for (const t of schedule) {
-      const dateKey = new Date(t.startTime).toISOString().split('T')[0];
+      const dateKey = localDayKey(new Date(t.startTime));
       if (!events[dateKey]) events[dateKey] = new Set();
       events[dateKey].add(t.leagueSlug);
     }
@@ -213,13 +232,14 @@ export default function LigenPage() {
 
   const getPlayerSlug = (playerName: string): string | null => {
     if (!playerName) return null;
-    const p = proPlayers.find(pp => pp.proName.toLowerCase() === playerName.toLowerCase());
-    if (!p || !p.accounts || p.accounts.length === 0) return null;
-    // Only link if account has proper Riot ID with #tag
-    const riotId = p.accounts.find(a => a.includes('#'));
-    if (!riotId) return null;
-    const [gameName, tag] = riotId.split('#');
-    return `/player/${encodeURIComponent(gameName)}--${encodeURIComponent(tag)}?region=euw1`;
+    // Konto + Region aus dem Team-Roster; ohne bekannte Region kein Link
+    // (frueher fest euw1 — LCK-Pros landeten auf fremden EUW-Konten).
+    const p = proLinks.find(pp => pp.name.toLowerCase() === playerName.toLowerCase());
+    const region = parseRegion(p?.region);
+    if (!p || !region) return null;
+    const [gameName, tag] = p.riotId.split('#');
+    if (!gameName || !tag) return null;
+    return `/player/${encodeURIComponent(gameName)}--${encodeURIComponent(tag)}?region=${region}`;
   };
 
   const getTeamRoster = (teamName: string): ProPlayer[] => {
@@ -317,11 +337,11 @@ export default function LigenPage() {
                   <div className="hidden sm:flex gap-4">
                     <div className="text-center">
                       <div className="text-lg font-bold text-white">{(leagueDetail.standings || []).flatMap(s => s.teams || []).length}</div>
-                      <div className="text-[10px] text-fg-muted uppercase tracking-wider">Teams</div>
+                      <div className="text-[10px] text-fg-muted uppercase tracking-wider">{t('ligen.teams')}</div>
                     </div>
                     <div className="text-center">
                       <div className="text-lg font-bold text-white">{(leagueDetail.matches || []).length}</div>
-                      <div className="text-[10px] text-fg-muted uppercase tracking-wider">Spiele</div>
+                      <div className="text-[10px] text-fg-muted uppercase tracking-wider">{t('ligen.games')}</div>
                     </div>
                   </div>
                 </div>
@@ -361,8 +381,8 @@ export default function LigenPage() {
                           <tr className="border-b-2 border-border-subtle text-fg-muted text-[10px] uppercase tracking-widest">
                             <th className="px-3 sm:px-4 py-3 text-center w-10">#</th>
                             <th className="px-3 sm:px-4 py-3 text-left">Team</th>
-                            <th className="px-2 py-3 text-center w-12">S</th>
-                            <th className="px-2 py-3 text-center w-12">N</th>
+                            <th className="px-2 py-3 text-center w-12">{t('ligen.winsShort')}</th>
+                            <th className="px-2 py-3 text-center w-12">{t('ligen.lossesShort')}</th>
                             <th className="px-2 py-3 text-center w-16">{t('ligen.record')}</th>
                             <th className="px-3 sm:px-4 py-3 text-left hidden md:table-cell">{t('teams.players')}</th>
                           </tr>
@@ -552,7 +572,7 @@ export default function LigenPage() {
               {calendarView === 'week' ? (
                 <div className="grid grid-cols-7 gap-1">
                   {weekDays.map((day, i) => {
-                    const key = day.toISOString().split('T')[0];
+                    const key = localDayKey(day);
                     const events = calendarEvents[key];
                     const isToday = day.toDateString() === today.toDateString();
                     return (
@@ -583,7 +603,7 @@ export default function LigenPage() {
                 <div className="grid grid-cols-7 gap-1">
                   {monthDays.map((day, i) => {
                     if (!day) return <div key={`empty-${i}`} className="min-h-[48px]" />;
-                    const key = day.toISOString().split('T')[0];
+                    const key = localDayKey(day);
                     const events = calendarEvents[key];
                     const isToday = day.toDateString() === today.toDateString();
                     return (

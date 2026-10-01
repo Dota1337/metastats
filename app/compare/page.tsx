@@ -11,6 +11,7 @@ import { useI18n, LOCALE_MAP } from '../lib/i18n';
 import { usePageTitle } from '../lib/use-page-title';
 import { formatTier, NO_DIVISION_TIERS } from '../lib/rank-format';
 import { CDRAGON_PLUGINS_BASE, rankEmblemUrl } from '../lib/cdragon-base';
+import { isRiftGame, MIN_RIFT_GAMES } from '../lib/lol-queue';
 
 const CompareRadar = dynamic(() => import('../components/CompareRadar'), { ssr: false });
 
@@ -171,13 +172,17 @@ function getRoleDistribution(matches: any[]): { role: string; count: number; pct
 function countCategoryWins(s1: any, s2: any): { p1: number; p2: number; tie: number } {
   const cats: Array<[number, number]> = [
     [s1.rankNum, s2.rankNum],
+    [s1.marketValue, s2.marketValue],
+  ];
+  // Spielwerte zaehlen nur, wenn beide genug Kluft-Spiele haben — sonst
+  // gewinnt ein Spieler ohne Spiele nicht gegen "0".
+  if (s1.hasGames && s2.hasGames) cats.push(
     [s1.winrate, s2.winrate],
     [s1.kda, s2.kda],
     [s1.csPerMin, s2.csPerMin],
     [s1.dmgPerMin, s2.dmgPerMin],
     [s1.visionScore, s2.visionScore],
-    [s1.marketValue, s2.marketValue],
-  ];
+  );
   let p1 = 0, p2 = 0, tie = 0;
   for (const [a, b] of cats) {
     if (a > b) p1++;
@@ -246,8 +251,8 @@ function HeadToHeadBanner({ p1, p2, name1, name2 }: { p1: number; p2: number; na
         />
       </div>
       <div className="flex items-center justify-between text-[10px] mt-1.5 tabular-nums">
-        <span className={p1 > p2 ? 'text-accent font-bold' : 'text-fg-muted'}>{p1} {p1 === 1 ? 'Kategorie' : 'Kategorien'}</span>
-        <span className={p2 > p1 ? 'text-accent font-bold' : 'text-fg-muted'}>{p2} {p2 === 1 ? 'Kategorie' : 'Kategorien'}</span>
+        <span className={p1 > p2 ? 'text-accent font-bold' : 'text-fg-muted'}>{p1} {p1 === 1 ? t('compare.category') : t('compare.categories')}</span>
+        <span className={p2 > p1 ? 'text-accent font-bold' : 'text-fg-muted'}>{p2} {p2 === 1 ? t('compare.category') : t('compare.categories')}</span>
       </div>
     </div>
   );
@@ -621,7 +626,9 @@ function CompareTab({ region, setRegion }: { region: string; setRegion: (r: stri
 
   async function fetchPlayer(name: string) {
     const summonerRes = await fetch(`/api/summoner?name=${encodeURIComponent(name)}&region=${region}`);
-    if (!summonerRes.ok) throw new Error(`"${name}" ${t('compare.notFound').toLowerCase()}`);
+    if (summonerRes.status === 404) throw new Error(`"${name}" ${t('compare.notFound').toLowerCase()}`);
+    // 429/502/503: Riot ueberlastet — nicht als "nicht gefunden" ausgeben.
+    if (!summonerRes.ok) throw new Error(t('player.rateLimited'));
     const summoner = await summonerRes.json();
     // Summoner response already includes matches when fresh
     if (summoner.matches && summoner.matches.length > 0) {
@@ -629,7 +636,9 @@ function CompareTab({ region, setRegion }: { region: string; setRegion: (r: stri
     }
     // Fallback: fetch matches separately
     const matchesRes = await fetch(`/api/matches?puuid=${summoner.summoner.puuid}&region=${region}`);
-    const matches = matchesRes.ok ? await matchesRes.json() : { matches: [] };
+    // Ladefehler ist kein "0 Spiele": sonst stuende der Spieler mit 0 % da.
+    if (!matchesRes.ok) throw new Error(t('player.rateLimited'));
+    const matches = await matchesRes.json();
     return { summoner, matches };
   }
 
@@ -650,7 +659,11 @@ function CompareTab({ region, setRegion }: { region: string; setRegion: (r: stri
     const solo = Array.isArray(data.summoner.ranked)
       ? data.summoner.ranked.find((r: any) => r.queueType === 'RANKED_SOLO_5x5')
       : null;
-    const matches = data.matches?.matches || data.summoner?.matches || [];
+    const all = data.matches?.matches || data.summoner?.matches || [];
+    // Nur Kluft-Spiele wie auf der Spielerseite: ARAM/Arena verzerren KDA,
+    // CS und Schaden, und Arena-"Sieg" heisst nur obere Haelfte.
+    const matches = all.filter(isRiftGame);
+    const hasGames = matches.length >= MIN_RIFT_GAMES;
     const totalGames = matches.length || 1;
     const wins = matches.filter((m: any) => m.win).length;
     const winrate = Math.round((wins / totalGames) * 100);
@@ -684,6 +697,7 @@ function CompareTab({ region, setRegion }: { region: string; setRegion: (r: stri
       objectives: getObjectiveStats(matches),
       roles: getRoleDistribution(matches),
       sampleSize: matches.length,
+      hasGames,
     };
   }
 
@@ -758,9 +772,12 @@ function CompareTab({ region, setRegion }: { region: string; setRegion: (r: stri
           {/* Tier-Embleme */}
           <TierBadgeRow s1={s1} s2={s2} />
 
+          {/* Spielwerte: nur wenn beide genug Kluft-Spiele haben */}
+          {s1.hasGames && s2.hasGames ? (<>
+          <div className="text-center text-fg-muted text-[11px] mb-4 tabular-nums">{t('compare.basedOn')} {s1.sampleSize} / {s2.sampleSize} {t('stats.games')}</div>
           {/* Recent form — letzte 10 Spiele als W/L-Quadrate + Streak */}
           <div className="bg-surface-sunken border border-border-subtle rounded-lg p-3 mb-6">
-            <div className="text-center text-[10px] uppercase tracking-widest text-fg-muted mb-2">Letzte 10 Spiele · Streak</div>
+            <div className="text-center text-[10px] uppercase tracking-widest text-fg-muted mb-2">{t('compare.recentForm')}</div>
             <div className="grid grid-cols-2 gap-3">
               <RecentFormRow form={s1.recentForm} streaks={s1.streaks} side="left" />
               <RecentFormRow form={s2.recentForm} streaks={s2.streaks} side="right" />
@@ -798,10 +815,17 @@ function CompareTab({ region, setRegion }: { region: string; setRegion: (r: stri
           <ComparisonBar label="CS/Min" value1={s1.csPerMin} value2={s2.csPerMin} format1={s1.csPerMin.toFixed(1)} format2={s2.csPerMin.toFixed(1)} />
           <ComparisonBar label="DMG/Min" value1={s1.dmgPerMin} value2={s2.dmgPerMin} format1={s1.dmgPerMin.toLocaleString(numLocale)} format2={s2.dmgPerMin.toLocaleString(numLocale)} />
           <ComparisonBar label={t('compare.vision')} value1={s1.visionScore} value2={s2.visionScore} format1={s1.visionScore.toFixed(1)} format2={s2.visionScore.toFixed(1)} />
+          </>) : (
+            <>
+              <div className="text-center text-fg-muted text-[11px] mb-4 tabular-nums">{t('compare.basedOn')} {s1.sampleSize} / {s2.sampleSize} {t('stats.games')} · {t('compare.tooFewGames')}</div>
+              <ComparisonBar label={t('player.rank')} value1={s1.rankNum} value2={s2.rankNum} format1={s1.rankStr || t('player.unranked')} format2={s2.rankStr || t('player.unranked')} />
+            </>
+          )}
           <ComparisonBar label={t('mv.marketValue')} value1={s1.marketValue} value2={s2.marketValue}
             format1={s1.marketValue ? formatMarketValue(s1.marketValue) : 'N/A'}
             format2={s2.marketValue ? formatMarketValue(s2.marketValue) : 'N/A'} />
 
+          {s1.hasGames && s2.hasGames && (<>
           {/* Schadens-Verteilung */}
           <div className="mt-6 pt-4 border-t border-border-subtle">
             <div className="text-center text-fg-secondary text-xs mb-3">{t('compare.damageSplit')}</div>
@@ -875,6 +899,7 @@ function CompareTab({ region, setRegion }: { region: string; setRegion: (r: stri
               ))}
             </div>
           </div>
+          </>)}
         </div>
         );
       })()}

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cachedJson, SLOW_CACHE_CONTROL } from '../../lib/api-cache';
+import { getDdragonVersions } from '../../lib/ddragon-version-server';
 import { parsePatchArticles, type PatchArticle } from '../../lib/lol-patch-dates';
 
 interface PatchNote {
@@ -47,11 +48,8 @@ export async function GET() {
 
   try {
     // Get all versions from DDragon
-    const [versionsRes, fresh] = await Promise.all([
-      fetch('https://ddragon.leagueoflegends.com/api/versions.json'),
-      fetchArticles(),
-    ]);
-    const allVersions: string[] = await versionsRes.json();
+    const [allVersions, fresh] = await Promise.all([getDdragonVersions(), fetchArticles()]);
+    if (!allVersions) throw new Error('ddragon nicht erreichbar');
     if (fresh) lastArticles = fresh;
     const articles = lastArticles;
 

@@ -6,6 +6,7 @@ import { cachedJson, STATS_CACHE_CONTROL } from '../../../../lib/api-cache';
 import { LOL_RANK_GROUPS } from '../../../../lib/rank-groups';
 import { parseRegion } from '../../../../lib/regions';
 import { itemVerdict, type StratumCount, type VerdictResult } from '../../../../lib/lol-item-verdict';
+import { getLatestDdragonVersion, DDRAGON_TIMEOUT_MS } from '../../../../lib/ddragon-version-server';
 import { pickCounters } from '../../../../lib/lol-counters.mjs';
 
 interface BuildEntry {
@@ -66,10 +67,9 @@ const PAGE = 1000;
 async function resolveChampionKey(idParam: string): Promise<string | null> {
   if (/^\d+$/.test(idParam)) return idParam;
   try {
-    const versionRes = await fetch('https://ddragon.leagueoflegends.com/api/versions.json');
-    const versions = await versionRes.json();
-    const v = versions[0];
-    const champRes = await fetch(`https://ddragon.leagueoflegends.com/cdn/${v}/data/en_US/champion.json`);
+    const v = await getLatestDdragonVersion();
+    if (!v) return null;
+    const champRes = await fetch(`https://ddragon.leagueoflegends.com/cdn/${v}/data/en_US/champion.json`, { signal: AbortSignal.timeout(DDRAGON_TIMEOUT_MS) });
     if (!champRes.ok) return null;
     const data = await champRes.json();
     for (const c of Object.values(data.data) as any[]) {
@@ -77,16 +77,6 @@ async function resolveChampionKey(idParam: string): Promise<string | null> {
     }
   } catch {}
   return null;
-}
-
-async function latestDdragonVersion(): Promise<string | null> {
-  try {
-    const res = await fetch('https://ddragon.leagueoflegends.com/api/versions.json', { signal: AbortSignal.timeout(5000) });
-    if (!res.ok) return null;
-    return (await res.json())[0] ?? null;
-  } catch {
-    return null;
-  }
 }
 
 const patchNum = (p: string) => p.split('.').map(Number);
@@ -259,7 +249,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       for (const [role, rows] of byRole) roles[role] = buildRole(rows);
       const ordered = orderRoles(roles, requestedRole);
       const sampleSize = Object.values(roles).reduce((s, r) => s + r.games, 0);
-      const ddragonVersion = (await latestDdragonVersion()) ?? readJsonFile(region)?.ddragonVersion;
+      const ddragonVersion = (await getLatestDdragonVersion()) ?? readJsonFile(region)?.ddragonVersion;
       if (ddragonVersion && Object.keys(ordered).length) {
         return cachedJson({
           championKey,

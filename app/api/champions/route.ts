@@ -3,6 +3,7 @@ import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { cachedJson, ASSET_CACHE_CONTROL } from '../../lib/api-cache';
 import { expandLolTier } from '../../lib/rank-groups';
+import { getLatestDdragonVersion, DDRAGON_TIMEOUT_MS } from '../../lib/ddragon-version-server';
 import { statsForTiers, type ChampionStatsFile } from '../../lib/champion-tier-stats';
 
 interface ChampionInfo {
@@ -28,14 +29,12 @@ export async function GET(request: NextRequest) {
 
   try {
     // Fetch Data Dragon version + champion list
-    const versionRes = await fetch('https://ddragon.leagueoflegends.com/api/versions.json');
-    const versions = await versionRes.json();
-    const version = versions[0];
-
-    const champRes = await fetch(
-      `https://ddragon.leagueoflegends.com/cdn/${version}/data/de_DE/champion.json`
-    );
-    if (!champRes.ok) {
+    const version = await getLatestDdragonVersion();
+    const champRes = version ? await fetch(
+      `https://ddragon.leagueoflegends.com/cdn/${version}/data/de_DE/champion.json`,
+      { signal: AbortSignal.timeout(DDRAGON_TIMEOUT_MS) }
+    ) : null;
+    if (!champRes?.ok) {
       return NextResponse.json({ error: 'Champion-Daten nicht verfügbar' }, { status: 502 });
     }
     const champData = await champRes.json();

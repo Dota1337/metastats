@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '../../../lib/supabase';
+import { getLatestDdragonVersion } from '../../../lib/ddragon-version-server';
 import { cronAuthFailure } from '../../../lib/cron-auth';
 
-// This endpoint is called by Vercel Cron every 6 hours
+// This endpoint is called by Vercel Cron once a day (vercel.json)
 // It checks if a new LoL patch has been released and stores it
 
 export async function GET(request: NextRequest) {
@@ -12,9 +13,10 @@ export async function GET(request: NextRequest) {
 
   try {
     // Fetch latest version from DDragon
-    const versionsRes = await fetch('https://ddragon.leagueoflegends.com/api/versions.json');
-    const versions: string[] = await versionsRes.json();
-    const latestVersion = versions[0];
+    // fresh: ohne Speicher und ohne Rueckfall, sonst landet bei einem
+    // ddragon-Ausfall eine alte Version als "no_change" im Protokoll.
+    const latestVersion = await getLatestDdragonVersion({ fresh: true });
+    if (!latestVersion) throw new Error('ddragon nicht erreichbar');
 
     // Check what we last stored
     const { data: stored } = await supabase

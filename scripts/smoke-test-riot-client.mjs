@@ -12,6 +12,7 @@
  */
 
 import { loadBootSet, aggregateMatch, finalizeBuilds, ALLOWED_QUEUES } from './lib/build-aggregator.mjs';
+import { latestDdragonVersion } from './lib/lol-items.mjs';
 import { createRiotClient } from './lib/riot-client.mjs';
 
 const API_KEY = process.env.RIOT_API_KEY;
@@ -54,8 +55,7 @@ async function main() {
 
   // Step 3: Match details
   console.log('\n[3/5] Match details...');
-  const ddRes = await fetch('https://ddragon.leagueoflegends.com/api/versions.json');
-  const ddVersion = (await ddRes.json())[0];
+  const ddVersion = await latestDdragonVersion();
   const bootSet = await loadBootSet(ddVersion);
   console.log(`  DDragon ${ddVersion}, ${bootSet.size} boot-item-IDs`);
 

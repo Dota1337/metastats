@@ -184,6 +184,7 @@
       "via": [
         "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
+        "app/lib/ddragon-version-server.ts",
         "app/lib/tft-supabase-reader.ts",
         "public/tft-set.json"
       ],
@@ -201,6 +202,7 @@
       "via": [
         "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
+        "app/lib/ddragon-version-server.ts",
         "app/lib/regions.ts",
         "app/lib/tft-supabase-reader.ts",
         "public/tft-set.json"
@@ -231,7 +233,9 @@
       "label": "/api/cron/check-patches",
       "group": "cron",
       "file": "app/api/cron/check-patches/route.ts",
-      "via": [],
+      "via": [
+        "app/lib/ddragon-version-server.ts"
+      ],
       "used": true,
       "usedBy": [
         "vercel.json"
@@ -273,6 +277,7 @@
       "via": [
         "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
+        "app/lib/ddragon-version-server.ts",
         "app/lib/tft-supabase-reader.ts",
         "public/tft-set.json"
       ],
@@ -517,6 +522,7 @@
       "via": [
         "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
+        "app/lib/ddragon-version-server.ts",
         "app/lib/lol-patch-dates.ts",
         "app/lib/tft-supabase-reader.ts",
         "public/tft-set.json"
@@ -1445,6 +1451,7 @@
       "via": [
         "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
+        "app/lib/ddragon-version-server.ts",
         "app/lib/tft-supabase-reader.ts",
         "public/tft-set.json"
       ],

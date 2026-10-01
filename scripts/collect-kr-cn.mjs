@@ -9,6 +9,7 @@
  */
 
 import { loadBootSet, aggregateMatch, finalizeBuilds, ALLOWED_QUEUES } from './lib/build-aggregator.mjs';
+import { latestDdragonVersion } from './lib/lol-items.mjs';
 import { createRiotClient } from './lib/riot-client.mjs';
 import { checkIdPhase, checkSample } from './lib/champion-sample-guard.mjs';
 
@@ -114,9 +115,7 @@ async function collectRegion(region, regional, label) {
 
   // Step 3: Fetch match details + builds
   console.log('[3/4] Lade Match-Details...');
-  const ddVersionRes = await fetch('https://ddragon.leagueoflegends.com/api/versions.json');
-  const ddVersions = await ddVersionRes.json();
-  const ddVersion = ddVersions[0];
+  const ddVersion = await latestDdragonVersion();
   const bootSet = await loadBootSet(ddVersion);
   console.log(`  Data Dragon ${ddVersion} — ${bootSet.size} Boot-Item-IDs erkannt`);
 

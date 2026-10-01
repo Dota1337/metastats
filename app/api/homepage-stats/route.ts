@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getLatestDdragonVersion, DDRAGON_TIMEOUT_MS } from '../../lib/ddragon-version-server';
 import { cachedJson, ASSET_CACHE_CONTROL } from '../../lib/api-cache';
 
 export async function GET(request: NextRequest) {
@@ -9,16 +10,17 @@ export async function GET(request: NextRequest) {
     let topChampions: { id: string; name: string; games: number; winRate: number; role: string }[] = [];
     let matchesAnalyzed = 0;
     try {
-      const statsRes = await fetch(`${origin}/champion-stats-euw.json`);
+      const statsRes = await fetch(`${origin}/champion-stats-euw.json`, { signal: AbortSignal.timeout(DDRAGON_TIMEOUT_MS) });
       if (statsRes.ok) {
         const statsData = await statsRes.json();
         const stats = statsData.stats || {};
         matchesAnalyzed = statsData.matchesAnalyzed || 0;
 
         // Get Data Dragon champion mapping
-        const versionRes = await fetch('https://ddragon.leagueoflegends.com/api/versions.json');
-        const versions = await versionRes.json();
-        const champRes = await fetch(`https://ddragon.leagueoflegends.com/cdn/${versions[0]}/data/en_US/champion.json`);
+        const version = await getLatestDdragonVersion();
+        if (!version) throw new Error('ddragon nicht erreichbar');
+        const champRes = await fetch(`https://ddragon.leagueoflegends.com/cdn/${version}/data/en_US/champion.json`, { signal: AbortSignal.timeout(DDRAGON_TIMEOUT_MS) });
+        if (!champRes.ok) throw new Error('champion.json ' + champRes.status);
         const champData = await champRes.json();
 
         const idToChamp: Record<string, { id: string; name: string; tags: string[] }> = {};

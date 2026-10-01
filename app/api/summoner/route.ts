@@ -34,9 +34,137 @@ export async function GET(request: NextRequest) {
   const tagLine = parts[1]?.trim() || 'EUW';
   const fullName = `${gameName}#${tagLine}`;
 
+  // Gespeicherten Stand ausliefern (frueher Pfad 4a). riotRefresh: Rang bei Riot
+  // nachfragen; im Rueckfall bei Ueberlast aus, der Schluessel ist ja ausgelastet.
+  // nameConfirmed: Riot hat fullName eben zu cached.puuid aufgeloest.
+  const serveCached = async (cached: any, opts: { riotRefresh: boolean; rateLimited: boolean; nameConfirmed: boolean }) => {
+    let { data: rankedData } = await supabase
+      .from('ranked_stats')
+      .select('*')
+      .eq('player_id', cached.id);
+
+    // Touch-refresh: if the players row is stale (>6h since last write), pull
+    // ranked stats again so LP movements show up without a full recalculation.
+    // 6h matches typical solo-queue session length — anything finer would
+    // burn API quota for marginal freshness gains.
+    const STALE_MS = 6 * 60 * 60 * 1000;
+    const lastUpdate = cached.updated_at ? new Date(cached.updated_at).getTime() : 0;
+    const isStale = !lastUpdate || (Date.now() - lastUpdate) > STALE_MS;
+
+    // Trigger fresh fetch if stats are missing OR the row is stale.
+    if (opts.riotRefresh && (!rankedData || rankedData.length === 0 || isStale)) {
+      try {
+        const rankedRes = await riotFetch(`https://${region}.api.riotgames.com/lol/league/v4/entries/by-puuid/${cached.puuid}`, apiKey);
+        if (rankedRes.ok) {
+          const freshRanked = await rankedRes.json();
+          if (Array.isArray(freshRanked)) {
+            // Weggefallene Queues (Season-Reset, Flex nicht mehr gespielt)
+            // loeschen — ein Upsert allein liesse sie stehen.
+            const liveQueues = freshRanked.map((q: any) => q.queueType);
+            const staleDelete = supabase.from('ranked_stats').delete().eq('player_id', cached.id);
+            await (liveQueues.length > 0
+              ? staleDelete.not('queue_type', 'in', `(${liveQueues.join(',')})`)
+              : staleDelete);
+            // Store ranked stats and update player tier
+            const soloQ = freshRanked.find((r: any) => r.queueType === 'RANKED_SOLO_5x5');
+            const flexQ = freshRanked.find((r: any) => r.queueType === 'RANKED_FLEX_SR');
+            const primary = soloQ || flexQ;
+            if (primary) {
+              await supabase.from('players').update({
+                tier: primary.tier,
+                rank: primary.rank,
+                winrate: Math.round((primary.wins / (primary.wins + primary.losses)) * 100),
+                updated_at: new Date().toISOString(),
+              }).eq('id', cached.id);
+              cached.tier = primary.tier;
+              cached.rank = primary.rank;
+            } else {
+              // Kein Rang (mehr) — Rang leeren und updated_at setzen, damit
+              // nicht jeder folgende Aufruf erneut bei Riot fragt.
+              await supabase.from('players').update({
+                tier: null,
+                rank: null,
+                winrate: null,
+                updated_at: new Date().toISOString(),
+              }).eq('id', cached.id);
+              cached.tier = null;
+              cached.rank = null;
+            }
+            for (const q of freshRanked) {
+              await supabase.from('ranked_stats').upsert({
+                player_id: cached.id,
+                queue_type: q.queueType,
+                tier: q.tier,
+                rank: q.rank,
+                league_points: q.leaguePoints,
+                wins: q.wins,
+                losses: q.losses,
+                updated_at: new Date().toISOString(),
+              }, { onConflict: 'player_id,queue_type' });
+            }
+            rankedData = freshRanked.map((q: any) => ({
+              queue_type: q.queueType, tier: q.tier, rank: q.rank,
+              league_points: q.leaguePoints, wins: q.wins, losses: q.losses,
+            }));
+          }
+        }
+      } catch {}
+    }
+
+    const mapped = (rankedData || []).map((r: any) => ({
+      queueType: r.queue_type || r.queueType,
+      tier: r.tier,
+      rank: r.rank,
+      leaguePoints: r.league_points ?? r.leaguePoints,
+      wins: r.wins,
+      losses: r.losses,
+    }));
+
+    // Riot hat den Namen gerade zu dieser puuid aufgeloest: gespeicherten Namen
+    // nachziehen, sonst findet der Namens-Rueckfall ein umbenanntes Konto unter
+    // dem alten Namen — und ein junges updated_at hiesse nichts.
+    if (opts.nameConfirmed && String(cached.summoner_name || '').toLowerCase() !== fullName.toLowerCase()) {
+      await supabase.from('players').update({ summoner_name: fullName }).eq('id', cached.id);
+      cached.summoner_name = fullName;
+    }
+
+    // Track visitor
+    const visitorId = request.cookies.get('visitor_id')?.value;
+    if (visitorId) {
+      const searchedBy = cached.searched_by || [];
+      if (!searchedBy.includes(visitorId)) {
+        searchedBy.push(visitorId);
+        await supabase.from('players').update({ searched_by: searchedBy }).eq('id', cached.id);
+      }
+    }
+
+    return NextResponse.json({
+      summoner: {
+        name: cached.summoner_name,
+        summonerLevel: cached.summoner_level,
+        profileIconId: cached.profile_icon_id,
+        puuid: cached.puuid,
+        tier: cached.tier,
+        rank: cached.rank,
+      },
+      ranked: mapped,
+      matches: [], // loaded via /api/matches
+      fromCache: true,
+      storedMarketValue: cached.market_value,
+      ...(opts.rateLimited ? { rateLimited: true } : {}),
+    }, opts.rateLimited ? { headers: { 'Cache-Control': 'no-store' } } : undefined);
+  };
+
   try {
     // === Step 1: Resolve account ===
-    const accountRes = await riotFetch(`https://${accountCluster}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`, apiKey);
+    const accountUrl = `https://${accountCluster}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`;
+    let accountRes = await riotFetch(accountUrl, apiKey, {}, 0);
+    if (accountRes.status === 429 || accountRes.status >= 500) {
+      const stored = await findStoredByName(fullName, region);
+      if (stored) return serveCached(stored, { riotRefresh: false, rateLimited: true, nameConfirmed: false });
+      // Kein gespeicherter Stand: dann doch nachholen wie bisher.
+      if (accountRes.status === 429) accountRes = await riotFetch(accountUrl, apiKey);
+    }
     if (!accountRes.ok) {
       // Distinguish error classes so the UI can show meaningful messages
       // and so we don't silently mask a revoked Riot API key as "Spieler nicht gefunden".
@@ -74,7 +202,12 @@ export async function GET(request: NextRequest) {
 
     // === Step 3: Fetch match IDs ===
     // Recent 30 LoL matches (all queues) for display
-    const matchListRes = await riotFetch(`https://${regional}.api.riotgames.com/lol/match/v5/matches/by-puuid/${account.puuid}/ids?start=0&count=30`, apiKey);
+    const matchListRes = await riotFetch(`https://${regional}.api.riotgames.com/lol/match/v5/matches/by-puuid/${account.puuid}/ids?start=0&count=30`, apiKey, {}, cached ? 0 : undefined);
+    // Ohne Spielliste ist "neue Spiele?" unbekannt: gespeicherten Stand zeigen
+    // statt mit 0 Spielen neu zu rechnen (und die letzte Match-ID zu verlieren).
+    if (!matchListRes.ok && cached) {
+      return serveCached(cached, { riotRefresh: false, rateLimited: true, nameConfirmed: true });
+    }
     const matchIds: string[] = matchListRes.ok ? await matchListRes.json() : [];
     const latestMatchId = matchIds[0] || null;
 
@@ -84,118 +217,19 @@ export async function GET(request: NextRequest) {
 
     // === Step 4a: No new matches → return stored data ===
     if (!hasNewMatches && cached) {
-      let { data: rankedData } = await supabase
-        .from('ranked_stats')
-        .select('*')
-        .eq('player_id', cached.id);
-
-      // Touch-refresh: if the players row is stale (>6h since last write), pull
-      // ranked stats again so LP movements show up without a full recalculation.
-      // 6h matches typical solo-queue session length — anything finer would
-      // burn API quota for marginal freshness gains.
-      const STALE_MS = 6 * 60 * 60 * 1000;
-      const lastUpdate = cached.updated_at ? new Date(cached.updated_at).getTime() : 0;
-      const isStale = !lastUpdate || (Date.now() - lastUpdate) > STALE_MS;
-
-      // Trigger fresh fetch if stats are missing OR the row is stale.
-      if (!rankedData || rankedData.length === 0 || isStale) {
-        try {
-          const rankedRes = await riotFetch(`https://${region}.api.riotgames.com/lol/league/v4/entries/by-puuid/${account.puuid}`, apiKey);
-          if (rankedRes.ok) {
-            const freshRanked = await rankedRes.json();
-            if (Array.isArray(freshRanked)) {
-              // Weggefallene Queues (Season-Reset, Flex nicht mehr gespielt)
-              // loeschen — ein Upsert allein liesse sie stehen.
-              const liveQueues = freshRanked.map((q: any) => q.queueType);
-              const staleDelete = supabase.from('ranked_stats').delete().eq('player_id', cached.id);
-              await (liveQueues.length > 0
-                ? staleDelete.not('queue_type', 'in', `(${liveQueues.join(',')})`)
-                : staleDelete);
-              // Store ranked stats and update player tier
-              const soloQ = freshRanked.find((r: any) => r.queueType === 'RANKED_SOLO_5x5');
-              const flexQ = freshRanked.find((r: any) => r.queueType === 'RANKED_FLEX_SR');
-              const primary = soloQ || flexQ;
-              if (primary) {
-                await supabase.from('players').update({
-                  tier: primary.tier,
-                  rank: primary.rank,
-                  winrate: Math.round((primary.wins / (primary.wins + primary.losses)) * 100),
-                  updated_at: new Date().toISOString(),
-                }).eq('id', cached.id);
-                cached.tier = primary.tier;
-                cached.rank = primary.rank;
-              } else {
-                // Kein Rang (mehr) — Rang leeren und updated_at setzen, damit
-                // nicht jeder folgende Aufruf erneut bei Riot fragt.
-                await supabase.from('players').update({
-                  tier: null,
-                  rank: null,
-                  winrate: null,
-                  updated_at: new Date().toISOString(),
-                }).eq('id', cached.id);
-                cached.tier = null;
-                cached.rank = null;
-              }
-              for (const q of freshRanked) {
-                await supabase.from('ranked_stats').upsert({
-                  player_id: cached.id,
-                  queue_type: q.queueType,
-                  tier: q.tier,
-                  rank: q.rank,
-                  league_points: q.leaguePoints,
-                  wins: q.wins,
-                  losses: q.losses,
-                  updated_at: new Date().toISOString(),
-                }, { onConflict: 'player_id,queue_type' });
-              }
-              rankedData = freshRanked.map((q: any) => ({
-                queue_type: q.queueType, tier: q.tier, rank: q.rank,
-                league_points: q.leaguePoints, wins: q.wins, losses: q.losses,
-              }));
-            }
-          }
-        } catch {}
-      }
-
-      const mapped = (rankedData || []).map((r: any) => ({
-        queueType: r.queue_type || r.queueType,
-        tier: r.tier,
-        rank: r.rank,
-        leaguePoints: r.league_points ?? r.leaguePoints,
-        wins: r.wins,
-        losses: r.losses,
-      }));
-
-      // Track visitor
-      const visitorId = request.cookies.get('visitor_id')?.value;
-      if (visitorId) {
-        const searchedBy = cached.searched_by || [];
-        if (!searchedBy.includes(visitorId)) {
-          searchedBy.push(visitorId);
-          await supabase.from('players').update({ searched_by: searchedBy }).eq('id', cached.id);
-        }
-      }
-
-      return NextResponse.json({
-        summoner: {
-          name: cached.summoner_name,
-          summonerLevel: cached.summoner_level,
-          profileIconId: cached.profile_icon_id,
-          puuid: cached.puuid,
-          tier: cached.tier,
-          rank: cached.rank,
-        },
-        ranked: mapped,
-        matches: [], // loaded via /api/matches
-        fromCache: true,
-        storedMarketValue: cached.market_value,
-      });
+      return serveCached(cached, { riotRefresh: true, rateLimited: false, nameConfirmed: true });
     }
 
     // === Step 4b: New matches detected → full recalculation ===
-    const summonerRes = await riotFetch(`https://${region}.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${account.puuid}`, apiKey);
+    const summonerRes = await riotFetch(`https://${region}.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${account.puuid}`, apiKey, {}, cached ? 0 : undefined);
     if (!summonerRes.ok) {
-      return NextResponse.json({ error: 'Summoner nicht gefunden' }, { status: 404 });
+      if (summonerRes.status === 404) {
+        return NextResponse.json({ error: 'Summoner nicht gefunden', code: 'not_found' }, { status: 404 });
+      }
+      if (cached) return serveCached(cached, { riotRefresh: false, rateLimited: true, nameConfirmed: true });
+      return summonerRes.status === 429
+        ? NextResponse.json({ error: 'Daten in Kürze wieder verfügbar', code: 'riot_rate_limit' }, { status: 429 })
+        : NextResponse.json({ error: `Riot API Fehler (${summonerRes.status})`, code: 'riot_upstream' }, { status: 502 });
     }
     const summoner = await summonerRes.json();
 
@@ -480,3 +514,25 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// Namens-Rueckfall, wenn Riot den Riot-Namen gerade nicht aufloest. Nur bei genau
+// einem Treffer und nur, wenn die Zeile juenger als NAME_FALLBACK_MAX_AGE_MS ist:
+// der Name wird bei jedem Aufruf mit Riot-Bestaetigung nachgezogen, eine alte
+// Zeile kann aber einen Namen tragen, den inzwischen ein anderes Konto hat.
+const NAME_FALLBACK_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
+
+function escapeLike(v: string): string {
+  return v.replace(/[\\%_]/g, (c) => '\\' + c);
+}
+
+async function findStoredByName(fullName: string, region: string): Promise<any | null> {
+  const { data, error } = await supabase
+    .from('players')
+    .select('*')
+    .ilike('summoner_name', escapeLike(fullName))
+    .eq('region', region)
+    .order('updated_at', { ascending: false })
+    .limit(2);
+  if (error || !data || data.length !== 1) return null;
+  const updated = data[0].updated_at ? new Date(data[0].updated_at).getTime() : 0;
+  return Date.now() - updated <= NAME_FALLBACK_MAX_AGE_MS ? data[0] : null;
+}

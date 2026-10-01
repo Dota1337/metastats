@@ -17,12 +17,14 @@
 const RETRY_ATTEMPTS = 2;
 const RETRY_MAX_MS = 5000;
 
-export async function riotFetch(url: string, apiKey: string, init: RequestInit = {}): Promise<Response> {
+// retries: 0, wenn der Aufrufer einen gespeicherten Stand als Rueckfall hat —
+// dann ist Warten teurer als der Rueckfall und belastet den Schluessel weiter.
+export async function riotFetch(url: string, apiKey: string, init: RequestInit = {}, retries: number = RETRY_ATTEMPTS): Promise<Response> {
   let res = await fetch(url, {
     ...init,
     headers: { ...(init.headers as Record<string, string> | undefined), 'X-Riot-Token': apiKey },
   });
-  for (let attempt = 0; attempt < RETRY_ATTEMPTS && res.status === 429; attempt++) {
+  for (let attempt = 0; attempt < retries && res.status === 429; attempt++) {
     const header = parseFloat(res.headers.get('retry-after') || '');
     const waitMs = Math.min(Number.isFinite(header) && header > 0 ? header * 1000 : 1000, RETRY_MAX_MS);
     await new Promise(r => setTimeout(r, waitMs));

@@ -93,7 +93,13 @@ export default function PlayerPage() {
       const res = await fetch(`/api/summoner?name=${encodeURIComponent(name + '#' + tag)}&region=${region}`);
       const data = await res.json();
       if (stale()) return;
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) {
+        // Servertext ist deutsch — ueber den Code uebersetzen.
+        const code = data?.code;
+        throw new Error(code === 'riot_rate_limit' ? t('player.rateLimited')
+          : code === 'not_found' || res.status === 404 ? t('player.notFound')
+          : t('player.riotUnavailable'));
+      }
       setPlayer(data);
       if (data.storedMarketValue) setStoredMarketValue(data.storedMarketValue);
 
@@ -129,6 +135,10 @@ export default function PlayerPage() {
 
       if (stale()) return;
       loadSeasonStats(data.summoner.puuid);
+
+      // Gespeicherter Stand wegen Riot-Ueberlast: Mastery und Live-Spiel laufen
+      // ueber denselben ausgelasteten Schluessel und wuerden nur warten lassen.
+      if (data.rateLimited) return;
 
       // Parallel fetch: mastery + live game
       const puuid = encodeURIComponent(data.summoner.puuid);

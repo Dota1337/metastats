@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { useI18n, type TranslationKey } from '../lib/i18n';
+import { useI18n, LOCALE_MAP, type TranslationKey } from '../lib/i18n';
 
 interface CoachingInsight {
   type: 'strength' | 'weakness' | 'tip';
@@ -207,14 +207,16 @@ function InsightCard({ insight, color, roleKey, tr }: { insight: CoachingInsight
     blue: { bg: 'bg-blue-500/5', border: 'border-blue-500/20', text: 'text-blue-400', bar: 'bg-blue-500' },
   };
   const c = colors[color];
+  const { lang } = useI18n();
+  const locale = LOCALE_MAP[lang];
 
   return (
     <div className={`${c.bg} border ${c.border} rounded-lg px-3 py-2`}>
       <div className="flex items-center justify-between mb-1">
         <span className="text-white text-xs font-medium">{title}</span>
         <div className="flex items-center gap-2">
-          <span className={`${c.text} text-xs font-bold`}>{insight.stat}</span>
-          <span className="text-fg-muted text-[10px]">/ {formatBenchmark(insight.category, insight.benchmarkValue)}</span>
+          <span className={`${c.text} text-xs font-bold`}>{formatValue(insight.category, insight.playerValue, locale)}</span>
+          <span className="text-fg-muted text-[10px]">/ {formatValue(insight.category, insight.benchmarkValue, locale)}</span>
         </div>
       </div>
       {/* Percentile bar */}
@@ -228,9 +230,13 @@ function InsightCard({ insight, color, roleKey, tr }: { insight: CoachingInsight
   );
 }
 
-function formatBenchmark(cat: string, val: number): string {
-  if (cat === 'killParticipation' || cat === 'dmgShare') return `${val.toFixed(1)}%`;
-  if (cat === 'kda') return val.toFixed(2);
-  if (cat === 'deathsPerGame') return val.toFixed(1);
-  return val.toFixed(1);
+// Wert und Vergleichswert gleich formatiert, Dezimalzeichen nach Sprache
+// (Server-Text insight.stat hat immer einen Punkt). Stellen wie formatStat in
+// app/api/ai-coach/route.ts.
+function formatValue(cat: string, val: number, locale: string): string {
+  const digits = cat === 'kda' ? 2
+    : (cat === 'objectiveDmg' || cat === 'damagePerMin' || cat === 'goldPerMin' || cat === 'utility') ? 0
+    : 1;
+  const s = val.toLocaleString(locale, { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  return cat === 'killParticipation' || cat === 'dmgShare' ? `${s}%` : s;
 }

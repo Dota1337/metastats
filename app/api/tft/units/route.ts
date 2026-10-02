@@ -5,6 +5,7 @@ import { resolveFilters, callRpc, getAvailablePatches, resolveTrendAnchorOffset 
 import { isExcludedUnit, isExcludedItem, setContainsExcludedItem } from '../../../lib/tft-excluded';
 import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias, DEGRADED_CACHE_CONTROL } from '../../../lib/api-cache';
 import { lookupSnapshot, isSnapshotPublisher } from '../../../lib/snapshot-lookup';
+import { lookupFallbackSnapshot, FALLBACK_HEADER, type FallbackFilters } from '../../../lib/snapshot-fallback';
 import { computeShares } from '../../../lib/tft-shares';
 
 // C3 (2026-07-04): raised so the snapshot publisher's per-permutation fetch of a
@@ -254,6 +255,8 @@ export async function GET(request: NextRequest) {
   }
 
   // Stats list — Supabase RPC with filter expansion.
+  // Notreserve bei DB-Ausfall, siehe app/lib/snapshot-fallback.ts.
+  let fallbackFilters: FallbackFilters | null = null;
   try {
     // Plan E + B (siehe comps/route.ts für Begründung): patches vorne, Alias
     // redirecten, Cache-Control patch-frische-abhängig wählen.
@@ -263,6 +266,9 @@ export async function GET(request: NextRequest) {
     const cacheControl = cacheControlForPatches(patches);
 
     const filters = await resolveFilters(searchParams);
+    // Mit ausdruecklich gewaehltem Patch passt das patchuebergreifende Bundle
+    // nicht (siehe Snapshot-Pfad unten) — dann keine Notreserve.
+    if (filters.patchFilter == null) fallbackFilters = filters;
 
     // Optional Δ-velocity layer (parallel to comps/items): when ?velocity=N is
     // present the route fires a second RPC and merges per-character Δs into
@@ -425,6 +431,19 @@ export async function GET(request: NextRequest) {
       units,
     }, { cache: trendAnchorDegraded ? DEGRADED_CACHE_CONTROL : cacheControl });
   } catch (e: any) {
+    // Trifft v. a. Trend-Anfragen, die am Bundle vorbei live laufen: dann
+    // lieber die Liste ohne Trend als eine leere Seite. Nie fuer den Publisher.
+    if (fallbackFilters && !isSnapshotPublisher(request)) {
+      const fb = await lookupFallbackSnapshot('units', 'units', fallbackFilters);
+      if (fb) {
+        console.error('[api/tft/units] Live fehlgeschlagen, Rueckfall', fb.tag, ':', e?.message ?? e);
+        const units = [...(fb.payload.units as { avgPlacement?: number | null; pickRate?: number | null }[])];
+        sortUnitsRareLast(units);
+        const resp = cachedJson({ ...fb.payload, units }, { cache: DEGRADED_CACHE_CONTROL });
+        resp.headers.set(FALLBACK_HEADER, fb.tag);
+        return resp;
+      }
+    }
     return NextResponse.json({ hasData: false, units: [], error: e.message }, { status: 502 });
   }
 }

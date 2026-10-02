@@ -11,6 +11,7 @@ import {
 import { isExcludedItem, isExcludedUnit } from '../../../lib/tft-excluded';
 import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias, DEGRADED_CACHE_CONTROL } from '../../../lib/api-cache';
 import { lookupSnapshot, isSnapshotPublisher } from '../../../lib/snapshot-lookup';
+import { lookupFallbackSnapshot, FALLBACK_HEADER, type FallbackFilters } from '../../../lib/snapshot-fallback';
 
 // C3 (2026-07-04): raised so the snapshot publisher's per-permutation fetch of a
 // heavy detoast perm doesn't 504 on the Vercel default (~15s) and leave a gap.
@@ -126,6 +127,8 @@ export async function GET(request: NextRequest) {
     });
   }
 
+  // Notreserve bei DB-Ausfall, siehe app/lib/snapshot-fallback.ts.
+  let fallbackFilters: FallbackFilters | null = null;
   try {
     // Plan E + B (siehe comps/route.ts).
     const patches = await getAvailablePatches();
@@ -134,6 +137,7 @@ export async function GET(request: NextRequest) {
     const cacheControl = cacheControlForPatches(patches);
 
     const filters = await resolveFilters(searchParams);
+    fallbackFilters = filters;
     // Velocity-Layer (W1-A): ?velocity=N → dedizierte RPC mit FILTER-
     // Aggregation für now/prev in EINEM Scan (Migration 0036). p_days bleibt
     // das User-gewählte Tagesfenster; p_shift_days = velocity-Wert vom
@@ -290,6 +294,17 @@ export async function GET(request: NextRequest) {
       items,
     }, { cache: trendAnchorDegraded ? DEGRADED_CACHE_CONTROL : cacheControl });
   } catch (e: any) {
+    // Trifft v. a. Trend-Anfragen, die am Bundle vorbei live laufen: dann
+    // lieber die Liste ohne Trend als eine leere Seite. Nie fuer den Publisher.
+    if (fallbackFilters && !isSnapshotPublisher(request)) {
+      const fb = await lookupFallbackSnapshot('items', 'items', fallbackFilters);
+      if (fb) {
+        console.error('[api/tft/items] Live fehlgeschlagen, Rueckfall', fb.tag, ':', e?.message ?? e);
+        const resp = cachedJson(fb.payload, { cache: DEGRADED_CACHE_CONTROL });
+        resp.headers.set(FALLBACK_HEADER, fb.tag);
+        return resp;
+      }
+    }
     return NextResponse.json({ hasData: false, items: [], error: e.message }, { status: 502 });
   }
 }

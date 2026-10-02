@@ -3,7 +3,7 @@
 // alles, was der Teil-Lauf nicht selbst publiziert hat, war weg.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mergeBaseError } from './publish-snapshot-bundle.mjs';
+import { mergeBaseError, patchFingerprint, reusableEntry, REUSE_MAX_AGE_MS } from './publish-snapshot-bundle.mjs';
 
 const base = { mergeMode: true, manifestUrlSet: true, baseEntryCount: 700, allowEmptyBase: false };
 
@@ -28,4 +28,51 @@ test('REPLACE laeuft auch ohne Basis — sonst waere der Wiederaufbau blockiert'
 test('--allow-empty-base hebt beide Faelle auf', () => {
   assert.equal(mergeBaseError({ ...base, manifestUrlSet: false, baseEntryCount: 0, allowEmptyBase: true }), null);
   assert.equal(mergeBaseError({ ...base, baseEntryCount: 0, allowEmptyBase: true }), null);
+});
+
+// Wiederverwendung beendeter Patches (2026-10-02). Auflage des Users: keine
+// Daten der letzten Tage verlieren — jede Abweichung muss neu rechnen.
+const now = Date.parse('2026-10-02T03:00:00Z');
+const patches = { current: '18.3', previous: '18.2' };
+const key = 'tft/comps/18.2/all__diamond_plus__3d.json';
+const fp = patchFingerprint({ first_day: '2026-09-10', last_day: '2026-09-23', total_matches: 123456 });
+const reuseArgs = {
+  alias: 'previous', key, patches, fingerprints: { '18.2': fp },
+  oldManifest: { patches, fingerprints: { '18.2': fp } },
+  baseEntries: { [key]: { key, url: 'https://blob/x.json', builtAt: '2026-10-01T03:00:00Z' } },
+  now,
+};
+
+test('Fingerabdruck braucht Tage und Spielzahl', () => {
+  assert.equal(fp, '2026-09-10|2026-09-23|123456');
+  assert.equal(patchFingerprint({ first_day: '2026-09-10', last_day: '2026-09-23' }), null);
+  assert.equal(patchFingerprint(null), null);
+});
+
+test('unveraenderter Vorpatch wird wiederverwendet', () => {
+  assert.equal(reusableEntry(reuseArgs).url, 'https://blob/x.json');
+});
+
+test('laufender Patch wird nie wiederverwendet', () => {
+  assert.equal(reusableEntry({ ...reuseArgs, alias: 'current' }), null);
+});
+
+test('Nachzuegler-Spiele erzwingen Neuberechnung', () => {
+  const fp2 = patchFingerprint({ first_day: '2026-09-10', last_day: '2026-09-23', total_matches: 123457 });
+  assert.equal(reusableEntry({ ...reuseArgs, fingerprints: { '18.2': fp2 } }), null);
+});
+
+test('Patchwechsel erzwingt Neuberechnung', () => {
+  assert.equal(reusableEntry({ ...reuseArgs, oldManifest: { ...reuseArgs.oldManifest, patches: { current: '18.2', previous: '18.1' } } }), null);
+});
+
+test('fehlender Abdruck oder Eintrag rechnet neu', () => {
+  assert.equal(reusableEntry({ ...reuseArgs, fingerprints: {} }), null);
+  assert.equal(reusableEntry({ ...reuseArgs, oldManifest: { patches } }), null);
+  assert.equal(reusableEntry({ ...reuseArgs, baseEntries: {} }), null);
+});
+
+test('zu alter Eintrag wird neu gebaut', () => {
+  const old = new Date(now - REUSE_MAX_AGE_MS - 1000).toISOString();
+  assert.equal(reusableEntry({ ...reuseArgs, baseEntries: { [key]: { key, url: 'u', builtAt: old } } }), null);
 });

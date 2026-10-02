@@ -12,6 +12,7 @@ import {
   resolveTrendAnchorOffset,
 } from '../../../lib/tft-supabase-reader';
 import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias, DEGRADED_CACHE_CONTROL } from '../../../lib/api-cache';
+import { FALLBACK_HEADER } from '../../../lib/snapshot-fallback';
 import { isExcludedUnit, isExcludedItem, setContainsExcludedItem } from '../../../lib/tft-excluded';
 import { lookupSnapshot, isSnapshotPublisher } from '../../../lib/snapshot-lookup';
 import { parseClusterKey } from '../../../lib/tft-cluster';
@@ -110,13 +111,14 @@ async function readPrecomputedList(
   filters: Awaited<ReturnType<typeof resolveFilters>>,
   latestDay: string | undefined,
   requestedMinGames: number,
-): Promise<CompRow[] | null> {
-  if (process.env.TFT_COMP_PRECOMPUTED_DISABLED === '1') return null;
-  if (filters.regionLabel !== COMP_PRECOMPUTE_REGION || filters.setNumber == null) return null;
+): Promise<{ fresh: CompRow[] | null; stale: CompRow[] | null }> {
+  const none = { fresh: null, stale: null };
+  if (process.env.TFT_COMP_PRECOMPUTED_DISABLED === '1') return none;
+  if (filters.regionLabel !== COMP_PRECOMPUTE_REGION || filters.setNumber == null) return none;
   const tiers = COMP_PRECOMPUTE_BUCKETS[filters.bucketLabel];
   // Nur wenn die Gruppe hier dieselben Raenge meint wie in der Rang-Datei —
   // sonst gehoert der Eintrag zu einer anderen Abfrage.
-  if (!tiers || listKey(tiers) !== listKey(filters.buckets)) return null;
+  if (!tiers || listKey(tiers) !== listKey(filters.buckets)) return none;
   try {
     const found = await callRpc<Array<{ last_day: string; min_games: number; computed_at: string; comp_rows: CompRow[] }>>(
       'get_tft_comp_list_precomputed',
@@ -130,12 +132,38 @@ async function readPrecomputedList(
       PRECOMPUTED_TIMEOUT_MS,
     );
     const e = found?.[0];
-    if (!precomputedEntryUsable(e, { latestDay, requestedMinGames, now: Date.now() })) return null;
-    return Array.isArray(e!.comp_rows) ? e!.comp_rows : null;
+    const rows = e && Array.isArray(e.comp_rows) && e.comp_rows.length > 0 ? e.comp_rows : null;
+    // Nicht mehr frisch, aber vorhanden: bleibt als Notreserve, falls die
+    // Live-Abfrage gleich scheitert (naechtliche Vollauslastung der DB).
+    if (!precomputedEntryUsable(e, { latestDay, requestedMinGames, now: Date.now() })) return { fresh: null, stale: rows };
+    return { fresh: rows, stale: rows };
   } catch (err) {
     console.error('[tft/comps] precomputed read failed, live fallback:', (err as Error).message);
-    return null;
+    return none;
   }
+}
+
+// Die Paar-Abfrage kennt keinen Rang und keinen Slug: der naechtliche
+// Publisher holt fuer 1440 Detail-Seiten nur 12 verschiedene Ergebnisse,
+// rechnete sie aber jedes Mal neu. Ergebnis je Abfrage 10 Minuten im Speicher
+// der Instanz; gleichzeitige Anfragen teilen sich einen Aufruf. Fehler werden
+// nicht gemerkt.
+const PAIRS_MEMO_TTL_MS = 10 * 60_000;
+const PAIRS_MEMO_MAX = 64;
+const pairsMemo = new Map<string, { at: number; rows: Promise<CompPairRow[]> }>();
+function compPairsMemo(args: Record<string, unknown>): Promise<CompPairRow[]> {
+  const key = JSON.stringify(args);
+  const now = Date.now();
+  const cached = pairsMemo.get(key);
+  if (cached && now - cached.at < PAIRS_MEMO_TTL_MS) return cached.rows;
+  const rows = callRpc<CompPairRow[]>('get_tft_comp_pairs', args, 20000);
+  rows.catch(() => { if (pairsMemo.get(key)?.rows === rows) pairsMemo.delete(key); });
+  pairsMemo.set(key, { at: now, rows });
+  if (pairsMemo.size > PAIRS_MEMO_MAX) {
+    for (const [k, v] of pairsMemo) if (now - v.at >= PAIRS_MEMO_TTL_MS) pairsMemo.delete(k);
+    while (pairsMemo.size > PAIRS_MEMO_MAX) pairsMemo.delete(pairsMemo.keys().next().value!);
+  }
+  return rows;
 }
 
 interface CompRow {
@@ -272,6 +300,11 @@ export async function GET(request: NextRequest) {
     ? Math.max(ADAPTIVE_FLOOR, Math.min(defaultMinGames, Math.round(ADAPTIVE_SHARE * participants)))
     : minGames;
 
+  const publisher = isSnapshotPublisher(request);
+  // Letzter gespeicherter Stand derselben Anfrage, falls die Live-Abfrage
+  // gleich scheitert (gesetzt im Listen-Pfad).
+  let fallback: { payload: unknown; tag: string } | null = null;
+
   try {
     // Plan E — Per-Patch-Cache-Key. Lade die patches einmalig vorne und
     // redirecte ?patch=current|previous auf den konkreten Patch-String, damit
@@ -350,13 +383,13 @@ export async function GET(request: NextRequest) {
           p_min_games: minGames,
           p_cluster_prefix: detailTrait ? `${detailTrait}@` : null,
         }, 20000),
-        callRpc<CompPairRow[]>('get_tft_comp_pairs', {
+        compPairsMemo({
           p_regions: filters.regions,
           p_days: filters.days,
           p_patch: filters.patchFilter,
           p_set: filters.setNumber,
           p_min_games: 10,
-        }, 20000),
+        }),
       ]);
       const participants = rows[0]?.participants || 0;
       let row = rows.find(r => r.cluster_key === slug);
@@ -605,6 +638,11 @@ export async function GET(request: NextRequest) {
         resp.headers.set('x-snapshot', hit.tag);
         return resp;
       }
+      // Gleicher Zeitraum, aber mit fester statt angepasster Schwelle: als
+      // Antwort zweite Wahl, als Notreserve bei DB-Ausfall besser als nichts.
+      if (hit && payload?.hasData && Array.isArray(payload.comps) && payload.comps.length > 0) {
+        fallback = { payload: hit.payload, tag: `snapshot:${hit.tag}` };
+      }
     }
 
     // Der Publisher hat maxDuration = 60 und darf laenger warten als ein
@@ -629,6 +667,8 @@ export async function GET(request: NextRequest) {
     let trendAnchorDegraded = false;
 
     const listMinGames = adaptiveMin ? ADAPTIVE_FLOOR : minGames;
+    let staleRows: CompRow[] | null = null;
+    let servedStale = false;
     const liveList = () => callRpc<CompRow[]>('get_tft_comp_stats_list_v2', {
       p_regions: filters.regions,
       p_buckets: filters.buckets,
@@ -649,10 +689,18 @@ export async function GET(request: NextRequest) {
       // Laufzeit 19,6 → ~7,4 s warm. Aequivalenz gegen die alte RPC ueber 18
       // Permutationen belegt (Skalare, Unit-Felder, topItems, carryItems).
       // Rollback ist genau dieser eine Bezeichner — 0027 bleibt deployed.
-      source === 'data'
+      (source === 'data'
         ? readPrecomputedList(filters, patches[0]?.last_day, listMinGames)
-            .then(r => r ?? liveList())
-        : liveList(),
+            .then(r => { staleRows = r.stale; return r.fresh ?? liveList(); })
+        : liveList()
+      ).catch((err: unknown) => {
+        // Notreserve nur fuer Besucher. Der Publisher muss scheitern, sonst
+        // schriebe er alte Zahlen als neuen Stand in die Snapshots.
+        if (publisher || !staleRows) throw err;
+        console.error('[api/tft/comps] Live-Liste fehlgeschlagen, alte vorberechnete Liste:', (err as Error)?.message ?? err);
+        servedStale = true;
+        return staleRows;
+      }),
       trendShift > 0
         ? resolveTrendAnchorOffset(filters, patches, { publisher: isSnapshotPublisher(request) }).then(anchor => {
           trendAnchorDegraded = anchor.degraded;
@@ -702,7 +750,7 @@ export async function GET(request: NextRequest) {
       });
     dataComps.sort((a, b) => (a.avgPlacement ?? 9) - (b.avgPlacement ?? 9));
 
-    return cachedJson({
+    const listResp = cachedJson({
       hasData: dataComps.length > 0,
       filters: {
         region: filters.regionLabel,
@@ -720,8 +768,19 @@ export async function GET(request: NextRequest) {
       minGames: effectiveMinGames,
       source,
       comps: source === 'editorial' ? [] : dataComps,
-    }, { cache: trendAnchorDegraded ? DEGRADED_CACHE_CONTROL : cacheControl });
+    }, { cache: trendAnchorDegraded || servedStale ? DEGRADED_CACHE_CONTROL : cacheControl });
+    if (servedStale) listResp.headers.set(FALLBACK_HEADER, 'precomputed-stale');
+    return listResp;
   } catch (e: any) {
+    // Bei ausgelasteter DB lieber den letzten gespeicherten Stand zeigen als
+    // eine leere Seite. Kurz gecacht, damit nach Erholung sofort wieder
+    // frische Zahlen kommen; nie fuer den Publisher (siehe oben).
+    if (fallback && !publisher) {
+      console.error('[api/tft/comps] Live fehlgeschlagen, Rueckfall', fallback.tag, ':', e?.message ?? e);
+      const resp = cachedJson(fallback.payload, { cache: DEGRADED_CACHE_CONTROL });
+      resp.headers.set(FALLBACK_HEADER, fallback.tag);
+      return resp;
+    }
     return NextResponse.json({ hasData: false, comps: [], error: e.message }, { status: 502 });
   }
 }

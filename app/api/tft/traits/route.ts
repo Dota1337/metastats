@@ -3,6 +3,7 @@ import { parseVelocity } from '../../../lib/query-params';
 import { resolveFilters, callRpc, getAvailablePatches, resolveTrendAnchorOffset } from '../../../lib/tft-supabase-reader';
 import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias, DEGRADED_CACHE_CONTROL } from '../../../lib/api-cache';
 import { lookupSnapshot, isSnapshotPublisher } from '../../../lib/snapshot-lookup';
+import { lookupFallbackSnapshot, FALLBACK_HEADER, type FallbackFilters } from '../../../lib/snapshot-fallback';
 
 // C3 (2026-07-04): raised so the snapshot publisher's per-permutation fetch of a
 // heavy detoast perm doesn't 504 on the Vercel default (~15s) and leave a gap.
@@ -33,6 +34,8 @@ const VELOCITY_MIN_GAMES = 30;
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
+  // Notreserve bei DB-Ausfall, siehe app/lib/snapshot-fallback.ts.
+  let fallbackFilters: FallbackFilters | null = null;
   try {
     // Plan E + B (siehe comps/route.ts).
     const patches = await getAvailablePatches();
@@ -41,6 +44,7 @@ export async function GET(request: NextRequest) {
     const cacheControl = cacheControlForPatches(patches);
 
     const filters = await resolveFilters(searchParams);
+    fallbackFilters = filters;
 
     // Δ-velocity (W1-A pattern, anchor-aware via 0039). Trait velocity is rolled
     // up across activation levels — the UI also groups per display name, so
@@ -157,6 +161,17 @@ export async function GET(request: NextRequest) {
       traits,
     }, { cache: trendAnchorDegraded ? DEGRADED_CACHE_CONTROL : cacheControl });
   } catch (e: any) {
+    // Trifft v. a. Trend-Anfragen, die am Bundle vorbei live laufen: dann
+    // lieber die Liste ohne Trend als eine leere Seite. Nie fuer den Publisher.
+    if (fallbackFilters && !isSnapshotPublisher(request)) {
+      const fb = await lookupFallbackSnapshot('traits', 'traits', fallbackFilters);
+      if (fb) {
+        console.error('[api/tft/traits] Live fehlgeschlagen, Rueckfall', fb.tag, ':', e?.message ?? e);
+        const resp = cachedJson(fb.payload, { cache: DEGRADED_CACHE_CONTROL });
+        resp.headers.set(FALLBACK_HEADER, fb.tag);
+        return resp;
+      }
+    }
     return NextResponse.json({ hasData: false, traits: [], error: e.message }, { status: 502 });
   }
 }

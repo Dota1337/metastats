@@ -44,6 +44,8 @@
 //   PUBLISH_LOCK_PATH       Override the cross-invocation lockfile path.
 
 import { put } from '@vercel/blob';
+import pg from 'pg';
+import { encodePasswordInPgUrl } from './lib/pg-url.mjs';
 import { openSync, closeSync, writeSync, readFileSync, existsSync, unlinkSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -226,7 +228,11 @@ async function fetchPayload(url, attempt = 1) {
     });
     clearTimeout(t);
     if (!res.ok) {
-      if (attempt < 4 && (res.status === 502 || res.status === 503 || res.status === 504)) {
+      // Hoechstens zwei Wiederholungen (2026-10-02, vorher drei): unter
+      // Vollauslastung der DB ist jede Wiederholung eine weitere schwere
+      // Abfrage, die Besucher-Anfragen in den 8-s-Abbruch draengt. Scheitert
+      // die Permutation trotzdem, bleibt ihr alter Eintrag (Carry-Over).
+      if (attempt < 3 && (res.status === 502 || res.status === 503 || res.status === 504)) {
         // Backoff bewusst lang (5s / 20s / 45s statt 2s / 4s): die 502er hier
         // sind KEINE sporadischen Netzfehler, sondern serverseitige Timeouts
         // auf schweren jsonb-Aggregaten (7d-Fenster). Ein sofortiger Retry
@@ -234,7 +240,7 @@ async function fetchPayload(url, attempt = 1) {
         // Versuch waermt aber Visibility-Map und Plan-Cache auf, sodass ein
         // spaeterer Versuch echte Chancen hat. Siehe
         // reference_tft_stats_vacuum_perf.md.
-        const backoffMs = [5_000, 20_000, 45_000][attempt - 1];
+        const backoffMs = [20_000, 60_000][attempt - 1];
         await new Promise(r => setTimeout(r, backoffMs));
         return fetchPayload(url, attempt + 1);
       }
@@ -243,7 +249,7 @@ async function fetchPayload(url, attempt = 1) {
     return await res.json();
   } catch (err) {
     clearTimeout(t);
-    if (attempt < 3 && err?.name === 'AbortError') {
+    if (attempt < 2 && err?.name === 'AbortError') {
       return fetchPayload(url, attempt + 1);
     }
     throw err;
@@ -256,6 +262,41 @@ async function fetchPayload(url, attempt = 1) {
 // timeoutet), ziehen wir die Patches aus dem existierenden Manifest — das ist
 // die Source-of-Truth, die wir gerade aktualisieren.
 let _patchInfo = null;
+
+// Eine kleine Abfrage je Lauf. Ohne DB-Zugang oder bei Fehler: {} — dann gibt
+// es keine Wiederverwendung und alles wird neu gerechnet (sicherer Rueckfall).
+async function loadDbFingerprints() {
+  const url = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL;
+  if (!url) {
+    console.log(`[${ts()}] keine DB-URL — keine Wiederverwendung beendeter Patches`);
+    return {};
+  }
+  const client = new pg.Client({
+    connectionString: encodePasswordInPgUrl(url),
+    ssl: { rejectUnauthorized: false },
+    statement_timeout: 60_000,
+    connectionTimeoutMillis: 20_000,
+  });
+  try {
+    await client.connect();
+    const { rows } = await client.query(
+      'select patch, first_day::text as first_day, last_day::text as last_day, total_matches from get_tft_available_patches(30)',
+    );
+    const out = {};
+    for (const info of rows) {
+      const fp = patchFingerprint(info);
+      if (fp && info.patch) out[info.patch] = fp;
+    }
+    console.log(`[${ts()}] Patch-Fingerabdruecke aus der DB: ${JSON.stringify(out)}`);
+    return out;
+  } catch (err) {
+    console.log(`[${ts()}] Patch-Fingerabdruecke nicht lesbar (${err?.message || err}) — keine Wiederverwendung`);
+    return {};
+  } finally {
+    await client.end().catch(() => {});
+  }
+}
+
 async function resolvePatches() {
   if (_patchInfo) return _patchInfo;
   const currentUrl = buildUrl('/api/tft/comps', {
@@ -270,6 +311,10 @@ async function resolvePatches() {
   ]);
   let current = cur?.filters?.patch || null;
   let previous = prev?.filters?.patch || null;
+  // Fingerabdruck je Patch (Tage + Spielzahl) direkt aus der DB — NICHT aus
+  // der API-Antwort: die Seite haelt ihre Patch-Liste bis zu 6 h im Speicher
+  // und kann Nachzuegler-Spiele der Nacht noch nicht kennen.
+  const fingerprints = await loadDbFingerprints();
   if (!current || !previous) {
     // Manifest-Fallback: wenn Supabase-RPC fuer Patches haengt, lesen wir die
     // patches aus dem zuletzt veroeffentlichten Manifest (shared memoized load).
@@ -281,8 +326,42 @@ async function resolvePatches() {
     }
   }
   _patchInfo = { current, previous };
+  _patchFingerprints = fingerprints;
   console.log(`[${ts()}] Resolved patches: current=${_patchInfo.current}, previous=${_patchInfo.previous}`);
   return _patchInfo;
+}
+let _patchFingerprints = {};
+
+// --- Wiederverwendung beendeter Patches (2026-10-02) ----------------------
+// Der Vorpatch aendert sich nicht mehr: sein Zeitfenster haengt am Patch-Ende,
+// nicht am heutigen Tag. Ihn jede Nacht neu zu rechnen war rund die Haelfte der
+// Listen-Last auf der DB. Wiederverwendet wird nur, wenn ALLES passt:
+// - Alias "previous" (der laufende Patch wird immer neu gerechnet)
+// - das alte Manifest hatte dieselben Patches current/previous (kein
+//   Patch-Wechsel dazwischen; sonst stimmte die eingebettete Patch-Liste nicht)
+// - der Fingerabdruck erster Tag | letzter Tag | Spielzahl ist unveraendert —
+//   kommen Nachzuegler-Spiele dazu, aendert sich die Spielzahl und es wird neu
+//   gerechnet (User-Auflage: keine Daten der letzten Tage verlieren)
+// - der Eintrag ist hoechstens 7 Tage alt (erzwungener Neubau)
+export const REUSE_MAX_AGE_MS = 7 * 24 * 3600 * 1000;
+
+export function patchFingerprint(info) {
+  if (!info?.first_day || !info?.last_day || info.total_matches == null) return null;
+  return `${info.first_day}|${info.last_day}|${Number(info.total_matches)}`;
+}
+
+export function reusableEntry({ alias, key, patches, fingerprints, oldManifest, baseEntries, now }) {
+  if (alias !== 'previous') return null;
+  const prev = patches?.previous;
+  if (!prev || !patches.current || !oldManifest) return null;
+  if (oldManifest.patches?.current !== patches.current || oldManifest.patches?.previous !== prev) return null;
+  const fp = fingerprints?.[prev];
+  if (!fp || oldManifest.fingerprints?.[prev] !== fp) return null;
+  const entry = baseEntries?.[key];
+  if (!entry?.url || entry.key !== key) return null;
+  const built = Date.parse(entry.builtAt);
+  if (!Number.isFinite(built) || now - built > REUSE_MAX_AGE_MS || built > now + 60_000) return null;
+  return entry;
 }
 
 /** Alias -> konkreter Patch. Muss identisch sein zu dem, was der Key kodiert. */
@@ -452,6 +531,7 @@ async function main() {
   // run preserves the keys it doesn't publish, and a fetch failure aborts with
   // zero side effects rather than clobbering the manifest.
   let baseEntries = {};
+  let reuseManifest = null;
   if (MERGE_MODE) {
     const base = await loadOldManifest();
     if (_oldManifestFetchFailed) {
@@ -492,7 +572,18 @@ async function main() {
       ? base.entries
       : {};
     console.log(`[${ts()}] manifest-mode=REPLACE (full run) — stale keys pruned, ${Object.keys(baseEntries).length} entries als Carry-Over-Basis fuer Fehlschlaege`);
+    if (!_oldManifestFetchFailed && base) reuseManifest = base;
   }
+  // Nur im Voll-Lauf: ein Teil-Lauf (MERGE) behaelt ohnehin die Basis.
+  const tryReuse = (endpoint, perm) => {
+    if (!reuseManifest || !perm || perm.patch !== 'previous' || !patches.previous) return null;
+    const key = snapshotKey(endpoint, { ...perm, patch: patches.previous });
+    const entry = reusableEntry({
+      alias: perm.patch, key, patches, fingerprints: _patchFingerprints,
+      oldManifest: reuseManifest, baseEntries, now: Date.now(),
+    });
+    return entry ? { reused: true, key, entry } : null;
+  };
 
   if (!patches.current) {
     console.error(`[${ts()}] FATAL: could not resolve "current" patch — aborting`);
@@ -507,6 +598,9 @@ async function main() {
   const endpointStats = {};
   let totalUploaded = 0;
   let totalCarried = 0;
+  // Wiederverwendete Eintraege beendeter Patches: weder Versuch noch Fehler,
+  // zaehlen deshalb nicht in den Nenner der Abbruch- und Fehlerquoten.
+  let totalReused = 0;
   let totalSkipped = 0;
   // Gemessene Leer-Payloads (hasData:false) sind KEIN Fehlversuch: bei einem
   // frischen Set sind Diamond+/Master+ real leer. Sie zaehlen deshalb nicht in
@@ -526,7 +620,7 @@ async function main() {
 
     const results = await processWithConcurrency(
       spec.permutations,
-      async (perm) => publishPermutation(endpoint, spec.apiPath, perm, patches),
+      async (perm) => tryReuse(endpoint, perm) ?? publishPermutation(endpoint, spec.apiPath, perm, patches),
       CONCURRENCY,
     );
 
@@ -534,6 +628,12 @@ async function main() {
     for (let i = 0; i < results.length; i++) {
       const r = results[i];
       const p = spec.permutations[i];
+      if (r?.reused) {
+        manifestEntries[r.key] = r.entry;
+        totalReused++;
+        endpointOk++;
+        continue;
+      }
       if (r?.error) {
         totalErrors++;
         console.log(`  ✗ ${endpoint} ${p.patch}/${p.region}/${p.days}d/${p.bucket}: ${r.error}`);
@@ -629,7 +729,7 @@ async function main() {
 
       const results = await processWithConcurrency(
         detailPerms,
-        async (perm) => publishDetailPermutation(perm, patches),
+        async (perm) => tryReuse('comps-detail', perm) ?? publishDetailPermutation(perm, patches),
         CONCURRENCY,
       );
 
@@ -637,6 +737,12 @@ async function main() {
       for (let i = 0; i < results.length; i++) {
         const r = results[i];
         const p = detailPerms[i];
+        if (r?.reused) {
+          manifestEntries[r.key] = r.entry;
+          totalReused++;
+          detailOk++;
+          continue;
+        }
         if (r?.error) {
           totalErrors++;
           console.log(`  ✗ comps-detail ${p.slug}/${p.patch}/${p.region}/${p.days}d: ${r.error}`);
@@ -708,6 +814,10 @@ async function main() {
     version: 'v1',
     builtAt: ts(),
     patches,
+    // Fingerabdruecke fuer die Wiederverwendung im naechsten Lauf. Ein
+    // Teil-Lauf hat die Patches auf die Basis gepinnt und uebernimmt deren
+    // Abdruecke, damit sie zu den uebernommenen Eintraegen passen.
+    fingerprints: MERGE_MODE ? ((await loadOldManifest())?.fingerprints ?? {}) : _patchFingerprints,
     entries: finalEntries,
   };
   const manifestBody = JSON.stringify(manifest);
@@ -730,7 +840,7 @@ async function main() {
     console.log(`[${ts()}] DRY-RUN: manifest would contain ${entryCountMsg} (${Buffer.byteLength(manifestBody)} B)`);
   }
 
-  console.log(`[${ts()}] DONE: uploaded=${totalUploaded}, skipped=${totalSkipped}, errors=${totalErrors}, totalBytes=${(totalBytes / 1024 / 1024).toFixed(2)} MB`);
+  console.log(`[${ts()}] DONE: uploaded=${totalUploaded}, reused=${totalReused}, skipped=${totalSkipped}, errors=${totalErrors}, totalBytes=${(totalBytes / 1024 / 1024).toFixed(2)} MB`);
 
   // --- Exit-Semantik --------------------------------------------------------
   // Vorher: JEDER Fehler -> exit 1. Folge: der Service stand dauerhaft auf

@@ -31,7 +31,12 @@ const WURZEL = join('app', 'api');
 // Schreib-Aufrufe auf dem Supabase-Client. .rpc() steht bewusst NICHT hier:
 // die allermeisten RPCs lesen nur, und jeden Aufruf einzeln zu begruenden waere
 // Laerm, der den Waechter unglaubwuerdig macht.
-const SCHREIBT = /\.(insert|upsert|update|delete)\s*\(/;
+//
+// .delete zaehlt nur ohne Argument oder mit Options-Objekt — so ruft Supabase
+// es auf (`.delete()` / `.delete({ count })`). Ein Map-/Set-Zwischenspeicher
+// loescht mit Schluessel (`memo.delete(key)`) und ist kein DB-Schreiben; das
+// hat am 03.10.2026 die Comp-Route faelschlich rot gemacht.
+const SCHREIBT = /\.(insert|upsert|update)\s*\(|\.delete\s*\(\s*(\)|\{)/;
 
 // Anerkannte Zugangspruefungen. Erweitern ist erlaubt — aber nur um etwas, das
 // den Aufrufer wirklich prueft, nicht um ein selbst ausgestelltes Cookie.

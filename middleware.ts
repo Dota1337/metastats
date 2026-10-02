@@ -81,6 +81,8 @@ export const config = {
     // Der Proxy waere damit genau um das kaputt, wofuer es ihn gibt.
     // `api/companion` aus demselben Grund: die Overwolf-App hat keine
     // Seiten-Sitzung, ihre Antworten sollen aus der Edge-Kopie kommen.
-    '/((?!_next/static|_next/image|api/img|api/companion|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    // `opengraph-image` (Vorschaubilder, auch unter /tft/comps/<slug>/...)
+    // ebenso: sie tragen einen CDN-Cache-Header, den ein Set-Cookie aushebeln wuerde.
+    '/((?!_next/static|_next/image|api/img|api/companion|favicon.ico|.*opengraph-image|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

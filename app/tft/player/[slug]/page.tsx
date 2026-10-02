@@ -42,6 +42,7 @@ import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } f
 import { formatTier } from '../../../lib/rank-format';
 import { setRankDisplay, withLiveRank, type SetRankDisplay } from '../../../lib/tft-rank-kind';
 import { CURRENT_SET } from '../../../lib/current-set';
+import { decodeSlug, parseTftPlayerSlug } from '../../../lib/og/slugs';
 import { getDdragonVersion } from '../../../lib/ddragon-version';
 import type { TftMatchSummary } from '../../../lib/tft-match-processor';
 
@@ -132,10 +133,8 @@ export default function TftPlayerPage() {
   // den Server selbst; alles Weitere nutzt dann die gefundene Region.
   const urlRegion = (searchParams.get('region') || '').toLowerCase() || null;
   const urlPuuid = searchParams.get('puuid') || '';
-  const slug = decodeURIComponent(String(params?.slug || ''));
-  const [gameName, tagLine] = slug.includes('--')
-    ? slug.split('--').map(decodeURIComponent)
-    : slug.split('#').map(decodeURIComponent);
+  const slug = decodeSlug(params?.slug);
+  const { gameName, tagLine } = parseTftPlayerSlug(slug);
   const fullName = `${gameName}${tagLine ? '#' + tagLine : ''}`;
 
   const [data, setData] = useState<SummonerData | null>(null);

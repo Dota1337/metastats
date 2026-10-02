@@ -18,6 +18,7 @@ import { isNonStandardMode, isRiftGame, MIN_RIFT_GAMES } from '../../lib/lol-que
 import { getDdragonVersion } from '../../lib/ddragon-version';
 import { regionLabel } from '../../lib/regions';
 import { calculateStatsOverview } from '../../lib/stats-categories';
+import { parseLolPlayerSlug } from '../../lib/og/slugs';
 import type { ExtendedMatchData } from '../../lib/match-processor';
 
 const PerformanceCharts = dynamic(() => import('../../components/PerformanceCharts'), { ssr: false });
@@ -78,19 +79,8 @@ export default function PlayerPage() {
 
   useEffect(() => {
     if (!slug) return;
-    const decoded = decodeURIComponent(slug as string);
-    const separatorIndex = decoded.lastIndexOf('--');
-    let name: string;
-    let tag: string;
-    if (separatorIndex !== -1) {
-      name = decoded.slice(0, separatorIndex);
-      tag = decoded.slice(separatorIndex + 2);
-    } else {
-      // Fallback for old-style URLs (name-tag)
-      const parts = decoded.split('-');
-      tag = parts[parts.length - 1];
-      name = parts.slice(0, -1).join(' ');
-    }
+    // Name--Tag, alte Adressen Name-Tag — gleiche Auslese wie Titel und Vorschaubild.
+    const { name, tag } = parseLolPlayerSlug(slug as string);
     loadPlayer(name, tag);
   }, [slug, region]);
 

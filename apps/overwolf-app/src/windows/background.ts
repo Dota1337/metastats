@@ -7,9 +7,11 @@ import { APP_SECRET, API_BASE, CLIENT_VERSION } from '../lib/config.ts';
 import { read, write, subscribe, type Live } from '../lib/store.ts';
 import { loadComps, loadLookups } from '../lib/api.ts';
 import { show, close, toggle, moveTo, type WindowName } from '../lib/ow.ts';
+import { enqueue, flush, idbStore, type OutboxEntry, type SendResult } from '../lib/outbox.ts';
+import { recordBoard, flattenBoards, type Boards } from '../lib/boards.ts';
 import {
   jsonish, parseBoardPieces, parseShop, parseLevel, parseStage, stageToRound,
-  parseOpponent, gameTimeToRound, isTftMode, type BoardPiece,
+  parseOpponent, gameTimeToRound, isTftMode,
 } from '../lib/gep.ts';
 
 const FEATURES = ['gep_internal', 'game_info', 'live_client_data', 'me', 'match_info', 'store', 'board'];
@@ -24,15 +26,13 @@ const log = (...a: unknown[]) => console.log('[metastats-companion]', ...a);
 
 // ---------- Brett-Daten fuer die Positions-Heatmap ----------
 
-interface Observation { round: number; kind: 'own' | 'opp'; cell: number; unit: string; level: number; items: string[] }
-
 const match = {
   matchId: null as string | null,
   region: null as string | null,
   handle: null as string | null,
   placement: null as number | null,
   round: 0,
-  observations: [] as Observation[],
+  boards: new Map() as Boards,
 };
 
 function resetMatch(): void {
@@ -40,11 +40,7 @@ function resetMatch(): void {
   match.region = null;
   match.placement = null;
   match.round = 0;
-  match.observations = [];
-}
-
-function record(kind: 'own' | 'opp', pieces: BoardPiece[]): void {
-  for (const p of pieces) match.observations.push({ round: match.round, kind, ...p });
+  match.boards = new Map();
 }
 
 async function hmacHex(secret: string, payload: string): Promise<string> {
@@ -54,39 +50,70 @@ async function hmacHex(secret: string, payload: string): Promise<string> {
   return Array.from(sig, b => b.toString(16).padStart(2, '0')).join('');
 }
 
+// Jeder Versuch wird frisch signiert: der Server nimmt den Zeitstempel im Kopf
+// nur fuenf Minuten lang an.
+async function send(e: OutboxEntry): Promise<SendResult> {
+  try {
+    const res = await fetch(e.url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Companion-Signature': await hmacHex(APP_SECRET, e.body),
+        'X-Companion-Timestamp': String(Date.now()),
+      },
+      body: e.body,
+    });
+    return { status: res.status };
+  } catch (err) {
+    return { error: (err as Error)?.message || 'network' };
+  }
+}
+
+async function flushOutbox(): Promise<void> {
+  try {
+    const r = await flush(idbStore, send);
+    if (r.sent || r.dropped || r.left) log('outbox', r);
+  } catch (e) {
+    log('outbox failed', (e as Error)?.message);
+  }
+}
+
 async function submit(): Promise<void> {
-  if (match.observations.length === 0) return;
+  const observations = flattenBoards(match.boards);
+  if (observations.length === 0) return;
   if (!read('ms.settings').share) {
     resetMatch();
     return;
   }
   const timestamp = Date.now();
+  const matchId = match.matchId || `LIVE_${timestamp}_${(match.handle || 'anon').slice(0, 8)}`;
   const body = JSON.stringify({
-    matchId: match.matchId || `LIVE_${timestamp}_${(match.handle || 'anon').slice(0, 8)}`,
+    matchId,
     region: match.region || 'euw1',
     ownPuuid: match.handle,
     placement: match.placement,
-    observationCount: match.observations.length,
-    observations: match.observations,
+    observationCount: observations.length,
+    observations,
     sentAt: new Date(timestamp).toISOString(),
     timestamp,
     clientVersion: CLIENT_VERSION,
   });
+  // Paketgroesse als Messgrundlage fuer den Komplett-Upload (Plan P2).
+  log('match packet', {
+    matchId, round: match.round, boards: match.boards.size,
+    observations: observations.length, bytes: new TextEncoder().encode(body).length,
+  });
   resetMatch();
+  const entry: OutboxEntry = { id: `${matchId}_${timestamp}`, url: SUBMIT_URL, body, createdAt: timestamp, tries: 0 };
   try {
-    const res = await fetch(SUBMIT_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Companion-Signature': await hmacHex(APP_SECRET, body),
-        'X-Companion-Timestamp': String(timestamp),
-      },
-      body,
-    });
-    log('submit', res.status);
+    await enqueue(idbStore, entry);
   } catch (e) {
-    log('submit failed', (e as Error)?.message);
+    // IndexedDB gesperrt: wenigstens einmal direkt senden.
+    log('outbox write failed', (e as Error)?.message);
+    log('submit', await send(entry));
+    return;
   }
+  await flushOutbox();
 }
 
 // ---------- Live-Zustand fuer die Overlays ----------
@@ -160,8 +187,11 @@ function onInfo(info: overwolf.games.events.InfoUpdates2Event): void {
   }
 
   const board = all.board;
-  if (board?.board_pieces) record('own', parseBoardPieces(board.board_pieces));
-  if (board?.opponent_board_pieces) record('opp', parseBoardPieces(board.opponent_board_pieces));
+  if (board?.board_pieces) recordBoard(match.boards, 'own', match.round, null, parseBoardPieces(board.board_pieces));
+  if (board?.opponent_board_pieces) {
+    const opp = p.opponent !== undefined ? p.opponent : live.opponent;
+    recordBoard(match.boards, 'opp', match.round, opp, parseBoardPieces(board.opponent_board_pieces));
+  }
 
   if (Object.keys(p).length) patchLive(p);
 }
@@ -282,6 +312,8 @@ subscribe(['ms.settings', 'ms.pin'], key => {
 
 write('ms.live', live);
 void refreshData();
-setInterval(() => void refreshData(true), REFRESH_MS);
+void flushOutbox();
+setInterval(() => { void refreshData(true); void flushOutbox(); }, REFRESH_MS);
+window.addEventListener('online', () => void flushOutbox());
 void show('main');
 log('ready', CLIENT_VERSION);

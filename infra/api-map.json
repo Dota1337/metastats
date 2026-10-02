@@ -12,7 +12,7 @@
     "rpcs": 29,
     "files": 13,
     "edges": 462,
-    "unused": 10,
+    "unused": 7,
     "unresolved": 1
   },
   "groups": [
@@ -235,8 +235,11 @@
         "app/lib/tft-tier-letter.ts",
         "public/tft-set.json"
       ],
-      "used": false,
-      "usedBy": []
+      "used": true,
+      "usedBy": [
+        "apps/overwolf-app/dist/app/assets/api-n6o9rYUg.js",
+        "apps/overwolf-app/src/lib/api.ts"
+      ]
     },
     {
       "id": "api:/api/companion/v1/lookups",
@@ -254,8 +257,11 @@
         "app/lib/tft-tier-letter.ts",
         "public/tft-set.json"
       ],
-      "used": false,
-      "usedBy": []
+      "used": true,
+      "usedBy": [
+        "apps/overwolf-app/dist/app/assets/api-n6o9rYUg.js",
+        "apps/overwolf-app/src/lib/api.ts"
+      ]
     },
     {
       "id": "api:/api/companion/v1/player",
@@ -273,8 +279,11 @@
         "app/lib/tft-tier-letter.ts",
         "public/tft-set.json"
       ],
-      "used": false,
-      "usedBy": []
+      "used": true,
+      "usedBy": [
+        "apps/overwolf-app/dist/app/assets/api-n6o9rYUg.js",
+        "apps/overwolf-app/src/lib/api.ts"
+      ]
     },
     {
       "id": "api:/api/cron/check-patches",
@@ -691,7 +700,6 @@
         "app/tft/player/[slug]/page.tsx",
         "app/tft/traits/[name]/page.tsx",
         "app/tft/units/[id]/page.tsx",
-        "apps/overwolf-app/js/desktop.js",
         "scripts/lib/revalidate-edge.mjs",
         "scripts/probe-aggregator-readiness.mjs",
         "scripts/publish-snapshot-bundle.mjs",
@@ -1154,7 +1162,8 @@
       "via": [],
       "used": true,
       "usedBy": [
-        "apps/overwolf-app/js/gep-tft.js"
+        "apps/overwolf-app/dist/app/assets/background-2URfX4wX.js",
+        "apps/overwolf-app/src/windows/background.ts"
       ]
     },
     {

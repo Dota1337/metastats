@@ -7,11 +7,12 @@ After=network-online.target
 Type=oneshot
 WorkingDirectory=/opt/metastats-crawler
 EnvironmentFile=/etc/metastats-crawler/env
-# Each run processes up to BATCH_SIZE (1000) observations and is idempotent
-# via the (cluster_key, unit, cell) primary key + tft_position_aggregator_state
-# high-water mark. 10 minutes is generous headroom for a 1k-row batch even
-# under load.
+# Rechnet die Tabelle bei jedem Lauf komplett neu (wiederholbar). Die
+# Comp-Zuordnung je Spiel liegt in /var/lib/metastats-companion/class-cache.json,
+# Riot wird je Spiel also nur einmal gefragt; ein Lauf ohne neue Spiele dauert
+# Sekunden. 10 Minuten reichen auch fuer einen Erstlauf mit vielen neuen Spielen.
 TimeoutStartSec=10m
+StateDirectory=metastats-companion
 ExecStart=/usr/bin/node scripts/aggregate-position-observations.mjs
 StandardOutput=journal
 StandardError=journal

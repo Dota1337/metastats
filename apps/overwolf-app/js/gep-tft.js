@@ -4,7 +4,9 @@
 // What we collect:
 //   - cell_N → { unit, level, items[] } for both own and opponent boards
 //   - match_info: match_id, round, opponent_info, our placement when known
-//   - augments selected — sent to backend only, NEVER displayed (Riot ToS)
+//
+// Augments are NOT requested at all: Overwolf's TFT docs warn that augment
+// data support violates Riot ToS and can get the app banned.
 //
 // What we DO NOT collect:
 //   - Game memory, personal data, location, browser activity
@@ -21,7 +23,7 @@
 // Game-ID 5426 (League of Legends). 21570 existiert in der Spieleliste
 // für TFT Mobile / Standalone — als Fallback drin lassen. Beide IDs
 // triggern setRequiredFeatures; die TFT-spezifischen GEP-Features
-// (board, roster) feuern nur in einem TFT-Match, daher braucht es im
+// (board) feuern nur in einem TFT-Match, daher braucht es im
 // Submit-Pfad keinen zusätzlichen Mode-Filter — leere observations →
 // kein Submit.
 const TFT_GAME_IDS = [5426, 21570];
@@ -37,7 +39,6 @@ const REQUIRED_FEATURES = [
   'match_info',
   'board',         // own board_pieces with cell positions
   'live_client_data',
-  'roster',        // opponent list for the lobby-scout window
 ];
 
 // State during a match. Cleared at match-end.
@@ -47,7 +48,6 @@ const matchState = {
   ownPuuid: null,
   observations: [],     // [{ round, kind: 'own'|'opp', cell, unit, level, items }]
   opponentInfo: null,
-  augmentsPicked: [],   // augment-api-names picked across the match
   placement: null,
   currentRound: 0,      // updated from match_info / game_data
   gameTimeAtSeed: null, // first observed gameTime (seconds), for delta-rounds
@@ -63,7 +63,6 @@ function reset() {
   matchState.ownPuuid = null;
   matchState.observations = [];
   matchState.opponentInfo = null;
-  matchState.augmentsPicked = [];
   matchState.placement = null;
   matchState.currentRound = 0;
   matchState.gameTimeAtSeed = null;
@@ -164,12 +163,10 @@ function submit() {
     ownPuuid: matchState.ownPuuid,
     placement: matchState.placement,
     observationCount: matchState.observations.length,
-    augmentsCount: matchState.augmentsPicked.length,
     observations: matchState.observations,
-    augments: matchState.augmentsPicked,
     sentAt: new Date(timestamp).toISOString(),
     timestamp: timestamp,
-    clientVersion: '0.1.0',
+    clientVersion: '0.1.1',
   };
   var body = JSON.stringify(payload);
   // Sign the body. Server checks (a) signature matches, (b) timestamp is
@@ -193,53 +190,6 @@ function submit() {
     log('submit failed', e && e.message);
   }).then(function () {
     reset();
-  });
-}
-
-// Parses the roster payload Overwolf delivers when match_info or the
-// dedicated `roster` feature updates. Both `data.roster` (raw object or
-// JSON string) and `data.players` shapes appear depending on GEP version
-// — we handle both, then forward to the lobby window.
-function extractRoster(data) {
-  if (!data) return [];
-  var raw = data.roster ?? data.players ?? null;
-  if (!raw) return [];
-  if (typeof raw === 'string') {
-    try { raw = JSON.parse(raw); } catch (e) { return []; }
-  }
-  var list = Array.isArray(raw) ? raw : Object.values(raw);
-  var out = [];
-  for (var i = 0; i < list.length; i++) {
-    var p = list[i];
-    if (!p) continue;
-    var name = String(p.gameName || p.summoner_name || p.name || '').trim();
-    if (!name) continue;
-    // Skip ourselves so the lobby window only shows the 7 opponents.
-    if (matchState.ownPuuid && p.puuid && p.puuid === matchState.ownPuuid) continue;
-    var tag = String(p.tagLine || p.tag_line || '').trim();
-    if (name.indexOf('#') > 0 && !tag) {
-      var parts = name.split('#');
-      name = parts[0];
-      tag = parts.slice(1).join('#');
-    }
-    out.push({
-      gameName: name,
-      tagLine: tag,
-      region: (matchState.region || 'euw1').toLowerCase(),
-    });
-  }
-  return out;
-}
-
-function pushRosterToLobby(roster) {
-  if (!roster || roster.length === 0) return;
-  if (typeof overwolf === 'undefined' || !overwolf.windows) return;
-  // Open the in-game window if it isn't already, then send the roster.
-  overwolf.windows.obtainDeclaredWindow('lobby', function (res) {
-    if (!res || res.status !== 'success') return;
-    overwolf.windows.restore(res.window.id, function () {
-      overwolf.windows.sendMessage(res.window.id, 'lobby:roster', { roster: roster }, function () {});
-    });
   });
 }
 
@@ -271,8 +221,6 @@ function onGepInfoUpdate(info) {
         else if (r != null) matchState.currentRound = Number(r);
       }
     }
-    var rosterFromMatch = extractRoster(data);
-    if (rosterFromMatch.length > 0) pushRosterToLobby(rosterFromMatch);
     // TFT delivers placement as a match_info update keyed 'match_outcome',
     // not as a separate match_end event. Treat it as a submit-trigger.
     var outcome = data.match_outcome || data.matchOutcome || data.placement;
@@ -284,10 +232,6 @@ function onGepInfoUpdate(info) {
         submit();
       }
     }
-  }
-  if (f === 'roster') {
-    var roster = extractRoster(data);
-    if (roster.length > 0) pushRosterToLobby(roster);
   }
   if (f === 'live_client_data') {
     // Overwolf delivers nested data inside live_client_data as
@@ -358,12 +302,6 @@ function onGepEvent(events) {
       log('match_end placement', matchState.placement, 'via', ev.name);
       submit();
     }
-    if (ev.name === 'augment_picked' && ev.data) {
-      try {
-        var picked = JSON.parse(ev.data);
-        if (picked && picked.augment_id) matchState.augmentsPicked.push(String(picked.augment_id));
-      } catch (e) { /* no-op */ }
-    }
   }
 }
 
@@ -425,7 +363,7 @@ function openDesktopWindow() {
   });
 }
 
-var COMPANION_BUILD = '2026-05-18T01:30-en-localization-v7';
+var COMPANION_BUILD = '2026-10-02-no-lobby-no-augments';
 
 attachListeners();
 setRequiredFeatures();

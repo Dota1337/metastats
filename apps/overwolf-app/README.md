@@ -89,7 +89,8 @@ metastats.gg /tft/comps/[slug] (Position-Heatmap)
 - Frontend: Position-Heatmap-Sektion auf `/tft/comps/[slug]`
 
 **Phase 3** (mid-term):
-- Lobby-Scout-Funktion (optional sichtbar im Overwolf-Overlay-Fenster)
+- ~~Lobby-Scout~~ entfernt 2026-10-02: Rang/Ø-Platz der Gegner im Spiel verbietet Riot
+  („may not track your opponent's … aggregate stats")
 - Roll-/Level-Breakpoint-Live-Display
 - Item-Cheat-Sheet (in-game window, Riot-ToS-konform)
 - Match-Replay-Visualisierung auf metastats.gg

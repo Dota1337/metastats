@@ -49,7 +49,7 @@ function ChartSkeleton({ height, className = '' }: { height: number; className?:
 import { formatStage } from '../../../lib/tft-stage';
 import { aggregateComponents } from '../../../lib/tft-components';
 import { compDefiningAugmentApiNameFromSlug, shownAugmentSlug } from '../../../lib/tft-comp-defining-augments';
-import { dedupeByPrimaryCluster, primaryClusterKey, parseClusterKey } from '../../../lib/tft-cluster';
+import { dedupeByPrimaryCluster, primaryClusterKey, parseClusterKey, compTraitFamilyKey } from '../../../lib/tft-cluster';
 import { loadCompGuidesBundle, findCompGuide } from '../../../lib/tft-comp-guides';
 import { descriptorTag } from '../../../lib/tft-comp-descriptor';
 import { computeRoles, namedCarries, shownItems, componentCheckFromItems } from '../../../lib/tft-comp-roles';
@@ -916,7 +916,7 @@ export default function TftCompDetailPage() {
               <PositionHeatmap
                 units={comp.typicalUnits}
                 carryCharacterId={leadCarry ?? undefined}
-                clusterKey={comp.clusterKey}
+                clusterKey={compTraitFamilyKey(comp.clusterKey)}
                 assets={assets}
               />
             )}

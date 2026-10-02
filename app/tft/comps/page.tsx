@@ -4,6 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
 import EmptyData from '../../components/tft/EmptyData';
+import ApiUnavailable from '../../components/ApiUnavailable';
 import CompFamilyRow, { type CompFamily } from '../../components/tft/CompFamilyRow';
 import CompsTabs from '../../components/tft/CompsTabs';
 import StatsFilterBar from '../../components/tft/StatsFilterBar';
@@ -23,7 +24,7 @@ export default function TftCompsPage() {
   const searchParams = useSearchParams();
   const {
     filters, handleFiltersChange, adv, setAdv, sortBy, chooseSort,
-    comps, filteredComps, hasData, patches, assets, loading, tierCutoffs,
+    comps, filteredComps, hasData, patches, assets, loading, tierCutoffs, error, retry,
     currentPatchLabel, families, currentSetFamilies, topFamilyKeys,
   } = useTftCompsData();
 
@@ -113,12 +114,15 @@ export default function TftCompsPage() {
           />
         )}
 
-        {loading && hasData === null && (
+        {loading && !error && hasData === null && (
           <div className="text-fg-muted text-center py-8">{t('tft.noDataYet').replace('Noch keine Daten', 'Lade')}</div>
         )}
-        {hasData === false && <EmptyData />}
+        {error && (
+          <ApiUnavailable messageKey="error.temporarilyUnavailable" badge={false} onRetry={retry} />
+        )}
+        {!error && hasData === false && <EmptyData />}
 
-        {hasData && visibleFamilies.length > 0 && (
+        {!error && hasData && visibleFamilies.length > 0 && (
           <>
             <div className={`hidden sm:grid items-center gap-4 px-3.5 py-2 text-[11px] text-fg-secondary font-semibold whitespace-nowrap ${
               filters.velocity > 0

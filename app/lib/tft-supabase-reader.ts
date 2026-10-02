@@ -308,6 +308,7 @@ export async function resolveFilters(searchParams: URLSearchParams): Promise<Res
   // precompute-comp-windows.mjs dasselbe Fenster rechnen muss.
   const { days, anchorOffsetDays } = listWindowDays({
     requestedDays, patchFilter, patchStartDay,
+    patchEndDay: patches.find(p => p.patch === patch)?.last_day ?? null,
     latestDay: patches[0]?.last_day, today: new Date(),
   });
 

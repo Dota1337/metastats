@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import EmptyData from '../../../components/tft/EmptyData';
+import ApiUnavailable from '../../../components/ApiUnavailable';
 import CompsTabs from '../../../components/tft/CompsTabs';
 import StatsFilterBar from '../../../components/tft/StatsFilterBar';
 import TftHero from '../../../components/tft/TftHero';
@@ -33,7 +34,7 @@ export default function TftCompsAtlasPage() {
   const { t } = useI18n();
   const {
     filters, handleFiltersChange, sortBy, chooseSort,
-    hasData, patches, assets, loading, currentPatchLabel,
+    hasData, patches, assets, loading, currentPatchLabel, error, retry,
     currentSetFamilies, topFamilyKeys,
   } = useTftCompsData();
 
@@ -94,12 +95,15 @@ export default function TftCompsAtlasPage() {
           </select>
         </div>
 
-        {loading && hasData === null && (
+        {loading && !error && hasData === null && (
           <div className="text-fg-muted text-center py-8">{t('tft.noDataYet').replace('Noch keine Daten', 'Lade')}</div>
         )}
-        {hasData === false && <EmptyData />}
+        {error && (
+          <ApiUnavailable messageKey="error.temporarilyUnavailable" badge={false} onRetry={retry} />
+        )}
+        {!error && hasData === false && <EmptyData />}
 
-        {hasData && assets && rows.length > 0 && (
+        {!error && hasData && assets && rows.length > 0 && (
           <div className="space-y-2">
             {rows.map(row => (
               <section

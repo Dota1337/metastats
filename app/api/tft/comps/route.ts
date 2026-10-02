@@ -263,11 +263,13 @@ export async function GET(request: NextRequest) {
   // Ohne ?minGames passt sich die Schwelle an die Datenmenge an: bei kleinen
   // Stichproben (Challenger, eine Region) blieben mit 70/Tag sonst nur eine
   // Handvoll Comps uebrig. Wirksam = max(30, min(Default, 0,2 % der Spieler-
-  // partien)). Der Snapshot-Key bleibt auf dem alten Default (compsMinGames).
+  // partien)). Der Publisher holt genau diese Antwort ohne ?minGames
+  // (Snapshot-Key mg0); der alte Key mit fester Schwelle ist nur Rueckfall.
   const adaptiveMin = minGamesParam == null;
   const ADAPTIVE_FLOOR = 30;
+  const ADAPTIVE_SHARE = 0.002;
   const effectiveMinFor = (participants: number) => adaptiveMin
-    ? Math.max(ADAPTIVE_FLOOR, Math.min(defaultMinGames, Math.round(0.002 * participants)))
+    ? Math.max(ADAPTIVE_FLOOR, Math.min(defaultMinGames, Math.round(ADAPTIVE_SHARE * participants)))
     : minGames;
 
   try {
@@ -571,15 +573,22 @@ export async function GET(request: NextRequest) {
     // überspringen den Snapshot wenn der Caller velocity oder source=editorial
     // verlangt — beides ist nicht im Bundle.
     if (source === 'data' && velocityShift === 0) {
-      const hit = await lookupSnapshot('comps', {
+      const lookup = (mg: number) => lookupSnapshot('comps', {
         patch: filters.patch,
         region: filters.regionLabel,
         days: filters.requestedDays,
         bucket: filters.bucketLabel,
-        minGames,
+        minGames: mg,
         setNumber: filters.setNumber,
         skip: isSnapshotPublisher(request),
       });
+      // Seit 2026-10-02 publiziert der Publisher die Liste ohne ?minGames
+      // (Schluessel mg0) — der Payload ist dann genau die Besucher-Antwort mit
+      // angepasster Schwelle. Bis zum ersten Lauf danach liegt nur der alte
+      // Schluessel mit fester Schwelle im Manifest; der greift weiter mit der
+      // Vollstaendigkeits-Pruefung unten.
+      const autoHit = adaptiveMin ? await lookup(0) : null;
+      const hit = autoHit ?? await lookup(minGames);
       // Guard (Code-Analyzer-Verdict 2026-06-21): nie einen Snapshot mit
       // hasData:false oder leerem comps-Array ausliefern. Sonst zeigt die
       // Listing-Page „Noch keine Daten" obwohl die Live-RPC frische Comps
@@ -590,7 +599,7 @@ export async function GET(request: NextRequest) {
       // Schwelle niedriger liegen, fehlen darin Comps → live rechnen.
       const sample = payload?.comps?.find(c => (c.pickRate ?? 0) > 0 && (c.games ?? 0) > 0);
       const snapParticipants = sample ? Number(sample.games) / Number(sample.pickRate) : 0;
-      const snapshotComplete = !adaptiveMin || effectiveMinFor(snapParticipants) >= minGames;
+      const snapshotComplete = !adaptiveMin || autoHit != null || effectiveMinFor(snapParticipants) >= minGames;
       if (hit && snapshotComplete && payload?.hasData && Array.isArray(payload.comps) && payload.comps.length > 0) {
         const resp = cachedJson(hit.payload, { cache: cacheControl });
         resp.headers.set('x-snapshot', hit.tag);
@@ -627,6 +636,10 @@ export async function GET(request: NextRequest) {
       p_patch: filters.patchFilter,
       p_set: filters.setNumber,
       p_min_games: listMinGames,
+      // Angepasste Schwelle schon in der Abfrage (Migration 0083): die teure
+      // Zerlegung der Einheiten- und Item-Daten laeuft nur noch fuer Comps,
+      // die der Filter unten behaelt. euw1/7 Tage/Diamant+ 12,7 s → 2,4 s.
+      ...(adaptiveMin ? { p_min_share: ADAPTIVE_SHARE, p_min_cap: defaultMinGames } : {}),
     }, publisherRpcTimeoutMs);
 
     const [rows, velocityRows] = await Promise.all([

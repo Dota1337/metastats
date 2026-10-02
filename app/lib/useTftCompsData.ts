@@ -54,6 +54,10 @@ export function useTftCompsData() {
   const [minGames, setMinGames] = useState<number | null>(null);
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
   const [loading, setLoading] = useState(false);
+  // Abruf endgueltig gescheitert (nach den Wiederholungen). Bis 2026-10-02 sah
+  // ein 502 hier aus wie „keine Comps" — r.ok wurde nie geprueft.
+  const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [tierCutoffs, setTierCutoffs] = useState<TierCutoffs | null>(null);
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
@@ -82,25 +86,43 @@ export function useTftCompsData() {
     // überschreiben, während die Filter-Chips schon das neue Set zeigen.
     const ctl = new AbortController();
     const { signal } = ctl;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     setLoading(true);
     const qs = filtersToQueryString(filters);
-    fetch(`/api/tft/comps?${qs}&source=data`, { signal })
-      .then(r => r.json())
-      .then(d => {
-        if (signal.aborted) return;
-        // Rang, den der Server tatsaechlich benutzt hat, in den Filter spiegeln
-        // (nur solange der User keinen eigenen gewaehlt hat).
-        adoptServerBucket(d.filters?.bucket, filters, setFilters);
-        setHasData(!!d.hasData);
-        setComps(d.comps || []);
-        setPatches(d.patches || []);
-        setMinGames(typeof d.minGames === 'number' ? d.minGames : null);
-        setLoading(false);
-      })
-      .catch(() => {
-        if (signal.aborted) return;
-        setHasData(false); setComps([]); setLoading(false);
-      });
+    // Bis zu 3 Versuche, aber nur bei Server- oder Netzfehler (5xx, kein
+    // Netz) und nur im sichtbaren Tab; ein 4xx ist endgueltig. Die Streuung
+    // verhindert, dass viele Besucher nach einem Aussetzer gleichzeitig
+    // nachfragen.
+    const attempt = (n: number) => {
+      fetch(`/api/tft/comps?${qs}&source=data`, { signal })
+        .then(r => {
+          if (!r.ok) throw Object.assign(new Error(`HTTP ${r.status}`), { retryable: r.status >= 500 });
+          return r.json();
+        })
+        .then(d => {
+          if (signal.aborted) return;
+          // Rang, den der Server tatsaechlich benutzt hat, in den Filter spiegeln
+          // (nur solange der User keinen eigenen gewaehlt hat).
+          adoptServerBucket(d.filters?.bucket, filters, setFilters);
+          setError(false);
+          setHasData(!!d.hasData);
+          setComps(d.comps || []);
+          setPatches(d.patches || []);
+          setMinGames(typeof d.minGames === 'number' ? d.minGames : null);
+          setLoading(false);
+        })
+        .catch((e: { retryable?: boolean }) => {
+          if (signal.aborted) return;
+          const visible = typeof document === 'undefined' || document.visibilityState !== 'hidden';
+          if (e?.retryable !== false && n < 3 && visible) {
+            timer = setTimeout(() => attempt(n + 1), 1000 * n + Math.random() * 1000);
+            return;
+          }
+          // Keine leere Liste vortaeuschen: die Seite zeigt den Fehlerkasten.
+          setError(true); setLoading(false);
+        });
+    };
+    attempt(1);
     // Persist NUR nach Hydration — sonst überschreibt der erste Effekt-Tick
     // mit den (URL-only) Defaults die in localStorage gespeicherte Persona,
     // bevor der Init-Effekt sie laden konnte.
@@ -111,8 +133,9 @@ export function useTftCompsData() {
     if (typeof window !== 'undefined' && window.location.pathname + window.location.search !== url) {
       router.replace(url, { scroll: false });
     }
-    return () => ctl.abort();
-  }, [filters, adv, sortBy, sortTouched, hydrated, pathname, router]);
+    return () => { ctl.abort(); if (timer) clearTimeout(timer); };
+  }, [filters, adv, sortBy, sortTouched, hydrated, pathname, router, reloadKey]);
+  const retry = () => setReloadKey(k => k + 1);
 
   // Filter-change handler that also auto-flips the sort to "Trending" the
   // first time the user enables Δ — and back to "avg" when they turn it off.
@@ -155,6 +178,7 @@ export function useTftCompsData() {
     adv, setAdv,
     sortBy, chooseSort,
     comps, filteredComps, hasData, patches, minGames, assets, loading, tierCutoffs,
+    error, retry,
     currentPatchLabel: patches[0]?.patch,
     families, currentSetFamilies: setFamilies, topFamilyKeys: topKeys,
   };

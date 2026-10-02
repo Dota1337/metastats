@@ -22,9 +22,7 @@ const REGION_OPTIONS: Option[] = [
   { value: 'tr1',   label: 'TR' },
   { value: 'ru',    label: 'RU' },
   { value: 'me1',   label: 'ME' },
-  { value: 'ph2',   label: 'PH' },
   { value: 'sg2',   label: 'SG' },
-  { value: 'th2',   label: 'TH' },
   { value: 'tw2',   label: 'TW' },
   { value: 'vn2',   label: 'VN' },
 ];

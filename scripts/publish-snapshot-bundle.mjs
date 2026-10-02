@@ -56,7 +56,6 @@ import { fileURLToPath } from 'node:url';
 import {
   SNAPSHOT_MATRIX as MATRIX,
   snapshotKey,
-  compsMinGames,
   DETAIL_REGIONS,
   DETAIL_DAYS,
   DETAIL_PATCHES,
@@ -583,7 +582,8 @@ async function main() {
       // Slug-Quelle: Default-Bucket der UI (diamond_plus), 3d — das 7d-Listing
       // ist ohne Snapshot nicht abrufbar (3× 502 gemessen, 8-s-RPC-Deckel).
       const listingUrl = buildUrl('/api/tft/comps', {
-        patch: 'current', region: 'all', days: 3, bucket: 'diamond_plus', minGames: compsMinGames(3),
+        // Ohne minGames = dieselbe Anfrage wie die Seite, trifft den mg0-Snapshot.
+        patch: 'current', region: 'all', days: 3, bucket: 'diamond_plus',
       });
       const listing = await fetchPayload(listingUrl);
       const comps = Array.isArray(listing?.comps) ? listing.comps : [];

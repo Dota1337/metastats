@@ -75,8 +75,6 @@ export function buildListMatrix(opts) {
 export const compsMinGames = (days) => 70 * Math.min(days, 14);
 export const SNAPSHOT_MATRIX = {
     // /api/tft/comps default in der UI: bucket=diamond_plus, region=all, days=3.
-    // minGames für comps = compsMinGames(days) = 70×min(days,14) (Route-Default,
-    // comps/route.ts) — NICHT 30. Skaliert mit dem Window gegen noisy comps.
     // Primary-Regionen + Primary-Buckets × 3 Days × 2 Patches = 180 Permutationen.
     comps: {
         apiPath: '/api/tft/comps',
@@ -85,7 +83,11 @@ export const SNAPSHOT_MATRIX = {
             regions: PRIMARY_REGIONS,
             days: PRIMARY_DAYS,
             buckets: PRIMARY_BUCKETS,
-            minGames: compsMinGames,
+            // 0 = ohne ?minGames abrufen wie die Seite selbst: die Route waehlt dann
+            // die angepasste Schwelle (seit 2026-10-02 in der Abfrage). Vorher war
+            // der Payload fester gefiltert und Einzelregionen liefen live in die
+            // 8-s-Grenze.
+            minGames: 0,
         }),
     },
     // /api/tft/units default: bucket=diamond_plus, region=all, days=3.
@@ -191,11 +193,17 @@ export function listWindowDays(o) {
         const today = utcMidnight(o.today);
         const latest = new Date(o.latestDay + 'T00:00:00Z');
         const staleness = Math.max(0, Math.floor((today.getTime() - latest.getTime()) / DAY_MS));
-        if (staleness >= 1)
-            days = Math.max(days, staleness + o.requestedDays);
+        const ended = o.patchFilter != null && o.patchEndDay != null && o.patchEndDay < o.latestDay;
+        const anchor = ended ? new Date(o.patchEndDay + 'T00:00:00Z') : latest;
+        const anchorStale = Math.max(0, Math.floor((today.getTime() - anchor.getTime()) / DAY_MS));
+        // `day >= current_date - days` schliesst den Ankertag schon ein: N Tage bis
+        // zum Anker brauchen days = Rueckstand + N - 1 (bis 2026-10-02 stand hier
+        // + N, „3 Tage" las 4 Tage).
+        if (anchorStale >= 1)
+            days = Math.max(days, anchorStale + o.requestedDays - 1);
         if (o.patchFilter == null && o.patchStartDay && days > o.requestedDays) {
             const start = new Date(o.patchStartDay + 'T00:00:00Z');
-            const sinceStart = Math.floor((today.getTime() - start.getTime()) / DAY_MS) + 1;
+            const sinceStart = Math.floor((today.getTime() - start.getTime()) / DAY_MS);
             if (sinceStart >= 1)
                 days = Math.max(o.requestedDays, Math.min(days, sinceStart));
         }
@@ -258,11 +266,11 @@ export function compPrecomputeJobs(o) {
     const today = utcMidnight(o.today);
     const latestDay = p[0].last_day;
     const cases = [
-        { patchKey: '', patchFilter: null, startDay: p[0].first_day },
+        { patchKey: '', patchFilter: null, startDay: p[0].first_day, endDay: null },
     ];
     for (const x of p.slice(0, 2)) {
         if (Number(x.set_number) === o.setNumber) {
-            cases.push({ patchKey: x.patch, patchFilter: x.patch, startDay: x.first_day });
+            cases.push({ patchKey: x.patch, patchFilter: x.patch, startDay: x.first_day, endDay: x.last_day });
         }
     }
     const out = [];
@@ -271,7 +279,8 @@ export function compPrecomputeJobs(o) {
         for (const [bucketLabel, tiers] of Object.entries(COMP_PRECOMPUTE_BUCKETS)) {
             for (let requestedDays = 1; requestedDays <= 7; requestedDays++) {
                 const { days } = listWindowDays({
-                    requestedDays, patchFilter: c.patchFilter, patchStartDay: c.startDay, latestDay, today,
+                    requestedDays, patchFilter: c.patchFilter, patchStartDay: c.startDay, patchEndDay: c.endDay,
+                    latestDay, today,
                 });
                 const windowStart = isoDay(new Date(today.getTime() - days * DAY_MS));
                 const dataStart = c.patchFilter && c.startDay > windowStart ? c.startDay : windowStart;

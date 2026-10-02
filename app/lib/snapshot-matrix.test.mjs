@@ -42,20 +42,32 @@ const PATCHES = [
 ];
 
 test('Fenster: 2 Tage Rueckstand dehnen „Letzter Tag" bis zum letzten Datentag', () => {
+  // day >= 13.09. - 2 = 11.09. → genau der letzte Datentag, nicht zwei.
   const r = listWindowDays({ requestedDays: 1, patchFilter: null, patchStartDay: '2026-09-10', latestDay: '2026-09-11', today: TODAY });
-  assert.deepEqual(r, { days: 3, anchorOffsetDays: 2 });
+  assert.deepEqual(r, { days: 2, anchorOffsetDays: 2 });
 });
 
-test('Fenster: ohne Patch-Filter nie vor den Patch-Start (4 Tage seit 10.09.)', () => {
+test('Fenster: ohne Patch-Filter nie vor den Patch-Start (ab 10.09.)', () => {
   const r = listWindowDays({ requestedDays: 3, patchFilter: null, patchStartDay: '2026-09-10', latestDay: '2026-09-11', today: TODAY });
-  assert.equal(r.days, 4);
+  assert.equal(r.days, 3);
   const seven = listWindowDays({ requestedDays: 7, patchFilter: null, patchStartDay: '2026-09-10', latestDay: '2026-09-11', today: TODAY });
   assert.equal(seven.days, 7);
 });
 
 test('Fenster: mit Patch-Filter wird nicht gekappt', () => {
-  const r = listWindowDays({ requestedDays: 7, patchFilter: '18.1', patchStartDay: '2026-08-26', latestDay: '2026-09-11', today: TODAY });
-  assert.equal(r.days, 9);
+  const r = listWindowDays({ requestedDays: 7, patchFilter: '18.2', patchStartDay: '2026-09-10', patchEndDay: '2026-09-11', latestDay: '2026-09-11', today: TODAY });
+  assert.equal(r.days, 8);
+});
+
+test('Fenster: abgelaufener Patch zaehlt ab seinem letzten Tag', () => {
+  // 18.1 endet 09.09.: 3 Tage = 07.-09.09. → day >= 13.09. - 6. Vor dem Fix
+  // lag das Fenster hinter dem Patch-Ende und die Liste war leer.
+  const r3 = listWindowDays({ requestedDays: 3, patchFilter: '18.1', patchStartDay: '2026-08-26', patchEndDay: '2026-09-09', latestDay: '2026-09-11', today: TODAY });
+  assert.equal(r3.days, 6);
+  const r7 = listWindowDays({ requestedDays: 7, patchFilter: '18.1', patchStartDay: '2026-08-26', patchEndDay: '2026-09-09', latestDay: '2026-09-11', today: TODAY });
+  assert.equal(r7.days, 10);
+  // Anzeige-Versatz bleibt der Rueckstand des Datenstands, nicht des Patches.
+  assert.equal(r7.anchorOffsetDays, 2);
 });
 
 test('Fenster: frische Daten → keine Dehnung', () => {
@@ -80,14 +92,14 @@ test('Jobs: data_start ist je Fall eindeutig und 18.2 faellt auf einen Eintrag j
   const jobs = compPrecomputeJobs({ patches: PATCHES, setNumber: 18, today: TODAY });
   const groups = Object.keys(COMP_PRECOMPUTE_BUCKETS).length;
   const by = k => jobs.filter(j => j.patchKey === k);
-  // 18.2 umfasst ab 3 Tagen den ganzen Patch → alle Stufen = data_start 10.09.
-  assert.equal(by('18.2').length, groups);
-  assert.ok(by('18.2').every(j => j.dataStart === '2026-09-10' && j.patchFirstDay === '2026-09-10'));
+  // 18.2: 1 Tag = 11.09., ab 2 Tagen der ganze Patch ab 10.09. → zwei Eintraege je Gruppe.
+  assert.equal(by('18.2').length, 2 * groups);
+  assert.ok(by('18.2').every(j => ['2026-09-10', '2026-09-11'].includes(j.dataStart) && j.patchFirstDay === '2026-09-10'));
   // 17.9 ist ein anderes Set → kein Fall.
   assert.equal(by('17.9').length, 0);
-  // aktuell ungefiltert: Stufen 2-4 werden auf 4 Tage gekappt (gleicher Eintrag), 1/5/6/7 einzeln.
+  // aktuell ungefiltert: Stufen 2-3 werden auf den Patch-Start gekappt (gleicher Eintrag), sonst einzeln.
   const cur = by('').filter(j => j.bucketLabel === 'all').map(j => j.dataStart).sort();
-  assert.deepEqual(cur, ['2026-09-06', '2026-09-07', '2026-09-08', '2026-09-09', '2026-09-10']);
+  assert.deepEqual(cur, ['2026-09-06', '2026-09-07', '2026-09-08', '2026-09-09', '2026-09-10', '2026-09-11']);
   assert.ok(by('').every(j => j.patchFirstDay === null));
   const keys = jobs.map(j => `${j.patchKey}|${j.bucketLabel}|${j.dataStart}`);
   assert.equal(new Set(keys).size, keys.length);
@@ -97,13 +109,13 @@ test('Jobs: data_start deckt sich mit der Lese-Funktion fuer jede Tagesstufe', (
   // Nachbau von get_tft_comp_list_precomputed: greatest(today - p_days, patch_first_day)
   const jobs = compPrecomputeJobs({ patches: PATCHES, setNumber: 18, today: TODAY });
   const cases = [
-    { key: '', filter: null, start: '2026-09-10' },
-    { key: '18.2', filter: '18.2', start: '2026-09-10' },
-    { key: '18.1', filter: '18.1', start: '2026-08-26' },
+    { key: '', filter: null, start: '2026-09-10', end: null },
+    { key: '18.2', filter: '18.2', start: '2026-09-10', end: '2026-09-11' },
+    { key: '18.1', filter: '18.1', start: '2026-08-26', end: '2026-09-09' },
   ];
   for (const c of cases) {
     for (let d = 1; d <= 7; d++) {
-      const { days } = listWindowDays({ requestedDays: d, patchFilter: c.filter, patchStartDay: c.start, latestDay: '2026-09-11', today: TODAY });
+      const { days } = listWindowDays({ requestedDays: d, patchFilter: c.filter, patchStartDay: c.start, patchEndDay: c.end, latestDay: '2026-09-11', today: TODAY });
       const ws = new Date(Date.UTC(2026, 8, 13) - days * 86_400_000).toISOString().slice(0, 10);
       const lookup = c.filter && c.start > ws ? c.start : ws;
       for (const b of Object.keys(COMP_PRECOMPUTE_BUCKETS)) {

@@ -683,6 +683,7 @@
       "via": [
         "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
+        "app/lib/snapshot-fallback.ts",
         "app/lib/snapshot-lookup.ts",
         "app/lib/tft-classify-comp.ts",
         "app/lib/tft-supabase-reader.ts",
@@ -823,6 +824,7 @@
       "via": [
         "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
+        "app/lib/snapshot-fallback.ts",
         "app/lib/snapshot-lookup.ts",
         "app/lib/tft-stats-loader.ts",
         "app/lib/tft-supabase-reader.ts",
@@ -1387,6 +1389,7 @@
       "via": [
         "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
+        "app/lib/snapshot-fallback.ts",
         "app/lib/snapshot-lookup.ts",
         "app/lib/tft-supabase-reader.ts",
         "public/tft-set.json"
@@ -1427,6 +1430,7 @@
       "via": [
         "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
+        "app/lib/snapshot-fallback.ts",
         "app/lib/snapshot-lookup.ts",
         "app/lib/tft-stats-loader.ts",
         "app/lib/tft-supabase-reader.ts",

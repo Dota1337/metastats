@@ -1265,8 +1265,7 @@
       ],
       "used": true,
       "usedBy": [
-        "app/tft/player/[slug]/page.tsx",
-        "apps/overwolf-app/js/lobby.js"
+        "app/tft/player/[slug]/page.tsx"
       ]
     },
     {

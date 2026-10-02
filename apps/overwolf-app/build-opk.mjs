@@ -22,6 +22,7 @@ import { ZipArchive } from 'archiver';
 const here = dirname(fileURLToPath(import.meta.url));
 const outDir = resolve(here, 'dist');
 const outFile = join(outDir, 'metastats-companion.opk');
+const appDir = join(outDir, 'app');
 
 async function main() {
   await import('node:fs/promises').then(fs => fs.mkdir(outDir, { recursive: true }));
@@ -43,24 +44,9 @@ async function main() {
 
     archive.pipe(output);
 
-    // Manifest must sit at the OPK root.
-    archive.file(join(here, 'manifest.json'), { name: 'manifest.json' });
-
-    // Runtime assets.
-    archive.directory(join(here, 'windows'), 'windows');
-    archive.directory(join(here, 'js'), 'js');
-    archive.directory(join(here, 'css'), 'css');
-
-    // Images: keep PNGs + ICO, skip SVG sources since Overwolf doesn't read them.
-    const imageGlob = [
-      'IconMouseNormal.png',
-      'IconMouseOver.png',
-      'launcher_icon.ico',
-      'splash.png',
-    ];
-    for (const f of imageGlob) {
-      archive.file(join(here, 'images', f), { name: `images/${f}` });
-    }
+    // Vite legt die fertige App samt manifest.json in dist/app ab; das OPK
+    // ist genau dieser Ordner. SVG-Quellen und das Icon-Skript bleiben draussen.
+    archive.glob('**/*', { cwd: appDir, ignore: ['**/*.svg', '**/*.mjs'] });
 
     archive.finalize();
   });

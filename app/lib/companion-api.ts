@@ -14,8 +14,13 @@ import { tftChampionTileUrl, tftIconUrl, tftTraitDisplayName, type TftAssetsBund
 import { componentCheckFromItems, namedCarries, shownItems } from './tft-comp-roles';
 import { tierLetterOfSync, type TierCutoffs } from './tft-tier-letter';
 import { BAG_SIZE, SHOP_ODDS } from './tft-roll-odds';
+import {
+  COMPANION_API_VERSION,
+  type CompanionComp, type CompanionCompUnit, type CompanionLookups, type CompanionMatch,
+} from './companion-types';
 
-export const COMPANION_API_VERSION = 1;
+export * from './companion-types';
+
 export const SITE_ORIGIN = 'https://www.metastats.gg';
 
 // Die App laeuft unter overwolf-extension://<app-id>. Fester Stern statt
@@ -57,39 +62,6 @@ export function absoluteUrl(u: string | null | undefined): string | null {
 
 const round = (v: number | null | undefined, digits: number): number | null =>
   v == null || !Number.isFinite(v) ? null : Number(v.toFixed(digits));
-
-export interface CompanionCompUnit {
-  id: string;
-  items?: string[];    // nur an Item-Traegern, wie auf /tft/comps; fehlt = keine
-  star3?: true;
-}
-
-export interface CompanionComp {
-  key: string;         // Familien-Schluessel <trait>__<carry>
-  slug: string;        // Detailseite auf metastats.gg
-  name: string;        // „Trait · Carry & Carry"
-  trait: string;
-  carries: string[];
-  itemCarriers: string[];
-  tier: string | null; // S/A/B/C/D, null unter der Mindest-Spielzahl
-  avg: number | null;
-  top4: number | null;
-  win: number | null;
-  pick: number | null;
-  games: number;
-  traitLevel: number;  // Trait-Stufe der gezeigten Variante (Zahl im Key, nicht Spieler-Stufe)
-  avgLevel: number | null; // Spieler-Stufe am Spielende im Schnitt
-  units: CompanionCompUnit[];
-}
-
-export interface CompanionCompsResponse {
-  v: number;
-  set: number | null;
-  patch: string | null;
-  filters: { region: string; bucket: string; days: number };
-  generatedAt: string;
-  comps: CompanionComp[];
-}
 
 // Reihenfolge der Units wie auf /tft/comps: Kosten aufsteigend, dann Name.
 function sortUnits<T extends { characterId: string }>(units: T[], assets: TftAssetsBundle | null): T[] {
@@ -143,19 +115,18 @@ export function toCompanionComp(
 // ---------------------------------------------------------------------------
 // Namen + Bilder + Rezepte, einmal je Set in der App zwischengespeichert.
 
-export interface CompanionLookups {
-  v: number;
-  set: number;
-  champions: Record<string, { name: string; cost: number; icon: string | null; traits: string[] }>;
-  items: Record<string, { name: string; icon: string | null; recipe?: [string, string]; component?: true }>;
-  traits: Record<string, { name: string; icon: string | null }>;
-  shopOdds: Record<number, [number, number, number, number, number]>;
-  bagSize: Record<number, number>;
-}
-
 // Nur, was im laufenden Set wirklich vorkommt: Champions mit Kosten 1-5 und
 // mindestens einem Trait (das Bundle fuehrt auch Monster wie „Murk Wolf"),
-// Items aus active.items, die Komponente oder 2-teiliges Rezept sind.
+// alle Items aus active.items ausser Augmenten. Augmente stehen im Bundle mit
+// unter items, erkennbar am Icon-Ordner hud/zaps/ (2026-10-02: 343 von 537;
+// von 322 auf Units gespielten Items ueber 15 Regionen liegt keins dort).
+// Artefakte, strahlende Items und Embleme muessen mit, sonst zeigt die App
+// in Partien Buchstaben statt Icons.
+// Nicht am Namen: DA_18_EmblemFloraFatalisAugment ist ein getragenes Emblem.
+function isAugmentEntry(icon: string | null | undefined): boolean {
+  return /\/hud\/zaps\//i.test(icon ?? '');
+}
+
 export function toCompanionLookups(assets: TftAssetsBundle): CompanionLookups {
   const champions: CompanionLookups['champions'] = {};
   for (const [id, c] of Object.entries(assets.champions)) {
@@ -170,10 +141,9 @@ export function toCompanionLookups(assets: TftAssetsBundle): CompanionLookups {
   const items: CompanionLookups['items'] = {};
   for (const id of assets.active?.items ?? []) {
     const it = assets.items[id];
-    if (!it) continue;
+    if (!it || isAugmentEntry(it.icon)) continue;
     const isComp = !!it.tags?.includes('component');
     const recipe = it.composition?.length === 2 ? [it.composition[0], it.composition[1]] as [string, string] : undefined;
-    if (!isComp && !recipe) continue;
     items[id] = {
       name: it.name,
       icon: absoluteUrl(tftIconUrl(assets, it.icon)),
@@ -192,16 +162,6 @@ export function toCompanionLookups(assets: TftAssetsBundle): CompanionLookups {
 // ---------------------------------------------------------------------------
 // Eigener Verlauf: nur die eigene Zeile je Spiel, ohne Mitspieler. Augments
 // werden bewusst nicht durchgereicht (Overwolf-Regel, siehe README der App).
-
-export interface CompanionMatch {
-  id: string;
-  at: number;          // Spielende, ms
-  queue: number | null;
-  placement: number;
-  level: number | null;
-  traits: Array<{ id: string; units: number; style: number }>;
-  units: Array<{ id: string; star: number; items: string[] }>;
-}
 
 interface RawParticipant {
   puuid?: string;

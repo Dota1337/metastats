@@ -1,0 +1,109 @@
+{
+  "manifest_version": 1,
+  "type": "WebApp",
+  "meta": {
+    "name": "metastats.gg Companion",
+    "version": "0.2.0",
+    "minimum-overwolf-version": "0.275.0",
+    "author": "metastats.gg",
+    "icon": "images/IconMouseOver.png",
+    "icon_gray": "images/IconMouseNormal.png",
+    "launcher_icon": "images/launcher_icon.ico",
+    "splash_image": "images/splash.png",
+    "description": "TFT companion by metastats.gg: current comps and tier list, item recipes, shop odds and a level plan for your pinned comp, shop highlight in game, and player profiles with match history."
+  },
+  "permissions": [
+    "GameInfo",
+    "Extensions",
+    "Hotkeys"
+  ],
+  "data": {
+    "start_window": "background",
+    "windows": {
+      "background": {
+        "file": "windows/background.html",
+        "is_background_page": true,
+        "show_in_taskbar": false,
+        "transparent": true,
+        "clickthrough": true,
+        "resizable": false,
+        "size": { "width": 1, "height": 1 }
+      },
+      "main": {
+        "file": "windows/main.html",
+        "show_in_taskbar": true,
+        "transparent": false,
+        "resizable": true,
+        "use_os_windowing": false,
+        "focus_game_takeover": "ReleaseOnHidden",
+        "focus_game_takeover_release_hotkey": "toggle_main",
+        "size": { "width": 900, "height": 680 },
+        "min_size": { "width": 720, "height": 520 },
+        "start_position": { "top": 80, "left": 120 }
+      },
+      "pinned": {
+        "file": "windows/pinned.html",
+        "in_game_only": true,
+        "transparent": true,
+        "resizable": false,
+        "show_in_taskbar": false,
+        "grab_keyboard_focus": false,
+        "size": { "width": 340, "height": 260 },
+        "start_position": { "top": 120, "left": 20 }
+      },
+      "shop": {
+        "file": "windows/shop.html",
+        "in_game_only": true,
+        "transparent": true,
+        "clickthrough": true,
+        "resizable": false,
+        "show_in_taskbar": false,
+        "grab_keyboard_focus": false,
+        "grab_focus_on_desktop": false,
+        "size": { "width": 1000, "height": 110 }
+      },
+      "matchup": {
+        "file": "windows/matchup.html",
+        "in_game_only": true,
+        "transparent": true,
+        "resizable": false,
+        "show_in_taskbar": false,
+        "grab_keyboard_focus": false,
+        "size": { "width": 320, "height": 44 },
+        "start_position": { "top": 12, "left": 760 }
+      }
+    },
+    "hotkeys": {
+      "toggle_main": {
+        "title": "Show/hide metastats.gg",
+        "action-type": "custom",
+        "default": "Alt+D"
+      }
+    },
+    "game_targeting": {
+      "type": "dedicated",
+      "game_ids": [5426, 21570]
+    },
+    "game_events": [5426, 21570],
+    "launch_events": [
+      {
+        "event": "GameLaunch",
+        "tracked": true,
+        "event_data": {
+          "game_ids": [5426, 21570]
+        },
+        "start_minimized": true
+      }
+    ],
+    "externally_connectable": {
+      "matches": [
+        "https://metastats.gg/*",
+        "https://*.metastats.gg/*",
+        "https://ddragon.leagueoflegends.com/*",
+        "https://raw.communitydragon.org/*"
+      ]
+    },
+    "extra-objects": {},
+    "user_agent": "metastats-companion/0.2"
+  }
+}

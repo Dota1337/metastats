@@ -1,5 +1,6 @@
 'use client';
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { COMPANION_TRANSLATIONS } from './i18n-companion';
 
 export type Lang = 'de' | 'en' | 'ko' | 'zh' | 'es' | 'fr';
 
@@ -3850,6 +3851,8 @@ const translations = {
     '\uC885\uB8CC', '\u5DF2\u7ED3\u675F',
     'Pasados', 'Pass\u00E9s'
   ),
+  // Overwolf-App, gepflegt in i18n-companion.ts
+  ...COMPANION_TRANSLATIONS,
 } as const;
 
 export type TranslationKey = keyof typeof translations;

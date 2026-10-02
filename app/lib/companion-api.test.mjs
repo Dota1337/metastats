@@ -65,7 +65,7 @@ test('toCompanionMatch: Spiel ohne eigene Zeile faellt weg', () => {
   assert.equal(toCompanionMatch({ participants: [{ puuid: 'me', placement: 1 }] }, 'me'), null);
 });
 
-test('toCompanionLookups: nur Set-Champions, nur Komponenten und 2-teilige Rezepte', () => {
+test('toCompanionLookups: nur Set-Champions, alle aktiven Items ausser Augmenten', () => {
   const assets = {
     set: 18,
     iconBase: 'https://raw.communitydragon.org/latest/game/',
@@ -79,16 +79,21 @@ test('toCompanionLookups: nur Set-Champions, nur Komponenten und 2-teilige Rezep
       F1: { name: 'Full', icon: 'f1.png', composition: ['C1', 'C2'] },
       R1: { name: 'Radiant', icon: 'r1.png', composition: ['F1'] },
       N1: { name: 'Not active', icon: 'n1.png', composition: ['C1', 'C1'] },
+      A1: { name: 'Artifact', icon: 'assets/maps/tft/icons/items/hexcore/a1.png' },
+      Z1: { name: 'Aftershock', icon: 'assets/ux/tft/hud/zaps/wands/z1.png' },
+      E1: { name: 'Emblem', icon: 'e1.png', composition: ['X'] },
+      DA_18_EmblemFooAugment: { name: 'Foo Emblem', icon: 'e2.png' },
     },
     traits: { T1: { name: 'Trait', icon: 't.png' } },
     augments: {},
-    active: { items: ['C1', 'C2', 'F1', 'R1'] },
+    active: { items: ['C1', 'C2', 'F1', 'R1', 'A1', 'Z1', 'E1', 'DA_18_EmblemFooAugment'] },
   };
   const l = toCompanionLookups(assets);
   assert.deepEqual(Object.keys(l.champions), ['U1']);
   assert.equal(l.champions.U1.icon, `${SITE_ORIGIN}/api/img/u.png`);
-  assert.deepEqual(Object.keys(l.items).sort(), ['C1', 'C2', 'F1']);
+  assert.deepEqual(Object.keys(l.items).sort(), ['A1', 'C1', 'C2', 'DA_18_EmblemFooAugment', 'E1', 'F1', 'R1']);
   assert.deepEqual(l.items.F1.recipe, ['C1', 'C2']);
+  assert.equal(l.items.R1.recipe, undefined);
   assert.equal(l.items.C1.component, true);
   assert.equal(l.shopOdds[9].length, 5);
 });

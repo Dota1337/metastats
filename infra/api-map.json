@@ -1162,7 +1162,7 @@
       "via": [],
       "used": true,
       "usedBy": [
-        "apps/overwolf-app/dist/app/assets/background-2URfX4wX.js",
+        "apps/overwolf-app/dist/app/assets/background-BkpAHQyB.js",
         "apps/overwolf-app/src/windows/background.ts"
       ]
     },

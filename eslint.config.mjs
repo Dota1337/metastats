@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Overwolf-App: eigenes Paket mit eigenem Build und Lint.
+    "apps/**",
   ]),
 ]);
 

@@ -79,6 +79,8 @@ export const config = {
     // zahlt einen Supabase-getUser()-Roundtrip und bekommt ein Set-Cookie —
     // und eine Antwort mit Set-Cookie ist bei Vercel dauerhaft uncachebar.
     // Der Proxy waere damit genau um das kaputt, wofuer es ihn gibt.
-    '/((?!_next/static|_next/image|api/img|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    // `api/companion` aus demselben Grund: die Overwolf-App hat keine
+    // Seiten-Sitzung, ihre Antworten sollen aus der Edge-Kopie kommen.
+    '/((?!_next/static|_next/image|api/img|api/companion|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

@@ -17,10 +17,10 @@
  * die Snapshots danach die frischen Listen sehen. Ein Fehler hier blockiert
  * den Publisher nicht; die Route rechnet dann live.
  *
- * Aufruf: node scripts/precompute-comp-windows.mjs [--only <patchKey|current>] [--dry-run]
+ * Aufruf: node scripts/precompute-comp-windows.mjs [--only <patchKey|current>] [--dry-run] [--force]
  */
 
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import pg from 'pg';
 import {
@@ -37,6 +37,9 @@ const args = process.argv.slice(2);
 const DRY = args.includes('--dry-run');
 const onlyIdx = args.indexOf('--only');
 const ONLY = onlyIdx >= 0 ? args[onlyIdx + 1] : null;
+// --force: laufenden Patch immer neu rechnen, auch wenn er bestaetigt werden koennte
+// (z. B. nach einer Reklassifizierung, die keine Spielzahl aendert).
+const FORCE = args.includes('--force');
 // Erzwungener Neubau beendeter Patches, auch wenn die Spielzahl gleich blieb.
 const REBUILD_AFTER_MS = 6 * 24 * 3600 * 1000;
 
@@ -60,6 +63,22 @@ if (!DB_URL) {
   process.exit(1);
 }
 
+// Prozesse, die tft_daily_comp_stats schreiben. Laeuft einer davon, darf eine
+// Liste weder bestaetigt noch als bestaetigbar markiert werden: der Writer
+// schreibt crawl_meta VOR comp_stats (tft-supabase-writer.mjs), der
+// Fingerabdruck liefe den Daten also voraus. Ohne /proc (nicht Linux) gilt
+// "aktiv" — dann wird wie frueher immer gerechnet.
+const WRITER_SCRIPTS = ['collect-tft-allranks', 'import-tft-json-to-supabase', 'relabel-tft-bpatch'];
+function statsWriterActive() {
+  let pids;
+  try { pids = readdirSync('/proc').filter(d => /^d+$/.test(d)); } catch { return true; }
+  for (const pid of pids) {
+    let cmd;
+    try { cmd = readFileSync(`/proc/${pid}/cmdline`, 'utf8'); } catch { continue; }
+    if (WRITER_SCRIPTS.some(w => cmd.includes(w))) return true;
+  }
+  return false;
+}
 
 const client = new pg.Client({
   connectionString: encodePasswordInPgUrl(DB_URL),
@@ -95,6 +114,9 @@ async function main() {
   // nur bestaetigt (Migration 0084). Der laufende Patch wird immer gerechnet.
   const matchesByPatch = new Map(patches.map(p => [p.patch, Number(p.total_matches)]));
   const endedPatches = new Set(patches.slice(1).map(p => p.patch));
+  // Fingerabdruck fuer den Fall ohne Patchfilter: alle Patches, auch die unter
+  // der 100k-Schwelle von establishedPatches — deren Spiele stecken mit drin.
+  const allMatches = rawPatches.reduce((n, p) => n + Number(p.total_matches), 0);
 
   let failed = 0;
   let confirmed = 0;
@@ -117,6 +139,32 @@ async function main() {
           continue;
         }
       }
+      // Laufender Patch: Wiederholungslaeufe am selben Tag (Resume, Catchup,
+      // manueller Start) bestaetigen nur, wenn seit dem Rechnen nachweislich
+      // nichts geschrieben wurde. Jede Bedingung, die nicht sicher erfuellt
+      // ist, fuehrt zum Neurechnen wie bisher.
+      const ended = Boolean(j.patchFilter && endedPatches.has(j.patchFilter));
+      const fingerprint = ended ? patchMatches : (j.patchFilter ? patchMatches : allMatches);
+      const writerActive = ended ? false : statsWriterActive();
+      if (!ended && !FORCE && !writerActive && fingerprint != null) {
+        const u = await client.query(
+          `update tft_comp_list_precomputed
+              set computed_at = now()
+            where patch_key = $1 and set_number = $2 and regions_key = $3 and buckets_key = $4 and data_start = $5
+              and last_day = $6::date and patch_matches = $7 and min_games = $8
+              and built_at > now() - interval '20 hours'
+              and built_at > (select max(finished_at) from tft_daily_crawl_meta where set_number = $2) + interval '2 minutes'`,
+          [j.patchKey, CURRENT_SET, regionsKey, listKey(j.tiers), j.dataStart, latestDay,
+            fingerprint, COMP_PRECOMPUTE_MIN_GAMES],
+        );
+        if (u.rowCount === 1) {
+          confirmed++;
+          console.log(`  = ${j.patchKey || 'aktuell'} ${j.bucketLabel} ${j.days}d ab ${j.dataStart}: seit dem Rechnen nichts Neues, bestaetigt`);
+          continue;
+        }
+      }
+      // Waehrend ein Writer laeuft, gerechnete Zeilen nie bestaetigbar machen.
+      const storedMatches = ended ? patchMatches : (writerActive ? null : fingerprint);
       await client.query('begin');
       await client.query(
         `delete from tft_comp_list_precomputed
@@ -132,7 +180,7 @@ async function main() {
                 now(), $13::bigint, now()
          returning jsonb_array_length(comp_rows) as n, pg_column_size(comp_rows) as bytes`,
         [j.patchKey, CURRENT_SET, regionsKey, listKey(j.tiers), j.dataStart, j.patchFirstDay, latestDay,
-          COMP_PRECOMPUTE_MIN_GAMES, ACTIVE_REGIONS, [...j.tiers], j.days, j.patchFilter, patchMatches],
+          COMP_PRECOMPUTE_MIN_GAMES, ACTIVE_REGIONS, [...j.tiers], j.days, j.patchFilter, storedMatches],
       );
       await client.query('commit');
       console.log(`  ✓ ${j.patchKey || 'aktuell'} ${j.bucketLabel} ${j.days}d ab ${j.dataStart}: `

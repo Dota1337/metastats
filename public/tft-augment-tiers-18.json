@@ -1,12 +1,12 @@
 {
   "set": 18,
   "source": "tactics.tools/info/augments",
-  "fetchedAt": "2026-09-26T06:19:19.034Z",
+  "fetchedAt": "2026-10-03T06:22:39.400Z",
   "counts": {
     "silver": 69,
     "gold": 112,
     "prismatic": 68,
-    "pinned": 433
+    "pinned": 431
   },
   "tiers": {
     "DA_AugmentedPower": 1,
@@ -147,8 +147,6 @@
     "DA_18_BlossomTraitAugment": 2,
     "DA_BodyguardTraining": 2,
     "TFT_Augment_BodyguardTraining": 2,
-    "DA_BonusGift": 2,
-    "DA_BonusGiftPlus": 2,
     "DA_BoosterPack": 2,
     "TFT_Augment_BoosterPack": 2,
     "DA_BoosterPackPlus": 2,

@@ -608,6 +608,9 @@ async function main() {
   // REPLACE-Lauf. Echte Ausfaelle landen in totalErrors und greifen weiterhin.
   let totalEmpty = 0;
   let totalErrors = 0;
+  // Fehler bei Zusatz-Permutationen (optional:true): getragen wie echte Fehler,
+  // aber ausserhalb der 2-%-Quote, damit sie keinen Nachtlauf kippen.
+  let totalOptionalErrors = 0;
   let totalBytes = 0;
 
   for (const [endpoint, spec] of Object.entries(MATRIX)) {
@@ -635,8 +638,8 @@ async function main() {
         continue;
       }
       if (r?.error) {
-        totalErrors++;
-        console.log(`  ✗ ${endpoint} ${p.patch}/${p.region}/${p.days}d/${p.bucket}: ${r.error}`);
+        if (p.optional) totalOptionalErrors++; else totalErrors++;
+        console.log(`  ✗ ${endpoint}${p.optional ? ' (optional)' : ''} ${p.patch}/${p.region}/${p.days}d/${p.bucket}: ${r.error}`);
         // Carry-Over: der alte Eintrag bleibt bestehen, statt aus dem Lookup zu
         // fallen. Der Patch-Guard in snapshot-lookup.ts sortiert einen Body aus,
         // der nicht zum Key-Patch passt — ein getragener Eintrag kann also
@@ -840,7 +843,7 @@ async function main() {
     console.log(`[${ts()}] DRY-RUN: manifest would contain ${entryCountMsg} (${Buffer.byteLength(manifestBody)} B)`);
   }
 
-  console.log(`[${ts()}] DONE: uploaded=${totalUploaded}, reused=${totalReused}, skipped=${totalSkipped}, errors=${totalErrors}, totalBytes=${(totalBytes / 1024 / 1024).toFixed(2)} MB`);
+  console.log(`[${ts()}] DONE: uploaded=${totalUploaded}, reused=${totalReused}, skipped=${totalSkipped}, errors=${totalErrors}, optionalErrors=${totalOptionalErrors}, totalBytes=${(totalBytes / 1024 / 1024).toFixed(2)} MB`);
 
   // --- Exit-Semantik --------------------------------------------------------
   // Vorher: JEDER Fehler -> exit 1. Folge: der Service stand dauerhaft auf

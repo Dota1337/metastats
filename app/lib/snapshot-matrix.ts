@@ -19,6 +19,9 @@ export interface SnapshotPermutation {
   bucket: string;                  // 'master_plus' | 'all' | 'diamond_plus' | ...
   minGames: number;                // RPC-Threshold, identisch zu Route-Default
   slug?: string;                   // nur fuer comps-detail: cluster_key
+  // Zusatz-Permutation: Fehler zaehlen nicht in die 2-%-Quote des Publishers
+  // (alter Eintrag wird weitergetragen, die Route rechnet sonst live).
+  optional?: boolean;
 }
 
 interface SnapshotEndpointSpec {
@@ -109,7 +112,18 @@ export const SNAPSHOT_MATRIX: Record<SnapshotEndpoint, SnapshotEndpointSpec> = {
       // der Payload fester gefiltert und Einzelregionen liefen live in die
       // 8-s-Grenze.
       minGames: 0,
-    }),
+    }).concat(
+      // Region „alle" fuer die uebrigen Tagesfenster 2/4/5/6: live reisst die
+      // Abfrage dort die 8-s-Grenze der Besucher (502 am 02./03.10.2026). Der
+      // Publisher liest die Vorab-Liste (Migration 0070) mit 25 s Zeit.
+      buildListMatrix({
+        patches: ['current', 'previous'],
+        regions: ['all'],
+        days: [2, 4, 5, 6],
+        buckets: PRIMARY_BUCKETS,
+        minGames: 0,
+      }).map(p => ({ ...p, optional: true })),
+    ),
   },
   // /api/tft/units default: bucket=diamond_plus, region=all, days=3.
   // Units-Listing wird häufig pro Region angesehen → mehr Regionen rein.

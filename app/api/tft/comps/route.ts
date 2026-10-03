@@ -111,6 +111,7 @@ async function readPrecomputedList(
   filters: Awaited<ReturnType<typeof resolveFilters>>,
   latestDay: string | undefined,
   requestedMinGames: number,
+  timeoutMs: number = PRECOMPUTED_TIMEOUT_MS,
 ): Promise<{ fresh: CompRow[] | null; stale: CompRow[] | null }> {
   const none = { fresh: null, stale: null };
   if (process.env.TFT_COMP_PRECOMPUTED_DISABLED === '1') return none;
@@ -129,7 +130,7 @@ async function readPrecomputedList(
         p_buckets_key: listKey(filters.buckets),
         p_days: filters.days,
       },
-      PRECOMPUTED_TIMEOUT_MS,
+      timeoutMs,
     );
     const e = found?.[0];
     const rows = e && Array.isArray(e.comp_rows) && e.comp_rows.length > 0 ? e.comp_rows : null;
@@ -690,7 +691,7 @@ export async function GET(request: NextRequest) {
       // Permutationen belegt (Skalare, Unit-Felder, topItems, carryItems).
       // Rollback ist genau dieser eine Bezeichner — 0027 bleibt deployed.
       (source === 'data'
-        ? readPrecomputedList(filters, patches[0]?.last_day, listMinGames)
+        ? readPrecomputedList(filters, patches[0]?.last_day, listMinGames, publisher ? 25_000 : PRECOMPUTED_TIMEOUT_MS)
             .then(r => { staleRows = r.stale; return r.fresh ?? liveList(); })
         : liveList()
       ).catch((err: unknown) => {

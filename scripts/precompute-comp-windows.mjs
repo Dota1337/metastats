@@ -71,7 +71,7 @@ if (!DB_URL) {
 const WRITER_SCRIPTS = ['collect-tft-allranks', 'import-tft-json-to-supabase', 'relabel-tft-bpatch'];
 function statsWriterActive() {
   let pids;
-  try { pids = readdirSync('/proc').filter(d => /^d+$/.test(d)); } catch { return true; }
+  try { pids = readdirSync('/proc').filter(d => /^\d+$/.test(d)); } catch { return true; }
   for (const pid of pids) {
     let cmd;
     try { cmd = readFileSync(`/proc/${pid}/cmdline`, 'utf8'); } catch { continue; }

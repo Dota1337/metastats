@@ -257,7 +257,12 @@ async function main() {
       let stages;
       try { stages = await readSource(url); }
       catch (e) { failed++; console.warn(`  [fail] ${t.id} ${url}: ${e.message}`); continue; }
-      if (!stages.length) { failed++; console.warn(`  [no-table] ${t.id} ${url}`); continue; }
+      // Vor Turnierbeginn (+1 Tag) ist eine leere Tabelle normal, kein Fehler —
+      // sonst endet der Lauf mit Exit 2, wenn nur angekuendigte Turniere faellig sind.
+      if (!stages.length) {
+        if (now < Date.parse(t.start_date) + DAY_MS) { console.log(`  [no-table, noch nicht begonnen] ${t.id} ${url}`); continue; }
+        failed++; console.warn(`  [no-table] ${t.id} ${url}`); continue;
+      }
 
       for (const s of stages) {
         const byRaw = new Map();
@@ -270,7 +275,7 @@ async function main() {
             region: r.region, points: r.points, games: r.games, fetched_at: new Date().toISOString(),
           };
         });
-        const top = rows.slice(0, 3).map(r => `${r.placement}.${r.raw}(${r.points})`).join(' ');
+        const top = rows.slice(0, 3).map(r => `${r.placement}.${r.raw_name}(${r.points})`).join(' ');
         console.log(`  ${t.id} · ${s.source} · ${s.stage}: ${rows.length} rows  ${top}`);
         if (DRY) continue;
 

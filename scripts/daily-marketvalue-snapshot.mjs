@@ -78,7 +78,9 @@
 import { readFileSync, existsSync, unlinkSync } from 'node:fs';
 import { resolve } from 'node:path';
 import pg from 'pg';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { createRiotClient } from './lib/riot-client.mjs';
+import { getAccountRouting } from './lib/regional-routing.mjs';
 import { batchBudget, riotWindowFor } from './lib/riot-limits.mjs';
 import { buildCompMeta, applyMeta, buildPopulation } from './lib/tft-skill-score.mjs';
 import {
@@ -264,6 +266,35 @@ for (const r of REGIONS) {
   }
 }
 
+// Spuren: eine je Riot-Weltregion, parallel. Bis 2026-10-03 liefen alle
+// Regionen nacheinander, das Riot-Kontingent gilt aber pro Weltregion (siehe
+// riotForCluster) — drei von vier Kontingenten lagen brach, und der Lauf
+// schaffte die 15 Regionen nicht in dem ~12-h-Fenster bis zum Stopp durch den
+// Daily-Crawl (28.09.-03.10. viermal nach 4 h gestoppt). Innerhalb einer Spur
+// bleibt es beim Rundlauf nach Rückstand, also immer nur EINE Region je
+// Weltregion und damit genau ein Verbraucher je Kontingent wie bisher.
+const LANES = new Map();
+for (const r of REGIONS) {
+  const c = getRegionalCluster(r);
+  if (!LANES.has(c)) LANES.set(c, []);
+  LANES.get(c).push(r);
+}
+const PARALLEL = LANES.size > 1;
+
+// Bei parallelen Spuren mischen sich die Logzeilen. Jede Zeile bekommt deshalb
+// die Region vorne, solange eine Region läuft — auch die Zeilen aus den
+// Bibliotheken (Riot-Begrenzer), weil der Kontext über await hinweg mitläuft.
+const logRegion = new AsyncLocalStorage();
+if (PARALLEL) {
+  for (const m of ['log', 'warn', 'error']) {
+    const orig = console[m].bind(console);
+    console[m] = (...a) => {
+      const r = logRegion.getStore();
+      return r ? orig(`[${r}]`, ...a) : orig(...a);
+    };
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Region-Reihenfolge: am längsten nicht bearbeitet zuerst
 //
@@ -438,7 +469,9 @@ const isRemote = /supabase\.com|pooler\.|aws-/i.test(DATABASE_URL);
 const pool = new pg.Pool({
   connectionString: isRemote ? encodePasswordInPgUrl(DATABASE_URL) : DATABASE_URL,
   ssl: isRemote ? { rejectUnauthorized: false } : undefined,
-  max: 6,
+  // 8 statt 6 seit den parallelen Spuren: DB-Arbeit läuft je Spur seriell,
+  // vier Spuren brauchen also 4 gleichzeitige Verbindungen plus Reserve.
+  max: 8,
   statement_timeout: 60_000, // bound query hangs (Audit H2, 2026-06-28)
 });
 // Ruhende Verbindungen, die der Server kappt (z. B. DB-Neustart), reissen sonst den Prozess.
@@ -804,7 +837,9 @@ async function processRegion(region) {
   const t0 = Date.now();
   // Pro Region ein sauberer Schnitt — Regionen unterscheiden sich stark in
   // Kohortengröße und Cache-Alter, eine Summe über alle wäre nicht deutbar.
-  if (timingEnabled) resetTimings();
+  // Die Stoppuhr ist prozessweit — bei parallelen Spuren wäre ein Zurücksetzen
+  // hier ein Löschen der Messwerte der anderen Spuren.
+  if (timingEnabled && !PARALLEL) resetTimings();
 
   // Der Tag dieser Region — EINMAL hier festgelegt, siehe backupTableName().
   const regionDay = new Date().toISOString().slice(0, 10);
@@ -1005,8 +1040,16 @@ async function processRegion(region) {
   // einen Set-Bump hinweggehen. Ohne das würden Rohdaten des alten Sets als neue
   // weiterverrechnet.
   if (USE_INFLIGHT_RESUME && setNumber !== lastCleanupSet) {
-    await cleanupStaleInflight(setNumber);
+    // Vor dem await setzen, damit eine zweite Spur nicht parallel nochmal
+    // aufräumt. Bei einem Set-Wechsel mitten im Lauf löscht das auch den
+    // Puffer einer anderen Spur, die noch mit dem alten Set rechnet — deren
+    // Region rechnet dann ohne Resume zu Ende. Selten genug, aber sichtbar.
+    const prevSet = lastCleanupSet;
     lastCleanupSet = setNumber;
+    if (PARALLEL && prevSet != null) {
+      console.warn(`  [set] Set-Wechsel ${prevSet} → ${setNumber} während des Laufs — Resume-Puffer anderer Spuren mit altem Set werden verworfen`);
+    }
+    await cleanupStaleInflight(setNumber);
   }
   const graph = loadGraph(region);
   const hotCompKeys = buildHotCompKeys(graph);
@@ -1016,7 +1059,13 @@ async function processRegion(region) {
   // Granularität (perf-critic F8: kleine Regionen sind in 2-5min durch,
   // Resume-Wert null). me1/br1/la1/la2/oc1 skippen automatisch.
   const inflightActive = USE_INFLIGHT_RESUME && players.length >= INFLIGHT_MIN_PLAYERS;
-  const inflightMap = inflightActive ? await loadInflightForRegion(region, setNumber) : new Map();
+  // Geladen wird der Puffer immer (wenn Resume an ist), nicht nur ab 500
+  // Spielern: er trägt neben der Resume-Arbeit auch die Spieler eines
+  // abgebrochenen Pass 2, die schon einen Snapshot haben und deshalb nicht
+  // mehr fällig sind — ohne sie würde die Population aus dem Rest gebaut
+  // (siehe popCohort unten). Übersprungen wird weiter nur ab 500 Spielern.
+  const bufferMap = USE_INFLIGHT_RESUME ? await loadInflightForRegion(region, setNumber) : new Map();
+  const inflightMap = inflightActive ? bufferMap : new Map();
   if (inflightActive) {
     console.log(`  [inflight] active — ${inflightMap.size} puuids im Skip-Set (resume mode)`);
   } else if (USE_INFLIGHT_RESUME) {
@@ -1074,7 +1123,7 @@ async function processRegion(region) {
         console.log(`  [pass1] ${p1}/${players.length} | ${gathered.length} usable, ${tooFew} too-few${inflightSuffix} | ${dt}s`);
         // Nur mit MV_TIMING=1 — sonst liefert formatTimings() einen leeren
         // String und die Ausgabe bleibt exakt wie bisher.
-        const t = formatTimings();
+        const t = PARALLEL ? '' : formatTimings();
         if (t) console.log(t);
       }
     } catch (err) {
@@ -1167,24 +1216,46 @@ async function processRegion(region) {
   // bitwise reproduzierbar zwischen den Pfaden.
   gathered.sort((a, b) => a.p.puuid.localeCompare(b.p.puuid));
 
+  // Bezugsgruppe der Population: die Fälligen PLUS die Puffer-Einträge von
+  // Spielern, die nicht mehr fällig sind. Letztere gibt es nur nach einem
+  // abgebrochenen Pass 2 (der Puffer wird erst nach sauberem Ende geleert):
+  // ein Teil hat dann schon seinen Snapshot, der Rest ist noch fällig. Ohne
+  // sie würde die Population nur aus dem Rest gebaut und die der vollen
+  // Kohorte überschreiben — dieselben zwei Bezugsgrößen, die der
+  // Abbruch-Riegel oben verhindern soll (logic-flow-critic 2026-10-03; Pass 2
+  // dauert gemessen 14-19 min, also länger als TimeoutStopSec).
+  // Snapshots bekommen weiterhin nur die Fälligen.
+  // Ausgeschlossen werden ALLE Fälligen, nicht nur die verwertbaren: ein
+  // Fälliger, der diesmal zu wenige Spiele hat, darf nicht über einen alten
+  // Puffer-Eintrag doch in die Population rutschen.
+  const dueSet = new Set(players.map(p => p.puuid));
+  const carried = [...bufferMap]
+    .filter(([puuid]) => !dueSet.has(puuid))
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([, raw]) => raw);
+  const popCohort = [...gathered.map(g => g.raw), ...carried];
+  if (carried.length > 0) {
+    console.log(`  [pop] ${carried.length} Spieler aus abgebrochenem Pass 2 in die Bezugsgruppe übernommen`);
+  }
+
   let pop;
   let compMetaSize = 0;
   if (POP_BYPASS_REGIONS.has(region)) {
     pop = makeNullPop();
     console.log(`  [pop] ${region} bypassed (n=${gathered.length} zu klein für valide z-Verteilung) — multiplier=1.0`);
   } else {
-    const compMeta = buildCompMeta(gathered.map(g => g.raw));
-    // applyMeta über GESAMTE gathered-Liste (Inflight + Frisch) — data-skeptic
+    const compMeta = buildCompMeta(popCohort);
+    // applyMeta über die GESAMTE Bezugsgruppe (Inflight + Frisch) — data-skeptic
     // F2: metaRelM wird in-place in raw_metrics geschrieben. Wenn applyMeta
     // nur über Frisch läuft, fehlt metaRelative-z für Inflight-Spieler →
     // unrated-Cascade in Pass 2.
-    for (const g of gathered) applyMeta(g.raw, compMeta);
-    pop = buildPopulation(gathered.map(g => g.raw));
+    for (const raw of popCohort) applyMeta(raw, compMeta);
+    pop = buildPopulation(popCohort);
     compMetaSize = compMeta.size;
-    await persistPopulation(pool, region, setNumber, pop, compMeta, gathered.length, {
+    await persistPopulation(pool, region, setNumber, pop, compMeta, popCohort.length, {
       supaUrl: SUPA_URL, supaKey: SUPA_KEY,
     });
-    console.log(`  [pop] persisted — ${gathered.length} players, ${compMetaSize} comps`);
+    console.log(`  [pop] persisted — ${popCohort.length} players, ${compMetaSize} comps`);
   }
 
   // 4. Pass 2: snapshotPlayer pro Spieler
@@ -1204,9 +1275,26 @@ async function processRegion(region) {
     // Fest, NICHT current_date pro Zeile — siehe backupTableName().
     snapshotDate: regionDay,
   };
+  // Kontoabfragen laufen über den Begrenzer der Weltregion, die sie wirklich
+  // trifft: sea fragt account-v1 bei europe (getAccountRouting). Über den
+  // sea-Client liefen sie neben der europe-Spur unkoordiniert gegen denselben
+  // Host (data-skeptic 2026-10-03).
+  const accountRiot = riotForCluster(getAccountRouting(region));
+  // Pass 2 bricht auf SIGTERM sauber ab statt nach TimeoutStopSec hart
+  // getötet zu werden. Datensicher, weil die Population schon steht und der
+  // Puffer bleibt: der nächste Lauf snapshottet den Rest gegen dieselbe
+  // Bezugsgruppe (popCohort).
+  let pass2Aborted = false;
+  let p2 = 0;
   for (const g of gathered) {
+    if (aborting) {
+      console.log(`  [signal] Pass 2 stopped at ${p2}/${gathered.length} (Population steht, Rest folgt im nächsten Lauf)`);
+      pass2Aborted = true;
+      break;
+    }
     try {
-      const r = await snapshotPlayer(pool, riot, g.p, g.raw, pop, snapshotCtx);
+      p2++;
+      const r = await snapshotPlayer(pool, accountRiot, g.p, g.raw, pop, snapshotCtx);
       if (r.snapshotted) snapshotted++; else unrated++;
     } catch (err) {
       failed++;
@@ -1216,9 +1304,9 @@ async function processRegion(region) {
 
   const dt = ((Date.now() - t0) / 1000).toFixed(0);
   const inflightSuffix = inflightActive ? `, ${fromInflight} from-inflight` : '';
-  const abortedSuffix = pass1Aborted ? ' [ABORTED — region not completed]' : '';
+  const abortedSuffix = (pass1Aborted || pass2Aborted) ? ' [ABORTED — region not completed]' : '';
   console.log(`  [done] ${snapshotted} snapshots | ${gathered.length} usable / ${players.length} total | ${tooFew} too-few, ${unrated} unrated, ${failed} failed${inflightSuffix} | ${dt}s${abortedSuffix}`);
-  return { region, players: players.length, gathered: gathered.length, snapshots: snapshotted, unrated, failed, backup: backupTbl, fromInflight, aborted: pass1Aborted };
+  return { region, players: players.length, gathered: gathered.length, snapshots: snapshotted, unrated, failed, backup: backupTbl, fromInflight, aborted: pass1Aborted || pass2Aborted };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1266,10 +1354,16 @@ async function main() {
     // geschrieben wurde — ohne diese Sperre würde der Rundlauf sie sofort wieder
     // aufgreifen und pro Anlauf erneut den Liga-Abruf bezahlen, bis der
     // Sicherheitsdeckel greift. Der nächste Prozessstart versucht es neu.
-    const noProgress = new Set();
+    //
+    // Jede Riot-Weltregion (LANES) hat ihr eigenes Abruf-Budget und bekommt
+    // deshalb einen eigenen Rundlauf. Die Rundläufe laufen gleichzeitig; ein
+    // Fehler in einem bricht die anderen nicht ab (allSettled).
+    const runLane = async (cluster, laneRegions) => {
+      const tag = PARALLEL ? `[${cluster}] ` : '';
+      const noProgress = new Set();
 
     for (let cycle = 1; cycle <= MAX_CYCLES && !aborting; cycle++) {
-      const todoRegions = (await orderByStaleness([...REGIONS]))
+      const todoRegions = (await orderByStaleness([...laneRegions]))
         .filter(r => !noProgress.has(r));
       let worked = 0;
 
@@ -1279,7 +1373,7 @@ async function main() {
           break;
         }
         try {
-          const r = await processRegion(region);
+          const r = await logRegion.run(region, () => processRegion(region));
           if (r.noop) continue;             // nichts fällig, zählt nicht als Arbeit
           results.push(r);
           worked++;
@@ -1307,17 +1401,28 @@ async function main() {
       }
 
       if (worked === 0) {
-        console.log(`\n=== Durchgang ${cycle}: nichts mehr fällig — Lauf beendet ===`);
+        console.log(`\n${tag}=== Durchgang ${cycle}: nichts mehr fällig — Lauf beendet ===`);
         break;
       }
       // Ein Probelauf schreibt nichts, also wäre jede Region im nächsten
       // Durchgang wieder fällig — genau einer reicht.
       if (DRY_RUN) break;
-      console.log(`\n=== Durchgang ${cycle} fertig: ${worked} Region(en) bearbeitet ===`);
+      console.log(`\n${tag}=== Durchgang ${cycle} fertig: ${worked} Region(en) bearbeitet ===`);
       if (cycle === MAX_CYCLES) {
-        console.warn(`[warn] max-cycles (${MAX_CYCLES}) erreicht — Lauf beendet, obwohl noch Regionen fällig sind.`);
+        console.warn(`${tag}[warn] max-cycles (${MAX_CYCLES}) erreicht — Lauf beendet, obwohl noch Regionen fällig sind.`);
       }
     }
+    };
+
+    const settled = await Promise.allSettled([...LANES].map(([c, rs]) => runLane(c, rs)));
+    settled.forEach((s, i) => {
+      if (s.status === 'rejected') {
+        const cluster = [...LANES.keys()][i];
+        const msg = s.reason?.message || String(s.reason);
+        console.error(`[${cluster}] FATAL (Rundlauf): ${msg}`);
+        results.push({ region: cluster, error: msg });
+      }
+    });
   } finally {
     await pool.end().catch(() => {});
   }
@@ -1346,7 +1451,9 @@ async function main() {
   if (!DRY_RUN) {
     const errored = results.filter(r => r.error).length;
     if (errored > 0 && errored >= Math.ceil(results.length / 2)) {
-      console.error(`[exit 1] ${errored}/${results.length} Regionen mit Fatal-Error — OnSuccess-Kette unterdrückt`);
+      // Hinweis: die Unit hat derzeit kein OnSuccess=; der Exit-Code macht den
+      // Fehlschlag im Journal und für den Watchdog sichtbar.
+      console.error(`[exit 1] ${errored}/${results.length} Regionen mit Fatal-Error`);
       process.exit(1);
     }
   }

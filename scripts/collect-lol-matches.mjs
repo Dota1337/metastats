@@ -50,6 +50,7 @@ import { LOL_DEV_KEY_BATCH } from './lib/riot-limits.mjs';
 import { getRegionalRouting, normalizeRegion, isValidRegion } from './lib/regional-routing.mjs';
 import { tryAcquire, releaseLock, wantPending } from './lib/advisory-lock.mjs';
 import { recentPatches } from './lib/lol-items.mjs';
+import { isTransientDbError, createDbOutageBudget, withDbRetry } from './lib/db-transient.mjs';
 
 const args = process.argv.slice(2);
 const getArg = (k, def = null) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : def; };
@@ -734,6 +735,11 @@ async function rankCycle(budget) {
     + rows.map((r) => `${r.status}=${r.n}`).join(' '));
 }
 
+// Kurze DB-Aussetzer abwarten statt den Lauf zu beenden — die Unit startet
+// nicht von selbst neu (nur refresh-riot-key.mjs startet sie).
+const dbBudget = createDbOutageBudget({ log });
+let rankDbError = null;
+
 async function runRankCycle() {
   if (!(await waitForTurn())) {
     log(`Sperre ${LOCK_PATH} nach ${TURN_MAX_WAIT_MS / 3_600_000} h nicht frei — Rang-Zyklus entfaellt.`);
@@ -745,6 +751,9 @@ async function runRankCycle() {
   } catch (err) {
     if (err instanceof RiotAuthError) { log(`ABBRUCH: ${err.message}`); return 'auth'; }
     if (err instanceof RiotTransientError) { log(`Rang: Riot antwortet nicht (${err.message}) — naechster Zyklus.`); return 'transient'; }
+    // Box-Postgres startet neu (z. B. Sicherheits-Updates): abgebrochene
+    // Match-Zeilen holt reclaimRankClaims nach 30 min zurueck.
+    if (isTransientDbError(err)) { rankDbError = err; return 'db'; }
     throw err;
   } finally {
     release();
@@ -792,7 +801,20 @@ async function main() {
         log(`Sperre ${LOCK_PATH} nach ${TURN_MAX_WAIT_MS / 3_600_000} h nicht frei — Lauf endet.`);
         break;
       }
-      const row = await claimPlayer();
+      let row;
+      try {
+        row = await claimPlayer();
+        dbBudget.ok();
+      } catch (err) {
+        // Sperre frei, bevor gewartet wird — sonst haengt der Marktwert-Lauf mit.
+        // Kam der Claim an, aber die Antwort nicht, steht die Zeile auf running;
+        // reclaimStaleClaims legt sie beim naechsten Start (nach 3 h) zurueck.
+        release();
+        if (!isTransientDbError(err)) throw err;
+        if (!(await dbBudget.pause(err, 'Spieler holen'))) return 1;
+        i--;
+        continue;
+      }
       if (!row) {
         release();
         log(rankOn ? 'Spieler-Warteschlange leer — weiter nur mit der Rang-Stichprobe.' : 'Warteschlange leer — nichts zu tun.');
@@ -801,24 +823,45 @@ async function main() {
       } else {
         log(`Spieler ${row.puuid.slice(0, 8)}… (${row.region}, Versuch ${row.attempts})`);
         try {
-          const stats = await fillPlayer(row.puuid, row.region);
-          await finishPlayer(row.puuid, 'done', stats, null);
+          let stats;
+          try {
+            stats = await fillPlayer(row.puuid, row.region);
+          } catch (err) {
+            // DB-Aussetzer mitten im Spieler: der Spieler war nicht schuld.
+            // Zurueck auf pending, ausser er scheitert schon zum zwanzigsten Mal
+            // (Versuche zaehlen auch jeden Key-Ablauf mit, 03.10. bis 7 gemessen).
+            if (isTransientDbError(err) && row.attempts < 20) {
+              release();
+              await withDbRetry(dbBudget, 'Spieler zuruecklegen', () => pool.query(
+                `update lol_match_fill_queue set status='pending', claimed_at=null,
+                        last_error=$2, updated_at=now() where puuid=$1`, [row.puuid, String(err.message).slice(0, 500)]));
+              log(`DB-Aussetzer bei ${row.puuid.slice(0, 8)}… (${err.message}) — Spieler zurueckgelegt.`);
+              if (!(await dbBudget.pause(err, 'Spieler fuellen'))) return 1;
+              continue;
+            }
+            throw err;
+          }
+          release();
+          await withDbRetry(dbBudget, 'Spieler abschliessen', () => finishPlayer(row.puuid, 'done', stats, null));
           done++;
           transientStreak = 0;
         } catch (err) {
+          if (err.dbOutage) return 1;
           if (err instanceof RiotAuthError || err instanceof RiotTransientError) {
             // Key weg oder Riot ueberlastet: der Spieler war nicht schuld. Zeile
             // zurueck auf `pending`, der naechste Lauf macht genau hier weiter.
-            await pool.query(
-              `update lol_match_fill_queue set status='pending', claimed_at=null,
-                      last_error=$2, updated_at=now() where puuid=$1`, [row.puuid, err.message]);
             release();
+            await withDbRetry(dbBudget, 'Spieler zuruecklegen', () => pool.query(
+              `update lol_match_fill_queue set status='pending', claimed_at=null,
+                      last_error=$2, updated_at=now() where puuid=$1`, [row.puuid, err.message]));
             if (err instanceof RiotAuthError) { log(`ABBRUCH: ${err.message}`); return 1; }
             log(`Riot antwortet nicht (${err.message}) — Spieler zurueckgelegt.`);
             if (++transientStreak >= 3) { log('Dreimal in Folge keine Antwort von Riot — Lauf endet.'); break; }
             continue;
           }
-          await finishPlayer(row.puuid, 'failed', null, String(err.message).slice(0, 500));
+          release();
+          await withDbRetry(dbBudget, 'Spieler als fehlgeschlagen markieren',
+            () => finishPlayer(row.puuid, 'failed', null, String(err.message).slice(0, 500)));
           log(`FEHLER bei ${row.puuid.slice(0, 8)}…: ${err.message}`);
         } finally {
           release();
@@ -830,6 +873,8 @@ async function main() {
       const r = await runRankCycle();
       if (r === 'auth') return 1;
       if (r === 'stop') break;
+      if (r === 'ok') dbBudget.ok();
+      if (r === 'db' && !(await dbBudget.pause(rankDbError, 'Rang-Stichprobe'))) return 1;
       if (r === 'transient' && ++transientStreak >= 3) { log('Dreimal in Folge keine Antwort von Riot — Lauf endet.'); break; }
     }
   }

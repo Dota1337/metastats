@@ -296,7 +296,9 @@ async function hetznerPool() {
       const { default: pg } = await import('pg');
       const url = process.env.DATABASE_URL;
       if (!url) throw new Error('DATABASE_URL fehlt');
-      return new pg.Pool({ connectionString: url, max: 2, statement_timeout: 30_000 });
+      const pool = new pg.Pool({ connectionString: url, max: 2, statement_timeout: 30_000 });
+      pool.on('error', (e) => console.error(`DB-Verbindung verworfen: ${e.message}`));
+      return pool;
     })();
   }
   return pgPoolPromise;

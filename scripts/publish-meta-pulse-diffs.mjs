@@ -96,6 +96,8 @@ const pool = new pg.Pool({
   query_timeout: 100_000,
   connectionTimeoutMillis: 15_000,
 });
+// Ruhende Verbindungen, die der Server kappt (z. B. DB-Neustart), reissen sonst den Prozess.
+pool.on('error', (e) => console.error(`DB-Verbindung verworfen: ${e.message}`));
 
 const log = (msg) => console.log(`[meta-pulse-diffs] ${msg}`);
 const isoDay = (v) => (v instanceof Date ? v.toISOString() : String(v)).slice(0, 10);

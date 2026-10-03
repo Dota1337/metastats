@@ -51,6 +51,8 @@ const RIOT_KEY = process.env.RIOT_API_KEY_TFT;
 const REGIONS = ACTIVE_REGIONS;
 
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, max: 3 });
+// Ruhende Verbindungen, die der Server kappt (z. B. DB-Neustart), reissen sonst den Prozess.
+pool.on('error', (e) => console.error(`DB-Verbindung verworfen: ${e.message}`));
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 // ── Platz-Tabelle: je Tag die LP aller Challenger-Zeilen der Region ──────────

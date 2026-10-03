@@ -138,6 +138,8 @@ const rl = url => riot.fetchJson(url, { safe: true });
 const MATCH_FETCH_CONCURRENCY = parseInt(arg('--match-concurrency', '6'), 10);
 
 const pool = new pg.Pool({ connectionString: DATABASE_URL, max: 5, statement_timeout: 60_000 });
+// Ruhende Verbindungen, die der Server kappt (z. B. DB-Neustart), reissen sonst den Prozess.
+pool.on('error', (e) => console.error(`DB-Verbindung verworfen: ${e.message}`));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // discovery

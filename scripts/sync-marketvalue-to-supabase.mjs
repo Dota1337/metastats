@@ -62,6 +62,8 @@ if (!DATABASE_URL || !SUPA_URL || !SUPA_KEY) {
 }
 
 const pool = new pg.Pool({ connectionString: DATABASE_URL, max: 3, statement_timeout: 60_000 });
+// Ruhende Verbindungen, die der Server kappt (z. B. DB-Neustart), reissen sonst den Prozess.
+pool.on('error', (e) => console.error(`DB-Verbindung verworfen: ${e.message}`));
 const BATCH = 200;
 
 async function supaUpsert(table, rows, onConflict) {

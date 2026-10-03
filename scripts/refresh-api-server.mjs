@@ -165,6 +165,8 @@ if (!AUTH_TOKEN || !RIOT_KEY || !DB_URL || !SUPA_URL || !SUPA_KEY) {
 // connections forever and exhaust the pool — this is an always-on service, so
 // pool exhaustion = total unresponsiveness until restart. Audit H2, 2026-06-28.
 const pool = new pg.Pool({ connectionString: DB_URL, max: 5, statement_timeout: 30_000 });
+// Ruhende Verbindungen, die der Server kappt (z. B. DB-Neustart), reissen sonst den Prozess.
+pool.on('error', (e) => console.error(`DB-Verbindung verworfen: ${e.message}`));
 
 // Single shared riot client — the rate-limiter is process-wide so a burst of
 // refresh calls doesn't trip 429s. Capped at ~180/10s = 90% of Riot's

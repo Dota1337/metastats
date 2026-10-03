@@ -42,6 +42,8 @@ const pool = new pg.Pool({
   max: 2,
   statement_timeout: 60_000,
 });
+// Ruhende Verbindungen, die der Server kappt (z. B. DB-Neustart), reissen sonst den Prozess.
+pool.on('error', (e) => console.error(`DB-Verbindung verworfen: ${e.message}`));
 
 function pct(sorted, p) {
   if (sorted.length === 0) return 0;

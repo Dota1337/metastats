@@ -63,6 +63,8 @@ const NO_MATCHES = args.includes('--no-matches');
 const RETENTION_DAYS = 10;
 
 const pool = new pg.Pool({ connectionString: DATABASE_URL, max: 4, statement_timeout: 120_000 });
+// Ruhende Verbindungen, die der Server kappt (z. B. DB-Neustart), reissen sonst den Prozess.
+pool.on('error', (e) => console.error(`DB-Verbindung verworfen: ${e.message}`));
 
 // Ein Liga-Client pro Plattform (eigene Zaehler je Host), ein Partien-Client
 // pro Regional-Route (fuenf Regionen teilen sich europe).

@@ -213,6 +213,8 @@ async function writeUpdates(client, updates) {
 
 async function main() {
   const pool = new pg.Pool({ connectionString: PG_URL, statement_timeout: TIMEOUT_MS, max: 2 });
+  // Ruhende Verbindungen, die der Server kappt (z. B. DB-Neustart), reissen sonst den Prozess.
+  pool.on('error', (e) => console.error(`DB-Verbindung verworfen: ${e.message}`));
   const state = loadCursor();
   const mode = PUUID_FILTER ? `cohort(${PUUID_FILTER.length} puuids)` : 'full-table';
   console.log(`[reclassify] set=${SET} batch=${BATCH} dry=${DRY} mode=${mode} timeout=${TIMEOUT_MS}ms`);

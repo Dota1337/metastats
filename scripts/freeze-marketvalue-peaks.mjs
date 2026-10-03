@@ -216,6 +216,8 @@ const pool = new pg.Pool({
   max: 2,
   statement_timeout: 600_000,
 });
+// Ruhende Verbindungen, die der Server kappt (z. B. DB-Neustart), reissen sonst den Prozess.
+pool.on('error', (e) => console.error(`DB-Verbindung verworfen: ${e.message}`));
 
 // LoL-Hoechstwert je Spieler und Split aus market_value_history. Nur Zeilen,
 // die die Suche seit 0080 mit Split und Partienzahl schreibt; Altzeilen sind

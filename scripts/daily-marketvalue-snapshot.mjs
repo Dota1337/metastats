@@ -441,6 +441,8 @@ const pool = new pg.Pool({
   max: 6,
   statement_timeout: 60_000, // bound query hangs (Audit H2, 2026-06-28)
 });
+// Ruhende Verbindungen, die der Server kappt (z. B. DB-Neustart), reissen sonst den Prozess.
+pool.on('error', (e) => console.error(`DB-Verbindung verworfen: ${e.message}`));
 
 // Set-Nummer, für die zuletzt aufgeräumt wurde (siehe processRegion).
 let lastCleanupSet = null;

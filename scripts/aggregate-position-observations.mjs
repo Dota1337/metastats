@@ -68,6 +68,8 @@ const CACHE_FILE = join(STATE_DIR, 'class-cache.json');
 
 // Box-Cache ist optional: ohne DATABASE_URL (oder lokal mit --no-box) faellt alles auf Riot.
 const pool = HETZNER_DB && !process.argv.includes('--no-box') ?new pg.Pool({ connectionString: HETZNER_DB, max: 3, statement_timeout: 60_000 }) : null;
+// Ruhende Verbindungen, die der Server kappt (z. B. DB-Neustart), reissen sonst den Prozess.
+pool?.on('error', (e) => console.error(`DB-Verbindung verworfen: ${e.message}`));
 // Teilt sich das Budget mit dem Backfill (laufen nie gleichzeitig lange).
 const riot = createRiotClient({ ...riotWindowFor('companion-backfill'), apiKey: RIOT_KEY });
 

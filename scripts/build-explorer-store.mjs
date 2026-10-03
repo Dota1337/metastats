@@ -75,6 +75,16 @@ function readTraitThresholds(setNumber) {
   return rows;
 }
 
+// Abweichende Riot-Kennungen (`aliasOf` im Bundle, z. B. TFT18_Akali →
+// DA_18_Akali_AD). Die Auswahlliste zeigt nur die Quelle; ohne Umschreiben
+// waeren die Spiele unter der alten Kennung im Explorer nicht erreichbar.
+function readUnitAliases(setNumber) {
+  const a = JSON.parse(fs.readFileSync(path.join(ROOT, `public/tft-assets-${setNumber}.json`), 'utf8'));
+  return Object.entries(a.champions || {})
+    .filter(([, c]) => typeof c?.aliasOf === 'string')
+    .map(([id, c]) => [id, c.aliasOf]);
+}
+
 // Patch-Bereiche [{patch, from, to}] fuer das Set. Tage, die in zwei Bereichen
 // liegen, markiert der Build als Wechseltag.
 async function readPatchRanges(setNumber) {
@@ -126,6 +136,7 @@ async function main() {
   if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL fehlt');
   const setNumber = readSetNumber();
   const thresholds = readTraitThresholds(setNumber);
+  const aliases = readUnitAliases(setNumber);
   const patches = await readPatchRanges(setNumber);
   log(`Set ${setNumber}, ${DAYS} Tage, Patch-Quelle ${patches.source} (${patches.ranges.length} Bereiche), Ziel ${OUT}`);
 
@@ -263,9 +274,13 @@ async function main() {
     LEFT JOIN day_patch dp USING (day)
     LEFT JOIN rk USING (bid)`);
 
-  // 4) units: characterId, Stern, bis zu 3 Items.
+  // 4) units: characterId, Stern, bis zu 3 Items. Alias-Kennungen werden auf
+  //    ihre Quelle umgeschrieben (readUnitAliases).
+  const unitExpr = aliases.length
+    ? `CASE u->>'characterId' ${aliases.map(([id, src]) => `WHEN ${sqlStr(id)} THEN ${sqlStr(src)}`).join(' ')} ELSE u->>'characterId' END`
+    : `u->>'characterId'`;
   await run(`CREATE TABLE units AS
-    SELECT bid, u->>'characterId' AS unit, (u->>'tier')::UTINYINT AS star,
+    SELECT bid, ${unitExpr} AS unit, (u->>'tier')::UTINYINT AS star,
       json_array_length(u->'items')::UTINYINT AS n_items,
       u->'items'->>0 AS i1, u->'items'->>1 AS i2, u->'items'->>2 AS i3
     FROM (SELECT bid, unnest(json_extract(units::JSON, '$[*]')) AS u FROM b0)

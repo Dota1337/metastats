@@ -27,6 +27,9 @@ export interface TftChampion {
   cost: number;
   traits: string[];
   ability?: { name: string; desc: string };
+  // Kopie einer anderen Einheit fuer abweichende Riot-Kennungen
+  // (scripts/fetch-tft-assets.mjs, CHAMPION_ALIASES).
+  aliasOf?: string;
 }
 export interface TftTraitTier {
   minUnits: number;
@@ -441,9 +444,10 @@ export function tftChampionTileUrl(
  * Erkennungsmerkmal ist die Form statt des Namens: Kosten 1-5 und mindestens
  * ein Merkmal hat nur eine echte Einheit. Kampf-Attrappen ("Mini Black Hole"),
  * FakeUnits und beschworene Gegner fallen an einer der beiden Bedingungen
- * durch. Gegenprobe am 2026-09-08 ueber beide Bundles: Set 17 liefert 63
- * Treffer, alle mit `TFT17_`; Set 18 liefert 74, alle mit `DA_` — in keinem
- * der beiden ist eine Einheit aus einem fremden Set dabei.
+ * durch. Kopien fuer abweichende Riot-Kennungen (`aliasOf`, z. B.
+ * TFT18_Akali = DA_18_Akali_AD) fallen weg, sonst stuende die Einheit doppelt
+ * in der Liste. Nachzaehlen: dieselbe Filterregel per `node -e` gegen
+ * public/tft-assets-<set>.json laufen lassen.
  *
  * Ergebnis ist nach Kosten, dann Name sortiert.
  */
@@ -453,7 +457,7 @@ export function tftPlayableChampions(
   if (!bundle) return [];
   return Object.entries(bundle.champions)
     .filter(([id, c]) => {
-      if (!c?.name) return false;
+      if (!c?.name || c.aliasOf) return false;
       const cost = c.cost ?? 0;
       if (cost < 1 || cost > 5) return false;
       if (!Array.isArray(c.traits) || c.traits.length === 0) return false;

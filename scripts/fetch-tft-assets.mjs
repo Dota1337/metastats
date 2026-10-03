@@ -258,9 +258,11 @@ async function main() {
   // Aliase: Riot schreibt in Match-Daten fuer einige Set-18-Einheiten/Items
   // eine andere ID als CDragon (TFT18_MasterYi statt DA_18_MasterYi_AD). Ohne
   // Eintrag fehlen Bild und Name. Kopie der Quelle, nur wenn es sie gibt.
+  // `aliasOf` markiert die Kopie: Auswahllisten (tftPlayableChampions) zeigen
+  // sie nicht doppelt, der Explorer-Bau zaehlt ihre Spiele zur Quelle.
   const CHAMPION_ALIASES = { TFT18_MasterYi: 'DA_18_MasterYi_AD', TFT18_Akali: 'DA_18_Akali_AD' };
   for (const [alias, src] of Object.entries(CHAMPION_ALIASES)) {
-    if (!champions[alias] && champions[src]) champions[alias] = { ...champions[src] };
+    if (!champions[alias] && champions[src]) champions[alias] = { aliasOf: src, ...champions[src] };
   }
   const ITEM_ALIASES = { DA_Artifact_Hullcrusher: 'TFT9_Item_OrnnHullbreaker' };
   for (const [alias, src] of Object.entries(ITEM_ALIASES)) {

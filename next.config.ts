@@ -12,6 +12,8 @@ const nextConfig: NextConfig = {
   // unbekannte IDs) — die Datei muss deshalb in die Funktion.
   outputFileTracingIncludes: {
     '/teams/[id]': ['./public/pro-teams/index.json'],
+    // Aufstellungs-Karte aus dem MetaTFT-Import, Dateiname haengt am Set.
+    '/api/tft/positions/by-units': ['./public/tft-metatft-boards-*.json'],
   },
   // Security-Header fuer alles. Bewusst KEIN Cache-Control hier: der Matcher
   // trifft auch /_next/static/*, und dort steht bereits das richtige

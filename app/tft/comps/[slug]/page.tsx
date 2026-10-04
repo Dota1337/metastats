@@ -916,7 +916,14 @@ export default function TftCompDetailPage() {
               <PositionHeatmap
                 units={comp.typicalUnits}
                 carryCharacterId={leadCarry ?? undefined}
-                clusterKey={compTraitFamilyKey(comp.clusterKey)}
+                clusterKey={(() => {
+                  // Eigene Familie zuerst, dann die der genannten Carries —
+                  // dieselbe Kandidatenliste wie beim Comp-Guide oben.
+                  const own = compTraitFamilyKey(comp.clusterKey);
+                  const parts = parseClusterKey(comp.clusterKey);
+                  const named = parts ? namedCompCarries.map(c => `${parts.trait}__${c}`) : [];
+                  return [...new Set([own, ...named])].join(',');
+                })()}
                 assets={assets}
               />
             )}

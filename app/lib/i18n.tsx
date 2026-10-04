@@ -2983,6 +2983,11 @@ const translations = {
     '\uCD08\uBC18 \uAC8C\uC784', '\u524D\u671F',
     'Juego temprano', 'D\u00E9but de partie'
   ),
+  'tft.comp.positioning': t6(
+    'Positionierung', 'Positioning',
+    '배치', '站位',
+    'Posicionamiento', 'Placement'
+  ),
   'tft.comp.avgPlacement': t6(
     '\u00D8 Platz', 'Avg place',
     '\uD3C9\uADE0 \uC21C\uC704', '\u5E73\u5747\u6392\u540D',

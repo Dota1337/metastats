@@ -63,7 +63,8 @@ export interface EarlyOption {
   units: string[];
   count: number | null;
   avg: number | null;
-  win: number | null;
+  /** Nur in alten Dateien; wird nicht gezeigt (passt nicht zu Top 4). */
+  win?: number | null;
 }
 
 export interface CarouselPick {
@@ -80,7 +81,10 @@ export interface LevelStep {
 }
 
 export interface CompDetails {
-  early: EarlyOption[];
+  /** Early-Boards je Spielerstufe "4".."7", je Stufe Top 3. */
+  earlyByLevel?: Record<string, EarlyOption[]>;
+  /** Vorgaenger-Feld (nur Stufe 4), aeltere Dateien. */
+  early?: EarlyOption[];
   carousel: CarouselPick[];
   levels: LevelStep[];
   // Import-only: meistgespielte Zelle je Unit (0-basiert). Nicht gerendert und
@@ -138,7 +142,8 @@ export interface CompGuide {
   /** Augment-apiNames, nach Grade absteigend, ungekappt (Anzeige: augmentRowsByRarity). */
   augments: string[];
   augmentGrades: Record<string, AugmentGrade>;
-  early: EarlyOption[];
+  /** Spielerstufe ("4".."7") -> meistgespielte Early-Boards. */
+  earlyByLevel: Record<string, EarlyOption[]>;
   carousel: CarouselPick[];
   levels: LevelStep[];
   details: CompDetails | null;
@@ -216,7 +221,8 @@ function toGuide(comp: MetaTftComp, details: CompDetails | null, cuts: LoadedGui
     games: comp.games,
     augments: augs.map(a => a.id),
     augmentGrades: Object.fromEntries(augs.map(a => [a.id, a.tier])),
-    early: details?.early || [],
+    earlyByLevel: details?.earlyByLevel
+      || (details?.early?.length ? { 4: details.early } : {}),
     carousel: details?.carousel || [],
     levels: details?.levels || [],
     details,

@@ -1,31 +1,70 @@
 import { NextRequest } from 'next/server';
+import { readFileSync } from 'fs';
+import path from 'path';
 import { supabaseAdmin } from '../../../../lib/supabase';
 import { cachedJson } from '../../../../lib/api-cache';
 import { isKnownUnitId } from '../../../../lib/tft-classify-comp';
+import { CURRENT_SET } from '../../../../lib/current-set';
 
-// Returns position frequency per (unit, cell) for a comma-separated set of
+// Returns position shares per (unit, cell) for a comma-separated set of
 // units. The comp-detail page hits this with its typicalUnits list to render
-// a per-unit mini board-heatmap.
+// a per-unit mini board-heatmap. Cells are 0-based (row*7+col, row 0 = back).
 //
-// Tier of source:
-//   ?cluster=…  → reads tft_position_comp_cell (comp-specific positions,
-//                 produced by the aggregator script that joins observations
-//                 against tft_player_match_cache.comp_cluster_key).
-//   no cluster  → reads the tft_position_unit_cell view (global positions
-//                 across all comps). Useful as a fallback when the comp
-//                 doesn't have enough comp-specific observations yet.
+// Source per unit, first one that has data wins — sources are never added
+// together, only their shares are shown:
+//   1. companion  tft_position_comp_cell for ?cluster=<trait>__<carry>[,...], once
+//                 the unit stood in >= MIN_UNIT_MATCHES own games of this comp.
+//   2. metatft    public/tft-metatft-boards-{set}.json (daily import), via the
+//                 file's familyMap.
+//   3. global     tft_position_unit_cell view (all comps).
+// `source` reports the one used, or 'mixed' if units came from different ones.
 
-interface PositionRow {
-  unit: string;
-  cell: number;
-  observations: number;
-  distinct_observers: number;
+const MIN_UNIT_MATCHES = 30;
+const KEEP_CELLS = 6;
+
+type Source = 'companion' | 'metatft' | 'global';
+interface CellShare { cell: number; observations: number; share: number }
+
+interface BoardsFile {
+  familyMap: Record<string, string>;
+  boards: Record<string, Record<string, { cell: number; share: number }[]>>;
+}
+
+let boardsCache: { set: number; file: BoardsFile | null } | null = null;
+function loadBoards(): BoardsFile | null {
+  if (boardsCache?.set === CURRENT_SET) return boardsCache.file;
+  let file: BoardsFile | null = null;
+  try {
+    const p = path.join(process.cwd(), 'public', `tft-metatft-boards-${CURRENT_SET}.json`);
+    file = JSON.parse(readFileSync(p, 'utf8')) as BoardsFile;
+  } catch {
+    // Datei fehlt (neues Set, Import noch nicht gelaufen) — dann global.
+  }
+  boardsCache = { set: CURRENT_SET, file };
+  return file;
+}
+
+/** Zaehlungen → Anteile je Unit, beste Zellen zuerst. */
+function toShares(rows: { unit: string; cell: number; observations: number }[]): Record<string, CellShare[]> {
+  const grouped: Record<string, CellShare[]> = {};
+  for (const r of rows) {
+    (grouped[r.unit] ||= []).push({ cell: Number(r.cell), observations: Number(r.observations), share: 0 });
+  }
+  for (const unit of Object.keys(grouped)) {
+    const cells = grouped[unit];
+    const total = cells.reduce((s, c) => s + c.observations, 0);
+    if (total <= 0) { delete grouped[unit]; continue; }
+    for (const c of cells) c.share = c.observations / total;
+    cells.sort((a, b) => b.observations - a.observations);
+    grouped[unit] = cells.slice(0, KEEP_CELLS);
+  }
+  return grouped;
 }
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const unitsParam = searchParams.get('units') || '';
-  const cluster = searchParams.get('cluster') || '';
+  const clusterParam = searchParams.get('cluster') || '';
   const units = unitsParam
     .split(',')
     .map(u => u.trim())
@@ -36,58 +75,69 @@ export async function GET(request: NextRequest) {
     return cachedJson({ hasData: false, units: {} });
   }
 
-  // Cluster-specific path: comp-bound positions from the aggregator table.
-  // Falls through to the global view if the cluster row count is too thin.
-  let data: any[] | null = null;
-  let error: any = null;
-  let source: 'comp' | 'global' = 'global';
+  const result: Record<string, CellShare[]> = {};
+  const used = new Set<Source>();
+  // Mehrere Familien-Schluessel moeglich (Comp mit zwei Carries): je Unit
+  // gewinnt der erste mit Daten, Quellen werden nie zusammengezaehlt.
+  const clusters = clusterParam
+    .split(',')
+    .map(c => c.trim())
+    .filter(c => /^[\w@]+_[A-Za-z0-9_]+$/.test(c))
+    .slice(0, 4);
 
-  if (cluster && /^[\w@]+_[A-Za-z0-9_]+$/.test(cluster)) {
+  // 1) Eigene Companion-Daten, je Unit sobald genug Partien da sind.
+  if (clusters.length > 0) {
     const r = await supabaseAdmin
       .from('tft_position_comp_cell')
-      .select('unit, cell, observations')
-      .eq('cluster_key', cluster)
+      .select('cluster_key, unit, cell, observations, unit_matches')
+      .in('cluster_key', clusters)
       .in('unit', units);
-    if (!r.error && r.data && r.data.length >= units.length * 2) {
-      data = r.data.map(d => ({ ...d, distinct_observers: 0 }));
-      source = 'comp';
+    if (!r.error && r.data) {
+      const enough = r.data.filter(d => Number(d.unit_matches) >= MIN_UNIT_MATCHES);
+      for (const cluster of clusters) {
+        const rows = enough.filter(d => d.cluster_key === cluster && !result[d.unit]);
+        for (const [unit, cells] of Object.entries(toShares(rows))) {
+          result[unit] = cells;
+          used.add('companion');
+        }
+      }
     }
   }
 
-  if (!data) {
+  // 2) MetaTFT-Aufstellung derselben Comp-Familie.
+  const boards = clusters.length > 0 ? loadBoards() : null;
+  for (const cluster of clusters) {
+    const id = boards?.familyMap[cluster];
+    const board = id ? boards?.boards[id] : undefined;
+    if (board) {
+      for (const unit of units) {
+        if (result[unit] || !board[unit]?.length) continue;
+        result[unit] = board[unit].map(c => ({ cell: c.cell, observations: 0, share: c.share }));
+        used.add('metatft');
+      }
+    }
+  }
+
+  // 3) Globale Sicht ueber alle Comps fuer den Rest.
+  const missing = units.filter(u => !result[u]);
+  if (missing.length > 0) {
     const r = await supabaseAdmin
       .from('tft_position_unit_cell')
-      .select('unit, cell, observations, distinct_observers')
-      .in('unit', units);
-    data = r.data;
-    error = r.error;
-  }
-
-  if (error) {
-    return cachedJson({ hasData: false, units: {}, error: error.message });
-  }
-
-  // Group by unit, keep top-N cells per unit.
-  const grouped: Record<string, { cell: number; observations: number; share: number }[]> = {};
-  for (const row of (data || []) as PositionRow[]) {
-    if (!grouped[row.unit]) grouped[row.unit] = [];
-    grouped[row.unit].push({ cell: row.cell, observations: Number(row.observations), share: 0 });
-  }
-
-  // Sort by observations desc + compute share-of-total per unit.
-  for (const unit of Object.keys(grouped)) {
-    const cells = grouped[unit];
-    const total = cells.reduce((s, c) => s + c.observations, 0);
-    if (total > 0) {
-      for (const c of cells) c.share = c.observations / total;
+      .select('unit, cell, observations')
+      .in('unit', missing);
+    if (r.error && used.size === 0) {
+      return cachedJson({ hasData: false, units: {}, error: r.error.message });
     }
-    cells.sort((a, b) => b.observations - a.observations);
-    grouped[unit] = cells.slice(0, 6);
+    for (const [unit, cells] of Object.entries(toShares(r.data || []))) {
+      result[unit] = cells;
+      used.add('global');
+    }
   }
 
+  const source = used.size === 1 ? [...used][0] : used.size > 1 ? 'mixed' : 'global';
   return cachedJson({
-    hasData: Object.keys(grouped).length > 0,
+    hasData: Object.keys(result).length > 0,
     source,
-    units: grouped,
+    units: result,
   });
 }

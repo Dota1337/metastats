@@ -80,8 +80,10 @@ function normaliseObservation(raw: Observation): null | {
   if (typeof raw.kind !== 'string' || !VALID_KINDS.has(raw.kind)) return null;
   if (!isFiniteNumber(raw.cell, 0, 99)) return null;
   if (!isString(raw.unit, 100)) return null;
-  const level = isFiniteNumber(raw.level, 1, 3) ? raw.level : 1;
-  const round = isFiniteNumber(raw.round, 0, 60) ? raw.round : 0;
+  // Sterne bis 4 (4-Sterne-Units gibt es seit Set 17), Runde = Stufe*10+Runde
+  // ab App 0.3, Stufe 7 ergibt 7x.
+  const level = isFiniteNumber(raw.level, 1, 4) ? raw.level : 1;
+  const round = isFiniteNumber(raw.round, 0, 79) ? raw.round : 0;
   const items = Array.isArray(raw.items)
     ? raw.items.filter((i): i is string => isString(i, 100)).slice(0, 3)
     : [];

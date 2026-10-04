@@ -41,7 +41,7 @@ export default function PositionHeatmap({ units, carryCharacterId, clusterKey, a
   const { t } = useI18n();
   const [data, setData] = useState<Record<string, CellShare[]>>({});
   const [hasData, setHasData] = useState<boolean>(false);
-  const [source, setSource] = useState<'comp' | 'global'>('global');
+  const [source, setSource] = useState<'companion' | 'metatft' | 'global' | 'mixed'>('global');
 
   useEffect(() => {
     const ids = units.map(u => u.characterId).filter(Boolean);
@@ -70,7 +70,7 @@ export default function PositionHeatmap({ units, carryCharacterId, clusterKey, a
   return (
     <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
       <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">
-        Positionierung
+        {t('tft.comp.positioning')}
         {source === 'global' && (
           <span className="text-fg-faint text-[10px] normal-case tracking-normal ml-2">(global)</span>
         )}

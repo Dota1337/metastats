@@ -52,7 +52,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add public/tft-metatft-comps-*.json
+          git add public/tft-metatft-comps-*.json public/tft-metatft-boards-*.json
           if git diff --staged --quiet; then
             echo "Keine Aenderungen an den Comp-Daten"
           else

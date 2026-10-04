@@ -1,4 +1,5 @@
 'use client';
+import { useState } from 'react';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
 import { tftIconUrl, tftChampionTileUrl, findChampion, findItem } from '../../lib/tft-cdragon';
 import { costColor as costColorOf } from '../../lib/tft-ui';
@@ -96,6 +97,53 @@ function EarlyChampionTile({ apiName, assets }: { apiName: string; assets: TftAs
 // Eine Early-Game-Variante: Board links, Kennzahlen rechts. Mehrere Varianten
 // untereinander statt einer „richtigen" — MetaTFT liefert die tatsächlich
 // gespielten Opener, und die unterscheiden sich real.
+// Early Game als Reiter je Spielerstufe, Stufe 4 offen. Stufen ohne Boards
+// bekommen keinen Reiter.
+const EARLY_LEVELS = ['4', '5', '6', '7'];
+
+function EarlyGameSection({
+  earlyByLevel, assets, t,
+}: {
+  earlyByLevel: Record<string, EarlyOption[]>;
+  assets: TftAssetsBundle | null;
+  t: (k: any) => string;
+}) {
+  const levels = EARLY_LEVELS.filter(l => (earlyByLevel[l]?.length ?? 0) > 0);
+  const [selected, setSelected] = useState<string | null>(null);
+  if (levels.length === 0) return null;
+  const level = selected && levels.includes(selected) ? selected : levels[0];
+
+  return (
+    <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
+      <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.earlyGame')}</h2>
+      {levels.length > 1 && (
+        <div className="flex flex-wrap gap-1.5 mb-3" role="tablist">
+          {levels.map(l => {
+            const active = l === level;
+            return (
+              <button
+                key={l}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setSelected(l)}
+                className={`px-2.5 py-1 rounded border text-xs transition-colors ${active ? 'border-accent bg-surface-raised text-white' : 'border-border-subtle text-fg-secondary hover:text-white'}`}
+              >
+                {t('tft.match.lvl')} {l}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      <div className="flex flex-col gap-3">
+        {earlyByLevel[level].map((opt, i) => (
+          <EarlyOptionRow key={`early-${level}-${i}`} option={opt} assets={assets} t={t} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function EarlyOptionRow({
   option, assets, t,
 }: {
@@ -211,16 +259,7 @@ export default function CompGuide({
       {/* 2) Early Game — die meistgespielten Opener-Boards dieser Comp mit
           ihrem Durchschnittsplatz, damit der Spieler zwischen ihnen wählen
           kann statt einen vorgesetzt zu bekommen. */}
-      {guide.early.length > 0 && (
-        <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
-          <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.earlyGame')}</h2>
-          <div className="flex flex-col gap-3">
-            {guide.early.map((opt, i) => (
-              <EarlyOptionRow key={`early-${i}`} option={opt} assets={assets} t={t} />
-            ))}
-          </div>
-        </section>
-      )}
+      <EarlyGameSection earlyByLevel={guide.earlyByLevel} assets={assets} t={t} />
 
       {/* 3) Carousel — welche Komponenten aus dem ersten Carousel zu dieser
           Comp führen. Erste echte Entscheidung der Runde. */}

@@ -95,6 +95,11 @@ const splitAmpList = (s) => String(s || '').split('&').map(x => x.trim()).filter
 // Browser beim Seitenaufruf zieht. Gerendert wird davon eine Handvoll Zeilen.
 const KEEP_EARLY_OPTIONS = 3;
 const KEEP_CAROUSEL = 6;
+// Early-Boards je Spielerstufe (Reiter 4/5/6/7 auf der Comp-Seite).
+const EARLY_LEVELS = ['4', '5', '6', '7'];
+// Zellen je Unit fuer die Aufstellungs-Karte — MetaTFT liefert hoechstens 6.
+const KEEP_CELLS = 6;
+const BOARD_CELLS = 28;
 
 /**
  * Holt die Detailseite eines Clusters und behält davon, was die UI zeigt.
@@ -109,22 +114,21 @@ async function fetchCompDetails(compId, generation, carries) {
   const raw = await getJson(`comp_details?comp=${compId}&cluster_id=${generation}`);
   const d = raw?.results || {};
 
-  // early_options ist nach Level gruppiert ("4".."7"); Level 4 ist das Opener-
-  // Board, das tftacademys earlyComp gemeint hat.
-  const early = (d.early_options?.['4'] || [])
-    .slice(0, KEEP_EARLY_OPTIONS)
-    .map(o => ({
-      units: splitAmpList(o.unit_list),
-      count: o.count ?? null,
-      avg: o.avg ?? null,
-      win: o.win ?? null,
-    }))
-    .filter(o => o.units.length > 0);
-
   const carousel = (d.first_carousel || [])
     .slice(0, KEEP_CAROUSEL)
     .map(x => ({ item: x.items, count: x.count ?? null, avg: x.avg ?? null }))
     .filter(x => x.item);
+
+  // early_options ist nach Spielerstufe gruppiert ("4".."7"). Ohne `win`: der Wert passt nicht zu Top 4
+  // (Ø-Platz 4,41 bei win 0,746 ist rechnerisch unmoeglich) und wird nicht gezeigt.
+  const earlyByLevel = {};
+  for (const lvl of EARLY_LEVELS) {
+    const rows = (d.early_options?.[lvl] || [])
+      .slice(0, KEEP_EARLY_OPTIONS)
+      .map(o => ({ units: splitAmpList(o.unit_list), count: o.count ?? null, avg: o.avg ?? null }))
+      .filter(o => o.units.length > 0);
+    if (rows.length) earlyByLevel[lvl] = rows;
+  }
 
   const levels = (d.levels || [])
     .filter(l => Number(l.level) >= 4 && l.stage)
@@ -150,7 +154,24 @@ async function fetchCompDetails(compId, generation, carries) {
     carryStars[u.unit] = (u.tiers || []).map(t => ({ star: t.tier, pcnt: t.pcnt, avg: t.avg }));
   }
 
-  return { early, carousel, levels, positions, carryStars, rerolls: d.rerolls || null };
+  // Aufstellungs-Karte: je Unit die Top-Zellen als Anteil an den gezeigten
+  // Zellen der Unit. Landet in einer eigenen Datei (siehe main), weil die
+  // Comps-Datei jede Comp-Seite laedt und die Karte nur die Route braucht.
+  const board = {};
+  for (const [unit, entry] of Object.entries(d.positioning?.units || {})) {
+    const cells = (entry?.positions || [])
+      .map(p => ({ cell: Number(String(p.cell).split('_')[1]) - 1, count: Number(p.count) }))
+      .filter(p => Number.isInteger(p.cell) && p.cell >= 0 && p.cell < BOARD_CELLS && p.count > 0)
+      .slice(0, KEEP_CELLS);
+    const total = cells.reduce((a, p) => a + p.count, 0);
+    if (!total) continue;
+    board[unit] = cells.map(p => ({ cell: p.cell, share: Math.round((p.count / total) * 1000) / 1000 }));
+  }
+
+  return {
+    details: { earlyByLevel, carousel, levels, positions, carryStars, rerolls: d.rerolls || null },
+    board,
+  };
 }
 
 async function main() {
@@ -248,13 +269,16 @@ async function main() {
   }
 
   const compDetails = {};
+  const boards = {};
   let detailsOk = 0;
   let detailsFail = 0;
   let budgetHit = false;
   for (const c of comps) {
     if (budgetLeft() < CALL_TIMEOUT_MS) { budgetHit = true; break; }
     try {
-      compDetails[c.id] = await fetchCompDetails(c.id, clusterId, [...(carriesByCluster.get(c.id) || [])]);
+      const r = await fetchCompDetails(c.id, clusterId, [...(carriesByCluster.get(c.id) || [])]);
+      compDetails[c.id] = r.details;
+      if (Object.keys(r.board).length) boards[c.id] = r.board;
       detailsOk++;
     } catch (err) {
       detailsFail++;
@@ -262,7 +286,7 @@ async function main() {
     }
   }
   if (budgetHit) console.warn(`  ! Zeitbudget erreicht — Details nur für ${detailsOk} von ${comps.length} Clustern`);
-  console.log(`  Details: ${detailsOk} geholt, ${detailsFail} fehlgeschlagen`);
+  console.log(`  Details: ${detailsOk} geholt, ${detailsFail} fehlgeschlagen, ${Object.keys(boards).length} mit Aufstellung`);
 
   // Details-Übernahme aus dem Vorlauf, wenn die Detail-Phase nichts brachte.
   // Die Liste ist dann trotzdem frisch — ohne diesen Zweig würde ein Ausfall
@@ -293,10 +317,34 @@ async function main() {
     details: compDetails,
   };
 
+  // Aufstellungs-Datei: gelesen nur von /api/tft/positions/by-units. Ohne
+  // frische Boards (Detail-Phase leer) bleibt die alte Datei liegen.
+  const boardsPath = resolve(ROOT, 'public', `tft-metatft-boards-${set}.json`);
+  const boardsPayload = Object.keys(boards).length ? {
+    set,
+    source: payload.source,
+    clusterId,
+    fetchedAt: payload.fetchedAt,
+    sourceUpdated: payload.sourceUpdated,
+    familyMap,
+    boards,
+  } : null;
+
   if (DRY_RUN) {
     console.log('  [dry-run] nichts geschrieben');
     console.log(`  Größe: ${(JSON.stringify(payload).length / 1024).toFixed(0)} KB roh`);
+    if (boardsPayload) console.log(`  Aufstellung: ${(JSON.stringify(boardsPayload).length / 1024).toFixed(0)} KB roh`);
     return;
+  }
+
+  if (boardsPayload) {
+    const tmpBoards = `${boardsPath}.tmp`;
+    writeFileSync(tmpBoards, JSON.stringify(boardsPayload) + '\n');
+    renameSync(tmpBoards, boardsPath);
+    console.log(`  -> public/tft-metatft-boards-${set}.json (${Object.keys(boards).length} Comps, `
+      + `${(JSON.stringify(boardsPayload).length / 1024).toFixed(0)} KB)`);
+  } else {
+    console.warn('  ! Keine Aufstellungsdaten — Aufstellungs-Datei bleibt unverändert');
   }
 
   // Atomar schreiben: erst vollständig danebenlegen, dann umbenennen. Sonst

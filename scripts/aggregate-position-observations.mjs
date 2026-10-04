@@ -192,7 +192,7 @@ async function classifyGroup(matchId, observer, region, cache) {
 async function main() {
   const t0 = Date.now();
   const all = await supaSelectAll('tft_position_observations',
-    'select=match_id,observer_puuid,region,unit,cell,observed_at&kind=eq.own&order=id.asc');
+    'select=match_id,observer_puuid,region,unit,cell,round,client_version,observed_at&kind=eq.own&order=id.asc');
   const observations = all.filter(o => isRiotMatchId(o.match_id) && o.observer_puuid);
   console.log(`Beobachtungen: ${all.length} eigene, davon ${observations.length} mit echter Match-ID`);
 

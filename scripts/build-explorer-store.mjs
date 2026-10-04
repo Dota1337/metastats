@@ -85,6 +85,36 @@ function readUnitAliases(setNumber) {
     .map(([id, c]) => [id, c.aliasOf]);
 }
 
+const RANGE_CACHE = path.join(path.dirname(OUT), 'patch-ranges.json');
+
+// Der juengste Patch endet bei Supabase am letzten Aggregat-Tag (meist
+// gestern); nach vorn offen, sonst fehlt der heutige Tag.
+function openNewest(ranges) {
+  const newest = ranges.reduce((a, b) => (b.from > a.from ? b : a));
+  newest.to = '2999-12-31';
+  return ranges;
+}
+
+// Roh-Bereiche (echtes last_day) je Set, nur fuer den Rueckfall. Ein Fehler
+// beim Schreiben bricht den Build nicht ab.
+function writeRangeCache(setNumber, ranges) {
+  try {
+    const tmp = `${RANGE_CACHE}.tmp`;
+    fs.writeFileSync(tmp, JSON.stringify({ set: setNumber, savedAt: new Date().toISOString(), ranges }));
+    fs.renameSync(tmp, RANGE_CACHE);
+  } catch (e) {
+    log('Patch-Cache nicht geschrieben', e.message);
+  }
+}
+
+function readRangeCache(setNumber) {
+  try {
+    const c = JSON.parse(fs.readFileSync(RANGE_CACHE, 'utf8'));
+    if (Number(c.set) === setNumber && Array.isArray(c.ranges) && c.ranges.length) return c;
+  } catch { /* kein Cache */ }
+  return null;
+}
+
 // Patch-Bereiche [{patch, from, to}] fuer das Set. Tage, die in zwei Bereichen
 // liegen, markiert der Build als Wechseltag.
 async function readPatchRanges(setNumber) {
@@ -102,11 +132,8 @@ async function readPatchRanges(setNumber) {
         const rows = (await res.json()).filter((r) => Number(r.set_number) === setNumber && r.patch);
         if (rows.length) {
           const ranges = rows.map((r) => ({ patch: r.patch, from: r.first_day, to: r.last_day }));
-          // Der juengste Patch endet bei Supabase am letzten Aggregat-Tag
-          // (meist gestern); nach vorn offen, sonst fehlt der heutige Tag.
-          const newest = ranges.reduce((a, b) => (b.from > a.from ? b : a));
-          newest.to = '2999-12-31';
-          return { source: 'supabase', ranges };
+          writeRangeCache(setNumber, ranges);
+          return { source: 'supabase', ranges: openNewest(ranges) };
         }
       } else {
         log('Patch-RPC HTTP', res.status);
@@ -115,9 +142,28 @@ async function readPatchRanges(setNumber) {
       log('Patch-RPC Fehler', e.message);
     }
   }
-  // Rueckfall: patchCuts aus tft-set.json (nur Schnitte, kein Ende).
+  // Rueckfall 1: die zuletzt von Supabase gelesenen Bereiche (echte Tage je
+  // Patch), ergaenzt um Schnitte, die danach dazukamen. patchCuts allein kennen
+  // den Starttag eines Basis-Patches nicht — bei mehreren Schnitten landeten
+  // z. B. die 18.2-Tage sonst unter 18.1b.
   const j = JSON.parse(fs.readFileSync(path.join(ROOT, 'public/tft-set.json'), 'utf8'));
   const cuts = (j.patchCuts || []).filter((c) => Number(c.set) === setNumber && c.from_day);
+  const cache = readRangeCache(setNumber);
+  if (cache) {
+    const ranges = cache.ranges.map((r) => ({ ...r }));
+    for (const c of [...cuts].sort((a, b) => a.from_day.localeCompare(b.from_day))) {
+      const newestFrom = ranges.reduce((m, r) => (r.from > m ? r.from : m), '');
+      if (c.from_day <= newestFrom || ranges.some((r) => r.patch === c.patch)) continue;
+      // Vorherige Bereiche am Schnitt schliessen (ein Tag Ueberlappung =
+      // Wechseltag), sonst traegt jeder spaetere Tag zwei Patches.
+      for (const r of ranges) if (r.to > c.from_day) r.to = c.from_day;
+      ranges.push({ patch: c.patch, from: c.from_day, to: c.from_day });
+    }
+    return { source: `Cache vom ${cache.savedAt}`, ranges: openNewest(ranges) };
+  }
+  // Rueckfall 2: ohne Cache nur patchCuts. Bei mehr als einem Schnitt fehlen
+  // die Basis-Tage dazwischen — dann lieber abbrechen, alte Datei bleibt.
+  if (cuts.length > 1) throw new Error('Patch-RPC aus, kein Cache und mehrere B-Patches — Abbruch, alte Datei bleibt');
   if (cuts.length) {
     cuts.sort((a, b) => a.from_day.localeCompare(b.from_day));
     const ranges = [];

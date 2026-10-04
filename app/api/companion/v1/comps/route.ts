@@ -7,9 +7,10 @@ import { GET as compsGET } from '../../../tft/comps/route';
 import { buildCompFamilies, currentSetFamilies, topFamilyKeys } from '../../../../lib/tft-comp-families';
 import { resolveCutoffs } from '../../../../lib/tft-tier-letter';
 import type { TftAssetsBundle } from '../../../../lib/tft-cdragon';
+import { callRpc, resolveFilters } from '../../../../lib/tft-supabase-reader';
 import {
-  COMPANION_API_VERSION, companionJson, companionPreflight, toCompanionComp,
-  type CompanionCompsResponse,
+  COMPANION_API_VERSION, buildCompanionVs, companionJson, companionPreflight, toCompanionComp,
+  type CompanionCompsResponse, type CompPairInput,
 } from '../../../../lib/companion-api';
 
 export const maxDuration = 60;
@@ -34,10 +35,19 @@ export async function GET(request: NextRequest) {
     patch: 'current', bucket, days: String(days), region, bucketAuto: '1', source: 'data',
   }).toString();
 
-  const [res, assets, cutoffBundle] = await Promise.all([
+  // Matchups: dieselbe Paar-Abfrage wie die Detailseite (ohne Rang, ab 10
+  // Spielen je Sub-Cluster-Paar). Scheitert sie, fehlen nur die Matchups.
+  const pairsPromise = resolveFilters(inner.searchParams)
+    .then(f => callRpc<CompPairInput[]>('get_tft_comp_pairs', {
+      p_regions: f.regions, p_days: f.days, p_patch: f.patchFilter, p_set: f.setNumber, p_min_games: 10,
+    }, 20000))
+    .catch(e => { console.warn('[companion/comps] pairs skipped:', (e as Error).message); return [] as CompPairInput[]; });
+
+  const [res, assets, cutoffBundle, pairs] = await Promise.all([
     compsGET(new NextRequest(inner)),
     fetch(`${origin}/tft-assets.json`).then(r => (r.ok ? r.json() as Promise<TftAssetsBundle> : null)).catch(() => null),
     fetch(`${origin}/tft-tier-cutoffs.json`).then(r => (r.ok ? r.json() : null)).catch(() => null),
+    pairsPromise,
   ]);
   if (!res.ok) {
     return companionJson({ v: COMPANION_API_VERSION, error: 'comps_unavailable' }, { status: 503, ...NO_STORE });
@@ -64,5 +74,7 @@ export async function GET(request: NextRequest) {
     generatedAt: new Date().toISOString(),
     comps: shown.map(f => toCompanionComp(f, assets, cutoffs)),
   };
+  const vs = buildCompanionVs(out.comps, pairs);
+  for (const c of out.comps) if (vs[c.key]) c.vs = vs[c.key];
   return companionJson(out, { cdn: 'public, s-maxage=1800, stale-while-revalidate=21600' });
 }

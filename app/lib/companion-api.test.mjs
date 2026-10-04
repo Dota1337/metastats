@@ -13,6 +13,10 @@ import assert from 'node:assert/strict';
 
 import {
   absoluteUrl,
+  buildCompanionVs,
+  companionStats,
+  memberKeyOf,
+  resolveBoard,
   toCompanionLookups,
   toCompanionMatch,
   COMPANION_CORS_HEADERS,
@@ -96,4 +100,61 @@ test('toCompanionLookups: nur Set-Champions, alle aktiven Items ausser Augmenten
   assert.equal(l.items.R1.recipe, undefined);
   assert.equal(l.items.C1.component, true);
   assert.equal(l.shopOdds[9].length, 5);
+});
+
+test('toCompanionMatch mit lobby: alle Spieler nach Platz, ohne Augments', () => {
+  const m = {
+    matchId: 'EUW1_2',
+    gameDatetime: 2000,
+    queueId: 1090,
+    participants: [
+      { puuid: 'me', placement: 3, level: 8, augments: ['DA_Augment_X'], units: [{ characterId: 'A' }] },
+      { puuid: 'p1', riotIdName: 'Eins', placement: 1, level: 9, units: [{ characterId: 'B', tier: 3, itemNames: ['I1'] }] },
+    ],
+  };
+  const out = toCompanionMatch(m, 'me', { lobby: true });
+  assert.deepEqual(out.lobby.map(p => [p.puuid, p.placement, p.name]), [['p1', 1, 'Eins'], ['me', 3, null]]);
+  assert.deepEqual(out.lobby[0].units, [{ id: 'B', star: 3, items: ['I1'] }]);
+  assert.ok(!JSON.stringify(out).includes('Augment'));
+  assert.equal(toCompanionMatch(m, 'me').lobby, undefined);
+});
+
+test('memberKeyOf: Familien-Schluessel ohne Stufe, Stern und Augment', () => {
+  assert.equal(memberKeyOf('T_Star@6_Lulu*3~twotanky'), 'T_Star__Lulu');
+  assert.equal(memberKeyOf('kaputt'), null);
+});
+
+test('buildCompanionVs: beide Richtungen, Zwei-Carry-Mitglieder zaehlen zur Comp, ab Mindest-Spielen', () => {
+  const comps = [
+    { key: 'A__x', members: ['A__x', 'A__y'] },
+    { key: 'B__z', members: ['B__z'] },
+  ];
+  const pairs = [
+    { a_key: 'A@4_x', b_key: 'B@6_z', games: 20, a_better: 15 },
+    { a_key: 'A@6_y*3', b_key: 'B@4_z', games: 20, a_better: 5 },
+    { a_key: 'A@4_x', b_key: 'A@6_y', games: 50, a_better: 25 }, // gleiche Comp
+    { a_key: 'C@4_q', b_key: 'B@4_z', games: 99, a_better: 50 }, // nicht in der Liste
+  ];
+  const vs = buildCompanionVs(comps, pairs);
+  assert.deepEqual(vs['A__x']['B__z'], [40, 0.5]);
+  assert.deepEqual(vs['B__z']['A__x'], [40, 0.5]);
+  assert.equal(vs['A__x']['A__x'], undefined);
+  assert.deepEqual(buildCompanionVs(comps, pairs, 41), {});
+});
+
+test('resolveBoard: staerkster Anteil zuerst, Ausweichen ins naechste Feld, immer gleich', () => {
+  const shares = {
+    U1: [{ cell: 3, share: 0.9 }],
+    U2: [{ cell: 3, share: 0.6 }, { cell: 10, share: 0.2 }],
+    U3: [{ cell: 3, share: 0.5 }],
+    U4: [],
+  };
+  const out = resolveBoard(['U3', 'U2', 'U1', 'U4'], shares);
+  assert.deepEqual(out, [{ unit: 'U1', cell: 3 }, { unit: 'U2', cell: 10 }, { unit: 'U3', cell: 2 }]);
+  assert.deepEqual(resolveBoard(['U1', 'U2', 'U3'], shares), out);
+});
+
+test('companionStats: gerundet, fehlende Werte null', () => {
+  assert.deepEqual(companionStats({ games: 12, avgPlacement: 4.256, top4Rate: 0.51234, top1Rate: null }),
+    { games: 12, avg: 4.26, top4: 0.512, win: null });
 });

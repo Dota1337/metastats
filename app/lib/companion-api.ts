@@ -16,7 +16,8 @@ import { tierLetterOfSync, type TierCutoffs } from './tft-tier-letter';
 import { BAG_SIZE, SHOP_ODDS } from './tft-roll-odds';
 import {
   COMPANION_API_VERSION,
-  type CompanionComp, type CompanionCompUnit, type CompanionLookups, type CompanionMatch,
+  type CompanionBoardCell, type CompanionComp, type CompanionCompUnit, type CompanionLobbyPlayer,
+  type CompanionLookups, type CompanionMatch, type CompanionStats, type CompanionVs,
 } from './companion-types';
 
 export * from './companion-types';
@@ -63,12 +64,108 @@ export function absoluteUrl(u: string | null | undefined): string | null {
 const round = (v: number | null | undefined, digits: number): number | null =>
   v == null || !Number.isFinite(v) ? null : Number(v.toFixed(digits));
 
+/** Spiele + Platz/Top 4/Sieg aus einer Zeile der Seiten-Routen. */
+export function companionStats(r: {
+  games?: number | null; avgPlacement?: number | null; top4Rate?: number | null; top1Rate?: number | null;
+}): CompanionStats {
+  return {
+    games: Number(r.games) || 0,
+    avg: round(r.avgPlacement, 2),
+    top4: round(r.top4Rate, 3),
+    win: round(r.top1Rate, 3),
+  };
+}
+
 // Reihenfolge der Units wie auf /tft/comps: Kosten aufsteigend, dann Name.
 function sortUnits<T extends { characterId: string }>(units: T[], assets: TftAssetsBundle | null): T[] {
   const costOf = (cid: string) => assets?.champions[cid]?.cost ?? 1;
   const nameOf = (cid: string) => (assets?.champions[cid]?.name || cid).toLowerCase();
   return [...units].sort((a, b) =>
     costOf(a.characterId) - costOf(b.characterId) || nameOf(a.characterId).localeCompare(nameOf(b.characterId)));
+}
+
+/** <trait>__<carry> eines cluster_key — dieselbe Regel wie familyKeyForMerge. */
+export function memberKeyOf(clusterKey: string): string | null {
+  const p = parseClusterKey(clusterKey);
+  return p ? `${p.trait}__${p.carry}` : null;
+}
+
+export interface CompPairInput { a_key: string; b_key: string; games: number; a_better: number }
+
+/**
+ * Matchups zwischen den Comps der Liste aus den Paar-Zeilen der Datenbank
+ * (zwei Comps im selben Spiel, wer landet weiter vorn). Sub-Cluster werden
+ * ueber `members` ihrer Comp zugeordnet und nach Spielen gewichtet summiert,
+ * wie die Detailseite es je Gegner-Familie tut. Paare innerhalb derselben
+ * Comp fallen weg. Ab `minGames` Spielen, sonst kein Eintrag.
+ */
+export function buildCompanionVs(
+  comps: Array<Pick<CompanionComp, 'key' | 'members'>>,
+  pairs: CompPairInput[],
+  minGames = 30,
+): Record<string, Record<string, CompanionVs>> {
+  const owner = new Map<string, string>();
+  for (const c of comps) for (const m of c.members ?? [c.key]) if (!owner.has(m)) owner.set(m, c.key);
+  const acc = new Map<string, { games: number; ahead: number }>();
+  const add = (a: string, b: string, games: number, ahead: number) => {
+    const k = `${a}\u0000${b}`;
+    const cur = acc.get(k) ?? { games: 0, ahead: 0 };
+    cur.games += games;
+    cur.ahead += ahead;
+    acc.set(k, cur);
+  };
+  for (const p of pairs) {
+    const ak = memberKeyOf(p.a_key);
+    const bk = memberKeyOf(p.b_key);
+    const a = ak ? owner.get(ak) : undefined;
+    const b = bk ? owner.get(bk) : undefined;
+    const games = Number(p.games) || 0;
+    if (!a || !b || a === b || games <= 0) continue;
+    const aBetter = Number(p.a_better) || 0;
+    add(a, b, games, aBetter);
+    add(b, a, games, games - aBetter);
+  }
+  const out: Record<string, Record<string, CompanionVs>> = {};
+  for (const [k, v] of acc) {
+    if (v.games < minGames) continue;
+    const [a, b] = k.split('\u0000');
+    (out[a] ||= {})[b] = [v.games, Number((v.ahead / v.games).toFixed(3))];
+  }
+  return out;
+}
+
+/**
+ * Ein Feld je Unit aus den Feld-Anteilen (beste zuerst). Wer den hoechsten
+ * Anteil hat, waehlt zuerst; ist sein Feld belegt, nimmt er sein naechstes
+ * Feld aus der Liste, sonst das naechste freie Feld derselben Reihe. Gleiche
+ * Daten ergeben immer dasselbe Board.
+ */
+export function resolveBoard(
+  units: string[],
+  shares: Record<string, Array<{ cell: number; share: number }>>,
+): CompanionBoardCell[] {
+  const order = units
+    .filter(u => shares[u]?.length)
+    .sort((a, b) => shares[b][0].share - shares[a][0].share || a.localeCompare(b));
+  const taken = new Set<number>();
+  const out: CompanionBoardCell[] = [];
+  for (const unit of order) {
+    let cell = shares[unit].map(c => c.cell).find(c => c >= 0 && c < 28 && !taken.has(c));
+    if (cell == null) {
+      const first = shares[unit][0].cell;
+      const row = Math.floor(first / 7);
+      const col = first % 7;
+      for (let d = 1; d < 7 && cell == null; d++) {
+        for (const c of [col - d, col + d]) {
+          if (c >= 0 && c < 7 && !taken.has(row * 7 + c)) { cell = row * 7 + c; break; }
+        }
+      }
+    }
+    if (cell == null) continue;
+    taken.add(cell);
+    out.push({ unit, cell });
+  }
+  return out;
 }
 
 export function toCompanionComp(
@@ -93,8 +190,16 @@ export function toCompanionComp(
   const tier = cutoffs
     ? tierLetterOfSync({ avgPlacement: main.avgPlacement, pickRate: main.pickRate, games: main.games }, 'comps', cutoffs)
     : null;
+  const members = [family.familyKey];
+  for (const v of family.variants || []) {
+    for (const s of [v.slug, v.clusterKey, ...((v._mergedFrom as string[] | undefined) ?? [])]) {
+      const k = typeof s === 'string' ? memberKeyOf(s) : null;
+      if (k && !members.includes(k)) members.push(k);
+    }
+  }
   return {
     key: family.familyKey,
+    members,
     slug: main.slug || main.clusterKey,
     name: named.length > 0 ? `${traitName} · ${named.map(nameOf).join(' & ')}` : traitName,
     trait: family.trait,
@@ -165,6 +270,7 @@ export function toCompanionLookups(assets: TftAssetsBundle): CompanionLookups {
 
 interface RawParticipant {
   puuid?: string;
+  riotIdName?: string | null;
   placement?: number;
   level?: number;
   traits?: Array<{ name?: string; numUnits?: number; style?: number; tierCurrent?: number }>;
@@ -177,21 +283,42 @@ interface RawMatch {
   participants?: RawParticipant[];
 }
 
-export function toCompanionMatch(m: RawMatch, puuid: string): CompanionMatch | null {
+const traitsOf = (p: RawParticipant) => (p.traits || [])
+  .filter(t => t?.name && (t.style ?? 0) > 0)
+  .sort((a, b) => (b.style ?? 0) - (a.style ?? 0) || (b.numUnits ?? 0) - (a.numUnits ?? 0))
+  .map(t => ({ id: t.name as string, units: t.numUnits ?? 0, style: t.style ?? 0 }));
+const unitsOf = (p: RawParticipant) => (p.units || [])
+  .filter(u => u?.characterId)
+  .map(u => ({ id: u.characterId as string, star: u.tier ?? 1, items: u.itemNames ?? u.items ?? [] }));
+
+/**
+ * Eigene Zeile je Spiel. Mit `lobby` zusaetzlich alle Spieler der Partie
+ * (Riot-ID, Platz, Traits, Units) — Augments bleiben in beiden Faellen weg.
+ */
+export function toCompanionMatch(m: RawMatch, puuid: string, opts: { lobby?: boolean } = {}): CompanionMatch | null {
   const me = m.participants?.find(p => p.puuid === puuid);
   if (!m.matchId || !me || typeof me.placement !== 'number') return null;
-  return {
+  const out: CompanionMatch = {
     id: m.matchId,
     at: Number(m.gameDatetime) || 0,
     queue: typeof m.queueId === 'number' ? m.queueId : null,
     placement: me.placement,
     level: typeof me.level === 'number' ? me.level : null,
-    traits: (me.traits || [])
-      .filter(t => t?.name && (t.style ?? 0) > 0)
-      .sort((a, b) => (b.style ?? 0) - (a.style ?? 0) || (b.numUnits ?? 0) - (a.numUnits ?? 0))
-      .map(t => ({ id: t.name as string, units: t.numUnits ?? 0, style: t.style ?? 0 })),
-    units: (me.units || [])
-      .filter(u => u?.characterId)
-      .map(u => ({ id: u.characterId as string, star: u.tier ?? 1, items: u.itemNames ?? u.items ?? [] })),
+    traits: traitsOf(me),
+    units: unitsOf(me),
   };
+  if (opts.lobby) {
+    out.lobby = (m.participants || [])
+      .filter(p => p?.puuid && typeof p.placement === 'number')
+      .sort((a, b) => (a.placement as number) - (b.placement as number))
+      .map((p): CompanionLobbyPlayer => ({
+        name: typeof p.riotIdName === 'string' && p.riotIdName ? p.riotIdName : null,
+        puuid: p.puuid as string,
+        placement: p.placement as number,
+        level: typeof p.level === 'number' ? p.level : null,
+        traits: traitsOf(p),
+        units: unitsOf(p),
+      }));
+  }
+  return out;
 }

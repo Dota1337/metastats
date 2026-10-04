@@ -6,13 +6,13 @@
     "belegen laesst, steht in `unresolved` statt als geratene Kante im Graphen."
   ],
   "counts": {
-    "routes": 81,
+    "routes": 84,
     "groups": 30,
     "tables": 35,
     "rpcs": 29,
     "files": 14,
-    "edges": 463,
-    "unused": 7,
+    "edges": 490,
+    "unused": 10,
     "unresolved": 1
   },
   "groups": [
@@ -25,16 +25,16 @@
       "count": 9
     },
     {
+      "name": "companion/v1",
+      "count": 6
+    },
+    {
       "name": "tft/comps",
       "count": 6
     },
     {
       "name": "internal",
       "count": 4
-    },
-    {
-      "name": "companion/v1",
-      "count": 3
     },
     {
       "name": "tft/pros",
@@ -220,6 +220,25 @@
       "disabledBy": "TFT_COACH_ENABLED"
     },
     {
+      "id": "api:/api/companion/v1/comp",
+      "kind": "route",
+      "label": "/api/companion/v1/comp",
+      "group": "companion/v1",
+      "file": "app/api/companion/v1/comp/route.ts",
+      "via": [
+        "app/lib/cdragon-base.ts",
+        "app/lib/current-set.ts",
+        "app/lib/tft-cdragon.ts",
+        "app/lib/tft-comp-guides.ts",
+        "app/lib/tft-roll-odds.ts",
+        "app/lib/tft-shop-pool.ts",
+        "app/lib/tft-tier-letter.ts",
+        "public/tft-set.json"
+      ],
+      "used": false,
+      "usedBy": []
+    },
+    {
       "id": "api:/api/companion/v1/comps",
       "kind": "route",
       "label": "/api/companion/v1/comps",
@@ -232,6 +251,7 @@
         "app/lib/tft-comp-guides.ts",
         "app/lib/tft-roll-odds.ts",
         "app/lib/tft-shop-pool.ts",
+        "app/lib/tft-supabase-reader.ts",
         "app/lib/tft-tier-letter.ts",
         "public/tft-set.json"
       ],
@@ -240,6 +260,25 @@
         "apps/overwolf-app/dist/app/assets/api-DIQZ3ziP.js",
         "apps/overwolf-app/src/lib/api.ts"
       ]
+    },
+    {
+      "id": "api:/api/companion/v1/items",
+      "kind": "route",
+      "label": "/api/companion/v1/items",
+      "group": "companion/v1",
+      "file": "app/api/companion/v1/items/route.ts",
+      "via": [
+        "app/lib/cdragon-base.ts",
+        "app/lib/current-set.ts",
+        "app/lib/tft-cdragon.ts",
+        "app/lib/tft-comp-guides.ts",
+        "app/lib/tft-roll-odds.ts",
+        "app/lib/tft-shop-pool.ts",
+        "app/lib/tft-tier-letter.ts",
+        "public/tft-set.json"
+      ],
+      "used": false,
+      "usedBy": []
     },
     {
       "id": "api:/api/companion/v1/lookups",
@@ -284,6 +323,25 @@
         "apps/overwolf-app/dist/app/assets/api-DIQZ3ziP.js",
         "apps/overwolf-app/src/lib/api.ts"
       ]
+    },
+    {
+      "id": "api:/api/companion/v1/units",
+      "kind": "route",
+      "label": "/api/companion/v1/units",
+      "group": "companion/v1",
+      "file": "app/api/companion/v1/units/route.ts",
+      "via": [
+        "app/lib/cdragon-base.ts",
+        "app/lib/current-set.ts",
+        "app/lib/tft-cdragon.ts",
+        "app/lib/tft-comp-guides.ts",
+        "app/lib/tft-roll-odds.ts",
+        "app/lib/tft-shop-pool.ts",
+        "app/lib/tft-tier-letter.ts",
+        "public/tft-set.json"
+      ],
+      "used": false,
+      "usedBy": []
     },
     {
       "id": "api:/api/cron/check-patches",
@@ -691,6 +749,7 @@
       ],
       "used": true,
       "usedBy": [
+        "app/api/companion/v1/comp/route.ts",
         "app/api/companion/v1/comps/route.ts",
         "app/components/internal/OpsGraph.tsx",
         "app/lib/snapshot-matrix.ts",
@@ -832,6 +891,7 @@
       ],
       "used": true,
       "usedBy": [
+        "app/api/companion/v1/items/route.ts",
         "app/components/internal/OpsGraph.tsx",
         "app/lib/snapshot-matrix.ts",
         "app/tft/items/[id]/page.tsx",
@@ -1152,6 +1212,7 @@
       ],
       "used": true,
       "usedBy": [
+        "app/api/companion/v1/comp/route.ts",
         "app/components/tft/PositionHeatmap.tsx",
         "next.config.ts"
       ]
@@ -1439,6 +1500,7 @@
       ],
       "used": true,
       "usedBy": [
+        "app/api/companion/v1/units/route.ts",
         "app/components/internal/OpsGraph.tsx",
         "app/components/tft/RegionCompare.tsx",
         "app/lib/snapshot-matrix.ts",
@@ -2174,6 +2236,51 @@
       "kind": "fetches"
     },
     {
+      "from": "api:/api/companion/v1/comp",
+      "to": "ext:cdragon",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/companion/v1/comp",
+      "to": "ext:metatft",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/companion/v1/comp",
+      "to": "ext:riot-web",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/companion/v1/comp",
+      "to": "file:tft-assets-*.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/companion/v1/comp",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/companion/v1/comp",
+      "to": "file:tft-metatft-comps-*.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/companion/v1/comp",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/companion/v1/comp",
+      "to": "file:tft-tier-cutoffs.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/companion/v1/comps",
+      "to": "db:tft_daily_crawl_meta",
+      "kind": "reads"
+    },
+    {
       "from": "api:/api/companion/v1/comps",
       "to": "ext:cdragon",
       "kind": "fetches"
@@ -2210,6 +2317,56 @@
     },
     {
       "from": "api:/api/companion/v1/comps",
+      "to": "file:tft-tier-cutoffs.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/companion/v1/comps",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/companion/v1/comps",
+      "to": "fn:get_tft_comp_pairs",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/companion/v1/items",
+      "to": "ext:cdragon",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/companion/v1/items",
+      "to": "ext:metatft",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/companion/v1/items",
+      "to": "ext:riot-web",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/companion/v1/items",
+      "to": "file:tft-assets-*.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/companion/v1/items",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/companion/v1/items",
+      "to": "file:tft-metatft-comps-*.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/companion/v1/items",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/companion/v1/items",
       "to": "file:tft-tier-cutoffs.json",
       "kind": "reads"
     },
@@ -2290,6 +2447,46 @@
     },
     {
       "from": "api:/api/companion/v1/player",
+      "to": "file:tft-tier-cutoffs.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/companion/v1/units",
+      "to": "ext:cdragon",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/companion/v1/units",
+      "to": "ext:metatft",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/companion/v1/units",
+      "to": "ext:riot-web",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/companion/v1/units",
+      "to": "file:tft-assets-*.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/companion/v1/units",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/companion/v1/units",
+      "to": "file:tft-metatft-comps-*.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/companion/v1/units",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/companion/v1/units",
       "to": "file:tft-tier-cutoffs.json",
       "kind": "reads"
     },

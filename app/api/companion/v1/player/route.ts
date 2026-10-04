@@ -1,6 +1,7 @@
-// Eigener Spielverlauf fuer die Overwolf-App: Spieler suchen, letzte 10 Spiele,
-// je Spiel nur die eigene Zeile (Platz, Stufe, Traits, Units mit Items).
-// Nutzt die Spieler- und Match-Routen der Seite im selben Prozess.
+// Spielverlauf fuer die Overwolf-App: Spieler suchen, je Seite 10 Spiele
+// (Normal + Ranked), je Spiel die eigene Zeile und die ganze Lobby (alle 8
+// Spieler mit Platz, Stufe, Traits, Units und Items). Weiterblaettern ueber
+// ?start=. Nutzt die Spieler- und Match-Routen der Seite im selben Prozess.
 import { NextRequest } from 'next/server';
 import { GET as summonerGET } from '../../../tft/summoner/route';
 import { GET as matchesGET } from '../../../tft/matches/route';
@@ -11,6 +12,9 @@ import {
 export const maxDuration = 30;
 
 const HISTORY_COUNT = 10;
+// Normal (1090) und Ranked (1100); Double Up, Hyper Roll usw. haben andere
+// Lobbys und Boards.
+const HISTORY_QUEUES = new Set([1090, 1100]);
 const NO_STORE = { cdn: 'no-store', browser: 'no-store' };
 
 export function OPTIONS() {
@@ -24,6 +28,8 @@ export async function GET(request: NextRequest) {
   if (!/^[^#]{1,32}#[^#]{1,8}$/.test(name)) {
     return companionJson({ v: COMPANION_API_VERSION, error: 'bad_name' }, { status: 400, ...NO_STORE });
   }
+  const startRaw = parseInt(sp.get('start') || '0', 10);
+  const start = Number.isFinite(startRaw) ? Math.max(0, Math.min(110, startRaw)) : 0;
   const origin = request.nextUrl.origin;
   const sUrl = new URL('/api/tft/summoner', origin);
   sUrl.searchParams.set('name', name);
@@ -41,18 +47,21 @@ export async function GET(request: NextRequest) {
     return companionJson({ v: COMPANION_API_VERSION, error: s?.code || 'player_unavailable' }, { status, ...NO_STORE });
   }
   const puuid = s.summoner.puuid;
-  const ids = (s.matchIds || []).slice(0, HISTORY_COUNT);
+  const allIds = s.matchIds || [];
+  const ids = allIds.slice(start, start + HISTORY_COUNT);
+  const nextStart = start + HISTORY_COUNT < allIds.length ? start + HISTORY_COUNT : null;
   let matches: CompanionMatch[] = [];
   if (ids.length > 0) {
     const mUrl = new URL('/api/tft/matches', origin);
     mUrl.searchParams.set('ids', ids.join(','));
+    mUrl.searchParams.set('queue', 'all');
     if (s.region) mUrl.searchParams.set('region', s.region);
     const mRes = await matchesGET(new NextRequest(mUrl));
     if (mRes.ok) {
       const m = await mRes.json().catch(() => null) as { matches?: Parameters<typeof toCompanionMatch>[0][] } | null;
       matches = (m?.matches || [])
-        .map(x => toCompanionMatch(x, puuid))
-        .filter((x): x is CompanionMatch => x != null)
+        .map(x => toCompanionMatch(x, puuid, { lobby: true }))
+        .filter((x): x is CompanionMatch => x != null && x.queue != null && HISTORY_QUEUES.has(x.queue))
         .sort((a, b) => b.at - a.at);
     }
   }
@@ -75,5 +84,6 @@ export async function GET(request: NextRequest) {
         }
       : null,
     matches,
+    nextStart,
   }, { cdn: 'public, s-maxage=120, stale-while-revalidate=600', browser: 'private, max-age=60' });
 }

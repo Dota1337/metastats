@@ -123,9 +123,8 @@ export async function GET(request: NextRequest) {
     };
   }).filter((m): m is NonNullable<typeof m> => m != null);
 
-  // Challenger base value uses the ladder-rank curve (130k..43k for the top
-  // 150). Without it a Challenger drops onto the LP-only fallback (~12k, ~10x
-  // too low). The live path has no apex-ladder context, so reuse the most
+  // Challenger base value uses the ladder-rank curve (130k at #1 down to 30k
+  // at #300). Without it a Challenger drops onto the 30k floor. The live path has no apex-ladder context, so reuse the most
   // recent snapshot's persisted ladder_rank for this player.
   let ladderRank: number | undefined;
   if (ranked?.tier === 'CHALLENGER') {

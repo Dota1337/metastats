@@ -203,7 +203,7 @@ async function discoverPlayers() {
 // --puuids mode: skip apex discovery, fetch each player's RANKED_TFT entry
 // directly. Used by the backfill workflow. Der Tabellenplatz kommt frisch aus
 // der Challenger-Liste (ein Abruf fuer alle) — ohne ihn fielen Challenger auf
-// die LP-Kurve (~12k statt ~130k). Nur wenn die Liste ausfaellt, bleibt der
+// die Untergrenze von 30k statt bis zu 130k. Nur wenn die Liste ausfaellt, bleibt der
 // letzte gespeicherte Platz des laufenden Sets stehen.
 async function loadPlayersByPuuids(puuids) {
   console.log(`[discovery] ${REGION} — explicit ${puuids.length} puuid(s)`);

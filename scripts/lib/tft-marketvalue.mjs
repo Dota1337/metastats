@@ -51,7 +51,8 @@ export function computeBaseValue(ranked, playerRank) {
 
   // Calibrated relative to LoL — TFT's top pros sit below LoL's top pros.
   // Target final-value range after multiplier:
-  //   Chall #1 → ~180k, Chall #30 → ~60k, Master 0 LP → ~1k.
+  //   Challenger-Grundwert: Platz 1 → 130k, Platz 100 → 60k, ab Platz 300 → 30k.
+  //   Master 0 LP → ~1k.
   // Keep this in lockstep with app/lib/tft-marketvalue/base-value.ts.
   if (tier === 'MASTER') {
     const cappedLp = Math.min(lp, 200);
@@ -62,15 +63,21 @@ export function computeBaseValue(ranked, playerRank) {
     return { rated: true, baseValue: 4000 + (cappedLp / 400) * 8000 };
   }
   if (tier === 'CHALLENGER') {
-    if (playerRank && playerRank <= 30) {
-      return { rated: true, baseValue: 130000 - ((playerRank - 1) / 29) * 87000 };
-    }
-    if (playerRank && playerRank <= 150) {
-      return { rated: true, baseValue: 43000 - ((playerRank - 30) / 120) * 28000 };
-    }
-    return { rated: true, baseValue: 5000 + Math.min(1, lp / 1500) * 7000 };
+    // Siehe challengerBase — User-Vorgabe 2026-10-04.
+    return { rated: true, baseValue: challengerBase(playerRank) };
   }
   return { rated: false, baseValue: 0, notRatedReason: 'unknown_tier' };
+}
+
+// Challenger-Grundwert nach Tabellenplatz (User-Vorgabe 2026-10-04, Stuetzwerte
+// nur mit Freigabe aendern): Platz 1 → 130k, Platz 100 → 60k (Kurve, oben
+// steiler), Platz 100–300 gerade Linie 60k → 30k, ab Platz 300 oder ohne Platz
+// → 30k. Gleichlauf mit app/lib/tft-marketvalue/base-value.ts prueft
+// app/lib/tft-marketvalue/base-value.test.mjs.
+export function challengerBase(playerRank) {
+  if (!playerRank || playerRank < 1 || playerRank >= 300) return 30000;
+  if (playerRank <= 100) return 60000 + 70000 * (1 - Math.pow((playerRank - 1) / 99, 0.6));
+  return 60000 - (playerRank - 100) * 150;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

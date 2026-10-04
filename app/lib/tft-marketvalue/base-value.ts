@@ -5,8 +5,8 @@ import type { TftRanked } from './types';
 // because the LoL esports + sponsorship economy is an order of magnitude
 // larger. Target final-value range after multiplier (×0.45 .. ×1.65):
 //   Chall #1            → ~180k €  (base 130k, typical multi 1.4)
-//   Chall #30           → ~60k €   (base 43k)
-//   Chall #150          → ~20k €
+//   Chall #100          → base 60k
+//   Chall #300+         → base 30k (Untergrenze, auch ohne Platz)
 //   GM 200 LP           → ~10k €
 //   Master 200 LP       → ~5k €
 //   Master 0 LP         → ~1k €
@@ -65,21 +65,22 @@ export function computeBaseValue(ranked: TftRanked | null, playerRank?: number):
     return { rated: true, baseValue: 4000 + (cappedLp / 400) * 8000 };
   }
   if (tier === 'CHALLENGER') {
-    // Top 30 — linear interpolation: rank 1 → 130k, rank 30 → 43k.
-    // With typical multiplier ~1.4 this lands at the 60k-180k final-value
-    // target band the brief calls for.
-    if (playerRank && playerRank <= 30) {
-      return { rated: true, baseValue: 130000 - ((playerRank - 1) / 29) * 87000 };
-    }
-    // Rank 31–150 — continued gentle drop 43k → 15k.
-    if (playerRank && playerRank <= 150) {
-      return { rated: true, baseValue: 43000 - ((playerRank - 30) / 120) * 28000 };
-    }
-    // Rank > 150 or unknown — LP-based fade, max ~12k base.
-    return { rated: true, baseValue: 5000 + Math.min(1, lp / 1500) * 7000 };
+    // User-Vorgabe 2026-10-04 — Stuetzwerte nur mit Freigabe aendern:
+    //   Platz 1 → 130k, Platz 100 → 60k (Kurve, oben steiler),
+    //   Platz 100–300 → gerade Linie 60k → 30k,
+    //   ab Platz 300 oder ohne Platz → 30k (Spieler, die beim Tageswechsel
+    //   aus Challenger fallen).
+    return { rated: true, baseValue: challengerBase(playerRank) };
   }
 
   return { rated: false, baseValue: 0, notRatedReason: 'unknown_tier' };
+}
+
+// Challenger-Grundwert nach Tabellenplatz. Siehe Kommentar in computeBaseValue.
+export function challengerBase(playerRank?: number | null): number {
+  if (!playerRank || playerRank < 1 || playerRank >= 300) return 30000;
+  if (playerRank <= 100) return 60000 + 70000 * (1 - Math.pow((playerRank - 1) / 99, 0.6));
+  return 60000 - (playerRank - 100) * 150;
 }
 
 export const TFT_TIER_VAL = TIER_VAL;

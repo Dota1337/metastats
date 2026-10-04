@@ -94,7 +94,7 @@ async function riotFetch(url, label) {
 }
 
 function loadState() {
-  try { return { unresolvable: {}, ...JSON.parse(readFileSync(STATE_FILE, 'utf8')) }; } catch { return { unresolvable: {} }; }
+  try { return { unresolvable: {}, clusterByHandle: {}, ...JSON.parse(readFileSync(STATE_FILE, 'utf8')) }; } catch { return { unresolvable: {}, clusterByHandle: {} }; }
 }
 function saveState(state) {
   mkdirSync(STATE_DIR, { recursive: true });
@@ -106,8 +106,10 @@ const puuidCache = new Map();
 async function resolvePuuid(handle, region) {
   if (puuidCache.has(handle)) return puuidCache.get(handle);
   const [gameName, tagLine] = handle.split('#');
+  // Konten sind global — ohne Region reicht europe.
+  const accountCluster = region ? getAccountRouting(region) : 'europe';
   const account = await riotFetch(
-    `https://${getAccountRouting(region)}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`,
+    `https://${accountCluster}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`,
     `account-v1 ${handle}`,
   );
   puuidCache.set(handle, account.puuid);
@@ -137,8 +139,11 @@ async function getPending() {
       `&match_id=like.LIVE_*&order=id.asc&offset=${offset}&limit=${PAGE}`);
     if (!res.ok) throw new Error(`Supabase GET: HTTP ${res.status}`);
     const rows = await res.json();
+    // Seit App 0.3.0 (Spiel 28164) kommt die Region oft leer — Overwolf
+    // liefert dort keine Server-Angabe. Solche Zeilen bleiben drin, die
+    // Weltregion wird unten durchprobiert.
     for (const r of rows) {
-      if (!r.observer_puuid || !r.region) continue;
+      if (!r.observer_puuid) continue;
       const k = `${r.match_id}|${r.observer_puuid}`;
       if (!byId.has(k)) byId.set(k, { liveId: r.match_id, handle: r.observer_puuid, region: r.region });
     }
@@ -147,35 +152,51 @@ async function getPending() {
   return [...byId.values()];
 }
 
-async function resolveOne({ liveId, handle, region }) {
+const CLUSTERS = ['europe', 'americas', 'asia', 'sea'];
+
+// "EUW1_7881677153" → "euw1"
+function regionFromMatchId(matchId) {
+  const p = String(matchId).split('_')[0].toLowerCase();
+  return isValidRegion(p) ? p : null;
+}
+
+async function resolveOne({ liveId, handle, region }, state) {
   const seed = liveIdToTimestampMs(liveId);
   if (seed == null) return { unresolvable: 'no_timestamp' };
-  if (!isValidRegion(region)) return { unresolvable: `region:${region}` };
+  if (region && !isValidRegion(region)) return { unresolvable: `region:${region}` };
   if (!isRiotHandle(handle)) return { unresolvable: 'observer_not_handle' };
-  const cluster = getRegionalRouting(region);
   const puuid = await resolvePuuid(handle, region);
+
+  // Bekannte Region zuerst, dann die beim letzten Treffer gemerkte Weltregion,
+  // dann die uebrigen. Der Tag (#EUW) ist frei waehlbar, also nur ein Hinweis.
+  const hinted = [region && getRegionalRouting(region), state.clusterByHandle[handle]].filter(Boolean);
+  const order = [...new Set([...hinted, ...CLUSTERS])];
 
   const startTime = Math.floor((seed - 30 * 60 * 1000) / 1000);
   const endTime = Math.floor((seed + 90 * 60 * 1000) / 1000);
-  const ids = await riotFetch(
-    `https://${cluster}.api.riotgames.com/tft/match/v1/matches/by-puuid/${puuid}/ids?start=0&count=20&startTime=${startTime}&endTime=${endTime}`,
-    `match-ids ${handle}`,
-  );
-
-  let best = null;
-  for (const id of ids) {
-    const md = await getMatchDetail(id, cluster);
-    const end = md.info?.game_datetime;
-    if (!end) continue;
-    const start = end - Math.round((md.info.game_length || 0) * 1000);
-    const delta = Math.abs(start - seed);
-    if (delta < TS_WINDOW_MS && (!best || delta < best.delta)) best = { md, delta };
+  let seen = 0;
+  for (const cluster of order) {
+    const ids = await riotFetch(
+      `https://${cluster}.api.riotgames.com/tft/match/v1/matches/by-puuid/${puuid}/ids?start=0&count=20&startTime=${startTime}&endTime=${endTime}`,
+      `match-ids ${handle} ${cluster}`,
+    );
+    seen += ids.length;
+    let best = null;
+    for (const id of ids) {
+      const md = await getMatchDetail(id, cluster);
+      const end = md.info?.game_datetime;
+      if (!end) continue;
+      const start = end - Math.round((md.info.game_length || 0) * 1000);
+      const delta = Math.abs(start - seed);
+      if (delta < TS_WINDOW_MS && (!best || delta < best.delta)) best = { md, delta };
+    }
+    if (!best) continue;
+    state.clusterByHandle[handle] = cluster;
+    const riotId = best.md.metadata.match_id;
+    const p = best.md.info.participants.find(x => x.puuid === puuid);
+    return { riotId, placement: p ? p.placement : null, delta: best.delta, region: region || regionFromMatchId(riotId) };
   }
-  if (!best) {
-    return Date.now() - seed > GIVE_UP_MS ? { unresolvable: `no_match_in_window(${ids.length})` } : { pending: true };
-  }
-  const p = best.md.info.participants.find(x => x.puuid === puuid);
-  return { riotId: best.md.metadata.match_id, placement: p ? p.placement : null, delta: best.delta };
+  return Date.now() - seed > GIVE_UP_MS ? { unresolvable: `no_match_in_window(${seen})` } : { pending: true };
 }
 
 async function main() {
@@ -190,7 +211,7 @@ async function main() {
   for (const p of pending) {
     let r;
     try {
-      r = await resolveOne(p);
+      r = await resolveOne(p, state);
     } catch (e) {
       failed++;
       console.warn(`  ${p.liveId}: ${e.message}`);
@@ -221,7 +242,7 @@ async function main() {
       {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-        body: JSON.stringify({ match_id: r.riotId, observer_placement: r.placement }),
+        body: JSON.stringify({ match_id: r.riotId, observer_placement: r.placement, ...(r.region ? { region: r.region } : {}) }),
       },
     );
     if (!upd.ok) { failed++; console.warn(`    Update fehlgeschlagen: ${upd.status} ${(await upd.text()).slice(0, 120)}`); continue; }

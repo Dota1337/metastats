@@ -11,16 +11,15 @@ import { enqueue, flush, idbStore, type OutboxEntry, type SendResult } from '../
 import { recordBoard, flattenBoards, type Boards } from '../lib/boards.ts';
 import {
   jsonish, parseBoardPieces, parseShop, parseLevel, parseStage, stageToRound,
-  parseOpponent, gameTimeToRound, isTftMode,
+  parseOpponent, gameTimeToRound, isTftMode, gameClassId, isTftGame, tftFromGame,
+  featuresFor, parseLocalPlayer, fightToRound, fightsLowerBound, regionFromHandle,
 } from '../lib/gep.ts';
 
-const FEATURES = ['gep_internal', 'game_info', 'live_client_data', 'me', 'match_info', 'store', 'board'];
 const REFRESH_MS = 30 * 60 * 1000;
 const SUBMIT_URL = API_BASE + '/api/tft/positions/submit';
-const TAG_TO_REGION: Record<string, string> = {
-  euw: 'euw1', eune: 'eun1', na: 'na1', kr: 'kr', br: 'br1', lan: 'la1', las: 'la2',
-  oce: 'oc1', jp: 'jp1', tr: 'tr1', ru: 'ru',
-};
+// Jeder neue Info-Schluessel einmal mit gekuerztem Rohwert ins Log — zum
+// Auswerten der ersten echten Spiele auf 28164 (welche Daten kommen wann).
+const DEBUG_GEP = true;
 
 const log = (...a: unknown[]) => console.log('[metastats-companion]', ...a);
 
@@ -33,14 +32,37 @@ const match = {
   placement: null as number | null,
   round: 0,
   boards: new Map() as Boards,
+  startedAt: Date.now(),
+  gameId: null as number | null,
+  submitted: false,
+  // Runde: round_type (21570/5426) hat Vorrang, sonst Kampf-Zaehler.
+  hasStageFeed: false,
+  fights: 0,
+  lastOutcome: '',
+  lastOutcomeAt: 0,
 };
 
 function resetMatch(): void {
   match.matchId = null;
   match.region = null;
+  match.handle = null;
   match.placement = null;
   match.round = 0;
   match.boards = new Map();
+  match.startedAt = Date.now();
+  match.submitted = false;
+  match.hasStageFeed = false;
+  match.fights = 0;
+  match.lastOutcome = '';
+  match.lastOutcomeAt = 0;
+}
+
+// Runde aus gezaehlten Kaempfen, mindestens so weit wie die Spielzeit erlaubt.
+function updateRoundFromFights(): void {
+  if (match.hasStageFeed) return;
+  const done = Math.max(match.fights, fightsLowerBound((Date.now() - match.startedAt) / 1000));
+  const r = fightToRound(done + 1);
+  if (r > match.round) match.round = r;
 }
 
 async function hmacHex(secret: string, payload: string): Promise<string> {
@@ -78,32 +100,38 @@ async function flushOutbox(): Promise<void> {
   }
 }
 
+// Genau ein Paket pro Spiel: nach dem Senden (Ausscheiden, Spielende) werden
+// weitere Brett-Updates — etwa beim Zuschauen — ignoriert.
 async function submit(): Promise<void> {
+  if (match.submitted) return;
   const observations = flattenBoards(match.boards);
   if (observations.length === 0) return;
-  if (!read('ms.settings').share) {
-    resetMatch();
-    return;
-  }
+  match.submitted = true;
+  match.boards = new Map();
+  if (!read('ms.settings').share) return;
   const timestamp = Date.now();
-  const matchId = match.matchId || `LIVE_${timestamp}_${(match.handle || 'anon').slice(0, 8)}`;
+  // Startzeit statt Sendezeit: der Backfill vergleicht mit dem Spielbeginn.
+  const seed = Math.floor(match.startedAt / 60000) * 60000;
+  const matchId = match.matchId || `LIVE_${seed}_${(match.handle || 'anon').slice(0, 8)}`;
   const body = JSON.stringify({
     matchId,
-    region: match.region || 'euw1',
+    // Nur eine sichere Region, sonst leer — der Backfill sucht dann selbst.
+    region: match.region,
     ownPuuid: match.handle,
     placement: match.placement,
     observationCount: observations.length,
     observations,
     sentAt: new Date(timestamp).toISOString(),
     timestamp,
-    clientVersion: CLIENT_VERSION,
+    // Spiel 28164 liefert keinen Spielmodus; die Kennung erlaubt, Hyper Roll
+    // oder Double Up spaeter herauszufiltern.
+    clientVersion: match.gameId === 28164 ? `${CLIENT_VERSION}-28164` : CLIENT_VERSION,
   });
   // Paketgroesse als Messgrundlage fuer den Komplett-Upload (Plan P2).
   log('match packet', {
     matchId, round: match.round, boards: match.boards.size,
     observations: observations.length, bytes: new TextEncoder().encode(body).length,
   });
-  resetMatch();
   const entry: OutboxEntry = { id: `${matchId}_${timestamp}`, url: SUBMIT_URL, body, createdAt: timestamp, tries: 0 };
   try {
     await enqueue(idbStore, entry);
@@ -127,9 +155,36 @@ function patchLive(p: Partial<Live>): void {
   void syncOverlays();
 }
 
+const seenKeys = new Set<string>();
+
+function debugKeys(all: Record<string, Record<string, unknown>>): void {
+  if (!DEBUG_GEP) return;
+  for (const [feature, keys] of Object.entries(all)) {
+    for (const [key, val] of Object.entries(keys || {})) {
+      const id = `${feature}.${key}`;
+      if (seenKeys.has(id)) continue;
+      seenKeys.add(id);
+      const raw = typeof val === 'string' ? val : JSON.stringify(val);
+      log('info key', match.gameId, id, String(raw).slice(0, 300));
+    }
+  }
+}
+
+function setHandle(name: string): void {
+  // 28164 meldet evtl. nur den Namen ohne #Tag. Passt der gespeicherte eigene
+  // Riot-Name dazu, wird er genommen (der Backfill braucht Name#TAG).
+  let handle = name;
+  const me = read('ms.me');
+  if (!name.includes('#') && me && me.split('#')[0].toLowerCase() === name.toLowerCase()) handle = me;
+  match.handle = handle.slice(0, 100);
+  if (handle.includes('#') && me !== handle) write('ms.me', handle);
+  if (!match.region) match.region = regionFromHandle(handle);
+}
+
 function onInfo(info: overwolf.games.events.InfoUpdates2Event): void {
   const all = (info?.info || {}) as Record<string, Record<string, unknown>>;
   const p: Partial<Live> = {};
+  debugKeys(all);
 
   const mi = all.match_info;
   if (mi) {
@@ -138,10 +193,24 @@ function onInfo(info: overwolf.games.events.InfoUpdates2Event): void {
     if (mi.round_type) {
       const stage = parseStage(mi.round_type);
       if (stage) {
+        match.hasStageFeed = true;
         p.stage = stage;
         const r = stageToRound(stage);
         if (r != null && r > match.round) match.round = r;
       }
+    }
+    // 28164: kein round_type — jedes neue Kampfergebnis zaehlt als ein Kampf.
+    // Overwolf fuehrt den Schluessel dort mit Leerzeichen am Ende.
+    const ro = mi.round_outcome ?? mi['round_outcome '];
+    if (ro != null && ro !== '') {
+      const txt = typeof ro === 'string' ? ro : JSON.stringify(ro);
+      const now = Date.now();
+      // Gleicher Wert oder < 20 s seit dem letzten = derselbe Kampf.
+      if (txt !== match.lastOutcome && now - match.lastOutcomeAt > 20_000) {
+        match.fights++;
+        match.lastOutcomeAt = now;
+      }
+      match.lastOutcome = txt;
     }
     if (mi.opponent !== undefined) p.opponent = parseOpponent(mi.opponent);
     if (mi.match_id) match.matchId = String(mi.match_id);
@@ -152,7 +221,21 @@ function onInfo(info: overwolf.games.events.InfoUpdates2Event): void {
     }
   }
 
+  const roster = all.roster;
+  if (roster?.player_status !== undefined) {
+    const lp = parseLocalPlayer(roster.player_status);
+    if (lp) {
+      if (!match.handle || (lp.name.includes('#') && !match.handle.includes('#'))) setHandle(lp.name);
+      // Ausgeschieden: Platz steht fest, Paket geht sofort raus.
+      if (lp.rank != null && !match.placement) {
+        match.placement = lp.rank;
+        void submit();
+      }
+    }
+  }
+
   const me = all.me;
+  if (me?.summoner_name && !match.handle) setHandle(String(me.summoner_name));
   if (me?.xp !== undefined) {
     const lvl = parseLevel(me.xp);
     if (lvl != null) p.level = lvl;
@@ -163,6 +246,10 @@ function onInfo(info: overwolf.games.events.InfoUpdates2Event): void {
     p.shop = parseShop(store.shop_pieces);
     if (!sawShopVisibleEvent) p.shopVisible = p.shop.some(Boolean);
   }
+  if (store?.shop_visible !== undefined) {
+    sawShopVisibleEvent = true;
+    p.shopVisible = String(store.shop_visible) === 'true';
+  }
 
   const lcd = all.live_client_data;
   if (lcd) {
@@ -170,10 +257,7 @@ function onInfo(info: overwolf.games.events.InfoUpdates2Event): void {
     if (ap) {
       const riotId = ap.riotIdGameName && ap.riotIdTagLine ? `${ap.riotIdGameName}#${ap.riotIdTagLine}` : ap.riotId || null;
       const handle = riotId || ap.summonerName;
-      if (handle) match.handle = String(handle).slice(0, 100);
-      if (riotId && read('ms.me') !== riotId) write('ms.me', riotId);
-      const region = TAG_TO_REGION[String(ap.riotIdTagLine || '').toLowerCase()];
-      if (region) match.region = region;
+      if (handle) setHandle(String(handle));
     }
     const gd = jsonish<{ gameTime?: number }>(lcd.game_data);
     if (gd?.gameTime != null) {
@@ -186,7 +270,9 @@ function onInfo(info: overwolf.games.events.InfoUpdates2Event): void {
     }
   }
 
-  const board = all.board;
+  if (!lcd) updateRoundFromFights();
+
+  const board = match.submitted ? null : all.board;
   if (board?.board_pieces) recordBoard(match.boards, 'own', match.round, null, parseBoardPieces(board.board_pieces));
   if (board?.opponent_board_pieces) {
     const opp = p.opponent !== undefined ? p.opponent : live.opponent;
@@ -209,24 +295,52 @@ function onEvents(e: overwolf.games.events.NewGameEvents): void {
       patchLive({ shopVisible: visible });
     } else if (END_EVENTS.has(ev.name)) {
       const place = Number(ev.data);
-      if (place >= 1 && place <= 8) match.placement = place;
+      if (place >= 1 && place <= 8 && !match.placement) match.placement = place;
       void submit();
     }
   }
 }
 
-function armFeatures(): void {
-  overwolf.games.events.setRequiredFeatures(FEATURES, r => log('features', r?.success, (r as { error?: string })?.error || ''));
+// Overwolf lehnt setRequiredFeatures kurz nach Spielstart oft ab, bis der
+// Spiel-Anschluss bereit ist: bis zu 5 Versuche im Abstand von 3 s. Die
+// Lauf-Marke beendet eine alte Schleife, sobald ein neues Spiel startet.
+let armGen = 0;
+
+function armFeatures(classId: number | null): void {
+  const gen = ++armGen;
+  const features = featuresFor(classId);
+  let tries = 0;
+  const attempt = () => {
+    if (gen !== armGen) return;
+    overwolf.games.events.setRequiredFeatures(features, r => {
+      const res = r as { success?: boolean; error?: string; supportedFeatures?: string[] };
+      log('features', classId, res?.success, res?.error || '', res?.supportedFeatures || '');
+      if (!res?.success && ++tries < 5 && gen === armGen) setTimeout(attempt, 3000);
+    });
+  };
+  attempt();
 }
 
-function onGameState(running: boolean): void {
-  if (running) {
-    armFeatures();
-  } else {
-    void submit();
-    sawShopVisibleEvent = false;
-    patchLive({ inTft: false, shop: [], shopVisible: false, opponent: null, stage: null, level: null });
-  }
+let activeGame: number | null = null;
+
+function onGameStart(classId: number | null): void {
+  if (!isTftGame(classId) || activeGame === classId) return; // anderes Spiel / schon erfasst
+  activeGame = classId;
+  resetMatch();
+  match.gameId = classId;
+  sawShopVisibleEvent = false;
+  armFeatures(classId);
+  // 28164/21570 sind sicher TFT; bei 5426 entscheidet erst game_mode.
+  patchLive({ inTft: tftFromGame(classId) === true, shop: [], shopVisible: false, opponent: null, stage: null, level: null });
+}
+
+function onGameEnd(): void {
+  if (activeGame == null) return;
+  activeGame = null;
+  armGen++;
+  void submit();
+  sawShopVisibleEvent = false;
+  patchLive({ inTft: false, shop: [], shopVisible: false, opponent: null, stage: null, level: null });
 }
 
 // ---------- Overlays ----------
@@ -292,10 +406,13 @@ async function refreshData(force = false): Promise<void> {
 overwolf.games.events.onInfoUpdates2.addListener(onInfo);
 overwolf.games.events.onNewEvents.addListener(onEvents);
 overwolf.games.onGameInfoUpdated.addListener(e => {
-  if (e?.runningChanged || e?.gameChanged) onGameState(!!e.gameInfo?.isRunning);
+  if (e?.runningChanged || e?.gameChanged) {
+    if (e.gameInfo?.isRunning) onGameStart(gameClassId(e.gameInfo));
+    else onGameEnd();
+  }
   if (e?.resolutionChanged) shopPlaced = false;
 });
-overwolf.games.getRunningGameInfo(r => { if (r?.isRunning) armFeatures(); });
+overwolf.games.getRunningGameInfo(r => { if (r?.isRunning) onGameStart(gameClassId(r)); });
 overwolf.settings.hotkeys.onPressed.addListener(e => { if (e?.name === 'toggle_main') void toggle('main'); });
 
 let lastRegion = read('ms.settings').region;

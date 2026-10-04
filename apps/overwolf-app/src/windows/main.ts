@@ -6,7 +6,7 @@ import { t, lang, LANGS, type Lang } from '../lib/i18n.ts';
 import { boot } from '../lib/boot.ts';
 import { loadComps, loadLookups, loadPlayer, siteUrl } from '../lib/api.ts';
 import { makeDraggable, minimizeSelf, closeSelf, openExternal } from '../lib/ow.ts';
-import { levelPlan, compRecipes } from '../lib/plan.ts';
+import { levelPlan, compRecipes, groupRecipes } from '../lib/plan.ts';
 import { h, clear, unitIcon, itemIcon, tierBadge, fmtAvg, fmtPct, compUnits } from '../lib/dom.ts';
 
 type Tab = 'comps' | 'tools' | 'profile' | 'settings';
@@ -140,12 +140,12 @@ function toolsTab(): HTMLElement {
     );
   }
 
-  const allRecipes = Object.entries(lk?.items ?? {})
-    .filter(([, it]) => it.recipe)
-    .sort((a, b) => a[1].name.localeCompare(b[1].name, lang()));
   const recipeBlock = h('div', { class: 'card' },
     h('h3', {}, t('tools.recipes')),
-    h('div', { class: 'recipes grid' }, allRecipes.map(([id, it]) => recipeRow(id, it.recipe!, lk))),
+    groupRecipes(lk).flatMap(g => [
+      h('div', { class: 'recipe-group muted' }, t(`recipes.${g.kind}`)),
+      h('div', { class: 'recipes grid' }, g.recipes.map(r => recipeRow(r.item, r.parts, lk))),
+    ]),
   );
 
   return h('section', { class: 'panel' }, planBlock, oddsBlock, recipeBlock);

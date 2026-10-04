@@ -23,6 +23,9 @@ export const COMPANION_TRANSLATIONS = {
   'companion.comps.open': t6('Auf metastats.gg öffnen', 'Open on metastats.gg', 'metastats.gg에서 열기', '在 metastats.gg 打开', 'Abrir en metastats.gg', 'Ouvrir sur metastats.gg'),
 
   'companion.tools.recipes': t6('Item-Rezepte', 'Item recipes', '아이템 조합법', '装备合成', 'Recetas de objetos', 'Recettes d’objets'),
+  'companion.recipes.items': t6('Items', 'Items', '아이템', '装备', 'Objetos', 'Objets'),
+  'companion.recipes.spatula': t6('Mit Spatula', 'With Spatula', '뒤집개 조합', '金铲铲合成', 'Con Espátula', 'Avec Spatule'),
+  'companion.recipes.pan': t6('Mit Bratpfanne', 'With Frying Pan', '프라이팬 조합', '金锅锅合成', 'Con Sartén', 'Avec Poêle'),
   'companion.tools.odds': t6('Shop-Chancen', 'Shop odds', '상점 확률', '商店概率', 'Probabilidades de tienda', 'Probabilités de boutique'),
   'companion.tools.level': t6('Stufe', 'Level', '레벨', '等级', 'Nivel', 'Niveau'),
   'companion.tools.levelPlan': t6('Stufenplan', 'Level plan', '레벨 계획', '升级计划', 'Plan de niveles', 'Plan de niveaux'),

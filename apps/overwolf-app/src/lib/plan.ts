@@ -28,8 +28,9 @@ export function levelPlan(comp: CompanionComp, lookups: CompanionLookups | null)
 
 export interface Recipe { item: string; parts: [string, string] }
 
-// Rezepte der Items an den Item-Traegern, ohne Doppelte. Items ohne
-// 2-teiliges Rezept (Embleme aus Spatula, Artefakte) fallen weg.
+// Rezepte der Items an den Item-Traegern, in Bau-Reihenfolge der Comp, ohne
+// Doppelte. Items ohne 2-teiliges Rezept (Artefakte, Strahlende) fallen weg;
+// Embleme aus Spatula oder Bratpfanne haben eines und bleiben drin.
 export function compRecipes(comp: CompanionComp, lookups: CompanionLookups | null): Recipe[] {
   if (!lookups) return [];
   const seen = new Set<string>();
@@ -43,6 +44,27 @@ export function compRecipes(comp: CompanionComp, lookups: CompanionLookups | nul
     }
   }
   return out;
+}
+
+export type RecipeGroupKind = 'items' | 'spatula' | 'pan';
+export interface RecipeGroup { kind: RecipeGroupKind; recipes: Recipe[] }
+
+// Gesamtliste der Rezepte in drei Bloecken: normale Items, alles mit Spatula
+// (Embleme, Cape, Crown), alles mit Bratpfanne (Embleme, Shield). Erkannt am
+// Bestandteil, nicht am Namen; Spatula geht vor. Je Block alphabetisch nach
+// dem (englischen) Item-Namen. Leere Bloecke fallen weg.
+export function groupRecipes(lookups: CompanionLookups | null): RecipeGroup[] {
+  const groups: Record<RecipeGroupKind, Recipe[]> = { items: [], spatula: [], pan: [] };
+  for (const [id, it] of Object.entries(lookups?.items ?? {})) {
+    if (!it.recipe) continue;
+    const parts = it.recipe.join(' ');
+    const kind: RecipeGroupKind = /Spatula/i.test(parts) ? 'spatula' : /FryingPan/i.test(parts) ? 'pan' : 'items';
+    groups[kind].push({ item: id, parts: it.recipe });
+  }
+  const name = (r: Recipe) => lookups?.items[r.item]?.name ?? r.item;
+  return (['items', 'spatula', 'pan'] as const)
+    .map(kind => ({ kind, recipes: groups[kind].sort((a, b) => name(a).localeCompare(name(b), 'en')) }))
+    .filter(g => g.recipes.length > 0);
 }
 
 // Welche Shop-Plaetze eine Unit der Comp zeigen.

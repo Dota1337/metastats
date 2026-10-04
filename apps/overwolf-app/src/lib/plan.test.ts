@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { CompanionComp, CompanionLookups } from '../../../../app/lib/companion-types.ts';
-import { levelPlan, compRecipes, shopMatches } from './plan.ts';
+import { levelPlan, compRecipes, shopMatches, groupRecipes } from './plan.ts';
 
 const lookups: CompanionLookups = {
   v: 1, set: 18,
@@ -51,4 +51,27 @@ test('Rezepte ohne Doppelte, Items ohne Rezept fallen weg', () => {
 test('shopMatches markiert nur Plaetze mit Units der Comp', () => {
   assert.deepEqual(shopMatches(['A', null, 'X', 'D', 'A'], comp([{ id: 'A' }, { id: 'D' }])), [true, false, false, true, true]);
   assert.deepEqual(shopMatches([], null), [false, false, false, false, false]);
+});
+
+test('groupRecipes: Items, dann Spatula, dann Bratpfanne, je alphabetisch', () => {
+  const lk: CompanionLookups = {
+    ...lookups,
+    items: {
+      ...lookups.items,
+      DA_Component_Spatula: { name: 'Spatula', icon: null, component: true },
+      DA_Component_FryingPan: { name: 'Frying Pan', icon: null, component: true },
+      Zeke: { name: "Zeke's Herald", icon: null, recipe: ['Sword', 'Bow'] },
+      Cape: { name: "Tactician's Cape", icon: null, recipe: ['DA_Component_Spatula', 'DA_Component_FryingPan'] },
+      EmbA: { name: 'Blossom Emblem', icon: null, recipe: ['DA_Component_Spatula', 'Sword'] },
+      Shield: { name: "Tactician's Shield", icon: null, recipe: ['DA_Component_FryingPan', 'DA_Component_FryingPan'] },
+      EmbB: { name: 'Brawler Emblem', icon: null, recipe: ['Bow', 'DA_Component_FryingPan'] },
+    },
+  };
+  const g = groupRecipes(lk);
+  assert.deepEqual(g.map(x => x.kind), ['items', 'spatula', 'pan']);
+  assert.deepEqual(g[0].recipes.map(r => r.item), ['Giant', 'Zeke']);
+  assert.deepEqual(g[1].recipes.map(r => r.item), ['EmbA', 'Cape']);
+  assert.deepEqual(g[2].recipes.map(r => r.item), ['EmbB', 'Shield']);
+  assert.deepEqual(groupRecipes(lookups).map(x => x.kind), ['items']);
+  assert.deepEqual(groupRecipes(null), []);
 });

@@ -31,7 +31,7 @@ export function parseBoardPieces(raw: unknown): BoardPiece[] {
 }
 
 // store.shop_pieces: {"slot_1":{"name":"DA_18_Tristana"}, ...} → 5 Plaetze.
-// Gekaufte Plaetze kommen leer oder ohne Namen.
+// Gekaufte Plaetze kommen leer, ohne Namen oder als "Sold".
 export function parseShop(raw: unknown): Array<string | null> {
   const parsed = jsonish<Record<string, { name?: string } | null>>(raw);
   const out: Array<string | null> = [null, null, null, null, null];
@@ -41,7 +41,8 @@ export function parseShop(raw: unknown): Array<string | null> {
     if (!m) continue;
     const i = Number(m[1]) - 1;
     if (i < 0 || i > 4) continue;
-    out[i] = val?.name ? String(val.name) : null;
+    const name = val?.name ? String(val.name) : '';
+    out[i] = name && name.toLowerCase() !== 'sold' ? name : null;
   }
   return out;
 }
@@ -80,8 +81,91 @@ export function gameTimeToRound(gameTimeSec: number): number {
   return Math.max(0, Math.min(60, Math.floor(gameTimeSec / 35)));
 }
 
-// match_info.game_mode ist "TFT" oder "LOL" — beide laufen als Spiel 5426.
+// match_info.game_mode ist "TFT" oder "LOL" — nur auf Spiel 5426 noetig, wo
+// Kluft und TFT als dasselbe Spiel laufen. 28164/21570 sind immer TFT.
 export function isTftMode(mode: unknown): boolean | null {
   if (typeof mode !== 'string' || !mode) return null;
   return mode.toUpperCase() === 'TFT';
+}
+
+// ---------- Spiel-Kennungen ----------
+
+// Overwolf fuehrt TFT seit Herbst 2026 als eigenes Spiel 28164 (Instanz
+// 281641). 21570 ist die alte TFT-Kennung, 5426 League of Legends, unter der
+// TFT frueher mitlief. Muss mit public/manifest.json uebereinstimmen
+// (Test in gep.test.ts).
+export const TFT_GAME_IDS = [28164, 21570, 5426] as const;
+const TFT_ONLY = new Set<number>([28164, 21570]);
+
+// gameInfo.classId, sonst aus der Instanz-ID (281641 → 28164).
+export function gameClassId(info: { classId?: number; id?: number } | null | undefined): number | null {
+  const c = Number(info?.classId);
+  if (Number.isFinite(c) && c > 0) return c;
+  const id = Number(info?.id);
+  return Number.isFinite(id) && id > 0 ? Math.floor(id / 10) : null;
+}
+
+export function isTftGame(classId: number | null): boolean {
+  return classId != null && (TFT_GAME_IDS as readonly number[]).includes(classId);
+}
+
+// true = sicher TFT, null = erst game_mode abwarten (5426), false = anderes Spiel.
+export function tftFromGame(classId: number | null): boolean | null {
+  if (classId == null) return null;
+  if (TFT_ONLY.has(classId)) return true;
+  return classId === 5426 ? null : false;
+}
+
+// 28164 kennt kein live_client_data, dafuer roster (eigener Name, Platzierung).
+export function featuresFor(classId: number | null): string[] {
+  const base = ['gep_internal', 'game_info', 'me', 'match_info', 'store', 'board', 'roster'];
+  return classId === 28164 ? base : [...base, 'live_client_data'];
+}
+
+// ---------- Ersatzquellen fuer 28164 ----------
+
+// roster.player_status: {"Name":{"localplayer":true,"rank":0,...},...}.
+// Lebende Spieler haben rank 0 bzw. leer, wer ausscheidet bekommt seinen Platz.
+export function parseLocalPlayer(raw: unknown): { name: string; rank: number | null } | null {
+  const parsed = jsonish<Record<string, { localplayer?: boolean | string; rank?: number | string; tag_line?: string } | null>>(raw);
+  if (!parsed || typeof parsed !== 'object') return null;
+  for (const [key, val] of Object.entries(parsed)) {
+    if (!val || typeof val !== 'object') continue;
+    if (val.localplayer !== true && val.localplayer !== 'true') continue;
+    const rank = Number(val.rank);
+    const name = val.tag_line && !key.includes('#') ? `${key}#${val.tag_line}` : key;
+    return { name, rank: Number.isInteger(rank) && rank >= 1 && rank <= 8 ? rank : null };
+  }
+  return null;
+}
+
+// Kampf Nr. n (ab 1) → Stufe×10+Runde. Ab Stufe 2 hat jede Stufe fuenf
+// Spielerkaempfe: x-1, x-2, x-3, x-5, x-6 (x-4 Karussell, x-7 Monster).
+const PVP_ROUNDS = [1, 2, 3, 5, 6];
+export function fightToRound(fight: number): number {
+  const n = Math.max(1, Math.floor(fight));
+  const stage = 2 + Math.floor((n - 1) / PVP_ROUNDS.length);
+  return stage * 10 + PVP_ROUNDS[(n - 1) % PVP_ROUNDS.length];
+}
+
+// Untergrenze fuer die Zahl der schon gespielten Kaempfe aus der Spielzeit,
+// bewusst vorsichtig (Stufe 1 ~3 Min, danach >= 75 s je Kampf), damit sie den
+// Zaehler nie ueberholt, solange round_outcome kommt.
+export function fightsLowerBound(elapsedSec: number): number {
+  if (!Number.isFinite(elapsedSec) || elapsedSec <= 180) return 0;
+  return Math.min(40, Math.floor((elapsedSec - 180) / 75));
+}
+
+// Regionskuerzel aus dem Standard-Tag. Nur ein Hinweis — der Tag ist frei
+// waehlbar, der Backfill probiert deshalb auch die anderen Weltregionen.
+const TAG_TO_REGION: Record<string, string> = {
+  euw: 'euw1', eune: 'eun1', na: 'na1', kr: 'kr', br: 'br1', lan: 'la1', las: 'la2',
+  oce: 'oc1', jp: 'jp1', tr: 'tr1', ru: 'ru', me: 'me1', sg: 'sg2', tw: 'tw2', vn: 'vn2',
+  ph: 'ph2', th: 'th2',
+  euw1: 'euw1', eun1: 'eun1', na1: 'na1', br1: 'br1', la1: 'la1', la2: 'la2', oc1: 'oc1',
+  jp1: 'jp1', tr1: 'tr1', me1: 'me1', sg2: 'sg2', tw2: 'tw2', vn2: 'vn2', ph2: 'ph2', th2: 'th2',
+};
+export function regionFromHandle(handle: string | null): string | null {
+  const tag = handle?.split('#')[1];
+  return tag ? TAG_TO_REGION[tag.toLowerCase()] ?? null : null;
 }

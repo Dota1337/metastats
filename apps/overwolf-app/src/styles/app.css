@@ -143,6 +143,8 @@ input, select { font: inherit; color: var(--text); }
 .plan-recipes .recipes { gap: 8px 18px; }
 .recipes { display: flex; flex-wrap: wrap; gap: 8px; }
 .recipes.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+.recipe-group { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; margin: 12px 0 6px; }
+.recipe-group:first-of-type { margin-top: 0; }
 .recipe { display: flex; align-items: center; gap: 4px; }
 .recipe .op { color: var(--muted); font-size: 11px; }
 

@@ -1,0 +1,14 @@
+{
+ "18.1": {
+  "publishIso": "2026-08-25T18:00:00.000Z",
+  "body": "<h2 id=\"patch-midpatch-updates\">Mid-Patch Updates</h2>\n<h3 class=\"change-detail-title\" id=\"patch-august-31st-and-september-1st\">AUGUST 31ST AND SEPTEMBER 1ST</h3>\n<h4 class=\"change-detail-title\">TRAITS</h4>\n<h4 class=\"change-detail-title\">CHAMPIONS</h4>\n<h4 class=\"change-detail-title\">GAME FEEL AND PERFORMANCE</h4>\n<h4 class=\"change-detail-title\">BUGS</h4>\n<h3 class=\"change-detail-title\">AUGUST 28TH</h3>\n<h4 class=\"change-detail-title\">NEW FEATURE</h4>\n<h4 class=\"change-detail-title\">DOUBLE UP</h4>\n<h4 class=\"change-detail-title\">BUG FIXES</h4>\n<h3 class=\"change-detail-title\">AUGUST 27TH</h3>\n<h4 class=\"change-detail-title\">BUG FIXES</h4>\n<h2 id=\"patch-enchanted-wilds-release-performance-notes\">ENCHANTED WILDS RELEASE PERFORMANCE NOTES</h2>"
+ },
+ "18.2": {
+  "publishIso": "2026-09-09T18:00:00.000Z",
+  "body": "<h2 id=\"patch-midpatch-updates\">MID-PATCH UPDATE</h2>\n<h4 class=\"change-detail-title\">SEPTEMBER 14</h4>\n<h4 class=\"change-detail-title\">SYSTEMS</h4>\n<h4 class=\"change-detail-title\">AUGMENTS</h4>\n<h4 class=\"change-detail-title\">UNITS</h4>\n<h4 class=\"change-detail-title\">WISPS</h4>\n<h4 class=\"change-detail-title\">BUG FIXES</h4>\n<h4 class=\"change-detail-title\">PERFORMANCE/STABILITY BUG FIXES</h4>\n<h2 id=\"patch-midpatch-updates\">18.2 PERFORMANCE/STABILITY IMPROVEMENTS</h2>"
+ },
+ "18.3": {
+  "publishIso": "2026-09-22T18:00:00.000Z",
+  "body": "<h2 id=\"patch-midpatch-updates\">MID-PATCH UPDATE</h2>\n<h4 class=\"change-detail-title\">SEPTEMBER 28TH</h4>\n<h4 class=\"change-detail-title\">SEPTEMBER 24TH</h4>\n<h4 class=\"change-detail-title\">18.3 B PATCH BALANCE CHANGES</h4>\n<h4 class=\"change-detail-title\">18.2 CHAMPION TARGETING</h4>\n<h4 class=\"change-detail-title\">18.2 B BALANCE CHANGES RE-ADDED</h4>\n<h4 class=\"change-detail-title\">AUGMENTS TEMPORARILY DISABLED</h4>\n<h2 id=\"patch-patch-highlights-\">PATCH HIGHLIGHTS</h2>"
+ }
+}

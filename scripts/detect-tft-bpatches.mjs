@@ -42,6 +42,29 @@ const MONTHS = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY',
   'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
 const DATE_RE = new RegExp(`(${MONTHS.join('|')})\\s+(\\d{1,2})(?:ST|ND|RD|TH)?`, 'g');
 
+const DAY_PART = `(?:${MONTHS.join('|')})\\s+\\d{1,2}(?:ST|ND|RD|TH)?`;
+const DATE_ONLY_RE = new RegExp(`^${DAY_PART}(?:\\s*(?:AND|&|,)\\s*${DAY_PART})*$`);
+
+// Seit 18.2 benennt Riot Kategorien frei ("18.3 B PATCH BALANCE CHANGES",
+// "AUGMENTS TEMPORARILY DISABLED"). Erst die exakten Listen, dann einzelne
+// Woerter: Bug/Fix/Performance gewinnen vor Balance-Woertern, damit
+// "CHAMPION BUG FIXES" keinen Schnitt erzeugt. Was keins von beidem
+// enthaelt, bleibt unbekannt und laesst den Lauf scheitern.
+const NON_BALANCE_WORDS = new Set(['BUG', 'BUGS', 'FIX', 'FIXES', 'PERFORMANCE', 'STABILITY', 'COSMETIC', 'COSMETICS']);
+const BALANCE_WORDS = new Set([
+  'BALANCE', 'TRAIT', 'TRAITS', 'CHAMPION', 'CHAMPIONS', 'UNIT', 'UNITS', 'ITEM', 'ITEMS',
+  'AUGMENT', 'AUGMENTS', 'ARTIFACTS', 'EMBLEMS', 'SYSTEM', 'SYSTEMS', 'PORTALS',
+  'ENCOUNTERS', 'ANOMALIES', 'CHARMS', 'WISPS',
+]);
+export function categoryKind(label) {
+  if (BALANCE.has(label)) return 'balance';
+  if (NON_BALANCE.has(label)) return 'other';
+  const words = label.replace(/^\d+\.\d+(?:\s?[A-Z])?\s+/, '').split(/[^A-Z]+/).filter(Boolean);
+  if (words.some(w => NON_BALANCE_WORDS.has(w))) return 'other';
+  if (words.some(w => BALANCE_WORDS.has(w))) return 'balance';
+  return 'unknown';
+}
+
 const text = html => html.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim().toUpperCase();
 
 // Letztes Datum einer Ueberschrift als YYYY-MM-DD. Das Jahr kommt vom
@@ -67,7 +90,8 @@ export function parseMidpatch(body, publishIso) {
   const updates = [];
   for (const h of section.matchAll(/<h([34])[^>]*>([\s\S]*?)<\/h\1>/g)) {
     const label = text(h[2]);
-    if (h[1] === '3') {
+    // Seit 18.2 setzt Riot das Datum als h4 ("SEPTEMBER 14", "SEPTEMBER 28TH").
+    if (h[1] === '3' || DATE_ONLY_RE.test(label)) {
       const day = headingDay(label, publishIso);
       if (!day) throw new Error(`Datums-Ueberschrift nicht lesbar: "${label}"`);
       updates.push({ day, heading: label, categories: [], balance: false });
@@ -75,8 +99,9 @@ export function parseMidpatch(body, publishIso) {
     }
     const cur = updates[updates.length - 1];
     if (!cur) throw new Error(`Kategorie "${label}" ohne Datums-Ueberschrift`);
-    if (BALANCE.has(label)) cur.balance = true;
-    else if (!NON_BALANCE.has(label)) throw new Error(`Unbekannte Kategorie "${label}" (${cur.heading}) — Liste in detect-tft-bpatches.mjs pruefen`);
+    const kind = categoryKind(label);
+    if (kind === 'balance') cur.balance = true;
+    else if (kind !== 'other') throw new Error(`Unbekannte Kategorie "${label}" (${cur.heading}) — Liste in detect-tft-bpatches.mjs pruefen`);
     cur.categories.push(label);
   }
   return updates;

@@ -25,6 +25,22 @@
       "from_day": "2026-09-01",
       "source": "https://teamfighttactics.leagueoflegends.com/en-us/news/game-updates/teamfight-tactics-patch-18-1/",
       "detected_at": "2026-09-13T17:26:34.587Z"
+    },
+    {
+      "set": 18,
+      "patch": "18.2b",
+      "base": "18.2",
+      "from_day": "2026-09-14",
+      "source": "https://teamfighttactics.leagueoflegends.com/en-us/news/game-updates/teamfight-tactics-patch-18-2/",
+      "detected_at": "2026-10-04T18:04:13.148Z"
+    },
+    {
+      "set": 18,
+      "patch": "18.3b",
+      "base": "18.3",
+      "from_day": "2026-09-24",
+      "source": "https://teamfighttactics.leagueoflegends.com/en-us/news/game-updates/teamfight-tactics-patch-18-3/",
+      "detected_at": "2026-10-04T18:04:13.148Z"
     }
   ]
 }

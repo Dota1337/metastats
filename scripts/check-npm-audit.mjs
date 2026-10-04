@@ -26,10 +26,16 @@ import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
-// Bekannte, bewusst offene Warnungen. Zurzeit leer: die tar-Warnungen ueber
-// fastembed sind mit fastembed 2.1.1 erledigt (tar nicht mehr im Baum, 2026-09-30).
-// Neue Ausnahmen nur mit Begruendung im Klartext eintragen.
-const BEKANNT = {};
+// Bekannte, bewusst offene Warnungen. Neue Ausnahmen nur mit Begruendung im
+// Klartext eintragen.
+const BEKANNT = {
+  // 2026-10-04: braces 3.0.3 ist die neueste Version, es gibt keinen Fix.
+  // Kommt nur ueber eslint-config-next > @next/eslint-plugin-next >
+  // fast-glob@3.3.1 (fest gepinnt) — reines Lint-Werkzeug, nicht in der Seite.
+  // Erneut pruefen bei neuem braces-Release oder fast-glob-Bump im Next-Plugin;
+  // die Pruefung unten meldet den Eintrag dann selbst als erledigt.
+  'GHSA-vfj7-8cjw-p6xm': 'braces via eslint-config-next > fast-glob@3.3.1 (dev, nur Lint)',
+};
 
 const ROT_AB = new Set(['high', 'critical']);
 

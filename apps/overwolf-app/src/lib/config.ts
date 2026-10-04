@@ -10,4 +10,4 @@ export const APP_SECRET = 'b1fb7ccb494629968f7f23cf4619de60bcca00abd9edaf01ec210
 // CORS-Vorabanfragen duerfen nicht umgeleitet werden.
 export const API_BASE = 'https://www.metastats.gg';
 
-export const CLIENT_VERSION = '0.3.0';
+export const CLIENT_VERSION = '0.4.0';

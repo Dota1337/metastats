@@ -3,7 +3,7 @@
   "type": "WebApp",
   "meta": {
     "name": "metastats.gg Companion",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "minimum-overwolf-version": "0.275.0",
     "author": "metastats.gg",
     "icon": "images/IconMouseOver.png",
@@ -35,8 +35,8 @@
         "transparent": false,
         "resizable": true,
         "use_os_windowing": false,
-        "focus_game_takeover": "ReleaseOnHidden",
-        "focus_game_takeover_release_hotkey": "toggle_main",
+        "desktop_only": true,
+        "native_window": true,
         "size": { "width": 900, "height": 680 },
         "min_size": { "width": 720, "height": 520 },
         "start_position": { "top": 80, "left": 120 }

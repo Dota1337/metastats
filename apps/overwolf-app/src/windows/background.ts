@@ -6,11 +6,11 @@
 import { APP_SECRET, API_BASE, CLIENT_VERSION } from '../lib/config.ts';
 import { read, write, subscribe, type Live } from '../lib/store.ts';
 import { loadComps, loadLookups } from '../lib/api.ts';
-import { show, close, toggle, moveTo, type WindowName } from '../lib/ow.ts';
+import { show, close, toggle, moveTo, minimize, setTopmost, obtain, type WindowName } from '../lib/ow.ts';
 import { enqueue, flush, idbStore, type OutboxEntry, type SendResult } from '../lib/outbox.ts';
 import { recordBoard, flattenBoards, type Boards } from '../lib/boards.ts';
 import {
-  jsonish, parseBoardPieces, parseShop, parseLevel, parseStage, stageToRound,
+  jsonish, parseBoardPieces, parseBench, parseShop, parseLevel, parseStage, stageToRound,
   parseOpponent, gameTimeToRound, isTftMode, gameClassId, isTftGame, tftFromGame,
   featuresFor, parseLocalPlayer, fightToRound, fightsLowerBound, regionFromHandle,
 } from '../lib/gep.ts';
@@ -21,7 +21,13 @@ const SUBMIT_URL = API_BASE + '/api/tft/positions/submit';
 // Auswerten der ersten echten Spiele auf 28164 (welche Daten kommen wann).
 const DEBUG_GEP = true;
 
-const log = (...a: unknown[]) => console.log('[metastats-companion]', ...a);
+// Overwolf schreibt Objekte nur als "[object Object]" ins Log, deshalb als JSON.
+const asText = (x: unknown): string => {
+  if (typeof x === 'string') return x;
+  if (x instanceof Error) return JSON.stringify({ message: x.message });
+  try { return JSON.stringify(x); } catch { return String(x); }
+};
+const log = (...a: unknown[]) => console.log('[metastats-companion]', ...a.map(asText));
 
 // ---------- Brett-Daten fuer die Positions-Heatmap ----------
 
@@ -107,6 +113,7 @@ async function submit(): Promise<void> {
   const observations = flattenBoards(match.boards);
   if (observations.length === 0) return;
   match.submitted = true;
+  const boardCount = match.boards.size;
   match.boards = new Map();
   if (!read('ms.settings').share) return;
   const timestamp = Date.now();
@@ -129,7 +136,7 @@ async function submit(): Promise<void> {
   });
   // Paketgroesse als Messgrundlage fuer den Komplett-Upload (Plan P2).
   log('match packet', {
-    matchId, round: match.round, boards: match.boards.size,
+    matchId, round: match.round, boards: boardCount,
     observations: observations.length, bytes: new TextEncoder().encode(body).length,
   });
   const entry: OutboxEntry = { id: `${matchId}_${timestamp}`, url: SUBMIT_URL, body, createdAt: timestamp, tries: 0 };
@@ -146,13 +153,27 @@ async function submit(): Promise<void> {
 
 // ---------- Live-Zustand fuer die Overlays ----------
 
-let live: Live = { ...read('ms.live'), inTft: false, shop: [], shopVisible: false, opponent: null, stage: null };
+let live: Live = { ...read('ms.live'), inTft: false, shop: [], shopVisible: false, opponent: null, stage: null, ownUnits: [] };
 let sawShopVisibleEvent = false;
 
 function patchLive(p: Partial<Live>): void {
   live = { ...live, ...p, updatedAt: Date.now() };
   write('ms.live', live);
   void syncOverlays();
+}
+
+// Eigene Units auf Brett und Bank, fuer die Comp-Vorschlaege im Overlay.
+let ownBoard: string[] = [];
+let ownBench: string[] = [];
+
+function ownUnitsPatch(): Partial<Live> {
+  const next = [...new Set([...ownBoard, ...ownBench].filter(Boolean))].sort();
+  return next.join('|') === live.ownUnits.join('|') ? {} : { ownUnits: next };
+}
+
+function resetOwn(): void {
+  ownBoard = [];
+  ownBench = [];
 }
 
 const seenKeys = new Set<string>();
@@ -274,6 +295,9 @@ function onInfo(info: overwolf.games.events.InfoUpdates2Event): void {
 
   const board = match.submitted ? null : all.board;
   if (board?.board_pieces) recordBoard(match.boards, 'own', match.round, null, parseBoardPieces(board.board_pieces));
+  if (all.board?.board_pieces !== undefined) ownBoard = parseBoardPieces(all.board.board_pieces).map(b => b.unit);
+  if (all.bench?.bench_pieces !== undefined) ownBench = parseBench(all.bench.bench_pieces);
+  Object.assign(p, ownUnitsPatch());
   if (board?.opponent_board_pieces) {
     const opp = p.opponent !== undefined ? p.opponent : live.opponent;
     recordBoard(match.boards, 'opp', match.round, opp, parseBoardPieces(board.opponent_board_pieces));
@@ -288,7 +312,8 @@ function onEvents(e: overwolf.games.events.NewGameEvents): void {
   for (const ev of e?.events || []) {
     if (ev.name === 'match_start' || ev.name === 'matchStart') {
       resetMatch();
-      patchLive({ inTft: live.inTft, level: null, shop: [], stage: null, opponent: null });
+      resetOwn();
+      patchLive({ inTft: live.inTft, level: null, shop: [], stage: null, opponent: null, ownUnits: [] });
     } else if (ev.name === 'shop_visible' || ev.name === 'shop_hidden') {
       sawShopVisibleEvent = true;
       const visible = ev.name === 'shop_visible' && String(ev.data) !== 'false';
@@ -329,9 +354,11 @@ function onGameStart(classId: number | null): void {
   resetMatch();
   match.gameId = classId;
   sawShopVisibleEvent = false;
+  resetOwn();
   armFeatures(classId);
   // 28164/21570 sind sicher TFT; bei 5426 entscheidet erst game_mode.
-  patchLive({ inTft: tftFromGame(classId) === true, shop: [], shopVisible: false, opponent: null, stage: null, level: null });
+  patchLive({ inTft: tftFromGame(classId) === true, shop: [], shopVisible: false, opponent: null, stage: null, level: null, ownUnits: [] });
+  void mainForGame();
 }
 
 function onGameEnd(): void {
@@ -340,7 +367,44 @@ function onGameEnd(): void {
   armGen++;
   void submit();
   sawShopVisibleEvent = false;
-  patchLive({ inTft: false, shop: [], shopVisible: false, opponent: null, stage: null, level: null });
+  resetOwn();
+  patchLive({ inTft: false, shop: [], shopVisible: false, opponent: null, stage: null, level: null, ownUnits: [] });
+  void setTopmost('main', false);
+}
+
+// ---------- Hauptfenster waehrend des Spiels ----------
+
+function runningGame(): Promise<overwolf.games.GetRunningGameInfoResult | null> {
+  return new Promise(res => overwolf.games.getRunningGameInfo(r => res(r?.isRunning ? r : null)));
+}
+
+// Liegt das Fenster auf dem Bildschirm des Spiels? null = nicht feststellbar.
+async function onGameMonitor(w: overwolf.windows.WindowInfo): Promise<boolean | null> {
+  const g = await runningGame();
+  const handle = (g as { monitorHandle?: { value: number } } | null)?.monitorHandle?.value;
+  if (handle == null) return null;
+  const displays = await new Promise<overwolf.utils.Display[]>(res =>
+    overwolf.utils.getMonitorsList(r => res(r?.displays || [])));
+  const d = displays.find(x => x.handle?.value === handle);
+  if (!d) return null;
+  if (w.monitorId) return w.monitorId === d.id;
+  const cx = w.left + w.width / 2;
+  const cy = w.top + w.height / 2;
+  return cx >= d.x && cx < d.x + d.width && cy >= d.y && cy < d.y + d.height;
+}
+
+// Waehrend TFT bleibt das Hauptfenster im Vordergrund (auf dem 2. Bildschirm
+// oder per Alt+D ueber dem Spiel). Liegt es beim Start auf dem Spiel-
+// Bildschirm, wird es minimiert, damit es das Spiel nicht verdeckt.
+async function mainForGame(): Promise<void> {
+  await setTopmost('main', true);
+  const w = await obtain('main');
+  if (!w) return;
+  const st = String(w.stateEx || w.state || '');
+  if (st !== 'normal' && st !== 'maximized') return;
+  const same = await onGameMonitor(w);
+  log('main on game start', { monitorId: w.monitorId, sameMonitor: same });
+  if (same !== false) await minimize('main');
 }
 
 // ---------- Overlays ----------
@@ -383,7 +447,8 @@ async function syncOverlays(): Promise<void> {
   const pin = read('ms.pin');
   const tft = live.inTft;
   await Promise.all([
-    setOverlay('pinned', tft && s.pinned && !!pin),
+    // Ohne angeheftete Comp zeigt das Overlay die Vorschlagsliste.
+    setOverlay('pinned', tft && s.pinned),
     setOverlay('shop', tft && s.shop && !!pin && live.shopVisible),
     setOverlay('matchup', tft && s.matchups),
   ]);
@@ -413,6 +478,14 @@ overwolf.games.onGameInfoUpdated.addListener(e => {
   if (e?.resolutionChanged) shopPlaced = false;
 });
 overwolf.games.getRunningGameInfo(r => { if (r?.isRunning) onGameStart(gameClassId(r)); });
+// Schliesst der Nutzer ein Overlay selbst, muss es beim naechsten Mal wieder aufgehen.
+overwolf.windows.onStateChanged.addListener(e => {
+  const name = e?.window_name as WindowName;
+  if (name && shown.has(name) && (e.window_state_ex === 'closed' || e.window_state_ex === 'hidden')) {
+    shown.delete(name);
+    if (name === 'shop') shopPlaced = false;
+  }
+});
 overwolf.settings.hotkeys.onPressed.addListener(e => { if (e?.name === 'toggle_main') void toggle('main'); });
 
 let lastRegion = read('ms.settings').region;
@@ -432,5 +505,7 @@ void refreshData();
 void flushOutbox();
 setInterval(() => { void refreshData(true); void flushOutbox(); }, REFRESH_MS);
 window.addEventListener('online', () => void flushOutbox());
-void show('main');
+// Beim Start ueber das Spiel (Overwolf startet die App mit dem Spiel) bleibt
+// das Hauptfenster zu; sonst geht es auf.
+void runningGame().then(g => { if (!g || !isTftGame(gameClassId(g))) void show('main'); });
 log('ready', CLIENT_VERSION);

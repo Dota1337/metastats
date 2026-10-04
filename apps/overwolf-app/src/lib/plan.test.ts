@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { CompanionComp, CompanionLookups } from '../../../../app/lib/companion-types.ts';
-import { levelPlan, compRecipes, shopMatches, groupRecipes } from './plan.ts';
+import { levelPlan, compRecipes, shopMatches, groupRecipes, suggestComps } from './plan.ts';
 
 const lookups: CompanionLookups = {
   v: 1, set: 18,
@@ -74,4 +74,12 @@ test('groupRecipes: Items, dann Spatula, dann Bratpfanne, je alphabetisch', () =
   assert.deepEqual(g[2].recipes.map(r => r.item), ['EmbB', 'Shield']);
   assert.deepEqual(groupRecipes(lookups).map(x => x.kind), ['items']);
   assert.deepEqual(groupRecipes(null), []);
+});
+
+test('suggestComps: ohne eigene Units nach Tier, sonst nach Treffern', () => {
+  const mk = (key: string, tier: string | null, ids: string[]): CompanionComp => ({ ...comp(ids.map(id => ({ id }))), key, tier });
+  const list = [mk('c', 'C', ['A', 'B']), mk('s', 'S', ['D']), mk('n', null, ['A']), mk('a', 'A', ['B'])];
+  assert.deepEqual(suggestComps(list, []).map(c => c.key), ['s', 'a', 'c', 'n']);
+  assert.deepEqual(suggestComps(list, ['A', 'B', 'B']).map(c => c.key), ['c', 'a', 'n', 's']);
+  assert.equal(suggestComps(list, [], 2).length, 2);
 });

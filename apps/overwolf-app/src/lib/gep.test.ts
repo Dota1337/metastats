@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import {
-  jsonish, parseBoardPieces, parseShop, parseLevel, parseStage, stageToRound,
+  jsonish, parseBoardPieces, parseBench, parseShop, parseLevel, parseStage, stageToRound,
   parseOpponent, gameTimeToRound, isTftMode,
   TFT_GAME_IDS, gameClassId, isTftGame, tftFromGame, featuresFor, parseLocalPlayer,
   fightToRound, fightsLowerBound, regionFromHandle,
@@ -115,6 +115,15 @@ test('Spiel-Kennungen: 28164 und 21570 sind sicher TFT, 5426 offen', () => {
   assert.ok(!featuresFor(28164).includes('live_client_data'));
   assert.ok(featuresFor(5426).includes('live_client_data'));
   assert.ok(featuresFor(28164).includes('roster'));
+  assert.ok(featuresFor(28164).includes('bench'));
+  assert.ok(featuresFor(21570).includes('bench'));
+  assert.ok(!featuresFor(5426).includes('bench'));
+});
+
+test('parseBench liest slot_N-Namen, leere Plaetze fallen weg', () => {
+  const raw = '{"slot_1":{"name":"TFT2_Sion","level":"1"},"slot_2":{"name":""},"slot_3":null,"cell_1":{"name":"X"}}';
+  assert.deepEqual(parseBench(raw), ['TFT2_Sion']);
+  assert.deepEqual(parseBench('kaputt'), []);
 });
 
 test('regionFromHandle nur bei bekanntem Tag', () => {

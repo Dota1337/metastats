@@ -2,8 +2,10 @@
 //
 // Alle Fenster der App laufen unter derselben Herkunft
 // (overwolf-extension://<id>), teilen also localStorage und bekommen
-// Aenderungen anderer Fenster als 'storage'-Ereignis. Das Hintergrundfenster
-// schreibt, Overlays lesen nur — so rendert ein Overlay nie aus dem Netz.
+// Aenderungen anderer Fenster als 'storage'-Ereignis. Spieldaten (ms.live,
+// ms.me) schreibt nur das Hintergrundfenster; die Fenster schreiben nur, was
+// der Nutzer waehlt (ms.pin, ms.settings), das Hauptfenster zusaetzlich die
+// geladenen Comps/Lookups. Overlays laden nie aus dem Netz.
 import type { CompanionComp, CompanionCompsResponse, CompanionLookups } from '../../../../app/lib/companion-types.ts';
 import type { Lang } from './i18n.ts';
 
@@ -14,6 +16,7 @@ export interface Settings {
   share: boolean;      // Brett-Daten senden
   region: string;
   lang: Lang | null;   // null = Overwolf-Sprache
+  collapsed: boolean;  // Comp-Overlay zugeklappt
 }
 
 export interface Live {
@@ -23,6 +26,7 @@ export interface Live {
   shopVisible: boolean;
   opponent: string | null;
   stage: string | null;
+  ownUnits: string[];  // eigene Units auf Brett + Bank (Kennungen, ohne Doppelte)
   updatedAt: number;
 }
 
@@ -42,11 +46,11 @@ export type StoreKey = keyof Schema;
 const LEGACY_PAUSED = 'metastats.companion.paused';
 
 const DEFAULTS: { [K in StoreKey]: Schema[K] } = {
-  'ms.settings': { pinned: true, shop: true, matchups: false, share: true, region: 'all', lang: null },
+  'ms.settings': { pinned: true, shop: true, matchups: false, share: true, region: 'all', lang: null, collapsed: false },
   'ms.pin': null,
   'ms.comps': null,
   'ms.lookups': null,
-  'ms.live': { inTft: false, level: null, shop: [], shopVisible: false, opponent: null, stage: null, updatedAt: 0 },
+  'ms.live': { inTft: false, level: null, shop: [], shopVisible: false, opponent: null, stage: null, ownUnits: [], updatedAt: 0 },
   'ms.me': null,
 };
 

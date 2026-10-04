@@ -75,3 +75,18 @@ export function shopMatches(shop: Array<string | null>, comp: CompanionComp | nu
     return !!s && ids.has(s);
   });
 }
+
+// Vorschlaege fuer das Comp-Overlay ohne angeheftete Comp: zuerst nach
+// Uebereinstimmung mit eigenen Units (Brett + Bank + Shop), bei Gleichstand
+// nach Tier, dann in der Reihenfolge der Seite. Ohne eigene Units = Tierliste.
+const TIER_RANK: Record<string, number> = { S: 0, A: 1, B: 2, C: 3, D: 4 };
+
+export function suggestComps(comps: CompanionComp[], ownUnits: string[], n = 5): CompanionComp[] {
+  const own = new Set(ownUnits);
+  const hits = (c: CompanionComp) => new Set(c.units.map(u => u.id).filter(id => own.has(id))).size;
+  return comps
+    .map((c, i) => ({ c, i, hits: hits(c), tier: TIER_RANK[c.tier ?? ''] ?? 9 }))
+    .sort((a, b) => b.hits - a.hits || a.tier - b.tier || a.i - b.i)
+    .slice(0, n)
+    .map(x => x.c);
+}

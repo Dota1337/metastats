@@ -1,30 +1,64 @@
 // Overlay der angehefteten Comp: Units mit Items, Rezepte, Shop-Chancen auf der
-// aktuellen Stufe und Stufenplan. Liest nur aus dem gemeinsamen Speicher.
+// aktuellen Stufe und Stufenplan. Ohne angeheftete Comp: die 5 passendsten
+// Comps (eigenes Brett + Bank, dann Tier), ein Klick heftet an. Liest nur aus
+// dem gemeinsamen Speicher.
 import '../styles/app.css';
-import { read, write, subscribe } from '../lib/store.ts';
+import { read, write, subscribe, patchSettings } from '../lib/store.ts';
 import { t } from '../lib/i18n.ts';
 import { boot } from '../lib/boot.ts';
-import { makeDraggable } from '../lib/ow.ts';
-import { levelPlan, compRecipes } from '../lib/plan.ts';
+import { makeDraggable, fitSelf } from '../lib/ow.ts';
+import { levelPlan, compRecipes, suggestComps } from '../lib/plan.ts';
 import { h, clear, unitIcon, itemIcon, compUnits, tierBadge } from '../lib/dom.ts';
 
 const root = document.getElementById('app')!;
-let collapsed = false;
+const WIDTH = 340;
+
+// Fensterhoehe folgt dem Inhalt, damit unter dem Overlay nichts Klicks schluckt.
+function fit(): void {
+  const el = root.firstElementChild as HTMLElement | null;
+  if (el) fitSelf(WIDTH, el.getBoundingClientRect().bottom + 2);
+}
+
+function collapseBtn(collapsed: boolean): HTMLElement {
+  return h('button', { class: 'win-btn', onclick: () => patchSettings({ collapsed: !collapsed }) }, collapsed ? '▾' : '▴');
+}
+
+function renderList(collapsed: boolean): void {
+  const lk = read('ms.lookups')?.data ?? null;
+  const comps = read('ms.comps')?.data.comps ?? [];
+  const head = h('header', { class: 'ov-head' },
+    h('div', { class: 'ov-title' }, t('tab.comps')),
+    collapseBtn(collapsed),
+  );
+  makeDraggable(head);
+  if (collapsed) { clear(root, h('div', { class: 'overlay' }, head)); return; }
+  clear(root, h('div', { class: 'overlay' },
+    head,
+    suggestComps(comps, read('ms.live').ownUnits).map(c =>
+      h('button', { class: 'ov-comp', title: c.name, onclick: () => write('ms.pin', c) },
+        h('div', { class: 'ov-comp-head' }, tierBadge(c.tier), h('span', { class: 'ov-title' }, c.name)),
+        // Ohne Items, damit fuenf Comps wenig vom Spielbild verdecken.
+        h('div', { class: 'units' }, c.units.map(u => unitIcon(u.id, lk, { star3: !!u.star3, size: 'sm' }))),
+      ),
+    ),
+  ));
+}
 
 function render(): void {
   const pin = read('ms.pin');
   const lk = read('ms.lookups')?.data ?? null;
   const live = read('ms.live');
-  if (!pin) { clear(root); return; }
+  const collapsed = read('ms.settings').collapsed;
+  if (!pin) { renderList(collapsed); fit(); return; }
 
   const head = h('header', { class: 'ov-head' },
     tierBadge(pin.tier),
     h('div', { class: 'ov-title' }, pin.name),
-    h('button', { class: 'win-btn', onclick: () => { collapsed = !collapsed; render(); } }, collapsed ? '▾' : '▴'),
+    collapseBtn(collapsed),
     h('button', { class: 'win-btn close', onclick: () => write('ms.pin', null) }, '×'),
   );
   makeDraggable(head);
-  if (collapsed) { clear(root, h('div', { class: 'overlay' }, head)); return; }
+  if (collapsed) { clear(root, h('div', { class: 'overlay' }, head)); fit(); return; }
 
   const plan = levelPlan(pin, lk);
   const recipes = compRecipes(pin, lk);
@@ -49,16 +83,26 @@ function render(): void {
       ),
     )) : null,
   ));
+  fit();
 }
 
 void boot(render);
-subscribe(['ms.pin', 'ms.lookups', 'ms.live'], key => {
-  // Shop-Wechsel aendern hier nichts; nur bei Stufenwechsel neu zeichnen.
+subscribe(['ms.pin', 'ms.lookups', 'ms.live', 'ms.comps', 'ms.settings'], key => {
+  // Shop-Wechsel aendern hier nichts; nur Stufe oder eigene Units zaehlen.
   if (key === 'ms.live') {
-    const lvl = read('ms.live').level;
-    if (lvl === lastLevel) return;
-    lastLevel = lvl;
+    const l = read('ms.live');
+    const units = l.ownUnits.join('|');
+    if (l.level === lastLevel && units === lastUnits) return;
+    lastLevel = l.level;
+    lastUnits = units;
+  }
+  if (key === 'ms.settings') {
+    const c = read('ms.settings').collapsed;
+    if (c === lastCollapsed) return;
+    lastCollapsed = c;
   }
   render();
 });
 let lastLevel = read('ms.live').level;
+let lastUnits = read('ms.live').ownUnits.join('|');
+let lastCollapsed = read('ms.settings').collapsed;

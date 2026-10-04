@@ -32,13 +32,31 @@ export async function isVisible(name: WindowName): Promise<boolean> {
   });
 }
 
+export async function minimize(name: WindowName): Promise<void> {
+  const w = await obtain(name);
+  if (w) await new Promise<void>(res => overwolf.windows.minimize(w.id, () => res()));
+}
+
+// Wiederherstellen allein holt ein Desktop-Fenster nicht sicher vor das Spiel.
 export async function toggle(name: WindowName): Promise<void> {
   if (await isVisible(name)) {
-    const w = await obtain(name);
-    if (w) overwolf.windows.minimize(w.id, () => {});
+    await minimize(name);
   } else {
-    await show(name);
+    const id = await show(name);
+    if (id) overwolf.windows.bringToFront(id, () => {});
   }
+}
+
+export async function setTopmost(name: WindowName, on: boolean): Promise<void> {
+  const w = await obtain(name);
+  if (w) await new Promise<void>(res => overwolf.windows.setTopmost(w.id, on, () => res()));
+}
+
+// Hoehe des eigenen Fensters an den Inhalt anpassen (Overlays ohne Rahmen).
+export function fitSelf(width: number, height: number): void {
+  overwolf.windows.getCurrentWindow(r => {
+    if (r?.window) overwolf.windows.changeSize({ window_id: r.window.id, width: Math.ceil(width), height: Math.ceil(height), auto_dpi_resize: true }, () => {});
+  });
 }
 
 export async function moveTo(name: WindowName, left: number, top: number, width?: number, height?: number): Promise<void> {

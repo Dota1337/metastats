@@ -189,6 +189,11 @@ kbd { background: var(--panel); border: 1px solid var(--line); border-radius: 5p
 .odds-inline .c4 { color: var(--c4); } .odds-inline .c5 { color: var(--c5); }
 .overlay .units { padding-bottom: 6px; }
 .recipes.compact { gap: 6px 10px; }
+.ov-comp { all: unset; display: flex; flex-direction: column; gap: 4px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.ov-comp:hover { border-color: var(--accent); }
+.ov-comp-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ov-comp .units { padding-bottom: 0; gap: 3px; flex-wrap: nowrap; }
+.ov-comp .unit.sm { width: 28px; height: 28px; }
 
 .matchup { flex-direction: row; align-items: center; cursor: move; }
 .matchup .opp { font-weight: 600; }

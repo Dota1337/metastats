@@ -58,7 +58,7 @@
     "eslint-config-next": "16.3.8",
     "fast-check": "^4.9.0",
     "fastembed": "^2.1.0",
-    "png-to-ico": "^3.0.1",
+    "sharp": "^0.35.5",
     "sqlite-vec": "^0.1.9",
     "tailwindcss": "^4",
     "typescript": "^5"

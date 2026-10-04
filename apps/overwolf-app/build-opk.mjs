@@ -8,8 +8,7 @@
 // which matches the default ZIP behaviour.
 //
 // What we deliberately exclude:
-//   - .svg sources (build artefacts, not run by Overwolf)
-//   - build-icons.mjs (devtool, not needed at runtime)
+//   - .svg sources (splash.svg is the template for scripts/build-brand-assets.mjs)
 //   - build-opk.mjs   (this script itself)
 //   - README.md       (dev doc, not the user-facing one Overwolf wants
 //                      in their store listing — that lives elsewhere)

@@ -7,6 +7,7 @@ import { useI18n, LOCALE_MAP } from './lib/i18n';
 import { REGIONS, regionLabel } from './lib/regions';
 import ApiUnavailable from './components/ApiUnavailable';
 import { formatTier } from './lib/rank-format';
+import crest from './assets/brand/crest.png';
 
 interface Champion {
   id: string;
@@ -195,8 +196,10 @@ export default function Home() {
           {/* Gold accent line */}
           <div className="w-12 h-0.5 bg-gradient-to-r from-transparent via-[#c89b3c] to-transparent mx-auto mb-6" />
 
-          <h1 className="text-white text-3xl sm:text-5xl font-bold mb-10 tracking-tight">
-            meta<span className="text-[#c89b3c]">stats</span>.gg
+          <h1 className="mb-10">
+            {/* Kein preload: groesstes Bild der Seite bleibt der Splash. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={crest.src} width={208} height={193} alt="metastats.gg" loading="eager" decoding="async" className="mx-auto w-40 sm:w-52 h-auto" />
           </h1>
 
           {/* Search bar with gold border */}

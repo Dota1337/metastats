@@ -31,6 +31,8 @@
 #                                     den Aufrufer zu pruefen
 #  14. ESLint-Deckel                — catches neue Lint-Fehler vor dem Upload
 #                                     statt erst als rote CI-Mail
+#  15. Logo-Dateien                 — catches Logos/Icons, die nicht mehr zur
+#                                     Quelle in assets/brand/ passen
 #
 # Ohne Riegel laufen ausserdem mit: der Memory-Reindex und der Wecker fuer die
 # vierteljaehrliche Sicherheitsdurchsicht. Beide melden nur.
@@ -230,6 +232,17 @@ echo "[pre-push] Checking ESLint-Deckel ..."
 if ! node scripts/check-eslint-budget.mjs; then
   echo ""
   echo "Mehr ESLint-Fehler als erlaubt — push blocked."
+  exit 1
+fi
+
+# --- Logo-Dateien ----------------------------------------------------------
+# Seite und Companion bekommen ihre Logos aus einem Skript. Wird eine Quelle
+# getauscht oder ein Icon von Hand ersetzt, ohne das Skript laufen zu lassen,
+# zeigen Seite und App verschiedene Logos. Vergleicht nur Pruefsummen.
+echo "[pre-push] Checking Logo-Dateien ..."
+if ! node scripts/build-brand-assets.mjs --check; then
+  echo ""
+  echo "Logo-Dateien veraltet — push blocked."
   exit 1
 fi
 

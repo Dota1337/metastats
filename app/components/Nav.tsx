@@ -7,6 +7,7 @@ import { TFT_COACH_ENABLED, TFT_PROS_ENABLED } from '../lib/feature-flags';
 import { useAuth } from '../lib/auth-context';
 import { getDdragonVersion } from '../lib/ddragon-version';
 import DdragonImg from './DdragonImg';
+import ggMark from '../assets/brand/gg-64.png';
 import { lolProfileHref, tftProfileHref, tftRankLabel, tftRegionLabel, type TftAccountHit } from '../lib/tft-player-search';
 
 interface NavProps {
@@ -232,8 +233,10 @@ export default function Nav({ active }: NavProps) {
         <div className="flex items-center flex-1">
           {/* text-accent statt zweier hartkodierter Hexe — das war die dritte
               unabhängige Stelle, an der beide Spielfarben standen. */}
-          <a href={homeHref} className="text-accent text-lg font-medium flex-shrink-0">
-            meta<span className="text-white">stats</span>.gg
+          <a href={homeHref} className="flex items-center gap-2 text-accent text-lg font-medium flex-shrink-0">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={ggMark.src} width={24} height={24} alt="" className="w-6 h-6" />
+            <span>meta<span className="text-white">stats</span>.gg</span>
           </a>
         </div>
 

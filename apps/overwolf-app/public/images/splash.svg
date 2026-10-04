@@ -21,18 +21,8 @@
   <!-- Decorative accent line top -->
   <rect x="0" y="0" width="400" height="2" fill="url(#sparkGrad)"/>
 
-  <!-- Compact logo mark left -->
-  <g transform="translate(20,30)">
-    <!-- Hex outline -->
-    <polygon points="14,4 36,4 50,30 36,56 14,56 0,30"
-             stroke="url(#accentGrad)" stroke-width="2" fill="none"/>
-    <!-- "m" letter -->
-    <path d="M 13 18 L 13 44
-             M 13 22 Q 13 17, 19 17 Q 25 17, 25 26 L 25 44
-             M 25 26 Q 25 17, 31 17 Q 37 17, 37 26 L 37 44"
-          stroke="url(#accentGrad)" stroke-width="3.5"
-          stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-  </g>
+  <!-- GG-Wappen links, setzt scripts/build-brand-assets.mjs ein -->
+  <!--BRAND_MARK-->
 
   <!-- Wordmark -->
   <text x="90" y="58" font-family="-apple-system, 'Segoe UI', sans-serif"

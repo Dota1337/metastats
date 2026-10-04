@@ -4,6 +4,7 @@ import { withAlpha } from '../lib/color';
 import { usePathname } from 'next/navigation';
 import { useI18n, LOCALE_MAP } from '../lib/i18n';
 import { detectGameFromPath, type Game } from '../lib/games';
+import ggMark from '../assets/brand/gg-64.png';
 
 interface PatchNote {
   version: string;
@@ -299,8 +300,10 @@ export default function SideDrawer() {
         {/* Header */}
         <div className="px-4 pt-4 pb-3 border-b border-border-subtle">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-[#c89b3c] text-sm font-medium">
-              meta<span className="text-white">stats</span>
+            <span className="flex items-center gap-2 text-accent-lol text-sm font-medium">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={ggMark.src} width={20} height={20} alt="" className="w-5 h-5" />
+              <span>meta<span className="text-white">stats</span></span>
             </span>
             <button onClick={() => setOpen(false)} className="text-fg-muted hover:text-white transition-colors">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

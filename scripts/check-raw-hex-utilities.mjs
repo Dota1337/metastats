@@ -29,7 +29,7 @@ import { readFileSync } from 'node:fs';
 // bekommen duerfen -- Gold im Root-Chrome (Nav/Footer, 43x) und zwei
 // Fundstellen in Dateien, die keine Route erreicht. Eine harte Null wuerde
 // genau die melden. Sie kommt, wenn diese Reste geklaert sind.
-const BASELINE = 306;
+const BASELINE = 298;
 
 // Die Farben aus app/globals.css, die ein Token haben (10 seit Commit A, 3 Textgraus seit 2026-09-27).
 const MIGRATED = new Set([

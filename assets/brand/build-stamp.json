@@ -1,0 +1,18 @@
+{
+  "script": "c0995ea2b57e09847427df52d9b9c66da53adb167a2f5e9e2539074ea82cd8cc",
+  "files": {
+    "assets/brand/hex-crest@2x.png": "76554bfe12bad141100e3c71f2d8c07e0ee235e0bddf67a7f97d24d7e78cde23",
+    "assets/brand/gg.png": "adbcbbd062e25a3a1de0eff8e6fb21d7a76a76fc54eea1f11b8554ffe5b3e248",
+    "app/assets/brand/crest.png": "a1a5e48cc12f53183c2d90cbd3314345baf0d0c6713ef125b9e2e3f59a690239",
+    "app/assets/brand/gg-64.png": "b3cf9ed7e8e1d6e7be39d8b67366c90735fb8e748e6ca3c89f6bf6d3cd57ccaa",
+    "app/icon.png": "33ad1a7879a504a7a97b59ca9ae94db4f7da3c0434824d862b9ea124415b20f9",
+    "app/apple-icon.png": "990d6c8a220e35bb1962c6f0770b5231dc153e3eb5f8e9dd70c78eb9f7b93049",
+    "app/favicon.ico": "28fa1382932f92b86a52449b696d06142f46cbfefe803e621bf1057834a9fd22",
+    "public/brand/icon-192.png": "0ddda878cf2d43ca907af300b061d4db78e0989ec34dadfa83c34558905d6c12",
+    "public/brand/icon-512.png": "e48efd619adeeea71edf34cf716ed5f2cf61f2e9c1576ddabab12d0583b9d14d",
+    "apps/overwolf-app/public/images/IconMouseOver.png": "33ad1a7879a504a7a97b59ca9ae94db4f7da3c0434824d862b9ea124415b20f9",
+    "apps/overwolf-app/public/images/IconMouseNormal.png": "0902e37a60ba998c3c2136b471d349d362563195329da39b69ac0d945acd64eb",
+    "apps/overwolf-app/public/images/launcher_icon.ico": "44e95acba0ca5ccf838789d779c7b3f22166e2a8eaa32d85f6089a9d6b11b8b5",
+    "apps/overwolf-app/public/images/splash.png": "accdbf21eb0182c59bda42448bf5120ce67db5030222627bf423aea1d7778803"
+  }
+}

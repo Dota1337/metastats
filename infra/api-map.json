@@ -237,7 +237,7 @@
       ],
       "used": true,
       "usedBy": [
-        "apps/overwolf-app/dist/app/assets/api-MQDEmuDD.js",
+        "apps/overwolf-app/dist/app/assets/api-CsVi5urR.js",
         "apps/overwolf-app/src/lib/api.ts"
       ]
     },
@@ -259,7 +259,7 @@
       ],
       "used": true,
       "usedBy": [
-        "apps/overwolf-app/dist/app/assets/api-MQDEmuDD.js",
+        "apps/overwolf-app/dist/app/assets/api-CsVi5urR.js",
         "apps/overwolf-app/src/lib/api.ts"
       ]
     },
@@ -281,7 +281,7 @@
       ],
       "used": true,
       "usedBy": [
-        "apps/overwolf-app/dist/app/assets/api-MQDEmuDD.js",
+        "apps/overwolf-app/dist/app/assets/api-CsVi5urR.js",
         "apps/overwolf-app/src/lib/api.ts"
       ]
     },
@@ -1164,7 +1164,7 @@
       "via": [],
       "used": true,
       "usedBy": [
-        "apps/overwolf-app/dist/app/assets/background-DFyktBmK.js",
+        "apps/overwolf-app/dist/app/assets/background-bYXMaOMU.js",
         "apps/overwolf-app/src/windows/background.ts"
       ]
     },

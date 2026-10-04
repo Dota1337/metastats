@@ -17,3 +17,48 @@ export function recordBoard(boards: Boards, kind: 'own' | 'opp', round: number, 
 export function flattenBoards(boards: Boards): Observation[] {
   return [...boards.values()].flat();
 }
+
+// ---------- Eigene Spiele fuer den Spielverlauf ----------
+
+export interface LocalRound { round: number; pieces: Array<{ cell: number; unit: string; level: number; items: string[] }> }
+
+export interface LocalMatch {
+  id: string;
+  matchId: string | null;  // Kennung aus dem Spiel, falls gemeldet
+  startedAt: number;
+  endedAt: number;
+  placement: number | null;
+  rounds: LocalRound[];
+}
+
+// Eigene Bretter je Runde, aufsteigend. Felder kommen roh aus dem Spiel
+// (cell_1..cell_28) und werden hier auf die Zaehlung des Servers gebracht:
+// Feld = roh - 1, also Reihe * 7 + Spalte mit Reihe 0 = hinten.
+export function ownRounds(boards: Boards): LocalRound[] {
+  const out: LocalRound[] = [];
+  for (const obs of boards.values()) {
+    if (obs.length === 0 || obs[0].kind !== 'own') continue;
+    out.push({
+      round: obs[0].round,
+      pieces: obs
+        .filter(o => o.cell >= 1 && o.cell <= 28 && o.unit)
+        .map(o => ({ cell: o.cell - 1, unit: o.unit, level: o.level, items: o.items })),
+    });
+  }
+  return out.filter(r => r.pieces.length > 0).sort((a, b) => a.round - b.round);
+}
+
+// Welches gespeicherte eigene Spiel zu einem Spiel aus Riots Verlauf gehoert:
+// gleiche Kennung, sonst Spielbeginn hoechstens 70 Minuten vor Riots Zeitpunkt
+// (und nicht mehr als 10 Minuten danach) — das naechstgelegene gewinnt.
+export function findLocalMatch(list: LocalMatch[], riot: { id: string; at: number }): LocalMatch | null {
+  const byId = list.find(m => m.matchId && (riot.id === m.matchId || riot.id.endsWith(`_${m.matchId}`)));
+  if (byId) return byId;
+  let best: LocalMatch | null = null;
+  for (const m of list) {
+    const d = riot.at - m.startedAt;
+    if (d < -10 * 60_000 || d > 70 * 60_000) continue;
+    if (!best || Math.abs(d) < Math.abs(riot.at - best.startedAt)) best = m;
+  }
+  return best;
+}

@@ -5,10 +5,11 @@
 // Riots Regeln verstossen und die App sperren koennen.
 import { APP_SECRET, API_BASE, CLIENT_VERSION } from '../lib/config.ts';
 import { read, write, subscribe, type Live } from '../lib/store.ts';
-import { loadComps, loadLookups } from '../lib/api.ts';
+import { loadComps, loadLookups, loadCompDetail } from '../lib/api.ts';
 import { show, close, toggle, moveTo, minimize, setTopmost, obtain, type WindowName } from '../lib/ow.ts';
 import { enqueue, flush, idbStore, type OutboxEntry, type SendResult } from '../lib/outbox.ts';
-import { recordBoard, flattenBoards, type Boards } from '../lib/boards.ts';
+import { recordBoard, flattenBoards, ownRounds, type Boards } from '../lib/boards.ts';
+import { saveLocalMatch } from '../lib/history-store.ts';
 import {
   jsonish, parseBoardPieces, parseBench, parseShop, parseLevel, parseStage, stageToRound,
   parseOpponent, gameTimeToRound, isTftMode, gameClassId, isTftGame, tftFromGame,
@@ -114,6 +115,14 @@ async function submit(): Promise<void> {
   if (observations.length === 0) return;
   match.submitted = true;
   const boardCount = match.boards.size;
+  // Eigene Bretter fuer den Spielverlauf behalten, unabhaengig vom Teilen.
+  const rounds = ownRounds(match.boards);
+  if (rounds.length) {
+    void saveLocalMatch({
+      id: `${match.startedAt}`, matchId: match.matchId, startedAt: match.startedAt,
+      endedAt: Date.now(), placement: match.placement, rounds,
+    }).catch(e => log('history save failed', (e as Error)?.message));
+  }
   match.boards = new Map();
   if (!read('ms.settings').share) return;
   const timestamp = Date.now();
@@ -153,7 +162,7 @@ async function submit(): Promise<void> {
 
 // ---------- Live-Zustand fuer die Overlays ----------
 
-let live: Live = { ...read('ms.live'), inTft: false, shop: [], shopVisible: false, opponent: null, stage: null, ownUnits: [] };
+let live: Live = { ...read('ms.live'), inTft: false, shop: [], shopVisible: false, opponent: null, stage: null, ownUnits: [], oppBoards: {} };
 let sawShopVisibleEvent = false;
 
 function patchLive(p: Partial<Live>): void {
@@ -300,7 +309,13 @@ function onInfo(info: overwolf.games.events.InfoUpdates2Event): void {
   Object.assign(p, ownUnitsPatch());
   if (board?.opponent_board_pieces) {
     const opp = p.opponent !== undefined ? p.opponent : live.opponent;
-    recordBoard(match.boards, 'opp', match.round, opp, parseBoardPieces(board.opponent_board_pieces));
+    const pieces = parseBoardPieces(board.opponent_board_pieces);
+    recordBoard(match.boards, 'opp', match.round, opp, pieces);
+    // Letztes Brett je Gegner fuer die Comp-Erkennung im Gegner-Overlay.
+    const units = [...new Set(pieces.map(x => x.unit).filter(Boolean))].sort();
+    if (opp && units.length && units.join('|') !== (live.oppBoards[opp] ?? []).join('|')) {
+      p.oppBoards = { ...live.oppBoards, [opp]: units };
+    }
   }
 
   if (Object.keys(p).length) patchLive(p);
@@ -313,7 +328,7 @@ function onEvents(e: overwolf.games.events.NewGameEvents): void {
     if (ev.name === 'match_start' || ev.name === 'matchStart') {
       resetMatch();
       resetOwn();
-      patchLive({ inTft: live.inTft, level: null, shop: [], stage: null, opponent: null, ownUnits: [] });
+      patchLive({ inTft: live.inTft, level: null, shop: [], stage: null, opponent: null, ownUnits: [], oppBoards: {} });
     } else if (ev.name === 'shop_visible' || ev.name === 'shop_hidden') {
       sawShopVisibleEvent = true;
       const visible = ev.name === 'shop_visible' && String(ev.data) !== 'false';
@@ -357,7 +372,7 @@ function onGameStart(classId: number | null): void {
   resetOwn();
   armFeatures(classId);
   // 28164/21570 sind sicher TFT; bei 5426 entscheidet erst game_mode.
-  patchLive({ inTft: tftFromGame(classId) === true, shop: [], shopVisible: false, opponent: null, stage: null, level: null, ownUnits: [] });
+  patchLive({ inTft: tftFromGame(classId) === true, shop: [], shopVisible: false, opponent: null, stage: null, level: null, ownUnits: [], oppBoards: {} });
   void mainForGame();
 }
 
@@ -368,7 +383,7 @@ function onGameEnd(): void {
   void submit();
   sawShopVisibleEvent = false;
   resetOwn();
-  patchLive({ inTft: false, shop: [], shopVisible: false, opponent: null, stage: null, level: null, ownUnits: [] });
+  patchLive({ inTft: false, shop: [], shopVisible: false, opponent: null, stage: null, level: null, ownUnits: [], oppBoards: {} });
   void setTopmost('main', false);
 }
 
@@ -450,8 +465,32 @@ async function syncOverlays(): Promise<void> {
     // Ohne angeheftete Comp zeigt das Overlay die Vorschlagsliste.
     setOverlay('pinned', tft && s.pinned),
     setOverlay('shop', tft && s.shop && !!pin && live.shopVisible),
-    setOverlay('matchup', tft && s.matchups),
+    setOverlay('matchup', tft && s.opponent && !!pin),
   ]);
+}
+
+// Detail der angehefteten Comp (Aufstellung, fruehe Boards) fuer das Overlay.
+// Die Overlays laden nie selbst, deshalb holt es das Hintergrundfenster.
+let pinDetailFor = '';
+
+async function loadPinDetail(force = false): Promise<void> {
+  const pin = read('ms.pin');
+  if (!pin) {
+    pinDetailFor = '';
+    if (read('ms.pinDetail')) write('ms.pinDetail', null);
+    return;
+  }
+  const want = `${read('ms.settings').region}|${pin.key}`;
+  const cur = read('ms.pinDetail');
+  if (!force && want === pinDetailFor && cur?.key === pin.key && Date.now() - cur.fetchedAt < REFRESH_MS) return;
+  pinDetailFor = want;
+  try {
+    const data = await loadCompDetail(pin.slug, pin.units.map(u => u.id));
+    if (read('ms.pin')?.key === pin.key) write('ms.pinDetail', { key: pin.key, fetchedAt: Date.now(), data });
+  } catch (e) {
+    pinDetailFor = '';
+    log('pin detail failed', (e as Error)?.message);
+  }
 }
 
 // ---------- Daten ----------
@@ -464,6 +503,7 @@ async function refreshData(force = false): Promise<void> {
     const fresh = comps.comps.find(c => c.key === pin.key);
     if (fresh) write('ms.pin', fresh);
   }
+  await loadPinDetail(force);
 }
 
 // ---------- Start ----------
@@ -497,6 +537,7 @@ subscribe(['ms.settings', 'ms.pin'], key => {
       void loadComps(true);
     }
   }
+  void loadPinDetail();
   void syncOverlays();
 });
 

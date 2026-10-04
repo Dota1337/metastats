@@ -9,6 +9,7 @@ import { boot } from '../lib/boot.ts';
 import { makeDraggable, fitSelf } from '../lib/ow.ts';
 import { levelPlan, compRecipes, suggestComps } from '../lib/plan.ts';
 import { h, clear, unitIcon, itemIcon, compUnits, tierBadge } from '../lib/dom.ts';
+import { boardView } from '../lib/board-view.ts';
 
 const root = document.getElementById('app')!;
 const WIDTH = 340;
@@ -63,10 +64,25 @@ function render(): void {
   const plan = levelPlan(pin, lk);
   const recipes = compRecipes(pin, lk);
   const odds = live.level != null ? lk?.shopOdds[live.level] : undefined;
+  // Aufstellung und fruehes Board laedt das Hintergrundfenster; ohne sie
+  // bleibt es bei der Unit-Reihe.
+  const pd = read('ms.pinDetail');
+  const detail = pd && pd.key === pin.key ? pd.data : null;
+  const byId = new Map(pin.units.map(u => [u.id, u]));
+  const early = live.level != null && live.level >= 4 && live.level <= 7 ? detail?.early[String(live.level)]?.[0] : undefined;
 
   clear(root, h('div', { class: 'overlay' },
     head,
-    compUnits(pin, lk, 'sm'),
+    detail && detail.board.length
+      ? h('div', {},
+        h('div', { class: 'ov-label' }, t('overlay.target')),
+        boardView(detail.board.map(b => ({ cell: b.cell, unit: b.unit, star: byId.get(b.unit)?.star3 ? 3 : undefined, items: byId.get(b.unit)?.items })), lk, 'sm'),
+      )
+      : compUnits(pin, lk, 'sm'),
+    early ? h('div', { class: 'ov-row' },
+      h('span', { class: 'ov-label' }, `${t('tab.early')} · ${t('tools.level')} ${live.level}`),
+      h('span', { class: 'units' }, early.units.map(u => unitIcon(u, lk, { size: 'sm' }))),
+    ) : null,
     h('div', { class: 'ov-row' },
       h('span', { class: 'ov-label' }, t('tools.levelPlan')),
       h('span', {}, plan.kind === 'reroll' ? t('plan.reroll', { n: plan.level }) : t(`plan.${plan.kind}`)),
@@ -87,7 +103,7 @@ function render(): void {
 }
 
 void boot(render);
-subscribe(['ms.pin', 'ms.lookups', 'ms.live', 'ms.comps', 'ms.settings'], key => {
+subscribe(['ms.pin', 'ms.pinDetail', 'ms.lookups', 'ms.live', 'ms.comps', 'ms.settings'], key => {
   // Shop-Wechsel aendern hier nichts; nur Stufe oder eigene Units zaehlen.
   if (key === 'ms.live') {
     const l = read('ms.live');

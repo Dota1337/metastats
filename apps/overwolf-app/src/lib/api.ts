@@ -2,7 +2,8 @@
 // Fenster lesen zuerst den gespeicherten Stand und laden nur nach, wenn er
 // aelter als die Frist ist — im Spiel wird so nie auf das Netz gewartet.
 import type {
-  CompanionCompsResponse, CompanionLookups, CompanionPlayerResponse,
+  CompanionCompDetail, CompanionCompsResponse, CompanionItemDetail, CompanionItemsResponse,
+  CompanionLookups, CompanionPlayerResponse, CompanionUnitDetail, CompanionUnitsResponse,
 } from '../../../../app/lib/companion-types.ts';
 import { API_BASE } from './config.ts';
 import { read, write } from './store.ts';
@@ -50,8 +51,53 @@ export async function loadLookups(force = false): Promise<CompanionLookups | nul
   }
 }
 
-export function loadPlayer(name: string): Promise<CompanionPlayerResponse> {
-  return getJson<CompanionPlayerResponse>(`/api/companion/v1/player?name=${encodeURIComponent(name)}`, 30000);
+export function loadPlayer(name: string, start = 0): Promise<CompanionPlayerResponse> {
+  const q = `name=${encodeURIComponent(name)}${start > 0 ? `&start=${start}` : ''}`;
+  return getJson<CompanionPlayerResponse>(`/api/companion/v1/player?${q}`, 30000);
+}
+
+// Units, Items und Comp-Details: nur im Speicher des Fensters, 30 Minuten.
+// Laufende Abrufe werden geteilt, damit schnelles Klicken nicht doppelt laedt.
+// Ein Fehler wird nicht gemerkt — der naechste Versuch fragt neu.
+const memo = new Map<string, { at: number; p: Promise<unknown> }>();
+
+function cached<T>(path: string, timeoutMs = 30000): Promise<T> {
+  const hit = memo.get(path);
+  if (hit && Date.now() - hit.at < COMPS_TTL) return hit.p as Promise<T>;
+  const p = getJson<T>(path, timeoutMs);
+  memo.set(path, { at: Date.now(), p });
+  p.catch(() => { if (memo.get(path)?.p === p) memo.delete(path); });
+  return p;
+}
+
+export function loadUnits(): Promise<CompanionUnitsResponse> {
+  return cached('/api/companion/v1/units');
+}
+
+export function loadUnit(id: string): Promise<CompanionUnitDetail> {
+  return cached(`/api/companion/v1/units?id=${encodeURIComponent(id)}`);
+}
+
+export function loadItems(): Promise<CompanionItemsResponse> {
+  return cached('/api/companion/v1/items');
+}
+
+export function loadItem(id: string): Promise<CompanionItemDetail> {
+  return cached(`/api/companion/v1/items?id=${encodeURIComponent(id)}`);
+}
+
+// Der Server rechnet ein Comp-Detail beim ersten Abruf manchmal laenger als
+// sein Zeitlimit (Antwort 503) — dann einmal nach kurzer Pause neu fragen.
+export async function loadCompDetail(slug: string, units: string[]): Promise<CompanionCompDetail> {
+  const region = read('ms.settings').region;
+  const path = `/api/companion/v1/comp?slug=${encodeURIComponent(slug)}&units=${encodeURIComponent(units.join(','))}&region=${encodeURIComponent(region)}`;
+  try {
+    return await cached<CompanionCompDetail>(path, 60000);
+  } catch (e) {
+    if ((e as { status?: number }).status !== 503) throw e;
+    await new Promise(r => setTimeout(r, 3000));
+    return cached<CompanionCompDetail>(path, 60000);
+  }
 }
 
 export function siteUrl(path: string): string {

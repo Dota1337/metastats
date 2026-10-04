@@ -5,14 +5,14 @@
 // Aenderungen anderer Fenster als 'storage'-Ereignis. Spieldaten (ms.live,
 // ms.me) schreibt nur das Hintergrundfenster; die Fenster schreiben nur, was
 // der Nutzer waehlt (ms.pin, ms.settings), das Hauptfenster zusaetzlich die
-// geladenen Comps/Lookups. Overlays laden nie aus dem Netz.
-import type { CompanionComp, CompanionCompsResponse, CompanionLookups } from '../../../../app/lib/companion-types.ts';
+// geladenen Comps/Lookups, das Hintergrundfenster das Detail der angehefteten Comp. Overlays laden nie aus dem Netz.
+import type { CompanionComp, CompanionCompDetail, CompanionCompsResponse, CompanionLookups } from '../../../../app/lib/companion-types.ts';
 import type { Lang } from './i18n.ts';
 
 export interface Settings {
   pinned: boolean;     // Comp-Overlay im Spiel
   shop: boolean;       // Shop-Markierung
-  matchups: boolean;   // Gegner-Anzeige, bewusst aus
+  opponent: boolean;   // Gegner-Overlay, solange eine Comp angeheftet ist (ab 0.5; frueher matchups, aus)
   share: boolean;      // Brett-Daten senden
   region: string;
   lang: Lang | null;   // null = Overwolf-Sprache
@@ -27,6 +27,7 @@ export interface Live {
   opponent: string | null;
   stage: string | null;
   ownUnits: string[];  // eigene Units auf Brett + Bank (Kennungen, ohne Doppelte)
+  oppBoards: Record<string, string[]>; // Gegnername -> Units seines zuletzt gesehenen Bretts
   updatedAt: number;
 }
 
@@ -39,6 +40,7 @@ interface Schema {
   'ms.lookups': Cached<CompanionLookups> | null;
   'ms.live': Live;
   'ms.me': string | null; // eigener Riot-Name aus dem Spiel, fuer das Profil
+  'ms.pinDetail': (Cached<CompanionCompDetail> & { key: string }) | null; // Detail der angehefteten Comp, laedt das Hintergrundfenster
 }
 export type StoreKey = keyof Schema;
 
@@ -46,12 +48,13 @@ export type StoreKey = keyof Schema;
 const LEGACY_PAUSED = 'metastats.companion.paused';
 
 const DEFAULTS: { [K in StoreKey]: Schema[K] } = {
-  'ms.settings': { pinned: true, shop: true, matchups: false, share: true, region: 'all', lang: null, collapsed: false },
+  'ms.settings': { pinned: true, shop: true, opponent: true, share: true, region: 'all', lang: null, collapsed: false },
   'ms.pin': null,
   'ms.comps': null,
   'ms.lookups': null,
-  'ms.live': { inTft: false, level: null, shop: [], shopVisible: false, opponent: null, stage: null, ownUnits: [], updatedAt: 0 },
+  'ms.live': { inTft: false, level: null, shop: [], shopVisible: false, opponent: null, stage: null, ownUnits: [], oppBoards: {}, updatedAt: 0 },
   'ms.me': null,
+  'ms.pinDetail': null,
 };
 
 export function read<K extends StoreKey>(key: K): Schema[K] {
@@ -66,6 +69,7 @@ export function read<K extends StoreKey>(key: K): Schema[K] {
     }
     const parsed = JSON.parse(raw) as Schema[K];
     if (key === 'ms.settings') return { ...DEFAULTS['ms.settings'], ...(parsed as Settings) } as Schema[K];
+    if (key === 'ms.live') return { ...DEFAULTS['ms.live'], ...(parsed as Live) } as Schema[K];
     return parsed;
   } catch {
     return DEFAULTS[key];

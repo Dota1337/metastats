@@ -57,6 +57,51 @@ export const COMPANION_TRANSLATIONS = {
   'companion.settings.asia': t6('Asien', 'Asia', '아시아', '亚洲', 'Asia', 'Asie'),
 
   'companion.overlay.nextOpponent': t6('Nächster Gegner', 'Next opponent', '다음 상대', '下一个对手', 'Próximo rival', 'Prochain adversaire'),
+  'companion.overlay.oppAhead': t6('landet am Ende vor dir in {n} % der Spiele', 'finishes ahead of you in {n}% of games', '{n}% 게임에서 당신보다 높은 순위', '{n}% 的对局排名在你之前', 'termina por delante de ti en el {n} % de las partidas', 'finit devant vous dans {n} % des parties'),
+  'companion.overlay.noMatchup': t6('Keine Matchup-Daten', 'No matchup data', '상성 데이터 없음', '暂无对位数据', 'Sin datos de enfrentamiento', 'Pas de données de matchup'),
+  'companion.overlay.target': t6('Ziel-Aufstellung', 'Target board', '목표 배치', '目标站位', 'Tablero objetivo', 'Placement cible'),
+
+  'companion.tab.units': t6('Units', 'Units', '유닛', '弈子', 'Unidades', 'Unités'),
+  'companion.tab.items': t6('Items', 'Items', '아이템', '装备', 'Objetos', 'Objets'),
+  'companion.tab.early': t6('Early Game', 'Early Game', '초반', '前期', 'Early Game', 'Early Game'),
+  'companion.tab.history': t6('Match History', 'Match History', '전적', '对局记录', 'Historial', 'Historique'),
+
+  'companion.common.back': t6('Zurück', 'Back', '뒤로', '返回', 'Volver', 'Retour'),
+  'companion.common.noData': t6('Keine Daten', 'No data', '데이터 없음', '暂无数据', 'Sin datos', 'Aucune donnée'),
+  'companion.common.all': t6('Alle', 'All', '전체', '全部', 'Todas', 'Toutes'),
+
+  'companion.comps.details': t6('Details', 'Details', '상세', '详情', 'Detalles', 'Détails'),
+  'companion.comps.board': t6('Aufstellung', 'Positioning', '배치', '站位', 'Posicionamiento', 'Placement'),
+  'companion.comps.carriers': t6('Items je Träger', 'Items per carrier', '유닛별 아이템', '各弈子装备', 'Objetos por portador', 'Objets par porteur'),
+  'companion.comps.endLevel': t6('Endstufe', 'Final level', '최종 레벨', '最终等级', 'Nivel final', 'Niveau final'),
+  'companion.comps.share': t6('Anteil', 'Share', '비율', '占比', 'Proporción', 'Part'),
+  'companion.comps.reach': t6('Stufe erreicht', 'Level reached', '레벨 도달', '到达等级', 'Nivel alcanzado', 'Niveau atteint'),
+  'companion.comps.matchups': t6('Matchups', 'Matchups', '상성', '对位', 'Enfrentamientos', 'Matchups'),
+  'companion.comps.strongVs': t6('Stark gegen', 'Strong against', '강한 상대', '克制', 'Fuerte contra', 'Fort contre'),
+  'companion.comps.weakVs': t6('Schwach gegen', 'Weak against', '약한 상대', '被克制', 'Débil contra', 'Faible contre'),
+  'companion.comps.ahead': t6('{n} % vorn', '{n}% ahead', '{n}% 우위', '{n}% 领先', '{n} % por delante', '{n} % devant'),
+
+  'companion.units.search': t6('Unit suchen', 'Search unit', '유닛 검색', '搜索弈子', 'Buscar unidad', 'Chercher une unité'),
+  'companion.units.unit': t6('Unit', 'Unit', '유닛', '弈子', 'Unidad', 'Unité'),
+  'companion.units.bestItems': t6('Beste Items', 'Best items', '추천 아이템', '最佳装备', 'Mejores objetos', 'Meilleurs objets'),
+  'companion.units.itemSets': t6('Beste Item-Kombinationen', 'Best item sets', '추천 아이템 조합', '最佳装备组合', 'Mejores combinaciones', 'Meilleures combinaisons'),
+  'companion.units.inComps': t6('In Comps', 'In comps', '포함된 조합', '所在阵容', 'En composiciones', 'Dans les compos'),
+
+  'companion.items.search': t6('Item suchen', 'Search item', '아이템 검색', '搜索装备', 'Buscar objeto', 'Chercher un objet'),
+  'companion.items.finished': t6('Fertige Items', 'Completed items', '완성 아이템', '成装', 'Objetos completos', 'Objets complets'),
+  'companion.items.emblem': t6('Embleme', 'Emblems', '상징', '纹章', 'Emblemas', 'Emblèmes'),
+  'companion.items.special': t6('Besondere', 'Special', '특수', '特殊', 'Especiales', 'Spéciaux'),
+  'companion.items.recipe': t6('Rezept', 'Recipe', '조합법', '合成', 'Receta', 'Recette'),
+  'companion.items.bestUsers': t6('Beste Träger', 'Best carriers', '추천 유닛', '最佳携带者', 'Mejores portadores', 'Meilleurs porteurs'),
+
+  'companion.early.pick': t6('Comp', 'Comp', '조합', '阵容', 'Composición', 'Compo'),
+  'companion.early.boards': t6('Häufigste Boards', 'Most played boards', '가장 많이 쓰인 보드', '最常用站位', 'Tableros más jugados', 'Plateaux les plus joués'),
+
+  'companion.history.more': t6('Weitere Spiele', 'More games', '더 보기', '更多对局', 'Más partidas', 'Plus de parties'),
+  'companion.history.lobby': t6('Lobby', 'Lobby', '로비', '房间', 'Sala', 'Lobby'),
+  'companion.history.myBoard': t6('Deine Aufstellung', 'Your board', '내 배치', '你的站位', 'Tu tablero', 'Votre plateau'),
+  'companion.history.round': t6('Runde', 'Round', '라운드', '回合', 'Ronda', 'Manche'),
+
   'companion.common.retry': t6('Erneut laden', 'Reload', '다시 불러오기', '重新加载', 'Recargar', 'Recharger'),
   'companion.common.offline': t6('Keine Verbindung zu metastats.gg', 'No connection to metastats.gg', 'metastats.gg에 연결할 수 없음', '无法连接 metastats.gg', 'Sin conexión con metastats.gg', 'Pas de connexion à metastats.gg'),
 } as const;

@@ -90,3 +90,35 @@ export function suggestComps(comps: CompanionComp[], ownUnits: string[], n = 5):
     .slice(0, n)
     .map(x => x.c);
 }
+
+// Comp des Gegners aus seinem zuletzt gesehenen Brett. Erst ab Stage 3 (davor
+// sind Boards Zwischenstaende), mindestens 5 Units der Comp auf dem Brett und
+// 2 Units Vorsprung vor der naechstbesten — sonst wird nichts geraten. Die
+// Liste fasst Sub-Cluster schon ueber members zusammen, eine Comp = ein Eintrag.
+export const RECOGNIZE_MIN_HITS = 5;
+export const RECOGNIZE_MIN_LEAD = 2;
+
+export function recognizeComp(units: string[], comps: CompanionComp[], stage: string | null): CompanionComp | null {
+  const s = stage ? Number(stage.split('-')[0]) : null;
+  if (s != null && Number.isFinite(s) && s < 3) return null;
+  const own = new Set(units);
+  if (own.size < RECOGNIZE_MIN_HITS) return null;
+  let best: CompanionComp | null = null;
+  let bestHits = 0;
+  let second = 0;
+  for (const c of comps) {
+    const hits = new Set(c.units.map(u => u.id).filter(id => own.has(id))).size;
+    if (hits > bestHits) { second = bestHits; bestHits = hits; best = c; }
+    else if (hits > second) second = hits;
+  }
+  return best && bestHits >= RECOGNIZE_MIN_HITS && bestHits - second >= RECOGNIZE_MIN_LEAD ? best : null;
+}
+
+// Matchup der eigenen (angehefteten) Comp gegen die erkannte Comp des Gegners:
+// Anteil der Spiele, in denen der Gegner am Ende vor dir landet. null = keine
+// Daten (gleiche Comp oder unter 30 gemeinsamen Spielen).
+export function opponentAhead(mine: CompanionComp, theirs: CompanionComp): { share: number; games: number } | null {
+  if (mine.key === theirs.key) return null;
+  const v = mine.vs?.[theirs.key];
+  return v ? { share: Number((1 - v[1]).toFixed(3)), games: v[0] } : null;
+}

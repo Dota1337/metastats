@@ -12,7 +12,7 @@
     "rpcs": 29,
     "files": 14,
     "edges": 490,
-    "unused": 10,
+    "unused": 7,
     "unresolved": 1
   },
   "groups": [
@@ -235,8 +235,11 @@
         "app/lib/tft-tier-letter.ts",
         "public/tft-set.json"
       ],
-      "used": false,
-      "usedBy": []
+      "used": true,
+      "usedBy": [
+        "apps/overwolf-app/dist/app/assets/history-store-BAh63Jzy.js",
+        "apps/overwolf-app/src/lib/api.ts"
+      ]
     },
     {
       "id": "api:/api/companion/v1/comps",
@@ -257,7 +260,7 @@
       ],
       "used": true,
       "usedBy": [
-        "apps/overwolf-app/dist/app/assets/api-DIQZ3ziP.js",
+        "apps/overwolf-app/dist/app/assets/history-store-BAh63Jzy.js",
         "apps/overwolf-app/src/lib/api.ts"
       ]
     },
@@ -277,8 +280,11 @@
         "app/lib/tft-tier-letter.ts",
         "public/tft-set.json"
       ],
-      "used": false,
-      "usedBy": []
+      "used": true,
+      "usedBy": [
+        "apps/overwolf-app/dist/app/assets/history-store-BAh63Jzy.js",
+        "apps/overwolf-app/src/lib/api.ts"
+      ]
     },
     {
       "id": "api:/api/companion/v1/lookups",
@@ -298,7 +304,7 @@
       ],
       "used": true,
       "usedBy": [
-        "apps/overwolf-app/dist/app/assets/api-DIQZ3ziP.js",
+        "apps/overwolf-app/dist/app/assets/history-store-BAh63Jzy.js",
         "apps/overwolf-app/src/lib/api.ts"
       ]
     },
@@ -320,7 +326,7 @@
       ],
       "used": true,
       "usedBy": [
-        "apps/overwolf-app/dist/app/assets/api-DIQZ3ziP.js",
+        "apps/overwolf-app/dist/app/assets/history-store-BAh63Jzy.js",
         "apps/overwolf-app/src/lib/api.ts"
       ]
     },
@@ -340,8 +346,11 @@
         "app/lib/tft-tier-letter.ts",
         "public/tft-set.json"
       ],
-      "used": false,
-      "usedBy": []
+      "used": true,
+      "usedBy": [
+        "apps/overwolf-app/dist/app/assets/history-store-BAh63Jzy.js",
+        "apps/overwolf-app/src/lib/api.ts"
+      ]
     },
     {
       "id": "api:/api/cron/check-patches",
@@ -1226,7 +1235,7 @@
       "via": [],
       "used": true,
       "usedBy": [
-        "apps/overwolf-app/dist/app/assets/background-BejZSoOO.js",
+        "apps/overwolf-app/dist/app/assets/background-Dt6xdr1d.js",
         "apps/overwolf-app/src/windows/background.ts"
       ]
     },

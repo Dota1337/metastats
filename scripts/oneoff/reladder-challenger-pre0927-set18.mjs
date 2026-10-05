@@ -46,10 +46,13 @@
 
 import pg from 'pg';
 import { challengerBase } from '../lib/tft-marketvalue.mjs';
+import { loadCurrentSet } from '../lib/current-set.mjs';
 
 const args = process.argv.slice(2);
 const APPLY = args.includes('--apply');
-const SET = 18;
+// Wie recompute-challenger-base-set18.mjs: kein Set-Literal (check-drift), --set 18 nach dem Set-Wechsel.
+const SET = Number(args.includes('--set') ? args[args.indexOf('--set') + 1] : loadCurrentSet());
+if (!Number.isInteger(SET)) throw new Error('Kein Set: --set N angeben');
 const LADDER_DAY = '2026-09-27';
 const BEFORE = '2026-09-28';
 const BACKUP = 'tft_mv_backup_20261005_reladder';

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { PatchInfo } from './tft-supabase-reader';
+import { previousPatchOf } from './snapshot-matrix';
 
 // Shared cache headers for TFT stats APIs. The underlying data only refreshes
 // once a day (Hetzner daily-crawl: 00:00 UTC start, fresh by ~09:00 UTC), so a
@@ -157,7 +158,8 @@ export function maybeRedirectByPatchAlias(
   // Snapshot wird beim nächsten Crawl-Lauf regeneriert und kann unter dem
   // stabilen Key "current" gecached werden.
   if (requested !== 'previous') return null;
-  const resolved = patches[1]?.patch ?? null;
+  // Dieselbe Vorpatch-Regel wie resolveFilters (previousPatchOf).
+  const resolved = previousPatchOf(patches, patches[0]?.patch)?.patch ?? null;
   if (!resolved || resolved === requested) return null;
   url.searchParams.set('patch', resolved);
   return NextResponse.redirect(url, {

@@ -35,7 +35,7 @@ export const CURRENT_SET: number = resolved;
 
 // Marketing-Name des Sets ("Space Gods"), sofern Riot ihn schon veroeffentlicht
 // hat. detect-tft-set.mjs traegt bewusst KEINEN geratenen Namen ein und faellt
-// auf `Set N` zurueck (scripts/detect-tft-set.mjs:20-33,200). Genau dieser
+// auf `Set N` zurueck (SET_NAMES / displayName in scripts/detect-tft-set.mjs). Genau dieser
 // Fallback darf nicht als Name durchgereicht werden — sonst steht in der
 // TFT-Kopfzone ab dem Set-18-Bump am 26.08. "Set 18 · Set 18".
 //

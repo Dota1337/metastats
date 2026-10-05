@@ -34,6 +34,9 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    # Ein haengender SSH-Lauf soll den Anstoss aus tft-bpatch-detect nicht
+    # stundenlang blockieren (concurrency-Gruppe deploy-hetzner).
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 

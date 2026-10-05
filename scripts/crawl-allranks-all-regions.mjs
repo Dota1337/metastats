@@ -14,6 +14,13 @@
  * daily run, watchdog resumes and manual `--day` backfills so they never hammer
  * the bucket in parallel.
  *
+ * Patch-Namen (Aufgabe A, 2026-10): Der Treiber rechnet den Namen des Zieltags
+ * einmal aus (crawlPatch) und gibt ihn allen Kindern als --set/--patch mit, damit
+ * keine Region einen anderen Namen bekommt, falls tft-set.json mitten im Lauf
+ * wechselt. Am Ende ruft er einmal relabel-tft-bpatch.mjs --auto --apply als Kind
+ * auf (unter seiner Sperre) — das korrigiert Tage, deren B-Patch Riot erst
+ * nachtraeglich angekuendigt hat. Regeln: scripts/lib/daily-crawl-post.mjs.
+ *
  * Usage:
  *   node scripts/crawl-allranks-all-regions.mjs                  # all regions, mode=auto (last finished day: D-1 after 05:00 UTC)
  *   node scripts/crawl-allranks-all-regions.mjs --resume-gaps    # oldest incomplete day in last K (watchdog)
@@ -25,7 +32,8 @@
  */
 
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, unlinkSync } from 'node:fs';
+import { readFileSync, unlinkSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 import { revalidateEdge, finishRevalidateRun, STATS_EDGE_PATHS } from './lib/revalidate-edge.mjs';
@@ -33,6 +41,15 @@ import { ACTIVE_REGIONS } from './lib/active-regions.mjs';
 import { resolveDailyTargetDay } from './lib/tft-crawl-window.mjs';
 import { tryAcquire, blockAcquire, releaseLock } from './lib/advisory-lock.mjs';
 import { assertContracts } from './lib/contracts.mjs';
+import { supabasePgUrl } from './lib/pg-url.mjs';
+import { crawlPatch } from './lib/tft-patch-day.mjs';
+import { STATUS_FILE, defaultStateDir } from './lib/tft-patch-relabel.mjs';
+import { DAILY_TABLES } from './lib/tft-supabase-writer.mjs';
+import {
+  EXPLORER_UNIT, LOCK_OWNER_ENV, PUBLISHER_UNIT, RELABEL_TIMEOUT_MS,
+  dailyCrawlLockPath, maintenanceTables, readRelabelStatus, relabelChildArgs,
+  shouldPostCrawl, shouldRunRelabel, waitUntilIdle,
+} from './lib/daily-crawl-post.mjs';
 import {
   DEFAULT_K, DEFAULT_MAX_ATTEMPTS, cursorPath, startSeed, readCursor,
   markCompleted, recordAttempt, isSettled, selectTodo, selectGapDay,
@@ -63,67 +80,71 @@ const RESUMABLE = MODE !== 'today';
 // re-fires later). Audit F3.
 const BLOCK_LOCK = Boolean(DAY_OVERRIDE) && RESUMABLE;
 
-const LOCK_PATH = process.env.DAILY_CRAWL_LOCK
-  || (existsSync('/run/lock') ? '/run/lock/metastats-daily-crawl.lock' : '.daily-crawl.lock');
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+const LOCK_PATH = dailyCrawlLockPath(process.env);
 let lockHeld = false;
 process.on('exit', () => { if (lockHeld) releaseLock(LOCK_PATH); });
 process.on('SIGTERM', () => process.exit(143));
 
-// Trigger the snapshot publisher ONLY when a run did real work (done > 0).
-// Replaces the systemd OnSuccess=publisher that fired even on No-Op resume skips
-// — with --resume-gaps a No-Op is the common case, and a needless full publish
-// loads Supabase ~3x/day for nothing. Audit HIGH-1. Best-effort (no systemctl
-// off the box).
-function triggerPublisher() {
+// systemd-Zustand einer Unit, null ohne systemctl (nicht auf der Box).
+function unitState(unit) {
   try {
-    const r = spawnSync('systemctl', ['start', '--no-block', 'metastats-snapshot-publisher.service'], { stdio: 'ignore' });
-    if (r.error) console.log(`    [publisher] trigger skipped: ${r.error.code || r.error.message}`);
-    else console.log('    [publisher] triggered (work done this run)');
-  } catch (err) {
-    console.log(`    [publisher] trigger skipped: ${err.message}`);
+    const r = spawnSync('systemctl', ['is-active', unit], { encoding: 'utf8', timeout: 15_000 });
+    if (r.error) return null;
+    return (r.stdout || '').trim() || null;
+  } catch {
+    return null;
   }
 }
 
-// Supabase passwords often contain reserved URL chars (#, @, …); pg's URL parser
-// rejects those unless percent-encoded. Same helper as db-exec.mjs / apply-migrations.
-function encodePasswordInPgUrl(url) {
-  const schemeEnd = url.indexOf('://');
-  if (schemeEnd < 0) return url;
-  const after = url.slice(schemeEnd + 3);
-  const atIdx = after.lastIndexOf('@');
-  if (atIdx < 0) return url;
-  const userinfo = after.slice(0, atIdx);
-  const rest = after.slice(atIdx);
-  const colonIdx = userinfo.indexOf(':');
-  if (colonIdx < 0) return url;
-  const user = userinfo.slice(0, colonIdx);
-  const pass = userinfo.slice(colonIdx + 1);
-  return `${url.slice(0, schemeEnd + 3)}${user}:${encodeURIComponent(pass)}${rest}`;
+// Ziele von systemctl start hier: metastats-snapshot-publisher.service
+// (PUBLISHER_UNIT) und metastats-explorer-build.service (EXPLORER_UNIT). Im
+// Klartext, weil die Systemkarte (build-system-map.mjs) Unit-Namen nur im
+// Quelltext findet, nicht ueber Konstanten.
+function startUnit(unit, label, why) {
+  try {
+    const r = spawnSync('systemctl', ['start', '--no-block', unit], { stdio: 'ignore', timeout: 15_000 });
+    if (r.error) console.log(`    [${label}] trigger skipped: ${r.error.code || r.error.message}`);
+    else console.log(`    [${label}] triggered (${why})`);
+  } catch (err) {
+    console.log(`    [${label}] trigger skipped: ${err.message}`);
+  }
+}
+
+// Trigger the snapshot publisher ONLY when a run did real work (crawled or
+// relabeled). Replaces the systemd OnSuccess=publisher that fired even on No-Op
+// resume skips — with --resume-gaps a No-Op is the common case, and a needless
+// full publish loads Supabase ~3x/day for nothing. Audit HIGH-1. Best-effort
+// (no systemctl off the box).
+// Laeuft der Publisher noch (Type=oneshot), wuerde ein Start verpuffen — dann
+// begrenzt warten. Die Markerdatei der Umbenennung sorgt dafuer, dass er die
+// betroffenen Patches neu rechnet statt alte Snapshots wiederzuverwenden.
+async function triggerPublisher(why) {
+  const wait = await waitUntilIdle({
+    probe: () => unitState(PUBLISHER_UNIT),
+    sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
+  });
+  if (wait.waitedMs > 0) console.log(`    [publisher] waited ${Math.round(wait.waitedMs / 1000)}s for the running publisher`);
+  if (!wait.idle) {
+    console.log(`    [publisher] still ${wait.state} — start skipped, its next run picks up the relabel marker`);
+    return;
+  }
+  startUnit(PUBLISHER_UNIT, 'publisher', why);
 }
 
 // C1 — post-crawl VACUUM (ANALYZE) targets. After a bulk-upsert the Supabase
 // visibility map goes cold and index-only-scans degrade to mass heap-fetches
 // (measured 153k fetches / 9s on get_tft_distinct_patches_for_set → 0 / 0.88s
 // after VACUUM). These are exactly the crawl-write targets from
-// tft-supabase-writer.mjs, plus the marketvalue snapshot table (leaderboard).
+// tft-supabase-writer.mjs (DAILY_TABLES, inkl. comp_outcome), plus names and the
+// marketvalue snapshot table (leaderboard).
 // The aggregates live only on Supabase (see reference_hetzner_supabase_db_split),
 // NOT on the crawler's Hetzner-local PG — hence a dedicated Supabase connection.
 // Heaviest first; marketvalue_snapshots (slowest, unbounded growth) LAST so it
 // can never delay the user-facing tft_daily_* tables. This does NOT fix the
 // detoast-bound diamond perms (~22s, CPU-bound, VACUUM-immune) — that's C3.
-const MAINTENANCE_TABLES = [
-  'tft_daily_comp_stats',
-  'tft_daily_unit_stats',
-  'tft_daily_unit_top_items',
-  'tft_daily_item_stats',
-  'tft_daily_trait_stats',
-  'tft_daily_comp_pairs',
-  'tft_daily_augment_stats',
-  'tft_daily_trait_unitcount_stats',
-  'tft_daily_crawl_meta',
-  'tft_player_names',
-  'tft_player_marketvalue_snapshots',
-];
+const MAINTENANCE_TABLES = maintenanceTables(DAILY_TABLES);
 const VACUUM_TOTAL_BUDGET_MS = 6 * 60_000; // wall-clock cap across all tables
 
 // Best-effort maintenance: ONE dedicated Supabase session-pooler connection,
@@ -134,15 +155,19 @@ const VACUUM_TOTAL_BUDGET_MS = 6 * 60_000; // wall-clock cap across all tables
 // lock_timeout a manual VACUUM could hold the Riot-bucket lock forever waiting
 // on the ShareUpdateExclusiveLock. NEVER throws.
 async function runMaintenanceVacuum() {
-  const dbUrl = process.env.SUPABASE_DB_URL;
-  if (!dbUrl) {
-    console.log('    [vacuum] skipped: SUPABASE_DB_URL not set');
+  // supabasePgUrl nimmt nur eine URL, die wirklich auf Supabase zeigt (auf der
+  // Box zeigt DATABASE_URL auf die Hetzner-PG), und kodiert das Passwort.
+  let dbUrl;
+  try {
+    dbUrl = supabasePgUrl(process.env);
+  } catch (err) {
+    console.log(`    [vacuum] skipped: ${err.message}`);
     return;
   }
   let client;
   try {
     client = new pg.Client({
-      connectionString: encodePasswordInPgUrl(dbUrl),
+      connectionString: dbUrl,
       ssl: { rejectUnauthorized: false },
       connectionTimeoutMillis: 15_000,
     });
@@ -171,22 +196,78 @@ async function runMaintenanceVacuum() {
   }
 }
 
-function runChild(cmd, cmdArgs, label) {
+// timeoutMs: das Kind wird nach Ablauf beendet (SIGTERM) und gilt als
+// fehlgeschlagen. Ohne Angabe kein Limit (Sammler wie bisher).
+function runChild(cmd, cmdArgs, label, { env, timeoutMs } = {}) {
   return new Promise((resolve, reject) => {
     const t0 = Date.now();
-    const proc = spawn(cmd, cmdArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
+    const proc = spawn(cmd, cmdArgs, { stdio: ['ignore', 'pipe', 'pipe'], ...(env ? { env } : {}) });
+    let killed = false;
+    const timer = timeoutMs ? setTimeout(() => { killed = true; proc.kill('SIGTERM'); }, timeoutMs) : null;
     const onLine = (chunk) => {
       const lines = chunk.toString('utf8').split('\n').filter(Boolean);
       for (const line of lines) console.log(`[${label}] ${line}`);
     };
     proc.stdout.on('data', onLine);
     proc.stderr.on('data', onLine);
+    proc.on('error', (err) => {
+      if (timer) clearTimeout(timer);
+      reject(new Error(`${label} could not start: ${err.message}`));
+    });
     proc.on('close', (code) => {
+      if (timer) clearTimeout(timer);
       const elapsed = ((Date.now() - t0) / 1000).toFixed(0);
-      if (code === 0) resolve({ label, elapsed });
+      if (killed) reject(new Error(`${label} killed after ${elapsed}s (limit ${Math.round(timeoutMs / 1000)}s)`));
+      else if (code === 0) resolve({ label, elapsed });
       else reject(new Error(`${label} exited ${code} after ${elapsed}s`));
     });
   });
+}
+
+// tft-set.json wie der Sammler lesen (3 Versuche, 2 s Abstand — ein Deploy kann
+// die Datei gerade ersetzen). Gibt das Ergebnis von crawlPatch zurueck.
+async function crawlLabelFor(day) {
+  const file = resolve(__dirname, '..', 'public/tft-set.json');
+  let lastErr = null;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const meta = JSON.parse(readFileSync(file, 'utf8'));
+      if (meta && typeof meta === 'object' && !Array.isArray(meta)) return crawlPatch(day, meta);
+      lastErr = new Error('kein JSON-Objekt');
+    } catch (err) { lastErr = err; }
+    if (attempt < 3) await new Promise((r) => setTimeout(r, 2000));
+  }
+  return { set: null, patch: null, warnings: [], error: `tft-set.json nicht lesbar: ${lastErr?.message}` };
+}
+
+// Schluss-Umbenennung als Kind. Gibt die Zahl der umbenannten Tage zurueck;
+// wirft nie — sie aendert den Exit-Code des Treibers nicht.
+async function runFinalRelabel(targetDay, label) {
+  const runId = `crawl-${targetDay}.${process.pid}.${Date.now()}`;
+  console.log(`\n[relabel] start (${targetDay} = ${label.patch}, run ${runId})`);
+  try {
+    await runChild('node', relabelChildArgs({ runId, day: targetDay, patch: label.patch }), 'relabel', {
+      env: { ...process.env, [LOCK_OWNER_ENV]: String(process.pid) },
+      timeoutMs: RELABEL_TIMEOUT_MS,
+    });
+  } catch (err) {
+    console.error(`[relabel] FAILED: ${err.message}`);
+  }
+  // Auch nach einem Abbruch zaehlen die Tage, die schon umbenannt sind.
+  let text;
+  try {
+    text = readFileSync(join(defaultStateDir(), STATUS_FILE), 'utf8');
+  } catch (err) {
+    console.error(`[relabel] Statusdatei nicht lesbar: ${err.message}`);
+    return 0;
+  }
+  const s = readRelabelStatus(text, runId);
+  if (!s.ok) {
+    console.error(`[relabel] ${s.reason}`);
+    return 0;
+  }
+  console.log(`[relabel] ${s.state}, ${s.changedDays.length} day(s) relabeled${s.changedDays.length ? `: ${s.changedDays.join(',')}` : ''}`);
+  return s.changedDays.length;
 }
 
 // The non-resumable rolling path (mode=today): crawl each region with its own
@@ -278,14 +359,26 @@ async function main() {
   const cursor = startSeed(targetDay);
   const todo = (regionFilter ? regions : ACTIVE_REGIONS).filter((r) => !isSettled(cursor, r, DEFAULT_MAX_ATTEMPTS));
   console.log(`=== targetDay=${targetDay} | ${cursor.completed.length} done, ${todo.length} todo ===`);
-  if (todo.length === 0) { console.log(`=== ${targetDay} already complete — nothing to do ===`); return; }
-  console.log(`    regions to crawl: ${todo.join(',')}`);
+
+  // Ein Name fuer alle Regionen dieses Laufs. Ohne Namen sammeln die Kinder wie
+  // bisher mit eigener Rechnung (und brechen selbst ab, wenn sie keinen finden);
+  // nur die Schluss-Umbenennung entfaellt.
+  const label = await crawlLabelFor(targetDay);
+  for (const w of label.warnings) console.log(`    [patch] ${w}`);
+  if (label.error) console.error(`    [patch] ${label.error} — Kinder rechnen selbst, keine Umbenennung`);
+  else console.log(`    patch label: set ${label.set}, ${label.patch}`);
+  const labelArgs = label.error ? [] : ['--set', String(label.set), '--patch', label.patch];
+
+  // "Schon vollstaendig" endet nicht mehr hier: die Schluss-Umbenennung laeuft
+  // trotzdem (ein B-Patch kann nach dem Sammeln angekuendigt worden sein).
+  if (todo.length === 0) console.log(`=== ${targetDay} already complete — nothing to crawl ===`);
+  else console.log(`    regions to crawl: ${todo.join(',')}`);
 
   let done = 0, failed = 0;
   for (const region of todo) {
     console.log(`\n[${region}] start`);
     try {
-      const { elapsed } = await runChild('node', ['scripts/collect-tft-allranks.mjs', '--region', region, '--no-json', '--day', targetDay], region);
+      const { elapsed } = await runChild('node', ['scripts/collect-tft-allranks.mjs', '--region', region, '--no-json', '--day', targetDay, ...labelArgs], region);
       console.log(`[${region}] done in ${elapsed}s`);
       done++;
       markCompleted(cursor, region); // exit-0 = done, persisted before revalidate
@@ -297,21 +390,37 @@ async function main() {
     }
   }
 
-  console.log(`\n=== complete in ${((Date.now() - t0) / 60_000).toFixed(1)} min — ${done} done, ${failed} failed ===`);
-  finishRevalidateRun(`revalidate/${targetDay}`, 'stats');
+  if (todo.length > 0) {
+    console.log(`\n=== complete in ${((Date.now() - t0) / 60_000).toFixed(1)} min — ${done} done, ${failed} failed ===`);
+    finishRevalidateRun(`revalidate/${targetDay}`, 'stats');
+  }
 
-  // Publish only when this run actually crawled something. Audit HIGH-1.
+  // Genau eine Schluss-Umbenennung je Lauf, noch unter der Sperre. Nie im
+  // rollenden Lauf, beim Nachholen nur nach echter Arbeit.
+  let relabelChanged = 0;
+  if (shouldRunRelabel({ mode: MODE, resumeGaps: RESUME_GAPS, done }) && !label.error) {
+    relabelChanged = await runFinalRelabel(targetDay, label);
+  }
+
+  // Publish only when this run actually crawled or relabeled something. Audit HIGH-1.
   // C1: VACUUM (ANALYZE) the just-upserted aggregates BEFORE the publisher —
   // warms the Supabase visibility map so the publisher's per-permutation RPC
   // fetches (and the next morning's user reads) hit fresh index-only-scans
   // instead of the cold-map heap-fetch degradation. Best-effort, never blocks.
-  if (done > 0) {
+  if (shouldPostCrawl({ done, relabelChanged })) {
     await runMaintenanceVacuum();
-    triggerPublisher();
+    // Ab hier wird nichts mehr bei Riot oder in die Tagestabellen geschrieben;
+    // das Warten auf den Publisher soll den naechsten Lauf nicht aufhalten.
+    releaseLock(LOCK_PATH);
+    lockHeld = false;
+    await triggerPublisher(relabelChanged > 0 ? `${done} region(s) crawled, ${relabelChanged} day(s) relabeled` : 'work done this run');
+    // Der Explorer liest die Patch-Namen aus denselben Tabellen.
+    if (relabelChanged > 0) startUnit(EXPLORER_UNIT, 'explorer', `${relabelChanged} day(s) relabeled`);
 
     // Laufzeit-Vertrag: hat der Lauf wirklich Aggregate geschrieben? Nicht-fatal,
     // damit die Publisher-/OnSuccess-Kette intakt bleibt — der zentrale
     // check-contracts-Timer meldet einen Bruch hart. Siehe infra/contracts.json.
+    // patch-axis prueft die Namen erst nach der Schluss-Umbenennung.
     await assertContracts([
       'daily-crawl/comp-stats',
       'daily-crawl/crawl-meta',
@@ -319,11 +428,13 @@ async function main() {
       'daily-crawl/unit-top-items',
       'daily-crawl/item-stats',
       'daily-crawl/trait-stats',
+      'daily-crawl/patch-axis',
     ]).catch(err => console.error('[contract] Prüfung fehlgeschlagen:', err.message));
   }
 
   // Substantial failure -> exit 1 so even a manual chain wouldn't treat it as a
   // clean success; the failed regions stay un-settled for the next resume tick.
+  // Die Umbenennung zaehlt hier nie mit (an diesem Exit-Code haengt OnSuccess).
   if (failed > 0 && failed >= Math.ceil(todo.length / 2)) {
     console.error(`[exit 1] ${failed}/${todo.length} regions failed`);
     process.exit(1);

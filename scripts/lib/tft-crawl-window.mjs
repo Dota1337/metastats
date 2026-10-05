@@ -50,3 +50,11 @@ export function resolveDailyTargetDay(now = new Date(), mode = 'auto', dayOverri
   if (mode === 'today') return resolveCrawlDay(now, 'today', null);
   return resolveCrawlDay(now, 'auto', null);
 }
+
+// Der Sammeltag, der GERADE laeuft: das Fenster [D 05:00, D+1 05:00), in dem
+// `now` liegt. Anders als resolveCrawlDay/resolveDailyTargetDay (letztes
+// ABGESCHLOSSENES Fenster) — fuer die Frage "welcher Patch ist jetzt live"
+// (detect-tft-set.mjs). Immer resolveDailyTargetDay(now) + 1 Tag.
+export function currentWindowDay(now = new Date()) {
+  return new Date(now.getTime() - 5 * 3_600_000).toISOString().slice(0, 10);
+}

@@ -136,9 +136,11 @@ jobs:
 
       # TFT set detection — pulls from CommunityDragon, no Riot API needed.
       # Surfaces a `set-changed` flag for downstream notifications.
+      # Nur Pruefung: public/tft-set.json schreibt allein tft-bpatch-detect.yml
+      # (02:17 UTC, taeglich), sonst rebasen mehrere Laeufe gegeneinander.
       - name: Detect new TFT set
         id: tftset
-        run: node scripts/detect-tft-set.mjs
+        run: node scripts/detect-tft-set.mjs --dry-run
         continue-on-error: true
 
       # Commit updated data files
@@ -146,7 +148,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add public/pro-players.json public/champion-stats-euw.json public/champion-builds-euw.json public/seasons.json public/tier-distribution.json public/tft-set.json
+          git add public/pro-players.json public/champion-stats-euw.json public/champion-builds-euw.json public/seasons.json public/tier-distribution.json
           if git diff --staged --quiet; then
             echo "No data changes to commit"
           else
@@ -159,6 +161,8 @@ jobs:
             pushed=""
             for attempt in 1 2 3; do
               if git pull --rebase origin main && git push; then pushed=1; break; fi
+              # Ein haengengebliebener Rebase wuerde jeden weiteren Versuch blockieren.
+              git rebase --abort 2>/dev/null || true
               echo "Push attempt $attempt failed, retrying..."
               sleep 5
             done

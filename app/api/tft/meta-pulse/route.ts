@@ -16,6 +16,7 @@ import {
   META_PULSE_VELOCITY_MIN_GAMES,
   META_PULSE_VELOCITY_SHIFTS,
   metaPulseVelocityWindow,
+  previousPatchOf,
   type MetaPulseVelocityRow,
 } from '../../../lib/snapshot-matrix';
 
@@ -93,13 +94,15 @@ export async function GET(request: NextRequest) {
     // Gewaehlter Patch (2026-09-13): ?patch=current → neuester, ein konkreter
     // Patch aus der Liste → dieser (?patch=previous kommt oben schon als
     // Redirect auf den konkreten Patch an). Unbekannte Werte → neuester.
-    // Verglichen wird immer mit dem Patch direkt davor in der Liste;
+    // Verglichen wird mit dem Vorpatch nach previousPatchOf (juengster
+    // frueherer Patch mit genug Datentagen, ein Kurz-Patch wird
+    // uebersprungen) — dieselbe Regel wie publish-meta-pulse-diffs.mjs.
     // currentPatch/previousPatch in der Antwort meinen genau dieses Paar.
     const patchParam = searchParams.get('patch') || 'current';
     const selIdx = Math.max(0, patchParam === 'current' || patchParam === 'any'
       ? 0 : patches.findIndex(p => p.patch === patchParam));
     const sel = patches[selIdx];
-    const cmp = patches[selIdx + 1];
+    const cmp = sel ? previousPatchOf(patches, sel.patch) ?? undefined : undefined;
     const currentPatch = sel?.patch ?? null;
     const setNumber = sel?.set_number ?? CURRENT_SET;
     // Vorpatch aus einem anderen Set: kein sinnvoller Vergleich → Patch-Kaesten leer.

@@ -25,6 +25,22 @@ const PERSIST_BUCKETS = [
 
 const BATCH = 200;
 
+// Alle Tagestabellen, die dieser Writer befuellt — der Tagestreiber raeumt genau
+// diese nach dem Sammeln auf (VACUUM). daily-crawl-post.test.mjs prueft, dass
+// die Liste zu den upsertRows-Aufrufen unten passt.
+export const DAILY_TABLES = [
+  'tft_daily_comp_stats',
+  'tft_daily_unit_stats',
+  'tft_daily_unit_top_items',
+  'tft_daily_item_stats',
+  'tft_daily_trait_stats',
+  'tft_daily_comp_pairs',
+  'tft_daily_augment_stats',
+  'tft_daily_trait_unitcount_stats',
+  'tft_daily_crawl_meta',
+  'tft_daily_comp_outcome',
+];
+
 // Transient-failure resilience (Backlog-Item 2, L1). A Supabase compute
 // saturation event answers with Cloudflare 522/504 or drops the connection
 // entirely (fetch rejects). Before this layer a single such blip on the very

@@ -17,8 +17,9 @@
  */
 
 import { readFileSync, existsSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
+import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..', '..');
@@ -374,9 +375,29 @@ function utcDay(offsetDays) {
 
 /**
  * Prüft einen Vertrag.
- * @returns {{id: string, status: 'ok'|'broken'|'error'|'skipped', detail: string}}
+ *
+ * `warn` = gelb: etwas weicht ab, ist aber kein Ausfall. Zaehlt nicht fuer den
+ * Exit-Code und nicht fuer die Treiber-Warnung, bekommt aber eine Aufgabe
+ * (eine Mail je neuem Grund, siehe contracts-alert.mjs).
+ * @returns {{id: string, status: 'ok'|'warn'|'broken'|'error'|'skipped', detail: string}}
  */
 export async function checkContract(c) {
+  return applyArming(c, await runCheck(c));
+}
+
+/**
+ * Vertraege mit `"armed": false` laufen mit, zaehlen aber nie: jedes Ergebnis
+ * wird zu skipped, der eigentliche Befund steht im Text. So laesst sich ein
+ * neuer Vertrag gegen echte Daten beobachten, ohne dass er Alarm, Exit-Code
+ * oder die Treiber-Warnung ausloest (patch-axis: scharf erst nach dem
+ * Negativtest der Datenkorrektur).
+ */
+export function applyArming(c, res) {
+  if (c.armed !== false) return res;
+  return { ...res, status: 'skipped', detail: `nicht scharf (Beobachtung) — waere ${res.status}: ${res.detail}` };
+}
+
+async function runCheck(c) {
   const r = (status, detail) => ({ id: c.id, owner: c.owner, status, detail });
 
   try {
@@ -387,6 +408,9 @@ export async function checkContract(c) {
     if (c.type === 'guide-coverage') return await checkGuideCoverage(c, r);
     if (c.type === 'anon-lockout') return await checkAnonLockout(c, r);
     if (c.type === 'set-axis') return await checkSetAxis(c, r);
+    if (c.type === 'patch-axis') return await checkPatchAxis(c, r);
+    if (c.type === 'lol-patch-shift') return await checkLolPatchShift(c, r);
+    if (c.type === 'box-main') return await checkBoxMain(c, r);
 
     if (c.backend === 'hetzner' && !isOnBox()) {
       return r('skipped', 'nur auf der Hetzner-Box prüfbar');
@@ -564,6 +588,418 @@ function readCurrentSet() {
   }
   const set = Number(json.setNumber ?? json.currentSet?.number ?? json.set ?? json.current);
   return Number.isFinite(set) ? set : null;
+}
+
+/** public/tft-set.json als Ganzes (Terminplan patchStarts/patchCuts), sonst null. */
+function readSetMeta() {
+  try {
+    return JSON.parse(readFileSync(resolve(REPO_ROOT, 'public', 'tft-set.json'), 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+/** Kalendertag + n, beides YYYY-MM-DD (UTC). */
+function shiftDay(day, n) {
+  return new Date(Date.parse(`${day}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
+}
+
+// ---------------------------------------------------------------- Patch-Achse
+
+/**
+ * Vertrag patch-axis: tragen die Tagesaggregate den Patch-Namen, den Riots
+ * Terminplan (public/tft-set.json patchStarts/patchCuts) fuer den Fenstertag
+ * vorgibt? Anlass: 23.09./24.09. standen als 18.2b statt 18.3/18.3b, weil der
+ * Name aus dem LoL-Versionsstand kam und der zwei Tage zu spaet umsprang. Frische
+ * und Zeilenzahl waren dabei gruen — nur ein Abgleich gegen den Soll-Namen sieht
+ * das.
+ *
+ * Gelesen wird per pg direkt in Supabase (REST kann nicht gruppieren), in einer
+ * Nur-Lese-Transaktion. Uebersprungen werden Tage ohne Vertrauen (Rueckfall auf
+ * latestPatch, Terminplan unstimmig oder zu Ende), Zeilen aus einem anderen Set
+ * und der ganze Lauf, solange die Umbenennung (scripts/relabel-tft-bpatch.mjs)
+ * arbeitet — mitten im Wechsel waere jeder Befund ein Fehlalarm.
+ */
+const PATCH_AXIS_TABLES = ['tft_daily_crawl_meta', 'tft_daily_comp_outcome'];
+const RELABEL_RUNNING_MAX_H = 6;   // aelter = abgestuerzter Lauf, Statusdatei zaehlt nicht mehr
+
+// pg_try_advisory_xact_lock(hashtext(k)) legt die bigint-Form an: objsubid 1,
+// classid = obere, objid = untere 32 Bit. Gemessen gegen eine echte Sperre.
+const RELABEL_LOCK_SQL = `select count(*)::int as n
+  from pg_locks l, (select hashtext($1)::bigint as k) h
+ where l.locktype = 'advisory' and l.objsubid = 1
+   and l.classid::bigint = ((h.k >> 32) & 4294967295)
+   and l.objid::bigint = (h.k & 4294967295)`;
+
+/**
+ * Reine Auswertung (ohne DB, testbar).
+ * rowsByTable: { [tabelle]: [{ day, set_number, patch, n }] }
+ * expect(day): Ergebnis von patchForDay — { patch, trusted, ... }
+ */
+export function evaluatePatchAxis({ rowsByTable, set, expect }) {
+  const memo = new Map();
+  const want = (day) => {
+    if (!memo.has(day)) memo.set(day, expect(day));
+    return memo.get(day);
+  };
+  const wrong = [];
+  const checked = new Set();
+  const untrusted = new Set();
+  let otherSetRows = 0;
+
+  for (const [table, rows] of Object.entries(rowsByTable)) {
+    for (const row of rows) {
+      const day = String(row.day).slice(0, 10);
+      const n = Number(row.n) || 0;
+      if (Number(row.set_number) !== Number(set)) { otherSetRows += n; continue; }
+      const e = want(day);
+      if (!e?.trusted || !e.patch) { untrusted.add(day); continue; }
+      checked.add(`${table}|${day}`);
+      if (row.patch !== e.patch) wrong.push({ table, day, got: row.patch ?? '(leer)', want: e.patch, n });
+    }
+  }
+
+  const notes = [];
+  if (untrusted.size) notes.push(`${untrusted.size} Tag(e) ohne verlaesslichen Terminplan uebersprungen`);
+  if (otherSetRows) notes.push(`${otherSetRows} Zeilen aus anderem Set ignoriert`);
+  const tail = notes.length ? ` (${notes.join(', ')})` : '';
+
+  if (wrong.length) {
+    const badDays = new Set(wrong.map((w) => `${w.table}|${w.day}`)).size;
+    return { status: 'broken', detail: `${badDays} Tabellen-Tag(e) mit falschem Patch-Namen — ${compactWrong(wrong)}${tail}` };
+  }
+  if (!checked.size) return { status: 'skipped', detail: `keine pruefbaren Tage${tail}` };
+  return { status: 'ok', detail: `${checked.size} Tabellen-Tage tragen den Namen aus dem Terminplan${tail}` };
+}
+
+/** Fasst aufeinanderfolgende Tage mit gleichem Fehler je Tabelle zusammen. */
+function compactWrong(wrong) {
+  const sorted = [...wrong].sort((a, b) => a.table.localeCompare(b.table) || a.day.localeCompare(b.day) || a.got.localeCompare(b.got));
+  const byTable = new Map();
+  for (const w of sorted) {
+    const list = byTable.get(w.table) ?? [];
+    byTable.set(w.table, list);
+    const last = list.findLast((x) => x.got === w.got && x.want === w.want);
+    if (last && shiftDay(last.to, 1) === w.day) { last.to = w.day; last.n += w.n; continue; }
+    list.push({ from: w.day, to: w.day, got: w.got, want: w.want, n: w.n });
+  }
+  return [...byTable].map(([table, list]) => `${table}: ${list
+    .sort((a, b) => a.from.localeCompare(b.from))
+    .map((x) => `${x.from === x.to ? x.from : `${x.from}…${x.to}`} ${x.got} statt ${x.want} (${x.n} Zeilen)`)
+    .join(', ')}`).join('; ');
+}
+
+/** Laeuft laut Statusdatei gerade eine Umbenennung? Grund als Text, sonst null.
+ *  Die DB-Sperre gilt nur je Tag; zwischen zwei Tagen sieht man den Lauf nur hier. */
+function relabelRunningReason(relabel, now = Date.now()) {
+  let st;
+  try {
+    const file = join(relabel.defaultStateDir(process.env), relabel.STATUS_FILE);
+    if (!existsSync(file)) return null;
+    st = JSON.parse(readFileSync(file, 'utf8'));
+  } catch {
+    return null;
+  }
+  if (st?.state !== 'running') return null;
+  const ageH = (now - Date.parse(st.startedAt)) / 3_600_000;
+  if (!Number.isFinite(ageH) || ageH > RELABEL_RUNNING_MAX_H) return null;
+  return `Umbenennung laeuft seit ${Math.round(ageH * 60)} min (Statusdatei) — Namen sind mitten im Wechsel`;
+}
+
+async function checkPatchAxis(c, r) {
+  const meta = readSetMeta();
+  const set = readCurrentSet();
+  if (!meta || set == null) return r('error', 'public/tft-set.json fehlt oder hat keine Set-Nummer');
+
+  // Dynamisch: ein kaputter Helfer kippt nur diesen Vertrag, nicht die Treiber,
+  // die contracts.mjs fuer ihre eigenen Vertraege laden.
+  const [{ patchForDay, addDays }, { currentWindowDay }, { supabasePgUrl }] = await Promise.all([
+    import('./tft-patch-day.mjs'), import('./tft-crawl-window.mjs'), import('./pg-url.mjs'),
+  ]);
+  const relabel = await import('./tft-patch-relabel.mjs').catch(() => null);
+  if (!relabel?.LOCK_KEY) return r('error', 'scripts/lib/tft-patch-relabel.mjs nicht ladbar — Umbenennungs-Sperre nicht pruefbar');
+
+  const running = relabelRunningReason(relabel);
+  if (running) return r('skipped', running);
+
+  const days = c.days ?? 14;
+  const cwd = currentWindowDay(new Date());
+  const from = addDays(cwd, -days);
+  const to = addDays(cwd, -1);
+  const tables = c.tables ?? PATCH_AXIS_TABLES;
+  for (const t of tables) if (!/^[a-z_][a-z0-9_]*$/.test(t)) return r('error', `ungueltiger Tabellenname ${t}`);
+
+  const { default: pg } = await import('pg');
+  const client = new pg.Client({
+    connectionString: supabasePgUrl(process.env),
+    ssl: { rejectUnauthorized: false },
+    connectionTimeoutMillis: 15_000,
+    application_name: 'contract-patch-axis',
+  });
+  client.on('error', (e) => console.error(`patch-axis: Verbindung verworfen: ${e.message}`));
+  await client.connect();
+  const held = async () => (await client.query(RELABEL_LOCK_SQL, [relabel.LOCK_KEY])).rows[0].n > 0;
+  const lockMsg = 'Umbenennung haelt gerade die DB-Sperre — Namen sind mitten im Wechsel';
+  try {
+    // Nur lesen. SET LOCAL statt Sitzungs-SET: haelt auch hinter einem
+    // Transaktions-Pooler nur fuer diese eine Transaktion.
+    await client.query('begin transaction read only');
+    await client.query('set local default_transaction_read_only = on');
+    await client.query(`set local statement_timeout = '30s'`);
+    if (await held()) return r('skipped', lockMsg);
+    const rowsByTable = {};
+    for (const t of tables) {
+      const q = await client.query(
+        `select day::text as day, set_number, patch, count(*)::int as n
+           from ${t}
+          where day >= $1::date and day <= $2::date
+          group by 1, 2, 3`,
+        [from, to],
+      );
+      rowsByTable[t] = q.rows;
+    }
+    // Zweiter Blick: hat die Umbenennung waehrend des Lesens begonnen?
+    if (await held() || relabelRunningReason(relabel)) return r('skipped', lockMsg);
+    const res = evaluatePatchAxis({ rowsByTable, set, expect: (d) => patchForDay(d, meta, set) });
+    return r(res.status, `${from}…${to}: ${res.detail}`);
+  } finally {
+    await client.query('rollback').catch(() => {});
+    await client.end().catch(() => {});
+  }
+}
+
+// ---------------------------------------------------------------- LoL-Verschiebung
+
+/**
+ * Vertrag lol-patch-shift: ging der LoL-Patch, der zum TFT-Patch gehoert,
+ * an demselben Fenstertag live, den der Terminplan fuer TFT nennt? TFT und LoL
+ * patchen gemeinsam; zeigen die EUW-Ranglistenspiele der Box den LoL-Patch
+ * einen Tag frueher oder spaeter in der Mehrheit, stimmt vermutlich der
+ * Terminplan nicht — dann waeren alle Patch-Namen ab dort verschoben.
+ *
+ * Nur Warnung: die LoL-Stichprobe ist klein und schwankt (seit 20.09. deutlich
+ * weniger Spiele). Ein Tag unter `minMatchesPerDay` gilt als unvollstaendig,
+ * dann ist das Ergebnis "unbekannt", nicht gruen. Mehrheit statt erstem
+ * Auftauchen: einzelne Spiele am Rand des Fensters sollen nichts ausloesen.
+ */
+const LOL_PATCH_SQL = `select ((game_creation at time zone 'UTC') - interval '5 hours')::date::text as day,
+       patch_major || '.' || patch_minor as patch,
+       count(distinct match_id)::int as matches
+  from lol_match_participant_raw
+ where region = $1 and queue_id = $2
+   and game_creation >= ($3::date + interval '5 hours') at time zone 'UTC'
+   and game_creation < ($4::date + interval '5 hours') at time zone 'UTC'
+ group by 1, 2`;
+
+/**
+ * Reine Auswertung eines Patchstarts (ohne DB, testbar).
+ * start: { patch, from_day }, lol: LoL-Patch (z.B. '16.19'),
+ * rows: [{ day, patch, matches }] fuer Vortag bis lastDay.
+ * Gibt { state: 'ok'|'warn'|'unknown', text } zurueck.
+ */
+export function evaluateLolPatchShift({ start, lol, rows, lastDay, minMatchesPerDay = 300, minShare = 0.5 }) {
+  const byDay = new Map();
+  for (const x of rows) {
+    const d = String(x.day).slice(0, 10);
+    const e = byDay.get(d) ?? { total: 0, hit: 0 };
+    const m = Number(x.matches) || 0;
+    e.total += m;
+    if (String(x.patch) === lol) e.hit += m;
+    byDay.set(d, e);
+  }
+  const info = (d) => {
+    const e = byDay.get(d) ?? { total: 0, hit: 0 };
+    return { ...e, complete: e.total >= minMatchesPerDay, share: e.total ? e.hit / e.total : 0 };
+  };
+  const pct = (s) => `${Math.round(s * 100)} %`;
+  const label = `${start.patch} (LoL ${lol})`;
+  const goLive = start.from_day;
+  const prev = shiftDay(goLive, -1);
+
+  const p = info(prev);
+  if (!p.complete) return { state: 'unknown', text: `${label}: Vortag ${prev} unvollstaendig (${p.total} Spiele)` };
+  if (p.share >= minShare) {
+    return { state: 'warn', text: `${label}: LoL-Patch schon am ${prev} in der Mehrheit (${pct(p.share)}), TFT-Go-live laut Terminplan erst ${goLive}` };
+  }
+  const g = info(goLive);
+  if (!g.complete) return { state: 'unknown', text: `${label}: Go-live-Tag ${goLive} unvollstaendig (${g.total} Spiele)` };
+  if (g.share >= minShare) return { state: 'ok', text: `${label}: ab ${goLive} in der Mehrheit (${pct(g.share)}), wie im Terminplan` };
+  for (let d = shiftDay(goLive, 1); d <= lastDay; d = shiftDay(d, 1)) {
+    const x = info(d);
+    if (x.complete && x.share >= minShare) {
+      return { state: 'warn', text: `${label}: erst am ${d} in der Mehrheit (${pct(x.share)}), TFT-Go-live laut Terminplan ${goLive} (dort ${pct(g.share)})` };
+    }
+  }
+  return { state: 'warn', text: `${label}: am TFT-Go-live ${goLive} nur ${pct(g.share)}, bis ${lastDay} keine Mehrheit` };
+}
+
+/** Mehrere Patchstarts zu einem Vertragsergebnis. */
+export function combineLolPatchShift(parts) {
+  const warn = parts.filter((x) => x.state === 'warn');
+  if (warn.length) return { status: 'warn', detail: warn.map((x) => x.text).join('; ') };
+  const text = parts.map((x) => x.text).join('; ');
+  if (parts.some((x) => x.state === 'ok')) return { status: 'ok', detail: text };
+  return { status: 'skipped', detail: `keine Daten — ${text}` };
+}
+
+async function checkLolPatchShift(c, r) {
+  if (!isOnBox()) return r('skipped', 'nur auf der Hetzner-Box pruefbar');
+  const meta = readSetMeta();
+  const set = readCurrentSet();
+  if (!meta || set == null) return r('error', 'public/tft-set.json fehlt oder hat keine Set-Nummer');
+  const [{ startsFor, lolPatchFor, addDays }, { currentWindowDay }] = await Promise.all([
+    import('./tft-patch-day.mjs'), import('./tft-crawl-window.mjs'),
+  ]);
+
+  // Nur abgeschlossene Fenstertage. 10 Tage reichen fuer die Entscheidung
+  // (spaetestens Go-live + 3) mit Puffer fuer ausgefallene Laeufe, ohne dass zwei
+  // Patchstarts (Abstand 14 Tage) gleichzeitig im Fenster liegen — sonst
+  // verdeckte eine offene Warnung die naechste mit demselben Grundmuster.
+  const lookback = c.lookbackDays ?? 10;
+  const cwd = currentWindowDay(new Date());
+  const lastDone = addDays(cwd, -1);
+  const earliest = addDays(cwd, -lookback);
+  const starts = [...startsFor(meta, set), ...startsFor(meta, set + 1)]
+    .filter((s) => s.from_day >= earliest && s.from_day <= lastDone);
+  if (!starts.length) return r('ok', `kein TFT-Patchstart zwischen ${earliest} und ${lastDone} — nichts zu vergleichen`);
+
+  const pool = await hetznerPool();
+  const parts = [];
+  for (const s of starts) {
+    const lol = lolPatchFor(s.patch);
+    if (!lol) { parts.push({ state: 'unknown', text: `${s.patch}: kein LoL-Gegenstueck bekannt` }); continue; }
+    const plus3 = addDays(s.from_day, 3);
+    const lastDay = plus3 < lastDone ? plus3 : lastDone;
+    const q = await pool.query(LOL_PATCH_SQL, [c.region ?? 'euw1', c.queueId ?? 420, addDays(s.from_day, -1), addDays(lastDay, 1)]);
+    parts.push(evaluateLolPatchShift({
+      start: s, lol, rows: q.rows, lastDay,
+      minMatchesPerDay: c.minMatchesPerDay ?? 300, minShare: c.minShare ?? 0.5,
+    }));
+  }
+  const res = combineLolPatchShift(parts);
+  return r(res.status, res.detail);
+}
+
+// ---------------------------------------------------------------- Box-Stand
+
+/**
+ * Vertrag box-main: laeuft auf der Box der Code von main? Ein Deploy, der
+ * scheitert oder nie angestossen wird, faellt sonst erst auf, wenn ein Fix
+ * "live" ist und nichts bewirkt.
+ *
+ * Bot-Commits (pro-teams.json, metatft-Dateien) loesen bewusst keinen Deploy
+ * aus (Pfadfilter in deploy-hetzner.yml), die Box steht dann zu Recht hinter
+ * main. Gezaehlt werden deshalb nur Dateien in den Deploy-Pfaden; die Liste
+ * kommt aus dem Workflow selbst, damit sie nicht auseinanderlaeuft.
+ * Nur Warnung; GitHub nicht erreichbar = unbekannt.
+ */
+export function globToRegExp(glob) {
+  let re = '';
+  for (let i = 0; i < glob.length; i++) {
+    const ch = glob[i];
+    if (ch === '*' && glob[i + 1] === '*') {
+      re += '.*';
+      i++;
+      if (glob[i + 1] === '/') i++;
+    } else if (ch === '*') re += '[^/]*';
+    else if (ch === '?') re += '[^/]';
+    else re += ch.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+  }
+  return new RegExp(`^${re}$`);
+}
+
+/** `paths:`-Liste des push-Ausloesers aus dem Workflow-Text. */
+export function deployPathsFrom(yamlText) {
+  const lines = String(yamlText).split(/\r?\n/);
+  const at = lines.findIndex((l) => /^\s*paths:\s*$/.test(l));
+  if (at < 0) return [];
+  const out = [];
+  for (const l of lines.slice(at + 1)) {
+    if (!l.trim() || l.trim().startsWith('#')) continue;
+    const m = /^\s*-\s*(['"]?)(.+?)\1\s*(#.*)?$/.exec(l);
+    if (!m) break;
+    out.push(m[2]);
+  }
+  return out;
+}
+
+/** GitHub-Semantik: spaeteres `!muster` nimmt wieder heraus. */
+export function inDeployPaths(file, patterns) {
+  let hit = false;
+  for (const p of patterns) {
+    if (p.startsWith('!')) { if (globToRegExp(p.slice(1)).test(file)) hit = false; }
+    else if (globToRegExp(p).test(file)) hit = true;
+  }
+  return hit;
+}
+
+/**
+ * Reine Auswertung (ohne Netz, testbar).
+ * compare: Antwort von GET /repos/{repo}/compare/{boxHead}...main
+ *          (oder { notFound: true }); dirty: lokale Aenderungen auf der Box.
+ */
+export function evaluateBoxMain({ compare, dirty = false, deployPaths = [], now = Date.now(), graceHours = 2 }) {
+  const warn = (detail) => ({ status: 'warn', detail });
+  const ok = (detail) => ({ status: 'ok', detail });
+  if (dirty) return warn('Arbeitsbaum der Box hat lokale Aenderungen an versionierten Dateien — Box-Stand weicht von main ab');
+  if (compare?.notFound) return warn('Box-Stand ist auf GitHub unbekannt (Commit nur auf der Box?)');
+  const ahead = Number(compare?.ahead_by) || 0;
+  const behind = Number(compare?.behind_by) || 0;
+  if (behind > 0) return warn(`Box hat ${behind} Commit(s), die nicht auf main liegen`);
+  if (ahead === 0) return ok('Box-Stand = main');
+
+  const files = compare.files ?? [];
+  const commits = compare.commits ?? [];
+  // GitHub kuerzt bei 300 Dateien / 250 Commits — dann lieber warnen als raten.
+  const truncated = files.length >= 300 || commits.length < ahead;
+  const relevant = deployPaths.length
+    ? files.filter((f) => inDeployPaths(f.filename, deployPaths)
+      || (f.previous_filename && inDeployPaths(f.previous_filename, deployPaths)))
+    : files;
+  if (!relevant.length && !truncated) {
+    return ok(`Box ${ahead} Commit(s) hinter main, keiner davon in den Deploy-Pfaden (wird bewusst nicht ausgerollt)`);
+  }
+  // Ohne Zuordnung Datei -> Commit zaehlt der juengste Commit: ist er frisch,
+  // laeuft der Deploy vermutlich noch. Ein haengender Deploy faellt dann einen
+  // Lauf spaeter auf.
+  const times = commits.map((x) => Date.parse(x?.commit?.committer?.date ?? x?.commit?.author?.date)).filter(Number.isFinite);
+  const ageH = times.length ? (now - Math.max(...times)) / 3_600_000 : null;
+  if (ageH != null && ageH < graceHours) {
+    return ok(`Box ${ahead} Commit(s) hinter main, juengster erst vor ${Math.round(ageH * 60)} min — Deploy vermutlich unterwegs`);
+  }
+  const age = ageH == null ? 'unbekannt' : `vor ${Math.round(ageH)} h`;
+  return warn(`Box-Stand liegt hinter main: ${ahead} Commit(s), davon ${relevant.length} Datei(en) in den Deploy-Pfaden`
+    + `${truncated ? ' (Liste von GitHub gekuerzt)' : ''}, juengster Commit ${age} — Deploy gescheitert oder nicht angestossen`);
+}
+
+async function checkBoxMain(c, r) {
+  if (!isOnBox()) return r('skipped', 'nur auf der Hetzner-Box pruefbar');
+  if (!c.repo) return r('error', 'Vertrag ohne repo');
+  const git = (...a) => execFileSync('git', ['-C', REPO_ROOT, '--no-optional-locks', ...a], {
+    encoding: 'utf8', timeout: 15_000, stdio: ['ignore', 'pipe', 'pipe'],
+  }).trim();
+  const head = git('rev-parse', 'HEAD');
+  const dirty = git('status', '--porcelain', '--untracked-files=no') !== '';
+
+  let compare;
+  try {
+    const res = await fetch(`https://api.github.com/repos/${c.repo}/compare/${head}...${c.branch ?? 'main'}`, {
+      headers: { accept: 'application/vnd.github+json', 'user-agent': 'metastats-contracts' },
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (res.status === 404) compare = { notFound: true };
+    else if (!res.ok) return r('skipped', `GitHub antwortet HTTP ${res.status} — Box-Stand unbekannt`);
+    else compare = await res.json();
+  } catch (e) {
+    return r('skipped', `GitHub nicht erreichbar (${e.name}) — Box-Stand unbekannt`);
+  }
+
+  let deployPaths = [];
+  try {
+    deployPaths = deployPathsFrom(readFileSync(resolve(REPO_ROOT, '.github', 'workflows', 'deploy-hetzner.yml'), 'utf8'));
+  } catch { /* leer = jede Datei zaehlt, also eher warnen als schweigen */ }
+  const v = evaluateBoxMain({ compare, dirty, deployPaths, now: Date.now(), graceHours: c.graceHours ?? 2 });
+  return r(v.status, v.detail);
 }
 
 /**

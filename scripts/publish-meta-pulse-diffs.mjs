@@ -36,6 +36,7 @@ import {
   META_PULSE_VELOCITY_SHIFTS,
   META_PULSE_COMPLETE_LOOKBACK_DAYS,
   metaPulseCompleteDay,
+  previousPatchOf,
 } from '../app/lib/snapshot-matrix.generated.mjs';
 
 if (existsSync('.env.local')) {
@@ -118,7 +119,15 @@ async function main() {
     'select patch, set_number, first_day::text as first_day, last_day::text as last_day, total_matches from get_tft_available_patches(30)',
   );
   const allPatches = establishedPatches(raw);
-  const patches = allPatches.slice(0, PATCH_COUNT);
+  // Vorpatch-Regel wie die Route (previousPatchOf): ein Kurz-Patch wird
+  // uebersprungen. Die Liste reicht deshalb mindestens bis zum Vorpatch des
+  // Vorpatches — die Seite vergleicht den gewaehlten Vorpatch wieder mit
+  // SEINEM Vorpatch. Uebersprungene Kurz-Patches dazwischen bleiben drin, sie
+  // sind direkt waehlbar.
+  const prevPatch = previousPatchOf(allPatches, allPatches[0]?.patch);
+  const prevPrevPatch = prevPatch ? previousPatchOf(allPatches, prevPatch.patch) : null;
+  const reachIdx = allPatches.indexOf(prevPrevPatch ?? prevPatch);
+  const patches = allPatches.slice(0, Math.max(PATCH_COUNT, reachIdx + 1));
   if (patches.length === 0) throw new Error('keine Patches');
   const regions = [...ACTIVE_REGIONS];
   let computed = 0, skipped = 0, failed = 0;
@@ -223,7 +232,7 @@ async function main() {
   });
   for (let selIdx = 0; selIdx < 1; selIdx++) {
     const raw = patches[selIdx];
-    const rawCmp = allPatches[selIdx + 1];
+    const rawCmp = previousPatchOf(allPatches, raw.patch);
     const sel = { patch: raw.patch, first_day: isoDay(raw.first_day), last_day: isoDay(raw.last_day) };
     const setNumber = Number(raw.set_number);
     // Letzter vollstaendiger Tag, dieselbe Regel wie die Route. Kleine Abfrage

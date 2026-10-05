@@ -405,6 +405,41 @@
       "windowDays": 2,
       "minRows": 2000,
       "note": "Zulauf der Rang-Stichprobe (EUW, 10 Zeilen je Match) in die Box-Datenbank. Ein Sammler-Lauf holt bis zu 900 Matches; unter 2000 Zeilen in zwei Tagen heisst, dass der Sammler steht (Riot-Key, Sperre, Dienst aus) - die Rang-Summen bleiben dann auf dem alten Stand stehen."
+    },
+
+    {
+      "id": "daily-crawl/patch-axis",
+      "owner": "metastats-daily-crawl.service",
+      "type": "patch-axis",
+      "backend": "supabase",
+      "armed": false,
+      "tables": ["tft_daily_crawl_meta", "tft_daily_comp_outcome"],
+      "days": 14,
+      "note": "Tragen die Tageszeilen der letzten 14 abgeschlossenen Fenstertage den Patch-Namen, den der Terminplan in public/tft-set.json (patchStarts/patchCuts) fuer den Tag vorgibt? Am 23./24.09.2026 stand 18.2b statt 18.3/18.3b, weil der Name am LoL-Versionsstand hing - Frische und Zeilenzahl waren dabei gruen. Uebersprungen: Tage ohne verlaesslichen Terminplan (Rueckfall auf latestPatch, Plan unstimmig oder zu Ende), Zeilen aus einem anderen Set und der ganze Lauf, solange scripts/relabel-tft-bpatch.mjs umbenennt (DB-Sperre oder Statusdatei 'running'). armed:false = laeuft nur mit und meldet 'waere ...'; scharf erst nach dem Negativtest der Datenkorrektur (Plan Schritt 15), dann armed entfernen (die Kennung steht schon im Treiber crawl-allranks-all-regions.mjs, nach der Schluss-Umbenennung). Rot heisst: Statistiken eines Tages stehen unter dem falschen Patch - erst Terminplan pruefen (node scripts/detect-tft-patch-schedule.mjs), dann umbenennen."
+    },
+
+    {
+      "id": "tft-patch/lol-verschiebung",
+      "owner": ".github/workflows/tft-bpatch-detect.yml",
+      "type": "lol-patch-shift",
+      "backend": "hetzner",
+      "region": "euw1",
+      "queueId": 420,
+      "lookbackDays": 10,
+      "minMatchesPerDay": 300,
+      "minShare": 0.5,
+      "note": "Nur Warnung (gelb). TFT und LoL patchen gemeinsam: der LoL-Patch zum TFT-Patch (lolPatchFor) muss in den EUW-Ranglistenspielen der Box am selben Fenstertag die Mehrheit stellen, den der Terminplan als TFT-Go-live nennt. Schon am Vortag oder erst spaeter in der Mehrheit heisst: der Terminplan ist vermutlich verschoben, und damit alle Patch-Namen ab dort. Ein Tag unter 300 Spielen gilt als unvollstaendig, dann ist das Ergebnis 'keine Daten' statt gruen. Geprueft werden Patchstarts der letzten 10 abgeschlossenen Fenstertage."
+    },
+
+    {
+      "id": "box/stand-main",
+      "owner": ".github/workflows/deploy-hetzner.yml",
+      "type": "box-main",
+      "backend": "hetzner",
+      "repo": "Dota1337/metastats",
+      "branch": "main",
+      "graceHours": 2,
+      "note": "Nur Warnung (gelb). Laeuft auf der Box der Code von main? Vergleicht den Box-Commit per GitHub-API mit main. Bot-Commits ausserhalb der Deploy-Pfade (pro-teams.json, metatft-Dateien) loesen bewusst keinen Deploy aus und zaehlen nicht; die Pfadliste wird aus deploy-hetzner.yml gelesen. Gelb heisst: ein Deploy ist gescheitert oder nie angestossen, ein Fix ist auf main, laeuft aber nicht. Commits juenger als 2 h gelten als unterwegs. GitHub nicht erreichbar = uebersprungen."
     }
   ]
 }

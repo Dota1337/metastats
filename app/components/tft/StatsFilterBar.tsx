@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { useI18n, type TranslationKey } from '../../lib/i18n';
 import { tftPatchLabel } from '../../lib/tft-patch-label';
 import { tftStatsBucket } from '../../lib/rank-groups';
+import { previousPatchOf } from '../../lib/snapshot-matrix';
 
 // Region / bucket option lists kept in sync with tft-supabase-reader.ts.
 // If you add a region or bucket group there, mirror it here.
@@ -103,10 +104,15 @@ export default function StatsFilterBar({ filters, patches, onChange, lead }: Pro
       ? t('tft.filter.dayOne')
       : t('tft.filter.dayN').replace('{n}', String(n));
 
-  // Show only the two newest patches as semantic options; older patches can
-  // still be reached via the explicit literal value if a deep link needs it.
+  // Semantische Optionen: neuester Patch und Vorpatch nach previousPatchOf
+  // (juengster frueherer Patch mit genug Datentagen — dieselbe Regel wie der
+  // Server bei ?patch=previous). Ein dabei uebersprungener Kurz-Patch (18.3,
+  // ein Datentag) bleibt als eigener Eintrag direkt waehlbar. Aeltere Patches
+  // erreicht nur ein Deep-Link mit dem konkreten Wert.
   const newest = patches[0];
-  const previous = patches[1];
+  const previous = previousPatchOf(patches, newest?.patch);
+  const previousIdx = previous ? patches.indexOf(previous) : patches.length;
+  const skippedPatches = patches.slice(1, previousIdx);
 
   // Patch-Hint: zeigt welcher Patch gerade aktiv ist + sein first_day. Bei
   // Default-Filter (current = patchübergreifende Aggregation) wird zusätzlich
@@ -136,6 +142,9 @@ export default function StatsFilterBar({ filters, patches, onChange, lead }: Pro
           <option value="current">
             {t('tft.filter.current')}{newest ? ` · ${tftPatchLabel(newest.patch)}` : ''}
           </option>
+          {skippedPatches.map(p => (
+            <option key={p.patch} value={p.patch}>{tftPatchLabel(p.patch)}</option>
+          ))}
           {previous && (
             <option value="previous">
               {t('tft.filter.previous')} · {tftPatchLabel(previous.patch)}

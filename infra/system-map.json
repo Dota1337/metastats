@@ -761,13 +761,15 @@
     },
     {
       "file": "tft-bpatch-detect.yml",
-      "name": "TFT B-Patch daily",
+      "name": "TFT Patch-Erkennung daily",
       "schedule": [
-        "30 4 * * *"
+        "17 2 * * *"
       ],
       "scripts": [
-        "scripts/detect-tft-bpatches.mjs",
-        "scripts/relabel-tft-bpatch.mjs"
+        "scripts/relabel-tft-bpatch.mjs",
+        "scripts/detect-tft-patch-schedule.mjs",
+        "scripts/detect-tft-set.mjs",
+        "scripts/detect-tft-bpatches.mjs"
       ],
       "manualDispatch": true,
       "onPush": false
@@ -915,6 +917,11 @@
     {
       "from": "scripts/crawl-allranks-all-regions.mjs",
       "to": "metastats-snapshot-publisher.service",
+      "via": "systemctl-start"
+    },
+    {
+      "from": "scripts/crawl-allranks-all-regions.mjs",
+      "to": "metastats-explorer-build.service",
       "via": "systemctl-start"
     },
     {
@@ -1124,7 +1131,8 @@
       "daily-crawl/trait-stats",
       "daily-crawl/player-names",
       "daily-crawl/keine-luecken",
-      "revalidate/edge-frische-stats"
+      "revalidate/edge-frische-stats",
+      "daily-crawl/patch-axis"
     ],
     "metastats-snapshot-publisher.service": [
       "snapshot-publisher/comp-list-precomputed",
@@ -1176,6 +1184,12 @@
     ],
     "metastats-lol-builds.service": [
       "lol-builds/rang-summen"
+    ],
+    ".github/workflows/tft-bpatch-detect.yml": [
+      "tft-patch/lol-verschiebung"
+    ],
+    ".github/workflows/deploy-hetzner.yml": [
+      "box/stand-main"
     ]
   }
 }

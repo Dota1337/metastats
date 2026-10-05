@@ -10,7 +10,7 @@ import { CURRENT_SET } from './current-set';
 import { TFT_RANK_GROUPS, tftStatsBucket } from './rank-groups';
 import {
   PATCH_MIN_GAMES, establishedPatches, listWindowDays, metaPulseCompleteDay, trendAnchorOffsetDays,
-  META_PULSE_COMPLETE_LOOKBACK_DAYS, META_PULSE_COMPLETE_SETTLE_MS, type CrawlMetaDayRow,
+  META_PULSE_COMPLETE_LOOKBACK_DAYS, META_PULSE_COMPLETE_SETTLE_MS, previousPatchOf, type CrawlMetaDayRow,
 } from './snapshot-matrix';
 
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -184,7 +184,8 @@ export async function getAvailablePatches(days = 30): Promise<PatchInfo[]> {
   }
 }
 
-// "current" → newest patch, "previous" → second-newest, else literal string.
+// "current" → newest patch, "previous" → Vorpatch nach previousPatchOf
+// (juengster frueherer Patch mit genug Datentagen), else literal string.
 async function resolvePatch(param: string | null): Promise<string | null> {
   if (!param || param === 'any') return null;
   if (param === 'current') {
@@ -193,10 +194,16 @@ async function resolvePatch(param: string | null): Promise<string | null> {
   }
   if (param === 'previous') {
     const patches = await getAvailablePatches();
-    return patches[1]?.patch ?? null;
+    return previousPatchOf(patches, patches[0]?.patch)?.patch ?? null;
   }
   return param;
 }
+
+// Platzhalter fuer patchFilter, wenn ?patch=previous keinen Vorpatch findet.
+// patchFilter=null hiesse „ueber alle Patches aggregieren" — genau der
+// Rueckfall, den es hier nicht geben darf. Kein echter Patch heisst so, die
+// RPCs liefern damit eine leere Antwort.
+export const NO_PREVIOUS_PATCH = '__kein_vorpatch__';
 
 // ---------------------------------------------------------------------------
 // Default-Bucket aus der Datenlage des laufenden Sets
@@ -285,8 +292,12 @@ export async function resolveFilters(searchParams: URLSearchParams): Promise<Res
   // patch (display) = der konkrete Patch-String (für UI + Cache-Key).
   // patchFilter (RPC) = null wenn ?patch=current (patchübergreifend aggregieren)
   //   oder ?patch=any, sonst der explizite Patch-String.
+  //   Findet ?patch=previous keinen Vorpatch, steht im patchFilter der
+  //   Platzhalter NO_PREVIOUS_PATCH: leere Antwort statt Aggregat ueber alles.
   const patch = await resolvePatchFromList(patches, patchParam);
-  const patchFilter = (patchParam === 'current' || patchParam === 'any') ? null : patch;
+  const patchFilter = (patchParam === 'current' || patchParam === 'any')
+    ? null
+    : (patchParam === 'previous' ? (patch ?? NO_PREVIOUS_PATCH) : patch);
   const patchStartDay = patches.find(p => p.patch === patch)?.first_day ?? null;
   // Set-Pin (2026-08-27): ohne diesen Default lief `p_set` als null in JEDE
   // Stats-RPC — die Antworten mischten das laufende Set mit dem vorherigen
@@ -323,7 +334,7 @@ export async function resolveFilters(searchParams: URLSearchParams): Promise<Res
 // getAvailablePatches roundtrip when the caller already has them).
 async function resolvePatchFromList(patches: PatchInfo[], param: string): Promise<string | null> {
   if (param === 'current') return patches[0]?.patch ?? null;
-  if (param === 'previous') return patches[1]?.patch ?? null;
+  if (param === 'previous') return previousPatchOf(patches, patches[0]?.patch)?.patch ?? null;
   return param;
 }
 

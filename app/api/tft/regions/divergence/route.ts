@@ -5,6 +5,7 @@ import {
 import { parsePatch, parseBoundedInt } from '../../../../lib/query-params';
 import { CURRENT_SET } from '../../../../lib/current-set';
 import { cachedJson } from '../../../../lib/api-cache';
+import { previousPatchOf } from '../../../../lib/snapshot-matrix';
 
 // W2-A: Region-Divergence — pro Comp den KR vs EU vs NA Vergleich.
 // Default-Window 7 Tage: KR-Crawls ziehen oft mit Verzögerung nach, ein
@@ -43,7 +44,13 @@ export async function GET(request: NextRequest) {
   let patch: string | null = null;
   if (patchParam === 'current' || patchParam === 'previous') {
     const patches = await getAvailablePatches();
-    patch = patchParam === 'current' ? patches[0]?.patch ?? null : patches[1]?.patch ?? null;
+    patch = patchParam === 'current'
+      ? patches[0]?.patch ?? null
+      : previousPatchOf(patches, patches[0]?.patch)?.patch ?? null;
+    // Kein Vorpatch: leere Antwort. p_patch=null hiesse „ueber alle Patches".
+    if (patchParam === 'previous' && !patch) {
+      return cachedJson({ hasData: false, days, bucket: bucketLabel, minGames, patch: null, comps: [] });
+    }
   } else if (patchParam !== 'any' && parsePatch(patchParam)) {
     // Nur Patches, die es in der Datenlage wirklich gibt. Die Formatpruefung
     // allein liesse noch ein paar tausend erfundene Werte durch, und jeder

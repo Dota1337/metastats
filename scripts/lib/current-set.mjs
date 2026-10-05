@@ -3,7 +3,7 @@
 // Die Wahrheit ist die Datei public/tft-set.json, NICHT public/tft-assets.json.
 // Der Unterschied ist kein Geschmack, sondern das Bump-Gate: detect-tft-set.mjs
 // haelt tft-set.json bewusst auf dem alten Set, bis SET_BUMP_EARLIEST erreicht
-// ist (siehe detect-tft-set.mjs:173). tft-assets.json folgt dagegen der
+// ist (siehe bumpGate/SET_BUMP_EARLIEST in detect-tft-set.mjs). tft-assets.json folgt dagegen der
 // CDragon-Datenlage und springt schon, sobald Riot das neue Set ausliefert —
 // also Tage vor dem Live-Go.
 //

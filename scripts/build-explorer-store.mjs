@@ -17,8 +17,12 @@
 // beide style 5). Ueberfuellung = num_units − minUnits der aktiven Stufe aus
 // dem Asset-Bundle; bei Traits mit nur einer Stufe NULL.
 //
-// Patch je Tag: Supabase-RPC get_tft_available_patches (Service-Key), Rueckfall
-// public/tft-set.json patchCuts. Ohne beides: Abbruch, alte Datei bleibt.
+// Patch je Tag: Supabase-RPC get_tft_available_patches (Service-Key). Rueckfall:
+// zuletzt gelesene Bereiche (patch-ranges.json), dann Riots Terminplan plus
+// B-Patch-Schnitte aus public/tft-set.json (patchRanges, dieselbe Regel wie der
+// Sammler). Ohne alles: Abbruch, alte Datei bleibt. Zugeordnet wird ueber den
+// Sammeltag (Spielzeit − 5 h, Fenster ab 05:00 UTC) — so zaehlen auch die
+// Patch-Tage in Supabase. Die Spalte `day` bleibt der Kalendertag (UTC).
 // Rang: naechster Eintrag desselben Spielers innerhalb ±3 Tagen aus
 // Marktwert-Snapshot (Diamant+) oder Rangliste tft_ladder_daily (Emerald+),
 // bei Gleichstand der fruehere. Die Rangliste haelt nur 10 Tage — deshalb
@@ -34,6 +38,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { patchRanges } from './lib/tft-patch-day.mjs';
+import { currentWindowDay } from './lib/tft-crawl-window.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -115,6 +121,16 @@ function readRangeCache(setNumber) {
   return null;
 }
 
+// Bereiche aus Riots Terminplan (patchRanges) im Format des Builds: nur
+// Patches, die bis zum Sammeltag `today` gestartet sind, der juengste offen.
+// Ohne Terminplan fuer das Set: [].
+export function scheduleRanges(meta, setNumber, today) {
+  const ranges = patchRanges(meta, setNumber)
+    .filter((r) => r.from_day <= today)
+    .map((r) => ({ patch: r.patch, from: r.from_day, to: r.to_day ?? '2999-12-31' }));
+  return ranges.length ? openNewest(ranges) : [];
+}
+
 // Patch-Bereiche [{patch, from, to}] fuer das Set. Tage, die in zwei Bereichen
 // liegen, markiert der Build als Wechseltag.
 async function readPatchRanges(setNumber) {
@@ -161,8 +177,12 @@ async function readPatchRanges(setNumber) {
     }
     return { source: `Cache vom ${cache.savedAt}`, ranges: openNewest(ranges) };
   }
-  // Rueckfall 2: ohne Cache nur patchCuts. Bei mehr als einem Schnitt fehlen
-  // die Basis-Tage dazwischen — dann lieber abbrechen, alte Datei bleibt.
+  // Rueckfall 2: Terminplan plus Schnitte. Kennt auch die Basis-Tage zwischen
+  // zwei B-Patches, die patchCuts allein fehlen.
+  const sched = scheduleRanges(j, setNumber, currentWindowDay());
+  if (sched.length) return { source: 'Terminplan (tft-set.json)', ranges: sched };
+  // Rueckfall 3: ohne Terminplan nur patchCuts. Bei mehr als einem Schnitt
+  // fehlen die Basis-Tage dazwischen — dann lieber abbrechen, alte Datei bleibt.
   if (cuts.length > 1) throw new Error('Patch-RPC aus, kein Cache und mehrere B-Patches — Abbruch, alte Datei bleibt');
   if (cuts.length) {
     cuts.sort((a, b) => a.from_day.localeCompare(b.from_day));
@@ -278,16 +298,17 @@ async function main() {
   await run(`CREATE TABLE b0 AS
     SELECT row_number() OVER ()::UINTEGER AS bid, *,
       CAST(to_timestamp(game_datetime / 1000) AT TIME ZONE 'UTC' AS DATE) AS day,
+      CAST(to_timestamp(game_datetime / 1000 - 18000) AT TIME ZONE 'UTC' AS DATE) AS pday,
       md5_number_upper(match_id || puuid) AS rk_key
     FROM raw`);
   await run(`DROP TABLE raw`);
 
   await run(`CREATE TABLE boards AS
     WITH day_patch AS (
-      SELECT d.day, arg_max(p.patch, p.d_from) AS patch, count(p.patch) > 1 AS patch_edge
-      FROM (SELECT DISTINCT day FROM b0) d
-      LEFT JOIN patch_ranges p ON d.day BETWEEN p.d_from AND p.d_to
-      GROUP BY d.day
+      SELECT d.pday, arg_max(p.patch, p.d_from) AS patch, count(p.patch) > 1 AS patch_edge
+      FROM (SELECT DISTINCT pday FROM b0) d
+      LEFT JOIN patch_ranges p ON d.pday BETWEEN p.d_from AND p.d_to
+      GROUP BY d.pday
     ),
     -- Naechster Eintrag aus Snapshot + Rangliste binnen ±3 Tagen, bei
     -- Gleichstand der fruehere (Stand vor der Partie). Erst je Spieler+Tag,
@@ -317,7 +338,7 @@ async function main() {
         ELSE b.comp_cluster_key END AS family
     FROM b0 b
     JOIN mids m USING (match_id)
-    LEFT JOIN day_patch dp USING (day)
+    LEFT JOIN day_patch dp USING (pday)
     LEFT JOIN rk USING (bid)`);
 
   // 4) units: characterId, Stern, bis zu 3 Items. Alias-Kennungen werden auf
@@ -392,7 +413,10 @@ async function main() {
     + ` ${stats.min_day}..${stats.max_day}, ${(size / 1e6).toFixed(0)} MB`);
 }
 
-main().catch((e) => {
-  console.error(`[explorer-build] FEHLER: ${e.stack || e.message}`);
-  process.exit(1);
-});
+const isMain = process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+if (isMain) {
+  main().catch((e) => {
+    console.error(`[explorer-build] FEHLER: ${e.stack || e.message}`);
+    process.exit(1);
+  });
+}

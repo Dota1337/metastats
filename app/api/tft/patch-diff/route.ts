@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callRpc, getAvailablePatches, expandBuckets, expandRegions } from '../../../lib/tft-supabase-reader';
 import { cachedJson } from '../../../lib/api-cache';
+import { previousPatchOf } from '../../../lib/snapshot-matrix';
 
 // /api/tft/patch-diff?patch=17.2&prev=17.1&entity=unit|item|trait
 //
@@ -9,10 +10,10 @@ import { cachedJson } from '../../../lib/api-cache';
 // patch) rather than a SQL JOIN — keeps the existing RPCs reusable and the
 // payload small.
 //
-// `prev` defaults to the second-newest patch in `available_patches`. If
-// fewer than 2 patches exist we return an empty `winners` / `losers` so
-// the UI can render a "Komm in ein paar Tagen wieder" empty state instead
-// of an error.
+// `prev` defaults to the Vorpatch of `patch` nach previousPatchOf
+// (snapshot-matrix.ts): der juengste fruehere Patch mit genug Datentagen,
+// ein Kurz-Patch wird uebersprungen. Gibt es keinen, liefern wir leere
+// `winners` / `losers` (reason 'single_patch') statt eines Fehlers.
 
 type Entity = 'unit' | 'item' | 'trait' | 'comp';
 
@@ -64,7 +65,7 @@ export async function GET(request: NextRequest) {
     const currentPatch = patchParam && knownPatches.has(patchParam) ? patchParam : patches[0].patch;
     const previousPatch = prevParam && knownPatches.has(prevParam)
       ? prevParam
-      : (patches[1]?.patch ?? null);
+      : (previousPatchOf(patches, currentPatch)?.patch ?? null);
     if (!previousPatch || currentPatch === previousPatch) {
       // Single-patch state — the pipeline hasn't accumulated a previous
       // version yet. Return the current entity stats so the UI can show

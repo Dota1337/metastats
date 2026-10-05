@@ -6,6 +6,10 @@
 // 23:30 und legt pro rotem Vertrag eine Aufgabe an (decide). Aufgaben, die der
 // Bot anlegt, schicken dem Repo-Besitzer eine Mail.
 //
+// Gelb (`warn`) bekommt ebenfalls eine Aufgabe, betitelt mit "(Warnung)": eine
+// Mail beim ersten Mal und je neuem Grund, danach Ruhe. Gelb zaehlt nicht fuer
+// die Sammel-Aufgabe — die soll eine gemeinsame Ursache fuer Ausfaelle zeigen.
+//
 // Das Repo ist oeffentlich. Deshalb verlaesst `detail` die Box nur, wo es
 // harmlos ist: Fehlertexte (err.message kann Host/Port enthalten), volle URLs
 // des endpoint-Typs und die Tabellenliste des Sicherheitsvertrags bleiben dort.
@@ -53,7 +57,7 @@ export function redactReport(report, typeById) {
       const sensitive = SENSITIVE_TYPES.has(type);
       let reason = null;
       if (r.status === 'error') reason = 'Pruefung fehlgeschlagen (Fehlertext auf der Box)';
-      else if (r.status === 'broken' && !sensitive) {
+      else if ((r.status === 'broken' || r.status === 'warn') && !sensitive) {
         if (type === 'endpoint') reason = 'Endpunkt antwortet nicht wie erwartet';
         else if (type !== undefined) reason = r.detail ?? null;
       }
@@ -82,15 +86,16 @@ const boxHint = (id) => 'Details auf der Box: `node scripts/check-contracts.mjs'
 const BOX_HINT = boxHint();
 
 function contractIssue(r, checkedAt) {
+  const warn = r.status === 'warn';
   if (r.sensitive) {
     return {
       title: '[Vertrag] Handlungsbedarf, Details auf der Box',
-      text: `Eine Pruefung ist rot (Stand ${checkedAt}).\n\n${BOX_HINT}`,
+      text: `Eine Pruefung ist ${warn ? 'gelb' : 'rot'} (Stand ${checkedAt}).\n\n${BOX_HINT}`,
     };
   }
   return {
-    title: `[Vertrag] ${r.id}`,
-    text: `Vertrag \`${r.id}\` ist rot (Stand ${checkedAt}).\n\nGrund: ${r.reason || 'Details auf der Box'}\n\n${boxHint(r.id)}`,
+    title: `[Vertrag] ${r.id}${warn ? ' (Warnung)' : ''}`,
+    text: `Vertrag \`${r.id}\` ist ${warn ? 'gelb (Warnung, kein Ausfall)' : 'rot'} (Stand ${checkedAt}).\n\nGrund: ${r.reason || 'Details auf der Box'}\n\n${boxHint(r.id)}`,
   };
 }
 
@@ -118,18 +123,28 @@ export function decide(input, issues) {
   }
   const isOpen = (k) => byKey.get(k)?.issue.state === 'open';
 
+  // level: 'red' | 'warn'. Alte Marker ohne level stammen aus der Zeit vor
+  // Gelb und waren immer rot.
   const openOrCreate = (key, title, text, state = {}) => {
     const hit = byKey.get(key);
     const st = { key, green: 0, ...state };
+    const level = state.level ?? 'red';
+    const word = level === 'warn' ? 'gelb' : 'rot';
     if (!hit) return ops.push({ op: 'create', title, body: withMarker(text, st) });
+    const edit = (body, withTitle) => ops.push({
+      op: 'edit', number: hit.issue.number, body, ...(withTitle && title !== hit.issue.title ? { title } : {}),
+    });
     if (hit.issue.state === 'closed') {
-      ops.push({ op: 'reopen', number: hit.issue.number, comment: `Wieder rot.\n\n${text}` });
-      return ops.push({ op: 'edit', number: hit.issue.number, body: withMarker(text, st) });
+      ops.push({ op: 'reopen', number: hit.issue.number, comment: `Wieder ${word}.\n\n${text}` });
+      return edit(withMarker(text, st), true);
     }
-    // offen: nur bei neuem Grund kommentieren, Gruen-Zaehler immer zuruecksetzen
-    const changed = (state.reason ?? null) !== (hit.st.reason ?? null);
-    if (changed) ops.push({ op: 'comment', number: hit.issue.number, body: `Grund geaendert:\n\n${text}` });
-    if (changed || hit.st.green) ops.push({ op: 'edit', number: hit.issue.number, body: withMarker(changed ? text : textOf(hit.issue.body), st) });
+    // offen: nur bei neuem Grund oder neuer Stufe kommentieren,
+    // Gruen-Zaehler immer zuruecksetzen
+    const levelChanged = level !== (hit.st.level ?? 'red');
+    const changed = levelChanged || (state.reason ?? null) !== (hit.st.reason ?? null);
+    if (levelChanged) ops.push({ op: 'comment', number: hit.issue.number, body: `Stufe geaendert, jetzt ${word}:\n\n${text}` });
+    else if (changed) ops.push({ op: 'comment', number: hit.issue.number, body: `Grund geaendert:\n\n${text}` });
+    if (changed || hit.st.green) edit(withMarker(changed ? text : textOf(hit.issue.body), st), levelChanged);
   };
   const close = (key, why) => {
     if (isOpen(key)) ops.push({ op: 'close', number: byKey.get(key).issue.number, comment: why });
@@ -167,9 +182,12 @@ export function decide(input, issues) {
   for (const r of results) {
     const key = keyOf(r.id);
     seen.add(key);
-    if (RED.has(r.status)) {
+    if (RED.has(r.status) || r.status === 'warn') {
       const { title, text } = contractIssue(r, report.checkedAt);
-      openOrCreate(key, title, text, { reason: r.sensitive ? 'sensitiv' : reasonKey(r.reason) });
+      openOrCreate(key, title, text, {
+        reason: r.sensitive ? 'sensitiv' : reasonKey(r.reason),
+        level: r.status === 'warn' ? 'warn' : 'red',
+      });
     } else if (r.status === 'ok' && isOpen(key)) {
       const hit = byKey.get(key);
       const green = (hit.st.green || 0) + 1;

@@ -36,7 +36,9 @@ export async function GET(request: NextRequest) {
       p_regions: filters.regions,
       p_buckets: filters.buckets,
       p_days: filters.days,
-      p_patch: filters.patch,
+      // patchFilter zuerst: ohne Vorpatch steht dort der Platzhalter
+      // (leere Antwort), filters.patch waere null = alle Patches.
+      p_patch: filters.patchFilter ?? filters.patch,
       p_set: filters.setNumber,
       p_name: name,
     });

@@ -17,7 +17,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeWindow, resolveCrawlDay, resolveDailyTargetDay } from './tft-crawl-window.mjs';
+import { computeWindow, currentWindowDay, resolveCrawlDay, resolveDailyTargetDay } from './tft-crawl-window.mjs';
 
 const at = (iso) => new Date(iso);
 const DAY_MS = 86_400_000;
@@ -95,4 +95,24 @@ test('Schaltjahr- und Jahreswechsel-Grenze', () => {
   assert.equal(resolveCrawlDay(at('2028-03-01T06:00:00Z'), 'auto'), '2028-02-29');
   assert.equal(resolveDailyTargetDay(at('2026-01-01T12:00:00Z'), 'auto'), '2025-12-31');
   assert.equal(resolveDailyTargetDay(at('2026-01-01T03:00:00Z'), 'auto'), '2025-12-30');
+});
+
+test('currentWindowDay: der laufende Sammeltag wechselt um 05:00 UTC', () => {
+  assert.equal(currentWindowDay(at('2026-03-10T04:59:59Z')), '2026-03-09');
+  assert.equal(currentWindowDay(at('2026-03-10T05:00:00Z')), '2026-03-10');
+  assert.equal(currentWindowDay(at('2026-03-10T23:59:59Z')), '2026-03-10');
+  assert.equal(currentWindowDay(at('2026-01-01T03:00:00Z')), '2025-12-31');
+});
+
+test('currentWindowDay ist immer der Tag nach resolveDailyTargetDay', () => {
+  // Der 05:45-Lauf sammelt das abgeschlossene Fenster von gestern, waehrend
+  // schon das naechste laeuft. Driften die beiden auseinander, rechnet
+  // detect-tft-set mit einem anderen Tag als der Sammler.
+  const zeiten = ['2026-03-10T04:59:00Z', '2026-03-10T05:00:00Z', '2026-03-10T05:45:00Z',
+    '2026-03-10T23:59:59Z', '2028-02-29T12:00:00Z', '2026-12-31T06:00:00Z', '2027-01-01T04:00:00Z'];
+  for (const iso of zeiten) {
+    const target = resolveDailyTargetDay(at(iso), 'auto');
+    const next = new Date(Date.parse(target + 'T00:00:00Z') + DAY_MS).toISOString().slice(0, 10);
+    assert.equal(currentWindowDay(at(iso)), next, iso);
+  }
 });

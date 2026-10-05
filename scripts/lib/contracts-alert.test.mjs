@@ -113,6 +113,77 @@ test('Totmann: nicht erreichbar und veraltet getrennt, veraltet bewertet nicht n
   assert.match(stale[0].title, /laeuft nicht/);
 });
 
+// ---- Gelb (warn) ------------------------------------------------------------
+
+const WARN_RAW = {
+  checkedAt: AT,
+  summary: { ok: 0, warn: 1, broken: 0, error: 0, skipped: 0 },
+  results: [{ id: 'box/stand-main', status: 'warn', detail: 'Box-Stand liegt hinter main: 3 Commit(s), davon 2 Datei(en) in den Deploy-Pfaden, juengster Commit vor 5 h — Deploy gescheitert oder nicht angestossen' }],
+};
+const WARN_TYPES = new Map([['box/stand-main', 'box-main']]);
+const warnReport = () => redactReport(WARN_RAW, WARN_TYPES);
+const WKEY = keyOf('box/stand-main');
+
+test('gelb: Grund verlaesst die Box, Sicherheitsvertrag bleibt stumm', () => {
+  const r = warnReport();
+  assert.equal(r.results[0].status, 'warn');
+  assert.match(r.results[0].reason, /hinter main/);
+  const sec = redactReport({ ...WARN_RAW, results: [{ id: 'sicherheit/anon-lockout', status: 'warn', detail: 'tabelle_x→anon' }] }, TYPES);
+  assert.equal(sec.results[0].reason, null);
+  assert.ok(!JSON.stringify(sec).includes('tabelle_x'));
+});
+
+test('gelb: eigene Aufgabe mit "(Warnung)" und Stufe im Marker', () => {
+  const ops = decide({ kind: 'report', report: warnReport(), now: NOW }, []);
+  assert.equal(ops.length, 1);
+  assert.equal(ops[0].op, 'create');
+  assert.equal(ops[0].title, '[Vertrag] box/stand-main (Warnung)');
+  assert.match(ops[0].body, /gelb \(Warnung, kein Ausfall\)/);
+  assert.equal(parseMarker(ops[0].body).level, 'warn');
+});
+
+test('gelb, zweiter Lauf mit anderen Zahlen: keine neue Mail', () => {
+  const first = decide({ kind: 'report', report: warnReport(), now: NOW }, []);
+  const issues = first.map((o, i) => ({ number: i + 1, state: 'open', title: o.title, body: o.body }));
+  const r2 = warnReport();
+  r2.results[0].reason = 'Box-Stand liegt hinter main: 7 Commit(s), davon 4 Datei(en) in den Deploy-Pfaden, juengster Commit vor 29 h — Deploy gescheitert oder nicht angestossen';
+  assert.deepEqual(decide({ kind: 'report', report: r2, now: NOW }, issues), []);
+});
+
+test('gelb -> rot: Kommentar und neuer Titel', () => {
+  const open = { number: 11, state: 'open', title: '[Vertrag] box/stand-main (Warnung)', body: withMarker('text', { key: WKEY, green: 0, level: 'warn', reason: 'x' }) };
+  const r = warnReport();
+  r.results[0].status = 'broken';
+  const ops = decide({ kind: 'report', report: r, now: NOW }, [open]);
+  assert.ok(ops.some((o) => o.op === 'comment' && o.number === 11 && /jetzt rot/.test(o.body)));
+  const edit = ops.find((o) => o.op === 'edit' && o.number === 11);
+  assert.equal(edit.title, '[Vertrag] box/stand-main');
+  assert.equal(parseMarker(edit.body).level, 'red');
+});
+
+test('gelb wieder da: geschlossene Aufgabe "Wieder gelb."', () => {
+  const ops = decide({ kind: 'report', report: warnReport(), now: NOW }, [issue(12, 'closed', WKEY)]);
+  const reopen = ops.find((o) => o.op === 'reopen');
+  assert.equal(reopen.number, 12);
+  assert.match(reopen.comment, /^Wieder gelb\./);
+  assert.equal(ops.find((o) => o.op === 'edit').title, '[Vertrag] box/stand-main (Warnung)');
+});
+
+test('alte rote Aufgabe ohne Stufe im Marker bleibt bei rot ruhig', () => {
+  const k = keyOf('lol-matchfill/match-cache');
+  const reason = 'letzter Tag #-#-# ist #d alt, erlaubt sind #d';
+  const ops = decide({ kind: 'report', report: report(), now: NOW }, [issue(13, 'open', k, { reason })]);
+  assert.ok(!ops.some((o) => o.number === 13));
+});
+
+test('gelb zaehlt nicht fuer die Sammel-Aufgabe', () => {
+  const r = report();
+  for (let i = 0; i < BUNDLE_AT; i++) r.results.push({ id: `w/${i}`, status: 'warn', sensitive: false, reason: 'gelb' });
+  const ops = decide({ kind: 'report', report: r, now: NOW }, []);
+  assert.ok(!ops.some((o) => /Pruefungen rot/.test(o.title ?? '')));
+  assert.equal(ops.filter((o) => o.op === 'create' && /\(Warnung\)/.test(o.title)).length, BUNDLE_AT);
+});
+
 test('Totmann-Aufgaben schliessen, sobald frisch', () => {
   const ops = decide({ kind: 'report', report: report(), now: NOW }, [issue(1, 'open', '__unreachable'), issue(2, 'open', '__stale')]);
   assert.ok(ops.some((o) => o.op === 'close' && o.number === 1));

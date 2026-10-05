@@ -51,8 +51,13 @@ crawl_running() {
   # (infra/hetzner/metastats-marketvalue-watchdog.sh).
   # Logic-Flow-Critic 2026-06-20: tft-pro-fullsync war asymmetrisch — Watchdog
   # checkte ihn, deploy nicht. Jetzt synchron.
+  # resume + catchup nur hier (2026-10): resume faehrt denselben Tagestreiber,
+  # catchup startet resume. Der Treiber startet am Ende die Patch-Umbenennung als
+  # Kind — ein Reset mitten darin tauschte deren Code unter dem laufenden Lauf aus.
   for u in metastats-crawler.service \
            metastats-daily-crawl.service \
+           metastats-daily-crawl-resume.service \
+           metastats-daily-crawl-catchup.service \
            metastats-marketvalue-snapshot.service \
            metastats-tft-pro-fullsync.service \
            metastats-snapshot-publisher.service; do

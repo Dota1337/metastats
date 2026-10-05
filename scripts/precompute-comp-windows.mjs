@@ -26,12 +26,13 @@ import pg from 'pg';
 import {
   compPrecomputeJobs,
   establishedPatches,
+  previousPatchOf,
   listKey,
   COMP_PRECOMPUTE_MIN_GAMES,
 } from '../app/lib/snapshot-matrix.generated.mjs';
 import { ACTIVE_REGIONS } from './lib/active-regions.mjs';
 import { CURRENT_SET } from './lib/current-set.mjs';
-import { encodePasswordInPgUrl } from './lib/pg-url.mjs';
+import { supabasePgUrl } from './lib/pg-url.mjs';
 
 const args = process.argv.slice(2);
 const DRY = args.includes('--dry-run');
@@ -57,9 +58,13 @@ function loadEnv() {
 }
 loadEnv();
 
-const DB_URL = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL;
-if (!DB_URL) {
-  console.error('[precompute] weder SUPABASE_DB_URL noch DATABASE_URL gesetzt');
+// Nur Supabase: auf der Box zeigt DATABASE_URL auf die Hetzner-PG, die die
+// Tagestabellen nicht hat. supabasePgUrl prueft den Host und kodiert das Passwort.
+let DB_URL;
+try {
+  DB_URL = supabasePgUrl(process.env);
+} catch (err) {
+  console.error(`[precompute] ${err.message}`);
   process.exit(1);
 }
 
@@ -81,7 +86,7 @@ function statsWriterActive() {
 }
 
 const client = new pg.Client({
-  connectionString: encodePasswordInPgUrl(DB_URL),
+  connectionString: DB_URL,
   ssl: { rejectUnauthorized: false },
   statement_timeout: 120_000,
 });
@@ -101,8 +106,14 @@ async function main() {
   const regionsKey = listKey(ACTIVE_REGIONS);
   let jobs = compPrecomputeJobs({ patches, setNumber: CURRENT_SET, today: runStart });
   if (ONLY) jobs = jobs.filter(j => (ONLY === 'current' ? j.patchKey === '' : j.patchKey === ONLY));
+  // Vorpatch nach derselben Regel wie die Seite (previousPatchOf); ein dabei
+  // uebersprungener Kurz-Patch wird nicht vorgerechnet und hier genannt.
+  const prevPatch = previousPatchOf(patches, patches[0].patch);
+  const prevIdx = prevPatch ? patches.indexOf(prevPatch) : patches.length;
+  const skippedPatches = patches.slice(1, prevIdx).map(p => p.patch);
   console.log(`[precompute] set ${CURRENT_SET}, letzter Tag ${latestDay}, ${jobs.length} Abfragen`
-    + ` (Patches: ${patches.slice(0, 2).map(p => p.patch).join(', ')})`);
+    + ` (Patches: ${[patches[0].patch, prevPatch?.patch].filter(Boolean).join(', ')}`
+    + `${skippedPatches.length ? `; uebersprungen, zu kurz: ${skippedPatches.join(', ')}` : ''})`);
   if (DRY) {
     for (const j of jobs) console.log(`  ${j.patchKey || 'aktuell'} ${j.bucketLabel} p_days=${j.days} ab ${j.dataStart}`);
     return 0;

@@ -6,13 +6,33 @@
 // metadata mirror — Riot Data Dragon does not expose a set list directly).
 // Strategy: find the highest "number" in setData[] whose mutator matches
 // /^TFTSet\d+$/ (no TURBO / no subset variants). That is the live ranked set.
+//
+// latestPatch kommt aus Riots Terminplan (patchStarts, geschrieben von
+// detect-tft-patch-schedule.mjs): patchForDay fuer den Sammeltag, der gerade
+// laeuft. ddragon ist nur noch Rueckfall und steht zur Diagnose in
+// `ddragonVersion` — der LoL-Patch erscheint dort bis zu zwei Tage nach dem
+// TFT-Go-Live, so landeten der 23. und 24.09.2026 als 18.2b in der Datenbank.
+// Schluessel, die andere Skripte schreiben (patchStarts, patchScheduleAlerts),
+// bleiben erhalten.
+//
+//   node scripts/detect-tft-set.mjs
+//   node scripts/detect-tft-set.mjs --dry-run
+//   node scripts/detect-tft-set.mjs --now 2026-10-07T06:00:00Z --ddragon-version 16.20.1 \
+//     --cdragon-file cd.json --set-file x.json        # Tests, ohne Netz
 
 import { writeFileSync, readFileSync, existsSync, appendFileSync } from 'node:fs';
 import { request as httpsRequest } from 'node:https';
 import { lookup as dnsLookup } from 'node:dns';
+import { SET_LAUNCH_LOL, baseOf, lolPatchFor, patchForDay, startsFor, tftBaseFromLol } from './lib/tft-patch-day.mjs';
+import { currentWindowDay } from './lib/tft-crawl-window.mjs';
+
+function arg(name) {
+  const i = process.argv.indexOf(name);
+  return i > 0 ? process.argv[i + 1] : undefined;
+}
 
 const SOURCE_URL = 'https://raw.communitydragon.org/latest/cdragon/tft/en_us.json';
-const OUT = 'public/tft-set.json';
+const OUT = arg('--set-file') || 'public/tft-set.json';
 
 // Riot's CommunityDragon mirror only exposes the internal mutator name
 // ("Set17") — the marketing-facing name ("Space Gods") is not in the JSON.
@@ -32,7 +52,7 @@ const SET_NAMES = {
   18: 'Enchanted Wilds',
 };
 
-// Fruehestes Datum (UTC, YYYY-MM-DD), ab dem ein Bump auf das jeweilige Set
+// Fruehester Sammeltag (YYYY-MM-DD), ab dem ein Bump auf das jeweilige Set
 // akzeptiert wird. CommunityDragon `latest` folgt dem Live-Client-Build und
 // traegt die Set-Daten typischerweise 1-2 Tage VOR dem Release. Ohne dieses
 // Gate wuerde der naechtliche Workflow praeemptiv auf das neue Set flippen,
@@ -41,6 +61,7 @@ const SET_NAMES = {
 // laufen leer. Schlimmer: der naechste Lauf wuerde einen manuellen Rollback
 // sofort wieder ueberschreiben, es gaebe also faktisch keinen Rueckweg.
 // Env-Override SET_BUMP_ALLOWED_AFTER='YYYY-MM-DD' fuer manuelles Vorziehen.
+// bumpGate nimmt den spaeteren Wert aus dieser Tabelle und Riots Terminplan.
 const SET_BUMP_EARLIEST = {
   // Set 18 "Enchanted Wilds": Riot nennt den 2026-08-26 offiziell
   // (teamfighttactics.leagueoflegends.com — Enchanted Wilds Overview:
@@ -50,61 +71,13 @@ const SET_BUMP_EARLIEST = {
   // das erste Set auf der Unreal Engine ist. Viele Sekundaerquellen
   // (tactics.tools, mobalytics) tragen das alte Datum weiterhin.
   18: '2026-08-26',
+  // Set 19: Riots Terminplan nennt TFT 19.1 am 2026-12-01 (gelesen 2026-10-05).
+  // Zieht Riot den Termin VOR, warnt bumpGate — dann hier von Hand anpassen.
+  19: '2026-12-01',
 };
 
-// TFT-Patch numbering is NOT exposed by any Riot API — Match-V1's
-// game_version returns the LoL build (e.g. "16.9.772.8292") and Data Dragon
-// only lists LoL versions. The user-visible TFT patch ("17.2") is a marketing
-// label that follows the convention `${setNumber}.${nthPatchSinceSetLaunch}`,
-// where each new LoL patch ≈ a new TFT patch.
-//
-// Mapping = the LoL patch where each set launched. From that we derive the
-// current TFT patch by subtracting from the current LoL minor version.
-// Update this when a new set ships — and bump the launch entry, not delete
-// the old ones (history pages may reference old set patches).
-// Maps each TFT set to the "anchor" LoL patch — i.e. the LoL patch number
-// where minor-diff = 0 (so LoL anchor.N maps to TFT set.N for N >= 1).
-// For Set 17: launch TFT 17.1 went live alongside LoL 16.8 on 2026-04-15.
-// Current TFT 17.3 corresponds to LoL 16.10, so the anchor is LoL 16.7
-// (LoL 16.8 = TFT 17.1, LoL 16.10 = TFT 17.3).
-const SET_LAUNCH_LOL = {
-  17: '16.7',   // Set 17 "Space Gods" anchors at LoL 16.7 → TFT 17.1 = LoL 16.8
-  // Set 18 "Enchanted Wilds" (Release 2026-08-26): LoL stand am 2026-07-31 auf
-  // 16.15.1; laut LoL-Patch-Schedule faellt der 26.08. auf LoL 16.17 (Riot
-  // zaehlt intern weiter 16.x, das Marketing nennt es 26.17 — game_version
-  // liefert 16.17). Anchor = Launch-Minor MINUS 1, also 16.16
-  // (LoL 16.17 = TFT 18.1).
-  // ACHTUNG: das ist eine Ableitung aus dem Patch-Schedule, KEINE direkte
-  // Bestaetigung. AM BUMP-TAG gegen ddragon versions.json UND gegen die erste
-  // echte Set-18-game_version verifizieren — ein Off-by-one hier verschiebt
-  // JEDES Patch-Label des Sets.
-  18: '16.16',
-};
-
-function tftPatchFromLol(lolVersion, setNumber) {
-  const launch = SET_LAUNCH_LOL[setNumber];
-  // Fehlender Anchor ist KEIN harmloser Fallback: der rohe LoL-String wandert
-  // via tft-set.json.latestPatch in collect-tft-allranks, das daraus einen
-  // plausibel aussehenden, aber falschen Patch wie "18.16" baut und nach
-  // Supabase schreibt. Genau das musste Migration 0023 beim Set-17-Bump
-  // nachtraeglich reparieren. Lieber laut abbrechen und den alten Stand
-  // behalten, als still falsche Labels persistieren.
-  if (!launch) {
-    console.error(`FATAL: kein SET_LAUNCH_LOL-Anchor fuer Set ${setNumber}.`);
-    console.error('       Eintrag in scripts/detect-tft-set.mjs ergaenzen.');
-    process.exit(1);
-  }
-  if (!lolVersion) return lolVersion;
-  const [curMajor, curMinor] = lolVersion.split('.').slice(0, 2).map(Number);
-  const [launchMajor, launchMinor] = launch.split('.').map(Number);
-  if ([curMajor, curMinor, launchMajor, launchMinor].some(n => Number.isNaN(n))) return lolVersion;
-  // Riot does roughly 25 LoL patches per year. Cross-year math:
-  const yearDiff = curMajor - launchMajor;
-  const minorDiff = curMinor - launchMinor;
-  const tftMinor = yearDiff * 25 + minorDiff;
-  if (tftMinor < 0) return lolVersion;
-  return `${setNumber}.${tftMinor}`;
-}
+// Der LoL-Anker je Set (SET_LAUNCH_LOL) liegt seit 2026-10-05 in
+// scripts/lib/tft-patch-day.mjs — dort rechnen auch Sammler und Umbenennung.
 
 function lookupIPv4(host) {
   return new Promise((resolve, reject) => {
@@ -150,48 +123,98 @@ function setOutput(key, value) {
   if (file) appendFileSync(file, `${key}=${value}\n`);
 }
 
+// Ab welchem Sammeltag ein Wechsel auf `set` erlaubt ist: der spaetere Wert aus
+// Riots Terminplan (erster Patch der Set) und SET_BUMP_EARLIEST. Der Terminplan
+// allein reicht nicht — eine Tabellenzeile, die Riot zu frueh eintraegt, darf
+// das Set nicht vorziehen. Die Konstante allein auch nicht — verschiebt Riot
+// nach hinten, wartet das Gate mit.
+function bumpGate(set, stored) {
+  if (process.env.SET_BUMP_ALLOWED_AFTER) return process.env.SET_BUMP_ALLOWED_AFTER;
+  const first = startsFor(stored, set)[0]?.from_day;
+  const fixed = SET_BUMP_EARLIEST[set];
+  if (first && fixed && first < fixed) {
+    console.warn(`      WARN: Riots Terminplan nennt fuer Set ${set} den ${first}, SET_BUMP_EARLIEST sagt ${fixed} — Riot hat vorgezogen? Konstante von Hand anpassen.`);
+  }
+  return [first, fixed].filter(Boolean).sort().at(-1) ?? null;
+}
+
+// Basis-Patch ("18.3") fuer den Sammeltag. latestPatch wird bewusst NICHT als
+// Rueckfall gelesen: das Skript schriebe sonst seinen eigenen alten Wert fort.
+function currentBase(stored, setNumber, ddragonFresh, day) {
+  const r = patchForDay(day, { ...stored, setNumber, latestPatch: null }, setNumber);
+  if (r.source !== 'fallback') {
+    for (const w of r.warnings) console.warn(`      WARN ${w}`);
+    return { base: r.base, how: 'Terminplan' };
+  }
+  // "weder Terminplan noch latestPatch" kommt vom absichtlich geleerten latestPatch.
+  for (const w of r.warnings.filter((w) => !w.startsWith('weder Terminplan'))) console.warn(`      WARN ${w}`);
+  console.warn(`      WARN Terminplan kennt den Sammeltag ${day} fuer Set ${setNumber} nicht — Rueckfall auf ddragon`);
+  if (!SET_LAUNCH_LOL[setNumber]) {
+    throw new Error(`Set ${setNumber}: weder Terminplan noch LoL-Anker — node scripts/detect-tft-patch-schedule.mjs laufen lassen oder SET_LAUNCH_LOL in scripts/lib/tft-patch-day.mjs ergaenzen`);
+  }
+  if (!ddragonFresh) throw new Error(`Set ${setNumber}: kein Termin fuer den Sammeltag ${day} und ddragon nicht erreichbar — nichts geschrieben`);
+  const base = tftBaseFromLol(ddragonFresh, setNumber);
+  if (!base) throw new Error(`ddragon ${ddragonFresh} passt nicht zum LoL-Anker von Set ${setNumber}`);
+  return { base, how: `ddragon ${ddragonFresh} (kein Termin im Terminplan)` };
+}
+
 async function main() {
-  console.log('[1/3] Fetch latest LoL patch from Data Dragon');
-  const lolPatch = await fetchLatestPatch();
-  console.log('      LoL patch:', lolPatch);
+  const now = process.argv.includes('--now') ? new Date(arg('--now')) : new Date();
+  if (Number.isNaN(now.getTime())) throw new Error(`--now ungueltig: ${arg('--now')}`);
+  const nowIso = now.toISOString();
+  const day = currentWindowDay(now);
+  const dry = process.argv.includes('--dry-run');
+  const stored = existsSync(OUT) ? JSON.parse(readFileSync(OUT, 'utf8')) : null;
+
+  console.log('[1/3] Fetch latest LoL patch from Data Dragon (nur Rueckfall + Diagnose)');
+  let ddragonFresh = null;
+  if (process.argv.includes('--ddragon-version')) ddragonFresh = arg('--ddragon-version') || null;
+  else {
+    try { ddragonFresh = await fetchLatestPatch(); }
+    catch (e) { console.warn(`      WARN ddragon nicht erreichbar: ${e.message}`); }
+  }
+  const ddragonVersion = ddragonFresh ?? stored?.ddragonVersion ?? null;
+  console.log('      ddragon:', ddragonFresh ?? '—');
 
   console.log('[2/3] Fetch TFT metadata from CommunityDragon');
-  const cd = await fetchJSON(SOURCE_URL);
+  const cdFile = arg('--cdragon-file');
+  const cd = cdFile ? JSON.parse(readFileSync(cdFile, 'utf8')) : await fetchJSON(SOURCE_URL);
   const setData = cd?.setData || [];
   console.log('      setData entries:', setData.length);
 
   // Pick the live set: highest "number" with a mutator that is exactly
   // "TFTSet<N>" — this filters out TURBO subsets and beta variants.
   const liveSets = setData.filter(s => /^TFTSet\d+$/.test(s.mutator || ''));
-  if (liveSets.length === 0) {
-    console.error('ERROR: no live set found in CommunityDragon data');
-    process.exit(1);
+  if (liveSets.length === 0) throw new Error('no live set found in CommunityDragon data');
+  let live = [...liveSets].sort((a, b) => (b.number || 0) - (a.number || 0))[0];
+  const cdragonNumber = live.number;
+
+  // Sets laufen nie rueckwaerts. Zeigt CDragon ein aelteres Set, ist die
+  // Quelle kaputt — ein Wechsel wuerde das laufende Set in die Historie
+  // schieben und alle Sammler auf das alte umstellen.
+  if (stored?.setNumber && live.number < stored.setNumber) {
+    throw new Error(`CommunityDragon zeigt hoechstens Set ${live.number}, gespeichert ist Set ${stored.setNumber} — nichts geschrieben`);
   }
-  let live = liveSets.sort((a, b) => (b.number || 0) - (a.number || 0))[0];
 
   // --- Bump-Gate -----------------------------------------------------------
   // CDragon zeigt das neue Set schon vor dem Live-Go. Wenn wir ihm blind
   // folgen, flippt die ganze Pipeline praeemptiv. Deshalb: ein Bump auf ein
-  // Set mit Datums-Gate wird erst ab diesem Datum akzeptiert; davor bleibt
-  // der gespeicherte Stand stehen (kein Write, kein Commit, kein Deploy).
-  const storedNow = existsSync(OUT) ? JSON.parse(readFileSync(OUT, 'utf8')) : null;
-  if (storedNow?.setNumber && live.number > storedNow.setNumber) {
-    const gate = process.env.SET_BUMP_ALLOWED_AFTER || SET_BUMP_EARLIEST[live.number];
-    const todayUtc = new Date().toISOString().slice(0, 10);
-    if (gate && todayUtc < gate) {
-      console.warn(`      GATE: CDragon zeigt Set ${live.number}, aber Bump erst ab ${gate} erlaubt (heute ${todayUtc}).`);
-      console.warn(`      -> bleibe auf Set ${storedNow.setNumber}. Vorziehen via SET_BUMP_ALLOWED_AFTER.`);
-      const held = liveSets.find(s => s.number === storedNow.setNumber);
-      if (!held) {
-        console.error(`FATAL: Set ${storedNow.setNumber} nicht mehr in CDragon — Gate kann nicht halten.`);
-        process.exit(1);
-      }
+  // Set mit Datums-Gate wird erst ab diesem Sammeltag akzeptiert; davor bleibt
+  // das gespeicherte Set stehen. Verglichen wird der laufende Sammeltag
+  // (Fenster ab 05:00 UTC), nicht der Kalendertag — sonst flippte ein Lauf
+  // zwischen 00:00 und 05:00 UTC einen Sammeltag zu frueh.
+  if (stored?.setNumber && live.number > stored.setNumber) {
+    const gate = bumpGate(live.number, stored);
+    if (gate && day < gate) {
+      console.warn(`      GATE: CDragon zeigt Set ${live.number}, aber Bump erst ab Sammeltag ${gate} erlaubt (laufender Sammeltag ${day}).`);
+      console.warn(`      -> bleibe auf Set ${stored.setNumber}. Vorziehen via SET_BUMP_ALLOWED_AFTER.`);
+      const held = liveSets.find(s => s.number === stored.setNumber);
+      if (!held) throw new Error(`Set ${stored.setNumber} nicht mehr in CDragon — Gate kann nicht halten.`);
       live = held;
-      setOutput('set-changed', 'false');
-      setOutput('set-bump-gated', String(live.number));
+      setOutput('set-bump-gated', String(cdragonNumber));
     } else if (!gate) {
       // Kein Gate hinterlegt: nicht still durchwinken, sondern sichtbar machen.
-      console.warn(`      WARN: Bump auf Set ${live.number} ohne SET_BUMP_EARLIEST-Eintrag — ungated.`);
+      console.warn(`      WARN: Bump auf Set ${live.number} ohne SET_BUMP_EARLIEST-Eintrag und ohne Terminplan — ungated.`);
     }
   }
   // -------------------------------------------------------------------------
@@ -199,21 +222,28 @@ async function main() {
   const displayName = SET_NAMES[live.number] || `Set ${live.number}`;
   console.log(`      live set: ${live.number} "${displayName}" (mutator ${live.mutator})`);
 
-  // Compute the TFT-style patch label from the LoL version + set-launch table.
-  // patchOverride in the existing tft-set.json wins — set it manually when
-  // Riot ships a hotfix like "17.2b" that doesn't line up with a LoL patch.
-  console.log('[3/3] Compare against existing tft-set.json + write');
-  const stored = existsSync(OUT) ? JSON.parse(readFileSync(OUT, 'utf8')) : null;
+  console.log('[3/3] Patch fuer den laufenden Sammeltag + write');
   const changed = !stored || stored.setNumber !== live.number;
+  const { base, how } = currentBase(stored, live.number, ddragonFresh, day);
+  // patchOverride ist der Hand-Eingriff fuer Sonderfaelle. Ein Set-Wechsel
+  // raeumt ihn ab — sonst truege Set 19 noch ein "18.6b".
+  const override = changed ? null : (stored?.patchOverride || null);
+  if (override && baseOf(override) !== base) {
+    console.warn(`      WARN patchOverride ${override} passt nicht zum Terminplan (${base}) — veraltet? In ${OUT} von Hand entfernen.`);
+  }
+  const latestPatch = override || base;
+  const lolPatch = lolPatchFor(latestPatch);
+  if (!lolPatch) console.warn(`      WARN kein LoL-Anker fuer ${latestPatch} — SET_LAUNCH_LOL in scripts/lib/tft-patch-day.mjs ergaenzen, sonst bleibt lolPatch leer.`);
+  console.log(`      Sammeltag ${day}: TFT ${latestPatch}${override ? ' (override)' : ''} aus ${how}, LoL ${lolPatch ?? '—'}`);
+  if (ddragonVersion && lolPatch && baseOf(ddragonVersion) !== lolPatch) {
+    console.log(`      Hinweis: ddragon meldet ${ddragonVersion}, der Terminplan LoL ${lolPatch} — ddragon hinkt nach einem Go-Live bis zu zwei Tage hinterher.`);
+  }
 
-  const derivedTftPatch = tftPatchFromLol(lolPatch, live.number);
-  const tftPatch = stored?.patchOverride || derivedTftPatch;
-  console.log(`      LoL ${lolPatch} → TFT ${tftPatch}${stored?.patchOverride ? ' (override)' : ''}`);
-
-  // Pull set-start / set-end from the Riot patch-schedule roadmap if it's been
-  // crawled. Keeps tft-set.json self-contained for /api/tft/sets/current.
-  let setStartDate = stored?.setStartDate ?? null;
-  let setEndDate = stored?.setEndDate ?? null;
+  // Set-Start/-Ende aus der Riot-Roadmap, falls gecrawlt. Bei einem Set-Wechsel
+  // gelten die alten Daten nicht mehr; ohne Roadmap-Eintrag liefert Riots
+  // Terminplan den Start (erster Patch der Set).
+  let setStartDate = changed ? null : (stored?.setStartDate ?? null);
+  let setEndDate = changed ? null : (stored?.setEndDate ?? null);
   const ROADMAP = 'public/tft-roadmap.json';
   if (existsSync(ROADMAP)) {
     try {
@@ -225,16 +255,18 @@ async function main() {
       }
     } catch {}
   }
+  setStartDate ??= startsFor(stored, live.number)[0]?.from_day ?? null;
 
   const payload = {
     setNumber: live.number,
     setName: displayName,
     mutator: live.mutator,
-    latestPatch: tftPatch,
-    lolPatch,                          // kept around for diagnostics
-    patchOverride: stored?.patchOverride || null,
-    detectedAt: stored?.detectedAt && !changed ? stored.detectedAt : new Date().toISOString(),
-    lastCheckedAt: new Date().toISOString(),
+    latestPatch,
+    lolPatch,                          // LoL-Patch derselben Woche, aus latestPatch gerechnet
+    ddragonVersion,                    // nur Diagnose: was ddragon zuletzt gemeldet hat
+    patchOverride: override,
+    detectedAt: stored?.detectedAt && !changed ? stored.detectedAt : nowIso,
+    lastCheckedAt: nowIso,
     history: stored?.history || [],
     setStartDate,
     setEndDate,
@@ -243,7 +275,7 @@ async function main() {
   };
   if (changed && stored?.setNumber) {
     payload.history = [
-      { setNumber: stored.setNumber, setName: stored.setName, mutator: stored.mutator, endedAt: new Date().toISOString() },
+      { setNumber: stored.setNumber, setName: stored.setName, mutator: stored.mutator, endedAt: nowIso },
       ...(stored.history || []),
     ];
     console.log(`      DETECTED: set ${stored.setNumber} -> ${live.number}`);
@@ -254,7 +286,16 @@ async function main() {
     console.log('      no bump');
     setOutput('set-changed', 'false');
   }
-  writeFileSync(OUT, JSON.stringify(payload, null, 2) + '\n');
+
+  // Schluessel anderer Skripte (patchStarts, patchScheduleAlerts, …) bleiben
+  // unveraendert, in ihrer bisherigen Reihenfolge hinten.
+  const next = { ...payload };
+  for (const [k, v] of Object.entries(stored ?? {})) if (!(k in next)) next[k] = v;
+  if (dry) {
+    console.log('      --dry-run: nichts geschrieben');
+    return;
+  }
+  writeFileSync(OUT, JSON.stringify(next, null, 2) + '\n');
   console.log(`      -> ${OUT}`);
 }
 

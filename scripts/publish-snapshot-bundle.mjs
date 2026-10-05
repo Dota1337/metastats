@@ -46,6 +46,7 @@
 import { put } from '@vercel/blob';
 import pg from 'pg';
 import { encodePasswordInPgUrl } from './lib/pg-url.mjs';
+import { defaultStateDir, readChangedMarker } from './lib/tft-patch-relabel.mjs';
 import { openSync, closeSync, writeSync, readFileSync, existsSync, unlinkSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -343,6 +344,10 @@ let _patchFingerprints = {};
 //   kommen Nachzuegler-Spiele dazu, aendert sich die Spielzahl und es wird neu
 //   gerechnet (User-Auflage: keine Daten der letzten Tage verlieren)
 // - der Eintrag ist hoechstens 7 Tage alt (erzwungener Neubau)
+// - der Patch wurde seit dem Bau nicht umbenannt (Markerdatei
+//   tft-patch-relabel-changed.json der Umbenennung, 2026-10). Sonst haette ein
+//   Tag den Patch gewechselt, ohne dass sich Tage oder Spielzahl zwingend aendern.
+//   Ist die Markerdatei unlesbar, wird nichts wiederverwendet.
 export const REUSE_MAX_AGE_MS = 7 * 24 * 3600 * 1000;
 
 export function patchFingerprint(info) {
@@ -350,7 +355,7 @@ export function patchFingerprint(info) {
   return `${info.first_day}|${info.last_day}|${Number(info.total_matches)}`;
 }
 
-export function reusableEntry({ alias, key, patches, fingerprints, oldManifest, baseEntries, now }) {
+export function reusableEntry({ alias, key, patches, fingerprints, oldManifest, baseEntries, now, relabeledAt }) {
   if (alias !== 'previous') return null;
   const prev = patches?.previous;
   if (!prev || !patches.current || !oldManifest) return null;
@@ -361,6 +366,8 @@ export function reusableEntry({ alias, key, patches, fingerprints, oldManifest, 
   if (!entry?.url || entry.key !== key) return null;
   const built = Date.parse(entry.builtAt);
   if (!Number.isFinite(built) || now - built > REUSE_MAX_AGE_MS || built > now + 60_000) return null;
+  const relabeled = Date.parse(relabeledAt?.[prev]);
+  if (Number.isFinite(relabeled) && relabeled >= built) return null;
   return entry;
 }
 
@@ -532,6 +539,7 @@ async function main() {
   // zero side effects rather than clobbering the manifest.
   let baseEntries = {};
   let reuseManifest = null;
+  let relabeledAt = {};
   if (MERGE_MODE) {
     const base = await loadOldManifest();
     if (_oldManifestFetchFailed) {
@@ -573,6 +581,14 @@ async function main() {
       : {};
     console.log(`[${ts()}] manifest-mode=REPLACE (full run) — stale keys pruned, ${Object.keys(baseEntries).length} entries als Carry-Over-Basis fuer Fehlschlaege`);
     if (!_oldManifestFetchFailed && base) reuseManifest = base;
+    if (reuseManifest) {
+      try {
+        relabeledAt = readChangedMarker(defaultStateDir())?.patches ?? {};
+      } catch (err) {
+        console.warn(`[${ts()}] reuse off: Markerdatei der Patch-Umbenennung unlesbar (${err.message}) — Vorpatch wird neu gerechnet`);
+        reuseManifest = null;
+      }
+    }
   }
   // Nur im Voll-Lauf: ein Teil-Lauf (MERGE) behaelt ohnehin die Basis.
   const tryReuse = (endpoint, perm) => {
@@ -580,7 +596,7 @@ async function main() {
     const key = snapshotKey(endpoint, { ...perm, patch: patches.previous });
     const entry = reusableEntry({
       alias: perm.patch, key, patches, fingerprints: _patchFingerprints,
-      oldManifest: reuseManifest, baseEntries, now: Date.now(),
+      oldManifest: reuseManifest, baseEntries, now: Date.now(), relabeledAt,
     });
     return entry ? { reused: true, key, entry } : null;
   };

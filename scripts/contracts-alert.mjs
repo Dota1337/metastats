@@ -80,7 +80,8 @@ async function apply(op) {
   switch (op.op) {
     case 'create': return gh('POST', '/issues', { title: op.title, body: op.body, labels: [LABEL] });
     case 'comment': return gh('POST', `/issues/${op.number}/comments`, { body: op.body });
-    case 'edit': return gh('PATCH', `/issues/${op.number}`, { body: op.body });
+    // title nur beim Wechsel rot <-> gelb (" (Warnung)" im Titel)
+    case 'edit': return gh('PATCH', `/issues/${op.number}`, op.title ? { body: op.body, title: op.title } : { body: op.body });
     case 'reopen':
       await gh('PATCH', `/issues/${op.number}`, { state: 'open' });
       return gh('POST', `/issues/${op.number}/comments`, { body: op.comment });
@@ -98,7 +99,7 @@ const issues = GH ? await listIssues() : [];
 const ops = decide(input, issues);
 
 console.log(input.kind === 'report'
-  ? `Status: ${input.report.summary?.ok ?? '?'} ok, ${(input.report.summary?.broken ?? 0) + (input.report.summary?.error ?? 0)} rot`
+  ? `Status: ${input.report.summary?.ok ?? '?'} ok, ${input.report.summary?.warn ?? 0} gelb, ${(input.report.summary?.broken ?? 0) + (input.report.summary?.error ?? 0)} rot`
   : `Status: nicht abrufbar (${input.why})`);
 for (const op of ops) console.log(`- ${op.op}${op.number ? ` #${op.number}` : ''}${op.title ? ` "${op.title}"` : ''}`);
 if (ops.length === 0) console.log('- nichts zu tun');

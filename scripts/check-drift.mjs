@@ -5,6 +5,7 @@
 // watchdog false-positives) — this catches it mechanically before push.
 
 import { ACTIVE_REGIONS } from './lib/active-regions.mjs';
+import { SET_LAUNCH_LOL, scheduleProblems, startsFor } from './lib/tft-patch-day.mjs';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 
 const norm = (arr) => [...new Set(arr)].sort().join(',');
@@ -172,8 +173,12 @@ function read(path) {
 //   c) die set-nummerierten Datenfiles existieren fuers aktuelle Set. Ohne
 //      tft-assets-{set}.json liefert loadCostMap eine leere Cost-Map und der
 //      Carry-Swap wird still zum No-Op.
-//   d) SET_LAUNCH_LOL kennt das aktuelle Set. Fehlt der Anker, ist JEDES
-//      Patch-Label des Sets verschoben.
+//   d) SET_LAUNCH_LOL (scripts/lib/tft-patch-day.mjs) kennt das aktuelle Set.
+//      Fehlt der Anker, bleibt lolPatch leer, und der ddragon-Rueckfall in
+//      detect-tft-set.mjs bricht ab.
+//   d2) Riots Terminplan (patchStarts in tft-set.json) ist da und passt zu den
+//      B-Patches. Ohne ihn rechnet detect-tft-set mit ddragon — genau der Weg,
+//      der den 23. und 24.09.2026 als 18.2b beschriftet hat.
 //
 // Der Bundle-Commit kommt vom Daten-Workflow und sieht nie einen lokalen Hook —
 // der Wecker klingelt also zuerst in der CI, beim Menschen erst nach dem Pull.
@@ -244,10 +249,26 @@ function read(path) {
     }
 
     // d) Patch-Anker.
-    if (!new RegExp(`^\\s*${currentSet}:`, 'm').test(read('scripts/detect-tft-set.mjs'))) {
-      console.error(`✗ DRIFT: SET_LAUNCH_LOL in detect-tft-set.mjs kennt Set ${currentSet} nicht`);
-      console.error('    → ohne Anker ist jedes Patch-Label dieses Sets verschoben.');
+    if (!SET_LAUNCH_LOL[currentSet]) {
+      console.error(`✗ DRIFT: SET_LAUNCH_LOL in scripts/lib/tft-patch-day.mjs kennt Set ${currentSet} nicht`);
+      console.error('    → ohne Anker bleibt lolPatch leer, und ohne Terminplan bricht detect-tft-set ab.');
       setDrift++;
+    }
+
+    // d2) Riots Terminplan. Bewusst ohne Datumsvergleich mit "heute" — der
+    //     Check soll morgen dasselbe sagen wie heute.
+    {
+      const meta = JSON.parse(read('public/tft-set.json'));
+      const problems = scheduleProblems(meta, currentSet);
+      for (const p of problems) {
+        console.error(`✗ DRIFT: public/tft-set.json — ${p}`);
+        setDrift++;
+      }
+      if (!problems.length && !startsFor(meta, currentSet).length) {
+        console.error(`✗ DRIFT: public/tft-set.json hat keinen Terminplan (patchStarts) fuer Set ${currentSet}`);
+        console.error('    → node scripts/detect-tft-patch-schedule.mjs laufen lassen.');
+        setDrift++;
+      }
     }
 
     // Zwei Einschraenkungen, beide noetig — einzeln ist jede zu locker:
@@ -382,7 +403,7 @@ function read(path) {
       const pinned = Object.keys(PINNED).length;
       console.log(
         `✓ Set-Kopplung auf Set ${currentSet}`
-        + ` (tft-set.json == tft-assets.json, Datenfiles da, Patch-Anker da,`
+        + ` (tft-set.json == tft-assets.json, Datenfiles da, Patch-Anker da, Terminplan da,`
         + ` ${total} Set-Literale${pinned ? `, ${pinned} bewusst gepinnt` : ''})`,
       );
     }
@@ -403,6 +424,15 @@ function read(path) {
     'app/lib/tft-comp-family-merge.test.mjs',
     'app/lib/tft-comp-level-outcome.test.mjs',
     'app/lib/tft-comp-guides.test.mjs',
+    'app/lib/tft-marketvalue/base-value.test.mjs',
+    'scripts/lib/tft-patch-day.test.mjs',
+    'scripts/lib/tft-patch-schedule.test.mjs',
+    'scripts/detect-tft-set.test.mjs',
+    'scripts/collect-tft-allranks.test.mjs',
+    'scripts/lib/pg-url.test.mjs',
+    'scripts/lib/tft-patch-relabel.test.mjs',
+    'scripts/lib/stop-at.test.mjs',
+    'scripts/lib/daily-crawl-post.test.mjs',
   ];
   const missing = EXPECTED_TESTS.filter((f) => read(f) === '');
   if (missing.length) {

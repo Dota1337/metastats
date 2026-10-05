@@ -1,34 +1,52 @@
 #!/usr/bin/env node
 /**
  * Collects TFT champion / item / augment / trait stats across every ranked
- * tier — Iron through Challenger. Writes:
- *   public/tft-stats-{set}-{region}.json
+ * tier — Iron through Challenger — for one region and one 24h window. Writes
+ * one row per (region, day, patch) to Supabase and, unless --no-json, the
+ * snapshot public/tft-stats-{region}.json.
  *
  * Uses RIOT_API_KEY_TFT (production tier, ~50 req/s app-wide).
  *
  * Pulls the most recently completed 24h window [yesterday 05:00 UTC, today
  * 05:00 UTC) via Riot's startTime/endTime match-ids filter, paginating
- * through up to N pages of 100 ids per player. The window anchor (05:00 UTC)
- * sits before Riot's typical EU patch deploy window, giving us near-clean
- * patch separation: each day's row primarily contains matches from one
- * patch. Matches are further re-grouped by their parsed game_version so a
- * mid-window patch boundary writes two rows (different `patch` values) for
- * the same `day`, fully cleaning the seam.
+ * through up to N pages of 100 ids per player.
+ *
+ * Patch label: one label per window day, the same for every region, taken
+ * from Riot's official TFT patch schedule (tft-set.json patchStarts and
+ * patchCuts) via scripts/lib/tft-patch-day.mjs — the go-live day belongs to
+ * the new patch. Matches can't be grouped by their own version: Match-V1
+ * game_version carries no number since set 18 ("TFT Unreal Version ?.?.?.?").
+ * The all-regions driver computes the label once per run and passes it as
+ * --set/--patch, so a tft-set.json deploy mid-run can't split the regions.
+ * Without a usable label the run aborts before the first Riot call.
  *
  * Usage:
  *   node scripts/collect-tft-allranks.mjs --region euw1
- *   node scripts/collect-tft-allranks.mjs --region kr
+ *   node scripts/collect-tft-allranks.mjs --region kr --day 2026-09-24
+ *   node scripts/collect-tft-allranks.mjs --region kr --set <set> --patch <patch>
+ *   node scripts/collect-tft-allranks.mjs --day 2026-09-24 --label-only   (prints the label, no key needed)
  */
 
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { aggregateMatch, finalize, emptyAggregate } from './lib/tft-build-aggregator.mjs';
 import { createRiotClient } from './lib/riot-client.mjs';
 import { writeTftStatsToSupabase } from './lib/tft-supabase-writer.mjs';
 import { computeWindow } from './lib/tft-crawl-window.mjs';
+import { crawlPatch, isDay } from './lib/tft-patch-day.mjs';
 
 const args = process.argv.slice(2);
 const arg = (k, def) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : def; };
 const hasFlag = (k) => args.includes(k);
+// Value of a flag, as `--k v` or `--k=v`: undefined = not given, '' = given
+// without a value (so a missing value fails loudly instead of being skipped).
+function flagValue(k) {
+  const eq = args.find((a) => a.startsWith(`${k}=`));
+  if (eq) return eq.slice(k.length + 1);
+  const i = args.indexOf(k);
+  if (i < 0) return undefined;
+  const v = args[i + 1];
+  return v === undefined || v.startsWith('--') ? '' : v;
+}
 
 const REGION = (arg('--region', 'euw1') || 'euw1').toLowerCase();
 const SKIP_SUPABASE = hasFlag('--no-supabase');
@@ -42,14 +60,12 @@ const SKIP_JSON = hasFlag('--no-json');
 const MODE = (arg('--mode', 'auto') || 'auto').toLowerCase();
 // Backfill flag: --day YYYY-MM-DD treats the window as [day 05 UTC, day+1 05 UTC)
 // and writes `day = YYYY-MM-DD`. Used when a daily run was missed.
-const DAY_OVERRIDE_RAW = arg('--day', null);
-const DAY_OVERRIDE = DAY_OVERRIDE_RAW && /^\d{4}-\d{2}-\d{2}$/.test(DAY_OVERRIDE_RAW)
-  ? DAY_OVERRIDE_RAW
-  : null;
-if (DAY_OVERRIDE_RAW && !DAY_OVERRIDE) {
-  console.error(`Invalid --day '${DAY_OVERRIDE_RAW}', expected YYYY-MM-DD`);
+const DAY_OVERRIDE_RAW = flagValue('--day');
+if (DAY_OVERRIDE_RAW !== undefined && !isDay(DAY_OVERRIDE_RAW)) {
+  console.error(`Invalid --day '${DAY_OVERRIDE_RAW}', expected a real date YYYY-MM-DD`);
   process.exit(1);
 }
+const DAY_OVERRIDE = DAY_OVERRIDE_RAW ?? null;
 // Hard cap per player to bound runtime when something goes weird (e.g. an
 // inflated startTime would normally page forever). 200 is well above any
 // realistic 24h grinding session (max ~45 matches/24h given 30min game length).
@@ -76,9 +92,6 @@ const SAMPLE_SIZES = {
 import { getRegionalRouting } from './lib/regional-routing.mjs';
 const REGIONAL = getRegionalRouting(REGION);
 
-const API_KEY = process.env.RIOT_API_KEY_TFT;
-if (!API_KEY) { console.error('RIOT_API_KEY_TFT env var required'); process.exit(1); }
-
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://bwawxwgxxfafbruebixa.supabase.co';
 const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -91,63 +104,45 @@ const WINDOW_END_SEC = Math.floor(WINDOW.endTime.getTime() / 1000);
 // `day` column = the calendar date the window primarily covers (its start).
 const DAY = WINDOW.startTime.toISOString().slice(0, 10);
 
-// Parse "15.4" from any of: "Releases/Game/15.4", "15.4.612.6512", "Version 15.4.x".
-// Returns null if no recognisable version found.
-function parseMatchPatchBase(gameVersion) {
-  if (!gameVersion) return null;
-  const m = String(gameVersion).match(/(\d+)\.(\d+)/);
-  return m ? `${m[1]}.${m[2]}` : null;
-}
-
-// Convert a parsed LoL game_version base ("16.11") into the TFT patch
-// namespace ("17.4") using the (lolPatch ↔ latestPatch) anchor in
-// tft-set.json — the same offset arithmetic as app/lib/tft-patch-label.ts.
-// Riot's Match-V1 game_version reports LoL-side patches, but the whole app
-// (UI, patch filter, "current" resolution) speaks the TFT patch number
-// players see in-game, so we store that. Degrades to the raw LoL base if no
-// anchor is available or the result falls outside the set window.
-function lolBaseToTftBase(lolBase) {
-  const setNumber = setMeta?.setNumber;
-  const anchorLol = parseMatchPatchBase(setMeta?.lolPatch);
-  const anchorTft = parseMatchPatchBase(setMeta?.latestPatch);
-  if (!lolBase || !setNumber || !anchorLol || !anchorTft) return lolBase;
-  const [inMaj, inMin] = lolBase.split('.').map(Number);
-  const [aLolMaj, aLolMin] = anchorLol.split('.').map(Number);
-  const aTftMin = Number(anchorTft.split('.')[1]);
-  if ([inMaj, inMin, aLolMaj, aLolMin, aTftMin].some(Number.isNaN)) return lolBase;
-  if (inMaj === setNumber) return lolBase; // already TFT-shaped
-  const tftMinor = aTftMin + (inMaj - aLolMaj) * 25 + (inMin - aLolMin);
-  if (tftMinor < 0 || tftMinor > 30) return lolBase; // out of set window
-  return `${setNumber}.${tftMinor}`;
-}
-
-// Resolve a match to the canonical (TFT-namespace) patch label we store. If
-// the converted patch equals the current setMeta.latestPatch base, return the
-// full latestPatch with its b/c suffix — Riot's game_version doesn't carry
-// b-patch markers, but our reporting layer expects them.
-function resolvePatch(gameVersion, currentPatch) {
-  const parsed = parseMatchPatchBase(gameVersion);
-  if (!parsed) return applyPatchCut(currentPatch || 'unknown');
-  const tft = lolBaseToTftBase(parsed);
-  const currentBase = currentPatch?.match(/^(\d+\.\d+)/)?.[1];
-  if (tft === currentBase) return applyPatchCut(currentPatch);
-  return applyPatchCut(tft);
-}
-
-// B-Patch-Schnitte (tft-set.json patchCuts, geschrieben von
-// scripts/detect-tft-bpatches.mjs): ab from_day gehoert der Sammeltag zum
-// B-Patch. Gewinnt vor latestPatch, damit ein Nachcrawl eines alten Tages
-// nicht wieder den Basis-Patch schreibt.
-function applyPatchCut(patch) {
-  const base = String(patch).match(/^(\d+\.\d+)/)?.[1];
-  if (!base) return patch;
-  let best = null;
-  for (const c of setMeta?.patchCuts || []) {
-    if (c.set !== CURRENT_SET || c.base !== base || DAY < c.from_day) continue;
-    if (!best || c.from_day > best.from_day) best = c;
+// tft-set.json is rewritten by deploys; a read during one can hit a missing or
+// half-written file, so retry briefly before giving up.
+async function loadSetMeta(file) {
+  let lastErr = null;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const j = JSON.parse(readFileSync(file, 'utf8'));
+      if (j && typeof j === 'object' && !Array.isArray(j)) return j;
+      lastErr = new Error('kein JSON-Objekt');
+    } catch (err) { lastErr = err; }
+    if (attempt < 3) await new Promise((r) => setTimeout(r, 2000));
   }
-  return best ? best.patch : patch;
+  throw new Error(`${file} nicht lesbar: ${lastErr?.message}`);
 }
+
+// The label every match of this window is stored under (see header). No label,
+// no crawl: a gap is repaired by a re-run, a wrong label spreads into every view.
+let setMeta;
+try {
+  setMeta = await loadSetMeta('public/tft-set.json');
+} catch (err) {
+  console.error(`[set] ${err.message} — Abbruch, nichts geschrieben`);
+  process.exit(1);
+}
+const LABEL = crawlPatch(DAY, setMeta, { set: flagValue('--set'), patch: flagValue('--patch') });
+for (const w of LABEL.warnings) console.error(`[patch] ${w}`);
+if (LABEL.error) {
+  console.error(`[patch] ${LABEL.error} — Abbruch, nichts geschrieben`);
+  process.exit(1);
+}
+const CURRENT_SET = LABEL.set;
+const PATCH = LABEL.patch;
+if (hasFlag('--label-only')) {
+  console.log(`[label] day=${DAY} set=${CURRENT_SET} patch=${PATCH}`);
+  process.exit(0);
+}
+
+const API_KEY = process.env.RIOT_API_KEY_TFT;
+if (!API_KEY) { console.error('RIOT_API_KEY_TFT env var required'); process.exit(1); }
 
 // Pre-fetch the set of TFT pro PUUIDs so the aggregator can flag matches
 // containing pros and write a parallel `pro_pool` bucket. Falls through to
@@ -168,13 +163,6 @@ async function loadProPuuids() {
     return set;
   } catch { return new Set(); }
 }
-
-let setMeta = null;
-if (existsSync('public/tft-set.json')) {
-  try { setMeta = JSON.parse(readFileSync('public/tft-set.json', 'utf8')); } catch {}
-}
-const CURRENT_SET = setMeta?.setNumber ?? null;
-const CURRENT_PATCH = setMeta?.latestPatch ?? null;
 
 // Production TFT limits (verified from X-App-Rate-Limit: 500:10,30000:600 +
 // match-detail method-limit 200:10). We cap below the match-detail method
@@ -332,7 +320,7 @@ async function writePlayerNames(names, seeds) {
 }
 
 async function main() {
-  console.log(`=== TFT Crawler ${REGION} (regional ${REGIONAL}) — set ${CURRENT_SET ?? '?'} ===`);
+  console.log(`=== TFT Crawler ${REGION} (regional ${REGIONAL}) — set ${CURRENT_SET}, patch ${PATCH} ===`);
   console.log(`[window] ${WINDOW.startTime.toISOString()} → ${WINDOW.endTime.toISOString()}  (day=${DAY})`);
 
   // Step 1: discover sample players per tier
@@ -370,14 +358,12 @@ async function main() {
     }
   }
 
-  // Step 3: fetch match details + aggregate, splitting by patch (parsed from
-  // each match's game_version). One aggregate per patch — finalized and
-  // written separately, so a mid-window patch boundary produces two rows
-  // (different `patch`) for the same `day`.
+  // Step 3: fetch match details + aggregate. Every match of the window goes
+  // into one aggregate under the window day's label (PATCH, see header).
   console.log(`\n[3/3] Aggregating ${allMatchIds.size} matches`);
   const proPuuids = await loadProPuuids();
   console.log(`  [pro] loaded ${proPuuids.size} pro PUUIDs for pro_pool tagging`);
-  const aggsByPatch = new Map(); // patch -> aggregate
+  let agg = null; // created with the first fetched match — stays null if none could be fetched
   const namesByPuuid = new Map(); // puuid -> { game_name, tag_line, t } — neuester Name je Spieler
   let totalSkipped = 0;
   const ids = [...allMatchIds];
@@ -389,34 +375,21 @@ async function main() {
     const id = ids[j];
     const raw = await rl(`https://${REGIONAL}.api.riotgames.com/tft/match/v1/matches/${id}`);
     if (!raw || raw._status) { totalSkipped++; continue; }
-    const patch = resolvePatch(raw?.info?.game_version, CURRENT_PATCH);
-    let agg = aggsByPatch.get(patch);
-    if (!agg) { agg = emptyAggregate(); aggsByPatch.set(patch, agg); }
+    agg ??= emptyAggregate();
     aggregateMatch(raw, agg, { tierBucket: matchTier[id], currentSet: CURRENT_SET, proPuuids });
     collectNames(raw, namesByPuuid);
     if ((j + 1) % 100 === 0 || j === ids.length - 1) {
-      const totals = [...aggsByPatch.values()].reduce((s, a) => s + a.matchesAnalyzed, 0);
-      console.log(`  ${j+1}/${ids.length} (${totals} aggregated across ${aggsByPatch.size} patch(es), ${totalSkipped} skipped)`);
+      console.log(`  ${j+1}/${ids.length} (${agg.matchesAnalyzed} aggregated, ${totalSkipped} skipped)`);
     }
   }
 
-  // Pick the patch with the most matches as the "primary" snapshot. Patches
-  // are already normalized to the TFT namespace by resolvePatch, but a
-  // mid-window patch boundary still yields two patches for one day —
-  // heaviest-patch-wins picks the dominant one for the JSON snapshot.
-  const finalizedByPatch = new Map();
-  for (const [patch, agg] of aggsByPatch) {
-    finalizedByPatch.set(patch, finalize(agg, { minUnitGames: 5, minItemGames: 5, minAugmentGames: 5 }));
-  }
-  const primaryPatch = [...finalizedByPatch.entries()]
-    .sort((a, b) => (b[1].matchesAnalyzed || 0) - (a[1].matchesAnalyzed || 0))[0]?.[0];
-
-  const writtenPatches = [];
-  for (const [patch, finalized] of finalizedByPatch) {
+  if (agg) {
+    const finalized = finalize(agg, { minUnitGames: 5, minItemGames: 5, minAugmentGames: 5 });
     const payload = {
       set: CURRENT_SET,
-      setName: setMeta?.setName,
-      patch,
+      // Only when it names the set we collected — a --set override may differ.
+      setName: Number(setMeta.setNumber) === CURRENT_SET ? setMeta.setName : undefined,
+      patch: PATCH,
       region: REGION,
       collectedAt: new Date().toISOString(),
       windowStart: WINDOW.startTime.toISOString(),
@@ -427,25 +400,22 @@ async function main() {
     };
 
     if (!SKIP_JSON) {
-      if (patch === primaryPatch) {
-        const file = `public/tft-stats-${REGION}.json`;
-        // persistTopItems (0069) und outcome (0078) sind nur fuer die DB — die JSON bleibt wie sie war.
-        writeFileSync(file, JSON.stringify(payload, (k, v) => (k === 'persistTopItems' || k === 'outcome' ? undefined : v)));
-        console.log(`\n  -> ${file} (patch=${patch}, ${payload.matchesAnalyzed} matches, ${Object.keys(payload.byUnit).length} units, ${Object.keys(payload.byItem).length} items)`);
-      }
+      const file = `public/tft-stats-${REGION}.json`;
+      // persistTopItems (0069) und outcome (0078) sind nur fuer die DB — die JSON bleibt wie sie war.
+      writeFileSync(file, JSON.stringify(payload, (k, v) => (k === 'persistTopItems' || k === 'outcome' ? undefined : v)));
+      console.log(`\n  -> ${file} (patch=${PATCH}, ${payload.matchesAnalyzed} matches, ${Object.keys(payload.byUnit).length} units, ${Object.keys(payload.byItem).length} items)`);
     }
 
     if (!SKIP_SUPABASE) {
-      console.log(`\n[supabase] writing ${REGION} day=${DAY} patch=${patch} set=${CURRENT_SET} (${payload.matchesAnalyzed} matches)`);
+      console.log(`\n[supabase] writing ${REGION} day=${DAY} patch=${PATCH} set=${CURRENT_SET} (${payload.matchesAnalyzed} matches)`);
       await writeTftStatsToSupabase({
         region: REGION,
         day: DAY,
-        patch,
+        patch: PATCH,
         setNumber: CURRENT_SET,
         payload,
       });
     }
-    writtenPatches.push({ patch, matches: payload.matchesAnalyzed });
   }
 
   // Namensverzeichnis fuer die Spielersuche — bewusst NACH den Aggregaten und
@@ -456,8 +426,8 @@ async function main() {
   }
 
   console.log(`\n[done] window=${WINDOW.startTime.toISOString()}..${WINDOW.endTime.toISOString()} day=${DAY}`);
-  for (const w of writtenPatches) console.log(`       patch=${w.patch}: ${w.matches} matches`);
-  if (writtenPatches.length === 0) console.log('       no matches found in window');
+  if (agg) console.log(`       patch=${PATCH}: ${agg.matchesAnalyzed} matches`);
+  else console.log('       no matches found in window');
 }
 
 main().catch(err => { console.error('FAIL:', err.message); console.error(err.stack); process.exit(1); });

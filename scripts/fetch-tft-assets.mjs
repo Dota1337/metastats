@@ -88,7 +88,7 @@ function normalizeIconPath(raw) {
 //
 // Frueher stand hier "highest TFTSet<N> mutator wins — same logic as
 // detect-tft-set.mjs". Das war einmal wahr und ist es seit dem Bump-Gate
-// (detect-tft-set.mjs:173) nicht mehr: detect haelt bewusst auf dem alten Set,
+// (bumpGate in detect-tft-set.mjs) nicht mehr: detect haelt bewusst auf dem alten Set,
 // bis SET_BUMP_EARLIEST erreicht ist, waehrend diese Funktion ungegatet der
 // hoechsten Nummer folgte.
 //

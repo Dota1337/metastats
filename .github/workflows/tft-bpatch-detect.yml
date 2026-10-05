@@ -1,23 +1,40 @@
-name: TFT B-Patch daily
+name: TFT Patch-Erkennung daily
 
-# Traegt Mid-Patch-Balance-Updates (B-Patches) aus Riots Patchnotes als Schnitt
-# in public/tft-set.json ein (scripts/detect-tft-bpatches.mjs). Der Commit
-# loest den Box-Deploy aus (deploy-hetzner.yml beobachtet tft-set.json), damit
-# die Tagessammlung um 05:45 UTC den Schnitt schon kennt.
+# Taeglicher Lauf um 02:17 UTC (04:17 CEST), der public/tft-set.json pflegt.
+# Er ist der EINZIGE Schreiber dieser Datei: tft-daily-crawl, tft-weekly-crawl
+# und weekly-crawl rufen detect-tft-set nur noch mit --dry-run (keine
+# Rebase-Konflikte zwischen vier Schreibern).
 #
-# Rot heisst: Riot hat eine unbekannte Kategorie oder den Seitenaufbau
-# geaendert — lieber sichtbar scheitern als falsch schneiden.
+# Reihenfolge (jeder Schritt laeuft auch, wenn der davor scheitert):
+#   1. detect-tft-patch-schedule  Riots Terminplan → patchStarts
+#   2. detect-tft-set             Set, latestPatch (aus patchStarts), lolPatch
+#   3. detect-tft-bpatches        Mid-Patch-Balance aus Riots Notes → patchCuts
+# Exit je Schritt: 0 sauber · 1 Fehler, nichts geschrieben · 2 geschrieben,
+# aber mit Befund (Verschiebungs-Hinweis, uebersprungene Basis …).
 #
-# Aeltere Tage nach einem neuen Schnitt einmalig nachziehen:
+# Danach: Commit + Push, dann Box-Deploy anstossen. Ein Push mit dem
+# GITHUB_TOKEN startet deploy-hetzner.yml NICHT von selbst, deshalb der
+# explizite Anstoss — aber nur, wenn sich seit dem letzten erfolgreichen
+# Deploy Deploy-Pfade geaendert haben. So kennt die Tagessammlung um 05:45 UTC
+# Terminplan und Schnitte schon.
+#
+# Befunde (Exit 1 oder 2) → ein Issue mit Label tft-patch-detect, hoechstens
+# eins offen. Der Lauf bleibt dabei gruen; rot wird er nur, wenn Push oder
+# Deploy-Anstoss scheitern.
+#
+# Aeltere Tage nach einem neuen Schnitt nachziehen macht die Box selbst
+# (relabel-tft-bpatch.mjs --auto am Ende der Tagessammlung); von Hand:
 #   node scripts/relabel-tft-bpatch.mjs
 
 on:
   schedule:
-    - cron: '30 4 * * *'
+    - cron: '17 2 * * *'
   workflow_dispatch: {}
 
 permissions:
   contents: write
+  actions: write
+  issues: write
 
 concurrency:
   group: tft-bpatch-detect
@@ -26,31 +43,163 @@ concurrency:
 jobs:
   detect:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Volle Historie fuer den Vergleich mit dem letzten erfolgreichen Deploy.
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
 
+      # Die drei Erkenner brauchen keine npm-Pakete (nur node:-Module).
+      - name: Terminplan lesen
+        id: schedule
+        continue-on-error: true
+        run: |
+          set +e
+          node scripts/detect-tft-patch-schedule.mjs 2>&1 | tee "$RUNNER_TEMP/schedule.log"
+          code=${PIPESTATUS[0]}
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          exit $code
+
+      - name: Set und latestPatch pruefen
+        id: tftset
+        continue-on-error: true
+        run: |
+          set +e
+          node scripts/detect-tft-set.mjs 2>&1 | tee "$RUNNER_TEMP/tftset.log"
+          code=${PIPESTATUS[0]}
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          exit $code
+
       - name: B-Patches aus den Riot-Notes lesen
-        run: node scripts/detect-tft-bpatches.mjs
+        id: bpatch
+        continue-on-error: true
+        run: |
+          set +e
+          node scripts/detect-tft-bpatches.mjs 2>&1 | tee "$RUNNER_TEMP/bpatch.log"
+          code=${PIPESTATUS[0]}
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          exit $code
 
       - name: Aenderungen committen
+        id: commit
+        if: ${{ !cancelled() }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add public/tft-set.json
           if git diff --staged --quiet; then
-            echo "Keine neuen B-Patch-Schnitte"
+            echo "tft-set.json unveraendert"
           else
-            git commit -m "chore: TFT B-Patch-Schnitt aus Riot-Notes"
+            git commit -m "chore: TFT-Terminplan/B-Patch-Schnitte aus Riot-Seiten"
             pushed=""
             for attempt in 1 2 3; do
               if git pull --rebase origin main && git push origin main; then pushed=1; break; fi
+              # Ein haengengebliebener Rebase wuerde jeden weiteren Versuch blockieren.
+              git rebase --abort 2>/dev/null || true
               echo "Push-Versuch $attempt fehlgeschlagen, neuer Versuch ..."
               sleep 10
             done
             [ -n "$pushed" ] || { echo "Push nach 3 Versuchen fehlgeschlagen"; exit 1; }
+          fi
+
+      - name: Box-Deploy anstossen
+        id: dispatch
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Dieselben Pfade wie on.push.paths in deploy-hetzner.yml — dort mitpflegen.
+          paths=(scripts package.json package-lock.json 'public/tft-graph-*.json' public/tft-set.json
+                 infra/contracts.json infra/hetzner/remote-deploy.sh .github/workflows/deploy-hetzner.yml)
+          git fetch --quiet origin main
+          target=$(git rev-parse FETCH_HEAD)
+          last=$(gh run list --workflow deploy-hetzner.yml --branch main --status success --limit 1 \
+                   --json headSha --jq '.[0].headSha // ""' 2>/dev/null) || last=""
+          if [ -z "$last" ] || ! git cat-file -e "${last}^{commit}" 2>/dev/null; then
+            echo "Letzter erfolgreicher Deploy unbekannt (${last:-keiner}) — Deploy wird angestossen"
+          elif git diff --quiet "$last" "$target" -- "${paths[@]}"; then
+            echo "Seit dem letzten erfolgreichen Deploy (${last:0:7}) keine Deploy-Pfade geaendert — kein Deploy"
+            exit 0
+          else
+            echo "Deploy-Pfade seit ${last:0:7} geaendert:"
+            git diff --stat "$last" "$target" -- "${paths[@]}"
+          fi
+          for attempt in 1 2 3; do
+            if gh workflow run deploy-hetzner.yml --ref main; then echo "Deploy angestossen"; exit 0; fi
+            echo "Anstoss-Versuch $attempt fehlgeschlagen, neuer Versuch ..."
+            sleep 10
+          done
+          echo "Deploy-Anstoss nach 3 Versuchen fehlgeschlagen"
+          exit 1
+
+      - name: Auswertung
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CODE_SCHEDULE: ${{ steps.schedule.outputs.code }}
+          CODE_TFTSET: ${{ steps.tftset.outputs.code }}
+          CODE_BPATCH: ${{ steps.bpatch.outputs.code }}
+          COMMIT: ${{ steps.commit.outcome }}
+          DISPATCH: ${{ steps.dispatch.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set +e
+          problems=""
+          note() {
+            case "$2" in
+              0) ;;
+              1) problems+="- $1: Fehler, nichts geschrieben (Exit 1)"$'\n' ;;
+              2) problems+="- $1: geschrieben, aber mit Befund (Exit 2)"$'\n' ;;
+              "") problems+="- $1: nicht gelaufen"$'\n' ;;
+              *) problems+="- $1: Exit $2"$'\n' ;;
+            esac
+          }
+          note "Terminplan (detect-tft-patch-schedule)" "$CODE_SCHEDULE"
+          note "Set (detect-tft-set)" "$CODE_TFTSET"
+          note "B-Patches (detect-tft-bpatches)" "$CODE_BPATCH"
+
+          if [ -n "$problems" ]; then
+            body="$RUNNER_TEMP/issue.md"
+            {
+              echo "Lauf: $RUN_URL"
+              echo
+              printf '%s' "$problems"
+              for f in schedule tftset bpatch; do
+                log="$RUNNER_TEMP/$f.log"
+                [ -s "$log" ] || continue
+                lines=$(grep -E 'BEFUND|ABBRUCH|FAIL|ACHTUNG|WARN|verworfen' "$log" | tail -n 30)
+                [ -n "$lines" ] || continue
+                echo
+                echo "### $f"
+                echo '```'
+                echo "$lines"
+                echo '```'
+              done
+            } > "$body"
+            cat "$body" >> "$GITHUB_STEP_SUMMARY"
+            echo "::warning::Patch-Erkennung mit Befund — Details in der Zusammenfassung"
+            gh label create tft-patch-detect --color D93F0B \
+              --description "Befund der taeglichen TFT-Patch-Erkennung" --force >/dev/null 2>&1
+            open=$(gh issue list --label tft-patch-detect --state open --json number --jq length 2>/dev/null)
+            if [ "$open" = "0" ]; then
+              gh issue create --title "TFT-Patch-Erkennung: Befund vom $(date -u +%F)" \
+                --label tft-patch-detect --body-file "$body" \
+                || echo "::warning::Issue konnte nicht angelegt werden"
+            elif [ -n "$open" ]; then
+              echo "Issue mit Label tft-patch-detect ist bereits offen — kein zweites"
+            else
+              echo "::warning::Offene Issues nicht abfragbar — kein Issue angelegt"
+            fi
+          else
+            echo "Alle drei Erkenner sauber (Exit 0)"
+          fi
+
+          if [ "$COMMIT" = "failure" ] || [ "$DISPATCH" = "failure" ]; then
+            echo "Push oder Deploy-Anstoss fehlgeschlagen (commit=$COMMIT, dispatch=$DISPATCH)"
+            exit 1
           fi

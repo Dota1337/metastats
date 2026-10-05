@@ -230,6 +230,51 @@ export function establishedPatches(rows, min = PATCH_MIN_GAMES) {
     return established.length > 0 ? established : rows;
 }
 // ---------------------------------------------------------------------------
+// Vorpatch-Regel F7(c) (2026-10-05)
+//
+// „previous" = der juengste fruehere Patch mit mindestens
+// PREVIOUS_PATCH_MIN_DAYS Datentagen. Ein Eintags-Patch (18.3: nur der 23.09.)
+// taugt nicht als Vergleich und wird uebersprungen; direkt waehlbar bleibt er.
+// Dieselbe Regel gilt im Leser (tft-supabase-reader.ts, api-cache.ts), in der
+// Vorab-Rechnung (compPrecomputeJobs) und auf Meta-Pulse (Route und
+// scripts/publish-meta-pulse-diffs.mjs) — sonst findet die Seite die
+// vorgerechneten Eintraege nicht.
+//
+// Datentage = Kalenderspanne first_day..last_day aus get_tft_available_patches
+// (Migration 0045, liest tft_daily_crawl_meta). Eine Zahl einzelner Tage
+// liefert die RPC nicht; ein Ausfalltag mitten im Patch zaehlt also mit.
+// Das Set prueft der Aufrufer — der Helfer kennt kein Set.
+export const PREVIOUS_PATCH_MIN_DAYS = 3;
+// Ab so vielen Tagen bleibt das Rising-Fenster auf Meta-Pulse im Patch
+// (metaPulseVelocityWindow), darunter vergleicht es ueber die Patchgrenze.
+export const VELOCITY_IN_PATCH_MIN_DAYS = 2;
+export function patchDayCount(p) {
+    if (!p?.first_day || !p?.last_day)
+        return 0;
+    const first = Date.parse(String(p.first_day).slice(0, 10) + 'T00:00:00Z');
+    const last = Date.parse(String(p.last_day).slice(0, 10) + 'T00:00:00Z');
+    if (!Number.isFinite(first) || !Number.isFinite(last) || last < first)
+        return 0;
+    return Math.round((last - first) / DAY_MS) + 1;
+}
+/**
+ * Vorpatch von `refPatch` in einer Liste neuester-zuerst (wie
+ * get_tft_available_patches sie liefert). null, wenn `refPatch` fehlt oder
+ * kein frueherer Patch genug Tage hat — kein Rueckfall auf den Nachbarn.
+ */
+export function previousPatchOf(patches, refPatch, minDays = PREVIOUS_PATCH_MIN_DAYS) {
+    if (!refPatch)
+        return null;
+    const idx = patches.findIndex(p => p.patch === refPatch);
+    if (idx < 0)
+        return null;
+    for (let i = idx + 1; i < patches.length; i++) {
+        if (patchDayCount(patches[i]) >= minDays)
+            return patches[i];
+    }
+    return null;
+}
+// ---------------------------------------------------------------------------
 // Vorab berechnete Comp-Listen (Plan D, 2026-09-13, Migration 0070)
 //
 // Gemessen von der Box (Region „alle", Mindestspiele 30): alle 16-21 s,
@@ -265,10 +310,11 @@ export function listKey(values) {
 function isoDay(d) {
     return d.toISOString().slice(0, 10);
 }
-// Alle Kombinationen, die das Box-Skript rechnet: aktuell ungefiltert plus die
-// zwei neuesten etablierten Patches des laufenden Sets, je Gruppe und je
-// Tagesstufe 1..7. Stufen mit gleichem data_start liefern dasselbe Ergebnis und
-// erscheinen nur einmal.
+// Alle Kombinationen, die das Box-Skript rechnet: aktuell ungefiltert plus der
+// neueste etablierte Patch und sein Vorpatch nach previousPatchOf, beide nur
+// aus dem laufenden Set, je Gruppe und je Tagesstufe 1..7. Ein uebersprungener
+// Kurz-Patch ist nur direkt waehlbar und wird live gerechnet. Stufen mit
+// gleichem data_start liefern dasselbe Ergebnis und erscheinen nur einmal.
 export function compPrecomputeJobs(o) {
     const p = o.patches;
     if (p.length === 0)
@@ -278,7 +324,8 @@ export function compPrecomputeJobs(o) {
     const cases = [
         { patchKey: '', patchFilter: null, startDay: p[0].first_day, endDay: null },
     ];
-    for (const x of p.slice(0, 2)) {
+    const prev = previousPatchOf(p, p[0].patch);
+    for (const x of prev ? [p[0], prev] : [p[0]]) {
         if (Number(x.set_number) === o.setNumber) {
             cases.push({ patchKey: x.patch, patchFilter: x.patch, startDay: x.first_day, endDay: x.last_day });
         }
@@ -410,7 +457,7 @@ export function metaPulseVelocityWindow(o) {
     let effShift = o.velocityShift;
     let effDays = o.requestedDays;
     let velocityPatch = o.sel?.patch ?? null;
-    if (patchDays >= 2) {
+    if (patchDays >= VELOCITY_IN_PATCH_MIN_DAYS) {
         effShift = Math.min(o.velocityShift, patchDays - 1);
         effDays = Math.max(1, Math.min(o.requestedDays, effShift, patchDays - effShift));
     }

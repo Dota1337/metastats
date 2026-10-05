@@ -13,8 +13,11 @@
  *   node scripts/check-contracts.mjs --json
  *
  * Exit-Codes:
- *   0  alle geprüften Verträge erfüllt (Skips sind ok)
+ *   0  alle geprüften Verträge erfüllt (Skips und Warnungen sind ok)
  *   1  mindestens ein Vertrag verletzt oder nicht prüfbar (Fehler)
+ *
+ * Warnung (`warn`, gelb) = Abweichung ohne Ausfall. Kein Exit-Code, die Unit
+ * bleibt gruen; contracts-alert.mjs legt dafuer trotzdem eine Aufgabe an.
  */
 
 import { writeFileSync, mkdirSync, renameSync } from 'node:fs';
@@ -48,11 +51,12 @@ await closePools();
 const broken = results.filter(r => r.status === 'broken');
 const errored = results.filter(r => r.status === 'error');
 const skipped = results.filter(r => r.status === 'skipped');
+const warned = results.filter(r => r.status === 'warn');
 const ok = results.filter(r => r.status === 'ok');
 
 const report = {
   checkedAt: new Date().toISOString(),
-  summary: { ok: ok.length, broken: broken.length, error: errored.length, skipped: skipped.length },
+  summary: { ok: ok.length, warn: warned.length, broken: broken.length, error: errored.length, skipped: skipped.length },
   results,
 };
 
@@ -71,15 +75,21 @@ if (OUT_PATH) {
 if (JSON_OUT) {
   console.log(JSON.stringify(report, null, 2));
 } else {
-  const mark = { ok: 'OK    ', broken: 'BRUCH ', error: 'FEHLER', skipped: 'skip  ' };
+  const mark = { ok: 'OK    ', warn: 'WARN  ', broken: 'BRUCH ', error: 'FEHLER', skipped: 'skip  ' };
   const width = Math.max(...results.map(r => r.id.length));
   for (const r of results) {
-    console.log(`${mark[r.status]} ${r.id.padEnd(width)}  ${r.detail}`);
+    console.log(`${mark[r.status] ?? r.status} ${r.id.padEnd(width)}  ${r.detail}`);
   }
   console.log(
-    `\n${ok.length} erfüllt · ${broken.length} verletzt · ` +
+    `\n${ok.length} erfüllt · ${warned.length} Warnung(en) · ${broken.length} verletzt · ` +
     `${errored.length} nicht prüfbar · ${skipped.length} übersprungen`,
   );
+  if (warned.length) {
+    console.log('\nWarnungen:');
+    for (const r of warned) {
+      console.log(`  ${r.id}  (${r.owner})\n    ${r.detail}`);
+    }
+  }
   if (broken.length || errored.length) {
     console.log('\nVerletzt:');
     for (const r of [...broken, ...errored]) {

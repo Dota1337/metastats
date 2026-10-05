@@ -76,3 +76,19 @@ test('zu alter Eintrag wird neu gebaut', () => {
   const old = new Date(now - REUSE_MAX_AGE_MS - 1000).toISOString();
   assert.equal(reusableEntry({ ...reuseArgs, baseEntries: { [key]: { key, url: 'u', builtAt: old } } }), null);
 });
+
+test('nach dem Bau umbenannter Vorpatch wird neu gerechnet', () => {
+  assert.equal(reusableEntry({ ...reuseArgs, relabeledAt: { '18.2': '2026-10-01T08:30:00Z' } }), null);
+  assert.equal(reusableEntry({ ...reuseArgs, relabeledAt: { '18.2': '2026-10-01T03:00:00Z' } }), null, 'gleiche Sekunde zaehlt als danach');
+});
+
+test('Umbenennung vor dem Bau oder an anderem Patch stoert nicht', () => {
+  assert.equal(reusableEntry({ ...reuseArgs, relabeledAt: { '18.2': '2026-09-30T08:30:00Z' } }).url, 'https://blob/x.json');
+  assert.equal(reusableEntry({ ...reuseArgs, relabeledAt: { '18.3': '2026-10-01T08:30:00Z' } }).url, 'https://blob/x.json');
+});
+
+test('fehlende oder kaputte Markerangaben aendern nichts', () => {
+  for (const relabeledAt of [undefined, null, {}, { '18.2': 'kein-datum' }]) {
+    assert.equal(reusableEntry({ ...reuseArgs, relabeledAt }).url, 'https://blob/x.json', String(relabeledAt));
+  }
+});

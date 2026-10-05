@@ -1,0 +1,100 @@
+{
+ "batchcomplete": "",
+ "query": {
+  "normalized": [
+   {
+    "from": "Space_Gods/EMEA/Major",
+    "to": "Space Gods/EMEA/Major"
+   },
+   {
+    "from": "TFT_Digi_Duos_Invitational",
+    "to": "TFT Digi Duos Invitational"
+   },
+   {
+    "from": "Hextech_Havoc_Double_Up",
+    "to": "Hextech Havoc Double Up"
+   },
+   {
+    "from": "Gibt_Es_Nicht_Probe_123",
+    "to": "Gibt Es Nicht Probe 123"
+   }
+  ],
+  "redirects": [
+   {
+    "from": "Deleted",
+    "to": "JosueDeleted"
+   }
+  ],
+  "pages": {
+   "1348": {
+    "pageid": 1348,
+    "ns": 0,
+    "title": "Hextech Havoc Double Up",
+    "revisions": [
+     {
+      "slots": {
+       "main": {
+        "contentmodel": "wikitext",
+        "contentformat": "text/x-wiki",
+        "*": "{{DISPLAYTITLE:Hextech Havoc: Double Up}}\n{{Infobox league\n|liquipediatier=2"
+       }
+      }
+     }
+    ]
+   },
+   "3921": {
+    "pageid": 3921,
+    "ns": 0,
+    "title": "JosueDeleted",
+    "revisions": [
+     {
+      "slots": {
+       "main": {
+        "contentmodel": "wikitext",
+        "contentformat": "text/x-wiki",
+        "*": "{{player-stub}}\n{{PlayerTabs}}\n{{Infobox player"
+       }
+      }
+     }
+    ]
+   },
+   "9523": {
+    "pageid": 9523,
+    "ns": 0,
+    "title": "TFT Digi Duos Invitational",
+    "revisions": [
+     {
+      "slots": {
+       "main": {
+        "contentmodel": "wikitext",
+        "contentformat": "text/x-wiki",
+        "*": "{{DISPLAYTITLE:TFT Digi Duos Invitational}}\n{{Tabs static\n|name1=Overview\t|link1=TFT_Digi_Duos_Invitational"
+       }
+      }
+     }
+    ]
+   },
+   "11196": {
+    "pageid": 11196,
+    "ns": 0,
+    "title": "Space Gods/EMEA/Major",
+    "revisions": [
+     {
+      "slots": {
+       "main": {
+        "contentmodel": "wikitext",
+        "contentformat": "text/x-wiki",
+        "*": "{{DISPLAYTITLE:{{SetName/17}}: TFT Major EMEA}}\n{{TFT_Set_17_Esports_NavBox}}\n{{Infobox league"
+       }
+      }
+     }
+    ]
+   },
+   "-1": {
+    "ns": 0,
+    "title": "Gibt Es Nicht Probe 123",
+    "missing": ""
+   }
+  }
+ }
+}

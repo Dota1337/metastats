@@ -1,0 +1,159 @@
+{{DISPLAYTITLE:{{SetName/17}}: TFT Major EMEA}}
+{{Infobox league
+|liquipediatier=2
+|name={{SetName/17}}: TFT Major EMEA
+|shortname=Set 17
+|tickername=TFT Major EMEA
+|image=TFT Major EMEA lightmode.png
+|imagedarkmode=TFT Major EMEA darkmode.png
+|icon=TFT EMEA Majors icon allmode.png
+|icondarkmode=TFT EMEA Majors icon allmode.png
+|series=Space Gods
+|series2=TFT EMEA Majors
+|organizer=Riot Games|organizer-link={{Direct Link/Riot Games}}
+|sponsor=
+|publishertier=sponsored
+|prizepool=
+|mode=Duos
+|localcurrency=EUR
+|type=Offline
+|region=EMEA
+|country=France
+|city=Paris
+|venue=[https://espot.fr/ Espot Paris]
+|date=2026-06-20
+|team_number=4
+|rulebook=
+|web=
+|bracket=
+|bracket2=
+|instagram=
+|twitter=
+|twitch=
+|youtube=
+|discord=
+|vod=
+|vod2=
+|vod3=
+|previous=
+|next=
+}}
+
+==About==
+Set 17 is the first year of EMEA's alternative competitive ecosystem structured around Minors and Majors<ref>{{Cite web|url=https://teamfighttactics.leagueoflegends.com/en-gb/news/community/the-future-of-teamfight-tactics-events-in-emea/|title=The Future of Teamfight Tactics Events in EMEA|author=Teamfight Tactics|date=2026-02-20}}</ref>, and the first '''TFT Major EMEA''' is in {{flag|fr}}Paris. The competition will feature four duos representing their respective countries in a unique 2v2v2v2 format.
+
+In addition to the Major, the event will also host fan activities, casual tournaments, and the finals of the {{LeagueIconSmall/spatula tour|link=Space Gods/EMEA/Spatula Tour/4v4 Challenge|name=Spatula Tour French Cup}} '''[[Space Gods/EMEA/Spatula Tour/4v4 Challenge|Spatula Tour 4v4 Challenge]]'''.
+
+===Format===
+* 4 teams of 2 compete in a Checkmate 40 Format
+** Games are played in Solos game mode with standard scoring.
+*** Players score based on their individual placement in each game.
+** Once a team scores 40 cummulative points, they are in check.
+** When a team has a player score game win after being in check, they win the match.
+*** Maximum 6 Games: If no player from a team in check wins Game 6, the champion will be decided by score.
+** The {{Bgcolortext|first|winning team}} is awarded and all-expenses-paid qualification to the {{LeagueIconSmall/tft open series}} '''[[TFT Open Series/TFT Vegas Open 2026|TFT Vegas Open 2026]]'''.
+
+===Prize Pool===
+{{DuoPrizePool|syncPlayers=1|prizesummary=0
+|qualifies1=TFT Open Series/TFT Vegas Open 2026|qualifies1name=TFT Vegas Open 2026|qualifies1icon=TFT Vegas Open allmode.png
+|{{Slot|qualified1=yes|{{DuoOpponent|p1=Loescher|p1flag=de|p2=Lorus|p2flag=de}}}}
+|{{Slot|{{DuoOpponent|p1=Guillosko|p1flag=es|p2=Snoodyboo|p2flag=es}}}}
+|{{Slot|{{DuoOpponent|p1=Brising|p1flag=fr|p2=Gobosteur|p2flag=fr}}}}
+|{{Slot|{{DuoOpponent|p1=Kubixon|p1flag=pl|p2=Spoti|p2flag=pl}}}}
+}}
+
+==Participants==
+{{TeamParticipants|minimumplayers=2
+|{{Opponent|Team France
+  |players={{Persons
+    |{{Person|Gobosteur|flag=fr}}
+    |{{Person|Brising|flag=fr}}
+  }}
+  |qualification={{Qualification|method=qual|page=Space Gods/EMEA/French Minor|text=French Minor}}
+}}
+|{{Opponent|Team Germany
+  |players={{Persons
+    |{{Person|Loescher|flag=de}}
+    |{{Person|Lorus|flag=de}}
+  }}
+  |qualification={{Qualification|method=invite|text=Team selected by [[JustJohnny]]<ref>{{Cite web|url=https://x.com/LPGjustJohnny/status/2068742094273798449?s=20|title=Ich durfte entscheiden wie wir die Leute nominieren.|author=[[JustJohnny]]|date=2026-06-21|language=German}}</ref>}}
+}}
+|{{Opponent|Team Poland
+  |players={{Persons
+    |{{Person|Kubixon}}
+    |{{Person|Spoti}}
+  }}
+  |qualification={{Qualification|method=qual|page=Space Gods/EMEA/Polish Minor|text=Polish Minor}}
+}}
+|{{Opponent|Team Spain
+  |players={{Persons
+    |{{Person|Guillosko|flag=es}}
+    |{{Person|Snoodyboo|flag=es}}
+  }}
+  |qualification={{Qualification|method=qual|page=Space Gods/EMEA/Spanish Minor|text=Spanish Minor}}
+}}	
+}}
+
+==Results==
+{{Matchlist|id=EsRL8PmeiI
+|M1header=TFT Major EMEA
+|M1={{Match|showgamedetails=0|finished=1
+    |matchpoint=40
+	|bg=1=up
+	|comment=Checkmate 40 Format/Max 6 Games
+	|map1={{Map|date=2026-06-20 - 14:00 {{Abbr/CEST}}|finished=1|vod=}}
+    |map2={{Map|date=2026-06-20 - 14:45 {{Abbr/CEST}}|finished=1|vod=}}
+    |map3={{Map|date=2026-06-20 - 15:30 {{Abbr/CEST}}|finished=1|vod=}}
+    |map4={{Map|date=2026-06-20 - 16:15 {{Abbr/CEST}}|finished=1|vod=}}
+	|map5={{Map|date=2026-06-20 - 17:00 {{Abbr/CEST}}|finished=1|vod=}}
+	|map6={{Map|date=2026-06-20 - 17:45 {{Abbr/CEST}}|finished=1|vod=}}
+    |opponent1={{TeamOpponent|Team Germany|m1={{MS|p=12}}|m2={{MS|p=12}}|m3={{MS|p=7}}|m4={{MS|p=7}}|m5={{MS|p=11}}|m6={{MS|p=10}}|placement=1}}
+    |opponent2={{TeamOpponent|Team Spain|m1={{MS|p=7}}|m2={{MS|p=11}}|m3={{MS|p=15}}|m4={{MS|p=6}}|m5={{MS|p=12}}|m6={{MS|p=9}}|placement=2}}
+    |opponent3={{TeamOpponent|Team France|m1={{MS|p=14}}|m2={{MS|p=10}}|m3={{MS|p=4}}|m4={{MS|p=8}}|m5={{MS|p=4}}|m6={{MS|p=9}}|placement=3}}
+    |opponent4={{TeamOpponent|Team Poland|m1={{MS|p=3}}|m2={{MS|p=3}}|m3={{MS|p=10}}|m4={{MS|p=15}}|m5={{MS|p=9}}|m6={{MS|p=8}}|placement=4}}
+}}
+}}
+
+===Individual Results===
+{{LPDB storage|false}}
+{{Matchlist|id=tdZIEB6kQV
+|M1={{Match|showgamedetails=0|finished=1
+    |p1=8|p2=7|p3=6|p4=5|p5=4|p6=3|p7=2|p8=1
+	|map1={{Map|date=2026-06-20 - 14:00 {{Abbr/CEST}}|finished=1|vod=}}
+    |map2={{Map|date=2026-06-20 - 14:45 {{Abbr/CEST}}|finished=1|vod=}}
+    |map3={{Map|date=2026-06-20 - 15:30 {{Abbr/CEST}}|finished=1|vod=}}
+    |map4={{Map|date=2026-06-20 - 16:15 {{Abbr/CEST}}|finished=1|vod=}}
+	|map5={{Map|date=2026-06-20 - 17:00 {{Abbr/CEST}}|finished=1|vod=}}
+	|map6={{Map|date=2026-06-20 - 17:45 {{Abbr/CEST}}|finished=1|vod=}}
+    |opponent1={{SoloOpponent|Guillosko|flag=es|team=Team Spain|m1={{MS|5}}|m2={{MS|3}}|m3={{MS|1}}|m4={{MS|7}}|m5={{MS|1}}|m6={{MS|3}}|placement=1}}
+    |opponent2={{SoloOpponent|Lorus|flag=de|team=Team Germany|m1={{MS|2}}|m2={{MS|1}}|m3={{MS|4}}|m4={{MS|3}}|m5={{MS|4}}|m6={{MS|7}}|placement=2}}
+    |opponent3={{SoloOpponent|Loescher|flag=de|team=Team Germany|m1={{MS|4}}|m2={{MS|5}}|m3={{MS|7}}|m4={{MS|8}}|m5={{MS|3}}|m6={{MS|1}}|placement=3}}
+    |opponent4={{SoloOpponent|Brising|flag=fr|team=Team France|m1={{MS|3}}|m2={{MS|2}}|m3={{MS|6}}|m4={{MS|4}}|m5={{MS|8}}|m6={{MS|5}}|placement=4}}
+    |opponent5={{SoloOpponent|Snoodyboo|flag=es|team=Team Spain|m1={{MS|6}}|m2={{MS|4}}|m3={{MS|2}}|m4={{MS|5}}|m5={{MS|5}}|m6={{MS|6}}|placement=5}}
+    |opponent6={{SoloOpponent|Kubixon|flag=pl|team=Team Poland|m1={{MS|8}}|m2={{MS|8}}|m3={{MS|3}}|m4={{MS|1}}|m5={{MS|2}}|m6={{MS|8}}|placement=6}}
+    |opponent7={{SoloOpponent|Spoti|flag=pl|team=Team Poland|m1={{MS|7}}|m2={{MS|7}}|m3={{MS|5}}|m4={{MS|2}}|m5={{MS|7}}|m6={{MS|2}}|placement=7}}
+    |opponent8={{SoloOpponent|Gobosteur|flag=fr|team=Team France|m1={{MS|1}}|m2={{MS|6}}|m3={{MS|8}}|m4={{MS|6}}|m5={{MS|6}}|m6={{MS|4}}|placement=8}}
+}}
+}}
+{{LPDB storage|true}}
+
+==Broadcast==
+===Streams===
+{{Streams|title=Official Streams
+|lang1=fr |twitch1=shaunz |2twitch1=un33d
+}}
+
+===Broadcast Talent===
+{{BroadcasterCard
+|position=Commentator |lang=fr
+|b1=Shaunz|b1flag=fr|b1name=Kévin Ghanbarzadeh
+|b2=Un33d|b2flag=fr|b2name=Grégoire Bodin
+}}
+
+
+==Additional Content==
+===Media===
+{{TournamentMedia}}
+
+==References==
+{{Reflist}}

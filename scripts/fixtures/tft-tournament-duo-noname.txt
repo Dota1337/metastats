@@ -1,0 +1,130 @@
+{{DISPLAYTITLE:TFT Digi Duos Invitational}}
+{{Tabs static
+|name1=Overview	|link1=TFT_Digi_Duos_Invitational
+|name2=Double Up|link2=TFT_Digi_Duos_Invitational/Double_Up
+|name3=4v4 Bracket		|link3=TFT_Digi_Duos_Invitational/4v4_Bracket
+}}
+{{Infobox league
+|liquipediatier=2
+|name=TFT Digi Duos Invitational
+|shortname=Digi Duos
+|tickername=Digi Duos
+|image=
+|imagedark=
+|icon=
+|series=Cyber City|abbreviation=
+|organizer=Riot Games|organizer-link={{Direct Link/Riot Games}}
+|type=offline
+|country=USA
+|city=Seattle
+|venue=
+|format=
+|mode=Duos
+|mode2=Squads
+|prizepoolusd=35000
+|sdate=2025-05-09|edate=2025-05-11
+|bracket=https://docs.google.com/spreadsheets/d/e/2PACX-1vQHYPSxiAbsyz32ldPv3BIFqCqfDtQqHOZcAAOQjV7c5gTPhlUSQXWdfUGWr7kDEblHsrbMg04iyYLW/pubhtml#
+|rulebook=
+|twitter=CompeteTFT
+|twitch=teamfighttactics
+|youtube=@playtft
+|facebook=PlayTFT
+|instagram=playtft
+|team_number=4
+|next=
+}}
+
+==About==
+===Format===
+* '''Double Up:''' ''May 9<sup>th</sup> - 10<sup>th</sup>''
+** 4 squads are split into ''4 Upper Bracket Duos'' and ''4 Lower Bracket Duos''.
+** Each breaket plays 8 games across ''Day 1 & Day 2''.
+** Games 13-16 have doubled point values.
+** {{Bgcolortext|up|Top 1<sup>st</sup> team}} advance to the '''4v4 Bracket - Grand Finals'''.
+** {{Bgcolortext|stayup|Top 2<sup>nd</sup> team}} advance to the '''4v4 Bracket - Semifinals'''.
+** {{Bgcolortext|staydown|Top 3<sup>rd</sup> & Top 4<sup>th</sup> teams}} advance to the '''4v4 Bracket - Quarterfinals'''.
+
+* '''4v4 Bracket:''' ''May 11<sup>th</sup>''
+** '''Quarterfinals:'''
+*** 2 teams play {{Abbr/Bo3}}.
+*** Winning team advannces to '''Semifinals.'''
+** '''Semifinals:'''
+*** 2 teams play {{Abbr/Bo3}}.
+*** Winning team advannces to '''Grand Finals.'''
+** '''Grand Finals:'''
+*** 2 teams play {{Abbr/Bo5}}.
+*** Winning team will be the champions of '''TFT Digi Duos Invitational.'''
+
+===Tiebreaker===
+{{Tiebreaker
+|1sts & Top 2s (1sts are counted twice).
+|# of 1sts, then # of 2nds, etc.
+|Placement in most recent game.
+|Most recent team to compliment Frodan's hair.
+|Best tiebreaker to make this spreadsheet look nice.
+}}
+
+===Prize Pool===
+{{TeamPrizePool|cutafter=4
+|{{Slot|usdprize=12500|{{TeamOpponent||lastvs=|lastvsscore=}}}}
+|{{Slot|usdprize=10000|{{TeamOpponent||lastvs=|lastvsscore=}}}}
+|{{Slot|usdprize=7500 |{{TeamOpponent||lastvs=|lastvsscore=}}}}
+|{{Slot|usdprize=5000 |{{TeamOpponent||lastvs=|lastvsscore=}}}}
+}}
+
+==Participants==
+{{TeamCardToggleButton<!--|playerinfo=true-->}}
+{{TeamCard columns start|cols=4|height=170}}
+{{TeamCard|players=4
+|team=Team SLAB
+|p1=Dishsoap
+|p2=Emilyywang
+|p3=Imaqtpie
+|p4=Sykkuno
+}}
+{{TeamCard|players=4
+|team=Team Skateparkge
+|p1=Kiyoon
+|p2=Yougelly
+|p3=Rayditz
+|p4=Alexkhosieyo
+}}
+{{TeamCard|players=4
+|team=Team Geriatric Gamers
+|p1=Robinsongz
+|p2=Boxbox
+|p3=Scarra
+|p4=Triciaisabirdy
+}}
+{{TeamCard|players=4
+|team=Team Jetlag Diff
+|p1=Un33d
+|p2=Manute
+|p3=Xntentacion
+|p4=JustJohnny
+}}
+
+{{TeamCard columns end}}
+
+==Results==
+===Double Up===
+
+===4v4 Bracket===
+
+==Broadcast==
+===Streams===
+{{Streams|title=Official Streams
+|lang1=usuk |youtube1=@playtft |twitch1=teamfighttactics
+}}
+
+===Broadcast Talent===
+{{BroadcasterCard
+|position=Commentator |lang=English
+|b1=ImpetuousPanda
+|b2=Frodan
+|b3=CLE
+|b4=Mortdog
+|b5=
+|b6=
+|b7=
+}}

@@ -1,0 +1,202 @@
+{{DISPLAYTITLE:Hextech Havoc: Double Up}}
+{{Infobox league
+|liquipediatier=2
+|name=Hextech Havoc: Double Up
+|shortname=Hextech Havoc: Double Up
+|tickername=Hextech Havoc: Double Up
+|image=Hextech Havoc- Double Up KV.jpeg
+|icon=Teamfight Tactics Double Up lightmode.png
+|icondarkmode=Teamfight Tactics Double Up darkmode.png
+|series=Gizmos & Gadgets
+|organizer=Riot Games|organizer-link={{Direct Link/Riot Games}}
+|publishertier=sponsored
+|sponsor=
+|prizepoolusd=10,000
+|type=Online
+|country=World
+|format=
+|mode=Duos
+|sdate=2022-02-26
+|edate=2022-02-27
+|web=
+|bracket=https://docs.google.com/spreadsheets/d/1IpKlINzybGwWkhpN1daTuJY3-SmFa-GPDTpDqPypi6g
+|rulebook=
+|twitter=TFT/status/1481551597746286595
+|twitch=teamfighttactics
+|youtube=
+|facebook=PlayTFT
+|instagram=playtft
+|discord=
+|team_number=8
+|previous=
+|next=
+}}
+
+==About==
+===Broadcast Talent===
+{{BroadcasterCard
+|position=Commentator
+|b1=Admirable
+|b2=Frodan
+|b3=Mean Mister Kien
+}}
+
+===Format===
+* '''Day 1''':
+** '''Phase One''':
+*** Duos will play five games.
+*** <span class="bg-up">Top 2</span> per lobby (4 total) advance to ''Day 2''.
+* '''Day 2''':
+** A Bo5 Lobby.
+
+====Points Distribution====
+<span class="mw-customtoggle-PreSeasonNotes-">For {{abbr|"Points Distribution"|}} '''Click here'''.</span>
+<div class="toccolours mw-collapsible mw-collapsed" id="mw-customcollapsible-PreSeasonNotes-" style="width:15%">
+
+{| class="wikitable" style="text-align:center;"
+! colspan="2"|Points Distribution
+|-
+!width=100px|Place
+!width=100px|Points
+|-
+|{{Placement|1}}||4
+|-
+|{{Placement|2}}||3
+|-
+|{{Placement|3}}||2
+|-
+|{{Placement|4}}||1
+|}
+</div>
+
+===Prize Pool===
+{{SoloPrizePool
+|{{Slot|usdprize=5000|{{TeamOpponent|EZGame}}}}
+|{{Slot|usdprize=2000|{{TeamOpponent|MeiCaiKorol}}}}
+|{{Slot|usdprize=1500|{{TeamOpponent|GLG Esports Club}}}}
+|{{Slot|usdprize=500|{{TeamOpponent|Ramblin Robin}}}}
+|{{Slot|usdprize=250
+|{{TeamOpponent|KDA e-Sports}}
+|{{TeamOpponent|Ba Bhet}}}}
+|{{Slot|usdprize=250
+|{{TeamOpponent|Casserole Gaming}}
+|{{TeamOpponent|Truuust}}}}
+}}
+
+==Participants==
+{{TeamCardToggleButton|left}}
+{{TeamCard columns start|cols=4}}
+{{TeamCard
+|team=Ramblin Robin
+|p1=robinsongz |p1flag= |p1team=team liquid
+|p2=Ramblinnn |p2flag=
+|players=2
+|qualifier=[[Giant_Slayer/Lab_Partners|Lab Partners]]
+}}
+{{TeamCard
+|team=EZGame
+|p1=EZ |p1flag=cn
+|p2=Hong Lian |p2flag=cn
+|players=2
+|qualifier=CN
+}}
+{{TeamCard
+|team=MeiCaiKorol
+|p1=Sudowoodo |p1flag=cn
+|p2=WangYue |p2flag=cn
+|players=2
+|qualifier=CN
+}}
+{{TeamCard
+|team=KDA e-Sports
+|p1=Constantine |p1flag=br
+|p2=Sukesvs |p2flag=br
+|players=2
+|qualifier=BR
+}}
+{{TeamCard
+|team=Casserole Gaming
+|p1=Draeko |p1flag=co
+|p2=JDCA2000 |p2flag=co
+|players=2
+|qualifier=LAN
+}}
+{{TeamCard
+|team=GLG Esports
+|p1=Autenticos |p1flag=ar
+|p2=LifesBad |p2flag=ar
+|players=2
+|qualifier=LAS
+}}
+{{TeamCard
+|team=Truuust
+|p1=peeba |p1flag=us
+|p2=JiveNThrive |p2flag=us
+|players=2
+|qualifier=NA
+}}
+{{TeamCard
+|team=Ba Bhet
+|p1=Fortune Chosen |p1flag=au |p1team=kraken esports club
+|p2=Pong670 |p2flag=nz
+|players=2
+|qualifier=OCE
+}}
+{{TeamCard columns end}}
+
+==Results==
+===Day 1===
+{{box|start|padding=2em|padding-bottom=2em}}
+{{match standings |title=Lobby A|rounds=5
+|p1=4|p2=3|p3=2|p4=1
+|bg1=up|bg2=up|bg3=down|bg4=down
+|details1={{MatchSummary|date=February 26, 2022 - 6:00 {{Abbr/PST}} |finished=true |twitch=teamfighttactics}}
+|details2={{MatchSummary|date=February 26, 2022 - 7:00 {{Abbr/PST}} |finished=true |twitch=teamfighttactics}}
+|details3={{MatchSummary|date=February 26, 2022 - 8:00 {{Abbr/PST}} |finished=true |twitch=teamfighttactics}}
+|details4={{MatchSummary|date=February 26, 2022 - 9:00 {{Abbr/PST}} |finished=true |twitch=teamfighttactics}}
+|details5={{MatchSummary|date=February 26, 2022 - 10:00 {{Abbr/PST}} |finished=true |twitch=teamfighttactics}}
+|p1team=Ramblin Robin |p1results=3,2,2,4,1
+|p2team=Meicaikorol |p2results=1,1,1,1,2
+|p3team=KDA e-Sports |p3results=2,3,3,2,3
+|p4team=Casserole Gaming |p4results=4,4,4,3,4
+}}
+
+{{box|break|padding=2em|padding-bottom=2em}}
+{{match standings |title=Lobby B|rounds=5
+|p1=4|p2=3|p3=2|p4=1
+|bg1=up|bg2=up|bg3=down|bg4=down
+|details1={{MatchSummary|date=February 26, 2022 - 6:00 {{Abbr/PST}} |finished=true |twitch=teamfighttactics}}
+|details2={{MatchSummary|date=February 26, 2022 - 7:00 {{Abbr/PST}} |finished=true |twitch=teamfighttactics}}
+|details3={{MatchSummary|date=February 26, 2022 - 8:00 {{Abbr/PST}} |finished=true |twitch=teamfighttactics}}
+|details4={{MatchSummary|date=February 26, 2022 - 9:00 {{Abbr/PST}} |finished=true |twitch=teamfighttactics}}
+|details5={{MatchSummary|date=February 26, 2022 - 10:00 {{Abbr/PST}} |finished=true |twitch=teamfighttactics}}
+|p1team=GLG Esports |p1results=1,2,2,3,1
+|p2team=EZGame |p2results=2,1,1,2,4
+|p3team=Ba Bhet |p3results=3,4,4,1,2
+|p4team=Truuust |p4results=4,3,3,4,3
+}}
+{{box|end}}
+
+===Day 2===
+{{match standings |title=Standings |rounds=5
+|p1=4|p2=3|p3=2|p4=1
+|bg1=up
+|details1={{MatchSummary|date=February 27, 2022 - 6:00 {{Abbr/PST}} |finished=true |twitch=teamfighttactics}}
+|details2={{MatchSummary|date=February 27, 2022 - 7:00 {{Abbr/PST}} |finished=true |twitch=teamfighttactics}}
+|details3={{MatchSummary|date=February 27, 2022 - 8:00 {{Abbr/PST}} |finished=true |twitch=teamfighttactics}}
+|details4={{MatchSummary|date=February 27, 2022 - 9:00 {{Abbr/PST}} |finished=true |twitch=teamfighttactics}}
+|details5={{MatchSummary|date=February 27, 2022 - 10:00 {{Abbr/PST}} |finished=true |twitch=teamfighttactics}}
+|p1team=EZGame |p1results=2,1,1,2,3
+|p2team=MeiCaiKorol |p2results=1,2,3,4,1
+|p3team=GLG Esports |p3results=3,3,2,1,2
+|p4team=Ramblin Robin |p4results=4,4,4,3,4
+}}
+
+==Additional Content==
+===Streams===
+{{Streams
+|lang1=us |twitch1=teamfighttactics
+}}
+
+==References==
+{{Reflist}}

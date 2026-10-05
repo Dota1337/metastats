@@ -11,6 +11,13 @@
 //    aus dem Seitenpfad. China und Seiten ohne Region: keine Zuordnung. Der Name
 //    muss auf den erlaubten Servern genau EIN Konto haben, und das muss Master+
 //    sein. pro_puuid bleibt unberuehrt — die Zuordnung liegt in eigener Tabelle.
+//    Vorher (D5, 2026-10-05): Namen mit Team-Kuerzel ("HR Loescher") gehen an
+//    den Pro "Loescher", wenn genau EIN Pro mit Konto so heisst (Name oder
+//    Liquipedia-Seite) — method 'team-prefix-pro'. Gleichnamige Pros (zwei
+//    "Tropical") werden nie automatisch verknuepft.
+//    Alte Verknuepfungen: nur verwaiste (Ergebniszeile weg) werden geloescht,
+//    jede einzeln im Log; die uebrigen bleiben stehen und kommen als Pruefliste
+//    ins Log, statt still zu verschwinden.
 
 import { getUsdRate } from './fx-rates.mjs';
 
@@ -43,9 +50,15 @@ const COUNTRY_PLATFORMS = (() => {
   return m;
 })();
 
+// China-Abschnitte im Seitenpfad. Golden_Spatula (Americas/APAC/EMEA) und
+// East_Asian_Finals (jp/kr/oce) sind KEINE China-Turniere (D5, gemessen
+// 2026-10-05: gemischte Laender bzw. jp/kr/oce/au in den gespeicherten Zeilen).
+const CN_SEGMENT = /^(cn|china|toc|joc|cn_qualifier)$/i;
+
 // Seitenpfad-Abschnitte, spezifischster zuerst geprueft (letzter Abschnitt gewinnt).
 const SEGMENT_PLATFORMS = [
-  [/^(cn|china|toc|joc|cn_qualifier|golden_spatula|east_asian_finals)$/i, NONE],
+  [CN_SEGMENT, NONE],
+  [/^east_asian_finals$/i, ['kr', 'jp1', 'oc1']],
   [/^turkey$/i, ['tr1']],
   [/^north_america$/i, ['na1']],
   [/^brazil$/i, ['br1']],
@@ -62,7 +75,6 @@ const SEGMENT_PLATFORMS = [
   [/^(amer|americas)$/i, ['na1', 'br1', 'la1', 'la2']],
   [/^apac$/i, ['kr', 'jp1', 'tw2', 'vn2', 'oc1', 'sg2']],
 ];
-const CN_SEGMENT = /^(cn|china|toc|joc|cn_qualifier|golden_spatula|east_asian_finals)$/i;
 
 /** Server aus dem Land; null = Land sagt nichts (leer, world, in, …). */
 export function platformsForCountry(country) {
@@ -93,6 +105,45 @@ export function normName(s) {
 export function stripTeamPrefix(name) {
   const m = String(name || '').match(/^([A-Z0-9]{2,5})\s+(\S.*)$/);
   return m ? m[2] : null;
+}
+
+/** Pros mit Konto: normName(Name) und normName(Liquipedia-Seite) → Set(puuid). */
+export function buildProIndex(pros) {
+  const idx = new Map();
+  const add = (k, puuid) => {
+    if (!k) return;
+    if (!idx.has(k)) idx.set(k, new Set());
+    idx.get(k).add(puuid);
+  };
+  for (const p of pros || []) {
+    if (!p?.puuid) continue;
+    add(normName(p.pro_name), p.puuid);
+    add(normName(String(p.source_page || '').replace(/_/g, ' ')), p.puuid);
+  }
+  return idx;
+}
+
+/** "HR Loescher" → Konto des Pros "Loescher", nur wenn genau EIN Pro passt. */
+export function prefixProPuuid(name, proIndex) {
+  const s = stripTeamPrefix(name);
+  if (!s) return null;
+  const hits = proIndex.get(normName(s));
+  return hits && hits.size === 1 ? [...hits][0] : null;
+}
+
+/**
+ * Alte Verknuepfungen, die dieser Lauf nicht mehr setzt: verwaist (keine
+ * Ergebniszeile mehr) → loeschen; sonst stehen lassen und pruefen.
+ * resultKeys: Set aus `${tournament_id}|${pro_name}` aller Ergebniszeilen.
+ */
+export function classifyStaleLinks(existing, keepKeys, resultKeys) {
+  const orphans = [], review = [];
+  for (const e of existing || []) {
+    const k = `${e.tournament_id}|${e.raw_name}`;
+    if (keepKeys.has(k)) continue;
+    (resultKeys.has(k) ? review : orphans).push(e);
+  }
+  return { orphans, review };
 }
 
 const MASTER_PLUS = new Set(['MASTER', 'GRANDMASTER', 'CHALLENGER']);
@@ -205,17 +256,18 @@ function pick(accounts, platforms) {
 
 /**
  * Pass 2: Zuordnungen neu aufbauen. Erst alles lesen (Abbruch bei Lesefehler,
- * dann wird auch nichts geloescht), dann upserten, dann veraltete loeschen.
+ * dann wird auch nichts geloescht), dann upserten, dann nur Verwaistes loeschen.
  */
 export async function rebuildPlayerLinks({ url, key, upsert, log = console.log }) {
   const { all, h } = sb(url, key);
   const tours = await all('tft_tournaments?select=id,liquipedia_page&order=id');
   const pageOf = new Map(tours.map(t => [t.id, t.liquipedia_page]));
   const rows = await all('tft_tournament_results?select=tournament_id,pro_name,country,pro_puuid&order=tournament_id,placement,pro_name');
+  const pros = await all('tft_pro_players?select=id,pro_name,source_page,puuid&puuid=not.is.null&order=id');
+  const proIndex = buildProIndex(pros);
   // Trockenlauf vor der Migration: Tabelle fehlt noch → leer. Scharf: Lesefehler bricht ab.
-  const existing = DRY
-    ? await all('tft_tournament_player_links?select=tournament_id,raw_name&order=tournament_id,raw_name').catch(() => [])
-    : await all('tft_tournament_player_links?select=tournament_id,raw_name&order=tournament_id,raw_name');
+  const linkCols = 'tft_tournament_player_links?select=tournament_id,raw_name,puuid,method&order=tournament_id,raw_name';
+  const existing = DRY ? await all(linkCols).catch(() => []) : await all(linkCols);
 
   // Land je Name aus allen Zeilen (fuer Zeilen ohne Land).
   const countriesByName = new Map();
@@ -233,7 +285,9 @@ export async function rebuildPlayerLinks({ url, key, upsert, log = console.log }
   for (const r of rows) {
     if (r.pro_puuid) continue;
     const k = `${r.tournament_id}|${r.pro_name}`;
-    if (seen.has(k)) continue;   // TPC-Doppeltabellen: ein Link je Turnier+Name
+    // Ein Name kann je Turnier mehrere Zeilen haben (verschiedene Plaetze,
+    // z. B. mehrere Pools auf einer Seite): ein Link je Turnier+Name.
+    if (seen.has(k)) continue;
     seen.add(k);
     let platforms = platformsForCountry(r.country);
     if (!platforms) {
@@ -252,7 +306,14 @@ export async function rebuildPlayerLinks({ url, key, upsert, log = console.log }
 
   const byNorm = await lookupAccounts(url, key, norms);
   const links = [];
+  let prefixLinked = 0;
   for (const c of candidates) {
+    const proPuuid = prefixProPuuid(c.r.pro_name, proIndex);
+    if (proPuuid) {
+      links.push({ tournament_id: c.r.tournament_id, raw_name: c.r.pro_name, puuid: proPuuid, method: 'team-prefix-pro' });
+      prefixLinked++;
+      continue;
+    }
     const acc = pick(byNorm.get(c.full), c.platforms) || (c.short ? pick(byNorm.get(c.short), c.platforms) : null);
     if (!acc) continue;
     links.push({ tournament_id: c.r.tournament_id, raw_name: c.r.pro_name, puuid: acc.puuid, method: 'name-unique-master' });
@@ -262,15 +323,24 @@ export async function rebuildPlayerLinks({ url, key, upsert, log = console.log }
     await upsert('tft_tournament_player_links', links.slice(i, i + 500), 'tournament_id,raw_name');
   }
   const keep = new Set(links.map(l => `${l.tournament_id}|${l.raw_name}`));
-  const stale = existing.filter(e => !keep.has(`${e.tournament_id}|${e.raw_name}`));
-  if (!DRY) {
-    for (const e of stale) {
-      const res = await fetch(`${url}/rest/v1/tft_tournament_player_links?tournament_id=eq.${encodeURIComponent(e.tournament_id)}&raw_name=eq.${encodeURIComponent(e.raw_name)}`, {
-        method: 'DELETE', headers: { ...h, Prefer: 'return=minimal' },
-      });
-      if (!res.ok) throw new Error(`Supabase delete link failed: HTTP ${res.status}`);
-    }
+  const resultKeys = new Set(rows.map(r => `${r.tournament_id}|${r.pro_name}`));
+  const rowPuuid = new Map();
+  for (const r of rows) if (r.pro_puuid) rowPuuid.set(`${r.tournament_id}|${r.pro_name}`, r.pro_puuid);
+  const { orphans, review } = classifyStaleLinks(existing, keep, resultKeys);
+  for (const e of orphans) {
+    log(`  [player-links] geloescht (Ergebniszeile weg): ${e.tournament_id} | ${e.raw_name} | ${e.puuid} | ${e.method}`);
+    if (DRY) continue;
+    const res = await fetch(`${url}/rest/v1/tft_tournament_player_links?tournament_id=eq.${encodeURIComponent(e.tournament_id)}&raw_name=eq.${encodeURIComponent(e.raw_name)}`, {
+      method: 'DELETE', headers: { ...h, Prefer: 'return=minimal' },
+    });
+    if (!res.ok) throw new Error(`Supabase delete link failed: HTTP ${res.status}`);
   }
-  log(`  [player-links] ${candidates.length} candidates, ${links.length} linked, ${stale.length} stale removed`);
-  return { candidates: candidates.length, links, stale: stale.length };
+  // Pruefliste: Verknuepfung bleibt stehen, die Regel setzt sie aber nicht mehr.
+  for (const e of review) {
+    const rp = rowPuuid.get(`${e.tournament_id}|${e.raw_name}`);
+    const why = rp ? (rp === e.puuid ? 'Zeile traegt jetzt dasselbe Konto' : 'Zeile traegt jetzt ein ANDERES Konto') : 'Regel trifft nicht mehr (Konto nicht mehr eindeutig/Master+)';
+    log(`  [player-links] PRUEFEN: ${e.tournament_id} | ${e.raw_name} | ${e.puuid} | ${e.method} | ${why}`);
+  }
+  log(`  [player-links] ${candidates.length} candidates, ${links.length} linked (${prefixLinked} team-prefix-pro), ${orphans.length} orphans removed, ${review.length} kept for review`);
+  return { candidates: candidates.length, links, prefixLinked, orphans: orphans.length, review };
 }

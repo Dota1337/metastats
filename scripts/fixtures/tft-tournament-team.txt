@@ -1,0 +1,322 @@
+{{Liquipedia links/Esports World Cup 2025}}{{DISPLAYTITLE:TFT at Esports World Cup 2025}}
+{{EWC 2025 Tabs}}
+{{Tabs static
+|name1=Overview|link1=Esports_World_Cup/2025
+|name2=Group Stage|link2=Esports_World_Cup/2025/Group_Stage
+|name3=Playoffs|link3=Esports_World_Cup/2025/Playoffs
+}}
+{{Infobox league
+|liquipediatier=1
+|name=Esports World Cup 2025
+|shortname=EWC 2025
+|tickername=EWC 2025
+|image=Esports World Cup 2024 lightmode.png |imagedark=Esports World Cup 2024 darkmode.png
+|icon=Esports World Cup icon lightmode.png|icondarkmode=Esports World Cup icon darkmode.png
+|series=Esports World Cup
+|organizer1=Esports World Cup Foundation|organizer1-link=https://esportsworldcup.com/
+|organizer2=ESL FACEIT Group|organizer2-link=https://eslfaceitgroup.com/
+|sponsor=
+|type=Offline
+|country=Saudi Arabia
+|city=Riyadh
+|venue=STC TV Studios
+|venue2=SNB Arena
+|format='''Group Stage''' <br> <small>GSL Format</small> <br>'''Playoffs''' <br><small>Single-Elimination</small>
+|mode=Squads
+|prizepoolusd=500,000
+|sdate=2025-08-11
+|edate=2025-08-15
+|team_number=16
+|bracket=
+|rulebook=https://drive.google.com/file/d/1jtrATSyyWNo012l52Onf6cozo4OEI-n9/view
+|web=https://esportsworldcup.com/en/competitions/teamfight-tactics
+|twitter=EWC_EN
+|facebook=esportsworldcup
+|instagram=ewc_en
+|youtube=@ewc
+|twitch=ewc_gold
+|twitch2=ewc_gold_en2
+|tiktok=ewc_en
+|huya=saewc
+|douyu=7388349
+|vod=
+|previous=Esports_World_Cup/2024{{!}}EWC 2024
+|next=Esports_World_Cup/2026{{!}}EWC 2026
+}}
+
+==About==
+The '''Esports World Cup''' is a tournament series that was announced in late 2023, building off the previously established '''Gamers8''' series. '''Teamfight Tactics''' was announced as part of the line-up on February 2, 2025.<ref name="EWC TFT">{{cite web|url=https://x.com/EWC_EN/status/1889034098909561267|title=Time to start a Riot|date=2025-02-10|author=Esports World Cup|language={{FlagNoLink|usuk}} English}}</ref>
+:''See [https://liquipedia.net/esports/Esports_World_Cup/2025 here] to read about the Esports World Cup 2025, the Calendar, the Club Standings and more.''
+
+===Format===
+* '''Group Stage:''' ''August 11 - 13''
+** 16 teams are split into 4 even groups of 4 teams.
+** For each group, 4 teams compete in the Double-Elimination (GSL) format.
+*** All matches are {{Abbr/Bo3}}.
+*** {{Abbr/Top2}} teams from each group advance to the ''Playoffs''.
+
+*'''Playoffs:''' ''August 14 - 15''
+** 8 teams qualified from ''Group Stage'' compete in the Single-Elimination format.
+*** All matches ''(excl. Grand Final)'' are {{Abbr/Bo3}}.
+*** Grand Final is {{Abbr/Bo5}}.
+
+====Points Distribution====
+{{Points8}}
+
+====Tiebreaker====
+{{Tiebreaker
+|A team's result in any given game will be the sum of their 4 players points compared to the sum of their opponents.
+|If the teams points are tied at the end of a game, the game victory will be awarded to the team whose player finished first in that match.
+}}
+
+===Prize Pool===
+{{TeamPrizePool|cutafter=8|points1=ewc2025
+|tournament1=Esports World Cup/2025/Group Stage
+|tournament2=Esports World Cup/2025/Playoffs
+<!--|freetext1=Notes-->
+|{{Slot|usdprize=150000|points1=1000|freetext={{Abbr/NA}} for Club Points}}
+|{{Slot|usdprize=70000|points1=750}}
+|{{Slot|usdprize=40000|points1=500|place=3-4}}
+|{{Slot|usdprize=25000|points1=200|place=5-8}}
+|{{Slot|usdprize=15000|place=9-12}}
+|{{Slot|usdprize=10000|place=13-16}}
+|adjacentContent=<div>
+{{AwardPrizePool|noprize=true
+|{{Slot|usdprize=10,000|award=Finals MVP|{{Opponent|Saopimi|flag=cn|team=Weibo Gaming}}}}
+}}</div>
+}}
+
+===Schedule===
+{{Toggle bracket start|tournament=Esports_World_Cup/2025/Group_Stage|sdate=2025-08-11|edate=2025-08-14|button1Text=Group Stage|button2Text=Hide Schedule|sortround=true|matchpage=true}}
+{{Toggle bracket end}}
+{{Toggle bracket start|tournament=Esports_World_Cup/2025/Playoffs|sdate=2025-08-14|edate=2025-08-16|button1Text=Playoffs|button2Text=Hide Schedule|sortround=true|matchpage=true}}
+{{Toggle bracket end}}
+
+==Participants==
+{{TeamCardToggleButton}}
+{{TeamCard columns start|cols=4|height=170}}
+{{TeamCard|players=4
+|team=AEGIS
+|p1=Opale
+|p2=Pas de Bol
+|p3=Lyyyress
+|p4=Gobosteur
+|t2title=Staff
+|t2c1=L3SCoco
+|qualifier=[[Esports_World_Cup/2025/EMEA/Closed Qualifier|EMEA Closed Qualifier]] #1
+}}
+{{TeamCard|players=4
+|team=Fnatic
+|p1=Clemou
+|p2=Yaroy
+|p3=ArmaTruc
+|p4=bensac
+|t2title=Staff
+|t2c1=Xavient|t2c1flag=gb
+|t2c2=Joyx   |t2c2flag=fr|t2c2pos=Analyst
+|qualifier=[[Esports_World_Cup/2025/EMEA/Closed Qualifier|EMEA Closed Qualifier]] #2
+|placement=13-16
+|placementicon=EWC 2024
+}}
+{{TeamCard|players=4
+|team=EVOS Esports
+|p1=simplywojtek
+|p2=Shreddin
+|p3=Kezman
+|p4=Aki
+|t2title=Staff
+|t2c1=Kubixon
+|qualifier=[[Esports_World_Cup/2025/EMEA/Closed Qualifier|EMEA Closed Qualifier]] #3
+|inotes={{Note|1|{{team|Emeryci}} are acquired by {{team|EVOS Esports}}.}}
+}}
+{{TeamCard|players=4
+|team=MOUZ
+|p1=salvyy
+|p2=Loescher
+|p3=WetJungler
+|p4=Sologesang
+|t2title=Staff
+|t2c1=DarkHydra
+|qualifier=[[Esports_World_Cup/2025/Global_Qualifier|Global Qualifier]] #1/2
+}}
+{{TeamCard|players=4
+|team=Al Qadsiah Esports
+|p1=EsPat
+|p2=Voltariux
+|p3=Rebanav
+|p4=Flowders
+|t2title=Staff
+|t2c1=Abkreno|t2c1flag=eg
+|t2c2=Khym|t2c2flag=vn|t2c2pos=Analyst
+|qualifier=[[Esports_World_Cup/2025/Global_Qualifier|Global Qualifier]] #3
+}}
+{{TeamCard|players=4
+|image=
+|imagedark=
+|team=Wolves Esports
+|p1=YGQF |p1wins=1
+|p2=Serein |p2wins=1
+|p3=HongLian
+|p4=Sudowoodo
+|t2title=Staff
+|t2c1=TangBao|t2c1flag=cn
+|placement=1
+|placementicon=EWC 2024
+|qualifier=[[Esports World Cup/2024|EWC 2024 Champion]]
+}}
+{{TeamCard|players=4
+|team=Team Falcons
+|p1=LiShao |p1wins=1
+|p2=Ningli3z
+|p3=Lituchuan
+|p4=Sheltie |p4wins=1
+|t2title=Staff
+|t2c1=dotcom
+|placement=9-12
+|placementicon=EWC 2024
+|qualifier=[[Asian_Champions_League/2025/Qualifier/China|ACL CN Qualifier]] #1
+}}
+{{TeamCard|players=4
+|team=Weibo Gaming
+|p1=TianLong
+|p2=Saopimi
+|p3=Guan
+|p4=LBTZ
+|t2title=Staff
+|t2c1=VVN|t2c1pos=Manager|t2c1flag=cn
+|t2c2=JIEX
+|placement=5-8
+|placementicon=EWC 2024
+|qualifier=[[Asian_Champions_League/2025/Qualifier/China|ACL CN Qualifier]] #2
+}}
+{{TeamCard|players=4
+|team=Twisted Minds
+|p1=A Hao
+|p2=A Chen
+|p3=Flancy
+|p4=Xunge
+|t2title=Staff
+|t2c1=CuewarsTaner|t2c1pos=Manager
+|t2c2=HoroX       |t2c2pos=Head Coach
+|placement=3-4
+|placementicon=EWC 2024
+|qualifier=[[Asian_Champions_League/2025/Qualifier/China|ACL CN Qualifier]] #3
+}}
+{{TeamCard|players=4
+|team=Flash Wolves
+|p1=Iron Bog
+|p2=YYDM
+|p3=Haruru
+|p4=Kbaobao
+|t2title=Staff
+|t2c1=AQ1H
+|qualifier=[[Asian_Champions_League/2025/Qualifier/APAC|ACL APAC Qualifier]] #1
+}}
+{{TeamCard|players=4
+|team=T1
+|p1=Binteum
+|p2=sCsC
+|p3=dunizuni
+|p4=CrazyMoving
+|t2title=Staff
+|t2c1=Dori|t2c1flag=kr
+|placement=2
+|placementicon=EWC 2024
+|qualifier=[[Asian_Champions_League/2025/Qualifier/APAC|ACL APAC Qualifier]] #2
+}}
+{{TeamCard|players=4
+|team=Virtus.pro
+|p1=Maris
+|p2=Milo
+|p3=k1an
+|p4=NCC1
+|t2title=Staff
+|t2c1=Le Chuyen |t2c1pos=Coach
+|t2c2=Succulento|t2c2pos=Analyst
+|qualifier=[[Asian_Champions_League/2025/Qualifier/APAC|ACL APAC Qualifier]] #3
+|inotes={{NoteBig
+|n1=May 3rd - '''[[Tulip Esport]]''''s roster is acquired by '''[[Virtus.pro]]'''. <ref>{{cite web|url=https://x.com/virtuspro/status/1918591463069204703|title=Virtus.рro enters the world of Teamfight Tactics🔥|author='''[[Virtus.рro]]'''|date=2025-05-03}}</ref>
+}}
+}}
+{{TeamCard|players=4
+|team=ROC Esports
+|p1=Dr OH
+|p2=Panda|p2link=Panda (Kim Se-jin)
+|p3=Araye
+|p4=Ssangyeop
+|t2title=Staff
+|t2c1=Cassigod|t2c1flag=kr
+|qualifier=[[Esports_World_Cup/2025/Global_Qualifier|Global Qualifier]] #1/2
+}}
+{{TeamCard|players=4
+|team=Team Vitality
+|p1=prestivent
+|p2=k3soju
+|p3=setsuko
+|p4=Milk
+|t2title=Staff
+|t2c1=Frodan
+|placement=3-4
+|placementicon=EWC 2024
+|qualifier=[[Esports_World_Cup/2025/Americas/Closed_Qualifier|AMER Closed Qualifier]] #1
+}}
+{{TeamCard|players=4
+|team=Team Liquid
+|p1=eusouolucas
+|p2=ego illusions
+|p3=vclf
+|p4=Bapzera
+|t2title=Staff
+|t2c1=Slooper
+|qualifier=[[Esports_World_Cup/2025/Americas/Closed_Qualifier|AMER Closed Qualifier]] #2
+}}
+{{TeamCard|players=4
+|team=Citadel Gaming
+|p1=robinsongz
+|p2=Kaiweng
+|p3=Souless
+|p4=dankmemes01
+|t2title=Staff
+|t2c1=Marcel P|t2c1pos=Head Coach
+|qualifier=[[Esports_World_Cup/2025/Americas/Closed_Qualifier|AMER Closed Qualifier]] #3
+}}
+{{TeamCard columns end}}
+
+==Results==
+==={{Stage|Group Stage}}===
+{{Toggle group start|state=show}}
+{{box|start}}
+{{box|start|padding=4em}}
+{{#section:Esports_World_Cup/2025/Group_Stage|Group A}}{{ShowBracket|EWC2025GSA|width=350px|attached=true|collapsed=true}}<br/>
+{{box|break|padding=4em}} 
+{{#section:Esports_World_Cup/2025/Group_Stage|Group B}}{{ShowBracket|EWC2025GSB|width=350px|attached=true|collapsed=true}}<br/>
+{{box|end}}
+{{box|break}}
+{{box|start|padding=4em}}
+{{#section:Esports_World_Cup/2025/Group_Stage|Group C}}{{ShowBracket|EWC2025GSC|width=350px|attached=true|collapsed=true}}<br/>
+{{box|break|padding=4em}} 
+{{#section:Esports_World_Cup/2025/Group_Stage|Group D}}{{ShowBracket|EWC2025GSD|width=350px|attached=true|collapsed=true}}<br/>
+{{box|end}}
+{{box|end}}
+{{Toggle group end}}
+<span style="line-height:24px">&nbsp;''[[Esports_World_Cup/2025/Group_Stage|Click here for more information about the Group Stage matches.]]''</span>
+
+==={{Stage|Playoffs}}===
+{{ShowBracket|EWC2025OFF}}
+<span style="line-height:24px">&nbsp;''[[Esports_World_Cup/2025/Playoffs|Click here for more information about the Playoffs matches.]]''</span>
+
+==Broadcast==
+{{Abbr/TBA}}
+
+==Additional Data==
+===Country Representation===
+{{Country representation}}
+
+===Returning Players===
+{{Player tournament appearances|pages=
+Esports_World_Cup/2024,
+Esports_World_Cup/2025
+|playerspage=Esports_World_Cup/2025|tiers=1|limit=21|headerType=|showPlacementInsteadOfTeam=}}
+
+==References==
+{{Reflist}}

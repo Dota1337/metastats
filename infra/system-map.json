@@ -846,7 +846,8 @@
         "0 9 * * 3"
       ],
       "scripts": [
-        "scripts/crawl-tft-tournaments.mjs"
+        "scripts/crawl-tft-tournaments.mjs",
+        "scripts/enrich-tft-pro-history.mjs"
       ],
       "manualDispatch": true,
       "onPush": false

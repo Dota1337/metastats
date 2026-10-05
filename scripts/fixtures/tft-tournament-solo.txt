@@ -1,0 +1,152 @@
+{{DISPLAYTITLE:Enchanted Wilds: TPC - EMEA Elderwood Cup}}
+{{Elderwood Cup Tabs}}
+{{Infobox league
+|liquipediatier=1|liquipediatiertype=Weekly
+|name=Enchanted Wilds: TFT Pro Circuit - EMEA Elderwood Cup
+|shortname=TPC: Elderwood Cup - EMEA
+|tickername=TPC: Elderwood Cup - EMEA
+|image=TFT Pro Circuit - EMEA lightmode.png
+|imagedarkmode=TFT Pro Circuit - EMEA darkmode.png
+|icon=TFT Pro Circuit icon lightmode.png
+|icondarkmode=TFT Pro Circuit icon darkmode.png
+|series={{ROOTPAGENAME}}
+|series2=TFT Pro Circuit|abbreviation2=TPC
+|organizer=Riot Games|organizer-link={{Direct Link/Riot Games}}
+|organizer2=GGTech|organizer2-link={{Direct Link/GGTech}}
+|sponsor=
+|publishertier=sponsored
+|prizepoolusd=30,200
+|type=Online
+|country=Americas
+|country2=EMEA
+|sdate=2026-09-18
+|edate=2026-09-20
+|participants_number=32
+|rulebook=https://cdn.sanity.io/files/dsfx7636/news_live/0cd36082dcf209fae0bc190cb0172f6817351614.pdf
+|web=https://competetft.com/en-US/tournament/116917834277455889/overview
+|bracket=https://docs.google.com/spreadsheets/d/e/2PACX-1vRTgkkUgPGAlWixf29kiFAmzb_PMmb0JYeZ71ECM29XfyNJHPxeMAs2GSxlfQXP8rv_-XJQYK6JDUVU/pubhtml#gid=532077851
+|bracket2=
+|instagram=
+|twitter=CompeteTFT
+|twitch=teamfighttactics
+|youtube=@playtft
+|discord=vVTrjdn3Qh
+|stats=
+|vod=
+|vod2=
+|vod3=
+|previous2=Enchanted Wilds/TFT_Pro_Circuit/AMER/Riftbeast Cup{{!}}AMER Riftbeast Cup
+|previous=Enchanted Wilds/TFT_Pro_Circuit/EMEA/Riftbeast Cup{{!}}EMEA Riftbeast Cup
+|next2=Enchanted Wilds/TFT_Pro_Circuit/AMER/Blossom Cup{{!}}AMER Blossom Cup
+|next=Enchanted Wilds/TFT_Pro_Circuit/EMEA/Blossom Cup{{!}}EMEA Blossom Cup
+
+}}
+
+==Prize Pool==
+{{SoloPrizePool|syncPlayers=1|cutafter=4
+|qualifies1=Enchanted Wilds/Tacticians Crown|qualifies1name=Tactician's Crown
+|qualifies1icon=TFT Tacticians Crown icon lightmode.png|qualifies1icondark=TFT Tacticians Crown icon darkmode.png
+|points1=S18_EMEA_Pro_Points
+|points2=S18_AMER_Pro_Points
+|{{Slot|usdprize=3000|qualified1=yes|points2=42|date=2026-09-20|{{SoloOpponent|wigwugg}}}}
+|{{Slot|usdprize=2000|points2=37|date=2026-09-20|{{SoloOpponent|Dishsoap}}}}
+|{{Slot|usdprize=1700|points2=33|date=2026-09-20|{{SoloOpponent|Toddy}}}}
+|{{Slot|usdprize=1500|points2=30|date=2026-09-20|{{SoloOpponent|Dankmemes}}}}
+|{{Slot|usdprize=1300|points1=31|date=2026-09-20|{{SoloOpponent|Zyk0o}}}}
+|{{Slot|usdprize=1200|points1=31|date=2026-09-20|{{SoloOpponent|Skipaeus}}}}
+|{{Slot|usdprize=1100|points2=32|date=2026-09-20|{{SoloOpponent|ripple overdrive}}}}
+|{{Slot|usdprize=1000|points2=26|date=2026-09-20|{{SoloOpponent|setsuko}}}}
+<!--Day 2, Cut 3-->
+|{{Slot|usdprize=800|points1=24|date=2026-09-19|{{SoloOpponent|Gobosteur}}}}
+|{{Slot|usdprize=800|points1=23|date=2026-09-19|{{SoloOpponent|Nuryy7}}}}
+|{{Slot|usdprize=800|points2=22|date=2026-09-19|{{SoloOpponent|Phoenixaa}}}}
+|{{Slot|usdprize=800|points2=21|date=2026-09-19|{{SoloOpponent|Marcel P}}}}
+<!--Day 2, Cut 2-->
+|{{Slot|usdprize=700|points1=20|date=2026-09-19|{{SoloOpponent|Bialy Lis}}}}
+|{{Slot|usdprize=700|points1=19|date=2026-09-19|{{SoloOpponent|KlicorneN}}}}
+|{{Slot|usdprize=700|points1=18|date=2026-09-19|{{SoloOpponent|Loescher}}}}
+|{{Slot|usdprize=700|points2=17|date=2026-09-19|{{SoloOpponent|Deleted}}}}
+<!--Day 2, Cut 1-->
+|{{Slot|usdprize=600|points1=16|date=2026-09-19|{{SoloOpponent|Yakumo}}}}
+|{{Slot|usdprize=600|points1=15|date=2026-09-19|{{SoloOpponent|L3SCoco}}}}
+|{{Slot|usdprize=600|points1=14|date=2026-09-19|{{SoloOpponent|Kubixon}}}}
+|{{Slot|usdprize=600|points2=13|date=2026-09-19|{{SoloOpponent|bruhbruhbruh}}}}
+|{{Slot|usdprize=500|points2=12|date=2026-09-19|{{SoloOpponent|Kaiweng}}}}
+|{{Slot|usdprize=500|points1=11|date=2026-09-19|{{SoloOpponent|tarteman}}}}
+|{{Slot|usdprize=500|points2=10|date=2026-09-19|{{SoloOpponent|Cottontail}}}}
+|{{Slot|usdprize=500|points1=9|date=2026-09-19|{{SoloOpponent|Enzo}}}}
+<!--Day 1 Cut-->
+|{{Slot|usdprize=450|points1=7|date=2026-09-18|{{SoloOpponent|AUG}}}}
+|{{Slot|usdprize=450|points1=6|date=2026-09-18|{{SoloOpponent|Wet Jungler}}}}
+|{{Slot|usdprize=450|points2=5|date=2026-09-18|{{SoloOpponent|me1stor8th}}}}
+|{{Slot|usdprize=450|points2=4|date=2026-09-18|{{SoloOpponent|J or C}}}}
+|{{Slot|usdprize=400|points2=3|date=2026-09-18|{{SoloOpponent|Shaco}}}}
+|{{Slot|usdprize=400|points1=2|date=2026-09-18|{{SoloOpponent|Vomendeth}}}}
+|{{Slot|usdprize=400|points1=1|date=2026-09-18|{{SoloOpponent|Hypno}}}}
+|{{Slot|usdprize=400|points2=0|date=2026-09-18|{{SoloOpponent|k0nda1}}}}
+|adjacentContent=<div>
+{{AwardPrizePool|cutafter=4
+|{{Slot|award=5 Win Bounties|usdprize=500|{{SoloOpponent|Ripple Overdrive}}}}
+|{{Slot|award=3 Win Bounties|usdprize=300|{{SoloOpponent|Skipaeus}}}}
+|{{Slot|award=3 Win Bounties|usdprize=300|{{SoloOpponent|Dishsoap}}}}
+|{{Slot|award=3 Win Bounties|usdprize=300|{{SoloOpponent|Phoenixaa}}}}
+|{{Slot|award=2 Win Bounties|usdprize=200|{{SoloOpponent|ZyK0o}}}}
+|{{Slot|award=2 Win Bounties|usdprize=200|{{SoloOpponent|Tarteman}}}}
+|{{Slot|award=2 Win Bounties|usdprize=200|{{SoloOpponent|Nuryy7}}}}
+|{{Slot|award=2 Win Bounties|usdprize=200|{{SoloOpponent|JosueDeleted}}}}
+|{{Slot|award=2 Win Bounties|usdprize=200|{{SoloOpponent|Toddy}}}}
+|{{Slot|award=2 Win Bounties|usdprize=200|{{SoloOpponent|Dankmemes01}}}}
+|{{Slot|award=2 Win Bounties|usdprize=200|{{SoloOpponent|setsuko}}}}
+|{{Slot|award=2 Win Bounties|usdprize=200|{{SoloOpponent|wigwugg}}}}
+|{{Slot|award=1 Win Bounty|usdprize=100|{{SoloOpponent|kubixon}}}}
+|{{Slot|award=1 Win Bounty|usdprize=100|{{SoloOpponent|KlicorneN}}}}
+|{{Slot|award=1 Win Bounty|usdprize=100|{{SoloOpponent|Loescher}}}}
+|{{Slot|award=1 Win Bounty|usdprize=100|{{SoloOpponent|Gobosteur}}}}
+|{{Slot|award=1 Win Bounty|usdprize=100|{{SoloOpponent|L3SCoco}}}}
+|{{Slot|award=1 Win Bounty|usdprize=100|{{SoloOpponent|Cottontail}}}}
+|{{Slot|award=1 Win Bounty|usdprize=100|{{SoloOpponent|Kaiweng}}}}
+|{{Slot|award=1 Win Bounty|usdprize=100|{{SoloOpponent|BruhbruhbruhWHO}}}}
+|{{Slot|award=1 Win Bounty|usdprize=100|{{SoloOpponent|Marcel P}}}}
+}}
+<br>The winner of each game during Days 1 & 2 is awarded a $100 bonus ($3,600 total).
+}}
+
+==Participants==
+{{ParticipantTable|colspan=4|entrywidth=270|sortOpponents=0|title=EMEA Elderwood Cup Players & Seed #s 
+|{{ParticipantSection|title={{LeagueIconSmall/tft emea esports}} EMEA Players|count=16
+|p1=ZyK0o|p1note=[[Enchanted Wilds/TFT Pro Circuit/EMEA/Pro Points|#1]]
+|p2=Tarteman|p2note=[[Enchanted Wilds/TFT Pro Circuit/EMEA/Pro Points|#2]]
+|p3=Yakumomurai|p3note=[[Enchanted Wilds/TFT Pro Circuit/EMEA/Pro Points|#3]]
+|p4=kubixon|p4note=[[Enchanted Wilds/TFT Pro Circuit/EMEA/Pro Points|#4]]
+|p5=KlicorneN|p5note=[[Enchanted Wilds/TFT Pro Circuit/EMEA/Pro Points|#5]]
+|p6=Hypno|p6note=[[Enchanted Wilds/TFT Pro Circuit/EMEA/Pro Points|#6]]
+|p7=Wet Jungler|p7note=[[Enchanted Wilds/TFT Pro Circuit/EMEA/Pro Points|#7]]
+|p8=Loescher|p8note=[[Enchanted Wilds/TFT Pro Circuit/EMEA/Pro Points|#8]]
+|p9=Enzosx|p9note=[[Enchanted Wilds/TFT Pro Circuit/EMEA/Pro Points|#9]]
+|p10=Gobosteur|p10note=[[Enchanted Wilds/TFT Pro Circuit/EMEA/Pro Points|#10]]
+|p11=Skipaeus|p11note=[[Enchanted Wilds/TFT Pro Circuit/EMEA/Pro Points|#11]]
+|p12=Vomendeth|p12note=[[Enchanted Wilds/TFT Pro Circuit/EMEA/Pro Points|#12]]
+|p13=L3SCoco|p13note=[[Enchanted Wilds/TFT Pro Circuit/EMEA/Pro Points|#13]]
+|p14=Nuryy7|p14note=[[Enchanted Wilds/TFT Pro Circuit/EMEA/Pro Points|#14]]
+|p15=Bialy Lis|p15note=[[Enchanted Wilds/TFT Pro Circuit/EMEA/Pro Points|#15]]
+|p16=AUG|p16note=[[Enchanted Wilds/TFT Pro Circuit/EMEA/Pro Points|#16]]
+}}
+|{{ParticipantSection|title={{LeagueIconSmall/tft americas esports}} AMER Players|count=16
+|p1=Dishsoap|p1note=[[Enchanted Wilds/TFT Pro Circuit/AMER/Pro Points|#17]]
+|p2=JosueDeleted|p2note=[[Enchanted Wilds/TFT Pro Circuit/AMER/Pro Points|#18]]
+|p3=Ripple Overdrive|p3note=[[Enchanted Wilds/TFT Pro Circuit/AMER/Pro Points|#19]]
+|p4=Shaco|p4note=[[Enchanted Wilds/TFT Pro Circuit/AMER/Pro Points|#20]]
+|p5=Toddy|p5note=[[Enchanted Wilds/TFT Pro Circuit/AMER/Pro Points|#21]]
+|p6=Dankmemes01|p6note=[[Enchanted Wilds/TFT Pro Circuit/AMER/Pro Points|#22]]
+|p7=Cottontail|p7note=[[Enchanted Wilds/TFT Pro Circuit/AMER/Pro Points|#23]]
+|p8=Kaiweng|p8note=[[Enchanted Wilds/TFT Pro Circuit/AMER/Pro Points|#24]]
+|p9=setsuko|p9note=[[Enchanted Wilds/TFT Pro Circuit/AMER/Pro Points|#25]]
+|p10=BruhbruhbruhWHO|p10note=[[Enchanted Wilds/TFT Pro Circuit/AMER/Pro Points|#26]]
+|p11=Phoenixaa|p11note=[[Enchanted Wilds/TFT Pro Circuit/AMER/Pro Points|#27]]
+|p12=k0nda1|p12note=[[Enchanted Wilds/TFT Pro Circuit/AMER/Pro Points|#28]]
+|p13=J or C|p13note=[[Enchanted Wilds/TFT Pro Circuit/AMER/Pro Points|#29]]
+|p14=me1stor8th|p14note=[[Enchanted Wilds/TFT Pro Circuit/AMER/Pro Points|#30]]
+|p15=wigwugg|p15note=[[Enchanted Wilds/TFT Pro Circuit/AMER/Pro Points|#31]]
+|p16=Marcel P|p16team=Final Lobby Gaming|p16note=[[Enchanted Wilds/TFT Pro Circuit/AMER/Pro Points|#32]]
+}}
+}}

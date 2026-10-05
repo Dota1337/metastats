@@ -433,6 +433,11 @@ function read(path) {
     'scripts/lib/tft-patch-relabel.test.mjs',
     'scripts/lib/stop-at.test.mjs',
     'scripts/lib/daily-crawl-post.test.mjs',
+    'scripts/crawl-tft-tournaments.test.mjs',
+    'scripts/lib/tft-tournament-parse.test.mjs',
+    'scripts/lib/tft-pro-history.test.mjs',
+    'scripts/lib/tft-tournament-postpass.test.mjs',
+    'app/lib/tft-tournament-history-merge.test.mjs',
   ];
   const missing = EXPECTED_TESTS.filter((f) => read(f) === '');
   if (missing.length) {

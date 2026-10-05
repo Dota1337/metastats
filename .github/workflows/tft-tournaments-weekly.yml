@@ -6,6 +6,16 @@ on:
     # tournament-results placement→puuid join has the fresh pro list.
     - cron: '0 9 * * 3'
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'weekly = Turniere + Pro-Historien; repair = alte Turniere ohne Ergebnisse (D13) + Pro-Historien; backfill = nur Pro-Historien (Erstbefuellung, bis 5,5 h)'
+        type: choice
+        options: [weekly, repair, backfill]
+        default: weekly
+      max:
+        description: 'Pro-Historien je Lauf (leer = 93, bei backfill 372)'
+        type: string
+        default: ''
 
 # contents: write — the crawler resolves event-dated FX rates (prize-money
 # conversion) and caches them in data/fx-rates.json, committed back below so
@@ -29,7 +39,10 @@ jobs:
     # kleine Rotation (~70-80 Seiten à 30 s). Der Voll-Lauf (--full, ~330
     # Seiten) passt NICHT in dieses Limit und gehoert in einen Handstart mit
     # angepasstem Timeout.
-    timeout-minutes: 90
+    # Seit 2026-10-05 folgt der Historie-Schritt (93 Pros, ~1 min je Pro).
+    # Jeder Schritt hat sein eigenes Limit; das Job-Limit deckt den
+    # backfill-Handstart (5,5 h) ab.
+    timeout-minutes: 355
 
     steps:
       - name: Checkout repository
@@ -43,8 +56,20 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Exit 1 bei Liquipedia-Sperre, mehr als 3 Schreibfehlern oder > 20 %
+      # fehlgeschlagenen Seiten. --deadline-min beendet sauber (Exit 0) vor
+      # dem Schritt-Limit; der Rest kommt im naechsten Lauf.
       - name: Crawl TFT tournaments
-        run: node scripts/crawl-tft-tournaments.mjs
+        if: ${{ inputs.mode != 'backfill' }}
+        timeout-minutes: 90
+        env:
+          MODE: ${{ inputs.mode }}
+        run: |
+          if [ "$MODE" = "repair" ]; then
+            node scripts/crawl-tft-tournaments.mjs --repair --deadline-min 80
+          else
+            node scripts/crawl-tft-tournaments.mjs --deadline-min 80
+          fi
 
       # Commit-back of the FX-rate cache (same race-safe retry pattern as the
       # daily/weekly crawl workflows). Without this, every weekly run re-fetches
@@ -72,3 +97,26 @@ jobs:
             # three failed push attempts still report a green run.
             [ -n "$pushed" ] || { echo "Push failed after 3 attempts"; exit 1; }
           fi
+
+      # Pro-Historien aus <Spieler>/Results (Plan Aufgabe B, D7). Laeuft auch
+      # nach einem Crawl-Fehler; bei aktiver Liquipedia-Sperre endet er selbst
+      # mit Exit 1. Gleicher Runner = gleiche Wartesperre wie der Crawl.
+      - name: Enrich pro tournament history
+        if: ${{ !cancelled() && inputs.mode != 'backfill' }}
+        timeout-minutes: 120
+        env:
+          MAX: ${{ inputs.max }}
+        run: |
+          case "$MAX" in ''|*[!0-9]*) MAX=93 ;; esac
+          node scripts/enrich-tft-pro-history.mjs --history --max "$MAX" --deadline-min 110
+
+      # Erstbefuellung per Handstart: alle 372 Seiten brauchen ~6 h, also zwei
+      # Laeufe (die Auswahl nimmt nie geholte Pros zuerst).
+      - name: Enrich pro tournament history (backfill)
+        if: ${{ !cancelled() && inputs.mode == 'backfill' }}
+        timeout-minutes: 345
+        env:
+          MAX: ${{ inputs.max }}
+        run: |
+          case "$MAX" in ''|*[!0-9]*) MAX=372 ;; esac
+          node scripts/enrich-tft-pro-history.mjs --history --max "$MAX" --deadline-min 330

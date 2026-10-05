@@ -1,54 +1,64 @@
 #!/usr/bin/env node
 /**
- * Crawls TFT tournaments from Liquipedia and upserts into Supabase.
+ * Holt TFT-Turniere von Liquipedia und schreibt sie nach Supabase.
  *
- * Pipeline (current — wikitext-parse path):
- *   1) Seed tournament page-titles: a hand-maintained list of the biggest
- *      events (carries region/set_number overrides) MERGED with auto-discovery
- *      from Category:S-Tier_Tournaments + A-Tier (+ B-Tier via --include-b-tier),
- *      so new events are picked up without editing the seed list.
- *   2) For each title: action=parse&prop=wikitext → parse the
- *      {{Infobox league}} template for metadata + the {{Prize pool}} or
- *      {{TeamCard}} blocks for placements.
- *   3) Cross-join placements against tft_pro_players (by lowercase
- *      pro_name match) so verified pros get a puuid linked from their
- *      tournament rows.
- *   4) Upsert tournaments + replace results.
+ * Ablauf (Wochenlauf):
+ *   1) Seitenliste: handgepflegte Startliste (traegt Region/Set/Tier) plus
+ *      Seiten aus Category:S-Tier_Tournaments + A-Tier (+ B-Tier mit
+ *      --include-b-tier). Fertige Turniere mit Ergebnissen werden nach 14 Tagen
+ *      uebersprungen, die 10 am laengsten nicht geprueften trotzdem geladen.
+ *   2) Je Seite action=parse (ohne Cache, Weiterleitungen aufgeloest):
+ *      {{Infobox league}} fuer die Kopfdaten, die Prize-Pool-Vorlagen fuer die
+ *      Plaetze (Parser: scripts/lib/tft-tournament-parse.mjs).
+ *   3) Verknuepfung Zeile → Pro ueber den Liquipedia-Link der Zeile
+ *      (link= / pNlink=, sonst die gleichnamige Seite) gegen source_page der
+ *      Pros. Gleiche Namen werden nie direkt verknuepft.
+ *   4) Erst schreiben, dann nur Verschwundenes loeschen — und das nur, wenn
+ *      Infobox und Prize Pool heil sind. Alles andere landet als [pruefen].
  *
- * Liquipedia ToU: 30-second delay between requests on the public wikitext
- * API. Roughly 50 tournament pages = ~25 minutes per run; we run weekly.
+ * --repair (D13): alte Turniere ohne Ergebniszeilen, Stapelabruf mit 50 Titeln
+ *   je Anfrage. Schreibt nur Ergebniszeilen + num_participants, nie die
+ *   Kopfdaten, nie standings_sources, loescht nichts.
  *
- * When the Liquipedia REST API key arrives (open-source-tier registration),
- * swap `fetchTournamentWikitext()` for the API path and drop the 30s delay
- * to the API's documented per-second limit. The DB schema is already shaped
- * for that.
+ * Liquipedia: hoechstens 1 Parse-Anfrage je 30 s (Sperre in
+ * lib/liquipedia-tft.mjs). Nie von der Hetzner-Box aus starten.
  *
- * Usage:
- *   node scripts/crawl-tft-tournaments.mjs                # full run (auto-discovers S+A tier)
- *   node scripts/crawl-tft-tournaments.mjs --limit 5      # smoke-test
- *   node scripts/crawl-tft-tournaments.mjs --no-supabase  # dry run
- *   node scripts/crawl-tft-tournaments.mjs --no-discover  # curated seed only (skip category scan)
- *   node scripts/crawl-tft-tournaments.mjs --include-b-tier  # also crawl B-tier events
- *   node scripts/crawl-tft-tournaments.mjs --pages "Foo,Bar"  # explicit list
- *   node scripts/crawl-tft-tournaments.mjs --full  # also re-crawl finished tournaments (default skips them)
+ * Exit 1: Sperre/429, Zeitlimit eines Schritts, mehr als 3 Schreibfehler,
+ * mehr als 20 % fehlgeschlagene Seiten. Ende per --deadline-min ist Exit 0.
+ *
+ * Aufruf:
+ *   node scripts/crawl-tft-tournaments.mjs                  # Wochenlauf
+ *   node scripts/crawl-tft-tournaments.mjs --limit 5        # Probelauf
+ *   node scripts/crawl-tft-tournaments.mjs --no-supabase    # Trockenlauf (liest, schreibt nicht)
+ *   node scripts/crawl-tft-tournaments.mjs --no-discover    # nur Startliste
+ *   node scripts/crawl-tft-tournaments.mjs --include-b-tier # auch B-Tier
+ *   node scripts/crawl-tft-tournaments.mjs --pages "Foo,Bar"
+ *   node scripts/crawl-tft-tournaments.mjs --full           # auch fertige Turniere
+ *   node scripts/crawl-tft-tournaments.mjs --post-only      # nur Nachlaeufe
+ *   node scripts/crawl-tft-tournaments.mjs --repair         # D13
+ *   node scripts/crawl-tft-tournaments.mjs --deadline-min 80
  */
 
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { getUsdRate } from './lib/fx-rates.mjs';
+import { reconvertStored, rebuildPlayerLinks, setDryRun } from './lib/tft-tournament-postpass.mjs';
+import {
+  liquipediaJson,
+  liquipediaCategoryMembers,
+  expandTemplates as sharedExpandTemplates,
+  LiquipediaCooldownError,
+  cooldownStatus,
+} from './lib/liquipedia-tft.mjs';
+import {
+  chunk, parseInfobox, unwiki, unwikiTemplateOnly, parseDate, parsePrize, detectPageCurrency,
+  deriveStatus, deriveSetNumber, countParticipants, participantsFromInfobox, numericTierToLetter,
+  standingsSources, pageToSlug, extractPrizePoolPlacements, parsePlacementTableHtml,
+  fetchWikitextBatch, fetchHtmlFresh, LiquipediaApiError,
+} from './lib/tft-tournament-parse.mjs';
+import { normalizePage, withTimeout, StepTimeoutError } from './lib/tft-pro-history.mjs';
 
-const args = process.argv.slice(2);
-const arg = (k, d) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : d; };
-const hasFlag = (k) => args.includes(k);
-
-const LIMIT = parseInt(arg('--limit', '0'), 10);
-const SKIP_SUPABASE = hasFlag('--no-supabase');
-const PAGES_OVERRIDE = arg('--pages', '');
-const VERBOSE = hasFlag('--verbose');
-// --full: jede Seite laden wie bis 2026-09-13 (Notfall-Rueckweg).
-const FULL = hasFlag('--full');
-// Nur die Nachlaeufe (Neu-Umrechnung + Name→Konto), ohne Liquipedia-Abruf.
-const POST_ONLY = hasFlag('--post-only');
 // Fertige Turniere mit Ergebnissen werden uebersprungen, sobald ihr Ende
 // laenger als diese Karenz her ist — Liquipedia traegt nach Turnierende oft
 // noch Tage nach. Die ROTATION aeltesten davon werden je Lauf trotzdem geladen,
@@ -56,10 +66,17 @@ const POST_ONLY = hasFlag('--post-only');
 const SKIP_GRACE_DAYS = 14;
 const ROTATION = 10;
 
-const LIQUIPEDIA_API = 'https://liquipedia.net/teamfighttactics/api.php';
-// Liquipedia ToU for public wikitext API: 30s between requests.
-const LIQUIPEDIA_DELAY_MS = 30_500;
-const USER_AGENT = 'metastats-bot/1.0 (https://metastats.gg; info@metastats.gg)';
+// D4/Probe 6: Liquipedia teilt den Team-Preis auf die Spieler (Loescher-Infobox
+// 16.779 $ passt nur mit Teilung). Duo (D2) bleibt voller Slot-Preis je Spieler.
+export const TEAM_PRIZE_MODE = 'split';
+
+// Zeitlimit je Liquipedia-Schritt. Danach haelt der Lauf an: der abgehaengte
+// Abruf laeuft weiter und die Wartesperre ist nicht gegen Gleichzeitigkeit geschuetzt.
+const STEP_TIMEOUT_MS = 13 * 60_000;
+const DB_TIMEOUT_MS = 60_000;
+const MAX_WRITE_ERRORS = 3;
+const MAX_FAIL_RATE = 0.2;
+const DAY_MS = 86_400_000;
 
 function loadEnv() {
   const p = resolve(process.cwd(), '.env.local');
@@ -72,13 +89,6 @@ function loadEnv() {
     if (!process.env[k]) process.env[k] = v;
   }
 }
-loadEnv();
-
-const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://bwawxwgxxfafbruebixa.supabase.co';
-const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-if (!SKIP_SUPABASE && !SUPA_KEY) { console.error('SUPABASE_SERVICE_ROLE_KEY required'); process.exit(1); }
-
-const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Seed list — hand-curated for V1 because Liquipedia's
@@ -87,7 +97,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 // Portal:Statistics/<year> page which lists every event of the year.
 // Tier mapping per Liquipedia: S/A/B/C.
 
-const SEED_TOURNAMENTS = [
+export const SEED_TOURNAMENTS = [
   // S-Tier — premier events
   { page: 'Esports_World_Cup/2026', tier: 'S', region: 'INT' },
   { page: 'Esports_World_Cup/2025', tier: 'S', region: 'INT' },
@@ -109,154 +119,10 @@ const SEED_TOURNAMENTS = [
   { page: 'K.O._Coliseum/EMEA/Regional_Finals', tier: 'A', region: 'EMEA', setNumber: 15 },
 ];
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Liquipedia fetch
-
-// Shared helpers — cross-process rate-limit lock + ETag-based HTTP cache.
-import { reconvertStored, rebuildPlayerLinks, setDryRun } from './lib/tft-tournament-postpass.mjs';
-import {
-  liquipediaJson,
-  liquipediaCategoryMembers,
-  expandTemplates as sharedExpandTemplates,
-} from './lib/liquipedia-tft.mjs';
-
-async function fetchTournamentWikitext(page) {
-  const j = await liquipediaJson({
-    action: 'parse', page, prop: 'wikitext|displaytitle|externallinks',
-  });
-  return {
-    wikitext: j?.parse?.wikitext?.['*'] || '',
-    displayTitle: j?.parse?.displaytitle || page.replace(/_/g, ' '),
-    externalLinks: Array.isArray(j?.parse?.externallinks) ? j.parse.externallinks : [],
-  };
-}
-
-// Ask Liquipedia to expand any wikitext server-side (resolves {{Template}}
-// references that aren't in our local TFT_SET_NAMES whitelist). On-demand
-// only — every call still passes through the shared rate-limit gate, so
-// burst-resolving N templates costs N × 5s sequentially.
-async function expandTemplatesViaLiquipedia(text) {
-  if (!text) return text;
-  try {
-    return await sharedExpandTemplates(text);
-  } catch (e) {
-    if (VERBOSE) console.warn(`  [expand-fail] ${e.message}`);
-    return text;
-  }
-}
-
-// Forwarder so existing callers don't change signature. The shared helper
-// already paginates cmcontinue + respects the rate-limit gate.
-async function fetchCategoryMembers(category) {
-  return liquipediaCategoryMembers(category);
-}
-
-// Auto-discover tournament pages from Liquipedia's tier categories so new
-// events are picked up without editing SEED_TOURNAMENTS. The curated seed still
-// wins (it carries region/set_number/tier overrides the categories don't have).
-// S + A tiers by default (premier + regional majors); B-tier behind a flag
-// because it's large and mostly minor weeklies.
-async function discoverSeedFromCategories() {
-  const cats = [
-    { cat: 'S-Tier_Tournaments', tier: 'S' },
-    { cat: 'A-Tier_Tournaments', tier: 'A' },
-  ];
-  if (hasFlag('--include-b-tier')) cats.push({ cat: 'B-Tier_Tournaments', tier: 'B' });
-  const discovered = [];
-  for (let i = 0; i < cats.length; i++) {
-    // Rate-limit handled inside the shared liquipediaJson gate.
-    try {
-      const titles = await fetchCategoryMembers(cats[i].cat);
-      for (const title of titles) {
-        discovered.push({ page: title.replace(/ /g, '_'), tier: cats[i].tier, region: null });
-      }
-      console.log(`  [discover] ${cats[i].cat}: ${titles.length} pages`);
-    } catch (e) {
-      console.warn(`  [discover] ${cats[i].cat} failed: ${e.message}`);
-    }
-  }
-  return discovered;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Template parsing — depth-tracked so nested templates don't fool the splitter
-
-function findTemplate(wikitext, templateName, from = 0) {
-  // MediaWiki template names are case-insensitive on the FIRST letter only
-  // ("{{prize pool slot}}" === "{{Prize pool slot}}"), so match either casing.
-  const lower = templateName.charAt(0).toLowerCase() + templateName.slice(1);
-  const upper = templateName.charAt(0).toUpperCase() + templateName.slice(1);
-  const markers = upper === lower ? [`{{${lower}`] : [`{{${lower}`, `{{${upper}`];
-  let idx = from;
-  while (true) {
-    // Earliest occurrence of any marker casing at/after idx.
-    let start = -1, marker = '';
-    for (const mk of markers) {
-      const p = wikitext.indexOf(mk, idx);
-      if (p >= 0 && (start < 0 || p < start)) { start = p; marker = mk; }
-    }
-    if (start < 0) return null;
-    // Ensure it's a template boundary (next char is `|` or `}` after a space)
-    const next = wikitext[start + marker.length];
-    if (next !== '|' && next !== ' ' && next !== '\n' && next !== '}') {
-      idx = start + 1;
-      continue;
-    }
-    let depth = 0, i = start;
-    while (i < wikitext.length) {
-      if (wikitext[i] === '{' && wikitext[i + 1] === '{') { depth++; i += 2; continue; }
-      if (wikitext[i] === '}' && wikitext[i + 1] === '}') { depth--; i += 2; if (depth === 0) return { start, end: i, body: wikitext.slice(start + marker.length, i - 2) }; continue; }
-      i++;
-    }
-    return null;
-  }
-}
-
-// All depth-balanced occurrences of a template (by name), in document order.
-function findAllTemplates(wikitext, templateName) {
-  const out = [];
-  let from = 0;
-  while (true) {
-    const t = findTemplate(wikitext, templateName, from);
-    if (!t) break;
-    out.push(t.body);
-    from = t.end;
-  }
-  return out;
-}
-
-function parseTemplateFields(body) {
-  const fields = {};
-  let depth = 0, buf = '';
-  for (let j = 0; j < body.length; j++) {
-    const c = body[j], n = body[j + 1];
-    if (c === '{' && n === '{') { depth++; buf += c; continue; }
-    if (c === '}' && n === '}') { depth--; buf += c; continue; }
-    // Brackets for [[Link|Text]] — also depth-track so | inside them doesn't split
-    if (c === '[' && n === '[') { depth++; buf += c; continue; }
-    if (c === ']' && n === ']') { depth--; buf += c; continue; }
-    if (c === '|' && depth === 0) {
-      ingest(fields, buf);
-      buf = '';
-    } else {
-      buf += c;
-    }
-  }
-  ingest(fields, buf);
-  return fields;
-}
-function ingest(map, raw) {
-  const eq = raw.indexOf('=');
-  if (eq < 0) return;
-  const k = raw.slice(0, eq).trim();
-  const v = raw.slice(eq + 1).trim();
-  if (k) map[k] = v;
-}
-
 // Set names — mirror of scripts/detect-tft-set.mjs SET_NAMES. Keep in sync.
 // Used to resolve the Liquipedia `{{SetName/N}}` template, which on the wiki
 // renders to the marketing-facing set name (e.g. {{SetName/17}} → "Space Gods").
-const TFT_SET_NAMES = {
+export const TFT_SET_NAMES = {
   1: 'Beta',
   2: 'Rise of the Elements',
   3: 'Galaxies',
@@ -276,344 +142,388 @@ const TFT_SET_NAMES = {
   17: 'Space Gods',
   18: 'Enchanted Wilds',
 };
+const SET_OPTS = { setNames: TFT_SET_NAMES };
 
-// Local-only template resolver (no Liquipedia call) — applied first inside
-// `unwiki()` and reused as a precheck before deciding to pay an extra
-// `expandtemplates` round-trip. Knows our whitelist of templates that have a
-// deterministic local resolution; leaves everything else untouched so the
-// caller can decide whether to expand server-side or strip.
-function unwikiTemplateOnly(s) {
-  if (!s) return '';
-  return s.replace(/\{\{\s*setname\s*\/\s*(\d+)\s*\}\}/gi, (_, n) => TFT_SET_NAMES[parseInt(n, 10)] || `Set ${n}`);
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// Reine Helfer (getestet in scripts/crawl-tft-tournaments.test.mjs)
 
-// Strip wiki-link syntax `[[X|Y]]` → `Y`, `[[X]]` → `X`, and resolve / strip
-// `{{Template}}` references that MediaWiki would otherwise expand server-side.
-// We do the SetName resolution explicitly so events whose `name` field is just
-// `{{SetName/17}}: AMER Regional Finals` come out as "Space Gods: AMER Regional
-// Finals" instead of bleeding raw template syntax into the UI. Anything still
-// in `{{…}}` at this point either came back unresolved from a server-side
-// expand call or is a template we don't know — strip it as the safe fallback.
-function unwiki(s) {
-  if (!s) return '';
-  let out = s
-    .replace(/\{\{\s*setname\s*\/\s*(\d+)\s*\}\}/gi, (_, n) => TFT_SET_NAMES[parseInt(n, 10)] || `Set ${n}`)
-    .replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, '$2')
-    .replace(/\[\[([^\]]+)\]\]/g, '$1')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/g, ' ');
-  // Strip any remaining {{…}} templates. Iterate so nested templates collapse
-  // ({{Foo|{{Bar}}}} → {{Foo|}} → '').
-  let prev;
-  do { prev = out; out = out.replace(/\{\{[^{}]*\}\}/g, ''); } while (out !== prev);
-  return out
-    .replace(/^[\s:,\-–—]+/, '')   // orphan punctuation left by a stripped leading template
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function parseDate(s) {
-  if (!s) return null;
-  // Liquipedia uses "yyyy-mm-dd" most of the time, occasionally "MonthName d, yyyy".
-  const ymd = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
-  if (ymd) return `${ymd[1]}-${ymd[2]}-${ymd[3]}`;
-  const d = new Date(s);
-  if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
-  return null;
-}
-
-// Parse a prize amount into whole units. Handles both thousand-separator styles
-// ("10,000,000" / "1.234.567") and decimal tails: a trailing 1-2-digit group
-// after a separator is a decimal part (US "1,234.56" or EU "1.234,56") and is
-// dropped — the old digit-strip turned "1,234.56" into 123456 (100x error).
-// Amounts <= 0 count as "no prize" (usdprize=0 must fall through to localprize).
-function parsePrize(s) {
-  if (!s) return null;
-  let t = String(s).replace(/[^\d.,]/g, '');
-  if (!t) return null;
-  const dec = /^(.+)[.,](\d{1,2})$/.exec(t);
-  if (dec) t = dec[1];
-  const num = t.replace(/[^\d]/g, '');
-  const n = num ? parseInt(num, 10) : null;
-  return n && n > 0 ? n : null;
-}
-
-// Page-level currency of {{SoloPrizePool}} local prizes + the infobox prizepool.
-// Liquipedia semantics: a bare `prizepool=` / `usdprize=` is USD; `localprize=`
-// values are in the page's `localcurrency=` (template param `localcurrency=` /
-// `localcurrency1..N=` or infobox field). Returns the uppercase ISO code, null
-// (no localcurrency anywhere → prizes are USD), or 'MIXED' (conflicting codes on
-// one page → caller must NOT convert, keep native + log).
-function detectPageCurrency(wikitext, infoboxFields) {
-  const found = new Set();
-  const add = (v) => { const c = String(v || '').trim().toUpperCase(); if (/^[A-Z]{3}$/.test(c)) found.add(c); };
-  add(infoboxFields.localcurrency);
-  for (const body of findAllTemplates(wikitext, 'SoloPrizePool')) {
-    const f = parseTemplateFields(body);
-    for (const [k, v] of Object.entries(f)) if (/^localcurrency\d*$/.test(k)) add(v);
+/**
+ * Teilnehmer aus den Ergebniszeilen (Rueckfall, wenn die Infobox keine Zahl hat):
+ * Solo = verschiedene Spieler, Team = verschiedene Teams (D3), Duo = Spieler / 2.
+ */
+export function entrantsFromRows(rows) {
+  const solo = new Set(), teams = new Set(), duo = new Set();
+  for (const r of rows || []) {
+    const name = String(r?.proName || '').trim().toLowerCase();
+    if (r?.kind === 'team') teams.add(r.team ? `t:${String(r.team).toLowerCase()}` : `p:${r.placement}`);
+    else if (r?.kind === 'duo') { if (name) duo.add(name); }
+    else if (name) solo.add(name);
   }
-  if (found.size === 0) return null;
-  if (found.size > 1) return 'MIXED';
-  return [...found][0];
+  const n = solo.size + teams.size + Math.ceil(duo.size / 2);
+  return n > 0 ? n : null;
 }
 
-function deriveStatus(startDate, endDate) {
-  const today = new Date().toISOString().slice(0, 10);
-  if (!startDate) return 'upcoming';
-  if (endDate && endDate < today) return 'past';
-  if (startDate <= today && (!endDate || endDate >= today)) return 'live';
-  return 'upcoming';
-}
-
-// Set number straight from the page so it's right even for auto-discovered
-// events (the seed list mislabels some). Prefer the set-esports navbox
-// ({{tft_set_17_esports_navbox}}); else the most-frequent {{setname/NN}}.
-function deriveSetNumber(wikitext) {
-  const navbox = /tft[ _]set[ _](\d+)[ _]esports[ _]navbox/i.exec(wikitext);
-  if (navbox) return parseInt(navbox[1], 10);
-  const counts = {};
-  const re = /\{\{\s*setname\/(\d+)/gi;
-  let m;
-  while ((m = re.exec(wikitext))) counts[m[1]] = (counts[m[1]] || 0) + 1;
-  const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
-  return top ? parseInt(top[0], 10) : null;
-}
-
-// Distinct participant count from {{ParticipantTable}} / {{ParticipantSection}}
-// blocks (each entrant is a {{SoloOpponent}}). Lets ongoing/upcoming events —
-// which have no final {{Slot}} ranking yet — still show "N participants".
-function countParticipants(wikitext) {
-  const collect = (text, set) => {
-    for (const opp of findAllTemplates(text, 'SoloOpponent')) {
-      const { positional, keyed } = parseTemplateArgs(opp);
-      const n = unwiki(positional[0] || keyed['1'] || '');
-      if (n) set.add(n.toLowerCase());
-    }
-  };
-  const names = new Set();
-  // Prefer dedicated participant blocks…
-  for (const tpl of ['ParticipantTable', 'ParticipantSection']) {
-    for (const block of findAllTemplates(wikitext, tpl)) collect(block, names);
+/** Seite → Konten der Pros. Nur Pros mit Konto; Schluessel wie normalizePage. */
+export function buildPageIndex(pros) {
+  const idx = new Map();
+  for (const p of pros || []) {
+    if (!p?.puuid) continue;
+    const k = normalizePage(p.source_page);
+    if (!k) continue;
+    if (!idx.has(k)) idx.set(k, new Set());
+    idx.get(k).add(p.puuid);
   }
-  // …else fall back to distinct {{SoloOpponent}} page-wide (bracket/matches),
-  // which approximates the roster size for ongoing events without a table.
-  if (names.size === 0) collect(wikitext, names);
-  return names.size || null;
+  return idx;
 }
 
-// Extract placements from {{Prize pool}} / {{prize pool start}} blocks.
-// Liquipedia uses many variants; the most common in TFT pages is `prize-pool-slot`
-// templates inside a wrapping table. We do a permissive scan: any line with
-// `place=N|...|p1=Name|...|usdprize=X` (or similar).
-// Depth-aware split of a template body into positional + keyed args. The body
-// starts with the leading `|` (everything after the template name), so the
-// first (empty) segment is dropped from positionals.
-function parseTemplateArgs(body) {
-  const positional = [], keyed = {};
-  let depth = 0, buf = '';
-  const flush = () => {
-    const eq = buf.indexOf('=');
-    if (eq >= 0) {
-      const k = buf.slice(0, eq).trim();
-      // Real param keys are simple tokens; anything else (a link/template that
-      // happens to contain `=`) is a positional value.
-      if (/^[A-Za-z0-9_ -]+$/.test(k)) { keyed[k] = buf.slice(eq + 1).trim(); return; }
-    }
-    const v = buf.trim();
-    if (v) positional.push(v);
-  };
-  for (let j = 0; j < body.length; j++) {
-    const c = body[j], n = body[j + 1];
-    if (c === '{' && n === '{') { depth++; buf += c; continue; }
-    if (c === '}' && n === '}') { depth--; buf += c; continue; }
-    if (c === '[' && n === '[') { depth++; buf += c; continue; }
-    if (c === ']' && n === ']') { depth--; buf += c; continue; }
-    if (c === '|' && depth === 0) { flush(); buf = ''; } else buf += c;
+/**
+ * Konto einer Ergebniszeile ueber den Liquipedia-Link. Ohne link= verlinkt
+ * Liquipedia auf die Seite mit dem Spielernamen — das ist die Seite, nicht ein
+ * Namensvergleich mit unseren Pros. Nur bei genau einem Konto je Seite.
+ */
+export function linkPuuid(row, idx) {
+  const k = normalizePage(row?.link || row?.proName);
+  if (!k || !idx) return null;
+  const set = idx.get(k);
+  return set && set.size === 1 ? [...set][0] : null;
+}
+
+/**
+ * Was nach dem Schreiben geloescht werden darf.
+ * @param stored   gespeicherte Zeilen [{ placement, pro_name }]
+ * @param newRows  geschriebene Zeilen [{ placement, pro_name }]
+ * @param intact   Prize Pool heil (extractPrizePoolPlacements.intact)
+ * @param infobox  Infobox gefunden
+ * @returns {{ remove: Array, review: Array, reason: string|null }}
+ */
+export function planDeletes(stored, newRows, { intact, infobox } = {}) {
+  const key = (placement, name) => `${placement}|${name}`;
+  const fresh = new Set((newRows || []).map(r => key(r.placement, r.pro_name)));
+  const old = stored || [];
+  const vanished = old.filter(s => !fresh.has(key(s.placement, s.pro_name)));
+  if (vanished.length === 0) return { remove: [], review: [], reason: null };
+  if (!infobox) return { remove: [], review: vanished, reason: 'keine Infobox' };
+  if (intact !== true) return { remove: [], review: vanished, reason: 'Prize Pool nicht heil' };
+  // Einbruch: mehr als die Haelfte von mindestens 10 Zeilen waere weg.
+  if (old.length >= 10 && vanished.length > old.length * 0.5) {
+    return { remove: [], review: vanished, reason: `Einbruch ${old.length} → ${old.length - vanished.length}` };
   }
-  flush();
-  return { positional, keyed };
+  return { remove: vanished, review: [], reason: null };
 }
 
-// Modern TFT prize-pool format: {{Slot|place=N|usdprize=X|{{SoloOpponent|Name|flag=xx}}}}.
-// Older pages used {{prize pool slot|place=N|p1=Name|usdprize=X}}. Handle both,
-// depth-safely (nested SoloOpponent/flag templates must not truncate the slot).
-function extractPlacements(wikitext) {
-  const placements = [];
+/** D13: vergangene Turniere mit Seite, aber ohne eine einzige Ergebniszeile. */
+export function repairTargets(tours, withResults, today) {
+  return (tours || []).filter(t => t && t.id && !withResults.has(t.id) && t.liquipedia_page
+    && (t.status === 'past' || (t.end_date && t.end_date < today)));
+}
+
+/** Zeilen ohne Dubletten auf dem exakten Schluessel (placement, pro_name). */
+export function dedupeResults(rows) {
   const seen = new Set();
-  // prizeUsdRaw = explicit usdprize= param (genuinely USD). prizeLocalRaw =
-  // localprize= param, denominated in the page's localcurrency — conversion
-  // happens in main() where the page currency + event date are known. The old
-  // `usdprize || localprize` collapse is exactly what stored ₩20M as "$20M".
-  const push = (place, proName, country, prizeUsdRaw, prizeLocalRaw, team) => {
-    if (!place || !proName) return;
-    const key = `${place}::${proName.toLowerCase()}`;
-    if (seen.has(key)) return;   // de-dupe nested per-day + overall blocks
-    seen.add(key);
-    placements.push({
-      placement: place, proName, team: team || null, country: country || null,
-      prizeUsdRaw: prizeUsdRaw ?? null, prizeLocalRaw: prizeLocalRaw ?? null,
-    });
-  };
-
-  // Modern {{Slot}} + nested {{SoloOpponent}}. Slots are in rank order and
-  // usually carry NO explicit place= — placement is the running position. A
-  // slot may hold several SoloOpponents (tied range, e.g. 5th-8th): they share
-  // the slot's base rank and the counter advances by the opponent count.
-  let rank = 1;
-  for (const body of findAllTemplates(wikitext, 'Slot')) {
-    const f = parseTemplateFields(body);
-    const base = f.place ? parseInt(f.place, 10) : rank;
-    const usdRaw = parsePrize(f.usdprize);
-    const localRaw = usdRaw == null ? parsePrize(f.localprize) : null;
-    const opps = findAllTemplates(body, 'SoloOpponent');
-    let n = 0;
-    for (const oppBody of opps) {
-      const { positional, keyed } = parseTemplateArgs(oppBody);
-      const proName = unwiki(positional[0] || keyed['1'] || keyed.p1 || '');
-      if (!proName) continue;
-      push(base, proName, keyed.flag || null, usdRaw, localRaw, null);
-      n++;
-    }
-    rank = base + Math.max(1, n);
+  const out = [];
+  for (const r of rows) {
+    const k = `${r.placement}|${r.pro_name}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(r);
   }
-
-  // Legacy {{prize pool slot}} format (older events) — only if Slot found nothing.
-  if (placements.length === 0) {
-    for (const body of findAllTemplates(wikitext, 'prize pool slot')) {
-      const f = parseTemplateFields(body);
-      const place = parseInt(f.place || '0', 10);
-      const proName = unwiki(f.p1 || f.player || f['1'] || '');
-      const usdRaw = parsePrize(f.usdprize);
-      const localRaw = usdRaw == null ? parsePrize(f.localprize) : null;
-      push(place, proName, f.c1 || f.p1flag || f.flag || null, usdRaw, localRaw, unwiki(f.team || '') || null);
-    }
-  }
-  return placements;
+  return out;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Slug + supabase
+// Aufrufzeile
 
-function numericTierToLetter(t) {
-  const n = parseInt(t, 10);
-  if (n === 1) return 'S';
-  if (n === 2) return 'A';
-  if (n === 3) return 'B';
-  if (n === 4) return 'C';
+function parseCli(argv) {
+  const arg = (k, d) => { const i = argv.indexOf(k); return i >= 0 ? argv[i + 1] : d; };
+  const has = (k) => argv.includes(k);
+  const deadlineMin = parseFloat(arg('--deadline-min', '0'));
+  return {
+    limit: parseInt(arg('--limit', '0'), 10) || 0,
+    dry: has('--no-supabase'),
+    pages: arg('--pages', ''),
+    verbose: has('--verbose'),
+    // --full: jede Seite laden wie bis 2026-09-13 (Notfall-Rueckweg).
+    full: has('--full'),
+    // Nur die Nachlaeufe (Neu-Umrechnung + Name→Konto), ohne Liquipedia-Abruf.
+    postOnly: has('--post-only'),
+    noDiscover: has('--no-discover'),
+    includeB: has('--include-b-tier'),
+    repair: has('--repair'),
+    deadlineMin: Number.isFinite(deadlineMin) && deadlineMin > 0 ? deadlineMin : 0,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Supabase
+
+function makeDb({ url, key, dry }) {
+  const h = { apikey: key, Authorization: `Bearer ${key}` };
+  const signal = () => AbortSignal.timeout(DB_TIMEOUT_MS);
+
+  // PostgREST liefert hoechstens 1000 Zeilen je Abfrage.
+  async function getAll(path) {
+    const out = [];
+    for (let from = 0; ; from += 1000) {
+      const r = await fetch(`${url}/rest/v1/${path}`, { headers: { ...h, Range: `${from}-${from + 999}` }, signal: signal() });
+      if (!r.ok) throw new Error(`Supabase read ${path.split('?')[0]} failed: HTTP ${r.status}`);
+      const rows = await r.json();
+      out.push(...rows);
+      if (rows.length < 1000) return out;
+    }
+  }
+
+  async function upsert(table, rows, onConflict) {
+    if (rows.length === 0) return;
+    if (dry) { console.log(`  [supabase] dry-run, would write ${rows.length} to ${table}`); return; }
+    const res = await fetch(`${url}/rest/v1/${table}?on_conflict=${onConflict}`, {
+      method: 'POST',
+      headers: { ...h, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify(rows),
+      signal: signal(),
+    });
+    if (!res.ok) throw new Error(`Supabase upsert ${table} failed: HTTP ${res.status} ${(await res.text()).slice(0, 400)}`);
+  }
+
+  async function remove(table, filter) {
+    if (dry) return;
+    const res = await fetch(`${url}/rest/v1/${table}?${filter}`, {
+      method: 'DELETE', headers: { ...h, Prefer: 'return=minimal' }, signal: signal(),
+    });
+    if (!res.ok) throw new Error(`Supabase delete ${table} failed: HTTP ${res.status}`);
+  }
+
+  async function patch(table, filter, row) {
+    if (dry) { console.log(`  [supabase] dry-run, would patch ${table}?${filter} ${JSON.stringify(row)}`); return; }
+    const res = await fetch(`${url}/rest/v1/${table}?${filter}`, {
+      method: 'PATCH',
+      headers: { ...h, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify(row),
+      signal: signal(),
+    });
+    if (!res.ok) throw new Error(`Supabase patch ${table} failed: HTTP ${res.status} ${(await res.text()).slice(0, 300)}`);
+  }
+
+  return { getAll, upsert, remove, patch };
+}
+
+// Gespeicherter Stand: welche Turniere fertig sind (ueberspringen), wann sie
+// zuletzt geprueft wurden (Rotation), welche Ergebnisse haben. Kein stiller
+// Rueckfall: ist die Datenbank nicht lesbar, bricht der Lauf ab — "alles laden"
+// lief nachweislich in das 180-min-Limit.
+async function loadStoredState(db) {
+  const withResults = new Set();
+  for (const r of await db.getAll('tft_tournament_results?select=tournament_id&order=tournament_id')) withResults.add(r.tournament_id);
+  const tours = await db.getAll('tft_tournaments?select=id,liquipedia_page,status,start_date,end_date,last_validated_at&order=id');
+  const cutoff = Date.now() - SKIP_GRACE_DAYS * DAY_MS;
+  const done = new Map();   // id -> last_validated_at (ms)
+  for (const t of tours) {
+    if (!withResults.has(t.id)) continue;
+    // Ohne Datum macht deriveStatus "upcoming" — mit Ergebnissen ist so ein
+    // Turnier aber laengst vorbei (29 von 38 am 2026-09-13).
+    const finished = (t.status === 'past' && t.end_date && Date.parse(t.end_date) < cutoff)
+      || (!t.start_date && !t.end_date);
+    if (finished) done.set(t.id, t.last_validated_at ? Date.parse(t.last_validated_at) : 0);
+  }
+  return { done, withResults, tours };
+}
+
+async function loadPageIndex(db) {
+  const pros = await db.getAll('tft_pro_players?select=pro_name,source_page,puuid&puuid=not.is.null&order=id');
+  return buildPageIndex(pros);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Liquipedia
+
+/** Wikitext einer Seite, frisch. null = Seite fehlt (404 oder missingtitle). */
+async function fetchTournamentPage(page) {
+  const j = await withTimeout(
+    liquipediaJson({ action: 'parse', page, prop: 'wikitext|displaytitle|externallinks', redirects: '1' }, { noCache: true }),
+    STEP_TIMEOUT_MS, `Seite ${page}`,
+  );
+  if (!j) return null;
+  if (j.error) {
+    if (j.error.code === 'missingtitle') return null;
+    throw new LiquipediaApiError(j.error.code, j.error.info);
+  }
+  return {
+    wikitext: j.parse?.wikitext?.['*'] || '',
+    displayTitle: j.parse?.displaytitle || page.replace(/_/g, ' '),
+    externalLinks: Array.isArray(j.parse?.externallinks) ? j.parse.externallinks : [],
+    title: j.parse?.title || page.replace(/_/g, ' '),
+    redirects: Array.isArray(j.parse?.redirects) ? j.parse.redirects : [],
+  };
+}
+
+// Vorlagen im Namen, die wir nicht selbst aufloesen, laesst Liquipedia
+// aufloesen (eigene Anfrage durch dieselbe Wartesperre). Fehler → Rohtext.
+async function expandTemplatesViaLiquipedia(text, verbose) {
+  if (!text) return text;
+  try {
+    return await withTimeout(sharedExpandTemplates(text), STEP_TIMEOUT_MS, 'expandtemplates');
+  } catch (e) {
+    if (e instanceof StepTimeoutError || e instanceof LiquipediaCooldownError) throw e;
+    if (verbose) console.warn(`  [expand-fail] ${e.message}`);
+    return text;
+  }
+}
+
+// Auto-discover tournament pages from Liquipedia's tier categories so new
+// events are picked up without editing SEED_TOURNAMENTS. The curated seed still
+// wins (it carries region/set_number/tier overrides the categories don't have).
+// S + A tiers by default (premier + regional majors); B-tier behind a flag
+// because it's large and mostly minor weeklies.
+async function discoverSeedFromCategories(includeB) {
+  const cats = [
+    { cat: 'S-Tier_Tournaments', tier: 'S' },
+    { cat: 'A-Tier_Tournaments', tier: 'A' },
+  ];
+  if (includeB) cats.push({ cat: 'B-Tier_Tournaments', tier: 'B' });
+  const discovered = [];
+  for (let i = 0; i < cats.length; i++) {
+    try {
+      const titles = await withTimeout(liquipediaCategoryMembers(cats[i].cat), STEP_TIMEOUT_MS, `Kategorie ${cats[i].cat}`);
+      for (const title of titles) {
+        discovered.push({ page: title.replace(/ /g, '_'), tier: cats[i].tier, region: null });
+      }
+      console.log(`  [discover] ${cats[i].cat}: ${titles.length} pages`);
+    } catch (e) {
+      // Sperre und Zeitlimit beenden den Lauf, alles andere nur diese Kategorie.
+      if (e instanceof LiquipediaCooldownError || e instanceof StepTimeoutError) throw e;
+      console.warn(`  [discover] ${cats[i].cat} failed: ${e.message}`);
+    }
+  }
+  return discovered;
+}
+
+/**
+ * Plaetze einer Seite. Team-Pools ohne eingetragene Teams brauchen die
+ * gerenderte Tabelle (eine weitere Parse-Anfrage). Scheitert sie, bleibt das
+ * erste Ergebnis — es ist dann nicht heil, also wird nichts geloescht.
+ */
+async function extractWithFallback(title, wikitext) {
+  const opts = { teamPrizeMode: TEAM_PRIZE_MODE, ...SET_OPTS };
+  let res = extractPrizePoolPlacements(wikitext, opts);
+  if (res.needsHtml) {
+    try {
+      const page = await withTimeout(fetchHtmlFresh(title), STEP_TIMEOUT_MS, `HTML ${title}`);
+      const teamPlaces = page ? parsePlacementTableHtml(page.html) : [];
+      if (teamPlaces.length) res = extractPrizePoolPlacements(wikitext, { ...opts, teamPlaces });
+      else console.warn(`  [html] ${title}: keine Platzierungstabelle`);
+    } catch (e) {
+      if (e instanceof LiquipediaCooldownError || e instanceof StepTimeoutError) throw e;
+      console.warn(`  [html-fail] ${title}: ${e.message}`);
+    }
+  }
+  if (res.unresolved.length) console.warn(`  [unresolved] ${title}: ${res.unresolved.join(', ')}`);
+  return res;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Preisgeld (W1, 2026-07-04)
+
+// Seitenwaehrung + EIN Kurs zum Turnierdatum (Cache data/fx-rates.json).
+// Regeln (feedback_no_fake_values — nie einen Kurs raten):
+//   usdprize=            → echte USD, keine Umrechnung
+//   localprize + bekannte Waehrung + Kurs + Datum → umgerechnet
+//   localprize + (MIXED | keine localcurrency | kein Kurs | kein Datum) →
+//   prize_usd NULL, Betrag + Waehrung bleiben, [fx-skip] im Log
+async function priceContext(page, wikitext, fields, startDate, endDate) {
+  const pageCurrency = detectPageCurrency(wikitext, fields);
+  const fxEventDate = endDate || startDate || null;
+  let fx = null;
+  const needsFx = pageCurrency && pageCurrency !== 'MIXED' && pageCurrency !== 'USD';
+  if (needsFx && fxEventDate) fx = await getUsdRate(pageCurrency, fxEventDate);
+  const fxSkipReason = !pageCurrency ? null
+    : pageCurrency === 'MIXED' ? 'mixed localcurrency codes on page'
+    : pageCurrency === 'USD' ? null
+    : !fxEventDate ? 'no start/end date for event-dated rate'
+    : !fx ? `no rate for ${pageCurrency}`
+    : null;
+  if (fxSkipReason) console.warn(`  [fx-skip] ${page}: ${fxSkipReason} — native amounts kept, prize_usd NULL`);
+
+  const convertLocal = (localRaw) => {
+    if (localRaw == null) return null;
+    if (!pageCurrency || pageCurrency === 'MIXED') return { usd: null, native: localRaw, currency: pageCurrency === 'MIXED' ? 'MIXED' : null, rate: null, date: null, source: null };
+    if (pageCurrency === 'USD') return { usd: localRaw, native: null, currency: 'USD', rate: null, date: null, source: 'usd' };
+    if (!fx) return { usd: null, native: localRaw, currency: pageCurrency, rate: null, date: null, source: null };
+    return { usd: Math.round(localRaw * fx.rate), native: localRaw, currency: pageCurrency, rate: fx.rate, date: fx.effectiveDate, source: fx.source };
+  };
+
+  // Infobox: prizepoolusd= ist USD; ein nacktes prizepool= ist USD, ausser die
+  // Seite setzt eine localcurrency.
+  const poolUsdExplicit = parsePrize(fields.prizepoolusd);
+  const poolRaw = parsePrize(fields.prizepool);
+  let pool = { usd: poolUsdExplicit ?? null, native: null, currency: poolUsdExplicit != null ? 'USD' : null, rate: null, date: null, source: poolUsdExplicit != null ? 'usd' : null };
+  if (poolUsdExplicit == null && poolRaw != null) {
+    pool = needsFx || pageCurrency === 'MIXED' ? convertLocal(poolRaw)
+      : { usd: poolRaw, native: null, currency: 'USD', rate: null, date: null, source: 'usd' };
+  }
+  return { convertLocal, pool, fxSkipped: !!fxSkipReason };
+}
+
+function toResultRows(id, rows, convertLocal, pageIdx) {
+  const none = { usd: null, native: null, currency: null, rate: null, date: null, source: null };
+  return dedupeResults(rows.map(p => {
+    const conv = p.prizeUsdRaw != null
+      ? { usd: p.prizeUsdRaw, native: null, currency: 'USD', rate: null, date: null, source: 'usd' }
+      : (convertLocal(p.prizeLocalRaw) ?? none);
+    return {
+      tournament_id: id,
+      placement: p.placement,
+      placement_max: p.placementMax ?? null,
+      pro_name: p.proName,
+      pro_puuid: linkPuuid(p, pageIdx),
+      team: p.team ?? null,
+      country: p.country ?? null,
+      prize_usd: conv.usd,
+      prize_native: conv.native,
+      prize_currency: conv.currency,
+      fx_rate: conv.rate,
+      fx_date: conv.date,
+      fx_source: conv.source,
+    };
+  }));
+}
+
+const resultFilter = (id, r) =>
+  `tournament_id=eq.${encodeURIComponent(id)}&placement=eq.${r.placement}&pro_name=eq.${encodeURIComponent(r.pro_name)}`;
+
+async function writeResults(db, results) {
+  for (const part of chunk(results, 500)) await db.upsert('tft_tournament_results', part, 'tournament_id,placement,pro_name');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Nachlaeufe
+
+async function postPasses(ctx) {
+  if (!ctx.key) { console.log('  [post] no Supabase key — skipped'); return; }
+  setDryRun(ctx.dry);
+  console.log('\n[3/3] Post passes …');
+  await withTimeout(reconvertStored({ url: ctx.url, key: ctx.key }), STEP_TIMEOUT_MS, 'Neu-Umrechnung');
+  await withTimeout(rebuildPlayerLinks({ url: ctx.url, key: ctx.key, upsert: ctx.db.upsert }), STEP_TIMEOUT_MS, 'Spieler-Verknuepfung');
+}
+
+// Haelt den Lauf bei Sperre/Zeitlimit an; andere Fehler zaehlen als Fehlschlag.
+function stopReason(e) {
+  if (e instanceof LiquipediaCooldownError) return 'Sperre';
+  if (e instanceof StepTimeoutError) return 'Zeitlimit';
   return null;
 }
 
-const STANDINGS_LINK = /^https?:\/\/(docs\.google\.com\/spreadsheets\/|(www\.)?riot\.com\/|([a-z0-9-]+\.)?apactft\.com\/)/i;
-function standingsSources(links) {
-  const out = [...new Set((links || []).filter(u => STANDINGS_LINK.test(u)))];
-  return out.length ? out : null;
-}
-
-function pageToSlug(page) {
-  return page.toLowerCase().replace(/[\/_]/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-');
-}
-
-async function loadProPuuids() {
-  if (!SUPA_KEY) return new Map();
-  const url = `${SUPA_URL}/rest/v1/tft_pro_players?select=puuid,pro_name`;
-  const r = await fetch(url, { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` } });
-  if (!r.ok) return new Map();
-  const rows = await r.json();
-  const m = new Map();
-  for (const row of rows || []) if (row.pro_name && row.puuid) m.set(row.pro_name.toLowerCase(), row.puuid);
-  return m;
-}
-
-async function upsert(table, rows, onConflict) {
-  if (rows.length === 0) return;
-  if (SKIP_SUPABASE) {
-    console.log(`  [supabase] dry-run, would write ${rows.length} to ${table}`);
-    return;
-  }
-  const url = `${SUPA_URL}/rest/v1/${table}?on_conflict=${onConflict}`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      apikey: SUPA_KEY,
-      Authorization: `Bearer ${SUPA_KEY}`,
-      'Content-Type': 'application/json',
-      Prefer: 'resolution=merge-duplicates,return=minimal',
-    },
-    body: JSON.stringify(rows),
-  });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Supabase upsert ${table} failed: HTTP ${res.status} ${body.slice(0, 400)}`);
-  }
-}
-
-async function deleteResultsFor(tournamentId) {
-  if (SKIP_SUPABASE) return;
-  const res = await fetch(`${SUPA_URL}/rest/v1/tft_tournament_results?tournament_id=eq.${tournamentId}`, {
-    method: 'DELETE',
-    headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, Prefer: 'return=minimal' },
-  });
-  // Sonst blieben alte Platzierungen stehen und der Upsert mischte sie mit neuen.
-  if (!res.ok) throw new Error(`Supabase delete results ${tournamentId} failed: HTTP ${res.status}`);
-}
-
-// Gespeicherter Stand je Turnier-ID: welche fertig sind (ueberspringen) und
-// wann sie zuletzt geprueft wurden (Rotation). Kein stiller Rueckfall: ist die
-// Datenbank nicht lesbar, bricht der Lauf ab — "alles laden" lief nachweislich
-// in das 180-min-Limit.
-async function loadStoredState() {
-  const h = { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` };
-  const get = async (path, from) => {
-    const r = await fetch(`${SUPA_URL}/rest/v1/${path}`, { headers: { ...h, Range: `${from}-${from + 999}` } });
-    if (!r.ok) throw new Error(`Supabase read ${path.split('?')[0]} failed: HTTP ${r.status}`);
-    return r.json();
-  };
-  const withResults = new Set();
-  // PostgREST liefert hoechstens 1000 Zeilen je Abfrage.
-  for (let from = 0; ; from += 1000) {
-    const rows = await get('tft_tournament_results?select=tournament_id&order=tournament_id', from);
-    for (const r of rows) withResults.add(r.tournament_id);
-    if (rows.length < 1000) break;
-  }
-  const cutoff = Date.now() - SKIP_GRACE_DAYS * 86_400_000;
-  const done = new Map();   // id -> last_validated_at (ms)
-  for (let from = 0; ; from += 1000) {
-    const rows = await get('tft_tournaments?select=id,status,start_date,end_date,last_validated_at&order=id', from);
-    for (const t of rows) {
-      if (!withResults.has(t.id)) continue;
-      // Ohne Datum macht deriveStatus "upcoming" — mit Ergebnissen ist so ein
-      // Turnier aber laengst vorbei (29 von 38 am 2026-09-13).
-      const finished = (t.status === 'past' && t.end_date && Date.parse(t.end_date) < cutoff)
-        || (!t.start_date && !t.end_date);
-      if (finished) done.set(t.id, t.last_validated_at ? Date.parse(t.last_validated_at) : 0);
-    }
-    if (rows.length < 1000) break;
-  }
-  return done;
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
-// main
+// Wochenlauf
 
-async function postPasses() {
-  if (!SUPA_KEY) { console.log('  [post] no Supabase key — skipped'); return; }
-  setDryRun(SKIP_SUPABASE);
-  console.log('\n[3/3] Post passes …');
-  await reconvertStored({ url: SUPA_URL, key: SUPA_KEY });
-  await rebuildPlayerLinks({ url: SUPA_URL, key: SUPA_KEY, upsert });
-}
-
-async function main() {
-  const t0 = Date.now();
-  console.log('=== TFT Tournament Crawler ===\n');
-  if (POST_ONLY) { await postPasses(); return; }
+async function runCrawl(o, ctx) {
+  const { db, canRead } = ctx;
+  const deadline = o.deadlineMin ? ctx.t0 + o.deadlineMin * 60_000 : Infinity;
 
   let seed = SEED_TOURNAMENTS;
-  if (PAGES_OVERRIDE) {
-    seed = PAGES_OVERRIDE.split(',').map(p => ({ page: p.trim(), tier: null, region: null }));
-  } else if (!hasFlag('--no-discover')) {
+  if (o.pages) {
+    seed = o.pages.split(',').map(p => p.trim()).filter(Boolean).map(p => ({ page: p, tier: null, region: null }));
+  } else if (!o.noDiscover) {
     console.log('[0/3] Auto-discovering tournament pages from tier categories …');
-    const discovered = await discoverSeedFromCategories();
+    const discovered = await discoverSeedFromCategories(o.includeB);
     const seen = new Set(SEED_TOURNAMENTS.map(s => s.page.toLowerCase()));
     const merged = [...SEED_TOURNAMENTS];   // curated first — keeps their region/set/tier overrides
     for (const d of discovered) {
@@ -623,10 +533,18 @@ async function main() {
     console.log(`  [discover] ${SEED_TOURNAMENTS.length} curated + ${merged.length - SEED_TOURNAMENTS.length} new = ${merged.length} pages\n`);
     seed = merged;
   }
+
+  // Bekannte Turnier-IDs: Weiterleitungen auf eine davon sind Dubletten.
+  const knownIds = new Set(seed.map(s => pageToSlug(s.page)));
+  let stored = null;
+  if (canRead) {
+    stored = await loadStoredState(db);
+    for (const t of stored.tours) knownIds.add(t.id);
+  }
   // Nur Neues laden. Eine ausdrueckliche --pages-Liste und --full laden immer;
-  // --no-supabase hat keine Datenbank zum Abgleich.
-  if (!PAGES_OVERRIDE && !FULL && !SKIP_SUPABASE) {
-    const done = await loadStoredState();
+  // --no-supabase gleicht nicht ab.
+  if (!o.pages && !o.full && !o.dry) {
+    const { done } = stored;
     const fresh = [], stale = [];
     for (const s of seed) (done.has(pageToSlug(s.page)) ? stale : fresh).push(s);
     stale.sort((a, b) => done.get(pageToSlug(a.page)) - done.get(pageToSlug(b.page)));
@@ -634,167 +552,275 @@ async function main() {
     console.log(`  [skip-done] ${stale.length - rotation.length} finished tournaments skipped, ${fresh.length} new/open + ${rotation.length} re-checked\n`);
     seed = [...fresh, ...rotation];
   }
-  if (LIMIT > 0) seed = seed.slice(0, LIMIT);
-  console.log(`[1/3] ${seed.length} tournament pages to crawl (~${Math.ceil(seed.length * LIQUIPEDIA_DELAY_MS / 60000)} min @ 30s rate-limit)\n`);
+  if (o.limit > 0) seed = seed.slice(0, o.limit);
+  console.log(`[1/3] ${seed.length} tournament pages to crawl (~${Math.ceil(seed.length * 30 / 60)} min @ 30 s rate-limit)\n`);
 
-  const proPuuidByName = await loadProPuuids();
-  console.log(`  [pro-join] loaded ${proPuuidByName.size} pros for puuid back-fill\n`);
+  const pageIdx = canRead ? await loadPageIndex(db) : new Map();
+  console.log(`  [pro-join] ${pageIdx.size} Liquipedia-Seiten mit Konto\n`);
 
   console.log('[2/3] Fetching + parsing + writing each page …');
-  let totalTournaments = 0, totalResults = 0;
-  let parsed = 0, skipped = 0, fxSkipped = 0;
+  const st = { attempted: 0, failed: 0, missing: 0, noInfobox: 0, redirectSkipped: 0, fxSkipped: 0, written: 0, results: 0, deleted: 0, review: 0, writeErrors: 0, stopped: null };
+  let n = 0;
   for (const s of seed) {
-    // Keine eigene Pause: liquipediaJson haelt die 30 s zwischen zwei Abrufen
-    // selbst ein (lib/liquipedia-tft.mjs:38,171). Die zusaetzliche 30,5-s-Pause
-    // hier legte die Arbeitszeit obendrauf (~36,8 s je Seite, Lauf 34333740958).
-    let wikitext, displayTitle, externalLinks;
-    try { ({ wikitext, displayTitle, externalLinks } = await fetchTournamentWikitext(s.page)); }
-    catch (e) { console.warn(`  [skip] ${s.page}: ${e.message}`); skipped++; continue; }
-    if (!wikitext) { skipped++; continue; }
-
-    const info = findTemplate(wikitext, 'Infobox league');
-    if (!info) {
-      if (VERBOSE) console.warn(`  [skip] ${s.page}: no Infobox league`);
-      skipped++; continue;
-    }
-    const fields = parseTemplateFields(info.body);
+    if (Date.now() >= deadline) { st.stopped = 'Frist'; console.log(`  [frist] --deadline-min ${o.deadlineMin} erreicht, ${seed.length - n} Seiten offen`); break; }
+    n++;
+    st.attempted++;
     const id = pageToSlug(s.page);
-    // If the raw name field still has wikitext templates that aren't in our
-    // local TFT_SET_NAMES whitelist, pay one extra Liquipedia call to expand
-    // them server-side (with the standard 30s ToU delay). Cheap because almost
-    // every tournament has a plain-text name.
-    let rawName = fields.name || '';
-    if (/\{\{[^{}]+\}\}/.test(rawName)) {
-      const stillTemplated = /\{\{[^{}]+\}\}/.test(unwikiTemplateOnly(rawName));
-      if (stillTemplated) {
-        await sleep(LIQUIPEDIA_DELAY_MS);
-        rawName = await expandTemplatesViaLiquipedia(rawName);
-      }
+
+    let page;
+    try { page = await fetchTournamentPage(s.page); }
+    catch (e) {
+      const why = stopReason(e);
+      if (why) { st.stopped = why; console.error(`  [abbruch] ${s.page}: ${e.message}`); break; }
+      console.warn(`  [skip] ${s.page}: ${e.message}`); st.failed++; continue;
     }
-    const name = unwiki(rawName) || displayTitle;
-    const startDate = parseDate(fields.sdate || fields.startdate || fields.date);
-    const endDate = parseDate(fields.edate || fields.enddate || fields.date);
-    const status = deriveStatus(startDate, endDate);
+    if (!page) { st.missing++; console.warn(`  [fehlt] ${s.page}: Seite existiert nicht`); continue; }
 
-    // Placements (finished events). Participant count is a fallback so
-    // ongoing/upcoming events — which have no final {{Slot}} ranking yet —
-    // still show "N participants" instead of looking empty.
-    const placements = extractPlacements(wikitext);
-    const infoboxCount = parseInt(fields.team_number || fields.player_number || '0', 10) || null;
-    const numParticipants = infoboxCount || placements.length || countParticipants(wikitext);
-
-    // ── Prize-money currency (W1, 2026-07-04). Detect the page currency, then
-    // resolve ONE event-dated FX rate per page (cached in data/fx-rates.json).
-    // Conversion rules (feedback_no_fake_values — never guess a rate):
-    //   usdprize=            → genuinely USD, no conversion
-    //   localprize + known currency + rate + event date → converted USD
-    //   localprize + (MIXED | no localcurrency | no rate | no date) → prize_usd
-    //   NULL, native amount + currency persisted, [fx-skip] logged
-    const pageCurrency = detectPageCurrency(wikitext, fields);
-    const fxEventDate = endDate || startDate || null;   // 35/280 events have neither
-    let fx = null;
-    const needsFx = pageCurrency && pageCurrency !== 'MIXED' && pageCurrency !== 'USD';
-    if (needsFx && fxEventDate) fx = await getUsdRate(pageCurrency, fxEventDate);
-    const fxSkipReason = !pageCurrency ? null
-      : pageCurrency === 'MIXED' ? 'mixed localcurrency codes on page'
-      : pageCurrency === 'USD' ? null
-      : !fxEventDate ? 'no start/end date for event-dated rate'
-      : !fx ? `no rate for ${pageCurrency}`
-      : null;
-    if (fxSkipReason) { console.warn(`  [fx-skip] ${s.page}: ${fxSkipReason} — native amounts kept, prize_usd NULL`); fxSkipped++; }
-
-    // localAmount → { prize_usd, native, currency, rate, date } under the rules above.
-    const convertLocal = (localRaw) => {
-      if (localRaw == null) return null;
-      if (!pageCurrency || pageCurrency === 'MIXED') return { usd: null, native: localRaw, currency: pageCurrency === 'MIXED' ? 'MIXED' : null, rate: null, date: null, source: null };
-      if (pageCurrency === 'USD') return { usd: localRaw, native: null, currency: 'USD', rate: null, date: null, source: 'usd' };
-      if (!fx) return { usd: null, native: localRaw, currency: pageCurrency, rate: null, date: null, source: null };
-      return { usd: Math.round(localRaw * fx.rate), native: localRaw, currency: pageCurrency, rate: fx.rate, date: fx.effectiveDate, source: fx.source };
-    };
-
-    // Infobox prizepool: prizepoolusd= is explicit USD; a bare prizepool= is USD
-    // by Liquipedia convention UNLESS the page sets a localcurrency.
-    const poolUsdExplicit = parsePrize(fields.prizepoolusd);
-    const poolRaw = parsePrize(fields.prizepool);
-    let pool = { usd: poolUsdExplicit ?? null, native: null, currency: poolUsdExplicit != null ? 'USD' : null, rate: null, date: null, source: poolUsdExplicit != null ? 'usd' : null };
-    if (poolUsdExplicit == null && poolRaw != null) {
-      pool = needsFx || pageCurrency === 'MIXED' ? convertLocal(poolRaw)
-        : { usd: poolRaw, native: null, currency: 'USD', rate: null, date: null, source: 'usd' };
+    const finalTitle = page.title.replace(/ /g, '_');
+    const finalSlug = pageToSlug(finalTitle);
+    if (finalSlug !== id && knownIds.has(finalSlug)) {
+      st.redirectSkipped++;
+      console.log(`  [weiterleitung] ${s.page} → ${finalTitle}: Ziel ist schon ein eigenes Turnier, uebersprungen`);
+      continue;
     }
 
-    const tour = {
-      id,
-      liquipedia_page: s.page,
-      name,
-      // Seed-tier wins over wiki-tier (wiki stores numeric 1/2/3; our schema uses S/A/B/C).
-      tier: s.tier || numericTierToLetter(fields.liquipediatier),
-      region: s.region || null,
-      // Set number from the page itself; seed value only as a fallback.
-      set_number: deriveSetNumber(wikitext) || s.setNumber || null,
-      start_date: startDate,
-      end_date: endDate,
-      status,
-      prize_pool_usd: pool.usd,
-      prize_pool_native: pool.native,
-      prize_pool_currency: pool.currency,
-      fx_rate: pool.rate,
-      fx_date: pool.date,
-      fx_source: pool.source,
-      twitch_channel: fields.twitch || null,
-      format: unwiki(fields.format) || null,
-      num_participants: numParticipants,
-      logo_url: null,                   // logos need image-API resolution; later
-      source: 'liquipedia',
-      last_validated_at: new Date().toISOString(),
-    };
-    // Nur mitsenden, wenn gefunden — sonst wuerde ein Abruf ohne Links
-    // gespeicherte Quellen ueberschreiben.
-    const sources = standingsSources(externalLinks);
-    if (sources) tour.standings_sources = sources;
-
-    const results = placements.map(p => {
-      const conv = p.prizeUsdRaw != null
-        ? { usd: p.prizeUsdRaw, native: null, currency: 'USD', rate: null, date: null, source: 'usd' }
-        : (convertLocal(p.prizeLocalRaw) ?? { usd: null, native: null, currency: null, rate: null, date: null, source: null });
-      return {
-        tournament_id: id,
-        placement: p.placement,
-        pro_name: p.proName,
-        pro_puuid: proPuuidByName.get(p.proName.toLowerCase()) || null,
-        team: p.team,
-        country: p.country,
-        prize_usd: conv.usd,
-        prize_native: conv.native,
-        prize_currency: conv.currency,
-        fx_rate: conv.rate,
-        fx_date: conv.date,
-        fx_source: conv.source,
-      };
-    });
-
-    // Write incrementally: a 2.5h discovery run must persist partial progress
-    // and never POST one huge results payload. Results are replaced per event.
+    let tour, results, ex;
     try {
-      await upsert('tft_tournaments', [tour], 'id');
-      // Nur ersetzen, wenn es Neues gibt: eine leere Antwort (Seitenumbau,
-      // Cache nach 429-Sperre) darf gespeicherte Platzierungen nicht loeschen.
-      if (results.length > 0) {
-        await deleteResultsFor(id);
-        await upsert('tft_tournament_results', results, 'tournament_id,placement,pro_name');
+      const fields = parseInfobox(page.wikitext);
+      if (!fields) {
+        if (o.verbose) console.warn(`  [skip] ${s.page}: no Infobox league`);
+        st.noInfobox++; continue;
       }
-      totalTournaments++;
-      totalResults += results.length;
+      // Vorlagen im Namen, die wir nicht kennen: eine weitere Anfrage.
+      let rawName = fields.name || '';
+      if (/\{\{[^{}]+\}\}/.test(rawName) && /\{\{[^{}]+\}\}/.test(unwikiTemplateOnly(rawName, SET_OPTS))) {
+        rawName = await expandTemplatesViaLiquipedia(rawName, o.verbose);
+      }
+      const name = unwiki(rawName, SET_OPTS) || page.displayTitle;
+      const startDate = parseDate(fields.sdate || fields.startdate || fields.date);
+      const endDate = parseDate(fields.edate || fields.enddate || fields.date);
+      const status = deriveStatus(startDate, endDate);
+
+      ex = await extractWithFallback(page.title, page.wikitext);
+      const numParticipants = participantsFromInfobox(fields) || entrantsFromRows(ex.rows) || countParticipants(page.wikitext);
+      const price = await priceContext(s.page, page.wikitext, fields, startDate, endDate);
+      if (price.fxSkipped) st.fxSkipped++;
+
+      tour = {
+        id,
+        liquipedia_page: finalTitle,
+        name,
+        // Seed-tier wins over wiki-tier (wiki stores numeric 1/2/3; our schema uses S/A/B/C).
+        tier: s.tier || numericTierToLetter(fields.liquipediatier),
+        region: s.region || null,
+        // Set number from the page itself; seed value only as a fallback.
+        set_number: deriveSetNumber(page.wikitext) || s.setNumber || null,
+        start_date: startDate,
+        end_date: endDate,
+        status,
+        prize_pool_usd: price.pool.usd,
+        prize_pool_native: price.pool.native,
+        prize_pool_currency: price.pool.currency,
+        fx_rate: price.pool.rate,
+        fx_date: price.pool.date,
+        fx_source: price.pool.source,
+        twitch_channel: fields.twitch || null,
+        format: unwiki(fields.format, SET_OPTS) || null,
+        num_participants: numParticipants,
+        logo_url: null,                   // logos need image-API resolution; later
+        source: 'liquipedia',
+        last_validated_at: new Date().toISOString(),
+      };
+      // Nur mitsenden, wenn gefunden — sonst wuerde ein Abruf ohne Links
+      // gespeicherte Quellen ueberschreiben.
+      const sources = standingsSources(page.externalLinks);
+      if (sources) tour.standings_sources = sources;
+      results = toResultRows(id, ex.rows, price.convertLocal, pageIdx);
     } catch (e) {
-      console.warn(`  [write-fail] ${s.page}: ${e.message}`);
+      const why = stopReason(e);
+      if (why) { st.stopped = why; console.error(`  [abbruch] ${s.page}: ${e.message}`); break; }
+      console.warn(`  [skip] ${s.page}: ${e.message}`); st.failed++; continue;
     }
-    parsed++;
-    console.log(`  ${parsed}/${seed.length}  ${s.page}  set=${tour.set_number ?? '—'}  placements=${placements.length}  participants=${numParticipants ?? '—'}`);
+
+    // Erst schreiben, dann nur Verschwundenes loeschen.
+    try {
+      const before = canRead
+        ? await db.getAll(`tft_tournament_results?select=placement,pro_name&tournament_id=eq.${encodeURIComponent(id)}&order=placement,pro_name`)
+        : [];
+      await db.upsert('tft_tournaments', [tour], 'id');
+      await writeResults(db, results);
+      const plan = planDeletes(before, results, { intact: ex.intact, infobox: true });
+      for (const r of plan.remove) {
+        await db.remove('tft_tournament_results', resultFilter(id, r));
+        console.log(`  [geloescht]${o.dry ? ' (Trockenlauf)' : ''} ${id} | ${r.placement} | ${r.pro_name}`);
+        st.deleted++;
+      }
+      for (const r of plan.review) console.log(`  [pruefen] nicht geloescht (${plan.reason}): ${id} | ${r.placement} | ${r.pro_name}`);
+      st.review += plan.review.length;
+      st.written++;
+      st.results += results.length;
+    } catch (e) {
+      st.failed++; st.writeErrors++;
+      console.warn(`  [write-fail] ${s.page}: ${e.message}`);
+      if (st.writeErrors > MAX_WRITE_ERRORS) { st.stopped = 'Schreibfehler'; console.error(`  [abbruch] mehr als ${MAX_WRITE_ERRORS} Schreibfehler`); break; }
+      continue;
+    }
+    console.log(`  ${n}/${seed.length}  ${s.page}  set=${tour.set_number ?? '—'}  placements=${results.length}  participants=${tour.num_participants ?? '—'}${ex.intact ? '' : '  (nicht heil)'}`);
   }
-
-  await postPasses();
-
-  const total = ((Date.now() - t0) / 1000).toFixed(0);
-  console.log(`\nDone. ${totalTournaments} tournaments, ${totalResults} placements in ${total}s (skipped: ${skipped}, fx-skipped: ${fxSkipped})`);
+  console.log(`\n  ${st.written} tournaments, ${st.results} placements, ${st.deleted} geloescht, ${st.review} zu pruefen | fehlt: ${st.missing}, ohne Infobox: ${st.noInfobox}, Weiterleitung: ${st.redirectSkipped}, fx-skip: ${st.fxSkipped}, Fehler: ${st.failed}/${st.attempted}`);
+  return st;
 }
 
-main().catch(err => { console.error('FAIL:', err.message); console.error(err.stack); process.exit(1); });
+// ─────────────────────────────────────────────────────────────────────────────
+// --repair (D13)
+
+async function runRepair(o, ctx) {
+  const { db, canRead } = ctx;
+  const today = new Date().toISOString().slice(0, 10);
+  const st = { attempted: 0, failed: 0, missing: 0, noInfobox: 0, redirectSkipped: 0, fxSkipped: 0, written: 0, results: 0, deleted: 0, review: 0, writeErrors: 0, stopped: null };
+
+  let tours = [], withResults = new Set();
+  if (canRead) ({ tours, withResults } = await loadStoredState(db));
+  let targets;
+  if (o.pages) {
+    const want = new Set(o.pages.split(',').map(p => normalizePage(p.trim())).filter(Boolean));
+    targets = canRead
+      ? tours.filter(t => want.has(normalizePage(t.liquipedia_page)))
+      : [...want].map(p => ({ id: pageToSlug(p), liquipedia_page: p, start_date: null, end_date: null }));
+    if (targets.length < want.size) console.warn(`  [repair] ${want.size - targets.length} der --pages nicht in der Datenbank — Reparatur legt keine Turniere an`);
+  } else {
+    targets = repairTargets(tours, withResults, today);
+  }
+  console.log(`[repair] ${targets.length} vergangene Turniere ohne Ergebniszeilen${o.limit > 0 && targets.length > o.limit ? ` (davon ${o.limit} in diesem Lauf)` : ''}`);
+  if (o.limit > 0) targets = targets.slice(0, o.limit);
+  if (!targets.length) return st;
+
+  const pageIdx = canRead ? await loadPageIndex(db) : new Map();
+  const knownIds = new Set(tours.map(t => t.id));
+  const titles = targets.map(t => t.liquipedia_page);
+  const groups = Math.ceil(new Set(titles).size / 50);
+  let batch;
+  try {
+    batch = await withTimeout(fetchWikitextBatch(titles), STEP_TIMEOUT_MS * groups, `Stapel ${titles.length} Seiten`);
+  } catch (e) {
+    const why = stopReason(e);
+    if (why) { st.stopped = why; console.error(`  [abbruch] Stapelabruf: ${e.message}`); return st; }
+    throw e;
+  }
+  for (const m of batch.missing) console.warn(`  [fehlt] ${m}`);
+
+  let n = 0;
+  for (const t of targets) {
+    n++;
+    st.attempted++;
+    const got = batch.byRequested.get(t.liquipedia_page);
+    if (!got) { st.missing++; continue; }
+    const finalTitle = got.title.replace(/ /g, '_');
+    const finalSlug = pageToSlug(finalTitle);
+    if (finalSlug !== t.id && knownIds.has(finalSlug)) {
+      st.redirectSkipped++;
+      console.log(`  [weiterleitung] ${t.liquipedia_page} → ${finalTitle}: Ziel ist schon ein eigenes Turnier, uebersprungen`);
+      continue;
+    }
+
+    let results, numParticipants, ex;
+    try {
+      const wikitext = got.content || '';
+      const fields = parseInfobox(wikitext);
+      if (!fields) st.noInfobox++;
+      const f = fields || {};
+      const startDate = parseDate(f.sdate || f.startdate || f.date) || t.start_date || null;
+      const endDate = parseDate(f.edate || f.enddate || f.date) || t.end_date || null;
+      ex = await extractWithFallback(got.title, wikitext);
+      numParticipants = participantsFromInfobox(f) || entrantsFromRows(ex.rows) || countParticipants(wikitext);
+      const price = await priceContext(t.liquipedia_page, wikitext, f, startDate, endDate);
+      if (price.fxSkipped) st.fxSkipped++;
+      results = toResultRows(t.id, ex.rows, price.convertLocal, pageIdx);
+    } catch (e) {
+      const why = stopReason(e);
+      if (why) { st.stopped = why; console.error(`  [abbruch] ${t.liquipedia_page}: ${e.message}`); break; }
+      console.warn(`  [skip] ${t.liquipedia_page}: ${e.message}`); st.failed++; continue;
+    }
+
+    try {
+      // Nur Ergebniszeilen + Teilnehmerzahl; Kopfdaten und standings_sources bleiben.
+      await writeResults(db, results);
+      if (numParticipants != null) await db.patch('tft_tournaments', `id=eq.${encodeURIComponent(t.id)}`, { num_participants: numParticipants });
+      st.written++;
+      st.results += results.length;
+    } catch (e) {
+      st.failed++; st.writeErrors++;
+      console.warn(`  [write-fail] ${t.liquipedia_page}: ${e.message}`);
+      if (st.writeErrors > MAX_WRITE_ERRORS) { st.stopped = 'Schreibfehler'; console.error(`  [abbruch] mehr als ${MAX_WRITE_ERRORS} Schreibfehler`); break; }
+      continue;
+    }
+    console.log(`  ${n}/${targets.length}  ${t.id}  placements=${results.length}  participants=${numParticipants ?? '—'}${ex.intact ? '' : '  (nicht heil)'}`);
+  }
+  console.log(`\n  [repair] ${st.written} Turniere, ${st.results} Zeilen | fehlt: ${st.missing}, ohne Infobox: ${st.noInfobox}, Weiterleitung: ${st.redirectSkipped}, fx-skip: ${st.fxSkipped}, Fehler: ${st.failed}/${st.attempted}`);
+  return st;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// main
+
+async function main(argv = process.argv.slice(2)) {
+  const t0 = Date.now();
+  const o = parseCli(argv);
+  loadEnv();
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://bwawxwgxxfafbruebixa.supabase.co';
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!o.dry && !key) { console.error('SUPABASE_SERVICE_ROLE_KEY required'); return 1; }
+  if (o.repair && !key && !o.pages) { console.error('--repair liest seine Ziele aus der Datenbank: SUPABASE_SERVICE_ROLE_KEY noetig'); return 1; }
+  const db = makeDb({ url, key, dry: o.dry });
+  // Lesen geht auch im Trockenlauf, sobald ein Schluessel da ist.
+  const ctx = { t0, url, key, dry: o.dry, db, canRead: !!key };
+
+  console.log(`=== TFT Tournament Crawler${o.repair ? ' (repair)' : ''}${o.dry ? ' — Trockenlauf' : ''} ===\n`);
+  if (o.postOnly) { await postPasses(ctx); return 0; }
+
+  const cd = cooldownStatus();
+  if (cd.active) {
+    console.error(`Liquipedia-Sperre aktiv bis ${new Date(cd.until).toISOString()} (noch ${cd.minutesRemaining} min) — Abbruch`);
+    return 1;
+  }
+
+  let st;
+  try {
+    st = o.repair ? await runRepair(o, ctx) : await runCrawl(o, ctx);
+  } catch (e) {
+    const why = stopReason(e);
+    if (!why) throw e;
+    console.error(`  [abbruch] ${e.message}`);
+    st = { attempted: 0, failed: 0, stopped: why };
+  }
+
+  let postFailed = false;
+  if (st.stopped === 'Schreibfehler' || st.stopped === 'Zeitlimit') {
+    console.log('  [post] uebersprungen nach Abbruch');
+  } else {
+    try { await postPasses(ctx); }
+    catch (e) { postFailed = true; console.error(`  [post-fail] ${e.message}`); }
+  }
+
+  const failRate = st.attempted > 0 ? st.failed / st.attempted : 0;
+  const secs = ((Date.now() - t0) / 1000).toFixed(0);
+  let code = 0;
+  const why = [];
+  if (st.stopped === 'Sperre' || st.stopped === 'Zeitlimit' || st.stopped === 'Schreibfehler') { code = 1; why.push(`Abbruch: ${st.stopped}`); }
+  if (failRate > MAX_FAIL_RATE) { code = 1; why.push(`${st.failed}/${st.attempted} Seiten fehlgeschlagen (> ${MAX_FAIL_RATE * 100} %)`); }
+  if (postFailed) { code = 1; why.push('Nachlauf fehlgeschlagen'); }
+  if (st.stopped === 'Frist') why.push('Frist erreicht (kein Fehler)');
+  console.log(`\nDone in ${secs}s — Exit ${code}${why.length ? ` (${why.join('; ')})` : ''}`);
+  return code;
+}
+
+// Import-Schutz: Tests importieren die reinen Helfer, ohne den Lauf zu starten.
+const invokedDirectly = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (invokedDirectly) {
+  main().then(code => process.exit(code ?? 0)).catch(err => {
+    if (err instanceof LiquipediaCooldownError) console.error(`Liquipedia-Sperre: ${err.message}`);
+    console.error('FAIL:', err.message);
+    console.error(err.stack);
+    process.exit(1);
+  });
+}

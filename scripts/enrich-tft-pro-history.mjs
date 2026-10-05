@@ -22,6 +22,15 @@
  *   node scripts/enrich-tft-pro-history.mjs --no-supabase  # dry-run, prints results
  *   node scripts/enrich-tft-pro-history.mjs --player Setsuko  # single player
  *
+ * Historie-Modus (Aufgabe B, 2026-10-05) — liest <Spieler>/Results frisch
+ * (ohne Cache) und schreibt die volle Liste mit src:'results':
+ *   node scripts/enrich-tft-pro-history.mjs --history                 # 93 Pros (Woche)
+ *   node scripts/enrich-tft-pro-history.mjs --history --max 372 --deadline-min 330
+ *   node scripts/enrich-tft-pro-history.mjs --history --pros Loescher,k0nda1
+ *   node scripts/enrich-tft-pro-history.mjs --history --player Loescher --no-supabase
+ * Auswahl und Regeln: scripts/lib/tft-pro-history.mjs. Exit 1 bei Liquipedia-
+ * Sperre (429/Abkuehlung) oder wenn mehr als 20 % der Pros scheitern.
+ *
  * Liquipedia ToU: 2s minimum between requests; we honor strictly.
  *
  * Warum es eine Staleness-Auswahl gibt: der Lauf holte frueher IMMER alle
@@ -49,7 +58,19 @@ const SINGLE_PLAYER = arg('--player', null);
 const SKIP_SUPABASE = hasFlag('--no-supabase');
 const VERBOSE = hasFlag('--verbose');
 const FORCE = hasFlag('--force');
-const MAX_PER_RUN = Math.max(1, parseInt(arg('--max', '250'), 10));
+const HISTORY = hasFlag('--history');
+const MAX_PER_RUN = Math.max(1, parseInt(arg('--max', HISTORY ? String(HISTORY_DEFAULT_MAX) : '250'), 10));
+// Nach so vielen Minuten startet der Historie-Modus keinen neuen Pro mehr.
+const DEADLINE_MIN = Math.max(0, parseFloat(arg('--deadline-min', '0')) || 0);
+// Kommagetrennte Pro-Namen oder Seiten — nur diese, ohne Auswahlregel.
+const ONLY_PROS = (arg('--pros', '') || '').split(',').map((s) => s.trim()).filter(Boolean);
+// Zeitlimit je Liquipedia-Abruf. Schlimmster normaler Fall in
+// liquipedia-tft.mjs: 30 s Wartezeit + 2 weiche 429 mit je bis zu 5 min Pause
+// und erneuter 30-s-Wartezeit (~11,5 min). Erst darueber gilt der Abruf als
+// haengend — dann haelt der Lauf an (StepTimeoutError), weil der abgehaengte
+// Abruf weiterlaeuft und sonst mit dem naechsten gleichzeitig feuern koennte.
+const STEP_TIMEOUT_MS = 13 * 60_000;
+const DB_TIMEOUT_MS = 30_000;
 // Wie viele davon zusaetzlich die /Results-Unterseite bekommen. Jeder kostet
 // 30 Sekunden extra (action=parse-Limit), deshalb bewusst klein.
 const DEEP_MAX_PER_RUN = Math.max(0, parseInt(arg('--deep-max', '10'), 10));
@@ -88,8 +109,13 @@ if (!SKIP_SUPABASE && !SUPA_KEY) { console.error('SUPABASE_SERVICE_ROLE_KEY requ
 // ─── Liquipedia ──────────────────────────────────────────────────────────
 // Shared helper: cross-process rate-limit lock + ETag cache (see
 // scripts/lib/liquipedia-tft.mjs).
-import { liquipediaHtml } from './lib/liquipedia-tft.mjs';
+import { liquipediaHtml, LiquipediaCooldownError, cooldownStatus } from './lib/liquipedia-tft.mjs';
 import { proRowFilter } from './lib/pro-row-filter.mjs';
+import { fetchHtmlFresh, fetchRedirectAliases, resolveTitles, parseResultsHtml, chunk } from './lib/tft-tournament-parse.mjs';
+import {
+  HISTORY_DEFAULT_MAX, buildHistoryEntries, checkPlausible, needsInfobox, decideEarnings,
+  listPrizeSum, newerTablePages, selectHistoryTargets, withTimeout, StepTimeoutError, LIST_GRACE_DAYS,
+} from './lib/tft-pro-history.mjs';
 
 async function fetchRenderedHtml(title) {
   return liquipediaHtml(title);
@@ -366,14 +392,35 @@ export function markDeepTargets(pros, { maxDeep = 10, force = false, now = Date.
   return new Set(sorted.slice(0, maxDeep).map((p) => p.source_page));
 }
 
-async function loadPros() {
-  const url = `${SUPA_URL}/rest/v1/tft_pro_players?source=eq.liquipedia&select=id,puuid,pro_name,source_page,last_enriched_at,last_history_enriched_at,last_tournament_at,tpc_verified&order=pro_name.asc`;
-  const res = await fetch(url, {
-    headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` },
-  });
-  if (!res.ok) throw new Error(`Supabase load failed: HTTP ${res.status}`);
-  return res.json();
+// Alle Zeilen einer Abfrage, seitenweise (PostgREST liefert hoechstens 1000).
+async function supaGetAll(pathAndQuery) {
+  const out = [];
+  for (let from = 0; ; from += 1000) {
+    const res = await fetch(`${SUPA_URL}/rest/v1/${pathAndQuery}`, {
+      headers: {
+        apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`,
+        'Range-Unit': 'items', Range: `${from}-${from + 999}`,
+      },
+      signal: AbortSignal.timeout(DB_TIMEOUT_MS),
+    });
+    if (!res.ok) throw new Error(`Supabase load failed: HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
+    const page = await res.json();
+    out.push(...page);
+    if (page.length < 1000) return out;
+  }
 }
+
+// hist_src/hist_read_at: Quelle und Lesezeitpunkt des ersten Listeneintrags —
+// sagt, ob die Liste schon aus dem Historie-Modus stammt, ohne alle Listen
+// (bis ~100 Eintraege je Pro) zu laden.
+async function loadPros() {
+  return supaGetAll('tft_pro_players?source=eq.liquipedia'
+    + '&select=id,puuid,pro_name,source_page,last_enriched_at,last_history_enriched_at,last_tournament_at,tpc_verified,'
+    + 'hist_src:tournament_results->0->>src,hist_read_at:tournament_results->0->>read_at'
+    + '&order=id.asc');
+}
+
+const inList = (values) => `in.(${values.map((v) => `"${String(v).replace(/"/g, '\\"')}"`).join(',')})`;
 
 async function updatePro(pro, patch) {
   // id-keyed (CN wave): puuid=eq.null would be a silent 200/0-rows no-op for
@@ -388,11 +435,242 @@ async function updatePro(pro, patch) {
       Prefer: 'return=minimal',
     },
     body: JSON.stringify(patch),
+    signal: AbortSignal.timeout(DB_TIMEOUT_MS),
   });
   if (!res.ok) {
     const body = await res.text();
     throw new Error(`Supabase update failed for ${pro.pro_name}: HTTP ${res.status} ${body.slice(0, 200)}`);
   }
+}
+
+// ─── Historie-Modus (--history) ─────────────────────────────────────────
+
+const DAY_MS = 86_400_000;
+
+// Schreibfehler sind getrennt gezaehlt: sie heissen "Datenbank kaputt", nicht
+// "eine Seite war seltsam" — nach mehr als 3 bricht der Lauf ab.
+class WriteError extends Error {}
+
+/**
+ * Pro-ids, deren Liste veraltet ist: ein verknuepftes Turnier fehlt darin und
+ * endete nach (Lesezeitpunkt − 14 Tage). D7 Stufe 2.
+ */
+async function loadNewerIds(pros) {
+  const listed = pros.filter((p) => p.hist_src === 'results' && p.puuid && p.hist_read_at);
+  const reads = listed.map((p) => Date.parse(p.hist_read_at)).filter(Number.isFinite);
+  if (!reads.length) return new Set();
+  const cutoff = new Date(Math.min(...reads) - LIST_GRACE_DAYS * DAY_MS).toISOString().slice(0, 10);
+  const tours = await supaGetAll('tft_tournaments?select=id,liquipedia_page,start_date,end_date'
+    + `&or=(end_date.gte.${cutoff},and(end_date.is.null,start_date.gte.${cutoff}))&order=id.asc`);
+  if (!tours.length) return new Set();
+  // Ohne Enddatum zaehlt der Start (laufendes oder eintaegiges Turnier).
+  const tourById = new Map(tours.map((t) => [String(t.id), { page: t.liquipedia_page, end: t.end_date || t.start_date }]));
+  const byPuuid = new Map();
+  const add = (puuid, tid) => {
+    const tour = tourById.get(String(tid));
+    if (!puuid || !tour) return;
+    if (!byPuuid.has(puuid)) byPuuid.set(puuid, []);
+    byPuuid.get(puuid).push(tour);
+  };
+  for (const ids of chunk([...tourById.keys()], 100)) {
+    const rows = await supaGetAll(`tft_tournament_results?select=tournament_id,pro_puuid&pro_puuid=not.is.null&tournament_id=${inList(ids)}`);
+    for (const r of rows) add(r.pro_puuid, r.tournament_id);
+    const links = await supaGetAll(`tft_tournament_player_links?select=tournament_id,puuid&tournament_id=${inList(ids)}`);
+    for (const l of links) add(l.puuid, l.tournament_id);
+  }
+  const candidates = listed.filter((p) => byPuuid.has(p.puuid));
+  const out = new Set();
+  for (const ids of chunk(candidates.map((p) => p.id), 50)) {
+    const full = await supaGetAll(`tft_pro_players?select=id,puuid,tournament_results&id=${inList(ids)}`);
+    for (const f of full) {
+      if (newerTablePages(f.tournament_results, byPuuid.get(f.puuid) || []).length) out.add(f.id);
+    }
+  }
+  return out;
+}
+
+/**
+ * Ein Pro: <Seite>/Results frisch lesen, pruefen, schreiben.
+ * @returns {'ok'|'missing'|'implausible'}
+ */
+async function historyOne(pro, { canonical, aliases }) {
+  const readAt = new Date().toISOString();
+  let oldList = [];
+  let storedTotal = null;
+  if (!SKIP_SUPABASE) {
+    const [detail] = await supaGetAll(`tft_pro_players?select=tournament_results,total_earnings_usd&${proRowFilter(pro)}`);
+    oldList = Array.isArray(detail?.tournament_results) ? detail.tournament_results : [];
+    storedTotal = detail?.total_earnings_usd == null ? null : Number(detail.total_earnings_usd);
+  }
+  const stampOnly = async () => {
+    if (SKIP_SUPABASE) return;
+    try { await updatePro(pro, { last_history_enriched_at: readAt }); } catch (e) { throw new WriteError(e.message); }
+  };
+
+  // Hauptseite fehlt (resolveTitles → null) oder Results-Seite fehlt (404 /
+  // missingtitle): nur stempeln, Liste bleibt. Der Pro rotiert dann mit den
+  // aeltesten statt jede Woche vorne zu stehen.
+  const page = canonical
+    ? await withTimeout(fetchHtmlFresh(`${canonical}/Results`), STEP_TIMEOUT_MS, `${canonical}/Results`)
+    : null;
+  if (!page) {
+    console.log(`  ${pro.pro_name}: keine Results-Seite${canonical ? '' : ' (Hauptseite fehlt)'} — nur gestempelt`);
+    await stampOnly();
+    return 'missing';
+  }
+
+  const parsed = parseResultsHtml(page.html, { playerName: canonical, aliases: [...aliases, pro.pro_name] });
+  const check = checkPlausible(parsed, oldList.length);
+  if (!check.ok) {
+    console.warn(`  [unplausibel] ${pro.pro_name}: ${check.reason} — Liste unveraendert, nur gestempelt`);
+    await stampOnly();
+    return 'implausible';
+  }
+  const entries = buildHistoryEntries(parsed.rows, readAt);
+
+  // Preisgeld (D8-B): Hauptseite nur lesen, wenn sich bezahlte Eintraege
+  // geaendert haben oder kein Wert da ist. Wirft der Abruf, wird NICHTS
+  // geschrieben — sonst stuende eine neue Liste neben einer alten Summe.
+  let earnings;
+  let earningsSrc = 'unveraendert';
+  if (needsInfobox(oldList, entries, storedTotal)) {
+    const main = await withTimeout(fetchHtmlFresh(canonical), STEP_TIMEOUT_MS, canonical);
+    const infobox = main ? extractTotalWinnings(main.html) : null;
+    earnings = decideEarnings({ infoboxFetched: true, infobox, listSum: listPrizeSum(entries) });
+    earningsSrc = infobox !== null && infobox > 0 ? 'Infobox' : (earnings !== undefined ? 'Listensumme (Infobox unlesbar)' : 'unveraendert (kein Wert)');
+  }
+
+  const wins = entries.filter((e) => e.win).length;
+  console.log(`  ${pro.pro_name}${canonical !== pro.source_page ? ` (→ ${canonical})` : ''}: `
+    + `${entries.length} Eintraege (vorher ${oldList.length}), ${wins} Siege, `
+    + `Preisgeld ${earnings ?? storedTotal ?? '—'} [${earningsSrc}]`
+    + (aliases.length ? `, Aliase ${aliases.join('/')}` : ''));
+  if (VERBOSE) console.log('    erste:', entries.slice(0, 3));
+
+  if (!SKIP_SUPABASE) {
+    const patch = { tournament_results: entries, last_history_enriched_at: readAt };
+    if (earnings !== undefined) patch.total_earnings_usd = earnings;
+    try { await updatePro(pro, patch); } catch (e) { throw new WriteError(e.message); }
+  }
+  return 'ok';
+}
+
+async function historyMain() {
+  const t0 = Date.now();
+  console.log('=== TFT Pro-Historie (Results-Seiten) ===\n');
+
+  // Sperre zuerst: ohne Cache wuerde jeder Abruf sofort scheitern.
+  const cd = cooldownStatus();
+  if (cd.active) {
+    console.error(`Liquipedia-Sperre aktiv bis ${new Date(cd.until).toISOString()} (noch ${cd.minutesRemaining} min) — Abbruch.`);
+    return 1;
+  }
+
+  let pros;
+  if (SINGLE_PLAYER) {
+    pros = [{ id: null, pro_name: SINGLE_PLAYER, source_page: SINGLE_PLAYER }];
+    if (!SKIP_SUPABASE) {
+      const all = await loadPros();
+      const hit = all.find((p) => [p.pro_name, p.source_page].some((s) => String(s || '').toLowerCase() === SINGLE_PLAYER.toLowerCase()));
+      if (!hit) { console.error(`--player ${SINGLE_PLAYER}: kein Liquipedia-Pro mit diesem Namen/dieser Seite`); return 1; }
+      pros = [hit];
+    }
+  } else if (SKIP_SUPABASE) {
+    console.error('Historie-Modus ohne Datenbank braucht --player <Name>.');
+    return 1;
+  } else {
+    const all = await loadPros();
+    if (ONLY_PROS.length) {
+      const wanted = new Map(ONLY_PROS.map((s) => [s.toLowerCase(), s]));
+      pros = all.filter((p) => p.source_page
+        && [p.pro_name, p.source_page].some((s) => wanted.has(String(s || '').toLowerCase())));
+      const found = new Set(pros.flatMap((p) => [p.pro_name, p.source_page].map((s) => String(s || '').toLowerCase())));
+      const notFound = [...wanted.keys()].filter((k) => !found.has(k)).map((k) => wanted.get(k));
+      if (notFound.length) console.warn(`WARNUNG: nicht gefunden: ${notFound.join(', ')}`);
+      console.log(`${all.length} Liquipedia-Pros, --pros → ${pros.length}`);
+    } else {
+      const newerIds = await loadNewerIds(all);
+      const pick = selectHistoryTargets(all, { newerIds, max: MAX_PER_RUN });
+      pros = pick.selected;
+      console.log(`${all.length} Liquipedia-Pros: nie geholt ${pick.groups.never}, neuere Turniere ${pick.groups.newer}, `
+        + `rotierend ${pick.groups.oldest} → ${pros.length} in diesem Lauf (--max ${MAX_PER_RUN})`
+        + (pick.deferred ? `, ${pick.deferred} spaeter` : ''));
+    }
+  }
+  if (LIMIT > 0) pros = pros.slice(0, LIMIT);
+  if (!pros.length) { console.log('Nichts zu tun.'); return 0; }
+
+  // Seitennamen aufloesen (Unterseiten wandern bei Weiterleitungen nicht mit)
+  // und Aliase holen — beides gebuendelt, kein parse-Abruf.
+  let canonicalOf = new Map();
+  let aliasesOf = new Map();
+  try {
+    // Ein Abruf je 50 Titel — Zeitlimit entsprechend vervielfacht.
+    const batchMs = (n) => STEP_TIMEOUT_MS * Math.max(1, Math.ceil(n / 50));
+    const titles = pros.map((p) => p.source_page);
+    canonicalOf = await withTimeout(resolveTitles(titles), batchMs(titles.length), 'Seitennamen aufloesen');
+    const canon = [...new Set([...canonicalOf.values()].filter(Boolean))];
+    aliasesOf = canon.length ? await withTimeout(fetchRedirectAliases(canon), batchMs(canon.length), 'Aliase') : new Map();
+  } catch (e) {
+    if (e instanceof LiquipediaCooldownError) { console.error(`Liquipedia-Sperre: ${e.message}`); return 1; }
+    if (e instanceof StepTimeoutError) { console.error(`${e.message} — Abbruch.`); return 1; }
+    console.warn(`WARNUNG: Seitennamen/Aliase nicht aufloesbar (${e.message}) — nehme source_page wie gespeichert`);
+    canonicalOf = new Map(pros.map((p) => [p.source_page, p.source_page]));
+  }
+
+  const counts = { ok: 0, missing: 0, implausible: 0, errors: 0, writeErrors: 0 };
+  let attempted = 0;
+  let stopped = null;
+  for (const pro of pros) {
+    if (DEADLINE_MIN > 0 && Date.now() - t0 > DEADLINE_MIN * 60_000) {
+      stopped = `Zeitgrenze ${DEADLINE_MIN} min erreicht — ${pros.length - attempted} Pros auf den naechsten Lauf`;
+      break;
+    }
+    attempted++;
+    const canonical = canonicalOf.has(pro.source_page) ? canonicalOf.get(pro.source_page) : pro.source_page;
+    if (canonical && canonical !== pro.source_page) {
+      console.log(`  Hinweis: source_page "${pro.source_page}" leitet weiter auf "${canonical}"`);
+    }
+    try {
+      const r = await historyOne(pro, { canonical, aliases: canonical ? (aliasesOf.get(canonical) || []) : [] });
+      counts[r]++;
+    } catch (e) {
+      if (e instanceof LiquipediaCooldownError) {
+        console.error(`Liquipedia-Sperre (429) bei ${pro.pro_name}: ${e.message} — Abbruch.`);
+        counts.errors++;
+        stopped = 'Sperre';
+        break;
+      }
+      if (e instanceof StepTimeoutError) {
+        // Anhalten: der haengende Abruf laeuft weiter (siehe STEP_TIMEOUT_MS).
+        console.error(`  [Zeitlimit] ${pro.pro_name}: ${e.message} — Abbruch.`);
+        counts.errors++;
+        stopped = 'Zeitlimit';
+        break;
+      }
+      if (e instanceof WriteError) {
+        counts.writeErrors++;
+        console.warn(`  [Schreibfehler] ${pro.pro_name}: ${e.message}`);
+        if (counts.writeErrors > 3) { stopped = 'mehr als 3 Schreibfehler'; break; }
+        continue;
+      }
+      counts.errors++;
+      console.warn(`  [Fehler] ${pro.pro_name}: ${e.message}`);
+    }
+  }
+
+  const secs = Math.round((Date.now() - t0) / 1000);
+  console.log(`\nFertig nach ${secs} s: ${attempted}/${pros.length} versucht — ok ${counts.ok}, ohne Results-Seite ${counts.missing}, `
+    + `unplausibel ${counts.implausible}, Fehler ${counts.errors}, Schreibfehler ${counts.writeErrors}`
+    + (stopped ? `. Abgebrochen: ${stopped}` : ''));
+
+  if (stopped === 'Sperre' || stopped === 'Zeitlimit' || counts.writeErrors > 3) return 1;
+  const failed = counts.errors + counts.implausible + counts.writeErrors;
+  if (attempted > 0 && failed / attempted > 0.2) {
+    console.error(`FEHLERQUOTE ${failed}/${attempted} ueber 20 % — Exit 1`);
+    return 1;
+  }
+  return 0;
 }
 
 // ─── main ────────────────────────────────────────────────────────────────
@@ -418,7 +696,9 @@ async function main() {
     // Tiefe Rotation: die Ausgewaehlten mit der aeltesten Historie bekommen
     // zusaetzlich die /Results-Unterseite. Jeder tiefe Spieler kostet 30s
     // extra, deshalb ein eigener, kleiner Deckel.
-    deepPages = markDeepTargets(pros, { maxDeep: DEEP_MAX_PER_RUN, force: FORCE });
+    // Pros mit Liste aus dem Historie-Modus (src:'results') bekommen hier
+    // keine tiefe Runde — die alte Tabellen-Lesung wuerde sie ueberschreiben.
+    deepPages = markDeepTargets(pros.filter((p) => p.hist_src !== 'results'), { maxDeep: DEEP_MAX_PER_RUN, force: FORCE });
     console.log(
       `${all.length} liquipedia rows, ${pick.totalWithPage} with source_page, `
       + `${pick.staleCount} stale${FORCE ? ' (--force: alle)' : ''} → ${pros.length} in diesem Lauf`
@@ -493,7 +773,10 @@ async function main() {
         }
         // null hiesse "nicht gefunden". Das darf die vorhandene Summe nicht
         // loeschen — siehe extractTotalWinnings.
-        if (total_earnings_usd !== null && total_earnings_usd !== undefined) {
+        // Bei Listen aus dem Historie-Modus gehoert die Summe dem Modus
+        // (frische Infobox, D8-B); die hier gelesene Hauptseite kann aus dem
+        // Cache stammen und aelter sein.
+        if (total_earnings_usd !== null && total_earnings_usd !== undefined && pro.hist_src !== 'results') {
           patch.total_earnings_usd = total_earnings_usd;
         }
         await updatePro(pro, patch);
@@ -527,5 +810,12 @@ async function main() {
 const invokedDirectly = process.argv[1]
   && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (invokedDirectly) {
-  main().catch((err) => { console.error('FAIL:', err.message); console.error(err.stack); process.exit(1); });
+  // process.exit am Ende: ein per Zeitlimit verlassener Abruf liefe sonst
+  // weiter und hielte den Prozess offen.
+  (HISTORY ? historyMain() : main().then(() => 0))
+    .then((code) => process.exit(code ?? 0))
+    .catch((err) => {
+      if (err instanceof LiquipediaCooldownError) console.error(`Liquipedia-Sperre: ${err.message}`);
+      console.error('FAIL:', err.message); console.error(err.stack); process.exit(1);
+    });
 }

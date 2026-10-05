@@ -100,6 +100,7 @@ import { loadSetStartDate, daysSinceSetStart } from './lib/current-set.mjs';
 import { fetchD2PlusEntriesDetailed, splitByActivity, rankChallengers } from './lib/tft-league-entries.mjs';
 import { assertContracts } from './lib/contracts.mjs';
 import { formatTimings, resetTimings, timingEnabled } from './lib/perf-timing.mjs';
+import { parseStopAt, msUntilUtc } from './lib/stop-at.mjs';
 
 // Env MUSS vor den Konstanten geladen sein. Bis 2026-08-04 stand der Aufruf
 // erst hinter dem Args-Block — Konstanten wie MV_MATCH_CONCURRENCY oder
@@ -233,6 +234,16 @@ const NEWCOMER_CAP = parseInt(arg('--newcomer-cap', '300'), 10);
 // Einzelabfragen fuer Spieler, die aus allen vollstaendig geladenen Listen
 // verschwunden sind (abgestiegen). Gedeckelt, Challenger zuerst.
 const PHANTOM_CAP = parseInt(arg('--phantom-cap', '1500'), 10);
+// Zeitgrenze (HH:MM, UTC): ab dann wie bei SIGTERM — die laufende Region endet
+// sauber, der Resume-Puffer bleibt, die naechste Nacht macht weiter. Haelt den
+// Lauf aus dem Fenster des Daily-Crawls, der ihn sonst erst nach bis zu 4 h
+// Warten stoppt (seit 2026-09-28 jede Nacht, Crawl startete dadurch 4 h spaeter).
+const STOP_AT_ARG = arg('--stop-at', null);
+const STOP_AT = STOP_AT_ARG == null ? null : parseStopAt(STOP_AT_ARG);
+if (STOP_AT_ARG != null && !STOP_AT) {
+  console.error(`Invalid --stop-at ${STOP_AT_ARG}, expected HH:MM (UTC)`);
+  process.exit(1);
+}
 
 if (!Number.isFinite(MAX_IDS) || MAX_IDS < 1 || MAX_IDS > 1000) {
   console.error(`Invalid --max-ids ${MAX_IDS}, expected 1..1000`);
@@ -481,11 +492,18 @@ pool.on('error', (e) => console.error(`DB-Verbindung verworfen: ${e.message}`));
 let lastCleanupSet = null;
 
 let aborting = false;
-process.on('SIGTERM', () => {
+function requestAbort(msg) {
   if (aborting) return;
   aborting = true;
-  console.log('\n  [signal] SIGTERM — finishing current region, then exiting (cursor preserved)');
-});
+  console.log(msg);
+}
+process.on('SIGTERM', () => requestAbort('\n  [signal] SIGTERM — finishing current region, then exiting (cursor preserved)'));
+if (STOP_AT) {
+  const ms = msUntilUtc(STOP_AT);
+  // unref: der Zeitgeber haelt einen vorher fertigen Lauf nicht am Leben.
+  setTimeout(() => requestAbort(`\n  [stop-at] ${STOP_AT_ARG} UTC erreicht — Abbruch, Puffer bleibt (laufende Region endet sauber)`), ms).unref();
+  console.log(`  [stop-at] Abbruch um ${STOP_AT_ARG} UTC, in ${Math.round(ms / 60_000)} min`);
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Lauf-Tag: EINMAL beim Prozessstart eingefroren

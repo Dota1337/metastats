@@ -40,7 +40,11 @@ TimeoutStartSec=infinity
 # Graceful-stop headroom: der Child fängt SIGTERM und schließt die aktuelle
 # Region sauber ab (= Backup-Table erhalten, kein partial-Snapshot-Salat).
 TimeoutStopSec=600
-ExecStart=/usr/bin/node scripts/daily-marketvalue-snapshot.mjs --region all
+# --newcomer-cap 1000: Rueckstand an Neueinsteigern (vn2) abbauen, stand vorher
+# nur in einer Zusatzdatei auf der Box (newcomer.conf, 2026-09-27).
+# --stop-at 05:15 (UTC): der Lauf endet vor dem Daily-Crawl (05:45 UTC) selbst,
+# statt jede Nacht erst nach dessen 4-h-Warten gestoppt zu werden. Puffer bleibt.
+ExecStart=/usr/bin/node scripts/daily-marketvalue-snapshot.mjs --region all --newcomer-cap 1000 --stop-at 05:15
 StandardOutput=journal
 StandardError=journal
 Nice=10

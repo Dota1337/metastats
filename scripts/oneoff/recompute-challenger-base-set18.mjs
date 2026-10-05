@@ -26,6 +26,12 @@ import pg from 'pg';
 import { computeBaseValue } from '../lib/tft-marketvalue.mjs';
 import { loadCurrentSet } from '../lib/current-set.mjs';
 
+// Gesperrt seit 2026-10-05: Lief am 04.10. Ein neuer Lauf wuerde die von
+// reladder-challenger-pre0927-set18.mjs geschaetzten Plaetze (Marker
+// "estimated") auf den hoechsten echten Wert deckeln und Werte verfaelschen.
+console.error('Gesperrt: lief am 2026-10-04; ein neuer Lauf wuerde die Plaetze aus reladder-challenger-pre0927-set18.mjs deckeln.');
+process.exit(1);
+
 const args = process.argv.slice(2);
 const APPLY = args.includes('--apply');
 const SET = Number(args.includes('--set') ? args[args.indexOf('--set') + 1] : loadCurrentSet());

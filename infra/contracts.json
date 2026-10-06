@@ -412,10 +412,9 @@
       "owner": "metastats-daily-crawl.service",
       "type": "patch-axis",
       "backend": "supabase",
-      "armed": false,
       "tables": ["tft_daily_crawl_meta", "tft_daily_comp_outcome"],
       "days": 14,
-      "note": "Tragen die Tageszeilen der letzten 14 abgeschlossenen Fenstertage den Patch-Namen, den der Terminplan in public/tft-set.json (patchStarts/patchCuts) fuer den Tag vorgibt? Am 23./24.09.2026 stand 18.2b statt 18.3/18.3b, weil der Name am LoL-Versionsstand hing - Frische und Zeilenzahl waren dabei gruen. Uebersprungen: Tage ohne verlaesslichen Terminplan (Rueckfall auf latestPatch, Plan unstimmig oder zu Ende), Zeilen aus einem anderen Set und der ganze Lauf, solange scripts/relabel-tft-bpatch.mjs umbenennt (DB-Sperre oder Statusdatei 'running'). armed:false = laeuft nur mit und meldet 'waere ...'; scharf erst nach dem Negativtest der Datenkorrektur (Plan Schritt 15), dann armed entfernen (die Kennung steht schon im Treiber crawl-allranks-all-regions.mjs, nach der Schluss-Umbenennung). Rot heisst: Statistiken eines Tages stehen unter dem falschen Patch - erst Terminplan pruefen (node scripts/detect-tft-patch-schedule.mjs), dann umbenennen."
+      "note": "Tragen die Tageszeilen der letzten 14 abgeschlossenen Fenstertage den Patch-Namen, den der Terminplan in public/tft-set.json (patchStarts/patchCuts) fuer den Tag vorgibt? Am 23./24.09.2026 stand 18.2b statt 18.3/18.3b, weil der Name am LoL-Versionsstand hing - Frische und Zeilenzahl waren dabei gruen. Uebersprungen: Tage ohne verlaesslichen Terminplan (Rueckfall auf latestPatch, Plan unstimmig oder zu Ende), Zeilen aus einem anderen Set und der ganze Lauf, solange scripts/relabel-tft-bpatch.mjs umbenennt (DB-Sperre oder Statusdatei 'running'). Scharf seit 2026-10-06, nach der Datenkorrektur vom selben Tag (Kennung im Treiber crawl-allranks-all-regions.mjs, nach der Schluss-Umbenennung). Rot heisst: Statistiken eines Tages stehen unter dem falschen Patch - erst Terminplan pruefen (node scripts/detect-tft-patch-schedule.mjs), dann umbenennen."
     },
 
     {

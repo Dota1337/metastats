@@ -11,7 +11,7 @@
     "tables": 36,
     "rpcs": 29,
     "files": 14,
-    "edges": 492,
+    "edges": 493,
     "unused": 7,
     "unresolved": 1
   },
@@ -1609,6 +1609,11 @@
       "label": "snapshot-bundle"
     },
     {
+      "id": "blob:tft-img",
+      "kind": "blob",
+      "label": "tft-img (Bilder-Kopie)"
+    },
+    {
       "id": "box:hetzner",
       "kind": "box",
       "label": "Hetzner-Box"
@@ -2594,6 +2599,11 @@
       "from": "api:/api/homepage-stats",
       "to": "fn:get_tft_available_patches",
       "kind": "calls"
+    },
+    {
+      "from": "api:/api/img/[...p]",
+      "to": "blob:tft-img",
+      "kind": "fetches"
     },
     {
       "from": "api:/api/img/[...p]",

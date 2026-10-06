@@ -83,6 +83,7 @@ const EXTERNALS = [
   { id: 'ext:riot-web', label: 'Riot Web', match: /(teamfighttactics|www)\.leagueoflegends\.com/ },
   { id: 'box:hetzner', label: 'Hetzner-Box', match: /HETZNER_[A-Z_]+|REFRESH_API_TOKEN|refresh\.metastats\.gg/ },
   { id: 'blob:manifest', label: 'snapshot-bundle', match: /lookupSnapshot|SNAPSHOT_MANIFEST_URL/ },
+  { id: 'blob:tft-img', label: 'tft-img (Bilder-Kopie)', match: /TFT_IMG_BLOB_BASE/ },
 ];
 
 // ------------------------------------------------------------------ Marker

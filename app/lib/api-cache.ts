@@ -45,7 +45,9 @@ export const ASSET_CACHE_CONTROL = 'public, s-maxage=1800, stale-while-revalidat
 // Cache-Control streicht, bevor die Antwort den Browser erreicht. Ohne eigenes
 // `max-age` holt jeder Reload alle Icons erneut von der Edge.
 export const IMG_CACHE_CONTROL = 'public, max-age=86400';
-export const IMG_CDN_CACHE_CONTROL = 'public, s-maxage=604800, stale-while-revalidate=86400';
+// `stale-if-error`: liefert die Edge einen Fehler von uns, darf sie eine Woche
+// lang die zuletzt gute Kopie zeigen statt eines kaputten Bildes.
+export const IMG_CDN_CACHE_CONTROL = 'public, s-maxage=604800, stale-while-revalidate=86400, stale-if-error=604800';
 
 // Degradierte Antwort: technisch 200, inhaltlich leer, weil eine Quelle
 // gerade nicht liefert. Der Statuscode allein reicht als Erkennungsmerkmal

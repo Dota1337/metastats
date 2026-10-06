@@ -75,6 +75,16 @@ jobs:
         run: node scripts/fetch-tft-assets.mjs
         continue-on-error: true
 
+      # Neue Bilder des frischen Bundles sofort in die eigene Kopie legen
+      # (scripts/mirror-tft-icons.mjs). Gedeckelt und ohne Einfluss auf den
+      # Rest des Laufs; was fehlt, holt der stuendliche tft-icon-mirror.yml nach.
+      - name: Mirror TFT icons to own storage
+        run: node scripts/mirror-tft-icons.mjs --max-minutes=25
+        timeout-minutes: 30
+        continue-on-error: true
+        env:
+          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
+
       - name: Crawl TFT all-ranks (EUW)
         if: env.RIOT_API_KEY_TFT != ''
         run: node scripts/collect-tft-allranks.mjs --region euw1

@@ -9,6 +9,14 @@
 // Was sie ausdruecklich NICHT kann: die letzte Meile heilen. Bricht der
 // Durchsatz zwischen Nutzer und Vercel ein, ist das Bild genauso langsam.
 //
+// Seit 06.10.2026 liegt eine dauerhafte Kopie aller Bilder in unserem
+// Vercel-Blob-Speicher (`tft-img/<pfad>`, befuellt von
+// scripts/mirror-tft-icons.mjs). Ist `TFT_IMG_BLOB_BASE` gesetzt, fragt die
+// Route zuerst dort und CommunityDragon nur noch fuer Bilder, die bei uns
+// fehlen. Anlass: CommunityDragon antwortete am 06.10. stundenlang mit 522,
+// und jeder Deploy leert Vercels Zwischenspeicher — ohne eigene Kopie fehlten
+// die Bilder. Ruecknahme: Env-Variable leeren, neu deployen.
+//
 // Kein `export const runtime`: die Edge-Runtime ist ab Next 16 deprecated
 // (node_modules/next/dist/docs/.../route-segment-config/runtime.md), Node ist
 // der Default und der richtige Ort fuer einen Streaming-Passthrough.
@@ -27,6 +35,42 @@ const UPSTREAM_TIMEOUT_MS = 5000;
 // etwas Grosses zeigt.
 const MAX_BYTES = 4 * 1024 * 1024;
 
+// Unsere Kopie antwortet in ~0,1 s, auch bei fehlendem Bild (404). Haengt sie
+// laenger als 1,5 s, ist sie gestoert und CommunityDragon bekommt seine Chance.
+const BLOB_TIMEOUT_MS = 1500;
+
+function blobUrlFor(target: string): string | null {
+  const base = process.env.TFT_IMG_BLOB_BASE?.trim().replace(/\/+$/, '');
+  if (!base) return null;
+  return `${base}/tft-img/${target.slice(CDRAGON_GAME_BASE.length)}`;
+}
+
+// Liefert die Antwort nur, wenn sie ein Bild traegt. Das Zeitlimit
+// `headerTimeoutMs` gilt bis zum Eintreffen der Antwort-Kopfzeilen; der Body
+// faellt danach unter den Gesamtdeckel UPSTREAM_TIMEOUT_MS, damit ein
+// kurzes Zeitlimit kein halb uebertragenes Bild abschneidet.
+async function fetchImage(url: string, headerTimeoutMs: number): Promise<Response | null> {
+  const headerTimeout = new AbortController();
+  const timer = setTimeout(() => headerTimeout.abort(), headerTimeoutMs);
+  try {
+    const res = await fetch(url, {
+      signal: AbortSignal.any([headerTimeout.signal, AbortSignal.timeout(UPSTREAM_TIMEOUT_MS)]),
+      // Keine Client-Header nach oben: weder Cookie noch Authorization haben
+      // bei einer oeffentlichen Bildquelle etwas zu suchen, und beide wuerden
+      // die Antwort vom CDN-Cache disqualifizieren.
+      headers: { accept: 'image/*' },
+      cache: 'no-store',
+    });
+    if (res.ok && res.body) return res;
+    await res.body?.cancel().catch(() => {});
+    return null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // Faellt der Proxy aus, soll der Browser genau das tun, was er ohne ihn taete:
 // direkt bei CommunityDragon fragen. Ein 302 ist hier ehrlicher als ein 502 —
 // der Nutzer sieht sein Bild, nur ohne den Umweg. Kurze TTL, damit ein
@@ -44,21 +88,13 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     return new NextResponse('Not found', { status: 404, headers: { 'Cache-Control': 'public, max-age=300' } });
   }
 
-  let upstream: Response;
-  try {
-    upstream = await fetch(target, {
-      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
-      // Keine Client-Header nach oben: weder Cookie noch Authorization haben
-      // bei einer oeffentlichen Bildquelle etwas zu suchen, und beide wuerden
-      // die Antwort vom CDN-Cache disqualifizieren.
-      headers: { accept: 'image/*' },
-      cache: 'no-store',
-    });
-  } catch {
-    return passthrough(target);
-  }
-
-  if (!upstream.ok || !upstream.body) return passthrough(target);
+  // Kein Schreiben aus der Route: die Kopie befuellt allein der Job. Sonst
+  // koennte ein einzelner Besucher-Abruf ein halbes oder falsches Bild
+  // dauerhaft ablegen.
+  const blobUrl = blobUrlFor(target);
+  const fromBlob = blobUrl ? await fetchImage(blobUrl, BLOB_TIMEOUT_MS) : null;
+  const upstream = fromBlob ?? (await fetchImage(target, UPSTREAM_TIMEOUT_MS));
+  if (!upstream?.body) return passthrough(target);
 
   const declared = Number(upstream.headers.get('content-length') ?? '0');
   if (declared > MAX_BYTES) return passthrough(target);
@@ -78,6 +114,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   // Purge-Knopf. Ohne ihn gibt es bei einem Patch nur zwei Hebel: warten oder
   // neu deployen. Kostet nichts, wenn er nie benutzt wird.
   res.headers.set('Vercel-Cache-Tag', 'tft-img');
+  res.headers.set('X-Img-Source', fromBlob ? 'blob' : 'cdragon');
   if (declared > 0) res.headers.set('Content-Length', String(declared));
   return res;
 }

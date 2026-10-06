@@ -792,6 +792,19 @@
       "onPush": false
     },
     {
+      "file": "tft-icon-mirror.yml",
+      "name": "TFT-Bilder-Kopie",
+      "schedule": [
+        "23 * * * *",
+        "40 3 * * 4"
+      ],
+      "scripts": [
+        "scripts/mirror-tft-icons.mjs"
+      ],
+      "manualDispatch": true,
+      "onPush": false
+    },
+    {
       "file": "tft-player-cache-prewarm.yml",
       "name": "TFT Player Cache Pre-Warm",
       "schedule": [
@@ -864,6 +877,7 @@
         "scripts/refresh-augment-stages.mjs",
         "scripts/refresh-patch-notes.mjs",
         "scripts/fetch-tft-assets.mjs",
+        "scripts/mirror-tft-icons.mjs",
         "scripts/collect-tft-allranks.mjs",
         "scripts/build-tft-knowledge-graph.mjs",
         "scripts/fetch-tft-tier-distribution.mjs"

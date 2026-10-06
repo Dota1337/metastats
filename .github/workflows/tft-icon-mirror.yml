@@ -1,0 +1,56 @@
+name: TFT-Bilder-Kopie
+
+# Haelt die eigene Kopie aller TFT-Bilder im Vercel-Blob-Speicher vollstaendig
+# (scripts/mirror-tft-icons.mjs). Der Bild-Weiterleiter /api/img liest zuerst
+# dort; fehlt ein Bild, faellt er auf CommunityDragon zurueck.
+#
+# Stuendlich, weil neue Bilder mit jeder Datei-Aktualisierung (Wochenlauf,
+# Comps, B-Patch) auftauchen koennen und CommunityDragon zeitweise ausfaellt —
+# ein Lauf ohne fehlende Bilder ist nach dem Auflisten (3 Aufrufe) fertig.
+# Donnerstags nach dem Patch-Mittwoch zusaetzlich `--refresh`: CDragon
+# `latest` kann unter gleichem Pfad neue Bytes liefern.
+#
+# Schreibt nichts ins Repo, deshalb nur Lese-Rechte.
+
+on:
+  schedule:
+    - cron: '23 * * * *'
+    - cron: '40 3 * * 4'
+  workflow_dispatch:
+    inputs:
+      refresh:
+        description: 'Aktuelles Bundle neu holen und geaenderte Bilder ersetzen'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tft-icon-mirror
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci --no-audit --no-fund
+
+      - name: Bilder kopieren
+        env:
+          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
+          REFRESH: ${{ github.event.schedule == '40 3 * * 4' || inputs.refresh == true }}
+        run: |
+          if [ "$REFRESH" = "true" ]; then
+            node scripts/mirror-tft-icons.mjs --refresh --max-minutes=50
+          else
+            node scripts/mirror-tft-icons.mjs --max-minutes=50
+          fi

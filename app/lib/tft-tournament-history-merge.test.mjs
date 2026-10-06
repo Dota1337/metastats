@@ -106,6 +106,99 @@ test('Nicht-Pro ohne Liste: geteilter 1. Platz aus der Tabelle ist kein Sieg', (
   assert.equal(h.earningsUsd, null);
 });
 
+const EW = 'Enchanted_Wilds/TFT_Pro_Circuit/EMEA/Elderwood_Cup';
+function award(tid, prize, over = {}) {
+  return { tournament_id: tid, award: '1 Win Bounty', pro_name: 'Loescher', place_name: 'Loescher', prize_usd: prize, ...over };
+}
+
+test('Bonus haengt am Listeneintrag; Liquipedia-Summe bleibt unveraendert', () => {
+  const tours = new Map([['ew', tour(EW, '2026-09-19', 'B', 'Elderwood Cup')]]);
+  const h = mergeTournamentHistory({
+    json: [listEntry({ title: EW, page: `${L}${EW}`, placement: 15, place: '15th', prize_usd: 700 })],
+    totalEarningsUsd: 27730,
+    rows: [{ tournament_id: 'ew', placement: 15, placement_max: null, pro_name: 'Loescher', prize_usd: 700, prize_native: null, prize_currency: null }],
+    tours,
+    awards: [award('ew', 100)],
+  });
+  assert.equal(h.entries.length, 1);
+  assert.equal(h.entries[0].prizeUsd, 700);
+  assert.equal(h.entries[0].bonusUsd, 100);
+  assert.equal(h.earningsUsd, 27730);
+});
+
+test('Bonus ohne Gesamtsumme zaehlt zur Listensumme; zwei Boni je Turnier addiert', () => {
+  const tours = new Map([['ew', tour(EW, '2026-09-19')]]);
+  const h = mergeTournamentHistory({
+    json: [listEntry({ title: EW, page: `${L}${EW}`, prize_usd: 700 })],
+    totalEarningsUsd: null, rows: [], tours,
+    awards: [award('ew', 100), award('ew', 50, { award: 'MVP' }), award('ew', null, { award: 'Leer' })],
+  });
+  assert.equal(h.entries[0].bonusUsd, 150);
+  assert.equal(h.earningsUsd, 850);
+});
+
+test('Bonus an ergaenzter Tabellenzeile zaehlt mit', () => {
+  const tours = new Map([['new', tour('Neu/Cup', '2026-09-30', 'B')]]);
+  const h = mergeTournamentHistory({
+    json: [listEntry({ prize_usd: 100 })],
+    totalEarningsUsd: 1000,
+    rows: [{ tournament_id: 'new', placement: 3, placement_max: null, pro_name: 'A', prize_usd: 500, prize_native: null, prize_currency: null }],
+    tours,
+    awards: [award('new', 100)],
+  });
+  assert.equal(h.entries.find(e => e.tournament === 'Neu/Cup').bonusUsd, 100);
+  assert.equal(h.earningsUsd, 1000 + 500 + 100);
+});
+
+test('Bonus ohne Platz: eigene Zeile ohne Platz; neu zaehlt dazu, alt steckt in der Summe', () => {
+  const tours = new Map([
+    ['neu', tour('Neu/Cup', '2026-09-30', 'B')],
+    ['alt', tour('Alt/Cup', '2026-03-01', 'B')],
+    ['weg', tour('Weg/Cup', '2026-09-30', 'B')],
+  ]);
+  const h = mergeTournamentHistory({
+    json: [listEntry({ prize_usd: 100 })],
+    totalEarningsUsd: 1000, rows: [], tours,
+    awards: [award('neu', 100), award('alt', 50), award('fremd', 75)],
+  });
+  const neu = h.entries.find(e => e.tournament === 'Neu/Cup');
+  assert.equal(neu.place, null);
+  assert.equal(neu.prizeUsd, null);
+  assert.equal(neu.bonusUsd, 100);
+  assert.equal(neu.win, false);
+  assert.equal(neu.href, '/tft/tournaments/neu');
+  assert.equal(h.entries.find(e => e.tournament === 'Alt/Cup').bonusUsd, 50);
+  assert.equal(h.entries.length, 3);            // 'fremd' hat kein Turnier, 'weg' keinen Bonus
+  assert.equal(h.earningsUsd, 1000 + 100);
+});
+
+test('Alte Liste: Bonus an Tabellenzeile und Listeneintrag, Summe mit Bonus', () => {
+  const tours = new Map([
+    ['t1', tour('A/B', '2025-01-01', 'S')],
+    ['t2', tour('C', '2024-01-01', 'A')],
+  ]);
+  const h = mergeTournamentHistory({
+    json: [
+      { tournament: 'A B', date: '2025-01-01', place: '1st', prize_usd: 100, tier: 'S-Tier', page: `${L}A/B` },
+      { tournament: 'C', date: '2024-01-01', place: '3rd', prize_usd: 50, tier: null, page: `${L}C` },
+    ],
+    totalEarningsUsd: 120,
+    rows: [{ tournament_id: 't1', placement: 1, placement_max: null, pro_name: 'P', prize_usd: 100, prize_native: null, prize_currency: null }],
+    tours,
+    awards: [award('t1', 30), award('t2', 20)],
+  });
+  assert.equal(h.entries.length, 2);
+  assert.equal(h.entries.find(e => e.tournament === 'A/B').bonusUsd, 30);
+  assert.equal(h.entries.find(e => e.tournament === 'C').bonusUsd, 20);
+  assert.equal(h.earningsUsd, 100 + 30 + 50 + 20);
+});
+
+test('Ohne Boni bleibt bonusUsd null', () => {
+  const h = mergeTournamentHistory({ json: [listEntry({ prize_usd: 10 })], totalEarningsUsd: null, rows: [], tours: new Map() });
+  assert.equal(h.entries[0].bonusUsd, null);
+  assert.equal(h.earningsUsd, 10);
+});
+
 test('Seitennamen: URL, Leerzeichen, kaputte Kodierung', () => {
   assert.equal(normalizeLiquipediaPage(`${L}Magic_n%27_Mayhem/EMEA`), "magic_n'_mayhem/emea");
   assert.equal(normalizeLiquipediaPage("Magic n' Mayhem/EMEA"), "magic_n'_mayhem/emea");

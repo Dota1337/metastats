@@ -8,10 +8,10 @@
   "counts": {
     "routes": 84,
     "groups": 30,
-    "tables": 35,
+    "tables": 36,
     "rpcs": 29,
     "files": 14,
-    "edges": 490,
+    "edges": 492,
     "unused": 7,
     "unresolved": 1
   },
@@ -1797,6 +1797,12 @@
       "id": "db:tft_public_comps",
       "kind": "table",
       "label": "tft_public_comps",
+      "declared": true
+    },
+    {
+      "id": "db:tft_tournament_awards",
+      "kind": "table",
+      "label": "tft_tournament_awards",
       "declared": true
     },
     {
@@ -3721,6 +3727,11 @@
     },
     {
       "from": "api:/api/tft/player-tournaments",
+      "to": "db:tft_tournament_awards",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/player-tournaments",
       "to": "db:tft_tournament_player_links",
       "kind": "reads"
     },
@@ -4492,6 +4503,11 @@
     {
       "from": "fn:get_tft_team_marketvalues",
       "to": "db:tft_pro_players",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_tournament_detail",
+      "to": "db:tft_tournament_awards",
       "kind": "reads"
     },
     {

@@ -168,7 +168,8 @@ function sb(url, key) {
 
 /**
  * Pass 1: Neu-Umrechnung. `upsert(table, rows, onConflict)` kommt vom Crawler
- * (respektiert --no-supabase). Liefert { tournaments, results, still }.
+ * (respektiert --no-supabase). Liefert { tournaments, results, awards, still }.
+ * Sonderpreise (tft_tournament_awards, 0087) wie die Ergebniszeilen.
  */
 export async function reconvertStored({ url, key, log = console.log }) {
   const { all } = sb(url, key);
@@ -181,6 +182,7 @@ export async function reconvertStored({ url, key, log = console.log }) {
     tourDates.set(t.id, t.end_date || t.start_date || null);
   }
   const results = await all(`tft_tournament_results?select=tournament_id,placement,pro_name,prize_native,prize_currency,prize_usd${fxCol}&prize_native=not.is.null&prize_currency=not.is.null&prize_currency=not.in.(MIXED,USD)&order=tournament_id,placement,pro_name`);
+  const awards = await all('tft_tournament_awards?select=tournament_id,award,pro_name,prize_native,prize_currency,prize_usd,fx_source&prize_native=not.is.null&prize_currency=not.is.null&prize_currency=not.in.(MIXED,USD)&order=tournament_id,award,pro_name');
 
   const due = r => r.prize_usd == null || /provisional/.test(r.fx_source || '') || r.fx_source == null;
   const conv = async (native, cur, date) => {
@@ -207,6 +209,16 @@ export async function reconvertStored({ url, key, log = console.log }) {
       prize_usd: c.usd, fx_rate: c.rate, fx_date: c.date, fx_source: c.source,
     });
   }
+  const awardRows = [];
+  for (const r of awards) {
+    if (!due(r)) continue;
+    const c = await conv(r.prize_native, r.prize_currency, tourDates.get(r.tournament_id));
+    if (!c) { still++; continue; }
+    awardRows.push({
+      tournament_id: r.tournament_id, award: r.award, pro_name: r.pro_name,
+      prize_usd: c.usd, fx_rate: c.rate, fx_date: c.date, fx_source: c.source,
+    });
+  }
   // Einzeln je Turnier, damit PATCH-artige Upserts keine Pflichtspalten verlangen:
   // id/PK + geaenderte Felder genuegen bei merge-duplicates auf bestehende Zeilen.
   for (const row of tourRows) await upsertPatch(url, key, 'tft_tournaments', `id=eq.${encodeURIComponent(row.id)}`, row);
@@ -214,8 +226,12 @@ export async function reconvertStored({ url, key, log = console.log }) {
     const f = `tournament_id=eq.${encodeURIComponent(row.tournament_id)}&placement=eq.${row.placement}&pro_name=eq.${encodeURIComponent(row.pro_name)}`;
     await upsertPatch(url, key, 'tft_tournament_results', f, row);
   }
-  log(`  [fx-reconvert] ${tourRows.length} tournaments, ${resRows.length} results converted, ${still} still without rate/date`);
-  return { tournaments: tourRows.length, results: resRows.length, still };
+  for (const row of awardRows) {
+    const f = `tournament_id=eq.${encodeURIComponent(row.tournament_id)}&award=eq.${encodeURIComponent(row.award)}&pro_name=eq.${encodeURIComponent(row.pro_name)}`;
+    await upsertPatch(url, key, 'tft_tournament_awards', f, row);
+  }
+  log(`  [fx-reconvert] ${tourRows.length} tournaments, ${resRows.length} results, ${awardRows.length} awards converted, ${still} still without rate/date`);
+  return { tournaments: tourRows.length, results: resRows.length, awards: awardRows.length, still };
 }
 
 let DRY = false;
@@ -262,7 +278,12 @@ export async function rebuildPlayerLinks({ url, key, upsert, log = console.log }
   const { all, h } = sb(url, key);
   const tours = await all('tft_tournaments?select=id,liquipedia_page&order=id');
   const pageOf = new Map(tours.map(t => [t.id, t.liquipedia_page]));
-  const rows = await all('tft_tournament_results?select=tournament_id,pro_name,country,pro_puuid&order=tournament_id,placement,pro_name');
+  // Sonderpreis-Zeilen (0087) mit: ihre Namen brauchen dieselbe Zuordnung und
+  // duerfen nicht als verwaist gelten.
+  const rows = [
+    ...await all('tft_tournament_results?select=tournament_id,pro_name,country,pro_puuid&order=tournament_id,placement,pro_name'),
+    ...await all('tft_tournament_awards?select=tournament_id,pro_name,country,pro_puuid&order=tournament_id,award,pro_name'),
+  ];
   const pros = await all('tft_pro_players?select=id,pro_name,source_page,puuid&puuid=not.is.null&order=id');
   const proIndex = buildProIndex(pros);
   // Trockenlauf vor der Migration: Tabelle fehlt noch → leer. Scharf: Lesefehler bricht ab.

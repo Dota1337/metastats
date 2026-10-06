@@ -16,9 +16,12 @@
  *   4) Erst schreiben, dann nur Verschwundenes loeschen — und das nur, wenn
  *      Infobox und Prize Pool heil sind. Alles andere landet als [pruefen].
  *
+ *   Sonderpreise (AwardPrizePool, z. B. "1 Win Bounty") gehen nach
+ *   tft_tournament_awards (0087), nicht in die Plaetze.
+ *
  * --repair (D13): alte Turniere ohne Ergebniszeilen, Stapelabruf mit 50 Titeln
- *   je Anfrage. Schreibt nur Ergebniszeilen + num_participants, nie die
- *   Kopfdaten, nie standings_sources, loescht nichts.
+ *   je Anfrage. Schreibt nur Ergebniszeilen, Sonderpreise + num_participants,
+ *   nie die Kopfdaten, nie standings_sources, loescht nichts.
  *
  * Liquipedia: hoechstens 1 Parse-Anfrage je 30 s (Sperre in
  * lib/liquipedia-tft.mjs). Nie von der Hetzner-Box aus starten.
@@ -43,7 +46,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getUsdRate } from './lib/fx-rates.mjs';
-import { reconvertStored, rebuildPlayerLinks, setDryRun } from './lib/tft-tournament-postpass.mjs';
+import { reconvertStored, rebuildPlayerLinks, setDryRun, normName } from './lib/tft-tournament-postpass.mjs';
 import {
   liquipediaJson,
   liquipediaCategoryMembers,
@@ -54,8 +57,8 @@ import {
 import {
   chunk, parseInfobox, unwiki, unwikiTemplateOnly, parseDate, parsePrize, detectPageCurrency,
   deriveStatus, deriveSetNumber, countParticipants, participantsFromInfobox, numericTierToLetter,
-  standingsSources, pageToSlug, extractPrizePoolPlacements, parsePlacementTableHtml,
-  fetchWikitextBatch, fetchHtmlFresh, LiquipediaApiError,
+  standingsSources, pageToSlug, extractPrizePoolPlacements, extractAwards, parsePlacementTableHtml,
+  fetchWikitextBatch, fetchHtmlFresh, LiquipediaApiError, resolveTitles, fetchRedirectAliases,
 } from './lib/tft-tournament-parse.mjs';
 import { normalizePage, withTimeout, StepTimeoutError } from './lib/tft-pro-history.mjs';
 
@@ -194,13 +197,13 @@ export function linkPuuid(row, idx) {
  * @param newRows  geschriebene Zeilen [{ placement, pro_name }]
  * @param intact   Prize Pool heil (extractPrizePoolPlacements.intact)
  * @param infobox  Infobox gefunden
+ * @param keyOf    Schluessel einer Zeile (Boni: award|pro_name)
  * @returns {{ remove: Array, review: Array, reason: string|null }}
  */
-export function planDeletes(stored, newRows, { intact, infobox } = {}) {
-  const key = (placement, name) => `${placement}|${name}`;
-  const fresh = new Set((newRows || []).map(r => key(r.placement, r.pro_name)));
+export function planDeletes(stored, newRows, { intact, infobox, keyOf = r => `${r.placement}|${r.pro_name}` } = {}) {
+  const fresh = new Set((newRows || []).map(keyOf));
   const old = stored || [];
-  const vanished = old.filter(s => !fresh.has(key(s.placement, s.pro_name)));
+  const vanished = old.filter(s => !fresh.has(keyOf(s)));
   if (vanished.length === 0) return { remove: [], review: [], reason: null };
   if (!infobox) return { remove: [], review: vanished, reason: 'keine Infobox' };
   if (intact !== true) return { remove: [], review: vanished, reason: 'Prize Pool nicht heil' };
@@ -313,7 +316,8 @@ function makeDb({ url, key, dry }) {
 async function loadStoredState(db) {
   const withResults = new Set();
   for (const r of await db.getAll('tft_tournament_results?select=tournament_id&order=tournament_id')) withResults.add(r.tournament_id);
-  const tours = await db.getAll('tft_tournaments?select=id,liquipedia_page,status,start_date,end_date,last_validated_at&order=id');
+  // tier/region/set_number: Rueckfall fuer --pages, deren Liste sie nicht kennt.
+  const tours = await db.getAll('tft_tournaments?select=id,liquipedia_page,status,start_date,end_date,last_validated_at,tier,region,set_number&order=id');
   const cutoff = Date.now() - SKIP_GRACE_DAYS * DAY_MS;
   const done = new Map();   // id -> last_validated_at (ms)
   for (const t of tours) {
@@ -493,6 +497,110 @@ async function writeResults(db, results) {
   for (const part of chunk(results, 500)) await db.upsert('tft_tournament_results', part, 'tournament_id,placement,pro_name');
 }
 
+/**
+ * Sonderpreise (0087) -> Zeilen fuer tft_tournament_awards. place_name ist der
+ * Name derselben Person in den Platz-Zeilen der Seite: zuerst ueber die
+ * Liquipedia-Seite, sonst ueber den Namen ohne Gross-/Kleinschreibung und
+ * Leerzeichen — nur bei genau einem Treffer, nie unscharf.
+ */
+export function toAwardRows(id, awards, convertLocal, pageIdx, placeRows) {
+  const none = { usd: null, native: null, currency: null, rate: null, date: null, source: null };
+  const byPage = new Map(), byName = new Map();
+  const add = (m, k, v) => { if (!k) return; if (!m.has(k)) m.set(k, new Set()); m.get(k).add(v); };
+  for (const p of placeRows || []) {
+    add(byPage, normalizePage(p.link || p.proName), p.proName);
+    add(byName, normName(p.proName), p.proName);
+  }
+  const one = (set) => (set && set.size === 1 ? [...set][0] : null);
+  const now = new Date().toISOString();
+  const seen = new Set();
+  const out = [];
+  for (const a of awards || []) {
+    const k = `${a.award}|${a.proName}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    const conv = a.prizeUsdRaw != null
+      ? { usd: a.prizeUsdRaw, native: null, currency: 'USD', rate: null, date: null, source: 'usd' }
+      : (convertLocal(a.prizeLocalRaw) ?? none);
+    out.push({
+      tournament_id: id,
+      award: a.award,
+      pro_name: a.proName,
+      link: a.link ?? null,
+      team: a.team ?? null,
+      country: a.country ?? null,
+      pro_puuid: linkPuuid(a, pageIdx),
+      place_name: one(byPage.get(normalizePage(a.link || a.proName))) ?? one(byName.get(normName(a.proName))),
+      prize_usd: conv.usd,
+      prize_native: conv.native,
+      prize_currency: conv.currency,
+      fx_rate: conv.rate,
+      fx_date: conv.date,
+      fx_source: conv.source,
+      updated_at: now,
+    });
+  }
+  return out;
+}
+
+/**
+ * Zweiter Abgleich fuer Sonderpreise ohne place_name: Platz-Zeilen tragen oft
+ * einen Weiterleitungsnamen ("Dankmemes" → Seite "Dankmemes01"), der Bonus den
+ * echten Seitennamen — oder umgekehrt. Fragt Liquipedia nur fuer die offenen
+ * Boni: echter Seitenname, dann dessen Weiterleitungen. Zuordnung weiter nur
+ * bei genau einer Platz-Zeile. Aendert die Zeilen in place.
+ */
+export async function placeAwardsByRedirect(rows, placeRows, { resolve = resolveTitles, aliases = fetchRedirectAliases } = {}) {
+  const open = (rows || []).filter(r => r.place_name == null);
+  if (!open.length || !placeRows?.length) return rows;
+  const byPage = new Map();
+  for (const p of placeRows) {
+    const k = normalizePage(p.link || p.proName);
+    if (!k) continue;
+    if (!byPage.has(k)) byPage.set(k, new Set());
+    byPage.get(k).add(p.proName);
+  }
+  const titleOf = (r) => String(r.link || r.pro_name || '').trim();
+  const titles = [...new Set(open.map(titleOf).filter(Boolean))];
+  if (!titles.length) return rows;
+  const canon = await resolve(titles);
+  const pages = [...new Set([...canon.values()].filter(Boolean))];
+  const alias = pages.length ? await aliases(pages) : new Map();
+  for (const r of open) {
+    const c = canon.get(titleOf(r));
+    if (!c) continue;
+    const hit = new Set();
+    for (const n of [titleOf(r), c, ...(alias.get(c) || [])]) {
+      for (const name of byPage.get(normalizePage(n)) || []) hit.add(name);
+    }
+    if (hit.size === 1) r.place_name = [...hit][0];
+  }
+  return rows;
+}
+
+// Weiterleitungs-Abgleich darf den Turnier-Lauf nicht kippen: bei Fehlern
+// bleibt place_name leer (Bonus erscheint dann als eigene Zeile), Sperre und
+// Zeitlimit brechen wie ueberall ab.
+async function placeAwardsSafe(rows, placeRows) {
+  try {
+    return await placeAwardsByRedirect(rows, placeRows);
+  } catch (e) {
+    if (stopReason(e)) throw e;
+    console.warn(`  [bonus-zuordnung] ${e.message}`);
+    return rows;
+  }
+}
+
+const awardKey = (r) => `${r.award}|${r.pro_name}`;
+const awardFilter = (id, r) =>
+  `tournament_id=eq.${encodeURIComponent(id)}&award=eq.${encodeURIComponent(r.award)}&pro_name=eq.${encodeURIComponent(r.pro_name)}`;
+
+async function writeAwards(db, awards) {
+  for (const part of chunk(awards, 500)) await db.upsert('tft_tournament_awards', part, 'tournament_id,award,pro_name');
+}
+
+const awardsOf = (wikitext) => extractAwards(wikitext, { teamPrizeMode: TEAM_PRIZE_MODE, ...SET_OPTS });
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Nachlaeufe
 
@@ -557,9 +665,11 @@ async function runCrawl(o, ctx) {
 
   const pageIdx = canRead ? await loadPageIndex(db) : new Map();
   console.log(`  [pro-join] ${pageIdx.size} Liquipedia-Seiten mit Konto\n`);
+  // --pages kennt tier/region/set nicht: gespeicherte Werte statt null.
+  const prevById = o.pages && stored ? new Map(stored.tours.map(t => [t.id, t])) : null;
 
   console.log('[2/3] Fetching + parsing + writing each page …');
-  const st = { attempted: 0, failed: 0, missing: 0, noInfobox: 0, redirectSkipped: 0, fxSkipped: 0, written: 0, results: 0, deleted: 0, review: 0, writeErrors: 0, stopped: null };
+  const st = { attempted: 0, failed: 0, missing: 0, noInfobox: 0, redirectSkipped: 0, fxSkipped: 0, written: 0, results: 0, awards: 0, deleted: 0, review: 0, writeErrors: 0, stopped: null };
   let n = 0;
   for (const s of seed) {
     if (Date.now() >= deadline) { st.stopped = 'Frist'; console.log(`  [frist] --deadline-min ${o.deadlineMin} erreicht, ${seed.length - n} Seiten offen`); break; }
@@ -584,7 +694,7 @@ async function runCrawl(o, ctx) {
       continue;
     }
 
-    let tour, results, ex;
+    let tour, results, ex, aw, awards;
     try {
       const fields = parseInfobox(page.wikitext);
       if (!fields) {
@@ -602,19 +712,21 @@ async function runCrawl(o, ctx) {
       const status = deriveStatus(startDate, endDate);
 
       ex = await extractWithFallback(page.title, page.wikitext);
+      aw = awardsOf(page.wikitext);
       const numParticipants = participantsFromInfobox(fields) || entrantsFromRows(ex.rows) || countParticipants(page.wikitext);
       const price = await priceContext(s.page, page.wikitext, fields, startDate, endDate);
       if (price.fxSkipped) st.fxSkipped++;
+      const prev = prevById?.get(id);
 
       tour = {
         id,
         liquipedia_page: finalTitle,
         name,
         // Seed-tier wins over wiki-tier (wiki stores numeric 1/2/3; our schema uses S/A/B/C).
-        tier: s.tier || numericTierToLetter(fields.liquipediatier),
-        region: s.region || null,
+        tier: s.tier || prev?.tier || numericTierToLetter(fields.liquipediatier),
+        region: s.region || prev?.region || null,
         // Set number from the page itself; seed value only as a fallback.
-        set_number: deriveSetNumber(page.wikitext) || s.setNumber || null,
+        set_number: deriveSetNumber(page.wikitext) || s.setNumber || prev?.set_number || null,
         start_date: startDate,
         end_date: endDate,
         status,
@@ -636,19 +748,34 @@ async function runCrawl(o, ctx) {
       const sources = standingsSources(page.externalLinks);
       if (sources) tour.standings_sources = sources;
       results = toResultRows(id, ex.rows, price.convertLocal, pageIdx);
+      awards = await placeAwardsSafe(toAwardRows(id, aw.rows, price.convertLocal, pageIdx, ex.rows), ex.rows);
     } catch (e) {
       const why = stopReason(e);
       if (why) { st.stopped = why; console.error(`  [abbruch] ${s.page}: ${e.message}`); break; }
       console.warn(`  [skip] ${s.page}: ${e.message}`); st.failed++; continue;
     }
 
-    // Erst schreiben, dann nur Verschwundenes loeschen.
+    // Erst schreiben, dann nur Verschwundenes loeschen. Boni vor den
+    // Ergebniszeilen: die alten Bonus-Plaetze (vor 0a781f4) verschwinden erst,
+    // wenn ihr Ersatz steht.
     try {
       const before = canRead
         ? await db.getAll(`tft_tournament_results?select=placement,pro_name&tournament_id=eq.${encodeURIComponent(id)}&order=placement,pro_name`)
         : [];
+      const awardsBefore = canRead
+        ? await db.getAll(`tft_tournament_awards?select=award,pro_name&tournament_id=eq.${encodeURIComponent(id)}&order=award,pro_name`)
+        : [];
       await db.upsert('tft_tournaments', [tour], 'id');
       await writeResults(db, results);
+      await writeAwards(db, awards);
+      const awardPlan = planDeletes(awardsBefore, awards, { intact: ex.intact && aw.intact, infobox: true, keyOf: awardKey });
+      for (const r of awardPlan.remove) {
+        await db.remove('tft_tournament_awards', awardFilter(id, r));
+        console.log(`  [bonus geloescht]${o.dry ? ' (Trockenlauf)' : ''} ${id} | ${r.award} | ${r.pro_name}`);
+        st.deleted++;
+      }
+      for (const r of awardPlan.review) console.log(`  [pruefen] Bonus nicht geloescht (${awardPlan.reason}): ${id} | ${r.award} | ${r.pro_name}`);
+      st.review += awardPlan.review.length;
       const plan = planDeletes(before, results, { intact: ex.intact, infobox: true });
       for (const r of plan.remove) {
         await db.remove('tft_tournament_results', resultFilter(id, r));
@@ -659,15 +786,16 @@ async function runCrawl(o, ctx) {
       st.review += plan.review.length;
       st.written++;
       st.results += results.length;
+      st.awards += awards.length;
     } catch (e) {
       st.failed++; st.writeErrors++;
       console.warn(`  [write-fail] ${s.page}: ${e.message}`);
       if (st.writeErrors > MAX_WRITE_ERRORS) { st.stopped = 'Schreibfehler'; console.error(`  [abbruch] mehr als ${MAX_WRITE_ERRORS} Schreibfehler`); break; }
       continue;
     }
-    console.log(`  ${n}/${seed.length}  ${s.page}  set=${tour.set_number ?? '—'}  placements=${results.length}  participants=${tour.num_participants ?? '—'}${ex.intact ? '' : '  (nicht heil)'}`);
+    console.log(`  ${n}/${seed.length}  ${s.page}  set=${tour.set_number ?? '—'}  placements=${results.length}${awards.length ? `  boni=${awards.length}` : ''}  participants=${tour.num_participants ?? '—'}${ex.intact && aw.intact ? '' : '  (nicht heil)'}`);
   }
-  console.log(`\n  ${st.written} tournaments, ${st.results} placements, ${st.deleted} geloescht, ${st.review} zu pruefen | fehlt: ${st.missing}, ohne Infobox: ${st.noInfobox}, Weiterleitung: ${st.redirectSkipped}, fx-skip: ${st.fxSkipped}, Fehler: ${st.failed}/${st.attempted}`);
+  console.log(`\n  ${st.written} tournaments, ${st.results} placements, ${st.awards} Boni, ${st.deleted} geloescht, ${st.review} zu pruefen | fehlt: ${st.missing}, ohne Infobox: ${st.noInfobox}, Weiterleitung: ${st.redirectSkipped}, fx-skip: ${st.fxSkipped}, Fehler: ${st.failed}/${st.attempted}`);
   return st;
 }
 
@@ -677,7 +805,7 @@ async function runCrawl(o, ctx) {
 async function runRepair(o, ctx) {
   const { db, canRead } = ctx;
   const today = new Date().toISOString().slice(0, 10);
-  const st = { attempted: 0, failed: 0, missing: 0, noInfobox: 0, redirectSkipped: 0, fxSkipped: 0, written: 0, results: 0, deleted: 0, review: 0, writeErrors: 0, stopped: null };
+  const st = { attempted: 0, failed: 0, missing: 0, noInfobox: 0, redirectSkipped: 0, fxSkipped: 0, written: 0, results: 0, awards: 0, deleted: 0, review: 0, writeErrors: 0, stopped: null };
 
   let tours = [], withResults = new Set();
   if (canRead) ({ tours, withResults } = await loadStoredState(db));
@@ -723,7 +851,7 @@ async function runRepair(o, ctx) {
       continue;
     }
 
-    let results, numParticipants, ex;
+    let results, awards, numParticipants, ex;
     try {
       const wikitext = got.content || '';
       const fields = parseInfobox(wikitext);
@@ -736,6 +864,7 @@ async function runRepair(o, ctx) {
       const price = await priceContext(t.liquipedia_page, wikitext, f, startDate, endDate);
       if (price.fxSkipped) st.fxSkipped++;
       results = toResultRows(t.id, ex.rows, price.convertLocal, pageIdx);
+      awards = await placeAwardsSafe(toAwardRows(t.id, awardsOf(wikitext).rows, price.convertLocal, pageIdx, ex.rows), ex.rows);
     } catch (e) {
       const why = stopReason(e);
       if (why) { st.stopped = why; console.error(`  [abbruch] ${t.liquipedia_page}: ${e.message}`); break; }
@@ -743,20 +872,23 @@ async function runRepair(o, ctx) {
     }
 
     try {
-      // Nur Ergebniszeilen + Teilnehmerzahl; Kopfdaten und standings_sources bleiben.
+      // Nur Ergebniszeilen, Boni + Teilnehmerzahl; Kopfdaten und standings_sources
+      // bleiben, geloescht wird nichts.
       await writeResults(db, results);
+      await writeAwards(db, awards);
       if (numParticipants != null) await db.patch('tft_tournaments', `id=eq.${encodeURIComponent(t.id)}`, { num_participants: numParticipants });
       st.written++;
       st.results += results.length;
+      st.awards += awards.length;
     } catch (e) {
       st.failed++; st.writeErrors++;
       console.warn(`  [write-fail] ${t.liquipedia_page}: ${e.message}`);
       if (st.writeErrors > MAX_WRITE_ERRORS) { st.stopped = 'Schreibfehler'; console.error(`  [abbruch] mehr als ${MAX_WRITE_ERRORS} Schreibfehler`); break; }
       continue;
     }
-    console.log(`  ${n}/${targets.length}  ${t.id}  placements=${results.length}  participants=${numParticipants ?? '—'}${ex.intact ? '' : '  (nicht heil)'}`);
+    console.log(`  ${n}/${targets.length}  ${t.id}  placements=${results.length}${awards.length ? `  boni=${awards.length}` : ''}  participants=${numParticipants ?? '—'}${ex.intact ? '' : '  (nicht heil)'}`);
   }
-  console.log(`\n  [repair] ${st.written} Turniere, ${st.results} Zeilen | fehlt: ${st.missing}, ohne Infobox: ${st.noInfobox}, Weiterleitung: ${st.redirectSkipped}, fx-skip: ${st.fxSkipped}, Fehler: ${st.failed}/${st.attempted}`);
+  console.log(`\n  [repair] ${st.written} Turniere, ${st.results} Zeilen, ${st.awards} Boni | fehlt: ${st.missing}, ohne Infobox: ${st.noInfobox}, Weiterleitung: ${st.redirectSkipped}, fx-skip: ${st.fxSkipped}, Fehler: ${st.failed}/${st.attempted}`);
   return st;
 }
 

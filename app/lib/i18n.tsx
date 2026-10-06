@@ -378,6 +378,7 @@ const translations = {
   'tft.player.colTournament': t6('Turnier', 'Tournament', '\uD1A0\uB108\uBA3C\uD2B8', '\u8D5B\u4E8B', 'Torneo', 'Tournoi'),
   'tft.player.colTier': t6('Tier', 'Tier', '\uD2F0\uC5B4', '\u7B49\u7EA7', 'Tier', 'Tier'),
   'tft.player.colPrize': t6('Preisgeld', 'Prize', '\uC0C1\uAE08', '\u5956\u91D1', 'Premio', 'Gain'),
+  'tft.player.prizeBonus': t6('Bonus', 'Bonus', '\uBCF4\uB108\uC2A4', '\u5956\u52B1', 'Bono', 'Bonus'),
   'tft.player.showLess': t6('Weniger anzeigen', 'Show less', '\uAC04\uB2E8\uD788 \uBCF4\uAE30', '\u6536\u8D77', 'Mostrar menos', 'Voir moins'),
   'tft.player.showMore': t6('+ {n} weitere anzeigen', '+ {n} more', '+ {n} \uAC1C \uB354 \uBCF4\uAE30', '+ \u8FD8\u6709 {n} \u9879', '+ {n} m\u00E1s', '+ {n} de plus'),
   'tft.player.standardRanked': t6('Standard Ranked', 'Standard Ranked', '\uC2A4\uD0E0\uB2E4\uB4DC \uB7AD\uD06C', '\u6807\u51C6\u6392\u4F4D', 'Standard Ranked', 'Standard Ranked'),

@@ -596,6 +596,70 @@ export function extractPrizePoolPlacements(wikitext, { teamPlaces = null, teamPr
   return { rows, needsHtml, intact, unresolved, pools: pools.length };
 }
 
+/**
+ * Sonderpreise aus den AwardPrizePool-Vorlagen (z. B. "1 Win Bounty", "Finals MVP").
+ * Sie sind kein Platz und landen deshalb nicht in extractPrizePoolPlacements,
+ * sondern in tft_tournament_awards (0087). Gezeigt wird "700 $ + 100 $ Bonus".
+ *
+ * `noprize=true` wird bewusst NICHT uebersprungen: Liquipedias Modul liest den
+ * Schalter nur in alten Preistabellen fuer die Summenzeile
+ * (Lua-Modules commons/PrizePool/Legacy.lua); der Sonderpreis wird trotzdem
+ * gezeigt und als Preisgeld gespeichert (commons/PrizePool/Award/Placement.lua).
+ * Sonderpreise ohne Betrag werden nicht zurueckgegeben.
+ *
+ * @returns {{rows: Array, intact: boolean, pools: number}} intact=false, wenn
+ *          ein Sonderpreis keinen lesbaren Spieler hat — dann darf nichts
+ *          geloescht werden.
+ */
+export function extractAwards(wikitext, { teamPrizeMode = 'full', setNames = {} } = {}) {
+  const text = stripComments(wikitext);
+  const cards = parseTeamCards(text);
+  const rows = [];
+  const seen = new Set();
+  let intact = true;
+  const share = (amount, n, split) => (amount == null ? null : split && n > 0 ? Math.round(amount / n) : amount);
+  const pools = findAllTemplateRanges(text, 'AwardPrizePool');
+  for (const pool of pools) {
+    const { positional, keyed: pk } = parseArgs(pool.body);
+    // {{Opponent|Name}} ohne type= gilt als Art des Pools, ohne Angabe als
+    // Einzelspieler — Sonderpreise sind fast immer persoenlich (EWC 2025:
+    // {{Opponent|Saopimi|flag=cn|team=Weibo Gaming}} als Finals MVP).
+    const poolType = String(pk.type || '').trim().toLowerCase() || 'solo';
+    for (const seg of positional) {
+      const st = asTemplate(seg);
+      if (!st || st.name !== 'slot') continue;
+      const { positional: sp, keyed: sk } = parseArgs(st.body);
+      const award = unwiki(sk.award || '', { setNames });
+      if (!award) continue;
+      const usd = parsePrize(sk.usdprize);
+      const local = usd == null ? parsePrize(sk.localprize) : null;
+      if (usd == null && local == null) continue;
+      const opps = sp.map(asTemplate).filter(ot => ot && OPPONENTS.has(ot.name));
+      if (opps.length === 0) { intact = false; continue; }
+      for (const ot of opps) {
+        const typed = ot.name === 'opponent' && !('type' in parseArgs(ot.body).keyed)
+          ? { ...ot, body: `${ot.body}|type=${poolType}` } : ot;
+        const o = opponentPlayers(typed, cards);
+        if (o.problem) { intact = false; continue; }
+        if (!o.team) o.team = cleanName(parseArgs(ot.body).keyed.team) || null;
+        const split = o.kind === 'team' && teamPrizeMode === 'split';
+        for (const p of o.players) {
+          const key = `${award}::${p.name}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          rows.push({
+            award, proName: p.name, link: p.link, team: o.team, country: p.flag,
+            prizeUsdRaw: share(usd, o.players.length, split),
+            prizeLocalRaw: share(local, o.players.length, split),
+            kind: o.kind,
+          });
+        }
+      }
+    }
+  }
+  return { rows, intact, pools: pools.length };
+}
+
 // ─── Gerenderte Platzierungstabelle (Team-Turniere) ─────────────────────
 
 function cellsOf(rowHtml) {

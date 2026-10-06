@@ -5,11 +5,25 @@ import { useParams } from 'next/navigation';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n, LOCALE_MAP } from '../../../lib/i18n';
-import { formatPrize } from '../../../lib/prize-format';
+import { formatPrize, formatUsd } from '../../../lib/prize-format';
 
 interface Result {
   placement: number;
   proName: string;
+  proPuuid: string | null;
+  team: string | null;
+  country: string | null;
+  prizeUsd: number | null;
+  prizeNative: number | null;
+  prizeCurrency: string | null;
+}
+
+// Sonderpreis (Bounty, MVP …) aus tft_tournament_awards (0087). placeName ist
+// der Name der Platz-Zeile desselben Spielers, wenn eindeutig zuordenbar.
+interface Award {
+  award: string;
+  proName: string;
+  placeName: string | null;
   proPuuid: string | null;
   team: string | null;
   country: string | null;
@@ -51,6 +65,7 @@ interface Tournament {
   source: string;
   results: Result[];
   live_standings: LiveRow[] | null;
+  awards?: Award[] | null;
 }
 
 const TIER_COLORS: Record<string, string> = { S: '#e0c75a', A: '#7B61FF', B: '#3a8ddc', C: 'var(--fg-faint)' };
@@ -60,6 +75,16 @@ const REGION_LABELS: Record<string, string> = {
 
 // Same cleaner used on the list page — drop set-codename suffix/prefix and
 // collapse the "/" hierarchy so the tournament reads as a single human name.
+/** Summe der Sonderpreise in Dollar; ein einzelner nicht umgerechneter in Landeswaehrung. */
+function bonusText(list: Award[] | undefined, locale: string): string | null {
+  if (!list || list.length === 0) return null;
+  const usd = list.reduce((s, a) => s + (a.prizeUsd != null && a.prizeUsd > 0 ? a.prizeUsd : 0), 0);
+  if (usd > 0) return formatUsd(usd);
+  if (list.length !== 1) return null;
+  const native = formatPrize(null, list[0].prizeNative, list[0].prizeCurrency, locale);
+  return native === '—' ? null : native;
+}
+
 function cleanTournamentName(raw: string): string {
   let name = raw;
   name = name.replace(/\s*\([^)]+\)\s*$/, '');
@@ -107,6 +132,60 @@ export default function TftTournamentDetailPage() {
   const dateFmt = (s: string | null) => s ? new Date(s).toLocaleDateString(locale, { day: '2-digit', month: 'long', year: 'numeric' }) : '—';
   const poolText = formatPrize(tournament.prize_pool_usd, tournament.prize_pool_native, tournament.prize_pool_currency, locale);
   const statusColor = tournament.status === 'live' ? '#e44040' : tournament.status === 'upcoming' ? '#3ecf8e' : 'var(--fg-secondary)';
+
+  // Sonderpreise in der Zeile des Spielers (erste Platz-Zeile mit dem Namen),
+  // sonst als eigene Zeile ohne Platz.
+  const results = tournament.results || [];
+  const placeNames = new Set(results.map(r => r.proName));
+  const bonusOf = new Map<string, Award[]>();
+  const extra = new Map<string, Award[]>();
+  for (const a of tournament.awards || []) {
+    const onPlace = a.placeName != null && placeNames.has(a.placeName);
+    const target = onPlace ? bonusOf : extra;
+    const k = onPlace ? a.placeName! : a.proName;
+    target.set(k, [...(target.get(k) || []), a]);
+  }
+  const given = new Set<string>();
+  const takeBonus = (name: string) => {
+    if (given.has(name)) return null;
+    given.add(name);
+    return bonusText(bonusOf.get(name), locale);
+  };
+  const standingRow = (
+    key: string, place: number | null, name: string, puuid: string | null,
+    team: string | null, country: string | null, prize: string, bonus: string | null,
+  ) => {
+    const placeColor = place === 1 ? '#f0c040' : place === 2 ? '#cfd6dc' : place === 3 ? '#cd7f32' : 'var(--fg-secondary)';
+    return (
+      <div
+        key={key}
+        className="block sm:grid sm:grid-cols-[3rem_1fr_8rem_5rem_6rem] gap-2 px-4 py-2 sm:items-center text-xs border-t border-border-subtle"
+      >
+        <div className="hidden sm:block text-right text-base font-bold tabular-nums" style={{ color: placeColor }}>
+          {place ?? '—'}
+        </div>
+        <div className="flex items-baseline gap-2 sm:block">
+          <span className="text-base font-bold tabular-nums sm:hidden" style={{ color: placeColor }}>{place != null ? `#${place}` : '—'}</span>
+          {puuid ? (
+            <PlayerNameLink puuid={puuid} name={name} />
+          ) : (
+            <span className="text-white font-medium">{name}</span>
+          )}
+        </div>
+        <div className="hidden sm:block text-fg-secondary truncate">{team || '—'}</div>
+        <div className="hidden sm:block text-fg-secondary">{country || '—'}</div>
+        <div className="flex sm:block items-center justify-between mt-1 sm:mt-0 sm:text-right tabular-nums">
+          <span className="text-fg-muted text-[10px] sm:hidden">{team}{team && country ? ' · ' : ''}{country}</span>
+          <span className="text-accent font-medium text-right">
+            {prize}
+            {bonus && (
+              <span className="block text-[10px] leading-tight font-normal">+ {bonus} {t('tft.player.prizeBonus')}</span>
+            )}
+          </span>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <main className="min-h-screen bg-surface-page">
@@ -174,7 +253,7 @@ export default function TftTournamentDetailPage() {
 
         {/* Standings — only rendered when we have data. No info text when
             empty (per user preference to skip explanatory copy). */}
-        {tournament.results && tournament.results.length > 0 && (
+        {(results.length > 0 || extra.size > 0) && (
           <section className="bg-surface-base border border-border-subtle rounded overflow-hidden">
             <div className="px-4 py-2 bg-surface-sunken text-[10px] uppercase tracking-widest text-fg-muted">
               {t('tft.tournaments.standings')}
@@ -186,36 +265,14 @@ export default function TftTournamentDetailPage() {
               <div>{t('tft.pros.col.region')}</div>
               <div className="text-right">{t('tft.player.colPrize')}</div>
             </div>
-            {tournament.results.map(r => {
-              const placeColor = r.placement === 1 ? '#f0c040' : r.placement === 2 ? '#cfd6dc' : r.placement === 3 ? '#cd7f32' : 'var(--fg-secondary)';
-              const playerLink = r.proPuuid ? `/api/tft/pros?puuid=${r.proPuuid}` : null;
-              return (
-                <div
-                  key={`${r.placement}-${r.proName}`}
-                  className="block sm:grid sm:grid-cols-[3rem_1fr_8rem_5rem_6rem] gap-2 px-4 py-2 sm:items-center text-xs border-t border-border-subtle"
-                >
-                  <div className="hidden sm:block text-right text-base font-bold tabular-nums" style={{ color: placeColor }}>
-                    {r.placement}
-                  </div>
-                  <div className="flex items-baseline gap-2 sm:block">
-                    <span className="text-base font-bold tabular-nums sm:hidden" style={{ color: placeColor }}>#{r.placement}</span>
-                    {playerLink ? (
-                      <PlayerNameLink puuid={r.proPuuid!} name={r.proName} />
-                    ) : (
-                      <span className="text-white font-medium">{r.proName}</span>
-                    )}
-                  </div>
-                  <div className="hidden sm:block text-fg-secondary truncate">{r.team || '—'}</div>
-                  <div className="hidden sm:block text-fg-secondary">{r.country || '—'}</div>
-                  <div className="flex sm:block items-center justify-between mt-1 sm:mt-0 sm:text-right tabular-nums">
-                    <span className="text-fg-muted text-[10px] sm:hidden">{r.team}{r.team && r.country ? ' · ' : ''}{r.country}</span>
-                    <span className="text-accent font-medium">
-                      {formatPrize(r.prizeUsd, r.prizeNative, r.prizeCurrency, locale)}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
+            {results.map(r => standingRow(
+              `${r.placement}-${r.proName}`, r.placement, r.proName, r.proPuuid, r.team, r.country,
+              formatPrize(r.prizeUsd, r.prizeNative, r.prizeCurrency, locale), takeBonus(r.proName),
+            ))}
+            {[...extra].map(([name, list]) => standingRow(
+              `award-${name}`, null, name, list.find(a => a.proPuuid)?.proPuuid ?? null,
+              list[0].team, list[0].country, '—', bonusText(list, locale),
+            ))}
           </section>
         )}
 

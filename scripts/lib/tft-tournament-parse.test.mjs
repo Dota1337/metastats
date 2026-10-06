@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import {
-  extractPrizePoolPlacements, parsePlacementTableHtml, parseResultsHtml, parseBatchResponse,
+  extractPrizePoolPlacements, extractAwards, parsePlacementTableHtml, parseResultsHtml, parseBatchResponse,
   parseTeamCards, resolveTeam, splitTopLevel, stripComments, decodeEntities, parsePrize,
   detectPageCurrency, parseInfobox, participantsFromInfobox, fetchWikitextBatch, fetchHtmlFresh,
   fetchRedirectAliases, resolveTitles, LiquipediaApiError,
@@ -27,6 +27,35 @@ test('Einzelturnier: 32 Plaetze, Sonderpreise nicht mitgezaehlt', () => {
   assert.deepEqual(find(r.rows, 'Deleted').map(x => [x.placement, x.prizeUsdRaw]), [[16, 700]]);
   assert.deepEqual(find(r.rows, 'k0nda1').map(x => [x.placement, x.prizeUsdRaw]), [[32, 400]]);
   assert.ok(r.rows.every(x => x.placementMax === null));
+});
+
+test('Sonderpreise: 21 Boni im Einzelturnier, Loescher 100 $ "1 Win Bounty"', () => {
+  const r = extractAwards(fx('tft-tournament-solo.txt'));
+  assert.equal(r.pools, 1);
+  assert.equal(r.intact, true);
+  assert.equal(r.rows.length, 21);
+  assert.deepEqual(find(r.rows, 'Loescher').map(x => [x.award, x.prizeUsdRaw]), [['1 Win Bounty', 100]]);
+  assert.deepEqual(find(r.rows, 'Ripple Overdrive').map(x => [x.award, x.prizeUsdRaw]), [['5 Win Bounties', 500]]);
+  assert.equal(r.rows.reduce((s, x) => s + x.prizeUsdRaw, 0), 3900);   // Summe der Slots (500 + 3×300 + 8×200 + 9×100)
+});
+
+test('Sonderpreise: noprize=true wird trotzdem gelesen (Finals MVP 10.000 $)', () => {
+  const r = extractAwards(fx('tft-tournament-team.txt'));
+  assert.equal(r.pools, 1);
+  assert.deepEqual(r.rows.map(x => [x.award, x.proName, x.prizeUsdRaw]), [['Finals MVP', 'Saopimi', 10000]]);
+});
+
+test('Sonderpreise: ohne Betrag nichts, ohne Spieler nicht heil, doppelte nur einmal', () => {
+  const wt = `{{AwardPrizePool
+|{{Slot|award=MVP|{{SoloOpponent|A}}}}
+|{{Slot|award=[[Bounty]]|usdprize=50|{{SoloOpponent|B}}}}
+|{{Slot|award=Bounty|usdprize=50|{{SoloOpponent|B}}}}
+|{{Slot|award=Top Scorer|usdprize=20}}
+}}`;
+  const r = extractAwards(wt);
+  assert.deepEqual(r.rows.map(x => [x.award, x.proName, x.prizeUsdRaw]), [['Bounty', 'B', 50]]);
+  assert.equal(r.intact, false);
+  assert.deepEqual(extractAwards('kein Pool').rows, []);
 });
 
 test('Duo-Turnier: beide Spieler je Platz, kein Preis eingetragen', () => {

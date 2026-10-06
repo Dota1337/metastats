@@ -89,6 +89,9 @@ export default function PlayerTournamentHistory({ puuid }: { puuid: string }) {
               <div className="text-fg-muted hidden sm:block">{e.tier || '—'}</div>
               <div className="text-gold-earnings text-right tabular-nums">
                 {formatPrize(e.prizeUsd, e.prizeNative, e.prizeCurrency, locale)}
+                {e.bonusUsd ? (
+                  <div className="text-[10px] leading-tight">+ {formatUsd(e.bonusUsd)} {t('tft.player.prizeBonus')}</div>
+                ) : null}
               </div>
             </div>
           ))}

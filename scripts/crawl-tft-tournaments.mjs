@@ -497,21 +497,40 @@ async function writeResults(db, results) {
   for (const part of chunk(results, 500)) await db.upsert('tft_tournament_results', part, 'tournament_id,placement,pro_name');
 }
 
+// Liquipedia schreibt den Sonderpreis-Gewinner hier anders als die Platz-Zeile
+// (Tippfehler in der Quelle, von Hand gegen die DB geprueft 06.10.2026).
+// Schluessel = Turnier-ID|Sonderpreis|Name im Sonderpreis → Name der Platz-Zeile.
+// Greift nur, wenn der exakte Abgleich nichts findet und der Ziel-Name genau
+// einmal unter den Platz-Zeilen steht.
+export const AWARD_PLACE_OVERRIDES = new Map([
+  ['ko-coliseum-tft-pro-circuit-cn-soul-fighter-cup|1 Win Bounty|Ibtz', 'lbtz'],
+  ['ko-coliseum-tft-pro-circuit-amer-battle-academia-cup|1st-place bounty|arkjow', 'TT arkjow'],
+]);
+
 /**
  * Sonderpreise (0087) -> Zeilen fuer tft_tournament_awards. place_name ist der
  * Name derselben Person in den Platz-Zeilen der Seite: zuerst ueber die
  * Liquipedia-Seite, sonst ueber den Namen ohne Gross-/Kleinschreibung und
- * Leerzeichen — nur bei genau einem Treffer, nie unscharf.
+ * Leerzeichen — nur bei genau einem Treffer, nie unscharf. Danach die feste
+ * Korrekturliste.
  */
-export function toAwardRows(id, awards, convertLocal, pageIdx, placeRows) {
+export function toAwardRows(id, awards, convertLocal, pageIdx, placeRows, overrides = AWARD_PLACE_OVERRIDES) {
   const none = { usd: null, native: null, currency: null, rate: null, date: null, source: null };
-  const byPage = new Map(), byName = new Map();
+  const byPage = new Map(), byName = new Map(), exact = new Map();
   const add = (m, k, v) => { if (!k) return; if (!m.has(k)) m.set(k, new Set()); m.get(k).add(v); };
   for (const p of placeRows || []) {
     add(byPage, normalizePage(p.link || p.proName), p.proName);
     add(byName, normName(p.proName), p.proName);
+    exact.set(p.proName, (exact.get(p.proName) || 0) + 1);
   }
   const one = (set) => (set && set.size === 1 ? [...set][0] : null);
+  const used = new Set();
+  const fixed = (k) => {
+    const target = overrides.get(`${id}|${k}`);
+    if (target == null || exact.get(target) !== 1) return null;
+    used.add(`${id}|${k}`);
+    return target;
+  };
   const now = new Date().toISOString();
   const seen = new Set();
   const out = [];
@@ -530,7 +549,7 @@ export function toAwardRows(id, awards, convertLocal, pageIdx, placeRows) {
       team: a.team ?? null,
       country: a.country ?? null,
       pro_puuid: linkPuuid(a, pageIdx),
-      place_name: one(byPage.get(normalizePage(a.link || a.proName))) ?? one(byName.get(normName(a.proName))),
+      place_name: one(byPage.get(normalizePage(a.link || a.proName))) ?? one(byName.get(normName(a.proName))) ?? fixed(k),
       prize_usd: conv.usd,
       prize_native: conv.native,
       prize_currency: conv.currency,
@@ -539,6 +558,11 @@ export function toAwardRows(id, awards, convertLocal, pageIdx, placeRows) {
       fx_source: conv.source,
       updated_at: now,
     });
+  }
+  // Eintrag greift nicht mehr (Quelle korrigiert oder Platz-Name geaendert) →
+  // melden, damit die Liste nicht unbemerkt veraltet.
+  for (const key of overrides.keys()) {
+    if (key.startsWith(`${id}|`) && !used.has(key)) console.warn(`  [bonus-korrektur] greift nicht mehr: ${key}`);
   }
   return out;
 }

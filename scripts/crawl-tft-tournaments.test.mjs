@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   entrantsFromRows, buildPageIndex, linkPuuid, planDeletes, repairTargets, dedupeResults,
-  toAwardRows, placeAwardsByRedirect, TEAM_PRIZE_MODE, TFT_SET_NAMES, SEED_TOURNAMENTS,
+  toAwardRows, placeAwardsByRedirect, AWARD_PLACE_OVERRIDES, TEAM_PRIZE_MODE, TFT_SET_NAMES, SEED_TOURNAMENTS,
 } from './crawl-tft-tournaments.mjs';
 
 test('Sonderpreise: Platz-Name ueber Link, dann Name; mehrdeutig → null; Dubletten raus', () => {
@@ -54,6 +54,39 @@ test('Sonderpreise: zwei gleichnamige Platz-Zeilen ohne Link → kein Platz-Name
   const none = toAwardRows('x', [{ award: 'MVP', proName: 'Y', link: null, prizeUsdRaw: null, prizeLocalRaw: null }], () => null, new Map(), []);
   assert.equal(none[0].prize_usd, null);
   assert.equal(none[0].prize_currency, null);
+});
+
+test('Sonderpreise: feste Korrekturliste nur fuer offene Boni, Ziel genau einmal, sonst Meldung', () => {
+  const ov = new Map([['t|Bounty|Ibtz', 'lbtz'], ['t|Bounty|Weg', 'Weg2'], ['anders|Bounty|X', 'Y']]);
+  const places = [{ placement: 13, proName: 'lbtz', link: null }, { placement: 2, proName: 'Ibtz2', link: null }];
+  const warn = console.warn; const warned = [];
+  console.warn = (m) => warned.push(m);
+  let rows;
+  try {
+    rows = toAwardRows('t', [
+      { award: 'Bounty', proName: 'Ibtz', link: null, prizeUsdRaw: 100 },
+      { award: 'MVP', proName: 'Ibtz', link: null, prizeUsdRaw: 50 },      // anderer Sonderpreis → kein Eintrag
+    ], () => null, new Map(), places, ov);
+  } finally { console.warn = warn; }
+  assert.equal(rows.find(r => r.award === 'Bounty').place_name, 'lbtz');
+  assert.equal(rows.find(r => r.award === 'MVP').place_name, null);
+  assert.deepEqual(warned, ['  [bonus-korrektur] greift nicht mehr: t|Bounty|Weg']);   // nur Eintraege dieses Turniers
+
+  // Ziel doppelt oder fehlend → nicht zuordnen
+  const twice = [{ placement: 13, proName: 'lbtz', link: null }, { placement: 14, proName: 'lbtz', link: 'Lbtz_(2)' }];
+  console.warn = () => {};
+  try {
+    assert.equal(toAwardRows('t', [{ award: 'Bounty', proName: 'Ibtz', link: null, prizeUsdRaw: 1 }], () => null, new Map(), twice, ov)[0].place_name, null);
+    assert.equal(toAwardRows('t', [{ award: 'Bounty', proName: 'Ibtz', link: null, prizeUsdRaw: 1 }], () => null, new Map(), [], ov)[0].place_name, null);
+    // exakter Abgleich gewinnt vor der Liste
+    const fixedSrc = toAwardRows('t', [{ award: 'Bounty', proName: 'Ibtz', link: null, prizeUsdRaw: 1 }], () => null, new Map(),
+      [{ placement: 1, proName: 'Ibtz', link: null }, { placement: 13, proName: 'lbtz', link: null }], ov);
+    assert.equal(fixedSrc[0].place_name, 'Ibtz');
+  } finally { console.warn = warn; }
+
+  // die echten Eintraege zeigen auf die gepruefte Turnier-ID
+  assert.equal(AWARD_PLACE_OVERRIDES.get('ko-coliseum-tft-pro-circuit-cn-soul-fighter-cup|1 Win Bounty|Ibtz'), 'lbtz');
+  assert.equal(AWARD_PLACE_OVERRIDES.get('ko-coliseum-tft-pro-circuit-amer-battle-academia-cup|1st-place bounty|arkjow'), 'TT arkjow');
 });
 
 test('Sonderpreise: Weiterleitungsnamen in beide Richtungen, nur offene Boni, nur eindeutig', async () => {

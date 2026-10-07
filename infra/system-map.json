@@ -173,6 +173,24 @@
       "persistent": true
     },
     {
+      "name": "metastats-deps-catchup.service",
+      "kind": "service",
+      "description": "metastats npm ci nachholen, wenn node_modules nicht zum package-lock.json passt (nur im Leerlauf)",
+      "scripts": []
+    },
+    {
+      "name": "metastats-deps-catchup.timer",
+      "kind": "timer",
+      "description": "metastats npm ci taeglich im Leerlauf nachholen",
+      "scripts": [],
+      "onCalendar": [
+        "*-*-* 05:20:00 UTC"
+      ],
+      "interval": [],
+      "activates": "metastats-deps-catchup.service",
+      "persistent": false
+    },
+    {
       "name": "metastats-explorer-api.service",
       "kind": "service",
       "description": "metastats TFT Data Explorer: Abfrage-Dienst (nur 127.0.0.1:4110)",
@@ -434,6 +452,7 @@
       "kind": "service",
       "description": "metastats TFT snapshot bundle publisher (Vercel-Blob)",
       "scripts": [
+        "scripts/precompute-comp-windows.mjs",
         "scripts/publish-snapshot-bundle.mjs"
       ],
       "After": [
@@ -591,6 +610,13 @@
       "activates": "metastats-daily-crawl.service",
       "onCalendar": [
         "*-*-* 05:45:00 UTC"
+      ]
+    },
+    {
+      "timer": "metastats-deps-catchup.timer",
+      "activates": "metastats-deps-catchup.service",
+      "onCalendar": [
+        "*-*-* 05:20:00 UTC"
       ]
     },
     {
@@ -998,6 +1024,12 @@
       "from": "scripts/validate-tft-pros-loop.mjs",
       "to": "scripts/classify-tft-pros.mjs",
       "via": "spawn"
+    },
+    {
+      "from": "metastats-daily-crawl.service",
+      "to": "metastats-marketvalue-snapshot.service",
+      "via": "systemctl-stop",
+      "exec": "ExecStartPre"
     }
   ],
   "npmScripts": [

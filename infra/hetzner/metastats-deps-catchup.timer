@@ -1,0 +1,16 @@
+[Unit]
+Description=metastats npm ci taeglich im Leerlauf nachholen
+
+[Timer]
+# 05:20 UTC (= 07:20 CEST) ist das einzige taegliche Leerlauf-Fenster der Box:
+# der Marktwert-Lauf endet per --stop-at 05:15 UTC (gemessen 06.10. 05:15:17,
+# 07.10. 05:15:09), der Tageslauf startet 05:45 UTC + bis zu 5 min Zufall
+# (gemessen 05:46-05:49). Ist doch noch ein Job aktiv, verschiebt
+# remote-deploy.sh --deps-only auf den naechsten Tag.
+# NICHT Persistent: ein nach einem Neustart nachgeholter Lauf landete
+# irgendwann am Tag, also mitten in einem Crawl — er wuerde dort nur
+# "Job laeuft" melden und nichts tun.
+OnCalendar=*-*-* 05:20:00 UTC
+
+[Install]
+WantedBy=timers.target

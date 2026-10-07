@@ -10,7 +10,12 @@
  *
  * Erfasst:
  *   • systemd-Units (infra/hetzner/*.service|*.timer) samt Beziehungen
- *     OnSuccess/OnFailure/Conflicts/After/Wants und dem Script hinter ExecStart
+ *     OnSuccess/OnFailure/Conflicts/After/Wants und den Scripts hinter ALLEN
+ *     Exec*-Zeilen (ExecStart, ExecStartPre/Post, ExecStop/StopPost,
+ *     ExecReload, ExecCondition)
+ *   • Unit→Unit-Kanten aus `systemctl start|stop|restart <unit>` in diesen
+ *     Exec*-Zeilen (z.B. stoppt das ExecStartPre des Daily-Crawls den
+ *     Marktwert-Lauf) — from ist dort der Unit-Name, nicht ein Script
  *   • GitHub-Workflows (.github/workflows/*.yml) samt Schedule + Scripts
  *   • Script→Script-Kanten: systemctl-Starts und spawn()-Aufrufe im Code
  *     (das sind die Kanten, die man in den Units NICHT sieht — z.B. startet
@@ -40,7 +45,8 @@ const read = (p) => readFileSync(p, 'utf8');
 const listDir = (d, re) => (existsSync(d) ? readdirSync(d).filter(f => re.test(f)).sort() : []);
 
 /**
- * Zieht das Repo-Script aus einer ExecStart-Zeile.
+ * Zieht das Repo-Script aus einer Exec*-Zeile (Praefixe wie `-`/`+` stoeren
+ * nicht, gesucht wird ab Leerzeichen/Quote/Slash).
  * Formen: `/usr/bin/node scripts/x.mjs --flag`, `/usr/bin/node /opt/.../scripts/x.mjs`,
  *         `/usr/local/bin/foo.sh` (deployt aus infra/hetzner/foo.sh),
  *         `/bin/sh -c '... node scripts/x.mjs ...'`
@@ -53,8 +59,36 @@ function scriptFromExecStart(line) {
   return null;
 }
 
-function parseUnit(file) {
-  const text = read(resolve(UNIT_DIR, file));
+// Bis 2026-10 las die Karte nur ExecStart. Dadurch fehlte z.B.
+// precompute-comp-windows.mjs (laeuft als ExecStartPre des Snapshot-Publishers)
+// und galt als "Script ohne Aufrufer", und der Stopp des Marktwert-Laufs im
+// ExecStartPre des Daily-Crawls war in keiner Kante zu sehen.
+export const EXEC_KEYS = [
+  'ExecCondition', 'ExecStartPre', 'ExecStart', 'ExecStartPost',
+  'ExecReload', 'ExecStop', 'ExecStopPost',
+];
+
+/**
+ * `systemctl start|stop|restart <unit…>` aus einer Exec*-Zeile. Optionen vor
+ * oder nach dem Verb (`--no-block`) und mehrere Units je Aufruf sind erlaubt.
+ * Andere Verben (is-active, try-restart, …) sind keine Kante.
+ */
+export function systemctlActions(line) {
+  const out = [];
+  const opt = String.raw`-{1,2}[\w-]+(?:=\S+)?`;
+  const re = new RegExp(
+    String.raw`\bsystemctl\s+(?:${opt}\s+)*(start|stop|restart)((?:\s+(?:${opt}|[\w@.-]+\.(?:service|timer)))+)`,
+    'g',
+  );
+  for (const m of line.matchAll(re)) {
+    for (const u of m[2].matchAll(/[\w@.-]+\.(?:service|timer)/g)) {
+      out.push({ action: m[1], unit: u[0] });
+    }
+  }
+  return out;
+}
+
+export function parseUnitText(file, text) {
   const get = (key) => {
     const out = [];
     // systemd erlaubt mehrere Zeilen derselben Direktive (additiv).
@@ -63,7 +97,16 @@ function parseUnit(file) {
     while ((m = re.exec(text))) out.push(m[1].trim());
     return out;
   };
-  const execs = get('ExecStart');
+  const execByKey = EXEC_KEYS.map(k => [k, get(k)]);
+  const execs = execByKey.flatMap(([, lines]) => lines);
+  const edges = [];
+  for (const [key, lines] of execByKey) {
+    for (const line of lines) {
+      for (const { action, unit } of systemctlActions(line)) {
+        if (unit !== file) edges.push({ from: file, to: unit, via: `systemctl-${action}`, exec: key });
+      }
+    }
+  }
   const rels = {};
   for (const key of ['OnSuccess', 'OnFailure', 'Conflicts', 'Wants', 'After', 'Requires', 'Before']) {
     // Werte können mehrere Units in einer Zeile enthalten (leerzeichengetrennt).
@@ -87,7 +130,11 @@ function parseUnit(file) {
     unit.activates = (get('Unit')[0] || file.replace(/\.timer$/, '.service')).trim();
     unit.persistent = /^Persistent=true/m.test(text);
   }
-  return unit;
+  return { unit, edges };
+}
+
+function parseUnit(file) {
+  return parseUnitText(file, read(resolve(UNIT_DIR, file)));
 }
 
 function parseWorkflow(file) {
@@ -115,6 +162,8 @@ function parseScriptEdges() {
   // nichts auf — der Verlust an Erkennung ist damit null.
   const SELF = new Set([
     'build-system-map.mjs', 'check-system-map.mjs', 'check-drift.mjs',
+    // Der Test fuehrt Unit-Zeilen als Beispieldaten (systemctl start a.service).
+    'build-system-map.test.mjs',
     // Die api-map-Werkzeuge laufen aus dem pre-push und aus package.json, nicht
     // aus einer Unit — ohne sie hier stuenden sie dauerhaft als „Skript ohne
     // Aufrufer" im Bericht.
@@ -162,9 +211,13 @@ function parseScriptEdges() {
 // ---------------------------------------------------------------- Build
 
 function build() {
-  const units = listDir(UNIT_DIR, /\.(service|timer)$/).map(parseUnit);
+  const parsed = listDir(UNIT_DIR, /\.(service|timer)$/).map(parseUnit);
+  const units = parsed.map(p => p.unit);
   const workflows = listDir(WF_DIR, /\.ya?ml$/).map(parseWorkflow);
-  const scriptEdges = parseScriptEdges();
+  // Kanten aus dem Code zuerst, dahinter die aus den Exec*-Zeilen der Units.
+  // via `systemctl-start` aus einer Unit prueft check-system-map (Schritt 4)
+  // genauso wie einen Start aus dem Code.
+  const scriptEdges = [...parseScriptEdges(), ...parsed.flatMap(p => p.edges)];
 
   const contracts = JSON.parse(read(resolve(ROOT, 'infra', 'contracts.json'))).contracts;
   const contractsByOwner = {};
@@ -195,24 +248,27 @@ function build() {
   };
 }
 
-const map = build();
-const serialized = JSON.stringify(map, null, 2) + '\n';
+// Nur als Script ausfuehren, nicht beim Import (Test: build-system-map.test.mjs).
+if (process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url))) {
+  const map = build();
+  const serialized = JSON.stringify(map, null, 2) + '\n';
 
-if (CHECK_ONLY) {
-  if (!existsSync(MAP_PATH)) {
-    console.error('infra/system-map.json fehlt — `npm run build:system-map` ausführen.');
-    process.exit(1);
+  if (CHECK_ONLY) {
+    if (!existsSync(MAP_PATH)) {
+      console.error('infra/system-map.json fehlt — `npm run build:system-map` ausführen.');
+      process.exit(1);
+    }
+    const current = read(MAP_PATH);
+    if (current.replace(/\r\n/g, '\n') !== serialized) {
+      console.error('infra/system-map.json ist veraltet — `npm run build:system-map` ausführen und committen.');
+      process.exit(1);
+    }
+    console.log('system-map ist aktuell.');
+  } else {
+    writeFileSync(MAP_PATH, serialized);
+    console.log(
+      `system-map geschrieben: ${map.units.length} Units, ${map.workflows.length} Workflows, `
+      + `${map.scriptEdges.length} Code-Kanten.`,
+    );
   }
-  const current = read(MAP_PATH);
-  if (current.replace(/\r\n/g, '\n') !== serialized) {
-    console.error('infra/system-map.json ist veraltet — `npm run build:system-map` ausführen und committen.');
-    process.exit(1);
-  }
-  console.log('system-map ist aktuell.');
-} else {
-  writeFileSync(MAP_PATH, serialized);
-  console.log(
-    `system-map geschrieben: ${map.units.length} Units, ${map.workflows.length} Workflows, `
-    + `${map.scriptEdges.length} Code-Kanten.`,
-  );
 }

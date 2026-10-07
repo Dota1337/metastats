@@ -14,15 +14,47 @@
 #                       NEXT scheduled run. We deliberately skip `git clean`,
 #                       `npm ci` and timer restarts — all of which can disrupt
 #                       a running crawl (wiping node_modules / untracked outputs).
-#   * idle           -> FULL sync: reset (+ clean fallback) + npm ci on lock
-#                       change + timer re-arm, as before.
+#   * idle           -> FULL sync: reset (+ clean fallback) + npm ci when the
+#                       installed deps differ from package-lock.json + timer
+#                       re-arm, as before.
+#
+# Third mode, NOT used by the workflow:
+#   * --deps-only    -> no git at all; only `npm ci` if node_modules does not
+#                       match package-lock.json AND no crawl is running. Called
+#                       daily by metastats-deps-catchup.timer from the copy on
+#                       disk (/opt/metastats-crawler/infra/hetzner/remote-deploy.sh).
+#
+# Warum der Vergleich gegen den INSTALLIERTEN Stand (2026-10): bis dahin
+# verglich das Script package-lock.json vor und nach dem Reset im selben Lauf.
+# Lief dabei ein Crawl, wurde npm ci nur aufgeschoben — und der naechste Deploy
+# sah keinen Unterschied mehr, weil der Lockfile schon auf der Platte lag. Die
+# Box installierte so nie wieder: node_modules vom 14.08., next 16.2.6 statt
+# 16.3.8, undici 6.27.0 statt 6.29.0. Jetzt schreibt jedes erfolgreiche npm ci
+# den Hash des installierten Lockfiles nach node_modules/.metastats-lock-sha1,
+# und verglichen wird gegen diesen Stempel. Er liegt bewusst IN node_modules:
+# npm ci loescht den Ordner zuerst, ein abgebrochener Lauf hinterlaesst also
+# keinen Stempel und wird beim naechsten Mal wiederholt.
 #
 # Systemd unit files (infra/hetzner/*.timer|*.service) are NOT applied here —
-# they are sensitive and change rarely. Apply unit changes manually:
-#   scp infra/hetzner/<unit> root@<host>:/etc/systemd/system/ && systemctl daemon-reload
+# they are sensitive and change rarely. Roll them out with
+# infra/hetzner/apply-units.sh (writes + daemon-reload, never enables/starts).
 set -euo pipefail
 
 cd /opt/metastats-crawler
+
+DEPS_ONLY=0
+[ "${1:-}" = "--deps-only" ] && DEPS_ONLY=1
+
+# Deploy und Nachhol-Timer duerfen nie gleichzeitig laufen: ein git reset
+# mitten in npm ci installierte einen halben Stand. Der Deploy wartet (der
+# Nachhol-Lauf ist nach Minuten fertig), der Nachhol-Lauf weicht aus — ein
+# laufender Deploy erledigt npm ci ohnehin selbst, sobald die Box frei ist.
+exec 9>/run/lock/metastats-remote-deploy.lock
+if [ "$DEPS_ONLY" = 1 ]; then
+  flock -n 9 || { echo "Deploy laeuft gerade — Nachhol-Lauf uebersprungen"; exit 0; }
+else
+  flock -w 600 9 || { echo "Nachhol-npm-ci laeuft seit >10 min — Deploy abgebrochen, bitte erneut ausloesen"; exit 1; }
+fi
 
 # http.version=HTTP/1.1 ist kein Aberglaube, sondern gemessen (02.09.2026):
 # ueber HTTP/2 schlug `git fetch` auf der Box in 4 von 5 Versuchen mit
@@ -36,11 +68,15 @@ cd /opt/metastats-crawler
 # haette, dass sie auf altem Code sitzt.
 # Der Retry bleibt trotzdem: ein einzelner Netzwerkhaenger soll den Deploy nicht
 # kosten.
-for attempt in 1 2 3; do
-  git -c http.version=HTTP/1.1 fetch origin --quiet && break
-  [ "$attempt" = 3 ] && { echo "git fetch nach 3 Versuchen fehlgeschlagen"; exit 1; }
-  sleep 5
-done
+# Der Nachhol-Lauf (--deps-only) fasst git nicht an: er installiert genau den
+# Stand, der schon auf der Platte liegt.
+if [ "$DEPS_ONLY" = 0 ]; then
+  for attempt in 1 2 3; do
+    git -c http.version=HTTP/1.1 fetch origin --quiet && break
+    [ "$attempt" = 3 ] && { echo "git fetch nach 3 Versuchen fehlgeschlagen"; exit 1; }
+    sleep 5
+  done
+fi
 
 # Crawls are Type=oneshot, so while running they sit in state "activating"
 # (NOT "active"). `is-active --quiet` returns false for "activating", so match
@@ -70,7 +106,49 @@ crawl_running() {
   return 1
 }
 
-before=$(sha1sum package-lock.json 2>/dev/null | cut -d' ' -f1 || true)
+# Installierter Stand: Stempel, den nur ein erfolgreiches npm ci schreibt
+# (Begruendung im Kopf). Fehlt er, gilt die Installation als abweichend — so
+# holt die Box beim ersten Lauf nach dieser Umstellung den Rueckstand nach.
+DEPS_STAMP=node_modules/.metastats-lock-sha1
+lock_hash() { sha1sum package-lock.json 2>/dev/null | cut -d' ' -f1 || true; }
+deps_outdated() {
+  local want
+  want=$(lock_hash)
+  [ -n "$want" ] || return 1   # kein Lockfile -> nichts, wogegen npm ci liefe
+  [ "$(cat "$DEPS_STAMP" 2>/dev/null || true)" != "$want" ]
+}
+# Full install (NOT --omit=dev): the crawler's runtime deps `pg` and
+# `libsodium-wrappers` currently live in devDependencies, so omitting dev
+# would strip them and break every script that imports pg.
+# Hash VOR npm ci nehmen: das ist der Lockfile, der installiert wird. Der
+# Stempel entsteht per mv, damit ein Abbruch nie einen halben Wert hinterlaesst.
+install_deps() {
+  local h
+  h=$(lock_hash)
+  npm ci
+  printf '%s\n' "$h" > "$DEPS_STAMP.tmp"
+  mv -f "$DEPS_STAMP.tmp" "$DEPS_STAMP"
+}
+
+if [ "$DEPS_ONLY" = 1 ]; then
+  if ! deps_outdated; then
+    echo "node_modules passt zu package-lock.json — nichts nachzuholen"
+    exit 0
+  fi
+  # Dieselbe Regel wie im Deploy: npm ci loescht node_modules, ein laufender
+  # Crawl stuerzte beim naechsten Import ab. Dann eben morgen.
+  if active=$(crawl_running); then
+    echo "node_modules weicht ab, aber $active — npm ci bleibt aufgeschoben"
+    exit 0
+  fi
+  echo "node_modules weicht von package-lock.json ab — npm ci wird nachgeholt"
+  install_deps
+  # Wie im Full-Sync: die Dauerdienste haben die alten Pakete im Speicher.
+  systemctl try-restart metastats-refresh-api.service || true
+  systemctl try-restart metastats-explorer-api.service || true
+  echo "npm ci nachgeholt fuer $(git rev-parse --short HEAD) on $(hostname) at $(date -u +%FT%TZ)"
+  exit 0
+fi
 
 # Hard-sync tracked files to main. Plain reset first; if an untracked file would
 # be clobbered by a now-tracked file, stash the blockers (preserved, NOT
@@ -88,9 +166,8 @@ if active=$(crawl_running); then
   # timers untouched.
   echo "crawl running ($active) — code-only sync (no clean / npm ci / restart)"
   sync_code
-  after=$(sha1sum package-lock.json 2>/dev/null | cut -d' ' -f1 || true)
-  if [ "$before" != "$after" ]; then
-    echo "WARN: package-lock.json changed — npm ci deferred (unsafe mid-crawl). Re-run via workflow_dispatch once idle."
+  if deps_outdated; then
+    echo "WARN: node_modules weicht von package-lock.json ab — npm ci aufgeschoben (unsafe mid-crawl). Nachgeholt durch metastats-deps-catchup.timer (05:20 UTC) oder den naechsten Deploy im Leerlauf."
   fi
   # Der Long-Running-API-Service ist KEIN Crawl: er haelt keinen Cursor und
   # keine Inflight-Arbeit, ein Neustart kostet Millisekunden. Er muss aber
@@ -109,14 +186,10 @@ fi
 # IDLE: full sync. The clean fallback clears stray untracked files only when
 # they would block the reset.
 git reset --hard origin/main || { git clean -fd; git reset --hard origin/main; }
-after=$(sha1sum package-lock.json 2>/dev/null | cut -d' ' -f1 || true)
 
-if [ "$before" != "$after" ]; then
-  # Full install (NOT --omit=dev): the crawler's runtime deps `pg` and
-  # `libsodium-wrappers` currently live in devDependencies, so omitting dev
-  # would strip them and break every script that imports pg.
-  echo "package-lock.json changed — running npm ci"
-  npm ci
+if deps_outdated; then
+  echo "node_modules weicht von package-lock.json ab — running npm ci"
+  install_deps
 fi
 
 # Re-arm the timers so the next scheduled run uses the new code. Restarting a

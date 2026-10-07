@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, Radar,
@@ -40,7 +40,7 @@ interface TftProRecord {
 import { loadTftSetMeta } from '../../../lib/tft-dd-assets';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { formatTier } from '../../../lib/rank-format';
-import { setRankDisplay, withLiveRank, type SetRankDisplay } from '../../../lib/tft-rank-kind';
+import { setEndRank, setMaxLp } from '../../../lib/tft-rank-kind';
 import { CURRENT_SET } from '../../../lib/current-set';
 import { decodeSlug, parseTftPlayerSlug } from '../../../lib/og/slugs';
 import { getDdragonVersion } from '../../../lib/ddragon-version';
@@ -804,10 +804,16 @@ function RankBlock({ ranked, seasonRanks }: { ranked: SummonerData['ranked']; se
   if (live.tier && !rows.some(s => s.set_number === CURRENT_SET)) {
     rows.push({ set_number: CURRENT_SET, set_label: `TFTSet${CURRENT_SET}`, queue_id: 1100, peak_tier: null, peak_division: null, peak_lp: null, peak_rating_label: null, total_games: null, source: 'riot' });
   }
+  // Je Set zwei Werte (User 2026-10-07): hoechste LP und Rang am Set-Ende.
+  // Laufendes Set: Ende noch offen ("—"), hoechste LP inkl. Live-Rang.
   const pastSeasons = rows
-    .map(s => ({ s, d: setRankDisplay(s.set_number === CURRENT_SET ? withLiveRank(s, CURRENT_SET, live)! : s) }))
-    .filter((x): x is { s: SeasonRank; d: SetRankDisplay } => x.d != null)
+    .map(s => {
+      const current = s.set_number === CURRENT_SET;
+      return { s, max: setMaxLp(s, current ? live : undefined), end: current ? null : setEndRank(s) };
+    })
+    .filter(x => x.end != null || x.max != null)
     .sort((a, b) => b.s.set_number - a.s.set_number || (b.s.set_label || '').localeCompare(a.s.set_label || ''));
+  const showMaxLp = pastSeasons.some(x => x.max != null);
 
   const inner = !ranked || !ranked.tier ? (
     <>
@@ -843,12 +849,18 @@ function RankBlock({ ranked, seasonRanks }: { ranked: SummonerData['ranked']; se
           </button>
           {open && (
             <div className="absolute left-0 sm:left-auto sm:right-0 mt-1 z-20 bg-surface-base border border-border-subtle rounded-lg shadow-lg p-3 min-w-[280px] max-w-[calc(100vw-2rem)] text-left">
-              <div className="text-fg-secondary text-[10px] uppercase tracking-widest mb-2">
-                {t('tft.player.peakRankPerSet')}
-              </div>
-              <div className="space-y-1.5">
-                {pastSeasons.map(({ s, d }) => (
-                  <SeasonRankRow key={s.set_label || s.set_number} season={s} rank={d} />
+              <div className={`grid ${showMaxLp ? 'grid-cols-[auto_auto_auto_auto]' : 'grid-cols-[auto_auto_auto]'} gap-x-3 gap-y-1.5 items-end text-xs`}>
+                <div className={RANK_HEAD}>{t('tft.player.setColumn')}</div>
+                {showMaxLp && <div className={RANK_HEAD}>{t('tft.player.maxLpPerSet')}</div>}
+                <div className={RANK_HEAD}>{t('tft.player.rankAtSetEnd')}</div>
+                <div className={`${RANK_HEAD} text-right`}>{t('tft.gamesShort')}</div>
+                {pastSeasons.map(({ s, max, end }) => (
+                  <Fragment key={s.set_label || s.set_number}>
+                    <div className="text-fg-secondary whitespace-nowrap">{formatSetLabel(s.set_label, s.set_number)}</div>
+                    {showMaxLp && <RankCell tier={max?.tier ?? null} div={null} lp={max?.lp ?? null} />}
+                    <RankCell tier={end?.tier ?? null} div={end?.div ?? null} lp={end?.lp ?? null} />
+                    <div className="text-fg-muted text-[10px] text-right">{s.total_games ?? ''}</div>
+                  </Fragment>
                 ))}
               </div>
             </div>
@@ -859,26 +871,16 @@ function RankBlock({ ranked, seasonRanks }: { ranked: SummonerData['ranked']; se
   );
 }
 
-function SeasonRankRow({ season, rank }: { season: SeasonRank; rank: SetRankDisplay }) {
-  const { t } = useI18n();
-  const color = TIER_COLORS[rank.tier] || 'var(--fg-secondary)';
-  const setLabel = formatSetLabel(season.set_label, season.set_number);
+const RANK_HEAD = 'text-fg-secondary text-[10px] uppercase tracking-widest leading-tight pb-0.5';
+// Kurzformen nur in dieser Tabelle: ausgeschrieben passt die Zeile am Handy
+// nicht (User 2026-10-07, gemessen ~389 px bei 302 px Platz).
+const SHORT_TIER: Record<string, string> = { GRANDMASTER: 'GM', CHALLENGER: 'CHALL' };
+
+function RankCell({ tier, div, lp }: { tier: string | null; div: string | null; lp: number | null }) {
+  if (!tier) return <div className="text-fg-muted">—</div>;
   // formatTier laesst bei Master/GM/Challenger die falsche "I"-Division weg.
-  const rankText = [
-    formatTier(rank.tier, rank.div),
-    rank.lp != null ? `${rank.lp} LP` : '',
-  ].filter(Boolean).join(' ');
-  return (
-    <div className="flex items-center justify-between gap-3 text-xs">
-      <div className="text-fg-secondary flex-shrink-0">{setLabel}</div>
-      <div className="flex items-center gap-2 min-w-0">
-        <span style={{ color }} className="font-medium truncate">{rankText}</span>
-        {season.total_games != null && (
-          <span className="text-fg-muted text-[10px] flex-shrink-0">{season.total_games} {t('tft.gamesShort')}</span>
-        )}
-      </div>
-    </div>
-  );
+  const text = [SHORT_TIER[tier] ?? formatTier(tier, div), lp != null ? `${lp} LP` : ''].filter(Boolean).join(' ');
+  return <div style={{ color: TIER_COLORS[tier] || 'var(--fg-secondary)' }} className="font-medium whitespace-nowrap">{text}</div>;
 }
 
 // "TFTSet9_2" → "Set 9.2", "TFTSet16" → "Set 16"

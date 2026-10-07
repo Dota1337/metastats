@@ -66,6 +66,36 @@ export function withLiveRank<T extends SetRankRowLike>(
 }
 
 /**
+ * Spalte "Max LP pro Set" (User 2026-10-07): die hoechsten LP des Sets mit der
+ * Stufe, in der sie erreicht wurden. Kandidaten sind Hoechststand, Ende und
+ * beim laufenden Set der Live-Rang, jeweils nur Master+ mit LP. Die Stufe kommt
+ * vom gewinnenden Wert — Set 14: Hoechststand Challenger 552, Ende GM 718 →
+ * "GM 718", nie "Challenger 718". Ohne Master+-Hoechststand zaehlt das Ende
+ * nicht (dakgg kennt keinen Hoechstwert, s. setRankDisplay); live schon.
+ */
+export function setMaxLp(
+  row: SetRankRowLike, live?: { tier: string | null; lp: number | null },
+): { tier: string; lp: number } | null {
+  let best: { tier: string; lp: number } | null = null;
+  const consider = (tier: string | null | undefined, lp: number | null | undefined) => {
+    const t = (tier || '').toUpperCase();
+    if (APEX.has(t) && lp != null && (!best || lp > best.lp)) best = { tier: t, lp };
+  };
+  consider(row.peak_tier, row.peak_lp);
+  if (best) consider(row.end_tier, row.end_lp);
+  if (live) consider(live.tier, live.lp);
+  return best;
+}
+
+/** Spalte "Rang am Set-Ende": nur end_*, nie aus dem Hoechststand. */
+export function setEndRank(row: SetRankRowLike): SetRankDisplay | null {
+  const tier = (row.end_tier || '').toUpperCase();
+  if (rankKey(tier, null, null) < 0) return null;
+  if (!APEX.has(tier)) return { tier, div: row.end_division ?? null, lp: null };
+  return { tier, div: null, lp: row.end_lp ?? null };
+}
+
+/**
  * Eine Zeile je Set-Nummer (Vergleichstabelle): das spaetere Halbset gewinnt
  * ("TFTSet9_2" vor "TFTSet9"), denn sein Ende ist das Ende des Sets.
  */

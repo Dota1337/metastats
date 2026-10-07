@@ -6,7 +6,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseMetatftProfile, mergeRankSources, refreshMode, applyRankOverrides, peakFromLeagueLogs, gamesFromLeagueLogs, RANK_SCHEMA_AT_MS } from './tft-rank-history.ts';
-import { setRankDisplay, withLiveRank, lastRowPerSet } from './tft-rank-kind.ts';
+import { setRankDisplay, withLiveRank, lastRowPerSet, setMaxLp, setEndRank } from './tft-rank-kind.ts';
 
 const START = Date.parse('2026-08-26T14:08:32.809Z');
 const CHILLOUT = 'NQoWt3WdMPUlQxeianc3L4nBVz8_TXwvW8h34YNVTKs2s7DKVgydtHnLwOFrt5fT6aKxSyfPB0O2Aw';
@@ -173,4 +173,54 @@ test('Merge: Verlaufs-Spielzahl auf dakgg-Zeile bleibt beim Neuabruf', () => {
   assert.equal(m.total_games, 212);
   const mt = [{ set_number: 7, set_label: 'TFTSet7', end_tier: 'DIAMOND', total_games: 215, source: 'metatft' }];
   assert.equal(mergeRankSources(mt, dk, existing, 18)[0].total_games, 215, 'MetaTFT geht vor');
+});
+
+// Tabelle "Max LP pro Set" / "Rang am Set-Ende" (User 2026-10-07).
+test('Max LP: Hoechststand GM 460, Ende Master 0 → GM 460 / Master 0 LP', () => {
+  const row = { set_number: 17, set_label: 'TFTSet17', peak_tier: 'GRANDMASTER', peak_lp: 460, end_tier: 'MASTER', end_division: 'I', end_lp: 0 };
+  assert.deepEqual(setMaxLp(row), { tier: 'GRANDMASTER', lp: 460 });
+  assert.deepEqual(setEndRank(row), { tier: 'MASTER', div: null, lp: 0 }, 'Master 0 LP ist echt, nicht leer');
+});
+
+test('Max LP: Stufe kommt vom hoeheren Wert (Set 14: Chall 552 → GM 718)', () => {
+  const row = { set_number: 14, set_label: 'TFTSet14', peak_tier: 'CHALLENGER', peak_lp: 552, end_tier: 'GRANDMASTER', end_lp: 718 };
+  assert.deepEqual(setMaxLp(row), { tier: 'GRANDMASTER', lp: 718 });
+  assert.deepEqual(setEndRank(row), { tier: 'GRANDMASTER', div: null, lp: 718 });
+});
+
+test('Max LP: dakgg-Master ohne Hoechststand → keine Max-LP, Ende "Master"', () => {
+  const row = { set_number: 9, set_label: 'TFTSet9', peak_tier: null, peak_lp: null, end_tier: 'MASTER', end_division: 'I', end_lp: null };
+  assert.equal(setMaxLp(row), null);
+  assert.deepEqual(setEndRank(row), { tier: 'MASTER', div: null, lp: null });
+});
+
+test('Max LP: Hoechststand GM, Ende Gold II → beide Werte getrennt', () => {
+  const row = { set_number: 16, set_label: 'TFTSet16', peak_tier: 'GRANDMASTER', peak_lp: 240, end_tier: 'GOLD', end_division: 'II', end_lp: 50 };
+  assert.deepEqual(setMaxLp(row), { tier: 'GRANDMASTER', lp: 240 });
+  assert.deepEqual(setEndRank(row), { tier: 'GOLD', div: 'II', lp: null });
+});
+
+test('Max LP: unter Master ohne Hoechststand → keine Max-LP; Unranked/1970 → kein Ende', () => {
+  assert.equal(setMaxLp({ set_number: 12, set_label: 'TFTSet12', peak_tier: 'DIAMOND', peak_lp: 75, end_tier: 'DIAMOND', end_division: 'II' }), null);
+  assert.equal(setEndRank({ set_number: 12, set_label: 'TFTSet12', peak_tier: null, peak_lp: null, end_tier: 'UNRANKED' }), null);
+  assert.equal(setEndRank({ set_number: 12, set_label: 'TFTSet12', peak_tier: null, peak_lp: null, end_tier: null }), null);
+});
+
+test('Max LP live: hoeherer Live-Rang gewinnt mit seiner Stufe', () => {
+  const row = { set_number: 18, set_label: 'TFTSet18', peak_tier: 'MASTER', peak_lp: 262 };
+  assert.deepEqual(setMaxLp(row, { tier: 'GRANDMASTER', lp: 492 }), { tier: 'GRANDMASTER', lp: 492 });
+  assert.deepEqual(setMaxLp({ ...row, peak_tier: 'CHALLENGER', peak_lp: 1200 }, { tier: 'GRANDMASTER', lp: 900 }), { tier: 'CHALLENGER', lp: 1200 }, 'Live tiefer: gespeicherter Wert bleibt mit Stufe');
+});
+
+test('Max LP live: Live unter Master behaelt gespeicherten Hoechststand; ohne beides → null', () => {
+  const row = { set_number: 18, set_label: 'TFTSet18', peak_tier: 'GRANDMASTER', peak_lp: 300 };
+  assert.deepEqual(setMaxLp(row, { tier: 'DIAMOND', lp: 40 }), { tier: 'GRANDMASTER', lp: 300 });
+  assert.equal(setMaxLp({ set_number: 18, set_label: 'TFTSet18', peak_tier: null, peak_lp: null }, { tier: 'DIAMOND', lp: 40 }), null);
+  assert.deepEqual(setMaxLp({ set_number: 18, set_label: 'TFTSet18', peak_tier: null, peak_lp: null }, { tier: 'MASTER', lp: 120 }), { tier: 'MASTER', lp: 120 });
+});
+
+test('Max LP: Ausnahme Chillout 8.2 → Challenger 760 in beiden Spalten', () => {
+  const [row] = applyRankOverrides(CHILLOUT, [], 18);
+  assert.deepEqual(setMaxLp(row), { tier: 'CHALLENGER', lp: 760 });
+  assert.deepEqual(setEndRank(row), { tier: 'CHALLENGER', div: null, lp: 760 });
 });

@@ -10,7 +10,8 @@
  *   2. Riot-Spiele dieses Kontos im Zeitfenster um den Startzeitpunkt
  *      (startTime/endTime statt "die letzten 30" — sonst rutschen aeltere
  *      Spiele nach ein paar Tagen aus der Liste und bleiben fuer immer offen).
- *   3. Naechstes Spiel innerhalb TS_WINDOW_MS → match_id + Platzierung setzen.
+ *   3. Spiel, in dessen Laufzeit der Startzeitpunkt faellt (pickMatch in
+ *      lib/companion-match-pick.mjs) → match_id + Platzierung setzen.
  *   4. Nichts gefunden und Startzeit aelter als GIVE_UP_MS → als "nicht
  *      aufloesbar" in der Statusdatei vermerken, damit es nicht jeden Lauf
  *      wieder Riot-Abfragen kostet.
@@ -27,6 +28,7 @@ import { getRegionalRouting, getAccountRouting, isValidRegion } from './lib/regi
 import { createRiotClient } from './lib/riot-client.mjs';
 import { riotWindowFor } from './lib/riot-limits.mjs';
 import { isRiotHandle } from './lib/companion-positions.mjs';
+import { pickMatch, shouldRetryUnresolvable, MATCH_ALGO_VERSION } from './lib/companion-match-pick.mjs';
 
 function loadEnv() {
   const candidates = ['/etc/metastats-crawler/env', resolve(process.cwd(), '.env.local')];
@@ -59,11 +61,10 @@ if (!SUPA_URL || !SUPA_KEY || !RIOT_KEY) {
 }
 
 // Riots game_datetime ist das Spielende, die Behelfs-ID traegt den Moment, in
-// dem die App das Spiel zuerst gesehen hat. Verglichen wird deshalb gegen den
-// errechneten Start (Ende minus game_length); 15 Min fangen Ladezeiten und
-// Uhr-Abweichung ab, ohne bei direkt hintereinander gespielten Partien das
-// falsche Spiel zu greifen.
-const TS_WINDOW_MS = 15 * 60 * 1000;
+// dem die App das Spiel zuerst gesehen hat — bei Einstieg mitten im Spiel weit
+// nach dem Start. Treffer ist deshalb jedes Spiel, in dessen Laufzeit (Start
+// minus 15 Min bis Ende) dieser Moment faellt; bei mehreren gewinnt der naechste
+// Start. Regel und Messung: scripts/lib/companion-match-pick.mjs.
 // Riot listet ein Spiel erst nach seinem Ende; bis dahin ist "nicht gefunden"
 // kein Endzustand.
 const GIVE_UP_MS = 24 * 60 * 60 * 1000;
@@ -181,15 +182,9 @@ async function resolveOne({ liveId, handle, region }, state) {
       `match-ids ${handle} ${cluster}`,
     );
     seen += ids.length;
-    let best = null;
-    for (const id of ids) {
-      const md = await getMatchDetail(id, cluster);
-      const end = md.info?.game_datetime;
-      if (!end) continue;
-      const start = end - Math.round((md.info.game_length || 0) * 1000);
-      const delta = Math.abs(start - seed);
-      if (delta < TS_WINDOW_MS && (!best || delta < best.delta)) best = { md, delta };
-    }
+    const details = [];
+    for (const id of ids) details.push(await getMatchDetail(id, cluster));
+    const best = pickMatch(seed, details, puuid);
     if (!best) continue;
     state.clusterByHandle[handle] = cluster;
     const riotId = best.md.metadata.match_id;
@@ -201,7 +196,9 @@ async function resolveOne({ liveId, handle, region }, state) {
 
 async function main() {
   const state = loadState();
-  const pending = (await getPending()).filter(p => !state.unresolvable[p.liveId]);
+  // Aufgegebene IDs bleiben draussen — ausser `no_match_*` einer aelteren
+  // Zuordnungsregel, die bekommen genau einen neuen Versuch (Eintrag traegt `v`).
+  const pending = (await getPending()).filter(p => shouldRetryUnresolvable(state.unresolvable[p.liveId]));
   if (pending.length === 0) {
     console.log('keine offenen LIVE_-IDs — fertig.');
     return;
@@ -220,7 +217,7 @@ async function main() {
     if (r.pending) { console.log(`  ${p.liveId}: noch kein Riot-Spiel, naechster Lauf`); continue; }
     if (r.unresolvable) {
       console.log(`  ${p.liveId}: nicht aufloesbar (${r.unresolvable})`);
-      if (!DRY_RUN) state.unresolvable[p.liveId] = { reason: r.unresolvable, at: new Date().toISOString() };
+      if (!DRY_RUN) state.unresolvable[p.liveId] = { reason: r.unresolvable, v: MATCH_ALGO_VERSION, at: new Date().toISOString() };
       continue;
     }
     // Doppelter Upload desselben Spiels (gemessen 2026-10-02: 2 von 8 offenen
@@ -232,7 +229,7 @@ async function main() {
     if (!dup.ok) { failed++; console.warn(`    Doppel-Pruefung fehlgeschlagen: ${dup.status}`); continue; }
     if ((await dup.json()).length > 0) {
       console.log(`  ${p.liveId}: doppelt hochgeladen, ${r.riotId} ist schon da`);
-      if (!DRY_RUN) state.unresolvable[p.liveId] = { reason: `duplicate_of:${r.riotId}`, at: new Date().toISOString() };
+      if (!DRY_RUN) state.unresolvable[p.liveId] = { reason: `duplicate_of:${r.riotId}`, v: MATCH_ALGO_VERSION, at: new Date().toISOString() };
       continue;
     }
     console.log(`  ${p.liveId} → ${r.riotId} (Platz ${r.placement}, ${Math.round(r.delta / 1000)} s Abstand)`);

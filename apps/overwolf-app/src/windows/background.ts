@@ -7,7 +7,7 @@ import { APP_SECRET, API_BASE, CLIENT_VERSION } from '../lib/config.ts';
 import { read, write, subscribe, type Live } from '../lib/store.ts';
 import { loadComps, loadLookups, loadCompDetail } from '../lib/api.ts';
 import { show, close, toggle, moveTo, minimize, setTopmost, obtain, type WindowName } from '../lib/ow.ts';
-import { enqueue, flush, idbStore, type OutboxEntry, type SendResult } from '../lib/outbox.ts';
+import { enqueue, flush, clear, idbStore, type OutboxEntry, type SendResult } from '../lib/outbox.ts';
 import { recordBoard, flattenBoards, ownRounds, type Boards } from '../lib/boards.ts';
 import { saveLocalMatch } from '../lib/history-store.ts';
 import {
@@ -100,7 +100,7 @@ async function send(e: OutboxEntry): Promise<SendResult> {
 
 async function flushOutbox(): Promise<void> {
   try {
-    const r = await flush(idbStore, send);
+    const r = await flush(idbStore, send, () => read('ms.settings').share);
     if (r.sent || r.dropped || r.left) log('outbox', r);
   } catch (e) {
     log('outbox failed', (e as Error)?.message);
@@ -530,6 +530,12 @@ subscribe(['ms.settings', 'ms.pin'], key => {
     if (region !== lastRegion) {
       lastRegion = region;
       void loadComps(true);
+    }
+    // Teilen aus: noch wartende Pakete duerfen nicht mehr rausgehen.
+    if (!read('ms.settings').share) {
+      void clear(idbStore)
+        .then(n => { if (n) log('outbox cleared', n); })
+        .catch(e => log('outbox clear failed', (e as Error)?.message));
     }
   }
   void loadPinDetail();

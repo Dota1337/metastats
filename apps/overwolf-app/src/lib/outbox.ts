@@ -45,12 +45,26 @@ export async function enqueue(store: OutboxStore, entry: OutboxEntry): Promise<v
   for (const old of all.slice(0, Math.max(0, all.length - MAX_ENTRIES))) await store.del(old.id);
 }
 
+/** Leert die Warteschlange, etwa wenn der Nutzer das Teilen abschaltet. Gibt die Zahl der geloeschten zurueck. */
+export async function clear(store: OutboxStore): Promise<number> {
+  const all = await store.all();
+  for (const e of all) await store.del(e.id);
+  return all.length;
+}
+
 let flushing = false;
 
-/** Sendet alle wartenden Pakete der Reihe nach. Gibt die Zahl der angenommenen zurueck. */
+/**
+ * Sendet alle wartenden Pakete der Reihe nach. Gibt die Zahl der angenommenen zurueck.
+ *
+ * `shareOn` wird vor JEDEM Paket neu gefragt: schaltet der Nutzer das Teilen
+ * ab, waehrend die Schleife laeuft, geht danach nichts mehr raus — die
+ * restlichen Pakete werden ungesendet geloescht.
+ */
 export async function flush(
   store: OutboxStore,
   send: (e: OutboxEntry) => Promise<SendResult>,
+  shareOn: () => boolean,
   now = Date.now(),
 ): Promise<{ sent: number; dropped: number; left: number }> {
   const out = { sent: 0, dropped: 0, left: 0 };
@@ -59,7 +73,7 @@ export async function flush(
   try {
     const all = (await store.all()).sort((a, b) => a.createdAt - b.createdAt);
     for (const e of all) {
-      if (now - e.createdAt > MAX_AGE_MS || e.tries >= MAX_TRIES) {
+      if (!shareOn() || now - e.createdAt > MAX_AGE_MS || e.tries >= MAX_TRIES) {
         await store.del(e.id);
         out.dropped++;
         continue;

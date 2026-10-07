@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { flush, enqueue, verdict, MAX_ENTRIES, MAX_TRIES, MAX_AGE_MS, type OutboxEntry, type OutboxStore } from './outbox.ts';
+import { flush, enqueue, clear, verdict, MAX_ENTRIES, MAX_TRIES, MAX_AGE_MS, type OutboxEntry, type OutboxStore } from './outbox.ts';
 import { recordBoard, flattenBoards, type Boards } from './boards.ts';
 
 function memStore(): OutboxStore & { map: Map<string, OutboxEntry> } {
@@ -13,6 +13,7 @@ function memStore(): OutboxStore & { map: Map<string, OutboxEntry> } {
   };
 }
 
+const on = () => true;
 const entry = (id: string, createdAt = 1000, tries = 0): OutboxEntry => ({ id, url: 'u', body: '{}', createdAt, tries });
 
 test('verdict: 2xx fertig, 400/413 verwerfen, 401/429/5xx/Netz erneut', () => {
@@ -28,10 +29,10 @@ test('verdict: 2xx fertig, 400/413 verwerfen, 401/429/5xx/Netz erneut', () => {
 test('Sendefehler behaelt das Paket, spaeterer Erfolg entfernt es', async () => {
   const s = memStore();
   await enqueue(s, entry('a'));
-  let r = await flush(s, async () => ({ error: 'offline' }), 2000);
+  let r = await flush(s, async () => ({ error: 'offline' }), on, 2000);
   assert.deepEqual(r, { sent: 0, dropped: 0, left: 1 });
   assert.equal(s.map.get('a')?.tries, 1);
-  r = await flush(s, async () => ({ status: 200 }), 3000);
+  r = await flush(s, async () => ({ status: 200 }), on, 3000);
   assert.deepEqual(r, { sent: 1, dropped: 0, left: 0 });
   assert.equal(s.map.size, 0);
 });
@@ -42,9 +43,47 @@ test('400 verwirft, zu alt oder zu oft versucht verwirft ohne Senden', async () 
   await enqueue(s, entry('old', 0));
   await enqueue(s, entry('tired', 1000, MAX_TRIES));
   let calls = 0;
-  const r = await flush(s, async () => { calls++; return { status: 400 }; }, MAX_AGE_MS + 1);
+  const r = await flush(s, async () => { calls++; return { status: 400 }; }, on, MAX_AGE_MS + 1);
   assert.equal(calls, 1);
   assert.deepEqual(r, { sent: 0, dropped: 3, left: 0 });
+});
+
+test('Teilen waehrend des Sendens abgeschaltet: danach geht kein Paket mehr raus', async () => {
+  const s = memStore();
+  await enqueue(s, entry('a', 1));
+  await enqueue(s, entry('b', 2));
+  await enqueue(s, entry('c', 3));
+  let share = true;
+  const sent: string[] = [];
+  const r = await flush(s, async e => { sent.push(e.id); share = false; return { status: 200 }; }, () => share, 10);
+  assert.deepEqual(sent, ['a']);
+  assert.deepEqual(r, { sent: 1, dropped: 2, left: 0 });
+  assert.equal(s.map.size, 0);
+});
+
+test('Teilen aus: flush sendet nichts und leert, clear leert die Warteschlange', async () => {
+  const s = memStore();
+  await enqueue(s, entry('a', 1));
+  await enqueue(s, entry('b', 2));
+  let calls = 0;
+  const r = await flush(s, async () => { calls++; return { status: 200 }; }, () => false, 10);
+  assert.equal(calls, 0);
+  assert.deepEqual(r, { sent: 0, dropped: 2, left: 0 });
+  assert.equal(s.map.size, 0);
+  await enqueue(s, entry('c', 3));
+  assert.equal(await clear(s), 1);
+  assert.equal(s.map.size, 0);
+  assert.equal(await clear(s), 0);
+});
+
+test('Teilen an: sendet alle Pakete wie bisher', async () => {
+  const s = memStore();
+  await enqueue(s, entry('a', 1));
+  await enqueue(s, entry('b', 2));
+  const sent: string[] = [];
+  const r = await flush(s, async e => { sent.push(e.id); return { status: 200 }; }, on, 10);
+  assert.deepEqual(sent, ['a', 'b']);
+  assert.deepEqual(r, { sent: 2, dropped: 0, left: 0 });
 });
 
 test('Stau: nur die neuesten MAX_ENTRIES bleiben', async () => {

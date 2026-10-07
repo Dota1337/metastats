@@ -27,6 +27,11 @@
             "command": "node \"$CLAUDE_PROJECT_DIR/scripts/hooks/session-start.mjs\"",
             "timeout": 90,
             "statusMessage": "Lade Tier-1-Memory ..."
+          },
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/workstation/start-watcher.mjs\"",
+            "timeout": 5
           }
         ]
       }

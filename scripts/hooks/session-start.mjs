@@ -201,6 +201,7 @@ const ERWARTETE_HOOKS = [
   ['UserPromptSubmit', 'code-prompt-reviewer.mjs', 'die Spec-Pflicht bei Code:-Auftraegen'],
   ['PostCompact', 'post-compact.mjs', 'das Nachspielen der Kernregeln nach einem Compact'],
   ['PreCompact', 'compact-reset.mjs', 'das Zuruecksetzen des Freigabe-Zustands vor einem Compact'],
+  ['SessionStart', 'start-watcher.mjs', 'die Prozess-Bremse — ohne die laufen Suchen nach Abbruch weiter und bremsen das Spiel'],
 ];
 
 try {

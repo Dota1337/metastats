@@ -86,9 +86,26 @@ function echterPfad(p) {
   try { return s(realpathSync(p)); } catch { return s(p); }
 }
 
+/**
+ * Git-Bash-Schreibweise eines Laufwerkspfads in die Windows-Form: `/d/x` ->
+ * `D:/x`. Ohne das liest `resolve()` `/d/Metastats/metastats` als Ordner `d`
+ * auf dem aktuellen Laufwerk — `cd /d/Metastats/metastats && rm app/x.ts`
+ * landete so bei `../../d/Metastats/metastats/app/x.ts` und galt als
+ * "ausserhalb des Projekts" (logic-flow-critic, 07.10.2026). `/dev/null`,
+ * `/tmp/x` und andere echte POSIX-Pfade bleiben unberuehrt, weil nach dem
+ * Buchstaben ein Schraegstrich oder das Ende stehen muss.
+ */
+export function toNativePath(p, platform = process.platform) {
+  if (platform !== 'win32' || typeof p !== 'string') return p;
+  const m = p.match(/^\/([a-zA-Z])(\/|$)(.*)$/s);
+  return m ? `${m[1].toUpperCase()}:/${m[3]}` : p;
+}
+
 /** Absoluter oder relativer Pfad -> projekt-relativ mit Vorwaerts-Slashes. */
 export function toRel(file, projectDir, base = projectDir) {
   if (!file) return '';
+  file = toNativePath(file);
+  base = toNativePath(base);
   const abs = isAbsolute(file) ? resolve(file) : resolve(base, file);
   // .claude/settings.json ist auf dieser Workstation ein Verweis nach Dropbox
   // (reference_workstation_sync). Ueber den Zielpfad geschrieben sieht die Datei
@@ -307,7 +324,8 @@ export function pathsWrittenByShell(cmd, projectDir, readScript = readFileSync, 
   for (const seg of splitSegments(cmd)) {
     const m = seg.match(/^cd\s+(?:--\s+)?(['"]?)([^'"]+)\1\s*$/);
     if (m) {                                    // `cd x && ...` setzt die Basis
-      base = isAbsolute(m[2]) ? resolve(m[2]) : resolve(base, m[2]);
+      const ziel = toNativePath(m[2]);
+      base = isAbsolute(ziel) ? resolve(ziel) : resolve(base, ziel);
       continue;
     }
     if (REMOTE.test(seg)) continue;             // laeuft nicht auf dieser Platte

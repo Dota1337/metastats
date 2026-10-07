@@ -18,15 +18,37 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { PROJECT_DIR, readInput, approvalStatus, PLAN_FILE } from './lib/state.mjs';
 import { isExempt, toRel, planQuality, pathsWrittenByShell, denyText } from './lib/gate-policy.mjs';
+import { checkSearch, searchDenyText } from './lib/search-policy.mjs';
 
 function allow() { process.exit(0); }
+
+function deny(reason) {
+  process.stdout.write(JSON.stringify({
+    hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason },
+  }));
+  process.exit(0);
+}
+
+const input = readInput();
+
+// Schritt 1: Suchsperre (eigener Notschalter SEARCH_GATE=0). Steht vor dem
+// WRITE_GATE-Schalter, weil sie auch mit abgeschaltetem Plan-Gate gelten soll —
+// eine Suche durch node_modules bremst das Spiel des Users unabhaengig davon,
+// ob gerade ein Plan freigegeben ist (Vorfall 07.10.2026).
+if (process.env.SEARCH_GATE !== '0') {
+  let v = null;
+  try {
+    v = checkSearch(input?.tool_name, input?.tool_input?.command, input?.cwd || PROJECT_DIR, { projectDir: PROJECT_DIR });
+  } catch (err) {
+    process.stderr.write(`[write-gate] Suchsperre uebersprungen: ${err?.message || err}\n`);
+  }
+  if (v) deny(searchDenyText(v));
+}
 
 if (process.env.WRITE_GATE === '0') allow();
 
 let rel = '';
-let input;
 try {
-  input = readInput();
   const tool = input?.tool_name || '';
   const ti = input?.tool_input || {};
 

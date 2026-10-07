@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import * as fs from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { isExempt, toRel, planQuality, pathsWrittenByShell } from './gate-policy.mjs';
+import { isExempt, toRel, planQuality, pathsWrittenByShell, toNativePath } from './gate-policy.mjs';
 
 const P = 'C:/projekt';
 const rels = (cmd, read) =>
@@ -124,6 +124,26 @@ test('cd setzt die Basis — Scratchpad blockt nicht, Projekt schon', () => {
   assert.equal(blocks('cd C:/projekt && sed -i s/a/b/ app/page.tsx'), true);
   // 49 % aller gemessenen Bash-Kommandos enthalten ein cd; ohne diese Regel
   // wuerde jeder Scratchpad-Schreibvorgang faelschlich blockiert.
+});
+
+test('toNativePath: Git-Bash-Laufwerkspfade werden zu Windows-Pfaden', () => {
+  assert.equal(toNativePath('/d/Metastats/x', 'win32'), 'D:/Metastats/x');
+  assert.equal(toNativePath('/c', 'win32'), 'C:/');
+  assert.equal(toNativePath('/c/', 'win32'), 'C:/');
+  assert.equal(toNativePath('/dev/null', 'win32'), '/dev/null');
+  assert.equal(toNativePath('/tmp/x', 'win32'), '/tmp/x');
+  assert.equal(toNativePath('app/x.ts', 'win32'), 'app/x.ts');
+  assert.equal(toNativePath('/d/x', 'linux'), '/d/x');
+  assert.equal(toNativePath(undefined, 'win32'), undefined);
+});
+
+// Luecke aus dem logic-flow-Befund (07.10.2026): `cd /d/…` wurde nicht als
+// Projektpfad erkannt, ein anschliessendes `rm app/x.ts` lief am Gate vorbei.
+// Nur unter Windows pruefbar — dort uebersetzt toNativePath den Pfad.
+test('cd /c/… und /c/…-Schreibziele zaehlen als Projekt', { skip: process.platform !== 'win32' }, () => {
+  assert.equal(blocks('cd /c/projekt && rm app/x.ts'), true);
+  assert.equal(blocks('echo x > /c/projekt/app/y.ts'), true);
+  assert.equal(isExempt(toRel('/c/Users/u/tmp.txt', P)), true);
 });
 
 test('ssh/docker: der Rest laeuft nicht auf dieser Platte', () => {

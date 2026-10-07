@@ -36,6 +36,8 @@ export interface CompanionComp {
   reroll?: { level: number; targets: string[] };
   /** Early-Game-Boards vorhanden (MetaTFT-Comp mit passendem Brett, ab 0.6). */
   hasEarly?: true;
+  /** MetaTFT-Comp mit Anleitung, dieselbe Zuordnung wie die Comp-Seite; fehlt = keine. */
+  guideId?: string;
 }
 
 export interface CompanionCompsResponse {
@@ -45,6 +47,8 @@ export interface CompanionCompsResponse {
   filters: { region: string; bucket: string; days: number };
   generatedAt: string;
   comps: CompanionComp[];
+  /** Geladene MetaTFT-Datei; null = keine fuer das laufende Set. */
+  guides?: { set: number; clusterId: number | null; fetchedAt: string } | null;
 }
 
 export interface CompanionLookups {

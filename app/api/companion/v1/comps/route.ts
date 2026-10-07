@@ -78,12 +78,16 @@ export async function GET(request: NextRequest) {
   };
   const vs = buildCompanionVs(out.comps, pairs);
   for (const c of out.comps) if (vs[c.key]) c.vs = vs[c.key];
-  // Early Game vorhanden: dieselbe Zuordnung wie Comp-Route und Seite, und
-  // mindestens ein fruehes Board ab 50 Spielen (EARLY_MIN_GAMES der Comp-Route).
+  // Anleitung: dieselbe Zuordnung wie Comp-Route und Seite. `guideId` und
+  // `guides` misst der Abdeckungs-Vertrag (scripts/lib/guide-coverage.mjs).
+  // Early Game vorhanden: mindestens ein fruehes Board ab 50 Spielen
+  // (EARLY_MIN_GAMES der Comp-Route).
   const guides = loadGuidesFromDisk();
+  out.guides = guides ? { set: guides.set, clusterId: guides.clusterId ?? null, fetchedAt: guides.fetchedAt } : null;
   if (guides) {
     for (const c of out.comps) {
       const id = resolveGuideId(guides, c.members ?? [c.key], c.units.map(u => u.id), [...new Set([...c.carries, ...c.itemCarriers])]);
+      if (id) c.guideId = id;
       const early = id ? guides.details[id]?.earlyByLevel : undefined;
       if (early && Object.values(early).some(opts => (opts || []).some(o => Array.isArray(o.units) && o.units.length > 0 && (o.count ?? 0) >= 50))) {
         c.hasEarly = true;

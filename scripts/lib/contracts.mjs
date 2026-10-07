@@ -20,6 +20,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
+import { evaluateGuideCoverage } from './guide-coverage.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..', '..');
@@ -1210,91 +1211,54 @@ async function checkCoverage(c, r) {
 }
 
 /**
- * Guide-Abdeckungs-Vertrag: deckt die Comp-Guide-Quelle noch das ab, was
- * tatsächlich gespielt wird?
+ * Guide-Abdeckungs-Vertrag: welcher Anteil der gespielten Comps bekommt auf
+ * der Comp-Liste eine MetaTFT-Anleitung?
  *
- * Der einzige Vertrag, der eine DB-Aggregation gegen eine Repo-Datei hält —
- * beide Seiten können unabhängig voneinander wegdriften, und die interessante
- * Größe ist ihr Schnitt. Die Guides kommen aus MetaTFTs Auto-Clustering, die
- * gespielten Familien aus unseren eigenen Match-Daten. Verschiebt ein Patch das
- * Meta, sinkt die Abdeckung ohne dass irgendein Job fehlschlägt: das Bundle ist
- * frisch, die Tabelle ist frisch, nur passen sie nicht mehr zueinander. Die
+ * Beide Seiten driften unabhängig: MetaTFT clustert neu, unser Meta verschiebt
+ * sich mit dem Patch. Sinkt der Schnitt, ist jeder Job grün und die
+ * Anleitungen fehlen trotzdem auf einem wachsenden Teil der Comps. Die
  * `datei-frische` daneben sieht das strukturell nicht.
  *
- * Die Aggregation steht in der DB (Migration 0054) und wird vom Verifier
- * (`npm run verify:coverage`) mit denselben Parametern aufgerufen — der Vertrag
- * misst also exakt die Zahl, die man lokal nachstellen kann.
- *
- * Die Schwelle ist bewusst locker: gemessen über 37 Fenster lag die Abdeckung
- * bei 67,4 % ± 0,7 pp. Ein Gate auf dem aktuellen Wert wäre an jedem einzelnen
- * historischen Fenster rot gewesen. 64 % liegt ~5 sd unter dem Mittel und
- * schlägt erst an, wenn wirklich etwas kaputt ist — ein Meta-Shift ohne
- * MetaTFT-Refresh, ein Import mit halber Familien-Map, ein Set-Wechsel, bei dem
- * das Bundle nachhinkt.
+ * Gemessen wird an der ausgelieferten Companion-Route, nicht an DB +
+ * familyMap: die Route liefert je Comp das Ergebnis derselben Zuordnung wie
+ * die Seite (`guideId` aus resolveGuideId — Familien-Treffer über alle
+ * zusammengelegten Familien, sonst passendes MetaTFT-Brett). Die alte Messung
+ * zählte nur exakte familyMap-Treffer, lag 08.10.2026 bei 68,2 % gegen 88,9 %
+ * auf der Seite und hat an der 64-%-Grenze Fehlalarm-Mails ausgelöst (#19).
+ * Die Bewertung steht in scripts/lib/guide-coverage.mjs, die auch
+ * `npm run verify:coverage` nutzt.
  */
 async function checkGuideCoverage(c, r) {
   // Set aus der Single Source of Truth, nicht aus dem Vertrag: sonst wäre der
   // Vertrag beim Set-Wechsel genau der Ort, an dem niemand nachzieht.
   const set = readCurrentSet();
   if (set == null) return r('error', 'public/tft-set.json fehlt oder hat keine Set-Nummer');
+  if (!c.url) return r('error', 'Vertrag ohne url');
 
-  const bundlePath = (c.bundlePath || 'public/tft-metatft-comps-{set}.json')
-    .replace('{set}', String(set));
-  const abs = resolve(REPO_ROOT, bundlePath);
-  if (!existsSync(abs)) return r('broken', `${bundlePath} existiert nicht`);
-
-  let familyMap;
-  try {
-    familyMap = JSON.parse(readFileSync(abs, 'utf8')).familyMap;
-  } catch (err) {
-    return r('broken', `${bundlePath} ist kein gültiges JSON: ${err.message}`);
+  // Ein frischer Aufbau rechnet die ganze Comp-Liste neu (08.10. 5,5 s, bei
+  // zaeher DB deutlich mehr), deshalb 60 s und ein zweiter Versuch nach 30 s.
+  let body = null;
+  let lastErr = '';
+  for (let attempt = 0; attempt < 2 && body == null; attempt++) {
+    if (attempt > 0) await new Promise((ok) => setTimeout(ok, 30_000));
+    try {
+      const res = await fetch(c.url, { signal: AbortSignal.timeout(60_000) });
+      if (res.ok) body = await res.json();
+      else lastErr = `HTTP ${res.status}`;
+    } catch (err) {
+      lastErr = err.message;
+    }
   }
-  if (!familyMap || Object.keys(familyMap).length === 0) {
-    return r('broken', `${bundlePath} hat keine familyMap — Import unvollständig`);
-  }
+  if (body == null) return r('broken', `Comp-Liste nicht erreichbar (2 Versuche, zuletzt ${lastErr}): ${c.url}`);
 
-  const rows = await supaRpc(c.rpc, {
-    p_days: c.days ?? 7,
-    p_set: set,
-    p_top: c.top ?? 50,
+  const out = evaluateGuideCoverage(body, {
+    set,
+    minRatio: c.minRatio,
+    warnRatio: c.warnRatio,
+    minFamilies: c.minFamilies,
+    maxAgeHours: c.maxAgeHours,
   });
-  if (!Array.isArray(rows)) return r('error', `${c.rpc} lieferte kein Array`);
-
-  // Ohne Datenlage ist ein Verhältnis bedeutungslos: 3 von 3 wären 100 %. Der
-  // Fall tritt real auf, wenn der Daily-Crawl steht oder das Set frisch
-  // gewechselt hat — beides soll hier laut sein, nicht grün.
-  const minFamilies = c.minFamilies ?? Math.floor((c.top ?? 50) * 0.8);
-  if (rows.length < minFamilies) {
-    return r('broken',
-      `nur ${rows.length} Familien über der Spielgrenze (min ${minFamilies}) — `
-      + `zu dünne Datenlage für eine Abdeckungs-Aussage, Set ${set}`);
-  }
-
-  // Gemessen wird der Anteil der SPIELE mit Guide, nicht der Anteil der
-  // Familien. Beides ist verfügbar und die Zahlen liegen weit auseinander —
-  // aktuell 28/50 Familien (56 %) bei 70 % Volumen —, weil die gedeckten
-  // Familien die grossen sind. Für die Frage „wie oft steht ein Spieler vor
-  // einer Comp-Seite ohne Guide" zählt das Volumen; der Familien-Zähler würde
-  // eine Long-Tail-Familie mit 120 Spielen genauso gewichten wie DRX__Kindred
-  // mit 44.865. Der Familien-Stand steht trotzdem im Detail, weil er die
-  // schnellere Diagnose ist.
-  const missing = rows.filter(x => !familyMap[x.family_key]);
-  const matchedRows = rows.length - missing.length;
-  const totalGames = rows.reduce((s, x) => s + Number(x.total_games), 0);
-  const missingGames = missing.reduce((s, x) => s + Number(x.total_games), 0);
-  if (totalGames === 0) return r('error', `${c.rpc} lieferte nur Zeilen ohne Spiele`);
-
-  const ratio = (totalGames - missingGames) / totalGames;
-  const pct = (ratio * 100).toFixed(1);
-  const min = (c.minRatio * 100).toFixed(0);
-  const stand = `${pct} % Volumen (min ${min} %), ${matchedRows}/${rows.length} Familien`;
-
-  if (ratio >= c.minRatio) return r('ok', stand);
-
-  const worst = missing
-    .slice(0, 3)
-    .map(x => `${x.family_key.replace(/(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/g, '')}(${x.total_games})`);
-  return r('broken', `nur ${stand} — grösste Lücken: ${worst.join(' ')}`);
+  return r(out.status, out.detail);
 }
 
 /**

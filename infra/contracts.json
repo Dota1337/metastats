@@ -258,14 +258,12 @@
       "id": "metatft-comps/familien-abdeckung",
       "owner": ".github/workflows/metatft-comps-daily.yml",
       "type": "guide-coverage",
-      "backend": "supabase",
-      "rpc": "get_metatft_family_coverage",
-      "bundlePath": "public/tft-metatft-comps-{set}.json",
-      "days": 7,
-      "top": 50,
-      "minFamilies": 40,
-      "minRatio": 0.64,
-      "note": "Die datei-frische daneben prüft, DASS das Bundle ankommt — nicht, ob es noch das abdeckt, was gespielt wird. Beide Seiten driften unabhängig: MetaTFT clustert neu, unser Meta verschiebt sich mit dem Patch. Sinkt der Schnitt, ist jeder Job grün und die Guide-Sektion trotzdem für einen wachsenden Teil der Comp-Seiten leer. minRatio zielt auf den Anteil der SPIELE, nicht der Familien: aktuell 70,0 % Volumen bei nur 28/50 Familien, weil die gedeckten Familien die grossen sind. Streuung des Volumens über 37 Fenster 67,4 % ± 0,7 pp, deshalb greift die Schwelle erst bei 64 % (~5 sd) und markiert echten Bruch statt Rauschen. Set kommt aus public/tft-set.json, ist also set-wechselfest. Dieselbe Zahl liefert `npm run verify:coverage`."
+      "url": "https://www.metastats.gg/api/companion/v1/comps?region=all&bucket=diamond_plus&days=3",
+      "minFamilies": 30,
+      "warnRatio": 0.80,
+      "minRatio": 0.70,
+      "maxAgeHours": 8,
+      "note": "Die datei-frische daneben prüft, DASS das MetaTFT-Bundle ankommt — nicht, ob es noch das abdeckt, was gespielt wird. Gemessen an der ausgelieferten Companion-Route: je Comp liefert sie guideId aus derselben Zuordnung wie die Seite (resolveGuideId: Familien-Treffer über alle zusammengelegten Familien, sonst passendes MetaTFT-Brett). Rang wählt die Route nach Datenlage des Sets (bucketAuto, live Diamond+; der bucket-Parameter wird überstimmt), alle Patches des Sets im 3-Tage-Fenster, alle Regionen, die gezeigten Top-Comps. Abdeckung = Anteil der SPIELE mit Anleitung. Live 08.10.2026: 88,9 % bei 31/40 Comps (euw1 96,9 %, kr 88,8 %, na1 91,4 %). Unter 80 % nur Warnung (keine Mail), unter 70 % Bruch. Bis 08.10. zählte der Vertrag nur exakte familyMap-Treffer über die RPC get_metatft_family_coverage, lag damit ~20 Punkte unter der Seite und flatterte an der alten 64-%-Grenze (Fehlalarm-Mails, #19). Set kommt aus public/tft-set.json; die Route muss dasselbe Set und guides.set liefern. Dieselbe Bewertung nutzt npm run verify:coverage (scripts/lib/guide-coverage.mjs)."
     },
 
     {

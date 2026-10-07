@@ -132,6 +132,12 @@ input, select { font: inherit; color: var(--text); }
 .level-pick { display: flex; gap: 4px; margin-bottom: 10px; }
 .chip { min-width: 30px; height: 28px; border-radius: 6px; background: var(--panel); border: 1px solid var(--line); }
 .chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+/* Stufen-Reiter (Aufstellung, Early): Text statt Knoepfe, aktive Stufe lila mit Unterstrich. */
+.lvl-tabs { display: flex; gap: 2px; margin-bottom: 10px; border-bottom: 1px solid var(--line); }
+.lvl-tab { display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 64px; padding: 4px 10px 6px; margin-bottom: -1px; border-bottom: 2px solid transparent; color: var(--muted); line-height: 1.2; }
+.lvl-tab:hover { color: var(--text); }
+.lvl-tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+.lvl-tab-share { font-size: 11px; font-weight: 400; color: var(--muted); }
 .odds { border-collapse: collapse; width: 100%; }
 .odds th, .odds td { padding: 5px 6px; text-align: center; border-bottom: 1px solid var(--line); }
 .odds th:first-child { text-align: left; color: var(--muted); font-weight: 500; }

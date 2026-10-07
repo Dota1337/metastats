@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { CompanionComp, CompanionLookups } from '../../../../app/lib/companion-types.ts';
-import { levelPlan, boardLevels, startLevel, compRecipes, shopMatches, groupRecipes } from './plan.ts';
+import { levelPlan, boardLevels, startLevel, shownLevels, compRecipes, shopMatches, groupRecipes } from './plan.ts';
 
 const lookups: CompanionLookups = {
   v: 1, set: 18,
@@ -37,8 +37,8 @@ test('3 Sterne ohne Reroll-Angabe ist kein Reroll', () => {
   assert.equal(levelPlan(comp([{ id: 'A', star3: true }], 8.2), lookups).kind, 'fast8');
 });
 
-test('boardLevels: Reroll-Stufe vorn und Start dort, sonst 7/8/9 ab 8', () => {
-  assert.deepEqual(boardLevels({ kind: 'reroll', level: 5, targets: ['A'], avgLevel: 8 }), { levels: [5, 7, 8, 9], start: 5 });
+test('boardLevels: immer 7/8/9, Reroll startet auf 7, sonst 8', () => {
+  assert.deepEqual(boardLevels({ kind: 'reroll', level: 5, targets: ['A'], avgLevel: 8 }), { levels: [7, 8, 9], start: 7 });
   assert.deepEqual(boardLevels({ kind: 'reroll', level: 7, targets: ['A'], avgLevel: 8 }), { levels: [7, 8, 9], start: 7 });
   assert.deepEqual(boardLevels({ kind: 'fast9', avgLevel: 8.7 }), { levels: [7, 8, 9], start: 8 });
 });
@@ -84,8 +84,17 @@ test('groupRecipes: Items, dann Spatula, dann Bratpfanne, je alphabetisch', () =
 
 test('startLevel: erste Stufe ab Start mit Brett, sonst erste mit Brett, sonst Start', () => {
   const has = (set: number[]) => (l: number) => set.includes(l);
-  assert.equal(startLevel([5, 7, 8, 9], 5, has([5, 7, 8, 9])), 5);
-  assert.equal(startLevel([5, 7, 8, 9], 5, has([7, 8, 9])), 7);
+  assert.equal(startLevel([7, 8, 9], 7, has([7, 8, 9])), 7);
+  assert.equal(startLevel([7, 8, 9], 7, has([8, 9])), 8);
+  assert.equal(startLevel([7, 8, 9], 8, has([7, 8, 9])), 8);
   assert.equal(startLevel([7, 8, 9], 8, has([7])), 7);
   assert.equal(startLevel([7, 8, 9], 8, has([])), 8);
+});
+
+test('shownLevels: nur Stufen mit Brett, Reihenfolge bleibt', () => {
+  const has = (set: number[]) => (l: number) => set.includes(l);
+  assert.deepEqual(shownLevels([7, 8, 9], has([])), []);
+  assert.deepEqual(shownLevels([7, 8, 9], has([9])), [9]);
+  assert.deepEqual(shownLevels([7, 8, 9], has([7, 9])), [7, 9]);
+  assert.deepEqual(shownLevels([4, 5, 6, 7], has([6, 4])), [4, 6]);
 });

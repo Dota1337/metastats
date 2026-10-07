@@ -1,5 +1,6 @@
 // Kleiner DOM-Baukasten statt Framework: die Overlays muessen schnell und klein bleiben.
 import type { CompanionComp, CompanionLookups } from '../../../../app/lib/companion-types.ts';
+import { t, lang } from './i18n.ts';
 
 type Child = Node | string | number | null | undefined | false;
 
@@ -55,6 +56,18 @@ export function itemIcon(id: string, lookups: CompanionLookups | null, size: 'xs
 
 export function tierBadge(tier: string | null): HTMLElement {
   return h('span', { class: `tier tier-${(tier || 'none').toLowerCase()}` }, tier || '—');
+}
+
+// Stufen-Reiter wie bei MetaTFT: „Stufe N", darunter klein der Anteil der
+// Spiele, die auf dieser Stufe enden (fehlt er, entfaellt die Zeile).
+export function levelTabs(levels: number[], active: number, shareOf: ((l: number) => number | null | undefined) | null, onPick: (l: number) => void): HTMLElement {
+  return h('div', { class: 'lvl-tabs', role: 'tablist' }, levels.map(l => {
+    const share = shareOf?.(l);
+    return h('button', { class: l === active ? 'lvl-tab active' : 'lvl-tab', role: 'tab', 'aria-selected': l === active ? 'true' : 'false', onclick: () => onPick(l) },
+      h('span', {}, `${t('tools.level')} ${l}`),
+      share != null ? h('span', { class: 'lvl-tab-share' }, share.toLocaleString(lang(), { style: 'percent', maximumFractionDigits: 0 })) : null,
+    );
+  }));
 }
 
 export function fmtAvg(v: number | null): string {

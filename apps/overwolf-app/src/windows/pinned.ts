@@ -7,8 +7,8 @@ import { read, write, subscribe, patchSettings } from '../lib/store.ts';
 import { t } from '../lib/i18n.ts';
 import { boot } from '../lib/boot.ts';
 import { makeDraggable, fitSelf } from '../lib/ow.ts';
-import { levelPlan, boardLevels, startLevel, compRecipes } from '../lib/plan.ts';
-import { h, clear, unitIcon, itemIcon, compUnits, tierBadge } from '../lib/dom.ts';
+import { levelPlan, boardLevels, startLevel, shownLevels, compRecipes } from '../lib/plan.ts';
+import { h, clear, unitIcon, itemIcon, compUnits, tierBadge, levelTabs } from '../lib/dom.ts';
 import { boardView } from '../lib/board-view.ts';
 
 const root = document.getElementById('app')!;
@@ -55,7 +55,8 @@ function render(): void {
   // ui.level 0 = noch nicht gewaehlt; dann die erste Stufe mit Brett ab der Startstufe.
   if (ui.key !== pin.key) { ui.key = pin.key; ui.level = 0; }
   const hasLevel = (l: number) => !!detail?.boardsByPlayerLevel?.[String(l)]?.length;
-  const level = ui.level || startLevel(levels, start, hasLevel);
+  const shown = shownLevels(levels, hasLevel);
+  const level = shown.includes(ui.level) ? ui.level : startLevel(shown, start, hasLevel);
   // Ohne Brett fuer die Stufe (zu wenig Spiele oder alter Stand): die Gesamt-Aufstellung.
   const board = detail?.boardsByPlayerLevel?.[String(level)] ?? detail?.board ?? [];
   const early = live.level != null && live.level >= 4 && live.level <= 7 ? detail?.early[String(live.level)]?.[0] : undefined;
@@ -64,10 +65,8 @@ function render(): void {
     head,
     detail && board.length
       ? h('div', {},
-        detail.boardsByPlayerLevel
-          ? h('div', { class: 'level-pick' }, levels.map(l =>
-            h('button', { class: l === level ? 'chip active' : 'chip', disabled: !hasLevel(l), onclick: () => { ui.level = l; render(); } }, `${t('tools.level')} ${l}`),
-          ))
+        shown.length
+          ? levelTabs(shown, level, l => detail.levels.find(x => x.level === l)?.share, l => { ui.level = l; render(); })
           : h('div', { class: 'ov-label' }, t('overlay.target')),
         boardView(board.map(b => ({ cell: b.cell, unit: b.unit, star: byId.get(b.unit)?.star3 ? 3 : undefined, items: byId.get(b.unit)?.items })), lk, 'sm'),
       )

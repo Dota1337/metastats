@@ -5,9 +5,9 @@ import { read, write } from '../../lib/store.ts';
 import { t, lang } from '../../lib/i18n.ts';
 import { loadCompDetail, siteUrl } from '../../lib/api.ts';
 import { openExternal } from '../../lib/ow.ts';
-import { levelPlan, boardLevels, startLevel } from '../../lib/plan.ts';
+import { levelPlan, boardLevels, startLevel, shownLevels } from '../../lib/plan.ts';
 import { boardView } from '../../lib/board-view.ts';
-import { h, clear, unitIcon, itemIcon, tierBadge, fmtAvg, fmtPct, compUnits } from '../../lib/dom.ts';
+import { h, clear, unitIcon, itemIcon, tierBadge, fmtAvg, fmtPct, compUnits, levelTabs } from '../../lib/dom.ts';
 import { nav, go, lookups, comps, backBtn, fetchSlot, slotFallback, itemName, rerender } from './ctx.ts';
 
 export const listState = { query: '', loadFailed: false, retry: () => {} };
@@ -139,7 +139,9 @@ function detailView(c: CompanionComp): HTMLElement {
   // boardUi.level 0 = noch nicht gewaehlt; dann die erste Stufe mit Brett ab der Startstufe.
   if (boardUi.key !== c.key) { boardUi.key = c.key; boardUi.level = 0; }
   const byLevel = d?.boardsByPlayerLevel;
-  const level = boardUi.level || startLevel(levels, start, l => !!byLevel?.[String(l)]?.length);
+  const hasLevel = (l: number) => !!byLevel?.[String(l)]?.length;
+  const shown = shownLevels(levels, hasLevel);
+  const level = shown.includes(boardUi.level) ? boardUi.level : startLevel(shown, start, hasLevel);
   const carriers = c.units.filter(u => u.items?.length);
   const strong = matchupList(c, true, lk);
   const weak = matchupList(c, false, lk);
@@ -157,9 +159,7 @@ function detailView(c: CompanionComp): HTMLElement {
     h('div', { class: 'detail-grid' },
       h('div', { class: 'card' },
         h('h3', {}, t('comps.board')),
-        byLevel ? h('div', { class: 'level-pick' }, levels.map(l =>
-          h('button', { class: l === level ? 'chip active' : 'chip', disabled: !byLevel[String(l)]?.length, onclick: () => { boardUi.level = l; rerender(); } }, `${t('tools.level')} ${l}`),
-        )) : null,
+        d && shown.length ? levelTabs(shown, level, l => d.levels.find(x => x.level === l)?.share, l => { boardUi.level = l; rerender(); }) : null,
         slot.state === 'loading' ? h('div', { class: 'spinner' }) : compBoard(c, d, lk, 'md', byLevel?.[String(level)] ?? d?.board ?? []),
       ),
       carriers.length ? h('div', { class: 'card' },

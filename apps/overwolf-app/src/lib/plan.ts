@@ -17,11 +17,15 @@ export function levelPlan(comp: CompanionComp, _lookups?: CompanionLookups | nul
   return { kind: comp.avgLevel != null && comp.avgLevel >= 8.5 ? 'fast9' : 'fast8', avgLevel: comp.avgLevel };
 }
 
-// Stufen fuer den Aufstellungs-Umschalter: Reroll-Stufe (falls Reroll und
-// unter 7), dann 7/8/9. Startstufe: Reroll-Stufe, sonst 8.
+// Stufen fuer den Aufstellungs-Umschalter: immer 7/8/9 (User 2026-10-07).
+// Startstufe: Reroll-Comps 7, sonst 8.
 export function boardLevels(plan: LevelPlan): { levels: number[]; start: number } {
-  const levels = plan.kind === 'reroll' && plan.level < 7 ? [plan.level, 7, 8, 9] : [7, 8, 9];
-  return { levels, start: plan.kind === 'reroll' ? plan.level : 8 };
+  return { levels: [7, 8, 9], start: plan.kind === 'reroll' ? 7 : 8 };
+}
+
+// Nur Stufen mit Brett bekommen einen Reiter; leere fallen ganz weg.
+export function shownLevels(levels: number[], has: (l: number) => boolean): number[] {
+  return levels.filter(has);
 }
 
 // Tatsaechliche Startstufe, sobald bekannt ist, welche Stufen ein Brett haben:

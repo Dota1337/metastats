@@ -3,11 +3,13 @@
 // typischerweise erreicht werden.
 import { read } from '../../lib/store.ts';
 import { t, lang } from '../../lib/i18n.ts';
-import { h, unitIcon, tierBadge, fmtAvg } from '../../lib/dom.ts';
+import { h, unitIcon, tierBadge, fmtAvg, levelTabs } from '../../lib/dom.ts';
+import { shownLevels } from '../../lib/plan.ts';
 import { nav, go, lookups, comps, slotFallback, rerender } from './ctx.ts';
 import { compDetailSlot, detailSlotKey } from './comps.ts';
 
-const ui = { level: 4 };
+// Gewaehlte Stufe; springt beim Wechsel der Comp auf deren erste Stufe mit Boards.
+const ui = { key: '', level: 0 };
 const LEVELS = [4, 5, 6, 7];
 
 export function earlyTab(): HTMLElement {
@@ -24,7 +26,10 @@ export function earlyTab(): HTMLElement {
   if (!c) return h('section', { class: 'panel' }, all.length ? null : h('div', { class: 'spinner' }));
   const slot = compDetailSlot(c);
   const d = slot.state === 'ok' ? slot.data : null;
-  const boards = d?.early[String(ui.level)] ?? [];
+  if (ui.key !== c.key) { ui.key = c.key; ui.level = 0; }
+  const shown = d ? shownLevels(LEVELS, l => !!d.early[String(l)]?.length) : [];
+  const level = shown.includes(ui.level) ? ui.level : shown[0] ?? LEVELS[0];
+  const boards = d?.early[String(level)] ?? [];
 
   return h('section', { class: 'panel' },
     h('div', { class: 'toolbar' },
@@ -33,9 +38,7 @@ export function earlyTab(): HTMLElement {
       h('button', { class: 'btn ghost', onclick: () => go('comps', { compKey: c.key }) }, t('comps.details')),
     ),
     d ? h('div', { class: 'card' },
-      h('div', { class: 'level-pick' }, LEVELS.map(l =>
-        h('button', { class: l === ui.level ? 'chip active' : 'chip', disabled: !(d.early[String(l)]?.length), onclick: () => { ui.level = l; rerender(); } }, `${t('tools.level')} ${l}`),
-      )),
+      shown.length ? levelTabs(shown, level, null, l => { ui.level = l; rerender(); }) : null,
       h('h3', {}, t('early.boards')),
       boards.length
         ? h('table', { class: 'table' },

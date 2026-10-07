@@ -229,6 +229,7 @@
         "app/lib/cdragon-base.ts",
         "app/lib/current-set.ts",
         "app/lib/tft-cdragon.ts",
+        "app/lib/tft-comp-guides-server.ts",
         "app/lib/tft-comp-guides.ts",
         "app/lib/tft-roll-odds.ts",
         "app/lib/tft-shop-pool.ts",
@@ -237,7 +238,7 @@
       ],
       "used": true,
       "usedBy": [
-        "apps/overwolf-app/dist/app/assets/history-store-BAh63Jzy.js",
+        "apps/overwolf-app/dist/app/assets/history-store-CBU5wL9n.js",
         "apps/overwolf-app/src/lib/api.ts"
       ]
     },
@@ -251,6 +252,7 @@
         "app/lib/cdragon-base.ts",
         "app/lib/current-set.ts",
         "app/lib/tft-cdragon.ts",
+        "app/lib/tft-comp-guides-server.ts",
         "app/lib/tft-comp-guides.ts",
         "app/lib/tft-roll-odds.ts",
         "app/lib/tft-shop-pool.ts",
@@ -260,7 +262,7 @@
       ],
       "used": true,
       "usedBy": [
-        "apps/overwolf-app/dist/app/assets/history-store-BAh63Jzy.js",
+        "apps/overwolf-app/dist/app/assets/history-store-CBU5wL9n.js",
         "apps/overwolf-app/src/lib/api.ts"
       ]
     },
@@ -282,7 +284,7 @@
       ],
       "used": true,
       "usedBy": [
-        "apps/overwolf-app/dist/app/assets/history-store-BAh63Jzy.js",
+        "apps/overwolf-app/dist/app/assets/history-store-CBU5wL9n.js",
         "apps/overwolf-app/src/lib/api.ts"
       ]
     },
@@ -304,7 +306,7 @@
       ],
       "used": true,
       "usedBy": [
-        "apps/overwolf-app/dist/app/assets/history-store-BAh63Jzy.js",
+        "apps/overwolf-app/dist/app/assets/history-store-CBU5wL9n.js",
         "apps/overwolf-app/src/lib/api.ts"
       ]
     },
@@ -326,7 +328,7 @@
       ],
       "used": true,
       "usedBy": [
-        "apps/overwolf-app/dist/app/assets/history-store-BAh63Jzy.js",
+        "apps/overwolf-app/dist/app/assets/history-store-CBU5wL9n.js",
         "apps/overwolf-app/src/lib/api.ts"
       ]
     },
@@ -348,7 +350,7 @@
       ],
       "used": true,
       "usedBy": [
-        "apps/overwolf-app/dist/app/assets/history-store-BAh63Jzy.js",
+        "apps/overwolf-app/dist/app/assets/history-store-CBU5wL9n.js",
         "apps/overwolf-app/src/lib/api.ts"
       ]
     },
@@ -1235,7 +1237,7 @@
       "via": [],
       "used": true,
       "usedBy": [
-        "apps/overwolf-app/dist/app/assets/background-Dt6xdr1d.js",
+        "apps/overwolf-app/dist/app/assets/background-B_KNGak3.js",
         "apps/overwolf-app/src/windows/background.ts"
       ]
     },

@@ -53,11 +53,16 @@ const posix = (p) => p.split('\\').join('/');
 
 // ------------------------------------------------------------------ Dateien
 
+// Build-Ausgabe und Pakete nie mitlesen: beide sind nicht eingecheckt
+// (apps/overwolf-app/.gitignore), die Karte hinge sonst davon ab, wann
+// zuletzt lokal gebaut wurde — und waere in jeder sauberen Kopie veraltet.
+const SKIP_DIRS = new Set(['dist', 'node_modules']);
+
 function walk(dir, match, out = []) {
   if (!existsSync(dir)) return out;
   for (const entry of readdirSync(dir).sort()) {
     const full = join(dir, entry);
-    if (statSync(full).isDirectory()) walk(full, match, out);
+    if (statSync(full).isDirectory()) { if (!SKIP_DIRS.has(entry)) walk(full, match, out); }
     else if (match.test(entry)) out.push(full);
   }
   return out;

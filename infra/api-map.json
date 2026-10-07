@@ -238,7 +238,6 @@
       ],
       "used": true,
       "usedBy": [
-        "apps/overwolf-app/dist/app/assets/history-store-CBU5wL9n.js",
         "apps/overwolf-app/src/lib/api.ts"
       ]
     },
@@ -262,7 +261,6 @@
       ],
       "used": true,
       "usedBy": [
-        "apps/overwolf-app/dist/app/assets/history-store-CBU5wL9n.js",
         "apps/overwolf-app/src/lib/api.ts"
       ]
     },
@@ -284,7 +282,6 @@
       ],
       "used": true,
       "usedBy": [
-        "apps/overwolf-app/dist/app/assets/history-store-CBU5wL9n.js",
         "apps/overwolf-app/src/lib/api.ts"
       ]
     },
@@ -306,7 +303,6 @@
       ],
       "used": true,
       "usedBy": [
-        "apps/overwolf-app/dist/app/assets/history-store-CBU5wL9n.js",
         "apps/overwolf-app/src/lib/api.ts"
       ]
     },
@@ -328,7 +324,6 @@
       ],
       "used": true,
       "usedBy": [
-        "apps/overwolf-app/dist/app/assets/history-store-CBU5wL9n.js",
         "apps/overwolf-app/src/lib/api.ts"
       ]
     },
@@ -350,7 +345,6 @@
       ],
       "used": true,
       "usedBy": [
-        "apps/overwolf-app/dist/app/assets/history-store-CBU5wL9n.js",
         "apps/overwolf-app/src/lib/api.ts"
       ]
     },
@@ -1237,7 +1231,6 @@
       "via": [],
       "used": true,
       "usedBy": [
-        "apps/overwolf-app/dist/app/assets/background-B_KNGak3.js",
         "apps/overwolf-app/src/windows/background.ts"
       ]
     },

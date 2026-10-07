@@ -6,6 +6,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { checkFandomImage } from './lib/fandom-image.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -142,20 +143,20 @@ async function main() {
 
   for (const team of data.teams) {
     if (!team.logo) continue;
-    try {
-      const r = await fetch(team.logo, { method: 'HEAD' });
-      if (r.status === 200) {
-        working++;
-      } else {
-        console.log(`  BROKEN (${r.status}): ${team.name} -> ${team.logo.substring(0, 60)}`);
-        team.logo = ''; // Remove broken logo
-        broken++;
-      }
-    } catch {
-      team.logo = '';
+    // Gemeinsamer Helfer: schickt Browser-User-Agent + Referer mit (ohne Referer
+    // antwortet Fandom immer 403 und hier waere jedes Logo geloescht worden).
+    // Nur ein echtes 404 (Platzhalterbild) entfernt das Logo.
+    const res = await checkFandomImage(team.logo);
+    if (res === 'ok') {
+      working++;
+    } else if (res === 'missing') {
+      console.log(`  BROKEN (404): ${team.name} -> ${team.logo.substring(0, 60)}`);
+      team.logo = ''; // Remove broken logo
       broken++;
+    } else {
+      console.log(`  UNGEPRUEFT: ${team.name} -> ${team.logo.substring(0, 60)}`);
     }
-    await sleep(50);
+    await sleep(200);
   }
 
   console.log(`  Working: ${working}, Broken: ${broken}`);

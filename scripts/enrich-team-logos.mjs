@@ -7,6 +7,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { fandomImageUrl } from './lib/fandom-image.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ESPORTS_KEY = process.env.LOLESPORTS_API_KEY || '';
@@ -123,9 +124,10 @@ async function main() {
 
       for (const t of teams) {
         if (t.Image && t.Name) {
-          // Leaguepedia Image is filename, need to construct URL
-          const imgName = t.Image.replace(/ /g, '_');
-          const imgUrl = `https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/${imgName}`;
+          // Leaguepedia Image is filename — Adresse mit md5-Unterordner bauen
+          // (ohne ihn liefert Fandom ein graues Platzhalterbild statt eines Fehlers).
+          const imgUrl = fandomImageUrl(t.Image);
+          if (!imgUrl) continue;
           leaguepediaLogos[t.Name.toLowerCase()] = imgUrl;
           if (t.Short) leaguepediaLogos[t.Short.toLowerCase()] = imgUrl;
         }

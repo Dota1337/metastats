@@ -3,6 +3,8 @@
  * Sources: Leaguepedia Players + TournamentRosters + existing pro-players.json
  */
 
+import { fandomImageUrl, checkFandomImage, repairFlatFandomLogos } from './lib/fandom-image.mjs';
+
 const CARGO_API = 'https://lol.fandom.com/wiki/Special:CargoExport';
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -488,6 +490,8 @@ async function main() {
 
     // Trust existing logo/short over hardcoded meta — existing came from enrich-team-logos
     // and has been manually verified over many commits (commits 7a632e3, fead011).
+    // Ausnahme: Logos ohne Fandom-Unterordner sind kaputt (graues Platzhalterbild)
+    // — die prueft repairFlatFandomLogos unten bei jedem Lauf neu.
     const finalLogo = existing?.logo || meta?.logo || null;
     const finalShort = existing?.short || meta?.short || name.slice(0, 3).toUpperCase();
 
@@ -524,6 +528,14 @@ async function main() {
 
   teamsDB.sort((a, b) => b.totalPrizeMoney - a.totalPrizeMoney);
 
+  // Uebernommene Logos ohne md5-Unterordner (`…/images/Name.png`) liefern bei
+  // Fandom ein graues Platzhalterbild statt eines Fehlers. Jede Woche neu pruefen:
+  // Adresse per md5 bauen, nur bei echtem Bild behalten, sonst null (Kuerzel-Feld).
+  const logoRepair = await repairFlatFandomLogos(teamsDB, { log: console.log });
+  if (logoRepair.checked > 0) {
+    console.log(`\n[Logo-Pruefung] ${logoRepair.checked} Logos ohne Unterordner: ${logoRepair.repaired} repariert, ${logoRepair.nulled} entfernt`);
+  }
+
   // Post-step: enrich missing logos from Leaguepedia Teams table (lightweight, no extra APIs)
   const teamsMissingLogo = teamsDB.filter(t => !t.logo || !String(t.logo).startsWith('http'));
   if (teamsMissingLogo.length > 0) {
@@ -539,8 +551,9 @@ async function main() {
       if (!batch.length) break;
       for (const t of batch) {
         if (t.Image && t.Name) {
-          const imgName = String(t.Image).replace(/ /g, '_');
-          const url = `https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/${imgName}`;
+          // Adresse mit md5-Unterordner — ohne ihn liefert Fandom ein Platzhalterbild.
+          const url = fandomImageUrl(t.Image);
+          if (!url) continue;
           // String() ist Pflicht: Cargo liefert rein numerische Teamnamen
           // ("100" für 100 Thieves) als Number, .toLowerCase() wirft dann.
           leaguepediaLogos[String(t.Name).toLowerCase()] = url;
@@ -554,7 +567,11 @@ async function main() {
     let enriched = 0;
     for (const t of teamsMissingLogo) {
       const url = leaguepediaLogos[(t.name || '').toLowerCase()] || leaguepediaLogos[(t.short || '').toLowerCase()];
-      if (url) { t.logo = url; enriched++; }
+      if (!url) continue;
+      // Nur ein echtes Bild uebernehmen (Fandom antwortet bei fehlender Datei
+      // mit 404 + Platzhalter). Nacheinander, mit Pause.
+      if (await checkFandomImage(url) === 'ok') { t.logo = url; enriched++; }
+      await sleep(200);
     }
     console.log(`  ${enriched}/${teamsMissingLogo.length} Logos via Leaguepedia ergaenzt`);
   }

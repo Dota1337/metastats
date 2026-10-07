@@ -286,14 +286,14 @@ export default function Leaderboard() {
                 <div className="text-fg-muted text-[10px]">{tierDist.month}</div>
               )}
             </div>
-            <div className="flex items-end gap-2 h-40 mb-3">
+            <div className="flex items-end gap-2 sm:h-40 mb-3 overflow-x-auto sm:overflow-visible">
               {(() => {
                 const maxPct = Math.max(...tierDist.tiers.map(t => t.pct), 1);
                 return tierDist.tiers.map(item => {
                   const barHeight = Math.max((item.pct / maxPct) * 100, 2);
                   const display = item.pct >= 1 ? item.pct.toFixed(1) + '%' : item.pct + '%';
                   return (
-                    <div key={item.key} className="flex-1 flex flex-col items-center gap-1">
+                    <div key={item.key} className="flex-1 shrink-0 sm:shrink min-w-[2.5rem] sm:min-w-0 flex flex-col items-center gap-1">
                       <div className="text-[10px] font-medium" style={{ color: item.color }}>
                         {display}
                       </div>

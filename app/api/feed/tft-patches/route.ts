@@ -1,20 +1,19 @@
 import { NextRequest } from 'next/server';
-import { getAvailablePatches, callRpc } from '../../../lib/tft-supabase-reader';
+import { getAvailablePatches, ALL_REGIONS } from '../../../lib/tft-supabase-reader';
+import { loadPatchDiff } from '../../../lib/meta-pulse-diff-snapshot';
+import { PATCH_DIFF_BUCKETS, PATCH_DIFF_MIN_GAMES } from '../../../lib/snapshot-matrix';
 import { SITE_URL } from '../../../lib/site';
 
 // /api/feed/tft-patches → RSS 2.0 of TFT patch winners/losers. Sprint 5.3.
 // Lightweight newsletter surface: any RSS reader / newsletter tool can scrape.
+//
+// Gewinner/Verlierer kommen nur aus den vorgerechneten Blobs der Box
+// (tft/patch-diff/*, Meister+, alle Regionen) — der Feed fragt die Datenbank
+// nicht mehr selbst. Fehlt ein Blob, steht beim Patch der kurze Ersatztext.
 
 const SITE = SITE_URL;
-
-interface UnitRow {
-  character_id: string;
-  games: number;
-  sum_placement: number;
-  top4: number;
-  top1: number;
-  participants: number;
-}
+const FEED_PATCHES = 6;
+const APEX = PATCH_DIFF_BUCKETS.master_plus;
 
 function escapeXml(s: string): string {
   return s.replace(/[&<>"']/g, c => (
@@ -22,37 +21,33 @@ function escapeXml(s: string): string {
   ));
 }
 
-// ph2/th2 raus — leer im TFT-Crawl (siehe tft-supabase-reader.ts).
-const ALL_REGIONS = ['euw1','kr','na1','eun1','br1','jp1','la1','la2','oc1','tr1','ru','me1','sg2','tw2','vn2'];
-const APEX = ['master','grandmaster','challenger'];
-
 export async function GET(_request: NextRequest) {
   const patches = await getAvailablePatches(120);
   const items: string[] = [];
 
-  for (let idx = 0; idx < Math.min(6, patches.length); idx++) {
+  // Ein Blob je Patch, auch fuer den Vorgaenger des letzten gezeigten Patches.
+  const shown = patches.slice(0, Math.min(FEED_PATCHES + 1, patches.length));
+  const blobs = await Promise.all(shown.map((p, idx) => loadPatchDiff({
+    entity: 'unit', regions: ALL_REGIONS, bucketLabel: 'master_plus', buckets: APEX,
+    patch: p, set: Number(p.set_number), closed: idx > 0,
+  }).catch(() => null)));
+
+  for (let idx = 0; idx < Math.min(FEED_PATCHES, patches.length); idx++) {
     const p = patches[idx];
-    const prev = patches[idx + 1];
+    const curr = blobs[idx];
+    const prevRows = blobs[idx + 1];
     let bullets = '';
-    try {
-      if (prev) {
-        const [curr, prevRows] = await Promise.all([
-          callRpc<UnitRow[]>('get_tft_unit_stats', {
-            p_regions: ALL_REGIONS, p_buckets: APEX, p_days: 30, p_patch: p.patch, p_set: p.set_number,
-          }),
-          callRpc<UnitRow[]>('get_tft_unit_stats', {
-            p_regions: ALL_REGIONS, p_buckets: APEX, p_days: 30, p_patch: prev.patch, p_set: prev.set_number,
-          }),
-        ]);
-        const prevMap = new Map(prevRows.map(r => [r.character_id, r]));
-        const diffs: { id: string; delta: number }[] = [];
-        for (const c of curr) {
-          const pp = prevMap.get(c.character_id);
-          if (!pp || c.games < 50 || pp.games < 50) continue;
-          const cAvg = Number(c.sum_placement) / Number(c.games);
-          const pAvg = Number(pp.sum_placement) / Number(pp.games);
-          diffs.push({ id: c.character_id, delta: cAvg - pAvg });
-        }
+    if (curr && prevRows) {
+      const prevMap = new Map(prevRows.map(r => [r.key, r]));
+      const diffs: { id: string; delta: number }[] = [];
+      for (const c of curr) {
+        const pp = prevMap.get(c.key);
+        if (!pp || c.games < PATCH_DIFF_MIN_GAMES || pp.games < PATCH_DIFF_MIN_GAMES) continue;
+        const cAvg = c.sum_placement / c.games;
+        const pAvg = pp.sum_placement / pp.games;
+        diffs.push({ id: c.key, delta: cAvg - pAvg });
+      }
+      if (diffs.length > 0) {
         diffs.sort((a, b) => a.delta - b.delta);
         const winners = diffs.slice(0, 3);
         const losers = diffs.slice(-3).reverse();
@@ -60,7 +55,7 @@ export async function GET(_request: NextRequest) {
           '<p><b>Winners:</b> ' + winners.map(w => `${w.id.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')} (Δ ${w.delta.toFixed(2)})`).join(', ') + '</p>' +
           '<p><b>Losers:</b> ' + losers.map(l => `${l.id.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')} (Δ +${l.delta.toFixed(2)})`).join(', ') + '</p>';
       }
-    } catch {}
+    }
 
     items.push(`
     <item>

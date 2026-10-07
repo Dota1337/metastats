@@ -1,17 +1,23 @@
-// Liest die vorgerechneten Meta-Pulse-Daten (region=all): Patch-Vergleiche und
-// Velocity. Geschrieben von scripts/publish-meta-pulse-diffs.mjs auf der Box;
-// Regeln und Pfade stehen in snapshot-matrix.ts. Jeder Fehler → null → die
-// Route rechnet live wie bisher.
+// Liest die vorgerechneten Meta-Pulse-Daten (region=all): Patch-Vergleiche,
+// Velocity und die Rohzeilen der Patch-Gewinner (/api/tft/patch-diff, RSS-Feed).
+// Geschrieben von scripts/publish-meta-pulse-diffs.mjs auf der Box; Regeln und
+// Pfade stehen in snapshot-matrix.ts. Jeder Fehler → null → die Route rechnet
+// live wie bisher.
 import {
   isValidMetaPulseDiff,
   isValidMetaPulseVelocity,
+  isValidPatchDiff,
   listKey,
   metaPulseDiffPath,
   metaPulseVelocityPath,
+  patchDiffPath,
   META_PULSE_DIFF_BUCKETS,
+  PATCH_DIFF_BUCKETS,
   type MetaPulseDiffRow,
   type MetaPulseVelocityRow,
   type MetaPulseVelocityWindow,
+  type PatchDiffEntity,
+  type PatchDiffRow,
 } from './snapshot-matrix';
 
 // Derselbe Blob-Speicher wie das Snapshot-Manifest.
@@ -68,6 +74,34 @@ export async function loadMetaPulseDiff(o: Scope & { patch: MetaPulsePatchInfo; 
   const ok = isValidMetaPulseDiff(snap, {
     set: Number(o.patch.set_number),
     patch: o.patch.patch,
+    lastDay: o.patch.last_day,
+    totalMatches: Number(o.patch.total_matches),
+    regions: o.regions,
+    buckets: o.buckets,
+    now: Date.now(),
+    closed: o.closed,
+  });
+  return ok ? snap.rows : null;
+}
+
+// Rohzeilen einer Patch-Seite (alle Regionen). Der Aufrufer prueft, dass er
+// wirklich alle Regionen meint; hier zaehlt nur die Rang-Gruppe.
+export async function loadPatchDiff(o: {
+  entity: PatchDiffEntity;
+  regions: ReadonlyArray<string>;
+  bucketLabel: string;
+  buckets: ReadonlyArray<string>;
+  patch: MetaPulsePatchInfo;
+  set: number;
+  closed: boolean;
+}): Promise<PatchDiffRow[] | null> {
+  const groupBuckets = PATCH_DIFF_BUCKETS[o.bucketLabel];
+  if (!groupBuckets || listKey(groupBuckets) !== listKey(o.buckets)) return null;
+  const snap = await fetchBlob(patchDiffPath(o.patch.patch, o.entity, o.bucketLabel));
+  const ok = isValidPatchDiff(snap, {
+    set: o.set,
+    patch: o.patch.patch,
+    entity: o.entity,
     lastDay: o.patch.last_day,
     totalMatches: Number(o.patch.total_matches),
     regions: o.regions,

@@ -1,17 +1,19 @@
 [Unit]
-Description=metastats Meta-Pulse Patchvergleiche vorrechnen (region=all)
+Description=metastats Meta-Pulse Patchvergleiche und Patch-Gewinner vorrechnen (region=all)
 Wants=network-online.target
 After=network-online.target
 # Kein Conflicts=: nutzt weder Lock noch Manifest des grossen Snapshot-Laufs,
 # nur eine eigene DB-Verbindung (max 1) und eigene Blob-Pfade
-# tft/meta-pulse/diff/*.
+# tft/meta-pulse/diff/*, tft/meta-pulse/velocity/* und tft/patch-diff/*.
 
 [Service]
 Type=oneshot
 WorkingDirectory=/opt/metastats-crawler
 EnvironmentFile=/etc/metastats-crawler/env
 # Testlauf 2026-10-01 mit --force: 15 Jobs, laengster 34 s. Ohne --force
-# rechnet ein Lauf nur, was sich geaendert hat.
+# rechnet ein Lauf nur, was sich geaendert hat. Die Patch-Gewinner
+# (4 Arten x Patches x 5 Rang-Gruppen) kommen am Ende; reisst ein Lauf das
+# Zeitlimit, bleibt Geschriebenes erhalten und der naechste macht weiter.
 TimeoutStartSec=1800
 ExecStart=/usr/bin/node scripts/publish-meta-pulse-diffs.mjs
 StandardOutput=journal

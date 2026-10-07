@@ -372,7 +372,7 @@
     {
       "name": "metastats-meta-pulse-diffs.service",
       "kind": "service",
-      "description": "metastats Meta-Pulse Patchvergleiche vorrechnen (region=all)",
+      "description": "metastats Meta-Pulse Patchvergleiche und Patch-Gewinner vorrechnen (region=all)",
       "scripts": [
         "scripts/publish-meta-pulse-diffs.mjs"
       ]

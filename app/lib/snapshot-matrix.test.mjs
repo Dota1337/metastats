@@ -32,6 +32,13 @@ import {
   META_PULSE_VELOCITY_MAX_AGE_MS,
   metaPulseCompleteDay,
   trendAnchorOffsetDays,
+  PATCH_DIFF_ENTITIES,
+  PATCH_DIFF_RPC,
+  PATCH_DIFF_COLUMNS,
+  PATCH_DIFF_BUCKETS,
+  patchDiffPath,
+  normalizePatchDiffRows,
+  isValidPatchDiff,
 } from './snapshot-matrix.ts';
 
 const TODAY = new Date('2026-09-13T08:30:00Z');
@@ -369,4 +376,119 @@ test('Vollstaendiger Tag: Publisher ohne Wartezeit zaehlt die letzte Region sofo
   const rows = [...FULL_29, ...REG3.map(r => metaRow(r, '2026-09-30', '2026-10-01T21:34:52Z'))];
   assert.equal(metaPulseCompleteDay(rows, REG3, at('2026-10-01T21:36:00Z')), '2026-09-29');
   assert.equal(metaPulseCompleteDay(rows, REG3, at('2026-10-01T21:36:00Z'), 0), '2026-09-30');
+});
+
+// Patch-Gewinner (/api/tft/patch-diff, RSS-Feed): Rohzeilen je Patch × Art × Rang.
+test('Patch-Diff: Rang-Gruppen entsprechen expandBuckets() der Route', async () => {
+  const { expandBuckets } = await import('./tft-supabase-reader.ts');
+  for (const [label, tiers] of Object.entries(PATCH_DIFF_BUCKETS)) {
+    assert.equal(listKey(tiers), listKey(expandBuckets(label)), label);
+  }
+});
+
+test('Patch-Diff: Pfad, Reihenfolge (Items zuletzt), jede Art hat Funktion und Spalten', () => {
+  assert.equal(patchDiffPath('18.3b', 'unit', 'master_plus'), 'tft/patch-diff/18.3b/unit/all__master_plus.json');
+  assert.equal(PATCH_DIFF_ENTITIES.at(-1), 'item');
+  assert.equal(new Set(PATCH_DIFF_ENTITIES).size, 4);
+  for (const e of PATCH_DIFF_ENTITIES) {
+    assert.ok(PATCH_DIFF_RPC[e], e);
+    assert.ok(PATCH_DIFF_COLUMNS[e].includes('games'), e);
+  }
+});
+
+test('Patch-Diff: Live-Rueckfall der Route ruft dieselben Funktionen wie die Box', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../api/tft/patch-diff/route.ts', import.meta.url), 'utf8');
+  const live = Object.fromEntries(
+    [...src.matchAll(/^\s*(unit|item|trait|comp): args => callRpc<RpcRows>\('([a-z0-9_]+)'/gm)].map(m => [m[1], m[2]]),
+  );
+  assert.deepEqual(live, { ...PATCH_DIFF_RPC });
+});
+
+test('Patch-Diff: Zeilen werden einheitlich, Eigenschaften ueber Stufen zusammengezaehlt', () => {
+  assert.deepEqual(
+    normalizePatchDiffRows('unit', [
+      { character_id: 'TFT18_Ahri', games: '120', sum_placement: '480', top4: '60', participants: '9000' },
+      { character_id: 'TFT18_Vi', games: 80, sum_placement: 360, top4: 35, participants: 9000 },
+    ]),
+    [
+      { key: 'TFT18_Ahri', games: 120, sum_placement: 480, top4: 60, participants: 9000 },
+      { key: 'TFT18_Vi', games: 80, sum_placement: 360, top4: 35, participants: 9000 },
+    ],
+  );
+  assert.deepEqual(
+    normalizePatchDiffRows('item', [{ api_name: 'TFT_Item_Bloodthirster', games: 70, sum_placement: 280, top4: 40, total_item_slots: 5000 }]),
+    [{ key: 'TFT_Item_Bloodthirster', games: 70, sum_placement: 280, top4: 40, participants: 5000 }],
+  );
+  assert.deepEqual(
+    normalizePatchDiffRows('trait', [
+      { name: 'TFT18_Mage', activation: 3, games: 100, sum_placement: 450, top4: 50, participants: 9000 },
+      { name: 'TFT18_Mage', activation: 5, games: 40, sum_placement: 120, top4: 30, participants: 9000 },
+      { name: 'TFT18_Tank', activation: 2, games: 60, sum_placement: 270, top4: 28, participants: 9000 },
+    ]),
+    [
+      { key: 'TFT18_Mage', games: 140, sum_placement: 570, top4: 80, participants: 9000 },
+      { key: 'TFT18_Tank', games: 60, sum_placement: 270, top4: 28, participants: 9000 },
+    ],
+  );
+  assert.deepEqual(
+    normalizePatchDiffRows('comp', [{ cluster_key: 'mage@8_ahri', games: 55, sum_placement: 220, top4: 30, participants: 9000 }]),
+    [{ key: 'mage@8_ahri', games: 55, sum_placement: 220, top4: 30, participants: 9000 }],
+  );
+  assert.deepEqual(normalizePatchDiffRows('unit', []), []);
+});
+
+const PD_REGIONS = ['euw1', 'na1', 'kr'];
+const PD_SNAP = {
+  v: 1,
+  generatedAt: '2026-10-08T03:00:00Z',
+  set: 18,
+  patch: '18.3b',
+  entity: 'unit',
+  lastDay: '2026-10-07',
+  totalMatches: 3_000_000,
+  regions: PD_REGIONS,
+  buckets: [...PATCH_DIFF_BUCKETS.master_plus],
+  days: 30,
+  minGames: 50,
+  rows: [],
+};
+const PD_WANT = {
+  set: 18,
+  patch: '18.3b',
+  entity: 'unit',
+  lastDay: '2026-10-07',
+  totalMatches: 2_990_000,
+  regions: ['kr', 'na1', 'euw1'],
+  buckets: [...PATCH_DIFF_BUCKETS.master_plus],
+  now: at('2026-10-08T09:00:00Z'),
+  closed: false,
+};
+
+test('Patch-Diff-Blob: passender laufender und abgeschlossener Patch wird angenommen', () => {
+  assert.equal(isValidPatchDiff(PD_SNAP, PD_WANT), true);
+  // Abgeschlossen: andere Summe (180- gegen 30-Tage-Liste) zaehlt nicht.
+  assert.equal(isValidPatchDiff({ ...PD_SNAP, totalMatches: 1_685_440 }, { ...PD_WANT, totalMatches: 5_125_888, closed: true }), true);
+  assert.equal(isValidPatchDiff({ ...PD_SNAP, generatedAt: '2026-09-28T09:00:00Z' }, { ...PD_WANT, closed: true }), true);
+});
+
+test('Patch-Diff-Blob: weniger Spiele, zu alt, falscher Ausschnitt oder Zukunft fallen durch', () => {
+  assert.equal(isValidPatchDiff({ ...PD_SNAP, totalMatches: 2_000_000 }, PD_WANT), false);
+  assert.equal(isValidPatchDiff({ ...PD_SNAP, generatedAt: '2026-10-06T20:00:00Z' }, PD_WANT), false); // 37 h
+  assert.equal(isValidPatchDiff({ ...PD_SNAP, generatedAt: '2026-09-23T08:00:00Z' }, { ...PD_WANT, closed: true }), false); // 15 d
+  assert.equal(isValidPatchDiff({ ...PD_SNAP, entity: 'item' }, PD_WANT), false);
+  assert.equal(isValidPatchDiff({ ...PD_SNAP, set: 17 }, PD_WANT), false);
+  assert.equal(isValidPatchDiff({ ...PD_SNAP, patch: '18.3' }, PD_WANT), false);
+  assert.equal(isValidPatchDiff({ ...PD_SNAP, regions: ['euw1'] }, PD_WANT), false);
+  assert.equal(isValidPatchDiff({ ...PD_SNAP, buckets: ['challenger'] }, PD_WANT), false);
+  assert.equal(isValidPatchDiff({ ...PD_SNAP, days: 7 }, PD_WANT), false);
+  assert.equal(isValidPatchDiff({ ...PD_SNAP, minGames: 30 }, PD_WANT), false);
+  assert.equal(isValidPatchDiff({ ...PD_SNAP, lastDay: '2026-10-06' }, PD_WANT), false);
+  assert.equal(isValidPatchDiff({ ...PD_SNAP, generatedAt: '2026-10-08T09:30:00Z' }, PD_WANT), false);
+});
+
+test('Patch-Diff-Blob: Muell wird abgelehnt statt zu werfen', () => {
+  for (const bad of [null, undefined, 'x', 42, [], {}, { ...PD_SNAP, v: 2 }, { ...PD_SNAP, rows: null }, { ...PD_SNAP, generatedAt: 'kaputt' }]) {
+    assert.equal(isValidPatchDiff(bad, PD_WANT), false);
+  }
 });

@@ -11,7 +11,7 @@
     "tables": 36,
     "rpcs": 29,
     "files": 14,
-    "edges": 493,
+    "edges": 494,
     "unused": 7,
     "unresolved": 1
   },
@@ -382,6 +382,7 @@
       "file": "app/api/feed/tft-patches/route.ts",
       "via": [
         "app/lib/current-set.ts",
+        "app/lib/meta-pulse-diff-snapshot.ts",
         "app/lib/tft-supabase-reader.ts",
         "public/tft-set.json"
       ],
@@ -1139,6 +1140,7 @@
       "via": [
         "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
+        "app/lib/meta-pulse-diff-snapshot.ts",
         "app/lib/tft-supabase-reader.ts",
         "public/tft-set.json"
       ],
@@ -2527,6 +2529,11 @@
     },
     {
       "from": "api:/api/feed/tft-patches",
+      "to": "blob:manifest",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/feed/tft-patches",
       "to": "db:tft_daily_crawl_meta",
       "kind": "reads"
     },
@@ -2543,11 +2550,6 @@
     {
       "from": "api:/api/feed/tft-patches",
       "to": "fn:get_tft_available_patches",
-      "kind": "calls"
-    },
-    {
-      "from": "api:/api/feed/tft-patches",
-      "to": "fn:get_tft_unit_stats",
       "kind": "calls"
     },
     {
@@ -3599,6 +3601,11 @@
       "from": "api:/api/tft/onetricks",
       "to": "fn:get_tft_available_patches",
       "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/patch-diff",
+      "to": "blob:manifest",
+      "kind": "fetches"
     },
     {
       "from": "api:/api/tft/patch-diff",

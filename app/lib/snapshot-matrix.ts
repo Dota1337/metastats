@@ -524,6 +524,137 @@ export function isValidMetaPulseDiff(snap: unknown, want: {
 }
 
 // ---------------------------------------------------------------------------
+// Patch-Gewinner: vorgerechnete Rohzeilen (2026-10-08)
+// ---------------------------------------------------------------------------
+// /api/tft/patch-diff ueber alle Regionen braucht live 11-21 s; Items und Comps
+// liefen am 07.10. in den 20-s-Deckel der Datenbank (HTTP 502). Die Box rechnet
+// je Patch × Art × Rang-Gruppe die Rohzeilen vor (scripts/publish-meta-pulse-diffs.mjs,
+// Teil „patchdiff"), Route und RSS-Feed rechnen den Vergleich aus zwei Blobs.
+// Nur region=all — Einzelregionen sind live billig (1,8-2,5 s).
+
+export type PatchDiffEntity = 'unit' | 'item' | 'trait' | 'comp';
+// Reihenfolge = Rechenreihenfolge der Box: Items zuletzt (langsamste Abfrage).
+export const PATCH_DIFF_ENTITIES: readonly PatchDiffEntity[] = ['unit', 'trait', 'comp', 'item'];
+export const PATCH_DIFF_RPC: Record<PatchDiffEntity, string> = {
+  unit: 'get_tft_unit_stats',
+  // Schlanke Variante (Migration 0028): die volle get_tft_item_stats laeuft bei
+  // 30 Tagen in den Deckel.
+  item: 'get_tft_item_stats_list',
+  trait: 'get_tft_trait_stats',
+  comp: 'get_tft_comp_stats_for_diff',
+};
+// Nur diese Spalten holt die Box (die Item-Funktion liefert sonst jsonb mit).
+export const PATCH_DIFF_COLUMNS: Record<PatchDiffEntity, readonly string[]> = {
+  unit: ['character_id', 'games', 'sum_placement', 'top4', 'participants'],
+  item: ['api_name', 'games', 'sum_placement', 'top4', 'total_item_slots'],
+  trait: ['name', 'games', 'sum_placement', 'top4', 'participants'],
+  comp: ['cluster_key', 'games', 'sum_placement', 'top4', 'participants'],
+};
+export const PATCH_DIFF_P_DAYS = 30;
+// Mindestspiele je Seite im Vergleich; die Comp-Funktion filtert selbst damit.
+export const PATCH_DIFF_MIN_GAMES = 50;
+export const PATCH_DIFF_MAX_AGE_MS = 36 * 60 * 60 * 1000;
+export const PATCH_DIFF_CLOSED_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
+// Die Rang-Auswahlen der Gewinner-Seite (all/diamond/master_plus/
+// grandmaster_plus), der Patch-Seite (dazu challenger) und des Feeds
+// (master_plus). Test: muss expandBuckets() im Leser entsprechen.
+export const PATCH_DIFF_BUCKETS: Record<string, readonly string[]> = {
+  all: LADDER_UP,
+  diamond: ['diamond'],
+  master_plus: plusFrom('master'),
+  grandmaster_plus: plusFrom('grandmaster'),
+  challenger: ['challenger'],
+};
+
+export function patchDiffPath(patch: string, entity: PatchDiffEntity, bucketLabel: string): string {
+  return `tft/patch-diff/${patch}/${entity}/all__${bucketLabel}.json`;
+}
+
+export interface PatchDiffRow {
+  key: string;
+  games: number;
+  sum_placement: number;
+  top4: number;
+  participants: number;
+}
+
+export interface PatchDiffSnapshot {
+  v: 1;
+  generatedAt: string;
+  set: number;
+  patch: string;
+  entity: PatchDiffEntity;
+  lastDay: string;
+  totalMatches: number;
+  regions: string[];
+  buckets: string[];
+  days: number;
+  minGames: number;
+  rows: PatchDiffRow[];
+}
+
+// RPC-Zeilen → eine Zeile je Schluessel. Eigenschaften werden ueber die
+// Aktivierungsstufen zusammengezaehlt: „wurde sie gebufft/generft?" fragt
+// nicht nach der Stufe. Teilnehmer = Gesamtzahl der ersten Zeile.
+export function normalizePatchDiffRows(
+  entity: PatchDiffEntity,
+  rows: ReadonlyArray<Record<string, unknown>>,
+): PatchDiffRow[] {
+  if (entity === 'trait') {
+    const participants = Number(rows[0]?.participants || 0);
+    const byName = new Map<string, PatchDiffRow>();
+    for (const r of rows) {
+      const name = String(r.name);
+      const cur = byName.get(name) || { key: name, games: 0, sum_placement: 0, top4: 0, participants };
+      cur.games += Number(r.games);
+      cur.sum_placement += Number(r.sum_placement);
+      cur.top4 += Number(r.top4);
+      byName.set(name, cur);
+    }
+    return [...byName.values()];
+  }
+  const keyField = entity === 'unit' ? 'character_id' : entity === 'item' ? 'api_name' : 'cluster_key';
+  const participants = Number(rows[0]?.[entity === 'item' ? 'total_item_slots' : 'participants'] || 0);
+  return rows.map(r => ({
+    key: String(r[keyField]),
+    games: Number(r.games),
+    sum_placement: Number(r.sum_placement),
+    top4: Number(r.top4),
+    participants,
+  }));
+}
+
+// Laufender Patch: Blob muss mindestens den letzten Tag und die Spielzahl der
+// Patch-Liste kennen und hoechstens 36 h alt sein. Abgeschlossener Patch: nur
+// letzter Tag und 14 Tage — keine Spielzahl, weil Route (180-Tage-Liste) und
+// Box (30-Tage-Liste) fuer alte Patches verschiedene Summen sehen (18.1b am
+// 07.10.: 5.125.888 gegen 1.685.440). Set muss gleich sein → Vergleiche ueber
+// eine Set-Grenze rechnet die Route live wie bisher.
+export function isValidPatchDiff(snap: unknown, want: {
+  set: number;
+  patch: string;
+  entity: PatchDiffEntity;
+  lastDay: string;
+  totalMatches: number;
+  regions: ReadonlyArray<string>;
+  buckets: ReadonlyArray<string>;
+  now: number;
+  closed: boolean;
+}): snap is PatchDiffSnapshot {
+  if (!snap || typeof snap !== 'object') return false;
+  const s = snap as Partial<PatchDiffSnapshot>;
+  if (s.v !== 1 || !Array.isArray(s.rows) || !Array.isArray(s.regions) || !Array.isArray(s.buckets)) return false;
+  if (s.entity !== want.entity || Number(s.set) !== want.set || s.patch !== want.patch) return false;
+  if (listKey(s.regions) !== listKey(want.regions) || listKey(s.buckets) !== listKey(want.buckets)) return false;
+  if (Number(s.days) !== PATCH_DIFF_P_DAYS || Number(s.minGames) !== PATCH_DIFF_MIN_GAMES) return false;
+  if (String(s.lastDay ?? '').slice(0, 10) < String(want.lastDay).slice(0, 10)) return false;
+  if (!want.closed && !(Number(s.totalMatches) >= Number(want.totalMatches))) return false;
+  const age = want.now - Date.parse(String(s.generatedAt));
+  const maxAge = want.closed ? PATCH_DIFF_CLOSED_MAX_AGE_MS : PATCH_DIFF_MAX_AGE_MS;
+  return Number.isFinite(age) && age >= -5 * 60 * 1000 && age <= maxAge;
+}
+
+// ---------------------------------------------------------------------------
 // Meta-Pulse: vorgerechnete Velocity („Aufsteiger", 2026-10-02)
 // ---------------------------------------------------------------------------
 // get_tft_comp_velocity ueber alle Regionen braucht kalt bis 12 s (Meister+,

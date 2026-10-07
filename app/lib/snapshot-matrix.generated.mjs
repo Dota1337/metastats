@@ -414,6 +414,94 @@ export function isValidMetaPulseDiff(snap, want) {
     const maxAge = want.closed ? META_PULSE_DIFF_CLOSED_MAX_AGE_MS : META_PULSE_DIFF_MAX_AGE_MS;
     return Number.isFinite(age) && age >= -5 * 60 * 1000 && age <= maxAge;
 }
+// Reihenfolge = Rechenreihenfolge der Box: Items zuletzt (langsamste Abfrage).
+export const PATCH_DIFF_ENTITIES = ['unit', 'trait', 'comp', 'item'];
+export const PATCH_DIFF_RPC = {
+    unit: 'get_tft_unit_stats',
+    // Schlanke Variante (Migration 0028): die volle get_tft_item_stats laeuft bei
+    // 30 Tagen in den Deckel.
+    item: 'get_tft_item_stats_list',
+    trait: 'get_tft_trait_stats',
+    comp: 'get_tft_comp_stats_for_diff',
+};
+// Nur diese Spalten holt die Box (die Item-Funktion liefert sonst jsonb mit).
+export const PATCH_DIFF_COLUMNS = {
+    unit: ['character_id', 'games', 'sum_placement', 'top4', 'participants'],
+    item: ['api_name', 'games', 'sum_placement', 'top4', 'total_item_slots'],
+    trait: ['name', 'games', 'sum_placement', 'top4', 'participants'],
+    comp: ['cluster_key', 'games', 'sum_placement', 'top4', 'participants'],
+};
+export const PATCH_DIFF_P_DAYS = 30;
+// Mindestspiele je Seite im Vergleich; die Comp-Funktion filtert selbst damit.
+export const PATCH_DIFF_MIN_GAMES = 50;
+export const PATCH_DIFF_MAX_AGE_MS = 36 * 60 * 60 * 1000;
+export const PATCH_DIFF_CLOSED_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
+// Die Rang-Auswahlen der Gewinner-Seite (all/diamond/master_plus/
+// grandmaster_plus), der Patch-Seite (dazu challenger) und des Feeds
+// (master_plus). Test: muss expandBuckets() im Leser entsprechen.
+export const PATCH_DIFF_BUCKETS = {
+    all: LADDER_UP,
+    diamond: ['diamond'],
+    master_plus: plusFrom('master'),
+    grandmaster_plus: plusFrom('grandmaster'),
+    challenger: ['challenger'],
+};
+export function patchDiffPath(patch, entity, bucketLabel) {
+    return `tft/patch-diff/${patch}/${entity}/all__${bucketLabel}.json`;
+}
+// RPC-Zeilen → eine Zeile je Schluessel. Eigenschaften werden ueber die
+// Aktivierungsstufen zusammengezaehlt: „wurde sie gebufft/generft?" fragt
+// nicht nach der Stufe. Teilnehmer = Gesamtzahl der ersten Zeile.
+export function normalizePatchDiffRows(entity, rows) {
+    if (entity === 'trait') {
+        const participants = Number(rows[0]?.participants || 0);
+        const byName = new Map();
+        for (const r of rows) {
+            const name = String(r.name);
+            const cur = byName.get(name) || { key: name, games: 0, sum_placement: 0, top4: 0, participants };
+            cur.games += Number(r.games);
+            cur.sum_placement += Number(r.sum_placement);
+            cur.top4 += Number(r.top4);
+            byName.set(name, cur);
+        }
+        return [...byName.values()];
+    }
+    const keyField = entity === 'unit' ? 'character_id' : entity === 'item' ? 'api_name' : 'cluster_key';
+    const participants = Number(rows[0]?.[entity === 'item' ? 'total_item_slots' : 'participants'] || 0);
+    return rows.map(r => ({
+        key: String(r[keyField]),
+        games: Number(r.games),
+        sum_placement: Number(r.sum_placement),
+        top4: Number(r.top4),
+        participants,
+    }));
+}
+// Laufender Patch: Blob muss mindestens den letzten Tag und die Spielzahl der
+// Patch-Liste kennen und hoechstens 36 h alt sein. Abgeschlossener Patch: nur
+// letzter Tag und 14 Tage — keine Spielzahl, weil Route (180-Tage-Liste) und
+// Box (30-Tage-Liste) fuer alte Patches verschiedene Summen sehen (18.1b am
+// 07.10.: 5.125.888 gegen 1.685.440). Set muss gleich sein → Vergleiche ueber
+// eine Set-Grenze rechnet die Route live wie bisher.
+export function isValidPatchDiff(snap, want) {
+    if (!snap || typeof snap !== 'object')
+        return false;
+    const s = snap;
+    if (s.v !== 1 || !Array.isArray(s.rows) || !Array.isArray(s.regions) || !Array.isArray(s.buckets))
+        return false;
+    if (s.entity !== want.entity || Number(s.set) !== want.set || s.patch !== want.patch)
+        return false;
+    if (listKey(s.regions) !== listKey(want.regions) || listKey(s.buckets) !== listKey(want.buckets))
+        return false;
+    if (Number(s.days) !== PATCH_DIFF_P_DAYS || Number(s.minGames) !== PATCH_DIFF_MIN_GAMES)
+        return false;
+    if (String(s.lastDay ?? '').slice(0, 10) < String(want.lastDay).slice(0, 10))
+        return false;
+    if (!want.closed && !(Number(s.totalMatches) >= Number(want.totalMatches)))
+        return false;
+    const age = want.now - Date.parse(String(s.generatedAt));
+    const maxAge = want.closed ? PATCH_DIFF_CLOSED_MAX_AGE_MS : PATCH_DIFF_MAX_AGE_MS;
+    return Number.isFinite(age) && age >= -5 * 60 * 1000 && age <= maxAge;
+}
 // ---------------------------------------------------------------------------
 // Meta-Pulse: vorgerechnete Velocity („Aufsteiger", 2026-10-02)
 // ---------------------------------------------------------------------------

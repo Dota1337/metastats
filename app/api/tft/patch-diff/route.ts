@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { callRpc, getAvailablePatches, expandBuckets, expandRegions } from '../../../lib/tft-supabase-reader';
+import { callRpc, getAvailablePatches, expandBuckets, expandRegions, ALL_REGIONS } from '../../../lib/tft-supabase-reader';
 import { cachedJson } from '../../../lib/api-cache';
-import { previousPatchOf } from '../../../lib/snapshot-matrix';
+import {
+  listKey,
+  normalizePatchDiffRows,
+  previousPatchOf,
+  PATCH_DIFF_MIN_GAMES,
+  PATCH_DIFF_P_DAYS,
+  type PatchDiffEntity,
+  type PatchDiffRow,
+} from '../../../lib/snapshot-matrix';
+import { loadPatchDiff } from '../../../lib/meta-pulse-diff-snapshot';
 
 // /api/tft/patch-diff?patch=17.2&prev=17.1&entity=unit|item|trait
 //
@@ -14,13 +23,12 @@ import { previousPatchOf } from '../../../lib/snapshot-matrix';
 // (snapshot-matrix.ts): der juengste fruehere Patch mit genug Datentagen,
 // ein Kurz-Patch wird uebersprungen. Gibt es keinen, liefern wir leere
 // `winners` / `losers` (reason 'single_patch') statt eines Fehlers.
+//
+// Alle Regionen: die Rohzeilen je Patch rechnet die Box vor
+// (scripts/publish-meta-pulse-diffs.mjs, tft/patch-diff/*). Fehlt ein Blob
+// oder ist er veraltet, rechnet diese Seite live wie bisher.
 
-type Entity = 'unit' | 'item' | 'trait' | 'comp';
-
-interface UnitRow { character_id: string; games: number; sum_placement: number; top4: number; top1: number; participants: number }
-interface ItemRow { api_name: string; games: number; sum_placement: number; top4: number; total_item_slots: number }
-interface TraitRow { name: string; activation: number | string; games: number; sum_placement: number; top4: number; participants: number }
-interface CompRow { cluster_key: string; games: number; sum_placement: number; top4: number; top1: number; participants: number }
+type Entity = PatchDiffEntity;
 
 interface DiffEntry {
   key: string;
@@ -37,7 +45,7 @@ interface DiffEntry {
   deltaTop4Rate: number;
 }
 
-const MIN_GAMES = 50;
+const MIN_GAMES = PATCH_DIFF_MIN_GAMES;
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -80,12 +88,22 @@ export async function GET(request: NextRequest) {
                     ?? patches[0].set_number;
     // Unbekannte Region-Werte faengt expandRegions ab (sonst: eine eigene
     // Abfrage je erfundenem Wert).
-    const regions = region ? expandRegions(region) : null;
+    const regions = region ? expandRegions(region) : ALL_REGIONS;
+    const allRegions = listKey(regions) === listKey(ALL_REGIONS);
 
-    const [curr, prev] = await Promise.all([
-      fetchEntityRows(entity, currentPatch, setNumber, regions, buckets),
-      fetchEntityRows(entity, previousPatch, setNumber, regions, buckets),
-    ]);
+    // Je Seite zuerst der vorgerechnete Blob (nur alle Regionen), sonst live.
+    const side = async (patch: string): Promise<PatchDiffRow[]> => {
+      const info = patches.find(p => p.patch === patch);
+      if (allRegions && info) {
+        const rows = await loadPatchDiff({
+          entity, regions, bucketLabel: bucketParam, buckets,
+          patch: info, set: Number(setNumber), closed: patch !== patches[0].patch,
+        });
+        if (rows) return rows;
+      }
+      return fetchEntityRows(entity, patch, setNumber, regions, buckets);
+    };
+    const [curr, prev] = await Promise.all([side(currentPatch), side(previousPatch)]);
 
     const prevMap = new Map(prev.map(r => [r.key, r]));
     const diffs: DiffEntry[] = [];
@@ -135,92 +153,34 @@ export async function GET(request: NextRequest) {
   }
 }
 
-interface Normalized {
-  key: string;
-  games: number;
-  sum_placement: number;
-  top4: number;
-  participants: number;
-}
+// Zusammenlegen der Zeilen teilt sich die Route mit der Box (snapshot-matrix.ts).
+// Funktionsnamen im Klartext, damit die Schnittstellen-Karte
+// (scripts/build-api-map.mjs) die Kanten sieht; snapshot-matrix.test.mjs haelt
+// sie gleich mit PATCH_DIFF_RPC, mit dem die Box rechnet. Item nutzt die
+// schlanke RPC (Migration 0028), Comp die reine Zahlen-RPC (Migration 0035) —
+// die vollen Varianten liefen bei 30 Tagen in den Timeout bzw. trugen 10 MB
+// jsonb je Aufruf.
+type RpcRows = Record<string, unknown>[];
+const LIVE_RPC: Record<Entity, (args: Record<string, unknown>) => Promise<RpcRows>> = {
+  unit: args => callRpc<RpcRows>('get_tft_unit_stats', args, 20000),
+  item: args => callRpc<RpcRows>('get_tft_item_stats_list', args, 20000),
+  trait: args => callRpc<RpcRows>('get_tft_trait_stats', args, 20000),
+  comp: args => callRpc<RpcRows>('get_tft_comp_stats_for_diff', { ...args, p_min_games: PATCH_DIFF_MIN_GAMES }, 20000),
+};
 
 async function fetchEntityRows(
   entity: Entity,
   patch: string,
   setNumber: number | null,
-  regions: string[] | null,
+  regions: string[],
   buckets: string[],
-): Promise<Normalized[]> {
-  const regionsArg = regions || ['all'];
-  // For 'all' region the RPC expects the full list — but we use a sentinel
-  // and let the SQL match on a wildcard. The reader resolves 'all' through
-  // its filter helper; here we just pass the literal so the RPC's ANY()
-  // clause matches each crawled region individually.
-  // ph2/th2 raus — leer im TFT-Crawl (siehe tft-supabase-reader.ts).
-  const allRegions = ['euw1', 'eun1', 'kr', 'na1', 'br1', 'jp1', 'la1', 'la2', 'oc1', 'tr1', 'ru', 'me1', 'sg2', 'tw2', 'vn2'];
-  const effectiveRegions = regions ? regions : allRegions;
-
-  const base = {
-    p_regions: effectiveRegions,
+): Promise<PatchDiffRow[]> {
+  const rows = await LIVE_RPC[entity]({
+    p_regions: regions,
     p_buckets: buckets,
-    p_days: 30,
+    p_days: PATCH_DIFF_P_DAYS,
     p_patch: patch,
     p_set: setNumber,
-  };
-
-  if (entity === 'unit') {
-    const rows = await callRpc<UnitRow[]>('get_tft_unit_stats', base, 20000);
-    const participants = Number(rows[0]?.participants || 0);
-    return rows.map(r => ({
-      key: r.character_id,
-      games: Number(r.games),
-      sum_placement: Number(r.sum_placement),
-      top4: Number(r.top4),
-      participants,
-    }));
-  }
-  if (entity === 'item') {
-    // Use the lean RPC (Migration 0028) — the non-lean get_tft_item_stats
-    // does jsonb_agg of top_users for EVERY item × day combo, which 57014-
-    // times out on Supabase at 30d windows. The lean variant aggregates the
-    // top_users once at the end; same diff math, sub-second response.
-    const rows = await callRpc<ItemRow[]>('get_tft_item_stats_list', base, 20000);
-    const participants = Number(rows[0]?.total_item_slots || 0);
-    return rows.map(r => ({
-      key: r.api_name,
-      games: Number(r.games),
-      sum_placement: Number(r.sum_placement),
-      top4: Number(r.top4),
-      participants,
-    }));
-  }
-  if (entity === 'trait') {
-    const rows = await callRpc<TraitRow[]>('get_tft_trait_stats', base, 20000);
-    const participants = Number(rows[0]?.participants || 0);
-    // Collapse per-activation rows so we have one entry per trait name. We
-    // sum across activation levels because the "did this trait get
-    // buffed/nerfed?" question doesn't care which activation triggered it.
-    const byName = new Map<string, Normalized>();
-    for (const r of rows) {
-      const cur = byName.get(r.name) || { key: r.name, games: 0, sum_placement: 0, top4: 0, participants };
-      cur.games += Number(r.games);
-      cur.sum_placement += Number(r.sum_placement);
-      cur.top4 += Number(r.top4);
-      byName.set(r.name, cur);
-    }
-    return [...byName.values()];
-  }
-  // entity === 'comp' — super-lean diff RPC (migration 0035), scalar-only.
-  // The list RPC carried 10 MB of jsonb_agg per call for fields we drop here.
-  const rows = await callRpc<CompRow[]>('get_tft_comp_stats_for_diff', {
-    ...base,
-    p_min_games: 50,
-  }, 20000);
-  const participants = Number(rows[0]?.participants || 0);
-  return rows.map(r => ({
-    key: r.cluster_key,
-    games: Number(r.games),
-    sum_placement: Number(r.sum_placement),
-    top4: Number(r.top4),
-    participants,
-  }));
+  });
+  return normalizePatchDiffRows(entity, rows);
 }

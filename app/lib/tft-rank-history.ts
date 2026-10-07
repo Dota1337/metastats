@@ -514,7 +514,7 @@ function latestLog(logs: LeagueLog[]): LeagueLog | null {
 
 /**
  * Hoechster Master+-Stand eines Sets aus dem LP-Verlauf. Exportiert fuer Tests.
- * Der Endrang kommt nie von hier (letzter Eintrag ist oft "Master 0").
+ * Die Endstufe kommt nie von hier, nur die End-LP (endFromLeagueLogs).
  */
 export function peakFromLeagueLogs(logs: LeagueLog[], prevLast?: LeagueLog | null): { tier: string; lp: number } | null {
   let best: { tier: string; lp: number } | null = null;
@@ -536,6 +536,23 @@ export function gamesFromLeagueLogs(logs: LeagueLog[], prevLast?: LeagueLog | nu
   const rows = cleanLeagueLogs(logs, prevLast);
   const g = rows.length ? Number(rows[rows.length - 1][4]) : NaN;
   return Number.isFinite(g) && g > 0 ? g : null;
+}
+
+/**
+ * End-LP eines Sets = LP im letzten Verlaufs-Eintrag, nur wenn dessen Stufe der
+ * gespeicherten Endstufe (Master+) entspricht. "Master 0" ist echt: dak.gg
+ * schreibt den Verfall auch ohne Spiele mit (Gegenprobe 2026-10-07: 44/44
+ * MetaTFT-Enden = letzter Eintrag). Nur Uebertrag oder leer → null.
+ * Exportiert fuer Tests.
+ */
+export function endFromLeagueLogs(logs: LeagueLog[], prevLast: LeagueLog | null | undefined, endTier: string | null | undefined): number | null {
+  const tier = (endTier || '').toUpperCase();
+  if (!APEX_TIERS.has(tier)) return null;
+  const rows = cleanLeagueLogs(logs, prevLast);
+  const last = rows[rows.length - 1];
+  if (!last || last[1].toUpperCase() !== tier) return null;
+  const lp = Number(last[3]);
+  return Number.isFinite(lp) && lp >= 0 ? lp : null;
 }
 
 // Seite 1 mit sort=desc enthaelt immer den neuesten Eintrag — fuer die
@@ -565,6 +582,9 @@ async function fetchDakggLeagueLogs(shard: string, gameName: string, tagLine: st
  *  - Master+-Ende ohne LP → Hoechstwert (leerer Verlauf → Marker).
  *  - Spielzahl leer (MetaTFT hat sie erst ab 9.2) → letzter Eintrag; kein
  *    Verlauf → bleibt leer und wird beim naechsten Neuabruf wieder gefragt.
+ *  - Master+-Ende ohne End-LP → LP des letzten Eintrags bei gleicher Stufe;
+ *    sonst leer, naechstes Mal erneut. Sets, die nur das brauchen, kommen
+ *    zuletzt dran, damit der Deckel zuerst Hoechstwert und Spiele trifft.
  * Der Uebertrag vom Vorset wird am letzten Eintrag des Vorsets erkannt.
  * Fehler → nichts gespeichert (naechstes Mal erneut). Exportiert fuer das
  * Erstbefuellungs-Skript.
@@ -572,8 +592,8 @@ async function fetchDakggLeagueLogs(shard: string, gameName: string, tagLine: st
 export async function fillFromLogs(
   puuid: string, region: string, gameName: string, tagLine: string,
   deadlineMs = LOG_DEADLINE_MS,
-): Promise<{ peak: number; games: number; none: number; failed: number }> {
-  const res = { peak: 0, games: 0, none: 0, failed: 0 };
+): Promise<{ peak: number; games: number; end: number; none: number; failed: number }> {
+  const res = { peak: 0, games: 0, end: 0, none: 0, failed: 0 };
   if (!gameName || !tagLine) return res;
   const until = Date.now() + deadlineMs;
   const rows = (await loadRankHistoryRaw(puuid))
@@ -587,12 +607,20 @@ export async function fillFromLogs(
     }
     return latest.get(label) ?? null;
   };
-  for (let i = 0; i < rows.length; i++) {
+  const apexEnd = (r: SeasonRank) => APEX_TIERS.has((r.end_tier || '').toUpperCase());
+  const needs = (r: SeasonRank) => ({
+    needPeak: apexEnd(r) && r.peak_lp == null && !isLogLabel(r.peak_rating_label),
+    needGames: r.total_games == null,
+    needEnd: apexEnd(r) && r.end_lp == null,
+  });
+  // Zuerst Sets mit Hoechstwert/Spielzahl (End-LP faellt dort mit ab), dann die nur mit End-LP.
+  const order = rows.map((_, i) => i).filter(i => rows[i].source !== 'override' && isRealTier(rows[i].end_tier));
+  const onlyEnd = (i: number) => { const n = needs(rows[i]); return !n.needPeak && !n.needGames; };
+  order.sort((a, b) => Number(onlyEnd(a)) - Number(onlyEnd(b)) || a - b);
+  for (const i of order) {
     const r = rows[i];
-    if (r.source === 'override' || !isRealTier(r.end_tier)) continue;
-    const needPeak = APEX_TIERS.has((r.end_tier || '').toUpperCase()) && r.peak_lp == null && !isLogLabel(r.peak_rating_label);
-    const needGames = r.total_games == null;
-    if (!needPeak && !needGames) continue;
+    const { needPeak, needGames, needEnd } = needs(r);
+    if (!needPeak && !needGames && !needEnd) continue;
     if (Date.now() > until) break;
     const season = toDakSeason(r.set_label!);
     if (!season) continue;
@@ -611,6 +639,10 @@ export async function fillFromLogs(
       if (needGames) {
         const games = gamesFromLeagueLogs(logs, prevLast);
         if (games != null) { patch.total_games = games; res.games++; }
+      }
+      if (needEnd) {
+        const lp = endFromLeagueLogs(logs, prevLast, r.end_tier);
+        if (lp != null) { patch.end_lp = lp; res.end++; }
       }
       if (Object.keys(patch).length) await patchRankRow(puuid, r.set_label!, patch);
     } catch {
@@ -634,6 +666,8 @@ async function patchRankRow(puuid: string, setLabel: string, patch: Partial<Seas
 //    peak_* — der wird dabei geleert. Werte aus dem dak.gg-LP-Verlauf
 //    ('dakgg-log*') bleiben, bis MetaTFT selbst einen Hoechstwert hat.
 //  - Endrang (end_*): MetaTFT, sonst gespeicherter MetaTFT-Endrang, sonst dakgg.
+//    End-LP aus dem Verlauf bleiben bei vergangenen Sets stehen, wenn die neue
+//    Quelle keine LP hat und die Endstufe gleich ist — egal welche Quelle.
 //  - dakgg nie fuers laufende Set (Tagesstand) und nie UNRANKED.
 export function mergeRankSources(metatft: SeasonRank[], dakgg: SeasonRank[], existing: SeasonRank[] = [], currentSet = CURRENT_SET): SeasonRank[] {
   const labels = new Set<string>();
@@ -667,13 +701,18 @@ export function mergeRankSources(metatft: SeasonRank[], dakgg: SeasonRank[], exi
       peak_rating_label: peakFrom?.peak_rating_label ?? null,
       end_tier: endFrom?.end_tier ?? null,
       end_division: endFrom?.end_division ?? null,
-      end_lp: endFrom?.end_lp ?? null,
+      end_lp: endFrom?.end_lp
+        ?? (e && base.set_number < currentSet && sameTier(e.end_tier, endFrom?.end_tier) ? e.end_lp ?? null : null),
       // Spielzahl aus dem Verlauf steht auf dakgg-Zeilen — beim Neuabruf behalten.
       total_games: m?.total_games ?? e?.total_games ?? null,
       source: m || eMt ? 'metatft' : 'dakgg',
     });
   }
   return out;
+}
+
+function sameTier(a: string | null | undefined, b: string | null | undefined): boolean {
+  return !!a && !!b && a.toUpperCase() === b.toUpperCase();
 }
 
 // "CHALLENGER I 1566 LP" → { tier: 'CHALLENGER', division: 'I', lp: 1566 }

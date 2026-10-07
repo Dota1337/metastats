@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Erstbefuellung aus dem dak.gg-LP-Verlauf fuer alle Spieler mit vergangenen
- * Sets, denen Hoechst-LP (Master+-Ende) oder Spielzahl fehlt. Die Seite macht
+ * Sets, denen Hoechst-LP (Master+-Ende), End-LP (Master+-Ende) oder Spielzahl fehlt. Die Seite macht
  * dasselbe beim woechentlichen Neuabruf, aber mit 40-s-Deckel pro Spieler.
  *
  * Aufruf (lokal, liest .env.local):
@@ -10,6 +10,8 @@
  *
  * Nacheinander, idempotent: gefuellte Sets werden nicht erneut gefragt.
  * Rueckbau Spielzahl: `update tft_player_rank_history set total_games=null where source='dakgg'`.
+ * Rueckbau End-LP: Sicherung vor dem Lauf zurueckschreiben (MetaTFT-Zeilen
+ * hatten teils schon End-LP; dakgg-Zeilen hatten nie welche).
  */
 
 import { readFileSync, existsSync } from 'node:fs';
@@ -39,6 +41,7 @@ const rows = [];
 for (const q of [
   `${base}&total_games=is.null`,
   `${base}&peak_lp=is.null&end_tier=in.(MASTER,GRANDMASTER,CHALLENGER)`,
+  `${base}&end_lp=is.null&end_tier=in.(MASTER,GRANDMASTER,CHALLENGER)`,
 ]) {
   for (let o = 0; ; o += 1000) {
     const page = await get(`${q}&order=puuid&offset=${o}&limit=1000`);
@@ -52,7 +55,7 @@ for (const r of rows) players.set(r.puuid, r.region);
 // Konto-Abfragen: sea-Plattformen laufen ueber europe.
 const route = r => /^(na1|br1|la1|la2)$/.test(r) ? 'americas' : /^(kr|jp1)$/.test(r) ? 'asia' : 'europe';
 const only = process.argv[2];
-const tot = { peak: 0, games: 0, none: 0, failed: 0 };
+const tot = { peak: 0, games: 0, end: 0, none: 0, failed: 0 };
 let i = 0, noName = 0;
 for (const [puuid, region] of players) {
   i++;

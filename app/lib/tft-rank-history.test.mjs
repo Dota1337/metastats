@@ -5,7 +5,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseMetatftProfile, mergeRankSources, refreshMode, applyRankOverrides, peakFromLeagueLogs, gamesFromLeagueLogs, RANK_SCHEMA_AT_MS } from './tft-rank-history.ts';
+import { parseMetatftProfile, mergeRankSources, refreshMode, applyRankOverrides, peakFromLeagueLogs, gamesFromLeagueLogs, endFromLeagueLogs, RANK_SCHEMA_AT_MS } from './tft-rank-history.ts';
 import { setRankDisplay, withLiveRank, lastRowPerSet, setMaxLp, setEndRank } from './tft-rank-kind.ts';
 
 const START = Date.parse('2026-08-26T14:08:32.809Z');
@@ -173,6 +173,38 @@ test('Merge: Verlaufs-Spielzahl auf dakgg-Zeile bleibt beim Neuabruf', () => {
   assert.equal(m.total_games, 212);
   const mt = [{ set_number: 7, set_label: 'TFTSet7', end_tier: 'DIAMOND', total_games: 215, source: 'metatft' }];
   assert.equal(mergeRankSources(mt, dk, existing, 18)[0].total_games, 215, 'MetaTFT geht vor');
+});
+
+// End-LP alter Sets aus dem Verlauf (User 2026-10-07).
+test('End-LP: letzter Eintrag bei gleicher Stufe, Master 0 ist echt', () => {
+  // Loescher Set 9.5: letzter Eintrag Chall 986 = MetaTFT-Ende 986
+  assert.equal(endFromLeagueLogs([[1000, 'GRANDMASTER', 'I', 700, 280, 40], [2000, 'CHALLENGER', 'I', 986, 297, 45]], null, 'CHALLENGER'), 986);
+  assert.equal(endFromLeagueLogs([[1000, 'MASTER', 'I', 120, 200, 30], [2000, 'MASTER', 'I', 0, 200, 30]], null, 'MASTER'), 0, 'Verfall ohne Spiele');
+  // Stufe passt nicht → nichts raten
+  assert.equal(endFromLeagueLogs([[1000, 'GRANDMASTER', 'I', 500, 200, 30]], null, 'MASTER'), null);
+  // unter Master keine LP
+  assert.equal(endFromLeagueLogs([[1000, 'DIAMOND', 'I', 50, 200, 30]], null, 'DIAMOND'), null);
+  // nur Uebertrag vom Vorset → null
+  const prev = [5000, 'MASTER', 'I', 900, 765, 90];
+  assert.equal(endFromLeagueLogs([[6000, 'MASTER', 'I', 900, 765, 90]], prev, 'MASTER'), null);
+  assert.equal(endFromLeagueLogs([], null, 'MASTER'), null);
+});
+
+test('Merge: End-LP aus dem Verlauf bleiben beim Neuabruf (dakgg und MetaTFT)', () => {
+  const existing = [{ set_number: 7, set_label: 'TFTSet7', end_tier: 'MASTER', end_lp: 0, total_games: 368, source: 'dakgg' }];
+  const dk = [{ set_number: 7, set_label: 'TFTSet7', end_tier: 'MASTER', end_division: 'I', end_lp: null, total_games: null, source: 'dakgg' }];
+  assert.equal(mergeRankSources([], dk, existing, 18)[0].end_lp, 0);
+  // andere Endstufe → gespeicherte LP passen nicht mehr
+  const dkGm = [{ ...dk[0], end_tier: 'GRANDMASTER' }];
+  assert.equal(mergeRankSources([], dkGm, existing, 18)[0].end_lp, null);
+  // MetaTFT ohne End-LP, gleiche Stufe → bleibt; MetaTFT mit LP → MetaTFT gewinnt
+  const ex2 = [{ set_number: 11, set_label: 'TFTSet11', end_tier: 'CHALLENGER', end_lp: 1200, total_games: 535, source: 'metatft' }];
+  const mt = [{ set_number: 11, set_label: 'TFTSet11', peak_tier: 'CHALLENGER', peak_lp: 1300, end_tier: 'CHALLENGER', end_lp: null, total_games: 535, source: 'metatft' }];
+  assert.equal(mergeRankSources(mt, [], ex2, 18)[0].end_lp, 1200);
+  assert.equal(mergeRankSources([{ ...mt[0], end_lp: 1250 }], [], ex2, 18)[0].end_lp, 1250);
+  // laufendes Set: nie behalten
+  const cur = [{ set_number: 18, set_label: 'TFTSet18', end_tier: 'MASTER', end_lp: 300, total_games: 50, source: 'metatft' }];
+  assert.equal(mergeRankSources([{ ...cur[0], end_lp: null }], [], cur, 18)[0].end_lp, null);
 });
 
 // Tabelle "Max LP pro Set" / "Rang am Set-Ende" (User 2026-10-07).

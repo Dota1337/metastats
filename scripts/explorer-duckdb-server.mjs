@@ -12,7 +12,16 @@
 // keine Abfrage sie mehr haelt (Referenzzaehler).
 //
 // Last: hoechstens 2 Abfragen gleichzeitig, bis zu 8 warten, danach 503.
-// Jede Abfrage wird nach QUERY_TIMEOUT_MS abgebrochen.
+// Besucher-Abfragen werden nach QUERY_TIMEOUT_MS abgebrochen. Laeuft dieselbe
+// Ansicht schon, wartet eine weitere Anfrage auf diese Rechnung (hoechstens
+// WAIT_MS, unter der 20-s-Grenze von refresh-api), statt doppelt zu rechnen.
+//
+// Startansichten (alle Reiter ohne Filter, neuester Patch) rechnet der Dienst
+// nach jedem Laden selbst, mit der eigenen Grenze WARM_TIMEOUT_MS: units,
+// traits und items brauchen gemessen 70-120 s und scheiterten an den 15 s bei
+// jedem Laden. Sie liegen je Datei in einer eigenen Ablage, die der
+// Zwischenspeicher nicht verdraengt; nach einem Tausch faengt die neue Datei
+// leer an.
 //
 // Vertrauensbereich: Mehrere unserer Spieler sitzen in derselben Partie (im
 // Schnitt ~2,5 je Lobby), ihre Platzierungen sind also nicht unabhaengig. Die
@@ -30,6 +39,9 @@ const DUCKDB_MODULE = process.env.EXPLORER_DUCKDB_MODULE
 const MAX_RUNNING = 2;
 const MAX_QUEUE = 8;
 const QUERY_TIMEOUT_MS = Number(process.env.EXPLORER_QUERY_TIMEOUT_MS || 15_000);
+const WARM_TIMEOUT_MS = Number(process.env.EXPLORER_WARM_TIMEOUT_MS || 300_000);
+const WAIT_MS = 18_000;
+const WARM_RETRY_PAUSE_MS = 60_000;
 const POLL_MS = 60_000;
 const CACHE_MAX = 400;
 const ROW_LIMIT = 500;
@@ -41,7 +53,7 @@ function log(...a) { console.log(`[explorer-api ${new Date().toISOString()}]`, .
 
 // ─── Instanz + Tausch ──────────────────────────────────────────────────────
 
-let current = null; // { instance, ino, refs, retired, meta, components }
+let current = null; // { instance, ino, refs, retired, meta, components, pinned, warmConn }
 
 async function openStore() {
   const st = fs.statSync(DB_PATH);
@@ -51,7 +63,7 @@ async function openStore() {
     memory_limit: '1GB',
     temp_directory: path.join(path.dirname(DB_PATH), 'tmp-api'),
   });
-  const holder = { instance, ino: st.ino, refs: 0, retired: false, meta: null, components: [] };
+  const holder = { instance, ino: st.ino, refs: 0, retired: false, meta: null, components: [], pinned: new Map(), warmConn: null };
   const conn = await instance.connect();
   try {
     const m = (await conn.runAndReadAll(
@@ -127,6 +139,9 @@ async function pollSwap() {
     log(`Datei geladen: Stand ${next.meta.builtAt}, ${next.meta.boards} Boards, Inode ${next.ino}`);
     if (prev) {
       prev.retired = true;
+      // Laufendes Vorwaermen der alten Datei abbrechen, sonst haelt es bis zu
+      // WARM_TIMEOUT_MS einen Platz fuer Zahlen, die niemand mehr abruft.
+      try { prev.warmConn?.interrupt(); } catch { /* bereits fertig */ }
       if (prev.refs === 0) closeHolder(prev);
     }
     warmUp(next).catch(err => log('Vorwaermen abgebrochen:', err.message));
@@ -142,9 +157,10 @@ async function pollSwap() {
 let running = 0;
 const queue = [];
 
-function acquireSlot() {
+// wait: das Vorwaermen stellt sich immer an, statt mit 503 abgewiesen zu werden.
+function acquireSlot({ wait = false } = {}) {
   if (running < MAX_RUNNING) { running++; return Promise.resolve(); }
-  if (queue.length >= MAX_QUEUE) {
+  if (!wait && queue.length >= MAX_QUEUE) {
     const e = new Error('busy'); e.status = 503; throw e;
   }
   return new Promise(resolve => queue.push(resolve));
@@ -295,9 +311,15 @@ function keySql(q, params, components) {
       // Ansichten raus — ein Guertel im Inventar ist kein Build.
       const compList = `[${components.filter(c => ID_RE.test(c)).map(c => `'${c}'`).join(', ')}]::VARCHAR[]`;
       if (!q.focus) {
-        return `SELECT DISTINCT bid, mid, placement, item AS key, NULL::INTEGER AS sub, NULL::INTEGER AS sub2 FROM (
-                  SELECT r.bid, r.mid, r.placement, unnest([u.i1, u.i2, u.i3]) AS item FROM ref r JOIN units u USING (bid))
-                WHERE item IS NOT NULL AND NOT list_contains(${compList}, item)`;
+        // Erst je Board die verschiedenen Items (schmale Zeilen), dann Partie
+        // und Platz dazu. Die breite Form (ganze Zeilen entpacken, dann
+        // DISTINCT) lief bei der Startansicht ueber das Speicherlimit; diese
+        // liefert dasselbe Ergebnis mit gemessen 1,21 GB.
+        return `SELECT r.bid, r.mid, r.placement, d.item AS key, NULL::INTEGER AS sub, NULL::INTEGER AS sub2
+                FROM (SELECT DISTINCT bid, item FROM (
+                        SELECT u.bid, unnest([u.i1, u.i2, u.i3]) AS item FROM units u WHERE u.bid IN (SELECT bid FROM ref))
+                      WHERE item IS NOT NULL AND NOT list_contains(${compList}, item)) d
+                JOIN ref r USING (bid)`;
       }
       const its = `list_sort(list_filter([u.i1, u.i2, u.i3], x -> x IS NOT NULL AND NOT list_contains(${compList}, x)))`;
       const base = `SELECT r.bid, r.mid, r.placement, ${its} AS its FROM ref r JOIN units u USING (bid) WHERE u.unit = ?`;
@@ -396,10 +418,13 @@ function summarize(s) {
 
 // ─── Abfrage ───────────────────────────────────────────────────────────────
 
-async function runQuery(holder, q) {
+async function runQuery(holder, q, { timeoutMs = QUERY_TIMEOUT_MS, warm = false } = {}) {
   const conn = await holder.instance.connect();
-  const timer = setTimeout(() => { try { conn.interrupt(); } catch { /* bereits fertig */ } }, QUERY_TIMEOUT_MS);
+  if (warm) holder.warmConn = conn;
+  const timer = setTimeout(() => { try { conn.interrupt(); } catch { /* bereits fertig */ } }, timeoutMs);
   try {
+    // Tausch waehrend des Verbindens: pollSwap hat noch nichts zum Abbrechen gesehen.
+    if (warm && holder.retired) throw new Error('swapped');
     const hasFilters = q.units.length + q.items.length + q.traits.length > 0;
 
     const pF = []; const cteF = fbCte(q, pF);
@@ -501,6 +526,7 @@ async function runQuery(holder, q) {
     return out;
   } finally {
     clearTimeout(timer);
+    if (holder.warmConn === conn) holder.warmConn = null;
     conn.closeSync?.();
   }
 }
@@ -516,6 +542,38 @@ function cacheGet(k) {
 function cacheSet(k, v) {
   cache.set(k, v);
   if (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value);
+}
+
+// Laufende Rechnungen je Schluessel. Der Eintrag entsteht vor dem Platz-Holen,
+// damit auch eine Anfrage aus der Warteschlange gefunden wird.
+const pending = new Map();
+
+// Rechnet q oder haengt sich an eine laufende Rechnung derselben Ansicht.
+// Deren Fehler gehen an alle Wartenden; ein Besucher, der nur mitwartet, gibt
+// nach WAIT_MS auf (504), die Rechnung selbst laeuft weiter.
+function compute(holder, q, key, { warm = false } = {}) {
+  const inflight = pending.get(key);
+  if (inflight) return warm ? inflight : withDeadline(inflight, WAIT_MS);
+  const p = (async () => {
+    await acquireSlot({ wait: warm });
+    try {
+      return await execute(holder, q, key, warm);
+    } finally {
+      releaseSlot();
+    }
+  })();
+  pending.set(key, p);
+  const clear = () => { if (pending.get(key) === p) pending.delete(key); };
+  p.then(clear, clear);
+  return p;
+}
+
+function withDeadline(p, ms) {
+  let timer;
+  const deadline = new Promise((_, reject) => {
+    timer = setTimeout(() => { const e = new Error('timeout'); e.status = 504; reject(e); }, ms);
+  });
+  return Promise.race([p, deadline]).finally(() => clearTimeout(timer));
 }
 
 // ─── HTTP ──────────────────────────────────────────────────────────────────
@@ -552,24 +610,18 @@ const server = http.createServer(async (req, res) => {
   resolveLatest(holder, q);
   const headers = { 'X-Explorer-Built-At': holder.meta.builtAt };
   const key = cacheKey(holder, q);
-  const hit = cacheGet(key);
+  const hit = holder.pinned.get(key) ?? cacheGet(key);
   if (hit) return send(res, 200, { meta: holder.meta, query: q, ...hit, cached: true }, headers);
 
-  try {
-    await acquireSlot();
-  } catch (err) {
-    return send(res, 503, { error: 'busy' }, { 'Retry-After': '5' });
-  }
   const t0 = Date.now();
   try {
-    const result = await execute(holder, q, key);
+    const result = await compute(holder, q, key);
     send(res, 200, { meta: holder.meta, query: q, ...result, cached: false }, headers);
   } catch (err) {
+    if (err.status === 503) return send(res, 503, { error: 'busy' }, { 'Retry-After': '5' });
     const interrupted = /interrupt/i.test(err.message || '');
     log(`Fehler (${Date.now() - t0} ms): ${err.message} bei ${JSON.stringify(q)}`);
     send(res, interrupted ? 504 : (err.status || 500), { error: interrupted ? 'timeout' : (err.status ? err.message : 'internal') });
-  } finally {
-    releaseSlot();
   }
 });
 
@@ -579,13 +631,13 @@ function resolveLatest(holder, q) {
 function cacheKey(holder, q) { return `${holder.ino}|${JSON.stringify(q)}`; }
 
 // Laeuft mit belegtem Slot; der Aufrufer gibt ihn frei.
-async function execute(holder, q, key) {
+async function execute(holder, q, key, warm = false) {
   holder.refs++;
   const t0 = Date.now();
   try {
-    const result = await runQuery(holder, q);
+    const result = await runQuery(holder, q, warm ? { timeoutMs: WARM_TIMEOUT_MS, warm: true } : {});
     result.ms = Date.now() - t0;
-    cacheSet(key, result);
+    if (warm) holder.pinned.set(key, result); else cacheSet(key, result);
     if (result.ms > 3000) log(`langsam ${result.ms} ms: ${JSON.stringify(q)}`);
     return result;
   } finally {
@@ -594,21 +646,48 @@ async function execute(holder, q, key) {
 }
 
 // Nach jedem Laden die Startansichten (alle Reiter ohne Filter, neuester
-// Patch) einmal rechnen, damit der erste Besucher nicht 2-3 s wartet. Nimmt
-// immer nur einen Slot, der zweite bleibt fuer echte Anfragen frei.
+// Patch) rechnen und festhalten; Besucher schicken dieselbe Anfrage, also
+// denselben Schluessel. Nimmt immer nur einen Slot, der zweite bleibt fuer
+// echte Anfragen frei. Was scheitert, kommt nach einer Pause noch einmal dran.
 async function warmUp(holder) {
   const t0 = Date.now();
   let n = 0;
-  for (const tab of TABS.filter(x => x !== 'summary')) {
-    if (current !== holder) return;
-    const q = normalizeQuery({ tab, patches: ['latest'] });
-    resolveLatest(holder, q);
-    const key = cacheKey(holder, q);
-    if (cacheGet(key)) continue;
-    try { await acquireSlot(); } catch { continue; }
-    try { await execute(holder, q, key); n++; } catch (err) { log(`Vorwaermen ${tab} fehlgeschlagen: ${err.message}`); } finally { releaseSlot(); }
+  let todo = TABS.filter(x => x !== 'summary');
+  for (let round = 0; round < 2 && todo.length; round++) {
+    if (round > 0) await new Promise(r => setTimeout(r, WARM_RETRY_PAUSE_MS));
+    const failed = [];
+    for (const tab of todo) {
+      if (current !== holder) return;
+      const q = normalizeQuery({ tab, patches: ['latest'] });
+      resolveLatest(holder, q);
+      try {
+        await warmOne(holder, q, cacheKey(holder, q));
+        n++;
+      } catch (err) {
+        if (current !== holder) return;
+        log(`Vorwaermen ${tab} fehlgeschlagen: ${err.message}`);
+        failed.push(tab);
+      }
+    }
+    todo = failed;
   }
-  log(`vorgewaermt: ${n} Startansichten in ${Date.now() - t0} ms`);
+  log(`vorgewaermt: ${n} Startansichten in ${Date.now() - t0} ms${todo.length ? ` (fehlgeschlagen: ${todo.join(', ')})` : ''}`);
+}
+
+async function warmOne(holder, q, key) {
+  if (holder.pinned.has(key)) return;
+  let result = cacheGet(key);
+  if (!result) {
+    // Rechnet gerade ein Besucher dieselbe Ansicht, erst auf ihn warten; laeuft
+    // er in seine 15 s, rechnen wir mit der langen Grenze selbst.
+    const other = pending.get(key);
+    if (other) result = await other.catch(() => null);
+    if (!result) {
+      if (current !== holder) throw new Error('swapped');
+      result = await compute(holder, q, key, { warm: true });
+    }
+  }
+  holder.pinned.set(key, result);
 }
 
 fs.mkdirSync(path.join(path.dirname(DB_PATH), 'tmp-api'), { recursive: true });

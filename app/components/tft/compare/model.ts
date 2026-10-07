@@ -31,8 +31,8 @@ export interface SeasonAggregate {
   bestTop4Streak: number;
   uniqueComps: number;
   dominantShare: number;
-  metaPickShare: number;
-  itemSlamScore: number;
+  metaPickShare: number | null;
+  itemSlamScore: number | null;
 }
 
 export interface SeasonRankRow {

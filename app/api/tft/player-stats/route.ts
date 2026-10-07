@@ -125,8 +125,10 @@ export async function GET(request: NextRequest) {
         bestTop4Streak: Number(seasonRow.best_top4_streak) || 0,
         uniqueComps: Number(seasonRow.unique_comps) || 0,
         dominantShare: Number(seasonRow.dominant_share) || 0,
-        metaPickShare: Number(seasonRow.meta_pick_share) || 0,
-        itemSlamScore: Number(seasonRow.item_slam_score) || 0,
+        // null = der Sammler konnte den Wert nicht bilden (zu wenige Comps /
+        // Items). Nicht zu 0 machen, sonst zeigt die Seite 0 % statt „—".
+        metaPickShare: numOrNull(seasonRow.meta_pick_share),
+        itemSlamScore: numOrNull(seasonRow.item_slam_score),
       }
     : null;
 
@@ -155,7 +157,7 @@ export async function GET(request: NextRequest) {
         seasonAggregate,
         // No per-match data → distribution + averages + top units unavailable
         placementDistribution: [0, 0, 0, 0, 0, 0, 0, 0],
-        averages: { level: 0, goldLeft: 0, eliminations: 0, damage: 0, lastRound: 0 },
+        averages: { level: 0, goldLeft: 0, eliminations: null, damage: null, lastRound: 0 },
         scores: {},
         topUnits: [],
         topTraits: [],
@@ -244,8 +246,11 @@ export async function GET(request: NextRequest) {
   const avgPlacement = sumPlacement / games;
   const avgLevel = sumLevel / games;
   const avgGoldLeft = sumGoldLeft / games;
-  const avgEliminations = sumEliminations / games;
-  const avgDamage = sumDamage / games;
+  // Set 18: Riot liefert total_damage_to_players und players_eliminated bei
+  // allen Spielern als 0. Summe 0 ueber alle Spiele heisst „fehlt", nicht
+  // „kein Schaden" — dann null, die Seite zeigt „—" (wie comps/route.ts).
+  const avgEliminations = sumEliminations > 0 ? sumEliminations / games : null;
+  const avgDamage = sumDamage > 0 ? sumDamage / games : null;
   const avgLastRound = sumLastRound / games;
 
   const scores = {
@@ -256,7 +261,7 @@ export async function GET(request: NextRequest) {
     // or all-in lost early). Anchor 5g → 100, 25g → 0 covers the typical
     // top-tier (8-12g) to beginner (30-50g) spread.
     eco:         clamp01(1 - (avgGoldLeft - 5) / 20) * 100,
-    damage:      clamp01(avgDamage / 200) * 100,
+    damage:      avgDamage == null ? null : clamp01(avgDamage / 200) * 100,
     survival:    clamp01((9 - avgPlacement) / 8) * 100,
     consistency: (top4 / games) * 100,
   };
@@ -374,6 +379,12 @@ async function buildCompareExtras(
   }
 
   return { recent, stddev, bestTop4Streak: bestStreak, avgLastRound, levelDist, traits, units, rank };
+}
+
+function numOrNull(v: unknown): number | null {
+  if (v == null) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
 }
 
 function clamp01(x: number): number {

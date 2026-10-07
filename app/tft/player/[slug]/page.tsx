@@ -86,14 +86,14 @@ interface PlayerStats {
   averages?: {
     level: number;
     goldLeft: number;
-    eliminations: number;
-    damage: number;
+    eliminations: number | null;
+    damage: number | null;
     lastRound: number;
   };
   scores?: {
     tempo: number;
     eco: number;
-    damage: number;
+    damage: number | null;
     survival: number;
     consistency: number;
   };
@@ -110,8 +110,8 @@ interface PlayerStats {
     bestTop4Streak: number;
     uniqueComps: number;
     dominantShare: number;
-    metaPickShare: number;
-    itemSlamScore: number;
+    metaPickShare: number | null;
+    itemSlamScore: number | null;
   } | null;
 }
 
@@ -572,7 +572,7 @@ function SeasonStats({
 // already-populated values; renders only when seasonAggregate is present.
 function SeasonProfile({ agg }: { agg: NonNullable<PlayerStats['seasonAggregate']> }) {
   const { t } = useI18n();
-  const pct = (v: number) => `${(v * 100).toFixed(0)}%`;
+  const pct = (v: number | null) => (v == null ? '—' : `${(v * 100).toFixed(0)}%`);
   return (
     <div className="mb-5">
       <div className="text-fg-secondary text-[10px] uppercase tracking-widest mb-2">{t('tft.player.seasonProfile')}</div>
@@ -667,11 +667,12 @@ function PlayStyle({
       current: `${t('tft.avgGoldLeft')}: ${avgs.goldLeft.toFixed(1)}g`,
       formula: t('tft.eco.tooltip'),
     },
-    {
+    // Achse entfaellt, wenn Riot keinen Schaden liefert (Set 18).
+    ...(scores.damage != null && avgs.damage != null ? [{
       axis: t('tft.damage'), value: round1(scores.damage),
       current: `${t('tft.avgDamage')}: ${Math.round(avgs.damage)}`,
       formula: t('tft.damage.tooltip'),
-    },
+    }] : []),
     {
       axis: t('tft.survival'), value: round1(scores.survival),
       current: `${t('tft.avgPlacement')}: ${avgPlacement?.toFixed(2) ?? '—'}`,
@@ -740,8 +741,8 @@ function PlayStyle({
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
         <MiniStat label={t('tft.avgLevel')}        value={avgs.level.toFixed(2)} />
         <MiniStat label={t('tft.avgGoldLeft')}     value={avgs.goldLeft.toFixed(1)} />
-        <MiniStat label={t('tft.avgEliminations')} value={avgs.eliminations.toFixed(2)} />
-        <MiniStat label={t('tft.avgDamage')}       value={Math.round(avgs.damage).toString()} />
+        <MiniStat label={t('tft.avgEliminations')} value={avgs.eliminations != null ? avgs.eliminations.toFixed(2) : '—'} />
+        <MiniStat label={t('tft.avgDamage')}       value={avgs.damage != null ? Math.round(avgs.damage).toString() : '—'} />
         <MiniStat label={t('tft.avgLastRound')}    value={formatStage(avgs.lastRound)} />
       </div>
     </>

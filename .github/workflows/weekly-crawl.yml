@@ -105,7 +105,11 @@ jobs:
         run: node scripts/weekly-crawl-gate.mjs
 
       # Pro Player Crawler (no Riot API key needed)
+      # handoff: das Tor hat einen Nachfolger angestossen, der den ganzen Lauf
+      # uebernimmt. Ohne diese Bedingung committen beide dieselben Dateien und
+      # der Nachfolger (aelterer Checkout) laeuft in den Konflikt (07.10.2026).
       - name: Crawl Pro Players
+        if: steps.gate.outputs.handoff != 'true'
         run: node scripts/crawl-pro-players.mjs
 
       # Champion Stats Crawler — EUW (needs valid Riot API key).
@@ -125,12 +129,14 @@ jobs:
       # public/seasons.json and exposes `season-changed` for the issue step.
       - name: Detect new season
         id: season
+        if: steps.gate.outputs.handoff != 'true'
         run: node scripts/detect-season.mjs
 
       # Pull external rank distribution (esportstales.com -> leagueofgraphs)
       # so the leaderboard chart is real data, not stale hardcoded values.
       # Failure is non-fatal: keeps the previous JSON if scrape breaks.
       - name: Refresh tier distribution
+        if: steps.gate.outputs.handoff != 'true'
         run: node scripts/fetch-tier-distribution.mjs
         continue-on-error: true
 
@@ -143,33 +149,22 @@ jobs:
         run: node scripts/detect-tft-set.mjs --dry-run
         continue-on-error: true
 
-      # Commit updated data files
+      # Commit updated data files. Kein `pull --rebase`: ein Lauf mit altem
+      # Checkout erzeugt dieselben Dateien wie ein zwischenzeitlicher Commit
+      # auf main, der Rebase endet dann im Konflikt. push-generated setzt auf
+      # main zurueck und kopiert die Dateien dieses Laufs als Ganzes darueber.
+      # seasons.json ist geschuetzt: Handarbeit (Split-Liste) bleibt stehen.
+      # Die uebrigen Workflows mit `pull --rebase` sind bewusst unveraendert.
       - name: Commit data updates
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add public/pro-players.json public/champion-stats-euw.json public/champion-builds-euw.json public/seasons.json public/tier-distribution.json
-          if git diff --staged --quiet; then
-            echo "No data changes to commit"
-          else
-            git commit -m "chore: weekly data update (pro players + champion stats)
+        if: steps.gate.outputs.handoff != 'true'
+        uses: ./.github/actions/push-generated
+        with:
+          files: public/pro-players.json public/champion-stats-euw.json public/champion-builds-euw.json public/seasons.json public/tier-distribution.json
+          protect: public/seasons.json
+          message: |
+            chore: weekly data update (pro players + champion stats)
 
-          Co-Authored-By: claude-flow <ruv@ruv.net>"
-            # Race-safe push: rebase onto any commits that landed on main during the
-            # multi-hour crawl. The generated data files are workflow-exclusive, so
-            # rebase conflicts are impossible here.
-            pushed=""
-            for attempt in 1 2 3; do
-              if git pull --rebase origin main && git push; then pushed=1; break; fi
-              # Ein haengengebliebener Rebase wuerde jeden weiteren Versuch blockieren.
-              git rebase --abort 2>/dev/null || true
-              echo "Push attempt $attempt failed, retrying..."
-              sleep 5
-            done
-            # Without this flag the last command executed is `sleep` (exit 0), so
-            # three failed push attempts still report a green run.
-            [ -n "$pushed" ] || { echo "Push failed after 3 attempts"; exit 1; }
-          fi
+            Co-Authored-By: claude-flow <ruv@ruv.net>
 
       # If the season detector flagged a major bump, open a GitHub issue so
       # the maintainer can confirm and (if desired) tag historical Marktwert

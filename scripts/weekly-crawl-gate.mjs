@@ -14,7 +14,11 @@
 //    neu an (attempt+1, hoechstens MAX_ATTEMPTS) und sammelt selbst nicht —
 //    die Sammlung (~2 h 15 min) muss noch in die 6 h Laufzeit passen.
 //
-// Ausgabe: run=true|false nach $GITHUB_OUTPUT.
+// Ausgabe: run=true|false und handoff=true|false nach $GITHUB_OUTPUT.
+// handoff=true heisst: der Nachfolger ist angestossen und uebernimmt den
+// ganzen Lauf. Der Workflow ueberspringt dann Sammel-, Erkennungs- und
+// Commit-Schritte — sonst committet er dieselben Dateien wie der Nachfolger,
+// dessen Checkout aelter ist (Rebase-Konflikt 07.10.2026, Lauf 37668000001).
 // Umgebung: DATA_FILE (Pflicht), BOX_REGION (euw1|kr), FORCE, BOX_HOST,
 // BOX_KEY (Pfad zum SSH-Key), WORKFLOW + ATTEMPT + GH_TOKEN (Neu-Anstoss).
 
@@ -28,9 +32,9 @@ const MAX_ATTEMPTS = 4;
 const POLL_MIN = 5;
 const UNIT = 'metastats-lol-marketvalue.service';
 
-function output(run, why) {
+function output(run, why, handoff = false) {
   console.log(run ? `Sammlung laeuft: ${why}` : `::warning::Sammlung ausgelassen: ${why}`);
-  if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `run=${run}\n`);
+  if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `run=${run}\nhandoff=${handoff}\n`);
 }
 
 // Zustand der Unit und die Region, an der der laufende Pass gerade arbeitet
@@ -54,16 +58,17 @@ function boxState() {
   return { state: lines[0], region };
 }
 
+// { ok: true } nur, wenn der Nachfolger wirklich angestossen ist.
 function redispatch(force) {
   const { WORKFLOW: wf } = process.env;
   const attempt = Number(process.env.ATTEMPT || 0);
-  if (!wf) return 'kein Neu-Anstoss konfiguriert';
-  if (attempt + 1 >= MAX_ATTEMPTS) return `kein Neu-Anstoss mehr (Versuch ${attempt + 1} von ${MAX_ATTEMPTS})`;
+  if (!wf) return { ok: false, msg: 'kein Neu-Anstoss konfiguriert' };
+  if (attempt + 1 >= MAX_ATTEMPTS) return { ok: false, msg: `kein Neu-Anstoss mehr (Versuch ${attempt + 1} von ${MAX_ATTEMPTS})` };
   const r = spawnSync('gh', ['workflow', 'run', wf, '--ref', 'main', '-f', `attempt=${attempt + 1}`, '-f', `force=${force}`],
     { encoding: 'utf8', timeout: 60_000, killSignal: 'SIGKILL' });
   return r.status === 0
-    ? `neu angestossen (Versuch ${attempt + 2} von ${MAX_ATTEMPTS})`
-    : `Neu-Anstoss fehlgeschlagen: ${(r.stderr || r.error?.message || '').trim().slice(0, 200)}`;
+    ? { ok: true, msg: `neu angestossen (Versuch ${attempt + 2} von ${MAX_ATTEMPTS})` }
+    : { ok: false, msg: `Neu-Anstoss fehlgeschlagen: ${(r.stderr || r.error?.message || '').trim().slice(0, 200)}` };
 }
 
 const sleep = ms => new Promise(res => setTimeout(res, ms));
@@ -93,7 +98,8 @@ async function main() {
       return output(true, `Marktwert-Pass arbeitet an ${box.region}, nicht an ${myRegion}.`);
     }
     if (Date.now() + POLL_MIN * 60_000 > deadline) {
-      return output(false, `Marktwert-Pass (${box.region ?? 'Start'}) laeuft nach ${MAX_WAIT_MIN} min noch — ${redispatch(force)}.`);
+      const next = redispatch(force);
+      return output(false, `Marktwert-Pass (${box.region ?? 'Start'}) laeuft nach ${MAX_WAIT_MIN} min noch — ${next.msg}.`, next.ok);
     }
     console.log(`Marktwert-Pass laeuft noch (${box.region ?? 'wartet auf Sperre'}) — warte ${POLL_MIN} min.`);
     await sleep(POLL_MIN * 60_000);

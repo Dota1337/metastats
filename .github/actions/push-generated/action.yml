@@ -1,0 +1,30 @@
+name: Push generated files
+description: >
+  Commits files a workflow generated and pushes them to main without a rebase:
+  resets onto the current main and copies each changed file over as a whole,
+  up to 3 attempts. Files listed in `protect` keep main's version when someone
+  other than the bot changed them since the checkout. Logic and comments live
+  in push.sh (testable locally).
+
+inputs:
+  files:
+    description: 'Paths, space-separated'
+    required: true
+  message:
+    description: 'Commit message'
+    required: true
+  protect:
+    description: 'Paths whose hand edits on main must not be overwritten'
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Commit and push
+      shell: bash
+      env:
+        FILES: ${{ inputs.files }}
+        MESSAGE: ${{ inputs.message }}
+        PROTECT: ${{ inputs.protect }}
+      run: bash "${{ github.action_path }}/push.sh"

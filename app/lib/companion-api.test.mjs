@@ -16,8 +16,10 @@ import {
   buildCompanionVs,
   companionStats,
   memberKeyOf,
+  rerollPlan,
   resolveBoard,
   toCompanionLookups,
+  unitsAtPlayerLevel,
   toCompanionMatch,
   COMPANION_CORS_HEADERS,
   SITE_ORIGIN,
@@ -157,4 +159,37 @@ test('resolveBoard: staerkster Anteil zuerst, Ausweichen ins naechste Feld, imme
 test('companionStats: gerundet, fehlende Werte null', () => {
   assert.deepEqual(companionStats({ games: 12, avgPlacement: 4.256, top4Rate: 0.51234, top1Rate: null }),
     { games: 12, avg: 4.26, top4: 0.512, win: null });
+});
+
+test('rerollPlan: Carry bis 3 Kosten mit Familien-3-Sterne-Anteil ab 0,55, Stufe aus den Kosten', () => {
+  const cost = { A: 3, B: 2, C: 4, D: 1 };
+  const variants = [
+    { typicalUnits: [{ characterId: 'A', gamesWithUnit: 100, star3Games: 70 }, { characterId: 'C', gamesWithUnit: 100, star3Games: 90 }] },
+    { typicalUnits: [{ characterId: 'A', gamesWithUnit: 100, star3Games: 50 }, { characterId: 'B', gamesWithUnit: 100, star3Games: 40 }] },
+  ];
+  // A: 120/200 = 0,6 -> Reroll auf 7; C kostet 4 -> zaehlt nicht; B 0,4 -> zu wenig.
+  assert.deepEqual(rerollPlan(['A', 'B', 'C'], variants, id => cost[id]), { level: 7, targets: ['A'] });
+  // Nur Units aus der Kandidatenliste zaehlen.
+  assert.equal(rerollPlan(['B', 'C'], variants, id => cost[id]), null);
+  // Hoechster Anteil entscheidet die Stufe, gleiche Kosten kommen mit.
+  const v2 = [{ typicalUnits: [
+    { characterId: 'A', gamesWithUnit: 100, star3Games: 60 },
+    { characterId: 'D', gamesWithUnit: 100, star3Games: 90 },
+  ] }];
+  assert.deepEqual(rerollPlan(['A', 'D'], v2, id => cost[id]), { level: 5, targets: ['D'] });
+  // Zu wenige Spiele -> kein Reroll.
+  assert.equal(rerollPlan(['D'], [{ typicalUnits: [{ characterId: 'D', gamesWithUnit: 4, star3Games: 4 }] }], id => cost[id]), null);
+});
+
+test('unitsAtPlayerLevel: die haeufigsten Units auf der Stufe, hoechstens so viele wie die Stufe', () => {
+  const units = [
+    { characterId: 'A', levelGames: { 7: 50, 8: 10 } },
+    { characterId: 'B', levelGames: { 7: 80 } },
+    { characterId: 'C', levelGames: { 8: 30 } },
+    { characterId: 'D', levelGames: { 7: 50 } },
+    { characterId: 'E' },
+  ];
+  assert.deepEqual(unitsAtPlayerLevel(units, 7), ['B', 'A', 'D']);
+  assert.deepEqual(unitsAtPlayerLevel(units, 8), ['C', 'A']);
+  assert.deepEqual(unitsAtPlayerLevel(units.concat(Array.from({ length: 10 }, (_, i) => ({ characterId: `X${i}`, levelGames: { 5: i + 1 } }))), 5).length, 5);
 });

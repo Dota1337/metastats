@@ -88,9 +88,11 @@ export function loadItem(id: string): Promise<CompanionItemDetail> {
 
 // Der Server rechnet ein Comp-Detail beim ersten Abruf manchmal laenger als
 // sein Zeitlimit (Antwort 503) — dann einmal nach kurzer Pause neu fragen.
-export async function loadCompDetail(slug: string, units: string[]): Promise<CompanionCompDetail> {
+// carries (Carries + Item-Traeger) braucht der Server fuer die Early-Game-Zuordnung.
+export async function loadCompDetail(slug: string, units: string[], carries: string[] = []): Promise<CompanionCompDetail> {
   const region = read('ms.settings').region;
-  const path = `/api/companion/v1/comp?slug=${encodeURIComponent(slug)}&units=${encodeURIComponent(units.join(','))}&region=${encodeURIComponent(region)}`;
+  const path = `/api/companion/v1/comp?slug=${encodeURIComponent(slug)}&units=${encodeURIComponent(units.join(','))}&region=${encodeURIComponent(region)}`
+    + (carries.length ? `&carries=${encodeURIComponent(carries.join(','))}` : '');
   try {
     return await cached<CompanionCompDetail>(path, 60000);
   } catch (e) {

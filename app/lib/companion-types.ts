@@ -32,6 +32,10 @@ export interface CompanionComp {
   members?: string[];
   /** Matchups gegen andere Comps der Liste (Schluessel = deren key), ab 30 Spielen. */
   vs?: Record<string, CompanionVs>;
+  /** Reroll-Comp: auf `level` bleiben, bis `targets` 3 Sterne haben (ab 0.6). */
+  reroll?: { level: number; targets: string[] };
+  /** Early-Game-Boards vorhanden (MetaTFT-Comp mit passendem Brett, ab 0.6). */
+  hasEarly?: true;
 }
 
 export interface CompanionCompsResponse {
@@ -150,6 +154,11 @@ export interface CompanionCompDetail {
   levelTiming: Array<{ level: number; stage: string }>;
   /** Spielerstufe 4..7 -> meistgespielte fruehe Boards (ab 50 Spielen). */
   early: Record<string, CompanionEarlyBoard[]>;
+  /**
+   * Spielerstufe -> Aufstellung des Endbretts auf dieser Stufe (Reroll-Stufe
+   * und 7/8/9, je ab 200 Spielen; ab 0.6). Fehlt = nur `board`.
+   */
+  boardsByPlayerLevel?: Record<string, CompanionBoardCell[]>;
 }
 
 export interface CompanionLobbyPlayer {

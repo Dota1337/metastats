@@ -1,5 +1,6 @@
-// Shop-Markierung: ein durchklickbares Fenster ueber der Shop-Leiste. Ueber
-// jedem Platz, der eine Unit der angehefteten Comp zeigt, liegt ein Rahmen.
+// Shop-Markierung: ein durchklickbares Fenster ueber der Shop-Leiste. Jeder
+// Platz, der eine Unit der angehefteten Comp zeigt, bekommt oben rechts einen
+// gelben Stern — ohne Rahmen, damit nichts anderes verdeckt wird.
 import '../styles/app.css';
 import { read, subscribe } from '../lib/store.ts';
 import { shopMatches } from '../lib/plan.ts';
@@ -21,7 +22,7 @@ function render(): void {
     hit ? h('div', {
       class: 'shop-mark',
       style: `left:${((SLOT_CENTERS[i] - SLOT_WIDTH / 2) * 100).toFixed(2)}%;width:${(SLOT_WIDTH * 100).toFixed(2)}%`,
-    }) : null,
+    }, '★') : null,
   )));
 }
 

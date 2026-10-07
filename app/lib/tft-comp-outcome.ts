@@ -82,6 +82,8 @@ export interface UnitOutcome {
   itemCopiesAvg: number | null;
   items: ItemOutcome[];
   sets: ItemSetOutcome[];
+  /** Spielerstufe am Spielende -> Boards mit der Unit (Endbrett auf dieser Stufe). */
+  levelGames: Record<string, number>;
 }
 
 export interface LevelRow {
@@ -234,6 +236,9 @@ export function buildCompOutcome(raw: CompOutcomeRaw): CompOutcome {
       itemCopiesAvg: n3 > 0 ? s3 / n3 : null,
       items,
       sets,
+      levelGames: Object.fromEntries(Object.entries(u.lv || {})
+        .map(([lvl, t]) => [lvl, num(t[0])] as const)
+        .filter(([, n]) => n > 0)),
     };
   }).sort((a, b) => b.games - a.games);
 

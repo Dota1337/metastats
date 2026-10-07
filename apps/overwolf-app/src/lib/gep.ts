@@ -30,18 +30,6 @@ export function parseBoardPieces(raw: unknown): BoardPiece[] {
   return out;
 }
 
-// bench.bench_pieces: {"slot_1":{"name":"TFT2_Sion","level":"1",...}, ...} → Unit-Kennungen.
-export function parseBench(raw: unknown): string[] {
-  const parsed = jsonish<Record<string, { name?: string } | null>>(raw);
-  if (!parsed || typeof parsed !== 'object') return [];
-  const out: string[] = [];
-  for (const [key, val] of Object.entries(parsed)) {
-    if (!/^slot_\d+$/.test(key) || !val?.name) continue;
-    out.push(String(val.name));
-  }
-  return out;
-}
-
 // store.shop_pieces: {"slot_1":{"name":"DA_18_Tristana"}, ...} → 5 Plaetze.
 // Gekaufte Plaetze kommen leer, ohne Namen oder als "Sold".
 export function parseShop(raw: unknown): Array<string | null> {
@@ -129,11 +117,10 @@ export function tftFromGame(classId: number | null): boolean | null {
 }
 
 // 28164 kennt kein live_client_data, dafuer roster (eigener Name, Platzierung).
-// Die Bank (bench) gibt es laut Overwolf-Status nur bei 28164 und 21570.
+// Die Bank (bench) wird seit 0.6 nicht mehr gebraucht (Comp-Vorschlaege weg).
 export function featuresFor(classId: number | null): string[] {
   const base = ['gep_internal', 'game_info', 'me', 'match_info', 'store', 'board', 'roster'];
-  if (classId === 28164) return [...base, 'bench'];
-  if (classId === 21570) return [...base, 'bench', 'live_client_data'];
+  if (classId === 28164) return base;
   return [...base, 'live_client_data'];
 }
 

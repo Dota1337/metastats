@@ -195,14 +195,17 @@ kbd { background: var(--panel); border: 1px solid var(--line); border-radius: 5p
 .ov-comp .units { padding-bottom: 0; gap: 3px; flex-wrap: nowrap; }
 .ov-comp .unit.sm { width: 28px; height: 28px; }
 
-.matchup { flex-direction: row; align-items: center; cursor: move; }
-.matchup .opp { font-weight: 600; }
+.matchup { padding: 6px 8px; gap: 4px; }
+.opp-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.opp-row.next .opp-name { color: var(--c5); }
+.opp-name { flex: 0 1 auto; max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.opp-row .ov-title { font-weight: 400; }
 
 .shop-strip { position: fixed; inset: 0; pointer-events: none; }
 .shop-mark {
-  position: absolute; top: 4%; bottom: 4%;
-  border: 3px solid var(--c5); border-radius: 6px;
-  box-shadow: 0 0 12px rgba(240, 180, 41, 0.75), inset 0 0 10px rgba(240, 180, 41, 0.35);
+  position: absolute; top: 2%; text-align: right; padding-right: 4px;
+  color: var(--c5); font-size: 20px; line-height: 1;
+  text-shadow: 0 0 3px #000, 0 0 6px rgba(0, 0, 0, 0.8);
 }
 
 /* ---------- Spielfeld ---------- */

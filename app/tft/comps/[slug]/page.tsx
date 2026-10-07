@@ -266,8 +266,8 @@ export default function TftCompDetailPage() {
             {(() => {
               const parts = parseClusterKey(comp.clusterKey);
               if (!parts) return null;
-              const match = [...new Set([...namedCompCarries, parts.carry])].reduce<ReturnType<typeof findCompGuide>>(
-                (hit, carry) => hit ?? findCompGuide(compGuidesBundle, { trait: parts.trait, carry }), null);
+              const match = findCompGuide(compGuidesBundle, { trait: parts.trait, carry: parts.carry },
+                (comp.typicalUnits || []).map((u: { characterId: string }) => u.characterId), namedCompCarries);
               if (!match) return null;
               return <CompGuide guide={match.guide} assets={assets} />;
             })()}

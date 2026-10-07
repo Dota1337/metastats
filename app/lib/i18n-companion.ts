@@ -56,9 +56,6 @@ export const COMPANION_TRANSLATIONS = {
   'companion.settings.west': t6('Westen', 'West', '서부', '西部', 'Oeste', 'Ouest'),
   'companion.settings.asia': t6('Asien', 'Asia', '아시아', '亚洲', 'Asia', 'Asie'),
 
-  'companion.overlay.nextOpponent': t6('Nächster Gegner', 'Next opponent', '다음 상대', '下一个对手', 'Próximo rival', 'Prochain adversaire'),
-  'companion.overlay.oppAhead': t6('landet am Ende vor dir in {n} % der Spiele', 'finishes ahead of you in {n}% of games', '{n}% 게임에서 당신보다 높은 순위', '{n}% 的对局排名在你之前', 'termina por delante de ti en el {n} % de las partidas', 'finit devant vous dans {n} % des parties'),
-  'companion.overlay.noMatchup': t6('Keine Matchup-Daten', 'No matchup data', '상성 데이터 없음', '暂无对位数据', 'Sin datos de enfrentamiento', 'Pas de données de matchup'),
   'companion.overlay.target': t6('Ziel-Aufstellung', 'Target board', '목표 배치', '目标站位', 'Tablero objetivo', 'Placement cible'),
 
   'companion.tab.units': t6('Units', 'Units', '유닛', '弈子', 'Unidades', 'Unités'),

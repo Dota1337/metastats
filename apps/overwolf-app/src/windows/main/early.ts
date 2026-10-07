@@ -14,7 +14,8 @@ export function earlyTab(): HTMLElement {
   const all = comps();
   const lk = lookups();
   const pin = read('ms.pin');
-  const key = nav.earlyKey ?? pin?.key ?? all[0]?.key ?? null;
+  // Ohne Wahl: die angeheftete Comp, sonst die erste mit fruehen Boards.
+  const key = nav.earlyKey ?? (pin?.hasEarly ? pin.key : null) ?? all.find(x => x.hasEarly)?.key ?? all[0]?.key ?? null;
   const c = all.find(x => x.key === key) ?? null;
 
   const select = h('select', {}, all.map(x => h('option', { value: x.key, selected: x.key === key }, `${x.tier ?? '—'} · ${x.name}`)));
@@ -40,7 +41,7 @@ export function earlyTab(): HTMLElement {
         ? h('table', { class: 'table' },
           h('tr', {}, h('th', {}, ''), h('th', {}, t('comps.avg')), h('th', {}, t('comps.games'))),
           boards.map(b => h('tr', {},
-            h('td', {}, h('div', { class: 'units' }, b.units.map(u => unitIcon(u, lk, { size: 'sm' })))),
+            h('td', {}, h('div', { class: 'units' }, b.units.filter(u => !lk || lk.champions[u]).map(u => unitIcon(u, lk, { size: 'sm' })))),
             h('td', {}, fmtAvg(b.avg)),
             h('td', {}, b.games.toLocaleString(lang())),
           )),

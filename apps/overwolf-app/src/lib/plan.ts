@@ -7,23 +7,28 @@ export type LevelPlan =
   | { kind: 'reroll'; level: number; targets: string[]; avgLevel: number | null }
   | { kind: 'fast8' | 'fast9'; avgLevel: number | null };
 
-// Reroll-Comps bleiben auf der Stufe, auf der ihre 3-Sterne-Unit am haeufigsten
-// im Shop steht: 1-Kosten auf 5, 2-Kosten auf 6, 3-Kosten auf 7.
-const REROLL_LEVEL: Record<number, number> = { 1: 5, 2: 6, 3: 7 };
-
-export function levelPlan(comp: CompanionComp, lookups: CompanionLookups | null): LevelPlan {
-  const costOf = (id: string) => lookups?.champions[id]?.cost ?? 99;
-  const rerollTargets = comp.units.filter(u => u.star3 && costOf(u.id) <= 3);
-  if (rerollTargets.length > 0) {
-    const cost = Math.min(...rerollTargets.map(u => costOf(u.id)));
-    return {
-      kind: 'reroll',
-      level: REROLL_LEVEL[cost],
-      targets: rerollTargets.filter(u => costOf(u.id) === cost).map(u => u.id),
-      avgLevel: comp.avgLevel,
-    };
+// Reroll-Stufe und Ziel-Units liefert der Server (rerollPlan in
+// app/lib/companion-api.ts: Carry bis 3 Kosten, 3-Sterne-Anteil der Familie
+// ab 0,55). Ohne diese Angabe: schnelles Leveln auf 8 oder 9.
+export function levelPlan(comp: CompanionComp, _lookups?: CompanionLookups | null): LevelPlan {
+  if (comp.reroll) {
+    return { kind: 'reroll', level: comp.reroll.level, targets: comp.reroll.targets, avgLevel: comp.avgLevel };
   }
   return { kind: comp.avgLevel != null && comp.avgLevel >= 8.5 ? 'fast9' : 'fast8', avgLevel: comp.avgLevel };
+}
+
+// Stufen fuer den Aufstellungs-Umschalter: Reroll-Stufe (falls Reroll und
+// unter 7), dann 7/8/9. Startstufe: Reroll-Stufe, sonst 8.
+export function boardLevels(plan: LevelPlan): { levels: number[]; start: number } {
+  const levels = plan.kind === 'reroll' && plan.level < 7 ? [plan.level, 7, 8, 9] : [7, 8, 9];
+  return { levels, start: plan.kind === 'reroll' ? plan.level : 8 };
+}
+
+// Tatsaechliche Startstufe, sobald bekannt ist, welche Stufen ein Brett haben:
+// die erste ab der Wunsch-Startstufe mit Brett, sonst die erste mit Brett,
+// sonst die Wunsch-Startstufe (dann zeigt die Seite die Gesamt-Aufstellung).
+export function startLevel(levels: number[], start: number, has: (l: number) => boolean): number {
+  return levels.find(l => l >= start && has(l)) ?? levels.find(has) ?? start;
 }
 
 export interface Recipe { item: string; parts: [string, string] }
@@ -76,27 +81,14 @@ export function shopMatches(shop: Array<string | null>, comp: CompanionComp | nu
   });
 }
 
-// Vorschlaege fuer das Comp-Overlay ohne angeheftete Comp: zuerst nach
-// Uebereinstimmung mit eigenen Units (Brett + Bank + Shop), bei Gleichstand
-// nach Tier, dann in der Reihenfolge der Seite. Ohne eigene Units = Tierliste.
-const TIER_RANK: Record<string, number> = { S: 0, A: 1, B: 2, C: 3, D: 4 };
-
-export function suggestComps(comps: CompanionComp[], ownUnits: string[], n = 5): CompanionComp[] {
-  const own = new Set(ownUnits);
-  const hits = (c: CompanionComp) => new Set(c.units.map(u => u.id).filter(id => own.has(id))).size;
-  return comps
-    .map((c, i) => ({ c, i, hits: hits(c), tier: TIER_RANK[c.tier ?? ''] ?? 9 }))
-    .sort((a, b) => b.hits - a.hits || a.tier - b.tier || a.i - b.i)
-    .slice(0, n)
-    .map(x => x.c);
-}
-
 // Comp des Gegners aus seinem zuletzt gesehenen Brett. Erst ab Stage 3 (davor
 // sind Boards Zwischenstaende), mindestens 5 Units der Comp auf dem Brett und
-// 2 Units Vorsprung vor der naechstbesten — sonst wird nichts geraten. Die
+// mehr Treffer als die naechstbeste — bei Gleichstand wird nichts geraten.
+// Ein Treffer Vorsprung reicht: verwandte Comps teilen oft alle Units bis auf
+// eine, mit 2 blieb selbst ein komplettes Brett meist unerkannt. Die
 // Liste fasst Sub-Cluster schon ueber members zusammen, eine Comp = ein Eintrag.
 export const RECOGNIZE_MIN_HITS = 5;
-export const RECOGNIZE_MIN_LEAD = 2;
+export const RECOGNIZE_MIN_LEAD = 1;
 
 export function recognizeComp(units: string[], comps: CompanionComp[], stage: string | null): CompanionComp | null {
   const s = stage ? Number(stage.split('-')[0]) : null;
@@ -112,13 +104,4 @@ export function recognizeComp(units: string[], comps: CompanionComp[], stage: st
     else if (hits > second) second = hits;
   }
   return best && bestHits >= RECOGNIZE_MIN_HITS && bestHits - second >= RECOGNIZE_MIN_LEAD ? best : null;
-}
-
-// Matchup der eigenen (angehefteten) Comp gegen die erkannte Comp des Gegners:
-// Anteil der Spiele, in denen der Gegner am Ende vor dir landet. null = keine
-// Daten (gleiche Comp oder unter 30 gemeinsamen Spielen).
-export function opponentAhead(mine: CompanionComp, theirs: CompanionComp): { share: number; games: number } | null {
-  if (mine.key === theirs.key) return null;
-  const v = mine.vs?.[theirs.key];
-  return v ? { share: Number((1 - v[1]).toFixed(3)), games: v[0] } : null;
 }

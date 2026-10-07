@@ -1,13 +1,13 @@
-// Overlay der angehefteten Comp: Units mit Items, Rezepte, Shop-Chancen auf der
-// aktuellen Stufe und Stufenplan. Ohne angeheftete Comp: die 5 passendsten
-// Comps (eigenes Brett + Bank, dann Tier), ein Klick heftet an. Liest nur aus
-// dem gemeinsamen Speicher.
+// Overlay der angehefteten Comp: Aufstellung je Spielerstufe (Umschalter),
+// Rezepte, Shop-Chancen auf der aktuellen Stufe und Stufenplan. Ohne
+// angeheftete Comp bleibt es leer (das Hintergrundfenster blendet es dann
+// aus). Liest nur aus dem gemeinsamen Speicher.
 import '../styles/app.css';
 import { read, write, subscribe, patchSettings } from '../lib/store.ts';
 import { t } from '../lib/i18n.ts';
 import { boot } from '../lib/boot.ts';
 import { makeDraggable, fitSelf } from '../lib/ow.ts';
-import { levelPlan, compRecipes, suggestComps } from '../lib/plan.ts';
+import { levelPlan, boardLevels, startLevel, compRecipes } from '../lib/plan.ts';
 import { h, clear, unitIcon, itemIcon, compUnits, tierBadge } from '../lib/dom.ts';
 import { boardView } from '../lib/board-view.ts';
 
@@ -24,33 +24,15 @@ function collapseBtn(collapsed: boolean): HTMLElement {
   return h('button', { class: 'win-btn', onclick: () => patchSettings({ collapsed: !collapsed }) }, collapsed ? '▾' : '▴');
 }
 
-function renderList(collapsed: boolean): void {
-  const lk = read('ms.lookups')?.data ?? null;
-  const comps = read('ms.comps')?.data.comps ?? [];
-  const head = h('header', { class: 'ov-head' },
-    h('div', { class: 'ov-title' }, t('tab.comps')),
-    collapseBtn(collapsed),
-  );
-  makeDraggable(head);
-  if (collapsed) { clear(root, h('div', { class: 'overlay' }, head)); return; }
-  clear(root, h('div', { class: 'overlay' },
-    head,
-    suggestComps(comps, read('ms.live').ownUnits).map(c =>
-      h('button', { class: 'ov-comp', title: c.name, onclick: () => write('ms.pin', c) },
-        h('div', { class: 'ov-comp-head' }, tierBadge(c.tier), h('span', { class: 'ov-title' }, c.name)),
-        // Ohne Items, damit fuenf Comps wenig vom Spielbild verdecken.
-        h('div', { class: 'units' }, c.units.map(u => unitIcon(u.id, lk, { star3: !!u.star3, size: 'sm' }))),
-      ),
-    ),
-  ));
-}
+// Gewaehlte Stufe der Aufstellung; springt beim Wechsel der Comp auf deren Start-Stufe.
+const ui = { key: '', level: 0 };
 
 function render(): void {
   const pin = read('ms.pin');
   const lk = read('ms.lookups')?.data ?? null;
   const live = read('ms.live');
   const collapsed = read('ms.settings').collapsed;
-  if (!pin) { renderList(collapsed); fit(); return; }
+  if (!pin) { clear(root); fit(); return; }
 
   const head = h('header', { class: 'ov-head' },
     tierBadge(pin.tier),
@@ -69,19 +51,30 @@ function render(): void {
   const pd = read('ms.pinDetail');
   const detail = pd && pd.key === pin.key ? pd.data : null;
   const byId = new Map(pin.units.map(u => [u.id, u]));
+  const { levels, start } = boardLevels(plan);
+  // ui.level 0 = noch nicht gewaehlt; dann die erste Stufe mit Brett ab der Startstufe.
+  if (ui.key !== pin.key) { ui.key = pin.key; ui.level = 0; }
+  const hasLevel = (l: number) => !!detail?.boardsByPlayerLevel?.[String(l)]?.length;
+  const level = ui.level || startLevel(levels, start, hasLevel);
+  // Ohne Brett fuer die Stufe (zu wenig Spiele oder alter Stand): die Gesamt-Aufstellung.
+  const board = detail?.boardsByPlayerLevel?.[String(level)] ?? detail?.board ?? [];
   const early = live.level != null && live.level >= 4 && live.level <= 7 ? detail?.early[String(live.level)]?.[0] : undefined;
 
   clear(root, h('div', { class: 'overlay' },
     head,
-    detail && detail.board.length
+    detail && board.length
       ? h('div', {},
-        h('div', { class: 'ov-label' }, t('overlay.target')),
-        boardView(detail.board.map(b => ({ cell: b.cell, unit: b.unit, star: byId.get(b.unit)?.star3 ? 3 : undefined, items: byId.get(b.unit)?.items })), lk, 'sm'),
+        detail.boardsByPlayerLevel
+          ? h('div', { class: 'level-pick' }, levels.map(l =>
+            h('button', { class: l === level ? 'chip active' : 'chip', disabled: !hasLevel(l), onclick: () => { ui.level = l; render(); } }, `${t('tools.level')} ${l}`),
+          ))
+          : h('div', { class: 'ov-label' }, t('overlay.target')),
+        boardView(board.map(b => ({ cell: b.cell, unit: b.unit, star: byId.get(b.unit)?.star3 ? 3 : undefined, items: byId.get(b.unit)?.items })), lk, 'sm'),
       )
       : compUnits(pin, lk, 'sm'),
     early ? h('div', { class: 'ov-row' },
       h('span', { class: 'ov-label' }, `${t('tab.early')} · ${t('tools.level')} ${live.level}`),
-      h('span', { class: 'units' }, early.units.map(u => unitIcon(u, lk, { size: 'sm' }))),
+      h('span', { class: 'units' }, early.units.filter(u => !lk || lk.champions[u]).map(u => unitIcon(u, lk, { size: 'sm' }))),
     ) : null,
     h('div', { class: 'ov-row' },
       h('span', { class: 'ov-label' }, t('tools.levelPlan')),
@@ -103,14 +96,12 @@ function render(): void {
 }
 
 void boot(render);
-subscribe(['ms.pin', 'ms.pinDetail', 'ms.lookups', 'ms.live', 'ms.comps', 'ms.settings'], key => {
-  // Shop-Wechsel aendern hier nichts; nur Stufe oder eigene Units zaehlen.
+subscribe(['ms.pin', 'ms.pinDetail', 'ms.lookups', 'ms.live', 'ms.settings'], key => {
+  // Shop-Wechsel aendern hier nichts; nur die Stufe zaehlt.
   if (key === 'ms.live') {
-    const l = read('ms.live');
-    const units = l.ownUnits.join('|');
-    if (l.level === lastLevel && units === lastUnits) return;
-    lastLevel = l.level;
-    lastUnits = units;
+    const l = read('ms.live').level;
+    if (l === lastLevel) return;
+    lastLevel = l;
   }
   if (key === 'ms.settings') {
     const c = read('ms.settings').collapsed;
@@ -120,5 +111,4 @@ subscribe(['ms.pin', 'ms.pinDetail', 'ms.lookups', 'ms.live', 'ms.comps', 'ms.se
   render();
 });
 let lastLevel = read('ms.live').level;
-let lastUnits = read('ms.live').ownUnits.join('|');
 let lastCollapsed = read('ms.settings').collapsed;

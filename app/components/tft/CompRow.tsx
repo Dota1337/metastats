@@ -130,7 +130,6 @@ export default function CompRow({
   // Cached bundle load — runs once per page session despite N rows.
   const [guideBundle, setGuideBundle] = useState<Awaited<ReturnType<typeof loadCompGuidesBundle>> | null>(null);
   useEffect(() => { loadCompGuidesBundle().then(setGuideBundle); }, []);
-  const guideMatch = parts ? findCompGuide(guideBundle, { trait: parts.trait, carry: parts.carry }) : null;
   // Display-Name aus dem zentralen Helper (matched In-Game-Variant aus desc).
   // Plus tooltip-Text damit Mouse-over über den Comp-Header die Trait-
   // Beschreibung dieser Constellation zeigt.
@@ -166,6 +165,10 @@ export default function CompRow({
   const roles: CompRoles = rolesProp
     ?? computeRoles(comp.typicalUnits, comp.games, { set: assets?.set, isComponent, keyCarry: parts?.carry });
   const named = namedCarries(roles, parts?.carry);
+  // Guide nur bei passendem Brett (resolveGuideId), Carries wie im Namen.
+  const guideMatch = parts
+    ? findCompGuide(guideBundle, { trait: parts.trait, carry: parts.carry }, (comp.typicalUnits || []).map(u => u.characterId), named)
+    : null;
   // „(mit X)" nur, wenn X nicht schon im Namen steht.
   const secondaryCid = parts?.secondary && !named.includes(parts.secondary) ? parts.secondary : null;
   const secondaryChamp = secondaryCid && assets ? assets.champions[secondaryCid] : null;

@@ -12,7 +12,7 @@ import type { Lang } from './i18n.ts';
 export interface Settings {
   pinned: boolean;     // Comp-Overlay im Spiel
   shop: boolean;       // Shop-Markierung
-  opponent: boolean;   // Gegner-Overlay, solange eine Comp angeheftet ist (ab 0.5; frueher matchups, aus)
+  opponent: boolean;   // Gegner-Overlay: erkannte Comps der Gegner, auch ohne angeheftete Comp (ab 0.6)
   share: boolean;      // Brett-Daten senden
   region: string;
   lang: Lang | null;   // null = Overwolf-Sprache
@@ -26,7 +26,6 @@ export interface Live {
   shopVisible: boolean;
   opponent: string | null;
   stage: string | null;
-  ownUnits: string[];  // eigene Units auf Brett + Bank (Kennungen, ohne Doppelte)
   oppBoards: Record<string, string[]>; // Gegnername -> Units seines zuletzt gesehenen Bretts
   updatedAt: number;
 }
@@ -52,7 +51,7 @@ const DEFAULTS: { [K in StoreKey]: Schema[K] } = {
   'ms.pin': null,
   'ms.comps': null,
   'ms.lookups': null,
-  'ms.live': { inTft: false, level: null, shop: [], shopVisible: false, opponent: null, stage: null, ownUnits: [], oppBoards: {}, updatedAt: 0 },
+  'ms.live': { inTft: false, level: null, shop: [], shopVisible: false, opponent: null, stage: null, oppBoards: {}, updatedAt: 0 },
   'ms.me': null,
   'ms.pinDetail': null,
 };

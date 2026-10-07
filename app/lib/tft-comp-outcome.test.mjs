@@ -72,6 +72,7 @@ test('buildCompOutcome: Items, Kombis, Unit-Wirkung je Level, Platzverteilung', 
   close(u.effect.delta, -4);
   close(u.effect.ci, 1.96 * Math.sqrt(0.5 / 2 + 0.5 / 2));
   close(u.itemCopiesAvg, 3.9);
+  assert.deepEqual(u.levelGames, { 8: 2 });
 
   const ie = u.items.find(i => i.item === 'IE');
   assert.equal(ie.grade, 'core');

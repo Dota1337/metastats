@@ -8,6 +8,8 @@ import { buildCompFamilies, currentSetFamilies, topFamilyKeys } from '../../../.
 import { resolveCutoffs } from '../../../../lib/tft-tier-letter';
 import type { TftAssetsBundle } from '../../../../lib/tft-cdragon';
 import { callRpc, resolveFilters } from '../../../../lib/tft-supabase-reader';
+import { resolveGuideId } from '../../../../lib/tft-comp-guides';
+import { loadGuidesFromDisk } from '../../../../lib/tft-comp-guides-server';
 import {
   COMPANION_API_VERSION, buildCompanionVs, companionJson, companionPreflight, toCompanionComp,
   type CompanionCompsResponse, type CompPairInput,
@@ -76,5 +78,17 @@ export async function GET(request: NextRequest) {
   };
   const vs = buildCompanionVs(out.comps, pairs);
   for (const c of out.comps) if (vs[c.key]) c.vs = vs[c.key];
+  // Early Game vorhanden: dieselbe Zuordnung wie Comp-Route und Seite, und
+  // mindestens ein fruehes Board ab 50 Spielen (EARLY_MIN_GAMES der Comp-Route).
+  const guides = loadGuidesFromDisk();
+  if (guides) {
+    for (const c of out.comps) {
+      const id = resolveGuideId(guides, c.members ?? [c.key], c.units.map(u => u.id), [...new Set([...c.carries, ...c.itemCarriers])]);
+      const early = id ? guides.details[id]?.earlyByLevel : undefined;
+      if (early && Object.values(early).some(opts => (opts || []).some(o => Array.isArray(o.units) && o.units.length > 0 && (o.count ?? 0) >= 50))) {
+        c.hasEarly = true;
+      }
+    }
+  }
   return companionJson(out, { cdn: 'public, s-maxage=1800, stale-while-revalidate=21600' });
 }

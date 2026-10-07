@@ -5,12 +5,15 @@ import { read, write } from '../../lib/store.ts';
 import { t, lang } from '../../lib/i18n.ts';
 import { loadCompDetail, siteUrl } from '../../lib/api.ts';
 import { openExternal } from '../../lib/ow.ts';
-import { levelPlan } from '../../lib/plan.ts';
+import { levelPlan, boardLevels, startLevel } from '../../lib/plan.ts';
 import { boardView } from '../../lib/board-view.ts';
 import { h, clear, unitIcon, itemIcon, tierBadge, fmtAvg, fmtPct, compUnits } from '../../lib/dom.ts';
-import { nav, go, lookups, comps, backBtn, fetchSlot, slotFallback, itemName } from './ctx.ts';
+import { nav, go, lookups, comps, backBtn, fetchSlot, slotFallback, itemName, rerender } from './ctx.ts';
 
 export const listState = { query: '', loadFailed: false, retry: () => {} };
+// Gewaehlte Stufe der Aufstellung in der Detailansicht; springt beim Wechsel
+// der Comp auf deren Start-Stufe.
+const boardUi = { key: '', level: 0 };
 
 export function recipeRow(item: string, parts: [string, string], lk: CompanionLookups | null, size: 'sm' | 'xs' = 'sm'): HTMLElement {
   return h('div', { class: 'recipe', title: itemName(item, lk) },
@@ -87,15 +90,16 @@ export function detailSlotKey(c: CompanionComp): string {
 }
 
 export function compDetailSlot(c: CompanionComp) {
-  return fetchSlot<CompanionCompDetail>(detailSlotKey(c), () => loadCompDetail(c.slug, c.units.map(u => u.id)));
+  return fetchSlot<CompanionCompDetail>(detailSlotKey(c), () => loadCompDetail(c.slug, c.units.map(u => u.id), [...new Set([...c.carries, ...c.itemCarriers])]));
 }
 
 // Aufstellung mit den Items und 3-Sternen der Comp-Liste; ohne Felder vom
-// Server die schlichte Unit-Reihe.
-export function compBoard(c: CompanionComp, d: CompanionCompDetail | null, lk: CompanionLookups | null, size: 'md' | 'sm' = 'md'): HTMLElement {
-  if (!d || d.board.length === 0) return compUnits(c, lk, size);
+// Server die schlichte Unit-Reihe. `board` ersetzt die Gesamt-Aufstellung
+// (Brett einer Spielerstufe).
+export function compBoard(c: CompanionComp, d: CompanionCompDetail | null, lk: CompanionLookups | null, size: 'md' | 'sm' = 'md', board = d?.board ?? []): HTMLElement {
+  if (!d || board.length === 0) return compUnits(c, lk, size);
   const byId = new Map(c.units.map(u => [u.id, u]));
-  return boardView(d.board.map(b => ({
+  return boardView(board.map(b => ({
     cell: b.cell, unit: b.unit,
     star: byId.get(b.unit)?.star3 ? 3 : undefined,
     items: byId.get(b.unit)?.items,
@@ -131,6 +135,11 @@ function detailView(c: CompanionComp): HTMLElement {
   const slot = compDetailSlot(c);
   const d = slot.state === 'ok' ? slot.data : null;
   const plan = levelPlan(c, lk);
+  const { levels, start } = boardLevels(plan);
+  // boardUi.level 0 = noch nicht gewaehlt; dann die erste Stufe mit Brett ab der Startstufe.
+  if (boardUi.key !== c.key) { boardUi.key = c.key; boardUi.level = 0; }
+  const byLevel = d?.boardsByPlayerLevel;
+  const level = boardUi.level || startLevel(levels, start, l => !!byLevel?.[String(l)]?.length);
   const carriers = c.units.filter(u => u.items?.length);
   const strong = matchupList(c, true, lk);
   const weak = matchupList(c, false, lk);
@@ -148,7 +157,10 @@ function detailView(c: CompanionComp): HTMLElement {
     h('div', { class: 'detail-grid' },
       h('div', { class: 'card' },
         h('h3', {}, t('comps.board')),
-        slot.state === 'loading' ? h('div', { class: 'spinner' }) : compBoard(c, d, lk),
+        byLevel ? h('div', { class: 'level-pick' }, levels.map(l =>
+          h('button', { class: l === level ? 'chip active' : 'chip', disabled: !byLevel[String(l)]?.length, onclick: () => { boardUi.level = l; rerender(); } }, `${t('tools.level')} ${l}`),
+        )) : null,
+        slot.state === 'loading' ? h('div', { class: 'spinner' }) : compBoard(c, d, lk, 'md', byLevel?.[String(level)] ?? d?.board ?? []),
       ),
       carriers.length ? h('div', { class: 'card' },
         h('h3', {}, t('comps.carriers')),

@@ -3,7 +3,7 @@
   "type": "WebApp",
   "meta": {
     "name": "metastats.gg Companion",
-    "version": "0.5.0",
+    "version": "0.6.0",
     "minimum-overwolf-version": "0.275.0",
     "author": "metastats.gg",
     "icon": "images/IconMouseOver.png",
@@ -66,9 +66,11 @@
         "file": "windows/matchup.html",
         "in_game_only": true,
         "transparent": true,
+        "clickthrough": true,
         "resizable": false,
         "show_in_taskbar": false,
         "grab_keyboard_focus": false,
+        "grab_focus_on_desktop": false,
         "size": { "width": 320, "height": 44 },
         "start_position": { "top": 12, "left": 760 }
       }
@@ -104,6 +106,6 @@
       ]
     },
     "extra-objects": {},
-    "user_agent": "metastats-companion/0.5"
+    "user_agent": "metastats-companion/0.6"
   }
 }

@@ -9,7 +9,7 @@
 // durch, damit der Zuschnitt testbar bleibt (companion-api.test.mjs).
 import { NextResponse } from 'next/server';
 import type { CompFamily } from '../components/tft/CompFamilyRow';
-import { isThreeStarUnit, parseClusterKey } from './tft-cluster';
+import { isThreeStarUnit, parseClusterKey, STAR3_MIN_GAMES, STAR3_SHARE_THRESHOLD } from './tft-cluster';
 import { tftChampionTileUrl, tftIconUrl, tftTraitDisplayName, type TftAssetsBundle } from './tft-cdragon';
 import { componentCheckFromItems, namedCarries, shownItems } from './tft-comp-roles';
 import { tierLetterOfSync, type TierCutoffs } from './tft-tier-letter';
@@ -168,6 +168,61 @@ export function resolveBoard(
   return out;
 }
 
+// Reroll-Comps bleiben auf der Stufe, auf der ihr 3-Sterne-Carry am haeufigsten
+// im Shop steht: 1-Kosten auf 5, 2-Kosten auf 6, 3-Kosten auf 7.
+export const REROLL_LEVEL_BY_COST: Record<number, number> = { 1: 5, 2: 6, 3: 7 };
+
+/**
+ * Reroll oder nicht (classification-reviewer 2026-10-07, 33/33 Comps richtig):
+ * ein Carry oder Item-Traeger kostet hoechstens 3 und steht ueber alle
+ * Varianten der Familie gerechnet zu mindestens STAR3_SHARE_THRESHOLD auf
+ * 3 Sternen. Die Stufe kommt von den Kosten des Carrys mit dem hoechsten
+ * 3-Sterne-Anteil. Kein Filter auf die Endstufe: Reroll-Comps leveln nach dem
+ * 3-Sterne-Treffer weiter und enden oft auf 8.
+ */
+export function rerollPlan(
+  candidates: string[],
+  variants: Array<{ typicalUnits?: Array<{ characterId: string; gamesWithUnit?: unknown; star3Games?: unknown }> }>,
+  costOf: (cid: string) => number | null | undefined,
+): { level: number; targets: string[] } | null {
+  const want = new Set(candidates);
+  const acc = new Map<string, { games: number; star3: number }>();
+  for (const v of variants) {
+    for (const u of v.typicalUnits || []) {
+      if (!want.has(u.characterId)) continue;
+      const cur = acc.get(u.characterId) ?? { games: 0, star3: 0 };
+      cur.games += Number(u.gamesWithUnit) || 0;
+      cur.star3 += Number(u.star3Games) || 0;
+      acc.set(u.characterId, cur);
+    }
+  }
+  const hits = [...acc]
+    .map(([id, a]) => ({ id, cost: Number(costOf(id)), share: a.games > 0 ? a.star3 / a.games : 0, games: a.games }))
+    .filter(h => REROLL_LEVEL_BY_COST[h.cost] != null && h.games >= STAR3_MIN_GAMES && h.share >= STAR3_SHARE_THRESHOLD)
+    .sort((a, b) => b.share - a.share || a.id.localeCompare(b.id));
+  if (hits.length === 0) return null;
+  const cost = hits[0].cost;
+  return { level: REROLL_LEVEL_BY_COST[cost], targets: hits.filter(h => h.cost === cost).map(h => h.id) };
+}
+
+/**
+ * Units des Endbretts auf Spielerstufe `level`: die `level` Units, die auf
+ * dieser Stufe am haeufigsten im Brett standen (Anteil an den Spielen der
+ * Comp auf der Stufe). Gleiche Daten ergeben immer dieselbe Auswahl.
+ */
+export function unitsAtPlayerLevel(
+  units: Array<{ characterId: string; levelGames?: Record<string, number> }>,
+  level: number,
+): string[] {
+  const key = String(level);
+  return units
+    .map(u => ({ id: u.characterId, n: Number(u.levelGames?.[key]) || 0 }))
+    .filter(u => u.n > 0)
+    .sort((a, b) => b.n - a.n || a.id.localeCompare(b.id))
+    .slice(0, level)
+    .map(u => u.id);
+}
+
 export function toCompanionComp(
   family: CompFamily,
   assets: TftAssetsBundle | null,
@@ -190,6 +245,11 @@ export function toCompanionComp(
   const tier = cutoffs
     ? tierLetterOfSync({ avgPlacement: main.avgPlacement, pickRate: main.pickRate, games: main.games }, 'comps', cutoffs)
     : null;
+  const reroll = rerollPlan(
+    [...new Set([...named, ...(family.itemCarriers ?? [])])],
+    (family.variants?.length ? family.variants : [main]) as Parameters<typeof rerollPlan>[1],
+    cid => assets?.champions[cid]?.cost,
+  );
   const members = [family.familyKey];
   for (const v of family.variants || []) {
     for (const s of [v.slug, v.clusterKey, ...((v._mergedFrom as string[] | undefined) ?? [])]) {
@@ -214,6 +274,7 @@ export function toCompanionComp(
     traitLevel: parts?.level ?? family.level,
     avgLevel: round(main.avgLevel ?? null, 2),
     units,
+    ...(reroll ? { reroll } : {}),
   };
 }
 

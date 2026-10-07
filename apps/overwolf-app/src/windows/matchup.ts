@@ -1,39 +1,35 @@
-// Naechster Gegner: Name, seine erkannte Comp (aus dem zuletzt gesehenen
-// Brett) und wie oft er damit vor deiner angehefteten Comp landet. Ohne
-// gesehenes Brett oder bei unklarer Erkennung wird keine Comp geraten.
+// Gegner-Overlay: fuer jeden Gegner, dessen zuletzt gesehenes Brett eindeutig
+// zu einer Comp passt, Name und erkannte Comp. Der naechste Gegner steht oben.
+// Braucht keine angeheftete Comp; ohne erkannte Comp bleibt es leer. Das
+// Fenster ist durchklickbar und wird vom Hintergrundfenster neben die
+// Spielerliste gesetzt.
 import '../styles/app.css';
 import { read, subscribe } from '../lib/store.ts';
-import { t } from '../lib/i18n.ts';
 import { boot } from '../lib/boot.ts';
-import { makeDraggable, fitSelf } from '../lib/ow.ts';
-import { recognizeComp, opponentAhead } from '../lib/plan.ts';
+import { fitSelf } from '../lib/ow.ts';
+import { recognizeComp } from '../lib/plan.ts';
 import { h, clear, tierBadge } from '../lib/dom.ts';
 
 const root = document.getElementById('app')!;
-const WIDTH = 320;
 
 function render(): void {
   const live = read('ms.live');
-  if (!live.opponent) { clear(root); return; }
-  const pin = read('ms.pin');
   const comps = read('ms.comps')?.data.comps ?? [];
-  const theirs = recognizeComp(live.oppBoards[live.opponent] ?? [], comps, live.stage);
-  const mu = pin && theirs ? opponentAhead(pin, theirs) : null;
-  const box = h('div', { class: 'overlay' },
-    h('header', { class: 'ov-head' },
-      h('span', { class: 'ov-label' }, t('overlay.nextOpponent')),
-      h('span', { class: 'ov-title' }, live.opponent),
-      live.stage ? h('span', { class: 'muted' }, live.stage) : null,
+  const rows = Object.entries(live.oppBoards)
+    .map(([name, units]) => ({ name, comp: recognizeComp(units, comps, live.stage) }))
+    .filter((r): r is { name: string; comp: NonNullable<typeof r.comp> } => r.comp != null)
+    .sort((a, b) => Number(b.name === live.opponent) - Number(a.name === live.opponent));
+  if (rows.length === 0) { clear(root); return; }
+  const box = h('div', { class: 'overlay matchup' }, rows.map(r =>
+    h('div', { class: r.name === live.opponent ? 'opp-row next' : 'opp-row' },
+      h('span', { class: 'opp-name', title: r.name }, r.name.split('#')[0]),
+      tierBadge(r.comp.tier),
+      h('span', { class: 'ov-title', title: r.comp.name }, r.comp.name),
     ),
-    theirs ? h('div', { class: 'ov-comp-head' }, tierBadge(theirs.tier), h('span', { class: 'ov-title' }, theirs.name)) : null,
-    theirs && pin && theirs.key !== pin.key
-      ? h('div', { class: 'muted' }, mu ? t('overlay.oppAhead', { n: Math.round(mu.share * 100) }) : t('overlay.noMatchup'))
-      : null,
-  );
-  makeDraggable(box);
+  ));
   clear(root, box);
-  fitSelf(WIDTH, box.getBoundingClientRect().bottom + 2);
+  fitSelf(window.innerWidth, box.getBoundingClientRect().bottom + 2);
 }
 
 void boot(render);
-subscribe(['ms.live', 'ms.pin', 'ms.comps'], render);
+subscribe(['ms.live', 'ms.comps'], render);

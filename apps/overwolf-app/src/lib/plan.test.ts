@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { CompanionComp, CompanionLookups } from '../../../../app/lib/companion-types.ts';
-import { levelPlan, compRecipes, shopMatches, groupRecipes, suggestComps } from './plan.ts';
+import { levelPlan, boardLevels, startLevel, compRecipes, shopMatches, groupRecipes } from './plan.ts';
 
 const lookups: CompanionLookups = {
   v: 1, set: 18,
@@ -28,13 +28,19 @@ function comp(units: CompanionComp['units'], avgLevel: number | null = 8): Compa
   };
 }
 
-test('Reroll: billigste 3-Sterne-Unit bestimmt die Stufe', () => {
-  const p = levelPlan(comp([{ id: 'B', star3: true }, { id: 'A', star3: true }, { id: 'D' }]), lookups);
-  assert.deepEqual(p, { kind: 'reroll', level: 5, targets: ['A'], avgLevel: 8 });
+test('Reroll: Stufe und Ziele kommen vom Server', () => {
+  const p = levelPlan({ ...comp([{ id: 'B', star3: true }, { id: 'A', star3: true }, { id: 'D' }]), reroll: { level: 7, targets: ['B'] } }, lookups);
+  assert.deepEqual(p, { kind: 'reroll', level: 7, targets: ['B'], avgLevel: 8 });
 });
 
-test('3 Sterne auf einer 4-Kosten-Unit ist kein Reroll', () => {
-  assert.equal(levelPlan(comp([{ id: 'D', star3: true }], 8.2), lookups).kind, 'fast8');
+test('3 Sterne ohne Reroll-Angabe ist kein Reroll', () => {
+  assert.equal(levelPlan(comp([{ id: 'A', star3: true }], 8.2), lookups).kind, 'fast8');
+});
+
+test('boardLevels: Reroll-Stufe vorn und Start dort, sonst 7/8/9 ab 8', () => {
+  assert.deepEqual(boardLevels({ kind: 'reroll', level: 5, targets: ['A'], avgLevel: 8 }), { levels: [5, 7, 8, 9], start: 5 });
+  assert.deepEqual(boardLevels({ kind: 'reroll', level: 7, targets: ['A'], avgLevel: 8 }), { levels: [7, 8, 9], start: 7 });
+  assert.deepEqual(boardLevels({ kind: 'fast9', avgLevel: 8.7 }), { levels: [7, 8, 9], start: 8 });
 });
 
 test('fast9 ab Endstufe 8,5, fast8 auch ohne Endstufe', () => {
@@ -76,10 +82,10 @@ test('groupRecipes: Items, dann Spatula, dann Bratpfanne, je alphabetisch', () =
   assert.deepEqual(groupRecipes(null), []);
 });
 
-test('suggestComps: ohne eigene Units nach Tier, sonst nach Treffern', () => {
-  const mk = (key: string, tier: string | null, ids: string[]): CompanionComp => ({ ...comp(ids.map(id => ({ id }))), key, tier });
-  const list = [mk('c', 'C', ['A', 'B']), mk('s', 'S', ['D']), mk('n', null, ['A']), mk('a', 'A', ['B'])];
-  assert.deepEqual(suggestComps(list, []).map(c => c.key), ['s', 'a', 'c', 'n']);
-  assert.deepEqual(suggestComps(list, ['A', 'B', 'B']).map(c => c.key), ['c', 'a', 'n', 's']);
-  assert.equal(suggestComps(list, [], 2).length, 2);
+test('startLevel: erste Stufe ab Start mit Brett, sonst erste mit Brett, sonst Start', () => {
+  const has = (set: number[]) => (l: number) => set.includes(l);
+  assert.equal(startLevel([5, 7, 8, 9], 5, has([5, 7, 8, 9])), 5);
+  assert.equal(startLevel([5, 7, 8, 9], 5, has([7, 8, 9])), 7);
+  assert.equal(startLevel([7, 8, 9], 8, has([7])), 7);
+  assert.equal(startLevel([7, 8, 9], 8, has([])), 8);
 });

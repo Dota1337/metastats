@@ -11,7 +11,7 @@ import { enqueue, flush, idbStore, type OutboxEntry, type SendResult } from '../
 import { recordBoard, flattenBoards, ownRounds, type Boards } from '../lib/boards.ts';
 import { saveLocalMatch } from '../lib/history-store.ts';
 import {
-  jsonish, parseBoardPieces, parseBench, parseShop, parseLevel, parseStage, stageToRound,
+  jsonish, parseBoardPieces, parseShop, parseLevel, parseStage, stageToRound,
   parseOpponent, gameTimeToRound, isTftMode, gameClassId, isTftGame, tftFromGame,
   featuresFor, parseLocalPlayer, fightToRound, fightsLowerBound, regionFromHandle,
 } from '../lib/gep.ts';
@@ -162,27 +162,13 @@ async function submit(): Promise<void> {
 
 // ---------- Live-Zustand fuer die Overlays ----------
 
-let live: Live = { ...read('ms.live'), inTft: false, shop: [], shopVisible: false, opponent: null, stage: null, ownUnits: [], oppBoards: {} };
+let live: Live = { ...read('ms.live'), inTft: false, shop: [], shopVisible: false, opponent: null, stage: null, oppBoards: {} };
 let sawShopVisibleEvent = false;
 
 function patchLive(p: Partial<Live>): void {
   live = { ...live, ...p, updatedAt: Date.now() };
   write('ms.live', live);
   void syncOverlays();
-}
-
-// Eigene Units auf Brett und Bank, fuer die Comp-Vorschlaege im Overlay.
-let ownBoard: string[] = [];
-let ownBench: string[] = [];
-
-function ownUnitsPatch(): Partial<Live> {
-  const next = [...new Set([...ownBoard, ...ownBench].filter(Boolean))].sort();
-  return next.join('|') === live.ownUnits.join('|') ? {} : { ownUnits: next };
-}
-
-function resetOwn(): void {
-  ownBoard = [];
-  ownBench = [];
 }
 
 const seenKeys = new Set<string>();
@@ -304,9 +290,6 @@ function onInfo(info: overwolf.games.events.InfoUpdates2Event): void {
 
   const board = match.submitted ? null : all.board;
   if (board?.board_pieces) recordBoard(match.boards, 'own', match.round, null, parseBoardPieces(board.board_pieces));
-  if (all.board?.board_pieces !== undefined) ownBoard = parseBoardPieces(all.board.board_pieces).map(b => b.unit);
-  if (all.bench?.bench_pieces !== undefined) ownBench = parseBench(all.bench.bench_pieces);
-  Object.assign(p, ownUnitsPatch());
   if (board?.opponent_board_pieces) {
     const opp = p.opponent !== undefined ? p.opponent : live.opponent;
     const pieces = parseBoardPieces(board.opponent_board_pieces);
@@ -327,8 +310,7 @@ function onEvents(e: overwolf.games.events.NewGameEvents): void {
   for (const ev of e?.events || []) {
     if (ev.name === 'match_start' || ev.name === 'matchStart') {
       resetMatch();
-      resetOwn();
-      patchLive({ inTft: live.inTft, level: null, shop: [], stage: null, opponent: null, ownUnits: [], oppBoards: {} });
+      patchLive({ inTft: live.inTft, level: null, shop: [], stage: null, opponent: null, oppBoards: {} });
     } else if (ev.name === 'shop_visible' || ev.name === 'shop_hidden') {
       sawShopVisibleEvent = true;
       const visible = ev.name === 'shop_visible' && String(ev.data) !== 'false';
@@ -369,10 +351,9 @@ function onGameStart(classId: number | null): void {
   resetMatch();
   match.gameId = classId;
   sawShopVisibleEvent = false;
-  resetOwn();
   armFeatures(classId);
   // 28164/21570 sind sicher TFT; bei 5426 entscheidet erst game_mode.
-  patchLive({ inTft: tftFromGame(classId) === true, shop: [], shopVisible: false, opponent: null, stage: null, level: null, ownUnits: [], oppBoards: {} });
+  patchLive({ inTft: tftFromGame(classId) === true, shop: [], shopVisible: false, opponent: null, stage: null, level: null, oppBoards: {} });
   void mainForGame();
 }
 
@@ -382,8 +363,7 @@ function onGameEnd(): void {
   armGen++;
   void submit();
   sawShopVisibleEvent = false;
-  resetOwn();
-  patchLive({ inTft: false, shop: [], shopVisible: false, opponent: null, stage: null, level: null, ownUnits: [], oppBoards: {} });
+  patchLive({ inTft: false, shop: [], shopVisible: false, opponent: null, stage: null, level: null, oppBoards: {} });
   void setTopmost('main', false);
 }
 
@@ -424,22 +404,36 @@ async function mainForGame(): Promise<void> {
 
 // ---------- Overlays ----------
 
-let shopPlaced = false;
+// Fenster, deren Lage am Spielbild haengt; nach Aufloesungswechsel oder
+// Schliessen neu setzen.
+const placed = new Set<WindowName>();
 
-async function placeShop(): Promise<void> {
+// Das Spielbild ist eine zentrierte 16:9-Flaeche; Lagen in Anteilen davon.
+async function gameRect(): Promise<{ ox: number; oy: number; bw: number; bh: number } | null> {
   const g = await new Promise<overwolf.games.GetRunningGameInfoResult | null>(res => overwolf.games.getRunningGameInfo(r => res(r || null)));
-  if (!g?.isRunning) return;
+  if (!g?.isRunning) return null;
   const W = g.logicalWidth || g.width;
   const H = g.logicalHeight || g.height;
-  if (!W || !H) return;
-  // Das Spielbild ist eine zentrierte 16:9-Flaeche; die Shop-Leiste sitzt
-  // unten zwischen ca. 24 % und 77,5 % ihrer Breite.
+  if (!W || !H) return null;
   const bw = Math.min(W, (H * 16) / 9);
   const bh = (bw * 9) / 16;
-  const ox = (W - bw) / 2;
-  const oy = (H - bh) / 2;
-  await moveTo('shop', ox + bw * 0.24, oy + bh * 0.80, bw * 0.535, bh * 0.11);
-  shopPlaced = true;
+  return { ox: (W - bw) / 2, oy: (H - bh) / 2, bw, bh };
+}
+
+// Shop-Leiste: unten zwischen ca. 24 % und 77,5 % der Breite.
+// Gegner-Liste: links neben den Spieler-Bildern am rechten Rand (die Hoehe
+// passt das Fenster selbst an seinen Inhalt an).
+const PLACES: Partial<Record<WindowName, [number, number, number, number]>> = {
+  shop: [0.24, 0.80, 0.535, 0.11],
+  matchup: [0.715, 0.17, 0.15, 0.5],
+};
+
+async function place(name: WindowName): Promise<void> {
+  const at = PLACES[name];
+  const r = at ? await gameRect() : null;
+  if (!at || !r) return;
+  await moveTo(name, r.ox + r.bw * at[0], r.oy + r.bh * at[1], r.bw * at[2], r.bh * at[3]);
+  placed.add(name);
 }
 
 const shown = new Set<WindowName>();
@@ -449,11 +443,11 @@ async function setOverlay(name: WindowName, want: boolean): Promise<void> {
   if (want) {
     shown.add(name);
     await show(name);
-    if (name === 'shop' && !shopPlaced) await placeShop();
+    if (PLACES[name] && !placed.has(name)) await place(name);
   } else {
     shown.delete(name);
     await close(name);
-    if (name === 'shop') shopPlaced = false;
+    placed.delete(name);
   }
 }
 
@@ -462,10 +456,11 @@ async function syncOverlays(): Promise<void> {
   const pin = read('ms.pin');
   const tft = live.inTft;
   await Promise.all([
-    // Ohne angeheftete Comp zeigt das Overlay die Vorschlagsliste.
-    setOverlay('pinned', tft && s.pinned),
+    // Comp-Overlay und Shop-Stern nur mit angehefteter Comp; die Gegner-Comps
+    // brauchen keine.
+    setOverlay('pinned', tft && s.pinned && !!pin),
     setOverlay('shop', tft && s.shop && !!pin && live.shopVisible),
-    setOverlay('matchup', tft && s.opponent && !!pin),
+    setOverlay('matchup', tft && s.opponent),
   ]);
 }
 
@@ -485,7 +480,7 @@ async function loadPinDetail(force = false): Promise<void> {
   if (!force && want === pinDetailFor && cur?.key === pin.key && Date.now() - cur.fetchedAt < REFRESH_MS) return;
   pinDetailFor = want;
   try {
-    const data = await loadCompDetail(pin.slug, pin.units.map(u => u.id));
+    const data = await loadCompDetail(pin.slug, pin.units.map(u => u.id), [...new Set([...pin.carries, ...pin.itemCarriers])]);
     if (read('ms.pin')?.key === pin.key) write('ms.pinDetail', { key: pin.key, fetchedAt: Date.now(), data });
   } catch (e) {
     pinDetailFor = '';
@@ -515,7 +510,7 @@ overwolf.games.onGameInfoUpdated.addListener(e => {
     if (e.gameInfo?.isRunning) onGameStart(gameClassId(e.gameInfo));
     else onGameEnd();
   }
-  if (e?.resolutionChanged) shopPlaced = false;
+  if (e?.resolutionChanged) placed.clear();
 });
 overwolf.games.getRunningGameInfo(r => { if (r?.isRunning) onGameStart(gameClassId(r)); });
 // Schliesst der Nutzer ein Overlay selbst, muss es beim naechsten Mal wieder aufgehen.
@@ -523,7 +518,7 @@ overwolf.windows.onStateChanged.addListener(e => {
   const name = e?.window_name as WindowName;
   if (name && shown.has(name) && (e.window_state_ex === 'closed' || e.window_state_ex === 'hidden')) {
     shown.delete(name);
-    if (name === 'shop') shopPlaced = false;
+    placed.delete(name);
   }
 });
 overwolf.settings.hotkeys.onPressed.addListener(e => { if (e?.name === 'toggle_main') void toggle('main'); });

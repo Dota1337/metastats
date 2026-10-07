@@ -22,6 +22,7 @@
 // 503 der Datenbank wuerde sonst den Guide-Lesepfad mitreissen.
 import { CURRENT_SET } from './current-set';
 import type { TftAssetsBundle } from './tft-cdragon';
+import { jaccard, MERGE_MIN_JACCARD } from './tft-comp-roles';
 
 const GUIDE_SET = CURRENT_SET;
 
@@ -230,19 +231,66 @@ function toGuide(comp: MetaTftComp, details: CompDetails | null, cuts: LoadedGui
 }
 
 /**
- * Familie → Guide. `parts` kommt aus dem cluster_key der Comp-Seite.
+ * Unsere Comp → MetaTFT-Comp (Guide, Early Game, Stufen-Zeitpunkte).
  *
- * Kein Fuzzy-Matching auf den Trait-Namen: die Familien-Map wird mit derselben
- * classifyComp-Lib gebildet, aus der auch die cluster_keys stammen, also ist
- * der Schlüssel exakt. Ein Prefix-Match wie in der tftacademy-Fassung würde
- * hier nur falsche Treffer erzeugen.
+ * Die Familien-Map allein reicht nicht: gemessen 2026-10-07 zeigten 14 von 25
+ * Eintraegen auf eine MetaTFT-Comp mit weniger als 70 % gemeinsamen Units, und
+ * 14 von 40 Comps hatten gar keinen Eintrag (Early Game blieb leer). Deshalb
+ * gilt dieselbe Schwelle wie beim Zusammenlegen zweier Familien
+ * (MERGE_MIN_JACCARD): ein Treffer zaehlt nur, wenn die Units zu mindestens
+ * 0,7 uebereinstimmen und ein Carry unserer Comp in der MetaTFT-Comp steht.
+ * Zuerst die Familien-Map, sonst der beste Treffer ueber alle MetaTFT-Comps.
+ *
+ * Mehrere unserer Comps duerfen auf dieselbe MetaTFT-Comp zeigen: gemessen
+ * sind das Varianten mit (fast) gleichem Brett, z. B. vier Aphelios-Comps mit
+ * 0,70-0,89 Ueberlappung — fuer alle gilt dasselbe Early Game.
+ *
+ * Ohne Units (alte Aufrufer) bleibt es beim exakten Familien-Treffer.
+ */
+export function resolveGuideId(
+  bundle: Pick<CompGuidesBundle, 'familyMap' | 'comps'>,
+  familyKeys: string[],
+  units: string[],
+  carries: string[],
+): string | null {
+  if (units.length === 0) {
+    for (const k of familyKeys) if (bundle.familyMap[k]) return bundle.familyMap[k];
+    return null;
+  }
+  const own = new Set(units);
+  const fits = (c: MetaTftComp | undefined): number => {
+    if (!c || !carries.some(x => c.units.includes(x))) return -1;
+    const j = jaccard(own, new Set(c.units));
+    return j >= MERGE_MIN_JACCARD ? j : -1;
+  };
+  for (const k of familyKeys) {
+    const id = bundle.familyMap[k];
+    if (id && fits(bundle.comps.find(c => c.id === id)) >= 0) return id;
+  }
+  let best: { id: string; j: number; games: number } | null = null;
+  for (const c of bundle.comps) {
+    const j = fits(c);
+    if (j < 0) continue;
+    if (!best || j > best.j || (j === best.j && c.games > best.games)) best = { id: c.id, j, games: c.games };
+  }
+  return best?.id ?? null;
+}
+
+/**
+ * Familie → Guide. `parts` kommt aus dem cluster_key der Comp-Seite, `units`
+ * sind die typischen Units der Comp, `carries` die erkannten Carries
+ * (Abgleich siehe resolveGuideId).
  */
 export function findCompGuide(
   loaded: LoadedGuides | null,
   parts: { trait: string; carry: string } | null,
+  units: string[] = [],
+  carries: string[] = [],
 ): { slug: string; guide: CompGuide } | null {
   if (!loaded?.bundle || !parts) return null;
-  const clusterId = loaded.bundle.familyMap[`${parts.trait}__${parts.carry}`];
+  // Erkannte Carries zuerst, dann der Key-Carry (wie die Seite sie benennt).
+  const all = [...new Set([...carries, parts.carry])];
+  const clusterId = resolveGuideId(loaded.bundle, all.map(c => `${parts.trait}__${c}`), units, all);
   if (!clusterId) return null;
   const comp = loaded.bundle.comps.find(c => c.id === clusterId);
   if (!comp) return null;

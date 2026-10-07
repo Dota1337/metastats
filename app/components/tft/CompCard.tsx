@@ -81,10 +81,10 @@ export default function CompCard({
   // comp has an editorial slug-map entry pointing at a tftacademy guide.
   const [guideBundle, setGuideBundle] = useState<Awaited<ReturnType<typeof loadCompGuidesBundle>> | null>(null);
   useEffect(() => { loadCompGuidesBundle().then(setGuideBundle); }, []);
-  // Guide: zuerst ueber die erkannten Carries, dann ueber den Key-Carry.
+  // Guide: zuerst ueber die erkannten Carries, dann ueber den Key-Carry;
+  // gilt nur bei passendem Brett (resolveGuideId).
   const guideMatch = parts
-    ? [...new Set([...named, parts.carry])].reduce<ReturnType<typeof findCompGuide>>(
-        (hit, carry) => hit ?? findCompGuide(guideBundle, { trait: parts.trait, carry }), null)
+    ? findCompGuide(guideBundle, { trait: parts.trait, carry: parts.carry }, comp.typicalUnits.map(u => u.characterId), named)
     : null;
   // Stargazer (and similar themed traits) ships seven constellation variants
   // — Mountain, Serpent, Huntress, Medallion, Fountain, Wolf, Shield — all of

@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
-import { loadTftAssets, tftIconUrl, tftChampionTileUrl, findChampion, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import { loadTftAssets, tftIconUrl, tftChampionTileUrl, findChampion, formatTftDesc, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { loadCompGuidesBundle, allGuides, augmentRowsByRarity, type CompGuide as CompGuideData } from '../../../lib/tft-comp-guides';
 
 // Augment-Compare-View — zwei Augments nebeneinander mit Tier-Badge,
@@ -147,7 +147,7 @@ function AugmentPanel({
       </div>
 
       {meta.desc && (
-        <p className="text-fg-secondary text-xs leading-relaxed whitespace-pre-line mb-3">{meta.desc}</p>
+        <p className="text-fg-secondary text-xs leading-relaxed whitespace-pre-line mb-3">{formatTftDesc(meta.desc)}</p>
       )}
 
       <div className="border-t border-border-subtle pt-3">

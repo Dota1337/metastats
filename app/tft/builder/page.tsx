@@ -7,7 +7,7 @@ import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
 import TftHero from '../../components/tft/TftHero';
 import { useI18n } from '../../lib/i18n';
-import { loadTftAssets, tftChampionTileUrl, tftIconUrl, tftPlayableChampions, tftTraitIdPrefix, type TftAssetsBundle } from '../../lib/tft-cdragon';
+import { loadTftAssets, tftChampionTileUrl, tftIconUrl, tftPlayableChampions, tftTraitIdPrefix, formatTftDesc, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import { buildPlanAheadCode } from '../../lib/tft-plan-ahead-code';
 import { HEX_CLIP } from '../../lib/tft-ui';
 
@@ -889,7 +889,7 @@ export default function TftBuilderPage() {
               <div className="text-fg-secondary text-xs uppercase tracking-widest">
                 {t('tft.builderBoard')}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   onClick={() => setShowOpponent(s => !s)}
                   className="px-3 py-1.5 rounded text-xs bg-surface-raised text-fg-secondary hover:text-white border border-border-subtle"
@@ -990,7 +990,7 @@ export default function TftBuilderPage() {
                     `${c.name} (${c.cost})`,
                     traits || null,
                     ability?.name ? `\n${ability.name}` : null,
-                    ability?.desc || null,
+                    formatTftDesc(ability?.desc) || null,
                   ].filter(Boolean).join('\n');
                   return (
                     <button
@@ -1070,7 +1070,7 @@ export default function TftBuilderPage() {
                     const iid = selectedPlacement.items[slotIdx];
                     const item = iid ? assets?.items[iid] : null;
                     const url = tftIconUrl(assets, item?.icon);
-                    const tooltip = item ? `${item.name}${item.desc ? '\n\n' + item.desc : ''}` : '';
+                    const tooltip = item ? `${item.name}${item.desc ? '\n\n' + formatTftDesc(item.desc) : ''}` : '';
                     return (
                       <button
                         key={slotIdx}
@@ -1093,7 +1093,7 @@ export default function TftBuilderPage() {
                       </div>
                       <div className="text-white text-xs font-medium mb-1">{champ.ability.name}</div>
                       {champ.ability.desc && (
-                        <div className="text-[#cbd5e1] text-[11px] leading-relaxed whitespace-pre-line">{champ.ability.desc}</div>
+                        <div className="text-[#cbd5e1] text-[11px] leading-relaxed whitespace-pre-line">{formatTftDesc(champ.ability.desc)}</div>
                       )}
                     </div>
                   );
@@ -1108,7 +1108,7 @@ export default function TftBuilderPage() {
                       {equipped.map(({ id, item }) => (
                         <div key={id}>
                           <div className="text-white text-[11px] font-medium">{item!.name}</div>
-                          <div className="text-[#cbd5e1] text-[10px] leading-relaxed">{item!.desc}</div>
+                          <div className="text-[#cbd5e1] text-[10px] leading-relaxed">{formatTftDesc(item!.desc)}</div>
                         </div>
                       ))}
                     </div>
@@ -1173,7 +1173,7 @@ export default function TftBuilderPage() {
                   const onSelectedUnit = selectedPlacement?.items.includes(item.id);
                   const fullOnSelected = selectedPlacement && selectedPlacement.items.length >= MAX_ITEMS_PER_UNIT && !onSelectedUnit;
                   const fullItem = assets?.items[item.id];
-                  const tooltip = fullItem?.desc ? `${item.name}\n\n${fullItem.desc}` : item.name;
+                  const tooltip = fullItem?.desc ? `${item.name}\n\n${formatTftDesc(fullItem.desc)}` : item.name;
                   return (
                     <button
                       key={item.id}

@@ -16,10 +16,11 @@
  * frontend doesn't have to download CD's full 24 MB blob.
  */
 
-import { writeFileSync, readFileSync, existsSync, readdirSync } from 'node:fs';
+import { writeFileSync, readFileSync, existsSync, readdirSync, realpathSync } from 'node:fs';
 import { request as httpsRequest } from 'node:https';
 import { resolve } from 'node:path';
 import { lookup as dnsLookup } from 'node:dns';
+import { fileURLToPath } from 'node:url';
 import { loadCurrentSet } from './lib/current-set.mjs';
 
 const SOURCE_URL = 'https://raw.communitydragon.org/latest/cdragon/tft/en_us.json';
@@ -343,45 +344,12 @@ async function main() {
   for (const it of cd.items || []) {
     if (it.apiName) itemsByName.set(it.apiName, it);
   }
-  // Build per-locale {name, desc} pairs for each augment. The English entry
-  // doubles as the default — same heuristic as before to handle sub-augments
-  // where desc==undefined or desc==name (e.g. Quest picks). For each non-EN
-  // locale we use the localised name/desc with the same effects-map (the
-  // @placeholders are language-agnostic numeric refs).
-  function buildI18nForAugment(apiName) {
-    const out = {};
-    for (const loc of LOCALES) {
-      const it = localeItems[loc.code]?.get(apiName);
-      if (!it) continue;
-      const nameDup = it.name && it.desc && it.name.trim() === it.desc.trim();
-      const hasSeparateDesc = !!(it.desc && it.desc.trim()) && !nameDup;
-      const nameIsTitle = it.name && it.name.length < 60 && !/[@.]/.test(it.name);
-      let displayName, sourceDesc;
-      if (hasSeparateDesc && nameIsTitle) {
-        displayName = it.name;
-        sourceDesc = it.desc;
-      } else {
-        // For "title is the long sentence" cases we keep the synthetic suffix
-        // title (en-only — every locale would otherwise get the same suffix
-        // and the user would see English titles on a translated page). Falling
-        // back to the suffix is fine because it's a stable game term.
-        displayName = (apiName.split('_').pop() || apiName).replace(/([a-z])([A-Z])/g, '$1 $2');
-        sourceDesc = it.name || '';
-      }
-      out[loc.code] = {
-        name: displayName,
-        desc: resolveDescPlaceholders(stripHtml(sourceDesc), it.effects),
-      };
-    }
-    return out;
-  }
-
   for (const augName of active.augments || []) {
     const apiName = typeof augName === 'string' ? augName : augName?.apiName;
     if (!apiName) continue;
     const a = itemsByName.get(apiName);
     if (!a) continue;
-    const i18n = buildI18nForAugment(apiName);
+    const i18n = buildAugmentI18n(apiName, localeItems);
     const en = i18n.en || { name: apiName, desc: '' };
     augments[apiName] = {
       name: en.name,
@@ -511,6 +479,8 @@ async function main() {
   } else {
     console.warn(`       WARN: nur ${overrideCount} Augments von tactics.tools gepinnt (<${OVERRIDE_MIN}) — Pool-Gegenprobe uebersprungen, Riots volle Liste bleibt stehen`);
   }
+  const aliasCount = markAugmentAliases(augments, derivedSetPrefix(traits));
+  console.log(`       augment-aliases: ${aliasCount} alte Kennungen als Kopie markiert (aliasOf)`);
   console.log(`       items: ${Object.keys(items).length}  active.items: ${activeItems.length}  champions: ${Object.keys(champions).length}  traits: ${Object.keys(traits).length}  augments: ${Object.keys(augments).length}  active.augments: ${activeAugments.length}  chibis: ${Object.keys(chibis).length}  tacticians: ${Object.keys(tacticians).length}`);
 
   const plannerCodes = buildPlannerCodes(teamplanner, active.number, champions);
@@ -605,6 +575,90 @@ function stripHtml(s) {
   return String(s || '').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+// Build per-locale {name, desc} pairs for each augment. The English entry
+// doubles as the default — same heuristic as before to handle sub-augments
+// where desc==undefined or desc==name (e.g. Quest picks). For each non-EN
+// locale we use the localised name/desc with the same effects-map (the
+// @placeholders are language-agnostic numeric refs).
+// `localeItems` = { <code>: Map<apiName, cdItem> } wie in main() geladen.
+export function buildAugmentI18n(apiName, localeItems) {
+  const out = {};
+  for (const loc of LOCALES) {
+    const it = localeItems[loc.code]?.get(apiName);
+    if (!it) continue;
+    const nameDup = it.name && it.desc && it.name.trim() === it.desc.trim();
+    const hasSeparateDesc = !!(it.desc && it.desc.trim()) && !nameDup;
+    const nameIsTitle = it.name && it.name.length < 60 && !/[@.]/.test(it.name);
+    let displayName, sourceDesc;
+    if (hasSeparateDesc && nameIsTitle) {
+      displayName = it.name;
+      sourceDesc = it.desc;
+    } else {
+      // For "title is the long sentence" cases we keep the synthetic suffix
+      // title (en-only — every locale would otherwise get the same suffix
+      // and the user would see English titles on a translated page). Falling
+      // back to the suffix is fine because it's a stable game term.
+      displayName = (apiName.split('_').pop() || apiName).replace(/([a-z])([A-Z])/g, '$1 $2');
+      sourceDesc = it.name || '';
+    }
+    out[loc.code] = {
+      name: displayName,
+      desc: resolveDescPlaceholders(stripHtml(sourceDesc), it.effects),
+    };
+  }
+  return out;
+}
+
+// Alte Augment-Kennungen als Kopie markieren. Riot fuehrt in Set 18 viele
+// Augments doppelt: unter der alten Kennung (TFT_Augment_*, TFT9_Augment_* …)
+// und unter der neuen mit Set-Praefix (DA_*), gleicher Name, gleiche Stufe.
+// Gemessen 2026-10-07: 435 aktive Eintraege, aber nur 253 Namen.
+// Regel: Gruppe = gleicher englischer Name. Gibt es darin GENAU EINEN Eintrag
+// mit dem Set-Praefix, bekommt jeder Eintrag OHNE Praefix und mit gleicher
+// Stufe `aliasOf: <Praefix-Kennung>`. Zwei Praefix-Eintraege mit gleichem Namen
+// (Beast Within Nidalee/Sivir, Nesting Dolls Plus/PlusPlus) sind verschiedene
+// Augments und werden nie zusammengelegt. Der Eintrag selbst bleibt im Bundle,
+// damit alte Links und alte Matches weiter einen Namen finden; Listen
+// ueberspringen `aliasOf`. Ohne Set-Praefix (leerer String) passiert nichts.
+// Gibt die Zahl der markierten Eintraege zurueck.
+export function markAugmentAliases(augments, setPrefix) {
+  if (!setPrefix || !augments) return 0;
+  const groups = new Map();
+  for (const [id, a] of Object.entries(augments)) {
+    const name = String(a?.i18n?.en?.name || a?.name || '').trim();
+    if (!name) continue;
+    if (!groups.has(name)) groups.set(name, []);
+    groups.get(name).push(id);
+  }
+  let marked = 0;
+  for (const ids of groups.values()) {
+    const current = ids.filter(id => id.startsWith(setPrefix));
+    if (current.length !== 1) continue;
+    const target = current[0];
+    for (const id of ids) {
+      if (id === target || id.startsWith(setPrefix)) continue;
+      if (augments[id].tier !== augments[target].tier) continue;
+      augments[id].aliasOf = target;
+      marked++;
+    }
+  }
+  return marked;
+}
+
+// Riot speichert die Effektwerte neuerer Sets teils nur unter dem Hash des
+// Namens: `effects: { "{c2c01596}": 20 }` fuer `@GoldInstantBasic@`. Der
+// Schluessel ist FNV-1a-32 ueber den kleingeschriebenen Namen (geprueft:
+// fnv('GoldInstantBasic') = c2c01596). Ohne diesen Rueckweg verliert z. B.
+// DA_AdvancedLoan die Zahl ("Gain Gold." statt "Gain 20 Gold.").
+function binHash(name) {
+  let h = 0x811c9dc5;
+  for (const ch of String(name).toLowerCase()) {
+    h ^= ch.charCodeAt(0);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return `{${h.toString(16).padStart(8, '0')}}`;
+}
+
 // Replace CD-style @VAR@ / @VAR*100@ placeholders in a description with the
 // resolved numeric value from a trait/item/augment effects map. Lookup is
 // case-insensitive (CD ships mixed-case keys). Unresolved tokens are
@@ -616,19 +670,23 @@ function fmtNum(v) {
   const rounded = Math.round(v * 100) / 100;
   return rounded % 1 === 0 ? String(rounded) : String(rounded);
 }
-function resolveDescPlaceholders(desc, vars) {
+export function resolveDescPlaceholders(desc, vars) {
   if (!desc) return desc;
   const lookup = {};
   if (vars && typeof vars === 'object') {
     for (const [k, v] of Object.entries(vars)) lookup[k.toLowerCase()] = v;
   }
+  const valueOf = (key) => {
+    const direct = lookup[key.toLowerCase()];
+    return direct !== undefined ? direct : lookup[binHash(key)];
+  };
   let out = desc;
   out = out.replace(/@([A-Za-z0-9_]+)\*100@/g, (_, key) => {
-    const v = lookup[key.toLowerCase()];
+    const v = valueOf(key);
     return typeof v === 'number' ? String(Math.round(v * 100)) : '';
   });
   out = out.replace(/@([A-Za-z0-9_]+)@/g, (_, key) => {
-    const v = lookup[key.toLowerCase()];
+    const v = valueOf(key);
     return v === undefined ? '' : fmtNum(typeof v === 'number' ? v : Number(v));
   });
   out = out.replace(/@[\w.:\-+*]+@/g, '');
@@ -705,7 +763,7 @@ function collectPlayedIds(setNumber) {
 // ersten Unterstrich; gewonnen hat er nur, wenn er mindestens die Haelfte aller
 // Merkmale traegt — sonst kommt der leere String zurueck, und die Aufrufer
 // filtern dann bewusst gar nicht statt auf ein geratenes Praefix.
-function derivedSetPrefix(traits) {
+export function derivedSetPrefix(traits) {
   const ids = Object.keys(traits || {});
   if (ids.length === 0) return '';
   const counts = new Map();
@@ -723,4 +781,15 @@ function derivedSetPrefix(traits) {
   return bestCount * 2 >= ids.length ? best : '';
 }
 
-main().catch(err => { console.error('FAIL:', err.message); process.exit(1); });
+// Nur bei direktem Aufruf laufen; beim Import (gezielte Nachbearbeitung,
+// Tests) bleiben die exportierten Funktionen ohne Netz- und Schreibzugriff.
+// realpath auf beiden Seiten, sonst verfehlt der Vergleich den Direktaufruf
+// hinter einer Verzeichnis-Verknuepfung (Workstation-Sync) und tut nichts.
+function isDirectRun() {
+  try {
+    return !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
+  } catch { return false; }
+}
+if (isDirectRun()) {
+  main().catch(err => { console.error('FAIL:', err.message); process.exit(1); });
+}

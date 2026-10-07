@@ -6,11 +6,10 @@ import Footer from '../../../components/Footer';
 import TierFilter, { type TierBucket, tierBucketFromParam } from '../../../components/tft/TierFilter';
 import EmptyData from '../../../components/tft/EmptyData';
 import { useI18n } from '../../../lib/i18n';
-import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftTraitDisplayName, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftTraitDisplayName, formatTftDesc, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { buildExplorerUrl } from '../../../lib/tft-explorer-url';
 import { parseClusterKey } from '../../../lib/tft-cluster';
 import { costColor as costColorOf } from '../../../lib/tft-ui';
-import tftSet from '../../../../public/tft-set.json';
 
 interface ItemDetail {
   apiName: string;
@@ -107,25 +106,20 @@ export default function TftItemDetailPage() {
   // Useful so a player on Negatron Cape sees all 9 magic-resist completed
   // items at a glance, with their own composition pills.
   //
-  // Strict set-scoping: keep only items from the active set + the universal
-  // `TFT_Item_*` namespace. The old `id.replace(/_Item_.*$/, '')`-prefix
-  // heuristic collapsed to `"TFT"` for the universal `TFT_Item_*` ids, which
-  // matched every set's prefix and silently pulled in retired Set-4..16
-  // emblems and Set-5 radiant spats (the latter with raw i18n keys as
-  // display names, e.g. "tft_item_name_Set5Skirmisher_RadiantSpat").
+  // Set-scoping via the asset bundle's `active.items` list (Riot set data
+  // cross-checked against played items, see scripts/fetch-tft-assets.mjs).
+  // A key-prefix check (`TFT_Item_` / `TFT<N>_Item_`) used to do this, but
+  // Set 18 ships every completed item under `DA_`, so the list came up empty.
+  // Retired emblems / Set-5 radiant spats are not in `active.items` either.
   // We also drop `_Corrupted` reskins (same item, different name → visually
   // duplicate entries) and any item whose display name still looks like an
   // unresolved CDragon i18n key.
-  const SET_NUM = tftSet.setNumber;
-  const isCurrentSetItem = (k: string) =>
-    k.startsWith('TFT_Item_') ||
-    k.startsWith(`TFT${SET_NUM}_Item_`) ||
-    k.startsWith(`TFTSet${SET_NUM}_Item_`);
+  const activeItems = new Set(assets?.active?.items ?? []);
   const siblings = assets && composition.length > 0
     ? Object.entries(assets.items)
         .filter(([k, v]) =>
           k !== id &&
-          isCurrentSetItem(k) &&
+          activeItems.has(k) &&
           !/Corrupted/i.test(k) &&
           !/^tft_item_name_/i.test(v.name || '') &&
           v.composition &&
@@ -148,7 +142,7 @@ export default function TftItemDetailPage() {
             )}
             <div className="flex-1">
               <h1 className="text-white text-2xl font-medium">{itemMeta?.name || prettyApi(id)}</h1>
-              {itemMeta?.desc && <p className="text-fg-secondary text-xs mt-1 max-w-prose">{itemMeta.desc}</p>}
+              {itemMeta?.desc && <p className="text-fg-secondary text-xs mt-1 max-w-prose">{formatTftDesc(itemMeta.desc)}</p>}
             </div>
           </div>
 

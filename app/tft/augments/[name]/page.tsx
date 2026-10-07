@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
-import { loadTftAssets, tftIconUrl, tftChampionTileUrl, findChampion, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import { loadTftAssets, tftIconUrl, tftChampionTileUrl, findChampion, formatTftDesc, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { loadCompGuidesBundle, allGuides, augmentRowsByRarity, type CompGuide } from '../../../lib/tft-comp-guides';
 import {
   loadAugmentStages,
@@ -113,7 +113,7 @@ export default function TftAugmentReferenceDetailPage() {
                   )}
                 </div>
                 {meta.desc && (
-                  <p className="text-fg-secondary text-sm mt-3 leading-relaxed whitespace-pre-line">{meta.desc}</p>
+                  <p className="text-fg-secondary text-sm mt-3 leading-relaxed whitespace-pre-line">{formatTftDesc(meta.desc)}</p>
                 )}
               </div>
             </div>

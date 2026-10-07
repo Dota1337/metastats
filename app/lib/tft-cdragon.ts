@@ -12,6 +12,9 @@
 
 import { renderTraitDesc } from './tft-trait-desc';
 import { CDRAGON_GAME_BASE } from './cdragon-base';
+import { formatTftDesc } from './tft-desc-format';
+
+export { formatTftDesc };
 
 export interface TftItem {
   name: string;
@@ -52,6 +55,9 @@ export interface TftAugment {
   // Per-locale name + desc from CDragon's localised TFT bundles.
   // Built by scripts/fetch-tft-assets.mjs from {de,en,ko,zh,es,fr}_<region>.json.
   i18n?: Partial<Record<'de' | 'en' | 'ko' | 'zh' | 'es' | 'fr', { name: string; desc: string }>>;
+  // Alte Kennung, die eine DA_-Kennung kopiert (scripts/fetch-tft-assets.mjs,
+  // markAugmentAliases). Bleibt fuer alte Links im Bundle, zaehlt nicht doppelt.
+  aliasOf?: string;
 }
 
 /** Pick the augment's localised name+desc; falls back to en, then top-level fields. */
@@ -61,10 +67,10 @@ export function tftAugmentLocalised(
 ): { name: string; desc: string } {
   if (!a) return { name: '', desc: '' };
   const loc = a.i18n?.[lang];
-  if (loc && (loc.name || loc.desc)) return { name: loc.name || a.name, desc: loc.desc || a.desc || '' };
+  if (loc && (loc.name || loc.desc)) return { name: loc.name || a.name, desc: formatTftDesc(loc.desc || a.desc) };
   const en = a.i18n?.en;
-  if (en) return { name: en.name || a.name, desc: en.desc || a.desc || '' };
-  return { name: a.name, desc: a.desc || '' };
+  if (en) return { name: en.name || a.name, desc: formatTftDesc(en.desc || a.desc) };
+  return { name: a.name, desc: formatTftDesc(a.desc) };
 }
 
 // Chibi-Champions (TFT-only premium companions) and Tacticians (Little Legends).
@@ -310,31 +316,9 @@ export function tftChampionTooltip(
   const ability = (ch as any)?.ability;
   if (!ability) return '';
   const abilityName: string = ability.name || ch?.name || '';
-  let body: string = ability.desc || '';
+  // Platzhalter und geleerte Werte raus (tft-desc-format.ts), einzeilig fuer den Tooltip.
+  const body = formatTftDesc(ability.desc).replace(/\s*\n\s*/g, ' ');
   if (!body) return abilityName;
-  // HTML-Tags raus (Riot streut <br>, <b>, <font color="…"> ein).
-  body = body.replace(/<[^>]+>/g, '');
-  // Inline-Refs wie {{TFT17_SpaceGroove_TheGroove}} → "The Groove".
-  body = body.replace(/\{\{[A-Z]+\d*_[\w]+(?:_([\w]+))?\}\}/g, (_full, lastSeg) => {
-    const seg = lastSeg as string | undefined;
-    if (!seg) return '';
-    return seg.replace(/([a-z])([A-Z])/g, '$1 $2');
-  });
-  // @TFTUnitProperty.…@ raus (cross-unit/-item Stats die wir nicht resolven können).
-  body = body.replace(/@TFTUnitProperty\.[^@]*@%?/g, '');
-  // %i:scaleHealth% etc. — kurze Labels analog renderTraitDesc.
-  const icons: Record<string, string> = {
-    scaleHealth: 'Health', scaleAS: 'AS', scaleAD: 'AD', scaleAP: 'AP',
-    scaleArmor: 'Armor', scaleMR: 'MR', scaleMana: 'Mana', scaleCrit: 'Crit',
-    scaleDodge: 'Dodge', scaleHeal: 'Heal', scaleShield: 'Shield',
-    scaleHPRegen: 'HP Regen',
-  };
-  body = body.replace(/%i:([\w]+)%/g, (_full, icon) => icons[icon] || '');
-  // Restliche unresolvte @Var@-Tokens entfernen (Werte sind level-/star-
-  // abhängig und ohne Variables nicht ableitbar).
-  body = body.replace(/@[\w.:]+\*?\d*@/g, '');
-  // Whitespace + verwaiste Punktuation
-  body = body.replace(/\s+/g, ' ').replace(/\s+([,.;:])/g, '$1').trim();
   return abilityName ? `${abilityName} — ${body}` : body;
 }
 

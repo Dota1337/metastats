@@ -61,13 +61,14 @@ export default function TftAugmentsReferencePage() {
     const whitelist = assets.active?.augments;
     if (whitelist?.length) {
       const set = new Set(whitelist);
+      // aliasOf = alte Kennung als Kopie einer DA_-Kennung, sonst doppelt gelistet
       return Object.entries(assets.augments)
-        .filter(([apiName]) => set.has(apiName))
+        .filter(([apiName, a]) => set.has(apiName) && !a.aliasOf)
         .map(([apiName, a]) => ({ apiName, ...a }));
     }
     const setPrefix = `TFT${assets.set}_`;
     return Object.entries(assets.augments)
-      .filter(([apiName]) => apiName.startsWith(setPrefix) && !/GodAugment/i.test(apiName))
+      .filter(([apiName, a]) => apiName.startsWith(setPrefix) && !/GodAugment/i.test(apiName) && !a.aliasOf)
       .map(([apiName, a]) => ({ apiName, ...a }));
   }, [assets]);
 

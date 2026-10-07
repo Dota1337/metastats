@@ -46,12 +46,17 @@ console.log(`  family-map:      ${metatftComps ? Object.keys(metatftComps.family
 console.log();
 
 // 1. Tier values are valid
-const activeList = bundle.active?.augments || [];
+const activeAll = bundle.active?.augments || [];
+for (const apiName of activeAll) {
+  if (!bundle.augments[apiName]) fail(`active.augments lists ${apiName} but bundle.augments has no entry`);
+}
+// aliasOf = alte Kennung als Kopie einer DA_-Kennung (fetch-tft-assets.mjs,
+// markAugmentAliases); geprueft wird nur das Original, sonst zaehlt alles doppelt.
+const activeList = activeAll.filter(id => bundle.augments[id] && !bundle.augments[id].aliasOf);
 if (activeList.length === 0) fail('active.augments is empty — bundle wasn\'t regenerated or filter wiped everything');
 
 for (const apiName of activeList) {
   const a = bundle.augments[apiName];
-  if (!a) { fail(`active.augments lists ${apiName} but bundle.augments has no entry`); continue; }
   if (![1, 2, 3].includes(a.tier)) fail(`${apiName} has invalid tier=${a.tier}`);
 }
 
@@ -60,7 +65,7 @@ if (override?.tiers) {
   let mismatched = 0;
   for (const [apiName, expectTier] of Object.entries(override.tiers)) {
     const a = bundle.augments[apiName];
-    if (!a) continue; // override may list augments outside this set's whitelist
+    if (!a || a.aliasOf) continue; // override may list augments outside this set's whitelist
     if (a.tier !== expectTier) {
       fail(`Tier-mismatch: ${apiName} (${a.name}) — bundle=${a.tier}, tactics.tools=${expectTier}`);
       mismatched++;

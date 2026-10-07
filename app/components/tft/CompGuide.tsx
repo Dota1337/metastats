@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
-import { tftIconUrl, tftChampionTileUrl, findChampion, findItem } from '../../lib/tft-cdragon';
+import { tftIconUrl, tftChampionTileUrl, findChampion, findItem, formatTftDesc } from '../../lib/tft-cdragon';
 import { costColor as costColorOf } from '../../lib/tft-ui';
 import { useI18n } from '../../lib/i18n';
 import {
@@ -47,7 +47,7 @@ function AugmentTile({
     <a
       href={`/tft/augments/${encodeURIComponent(apiName)}`}
       className="flex flex-col items-center w-16 hover:scale-105 transition"
-      title={meta?.desc?.replace(/<[^>]+>/g, '') || meta?.name || apiName}
+      title={formatTftDesc(meta?.desc) || meta?.name || apiName}
     >
       <div className="relative">
         <div

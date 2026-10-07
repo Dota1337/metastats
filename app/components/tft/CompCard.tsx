@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { withAlpha } from '../../lib/color';
 import { useRouter } from 'next/navigation';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
-import { tftIconUrl, tftChampionTileUrl, findChampion, findItem, tftTraitDisplayName, tftTraitDescription, tftChampionTooltip } from '../../lib/tft-cdragon';
+import { tftIconUrl, tftChampionTileUrl, findChampion, findItem, tftTraitDisplayName, tftTraitDescription, tftChampionTooltip, formatTftDesc } from '../../lib/tft-cdragon';
 import { costColor as costColorOf } from '../../lib/tft-ui';
 import { CURRENT_SET } from '../../lib/current-set';
 import { useI18n } from '../../lib/i18n';
@@ -222,7 +222,7 @@ export default function CompCard({
                   <span
                     className="ml-1 inline-flex items-center px-1.5 py-[1px] rounded text-[10px] font-medium"
                     style={{ color: '#c39bff', backgroundColor: 'rgba(123,97,255,0.12)', border: '1px solid rgba(123,97,255,0.4)' }}
-                    title={augMeta?.desc?.replace(/<[^>]+>/g, '')}
+                    title={formatTftDesc(augMeta?.desc) || undefined}
                   >
                     {augName}
                   </span>

@@ -17,6 +17,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import pg from 'pg';
 import { assertContracts } from './lib/contracts.mjs';
+import { upsertBatches } from './lib/supabase-upsert.mjs';
 
 const args = process.argv.slice(2);
 const arg = (k, def) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : def; };
@@ -65,28 +66,14 @@ const pool = new pg.Pool({ connectionString: DATABASE_URL, max: 3, statement_tim
 // Ruhende Verbindungen, die der Server kappt (z. B. DB-Neustart), reissen sonst den Prozess.
 pool.on('error', (e) => console.error(`DB-Verbindung verworfen: ${e.message}`));
 const BATCH = 200;
+// Frist ueber beide Tabellen: die Unit kappt nach TimeoutStartSec=1800. Lieber
+// nach 25 min mit "X von Y Paketen" enden als ohne Meldung abgeschossen werden.
+const DEADLINE = Date.now() + 25 * 60_000;
 
 async function supaUpsert(table, rows, onConflict) {
   if (rows.length === 0) return;
-  for (let i = 0; i < rows.length; i += BATCH) {
-    const batch = rows.slice(i, i + BATCH);
-    const url = `${SUPA_URL}/rest/v1/${table}?on_conflict=${onConflict}`;
-    const res = await fetch(url, {
-      method: 'POST',
-      signal: AbortSignal.timeout(15_000),
-      headers: {
-        apikey: SUPA_KEY,
-        Authorization: `Bearer ${SUPA_KEY}`,
-        'Content-Type': 'application/json',
-        Prefer: 'resolution=merge-duplicates,return=minimal',
-      },
-      body: JSON.stringify(batch),
-    });
-    if (!res.ok) {
-      const body = await res.text();
-      throw new Error(`Supabase upsert ${table} failed: HTTP ${res.status} ${body.slice(0, 300)}`);
-    }
-  }
+  // Wiederholung bei Timeout/Netz/5xx (Fehlschlaege 05.–07.10. um 19:15 UTC).
+  await upsertBatches({ url: SUPA_URL, key: SUPA_KEY, table, rows, onConflict, batchSize: BATCH, deadline: DEADLINE });
 }
 
 async function syncSnapshots() {

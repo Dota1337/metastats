@@ -61,6 +61,9 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { patchRanges } from './lib/tft-patch-day.mjs';
 import { currentWindowDay } from './lib/tft-crawl-window.mjs';
+import { AGG_SIG, compListSql } from './lib/explorer-agg.mjs';
+import { aggStep } from './lib/explorer-agg-build.mjs';
+import { readComponents, componentsHash } from './lib/explorer-components.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -217,6 +220,8 @@ export function filesFor(out) {
     work: `${out}.work`,
     tmp: `${out}.tmp`,
     spill: `${out}.spill`,
+    aggwork: `${out}.aggwork`,   // Arbeitskopie je Tages-Block der Teilsummen
+    aggtry: `${out}.aggtry`,     // Versuchs-Stempel: bleibt nur nach Absturz im Teilsummen-Schritt liegen
     stamp: `${out}.full-attempt.json`,
     marker: path.join(dir, 'force-full'),
     status: path.join(dir, base === 'explorer' ? 'status.json' : `${base}.status.json`),
@@ -524,7 +529,9 @@ async function build({ t0, win, testRun, untilMs, files }) {
 
   const { DuckDBInstance } = await import(DUCKDB_MODULE);
   const cleanup = () => {
-    for (const f of [files.tmp, `${files.tmp}.wal`, files.work, `${files.work}.wal`]) fs.rmSync(f, { force: true });
+    for (const f of [files.tmp, `${files.tmp}.wal`, files.work, `${files.work}.wal`, files.aggwork, `${files.aggwork}.wal`]) {
+      fs.rmSync(f, { force: true });
+    }
     fs.rmSync(files.spill, { recursive: true, force: true });
   };
   cleanup();
@@ -808,6 +815,18 @@ async function build({ t0, win, testRun, untilMs, files }) {
     const lastFullDay = mode === 'full' ? win.n : prev.meta.lastFullDay;
     // Nummern nie wiederverwenden, auch wenn das hoechste Board rausgefallen ist.
     const nextBid = Math.max(Number(stats.max_bid) + 1, mode === 'delta' ? prev.meta.nextBid : 1);
+
+    // Tages-Teilsummen fuer die filterlosen Ansichten (Paket 5b). Liest die
+    // alte meta (Kennung) und laeuft deshalb davor. Scheitert er, bleibt die
+    // Datei gueltig — ohne Summen, der Dienst rechnet dann live.
+    const components = readComponents(ROOT, setNumber, log);
+    const agg = await aggStep({
+      exec: (s) => c.run(s), all, log, outdb, mode, win, startBid, nextBid, patchChanged, t0Ms: t0, files,
+      compList: compListSql(components), compHash: componentsHash(components),
+    });
+    alarms.push(...agg.alarms);
+    tStep = Date.now();
+
     await run(`DROP TABLE IF EXISTS ${outdb}.meta`);
     await run(`CREATE TABLE ${outdb}.meta AS SELECT
       now() AS built_at, ${setNumber}::INTEGER AS set_number, ${DAYS}::INTEGER AS days,
@@ -820,7 +839,7 @@ async function build({ t0, win, testRun, untilMs, files }) {
       ${lastFullMs == null ? 'NULL' : lastFullMs}::BIGINT AS last_full_ms,
       ${lastFullDay ? sqlStr(lastFullDay) : 'NULL'}::DATE AS last_full_day,
       ${sqlStr(win.n)}::DATE AS n_day, ${nextBid}::BIGINT AS next_bid,
-      ${testRun} AS test_run, ${sqlStr(mode)} AS mode`);
+      ${testRun} AS test_run, ${sqlStr(mode)} AS mode, ${agg.token ? sqlStr(agg.token) : 'NULL'}::VARCHAR AS agg_token`);
     await run(`CHECKPOINT ${outdb}`);
     await run(`DETACH ${outdb}`);
     close();
@@ -837,11 +856,13 @@ async function build({ t0, win, testRun, untilMs, files }) {
       builtAt: new Date().toISOString(), setNumber, boards, matches,
       minDay: stats.min_day, maxDay: stats.max_day, bytes: size,
       mode, reasons: decision.reasons, lastFullAt: lastFullMs == null ? null : new Date(lastFullMs).toISOString(),
-      durations: { totalS: Math.round(totalS), scanS: Math.round(scanS) },
+      durations: { totalS: Math.round(totalS), scanS: Math.round(scanS), aggS: agg.s },
+      aggDays: { covered: agg.covered, total: agg.total }, aggNew: agg.newDays, aggSig: agg.token ? AGG_SIG : null,
       alarms,
     });
     log(`fertig (${mode}) in ${totalS.toFixed(1)} s: ${boards} Boards / ${matches} Partien, Rang bekannt ${stats.ranked},`
       + ` ohne Patch ${stats.no_patch}, neue Traits ohne Bundle-Schwelle ${nNoTraitMin}, ${stats.min_day}..${stats.max_day},`
+      + ` Teilsummen ${agg.token ? `${agg.covered}/${agg.total} Tage` : 'keine'},`
       + ` ${(size / 1e6).toFixed(0)} MB${alarms.length ? `, ALARM: ${alarms.join('; ')}` : ''}`);
     return 0;
   } finally {

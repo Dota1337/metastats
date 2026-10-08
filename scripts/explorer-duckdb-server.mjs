@@ -11,15 +11,24 @@
 // Abfrage an und tauschen erst dann. Die alte Instanz wird geschlossen, sobald
 // keine Abfrage sie mehr haelt (Referenzzaehler).
 //
-// Last: hoechstens 2 Abfragen gleichzeitig, bis zu 8 warten, danach 503.
+// Last (Live-Spur): hoechstens 2 Abfragen gleichzeitig, bis zu 8 warten, danach 503.
 // Besucher-Abfragen werden nach QUERY_TIMEOUT_MS abgebrochen. Laeuft dieselbe
 // Ansicht schon, wartet eine weitere Anfrage auf diese Rechnung (hoechstens
 // WAIT_MS, unter der 20-s-Grenze von refresh-api), statt doppelt zu rechnen.
 //
+// Tages-Teilsummen (Paket 5b): Ansichten ohne Board-Filter (kein Rang, keine
+// Unit/Item/Trait, kein Fokus) summiert der Dienst aus agg_rows/agg_head, die
+// der Bau je Tag, Patch und Region schreibt — fuer jeden Patch und jede
+// Region, bitgleich zur Live-Rechnung. Eigene Spur (4 laufend, 16 wartend,
+// AGG_TIMEOUT_MS), damit diese Ansichten nie hinter 15-s-Abfragen warten.
+// Genommen nur, wenn die Summen zu dieser Datei gehoeren (loadAgg) und alle
+// Tage der Patch-Wahl gedeckt sind; sonst und bei jedem Fehler live.
+// EXPLORER_AGG=0 schaltet den Weg ab. Antwort-Kopf X-Explorer-Source: agg|live.
+//
 // Startansichten (alle Reiter ohne Filter, neuester Patch) rechnet der Dienst
-// nach jedem Laden selbst, mit der eigenen Grenze WARM_TIMEOUT_MS: units,
-// traits und items brauchen gemessen 70-120 s und scheiterten an den 15 s bei
-// jedem Laden. Sie liegen je Datei in einer eigenen Ablage, die der
+// nach jedem Laden selbst, mit der eigenen Grenze WARM_TIMEOUT_MS: live
+// brauchen units, traits und items gemessen 70-120 s und scheiterten an den
+// 15 s bei jedem Laden. Sie liegen je Datei in einer eigenen Ablage, die der
 // Zwischenspeicher nicht verdraengt; nach einem Tausch faengt die neue Datei
 // leer an.
 //
@@ -31,6 +40,9 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import { readComponents as readComponentsFrom, componentsHash } from './lib/explorer-components.mjs';
+import { AGG_SIG, compListSql, keySelect, variantsForQuery, aggEligible, aggDaysFor } from './lib/explorer-agg.mjs';
+import { AGG_SUM_COLS, AGG_HEAD_COLS } from './lib/explorer-agg-build.mjs';
 
 const DB_PATH = process.env.EXPLORER_DB_PATH || '/mnt/HC_Volume_105869432/explorer/explorer.duckdb';
 const PORT = Number(process.env.EXPLORER_PORT || 4110);
@@ -46,6 +58,14 @@ const POLL_MS = 60_000;
 const CACHE_MAX = 400;
 const ROW_LIMIT = 500;
 const ROW_MIN_BOARDS = 5;
+// Feste Reihenfolge in beiden Wegen: bei gleicher Board-Zahl entschied sonst
+// der Zufall, welche Zeilen an der 500er-Grenze landen.
+const ROW_ORDER = 'ORDER BY n1 DESC, key NULLS FIRST, sub NULLS FIRST, sub2 NULLS FIRST';
+const AGG_ON = process.env.EXPLORER_AGG !== '0';
+const AGG_RUNNING = 4;
+const AGG_QUEUE = 16;
+const AGG_TIMEOUT_MS = Number(process.env.EXPLORER_AGG_TIMEOUT_MS || 2000);
+const AGG_WARM_TIMEOUT_MS = 30_000;
 
 const { DuckDBInstance } = await import(DUCKDB_MODULE);
 
@@ -53,7 +73,7 @@ function log(...a) { console.log(`[explorer-api ${new Date().toISOString()}]`, .
 
 // ─── Instanz + Tausch ──────────────────────────────────────────────────────
 
-let current = null; // { instance, ino, refs, retired, meta, components, pinned, warmConn }
+let current = null; // { instance, ino, refs, retired, meta, components, compHash, agg, pinned, warmConn }
 
 async function openStore() {
   const st = fs.statSync(DB_PATH);
@@ -63,9 +83,13 @@ async function openStore() {
     memory_limit: '1GB',
     temp_directory: path.join(path.dirname(DB_PATH), 'tmp-api'),
   });
-  const holder = { instance, ino: st.ino, refs: 0, retired: false, meta: null, components: [], pinned: new Map(), warmConn: null };
+  const holder = {
+    instance, ino: st.ino, refs: 0, retired: false, meta: null, components: [], compHash: null, agg: null,
+    pinned: new Map(), warmConn: null,
+  };
   const conn = await instance.connect();
   try {
+    holder.agg = AGG_ON ? await loadAgg(conn) : null;
     const m = (await conn.runAndReadAll(
       `SELECT CAST(built_at AS VARCHAR) AS built_at, set_number, days,
               CAST(min_day AS VARCHAR) AS min_day, CAST(max_day AS VARCHAR) AS max_day,
@@ -79,8 +103,11 @@ async function openStore() {
     const ranks = (await conn.runAndReadAll(
       `SELECT coalesce(rank, 'unknown') AS rank, count(*)::DOUBLE AS boards FROM boards GROUP BY 1 ORDER BY boards DESC`)).getRowObjectsJS();
     // Anwaermen: eine typische Gruppierung, damit die erste echte Anfrage
-    // nicht die Spalten von der Platte holen muss.
-    await conn.runAndReadAll(`SELECT unit, count(*) FROM units GROUP BY unit`);
+    // nicht die Spalten von der Platte holen muss — mit Teilsummen deren
+    // Tabelle, aus der die Startansichten dann kommen.
+    await conn.runAndReadAll(holder.agg
+      ? `SELECT variant, sum(n1) FROM agg_rows GROUP BY variant`
+      : `SELECT unit, count(*) FROM units GROUP BY unit`);
     holder.meta = {
       // DuckDB liefert "2026-09-28 19:43:25.07+00" — Safari/Firefox lesen das nicht.
       builtAt: new Date(String(m.built_at).replace(' ', 'T').replace(/([+-]\d\d)$/, '$1:00')).toISOString(), setNumber: Number(m.set_number), days: Number(m.days),
@@ -91,27 +118,46 @@ async function openStore() {
     conn.closeSync?.();
   }
   holder.components = readComponents(holder.meta.setNumber);
+  holder.compHash = componentsHash(holder.components);
   return holder;
+}
+
+// Teilsummen nur, wenn sie zu genau dieser Datei gehoeren: gleiche
+// Definition (AGG_SIG), Kennung = meta.agg_token, gerechnet bis zum Stand
+// dieser Datei (base_next_bid = meta.next_bid). Sonst live, nie halb.
+async function loadAgg(conn) {
+  try {
+    const am = (await conn.runAndReadAll(
+      `SELECT sig, token, base_next_bid::DOUBLE AS base, comp_hash FROM agg_meta`)).getRowObjectsJS();
+    const mm = (await conn.runAndReadAll(
+      `SELECT agg_token, next_bid::DOUBLE AS next_bid FROM meta`)).getRowObjectsJS();
+    const a = am[0];
+    const why = am.length !== 1 ? `${am.length} Kennungen`
+      : a.sig !== AGG_SIG ? 'andere Definition'
+      : !a.token ? 'ohne Kennung'
+      : mm.length !== 1 || a.token !== mm[0].agg_token ? 'Kennung passt nicht zur Datei'
+      : a.base == null || a.base !== mm[0].next_bid ? 'anderer Stand'
+      : null;
+    if (why) { log(`Teilsummen unbenutzt (${why}), rechne live`); return null; }
+    const covered = new Set((await conn.runAndReadAll(
+      `SELECT CAST(day AS VARCHAR) AS day FROM agg_days`)).getRowObjectsJS().map(r => r.day));
+    const dayPatches = (await conn.runAndReadAll(
+      `SELECT CAST(day AS VARCHAR) AS day, patch FROM day_patches`)).getRowObjectsJS();
+    const total = new Set(dayPatches.map(r => r.day)).size;
+    return { covered, dayPatches, compHash: a.comp_hash, total, coveredDays: covered.size };
+  } catch (err) {
+    log(`Teilsummen nicht lesbar, rechne live: ${err.message}`);
+    return null;
+  }
 }
 
 // Komponenten (Schwert, Bogen …) fliegen aus Item-Paaren und -Trios. Welche
 // das sind, steht im Bundle: alles, was in der Rezeptur eines aktiven
 // Items vorkommt. Gemessen fuer Set 18: 10 Stueck (DA_Component_*).
+// Liste und Hash kommen aus scripts/lib/explorer-components.mjs, die auch der
+// Bau fuer die Tages-Teilsummen nutzt.
 function readComponents(setNumber) {
-  try {
-    const a = JSON.parse(fs.readFileSync(path.join(process.cwd(), `public/tft-assets-${setNumber}.json`), 'utf8'));
-    const active = new Set(a.active?.items || []);
-    const comp = new Set();
-    for (const id of active) {
-      const c = a.items?.[id]?.composition;
-      if (Array.isArray(c) && c.length === 2) c.forEach(x => comp.add(x));
-    }
-    if (comp.size === 0) log(`WARNUNG: keine Komponenten im Bundle fuer Set ${setNumber}`);
-    return [...comp];
-  } catch (err) {
-    log(`WARNUNG: Bundle fuer Set ${setNumber} nicht lesbar (${err.message}) — Paare enthalten Komponenten`);
-    return [];
-  }
+  return readComponentsFrom(process.cwd(), setNumber, log);
 }
 
 function release(holder) {
@@ -136,7 +182,8 @@ async function pollSwap() {
     const prev = current;
     current = next;
     cache.clear();
-    log(`Datei geladen: Stand ${next.meta.builtAt}, ${next.meta.boards} Boards, Inode ${next.ino}`);
+    log(`Datei geladen: Stand ${next.meta.builtAt}, ${next.meta.boards} Boards, Inode ${next.ino}, `
+      + `Teilsummen ${next.agg ? `${next.agg.coveredDays}/${next.agg.total} Tage` : (AGG_ON ? 'keine' : 'aus')}`);
     if (prev) {
       prev.retired = true;
       // Laufendes Vorwaermen der alten Datei abbrechen, sonst haelt es bis zu
@@ -154,21 +201,27 @@ async function pollSwap() {
 
 // ─── Warteschlange ─────────────────────────────────────────────────────────
 
-let running = 0;
-const queue = [];
-
+// Zwei Spuren: live (2 laufend, 8 wartend) und Teilsummen (4/16). Eine
+// Summen-Abfrage braucht Millisekunden und soll nie hinter einer
+// 15-s-Live-Rechnung warten.
 // wait: das Vorwaermen stellt sich immer an, statt mit 503 abgewiesen zu werden.
-function acquireSlot({ wait = false } = {}) {
-  if (running < MAX_RUNNING) { running++; return Promise.resolve(); }
-  if (!wait && queue.length >= MAX_QUEUE) {
-    const e = new Error('busy'); e.status = 503; throw e;
-  }
-  return new Promise(resolve => queue.push(resolve));
+function makeLane(max, maxQueue) {
+  const lane = { running: 0, queue: [] };
+  lane.acquire = ({ wait = false } = {}) => {
+    if (lane.running < max) { lane.running++; return Promise.resolve(); }
+    if (!wait && lane.queue.length >= maxQueue) {
+      const e = new Error('busy'); e.status = 503; throw e;
+    }
+    return new Promise(resolve => lane.queue.push(resolve));
+  };
+  lane.release = () => {
+    const next = lane.queue.shift();
+    if (next) next(); else lane.running--;
+  };
+  return lane;
 }
-function releaseSlot() {
-  const next = queue.shift();
-  if (next) next(); else running--;
-}
+const liveLane = makeLane(MAX_RUNNING, MAX_QUEUE);
+const aggLane = makeLane(AGG_RUNNING, AGG_QUEUE);
 
 // ─── Eingaben pruefen ──────────────────────────────────────────────────────
 
@@ -294,72 +347,40 @@ async function setStats(conn, cteSql, params, from = 'fb') {
 }
 
 // Schluessel je Reiter: liefert Zeilen (bid, mid, placement, key, sub, sub2)
-// aus der Referenzmenge `ref`. DISTINCT, weil eine Unit doppelt auf dem
-// Board stehen kann.
+// aus der Referenzmenge `ref`. Ohne Item-Fokus kommt die SQL aus
+// scripts/lib/explorer-agg.mjs — dieselbe, aus der der Bau die
+// Tages-Teilsummen rechnet. Dort auch: DISTINCT, weil eine Unit doppelt auf
+// dem Board stehen kann; Sterne = hoechste Kopie je Board (zwei 2★-Kopien
+// sind EIN Board mit 2★); Items erst je Board schmal, dann Partie und Platz
+// (die breite Form lief bei der Startansicht ueber das Speicherlimit).
 function keySql(q, params, components) {
-  switch (q.tab) {
-    case 'units':
-      return q.split === 'star'
-        // Hoechste Kopie je Board: zwei 2★-Kopien sind EIN Board mit 2★.
-        // Die Summenzeile je Unit entsteht unten aus diesen Zeilen (kg).
-        ? `SELECT r.bid, r.mid, r.placement, u.unit AS key, max(u.star)::INTEGER AS sub, NULL::INTEGER AS sub2
-             FROM ref r JOIN units u USING (bid) GROUP BY r.bid, r.mid, r.placement, u.unit`
-        : `SELECT DISTINCT r.bid, r.mid, r.placement, u.unit AS key, NULL::INTEGER AS sub, NULL::INTEGER AS sub2 FROM ref r JOIN units u USING (bid)`;
-    case 'items': {
-      // Komponenten stammen aus dem Bundle und sind per ID_RE geprueft,
-      // deshalb als Literal statt als Listen-Parameter. Sie fallen in beiden
-      // Ansichten raus — ein Guertel im Inventar ist kein Build.
-      const compList = `[${components.filter(c => ID_RE.test(c)).map(c => `'${c}'`).join(', ')}]::VARCHAR[]`;
-      if (!q.focus) {
-        // Erst je Board die verschiedenen Items (schmale Zeilen), dann Partie
-        // und Platz dazu. Die breite Form (ganze Zeilen entpacken, dann
-        // DISTINCT) lief bei der Startansicht ueber das Speicherlimit; diese
-        // liefert dasselbe Ergebnis mit gemessen 1,21 GB.
-        return `SELECT r.bid, r.mid, r.placement, d.item AS key, NULL::INTEGER AS sub, NULL::INTEGER AS sub2
-                FROM (SELECT DISTINCT bid, item FROM (
-                        SELECT u.bid, unnest([u.i1, u.i2, u.i3]) AS item FROM units u WHERE u.bid IN (SELECT bid FROM ref))
-                      WHERE item IS NOT NULL AND NOT list_contains(${compList}, item)) d
-                JOIN ref r USING (bid)`;
-      }
-      const its = `list_sort(list_filter([u.i1, u.i2, u.i3], x -> x IS NOT NULL AND NOT list_contains(${compList}, x)))`;
-      const base = `SELECT r.bid, r.mid, r.placement, ${its} AS its FROM ref r JOIN units u USING (bid) WHERE u.unit = ?`;
-      params.push(q.focus);
-      if (q.combo === 1) {
-        return `SELECT DISTINCT bid, mid, placement, key, NULL::INTEGER AS sub, NULL::INTEGER AS sub2 FROM (
-                  SELECT bid, mid, placement, unnest(its) AS key FROM (${base}))`;
-      }
-      if (q.combo === 2) {
-        return `SELECT DISTINCT bid, mid, placement, key, NULL::INTEGER AS sub, NULL::INTEGER AS sub2 FROM (
-                  SELECT bid, mid, placement, unnest(CASE
-                    WHEN len(its) = 2 THEN [its[1] || '|' || its[2]]
-                    WHEN len(its) = 3 THEN [its[1] || '|' || its[2], its[1] || '|' || its[3], its[2] || '|' || its[3]]
-                    ELSE []::VARCHAR[] END) AS key FROM (${base}))`;
-      }
-      return `SELECT DISTINCT bid, mid, placement, its[1] || '|' || its[2] || '|' || its[3] AS key, NULL::INTEGER AS sub, NULL::INTEGER AS sub2
-              FROM (${base}) WHERE len(its) = 3`;
+  // Komponenten stammen aus dem Bundle und sind per ID_RE geprueft,
+  // deshalb als Literal statt als Listen-Parameter. Sie fallen in beiden
+  // Item-Ansichten raus — ein Guertel im Inventar ist kein Build.
+  const compList = compListSql(components);
+  if (q.tab === 'items' && q.focus) {
+    const its = `list_sort(list_filter([u.i1, u.i2, u.i3], x -> x IS NOT NULL AND NOT list_contains(${compList}, x)))`;
+    const base = `SELECT r.bid, r.mid, r.placement, ${its} AS its FROM ref r JOIN units u USING (bid) WHERE u.unit = ?`;
+    params.push(q.focus);
+    if (q.combo === 1) {
+      return `SELECT DISTINCT bid, mid, placement, key, NULL::INTEGER AS sub, NULL::INTEGER AS sub2 FROM (
+                SELECT bid, mid, placement, unnest(its) AS key FROM (${base}))`;
     }
-    case 'traits':
-      return q.split === 'over'
-        ? `SELECT DISTINCT r.bid, r.mid, r.placement, t.trait AS key, t.lvl::INTEGER AS sub, t.overcap::INTEGER AS sub2 FROM ref r JOIN traits t USING (bid)`
-        : `SELECT DISTINCT r.bid, r.mid, r.placement, t.trait AS key, t.lvl::INTEGER AS sub, NULL::INTEGER AS sub2 FROM ref r JOIN traits t USING (bid)`;
-    case 'comps':
-      return `SELECT bid, mid, placement, family AS key, NULL::INTEGER AS sub, NULL::INTEGER AS sub2 FROM ref WHERE family IS NOT NULL`;
-    case 'level':
-      return `SELECT bid, mid, placement, CAST(level AS VARCHAR) AS key, NULL::INTEGER AS sub, NULL::INTEGER AS sub2 FROM ref`;
-    case 'round':
-      return `SELECT bid, mid, placement, CAST(last_round AS VARCHAR) AS key, NULL::INTEGER AS sub, NULL::INTEGER AS sub2 FROM ref`;
-    case 'gold':
-      return `SELECT bid, mid, placement, CASE
-                WHEN gold_left <= 0 THEN '0' WHEN gold_left < 10 THEN '1-9' WHEN gold_left < 20 THEN '10-19'
-                WHEN gold_left < 30 THEN '20-29' WHEN gold_left < 50 THEN '30-49' ELSE '50+' END AS key,
-              NULL::INTEGER AS sub, NULL::INTEGER AS sub2 FROM ref`;
-    case 'region':
-      return `SELECT bid, mid, placement, region AS key, NULL::INTEGER AS sub, NULL::INTEGER AS sub2 FROM ref`;
-    case 'rank':
-      return `SELECT bid, mid, placement, rank AS key, NULL::INTEGER AS sub, NULL::INTEGER AS sub2 FROM ref WHERE rank IS NOT NULL`;
-    default:
-      throw bad('invalid_tab');
+    if (q.combo === 2) {
+      return `SELECT DISTINCT bid, mid, placement, key, NULL::INTEGER AS sub, NULL::INTEGER AS sub2 FROM (
+                SELECT bid, mid, placement, unnest(CASE
+                  WHEN len(its) = 2 THEN [its[1] || '|' || its[2]]
+                  WHEN len(its) = 3 THEN [its[1] || '|' || its[2], its[1] || '|' || its[3], its[2] || '|' || its[3]]
+                  ELSE []::VARCHAR[] END) AS key FROM (${base}))`;
+    }
+    return `SELECT DISTINCT bid, mid, placement, its[1] || '|' || its[2] || '|' || its[3] AS key, NULL::INTEGER AS sub, NULL::INTEGER AS sub2
+            FROM (${base}) WHERE len(its) = 3`;
   }
+  // Bei Sternen die Variante units_star; die Summenzeile je Unit entsteht
+  // unten aus deren Zeilen (kg).
+  const variant = variantsForQuery(q)?.[0];
+  if (!variant) throw bad('invalid_tab');
+  return keySelect(variant, { b: 'ref', compList });
 }
 
 // Kennzahlen je Zeile. Referenzmenge R (gefilterte Boards; im Item-Reiter mit
@@ -502,11 +523,9 @@ async function runQuery(holder, q, { timeoutMs = QUERY_TIMEOUT_MS, warm = false 
         FROM kg JOIN cl USING (mid)
         GROUP BY key, sub, sub2
         HAVING sum(n1) >= ?
-        ORDER BY n1 DESC
+        ${ROW_ORDER}
         LIMIT ?`, p)).getRowObjectsJS();
-      const refT = { ...ref, t4: ref.hist.slice(0, 4).reduce((a, b) => a + b, 0) };
-      out.refGames = ref.n;
-      out.rows = rows.map(r => ({ key: r.key, sub: r.sub, sub2: r.sub2, ...rowStats(r, refT) }));
+      finishRows(out, rows, ref);
       // Units: wie oft landet die Unit auf 3★ (hoechste Kopie je Board)?
       if (q.tab === 'units' && q.split !== 'star' && out.rows.length) {
         const ps = [];
@@ -529,6 +548,71 @@ async function runQuery(holder, q, { timeoutMs = QUERY_TIMEOUT_MS, warm = false 
     if (holder.warmConn === conn) holder.warmConn = null;
     conn.closeSync?.();
   }
+}
+
+// Zeilen-Kennzahlen gegen die Referenzmenge; beide Wege enden hier.
+function finishRows(out, rows, ref) {
+  const refT = { ...ref, t4: ref.hist.slice(0, 4).reduce((a, b) => a + b, 0) };
+  out.refGames = ref.n;
+  out.rows = rows.map(r => ({ key: r.key, sub: r.sub, sub2: r.sub2, ...rowStats(r, refT) }));
+}
+
+// Filterlose Ansicht aus den Tages-Teilsummen. days = alle Tage der
+// Patch-Wahl (aggDaysFor), alle gedeckt. Tag, Patch und Region sind je
+// Partie fest, die Summen ganzzahlig unter 2^53 — die Summe ueber Tage ist
+// also exakt die Live-Summe, Zeile fuer Zeile.
+async function runAggQuery(holder, q, days, { timeoutMs = AGG_TIMEOUT_MS, warm = false } = {}) {
+  const conn = await holder.instance.connect();
+  if (warm) holder.warmConn = conn;
+  const timer = setTimeout(() => { try { conn.interrupt(); } catch { /* bereits fertig */ } }, timeoutMs);
+  try {
+    if (warm && holder.retired) throw new Error('swapped');
+    let f = { matches: 0, n: 0, s: 0, ss: 0, sn: 0, nn: 0, hist: Array(8).fill(0) };
+    const p = [...days];
+    const w = ['day IN (SELECT day FROM agg_days)', `day IN (${days.map(() => 'CAST(? AS DATE)').join(', ')})`];
+    if (q.region !== 'all') { w.push('region = ?'); p.push(q.region); }
+    if (q.patches.length) { w.push(`patch IN (${q.patches.map(() => '?').join(', ')})`); p.push(...q.patches); }
+    if (days.length) {
+      const h = (await conn.runAndReadAll(
+        `SELECT ${AGG_HEAD_COLS.map(c => `coalesce(sum(${c}), 0)::DOUBLE AS ${c}`).join(', ')}
+         FROM agg_head WHERE ${w.join(' AND ')}`, p)).getRowObjectsJS()[0];
+      f = { matches: h.matches, n: h.n, s: h.s, ss: h.ss, sn: h.sn, nn: h.nn, hist: [h.h1, h.h2, h.h3, h.h4, h.h5, h.h6, h.h7, h.h8] };
+    }
+    const out = { summary: summarize(f), base: summarize(f), headDelta: null, rows: null, refGames: null };
+    if (f.n > 0) {
+      const variants = aggEligible(q);
+      const rows = (await conn.runAndReadAll(
+        `SELECT key, sub, sub2, ${AGG_SUM_COLS.map(c => `sum("${c}")::DOUBLE AS "${c}"`).join(', ')}
+         FROM agg_rows
+         WHERE variant IN (${variants.map(() => '?').join(', ')}) AND ${w.join(' AND ')}
+         GROUP BY key, sub, sub2
+         HAVING sum(n1) >= ?
+         ${ROW_ORDER}
+         LIMIT ?`, [...variants, ...p, ROW_MIN_BOARDS, ROW_LIMIT])).getRowObjectsJS();
+      finishRows(out, rows, f);
+      // 3★-Anteil: n3 = Boards mit der Unit auf 3★ (hoechste Kopie), n1 = alle.
+      if (q.tab === 'units' && q.split !== 'star') {
+        rows.forEach((r, i) => { out.rows[i].star3 = r.n3 / r.n1; });
+      }
+    } else {
+      out.rows = [];
+      out.refGames = 0;
+    }
+    return out;
+  } finally {
+    clearTimeout(timer);
+    if (holder.warmConn === conn) holder.warmConn = null;
+    conn.closeSync?.();
+  }
+}
+
+// Tage fuer den Summen-Weg oder null (dann live): nur filterlose Ansichten,
+// Items nur mit derselben Komponenten-Liste wie beim Bau.
+function aggDays(holder, q) {
+  const a = holder.agg;
+  if (!a || !aggEligible(q)) return null;
+  if (q.tab === 'items' && a.compHash !== holder.compHash) return null;
+  return aggDaysFor(q.patches, a.dayPatches, a.covered);
 }
 
 // ─── Cache ─────────────────────────────────────────────────────────────────
@@ -555,11 +639,26 @@ function compute(holder, q, key, { warm = false } = {}) {
   const inflight = pending.get(key);
   if (inflight) return warm ? inflight : withDeadline(inflight, WAIT_MS);
   const p = (async () => {
-    await acquireSlot({ wait: warm });
+    // Erst die Teilsummen in ihrer eigenen Spur; scheitert das (auch an der
+    // 2-s-Grenze), rechnet dieselbe Anfrage live. Ist die Summen-Spur voll,
+    // gibt es 503 wie bei der Live-Spur.
+    const days = aggDays(holder, q);
+    if (days) {
+      await aggLane.acquire({ wait: warm });
+      try {
+        return await execute(holder, q, key, warm, days);
+      } catch (err) {
+        if (err.message === 'swapped') throw err;
+        log(`Teilsummen-Weg gescheitert, rechne live: ${err.message} bei ${JSON.stringify(q)}`);
+      } finally {
+        aggLane.release();
+      }
+    }
+    await liveLane.acquire({ wait: warm });
     try {
       return await execute(holder, q, key, warm);
     } finally {
-      releaseSlot();
+      liveLane.release();
     }
   })();
   pending.set(key, p);
@@ -594,7 +693,11 @@ function readBody(req) {
 
 const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && req.url === '/healthz') {
-    return send(res, current ? 200 : 503, { ok: !!current, meta: current?.meta ?? null, running, queued: queue.length });
+    const a = current?.agg;
+    return send(res, current ? 200 : 503, {
+      ok: !!current, meta: current?.meta ?? null, running: liveLane.running, queued: liveLane.queue.length,
+      agg: a ? { covered: a.coveredDays, total: a.total, running: aggLane.running, queued: aggLane.queue.length } : null,
+    });
   }
   if (req.method !== 'POST' || req.url !== '/explore') return send(res, 404, { error: 'not_found' });
   if (!current) return send(res, 503, { error: 'explorer_unavailable' });
@@ -611,12 +714,14 @@ const server = http.createServer(async (req, res) => {
   const headers = { 'X-Explorer-Built-At': holder.meta.builtAt };
   const key = cacheKey(holder, q);
   const hit = holder.pinned.get(key) ?? cacheGet(key);
-  if (hit) return send(res, 200, { meta: holder.meta, query: q, ...hit, cached: true }, headers);
+  // X-Explorer-Source bleibt auf der Box: refresh-api reicht nur Built-At und
+  // Retry-After durch. Fuer Diagnose und den Abgleich agg gegen live.
+  if (hit) return send(res, 200, { meta: holder.meta, query: q, ...hit, cached: true }, { ...headers, 'X-Explorer-Source': hit.src ?? 'live' });
 
   const t0 = Date.now();
   try {
     const result = await compute(holder, q, key);
-    send(res, 200, { meta: holder.meta, query: q, ...result, cached: false }, headers);
+    send(res, 200, { meta: holder.meta, query: q, ...result, cached: false }, { ...headers, 'X-Explorer-Source': result.src ?? 'live' });
   } catch (err) {
     if (err.status === 503) return send(res, 503, { error: 'busy' }, { 'Retry-After': '5' });
     const interrupted = /interrupt/i.test(err.message || '');
@@ -631,11 +736,16 @@ function resolveLatest(holder, q) {
 function cacheKey(holder, q) { return `${holder.ino}|${JSON.stringify(q)}`; }
 
 // Laeuft mit belegtem Slot; der Aufrufer gibt ihn frei.
-async function execute(holder, q, key, warm = false) {
+// days gesetzt = Summen-Weg (aggDays), sonst live.
+async function execute(holder, q, key, warm = false, days = null) {
   holder.refs++;
   const t0 = Date.now();
   try {
-    const result = await runQuery(holder, q, warm ? { timeoutMs: WARM_TIMEOUT_MS, warm: true } : {});
+    const result = days
+      ? await runAggQuery(holder, q, days, warm ? { timeoutMs: AGG_WARM_TIMEOUT_MS, warm: true } : {})
+      : await runQuery(holder, q, warm ? { timeoutMs: WARM_TIMEOUT_MS, warm: true } : {});
+    // Nicht aufzaehlbar: steht nicht im JSON, nur im Antwort-Kopf.
+    Object.defineProperty(result, 'src', { value: days ? 'agg' : 'live', enumerable: false });
     result.ms = Date.now() - t0;
     if (warm) holder.pinned.set(key, result); else cacheSet(key, result);
     if (result.ms > 3000) log(`langsam ${result.ms} ms: ${JSON.stringify(q)}`);
@@ -647,8 +757,9 @@ async function execute(holder, q, key, warm = false) {
 
 // Nach jedem Laden die Startansichten (alle Reiter ohne Filter, neuester
 // Patch) rechnen und festhalten; Besucher schicken dieselbe Anfrage, also
-// denselben Schluessel. Nimmt immer nur einen Slot, der zweite bleibt fuer
-// echte Anfragen frei. Was scheitert, kommt nach einer Pause noch einmal dran.
+// denselben Schluessel. Nimmt immer nur einen Slot seiner Spur, der Rest
+// bleibt fuer echte Anfragen frei. Mit Teilsummen sind das Millisekunden je
+// Reiter. Was scheitert, kommt nach einer Pause noch einmal dran.
 async function warmUp(holder) {
   const t0 = Date.now();
   let n = 0;

@@ -9,8 +9,9 @@ import { parseExplorerParams, serializeExplorerQuery, toServiceBody } from '../.
 // cachen kann; die Seite baut die URL mit serializeExplorerQuery, also in
 // fester Reihenfolge.
 //
-// Cache: die Daten aendern sich nur einmal am Tag (Build 02:15 UTC, fertig
-// gemessen nach ~15 min). Deshalb bis 03:30 UTC des naechsten Tages cachen,
+// Cache: die Daten aendern sich nur einmal am Tag (Build 01:35 UTC; Teil-Aufbau
+// gemessen 258 s, Vollaufbau 3953 s am 08.10.2026, die Teilsummen-Frist im Bau
+// haelt den Tausch vor 03:30). Deshalb bis 03:30 UTC des naechsten Tages cachen,
 // danach hoechstens eine Stunde alt ausliefern, waehrend neu gerechnet wird.
 
 export const runtime = 'nodejs';

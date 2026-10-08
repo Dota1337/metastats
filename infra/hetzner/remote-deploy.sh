@@ -90,8 +90,9 @@ crawl_running() {
   # resume + catchup nur hier (2026-10): resume faehrt denselben Tagestreiber,
   # catchup startet resume. Der Treiber startet am Ende die Patch-Umbenennung als
   # Kind — ein Reset mitten darin tauschte deren Code unter dem laufenden Lauf aus.
-  # explorer-build nur hier: laedt seine Bibliotheken nach, ein Reset im ~70-Min-
-  # Vollaufbau mischte alten und neuen Code in einem Lauf.
+  # explorer-build nur hier: haelt npm ci (loescht node_modules) und git clean
+  # vom ~70-Min-Vollaufbau fern. Den Code tauscht auch der Code-only-Zweig; der
+  # Lauf hat seine Module beim Start geladen, DuckDB kommt aus /opt/metastats-explorer.
   for u in metastats-crawler.service \
            metastats-daily-crawl.service \
            metastats-daily-crawl-resume.service \
